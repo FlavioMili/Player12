@@ -111,6 +111,12 @@ class ManagementScene : public GUIScene
 
   /** @brief Rebuilds cached view models from the game state. */
   virtual void refresh() {}
+  /** Override for new/custom data domains. Record filtering and related items
+   * belong to the page; schema discovery remains inside the generic editor. */
+  virtual std::optional<EditorContext> editorContext() const
+  {
+    return std::nullopt;
+  }
 
   /** @brief Shows a short confirmation message in the top bar. */
   void showToast(std::string message, bool isError = false);

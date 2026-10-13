@@ -25,6 +25,11 @@ set(FM_CORE_SOURCES
 
     database/database_connection.h
     database/database_connection.cpp
+    database/runtime_editor.h
+    database/runtime_editor.cpp
+    controller/game_controller_editor.cpp
+    model/runtime_editor_validation.h
+    model/runtime_editor_validation.cpp
     database/repositories/player_repository.h
     database/repositories/player_repository.cpp
     database/repositories/team_repository.h
@@ -377,6 +382,8 @@ set(FM_UI_SOURCES
     gui/scenes/transfer_market_scene_tuning.h
     gui/scenes/management_scene.h
     gui/scenes/management_scene.cpp
+    gui/scenes/runtime_editor_dialog.h
+    gui/scenes/runtime_editor_dialog.cpp
     gui/scenes/manager_scene.h
     gui/scenes/manager_scene.cpp
     gui/scenes/player_profile_scene.h
@@ -478,6 +485,7 @@ set(FM_UI_SOURCES
     gui/view_models/match_clock.h
     gui/view_models/match_clock.cpp
     gui/view_models/player_view.h
+    gui/view_models/editor_context.h
     gui/view_models/player_view.cpp
     gui/widgets/format.h
     gui/widgets/format.cpp

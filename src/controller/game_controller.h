@@ -1416,7 +1416,37 @@ class GameController
   /** @brief Gets the game data cache. */
   std::shared_ptr<GameData> getGameData() const { return gamedata; }
 
+  /** Editing pauses career advancement. UI callers must also exclude live
+   * matches and discard scene caches at a frame boundary after apply/undo.
+   * The session database is private; cancelling only releases the pause. */
+  struct EditorSession
+  {
+    std::shared_ptr<DatabaseConnection> database;
+    std::shared_ptr<DatabaseConnection> source;
+    int source_changes = 0;
+    std::string source_schema;
+  };
+  std::shared_ptr<EditorSession> beginEditor();
+  void cancelEditor();
+  bool applyEditor(const std::shared_ptr<EditorSession>& session,
+                   const std::vector<RuntimeEditor::Change>& changes,
+                   std::string& error);
+  bool undoEditor(std::string& error);
+  bool canUndoEditor() const { return editor_backup != nullptr; }
+  void registerEditorValidator(RuntimeEditor::Validator validator);
+
+  /** Number of successful runtime replacements; used to invalidate UI caches.
+   */
+  std::uint64_t getEditorRevision() const { return editor_revision; }
+
  private:
+  mutable std::recursive_mutex runtime_mutex;
+  std::weak_ptr<EditorSession> editor_session;
+  std::shared_ptr<DatabaseConnection> editor_backup;
+  std::vector<RuntimeEditor::Validator> editor_validators;
+  std::uint64_t editor_revision = 0;
+  bool replaceEditorDatabase(std::shared_ptr<DatabaseConnection> connection,
+                             std::string& error);
   std::shared_ptr<class DatabaseConnection> db_conn;
   std::unique_ptr<Game> game;
   std::shared_ptr<class GameData> gamedata;

@@ -136,6 +136,34 @@ Game::Game(std::shared_ptr<GameData> gd,
         return totals;
       });
   loadGame();
+  discoverExtensions();
+}
+
+void Game::discoverExtensions()
+{
+  auto canonical = SaveManager::createWorkingCopy();
+  canonical->initialize();
+  extensions = std::make_unique<RuntimeEditor::Extensions>(db_conn->getRaw(),
+                                                           canonical->getRaw());
+  extensions_version = RuntimeEditor::schemaVersion(db_conn->getRaw());
+  // Learn opaque JSON members from this build's own serializers. The probe
+  // stays in memory; restoring the database never touches the save slot.
+  auto original = SaveManager::createWorkingCopy();
+  RuntimeEditor::copy(db_conn->getRaw(), original->getRaw());
+  try
+  {
+    serialize(true);
+    payload_extensions =
+        RuntimeEditor::Payloads(original->getRaw(), db_conn->getRaw());
+    // Keep the normalized database consistent with the serializers' onSaved
+    // flags. Restoring its old owned values would lose dirty-state writes.
+    payload_extensions.restore(db_conn->getRaw());
+  }
+  catch (...)
+  {
+    RuntimeEditor::copy(original->getRaw(), db_conn->getRaw());
+    throw;
+  }
 }
 
 void Game::loadGame()
@@ -195,8 +223,20 @@ void Game::loadGame()
   career.setInternationalDuty(national_job.hasJob());
 }
 
-void Game::saveGame()
+void Game::saveGame() { serialize(false); }
+
+void Game::serialize(bool probe)
 {
+  if (extensions &&
+      extensions_version != RuntimeEditor::schemaVersion(db_conn->getRaw()))
+  {
+    auto canonical = SaveManager::createWorkingCopy();
+    canonical->initialize();
+    extensions = std::make_unique<RuntimeEditor::Extensions>(
+        db_conn->getRaw(), canonical->getRaw());
+    extensions_version = RuntimeEditor::schemaVersion(db_conn->getRaw());
+  }
+  if (extensions) extensions->capture(db_conn->getRaw());
   db_conn->beginTransaction();
   try
   {
@@ -211,7 +251,7 @@ void Game::saveGame()
     fixtureRepo.saveCalendar(calendar);
     competitions.save();
     world.save(db_conn);
-    SaveManager::fault(SaveManager::FaultPoint::MidFlush);
+    if (!probe) SaveManager::fault(SaveManager::FaultPoint::MidFlush);
     transfers.save(db_conn);
     career.save(db_conn);
     guidance.save(db_conn);
@@ -227,6 +267,8 @@ void Game::saveGame()
     }
     playerRepo.updatePlayers(gamedata->getPlayersVector());
     teamRepo.updateTeamsState(gamedata->getTeamsVector());
+    if (extensions) extensions->restore(db_conn->getRaw());
+    payload_extensions.restore(db_conn->getRaw());
     db_conn->commitTransaction();
   }
   catch (const std::exception& e)

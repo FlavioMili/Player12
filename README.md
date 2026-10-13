@@ -55,7 +55,7 @@ git clone https://github.com/FlavioMili/FootballManagement.git
 cd FootballManagement
 cmake --preset release
 cmake --build --preset release --parallel 4
-./out/build/release/src/Player12
+./build/release/src/Player12
 ```
 
 For Ubuntu with GCC 14, use
@@ -72,7 +72,7 @@ squad, tactics and first match.
 
 | I want to… | Start here |
 |------------|------------|
-| Play the game | [First career](docs/user/getting-started.md) · [Controls](docs/user/controls.md) |
+| Play the game | [First career](docs/user/getting-started.md) · [Controls](docs/user/controls.md) · [In-game editor](docs/user/in-game-editor.md) |
 | Install, run or find my saves | [Platform setup](docs/user/installation.md) · [Files and troubleshooting](docs/user/files-and-troubleshooting.md) |
 | Make my first contribution | [Contributor guide](CONTRIBUTING.md) |
 | Understand the implementation | [Developer guide](docs/development/README.md) · [Architecture](docs/ARCHITECTURE.md) |
