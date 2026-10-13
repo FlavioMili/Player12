@@ -51,7 +51,7 @@ then use the test-enabled preset from the source root:
 ```sh
 cmake --preset release-tests
 cmake --build --preset release-tests --parallel 4
-./out/build/release-tests/src/Player12
+./build/release-tests/src/Player12
 ```
 
 On Linux with GCC 14, prefix the configure step with
