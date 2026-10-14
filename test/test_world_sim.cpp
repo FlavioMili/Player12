@@ -1036,6 +1036,32 @@ TEST(WorldSimulationTest, TakingChargeFillsTheDayOneInbox)
   EXPECT_EQ(controller->getInbox().size(), messages);
 }
 
+TEST(InboxTest, WorkloadWarningsDigestWithoutSuppressingInjuries)
+{
+  Inbox inbox;
+  const auto post =
+      [&inbox](const char* title, GameDateValue date, PlayerID player)
+  {
+    InboxMessage message;
+    message.title_key = title;
+    message.date = date;
+    message.player_id = player;
+    inbox.add(std::move(message));
+  };
+  post("MEDICAL_WARN_LOAD_TITLE", GameDateValue(2025, 9, 1), 1);
+  post("MEDICAL_WARN_LOAD_TITLE", GameDateValue(2025, 9, 2), 2);
+  post("INBOX_INJURY_TITLE", GameDateValue(2025, 9, 3), 1);
+  post("INBOX_INJURY_TITLE", GameDateValue(2025, 9, 3), 2);
+  post("MEDICAL_WARN_LOAD_TITLE", GameDateValue(2025, 9, 8), 3);
+  const auto& messages = inbox.getMessages();
+  ASSERT_EQ(messages.size(), 5u);  // Keep every advisory in the history.
+  EXPECT_FALSE(messages[0].read);
+  EXPECT_TRUE(messages[1].read);
+  EXPECT_FALSE(messages[2].read);
+  EXPECT_FALSE(messages[3].read);
+  EXPECT_FALSE(messages[4].read);  // A new week's warning is unread again.
+}
+
 TEST(WorldSimulationTest, InboxStaysQuietThroughTheFirstMonths)
 {
   const SlotCleanup slot{uniqueSlot(4)};
