@@ -4,7 +4,7 @@ Configure with tests (`release-tests` preset or `-DBUILD_TESTING=ON`):
 
 Install the [platform prerequisites](../user/installation.md) first. If you
 are already using a build directory such as `build`, use `ctest --test-dir build`
-instead of the preset; a preset always targets its own `out/build/` directory.
+instead of the preset; a preset always targets its own `build/` directory.
 
 ```sh
 cmake --preset release-tests
@@ -46,12 +46,12 @@ batches of matches or whole seasons and compares the results with real-world
 ranges:
 
 ```sh
-./out/build/release-tests/src/fm_lab matches --n 1000 --spread --threads 4
-./out/build/release-tests/src/fm_lab season --seasons 1 --threads 2
-./out/build/release-tests/src/fm_lab tactics
+./build/release-tests/src/fm_lab matches --n 1000 --spread --threads 4
+./build/release-tests/src/fm_lab season --seasons 1 --threads 2
+./build/release-tests/src/fm_lab tactics
 ```
 
-`./out/build/release-tests/src/fm_lab --help` lists every option. The lab writes
+`./build/release-tests/src/fm_lab --help` lists every option. The lab writes
 `report.md` and `metrics.json` to its output directory. Compare before/after
 results using the same seeds, ratings, count and fidelity; see
 [Extending and modding](extending-and-modding.md#validate-a-behavior-change).
@@ -77,8 +77,8 @@ before and after the edit. Benchmarks are opt-in and are not part of normal CI.
 ```sh
 cmake --preset profile
 cmake --build --preset profile --target db_benchmarks match_benchmarks --parallel 4
-./out/build/profile/benchmarks/db_benchmarks
-./out/build/profile/benchmarks/match_benchmarks
+./build/profile/benchmarks/db_benchmarks
+./build/profile/benchmarks/match_benchmarks
 ```
 
 The `profile` preset enables machine-local native optimizations; use comparable

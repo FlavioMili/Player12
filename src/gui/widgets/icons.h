@@ -33,6 +33,7 @@ enum class Icon : uint8_t
   SETTINGS,
   EXIT,
   SEARCH,
+  EDIT,
   INBOX,
   CLUB
 };

@@ -90,7 +90,7 @@ Then start a development build with an isolated save/settings directory:
 
 ```sh
 FM_RUNTIME_ROOT=/tmp/fm-player-cameo FM_WORLD_SEED=424242 \
-  ./out/build/release/src/Player12
+  ./build/release/src/Player12
 ```
 
 Create a **new career**, choose your club, open its squad and find your player.

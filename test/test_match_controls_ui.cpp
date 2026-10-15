@@ -373,6 +373,9 @@ TEST_F(HeadlessMatch, RefusedSubstitutionsSayWhy)
   playUntilBallInPlay();
   engine->advance(300.0f);
   playToNextStoppage();
+  // Half-time substitutions are free. Start the window-limit fixture at a
+  // stoppage that actually consumes a window on every platform.
+  if (engine->getState() == MatchState::HALF_TIME) playToNextStoppage();
   const std::vector<PlayerID> players = onPitch();
   const std::vector<PlayerID> substitutes = freeSubstitutes();
   ASSERT_GE(players.size(), 6u);
@@ -393,6 +396,7 @@ TEST_F(HeadlessMatch, RefusedSubstitutionsSayWhy)
   EXPECT_EQ(plan.check(*engine, true, bench(), opponent, substitutes[1]),
             Refusal::NOT_ON_PITCH);
   plan.apply(*engine, true, bench());
+  ASSERT_EQ(engine->getSubstitutionWindowsUsed(true), 1);
 
   // The substitute who came on cannot come on again, and the player who
   // went off is no longer on the pitch.
@@ -412,10 +416,16 @@ TEST_F(HeadlessMatch, RefusedSubstitutionsSayWhy)
 
   // Every window used: refused in play (outside half-time).
   playToNextStoppage();
-  plan.add(*engine, true, bench(), players[1], substitutes[1]);
+  if (engine->getState() == MatchState::HALF_TIME) playToNextStoppage();
+  ASSERT_EQ(plan.add(*engine, true, bench(), players[1], substitutes[1]),
+            Refusal::NONE);
   plan.apply(*engine, true, bench());
+  ASSERT_EQ(engine->getSubstitutionWindowsUsed(true), 2);
   playToNextStoppage();
-  plan.add(*engine, true, bench(), players[2], substitutes[2]);
+  // Half-time is free, so it cannot establish an exhausted-window fixture.
+  if (engine->getState() == MatchState::HALF_TIME) playToNextStoppage();
+  ASSERT_EQ(plan.add(*engine, true, bench(), players[2], substitutes[2]),
+            Refusal::NONE);
   plan.apply(*engine, true, bench());
   ASSERT_EQ(engine->getSubstitutionWindowsUsed(true), 3);
   playUntilBallInPlay();

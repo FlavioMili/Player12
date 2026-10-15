@@ -38,7 +38,7 @@ normal saves and settings:
 
 ```sh
 FM_RUNTIME_ROOT=/tmp/fm-test-career FM_WORLD_SEED=424242 \
-  ./out/build/release/src/Player12
+  ./build/release/src/Player12
 ```
 
 Use the executable path for your own build. For data modifications, follow

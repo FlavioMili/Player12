@@ -34,7 +34,7 @@ cmake --build --preset profile --parallel 2
 `release` is portable and does not use `-march=native`. `profile` is explicitly
 machine-local and does. Sanitizers are enabled only by `debug-sanitized`, so a
 plain Debug build does not claim diagnostics it did not run. Build trees are
-placed under the ignored `out/build` directory; validation artifacts and
+placed under the ignored `build` directory; validation artifacts and
 runtime data still belong in an isolated `/tmp/fm-*` root.
 
 Tests, benchmarks, UI automation, sanitizers, clang-tidy, native optimization,

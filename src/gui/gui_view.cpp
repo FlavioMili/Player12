@@ -27,8 +27,10 @@
 #include "gui/gui_scene.h"
 #include "gui/input_actions.h"
 #include "gui/render_scale.h"
+#include "gui/scenes/main_game_scene.h"
 #include "gui/scenes/main_menu_scene.h"
 #include "gui/scenes/match_scene.h"
+#include "gui/scenes/runtime_editor_dialog.h"
 #include "gui/scenes/team_selection_scene.h"
 #include "gui/widgets/theme.h"
 #include "imgui.h"
@@ -45,6 +47,7 @@ GUIView::GUIView(GameController& controller_ref)
 
 GUIView::~GUIView()
 {
+  editor_dialog.reset();
   // Clean up any overlaid scenes and active scenes before shutting down
   // renderer
   while (!sceneStack.empty())
@@ -344,6 +347,8 @@ void GUIView::render()
     activeScene->render();
   }
 
+  if (editor_dialog) editor_dialog->render();
+
   ImGui::Render();
   // The SDL_Renderer backend scales only clip rectangles by the framebuffer
   // scale; vertex positions are in window coordinates. Without this, a
@@ -474,6 +479,7 @@ void GUIView::recordHistory()
 
 void GUIView::applyPendingSceneChanges()
 {
+  applyEditorRequest();
   if (pendingAction == PendingAction::NONE) return;
   while (pendingAction != PendingAction::NONE)
   {
@@ -680,4 +686,67 @@ void GUIView::releaseBackdrop()
 {
   if (backdropTexture != nullptr) SDL_DestroyTexture(backdropTexture);
   backdropTexture = nullptr;
+}
+
+void GUIView::openEditor(const std::optional<NavEntry>& context)
+{
+  const auto* hub = dynamic_cast<MainGameScene*>(getBaseScene());
+  if (!controller.isGameLoaded() || !hub || hub->isContinuing() ||
+      (getTopScene() && getTopScene()->getID() == SceneID::MATCH))
+    return;
+  if (!editor_dialog)
+    editor_dialog = std::make_unique<RuntimeEditorDialog>(controller);
+  editor_dialog->open(context);
+}
+
+void GUIView::applyEditorRequest()
+{
+  if (!editor_dialog) return;
+  const auto request = editor_dialog->takeRequest();
+  if (request == RuntimeEditorDialog::Request::None) return;
+  const auto context =
+      getActiveScene() ? getActiveScene()->historyEntry() : std::nullopt;
+  std::string error;
+  const bool success =
+      request == RuntimeEditorDialog::Request::Undo
+          ? controller.undoEditor(error)
+          : controller.applyEditor(editor_dialog->session(),
+                                   editor_dialog->changes(), error);
+  editor_dialog->finish(success, std::move(error));
+  if (!success) return;
+  // Replacement happens outside render/update. Discard cached model references
+  // before reopening a screen against the new world.
+  changeScene(std::make_unique<MainGameScene>(this));
+  applyPendingSceneChanges();
+  if (!context || !Navigation::canOpen(this, *context)) return;
+  switch (context->kind)
+  {
+    case NavEntry::Kind::SECTION:
+      Navigation::open(this, context->section);
+      break;
+    case NavEntry::Kind::PLAYER:
+      Navigation::openPlayer(this, context->player);
+      break;
+    case NavEntry::Kind::CLUB:
+      Navigation::openClub(this, context->team);
+      break;
+    case NavEntry::Kind::COMPARE:
+      Navigation::openCompare(this, context->player, context->second_player);
+      break;
+    case NavEntry::Kind::MATCH_REPORT:
+      Navigation::openMatchReport(this, context->date, context->team,
+                                  context->away_team);
+      break;
+  }
+}
+
+void GUIView::openEditor(const EditorContext& context)
+{
+  const auto* hub = dynamic_cast<MainGameScene*>(getBaseScene());
+  if (!controller.isGameLoaded() || !hub || hub->isContinuing() ||
+      (getTopScene() && getTopScene()->getID() == SceneID::MATCH))
+    return;
+  if (!editor_dialog)
+    editor_dialog = std::make_unique<RuntimeEditorDialog>(controller);
+  editor_dialog->open(context);
 }
