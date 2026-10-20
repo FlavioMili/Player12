@@ -70,10 +70,21 @@ Extra required columns on rewritten tables need defaults or writer support.
 
 A ManagementScene can override `editorContext()` with an EditorContext declaring
 its primary table, current-record filter, related tables and their filters.
-Alternatively call `GUIView::openEditor(context)`. Controls are generated from
-the discovered columns; new stat keys come from the player's stored stats map.
-Built-in navigation contexts are presentation hints and do not limit the core
-editor. Unsupported internal payloads remain behind dedicated game controls.
+Alternatively call `GUIView::openEditor(context)`. Declare `editable_fields` for
+a custom feature: each `EditorField` binds a column to a localisation key,
+section key, control, optional numeric limits and labelled stored choices.
+Only declared columns receive controls or enter UI-generated changes. Missing
+columns are omitted; keys/generated columns remain read-only. Keep labels and
+choice values separate so changing language never changes persisted values.
+
+Built-in player/club presentations live in `gui/view_models/editor_fields.cpp`.
+The dialog renders these descriptions without inferring gameplay meaning from
+SQL types. New player stat keys still come from the stored stats object and
+appear automatically. New ordinary columns remain preserved but require feature
+presentation metadata before becoming editable. This is deliberate: a database
+schema alone cannot say whether a number is a position, a price or an internal
+counter. Core schema discovery, validators and opaque-data preservation remain
+independent of the player-facing presentation.
 
 Register new semantic rules through `GameController::registerEditorValidator`.
 Validators receive the staged connection and changes, throw a useful diagnostic

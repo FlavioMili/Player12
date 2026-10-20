@@ -1520,20 +1520,39 @@ void ManagementScene::renderTopBar(float height)
     ImGui::SetCursorPosY(centeredY);
   }
 
+  const auto pageEditor = editorContext();
+  const bool canEdit = pageEditor ? (!pageEditor->editable_fields.empty() ||
+                                     !editorFields(pageEditor->table).empty())
+                                  : hasBuiltinEditor(historyEntry());
   const auto editPos = ImGui::GetCursorScreenPos();
+  ImGui::BeginDisabled(!canEdit);
   if (UI::secondaryButton("###shell_edit",
                           ImVec2(UI::buttonHeight(), UI::buttonHeight())))
   {
-    if (const auto context = editorContext())
-      guiView->openEditor(*context);
+    if (pageEditor)
+    {
+      guiView->openEditor(*pageEditor);
+    }
     else
+    {
       guiView->openEditor(historyEntry());
+    }
   }
+  ImGui::EndDisabled();
   UI::drawIcon(drawList, UI::Icon::EDIT,
                ImVec2(editPos.x + UI::buttonHeight() * .5f,
                       editPos.y + UI::buttonHeight() * .5f),
-               16 * Theme::scale(), ImGui::GetColorU32(palette.text));
-  if (ImGui::IsItemHovered()) ImGui::SetTooltip("%s", LOC("EDITOR_OPEN"));
+               16 * Theme::scale(),
+               ImGui::GetColorU32(canEdit ? palette.text : palette.faint));
+  if (ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenDisabled))
+  {
+    constexpr float TOOLTIP_WIDTH_EM = 20.0F;
+    ImGui::BeginTooltip();
+    ImGui::PushTextWrapPos(ImGui::GetFontSize() * TOOLTIP_WIDTH_EM);
+    ImGui::TextUnformatted(LOC(canEdit ? "EDITOR_OPEN" : "EDITOR_UNAVAILABLE"));
+    ImGui::PopTextWrapPos();
+    ImGui::EndTooltip();
+  }
   ImGui::SameLine();
   ImGui::SetCursorPosY(centeredY);
 

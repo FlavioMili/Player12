@@ -13,12 +13,17 @@
 #include <vector>
 
 #include "database/runtime_editor.h"
+#include "gui/view_models/editor_fields.h"
 
-/** A page declares the records it exposes. The editor generates controls
- * from their live schema; adding a feature never requires a database-editor
- * table switch. Built-in pages also have navigation-based default contexts. */
+/** A page declares its records and player-facing controls. The live schema
+ * determines which declared fields exist, never their gameplay meaning.
+ * Features supply presentation metadata without changing the dialog; built-in
+ * player and club pages have navigation-based defaults. */
 struct EditorContext
 {
+  // Feature-owned, player-facing controls. Unknown columns remain preserved
+  // by persistence, but never become arbitrary inputs in the game UI.
+  std::vector<EditorField> editable_fields;
   std::string table;
   std::map<std::string, RuntimeEditor::Value, std::less<>> filter;
   std::vector<std::string> related_tables;

@@ -9,6 +9,7 @@
 #pragma once
 
 #include <array>
+#include <map>
 #include <memory>
 #include <optional>
 #include <string>
@@ -18,13 +19,17 @@
 #include "gui/nav_history.h"
 #include "gui/view_models/editor_context.h"
 
-/** A generated editor for the active schema. Owns a private draft database;
+/** Contextual gameplay editor with feature-owned presentation. Owns a draft;
  * apply requests are consumed by GUIView at the next frame boundary. */
 class RuntimeEditorDialog
 {
  public:
-  explicit RuntimeEditorDialog(GameController& controller);
+  explicit RuntimeEditorDialog(GameController& owner);
   ~RuntimeEditorDialog();
+  RuntimeEditorDialog(const RuntimeEditorDialog&) = delete;
+  RuntimeEditorDialog& operator=(const RuntimeEditorDialog&) = delete;
+  RuntimeEditorDialog(RuntimeEditorDialog&&) = delete;
+  RuntimeEditorDialog& operator=(RuntimeEditorDialog&&) = delete;
   void open(const std::optional<NavEntry>& context);
   void open(const EditorContext& context);
   void render();
@@ -61,6 +66,17 @@ class RuntimeEditorDialog
   void selectRow(std::size_t index);
   void stage();
   void renderForm();
+  static void renderField(Field& field, const EditorField& descriptor);
+  static void renderNumber(Field& field, const EditorField& descriptor);
+  static void renderChoice(Field& field, const EditorField& descriptor);
+  void renderSection(const std::string& section,
+                     const std::vector<EditorField>& descriptors);
+  void renderNavigation();
+  void renderBody(float footer);
+  void renderActions();
+  void renderConfirmation();
+  const EditorField* fieldDescriptor(const std::string& name) const;
+  void limitToGameplay();
   void renderBrowser();
   bool formDirty() const;
   void close();
@@ -80,13 +96,12 @@ class RuntimeEditorDialog
   int offset = 0;
   std::optional<RuntimeEditor::Row> original;
   std::vector<Field> fields;
-  bool browse_all = false;
+  std::map<std::string, std::vector<EditorField>, std::less<>> presentations;
   bool show_records = false;
   std::string focus_label;
   bool opened = false;
   bool close_requested = false;
   bool popup_requested = false;
-  bool apply_confirm = false;
   bool undo_confirm = false;
   std::string error;
   Request request = Request::None;

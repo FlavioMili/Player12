@@ -486,6 +486,8 @@ set(FM_UI_SOURCES
     gui/view_models/match_clock.cpp
     gui/view_models/player_view.h
     gui/view_models/editor_context.h
+    gui/view_models/editor_fields.h
+    gui/view_models/editor_fields.cpp
     gui/view_models/player_view.cpp
     gui/widgets/format.h
     gui/widgets/format.cpp
