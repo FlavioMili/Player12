@@ -640,8 +640,8 @@ std::string display(const Value& item)
     constexpr std::size_t NUMBER_BUFFER_SIZE = 64;
     std::array<char, NUMBER_BUFFER_SIZE> buffer{};
     const auto converted = std::to_chars(
-        buffer.data(), buffer.end(), *number, std::chars_format::general,
-        std::numeric_limits<double>::max_digits10);
+        buffer.data(), std::to_address(buffer.end()), *number,
+        std::chars_format::general, std::numeric_limits<double>::max_digits10);
     if (converted.ec != std::errc())
     {
       throw Error("Cannot format number");
