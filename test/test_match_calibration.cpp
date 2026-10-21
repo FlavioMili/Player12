@@ -6,6 +6,7 @@
 //  See the LICENSE file in the project root.
 // -----------------------------------------------------------------------------
 
+#include <fmt/format.h>
 #include <gtest/gtest.h>
 
 #include <algorithm>
@@ -745,8 +746,8 @@ TEST(MatchEngineCalibration, LeagueSeasonProducesARealisticTable)
     int topScorer = 0;
     for (const auto& [id, goals] : sample.scorers)
       topScorer = std::max(topScorer, goals);
-    std::printf("[season %d] champion=%d bottom=%d topScorer=%d\n", season,
-                champion, bottom, topScorer);
+    fmt::print("[season {}] champion={} bottom={} topScorer={}\n", season,
+               champion, bottom, topScorer);
     championTotal += champion;
     bottomTotal += bottom;
     topScorerTotal += topScorer;

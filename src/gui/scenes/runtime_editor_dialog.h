@@ -106,7 +106,8 @@ class RuntimeEditorDialog
     bool close_requested = false;
     bool popup_requested = false;
     bool undo_confirm = false;
-  } popup;
+  };
+  PopupState popup;
   std::string error;
   Request request = Request::None;
   std::vector<RuntimeEditor::Change> pending_changes;

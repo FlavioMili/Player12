@@ -603,13 +603,14 @@ void RuntimeEditorDialog::chooseTable(const std::string& name)
   }
   selected_table = name;
   context_filter.clear();
-  const auto has = [&table](const char* column)
-  {
-    return std::ranges::find(table->columns, std::string(column),
-                             &RuntimeEditor::Column::name) !=
-           table->columns.end();
-  };
-  if ((context_player != 0U) && name == "Players" && has("id"))
+  if (const auto has =
+          [&table](const char* column)
+      {
+        return std::ranges::find(table->columns, std::string(column),
+                                 &RuntimeEditor::Column::name) !=
+               table->columns.end();
+      };
+      (context_player != 0U) && name == "Players" && has("id"))
   {
     context_filter["id"] = static_cast<std::int64_t>(context_player);
   }

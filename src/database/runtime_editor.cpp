@@ -19,7 +19,6 @@
 #include <set>
 #include <span>
 #include <stdexcept>
-#include <type_traits>
 
 namespace RuntimeEditor
 {
@@ -89,43 +88,44 @@ Value value(sqlite3_stmt* stmt, int index)
   }
 }
 
+struct ValueBinder
+{
+  sqlite3_stmt* stmt;
+  int index;
+
+  int operator()(std::monostate /*null*/) const
+  {
+    return sqlite3_bind_null(stmt, index);
+  }
+  int operator()(std::int64_t value) const
+  {
+    return sqlite3_bind_int64(stmt, index, value);
+  }
+  int operator()(double value) const
+  {
+    if (!std::isfinite(value))
+    {
+      throw Error("Non-finite number");
+    }
+    return sqlite3_bind_double(stmt, index, value);
+  }
+  int operator()(std::string_view value) const
+  {
+    return sqlite3_bind_text64(stmt, index, value.data(), value.size(),
+                               SQLITE_TRANSIENT, SQLITE_UTF8);
+  }
+  int operator()(const Blob& value) const
+  {
+    return sqlite3_bind_blob64(
+        stmt, index,
+        value.empty() ? "" : static_cast<const void*>(value.data()),
+        value.size(), SQLITE_TRANSIENT);
+  }
+};
+
 void bindValue(sqlite3* db, sqlite3_stmt* stmt, int index, const Value& item)
 {
-  const int result = std::visit(
-      [stmt, index](const auto& value) -> int
-      {
-        using T = std::decay_t<decltype(value)>;
-        if constexpr (std::is_same_v<T, std::monostate>)
-        {
-          return sqlite3_bind_null(stmt, index);
-        }
-        else if constexpr (std::is_same_v<T, std::int64_t>)
-        {
-          return sqlite3_bind_int64(stmt, index, value);
-        }
-        else if constexpr (std::is_same_v<T, double>)
-        {
-          if (!std::isfinite(value))
-          {
-            throw Error("Non-finite number");
-          }
-          return sqlite3_bind_double(stmt, index, value);
-        }
-        else if constexpr (std::is_same_v<T, std::string>)
-        {
-          return sqlite3_bind_text64(stmt, index, value.data(), value.size(),
-                                     SQLITE_TRANSIENT, SQLITE_UTF8);
-        }
-        else
-        {
-          return sqlite3_bind_blob64(
-              stmt, index,
-              value.empty() ? "" : static_cast<const void*>(value.data()),
-              value.size(), SQLITE_TRANSIENT);
-        }
-      },
-      item);
-  check(db, result);
+  check(db, std::visit(ValueBinder{.stmt = stmt, .index = index}, item));
 }
 
 std::string join(const std::vector<std::string>& names)
@@ -484,8 +484,8 @@ Page read(sqlite3* db, const std::string& name, int offset,
           const std::string& search, int limit,
           const std::map<std::string, Value, std::less<>>& filter)
 {
-  constexpr int MAX_PAGE_SIZE = 1000;
-  if (offset < 0 || limit < 1 || limit > MAX_PAGE_SIZE)
+  if (constexpr int MAX_PAGE_SIZE = 1000;
+      offset < 0 || limit < 1 || limit > MAX_PAGE_SIZE)
   {
     throw Error("Invalid page size");
   }
