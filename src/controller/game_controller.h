@@ -1428,6 +1428,8 @@ class GameController
   };
   std::shared_ptr<EditorSession> beginEditor();
   void cancelEditor();
+  /** Contains loader, codec and feature-validator exceptions at the runtime
+   * replacement boundary; failures preserve the live career and draft. */
   bool applyEditor(const std::shared_ptr<EditorSession>& session,
                    const std::vector<RuntimeEditor::Change>& changes,
                    std::string& error);
@@ -1440,13 +1442,12 @@ class GameController
   std::uint64_t getEditorRevision() const { return editor_revision; }
 
  private:
-  mutable std::recursive_mutex runtime_mutex;
+  mutable std::mutex runtime_mutex;
   std::weak_ptr<EditorSession> editor_session;
   std::shared_ptr<DatabaseConnection> editor_backup;
   std::vector<RuntimeEditor::Validator> editor_validators;
   std::uint64_t editor_revision = 0;
-  bool replaceEditorDatabase(std::shared_ptr<DatabaseConnection> connection,
-                             std::string& error);
+  void replaceEditorDatabase(std::shared_ptr<DatabaseConnection> connection);
   std::shared_ptr<class DatabaseConnection> db_conn;
   std::unique_ptr<Game> game;
   std::shared_ptr<class GameData> gamedata;
@@ -1476,7 +1477,8 @@ class GameController
   mutable std::mutex save_status_mutex;
   SaveStatusInfo save_status;
   /** Flushes the game and atomically replaces the slot file. */
-  bool persist(bool autosave);
+  /** Caller must hold runtime_mutex, including autosaves during advancement. */
+  bool persistLocked(bool autosave);
   void maybeAutosave();
   void startSession(int slot, std::int64_t playtime_seconds);
   /** One day of simulation plus the AI transfer activity that follows. */

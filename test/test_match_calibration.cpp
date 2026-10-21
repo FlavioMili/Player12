@@ -642,6 +642,63 @@ TEST(MatchEngineCalibration, WeakerLeaguesScoreLessThanStrongerOnes)
   EXPECT_LE(low.perMatch(low.homeWins), 0.55);
 }
 
+namespace
+{
+struct SeasonSample
+{
+  std::vector<int> points;
+  std::map<PlayerID, int> scorers;
+  int home_wins = 0;
+  int draws = 0;
+  int away_wins = 0;
+};
+
+void simulateCalibrationSeason(std::vector<Team>& clubs,
+                               const StatsConfig& config, std::uint32_t& seed,
+                               SeasonSample& sample)
+{
+  constexpr int WIN_POINTS = 3;
+  sample.points.resize(clubs.size());
+  for (std::size_t home = 0; home < clubs.size(); ++home)
+  {
+    for (std::size_t away = 0; away < clubs.size(); ++away)
+    {
+      if (home == away)
+      {
+        continue;
+      }
+      MatchEngine engine(clubs.at(home).getLineup(), clubs.at(away).getLineup(),
+                         clubs.at(home).getStrategy(),
+                         clubs.at(away).getStrategy(), config, seed++);
+      engine.simulateToEnd();
+      ASSERT_EQ(engine.getState(), MatchState::FULL_TIME);
+      const int homeGoals = engine.getHomeScore();
+      const int awayGoals = engine.getAwayScore();
+      if (homeGoals > awayGoals)
+      {
+        ++sample.home_wins;
+        sample.points.at(home) += WIN_POINTS;
+      }
+      else if (homeGoals == awayGoals)
+      {
+        ++sample.draws;
+        ++sample.points.at(home);
+        ++sample.points.at(away);
+      }
+      else
+      {
+        ++sample.away_wins;
+        sample.points.at(away) += WIN_POINTS;
+      }
+      for (const PlayerMatchStats& entry : engine.getPlayerStats())
+      {
+        sample.scorers[entry.playerId] += entry.goals;
+      }
+    }
+  }
+}
+}  // namespace
+
 TEST(MatchEngineCalibration, LeagueSeasonProducesARealisticTable)
 {
   // A 20-club double round robin with a top-flight quality spread: the
@@ -677,51 +734,24 @@ TEST(MatchEngineCalibration, LeagueSeasonProducesARealisticTable)
   std::uint32_t seed = 9'001;
   for (int season = 0; season < SEASONS; ++season)
   {
-    std::array<int, CLUBS> points{};
-    std::map<PlayerID, int> scorers;
-    for (int home = 0; home < CLUBS; ++home)
-    {
-      for (int away = 0; away < CLUBS; ++away)
-      {
-        if (home == away) continue;
-        MatchEngine engine(clubs[home].getLineup(), clubs[away].getLineup(),
-                           clubs[home].getStrategy(), clubs[away].getStrategy(),
-                           config, seed++);
-        engine.simulateToEnd();
-        ASSERT_EQ(engine.getState(), MatchState::FULL_TIME);
-        const int homeGoals = engine.getHomeScore();
-        const int awayGoals = engine.getAwayScore();
-        if (homeGoals > awayGoals)
-        {
-          ++homeWins;
-          points[home] += 3;
-        }
-        else if (homeGoals == awayGoals)
-        {
-          ++draws;
-          ++points[home];
-          ++points[away];
-        }
-        else
-        {
-          ++awayWins;
-          points[away] += 3;
-        }
-        for (const PlayerMatchStats& entry : engine.getPlayerStats())
-          scorers[entry.playerId] += entry.goals;
-      }
-    }
-    const int champion = *std::ranges::max_element(points);
-    const int bottom = *std::ranges::min_element(points);
+    SeasonSample sample;
+    ASSERT_NO_FATAL_FAILURE(
+        simulateCalibrationSeason(clubs, config, seed, sample));
+    homeWins += sample.home_wins;
+    draws += sample.draws;
+    awayWins += sample.away_wins;
+    const int champion = *std::ranges::max_element(sample.points);
+    const int bottom = *std::ranges::min_element(sample.points);
     int topScorer = 0;
-    for (const auto& [id, goals] : scorers)
+    for (const auto& [id, goals] : sample.scorers)
       topScorer = std::max(topScorer, goals);
     std::printf("[season %d] champion=%d bottom=%d topScorer=%d\n", season,
                 champion, bottom, topScorer);
     championTotal += champion;
     bottomTotal += bottom;
     topScorerTotal += topScorer;
-    for (int club = 0; club < CLUBS; ++club) totalPoints[club] += points[club];
+    for (int club = 0; club < CLUBS; ++club)
+      totalPoints[club] += sample.points[club];
   }
 
   const double matches = SEASONS * CLUBS * (CLUBS - 1);

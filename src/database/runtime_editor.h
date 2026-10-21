@@ -14,6 +14,7 @@
 #include <functional>
 #include <map>
 #include <optional>
+#include <stdexcept>
 #include <string>
 #include <variant>
 #include <vector>
@@ -23,6 +24,14 @@
  * and registered validators run in the same savepoint as the mutations. */
 namespace RuntimeEditor
 {
+/** A rejected edit or SQLite operation. UI/controller boundaries translate
+ * this exception to a visible error while preserving the current career. */
+class Error : public std::runtime_error
+{
+ public:
+  using std::runtime_error::runtime_error;
+};
+
 using Blob = std::vector<unsigned char>;
 using Value =
     std::variant<std::monostate, std::int64_t, double, std::string, Blob>;
@@ -92,7 +101,7 @@ std::string quote(const std::string& identifier);
 std::string schema(sqlite3* db);
 int schemaVersion(sqlite3* db);
 std::vector<Table> catalog(sqlite3* db);
-Page read(sqlite3* db, const std::string& table, int offset = 0,
+Page read(sqlite3* db, const std::string& name, int offset = 0,
           const std::string& search = "", int limit = 50,
           const std::map<std::string, Value, std::less<>>& filter = {});
 /** Throws on stale schema/record, invalid types, constraints or validation.
@@ -102,9 +111,9 @@ void apply(sqlite3* db, const std::vector<Change>& changes,
            const std::vector<Validator>& validators = {},
            bool defer_relations = false);
 void copy(sqlite3* source, sqlite3* destination);
-std::string display(const Value& value);
-Value parse(int storage_type, const std::string& text);
-int storageType(const Value& value);
+std::string display(const Value& item);
+Value parse(int type, const std::string& input);
+int storageType(const Value& item);
 
 /** Preserves extra columns while existing repositories rewrite known tables.
  * The canonical schema is discovered from this build's schema, not a fixed
@@ -145,6 +154,8 @@ class Payloads
     std::vector<Value> identity;
     std::string missing;
   };
+  void captureColumn(sqlite3* original, sqlite3* normalized, const Table& table,
+                     const Column& column);
   std::vector<Payload> payloads;
 };
 }  // namespace RuntimeEditor

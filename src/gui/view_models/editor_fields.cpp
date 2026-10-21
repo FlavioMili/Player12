@@ -42,7 +42,8 @@ std::vector<EditorField> playerFields()
   stats.control = EditorField::Control::Attributes;
   auto role = text("role", "EDITOR_POSITION", PERSONAL);
   role.control = EditorField::Control::Choice;
-  for (int index = 0; index < static_cast<int>(PlayerRole::UNKNOWN); ++index)
+  for (auto index = std::to_underlying(PlayerRole::GK);
+       index < std::to_underlying(PlayerRole::UNKNOWN); ++index)
   {
     const auto value = RoleUtils::toString(static_cast<PlayerRole>(index));
     role.choices.emplace_back(value, "ROLE_LONG_" + value);
@@ -109,18 +110,19 @@ std::vector<EditorField> editorFields(std::string_view table)
 
 std::string_view editorTable(NavSection section)
 {
+  using enum NavSection;
   switch (section)
   {
-    case NavSection::SQUAD:
-    case NavSection::LINEUP:
-    case NavSection::YOUTH:
-    case NavSection::RESERVES:
-    case NavSection::SQUAD_PLANNER:
-    case NavSection::MEDICAL:
+    case SQUAD:
+    case LINEUP:
+    case YOUTH:
+    case RESERVES:
+    case SQUAD_PLANNER:
+    case MEDICAL:
       return "Players";
-    case NavSection::HOME:
-    case NavSection::CLUB:
-    case NavSection::FINANCES:
+    case HOME:
+    case CLUB:
+    case FINANCES:
       return "Teams";
     default:
       return "";
@@ -133,15 +135,16 @@ bool hasBuiltinEditor(const std::optional<NavEntry>& context)
   {
     return false;
   }
+  using enum NavEntry::Kind;
   switch (context->kind)
   {
-    case NavEntry::Kind::PLAYER:
-    case NavEntry::Kind::COMPARE:
-    case NavEntry::Kind::CLUB:
+    case PLAYER:
+    case COMPARE:
+    case CLUB:
       return true;
-    case NavEntry::Kind::SECTION:
+    case SECTION:
       return !editorTable(context->section).empty();
-    case NavEntry::Kind::MATCH_REPORT:
+    case MATCH_REPORT:
       return false;
   }
   return false;

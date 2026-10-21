@@ -88,7 +88,7 @@ void GameController::newGame(int slot, std::optional<std::uint64_t> world_seed)
   game->getTransfers().seedReleaseClauses();
   purgeStaleListings();
   startSession(slot, 0);
-  persist(false);
+  persistLocked(false);
   last_initialization_milliseconds =
       std::chrono::duration<float, std::milli>(
           std::chrono::steady_clock::now() - startedAt)
@@ -674,11 +674,14 @@ std::vector<DisciplinaryRecord> GameController::getSuspendedPlayers(
                                                                   *gamedata);
 }
 
-bool GameController::saveGame() { return persist(false); }
-
-bool GameController::persist(bool autosave)
+bool GameController::saveGame()
 {
   const std::scoped_lock runtime_lock(runtime_mutex);
+  return persistLocked(false);
+}
+
+bool GameController::persistLocked(bool autosave)
+{
   if (!editor_session.expired()) return false;
   if (!game || current_slot < 0) return false;
   using Clock = std::chrono::steady_clock;
@@ -800,7 +803,7 @@ void GameController::maybeAutosave()
   if (SaveManager::isAutosaveDue(
           autosave_policy.frequency, last_autosave_date, last_autosave_season,
           today, game->getCurrentSeason(), managed_match_yesterday))
-    persist(true);
+    persistLocked(true);
 }
 
 void GameController::setAutosavePolicy(const AutosavePolicy& policy)
@@ -3402,6 +3405,11 @@ bool GameController::resignFromClub()
 
 int GameController::advanceWhileUnemployed(int max_days)
 {
+  const std::scoped_lock runtime_lock(runtime_mutex);
+  if (!editor_session.expired())
+  {
+    return 0;
+  }
   last_continue_stop = ContinueStop::None;
   if (!game || max_days <= 0 || !isUnemployed()) return 0;
   continue_stop_requested = false;

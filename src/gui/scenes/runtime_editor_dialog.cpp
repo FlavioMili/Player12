@@ -17,6 +17,7 @@
 #include <nlohmann/json.hpp>
 #include <set>
 
+#include "database/database_exception.h"
 #include "database/gamedata.h"
 #include "global/global.h"
 #include "global/language_manager.h"
@@ -103,7 +104,7 @@ struct AttributeGroup
 std::vector<AttributeGroup> attributeGroups(const nlohmann::json& stats)
 {
   std::vector<AttributeGroup> groups;
-  std::set<std::string> grouped;
+  std::set<std::string, std::less<>> grouped;
   for (const auto& descriptor : PlayerView::ATTRIBUTE_GROUPS)
   {
     AttributeGroup group{.title = LOC(descriptor.title_key), .stats = {}};
@@ -154,7 +155,7 @@ void input(const char* label, std::string& string)
                    resizeText, &string);
 }
 
-std::string humanLabel(const std::string& name)
+std::string humanLabel(std::string_view name)
 {
   std::string result;
   for (std::size_t i = 0; i < name.size(); ++i)
@@ -179,11 +180,10 @@ int attributeColumns(const std::vector<AttributeGroup>& groups,
   float label_width = 0.0F;
   for (const auto& group : groups)
   {
-    for (const auto& stat : group.stats)
+    for (const auto& [name, value] : group.stats)
     {
-      const auto translated = PlayerView::statLabel(stat.first);
-      const auto label =
-          translated == stat.first ? humanLabel(stat.first) : translated;
+      const auto translated = PlayerView::statLabel(name);
+      const auto label = translated == name ? humanLabel(name) : translated;
       label_width = std::max(label_width, ImGui::CalcTextSize(label.c_str()).x);
     }
   }
@@ -198,6 +198,31 @@ int attributeColumns(const std::vector<AttributeGroup>& groups,
   return std::clamp(
       static_cast<int>(ImGui::GetContentRegionAvail().x / minimum_width), 1,
       maximum);
+}
+
+bool renderAttribute(const std::string& name, double value,
+                     nlohmann::json& stats)
+{
+  bool changed = false;
+  ImGui::PushID(name.c_str());
+  ImGui::TableNextColumn();
+  ImGui::AlignTextToFramePadding();
+  const auto translated = PlayerView::statLabel(name);
+  wrapped((translated == name ? humanLabel(name) : translated).c_str());
+  ImGui::TableNextColumn();
+  ImGui::SetNextItemWidth(-1);
+  auto rating = static_cast<float>(value);
+  ImGui::PushStyleColor(ImGuiCol_Text, Theme::ratingColor(value));
+  if (ImGui::InputFloat("##rating", &rating, 1.0F, 0.0F, "%.0f") &&
+      std::isfinite(rating))
+  {
+    stats.at(name) = std::clamp(rating, static_cast<float>(MIN_STAT_VAL),
+                                static_cast<float>(MAX_STAT_VAL));
+    changed = true;
+  }
+  ImGui::PopStyleColor();
+  ImGui::PopID();
+  return changed;
 }
 
 std::string tableLabel(const std::string& name)
@@ -232,7 +257,7 @@ RuntimeEditorDialog::RuntimeEditorDialog(GameController& owner)
 }
 RuntimeEditorDialog::~RuntimeEditorDialog()
 {
-  if (opened)
+  if (popup.opened)
   {
     controller.cancelEditor();
   }
@@ -240,13 +265,11 @@ RuntimeEditorDialog::~RuntimeEditorDialog()
 
 void RuntimeEditorDialog::open(const std::optional<NavEntry>& context)
 {
-  if (opened)
+  if (popup.opened)
   {
     return;
   }
-  opened = true;
-  close_requested = false;
-  popup_requested = true;
+  popup = {.opened = true, .popup_requested = true};
   error.clear();
   pending_changes.clear();
   fields.clear();
@@ -330,6 +353,8 @@ void RuntimeEditorDialog::open(const std::optional<NavEntry>& context)
       show_records = true;
     }
   }
+  // Opening flushes the live game's feature serializers. Contain their
+  // exception types here so a failed open cannot terminate the UI loop.
   catch (const std::exception& failure)
   {
     error = failure.what();
@@ -340,7 +365,7 @@ void RuntimeEditorDialog::close()
 {
   controller.cancelEditor();
   editor_session.reset();
-  opened = false;
+  popup.opened = false;
   fields.clear();
   pending_changes.clear();
   request = Request::None;
@@ -362,7 +387,7 @@ void RuntimeEditorDialog::refresh()
       page.table.writable = false;
     }
   }
-  catch (const std::exception& failure)
+  catch (const RuntimeEditor::Error& failure)
   {
     error = failure.what();
     page = {};
@@ -384,8 +409,7 @@ void RuntimeEditorDialog::selectRow(std::size_t index)
   original = page.rows.at(index);
   show_records = false;
   focus_label = tableLabel(selected_table);
-  auto record_name = rowLabel(page.table, *original);
-  if (!record_name.empty())
+  if (auto record_name = rowLabel(page.table, *original); !record_name.empty())
   {
     focus_label = std::move(record_name);
   }
@@ -439,14 +463,14 @@ void RuntimeEditorDialog::stage()
     RuntimeEditor::apply(candidate->getRaw(), {change}, {}, true);
     const auto selected_identity = change.original.identity;
     auto pending = pending_changes;
-    const auto previous = std::ranges::find_if(
-        pending,
-        [&change](const RuntimeEditor::Change& old)
-        {
-          return old.table == change.table &&
-                 old.original.identity == change.original.identity;
-        });
-    if (previous == pending.end())
+    if (const auto previous = std::ranges::find_if(
+            pending,
+            [&change](const RuntimeEditor::Change& old)
+            {
+              return old.table == change.table &&
+                     old.original.identity == change.original.identity;
+            });
+        previous == pending.end())
     {
       pending.push_back(std::move(change));
     }
@@ -493,7 +517,11 @@ void RuntimeEditorDialog::stage()
       show_records = true;
     }
   }
-  catch (const std::exception& failure)
+  catch (const RuntimeEditor::Error& failure)
+  {
+    error = failure.what();
+  }
+  catch (const DatabaseException& failure)
   {
     error = failure.what();
   }
@@ -567,39 +595,35 @@ void RuntimeEditorDialog::chooseTable(const std::string& name)
       return;
     }
   }
-  if (std::ranges::find(tables, name, &RuntimeEditor::Table::name) ==
-      tables.end())
+  const auto table =
+      std::ranges::find(tables, name, &RuntimeEditor::Table::name);
+  if (table == tables.end())
   {
     return;
   }
   selected_table = name;
   context_filter.clear();
-  const auto table =
-      std::ranges::find(tables, name, &RuntimeEditor::Table::name);
-  if (table != tables.end())
+  const auto has = [&table](const char* column)
   {
-    const auto has = [&table](const char* column)
-    {
-      return std::ranges::find(table->columns, std::string(column),
-                               &RuntimeEditor::Column::name) !=
-             table->columns.end();
-    };
-    if ((context_player != 0U) && name == "Players" && has("id"))
-    {
-      context_filter["id"] = static_cast<std::int64_t>(context_player);
-    }
-    else if ((context_player != 0U) && has("player_id"))
-    {
-      context_filter["player_id"] = static_cast<std::int64_t>(context_player);
-    }
-    else if ((context_team != 0U) && name == "Teams" && has("id"))
-    {
-      context_filter["id"] = static_cast<std::int64_t>(context_team);
-    }
-    else if ((context_team != 0U) && has("team_id"))
-    {
-      context_filter["team_id"] = static_cast<std::int64_t>(context_team);
-    }
+    return std::ranges::find(table->columns, std::string(column),
+                             &RuntimeEditor::Column::name) !=
+           table->columns.end();
+  };
+  if ((context_player != 0U) && name == "Players" && has("id"))
+  {
+    context_filter["id"] = static_cast<std::int64_t>(context_player);
+  }
+  else if ((context_player != 0U) && has("player_id"))
+  {
+    context_filter["player_id"] = static_cast<std::int64_t>(context_player);
+  }
+  else if ((context_team != 0U) && name == "Teams" && has("id"))
+  {
+    context_filter["id"] = static_cast<std::int64_t>(context_team);
+  }
+  else if ((context_team != 0U) && has("team_id"))
+  {
+    context_filter["team_id"] = static_cast<std::int64_t>(context_team);
   }
   if (const auto scope = scoped_filters.find(name);
       scope != scoped_filters.end())
@@ -627,7 +651,7 @@ void RuntimeEditorDialog::renderAttributes(Field& field)
     wrapped(LOC("EDITOR_ERROR"));
     return;
   }
-  auto groups = attributeGroups(stats);
+  const auto groups = attributeGroups(stats);
   wrapped(LOC("EDITOR_ATTRIBUTE_HINT"));
   ImGui::Spacing();
   const float scale = Theme::scale();
@@ -640,7 +664,7 @@ void RuntimeEditorDialog::renderAttributes(Field& field)
   const bool table = ImGui::BeginTable("##attribute_groups", columns,
                                        ImGuiTableFlags_SizingStretchSame);
   bool changed = false;
-  for (auto& group : groups)
+  for (const auto& group : groups)
   {
     if (table)
     {
@@ -655,26 +679,9 @@ void RuntimeEditorDialog::renderAttributes(Field& field)
       ImGui::TableSetupColumn("##label", ImGuiTableColumnFlags_WidthStretch);
       ImGui::TableSetupColumn("##value", ImGuiTableColumnFlags_WidthFixed,
                               rating_width);
-      for (auto& [name, value] : group.stats)
+      for (const auto& [name, value] : group.stats)
       {
-        ImGui::PushID(name.c_str());
-        ImGui::TableNextColumn();
-        ImGui::AlignTextToFramePadding();
-        const auto translated = PlayerView::statLabel(name);
-        wrapped((translated == name ? humanLabel(name) : translated).c_str());
-        ImGui::TableNextColumn();
-        ImGui::SetNextItemWidth(-1);
-        auto rating = static_cast<float>(value);
-        ImGui::PushStyleColor(ImGuiCol_Text, Theme::ratingColor(value));
-        if (ImGui::InputFloat("##rating", &rating, 1.0F, 0.0F, "%.0f") &&
-            std::isfinite(rating))
-        {
-          stats.at(name) = std::clamp(rating, static_cast<float>(MIN_STAT_VAL),
-                                      static_cast<float>(MAX_STAT_VAL));
-          changed = true;
-        }
-        ImGui::PopStyleColor();
-        ImGui::PopID();
+        changed = renderAttribute(name, value, stats) || changed;
       }
       ImGui::EndTable();
     }
@@ -703,7 +710,8 @@ const EditorField* RuntimeEditorDialog::fieldDescriptor(
   }
   const auto descriptor =
       std::ranges::find(presentation->second, name, &EditorField::column);
-  return descriptor == presentation->second.end() ? nullptr : &*descriptor;
+  return descriptor == presentation->second.end() ? nullptr
+                                                  : std::to_address(descriptor);
 }
 
 void RuntimeEditorDialog::limitToGameplay()
@@ -733,10 +741,10 @@ void RuntimeEditorDialog::renderChoice(Field& field,
   const auto selected =
       std::ranges::find(descriptor.choices, field.text,
                         &std::pair<std::string, std::string>::first);
-  const char* preview = selected == descriptor.choices.end()
-                            ? LOC("EDITOR_NO_VALUE")
-                            : LOC(selected->second.c_str());
-  if (!ImGui::BeginCombo("##value", preview))
+  if (const char* preview = selected == descriptor.choices.end()
+                                ? LOC("EDITOR_NO_VALUE")
+                                : LOC(selected->second.c_str());
+      !ImGui::BeginCombo("##value", preview))
   {
     return;
   }
@@ -757,16 +765,16 @@ void RuntimeEditorDialog::renderNumber(Field& field,
   {
     auto number =
         std::get<std::int64_t>(RuntimeEditor::parse(field.type, field.text));
-    const std::int64_t step = 1;
-    if (!ImGui::InputScalar("##value", ImGuiDataType_S64, &number, &step))
+    if (const std::int64_t step = 1;
+        !ImGui::InputScalar("##value", ImGuiDataType_S64, &number, &step))
     {
       return;
     }
-    if (descriptor.minimum)
+    if (descriptor.minimum.has_value())
     {
       number = std::max(number, static_cast<std::int64_t>(*descriptor.minimum));
     }
-    if (descriptor.maximum)
+    if (descriptor.maximum.has_value())
     {
       number = std::min(number, static_cast<std::int64_t>(*descriptor.maximum));
     }
@@ -781,11 +789,11 @@ void RuntimeEditorDialog::renderNumber(Field& field,
     {
       return;
     }
-    if (descriptor.minimum)
+    if (descriptor.minimum.has_value())
     {
       number = std::max(number, *descriptor.minimum);
     }
-    if (descriptor.maximum)
+    if (descriptor.maximum.has_value())
     {
       number = std::min(number, *descriptor.maximum);
     }
@@ -836,9 +844,9 @@ void RuntimeEditorDialog::renderForm()
   std::vector<std::string> sections;
   for (const auto& descriptor : presentation->second)
   {
-    const auto field =
-        std::ranges::find(fields, descriptor.column, &Field::name);
-    if (field == fields.end() || field->readonly)
+    if (const auto field =
+            std::ranges::find(fields, descriptor.column, &Field::name);
+        field == fields.end() || field->readonly)
     {
       continue;
     }
@@ -870,7 +878,7 @@ void RuntimeEditorDialog::renderForm()
 }
 
 void RuntimeEditorDialog::renderSection(
-    const std::string& selected_section,
+    std::string_view selected_section,
     const std::vector<EditorField>& descriptors)
 {
   if (ImGui::BeginChild("##editor_fields", ImVec2(0, 0)))
@@ -914,15 +922,15 @@ void RuntimeEditorDialog::renderSection(
 
 void RuntimeEditorDialog::render()
 {
-  if (!opened)
+  if (!popup.opened)
   {
     return;
   }
   const ScopedEditorStyle editor_style;
-  if (popup_requested)
+  if (popup.popup_requested)
   {
     ImGui::OpenPopup("###runtime_editor");
-    popup_requested = false;
+    popup.popup_requested = false;
   }
   const auto* viewport = ImGui::GetMainViewport();
   ImGui::SetNextWindowPos(
@@ -934,9 +942,9 @@ void RuntimeEditorDialog::render()
                                   std::min(viewport->WorkSize.y - WINDOW_MARGIN,
                                            WINDOW_HEIGHT * Theme::scale())),
                            ImGuiCond_Always);
-  const std::string title =
-      std::string(LOC("EDITOR_TITLE")) + "###runtime_editor";
-  if (!ImGui::BeginPopupModal(
+  if (const std::string title =
+          std::string(LOC("EDITOR_TITLE")) + "###runtime_editor";
+      !ImGui::BeginPopupModal(
           title.c_str(), nullptr,
           static_cast<ImGuiWindowFlags>(
               static_cast<unsigned>(ImGuiWindowFlags_NoSavedSettings) |
@@ -947,7 +955,7 @@ void RuntimeEditorDialog::render()
   {
     return;
   }
-  if (close_requested)
+  if (popup.close_requested)
   {
     ImGui::CloseCurrentPopup();
     close();
@@ -991,36 +999,35 @@ void RuntimeEditorDialog::render()
 
 void RuntimeEditorDialog::renderNavigation()
 {
-  // Navigation is contextual: only feature-owned gameplay surfaces appear.
-  // Opening another entity stages the current draft before changing selection.
-  if (tables.size() > 1 && ImGui::BeginMenuBar())
+  if (tables.size() <= 1 || !ImGui::BeginMenuBar())
   {
-    if (ImGui::BeginMenu(LOC("EDITOR_EDIT_MENU")))
-    {
-      for (const auto& table : tables)
-      {
-        if (ImGui::MenuItem(tableLabel(table.name).c_str(), nullptr,
-                            table.name == selected_table))
-        {
-          chooseTable(table.name);
-        }
-      }
-      ImGui::EndMenu();
-    }
-    if (!show_records && selected_table == "Players" && context_player == 0 &&
-        ImGui::MenuItem(LOC("EDITOR_CHOOSE_PLAYER")))
-    {
-      if (formDirty())
-      {
-        stage();
-      }
-      if (error.empty())
-      {
-        show_records = true;
-      }
-    }
-    ImGui::EndMenuBar();
+    return;
   }
+  if (ImGui::BeginMenu(LOC("EDITOR_EDIT_MENU")))
+  {
+    for (const auto& table : tables)
+    {
+      if (ImGui::MenuItem(tableLabel(table.name).c_str(), nullptr,
+                          table.name == selected_table))
+      {
+        chooseTable(table.name);
+      }
+    }
+    ImGui::EndMenu();
+  }
+  if (!show_records && selected_table == "Players" && context_player == 0 &&
+      ImGui::MenuItem(LOC("EDITOR_CHOOSE_PLAYER")))
+  {
+    if (formDirty())
+    {
+      stage();
+    }
+    if (error.empty())
+    {
+      show_records = true;
+    }
+  }
+  ImGui::EndMenuBar();
 }
 
 void RuntimeEditorDialog::renderBody(float footer)
@@ -1077,17 +1084,17 @@ void RuntimeEditorDialog::renderActions()
     if (UI::secondaryButton(LOC("EDITOR_UNDO"), ImVec2(0, 0),
                             UI::ButtonSize::COMPACT))
     {
-      undo_confirm = true;
+      popup.undo_confirm = true;
     }
   }
 }
 
 void RuntimeEditorDialog::renderConfirmation()
 {
-  if (undo_confirm)
+  if (popup.undo_confirm)
   {
     ImGui::OpenPopup("##editor_apply_confirm");
-    undo_confirm = false;
+    popup.undo_confirm = false;
   }
   if (ImGui::BeginPopupModal("##editor_apply_confirm", nullptr,
                              ImGuiWindowFlags_AlwaysAutoResize))
@@ -1096,13 +1103,13 @@ void RuntimeEditorDialog::renderConfirmation()
     if (UI::primaryButton(LOC("EDITOR_UNDO")))
     {
       request = Request::Undo;
-      undo_confirm = false;
+      popup.undo_confirm = false;
       ImGui::CloseCurrentPopup();
     }
     ImGui::SameLine();
     if (UI::secondaryButton(LOC("EDITOR_CANCEL")))
     {
-      undo_confirm = false;
+      popup.undo_confirm = false;
       ImGui::CloseCurrentPopup();
     }
     ImGui::EndPopup();
@@ -1122,7 +1129,7 @@ void RuntimeEditorDialog::finish(bool success, std::string message)
   {
     controller.cancelEditor();
     editor_session.reset();
-    close_requested = true;
+    popup.close_requested = true;
   }
   else
   {
@@ -1152,7 +1159,7 @@ bool RuntimeEditorDialog::formDirty() const
 
 void RuntimeEditorDialog::open(const EditorContext& context)
 {
-  if (opened)
+  if (popup.opened)
   {
     return;
   }
@@ -1193,7 +1200,7 @@ void RuntimeEditorDialog::open(const EditorContext& context)
       show_records = true;
     }
   }
-  catch (const std::exception& failure)
+  catch (const RuntimeEditor::Error& failure)
   {
     error = failure.what();
   }

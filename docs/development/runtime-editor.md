@@ -33,7 +33,10 @@ silently normalized fields and invalid payloads cannot publish a replacement.
 The running Game, GameData and connection change only after successful checks.
 
 The controller serializes editing, saving and career advancement with its
-runtime mutex. Sessions pause advancement and saves; the GUI also excludes
+non-recursive runtime mutex. Public entry points own the lock; private
+`persistLocked` shares that ownership during new-career saves and autosaves,
+without acquiring it again. Unemployed advancement follows the same rules.
+Sessions pause advancement and saves; the GUI also excludes
 live matches and pending Continue operations. GUIView consumes apply/undo
 requests before scene updates, then rebuilds all scenes containing model
 references and reopens the current navigation entry when it still exists.
@@ -89,6 +92,8 @@ independent of the player-facing presentation.
 Register new semantic rules through `GameController::registerEditorValidator`.
 Validators receive the staged connection and changes, throw a useful diagnostic
 on failure, and must not mutate the live game or produce external side effects.
+Apply holds the controller's runtime lock while calling validators; callbacks
+must not reenter mutating GameController methods.
 Keep engine-specific rules near their model boundary; SQL constraints remain
 authoritative for database structure.
 

@@ -26,7 +26,7 @@ Handle database(const char* sql)
 {
   sqlite3* raw = nullptr;
   EXPECT_EQ(sqlite3_open(":memory:", &raw), SQLITE_OK);
-  Handle db(raw, sqlite3_close);
+  Handle db(raw, &sqlite3_close);
   EXPECT_EQ(sqlite3_exec(raw, sql, nullptr, nullptr, nullptr), SQLITE_OK);
   return db;
 }
@@ -83,9 +83,7 @@ TEST(RuntimeEditor, DiscoversUnrelatedSchemasAndEvolvesWithoutAnAllowlist)
 TEST(RuntimeEditor, CompositeKeysNullsBlobsAndQuotedIdentifiersRoundtrip)
 {
   auto db = database(
-      "CREATE TABLE \"odd\"\"table\"(a TEXT,b INTEGER,payload BLOB,note "
-      "TEXT,PRIMARY KEY(a,b)) WITHOUT ROWID; INSERT INTO \"odd\"\"table\" "
-      "VALUES('x',2,x'',NULL),('y',3,x'ff','other');");
+      R"(CREATE TABLE "odd""table"(a TEXT,b INTEGER,payload BLOB,note TEXT,PRIMARY KEY(a,b)) WITHOUT ROWID; INSERT INTO "odd""table" VALUES('x',2,x'',NULL),('y',3,x'ff','other');)");
   auto page = read(db.get(), "odd\"table");
   ASSERT_EQ(page.table.identity.size(), 2U);
   EXPECT_TRUE(std::holds_alternative<std::monostate>(page.rows[0].values[3]));
@@ -139,6 +137,32 @@ TEST(RuntimeEditor, ConstraintsStaleDraftsValidatorsAndTriggersAreAtomic)
       apply(db.get(), {update(page, 0, {{"value", std::int64_t{13}}})}),
       std::runtime_error);
   EXPECT_EQ(read(db.get(), "audit").rows.size(), 1U);
+}
+
+TEST(RuntimeEditor, AdditionalWithoutRowidForeignKeyViolationsAreRejected)
+{
+  auto db = database(
+      "CREATE TABLE parents(id INTEGER PRIMARY KEY); "
+      "CREATE TABLE children(id TEXT PRIMARY KEY, parent INTEGER "
+      "REFERENCES parents(id)) WITHOUT ROWID; "
+      "INSERT INTO children VALUES('legacy',999);");
+  const Change insert{
+      "children",
+      schema(db.get()),
+      Operation::Insert,
+      {},
+      {{"id", std::string("new")}, {"parent", std::int64_t{999}}}};
+  EXPECT_THROW(apply(db.get(), {insert}), Error);
+  const auto page = read(db.get(), "children");
+  ASSERT_EQ(page.rows.size(), 1U);
+  EXPECT_EQ(std::get<std::string>(page.rows.front().values.front()), "legacy");
+
+  // Keeping an existing violation is permitted; resolving one is permitted too.
+  apply(db.get(), {update(page, 0, {{"id", std::string("renamed")}})});
+  ASSERT_EQ(sqlite3_exec(db.get(), "INSERT INTO parents VALUES(999)", nullptr,
+                         nullptr, nullptr),
+            SQLITE_OK);
+  EXPECT_NO_THROW(apply(db.get(), {}));
 }
 
 TEST(RuntimeEditor, PaginationAndSearchAreBoundAndLiteral)
@@ -308,4 +332,73 @@ TEST(RuntimeEditorCareer, EditsBecomeLivePersistAndRecoverWithCustomData)
       {update(invalid_player, 0, {{"age", std::int64_t{999}}})}, error));
   EXPECT_FALSE(error.empty());
   controller.cancelEditor();
+}
+
+TEST(RuntimeEditorCareer, RejectsDeletionsRecreatedByRuntimeLoaders)
+{
+  GameController controller;
+  controller.newGame(92, 20250702);
+  controller.selectManagedTeam(
+      controller.getGameData()->getTeamsVector().front().get().getId());
+  ASSERT_EQ(sqlite3_exec(controller.getDbConn()->getRaw(),
+                         "CREATE TABLE CustomData(id INTEGER PRIMARY KEY); "
+                         "INSERT INTO CustomData VALUES(1)",
+                         nullptr, nullptr, nullptr),
+            SQLITE_OK);
+  auto session = controller.beginEditor();
+  const auto profile = read(session->database->getRaw(), "ManagerProfile");
+  ASSERT_EQ(profile.rows.size(), 1U);
+  auto deletion = update(profile, 0, {});
+  deletion.operation = Operation::Delete;
+  std::string error;
+  EXPECT_FALSE(controller.applyEditor(session, {deletion}, error));
+  EXPECT_NE(error.find("recreate"), std::string::npos) << error;
+  EXPECT_EQ(controller.getEditorRevision(), 0U);
+  EXPECT_EQ(
+      read(controller.getDbConn()->getRaw(), "ManagerProfile").rows.size(), 1U);
+
+  const auto custom = read(session->database->getRaw(), "CustomData");
+  deletion = update(custom, 0, {});
+  deletion.operation = Operation::Delete;
+  const Change replacement{"CustomData",
+                           custom.schema,
+                           Operation::Insert,
+                           {},
+                           {{"id", std::int64_t{1}}}};
+  ASSERT_TRUE(controller.applyEditor(session, {deletion, replacement}, error))
+      << error;
+  session = controller.beginEditor();
+  const auto retained = read(session->database->getRaw(), "CustomData");
+  ASSERT_EQ(retained.rows.size(), 1U);
+  deletion = update(retained, 0, {});
+  deletion.operation = Operation::Delete;
+  ASSERT_TRUE(controller.applyEditor(session, {deletion}, error)) << error;
+  EXPECT_TRUE(
+      read(controller.getDbConn()->getRaw(), "CustomData").rows.empty());
+}
+
+TEST(RuntimeEditorCareer, EditingPausesUnemployedAdvancementAndResumesAutosave)
+{
+  GameController controller;
+  controller.newGame(93, 20250702);
+  controller.selectManagedTeam(
+      controller.getGameData()->getTeamsVector().front().get().getId());
+  ASSERT_TRUE(controller.resignFromClub());
+  ASSERT_TRUE(controller.isUnemployed());
+  controller.setAutosavePolicy(
+      {.frequency = AutosaveFrequency::Daily, .backups = 0});
+  const auto session = controller.beginEditor();
+  const auto before = controller.getCurrentDate();
+  EXPECT_EQ(controller.advanceWhileUnemployed(1), 0);
+  EXPECT_EQ(controller.getCurrentDate(), before);
+  EXPECT_FALSE(controller.saveGame());
+  controller.cancelEditor();
+  ASSERT_TRUE(controller.saveGame());
+  EXPECT_EQ(controller.advanceWhileUnemployed(1), 1);
+  EXPECT_NE(controller.getCurrentDate(), before);
+  EXPECT_TRUE(controller.getSaveStatus().ok);
+  EXPECT_TRUE(controller.getSaveStatus().autosave);
+  controller.advanceDay();
+  EXPECT_TRUE(controller.getSaveStatus().ok);
+  EXPECT_TRUE(controller.getSaveStatus().autosave);
 }

@@ -8,6 +8,7 @@
 
 #include <algorithm>
 #include <cmath>
+#include <format>
 #include <nlohmann/json.hpp>
 #include <stdexcept>
 
@@ -27,7 +28,7 @@ std::shared_ptr<DatabaseConnection> clone(
 }
 
 constexpr double FLOAT_ROUNDTRIP_TOLERANCE =
-    4 * std::numeric_limits<float>::epsilon();
+    4 * static_cast<double>(std::numeric_limits<float>::epsilon());
 
 bool equivalentJson(const nlohmann::json& a, const nlohmann::json& b)
 {
@@ -59,14 +60,7 @@ bool equivalentJson(const nlohmann::json& a, const nlohmann::json& b)
   }
   if (a.is_array())
   {
-    for (std::size_t i = 0; i < a.size(); ++i)
-    {
-      if (!equivalentJson(a.at(i), b.at(i)))
-      {
-        return false;
-      }
-    }
-    return true;
+    return std::ranges::equal(a, b, equivalentJson);
   }
   return false;
 }
@@ -95,7 +89,8 @@ bool equivalent(const RuntimeEditor::Value& a, const RuntimeEditor::Value& b)
     }
     return std::nullopt;
   };
-  if (const auto left = number(a), right = number(b); left && right)
+  if (const auto left = number(a), right = number(b);
+      left.has_value() && right.has_value())
   {
     return std::abs(*left - *right) <=
            FLOAT_ROUNDTRIP_TOLERANCE * std::max(1.0, std::abs(*left));
@@ -111,47 +106,65 @@ bool equivalent(const RuntimeEditor::Value& a, const RuntimeEditor::Value& b)
   return !lj.is_discarded() && !rj.is_discarded() && equivalentJson(lj, rj);
 }
 
+std::map<std::string, RuntimeEditor::Value, std::less<>> resultingKey(
+    const RuntimeEditor::Table& table, const RuntimeEditor::Change& change)
+{
+  std::map<std::string, RuntimeEditor::Value, std::less<>> key;
+  // Updates can change identity fields. Match on the resulting stable key.
+  for (const auto& name : table.persistent_identity)
+  {
+    if (const auto edited = change.fields.find(name);
+        edited != change.fields.end())
+    {
+      key[name] = edited->second;
+    }
+    else if (const auto col = std::ranges::find(table.columns, name,
+                                                &RuntimeEditor::Column::name);
+             col != table.columns.end() &&
+             change.original.values.size() == table.columns.size())
+    {
+      key[name] = change.original.values.at(
+          static_cast<std::size_t>(col - table.columns.begin()));
+    }
+  }
+  if (key.empty())
+  {
+    // For inserts with generated keys, submitted fields identify the row.
+    key = change.fields;
+  }
+  return key;
+}
+
 void verifyRoundtrip(sqlite3* expected, sqlite3* normalized,
                      const std::vector<RuntimeEditor::Change>& changes)
 {
+  const auto tables = RuntimeEditor::catalog(expected);
   for (const auto& change : changes)
   {
-    if (change.operation == RuntimeEditor::Operation::Delete)
-    {
-      continue;
-    }
-    const auto tables = RuntimeEditor::catalog(expected);
     const auto table =
         std::ranges::find(tables, change.table, &RuntimeEditor::Table::name);
     if (table == tables.end())
     {
-      throw std::runtime_error("Edited table disappeared");
+      throw RuntimeEditor::Error("Edited table disappeared");
     }
-    std::map<std::string, RuntimeEditor::Value, std::less<>> key;
-    // Updates can change identity fields. Match on the resulting stable key.
-    for (const auto& name : table->persistent_identity)
+    const auto key = resultingKey(*table, change);
+    if (change.operation == RuntimeEditor::Operation::Delete)
     {
-      if (const auto edited = change.fields.find(name);
-          edited != change.fields.end())
+      // Validate the final batch state; a later insert may reuse this key.
+      if (!key.empty() &&
+          !RuntimeEditor::read(expected, change.table, 0, "", 1, key)
+               .rows.empty())
       {
-        key[name] = edited->second;
+        continue;
       }
-      else
+      if (key.empty() ||
+          !RuntimeEditor::read(normalized, change.table, 0, "", 1, key)
+               .rows.empty())
       {
-        const auto col = std::ranges::find(table->columns, name,
-                                           &RuntimeEditor::Column::name);
-        if (col != table->columns.end() &&
-            change.original.values.size() == table->columns.size())
-        {
-          key[name] = change.original.values[static_cast<std::size_t>(
-              col - table->columns.begin())];
-        }
+        throw RuntimeEditor::Error(change.table +
+                                   ": runtime would recreate this record");
       }
-    }
-    if (key.empty())
-    {
-      // For inserts with generated keys, submitted fields identify the row.
-      key = change.fields;
+      continue;
     }
     const auto before =
         RuntimeEditor::read(expected, change.table, 0, "", 2, key);
@@ -159,8 +172,8 @@ void verifyRoundtrip(sqlite3* expected, sqlite3* normalized,
         RuntimeEditor::read(normalized, change.table, 0, "", 2, key);
     if (before.rows.size() != 1 || after.rows.size() != 1)
     {
-      throw std::runtime_error(change.table +
-                               ": record cannot be represented by the runtime");
+      throw RuntimeEditor::Error(
+          change.table + ": record cannot be represented by the runtime");
     }
     for (const auto& [name, item] : change.fields)
     {
@@ -168,10 +181,10 @@ void verifyRoundtrip(sqlite3* expected, sqlite3* normalized,
       const auto col =
           std::ranges::find(table->columns, name, &RuntimeEditor::Column::name);
       const auto index = static_cast<std::size_t>(col - table->columns.begin());
-      if (!equivalent(before.rows.front().values[index],
-                      after.rows.front().values[index]))
+      if (!equivalent(before.rows.front().values.at(index),
+                      after.rows.front().values.at(index)))
       {
-        throw std::runtime_error(
+        throw RuntimeEditor::Error(
             change.table + "." + name +
             ": runtime would normalize or discard this value");
       }
@@ -182,19 +195,19 @@ void verifyRoundtrip(sqlite3* expected, sqlite3* normalized,
 
 std::shared_ptr<GameController::EditorSession> GameController::beginEditor()
 {
-  const std::unique_lock lock(runtime_mutex, std::try_to_lock);
-  if (!lock.owns_lock() || !game || !editor_session.expired())
+  if (const std::unique_lock lock(runtime_mutex, std::try_to_lock);
+      lock.owns_lock() && game && editor_session.expired())
   {
-    throw std::runtime_error("Career is busy or an editor is already open");
+    game->saveGame();
+    auto session = std::make_shared<EditorSession>();
+    session->database = clone(db_conn);
+    session->source = db_conn;
+    session->source_changes = sqlite3_total_changes(db_conn->getRaw());
+    session->source_schema = RuntimeEditor::schema(db_conn->getRaw());
+    editor_session = session;
+    return session;
   }
-  game->saveGame();
-  auto session = std::make_shared<EditorSession>();
-  session->database = clone(db_conn);
-  session->source = db_conn;
-  session->source_changes = sqlite3_total_changes(db_conn->getRaw());
-  session->source_schema = RuntimeEditor::schema(db_conn->getRaw());
-  editor_session = session;
-  return session;
+  throw RuntimeEditor::Error("Career is busy or an editor is already open");
 }
 
 void GameController::cancelEditor()
@@ -209,35 +222,26 @@ void GameController::registerEditorValidator(RuntimeEditor::Validator validator)
   editor_validators.push_back(std::move(validator));
 }
 
-bool GameController::replaceEditorDatabase(
-    std::shared_ptr<DatabaseConnection> connection, std::string& error)
+void GameController::replaceEditorDatabase(
+    std::shared_ptr<DatabaseConnection> connection)
 {
-  try
+  auto data = std::make_shared<GameData>();
+  auto replacement = std::make_unique<Game>(data, connection);
+  replacement->setSimulationThreads(game->getSimulationThreads());
+  auto listings = data->loadAllTransferListings();
+  for (auto& [id, listing] : listings)
   {
-    auto data = std::make_shared<GameData>();
-    auto replacement = std::make_unique<Game>(data, connection);
-    replacement->setSimulationThreads(game->getSimulationThreads());
-    auto listings = data->loadAllTransferListings();
-    for (auto& [id, listing] : listings)
+    if (const auto player = data->getPlayer(id))
     {
-      if (const auto player = data->getPlayer(id))
-      {
-        listing.seller_team_id = player->get().getTeamId();
-        data->getPlayers().at(id).setTransferStatus(TransferStatus::Listed);
-      }
+      listing.seller_team_id = player->get().getTeamId();
+      data->getPlayers().at(id).setTransferStatus(TransferStatus::Listed);
     }
-    game = std::move(replacement);
-    gamedata = std::move(data);
-    db_conn = std::move(connection);
-    transfer_listings = std::move(listings);
-    ++editor_revision;
-    return true;
   }
-  catch (const std::exception& failure)
-  {
-    error = failure.what();
-    return false;
-  }
+  game = std::move(replacement);
+  gamedata = std::move(data);
+  db_conn = std::move(connection);
+  transfer_listings = std::move(listings);
+  ++editor_revision;
 }
 
 bool GameController::applyEditor(
@@ -250,7 +254,7 @@ bool GameController::applyEditor(
   {
     if (!session || !db_conn)
     {
-      throw std::runtime_error("No active editor session");
+      throw RuntimeEditor::Error("No active editor session");
     }
     const auto active = editor_session.lock();
     const auto source = session->source;
@@ -258,15 +262,15 @@ bool GameController::applyEditor(
         sqlite3_total_changes(db_conn->getRaw()) != session->source_changes ||
         RuntimeEditor::schema(db_conn->getRaw()) != session->source_schema)
     {
-      throw std::runtime_error("Career changed; reopen the editor");
+      throw RuntimeEditor::Error("Career changed; reopen the editor");
     }
     if (changes.empty())
     {
-      throw std::runtime_error("No changes to apply");
+      throw RuntimeEditor::Error("No changes to apply");
     }
     auto candidate = clone(source);
     auto validators = editor_validators;
-    validators.insert(validators.begin(), EditorValidation::validate);
+    validators.emplace(validators.begin(), EditorValidation::validate);
     RuntimeEditor::apply(candidate->getRaw(), changes, validators);
     auto expected = clone(candidate);
     // A private reconstruction and save detect lossy casts, invalid payloads,
@@ -280,19 +284,21 @@ bool GameController::applyEditor(
                      "UPDATE save_meta SET edited=1 WHERE id=1", nullptr,
                      nullptr, nullptr) != SQLITE_OK)
     {
-      throw std::runtime_error(sqlite3_errmsg(expected->getRaw()));
+      throw RuntimeEditor::Error(sqlite3_errmsg(expected->getRaw()));
     }
     const auto backup = clone(db_conn);
-    if (!replaceEditorDatabase(expected, error))
-    {
-      return false;
-    }
+    replaceEditorDatabase(expected);
     editor_backup = backup;
     editor_session.reset();
-    Logger::info("Runtime editor applied " + std::to_string(changes.size()) +
-                 " record changes");
+    Logger::info(std::format("Runtime editor applied {} record changes",
+                             changes.size()));
     return true;
   }
+  // Feature validators, database loaders and JSON codecs have distinct
+  // exception types. Contain them here so a rejected draft never escapes into
+  // the game loop.
+  // A runtime replacement crosses independently implemented loaders/codecs.
+  // Preserve the live career even when one throws an unfamiliar exception type.
   catch (const std::exception& failure)
   {
     error = failure.what();
@@ -312,14 +318,16 @@ bool GameController::undoEditor(std::string& error)
   try
   {
     auto previous = clone(db_conn);
-    if (!replaceEditorDatabase(clone(editor_backup), error))
-    {
-      return false;
-    }
+    replaceEditorDatabase(clone(editor_backup));
     editor_backup = std::move(previous);
     editor_session.reset();
     return true;
   }
+  // Feature validators, database loaders and JSON codecs have distinct
+  // exception types. Contain them here so a rejected draft never escapes into
+  // the game loop.
+  // A runtime replacement crosses independently implemented loaders/codecs.
+  // Preserve the live career even when one throws an unfamiliar exception type.
   catch (const std::exception& failure)
   {
     error = failure.what();

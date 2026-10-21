@@ -13,6 +13,7 @@
 #include <memory>
 #include <optional>
 #include <string>
+#include <string_view>
 #include <vector>
 
 #include "controller/game_controller.h"
@@ -33,7 +34,7 @@ class RuntimeEditorDialog
   void open(const std::optional<NavEntry>& context);
   void open(const EditorContext& context);
   void render();
-  bool isOpen() const { return opened; }
+  bool isOpen() const { return popup.opened; }
   enum class Request
   {
     None,
@@ -69,7 +70,7 @@ class RuntimeEditorDialog
   static void renderField(Field& field, const EditorField& descriptor);
   static void renderNumber(Field& field, const EditorField& descriptor);
   static void renderChoice(Field& field, const EditorField& descriptor);
-  void renderSection(const std::string& section,
+  void renderSection(std::string_view section,
                      const std::vector<EditorField>& descriptors);
   void renderNavigation();
   void renderBody(float footer);
@@ -99,10 +100,13 @@ class RuntimeEditorDialog
   std::map<std::string, std::vector<EditorField>, std::less<>> presentations;
   bool show_records = false;
   std::string focus_label;
-  bool opened = false;
-  bool close_requested = false;
-  bool popup_requested = false;
-  bool undo_confirm = false;
+  struct PopupState
+  {
+    bool opened = false;
+    bool close_requested = false;
+    bool popup_requested = false;
+    bool undo_confirm = false;
+  } popup;
   std::string error;
   Request request = Request::None;
   std::vector<RuntimeEditor::Change> pending_changes;

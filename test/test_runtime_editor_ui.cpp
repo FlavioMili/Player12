@@ -38,7 +38,7 @@ class GameFlowTest_GUIFlowLifecycle_Test
     view.render();
     EXPECT_EQ(ImGui::GetCurrentContext()->ErrorCountCurrentFrame, 0);
   }
-  static RuntimeEditorDialog* editor(GUIView& view)
+  static RuntimeEditorDialog* editor(const GUIView& view)
   {
     return view.editor_dialog.get();
   }
@@ -122,7 +122,7 @@ class GameFlowTest_GUIFlowLifecycle_Test
   }
   static void close(RuntimeEditorDialog& editor)
   {
-    editor.close_requested = true;
+    editor.popup.close_requested = true;
   }
   static void choose(RuntimeEditorDialog& editor, const std::string& table)
   {
@@ -137,13 +137,18 @@ void frames(GUIView& view, int count = 3)
 {
   for (int i = 0; i < count; ++i) Bridge::frame(view);
 }
-void capture(GUIView& view, const char* name)
+void capture(const GUIView& view, const char* name)
 {
   const auto path = RuntimePaths::capturePath(name);
   ASSERT_TRUE(view.captureScreenshot(path.string()));
 }
 struct Cleanup
 {
+  explicit Cleanup(int save_slot) : slot(save_slot) {}
+  Cleanup(const Cleanup&) = delete;
+  Cleanup& operator=(const Cleanup&) = delete;
+  Cleanup(Cleanup&&) = delete;
+  Cleanup& operator=(Cleanup&&) = delete;
   int slot;
   ~Cleanup() { RuntimePaths::removeSave(slot); }
 };

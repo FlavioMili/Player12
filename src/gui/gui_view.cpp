@@ -690,8 +690,8 @@ void GUIView::releaseBackdrop()
 
 void GUIView::openEditor(const std::optional<NavEntry>& context)
 {
-  const auto* hub = dynamic_cast<MainGameScene*>(getBaseScene());
-  if (!controller.isGameLoaded() || !hub || hub->isContinuing() ||
+  if (const auto* hub = dynamic_cast<MainGameScene*>(getBaseScene());
+      !controller.isGameLoaded() || !hub || hub->isContinuing() ||
       (getTopScene() && getTopScene()->getID() == SceneID::MATCH))
     return;
   if (!editor_dialog)
@@ -719,21 +719,22 @@ void GUIView::applyEditorRequest()
   changeScene(std::make_unique<MainGameScene>(this));
   applyPendingSceneChanges();
   if (!context || !Navigation::canOpen(this, *context)) return;
+  using enum NavEntry::Kind;
   switch (context->kind)
   {
-    case NavEntry::Kind::SECTION:
+    case SECTION:
       Navigation::open(this, context->section);
       break;
-    case NavEntry::Kind::PLAYER:
+    case PLAYER:
       Navigation::openPlayer(this, context->player);
       break;
-    case NavEntry::Kind::CLUB:
+    case CLUB:
       Navigation::openClub(this, context->team);
       break;
-    case NavEntry::Kind::COMPARE:
+    case COMPARE:
       Navigation::openCompare(this, context->player, context->second_player);
       break;
-    case NavEntry::Kind::MATCH_REPORT:
+    case MATCH_REPORT:
       Navigation::openMatchReport(this, context->date, context->team,
                                   context->away_team);
       break;
@@ -742,8 +743,8 @@ void GUIView::applyEditorRequest()
 
 void GUIView::openEditor(const EditorContext& context)
 {
-  const auto* hub = dynamic_cast<MainGameScene*>(getBaseScene());
-  if (!controller.isGameLoaded() || !hub || hub->isContinuing() ||
+  if (const auto* hub = dynamic_cast<MainGameScene*>(getBaseScene());
+      !controller.isGameLoaded() || !hub || hub->isContinuing() ||
       (getTopScene() && getTopScene()->getID() == SceneID::MATCH))
     return;
   if (!editor_dialog)
