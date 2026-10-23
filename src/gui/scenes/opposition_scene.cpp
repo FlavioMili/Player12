@@ -14,6 +14,7 @@
 #include <algorithm>
 #include <array>
 #include <format>
+#include <utility>
 
 #include "global/language_manager.h"
 #include "gui/gui_view.h"
@@ -130,7 +131,7 @@ void OppositionScene::renderContent()
   }
 }
 
-void OppositionScene::renderSummary()
+void OppositionScene::renderSummary() const
 {
   const Theme::Palette& palette = Theme::palette();
   const OppositionAverages& recent = report.recent;
@@ -192,11 +193,11 @@ void OppositionScene::renderCounters(float width)
     }
     note(GuidanceUI::text(counter.reason));
     const StrategySliders& shift = counter.shift;
-    const bool actionable =
-        counter.mark != 0 || shift.pressing != 0.0f ||
-        shift.riskTaking != 0.0f || shift.offensiveBias != 0.0f ||
-        shift.widthUsage != 0.0f || shift.compactness != 0.0f;
-    if (actionable)
+    if (const bool actionable =
+            counter.mark != 0 || shift.pressing != 0.0f ||
+            shift.riskTaking != 0.0f || shift.offensiveBias != 0.0f ||
+            shift.widthUsage != 0.0f || shift.compactness != 0.0f;
+        actionable)
     {
       ImGui::BeginDisabled(applied[index]);
       if (UI::secondaryButton(
@@ -220,7 +221,7 @@ void OppositionScene::renderCounters(float width)
   UI::endCard();
 }
 
-void OppositionScene::renderProfile(float width)
+void OppositionScene::renderProfile(float width) const
 {
   const Theme::Palette& palette = Theme::palette();
   UI::beginAutoHeightCard("opp_profile", LOC("OPPOSITION_PROFILE"), width);
@@ -273,11 +274,12 @@ void OppositionScene::renderLikelyXi(float width)
                                : fmt::sprintf(LOC("OPPOSITION_LIKELY_XI_SHAPE"),
                                               report.formation.c_str());
   UI::beginAutoHeightCard("opp_xi", title.c_str(), width);
-  static const UI::Column COLUMNS[] = {
+  static const std::array<UI::Column, 4> COLUMNS = {{
       {"OPPOSITION_COL_PLAYER", 0.0f, 0},
       {"OPPOSITION_COL_ESTIMATE", 70.0f, 1},
       {"OPPOSITION_COL_FOOT", 56.0f, 2},
-      {"OPPOSITION_COL_INSTRUCTION", INSTRUCTION_WIDTH, 0}};
+      {"OPPOSITION_COL_INSTRUCTION", INSTRUCTION_WIDTH, 0},
+  }};
   std::array<UI::Column, 4> columns{};
   for (std::size_t index = 0; index < columns.size(); ++index)
   {
@@ -286,8 +288,8 @@ void OppositionScene::renderLikelyXi(float width)
   }
   const UI::ColumnMask mask =
       UI::fitColumns(columns, ImGui::GetContentRegionAvail().x, 120.0f);
-  std::array<const char*,
-             static_cast<std::size_t>(OppositionInstruction::COUNT)>
+  std::array<const char*, static_cast<std::size_t>(
+                              std::to_underlying(OppositionInstruction::COUNT))>
       labels{};
   for (std::size_t index = 0; index < labels.size(); ++index)
     labels[index] = LOC(
@@ -331,7 +333,8 @@ void OppositionScene::renderLikelyXi(float width)
       }
       if (UI::cell(mask, 3))
       {
-        int selected = static_cast<int>(instructions[index]);
+        auto selected =
+            static_cast<int>(std::to_underlying(instructions[index]));
         ImGui::SetNextItemWidth(-FLT_MIN);
         if (ImGui::Combo("##instruction", &selected, labels.data(),
                          static_cast<int>(labels.size())))

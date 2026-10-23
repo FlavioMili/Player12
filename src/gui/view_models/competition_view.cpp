@@ -62,6 +62,7 @@ std::vector<StandingRow> buildStandings(const GameController& controller,
 {
   // Table order, points and tie-breakers come from the competitions model.
   std::vector<StandingRow> rows;
+  using enum UI::Outcome;
   const std::vector<::StandingRow> table = controller.getStandings(leagueId);
   rows.reserve(table.size());
   for (const ::StandingRow& source : table)
@@ -79,11 +80,11 @@ std::vector<StandingRow> buildStandings(const GameController& controller,
     for (const char result : source.form)
     {
       if (result == 'W')
-        pushForm(row, UI::Outcome::WIN);
+        pushForm(row, WIN);
       else if (result == 'D')
-        pushForm(row, UI::Outcome::DRAW);
+        pushForm(row, DRAW);
       else if (result == 'L')
-        pushForm(row, UI::Outcome::LOSS);
+        pushForm(row, LOSS);
     }
   }
   return rows;
@@ -107,7 +108,8 @@ Zones zonesFor(const GameController& controller, LeagueID leagueId)
         {Competitions::PROMOTION_SLOTS, child.getTeamIDs().size() / 4,
          parent.getTeamIDs().size() / (4 * std::max<size_t>(1, children))});
   };
-  if (const auto parentId = league->get().getParentLeagueID())
+  if (const auto parentId = league->get().getParentLeagueID();
+      parentId.has_value())
     if (const auto parent = controller.getLeagueById(*parentId))
       zones.promotion = slotsBetween(parent->get(), league->get());
   for (const auto& other : controller.getLeagues())
@@ -168,15 +170,16 @@ std::optional<FixtureRow> nextFixture(const GameController& controller,
 
 const char* matchTypeKey(MatchType type)
 {
+  using enum MatchType;
   switch (type)
   {
-    case MatchType::LEAGUE:
+    case LEAGUE:
       return "MATCH_TYPE_LEAGUE";
-    case MatchType::FRIENDLY:
+    case FRIENDLY:
       return "MATCH_TYPE_FRIENDLY";
-    case MatchType::CUP:
+    case CUP:
       return "MATCH_TYPE_CUP";
-    case MatchType::CONTINENTAL:
+    case CONTINENTAL:
       return "MATCH_TYPE_CONTINENTAL";
   }
   return "MATCH_TYPE_LEAGUE";
@@ -184,12 +187,13 @@ const char* matchTypeKey(MatchType type)
 
 UI::Outcome outcomeFor(const FixtureRow& fixture, TeamID teamId)
 {
+  using enum UI::Outcome;
   const bool home = fixture.home_id == teamId;
   const int scored = home ? fixture.home_score : fixture.away_score;
   const int conceded = home ? fixture.away_score : fixture.home_score;
-  if (scored > conceded) return UI::Outcome::WIN;
-  if (scored < conceded) return UI::Outcome::LOSS;
-  return UI::Outcome::DRAW;
+  if (scored > conceded) return WIN;
+  if (scored < conceded) return LOSS;
+  return DRAW;
 }
 
 }  // namespace CompetitionView

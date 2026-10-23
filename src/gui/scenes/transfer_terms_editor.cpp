@@ -81,8 +81,7 @@ std::span<const char* const> targetLabels(
     TargetLabels& cache, const char* key,
     std::span<const std::uint16_t> options)
 {
-  const char* pattern = LOC(key);
-  if (cache.pattern != pattern)
+  if (const char* pattern = LOC(key); cache.pattern != pattern)
   {
     cache.pattern = pattern;
     for (std::size_t index = 0; index < options.size(); ++index)
@@ -135,8 +134,8 @@ bool edit(TransferNegotiation::OfferTerms& terms,
 {
   bool changed = snapToOptions(terms);
   formLabel(LOC("TRANSFER_FIELD_FEE"));
-  std::int64_t fee = terms.fee;
-  if (UI::moneyInput("##fee", fee,
+  if (std::int64_t fee = terms.fee;
+      UI::moneyInput("##fee", fee,
                      {.minimum = FEE_STEP,
                       .maximum = std::numeric_limits<std::uint32_t>::max(),
                       .chips = fee_chips}))
@@ -147,8 +146,8 @@ bool edit(TransferNegotiation::OfferTerms& terms,
   }
 
   formLabel(LOC("TRANSFER_FIELD_UPFRONT"));
-  int upfrontIndex = optionIndex(UPFRONT_OPTIONS, terms.upfront_percent);
-  if (UI::segmented("##upfront", upfrontIndex, UPFRONT_LABELS))
+  if (int upfrontIndex = optionIndex(UPFRONT_OPTIONS, terms.upfront_percent);
+      UI::segmented("##upfront", upfrontIndex, UPFRONT_LABELS))
   {
     terms.upfront_percent =
         UPFRONT_OPTIONS[static_cast<std::size_t>(upfrontIndex)];
@@ -183,9 +182,8 @@ bool edit(TransferNegotiation::OfferTerms& terms,
                             const char* target_key, TargetLabels& cache)
   {
     formLabel(label);
-    std::int64_t amount = bonus;
-    if (UI::moneyInput(id, amount,
-                       {.maximum = std::numeric_limits<std::uint32_t>::max()}))
+    if (std::int64_t amount = bonus; UI::moneyInput(
+            id, amount, {.maximum = std::numeric_limits<std::uint32_t>::max()}))
     {
       bonus = static_cast<std::uint32_t>(amount);
       changed = true;
@@ -213,8 +211,8 @@ bool edit(TransferNegotiation::OfferTerms& terms,
            terms.goal_target, GOAL_TARGETS, "TRANSFER_GOALS_SHORT",
            goal_labels);
   formLabel(LOC("TRANSFER_FIELD_SELL_ON"));
-  int sellOnIndex = optionIndex(SELL_ON_OPTIONS, terms.sell_on_percent);
-  if (UI::segmented("##sell_on", sellOnIndex, SELL_ON_LABELS))
+  if (int sellOnIndex = optionIndex(SELL_ON_OPTIONS, terms.sell_on_percent);
+      UI::segmented("##sell_on", sellOnIndex, SELL_ON_LABELS))
   {
     terms.sell_on_percent =
         SELL_ON_OPTIONS[static_cast<std::size_t>(sellOnIndex)];
@@ -227,10 +225,11 @@ bool edit(TransferNegotiation::OfferTerms& terms,
 bool snapLoanToOptions(TransferNegotiation::LoanTerms& terms)
 {
   bool changed = false;
-  const int share = std::clamp((terms.wage_share + LOAN_WAGE_SHARE_STEP / 2) /
-                                   LOAN_WAGE_SHARE_STEP * LOAN_WAGE_SHARE_STEP,
-                               0, 100);
-  if (share != terms.wage_share)
+  if (const int share =
+          std::clamp((terms.wage_share + LOAN_WAGE_SHARE_STEP / 2) /
+                         LOAN_WAGE_SHARE_STEP * LOAN_WAGE_SHARE_STEP,
+                     0, 100);
+      share != terms.wage_share)
   {
     terms.wage_share = static_cast<std::uint8_t>(share);
     changed = true;
@@ -246,9 +245,9 @@ bool editLoan(TransferNegotiation::LoanTerms& terms, std::uint32_t market_value)
   bool changed = snapLoanToOptions(terms);
   formLabel(LOC("TRANSFER_FIELD_DURATION"));
   int duration = terms.duration == LoanDuration::SeasonEnd ? 0 : 1;
-  const std::array<const char*, 2> durations = {
-      LOC("TRANSFER_LOAN_SEASON"), LOC("TRANSFER_LOAN_SIX_MONTHS")};
-  if (UI::segmented("##loan_duration", duration, durations))
+  if (const std::array<const char*, 2> durations =
+          {LOC("TRANSFER_LOAN_SEASON"), LOC("TRANSFER_LOAN_SIX_MONTHS")};
+      UI::segmented("##loan_duration", duration, durations))
   {
     terms.duration =
         duration == 0 ? LoanDuration::SeasonEnd : LoanDuration::SixMonths;
@@ -269,8 +268,8 @@ bool editLoan(TransferNegotiation::LoanTerms& terms, std::uint32_t market_value)
   }
 
   formLabel(LOC("TRANSFER_FIELD_LOAN_FEE"));
-  std::int64_t fee = terms.loan_fee;
-  if (UI::moneyInput("##loan_fee", fee,
+  if (std::int64_t fee = terms.loan_fee;
+      UI::moneyInput("##loan_fee", fee,
                      {.maximum = std::numeric_limits<std::uint32_t>::max()}))
   {
     terms.loan_fee = static_cast<std::uint32_t>(fee);
@@ -278,9 +277,11 @@ bool editLoan(TransferNegotiation::LoanTerms& terms, std::uint32_t market_value)
   }
 
   formLabel(LOC("LOAN_FIELD_PURCHASE"));
-  int purchase = terms.option_fee == 0 && !terms.obligation ? 0
-                 : terms.obligation                         ? 2
-                                                            : 1;
+  int purchase = 1;
+  if (terms.option_fee == 0 && !terms.obligation)
+    purchase = 0;
+  else if (terms.obligation)
+    purchase = 2;
   const std::array<const char*, 3> purchases = {
       LOC("LOAN_PURCHASE_NONE"), LOC("LOAN_PURCHASE_OPTION"),
       LOC("LOAN_PURCHASE_OBLIGATION")};
@@ -319,9 +320,9 @@ bool editLoan(TransferNegotiation::LoanTerms& terms, std::uint32_t market_value)
 
   formLabel(LOC("TRANSFER_FIELD_RECALL"));
   int recall = terms.recall_clause ? 1 : 0;
-  const std::array<const char*, 2> recalls = {LOC("LOAN_RECALL_NO"),
-                                              LOC("LOAN_RECALL_YES")};
-  if (UI::segmented("##loan_recall", recall, recalls))
+  if (const std::array<const char*, 2> recalls = {LOC("LOAN_RECALL_NO"),
+                                                  LOC("LOAN_RECALL_YES")};
+      UI::segmented("##loan_recall", recall, recalls))
   {
     terms.recall_clause = recall == 1;
     changed = true;
@@ -337,8 +338,8 @@ bool editLoan(TransferNegotiation::LoanTerms& terms, std::uint32_t market_value)
   labels[0] = LOC("LOAN_APPS_NONE");
   for (std::size_t index = 0; index < targets.size(); ++index)
     labels[index + 1] = targets[index];
-  int apps = optionIndex(MIN_APPEARANCE_OPTIONS, terms.min_appearances);
-  if (UI::segmented("##loan_apps", apps, labels))
+  if (int apps = optionIndex(MIN_APPEARANCE_OPTIONS, terms.min_appearances);
+      UI::segmented("##loan_apps", apps, labels))
   {
     terms.min_appearances =
         MIN_APPEARANCE_OPTIONS[static_cast<std::size_t>(apps)];
@@ -348,8 +349,8 @@ bool editLoan(TransferNegotiation::LoanTerms& terms, std::uint32_t market_value)
   if (terms.min_appearances > 0)
   {
     formLabel(LOC("LOAN_FIELD_UNPLAYED_FEE"));
-    std::int64_t unplayed = terms.unplayed_fee;
-    if (UI::moneyInput("##loan_unplayed", unplayed,
+    if (std::int64_t unplayed = terms.unplayed_fee;
+        UI::moneyInput("##loan_unplayed", unplayed,
                        {.minimum = FEE_STEP,
                         .maximum = std::numeric_limits<std::uint32_t>::max()}))
     {

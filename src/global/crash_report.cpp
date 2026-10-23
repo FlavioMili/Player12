@@ -9,6 +9,7 @@
 #include "global/crash_report.h"
 
 #include <algorithm>
+#include <array>
 #include <atomic>
 #include <chrono>
 #include <csignal>
@@ -19,12 +20,14 @@
 #include <functional>
 #include <optional>
 #include <string>
+#include <string_view>
 #include <system_error>
 #include <vector>
 
 #if defined(_WIN32)
 #include <fcntl.h>
 #include <io.h>
+#include <share.h>
 #include <sys/stat.h>
 #else
 #include <fcntl.h>
@@ -34,7 +37,6 @@
 
 #if __has_include(<execinfo.h>)
 #include <execinfo.h>
-#define FM_HAVE_BACKTRACE 1
 #endif
 
 #include "global/build_info.h"
@@ -56,19 +58,30 @@ constexpr std::string_view REPORT_PREFIX = "crash-";
 
 // Everything a signal handler needs is prepared up front: in the handler
 // only async-signal-safe calls are made (open, write, close, signal, raise).
-PathChar report_path[PATH_CAPACITY] = {};
-PathChar pending_path[PATH_CAPACITY] = {};
-char report_name[NAME_CAPACITY] = {};
-char header[HEADER_CAPACITY] = {};
-std::size_t header_length = 0;
-std::atomic<bool> prepared{false};
-std::atomic_flag written = ATOMIC_FLAG_INIT;
+struct CrashState
+{
+  std::array<PathChar, PATH_CAPACITY> report_path{};
+  std::array<PathChar, PATH_CAPACITY> pending_path{};
+  std::array<char, NAME_CAPACITY> report_name{};
+  std::size_t report_name_length = 0;
+  std::array<char, HEADER_CAPACITY> header{};
+  std::size_t header_length = 0;
+  std::atomic<bool> prepared{false};
+  std::atomic_flag written{};
+};
 
-bool copyPath(const fs::path& path, PathChar (&target)[PATH_CAPACITY])
+CrashState& crashState()
+{
+  // Constant initialization avoids a lazy initialization guard in the handler.
+  constinit static CrashState state;
+  return state;
+}
+
+bool copyPath(const fs::path& path, std::array<PathChar, PATH_CAPACITY>& target)
 {
   const fs::path::string_type& native = path.native();
   if (native.size() >= PATH_CAPACITY) return false;
-  std::ranges::copy(native, target);
+  std::ranges::copy(native, target.begin());
   target[native.size()] = PathChar{};
   return true;
 }
@@ -76,17 +89,20 @@ bool copyPath(const fs::path& path, PathChar (&target)[PATH_CAPACITY])
 /** Report name and header for this session (stamped with its start time). */
 void prepare()
 {
+  auto& state = crashState();
   const auto now = std::chrono::floor<std::chrono::seconds>(
       std::chrono::system_clock::now());
   const std::string stamp = std::format("{:%Y%m%dT%H%M%SZ}", now);
   const std::string name = std::string(REPORT_PREFIX) + stamp + ".txt";
   const fs::path folder = CrashReport::directory();
   const std::size_t name_length = std::min(name.size(), NAME_CAPACITY - 1);
-  std::memcpy(report_name, name.data(), name_length);
-  report_name[name_length] = '\0';
-  if (!copyPath(folder / name, report_path)) report_path[0] = PathChar{};
-  if (!copyPath(folder / PENDING_FILE, pending_path))
-    pending_path[0] = PathChar{};
+  std::memcpy(state.report_name.data(), name.data(), name_length);
+  state.report_name[name_length] = '\0';
+  state.report_name_length = name_length;
+  if (!copyPath(folder / name, state.report_path))
+    state.report_path[0] = PathChar{};
+  if (!copyPath(folder / PENDING_FILE, state.pending_path))
+    state.pending_path[0] = PathChar{};
 
   const std::string text = std::format(
       "Player12 crash report\n"
@@ -97,17 +113,20 @@ void prepare()
       "This report stays on this computer; nothing was sent anywhere.\n\n",
       BuildInfo::version(), BuildInfo::commit(), BuildInfo::configuration(),
       BuildInfo::compiler(), BuildInfo::platform(), now, stamp);
-  header_length = std::min(text.size(), HEADER_CAPACITY - 1);
-  std::memcpy(header, text.data(), header_length);
-  prepared.store(true);
+  state.header_length = std::min(text.size(), HEADER_CAPACITY - 1);
+  std::memcpy(state.header.data(), text.data(), state.header_length);
+  state.prepared.store(true);
 }
 
 int openForWrite(const PathChar* path)
 {
   if (path[0] == PathChar{}) return -1;
 #if defined(_WIN32)
-  return _wopen(path, _O_WRONLY | _O_CREAT | _O_TRUNC | _O_BINARY,
-                _S_IREAD | _S_IWRITE);
+  int fd = -1;
+  if (_wsopen_s(&fd, path, _O_WRONLY | _O_CREAT | _O_TRUNC | _O_BINARY,
+                _SH_DENYNO, _S_IREAD | _S_IWRITE) != 0)
+    return -1;
+  return fd;
 #else
   return ::open(path, O_WRONLY | O_CREAT | O_TRUNC | O_CLOEXEC, 0644);
 #endif
@@ -128,9 +147,10 @@ void writeAll(int fd, const char* data, std::size_t size)
   }
 }
 
-void writeText(int fd, const char* text)
+template <std::size_t Size>
+void writeText(int fd, const char (&text)[Size])
 {
-  writeAll(fd, text, std::strlen(text));
+  writeAll(fd, text, Size - 1);
 }
 
 void closeFile(int fd)
@@ -145,28 +165,29 @@ void closeFile(int fd)
 /** Signal-safe: writes the report and the pending marker. */
 void writeReport(const char* reason, std::size_t reason_length)
 {
-  if (const int fd = openForWrite(report_path); fd >= 0)
+  auto& state = crashState();
+  if (const int fd = openForWrite(state.report_path.data()); fd >= 0)
   {
-    writeAll(fd, header, header_length);
+    writeAll(fd, state.header.data(), state.header_length);
     writeText(fd, "Reason: ");
     writeAll(fd, reason, reason_length);
     writeText(fd, "\n");
-#if defined(FM_HAVE_BACKTRACE)
-    void* frames[BACKTRACE_FRAMES];
-    const int count = backtrace(frames, BACKTRACE_FRAMES);
+#if __has_include(<execinfo.h>)
+    std::array<void*, BACKTRACE_FRAMES> frames{};
+    const int count = backtrace(frames.data(), BACKTRACE_FRAMES);
     writeText(fd, "\nBacktrace:\n");
-    backtrace_symbols_fd(frames, count, fd);
+    backtrace_symbols_fd(frames.data(), count, fd);
 #endif
     closeFile(fd);
   }
-  if (const int fd = openForWrite(pending_path); fd >= 0)
+  if (const int fd = openForWrite(state.pending_path.data()); fd >= 0)
   {
-    writeText(fd, report_name);
+    writeAll(fd, state.report_name.data(), state.report_name_length);
     closeFile(fd);
   }
 }
 
-const char* signalReason(int signal_number)
+std::string_view signalReason(int signal_number)
 {
   switch (signal_number)
   {
@@ -189,10 +210,11 @@ const char* signalReason(int signal_number)
 
 void onFatalSignal(int signal_number)
 {
-  if (!written.test_and_set())
+  auto& state = crashState();
+  if (!state.written.test_and_set())
   {
-    const char* reason = signalReason(signal_number);
-    writeReport(reason, std::strlen(reason));
+    const std::string_view reason = signalReason(signal_number);
+    writeReport(reason.data(), reason.size());
   }
   // Default action from here: the process still ends with this signal.
   std::signal(signal_number, SIG_DFL);
@@ -246,10 +268,11 @@ fs::path directory() { return RuntimePaths::logPath().parent_path(); }
 
 void install()
 {
+  auto& state = crashState();
   prepare();
-  written.clear();
+  state.written.clear();
   keepCrashedSessionLog();
-#if defined(FM_HAVE_BACKTRACE)
+#if __has_include(<execinfo.h>)
   // The first backtrace() loads the unwinder; do it now, not in a handler.
   void* frame = nullptr;
   backtrace(&frame, 1);
@@ -260,10 +283,10 @@ void install()
     std::signal(signal_number, onFatalSignal);
 #else
   // A separate stack lets the handler run after a stack overflow.
-  static char alternate_stack[64 * 1024];
+  static std::array<char, 64 * 1024> alternate_stack{};
   stack_t stack{};
-  stack.ss_sp = alternate_stack;
-  stack.ss_size = sizeof(alternate_stack);
+  stack.ss_sp = alternate_stack.data();
+  stack.ss_size = alternate_stack.size();
   sigaltstack(&stack, nullptr);
   struct sigaction action{};
   action.sa_handler = onFatalSignal;
@@ -277,9 +300,10 @@ void install()
 
 fs::path write(std::string_view reason)
 {
-  if (!prepared.load()) prepare();
-  const fs::path report(report_path);
-  if (!written.test_and_set())
+  auto& state = crashState();
+  if (!state.prepared.load()) prepare();
+  const fs::path report(state.report_path.data());
+  if (!state.written.test_and_set())
   {
     writeReport(reason.data(), reason.size());
     Logger::error(

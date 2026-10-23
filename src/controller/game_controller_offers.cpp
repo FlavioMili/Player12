@@ -209,10 +209,10 @@ GameController::OfferOutcome GameController::settleIncomingOffer(
   {
     // With the fee agreed the buyer talks personal terms with the player;
     // the rare refusal depends on how keen he is on the move.
-    const double roll = WorldRng::hashUniform(
-        gamedata->getWorldSeed(), RngDomain::Transfers, offer.id,
-        mixHash(offer.player_id, PERSONAL_TERMS_KEY));
-    if (roll < BuyerNegotiation::termsRefusalChance(
+    if (const double roll = WorldRng::hashUniform(
+            gamedata->getWorldSeed(), RngDomain::Transfers, offer.id,
+            mixHash(offer.player_id, PERSONAL_TERMS_KEY));
+        roll < BuyerNegotiation::termsRefusalChance(
                    playerStance(offer.player_id, offer.buyer)))
     {
       market.removeIncomingOffer(offer_id);
@@ -446,10 +446,11 @@ GameController::OfferOutcome GameController::answerCounter(
                                             TransferTuning::Buyer::ANSWER_DAYS);
       market.updateIncomingOffer(offer);
       // The body names what shaped the answer (e.g. more instalments).
-      const BuyerNegotiation::Why why =
-          reply.reasons.size() > 1 ? reply.reasons[1]
-          : reply.reasons.empty()  ? BuyerNegotiation::Why::Improved
-                                   : reply.reasons.front();
+      BuyerNegotiation::Why why = BuyerNegotiation::Why::Improved;
+      if (reply.reasons.size() > 1)
+        why = reply.reasons[1];
+      else if (!reply.reasons.empty())
+        why = reply.reasons.front();
       notify(game->getWorld(), today, "INBOX_OFFER_REPLY_TITLE",
              replyBody(reply.move),
              {player_name, buyer_name, formatMoney(reply.terms.fee),
@@ -464,10 +465,12 @@ GameController::OfferOutcome GameController::answerCounter(
   market.closeTalks(offer.player_id, offer.buyer, today);
   const bool wages =
       std::ranges::contains(reply.reasons, BuyerNegotiation::Why::WageBudget);
-  notify(game->getWorld(), today, "INBOX_OFFER_WITHDRAWN_TITLE",
-         reply.insulted ? "INBOX_OFFER_WITHDRAWN_INSULT_BODY"
-         : wages        ? "INBOX_OFFER_WITHDRAWN_WAGES_BODY"
-                        : "INBOX_OFFER_WITHDRAWN_BODY",
+  const char* body = "INBOX_OFFER_WITHDRAWN_BODY";
+  if (reply.insulted)
+    body = "INBOX_OFFER_WITHDRAWN_INSULT_BODY";
+  else if (wages)
+    body = "INBOX_OFFER_WITHDRAWN_WAGES_BODY";
+  notify(game->getWorld(), today, "INBOX_OFFER_WITHDRAWN_TITLE", body,
          {player_name, buyer_name}, offer.player_id, offer.buyer);
   return OfferOutcome::WalkedAway;
 }
@@ -563,10 +566,11 @@ GameController::OfferOutcome GameController::answerLoanCounter(
       offer.expires = market.answerDeadline(offer.buyer, today,
                                             TransferTuning::Buyer::ANSWER_DAYS);
       market.updateIncomingOffer(offer);
-      const LoanNegotiation::Why why =
-          reply.reasons.size() > 1 ? reply.reasons[1]
-          : reply.reasons.empty()  ? LoanNegotiation::Why::Improved
-                                   : reply.reasons.front();
+      LoanNegotiation::Why why = LoanNegotiation::Why::Improved;
+      if (reply.reasons.size() > 1)
+        why = reply.reasons[1];
+      else if (!reply.reasons.empty())
+        why = reply.reasons.front();
       notify(game->getWorld(), today, "INBOX_OFFER_REPLY_TITLE",
              loanReplyBody(reply.move),
              {player_name, buyer_name,
@@ -582,10 +586,12 @@ GameController::OfferOutcome GameController::answerLoanCounter(
   market.closeTalks(offer.player_id, offer.buyer, today);
   const bool wages =
       std::ranges::contains(reply.reasons, LoanNegotiation::Why::NoWageRoom);
-  notify(game->getWorld(), today, "INBOX_LOAN_WITHDRAWN_TITLE",
-         reply.insulted ? "INBOX_LOAN_WITHDRAWN_INSULT_BODY"
-         : wages        ? "INBOX_LOAN_WITHDRAWN_WAGES_BODY"
-                        : "INBOX_LOAN_WITHDRAWN_BODY",
+  const char* body = "INBOX_LOAN_WITHDRAWN_BODY";
+  if (reply.insulted)
+    body = "INBOX_LOAN_WITHDRAWN_INSULT_BODY";
+  else if (wages)
+    body = "INBOX_LOAN_WITHDRAWN_WAGES_BODY";
+  notify(game->getWorld(), today, "INBOX_LOAN_WITHDRAWN_TITLE", body,
          {player_name, buyer_name}, offer.player_id, offer.buyer);
   return OfferOutcome::WalkedAway;
 }
@@ -667,8 +673,8 @@ bool GameController::routeListingBid(PlayerID pid, TeamID bidder_id,
           { return offer.player_id == pid && offer.buyer == bidder_id; }))
     return false;
   // A club that could not pay his wage does not turn its bid into talks.
-  const auto bidder = gamedata->getTeam(bidder_id);
-  if (!bidder ||
+  if (const auto bidder = gamedata->getTeam(bidder_id);
+      !bidder ||
       !TransferMarket::affordsWage(
           bidder->get(),
           TransferNegotiation::demandedOffer(
@@ -711,8 +717,8 @@ void GameController::absorbListingBids()
   std::vector<PlayerID> absorbed;
   for (const auto& [pid, listing] : transfer_listings)
   {
-    if (listing.seller_team_id == managed && listing.highest_bidder_id &&
-        listing.highest_bid > 0)
+    if (listing.seller_team_id == managed &&
+        listing.highest_bidder_id.has_value() && listing.highest_bid > 0)
       absorbed.push_back(pid);
   }
   std::ranges::sort(absorbed);

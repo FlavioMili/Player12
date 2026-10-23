@@ -142,19 +142,19 @@ void MainMenuScene::update(float deltaTime)
       const std::filesystem::path restore = pending_restore;
       pending_restore.clear();
       GameController* controller = &guiView->getController();
-      loading_operation =
-          std::async(std::launch::async,
-                     [controller, slot, createNewGame, restore]()
-                     {
-                       if (createNewGame)
-                       {
-                         controller->newGame(slot);
-                         return true;
-                       }
-                       if (!restore.empty())
-                         return controller->restoreBackup(slot, restore);
-                       return controller->loadGame(slot);
-                     });
+      loading_operation = launchBackgroundTask(
+          loading_worker,
+          [controller, slot, createNewGame, restore]()
+          {
+            if (createNewGame)
+            {
+              controller->newGame(slot);
+              return true;
+            }
+            if (!restore.empty())
+              return controller->restoreBackup(slot, restore);
+            return controller->loadGame(slot);
+          });
       loading_operation_started = true;
       return;
     }
@@ -217,7 +217,7 @@ void MainMenuScene::showLoadError(int slot, std::string text)
   }
 }
 
-void MainMenuScene::renderBackdrop()
+void MainMenuScene::renderBackdrop() const
 {
   // Procedural art: a soft vertical gradient and a large, faint pitch drawn
   // in perspective behind the menu.
@@ -245,7 +245,7 @@ void MainMenuScene::renderBackdrop()
   const auto at = [&](float u, float v)
   {
     // u across the pitch (-1..1), v from far (0) to near (1).
-    const float half = farHalf + (nearHalf - farHalf) * v;
+    const float half = std::lerp(farHalf, nearHalf, v);
     return ImVec2(centerX + u * half, horizon + (nearY - horizon) * v);
   };
   const float thickness = 2.0f * scale;
@@ -328,9 +328,9 @@ void MainMenuScene::render()
   {
     const auto& latest =
         cached_metadata[static_cast<size_t>(latest_career_slot - 1)];
-    const std::string label =
-        std::string(LOC("MENU_CONTINUE_CAREER")) + "###continue_career";
-    if (UI::primaryButton(label.c_str(),
+    if (const std::string label =
+            std::string(LOC("MENU_CONTINUE_CAREER")) + "###continue_career";
+        UI::primaryButton(label.c_str(),
                           ImVec2(buttonSize.x, buttonSize.y * 1.35f)))
       startSlot(latest_career_slot, false);
     Theme::ScopedText small(Theme::Text::SMALL);
@@ -341,8 +341,8 @@ void MainMenuScene::render()
             .c_str());
     ImGui::Dummy(ImVec2(0.0f, Theme::Space::S * scale));
   }
-  const bool firstRun = latest_career_slot == 0;
-  if (firstRun ? UI::primaryButton(LOC("MENU_NEW_GAME"), buttonSize)
+  if (const bool firstRun = latest_career_slot == 0;
+      firstRun ? UI::primaryButton(LOC("MENU_NEW_GAME"), buttonSize)
                : UI::secondaryButton(LOC("MENU_NEW_GAME"), buttonSize))
   {
     slot_picker_requested = true;
@@ -374,7 +374,7 @@ void MainMenuScene::render()
   ImGui::End();
 }
 
-void MainMenuScene::renderLanguageNotice()
+void MainMenuScene::renderLanguageNotice() const
 {
   if (language_notice.empty()) return;
   const ImGuiViewport* viewport = ImGui::GetMainViewport();
@@ -392,7 +392,7 @@ void MainMenuScene::renderLanguageNotice()
   ImGui::PopTextWrapPos();
 }
 
-void MainMenuScene::renderVersion()
+void MainMenuScene::renderVersion() const
 {
   static const std::string label = "v" + std::string(BuildInfo::version());
   const ImGuiViewport* viewport = ImGui::GetMainViewport();
@@ -603,11 +603,11 @@ void MainMenuScene::renderBackups()
 
   if (!restore_candidate.empty() && !ImGui::IsPopupOpen("##confirm_restore"))
     ImGui::OpenPopup("##confirm_restore");
-  const UI::DialogResult result =
-      UI::confirmDialog("##confirm_restore", LOC("SAVE_BACKUP_RESTORE"),
-                        LOC("SAVE_BACKUP_RESTORE_CONFIRM"),
-                        LOC("SAVE_BACKUP_RESTORE"), LOC("SETTINGS_CANCEL"));
-  if (result == UI::DialogResult::CONFIRM)
+  if (const UI::DialogResult result =
+          UI::confirmDialog("##confirm_restore", LOC("SAVE_BACKUP_RESTORE"),
+                            LOC("SAVE_BACKUP_RESTORE_CONFIRM"),
+                            LOC("SAVE_BACKUP_RESTORE"), LOC("SETTINGS_CANCEL"));
+      result == UI::DialogResult::CONFIRM)
   {
     // Restoring loads the career: run it on the loader like a normal load.
     pending_restore = restore_candidate;
@@ -744,10 +744,10 @@ void MainMenuScene::renderSlotPicker()
     ImGui::Spacing();
     // Escape belongs to whichever dialog is on top: a confirmation or the
     // backups list opened from here closes first.
-    const bool escape = ImGui::IsKeyPressed(ImGuiKey_Escape, false) &&
-                        overwrite_slot == 0 && delete_slot == 0 &&
-                        !ImGui::IsPopupOpen("##save_backups");
-    if (UI::secondaryButton(LOC("SETTINGS_CANCEL"), ImVec2(slotSize.x, 0.0f)) ||
+    if (const bool escape = ImGui::IsKeyPressed(ImGuiKey_Escape, false) &&
+                            overwrite_slot == 0 && delete_slot == 0 &&
+                            !ImGui::IsPopupOpen("##save_backups");
+        UI::secondaryButton(LOC("SETTINGS_CANCEL"), ImVec2(slotSize.x, 0.0f)) ||
         escape)
       ImGui::CloseCurrentPopup();
 
@@ -767,10 +767,10 @@ void MainMenuScene::renderSlotPicker()
     // Deleting a save (and its backups) is permanent: ask first.
     if (delete_slot > 0 && !ImGui::IsPopupOpen("##confirm_delete"))
       ImGui::OpenPopup("##confirm_delete");
-    const UI::DialogResult deletion = UI::confirmDialog(
-        "##confirm_delete", LOC("SAVE_DELETE_TITLE"), delete_text.c_str(),
-        LOC("SAVE_DELETE"), LOC("SETTINGS_CANCEL"));
-    if (deletion == UI::DialogResult::CONFIRM)
+    if (const UI::DialogResult deletion = UI::confirmDialog(
+            "##confirm_delete", LOC("SAVE_DELETE_TITLE"), delete_text.c_str(),
+            LOC("SAVE_DELETE"), LOC("SETTINGS_CANCEL"));
+        deletion == UI::DialogResult::CONFIRM)
     {
       if (!guiView->getController().deleteSave(delete_slot))
         Logger::error(std::format("Could not delete slot {}", delete_slot));

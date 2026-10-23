@@ -22,6 +22,7 @@
 #include <cfloat>
 #include <filesystem>
 #include <memory>
+#include <utility>
 
 #include "controller/game_controller.h"
 #include "global/logger.h"
@@ -94,11 +95,15 @@ constexpr std::uint64_t WORLD_SEED = 20250702;
 
 int uniqueSlot(int offset)
 {
-  return 9'200'000 + static_cast<int>(getpid() % 100'000) * 10 + offset;
+  return 9'200'000 + getpid() % 100'000 * 10 + offset;
 }
 
 struct SlotCleanup
 {
+  explicit SlotCleanup(int saveSlot) : slot(saveSlot) {}
+  SlotCleanup(const SlotCleanup&) = delete;
+  SlotCleanup& operator=(const SlotCleanup&) = delete;
+
   int slot;
   ~SlotCleanup() { RuntimePaths::removeSave(slot); }
 };
@@ -113,8 +118,8 @@ void capture(GUIView& view, const char* name)
 void resize(GUIView& view, int width, int height)
 {
   SDL_SetWindowSize(view.getWindow(), width, height);
-  SDL_Event event{};
-  event.type = SDL_EVENT_WINDOW_RESIZED;
+  SDL_Event event{.window = {}};
+  event.window.type = SDL_EVENT_WINDOW_RESIZED;
   event.window.windowID = SDL_GetWindowID(view.getWindow());
   event.window.data1 = width;
   event.window.data2 = height;
@@ -130,9 +135,13 @@ void hoverEverywhere(GUIView& view, float step = 48.0f)
 {
   ImGuiIO& io = ImGui::GetIO();
   const ImVec2 size = io.DisplaySize;
-  for (float y = step * 0.5f; y < size.y; y += step)
-    for (float x = step * 0.5f; x < size.x; x += step)
+  for (int y_index = 0; step * (static_cast<float>(y_index) + 0.5f) < size.y;
+       ++y_index)
+    for (int x_index = 0; step * (static_cast<float>(x_index) + 0.5f) < size.x;
+         ++x_index)
     {
+      const float y = step * (static_cast<float>(y_index) + 0.5f);
+      const float x = step * (static_cast<float>(x_index) + 0.5f);
       io.AddMousePosEvent(x, y);
       Bridge::frame(view);
     }
@@ -290,7 +299,8 @@ TEST(InboxUiTest, FiltersSurviveASceneChangeAndAReload)
     EXPECT_TRUE(Bridge::followedOnly(*scene));
     EXPECT_EQ(Bridge::threadCount(*scene), 1u);
 
-    Bridge::pickCategory(*scene, static_cast<int>(InboxCategory::Transfer));
+    Bridge::pickCategory(
+        *scene, static_cast<int>(std::to_underlying(InboxCategory::Transfer)));
     frames(view, 2);
   }
   controller->saveGame();

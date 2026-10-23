@@ -320,7 +320,7 @@ class Game
   NationalManagement national_job;
   NationalDayEvents last_national_events;
   MatchScheduler scheduler;
-  GameDateValue currentDate;
+  GameDateValue currentDate = START_DATE;
   uint8_t current_season = 1;
   uint16_t managed_team_id;
   CareerGuidance guidance;

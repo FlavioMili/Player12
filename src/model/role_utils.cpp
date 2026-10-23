@@ -10,13 +10,14 @@
 
 #include <array>
 #include <cstddef>
+#include <utility>
 
 #include "global/language_manager.h"
 
 namespace
 {
 constexpr std::size_t ROLE_COUNT =
-    static_cast<std::size_t>(PlayerRole::UNKNOWN);
+    static_cast<std::size_t>(std::to_underlying(PlayerRole::UNKNOWN));
 
 constexpr std::array<const char*, ROLE_COUNT> SHORT_KEYS = {
     "ROLE_SHORT_GK",  "ROLE_SHORT_CB", "ROLE_SHORT_LB",  "ROLE_SHORT_RB",
@@ -33,19 +34,19 @@ constexpr const char* NO_ROLE = "-";
 
 const char* RoleUtils::shortName(PlayerRole role)
 {
-  const auto index = static_cast<std::size_t>(role);
+  const auto index = static_cast<std::size_t>(std::to_underlying(role));
   return index < ROLE_COUNT ? LOC(SHORT_KEYS[index]) : NO_ROLE;
 }
 
 const char* RoleUtils::longName(PlayerRole role)
 {
-  const auto index = static_cast<std::size_t>(role);
+  const auto index = static_cast<std::size_t>(std::to_underlying(role));
   return index < ROLE_COUNT ? LOC(LONG_KEYS[index]) : NO_ROLE;
 }
 
 std::string RoleUtils::shortNameArg(PlayerRole role)
 {
-  const auto index = static_cast<std::size_t>(role);
+  const auto index = static_cast<std::size_t>(std::to_underlying(role));
   return index < ROLE_COUNT ? std::string("@") + SHORT_KEYS[index]
                             : std::string(NO_ROLE);
 }

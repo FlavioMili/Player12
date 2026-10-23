@@ -110,7 +110,10 @@ class ManagementScene : public GUIScene
   [[nodiscard]] virtual NavSection navSection() const = 0;
 
   /** @brief Rebuilds cached view models from the game state. */
-  virtual void refresh() {}
+  virtual void refresh()
+  {
+    // Screens without cached view models have nothing to refresh.
+  }
   /** Override for new/custom data domains. Record filtering and related items
    * belong to the page; schema discovery remains inside the generic editor. */
   virtual std::optional<EditorContext> editorContext() const
@@ -159,7 +162,7 @@ class ManagementScene : public GUIScene
   void buildPaletteIndex();
   void filterPalette();
   void activatePaletteEntry(const PaletteEntry& entry);
-  void syncClubAccent();
+  void syncClubAccent() const;
 
   std::string toast_message;
   float toast_seconds = 0.0f;

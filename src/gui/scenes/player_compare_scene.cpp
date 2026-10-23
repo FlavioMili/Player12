@@ -68,7 +68,11 @@ PlayerCompareScene::PlayerCompareScene(GUIView* parent, PlayerID first,
   requested[1] = second;
 }
 
-void PlayerCompareScene::update(float /*deltaTime*/) {}
+void PlayerCompareScene::update(float /*deltaTime*/)
+{
+  // The comparison view has no time-driven state; refresh() rebuilds its
+  // player estimates when the scene is entered or data changes.
+}
 
 ImVec4 PlayerCompareScene::seriesColor(std::size_t index) const
 {
@@ -97,7 +101,7 @@ void PlayerCompareScene::refresh()
 
 void PlayerCompareScene::setSlot(std::size_t index, PlayerID id)
 {
-  GameController& controller = guiView->getController();
+  const GameController& controller = guiView->getController();
   Slot& slot = slots[index];
   slot = Slot{};
   const auto data = controller.getGameData();
@@ -114,7 +118,7 @@ void PlayerCompareScene::setSlot(std::size_t index, PlayerID id)
   slot.name = p.getName();
   const auto team = controller.getTeamById(p.getTeamId());
   slot.subtitle =
-      std::format("{}  \xC2\xB7  {}  \xC2\xB7  {}",
+      std::format("{}  \u00B7  {}  \u00B7  {}",
                   RoleUtils::shortName(p.getRole()), p.getAge(),
                   team && p.getTeamId() != FREE_AGENTS_TEAM_ID
                       ? team->get().getName()
@@ -185,7 +189,7 @@ void PlayerCompareScene::rebuildAxes()
 void PlayerCompareScene::buildCandidates()
 {
   candidates.clear();
-  filtered_query.assign(1, '\x01');  // Forces the filter to run.
+  filtered_query.assign(1, '\001');  // Forces the filter to run.
   GameController& controller = guiView->getController();
   const auto data = controller.getGameData();
   if (!data) return;
@@ -211,7 +215,7 @@ void PlayerCompareScene::buildCandidates()
     candidate.label = player->get().getName();
     candidate.lower = PlayerView::toLower(candidate.label);
     candidate.detail = std::format(
-        "{}  \xC2\xB7  {}", RoleUtils::shortName(player->get().getRole()),
+        "{}  \u00B7  {}", RoleUtils::shortName(player->get().getRole()),
         team ? team->get().getName() : std::string());
     candidates.push_back(std::move(candidate));
   }
@@ -246,7 +250,7 @@ void PlayerCompareScene::renderSlots()
   for (std::size_t index = 0; index < MAX_PLAYERS; ++index)
   {
     row.next();
-    Slot& slot = slots[index];
+    const Slot& slot = slots[index];
     ImGui::PushID(static_cast<int>(index));
     UI::beginAutoHeightCard("slot", nullptr, width);
     const ImVec2 at = ImGui::GetCursorScreenPos();
@@ -288,30 +292,29 @@ void PlayerCompareScene::renderSlots()
     UI::endCard();
     ImGui::PopID();
   }
-  if (removed) setSlot(*removed, 0);
+  if (removed.has_value()) setSlot(*removed, 0);
 }
 
 void PlayerCompareScene::renderPicker(std::size_t index, float width)
 {
   const Theme::Palette& palette = Theme::palette();
   ImGui::SetNextItemWidth(width);
-  const char* preview = LOC(slots[index].id != 0 ? "COMPARE_CHANGE_PLAYER"
-                                                 : "COMPARE_ADD_PLAYER");
-  if (!ImGui::BeginCombo("##pick", preview, ImGuiComboFlags_HeightLarge))
+  if (const char* preview = LOC(slots[index].id != 0 ? "COMPARE_CHANGE_PLAYER"
+                                                     : "COMPARE_ADD_PLAYER");
+      !ImGui::BeginCombo("##pick", preview, ImGuiComboFlags_HeightLarge))
     return;
   if (ImGui::IsWindowAppearing()) ImGui::SetKeyboardFocusHere();
   ImGui::SetNextItemWidth(-FLT_MIN);
   ImGui::InputTextWithHint("##filter", LOC("COMPARE_SEARCH_HINT"),
                            filter.data(), filter.size());
-  const std::string query = PlayerView::toLower(filter.data());
-  if (query != filtered_query)
+  if (const std::string query = PlayerView::toLower(filter.data());
+      query != filtered_query)
   {
     filtered_query = query;
     filtered.clear();
     for (std::size_t candidate = 0; candidate < candidates.size(); ++candidate)
     {
-      if (!query.empty() &&
-          candidates[candidate].lower.find(query) == std::string::npos)
+      if (!query.empty() && !candidates[candidate].lower.contains(query))
         continue;
       filtered.push_back(candidate);
       if (filtered.size() >= PICKER_MAX_RESULTS) break;
@@ -388,12 +391,16 @@ void PlayerCompareScene::renderRadar(float width)
       const ImVec2 edge = point(axis, 100.0f);
       const float dx = edge.x - centre.x;
       const float dy = edge.y - centre.y;
-      const float x = dx > 1.0f    ? edge.x + 4.0f * scale
-                      : dx < -1.0f ? edge.x - textSize.x - 4.0f * scale
-                                   : edge.x - textSize.x * 0.5f;
-      const float y = dy > 1.0f    ? edge.y + 2.0f * scale
-                      : dy < -1.0f ? edge.y - textSize.y - 2.0f * scale
-                                   : edge.y - textSize.y * 0.5f;
+      float x = edge.x - textSize.x * 0.5f;
+      if (dx > 1.0f)
+        x = edge.x + 4.0f * scale;
+      else if (dx < -1.0f)
+        x = edge.x - textSize.x - 4.0f * scale;
+      float y = edge.y - textSize.y * 0.5f;
+      if (dy > 1.0f)
+        y = edge.y + 2.0f * scale;
+      else if (dy < -1.0f)
+        y = edge.y - textSize.y - 2.0f * scale;
       drawList->AddText(ImVec2(x, y), Theme::toU32(palette.muted),
                         label.c_str());
     }
@@ -467,7 +474,7 @@ void PlayerCompareScene::renderBars(float width)
       const auto found =
           std::ranges::find(slot.attributes, axis, &ScoutedAttribute::name);
       if (found == slot.attributes.end()) continue;
-      const std::size_t position =
+      const auto position =
           static_cast<std::size_t>(found - slot.attributes.begin());
       const ImVec2 at = ImGui::GetCursorScreenPos();
       const float barWidth =
@@ -510,8 +517,8 @@ void PlayerCompareScene::renderFacts()
 {
   const Theme::Palette& palette = Theme::palette();
   UI::beginAutoHeightCard("compare_facts", LOC("COMPARE_FACTS"));
-  const int columns = 1 + static_cast<int>(filledSlots());
-  if (ImGui::BeginTable("facts", columns,
+  if (const int columns = 1 + static_cast<int>(filledSlots());
+      ImGui::BeginTable("facts", columns,
                         ImGuiTableFlags_RowBg | ImGuiTableFlags_BordersInnerH |
                             ImGuiTableFlags_SizingStretchSame))
   {

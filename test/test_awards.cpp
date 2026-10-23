@@ -28,11 +28,15 @@ constexpr std::uint64_t WORLD_SEED = 20250702;
 
 int uniqueSlot(int offset)
 {
-  return 2'000'000 + static_cast<int>(getpid() % 100'000) * 10 + offset;
+  return 2'000'000 + getpid() % 100'000 * 10 + offset;
 }
 
 struct SlotCleanup
 {
+  explicit SlotCleanup(int saveSlot) : slot(saveSlot) {}
+  SlotCleanup(const SlotCleanup&) = delete;
+  SlotCleanup& operator=(const SlotCleanup&) = delete;
+
   int slot;
   ~SlotCleanup() { RuntimePaths::removeSave(slot); }
 };
@@ -103,10 +107,10 @@ PlayerID findPlayer(const GameController& controller, TeamID team, Pred pred)
 
 TEST(Awards, PlayerOfMonthNeedsMinimumMinutes)
 {
-  const std::vector<AwardCandidate> pool = {
-      candidate(1, PlayerRole::CM, 27, 180, 9.5f),  // two matches only
-      candidate(2, PlayerRole::CM, 27, 270, 7.4f),
-      candidate(3, PlayerRole::ST, 27, 360, 7.1f)};
+  using enum PlayerRole;
+  const std::vector pool = {
+      candidate(1, CM, 27, 180, 9.5f),  // two matches only
+      candidate(2, CM, 27, 270, 7.4f), candidate(3, ST, 27, 360, 7.1f)};
   const auto best = Awards::bestPlayer(pool, Awards::MONTH_MIN_MINUTES);
   ASSERT_TRUE(best.has_value());
   EXPECT_EQ(pool[*best].tally.player_id, 2u);
@@ -114,10 +118,10 @@ TEST(Awards, PlayerOfMonthNeedsMinimumMinutes)
 
 TEST(Awards, YoungPlayerRespectsAgeAndTiesGoToLowerId)
 {
-  const std::vector<AwardCandidate> pool = {
-      candidate(9, PlayerRole::CM, 22, 360, 8.0f),
-      candidate(7, PlayerRole::CM, 21, 360, 7.0f),
-      candidate(5, PlayerRole::CM, 20, 360, 7.0f)};
+  using enum PlayerRole;
+  const std::vector pool = {candidate(9, CM, 22, 360, 8.0f),
+                            candidate(7, CM, 21, 360, 7.0f),
+                            candidate(5, CM, 20, 360, 7.0f)};
   const auto young = Awards::bestPlayer(pool, Awards::MONTH_MIN_MINUTES,
                                         Awards::YOUNG_MAX_AGE);
   ASSERT_TRUE(young.has_value());
@@ -127,36 +131,34 @@ TEST(Awards, YoungPlayerRespectsAgeAndTiesGoToLowerId)
 
 TEST(Awards, GoldenBootAndGloveTieBreaks)
 {
-  const std::vector<AwardCandidate> pool = {
-      candidate(1, PlayerRole::ST, 25, 2700, 7.0f, 20),
-      candidate(2, PlayerRole::ST, 25, 2400, 7.0f, 20),  // fewer minutes
-      candidate(3, PlayerRole::GK, 25, 3000, 6.8f, 0, 12),
-      candidate(4, PlayerRole::GK, 25, 900, 6.8f, 0, 14),    // too few minutes
-      candidate(5, PlayerRole::CB, 25, 3000, 6.8f, 0, 15)};  // not a keeper
+  using enum PlayerRole;
+  const std::vector pool = {
+      candidate(1, ST, 25, 2700, 7.0f, 20),
+      candidate(2, ST, 25, 2400, 7.0f, 20),  // fewer minutes
+      candidate(3, GK, 25, 3000, 6.8f, 0, 12),
+      candidate(4, GK, 25, 900, 6.8f, 0, 14),    // too few minutes
+      candidate(5, CB, 25, 3000, 6.8f, 0, 15)};  // not a keeper
   EXPECT_EQ(pool[*Awards::goldenBoot(pool)].tally.player_id, 2u);
   const auto glove = Awards::goldenGlove(pool, Awards::seasonMinMinutes(pool));
   ASSERT_TRUE(glove.has_value());
   EXPECT_EQ(pool[*glove].tally.player_id, 3u);
-  EXPECT_FALSE(Awards::goldenBoot(std::vector<AwardCandidate>{candidate(
-                                      8, PlayerRole::ST, 25, 900, 7.0f)})
+  EXPECT_FALSE(Awards::goldenBoot(std::vector{candidate(8, ST, 25, 900, 7.0f)})
                    .has_value());
 }
 
 TEST(Awards, TeamOfSeasonFillsTheFormationWithFallbacks)
 {
+  using enum PlayerRole;
   std::vector<AwardCandidate> pool;
   PlayerID id = 1;
-  for (const PlayerRole role :
-       {PlayerRole::GK, PlayerRole::RB, PlayerRole::CB, PlayerRole::CB,
-        PlayerRole::CB, PlayerRole::CM, PlayerRole::CDM, PlayerRole::CAM,
-        PlayerRole::RW, PlayerRole::ST, PlayerRole::LM})
+  for (const PlayerRole role : {GK, RB, CB, CB, CB, CM, CDM, CAM, RW, ST, LM})
     pool.push_back(candidate(id++, role, 26, 2500, 7.0f + 0.01f * id));
   // No natural left back: the spare centre back covers it.
   const auto team = Awards::teamOfSeason(pool, 1000);
   for (const auto& slot : team) ASSERT_TRUE(slot.has_value());
-  EXPECT_EQ(pool[*team[0]].role, PlayerRole::GK);
-  EXPECT_EQ(pool[*team[4]].role, PlayerRole::CB);
-  EXPECT_EQ(pool[*team[10]].role, PlayerRole::LM);
+  EXPECT_EQ(pool[*team[0]].role, GK);
+  EXPECT_EQ(pool[*team[4]].role, CB);
+  EXPECT_EQ(pool[*team[10]].role, LM);
   std::vector<std::size_t> picked;
   for (const auto& slot : team) picked.push_back(*slot);
   std::ranges::sort(picked);
@@ -189,6 +191,7 @@ TEST(Awards, GoalScoreRewardsLateWinners)
 
 TEST(Awards, ValuePremiumIsRecentAndCapped)
 {
+  using enum AwardType;
   const GameDateValue today(2027, 3, 10);
   std::vector<AwardRecord> honours;
   AwardRecord month;
@@ -203,8 +206,7 @@ TEST(Awards, ValuePremiumIsRecentAndCapped)
   AwardRecord season;
   season.season_year = 2026;
   for (const AwardType type :
-       {AwardType::PlayerOfSeason, AwardType::GoldenBoot,
-        AwardType::YoungPlayerOfSeason, AwardType::GoldenGlove})
+       {PlayerOfSeason, GoldenBoot, YoungPlayerOfSeason, GoldenGlove})
   {
     season.type = type;
     honours.push_back(season);
@@ -259,10 +261,10 @@ TEST(Awards, MonthlyAwardsFromMatchReports)
   }
   ASSERT_EQ(awards.monthTallies().size(), 4u);
   const std::vector<AwardRecord> given = awards.awardMonth(*gamedata, 2025, 8);
-  const auto find = [&](AwardType type) -> const AwardRecord*
+  const auto find = [&](AwardType type)
   {
     const auto it = std::ranges::find(given, type, &AwardRecord::type);
-    return it == given.end() ? nullptr : &*it;
+    return it == given.end() ? nullptr : std::to_address(it);
   };
   ASSERT_NE(find(AwardType::PlayerOfMonth), nullptr);
   EXPECT_EQ(find(AwardType::PlayerOfMonth)->player_id, star);

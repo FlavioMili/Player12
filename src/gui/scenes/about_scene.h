@@ -41,7 +41,10 @@ class AboutScene : public GUIScene
   AboutScene(GUIView* guiView_ptr, bool inCareer);
 
   void onEnter() override;
-  void update(float /*deltaTime*/) override {}
+  void update(float /*deltaTime*/) override
+  {
+    // Rendering reads current state; there is no per-frame update work.
+  }
   void render() override;
   [[nodiscard]] SceneID getID() const override { return SceneID::ABOUT; }
 

@@ -225,9 +225,9 @@ void DrawCeremonyDialog::render(GUIView* view)
   ImGui::Separator();
 
   // The list is the dialog's only scrolling area.
-  const float footer =
-      UI::buttonHeight() + ImGui::GetStyle().ItemSpacing.y * 2.0f;
-  if (ImGui::BeginChild(
+  if (const float footer =
+          UI::buttonHeight() + ImGui::GetStyle().ItemSpacing.y * 2.0f;
+      ImGui::BeginChild(
           "##draw_list",
           ImVec2(0.0f, std::max(scaled(80.0f),
                                 ImGui::GetContentRegionAvail().y - footer)),

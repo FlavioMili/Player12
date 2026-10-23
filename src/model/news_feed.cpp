@@ -113,11 +113,6 @@ class World
     return root;
   }
 
-  LeagueID countryOfTeam(TeamID id) const
-  {
-    return countryOfLeague(leagueOf(id));
-  }
-
   std::uint8_t tier(LeagueID league_id) const
   {
     return gamedata.getLeague(league_id)
@@ -174,29 +169,31 @@ void addTransfers(const NewsSources& sources, const World& world,
                   const GameDateValue& from, const GameDateValue& to,
                   std::vector<NewsItem>& out)
 {
+  using enum TransferKind;
+  using enum NewsKind;
   for (const TransferRecord& record : sources.transfers)
   {
     if (!inWindow(record.date, from, to)) continue;
     const bool ours =
         sources.managed_team != 0 && (record.to_team == sources.managed_team ||
                                       record.from_team == sources.managed_team);
-    const bool fee_move = record.kind == TransferKind::Permanent ||
-                          record.kind == TransferKind::PreContract;
+    const bool fee_move =
+        record.kind == Permanent || record.kind == PreContract;
     std::string key;
     if (fee_move && record.fee >= NewsFeed::MAJOR_FEE)
-      key = pick(TRANSFER_KEYS, NewsKind::Transfer, record.player_id,
-                 record.to_team, record.date);
+      key = pick(TRANSFER_KEYS, Transfer, record.player_id, record.to_team,
+                 record.date);
     else if (!ours)
       continue;
-    else if (record.kind == TransferKind::Permanent && record.fee > 0)
-      key = pick(TRANSFER_KEYS, NewsKind::Transfer, record.player_id,
-                 record.to_team, record.date);
-    else if (record.kind == TransferKind::Free ||
-             (record.kind == TransferKind::Permanent && record.fee == 0))
+    else if (record.kind == Permanent && record.fee > 0)
+      key = pick(TRANSFER_KEYS, Transfer, record.player_id, record.to_team,
+                 record.date);
+    else if (record.kind == Free ||
+             (record.kind == Permanent && record.fee == 0))
       key = "NEWS_TRANSFER_FREE";
-    else if (record.kind == TransferKind::Loan)
+    else if (record.kind == Loan)
       key = "NEWS_TRANSFER_LOAN";
-    else if (record.kind == TransferKind::PreContract)
+    else if (record.kind == PreContract)
       key = "NEWS_TRANSFER_PRECONTRACT";
     else
       continue;  // Loan returns and releases are not news.
@@ -204,7 +201,7 @@ void addTransfers(const NewsSources& sources, const World& world,
     const std::string buyer = world.teamName(record.to_team);
     if (player.empty() || buyer.empty()) continue;
     std::string seller = world.teamName(record.from_team);
-    NewsItem item = story(NewsKind::Transfer, record.date, std::move(key),
+    NewsItem item = story(Transfer, record.date, std::move(key),
                           {player, buyer, seller, formatMoney(record.fee)});
     item.player_id = record.player_id;
     item.team_id = record.to_team;
@@ -240,26 +237,27 @@ void addManagers(const NewsSources& sources, const World& world,
                  const GameDateValue& from, const GameDateValue& to,
                  std::vector<NewsItem>& out)
 {
+  using enum DepartureReason;
+  using enum NewsKind;
   // The human manager's own spells.
   for (const ManagerStint& stint : sources.stints)
   {
     if (inWindow(stint.start, from, to))
-      addManagerStory(world, NewsKind::Manager, stint.start,
-                      pick(APPOINTED_KEYS, NewsKind::Manager, stint.team_id, 1,
-                           stint.start),
-                      sources.manager_name, stint.team_id, WEIGHT_APPOINTMENT,
-                      out);
-    if (stint.reason == DepartureReason::Current ||
-        stint.reason == DepartureReason::Moved ||
+      addManagerStory(
+          world, NewsKind::Manager, stint.start,
+          pick(APPOINTED_KEYS, Manager, stint.team_id, 1, stint.start),
+          sources.manager_name, stint.team_id, WEIGHT_APPOINTMENT, out);
+    if (stint.reason == Current || stint.reason == Moved ||
         !inWindow(stint.end, from, to))
       continue;
-    std::string key =
-        stint.reason == DepartureReason::Sacked
-            ? pick(SACKED_KEYS, NewsKind::Manager, stint.team_id, 2, stint.end)
-        : stint.reason == DepartureReason::Resigned
-            ? std::string("NEWS_MANAGER_RESIGNED")
-            : std::string("NEWS_MANAGER_LEFT");
-    addManagerStory(world, NewsKind::Manager, stint.end, std::move(key),
+    std::string key;
+    if (stint.reason == Sacked)
+      key = pick(SACKED_KEYS, Manager, stint.team_id, 2, stint.end);
+    else if (stint.reason == Resigned)
+      key = "NEWS_MANAGER_RESIGNED";
+    else
+      key = "NEWS_MANAGER_LEFT";
+    addManagerStory(world, Manager, stint.end, std::move(key),
                     sources.manager_name, stint.team_id, WEIGHT_SACKING, out);
   }
 
@@ -267,13 +265,13 @@ void addManagers(const NewsSources& sources, const World& world,
   std::vector<std::pair<TeamID, GameDateValue>> reported;
   for (const InboxMessage& message : sources.inbox)
   {
-    if (message.title_key != DISMISSAL_TITLE || !message.team_id ||
+    if (message.title_key != DISMISSAL_TITLE || !message.team_id.has_value() ||
         message.args.empty() || !inWindow(message.date, from, to))
       continue;
     reported.emplace_back(*message.team_id, message.date);
     addManagerStory(
-        world, NewsKind::Manager, message.date,
-        pick(SACKED_KEYS, NewsKind::Manager, *message.team_id, 3, message.date),
+        world, Manager, message.date,
+        pick(SACKED_KEYS, Manager, *message.team_id, 3, message.date),
         message.args[0], *message.team_id, WEIGHT_SACKING, out);
   }
 
@@ -287,8 +285,8 @@ void addManagers(const NewsSources& sources, const World& world,
       continue;
     const std::string club = world.teamName(vacancy.team_id);
     if (club.empty()) continue;
-    NewsItem item = story(NewsKind::Manager, vacancy.opened,
-                          "NEWS_MANAGER_VACANCY", {club});
+    NewsItem item =
+        story(Manager, vacancy.opened, "NEWS_MANAGER_VACANCY", {club});
     item.team_id = vacancy.team_id;
     const LeagueID league = world.leagueOf(vacancy.team_id);
     item.country = world.countryOfLeague(league);
@@ -302,9 +300,9 @@ void addManagers(const NewsSources& sources, const World& world,
   {
     if (manager.team_id == 0 || !inWindow(manager.appointed, from, to))
       continue;
-    addManagerStory(world, NewsKind::Manager, manager.appointed,
-                    pick(APPOINTED_KEYS, NewsKind::Manager, manager.team_id,
-                         manager.id, manager.appointed),
+    addManagerStory(world, Manager, manager.appointed,
+                    pick(APPOINTED_KEYS, Manager, manager.team_id, manager.id,
+                         manager.appointed),
                     manager.name(), manager.team_id, WEIGHT_APPOINTMENT, out);
   }
 }
@@ -332,7 +330,7 @@ void addUpsets(const NewsSources& sources, const World& world,
       if (!match.isPlayed() || match.getMatchType() == MatchType::FRIENDLY)
         continue;
       const std::optional<TeamID> winner = match.getWinnerId();
-      if (!winner) continue;
+      if (!winner.has_value()) continue;
       const TeamID loser = *winner == match.getHomeTeamId()
                                ? match.getAwayTeamId()
                                : match.getHomeTeamId();
@@ -424,7 +422,7 @@ void addRaces(const NewsSources& sources, const World& world,
     if (!league) continue;
     const std::size_t clubs = league->get().getTeamIDs().size();
     if (clubs < 2) continue;
-    const int season_games = static_cast<int>((clubs - 1) * 2);
+    const auto season_games = static_cast<int>((clubs - 1) * 2);
     std::map<TeamID, TableRow> table;
     for (const TeamID team : league->get().getTeamIDs()) table[team];
     const NewsCompetition competition{MatchType::LEAGUE, league_id};
@@ -447,14 +445,17 @@ void addRaces(const NewsSources& sources, const World& world,
         ++home.points;
         ++away.points;
       }
-      const bool day_done = index + 1 == matches.size() ||
-                            !(matches[index + 1]->getDate() == match.getDate());
-      if (!day_done) continue;
+      if (const bool day_done =
+              index + 1 == matches.size() ||
+              !(matches[index + 1]->getDate() == match.getDate());
+          !day_done)
+        continue;
       const auto [first, second] = topTwo(table);
-      const bool strict =
-          first != 0 &&
-          (second == 0 || table[first].points > table[second].points);
-      if (!strict) continue;
+      if (const bool strict =
+              first != 0 &&
+              (second == 0 || table[first].points > table[second].points);
+          !strict)
+        continue;
       if (last_leader != 0 && first != last_leader &&
           table[first].played >= NewsFeed::LEADER_MIN_PLAYED &&
           inWindow(match.getDate(), from, to))
@@ -545,26 +546,27 @@ void addVerdicts(const NewsSources& sources, const World& world,
 
 const char* recordKey(RecordKind kind)
 {
+  using enum RecordKind;
   switch (kind)
   {
-    case RecordKind::BiggestWin:
+    case BiggestWin:
       return "NEWS_RECORD_BIGGEST_WIN";
-    case RecordKind::HighestScoringMatch:
+    case HighestScoringMatch:
       return "NEWS_RECORD_HIGHEST_SCORING";
-    case RecordKind::HighestAttendance:
+    case HighestAttendance:
       return "NEWS_RECORD_ATTENDANCE";
-    case RecordKind::MostGoalsSeason:
+    case MostGoalsSeason:
       return "NEWS_RECORD_GOALS_SEASON";
-    case RecordKind::MostPointsSeason:
+    case MostPointsSeason:
       return "NEWS_RECORD_POINTS_SEASON";
-    case RecordKind::TopScorerSeason:
+    case TopScorerSeason:
       return "NEWS_RECORD_TOP_SCORER";
-    case RecordKind::RecordSigning:
+    case RecordSigning:
       return "NEWS_RECORD_SIGNING";
-    case RecordKind::RecordSale:
+    case RecordSale:
       return "NEWS_RECORD_SALE";
-    case RecordKind::BiggestDefeat:
-    case RecordKind::COUNT:
+    case BiggestDefeat:
+    case COUNT:
       break;
   }
   return nullptr;
@@ -574,6 +576,7 @@ void addRecords(const NewsSources& sources, const World& world,
                 const GameDateValue& from, const GameDateValue& to,
                 std::vector<NewsItem>& out)
 {
+  using enum RecordKind;
   // In a save's first season every record is a first: none is news.
   const std::uint16_t first_season =
       sources.world_start.month >= 7
@@ -597,23 +600,23 @@ void addRecords(const NewsSources& sources, const World& world,
     std::string figure;
     switch (record.kind)
     {
-      case RecordKind::BiggestWin:
+      case BiggestWin:
         figure = scoreline(record.goals_for, record.goals_against);
         break;
-      case RecordKind::RecordSigning:
-      case RecordKind::RecordSale:
+      case RecordSigning:
+      case RecordSale:
         figure = formatMoney(record.value);
         break;
-      case RecordKind::HighestAttendance:
+      case HighestAttendance:
         figure = NumberFormat::grouped(record.value);
         break;
       default:
         figure = std::to_string(record.value);
         break;
     }
-    const bool player_record = record.kind == RecordKind::TopScorerSeason ||
-                               record.kind == RecordKind::RecordSigning ||
-                               record.kind == RecordKind::RecordSale;
+    const bool player_record = record.kind == TopScorerSeason ||
+                               record.kind == RecordSigning ||
+                               record.kind == RecordSale;
     const std::string subject =
         player_record ? record.name : world.teamName(record.team_id);
     if (subject.empty() || holder.empty()) continue;
@@ -626,10 +629,10 @@ void addRecords(const NewsSources& sources, const World& world,
     item.other_team_id = record.opponent_id;
     item.country = world.countryOfLeague(competition.id);
     item.competition = competition;
-    const bool match_record = record.kind == RecordKind::BiggestWin ||
-                              record.kind == RecordKind::HighestScoringMatch ||
-                              record.kind == RecordKind::HighestAttendance;
-    if (match_record && record.opponent_id != 0)
+    if (const bool match_record = record.kind == BiggestWin ||
+                                  record.kind == HighestScoringMatch ||
+                                  record.kind == HighestAttendance;
+        match_record && record.opponent_id != 0)
     {
       item.has_match = true;
       item.match_date = record.date;
@@ -692,21 +695,22 @@ void addAwards(const NewsSources& sources, const World& world,
 
 const char* newsKindKey(NewsKind kind)
 {
+  using enum NewsKind;
   switch (kind)
   {
-    case NewsKind::Transfer:
+    case Transfer:
       return "NEWS_KIND_TRANSFER";
-    case NewsKind::Manager:
+    case Manager:
       return "NEWS_KIND_MANAGER";
-    case NewsKind::Race:
+    case Race:
       return "NEWS_KIND_RACE";
-    case NewsKind::Upset:
+    case Upset:
       return "NEWS_KIND_UPSET";
-    case NewsKind::Record:
+    case Record:
       return "NEWS_KIND_RECORD";
-    case NewsKind::Award:
+    case Award:
       return "NEWS_KIND_AWARD";
-    case NewsKind::COUNT:
+    case COUNT:
       break;
   }
   return "NEWS_KIND_TRANSFER";
@@ -719,9 +723,9 @@ std::string NewsItem::headline() const
 
 bool NewsFilter::matches(const NewsItem& item) const
 {
-  return (!country || item.country == *country) &&
-         (!competition || item.competition == *competition) &&
-         (!kind || item.kind == *kind);
+  return (!country.has_value() || item.country == *country) &&
+         (!competition.has_value() || item.competition == *competition) &&
+         (!kind.has_value() || item.kind == *kind);
 }
 
 std::size_t NewsFeed::variant(NewsKind kind, std::uint32_t first,

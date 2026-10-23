@@ -14,6 +14,7 @@
 #include <array>
 #include <cmath>
 #include <format>
+#include <utility>
 
 #include "global/language_manager.h"
 #include "gui/gui_view.h"
@@ -68,13 +69,14 @@ const std::array<UI::Column, COLUMN_COUNT>& playerColumns()
 ImVec4 riskColor(WorkloadRisk risk)
 {
   const Theme::Palette& palette = Theme::palette();
+  using enum WorkloadRisk;
   switch (risk)
   {
-    case WorkloadRisk::High:
+    case High:
       return palette.negative;
-    case WorkloadRisk::Moderate:
+    case Moderate:
       return palette.warning;
-    case WorkloadRisk::Low:
+    case Low:
       break;
   }
   return palette.positive;
@@ -83,13 +85,14 @@ ImVec4 riskColor(WorkloadRisk risk)
 ImVec4 severityColor(AdviceSeverity severity)
 {
   const Theme::Palette& palette = Theme::palette();
+  using enum AdviceSeverity;
   switch (severity)
   {
-    case AdviceSeverity::Warning:
+    case Warning:
       return palette.negative;
-    case AdviceSeverity::Suggestion:
+    case Suggestion:
       return palette.warning;
-    case AdviceSeverity::Info:
+    case Info:
       break;
   }
   return palette.info;
@@ -131,9 +134,9 @@ void trendArrow(float trend, bool veteran)
   if (ImGui::IsItemHovered()) ImGui::SetTooltip("%s", LOC(tooltip));
 }
 
-template <typename Enum>
-bool enumCombo(const char* id, Enum& value, std::size_t count,
-               const char* (*key)(Enum), float width)
+template <typename Enum, typename KeyFunction>
+bool enumCombo(const char* id, Enum& value, std::size_t count, KeyFunction key,
+               float width)
 {
   bool changed = false;
   ImGui::SetNextItemWidth(width);
@@ -156,7 +159,11 @@ bool enumCombo(const char* id, Enum& value, std::size_t count,
 
 TrainingScene::TrainingScene(GUIView* parent) : ManagementScene(parent) {}
 
-void TrainingScene::update(float /*deltaTime*/) {}
+void TrainingScene::update(float /*deltaTime*/)
+{
+  /* This page changes only in response to controller actions; its model is
+   * refreshed after edits, with no frame-driven work to perform. */
+}
 
 void TrainingScene::refresh()
 {
@@ -236,12 +243,12 @@ void TrainingScene::refresh()
   }
 
   for (const TrainingAdvice& item : controller.getTrainingAdvice())
-    advice.push_back({item.severity, formatLocalized(item.key, item.args)});
+    advice.emplace_back(item.severity, formatLocalized(item.key, item.args));
 }
 
 void TrainingScene::sortRows()
 {
-  const auto key = [this](const PlayerRow& row) -> float
+  const auto key = [this](const PlayerRow& row)
   {
     switch (sort_column)
     {
@@ -285,20 +292,22 @@ void TrainingScene::renderContent()
   const float tile = tiles.width();
   const std::string condition = std::format("{:.0f}%", average_condition);
   tiles.next();
+  ImVec4 conditionColor = palette.negative;
+  if (average_condition >= 85.0f)
+    conditionColor = palette.positive;
+  else if (average_condition >= 75.0f)
+    conditionColor = palette.warning;
   UI::statTile("condition", LOC("TRAINING_TILE_CONDITION"), condition.c_str(),
-               LOC("TRAINING_TILE_CONDITION_NOTE"),
-               average_condition >= 85.0f   ? palette.positive
-               : average_condition >= 75.0f ? palette.warning
-                                            : palette.negative,
-               tile);
+               LOC("TRAINING_TILE_CONDITION_NOTE"), conditionColor, tile);
   const std::string drilled = std::format("{:.0f}%", familiarity * 100.0f);
   tiles.next();
+  ImVec4 familiarityColor = palette.negative;
+  if (familiarity >= 0.7f)
+    familiarityColor = palette.positive;
+  else if (familiarity >= 0.45f)
+    familiarityColor = palette.warning;
   UI::statTile("familiarity", LOC("TRAINING_TILE_FAMILIARITY"), drilled.c_str(),
-               LOC("TRAINING_TILE_FAMILIARITY_NOTE"),
-               familiarity >= 0.7f    ? palette.positive
-               : familiarity >= 0.45f ? palette.warning
-                                      : palette.negative,
-               tile);
+               LOC("TRAINING_TILE_FAMILIARITY_NOTE"), familiarityColor, tile);
   const std::string risk = std::to_string(at_risk);
   tiles.next();
   UI::statTile("risk", LOC("TRAINING_TILE_RISK"), risk.c_str(),
@@ -334,10 +343,11 @@ void TrainingScene::renderControls()
   ImGui::AlignTextToFramePadding();
   ImGui::TextColored(palette.muted, "%s", LOC("TRAINING_PRESET"));
   ImGui::SameLine();
-  TrainingPreset preset = plan.preset;
-  if (enumCombo("##preset", preset,
-                static_cast<std::size_t>(TrainingPreset::Custom),
-                TrainingModel::presetKey, presetWidth) &&
+  if (TrainingPreset preset = plan.preset;
+      enumCombo(
+          "##preset", preset,
+          static_cast<std::size_t>(std::to_underlying(TrainingPreset::Custom)),
+          TrainingModel::presetKey, presetWidth) &&
       controller.setTrainingPreset(preset))
   {
     refresh();
@@ -353,9 +363,10 @@ void TrainingScene::renderControls()
   ImGui::AlignTextToFramePadding();
   ImGui::TextColored(palette.muted, "%s", intensityLabel);
   ImGui::SameLine();
-  TrainingIntensity intensity = plan.intensity;
-  if (enumCombo("##squad_intensity", intensity,
-                static_cast<std::size_t>(TrainingIntensity::COUNT),
+  if (TrainingIntensity intensity = plan.intensity;
+      enumCombo("##squad_intensity", intensity,
+                static_cast<std::size_t>(
+                    std::to_underlying(TrainingIntensity::COUNT)),
                 TrainingModel::intensityKey, intensityWidth) &&
       controller.setTrainingIntensity(intensity))
     refresh();
@@ -367,8 +378,8 @@ void TrainingScene::renderControls()
                          ImGui::GetStyle().ItemInnerSpacing.x +
                          ImGui::CalcTextSize(autoLabel).x,
                      spacing);
-  bool automatic = plan.auto_congestion;
-  if (ImGui::Checkbox(autoLabel, &automatic) &&
+  if (bool automatic = plan.auto_congestion;
+      ImGui::Checkbox(autoLabel, &automatic) &&
       controller.setCongestionAutoAdjust(automatic))
     refresh();
   if (ImGui::IsItemHovered())
@@ -389,9 +400,10 @@ void TrainingScene::renderSlot(int day, bool compact)
     changed |= enumCombo("##session", slot.session, SESSION_TYPE_COUNT,
                          TrainingModel::sessionKey, cellWidth);
     ImGui::BeginDisabled(slot.session == SessionType::Rest);
-    changed |= enumCombo("##intensity", slot.intensity,
-                         static_cast<std::size_t>(TrainingIntensity::COUNT),
-                         TrainingModel::intensityKey, cellWidth);
+    changed |= enumCombo(
+        "##intensity", slot.intensity,
+        static_cast<std::size_t>(std::to_underlying(TrainingIntensity::COUNT)),
+        TrainingModel::intensityKey, cellWidth);
     ImGui::EndDisabled();
   }
   else
@@ -407,20 +419,22 @@ void TrainingScene::renderSlot(int day, bool compact)
                          TrainingModel::sessionKey, -FLT_MIN);
     ImGui::TableNextColumn();
     ImGui::BeginDisabled(slot.session == SessionType::Rest);
-    changed |= enumCombo("##intensity", slot.intensity,
-                         static_cast<std::size_t>(TrainingIntensity::COUNT),
-                         TrainingModel::intensityKey, -FLT_MIN);
+    changed |= enumCombo(
+        "##intensity", slot.intensity,
+        static_cast<std::size_t>(std::to_underlying(TrainingIntensity::COUNT)),
+        TrainingModel::intensityKey, -FLT_MIN);
     ImGui::EndDisabled();
     ImGui::TableNextColumn();
     ImGui::SetCursorPosY(ImGui::GetCursorPosY() +
                          ImGui::GetStyle().FramePadding.y);
   }
   const float load = TrainingModel::sessionLoad(slot, plan.intensity);
-  UI::meter("", std::min(1.0f, load / 1.8f), 0.0f,
-            load > 1.3f   ? palette.negative
-            : load > 0.7f ? palette.warning
-                          : palette.positive,
-            "");
+  ImVec4 loadColor = palette.positive;
+  if (load > 1.3f)
+    loadColor = palette.negative;
+  else if (load > 0.7f)
+    loadColor = palette.warning;
+  UI::meter("", std::min(1.0f, load / 1.8f), 0.0f, loadColor, "");
   if (ImGui::IsItemHovered())
     ImGui::SetTooltip("%s", LOC("TRAINING_LOAD_HELP"));
   if (changed &&
@@ -435,11 +449,11 @@ void TrainingScene::renderMicrocycle(float width)
   UI::beginAutoHeightCard("training_schedule", LOC("TRAINING_SCHEDULE"), width);
   renderControls();
   ImGui::Dummy(ImVec2(0.0f, Theme::Space::XS * dpi()));
-  constexpr int DAYS = static_cast<int>(MICROCYCLE_DAYS);
+  constexpr auto DAYS = static_cast<int>(MICROCYCLE_DAYS);
   // Seven columns when they fit, otherwise one row per day: never scrolls.
-  const bool wide =
-      ImGui::GetContentRegionAvail().x >= MICROCYCLE_WIDE_WIDTH * dpi();
-  if (wide && ImGui::BeginTable("microcycle", DAYS,
+  if (const bool wide =
+          ImGui::GetContentRegionAvail().x >= MICROCYCLE_WIDE_WIDTH * dpi();
+      wide && ImGui::BeginTable("microcycle", DAYS,
                                 ImGuiTableFlags_BordersInnerV |
                                     ImGuiTableFlags_SizingStretchSame))
   {
@@ -473,7 +487,7 @@ void TrainingScene::renderMicrocycle(float width)
   UI::endCard();
 }
 
-void TrainingScene::renderWeek()
+void TrainingScene::renderWeek() const
 {
   const Theme::Palette& palette = Theme::palette();
   UI::beginAutoHeightCard("training_week", LOC("TRAINING_WEEK"));
@@ -521,7 +535,7 @@ void TrainingScene::renderWeek()
   UI::endCard();
 }
 
-void TrainingScene::renderAdvice(float width)
+void TrainingScene::renderAdvice(float width) const
 {
   UI::beginAutoHeightCard("training_advice", LOC("TRAINING_ADVICE"), width);
   for (const AdviceLine& line : advice)
@@ -557,11 +571,11 @@ void TrainingScene::renderPlayers()
   }
   std::array<UI::Column, COLUMN_COUNT> columns = playerColumns();
   for (UI::Column& column : columns) column.label = LOC(column.label);
-  const UI::ColumnMask mask =
-      UI::fitColumns(columns, ImGui::GetContentRegionAvail().x);
   // No inner scrolling: the table grows and the page scrolls (the clipper
   // still skips rows outside the page viewport).
-  if (UI::beginResponsiveTable("training_table", columns, mask,
+  if (const UI::ColumnMask mask =
+          UI::fitColumns(columns, ImGui::GetContentRegionAvail().x);
+      UI::beginResponsiveTable("training_table", columns, mask,
                                ImGuiTableFlags_RowBg |
                                    ImGuiTableFlags_BordersInnerH |
                                    ImGuiTableFlags_Sortable,
@@ -608,11 +622,15 @@ void TrainingScene::renderPlayers()
           if (row.injured)
             UI::badge(LOC("TRAINING_INJURED"), palette.negative);
           else
-            UI::meter("", row.condition / 100.0f, 0.0f,
-                      row.condition >= 85.0f   ? palette.positive
-                      : row.condition >= 70.0f ? palette.warning
-                                               : palette.negative,
+          {
+            ImVec4 conditionColor = palette.negative;
+            if (row.condition >= 85.0f)
+              conditionColor = palette.positive;
+            else if (row.condition >= 70.0f)
+              conditionColor = palette.warning;
+            UI::meter("", row.condition / 100.0f, 0.0f, conditionColor,
                       row.condition_text.c_str());
+          }
         }
         if (UI::cell(mask, WORKLOAD))
         {

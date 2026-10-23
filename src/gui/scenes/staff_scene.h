@@ -67,7 +67,7 @@ class StaffScene : public ManagementScene
   };
 
   void renderStaff(float width);
-  void renderImpact(float width);
+  void renderImpact(float width) const;
   void renderMarket();
   void renderFilters();
   /** Rows grouped by department, each group with a header and a table. */

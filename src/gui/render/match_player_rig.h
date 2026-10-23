@@ -70,8 +70,7 @@ inline TwoBone solveTwoBone(Vec3 root, Vec3 target, float upper, float lower,
       (upper * upper - lower * lower + distance * distance) / (2.0f * distance);
   const float height = std::sqrt(std::max(upper * upper - along * along, 0.0f));
   Vec3 bend = pole - direction * RenderMath::dot(pole, direction);
-  const float bendLength = RenderMath::length(bend);
-  if (bendLength < 1e-4f)
+  if (const float bendLength = RenderMath::length(bend); bendLength < 1e-4f)
   {
     // Pole along the limb: any perpendicular will do.
     bend = RenderMath::cross(
@@ -193,8 +192,11 @@ inline Vec3 stepFoot(FootState& foot, const StrideInput& input)
     // Standing: both feet down under the hips. Moving: the gait below puts
     // the foot down on its exact spot (or swings it from under the body).
     foot = FootState{};
-    foot.position = foot.planted = foot.liftOff =
+    const Vec3 initialPosition =
         input.idle ? input.rest : stanceSpot(input, 0.5f);
+    foot.liftOff = initialPosition;
+    foot.planted = initialPosition;
+    foot.position = initialPosition;
     foot.yaw = input.yaw;
     foot.inStance = input.idle;
     foot.valid = true;
@@ -210,15 +212,16 @@ inline Vec3 stepFoot(FootState& foot, const StrideInput& input)
           UP * (input.liftHeight * 0.5f * std::sin(PI * share));
       if (foot.stepSeconds <= 0.0f)
       {
-        foot.position = foot.planted = foot.stepTarget;
+        foot.planted = foot.stepTarget;
+        foot.position = foot.stepTarget;
         foot.yaw = input.yaw;
         foot.inStance = true;
       }
       return foot.position;
     }
-    const bool drifted =
-        flatDistance(foot.planted, input.rest) > input.idleStepMetres;
-    if ((!foot.inStance || drifted) && !input.otherStepping)
+    if (const bool drifted =
+            flatDistance(foot.planted, input.rest) > input.idleStepMetres;
+        (!foot.inStance || drifted) && !input.otherStepping)
     {
       // Step back under the hip (a foot caught mid-swing lands there too).
       foot.liftOff = foot.position;
@@ -242,8 +245,9 @@ inline Vec3 stepFoot(FootState& foot, const StrideInput& input)
   const bool stance = share < input.duty;
   if (stance)
   {
-    const Vec3 ideal = stanceSpot(input, share / std::max(input.duty, 1e-3f));
-    if (!foot.inStance || flatDistance(foot.planted, ideal) > input.maxDrift)
+    if (const Vec3 ideal =
+            stanceSpot(input, share / std::max(input.duty, 1e-3f));
+        !foot.inStance || flatDistance(foot.planted, ideal) > input.maxDrift)
     {
       foot.planted = ideal;
       foot.yaw = input.yaw;
@@ -341,11 +345,12 @@ struct ActionInput
 
 inline Action locomotionFor(float speed, const GaitBands& bands = {})
 {
-  if (speed < bands.idle) return Action::IDLE;
-  if (speed < bands.walk) return Action::WALK;
-  if (speed < bands.jog) return Action::JOG;
-  if (speed < bands.run) return Action::RUN;
-  return Action::SPRINT;
+  using enum Action;
+  if (speed < bands.idle) return IDLE;
+  if (speed < bands.walk) return WALK;
+  if (speed < bands.jog) return JOG;
+  if (speed < bands.run) return RUN;
+  return SPRINT;
 }
 
 /**
@@ -414,13 +419,14 @@ struct Swing
 
 inline Swing followThroughFor(Event event)
 {
+  using enum Event;
   switch (event)
   {
-    case Event::SHOT:
+    case SHOT:
       return {0.55f, 0.05f, 0.7f};
-    case Event::CROSS:
+    case CROSS:
       return {0.4f, 0.32f, 0.6f};
-    case Event::PASS:
+    case PASS:
     default:
       return {0.38f, 0.08f, 0.22f};
   }
@@ -454,8 +460,9 @@ inline Vec3 kickAnkle(Event event, float seconds, Vec3 contact, Vec3 direction,
     weight = 1.0f;
     return contact;
   }
-  const float through = (seconds - timing.contactHold) / timing.followThrough;
-  if (through < 1.0f)
+  if (const float through =
+          (seconds - timing.contactHold) / timing.followThrough;
+      through < 1.0f)
   {
     weight = 1.0f;
     // Fast off the ball, slowing towards the top of the follow-through.

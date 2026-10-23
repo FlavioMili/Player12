@@ -14,6 +14,7 @@
 #include <optional>
 #include <string>
 #include <unordered_map>
+#include <utility>
 #include <vector>
 
 #include "global/types.h"
@@ -60,7 +61,7 @@ enum class MicrocycleDay : std::uint8_t
 };
 
 inline constexpr std::size_t MICROCYCLE_DAYS =
-    static_cast<std::size_t>(MicrocycleDay::COUNT);
+    static_cast<std::size_t>(std::to_underlying(MicrocycleDay::COUNT));
 
 /** @brief Session content (values are persisted). */
 enum class SessionType : std::uint8_t
@@ -77,7 +78,7 @@ enum class SessionType : std::uint8_t
 };
 
 inline constexpr std::size_t SESSION_TYPE_COUNT =
-    static_cast<std::size_t>(SessionType::COUNT);
+    static_cast<std::size_t>(std::to_underlying(SessionType::COUNT));
 
 /** @brief Session or squad-wide intensity (values are persisted). */
 enum class TrainingIntensity : std::uint8_t
@@ -117,7 +118,7 @@ enum class TrainingFocus : std::uint8_t
 };
 
 inline constexpr std::size_t TRAINING_FOCUS_COUNT =
-    static_cast<std::size_t>(TrainingFocus::COUNT);
+    static_cast<std::size_t>(std::to_underlying(TrainingFocus::COUNT));
 
 /** @brief One day of the template. */
 struct TrainingSlot
@@ -269,7 +270,7 @@ class TrainingRegistry
   template <typename PlayerMap>
   void prunePlayers(const PlayerMap& existing)
   {
-    std::erase_if(player_states, [&](const auto& entry)
+    std::erase_if(player_states, [&existing](const auto& entry)
                   { return !existing.contains(entry.first); });
   }
 
@@ -443,7 +444,7 @@ void rollWorkloads(GameData& gamedata);
 double trainPlayer(GameData& gamedata, Player& player, std::int32_t ordinal);
 
 /** Adds match load and returns the match injury hazard multiplier. */
-double recordMatchLoad(GameData& gamedata, Player& player,
+double recordMatchLoad(GameData& gamedata, const Player& player,
                        std::uint8_t minutes);
 
 /** Marks a match day for a club (microcycle anchor, familiarity). */

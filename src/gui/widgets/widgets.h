@@ -15,6 +15,7 @@
 #include <span>
 #include <string>
 #include <string_view>
+#include <type_traits>
 
 /**
  * @brief Reusable, theme-aware widgets for management screens.
@@ -431,7 +432,17 @@ void textRightColored(const ImVec4& color, const char* text);
 template <typename T>
 int compare(const T& left, const T& right)
 {
-  return left < right ? -1 : (right < left ? 1 : 0);
+  if constexpr (std::is_same_v<T, bool>)
+  {
+    if (left == right) return 0;
+    return left ? 1 : -1;
+  }
+  else
+  {
+    if (left < right) return -1;
+    if (right < left) return 1;
+    return 0;
+  }
 }
 
 }  // namespace UI

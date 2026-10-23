@@ -241,7 +241,7 @@ std::optional<DrawCeremony> DrawCeremonies::continentalRound(
 
   DrawCeremony ceremony;
   ceremony.competition_id = competition_id;
-  ceremony.stage = static_cast<std::uint8_t>(round);
+  ceremony.stage = std::to_underlying(round);
   ceremony.competition_name = LOC(rules->name_key);
   ceremony.round_name = roundName(round);
   ceremony.drawn_on = event->date;

@@ -30,11 +30,12 @@ class MatchEngine;
 class MatchAnalysisPanel
 {
  public:
-  void renderForMatch(GameController& controller, const MatchEngine& engine,
-                      TeamID home_id, TeamID away_id, bool other_dialog_open);
+  void renderForMatch(const GameController& controller,
+                      const MatchEngine& engine, TeamID home_id, TeamID away_id,
+                      bool other_dialog_open);
 
   /** Opens the analysis of the match so far (the managed side only). */
-  void openNow(GameController& controller, const MatchEngine& engine,
+  void openNow(const GameController& controller, const MatchEngine& engine,
                TeamID home_id, TeamID away_id);
 
   void close() { visible = false; }
@@ -49,7 +50,7 @@ class MatchAnalysisPanel
     std::string other;
   };
 
-  void build(GameController& controller, const MatchEngine& engine,
+  void build(const GameController& controller, const MatchEngine& engine,
              bool managed_home);
   void render();
 

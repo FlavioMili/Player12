@@ -13,8 +13,9 @@
 #include <algorithm>
 #include <cfloat>
 #include <cmath>
-#include <cstdio>
+#include <cstddef>
 #include <format>
+#include <utility>
 
 #include "controller/game_controller.h"
 #include "database/gamedata.h"
@@ -56,13 +57,14 @@ const char* stageKey(ApplicationStage stage)
 {
   switch (stage)
   {
-    case ApplicationStage::Pending:
+    using enum ApplicationStage;
+    case Pending:
       return "JOB_STAGE_PENDING";
-    case ApplicationStage::Interview:
+    case Interview:
       return "JOB_STAGE_INTERVIEW";
-    case ApplicationStage::Rejected:
+    case Rejected:
       return "JOB_STAGE_REJECTED";
-    case ApplicationStage::Offered:
+    case Offered:
       break;
   }
   return "JOB_STAGE_OFFERED";
@@ -156,10 +158,6 @@ class Strip
 {
  public:
   Strip()
-      : draw_list(ImGui::GetWindowDrawList()),
-        start(ImGui::GetCursorScreenPos()),
-        width(ImGui::GetContentRegionAvail().x),
-        pad(Theme::Space::M * Theme::scale())
   {
     draw_list->ChannelsSplit(2);
     draw_list->ChannelsSetCurrent(1);
@@ -188,10 +186,10 @@ class Strip
   [[nodiscard]] float innerWidth() const { return width - 2.0f * pad; }
 
  private:
-  ImDrawList* draw_list;
-  ImVec2 start;
-  float width;
-  float pad;
+  ImDrawList* draw_list = ImGui::GetWindowDrawList();
+  ImVec2 start = ImGui::GetCursorScreenPos();
+  float width = ImGui::GetContentRegionAvail().x;
+  float pad = Theme::Space::M * Theme::scale();
 };
 }  // namespace
 
@@ -205,20 +203,27 @@ void ManagerSetupPanel::initialize(const GameController& controller)
   // A name from the default nationality; the player can type another.
   WorldRng rng = WorldRng::stream(controller.getWorldSeed(),
                                   RngDomain::Managers, 0x4E45'5747ULL);
-  const Language language = static_cast<Language>(nationality);
+  const auto language = static_cast<Language>(nationality);
   const NamePool& names = NamePool::instance();
   const auto& firsts = names.firstNames(language);
-  const auto& lasts = names.lastNames(language);
-  if (!firsts.empty() && !lasts.empty())
+  if (const auto& lasts = names.lastNames(language);
+      !firsts.empty() && !lasts.empty())
   {
     default_first = firsts[static_cast<std::size_t>(
         rng.uniformInt(0, static_cast<int>(firsts.size()) - 1))];
     default_last = lasts[static_cast<std::size_t>(
         rng.uniformInt(0, static_cast<int>(lasts.size()) - 1))];
   }
-  std::snprintf(first_name.data(), first_name.size(), "%s",
-                default_first.c_str());
-  std::snprintf(last_name.data(), last_name.size(), "%s", default_last.c_str());
+  const auto first = std::format_to_n(
+      first_name.data(), static_cast<std::ptrdiff_t>(first_name.size() - 1),
+      "{}", default_first);
+  first_name[std::min(static_cast<std::size_t>(first.size),
+                      first_name.size() - 1)] = '\0';
+  const auto last = std::format_to_n(
+      last_name.data(), static_cast<std::ptrdiff_t>(last_name.size() - 1), "{}",
+      default_last);
+  last_name[std::min(static_cast<std::size_t>(last.size),
+                     last_name.size() - 1)] = '\0';
 }
 
 ManagerSetup ManagerSetupPanel::setup() const
@@ -271,10 +276,11 @@ ManagerSetupPanel::Action ManagerSetupPanel::render(
   end();
 
   next(LOC("MANAGER_SETUP_NATIONALITY"));
-  const std::string nation = nationName(static_cast<Language>(nationality));
-  if (ImGui::BeginCombo("##nationality", nation.c_str()))
+  if (const std::string nation = nationName(static_cast<Language>(nationality));
+      ImGui::BeginCombo("##nationality", nation.c_str()))
   {
-    for (int index = 0; index <= static_cast<int>(Language::US); ++index)
+    for (int index = 0;
+         index <= static_cast<int>(std::to_underlying(Language::US)); ++index)
     {
       const std::string option = nationName(static_cast<Language>(index));
       if (ImGui::Selectable(option.c_str(), index == nationality))
@@ -289,7 +295,8 @@ ManagerSetupPanel::Action ManagerSetupPanel::render(
                         LOC(ManagerMarketModel::backgroundKey(
                             static_cast<ManagerBackground>(background)))))
   {
-    for (int index = 0; index < static_cast<int>(ManagerBackground::COUNT);
+    for (int index = 0;
+         index < static_cast<int>(std::to_underlying(ManagerBackground::COUNT));
          ++index)
     {
       if (ImGui::Selectable(LOC(ManagerMarketModel::backgroundKey(
@@ -305,7 +312,9 @@ ManagerSetupPanel::Action ManagerSetupPanel::render(
   if (ImGui::BeginCombo("##style", LOC(ManagerMarketModel::styleKey(
                                        static_cast<ManagerStyle>(style)))))
   {
-    for (int index = 0; index < static_cast<int>(ManagerStyle::COUNT); ++index)
+    for (int index = 0;
+         index < static_cast<int>(std::to_underlying(ManagerStyle::COUNT));
+         ++index)
     {
       if (ImGui::Selectable(LOC(ManagerMarketModel::styleKey(
                                 static_cast<ManagerStyle>(index))),
@@ -355,7 +364,11 @@ ManagerScene::ManagerScene(GUIView* parent, std::optional<Tab> initial)
       parent->getController().isUnemployed() ? Tab::JOB_CENTRE : Tab::PROFILE);
 }
 
-void ManagerScene::update(float /*deltaTime*/) {}
+void ManagerScene::update(float /*deltaTime*/)
+{
+  /* The page refreshes its model on entry and after actions; no frame-driven
+   * animation or other time-dependent state needs updating. */
+}
 
 void ManagerScene::refresh()
 {
@@ -470,9 +483,9 @@ void ManagerScene::refresh()
   }
   std::ranges::reverse(seasons);
   for (const ManagerAward& award : controller.getManagerAwards())
-    awards.push_back({seasonLabel(award.start_year),
-                      ManagerMarketModel::awardKey(award.kind),
-                      award.club_name});
+    awards.emplace_back(seasonLabel(award.start_year),
+                        ManagerMarketModel::awardKey(award.kind),
+                        award.club_name);
   std::ranges::reverse(awards);
 
   // ---- Job Centre ----
@@ -527,13 +540,15 @@ void ManagerScene::refresh()
 
 void ManagerScene::renderContent()
 {
-  const ManagerProfile* profile = guiView->getController().getManagerProfile();
-  if (!profile) return;
+  if (const ManagerProfile* profile =
+          guiView->getController().getManagerProfile();
+      !profile)
+    return;
   UI::pageHeader(LOC("MANAGER_TITLE"), subtitle.c_str());
   const std::array<const char*, 2> tabs = {LOC("MANAGER_TAB_PROFILE"),
                                            LOC("MANAGER_TAB_JOBS")};
-  int selected = static_cast<int>(tab);
-  if (UI::segmented("##manager_tabs", selected, tabs))
+  if (auto selected = static_cast<int>(std::to_underlying(tab));
+      UI::segmented("##manager_tabs", selected, tabs))
     tab = static_cast<Tab>(selected);
   ImGui::Dummy(ImVec2(0.0f, Theme::Space::S * Theme::scale()));
   if (tab == Tab::PROFILE)
@@ -612,7 +627,7 @@ void ManagerScene::renderProfileCard(float width)
   UI::endCard();
 }
 
-void ManagerScene::renderHonours(float width)
+void ManagerScene::renderHonours(float width) const
 {
   const Theme::Palette& palette = Theme::palette();
   UI::beginAutoHeightCard("manager_honours", LOC("MANAGER_HONOURS"), width);
@@ -630,7 +645,7 @@ void ManagerScene::renderHonours(float width)
   UI::endCard();
 }
 
-void ManagerScene::renderHistory()
+void ManagerScene::renderHistory() const
 {
   const Theme::Palette& palette = Theme::palette();
   UI::beginAutoHeightCard("manager_history", LOC("MANAGER_HISTORY"));
@@ -642,9 +657,9 @@ void ManagerScene::renderHistory()
     return;
   }
   const auto columns = localize(historyColumns());
-  const UI::ColumnMask mask =
-      UI::fitColumns(columns, ImGui::GetContentRegionAvail().x);
-  if (UI::beginResponsiveTable(
+  if (const UI::ColumnMask mask =
+          UI::fitColumns(columns, ImGui::GetContentRegionAvail().x);
+      UI::beginResponsiveTable(
           "history", columns, mask,
           ImGuiTableFlags_RowBg | ImGuiTableFlags_BordersInnerH))
   {
@@ -671,15 +686,15 @@ void ManagerScene::renderHistory()
   UI::endCard();
 }
 
-void ManagerScene::renderSeasons()
+void ManagerScene::renderSeasons() const
 {
   if (seasons.empty()) return;
   const Theme::Palette& palette = Theme::palette();
   UI::beginAutoHeightCard("manager_seasons", LOC("MANAGER_SEASONS"));
   const auto columns = localize(seasonColumns());
-  const UI::ColumnMask mask =
-      UI::fitColumns(columns, ImGui::GetContentRegionAvail().x);
-  if (UI::beginResponsiveTable(
+  if (const UI::ColumnMask mask =
+          UI::fitColumns(columns, ImGui::GetContentRegionAvail().x);
+      UI::beginResponsiveTable(
           "seasons", columns, mask,
           ImGuiTableFlags_RowBg | ImGuiTableFlags_BordersInnerH))
   {
@@ -692,10 +707,14 @@ void ManagerScene::renderSeasons()
         UI::textFitted(row.club, ImGui::GetContentRegionAvail().x,
                        palette.text);
       if (UI::cell(mask, 2))
-        ImGui::TextColored(
-            row.margin > 0 ? palette.positive
-                           : (row.margin < 0 ? palette.negative : palette.text),
-            "%s", row.finish.c_str());
+      {
+        ImVec4 finishColor = palette.text;
+        if (row.margin > 0)
+          finishColor = palette.positive;
+        else if (row.margin < 0)
+          finishColor = palette.negative;
+        ImGui::TextColored(finishColor, "%s", row.finish.c_str());
+      }
       if (UI::cell(mask, 3))
         ImGui::TextColored(palette.muted, "%s", row.expected.c_str());
     }
@@ -784,13 +803,16 @@ void ManagerScene::renderOffers()
         {
           accept_candidate = offer.id;
           const auto club = guiView->getController().getManagedTeam();
-          accept_text =
-              unemployed
-                  ? formatLocalized("JOB_ACCEPT_NATIONAL_BODY", {offer.club})
-                  : formatLocalized(
-                        "JOB_ACCEPT_BODY",
-                        {club ? club->get().getName() : std::string(),
-                         offer.club});
+          if (unemployed)
+            accept_text =
+                formatLocalized("JOB_ACCEPT_NATIONAL_BODY", {offer.club});
+          else
+          {
+            std::string clubName;
+            if (club) clubName = club->get().getName();
+            accept_text = formatLocalized("JOB_ACCEPT_BODY",
+                                          {std::move(clubName), offer.club});
+          }
           if (ends_national)
             accept_text += "\n\n" + formatLocalized("JOB_ACCEPT_ENDS_NATIONAL",
                                                     {national_value});
@@ -817,7 +839,7 @@ void ManagerScene::renderInterviews()
 {
   if (interviews.empty()) return;
   const Theme::Palette& palette = Theme::palette();
-  GameController& controller = guiView->getController();
+  const GameController& controller = guiView->getController();
   UI::beginAutoHeightCard("job_interviews", LOC("JOB_INTERVIEWS"));
   for (const TeamID club : interviews)
   {
@@ -876,8 +898,8 @@ void ManagerScene::renderVacancies()
       ImGui::TableNextRow(ImGuiTableRowFlags_None,
                           UI::buttonHeight(UI::ButtonSize::COMPACT));
       ImGui::TableNextColumn();
-      const bool is_selected = selected_vacancy == row.team_id;
-      if (ImGui::Selectable(row.club.c_str(), is_selected,
+      if (const bool is_selected = selected_vacancy == row.team_id;
+          ImGui::Selectable(row.club.c_str(), is_selected,
                             ImGuiSelectableFlags_SpanAllColumns))
         selected_vacancy = is_selected ? 0 : row.team_id;
       if (ImGui::IsItemHovered(ImGuiHoveredFlags_DelayNormal))
@@ -986,17 +1008,27 @@ void ManagerScene::renderInterviewDialog()
     for (std::size_t topic = 0; topic < INTERVIEW_TOPICS; ++topic)
     {
       const int fit = interview_result->answer_fit[topic];
-      ImGui::TextColored(fit >= 2   ? palette.positive
-                         : fit >= 1 ? palette.text
-                         : fit == 0 ? palette.muted
-                                    : palette.negative,
-                         "%s  ·  %s",
+      ImVec4 fitColor = palette.negative;
+      const char* fitKey = "JOB_FIT_POOR";
+      if (fit >= 2)
+      {
+        fitColor = palette.positive;
+        fitKey = "JOB_FIT_GREAT";
+      }
+      else if (fit >= 1)
+      {
+        fitColor = palette.text;
+        fitKey = "JOB_FIT_GOOD";
+      }
+      else if (fit == 0)
+      {
+        fitColor = palette.muted;
+        fitKey = "JOB_FIT_NEUTRAL";
+      }
+      ImGui::TextColored(fitColor, "%s  ·  %s",
                          LOC(ManagerMarketModel::interviewQuestionKey(
                              static_cast<InterviewTopic>(topic))),
-                         LOC(fit >= 2   ? "JOB_FIT_GREAT"
-                             : fit >= 1 ? "JOB_FIT_GOOD"
-                             : fit == 0 ? "JOB_FIT_NEUTRAL"
-                                        : "JOB_FIT_POOR"));
+                         LOC(fitKey));
     }
     ImGui::PopTextWrapPos();
     ImGui::Dummy(ImVec2(0.0f, Theme::Space::S * scale));
@@ -1070,9 +1102,9 @@ void ManagerScene::renderConfirmations()
     resign_requested = false;
     ImGui::OpenPopup(RESIGN_POPUP_ID);
   }
-  const std::string resign_body =
-      formatLocalized("MANAGER_RESIGN_BODY", {club_value});
-  if (UI::confirmDialog(RESIGN_POPUP_ID, LOC("MANAGER_RESIGN_TITLE"),
+  if (const std::string resign_body =
+          formatLocalized("MANAGER_RESIGN_BODY", {club_value});
+      UI::confirmDialog(RESIGN_POPUP_ID, LOC("MANAGER_RESIGN_TITLE"),
                         resign_body.c_str(), LOC("MANAGER_RESIGN"),
                         LOC("SETTINGS_CANCEL")) == UI::DialogResult::CONFIRM)
     pending = {PendingAction::Kind::RESIGN, 0};
@@ -1257,7 +1289,7 @@ void ManagerScene::renderUnemployedHome(GUIView* view)
 
 void ManagerScene::refreshNational()
 {
-  GameController& controller = guiView->getController();
+  const GameController& controller = guiView->getController();
   national_facts.clear();
   national_history.clear();
   national_vacancies.clear();
@@ -1439,13 +1471,13 @@ void ManagerScene::renderNationalVacancies()
     while (index < national_vacancies.size() && opened == nullptr)
     {
       const NationalVacancyRow& row = national_vacancies[index++];
-      const int id = static_cast<int>(row.nation);
+      const auto id = static_cast<int>(std::to_underlying(row.nation));
       ImGui::PushID(id);
       ImGui::TableNextRow(ImGuiTableRowFlags_None,
                           UI::buttonHeight(UI::ButtonSize::COMPACT));
       ImGui::TableNextColumn();
-      const bool is_selected = selected_nation == id;
-      if (ImGui::Selectable(row.name.c_str(), is_selected,
+      if (const bool is_selected = selected_nation == id;
+          ImGui::Selectable(row.name.c_str(), is_selected,
                             ImGuiSelectableFlags_SpanAllColumns))
         selected_nation = is_selected ? -1 : id;
       if (UI::cell(mask, 1))
@@ -1464,7 +1496,7 @@ void ManagerScene::renderNationalVacancies()
     ImGui::EndTable();
     if (opened != nullptr)
     {
-      ImGui::PushID(static_cast<int>(opened->nation));
+      ImGui::PushID(static_cast<int>(std::to_underlying(opened->nation)));
       Strip strip;
       if (opened->licence_missing)
         ImGui::TextColored(
@@ -1484,8 +1516,9 @@ void ManagerScene::renderNationalVacancies()
       {
         ImGui::BeginDisabled(national_blocked || national_job);
         if (UI::primaryButton(LOC("JOB_APPLY")))
-          pending = {PendingAction::Kind::NATIONAL_APPLY,
-                     static_cast<std::uint32_t>(opened->nation)};
+          pending = {
+              PendingAction::Kind::NATIONAL_APPLY,
+              static_cast<std::uint32_t>(std::to_underlying(opened->nation))};
         ImGui::EndDisabled();
         ImGui::SameLine();
         ImGui::AlignTextToFramePadding();

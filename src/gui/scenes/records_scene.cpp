@@ -13,6 +13,7 @@
 
 #include <array>
 #include <format>
+#include <utility>
 
 #include "controller/game_controller.h"
 #include "database/gamedata.h"
@@ -68,11 +69,12 @@ void RecordsScene::refresh()
     const std::string opponent = teamName(controller, entry.opponent_id);
     const std::string score =
         std::format("{}-{}", entry.goals_for, entry.goals_against);
+    using enum RecordKind;
     switch (entry.kind)
     {
-      case RecordKind::BiggestWin:
-      case RecordKind::BiggestDefeat:
-      case RecordKind::HighestScoringMatch:
+      case BiggestWin:
+      case BiggestDefeat:
+      case HighestScoringMatch:
         line.value = score;
         line.holder = league
                           ? fmt::sprintf(LOC("RECORDS_MATCH_LEAGUE"),
@@ -82,25 +84,25 @@ void RecordsScene::refresh()
                                          opponent.c_str());
         line.when = Format::date(entry.date);
         break;
-      case RecordKind::HighestAttendance:
+      case HighestAttendance:
         line.value = Format::thousands(entry.value);
         line.holder = fmt::sprintf(LOC("RECORDS_MATCH_LEAGUE"), club.c_str(),
                                    opponent.c_str());
         line.when = Format::date(entry.date);
         break;
-      case RecordKind::MostGoalsSeason:
+      case MostGoalsSeason:
         line.value = fmt::sprintf(LOC("RECORDS_VALUE_GOALS"),
                                   static_cast<int>(entry.value));
         line.holder = league ? club : std::string();
         line.when = seasonLabel(entry.season_year);
         break;
-      case RecordKind::MostPointsSeason:
+      case MostPointsSeason:
         line.value = fmt::sprintf(LOC("RECORDS_VALUE_POINTS"),
                                   static_cast<int>(entry.value));
         line.holder = league ? club : std::string();
         line.when = seasonLabel(entry.season_year);
         break;
-      case RecordKind::TopScorerSeason:
+      case TopScorerSeason:
         line.value = fmt::sprintf(LOC("RECORDS_VALUE_GOALS"),
                                   static_cast<int>(entry.value));
         line.holder =
@@ -108,15 +110,15 @@ void RecordsScene::refresh()
         line.player_id = known(entry.player_id);
         line.when = seasonLabel(entry.season_year);
         break;
-      case RecordKind::RecordSigning:
-      case RecordKind::RecordSale:
-      case RecordKind::COUNT:
+      case RecordSigning:
+      case RecordSale:
+      case COUNT:
         line.value = Format::money(entry.value);
-        line.holder = fmt::sprintf(
-            LOC(entry.kind == RecordKind::RecordSale ? "RECORDS_SALE_TO"
-                                                     : "RECORDS_SIGNING_FROM"),
-            entry.name.c_str(), opponent.c_str());
-        if (league && entry.kind == RecordKind::RecordSigning)
+        line.holder =
+            fmt::sprintf(LOC(entry.kind == RecordSale ? "RECORDS_SALE_TO"
+                                                      : "RECORDS_SIGNING_FROM"),
+                         entry.name.c_str(), opponent.c_str());
+        if (league && entry.kind == RecordSigning)
           line.holder += "  ·  " + club;
         line.player_id = known(entry.player_id);
         line.when = Format::date(entry.date);
@@ -166,19 +168,18 @@ void RecordsScene::refresh()
   }
   all_time.clear();
   for (const AllTimeRow& row : controller.getAllTimeTable(league_id))
-    all_time.push_back({row.team_id, teamName(controller, row.team_id),
-                        row.played, row.won, row.drawn, row.lost, row.goals_for,
-                        row.goals_against, row.points});
+    all_time.emplace_back(row.team_id, teamName(controller, row.team_id),
+                          row.played, row.won, row.drawn, row.lost,
+                          row.goals_for, row.goals_against, row.points);
 }
 
 void RecordsScene::renderContent()
 {
   UI::pageHeader(LOC("RECORDS_TITLE"), LOC("RECORDS_SUBTITLE"));
-  const char* tabs[] = {LOC("RECORDS_TAB_CLUB"), LOC("RECORDS_TAB_LEAGUE"),
-                        LOC("RECORDS_TAB_ALL_TIME"),
-                        LOC("RECORDS_TAB_HALL_OF_FAME")};
-  int tab = static_cast<int>(active_tab);
-  if (UI::segmented(
+  const std::array<const char*, 4> tabs = {
+      LOC("RECORDS_TAB_CLUB"), LOC("RECORDS_TAB_LEAGUE"),
+      LOC("RECORDS_TAB_ALL_TIME"), LOC("RECORDS_TAB_HALL_OF_FAME")};
+  if (auto tab = std::to_underlying(active_tab); UI::segmented(
           "##records_tab", tab, tabs,
           std::min(620.0f * Theme::scale(), ImGui::GetContentRegionAvail().x)))
     active_tab = static_cast<Tab>(tab);
@@ -193,9 +194,10 @@ void RecordsScene::renderContent()
   const bool twoColumns = available >= TWO_COLUMN_MIN_WIDTH * Theme::scale();
   const float half =
       twoColumns ? std::floor((available - gap) * 0.5f) : available;
+  using enum Tab;
   switch (active_tab)
   {
-    case Tab::CLUB:
+    case CLUB:
       renderClubSelector();
       renderRecords("club_records", LOC("RECORDS_CLUB_CARD"), club_records,
                     available);
@@ -204,16 +206,16 @@ void RecordsScene::renderContent()
       renderPlayers("club_apps", LOC("RECORDS_MOST_APPEARANCES"), appearances,
                     twoColumns ? available - gap - half : available);
       break;
-    case Tab::LEAGUE:
+    case LEAGUE:
       renderLeagueSelector();
       renderRecords("league_records", LOC("RECORDS_LEAGUE_CARD"),
                     league_records, available);
       break;
-    case Tab::ALL_TIME:
+    case ALL_TIME:
       renderLeagueSelector();
       renderAllTime();
       break;
-    case Tab::HALL_OF_FAME:
+    case HALL_OF_FAME:
       renderClubSelector();
       renderHallOfFame();
       break;
@@ -222,7 +224,7 @@ void RecordsScene::renderContent()
 
 void RecordsScene::renderClubSelector()
 {
-  GameController& controller = guiView->getController();
+  const GameController& controller = guiView->getController();
   ImGui::SetNextItemWidth(
       std::min(280.0f * Theme::scale(), ImGui::GetContentRegionAvail().x));
   if (ImGui::BeginCombo("##records_club", teamName(controller, club_id).c_str(),
@@ -246,7 +248,7 @@ void RecordsScene::renderClubSelector()
 
 void RecordsScene::renderLeagueSelector()
 {
-  GameController& controller = guiView->getController();
+  const GameController& controller = guiView->getController();
   const auto league = controller.getLeagueById(league_id);
   ImGui::SetNextItemWidth(
       std::min(280.0f * Theme::scale(), ImGui::GetContentRegionAvail().x));
@@ -286,9 +288,9 @@ void RecordsScene::renderRecords(const char* id, const char* title,
   }};
   std::array<UI::Column, 4> columns = COLUMNS;
   for (UI::Column& column : columns) column.label = LOC(column.label);
-  const UI::ColumnMask mask =
-      UI::fitColumns(columns, ImGui::GetContentRegionAvail().x, 140.0f);
-  if (UI::beginResponsiveTable(
+  if (const UI::ColumnMask mask =
+          UI::fitColumns(columns, ImGui::GetContentRegionAvail().x, 140.0f);
+      UI::beginResponsiveTable(
           id, columns, mask,
           ImGuiTableFlags_RowBg | ImGuiTableFlags_BordersInnerH))
   {
@@ -343,9 +345,9 @@ void RecordsScene::renderPlayers(const char* id, const char* title,
   }};
   std::array<UI::Column, 4> columns = COLUMNS;
   for (UI::Column& column : columns) column.label = LOC(column.label);
-  const UI::ColumnMask mask =
-      UI::fitColumns(columns, ImGui::GetContentRegionAvail().x, 130.0f);
-  if (UI::beginResponsiveTable(
+  if (const UI::ColumnMask mask =
+          UI::fitColumns(columns, ImGui::GetContentRegionAvail().x, 130.0f);
+      UI::beginResponsiveTable(
           id, columns, mask,
           ImGuiTableFlags_RowBg | ImGuiTableFlags_BordersInnerH))
   {

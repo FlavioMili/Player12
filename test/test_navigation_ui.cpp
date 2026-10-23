@@ -79,11 +79,15 @@ constexpr std::uint64_t MS = 1'000'000;
 
 int uniqueSlot(int offset)
 {
-  return 900'000 + static_cast<int>(getpid() % 100'000) * 10 + offset;
+  return 900'000 + getpid() % 100'000 * 10 + offset;
 }
 
 struct SlotCleanup
 {
+  explicit SlotCleanup(int saveSlot) : slot(saveSlot) {}
+  SlotCleanup(const SlotCleanup&) = delete;
+  SlotCleanup& operator=(const SlotCleanup&) = delete;
+
   int slot;
   ~SlotCleanup() { RuntimePaths::removeSave(slot); }
 };
@@ -104,7 +108,7 @@ class Touchpad
 {
  public:
   explicit Touchpad(const GUIView& view)
-      : window(SDL_GetWindowID(view.getWindow())), clock(SDL_GetTicksNS())
+      : window(SDL_GetWindowID(view.getWindow()))
   {
   }
 
@@ -113,8 +117,8 @@ class Touchpad
     clock += 1'000 * MS;
     for (int index = 0; index < samples; ++index)
     {
-      SDL_Event event{};
-      event.type = SDL_EVENT_MOUSE_WHEEL;
+      SDL_Event event{.wheel = {}};
+      event.wheel.type = SDL_EVENT_MOUSE_WHEEL;
       event.wheel.timestamp = clock;
       event.wheel.windowID = window;
       event.wheel.x = dx;
@@ -127,15 +131,16 @@ class Touchpad
 
  private:
   SDL_WindowID window;
-  std::uint64_t clock;
+  std::uint64_t clock{SDL_GetTicksNS()};
 };
 
 void sideButton(const GUIView& view, Uint8 button)
 {
   for (const bool down : {true, false})
   {
-    SDL_Event event{};
-    event.type = down ? SDL_EVENT_MOUSE_BUTTON_DOWN : SDL_EVENT_MOUSE_BUTTON_UP;
+    SDL_Event event{.button = {}};
+    event.button.type =
+        down ? SDL_EVENT_MOUSE_BUTTON_DOWN : SDL_EVENT_MOUSE_BUTTON_UP;
     event.button.windowID = SDL_GetWindowID(view.getWindow());
     event.button.button = button;
     event.button.down = down;
@@ -170,14 +175,14 @@ int openPopups() { return GImGui->OpenPopupStack.Size; }
  * contains @p window_part (scanning @p from the top or the bottom) and
  * clicks it. False when the item never got the hover.
  */
-bool clickItem(GUIView& view, std::string_view window_part,
-               ImGuiID (*id_of)(const ImGuiWindow&), bool from_bottom)
+template <typename IdOf>
+bool clickItem(GUIView& view, std::string_view window_part, IdOf&& id_of,
+               bool from_bottom)
 {
   const ImGuiWindow* window = nullptr;
   for (const ImGuiWindow* candidate : GImGui->Windows)
     if (candidate->Active &&
-        std::string_view(candidate->Name).find(window_part) !=
-            std::string_view::npos)
+        std::string_view(candidate->Name).contains(window_part))
     {
       window = candidate;
       break;
@@ -188,11 +193,19 @@ bool clickItem(GUIView& view, std::string_view window_part,
   const ImRect area(ImMax(window->Rect().Min, ImVec2(0.0f, 0.0f)),
                     ImMin(window->Rect().Max, io.DisplaySize));
   const float step = 8.0f;
-  for (float offset = 4.0f; offset < area.GetHeight(); offset += step)
+  for (int offset_index = 0;
+       4.0f + step * static_cast<float>(offset_index) < area.GetHeight();
+       ++offset_index)
   {
+    const float offset = 4.0f + step * static_cast<float>(offset_index);
     const float y = from_bottom ? area.Max.y - offset : area.Min.y + offset;
-    for (float x = area.Min.x + 4.0f; x < area.Max.x; x += 2.0f * step)
+    for (int x_index = 0;
+         area.Min.x + 4.0f + 2.0f * step * static_cast<float>(x_index) <
+         area.Max.x;
+         ++x_index)
     {
+      const float x =
+          area.Min.x + 4.0f + 2.0f * step * static_cast<float>(x_index);
       io.AddMousePosEvent(x, y);
       Bridge::frame(view);
       if (GImGui->HoveredId != item) continue;

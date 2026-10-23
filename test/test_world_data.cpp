@@ -10,6 +10,7 @@
 #include <unistd.h>
 
 #include <algorithm>
+#include <functional>
 #include <map>
 #include <memory>
 #include <optional>
@@ -38,11 +39,15 @@ constexpr std::size_t CLUBS_MOVING = 3;
 
 int uniqueSlot(int offset)
 {
-  return 400'000 + static_cast<int>(getpid() % 100'000) * 10 + offset;
+  return 400'000 + getpid() % 100'000 * 10 + offset;
 }
 
 struct SlotCleanup
 {
+  explicit SlotCleanup(int saveSlot) : slot(saveSlot) {}
+  SlotCleanup(const SlotCleanup&) = delete;
+  SlotCleanup& operator=(const SlotCleanup&) = delete;
+
   int slot;
   ~SlotCleanup() { RuntimePaths::removeSave(slot); }
 };
@@ -189,8 +194,8 @@ TEST(WorldDataTest, EveryClubHasACompleteIdentity)
   ASSERT_EQ(teams.size(), 2 * COUNTRIES * CLUBS_PER_LEAGUE);
   ASSERT_EQ(identities.size(), teams.size());
 
-  std::set<std::string> names;
-  std::set<std::string> codes;
+  std::set<std::string, std::less<>> names;
+  std::set<std::string, std::less<>> codes;
   for (const Team& team : teams)
   {
     EXPECT_TRUE(names.insert(team.getName()).second) << team.getName();
@@ -235,7 +240,7 @@ TEST(WorldDataTest, NewGameLoadsNamesAndIdentities)
   EXPECT_EQ(predefined->get().getTeamId(), 103);
 
   // The Apulian second division, including Acaya.
-  std::set<std::string> lower_names;
+  std::set<std::string, std::less<>> lower_names;
   for (const auto& [id, team] : data.getTeams())
   {
     if (team.getLeagueId() == ITALIAN_LOWER_LEAGUE)

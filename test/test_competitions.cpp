@@ -12,6 +12,7 @@
 #include <algorithm>
 #include <cstdlib>
 #include <filesystem>
+#include <format>
 #include <iostream>
 #include <map>
 #include <memory>
@@ -56,14 +57,13 @@ void addDivision(GameData& gamedata, LeagueID league_id,
   for (size_t i = 0; i < DIVISION_SIZE; ++i)
   {
     const auto team_id = static_cast<TeamID>(first_team + i);
-    gamedata.addTeam(team_id, Team(team_id, league_id,
-                                   "Club " + std::to_string(team_id), 0));
+    gamedata.addTeam(
+        team_id, Team(team_id, league_id, std::format("Club {}", team_id), 0));
     team_ids.push_back(team_id);
   }
   gamedata.addLeague(
-      league_id,
-      League(league_id, "Country " + std::to_string(league_id) + " League",
-             team_ids, parent));
+      league_id, League(league_id, std::format("Country {} League", league_id),
+                        team_ids, parent));
 }
 
 /** Two linked divisions (40 clubs) plus a single-division country. */
@@ -428,7 +428,7 @@ TEST(KnockoutTest, PenaltyConversionIsRealistic)
   EXPECT_GE(Competitions::penaltyConversionProbability(1.0f, 100.0f), 0.55f);
 
   std::mt19937 rng(1234);
-  const std::vector<float> takers(11, 0.75f);
+  const std::vector takers(11, 0.75f);
   int home_wins = 0;
   int sudden_death = 0;
   constexpr int SHOOTOUTS = 20'000;
@@ -504,7 +504,7 @@ TEST(CupTest, BracketRunsToASingleWinner)
   for (int guard = 0; guard < 16; ++guard)
   {
     const auto status = Competitions::cupStatus(calendar, gamedata, TOP_LEAGUE);
-    if (status.winner) break;
+    if (status.winner.has_value()) break;
     // A round's ties are spread over several days: settle all of them.
     GameDateValue round_date = status.rounds.back().ties.front().getDate();
     for (const LeagueID cup : {TOP_LEAGUE, OTHER_COUNTRY})
@@ -679,7 +679,7 @@ PlayerMatchLine cards(PlayerID player, TeamID team, uint8_t yellows,
 
 Player squadPlayer(PlayerID id, TeamID team, PlayerRole role)
 {
-  return Player(id, team, "Test", "Player " + std::to_string(id), role,
+  return Player(id, team, "Test", std::format("Player {}", id), role,
                 Language::EN, 1000, 0, 25, 2, 180, Foot::Right, {});
 }
 }  // namespace
@@ -689,11 +689,12 @@ class DisciplineTest : public ::testing::Test
  protected:
   void SetUp() override
   {
+    using enum PlayerRole;
     gamedata.addTeam(10, Team(10, 1, "Home", 0));
     gamedata.addTeam(20, Team(20, 1, "Away", 0));
-    gamedata.addPlayer(1, squadPlayer(1, 10, PlayerRole::CM));
-    gamedata.addPlayer(2, squadPlayer(2, 10, PlayerRole::ST));
-    gamedata.addPlayer(3, squadPlayer(3, 20, PlayerRole::CB));
+    gamedata.addPlayer(1, squadPlayer(1, 10, CM));
+    gamedata.addPlayer(2, squadPlayer(2, 10, ST));
+    gamedata.addPlayer(3, squadPlayer(3, 20, CB));
   }
 
   void play(MatchType type, std::vector<PlayerMatchLine> lines = {})
@@ -708,33 +709,34 @@ class DisciplineTest : public ::testing::Test
 
 TEST_F(DisciplineTest, FifthYellowBansForOneMatchInTheSameCompetition)
 {
-  for (int match = 0; match < 4; ++match)
-    play(MatchType::LEAGUE, {cards(1, 10, 1, 0)});
-  play(MatchType::CUP, {cards(1, 10, 1, 0)});
-  EXPECT_FALSE(discipline.isSuspended(1, MatchType::LEAGUE));
-  play(MatchType::LEAGUE, {cards(1, 10, 1, 0)});
-  EXPECT_EQ(discipline.banMatches(1, MatchType::LEAGUE), 1);
-  EXPECT_FALSE(discipline.isSuspended(1, MatchType::CUP));
+  using enum MatchType;
+  for (int match = 0; match < 4; ++match) play(LEAGUE, {cards(1, 10, 1, 0)});
+  play(CUP, {cards(1, 10, 1, 0)});
+  EXPECT_FALSE(discipline.isSuspended(1, LEAGUE));
+  play(LEAGUE, {cards(1, 10, 1, 0)});
+  EXPECT_EQ(discipline.banMatches(1, LEAGUE), 1);
+  EXPECT_FALSE(discipline.isSuspended(1, CUP));
 
-  play(MatchType::CUP);  // Cup matches do not serve league bans.
-  play(MatchType::FRIENDLY);
-  EXPECT_EQ(discipline.banMatches(1, MatchType::LEAGUE), 1);
-  play(MatchType::LEAGUE);
-  EXPECT_FALSE(discipline.isSuspended(1, MatchType::LEAGUE));
+  play(CUP);  // Cup matches do not serve league bans.
+  play(FRIENDLY);
+  EXPECT_EQ(discipline.banMatches(1, LEAGUE), 1);
+  play(LEAGUE);
+  EXPECT_FALSE(discipline.isSuspended(1, LEAGUE));
 }
 
 TEST_F(DisciplineTest, RedCardsBanAndRepeatOffencesGrow)
 {
-  play(MatchType::LEAGUE, {cards(2, 10, 2, 1)});  // Second caution.
-  EXPECT_EQ(discipline.banMatches(2, MatchType::LEAGUE), 1);
-  play(MatchType::LEAGUE);
-  EXPECT_EQ(discipline.banMatches(2, MatchType::LEAGUE), 0);
+  using enum MatchType;
+  play(LEAGUE, {cards(2, 10, 2, 1)});  // Second caution.
+  EXPECT_EQ(discipline.banMatches(2, LEAGUE), 1);
+  play(LEAGUE);
+  EXPECT_EQ(discipline.banMatches(2, LEAGUE), 0);
 
-  play(MatchType::LEAGUE, {cards(3, 20, 0, 1)});  // Straight red.
-  EXPECT_EQ(discipline.banMatches(3, MatchType::LEAGUE), 1);
-  play(MatchType::LEAGUE);
-  play(MatchType::LEAGUE, {cards(3, 20, 0, 1)});  // Second red this season.
-  EXPECT_EQ(discipline.banMatches(3, MatchType::LEAGUE), 2);
+  play(LEAGUE, {cards(3, 20, 0, 1)});  // Straight red.
+  EXPECT_EQ(discipline.banMatches(3, LEAGUE), 1);
+  play(LEAGUE);
+  play(LEAGUE, {cards(3, 20, 0, 1)});  // Second red this season.
+  EXPECT_EQ(discipline.banMatches(3, LEAGUE), 2);
 
   const auto suspended = discipline.suspendedPlayers(20, gamedata);
   ASSERT_EQ(suspended.size(), 1u);
@@ -749,8 +751,7 @@ TEST_F(DisciplineTest, RedCardsBanAndRepeatOffencesGrow)
       << "cautions of a second-yellow dismissal do not accumulate";
 
   discipline.resetSeason();
-  EXPECT_EQ(discipline.banMatches(3, MatchType::LEAGUE), 2)
-      << "bans carry over";
+  EXPECT_EQ(discipline.banMatches(3, LEAGUE), 2) << "bans carry over";
   EXPECT_EQ(discipline.records().size(), 1u);
 }
 
@@ -768,7 +769,12 @@ TEST_F(DisciplineTest, SuspendedStartersSitOutSimulatedMatches)
   auto db_conn = std::make_shared<DatabaseConnection>(":memory:");
   gamedata.addPlayer(4, squadPlayer(4, 10, PlayerRole::GK));
   gamedata.addPlayer(5, squadPlayer(5, 10, PlayerRole::ST));
-  auto shared = std::shared_ptr<GameData>(&gamedata, [](GameData*) {});
+  auto shared = std::shared_ptr<GameData>(&gamedata,
+                                          [](GameData*)
+                                          {
+                                            // The fixture owns this object; the
+                                            // shared pointer only borrows it.
+                                          });
   Lineup& lineup = shared->getTeam(10)->get().getLineup();
   lineup.setGoalkeeper(&shared->getPlayers().at(4));
   lineup.addOutfieldPlayer(&shared->getPlayers().at(2), Vector2F{0.8f, 0.5f});
@@ -911,7 +917,7 @@ TEST_F(CompetitionPersistenceTest, HistoryAndPlayerStatsRoundTrip)
   stats.goals = 21;
   stats.rating_total = 210.0f;
   stats.rated_matches = 30;
-  table.emplace(PlayerSeasonKey{1, 50'123, 601, MatchType::LEAGUE}, stats);
+  table.try_emplace(PlayerSeasonKey{1, 50'123, 601, MatchType::LEAGUE}, stats);
   repository.savePlayerSeasonStats(table);
   const auto loaded = repository.loadPlayerSeasonStats(1);
   ASSERT_EQ(loaded.size(), 1u);
@@ -1016,10 +1022,11 @@ TEST(SeasonRolloverTest, SeasonEndRecordsHistoryPromotesAndRegenerates)
       {
         for (Match& match : game.getCalendar().getMatchesForDateMutable(next))
         {
-          const bool engine_fixture = next == engine_date &&
-                                      match.getHomeTeamId() == engine_home &&
-                                      match.getAwayTeamId() == engine_away;
-          if (match.isPlayed() || engine_fixture) continue;
+          if (const bool engine_fixture =
+                  next == engine_date && match.getHomeTeamId() == engine_home &&
+                  match.getAwayTeamId() == engine_away;
+              match.isPlayed() || engine_fixture)
+            continue;
           const auto home_goals = static_cast<uint8_t>(
               (match.getHomeTeamId() * 7U + next.day) % 4U);
           const auto away_goals = static_cast<uint8_t>(
@@ -1048,12 +1055,12 @@ TEST(SeasonRolloverTest, SeasonEndRecordsHistoryPromotesAndRegenerates)
           {
             const Match& earlier = *fixtures[i - 1];
             const Match& later = *fixtures[i];
-            const int required =
-                earlier.getMatchType() == MatchType::LEAGUE &&
-                        later.getMatchType() != MatchType::LEAGUE
-                    ? SeasonCalendar::MIN_REST_BEFORE_TIE
-                    : SeasonCalendar::MIN_REST_DAYS;
-            if (SeasonCalendar::addDays(earlier.getDate(), required - 1) <
+            if (const int required =
+                    earlier.getMatchType() == MatchType::LEAGUE &&
+                            later.getMatchType() != MatchType::LEAGUE
+                        ? SeasonCalendar::MIN_REST_BEFORE_TIE
+                        : SeasonCalendar::MIN_REST_DAYS;
+                SeasonCalendar::addDays(earlier.getDate(), required - 1) <
                 later.getDate())
               continue;
             if (++tired <= 5)
@@ -1137,12 +1144,12 @@ TEST(SeasonRolloverTest, SeasonEndRecordsHistoryPromotesAndRegenerates)
     EXPECT_EQ(top_entry->champion_id, final_top.front().team_id);
     EXPECT_EQ(top_entry->runner_up_id, final_top[1].team_id);
     EXPECT_EQ(top_entry->relegated.size(), Competitions::PROMOTION_SLOTS);
-    const size_t cups = static_cast<size_t>(std::ranges::count_if(
+    const auto cups = std::ranges::count_if(
         history,
         [](const SeasonHistoryEntry& entry)
         {
           return entry.competition_type == MatchType::CUP && entry.champion_id;
-        }));
+        });
     EXPECT_EQ(cups, Competitions::countryRoots(*gamedata).size());
 
     // The new season is scheduled with the promoted clubs in the top flight.

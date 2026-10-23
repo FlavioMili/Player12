@@ -90,9 +90,12 @@ void drawRing(ImDrawList& drawList, const IMatchRenderer& renderer,
 ImU32 conditionColor(float stamina)
 {
   const Theme::Palette& palette = Theme::palette();
-  return Theme::toU32(stamina >= 0.75f   ? palette.positive
-                      : stamina >= 0.55f ? palette.warning
-                                         : palette.negative);
+  ImVec4 color = palette.negative;
+  if (stamina >= 0.75f)
+    color = palette.positive;
+  else if (stamina >= 0.55f)
+    color = palette.warning;
+  return Theme::toU32(color);
 }
 
 /** Name, condition and (while charging) the power bar above the head. */

@@ -11,6 +11,7 @@
 #include <sqlite3.h>
 
 #include <algorithm>
+#include <utility>
 
 #include "database/database_connection.h"
 #include "model/world_simulation.h"
@@ -24,28 +25,30 @@ constexpr float MORALE_PER_LEVEL = 4.0f;
 int level(SquadStatus status)
 {
   // Prospects and backups both sit at the bottom of the pecking order.
-  return status == SquadStatus::Prospect ? static_cast<int>(SquadStatus::Backup)
-                                         : static_cast<int>(status);
+  return status == SquadStatus::Prospect
+             ? static_cast<int>(std::to_underlying(SquadStatus::Backup))
+             : static_cast<int>(std::to_underlying(status));
 }
 }  // namespace
 
 const char* SquadStatusModel::nameKey(SquadStatus status)
 {
+  using enum SquadStatus;
   switch (status)
   {
-    case SquadStatus::Star:
+    case Star:
       return "SQUAD_STATUS_STAR";
-    case SquadStatus::Important:
+    case Important:
       return "SQUAD_STATUS_IMPORTANT";
-    case SquadStatus::Regular:
+    case Regular:
       return "SQUAD_STATUS_REGULAR";
-    case SquadStatus::Rotation:
+    case Rotation:
       return "SQUAD_STATUS_ROTATION";
-    case SquadStatus::Backup:
+    case Backup:
       return "SQUAD_STATUS_BACKUP";
-    case SquadStatus::Prospect:
+    case Prospect:
       return "SQUAD_STATUS_PROSPECT";
-    case SquadStatus::COUNT:
+    case COUNT:
       break;
   }
   return "SQUAD_STATUS_REGULAR";
@@ -53,21 +56,22 @@ const char* SquadStatusModel::nameKey(SquadStatus status)
 
 const char* SquadStatusModel::expectationKey(SquadStatus status)
 {
+  using enum SquadStatus;
   switch (status)
   {
-    case SquadStatus::Star:
+    case Star:
       return "SQUAD_STATUS_STAR_HELP";
-    case SquadStatus::Important:
+    case Important:
       return "SQUAD_STATUS_IMPORTANT_HELP";
-    case SquadStatus::Regular:
+    case Regular:
       return "SQUAD_STATUS_REGULAR_HELP";
-    case SquadStatus::Rotation:
+    case Rotation:
       return "SQUAD_STATUS_ROTATION_HELP";
-    case SquadStatus::Backup:
+    case Backup:
       return "SQUAD_STATUS_BACKUP_HELP";
-    case SquadStatus::Prospect:
+    case Prospect:
       return "SQUAD_STATUS_PROSPECT_HELP";
-    case SquadStatus::COUNT:
+    case COUNT:
       break;
   }
   return "SQUAD_STATUS_REGULAR_HELP";
@@ -75,19 +79,20 @@ const char* SquadStatusModel::expectationKey(SquadStatus status)
 
 SquadRole SquadStatusModel::toSquadRole(SquadStatus status)
 {
+  using enum SquadStatus;
   switch (status)
   {
-    case SquadStatus::Star:
+    case Star:
       return SquadRole::KeyPlayer;
-    case SquadStatus::Important:
-    case SquadStatus::Regular:
+    case Important:
+    case Regular:
       return SquadRole::FirstTeam;
-    case SquadStatus::Rotation:
+    case Rotation:
       return SquadRole::Rotation;
-    case SquadStatus::Backup:
+    case Backup:
       return SquadRole::Backup;
-    case SquadStatus::Prospect:
-    case SquadStatus::COUNT:
+    case Prospect:
+    case COUNT:
       break;
   }
   return SquadRole::Fringe;
@@ -99,8 +104,8 @@ SquadStatus SquadStatusModel::expectation(SquadStatus assigned,
   const int floor = level(deserved) + TOLERATED_LEVELS;
   if (level(assigned) <= floor) return assigned;
   // A prospect who deserves little keeps his own, modest expectation.
-  return static_cast<SquadStatus>(
-      std::min(floor, static_cast<int>(SquadStatus::Backup)));
+  return static_cast<SquadStatus>(std::min(
+      floor, static_cast<int>(std::to_underlying(SquadStatus::Backup))));
 }
 
 SquadStatus SquadStatusModel::deserved(std::size_t rank, int age)
@@ -149,7 +154,9 @@ void SquadStatusBook::load(const DatabaseConnection& db_conn)
   while (sqlite3_step(stmt) == SQLITE_ROW)
   {
     const auto status = sqlite3_column_int(stmt, 2);
-    if (status < 0 || status >= static_cast<int>(SquadStatus::COUNT)) continue;
+    if (status < 0 ||
+        status >= static_cast<int>(std::to_underlying(SquadStatus::COUNT)))
+      continue;
     entries[static_cast<PlayerID>(sqlite3_column_int64(stmt, 0))] =
         Entry{static_cast<TeamID>(sqlite3_column_int(stmt, 1)),
               static_cast<SquadStatus>(status)};
@@ -168,7 +175,8 @@ void SquadStatusBook::save(const DatabaseConnection& db_conn) const
   {
     sqlite3_bind_int64(stmt, 1, player_id);
     sqlite3_bind_int(stmt, 2, entry.team_id);
-    sqlite3_bind_int(stmt, 3, static_cast<int>(entry.status));
+    sqlite3_bind_int(stmt, 3,
+                     static_cast<int>(std::to_underlying(entry.status)));
     db_conn.executeStep(stmt);
     sqlite3_reset(stmt);
   }

@@ -322,7 +322,7 @@ class WorldSimulation
   void reviewCash(const GameDateValue& date, TeamID managed_team_id,
                   bool monthly);
   /** An AI club deep in the red may be recapitalised by its owner. */
-  void rescueByOwner(const GameDateValue& date, Team& team);
+  void rescueByOwner(const GameDateValue& date, Team& team) const;
   /**
    * Parachute money per season of the clubs that went down from a top
    * division in the last two finished seasons and are still below it.

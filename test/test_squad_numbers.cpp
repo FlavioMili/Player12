@@ -97,6 +97,10 @@ std::vector<Entry> clubNumbers(const GameData& data, TeamID team_id)
 
 struct SlotCleanup
 {
+  explicit SlotCleanup(int saveSlot) : slot(saveSlot) {}
+  SlotCleanup(const SlotCleanup&) = delete;
+  SlotCleanup& operator=(const SlotCleanup&) = delete;
+
   int slot;
   ~SlotCleanup() { SaveManager::deleteSave(RuntimePaths::savePath(slot)); }
 };
@@ -164,7 +168,7 @@ TEST(SquadNumbers, NewSquadIsNumberedTheTraditionalWay)
   // The order of the players does not matter.
   std::vector<Entry> shuffled = typicalSquad();
   std::mt19937 engine(3);
-  std::shuffle(shuffled.begin(), shuffled.end(), engine);
+  std::ranges::shuffle(shuffled, engine);
   SquadNumbers::assign(shuffled);
   for (const Entry& player : squad)
     EXPECT_EQ(numberOf(shuffled, player.id), player.number) << player.id;
@@ -193,8 +197,8 @@ TEST(SquadNumbers, NewcomersKeepTheirNumberWhenFree)
   SquadNumbers::assign(squad);
   EXPECT_EQ(numberOf(squad, 32), 10);
   // Two players sharing a number: the better one keeps it.
-  std::vector<Entry> clash = {entry(1, PlayerRole::ST, 60, 26, 9),
-                              entry(2, PlayerRole::ST, 70, 26, 9)};
+  std::vector clash = {entry(1, PlayerRole::ST, 60, 26, 9),
+                       entry(2, PlayerRole::ST, 70, 26, 9)};
   SquadNumbers::assign(clash);
   EXPECT_EQ(numberOf(clash, 2), 9);
   EXPECT_NE(numberOf(clash, 1), 9);

@@ -37,9 +37,9 @@ std::string readFile(const fs::path& path)
   return {std::istreambuf_iterator<char>(file), {}};
 }
 
-bool contains(const std::string& text, std::string_view part)
+bool contains(std::string_view text, std::string_view part)
 {
-  return text.find(part) != std::string::npos;
+  return text.contains(part);
 }
 
 /** Points the runtime root of this process (and its children) elsewhere. */

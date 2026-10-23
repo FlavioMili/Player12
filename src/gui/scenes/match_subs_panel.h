@@ -10,6 +10,7 @@
 
 #include <imgui.h>
 
+#include <cstddef>
 #include <cstdint>
 #include <string>
 #include <vector>
@@ -104,7 +105,7 @@ class MatchSubsPanel
   };
 
   void collectMarkers(const TouchlineContext& context);
-  void renderUsage(const TouchlineContext& context);
+  void renderUsage(const TouchlineContext& context) const;
   void renderPitch(const TouchlineContext& context, float width);
   void renderBench(const TouchlineContext& context, const Lineup& lineup,
                    float width);
@@ -112,8 +113,9 @@ class MatchSubsPanel
   void renderSuggestions(const TouchlineContext& context, const Lineup& lineup);
   void renderFooter(const TouchlineContext& context);
   /** Applies the outcomes of made changes to the HUD status. */
-  void report(const TouchlineContext& context, const Lineup& lineup,
-              const std::vector<MatchChanges::SubstitutionOutcome>& outcomes);
+  void report(
+      const TouchlineContext& context, const Lineup& lineup,
+      const std::vector<MatchChanges::SubstitutionOutcome>& outcomes) const;
   /** Selection changed: plans the change once both players are chosen. */
   void selectionChanged(const TouchlineContext& context);
 

@@ -13,6 +13,7 @@
 #include <cmath>
 #include <limits>
 #include <sstream>
+#include <utility>
 
 #include "database/gamedata.h"
 #include "model/role_utils.h"
@@ -104,22 +105,27 @@ bool Lineup::removePlayer(PlayerID playerID)
 
 PlayerRole Lineup::roleAt(Vector2F position)
 {
+  using enum PlayerRole;
   // Bands match the formation presets: back line about 0.20, holding
   // midfielders 0.37-0.38, midfield 0.43-0.46, number tens and inside
   // wingers about 0.60, forwards from 0.72.
   const bool left = position.y < 0.2f;
   const bool right = position.y > 0.8f;
   if (position.x < 0.32f)
-    return left ? PlayerRole::LB : right ? PlayerRole::RB : PlayerRole::CB;
+  {
+    if (left) return LB;
+    if (right) return RB;
+    return CB;
+  }
   if (position.x < 0.55f)
   {
-    if (left) return PlayerRole::LM;
-    if (right) return PlayerRole::RM;
-    return position.x < 0.40f ? PlayerRole::CDM : PlayerRole::CM;
+    if (left) return LM;
+    if (right) return RM;
+    return position.x < 0.40f ? CDM : CM;
   }
-  if (left) return PlayerRole::LW;
-  if (right) return PlayerRole::RW;
-  return position.x < 0.68f ? PlayerRole::CAM : PlayerRole::ST;
+  if (left) return LW;
+  if (right) return RW;
+  return position.x < 0.68f ? CAM : ST;
 }
 
 const std::vector<Lineup::PositionedPlayer>& Lineup::getOutfieldPlayers() const
@@ -194,35 +200,37 @@ std::vector<const Player*> Lineup::chooseBench(
           !std::ranges::contains(ordered, player))
         ordered.push_back(player);
 
-  enum Group : uint8_t
+  enum class Group : uint8_t
   {
-    KEEPER,
-    DEFENDER,
-    MIDFIELDER,
-    FORWARD
+    Keeper,
+    Defender,
+    Midfielder,
+    Forward
   };
+  using enum Group;
+  using enum PlayerRole;
   const auto groupOf = [](const Player* player)
   {
     switch (player->getRole())
     {
-      case PlayerRole::GK:
-        return KEEPER;
-      case PlayerRole::CB:
-      case PlayerRole::LB:
-      case PlayerRole::RB:
-        return DEFENDER;
-      case PlayerRole::LW:
-      case PlayerRole::RW:
-      case PlayerRole::ST:
-        return FORWARD;
+      case GK:
+        return Keeper;
+      case CB:
+      case LB:
+      case RB:
+        return Defender;
+      case LW:
+      case RW:
+      case ST:
+        return Forward;
       default:
-        return MIDFIELDER;
+        return Midfielder;
     }
   };
   std::vector<const Player*> bench;
   bench.reserve(MAX_SUBSTITUTES);
   // Cover first: a keeper, then one player of each outfield line.
-  for (const Group group : {KEEPER, DEFENDER, MIDFIELDER, FORWARD})
+  for (const Group group : {Keeper, Defender, Midfielder, Forward})
   {
     const auto found = std::ranges::find_if(
         ordered, [&](const Player* player)
@@ -235,9 +243,9 @@ std::vector<const Player*> Lineup::chooseBench(
   {
     if (bench.size() >= MAX_SUBSTITUTES) break;
     if (std::ranges::contains(bench, player)) continue;
-    if (groupOf(player) == KEEPER &&
+    if (groupOf(player) == Keeper &&
         std::ranges::count_if(bench, [&](const Player* chosen)
-                              { return groupOf(chosen) == KEEPER; }) >= 2)
+                              { return groupOf(chosen) == Keeper; }) >= 2)
       continue;
     bench.push_back(player);
   }
@@ -248,9 +256,9 @@ bool Lineup::bringIn(const Player* player, PlayerID replaced)
 {
   if (!player || player->getId() == replaced) return false;
   const PlayerID incoming = player->getId();
-  const auto selected = [incoming](const Player* candidate)
-  { return candidate && candidate->getId() == incoming; };
-  if (selected(goalkeeper) ||
+  if (const auto selected = [incoming](const Player* candidate)
+      { return candidate && candidate->getId() == incoming; };
+      selected(goalkeeper) ||
       std::ranges::any_of(outfield_players, [&](const PositionedPlayer& slot)
                           { return selected(slot.player); }) ||
       std::ranges::any_of(reserves, selected))
@@ -301,23 +309,24 @@ float stat(const Player& player, const char* name)
 
 const char* SetPieces::dutyKey(SetPieceDuty duty)
 {
+  using enum SetPieceDuty;
   switch (duty)
   {
-    case SetPieceDuty::Captain:
+    case Captain:
       return "SET_PIECE_CAPTAIN";
-    case SetPieceDuty::ViceCaptain:
+    case ViceCaptain:
       return "SET_PIECE_VICE_CAPTAIN";
-    case SetPieceDuty::Penalties:
+    case Penalties:
       return "SET_PIECE_PENALTIES";
-    case SetPieceDuty::FreeKicks:
+    case FreeKicks:
       return "SET_PIECE_FREE_KICKS";
-    case SetPieceDuty::CornersLeft:
+    case CornersLeft:
       return "SET_PIECE_CORNERS_LEFT";
-    case SetPieceDuty::CornersRight:
+    case CornersRight:
       return "SET_PIECE_CORNERS_RIGHT";
-    case SetPieceDuty::LongThrows:
+    case LongThrows:
       return "SET_PIECE_LONG_THROWS";
-    case SetPieceDuty::COUNT:
+    case COUNT:
       break;
   }
   return "SET_PIECE_CAPTAIN";
@@ -325,29 +334,31 @@ const char* SetPieces::dutyKey(SetPieceDuty duty)
 
 bool SetPieces::isLeadership(SetPieceDuty duty)
 {
-  return duty == SetPieceDuty::Captain || duty == SetPieceDuty::ViceCaptain;
+  using enum SetPieceDuty;
+  return duty == Captain || duty == ViceCaptain;
 }
 
 float SetPieces::score(SetPieceDuty duty, const Player& player)
 {
+  using enum SetPieceDuty;
   if (isLeadership(duty) || player.getRole() == PlayerRole::GK) return 0.0f;
   // A corner from the side of the preferred foot is the natural delivery.
   constexpr float FOOT_BONUS = 3.0f;
   switch (duty)
   {
-    case SetPieceDuty::Penalties:
-    case SetPieceDuty::FreeKicks:
+    case Penalties:
+    case FreeKicks:
       return stat(player, "Shooting") * 0.75f +
              stat(player, "Passing") * 0.15f + stat(player, "Vision") * 0.10f;
-    case SetPieceDuty::CornersLeft:
-    case SetPieceDuty::CornersRight:
+    case CornersLeft:
+    case CornersRight:
     {
-      const bool leftCorner = duty == SetPieceDuty::CornersLeft;
+      const bool leftCorner = duty == CornersLeft;
       const bool leftFooted = player.getFoot() == Foot::Left;
       return stat(player, "Passing") * 0.6f + stat(player, "Vision") * 0.4f +
              (leftCorner == leftFooted ? FOOT_BONUS : 0.0f);
     }
-    case SetPieceDuty::LongThrows:
+    case LongThrows:
     {
       // Strength first; every centimetre above 175 adds some distance.
       const float reach =
@@ -384,21 +395,22 @@ const Player* SetPieces::best(SetPieceDuty duty,
 
 PlayerID Lineup::getDesignated(SetPieceDuty duty) const
 {
-  return duty < SetPieceDuty::COUNT ? designations[static_cast<size_t>(duty)]
-                                    : PlayerID{};
+  return duty < SetPieceDuty::COUNT
+             ? designations[static_cast<size_t>(std::to_underlying(duty))]
+             : PlayerID{};
 }
 
 void Lineup::setDesignated(SetPieceDuty duty, PlayerID playerID)
 {
   if (duty >= SetPieceDuty::COUNT) return;
-  designations[static_cast<size_t>(duty)] = playerID;
+  designations[static_cast<size_t>(std::to_underlying(duty))] = playerID;
   // One player cannot be captain and vice-captain at once.
   if (playerID == PlayerID{} || !SetPieces::isLeadership(duty)) return;
   const SetPieceDuty other = duty == SetPieceDuty::Captain
                                  ? SetPieceDuty::ViceCaptain
                                  : SetPieceDuty::Captain;
-  if (designations[static_cast<size_t>(other)] == playerID)
-    designations[static_cast<size_t>(other)] = PlayerID{};
+  if (designations[static_cast<size_t>(std::to_underlying(other))] == playerID)
+    designations[static_cast<size_t>(std::to_underlying(other))] = PlayerID{};
 }
 
 const SetPieceDesignations& Lineup::getDesignations() const
@@ -485,6 +497,7 @@ void Lineup::generateStartingXI(const class GameData& gamedata,
                                 const std::vector<PlayerID>& allPlayerIDs,
                                 const StatsConfig& stats_config)
 {
+  using enum PlayerRole;
   // Clear previous lineup
   clear();
   reserves.clear();
@@ -496,7 +509,7 @@ void Lineup::generateStartingXI(const class GameData& gamedata,
   for (const auto& playerID : allPlayerIDs)
   {
     const Player& p = gamedata.getPlayers().at(playerID);
-    if (p.getRole() == PlayerRole::GK)
+    if (p.getRole() == GK)
     {
       if (!bestGK ||
           p.getOverall(stats_config) > bestGK->getOverall(stats_config))
@@ -530,10 +543,8 @@ void Lineup::generateStartingXI(const class GameData& gamedata,
 
   // Fill a balanced 4-4-2. Pure overall sorting routinely produced teams with
   // no defenders because ratings from unlike roles are not interchangeable.
-  static constexpr std::array<PlayerRole, 10> SLOT_ROLES = {
-      PlayerRole::LB, PlayerRole::CB, PlayerRole::CB, PlayerRole::RB,
-      PlayerRole::LM, PlayerRole::CM, PlayerRole::CM, PlayerRole::RM,
-      PlayerRole::ST, PlayerRole::ST};
+  static constexpr std::array<PlayerRole, 10> SLOT_ROLES = {LB, CB, CB, RB, LM,
+                                                            CM, CM, RM, ST, ST};
   static constexpr std::array<Vector2F, 10> SLOT_POSITIONS = {
       Vector2F{0.20f, 0.12f}, Vector2F{0.20f, 0.38f}, Vector2F{0.20f, 0.62f},
       Vector2F{0.20f, 0.88f}, Vector2F{0.43f, 0.12f}, Vector2F{0.43f, 0.38f},
@@ -541,37 +552,22 @@ void Lineup::generateStartingXI(const class GameData& gamedata,
       Vector2F{0.78f, 0.62f}};
 
   const auto isDefender = [](PlayerRole role)
-  {
-    return role == PlayerRole::LB || role == PlayerRole::CB ||
-           role == PlayerRole::RB;
-  };
+  { return role == LB || role == CB || role == RB; };
   const auto isCentralMidfielder = [](PlayerRole role)
-  {
-    return role == PlayerRole::CDM || role == PlayerRole::CM ||
-           role == PlayerRole::CAM;
-  };
+  { return role == CDM || role == CM || role == CAM; };
   const auto roleFit = [&](PlayerRole actual, PlayerRole expected)
   {
     if (actual == expected) return 30.0;
-    if (expected == PlayerRole::CB && isDefender(actual)) return 16.0;
-    if ((expected == PlayerRole::LB || expected == PlayerRole::RB) &&
-        isDefender(actual))
-      return 13.0;
-    if (expected == PlayerRole::CM && isCentralMidfielder(actual)) return 24.0;
-    if (expected == PlayerRole::LM &&
-        (actual == PlayerRole::LW || actual == PlayerRole::LB))
-      return 18.0;
-    if (expected == PlayerRole::RM &&
-        (actual == PlayerRole::RW || actual == PlayerRole::RB))
-      return 18.0;
-    if ((expected == PlayerRole::LM || expected == PlayerRole::RM) &&
-        (isCentralMidfielder(actual) || actual == PlayerRole::LM ||
-         actual == PlayerRole::RM || actual == PlayerRole::LW ||
-         actual == PlayerRole::RW))
+    if (expected == CB && isDefender(actual)) return 16.0;
+    if ((expected == LB || expected == RB) && isDefender(actual)) return 13.0;
+    if (expected == CM && isCentralMidfielder(actual)) return 24.0;
+    if (expected == LM && (actual == LW || actual == LB)) return 18.0;
+    if (expected == RM && (actual == RW || actual == RB)) return 18.0;
+    if ((expected == LM || expected == RM) &&
+        (isCentralMidfielder(actual) || actual == LM || actual == RM ||
+         actual == LW || actual == RW))
       return 10.0;
-    if (expected == PlayerRole::ST &&
-        (actual == PlayerRole::LW || actual == PlayerRole::RW))
-      return 15.0;
+    if (expected == ST && (actual == LW || actual == RW)) return 15.0;
     return -15.0;
   };
 

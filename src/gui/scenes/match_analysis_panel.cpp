@@ -46,27 +46,28 @@ std::string percentText(float share)
 
 const char* noteKey(PlayerNote::Kind kind)
 {
+  using enum PlayerNote::Kind;
   switch (kind)
   {
-    case PlayerNote::Kind::Standout:
+    case Standout:
       return "ANALYSIS_NOTE_STANDOUT";
-    case PlayerNote::Kind::Struggling:
+    case Struggling:
       return "ANALYSIS_NOTE_STRUGGLING";
-    case PlayerNote::Kind::Tired:
+    case Tired:
       break;
   }
   return "ANALYSIS_NOTE_TIRED";
 }
 }  // namespace
 
-void MatchAnalysisPanel::renderForMatch(GameController& controller,
+void MatchAnalysisPanel::renderForMatch(const GameController& controller,
                                         const MatchEngine& engine,
                                         TeamID home_id, TeamID away_id,
                                         bool other_dialog_open)
 {
   const auto team = controller.getManagedTeam();
-  const TeamID managed = team ? team->get().getId() : 0;
-  if (team && (managed == home_id || managed == away_id) && !other_dialog_open)
+  if (const TeamID managed = team ? team->get().getId() : 0;
+      team && (managed == home_id || managed == away_id) && !other_dialog_open)
   {
     const MatchState state = engine.getState();
     const bool break_time =
@@ -89,7 +90,7 @@ void MatchAnalysisPanel::renderForMatch(GameController& controller,
   render();
 }
 
-void MatchAnalysisPanel::openNow(GameController& controller,
+void MatchAnalysisPanel::openNow(const GameController& controller,
                                  const MatchEngine& engine, TeamID home_id,
                                  TeamID away_id)
 {
@@ -110,7 +111,7 @@ void MatchAnalysisPanel::openNow(GameController& controller,
   focus_requested = true;
 }
 
-void MatchAnalysisPanel::build(GameController& controller,
+void MatchAnalysisPanel::build(const GameController& controller,
                                const MatchEngine& engine, bool managed_home)
 {
   const auto data = controller.getGameData();
@@ -123,44 +124,44 @@ void MatchAnalysisPanel::build(GameController& controller,
   const MatchAnalysis analysis =
       analyseLiveMatch(engine, managed_home, name_of);
   const MatchState state = engine.getState();
-  title =
-      analysis.full_time ? LOC("ANALYSIS_TITLE_FULL")
-      : state == MatchState::HALF_TIME
-          ? LOC("ANALYSIS_TITLE_HALF")
-          : fmt::sprintf(LOC("ANALYSIS_TITLE_LIVE"),
+  if (analysis.full_time)
+    title = LOC("ANALYSIS_TITLE_FULL");
+  else if (state == MatchState::HALF_TIME)
+    title = LOC("ANALYSIS_TITLE_HALF");
+  else
+    title = fmt::sprintf(LOC("ANALYSIS_TITLE_LIVE"),
                          static_cast<int>(engine.getMatchTimeMinutes()) + 1);
 
   const SideSummary& own = analysis.own;
   const SideSummary& other = analysis.opponent;
   rows.clear();
-  rows.push_back({LOC("ANALYSIS_ROW_GOALS"), std::to_string(own.goals),
-                  std::to_string(other.goals)});
-  rows.push_back({LOC("ANALYSIS_ROW_SHOTS"),
-                  std::format("{} ({})", own.shots, own.shots_on_target),
-                  std::format("{} ({})", other.shots, other.shots_on_target)});
-  rows.push_back({LOC("ANALYSIS_ROW_XG"), std::format("{:.2f}", own.xg),
-                  std::format("{:.2f}", other.xg)});
-  rows.push_back({LOC("ANALYSIS_ROW_POSSESSION"),
-                  std::format("{:.0f}%", own.possession),
-                  std::format("{:.0f}%", other.possession)});
-  rows.push_back({LOC("ANALYSIS_ROW_PASSING"),
-                  percentText(own.passCompletion()),
-                  percentText(other.passCompletion())});
-  rows.push_back(
-      {LOC("ANALYSIS_ROW_PRESS"),
-       std::format("{:.1f}",
-                   own.passesAllowedPerAction(other.passes_attempted)),
-       std::format("{:.1f}",
-                   other.passesAllowedPerAction(own.passes_attempted))});
+  rows.emplace_back(LOC("ANALYSIS_ROW_GOALS"), std::to_string(own.goals),
+                    std::to_string(other.goals));
+  rows.emplace_back(LOC("ANALYSIS_ROW_SHOTS"),
+                    std::format("{} ({})", own.shots, own.shots_on_target),
+                    std::format("{} ({})", other.shots, other.shots_on_target));
+  rows.emplace_back(LOC("ANALYSIS_ROW_XG"), std::format("{:.2f}", own.xg),
+                    std::format("{:.2f}", other.xg));
+  rows.emplace_back(LOC("ANALYSIS_ROW_POSSESSION"),
+                    std::format("{:.0f}%", own.possession),
+                    std::format("{:.0f}%", other.possession));
+  rows.emplace_back(LOC("ANALYSIS_ROW_PASSING"),
+                    percentText(own.passCompletion()),
+                    percentText(other.passCompletion()));
+  rows.emplace_back(
+      LOC("ANALYSIS_ROW_PRESS"),
+      std::format("{:.1f}", own.passesAllowedPerAction(other.passes_attempted)),
+      std::format("{:.1f}",
+                  other.passesAllowedPerAction(own.passes_attempted)));
   // The engine only counts aerial duels in some situations; no row at 0/0.
   if (own.aerials_won + own.aerials_lost + other.aerials_won +
           other.aerials_lost >
       0)
-    rows.push_back({LOC("ANALYSIS_ROW_AERIALS"),
-                    std::format("{}/{}", own.aerials_won,
-                                own.aerials_won + own.aerials_lost),
-                    std::format("{}/{}", other.aerials_won,
-                                other.aerials_won + other.aerials_lost)});
+    rows.emplace_back(LOC("ANALYSIS_ROW_AERIALS"),
+                      std::format("{}/{}", own.aerials_won,
+                                  own.aerials_won + own.aerials_lost),
+                      std::format("{}/{}", other.aerials_won,
+                                  other.aerials_won + other.aerials_lost));
 
   observations.clear();
   for (const AnalysisLine& line : analysis.observations)
@@ -177,8 +178,8 @@ void MatchAnalysisPanel::build(GameController& controller,
   sample = GuidanceUI::text(analysis.sample);
   suggestions.clear();
   for (const AnalysisSuggestion& suggestion : analysis.suggestions)
-    suggestions.push_back({GuidanceUI::text(suggestion.action),
-                           GuidanceUI::text(suggestion.reason)});
+    suggestions.emplace_back(GuidanceUI::text(suggestion.action),
+                             GuidanceUI::text(suggestion.reason));
 }
 
 void MatchAnalysisPanel::render()
@@ -205,12 +206,12 @@ void MatchAnalysisPanel::render()
     focus_requested = false;
     ImGui::SetNextWindowFocus();
   }
-  const bool shown = ImGui::Begin(
-      WINDOW_ID, nullptr,
-      ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoTitleBar |
-          ImGuiWindowFlags_NoSavedSettings | ImGuiWindowFlags_NoCollapse |
-          ImGuiWindowFlags_NoMove);
-  if (!shown)
+  if (const bool shown = ImGui::Begin(
+          WINDOW_ID, nullptr,
+          ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoTitleBar |
+              ImGuiWindowFlags_NoSavedSettings | ImGuiWindowFlags_NoCollapse |
+              ImGuiWindowFlags_NoMove);
+      !shown)
   {
     ImGui::End();
     return;

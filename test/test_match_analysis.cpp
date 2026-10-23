@@ -10,6 +10,7 @@
 
 #include <algorithm>
 #include <cmath>
+#include <format>
 #include <vector>
 
 #include "model/match_analysis.h"
@@ -58,7 +59,7 @@ bool suggests(const MatchAnalysis& analysis, AnalysisSuggestion::Kind kind)
                              { return suggestion.kind == kind; });
 }
 
-std::string nameOf(PlayerID id) { return "P" + std::to_string(id); }
+std::string nameOf(PlayerID id) { return std::format("P{}", id); }
 
 /** A first half in which the away side attacks down its left flank. */
 struct Scenario
@@ -70,17 +71,18 @@ struct Scenario
 
   Scenario()
   {
+    using enum MatchEventType;
     // Away attacks towards x = 0; away's left flank is high y in raw
     // coordinates (mirrored to low y in its attacking frame).
     for (int index = 0; index < 8; ++index)
     {
       events.push_back(shot(false, 20, 0.12f, 0.85f, 0.125f));
-      events.push_back(outcome(MatchEventType::SAVE, true, 1));
+      events.push_back(outcome(SAVE, true, 1));
     }
     for (int index = 0; index < 2; ++index)
     {
       events.push_back(shot(true, 9, 0.88f, 0.5f, 0.05f));
-      events.push_back(outcome(MatchEventType::SHOT_OFF_TARGET, true, 9));
+      events.push_back(outcome(SHOT_OFF_TARGET, true, 9));
     }
     stats.homeShots = 2;
     stats.awayShots = 8;
@@ -116,14 +118,14 @@ struct Scenario
 
 TEST(MatchAnalysisTest, ShotsAreMirroredIntoAttackingFramesWithOutcomes)
 {
-  std::vector<MatchEvent> events = {
-      shot(true, 9, 0.9f, 0.2f, 0.3f),
-      outcome(MatchEventType::GOAL, true, 9),
-      shot(false, 20, 0.1f, 0.2f, 0.1f),
-      outcome(MatchEventType::WOODWORK, false, 20),
-      outcome(MatchEventType::SAVE, true, 1),
-      shot(false, 21, 0.2f, 0.5f, 0.05f),
-      outcome(MatchEventType::SHOT_BLOCKED, true, 4)};
+  using enum MatchEventType;
+  std::vector events = {shot(true, 9, 0.9f, 0.2f, 0.3f),
+                        outcome(GOAL, true, 9),
+                        shot(false, 20, 0.1f, 0.2f, 0.1f),
+                        outcome(WOODWORK, false, 20),
+                        outcome(SAVE, true, 1),
+                        shot(false, 21, 0.2f, 0.5f, 0.05f),
+                        outcome(SHOT_BLOCKED, true, 4)};
   const std::vector<ShotRecord> shots = extractShots(events);
   ASSERT_EQ(shots.size(), 3U);
   EXPECT_EQ(shots[0].outcome, ShotOutcome::Goal);

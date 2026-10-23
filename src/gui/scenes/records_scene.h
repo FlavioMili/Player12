@@ -33,7 +33,10 @@ class RecordsScene : public ManagementScene
 
   explicit RecordsScene(GUIView* parent);
 
-  void update(float /*deltaTime*/) override {}
+  void update(float /*deltaTime*/) override
+  {
+    // Rendering reads current state; there is no per-frame update work.
+  }
   [[nodiscard]] SceneID getID() const override { return SceneID::RECORDS; }
 
   /** @brief Shows a tab (e.g. from another screen). */

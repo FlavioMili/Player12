@@ -14,6 +14,7 @@
 #include <array>
 #include <set>
 #include <tuple>
+#include <utility>
 
 #include "controller/game_controller.h"
 #include "database/gamedata.h"
@@ -117,7 +118,7 @@ void NewsScene::refresh()
                         return left.first == 0;
                       return left.second < right.second;
                     });
-  if (filter.country &&
+  if (filter.country.has_value() &&
       std::ranges::find(countries, *filter.country,
                         &std::pair<LeagueID, std::string>::first) ==
           countries.end())
@@ -134,13 +135,14 @@ void NewsScene::rebuildCompetitions()
   for (const NewsItem& item : items)
   {
     if (item.competition.id == 0) continue;
-    if (filter.country && item.country != *filter.country) continue;
+    if (filter.country.has_value() && item.country != *filter.country) continue;
     if (!seen.insert(
-                 {static_cast<int>(item.competition.type), item.competition.id})
+                 {static_cast<int>(std::to_underlying(item.competition.type)),
+                  item.competition.id})
              .second)
       continue;
-    competitions.push_back(
-        {item.competition, competitionName(controller, item.competition)});
+    competitions.emplace_back(item.competition,
+                              competitionName(controller, item.competition));
   }
   // Leagues by tier and name, then cups, then continental competitions.
   const auto data = controller.getGameData();
@@ -150,9 +152,11 @@ void NewsScene::rebuildCompetitions()
       {
         const auto rank = [&data](const CompetitionOption& option)
         {
-          const int type = option.competition.type == MatchType::LEAGUE ? 0
-                           : option.competition.type == MatchType::CUP  ? 1
-                                                                        : 2;
+          int type = 2;
+          if (option.competition.type == MatchType::LEAGUE)
+            type = 0;
+          else if (option.competition.type == MatchType::CUP)
+            type = 1;
           const int tier =
               type == 0 && data && data->getLeague(option.competition.id)
                   ? Competitions::leagueTier(*data, option.competition.id)
@@ -172,7 +176,7 @@ void NewsScene::applyFilter()
   kept = NewsFeed::filter(items, filter);
   visible = std::min(PAGE_SIZE, kept.size());
   country_label = LOC("NEWS_ALL_COUNTRIES");
-  if (filter.country)
+  if (filter.country.has_value())
     if (const auto found =
             std::ranges::find(countries, *filter.country,
                               &std::pair<LeagueID, std::string>::first);
@@ -208,13 +212,14 @@ void NewsScene::renderFilters()
   if (ImGui::BeginCombo("##news_country", country_label.c_str(),
                         ImGuiComboFlags_HeightLarge))
   {
-    if (ImGui::Selectable(LOC("NEWS_ALL_COUNTRIES"), !filter.country))
+    if (ImGui::Selectable(LOC("NEWS_ALL_COUNTRIES"),
+                          !filter.country.has_value()))
       filterCountry(std::nullopt);
     for (const auto& [id, name] : countries)
     {
       ImGui::PushID(static_cast<int>(id));
-      if (ImGui::Selectable(name.c_str(),
-                            filter.country && *filter.country == id))
+      if (ImGui::Selectable(name.c_str(), filter.country.has_value() &&
+                                              *filter.country == id))
         filterCountry(id);
       ImGui::PopID();
     }
@@ -247,15 +252,14 @@ void NewsScene::renderFilters()
   }
 
   // Kinds as toggles that wrap onto more lines on narrow windows.
-  const char* all = LOC("NEWS_KIND_ALL");
-  if (UI::toggleButton(all, !filter.kind, ImVec2(0, 0),
-                       UI::ButtonSize::COMPACT))
+  if (const char* all = LOC("NEWS_KIND_ALL"); UI::toggleButton(
+          all, !filter.kind, ImVec2(0, 0), UI::ButtonSize::COMPACT))
     filterKind(std::nullopt);
   for (const NewsKind kind : KINDS)
   {
     const char* label = LOC(newsKindKey(kind));
     UI::sameLineIfFits(UI::buttonWidth(label, UI::ButtonSize::COMPACT));
-    ImGui::PushID(static_cast<int>(kind));
+    ImGui::PushID(static_cast<int>(std::to_underlying(kind)));
     if (UI::toggleButton(label, filter.kind && *filter.kind == kind,
                          ImVec2(0, 0), UI::ButtonSize::COMPACT))
       filterKind(filter.kind && *filter.kind == kind

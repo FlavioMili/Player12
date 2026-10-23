@@ -16,6 +16,7 @@
 #include <cmath>
 #include <format>
 #include <string>
+#include <utility>
 
 #include "database/gamedata.h"
 #include "global/global.h"
@@ -164,10 +165,10 @@ void TeamSelectionScene::render()
   ImGui::BeginGroup();
   // The way out of the club choice: Back (or Escape, unless a field or a
   // list is taking keys) returns to the main menu.
-  const bool escape = !ImGui::IsAnyItemActive() &&
-                      !ImGui::IsPopupOpen("", ImGuiPopupFlags_AnyPopupId) &&
-                      ImGui::IsKeyPressed(ImGuiKey_Escape, false);
-  if (UI::secondaryButton(LOC("TEAM_SELECTION_BACK"), ImVec2(0.0f, 0.0f),
+  if (const bool escape = !ImGui::IsAnyItemActive() &&
+                          !ImGui::IsPopupOpen("", ImGuiPopupFlags_AnyPopupId) &&
+                          ImGui::IsKeyPressed(ImGuiKey_Escape, false);
+      UI::secondaryButton(LOC("TEAM_SELECTION_BACK"), ImVec2(0.0f, 0.0f),
                           UI::ButtonSize::COMPACT) ||
       escape)
     backToMenu();
@@ -200,7 +201,7 @@ void TeamSelectionScene::render()
     // Narrow windows: the club card becomes a strip above the table, so the
     // start button stays in view.
     if (!showCard) renderSelectedClubStrip();
-    if (selected_league_id)
+    if (selected_league_id.has_value())
       renderClubTable(ImGui::GetContentRegionAvail().y);
     else
       UI::emptyState(LOC("TEAM_SELECTION_SELECT_LEAGUE_FIRST"), nullptr);
@@ -224,9 +225,9 @@ void TeamSelectionScene::renderStackedBrowser(float width)
   renderSelectedClubStrip();
   const float gap = ImGui::GetStyle().ItemSpacing.x;
   const float listWidth = LEAGUE_LIST_WIDTH * Theme::scale();
-  const bool sideBySide =
-      width - listWidth - gap >= STACKED_TABLE_MIN_WIDTH * Theme::scale();
-  if (sideBySide)
+  if (const bool sideBySide =
+          width - listWidth - gap >= STACKED_TABLE_MIN_WIDTH * Theme::scale();
+      sideBySide)
   {
     ImGui::BeginGroup();
     renderLeagueList(listWidth, 0.0f);
@@ -238,7 +239,7 @@ void TeamSelectionScene::renderStackedBrowser(float width)
     renderLeagueList(width, 0.0f);
   }
   ImGui::BeginGroup();
-  if (selected_league_id)
+  if (selected_league_id.has_value())
     renderClubTable(0.0f);
   else
     UI::emptyState(LOC("TEAM_SELECTION_SELECT_LEAGUE_FIRST"), nullptr);
@@ -342,13 +343,13 @@ void TeamSelectionScene::renderClubTable(float height)
   const float tableWidth = ImGui::GetContentRegionAvail().x;
   const bool compact = tableWidth < 900.0f * Theme::scale();
   const bool showExpectation = tableWidth >= 600.0f * Theme::scale();
-  const int columnCount = (compact ? 4 : 6) + (showExpectation ? 1 : 0);
-  if (ImGui::BeginTable("TeamsTable", columnCount, flags))
+  if (const int columnCount = (compact ? 4 : 6) + (showExpectation ? 1 : 0);
+      ImGui::BeginTable("TeamsTable", columnCount, flags))
   {
     if (fill) ImGui::TableSetupScrollFreeze(0, 1);
     ImGui::TableSetupColumn(LOC("MAIN_GAME_TEAM"),
                             ImGuiTableColumnFlags_WidthStretch, 0.0f,
-                            static_cast<ImGuiID>(ClubColumn::NAME));
+                            std::to_underlying(ClubColumn::NAME));
     // Explicit widths: the table is laid out correctly from its first frame.
     const auto column = [](const char* label, ImGuiTableColumnFlags extra,
                            float minimum, ClubColumn id)
@@ -357,7 +358,7 @@ void TeamSelectionScene::renderClubTable(float height)
           label, ImGuiTableColumnFlags_WidthFixed | extra,
           std::max(ImGui::CalcTextSize(label).x + 20.0f * Theme::scale(),
                    minimum * Theme::scale()),
-          static_cast<ImGuiID>(id));
+          std::to_underlying(id));
     };
     column(LOC("TEAM_SELECTION_REPUTATION"),
            ImGuiTableColumnFlags_DefaultSort |
@@ -388,8 +389,9 @@ void TeamSelectionScene::renderClubTable(float height)
         specs != nullptr && specs->SpecsCount > 0)
     {
       const ImGuiTableColumnSortSpecs& spec = specs->Specs[0];
-      const bool ascending = spec.SortDirection == ImGuiSortDirection_Ascending;
-      if (specs->SpecsDirty || spec.ColumnUserID != sort_column ||
+      if (const bool ascending =
+              spec.SortDirection == ImGuiSortDirection_Ascending;
+          specs->SpecsDirty || spec.ColumnUserID != sort_column ||
           ascending != sort_ascending)
       {
         sort_column = spec.ColumnUserID;
@@ -455,7 +457,7 @@ const TeamSelectionScene::ClubSummary* TeamSelectionScene::selectedClub() const
   const auto selected =
       std::ranges::find_if(club_summaries, [this](const ClubSummary& club)
                            { return selected_team_id == club.id; });
-  return selected == club_summaries.end() ? nullptr : &*selected;
+  return selected == club_summaries.end() ? nullptr : std::to_address(selected);
 }
 
 void TeamSelectionScene::renderClubIdentity(const ClubSummary& club,
@@ -615,7 +617,7 @@ void TeamSelectionScene::loadAvailableLeagues()
 
 void TeamSelectionScene::loadAvailableTeams()
 {
-  if (!selected_league_id) return;
+  if (!selected_league_id.has_value()) return;
   const auto& controller = guiView->getController();
   const auto& statsConfig = controller.getStatsConfig();
   available_teams.clear();
@@ -690,7 +692,7 @@ void TeamSelectionScene::loadAvailableTeams()
 
   // Board expectation follows the wage-bill rank (as the board model does);
   // difficulty compares squad strength with the rest of the league.
-  const int size = static_cast<int>(club_summaries.size());
+  const auto size = static_cast<int>(club_summaries.size());
   std::vector<size_t> order(club_summaries.size());
   for (size_t index = 0; index < order.size(); ++index) order[index] = index;
   std::ranges::sort(order,
@@ -717,24 +719,29 @@ void TeamSelectionScene::loadAvailableTeams()
     const float percentile =
         size > 1 ? static_cast<float>(rank) / static_cast<float>(size - 1)
                  : 0.0f;
-    club_summaries[order[rank]].difficulty = percentile < 0.25f   ? 0
-                                             : percentile < 0.6f  ? 1
-                                             : percentile < 0.85f ? 2
-                                                                  : 3;
+    int difficulty = 3;
+    if (percentile < 0.25f)
+      difficulty = 0;
+    else if (percentile < 0.6f)
+      difficulty = 1;
+    else if (percentile < 0.85f)
+      difficulty = 2;
+    club_summaries[order[rank]].difficulty = difficulty;
   }
 
   if (sort_column == 0)
   {
-    sort_column = static_cast<ImGuiID>(ClubColumn::REPUTATION);
+    sort_column = std::to_underlying(ClubColumn::REPUTATION);
     sort_ascending = false;
   }
   sortClubs();
-  if (!club_summaries.empty() && !selected_team_id)
+  if (!club_summaries.empty() && !selected_team_id.has_value())
     selected_team_id = club_summaries.front().id;
 }
 
 void TeamSelectionScene::sortClubs()
 {
+  using enum ClubColumn;
   const auto column = static_cast<ClubColumn>(sort_column);
   std::ranges::stable_sort(
       club_summaries,
@@ -743,25 +750,25 @@ void TeamSelectionScene::sortClubs()
         int comparison = 0;
         switch (column)
         {
-          case ClubColumn::NAME:
+          case NAME:
             comparison = a.name.compare(b.name);
             break;
-          case ClubColumn::REPUTATION:
+          case REPUTATION:
             comparison = UI::compare(a.reputation, b.reputation);
             break;
-          case ClubColumn::STADIUM:
+          case STADIUM:
             comparison = UI::compare(a.stadium, b.stadium);
             break;
-          case ClubColumn::AVERAGE:
+          case AVERAGE:
             comparison = UI::compare(a.average_overall, b.average_overall);
             break;
-          case ClubColumn::EXPECTATION:
+          case EXPECTATION:
             comparison = UI::compare(a.expected_position, b.expected_position);
             break;
-          case ClubColumn::DIFFICULTY:
+          case DIFFICULTY:
             comparison = UI::compare(a.difficulty, b.difficulty);
             break;
-          case ClubColumn::BALANCE:
+          case BALANCE:
             comparison = UI::compare(a.balance, b.balance);
             break;
         }

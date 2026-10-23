@@ -17,12 +17,12 @@
 #include <chrono>
 #include <cmath>
 #include <cstdint>
-#include <cstdio>
 #include <cstdlib>
 #include <format>
 #include <future>
 #include <optional>
 #include <string_view>
+#include <utility>
 
 #include "database/datagenerator.h"
 #include "database/gamedata.h"
@@ -53,6 +53,16 @@
 
 namespace
 {
+template <std::size_t Size, class... Args>
+void formatBuffer(std::array<char, Size>& buffer,
+                  std::format_string<Args...> format, Args&&... args)
+{
+  static_assert(Size > 0);
+  const auto result = std::format_to_n(buffer.data(), Size - 1, format,
+                                       std::forward<Args>(args)...);
+  *result.out = '\0';
+}
+
 std::optional<std::uint32_t> configuredMatchSeed()
 {
   const char* configuredSeed = std::getenv("FM_MATCH_SEED");
@@ -120,27 +130,28 @@ constexpr float FOCUS_SHOUTS_WIDTH_SHARE = 0.33f;
 
 ImVec4 eventColor(MatchEventType type)
 {
+  using enum MatchEventType;
   const Theme::Palette& palette = Theme::palette();
   switch (type)
   {
-    case MatchEventType::GOAL:
+    case GOAL:
       return palette.positive;
-    case MatchEventType::OWN_GOAL:
-    case MatchEventType::RED_CARD:
-    case MatchEventType::SECOND_YELLOW:
-    case MatchEventType::INJURY:
+    case OWN_GOAL:
+    case RED_CARD:
+    case SECOND_YELLOW:
+    case INJURY:
       return palette.negative;
-    case MatchEventType::YELLOW_CARD:
-    case MatchEventType::PENALTY:
-    case MatchEventType::PENALTY_MISSED:
-    case MatchEventType::PENALTY_SHOOTOUT:
+    case YELLOW_CARD:
+    case PENALTY:
+    case PENALTY_MISSED:
+    case PENALTY_SHOOTOUT:
       return palette.warning;
-    case MatchEventType::SUBSTITUTION:
-    case MatchEventType::ADDED_TIME:
-    case MatchEventType::KICK_OFF:
-    case MatchEventType::HALF_TIME:
-    case MatchEventType::SECOND_HALF:
-    case MatchEventType::FULL_TIME:
+    case SUBSTITUTION:
+    case ADDED_TIME:
+    case KICK_OFF:
+    case HALF_TIME:
+    case SECOND_HALF:
+    case FULL_TIME:
       return palette.info;
     default:
       return palette.text;
@@ -151,28 +162,29 @@ ImVec4 eventColor(MatchEventType type)
 /// match; routine restarts (throw-ins, goal kicks, free kicks...) are not.
 bool isKeyEvent(MatchEventType type)
 {
+  using enum MatchEventType;
   switch (type)
   {
-    case MatchEventType::KICK_OFF:
-    case MatchEventType::GOAL:
-    case MatchEventType::OWN_GOAL:
-    case MatchEventType::SHOT:
-    case MatchEventType::SAVE:
-    case MatchEventType::SHOT_BLOCKED:
-    case MatchEventType::SHOT_OFF_TARGET:
-    case MatchEventType::WOODWORK:
-    case MatchEventType::YELLOW_CARD:
-    case MatchEventType::SECOND_YELLOW:
-    case MatchEventType::RED_CARD:
-    case MatchEventType::INJURY:
-    case MatchEventType::SUBSTITUTION:
-    case MatchEventType::PENALTY:
-    case MatchEventType::PENALTY_MISSED:
-    case MatchEventType::PENALTY_SHOOTOUT:
-    case MatchEventType::ADDED_TIME:
-    case MatchEventType::HALF_TIME:
-    case MatchEventType::SECOND_HALF:
-    case MatchEventType::FULL_TIME:
+    case KICK_OFF:
+    case GOAL:
+    case OWN_GOAL:
+    case SHOT:
+    case SAVE:
+    case SHOT_BLOCKED:
+    case SHOT_OFF_TARGET:
+    case WOODWORK:
+    case YELLOW_CARD:
+    case SECOND_YELLOW:
+    case RED_CARD:
+    case INJURY:
+    case SUBSTITUTION:
+    case PENALTY:
+    case PENALTY_MISSED:
+    case PENALTY_SHOOTOUT:
+    case ADDED_TIME:
+    case HALF_TIME:
+    case SECOND_HALF:
+    case FULL_TIME:
       return true;
     default:
       return false;
@@ -183,22 +195,23 @@ bool isKeyEvent(MatchEventType type)
 /// breaks and the shootout.
 const char* periodKey(const MatchEngine& engine)
 {
+  using enum MatchState;
   const int period = engine.getPeriod();
   switch (engine.getState())
   {
-    case MatchState::FULL_TIME:
+    case FULL_TIME:
       return "MATCH_PERIOD_FULL";
-    case MatchState::PENALTY_SHOOTOUT:
+    case PENALTY_SHOOTOUT:
       return "MATCH_PERIOD_SHOOTOUT";
-    case MatchState::HALF_TIME:
-      return period == 1   ? "MATCH_PERIOD_HALF"
-             : period == 2 ? "MATCH_PERIOD_EXTRA_BREAK"
-                           : "MATCH_PERIOD_EXTRA_HALF";
+    case HALF_TIME:
+      if (period == 1) return "MATCH_PERIOD_HALF";
+      if (period == 2) return "MATCH_PERIOD_EXTRA_BREAK";
+      return "MATCH_PERIOD_EXTRA_HALF";
     default:
-      return period >= 4   ? "MATCH_PERIOD_EXTRA_SECOND"
-             : period == 3 ? "MATCH_PERIOD_EXTRA_FIRST"
-             : period == 2 ? "MATCH_PERIOD_SECOND"
-                           : "MATCH_PERIOD_FIRST";
+      if (period >= 4) return "MATCH_PERIOD_EXTRA_SECOND";
+      if (period == 3) return "MATCH_PERIOD_EXTRA_FIRST";
+      if (period == 2) return "MATCH_PERIOD_SECOND";
+      return "MATCH_PERIOD_FIRST";
   }
 }
 
@@ -327,8 +340,8 @@ void countRow(const char* label, int home, int away)
 {
   std::array<char, 16> homeText{};
   std::array<char, 16> awayText{};
-  std::snprintf(homeText.data(), homeText.size(), "%d", home);
-  std::snprintf(awayText.data(), awayText.size(), "%d", away);
+  formatBuffer(homeText, "{}", home);
+  formatBuffer(awayText, "{}", away);
   comparisonRow(label, static_cast<float>(home), static_cast<float>(away),
                 homeText.data(), awayText.data());
 }
@@ -336,23 +349,24 @@ void countRow(const char* label, int home, int away)
 #ifdef DEBUG
 const char* passIntentLabel(PassIntent intent)
 {
+  using enum PassIntent;
   switch (intent)
   {
-    case PassIntent::RECYCLE:
+    case RECYCLE:
       return "Recycle possession";
-    case PassIntent::PROGRESSIVE:
+    case PROGRESSIVE:
       return "Progressive pass";
-    case PassIntent::THROUGH_BALL:
+    case THROUGH_BALL:
       return "Through ball";
-    case PassIntent::CROSS:
+    case CROSS:
       return "Cross";
-    case PassIntent::CUTBACK:
+    case CUTBACK:
       return "Cutback";
-    case PassIntent::SWITCH_PLAY:
+    case SWITCH_PLAY:
       return "Switch play";
-    case PassIntent::PRESSURE_RELEASE:
+    case PRESSURE_RELEASE:
       return "Escape pressure";
-    case PassIntent::SET_PIECE:
+    case SET_PIECE:
       return "Set piece";
   }
   return "Unknown";
@@ -360,21 +374,22 @@ const char* passIntentLabel(PassIntent intent)
 
 const char* teamPhaseLabel(TeamPhase phase)
 {
+  using enum TeamPhase;
   switch (phase)
   {
-    case TeamPhase::STOPPAGE:
+    case STOPPAGE:
       return "Stoppage";
-    case TeamPhase::SET_PIECE:
+    case SET_PIECE:
       return "Set piece";
-    case TeamPhase::DEFENSIVE_BLOCK:
+    case DEFENSIVE_BLOCK:
       return "Defensive block";
-    case TeamPhase::DEFENSIVE_TRANSITION:
+    case DEFENSIVE_TRANSITION:
       return "Defensive transition";
-    case TeamPhase::ATTACKING_TRANSITION:
+    case ATTACKING_TRANSITION:
       return "Attacking transition";
-    case TeamPhase::POSSESSION:
+    case POSSESSION:
       return "Possession";
-    case TeamPhase::FINAL_THIRD:
+    case FINAL_THIRD:
       return "Final third";
   }
   return "Unknown";
@@ -394,9 +409,8 @@ void MatchScene::onEnter()
   const auto startedAt = std::chrono::steady_clock::now();
   GameController& controller = guiView->getController();
   auto home_opt = controller.getTeamById(home_team_id);
-  auto away_opt = controller.getTeamById(away_team_id);
-
-  if (home_opt && away_opt)
+  if (auto away_opt = controller.getTeamById(away_team_id);
+      home_opt && away_opt)
   {
     home_name = home_opt->get().getName();
     away_name = away_opt->get().getName();
@@ -453,8 +467,8 @@ void MatchScene::refreshLineupProblems()
   lineup_problems.clear();
   // Only a real fixture of the managed club has eligibility rules; tooling
   // matches (profiling, tests) play the selections as they are.
-  if (!managed_is_home || !fixture_type) return;
-  GameController& controller = guiView->getController();
+  if (!managed_is_home.has_value() || !fixture_type.has_value()) return;
+  const GameController& controller = guiView->getController();
   const auto data = controller.getGameData();
   const TeamID managedId = *managed_is_home ? home_team_id : away_team_id;
   const auto fixes = controller.previewLineupFix(managedId, *fixture_type);
@@ -471,8 +485,7 @@ void MatchScene::refreshLineupProblems()
             fixes, [id](const auto& change) { return change.first == id; });
         fix != fixes.end())
       problem.replacement = nameOf(fix->second);
-    const auto player = data ? data->getPlayer(id) : std::nullopt;
-    if (player)
+    if (const auto player = data ? data->getPlayer(id) : std::nullopt; player)
     {
       const Player& selected = player->get();
       problem.name = selected.getName();
@@ -511,10 +524,10 @@ void MatchScene::applyLineupFix()
     return;
   }
   std::string note;
-  const auto add = [&note](const std::string& entry)
+  const auto add = [&note](std::string_view entry)
   {
     if (!note.empty()) note += "  ·  ";
-    note += entry;
+    note.append(entry);
   };
   for (const LineupProblem& problem : before)
   {
@@ -546,7 +559,7 @@ void MatchScene::startMatch()
   // Deterministic per save and fixture (FM_MATCH_SEED overrides it), so a
   // reloaded save replays the same match until a manual change is made.
   std::uint32_t seed = 0;
-  if (const auto configured = configuredMatchSeed())
+  if (const auto configured = configuredMatchSeed(); configured.has_value())
   {
     seed = *configured;
   }
@@ -574,7 +587,8 @@ void MatchScene::startMatch()
   MatchdaySquad::carryCondition(*engine, away_team.getLineup());
   // The medical staff's minute limits: the assistant follows them when he
   // makes the managed side's changes.
-  if (const Game* game = controller.getGame(); game && managed_is_home)
+  if (const Game* game = controller.getGame();
+      game && managed_is_home.has_value())
     for (const auto& [player, flags] : MatchdaySquad::medicalFlags(
              game->getMedical(),
              *managed_is_home ? home_team.getLineup() : away_team.getLineup()))
@@ -587,7 +601,7 @@ void MatchScene::startMatch()
   applySubstitutionPolicy();
   // In-match tactics start from the managed club's plan.
   subs_panel.getPlan().clear();
-  if (managed_is_home)
+  if (managed_is_home.has_value())
     tactics_panel.reset(*managed_is_home ? home_team.getStrategy()
                                          : away_team.getStrategy());
   setPlaybackSpeed(lastPlaybackSpeed);
@@ -629,7 +643,8 @@ void MatchScene::applySubstitutionPolicy()
 std::optional<TouchlineContext> MatchScene::touchline()
 {
   // Nothing touches the engine while a quick result plays it on a worker.
-  if (!engine || !managed_is_home || quick_result.valid()) return std::nullopt;
+  if (!engine || !managed_is_home.has_value() || quick_result.valid())
+    return std::nullopt;
   const bool home = *managed_is_home;
   return TouchlineContext{guiView->getController(),
                           *engine,
@@ -660,9 +675,10 @@ void MatchScene::showSubstitutions(bool show)
   if (show)
   {
     // Never over another dialog (the team talk); it can replace tactics.
-    const bool otherDialog =
-        !show_tactics && ImGui::IsPopupOpen("", ImGuiPopupFlags_AnyPopupId);
-    if (!touchline() || match_finished || otherDialog) return;
+    if (const bool otherDialog =
+            !show_tactics && ImGui::IsPopupOpen("", ImGuiPopupFlags_AnyPopupId);
+        !touchline() || match_finished || otherDialog)
+      return;
     showTactics(false);
     subs_panel.resetSelection();
     substitution_status.clear();
@@ -684,9 +700,11 @@ void MatchScene::showTactics(bool show)
   if (show == show_tactics) return;
   if (show)
   {
-    const bool otherDialog = !show_substitutions &&
-                             ImGui::IsPopupOpen("", ImGuiPopupFlags_AnyPopupId);
-    if (!touchline() || match_finished || otherDialog) return;
+    if (const bool otherDialog =
+            !show_substitutions &&
+            ImGui::IsPopupOpen("", ImGuiPopupFlags_AnyPopupId);
+        !touchline() || match_finished || otherDialog)
+      return;
     showSubstitutions(false);
     tactics_panel.resetPopup();
     substitution_status.clear();
@@ -740,23 +758,24 @@ bool MatchScene::quickResult()
   if (!engine || match_finished || quick_result.valid()) return false;
   // The rest of a real-time match is tens of thousands of steps: it runs off
   // the UI thread and nothing reads the engine until it is done.
-  quick_result = std::async(std::launch::async,
-                            [match = engine.get()] { match->simulateToEnd(); });
+  quick_result = launchBackgroundTask(
+      quick_result_worker, [match = engine.get()] { match->simulateToEnd(); });
   return true;
 }
 
 std::string MatchScene::clockText() const
 {
+  using enum MatchState;
   switch (engine->getState())
   {
-    case MatchState::HALF_TIME:
+    case HALF_TIME:
       // The break before extra time comes after the full 90 minutes.
       if (engine->getPeriod() == 2)
         return MatchClock::clockLabel(MatchRules::periodEndMinute(2), 2, false);
       return LOC("MATCH_CLOCK_HALF_TIME");
-    case MatchState::FULL_TIME:
+    case FULL_TIME:
       return LOC("MATCH_CLOCK_FULL_TIME");
-    case MatchState::PENALTY_SHOOTOUT:
+    case PENALTY_SHOOTOUT:
       return std::format("{}-{}", engine->getShootoutScore(true),
                          engine->getShootoutScore(false));
     default:
@@ -849,7 +868,7 @@ void MatchScene::pauseAtBreak()
   const MatchState state = engine->getState();
   const bool breakNow =
       state == MatchState::HALF_TIME || state == MatchState::PENALTY_SHOOTOUT;
-  if (breakNow && !in_break && managed_is_home && !match_finished &&
+  if (breakNow && !in_break && managed_is_home.has_value() && !match_finished &&
       SettingsManager::instance()->get().pause_at_breaks)
   {
     is_paused = true;
@@ -906,6 +925,7 @@ void MatchScene::toggleWindowFullscreen()
 
 void MatchScene::handleEvent(const SDL_Event& event)
 {
+  using enum MatchViewMode;
   // Key releases always reach the play controls so nothing sticks. While the
   // user is in control the PLAY actions drive the pitch and the manager's
   // MATCH keys are not listened to (the pause menu has those functions); a
@@ -938,9 +958,7 @@ void MatchScene::handleEvent(const SDL_Event& event)
     }
     if (keys.matches(Ids::CAMERA_VIEW_TOGGLE, key))
     {
-      setViewMode(view_mode == MatchViewMode::PITCH_2D
-                      ? MatchViewMode::BROADCAST_3D
-                      : MatchViewMode::PITCH_2D);
+      setViewMode(view_mode == PITCH_2D ? BROADCAST_3D : PITCH_2D);
       return;
     }
     static constexpr std::array<std::pair<std::string_view, MatchCameraMode>, 6>
@@ -964,7 +982,7 @@ void MatchScene::handleEvent(const SDL_Event& event)
     }
     if (keys.matches(Ids::CAMERA_RESET, key))
     {
-      if (view_mode == MatchViewMode::BROADCAST_3D)
+      if (view_mode == BROADCAST_3D)
       {
         takeFreeCamera();
         pending_camera_input.reset = true;
@@ -1000,8 +1018,8 @@ void MatchScene::handleEvent(const SDL_Event& event)
       SettingsManager::instance()->save();
       return;
     }
-    const bool faster = keys.matches(Ids::MATCH_FASTER, key);
-    if (faster || keys.matches(Ids::MATCH_SLOWER, key))
+    if (const bool faster = keys.matches(Ids::MATCH_FASTER, key);
+        faster || keys.matches(Ids::MATCH_SLOWER, key))
     {
       // One step of the speed control (highlights keep their mode).
       const auto& speeds = MatchSceneTuning::Controls::SPEED_STEPS;
@@ -1271,8 +1289,8 @@ void MatchScene::renderScoreboard()
   const float centreX = origin.x + width * 0.5f;
 
   std::array<char, 24> score{};
-  std::snprintf(score.data(), score.size(), "%d  -  %d", engine->getHomeScore(),
-                engine->getAwayScore());
+  formatBuffer(score, "{}  -  {}", engine->getHomeScore(),
+               engine->getAwayScore());
   ImVec2 scoreSize;
   {
     Theme::ScopedText display(Theme::Text::DISPLAY);
@@ -1302,7 +1320,7 @@ void MatchScene::renderScoreboard()
   std::array<char, 16> addedText{};
   if (announced > 0 && state != MatchState::HALF_TIME &&
       state != MatchState::FULL_TIME && state != MatchState::PENALTY_SHOOTOUT)
-    std::snprintf(addedText.data(), addedText.size(), "+%d", announced);
+    formatBuffer(addedText, "+{}", announced);
   {
     Theme::ScopedText caption(Theme::Text::CAPTION);
     const ImVec2 padding(scaled(6.0f), scaled(2.0f));
@@ -1371,7 +1389,7 @@ void MatchScene::renderScoreboard()
   }
 
   // Competition on the left edge.
-  if (fixture_type)
+  if (fixture_type.has_value())
   {
     ImGui::SetCursorPos(origin);
     UI::badge(LOC(CompetitionView::matchTypeKey(*fixture_type)), palette.info);
@@ -1459,10 +1477,11 @@ void MatchScene::renderTimeline()
   {
     const bool goal = event.type == MatchEventType::GOAL ||
                       event.type == MatchEventType::OWN_GOAL;
-    const bool card = event.type == MatchEventType::YELLOW_CARD ||
-                      event.type == MatchEventType::SECOND_YELLOW ||
-                      event.type == MatchEventType::RED_CARD;
-    if (!goal && !card) continue;
+    if (const bool card = event.type == MatchEventType::YELLOW_CARD ||
+                          event.type == MatchEventType::SECOND_YELLOW ||
+                          event.type == MatchEventType::RED_CARD;
+        !goal && !card)
+      continue;
     // An own goal counts for the other side.
     const bool home = event.type == MatchEventType::OWN_GOAL ? !event.isHomeTeam
                                                              : event.isHomeTeam;
@@ -1490,6 +1509,7 @@ void MatchScene::renderTimeline()
 
 void MatchScene::renderControls()
 {
+  using enum MatchViewMode;
   const Theme::Palette& palette = Theme::palette();
   const ImVec2 pauseSize(scaled(MatchSceneTuning::Controls::PAUSE_BUTTON_WIDTH),
                          0.0f);
@@ -1512,7 +1532,7 @@ void MatchScene::renderControls()
     // Watch, Simulate (quick result) or Play.
     renderPlayButtons();
   }
-  if (managed_is_home)
+  if (managed_is_home.has_value())
   {
     UI::sameLineIfFits(UI::buttonWidth(LOC("MATCH_ANALYSIS")));
     // Toggles the analysis panel (it never covers these controls).
@@ -1540,8 +1560,8 @@ void MatchScene::renderControls()
                          2.0f * style.FramePadding.x + gap;
     for (std::size_t index = 0; index < speeds.size(); ++index)
     {
-      std::snprintf(speedLabels[index].data(), speedLabels[index].size(), "%gx",
-                    static_cast<double>(speeds[index]));
+      formatBuffer(speedLabels[index], "{:g}x",
+                   static_cast<double>(speeds[index]));
       segmentWidth += ImGui::CalcTextSize(speedLabels[index].data()).x +
                       2.0f * style.FramePadding.x + gap;
     }
@@ -1560,8 +1580,9 @@ void MatchScene::renderControls()
         setPlaybackSpeed(speeds[index]);
     }
     ImGui::SameLine(0.0f, gap);
-    const ImVec2 highlightsSize(UI::buttonWidth(LOC("MATCH_HIGHLIGHTS")), 0.0f);
-    if (highlights_only
+    if (const ImVec2 highlightsSize(UI::buttonWidth(LOC("MATCH_HIGHLIGHTS")),
+                                    0.0f);
+        highlights_only
             ? UI::primaryButton(LOC("MATCH_HIGHLIGHTS"), highlightsSize)
             : ImGui::Button(LOC("MATCH_HIGHLIGHTS"), highlightsSize))
       setHighlightsOnly(!highlights_only);
@@ -1570,17 +1591,18 @@ void MatchScene::renderControls()
     ImGui::PopID();
   }
 
-  const int used =
-      managed_is_home ? engine->getSubstitutionsUsed(*managed_is_home) : 0;
+  const int used = managed_is_home.has_value()
+                       ? engine->getSubstitutionsUsed(*managed_is_home)
+                       : 0;
   // Fixed buffer: the HUD formats no heap strings per frame.
   std::array<char, 96> subsLabel{};
-  std::snprintf(subsLabel.data(), subsLabel.size(),
-                "%s %d/%d###match_substitutions", LOC("SUBSTITUTION_TITLE"),
-                used, MatchChanges::maxSubstitutions(*engine));
+  formatBuffer(subsLabel, "{} {}/{}###match_substitutions",
+               LOC("SUBSTITUTION_TITLE"), used,
+               MatchChanges::maxSubstitutions(*engine));
   const float subsWidth =
       scaled(MatchSceneTuning::Controls::SUBSTITUTION_BUTTON_WIDTH);
   UI::sameLineIfFits(subsWidth);
-  ImGui::BeginDisabled(!managed_is_home || match_finished);
+  ImGui::BeginDisabled(!managed_is_home.has_value() || match_finished);
   if (ImGui::Button(subsLabel.data(), ImVec2(subsWidth, 0.0f)))
     showSubstitutions(true);
   if (ImGui::IsItemHovered())
@@ -1593,18 +1615,16 @@ void MatchScene::renderControls()
 
   const float viewWidth = scaled(MatchSceneTuning::Controls::VIEW_BUTTON_WIDTH);
   UI::sameLineIfFits(viewWidth);
-  if (ImGui::Button(view_mode == MatchViewMode::PITCH_2D ? LOC("MATCH_VIEW_3D")
-                                                         : LOC("MATCH_VIEW_2D"),
-                    ImVec2(viewWidth, 0.0f)))
+  if (ImGui::Button(
+          view_mode == PITCH_2D ? LOC("MATCH_VIEW_3D") : LOC("MATCH_VIEW_2D"),
+          ImVec2(viewWidth, 0.0f)))
   {
-    setViewMode(view_mode == MatchViewMode::PITCH_2D
-                    ? MatchViewMode::BROADCAST_3D
-                    : MatchViewMode::PITCH_2D);
+    setViewMode(view_mode == PITCH_2D ? BROADCAST_3D : PITCH_2D);
   }
 
   // What the assistant manager may decide on the manager's behalf.
   UI::sameLineIfFits(UI::buttonWidth(LOC("MATCH_ASSISTANT")));
-  ImGui::BeginDisabled(!managed_is_home);
+  ImGui::BeginDisabled(!managed_is_home.has_value());
   if (ImGui::Button(LOC("MATCH_ASSISTANT"))) ImGui::OpenPopup("##assistant");
   ImGui::EndDisabled();
   if (ImGui::BeginPopup("##assistant"))
@@ -1628,18 +1648,19 @@ void MatchScene::renderControls()
 
   // Latest message: debug, then substitutions, then pre-match changes.
   const bool refused = substitution_refused && !substitution_status.empty();
-  const std::string& status = !debug_status.empty() ? debug_status
-                              : !substitution_status.empty()
-                                  ? substitution_status
-                                  : pre_match_note;
-  if (!status.empty())
+  const std::string* status = &pre_match_note;
+  if (!substitution_status.empty()) status = &substitution_status;
+  if (!debug_status.empty()) status = &debug_status;
+  ImVec4 statusColor = palette.positive;
+  if (refused || !debug_status.empty())
+    statusColor = palette.warning;
+  else if (status == &pre_match_note)
+    statusColor = palette.info;
+  if (!status->empty())
   {
-    UI::sameLineIfFits(ImGui::CalcTextSize(status.c_str()).x);
+    UI::sameLineIfFits(ImGui::CalcTextSize(status->c_str()).x);
     ImGui::AlignTextToFramePadding();
-    ImGui::TextColored(refused || !debug_status.empty() ? palette.warning
-                       : &status == &pre_match_note     ? palette.info
-                                                        : palette.positive,
-                       "%s", status.c_str());
+    ImGui::TextColored(statusColor, "%s", status->c_str());
   }
 }
 
@@ -1968,8 +1989,8 @@ void MatchScene::renderFocusHud(ImVec2 origin, ImVec2 size)
     teamChip(true);
     ImGui::SameLine();
     std::array<char, 24> score{};
-    std::snprintf(score.data(), score.size(), "%d - %d", engine->getHomeScore(),
-                  engine->getAwayScore());
+    formatBuffer(score, "{} - {}", engine->getHomeScore(),
+                 engine->getAwayScore());
     {
       Theme::ScopedText heading(Theme::Text::TITLE);
       ImGui::AlignTextToFramePadding();
@@ -2020,8 +2041,7 @@ void MatchScene::renderFocusHud(ImVec2 origin, ImVec2 size)
          ++index)
     {
       std::array<char, 16> label{};
-      std::snprintf(label.data(), label.size(), "%gx",
-                    static_cast<double>(speeds[index]));
+      formatBuffer(label, "{:g}x", static_cast<double>(speeds[index]));
       ImGui::SameLine(0.0f, index == 0 ? -1.0f : gap);
       const bool active = !highlights_only && match_speed == speeds[index];
       if (active ? UI::primaryButton(label.data())
@@ -2042,7 +2062,7 @@ void MatchScene::renderFocusHud(ImVec2 origin, ImVec2 size)
     renderPlayButtons();
 
     // The matchday dialogs work over the focus view too.
-    if (managed_is_home && !match_finished)
+    if (managed_is_home.has_value() && !match_finished)
     {
       ImGui::SameLine();
       if (ImGui::Button(LOC("SUBSTITUTION_TITLE"))) showSubstitutions(true);
@@ -2123,12 +2143,14 @@ void MatchScene::renderFocusHud(ImVec2 origin, ImVec2 size)
   const auto& events = engine->getEvents();
   std::array<std::size_t, TICKER_ROWS> latest{};
   std::size_t found = 0;
-  for (std::size_t scanned = 0;
-       scanned < std::min(events.size(), TICKER_SCAN) && found < TICKER_ROWS;
+  for (std::size_t scanned = 0; scanned < std::min(events.size(), TICKER_SCAN);
        ++scanned)
   {
     const std::size_t index = events.size() - 1 - scanned;
-    if (isKeyEvent(events[index].type)) latest[found++] = index;
+    if (!isKeyEvent(events[index].type)) continue;
+    latest[found] = index;
+    ++found;
+    if (found == TICKER_ROWS) break;
   }
   if (found > 0)
   {
@@ -2172,24 +2194,20 @@ void MatchScene::renderStatistics(ImVec2 size)
   std::array<char, 16> homeText{};
   std::array<char, 16> awayText{};
 
-  std::snprintf(homeText.data(), homeText.size(), "%.0f%%",
-                static_cast<double>(stats.homePossession));
-  std::snprintf(awayText.data(), awayText.size(), "%.0f%%",
-                static_cast<double>(stats.awayPossession));
+  formatBuffer(homeText, "{:.0f}%", static_cast<double>(stats.homePossession));
+  formatBuffer(awayText, "{:.0f}%", static_cast<double>(stats.awayPossession));
   comparisonRow(LOC("REPORT_POSSESSION"), stats.homePossession,
                 stats.awayPossession, homeText.data(), awayText.data());
   countRow(LOC("REPORT_SHOTS"), stats.homeShots, stats.awayShots);
   countRow(LOC("REPORT_ON_TARGET"), stats.homeOnTarget, stats.awayOnTarget);
-  std::snprintf(homeText.data(), homeText.size(), "%.2f",
-                static_cast<double>(stats.homeShotXG));
-  std::snprintf(awayText.data(), awayText.size(), "%.2f",
-                static_cast<double>(stats.awayShotXG));
+  formatBuffer(homeText, "{:.2f}", static_cast<double>(stats.homeShotXG));
+  formatBuffer(awayText, "{:.2f}", static_cast<double>(stats.awayShotXG));
   comparisonRow(LOC("REPORT_XG"), stats.homeShotXG, stats.awayShotXG,
                 homeText.data(), awayText.data());
-  std::snprintf(homeText.data(), homeText.size(), "%d/%d",
-                stats.homePassesCompleted, stats.homePassesAttempted);
-  std::snprintf(awayText.data(), awayText.size(), "%d/%d",
-                stats.awayPassesCompleted, stats.awayPassesAttempted);
+  formatBuffer(homeText, "{}/{}", stats.homePassesCompleted,
+               stats.homePassesAttempted);
+  formatBuffer(awayText, "{}/{}", stats.awayPassesCompleted,
+               stats.awayPassesAttempted);
   comparisonRow(LOC("REPORT_PASSES"),
                 static_cast<float>(stats.homePassesCompleted),
                 static_cast<float>(stats.awayPassesCompleted), homeText.data(),
@@ -2198,10 +2216,8 @@ void MatchScene::renderStatistics(ImVec2 size)
   countRow(LOC("REPORT_FOULS"), stats.homeFouls, stats.awayFouls);
   countRow(LOC("REPORT_OFFSIDES"), stats.homeOffsides, stats.awayOffsides);
   countRow(LOC("REPORT_SAVES"), stats.homeSaves, stats.awaySaves);
-  std::snprintf(homeText.data(), homeText.size(), "%d / %d",
-                stats.homeYellowCards, stats.homeRedCards);
-  std::snprintf(awayText.data(), awayText.size(), "%d / %d",
-                stats.awayYellowCards, stats.awayRedCards);
+  formatBuffer(homeText, "{} / {}", stats.homeYellowCards, stats.homeRedCards);
+  formatBuffer(awayText, "{} / {}", stats.awayYellowCards, stats.awayRedCards);
   comparisonRow(LOC("REPORT_CARDS"),
                 static_cast<float>(stats.homeYellowCards + stats.homeRedCards),
                 static_cast<float>(stats.awayYellowCards + stats.awayRedCards),

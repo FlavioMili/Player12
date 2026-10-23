@@ -13,6 +13,10 @@ Saves are SQLite databases in `saves/` (one per slot, with numbered
 backups beside it that the main menu can restore). The log and any crash
 reports are in `logs/`; attach both when you report a crash.
 
+If the game reports `Cannot locate private game storage`, check that your
+user data directory is available and writable. The game stops with a startup
+error instead of saving careers in a shared temporary directory.
+
 ## Recover a save
 
 If a slot cannot load, use the main menu's backup restoration option. Keep a
@@ -37,7 +41,8 @@ From a source checkout on Linux, this keeps experiments separate from your
 normal saves and settings:
 
 ```sh
-FM_RUNTIME_ROOT=/tmp/fm-test-career FM_WORLD_SEED=424242 \
+career_root="$(mktemp -d)"
+FM_RUNTIME_ROOT="$career_root" FM_WORLD_SEED=424242 \
   ./build/release/src/Player12
 ```
 

@@ -13,6 +13,7 @@
 #include <algorithm>
 #include <array>
 #include <cmath>
+#include <format>
 #include <string>
 
 #include "global/language_manager.h"
@@ -100,7 +101,7 @@ bool MatchTacticsPanel::apply(const TouchlineContext& context)
   const bool newShape =
       draft_shape.size() == current.size() && !sameShape(draft_shape, current);
   if (!newSliders && !newShape) return false;
-  history.push_back({applied, current});
+  history.emplace_back(applied, current);
   if (newSliders)
   {
     Strategy next = applied;
@@ -124,9 +125,9 @@ bool MatchTacticsPanel::undo(const TouchlineContext& context)
                                  applied.getSliders()))
     context.engine.setStrategy(context.home, previous.strategy);
   applied = previous.strategy;
-  const std::vector<Vector2F> current =
-      context.engine.getFormation(context.home);
-  if (previous.shape.size() == current.size() &&
+  if (const std::vector<Vector2F> current =
+          context.engine.getFormation(context.home);
+      previous.shape.size() == current.size() &&
       !sameShape(previous.shape, current))
     context.engine.setFormation(context.home, previous.shape);
   syncDraft(context);
@@ -138,11 +139,10 @@ bool MatchTacticsPanel::undo(const TouchlineContext& context)
 bool MatchTacticsPanel::render(const TouchlineContext& context)
 {
   const bool opening = !popup_opened;
-  std::array<char, 128> title{};
-  std::snprintf(title.data(), title.size(), "%s%s", LOC("MATCH_TACTICS_TITLE"),
-                WINDOW_ID);
+  const std::string title =
+      std::format("{}{}", LOC("MATCH_TACTICS_TITLE"), WINDOW_ID);
   if (opening) syncDraft(context);
-  if (!Touchline::beginDialog(title.data(), popup_opened, DIALOG_WIDTH,
+  if (!Touchline::beginDialog(title.c_str(), popup_opened, DIALOG_WIDTH,
                               DIALOG_HEIGHT))
   {
     close_requested = false;
@@ -317,9 +317,9 @@ void MatchTacticsPanel::renderFamiliarity(const TouchlineContext& context)
       fmt::sprintf(LOC("MATCH_TACTICS_FAMILIARITY"),
                    static_cast<int>(std::lround(familiarity * 100.0f)));
   ImGui::TextColored(palette.muted, "%s", known.c_str());
-  const float cost = MatchChanges::reshapeCost(
-      context.engine.getFormation(context.home), draft_shape);
-  if (cost >= MINIMUM_SHOWN_COST)
+  if (const float cost = MatchChanges::reshapeCost(
+          context.engine.getFormation(context.home), draft_shape);
+      cost >= MINIMUM_SHOWN_COST)
   {
     const std::string note = fmt::sprintf(
         LOC("MATCH_TACTICS_RESHAPE_COST"),

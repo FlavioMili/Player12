@@ -11,6 +11,8 @@
 #include <fmt/printf.h>
 
 #include <algorithm>
+#include <array>
+#include <utility>
 
 #include "controller/game_controller.h"
 #include "global/language_manager.h"
@@ -44,7 +46,7 @@ void HolidayDialog::open(GameController& controller)
   plan = HolidayPlan();
   plan.preferences = controller.getHolidayPreferences();
   plan.until = SeasonCalendar::addDays(controller.getCurrentDate(), 14);
-  mode = static_cast<int>(plan.mode);
+  mode = static_cast<int>(std::to_underlying(plan.mode));
   bid_mode = plan.preferences.big_bid_threshold > 0 ? 1 : 0;
   bid_amount = plan.preferences.big_bid_threshold > 0
                    ? plan.preferences.big_bid_threshold
@@ -55,7 +57,7 @@ void HolidayDialog::open(GameController& controller)
   open_requested = true;
 }
 
-void HolidayDialog::refreshTarget(GameController& controller)
+void HolidayDialog::refreshTarget(const GameController& controller)
 {
   plan.mode = static_cast<HolidayMode>(mode);
   const GameDateValue today = controller.getCurrentDate();
@@ -77,7 +79,7 @@ void HolidayDialog::refreshTarget(GameController& controller)
                              Format::date(*target).c_str(), days);
 }
 
-void HolidayDialog::showSummary(GameController& controller,
+void HolidayDialog::showSummary(const GameController& controller,
                                 const HolidaySummary& summary)
 {
   const Theme::Palette& palette = Theme::palette();
@@ -101,17 +103,18 @@ void HolidayDialog::showSummary(GameController& controller,
   for (size_t index = first; index < summary.results.size(); ++index)
   {
     const HolidayResult& result = summary.results[index];
-    const ImVec4 color =
-        result.goals_for > result.goals_against   ? palette.positive
-        : result.goals_for < result.goals_against ? palette.negative
-                                                  : palette.muted;
-    results.push_back(
-        {fmt::sprintf(
-             LOC(result.home ? "HOLIDAY_RESULT_HOME" : "HOLIDAY_RESULT_AWAY"),
-             Format::dayMonth(result.date).c_str(),
-             teamName(controller, result.opponent_id).c_str(), result.goals_for,
-             result.goals_against),
-         color});
+    ImVec4 color = palette.muted;
+    if (result.goals_for > result.goals_against)
+      color = palette.positive;
+    else if (result.goals_for < result.goals_against)
+      color = palette.negative;
+    results.emplace_back(
+        fmt::sprintf(
+            LOC(result.home ? "HOLIDAY_RESULT_HOME" : "HOLIDAY_RESULT_AWAY"),
+            Format::dayMonth(result.date).c_str(),
+            teamName(controller, result.opponent_id).c_str(), result.goals_for,
+            result.goals_against),
+        color);
   }
   table_line.clear();
   if (summary.position_after > 0 && summary.played_before > 0)
@@ -129,20 +132,19 @@ void HolidayDialog::showSummary(GameController& controller,
                               Format::money(summary.balance_before).c_str())}};
   moves.clear();
   for (const HolidayMove& move : summary.moves)
-    moves.push_back(
-        {fmt::sprintf(
-             LOC(move.incoming ? "HOLIDAY_MOVE_IN" : "HOLIDAY_MOVE_OUT"),
-             move.name.c_str(),
-             teamName(controller, move.other_team_id).c_str(),
-             Format::money(move.fee).c_str()),
-         move.incoming ? palette.text : palette.muted});
+    moves.emplace_back(
+        fmt::sprintf(
+            LOC(move.incoming ? "HOLIDAY_MOVE_IN" : "HOLIDAY_MOVE_OUT"),
+            move.name.c_str(), teamName(controller, move.other_team_id).c_str(),
+            Format::money(move.fee).c_str()),
+        move.incoming ? palette.text : palette.muted);
   injuries.clear();
   for (const HolidayInjury& injury : summary.injuries)
-    injuries.push_back(
-        {fmt::sprintf(Format::plural("HOLIDAY_INJURY_LINE", injury.days),
-                      injury.name.c_str(), LOC(injury.injury_key.c_str()),
-                      injury.days),
-         injury.key_player ? palette.warning : palette.text});
+    injuries.emplace_back(
+        fmt::sprintf(Format::plural("HOLIDAY_INJURY_LINE", injury.days),
+                     injury.name.c_str(), LOC(injury.injury_key.c_str()),
+                     injury.days),
+        injury.key_player ? palette.warning : palette.text);
   filed_line = summary.messages_filed > 0
                    ? fmt::sprintf(Format::plural("HOLIDAY_FILED",
                                                  summary.messages_filed),
@@ -204,10 +206,10 @@ std::optional<HolidayPlan> HolidayDialog::renderPlan(GameController& controller)
   ImGui::Separator();
 
   UI::sectionLabel(LOC("HOLIDAY_HOW_LONG"));
-  const char* modes[] = {
-      LOC("HOLIDAY_MODE_UNTIL_DATE"), LOC("HOLIDAY_MODE_NEXT_MATCH"),
-      LOC("HOLIDAY_MODE_NEXT_DECISION"), LOC("HOLIDAY_MODE_WINDOW_END")};
-  if (UI::segmented("##holiday_mode", mode, modes,
+  if (const std::array<const char*, 4> modes =
+          {LOC("HOLIDAY_MODE_UNTIL_DATE"), LOC("HOLIDAY_MODE_NEXT_MATCH"),
+           LOC("HOLIDAY_MODE_NEXT_DECISION"), LOC("HOLIDAY_MODE_WINDOW_END")};
+      UI::segmented("##holiday_mode", mode, modes,
                     ImGui::GetContentRegionAvail().x))
     refreshTarget(controller);
   if (plan.mode == HolidayMode::UntilDate)
@@ -253,8 +255,8 @@ std::optional<HolidayPlan> HolidayDialog::renderPlan(GameController& controller)
   if (rules.stop_big_bid)
   {
     ImGui::Indent(scaled(Theme::Space::L));
-    const char* bids[] = {LOC("HOLIDAY_BID_KEY_PLAYERS"),
-                          LOC("HOLIDAY_BID_AMOUNT")};
+    const std::array<const char*, 2> bids = {LOC("HOLIDAY_BID_KEY_PLAYERS"),
+                                             LOC("HOLIDAY_BID_AMOUNT")};
     UI::segmented("##bid_mode", bid_mode, bids,
                   std::min(scaled(360.0f), ImGui::GetContentRegionAvail().x));
     if (bid_mode == 1)

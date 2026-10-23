@@ -41,15 +41,16 @@ const std::array<UI::Column, 6>& clubFixtureColumns()
 
 ImVec4 matchTypeColor(MatchType type)
 {
+  using enum MatchType;
   const Theme::Palette& palette = Theme::palette();
   switch (type)
   {
-    case MatchType::LEAGUE:
+    case LEAGUE:
       return palette.info;
-    case MatchType::FRIENDLY:
+    case FRIENDLY:
       return palette.muted;
-    case MatchType::CUP:
-    case MatchType::CONTINENTAL:
+    case CUP:
+    case CONTINENTAL:
       return palette.warning;
   }
   return palette.info;
@@ -59,7 +60,11 @@ ImVec4 matchTypeColor(MatchType type)
 
 FixturesScene::FixturesScene(GUIView* parent) : ManagementScene(parent) {}
 
-void FixturesScene::update(float /*deltaTime*/) {}
+void FixturesScene::update(float /*deltaTime*/)
+{
+  // Fixture data is event-driven and cached by refresh(); this page has no
+  // time-dependent state to update each frame.
+}
 
 void FixturesScene::refresh()
 {
@@ -67,7 +72,11 @@ void FixturesScene::refresh()
   const auto managed = controller.getManagedTeam();
   club_fixtures.clear();
   league_fixtures.clear();
-  wins = draws = losses = goals_for = goals_against = 0;
+  wins = 0;
+  draws = 0;
+  losses = 0;
+  goals_for = 0;
+  goals_against = 0;
   next_fixture_index = -1;
   if (!managed) return;
   club_id = managed->get().getId();
@@ -87,15 +96,16 @@ void FixturesScene::refresh()
     const bool home = fixture.home_id == club_id;
     goals_for += home ? fixture.home_score : fixture.away_score;
     goals_against += home ? fixture.away_score : fixture.home_score;
+    using enum UI::Outcome;
     switch (CompetitionView::outcomeFor(fixture, club_id))
     {
-      case UI::Outcome::WIN:
+      case WIN:
         ++wins;
         break;
-      case UI::Outcome::DRAW:
+      case DRAW:
         ++draws;
         break;
-      case UI::Outcome::LOSS:
+      case LOSS:
         ++losses;
         break;
     }
@@ -160,7 +170,7 @@ void FixturesScene::renderClubSummary()
   UI::statTile("ppg", LOC("FIXTURES_PPG"), ppg.c_str(),
                LOC("FIXTURES_PPG_NOTE"), palette.text, width);
   tiles.next();
-  const int remaining = static_cast<int>(std::ranges::count_if(
+  const auto remaining = static_cast<int>(std::ranges::count_if(
       club_fixtures, [](const auto& fixture) { return !fixture.played; }));
   const std::string remainingText = std::to_string(remaining);
   UI::statTile("remaining", LOC("FIXTURES_REMAINING"), remainingText.c_str(),
@@ -181,10 +191,10 @@ void FixturesScene::renderClubFixtures(float height)
   for (UI::Column& column : columns) column.label = LOC(column.label);
   const UI::ColumnMask mask =
       UI::fitColumns(columns, ImGui::GetContentRegionAvail().x);
-  const ImGuiTableFlags flags = ImGuiTableFlags_RowBg |
-                                ImGuiTableFlags_BordersInnerH |
-                                ImGuiTableFlags_ScrollY;
-  if (UI::beginResponsiveTable("club_fixtures", columns, mask, flags))
+  if (const ImGuiTableFlags flags = ImGuiTableFlags_RowBg |
+                                    ImGuiTableFlags_BordersInnerH |
+                                    ImGuiTableFlags_ScrollY;
+      UI::beginResponsiveTable("club_fixtures", columns, mask, flags))
   {
     ImGuiListClipper clipper;
     clipper.Begin(static_cast<int>(club_fixtures.size()));

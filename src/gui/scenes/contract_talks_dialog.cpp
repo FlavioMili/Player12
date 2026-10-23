@@ -68,15 +68,16 @@ std::uint32_t toMoney(std::int64_t value)
 
 const char* kindKey(ContractKind kind)
 {
+  using enum ContractKind;
   switch (kind)
   {
-    case ContractKind::PreContract:
+    case PreContract:
       return "TRANSFER_TALK_PRE_CONTRACT";
-    case ContractKind::FreeAgent:
+    case FreeAgent:
       return "TRANSFER_TALK_FREE";
-    case ContractKind::Renewal:
+    case Renewal:
       return "CONTRACT_TALK_RENEWAL";
-    case ContractKind::Transfer:
+    case Transfer:
       break;
   }
   return "TRANSFER_TALK_TRANSFER";
@@ -161,31 +162,31 @@ void ContractTalksDialog::refreshDemands(GameController& controller)
   projected = controller.getGame()->getTransfers().projectedRole(
       player_id, controller.getGame()->getManagedTeamId());
   demand_lines.clear();
-  demand_lines.push_back({LOC("TRANSFER_FIELD_AGENT_ASK"),
-                          fmt::sprintf(LOC("TRANSFER_PER_WEEK"),
-                                       Format::moneyFull(agent.flat_wage))});
-  demand_lines.push_back({LOC("AGENT_FIELD_PACKAGE"),
-                          fmt::sprintf(LOC("AGENT_PACKAGE_VALUE"),
-                                       Format::money(agent.asking_wage),
-                                       static_cast<int>(agent.yearly_rise),
-                                       Format::money(agent.appearance_bonus))});
+  demand_lines.emplace_back(LOC("TRANSFER_FIELD_AGENT_ASK"),
+                            fmt::sprintf(LOC("TRANSFER_PER_WEEK"),
+                                         Format::moneyFull(agent.flat_wage)));
+  demand_lines.emplace_back(
+      LOC("AGENT_FIELD_PACKAGE"),
+      fmt::sprintf(LOC("AGENT_PACKAGE_VALUE"), Format::money(agent.asking_wage),
+                   static_cast<int>(agent.yearly_rise),
+                   Format::money(agent.appearance_bonus)));
   if (agent.signing_bonus > 0)
-    demand_lines.push_back({LOC("TRANSFER_FIELD_SIGNING_BONUS"),
-                            Format::moneyFull(agent.signing_bonus)});
-  demand_lines.push_back(
-      {LOC("AGENT_FIELD_FEE"),
-       fmt::sprintf(LOC("AGENT_FEE_VALUE"), Format::money(agent.agent_fee),
-                    Format::money(agent.standard_agent_fee))});
+    demand_lines.emplace_back(LOC("TRANSFER_FIELD_SIGNING_BONUS"),
+                              Format::moneyFull(agent.signing_bonus));
+  demand_lines.emplace_back(
+      LOC("AGENT_FIELD_FEE"),
+      fmt::sprintf(LOC("AGENT_FEE_VALUE"), Format::money(agent.agent_fee),
+                   Format::money(agent.standard_agent_fee)));
   if (agent.wants_release_clause)
-    demand_lines.push_back(
-        {LOC("TRANSFER_FIELD_RELEASE_CLAUSE"),
-         fmt::sprintf(LOC("TRANSFER_CLAUSE_AT_MOST"),
-                      Format::money(agent.max_release_clause))});
+    demand_lines.emplace_back(
+        LOC("TRANSFER_FIELD_RELEASE_CLAUSE"),
+        fmt::sprintf(LOC("TRANSFER_CLAUSE_AT_MOST"),
+                     Format::money(agent.max_release_clause)));
   std::string role = LOC(squadRoleKey(agent.desired_role));
   if (agent.wants_promise) role += LOC("AGENT_WANTS_PROMISE");
-  demand_lines.push_back({LOC("TRANSFER_FIELD_DESIRED_ROLE"), role});
-  demand_lines.push_back(
-      {LOC("TRANSFER_FIELD_PROJECTED_ROLE"), LOC(squadRoleKey(projected))});
+  demand_lines.emplace_back(LOC("TRANSFER_FIELD_DESIRED_ROLE"), role);
+  demand_lines.emplace_back(LOC("TRANSFER_FIELD_PROJECTED_ROLE"),
+                            LOC(squadRoleKey(projected)));
 }
 
 void ContractTalksDialog::refreshYearLabels(
@@ -228,8 +229,7 @@ ContractTalksDialog::Event ContractTalksDialog::render(
   ImGui::SetNextWindowSizeConstraints(
       ImVec2(width, 0.0f),
       ImVec2(width, viewport->WorkSize.y * VIEWPORT_HEIGHT_SHARE));
-  const std::string label = title + POPUP_ID;
-  if (!ImGui::BeginPopupModal(
+  if (const std::string label = title + POPUP_ID; !ImGui::BeginPopupModal(
           label.c_str(), nullptr,
           ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoSavedSettings))
   {
@@ -302,11 +302,11 @@ void ContractTalksDialog::renderTerms()
   bool changed = false;
   formLabel(LOC("TRANSFER_FIELD_WAGE"));
   std::int64_t wage = offer.weekly_wage;
-  const std::array<UI::MoneyChip, 3> wage_chips = {
-      {{LOC("AGENT_CHIP_PACKAGE"), agent.asking_wage},
-       {LOC("TRANSFER_CHIP_AGENT_ASK"), agent.flat_wage},
-       {LOC("TRANSFER_CHIP_MINUS_5"), scaledWage(agent.flat_wage, 0.95)}}};
-  if (UI::moneyInput("##contract_wage", wage,
+  if (const std::array<UI::MoneyChip, 3> wage_chips =
+          {{{LOC("AGENT_CHIP_PACKAGE"), agent.asking_wage},
+            {LOC("TRANSFER_CHIP_AGENT_ASK"), agent.flat_wage},
+            {LOC("TRANSFER_CHIP_MINUS_5"), scaledWage(agent.flat_wage, 0.95)}}};
+      UI::moneyInput("##contract_wage", wage,
                      {.maximum = std::numeric_limits<std::uint32_t>::max(),
                       .chips = wage_chips}))
   {
@@ -315,9 +315,9 @@ void ContractTalksDialog::renderTerms()
   }
 
   formLabel(LOC("CONTRACT_FIELD_UNTIL"));
-  int year_index = std::clamp(offer.years - first_year, 0,
-                              static_cast<int>(year_labels.size()) - 1);
-  if (UI::segmented("##contract_until", year_index,
+  if (int year_index = std::clamp(offer.years - first_year, 0,
+                                  static_cast<int>(year_labels.size()) - 1);
+      UI::segmented("##contract_until", year_index,
                     std::span<const char* const>(year_labels)))
   {
     offer.years = static_cast<std::uint8_t>(first_year + year_index);
@@ -347,10 +347,10 @@ void ContractTalksDialog::renderTerms()
 
   formLabel(LOC("CONTRACT_FIELD_APPEARANCE"));
   std::int64_t appearance = offer.appearance_bonus;
-  const std::array<UI::MoneyChip, 2> appearance_chips = {
-      {{LOC("TRANSFER_CHIP_NONE"), 0},
-       {LOC("AGENT_CHIP_ASKED"), agent.appearance_bonus}}};
-  if (UI::moneyInput("##contract_appearance", appearance,
+  if (const std::array<UI::MoneyChip, 2> appearance_chips =
+          {{{LOC("TRANSFER_CHIP_NONE"), 0},
+            {LOC("AGENT_CHIP_ASKED"), agent.appearance_bonus}}};
+      UI::moneyInput("##contract_appearance", appearance,
                      {.maximum = std::numeric_limits<std::uint32_t>::max(),
                       .chips = appearance_chips}))
   {
@@ -373,10 +373,10 @@ void ContractTalksDialog::renderTerms()
   }
 
   formLabel(LOC("AGENT_FIELD_FEE"));
-  const std::array<UI::MoneyChip, 2> fee_chips = {
-      {{LOC("AGENT_CHIP_ASKED"), agent.agent_fee},
-       {LOC("AGENT_CHIP_STANDARD"), agent.standard_agent_fee}}};
-  if (UI::moneyInput("##contract_agent_fee", agent_fee,
+  if (const std::array<UI::MoneyChip, 2> fee_chips =
+          {{{LOC("AGENT_CHIP_ASKED"), agent.agent_fee},
+            {LOC("AGENT_CHIP_STANDARD"), agent.standard_agent_fee}}};
+      UI::moneyInput("##contract_agent_fee", agent_fee,
                      {.maximum = std::numeric_limits<std::uint32_t>::max(),
                       .chips = fee_chips}))
     changed = true;
@@ -384,12 +384,12 @@ void ContractTalksDialog::renderTerms()
 
   formLabel(LOC("TRANSFER_FIELD_PROMISE"));
   ImGui::SetNextItemWidth(-FLT_MIN);
-  const char* preview =
-      promise_index == 0
-          ? LOC("TRANSFER_PROMISE_NONE")
-          : LOC(squadRoleKey(
-                PROMISE_ROLES[static_cast<std::size_t>(promise_index - 1)]));
-  if (ImGui::BeginCombo("##contract_promise", preview))
+  if (const char* preview =
+          promise_index == 0
+              ? LOC("TRANSFER_PROMISE_NONE")
+              : LOC(squadRoleKey(PROMISE_ROLES[static_cast<std::size_t>(
+                    promise_index - 1)]));
+      ImGui::BeginCombo("##contract_promise", preview))
   {
     if (ImGui::Selectable(LOC("TRANSFER_PROMISE_NONE"), promise_index == 0))
       promise_index = 0;

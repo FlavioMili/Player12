@@ -82,15 +82,18 @@ constexpr std::array<UI::Column, 5> TABLE_COLUMNS = {{
 
 std::string range(float low, float high)
 {
-  const int lo = static_cast<int>(std::lround(low));
-  const int hi = static_cast<int>(std::lround(high));
+  const auto lo = static_cast<int>(std::lround(low));
+  const auto hi = static_cast<int>(std::lround(high));
   return lo == hi ? std::to_string(lo) : std::format("{}-{}", lo, hi);
 }
 }  // namespace
 
 ReservesScene::ReservesScene(GUIView* parent) : ManagementScene(parent) {}
 
-void ReservesScene::update(float /*deltaTime*/) {}
+void ReservesScene::update(float /*deltaTime*/)
+{
+  // Reserve state is refreshed on scene entry and after explicit actions.
+}
 
 ReservesScene::Row ReservesScene::makeRow(
     const GameController::YouthPlayerView& view) const
@@ -130,11 +133,13 @@ void ReservesScene::refresh()
     squad_rows.push_back(makeRow(view));
   for (const auto& view : controller.getReserveCandidates())
     candidate_rows.push_back(makeRow(view));
-  const bool known = std::ranges::any_of(squad_rows, [this](const Row& row)
-                                         { return row.view.id == selected; }) ||
-                     std::ranges::any_of(candidate_rows, [this](const Row& row)
-                                         { return row.view.id == selected; });
-  if (!known) selected = 0;
+  if (const bool known =
+          std::ranges::any_of(squad_rows, [this](const Row& row)
+                              { return row.view.id == selected; }) ||
+          std::ranges::any_of(candidate_rows, [this](const Row& row)
+                              { return row.view.id == selected; });
+      !known)
+    selected = 0;
 
   const std::string country =
       LOC(International::teamNameKey(overview.country).c_str());
@@ -185,11 +190,12 @@ void ReservesScene::refresh()
         "{} ({})", opponent ? opponent->get().getName() : std::string("?"),
         LOC(result.home ? "YOUTH_HOME" : "YOUTH_AWAY"));
     line.score = std::format("{}-{}", result.goals_for, result.goals_against);
-    line.outcome =
-        result.goals_for > result.goals_against
-            ? UI::Outcome::WIN
-            : (result.goals_for == result.goals_against ? UI::Outcome::DRAW
-                                                        : UI::Outcome::LOSS);
+    if (result.goals_for > result.goals_against)
+      line.outcome = UI::Outcome::WIN;
+    else if (result.goals_for == result.goals_against)
+      line.outcome = UI::Outcome::DRAW;
+    else
+      line.outcome = UI::Outcome::LOSS;
     form.push_back(line.outcome);
     results.push_back(std::move(line));
   }
@@ -197,7 +203,7 @@ void ReservesScene::refresh()
 
 void ReservesScene::renderContent()
 {
-  GameController& controller = guiView->getController();
+  const GameController& controller = guiView->getController();
   if (!controller.hasSelectedTeam()) return;
   if (!(cached_date == controller.getCurrentDate())) refresh();
   UI::pageHeader(LOC("U21_TITLE"), subtitle.c_str());
@@ -371,7 +377,7 @@ void ReservesScene::renderResultsCard(float width)
   UI::endCard();
 }
 
-void ReservesScene::renderQuotaCard(float width)
+void ReservesScene::renderQuotaCard(float width) const
 {
   const Theme::Palette& palette = Theme::palette();
   UI::beginAutoHeightCard("u21_rules_card", LOC("U21_CARD_RULES"), width);

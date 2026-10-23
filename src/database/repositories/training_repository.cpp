@@ -13,6 +13,7 @@
 #include <charconv>
 #include <format>
 #include <string>
+#include <string_view>
 #include <unordered_map>
 #include <utility>
 #include <vector>
@@ -25,7 +26,7 @@ std::string columnText(sqlite3_stmt* stmt, int column)
   return text ? reinterpret_cast<const char*>(text) : "";
 }
 
-std::vector<float> parseNumbers(const std::string& text)
+std::vector<float> parseNumbers(std::string_view text)
 {
   std::vector<float> values;
   const char* cursor = text.data();
@@ -47,8 +48,9 @@ std::string encodeSchedule(const Microcycle& slots)
   for (const TrainingSlot& slot : slots)
   {
     if (!text.empty()) text += ',';
-    text += std::format("{},{}", static_cast<int>(slot.session),
-                        static_cast<int>(slot.intensity));
+    text +=
+        std::format("{},{}", static_cast<int>(std::to_underlying(slot.session)),
+                    static_cast<int>(std::to_underlying(slot.intensity)));
   }
   return text;
 }
@@ -63,7 +65,8 @@ void decodeSchedule(const std::string& text, Microcycle& slots)
     const auto intensity = static_cast<int>(values[2 * i + 1]);
     if (session < 0 || session >= static_cast<int>(SESSION_TYPE_COUNT) ||
         intensity < 0 ||
-        intensity >= static_cast<int>(TrainingIntensity::COUNT))
+        intensity >=
+            static_cast<int>(std::to_underlying(TrainingIntensity::COUNT)))
       continue;
     slots[i] = {static_cast<SessionType>(session),
                 static_cast<TrainingIntensity>(intensity)};
@@ -117,10 +120,11 @@ std::unordered_map<TeamID, TeamTrainingPlan> TrainingRepository::loadPlans()
     TeamTrainingPlan plan;
     const int preset = sqlite3_column_int(stmt, 1);
     const int intensity = sqlite3_column_int(stmt, 2);
-    if (preset >= 0 && preset < static_cast<int>(TrainingPreset::COUNT))
+    if (preset >= 0 &&
+        preset < static_cast<int>(std::to_underlying(TrainingPreset::COUNT)))
       plan.preset = static_cast<TrainingPreset>(preset);
-    if (intensity >= 0 &&
-        intensity < static_cast<int>(TrainingIntensity::COUNT))
+    if (intensity >= 0 && intensity < static_cast<int>(std::to_underlying(
+                                          TrainingIntensity::COUNT)))
       plan.intensity = static_cast<TrainingIntensity>(intensity);
     plan.auto_congestion = sqlite3_column_int(stmt, 3) != 0;
     plan.slots = TrainingModel::presetMicrocycle(plan.preset);
@@ -130,8 +134,8 @@ std::unordered_map<TeamID, TeamTrainingPlan> TrainingRepository::loadPlans()
     plan.week_load = static_cast<float>(sqlite3_column_double(stmt, 7));
     plan.last_week_load = static_cast<float>(sqlite3_column_double(stmt, 8));
     plan.last_match_day = sqlite3_column_int(stmt, 9);
-    plans.emplace(static_cast<TeamID>(sqlite3_column_int(stmt, 0)),
-                  std::move(plan));
+    plans.try_emplace(static_cast<TeamID>(sqlite3_column_int(stmt, 0)),
+                      std::move(plan));
   }
   sqlite3_finalize(stmt);
   return plans;
@@ -147,15 +151,15 @@ TrainingRepository::loadPlayers() const
   while (sqlite3_step(stmt) == SQLITE_ROW)
   {
     PlayerTrainingState state;
-    const int focus = sqlite3_column_int(stmt, 1);
-    if (focus >= 0 && focus < static_cast<int>(TRAINING_FOCUS_COUNT))
+    if (const int focus = sqlite3_column_int(stmt, 1);
+        focus >= 0 && focus < static_cast<int>(TRAINING_FOCUS_COUNT))
       state.focus = static_cast<TrainingFocus>(focus);
     state.acute = static_cast<float>(sqlite3_column_double(stmt, 2));
     state.chronic = static_cast<float>(sqlite3_column_double(stmt, 3));
     state.pending = static_cast<float>(sqlite3_column_double(stmt, 4));
     state.trend = static_cast<float>(sqlite3_column_double(stmt, 5));
-    players.emplace(static_cast<PlayerID>(sqlite3_column_int64(stmt, 0)),
-                    state);
+    players.try_emplace(static_cast<PlayerID>(sqlite3_column_int64(stmt, 0)),
+                        state);
   }
   sqlite3_finalize(stmt);
   return players;
@@ -195,8 +199,8 @@ void TrainingRepository::replaceAll(const TrainingRegistry& registry) const
     row.week_load = sqlite3_column_double(select, 7);
     row.last_week_load = sqlite3_column_double(select, 8);
     row.last_match_day = sqlite3_column_int(select, 9);
-    stored_plans.emplace(static_cast<TeamID>(sqlite3_column_int(select, 0)),
-                         std::move(row));
+    stored_plans.try_emplace(static_cast<TeamID>(sqlite3_column_int(select, 0)),
+                             std::move(row));
   }
   sqlite3_finalize(select);
 
@@ -208,13 +212,14 @@ void TrainingRepository::replaceAll(const TrainingRegistry& registry) const
   {
     const std::string schedule = encodeSchedule(plan.slots);
     const std::string tactic = encodeTactic(plan.tactic);
-    const auto found = stored_plans.find(team_id);
-    if (found != stored_plans.end())
+    if (const auto found = stored_plans.find(team_id);
+        found != stored_plans.end())
     {
       StoredPlan& row = found->second;
       row.seen = true;
-      if (row.preset == static_cast<int>(plan.preset) &&
-          row.intensity == static_cast<int>(plan.intensity) &&
+      if (row.preset == static_cast<int>(std::to_underlying(plan.preset)) &&
+          row.intensity ==
+              static_cast<int>(std::to_underlying(plan.intensity)) &&
           row.auto_congestion == (plan.auto_congestion ? 1 : 0) &&
           row.schedule == schedule &&
           row.familiarity == static_cast<double>(plan.familiarity) &&
@@ -225,8 +230,10 @@ void TrainingRepository::replaceAll(const TrainingRegistry& registry) const
         continue;
     }
     sqlite3_bind_int(plan_stmt, 1, team_id);
-    sqlite3_bind_int(plan_stmt, 2, static_cast<int>(plan.preset));
-    sqlite3_bind_int(plan_stmt, 3, static_cast<int>(plan.intensity));
+    sqlite3_bind_int(plan_stmt, 2,
+                     static_cast<int>(std::to_underlying(plan.preset)));
+    sqlite3_bind_int(plan_stmt, 3,
+                     static_cast<int>(std::to_underlying(plan.intensity)));
     sqlite3_bind_int(plan_stmt, 4, plan.auto_congestion ? 1 : 0);
     sqlite3_bind_text(plan_stmt, 5, schedule.c_str(), -1, SQLITE_TRANSIENT);
     sqlite3_bind_double(plan_stmt, 6, static_cast<double>(plan.familiarity));
@@ -265,7 +272,7 @@ void TrainingRepository::replaceAll(const TrainingRegistry& registry) const
       "PlayerTraining;");
   while (sqlite3_step(select) == SQLITE_ROW)
   {
-    stored_players.emplace(
+    stored_players.try_emplace(
         static_cast<PlayerID>(sqlite3_column_int64(select, 0)),
         StoredPlayer{
             sqlite3_column_int(select, 1), sqlite3_column_double(select, 2),
@@ -279,12 +286,12 @@ void TrainingRepository::replaceAll(const TrainingRegistry& registry) const
       "chronic, pending, trend) VALUES (?, ?, ?, ?, ?, ?);");
   for (const auto& [player_id, state] : registry.players())
   {
-    const auto found = stored_players.find(player_id);
-    if (found != stored_players.end())
+    if (const auto found = stored_players.find(player_id);
+        found != stored_players.end())
     {
       StoredPlayer& row = found->second;
       row.seen = true;
-      if (row.focus == static_cast<int>(state.focus) &&
+      if (row.focus == static_cast<int>(std::to_underlying(state.focus)) &&
           row.acute == static_cast<double>(state.acute) &&
           row.chronic == static_cast<double>(state.chronic) &&
           row.pending == static_cast<double>(state.pending) &&
@@ -292,7 +299,8 @@ void TrainingRepository::replaceAll(const TrainingRegistry& registry) const
         continue;
     }
     sqlite3_bind_int64(player_stmt, 1, player_id);
-    sqlite3_bind_int(player_stmt, 2, static_cast<int>(state.focus));
+    sqlite3_bind_int(player_stmt, 2,
+                     static_cast<int>(std::to_underlying(state.focus)));
     sqlite3_bind_double(player_stmt, 3, static_cast<double>(state.acute));
     sqlite3_bind_double(player_stmt, 4, static_cast<double>(state.chronic));
     sqlite3_bind_double(player_stmt, 5, static_cast<double>(state.pending));

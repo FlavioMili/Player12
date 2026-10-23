@@ -9,6 +9,7 @@
 #pragma once
 
 #include <array>
+#include <cstddef>
 #include <cstdint>
 #include <string>
 #include <vector>
@@ -66,7 +67,7 @@ class MedicalScene : public ManagementScene
     int load_trend = 0;  /*!< -1 falling, 0 stable, 1 rising. */
     std::string reasons; /*!< Why the risk is raised. */
     bool returning = false;
-    std::uint8_t flags = 0; /*!< MedicalFlag bits. */
+    std::byte flags{}; /*!< MedicalFlag bits. */
   };
 
   /** @brief A physio or doctor. */
@@ -88,7 +89,7 @@ class MedicalScene : public ManagementScene
   /** Name cell of both tables: selects the player for the load card. */
   void nameCell(PlayerID id, const std::string& name, const std::string& role,
                 bool returning);
-  void setFlag(std::uint8_t flag, bool enabled);
+  void setFlag(std::byte flag, bool enabled);
 
   std::vector<InjuryLine> injured;
   std::vector<RiskLine> risks;
@@ -106,7 +107,7 @@ class MedicalScene : public ManagementScene
   /** Player shown in the load card (0: none) and his cached data. */
   PlayerID selected = 0;
   std::string selected_name;
-  std::uint8_t selected_flags = 0;
+  std::byte selected_flags{};
   std::int32_t chart_today = 0;
   std::array<LoadChartDay, MedicalCentre::LOAD_CHART_DAYS> chart{};
   bool chart_empty = true;

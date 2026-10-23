@@ -23,13 +23,16 @@
 #include <memory>
 #include <mutex>
 #include <optional>
+#include <print>
 #include <stdexcept>
 #include <string>
 #include <thread>
+#include <utility>
 #include <vector>
 
 #include "controller/game_controller.h"
 #include "database/gamedata.h"
+#include "global/background_task.h"
 #include "global/logger.h"
 #include "global/runtime_paths.h"
 #include "global/thread_pool.h"
@@ -47,13 +50,16 @@ constexpr unsigned PARALLEL_THREADS = 4;
 /** Save slot unique to this process (the test binaries run in parallel). */
 int uniqueSlot(int offset)
 {
-  return 300'000 + static_cast<int>(getpid() % 100'000) * 10 + offset;
+  return 300'000 + (getpid() % 100'000) * 10 + offset;
 }
 
 struct SlotCleanup
 {
   int slot;
+  explicit SlotCleanup(int slotValue) : slot(slotValue) {}
   ~SlotCleanup() { RuntimePaths::removeSave(slot); }
+  SlotCleanup(const SlotCleanup&) = delete;
+  SlotCleanup& operator=(const SlotCleanup&) = delete;
 };
 
 std::unique_ptr<GameController> makeWorld(int slot)
@@ -78,8 +84,8 @@ class ShutdownWatchdog
               std::unique_lock lock(mutex);
               if (!finished.wait_for(lock, limit, [this] { return done; }))
               {
-                std::fprintf(stderr, "%s did not finish within %lld s\n", what,
-                             static_cast<long long>(limit.count()));
+                std::print(stderr, "{} did not finish within {} s\n", what,
+                           limit.count());
                 std::abort();
               }
             })
@@ -101,7 +107,7 @@ class ShutdownWatchdog
   std::mutex mutex;
   std::condition_variable finished;
   bool done = false;
-  std::thread watcher;  // Last: starts once the state above exists.
+  std::jthread watcher;  // Last: starts once the state above exists.
 };
 
 constexpr std::chrono::seconds SHUTDOWN_LIMIT{20};
@@ -232,9 +238,9 @@ std::vector<std::string> worldFingerprint(const GameController& controller)
         " apps{} mins{}",
         id, player.getTeamId(), dynamics.condition, dynamics.sharpness,
         dynamics.morale, dynamics.playing_share,
-        static_cast<int>(dynamics.injury), dynamics.injury_days,
-        dynamics.last_match_day, dynamics.season_appearances,
-        dynamics.season_minutes);
+        static_cast<int>(std::to_underlying(dynamics.injury)),
+        dynamics.injury_days, dynamics.last_match_day,
+        dynamics.season_appearances, dynamics.season_minutes);
     for (const float rating : dynamics.recent_ratings)
       line += fmt::format(" r{}", rating);
     for (const auto& [name, value] : player.getStats())
@@ -271,7 +277,7 @@ TEST(ThreadPoolTest, ParallelForRunsEveryIndexExactlyOnce)
   EXPECT_EQ(pool.getWorkerCount(), 3U);
   constexpr std::size_t COUNT = 2000;
   std::vector<std::atomic<int>> calls(COUNT);
-  pool.parallelFor(COUNT, [&](std::size_t index) { ++calls[index]; });
+  pool.parallelFor(COUNT, [&calls](std::size_t index) { ++calls[index]; });
   for (std::size_t i = 0; i < COUNT; ++i) ASSERT_EQ(calls[i].load(), 1) << i;
 
   pool.parallelFor(0, [](std::size_t) { FAIL() << "no index to run"; });
@@ -280,9 +286,9 @@ TEST(ThreadPoolTest, ParallelForRunsEveryIndexExactlyOnce)
 TEST(ThreadPoolTest, RethrowsTheFirstTaskExceptionAfterTheBatch)
 {
   ThreadPool pool(2);
-  std::atomic<int> finished{0};
+  std::atomic finished{0};
   EXPECT_THROW(pool.parallelFor(64,
-                                [&](std::size_t index)
+                                [&finished](std::size_t index)
                                 {
                                   if (index == 10)
                                     throw std::runtime_error("task failed");
@@ -297,9 +303,10 @@ TEST(ThreadPoolTest, NestedBatchesOnBusyWorkersComplete)
   // Every worker blocks inside an outer task; the inner batches must still
   // finish because their callers work through them.
   ThreadPool pool(2);
-  std::atomic<int> inner{0};
-  pool.parallelFor(4, [&](std::size_t)
-                   { pool.parallelFor(16, [&](std::size_t) { ++inner; }); });
+  std::atomic inner{0};
+  pool.parallelFor(
+      4, [&pool, &inner](std::size_t)
+      { pool.parallelFor(16, [&inner](std::size_t) { ++inner; }); });
   EXPECT_EQ(inner.load(), 64);
 }
 
@@ -314,9 +321,9 @@ TEST(ThreadPoolTest, DestroyingAPoolJoinsItsWorkersPromptly)
       ThreadPool idle(ThreadPool::MAX_THREADS);
     }
     ThreadPool pool(3);
-    std::atomic<int> calls{0};
-    pool.parallelFor(64, [&](std::size_t) { ++calls; });
-    pool.parallelFor(2, [&](std::size_t) { ++calls; });
+    std::atomic calls{0};
+    pool.parallelFor(64, [&calls](std::size_t) { ++calls; });
+    pool.parallelFor(2, [&calls](std::size_t) { ++calls; });
     EXPECT_EQ(calls.load(), 66);
   }
 }
@@ -440,9 +447,12 @@ TEST(MatchSchedulerTest, ControllerShutsDownCleanlyAfterParallelMatchdays)
     // Two full league matchdays and the days between them.
     const GameDateValue end = SeasonCalendar::addDays(*matchday, 8);
     if (on_worker)
-      std::async(std::launch::async,
-                 [&controller, end] { advanceUntil(*controller, end); })
+    {
+      std::jthread worker;
+      launchBackgroundTask(
+          worker, [&controller, end] { advanceUntil(*controller, end); })
           .get();
+    }
     else
       advanceUntil(*controller, end);
     std::size_t played = 0;
@@ -721,10 +731,10 @@ TEST(MatchContextTest, LeaguesCarryTheirOwnMatchStyle)
   // Each tier has its own neutral goal level, so compare the goals the
   // contexts aim for: the Championship scores less than the Premier League.
   using Reference = WorldTuning::MatchContext;
-  const auto expectedGoals = [&](LeagueID league, float neutral)
+  const auto expectedGoals = [&](LeagueID league, float neutralGoals)
   {
-    return neutral * std::pow(context(league).goalRateScale,
-                              Reference::GOAL_RESPONSE_EXPONENT);
+    return neutralGoals * std::pow(context(league).goalRateScale,
+                                   Reference::GOAL_RESPONSE_EXPONENT);
   };
   EXPECT_LT(expectedGoals(ENGLAND_2, Reference::REFERENCE_GOALS_SECOND),
             0.9f * expectedGoals(ENGLAND, Reference::REFERENCE_GOALS_TOP));

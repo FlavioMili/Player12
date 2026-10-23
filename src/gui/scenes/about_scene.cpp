@@ -157,15 +157,14 @@ void AboutScene::renderThirdParty()
     const Credits::Component& component = COMPONENTS[index];
     ImGui::PushID(static_cast<int>(index));
     // Licence texts open inline: the page stays the only scroll surface.
-    const bool open =
-        ImGui::TreeNodeEx("##licence", ImGuiTreeNodeFlags_SpanAvailWidth,
-                          "%s  ·  %s", component.name, component.licence);
-    if (open)
+    if (const bool open =
+            ImGui::TreeNodeEx("##licence", ImGuiTreeNodeFlags_SpanAvailWidth,
+                              "%s  ·  %s", component.name, component.licence);
+        open)
     {
       if (component.tests_only)
         ImGui::TextColored(palette.muted, "%s", LOC("ABOUT_TESTS_ONLY"));
-      const std::string& text = licence_texts[index];
-      if (text.empty())
+      if (const std::string& text = licence_texts[index]; text.empty())
         ImGui::TextColored(palette.muted, "%s", LOC("ABOUT_LICENSE_MISSING"));
       else
       {

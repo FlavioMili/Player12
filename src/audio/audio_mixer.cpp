@@ -10,6 +10,7 @@
 
 #include <algorithm>
 #include <cmath>
+#include <utility>
 
 namespace Audio
 {
@@ -35,11 +36,12 @@ Mixer::Mixer() = default;
 bool Mixer::trigger(const SoundCommand& command)
 {
   const std::uint32_t head = commandHead.load(std::memory_order_relaxed);
-  const std::uint32_t tail = commandTail.load(std::memory_order_acquire);
-  if (head - tail >= COMMAND_CAPACITY) return false;
+  if (const std::uint32_t tail = commandTail.load(std::memory_order_acquire);
+      head - tail >= COMMAND_CAPACITY)
+    return false;
   commands[head % COMMAND_CAPACITY] = command;
   commandHead.store(head + 1, std::memory_order_release);
-  ++triggered[static_cast<std::size_t>(command.sound)];
+  ++triggered[static_cast<std::size_t>(std::to_underlying(command.sound))];
   return true;
 }
 

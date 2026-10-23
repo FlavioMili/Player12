@@ -14,6 +14,7 @@
 #include <climits>
 #include <fstream>
 #include <map>
+#include <memory>
 #include <nlohmann/json.hpp>
 #include <numeric>
 #include <optional>
@@ -293,10 +294,9 @@ SeasonCalendar::internationalWindows(uint16_t season_year)
           fromDayNumber(saturday + rule.match_offsets[match]));
     windows.push_back(std::move(window));
   }
-  std::sort(
-      windows.begin(), windows.end(),
-      [](const InternationalWindow& left, const InternationalWindow& right)
-      { return left.start < right.start; });
+  std::ranges::sort(windows, [](const InternationalWindow& left,
+                                const InternationalWindow& right)
+                    { return left.start < right.start; });
   return windows;
 }
 
@@ -457,8 +457,8 @@ std::vector<GameDateValue> SeasonCalendar::friendlyDates(
 
 int SeasonCalendar::restDays(MatchType earlier, MatchType later)
 {
-  return earlier == MatchType::LEAGUE && later != MatchType::LEAGUE &&
-                 later != MatchType::FRIENDLY
+  using enum MatchType;
+  return earlier == LEAGUE && later != LEAGUE && later != FRIENDLY
              ? MIN_REST_BEFORE_TIE
              : MIN_REST_DAYS;
 }
@@ -566,7 +566,8 @@ std::vector<DaySlot> parseSlots(const json& list,
     {
       for (const json& time : *kickoffs)
         if (time.is_string())
-          if (const auto minutes = parseKickoff(time.get<std::string>()))
+          if (const auto minutes = parseKickoff(time.get<std::string>());
+              minutes.has_value())
             slot.kickoffs.push_back(*minutes);
     }
     std::ranges::sort(slot.kickoffs);
@@ -596,8 +597,8 @@ std::unordered_map<LeagueID, RoundPattern> loadRoundPatterns()
       pattern.weekend = parseSlots(*weekend, WEEKEND_DAYS);
     if (const auto midweek = days->find("midweek"); midweek != days->end())
       pattern.midweek = parseSlots(*midweek, MIDWEEK_DAYS);
-    patterns.emplace(static_cast<LeagueID>(id->get<unsigned>()),
-                     std::move(pattern));
+    patterns.try_emplace(static_cast<LeagueID>(id->get<unsigned>()),
+                         std::move(pattern));
   }
   return patterns;
 }
@@ -711,8 +712,17 @@ std::vector<RoundDay> roundDays(int anchor, const RoundPattern& pattern,
 /** Splits @p matches over the days by weight (largest remainder). */
 void setQuotas(std::vector<RoundDay>& days, size_t matches)
 {
+  if (days.empty()) return;
   size_t total = 0;
   for (const RoundDay& day : days) total += day.weight;
+  if (total == 0)
+  {
+    const size_t each = matches / days.size();
+    const size_t extra = matches % days.size();
+    for (size_t i = 0; i < days.size(); ++i)
+      days[i].quota = each + (i < extra ? 1 : 0);
+    return;
+  }
   std::vector<std::pair<size_t, size_t>> remainders;  // (remainder, index)
   size_t given = 0;
   for (size_t i = 0; i < days.size(); ++i)
@@ -756,7 +766,7 @@ constexpr size_t CONTINENTAL_DAY_MATCHES = 12;
  * matches from days busier than @p comfortable (e.g. both tiers in the same
  * midweek).
  */
-void balanceRounds(std::vector<PlannedRound*>& window,
+void balanceRounds(const std::vector<PlannedRound*>& window,
                    std::unordered_map<int, size_t>& load, size_t comfortable)
 {
   const auto cap = [](const PlannedRound& round)
@@ -885,14 +895,22 @@ const Match* Calendar::findMatch(const GameDateValue& date, TeamID home_id,
                              return candidate.getHomeTeamId() == home_id &&
                                     candidate.getAwayTeamId() == away_id;
                            });
-  return match == it->second.end() ? nullptr : &*match;
+  return match == it->second.end() ? nullptr : std::to_address(match);
 }
 
 Match* Calendar::findMatch(const GameDateValue& date, TeamID home_id,
                            TeamID away_id)
 {
-  return const_cast<Match*>(
-      static_cast<const Calendar&>(*this).findMatch(date, home_id, away_id));
+  const auto date_it = schedule.find(date);
+  if (date_it == schedule.end()) return nullptr;
+  const auto match =
+      std::ranges::find_if(date_it->second,
+                           [home_id, away_id](const Match& candidate)
+                           {
+                             return candidate.getHomeTeamId() == home_id &&
+                                    candidate.getAwayTeamId() == away_id;
+                           });
+  return match == date_it->second.end() ? nullptr : std::to_address(match);
 }
 
 std::vector<Match> Calendar::getTeamFixtures(TeamID team_id) const
@@ -999,7 +1017,8 @@ void Calendar::generateSeasonFixtures(const class GameData& gamedata,
       const int next_start = round + 1 < rounds
                                  ? toDayNumber(round_dates[round + 1]) - 1
                                  : INT_MAX / 2;
-      const auto usable = [&](int day)
+      const auto usable =
+          [weekend, anchor, tier, next_start, &continental_days](int day)
       {
         if (SeasonCalendar::isBlackout(fromDayNumber(day))) return false;
         // Only lower divisions (whose clubs rarely play in Europe) bring a
@@ -1069,7 +1088,7 @@ void Calendar::generateSeasonFixtures(const class GameData& gamedata,
         for (const RoundDay& day : plan.rounds[round + 1].days)
           if (day.quota > 0) next_latest = day.day;
       }
-      const auto fits = [&](size_t pair, int day)
+      const auto fits = [&pairs, &lastPlayed, next_latest](size_t pair, int day)
       {
         return day - lastPlayed(pairs[pair].first) >=
                    SeasonCalendar::MIN_REST_DAYS &&
@@ -1121,7 +1140,7 @@ void Calendar::generateSeasonFixtures(const class GameData& gamedata,
             return std::min(day.day - lastPlayed(pairs[pair].first),
                             day.day - lastPlayed(pairs[pair].second));
           };
-          chosen = &*std::ranges::max_element(days, {}, rest);
+          chosen = std::to_address(std::ranges::max_element(days, {}, rest));
           Logger::warn("No rested day for a league fixture on " +
                        fromDayNumber(chosen->day).toString());
         }
@@ -1151,6 +1170,7 @@ void Calendar::generateSeasonFixtures(const class GameData& gamedata,
 
 size_t Calendar::protectRest(const GameDateValue& after)
 {
+  using enum MatchType;
   if (!rest_check_pending) return 0;
   rest_check_pending = false;
 
@@ -1158,7 +1178,7 @@ size_t Calendar::protectRest(const GameDateValue& after)
   struct Busy
   {
     int day = 0;
-    MatchType type = MatchType::LEAGUE;
+    MatchType type = LEAGUE;
   };
   std::unordered_map<TeamID, std::vector<Busy>> busy;
   struct LeagueFixture
@@ -1176,11 +1196,10 @@ size_t Calendar::protectRest(const GameDateValue& after)
     const int day = toDayNumber(date);
     for (const Match& match : matches)
     {
-      if (match.getMatchType() == MatchType::FRIENDLY) continue;
+      if (match.getMatchType() == FRIENDLY) continue;
       busy[match.getHomeTeamId()].push_back({day, match.getMatchType()});
       busy[match.getAwayTeamId()].push_back({day, match.getMatchType()});
-      if (match.getMatchType() == MatchType::LEAGUE && !match.isPlayed() &&
-          day > first)
+      if (match.getMatchType() == LEAGUE && !match.isPlayed() && day > first)
         league_fixtures.push_back({date, match.getHomeTeamId(),
                                    match.getAwayTeamId(),
                                    match.getCompetitionId(), match.getStage()});
@@ -1193,19 +1212,17 @@ size_t Calendar::protectRest(const GameDateValue& after)
     bool skipped = false;
     for (const Busy& other : busy[team])
     {
-      if (!skipped && other.day == from && other.type == MatchType::LEAGUE)
+      if (!skipped && other.day == from && other.type == LEAGUE)
       {
         skipped = true;
         continue;
       }
       if (other.day == day) return false;
       if (other.day < day &&
-          day - other.day <
-              SeasonCalendar::restDays(other.type, MatchType::LEAGUE))
+          day - other.day < SeasonCalendar::restDays(other.type, LEAGUE))
         return false;
       if (other.day > day &&
-          other.day - day <
-              SeasonCalendar::restDays(MatchType::LEAGUE, other.type))
+          other.day - day < SeasonCalendar::restDays(LEAGUE, other.type))
         return false;
     }
     return true;
@@ -1219,7 +1236,7 @@ size_t Calendar::protectRest(const GameDateValue& after)
     for (int ahead = 1; ahead <= 4; ++ahead)
       for (const Match& match :
            getMatchesForDate(SeasonCalendar::addDays(thursday, ahead)))
-        if (match.getMatchType() == MatchType::LEAGUE &&
+        if (match.getMatchType() == LEAGUE &&
             match.getCompetitionId() == competition &&
             match.getStage() == stage)
           return true;
@@ -1232,7 +1249,7 @@ size_t Calendar::protectRest(const GameDateValue& after)
   {
     if (weekdayOf(toDayNumber(date)) != SeasonCalendar::THURSDAY) continue;
     for (const Match& match : matches)
-      if (match.getMatchType() == MatchType::LEAGUE &&
+      if (match.getMatchType() == LEAGUE &&
           !thursday_leagues.contains(match.getCompetitionId()) &&
           weekendRoundAfter(date, match.getCompetitionId(), match.getStage()))
         thursday_leagues.insert(match.getCompetitionId());
@@ -1244,7 +1261,7 @@ size_t Calendar::protectRest(const GameDateValue& after)
     if (rested(home_id, day, day) && rested(away_id, day, day)) continue;
 
     // Other days of the same round: Friday-Monday or Tuesday-Thursday.
-    const uint8_t weekday = static_cast<uint8_t>(weekdayOf(day));
+    const auto weekday = static_cast<uint8_t>(weekdayOf(day));
     bool midweek = weekday >= SeasonCalendar::TUESDAY &&
                    weekday <= SeasonCalendar::THURSDAY;
     int window_start = midweek ? day - (weekday - SeasonCalendar::TUESDAY)
@@ -1259,7 +1276,6 @@ size_t Calendar::protectRest(const GameDateValue& after)
         weekendRoundAfter(date, competition, stage))
     {
       // A weekend match brought forward: Thursday to Monday.
-      midweek = false;
       window_start = day;
       window_days = 5;
     }
@@ -1277,11 +1293,12 @@ size_t Calendar::protectRest(const GameDateValue& after)
         const auto found = schedule.find(fromDayNumber(candidate_day));
         return found == schedule.end() ? size_t{0} : found->second.size();
       };
-      if (!target || std::pair{load(candidate), std::abs(candidate - day)} <
-                         std::pair{load(*target), std::abs(*target - day)})
+      if (!target.has_value() ||
+          std::pair{load(candidate), std::abs(candidate - day)} <
+              std::pair{load(*target), std::abs(*target - day)})
         target = candidate;
     }
-    if (!target) continue;
+    if (!target.has_value()) continue;
 
     std::vector<Match>& from_day = schedule[date];
     const auto it =
@@ -1293,7 +1310,7 @@ size_t Calendar::protectRest(const GameDateValue& after)
                              });
     if (it == from_day.end()) continue;
     const GameDateValue to = fromDayNumber(*target);
-    Match match(home_id, away_id, to, MatchType::LEAGUE, it->getCompetitionId(),
+    Match match(home_id, away_id, to, LEAGUE, it->getCompetitionId(),
                 it->getStage());
     match.setKickoff(it->getScheduledKickoff());
     from_day.erase(it);
@@ -1304,7 +1321,7 @@ size_t Calendar::protectRest(const GameDateValue& after)
       std::vector<Busy>& days = busy[team];
       if (const auto entry = std::ranges::find_if(
               days, [day](const Busy& other)
-              { return other.day == day && other.type == MatchType::LEAGUE; });
+              { return other.day == day && other.type == LEAGUE; });
           entry != days.end())
         entry->day = *target;
       std::ranges::sort(days, {}, &Busy::day);

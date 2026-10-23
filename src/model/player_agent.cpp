@@ -11,6 +11,7 @@
 #include <algorithm>
 #include <cmath>
 #include <limits>
+#include <utility>
 
 #include "model/transfer_tuning.h"
 #include "model/world_simulation.h"
@@ -28,7 +29,7 @@ constexpr double FEE_ROUNDING = 1'000.0;
 /** His client wants a clearly bigger club: reputation points above. */
 constexpr int KEEN_REPUTATION_GAP = 5;
 
-int level(SquadRole role) { return static_cast<int>(role); }
+int level(SquadRole role) { return static_cast<int>(std::to_underlying(role)); }
 
 std::uint32_t clampMoney(double amount)
 {
@@ -59,25 +60,23 @@ std::uint8_t riseFor(const PlayerContext& context, std::uint8_t years)
 const char* lineFor(const ContractResponse& response,
                     const ContractOffer& offer)
 {
+  using enum Reason;
   const auto& reasons = response.reasons;
   if (response.accepted) return "AGENT_LINE_AGREED";
-  if (has(reasons, Reason::TalksEnded)) return "AGENT_LINE_WALKED";
-  if (has(reasons, Reason::ClubTooSmall)) return "AGENT_LINE_CLUB_TOO_SMALL";
-  if (has(reasons, Reason::PromiseNotCredible))
-    return "AGENT_LINE_PROMISE_DOUBT";
-  if (has(reasons, Reason::PlayingTime)) return "AGENT_LINE_PLAYING_TIME";
-  if (has(reasons, Reason::WageTooLow))
+  if (has(reasons, TalksEnded)) return "AGENT_LINE_WALKED";
+  if (has(reasons, ClubTooSmall)) return "AGENT_LINE_CLUB_TOO_SMALL";
+  if (has(reasons, PromiseNotCredible)) return "AGENT_LINE_PROMISE_DOUBT";
+  if (has(reasons, PlayingTime)) return "AGENT_LINE_PLAYING_TIME";
+  if (has(reasons, WageTooLow))
     return static_cast<double>(offer.weekly_wage) <
                    static_cast<double>(response.demand.weekly_wage) *
                        static_cast<double>(N::INSULT_WAGE_SHARE)
                ? "AGENT_LINE_INSULTED"
                : "AGENT_LINE_WAGE";
-  if (has(reasons, Reason::WantsReleaseClause))
-    return "AGENT_LINE_RELEASE_CLAUSE";
-  if (has(reasons, Reason::ContractTooShort) ||
-      has(reasons, Reason::ContractTooLong))
+  if (has(reasons, WantsReleaseClause)) return "AGENT_LINE_RELEASE_CLAUSE";
+  if (has(reasons, ContractTooShort) || has(reasons, ContractTooLong))
     return "AGENT_LINE_YEARS";
-  if (has(reasons, Reason::AgentFeeTooLow)) return "AGENT_LINE_AGENT_FEE";
+  if (has(reasons, AgentFeeTooLow)) return "AGENT_LINE_AGENT_FEE";
   return "AGENT_LINE_CLOSE";
 }
 }  // namespace
@@ -177,23 +176,24 @@ ContractOffer askedOffer(const Demands& demands, std::uint8_t years)
 Reply respond(const PlayerContext& context, const ContractOffer& offer,
               std::uint8_t round, std::uint32_t transfer_fee)
 {
+  using enum Reason;
   Reply reply;
   reply.response = TransferNegotiation::evaluateContract(context, offer, round);
   ContractResponse& response = reply.response;
   // On a free move the usual fee follows the wage he signs for.
   const std::uint32_t paid = offer.agent_fee.value_or(
       standardAgentFee(context.kind, transfer_fee, offer.weekly_wage));
-  const std::uint32_t lowest = lowestAgentFee(standardAgentFee(
-      context.kind, transfer_fee, response.demand.weekly_wage));
-  if (paid < lowest)
+  if (const std::uint32_t lowest = lowestAgentFee(standardAgentFee(
+          context.kind, transfer_fee, response.demand.weekly_wage));
+      paid < lowest)
   {
-    response.reasons.push_back(Reason::AgentFeeTooLow);
+    response.reasons.push_back(AgentFeeTooLow);
     if (response.accepted)
     {
       response.accepted = false;
-      std::erase(response.reasons, Reason::TermsAccepted);
+      std::erase(response.reasons, TermsAccepted);
       if (round + 1 >= N::MAX_PLAYER_ROUNDS)
-        response.reasons.push_back(Reason::TalksEnded);
+        response.reasons.push_back(TalksEnded);
       response.demand.asking_wage = TransferNegotiation::agentAsk(
           context, response.demand,
           static_cast<std::uint8_t>(std::min(round + 1, 255)));
@@ -224,31 +224,29 @@ const char* openingLine(const PlayerContext& context)
 const char* purchaseLine(const ClubResponse& response, bool would_join,
                          const PlayerContext& context)
 {
-  using Decision = ClubResponse::Decision;
+  using enum Reason;
+  using enum ClubResponse::Decision;
   const bool keen = context.current_club_reputation > 0 &&
                     static_cast<int>(context.new_club_reputation) -
                             static_cast<int>(context.current_club_reputation) >=
                         KEEN_REPUTATION_GAP;
   // The selling club never heard the offer: nothing to say.
-  if (has(response.reasons, Reason::WindowClosed) ||
-      has(response.reasons, Reason::Embargo) ||
-      has(response.reasons, Reason::Unavailable) ||
-      has(response.reasons, Reason::OverBudget) ||
-      has(response.reasons, Reason::SquadFull))
+  if (has(response.reasons, WindowClosed) || has(response.reasons, Embargo) ||
+      has(response.reasons, Unavailable) || has(response.reasons, OverBudget) ||
+      has(response.reasons, SquadFull))
     return "";
-  if (has(response.reasons, Reason::ReleaseClauseMet))
-    return "AGENT_CLUB_CLAUSE";
+  if (has(response.reasons, ReleaseClauseMet)) return "AGENT_CLUB_CLAUSE";
   switch (response.decision)
   {
-    case Decision::Accept:
+    case Accept:
       return would_join ? "AGENT_CLUB_AGREED" : "AGENT_CLUB_AGREED_DOUBT";
-    case Decision::Counter:
+    case Counter:
       return keen ? "AGENT_CLUB_COUNTER_KEEN" : "AGENT_CLUB_COUNTER";
-    case Decision::Reject:
+    case Reject:
       break;
   }
-  if (has(response.reasons, Reason::NotForSale) ||
-      has(response.reasons, Reason::KeyPlayerNotForSale))
+  if (has(response.reasons, NotForSale) ||
+      has(response.reasons, KeyPlayerNotForSale))
     return "AGENT_CLUB_NOT_FOR_SALE";
   return would_join ? "AGENT_CLUB_REJECTED" : "AGENT_CLUB_NOT_INTERESTED";
 }

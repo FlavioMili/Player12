@@ -192,7 +192,8 @@ double selectionScore(const Player& player, uint16_t caps,
  * players. Deterministic (ties by player ID).
  */
 std::vector<PlayerID> selectSquad(
-    std::vector<const Player*> eligible, size_t size, const StatsConfig& config,
+    const std::vector<const Player*>& eligible, size_t size,
+    const StatsConfig& config,
     const std::unordered_map<PlayerID, uint16_t>& caps);
 }  // namespace International
 

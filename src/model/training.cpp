@@ -124,6 +124,7 @@ const TeamTrainingPlan& defaultPlan()
 float coachingFor(const TeamTrainingPlan& plan, const StaffEffects& effects,
                   const Player& player)
 {
+  using enum S;
   if (player.getRole() == PlayerRole::GK)
     return 0.7f * effects.coaching_goalkeeping +
            0.3f * effects.coaching_tactical;
@@ -135,25 +136,25 @@ float coachingFor(const TeamTrainingPlan& plan, const StaffEffects& effects,
     float quality = 0.0f;
     switch (slot.session)
     {
-      case S::Fitness:
+      case Fitness:
         quality = effects.coaching_fitness;
         break;
-      case S::Technical:
+      case Technical:
         quality = 0.5f * (effects.coaching_attacking + effects.coaching_youth);
         break;
-      case S::Attacking:
+      case Attacking:
         quality = effects.coaching_attacking;
         break;
-      case S::Defending:
+      case Defending:
         quality = effects.coaching_defending;
         break;
-      case S::Tactical:
-      case S::MatchPrep:
+      case Tactical:
+      case MatchPrep:
         quality = effects.coaching_tactical;
         break;
-      case S::Rest:
-      case S::Recovery:
-      case S::COUNT:
+      case Rest:
+      case Recovery:
+      case COUNT:
         continue;
     }
     weighted += load * quality;
@@ -185,9 +186,9 @@ std::string joinNames(const std::vector<std::string>& names, std::size_t limit)
 
 TeamTrainingPlan& TrainingRegistry::plan(TeamID team_id)
 {
-  const auto found = team_plans.find(team_id);
-  if (found != team_plans.end()) return found->second;
-  return team_plans.emplace(team_id, defaultPlan()).first->second;
+  if (const auto found = team_plans.find(team_id); found != team_plans.end())
+    return found->second;
+  return team_plans.try_emplace(team_id, defaultPlan()).first->second;
 }
 
 const TeamTrainingPlan* TrainingRegistry::findPlan(TeamID team_id) const
@@ -198,12 +199,13 @@ const TeamTrainingPlan* TrainingRegistry::findPlan(TeamID team_id) const
 
 PlayerTrainingState& TrainingRegistry::player(PlayerID player_id)
 {
-  const auto found = player_states.find(player_id);
-  if (found != player_states.end()) return found->second;
+  if (const auto found = player_states.find(player_id);
+      found != player_states.end())
+    return found->second;
   PlayerTrainingState state;
   state.acute = TrainingModel::typicalDailyLoad();
   state.chronic = state.acute;
-  return player_states.emplace(player_id, state).first->second;
+  return player_states.try_emplace(player_id, state).first->second;
 }
 
 const PlayerTrainingState* TrainingRegistry::findPlayer(
@@ -294,12 +296,13 @@ float sessionInjuryExposure(TrainingSlot slot,
 std::optional<MicrocycleDay> dayFor(int days_since_last, int days_to_next,
                                     std::int32_t ordinal)
 {
+  using enum MicrocycleDay;
   if (days_to_next == 0) return std::nullopt;
-  if (days_to_next == 1) return MicrocycleDay::MdMinus1;
-  if (days_since_last == 1) return MicrocycleDay::MdPlus1;
+  if (days_to_next == 1) return MdMinus1;
+  if (days_since_last == 1) return MdPlus1;
   if (days_to_next >= 2 && days_to_next <= 4)
     return static_cast<MicrocycleDay>(6 - days_to_next);
-  if (days_since_last == 2) return MicrocycleDay::MdPlus2;
+  if (days_since_last == 2) return MdPlus2;
   // Long gaps (breaks, pre-season): four-day blocks of rest, speed,
   // endurance and strength.
   const int horizon =
@@ -364,26 +367,27 @@ float recoveryShare(SessionType session)
 
 float sharpnessGain(TrainingSlot slot)
 {
+  using enum S;
   float gain = 0.0f;
   switch (slot.session)
   {
-    case S::MatchPrep:
+    case MatchPrep:
       gain = 0.45f;
       break;
-    case S::Tactical:
+    case Tactical:
       gain = 0.35f;
       break;
-    case S::Technical:
-    case S::Attacking:
-    case S::Defending:
+    case Technical:
+    case Attacking:
+    case Defending:
       gain = 0.25f;
       break;
-    case S::Fitness:
+    case Fitness:
       gain = 0.15f;
       break;
-    case S::Rest:
-    case S::Recovery:
-    case S::COUNT:
+    case Rest:
+    case Recovery:
+    case COUNT:
       break;
   }
   return gain * SLOT_INTENSITY[idx(slot.intensity)];
@@ -407,10 +411,11 @@ float workloadRiskMultiplier(const PlayerTrainingState& state)
 
 WorkloadRisk workloadRisk(const PlayerTrainingState& state, float condition)
 {
+  using enum WorkloadRisk;
   const float ratio = workloadRatio(state);
-  if (ratio > 1.5f || condition < 55.0f) return WorkloadRisk::High;
-  if (ratio > 1.3f || condition < 70.0f) return WorkloadRisk::Moderate;
-  return WorkloadRisk::Low;
+  if (ratio > 1.5f || condition < 55.0f) return High;
+  if (ratio > 1.3f || condition < 70.0f) return Moderate;
+  return Low;
 }
 
 void rollDay(PlayerTrainingState& state)
@@ -448,8 +453,8 @@ std::array<float, 9> scheduleAttributeMix(const TeamTrainingPlan& plan)
     for (std::size_t stat = 0; stat < STAT_COUNT; ++stat)
       mix[stat] += load * SESSION_MIX[idx(slot.session)][stat];
   }
-  const float total = std::accumulate(mix.begin(), mix.end(), 0.0f);
-  if (total > 0.0f)
+  if (const float total = std::accumulate(mix.begin(), mix.end(), 0.0f);
+      total > 0.0f)
   {
     for (float& value : mix) value /= total;
   }
@@ -459,26 +464,27 @@ std::array<float, 9> scheduleAttributeMix(const TeamTrainingPlan& plan)
 std::array<float, 9> focusAttributeMix(TrainingFocus focus,
                                        const StatsConfig& config)
 {
+  using enum TrainingFocus;
   switch (focus)
   {
-    case TrainingFocus::Physical:
+    case Physical:
       return {1, 0, 0, 0, 0, 1, 1, 0, 0};
-    case TrainingFocus::Attacking:
+    case Attacking:
       return {0, 1, 0, 1, 0, 0, 0, 0, 0};
-    case TrainingFocus::Playmaking:
+    case Playmaking:
       return {0, 0, 1, 0, 0, 0, 0, 1, 0};
-    case TrainingFocus::Defending:
+    case Defending:
       return {0, 0, 0, 0, 1, 1, 0, 0, 0};
-    case TrainingFocus::Goalkeeping:
+    case Goalkeeping:
       return {0, 0, 0, 0, 0, 0, 0, 0, 1};
-    case TrainingFocus::RetrainStriker:
+    case RetrainStriker:
       return roleWeights(config, RoleUtils::getBroadCategory(PlayerRole::ST));
-    case TrainingFocus::RetrainMidfielder:
+    case RetrainMidfielder:
       return roleWeights(config, RoleUtils::getBroadCategory(PlayerRole::CM));
-    case TrainingFocus::RetrainDefender:
+    case RetrainDefender:
       return roleWeights(config, RoleUtils::getBroadCategory(PlayerRole::CB));
-    case TrainingFocus::None:
-    case TrainingFocus::COUNT:
+    case None:
+    case COUNT:
       break;
   }
   return {};
@@ -610,26 +616,27 @@ float familiarityLoss(const TacticSnapshot& before, const TacticSnapshot& after)
 
 float familiarityGain(TrainingSlot slot)
 {
+  using enum S;
   float gain = 0.0f;
   switch (slot.session)
   {
-    case S::Tactical:
+    case Tactical:
       gain = 0.06f;
       break;
-    case S::MatchPrep:
+    case MatchPrep:
       gain = 0.04f;
       break;
-    case S::Attacking:
-    case S::Defending:
+    case Attacking:
+    case Defending:
       gain = 0.015f;
       break;
-    case S::Technical:
+    case Technical:
       gain = 0.01f;
       break;
-    case S::Rest:
-    case S::Recovery:
-    case S::Fitness:
-    case S::COUNT:
+    case Rest:
+    case Recovery:
+    case Fitness:
+    case COUNT:
       break;
   }
   return gain * SLOT_INTENSITY[idx(slot.intensity)];
@@ -638,9 +645,9 @@ float familiarityGain(TrainingSlot slot)
 std::vector<TrainingAdvice> advise(const AdviceInputs& inputs)
 {
   std::vector<TrainingAdvice> advice;
-  const auto push = [&](AdviceSeverity severity, const char* key,
-                        std::vector<std::string> args)
-  { advice.push_back({severity, key, std::move(args)}); };
+  const auto push = [&advice](AdviceSeverity severity, const char* key,
+                              std::vector<std::string> args)
+  { advice.emplace_back(severity, key, std::move(args)); };
 
   if (!inputs.spike_players.empty())
   {
@@ -707,24 +714,25 @@ std::vector<TrainingAdvice> advise(const AdviceInputs& inputs)
 
 const char* sessionKey(SessionType session)
 {
+  using enum S;
   switch (session)
   {
-    case S::Rest:
+    case Rest:
       return "TRAINING_SESSION_REST";
-    case S::Recovery:
+    case Recovery:
       return "TRAINING_SESSION_RECOVERY";
-    case S::Fitness:
+    case Fitness:
       return "TRAINING_SESSION_FITNESS";
-    case S::Technical:
+    case Technical:
       return "TRAINING_SESSION_TECHNICAL";
-    case S::Attacking:
+    case Attacking:
       return "TRAINING_SESSION_ATTACKING";
-    case S::Defending:
+    case Defending:
       return "TRAINING_SESSION_DEFENDING";
-    case S::Tactical:
+    case Tactical:
       return "TRAINING_SESSION_TACTICAL";
-    case S::MatchPrep:
-    case S::COUNT:
+    case MatchPrep:
+    case COUNT:
       break;
   }
   return "TRAINING_SESSION_MATCH_PREP";
@@ -732,14 +740,15 @@ const char* sessionKey(SessionType session)
 
 const char* intensityKey(TrainingIntensity intensity)
 {
+  using enum TrainingIntensity;
   switch (intensity)
   {
-    case I::Low:
+    case Low:
       return "TRAINING_INTENSITY_LOW";
-    case I::High:
+    case High:
       return "TRAINING_INTENSITY_HIGH";
-    case I::Normal:
-    case I::COUNT:
+    case Normal:
+    case COUNT:
       break;
   }
   return "TRAINING_INTENSITY_NORMAL";
@@ -747,22 +756,23 @@ const char* intensityKey(TrainingIntensity intensity)
 
 const char* presetKey(TrainingPreset preset)
 {
+  using enum TrainingPreset;
   switch (preset)
   {
-    case TrainingPreset::Fitness:
+    case Fitness:
       return "TRAINING_PRESET_FITNESS";
-    case TrainingPreset::Attacking:
+    case Attacking:
       return "TRAINING_PRESET_ATTACKING";
-    case TrainingPreset::Defending:
+    case Defending:
       return "TRAINING_PRESET_DEFENDING";
-    case TrainingPreset::YouthDevelopment:
+    case YouthDevelopment:
       return "TRAINING_PRESET_YOUTH";
-    case TrainingPreset::Light:
+    case Light:
       return "TRAINING_PRESET_LIGHT";
-    case TrainingPreset::Custom:
+    case Custom:
       return "TRAINING_PRESET_CUSTOM";
-    case TrainingPreset::Balanced:
-    case TrainingPreset::COUNT:
+    case Balanced:
+    case COUNT:
       break;
   }
   return "TRAINING_PRESET_BALANCED";
@@ -770,26 +780,27 @@ const char* presetKey(TrainingPreset preset)
 
 const char* focusKey(TrainingFocus focus)
 {
+  using enum TrainingFocus;
   switch (focus)
   {
-    case TrainingFocus::Physical:
+    case Physical:
       return "TRAINING_FOCUS_PHYSICAL";
-    case TrainingFocus::Attacking:
+    case Attacking:
       return "TRAINING_FOCUS_ATTACKING";
-    case TrainingFocus::Playmaking:
+    case Playmaking:
       return "TRAINING_FOCUS_PLAYMAKING";
-    case TrainingFocus::Defending:
+    case Defending:
       return "TRAINING_FOCUS_DEFENDING";
-    case TrainingFocus::Goalkeeping:
+    case Goalkeeping:
       return "TRAINING_FOCUS_GOALKEEPING";
-    case TrainingFocus::RetrainStriker:
+    case RetrainStriker:
       return "TRAINING_FOCUS_RETRAIN_ST";
-    case TrainingFocus::RetrainMidfielder:
+    case RetrainMidfielder:
       return "TRAINING_FOCUS_RETRAIN_MID";
-    case TrainingFocus::RetrainDefender:
+    case RetrainDefender:
       return "TRAINING_FOCUS_RETRAIN_DEF";
-    case TrainingFocus::None:
-    case TrainingFocus::COUNT:
+    case None:
+    case COUNT:
       break;
   }
   return "TRAINING_FOCUS_NONE";
@@ -797,20 +808,21 @@ const char* focusKey(TrainingFocus focus)
 
 const char* dayKey(MicrocycleDay day)
 {
+  using enum MicrocycleDay;
   switch (day)
   {
-    case MicrocycleDay::MdPlus1:
+    case MdPlus1:
       return "TRAINING_DAY_MD_PLUS_1";
-    case MicrocycleDay::MdPlus2:
+    case MdPlus2:
       return "TRAINING_DAY_MD_PLUS_2";
-    case MicrocycleDay::MdMinus4:
+    case MdMinus4:
       return "TRAINING_DAY_MD_MINUS_4";
-    case MicrocycleDay::MdMinus3:
+    case MdMinus3:
       return "TRAINING_DAY_MD_MINUS_3";
-    case MicrocycleDay::MdMinus2:
+    case MdMinus2:
       return "TRAINING_DAY_MD_MINUS_2";
-    case MicrocycleDay::MdMinus1:
-    case MicrocycleDay::COUNT:
+    case MdMinus1:
+    case COUNT:
       break;
   }
   return "TRAINING_DAY_MD_MINUS_1";
@@ -818,13 +830,14 @@ const char* dayKey(MicrocycleDay day)
 
 const char* riskKey(WorkloadRisk risk)
 {
+  using enum WorkloadRisk;
   switch (risk)
   {
-    case WorkloadRisk::Moderate:
+    case Moderate:
       return "TRAINING_RISK_MODERATE";
-    case WorkloadRisk::High:
+    case High:
       return "TRAINING_RISK_HIGH";
-    case WorkloadRisk::Low:
+    case Low:
       break;
   }
   return "TRAINING_RISK_LOW";
@@ -894,6 +907,7 @@ void rollWorkloads(GameData& gamedata)
 
 double trainPlayer(GameData& gamedata, Player& player, std::int32_t ordinal)
 {
+  using enum S;
   const TeamID team_id = player.getTeamId();
   if (team_id == FREE_AGENTS_TEAM_ID) return 0.0;
   TrainingRegistry& registry = gamedata.getTraining();
@@ -909,17 +923,17 @@ double trainPlayer(GameData& gamedata, Player& player, std::int32_t ordinal)
     if (since_played == 1)
     {
       // Played outside the club's rhythm: recovery, then a day off.
-      slot = TrainingSlot{S::Recovery, I::Low};
+      slot = TrainingSlot{Recovery, I::Low};
     }
     else if (since_played == 2)
     {
-      slot = TrainingSlot{S::Rest, I::Low};
+      slot = TrainingSlot{Rest, I::Low};
     }
     else if (plan->today.day == MicrocycleDay::MdPlus1 &&
              !plan->today.adjusted && plan->last_match_day > 0)
     {
       // MD+1: starters recover, the others do a compensation session.
-      slot = TrainingSlot{S::Fitness, I::Normal};
+      slot = TrainingSlot{Fitness, I::Normal};
     }
   }
 
@@ -952,7 +966,8 @@ double trainPlayer(GameData& gamedata, Player& player, std::int32_t ordinal)
       gamedata.getStaff().effects(team_id).injury_prevention);
 }
 
-double recordMatchLoad(GameData& gamedata, Player& player, std::uint8_t minutes)
+double recordMatchLoad(GameData& gamedata, const Player& player,
+                       std::uint8_t minutes)
 {
   PlayerTrainingState& state = gamedata.getTraining().player(player.getId());
   state.pending +=
@@ -1050,8 +1065,8 @@ AdviceInputs adviceInputs(const GameData& gamedata, TeamID team_id,
     condition_total += dynamics.condition;
     ++fit;
     if (dynamics.condition < 75.0f) ++inputs.tired_players;
-    const PlayerTrainingState* state = registry.findPlayer(player.getId());
-    if (state && TrainingModel::workloadRatio(*state) > 1.5f)
+    if (const PlayerTrainingState* state = registry.findPlayer(player.getId());
+        state && TrainingModel::workloadRatio(*state) > 1.5f)
       inputs.spike_players.push_back(player.getName());
     if (player.getAge() <= 21 &&
         player.getPotential() - static_cast<float>(player.getOverall(config)) >=

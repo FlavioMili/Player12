@@ -85,24 +85,25 @@ int GameController::advanceToNextEvent(int max_days)
 
 const char* GameController::continueStopKey(ContinueStop stop)
 {
+  using enum ContinueStop;
   switch (stop)
   {
-    case ContinueStop::None:
-    case ContinueStop::Fixture:
+    case None:
+    case Fixture:
       return "CONTINUE_STOP_FIXTURE";
-    case ContinueStop::Message:
+    case Message:
       return "CONTINUE_STOP_MESSAGE";
-    case ContinueStop::Decision:
+    case Decision:
       return "CONTINUE_STOP_DECISION";
-    case ContinueStop::WindowOpened:
+    case WindowOpened:
       return "CONTINUE_STOP_WINDOW";
-    case ContinueStop::NewSeason:
+    case NewSeason:
       return "CONTINUE_STOP_NEW_SEASON";
-    case ContinueStop::LostJob:
+    case LostJob:
       return "CONTINUE_STOP_LOST_JOB";
-    case ContinueStop::Requested:
+    case Requested:
       return "CONTINUE_STOP_REQUESTED";
-    case ContinueStop::DayLimit:
+    case DayLimit:
       break;
   }
   return "CONTINUE_STOP_DAY_LIMIT";
@@ -146,6 +147,7 @@ void GameController::markSeasonReviewSeen(uint16_t season)
 std::optional<GameController::BoardTargets> GameController::getBoardTargets()
     const
 {
+  using enum ObjectiveGrade;
   const auto club = managedClub();
   if (!game || !club) return std::nullopt;
   const BoardState& board = game->getWorld().getBoardState();
@@ -168,7 +170,7 @@ std::optional<GameController::BoardTargets> GameController::getBoardTargets()
   targets.cup_still_in = run.still_in;
   targets.cup_grade =
       BoardModel::gradeCup(board.cup_objective, run.rounds_left, run.won,
-                           run.still_in || !run.rounds_left);
+                           run.still_in || !run.rounds_left.has_value());
 
   const Finances& finances = team.getFinances();
   targets.finances = board.finance_objective;
@@ -184,15 +186,14 @@ std::optional<GameController::BoardTargets> GameController::getBoardTargets()
   targets.young_regulars = game->youngRegulars(team.getId());
   targets.youth_grade =
       BoardModel::gradeYouth(board.youth_target, targets.young_regulars);
-  if (targets.youth_grade == ObjectiveGrade::Failed)
-    targets.youth_grade = ObjectiveGrade::Missed;
+  if (targets.youth_grade == Failed) targets.youth_grade = Missed;
   // A board of an older save sets these targets at the next season start;
   // until then they are not judged (SeasonVerdictInputs::targets_set).
   if (!board.targets_set)
   {
-    targets.cup_grade = ObjectiveGrade::Met;
-    targets.finance_grade = ObjectiveGrade::Met;
-    targets.youth_grade = ObjectiveGrade::Met;
+    targets.cup_grade = Met;
+    targets.finance_grade = Met;
+    targets.youth_grade = Met;
   }
   return targets;
 }

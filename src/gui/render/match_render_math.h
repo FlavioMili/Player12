@@ -33,6 +33,19 @@ struct Vec3
   float x = 0.0f;
   float y = 0.0f;
   float z = 0.0f;
+
+  friend constexpr Vec3 operator+(Vec3 a, Vec3 b)
+  {
+    return {a.x + b.x, a.y + b.y, a.z + b.z};
+  }
+  friend constexpr Vec3 operator-(Vec3 a, Vec3 b)
+  {
+    return {a.x - b.x, a.y - b.y, a.z - b.z};
+  }
+  friend constexpr Vec3 operator*(Vec3 a, float s)
+  {
+    return {a.x * s, a.y * s, a.z * s};
+  }
 };
 
 struct Vec4
@@ -43,18 +56,6 @@ struct Vec4
   float w = 0.0f;
 };
 
-constexpr Vec3 operator+(Vec3 a, Vec3 b)
-{
-  return {a.x + b.x, a.y + b.y, a.z + b.z};
-}
-constexpr Vec3 operator-(Vec3 a, Vec3 b)
-{
-  return {a.x - b.x, a.y - b.y, a.z - b.z};
-}
-constexpr Vec3 operator*(Vec3 a, float s)
-{
-  return {a.x * s, a.y * s, a.z * s};
-}
 constexpr float dot(Vec3 a, Vec3 b)
 {
   return a.x * b.x + a.y * b.y + a.z * b.z;
@@ -79,7 +80,10 @@ struct Mat4
   static constexpr Mat4 identity()
   {
     Mat4 result;
-    result.m[0] = result.m[5] = result.m[10] = result.m[15] = 1.0f;
+    result.m[0] = 1.0f;
+    result.m[5] = 1.0f;
+    result.m[10] = 1.0f;
+    result.m[15] = 1.0f;
     return result;
   }
 
@@ -90,21 +94,21 @@ struct Mat4
             m[8] * p.x + m[9] * p.y + m[10] * p.z + m[11],
             m[12] * p.x + m[13] * p.y + m[14] * p.z + m[15]};
   }
-};
 
-constexpr Mat4 operator*(const Mat4& a, const Mat4& b)
-{
-  Mat4 result;
-  for (std::size_t row = 0; row < 4; ++row)
-    for (std::size_t column = 0; column < 4; ++column)
-    {
-      float sum = 0.0f;
-      for (std::size_t k = 0; k < 4; ++k)
-        sum += a.m[row * 4 + k] * b.m[k * 4 + column];
-      result.m[row * 4 + column] = sum;
-    }
-  return result;
-}
+  friend constexpr Mat4 operator*(const Mat4& a, const Mat4& b)
+  {
+    Mat4 result;
+    for (std::size_t row = 0; row < 4; ++row)
+      for (std::size_t column = 0; column < 4; ++column)
+      {
+        float sum = 0.0f;
+        for (std::size_t k = 0; k < 4; ++k)
+          sum += a.m[row * 4 + k] * b.m[k * 4 + column];
+        result.m[row * 4 + column] = sum;
+      }
+    return result;
+  }
+};
 
 /** Right-handed view matrix; the camera looks down its local -Z axis. */
 inline Mat4 lookAt(Vec3 eye, Vec3 target, Vec3 up)
@@ -337,31 +341,32 @@ class ShirtNumbers
 
   static std::array<int, 3> preferred(PlayerRole role)
   {
+    using enum PlayerRole;
     switch (role)
     {
-      case PlayerRole::GK:
+      case GK:
         return {1, 0, 0};
-      case PlayerRole::RB:
+      case RB:
         return {2, 3, 0};
-      case PlayerRole::LB:
+      case LB:
         return {3, 2, 0};
-      case PlayerRole::CB:
+      case CB:
         return {4, 5, 6};
-      case PlayerRole::CDM:
+      case CDM:
         return {6, 4, 8};
-      case PlayerRole::CM:
+      case CM:
         return {8, 6, 10};
-      case PlayerRole::CAM:
+      case CAM:
         return {10, 8, 7};
-      case PlayerRole::RM:
-      case PlayerRole::RW:
+      case RM:
+      case RW:
         return {7, 11, 0};
-      case PlayerRole::LM:
-      case PlayerRole::LW:
+      case LM:
+      case LW:
         return {11, 7, 0};
-      case PlayerRole::ST:
+      case ST:
         return {9, 10, 11};
-      case PlayerRole::UNKNOWN:
+      case UNKNOWN:
         break;
     }
     return {0, 0, 0};

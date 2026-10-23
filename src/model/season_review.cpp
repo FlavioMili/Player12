@@ -10,7 +10,9 @@
 
 #include <algorithm>
 #include <cmath>
+#include <memory>
 #include <string>
+#include <utility>
 
 #include "database/sqlite_rows.h"
 #include "model/inbox.h"
@@ -31,15 +33,16 @@ constexpr float DELIGHTED_SCORE = 1.5f;
 constexpr float PLEASED_SCORE = 0.5f;
 float gradeScore(ObjectiveGrade grade)
 {
+  using enum ObjectiveGrade;
   switch (grade)
   {
-    case ObjectiveGrade::Exceeded:
+    case Exceeded:
       return 1.0f;
-    case ObjectiveGrade::Met:
+    case Met:
       return 0.0f;
-    case ObjectiveGrade::Missed:
+    case Missed:
       return -1.0f;
-    case ObjectiveGrade::Failed:
+    case Failed:
       break;
   }
   return -2.5f;
@@ -47,10 +50,11 @@ float gradeScore(ObjectiveGrade grade)
 
 ObjectiveGrade gradeOf(float score)
 {
-  if (score >= 1.0f) return ObjectiveGrade::Exceeded;
-  if (score >= 0.0f) return ObjectiveGrade::Met;
-  if (score >= -1.0f) return ObjectiveGrade::Missed;
-  return ObjectiveGrade::Failed;
+  using enum ObjectiveGrade;
+  if (score >= 1.0f) return Exceeded;
+  if (score >= 0.0f) return Met;
+  if (score >= -1.0f) return Missed;
+  return Failed;
 }
 
 InboxMessage message(const GameDateValue& date, InboxCategory category,
@@ -72,6 +76,7 @@ namespace SeasonReviewModel
 {
 SeasonVerdictResult judge(const SeasonVerdictInputs& inputs)
 {
+  using enum SeasonVerdict;
   SeasonVerdictResult result;
 
   // League: places against the target, a quarter of the table per unit.
@@ -104,43 +109,44 @@ SeasonVerdictResult judge(const SeasonVerdictInputs& inputs)
 
   if (!judged)
   {
-    result.verdict = score >= PLEASED_SCORE ? SeasonVerdict::Pleased
-                                            : SeasonVerdict::Satisfied;
+    result.verdict = score >= PLEASED_SCORE ? Pleased : Satisfied;
     return result;
   }
 
   const bool failed =
       league < 0.0f ||
       (result.finances == ObjectiveGrade::Failed && league < 1.0f);
-  const bool unexpected_drop =
-      inputs.relegated && inputs.objective != BoardObjective::AvoidRelegation;
-  if (failed && (result.confidence < SACK_CONFIDENCE || unexpected_drop ||
+  if (const bool unexpected_drop =
+          inputs.relegated &&
+          inputs.objective != BoardObjective::AvoidRelegation;
+      failed && (result.confidence < SACK_CONFIDENCE || unexpected_drop ||
                  (inputs.warned_last_season && league < 0.0f)))
-    result.verdict = SeasonVerdict::Sacked;
+    result.verdict = Sacked;
   else if (failed || result.confidence < WorldTuning::Board::WARNING_THRESHOLD)
-    result.verdict = SeasonVerdict::Warned;
+    result.verdict = Warned;
   else if (score >= DELIGHTED_SCORE)
-    result.verdict = SeasonVerdict::Delighted;
+    result.verdict = Delighted;
   else if (score >= PLEASED_SCORE)
-    result.verdict = SeasonVerdict::Pleased;
+    result.verdict = Pleased;
   else
-    result.verdict = SeasonVerdict::Satisfied;
+    result.verdict = Satisfied;
   return result;
 }
 
 const char* verdictKey(SeasonVerdict verdict)
 {
+  using enum SeasonVerdict;
   switch (verdict)
   {
-    case SeasonVerdict::Delighted:
+    case Delighted:
       return "SEASON_VERDICT_DELIGHTED";
-    case SeasonVerdict::Pleased:
+    case Pleased:
       return "SEASON_VERDICT_PLEASED";
-    case SeasonVerdict::Satisfied:
+    case Satisfied:
       return "SEASON_VERDICT_SATISFIED";
-    case SeasonVerdict::Warned:
+    case Warned:
       return "SEASON_VERDICT_WARNED";
-    case SeasonVerdict::Sacked:
+    case Sacked:
       break;
   }
   return "SEASON_VERDICT_SACKED";
@@ -148,15 +154,16 @@ const char* verdictKey(SeasonVerdict verdict)
 
 const char* gradeKey(ObjectiveGrade grade)
 {
+  using enum ObjectiveGrade;
   switch (grade)
   {
-    case ObjectiveGrade::Exceeded:
+    case Exceeded:
       return "SEASON_GRADE_EXCEEDED";
-    case ObjectiveGrade::Met:
+    case Met:
       return "SEASON_GRADE_MET";
-    case ObjectiveGrade::Missed:
+    case Missed:
       return "SEASON_GRADE_MISSED";
-    case ObjectiveGrade::Failed:
+    case Failed:
       break;
   }
   return "SEASON_GRADE_FAILED";
@@ -165,6 +172,7 @@ const char* gradeKey(ObjectiveGrade grade)
 void postEvents(Inbox& inbox, const GameDateValue& date,
                 const SeasonReview& review, const EventNames& names)
 {
+  using enum SeasonVerdict;
   const TeamID club = review.team_id;
   const std::string position = std::to_string(review.position);
   if (review.champion)
@@ -205,19 +213,19 @@ void postEvents(Inbox& inbox, const GameDateValue& date,
   std::string body = "INBOX_SEASON_REVIEW_";
   switch (review.result.verdict)
   {
-    case SeasonVerdict::Delighted:
+    case Delighted:
       body += "DELIGHTED_BODY";
       break;
-    case SeasonVerdict::Pleased:
+    case Pleased:
       body += "PLEASED_BODY";
       break;
-    case SeasonVerdict::Satisfied:
+    case Satisfied:
       body += "SATISFIED_BODY";
       break;
-    case SeasonVerdict::Warned:
+    case Warned:
       body += "WARNED_BODY";
       break;
-    case SeasonVerdict::Sacked:
+    case Sacked:
       body += "SACKED_BODY";
       break;
   }
@@ -299,14 +307,14 @@ SeasonReview* SeasonArchive::review(std::uint16_t season)
 {
   const auto found =
       std::ranges::find(season_reviews, season, &SeasonReview::season);
-  return found == season_reviews.end() ? nullptr : &*found;
+  return found == season_reviews.end() ? nullptr : std::to_address(found);
 }
 
 const SeasonReview* SeasonArchive::review(std::uint16_t season) const
 {
   const auto found =
       std::ranges::find(season_reviews, season, &SeasonReview::season);
-  return found == season_reviews.end() ? nullptr : &*found;
+  return found == season_reviews.end() ? nullptr : std::to_address(found);
 }
 
 const SeasonReview* SeasonArchive::unseenReview() const
@@ -337,7 +345,7 @@ void SeasonArchive::load(const DatabaseConnection& db)
       "SELECT season, start_year, league_id, position, team_id, played, "
       "won, drawn, lost, goals_for, goals_against, points FROM "
       "SeasonTables ORDER BY season, league_id, position;",
-      [&](sqlite3_stmt* stmt)
+      [this](sqlite3_stmt* stmt)
       {
         const auto season = column<std::uint16_t>(stmt, 0);
         start_years[season] = column<std::uint16_t>(stmt, 1);
@@ -365,7 +373,7 @@ void SeasonArchive::load(const DatabaseConnection& db)
       "next_objective, next_target, seen, cup_objective, finance_objective, "
       "youth_target, young_regulars, next_cup, next_finances, next_youth "
       "FROM SeasonReviews ORDER BY season;",
-      [&](sqlite3_stmt* stmt)
+      [this](sqlite3_stmt* stmt)
       {
         const auto grade = [stmt](int index)
         {
@@ -496,7 +504,7 @@ void SeasonArchive::save(const DatabaseConnection& db) const
         integer(6, review.position);
         integer(7, review.league_size);
         integer(8, review.target_position);
-        integer(9, static_cast<int>(review.objective));
+        integer(9, static_cast<int>(std::to_underlying(review.objective)));
         integer(10, review.played);
         integer(11, review.won);
         integer(12, review.drawn);
@@ -515,25 +523,29 @@ void SeasonArchive::save(const DatabaseConnection& db) const
         integer(25, review.balance);
         sqlite3_bind_double(stmt, 26,
                             static_cast<double>(review.confidence_before));
-        integer(27, static_cast<int>(review.result.verdict));
-        integer(28, static_cast<int>(review.result.league));
-        integer(29, static_cast<int>(review.result.cup));
-        integer(30, static_cast<int>(review.result.finances));
-        integer(31, static_cast<int>(review.result.youth));
+        integer(27,
+                static_cast<int>(std::to_underlying(review.result.verdict)));
+        integer(28, static_cast<int>(std::to_underlying(review.result.league)));
+        integer(29, static_cast<int>(std::to_underlying(review.result.cup)));
+        integer(30,
+                static_cast<int>(std::to_underlying(review.result.finances)));
+        integer(31, static_cast<int>(std::to_underlying(review.result.youth)));
         sqlite3_bind_double(stmt, 32,
                             static_cast<double>(review.result.confidence));
         if (review.next_objective)
-          integer(33, static_cast<int>(*review.next_objective));
+          integer(33,
+                  static_cast<int>(std::to_underlying(*review.next_objective)));
         else
           sqlite3_bind_null(stmt, 33);
         integer(34, review.next_target);
         integer(35, review.seen ? 1 : 0);
-        integer(36, static_cast<int>(review.cup_objective));
-        integer(37, static_cast<int>(review.finance_objective));
+        integer(36, static_cast<int>(std::to_underlying(review.cup_objective)));
+        integer(37,
+                static_cast<int>(std::to_underlying(review.finance_objective)));
         integer(38, review.youth_target);
         integer(39, review.young_regulars);
-        integer(40, static_cast<int>(review.next_cup));
-        integer(41, static_cast<int>(review.next_finances));
+        integer(40, static_cast<int>(std::to_underlying(review.next_cup)));
+        integer(41, static_cast<int>(std::to_underlying(review.next_finances)));
         integer(42, review.next_youth);
       });
 }

@@ -70,6 +70,7 @@ set(FM_CORE_SOURCES
     database/save_manager.cpp
     database/sqlite_rows.h
 
+    global/background_task.h
     global/build_info.h
     global/build_info.cpp
     global/crash_report.h

@@ -16,6 +16,7 @@ target_link_libraries(runtime_editor_ui_tests PRIVATE GTest::gtest_main fm_ui)
 set_property(TARGET runtime_editor_ui_tests PROPERTY TEST_LAUNCHER "${FM_TEST_LAUNCHER}")
 
 add_executable(unit_tests
+  test_background_task.cpp
   test_localization.cpp
   test_next_action.cpp
   test_opposition_report.cpp
@@ -72,6 +73,7 @@ set_property(TARGET unit_tests PROPERTY TEST_LAUNCHER "${FM_TEST_LAUNCHER}")
 # This target deliberately excludes all GUI sources. It is the fast headless
 # correctness and leak-check lane for model, controller, and persistence code.
 add_executable(core_unit_tests
+  test_background_task.cpp
   test_localization.cpp
   test_next_action.cpp
   test_opposition_report.cpp

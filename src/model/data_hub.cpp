@@ -13,6 +13,7 @@
 #include <nlohmann/json.hpp>
 #include <numeric>
 #include <unordered_map>
+#include <utility>
 
 #include "model/match_engine.h"
 #include "model/world_rng.h"
@@ -85,33 +86,34 @@ struct SideTotals
   /** @p conversion: league goals per shot on target. */
   float value(HubMetric metric, float conversion) const
   {
-    const float n = static_cast<float>(std::max(matches, 1));
+    const auto n = static_cast<float>(std::max(matches, 1));
+    using enum HubMetric;
     switch (metric)
     {
-      case HubMetric::GoalsFor:
+      case GoalsFor:
         return goals_for / n;
-      case HubMetric::GoalsAgainst:
+      case GoalsAgainst:
         return goals_against / n;
-      case HubMetric::XgFor:
+      case XgFor:
         return xg_for / n;
-      case HubMetric::XgAgainst:
+      case XgAgainst:
         return xg_against / n;
-      case HubMetric::ShotsFor:
+      case ShotsFor:
         return shots_for / n;
-      case HubMetric::ShotsAgainst:
+      case ShotsAgainst:
         return shots_against / n;
-      case HubMetric::PassCompletion:
+      case PassCompletion:
         return passes_attempted > 0.0f
                    ? 100.0f * passes_completed / passes_attempted
                    : 0.0f;
-      case HubMetric::Finishing:
+      case Finishing:
         return (goals_for - xg_for) / n;
-      case HubMetric::GoalsPrevented:
+      case GoalsPrevented:
         return (on_target_against * conversion - goals_against) / n;
-      case HubMetric::SetPieceShare:
+      case SetPieceShare:
         return set_piece_base > 0.0f ? 100.0f * set_piece_shots / set_piece_base
                                      : 0.0f;
-      case HubMetric::COUNT:
+      case COUNT:
         break;
     }
     return 0.0f;
@@ -120,8 +122,9 @@ struct SideTotals
 
 bool lowerIsBetter(HubMetric metric)
 {
-  return metric == HubMetric::GoalsAgainst || metric == HubMetric::XgAgainst ||
-         metric == HubMetric::ShotsAgainst;
+  using enum HubMetric;
+  return metric == GoalsAgainst || metric == XgAgainst ||
+         metric == ShotsAgainst;
 }
 
 json shotToJson(const ShotRecord& shot)
@@ -130,7 +133,7 @@ json shotToJson(const ShotRecord& shot)
                     (shot.set_piece ? SHOT_SET_PIECE : 0) |
                     (shot.penalty ? SHOT_PENALTY : 0);
   return json::array({shot.minute, shot.period, shot.home ? 1 : 0, shot.player,
-                      shot.x, shot.y, shot.xg, static_cast<int>(shot.outcome),
+                      shot.x, shot.y, shot.xg, std::to_underlying(shot.outcome),
                       flags});
 }
 
@@ -147,7 +150,7 @@ std::optional<ShotRecord> shotFromJson(const json& value)
   shot.y = std::clamp(value[5].get<float>(), 0.0f, 1.0f);
   shot.xg = std::clamp(value[6].get<float>(), 0.0f, 1.0f);
   const int outcome = value[7].get<int>();
-  if (outcome < 0 || outcome > static_cast<int>(ShotOutcome::Woodwork))
+  if (outcome < 0 || outcome > std::to_underlying(ShotOutcome::Woodwork))
     return std::nullopt;
   shot.outcome = static_cast<ShotOutcome>(outcome);
   if (value.size() > 8)
@@ -276,8 +279,8 @@ ManagedMatchSnapshot captureSnapshot(const MatchEngine& engine,
       sides(stats.homePassesCompleted, stats.awayPassesCompleted);
   snapshot.shots = extractShots(engine.getEvents());
   // The tracker saw the same shots in the same order as the SHOT events.
-  const std::vector<TrackedShot>& kinds = engine.getTracker().shots();
-  if (kinds.size() == snapshot.shots.size())
+  if (const std::vector<TrackedShot>& kinds = engine.getTracker().shots();
+      kinds.size() == snapshot.shots.size())
   {
     for (std::size_t index = 0; index < kinds.size(); ++index)
     {
@@ -341,11 +344,11 @@ TeamAnalytics DataHub::buildTeamAnalytics(const DataHubInput& input)
     const TeamMatchStats& own = home ? report->home_stats : report->away_stats;
     const TeamMatchStats& other =
         home ? report->away_stats : report->home_stats;
-    analytics.trend.push_back(
-        {report->date, home ? report->away_team_id : report->home_team_id, home,
-         home ? report->home_goals : report->away_goals,
-         home ? report->away_goals : report->home_goals, own.expected_goals,
-         other.expected_goals, own.shots, other.shots});
+    analytics.trend.emplace_back(
+        report->date, home ? report->away_team_id : report->home_team_id, home,
+        home ? report->home_goals : report->away_goals,
+        home ? report->away_goals : report->home_goals, own.expected_goals,
+        other.expected_goals, own.shots, other.shots);
   }
   for (std::size_t index = 0; index < analytics.trend.size(); ++index)
   {
@@ -521,7 +524,7 @@ std::vector<PlayerAnalyticsRow> DataHub::buildPlayerAnalytics(
     for (const PlayerMatchSnapshot& line : snapshot.players)
     {
       const auto index = detail.indexOf(line.player);
-      if (!index) continue;
+      if (!index.has_value()) continue;
       const DetailPlayer& tracked = detail.players[*index];
       PlayerAnalyticsRow& row = rowFor(line.player);
       row.detail_minutes += line.minutes;
@@ -546,17 +549,18 @@ std::vector<PlayerAnalyticsRow> DataHub::buildPlayerAnalytics(
 
 float DataHub::leaderValue(const PlayerAnalyticsRow& row, LeaderMetric metric)
 {
+  using enum LeaderMetric;
   switch (metric)
   {
-    case LeaderMetric::ExpectedGoals:
+    case ExpectedGoals:
       return row.xg;
-    case LeaderMetric::ExpectedAssists:
+    case ExpectedAssists:
       return row.xa;
-    case LeaderMetric::ProgressivePasses:
+    case ProgressivePasses:
       return static_cast<float>(row.progressive_passes);
-    case LeaderMetric::Pressures:
+    case Pressures:
       return static_cast<float>(row.pressures);
-    case LeaderMetric::COUNT:
+    case COUNT:
       break;
   }
   return 0.0f;
@@ -584,18 +588,18 @@ std::vector<std::size_t> DataHub::leaders(
 
 const char* leaderMetricKey(LeaderMetric metric)
 {
-  const auto index = static_cast<std::size_t>(metric);
+  const auto index = std::to_underlying(metric);
   return index < LEADER_METRIC_COUNT ? LEADER_KEYS[index] : "";
 }
 
 const char* hubMetricKey(HubMetric metric)
 {
-  const auto index = static_cast<std::size_t>(metric);
+  const auto index = std::to_underlying(metric);
   return index < HUB_METRIC_COUNT ? METRIC_KEYS[index] : "";
 }
 
 const char* hubMetricHelpKey(HubMetric metric)
 {
-  const auto index = static_cast<std::size_t>(metric);
+  const auto index = std::to_underlying(metric);
   return index < HUB_METRIC_COUNT ? METRIC_HELP_KEYS[index] : "";
 }

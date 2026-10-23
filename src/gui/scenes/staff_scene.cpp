@@ -13,9 +13,9 @@
 #include <algorithm>
 #include <array>
 #include <cmath>
-#include <cstdio>
 #include <format>
 #include <tuple>
+#include <utility>
 #include <vector>
 
 #include "controller/game_controller.h"
@@ -42,15 +42,16 @@ constexpr std::array<const char*, 4> DEPARTMENT_KEYS = {
 
 std::size_t departmentOf(StaffRole role)
 {
+  using enum StaffRole;
   switch (role)
   {
-    case StaffRole::Physio:
-    case StaffRole::SportsScientist:
+    case Physio:
+    case SportsScientist:
       return 1;
-    case StaffRole::Scout:
+    case Scout:
       return 2;
-    case StaffRole::YouthCoach:
-    case StaffRole::HeadOfYouth:
+    case YouthCoach:
+    case HeadOfYouth:
       return 3;
     default:
       return 0;
@@ -112,20 +113,20 @@ std::string keyAttributes(const StaffMember& member)
 
 const char* resultKey(GameController::StaffActionResult result)
 {
-  using Result = GameController::StaffActionResult;
+  using enum GameController::StaffActionResult;
   switch (result)
   {
-    case Result::RoleFull:
+    case RoleFull:
       return "STAFF_RESULT_ROLE_FULL";
-    case Result::CannotAfford:
+    case CannotAfford:
       return "STAFF_RESULT_CANNOT_AFFORD";
-    case Result::InvalidTerms:
+    case InvalidTerms:
       return "STAFF_RESULT_INVALID_TERMS";
-    case Result::NotAvailable:
-    case Result::UnknownStaff:
+    case NotAvailable:
+    case UnknownStaff:
       return "STAFF_RESULT_NOT_AVAILABLE";
-    case Result::NoClub:
-    case Result::Ok:
+    case NoClub:
+    case Ok:
       break;
   }
   return "STAFF_RESULT_NO_CLUB";
@@ -134,7 +135,11 @@ const char* resultKey(GameController::StaffActionResult result)
 
 StaffScene::StaffScene(GUIView* parent) : ManagementScene(parent) {}
 
-void StaffScene::update(float /*deltaTime*/) {}
+void StaffScene::update(float /*deltaTime*/)
+{
+  // Staff data changes only through scene actions; refresh() rebuilds the
+  // rows after navigation or an action, so no per-frame work is needed.
+}
 
 void StaffScene::refresh()
 {
@@ -218,10 +223,11 @@ void StaffScene::rebuildMarket()
   // Occupied posts per role, counted once.
   std::array<std::size_t, STAFF_ROLE_COUNT> employed{};
   for (const StaffMember* member : controller.getStaff(managed->get().getId()))
-    ++employed[static_cast<std::size_t>(member->role)];
+    ++employed[static_cast<std::size_t>(std::to_underlying(member->role))];
   for (const StaffMember* member : controller.getStaffMarket())
   {
-    if (role_filter >= 0 && static_cast<int>(member->role) != role_filter)
+    if (role_filter >= 0 &&
+        static_cast<int>(std::to_underlying(member->role)) != role_filter)
       continue;
     const int rating = StaffModel::rating(*member);
     if (rating < min_rating) continue;
@@ -234,7 +240,8 @@ void StaffScene::rebuildMarket()
     row.rating = rating;
     row.demand = Format::money(controller.getStaffWageDemand(member->id));
     row.hire_label = formatLocalized("STAFF_HIRE_FOR", {row.demand});
-    const auto role = static_cast<std::size_t>(member->role);
+    const auto role =
+        static_cast<std::size_t>(std::to_underlying(member->role));
     row.role_full = employed[role] >= StaffModel::ROLE_LIMITS[role];
     market_rows.push_back(std::move(row));
   }
@@ -257,8 +264,8 @@ void StaffScene::showResult(int result, const char* success_key)
 
 void StaffScene::renderContent()
 {
-  const auto managed = guiView->getController().getManagedTeam();
-  if (!managed) return;
+  if (const auto managed = guiView->getController().getManagedTeam(); !managed)
+    return;
   const Theme::Palette& palette = Theme::palette();
   UI::pageHeader(LOC("STAFF_TITLE"), LOC("STAFF_SUBTITLE"));
 
@@ -306,25 +313,28 @@ void StaffScene::renderContent()
 
   // Actions run after the tables so the rows are never rebuilt mid-draw.
   GameController& controller = guiView->getController();
+  using enum PendingAction::Kind;
   switch (pending.kind)
   {
-    case PendingAction::Kind::HIRE:
-      showResult(
-          static_cast<int>(controller.hireStaff(pending.id, pending.years)),
-          "STAFF_HIRED_TOAST");
+    case HIRE:
+      showResult(static_cast<int>(std::to_underlying(
+                     controller.hireStaff(pending.id, pending.years))),
+                 "STAFF_HIRED_TOAST");
       selected = 0;
       break;
-    case PendingAction::Kind::EXTEND:
-      showResult(static_cast<int>(
-                     controller.extendStaffContract(pending.id, pending.years)),
-                 "STAFF_EXTENDED_TOAST");
+    case EXTEND:
+      showResult(
+          static_cast<int>(std::to_underlying(
+              controller.extendStaffContract(pending.id, pending.years))),
+          "STAFF_EXTENDED_TOAST");
       break;
-    case PendingAction::Kind::RELEASE:
-      showResult(static_cast<int>(controller.releaseStaff(pending.id)),
+    case RELEASE:
+      showResult(static_cast<int>(
+                     std::to_underlying(controller.releaseStaff(pending.id))),
                  "STAFF_RELEASED_TOAST");
       selected = 0;
       break;
-    case PendingAction::Kind::NONE:
+    case NONE:
       break;
   }
   pending = {};
@@ -362,10 +372,9 @@ void StaffScene::renderGroups(const char* id, const std::vector<StaffRow>& rows,
     while (end < rows.size() && departmentOf(rows[end].role) == department)
       ++end;
     ImGui::Dummy(ImVec2(0.0f, Theme::Space::XS * Theme::scale()));
-    char header[96];
-    std::snprintf(header, sizeof(header), "%s  \xC2\xB7  %zu",
-                  LOC(DEPARTMENT_KEYS[department]), end - begin);
-    UI::sectionLabel(header);
+    const std::string header = std::format(
+        "{}  \u00B7  {}", LOC(DEPARTMENT_KEYS[department]), end - begin);
+    UI::sectionLabel(header.c_str());
     ImGui::PushID(static_cast<int>(department));
 
     // The selected row opens a detail strip right under it: the table is
@@ -387,8 +396,8 @@ void StaffScene::renderGroups(const char* id, const std::vector<StaffRow>& rows,
         ImGui::TableNextRow(ImGuiTableRowFlags_None,
                             UI::buttonHeight(UI::ButtonSize::COMPACT));
         ImGui::TableNextColumn();
-        const bool isSelected = selected == row.id;
-        if (ImGui::Selectable(row.name.c_str(), isSelected,
+        if (const bool isSelected = selected == row.id;
+            ImGui::Selectable(row.name.c_str(), isSelected,
                               ImGuiSelectableFlags_SpanAllColumns))
           selected = isSelected ? 0 : row.id;
         if (ImGui::IsItemHovered(ImGuiHoveredFlags_DelayNormal))
@@ -428,7 +437,7 @@ void StaffScene::renderGroups(const char* id, const std::vector<StaffRow>& rows,
 
 void StaffScene::renderDetail(const StaffRow& row, bool market)
 {
-  GameController& controller = guiView->getController();
+  const GameController& controller = guiView->getController();
   const Theme::Palette& palette = Theme::palette();
   const float scale = Theme::scale();
   ImDrawList* drawList = ImGui::GetWindowDrawList();
@@ -453,8 +462,8 @@ void StaffScene::renderDetail(const StaffRow& row, bool market)
     ImGui::SameLine();
     static constexpr std::array<const char*, MAX_HIRE_YEARS> YEARS = {"1", "2",
                                                                       "3", "4"};
-    int years = hire_years - 1;
-    if (UI::segmented("##years", years, YEARS)) hire_years = years + 1;
+    if (int years = hire_years - 1; UI::segmented("##years", years, YEARS))
+      hire_years = years + 1;
     const char* hire = row.hire_label.c_str();
     UI::sameLineIfFits(UI::buttonWidth(hire));
     ImGui::BeginDisabled(row.role_full);
@@ -503,7 +512,7 @@ void StaffScene::renderDetail(const StaffRow& row, bool market)
   ImGui::Dummy(ImVec2(width, Theme::Space::XS * scale));
 }
 
-void StaffScene::renderImpact(float width)
+void StaffScene::renderImpact(float width) const
 {
   const Theme::Palette& palette = Theme::palette();
   UI::beginAutoHeightCard("staff_impact", LOC("STAFF_IMPACT"), width);
@@ -540,11 +549,11 @@ void StaffScene::renderFilters()
   ImGui::TextColored(palette.muted, "%s", LOC("STAFF_FILTER_ROLE"));
   ImGui::SameLine();
   ImGui::SetNextItemWidth(200.0f * Theme::scale());
-  const char* role_label =
-      role_filter < 0
-          ? LOC("STAFF_FILTER_ALL")
-          : LOC(StaffModel::roleKey(static_cast<StaffRole>(role_filter)));
-  if (ImGui::BeginCombo("##role_filter", role_label))
+  if (const char* role_label =
+          role_filter < 0
+              ? LOC("STAFF_FILTER_ALL")
+              : LOC(StaffModel::roleKey(static_cast<StaffRole>(role_filter)));
+      ImGui::BeginCombo("##role_filter", role_label))
   {
     if (ImGui::Selectable(LOC("STAFF_FILTER_ALL"), role_filter < 0))
     {

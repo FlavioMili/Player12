@@ -12,6 +12,7 @@
 #include <array>
 #include <cmath>
 #include <format>
+#include <string_view>
 #include <utility>
 
 #include "database/gamedata.h"
@@ -61,7 +62,7 @@ float ambitionScale(const Player& player)
   return 0.5f + toUnit(player.getTraits().ambition);
 }
 
-bool isPhysicalStat(const std::string& stat)
+bool isPhysicalStat(std::string_view stat)
 {
   return stat == "Pace" || stat == "Physicality" || stat == "Stamina";
 }
@@ -117,28 +118,30 @@ std::uint8_t pointsFor(std::uint8_t own, std::uint8_t other)
 
 MatchOutcome outcomeFor(std::uint8_t own, std::uint8_t other)
 {
-  if (own > other) return MatchOutcome::Win;
-  return own == other ? MatchOutcome::Draw : MatchOutcome::Loss;
+  using enum MatchOutcome;
+  if (own > other) return Win;
+  return own == other ? Draw : Loss;
 }
 
 float expectedShare(SquadRole role, int age)
 {
+  using enum SquadRole;
   float share = 0.03f;
   switch (role)
   {
-    case SquadRole::KeyPlayer:
+    case KeyPlayer:
       share = 0.85f;
       break;
-    case SquadRole::FirstTeam:
+    case FirstTeam:
       share = 0.70f;
       break;
-    case SquadRole::Rotation:
+    case Rotation:
       share = 0.40f;
       break;
-    case SquadRole::Backup:
+    case Backup:
       share = 0.15f;
       break;
-    case SquadRole::Fringe:
+    case Fringe:
       break;
   }
   return age <= 19 ? std::min(share, 0.10f) : share;
@@ -146,11 +149,12 @@ float expectedShare(SquadRole role, int age)
 
 SquadRole roleForRank(std::size_t rank)
 {
-  if (rank < 5) return SquadRole::KeyPlayer;
-  if (rank < 11) return SquadRole::FirstTeam;
-  if (rank < 16) return SquadRole::Rotation;
-  if (rank < 22) return SquadRole::Backup;
-  return SquadRole::Fringe;
+  using enum SquadRole;
+  if (rank < 5) return KeyPlayer;
+  if (rank < 11) return FirstTeam;
+  if (rank < 16) return Rotation;
+  if (rank < 22) return Backup;
+  return Fringe;
 }
 
 float growthRate(int age)
@@ -192,17 +196,18 @@ constexpr std::array<std::size_t, 4> AREA_STARTERS = {1, 4, 3, 3};
 
 std::size_t areaOf(PlayerRole role)
 {
+  using enum PlayerRole;
   switch (role)
   {
-    case PlayerRole::GK:
+    case GK:
       return 0;
-    case PlayerRole::CB:
-    case PlayerRole::LB:
-    case PlayerRole::RB:
+    case CB:
+    case LB:
+    case RB:
       return 1;
-    case PlayerRole::LW:
-    case PlayerRole::RW:
-    case PlayerRole::ST:
+    case LW:
+    case RW:
+    case ST:
       return 3;
     default:
       return 2;
@@ -262,17 +267,18 @@ std::string listOrNone(const std::vector<std::string>& names)
 
 const char* squadRoleKey(SquadRole role)
 {
+  using enum SquadRole;
   switch (role)
   {
-    case SquadRole::KeyPlayer:
+    case KeyPlayer:
       return "SQUAD_ROLE_KEY_PLAYER";
-    case SquadRole::FirstTeam:
+    case FirstTeam:
       return "SQUAD_ROLE_FIRST_TEAM";
-    case SquadRole::Rotation:
+    case Rotation:
       return "SQUAD_ROLE_ROTATION";
-    case SquadRole::Backup:
+    case Backup:
       return "SQUAD_ROLE_BACKUP";
-    case SquadRole::Fringe:
+    case Fringe:
       break;
   }
   return "SQUAD_ROLE_FRINGE";
@@ -359,7 +365,7 @@ const WorldSimulation::FocusStats& WorldSimulation::focusFor(
           stats.non_physical_weight += focus.weights[i];
         }
       }
-      focus_by_category.emplace(category, std::move(stats));
+      focus_by_category.try_emplace(category, std::move(stats));
     }
   }
   static const FocusStats EMPTY;
@@ -618,9 +624,9 @@ void WorldSimulation::processWeekly(const GameDateValue& date,
   for (auto& [team_id, team] : gamedata->getTeams())
   {
     if (team_id == FREE_AGENTS_TEAM_ID) continue;
-    const std::int64_t payroll =
-        team.getFinances().getCurrentWageSpending(*gamedata, team);
-    if (payroll > 0)
+    if (const std::int64_t payroll =
+            team.getFinances().getCurrentWageSpending(*gamedata, team);
+        payroll > 0)
       team.getFinances().record(date, FinanceCategory::Wages, -payroll);
     updateWeeklyMorale(team);
   }
@@ -763,9 +769,10 @@ void WorldSimulation::updateWeeklyMorale(Team& team)
                 : 0.0f);
 
     float wage_term = 0.0f;
-    const double fair = wage_scale * ClubEconomy::wageIndex(
-                                         ranked[rank].overall, player.getAge());
-    if (fair > 0.0 && player.getWage() > 0)
+    if (const double fair =
+            wage_scale *
+            ClubEconomy::wageIndex(ranked[rank].overall, player.getAge());
+        fair > 0.0 && player.getWage() > 0)
     {
       wage_term =
           std::clamp(
@@ -911,8 +918,8 @@ std::unordered_map<TeamID, double> WorldSimulation::parachutes(
     const auto economy = economies.find(entry.competition_id);
     for (const TeamID team_id : entry.relegated)
     {
-      const auto team = gamedata->getTeam(team_id);
-      if (!team ||
+      if (const auto team = gamedata->getTeam(team_id);
+          !team ||
           Competitions::leagueTier(*gamedata, team->get().getLeagueId()) == 1)
         continue;
       if (seasons_ago == 0 && relegated_now) relegated_now->push_back(team_id);
@@ -948,29 +955,30 @@ void WorldSimulation::applyRelegationWageCuts(
   }
 }
 
-void WorldSimulation::rescueByOwner(const GameDateValue& date, Team& team)
+void WorldSimulation::rescueByOwner(const GameDateValue& date, Team& team) const
 {
+  using enum OwnerType;
   using Finance = WorldTuning::Finance;
   Finances& finances = team.getFinances();
   const std::int64_t rescue = ClubEconomy::ownerRescue(
       finances.getBalance(), finances.getCurrentWageSpending(*gamedata, team));
   if (rescue <= 0) return;
   float chance = 0.0f;
-  const ClubVision vision = ManagerMarketModel::clubVision(
-      gamedata->getWorldSeed(), team.getId(), team.getReputation(),
-      team.getProfile().youth_facilities, 0, 0);
-  switch (vision.owner)
+  switch (const ClubVision vision = ManagerMarketModel::clubVision(
+              gamedata->getWorldSeed(), team.getId(), team.getReputation(),
+              team.getProfile().youth_facilities, 0, 0);
+          vision.owner)
   {
-    case OwnerType::ImpatientBenefactor:
+    case ImpatientBenefactor:
       chance = Finance::BENEFACTOR_RESCUE_CHANCE;
       break;
-    case OwnerType::Ambitious:
+    case Ambitious:
       chance = Finance::AMBITIOUS_RESCUE_CHANCE;
       break;
-    case OwnerType::Patient:
+    case Patient:
       chance = Finance::PATIENT_RESCUE_CHANCE;
       break;
-    case OwnerType::MemberOwned:
+    case MemberOwned:
       break;
   }
   if (WorldRng::hashUniform(gamedata->getWorldSeed(), RngDomain::Transfers,
@@ -1016,13 +1024,16 @@ void WorldSimulation::clearFreeAgentPool(const GameDateValue& date)
     const Player& player = gamedata->getPlayers().at(player_id);
     if (free_agent_hold && free_agent_hold(player_id)) continue;
     const int age = player.getAge();
-    double chance = age <= 21   ? FreeAgents::EXIT_CHANCE_YOUNG
-                    : age <= 27 ? FreeAgents::EXIT_CHANCE_PRIME
-                    : age <= 31 ? FreeAgents::EXIT_CHANCE_LATE
-                                : FreeAgents::EXIT_CHANCE_VETERAN;
+    double chance = FreeAgents::EXIT_CHANCE_VETERAN;
+    if (age <= 21)
+      chance = FreeAgents::EXIT_CHANCE_YOUNG;
+    else if (age <= 27)
+      chance = FreeAgents::EXIT_CHANCE_PRIME;
+    else if (age <= 31)
+      chance = FreeAgents::EXIT_CHANCE_LATE;
     const double overall = player.getOverall(config);
-    const double margin = FreeAgents::LEVEL_MARGIN;
-    if (overall >= level + margin)
+    if (const double margin = FreeAgents::LEVEL_MARGIN;
+        overall >= level + margin)
       chance *= FreeAgents::ABOVE_LEVEL_FACTOR;
     else if (overall < level - margin)
       chance *= FreeAgents::BELOW_LEVEL_FACTOR;
@@ -1064,10 +1075,9 @@ void WorldSimulation::ensureBoard(const GameDateValue& date,
                                       &std::pair<std::int64_t, TeamID>::second);
   const int expected =
       static_cast<int>(std::distance(wage_bills.begin(), rank)) + 1;
-  const int league_size = static_cast<int>(wage_bills.size());
+  const auto league_size = static_cast<int>(wage_bills.size());
 
-  const bool same_club = board.team_id == managed_team_id;
-  if (!same_club)
+  if (const bool same_club = board.team_id == managed_team_id; !same_club)
   {
     board = BoardState{};
     board.team_id = managed_team_id;
@@ -1403,7 +1413,7 @@ bool WorldSimulation::applyMatchConsequences(
   const std::int32_t ordinal = dayOrdinal(date);
   if (dynamics.last_match_day == ordinal) return false;
 
-  const float minutes = static_cast<float>(consequence.minutes_played);
+  const auto minutes = static_cast<float>(consequence.minutes_played);
   const float stamina = statValue(player, "Stamina", 60.0f);
   const double workload_multiplier = TrainingSystem::recordMatchLoad(
       *gamedata, player, consequence.minutes_played);
@@ -1644,19 +1654,18 @@ double WorldSimulation::sportingSuccess(const Team& team) const
     const auto clubs = static_cast<double>(league->get().getTeamIDs().size());
     if (started && clubs > 1.0)
     {
-      const double position = static_cast<double>(leaguePosition(team.getId()));
+      const auto position = static_cast<double>(leaguePosition(team.getId()));
       position_term = (clubs + 1.0 - 2.0 * position) / (clubs - 1.0);
     }
   }
   double form_term = 0.0;
-  const std::string& form = team.getRecentForm();
-  if (!form.empty())
+  if (const std::string& form = team.getRecentForm(); !form.empty())
   {
     double points = 0.0;
     for (const char result : form)
     {
-      if (result == static_cast<char>(MatchOutcome::Win)) points += 3.0;
-      if (result == static_cast<char>(MatchOutcome::Draw)) points += 1.0;
+      if (result == std::to_underlying(MatchOutcome::Win)) points += 3.0;
+      if (result == std::to_underlying(MatchOutcome::Draw)) points += 1.0;
     }
     form_term = std::clamp(
         (points / static_cast<double>(form.size()) - 1.35) / 1.65, -1.0, 1.0);
@@ -1739,9 +1748,9 @@ void WorldSimulation::onTransferBid(const GameDateValue& date,
   const auto bidder = gamedata->getTeam(bidder_id);
   if (found == players.end() || !bidder) return;
   Player& player = found->second;
-  const auto current = gamedata->getTeam(player.getTeamId());
   // Interest from a clearly bigger club unsettles ambitious players. [P]
-  if (current &&
+  if (const auto current = gamedata->getTeam(player.getTeamId());
+      current &&
       bidder->get().getReputation() > current->get().getReputation() + 5 &&
       player.getTraits().ambition > 55)
     player.mutableDynamics().transfer_interest_weeks = 3;
@@ -1940,7 +1949,7 @@ void WorldSimulation::renewAiContracts(TeamID managed_team_id)
 {
   const StatsConfig& config = gamedata->getStatsConfig();
   const std::uint64_t seed = gamedata->getWorldSeed();
-  for (auto& [team_id, team] : gamedata->getTeams())
+  for (const auto& [team_id, team] : gamedata->getTeams())
   {
     if (team_id == FREE_AGENTS_TEAM_ID || team_id == managed_team_id) continue;
     std::vector<std::pair<double, PlayerID>> ranked;

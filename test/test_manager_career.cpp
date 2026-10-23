@@ -40,11 +40,15 @@ constexpr std::uint64_t WORLD_SEED = 20250702;
 
 int uniqueSlot(int offset)
 {
-  return 500'000 + static_cast<int>(getpid() % 100'000) * 10 + offset;
+  return 500'000 + (getpid() % 100'000) * 10 + offset;
 }
 
 struct SlotCleanup
 {
+  explicit SlotCleanup(int saveSlot) : slot(saveSlot) {}
+  SlotCleanup(const SlotCleanup&) = delete;
+  SlotCleanup& operator=(const SlotCleanup&) = delete;
+
   int slot;
   ~SlotCleanup() { RuntimePaths::removeSave(slot); }
 };
@@ -157,13 +161,14 @@ std::uint32_t earnOffer(Game& game, const std::vector<TeamID>& candidates)
         break;
       game.advanceDay();
     }
-    const JobApplication* application = career.findApplication(club);
-    if (!application || application->stage != ApplicationStage::Interview)
+    if (const JobApplication* application = career.findApplication(club);
+        !application || application->stage != ApplicationStage::Interview)
       continue;
     const auto answers = bestAnswers(career.visionOf(club));
-    const auto result = career.interview(club, answers, game.getCurrentDate(),
-                                         game.getWorld().getInbox());
-    if (!result || !result->offered) continue;
+    if (const auto result = career.interview(
+            club, answers, game.getCurrentDate(), game.getWorld().getInbox());
+        !result || !result->offered)
+      continue;
     for (const JobOffer& offer : career.getOffers())
       if (offer.team_id == club) return offer.id;
   }
@@ -350,12 +355,13 @@ TEST(ManagerCareerMarket, TopFlightChangesMatchRealRates)
                             .count();
       ++days;
       // One league round a week from mid-August to mid-May.
-      const bool round = dayOrdinal(date) % 7 == 3 &&
-                         ManagerMarketModel::monthFactor(date.month) > 0.0f &&
-                         !(date.month == 5 && date.day > 20);
-      if (round)
+      if (const bool round =
+              dayOrdinal(date) % 7 == 3 &&
+              ManagerMarketModel::monthFactor(date.month) > 0.0f &&
+              !(date.month == 5 && date.day > 20);
+          round)
       {
-        for (auto& [league_id, clubs] : leagues)
+        for (const auto& [league_id, clubs] : leagues)
         {
           std::vector<TeamID> order = clubs;
           rng.shuffle(std::span<TeamID>(order));
@@ -371,26 +377,33 @@ TEST(ManagerCareerMarket, TopFlightChangesMatchRealRates)
             const int home_goals = roll < static_cast<double>(win) ? 1 : 0;
             const int away_goals =
                 roll >= static_cast<double>(win + draw) ? 1 : 0;
-            points[home] += home_goals > away_goals
-                                ? 3
-                                : (home_goals == away_goals ? 1 : 0);
-            points[away] += away_goals > home_goals
-                                ? 3
-                                : (home_goals == away_goals ? 1 : 0);
-            career.onMatchPlayed(home, away, home_goals, away_goals, true,
-                                 BoardModel::expectedPoints(
-                                     strength(home), strength(away), true),
-                                 BoardModel::expectedPoints(
-                                     strength(away), strength(home), false),
-                                 FREE_AGENTS_TEAM_ID);
+            int home_points = 0;
+            if (home_goals > away_goals)
+              home_points = 3;
+            else if (home_goals == away_goals)
+              home_points = 1;
+            points[home] += home_points;
+            int away_points = 0;
+            if (away_goals > home_goals)
+              away_points = 3;
+            else if (home_goals == away_goals)
+              away_points = 1;
+            points[away] += away_points;
+            career.onMatchPlayed({home, away, home_goals, away_goals, true,
+                                  BoardModel::expectedPoints(
+                                      strength(home), strength(away), true),
+                                  BoardModel::expectedPoints(
+                                      strength(away), strength(home), false),
+                                  FREE_AGENTS_TEAM_ID});
           }
         }
       }
       const auto now = snapshot();
       for (const auto& [team_id, before] : holders)
       {
-        const auto after = now.find(team_id);
-        if (after != now.end() && after->second.id == before.id) continue;
+        if (const auto after = now.find(team_id);
+            after != now.end() && after->second.id == before.id)
+          continue;
         if (season >= WARMUP_SEASONS)
         {
           ++changes;
@@ -493,8 +506,7 @@ TEST(ManagerCareerFlow, ResignedManagerLosesControlAndTimeRuns)
   EXPECT_FALSE(controller->setLoanListed(player, true));
   EXPECT_FALSE(controller->talkToPlayer(player, TalkOption::PraiseForm));
   EXPECT_EQ(controller->getTrainingPlan(), nullptr);
-  const auto market = controller->getStaffMarket();
-  if (!market.empty())
+  if (const auto market = controller->getStaffMarket(); !market.empty())
     EXPECT_EQ(controller->hireStaff(market.front()->id, 2),
               GameController::StaffActionResult::NoClub);
   EXPECT_TRUE(controller->getIncomingOffers().empty());

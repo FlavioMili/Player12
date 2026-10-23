@@ -309,15 +309,16 @@ Foot drawFoot(WorldRng& rng, PlayerRole role)
 
 int drawAge(WorldRng& rng, SquadTier tier)
 {
+  using enum SquadTier;
   switch (tier)
   {
-    case SquadTier::Starter:
+    case Starter:
       return std::clamp(static_cast<int>(std::lround(rng.normal(27.0f, 3.0f))),
                         21, 34);
-    case SquadTier::Rotation:
+    case Rotation:
       return std::clamp(static_cast<int>(std::lround(rng.normal(26.0f, 4.0f))),
                         19, 35);
-    case SquadTier::Backup:
+    case Backup:
       return rng.chance(0.5)
                  ? std::clamp(
                        static_cast<int>(std::lround(rng.normal(21.0f, 1.5f))),
@@ -325,7 +326,7 @@ int drawAge(WorldRng& rng, SquadTier tier)
                  : std::clamp(
                        static_cast<int>(std::lround(rng.normal(31.0f, 2.0f))),
                        27, 36);
-    case SquadTier::Prospect:
+    case Prospect:
       return rng.uniformInt(17, 20);
   }
   return 25;
@@ -333,15 +334,16 @@ int drawAge(WorldRng& rng, SquadTier tier)
 
 float tierOffset(SquadTier tier)
 {
+  using enum SquadTier;
   switch (tier)
   {
-    case SquadTier::Starter:
+    case Starter:
       return 2.0f;
-    case SquadTier::Rotation:
+    case Rotation:
       return -3.0f;
-    case SquadTier::Backup:
+    case Backup:
       return -8.0f;
-    case SquadTier::Prospect:
+    case Prospect:
       return -14.0f;
   }
   return 0.0f;
@@ -420,7 +422,7 @@ const NamePool& NamePool::instance()
         const auto language = stringToLanguage.find(name);
         auto names = list.get<std::vector<std::string>>();
         if (language != stringToLanguage.end() && !names.empty())
-          out.emplace(language->second, std::move(names));
+          out.try_emplace(language->second, std::move(names));
       }
     };
     const nlohmann::json first = read(AssetPaths::firstNames());
@@ -488,7 +490,11 @@ std::string NamePool::normalizeName(std::string_view name)
     }
     // Two-byte sequences cover the Latin supplements; anything else is
     // kept as it is.
-    const std::size_t length = byte >= 0xF0 ? 4 : byte >= 0xE0 ? 3 : 2;
+    std::size_t length = 2;
+    if (byte >= 0xF0)
+      length = 4;
+    else if (byte >= 0xE0)
+      length = 3;
     if ((byte & 0xE0) == 0xC0 && i + 1 < name.size())
     {
       const char32_t code =
@@ -628,7 +634,7 @@ float teamLevel(std::uint8_t reputation)
 
 std::vector<float> levelOffsets(const LeagueShape& shape, std::size_t clubs)
 {
-  std::vector<float> offsets(clubs, 0.0f);
+  std::vector offsets(clubs, 0.0f);
   if (clubs < 2) return offsets;
   // Normal scores by rank, the elite pulled clear, then rescaled to the
   // league's spread around a zero mean.

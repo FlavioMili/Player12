@@ -13,19 +13,23 @@
 
 #include <gtest/gtest.h>
 
+#include <array>
 #include <filesystem>
 #include <fstream>
+#include <functional>
 #include <nlohmann/json.hpp>
 #include <optional>
 #include <regex>
 #include <set>
 #include <string>
+#include <string_view>
 #include <vector>
 
 #include "global/global.h"
 #include "global/language_manager.h"
 #include "global/number_format.h"
 #include "global/paths.h"
+#include "global/runtime_paths.h"
 #include "model/club_article.h"
 #include "model/competition.h"
 #include "model/inbox.h"
@@ -34,9 +38,9 @@
 
 namespace
 {
-nlohmann::json loadJson(const std::string& path)
+nlohmann::json loadJson(std::string_view path)
 {
-  std::ifstream stream(path);
+  std::ifstream stream{std::string(path)};
   return nlohmann::json::parse(stream);
 }
 
@@ -46,24 +50,26 @@ nlohmann::json languageFile(const char* file)
 }
 
 /** Positional placeholder indices ("{0}", "{1:di}", "{2|a|b}" -> 0, 1, 2). */
-std::set<int> positionalIndices(const std::string& text)
+std::set<int> positionalIndices(std::string_view text)
 {
   static const std::regex PLACEHOLDER(R"(\{(\d+)[}:|])");
   std::set<int> indices;
-  for (auto it = std::sregex_iterator(text.begin(), text.end(), PLACEHOLDER);
-       it != std::sregex_iterator(); ++it)
+  using Iterator = std::regex_iterator<std::string_view::const_iterator>;
+  for (auto it = Iterator(text.begin(), text.end(), PLACEHOLDER);
+       it != Iterator(); ++it)
     indices.insert(std::stoi((*it)[1].str()));
   return indices;
 }
 
 /** printf conversions in order, "%%" excluded. */
-std::vector<std::string> printfConversions(const std::string& text)
+std::vector<std::string> printfConversions(std::string_view text)
 {
   static const std::regex CONVERSION(
       R"(%[-+#0]*[0-9]*(?:\.[0-9]+)?(?:hh|h|ll|l|z|j|t)?([diouxXeEfgGcsp%]))");
   std::vector<std::string> conversions;
-  for (auto it = std::sregex_iterator(text.begin(), text.end(), CONVERSION);
-       it != std::sregex_iterator(); ++it)
+  using Iterator = std::regex_iterator<std::string_view::const_iterator>;
+  for (auto it = Iterator(text.begin(), text.end(), CONVERSION);
+       it != Iterator(); ++it)
   {
     if ((*it)[1].str() != "%") conversions.push_back(it->str());
   }
@@ -96,7 +102,7 @@ TEST(LanguageFilesTest, BothLanguagesHaveTheSameKeysAndPlaceholders)
   const nlohmann::json italian = languageFile("Italian.json");
   ASSERT_EQ(english.size(), italian.size());
   static const std::regex SPEC(R"(\{\d+([:|])([^}]*)\})");
-  static const std::set<std::string> PREPOSITIONS = {
+  static const std::set<std::string, std::less<>> PREPOSITIONS = {
       "il", "Il", "di", "Di", "a", "A", "da", "Da", "in", "In", "su", "Su"};
   for (const auto& [key, value] : english.items())
   {
@@ -284,7 +290,7 @@ constexpr std::optional<int64_t> REFUSED = std::nullopt;
 using enum NumberFormat::MoneyError;
 
 // Every way a player is likely to type an amount, in both languages.
-const MoneyCase MONEY_CASES[] = {
+constexpr std::array<MoneyCase, 56> MONEY_CASES = {{
     {"1,5M", 1'500'000, 1'500'000},
     {"1.5M", 1'500'000, 1'500'000},
     {"1.500.000", 1'500'000, 1'500'000},
@@ -293,7 +299,7 @@ const MoneyCase MONEY_CASES[] = {
     {"€ 2,25 mln", 2'250'000, 2'250'000},
     {"€2.25 mln", 2'250'000, 2'250'000},
     {"1,5 mln €", 1'500'000, 1'500'000},
-    {"€ 1,5 mln", 1'500'000, 1'500'000},
+    {"€\u00A01,5\u00A0mln", 1'500'000, 1'500'000},
     {"0,5m", 500'000, 500'000},
     {",5m", 500'000, 500'000},
     {"15m", 15'000'000, 15'000'000},
@@ -307,7 +313,7 @@ const MoneyCase MONEY_CASES[] = {
     {"1 500 000", 1'500'000, 1'500'000},
     {"1'500'000", 1'500'000, 1'500'000},
     {"€1,250,000", 1'250'000, 1'250'000},
-    {"€ 1.250.000", 1'250'000, 1'250'000},
+    {"€\u00A01.250.000", 1'250'000, 1'250'000},
     {"1.234.567,89", 1'234'568, 1'234'568},
     {"1,234,567.89", 1'234'568, 1'234'568},
     {"14.500", 14'500, 14'500},
@@ -345,7 +351,7 @@ const MoneyCase MONEY_CASES[] = {
     {"1 5 m", REFUSED, REFUSED, AMBIGUOUS},
     {"99999999999999999999", REFUSED, REFUSED, TOO_LARGE},
     {"10000000b", REFUSED, REFUSED, TOO_LARGE},
-};
+}};
 }  // namespace
 
 TEST_F(LanguageFormatTest, TypedMoneyIsReadTheSameWayInBothLanguages)
@@ -361,7 +367,7 @@ TEST_F(LanguageFormatTest, TypedMoneyIsReadTheSameWayInBothLanguages)
           NumberFormat::parseMoney(item.text);
       EXPECT_EQ(parsed.value, expected)
           << (italian ? "IT " : "EN ") << '"' << item.text << '"';
-      if (!expected)
+      if (!expected.has_value())
       {
         EXPECT_EQ(parsed.error, item.error) << '"' << item.text << '"';
         EXPECT_NE(NumberFormat::errorKey(parsed.error), nullptr);
@@ -423,8 +429,7 @@ namespace
 std::filesystem::path writeFile(const std::string& name,
                                 const std::string& contents)
 {
-  const std::filesystem::path path =
-      std::filesystem::temp_directory_path() / name;
+  const std::filesystem::path path = RuntimePaths::root() / name;
   std::ofstream(path, std::ios::binary) << contents;
   return path;
 }
@@ -449,10 +454,10 @@ TEST_F(LanguageFormatTest, ABrokenLanguageFileFallsBackToEnglish)
   const std::filesystem::path truncated = writeFile(
       "fm_lang_truncated.json", italianText.substr(0, italianText.size() / 2));
   const std::filesystem::path garbage =
-      writeFile("fm_lang_garbage.json", "\x01\x02 not json {");
+      writeFile("fm_lang_garbage.json", "\001\002 not json {");
   const std::filesystem::path list = writeFile("fm_lang_list.json", "[1, 2]");
   const std::filesystem::path missing =
-      std::filesystem::temp_directory_path() / "fm_lang_missing.json";
+      RuntimePaths::root() / "fm_lang_missing.json";
   std::filesystem::remove(missing);
 
   for (const auto& path : {truncated, garbage, list, missing})

@@ -33,11 +33,14 @@ constexpr double WIDE_MARGIN = 8.0;
 
 int uniqueSlot(int offset)
 {
-  return 6'500'000 + static_cast<int>(getpid() % 100'000) * 10 + offset;
+  return 6'500'000 + (getpid() % 100'000) * 10 + offset;
 }
 
 struct SlotCleanup
 {
+  explicit SlotCleanup(int value) : slot(value) {}
+  SlotCleanup(const SlotCleanup&) = delete;
+  SlotCleanup& operator=(const SlotCleanup&) = delete;
   int slot;
   ~SlotCleanup() { RuntimePaths::removeSave(slot); }
 };
@@ -78,12 +81,39 @@ std::vector<const Player*> clubPlayers(const GameController& controller,
   for (const auto* ids : {&team.getPlayerIDs(), &team.getAcademyIDs()})
     for (const PlayerID player_id : *ids)
     {
-      const YouthRecord* youth = game.getWorld().getYouth().record(player_id);
-      if (youth && youth->status == YouthStatus::Candidate) continue;
+      if (const YouthRecord* youth =
+              game.getWorld().getYouth().record(player_id);
+          youth && youth->status == YouthStatus::Candidate)
+        continue;
       if (const auto player = controller.getGameData()->getPlayer(player_id))
         players.push_back(&player->get());
     }
   return players;
+}
+
+bool compareQuality(const Lineup& lineup, PlayerID player, bool standInsOnly)
+{
+  return !standInsOnly ||
+         std::ranges::any_of(lineup.getStandIns(),
+                             [player](const Lineup::StandIn& entry)
+                             { return entry.stand_in == player; });
+}
+
+void expectOutfieldQuality(const Lineup& lineup, const Player& player,
+                           const StatsConfig& config, const std::string& what,
+                           bool standInsOnly)
+{
+  for (const Lineup::PositionedPlayer& slot : lineup.getOutfieldPlayers())
+  {
+    ASSERT_NE(slot.player, nullptr) << what;
+    if (!compareQuality(lineup, slot.player->getId(), standInsOnly) ||
+        Lineup::roleAt(slot.position) != player.getRole())
+      continue;
+    EXPECT_LT(player.getOverall(config) - slot.player->getOverall(config),
+              WIDE_MARGIN)
+        << what << ": " << nameOf(&player) << " sits out behind "
+        << nameOf(slot.player);
+  }
 }
 
 /**
@@ -97,13 +127,6 @@ void expectBestAvailable(const Lineup& lineup,
                          const StatsConfig& config, const std::string& what,
                          bool standInsOnly = false)
 {
-  const auto compareQuality = [&](PlayerID player)
-  {
-    return !standInsOnly ||
-           std::ranges::any_of(lineup.getStandIns(),
-                               [&](const Lineup::StandIn& entry)
-                               { return entry.stand_in == player; });
-  };
   const Player* goalkeeper = lineup.getGoalkeeper();
   ASSERT_NE(goalkeeper, nullptr) << what;
   ASSERT_TRUE(std::ranges::contains(available, goalkeeper))
@@ -112,7 +135,7 @@ void expectBestAvailable(const Lineup& lineup,
   {
     if (player->getRole() == PlayerRole::GK)
     {
-      if (!compareQuality(goalkeeper->getId()))
+      if (!compareQuality(lineup, goalkeeper->getId(), standInsOnly))
       {
         continue;
       }
@@ -122,19 +145,7 @@ void expectBestAvailable(const Lineup& lineup,
       continue;
     }
     if (lineup.isStarter(player->getId())) continue;
-    for (const Lineup::PositionedPlayer& slot : lineup.getOutfieldPlayers())
-    {
-      ASSERT_NE(slot.player, nullptr) << what;
-      if (!compareQuality(slot.player->getId()))
-      {
-        continue;
-      }
-      if (Lineup::roleAt(slot.position) != player->getRole()) continue;
-      EXPECT_LT(player->getOverall(config) - slot.player->getOverall(config),
-                WIDE_MARGIN)
-          << what << ": " << nameOf(player) << " sits out behind "
-          << nameOf(slot.player);
-    }
+    expectOutfieldQuality(lineup, *player, config, what, standInsOnly);
   }
   for (const Lineup::PositionedPlayer& slot : lineup.getOutfieldPlayers())
     EXPECT_TRUE(std::ranges::contains(available, slot.player))

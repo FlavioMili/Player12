@@ -107,11 +107,15 @@ constexpr std::uint64_t WORLD_SEED = 20250702;
 
 int uniqueSlot(int offset)
 {
-  return 600'000 + static_cast<int>(getpid() % 100'000) * 10 + offset;
+  return 600'000 + (getpid() % 100'000) * 10 + offset;
 }
 
 struct SlotCleanup
 {
+  explicit SlotCleanup(int saveSlot) : slot(saveSlot) {}
+  SlotCleanup(const SlotCleanup&) = delete;
+  SlotCleanup& operator=(const SlotCleanup&) = delete;
+
   int slot;
   ~SlotCleanup() { RuntimePaths::removeSave(slot); }
 };
@@ -127,8 +131,8 @@ void capture(GUIView& view, const char* name)
 void resize(GUIView& view, int width, int height)
 {
   SDL_SetWindowSize(view.getWindow(), width, height);
-  SDL_Event event{};
-  event.type = SDL_EVENT_WINDOW_RESIZED;
+  SDL_Event event{.window = {}};
+  event.window.type = SDL_EVENT_WINDOW_RESIZED;
   event.window.windowID = SDL_GetWindowID(view.getWindow());
   event.window.data1 = width;
   event.window.data2 = height;
@@ -241,9 +245,17 @@ bool startButtonReachable(GUIView& view)
   const ImRect area(ImMax(card->Rect().Min, ImVec2(0.0f, 0.0f)),
                     ImMin(card->Rect().Max, display));
   bool found = false;
-  for (float y = area.Min.y + 4.0f; y < area.Max.y && !found; y += 8.0f)
-    for (float x = area.Min.x + 4.0f; x < area.Max.x && !found; x += 24.0f)
+  for (int y_index = 0;
+       area.Min.y + 4.0f + 8.0f * static_cast<float>(y_index) < area.Max.y &&
+       !found;
+       ++y_index)
+    for (int x_index = 0;
+         area.Min.x + 4.0f + 24.0f * static_cast<float>(x_index) < area.Max.x &&
+         !found;
+         ++x_index)
     {
+      const float y = area.Min.y + 4.0f + 8.0f * static_cast<float>(y_index);
+      const float x = area.Min.x + 4.0f + 24.0f * static_cast<float>(x_index);
       ImGui::GetIO().AddMousePosEvent(x, y);
       Bridge::frame(view);
       found = GImGui->HoveredId == button;

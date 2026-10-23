@@ -12,6 +12,7 @@
 #include <cstdint>
 #include <functional>
 #include <memory>
+#include <mutex>
 #include <optional>
 #include <string>
 #include <unordered_map>
@@ -374,12 +375,15 @@ struct ScoutSummary
  * graded reports and prioritise the club's recruitment focuses. Shortlisted
  * players raise alerts when they are listed, enter their final contract year,
  * get injured or move.
+ * Const cache lookups may run concurrently; returned scout lists are snapshots.
+ * Career mutations and borrowed assignment/state references require exclusive
+ * access to the underlying career, including its GameData.
  */
 class ScoutingSystem
 {
  public:
   static constexpr std::size_t ROLE_COUNT =
-      static_cast<std::size_t>(PlayerRole::UNKNOWN);
+      static_cast<std::size_t>(std::to_underlying(PlayerRole::UNKNOWN));
   using ScoutProvider = std::function<std::vector<ScoutProfile>(TeamID)>;
   using BudgetProvider = std::function<std::int64_t(TeamID)>;
 
@@ -448,7 +452,7 @@ class ScoutingSystem
   // ---- Scouts & assignments ----
 
   /** Current scouts (re-read from the staff roster on each call). */
-  const std::vector<ScoutProfile>& getScouts() const;
+  std::vector<ScoutProfile> getScouts() const;
   const std::vector<ScoutAssignment>& getAssignments() const
   {
     return state.assignments;
@@ -541,7 +545,7 @@ class ScoutingSystem
   /** Mean attributes per position group of a club (possible_stats order). */
   using TeamPrior = std::array<std::vector<float>, POSITION_GROUPS>;
 
-  const std::vector<float>& priorMeans(TeamID team_id, std::size_t group) const;
+  float priorMean(TeamID team_id, std::size_t group, std::size_t index) const;
   Estimate estimateStat(const Player& player, const std::string& stat,
                         float value, float noise_sd) const;
 
@@ -596,6 +600,8 @@ class ScoutingSystem
   std::shared_ptr<GameData> gamedata;
   ScoutProvider scout_provider;
   BudgetProvider budget_provider;
+  /** Cache lookups call one another while building summaries and estimates. */
+  mutable std::recursive_mutex cache_mutex;
   mutable std::vector<ScoutProfile> scouts; /*!< Cache of the provider. */
   mutable std::unordered_map<TeamID, TeamPrior> priors; /*!< Daily cache. */
   /** Backgrounds of scouts not stored yet (identical once stored). */

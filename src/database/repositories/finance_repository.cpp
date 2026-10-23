@@ -55,7 +55,8 @@ void FinanceRepository::insertPending(
       sqlite3_bind_int(stmt, 1, team.getId());
       sqlite3_bind_int64(stmt, 2, static_cast<sqlite3_int64>(seq++));
       sqlite3_bind_int(stmt, 3, dateToInt(transaction.date));
-      sqlite3_bind_int(stmt, 4, static_cast<int>(transaction.category));
+      sqlite3_bind_int(
+          stmt, 4, static_cast<int>(std::to_underlying(transaction.category)));
       sqlite3_bind_int64(stmt, 5, transaction.amount);
       db_conn->executeStep(stmt);
       sqlite3_reset(stmt);

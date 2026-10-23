@@ -39,7 +39,7 @@ double operatingShare(const LeagueEconomy& economy)
 double meritPrize(const LeagueEconomy& economy, std::size_t position,
                   std::size_t league_size)
 {
-  const double clubs = static_cast<double>(league_size);
+  const auto clubs = static_cast<double>(league_size);
   const double merit_pool =
       static_cast<double>(economy.profile->average_revenue_eur) *
       static_cast<double>(economy.profile->tv_share) *
@@ -95,7 +95,7 @@ std::unordered_map<LeagueID, LeagueEconomy> buildLeagueEconomies(
   std::unordered_map<LeagueID, LeagueEconomy> economies;
   economies.reserve(reputations.size());
   for (const auto& [league_id, values] : reputations)
-    economies.emplace(league_id, makeLeagueEconomy(league_id, values));
+    economies.try_emplace(league_id, makeLeagueEconomy(league_id, values));
   return economies;
 }
 
@@ -124,7 +124,7 @@ std::size_t expectedPosition(const LeagueEconomy& economy,
 double expectedIncome(const LeagueEconomy& economy, std::uint8_t reputation)
 {
   const double revenue = expectedRevenue(economy, reputation);
-  const std::size_t clubs = std::max<std::size_t>(economy.clubs, 1);
+  const auto clubs = std::max<std::size_t>(economy.clubs, 1);
   const std::size_t position =
       std::min(expectedPosition(economy, reputation), clubs - 1);
   return monthlyBroadcasting(economy) * 12.0 +
@@ -140,7 +140,7 @@ double baseDemand(const LeagueEconomy& economy, std::uint8_t reputation)
   // Mid-table clubs fill the league's typical share of their ground (97% in
   // Germany, 34% in Russia) [S]; bigger clubs draw proportionally more (a
   // 20-point reputation edge fills about 30% more). [P]
-  const double fill = static_cast<double>(economy.profile->stadium_fill);
+  const auto fill = static_cast<double>(economy.profile->stadium_fill);
   return std::clamp(
       fill * (1.0 + 0.3 *
                         (static_cast<double>(reputation) -

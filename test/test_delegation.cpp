@@ -25,11 +25,15 @@ constexpr std::uint64_t WORLD_SEED = 20250702;
 
 int uniqueSlot(int offset)
 {
-  return 320'000 + static_cast<int>(getpid() % 100'000) * 10 + offset;
+  return 320'000 + getpid() % 100'000 * 10 + offset;
 }
 
 struct SlotCleanup
 {
+  explicit SlotCleanup(int saveSlot) : slot(saveSlot) {}
+  SlotCleanup(const SlotCleanup&) = delete;
+  SlotCleanup& operator=(const SlotCleanup&) = delete;
+
   int slot;
   ~SlotCleanup() { RuntimePaths::removeSave(slot); }
 };
@@ -233,10 +237,11 @@ TEST(DelegationTest, ManualChangeTakesTheDutyBackWithUndo)
   ASSERT_TRUE(controller->setDutyOwner(Duty::ScoutingAssignments,
                                        DutyOwner::Assistant));
   for (int day = 0; day < 7; ++day) controller->advanceDay();
-  const auto active = std::ranges::find_if(controller->getScoutAssignments(),
-                                           [](const ScoutAssignment& assignment)
-                                           { return !assignment.finished; });
-  if (active != controller->getScoutAssignments().end())
+  if (const auto active =
+          std::ranges::find_if(controller->getScoutAssignments(),
+                               [](const ScoutAssignment& assignment)
+                               { return !assignment.finished; });
+      active != controller->getScoutAssignments().end())
   {
     ASSERT_TRUE(controller->cancelScoutAssignment(active->id));
     EXPECT_FALSE(controller->isDelegated(Duty::ScoutingAssignments));

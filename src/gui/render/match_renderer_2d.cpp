@@ -16,6 +16,7 @@
 #include <cfloat>
 #include <cmath>
 #include <cstdint>
+#include <format>
 #include <numbers>
 #include <span>
 #include <string>
@@ -96,25 +97,21 @@ float valueNoise(float x, float y, std::uint32_t salt)
   const float b = unitHash(ix + 1U, iy, salt);
   const float c = unitHash(ix, iy + 1U, salt);
   const float d = unitHash(ix + 1U, iy + 1U, salt);
-  return (a + (b - a) * sx) + ((c + (d - c) * sx) - (a + (b - a) * sx)) * sy;
+  return std::lerp(std::lerp(a, b, sx), std::lerp(c, d, sx), sy);
 }
 
 #ifdef DEBUG
 ImU32 intentDebugColor(PlayerIntent intent)
 {
-  if (intent == PlayerIntent::RUN_IN_BEHIND ||
-      intent == PlayerIntent::ATTACK_BOX || intent == PlayerIntent::OVERLAP)
+  using enum PlayerIntent;
+  if (intent == RUN_IN_BEHIND || intent == ATTACK_BOX || intent == OVERLAP)
     return MatchSceneTuning::Marker::DEBUG_RUN_COLOR;
-  if (intent == PlayerIntent::PRESS_BALL ||
-      intent == PlayerIntent::CLAIM_LOOSE_BALL ||
-      intent == PlayerIntent::COVER_PRESS ||
-      intent == PlayerIntent::BLOCK_PASSING_LANE)
+  if (intent == PRESS_BALL || intent == CLAIM_LOOSE_BALL ||
+      intent == COVER_PRESS || intent == BLOCK_PASSING_LANE)
   {
     return MatchSceneTuning::Marker::DEBUG_PRESS_COLOR;
   }
-  if (intent == PlayerIntent::OFFER_SUPPORT ||
-      intent == PlayerIntent::RECEIVE_PASS ||
-      intent == PlayerIntent::CARRY_BALL)
+  if (intent == OFFER_SUPPORT || intent == RECEIVE_PASS || intent == CARRY_BALL)
   {
     return MatchSceneTuning::Marker::DEBUG_SUPPORT_COLOR;
   }
@@ -407,8 +404,7 @@ void MatchRenderer2D::State::buildGrassColors()
           const float dx = x / LENGTH * 2.0f - 1.0f;
           const float dy = y / WIDTH * 2.0f - 1.0f;
           const float reach = std::min(1.0f, 0.55f * dx * dx + 0.45f * dy * dy);
-          const float light =
-              G::LIGHT_CENTRE + (G::LIGHT_EDGE - G::LIGHT_CENTRE) * reach;
+          const float light = std::lerp(G::LIGHT_CENTRE, G::LIGHT_EDGE, reach);
           const float mottle =
               (valueNoise(x / G::NOISE_METRES, y / G::NOISE_METRES, 31U) -
                0.5f) *
@@ -457,13 +453,17 @@ void MatchRenderer2D::State::buildStands(float apron)
   const auto boards =
       [&](float from, float to, float fixed, bool alongX, std::uint32_t side)
   {
-    std::uint32_t index = side * 3U;
-    for (float start = from; start < to; start += boardPixels, ++index)
+    for (std::size_t boardIndex = 0;; ++boardIndex)
     {
+      const float start = from + static_cast<float>(boardIndex) * boardPixels;
+      if (!(start < to)) break;
       const float end = std::min(to, start + boardPixels - px(1.0f));
-      const ImU32 color = shadeColor(
-          Stadium3D::SPONSORS[index % Stadium3D::SPONSORS.size()].background,
-          0.85f);
+      const ImU32 color =
+          shadeColor(Stadium3D::SPONSORS[(static_cast<std::size_t>(side) * 3U +
+                                          boardIndex) %
+                                         Stadium3D::SPONSORS.size()]
+                         .background,
+                     0.85f);
       if (alongX)
         quad(start, fixed, end, fixed + board, color);
       else
@@ -494,8 +494,8 @@ void MatchRenderer2D::State::buildStands(float apron)
                          const KitColors* fans)
   {
     if (x1 - x0 < step || y1 - y0 < step) return;
-    const int columns = static_cast<int>((x1 - x0) / step);
-    const int rows = static_cast<int>((y1 - y0) / step);
+    const auto columns = static_cast<int>((x1 - x0) / step);
+    const auto rows = static_cast<int>((y1 - y0) / step);
     const float originX =
         x0 + ((x1 - x0) - static_cast<float>(columns) * step) * 0.5f;
     const float originY =
@@ -663,9 +663,9 @@ void MatchRenderer2D::State::detectKick(const MatchRenderSnapshot& snapshot)
   // at speed, or a sudden jump in ball speed next to someone.
   const MatchRenderBall& source = snapshot.ball;
   const Player* possessor = source.possessedBy;
-  const bool newStep = source.currentPosition.x != lastBallPosition.x ||
-                       source.currentPosition.y != lastBallPosition.y;
-  if (!newStep)
+  if (const bool newStep = source.currentPosition.x != lastBallPosition.x ||
+                           source.currentPosition.y != lastBallPosition.y;
+      !newStep)
   {
     if (possessor) lastPossessor = possessor;
     return;
@@ -683,8 +683,8 @@ void MatchRenderer2D::State::detectKick(const MatchRenderSnapshot& snapshot)
   constexpr float MIN_KICK_SPEED = 6.5f;
   constexpr float SPEED_JUMP = 5.0f;
   constexpr float REACH_METRES = 2.2f;
-  constexpr float TELEPORT_METRES = 6.0f;
-  if (livePlay && stepMetres < TELEPORT_METRES && speed >= MIN_KICK_SPEED)
+  if (constexpr float TELEPORT_METRES = 6.0f;
+      livePlay && stepMetres < TELEPORT_METRES && speed >= MIN_KICK_SPEED)
   {
     if (lastPossessor && possessor != lastPossessor)
     {
@@ -713,8 +713,8 @@ void MatchRenderer2D::State::detectKick(const MatchRenderSnapshot& snapshot)
 
   kickByHome = kicker->isHomeTeam;
   lineAtKick = defendingLine(snapshot, kickByHome, fromX);
-  Flight& previous = flights[currentFlight];
-  if (previous.used && previous.endedSeconds < 0.0f)
+  if (Flight& previous = flights[currentFlight];
+      previous.used && previous.endedSeconds < 0.0f)
     previous.endedSeconds = 0.0f;
   currentFlight = (currentFlight + 1) % flights.size();
   Flight& flight = flights[currentFlight];
@@ -854,7 +854,7 @@ void MatchRenderer2D::State::drawStadium(float apron)
   if (standWidth != viewport.width || standHeight != viewport.height ||
       standApron != apron)
     buildStands(apron);
-  const int total = static_cast<int>(standQuads.size());
+  const auto total = static_cast<int>(standQuads.size());
   for (int first = 0; first < total; first += 4)
   {
     reserveBatch(4, 6);
@@ -1100,11 +1100,13 @@ void MatchRenderer2D::State::drawOffside()
       withAlpha(O::COLOR,
                 static_cast<std::uint8_t>(static_cast<float>(alpha) * 0.22f)));
   const float dash = O::DASH_METRES * ppm;
-  for (float y = viewport.y; y < viewport.y + viewport.height; y += dash * 2.0f)
+  const float bottom = viewport.y + viewport.height;
+  for (std::size_t dashIndex = 0;; ++dashIndex)
   {
-    drawList->AddLine({x, y},
-                      {x, std::min(y + dash, viewport.y + viewport.height)},
-                      color, thickness);
+    const float y = viewport.y + static_cast<float>(dashIndex) * (dash * 2.0f);
+    if (!(y < bottom)) break;
+    drawList->AddLine({x, y}, {x, std::min(y + dash, bottom)}, color,
+                      thickness);
   }
 }
 
@@ -1130,8 +1132,9 @@ void MatchRenderer2D::State::drawFlights()
     };
     // Very short touches are not worth a path.
     const PathSample& first = flight.samples[0];
-    const PathSample last = sampleAt(count - 1);
-    if (std::hypot(last.x - first.x, last.y - first.y) < 3.0f) continue;
+    if (const PathSample last = sampleAt(count - 1);
+        std::hypot(last.x - first.x, last.y - first.y) < 3.0f)
+      continue;
     const float fade =
         travelling ? 1.0f
                    : std::clamp(1.0f - flight.endedSeconds / F::FADE_SECONDS,
@@ -1226,10 +1229,10 @@ void MatchRenderer2D::State::drawToken(const TokenOnScreen& token, float radius,
 {
   using T = Tuning::Token;
   const MatchRenderPlayer& player = *token.player;
-  const KitColors& kit =
-      player.isGoalkeeper
-          ? (player.isHomeTeam ? kits.homeGoalkeeper : kits.awayGoalkeeper)
-          : (player.isHomeTeam ? kits.home : kits.away);
+  const KitColors& teamKit = player.isHomeTeam ? kits.home : kits.away;
+  const KitColors& goalkeeperKit =
+      player.isHomeTeam ? kits.homeGoalkeeper : kits.awayGoalkeeper;
+  const KitColors& kit = player.isGoalkeeper ? goalkeeperKit : teamKit;
   const float fade = player.onPitch ? 1.0f : T::OFF_PITCH_ALPHA;
   const auto faded = [fade](ImU32 color)
   {
@@ -1278,8 +1281,8 @@ void MatchRenderer2D::State::drawToken(const TokenOnScreen& token, float radius,
   drawList->AddCircleFilled({at.x - radius * 0.2f, at.y - radius * 0.22f},
                             radius * 0.4f, faded(IM_COL32(255, 255, 255, 30)));
 
-  const float fontSize = radius * T::NUMBER_SHARE;
-  if (token.number > 0 && fontSize >= px(T::MIN_NUMBER_PIXELS))
+  if (const float fontSize = radius * T::NUMBER_SHARE;
+      token.number > 0 && fontSize >= px(T::MIN_NUMBER_PIXELS))
   {
     const char* text =
         NUMBER_TEXT[static_cast<std::size_t>(std::clamp(token.number, 0, 99))]
@@ -1479,35 +1482,36 @@ void MatchRenderer2D::State::drawBall()
 
 const char* playerIntentLabel(PlayerIntent intent)
 {
+  using enum PlayerIntent;
   switch (intent)
   {
-    case PlayerIntent::HOLD_SHAPE:
+    case HOLD_SHAPE:
       return LOC("MATCH_INTENT_HOLD_SHAPE");
-    case PlayerIntent::CARRY_BALL:
+    case CARRY_BALL:
       return LOC("MATCH_INTENT_CARRY_BALL");
-    case PlayerIntent::OFFER_SUPPORT:
+    case OFFER_SUPPORT:
       return LOC("MATCH_INTENT_OFFER_SUPPORT");
-    case PlayerIntent::RECEIVE_PASS:
+    case RECEIVE_PASS:
       return LOC("MATCH_INTENT_RECEIVE_PASS");
-    case PlayerIntent::RUN_IN_BEHIND:
+    case RUN_IN_BEHIND:
       return LOC("MATCH_INTENT_RUN_IN_BEHIND");
-    case PlayerIntent::ATTACK_BOX:
+    case ATTACK_BOX:
       return LOC("MATCH_INTENT_ATTACK_BOX");
-    case PlayerIntent::OVERLAP:
+    case OVERLAP:
       return LOC("MATCH_INTENT_OVERLAP");
-    case PlayerIntent::PRESS_BALL:
+    case PRESS_BALL:
       return LOC("MATCH_INTENT_PRESS_BALL");
-    case PlayerIntent::COVER_PRESS:
+    case COVER_PRESS:
       return LOC("MATCH_INTENT_COVER_PRESS");
-    case PlayerIntent::BLOCK_PASSING_LANE:
+    case BLOCK_PASSING_LANE:
       return LOC("MATCH_INTENT_BLOCK_PASSING_LANE");
-    case PlayerIntent::MARK_OPPONENT:
+    case MARK_OPPONENT:
       return LOC("MATCH_INTENT_MARK_OPPONENT");
-    case PlayerIntent::CLAIM_LOOSE_BALL:
+    case CLAIM_LOOSE_BALL:
       return LOC("MATCH_INTENT_CLAIM_LOOSE_BALL");
-    case PlayerIntent::RECOVER_SHAPE:
+    case RECOVER_SHAPE:
       return LOC("MATCH_INTENT_RECOVER_SHAPE");
-    case PlayerIntent::GOALKEEP:
+    case GOALKEEP:
       return LOC("MATCH_INTENT_GOALKEEP");
   }
   return "";
@@ -1560,8 +1564,7 @@ void drawGoalCelebration(ImDrawList& drawList, const MatchViewport& viewport,
       viewport.y + viewport.height * MatchSceneTuning::Pitch::CENTRE_RATIO;
   const float baseFontSize = ImGui::GetStyle().FontSizeBase;
   const std::string banner = LOC("MATCH_GOAL_BANNER");
-  const std::string score =
-      std::to_string(homeScore) + " - " + std::to_string(awayScore);
+  const std::string score = std::format("{} - {}", homeScore, awayScore);
 
   ImGui::PushFont(nullptr,
                   baseFontSize * MatchSceneTuning::Celebration::BANNER_SCALE);

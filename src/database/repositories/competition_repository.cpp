@@ -173,9 +173,9 @@ PlayerSeasonTable CompetitionRepository::loadPlayerSeasonStats(
   while (sqlite3_step(stmt) == SQLITE_ROW)
   {
     const PlayerSeasonStats stats = readPlayerStats(stmt);
-    table.emplace(PlayerSeasonKey{stats.season, stats.player_id, stats.team_id,
-                                  stats.competition_type},
-                  stats);
+    table.try_emplace(PlayerSeasonKey{stats.season, stats.player_id,
+                                      stats.team_id, stats.competition_type},
+                      stats);
   }
   sqlite3_finalize(stmt);
   return table;

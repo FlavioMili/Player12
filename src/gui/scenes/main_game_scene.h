@@ -11,9 +11,11 @@
 #include <future>
 #include <optional>
 #include <string>
+#include <thread>
 #include <unordered_set>
 #include <vector>
 
+#include "global/background_task.h"
 #include "gui/gui_scene.h"
 #include "gui/gui_view.h"
 #include "gui/scenes/management_scene.h"
@@ -183,6 +185,7 @@ class MainGameScene : public ManagementScene
   int cached_season = -1;
   GameDateValue cached_date;
   TeamID cached_club = 0; /**< Club the cached page shows (0: none). */
+  std::jthread continue_worker;
   std::future<int> continue_operation;
   bool continuation_running = false;
   bool continuation_requested = false;

@@ -11,6 +11,7 @@
 #include <algorithm>
 #include <cmath>
 #include <string>
+#include <utility>
 
 #include "database/gamedata.h"
 #include "database/sqlite_rows.h"
@@ -41,14 +42,15 @@ double seasonIncome(const GameData& gamedata, const Team& team)
 std::uint8_t currentLevel(const Team& team, FacilityProjectType type,
                           std::uint8_t medical)
 {
+  using enum FacilityProjectType;
   switch (type)
   {
-    case FacilityProjectType::TrainingGround:
+    case TrainingGround:
       return team.getProfile().training_facilities;
-    case FacilityProjectType::MedicalCentre:
+    case MedicalCentre:
       return medical;
-    case FacilityProjectType::StadiumExpansion:
-    case FacilityProjectType::COUNT:
+    case StadiumExpansion:
+    case COUNT:
       break;
   }
   return 0;
@@ -82,8 +84,9 @@ ProjectVerdict FacilityProjects::request(
     GameData& gamedata, const BoardState& board, TeamID team_id,
     FacilityProjectType type, std::uint32_t seats, const GameDateValue& today)
 {
+  using enum ProjectVerdict;
   const auto team = gamedata.getTeam(team_id);
-  if (!team || team_id == FREE_AGENTS_TEAM_ID) return ProjectVerdict::AtMaximum;
+  if (!team || team_id == FREE_AGENTS_TEAM_ID) return AtMaximum;
   Team& club = team->get();
   const ProjectQuote offer = quote(gamedata, team_id, type, seats);
 
@@ -104,12 +107,11 @@ ProjectVerdict FacilityProjects::request(
   context.cooling_down = cooldownUntil(team_id, type, today).has_value();
 
   const ProjectVerdict verdict = BoardModel::reviewProject(offer, context);
-  if (verdict != ProjectVerdict::Approved)
+  if (verdict != Approved)
   {
-    if (verdict != ProjectVerdict::AlreadyRunning &&
-        verdict != ProjectVerdict::TooManyProjects &&
-        verdict != ProjectVerdict::Cooldown)
-      cooldowns[{team_id, static_cast<std::uint8_t>(type)}] =
+    if (verdict != AlreadyRunning && verdict != TooManyProjects &&
+        verdict != Cooldown)
+      cooldowns[{team_id, std::to_underlying(type)}] =
           SeasonCalendar::addDays(today, BoardModel::PROJECT_COOLDOWN_DAYS);
     return verdict;
   }
@@ -168,6 +170,7 @@ void FacilityProjects::complete(GameData& gamedata, FacilityProject& project,
                                 const GameDateValue& date,
                                 TeamID managed_team_id, Inbox& inbox)
 {
+  using enum FacilityProjectType;
   Team& club = gamedata.getTeam(project.team_id)->get();
   if (project.paid < project.cost)
   {
@@ -180,12 +183,12 @@ void FacilityProjects::complete(GameData& gamedata, FacilityProject& project,
   std::string detail;
   switch (project.type)
   {
-    case FacilityProjectType::TrainingGround:
+    case TrainingGround:
       profile.training_facilities = static_cast<std::uint8_t>(std::min<int>(
           100, profile.training_facilities + static_cast<int>(project.amount)));
       detail = std::to_string(profile.training_facilities);
       break;
-    case FacilityProjectType::MedicalCentre:
+    case MedicalCentre:
     {
       std::uint8_t& level =
           medical.try_emplace(project.team_id, STANDARD_MEDICAL).first->second;
@@ -194,8 +197,8 @@ void FacilityProjects::complete(GameData& gamedata, FacilityProject& project,
       detail = std::to_string(level);
       break;
     }
-    case FacilityProjectType::StadiumExpansion:
-    case FacilityProjectType::COUNT:
+    case StadiumExpansion:
+    case COUNT:
       profile.stadium_capacity += project.amount + project.disruption;
       detail = std::to_string(profile.stadium_capacity);
       break;
@@ -238,7 +241,7 @@ std::vector<FacilityProject> FacilityProjects::projectsFor(TeamID team_id) const
 std::optional<GameDateValue> FacilityProjects::cooldownUntil(
     TeamID team_id, FacilityProjectType type, const GameDateValue& today) const
 {
-  const auto found = cooldowns.find({team_id, static_cast<std::uint8_t>(type)});
+  const auto found = cooldowns.find({team_id, std::to_underlying(type)});
   if (found == cooldowns.end() || !(today < found->second)) return std::nullopt;
   return found->second;
 }
@@ -263,11 +266,10 @@ void FacilityProjects::load(const std::shared_ptr<DatabaseConnection>& db_conn)
   forEach(db,
           "SELECT id, team_id, type, start_date, end_date, cost, paid, amount, "
           "disruption, completed FROM FacilityProjects ORDER BY id;",
-          [&](sqlite3_stmt* stmt)
+          [this](sqlite3_stmt* stmt)
           {
             const auto type = column<std::uint8_t>(stmt, 2);
-            if (type >= static_cast<std::uint8_t>(FacilityProjectType::COUNT))
-              return;
+            if (type >= std::to_underlying(FacilityProjectType::COUNT)) return;
             FacilityProject project;
             project.id = column<std::uint32_t>(stmt, 0);
             project.team_id = column<TeamID>(stmt, 1);
@@ -284,11 +286,11 @@ void FacilityProjects::load(const std::shared_ptr<DatabaseConnection>& db_conn)
           });
   forEach(
       db, "SELECT team_id, medical FROM ClubFacilities;",
-      [&](sqlite3_stmt* stmt)
+      [this](sqlite3_stmt* stmt)
       { medical[column<TeamID>(stmt, 0)] = column<std::uint8_t>(stmt, 1); });
   forEach(
       db, "SELECT team_id, type, until_date FROM ProjectCooldowns;",
-      [&](sqlite3_stmt* stmt)
+      [this](sqlite3_stmt* stmt)
       {
         cooldowns[{column<TeamID>(stmt, 0), column<std::uint8_t>(stmt, 1)}] =
             GameDateValue::fromString(columnText(stmt, 2));
@@ -312,7 +314,8 @@ void FacilityProjects::save(
             {
               sqlite3_bind_int64(row, 1, project.id);
               sqlite3_bind_int(row, 2, project.team_id);
-              sqlite3_bind_int(row, 3, static_cast<int>(project.type));
+              sqlite3_bind_int(
+                  row, 3, static_cast<int>(std::to_underlying(project.type)));
               bindText(row, 4, project.start.toString());
               bindText(row, 5, project.end.toString());
               sqlite3_bind_int64(row, 6, project.cost);

@@ -308,7 +308,7 @@ class TransferMarket
   std::int64_t spendableBudget(TeamID team_id, const GameDateValue& date) const;
   /** Takes a departed player out of the managed club's line-up, filling
    * his place without rebuilding the rest of the manager's selection. */
-  void removeFromLineup(Team& team, const Player& departed);
+  void removeFromLineup(Team& team, const Player& departed) const;
   /** Agent fee paid by the buyer: the one agreed in the contract, else
    * 10% of a fee, or weeks of wage. */
   static std::uint32_t agentFee(const Deal& deal);

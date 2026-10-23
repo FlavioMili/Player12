@@ -9,6 +9,7 @@
 #include <gtest/gtest.h>
 
 #include <algorithm>
+#include <array>
 #include <chrono>
 #include <cmath>
 #include <cstdint>
@@ -19,6 +20,7 @@
 #include <string>
 #include <thread>
 #include <type_traits>
+#include <utility>
 #include <vector>
 
 #include "audio/audio_mixer.h"
@@ -50,8 +52,8 @@ Levels renderSeconds(Mixer& mixer, float seconds,
                      std::vector<float>* capture = nullptr)
 {
   std::vector<float> block(2 * BLOCK);
-  const int blocks = static_cast<int>(seconds * Audio::SAMPLE_RATE_F /
-                                      static_cast<float>(BLOCK));
+  const auto blocks = static_cast<int>(seconds * Audio::SAMPLE_RATE_F /
+                                       static_cast<float>(BLOCK));
   double sum = 0.0;
   std::size_t count = 0;
   Levels levels;
@@ -129,15 +131,21 @@ StatsConfig createStatsConfig()
 Team createTeam(TeamID id, const std::string& name,
                 std::vector<std::unique_ptr<Player>>& players)
 {
+  using enum PlayerRole;
   Team team(id, 1, name, 50'000'000, {}, Strategy{}, Lineup{});
-  static constexpr PlayerRole ROLES[11] = {
-      PlayerRole::GK, PlayerRole::LB, PlayerRole::CB, PlayerRole::CB,
-      PlayerRole::RB, PlayerRole::CM, PlayerRole::CM, PlayerRole::LW,
-      PlayerRole::RW, PlayerRole::ST, PlayerRole::ST};
-  static constexpr Vector2F POSITIONS[11] = {
-      {0.04f, 0.50f}, {0.18f, 0.12f}, {0.18f, 0.38f}, {0.18f, 0.62f},
-      {0.18f, 0.88f}, {0.43f, 0.35f}, {0.43f, 0.65f}, {0.68f, 0.16f},
-      {0.68f, 0.84f}, {0.78f, 0.38f}, {0.78f, 0.62f}};
+  static constexpr std::array ROLES = {GK, LB, CB, CB, RB, CM,
+                                       CM, LW, RW, ST, ST};
+  static constexpr std::array<Vector2F, 11> POSITIONS = {{{0.04f, 0.50f},
+                                                          {0.18f, 0.12f},
+                                                          {0.18f, 0.38f},
+                                                          {0.18f, 0.62f},
+                                                          {0.18f, 0.88f},
+                                                          {0.43f, 0.35f},
+                                                          {0.43f, 0.65f},
+                                                          {0.68f, 0.16f},
+                                                          {0.68f, 0.84f},
+                                                          {0.78f, 0.38f},
+                                                          {0.78f, 0.62f}}};
   for (uint32_t index = 0; index < 11; ++index)
   {
     const std::map<std::string, float> stats = {
@@ -148,7 +156,7 @@ Team createTeam(TeamID id, const std::string& name,
         static_cast<PlayerID>(id) * 100U + index, id, "First",
         std::to_string(index), ROLES[index], Language::EN, 100'000, 0, 25, 3,
         180, Foot::Right, stats);
-    if (ROLES[index] == PlayerRole::GK)
+    if (ROLES[index] == GK)
       team.getLineup().setGoalkeeper(player.get());
     else
       team.getLineup().addOutfieldPlayer(player.get(), POSITIONS[index]);
@@ -243,7 +251,7 @@ TEST(AudioMixerTest, BusesAndMuteControlTheOutput)
   // The effects bus still carries a whistle.
   crowdMuted.trigger(
       {.sound = Sound::WHISTLE,
-       .variant = static_cast<std::uint8_t>(Audio::WhistlePattern::KICK_OFF)});
+       .variant = std::to_underlying(Audio::WhistlePattern::KICK_OFF)});
   EXPECT_GT(renderSeconds(crowdMuted, 0.5f).rms, 0.01f);
 
   // Master at zero silences everything.
@@ -270,14 +278,15 @@ TEST(AudioMixerTest, BusesAndMuteControlTheOutput)
 
 TEST(AudioMixerTest, RendersFarFasterThanRealTime)
 {
+  using enum Audio::Sound;
   Mixer mixer;
   mixer.setCrowd(0.6f, 1.0f);
   const auto started = std::chrono::steady_clock::now();
   for (int second = 0; second < 10; ++second)
   {
-    mixer.trigger({.sound = Sound::KICK, .intensity = 0.4f});
-    mixer.trigger({.sound = Sound::CROWD_OOH, .intensity = 0.5f});
-    if (second % 3 == 0) mixer.trigger({.sound = Sound::CROWD_APPLAUSE});
+    mixer.trigger({.sound = KICK, .intensity = 0.4f});
+    mixer.trigger({.sound = CROWD_OOH, .intensity = 0.5f});
+    if (second % 3 == 0) mixer.trigger({.sound = CROWD_APPLAUSE});
     renderSeconds(mixer, 1.0f);
   }
   const double seconds =
@@ -291,13 +300,12 @@ TEST(AudioMixerTest, RendersFarFasterThanRealTime)
 
 TEST(MatchEventCursorTest, ReportsEachEventOnceAcrossReplaysAndEviction)
 {
+  using enum MatchEventType;
   MatchEventCursor cursor;
   std::vector<const MatchEvent*> fresh;
-  std::vector<MatchEvent> log = {
-      makeEvent(MatchEventType::KICK_OFF, 0.0f, true),
-      makeEvent(MatchEventType::FOUL, 3.0f, false),
-      makeEvent(MatchEventType::YELLOW_CARD, 3.0f, false),
-      makeEvent(MatchEventType::FREE_KICK, 3.0f, true)};
+  std::vector log = {
+      makeEvent(KICK_OFF, 0.0f, true), makeEvent(FOUL, 3.0f, false),
+      makeEvent(YELLOW_CARD, 3.0f, false), makeEvent(FREE_KICK, 3.0f, true)};
   cursor.collect(log, fresh);
   EXPECT_EQ(fresh.size(), 4U);  // same-minute events are all distinct
 
@@ -305,44 +313,42 @@ TEST(MatchEventCursorTest, ReportsEachEventOnceAcrossReplaysAndEviction)
   cursor.collect(log, fresh);
   EXPECT_TRUE(fresh.empty());
 
-  log.push_back(makeEvent(MatchEventType::GOAL, 7.5f, true, 1, 0));
+  log.push_back(makeEvent(GOAL, 7.5f, true, 1, 0));
   fresh.clear();
   cursor.collect(log, fresh);
   ASSERT_EQ(fresh.size(), 1U);
-  EXPECT_EQ(fresh[0]->type, MatchEventType::GOAL);
+  EXPECT_EQ(fresh[0]->type, GOAL);
 
   // The engine's log drops its oldest entries once full.
   log.erase(log.begin(), log.begin() + 2);
-  log.push_back(makeEvent(MatchEventType::CORNER, 9.0f, false, 1, 0));
+  log.push_back(makeEvent(CORNER, 9.0f, false, 1, 0));
   fresh.clear();
   cursor.collect(log, fresh);
   ASSERT_EQ(fresh.size(), 1U);
-  EXPECT_EQ(fresh[0]->type, MatchEventType::CORNER);
+  EXPECT_EQ(fresh[0]->type, CORNER);
 
   // A replay (a new engine playing the same match from kick-off) or a seek
   // back never repeats what was heard...
-  std::vector<MatchEvent> replay = {
-      makeEvent(MatchEventType::KICK_OFF, 0.0f, true),
-      makeEvent(MatchEventType::FOUL, 3.0f, false),
-      makeEvent(MatchEventType::YELLOW_CARD, 3.0f, false)};
+  std::vector replay = {makeEvent(KICK_OFF, 0.0f, true),
+                        makeEvent(FOUL, 3.0f, false),
+                        makeEvent(YELLOW_CARD, 3.0f, false)};
   fresh.clear();
   cursor.collect(replay, fresh);
   EXPECT_TRUE(fresh.empty());
-  replay.push_back(makeEvent(MatchEventType::GOAL, 7.5f, true, 1, 0));
-  replay.push_back(makeEvent(MatchEventType::CORNER, 9.0f, false, 1, 0));
+  replay.push_back(makeEvent(GOAL, 7.5f, true, 1, 0));
+  replay.push_back(makeEvent(CORNER, 9.0f, false, 1, 0));
   fresh.clear();
   cursor.collect(replay, fresh);
   EXPECT_TRUE(fresh.empty());
   // ...but play past it is heard, second half included.
-  replay.push_back(
-      makeEvent(MatchEventType::SECOND_HALF, 45.0f, true, 1, 0, 2));
+  replay.push_back(makeEvent(SECOND_HALF, 45.0f, true, 1, 0, 2));
   fresh.clear();
   cursor.collect(replay, fresh);
   ASSERT_EQ(fresh.size(), 1U);
-  EXPECT_EQ(fresh[0]->type, MatchEventType::SECOND_HALF);
+  EXPECT_EQ(fresh[0]->type, SECOND_HALF);
 
   // Skipped events are consumed silently.
-  replay.push_back(makeEvent(MatchEventType::SHOT, 50.0f, true, 1, 0, 2));
+  replay.push_back(makeEvent(SHOT, 50.0f, true, 1, 0, 2));
   cursor.skipAll(replay);
   fresh.clear();
   cursor.collect(replay, fresh);
@@ -352,9 +358,8 @@ TEST(MatchEventCursorTest, ReportsEachEventOnceAcrossReplaysAndEviction)
 TEST(MatchAudioTest, MapsEventsToSoundsOnceAndFromTheHomeCrowdsSide)
 {
   MatchAudio audio(false);
-  Mixer& mixer = audio.mixer();
-  std::vector<MatchEvent> log = {
-      makeEvent(MatchEventType::KICK_OFF, 0.0f, true)};
+  const Mixer& mixer = audio.mixer();
+  std::vector log = {makeEvent(MatchEventType::KICK_OFF, 0.0f, true)};
   audio.update(0.016f, frameAt(0.0f), log);
   EXPECT_EQ(mixer.triggeredCount(Sound::WHISTLE), 1U);
 
@@ -405,9 +410,8 @@ TEST(MatchAudioTest, MapsEventsToSoundsOnceAndFromTheHomeCrowdsSide)
 TEST(MatchAudioTest, SkipsJumpsAndThinsOutFastPlayback)
 {
   MatchAudio audio(false);
-  Mixer& mixer = audio.mixer();
-  std::vector<MatchEvent> log = {
-      makeEvent(MatchEventType::KICK_OFF, 0.0f, true)};
+  const Mixer& mixer = audio.mixer();
+  std::vector log = {makeEvent(MatchEventType::KICK_OFF, 0.0f, true)};
   audio.update(0.016f, frameAt(0.0f), log);
   const std::uint64_t afterKickOff = reactionCount(mixer);
 
@@ -452,9 +456,8 @@ TEST(MatchAudioTest, CommandsAreCopiesIndependentOfTheEventLog)
 {
   MatchAudio audio(false);
   {
-    std::vector<MatchEvent> log = {
-        makeEvent(MatchEventType::KICK_OFF, 0.0f, true),
-        makeEvent(MatchEventType::GOAL, 0.5f, true, 1, 0)};
+    std::vector log = {makeEvent(MatchEventType::KICK_OFF, 0.0f, true),
+                       makeEvent(MatchEventType::GOAL, 0.5f, true, 1, 0)};
     audio.update(0.016f, frameAt(0.5f), log);
   }
   // The log is gone; the queued sounds still render from their own data.
@@ -512,19 +515,20 @@ TEST(MatchAudioTest, FollowsALiveMatchWithoutRepeatingItOnReplay)
 TEST(MatchAudioTest, OpensTheDummyDeviceAndPlaysThroughIt)
 {
   // The test environment selects SDL's dummy driver; nothing is audible.
-  const char* driver = std::getenv("SDL_AUDIODRIVER");
-  if (driver == nullptr || std::string(driver) != "dummy")
+  if (const char* driver = std::getenv("SDL_AUDIODRIVER");
+      driver == nullptr || std::string(driver) != "dummy")
     GTEST_SKIP() << "needs SDL_AUDIODRIVER=dummy";
   MatchAudio audio(true);
   ASSERT_TRUE(audio.deviceOpen());
   audio.mixer().trigger(
       {.sound = Sound::WHISTLE,
-       .variant = static_cast<std::uint8_t>(Audio::WhistlePattern::FULL_TIME)});
+       .variant = std::to_underlying(Audio::WhistlePattern::FULL_TIME)});
   bool playing = false;
-  for (int attempt = 0; attempt < 100 && !playing; ++attempt)
+  for (int attempt = 0; attempt < 100; ++attempt)
   {
     std::this_thread::sleep_for(std::chrono::milliseconds(10));
     playing = audio.mixer().activeVoices() > 0;
+    if (playing) break;
   }
   EXPECT_TRUE(playing);
 }
@@ -555,7 +559,7 @@ TEST(MatchAudioTest, RendersAMatchMomentAtSaneLevels)
   MatchAudioFrame frame = frameAt(0.0f);
   const auto step = [&](float seconds)
   {
-    const int frames = static_cast<int>(seconds * 100.0f);
+    const auto frames = static_cast<int>(seconds * 100.0f);
     for (int index = 0; index < frames; ++index)
     {
       audio.update(0.01f, frame, log);
@@ -607,7 +611,7 @@ TEST(MatchAudioTest, RendersAMatchMomentAtSaneLevels)
   for (std::size_t index = goalStart; index < capture.size(); ++index)
     goalSum += static_cast<double>(capture[index]) * capture[index];
   for (float sample : capture) peak = std::max(peak, std::abs(sample));
-  const float goalRms = static_cast<float>(
+  const auto goalRms = static_cast<float>(
       std::sqrt(goalSum / static_cast<double>(capture.size() - goalStart)));
 
   RecordProperty("bed_rms", std::to_string(bed.rms));

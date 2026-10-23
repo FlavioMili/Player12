@@ -18,6 +18,8 @@
 #include <cmath>
 #include <format>
 #include <map>
+#include <memory>
+#include <utility>
 
 #include "controller/game_controller.h"
 #include "database/gamedata.h"
@@ -51,15 +53,15 @@ constexpr std::size_t EXPERTISE_LINES = 4;
 constexpr float DAYS_PER_YEAR = 365.0f;
 
 /** ISO 639-1 codes in SpokenLanguage order, for the compact list. */
-constexpr std::array<const char*,
-                     static_cast<std::size_t>(SpokenLanguage::COUNT)>
+constexpr std::array<const char*, static_cast<std::size_t>(std::to_underlying(
+                                      SpokenLanguage::COUNT))>
     LANGUAGE_CODES = {"EN", "IT", "ES", "FR", "DE", "PT", "NL", "RU", "SV",
                       "PL", "EL", "TR", "AR", "JA", "ZH", "KO", "RO", "HR",
                       "DA", "FI", "NO", "SK", "CS", "HU", "UK"};
 
 uint64_t pickerKey(ScoutTargetKind kind, uint32_t id)
 {
-  return (static_cast<uint64_t>(kind) << 32U) | id;
+  return (static_cast<uint64_t>(std::to_underlying(kind)) << 32U) | id;
 }
 
 std::string nationalityName(Language nationality)
@@ -78,7 +80,9 @@ std::vector<SpokenLanguage> languagesOf(const ScoutExpertise& expertise)
   const SpokenLanguage native = nativeLanguage(expertise.nationality);
   if (speaks(expertise.languages, native)) languages.push_back(native);
   for (std::size_t index = 0;
-       index < static_cast<std::size_t>(SpokenLanguage::COUNT); ++index)
+       index <
+       static_cast<std::size_t>(std::to_underlying(SpokenLanguage::COUNT));
+       ++index)
   {
     const auto language = static_cast<SpokenLanguage>(index);
     if (language != native && speaks(expertise.languages, language))
@@ -107,7 +111,7 @@ std::string multiplierText(float multiplier)
 
 void ScoutingScene::rebuildWorld()
 {
-  GameController& controller = guiView->getController();
+  const GameController& controller = guiView->getController();
   world.clear();
   std::map<LeagueID, CountryNode> countries;
   const auto rootOf = [&controller](LeagueID league_id)
@@ -116,7 +120,8 @@ void ScoutingScene::rebuildWorld()
     for (int depth = 0; depth < 8; ++depth)
     {
       const auto league = controller.getLeagueById(current);
-      if (!league || !league->get().getParentLeagueID()) break;
+      if (!league.has_value() || !league->get().getParentLeagueID().has_value())
+        break;
       current = *league->get().getParentLeagueID();
     }
     return current;
@@ -156,7 +161,7 @@ void ScoutingScene::rebuildWorld()
 
 void ScoutingScene::rebuildScouts()
 {
-  GameController& controller = guiView->getController();
+  const GameController& controller = guiView->getController();
   scout_lines.clear();
   for (const ScoutSummary& summary : controller.getScoutSummaries())
   {
@@ -167,7 +172,8 @@ void ScoutingScene::rebuildScouts()
          languagesOf(controller.getScoutExpertise(summary.profile.id)))
     {
       if (!line.languages.empty()) line.languages += " · ";
-      line.languages += LANGUAGE_CODES[static_cast<std::size_t>(language)];
+      line.languages += LANGUAGE_CODES[static_cast<std::size_t>(
+          std::to_underlying(language))];
     }
     line.judging = fmt::sprintf(LOC("SCOUTING_JUDGING_SHORT"),
                                 summary.profile.judging_ability,
@@ -190,10 +196,12 @@ void ScoutingScene::rebuildScouts()
     const auto news =
         std::ranges::find_if(scout_lines, [](const ScoutLine& line)
                              { return line.summary.unread_reports > 0; });
-    selected_scout = news != scout_lines.end() ? news->summary.profile.id
-                     : scout_lines.empty()
-                         ? 0
-                         : scout_lines.front().summary.profile.id;
+    if (news != scout_lines.end())
+      selected_scout = news->summary.profile.id;
+    else if (scout_lines.empty())
+      selected_scout = 0;
+    else
+      selected_scout = scout_lines.front().summary.profile.id;
     send_open = false;
     history_assignment = 0;
     fresh_reports.clear();
@@ -206,7 +214,7 @@ const ScoutingScene::ScoutLine* ScoutingScene::selectedScoutLine() const
   const auto found = std::ranges::find_if(
       scout_lines, [this](const ScoutLine& line)
       { return line.summary.profile.id == selected_scout; });
-  return found == scout_lines.end() ? nullptr : &*found;
+  return found == scout_lines.end() ? nullptr : std::to_address(found);
 }
 
 void ScoutingScene::selectScout(uint32_t scoutId)
@@ -302,7 +310,7 @@ void ScoutingScene::rebuildScoutDetail()
   for (const ContinentNode& continent : world)
   {
     remember(ScoutTargetKind::Region,
-             static_cast<uint32_t>(continent.continent));
+             static_cast<uint32_t>(std::to_underlying(continent.continent)));
     for (const CountryNode& country : continent.countries)
     {
       remember(ScoutTargetKind::Country, country.id);
@@ -345,7 +353,7 @@ void ScoutingScene::rebuildScoutDetail()
 
 void ScoutingScene::rebuildScoutReportList()
 {
-  GameController& controller = guiView->getController();
+  const GameController& controller = guiView->getController();
   const ScoutLine* line = selectedScoutLine();
   scout_reports.clear();
   if (line == nullptr) return;
@@ -369,20 +377,21 @@ void ScoutingScene::sortScoutReports()
 {
   const auto key = [this](const ReportLine& a, const ReportLine& b)
   {
+    using enum ReportColumn;
     switch (report_sort)
     {
-      case ReportColumn::PLAYER:
+      case PLAYER:
         return UI::compare(a.player_name, b.player_name);
-      case ReportColumn::GRADE:
+      case GRADE:
         // A is the best grade: sort it as the highest.
         return UI::compare(b.report.grade, a.report.grade);
-      case ReportColumn::ABILITY:
+      case ABILITY:
         return UI::compare(a.report.overall, b.report.overall);
-      case ReportColumn::POTENTIAL:
+      case POTENTIAL:
         return UI::compare(a.report.potential_high, b.report.potential_high);
-      case ReportColumn::FEE:
+      case FEE:
         return UI::compare(a.report.estimated_fee, b.report.estimated_fee);
-      case ReportColumn::DATE:
+      case DATE:
         return UI::compare(a.report.id, b.report.id);
     }
     return 0;
@@ -398,22 +407,22 @@ void ScoutingScene::sortScoutReports()
 
 void ScoutingScene::rebuildSendPreview()
 {
+  using enum ScoutTargetKind;
   send_dirty = false;
-  GameController& controller = guiView->getController();
+  const GameController& controller = guiView->getController();
   send_cost =
-      send_target == 0 && send_kind != ScoutTargetKind::FreeAgents &&
-              send_kind != ScoutTargetKind::Region
+      send_target == 0 && send_kind != FreeAgents && send_kind != Region
           ? 0
           : controller.getScoutAssignmentCost(send_kind, send_target,
                                               static_cast<uint16_t>(send_days));
   send_effect =
       controller.getScoutEffectiveness(selected_scout, send_kind, send_target);
-  send_target_text = send_kind == ScoutTargetKind::Player && send_target == 0
+  send_target_text = send_kind == Player && send_target == 0
                          ? std::string()
                          : targetLabel(send_kind, send_target);
   effect_lines.clear();
   for (const EffectFactor& factor : send_effect.factors)
-    effect_lines.push_back({effectText(factor), factor.delta});
+    effect_lines.emplace_back(effectText(factor), factor.delta);
 }
 
 void ScoutingScene::rebuildPlayerMatches()
@@ -426,7 +435,7 @@ void ScoutingScene::rebuildPlayerMatches()
   for (const Player& player : controller.getGameData()->getPlayersVector())
   {
     if (managed && player.getTeamId() == managed->get().getId()) continue;
-    if (lower(player.getName()).find(query) == std::string::npos) continue;
+    if (!lower(player.getName()).contains(query)) continue;
     player_matches.emplace_back(player.getId(), player.getName());
     if (player_matches.size() >= PLAYER_MATCH_LIMIT) break;
   }
@@ -435,27 +444,28 @@ void ScoutingScene::rebuildPlayerMatches()
 std::string ScoutingScene::targetLabel(ScoutTargetKind kind,
                                        uint32_t targetId) const
 {
-  GameController& controller = guiView->getController();
+  const GameController& controller = guiView->getController();
+  using enum ScoutTargetKind;
   switch (kind)
   {
-    case ScoutTargetKind::Player:
+    case Player:
       if (const auto player = controller.getGameData()->getPlayer(targetId))
         return player->get().getName();
       break;
-    case ScoutTargetKind::League:
+    case League:
       if (const auto league =
               controller.getLeagueById(static_cast<LeagueID>(targetId)))
         return Competitions::leagueName(league->get());
       break;
-    case ScoutTargetKind::Country:
+    case Country:
       if (const auto league =
               controller.getLeagueById(static_cast<LeagueID>(targetId)))
         return fmt::sprintf(LOC("SCOUTING_COUNTRY_NODE"),
                             Competitions::leagueName(league->get()).c_str());
       break;
-    case ScoutTargetKind::Region:
+    case Region:
       return LOC(continentKey(static_cast<Continent>(targetId)));
-    case ScoutTargetKind::FreeAgents:
+    case FreeAgents:
       return LOC("SCOUTING_TARGET_FREE_AGENTS");
   }
   return {};
@@ -463,7 +473,7 @@ std::string ScoutingScene::targetLabel(ScoutTargetKind kind,
 
 std::string ScoutingScene::effectText(const EffectFactor& factor) const
 {
-  GameController& controller = guiView->getController();
+  const GameController& controller = guiView->getController();
   const auto leagueName = [&controller](uint32_t id)
   {
     const auto league = controller.getLeagueById(static_cast<LeagueID>(id));
@@ -633,19 +643,20 @@ void ScoutingScene::renderScoutList(float width, float height)
     y += lineHeight;
     std::string status;
     ImVec4 statusColor = palette.positive;
+    using enum ScoutStatus;
     switch (summary.status)
     {
-      case ScoutStatus::OnAssignment:
+      case OnAssignment:
         status = fmt::sprintf(
             Format::plural("SCOUTING_STATUS_ASSIGNED", line.days_left),
             line.target.c_str(), line.days_left);
         statusColor = palette.warning;
         break;
-      case ScoutStatus::IdleWithHistory:
+      case IdleWithHistory:
         status = fmt::sprintf(LOC("SCOUTING_STATUS_IDLE_HISTORY"),
                               static_cast<int>(summary.total_reports));
         break;
-      case ScoutStatus::IdleNew:
+      case IdleNew:
         status = LOC("SCOUTING_STATUS_IDLE_NEW");
         statusColor = palette.info;
         break;
@@ -722,7 +733,7 @@ void ScoutingScene::renderScoutDetail(float height)
   UI::endCard();
 }
 
-void ScoutingScene::renderScoutHeader(const ScoutLine& line)
+void ScoutingScene::renderScoutHeader(const ScoutLine& line) const
 {
   const Theme::Palette& palette = Theme::palette();
   const ScoutProfile& scout = line.summary.profile;
@@ -822,10 +833,11 @@ void ScoutingScene::renderActiveAssignment(const ScoutLine& line)
 void ScoutingScene::renderScoutHistory()
 {
   UI::sectionLabel(LOC("SCOUTING_PREVIOUS_ASSIGNMENTS"));
-  const float rows =
+  const auto rows =
       static_cast<float>(std::min<std::size_t>(scout_history.size(), 5));
-  const float tableHeight = (rows + 1.3f) * ImGui::GetFrameHeightWithSpacing();
-  if (UI::beginDataTable("scout_history", 4,
+  if (const float tableHeight =
+          (rows + 1.3f) * ImGui::GetFrameHeightWithSpacing();
+      UI::beginDataTable("scout_history", 4,
                          ImGuiTableFlags_RowBg | ImGuiTableFlags_BordersInnerH |
                              ImGuiTableFlags_ScrollY |
                              ImGuiTableFlags_SizingFixedFit,
@@ -887,7 +899,8 @@ void ScoutingScene::renderScoutReports(const char* id, float height)
   const auto column =
       [](const char* key, ReportColumn user, ImGuiTableColumnFlags extra = 0)
   {
-    ImGui::TableSetupColumn(LOC(key), extra, 0.0f, static_cast<ImGuiID>(user));
+    ImGui::TableSetupColumn(LOC(key), extra, 0.0f,
+                            static_cast<ImGuiID>(std::to_underlying(user)));
   };
   column("SCOUTING_COL_PLAYER", ReportColumn::PLAYER,
          ImGuiTableColumnFlags_WidthStretch);
@@ -919,7 +932,7 @@ void ScoutingScene::renderScoutReports(const char* id, float height)
   {
     for (int index = clipper.DisplayStart; index < clipper.DisplayEnd; ++index)
     {
-      ReportLine& line = scout_reports[static_cast<std::size_t>(index)];
+      const ReportLine& line = scout_reports[static_cast<std::size_t>(index)];
       const ScoutReport& report = line.report;
       ImGui::TableNextRow();
       ImGui::TableNextColumn();
@@ -980,8 +993,8 @@ void ScoutingScene::renderScoutReports(const char* id, float height)
 
 void ScoutingScene::renderSendFlow(const ScoutLine& line)
 {
-  const float available = ImGui::GetContentRegionAvail().x;
-  if (available >= SEND_TWO_COLUMN_MIN_WIDTH * dpi())
+  if (const float available = ImGui::GetContentRegionAvail().x;
+      available >= SEND_TWO_COLUMN_MIN_WIDTH * dpi())
   {
     const float height = std::max(PICKER_STACKED_HEIGHT * dpi(),
                                   ImGui::GetContentRegionAvail().y);
@@ -1028,10 +1041,10 @@ void ScoutingScene::renderWorldPicker(float width, float height)
     const float textX = min.x + ImGui::GetTreeNodeToLabelSpacing();
     const float textY =
         min.y + (max.y - min.y - ImGui::GetTextLineHeight()) * 0.5f;
-    const bool cut =
-        UI::drawTextFitted(ImGui::GetWindowDrawList(), ImVec2(textX, textY),
-                           Theme::toU32(palette.text), label, max.x - textX);
-    if (cut && ImGui::IsItemHovered(ImGuiHoveredFlags_DelayShort))
+    if (const bool cut = UI::drawTextFitted(
+            ImGui::GetWindowDrawList(), ImVec2(textX, textY),
+            Theme::toU32(palette.text), label, max.x - textX);
+        cut && ImGui::IsItemHovered(ImGuiHoveredFlags_DelayShort))
       ImGui::SetTooltip("%s", label);
     return open;
   };
@@ -1087,17 +1100,17 @@ void ScoutingScene::renderWorldPicker(float width, float height)
   const Continent home = homeContinent(selected_expertise.nationality);
   for (const ContinentNode& continent : world)
   {
-    ImGui::PushID(static_cast<int>(continent.continent));
+    ImGui::PushID(static_cast<int>(std::to_underlying(continent.continent)));
     if (branch(continent.name.c_str(), ScoutTargetKind::Region,
-               static_cast<uint32_t>(continent.continent),
+               static_cast<uint32_t>(std::to_underlying(continent.continent)),
                continent.continent == home))
     {
       for (const CountryNode& country : continent.countries)
       {
         ImGui::PushID(country.id);
-        const std::string label =
-            fmt::sprintf(LOC("SCOUTING_COUNTRY_NODE"), country.name.c_str());
-        if (branch(label.c_str(), ScoutTargetKind::Country, country.id, false))
+        if (const std::string label = fmt::sprintf(LOC("SCOUTING_COUNTRY_NODE"),
+                                                   country.name.c_str());
+            branch(label.c_str(), ScoutTargetKind::Country, country.id, false))
         {
           for (const auto& [league_id, name] : country.divisions)
           {

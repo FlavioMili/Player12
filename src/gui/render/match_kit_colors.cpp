@@ -8,6 +8,7 @@
 
 #include "gui/render/match_kit_colors.h"
 
+#include <algorithm>
 #include <array>
 #include <cmath>
 #include <cstddef>
@@ -63,9 +64,9 @@ constexpr std::array<KitColors, 6> GOALKEEPER_KITS{{
 
 bool contrastsWithAll(ImU32 candidate, std::initializer_list<ImU32> others)
 {
-  for (const ImU32 other : others)
-    if (kitColorDistance(candidate, other) < KIT_CLASH_DISTANCE) return false;
-  return true;
+  return std::ranges::all_of(
+      others, [candidate](ImU32 other)
+      { return kitColorDistance(candidate, other) >= KIT_CLASH_DISTANCE; });
 }
 
 KitColors pickGoalkeeperKit(TeamID team, std::initializer_list<ImU32> avoid)
@@ -176,10 +177,10 @@ MatchKits chooseMatchKits(TeamID homeTeam, TeamID awayTeam,
   kits.away = awayColours
                   ? clubKit(*awayColours)
                   : HOME_KITS[cosmeticHash(awayTeam) % HOME_KITS.size()];
-  const bool clash = homeTeam == awayTeam ||
-                     !contrastsWithAll(kits.away.shirt, {kits.home.shirt});
   // A club's own reversed colours come before any generic change strip.
-  if (clash && awayColours && homeTeam != awayTeam &&
+  if (const bool clash = homeTeam == awayTeam ||
+                         !contrastsWithAll(kits.away.shirt, {kits.home.shirt});
+      clash && awayColours && homeTeam != awayTeam &&
       contrastsWithAll(awayColours->secondary, {kits.home.shirt}))
   {
     kits.away = {awayColours->secondary, awayColours->primary,

@@ -32,77 +32,78 @@ std::string teamName(const MatchCommentaryNames& names, bool home)
 
 const char* MatchCommentary::key(const MatchEvent& event)
 {
+  using enum MatchEventType;
   switch (event.type)
   {
-    case MatchEventType::KICK_OFF:
+    case KICK_OFF:
       return "MATCH_COMMENT_KICK_OFF";
-    case MatchEventType::GOAL:
+    case GOAL:
       return "MATCH_COMMENT_GOAL";
-    case MatchEventType::OWN_GOAL:
+    case OWN_GOAL:
       return "MATCH_COMMENT_OWN_GOAL";
-    case MatchEventType::SHOT:
+    case SHOT:
       return event.detail == MatchEventDetail::HEADER ? "MATCH_COMMENT_HEADER"
                                                       : "MATCH_COMMENT_SHOT";
-    case MatchEventType::SAVE:
+    case SAVE:
       if (event.detail == MatchEventDetail::PARRIED)
         return "MATCH_COMMENT_SAVE_PARRY";
       if (event.detail == MatchEventDetail::TIPPED_BEHIND)
         return "MATCH_COMMENT_SAVE_TIP";
       return "MATCH_COMMENT_SAVE";
-    case MatchEventType::SHOT_BLOCKED:
+    case SHOT_BLOCKED:
       return event.detail == MatchEventDetail::WALL ? "MATCH_COMMENT_WALL"
                                                     : "MATCH_COMMENT_BLOCK";
-    case MatchEventType::SHOT_OFF_TARGET:
+    case SHOT_OFF_TARGET:
       return "MATCH_COMMENT_OFF_TARGET";
-    case MatchEventType::WOODWORK:
+    case WOODWORK:
       return event.primaryPlayerId != PlayerID{}
                  ? "MATCH_COMMENT_WOODWORK"
                  : "MATCH_COMMENT_WOODWORK_BALL";
-    case MatchEventType::FOUL:
+    case FOUL:
       return "MATCH_COMMENT_FOUL";
-    case MatchEventType::ADVANTAGE:
+    case ADVANTAGE:
       return "MATCH_COMMENT_ADVANTAGE";
-    case MatchEventType::YELLOW_CARD:
+    case YELLOW_CARD:
       return "MATCH_COMMENT_YELLOW";
-    case MatchEventType::SECOND_YELLOW:
+    case SECOND_YELLOW:
       return "MATCH_COMMENT_SECOND_YELLOW";
-    case MatchEventType::RED_CARD:
+    case RED_CARD:
       return "MATCH_COMMENT_RED";
-    case MatchEventType::INJURY:
+    case INJURY:
       return event.detail == MatchEventDetail::CONTACT
                  ? "MATCH_COMMENT_INJURY_CONTACT"
                  : "MATCH_COMMENT_INJURY";
-    case MatchEventType::SUBSTITUTION:
+    case SUBSTITUTION:
       return "MATCH_COMMENT_SUBSTITUTION";
-    case MatchEventType::OFFSIDE:
+    case OFFSIDE:
       return "MATCH_COMMENT_OFFSIDE";
-    case MatchEventType::CORNER:
+    case CORNER:
       return "MATCH_COMMENT_CORNER";
-    case MatchEventType::FREE_KICK:
+    case FREE_KICK:
       return "MATCH_COMMENT_FREE_KICK";
-    case MatchEventType::PENALTY:
+    case PENALTY:
       return "MATCH_COMMENT_PENALTY";
-    case MatchEventType::PENALTY_MISSED:
+    case PENALTY_MISSED:
       return "MATCH_COMMENT_PENALTY_MISSED";
-    case MatchEventType::THROW_IN:
+    case THROW_IN:
       return "MATCH_COMMENT_THROW_IN";
-    case MatchEventType::GOAL_KICK:
+    case GOAL_KICK:
       return "MATCH_COMMENT_GOAL_KICK";
-    case MatchEventType::ADDED_TIME:
+    case ADDED_TIME:
       return "MATCH_COMMENT_ADDED_TIME";
-    case MatchEventType::HALF_TIME:
+    case HALF_TIME:
       if (event.period == 2) return "MATCH_COMMENT_END_OF_NORMAL_TIME";
       if (event.period >= 3) return "MATCH_COMMENT_EXTRA_TIME_HALF_TIME";
       return "MATCH_COMMENT_HALF_TIME";
-    case MatchEventType::SECOND_HALF:
+    case SECOND_HALF:
       if (event.period == 3) return "MATCH_COMMENT_EXTRA_TIME";
       if (event.period >= 4) return "MATCH_COMMENT_EXTRA_TIME_SECOND_HALF";
       return "MATCH_COMMENT_SECOND_HALF";
-    case MatchEventType::FULL_TIME:
+    case FULL_TIME:
       return event.homeShootout + event.awayShootout > 0
                  ? "MATCH_COMMENT_FULL_TIME_PENALTIES"
                  : "MATCH_COMMENT_FULL_TIME";
-    case MatchEventType::PENALTY_SHOOTOUT:
+    case PENALTY_SHOOTOUT:
       if (event.detail == MatchEventDetail::SCORED)
         return "MATCH_COMMENT_SHOOTOUT_SCORED";
       if (event.detail == MatchEventDetail::SAVED)
@@ -110,7 +111,7 @@ const char* MatchCommentary::key(const MatchEvent& event)
       if (event.detail == MatchEventDetail::MISSED)
         return "MATCH_COMMENT_SHOOTOUT_MISSED";
       return "MATCH_COMMENT_SHOOTOUT";
-    case MatchEventType::INFO:
+    case INFO:
       return event.detail == MatchEventDetail::ABANDONED
                  ? "MATCH_COMMENT_ABANDONED"
                  : "MATCH_COMMENT_INFO";

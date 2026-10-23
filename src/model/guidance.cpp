@@ -14,6 +14,7 @@
 #include <cstdint>
 #include <span>
 #include <string>
+#include <utility>
 #include <vector>
 
 #include "database/database_connection.h"
@@ -42,10 +43,10 @@ bool sameFixture(const ManagedMatchSnapshot& a, const ManagedMatchSnapshot& b)
 
 void CareerGuidance::addSnapshot(ManagedMatchSnapshot snapshot)
 {
-  const auto found = std::ranges::find_if(
-      snapshots, [&snapshot](const ManagedMatchSnapshot& existing)
-      { return sameFixture(existing, snapshot); });
-  if (found != snapshots.end())
+  if (const auto found = std::ranges::find_if(
+          snapshots, [&snapshot](const ManagedMatchSnapshot& existing)
+          { return sameFixture(existing, snapshot); });
+      found != snapshots.end())
   {
     *found = std::move(snapshot);
     unsaved_from = std::min(
@@ -85,17 +86,17 @@ void CareerGuidance::load(const std::shared_ptr<DatabaseConnection>& db_conn)
                  if (sqlite3_column_int(stmt, 0) != 0) onboarding.dismiss();
                });
   }
-  forEachRow(*db_conn, "SELECT duty, owner FROM DelegatedDuties;",
-             [this](sqlite3_stmt* stmt)
-             {
-               const int duty = sqlite3_column_int(stmt, 0);
-               const int owner = sqlite3_column_int(stmt, 1);
-               if (duty < 0 || duty >= static_cast<int>(DUTY_COUNT) ||
-                   owner < 0 || owner > static_cast<int>(DutyOwner::Assistant))
-                 return;  // Written by a newer version.
-               delegation.set(static_cast<Duty>(duty),
-                              static_cast<DutyOwner>(owner));
-             });
+  forEachRow(
+      *db_conn, "SELECT duty, owner FROM DelegatedDuties;",
+      [this](sqlite3_stmt* stmt)
+      {
+        const int duty = sqlite3_column_int(stmt, 0);
+        const int owner = sqlite3_column_int(stmt, 1);
+        if (duty < 0 || duty >= static_cast<int>(DUTY_COUNT) || owner < 0 ||
+            owner > static_cast<int>(std::to_underlying(DutyOwner::Assistant)))
+          return;  // Written by a newer version.
+        delegation.set(static_cast<Duty>(duty), static_cast<DutyOwner>(owner));
+      });
   std::vector<OppositionOrder> orders;
   forEachRow(
       *db_conn,
@@ -104,7 +105,8 @@ void CareerGuidance::load(const std::shared_ptr<DatabaseConnection>& db_conn)
       {
         const int instruction = sqlite3_column_int(stmt, 2);
         if (instruction <= 0 ||
-            instruction >= static_cast<int>(OppositionInstruction::COUNT))
+            instruction >= static_cast<int>(std::to_underlying(
+                               OppositionInstruction::COUNT)))
           return;
         orders.push_back({static_cast<TeamID>(sqlite3_column_int(stmt, 0)),
                           static_cast<PlayerID>(sqlite3_column_int64(stmt, 1)),
@@ -124,8 +126,8 @@ void CareerGuidance::load(const std::shared_ptr<DatabaseConnection>& db_conn)
         if (!snapshot) return;
         const auto* blob =
             static_cast<const std::uint8_t*>(sqlite3_column_blob(stmt, 1));
-        const int bytes = sqlite3_column_bytes(stmt, 1);
-        if (blob != nullptr && bytes > 0)
+        if (const int bytes = sqlite3_column_bytes(stmt, 1);
+            blob != nullptr && bytes > 0)
         {
           // A damaged blob only loses the detail, not the snapshot.
           if (auto detail = MatchDetail::decode(
@@ -163,8 +165,9 @@ void CareerGuidance::save(
   for (std::size_t duty = 0; duty < DUTY_COUNT; ++duty)
   {
     sqlite3_bind_int(stmt, 1, static_cast<int>(duty));
-    sqlite3_bind_int(
-        stmt, 2, static_cast<int>(delegation.owner(static_cast<Duty>(duty))));
+    sqlite3_bind_int(stmt, 2,
+                     static_cast<int>(std::to_underlying(
+                         delegation.owner(static_cast<Duty>(duty)))));
     db.executeStep(stmt);
     sqlite3_reset(stmt);
   }
@@ -178,7 +181,8 @@ void CareerGuidance::save(
   {
     sqlite3_bind_int(stmt, 1, order.opponent);
     sqlite3_bind_int64(stmt, 2, order.player);
-    sqlite3_bind_int(stmt, 3, static_cast<int>(order.instruction));
+    sqlite3_bind_int(stmt, 3,
+                     static_cast<int>(std::to_underlying(order.instruction)));
     db.executeStep(stmt);
     sqlite3_reset(stmt);
   }

@@ -11,10 +11,12 @@
 #include <array>
 #include <cstdint>
 #include <functional>
+#include <map>
 #include <memory>
 #include <optional>
 #include <span>
 #include <string>
+#include <utility>
 #include <vector>
 
 #include "global/languages.h"
@@ -267,7 +269,7 @@ enum class InterviewTopic : std::uint8_t
 };
 
 inline constexpr std::size_t INTERVIEW_TOPICS =
-    static_cast<std::size_t>(InterviewTopic::COUNT);
+    static_cast<std::size_t>(std::to_underlying(InterviewTopic::COUNT));
 inline constexpr std::size_t INTERVIEW_OPTIONS = 3;
 
 enum class ApplyResult : std::uint8_t
@@ -302,6 +304,19 @@ struct CareerDayEvents
   bool interview_invitation = false;
   int ai_dismissals = 0;
   int ai_appointments = 0;
+};
+
+/** A competitive result and the board expectations used by career reviews. */
+struct ManagerMatchEvent
+{
+  TeamID home_team = 0;
+  TeamID away_team = 0;
+  int home_goals = 0;
+  int away_goals = 0;
+  bool league_match = false;
+  float home_expected_points = 0.0f;
+  float away_expected_points = 0.0f;
+  TeamID managed_team;
 };
 
 /**
@@ -525,9 +540,7 @@ class ManagerCareer
                                 Inbox& inbox);
 
   /** A competitive match: AI job security, the human's record. */
-  void onMatchPlayed(TeamID home_id, TeamID away_id, int home_goals,
-                     int away_goals, bool league, float home_expected,
-                     float away_expected, TeamID managed_team_id);
+  void onMatchPlayed(const ManagerMatchEvent& match);
 
   /**
    * Season end: season line, honours, reputation, ageing and the boards'
@@ -551,10 +564,32 @@ class ManagerCareer
                      Inbox& inbox, CareerDayEvents& events);
   void weeklyReviews(const GameDateValue& date, TeamID managed_team_id,
                      Inbox& inbox, CareerDayEvents& events);
+  void weeklyAiReviews(const GameDateValue& date, TeamID managed_team_id,
+                       Inbox& inbox, CareerDayEvents& events);
+  void weeklyManagerReview(const GameDateValue& date, TeamID managed_team_id,
+                           Inbox& inbox, CareerDayEvents& events);
   void monthlyReviews(const GameDateValue& date, TeamID managed_team_id,
                       float board_confidence, int board_expected_position,
                       const PositionProvider& positions, Inbox& inbox,
                       CareerDayEvents& events);
+  void monthlyAiReviews(
+      const std::map<LeagueID, std::vector<std::pair<std::uint8_t, TeamID>>>&
+          league_ranks,
+      const PositionProvider& positions);
+  void monthlyManagerReview(
+      const GameDateValue& date, TeamID managed_team_id, float board_confidence,
+      int board_expected_position, const PositionProvider& positions,
+      const std::map<LeagueID, std::vector<std::pair<std::uint8_t, TeamID>>>&
+          league_ranks,
+      Inbox& inbox, CareerDayEvents& events);
+  void reviewAiManagersAtSeasonEnd(const GameDateValue& date,
+                                   TeamID managed_team_id,
+                                   const PositionProvider& positions,
+                                   Inbox& inbox);
+  void ageManagersAtSeasonEnd(const GameDateValue& date);
+  float applySeasonHonours(const ManagerSeasonLine& line,
+                           std::span<const SeasonHistoryEntry> finished,
+                           std::uint16_t start_year);
   void dismissAi(AiManager& manager, const GameDateValue& date, Inbox& inbox,
                  TeamID managed_team_id);
   void openVacancy(TeamID team_id, const GameDateValue& date);

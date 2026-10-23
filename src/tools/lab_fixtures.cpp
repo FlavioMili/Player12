@@ -61,49 +61,50 @@ std::map<std::string, float> roleStats(PlayerRole role, float base,
       {"Defending", value(0.0f)}, {"Physicality", value(0.0f)},
       {"Stamina", value(0.0f)},   {"Vision", value(0.0f)},
       {"Goalkeeping", 15.0f}};
+  using enum PlayerRole;
   switch (role)
   {
-    case PlayerRole::GK:
+    case GK:
       stats["Goalkeeping"] = value(4.0f);
       stats["Shooting"] = value(-40.0f);
       stats["Dribbling"] = value(-30.0f);
       stats["Pace"] = value(-20.0f);
       break;
-    case PlayerRole::CB:
+    case CB:
       stats["Defending"] = value(8.0f);
       stats["Physicality"] = value(8.0f);
       stats["Shooting"] = value(-25.0f);
       stats["Dribbling"] = value(-15.0f);
       break;
-    case PlayerRole::LB:
-    case PlayerRole::RB:
+    case LB:
+    case RB:
       stats["Defending"] = value(4.0f);
       stats["Pace"] = value(4.0f);
       stats["Shooting"] = value(-20.0f);
       break;
-    case PlayerRole::LM:
-    case PlayerRole::RM:
-    case PlayerRole::LW:
-    case PlayerRole::RW:
+    case LM:
+    case RM:
+    case LW:
+    case RW:
       stats["Pace"] = value(6.0f);
       stats["Dribbling"] = value(4.0f);
       stats["Defending"] = value(-15.0f);
       stats["Shooting"] = value(-4.0f);
       break;
-    case PlayerRole::CM:
-    case PlayerRole::CDM:
-    case PlayerRole::CAM:
+    case CM:
+    case CDM:
+    case CAM:
       stats["Passing"] = value(6.0f);
       stats["Vision"] = value(6.0f);
       stats["Stamina"] = value(6.0f);
       stats["Defending"] = value(-6.0f);
       break;
-    case PlayerRole::ST:
+    case ST:
       stats["Shooting"] = value(8.0f);
       stats["Defending"] = value(-30.0f);
       stats["Dribbling"] = value(2.0f);
       break;
-    case PlayerRole::UNKNOWN:
+    case UNKNOWN:
       break;
   }
   return stats;

@@ -82,17 +82,18 @@ std::string teamName(const GameData* gamedata, TeamID id)
 
 const char* departureKey(DepartureReason reason)
 {
+  using enum DepartureReason;
   switch (reason)
   {
-    case DepartureReason::Sacked:
+    case Sacked:
       return "TIMELINE_SACKED";
-    case DepartureReason::Resigned:
+    case Resigned:
       return "TIMELINE_RESIGNED";
-    case DepartureReason::Moved:
+    case Moved:
       return "TIMELINE_MOVED";
-    case DepartureReason::ContractExpired:
+    case ContractExpired:
       return "TIMELINE_EXPIRED";
-    case DepartureReason::Current:
+    case Current:
       break;
   }
   return nullptr;
@@ -102,24 +103,25 @@ const char* departureKey(DepartureReason reason)
 std::tuple<const char*, std::string, std::string> recordText(
     const RecordEntry& record, const GameData* gamedata)
 {
+  using enum RecordKind;
   switch (record.kind)
   {
-    case RecordKind::BiggestWin:
-    case RecordKind::BiggestDefeat:
-    case RecordKind::HighestScoringMatch:
+    case BiggestWin:
+    case BiggestDefeat:
+    case HighestScoringMatch:
       return {"TIMELINE_RECORD_MATCH",
               std::format("{}-{}", record.goals_for, record.goals_against),
               teamName(gamedata, record.opponent_id)};
-    case RecordKind::RecordSigning:
-    case RecordKind::RecordSale:
+    case RecordSigning:
+    case RecordSale:
       return {"TIMELINE_RECORD_PLAYER", formatMoney(record.value), record.name};
-    case RecordKind::TopScorerSeason:
+    case TopScorerSeason:
       return {"TIMELINE_RECORD_PLAYER", std::to_string(record.value),
               record.name};
-    case RecordKind::HighestAttendance:
-    case RecordKind::MostGoalsSeason:
-    case RecordKind::MostPointsSeason:
-    case RecordKind::COUNT:
+    case HighestAttendance:
+    case MostGoalsSeason:
+    case MostPointsSeason:
+    case COUNT:
       break;
   }
   return {"TIMELINE_RECORD_VALUE", std::to_string(record.value), std::string()};
@@ -207,10 +209,9 @@ class Builder
       if (listed == CareerTimeline::KEY_SIGNINGS_PER_STINT) break;
       const std::string name = playerName(in.gamedata, record->player_id);
       if (name.empty()) continue;
-      const char* key = record->kind == TransferKind::Loan
-                            ? "TIMELINE_SIGNING_LOAN"
-                        : record->fee == 0 ? "TIMELINE_SIGNING_FREE"
-                                           : "TIMELINE_SIGNING";
+      const char* key = "TIMELINE_SIGNING";
+      if (record->fee == 0) key = "TIMELINE_SIGNING_FREE";
+      if (record->kind == TransferKind::Loan) key = "TIMELINE_SIGNING_LOAN";
       add(record->date, TimelineKind::Signing, stint.team_id, key,
           {stint.club_name, name, formatMoney(record->fee),
            teamName(in.gamedata, record->from_team)},
@@ -322,7 +323,7 @@ std::string seasonLabel(std::uint16_t year)
   return std::format("{}/{:02}", year, (year + 1U) % 100U);
 }
 
-std::string escapeCell(std::string text)
+std::string escapeCell(const std::string& text)
 {
   std::string escaped;
   escaped.reserve(text.size());
@@ -342,27 +343,28 @@ std::string escapeCell(std::string text)
 
 const char* timelineKindKey(TimelineKind kind)
 {
+  using enum TimelineKind;
   switch (kind)
   {
-    case TimelineKind::Appointed:
+    case Appointed:
       return "TIMELINE_KIND_APPOINTED";
-    case TimelineKind::Departed:
+    case Departed:
       return "TIMELINE_KIND_DEPARTED";
-    case TimelineKind::Trophy:
+    case Trophy:
       return "TIMELINE_KIND_TROPHY";
-    case TimelineKind::Award:
+    case Award:
       return "TIMELINE_KIND_AWARD";
-    case TimelineKind::Promotion:
+    case Promotion:
       return "TIMELINE_KIND_PROMOTION";
-    case TimelineKind::Relegation:
+    case Relegation:
       return "TIMELINE_KIND_RELEGATION";
-    case TimelineKind::Season:
+    case Season:
       return "TIMELINE_KIND_SEASON";
-    case TimelineKind::Record:
+    case Record:
       return "TIMELINE_KIND_RECORD";
-    case TimelineKind::Signing:
+    case Signing:
       return "TIMELINE_KIND_SIGNING";
-    case TimelineKind::COUNT:
+    case COUNT:
       break;
   }
   return "TIMELINE_KIND_APPOINTED";

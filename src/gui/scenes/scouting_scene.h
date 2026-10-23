@@ -11,6 +11,7 @@
 #include <array>
 #include <cstdint>
 #include <string>
+#include <string_view>
 #include <unordered_map>
 #include <utility>
 #include <vector>
@@ -180,7 +181,7 @@ class ScoutingScene : public ManagementScene
   void renderOverview();
   void renderScoutList(float width, float height);
   void renderScoutDetail(float height);
-  void renderScoutHeader(const ScoutLine& line);
+  void renderScoutHeader(const ScoutLine& line) const;
   void renderActiveAssignment(const ScoutLine& line);
   void renderScoutHistory();
   void renderScoutReports(const char* id, float height);
@@ -198,7 +199,7 @@ class ScoutingScene : public ManagementScene
   void renderFocusEditor();
   void renderPlayerActions();
 
-  void selectPlayer(PlayerID playerId, const std::string& name);
+  void selectPlayer(PlayerID playerId, std::string_view name);
   void sendScout(ScoutTargetKind kind, uint32_t targetId);
   bool playerCell(PlayerID playerId, const std::string& name, bool selected);
 

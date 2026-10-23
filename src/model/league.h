@@ -124,7 +124,7 @@ class League
    * @brief Gets the parent league ID, if any.
    * @return An optional containing the parent league ID.
    */
-  const std::optional<LeagueID> getParentLeagueID() const;
+  std::optional<LeagueID> getParentLeagueID() const;
 
   /** @brief Ordering rule for teams level on points. */
   TieBreakRule getTieBreakRule() const { return tie_break; }

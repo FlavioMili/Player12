@@ -12,6 +12,7 @@
 #include <cmath>
 #include <format>
 #include <optional>
+#include <utility>
 
 #include "model/match_engine.h"
 
@@ -32,10 +33,9 @@ std::string oneDecimal(float value) { return std::format("{:.1f}", value); }
 
 bool isShotOutcome(MatchEventType type)
 {
-  return type == MatchEventType::GOAL || type == MatchEventType::SAVE ||
-         type == MatchEventType::SHOT_BLOCKED ||
-         type == MatchEventType::SHOT_OFF_TARGET ||
-         type == MatchEventType::WOODWORK;
+  using enum MatchEventType;
+  return type == GOAL || type == SAVE || type == SHOT_BLOCKED ||
+         type == SHOT_OFF_TARGET || type == WOODWORK;
 }
 
 void fillFromStats(const MatchStats& stats, bool home, SideSummary& side)
@@ -60,27 +60,29 @@ void fillFromStats(const MatchStats& stats, bool home, SideSummary& side)
 // Right flank of the defending side is the attacker's left, and so on.
 Flank mirrored(Flank flank)
 {
+  using enum Flank;
   switch (flank)
   {
-    case Flank::Left:
-      return Flank::Right;
-    case Flank::Right:
-      return Flank::Left;
-    case Flank::Centre:
+    case Left:
+      return Right;
+    case Right:
+      return Left;
+    case Centre:
       break;
   }
-  return Flank::Centre;
+  return Centre;
 }
 
 const char* flankKey(Flank flank)
 {
+  using enum Flank;
   switch (flank)
   {
-    case Flank::Left:
+    case Left:
       return "@ANALYSIS_FLANK_LEFT";
-    case Flank::Right:
+    case Right:
       return "@ANALYSIS_FLANK_RIGHT";
-    case Flank::Centre:
+    case Centre:
       break;
   }
   return "@ANALYSIS_FLANK_CENTRE";
@@ -102,18 +104,20 @@ void addSuggestion(MatchAnalysis& analysis, AnalysisSuggestion::Kind kind,
                    int priority, AnalysisLine action, AnalysisLine reason,
                    PlayerID player = 0)
 {
-  analysis.suggestions.push_back(
-      {kind, std::move(action), std::move(reason), player, priority});
+  analysis.suggestions.emplace_back(kind, std::move(action), std::move(reason),
+                                    player, priority);
 }
 }  // namespace
 
 std::vector<ShotRecord> extractShots(std::span<const MatchEvent> events)
 {
+  using enum MatchEventType;
+  using enum ShotOutcome;
   std::vector<ShotRecord> shots;
   std::optional<std::size_t> open;  // Shot waiting for its outcome.
   for (const MatchEvent& event : events)
   {
-    if (event.type == MatchEventType::SHOT)
+    if (event.type == SHOT)
     {
       ShotRecord shot;
       shot.minute = event.timeMinute;
@@ -129,25 +133,25 @@ std::vector<ShotRecord> extractShots(std::span<const MatchEvent> events)
       open = shots.size() - 1;
       continue;
     }
-    if (!open || !isShotOutcome(event.type)) continue;
+    if (!open.has_value() || !isShotOutcome(event.type)) continue;
     ShotRecord& shot = shots[*open];
     switch (event.type)
     {
-      case MatchEventType::GOAL:
+      case GOAL:
         if (event.primaryPlayerId != shot.player) continue;
-        shot.outcome = ShotOutcome::Goal;
+        shot.outcome = Goal;
         break;
-      case MatchEventType::SAVE:
-        shot.outcome = ShotOutcome::Saved;
+      case SAVE:
+        shot.outcome = Saved;
         break;
-      case MatchEventType::SHOT_BLOCKED:
-        shot.outcome = ShotOutcome::Blocked;
+      case SHOT_BLOCKED:
+        shot.outcome = Blocked;
         break;
-      case MatchEventType::WOODWORK:
-        shot.outcome = ShotOutcome::Woodwork;
+      case WOODWORK:
+        shot.outcome = Woodwork;
         continue;  // The rebound may still be saved or scored.
       default:
-        shot.outcome = ShotOutcome::OffTarget;
+        shot.outcome = OffTarget;
         break;
     }
     open.reset();
@@ -157,9 +161,10 @@ std::vector<ShotRecord> extractShots(std::span<const MatchEvent> events)
 
 Flank flankOf(const ShotRecord& shot)
 {
-  if (shot.y < FLANK_EDGE) return Flank::Left;
-  if (shot.y > 1.0f - FLANK_EDGE) return Flank::Right;
-  return Flank::Centre;
+  using enum Flank;
+  if (shot.y < FLANK_EDGE) return Left;
+  if (shot.y > 1.0f - FLANK_EDGE) return Right;
+  return Centre;
 }
 
 float SideSummary::passCompletion() const
@@ -192,7 +197,7 @@ MatchAnalysis analyseMatch(const AnalysisInput& input)
   for (const ShotRecord& shot : extractShots(input.events))
   {
     SideSummary& side = shot.home == home ? own : opp;
-    const auto flank = static_cast<std::size_t>(flankOf(shot));
+    const auto flank = std::to_underlying(flankOf(shot));
     side.flank_xg[flank] += shot.xg;
     ++side.flank_shots[flank];
   }
@@ -214,9 +219,12 @@ MatchAnalysis analyseMatch(const AnalysisInput& input)
   const int totalShots = own.shots + opp.shots;
   analysis.enough_data = totalShots >= R::MIN_SHOTS;
   analysis.tentative = totalShots < R::CONFIDENT_SHOTS;
-  analysis.sample = {!analysis.enough_data ? "ANALYSIS_SAMPLE_TOO_SMALL"
-                     : analysis.tentative  ? "ANALYSIS_SAMPLE_TENTATIVE"
-                                           : "ANALYSIS_SAMPLE_OK",
+  const char* sample = "ANALYSIS_SAMPLE_OK";
+  if (!analysis.enough_data)
+    sample = "ANALYSIS_SAMPLE_TOO_SMALL";
+  else if (analysis.tentative)
+    sample = "ANALYSIS_SAMPLE_TENTATIVE";
+  analysis.sample = {sample,
                      {std::to_string(totalShots),
                       std::to_string(static_cast<int>(input.minute))}};
 
@@ -261,8 +269,7 @@ MatchAnalysis analyseMatch(const AnalysisInput& input)
     analysis.observations.push_back(
         {"ANALYSIS_OBS_THEIR_FLANK",
          {percent(flank->second), flankKey(mirrored(flank->first)),
-          std::to_string(
-              opp.flank_shots[static_cast<std::size_t>(flank->first)])}});
+          std::to_string(opp.flank_shots[std::to_underlying(flank->first)])}});
   }
   const float allowed = own.passesAllowedPerAction(opp.passes_attempted);
   analysis.observations.push_back(
@@ -271,8 +278,7 @@ MatchAnalysis analyseMatch(const AnalysisInput& input)
         std::to_string(own.tackles_attempted + own.interceptions),
         percent(opp.passCompletion())}});
   const int aerials = own.aerials_won + own.aerials_lost;
-  const int tackles = own.tackles_attempted;
-  if (aerials > 0 || tackles > 0)
+  if (const int tackles = own.tackles_attempted; aerials > 0 || tackles > 0)
   {
     analysis.observations.push_back(
         {"ANALYSIS_OBS_DUELS",

@@ -13,6 +13,7 @@
 #include <algorithm>
 #include <array>
 #include <cmath>
+#include <utility>
 
 #include "controller/game_controller.h"
 #include "database/gamedata.h"
@@ -63,22 +64,22 @@ constexpr std::array<SectionSpec, 4> SECTIONS = {{
 /** Options that do not apply to the situation are hidden, not greyed. */
 bool hidden(TalkBlock block)
 {
-  return block == TalkBlock::NotAtClub ||
-         block == TalkBlock::NoTransferInterest ||
-         block == TalkBlock::NoTransferRequest ||
-         block == TalkBlock::NotUnhappy;
+  using enum TalkBlock;
+  return block == NotAtClub || block == NoTransferInterest ||
+         block == NoTransferRequest || block == NotUnhappy;
 }
 
 ImVec4 hintColor(TalkHint hint)
 {
+  using enum TalkHint;
   const Theme::Palette& palette = Theme::palette();
   switch (hint)
   {
-    case TalkHint::LikelyPositive:
+    case LikelyPositive:
       return palette.positive;
-    case TalkHint::Uncertain:
+    case Uncertain:
       return palette.muted;
-    case TalkHint::Risky:
+    case Risky:
       break;
   }
   return palette.warning;
@@ -86,14 +87,15 @@ ImVec4 hintColor(TalkHint hint)
 
 ImVec4 reactionColor(TalkReaction reaction)
 {
+  using enum TalkReaction;
   const Theme::Palette& palette = Theme::palette();
   switch (reaction)
   {
-    case TalkReaction::Positive:
+    case Positive:
       return palette.positive;
-    case TalkReaction::Neutral:
+    case Neutral:
       return palette.info;
-    case TalkReaction::Negative:
+    case Negative:
       break;
   }
   return palette.negative;
@@ -117,7 +119,7 @@ void PlayerTalkDialog::open(GameController& controller, PlayerID id)
   open_requested = true;
 }
 
-void PlayerTalkDialog::rebuild(GameController& controller)
+void PlayerTalkDialog::rebuild(const GameController& controller)
 {
   const Theme::Palette& palette = Theme::palette();
   const auto gamedata = controller.getGameData();
@@ -159,9 +161,10 @@ void PlayerTalkDialog::rebuild(GameController& controller)
           std::lround(100.0 * promise.player_minutes / promise.team_minutes),
           std::lround(100.0f * promise.target));
     line.progress = promise.progress();
+    using enum PromiseState;
     switch (promise.state)
     {
-      case PromiseState::Active:
+      case Active:
         line.when = fmt::sprintf(
             Format::plural("TALK_PROMISE_DUE",
                            std::max(0, promise.deadline_day - today_ordinal)),
@@ -169,11 +172,11 @@ void PlayerTalkDialog::rebuild(GameController& controller)
             std::max(0, promise.deadline_day - today_ordinal));
         line.color = palette.accent;
         break;
-      case PromiseState::Kept:
+      case Kept:
         line.when = LOC(Interactions::promiseStateKey(promise.state));
         line.color = palette.positive;
         break;
-      case PromiseState::Broken:
+      case Broken:
         line.when = LOC(Interactions::promiseStateKey(promise.state));
         line.color = palette.negative;
         break;
@@ -261,10 +264,10 @@ bool PlayerTalkDialog::render(GameController& controller)
   ImGui::Dummy(ImVec2(0.0f, scaled(Theme::Space::S)));
   const ImVec2 buttonSize(
       std::min(scaled(BUTTON_WIDTH), ImGui::GetContentRegionAvail().x), 0.0f);
-  const bool close = has_result
-                         ? UI::primaryButton(LOC("TALK_CLOSE"), buttonSize)
-                         : ImGui::Button(LOC("TALK_LEAVE"), buttonSize);
-  if (close || ImGui::IsKeyPressed(ImGuiKey_Escape, false))
+  if (const bool close = has_result
+                             ? UI::primaryButton(LOC("TALK_CLOSE"), buttonSize)
+                             : ImGui::Button(LOC("TALK_LEAVE"), buttonSize);
+      close || ImGui::IsKeyPressed(ImGuiKey_Escape, false))
   {
     ImGui::CloseCurrentPopup();
     visible = false;
@@ -273,7 +276,7 @@ bool PlayerTalkDialog::render(GameController& controller)
   return has_result && !had_result;
 }
 
-void PlayerTalkDialog::renderHeader()
+void PlayerTalkDialog::renderHeader() const
 {
   const Theme::Palette& palette = Theme::palette();
   {
@@ -332,7 +335,7 @@ void PlayerTalkDialog::renderOptions(GameController& controller)
     UI::sectionLabel(section.title.c_str());
     for (const OptionRow& row : section.rows)
     {
-      ImGui::PushID(static_cast<int>(row.option));
+      ImGui::PushID(static_cast<int>(std::to_underlying(row.option)));
       const float width = ImGui::GetContentRegionAvail().x;
       const ImVec2 start = ImGui::GetCursorScreenPos();
       ImGui::BeginDisabled(!row.enabled);
@@ -416,7 +419,7 @@ void PlayerTalkDialog::choose(GameController& controller, TalkOption option)
   rebuild(controller);
 }
 
-void PlayerTalkDialog::renderResult()
+void PlayerTalkDialog::renderResult() const
 {
   const Theme::Palette& palette = Theme::palette();
   ImGui::Dummy(ImVec2(0.0f, scaled(Theme::Space::XS)));
@@ -438,7 +441,8 @@ void PlayerTalkDialog::renderResult()
 void PlayerTalkDialog::inboxAction(GameController& controller,
                                    const InboxMessage& message)
 {
-  if (!message.player_id || !controller.hasPendingTalk(*message.player_id))
+  if (!message.player_id.has_value() ||
+      !controller.hasPendingTalk(*message.player_id))
     return;
   ImGui::PushID("talk_reply");
   if (UI::primaryButton(LOC("TALK_INBOX_REPLY")))

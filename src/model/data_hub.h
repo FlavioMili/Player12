@@ -13,6 +13,7 @@
 #include <optional>
 #include <span>
 #include <string>
+#include <utility>
 #include <vector>
 
 #include "global/types.h"
@@ -107,7 +108,7 @@ enum class HubMetric : std::uint8_t
 };
 
 inline constexpr std::size_t HUB_METRIC_COUNT =
-    static_cast<std::size_t>(HubMetric::COUNT);
+    static_cast<std::size_t>(std::to_underlying(HubMetric::COUNT));
 
 /** @brief The club's value against the league average and its rank. */
 struct MetricComparison
@@ -230,7 +231,7 @@ enum class LeaderMetric : std::uint8_t
 };
 
 inline constexpr std::size_t LEADER_METRIC_COUNT =
-    static_cast<std::size_t>(LeaderMetric::COUNT);
+    static_cast<std::size_t>(std::to_underlying(LeaderMetric::COUNT));
 
 namespace DataHub
 {

@@ -52,13 +52,20 @@ class StandingsScene : public ManagementScene
   };
 
   void renderCompetitionSelector();
+  void renderSeasonSelector();
   void renderHighlights();
   void renderTable(float width, float height);
+  void renderStandingRow(size_t index, UI::ColumnMask mask, TeamID clubId,
+                         size_t continental) const;
   void renderScorers(float width, float height);
   void renderCup();
+  void renderCupSummary(TeamID clubId) const;
+  void renderCupDraw(TeamID clubId);
+  void renderCupTie(const Match& match, size_t id, TeamID clubId) const;
+  void renderCupBracketRows(TeamID clubId) const;
   /** Clinched and lost places of every club, and the managed club's run-in. */
   void refreshRace();
-  void renderNeeds();
+  void renderNeeds() const;
   /** Loads an archived final table and its top scorer. */
   void refreshPastSeason(uint16_t season);
   [[nodiscard]] std::string seasonLabel(uint16_t season) const;

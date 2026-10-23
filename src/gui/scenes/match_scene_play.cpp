@@ -58,8 +58,9 @@ MatchPlayController::Options MatchScene::playOptions() const
 bool MatchScene::canTakeControl() const
 {
   return SettingsManager::instance()->get().play_mode && engine &&
-         managed_is_home && !match_finished && !quick_result.valid() &&
-         !play.isActive() && engine->getState() != MatchState::FULL_TIME;
+         managed_is_home.has_value() && !match_finished &&
+         !quick_result.valid() && !play.isActive() &&
+         engine->getState() != MatchState::FULL_TIME;
 }
 
 void MatchScene::requestTakeControl()
@@ -272,7 +273,8 @@ void MatchScene::renderPlayOverlay(const IMatchRenderer& renderer,
 
 void MatchScene::renderPlayButtons()
 {
-  if (!engine || !managed_is_home || match_finished || quick_result.valid())
+  if (!engine || !managed_is_home.has_value() || match_finished ||
+      quick_result.valid())
     return;
   if (!play.isActive())
   {
@@ -298,7 +300,7 @@ void MatchScene::renderPlayButtons()
     ImGui::SetTooltip("%s", LOC("MATCH_HAND_BACK_HINT"));
 }
 
-void MatchScene::renderPlayControlsHelp()
+void MatchScene::renderPlayControlsHelp() const
 {
   const ImVec4 muted = Theme::palette().muted;
   ImGui::TextColored(muted, "%s", LOC("PLAY_CONTROLS_KEYBOARD"));
@@ -343,8 +345,8 @@ void MatchScene::renderPlayConfirm()
                           ImVec2(0.5f, 0.5f));
   ImGui::SetNextWindowSize(
       ImVec2(std::min(scaled(560.0f), viewport->WorkSize.x * 0.92f), 0.0f));
-  const std::string title = std::string(LOC("PLAY_CONFIRM_TITLE")) + ID;
-  if (!ImGui::BeginPopupModal(
+  if (const std::string title = std::string(LOC("PLAY_CONFIRM_TITLE")) + ID;
+      !ImGui::BeginPopupModal(
           title.c_str(), nullptr,
           ImGuiWindowFlags_NoSavedSettings | ImGuiWindowFlags_NoResize))
     return;
@@ -400,8 +402,8 @@ void MatchScene::renderPlayMenu()
                           ImVec2(0.5f, 0.5f));
   ImGui::SetNextWindowSize(
       ImVec2(std::min(scaled(560.0f), viewport->WorkSize.x * 0.92f), 0.0f));
-  const std::string title = std::string(LOC("PLAY_MENU_TITLE")) + ID;
-  if (!ImGui::BeginPopupModal(
+  if (const std::string title = std::string(LOC("PLAY_MENU_TITLE")) + ID;
+      !ImGui::BeginPopupModal(
           title.c_str(), nullptr,
           ImGuiWindowFlags_NoSavedSettings | ImGuiWindowFlags_NoResize))
     return;

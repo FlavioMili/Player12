@@ -68,9 +68,8 @@ float footerHeight()
 
 void pauseSetting()
 {
-  Settings& settings = SettingsManager::instance()->get();
-  if (ImGui::Checkbox(LOC("MATCH_PAUSE_FOR_CHANGES"),
-                      &settings.pause_for_match_changes))
+  if (Settings& settings = SettingsManager::instance()->get(); ImGui::Checkbox(
+          LOC("MATCH_PAUSE_FOR_CHANGES"), &settings.pause_for_match_changes))
     SettingsManager::instance()->save();
   if (ImGui::IsItemHovered())
     ImGui::SetTooltip("%s", LOC("MATCH_PAUSE_FOR_CHANGES_HINT"));
@@ -85,24 +84,24 @@ std::string refusalText(MatchChanges::Refusal refusal,
                         const MatchEngine& engine, const std::string& outName,
                         const std::string& inName)
 {
-  using MatchChanges::Refusal;
+  using enum MatchChanges::Refusal;
   const char* key = MatchChanges::refusalKey(refusal);
   switch (refusal)
   {
-    case Refusal::NONE:
+    case NONE:
       return {};
-    case Refusal::LIMIT:
+    case LIMIT:
       return fmt::sprintf(LOC(key), MatchChanges::maxSubstitutions(engine));
-    case Refusal::WINDOWS:
+    case WINDOWS:
       return fmt::sprintf(LOC(key), MatchChanges::maxWindows(engine));
-    case Refusal::NOT_ON_PITCH:
+    case NOT_ON_PITCH:
       return fmt::sprintf(LOC(key), outName.c_str());
-    case Refusal::NOT_ON_BENCH:
-    case Refusal::ALREADY_PLAYED:
+    case NOT_ON_BENCH:
+    case ALREADY_PLAYED:
       return fmt::sprintf(LOC(key), inName.c_str());
-    case Refusal::ALREADY_PLANNED:
-    case Refusal::MATCH_OVER:
-    case Refusal::NOT_NOW:
+    case ALREADY_PLANNED:
+    case MATCH_OVER:
+    case NOT_NOW:
       return LOC(key);
   }
   return LOC(key);

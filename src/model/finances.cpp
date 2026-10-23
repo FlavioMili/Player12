@@ -38,7 +38,7 @@ std::int64_t reinvestedShare(std::int64_t fee)
 
 const char* financeCategoryKey(FinanceCategory category)
 {
-  const auto index = static_cast<std::size_t>(category);
+  const auto index = static_cast<std::size_t>(std::to_underlying(category));
   return index < CATEGORY_KEYS.size() ? CATEGORY_KEYS[index]
                                       : "FIN_CAT_ADJUSTMENT";
 }
@@ -51,11 +51,12 @@ Finances::Finances(std::int64_t opening_balance, GameDateValue opening_date)
 void Finances::record(const GameDateValue& date, FinanceCategory category,
                       std::int64_t amount)
 {
+  using enum FinanceCategory;
   ledger.push_back({date, category, amount});
   balance += amount;
-  if (category == FinanceCategory::TransferFeeOut)
+  if (category == TransferFeeOut)
     transfer_budget = std::max<std::int64_t>(0, transfer_budget + amount);
-  else if (category == FinanceCategory::TransferFeeIn)
+  else if (category == TransferFeeIn)
     transfer_budget += reinvestedShare(amount);
 }
 
@@ -157,8 +158,8 @@ FinanceSummary Finances::summarize(const GameDateValue& from,
   for (const FinanceTransaction& transaction : ledger)
   {
     if (transaction.date < from || to < transaction.date) continue;
-    summary.by_category[static_cast<std::size_t>(transaction.category)] +=
-        transaction.amount;
+    summary.by_category[static_cast<std::size_t>(
+        std::to_underlying(transaction.category))] += transaction.amount;
     if (transaction.amount >= 0)
       summary.income += transaction.amount;
     else

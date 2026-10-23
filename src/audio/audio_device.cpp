@@ -23,7 +23,7 @@ AudioDevice::AudioDevice(Mixer& mixerToPlay) : mixer(mixerToPlay)
     return;
   }
   subsystemStarted = true;
-  opener = std::thread([this] { open(); });
+  opener = std::jthread([this] { open(); });
 }
 
 void AudioDevice::open()

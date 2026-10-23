@@ -14,11 +14,15 @@
 #include <gtest/gtest.h>
 
 #include <algorithm>
+#include <array>
 #include <chrono>
 #include <cstdint>
+#include <format>
 #include <iostream>
 #include <random>
 #include <string>
+#include <string_view>
+#include <utility>
 #include <vector>
 
 #include "database/gamedata.h"
@@ -52,8 +56,8 @@ struct Table
   explicit Table(size_t clubs,
                  TieBreakRule rule = TieBreakRule::GOAL_DIFFERENCE)
   {
-    static const char* const NAMES[] = {"Alpha", "Bravo", "Charlie",
-                                        "Delta", "Echo",  "Foxtrot"};
+    static constexpr std::array<std::string_view, 6> NAMES = {
+        "Alpha", "Bravo", "Charlie", "Delta", "Echo", "Foxtrot"};
     input.rule = rule;
     for (size_t index = 0; index < clubs; ++index)
     {
@@ -80,7 +84,7 @@ struct Table
                                const RacePlaces& places = {}) const
   {
     return Standings::clinchReport(input, places, team)
-        .races[static_cast<size_t>(which)];
+        .races[static_cast<size_t>(std::to_underlying(which))];
   }
 
   [[nodiscard]] Clinch status(TeamID team, const RacePlaces& places = {}) const
@@ -424,7 +428,7 @@ TEST(StandingsRaceTest, NeverContradictsTheRealTableOverAllSmallScores)
   int finished_checks = 0;
   for (int round = 0; round < 140; ++round)
   {
-    const size_t clubs = 4 + static_cast<size_t>(round % 3);
+    const auto clubs = 4 + static_cast<size_t>(round % 3);
     const TieBreakRule rule = round % 2 == 0 ? TieBreakRule::GOAL_DIFFERENCE
                                              : TieBreakRule::HEAD_TO_HEAD;
     Table league(clubs, rule);
@@ -434,7 +438,7 @@ TEST(StandingsRaceTest, NeverContradictsTheRealTableOverAllSmallScores)
         if (home != away) pairs.emplace_back(home, away);
     std::ranges::shuffle(pairs, rng);
     const size_t open = static_cast<size_t>(round % 4);
-    std::uniform_int_distribution<int> score(0, 2);
+    std::uniform_int_distribution score(0, 2);
     for (size_t index = 0; index < pairs.size(); ++index)
     {
       if (index < open)
@@ -477,12 +481,14 @@ TEST(StandingsRaceTest, NeverContradictsTheRealTableOverAllSmallScores)
     const auto reports = Standings::clinchReports(league.input, places);
     std::string fixtures;
     for (const Standings::RaceFixture& fixture : league.input.fixtures)
-      fixtures += std::to_string(fixture.home_id) + "-" +
-                  std::to_string(fixture.away_id) +
-                  (fixture.played ? " " + std::to_string(fixture.home_goals) +
-                                        ":" + std::to_string(fixture.away_goals)
-                                  : std::string(" open")) +
-                  "; ";
+    {
+      const auto result =
+          fixture.played
+              ? std::format(" {}:{}", fixture.home_goals, fixture.away_goals)
+              : std::string(" open");
+      fixtures +=
+          std::format("{}-{}{}; ", fixture.home_id, fixture.away_id, result);
+    }
     for (const Standings::ClinchReport& report : reports)
     {
       const PositionSpan& span = spans[report.team_id];
@@ -490,7 +496,8 @@ TEST(StandingsRaceTest, NeverContradictsTheRealTableOverAllSmallScores)
            {Race::TITLE, Race::CONTINENTAL_TOP, Race::SURVIVAL})
       {
         const int cutoff = Standings::raceCutoff(race, places, clubs);
-        const RaceState state = report.races[static_cast<size_t>(race)];
+        const RaceState state =
+            report.races[static_cast<size_t>(std::to_underlying(race))];
         if (state == RaceState::SECURED)
         {
           ++decided;
@@ -559,7 +566,7 @@ TEST(StandingsRaceTest, FullSizeLeagueRunInStaysFast)
     for (TeamID id = 1; id <= CLUBS; ++id)
     {
       input.teams.push_back(id);
-      input.names.push_back("Club " + std::to_string(id));
+      input.names.push_back(std::format("Club {}", id));
     }
     const size_t open_from = rounds.size() - left * (CLUBS / 2);
     for (size_t index = 0; index < rounds.size(); ++index)
@@ -585,7 +592,7 @@ TEST(StandingsRaceTest, FullSizeLeagueRunInStaysFast)
     int decided = 0;
     for (const auto& report : reports)
       for (const RaceState state : report.races)
-        decided += state == RaceState::SECURED || state == RaceState::LOST;
+        if (state == RaceState::SECURED || state == RaceState::LOST) ++decided;
     std::cout << left << " rounds left ("
               << (rule == TieBreakRule::HEAD_TO_HEAD ? "head-to-head"
                                                      : "goal difference")

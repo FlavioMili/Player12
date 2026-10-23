@@ -11,9 +11,10 @@
 #include <SDL3/SDL.h>
 
 #include <cstdlib>
+#include <format>
+#include <memory>
 #include <stdexcept>
 #include <string>
-#include <string_view>
 #include <utility>
 
 #include "global/logger.h"
@@ -22,14 +23,53 @@
 #if defined(_WIN32)
 #include <process.h>
 #else
+#include <sys/stat.h>
 #include <unistd.h>
 #endif
 
 namespace
 {
+std::string environmentValue(const char* name)
+{
+#if defined(_WIN32)
+  char* value = nullptr;
+  std::size_t size = 0;
+  if (_dupenv_s(&value, &size, name) != 0) return {};
+  const std::unique_ptr<char, decltype(&std::free)> owned(value, &std::free);
+  return owned ? std::string(owned.get()) : std::string{};
+#else
+  const char* value = std::getenv(name);
+  return value != nullptr ? std::string(value) : std::string{};
+#endif
+}
+
+bool keepTestArtifacts()
+{
+  const auto keep = environmentValue("FM_KEEP_TEST_ARTIFACTS");
+  return !keep.empty() && keep != "0";
+}
+
 std::filesystem::path ensureDirectory(std::filesystem::path path)
 {
   std::filesystem::create_directories(path);
+  return path;
+}
+
+std::filesystem::path ensureTestDirectory(std::filesystem::path path)
+{
+  std::filesystem::create_directories(path);
+  if (std::filesystem::is_symlink(std::filesystem::symlink_status(path)))
+    throw std::runtime_error("Test storage must not be a symbolic link");
+#if !defined(_WIN32)
+  // A shared /tmp parent may already exist. Do not trust a directory planted
+  // by another account, and keep process files private even with a loose umask.
+  struct stat status{};
+  if (lstat(path.c_str(), &status) != 0 || !S_ISDIR(status.st_mode) ||
+      status.st_uid != geteuid())
+    throw std::runtime_error("Test storage must be owned by the current user");
+  std::filesystem::permissions(path, std::filesystem::perms::owner_all,
+                               std::filesystem::perm_options::replace);
+#endif
   return path;
 }
 
@@ -59,16 +99,14 @@ class TestRuntimeRoot
 {
  public:
   explicit TestRuntimeRoot(std::filesystem::path directory)
-      : path(ensureDirectory(std::move(directory)))
+      : path(ensureTestDirectory(std::move(directory)))
   {
   }
   ~TestRuntimeRoot()
   {
     // A forked child (e.g. a death test) must not delete its parent's root.
     if (processId() != owner) return;
-    const char* keep = std::getenv("FM_KEEP_TEST_ARTIFACTS");
-    if (keep != nullptr && *keep != '\0' && std::string_view(keep) != "0")
-      return;
+    if (keepTestArtifacts()) return;
     std::error_code error;
     std::filesystem::remove_all(path, error);
   }
@@ -84,34 +122,36 @@ class TestRuntimeRoot
 
 std::filesystem::path RuntimePaths::root()
 {
-  if (const char* configured = std::getenv("FM_RUNTIME_ROOT");
-      configured != nullptr && *configured != '\0')
+  if (const auto configured = environmentValue("FM_RUNTIME_ROOT");
+      !configured.empty())
   {
     return ensureDirectory(std::filesystem::absolute(configured));
   }
 
-  if (const char* testRoot = std::getenv("FM_TEST_RUNTIME_ROOT");
-      testRoot != nullptr && *testRoot != '\0')
+  if (const auto testRoot = environmentValue("FM_TEST_RUNTIME_ROOT");
+      !testRoot.empty())
   {
     // Created once per process; later calls only re-create the directory
     // if a test removed it.
     static const TestRuntimeRoot processRoot(
-        std::filesystem::absolute(testRoot) / std::to_string(processId()));
-    return ensureDirectory(processRoot.path);
+        ensureTestDirectory(std::filesystem::absolute(testRoot)) /
+        std::to_string(processId()));
+    return ensureTestDirectory(processRoot.path);
   }
 
   // Keep the historical storage identity through the Player12 rebrand so
   // existing careers and settings remain discoverable on every platform.
-  char* prefPath = SDL_GetPrefPath("FlavioMili", "FootballManagement");
-  if (prefPath != nullptr)
+  if (const std::unique_ptr<char, decltype(&SDL_free)> prefPath(
+          SDL_GetPrefPath("FlavioMili", "FootballManagement"), &SDL_free);
+      prefPath != nullptr)
   {
-    std::filesystem::path result = ensureDirectory(prefPath);
-    SDL_free(prefPath);
-    return result;
+    return ensureDirectory(prefPath.get());
   }
 
-  return ensureDirectory(std::filesystem::temp_directory_path() /
-                         "FootballManagement");
+  // A predictable directory in the system temporary area can be planted by
+  // another user. Never store careers there when the preference path fails.
+  throw std::runtime_error(std::string("Cannot locate private game storage: ") +
+                           SDL_GetError());
 }
 
 std::filesystem::path RuntimePaths::saveDirectory()
@@ -122,7 +162,7 @@ std::filesystem::path RuntimePaths::saveDirectory()
 std::filesystem::path RuntimePaths::savePath(int slot)
 {
   if (slot < 0) throw std::invalid_argument("Save slot cannot be negative");
-  return saveDirectory() / ("save_" + std::to_string(slot) + ".db");
+  return saveDirectory() / std::format("save_{}.db", slot);
 }
 
 std::filesystem::path RuntimePaths::settingsPath()
@@ -150,42 +190,47 @@ std::filesystem::path RuntimePaths::imguiIniPath()
   return root() / "imgui.ini";
 }
 
-const std::filesystem::path& RuntimePaths::assetRoot()
+namespace
 {
-  static const std::filesystem::path resolved = []
-  {
-    const auto hasAssets = [](const std::filesystem::path& candidate)
-    {
-      std::error_code error;
-      return std::filesystem::is_regular_file(
-          candidate / "assets" / "db" / "schema.sql", error);
-    };
+bool hasAssets(const std::filesystem::path& candidate)
+{
+  std::error_code error;
+  return std::filesystem::is_regular_file(
+      candidate / "assets" / "db" / "schema.sql", error);
+}
 
-    std::filesystem::path chosen = FM_SOURCE_DIR;
-    if (const char* configured = std::getenv("FM_ASSET_ROOT");
-        configured != nullptr && *configured != '\0')
+std::filesystem::path resolveAssetRoot()
+{
+  std::filesystem::path chosen = FM_SOURCE_DIR;
+  if (const auto configured = environmentValue("FM_ASSET_ROOT");
+      !configured.empty())
+  {
+    chosen = std::filesystem::absolute(configured);
+  }
+  else if (const char* base = SDL_GetBasePath(); base != nullptr)
+  {
+    // SDL owns the returned string; on macOS bundles it already points at
+    // Contents/Resources.
+    const std::filesystem::path executableDir(base);
+    for (const auto& candidate :
+         {executableDir / ".." / "share" / "footballmanagement",
+          executableDir / ".." / "Resources", executableDir})
     {
-      chosen = std::filesystem::absolute(configured);
-    }
-    else if (const char* base = SDL_GetBasePath(); base != nullptr)
-    {
-      // SDL owns the returned string; on macOS bundles it already points at
-      // Contents/Resources.
-      const std::filesystem::path executableDir(base);
-      for (const auto& candidate :
-           {executableDir / ".." / "share" / "footballmanagement",
-            executableDir / ".." / "Resources", executableDir})
+      if (hasAssets(candidate))
       {
-        if (hasAssets(candidate))
-        {
-          chosen = candidate.lexically_normal();
-          break;
-        }
+        chosen = candidate.lexically_normal();
+        break;
       }
     }
-    Logger::info("Game data root: " + chosen.string());
-    return chosen;
-  }();
+  }
+  Logger::info("Game data root: " + chosen.string());
+  return chosen;
+}
+}  // namespace
+
+const std::filesystem::path& RuntimePaths::assetRoot()
+{
+  static const std::filesystem::path resolved = resolveAssetRoot();
   return resolved;
 }
 

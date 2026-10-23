@@ -13,6 +13,7 @@
 #include <cmath>
 #include <format>
 #include <limits>
+#include <utility>
 
 namespace Lab
 {
@@ -276,7 +277,7 @@ void appendTextTable(std::string& out, const TextTable& table)
   for (const std::string& cell : table.header)
     out += std::format(" {} |", escapeCell(cell));
   out += "\n|";
-  for (std::size_t i = 0; i < table.header.size(); ++i) out += "---|";
+  for ([[maybe_unused]] const std::string& header : table.header) out += "---|";
   out += "\n";
   for (const auto& row : table.rows)
   {
@@ -299,21 +300,22 @@ double Summary::monitorPassRate() const
 
 Summary LabReport::summary() const
 {
+  using enum Tier;
   Summary summary;
   for (const ReportRow& row : rows)
   {
     if (row.verdict == Verdict::NotMeasured)
     {
-      if (row.tier != Tier::Info) ++summary.not_measured;
+      if (row.tier != Info) ++summary.not_measured;
       continue;
     }
-    if (row.tier == Tier::Gate)
+    if (row.tier == Gate)
     {
       if (row.verdict == Verdict::Pass) ++summary.gate_pass;
       if (row.verdict == Verdict::Warn) ++summary.gate_warn;
       if (row.verdict == Verdict::Fail) ++summary.gate_fail;
     }
-    else if (row.tier == Tier::Monitor)
+    else if (row.tier == Monitor)
     {
       ++summary.monitor_evaluated;
       if (row.verdict == Verdict::Pass) ++summary.monitor_pass;
@@ -349,10 +351,10 @@ std::vector<ReportRow> evaluateTargets(
     row.source = spec.source;
     row.unit = spec.unit;
     row.note = spec.note;
-    const auto found = spec.metric.empty()
-                           ? metrics.end()
-                           : metrics.find(std::string(spec.metric));
-    if (found != metrics.end())
+    if (const auto found = spec.metric.empty()
+                               ? metrics.end()
+                               : metrics.find(std::string(spec.metric));
+        found != metrics.end())
       row.estimate = found->second;
     else if (!spec.metric.empty())
       row.note = row.note.empty() ? "no data in this mode"
@@ -367,12 +369,12 @@ std::vector<ReportRow> evaluateTargets(
 
 std::string_view verdictName(Verdict verdict)
 {
-  return VERDICT_NAMES[static_cast<std::size_t>(verdict)];
+  return VERDICT_NAMES[static_cast<std::size_t>(std::to_underlying(verdict))];
 }
 
 std::string_view tierName(Tier tier)
 {
-  return TIER_NAMES[static_cast<std::size_t>(tier)];
+  return TIER_NAMES[static_cast<std::size_t>(std::to_underlying(tier))];
 }
 
 std::string formatValue(double value, Unit unit)

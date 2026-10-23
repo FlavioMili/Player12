@@ -19,6 +19,7 @@
 #include <memory>
 #include <numbers>
 #include <optional>
+#include <print>
 #include <string>
 #include <vector>
 
@@ -52,19 +53,25 @@ StatsConfig createStatsConfig()
 Team createDummyTeam(TeamID id, const std::string& name, int rating,
                      std::vector<std::unique_ptr<Player>>& players)
 {
+  using enum PlayerRole;
   Team team(id, 1, name, 50'000'000, {}, Strategy{}, Lineup{});
-  static constexpr PlayerRole ROLES[11] = {
-      PlayerRole::GK, PlayerRole::LB, PlayerRole::CB, PlayerRole::CB,
-      PlayerRole::RB, PlayerRole::CM, PlayerRole::CM, PlayerRole::LW,
-      PlayerRole::RW, PlayerRole::ST, PlayerRole::ST};
-  static constexpr Vector2F POSITIONS[11] = {
-      {0.04f, 0.50f}, {0.18f, 0.12f}, {0.18f, 0.38f}, {0.18f, 0.62f},
-      {0.18f, 0.88f}, {0.43f, 0.35f}, {0.43f, 0.65f}, {0.68f, 0.16f},
-      {0.68f, 0.84f}, {0.78f, 0.38f}, {0.78f, 0.62f}};
+  static constexpr std::array ROLES = {GK, LB, CB, CB, RB, CM,
+                                       CM, LW, RW, ST, ST};
+  static constexpr std::array<Vector2F, 11> POSITIONS = {{{0.04f, 0.50f},
+                                                          {0.18f, 0.12f},
+                                                          {0.18f, 0.38f},
+                                                          {0.18f, 0.62f},
+                                                          {0.18f, 0.88f},
+                                                          {0.43f, 0.35f},
+                                                          {0.43f, 0.65f},
+                                                          {0.68f, 0.16f},
+                                                          {0.68f, 0.84f},
+                                                          {0.78f, 0.38f},
+                                                          {0.78f, 0.62f}}};
 
   for (uint32_t index = 0; index < 11; ++index)
   {
-    const float value = static_cast<float>(rating);
+    const auto value = static_cast<float>(rating);
     const std::map<std::string, float> stats = {
         {"Pace", value},      {"Shooting", value},  {"Passing", value},
         {"Dribbling", value}, {"Defending", value}, {"Physicality", value},
@@ -73,7 +80,7 @@ Team createDummyTeam(TeamID id, const std::string& name, int rating,
         static_cast<PlayerID>(id) * 100U + index, id, "First",
         std::to_string(index), ROLES[index], Language::EN, 100'000, 0, 25, 3,
         180, Foot::Right, stats);
-    if (ROLES[index] == PlayerRole::GK)
+    if (ROLES[index] == GK)
       team.getLineup().setGoalkeeper(player.get());
     else
       team.getLineup().addOutfieldPlayer(player.get(), POSITIONS[index]);
@@ -295,6 +302,7 @@ TEST(MatchEngineTest, DelayedRenderFrameHasBoundedCatchUpWork)
 
 TEST(MatchEngineTest, LivePlayAlwaysAssignsPressureOrBallRecovery)
 {
+  using enum PlayerIntent;
   std::vector<std::unique_ptr<Player>> players;
   Team home = createDummyTeam(1, "Home", 65, players);
   Team away = createDummyTeam(2, "Away", 65, players);
@@ -332,9 +340,9 @@ TEST(MatchEngineTest, LivePlayAlwaysAssignsPressureOrBallRecovery)
   bool awayEngagesBall = false;
   for (const MatchPlayer& player : engine.getPlayers())
   {
-    const bool engagesBall = player.intent == PlayerIntent::PRESS_BALL ||
-                             player.intent == PlayerIntent::CLAIM_LOOSE_BALL ||
-                             player.intent == PlayerIntent::RECEIVE_PASS;
+    const bool engagesBall = player.intent == PRESS_BALL ||
+                             player.intent == CLAIM_LOOSE_BALL ||
+                             player.intent == RECEIVE_PASS;
     if (player.isHomeTeam)
       homeEngagesBall = homeEngagesBall || engagesBall;
     else
@@ -513,10 +521,11 @@ TEST(MatchEngineTest, PossessionBuildsDistinctSupportAngles)
       {
         continue;
       }
-      const float targetDistance =
-          std::hypot(player.movementTarget.x - carrier->position.x,
-                     player.movementTarget.y - carrier->position.y);
-      if (targetDistance > MAX_SUPPORT_DISTANCE) continue;
+      if (const float targetDistance =
+              std::hypot(player.movementTarget.x - carrier->position.x,
+                         player.movementTarget.y - carrier->position.y);
+          targetDistance > MAX_SUPPORT_DISTANCE)
+        continue;
       ++nearbySupporters;
       const float lateralOffset = player.movementTarget.y - carrier->position.y;
       supportAbove = supportAbove || lateralOffset < -MIN_LATERAL_ANGLE;
@@ -559,19 +568,21 @@ TEST(MatchEngineTest, FinalThirdPossessionKeepsRestDefenseBehindTheBall)
         engine.getPlayers(), [&engine](const MatchPlayer& player)
         { return player.player == engine.getBall().possessedBy; });
     ASSERT_NE(carrier, engine.getPlayers().end());
-    const TeamPhase attackingPhase =
-        carrier->isHomeTeam ? engine.getHomePhase() : engine.getAwayPhase();
-    if (attackingPhase != TeamPhase::FINAL_THIRD) continue;
+    if (const TeamPhase attackingPhase =
+            carrier->isHomeTeam ? engine.getHomePhase() : engine.getAwayPhase();
+        attackingPhase != TeamPhase::FINAL_THIRD)
+      continue;
 
     int restDefenders = 0;
     for (const MatchPlayer& player : engine.getPlayers())
     {
       if (player.isHomeTeam != carrier->isHomeTeam || !player.player) continue;
       const PlayerRole role = player.player->getRole();
-      const bool defensiveRole = role == PlayerRole::CB ||
-                                 role == PlayerRole::LB ||
-                                 role == PlayerRole::RB;
-      if (!defensiveRole) continue;
+      if (const bool defensiveRole = role == PlayerRole::CB ||
+                                     role == PlayerRole::LB ||
+                                     role == PlayerRole::RB;
+          !defensiveRole)
+        continue;
       const float goalSideGap = carrier->isHomeTeam
                                     ? carrier->position.x - player.position.x
                                     : player.position.x - carrier->position.x;
@@ -891,14 +902,13 @@ namespace
 Team createSquadWithBench(TeamID id, const std::string& name, int rating,
                           std::vector<std::unique_ptr<Player>>& players)
 {
+  using enum PlayerRole;
   Team team = createDummyTeam(id, name, rating, players);
-  static constexpr PlayerRole BENCH[7] = {
-      PlayerRole::GK, PlayerRole::CB, PlayerRole::RB, PlayerRole::CM,
-      PlayerRole::LW, PlayerRole::ST, PlayerRole::ST};
+  static constexpr std::array BENCH = {GK, CB, RB, CM, LW, ST, ST};
   std::vector<const Player*> reserves;
   for (uint32_t index = 0; index < 7; ++index)
   {
-    const float value = static_cast<float>(rating);
+    const auto value = static_cast<float>(rating);
     const std::map<std::string, float> stats = {
         {"Pace", value},      {"Shooting", value},  {"Passing", value},
         {"Dribbling", value}, {"Defending", value}, {"Physicality", value},
@@ -924,16 +934,16 @@ int activePlayers(const MatchEngine& engine, bool homeTeam)
 /** Advances fixed steps until play next stops (a new restart begins). */
 bool advanceToNextStoppage(MatchEngine& engine)
 {
+  using enum MatchState;
   bool sawPlay = false;
   for (int step = 0; step < 20'000; ++step)
   {
-    if (engine.getState() == MatchState::FULL_TIME) return false;
+    if (engine.getState() == FULL_TIME) return false;
     engine.update(MatchTuning::Timing::FIXED_STEP_SECONDS);
     const MatchState state = engine.getState();
-    if (state == MatchState::PLAYING)
+    if (state == PLAYING)
       sawPlay = true;
-    else if (sawPlay && state != MatchState::GOAL &&
-             state != MatchState::FULL_TIME)
+    else if (sawPlay && state != GOAL && state != FULL_TIME)
       return true;
   }
   return false;
@@ -942,6 +952,7 @@ bool advanceToNextStoppage(MatchEngine& engine)
 
 TEST(MatchEngineTest, StructuredEventsAndPlayerStatsAreConsistent)
 {
+  using enum MatchEventType;
   std::vector<std::unique_ptr<Player>> players;
   Team home = createSquadWithBench(1, "Home", 72, players);
   Team away = createSquadWithBench(2, "Away", 64, players);
@@ -990,38 +1001,36 @@ TEST(MatchEngineTest, StructuredEventsAndPlayerStatsAreConsistent)
   {
     EXPECT_TRUE(event.period == 1 || event.period == 2);
     EXPECT_GE(event.addedMinute, 0.0f);
-    if (event.type == MatchEventType::GOAL ||
-        event.type == MatchEventType::OWN_GOAL)
+    if (event.type == GOAL || event.type == OWN_GOAL)
     {
       ++goalEvents;
       EXPECT_TRUE(event.hasTeam);
       EXPECT_NE(event.primaryPlayerId, 0u);
-      EXPECT_STREQ(MatchCommentary::key(event),
-                   event.type == MatchEventType::GOAL
-                       ? "MATCH_COMMENT_GOAL"
-                       : "MATCH_COMMENT_OWN_GOAL");
+      EXPECT_STREQ(MatchCommentary::key(event), event.type == GOAL
+                                                    ? "MATCH_COMMENT_GOAL"
+                                                    : "MATCH_COMMENT_OWN_GOAL");
       EXPECT_EQ(event.homeScore + event.awayScore, goalEvents)
           << "goal events carry the score after the goal";
     }
-    if (event.type == MatchEventType::SHOT)
+    if (event.type == SHOT)
     {
       EXPECT_GT(event.xg, 0.0f);
       EXPECT_NE(event.primaryPlayerId, 0u);
     }
-    if (event.type == MatchEventType::ADDED_TIME) ++addedTimeEvents;
-    if (event.type == MatchEventType::SECOND_HALF)
+    if (event.type == ADDED_TIME) ++addedTimeEvents;
+    if (event.type == SECOND_HALF)
     {
       sawSecondHalf = true;
       EXPECT_FLOAT_EQ(event.timeMinute, MatchTuning::Timing::HALF_TIME_MINUTE);
       EXPECT_EQ(event.period, 2);
     }
-    if (event.type == MatchEventType::HALF_TIME)
+    if (event.type == HALF_TIME)
     {
       EXPECT_GE(event.timeMinute,
                 MatchTuning::Timing::HALF_TIME_MINUTE +
                     static_cast<float>(engine.getAddedMinutes(1)));
     }
-    if (event.type == MatchEventType::SUBSTITUTION)
+    if (event.type == SUBSTITUTION)
     {
       EXPECT_NE(event.primaryPlayerId, 0u);
       EXPECT_NE(event.secondaryPlayerId, 0u);
@@ -1439,8 +1448,8 @@ TEST(MatchEngineTest, FullHeadlessMatchIsFast)
     EXPECT_EQ(engine.getState(), MatchState::FULL_TIME);
   }
   RecordProperty("milliseconds_per_match", std::to_string(total / MATCHES));
-  std::printf("[timing] headless match cpu %.2f ms (fastest %.2f ms)\n",
-              total / MATCHES, fastest);
+  std::print("[timing] headless match cpu {:.2f} ms (fastest {:.2f} ms)\n",
+             total / MATCHES, fastest);
   EXPECT_LT(fastest, 150.0);
 }
 
@@ -1571,9 +1580,10 @@ TEST(MatchEngineTest, MatchContextMovesGoalsCardsAndHomeAdvantage)
       totals.goals += engine.getHomeScore() + engine.getAwayScore();
       totals.yellows +=
           engine.getStats().homeYellowCards + engine.getStats().awayYellowCards;
-      totals.homePoints += engine.getHomeScore() > engine.getAwayScore()    ? 3
-                           : engine.getHomeScore() == engine.getAwayScore() ? 1
-                                                                            : 0;
+      if (engine.getHomeScore() > engine.getAwayScore())
+        totals.homePoints += 3;
+      else if (engine.getHomeScore() == engine.getAwayScore())
+        totals.homePoints += 1;
     }
     return totals;
   };
@@ -1583,7 +1593,7 @@ TEST(MatchEngineTest, MatchContextMovesGoalsCardsAndHomeAdvantage)
   highScoring.goalRateScale = 1.25f;
   const Totals fewGoals = run(lowScoring, 60);
   const Totals manyGoals = run(highScoring, 60);
-  std::printf("[context] goals %d vs %d\n", fewGoals.goals, manyGoals.goals);
+  std::print("[context] goals {} vs {}\n", fewGoals.goals, manyGoals.goals);
   EXPECT_LT(fewGoals.goals * 115, manyGoals.goals * 100);
 
   MatchContext lenient;
@@ -1592,8 +1602,8 @@ TEST(MatchEngineTest, MatchContextMovesGoalsCardsAndHomeAdvantage)
   strict.refereeStrictnessMean = 1.35f;
   const Totals fewCards = run(lenient, 40);
   const Totals manyCards = run(strict, 40);
-  std::printf("[context] yellows %d vs %d\n", fewCards.yellows,
-              manyCards.yellows);
+  std::print("[context] yellows {} vs {}\n", fewCards.yellows,
+             manyCards.yellows);
   EXPECT_LT(fewCards.yellows * 130, manyCards.yellows * 100);
 
   MatchContext neutral;
@@ -1602,8 +1612,8 @@ TEST(MatchEngineTest, MatchContextMovesGoalsCardsAndHomeAdvantage)
   fortress.homeAdvantageScale = 2.0f;
   const Totals neutralVenue = run(neutral, 80);
   const Totals strongHome = run(fortress, 80);
-  std::printf("[context] home points %d vs %d\n", neutralVenue.homePoints,
-              strongHome.homePoints);
+  std::print("[context] home points {} vs {}\n", neutralVenue.homePoints,
+             strongHome.homePoints);
   EXPECT_LT(neutralVenue.homePoints, strongHome.homePoints);
 }
 
@@ -1624,6 +1634,7 @@ MatchEngine playKnockout(const Team& home, const Team& away,
 
 TEST(MatchEngineTest, LevelKnockoutGoesToExtraTimeThenPenalties)
 {
+  using enum MatchEventType;
   std::vector<std::unique_ptr<Player>> players;
   Team home = createSquadWithBench(1, "Home", 68, players);
   Team away = createSquadWithBench(2, "Away", 68, players);
@@ -1652,19 +1663,16 @@ TEST(MatchEngineTest, LevelKnockoutGoesToExtraTimeThenPenalties)
     std::optional<bool> lastKicker;
     for (const MatchEvent& event : engine.getEvents())
     {
-      if (event.type == MatchEventType::SECOND_HALF && event.period == 3)
-        sawExtraTime = true;
-      if (event.type == MatchEventType::SECOND_HALF && event.period == 4)
+      if (event.type == SECOND_HALF && event.period == 3) sawExtraTime = true;
+      if (event.type == SECOND_HALF && event.period == 4)
         sawSecondExtraHalf = true;
-      if (event.type == MatchEventType::GOAL ||
-          event.type == MatchEventType::OWN_GOAL)
-        ++goalEvents;
-      if (event.type != MatchEventType::PENALTY_SHOOTOUT ||
+      if (event.type == GOAL || event.type == OWN_GOAL) ++goalEvents;
+      if (event.type != PENALTY_SHOOTOUT ||
           event.detail == MatchEventDetail::NONE)
         continue;
       ++kicks;
       // ABAB: the sides alternate from the first kick to the last.
-      if (lastKicker) EXPECT_NE(*lastKicker, event.isHomeTeam);
+      if (lastKicker.has_value()) EXPECT_NE(*lastKicker, event.isHomeTeam);
       lastKicker = event.isHomeTeam;
       EXPECT_NE(event.primaryPlayerId, 0u);
     }
@@ -1680,7 +1688,7 @@ TEST(MatchEngineTest, LevelKnockoutGoesToExtraTimeThenPenalties)
         engine.getShootoutScore(false), engine.getShootoutKicks(false)));
     EXPECT_EQ(*engine.getTieWinnerHome(),
               engine.getShootoutScore(true) > engine.getShootoutScore(false));
-    EXPECT_EQ(engine.getEvents().back().type, MatchEventType::FULL_TIME);
+    EXPECT_EQ(engine.getEvents().back().type, FULL_TIME);
     EXPECT_LE(std::max(engine.getSubstitutionsUsed(true),
                        engine.getSubstitutionsUsed(false)),
               MatchTuning::Rules::MAX_SUBSTITUTIONS_PER_TEAM +
@@ -1871,9 +1879,10 @@ TEST(MatchEngineTest, PlayersAndBallMoveAtRealisticSpeeds)
     EXPECT_LE(entry.topSpeed, 10.5f);
     EXPECT_LE(entry.highIntensityMetres, entry.distanceMetres);
     EXPECT_LE(entry.sprintMetres, entry.highIntensityMetres);
-    const bool fullMatch = entry.started && !entry.substitutedOff &&
-                           !entry.sentOff && !entry.injured;
-    if (!fullMatch || entry.role == PlayerRole::GK) continue;
+    if (const bool fullMatch = entry.started && !entry.substitutedOff &&
+                               !entry.sentOff && !entry.injured;
+        !fullMatch || entry.role == PlayerRole::GK)
+      continue;
     EXPECT_GE(entry.distanceMetres, 6'000.0f);
     EXPECT_LE(entry.distanceMetres, 14'000.0f);
     EXPECT_GT(entry.topSpeed, 6.5f);
@@ -1972,12 +1981,6 @@ TEST(MatchEngineTest, BenchConditionAndFamiliarityInputs)
 
 namespace
 {
-float metresBetweenPoints(Vector2F first, Vector2F second)
-{
-  return std::hypot((first.x - second.x) * MatchTuning::Pitch::LENGTH_METRES,
-                    (first.y - second.y) * MatchTuning::Pitch::WIDTH_METRES);
-}
-
 /** Metric distance from a point to the segment [start, end]. */
 float metresToSegment(Vector2F point, Vector2F start, Vector2F end)
 {
@@ -2609,7 +2612,7 @@ TEST(MatchEngineTest, ControlledCarrierPassesTowardTheAim)
   input.action = MatchInputAction::PASS;
   engine.submitInput(input);
   bool passed = false;
-  const int buffered =
+  const auto buffered =
       static_cast<int>(MatchTuning::Control::ACTION_BUFFER_SECONDS /
                        MatchTuning::Timing::FIXED_STEP_SECONDS);
   for (int step = 0; step < buffered && !passed; ++step)
@@ -2633,6 +2636,7 @@ TEST(MatchEngineTest, ControlledCarrierPassesTowardTheAim)
 
 TEST(MatchEngineTest, RecordedControllerInputReplaysIdentically)
 {
+  using enum MatchInputAction;
   std::vector<std::unique_ptr<Player>> players;
   Team home = createSquadWithBench(1, "Home", 68, players);
   Team away = createSquadWithBench(2, "Away", 67, players);
@@ -2648,9 +2652,9 @@ TEST(MatchEngineTest, RecordedControllerInputReplaysIdentically)
     input.moveX = std::cos(phase);
     input.moveY = std::sin(phase * 1.3f);
     input.sprint = second % 7 < 3;
-    if (second % 11 == 0) input.action = MatchInputAction::PASS;
-    if (second % 29 == 0) input.action = MatchInputAction::SHOOT;
-    if (second % 13 == 0) input.action = MatchInputAction::TACKLE;
+    if (second % 11 == 0) input.action = PASS;
+    if (second % 29 == 0) input.action = SHOOT;
+    if (second % 13 == 0) input.action = TACKLE;
     live.submitInput(input);
     live.update(0.5f);
     live.update(0.5f);
@@ -2986,6 +2990,7 @@ TEST(PlayModeTest, PlayModeOffKeepsTheMatchBitIdentical)
 
 TEST(PlayModeTest, TeamControlWithSwitchingReplaysExactly)
 {
+  using enum MatchInputAction;
   std::vector<std::unique_ptr<Player>> players;
   Team home = createSquadWithBench(1, "Home", 68, players);
   Team away = createSquadWithBench(2, "Away", 70, players);
@@ -3000,9 +3005,10 @@ TEST(PlayModeTest, TeamControlWithSwitchingReplaysExactly)
   for (int tick = 0; tick < 12'000 && live.getState() != MatchState::FULL_TIME;
        ++tick)
   {
-    PlayerID wanted = tick % 97 == 0 ? live.nextSwitchCandidate(true, active)
-                                     : live.suggestActivePlayer(true, active);
-    if (wanted != 0 && wanted != active && live.setControlledPlayer(wanted))
+    if (PlayerID wanted = tick % 97 == 0
+                              ? live.nextSwitchCandidate(true, active)
+                              : live.suggestActivePlayer(true, active);
+        wanted != 0 && wanted != active && live.setControlledPlayer(wanted))
     {
       active = wanted;
       ++switches;
@@ -3015,10 +3021,8 @@ TEST(PlayModeTest, TeamControlWithSwitchingReplaysExactly)
     input.jockey = tick % 23 < 5;
     input.passAssist = static_cast<std::uint8_t>(tick % 3);
     input.power = static_cast<float>(tick % 10) / 10.0f;
-    constexpr std::array ACTIONS{
-        MatchInputAction::PASS,        MatchInputAction::THROUGH_BALL,
-        MatchInputAction::LOFTED_PASS, MatchInputAction::SHOOT,
-        MatchInputAction::TACKLE,      MatchInputAction::SLIDE_TACKLE};
+    constexpr std::array ACTIONS{PASS,  THROUGH_BALL, LOFTED_PASS,
+                                 SHOOT, TACKLE,       SLIDE_TACKLE};
     if (tick % 7 == 0) input.action = ACTIONS[(tick / 7) % ACTIONS.size()];
     live.submitInput(input);
     live.advance(MatchTuning::Timing::FIXED_STEP_SECONDS);
@@ -3176,8 +3180,8 @@ TEST(PlayModeTest, JockeyingDefenderHoldsAGoalSideLine)
           toGoalY / toGoal * MatchTuning::Control::JOCKEY_CONTAIN_METRES;
       const float offsetX = spotX - defender->position.x * 105.0f;
       const float offsetY = spotY - defender->position.y * 68.0f;
-      const float metres = std::hypot(offsetX, offsetY);
-      if (metres > 1.0f && previous > 0.5f)
+      if (const float metres = std::hypot(offsetX, offsetY);
+          metres > 1.0f && previous > 0.5f)
         EXPECT_GT(
             (defender->velocity.x * offsetX + defender->velocity.y * offsetY) /
                 (metres * previous),
@@ -3512,8 +3516,9 @@ TEST(PlayModeTest, OutOfPlayRestartsAutomaticallyWithinThreeSeconds)
   engine.setPlayHalfMinutes(15);
   const auto isRestart = [](MatchState state)
   {
-    return state == MatchState::THROW_IN || state == MatchState::GOAL_KICK ||
-           state == MatchState::CORNER_KICK || state == MatchState::FREE_KICK;
+    using enum MatchState;
+    return state == THROW_IN || state == GOAL_KICK || state == CORNER_KICK ||
+           state == FREE_KICK;
   };
   int restarts = 0;
   for (int step = 0; step < 6000 && restarts < 8; ++step)
@@ -3542,6 +3547,7 @@ TEST(PlayModeTest, OutOfPlayRestartsAutomaticallyWithinThreeSeconds)
 
 TEST(PlayModeTest, PassButtonReleasesOutOfPlayBallForTheRestartSide)
 {
+  using enum MatchState;
   std::vector<std::unique_ptr<Player>> players;
   Team home = createDummyTeam(1, "Home", 65, players);
   Team away = createDummyTeam(2, "Away", 65, players);
@@ -3554,8 +3560,8 @@ TEST(PlayModeTest, PassButtonReleasesOutOfPlayBallForTheRestartSide)
   {
     engine.advance(0.1f);
     const MatchState state = engine.getState();
-    if (state != MatchState::THROW_IN && state != MatchState::GOAL_KICK &&
-        state != MatchState::CORNER_KICK && state != MatchState::FREE_KICK)
+    if (state != THROW_IN && state != GOAL_KICK && state != CORNER_KICK &&
+        state != FREE_KICK)
       continue;
     const Player* owner = engine.getBall().possessedBy;
     ASSERT_NE(owner, nullptr);

@@ -28,7 +28,10 @@ class DataHubScene : public ManagementScene
  public:
   explicit DataHubScene(GUIView* parent);
 
-  void update(float /*deltaTime*/) override {}
+  void update(float /*deltaTime*/) override
+  {
+    // Rendering reads current state; there is no per-frame update work.
+  }
   [[nodiscard]] SceneID getID() const override { return SceneID::DATA_HUB; }
 
  protected:

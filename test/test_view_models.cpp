@@ -18,6 +18,7 @@
 #include <nlohmann/json.hpp>
 #include <string>
 #include <unordered_set>
+#include <utility>
 
 #include "controller/game_controller.h"
 #include "database/gamedata.h"
@@ -279,7 +280,8 @@ TEST(SettingsPersistenceTest, AutosavePolicyRoundTripsAndReachesTheController)
   SettingsManager* manager = SettingsManager::instance();
   const Settings original = manager->get();
   Settings& settings = manager->get();
-  settings.autosave_frequency = static_cast<int>(AutosaveFrequency::Matchday);
+  settings.autosave_frequency =
+      static_cast<int>(std::to_underlying(AutosaveFrequency::Matchday));
   settings.autosave_backups = 7;
   manager->save();
 

@@ -11,6 +11,7 @@
 #include <algorithm>
 #include <cmath>
 #include <nlohmann/json.hpp>
+#include <utility>
 
 #include "model/lineup.h"
 #include "model/match_engine.h"
@@ -81,31 +82,32 @@ TeamMatchStats statsFromObject(const json& object)
 /** Relative chance that @p player scores an extra-time goal. */
 double scorerWeight(const Player& player)
 {
+  using enum PlayerRole;
   double role = 1.0;
   switch (player.getRole())
   {
-    case PlayerRole::GK:
-    case PlayerRole::UNKNOWN:
+    case GK:
+    case UNKNOWN:
       return 0.0;
-    case PlayerRole::ST:
+    case ST:
       role = 6.0;
       break;
-    case PlayerRole::LW:
-    case PlayerRole::RW:
-    case PlayerRole::CAM:
+    case LW:
+    case RW:
+    case CAM:
       role = 4.0;
       break;
-    case PlayerRole::LM:
-    case PlayerRole::RM:
-    case PlayerRole::CM:
+    case LM:
+    case RM:
+    case CM:
       role = 2.0;
       break;
-    case PlayerRole::CDM:
+    case CDM:
       role = 1.5;
       break;
-    case PlayerRole::CB:
-    case PlayerRole::LB:
-    case PlayerRole::RB:
+    case CB:
+    case LB:
+    case RB:
       role = 1.0;
       break;
   }
@@ -151,7 +153,8 @@ void MatchReport::fillFromEngine(const MatchEngine& engine, TeamID home_id,
   away_stats.expected_goals = stats.awayShotXG;
   home_stats.red_cards = toCount(stats.homeRedCards);
   away_stats.red_cards = toCount(stats.awayRedCards);
-  home_stats.set_pieces_known = away_stats.set_pieces_known = true;
+  home_stats.set_pieces_known = true;
+  away_stats.set_pieces_known = true;
   home_stats.set_piece_shots = toCount(stats.homeSetPieceShots);
   away_stats.set_piece_shots = toCount(stats.awaySetPieceShots);
   home_stats.set_piece_goals = toCount(stats.homeSetPieceGoals);
@@ -186,7 +189,7 @@ void MatchReport::fillFromEngine(const MatchEngine& engine, TeamID home_id,
   players.reserve(engine.getPlayerStats().size());
   // Minutes are reported on the usual 90-minute scale (120 after extra
   // time) whatever the added time, as a share of the clock time played.
-  const float fullMatch =
+  const auto fullMatch =
       static_cast<float>(extra_time ? EXTRA_TIME_MINUTES : REGULATION_MINUTES);
   const float clockMinutes =
       std::max(fullMatch, engine.getElapsedMatchMinutes());
@@ -245,10 +248,11 @@ void MatchReport::addLineupAppearances(const Lineup& lineup, TeamID team_id)
   const auto addStarter = [&](const Player* player)
   {
     if (!player) return;
-    const bool alreadyListed =
-        std::ranges::any_of(players, [player](const PlayerMatchLine& line)
-                            { return line.player_id == player->getId(); });
-    if (alreadyListed) return;
+    if (const bool alreadyListed =
+            std::ranges::any_of(players, [player](const PlayerMatchLine& line)
+                                { return line.player_id == player->getId(); });
+        alreadyListed)
+      return;
     PlayerMatchLine line;
     line.player_id = player->getId();
     line.team_id = team_id;
@@ -322,7 +326,7 @@ std::string MatchReport::eventsToJson() const
   {
     array.push_back({{"m", event.minute},
                      {"x", event.added_minute},
-                     {"k", static_cast<int>(event.kind)},
+                     {"k", static_cast<int>(std::to_underlying(event.kind))},
                      {"h", event.home},
                      {"p", event.player},
                      {"a", event.assist}});
@@ -352,7 +356,7 @@ std::string MatchReport::statsToJson() const
 {
   json object{{"home", statsToObject(home_stats)},
               {"away", statsToObject(away_stats)}};
-  if (played_home)
+  if (played_home.has_value())
     object["play"] = json{{"home", *played_home}, {"share", played_share}};
   return object.dump();
 }
