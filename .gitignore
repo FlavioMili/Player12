@@ -1,4 +1,4 @@
-build/*
+/build/
 build-release/
 FootballManagement*
 compile_commands.json
@@ -22,3 +22,11 @@ docs/implementation
 # Local documentation/media build helpers
 __pycache__/
 node_modules/
+
+# Private local agent workspace and governance records
+/.local-tools/
+/.kittify/
+/kitty-ops/
+/.agents/
+/.codex/
+/.aws/

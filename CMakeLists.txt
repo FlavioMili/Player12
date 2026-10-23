@@ -144,7 +144,7 @@ FetchContent_Declare(
 FetchContent_MakeAvailable(json)
 
 # --- SQLite3 ---
-find_package(SQLite3 QUIET)
+find_package(SQLite3 3.37 QUIET)
 if(NOT SQLite3_FOUND)
   message(STATUS "SQLite3 not found, fetching from GitHub...")
   FetchContent_Declare(

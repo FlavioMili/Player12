@@ -7790,6 +7790,7 @@ void MatchEngine::scoreGoal(bool homeTeam)
 
   goalScoredByHome = homeTeam;
   goalCelebrationRemaining = getGoalCelebrationDuration();
+  beginStoppage();
   state = MatchState::GOAL;
   ball.possessedBy = nullptr;
   ball.shotByHome = homeTeam;
@@ -7876,7 +7877,12 @@ void MatchEngine::beginStoppage()
 
 void MatchEngine::setupKickOff(bool homeKickingOff)
 {
-  beginStoppage();
+  // The goal already opened this break in play. Changes during its
+  // celebration and the following kick-off share one substitution window.
+  if (state != MatchState::GOAL)
+  {
+    beginStoppage();
+  }
   restartIsSetPiece = false;
   pendingAdvantage.active = false;
   resetPositions();

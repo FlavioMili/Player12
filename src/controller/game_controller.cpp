@@ -55,6 +55,9 @@ GameController::GameController() : game(nullptr), gamedata(nullptr) {}
 
 void GameController::newGame(int slot, std::optional<std::uint64_t> world_seed)
 {
+  const std::scoped_lock runtime_lock(runtime_mutex);
+  editor_session.reset();
+  editor_backup.reset();
   const auto startedAt = std::chrono::steady_clock::now();
   // The slot is not touched until the new world is complete: the first save
   // replaces it atomically and keeps the previous file as a rotation backup,
@@ -85,7 +88,7 @@ void GameController::newGame(int slot, std::optional<std::uint64_t> world_seed)
   game->getTransfers().seedReleaseClauses();
   purgeStaleListings();
   startSession(slot, 0);
-  persist(false);
+  persistLocked(false);
   last_initialization_milliseconds =
       std::chrono::duration<float, std::milli>(
           std::chrono::steady_clock::now() - startedAt)
@@ -96,6 +99,9 @@ void GameController::newGame(int slot, std::optional<std::uint64_t> world_seed)
 
 bool GameController::loadGame(int slot)
 {
+  const std::scoped_lock runtime_lock(runtime_mutex);
+  editor_session.reset();
+  editor_backup.reset();
   const auto startedAt = std::chrono::steady_clock::now();
   const std::filesystem::path path = RuntimePaths::savePath(slot);
   last_load_error.reset();
@@ -331,6 +337,8 @@ const StatsConfig& GameController::getStatsConfig() const
 
 void GameController::advanceDay()
 {
+  const std::scoped_lock runtime_lock(runtime_mutex);
+  if (!editor_session.expired()) return;
   if (!game) return;
   game->resetSimulationProgress();
   continue_days_started = 0;
@@ -354,6 +362,8 @@ void GameController::simulateDay()
 
 int GameController::advanceToNextManagedFixture(int max_days)
 {
+  const std::scoped_lock runtime_lock(runtime_mutex);
+  if (!editor_session.expired()) return 0;
   last_continue_stop = ContinueStop::None;
   if (!game || max_days <= 0 || !hasSelectedTeam()) return 0;
   continue_stop_requested = false;
@@ -664,10 +674,15 @@ std::vector<DisciplinaryRecord> GameController::getSuspendedPlayers(
                                                                   *gamedata);
 }
 
-bool GameController::saveGame() { return persist(false); }
-
-bool GameController::persist(bool autosave)
+bool GameController::saveGame()
 {
+  const std::scoped_lock runtime_lock(runtime_mutex);
+  return persistLocked(false);
+}
+
+bool GameController::persistLocked(bool autosave)
+{
+  if (!editor_session.expired()) return false;
   if (!game || current_slot < 0) return false;
   using Clock = std::chrono::steady_clock;
   const auto started = Clock::now();
@@ -788,7 +803,7 @@ void GameController::maybeAutosave()
   if (SaveManager::isAutosaveDue(
           autosave_policy.frequency, last_autosave_date, last_autosave_season,
           today, game->getCurrentSeason(), managed_match_yesterday))
-    persist(true);
+    persistLocked(true);
 }
 
 void GameController::setAutosavePolicy(const AutosavePolicy& policy)
@@ -3390,6 +3405,11 @@ bool GameController::resignFromClub()
 
 int GameController::advanceWhileUnemployed(int max_days)
 {
+  const std::scoped_lock runtime_lock(runtime_mutex);
+  if (!editor_session.expired())
+  {
+    return 0;
+  }
   last_continue_stop = ContinueStop::None;
   if (!game || max_days <= 0 || !isUnemployed()) return 0;
   continue_stop_requested = false;
@@ -4248,6 +4268,8 @@ std::optional<GameDateValue> GameController::getHolidayTarget(
 
 int GameController::goOnHoliday(const HolidayPlan& plan)
 {
+  const std::scoped_lock runtime_lock(runtime_mutex);
+  if (!editor_session.expired()) return 0;
   holiday_summary = HolidaySummary();
   last_continue_stop = ContinueStop::None;
   if (!game || !hasSelectedTeam()) return 0;

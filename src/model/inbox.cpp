@@ -35,8 +35,10 @@ constexpr std::array<std::string_view, 5> ROUTINE_TITLES = {
     "INBOX_INSTALMENT_PAID_TITLE", "INBOX_INSTALMENT_RECEIVED_TITLE",
     "SCOUT_ALERT_MOVED_TITLE"};
 
-constexpr std::array<std::string_view, 2> DIGEST_TITLES = {
-    "INBOX_BID_TITLE", "INBOX_LOAN_OFFER_TITLE"};
+// Repeated advisory workload warnings share the weekly unread digest. Keep
+// individual injury/carrying notices and actionable decisions distinct.
+constexpr std::array<std::string_view, 3> DIGEST_TITLES = {
+    "INBOX_BID_TITLE", "INBOX_LOAN_OFFER_TITLE", "MEDICAL_WARN_LOAD_TITLE"};
 
 struct ActionEntry
 {

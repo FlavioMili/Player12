@@ -17,6 +17,8 @@
 
 int GameController::advanceToNextEvent(int max_days)
 {
+  const std::scoped_lock runtime_lock(runtime_mutex);
+  if (!editor_session.expired()) return 0;
   last_continue_stop = ContinueStop::None;
   if (!game || max_days <= 0 || !hasSelectedTeam()) return 0;
   continue_stop_requested = false;

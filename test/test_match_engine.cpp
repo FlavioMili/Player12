@@ -1200,6 +1200,36 @@ TEST(MatchEngineTest, ManualSubstitutionsFollowLimitsAndWindows)
   EXPECT_TRUE(engine.canSubstitute(false));
 }
 
+TEST(MatchEngineTest, GoalAndFollowingKickoffShareOneSubstitutionWindow)
+{
+  std::vector<std::unique_ptr<Player>> players;
+  Team home = createSquadWithBench(1, "Home", 80, players);
+  Team away = createSquadWithBench(2, "Away", 40, players);
+  const StatsConfig config = createStatsConfig();
+  MatchEngine engine(home.getLineup(), away.getLineup(), home.getStrategy(),
+                     away.getStrategy(), config, 77);
+  engine.setAutoSubstitutions(false, false);
+  const auto& bench = home.getLineup().getReserves();
+  ASSERT_TRUE(engine.substitutePlayer(107, bench[4]));
+  ASSERT_EQ(engine.getSubstitutionWindowsUsed(true), 1);
+
+  for (int step = 0; step < 20'000 && engine.getState() != MatchState::GOAL;
+       ++step)
+    engine.advance(MatchTuning::Timing::FIXED_STEP_SECONDS);
+  ASSERT_EQ(engine.getState(), MatchState::GOAL);
+  ASSERT_TRUE(engine.substitutePlayer(109, bench[5]));
+  EXPECT_EQ(engine.getSubstitutionWindowsUsed(true), 2)
+      << "a goal starts a new break in play";
+
+  for (int step = 0; step < 2'000 && engine.getState() == MatchState::GOAL;
+       ++step)
+    engine.advance(MatchTuning::Timing::FIXED_STEP_SECONDS);
+  ASSERT_EQ(engine.getState(), MatchState::KICK_OFF);
+  ASSERT_TRUE(engine.substitutePlayer(110, bench[6]));
+  EXPECT_EQ(engine.getSubstitutionWindowsUsed(true), 2)
+      << "celebration and kick-off belong to the same break in play";
+}
+
 TEST(MatchEngineTest, PenaltiesAreTakenByTheBestOutfieldShooter)
 {
   std::vector<std::unique_ptr<Player>> players;

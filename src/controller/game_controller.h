@@ -1416,7 +1416,38 @@ class GameController
   /** @brief Gets the game data cache. */
   std::shared_ptr<GameData> getGameData() const { return gamedata; }
 
+  /** Editing pauses career advancement. UI callers must also exclude live
+   * matches and discard scene caches at a frame boundary after apply/undo.
+   * The session database is private; cancelling only releases the pause. */
+  struct EditorSession
+  {
+    std::shared_ptr<DatabaseConnection> database;
+    std::shared_ptr<DatabaseConnection> source;
+    int source_changes = 0;
+    std::string source_schema;
+  };
+  std::shared_ptr<EditorSession> beginEditor();
+  void cancelEditor();
+  /** Contains loader, codec and feature-validator exceptions at the runtime
+   * replacement boundary; failures preserve the live career and draft. */
+  bool applyEditor(const std::shared_ptr<EditorSession>& session,
+                   const std::vector<RuntimeEditor::Change>& changes,
+                   std::string& error);
+  bool undoEditor(std::string& error);
+  bool canUndoEditor() const { return editor_backup != nullptr; }
+  void registerEditorValidator(RuntimeEditor::Validator validator);
+
+  /** Number of successful runtime replacements; used to invalidate UI caches.
+   */
+  std::uint64_t getEditorRevision() const { return editor_revision; }
+
  private:
+  mutable std::mutex runtime_mutex;
+  std::weak_ptr<EditorSession> editor_session;
+  std::shared_ptr<DatabaseConnection> editor_backup;
+  std::vector<RuntimeEditor::Validator> editor_validators;
+  std::uint64_t editor_revision = 0;
+  void replaceEditorDatabase(std::shared_ptr<DatabaseConnection> connection);
   std::shared_ptr<class DatabaseConnection> db_conn;
   std::unique_ptr<Game> game;
   std::shared_ptr<class GameData> gamedata;
@@ -1446,7 +1477,8 @@ class GameController
   mutable std::mutex save_status_mutex;
   SaveStatusInfo save_status;
   /** Flushes the game and atomically replaces the slot file. */
-  bool persist(bool autosave);
+  /** Caller must hold runtime_mutex, including autosaves during advancement. */
+  bool persistLocked(bool autosave);
   void maybeAutosave();
   void startSession(int slot, std::int64_t playtime_seconds);
   /** One day of simulation plus the AI transfer activity that follows. */

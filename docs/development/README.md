@@ -14,6 +14,7 @@ your first change and [platform setup](../user/installation.md) for dependencies
 | [Design notes and Spec Kitty history](design-notes.md) | Recovered rationale, original source references and differences between plans and shipped code |
 | [Builds](builds.md) | Configure/build/test presets and tooling |
 | [Tests and tools](testing.md) | Focused tests, suite labels, balance lab and benchmarks |
+| [Runtime editor](runtime-editor.md) | Schema discovery, page contexts, validation and preservation of custom data |
 | [Website and documentation](website.md) | Maintain the showcase, media and rendered guides |
 | [Release](release.md) | Packaging and runtime paths |
 

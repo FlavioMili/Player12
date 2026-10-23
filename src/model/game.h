@@ -19,6 +19,7 @@
 #include <vector>
 
 #include "database/database_connection.h"
+#include "database/runtime_editor.h"
 #include "model/calendar.h"
 #include "model/competition_manager.h"
 #include "model/gamedate.h"
@@ -303,6 +304,11 @@ class Game
   void settleLevelTie(Match& match, MatchReport& report);
 
   std::shared_ptr<DatabaseConnection> db_conn;
+  std::unique_ptr<RuntimeEditor::Extensions> extensions;
+  int extensions_version = -1;
+  RuntimeEditor::Payloads payload_extensions;
+  void discoverExtensions();
+  void serialize(bool probe);
   std::shared_ptr<class GameData> gamedata;
   Calendar calendar;
   CompetitionManager competitions;

@@ -132,13 +132,17 @@ void resize(GUIView& view, int width, int height)
 void pressKey(GUIView& view, ImGuiKey key, ImGuiKeyChord mods = 0)
 {
   ImGuiIO& io = ImGui::GetIO();
-  if ((mods & ImGuiMod_Ctrl) != 0) io.AddKeyEvent(ImGuiMod_Ctrl, true);
+  // Inject logical test chords consistently: ImGui swaps physical Ctrl and
+  // Super events when macOS behavior is enabled.
+  const ImGuiKey control =
+      io.ConfigMacOSXBehaviors ? ImGuiMod_Super : ImGuiMod_Ctrl;
+  if ((mods & ImGuiMod_Ctrl) != 0) io.AddKeyEvent(control, true);
   if ((mods & ImGuiMod_Shift) != 0) io.AddKeyEvent(ImGuiMod_Shift, true);
   if ((mods & ImGuiMod_Alt) != 0) io.AddKeyEvent(ImGuiMod_Alt, true);
   io.AddKeyEvent(key, true);
   Bridge::frame(view);
   io.AddKeyEvent(key, false);
-  if ((mods & ImGuiMod_Ctrl) != 0) io.AddKeyEvent(ImGuiMod_Ctrl, false);
+  if ((mods & ImGuiMod_Ctrl) != 0) io.AddKeyEvent(control, false);
   if ((mods & ImGuiMod_Shift) != 0) io.AddKeyEvent(ImGuiMod_Shift, false);
   if ((mods & ImGuiMod_Alt) != 0) io.AddKeyEvent(ImGuiMod_Alt, false);
   Bridge::frame(view);
@@ -462,90 +466,95 @@ TEST(InputActionsTest, KeyEventsMatchByCharacterOrPhysicalKey)
 
 TEST(OnboardingUiTest, SettingsControlsRebindWithConflictPersistAndReset)
 {
-  SDL_SetHint(SDL_HINT_VIDEO_DRIVER, "dummy");
-  Logger::init();
-  const BindingsCleanup cleanup;
-  Input::registry().resetAll();
-  GameController controller;
-  GUIView view(controller);
-  ASSERT_TRUE(Bridge::initialize(view));
-  resize(view, 1280, 720);
-  view.changeScene(std::make_unique<SettingsScene>(&view));
-  frames(view, 3);
-  auto* settings = dynamic_cast<SettingsScene*>(Bridge::activeScene(view));
-  ASSERT_NE(settings, nullptr);
-  capture(view, "settings_controls.bmp");
+  for (const bool macBehavior : {false, true})
+  {
+    SCOPED_TRACE(macBehavior ? "macOS modifiers" : "standard modifiers");
+    SDL_SetHint(SDL_HINT_VIDEO_DRIVER, "dummy");
+    Logger::init();
+    const BindingsCleanup cleanup;
+    Input::registry().resetAll();
+    GameController controller;
+    GUIView view(controller);
+    ASSERT_TRUE(Bridge::initialize(view));
+    ImGui::GetIO().ConfigMacOSXBehaviors = macBehavior;
+    resize(view, 1280, 720);
+    view.changeScene(std::make_unique<SettingsScene>(&view));
+    frames(view, 3);
+    auto* settings = dynamic_cast<SettingsScene*>(Bridge::activeScene(view));
+    ASSERT_NE(settings, nullptr);
+    capture(view, "settings_controls.bmp");
 
-  Input::ActionRegistry& registry = Input::registry();
-  const Input::ActionId home = *registry.find(Input::Ids::NAV_HOME);
-  const Input::ActionId inbox = *registry.find(Input::Ids::NAV_INBOX);
+    Input::ActionRegistry& registry = Input::registry();
+    const Input::ActionId home = *registry.find(Input::Ids::NAV_HOME);
+    const Input::ActionId inbox = *registry.find(Input::Ids::NAV_INBOX);
 
-  // Waiting for a key: F1 is taken by Home, so the screen asks first.
-  Bridge::captureSlot(*settings, inbox, 0);
-  frames(view, 1);
-  pressKey(view, ImGuiKey_F1);
-  EXPECT_TRUE(Bridge::hasConflict(*settings));
-  EXPECT_EQ(Bridge::conflictWith(*settings), home);
-  EXPECT_EQ(registry.chord(inbox), ImGuiKey_F2);
-  // Escape while a key is awaited cancels the capture, not the screen.
-  Bridge::captureSlot(*settings, inbox, 1);
-  frames(view, 1);
-  pressKey(view, ImGuiKey_Escape);
-  EXPECT_EQ(Bridge::activeScene(view)->getID(), SceneID::SETTINGS);
-  EXPECT_EQ(registry.chord(inbox, 1), ImGuiKey_None);
+    // Waiting for a key: F1 is taken by Home, so the screen asks first.
+    Bridge::captureSlot(*settings, inbox, 0);
+    frames(view, 1);
+    pressKey(view, ImGuiKey_F1);
+    EXPECT_TRUE(Bridge::hasConflict(*settings));
+    EXPECT_EQ(Bridge::conflictWith(*settings), home);
+    EXPECT_EQ(registry.chord(inbox), ImGuiKey_F2);
+    // Escape while a key is awaited cancels the capture, not the screen.
+    Bridge::captureSlot(*settings, inbox, 1);
+    frames(view, 1);
+    pressKey(view, ImGuiKey_Escape);
+    EXPECT_EQ(Bridge::activeScene(view)->getID(), SceneID::SETTINGS);
+    EXPECT_EQ(registry.chord(inbox, 1), ImGuiKey_None);
 
-  // A free combination binds at once.
-  Bridge::captureSlot(*settings, inbox, 1);
-  frames(view, 1);
-  pressKey(view, ImGuiKey_I, ImGuiMod_Ctrl);
-  EXPECT_EQ(registry.chord(inbox, 1), ImGuiMod_Ctrl | ImGuiKey_I);
-  frames(view, 2);
-  capture(view, "settings_controls_rebound.bmp");
+    // A free combination binds at once.
+    Bridge::captureSlot(*settings, inbox, 1);
+    frames(view, 1);
+    pressKey(view, ImGuiKey_I, ImGuiMod_Ctrl);
+    EXPECT_EQ(registry.chord(inbox, 1), ImGuiMod_Ctrl | ImGuiKey_I);
+    frames(view, 2);
+    capture(view, "settings_controls_rebound.bmp");
 
-  // Apply & Back writes the file; a fresh load keeps the binding.
-  ASSERT_TRUE(clickButton(view, "##settings", LOC("SETTINGS_APPLY")));
-  frames(view, 2);
-  EXPECT_EQ(Bridge::activeScene(view)->getID(), SceneID::MAIN_MENU);
-  SettingsManager::instance()->get() = Settings{};
-  SettingsManager::instance()->load();
-  registry.reloadFromSettings();
-  EXPECT_EQ(registry.chord(inbox, 1), ImGuiMod_Ctrl | ImGuiKey_I);
+    // Apply & Back writes the file; a fresh load keeps the binding.
+    ASSERT_TRUE(clickButton(view, "##settings", LOC("SETTINGS_APPLY")));
+    frames(view, 2);
+    EXPECT_EQ(Bridge::activeScene(view)->getID(), SceneID::MAIN_MENU);
+    SettingsManager::instance()->get() = Settings{};
+    SettingsManager::instance()->load();
+    registry.reloadFromSettings();
+    EXPECT_EQ(registry.chord(inbox, 1), ImGuiMod_Ctrl | ImGuiKey_I);
 
-  // Reset to defaults puts every key back; Apply saves it.
-  view.changeScene(std::make_unique<SettingsScene>(&view));
-  frames(view, 3);
-  ASSERT_TRUE(clickButton(view, "##settings", LOC("SETTINGS_RESET")));
-  EXPECT_TRUE(registry.isDefault(inbox));
-  ASSERT_TRUE(clickButton(view, "##settings", LOC("SETTINGS_APPLY")));
-  frames(view, 2);
-  SettingsManager::instance()->get() = Settings{};
-  SettingsManager::instance()->load();
-  EXPECT_TRUE(SettingsManager::instance()->get().key_bindings.empty());
+    // Reset to defaults puts every key back; Apply saves it.
+    view.changeScene(std::make_unique<SettingsScene>(&view));
+    frames(view, 3);
+    ASSERT_TRUE(clickButton(view, "##settings", LOC("SETTINGS_RESET")));
+    EXPECT_TRUE(registry.isDefault(inbox));
+    ASSERT_TRUE(clickButton(view, "##settings", LOC("SETTINGS_APPLY")));
+    frames(view, 2);
+    SettingsManager::instance()->get() = Settings{};
+    SettingsManager::instance()->load();
+    EXPECT_TRUE(SettingsManager::instance()->get().key_bindings.empty());
 
-  // Cancel drops bindings changed on the screen.
-  view.changeScene(std::make_unique<SettingsScene>(&view));
-  frames(view, 3);
-  settings = dynamic_cast<SettingsScene*>(Bridge::activeScene(view));
-  ASSERT_NE(settings, nullptr);
-  Bridge::captureSlot(*settings, home, 1);
-  frames(view, 1);
-  pressKey(view, ImGuiKey_H, ImGuiMod_Ctrl);
-  EXPECT_EQ(registry.chord(home, 1), ImGuiMod_Ctrl | ImGuiKey_H);
-  ASSERT_TRUE(clickButton(view, "##settings", LOC("SETTINGS_CANCEL")));
-  frames(view, 2);
-  EXPECT_EQ(registry.chord(home, 1), ImGuiKey_None);
+    // Cancel drops bindings changed on the screen.
+    view.changeScene(std::make_unique<SettingsScene>(&view));
+    frames(view, 3);
+    settings = dynamic_cast<SettingsScene*>(Bridge::activeScene(view));
+    ASSERT_NE(settings, nullptr);
+    Bridge::captureSlot(*settings, home, 1);
+    frames(view, 1);
+    pressKey(view, ImGuiKey_H, ImGuiMod_Ctrl);
+    EXPECT_EQ(registry.chord(home, 1), ImGuiMod_Ctrl | ImGuiKey_H);
+    ASSERT_TRUE(clickButton(view, "##settings", LOC("SETTINGS_CANCEL")));
+    frames(view, 2);
+    EXPECT_EQ(registry.chord(home, 1), ImGuiKey_None);
 
-  // The whole screen at UI scale 2 and with the larger text.
-  resize(view, 2560, 1440);
-  SettingsManager::instance()->get().ui_scale = 2.0f;
-  SettingsManager::instance()->get().text_scale = 1.3f;
-  SettingsManager::instance()->get().color_vision = 1;
-  view.refreshTheme();
-  view.changeScene(std::make_unique<SettingsScene>(&view));
-  frames(view, 3);
-  capture(view, "settings_hidpi_large_text.bmp");
-  SettingsManager::instance()->get() = Settings{};
-  view.refreshTheme();
+    // The whole screen at UI scale 2 and with the larger text.
+    resize(view, 2560, 1440);
+    SettingsManager::instance()->get().ui_scale = 2.0f;
+    SettingsManager::instance()->get().text_scale = 1.3f;
+    SettingsManager::instance()->get().color_vision = 1;
+    view.refreshTheme();
+    view.changeScene(std::make_unique<SettingsScene>(&view));
+    frames(view, 3);
+    capture(view, "settings_hidpi_large_text.bmp");
+    SettingsManager::instance()->get() = Settings{};
+    view.refreshTheme();
+  }
 }
 
 // ---- Contrast

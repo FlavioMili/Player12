@@ -1451,12 +1451,10 @@ void ManagementScene::renderTopBar(float height)
   const ImGuiViewport* viewport = ImGui::GetMainViewport();
   const float viewportRight =
       viewport ? viewport->WorkPos.x + viewport->WorkSize.x : 0.0f;
-  const float localViewportRight =
-      viewportRight - ImGui::GetWindowPos().x -
-      ImGui::GetStyle().WindowPadding.x;
-  const float rightEdge =
-      std::min(leftEdge + ImGui::GetContentRegionAvail().x,
-               std::max(leftEdge, localViewportRight));
+  const float localViewportRight = viewportRight - ImGui::GetWindowPos().x -
+                                   ImGui::GetStyle().WindowPadding.x;
+  const float rightEdge = std::min(leftEdge + ImGui::GetContentRegionAvail().x,
+                                   std::max(leftEdge, localViewportRight));
 
   // Back and Forward walk the history like a browser's; each is disabled
   // while there is nothing to go to.
@@ -1466,7 +1464,7 @@ void ManagementScene::renderTopBar(float height)
   const bool canGoForward = Navigation::canGoForward(guiView);
   const float forwardWidth = UI::buttonHeight();
   const float backWidth = UI::buttonWidth(backLabel.c_str()) + forwardWidth +
-                          2.0f * style.ItemSpacing.x;
+                          3.0f * style.ItemSpacing.x + UI::buttonHeight();
   const float fullSearchWidth = 300.0f * Theme::scale();
   const float compactSearchWidth = frameHeight + 2.0f * Theme::scale();
   const float balanceBlock = balanceWidth + gap;
@@ -1522,6 +1520,42 @@ void ManagementScene::renderTopBar(float height)
     ImGui::SetCursorPosY(centeredY);
   }
 
+  const auto pageEditor = editorContext();
+  const bool canEdit = pageEditor ? (!pageEditor->editable_fields.empty() ||
+                                     !editorFields(pageEditor->table).empty())
+                                  : hasBuiltinEditor(historyEntry());
+  const auto editPos = ImGui::GetCursorScreenPos();
+  ImGui::BeginDisabled(!canEdit);
+  if (UI::secondaryButton("###shell_edit",
+                          ImVec2(UI::buttonHeight(), UI::buttonHeight())))
+  {
+    if (pageEditor)
+    {
+      guiView->openEditor(*pageEditor);
+    }
+    else
+    {
+      guiView->openEditor(historyEntry());
+    }
+  }
+  ImGui::EndDisabled();
+  UI::drawIcon(drawList, UI::Icon::EDIT,
+               ImVec2(editPos.x + UI::buttonHeight() * .5f,
+                      editPos.y + UI::buttonHeight() * .5f),
+               16 * Theme::scale(),
+               ImGui::GetColorU32(canEdit ? palette.text : palette.faint));
+  if (ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenDisabled))
+  {
+    constexpr float TOOLTIP_WIDTH_EM = 20.0F;
+    ImGui::BeginTooltip();
+    ImGui::PushTextWrapPos(ImGui::GetFontSize() * TOOLTIP_WIDTH_EM);
+    ImGui::TextUnformatted(LOC(canEdit ? "EDITOR_OPEN" : "EDITOR_UNAVAILABLE"));
+    ImGui::PopTextWrapPos();
+    ImGui::EndTooltip();
+  }
+  ImGui::SameLine();
+  ImGui::SetCursorPosY(centeredY);
+
   // Search launcher styled as an input field with a drawn magnifier.
   {
     const std::string searchLabel =
@@ -1550,8 +1584,7 @@ void ManagementScene::renderTopBar(float height)
   // The right-hand cluster is right-aligned but never placed left of the
   // search field. Anchoring it here (not to the transient toast on the same
   // line) keeps the Play Match button inside the window when a toast shows.
-  const float searchEndX =
-      ImGui::GetItemRectMax().x - ImGui::GetWindowPos().x;
+  const float searchEndX = ImGui::GetItemRectMax().x - ImGui::GetWindowPos().x;
 
   if (toast_seconds > 0.0f && !toast_message.empty())
   {

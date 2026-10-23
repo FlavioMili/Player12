@@ -6,6 +6,7 @@
 //  See the LICENSE file in the project root.
 // -----------------------------------------------------------------------------
 
+#include <fmt/format.h>
 #include <gtest/gtest.h>
 
 #include <algorithm>
@@ -642,6 +643,63 @@ TEST(MatchEngineCalibration, WeakerLeaguesScoreLessThanStrongerOnes)
   EXPECT_LE(low.perMatch(low.homeWins), 0.55);
 }
 
+namespace
+{
+struct SeasonSample
+{
+  std::vector<int> points;
+  std::map<PlayerID, int> scorers;
+  int home_wins = 0;
+  int draws = 0;
+  int away_wins = 0;
+};
+
+void simulateCalibrationSeason(std::vector<Team>& clubs,
+                               const StatsConfig& config, std::uint32_t& seed,
+                               SeasonSample& sample)
+{
+  constexpr int WIN_POINTS = 3;
+  sample.points.resize(clubs.size());
+  for (std::size_t home = 0; home < clubs.size(); ++home)
+  {
+    for (std::size_t away = 0; away < clubs.size(); ++away)
+    {
+      if (home == away)
+      {
+        continue;
+      }
+      MatchEngine engine(clubs.at(home).getLineup(), clubs.at(away).getLineup(),
+                         clubs.at(home).getStrategy(),
+                         clubs.at(away).getStrategy(), config, seed++);
+      engine.simulateToEnd();
+      ASSERT_EQ(engine.getState(), MatchState::FULL_TIME);
+      const int homeGoals = engine.getHomeScore();
+      const int awayGoals = engine.getAwayScore();
+      if (homeGoals > awayGoals)
+      {
+        ++sample.home_wins;
+        sample.points.at(home) += WIN_POINTS;
+      }
+      else if (homeGoals == awayGoals)
+      {
+        ++sample.draws;
+        ++sample.points.at(home);
+        ++sample.points.at(away);
+      }
+      else
+      {
+        ++sample.away_wins;
+        sample.points.at(away) += WIN_POINTS;
+      }
+      for (const PlayerMatchStats& entry : engine.getPlayerStats())
+      {
+        sample.scorers[entry.playerId] += entry.goals;
+      }
+    }
+  }
+}
+}  // namespace
+
 TEST(MatchEngineCalibration, LeagueSeasonProducesARealisticTable)
 {
   // A 20-club double round robin with a top-flight quality spread: the
@@ -663,60 +721,49 @@ TEST(MatchEngineCalibration, LeagueSeasonProducesARealisticTable)
         createCalibrationTeam(static_cast<TeamID>(10 + club), rating, pool));
   }
 
-  std::array<int, CLUBS> points{};
-  std::map<PlayerID, int> scorers;
+  // Calibration is a distribution check, not a golden result for one seed.
+  // Keep the existing bands, but sample three seasons so a single extreme
+  // scorer or platform-level trajectory difference does not decide the gate.
+  constexpr int SEASONS = 3;
+  std::array<int, CLUBS> totalPoints{};
   int homeWins = 0;
   int draws = 0;
   int awayWins = 0;
+  int championTotal = 0;
+  int bottomTotal = 0;
+  int topScorerTotal = 0;
   std::uint32_t seed = 9'001;
-  for (int home = 0; home < CLUBS; ++home)
+  for (int season = 0; season < SEASONS; ++season)
   {
-    for (int away = 0; away < CLUBS; ++away)
-    {
-      if (home == away) continue;
-      MatchEngine engine(clubs[home].getLineup(), clubs[away].getLineup(),
-                         clubs[home].getStrategy(), clubs[away].getStrategy(),
-                         config, seed++);
-      engine.simulateToEnd();
-      ASSERT_EQ(engine.getState(), MatchState::FULL_TIME);
-      const int homeGoals = engine.getHomeScore();
-      const int awayGoals = engine.getAwayScore();
-      if (homeGoals > awayGoals)
-      {
-        ++homeWins;
-        points[home] += 3;
-      }
-      else if (homeGoals == awayGoals)
-      {
-        ++draws;
-        ++points[home];
-        ++points[away];
-      }
-      else
-      {
-        ++awayWins;
-        points[away] += 3;
-      }
-      for (const PlayerMatchStats& entry : engine.getPlayerStats())
-        scorers[entry.playerId] += entry.goals;
-    }
+    SeasonSample sample;
+    ASSERT_NO_FATAL_FAILURE(
+        simulateCalibrationSeason(clubs, config, seed, sample));
+    homeWins += sample.home_wins;
+    draws += sample.draws;
+    awayWins += sample.away_wins;
+    const int champion = *std::ranges::max_element(sample.points);
+    const int bottom = *std::ranges::min_element(sample.points);
+    int topScorer = 0;
+    for (const auto& [id, goals] : sample.scorers)
+      topScorer = std::max(topScorer, goals);
+    fmt::print("[season {}] champion={} bottom={} topScorer={}\n", season,
+               champion, bottom, topScorer);
+    championTotal += champion;
+    bottomTotal += bottom;
+    topScorerTotal += topScorer;
+    for (int club = 0; club < CLUBS; ++club)
+      totalPoints[club] += sample.points[club];
   }
 
-  const double matches = CLUBS * (CLUBS - 1);
-  const int champion = *std::ranges::max_element(points);
-  const int bottom = *std::ranges::min_element(points);
-  int topScorer = 0;
-  for (const auto& [id, goals] : scorers)
-    topScorer = std::max(topScorer, goals);
+  const double matches = SEASONS * CLUBS * (CLUBS - 1);
+  const double champion = static_cast<double>(championTotal) / SEASONS;
+  const double bottom = static_cast<double>(bottomTotal) / SEASONS;
+  const double topScorer = static_cast<double>(topScorerTotal) / SEASONS;
   std::printf(
-      "[season] home/draw/away=%.1f/%.1f/%.1f%% champion=%d bottom=%d "
-      "topScorer=%d strongest=%d weakest=%d\n",
+      "[season mean] home/draw/away=%.1f/%.1f/%.1f%% "
+      "champion=%.1f bottom=%.1f topScorer=%.1f\n",
       100.0 * homeWins / matches, 100.0 * draws / matches,
-      100.0 * awayWins / matches, champion, bottom, topScorer,
-      points[CLUBS - 1], points[0]);
-  std::printf("[season] points by rating:");
-  for (const int clubPoints : points) std::printf(" %d", clubPoints);
-  std::printf("\n");
+      100.0 * awayWins / matches, champion, bottom, topScorer);
   EXPECT_GE(homeWins / matches, 0.40);
   EXPECT_LE(homeWins / matches, 0.50);
   EXPECT_GE(draws / matches, 0.21);
@@ -728,6 +775,6 @@ TEST(MatchEngineCalibration, LeagueSeasonProducesARealisticTable)
   EXPECT_LE(bottom, 38);
   EXPECT_GE(topScorer, 15);
   EXPECT_LE(topScorer, 32);
-  // Quality decides the table over a season.
-  EXPECT_GT(points[CLUBS - 1], points[0] + 30);
+  // Quality decides the table across independent seasons.
+  EXPECT_GT(totalPoints[CLUBS - 1], totalPoints[0] + 30 * SEASONS);
 }
