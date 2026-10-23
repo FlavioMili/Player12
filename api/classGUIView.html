@@ -191,6 +191,10 @@ Public Member Functions</h2></td></tr>
 <tr class="separator:ac5875a192bd0f8c7147931e9484a4810"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:aef8b9291f46a97b275a2d9f05ebd6831" id="r_aef8b9291f46a97b275a2d9f05ebd6831"><td class="memItemLeft" align="right" valign="top">bool&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classGUIView.html#aef8b9291f46a97b275a2d9f05ebd6831">captureScreenshot</a> (std::string_view path) const</td></tr>
 <tr class="separator:aef8b9291f46a97b275a2d9f05ebd6831"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a5113647fca4585a6ba74ea8e0e2d5192" id="r_a5113647fca4585a6ba74ea8e0e2d5192"><td class="memItemLeft" align="right" valign="top">void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classGUIView.html#a5113647fca4585a6ba74ea8e0e2d5192">openEditor</a> (const std::optional&lt; <a class="el" href="structNavEntry.html">NavEntry</a> &gt; &amp;context)</td></tr>
+<tr class="separator:a5113647fca4585a6ba74ea8e0e2d5192"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a8306d4f85a59244da26214fd51275b00" id="r_a8306d4f85a59244da26214fd51275b00"><td class="memItemLeft" align="right" valign="top">void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classGUIView.html#a8306d4f85a59244da26214fd51275b00">openEditor</a> (const <a class="el" href="structEditorContext.html">EditorContext</a> &amp;context)</td></tr>
+<tr class="separator:a8306d4f85a59244da26214fd51275b00"><td class="memSeparator" colspan="2">&#160;</td></tr>
 </table><table class="memberdecls">
 <tr class="heading"><td colspan="2"><h2 class="groupheader"><a id="pri-types" name="pri-types"></a>
 Private Types</h2></td></tr>
@@ -221,6 +225,8 @@ Private Member Functions</h2></td></tr>
 <tr class="separator:aab2105ec50a97925112d97cdd5456a15"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a3e3aa698f5e4cc219cca1a7e1f43f127" id="r_a3e3aa698f5e4cc219cca1a7e1f43f127"><td class="memItemLeft" align="right" valign="top"><a class="el" href="classGUIScene.html">GUIScene</a> *&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classGUIView.html#a3e3aa698f5e4cc219cca1a7e1f43f127">getActiveScene</a> () const</td></tr>
 <tr class="separator:a3e3aa698f5e4cc219cca1a7e1f43f127"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a99c8f7461a9e1e7cc3dbdafe35dbfdd6" id="r_a99c8f7461a9e1e7cc3dbdafe35dbfdd6"><td class="memItemLeft" align="right" valign="top">void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classGUIView.html#a99c8f7461a9e1e7cc3dbdafe35dbfdd6">applyEditorRequest</a> ()</td></tr>
+<tr class="separator:a99c8f7461a9e1e7cc3dbdafe35dbfdd6"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a7aa38ef6fc86ca5795acbfe197f53ccb" id="r_a7aa38ef6fc86ca5795acbfe197f53ccb"><td class="memItemLeft" align="right" valign="top">void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classGUIView.html#a7aa38ef6fc86ca5795acbfe197f53ccb">beginMatchRenderTimings</a> ()</td></tr>
 <tr class="separator:a7aa38ef6fc86ca5795acbfe197f53ccb"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:acf4afae32b601d8f4f9df3368b9001ee" id="r_acf4afae32b601d8f4f9df3368b9001ee"><td class="memItemLeft" align="right" valign="top">void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classGUIView.html#acf4afae32b601d8f4f9df3368b9001ee">reportMatchRenderTimings</a> ()</td></tr>
@@ -244,6 +250,8 @@ Private Attributes</h2></td></tr>
 <tr class="separator:a8592805a6ad9454cbfabcde9d1da7d13"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:ab939db4c340bcc8db53faa47bedc3fc6" id="r_ab939db4c340bcc8db53faa47bedc3fc6"><td class="memItemLeft" align="right" valign="top">bool&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classGUIView.html#ab939db4c340bcc8db53faa47bedc3fc6">backdropPending</a> = false</td></tr>
 <tr class="separator:ab939db4c340bcc8db53faa47bedc3fc6"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a66b46c29aafb30226677ade85f15ba59" id="r_a66b46c29aafb30226677ade85f15ba59"><td class="memItemLeft" align="right" valign="top">std::unique_ptr&lt; <a class="el" href="classRuntimeEditorDialog.html">RuntimeEditorDialog</a> &gt;&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classGUIView.html#a66b46c29aafb30226677ade85f15ba59">editor_dialog</a></td></tr>
+<tr class="separator:a66b46c29aafb30226677ade85f15ba59"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a2d1e8d0591c83f9afcac9688e78e179c" id="r_a2d1e8d0591c83f9afcac9688e78e179c"><td class="memItemLeft" align="right" valign="top">SDL_Texture *&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classGUIView.html#a2d1e8d0591c83f9afcac9688e78e179c">backdropTexture</a> = nullptr</td></tr>
 <tr class="separator:a2d1e8d0591c83f9afcac9688e78e179c"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:aeba6e4d5c303ecb6f7257a512503fe5b" id="r_aeba6e4d5c303ecb6f7257a512503fe5b"><td class="memItemLeft" align="right" valign="top">bool&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classGUIView.html#aeba6e4d5c303ecb6f7257a512503fe5b">rendererIsSoftware</a> = false</td></tr>
@@ -370,6 +378,31 @@ Friends</h2></td></tr>
 </div>
 </div>
 <h2 class="groupheader">Member Function Documentation</h2>
+<a id="a99c8f7461a9e1e7cc3dbdafe35dbfdd6" name="a99c8f7461a9e1e7cc3dbdafe35dbfdd6"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a99c8f7461a9e1e7cc3dbdafe35dbfdd6">&#9670;&#160;</a></span>applyEditorRequest()</h2>
+
+<div class="memitem">
+<div class="memproto">
+<table class="mlabels">
+  <tr>
+  <td class="mlabels-left">
+      <table class="memname">
+        <tr>
+          <td class="memname">void GUIView::applyEditorRequest </td>
+          <td>(</td>
+          <td class="paramname"></td><td>)</td>
+          <td></td>
+        </tr>
+      </table>
+  </td>
+  <td class="mlabels-right">
+<span class="mlabels"><span class="mlabel">private</span></span>  </td>
+  </tr>
+</table>
+</div><div class="memdoc">
+
+</div>
+</div>
 <a id="aabab23c9efe047fb1350f7cb5a121c13" name="aabab23c9efe047fb1350f7cb5a121c13"></a>
 <h2 class="memtitle"><span class="permalink"><a href="#aabab23c9efe047fb1350f7cb5a121c13">&#9670;&#160;</a></span>applyManagementTheme()</h2>
 
@@ -932,6 +965,43 @@ Friends</h2></td></tr>
 
 </div>
 </div>
+<a id="a8306d4f85a59244da26214fd51275b00" name="a8306d4f85a59244da26214fd51275b00"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a8306d4f85a59244da26214fd51275b00">&#9670;&#160;</a></span>openEditor() <span class="overload">[1/2]</span></h2>
+
+<div class="memitem">
+<div class="memproto">
+      <table class="memname">
+        <tr>
+          <td class="memname">void GUIView::openEditor </td>
+          <td>(</td>
+          <td class="paramtype">const <a class="el" href="structEditorContext.html">EditorContext</a> &amp;&#160;</td>
+          <td class="paramname"><em>context</em></td><td>)</td>
+          <td></td>
+        </tr>
+      </table>
+</div><div class="memdoc">
+
+</div>
+</div>
+<a id="a5113647fca4585a6ba74ea8e0e2d5192" name="a5113647fca4585a6ba74ea8e0e2d5192"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a5113647fca4585a6ba74ea8e0e2d5192">&#9670;&#160;</a></span>openEditor() <span class="overload">[2/2]</span></h2>
+
+<div class="memitem">
+<div class="memproto">
+      <table class="memname">
+        <tr>
+          <td class="memname">void GUIView::openEditor </td>
+          <td>(</td>
+          <td class="paramtype">const std::optional&lt; <a class="el" href="structNavEntry.html">NavEntry</a> &gt; &amp;&#160;</td>
+          <td class="paramname"><em>context</em></td><td>)</td>
+          <td></td>
+        </tr>
+      </table>
+</div><div class="memdoc">
+<p>Opens a schema-driven editor with optional page/entity context. </p>
+
+</div>
+</div>
 <a id="a0b59705de676f49769060d1fc8962abc" name="a0b59705de676f49769060d1fc8962abc"></a>
 <h2 class="memtitle"><span class="permalink"><a href="#a0b59705de676f49769060d1fc8962abc">&#9670;&#160;</a></span>overlayScene()</h2>
 
@@ -1368,6 +1438,28 @@ Friends</h2></td></tr>
       <table class="memname">
         <tr>
           <td class="memname">std::unique_ptr&lt;<a class="el" href="classGUIScene.html">GUIScene</a>&gt; GUIView::currentScene</td>
+        </tr>
+      </table>
+  </td>
+  <td class="mlabels-right">
+<span class="mlabels"><span class="mlabel">private</span></span>  </td>
+  </tr>
+</table>
+</div><div class="memdoc">
+
+</div>
+</div>
+<a id="a66b46c29aafb30226677ade85f15ba59" name="a66b46c29aafb30226677ade85f15ba59"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a66b46c29aafb30226677ade85f15ba59">&#9670;&#160;</a></span>editor_dialog</h2>
+
+<div class="memitem">
+<div class="memproto">
+<table class="mlabels">
+  <tr>
+  <td class="mlabels-left">
+      <table class="memname">
+        <tr>
+          <td class="memname">std::unique_ptr&lt;<a class="el" href="classRuntimeEditorDialog.html">RuntimeEditorDialog</a>&gt; GUIView::editor_dialog</td>
         </tr>
       </table>
   </td>

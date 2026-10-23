@@ -1,13 +1,19 @@
 var searchData=
 [
-  ['effectfactor_0',['EffectFactor',['../structEffectFactor.html',1,'']]],
-  ['effectline_1',['effectline',['../structInboxDilemmaCard_1_1EffectLine.html',1,'InboxDilemmaCard::EffectLine'],['../structScoutingScene_1_1EffectLine.html',1,'ScoutingScene::EffectLine']]],
-  ['end_2',['End',['../structMatchRender3DTuning_1_1End.html',1,'MatchRender3DTuning']]],
-  ['entrant_3',['Entrant',['../structContinentalCompetitions_1_1Entrant.html',1,'ContinentalCompetitions']]],
-  ['entrantline_4',['EntrantLine',['../structInternationalScene_1_1EntrantLine.html',1,'InternationalScene']]],
-  ['entry_5',['entry',['../structCalendarScene_1_1Entry.html',1,'CalendarScene::Entry'],['../structSquadNumbers_1_1Entry.html',1,'SquadNumbers::Entry'],['../structSquadStatusBook_1_1Entry.html',1,'SquadStatusBook::Entry']]],
-  ['estimate_6',['estimate',['../structLab_1_1Estimate.html',1,'Lab::Estimate'],['../structScoutingSystem_1_1Estimate.html',1,'ScoutingSystem::Estimate']]],
-  ['eventnames_7',['EventNames',['../structSeasonReviewModel_1_1EventNames.html',1,'SeasonReviewModel']]],
-  ['eventrow_8',['EventRow',['../structMatchReportScene_1_1EventRow.html',1,'MatchReportScene']]],
-  ['events_9',['Events',['../structMatchSceneTuning_1_1Events.html',1,'MatchSceneTuning']]]
+  ['editorcontext_0',['EditorContext',['../structEditorContext.html',1,'']]],
+  ['editorfield_1',['EditorField',['../structEditorField.html',1,'']]],
+  ['editorsession_2',['EditorSession',['../structGameController_1_1EditorSession.html',1,'GameController']]],
+  ['effectfactor_3',['EffectFactor',['../structEffectFactor.html',1,'']]],
+  ['effectline_4',['effectline',['../structInboxDilemmaCard_1_1EffectLine.html',1,'InboxDilemmaCard::EffectLine'],['../structScoutingScene_1_1EffectLine.html',1,'ScoutingScene::EffectLine']]],
+  ['end_5',['End',['../structMatchRender3DTuning_1_1End.html',1,'MatchRender3DTuning']]],
+  ['entrant_6',['Entrant',['../structContinentalCompetitions_1_1Entrant.html',1,'ContinentalCompetitions']]],
+  ['entrantline_7',['EntrantLine',['../structInternationalScene_1_1EntrantLine.html',1,'InternationalScene']]],
+  ['entry_8',['entry',['../structSquadNumbers_1_1Entry.html',1,'SquadNumbers::Entry'],['../structSquadStatusBook_1_1Entry.html',1,'SquadStatusBook::Entry'],['../structCalendarScene_1_1Entry.html',1,'CalendarScene::Entry']]],
+  ['error_9',['Error',['../classRuntimeEditor_1_1Error.html',1,'RuntimeEditor']]],
+  ['estimate_10',['estimate',['../structLab_1_1Estimate.html',1,'Lab::Estimate'],['../structScoutingSystem_1_1Estimate.html',1,'ScoutingSystem::Estimate']]],
+  ['eventnames_11',['EventNames',['../structSeasonReviewModel_1_1EventNames.html',1,'SeasonReviewModel']]],
+  ['eventrow_12',['EventRow',['../structMatchReportScene_1_1EventRow.html',1,'MatchReportScene']]],
+  ['events_13',['Events',['../structMatchSceneTuning_1_1Events.html',1,'MatchSceneTuning']]],
+  ['extensions_14',['Extensions',['../classRuntimeEditor_1_1Extensions.html',1,'RuntimeEditor']]],
+  ['extratable_15',['ExtraTable',['../structRuntimeEditor_1_1Extensions_1_1ExtraTable.html',1,'RuntimeEditor::Extensions']]]
 ];

@@ -4,6 +4,7 @@ var classManagementScene =
     [ "ManagementScene", "classManagementScene.html#a002354c4cc06868e4fe31e6d06526296", null ],
     [ "activatePaletteEntry", "classManagementScene.html#a195c726953b7e0bd1b83ee004bd31aa0", null ],
     [ "buildPaletteIndex", "classManagementScene.html#a25141adcb6ea724bbb8f8251e9bd9895", null ],
+    [ "editorContext", "classManagementScene.html#a29c94f864180886e9e9849df7bc1acbb", null ],
     [ "filterPalette", "classManagementScene.html#af407246ae19af9809a628d84e585b8d4", null ],
     [ "handleEvent", "classManagementScene.html#ac1a144db5815e153495cafeb1182328b", null ],
     [ "handleShortcuts", "classManagementScene.html#a7d157153eb844c34c519980adfed4de1", null ],

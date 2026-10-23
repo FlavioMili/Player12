@@ -143,6 +143,17 @@ var annotated_dup =
       [ "Vec3", "structRenderMath_1_1Vec3.html", "structRenderMath_1_1Vec3" ],
       [ "Vec4", "structRenderMath_1_1Vec4.html", "structRenderMath_1_1Vec4" ]
     ] ],
+    [ "RuntimeEditor", "namespaceRuntimeEditor.html", [
+      [ "Change", "structRuntimeEditor_1_1Change.html", "structRuntimeEditor_1_1Change" ],
+      [ "Column", "structRuntimeEditor_1_1Column.html", "structRuntimeEditor_1_1Column" ],
+      [ "Error", "classRuntimeEditor_1_1Error.html", null ],
+      [ "Extensions", "classRuntimeEditor_1_1Extensions.html", "classRuntimeEditor_1_1Extensions" ],
+      [ "Page", "structRuntimeEditor_1_1Page.html", "structRuntimeEditor_1_1Page" ],
+      [ "Payloads", "classRuntimeEditor_1_1Payloads.html", "classRuntimeEditor_1_1Payloads" ],
+      [ "Relation", "structRuntimeEditor_1_1Relation.html", "structRuntimeEditor_1_1Relation" ],
+      [ "Row", "structRuntimeEditor_1_1Row.html", "structRuntimeEditor_1_1Row" ],
+      [ "Table", "structRuntimeEditor_1_1Table.html", "structRuntimeEditor_1_1Table" ]
+    ] ],
     [ "SeasonCalendar", "namespaceSeasonCalendar.html", [
       [ "InternationalWindow", "structSeasonCalendar_1_1InternationalWindow.html", "structSeasonCalendar_1_1InternationalWindow" ]
     ] ],
@@ -271,6 +282,8 @@ var annotated_dup =
     [ "DressingRoom", "structDressingRoom.html", "structDressingRoom" ],
     [ "Dropdown", "classDropdown.html", "classDropdown" ],
     [ "DropdownStyle", "structDropdownStyle.html", "structDropdownStyle" ],
+    [ "EditorContext", "structEditorContext.html", "structEditorContext" ],
+    [ "EditorField", "structEditorField.html", "structEditorField" ],
     [ "EffectFactor", "structEffectFactor.html", "structEffectFactor" ],
     [ "FacilityProject", "structFacilityProject.html", "structFacilityProject" ],
     [ "FacilityProjects", "classFacilityProjects.html", "classFacilityProjects" ],
@@ -491,6 +504,7 @@ var annotated_dup =
     [ "RoleUtils", "classRoleUtils.html", "classRoleUtils" ],
     [ "RoleWeights", "structRoleWeights.html", "structRoleWeights" ],
     [ "RosterScene", "classRosterScene.html", "classRosterScene" ],
+    [ "RuntimeEditorDialog", "classRuntimeEditorDialog.html", "classRuntimeEditorDialog" ],
     [ "RuntimePaths", "classRuntimePaths.html", "classRuntimePaths" ],
     [ "SaveBackup", "structSaveBackup.html", "structSaveBackup" ],
     [ "SaveError", "structSaveError.html", "structSaveError" ],

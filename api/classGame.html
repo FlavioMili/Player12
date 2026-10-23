@@ -250,11 +250,21 @@ Private Member Functions</h2></td></tr>
 <tr class="separator:acf6fb0042bd90d27f09818bd99ee5c61"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:adee26e0b59d3b7426708cce545dc746d" id="r_adee26e0b59d3b7426708cce545dc746d"><td class="memItemLeft" align="right" valign="top">void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classGame.html#adee26e0b59d3b7426708cce545dc746d">settleLevelTie</a> (<a class="el" href="classMatch.html">Match</a> &amp;match, <a class="el" href="structMatchReport.html">MatchReport</a> &amp;report)</td></tr>
 <tr class="separator:adee26e0b59d3b7426708cce545dc746d"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a9d0b5d60824b730d82827784a463312b" id="r_a9d0b5d60824b730d82827784a463312b"><td class="memItemLeft" align="right" valign="top">void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classGame.html#a9d0b5d60824b730d82827784a463312b">discoverExtensions</a> ()</td></tr>
+<tr class="separator:a9d0b5d60824b730d82827784a463312b"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:aa645cff84e3326e0ce308a2bc4e7b210" id="r_aa645cff84e3326e0ce308a2bc4e7b210"><td class="memItemLeft" align="right" valign="top">void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classGame.html#aa645cff84e3326e0ce308a2bc4e7b210">serialize</a> (bool probe)</td></tr>
+<tr class="separator:aa645cff84e3326e0ce308a2bc4e7b210"><td class="memSeparator" colspan="2">&#160;</td></tr>
 </table><table class="memberdecls">
 <tr class="heading"><td colspan="2"><h2 class="groupheader"><a id="pri-attribs" name="pri-attribs"></a>
 Private Attributes</h2></td></tr>
 <tr class="memitem:aae66a3f565896abfe7a086b1ec0f5360" id="r_aae66a3f565896abfe7a086b1ec0f5360"><td class="memItemLeft" align="right" valign="top">std::shared_ptr&lt; <a class="el" href="classDatabaseConnection.html">DatabaseConnection</a> &gt;&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classGame.html#aae66a3f565896abfe7a086b1ec0f5360">db_conn</a></td></tr>
 <tr class="separator:aae66a3f565896abfe7a086b1ec0f5360"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a7ae77ff47cb63b7164609335bd1eb310" id="r_a7ae77ff47cb63b7164609335bd1eb310"><td class="memItemLeft" align="right" valign="top">std::unique_ptr&lt; <a class="el" href="classRuntimeEditor_1_1Extensions.html">RuntimeEditor::Extensions</a> &gt;&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classGame.html#a7ae77ff47cb63b7164609335bd1eb310">extensions</a></td></tr>
+<tr class="separator:a7ae77ff47cb63b7164609335bd1eb310"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:aa7d58fcc0d591348f510a7d56afebfc1" id="r_aa7d58fcc0d591348f510a7d56afebfc1"><td class="memItemLeft" align="right" valign="top">int&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classGame.html#aa7d58fcc0d591348f510a7d56afebfc1">extensions_version</a> = -1</td></tr>
+<tr class="separator:aa7d58fcc0d591348f510a7d56afebfc1"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:ae3885d20c01421e4ba50dcd0bd375872" id="r_ae3885d20c01421e4ba50dcd0bd375872"><td class="memItemLeft" align="right" valign="top"><a class="el" href="classRuntimeEditor_1_1Payloads.html">RuntimeEditor::Payloads</a>&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classGame.html#ae3885d20c01421e4ba50dcd0bd375872">payload_extensions</a></td></tr>
+<tr class="separator:ae3885d20c01421e4ba50dcd0bd375872"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a5c365b0fe4711a702d2205c3affecce3" id="r_a5c365b0fe4711a702d2205c3affecce3"><td class="memItemLeft" align="right" valign="top">std::shared_ptr&lt; class <a class="el" href="classGameData.html">GameData</a> &gt;&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classGame.html#a5c365b0fe4711a702d2205c3affecce3">gamedata</a></td></tr>
 <tr class="separator:a5c365b0fe4711a702d2205c3affecce3"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a0fe387393f94569a97aa49524680e8d6" id="r_a0fe387393f94569a97aa49524680e8d6"><td class="memItemLeft" align="right" valign="top"><a class="el" href="classCalendar.html">Calendar</a>&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classGame.html#a0fe387393f94569a97aa49524680e8d6">calendar</a></td></tr>
@@ -445,6 +455,31 @@ Private Attributes</h2></td></tr>
           <td> const</td>
         </tr>
       </table>
+</div><div class="memdoc">
+
+</div>
+</div>
+<a id="a9d0b5d60824b730d82827784a463312b" name="a9d0b5d60824b730d82827784a463312b"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a9d0b5d60824b730d82827784a463312b">&#9670;&#160;</a></span>discoverExtensions()</h2>
+
+<div class="memitem">
+<div class="memproto">
+<table class="mlabels">
+  <tr>
+  <td class="mlabels-left">
+      <table class="memname">
+        <tr>
+          <td class="memname">void Game::discoverExtensions </td>
+          <td>(</td>
+          <td class="paramname"></td><td>)</td>
+          <td></td>
+        </tr>
+      </table>
+  </td>
+  <td class="mlabels-right">
+<span class="mlabels"><span class="mlabel">private</span></span>  </td>
+  </tr>
+</table>
 </div><div class="memdoc">
 
 </div>
@@ -1650,6 +1685,32 @@ Private Attributes</h2></td></tr>
 
 </div>
 </div>
+<a id="aa645cff84e3326e0ce308a2bc4e7b210" name="aa645cff84e3326e0ce308a2bc4e7b210"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#aa645cff84e3326e0ce308a2bc4e7b210">&#9670;&#160;</a></span>serialize()</h2>
+
+<div class="memitem">
+<div class="memproto">
+<table class="mlabels">
+  <tr>
+  <td class="mlabels-left">
+      <table class="memname">
+        <tr>
+          <td class="memname">void Game::serialize </td>
+          <td>(</td>
+          <td class="paramtype">bool&#160;</td>
+          <td class="paramname"><em>probe</em></td><td>)</td>
+          <td></td>
+        </tr>
+      </table>
+  </td>
+  <td class="mlabels-right">
+<span class="mlabels"><span class="mlabel">private</span></span>  </td>
+  </tr>
+</table>
+</div><div class="memdoc">
+
+</div>
+</div>
 <a id="a9656e23e45363e1be5a2c55b5de3a4a3" name="a9656e23e45363e1be5a2c55b5de3a4a3"></a>
 <h2 class="memtitle"><span class="permalink"><a href="#a9656e23e45363e1be5a2c55b5de3a4a3">&#9670;&#160;</a></span>setAssistantFixesLineup()</h2>
 
@@ -2152,6 +2213,50 @@ Private Attributes</h2></td></tr>
 
 </div>
 </div>
+<a id="a7ae77ff47cb63b7164609335bd1eb310" name="a7ae77ff47cb63b7164609335bd1eb310"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a7ae77ff47cb63b7164609335bd1eb310">&#9670;&#160;</a></span>extensions</h2>
+
+<div class="memitem">
+<div class="memproto">
+<table class="mlabels">
+  <tr>
+  <td class="mlabels-left">
+      <table class="memname">
+        <tr>
+          <td class="memname">std::unique_ptr&lt;<a class="el" href="classRuntimeEditor_1_1Extensions.html">RuntimeEditor::Extensions</a>&gt; Game::extensions</td>
+        </tr>
+      </table>
+  </td>
+  <td class="mlabels-right">
+<span class="mlabels"><span class="mlabel">private</span></span>  </td>
+  </tr>
+</table>
+</div><div class="memdoc">
+
+</div>
+</div>
+<a id="aa7d58fcc0d591348f510a7d56afebfc1" name="aa7d58fcc0d591348f510a7d56afebfc1"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#aa7d58fcc0d591348f510a7d56afebfc1">&#9670;&#160;</a></span>extensions_version</h2>
+
+<div class="memitem">
+<div class="memproto">
+<table class="mlabels">
+  <tr>
+  <td class="mlabels-left">
+      <table class="memname">
+        <tr>
+          <td class="memname">int Game::extensions_version = -1</td>
+        </tr>
+      </table>
+  </td>
+  <td class="mlabels-right">
+<span class="mlabels"><span class="mlabel">private</span></span>  </td>
+  </tr>
+</table>
+</div><div class="memdoc">
+
+</div>
+</div>
 <a id="a5c365b0fe4711a702d2205c3affecce3" name="a5c365b0fe4711a702d2205c3affecce3"></a>
 <h2 class="memtitle"><span class="permalink"><a href="#a5c365b0fe4711a702d2205c3affecce3">&#9670;&#160;</a></span>gamedata</h2>
 
@@ -2340,6 +2445,28 @@ Private Attributes</h2></td></tr>
       <table class="memname">
         <tr>
           <td class="memname"><a class="el" href="classNationalManagement.html">NationalManagement</a> Game::national_job</td>
+        </tr>
+      </table>
+  </td>
+  <td class="mlabels-right">
+<span class="mlabels"><span class="mlabel">private</span></span>  </td>
+  </tr>
+</table>
+</div><div class="memdoc">
+
+</div>
+</div>
+<a id="ae3885d20c01421e4ba50dcd0bd375872" name="ae3885d20c01421e4ba50dcd0bd375872"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#ae3885d20c01421e4ba50dcd0bd375872">&#9670;&#160;</a></span>payload_extensions</h2>
+
+<div class="memitem">
+<div class="memproto">
+<table class="mlabels">
+  <tr>
+  <td class="mlabels-left">
+      <table class="memname">
+        <tr>
+          <td class="memname"><a class="el" href="classRuntimeEditor_1_1Payloads.html">RuntimeEditor::Payloads</a> Game::payload_extensions</td>
         </tr>
       </table>
   </td>

@@ -114,7 +114,7 @@ Presets</h1>
 <div class="line"> </div>
 <div class="line">cmake --preset profile</div>
 <div class="line">cmake --build --preset profile --parallel 2</div>
-</div><!-- fragment --><p><code>release</code> is portable and does not use <code>-march=native</code>. <code>profile</code> is explicitly machine-local and does. Sanitizers are enabled only by <code>debug-sanitized</code>, so a plain Debug build does not claim diagnostics it did not run. Build trees are placed under the ignored <code>out/build</code> directory; validation artifacts and runtime data still belong in an isolated <code>/tmp/fm-*</code> root.</p>
+</div><!-- fragment --><p><code>release</code> is portable and does not use <code>-march=native</code>. <code>profile</code> is explicitly machine-local and does. Sanitizers are enabled only by <code>debug-sanitized</code>, so a plain Debug build does not claim diagnostics it did not run. Build trees are placed under the ignored <code>build</code> directory; validation artifacts and runtime data still belong in an isolated <code>/tmp/fm-*</code> root.</p>
 <p>Tests, benchmarks, <a class="el" href="namespaceUI.html" title="Small vector icons drawn with ImDrawList (no icon font needed).">UI</a> automation, sanitizers, clang-tidy, native optimization, and source-tree compile-command copying are independent options. Production builds do not fetch GTest, Benchmark, or ImGui Test Engine. <code>fm_core</code> contains headless domain/persistence code; <code>fm_ui</code> owns Dear ImGui and scenes.</p>
 <h1><a class="anchor" id="autotoc_md36"></a>
 clang-tidy</h1>

@@ -86,6 +86,8 @@ var dir_b5cd8e7fdc4b3f1169d06247ffeae034 =
     [ "reserves_scene.h", "reserves__scene_8h.html", "reserves__scene_8h" ],
     [ "roster_scene.cpp", "roster__scene_8cpp.html", null ],
     [ "roster_scene.h", "roster__scene_8h.html", "roster__scene_8h" ],
+    [ "runtime_editor_dialog.cpp", "runtime__editor__dialog_8cpp.html", null ],
+    [ "runtime_editor_dialog.h", "runtime__editor__dialog_8h.html", "runtime__editor__dialog_8h" ],
     [ "scouting_scene.cpp", "scouting__scene_8cpp.html", "scouting__scene_8cpp" ],
     [ "scouting_scene.h", "scouting__scene_8h.html", "scouting__scene_8h" ],
     [ "scouting_scene_internal.h", "scouting__scene__internal_8h.html", "scouting__scene__internal_8h" ],

@@ -9,6 +9,8 @@ var dir_803ee67260c130b45d29089798491ab2 =
     [ "datagenerator.h", "datagenerator_8h.html", "datagenerator_8h" ],
     [ "gamedata.cpp", "gamedata_8cpp.html", "gamedata_8cpp" ],
     [ "gamedata.h", "gamedata_8h.html", "gamedata_8h" ],
+    [ "runtime_editor.cpp", "runtime__editor_8cpp.html", "runtime__editor_8cpp" ],
+    [ "runtime_editor.h", "runtime__editor_8h.html", "runtime__editor_8h" ],
     [ "save_manager.cpp", "save__manager_8cpp.html", null ],
     [ "save_manager.h", "save__manager_8h.html", "save__manager_8h" ],
     [ "sqlite_rows.h", "sqlite__rows_8h.html", "sqlite__rows_8h" ],

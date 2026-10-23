@@ -96,7 +96,7 @@ $(document).ready(function(){initNavTree('md_docs_2user_2files-and-troubleshooti
   <div class="headertitle"><div class="title">Saves, settings and troubleshooting</div></div>
 </div><!--header-->
 <div class="contents">
-<div class="textblock"><p><a class="anchor" id="autotoc_md102"></a> Saves, settings, logs and screenshots go to the user data directory, never next to the executable:</p>
+<div class="textblock"><p><a class="anchor" id="autotoc_md108"></a> Saves, settings, logs and screenshots go to the user data directory, never next to the executable:</p>
 <table class="markdownTable">
 <tr class="markdownTableHead">
 <th class="markdownTableHeadNone">System   </th><th class="markdownTableHeadNone">Folder    </th></tr>
@@ -108,20 +108,20 @@ $(document).ready(function(){initNavTree('md_docs_2user_2files-and-troubleshooti
 <td class="markdownTableBodyNone">Windows   </td><td class="markdownTableBodyNone"><code>APPDATA%\FlavioMili\FootballManagement</code>   </td></tr>
 </table>
 <p>Saves are SQLite databases in <code>saves/</code> (one per slot, with numbered backups beside it that the main menu can restore). The log and any crash reports are in <code>logs/</code>; attach both when you report a crash.</p>
-<h1><a class="anchor" id="autotoc_md103"></a>
+<h1><a class="anchor" id="autotoc_md109"></a>
 Recover a save</h1>
 <p>If a slot cannot load, use the main menu's backup restoration option. Keep a copy of the affected save and its backups when reporting the problem. The <a class="el" href="md_docs_2user_2getting-started.html">first-career guide</a> covers normal saving and loading.</p>
-<h1><a class="anchor" id="autotoc_md104"></a>
+<h1><a class="anchor" id="autotoc_md110"></a>
 Report a problem</h1>
 <p>Open a <a href="https://github.com/FlavioMili/FootballManagement/issues/new/choose">bug report</a> with your operating system, game version or source revision, steps to reproduce, and the expected versus actual behavior. Attach a screenshot for visual issues and logs/crash reports for crashes. Share a save only if you are comfortable making the names and career details it contains public.</p>
 <p>For build problems, include the failing command and its error output; the <a class="el" href="md_docs_2user_2installation.html">installation guide</a> lists platform prerequisites. For match behavior, include the fixture and seed if known.</p>
-<h1><a class="anchor" id="autotoc_md105"></a>
+<h1><a class="anchor" id="autotoc_md111"></a>
 Use an isolated test career</h1>
 <p>From a source checkout on Linux, this keeps experiments separate from your normal saves and settings:</p>
 <div class="fragment"><div class="line">FM_RUNTIME_ROOT=/tmp/fm-test-career FM_WORLD_SEED=424242 \</div>
-<div class="line">  ./out/build/release/src/Player12</div>
+<div class="line">  ./build/release/src/Player12</div>
 </div><!-- fragment --><p>Use the executable path for your own build. For data modifications, follow <a class="el" href="md_docs_2development_2extending-and-modding.html">Extending and modding</a>.</p>
-<h1><a class="anchor" id="autotoc_md106"></a>
+<h1><a class="anchor" id="autotoc_md112"></a>
 Player12 and earlier careers</h1>
 <p>Player12 was previously called Football Management. The executable and package names now use Player12. The save/settings directory intentionally keeps the historical <code>FlavioMili/FootballManagement</code> name, so existing careers and backups remain available without moving files. </p>
 </div></div><!-- contents -->

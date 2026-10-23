@@ -122,6 +122,9 @@ var namespaces_dup =
       [ "shownAt", "namespaceDrawCeremonies.html#a0ff2cd682c0eff2ad994cb716e9357d7", null ],
       [ "REVEAL_SECONDS", "namespaceDrawCeremonies.html#ac6788246032961a2707d45c00ab9e3bb", null ]
     ] ],
+    [ "EditorValidation", "namespaceEditorValidation.html", [
+      [ "validate", "namespaceEditorValidation.html#a93cca6fcc4188cc2fe249ebcd643a1be", null ]
+    ] ],
     [ "Format", "namespaceFormat.html", [
       [ "date", "namespaceFormat.html#acd672d94e827b6c13fcf686cceb9be50", null ],
       [ "dayMonth", "namespaceFormat.html#a1050b2f3b40b879f2618a0c824634f70", null ],
@@ -427,6 +430,7 @@ var namespaces_dup =
       [ "LEGEND_HONOURS_APPEARANCES", "namespaceRecords.html#a3fd81c113e1d2ed8b7e2e666f1628746", null ]
     ] ],
     [ "RenderMath", "namespaceRenderMath.html", "namespaceRenderMath" ],
+    [ "RuntimeEditor", "namespaceRuntimeEditor.html", "namespaceRuntimeEditor" ],
     [ "SaveFormat", "namespaceSaveFormat.html", [
       [ "ENGINE_VERSION", "namespaceSaveFormat.html#a950cfe9240ac648503668b359374c91a", null ],
       [ "FORMAT_ID", "namespaceSaveFormat.html#a5d75f9538722babba1ff3c1ce5f592a5", null ],

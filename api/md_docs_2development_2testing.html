@@ -96,8 +96,8 @@ $(document).ready(function(){initNavTree('md_docs_2development_2testing.html',''
   <div class="headertitle"><div class="title">Tests and tools</div></div>
 </div><!--header-->
 <div class="contents">
-<div class="textblock"><p><a class="anchor" id="autotoc_md76"></a> Configure with tests (<code>release-tests</code> preset or <code>-DBUILD_TESTING=ON</code>):</p>
-<p>Install the <a class="el" href="md_docs_2user_2installation.html">platform prerequisites</a> first. If you are already using a build directory such as <code>build</code>, use <code>ctest --test-dir build</code> instead of the preset; a preset always targets its own <code>out/build/</code> directory.</p>
+<div class="textblock"><p><a class="anchor" id="autotoc_md82"></a> Configure with tests (<code>release-tests</code> preset or <code>-DBUILD_TESTING=ON</code>):</p>
+<p>Install the <a class="el" href="md_docs_2user_2installation.html">platform prerequisites</a> first. If you are already using a build directory such as <code>build</code>, use <code>ctest --test-dir build</code> instead of the preset; a preset always targets its own <code>build/</code> directory.</p>
 <div class="fragment"><div class="line">cmake --preset release-tests</div>
 <div class="line">cmake --build --preset release-tests --parallel 4</div>
 <div class="line"> </div>
@@ -107,33 +107,33 @@ $(document).ready(function(){initNavTree('md_docs_2development_2testing.html',''
 <div class="line"># Everything, including the long playtest, GUI monkey and adversarial suites</div>
 <div class="line">ctest --preset release-tests</div>
 </div><!-- fragment --><p>Tests run headless (SDL's dummy video driver) with fixed seeds and a scratch data directory under <code>/tmp/football-management-tests</code>, so they never touch your saves. Labels: <code>unit</code>, <code>core</code> (no GUI), <code>gui</code>, <code>lab</code>, <code>playtest</code>, <code>monkey</code>, <code>adversarial</code> and <code>slow</code>.</p>
-<h1><a class="anchor" id="autotoc_md77"></a>
+<h1><a class="anchor" id="autotoc_md83"></a>
 Run one area first</h1>
 <div class="fragment"><div class="line">ctest --preset release-tests -N -R &#39;MatchScenarioTest&#39;</div>
 <div class="line">ctest --preset release-tests -R &#39;^core::MatchScenarioTest\.&#39;</div>
 </div><!-- fragment --><p>CTest lists each GoogleTest case separately. Core cases have a <code>core::</code> prefix; the main <code>unit_tests</code> cases have no prefix. Engine and Play tests currently live in <code>unit_tests</code>; match scenarios, rules, tactics and scheduler tests also have headless coverage. Use <code>-N</code> to confirm that a filter selects actual tests before relying on its result.</p>
 <p>The <a class="el" href="md_docs_2development_2match-engine.html">engine guide</a> maps behaviors to tests. For larger code changes, also run the CI-style suite above and the relevant sanitizer checks from <a class="el" href="md_docs_2development_2builds.html">Builds</a>. Preserve failing output in your PR description.</p>
-<h1><a class="anchor" id="autotoc_md78"></a>
+<h1><a class="anchor" id="autotoc_md84"></a>
 Balance lab</h1>
 <p><code>fm_lab</code>, built next to the game, is a headless balance lab. It plays large batches of matches or whole seasons and compares the results with real-world ranges:</p>
-<div class="fragment"><div class="line">./out/build/release-tests/src/fm_lab matches --n 1000 --spread --threads 4</div>
-<div class="line">./out/build/release-tests/src/fm_lab season --seasons 1 --threads 2</div>
-<div class="line">./out/build/release-tests/src/fm_lab tactics</div>
-</div><!-- fragment --><p><code>./out/build/release-tests/src/fm_lab --help</code> lists every option. The lab writes <code>report.md</code> and <code>metrics.json</code> to its output directory. Compare before/after results using the same seeds, ratings, count and fidelity; see <a href="extending-and-modding.md#validate-a-behavior-change">Extending and modding</a>.</p>
-<h1><a class="anchor" id="autotoc_md79"></a>
+<div class="fragment"><div class="line">./build/release-tests/src/fm_lab matches --n 1000 --spread --threads 4</div>
+<div class="line">./build/release-tests/src/fm_lab season --seasons 1 --threads 2</div>
+<div class="line">./build/release-tests/src/fm_lab tactics</div>
+</div><!-- fragment --><p><code>./build/release-tests/src/fm_lab --help</code> lists every option. The lab writes <code>report.md</code> and <code>metrics.json</code> to its output directory. Compare before/after results using the same seeds, ratings, count and fidelity; see <a href="extending-and-modding.md#validate-a-behavior-change">Extending and modding</a>.</p>
+<h1><a class="anchor" id="autotoc_md85"></a>
 Screenshots</h1>
 <p>The screenshots in <code>docs/images</code> come from a real career, captured by the <code>showcase_captures</code> test (skipped unless <code>FM_SHOWCASE_DIR</code> is set):</p>
 <div class="fragment"><div class="line">FM_SHOWCASE_DIR=/tmp/showcase ctest --preset release-tests -R showcase</div>
 </div><!-- fragment --><p>It writes PNG files at interface scale 2; the header of <a href="../../test/test_showcase_captures.cpp">test/test_showcase_captures.cpp</a> explains the options.</p>
-<h1><a class="anchor" id="autotoc_md80"></a>
+<h1><a class="anchor" id="autotoc_md86"></a>
 Performance benchmarks</h1>
 <p>For a change to database work or a hot simulation loop, measure its workload before and after the edit. Benchmarks are opt-in and are not part of normal CI.</p>
 <div class="fragment"><div class="line">cmake --preset profile</div>
 <div class="line">cmake --build --preset profile --target db_benchmarks match_benchmarks --parallel 4</div>
-<div class="line">./out/build/profile/benchmarks/db_benchmarks</div>
-<div class="line">./out/build/profile/benchmarks/match_benchmarks</div>
+<div class="line">./build/profile/benchmarks/db_benchmarks</div>
+<div class="line">./build/profile/benchmarks/match_benchmarks</div>
 </div><!-- fragment --><p>The <code>profile</code> preset enables machine-local native optimizations; use comparable builds and hardware when reporting results. Benchmark target definitions are in <a href="../../benchmarks/CMakeLists.txt">benchmarks/CMakeLists.txt</a>.</p>
-<h1><a class="anchor" id="autotoc_md81"></a>
+<h1><a class="anchor" id="autotoc_md87"></a>
 Historical calibration failures</h1>
 <p>Verification on 2026-10-07 reproduced these failures with the original engine from revision <code>8b0aafb</code>, before the documentation/context-override changes:</p>
 <table class="markdownTable">

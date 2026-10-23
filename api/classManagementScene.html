@@ -203,6 +203,8 @@ Protected Member Functions</h2></td></tr>
 <tr class="memitem:af886eddb1a9a30d31d59a1b7dd4818ec" id="r_af886eddb1a9a30d31d59a1b7dd4818ec"><td class="memItemLeft" align="right" valign="top">virtual void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classManagementScene.html#af886eddb1a9a30d31d59a1b7dd4818ec">refresh</a> ()</td></tr>
 <tr class="memdesc:af886eddb1a9a30d31d59a1b7dd4818ec"><td class="mdescLeft">&#160;</td><td class="mdescRight">Rebuilds cached view models from the game state.  <br /></td></tr>
 <tr class="separator:af886eddb1a9a30d31d59a1b7dd4818ec"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a29c94f864180886e9e9849df7bc1acbb" id="r_a29c94f864180886e9e9849df7bc1acbb"><td class="memItemLeft" align="right" valign="top">virtual std::optional&lt; <a class="el" href="structEditorContext.html">EditorContext</a> &gt;&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classManagementScene.html#a29c94f864180886e9e9849df7bc1acbb">editorContext</a> () const</td></tr>
+<tr class="separator:a29c94f864180886e9e9849df7bc1acbb"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a2f8e03d579276bee8760a49d393e7364" id="r_a2f8e03d579276bee8760a49d393e7364"><td class="memItemLeft" align="right" valign="top">void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classManagementScene.html#a2f8e03d579276bee8760a49d393e7364">showToast</a> (std::string message, bool isError=false)</td></tr>
 <tr class="memdesc:a2f8e03d579276bee8760a49d393e7364"><td class="mdescLeft">&#160;</td><td class="mdescRight">Shows a short confirmation message in the top bar.  <br /></td></tr>
 <tr class="separator:a2f8e03d579276bee8760a49d393e7364"><td class="memSeparator" colspan="2">&#160;</td></tr>
@@ -393,6 +395,32 @@ Additional Inherited Members</h2></td></tr>
   </tr>
 </table>
 </div><div class="memdoc">
+
+</div>
+</div>
+<a id="a29c94f864180886e9e9849df7bc1acbb" name="a29c94f864180886e9e9849df7bc1acbb"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a29c94f864180886e9e9849df7bc1acbb">&#9670;&#160;</a></span>editorContext()</h2>
+
+<div class="memitem">
+<div class="memproto">
+<table class="mlabels">
+  <tr>
+  <td class="mlabels-left">
+      <table class="memname">
+        <tr>
+          <td class="memname">virtual std::optional&lt; <a class="el" href="structEditorContext.html">EditorContext</a> &gt; ManagementScene::editorContext </td>
+          <td>(</td>
+          <td class="paramname"></td><td>)</td>
+          <td> const</td>
+        </tr>
+      </table>
+  </td>
+  <td class="mlabels-right">
+<span class="mlabels"><span class="mlabel">inline</span><span class="mlabel">protected</span><span class="mlabel">virtual</span></span>  </td>
+  </tr>
+</table>
+</div><div class="memdoc">
+<p>Override for new/custom data domains. Record filtering and related items belong to the page; schema discovery remains inside the generic editor. </p>
 
 </div>
 </div>

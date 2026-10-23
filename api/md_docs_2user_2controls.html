@@ -96,9 +96,9 @@ $(document).ready(function(){initNavTree('md_docs_2user_2controls.html',''); ini
   <div class="headertitle"><div class="title">Controls</div></div>
 </div><!--header-->
 <div class="contents">
-<div class="textblock"><p><a class="anchor" id="autotoc_md87"></a> Player12 is played with the mouse. Keyboard shortcuts speed up the things you do all the time: moving between screens, advancing the calendar and driving the match view.</p>
+<div class="textblock"><p><a class="anchor" id="autotoc_md93"></a> Player12 is played with the mouse. Keyboard shortcuts speed up the things you do all the time: moving between screens, advancing the calendar and driving the match view.</p>
 <p>The keys below are the defaults. Every shortcut except F12 (screenshot) and Shift (sprint in play mode) can be rebound in <em><a class="el" href="structSettings.html" title="Stores the game&#39;s configuration settings.">Settings</a> &gt; Controls</em>, which warns you when two actions would share a key and can reset any of them to its default. The in-game <em>Help</em> screen (F8) lists the keys as you have bound them.</p>
-<h1><a class="anchor" id="autotoc_md88"></a>
+<h1><a class="anchor" id="autotoc_md94"></a>
 Anywhere in the game</h1>
 <table class="markdownTable">
 <tr class="markdownTableHead">
@@ -106,7 +106,7 @@ Anywhere in the game</h1>
 <tr class="markdownTableRowOdd">
 <td class="markdownTableBodyNone">F12   </td><td class="markdownTableBodyNone">Save a screenshot as <code>captures/screenshot.bmp</code> in the user data directory (see Where your files are). Set <code>FM_SCREENSHOT_PATH</code> to choose another file.   </td></tr>
 </table>
-<h1><a class="anchor" id="autotoc_md89"></a>
+<h1><a class="anchor" id="autotoc_md95"></a>
 Main menu and club choice</h1>
 <table class="markdownTable">
 <tr class="markdownTableHead">
@@ -117,7 +117,7 @@ Main menu and club choice</h1>
 <td class="markdownTableBodyNone">Esc (club choice)   </td><td class="markdownTableBodyNone">Back to the main menu, like the Back to menu button. The new career stays in its slot as "not started"; load it to choose a club later.   </td></tr>
 </table>
 <p>Money fields accept either decimal mark and the usual units: <code>1,5M</code>, <code>1.5M</code>, <code>1500k</code>, <code>1.500.000</code>, <code>1,500,000</code>, <code>€ 2,25 mln</code> or <code>850 mila</code>. The amount you typed is shown under the field as you type. Text that could mean two amounts (<code>1.500,000</code>, or <code>1,500k</code> in English) is refused with a short explanation instead of being guessed.</p>
-<h1><a class="anchor" id="autotoc_md90"></a>
+<h1><a class="anchor" id="autotoc_md96"></a>
 Management screens</h1>
 <p>These work on every screen of a career (Home, Squad, Transfers and so on). Shortcuts that would clash with typing are ignored while a text field is active or a dialog is open.</p>
 <table class="markdownTable">
@@ -146,7 +146,7 @@ Management screens</h1>
 <tr class="markdownTableRowOdd">
 <td class="markdownTableBodyNone">Tab / arrow keys   </td><td class="markdownTableBodyNone">Keyboard navigation between widgets (Dear ImGui)   </td></tr>
 </table>
-<h2><a class="anchor" id="autotoc_md91"></a>
+<h2><a class="anchor" id="autotoc_md97"></a>
 Back and Forward</h2>
 <p>Career screens keep a history like a web browser. Back returns to the screen you were on before, whether you got there from the sidebar, a shortcut, the palette or a link on a page; Forward re-opens what Back left. Opening a new screen after going back drops the screens ahead, as in a browser. The history holds the last 50 screens and starts afresh whenever a career is started or loaded. Screens that can no longer be opened are skipped: the profile of a player who has left the game, or one of your club's screens while you are out of work. The live match and the club choice are not part of the history, so Back never leaves a match or the career.</p>
 <table class="markdownTable">
@@ -162,7 +162,7 @@ Back and Forward</h2>
 <td class="markdownTableBodyNone">Top bar   </td><td class="markdownTableBodyNone"><em>Back</em> button   </td><td class="markdownTableBodyNone">Arrow button next to it   </td></tr>
 </table>
 <p>One swipe is one step; a round arrow slides in from the edge of the window while you swipe and the step happens once it is fully out. The swipe is ignored while you scroll up or down, over a list that scrolls sideways, while a text field is being edited and while a dialog is open. The top-bar buttons are greyed out when there is nothing to go back or forward to.</p>
-<h2><a class="anchor" id="autotoc_md92"></a>
+<h2><a class="anchor" id="autotoc_md98"></a>
 Sidebar hubs</h2>
 <p>The sidebar has seven hubs. The hub you are working in lists its screens underneath its name, with the current screen highlighted; click one to open it. Clicking a hub, or pressing its F-key, opens the hub's first screen. Right after a sidebar click or an F-key, Up and Down move between the screens of that hub; a click on the page gives the arrow keys back to the page. Counters (unread messages, new scout reports) appear next to their screen and, added up, next to the hub.</p>
 <p>On narrow windows the sidebar shrinks to icons: hovering a hub's icon shows its screens in a small menu beside it, and the current hub's screens also appear as tabs above the page.</p>
@@ -185,7 +185,7 @@ Sidebar hubs</h2>
 <td class="markdownTableBodyNone">F7   </td><td class="markdownTableBodyNone">Club   </td><td class="markdownTableBodyNone">Club, <a class="el" href="classFinances.html" title="A club&#39;s balance, budgets and dated transaction ledger.">Finances</a>, Staff, Delegation, Manager, Career timeline, <a class="el" href="namespaceAwards.html" title="Selection rules of the league honours.">Awards</a>, <a class="el" href="namespaceRecords.html" title="Comparison rules of the records book.">Records</a>   </td></tr>
 </table>
 <p>Every screen can also be opened with Ctrl+K. While you are out of work, only the screens that make sense without a club are available (Home, <a class="el" href="classInbox.html" title="Chronological list of messages with read tracking.">Inbox</a>, News, <a class="el" href="namespaceCompetitions.html" title="Domestic competitions: league pyramids, cups, knockout resolution and promotion/relegation.">Competitions</a>, <a class="el" href="namespaceInternational.html" title="National teams: confederations, competitions and pure helpers.">International</a>, Manager, Career timeline, <a class="el" href="namespaceAwards.html" title="Selection rules of the league honours.">Awards</a> and <a class="el" href="namespaceRecords.html" title="Comparison rules of the records book.">Records</a>, plus Call-ups if you coach a national team), and the F-key of a hub with none of them does nothing.</p>
-<h2><a class="anchor" id="autotoc_md93"></a>
+<h2><a class="anchor" id="autotoc_md99"></a>
 Mouse on management screens</h2>
 <table class="markdownTable">
 <tr class="markdownTableHead">
@@ -205,10 +205,10 @@ Mouse on management screens</h2>
 <tr class="markdownTableRowOdd">
 <td class="markdownTableBodyNone">Top bar   </td><td class="markdownTableBodyNone"><em>Back</em> returns to the previous screen and the arrow next to it goes forward again; the search field opens the palette; the holiday button next to Continue opens the holiday planner   </td></tr>
 </table>
-<h1><a class="anchor" id="autotoc_md94"></a>
+<h1><a class="anchor" id="autotoc_md100"></a>
 Match day</h1>
 <p>The match screen has its own keys. They are ignored while you type in a text field.</p>
-<h2><a class="anchor" id="autotoc_md95"></a>
+<h2><a class="anchor" id="autotoc_md101"></a>
 Playback</h2>
 <table class="markdownTable">
 <tr class="markdownTableHead">
@@ -233,7 +233,7 @@ Playback</h2>
 <td class="markdownTableBodyNone">Alt+Enter   </td><td class="markdownTableBodyNone">Toggle a full-screen window (match screen only; elsewhere use <em><a class="el" href="structSettings.html" title="Stores the game&#39;s configuration settings.">Settings</a> &gt; Fullscreen</em>)   </td></tr>
 </table>
 <p>Speed (1x, 2x, 4x, 8x, 16x, 30x), <em>Highlights</em>, <em>Quick result</em>, <em>Finish match</em>, substitutions, tactics and the assistant options are buttons in the match toolbar. At 1x one second of match time takes one real second. With <em>Highlights</em> on, the game skips instantly to the next key moment and plays that moment at the chosen speed. With <em><a class="el" href="structSettings.html" title="Stores the game&#39;s configuration settings.">Settings</a> &gt; Pause at half-time</em> on, your match stops at half-time (and at the breaks around extra time and before a shootout) at any speed until you resume it.</p>
-<h2><a class="anchor" id="autotoc_md96"></a>
+<h2><a class="anchor" id="autotoc_md102"></a>
 Substitutions board and tactics</h2>
 <table class="markdownTable">
 <tr class="markdownTableHead">
@@ -244,7 +244,7 @@ Substitutions board and tactics</h2>
 <td class="markdownTableBodyNone"><em>Pause while open</em>   </td><td class="markdownTableBodyNone">Keeps the match paused while the board or the panel is open (a saved setting)   </td></tr>
 </table>
 <p>The tactics panel changes the style, the instructions and the formation during the match. A new formation costs some tactical familiarity, which the team recovers over the following minutes; <em>Undo</em> restores the previous tactics.</p>
-<h2><a class="anchor" id="autotoc_md97"></a>
+<h2><a class="anchor" id="autotoc_md103"></a>
 Touchline shouts</h2>
 <p>Hold Shift and press a key of the number row. The keys follow the order of the shouts bar; the bar shows the key your keyboard layout prints on each.</p>
 <table class="markdownTable">
@@ -274,7 +274,7 @@ Touchline shouts</h2>
 <td class="markdownTableBodyNone">Shift+- (the key after 0)   </td><td class="markdownTableBodyNone">Shoot on sight   </td></tr>
 </table>
 <p>A shout's effect fades over about ten minutes, and shouting again soon afterwards has less effect.</p>
-<h2><a class="anchor" id="autotoc_md98"></a>
+<h2><a class="anchor" id="autotoc_md104"></a>
 3D cameras</h2>
 <table class="markdownTable">
 <tr class="markdownTableHead">
@@ -296,7 +296,7 @@ Touchline shouts</h2>
 <tr class="markdownTableRowEven">
 <td class="markdownTableBodyNone">R   </td><td class="markdownTableBodyNone">Reset the view   </td></tr>
 </table>
-<h2><a class="anchor" id="autotoc_md99"></a>
+<h2><a class="anchor" id="autotoc_md105"></a>
 Mouse in the match view</h2>
 <table class="markdownTable">
 <tr class="markdownTableHead">
@@ -313,7 +313,7 @@ Mouse in the match view</h2>
 <td class="markdownTableBodyNone">Double-click (other cameras, or the 2D view)   </td><td class="markdownTableBodyNone">Toggle pitch focus   </td></tr>
 </table>
 <p>In the 2D view the mouse only toggles pitch focus; orbit, pan and zoom apply to the 3D view.</p>
-<h2><a class="anchor" id="autotoc_md100"></a>
+<h2><a class="anchor" id="autotoc_md106"></a>
 Play mode</h2>
 <p>In your club's live match, <em>Play</em> (before kick-off) or <em>Take control</em> (while you watch) lets you play the match yourself. The match pauses first and shows the controls; <em>Start playing</em> hands you the team. You always control one footballer of your side, the <em>active player</em>, marked by a yellow ring with his name and condition above him; control moves between team-mates as the play goes on. Everybody else, both teams' goalkeepers and every restart (kick-offs, throw-ins, corners, free kicks, penalties) stay with the AI. A played match runs in real time, with the same rules, attributes and fatigue as a watched one: what you choose is where the ball should go, while the player's technique, the pressure on him and how tired he is decide how well he does it.</p>
 <p>The stick and the movement keys follow the screen: up is up in the 2D view and in the 3D play camera alike.</p>
@@ -353,7 +353,7 @@ Play mode</h2>
 <td class="markdownTableBodyNone">Stick dead zone   </td><td class="markdownTableBodyNone">How far the stick must move before the player does (0.05 to 0.50, default 0.20)   </td></tr>
 </table>
 <p>Gamepads can be plugged in and out at any time; the first connected pad is used. The views while playing: the 2D view zooms in and follows the active player and the ball; the 3D view uses the <em>Play</em> camera, which keeps both in the picture. A radar of the whole pitch sits at the bottom of the view, and an arrow at the edge points to the active player when he is out of the picture.</p>
-<h1><a class="anchor" id="autotoc_md101"></a>
+<h1><a class="anchor" id="autotoc_md107"></a>
 Where your files are</h1>
 <p>Saves, settings, logs and screenshots never go next to the game. They live in the user data directory:</p>
 <table class="markdownTable">

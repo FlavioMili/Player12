@@ -13,6 +13,6 @@ var searchData=
   ['continuestop_10',['ContinueStop',['../game__controller_8h.html#ad15177988324ea1c00c33b595ab4c1d9',1,'game_controller.h']]],
   ['contractfilter_11',['ContractFilter',['../classTransferMarketScene.html#a866ab41d4561d2e20f63a09cf76ee3bc',1,'TransferMarketScene']]],
   ['contractkind_12',['ContractKind',['../namespaceTransferNegotiation.html#aa025c5c60896373651da65fef9455c98',1,'TransferNegotiation']]],
-  ['control_13',['Control',['../classMatchPlayController.html#ac4322f7813d8053209344d6652eaa7b9',1,'MatchPlayController']]],
+  ['control_13',['control',['../classMatchPlayController.html#ac4322f7813d8053209344d6652eaa7b9',1,'MatchPlayController::Control'],['../structEditorField.html#a8ea3dd95cada9a0d4f2e49f26dfb0ab3',1,'EditorField::Control']]],
   ['cupobjective_14',['CupObjective',['../board_8h.html#a40ebb705e9a4307fcef2ebb7ef35cd18',1,'board.h']]]
 ];

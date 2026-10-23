@@ -21,6 +21,7 @@ var game__controller_8h =
     [ "GameController::CallUpView", "structGameController_1_1CallUpView.html", "structGameController_1_1CallUpView" ],
     [ "GameController::NextFixture", "structGameController_1_1NextFixture.html", "structGameController_1_1NextFixture" ],
     [ "GameController::DataHubView", "structGameController_1_1DataHubView.html", "structGameController_1_1DataHubView" ],
+    [ "GameController::EditorSession", "structGameController_1_1EditorSession.html", "structGameController_1_1EditorSession" ],
     [ "ContinueStop", "game__controller_8h.html#ad15177988324ea1c00c33b595ab4c1d9", [
       [ "None", "game__controller_8h.html#ad15177988324ea1c00c33b595ab4c1d9a6adf97f83acf6453d4a6a4b1070f3754", null ],
       [ "Fixture", "game__controller_8h.html#ad15177988324ea1c00c33b595ab4c1d9abfc1041d408b88953eacd86820332d8c", null ],

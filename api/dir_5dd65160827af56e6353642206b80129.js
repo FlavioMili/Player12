@@ -104,6 +104,8 @@ var dir_5dd65160827af56e6353642206b80129 =
     [ "records.h", "records_8h.html", "records_8h" ],
     [ "role_utils.cpp", "role__utils_8cpp.html", null ],
     [ "role_utils.h", "role__utils_8h.html", "role__utils_8h" ],
+    [ "runtime_editor_validation.cpp", "runtime__editor__validation_8cpp.html", "runtime__editor__validation_8cpp" ],
+    [ "runtime_editor_validation.h", "runtime__editor__validation_8h.html", "runtime__editor__validation_8h" ],
     [ "scout_expertise.cpp", "scout__expertise_8cpp.html", "scout__expertise_8cpp" ],
     [ "scout_expertise.h", "scout__expertise_8h.html", "scout__expertise_8h" ],
     [ "scouting.cpp", "scouting_8cpp.html", "scouting_8cpp" ],

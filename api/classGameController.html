@@ -130,6 +130,8 @@ Classes</h2></td></tr>
 <tr class="separator:"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:"><td class="memItemLeft" align="right" valign="top">struct &#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structGameController_1_1DataHubView.html">DataHubView</a></td></tr>
 <tr class="separator:"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:"><td class="memItemLeft" align="right" valign="top">struct &#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structGameController_1_1EditorSession.html">EditorSession</a></td></tr>
+<tr class="separator:"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:"><td class="memItemLeft" align="right" valign="top">struct &#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structGameController_1_1IncomingOfferView.html">IncomingOfferView</a></td></tr>
 <tr class="separator:"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:"><td class="memItemLeft" align="right" valign="top">struct &#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structGameController_1_1NationalVacancyView.html">NationalVacancyView</a></td></tr>
@@ -918,6 +920,20 @@ Public Member Functions</h2></td></tr>
 <tr class="memitem:ac3e7c67b1516d1a579bb693a1bb51ff4" id="r_ac3e7c67b1516d1a579bb693a1bb51ff4"><td class="memItemLeft" align="right" valign="top">std::shared_ptr&lt; <a class="el" href="classGameData.html">GameData</a> &gt;&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classGameController.html#ac3e7c67b1516d1a579bb693a1bb51ff4">getGameData</a> () const</td></tr>
 <tr class="memdesc:ac3e7c67b1516d1a579bb693a1bb51ff4"><td class="mdescLeft">&#160;</td><td class="mdescRight">Gets the game data cache.  <br /></td></tr>
 <tr class="separator:ac3e7c67b1516d1a579bb693a1bb51ff4"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a67fbbf24ab97a10e84591be865a5a3ad" id="r_a67fbbf24ab97a10e84591be865a5a3ad"><td class="memItemLeft" align="right" valign="top">std::shared_ptr&lt; <a class="el" href="structGameController_1_1EditorSession.html">EditorSession</a> &gt;&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classGameController.html#a67fbbf24ab97a10e84591be865a5a3ad">beginEditor</a> ()</td></tr>
+<tr class="separator:a67fbbf24ab97a10e84591be865a5a3ad"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a85cb006bb9abbd6610f4bc325f6af8aa" id="r_a85cb006bb9abbd6610f4bc325f6af8aa"><td class="memItemLeft" align="right" valign="top">void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classGameController.html#a85cb006bb9abbd6610f4bc325f6af8aa">cancelEditor</a> ()</td></tr>
+<tr class="separator:a85cb006bb9abbd6610f4bc325f6af8aa"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a748f856a8deee1ceb6be8387d01f55f8" id="r_a748f856a8deee1ceb6be8387d01f55f8"><td class="memItemLeft" align="right" valign="top">bool&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classGameController.html#a748f856a8deee1ceb6be8387d01f55f8">applyEditor</a> (const std::shared_ptr&lt; <a class="el" href="structGameController_1_1EditorSession.html">EditorSession</a> &gt; &amp;session, const std::vector&lt; <a class="el" href="structRuntimeEditor_1_1Change.html">RuntimeEditor::Change</a> &gt; &amp;changes, std::string &amp;error)</td></tr>
+<tr class="separator:a748f856a8deee1ceb6be8387d01f55f8"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:ada9113a5b08d1dc46608e7f1024420e6" id="r_ada9113a5b08d1dc46608e7f1024420e6"><td class="memItemLeft" align="right" valign="top">bool&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classGameController.html#ada9113a5b08d1dc46608e7f1024420e6">undoEditor</a> (std::string &amp;error)</td></tr>
+<tr class="separator:ada9113a5b08d1dc46608e7f1024420e6"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:ae1900bef18f082affe3668b316ebd48b" id="r_ae1900bef18f082affe3668b316ebd48b"><td class="memItemLeft" align="right" valign="top">bool&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classGameController.html#ae1900bef18f082affe3668b316ebd48b">canUndoEditor</a> () const</td></tr>
+<tr class="separator:ae1900bef18f082affe3668b316ebd48b"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a379c70f771ebb847c2e5824ae7f0784e" id="r_a379c70f771ebb847c2e5824ae7f0784e"><td class="memItemLeft" align="right" valign="top">void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classGameController.html#a379c70f771ebb847c2e5824ae7f0784e">registerEditorValidator</a> (<a class="el" href="namespaceRuntimeEditor.html#aace83de1cb13f3d5bed01766a07efe4a">RuntimeEditor::Validator</a> validator)</td></tr>
+<tr class="separator:a379c70f771ebb847c2e5824ae7f0784e"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a4240353bc9acceda24d0970eaa3f1601" id="r_a4240353bc9acceda24d0970eaa3f1601"><td class="memItemLeft" align="right" valign="top">std::uint64_t&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classGameController.html#a4240353bc9acceda24d0970eaa3f1601">getEditorRevision</a> () const</td></tr>
+<tr class="separator:a4240353bc9acceda24d0970eaa3f1601"><td class="memSeparator" colspan="2">&#160;</td></tr>
 </table><table class="memberdecls">
 <tr class="heading"><td colspan="2"><h2 class="groupheader"><a id="pub-static-methods" name="pub-static-methods"></a>
 Static Public Member Functions</h2></td></tr>
@@ -933,8 +949,10 @@ Static Public Attributes</h2></td></tr>
 </table><table class="memberdecls">
 <tr class="heading"><td colspan="2"><h2 class="groupheader"><a id="pri-methods" name="pri-methods"></a>
 Private Member Functions</h2></td></tr>
-<tr class="memitem:a5e00cbaffe6833c60f626e85411c243c" id="r_a5e00cbaffe6833c60f626e85411c243c"><td class="memItemLeft" align="right" valign="top">bool&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classGameController.html#a5e00cbaffe6833c60f626e85411c243c">persist</a> (bool autosave)</td></tr>
-<tr class="separator:a5e00cbaffe6833c60f626e85411c243c"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a67d1d7ee2a43bb9bb7c39f1018b2a60b" id="r_a67d1d7ee2a43bb9bb7c39f1018b2a60b"><td class="memItemLeft" align="right" valign="top">void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classGameController.html#a67d1d7ee2a43bb9bb7c39f1018b2a60b">replaceEditorDatabase</a> (std::shared_ptr&lt; <a class="el" href="classDatabaseConnection.html">DatabaseConnection</a> &gt; connection)</td></tr>
+<tr class="separator:a67d1d7ee2a43bb9bb7c39f1018b2a60b"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:ad5266c8778adf9c775a797c0da9ddb03" id="r_ad5266c8778adf9c775a797c0da9ddb03"><td class="memItemLeft" align="right" valign="top">bool&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classGameController.html#ad5266c8778adf9c775a797c0da9ddb03">persistLocked</a> (bool autosave)</td></tr>
+<tr class="separator:ad5266c8778adf9c775a797c0da9ddb03"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:aba50ae0d9c18ce774e2a2657f95ad58c" id="r_aba50ae0d9c18ce774e2a2657f95ad58c"><td class="memItemLeft" align="right" valign="top">void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classGameController.html#aba50ae0d9c18ce774e2a2657f95ad58c">maybeAutosave</a> ()</td></tr>
 <tr class="separator:aba50ae0d9c18ce774e2a2657f95ad58c"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:ae01842924d842ec49e8b743354bfac79" id="r_ae01842924d842ec49e8b743354bfac79"><td class="memItemLeft" align="right" valign="top">void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classGameController.html#ae01842924d842ec49e8b743354bfac79">startSession</a> (int slot, std::int64_t playtime_seconds)</td></tr>
@@ -988,6 +1006,16 @@ Private Member Functions</h2></td></tr>
 </table><table class="memberdecls">
 <tr class="heading"><td colspan="2"><h2 class="groupheader"><a id="pri-attribs" name="pri-attribs"></a>
 Private Attributes</h2></td></tr>
+<tr class="memitem:a1b567ea69589780b35e30dcf643cc960" id="r_a1b567ea69589780b35e30dcf643cc960"><td class="memItemLeft" align="right" valign="top">std::mutex&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classGameController.html#a1b567ea69589780b35e30dcf643cc960">runtime_mutex</a></td></tr>
+<tr class="separator:a1b567ea69589780b35e30dcf643cc960"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:af36331c442673ba972a5a154b5be5426" id="r_af36331c442673ba972a5a154b5be5426"><td class="memItemLeft" align="right" valign="top">std::weak_ptr&lt; <a class="el" href="structGameController_1_1EditorSession.html">EditorSession</a> &gt;&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classGameController.html#af36331c442673ba972a5a154b5be5426">editor_session</a></td></tr>
+<tr class="separator:af36331c442673ba972a5a154b5be5426"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:ad38cd75d1aaa7acc1a5eaf5022ee5ea7" id="r_ad38cd75d1aaa7acc1a5eaf5022ee5ea7"><td class="memItemLeft" align="right" valign="top">std::shared_ptr&lt; <a class="el" href="classDatabaseConnection.html">DatabaseConnection</a> &gt;&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classGameController.html#ad38cd75d1aaa7acc1a5eaf5022ee5ea7">editor_backup</a></td></tr>
+<tr class="separator:ad38cd75d1aaa7acc1a5eaf5022ee5ea7"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a9ec1376f6f513ed9db421a306148befd" id="r_a9ec1376f6f513ed9db421a306148befd"><td class="memItemLeft" align="right" valign="top">std::vector&lt; <a class="el" href="namespaceRuntimeEditor.html#aace83de1cb13f3d5bed01766a07efe4a">RuntimeEditor::Validator</a> &gt;&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classGameController.html#a9ec1376f6f513ed9db421a306148befd">editor_validators</a></td></tr>
+<tr class="separator:a9ec1376f6f513ed9db421a306148befd"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:ae6f623cc974bc06da5e47737eaca22a5" id="r_ae6f623cc974bc06da5e47737eaca22a5"><td class="memItemLeft" align="right" valign="top">std::uint64_t&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classGameController.html#ae6f623cc974bc06da5e47737eaca22a5">editor_revision</a> = 0</td></tr>
+<tr class="separator:ae6f623cc974bc06da5e47737eaca22a5"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a28406eb95885f8601a10eecf67596c8d" id="r_a28406eb95885f8601a10eecf67596c8d"><td class="memItemLeft" align="right" valign="top">std::shared_ptr&lt; class <a class="el" href="classDatabaseConnection.html">DatabaseConnection</a> &gt;&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classGameController.html#a28406eb95885f8601a10eecf67596c8d">db_conn</a></td></tr>
 <tr class="separator:a28406eb95885f8601a10eecf67596c8d"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a5bc22fd160fa4b1a0d75dc92d3f83966" id="r_a5bc22fd160fa4b1a0d75dc92d3f83966"><td class="memItemLeft" align="right" valign="top">std::unique_ptr&lt; <a class="el" href="classGame.html">Game</a> &gt;&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classGameController.html#a5bc22fd160fa4b1a0d75dc92d3f83966">game</a></td></tr>
@@ -1501,6 +1529,41 @@ Private Attributes</h2></td></tr>
 
 </div>
 </div>
+<a id="a748f856a8deee1ceb6be8387d01f55f8" name="a748f856a8deee1ceb6be8387d01f55f8"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a748f856a8deee1ceb6be8387d01f55f8">&#9670;&#160;</a></span>applyEditor()</h2>
+
+<div class="memitem">
+<div class="memproto">
+      <table class="memname">
+        <tr>
+          <td class="memname">bool GameController::applyEditor </td>
+          <td>(</td>
+          <td class="paramtype">const std::shared_ptr&lt; <a class="el" href="structGameController_1_1EditorSession.html">EditorSession</a> &gt; &amp;&#160;</td>
+          <td class="paramname"><em>session</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">const std::vector&lt; <a class="el" href="structRuntimeEditor_1_1Change.html">RuntimeEditor::Change</a> &gt; &amp;&#160;</td>
+          <td class="paramname"><em>changes</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">std::string &amp;&#160;</td>
+          <td class="paramname"><em>error</em>&#160;</td>
+        </tr>
+        <tr>
+          <td></td>
+          <td>)</td>
+          <td></td><td></td>
+        </tr>
+      </table>
+</div><div class="memdoc">
+<p>Contains loader, codec and feature-validator exceptions at the runtime replacement boundary; failures preserve the live career and draft. </p>
+
+</div>
+</div>
 <a id="a70574080700ddb6fbf7d6e00a7e851f6" name="a70574080700ddb6fbf7d6e00a7e851f6"></a>
 <h2 class="memtitle"><span class="permalink"><a href="#a70574080700ddb6fbf7d6e00a7e851f6">&#9670;&#160;</a></span>applyForJob()</h2>
 
@@ -1669,6 +1732,23 @@ Private Attributes</h2></td></tr>
       </table>
 </div><div class="memdoc">
 <p>Designates every duty from the current XI (the automatic choices). </p>
+
+</div>
+</div>
+<a id="a67fbbf24ab97a10e84591be865a5a3ad" name="a67fbbf24ab97a10e84591be865a5a3ad"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a67fbbf24ab97a10e84591be865a5a3ad">&#9670;&#160;</a></span>beginEditor()</h2>
+
+<div class="memitem">
+<div class="memproto">
+      <table class="memname">
+        <tr>
+          <td class="memname">std::shared_ptr&lt; <a class="el" href="structGameController_1_1EditorSession.html">GameController::EditorSession</a> &gt; GameController::beginEditor </td>
+          <td>(</td>
+          <td class="paramname"></td><td>)</td>
+          <td></td>
+        </tr>
+      </table>
+</div><div class="memdoc">
 
 </div>
 </div>
@@ -1890,6 +1970,23 @@ Private Attributes</h2></td></tr>
 
 </div>
 </div>
+<a id="a85cb006bb9abbd6610f4bc325f6af8aa" name="a85cb006bb9abbd6610f4bc325f6af8aa"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a85cb006bb9abbd6610f4bc325f6af8aa">&#9670;&#160;</a></span>cancelEditor()</h2>
+
+<div class="memitem">
+<div class="memproto">
+      <table class="memname">
+        <tr>
+          <td class="memname">void GameController::cancelEditor </td>
+          <td>(</td>
+          <td class="paramname"></td><td>)</td>
+          <td></td>
+        </tr>
+      </table>
+</div><div class="memdoc">
+
+</div>
+</div>
 <a id="a3b5cad07c4afa15fa201664fae674488" name="a3b5cad07c4afa15fa201664fae674488"></a>
 <h2 class="memtitle"><span class="permalink"><a href="#a3b5cad07c4afa15fa201664fae674488">&#9670;&#160;</a></span>cancelScoutAssignment()</h2>
 
@@ -2063,6 +2160,31 @@ Private Attributes</h2></td></tr>
       </table>
 </div><div class="memdoc">
 <p>True when <code>club</code> may sign a player without a club today: any day in most countries, only in and shortly after the windows in some. </p>
+
+</div>
+</div>
+<a id="ae1900bef18f082affe3668b316ebd48b" name="ae1900bef18f082affe3668b316ebd48b"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#ae1900bef18f082affe3668b316ebd48b">&#9670;&#160;</a></span>canUndoEditor()</h2>
+
+<div class="memitem">
+<div class="memproto">
+<table class="mlabels">
+  <tr>
+  <td class="mlabels-left">
+      <table class="memname">
+        <tr>
+          <td class="memname">bool GameController::canUndoEditor </td>
+          <td>(</td>
+          <td class="paramname"></td><td>)</td>
+          <td> const</td>
+        </tr>
+      </table>
+  </td>
+  <td class="mlabels-right">
+<span class="mlabels"><span class="mlabel">inline</span></span>  </td>
+  </tr>
+</table>
+</div><div class="memdoc">
 
 </div>
 </div>
@@ -3575,6 +3697,32 @@ Private Attributes</h2></td></tr>
       </table>
 </div><div class="memdoc">
 <p>Leaders, cliques, cohesion, mood, requests and promises. </p>
+
+</div>
+</div>
+<a id="a4240353bc9acceda24d0970eaa3f1601" name="a4240353bc9acceda24d0970eaa3f1601"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a4240353bc9acceda24d0970eaa3f1601">&#9670;&#160;</a></span>getEditorRevision()</h2>
+
+<div class="memitem">
+<div class="memproto">
+<table class="mlabels">
+  <tr>
+  <td class="mlabels-left">
+      <table class="memname">
+        <tr>
+          <td class="memname">std::uint64_t GameController::getEditorRevision </td>
+          <td>(</td>
+          <td class="paramname"></td><td>)</td>
+          <td> const</td>
+        </tr>
+      </table>
+  </td>
+  <td class="mlabels-right">
+<span class="mlabels"><span class="mlabel">inline</span></span>  </td>
+  </tr>
+</table>
+</div><div class="memdoc">
+<p>Number of successful runtime replacements; used to invalidate <a class="el" href="namespaceUI.html" title="Small vector icons drawn with ImDrawList (no icon font needed).">UI</a> caches. </p>
 
 </div>
 </div>
@@ -7632,8 +7780,8 @@ Private Attributes</h2></td></tr>
 
 </div>
 </div>
-<a id="a5e00cbaffe6833c60f626e85411c243c" name="a5e00cbaffe6833c60f626e85411c243c"></a>
-<h2 class="memtitle"><span class="permalink"><a href="#a5e00cbaffe6833c60f626e85411c243c">&#9670;&#160;</a></span>persist()</h2>
+<a id="ad5266c8778adf9c775a797c0da9ddb03" name="ad5266c8778adf9c775a797c0da9ddb03"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#ad5266c8778adf9c775a797c0da9ddb03">&#9670;&#160;</a></span>persistLocked()</h2>
 
 <div class="memitem">
 <div class="memproto">
@@ -7642,7 +7790,7 @@ Private Attributes</h2></td></tr>
   <td class="mlabels-left">
       <table class="memname">
         <tr>
-          <td class="memname">bool GameController::persist </td>
+          <td class="memname">bool GameController::persistLocked </td>
           <td>(</td>
           <td class="paramtype">bool&#160;</td>
           <td class="paramname"><em>autosave</em></td><td>)</td>
@@ -7655,7 +7803,7 @@ Private Attributes</h2></td></tr>
   </tr>
 </table>
 </div><div class="memdoc">
-<p>Flushes the game and atomically replaces the slot file. </p>
+<p>Flushes the game and atomically replaces the slot file. Caller must hold runtime_mutex, including autosaves during advancement. </p>
 
 </div>
 </div>
@@ -8027,6 +8175,24 @@ Private Attributes</h2></td></tr>
 
 </div>
 </div>
+<a id="a379c70f771ebb847c2e5824ae7f0784e" name="a379c70f771ebb847c2e5824ae7f0784e"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a379c70f771ebb847c2e5824ae7f0784e">&#9670;&#160;</a></span>registerEditorValidator()</h2>
+
+<div class="memitem">
+<div class="memproto">
+      <table class="memname">
+        <tr>
+          <td class="memname">void GameController::registerEditorValidator </td>
+          <td>(</td>
+          <td class="paramtype"><a class="el" href="namespaceRuntimeEditor.html#aace83de1cb13f3d5bed01766a07efe4a">RuntimeEditor::Validator</a>&#160;</td>
+          <td class="paramname"><em>validator</em></td><td>)</td>
+          <td></td>
+        </tr>
+      </table>
+</div><div class="memdoc">
+
+</div>
+</div>
 <a id="add36b9ab836aff933b8aad7bbc08d532" name="add36b9ab836aff933b8aad7bbc08d532"></a>
 <h2 class="memtitle"><span class="permalink"><a href="#add36b9ab836aff933b8aad7bbc08d532">&#9670;&#160;</a></span>rejectBid()</h2>
 
@@ -8229,6 +8395,32 @@ Private Attributes</h2></td></tr>
       </table>
 </div><div class="memdoc">
 <p>Extends a managed player's contract to <code>terms.years</code> seasons (the current one included) if he and his agent accept the terms, as one round of the renewal talks. </p>
+
+</div>
+</div>
+<a id="a67d1d7ee2a43bb9bb7c39f1018b2a60b" name="a67d1d7ee2a43bb9bb7c39f1018b2a60b"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a67d1d7ee2a43bb9bb7c39f1018b2a60b">&#9670;&#160;</a></span>replaceEditorDatabase()</h2>
+
+<div class="memitem">
+<div class="memproto">
+<table class="mlabels">
+  <tr>
+  <td class="mlabels-left">
+      <table class="memname">
+        <tr>
+          <td class="memname">void GameController::replaceEditorDatabase </td>
+          <td>(</td>
+          <td class="paramtype">std::shared_ptr&lt; <a class="el" href="classDatabaseConnection.html">DatabaseConnection</a> &gt;&#160;</td>
+          <td class="paramname"><em>connection</em></td><td>)</td>
+          <td></td>
+        </tr>
+      </table>
+  </td>
+  <td class="mlabels-right">
+<span class="mlabels"><span class="mlabel">private</span></span>  </td>
+  </tr>
+</table>
+</div><div class="memdoc">
 
 </div>
 </div>
@@ -9472,6 +9664,24 @@ Private Attributes</h2></td></tr>
 
 </div>
 </div>
+<a id="ada9113a5b08d1dc46608e7f1024420e6" name="ada9113a5b08d1dc46608e7f1024420e6"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#ada9113a5b08d1dc46608e7f1024420e6">&#9670;&#160;</a></span>undoEditor()</h2>
+
+<div class="memitem">
+<div class="memproto">
+      <table class="memname">
+        <tr>
+          <td class="memname">bool GameController::undoEditor </td>
+          <td>(</td>
+          <td class="paramtype">std::string &amp;&#160;</td>
+          <td class="paramname"><em>error</em></td><td>)</td>
+          <td></td>
+        </tr>
+      </table>
+</div><div class="memdoc">
+
+</div>
+</div>
 <a id="a68856a34be4eb7393e5366f8fe07cba3" name="a68856a34be4eb7393e5366f8fe07cba3"></a>
 <h2 class="memtitle"><span class="permalink"><a href="#a68856a34be4eb7393e5366f8fe07cba3">&#9670;&#160;</a></span>undoReclaimedDuty()</h2>
 
@@ -9728,6 +9938,94 @@ Private Attributes</h2></td></tr>
 
 </div>
 </div>
+<a id="ad38cd75d1aaa7acc1a5eaf5022ee5ea7" name="ad38cd75d1aaa7acc1a5eaf5022ee5ea7"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#ad38cd75d1aaa7acc1a5eaf5022ee5ea7">&#9670;&#160;</a></span>editor_backup</h2>
+
+<div class="memitem">
+<div class="memproto">
+<table class="mlabels">
+  <tr>
+  <td class="mlabels-left">
+      <table class="memname">
+        <tr>
+          <td class="memname">std::shared_ptr&lt;<a class="el" href="classDatabaseConnection.html">DatabaseConnection</a>&gt; GameController::editor_backup</td>
+        </tr>
+      </table>
+  </td>
+  <td class="mlabels-right">
+<span class="mlabels"><span class="mlabel">private</span></span>  </td>
+  </tr>
+</table>
+</div><div class="memdoc">
+
+</div>
+</div>
+<a id="ae6f623cc974bc06da5e47737eaca22a5" name="ae6f623cc974bc06da5e47737eaca22a5"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#ae6f623cc974bc06da5e47737eaca22a5">&#9670;&#160;</a></span>editor_revision</h2>
+
+<div class="memitem">
+<div class="memproto">
+<table class="mlabels">
+  <tr>
+  <td class="mlabels-left">
+      <table class="memname">
+        <tr>
+          <td class="memname">std::uint64_t GameController::editor_revision = 0</td>
+        </tr>
+      </table>
+  </td>
+  <td class="mlabels-right">
+<span class="mlabels"><span class="mlabel">private</span></span>  </td>
+  </tr>
+</table>
+</div><div class="memdoc">
+
+</div>
+</div>
+<a id="af36331c442673ba972a5a154b5be5426" name="af36331c442673ba972a5a154b5be5426"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#af36331c442673ba972a5a154b5be5426">&#9670;&#160;</a></span>editor_session</h2>
+
+<div class="memitem">
+<div class="memproto">
+<table class="mlabels">
+  <tr>
+  <td class="mlabels-left">
+      <table class="memname">
+        <tr>
+          <td class="memname">std::weak_ptr&lt;<a class="el" href="structGameController_1_1EditorSession.html">EditorSession</a>&gt; GameController::editor_session</td>
+        </tr>
+      </table>
+  </td>
+  <td class="mlabels-right">
+<span class="mlabels"><span class="mlabel">private</span></span>  </td>
+  </tr>
+</table>
+</div><div class="memdoc">
+
+</div>
+</div>
+<a id="a9ec1376f6f513ed9db421a306148befd" name="a9ec1376f6f513ed9db421a306148befd"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a9ec1376f6f513ed9db421a306148befd">&#9670;&#160;</a></span>editor_validators</h2>
+
+<div class="memitem">
+<div class="memproto">
+<table class="mlabels">
+  <tr>
+  <td class="mlabels-left">
+      <table class="memname">
+        <tr>
+          <td class="memname">std::vector&lt;<a class="el" href="namespaceRuntimeEditor.html#aace83de1cb13f3d5bed01766a07efe4a">RuntimeEditor::Validator</a>&gt; GameController::editor_validators</td>
+        </tr>
+      </table>
+  </td>
+  <td class="mlabels-right">
+<span class="mlabels"><span class="mlabel">private</span></span>  </td>
+  </tr>
+</table>
+</div><div class="memdoc">
+
+</div>
+</div>
 <a id="a5bc22fd160fa4b1a0d75dc92d3f83966" name="a5bc22fd160fa4b1a0d75dc92d3f83966"></a>
 <h2 class="memtitle"><span class="permalink"><a href="#a5bc22fd160fa4b1a0d75dc92d3f83966">&#9670;&#160;</a></span>game</h2>
 
@@ -9971,6 +10269,28 @@ Private Attributes</h2></td></tr>
 
 </div>
 </div>
+<a id="a1b567ea69589780b35e30dcf643cc960" name="a1b567ea69589780b35e30dcf643cc960"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a1b567ea69589780b35e30dcf643cc960">&#9670;&#160;</a></span>runtime_mutex</h2>
+
+<div class="memitem">
+<div class="memproto">
+<table class="mlabels">
+  <tr>
+  <td class="mlabels-left">
+      <table class="memname">
+        <tr>
+          <td class="memname">std::mutex GameController::runtime_mutex</td>
+        </tr>
+      </table>
+  </td>
+  <td class="mlabels-right">
+<span class="mlabels"><span class="mlabel">mutable</span><span class="mlabel">private</span></span>  </td>
+  </tr>
+</table>
+</div><div class="memdoc">
+
+</div>
+</div>
 <a id="a62668eef2da77964a67770c9e1b5f2e1" name="a62668eef2da77964a67770c9e1b5f2e1"></a>
 <h2 class="memtitle"><span class="permalink"><a href="#a62668eef2da77964a67770c9e1b5f2e1">&#9670;&#160;</a></span>save_status</h2>
 
@@ -10108,6 +10428,7 @@ Private Attributes</h2></td></tr>
 <li>src/controller/<a class="el" href="game__controller_8h_source.html">game_controller.h</a></li>
 <li>src/controller/<a class="el" href="game__controller_8cpp.html">game_controller.cpp</a></li>
 <li>src/controller/<a class="el" href="game__controller__career_8cpp.html">game_controller_career.cpp</a></li>
+<li>src/controller/<a class="el" href="game__controller__editor_8cpp.html">game_controller_editor.cpp</a></li>
 <li>src/controller/<a class="el" href="game__controller__guidance_8cpp.html">game_controller_guidance.cpp</a></li>
 <li>src/controller/<a class="el" href="game__controller__offers_8cpp.html">game_controller_offers.cpp</a></li>
 <li>src/controller/<a class="el" href="game__controller__season_8cpp.html">game_controller_season.cpp</a></li>

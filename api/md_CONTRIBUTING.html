@@ -135,7 +135,7 @@ Set up for code changes</h1>
 <p>On Linux, install the <a class="el" href="md_docs_2user_2installation.html">platform prerequisites</a>, then use the test-enabled preset from the source root:</p>
 <div class="fragment"><div class="line">cmake --preset release-tests</div>
 <div class="line">cmake --build --preset release-tests --parallel 4</div>
-<div class="line">./out/build/release-tests/src/Player12</div>
+<div class="line">./build/release-tests/src/Player12</div>
 </div><!-- fragment --><p>On Linux with GCC 14, prefix the configure step with <code>CC=gcc-14 CXX=g++-14</code>. macOS needs the compiler/linker setup described in its <a href="docs/user/installation.md#macos">installation guide</a>; select <code>-DBUILD_TESTING=ON</code> there. Windows builds are experimental and the current test suites require POSIX APIs, so use Linux/macOS for test development.</p>
 <p>The <a class="el" href="md_docs_2development_2builds.html">build guide</a> explains sanitizers, profiling, dependency configuration and linting. The <a class="el" href="md_docs_2ARCHITECTURE.html">architecture map</a> explains how the core, GUI and database fit together.</p>
 <h1><a class="anchor" id="autotoc_md15"></a>

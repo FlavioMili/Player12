@@ -19,7 +19,7 @@ var searchData=
   ['red_5fgreen_16',['RED_GREEN',['../namespaceTheme.html#aaa5ad72e8bbefb6e566deb7ae47ab76eabc512462a2c883b0a43583f607c19b5a',1,'Theme']]],
   ['refusetransferrequest_17',['RefuseTransferRequest',['../interactions_8h.html#aa8e7a97ca6d6cad147e8a063859337ffaf5c194eb09b1ebbd4c38c950efc11020',1,'interactions.h']]],
   ['region_18',['Region',['../scouting_8h.html#a5d57348f6c0bf6958ec14817316aa2d8af447ac856e7e72435904956e3b15f433',1,'scouting.h']]],
-  ['regular_19',['regular',['../namespaceUI.html#a993c47f793264d76af4a0e9cd18eac18a820ead78f0fa32544c7ba38fe7ff53d9',1,'UI::REGULAR'],['../squad__status_8h.html#acdd7df077a5ff3ff49af1836d8beb9cead2203cb1237cb6460cbad94564e39345',1,'Regular:&#160;squad_status.h']]],
+  ['regular_19',['regular',['../squad__status_8h.html#acdd7df077a5ff3ff49af1836d8beb9cead2203cb1237cb6460cbad94564e39345',1,'Regular:&#160;squad_status.h'],['../namespaceUI.html#a993c47f793264d76af4a0e9cd18eac18a820ead78f0fa32544c7ba38fe7ff53d9',1,'UI::REGULAR']]],
   ['regular_5fseason_20',['REGULAR_SEASON',['../types_8h.html#a8325bf9916560fc79fd7726e212dfd76ac663a387e6443fa515a47be8a657606a',1,'types.h']]],
   ['reject_21',['Reject',['../structTransferNegotiation_1_1ClubResponse.html#a9d4a03536f6e63f0ad71d7f4f7b1478fad98ac12774fca5c3cbaffe276840c55f',1,'TransferNegotiation::ClubResponse']]],
   ['rejected_22',['rejected',['../classGameController.html#a29932e93f00f0c17f7aaccfc2e8cadbead37b1f6c0512e2118cee17fea015b699',1,'GameController::Rejected'],['../manager__career_8h.html#a3c49ebb8fea620a3c3ddecada918e054ad37b1f6c0512e2118cee17fea015b699',1,'Rejected:&#160;manager_career.h'],['../national__job_8h.html#aa7192562c0c2582fef91ed9714aef299ad37b1f6c0512e2118cee17fea015b699',1,'Rejected:&#160;national_job.h']]],

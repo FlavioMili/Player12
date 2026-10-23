@@ -8,11 +8,12 @@ var searchData=
   ['refusal_5',['Refusal',['../namespaceMatchChanges.html#aa0c7a8c1fad8daa8c2b7ab93d1d22c9b',1,'MatchChanges']]],
   ['reportcolumn_6',['ReportColumn',['../classScoutingScene.html#ae98b707459eb38c2a1dfd30a4e300f59',1,'ScoutingScene']]],
   ['reputationtier_7',['ReputationTier',['../manager__career_8h.html#a862cfc8e5a0be420dc977149266e1d2e',1,'manager_career.h']]],
-  ['riskband_8',['RiskBand',['../medical__centre_8h.html#a8da49925cd05820815992bafa600b3f6',1,'medical_centre.h']]],
-  ['riskreason_9',['RiskReason',['../medical__centre_8h.html#af6982cc311603227909025d58533b93e',1,'medical_centre.h']]],
-  ['rngdomain_10',['RngDomain',['../world__rng_8h.html#a524e3a7f11d051a2d8ad8b3d22ab4407',1,'world_rng.h']]],
-  ['role_11',['Role',['../roles_8h.html#a25049a19fe6ffc37f4035732b370b42c',1,'roles.h']]],
-  ['roleduty_12',['RoleDuty',['../tactics_8h.html#a0def41ff5c7c3157ef5c508203fce19c',1,'tactics.h']]],
-  ['rolefamily_13',['RoleFamily',['../tactics_8h.html#a881873cd22e18431a091f4b42dea2593',1,'tactics.h']]],
-  ['round_14',['Round',['../namespaceContinental.html#afae0a93505fc18e53ae33cd468800da8',1,'Continental']]]
+  ['request_8',['Request',['../classRuntimeEditorDialog.html#ae3deef65a7a0e97721bcbbe33f2477f1',1,'RuntimeEditorDialog']]],
+  ['riskband_9',['RiskBand',['../medical__centre_8h.html#a8da49925cd05820815992bafa600b3f6',1,'medical_centre.h']]],
+  ['riskreason_10',['RiskReason',['../medical__centre_8h.html#af6982cc311603227909025d58533b93e',1,'medical_centre.h']]],
+  ['rngdomain_11',['RngDomain',['../world__rng_8h.html#a524e3a7f11d051a2d8ad8b3d22ab4407',1,'world_rng.h']]],
+  ['role_12',['Role',['../roles_8h.html#a25049a19fe6ffc37f4035732b370b42c',1,'roles.h']]],
+  ['roleduty_13',['RoleDuty',['../tactics_8h.html#a0def41ff5c7c3157ef5c508203fce19c',1,'tactics.h']]],
+  ['rolefamily_14',['RoleFamily',['../tactics_8h.html#a881873cd22e18431a091f4b42dea2593',1,'tactics.h']]],
+  ['round_15',['Round',['../namespaceContinental.html#afae0a93505fc18e53ae33cd468800da8',1,'Continental']]]
 ];

@@ -35,6 +35,7 @@ var namespaceUI =
       [ "SETTINGS", "namespaceUI.html#a4e3e02023e3c9d99f68862819df6b608aed6f7aca7887a927b9ed3d62aa347a86", null ],
       [ "EXIT", "namespaceUI.html#a4e3e02023e3c9d99f68862819df6b608aa42b2fb0e720a080e79a92f4ca97d927", null ],
       [ "SEARCH", "namespaceUI.html#a4e3e02023e3c9d99f68862819df6b608a0f544d682c3a664870f025f48c4b04b5", null ],
+      [ "EDIT", "namespaceUI.html#a4e3e02023e3c9d99f68862819df6b608a93762d802eed04b3e1c59d1d46b35248", null ],
       [ "INBOX", "namespaceUI.html#a4e3e02023e3c9d99f68862819df6b608a7e33429f656f1e6e9d79b29c3f82c57e", null ],
       [ "CLUB", "namespaceUI.html#a4e3e02023e3c9d99f68862819df6b608ac54fc2509b0cd290993c32b5cbf26b09", null ]
     ] ],

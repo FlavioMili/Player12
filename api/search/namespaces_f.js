@@ -1,14 +1,22 @@
 var searchData=
 [
-  ['tactics_0',['Tactics',['../namespaceTactics.html',1,'']]],
-  ['tacticstuning_1',['TacticsTuning',['../namespaceTacticsTuning.html',1,'']]],
-  ['textencoding_2',['TextEncoding',['../namespaceTextEncoding.html',1,'']]],
-  ['theme_3',['Theme',['../namespaceTheme.html',1,'']]],
-  ['theme_3a_3aspace_4',['Space',['../namespaceTheme_1_1Space.html',1,'Theme']]],
-  ['touchline_5',['Touchline',['../namespaceTouchline.html',1,'']]],
-  ['trainingmodel_6',['TrainingModel',['../namespaceTrainingModel.html',1,'']]],
-  ['trainingsystem_7',['TrainingSystem',['../namespaceTrainingSystem.html',1,'']]],
-  ['transfernegotiation_8',['TransferNegotiation',['../namespaceTransferNegotiation.html',1,'']]],
-  ['transfertermseditor_9',['TransferTermsEditor',['../namespaceTransferTermsEditor.html',1,'']]],
-  ['transferwindows_10',['TransferWindows',['../namespaceTransferWindows.html',1,'']]]
+  ['saveformat_0',['SaveFormat',['../namespaceSaveFormat.html',1,'']]],
+  ['scoutexpertisemodel_1',['ScoutExpertiseModel',['../namespaceScoutExpertiseModel.html',1,'']]],
+  ['scoutingtuning_2',['ScoutingTuning',['../namespaceScoutingTuning.html',1,'']]],
+  ['scoutingui_3',['ScoutingUi',['../namespaceScoutingUi.html',1,'']]],
+  ['seasonagenda_4',['SeasonAgenda',['../namespaceSeasonAgenda.html',1,'']]],
+  ['seasoncalendar_5',['SeasonCalendar',['../namespaceSeasonCalendar.html',1,'']]],
+  ['seasonreviewmodel_6',['SeasonReviewModel',['../namespaceSeasonReviewModel.html',1,'']]],
+  ['seasonstats_7',['SeasonStats',['../namespaceSeasonStats.html',1,'']]],
+  ['setpieces_8',['SetPieces',['../namespaceSetPieces.html',1,'']]],
+  ['sqliterows_9',['SqliteRows',['../namespaceSqliteRows.html',1,'']]],
+  ['squadnumbers_10',['SquadNumbers',['../namespaceSquadNumbers.html',1,'']]],
+  ['squadplanner_11',['SquadPlanner',['../namespaceSquadPlanner.html',1,'']]],
+  ['squadstatusmodel_12',['SquadStatusModel',['../namespaceSquadStatusModel.html',1,'']]],
+  ['stadium3d_13',['Stadium3D',['../namespaceStadium3D.html',1,'']]],
+  ['stadium3d_3a_3acrowdflags_14',['CrowdFlags',['../namespaceStadium3D_1_1CrowdFlags.html',1,'Stadium3D']]],
+  ['staffmodel_15',['StaffModel',['../namespaceStaffModel.html',1,'']]],
+  ['standings_16',['Standings',['../namespaceStandings.html',1,'']]],
+  ['stories_17',['Stories',['../namespaceStories.html',1,'']]],
+  ['supportermodel_18',['SupporterModel',['../namespaceSupporterModel.html',1,'']]]
 ];

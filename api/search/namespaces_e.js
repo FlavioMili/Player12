@@ -1,22 +1,6 @@
 var searchData=
 [
-  ['saveformat_0',['SaveFormat',['../namespaceSaveFormat.html',1,'']]],
-  ['scoutexpertisemodel_1',['ScoutExpertiseModel',['../namespaceScoutExpertiseModel.html',1,'']]],
-  ['scoutingtuning_2',['ScoutingTuning',['../namespaceScoutingTuning.html',1,'']]],
-  ['scoutingui_3',['ScoutingUi',['../namespaceScoutingUi.html',1,'']]],
-  ['seasonagenda_4',['SeasonAgenda',['../namespaceSeasonAgenda.html',1,'']]],
-  ['seasoncalendar_5',['SeasonCalendar',['../namespaceSeasonCalendar.html',1,'']]],
-  ['seasonreviewmodel_6',['SeasonReviewModel',['../namespaceSeasonReviewModel.html',1,'']]],
-  ['seasonstats_7',['SeasonStats',['../namespaceSeasonStats.html',1,'']]],
-  ['setpieces_8',['SetPieces',['../namespaceSetPieces.html',1,'']]],
-  ['sqliterows_9',['SqliteRows',['../namespaceSqliteRows.html',1,'']]],
-  ['squadnumbers_10',['SquadNumbers',['../namespaceSquadNumbers.html',1,'']]],
-  ['squadplanner_11',['SquadPlanner',['../namespaceSquadPlanner.html',1,'']]],
-  ['squadstatusmodel_12',['SquadStatusModel',['../namespaceSquadStatusModel.html',1,'']]],
-  ['stadium3d_13',['Stadium3D',['../namespaceStadium3D.html',1,'']]],
-  ['stadium3d_3a_3acrowdflags_14',['CrowdFlags',['../namespaceStadium3D_1_1CrowdFlags.html',1,'Stadium3D']]],
-  ['staffmodel_15',['StaffModel',['../namespaceStaffModel.html',1,'']]],
-  ['standings_16',['Standings',['../namespaceStandings.html',1,'']]],
-  ['stories_17',['Stories',['../namespaceStories.html',1,'']]],
-  ['supportermodel_18',['SupporterModel',['../namespaceSupporterModel.html',1,'']]]
+  ['records_0',['Records',['../namespaceRecords.html',1,'']]],
+  ['rendermath_1',['RenderMath',['../namespaceRenderMath.html',1,'']]],
+  ['runtimeeditor_2',['RuntimeEditor',['../namespaceRuntimeEditor.html',1,'']]]
 ];

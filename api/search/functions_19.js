@@ -14,11 +14,12 @@ var searchData=
   ['_7ematchrenderer2d_11',['~MatchRenderer2D',['../classMatchRenderer2D.html#a82e9dc238963c2c0a918e625f4c2b5fd',1,'MatchRenderer2D']]],
   ['_7ematchrenderer3d_12',['~MatchRenderer3D',['../classMatchRenderer3D.html#a357b2716ac4b9e06102fa19c30f01019',1,'MatchRenderer3D']]],
   ['_7erosterscene_13',['~RosterScene',['../classRosterScene.html#a2affa9fe6e3f6d5410196c8b8b2e3bc5',1,'RosterScene']]],
-  ['_7escopedrenderscale_14',['~ScopedRenderScale',['../classScopedRenderScale.html#af08c3f17fc2c91bffa6a32d36bbd7731',1,'ScopedRenderScale']]],
-  ['_7escopedtext_15',['~ScopedText',['../classTheme_1_1ScopedText.html#a26cac2429fcbd3a616f8c94e15ea7861',1,'Theme::ScopedText']]],
-  ['_7esettingsscene_16',['~SettingsScene',['../classSettingsScene.html#a66463d72a6eb105d6440d3bdfba165ca',1,'SettingsScene']]],
-  ['_7estrategyscene_17',['~StrategyScene',['../classStrategyScene.html#a3d3b1b8b187a9f2ca2424f52bb993781',1,'StrategyScene']]],
-  ['_7eteamselectionscene_18',['~TeamSelectionScene',['../classTeamSelectionScene.html#a86513097cab63a15ace7491e09ee8aab',1,'TeamSelectionScene']]],
-  ['_7ethreadpool_19',['~ThreadPool',['../classThreadPool.html#a44d3d2ab618970605e684efc216655eb',1,'ThreadPool']]],
-  ['_7etransfermarketscene_20',['~TransferMarketScene',['../classTransferMarketScene.html#aaa232b4c3115799988734545df91dad5',1,'TransferMarketScene']]]
+  ['_7eruntimeeditordialog_14',['~RuntimeEditorDialog',['../classRuntimeEditorDialog.html#a29dd81e4433d8e083946c22ceb959121',1,'RuntimeEditorDialog']]],
+  ['_7escopedrenderscale_15',['~ScopedRenderScale',['../classScopedRenderScale.html#af08c3f17fc2c91bffa6a32d36bbd7731',1,'ScopedRenderScale']]],
+  ['_7escopedtext_16',['~ScopedText',['../classTheme_1_1ScopedText.html#a26cac2429fcbd3a616f8c94e15ea7861',1,'Theme::ScopedText']]],
+  ['_7esettingsscene_17',['~SettingsScene',['../classSettingsScene.html#a66463d72a6eb105d6440d3bdfba165ca',1,'SettingsScene']]],
+  ['_7estrategyscene_18',['~StrategyScene',['../classStrategyScene.html#a3d3b1b8b187a9f2ca2424f52bb993781',1,'StrategyScene']]],
+  ['_7eteamselectionscene_19',['~TeamSelectionScene',['../classTeamSelectionScene.html#a86513097cab63a15ace7491e09ee8aab',1,'TeamSelectionScene']]],
+  ['_7ethreadpool_20',['~ThreadPool',['../classThreadPool.html#a44d3d2ab618970605e684efc216655eb',1,'ThreadPool']]],
+  ['_7etransfermarketscene_21',['~TransferMarketScene',['../classTransferMarketScene.html#aaa232b4c3115799988734545df91dad5',1,'TransferMarketScene']]]
 ];
