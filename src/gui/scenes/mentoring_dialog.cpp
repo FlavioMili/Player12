@@ -91,14 +91,15 @@ void MentoringDialog::rebuild(GameController& controller)
   for (const auto& player : controller.getPlayersForTeam(team->get().getId()))
   {
     const PlayerID id = player.get().getId();
-    const bool grouped = std::ranges::any_of(
-        groups,
-        [id](const GroupView& group)
-        {
-          return group.mentor.id == id ||
-                 std::ranges::contains(group.mentees, id, &Member::id);
-        });
-    if (grouped) continue;
+    if (const bool grouped = std::ranges::any_of(
+            groups,
+            [id](const GroupView& group)
+            {
+              return group.mentor.id == id ||
+                     std::ranges::contains(group.mentees, id, &Member::id);
+            });
+        grouped)
+      continue;
     const std::string label = fmt::sprintf(
         "%s (%d, %s)", player.get().getName().c_str(), player.get().getAge(),
         LOC(YouthModel::personalityKey(player.get().getTraits())));
@@ -174,9 +175,9 @@ bool MentoringDialog::render(GameController& controller)
     ImGui::PopTextWrapPos();
   }
   ImGui::Dummy(ImVec2(0.0f, scaled(Theme::Space::S)));
-  const ImVec2 closeSize(
-      std::min(scaled(150.0f), ImGui::GetContentRegionAvail().x), 0.0f);
-  if (UI::primaryButton(LOC("TALK_CLOSE"), closeSize) ||
+  if (const ImVec2 closeSize(
+          std::min(scaled(150.0f), ImGui::GetContentRegionAvail().x), 0.0f);
+      UI::primaryButton(LOC("TALK_CLOSE"), closeSize) ||
       ImGui::IsKeyPressed(ImGuiKey_Escape, false))
   {
     ImGui::CloseCurrentPopup();

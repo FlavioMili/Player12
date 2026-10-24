@@ -11,6 +11,7 @@
 #include <cstdint>
 #include <map>
 #include <span>
+#include <utility>
 #include <vector>
 
 #include "global/languages.h"
@@ -55,7 +56,7 @@ using LanguageSet = std::uint32_t;
 
 constexpr LanguageSet languageBit(SpokenLanguage language)
 {
-  return LanguageSet{1} << static_cast<unsigned>(language);
+  return LanguageSet{1} << static_cast<unsigned>(std::to_underlying(language));
 }
 
 constexpr bool speaks(LanguageSet languages, SpokenLanguage language)

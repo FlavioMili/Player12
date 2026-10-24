@@ -41,11 +41,15 @@ constexpr std::uint64_t WORLD_SEED = 20250702;
 
 int uniqueSlot(int offset)
 {
-  return 300'000 + static_cast<int>(getpid() % 100'000) * 10 + offset;
+  return 300'000 + (getpid() % 100'000) * 10 + offset;
 }
 
 struct SlotCleanup
 {
+  explicit SlotCleanup(int saveSlot) : slot(saveSlot) {}
+  SlotCleanup(const SlotCleanup&) = delete;
+  SlotCleanup& operator=(const SlotCleanup&) = delete;
+
   int slot;
   ~SlotCleanup() { RuntimePaths::removeSave(slot); }
 };
@@ -712,9 +716,11 @@ TEST(ContinentalTest, ExtraTimeResultCountsForTheManager)
 
     // Form and the manager's record count the match's score after extra
     // time (a second leg can be drawn on the day and still decide the tie).
-    const char outcome = home_goals > away_goals   ? 'W'
-                         : home_goals < away_goals ? 'L'
-                                                   : 'D';
+    char outcome = 'D';
+    if (home_goals > away_goals)
+      outcome = 'W';
+    else if (home_goals < away_goals)
+      outcome = 'L';
     const std::string& form =
         controller->getTeamById(managed)->get().getRecentForm();
     ASSERT_FALSE(form.empty());
@@ -831,8 +837,8 @@ TEST(KnockoutPipelineTest, CupTiesArePlayedToAWinnerByTheEngine)
   std::vector<TeamID> free_clubs;
   for (const auto& team : controller->getTeams())
   {
-    const TeamID id = team.get().getId();
-    if (id != FREE_AGENTS_TEAM_ID && id != managed && !busy(id))
+    if (const TeamID id = team.get().getId();
+        id != FREE_AGENTS_TEAM_ID && id != managed && !busy(id))
       free_clubs.push_back(id);
     if (free_clubs.size() == 80) break;
   }
@@ -913,10 +919,11 @@ TEST(KnockoutPipelineTest, LiveCupTieKeepsTheEnginesExtraTimeAndShootout)
     if (other.getId() == FREE_AGENTS_TEAM_ID || other.getId() == managed ||
         other.getLeagueId() == own_league)
       continue;
-    const bool free_today = std::ranges::none_of(
-        controller->getTeamFixtures(other.getId()),
-        [&](const Match& match) { return match.getDate() == today; });
-    if (!free_today) continue;
+    if (const bool free_today = std::ranges::none_of(
+            controller->getTeamFixtures(other.getId()),
+            [&](const Match& match) { return match.getDate() == today; });
+        !free_today)
+      continue;
     const Match probe(managed, other.getId(), today, MatchType::CUP);
     const auto rules = controller->getGame()->getCompetitions().knockoutRules(
         controller->getGame()->getCalendar(), probe);

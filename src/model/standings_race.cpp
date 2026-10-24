@@ -10,8 +10,10 @@
 
 #include <algorithm>
 #include <limits>
+#include <numeric>
 #include <optional>
 #include <unordered_map>
+#include <utility>
 
 #include "database/gamedata.h"
 #include "model/calendar.h"
@@ -81,11 +83,10 @@ struct Record
 class RaceSolver
 {
  public:
-  explicit RaceSolver(const RaceInput& input) : rule(input.rule)
+  explicit RaceSolver(const RaceInput& input)
+      : rule(input.rule), teams(input.teams), names(input.names)
   {
     const size_t count = input.teams.size();
-    teams = input.teams;
-    names = input.names;
     names.resize(count);
     index_of.reserve(count);
     for (size_t index = 0; index < count; ++index)
@@ -119,8 +120,16 @@ class RaceSolver
       goals_for[a] += fixture.away_goals;
       pair_diff[h * count + a] += margin;
       pair_diff[a * count + h] -= margin;
-      const int home_points = margin > 0 ? WIN_POINTS : margin == 0 ? 1 : 0;
-      const int away_points = margin < 0 ? WIN_POINTS : margin == 0 ? 1 : 0;
+      int home_points = 0;
+      int away_points = 0;
+      if (margin > 0)
+        home_points = WIN_POINTS;
+      else if (margin == 0)
+        home_points = 1;
+      if (margin < 0)
+        away_points = WIN_POINTS;
+      else if (margin == 0)
+        away_points = 1;
       base_points[h] += home_points;
       base_points[a] += away_points;
       pair_points[h * count + a] += home_points;
@@ -180,19 +189,20 @@ class RaceSolver
     const auto& games = fixtures_of[t];
     for (size_t k = 0; k < games.size(); ++k)
     {
-      const int8_t result =
-          worst_case ? (own != nullptr ? (*own)[k] : OWN_LOSS) : OWN_WIN;
+      int8_t result = OWN_WIN;
+      if (worst_case) result = own != nullptr ? (*own)[k] : OWN_LOSS;
       const bool at_home = remaining[games[k]].first == t;
-      const int8_t match = result == OWN_DRAW               ? DRAW
-                           : (result == OWN_WIN) == at_home ? HOME_WIN
-                                                            : AWAY_WIN;
+      int8_t match = AWAY_WIN;
+      if (result == OWN_DRAW)
+        match = DRAW;
+      else if ((result == OWN_WIN) == at_home)
+        match = HOME_WIN;
       assign(games[k], match);
     }
     final_points = points[t];
     query_nodes = 0;
     aborted = false;
-    const bool found = search(0);
-    if (found) return Answer::YES;
+    if (const bool found = search(0); found) return Answer::YES;
     return aborted ? Answer::UNKNOWN : Answer::NO;
   }
 
@@ -240,7 +250,14 @@ class RaceSolver
 
   bool search(size_t position)
   {
-    if (++query_nodes > QUERY_NODE_LIMIT || ++report_nodes > REPORT_NODE_LIMIT)
+    ++query_nodes;
+    if (query_nodes > QUERY_NODE_LIMIT)
+    {
+      aborted = true;
+      return false;
+    }
+    ++report_nodes;
+    if (report_nodes > REPORT_NODE_LIMIT)
     {
       aborted = true;
       return false;
@@ -303,12 +320,16 @@ class RaceSolver
   {
     const auto score = [&](int8_t result)
     {
-      const int home_after = points[home] + (result == HOME_WIN ? WIN_POINTS
-                                             : result == DRAW   ? 1
-                                                                : 0);
-      const int away_after = points[away] + (result == AWAY_WIN ? WIN_POINTS
-                                             : result == DRAW   ? 1
-                                                                : 0);
+      int home_after = points[home];
+      int away_after = points[away];
+      if (result == HOME_WIN)
+        home_after += WIN_POINTS;
+      else if (result == DRAW)
+        ++home_after;
+      if (result == AWAY_WIN)
+        away_after += WIN_POINTS;
+      else if (result == DRAW)
+        ++away_after;
       const int passed = static_cast<int>(home_after > final_points) +
                          static_cast<int>(away_after > final_points);
       const int level = static_cast<int>(home_after >= final_points) +
@@ -426,7 +447,7 @@ class RaceSolver
           !fixtures_of[other].empty())
         return std::nullopt;
     }
-    std::vector<size_t> members = {target, x};
+    std::vector members = {target, x};
     for (const size_t other : group)
     {
       if (other == x) continue;
@@ -478,8 +499,8 @@ class RaceSolver
     if (rule == TieBreakRule::HEAD_TO_HEAD)
     {
       const int x_points = groupPoints(x, rx);
-      const int t_points = groupPoints(t, rt);
-      if (x_points != t_points) return x_points > t_points;
+      if (const int t_points = groupPoints(t, rt); x_points != t_points)
+        return x_points > t_points;
       if (rt.group_losses > 0 || rx.group_wins > 0) return true;
       const int64_t x_mini = groupDiff(x) - rx.group_losses;
       const int64_t t_mini = groupDiff(t) + rt.group_wins;
@@ -505,8 +526,8 @@ class RaceSolver
     if (rule == TieBreakRule::HEAD_TO_HEAD)
     {
       const int x_points = groupPoints(x, rx);
-      const int t_points = groupPoints(t, rt);
-      if (x_points != t_points) return x_points < t_points;
+      if (const int t_points = groupPoints(t, rt); x_points != t_points)
+        return x_points < t_points;
       if (rt.group_wins > 0 || rx.group_losses > 0) return true;
       const int64_t x_mini = groupDiff(x) + rx.group_wins;
       const int64_t t_mini = groupDiff(t) - rt.group_losses;
@@ -551,35 +572,36 @@ class RaceSolver
   bool aborted = false;
 };
 
+using enum Standings::Race;
 constexpr std::array<Standings::Race, Standings::RACE_COUNT> RACES = {
-    Standings::Race::TITLE,       Standings::Race::PROMOTION,
-    Standings::Race::PLAY_OFF,    Standings::Race::CONTINENTAL_TOP,
-    Standings::Race::CONTINENTAL, Standings::Race::SURVIVAL};
+    TITLE, PROMOTION, PLAY_OFF, CONTINENTAL_TOP, CONTINENTAL, SURVIVAL};
 
 Standings::ClinchReport reportFor(RaceSolver& solver, size_t club, TeamID team,
                                   const Standings::RacePlaces& places)
 {
+  using enum Answer;
+  using enum Standings::RaceState;
   Standings::ClinchReport report;
   report.team_id = team;
   for (const Standings::Race race : RACES)
   {
-    auto& state = report.races[static_cast<size_t>(race)];
+    auto& state = report.races[static_cast<size_t>(std::to_underlying(race))];
     const uint16_t cutoff = Standings::raceCutoff(race, places, solver.size());
     if (cutoff == 0)
     {
-      state = Standings::RaceState::NONE;
+      state = NONE;
       continue;
     }
-    state = Standings::RaceState::OPEN;
-    if (solver.canPushAbove(club, cutoff, nullptr) == Answer::NO)
-      state = Standings::RaceState::SECURED;
-    else if (solver.canKeepBelow(club, cutoff - 1u) == Answer::NO)
-      state = Standings::RaceState::LOST;
+    state = OPEN;
+    if (solver.canPushAbove(club, cutoff, nullptr) == NO)
+      state = SECURED;
+    else if (solver.canKeepBelow(club, cutoff - 1u) == NO)
+      state = LOST;
   }
   const auto secured = [&](Standings::Race race)
   {
-    return report.races[static_cast<size_t>(race)] ==
-           Standings::RaceState::SECURED;
+    return report.races[static_cast<size_t>(std::to_underlying(race))] ==
+           SECURED;
   };
   using Standings::Clinch;
   using Standings::Race;
@@ -595,8 +617,8 @@ Standings::ClinchReport reportFor(RaceSolver& solver, size_t club, TeamID team,
     report.status = Clinch::CONTINENTAL;
   else if (secured(Race::SURVIVAL))
     report.status = Clinch::SAFE;
-  else if (report.races[static_cast<size_t>(Race::SURVIVAL)] ==
-           Standings::RaceState::LOST)
+  else if (report.races[static_cast<size_t>(
+               std::to_underlying(Race::SURVIVAL))] == LOST)
     report.status = Clinch::RELEGATED;
   return report;
 }
@@ -606,7 +628,10 @@ int ownPoints(const std::vector<int8_t>& results)
 {
   int total = 0;
   for (const int8_t result : results)
-    total += result == OWN_WIN ? WIN_POINTS : result == OWN_DRAW ? 1 : 0;
+    if (result == OWN_WIN)
+      total += WIN_POINTS;
+    else if (result == OWN_DRAW)
+      ++total;
   return total;
 }
 
@@ -619,10 +644,11 @@ int ownPoints(const std::vector<int8_t>& results)
  */
 Answer guarantees(RaceSolver& solver, size_t club, uint16_t cutoff, int minimum)
 {
+  using enum Answer;
   const size_t games = solver.fixturesOf(club).size();
   size_t combinations = 1;
   for (size_t game = 0; game < games; ++game) combinations *= 3;
-  std::vector<int8_t> results(games, OWN_LOSS);
+  std::vector results(games, OWN_LOSS);
   bool unknown = false;
   for (size_t code = 0; code < combinations; ++code)
   {
@@ -632,13 +658,14 @@ Answer guarantees(RaceSolver& solver, size_t club, uint16_t cutoff, int minimum)
       results[game] = static_cast<int8_t>(rest % 3);
       rest /= 3;
     }
-    const int total = ownPoints(results);
-    if (total < minimum || total > minimum + 2) continue;
+    if (const int total = ownPoints(results);
+        total < minimum || total > minimum + 2)
+      continue;
     const Answer answer = solver.canPushAbove(club, cutoff, &results);
-    if (answer == Answer::YES) return Answer::NO;
-    if (answer == Answer::UNKNOWN) unknown = true;
+    if (answer == YES) return NO;
+    if (answer == UNKNOWN) unknown = true;
   }
-  return unknown ? Answer::UNKNOWN : Answer::YES;
+  return unknown ? UNKNOWN : YES;
 }
 }  // namespace
 
@@ -682,7 +709,7 @@ Standings::ClinchReport Standings::clinchReport(const RaceInput& input,
 {
   RaceSolver solver(input);
   const auto club = solver.indexOf(team);
-  if (!club)
+  if (!club.has_value())
   {
     ClinchReport none;
     none.team_id = team;
@@ -714,7 +741,7 @@ std::vector<Standings::RaceNeed> Standings::whatYouNeed(
   std::vector<RaceNeed> needs;
   RaceSolver solver(input);
   const auto club = solver.indexOf(team);
-  if (!club) return needs;
+  if (!club.has_value()) return needs;
   const auto& games = solver.fixturesOf(*club);
   if (games.empty() || games.size() > MAX_NEED_GAMES) return needs;
   const int most = WIN_POINTS * static_cast<int>(games.size());
@@ -725,7 +752,9 @@ std::vector<Standings::RaceNeed> Standings::whatYouNeed(
   const ClinchReport report = reportFor(solver, *club, team, places);
   for (const Race race : RACES)
   {
-    if (report.races[static_cast<size_t>(race)] != RaceState::OPEN) continue;
+    if (report.races[static_cast<size_t>(std::to_underlying(race))] !=
+        RaceState::OPEN)
+      continue;
     const uint16_t cutoff = raceCutoff(race, places, solver.size());
     RaceNeed need;
     need.race = race;
@@ -746,7 +775,7 @@ std::vector<Standings::RaceNeed> Standings::whatYouNeed(
     bool unknown = false;
     while (low < high)
     {
-      const int middle = (low + high) / 2;
+      const int middle = std::midpoint(low, high);
       const Answer answer = guarantees(solver, *club, cutoff, middle);
       if (answer == Answer::UNKNOWN)
       {
@@ -833,7 +862,7 @@ Standings::RacePlaces Standings::racePlaces(
                      parent.getTeamIDs().size() / (4 * children)});
   };
   const auto parent_id = league->get().getParentLeagueID();
-  if (parent_id)
+  if (parent_id.has_value())
     if (const auto parent = gamedata.getLeague(*parent_id))
       places.promotion =
           static_cast<uint16_t>(slotsBetween(parent->get(), league->get()));
@@ -845,7 +874,8 @@ Standings::RacePlaces Standings::racePlaces(
 
   // Continental places: top divisions only, from the association ranking.
   const auto continent = Continental::continentOf(league_id);
-  if (parent_id || continental == nullptr || !continent) return places;
+  if (parent_id.has_value() || continental == nullptr || !continent.has_value())
+    return places;
   const auto ranking = continental->associationRanking(*continent);
   const auto mine = std::ranges::find(
       ranking, league_id,
@@ -859,7 +889,7 @@ Standings::RacePlaces Standings::racePlaces(
   }
   // The ranking is updated with this season's results before qualifying,
   // so assume the association may still drop one place.
-  const size_t current = static_cast<size_t>(mine - ranking.begin());
+  const auto current = static_cast<size_t>(mine - ranking.begin());
   const auto placesAt = [&](size_t rank) -> std::pair<uint16_t, uint16_t>
   {
     std::vector<size_t> taken(sizes.size(), 0);

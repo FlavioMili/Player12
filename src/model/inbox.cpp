@@ -23,8 +23,8 @@
 
 namespace
 {
-constexpr std::array<const char*,
-                     static_cast<std::size_t>(InboxCategory::COUNT)>
+constexpr std::array<const char*, static_cast<std::size_t>(
+                                      std::to_underlying(InboxCategory::COUNT))>
     CATEGORY_KEYS = {"INBOX_CAT_GENERAL",  "INBOX_CAT_MATCH",
                      "INBOX_CAT_INJURY",   "INBOX_CAT_TRANSFER",
                      "INBOX_CAT_CONTRACT", "INBOX_CAT_YOUTH",
@@ -75,7 +75,7 @@ constexpr std::array<const char*, 12> MONTH_KEYS = {
     "MONTH_MAY", "MONTH_JUN", "MONTH_JUL", "MONTH_AUG",
     "MONTH_SEP", "MONTH_OCT", "MONTH_NOV", "MONTH_DEC"};
 
-bool isKeyArgument(const std::string& argument)
+bool isKeyArgument(std::string_view argument)
 {
   return argument.size() > 1 && argument.front() == '@';
 }
@@ -100,7 +100,10 @@ bool isIsoDate(const std::string& argument)
 // before that carry finished text ("€1.25M"), which is left as it is.
 std::string expandMoney(const std::string& argument)
 {
-  static constexpr std::string_view EURO = "\xE2\x82\xAC";
+  static constexpr std::string_view EURO =
+      "\xE2"
+      "\x82"
+      "\xAC";
   std::size_t found = argument.find(EURO);
   if (found == std::string::npos) return argument;
   std::string result;
@@ -113,12 +116,12 @@ std::string expandMoney(const std::string& argument)
     while (end < argument.size() && argument[end] >= '0' &&
            argument[end] <= '9')
       ++end;
-    const bool token =
-        end > digits && end - digits <= 18 &&
-        (end == argument.size() ||
-         (std::isalnum(static_cast<unsigned char>(argument[end])) == 0 &&
-          argument[end] != '.' && argument[end] != ','));
-    if (!token)
+    if (const bool token =
+            end > digits && end - digits <= 18 &&
+            (end == argument.size() ||
+             (std::isalnum(static_cast<unsigned char>(argument[end])) == 0 &&
+              argument[end] != '.' && argument[end] != ','));
+        !token)
     {
       found += EURO.size();
       continue;
@@ -209,7 +212,7 @@ std::string resolveSpec(const std::string& argument, std::string_view spec)
 
 const char* inboxCategoryKey(InboxCategory category)
 {
-  const auto index = static_cast<std::size_t>(category);
+  const auto index = static_cast<std::size_t>(std::to_underlying(category));
   return index < CATEGORY_KEYS.size() ? CATEGORY_KEYS[index]
                                       : "INBOX_CAT_GENERAL";
 }
@@ -262,7 +265,11 @@ std::string localizedDate(const std::string& text)
 
 std::string formatMoney(std::int64_t amount)
 {
-  return "\xE2\x82\xAC" + std::to_string(amount);
+  return std::format("{}{}",
+                     "\xE2"
+                     "\x82"
+                     "\xAC",
+                     amount);
 }
 
 std::string InboxMessage::formatTitle() const
@@ -287,9 +294,10 @@ bool Inbox::isDigested(const std::string& title_key)
 
 InboxAction Inbox::actionFor(const std::string& title_key)
 {
+  using enum InboxAction;
   const auto found =
       std::ranges::find(ACTION_TITLES, title_key, &ActionEntry::title_key);
-  return found != ACTION_TITLES.end() ? found->action : InboxAction::None;
+  return found != ACTION_TITLES.end() ? found->action : None;
 }
 
 bool Inbox::isDecision(InboxAction action)
@@ -304,13 +312,15 @@ bool Inbox::matchesView(const InboxMessage& message, const InboxView& view,
                         std::span<const PlayerID> followed)
 {
   if (view.category >= 0 &&
-      static_cast<int>(message.category) != static_cast<int>(view.category))
+      static_cast<int>(std::to_underlying(message.category)) !=
+          static_cast<int>(view.category))
     return false;
   if (view.unread_only && message.read) return false;
-  if (view.player_id && message.player_id != view.player_id) return false;
-  if (view.team_id && message.team_id != view.team_id) return false;
+  if (view.player_id.has_value() && message.player_id != view.player_id)
+    return false;
+  if (view.team_id.has_value() && message.team_id != view.team_id) return false;
   return !view.followed_only ||
-         (message.player_id &&
+         (message.player_id.has_value() &&
           std::ranges::contains(followed, *message.player_id));
 }
 

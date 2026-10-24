@@ -134,7 +134,7 @@ std::vector<MatchSimulationResult> MatchScheduler::run(
   // mutating GameData here would race with other fixtures reading players.
   total.fetch_add(static_cast<uint32_t>(inputs.size()),
                   std::memory_order_relaxed);
-  const auto simulate = [&](std::size_t index)
+  const auto simulate = [this, &results, &inputs, &config](std::size_t index)
   {
     results[index] = MatchSimulation::run(inputs[index], config);
     completed.fetch_add(1, std::memory_order_relaxed);

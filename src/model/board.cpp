@@ -34,31 +34,33 @@ namespace BoardModel
 {
 BoardObjective objectiveFor(int expected_position, int league_size)
 {
-  if (expected_position <= 1) return BoardObjective::WinLeague;
-  if (expected_position <= 4) return BoardObjective::TopFour;
-  if (expected_position <= league_size / 2) return BoardObjective::TopHalf;
-  if (expected_position <= league_size - 5) return BoardObjective::MidTable;
-  return BoardObjective::AvoidRelegation;
+  using enum BoardObjective;
+  if (expected_position <= 1) return WinLeague;
+  if (expected_position <= 4) return TopFour;
+  if (expected_position <= league_size / 2) return TopHalf;
+  if (expected_position <= league_size - 5) return MidTable;
+  return AvoidRelegation;
 }
 
 std::uint8_t targetPosition(BoardObjective objective, int league_size)
 {
+  using enum BoardObjective;
   int target = league_size;
   switch (objective)
   {
-    case BoardObjective::WinLeague:
+    case WinLeague:
       target = 2;  // Finishing second still keeps the board broadly happy.
       break;
-    case BoardObjective::TopFour:
+    case TopFour:
       target = 4;
       break;
-    case BoardObjective::TopHalf:
+    case TopHalf:
       target = league_size / 2;
       break;
-    case BoardObjective::MidTable:
+    case MidTable:
       target = league_size - 5;
       break;
-    case BoardObjective::AvoidRelegation:
+    case AvoidRelegation:
       target = league_size - 3;
       break;
   }
@@ -67,17 +69,18 @@ std::uint8_t targetPosition(BoardObjective objective, int league_size)
 
 const char* objectiveKey(BoardObjective objective)
 {
+  using enum BoardObjective;
   switch (objective)
   {
-    case BoardObjective::WinLeague:
+    case WinLeague:
       return "BOARD_OBJ_WIN_LEAGUE";
-    case BoardObjective::TopFour:
+    case TopFour:
       return "BOARD_OBJ_TOP_FOUR";
-    case BoardObjective::TopHalf:
+    case TopHalf:
       return "BOARD_OBJ_TOP_HALF";
-    case BoardObjective::MidTable:
+    case MidTable:
       return "BOARD_OBJ_MID_TABLE";
-    case BoardObjective::AvoidRelegation:
+    case AvoidRelegation:
       return "BOARD_OBJ_AVOID_RELEGATION";
   }
   return "BOARD_OBJ_MID_TABLE";
@@ -115,7 +118,8 @@ BoardReviewOutcome monthlyReview(BoardState& state, int position,
                                  bool over_wage_budget, bool in_season)
 {
   using Tuning = WorldTuning::Board;
-  if (state.dismissed) return BoardReviewOutcome::Dismissed;
+  using enum BoardReviewOutcome;
+  if (state.dismissed) return Dismissed;
 
   const float quarter = std::max(1.0f, static_cast<float>(league_size) / 4.0f);
   float signal = 50.0f;
@@ -130,9 +134,7 @@ BoardReviewOutcome monthlyReview(BoardState& state, int position,
   if (over_wage_budget) signal -= 12.0f;
   state.confidence = blend(state.confidence, signal);
   if (!in_season)
-    return state.confidence < Tuning::WARNING_THRESHOLD
-               ? BoardReviewOutcome::Warning
-               : BoardReviewOutcome::Satisfied;
+    return state.confidence < Tuning::WARNING_THRESHOLD ? Warning : Satisfied;
 
   if (state.confidence < Tuning::DISMISSAL_THRESHOLD)
     ++state.low_reviews;
@@ -143,17 +145,14 @@ BoardReviewOutcome monthlyReview(BoardState& state, int position,
       state.league_matches >= Tuning::MIN_MATCHES_FOR_DISMISSAL)
   {
     state.dismissed = true;
-    return BoardReviewOutcome::Dismissed;
+    return Dismissed;
   }
-  return state.confidence < Tuning::WARNING_THRESHOLD
-             ? BoardReviewOutcome::Warning
-             : BoardReviewOutcome::Satisfied;
+  return state.confidence < Tuning::WARNING_THRESHOLD ? Warning : Satisfied;
 }
 
 void seasonReview(BoardState& state, int final_position)
 {
-  const float margin =
-      static_cast<float>(state.target_position - final_position);
+  auto margin = static_cast<float>(state.target_position - final_position);
   adjustConfidence(state, std::clamp(margin * 3.0f, -20.0f, 15.0f));
 }
 
@@ -164,20 +163,22 @@ void adjustConfidence(BoardState& state, float delta)
 
 CupObjective cupObjectiveFor(BoardObjective objective, int tier)
 {
+  using enum BoardObjective;
+  using enum CupObjective;
   // Only the top division's leading clubs are expected to go deep. [P]
-  if (tier > 1) return CupObjective::None;
+  if (tier > 1) return None;
   switch (objective)
   {
-    case BoardObjective::WinLeague:
-      return CupObjective::SemiFinal;
-    case BoardObjective::TopFour:
-      return CupObjective::QuarterFinal;
-    case BoardObjective::TopHalf:
-    case BoardObjective::MidTable:
-    case BoardObjective::AvoidRelegation:
+    case WinLeague:
+      return SemiFinal;
+    case TopFour:
+      return QuarterFinal;
+    case TopHalf:
+    case MidTable:
+    case AvoidRelegation:
       break;
   }
-  return CupObjective::None;
+  return None;
 }
 
 FinanceObjective financeObjectiveFor(float tight_budget, std::int64_t balance)
@@ -196,17 +197,18 @@ std::uint8_t youthTargetFor(float youth_focus)
 
 const char* cupObjectiveKey(CupObjective objective)
 {
+  using enum CupObjective;
   switch (objective)
   {
-    case CupObjective::None:
+    case None:
       return "BOARD_CUP_NONE";
-    case CupObjective::QuarterFinal:
+    case QuarterFinal:
       return "BOARD_CUP_QUARTER_FINAL";
-    case CupObjective::SemiFinal:
+    case SemiFinal:
       return "BOARD_CUP_SEMI_FINAL";
-    case CupObjective::Final:
+    case Final:
       return "BOARD_CUP_FINAL";
-    case CupObjective::Win:
+    case Win:
       break;
   }
   return "BOARD_CUP_WIN";
@@ -227,49 +229,49 @@ const char* youthTargetKey(std::uint8_t target)
 ObjectiveGrade gradeCup(CupObjective objective, std::optional<int> rounds_left,
                         bool won, bool still_in)
 {
-  if (won) return ObjectiveGrade::Exceeded;
-  if (objective == CupObjective::None)
-    return rounds_left && *rounds_left == 0 ? ObjectiveGrade::Exceeded
-                                            : ObjectiveGrade::Met;
+  using enum CupObjective;
+  using enum ObjectiveGrade;
+  if (won) return Exceeded;
+  if (objective == None)
+    return rounds_left && *rounds_left == 0 ? Exceeded : Met;
   // Rounds still to come after the one the target asks to reach.
   int required = 0;
   switch (objective)
   {
-    case CupObjective::QuarterFinal:
+    case QuarterFinal:
       required = 2;
       break;
-    case CupObjective::SemiFinal:
+    case SemiFinal:
       required = 1;
       break;
-    case CupObjective::None:
-    case CupObjective::Final:
-    case CupObjective::Win:
+    case None:
+    case Final:
+    case Win:
       break;
   }
   const bool reached = rounds_left && *rounds_left <= required;
-  if (objective == CupObjective::Win)
-    return still_in  ? ObjectiveGrade::Met
-           : reached ? ObjectiveGrade::Missed
-                     : ObjectiveGrade::Failed;
-  if (reached)
-    return *rounds_left < required ? ObjectiveGrade::Exceeded
-                                   : ObjectiveGrade::Met;
-  if (still_in) return ObjectiveGrade::Met;
-  return rounds_left && *rounds_left == required + 1 ? ObjectiveGrade::Missed
-                                                     : ObjectiveGrade::Failed;
+  if (objective == Win)
+  {
+    if (still_in) return Met;
+    return reached ? Missed : Failed;
+  }
+  if (reached) return *rounds_left < required ? Exceeded : Met;
+  if (still_in) return Met;
+  return rounds_left && *rounds_left == required + 1 ? Missed : Failed;
 }
 
 const char* targetStatusKey(ObjectiveGrade grade)
 {
+  using enum ObjectiveGrade;
   switch (grade)
   {
-    case ObjectiveGrade::Exceeded:
+    case Exceeded:
       return "BOARD_STATUS_AHEAD";
-    case ObjectiveGrade::Met:
+    case Met:
       return "BOARD_STATUS_ON_TRACK";
-    case ObjectiveGrade::Missed:
+    case Missed:
       return "BOARD_STATUS_BEHIND";
-    case ObjectiveGrade::Failed:
+    case Failed:
       break;
   }
   return "BOARD_STATUS_OFF_TRACK";
@@ -277,40 +279,41 @@ const char* targetStatusKey(ObjectiveGrade grade)
 
 ObjectiveGrade gradeLeague(int target_position, int position, int league_size)
 {
+  using enum ObjectiveGrade;
   const float quarter = std::max(1.0f, static_cast<float>(league_size) / 4.0f);
   const float margin = static_cast<float>(target_position - position) / quarter;
-  if (margin >= 1.0f) return ObjectiveGrade::Exceeded;
-  if (margin >= 0.0f) return ObjectiveGrade::Met;
-  if (margin >= -1.0f) return ObjectiveGrade::Missed;
-  return ObjectiveGrade::Failed;
+  if (margin >= 1.0f) return Exceeded;
+  if (margin >= 0.0f) return Met;
+  if (margin >= -1.0f) return Missed;
+  return Failed;
 }
 
 ObjectiveGrade gradeFinances(FinanceObjective objective, std::int64_t balance,
                              std::int64_t start_balance, bool over_wage_budget)
 {
+  using enum ObjectiveGrade;
   if (balance < 0 &&
       !(objective == FinanceObjective::BreakEven && balance >= start_balance))
-    return ObjectiveGrade::Failed;
+    return Failed;
   if (objective == FinanceObjective::BreakEven)
   {
-    if (balance < start_balance) return ObjectiveGrade::Missed;
+    if (balance < start_balance) return Missed;
     // A clear profit on a tight budget is beyond what was asked. [P]
     const std::int64_t margin =
         std::max<std::int64_t>(1'000'000, std::abs(start_balance) / 5);
-    return balance - start_balance >= margin && !over_wage_budget
-               ? ObjectiveGrade::Exceeded
-               : ObjectiveGrade::Met;
+    return balance - start_balance >= margin && !over_wage_budget ? Exceeded
+                                                                  : Met;
   }
-  return over_wage_budget ? ObjectiveGrade::Missed : ObjectiveGrade::Met;
+  return over_wage_budget ? Missed : Met;
 }
 
 ObjectiveGrade gradeYouth(std::uint8_t target, int young_regulars)
 {
-  if (target == 0)
-    return young_regulars >= 3 ? ObjectiveGrade::Exceeded : ObjectiveGrade::Met;
-  if (young_regulars >= target + 2) return ObjectiveGrade::Exceeded;
-  if (young_regulars >= target) return ObjectiveGrade::Met;
-  return young_regulars > 0 ? ObjectiveGrade::Missed : ObjectiveGrade::Failed;
+  using enum ObjectiveGrade;
+  if (target == 0) return young_regulars >= 3 ? Exceeded : Met;
+  if (young_regulars >= target + 2) return Exceeded;
+  if (young_regulars >= target) return Met;
+  return young_regulars > 0 ? Missed : Failed;
 }
 }  // namespace BoardModel
 
@@ -324,15 +327,16 @@ ProjectQuote quoteProject(FacilityProjectType type, std::uint8_t current_level,
                           std::uint32_t capacity, std::uint8_t reputation,
                           double season_income, std::uint32_t seats)
 {
+  using enum FacilityProjectType;
   ProjectQuote quote;
   quote.type = type;
   const double level_factor = 1.0 + static_cast<double>(current_level) / 100.0;
   switch (type)
   {
-    case FacilityProjectType::TrainingGround:
-    case FacilityProjectType::MedicalCentre:
+    case TrainingGround:
+    case MedicalCentre:
     {
-      const bool training = type == FacilityProjectType::TrainingGround;
+      const bool training = type == TrainingGround;
       quote.amount = static_cast<std::uint32_t>(
           std::clamp(100 - static_cast<int>(current_level), 0, 10));
       // [P] A modern training centre costs a few percent of a season's
@@ -342,8 +346,8 @@ ProjectQuote quoteProject(FacilityProjectType type, std::uint8_t current_level,
       quote.days = training ? 180 : 120;
       break;
     }
-    case FacilityProjectType::StadiumExpansion:
-    case FacilityProjectType::COUNT:
+    case StadiumExpansion:
+    case COUNT:
     {
       const std::uint32_t room = capacity >= MAX_STADIUM_CAPACITY
                                      ? 0
@@ -371,21 +375,20 @@ ProjectQuote quoteProject(FacilityProjectType type, std::uint8_t current_level,
 ProjectVerdict reviewProject(const ProjectQuote& quote,
                              const ProjectRequestContext& context)
 {
-  if (context.same_type_running) return ProjectVerdict::AlreadyRunning;
-  if (context.running_projects >= MAX_RUNNING_PROJECTS)
-    return ProjectVerdict::TooManyProjects;
-  if (context.cooling_down) return ProjectVerdict::Cooldown;
-  if (quote.amount == 0) return ProjectVerdict::AtMaximum;
+  using enum ProjectVerdict;
+  if (context.same_type_running) return AlreadyRunning;
+  if (context.running_projects >= MAX_RUNNING_PROJECTS) return TooManyProjects;
+  if (context.cooling_down) return Cooldown;
+  if (quote.amount == 0) return AtMaximum;
   // Facilities far above the club's stature do not pay back. [P]
   if (quote.type != FacilityProjectType::StadiumExpansion &&
       context.current_level >= context.reputation + 25)
-    return ProjectVerdict::NotNeeded;
-  if (context.confidence < PROJECT_MIN_CONFIDENCE)
-    return ProjectVerdict::LowConfidence;
+    return NotNeeded;
+  if (context.confidence < PROJECT_MIN_CONFIDENCE) return LowConfidence;
   if (context.balance - quote.cost <
       PROJECT_CASH_RESERVE_WEEKS * context.weekly_payroll)
-    return ProjectVerdict::CannotAfford;
-  return ProjectVerdict::Approved;
+    return CannotAfford;
+  return Approved;
 }
 
 float medicalLayoffMultiplier(std::uint8_t medical_level)
@@ -396,14 +399,15 @@ float medicalLayoffMultiplier(std::uint8_t medical_level)
 
 const char* projectTypeKey(FacilityProjectType type)
 {
+  using enum FacilityProjectType;
   switch (type)
   {
-    case FacilityProjectType::TrainingGround:
+    case TrainingGround:
       return "PROJECT_TRAINING_GROUND";
-    case FacilityProjectType::MedicalCentre:
+    case MedicalCentre:
       return "PROJECT_MEDICAL_CENTRE";
-    case FacilityProjectType::StadiumExpansion:
-    case FacilityProjectType::COUNT:
+    case StadiumExpansion:
+    case COUNT:
       break;
   }
   return "PROJECT_STADIUM_EXPANSION";
@@ -411,23 +415,24 @@ const char* projectTypeKey(FacilityProjectType type)
 
 const char* projectVerdictKey(ProjectVerdict verdict)
 {
+  using enum ProjectVerdict;
   switch (verdict)
   {
-    case ProjectVerdict::Approved:
+    case Approved:
       return "PROJECT_VERDICT_APPROVED";
-    case ProjectVerdict::AlreadyRunning:
+    case AlreadyRunning:
       return "PROJECT_VERDICT_RUNNING";
-    case ProjectVerdict::TooManyProjects:
+    case TooManyProjects:
       return "PROJECT_VERDICT_TOO_MANY";
-    case ProjectVerdict::Cooldown:
+    case Cooldown:
       return "PROJECT_VERDICT_COOLDOWN";
-    case ProjectVerdict::AtMaximum:
+    case AtMaximum:
       return "PROJECT_VERDICT_MAXIMUM";
-    case ProjectVerdict::NotNeeded:
+    case NotNeeded:
       return "PROJECT_VERDICT_NOT_NEEDED";
-    case ProjectVerdict::LowConfidence:
+    case LowConfidence:
       return "PROJECT_VERDICT_CONFIDENCE";
-    case ProjectVerdict::CannotAfford:
+    case CannotAfford:
       break;
   }
   return "PROJECT_VERDICT_AFFORD";

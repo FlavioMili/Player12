@@ -16,15 +16,18 @@
 #include <cmath>
 #include <cstdio>
 #include <cstdlib>
+#include <format>
 #include <fstream>
 #include <functional>
 #include <iostream>
 #include <map>
 #include <memory>
 #include <nlohmann/json.hpp>
+#include <print>
 #include <set>
 #include <string>
 #include <unordered_map>
+#include <utility>
 #include <vector>
 
 #include "controller/game_controller.h"
@@ -51,14 +54,17 @@ constexpr std::uint64_t WORLD_SEED = 20250702;
  */
 int uniqueSlot(int offset)
 {
-  return 100'000 + static_cast<int>(getpid() % 100'000) * 10 + offset;
+  return 100'000 + (getpid() % 100'000) * 10 + offset;
 }
 
 /** Deletes the save of a slot when the test ends. */
 struct SlotCleanup
 {
   int slot;
+  explicit SlotCleanup(int slotValue) : slot(slotValue) {}
   ~SlotCleanup() { RuntimePaths::removeSave(slot); }
+  SlotCleanup(const SlotCleanup&) = delete;
+  SlotCleanup& operator=(const SlotCleanup&) = delete;
 };
 
 std::unique_ptr<GameController> makeWorld(int slot,
@@ -100,18 +106,19 @@ void execSql(sqlite3* db, const char* sql)
 
 TEST(WorldRngTest, SameSeedSameSequenceAndIndependentStreams)
 {
+  using enum RngDomain;
   WorldRng a(99);
   WorldRng b(99);
   for (int i = 0; i < 100; ++i) ASSERT_EQ(a.next(), b.next());
 
-  WorldRng injuries = WorldRng::stream(7, RngDomain::MatchInjury, 1, 2);
-  WorldRng injuries_again = WorldRng::stream(7, RngDomain::MatchInjury, 1, 2);
-  WorldRng youth = WorldRng::stream(7, RngDomain::YouthIntake, 1, 2);
+  WorldRng injuries = WorldRng::stream(7, MatchInjury, 1, 2);
+  WorldRng injuries_again = WorldRng::stream(7, MatchInjury, 1, 2);
+  WorldRng youth = WorldRng::stream(7, YouthIntake, 1, 2);
   const std::uint64_t first = injuries.next();
   EXPECT_EQ(first, injuries_again.next());
   EXPECT_NE(first, youth.next());
-  EXPECT_EQ(WorldRng::hashUniform(7, RngDomain::Retirement, 3, 4),
-            WorldRng::hashUniform(7, RngDomain::Retirement, 3, 4));
+  EXPECT_EQ(WorldRng::hashUniform(7, Retirement, 3, 4),
+            WorldRng::hashUniform(7, Retirement, 3, 4));
   EXPECT_NE(WorldRng::hashUniform(7, RngDomain::Retirement, 3, 4),
             WorldRng::hashUniform(8, RngDomain::Retirement, 3, 4));
 }
@@ -312,15 +319,15 @@ TEST(WorldGenerationTest, NamesFollowNationalityAndAreUnique)
   auto gamedata = controller->getGameData();
   const NamePool& pool = NamePool::instance();
 
-  std::map<std::string, int> full_names;
+  std::map<std::string, int, std::less<>> full_names;
   std::map<LeagueID, std::pair<int, int>> domestic;  // domestic, total
   int matching_first_names = 0;
   for (const auto& [id, player] : gamedata->getPlayers())
   {
     ++full_names[player.getName()];
     EXPECT_FALSE(pool.isExcluded(player.getName()));
-    const auto& firsts = pool.firstNames(player.getNationality());
-    if (std::ranges::contains(firsts, player.getFirstName()))
+    if (const auto& firsts = pool.firstNames(player.getNationality());
+        std::ranges::contains(firsts, player.getFirstName()))
       ++matching_first_names;
     const auto team = gamedata->getTeam(player.getTeamId());
     if (!team || player.getTeamId() == FREE_AGENTS_TEAM_ID) continue;
@@ -352,7 +359,7 @@ TEST(WorldGenerationTest, NamesFollowNationalityAndAreUnique)
   // At most one surname appears twice in a squad, none three times.
   for (const auto& team : controller->getTeams())
   {
-    std::map<std::string, int> surnames;
+    std::map<std::string, int, std::less<>> surnames;
     for (const auto& player : controller->getPlayersForTeam(team.get().getId()))
       ++surnames[player.get().getLastName()];
     int repeated = 0;
@@ -443,9 +450,9 @@ TEST(WorldGenerationTest, LeagueShapesStratifyTopDivisions)
     ASSERT_EQ(upper.size(), 20u);
     ASSERT_EQ(lower.size(), 20u);
     const double promoted = (lower[0] + lower[1] + lower[2]) / 3.0;
-    std::printf(
-        "[shape] league %d strength SD %.2f (1st %.1f, 11th %.1f, "
-        "16th %.1f, 20th %.1f); league %d SD %.2f (top three %.1f)\n",
+    std::print(
+        "[shape] league {} strength SD {:.2f} (1st {:.1f}, 11th {:.1f}, "
+        "16th {:.1f}, 20th {:.1f}); league {} SD {:.2f} (top three {:.1f})\n",
         int(top), sd(upper), upper[0], upper[10], upper[15], upper[19],
         int(second), sd(lower), promoted);
     if (country < 6)
@@ -474,17 +481,16 @@ std::vector<std::string> rosterProblems(const GameController& controller)
     for (const auto* ids : {&team.getPlayerIDs(), &team.getAcademyIDs()})
       for (const PlayerID player_id : *ids)
         if (!listed.emplace(player_id, team_id).second)
-          problems.push_back("player " + std::to_string(player_id) +
-                             " listed twice");
+          problems.push_back(std::format("player {} listed twice", player_id));
   }
   for (const auto& [player_id, player] : data->getPlayers())
   {
     if (player.getTeamId() == FREE_AGENTS_TEAM_ID) continue;
     const auto found = listed.find(player_id);
     if (found == listed.end() || found->second != player.getTeamId())
-      problems.push_back("player " + std::to_string(player_id) + " of club " +
-                         std::to_string(player.getTeamId()) +
-                         " is not on its roster");
+      problems.push_back(
+          std::format("player {} of club {} is not on its roster", player_id,
+                      player.getTeamId()));
   }
   if (problems.size() > 8) problems.resize(8);
   return problems;
@@ -567,9 +573,10 @@ TEST(PlayerAgeingTest, AttributeGroupsAgeAtDifferentRates)
     return total / static_cast<double>(OUTFIELD.size());
   };
   for (const int age : {26, 27, 29, 30, 31, 32, 33, 34, 35})
-    std::printf("[ageing] age %d outfield %.2f GK %.2f CB %.2f ST %.2f\n", age,
-                outfield(age), yearly(PlayerRole::GK, age),
-                yearly(PlayerRole::CB, age), yearly(PlayerRole::ST, age));
+    std::print(
+        "[ageing] age {} outfield {:.2f} GK {:.2f} CB {:.2f} ST {:.2f}\n", age,
+        outfield(age), yearly(PlayerRole::GK, age), yearly(PlayerRole::CB, age),
+        yearly(PlayerRole::ST, age));
 
   EXPECT_NEAR(outfield(26), 0.0, 0.05) << "no ageing before 27";
   EXPECT_GE(outfield(27), 0.0) << "passing and vision still improve";
@@ -611,6 +618,7 @@ TEST(WorldGenerationTest, PreseasonFriendliesStayInTheRegion)
 
 TEST(InjuryModelTest, DiagnosisMixAndLayoffsFollowTheStudies)
 {
+  using enum InjuryType;
   WorldRng rng(77);
   constexpr int DRAWS = 40'000;
   int hamstrings = 0;
@@ -620,14 +628,13 @@ TEST(InjuryModelTest, DiagnosisMixAndLayoffsFollowTheStudies)
   for (int i = 0; i < DRAWS; ++i)
   {
     const Injury injury =
-        InjuryModel::draw(rng, InjuryContext::Match, InjuryType::None, false);
-    ASSERT_NE(injury.type, InjuryType::None);
+        InjuryModel::draw(rng, InjuryContext::Match, None, false);
+    ASSERT_NE(injury.type, None);
     ASSERT_GE(injury.days, 1);
-    if (injury.type == InjuryType::HamstringStrain ||
-        injury.type == InjuryType::HamstringTightness)
+    if (injury.type == HamstringStrain || injury.type == HamstringTightness)
       ++hamstrings;
     if (InjuryModel::severity(injury.days) == InjurySeverity::Minor) ++minor;
-    if (injury.type == InjuryType::KneeAcl)
+    if (injury.type == KneeAcl)
     {
       ++match_acl;
       acl_days.push_back(injury.days);
@@ -650,8 +657,8 @@ TEST(InjuryModelTest, DiagnosisMixAndLayoffsFollowTheStudies)
   int training_acl = 0;
   for (int i = 0; i < DRAWS; ++i)
   {
-    if (InjuryModel::draw(rng, InjuryContext::Training, InjuryType::None, false)
-            .type == InjuryType::KneeAcl)
+    if (InjuryModel::draw(rng, InjuryContext::Training, None, false).type ==
+        KneeAcl)
       ++training_acl;
   }
   EXPECT_LT(training_acl * 5, match_acl);
@@ -708,8 +715,7 @@ TEST(WorldSimulationTest, MatchConsequencesDrainRecoverAndInjure)
           return message.category == InboxCategory::Injury &&
                  (message.player_id == injured_id ||
                   (message.title_key == "INBOX_MEDICAL_TITLE" &&
-                   message.args.size() > 1 &&
-                   message.args[1].find(name) != std::string::npos));
+                   message.args.size() > 1 && message.args[1].contains(name)));
         });
   };
   for (int day = 0; day < 7 && !reported(); ++day) controller->advanceDay();
@@ -778,8 +784,8 @@ void printLeagueFinances(const GameController& controller)
         GameDateValue(2025, 7, 3), GameDateValue(2026, 7, 2));
     const auto category = [&](FinanceCategory value)
     {
-      return static_cast<double>(
-          season.by_category[static_cast<std::size_t>(value)]);
+      return static_cast<double>(season.by_category[static_cast<std::size_t>(
+          std::to_underlying(value))]);
     };
     LeagueTotals& totals = leagues[team.get().getLeagueId()];
     const double transfers = category(FinanceCategory::TransferFeeIn) +
@@ -834,8 +840,9 @@ YearDigest playYear(GameController& controller, WorldSimulation& world,
       world.onSeasonEnd(date, managed);
       world.onSeasonStart(date, managed);
     }
-    const bool in_season = date.month >= 9 || date.month <= 5;
-    if (!in_season || dayOrdinal(date) % 7 != 3) continue;
+    if (const bool in_season = date.month >= 9 || date.month <= 5;
+        !in_season || dayOrdinal(date) % 7 != 3)
+      continue;
     // Round robin pairing by rotation.
     ++round;
     const std::size_t size = league_teams.size();
@@ -941,7 +948,7 @@ TEST(WorldSimulationTest, AYearOfDevelopmentInjuriesYouthFinanceAndNews)
   EXPECT_FALSE(gamedata->getRemovedPlayerIds().empty()) << "no retirements";
 
   // Graduates get names nobody else carries.
-  std::set<std::string> names;
+  std::set<std::string, std::less<>> names;
   for (const auto& [id, player] : gamedata->getPlayers())
     EXPECT_TRUE(names.insert(player.getName()).second) << player.getName();
 
@@ -961,7 +968,10 @@ TEST(WorldSimulationTest, AYearOfDevelopmentInjuriesYouthFinanceAndNews)
   const FinanceSummary year = managed_finances.summarize(
       controller->getCurrentDate(), GameDateValue(2026, 7, 2));
   const auto total = [&](FinanceCategory category)
-  { return year.by_category[static_cast<std::size_t>(category)]; };
+  {
+    return year
+        .by_category[static_cast<std::size_t>(std::to_underlying(category))];
+  };
   EXPECT_LT(total(FinanceCategory::Wages), 0);
   EXPECT_GT(total(FinanceCategory::Matchday), 0);
   EXPECT_GT(total(FinanceCategory::Broadcasting), 0);
@@ -1008,7 +1018,7 @@ TEST(WorldSimulationTest, TakingChargeFillsTheDayOneInbox)
   EXPECT_GT(board.expected_position, 0);
   EXPECT_GT(board.target_position, 0);
 
-  std::set<std::string> titles;
+  std::set<std::string, std::less<>> titles;
   for (const InboxMessage& message : controller->getInbox())
   {
     titles.insert(message.title_key);
@@ -1071,12 +1081,12 @@ TEST(WorldSimulationTest, InboxStaysQuietThroughTheFirstMonths)
   while (controller->getCurrentDate() < GameDateValue(2025, 10, 1))
     controller->advanceDay();
 
-  std::map<std::string, std::pair<int, int>> by_title;  // unread, read
+  std::map<std::string, std::pair<int, int>, std::less<>> by_title;
   std::map<int, int> unread_by_month;
   for (const InboxMessage& message : controller->getInbox())
   {
-    auto& counts = by_title[message.title_key];
-    (message.read ? counts.second : counts.first) += 1;
+    auto& [unread, read] = by_title[message.title_key];
+    (message.read ? read : unread) += 1;
     if (!message.read) ++unread_by_month[message.date.month];
   }
   for (const auto& [title, counts] : by_title)

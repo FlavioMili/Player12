@@ -43,7 +43,6 @@
 #include <cstdint>
 #include <cstdio>
 #include <cstdlib>
-#include <cstring>
 #include <filesystem>
 #include <format>
 #include <fstream>
@@ -58,6 +57,7 @@
 #include <string_view>
 #include <unordered_map>
 #include <unordered_set>
+#include <utility>
 #include <vector>
 
 #include "backends/imgui_impl_sdl3.h"
@@ -170,7 +170,10 @@ class GameFlowTest_GUIFlowLifecycle_Test
     return hub.cached_next->date;
   }
 
-  static MatchEngine* engine(MatchScene& scene) { return scene.engine.get(); }
+  static MatchEngine* engine(const MatchScene& scene)
+  {
+    return scene.engine.get();
+  }
   static bool finished(const MatchScene& scene) { return scene.match_finished; }
   static void setSpeed(MatchScene& scene, float speed)
   {
@@ -248,78 +251,49 @@ int dayNumber(const GameDateValue& date)
 
 const char* sceneName(SceneID id)
 {
-  switch (id)
-  {
-    case SceneID::MAIN_MENU:
-      return "main_menu";
-    case SceneID::SETTINGS:
-      return "settings";
-    case SceneID::GAME_MENU:
-      return "hub";
-    case SceneID::LINEUP:
-      return "lineup";
-    case SceneID::TEAM_SELECTION:
-      return "team_selection";
-    case SceneID::ROSTER:
-      return "squad";
-    case SceneID::STRATEGY:
-      return "tactics";
-    case SceneID::TRANSFER_MARKET:
-      return "transfers";
-    case SceneID::MATCH:
-      return "match";
-    case SceneID::PLAYER_PROFILE:
-      return "profile";
-    case SceneID::FIXTURES:
-      return "fixtures";
-    case SceneID::STANDINGS:
-      return "standings";
-    case SceneID::INBOX:
-      return "inbox";
-    case SceneID::CLUB:
-      return "club";
-    case SceneID::MATCH_REPORT:
-      return "match_report";
-    case SceneID::SCOUTING:
-      return "scouting";
-    case SceneID::TRAINING:
-      return "training";
-    case SceneID::STAFF:
-      return "staff";
-    case SceneID::MANAGER:
-      return "manager";
-    case SceneID::YOUTH:
-      return "youth";
-    case SceneID::MEDICAL:
-      return "medical";
-    case SceneID::CALENDAR:
-      return "calendar";
-    case SceneID::SQUAD_PLANNER:
-      return "squad_planner";
-    case SceneID::PLAYER_COMPARE:
-      return "player_compare";
-    case SceneID::DELEGATION:
-      return "delegation";
-    case SceneID::DATA_HUB:
-      return "data_hub";
-    case SceneID::OPPOSITION:
-      return "opposition";
-    case SceneID::INTERNATIONAL:
-      return "international";
-    case SceneID::AWARDS:
-      return "awards";
-    case SceneID::RECORDS:
-      return "records";
-    case SceneID::PLANNING:
-      return "planning";
-    case SceneID::HELP:
-      return "help";
-    case SceneID::RESERVES:
-      return "reserves";
-    case SceneID::CALL_UPS:
-      return "call_ups";
-  }
-  return "?";
+  using enum SceneID;
+  static constexpr std::array NAMES = {
+      std::pair{MAIN_MENU, "main_menu"},
+      std::pair{SETTINGS, "settings"},
+      std::pair{GAME_MENU, "hub"},
+      std::pair{LINEUP, "lineup"},
+      std::pair{TEAM_SELECTION, "team_selection"},
+      std::pair{ROSTER, "squad"},
+      std::pair{STRATEGY, "tactics"},
+      std::pair{TRANSFER_MARKET, "transfers"},
+      std::pair{MATCH, "match"},
+      std::pair{PLAYER_PROFILE, "profile"},
+      std::pair{FIXTURES, "fixtures"},
+      std::pair{STANDINGS, "standings"},
+      std::pair{INBOX, "inbox"},
+      std::pair{CLUB, "club"},
+      std::pair{MATCH_REPORT, "match_report"},
+      std::pair{SCOUTING, "scouting"},
+      std::pair{TRAINING, "training"},
+      std::pair{STAFF, "staff"},
+      std::pair{MANAGER, "manager"},
+      std::pair{YOUTH, "youth"},
+      std::pair{MEDICAL, "medical"},
+      std::pair{CALENDAR, "calendar"},
+      std::pair{SQUAD_PLANNER, "squad_planner"},
+      std::pair{PLAYER_COMPARE, "player_compare"},
+      std::pair{DELEGATION, "delegation"},
+      std::pair{DATA_HUB, "data_hub"},
+      std::pair{OPPOSITION, "opposition"},
+      std::pair{INTERNATIONAL, "international"},
+      std::pair{AWARDS, "awards"},
+      std::pair{RECORDS, "records"},
+      std::pair{PLANNING, "planning"},
+      std::pair{HELP, "help"},
+      std::pair{RESERVES, "reserves"},
+      std::pair{CALL_UPS, "call_ups"},
+      std::pair{ABOUT, "about"},
+      std::pair{NEWS, "news"},
+      std::pair{TIMELINE, "timeline"},
+  };
+  const auto found =
+      std::ranges::find(NAMES, id, &decltype(NAMES)::value_type::first);
+  return found == NAMES.end() ? "?" : found->second;
 }
 
 // ---- Keys
@@ -382,18 +356,9 @@ constexpr KeySpec KEY_ALT_LEFT{"Alt+Left", SDLK_LEFT, SDL_SCANCODE_LEFT, SDL_KMO
 // clang-format on
 
 /** Text a user (or a cat on the keyboard) might type. */
-constexpr std::array<const char*, 12> TEXT_SAMPLES = {"a",
-                                                      "Ro",
-                                                      "united",
-                                                      "zzzz",
-                                                      "12",
-                                                      "%s%n%d",
-                                                      "\xC3\xA8\xC3\xA0",
-                                                      "{}{0}",
-                                                      "  ",
-                                                      "\xE2\x82\xAC 5",
-                                                      "O'Neil",
-                                                      "-1"};
+constexpr std::array<const char*, 12> TEXT_SAMPLES = {
+    "a",     "Ro", "united",     "zzzz",   "12", "%s%n%d", "\u{00E8}\u{00E0}",
+    "{}{0}", "  ", "\u{20AC} 5", "O'Neil", "-1"};
 
 constexpr std::array<std::pair<int, int>, 4> WINDOW_SIZES = {
     {{1024, 700}, {1280, 720}, {1920, 1080}, {2560, 1440}}};
@@ -444,7 +409,7 @@ std::vector<std::string> checkWorld(const GameController& controller)
   std::vector<std::string> problems;
   if (!controller.isGameLoaded()) return problems;
   const auto data = controller.getGameData();
-  std::map<std::string, int> perRule;
+  std::map<std::string, int, std::less<>> perRule;
   const auto report = [&](const std::string& rule, std::string text)
   {
     if (perRule[rule]++ < 3) problems.push_back(rule + ": " + std::move(text));
@@ -494,7 +459,7 @@ std::vector<std::string> checkWorld(const GameController& controller)
     // Lineups hold raw pointers: every one must still point at a live
     // player (a released/retired player must not linger as a dangling one).
     const Lineup& lineup = team.getLineup();
-    std::vector<const Player*> selected{lineup.getGoalkeeper()};
+    std::vector selected{lineup.getGoalkeeper()};
     for (const auto& positioned : lineup.getOutfieldPlayers())
       selected.push_back(positioned.player);
     for (const Player* reserve : lineup.getReserves())
@@ -617,7 +582,7 @@ std::vector<std::string> checkWorld(const GameController& controller)
 /** Persisted state compared across a save and a reload. */
 struct Fingerprint
 {
-  std::map<std::string, std::string> fields;
+  std::map<std::string, std::string, std::less<>> fields;
 
   static Fingerprint of(const GameController& controller)
   {
@@ -639,7 +604,7 @@ struct Fingerprint
       std::vector<PlayerID> squad = team.getPlayerIDs();
       std::ranges::sort(squad);
       std::string ids;
-      for (const PlayerID id : squad) ids += std::to_string(id) + ",";
+      for (const PlayerID id : squad) ids += std::format("{},", id);
       fields[std::format("squad {}", teamId)] = ids;
       fields[std::format("balance {}", teamId)] =
           std::to_string(team.getFinances().getBalance());
@@ -710,9 +675,10 @@ struct Fingerprint
 
 std::array<char, 512> crash_note{};
 
-extern "C" void onFatalSignal(int signal)
+void onFatalSignal(int signal)
 {
-  const size_t length = std::strlen(crash_note.data());
+  size_t length = 0;
+  while (length < crash_note.size() && crash_note[length] != '\0') ++length;
   if (length > 0) (void)!write(STDERR_FILENO, crash_note.data(), length);
   std::signal(signal, SIG_DFL);
   std::raise(signal);
@@ -775,11 +741,11 @@ class Driver
     Bridge::applyPending(view);
     Bridge::handleEvents(view);
     Bridge::update(view, FRAME_SECONDS);
-    const double elapsed = Bridge::render(
-        view, FRAME_SECONDS,
-        raster ||
-            ++frame_counter % (sweeping ? SWEEP_RASTER_EVERY : RASTER_EVERY) ==
-                0);
+    bool shouldRaster = raster;
+    if (!shouldRaster)
+      shouldRaster =
+          ++frame_counter % (sweeping ? SWEEP_RASTER_EVERY : RASTER_EVERY) == 0;
+    const double elapsed = Bridge::render(view, FRAME_SECONDS, shouldRaster);
     const int errors = GImGui->ErrorCountCurrentFrame;
     if (errors > 0 && imgui_errors == 0)
     {
@@ -858,8 +824,8 @@ class Driver
   /** A real SDL key press (both ImGui and the scene's handleEvent see it). */
   void key(const KeySpec& spec)
   {
-    SDL_Event event{};
-    event.type = SDL_EVENT_KEY_DOWN;
+    SDL_Event event{.key = {}};
+    event.key.type = SDL_EVENT_KEY_DOWN;
     event.key.windowID = SDL_GetWindowID(view.getWindow());
     event.key.key = spec.key;
     event.key.scancode = spec.scancode;
@@ -867,7 +833,7 @@ class Driver
     event.key.down = true;
     SDL_PushEvent(&event);
     frame();
-    event.type = SDL_EVENT_KEY_UP;
+    event.key.type = SDL_EVENT_KEY_UP;
     event.key.down = false;
     event.key.mod = SDL_KMOD_NONE;
     SDL_PushEvent(&event);
@@ -881,8 +847,8 @@ class Driver
   void resize(int width, int height)
   {
     SDL_SetWindowSize(view.getWindow(), width, height);
-    SDL_Event event{};
-    event.type = SDL_EVENT_WINDOW_RESIZED;
+    SDL_Event event{.window = {}};
+    event.window.type = SDL_EVENT_WINDOW_RESIZED;
     event.window.windowID = SDL_GetWindowID(view.getWindow());
     event.window.data1 = width;
     event.window.data2 = height;
@@ -956,7 +922,7 @@ class Driver
       if (std::ranges::any_of(
               targets, [id](const Target& target) { return target.id == id; }))
         continue;
-      targets.push_back({id, point});
+      targets.emplace_back(id, point);
     }
     return targets;
   }
@@ -967,9 +933,13 @@ class Driver
     const ImVec2 display = ImGui::GetIO().DisplaySize;
     std::vector<Target> items;
     std::unordered_map<ImGuiID, size_t> index;
-    for (float y = stepY * 0.5f; y < display.y; y += stepY)
-      for (float x = stepX * 0.5f; x < display.x; x += stepX)
+    for (int y_index = 0;
+         stepY * (static_cast<float>(y_index) + 0.5f) < display.y; ++y_index)
+      for (int x_index = 0;
+           stepX * (static_cast<float>(x_index) + 0.5f) < display.x; ++x_index)
       {
+        const float y = stepY * (static_cast<float>(y_index) + 0.5f);
+        const float x = stepX * (static_cast<float>(x_index) + 0.5f);
         mouseTo({x, y});
         frame();
         const ImGuiID id = GImGui->HoveredId;
@@ -1064,11 +1034,14 @@ class Driver
     const Sweep sweep(*this);
     std::unordered_set<ImGuiID> seen;
     // Bottom-up when asked: dialogs keep their way out at the bottom.
-    const int rows =
+    const auto rows =
         static_cast<int>(std::ceil((max.y - min.y - 6.0f) / 10.0f));
     for (int row = 0; row < rows; ++row)
-      for (float x = min.x + 8.0f; x < max.x; x += 16.0f)
+      for (int x_index = 0;
+           min.x + 8.0f + 16.0f * static_cast<float>(x_index) < max.x;
+           ++x_index)
       {
+        const float x = min.x + 8.0f + 16.0f * static_cast<float>(x_index);
         const float y =
             min.y + 6.0f +
             10.0f * static_cast<float>(bottom_up ? rows - 1 - row : row);
@@ -1077,10 +1050,9 @@ class Driver
         const ImGuiID id = GImGui->HoveredId;
         if (id == 0 || GImGui->HoveredIdIsDisabled || !seen.insert(id).second)
           continue;
-        const std::string label = labelOf(id, {x, y});
-        if (std::ranges::none_of(
-                needles, [&label](const std::string& part)
-                { return label.find(part) != std::string::npos; }))
+        if (const std::string label = labelOf(id, {x, y});
+            std::ranges::none_of(needles, [&label](std::string_view part)
+                                 { return label.contains(part); }))
           continue;
         found_labels[needle] = {id, ImVec2(x, y)};
         return ImVec2(x, y);
@@ -1106,8 +1078,7 @@ class Driver
       frame();
       if (GImGui->HoveredId == 0) continue;
       if (continue_id == 0 &&
-          labelOf(GImGui->HoveredId, point).find("shell_continue") !=
-              std::string::npos)
+          labelOf(GImGui->HoveredId, point).contains("shell_continue"))
         continue_id = GImGui->HoveredId;
       if (continue_id != 0 && GImGui->HoveredId == continue_id) return point;
     }
@@ -1121,29 +1092,28 @@ class Driver
     int stuckFrames = 0;
     while (true)
     {
-      MainGameScene* base = hub();
+      const MainGameScene* base = hub();
       const bool running = base != nullptr && base->isAdvancing();
       const bool requested =
           base != nullptr && Bridge::continueRequested(*base);
-      if (running)
-      {
-        // The contract that keeps screens from reading the world while the
-        // worker thread changes it.
-        if (view.getOverlayDepth() != 0 || active() != base)
-          problems.push_back(std::format(
-              "continue: screen '{}' active (overlays {}) while days are "
-              "simulated",
-              sceneName(activeId()), view.getOverlayDepth()));
-      }
+      // Keep screens from reading the world while its worker changes it.
+      if (running && (view.getOverlayDepth() != 0 || active() != base))
+        problems.push_back(
+            std::format("continue: screen '{}' active (overlays {}) while days "
+                        "are simulated",
+                        sceneName(activeId()), view.getOverlayDepth()));
       const auto* match = dynamic_cast<const MatchScene*>(active());
-      const bool quick = match != nullptr && Bridge::quickResultPending(*match);
-      if (!running && !loadingSlot() && !quick)
+      if (const bool quick =
+              match != nullptr && Bridge::quickResultPending(*match);
+          !running && !loadingSlot() && !quick)
       {
-        if (!requested || active() != base || ++stuckFrames > 6) break;
+        if (!requested) break;
+        if (active() != base) break;
+        if (++stuckFrames > 6) break;
       }
       if (Clock::now() - start > CONTINUE_DEADLINE)
       {
-        problems.push_back("continue/loading did not finish within 120 s");
+        problems.emplace_back("continue/loading did not finish within 120 s");
         return false;
       }
       skip_budget = true;
@@ -1264,7 +1234,7 @@ class Monkey
     GUIView view(controller);
     if (!Bridge::initialize(view))
     {
-      violations.push_back("GUIView::initialize failed");
+      violations.emplace_back("GUIView::initialize failed");
       return violations;
     }
     ImGui::GetIO().IniFilename = nullptr;
@@ -1278,10 +1248,11 @@ class Monkey
     const auto started = Clock::now();
     for (step = 1; step <= steps && violations.size() < MAX_VIOLATIONS; ++step)
     {
-      std::snprintf(crash_note.data(), crash_note.size(),
-                    "\n*** monkey crashed: seed %llu step %d (log %s)\n",
-                    static_cast<unsigned long long>(seed), step,
-                    log_path.c_str());
+      const auto note =
+          std::format_to_n(crash_note.data(), crash_note.size() - 1,
+                           "\n*** monkey crashed: seed {} step {} (log {})\n",
+                           seed, step, log_path.string());
+      *note.out = '\0';
       const SceneID scene = driver.activeId();
       const Action action = pick(driver);
       std::string detail;
@@ -1322,11 +1293,11 @@ class Monkey
         perf_file << std::format("step {} [{}] {:.0f} ms UI build: {}\n", step,
                                  driver.worst_frame_scene,
                                  driver.worst_frame_ms, detail);
-      if (MainGameScene* hub = driver.hub(); hub && !hub->isAdvancing() &&
-                                             !Bridge::continueRequested(*hub) &&
-                                             Bridge::backdropAlive(view))
-        problems.push_back("continue: frozen backdrop left after Continue");
-      if (MainGameScene* hub = driver.hub();
+      if (const MainGameScene* hub = driver.hub();
+          hub && !hub->isAdvancing() && !Bridge::continueRequested(*hub) &&
+          Bridge::backdropAlive(view))
+        problems.emplace_back("continue: frozen backdrop left after Continue");
+      if (const MainGameScene* hub = driver.hub();
           hub && Bridge::continueRequested(*hub) && driver.active() != hub)
         problems.push_back(std::format(
             "continue: request pending while '{}' is shown (never starts)",
@@ -1397,7 +1368,7 @@ class Monkey
   std::ofstream perf_file;
   std::vector<std::string> log_lines;
   std::vector<std::string> violations;
-  std::set<std::string> reported;
+  std::set<std::string, std::less<>> reported;
   double slowest_frame_ms = 0.0;
 
   void line(const std::string& text)
@@ -1409,48 +1380,45 @@ class Monkey
 
   Action pick(const Driver& driver)
   {
+    using enum Action;
     const SceneID scene = driver.activeId();
     const bool shell =
         dynamic_cast<ManagementScene*>(driver.active()) != nullptr;
     std::vector<Weighted> table = {
-        {Action::CLICK, 34},      {Action::DOUBLE_CLICK, 4},
-        {Action::RIGHT_CLICK, 2}, {Action::SCROLL, 8},
-        {Action::DRAG, 5},        {Action::OTHER_KEY, 6},
-        {Action::TYPE, 4},        {Action::RESIZE, 2},
-        {Action::UI_SCALE, 2},    {Action::THEME, 2},
-        {Action::LANGUAGE, 1}};
+        {CLICK, 34},   {DOUBLE_CLICK, 4}, {RIGHT_CLICK, 2}, {SCROLL, 8},
+        {DRAG, 5},     {OTHER_KEY, 6},    {TYPE, 4},        {RESIZE, 2},
+        {UI_SCALE, 2}, {THEME, 2},        {LANGUAGE, 1}};
     if (shell)
     {
-      table.insert(table.end(), {{Action::NAV_KEY, 9},
-                                 {Action::PALETTE, 3},
-                                 {Action::CONTINUE_KEY, 3},
-                                 {Action::CONTINUE_CLICKS, 6},
-                                 {Action::SAVE, 2},
-                                 {Action::SAVE_RELOAD, 2},
-                                 {Action::BACK_FORWARD, 3}});
+      table.insert(table.end(), {{NAV_KEY, 9},
+                                 {PALETTE, 3},
+                                 {CONTINUE_KEY, 3},
+                                 {CONTINUE_CLICKS, 6},
+                                 {SAVE, 2},
+                                 {SAVE_RELOAD, 2},
+                                 {BACK_FORWARD, 3}});
     }
     if (scene == SceneID::MATCH)
     {
-      table.insert(table.end(),
-                   {{Action::MATCH_KEY, 6}, {Action::MATCH_RUN, 12}});
-      auto* match = dynamic_cast<MatchScene*>(driver.active());
+      table.insert(table.end(), {{MATCH_KEY, 6}, {MATCH_RUN, 12}});
+      const auto* match = dynamic_cast<const MatchScene*>(driver.active());
       if (match != nullptr && Bridge::finished(*match))
-        table.push_back({Action::MATCH_FINISH, 14});
+        table.push_back({MATCH_FINISH, 14});
     }
     // A stuck user eventually looks for the way out of a dialog or screen.
     if (ImGui::IsPopupOpen(
             "", ImGuiPopupFlags_AnyPopupId | ImGuiPopupFlags_AnyPopupLevel) ||
         scene == SceneID::SETTINGS || scene == SceneID::TEAM_SELECTION)
-      table.push_back({Action::CLOSE_DIALOG, 8});
+      table.push_back({CLOSE_DIALOG, 8});
     int total = 0;
     for (const Weighted& entry : table) total += entry.weight;
-    int roll = static_cast<int>(rng.below(static_cast<size_t>(total)));
+    auto roll = static_cast<int>(rng.below(static_cast<size_t>(total)));
     for (const Weighted& entry : table)
     {
       if (roll < entry.weight) return entry.action;
       roll -= entry.weight;
     }
-    return Action::CLICK;
+    return CLICK;
   }
 
   std::string clickTarget(Driver& driver, int count, ImGuiMouseButton button,
@@ -1474,7 +1442,7 @@ class Monkey
   std::string perform(Driver& driver, Action action,
                       std::vector<std::string>& problems)
   {
-    GameController& controller = driver.controller;
+    const GameController& controller = driver.controller;
     switch (action)
     {
       case Action::CLICK:
@@ -1490,7 +1458,7 @@ class Monkey
         const ImRect& rect = rects[rng.below(rects.size())];
         const ImVec2 point(rect.Min.x + rng.unit() * rect.GetWidth(),
                            rect.Min.y + rng.unit() * rect.GetHeight());
-        const float amount = static_cast<float>(rng.range(-8, 8));
+        const auto amount = static_cast<float>(rng.range(-8, 8));
         driver.wheel(point, amount);
         Driver::parkMouse();
         driver.frame();
@@ -1572,8 +1540,8 @@ class Monkey
       case Action::THEME:
       {
         Settings& settings = SettingsManager::instance()->get();
-        settings.theme_preset = static_cast<int>(
-            rng.below(static_cast<size_t>(Theme::Preset::COUNT)));
+        settings.theme_preset = static_cast<int>(rng.below(
+            static_cast<size_t>(std::to_underlying(Theme::Preset::COUNT))));
         settings.compact_density = rng.chance(0.5f);
         settings.reduced_motion = rng.chance(0.3f);
         driver.view.refreshTheme();
@@ -1585,13 +1553,13 @@ class Monkey
       }
       case Action::LANGUAGE:
       {
+        using enum Language;
         Settings& settings = SettingsManager::instance()->get();
-        settings.language =
-            settings.language == Language::EN ? Language::IT : Language::EN;
+        settings.language = settings.language == EN ? IT : EN;
         LanguageManager::instance().loadLanguage(settings.language);
         driver.frames(2);
         return std::format("language {}",
-                           settings.language == Language::EN ? "EN" : "IT");
+                           settings.language == EN ? "EN" : "IT");
       }
       case Action::SAVE_RELOAD:
         return saveReload(driver, problems);
@@ -1689,8 +1657,8 @@ class Monkey
   /** Clicks the top bar's Continue 1-3 times in consecutive frames. */
   std::string continueClicks(Driver& driver, std::vector<std::string>& problems)
   {
-    GameController& controller = driver.controller;
-    MainGameScene* hub = driver.hub();
+    const GameController& controller = driver.controller;
+    const MainGameScene* hub = driver.hub();
     const int clicks = rng.range(1, 3);
     const auto point = driver.continueButton();
     if (!point || hub == nullptr) return "continue button not found";
@@ -1716,9 +1684,10 @@ class Monkey
   }
 
   /** Ctrl+S, back to the main menu, load the slot, compare the state. */
-  std::string saveReload(Driver& driver, std::vector<std::string>& problems)
+  std::string saveReload(Driver& driver,
+                         std::vector<std::string>& problems) const
   {
-    GameController& controller = driver.controller;
+    const GameController& controller = driver.controller;
     const int slot = controller.getCurrentSlot().value_or(0);
     if (slot == 0) return "save/reload: no slot";
     driver.key(KEY_CTRL_S);
@@ -1797,22 +1766,22 @@ TEST_P(GuiMonkey, RandomUserKeepsInvariants)
             << "\n[monkey] log: " << monkey.logPath().string() << '\n';
   if (violations.empty()) return;
   std::string summary;
-  std::set<std::string> known;
+  std::set<std::string, std::less<>> known;
   bool allKnown = true;
   for (const std::string& violation : violations)
   {
     summary += "  " + violation + "\n";
-    const auto match = std::ranges::find_if(
-        knownBugs(),
-        [&violation](const KnownBug& bug)
-        {
-          return violation.find(bug.first) != std::string::npos &&
-                 violation.find(bug.second) != std::string::npos;
-        });
+    const auto match =
+        std::ranges::find_if(knownBugs(),
+                             [&violation](const KnownBug& bug)
+                             {
+                               return violation.contains(bug.first) &&
+                                      violation.contains(bug.second);
+                             });
     if (match == knownBugs().end())
       allKnown = false;
     else
-      known.insert(match->id);
+      known.emplace(match->id);
   }
   const std::string replay = std::format(
       "replay: FM_MONKEY_SEED={} FM_MONKEY_STEPS={} build/test/monkey_tests",
@@ -1920,8 +1889,8 @@ uint64_t stateHash(const GameController& controller)
     mix(static_cast<uint64_t>(std::lround(value * 1000.0f)));
   if (const TeamTrainingPlan* plan = controller.getTrainingPlan())
   {
-    mix(static_cast<uint64_t>(plan->preset));
-    mix(static_cast<uint64_t>(plan->intensity));
+    mix(static_cast<uint64_t>(std::to_underlying(plan->preset)));
+    mix(static_cast<uint64_t>(std::to_underlying(plan->intensity)));
     mix(plan->auto_congestion ? 1 : 0);
   }
   for (const auto& staff : controller.getStaff(team.getId())) mix(staff->id);
@@ -2046,7 +2015,7 @@ TEST(GuiWidgetSweep, EveryEnabledWidgetHasAnEffect)
       {NavSection::PLANNING, "planning"},
   }};
 
-  std::set<std::string> tested;
+  std::set<std::string, std::less<>> tested;
   std::vector<std::string> dead;
   int clicked = 0;
   for (const auto& [section, name] : SECTIONS)
@@ -2070,12 +2039,11 @@ TEST(GuiWidgetSweep, EveryEnabledWidgetHasAnEffect)
     order.insert(order.end(), tabs.begin(), tabs.end());
     for (const auto& [item, label] : order)
     {
-      const bool shell = label.find("##sidebar") != std::string::npos ||
-                         label.find("##topbar") != std::string::npos;
+      const bool shell =
+          label.contains("##sidebar") || label.contains("##topbar");
       if (shell && section != NavSection::HOME) continue;
-      if (std::ranges::any_of(
-              NOT_CLICKED_BY_SWEEP, [&label](const auto& entry)
-              { return label.find(entry.first) != std::string::npos; }))
+      if (std::ranges::any_of(NOT_CLICKED_BY_SWEEP, [&label](const auto& entry)
+                              { return label.contains(entry.first); }))
         continue;
       // One click per kind of widget: row buttons differ only in digits.
       std::string kind;
@@ -2092,6 +2060,7 @@ TEST(GuiWidgetSweep, EveryEnabledWidgetHasAnEffect)
         NONE,
         GONE
       };
+      using enum Outcome;
       const auto effect = [&](ImVec2 point, bool offCentre)
       {
         Navigation::open(&view, section);
@@ -2100,29 +2069,32 @@ TEST(GuiWidgetSweep, EveryEnabledWidgetHasAnEffect)
         driver.frame();
         if (GImGui->HoveredId != item->id)
         {
-          if (offCentre) return Outcome::NONE;
+          if (offCentre) return NONE;
           // Layouts shift vertically (a dismissed tip): scan the column.
           bool found = false;
           const float height = ImGui::GetIO().DisplaySize.y;
-          for (float y = 3.0f; y < height && !found; y += 6.0f)
+          for (int y_index = 0;
+               3.0f + 6.0f * static_cast<float>(y_index) < height && !found;
+               ++y_index)
           {
+            const float y = 3.0f + 6.0f * static_cast<float>(y_index);
             Driver::mouseTo({point.x, y});
             driver.frame();
             found = GImGui->HoveredId == item->id;
             if (found) point.y = y;
           }
-          if (!found) return Outcome::GONE;
+          if (!found) return GONE;
         }
         const Signature before = signature();
-        if (!(before == signature())) return Outcome::EFFECT;  // Animates.
+        if (!(before == signature())) return EFFECT;  // Animates.
         driver.click(point);
         const Signature after = signature();
         closePopups();
-        return after == before ? Outcome::NONE : Outcome::EFFECT;
+        return after == before ? NONE : EFFECT;
       };
       Outcome outcome = effect(item->point, false);
       // A slider clicked at its current value does not move: off-centre.
-      if (outcome == Outcome::NONE && item->max.x - item->min.x >= 40.0f)
+      if (outcome == NONE && item->max.x - item->min.x >= 40.0f)
         outcome = effect(
             {item->min.x + (item->max.x - item->min.x) * 0.2f, item->point.y},
             true);
@@ -2136,7 +2108,7 @@ TEST(GuiWidgetSweep, EveryEnabledWidgetHasAnEffect)
           result = result.substr(0, result.rfind('/'));
         return result;
       };
-      for (int levels = 1; levels <= 2 && outcome == Outcome::NONE; ++levels)
+      for (int levels = 1; levels <= 2 && outcome == NONE; ++levels)
       {
         const std::string parent = ancestor(label, levels);
         for (const auto& [other, otherLabel] : order)
@@ -2159,18 +2131,21 @@ TEST(GuiWidgetSweep, EveryEnabledWidgetHasAnEffect)
           closePopups();
           if (!(after == before))
           {
-            outcome = Outcome::EFFECT;
+            outcome = EFFECT;
             break;
           }
         }
       }
-      const bool changed = outcome != Outcome::NONE;
+      const bool changed = outcome != NONE;
+      const char* outcome_name = "none";
+      if (outcome == EFFECT)
+        outcome_name = "effect";
+      else if (outcome == GONE)
+        outcome_name = "gone";
       if (std::getenv("FM_SWEEP_VERBOSE") != nullptr)
         std::cout << "[sweep] clicked " << name << ": " << label << " -> "
-                  << (outcome == Outcome::EFFECT ? "effect"
-                      : outcome == Outcome::GONE ? "gone"
-                                                 : "none")
-                  << " now " << sceneName(driver.activeId()) << '\n';
+                  << outcome_name << " now " << sceneName(driver.activeId())
+                  << '\n';
       // Navigation on the current section re-opens the same screen.
       if (!changed && shell) continue;
       if (!changed) dead.push_back(std::format("{}: `{}`", name, label));

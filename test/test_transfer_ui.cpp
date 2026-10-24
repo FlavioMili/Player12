@@ -152,11 +152,15 @@ constexpr std::uint64_t WORLD_SEED = 20250702;
 
 int uniqueSlot(int offset)
 {
-  return 720'000 + static_cast<int>(getpid() % 100'000) * 10 + offset;
+  return 720'000 + (getpid() % 100'000) * 10 + offset;
 }
 
 struct SlotCleanup
 {
+  explicit SlotCleanup(int saveSlot) : slot(saveSlot) {}
+  SlotCleanup(const SlotCleanup&) = delete;
+  SlotCleanup& operator=(const SlotCleanup&) = delete;
+
   int slot;
   ~SlotCleanup() { RuntimePaths::removeSave(slot); }
 };
@@ -172,8 +176,8 @@ void capture(GUIView& view, const char* name)
 void resize(GUIView& view, int width, int height)
 {
   SDL_SetWindowSize(view.getWindow(), width, height);
-  SDL_Event event{};
-  event.type = SDL_EVENT_WINDOW_RESIZED;
+  SDL_Event event{.window = {}};
+  event.window.type = SDL_EVENT_WINDOW_RESIZED;
   event.window.windowID = SDL_GetWindowID(view.getWindow());
   event.window.data1 = width;
   event.window.data2 = height;
@@ -271,8 +275,8 @@ Bid receiveBid(GameController& controller, TeamID managed, std::uint32_t fee,
       offer.created = today;
       offer.expires = today + 5;
       const std::uint32_t id = market.addIncomingOffer(offer);
-      const auto view = controller.getIncomingOfferView(id);
-      if (view &&
+      if (const auto view = controller.getIncomingOfferView(id);
+          view &&
           (view->stance == BuyerNegotiation::PlayerStance::WantsBiggerClub ||
            view->stance == BuyerNegotiation::PlayerStance::AskedToLeave))
       {
@@ -291,7 +295,7 @@ Bid receiveBid(GameController& controller, TeamID managed, std::uint32_t fee,
 bool clickNegotiate(GUIView& view, std::uint32_t offer_id)
 {
   const char* label = LOC("INBOX_DECISION_NEGOTIATE");
-  const int push_id = static_cast<int>(offer_id);
+  const auto push_id = static_cast<int>(offer_id);
   ImGuiIO& io = ImGui::GetIO();
   std::vector<ImGuiWindow*> cards;
   for (ImGuiWindow* window : GImGui->Windows)
@@ -304,9 +308,15 @@ bool clickNegotiate(GUIView& view, std::uint32_t offer_id)
         ImHashStr(label, 0, ImHashData(&push_id, sizeof(push_id), card->ID));
     const ImRect area(ImMax(card->Rect().Min, ImVec2(0.0f, 0.0f)),
                       ImMin(card->Rect().Max, io.DisplaySize));
-    for (float y = area.Min.y + 4.0f; y < area.Max.y; y += 6.0f)
-      for (float x = area.Min.x + 4.0f; x < area.Max.x; x += 12.0f)
+    for (int y_index = 0;
+         area.Min.y + 4.0f + 6.0f * static_cast<float>(y_index) < area.Max.y;
+         ++y_index)
+      for (int x_index = 0;
+           area.Min.x + 4.0f + 12.0f * static_cast<float>(x_index) < area.Max.x;
+           ++x_index)
       {
+        const float y = area.Min.y + 4.0f + 6.0f * static_cast<float>(y_index);
+        const float x = area.Min.x + 4.0f + 12.0f * static_cast<float>(x_index);
         io.AddMousePosEvent(x, y);
         Bridge::frame(view);
         if (GImGui->HoveredId != button) continue;
@@ -352,9 +362,10 @@ void waitForAnswer(GameController& controller, std::uint32_t offer_id)
 {
   for (int day = 0; day < 3; ++day)
   {
-    const IncomingOffer* offer =
-        controller.getGame()->getTransfers().findIncomingOffer(offer_id);
-    if (offer == nullptr || offer->status != OfferStatus::AwaitingBuyer) return;
+    if (const IncomingOffer* offer =
+            controller.getGame()->getTransfers().findIncomingOffer(offer_id);
+        offer == nullptr || offer->status != OfferStatus::AwaitingBuyer)
+      return;
     controller.advanceDay();
   }
 }

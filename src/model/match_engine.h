@@ -930,6 +930,13 @@ class MatchEngine
   }
 
  private:
+  enum class TacticalArrival
+  {
+    MIDFIELDER,
+    FAR_POST,
+    FULLBACK
+  };
+
   std::vector<MatchPlayer> players;
   MatchBall ball;
   const StatsConfig& statsConfig;
@@ -1190,7 +1197,6 @@ class MatchEngine
     float passDistance = 0.0f;
     bool lofted = false;
   };
-
   void initializePlayers(const Lineup& lineup, bool isHomeTeam);
   void loadAttributes(MatchPlayer& matchPlayer, const Player* player) const;
   std::size_t addPlayerStats(const MatchPlayer& matchPlayer, bool started);
@@ -1243,11 +1249,12 @@ class MatchEngine
    * (urgent when urgentMovement is set) in play, or the restart spot
    * (movementTarget) at a walk.
    */
-  void integrateMovements(const std::uint8_t* slots, std::size_t count,
-                          float dt, bool walking);
+  void integrateMovements(std::span<const std::uint8_t> slots, float dt,
+                          bool walking);
   void updateRestartMovement(float dt);
   bool userRestartPassRequested() const;
-  void updateRestartSupport(MatchPlayer& player, const MatchPlayer* taker);
+  void updateRestartSupport(MatchPlayer& player,
+                            const MatchPlayer* taker) const;
   void separatePlayers();
   Vector2F goalkeeperTarget(MatchPlayer& keeper, const MatchPlayer* carrier);
   void diveGoalkeeper(MatchPlayer& keeper, float dt);
@@ -1368,9 +1375,37 @@ class MatchEngine
   void captureInterpolationFrame();
   void simulateStep(float dt);
   void updateTeamPhases();
+  void setTransitionPhases(bool attackingHome);
+  void setControlledPhases(bool attackingHome, float ballX);
   void updateMovement(float dt);
   /** Team shape and every off-ball target (see updateMovement). */
   void refreshTacticalTargets(float dt);
+  float estimatedArrivalTime(const MatchPlayer& candidate,
+                             Vector2F pressurePosition,
+                             const MatchPlayer* carrier);
+  std::array<MatchPlayer*, 2> closestOutfieldPair(bool homeTeam,
+                                                  const MatchPlayer* carrier,
+                                                  Vector2F pressurePosition);
+  float runPriority(const MatchPlayer& candidate, const MatchPlayer* carrier);
+  std::array<MatchPlayer*, MatchTuning::Shape::MAX_COMMITTED_RUNNERS>
+  selectAttackingRunners(bool homeTeam, const MatchPlayer* carrier,
+                         const MatchPlayer* transitionSource);
+  float runChannel(const MatchPlayer& runner) const;
+  MatchPlayer* selectFinalThirdPlayer(
+      bool homeTeam, TacticalArrival arrival, const MatchPlayer* carrier,
+      const std::array<MatchPlayer*, MatchTuning::Shape::MAX_COMMITTED_RUNNERS>&
+          homeRunners,
+      const std::array<MatchPlayer*, MatchTuning::Shape::MAX_COMMITTED_RUNNERS>&
+          awayRunners);
+  std::array<MatchPlayer*, MatchTuning::Shape::MAX_ACTIVE_SUPPORTERS>
+  selectActiveSupporters(
+      bool homeTeam, const MatchPlayer* carrier,
+      const std::array<MatchPlayer*, MatchTuning::Shape::MAX_COMMITTED_RUNNERS>&
+          runners,
+      const MatchPlayer* midfieldArrival, const MatchPlayer* farPostRunner,
+      const MatchPlayer* overlappingFullback);
+  const MatchPlayer* findCoverOutlet(bool defendingHome,
+                                     const MatchPlayer* carrier) const;
   /** Integrates the free ball in sub-steps, resolving contacts in each. */
   void updateBall(float dt);
   /** Pure ball physics for one sub-step (no contacts or rules). */
@@ -1379,7 +1414,7 @@ class MatchEngine
   void resolvePossessionAndActions(float dt);
   /** Moves the dribbled ball with its carrier; false if a heavy touch lost it.
    */
-  bool updateDribble(MatchPlayer& carrier, float dt);
+  bool updateDribble(const MatchPlayer& carrier, float dt);
   /** Share of the current touch the ball is still away from the foot. */
   float dribbleExposureShare() const;
   /** Tries to beat a jockeying defender; true if the carrier kept the ball. */
@@ -1430,14 +1465,14 @@ class MatchEngine
   float switchSeconds(const MatchPlayer& candidate) const;
   /** Acceleration, braking, lateral limit, position and facing update. */
   void stepKinematics(MatchPlayer& player, Vector2F desired, float desiredSpeed,
-                      float topSpeed, float fatigue, float dt);
+                      float topSpeed, float fatigue, float dt) const;
   void passBall(MatchPlayer& passer, const PassOption& option,
                 bool forceLofted = false);
   void takeShot(MatchPlayer& shooter, float forcedXG = -1.0f,
                 bool header = false, bool freeKick = false);
   /** Strikes a shot at goal (aim, execution error, launch) and returns its
    * xG; takeShot() adds the statistics and the event. */
-  float strikeShot(MatchPlayer& shooter, float forcedXG, bool header,
+  float strikeShot(const MatchPlayer& shooter, float forcedXG, bool header,
                    bool penalty, bool freeKick = false);
   struct SaveAttempt
   {
@@ -1462,7 +1497,7 @@ class MatchEngine
   void clearFlightState();
 
   std::optional<PassOption> choosePassTarget(MatchPlayer& passer);
-  PassOption evaluatePassOption(MatchPlayer& passer,
+  PassOption evaluatePassOption(const MatchPlayer& passer,
                                 MatchPlayer& receiver) const;
   MatchPlayer* findClosestPlayer(Vector2F position, bool homeTeam,
                                  bool includeGoalkeeper = true);

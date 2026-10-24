@@ -4,12 +4,33 @@ Three workflows in `.github/workflows/` build the game:
 
 | Workflow      | Trigger                          | What it does                                                        |
 |---------------|----------------------------------|---------------------------------------------------------------------|
-| `ci.yml`      | push to any branch, pull request | Runs `build.yml` (packages kept 3 days) plus a Linux ASan/UBSan job on the core tests |
+| `ci.yml`      | push to any branch, pull request | Runs `build.yml` (artifacts kept 3 days) plus Linux ASan/UBSan; successful main pushes publish development pre-releases |
 | `release.yml` | tag `v*`, manual run             | Builds and smoke-tests packages, then publishes a GitHub Release with checksums    |
 | `build.yml`   | called by the two above          | Release build, headless tests, packaging, package smoke test        |
 
 `deploy_docs.yml` (Doxygen site) is unrelated; it publishes the API docs
 and the public project, player and contributor guides.
+
+## Development builds for main commits
+
+Every successful push to `main` publishes a development pre-release using the
+packages already produced by CI. Publication waits for all platform package
+jobs and the sanitizer job. Pushes to other branches and pull requests keep
+workflow artifacts only.
+
+For source commit `0123456789abcdef...` with project version `1.0.0`, packages
+report `1.0.0-dev.sha0123456789ab`. The GitHub release tag is `dev-<full commit
+SHA>`, so each pushed main revision has a separate download page. A rerun
+updates the same release's assets. When one push contains multiple commits,
+the release belongs to that push's head commit.
+
+Each pre-release includes the Linux tarball and AppImage, macOS ARM64 ZIP,
+Windows ZIP, and `SHA256SUMS.txt`. It is explicitly excluded from GitHub's
+Latest designation; official `v*` releases continue through `release.yml`.
+Main runs use separate concurrency groups for each source commit, so a newer
+push does not cancel the previous commit's build or publication. These
+releases use the workflow's scoped `GITHUB_TOKEN`; no extra secret or duplicate
+platform build is needed.
 
 ## Cutting a release
 

@@ -14,6 +14,7 @@
 #include <sqlite3.h>
 
 #include <algorithm>
+#include <format>
 #include <fstream>
 #include <iostream>
 #include <map>
@@ -56,7 +57,7 @@ void buildStockWorld(GameData& gamedata)
     {
       const auto team_id = static_cast<TeamID>(league_id * 100 + i);
       gamedata.addTeam(team_id, Team(team_id, league_id,
-                                     "Club " + std::to_string(team_id), 0));
+                                     std::format("Club {}", team_id), 0));
       team_ids.push_back(team_id);
     }
     gamedata.addLeague(league_id,
@@ -277,8 +278,7 @@ TEST_F(StaggeredRoundsTest, EveryClubPlaysOncePerRoundWithRest)
     if (used.size() >= 2)
       ++spread_rounds;
     else
-      single_days +=
-          " " + std::to_string(key.first) + "/" + std::to_string(key.second);
+      single_days += std::format(" {}/{}", key.first, key.second);
   }
   EXPECT_GE(spread_rounds, days.size() * 95 / 100)
       << "league/round on one day:" << single_days;

@@ -11,6 +11,7 @@
 #include <algorithm>
 #include <cstdint>
 #include <string_view>
+#include <utility>
 #include <vector>
 
 #include "finances.h"
@@ -31,19 +32,20 @@ constexpr double YOUTH_START_MARGIN = 2.0;
 
 int positionGroup(PlayerRole role)
 {
+  using enum PlayerRole;
   switch (role)
   {
-    case PlayerRole::GK:
+    case GK:
       return 0;
-    case PlayerRole::LB:
-    case PlayerRole::CB:
-    case PlayerRole::RB:
+    case LB:
+    case CB:
+    case RB:
       return 1;
-    case PlayerRole::CDM:
-    case PlayerRole::CM:
-    case PlayerRole::CAM:
-    case PlayerRole::LM:
-    case PlayerRole::RM:
+    case CDM:
+    case CM:
+    case CAM:
+    case LM:
+    case RM:
       return 2;
     default:
       return 3;
@@ -148,7 +150,7 @@ void Team::generateStartingXI(const class GameData& gamedata,
     const int group = positionGroup(starter->getRole());
     const bool experienced_option = std::ranges::any_of(
         available,
-        [&](PlayerID player_id)
+        [this, &players, &stats_config, threshold, group](PlayerID player_id)
         {
           const Player& other = players.at(player_id);
           return other.getAge() >= EXPERIENCED_MIN_AGE &&
@@ -190,7 +192,7 @@ void Team::setRecentForm(std::string_view form)
 
 void Team::pushResult(MatchOutcome outcome)
 {
-  recent_form.insert(recent_form.begin(), static_cast<char>(outcome));
+  recent_form.insert(recent_form.begin(), std::to_underlying(outcome));
   if (recent_form.size() > RECENT_FORM_LENGTH)
     recent_form.resize(RECENT_FORM_LENGTH);
 }

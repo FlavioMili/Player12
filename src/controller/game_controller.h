@@ -148,7 +148,7 @@ class GameController
   bool restoreBackup(int slot, const std::filesystem::path& backup);
 
   /** Deletes a slot with its backups (not the loaded one). */
-  bool deleteSave(int slot);
+  bool deleteSave(int slot) const;
 
   /** When the game saves on its own and how many backups a slot keeps. */
   void setAutosavePolicy(const AutosavePolicy& policy);
@@ -918,7 +918,7 @@ class GameController
   /** Managed club's knowledge of a player, 0-100. */
   float getScoutingKnowledge(PlayerID player_id) const;
 
-  const std::vector<ScoutProfile>& getScouts() const;
+  std::vector<ScoutProfile> getScouts() const;
   const std::vector<ScoutAssignment>& getScoutAssignments() const;
   /** Price of an assignment; 0 if the target is invalid. */
   int64_t getScoutAssignmentCost(ScoutTargetKind kind, uint32_t target_id,
@@ -1471,6 +1471,7 @@ class GameController
   std::int64_t playtime_before_session = 0;
   std::chrono::steady_clock::time_point session_started;
   std::optional<SaveError> last_load_error;
+  mutable std::mutex club_identity_mutex;
   /** Data-pack club identities, read on the first getClubIdentity(). */
   mutable std::optional<std::unordered_map<TeamID, ClubIdentity>>
       club_identities;

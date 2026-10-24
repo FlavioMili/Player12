@@ -124,11 +124,12 @@ std::vector<TieOption> tieOptions(const Calendar& calendar, TeamID home_id,
       for (const Match& match :
            calendar.getMatchesForDate(SeasonCalendar::addDays(day, near)))
       {
-        const bool involved = match.getHomeTeamId() == home_id ||
-                              match.getAwayTeamId() == home_id ||
-                              match.getHomeTeamId() == away_id ||
-                              match.getAwayTeamId() == away_id;
-        if (!involved) continue;
+        if (const bool involved = match.getHomeTeamId() == home_id ||
+                                  match.getAwayTeamId() == home_id ||
+                                  match.getHomeTeamId() == away_id ||
+                                  match.getAwayTeamId() == away_id;
+            !involved)
+          continue;
         if (near == 0)
           option.clashes += 10;
         else if (near < 0 && -near < SeasonCalendar::restDays(
@@ -170,8 +171,8 @@ void addTies(Calendar& calendar, const GameData& gamedata,
     TeamID away_id = participants[i + 1];
     // The lower-division club hosts when the tiers differ.
     const auto home_team = gamedata.getTeam(home_id);
-    const auto away_team = gamedata.getTeam(away_id);
-    if (home_team && away_team &&
+    if (const auto away_team = gamedata.getTeam(away_id);
+        home_team && away_team &&
         Competitions::leagueTier(gamedata, home_team->get().getLeagueId()) <
             Competitions::leagueTier(gamedata, away_team->get().getLeagueId()))
       std::swap(home_id, away_id);
@@ -271,15 +272,16 @@ std::vector<LeagueID> Competitions::countryLeagues(const GameData& gamedata,
   std::vector<LeagueID> leagues;
   for (const auto& [id, league] : gamedata.getLeagues())
     if (rootLeague(gamedata, id) == root) leagues.push_back(id);
-  std::ranges::sort(leagues,
-                    [&gamedata](LeagueID left, LeagueID right)
-                    {
-                      const uint8_t left_tier = leagueTier(gamedata, left);
-                      const uint8_t right_tier = leagueTier(gamedata, right);
-                      if (left_tier != right_tier)
-                        return left_tier < right_tier;
-                      return left < right;
-                    });
+  std::ranges::sort(
+      leagues,
+      [&gamedata](LeagueID left, LeagueID right)
+      {
+        const uint8_t left_tier = leagueTier(gamedata, left);
+        if (const uint8_t right_tier = leagueTier(gamedata, right);
+            left_tier != right_tier)
+          return left_tier < right_tier;
+        return left < right;
+      });
   return leagues;
 }
 
@@ -383,7 +385,7 @@ Competitions::CupStatus Competitions::cupStatus(const Calendar& calendar,
           match.getCompetitionId() != root)
         continue;
       by_stage[match.getStage()].push_back(match);
-      if (const auto winner = match.getWinnerId())
+      if (const auto winner = match.getWinnerId(); winner.has_value())
         eliminated.insert(*winner == match.getHomeTeamId()
                               ? match.getAwayTeamId()
                               : match.getHomeTeamId());
@@ -458,7 +460,7 @@ size_t Competitions::drawPendingCupRounds(Calendar& calendar,
   for (const LeagueID root : countryRoots(gamedata))
   {
     const CupStatus status = cupStatus(calendar, gamedata, root);
-    if (status.rounds.empty() || status.winner ||
+    if (status.rounds.empty() || status.winner.has_value() ||
         !status.rounds.back().complete || status.remaining.size() < 2)
       continue;
 
@@ -513,12 +515,8 @@ std::optional<Competitions::CupDraw> Competitions::cupDraw(
                              std::tuple{right.getDate(), right.getHomeTeamId(),
                                         right.getAwayTeamId()};
                     });
-  draw.drawn_on =
-      previous_last
-          ? *previous_last
-          : GameDateValue(
-                SeasonCalendar::seasonStartYear(draw.ties.front().getDate()), 7,
-                1);
+  draw.drawn_on = previous_last.value_or(GameDateValue(
+      SeasonCalendar::seasonStartYear(draw.ties.front().getDate()), 7, 1));
   return draw;
 }
 

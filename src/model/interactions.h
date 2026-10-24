@@ -16,6 +16,7 @@
 #include <optional>
 #include <string>
 #include <unordered_map>
+#include <utility>
 #include <vector>
 
 #include "global/types.h"
@@ -174,7 +175,8 @@ enum class TalkGroup : std::uint8_t
 struct PlayerRelation
 {
   float trust = 0.0f; /*!< -100 (no faith) to 100 (full backing). */
-  std::array<std::int32_t, static_cast<std::size_t>(TalkGroup::COUNT)>
+  std::array<std::int32_t,
+             static_cast<std::size_t>(std::to_underlying(TalkGroup::COUNT))>
       last_talk{}; /*!< Day ordinals, 0 = never. */
   TalkRequest request = TalkRequest::None;
   std::int32_t request_day = 0;
@@ -269,7 +271,7 @@ struct TeamTalkContext
   int goal_difference = 0;      /*!< Own minus opponent (half-time). */
   float expected_points = 1.4f; /*!< Own expectation before kick-off. */
   bool derby = false;
-  bool final = false;
+  bool final_match = false;
   bool cup = false;
   std::int32_t day = 0;
   std::vector<TalkListener> listeners;
@@ -549,13 +551,37 @@ class InteractionSystem
   TalkBlock blockFor(const Player& player, TalkOption option,
                      const TalkContext& context, const GameDateValue& date,
                      TeamID managed_team_id, std::int32_t& cooldown) const;
+  TalkBlock optionBlockFor(const Player& player, TalkOption option,
+                           const TalkContext& context,
+                           const GameDateValue& date,
+                           TeamID managed_team_id) const;
+  bool hasActivePromise(PlayerID player_id, PromiseType type) const;
   void evaluatePromises(const GameDateValue& date, TeamID managed_team_id,
                         Inbox& inbox);
+  void evaluatePromise(Promise& promise, const Player& player, bool due,
+                       const GameDateValue& date, std::int32_t today,
+                       Inbox& inbox);
+  void evaluatePlayingTimePromise(Promise& promise, const Player& player,
+                                  bool due, const GameDateValue& date,
+                                  std::int32_t today, Inbox& inbox);
+  void evaluateContractPromise(Promise& promise, const Player& player, bool due,
+                               const GameDateValue& date, Inbox& inbox);
+  void evaluateSigningPromise(Promise& promise, bool due,
+                              const GameDateValue& date, Inbox& inbox);
   void resolvePromise(Promise& promise, PromiseState outcome,
                       PromiseVoidReason reason, const GameDateValue& date,
                       Inbox& inbox);
   void raiseRequests(const GameDateValue& date, TeamID managed_team_id,
                      Inbox& inbox);
+  bool resolveIgnoredRequest(Player& player, PlayerDynamics& dynamics,
+                             PlayerRelation& relation,
+                             const GameDateValue& date, std::int32_t today,
+                             Inbox& inbox);
+  TalkRequest requestForPlayer(const Player& player,
+                               const PlayerDynamics& dynamics,
+                               const PlayerRelation& relation,
+                               const GameDateValue& date,
+                               std::int32_t today) const;
   void spreadLeaderMood(TeamID managed_team_id, const GameDateValue& date);
   PlayerRelation& relationFor(PlayerID player_id);
   float firstTeamThreshold(TeamID team_id) const;

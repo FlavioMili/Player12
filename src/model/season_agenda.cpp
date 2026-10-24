@@ -48,29 +48,30 @@ int spanFrom(const GameDateValue& from, Predicate inside, int limit)
 
 const char* SeasonAgenda::kindKey(AgendaKind kind)
 {
+  using enum AgendaKind;
   switch (kind)
   {
-    case AgendaKind::SeasonStart:
+    case SeasonStart:
       return "AGENDA_SEASON_START";
-    case AgendaKind::TransferWindowOpens:
+    case TransferWindowOpens:
       return "AGENDA_WINDOW_OPENS";
-    case AgendaKind::TransferDeadline:
+    case TransferDeadline:
       return "AGENDA_TRANSFER_DEADLINE";
-    case AgendaKind::InternationalBreak:
+    case InternationalBreak:
       return "AGENDA_INTERNATIONAL_BREAK";
-    case AgendaKind::WinterBreak:
+    case WinterBreak:
       return "AGENDA_WINTER_BREAK";
-    case AgendaKind::BoardReview:
+    case BoardReview:
       return "AGENDA_BOARD_REVIEW";
-    case AgendaKind::ContractReminder:
+    case ContractReminder:
       return "AGENDA_CONTRACT_REMINDER";
-    case AgendaKind::YouthPreview:
+    case YouthPreview:
       return "AGENDA_YOUTH_PREVIEW";
-    case AgendaKind::YouthIntake:
+    case YouthIntake:
       return "AGENDA_YOUTH_INTAKE";
-    case AgendaKind::YouthDecisionDeadline:
+    case YouthDecisionDeadline:
       return "AGENDA_YOUTH_DEADLINE";
-    case AgendaKind::Fixture:
+    case Fixture:
       break;
   }
   return "AGENDA_FIXTURE";

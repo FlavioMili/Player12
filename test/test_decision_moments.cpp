@@ -13,12 +13,14 @@
 #include <unistd.h>
 
 #include <algorithm>
+#include <array>
 #include <cmath>
 #include <fstream>
 #include <memory>
 #include <nlohmann/json.hpp>
 #include <string>
 #include <tuple>
+#include <utility>
 #include <vector>
 
 #include "controller/game_controller.h"
@@ -40,11 +42,15 @@ constexpr std::uint64_t WORLD_SEED = 20250702;
 
 int uniqueSlot(int offset)
 {
-  return 9'100'000 + static_cast<int>(getpid() % 100'000) * 10 + offset;
+  return 9'100'000 + getpid() % 100'000 * 10 + offset;
 }
 
 struct SlotCleanup
 {
+  explicit SlotCleanup(int saveSlot) : slot(saveSlot) {}
+  SlotCleanup(const SlotCleanup&) = delete;
+  SlotCleanup& operator=(const SlotCleanup&) = delete;
+
   int slot;
   ~SlotCleanup() { RuntimePaths::removeSave(slot); }
 };
@@ -93,8 +99,9 @@ nlohmann::json loadLanguage(const char* file)
 std::vector<StoryKind> allDilemmas()
 {
   std::vector<StoryKind> kinds;
-  for (int kind = static_cast<int>(Stories::FIRST_DILEMMA);
-       kind <= static_cast<int>(Stories::LAST_DILEMMA); ++kind)
+  for (auto kind = static_cast<int>(std::to_underlying(Stories::FIRST_DILEMMA));
+       kind <= static_cast<int>(std::to_underlying(Stories::LAST_DILEMMA));
+       ++kind)
     kinds.push_back(static_cast<StoryKind>(kind));
   return kinds;
 }
@@ -112,12 +119,12 @@ using Raised = std::tuple<StoryKind, std::int32_t, PlayerID>;
 
 /** Runs a story engine over @p days from @p start, leaving every moment
  * unanswered, and returns the moments raised. */
-std::vector<Raised> runSeason(GameController& controller, GameDateValue start,
-                              int days, Inbox& inbox)
+std::vector<Raised> runSeason(const GameController& controller,
+                              GameDateValue start, int days, Inbox& inbox)
 {
   const auto gamedata = controller.getGameData();
-  InteractionSystem interactions(
-      gamedata, [&](PlayerID id) { return controller.getSquadRole(id); });
+  InteractionSystem interactions(gamedata, [&controller](PlayerID id)
+                                 { return controller.getSquadRole(id); });
   StoryEngine stories(gamedata);
   GameDateValue date = start;
   for (int day = 0; day < days; ++day)
@@ -148,9 +155,11 @@ TEST(InboxViewTest, FiltersMatchCategoryUnreadEntityAndFollowed)
 
   InboxView view;
   EXPECT_TRUE(Inbox::matchesView(message, view, nobody));
-  view.category = static_cast<std::int8_t>(InboxCategory::Injury);
+  view.category =
+      static_cast<std::int8_t>(std::to_underlying(InboxCategory::Injury));
   EXPECT_FALSE(Inbox::matchesView(message, view, nobody));
-  view.category = static_cast<std::int8_t>(InboxCategory::Transfer);
+  view.category =
+      static_cast<std::int8_t>(std::to_underlying(InboxCategory::Transfer));
   EXPECT_TRUE(Inbox::matchesView(message, view, nobody));
 
   view.unread_only = true;
@@ -187,7 +196,8 @@ TEST(InboxViewTest, FiltersFollowsAndMomentsSurviveSaveAndLoad)
 
   InboxView view;
   view.tab = 1;
-  view.category = static_cast<std::int8_t>(InboxCategory::Transfer);
+  view.category =
+      static_cast<std::int8_t>(std::to_underlying(InboxCategory::Transfer));
   view.unread_only = true;
   view.followed_only = true;
   view.team_id = other;
@@ -204,8 +214,8 @@ TEST(InboxViewTest, FiltersFollowsAndMomentsSurviveSaveAndLoad)
                                .front()
                                .get()
                                .getId();
-  state.dilemmas.push_back(Dilemma{StoryKind::FineDispute, captain, 0, today,
-                                   today + Stories::DILEMMA_ANSWER_DAYS});
+  state.dilemmas.emplace_back(StoryKind::FineDispute, captain, 0, today,
+                              today + Stories::DILEMMA_ANSWER_DAYS);
   stories.restore(state);
   InboxMessage message;
   message.date = controller->getCurrentDate();
@@ -268,8 +278,8 @@ TEST(FollowTest, FollowedPlayersMakeNewsUntilUnfollowed)
   const PlayerID star = others[0].get().getId();
   const PlayerID own =
       controller->getPlayersForTeam(managed).front().get().getId();
-  InteractionSystem interactions(
-      gamedata, [&](PlayerID id) { return controller->getSquadRole(id); });
+  InteractionSystem interactions(gamedata, [&controller](PlayerID id)
+                                 { return controller->getSquadRole(id); });
   StoryEngine stories(gamedata);
   Inbox inbox;
   GameDateValue date(2025, 9, 2);
@@ -279,7 +289,8 @@ TEST(FollowTest, FollowedPlayersMakeNewsUntilUnfollowed)
   // Match days throughout: no decision moment gets in the way.
   StoryDayContext match_day;
   match_day.days_to_match = 0;
-  const auto day = [&](int days)
+  const auto day =
+      [&date, &stories, managed, &interactions, &inbox, &match_day](int days)
   {
     date = SeasonCalendar::addDays(date, days);
     stories.onDayAdvanced(date, managed, interactions, inbox, match_day);
@@ -449,7 +460,7 @@ TEST(DilemmaTest, EveryMomentHasKeysAndAnAction)
 
 TEST(DilemmaTest, EffectsAreBoundedAndEveryAnswerCostsSomething)
 {
-  ClubProfile profiles[2];
+  std::array<ClubProfile, 2> profiles{};
   profiles[1].reputation = 100;
   profiles[1].stadium_capacity = 90'000;
   profiles[1].ticket_price = 120;
@@ -457,7 +468,7 @@ TEST(DilemmaTest, EffectsAreBoundedAndEveryAnswerCostsSomething)
   {
     for (const StoryKind kind : allDilemmas())
     {
-      bool any_cost[2] = {false, false};
+      std::array<bool, 2> any_cost{};
       for (const int option : {0, 1})
       {
         const DilemmaEffects effects =
@@ -482,8 +493,8 @@ TEST(DilemmaTest, EffectsAreBoundedAndEveryAnswerCostsSomething)
             any_cost[option] ||
             Stories::dilemmaEffects(kind, 1 - option, profile).money > 0;
       // No free lunch: both answers have a downside.
-      EXPECT_TRUE(any_cost[0]) << static_cast<int>(kind);
-      EXPECT_TRUE(any_cost[1]) << static_cast<int>(kind);
+      EXPECT_TRUE(any_cost[0]) << static_cast<int>(std::to_underlying(kind));
+      EXPECT_TRUE(any_cost[1]) << static_cast<int>(std::to_underlying(kind));
     }
   }
   EXPECT_EQ(
@@ -513,7 +524,8 @@ TEST(DilemmaTest, NeverOnMatchDayRareAndDeterministic)
       if (std::get<0>(raised[earlier]) == kind)
         EXPECT_GE(day - std::get<1>(raised[earlier]),
                   Stories::DILEMMA_KIND_COOLDOWN_DAYS)
-            << "kind " << static_cast<int>(kind) << " repeats too soon";
+            << "kind " << static_cast<int>(std::to_underlying(kind))
+            << " repeats too soon";
     if (kind == StoryKind::SponsorAppearance)
     {
       const int to_match = weeklyRhythm(day).days_to_match;
@@ -532,8 +544,8 @@ TEST(DilemmaTest, NeverOnMatchDayRareAndDeterministic)
 
   // A club that plays every day never meets one.
   const auto gamedata = controller->getGameData();
-  InteractionSystem interactions(
-      gamedata, [&](PlayerID id) { return controller->getSquadRole(id); });
+  InteractionSystem interactions(gamedata, [&controller](PlayerID id)
+                                 { return controller->getSquadRole(id); });
   StoryEngine busy(gamedata);
   Inbox busy_inbox;
   GameDateValue date = start;
@@ -554,8 +566,8 @@ TEST(DilemmaTest, UnansweredMomentsLapseWithoutEffects)
   auto controller = makeCareer(slot.slot);
   const auto gamedata = controller->getGameData();
   const TeamID managed = managedId(*controller);
-  InteractionSystem interactions(
-      gamedata, [&](PlayerID id) { return controller->getSquadRole(id); });
+  InteractionSystem interactions(gamedata, [&controller](PlayerID id)
+                                 { return controller->getSquadRole(id); });
   StoryEngine stories(gamedata);
   const PlayerID subject =
       controller->getPlayersForTeam(managed).front().get().getId();
@@ -563,9 +575,8 @@ TEST(DilemmaTest, UnansweredMomentsLapseWithoutEffects)
   GameDateValue date(2025, 10, 1);
   const std::int32_t today = dayOrdinal(date);
   StoryState state;
-  state.dilemmas.push_back(Dilemma{StoryKind::CompassionateLeave, subject, 0,
-                                   today,
-                                   today + Stories::DILEMMA_ANSWER_DAYS});
+  state.dilemmas.emplace_back(StoryKind::CompassionateLeave, subject, 0, today,
+                              today + Stories::DILEMMA_ANSWER_DAYS);
   stories.restore(state);
   Inbox inbox;
   for (int day = 0; day <= Stories::DILEMMA_ANSWER_DAYS; ++day)
@@ -603,8 +614,8 @@ TEST(DilemmaTest, AnswersApplyTheEffectsShownAndAreRecorded)
   player.mutableDynamics().sharpness = 70.0f;
   mutablePlayer(*controller, bystander).mutableDynamics().morale = 50.0f;
   StoryState state = stories.getState();
-  state.dilemmas.push_back(Dilemma{StoryKind::CoachingCourse, veteran, 0, today,
-                                   today + Stories::DILEMMA_ANSWER_DAYS});
+  state.dilemmas.emplace_back(StoryKind::CoachingCourse, veteran, 0, today,
+                              today + Stories::DILEMMA_ANSWER_DAYS);
   stories.restore(state);
   const auto preview = controller->getDilemmaEffects(0);
   ASSERT_TRUE(preview.has_value());
@@ -640,8 +651,8 @@ TEST(DilemmaTest, AnswersApplyTheEffectsShownAndAreRecorded)
 
   // Fans' protest, held prices: the whole squad feels it.
   state = stories.getState();
-  state.dilemmas.push_back(Dilemma{StoryKind::TicketProtest, 0, 0, today + 20,
-                                   today + 20 + Stories::DILEMMA_ANSWER_DAYS});
+  state.dilemmas.emplace_back(StoryKind::TicketProtest, 0, 0, today + 20,
+                              today + 20 + Stories::DILEMMA_ANSWER_DAYS);
   stories.restore(state);
   const auto held = controller->getDilemmaEffects(1);
   ASSERT_TRUE(held.has_value());

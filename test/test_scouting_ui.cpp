@@ -22,6 +22,7 @@
 #include <memory>
 #include <string>
 #include <tuple>
+#include <utility>
 
 #include "controller/game_controller.h"
 #include "global/logger.h"
@@ -106,11 +107,15 @@ constexpr LeagueID FOREIGN_LEAGUE = 3;
 
 int uniqueSlot(int offset)
 {
-  return 400'000 + static_cast<int>(getpid() % 100'000) * 10 + offset;
+  return 400'000 + getpid() % 100'000 * 10 + offset;
 }
 
 struct SlotCleanup
 {
+  explicit SlotCleanup(int saveSlot) : slot(saveSlot) {}
+  SlotCleanup(const SlotCleanup&) = delete;
+  SlotCleanup& operator=(const SlotCleanup&) = delete;
+
   int slot;
   ~SlotCleanup() { RuntimePaths::removeSave(slot); }
 };
@@ -126,8 +131,8 @@ void capture(GUIView& view, const char* name)
 void resize(GUIView& view, int width, int height)
 {
   SDL_SetWindowSize(view.getWindow(), width, height);
-  SDL_Event event{};
-  event.type = SDL_EVENT_WINDOW_RESIZED;
+  SDL_Event event{.window = {}};
+  event.window.type = SDL_EVENT_WINDOW_RESIZED;
   event.window.windowID = SDL_GetWindowID(view.getWindow());
   event.window.data1 = width;
   event.window.data2 = height;
@@ -162,13 +167,13 @@ TEST(ScoutingUiTest, ScoutPagesFollowWhatEachScoutIsDoing)
   const uint32_t assigned = scouts[0].id;
   const uint32_t experienced = scouts[1].id;
   const uint32_t fresh = scouts[2].id;
-  PlayerID target = 0;
-  for (const TeamID id :
-       controller.getLeagueById(FOREIGN_LEAGUE)->get().getTeamIDs())
-  {
-    target = controller.getPlayersForTeam(id).front().get().getId();
-    break;
-  }
+  const auto& foreign_clubs =
+      controller.getLeagueById(FOREIGN_LEAGUE)->get().getTeamIDs();
+  ASSERT_FALSE(foreign_clubs.empty());
+  const auto foreign_players =
+      controller.getPlayersForTeam(foreign_clubs.front());
+  ASSERT_FALSE(foreign_players.empty());
+  const PlayerID target = foreign_players.front().get().getId();
   // Domestic rivals are known best: reports come quickly.
   ASSERT_EQ(controller.startScoutAssignment(assigned, ScoutTargetKind::League,
                                             OWN_LEAGUE, 40),
@@ -223,8 +228,9 @@ TEST(ScoutingUiTest, ScoutPagesFollowWhatEachScoutIsDoing)
   EXPECT_GT(Bridge::pickerEntries(*scene), 5u);
   EXPECT_GT(Bridge::sendCost(*scene), 0) << "a destination is suggested";
   capture(view, "scouting_scout_new.bmp");
-  Bridge::pick(*scene, ScoutTargetKind::Region,
-               static_cast<uint32_t>(Continent::SouthAmerica));
+  Bridge::pick(
+      *scene, ScoutTargetKind::Region,
+      static_cast<uint32_t>(std::to_underlying(Continent::SouthAmerica)));
   frames(view, 2);
   EXPECT_GT(Bridge::effectLines(*scene), 0u);
   capture(view, "scouting_scout_new_region.bmp");

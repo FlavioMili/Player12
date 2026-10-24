@@ -84,7 +84,7 @@ float valueNoise(float x, float y, std::uint32_t salt)
   const float top =
       lattice(cellX, cellY + 1.0f) +
       (lattice(cellX + 1.0f, cellY + 1.0f) - lattice(cellX, cellY + 1.0f)) * fx;
-  return bottom + (top - bottom) * fy;
+  return std::lerp(bottom, top, fy);
 }
 
 void addRectangle(std::vector<GroundPolygon>& target, float x0, float y0,
@@ -214,7 +214,7 @@ void buildGround(Geometry& geometry, bool day)
   grid.rows = G::ROWS;
   grid.points.clear();
   grid.colors.clear();
-  const std::size_t vertices = static_cast<std::size_t>(
+  const auto vertices = static_cast<std::size_t>(
       grid.stripes * grid.columnVertices() * (grid.rows + 1));
   grid.points.reserve(vertices);
   grid.colors.reserve(vertices);
@@ -402,8 +402,8 @@ struct SectionShape
 class StandBuilder
 {
  public:
-  StandBuilder(Geometry& target, const MatchKits& matchKits, bool daylight)
-      : geometry(target), kits(matchKits), day(daylight)
+  StandBuilder(Geometry& target, const MatchKits& matchKits, bool daylightView)
+      : geometry(target), kits(matchKits), day(daylightView)
   {
   }
 
@@ -500,8 +500,10 @@ class StandBuilder
     using S = Tuning::Stands;
     using D = Tuning::Day;
     const Vec3 sun = sunDirection();
-    const float toward = -(sun.x * shape.outward.x + sun.y * shape.outward.y);
-    if (toward > 0.05f) return;
+    if (const float toward =
+            -(sun.x * shape.outward.x + sun.y * shape.outward.y);
+        toward > 0.05f)
+      return;
     const ProfilePoint edge{S::ROOF_FRONT_DEPTH,
                             S::ROOF_FRONT_HEIGHT - S::FASCIA_HEIGHT};
     const auto onGround = [&](Vec3 point)
@@ -514,12 +516,14 @@ class StandBuilder
     const Vec3 leftEdge = onGround(shape.left(edge));
     const Vec3 rightEdge = onGround(shape.right(edge));
     // Only where the shadow reaches past the front of the stand.
-    const auto inward = [&](Vec3 point)
-    {
-      return -((point.x - leftFront.x) * shape.outward.x +
-               (point.y - leftFront.y) * shape.outward.y);
-    };
-    if (inward(leftEdge) <= 0.1f && inward(rightEdge) <= 0.1f) return;
+    if (const auto inward =
+            [&](Vec3 point)
+        {
+          return -((point.x - leftFront.x) * shape.outward.x +
+                   (point.y - leftFront.y) * shape.outward.y);
+        };
+        inward(leftEdge) <= 0.1f && inward(rightEdge) <= 0.1f)
+      return;
     const Vec3 soft = shape.outward * D::STAND_SHADOW_PENUMBRA;
     const ImU32 dark = IM_COL32(0, 0, 0, D::STAND_SHADOW_ALPHA);
     const ImU32 clear = IM_COL32(0, 0, 0, 0);
@@ -542,8 +546,8 @@ class StandBuilder
     fringe.colors[2] = clear;
     fringe.colors[3] = clear;
     geometry.standShadows.push_back(fringe);
-    geometry.shadowAreas.push_back(
-        {leftFront, rightFront, rightEdge, leftEdge});
+    geometry.shadowAreas.emplace_back(
+        std::array<Vec3, 4>{leftFront, rightFront, rightEdge, leftEdge});
   }
 
   /// A profile face in night and day colours (`dayNear`/`dayFar` are the
@@ -570,11 +574,12 @@ class StandBuilder
                      float teamNoise, bool& teamFan) const
   {
     using C = Tuning::Crowd;
-    const float teamShare =
-        (shape.awayEnd
-             ? C::AWAY_END_SHARE
-             : (shape.side == Side::WEST ? C::HOME_END_SHARE : C::HOME_SHARE)) +
-        C::SHARE_SWING * (teamNoise - 0.5f) * 2.0f;
+    float teamShare = C::HOME_SHARE;
+    if (shape.awayEnd)
+      teamShare = C::AWAY_END_SHARE;
+    else if (shape.side == Side::WEST)
+      teamShare = C::HOME_END_SHARE;
+    teamShare += C::SHARE_SWING * (teamNoise - 0.5f) * 2.0f;
     teamFan = unitHash(key, 3U, 0U) < teamShare;
     if (teamFan)
     {
@@ -592,11 +597,11 @@ class StandBuilder
   }
 
   /// Who a spectator cheers for and whether a scarf comes out.
-  static std::uint8_t supporterFlags(const SectionShape& shape,
-                                     std::uint32_t key, bool teamFan)
+  static std::byte supporterFlags(const SectionShape& shape, std::uint32_t key,
+                                  bool teamFan)
   {
     using C = Tuning::Crowd;
-    std::uint8_t flags = 0;
+    std::byte flags{};
     if (teamFan)
     {
       flags |= shape.awayEnd ? CrowdFlags::AWAY_FAN | CrowdFlags::CHEERS_AWAY
@@ -619,9 +624,11 @@ class StandBuilder
   {
     using C = Tuning::Crowd;
     if (!teamFan) return;
-    const float share = shape.side == Side::WEST ? C::HOME_END_FLAG_SHARE
-                        : shape.awayEnd          ? C::AWAY_END_FLAG_SHARE
-                                                 : C::FLAG_SHARE;
+    float share = C::FLAG_SHARE;
+    if (shape.awayEnd)
+      share = C::AWAY_END_FLAG_SHARE;
+    else if (shape.side == Side::WEST)
+      share = C::HOME_END_FLAG_SHARE;
     if (unitHash(key, 11U, 0U) >= share) return;
     const KitColors& kit = shape.awayEnd ? kits.away : kits.home;
     CrowdFlag& flag = geometry.flags.emplace_back();
@@ -647,7 +654,7 @@ class StandBuilder
         IM_COL32(150, 100, 70, 255), IM_COL32(96, 64, 44, 255)};
     face.clumpBegin = static_cast<std::uint32_t>(geometry.clumps.size());
     face.flagBegin = static_cast<std::uint32_t>(geometry.flags.size());
-    const int rows = static_cast<int>((to.d - from.d) / C::ROW_DEPTH);
+    const auto rows = static_cast<int>((to.d - from.d) / C::ROW_DEPTH);
     const auto rowPoint = [&](int row)
     {
       const float d = from.d + (static_cast<float>(row) + 0.5f) * C::ROW_DEPTH;
@@ -681,7 +688,7 @@ class StandBuilder
       const ProfilePoint front = rowPoint(firstRow);
       const float rowLength =
           RenderMath::length(shape.right(front) - shape.left(front));
-      const int seats = static_cast<int>(rowLength / C::SEAT_SPACING);
+      const auto seats = static_cast<int>(rowLength / C::SEAT_SPACING);
       for (int firstSeat = 0; firstSeat < seats; firstSeat += C::CLUMP_SEATS)
       {
         const int endSeat = std::min(firstSeat + C::CLUMP_SEATS, seats);
@@ -701,7 +708,7 @@ class StandBuilder
           // the sun (or only the sky under the roof) by day.
           const float rowLight =
               day ? sunlight(spectatorNormal, inRoofShadow(shape, point))
-                  : frontLight + (backLight - frontLight) * rowT;
+                  : std::lerp(frontLight, backLight, rowT);
           for (int seat = firstSeat; seat < endSeat; ++seat)
           {
             const std::uint32_t key = ((sectionCounter * 4U + tier) * 128U +
@@ -740,18 +747,28 @@ class StandBuilder
                                          static_cast<float>(CROWD_PHASES)) %
                 CROWD_PHASES);
             dot.flags = supporterFlags(shape, key, teamFan);
-            if ((dot.flags & CrowdFlags::CHEERS_HOME) != 0U) ++cheersHome;
-            if ((dot.flags & CrowdFlags::CHEERS_AWAY) != 0U) ++cheersAway;
+            if ((dot.flags & CrowdFlags::CHEERS_HOME) != std::byte{})
+              ++cheersHome;
+            if ((dot.flags & CrowdFlags::CHEERS_AWAY) != std::byte{})
+              ++cheersAway;
             addFlag(shape, key, dot, right - left, teamFan);
             const ImU32 look = mixColor(dot.body, dot.head, 0.25f);
             accumulate(clumpSum, look);
-            accumulate(rowT < 0.5f ? nearSum : farSum, look);
-            (rowT < 0.5f ? nearCount : farCount) += 1.0f;
+            if (rowT < 0.5f)
+            {
+              accumulate(nearSum, look);
+              nearCount += 1.0f;
+            }
+            else
+            {
+              accumulate(farSum, look);
+              farCount += 1.0f;
+            }
           }
         }
         clump.dotEnd = static_cast<std::uint32_t>(geometry.crowd.size());
         if (clump.dotEnd == clump.dotBegin) continue;
-        const float seatCount = static_cast<float>(endSeat - firstSeat);
+        const auto seatCount = static_cast<float>(endSeat - firstSeat);
         const float centre =
             (static_cast<float>(firstSeat) + seatCount * 0.5f) /
             static_cast<float>(seats);
@@ -764,7 +781,7 @@ class StandBuilder
         clump.halfWidth = seatCount * C::SEAT_SPACING * 0.5f;
         clump.color = average(
             clumpSum, static_cast<float>(clump.dotEnd - clump.dotBegin));
-        const int members = static_cast<int>(clump.dotEnd - clump.dotBegin);
+        const auto members = static_cast<int>(clump.dotEnd - clump.dotBegin);
         if (cheersHome * 2 > members) clump.flags |= CrowdFlags::CHEERS_HOME;
         if (cheersAway * 2 > members) clump.flags |= CrowdFlags::CHEERS_AWAY;
         clump.phase = geometry.crowd[clump.dotBegin].phase;
@@ -972,7 +989,7 @@ void buildBoards(Geometry& geometry)
     const Vec3 span = run.end - run.start;
     const float runLength = RenderMath::length(span);
     const Vec3 direction = span * (1.0f / runLength);
-    const int count = static_cast<int>(runLength / (B::LENGTH + B::GAP));
+    const auto count = static_cast<int>(runLength / (B::LENGTH + B::GAP));
     const float used = static_cast<float>(count) * (B::LENGTH + B::GAP);
     const Vec3 right = RenderMath::cross(run.normal * -1.0f, UP);
     for (int index = 0; index < count; ++index)
@@ -1061,7 +1078,7 @@ bool Geometry::inStandShadow(Vec3 point) const
     // Convex quad: inside when on the same side of all four edges.
     float sign = 0.0f;
     bool inside = true;
-    for (std::size_t index = 0; index < area.size() && inside; ++index)
+    for (std::size_t index = 0; index < area.size(); ++index)
     {
       const Vec3& a = area[index];
       const Vec3& b = area[(index + 1) % area.size()];
@@ -1070,15 +1087,17 @@ bool Geometry::inStandShadow(Vec3 point) const
       if (std::abs(side) < 1e-6f) continue;
       if (sign == 0.0f) sign = side;
       inside = side * sign > 0.0f;
+      if (!inside) break;
     }
     if (inside) return true;
   }
   return false;
 }
 
-void Geometry::build(const MatchKits& kits, bool daylight)
+void Geometry::build(const MatchKits& kits, bool daylightView)
 {
-  day = daylight;
+  using enum Side;
+  day = daylightView;
   standShadows.clear();
   shadowAreas.clear();
   ground.clear();
@@ -1108,17 +1127,17 @@ void Geometry::build(const MatchKits& kits, bool daylight)
   const Vec3 east{1.0f, 0.0f, 0.0f};
   StandBuilder stands(*this, kits, day);
   stands.buildStand({x0, y0, 0.0f}, east, south, x1 - x0, S::SIDE_SECTIONS,
-                    Side::SOUTH);
+                    SOUTH);
   stands.buildStand({x1, y1, 0.0f}, west, north, x1 - x0, S::SIDE_SECTIONS,
-                    Side::NORTH);
+                    NORTH);
   stands.buildStand({x0, y1, 0.0f}, south, west, y1 - y0, S::END_SECTIONS,
-                    Side::WEST);
+                    WEST);
   stands.buildStand({x1, y0, 0.0f}, north, east, y1 - y0, S::END_SECTIONS,
-                    Side::EAST);
-  stands.buildCorner({x0, y0, 0.0f}, west, south, Side::SOUTH);
-  stands.buildCorner({x1, y0, 0.0f}, south, east, Side::SOUTH);
-  stands.buildCorner({x1, y1, 0.0f}, east, north, Side::NORTH);
-  stands.buildCorner({x0, y1, 0.0f}, north, west, Side::NORTH);
+                    EAST);
+  stands.buildCorner({x0, y0, 0.0f}, west, south, SOUTH);
+  stands.buildCorner({x1, y0, 0.0f}, south, east, SOUTH);
+  stands.buildCorner({x1, y1, 0.0f}, east, north, NORTH);
+  stands.buildCorner({x0, y1, 0.0f}, north, west, NORTH);
   buildFloodlights(*this, day);
   buildBoards(*this);
   buildGoals(*this);

@@ -20,6 +20,7 @@
 #include <algorithm>
 #include <cmath>
 #include <filesystem>
+#include <format>
 #include <fstream>
 #include <memory>
 #include <regex>
@@ -27,6 +28,7 @@
 #include <sstream>
 #include <string>
 #include <string_view>
+#include <utility>
 #include <vector>
 
 #include "controller/game_controller.h"
@@ -87,11 +89,15 @@ constexpr std::uint64_t WORLD_SEED = 20250702;
 
 int uniqueSlot(int offset)
 {
-  return 470'000 + static_cast<int>(getpid() % 100'000) * 10 + offset;
+  return 470'000 + getpid() % 100'000 * 10 + offset;
 }
 
 struct SlotCleanup
 {
+  explicit SlotCleanup(int saveSlot) : slot(saveSlot) {}
+  SlotCleanup(const SlotCleanup&) = delete;
+  SlotCleanup& operator=(const SlotCleanup&) = delete;
+
   int slot;
   ~SlotCleanup() { RuntimePaths::removeSave(slot); }
 };
@@ -99,6 +105,10 @@ struct SlotCleanup
 /** Restores the default bindings whatever a test did. */
 struct BindingsCleanup
 {
+  BindingsCleanup() = default;
+  BindingsCleanup(const BindingsCleanup&) = delete;
+  BindingsCleanup& operator=(const BindingsCleanup&) = delete;
+
   ~BindingsCleanup()
   {
     Input::registry().resetAll();
@@ -121,8 +131,8 @@ void capture(GUIView& view, const char* name)
 void resize(GUIView& view, int width, int height)
 {
   SDL_SetWindowSize(view.getWindow(), width, height);
-  SDL_Event event{};
-  event.type = SDL_EVENT_WINDOW_RESIZED;
+  SDL_Event event{.window = {}};
+  event.window.type = SDL_EVENT_WINDOW_RESIZED;
   event.window.windowID = SDL_GetWindowID(view.getWindow());
   event.window.data1 = width;
   event.window.data2 = height;
@@ -153,8 +163,7 @@ const ImGuiWindow* findWindow(std::string_view part)
 {
   const ImGuiWindow* found = nullptr;
   for (const ImGuiWindow* window : GImGui->Windows)
-    if (window->Active &&
-        std::string_view(window->Name).find(part) != std::string_view::npos)
+    if (window->Active && std::string_view(window->Name).contains(part))
       found = window;
   return found;
 }
@@ -184,15 +193,15 @@ bool clickButton(GUIView& view, std::string_view windowPart, const char* label)
   return clickItem(view, window, ImHashStr(label, 0, window->ID));
 }
 
-bool welcomeOpen(GUIView& view)
+bool welcomeOpen(const GUIView& view)
 {
-  auto* hub = dynamic_cast<MainGameScene*>(view.getBaseScene());
+  const auto* hub = dynamic_cast<const MainGameScene*>(view.getBaseScene());
   return hub != nullptr && hub->welcomeTour().isOpen();
 }
 
-std::size_t welcomePage(GUIView& view)
+std::size_t welcomePage(const GUIView& view)
 {
-  auto* hub = dynamic_cast<MainGameScene*>(view.getBaseScene());
+  const auto* hub = dynamic_cast<const MainGameScene*>(view.getBaseScene());
   return hub != nullptr ? hub->welcomeTour().page() : 0;
 }
 }  // namespace
@@ -565,17 +574,20 @@ TEST(AccessibilityTest, EveryThemeMeetsWcagContrast)
   const ImVec4 accent(0.130f, 0.650f, 0.390f, 1.0f);
   constexpr float BODY_TEXT = 4.5f;  // WCAG AA, normal text
   constexpr float NON_TEXT = 3.0f;   // WCAG AA, large text and UI parts
-  for (int preset = 0; preset < static_cast<int>(Theme::Preset::COUNT);
+  for (int preset = 0;
+       preset < static_cast<int>(std::to_underlying(Theme::Preset::COUNT));
        ++preset)
-    for (int vision = 0; vision < static_cast<int>(Theme::ColorVision::COUNT);
+    for (int vision = 0;
+         vision <
+         static_cast<int>(std::to_underlying(Theme::ColorVision::COUNT));
          ++vision)
     {
       const Theme::Palette p =
           Theme::presetPalette(static_cast<Theme::Preset>(preset),
                                static_cast<Theme::ColorVision>(vision), accent);
-      const std::string where =
-          std::string(Theme::presetKey(static_cast<Theme::Preset>(preset))) +
-          " / vision " + std::to_string(vision);
+      const std::string where = std::format(
+          "{} / vision {}",
+          Theme::presetKey(static_cast<Theme::Preset>(preset)), vision);
       for (const ImVec4* ground : {&p.background, &p.surface, &p.raised})
       {
         EXPECT_GE(Theme::contrastRatio(p.text, *ground), BODY_TEXT) << where;
@@ -684,8 +696,9 @@ std::vector<std::string> callArguments(const std::string& text,
 /** Text a player would read: words, not ids, keys or format strings. */
 bool looksLikeEnglish(std::string literal)
 {
-  static const std::regex KEY(R"(^[A-Z0-9_]+$)");
-  if (std::regex_match(literal, KEY)) return false;
+  if (static const std::regex KEY(R"(^[A-Z0-9_]+$)");
+      std::regex_match(literal, KEY))
+    return false;
   literal = literal.substr(0, literal.find("##"));
   static const std::regex FORMAT(
       R"(%[-+ #0]*[0-9*]*(?:\.[0-9*]+)?(?:hh|h|ll|l|z|j|t)?[a-zA-Z%]|\{[^}]*\})");
@@ -703,7 +716,7 @@ TEST(LocalizationScanTest, GuiCodeHasNoHardCodedEnglish)
   // an id first, that argument is skipped (see SKIP_FIRST / link()).
   static const std::regex CALL(
       R"(\b(ImGui::(?:Text|TextUnformatted|TextColored|TextWrapped|TextDisabled|BulletText|LabelText|Button|SmallButton|Checkbox|RadioButton|Selectable|MenuItem|BeginMenu|BeginTabItem|TabItemButton|SeparatorText|SetTooltip|CollapsingHeader|TreeNode|TableSetupColumn|TextLink|InputTextWithHint)|UI::(?:primaryButton|secondaryButton|dangerButton|toggleButton|pageHeader|sectionLabel|emptyState|badge|textFitted|keyValue|summaryRow|textRight|textRightColored|link|beginCard|beginAutoHeightCard|statTile|confirmDialog))\s*\()");
-  static const std::set<std::string> SKIP_FIRST = {
+  static const std::set<std::string, std::less<>> SKIP_FIRST = {
       "UI::beginCard", "UI::beginAutoHeightCard", "UI::statTile",
       "UI::confirmDialog", "ImGui::InputTextWithHint"};
   const std::filesystem::path root =

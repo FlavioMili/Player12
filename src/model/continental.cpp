@@ -12,10 +12,12 @@
 
 #include <algorithm>
 #include <cmath>
+#include <memory>
 #include <nlohmann/json.hpp>
 #include <numeric>
 #include <random>
 #include <set>
+#include <utility>
 
 #include "database/database_connection.h"
 #include "database/gamedata.h"
@@ -105,7 +107,8 @@ struct DrawState
     const size_t b = index(q, j);
     host[p][q][i] = on ? static_cast<int>(j) : -1;
     taken[p][q][j] = on ? 1 : 0;
-    met[a][b] = met[b][a] = on ? 1 : 0;
+    met[a][b] = on ? 1 : 0;
+    met[b][a] = on ? 1 : 0;
     const int delta = on ? 1 : -1;
     faced[a][association[b]] =
         static_cast<uint8_t>(faced[a][association[b]] + delta);
@@ -223,7 +226,7 @@ std::vector<uint8_t> assignMatchdays(
         std::ranges::shuffle(list, rng);
         return list;
       };
-      const auto pickTeam = [&]() -> std::optional<size_t>
+      const auto pickTeam = [&]()
       {
         std::optional<size_t> best;
         size_t best_count = SIZE_MAX;
@@ -250,7 +253,7 @@ std::vector<uint8_t> assignMatchdays(
       while (++steps < DRAW_STEP_BUDGET)
       {
         const std::optional<size_t> team = pickTeam();
-        if (!team)
+        if (!team.has_value())
         {
           matched = true;
           break;
@@ -264,7 +267,8 @@ std::vector<uint8_t> assignMatchdays(
           {
             const size_t e = list.back();
             list.pop_back();
-            busy[edges[e].first] = busy[edges[e].second] = 1;
+            busy[edges[e].first] = 1;
+            busy[edges[e].second] = 1;
             chosen.push_back(e);
             advanced = true;
             break;
@@ -273,7 +277,8 @@ std::vector<uint8_t> assignMatchdays(
           if (chosen.empty()) break;
           const size_t undo = chosen.back();
           chosen.pop_back();
-          busy[edges[undo].first] = busy[edges[undo].second] = 0;
+          busy[edges[undo].first] = 0;
+          busy[edges[undo].second] = 0;
         }
         if (!advanced) break;
       }
@@ -289,14 +294,14 @@ std::vector<uint8_t> assignMatchdays(
   // Documented fallback (never observed with the release formats): greedy
   // rounds, anything left over is played in an extra round.
   std::ranges::fill(matchday, 0);
-  std::vector<std::vector<uint8_t>> busy(rounds + 2,
-                                         std::vector<uint8_t>(teams, 0));
+  std::vector busy(rounds + 2, std::vector<uint8_t>(teams, 0));
   for (size_t e = 0; e < edges.size(); ++e)
   {
     for (size_t round = 1; round <= rounds + 1; ++round)
     {
       if (busy[round][edges[e].first] || busy[round][edges[e].second]) continue;
-      busy[round][edges[e].first] = busy[round][edges[e].second] = 1;
+      busy[round][edges[e].first] = 1;
+      busy[round][edges[e].second] = 1;
       matchday[e] = static_cast<uint8_t>(round);
       break;
     }
@@ -317,19 +322,20 @@ std::string joinNames(const std::vector<std::string>& names)
 
 int64_t roundFee(const Continental::Prizes& prizes, Round round)
 {
+  using enum Round;
   switch (round)
   {
-    case Round::LeaguePhase:
+    case LeaguePhase:
       return prizes.participation;
-    case Round::Playoff:
+    case Playoff:
       return prizes.playoff;
-    case Round::RoundOf16:
+    case RoundOf16:
       return prizes.round_of_16;
-    case Round::QuarterFinal:
+    case QuarterFinal:
       return prizes.quarter_final;
-    case Round::SemiFinal:
+    case SemiFinal:
       return prizes.semi_final;
-    case Round::Final:
+    case Final:
       return prizes.final_fee;
   }
   return 0;
@@ -339,13 +345,14 @@ int64_t roundFee(const Continental::Prizes& prizes, Round round)
  * leg. */
 size_t knockoutWeek(Round round, Round first_knockout)
 {
+  using enum Round;
   switch (round)
   {
-    case Round::Playoff:
-      return first_knockout == Round::RoundOf16 ? 8 : 10;
-    case Round::RoundOf16:
+    case Playoff:
+      return first_knockout == RoundOf16 ? 8 : 10;
+    case RoundOf16:
       return 10;
-    case Round::QuarterFinal:
+    case QuarterFinal:
       return 12;
     default:
       return 14;
@@ -414,14 +421,14 @@ Round Continental::firstKnockoutRound(uint8_t clubs)
 uint8_t Continental::stageCode(Round round, uint8_t leg)
 {
   return static_cast<uint8_t>(KNOCKOUT_STAGE_BASE +
-                              2 * static_cast<uint8_t>(round) + (leg - 1));
+                              2 * std::to_underlying(round) + (leg - 1));
 }
 
 Round Continental::roundOf(uint8_t stage)
 {
   if (stage < KNOCKOUT_STAGE_BASE + 2) return Round::LeaguePhase;
   return static_cast<Round>(std::min<int>((stage - KNOCKOUT_STAGE_BASE) / 2,
-                                          static_cast<int>(Round::Final)));
+                                          std::to_underlying(Round::Final)));
 }
 
 uint8_t Continental::legOf(uint8_t stage)
@@ -433,19 +440,20 @@ uint8_t Continental::legOf(uint8_t stage)
 
 const char* Continental::roundKey(Round round)
 {
+  using enum Round;
   switch (round)
   {
-    case Round::LeaguePhase:
+    case LeaguePhase:
       return "CONT_ROUND_LEAGUE_PHASE";
-    case Round::Playoff:
+    case Playoff:
       return "CONT_ROUND_PLAYOFF";
-    case Round::RoundOf16:
+    case RoundOf16:
       return "CONT_ROUND_OF_16";
-    case Round::QuarterFinal:
+    case QuarterFinal:
       return "CONT_ROUND_QUARTER_FINAL";
-    case Round::SemiFinal:
+    case SemiFinal:
       return "CONT_ROUND_SEMI_FINAL";
-    case Round::Final:
+    case Final:
       return "CONT_ROUND_FINAL";
   }
   return "CONT_ROUND_LEAGUE_PHASE";
@@ -505,7 +513,7 @@ std::vector<Continental::LeagueFixture> Continental::drawLeaguePhase(
   std::vector<DrawSlot> slots;
   for (size_t p = 0; p < pots; ++p)
     for (size_t q = 0; q < pots; ++q)
-      for (size_t i = 0; i < pot_size; ++i) slots.push_back({p, q, i});
+      for (size_t i = 0; i < pot_size; ++i) slots.emplace_back(p, q, i);
 
   std::mt19937 rng(seed);
   struct Level
@@ -682,7 +690,7 @@ ContinentalCompetitions::Season* ContinentalCompetitions::findSeason(
 {
   const auto it =
       std::ranges::find(seasons, competition_id, &Season::competition_id);
-  return it == seasons.end() ? nullptr : &*it;
+  return it == seasons.end() ? nullptr : std::to_address(it);
 }
 
 const ContinentalCompetitions::Season* ContinentalCompetitions::getSeason(
@@ -690,7 +698,7 @@ const ContinentalCompetitions::Season* ContinentalCompetitions::getSeason(
 {
   const auto it =
       std::ranges::find(seasons, competition_id, &Season::competition_id);
-  return it == seasons.end() ? nullptr : &*it;
+  return it == seasons.end() ? nullptr : std::to_address(it);
 }
 
 const std::vector<StandingRow>& ContinentalCompetitions::getTable(
@@ -766,8 +774,9 @@ std::vector<LeagueID> ContinentalCompetitions::rankedAssociations(
       {
         if (left.first != right.first) return left.first > right.first;
         const auto rep_left = leagueProfile(left.second).reputation;
-        const auto rep_right = leagueProfile(right.second).reputation;
-        if (rep_left != rep_right) return rep_left > rep_right;
+        if (const auto rep_right = leagueProfile(right.second).reputation;
+            rep_left != rep_right)
+          return rep_left > rep_right;
         return left.second < right.second;
       });
   std::vector<LeagueID> order;
@@ -792,15 +801,17 @@ std::vector<TeamID> ContinentalCompetitions::topDivisionClubs(
   const auto league = gamedata->getLeague(association);
   if (!league) return {};
   std::vector<TeamID> teams = league->get().getTeamIDs();
-  std::ranges::sort(
-      teams,
-      [this](TeamID left, TeamID right)
-      {
-        const auto rep_left = gamedata->getTeam(left)->get().getReputation();
-        const auto rep_right = gamedata->getTeam(right)->get().getReputation();
-        if (rep_left != rep_right) return rep_left > rep_right;
-        return left < right;
-      });
+  std::ranges::sort(teams,
+                    [this](TeamID left, TeamID right)
+                    {
+                      const auto rep_left =
+                          gamedata->getTeam(left)->get().getReputation();
+                      if (const auto rep_right =
+                              gamedata->getTeam(right)->get().getReputation();
+                          rep_left != rep_right)
+                        return rep_left > rep_right;
+                      return left < right;
+                    });
   return teams;
 }
 
@@ -985,9 +996,9 @@ void ContinentalCompetitions::startSeason(uint16_t season_year,
                                           const GameDateValue& today)
 {
   if (std::ranges::contains(seasons, season_year, &Season::season_year)) return;
-  const std::vector<GameDateValue> weeks =
-      SeasonCalendar::continentalWeeks(season_year);
-  if (weeks.empty() || !(today < plusDays(weeks.front(), -LATEST_START_DAYS)))
+  if (const std::vector<GameDateValue> weeks =
+          SeasonCalendar::continentalWeeks(season_year);
+      weeks.empty() || !(today < plusDays(weeks.front(), -LATEST_START_DAYS)))
     return;
   std::erase_if(seasons, [season_year](const Season& season)
                 { return season.season_year < season_year; });
@@ -1086,7 +1097,7 @@ void ContinentalCompetitions::postNews(const GameDateValue& date,
                                        std::string title_key,
                                        std::string body_key,
                                        std::vector<std::string> args,
-                                       std::vector<TeamID> involved,
+                                       const std::vector<TeamID>& involved,
                                        bool headline) const
 {
   if (!news) return;
@@ -1265,7 +1276,7 @@ void ContinentalCompetitions::onResult(const Match& match)
     payPrize(match.getHomeTeamId(), date, rules->prizes.draw);
     payPrize(match.getAwayTeamId(), date, rules->prizes.draw);
   }
-  else if (const auto winner = match.getWinnerId())
+  else if (const auto winner = match.getWinnerId(); winner.has_value())
   {
     payPrize(*winner, date, rules->prizes.win);
   }
@@ -1379,15 +1390,16 @@ void ContinentalCompetitions::advanceKnockouts(Calendar& calendar,
     const std::vector<const Match*> matches =
         competitionMatches(calendar, season.competition_id);
     const size_t expected = size_t{season.clubs} * season.matches / 2;
-    const size_t played = static_cast<size_t>(std::ranges::count_if(
-        matches,
-        [](const Match* match)
-        {
-          return Continental::roundOf(match->getStage()) ==
-                     Round::LeaguePhase &&
-                 match->isPlayed();
-        }));
-    if (played < expected || table.size() < season.clubs) return;
+    if (const auto played = static_cast<size_t>(std::ranges::count_if(
+            matches,
+            [](const Match* match)
+            {
+              return Continental::roundOf(match->getStage()) ==
+                         Round::LeaguePhase &&
+                     match->isPlayed();
+            }));
+        played < expected || table.size() < season.clubs)
+      return;
     season.league_phase_complete = true;
     const uint8_t direct = Continental::directPlaces(season.clubs);
     const uint8_t playoff = Continental::playoffPlaces(season.clubs);
@@ -1395,11 +1407,11 @@ void ContinentalCompetitions::advanceKnockouts(Calendar& calendar,
     {
       payPrize(row.team_id, today,
                rules->prizes.ranking_step * (season.clubs - row.position + 1));
-      const char* outcome =
-          row.position <= direct
-              ? "CONT_OUTCOME_DIRECT"
-              : (row.position <= direct + playoff ? "CONT_OUTCOME_PLAYOFF"
-                                                  : "CONT_OUTCOME_OUT");
+      const char* outcome = "CONT_OUTCOME_OUT";
+      if (row.position <= direct)
+        outcome = "CONT_OUTCOME_DIRECT";
+      else if (row.position <= direct + playoff)
+        outcome = "CONT_OUTCOME_PLAYOFF";
       postNews(today, "INBOX_CONT_LEAGUE_END_TITLE",
                "INBOX_CONT_LEAGUE_END_BODY",
                {competition, teamName(row.team_id),
@@ -1486,7 +1498,7 @@ void ContinentalCompetitions::advanceKnockouts(Calendar& calendar,
                       std::move(seeded), std::move(winners), today);
     return;
   }
-  const auto next = static_cast<Round>(static_cast<uint8_t>(latest) + 1);
+  const auto next = static_cast<Round>(std::to_underlying(latest) + 1);
   drawKnockoutRound(calendar, season, next, std::move(winners), {}, today);
 }
 
@@ -1500,7 +1512,7 @@ void ContinentalCompetitions::drawKnockoutRound(Calendar& calendar,
   if (!rules) return;
   std::mt19937 rng(
       Competitions::mixSeed(season.season_year, season.competition_id,
-                            KNOCKOUT_DRAW_SALT + static_cast<uint32_t>(round)));
+                            KNOCKOUT_DRAW_SALT + std::to_underlying(round)));
   const auto association = [this](TeamID team_id)
   {
     const auto team = gamedata->getTeam(team_id);
@@ -1671,8 +1683,8 @@ void ContinentalCompetitions::closeSeason(
     for (const auto& [team_id, round] : furthest)
     {
       points[team_id] += rules->knockout_bonus +
-                         ROUND_BONUS * (static_cast<int>(round) -
-                                        static_cast<int>(first_knockout));
+                         ROUND_BONUS * (std::to_underlying(round) -
+                                        std::to_underlying(first_knockout));
     }
     if (season.winner_id != 0) points[season.winner_id] += ROUND_BONUS;
     for (const Entrant& entrant : season.entrants)
@@ -1712,7 +1724,7 @@ void ContinentalCompetitions::closeSeason(
       prior.fill(
           std::max(0.0, (team->get().getReputation() - PRIOR_REPUTATION_BASE) *
                             CLUB_PRIOR_SLOPE));
-      it = clubs.emplace(team_id, prior).first;
+      it = clubs.try_emplace(team_id, prior).first;
     }
     const auto value = points.find(team_id);
     shift(it->second, value == points.end() ? 0.0 : value->second);
@@ -1777,12 +1789,12 @@ std::string ContinentalCompetitions::serialize() const
     entry["entrants"] = std::move(entrants);
     json ties = json::array();
     for (const Tie& tie : season.ties)
-      ties.push_back({static_cast<int>(tie.round), tie.seeded_id,
+      ties.push_back({std::to_underlying(tie.round), tie.seeded_id,
                       tie.unseeded_id, tie.winner_id});
     entry["ties"] = std::move(ties);
     json draws = json::array();
     for (const DrawEvent& draw : season.draws)
-      draws.push_back({draw.date.toString(), static_cast<int>(draw.round)});
+      draws.push_back({draw.date.toString(), std::to_underlying(draw.round)});
     entry["draws"] = std::move(draws);
     seasons_json.push_back(std::move(entry));
   }

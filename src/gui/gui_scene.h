@@ -127,10 +127,8 @@ class GUIScene
    * @brief Gets the ID of the scene.
    * @return The SceneID of this scene.
    *
-   * This function might be used to check what we are rendering.
-   * we would simply do something like this:
-   * MainMenuScene::getID() { return SceneID::MAIN_MENU; }
-   * TODO : remove or not?
+   * GUIView uses this identifier to apply match-specific event and scene
+   * behavior.
    */
   virtual SceneID getID() const = 0;
 
@@ -176,6 +174,4 @@ class GUIScene
   void quit();
 
   GUIView* guiView;
-
- private:
 };

@@ -15,6 +15,8 @@
 #include <array>
 #include <cmath>
 #include <filesystem>
+#include <format>
+#include <utility>
 
 #include "controller/game_controller.h"
 #include "global/language_manager.h"
@@ -70,7 +72,7 @@ void SettingsScene::onEnter()
   }
   if (languageOptions.empty())
   {
-    languageOptions.push_back("English");
+    languageOptions.emplace_back("English");
     availableLanguageEnums.push_back(Language::EN);
   }
   for (const auto& fps : GUIConstants::FPS_OPTIONS)
@@ -84,15 +86,13 @@ void SettingsScene::onEnter()
 void SettingsScene::syncPendingFromSettings()
 {
   const Settings& settings = SettingsManager::instance()->get();
-  auto itLang = std::find(availableLanguageEnums.begin(),
-                          availableLanguageEnums.end(), settings.language);
+  auto itLang = std::ranges::find(availableLanguageEnums, settings.language);
   selectedLanguage = (itLang != availableLanguageEnums.end())
                          ? static_cast<int>(std::distance(
                                availableLanguageEnums.begin(), itLang))
                          : 0;
 
-  auto itFps = std::find(GUIConstants::FPS_OPTIONS.begin(),
-                         GUIConstants::FPS_OPTIONS.end(), settings.fps_limit);
+  auto itFps = std::ranges::find(GUIConstants::FPS_OPTIONS, settings.fps_limit);
   selectedFPS = (itFps != GUIConstants::FPS_OPTIONS.end())
                     ? static_cast<int>(std::distance(
                           GUIConstants::FPS_OPTIONS.begin(), itFps))
@@ -101,20 +101,19 @@ void SettingsScene::syncPendingFromSettings()
   // The presets, plus a size set in the file that is not one of them.
   resolutions.assign(GUIConstants::RESOLUTIONS.begin(),
                      GUIConstants::RESOLUTIONS.end());
-  const auto current =
-      std::ranges::find_if(resolutions,
-                           [&settings](const GUIConstants::Resolution& r)
-                           {
-                             return r.width == settings.resolution_width &&
-                                    r.height == settings.resolution_height;
-                           });
-  if (current == resolutions.end())
+  if (const auto current =
+          std::ranges::find_if(resolutions,
+                               [&settings](const GUIConstants::Resolution& r)
+                               {
+                                 return r.width == settings.resolution_width &&
+                                        r.height == settings.resolution_height;
+                               });
+      current == resolutions.end())
     resolutions.push_back(
         {settings.resolution_width, settings.resolution_height});
   resolutionOptions.clear();
   for (const auto& res : resolutions)
-    resolutionOptions.push_back(std::to_string(res.width) + "x" +
-                                std::to_string(res.height));
+    resolutionOptions.push_back(std::format("{}x{}", res.width, res.height));
   selectedResolution = static_cast<int>(std::distance(
       resolutions.begin(),
       std::ranges::find_if(resolutions,
@@ -216,7 +215,7 @@ bool presetCard(Theme::Preset preset, bool selected, float width)
   const Theme::Palette& palette = Theme::palette();
   const ImVec2 start = ImGui::GetCursorScreenPos();
   const ImVec2 size(width, SWATCH_HEIGHT * Theme::scale());
-  ImGui::PushID(static_cast<int>(preset));
+  ImGui::PushID(static_cast<int>(std::to_underlying(preset)));
   const bool pressed = ImGui::InvisibleButton("##preset", size);
   const bool hovered = ImGui::IsItemHovered();
   ImGui::PopID();
@@ -241,11 +240,13 @@ bool presetCard(Theme::Preset preset, bool selected, float width)
       ImVec2(start.x + size.x * 0.52f, end.y - 20.0f * Theme::scale()),
       ImVec2(start.x + size.x * 0.78f, end.y - 11.0f * Theme::scale()),
       Theme::toU32(palette.accent), 2.0f * Theme::scale());
-  drawList->AddRect(start, end,
-                    Theme::toU32(selected  ? palette.accent
-                                 : hovered ? palette.muted
-                                           : palette.border),
-                    rounding, 0, selected ? 2.5f * Theme::scale() : 1.0f);
+  ImVec4 borderColor = palette.border;
+  if (selected)
+    borderColor = palette.accent;
+  else if (hovered)
+    borderColor = palette.muted;
+  drawList->AddRect(start, end, Theme::toU32(borderColor), rounding, 0,
+                    selected ? 2.5f * Theme::scale() : 1.0f);
   const char* name = LOC(Theme::presetKey(preset));
   ImGui::PushFont(nullptr, Theme::textSize(Theme::Text::SMALL));
   const float nameWidth = ImGui::CalcTextSize(name).x;
@@ -414,7 +415,8 @@ void SettingsScene::renderAppearance()
   ImGui::TextUnformatted(LOC("SETTINGS_THEME"));
   if (ImGui::IsItemHovered(ImGuiHoveredFlags_DelayShort))
     ImGui::SetTooltip("%s", LOC("SETTINGS_THEME_HELP"));
-  const auto presetCount = static_cast<int>(Theme::Preset::COUNT);
+  const auto presetCount =
+      static_cast<int>(std::to_underlying(Theme::Preset::COUNT));
   const float gap = ImGui::GetStyle().ItemSpacing.x;
   const float cardWidth = (ImGui::GetContentRegionAvail().x -
                            gap * static_cast<float>(presetCount - 1)) /
@@ -464,9 +466,10 @@ void SettingsScene::renderAppearance()
 
   settingLabel(LOC("SETTINGS_COLOR_VISION"), LOC("SETTINGS_COLOR_VISION_HELP"));
   {
-    const int count = static_cast<int>(Theme::ColorVision::COUNT);
-    const int current = std::clamp(settings.color_vision, 0, count - 1);
-    if (ImGui::BeginCombo("##color_vision",
+    const auto count =
+        static_cast<int>(std::to_underlying(Theme::ColorVision::COUNT));
+    if (const int current = std::clamp(settings.color_vision, 0, count - 1);
+        ImGui::BeginCombo("##color_vision",
                           LOC(Theme::colorVisionKey(
                               static_cast<Theme::ColorVision>(current)))))
     {
@@ -495,8 +498,8 @@ void SettingsScene::renderAppearance()
   {
     ImGui::SameLine();
     ImGui::SetNextItemWidth(-FLT_MIN);
-    float percent = pending_ui_scale * 100.0f;
-    if (ImGui::SliderFloat("##ui_scale", &percent, MIN_SCALE_PERCENT,
+    if (float percent = pending_ui_scale * 100.0f;
+        ImGui::SliderFloat("##ui_scale", &percent, MIN_SCALE_PERCENT,
                            MAX_SCALE_PERCENT, "%.0f%%"))
       pending_ui_scale = std::round(percent / 5.0f) * 0.05f;
     // Rescaling moves the slider itself, so apply once the drag ends.
@@ -509,8 +512,8 @@ void SettingsScene::renderAppearance()
 
   settingLabel(LOC("SETTINGS_TEXT_SIZE"), LOC("SETTINGS_TEXT_SIZE_HELP"));
   {
-    float percent = pending_text_scale * 100.0f;
-    if (ImGui::SliderFloat("##text_scale", &percent, MIN_TEXT_PERCENT,
+    if (float percent = pending_text_scale * 100.0f;
+        ImGui::SliderFloat("##text_scale", &percent, MIN_TEXT_PERCENT,
                            MAX_TEXT_PERCENT, "%.0f%%"))
       pending_text_scale = std::round(percent / 5.0f) * 0.05f;
     rowTooltip(LOC("SETTINGS_TEXT_SIZE_HELP"));
@@ -559,8 +562,8 @@ void SettingsScene::renderGuidance()
 
   // A hidden first-week checklist can come back (it belongs to the career,
   // so this acts at once and Cancel does not undo it).
-  GameController& controller = guiView->getController();
-  if (in_career && controller.getManagedTeam())
+  if (GameController& controller = guiView->getController();
+      in_career && controller.getManagedTeam())
   {
     const OnboardingState& checklist = controller.getOnboarding();
     settingLabel(LOC("SETTINGS_CHECKLIST"), LOC("SETTINGS_CHECKLIST_HELP"));
@@ -593,8 +596,8 @@ void SettingsScene::renderAudio()
   // Cancel restores the previous values.
   const auto volumeSlider = [](const char* id, float& volume, const char* help)
   {
-    float percent = volume * 100.0f;
-    if (ImGui::SliderFloat(id, &percent, 0.0f, 100.0f, "%.0f%%"))
+    if (float percent = volume * 100.0f;
+        ImGui::SliderFloat(id, &percent, 0.0f, 100.0f, "%.0f%%"))
       volume = std::clamp(std::round(percent) / 100.0f, 0.0f, 1.0f);
     rowTooltip(help);
   };
@@ -635,13 +638,13 @@ void SettingsScene::updateCapture()
     return;
   }
   const auto chord = Input::capturePressedChord();
-  if (!chord) return;
+  if (!chord.has_value()) return;
   const Capture target = *capture;
   capture.reset();
   capture_end_frame = ImGui::GetFrameCount();
   const Input::RebindResult result =
       registry.rebind(target.action, target.slot, *chord);
-  if (!result.applied && result.conflict)
+  if (!result.applied && result.conflict.has_value())
     conflict = Conflict{target.action, target.slot, *chord, *result.conflict};
 }
 
@@ -752,12 +755,15 @@ void SettingsScene::renderControls()
   const float labelWidth = std::min(ImGui::GetContentRegionAvail().x * 0.42f,
                                     300.0f * Theme::scale());
   for (std::size_t index = 0;
-       index < static_cast<std::size_t>(Input::Category::COUNT); ++index)
+       index <
+       static_cast<std::size_t>(std::to_underlying(Input::Category::COUNT));
+       ++index)
   {
     const auto category = static_cast<Input::Category>(index);
     bool heading = false;
     registry.forEach(category,
-                     [&](Input::ActionId id, const Input::Action& action)
+                     [this, &heading, category, labelWidth](
+                         Input::ActionId id, const Input::Action& action)
                      {
                        if (!heading)
                        {
@@ -825,9 +831,9 @@ void SettingsScene::renderData()
     ImGui::OpenPopup("###WipeDataPopup");
   }
 
-  const std::string popupTitle =
-      std::string(LOC("SETTINGS_WIPE_TITLE")) + "###WipeDataPopup";
-  if (ImGui::BeginPopupModal(popupTitle.c_str(), nullptr,
+  if (const std::string popupTitle =
+          std::string(LOC("SETTINGS_WIPE_TITLE")) + "###WipeDataPopup";
+      ImGui::BeginPopupModal(popupTitle.c_str(), nullptr,
                              ImGuiWindowFlags_AlwaysAutoResize))
   {
     ImGui::PushTextWrapPos(420.0f * Theme::scale());

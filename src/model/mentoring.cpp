@@ -10,6 +10,7 @@
 
 #include <algorithm>
 #include <cmath>
+#include <memory>
 
 #include "database/gamedata.h"
 #include "database/sqlite_rows.h"
@@ -30,29 +31,30 @@ std::uint8_t applyPending(std::uint8_t value, float& pending)
 
 const char* mentoringErrorKey(MentoringError error)
 {
+  using enum MentoringError;
   switch (error)
   {
-    case MentoringError::None:
+    case None:
       return "MENTORING_ERROR_NONE";
-    case MentoringError::UnknownPlayer:
+    case UnknownPlayer:
       return "MENTORING_ERROR_UNKNOWN_PLAYER";
-    case MentoringError::NotSameClub:
+    case NotSameClub:
       return "MENTORING_ERROR_NOT_SAME_CLUB";
-    case MentoringError::MentorTooYoung:
+    case MentorTooYoung:
       return "MENTORING_ERROR_MENTOR_TOO_YOUNG";
-    case MentoringError::MenteeTooOld:
+    case MenteeTooOld:
       return "MENTORING_ERROR_MENTEE_TOO_OLD";
-    case MentoringError::SamePlayer:
+    case SamePlayer:
       return "MENTORING_ERROR_SAME_PLAYER";
-    case MentoringError::AlreadyMentor:
+    case AlreadyMentor:
       return "MENTORING_ERROR_ALREADY_MENTOR";
-    case MentoringError::AlreadyMentee:
+    case AlreadyMentee:
       return "MENTORING_ERROR_ALREADY_MENTEE";
-    case MentoringError::MentorIsMentee:
+    case MentorIsMentee:
       return "MENTORING_ERROR_MENTOR_IS_MENTEE";
-    case MentoringError::GroupFull:
+    case GroupFull:
       return "MENTORING_ERROR_GROUP_FULL";
-    case MentoringError::UnknownGroup:
+    case UnknownGroup:
       break;
   }
   return "MENTORING_ERROR_UNKNOWN_GROUP";
@@ -97,7 +99,7 @@ float developmentMultiplier(std::uint8_t mentor_professionalism)
 MentoringGroup* MentoringSystem::find(std::uint32_t group_id)
 {
   const auto found = std::ranges::find(all, group_id, &MentoringGroup::id);
-  return found == all.end() ? nullptr : &*found;
+  return found == all.end() ? nullptr : std::to_address(found);
 }
 
 const MentoringGroup* MentoringSystem::groupOf(PlayerID player_id) const
@@ -116,46 +118,42 @@ MentoringError MentoringSystem::createGroup(const GameData& gamedata,
                                             TeamID team_id, PlayerID mentor_id,
                                             std::uint32_t* id)
 {
+  using enum MentoringError;
   const auto mentor = gamedata.getPlayer(mentor_id);
-  if (!mentor) return MentoringError::UnknownPlayer;
+  if (!mentor) return UnknownPlayer;
   if (team_id == FREE_AGENTS_TEAM_ID || mentor->get().getTeamId() != team_id)
-    return MentoringError::NotSameClub;
-  if (mentor->get().getAge() < Mentoring::MENTOR_MIN_AGE)
-    return MentoringError::MentorTooYoung;
+    return NotSameClub;
+  if (mentor->get().getAge() < Mentoring::MENTOR_MIN_AGE) return MentorTooYoung;
   if (const MentoringGroup* group = groupOf(mentor_id))
-    return group->mentor_id == mentor_id ? MentoringError::AlreadyMentor
-                                         : MentoringError::MentorIsMentee;
+    return group->mentor_id == mentor_id ? AlreadyMentor : MentorIsMentee;
   MentoringGroup group;
   group.id = next_id++;
   group.team_id = team_id;
   group.mentor_id = mentor_id;
   all.push_back(group);
   if (id) *id = group.id;
-  return MentoringError::None;
+  return None;
 }
 
 MentoringError MentoringSystem::addMentee(const GameData& gamedata,
                                           std::uint32_t group_id,
                                           PlayerID mentee_id)
 {
+  using enum MentoringError;
   MentoringGroup* group = find(group_id);
-  if (!group) return MentoringError::UnknownGroup;
+  if (!group) return UnknownGroup;
   const auto mentee = gamedata.getPlayer(mentee_id);
-  if (!mentee) return MentoringError::UnknownPlayer;
-  if (mentee_id == group->mentor_id) return MentoringError::SamePlayer;
-  if (mentee->get().getTeamId() != group->team_id)
-    return MentoringError::NotSameClub;
-  if (mentee->get().getAge() > Mentoring::MENTEE_MAX_AGE)
-    return MentoringError::MenteeTooOld;
+  if (!mentee) return UnknownPlayer;
+  if (mentee_id == group->mentor_id) return SamePlayer;
+  if (mentee->get().getTeamId() != group->team_id) return NotSameClub;
+  if (mentee->get().getAge() > Mentoring::MENTEE_MAX_AGE) return MenteeTooOld;
   if (const MentoringGroup* other = groupOf(mentee_id))
-    return other->mentor_id == mentee_id ? MentoringError::AlreadyMentor
-                                         : MentoringError::AlreadyMentee;
-  if (group->mentees.size() >= Mentoring::MAX_MENTEES)
-    return MentoringError::GroupFull;
+    return other->mentor_id == mentee_id ? AlreadyMentor : AlreadyMentee;
+  if (group->mentees.size() >= Mentoring::MAX_MENTEES) return GroupFull;
   MenteeState state;
   state.player_id = mentee_id;
   group->mentees.push_back(state);
-  return MentoringError::None;
+  return None;
 }
 
 MentoringError MentoringSystem::removeMentee(std::uint32_t group_id,
@@ -180,7 +178,7 @@ MentoringError MentoringSystem::dissolve(std::uint32_t group_id)
 void MentoringSystem::prune(const GameData& gamedata)
 {
   std::erase_if(all,
-                [&](const MentoringGroup& group)
+                [&gamedata](const MentoringGroup& group)
                 {
                   const auto mentor = gamedata.getPlayer(group.mentor_id);
                   return !mentor || mentor->get().getTeamId() != group.team_id;
@@ -188,7 +186,7 @@ void MentoringSystem::prune(const GameData& gamedata)
   for (MentoringGroup& group : all)
   {
     std::erase_if(group.mentees,
-                  [&](const MenteeState& state)
+                  [&gamedata, &group](const MenteeState& state)
                   {
                     const auto mentee = gamedata.getPlayer(state.player_id);
                     return !mentee ||
@@ -286,7 +284,7 @@ void MentoringSystem::load(const std::shared_ptr<DatabaseConnection>& db_conn)
   clear();
   forEach(*db_conn,
           "SELECT id, team_id, mentor_id FROM MentoringGroups ORDER BY id;",
-          [&](sqlite3_stmt* stmt)
+          [this](sqlite3_stmt* stmt)
           {
             MentoringGroup group;
             group.id = column<std::uint32_t>(stmt, 0);
@@ -299,7 +297,7 @@ void MentoringSystem::load(const std::shared_ptr<DatabaseConnection>& db_conn)
           "SELECT group_id, player_id, professionalism_shift, "
           "temperament_shift, professionalism_pending, temperament_pending "
           "FROM MentoringMentees ORDER BY rowid;",
-          [&](sqlite3_stmt* stmt)
+          [this](sqlite3_stmt* stmt)
           {
             MentoringGroup* group = find(column<std::uint32_t>(stmt, 0));
             if (!group) return;

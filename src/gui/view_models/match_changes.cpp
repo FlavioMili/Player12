@@ -10,6 +10,7 @@
 
 #include <algorithm>
 #include <cmath>
+#include <cstddef>
 #include <limits>
 
 #include "model/match_tuning.h"
@@ -30,15 +31,16 @@ constexpr float TIRED_SUBSTITUTE = 0.75f;
 
 bool isDefensive(PlayerRole role)
 {
+  using enum PlayerRole;
   switch (role)
   {
-    case PlayerRole::CB:
-    case PlayerRole::LB:
-    case PlayerRole::RB:
-    case PlayerRole::CDM:
-    case PlayerRole::CM:
-    case PlayerRole::LM:
-    case PlayerRole::RM:
+    case CB:
+    case LB:
+    case RB:
+    case CDM:
+    case CM:
+    case LM:
+    case RM:
       return true;
     default:
       return false;
@@ -71,25 +73,26 @@ float metresBetween(Vector2F first, Vector2F second)
 
 const char* refusalKey(Refusal refusal)
 {
+  using enum Refusal;
   switch (refusal)
   {
-    case Refusal::NONE:
+    case NONE:
       return "";
-    case Refusal::MATCH_OVER:
+    case MATCH_OVER:
       return "SUBSTITUTION_REFUSED_FINISHED";
-    case Refusal::LIMIT:
+    case LIMIT:
       return "SUBSTITUTION_REFUSED_LIMIT";
-    case Refusal::WINDOWS:
+    case WINDOWS:
       return "SUBSTITUTION_REFUSED_WINDOWS";
-    case Refusal::NOT_NOW:
+    case NOT_NOW:
       return "SUBSTITUTION_REFUSED_NOW";
-    case Refusal::NOT_ON_PITCH:
+    case NOT_ON_PITCH:
       return "SUBSTITUTION_REFUSED_OFF_PITCH";
-    case Refusal::NOT_ON_BENCH:
+    case NOT_ON_BENCH:
       return "SUBSTITUTION_REFUSED_NOT_BENCH";
-    case Refusal::ALREADY_PLAYED:
+    case ALREADY_PLAYED:
       return "SUBSTITUTION_REFUSED_PLAYED";
-    case Refusal::ALREADY_PLANNED:
+    case ALREADY_PLANNED:
       return "SUBSTITUTION_REFUSED_PLANNED";
   }
   return "";
@@ -97,15 +100,17 @@ const char* refusalKey(Refusal refusal)
 
 Refusal rulesRefusal(const MatchEngine& engine, bool home, int planned)
 {
+  using enum MatchState;
+  using enum Refusal;
   const MatchState state = engine.getState();
-  if (state == MatchState::FULL_TIME) return Refusal::MATCH_OVER;
+  if (state == FULL_TIME) return MATCH_OVER;
   if (engine.getSubstitutionsUsed(home) + planned >= maxSubstitutions(engine))
-    return Refusal::LIMIT;
-  if (engine.canSubstitute(home)) return Refusal::NONE;
-  if (state != MatchState::HALF_TIME &&
+    return LIMIT;
+  if (engine.canSubstitute(home)) return NONE;
+  if (state != HALF_TIME &&
       engine.getSubstitutionWindowsUsed(home) >= maxWindows(engine))
-    return Refusal::WINDOWS;
-  return Refusal::NOT_NOW;
+    return WINDOWS;
+  return NOT_NOW;
 }
 int maxSubstitutions(const MatchEngine& engine)
 {
@@ -125,11 +130,12 @@ int maxWindows(const MatchEngine& engine)
 
 bool atStoppage(const MatchEngine& engine)
 {
+  using enum MatchState;
   switch (engine.getState())
   {
-    case MatchState::PLAYING:
-    case MatchState::FULL_TIME:
-    case MatchState::PENALTY_SHOOTOUT:
+    case PLAYING:
+    case FULL_TIME:
+    case PENALTY_SHOOTOUT:
       return false;
     default:
       return true;
@@ -140,15 +146,16 @@ Refusal SubstitutionPlan::check(const MatchEngine& engine, bool home,
                                 std::span<const Player* const> bench,
                                 PlayerID out, PlayerID in) const
 {
+  using enum Refusal;
   if (const Refusal rules =
           rulesRefusal(engine, home, static_cast<int>(planned.size()));
-      rules != Refusal::NONE)
+      rules != NONE)
     return rules;
-  if (involves(out) || involves(in)) return Refusal::ALREADY_PLANNED;
-  if (!onPitch(engine, home, out)) return Refusal::NOT_ON_PITCH;
-  if (!benchPlayer(bench, in)) return Refusal::NOT_ON_BENCH;
-  if (engine.findPlayerStats(in) != nullptr) return Refusal::ALREADY_PLAYED;
-  return Refusal::NONE;
+  if (involves(out) || involves(in)) return ALREADY_PLANNED;
+  if (!onPitch(engine, home, out)) return NOT_ON_PITCH;
+  if (!benchPlayer(bench, in)) return NOT_ON_BENCH;
+  if (engine.findPlayerStats(in) != nullptr) return ALREADY_PLAYED;
+  return NONE;
 }
 
 Refusal SubstitutionPlan::add(const MatchEngine& engine, bool home,
@@ -192,6 +199,7 @@ PlayerID SubstitutionPlan::replacementFor(PlayerID out) const
 std::vector<SubstitutionOutcome> SubstitutionPlan::apply(
     MatchEngine& engine, bool home, std::span<const Player* const> bench)
 {
+  using enum Refusal;
   std::vector<SubstitutionOutcome> outcomes;
   outcomes.reserve(planned.size());
   for (const PlannedSubstitution& change : planned)
@@ -199,14 +207,13 @@ std::vector<SubstitutionOutcome> SubstitutionPlan::apply(
     // Re-checked now: a planned player may have been sent off meanwhile.
     Refusal refusal = rulesRefusal(engine, home, 0);
     const Player* incoming = benchPlayer(bench, change.in);
-    if (refusal == Refusal::NONE && !onPitch(engine, home, change.out))
-      refusal = Refusal::NOT_ON_PITCH;
-    if (refusal == Refusal::NONE && !incoming) refusal = Refusal::NOT_ON_BENCH;
-    if (refusal == Refusal::NONE && engine.findPlayerStats(change.in))
-      refusal = Refusal::ALREADY_PLAYED;
-    if (refusal == Refusal::NONE &&
-        !engine.substitutePlayer(change.out, incoming))
-      refusal = Refusal::NOT_NOW;
+    if (refusal == NONE && !onPitch(engine, home, change.out))
+      refusal = NOT_ON_PITCH;
+    if (refusal == NONE && !incoming) refusal = NOT_ON_BENCH;
+    if (refusal == NONE && engine.findPlayerStats(change.in))
+      refusal = ALREADY_PLAYED;
+    if (refusal == NONE && !engine.substitutePlayer(change.out, incoming))
+      refusal = NOT_NOW;
     outcomes.push_back({change, refusal});
   }
   clear();
@@ -245,7 +252,7 @@ std::vector<Suggestion> suggestSubstitutions(
   struct Need
   {
     const MatchPlayer* player;
-    std::uint8_t reasons;
+    std::byte reasons;
     float urgency;
   };
   std::vector<Need> needs;
@@ -254,25 +261,25 @@ std::vector<Suggestion> suggestSubstitutions(
     if (!player.player || !player.onPitch || player.isHomeTeam != home ||
         plan.involves(player.player->getId()))
       continue;
-    std::uint8_t reasons = 0;
+    std::byte reasons{};
     float urgency = 0.0f;
     if (player.isInjured)
     {
-      reasons |= SUGGEST_INJURED;
+      reasons |= static_cast<std::byte>(SUGGEST_INJURED);
       urgency += 2.0f;
     }
     if (player.stamina < Tuning::FATIGUE_THRESHOLD)
     {
-      reasons |= SUGGEST_TIRED;
+      reasons |= static_cast<std::byte>(SUGGEST_TIRED);
       urgency += Tuning::FATIGUE_THRESHOLD - player.stamina + 0.1f;
     }
     if (player.yellowCards > 0 && minute >= Tuning::CARD_RISK_MINUTE &&
         !player.isGoalkeeper && isDefensive(player.player->getRole()))
     {
-      reasons |= SUGGEST_BOOKED;
+      reasons |= static_cast<std::byte>(SUGGEST_BOOKED);
       urgency += Tuning::CARD_RISK_NEED;
     }
-    if (reasons != 0) needs.push_back({&player, reasons, urgency});
+    if (reasons != std::byte{}) needs.push_back({&player, reasons, urgency});
   }
   std::ranges::sort(needs, [](const Need& left, const Need& right)
                     { return left.urgency > right.urgency; });
@@ -307,7 +314,8 @@ std::vector<Suggestion> suggestSubstitutions(
     }
     if (!best) continue;
     taken.push_back(best->getId());
-    result.push_back({need.player->player->getId(), best->getId(), need.reasons,
+    result.push_back({need.player->player->getId(), best->getId(),
+                      std::to_integer<std::uint8_t>(need.reasons),
                       need.player->stamina});
   }
   return result;
@@ -386,7 +394,7 @@ std::vector<Vector2F> formationFor(const MatchEngine& engine, bool home,
   std::array<bool, 10> slotDone{};
   std::array<bool, 10> spotDone{};
   std::vector<Vector2F> result(shape.size());
-  for (std::size_t pick = 0; pick < shape.size(); ++pick)
+  for ([[maybe_unused]] const Vector2F& position : shape)
   {
     float bestScore = -std::numeric_limits<float>::infinity();
     std::size_t bestSlot = 0;

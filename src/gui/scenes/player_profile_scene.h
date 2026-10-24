@@ -100,14 +100,14 @@ class PlayerProfileScene : public ManagementScene
 
   void renderHeader();
   void renderActions();
-  void renderBio(const Player& player, float width, float height);
-  void renderStatus(float width, float height);
-  void renderAttributes(float width, float height);
-  void renderSuitability(float width, float height);
+  void renderBio(const Player& player, float width, float height) const;
+  void renderStatus(float width, float height) const;
+  void renderAttributes(float width, float height) const;
+  void renderSuitability(float width, float height) const;
   void renderScouting(float width, float height);
   void renderStatistics(float width, float height);
-  void renderStatsTable(const std::vector<StatsRow>& rows, bool career);
-  void renderTransfers();
+  void renderStatsTable(const std::vector<StatsRow>& rows, bool career) const;
+  void renderTransfers() const;
   void renderDialogs();
   void sendScout();
   [[nodiscard]] const Player* player() const;

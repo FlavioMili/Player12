@@ -29,11 +29,15 @@ constexpr std::uint64_t WORLD_SEED = 20250702;
 
 int uniqueSlot(int offset)
 {
-  return 700'000 + static_cast<int>(getpid() % 100'000) * 10 + offset;
+  return 700'000 + getpid() % 100'000 * 10 + offset;
 }
 
 struct SlotCleanup
 {
+  explicit SlotCleanup(int saveSlot) : slot(saveSlot) {}
+  SlotCleanup(const SlotCleanup&) = delete;
+  SlotCleanup& operator=(const SlotCleanup&) = delete;
+
   int slot;
   ~SlotCleanup() { RuntimePaths::removeSave(slot); }
 };
@@ -100,24 +104,23 @@ TEST(SquadStatusTest, DeservedStatusFollowsTheAbilityRank)
 
 TEST(SquadStatusTest, DemotionBeyondOneLevelCostsMoraleScaledByAmbition)
 {
+  using enum SquadStatus;
   using SquadStatusModel::moraleOffset;
-  EXPECT_EQ(moraleOffset(SquadStatus::Star, SquadStatus::Rotation, 1.0f), 0.0f)
+  EXPECT_EQ(moraleOffset(Star, Rotation, 1.0f), 0.0f)
       << "promotions never hurt";
-  EXPECT_EQ(moraleOffset(SquadStatus::Important, SquadStatus::Star, 1.0f), 0.0f)
+  EXPECT_EQ(moraleOffset(Important, Star, 1.0f), 0.0f)
       << "one level below is tolerated";
-  const float two = moraleOffset(SquadStatus::Regular, SquadStatus::Star, 1.0f);
-  const float four = moraleOffset(SquadStatus::Backup, SquadStatus::Star, 1.0f);
+  const float two = moraleOffset(Regular, Star, 1.0f);
+  const float four = moraleOffset(Backup, Star, 1.0f);
   EXPECT_LT(two, 0.0f);
   EXPECT_LT(four, two);
-  EXPECT_LT(moraleOffset(SquadStatus::Backup, SquadStatus::Star, 1.5f), four);
-  EXPECT_GT(moraleOffset(SquadStatus::Backup, SquadStatus::Star, 0.8f), four);
+  EXPECT_LT(moraleOffset(Backup, Star, 1.5f), four);
+  EXPECT_GT(moraleOffset(Backup, Star, 0.8f), four);
   // Playing more than a backup expects is worth at most +5: a clear
   // demotion still hurts the least ambitious player.
-  EXPECT_LT(moraleOffset(SquadStatus::Backup, SquadStatus::Star, 0.5f) + 5.0f,
-            0.0f);
+  EXPECT_LT(moraleOffset(Backup, Star, 0.5f) + 5.0f, 0.0f);
   // A prospect and a backup share the bottom of the pecking order.
-  EXPECT_EQ(moraleOffset(SquadStatus::Prospect, SquadStatus::Backup, 1.0f),
-            0.0f);
+  EXPECT_EQ(moraleOffset(Prospect, Backup, 1.0f), 0.0f);
 }
 
 TEST(SquadStatusTest, ExpectationNeverDropsFarBelowTheDeservedStatus)

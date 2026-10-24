@@ -90,11 +90,15 @@ constexpr std::uint64_t WORLD_SEED = 20250702;
 
 int uniqueSlot(int offset)
 {
-  return 470'000 + static_cast<int>(getpid() % 100'000) * 10 + offset;
+  return 470'000 + getpid() % 100'000 * 10 + offset;
 }
 
 struct SlotCleanup
 {
+  explicit SlotCleanup(int saveSlot) : slot(saveSlot) {}
+  SlotCleanup(const SlotCleanup&) = delete;
+  SlotCleanup& operator=(const SlotCleanup&) = delete;
+
   int slot;
   ~SlotCleanup() { RuntimePaths::removeSave(slot); }
 };
@@ -110,8 +114,8 @@ void capture(GUIView& view, const char* name)
 void resize(GUIView& view, int width, int height)
 {
   SDL_SetWindowSize(view.getWindow(), width, height);
-  SDL_Event event{};
-  event.type = SDL_EVENT_WINDOW_RESIZED;
+  SDL_Event event{.window = {}};
+  event.window.type = SDL_EVENT_WINDOW_RESIZED;
   event.window.windowID = SDL_GetWindowID(view.getWindow());
   event.window.data1 = width;
   event.window.data2 = height;
@@ -127,9 +131,13 @@ void hoverEverywhere(GUIView& view, float step = 48.0f)
 {
   ImGuiIO& io = ImGui::GetIO();
   const ImVec2 size = io.DisplaySize;
-  for (float y = step * 0.5f; y < size.y; y += step)
-    for (float x = step * 0.5f; x < size.x; x += step)
+  for (int y_index = 0; step * (static_cast<float>(y_index) + 0.5f) < size.y;
+       ++y_index)
+    for (int x_index = 0; step * (static_cast<float>(x_index) + 0.5f) < size.x;
+         ++x_index)
     {
+      const float y = step * (static_cast<float>(y_index) + 0.5f);
+      const float x = step * (static_cast<float>(x_index) + 0.5f);
       io.AddMousePosEvent(x, y);
       Bridge::frame(view);
     }
@@ -161,11 +169,13 @@ std::string nestedScrolling()
 
 bool tacticsCardShown()
 {
-  for (const ImGuiWindow* window : GImGui->Windows)
-    if (window->Active && std::string_view(window->Name).find("tactic_roles") !=
-                              std::string_view::npos)
-      return true;
-  return false;
+  return std::ranges::any_of(
+      GImGui->Windows,
+      [](const ImGuiWindow* window)
+      {
+        return window->Active &&
+               std::string_view(window->Name).contains("tactic_roles");
+      });
 }
 }  // namespace
 

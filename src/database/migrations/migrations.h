@@ -114,7 +114,7 @@ struct MigrationReport
  * columns are missing. A failing migration rolls back, leaves the database
  * at the previous version and throws DatabaseException.
  */
-MigrationReport migrate(DatabaseConnection& connection,
+MigrationReport migrate(const DatabaseConnection& connection,
                         std::span<const Migration> migrations = registry());
 
 /** True when @p table exists. */

@@ -15,9 +15,10 @@
 #include <array>
 #include <bit>
 #include <cmath>
-#include <cstdio>
+#include <cstddef>
 #include <cstdlib>
 #include <cstring>
+#include <format>
 #include <string>
 #include <vector>
 
@@ -46,8 +47,8 @@ bool drawTextFitted(ImDrawList* drawList, ImVec2 position, ImU32 color,
                     std::string_view text, float maxWidth)
 {
   const char* begin = text.data();
-  const char* end = begin + text.size();
-  if (ImGui::CalcTextSize(begin, end).x <= maxWidth)
+  if (const char* end = begin + text.size();
+      ImGui::CalcTextSize(begin, end).x <= maxWidth)
   {
     drawList->AddText(position, color, begin, end);
     return false;
@@ -56,27 +57,26 @@ bool drawTextFitted(ImDrawList* drawList, ImVec2 position, ImU32 color,
   const float ellipsisWidth =
       ImGui::CalcTextSize(ELLIPSIS.data(), ELLIPSIS.data() + ELLIPSIS.size()).x;
   // Longest prefix (on a UTF-8 boundary) that leaves room for the ellipsis.
+  const auto isContinuation = [](char character)
+  {
+    const auto byte = static_cast<std::byte>(character);
+    return (std::to_integer<unsigned char>(byte) & 0xC0U) == 0x80U;
+  };
   size_t low = 0;
   size_t high = text.size();
   while (low < high)
   {
     size_t middle = (low + high + 1) / 2;
-    while (middle > 0 &&
-           (static_cast<unsigned char>(text[middle]) & 0xC0U) == 0x80U)
+    while (middle > 0 && middle < text.size() && isContinuation(text[middle]))
       --middle;
-    if (middle <= low)
-    {
-      high = low;
-      break;
-    }
+    if (middle <= low) break;
     if (ImGui::CalcTextSize(begin, begin + middle).x + ellipsisWidth <=
         maxWidth)
       low = middle;
     else
       high = middle - 1;
   }
-  while (low > 0 && (static_cast<unsigned char>(text[low]) & 0xC0U) == 0x80U)
-    --low;
+  while (low > 0 && low < text.size() && isContinuation(text[low])) --low;
   drawList->AddText(position, color, begin, begin + low);
   const float prefixWidth = ImGui::CalcTextSize(begin, begin + low).x;
   drawList->AddText(ImVec2(position.x + prefixWidth, position.y), color,
@@ -187,11 +187,11 @@ void TileRow::next()
 
 float statTileHeight()
 {
+  using enum Theme::Text;
   const ImGuiStyle& style = ImGui::GetStyle();
   const float dpi = style.FontScaleDpi;
-  return (Theme::textSize(Theme::Text::CAPTION) +
-          Theme::textSize(Theme::Text::DISPLAY) +
-          Theme::textSize(Theme::Text::SMALL)) *
+  return (Theme::textSize(CAPTION) + Theme::textSize(DISPLAY) +
+          Theme::textSize(SMALL)) *
              dpi +
          2.0f * style.ItemSpacing.y * 0.5f + 2.0f * scaled(Theme::Space::M) +
          scaled(Theme::Space::XS);
@@ -200,12 +200,13 @@ float statTileHeight()
 void statTile(const char* id, const char* caption, const char* value,
               const char* footnote, const ImVec4& valueColor, float width)
 {
+  using enum Theme::Text;
   beginCard(id, nullptr, ImVec2(width, statTileHeight()));
   ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing,
                       ImVec2(ImGui::GetStyle().ItemSpacing.x,
                              ImGui::GetStyle().ItemSpacing.y * 0.5f));
   {
-    Theme::ScopedText captionText(Theme::Text::CAPTION);
+    Theme::ScopedText captionText(CAPTION);
     textFitted(caption, ImGui::GetContentRegionAvail().x,
                Theme::palette().muted);
   }
@@ -214,17 +215,15 @@ void statTile(const char* id, const char* caption, const char* value,
     // overflowing the tile; the line height stays that of DISPLAY.
     const float available = ImGui::GetContentRegionAvail().x;
     const float lineStart = ImGui::GetCursorPosY();
-    Theme::Text level = Theme::Text::DISPLAY;
-    for (const Theme::Text candidate :
-         {Theme::Text::DISPLAY, Theme::Text::HEADING, Theme::Text::TITLE,
-          Theme::Text::BODY})
+    Theme::Text level = DISPLAY;
+    for (const Theme::Text candidate : {DISPLAY, HEADING, TITLE, BODY})
     {
       level = candidate;
       Theme::ScopedText probe(candidate);
       if (ImGui::CalcTextSize(value).x <= available) break;
     }
     const float displayHeight =
-        Theme::textSize(Theme::Text::DISPLAY) * ImGui::GetStyle().FontScaleDpi;
+        Theme::textSize(DISPLAY) * ImGui::GetStyle().FontScaleDpi;
     Theme::ScopedText fitted(level);
     ImGui::SetCursorPosY(lineStart +
                          (displayHeight - ImGui::GetTextLineHeight()) * 0.5f);
@@ -234,7 +233,7 @@ void statTile(const char* id, const char* caption, const char* value,
   }
   if (footnote != nullptr && *footnote != '\0')
   {
-    Theme::ScopedText small(Theme::Text::SMALL);
+    Theme::ScopedText small(SMALL);
     textFitted(footnote, ImGui::GetContentRegionAvail().x,
                Theme::palette().muted);
   }
@@ -294,7 +293,11 @@ void attributeBar(const char* label, float value, float labelWidth,
                   float maxValue, float width)
 {
   std::array<char, 16> text{};
-  std::snprintf(text.data(), text.size(), "%.0f", static_cast<double>(value));
+  const auto formatted = std::format_to_n(
+      text.data(), static_cast<std::ptrdiff_t>(text.size() - 1), "{:.0f}",
+      static_cast<double>(value));
+  text[std::min(static_cast<std::size_t>(formatted.size), text.size() - 1)] =
+      '\0';
   barRow(label, value / maxValue, labelWidth,
          Theme::ratingColor(value / maxValue * 100.0f), text.data(), width);
 }
@@ -308,7 +311,11 @@ void meter(const char* label, float fraction, float labelWidth,
 void ratingChip(double rating)
 {
   std::array<char, 16> text{};
-  std::snprintf(text.data(), text.size(), "%.0f", rating);
+  const auto formatted = std::format_to_n(
+      text.data(), static_cast<std::ptrdiff_t>(text.size() - 1), "{:.0f}",
+      rating);
+  text[std::min(static_cast<std::size_t>(formatted.size), text.size() - 1)] =
+      '\0';
   const ImVec2 textSize = ImGui::CalcTextSize(text.data());
   const float padX = scaled(6.0f);
   const ImVec2 size(std::max(textSize.x + 2.0f * padX, scaled(32.0f)),
@@ -374,8 +381,7 @@ void drawClubBadge(ImDrawList* drawList, ImVec2 min, float height,
   ImFont* font = ImGui::GetFont();
   float fontSize = ImGui::GetFontSize();
   ImVec2 textSize = font->CalcTextSizeA(fontSize, FLT_MAX, 0.0f, code);
-  const float room = w * 0.78f;
-  if (textSize.x > room)
+  if (const float room = w * 0.78f; textSize.x > room)
   {
     fontSize *= room / textSize.x;
     if (fontSize < scaled(8.0f)) return;
@@ -408,21 +414,28 @@ void formStrip(std::span<const Outcome> outcomes)
   const float top = start.y + std::max(0.0f, (lineHeight - size) * 0.5f);
   ImDrawList* drawList = ImGui::GetWindowDrawList();
   float x = start.x;
+  using enum Outcome;
   for (const Outcome outcome : outcomes)
   {
-    const ImVec4& color = outcome == Outcome::WIN    ? palette.positive
-                          : outcome == Outcome::DRAW ? palette.faint
-                                                     : palette.negative;
-    const char* letter = outcome == Outcome::WIN    ? LOC("FORM_WIN_SHORT")
-                         : outcome == Outcome::DRAW ? LOC("FORM_DRAW_SHORT")
-                                                    : LOC("FORM_LOSS_SHORT");
+    const ImVec4* color = &palette.negative;
+    const char* letter = LOC("FORM_LOSS_SHORT");
+    if (outcome == WIN)
+    {
+      color = &palette.positive;
+      letter = LOC("FORM_WIN_SHORT");
+    }
+    else if (outcome == DRAW)
+    {
+      color = &palette.faint;
+      letter = LOC("FORM_DRAW_SHORT");
+    }
     drawList->AddRectFilled(ImVec2(x, top), ImVec2(x + size, top + size),
-                            Theme::toU32(color), scaled(3.0f));
+                            Theme::toU32(*color), scaled(3.0f));
     const ImVec2 letterSize = ImGui::CalcTextSize(letter);
     drawList->AddText(
         ImVec2(x + (size - letterSize.x) * 0.5f,
                top + (size - letterSize.y) * 0.5f),
-        0.2126f * color.x + 0.7152f * color.y + 0.0722f * color.z > 0.42f
+        0.2126f * color->x + 0.7152f * color->y + 0.0722f * color->z > 0.42f
             ? IM_COL32(12, 14, 18, 255)
             : IM_COL32(255, 255, 255, 255),
         letter);
@@ -579,8 +592,8 @@ void barChart(const char* id, std::span<const BarDatum> bars, float width,
     drawList->AddRectFilled(barMin,
                             ImVec2(barMin.x + trackWidth, barMin.y + barHeight),
                             Theme::toU32(palette.raised), scaled(2.0f));
-    const float fraction = maximum > 0.0f ? bar.value / maximum : 0.0f;
-    if (fraction > 0.0f)
+    if (const float fraction = maximum > 0.0f ? bar.value / maximum : 0.0f;
+        fraction > 0.0f)
       drawList->AddRectFilled(
           barMin,
           ImVec2(barMin.x + trackWidth * fraction, barMin.y + barHeight),
@@ -654,9 +667,8 @@ bool styledButton(const char* label, ImVec2 size, ButtonSize buttonSize,
   ImGui::PushStyleColor(ImGuiCol_ButtonHovered, hover);
   ImGui::PushStyleColor(ImGuiCol_ButtonActive, active);
   ImGui::PushStyleColor(ImGuiCol_Text, text);
-  ImGui::PushStyleVar(
-      ImGuiStyleVar_FramePadding,
-      ImVec2(scaled(Size::BUTTON_PADDING_X), verticalPadding));
+  ImGui::PushStyleVar(ImGuiStyleVar_FramePadding,
+                      ImVec2(scaled(Size::BUTTON_PADDING_X), verticalPadding));
   const bool pressed = ImGui::Button(label, extent);
   ImGui::PopStyleVar();
   ImGui::PopStyleColor(4);
@@ -685,7 +697,7 @@ int64_t roundToSignificant(double value)
 
 int64_t stepMoney(int64_t value, bool up, double fraction)
 {
-  const double current = static_cast<double>(value);
+  const auto current = static_cast<double>(value);
   // Every press moves by at least 1, so small amounts never get stuck.
   if (up)
     return std::max<int64_t>(value + 1,
@@ -722,7 +734,7 @@ bool dangerButton(const char* label, ImVec2 size, ButtonSize buttonSize)
 bool parseMoney(std::string_view text, int64_t& value)
 {
   const NumberFormat::MoneyParse parsed = NumberFormat::parseMoney(text);
-  if (!parsed.value) return false;
+  if (!parsed.value.has_value()) return false;
   value = *parsed.value;
   return true;
 }
@@ -731,7 +743,8 @@ MoneyPreview moneyPreview(std::string_view text,
                           const MoneyInputOptions& options)
 {
   const NumberFormat::MoneyParse parsed = NumberFormat::parseMoney(text);
-  if (!parsed.value) return {LOC(NumberFormat::errorKey(parsed.error)), true};
+  if (!parsed.value.has_value())
+    return {LOC(NumberFormat::errorKey(parsed.error)), true};
   const int64_t clamped =
       std::clamp(*parsed.value, options.minimum, options.maximum);
   if (clamped != *parsed.value)
@@ -773,7 +786,9 @@ bool moneyInput(const char* id, int64_t& value,
   const auto clampValue = [&options](int64_t candidate)
   { return std::clamp(candidate, options.minimum, options.maximum); };
   const ImGuiIO& io = ImGui::GetIO();
-  const double stepFraction = io.KeyShift ? 0.10 : (io.KeyCtrl ? 0.01 : 0.05);
+  double stepFraction = 0.05;
+  if (io.KeyCtrl) stepFraction = 0.01;
+  if (io.KeyShift) stepFraction = 0.10;
   const char* stepHelp = LOC("WIDGET_MONEY_STEP_HELP");
   const float rowStartX = ImGui::GetCursorPosX();
 
@@ -788,7 +803,11 @@ bool moneyInput(const char* id, int64_t& value,
 
   std::array<char, 48> buffer{};
   const std::string shown = Format::moneyFull(value);
-  std::snprintf(buffer.data(), buffer.size(), "%s", shown.c_str());
+  const auto formatted = std::format_to_n(
+      buffer.data(), static_cast<std::ptrdiff_t>(buffer.size() - 1), "{}",
+      shown);
+  buffer[std::min(static_cast<std::size_t>(formatted.size),
+                  buffer.size() - 1)] = '\0';
   ImGui::SetNextItemWidth(
       std::max(scaled(80.0f), width - 2.0f * (stepWidth + gap)));
   ImGui::InputText("##money", buffer.data(), buffer.size(),
@@ -842,8 +861,8 @@ bool moneyInput(const char* id, int64_t& value,
   if (changed && rejected == fieldId) rejected = 0;
 
   // Live reading of the typed text (or why it was refused) under the field.
-  const bool typing = editing == fieldId && edited;
-  if (typing || rejected == fieldId)
+  if (const bool typing = editing == fieldId && edited;
+      typing || rejected == fieldId)
   {
     const Theme::Palette& palette = Theme::palette();
     const bool error = !typing || preview.error;
@@ -990,7 +1009,7 @@ void budgetImpact(const char* label, int64_t current, int64_t after,
   ImDrawList* drawList = ImGui::GetWindowDrawList();
   drawList->AddRectFilled(start, ImVec2(start.x + width, start.y + height),
                           Theme::toU32(palette.raised), height * 0.5f);
-  const double base = static_cast<double>(std::max<int64_t>(current, 1));
+  const auto base = static_cast<double>(std::max<int64_t>(current, 1));
   const float kept =
       std::clamp(static_cast<float>(
                      static_cast<double>(std::max<int64_t>(after, 0)) / base),
@@ -1155,7 +1174,11 @@ bool beginResponsiveTable(const char* id, std::span<const Column> columns,
   // One table state per column set: ImGui keeps per-column state (order,
   // widths, sort) that must not leak between different visible sets.
   std::array<char, 96> name{};
-  std::snprintf(name.data(), name.size(), "%s##cols%08x", id, mask);
+  const auto formatted = std::format_to_n(
+      name.data(), static_cast<std::ptrdiff_t>(name.size() - 1),
+      "{}##cols{:08x}", id, mask);
+  name[std::min(static_cast<std::size_t>(formatted.size), name.size() - 1)] =
+      '\0';
   if (!ImGui::BeginTable(name.data(), visible, flags, size)) return false;
   for (size_t index = 0; index < columns.size(); ++index)
   {
@@ -1221,8 +1244,8 @@ void keyValue(const char* key, const char* value, float keyWidth)
   // Long (translated) labels push the value right; in narrow cards the value
   // moves below the label, and it always wraps instead of being clipped.
   const float valueX = std::max(keyWidth, keyTextWidth + 2.0f * spacing);
-  const float valueWidth = ImGui::CalcTextSize(value).x;
-  if (valueX + std::min(valueWidth, available * 0.35f) <= available)
+  if (const float valueWidth = ImGui::CalcTextSize(value).x;
+      valueX + std::min(valueWidth, available * 0.35f) <= available)
   {
     ImGui::SameLine(startX + valueX);
   }
@@ -1257,8 +1280,8 @@ float buttonWidth(const char* label, ButtonSize buttonSize)
 void textRight(const char* text)
 {
   const float width = ImGui::CalcTextSize(text).x;
-  const float available = ImGui::GetContentRegionAvail().x;
-  if (available > width)
+  if (const float available = ImGui::GetContentRegionAvail().x;
+      available > width)
     ImGui::SetCursorPosX(ImGui::GetCursorPosX() + available - width);
   ImGui::TextUnformatted(text);
 }

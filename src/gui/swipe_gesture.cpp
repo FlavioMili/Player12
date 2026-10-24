@@ -13,50 +13,53 @@
 
 bool SwipeGesture::expired(std::uint64_t now_ns) const
 {
-  return phase != Phase::IDLE && now_ns > last_ns &&
-         now_ns - last_ns > tuning.idle_ns;
+  using enum Phase;
+  return phase != IDLE && now_ns > last_ns && now_ns - last_ns > tuning.idle_ns;
 }
 
 SwipeGesture::Step SwipeGesture::feed(float dx, float dy,
                                       std::uint64_t timestamp_ns)
 {
+  using enum Phase;
+  using enum Step;
   if (expired(timestamp_ns)) reset();
-  if (phase == Phase::IDLE) phase = Phase::UNDECIDED;
+  if (phase == IDLE) phase = UNDECIDED;
   last_ns = std::max(last_ns, timestamp_ns);
-  if (phase == Phase::IGNORED || phase == Phase::DONE) return Step::NONE;
+  if (phase == IGNORED || phase == DONE) return NONE;
 
   travel_x += dx;
   travel_y += dy;
   const float sideways = std::fabs(travel_x);
   const float vertical = std::fabs(travel_y);
-  if (phase == Phase::UNDECIDED)
+  if (phase == UNDECIDED)
   {
-    if (std::max(sideways, vertical) < tuning.slop) return Step::NONE;
-    phase = sideways >= vertical * tuning.dominance ? Phase::SIDEWAYS
-                                                    : Phase::IGNORED;
-    if (phase == Phase::IGNORED) return Step::NONE;
+    if (std::max(sideways, vertical) < tuning.slop) return NONE;
+    phase = sideways >= vertical * tuning.dominance ? SIDEWAYS : IGNORED;
+    if (phase == IGNORED) return NONE;
   }
   // A swipe that turns into a vertical scroll is a scroll after all.
   if (vertical * tuning.dominance > sideways)
   {
-    phase = Phase::IGNORED;
-    return Step::NONE;
+    phase = IGNORED;
+    return NONE;
   }
-  if (sideways < tuning.threshold) return Step::NONE;
-  phase = Phase::DONE;
-  return travel_x > 0.0f ? Step::BACK : Step::FORWARD;
+  if (sideways < tuning.threshold) return NONE;
+  phase = DONE;
+  return travel_x > 0.0f ? BACK : FORWARD;
 }
 
 void SwipeGesture::suppress(std::uint64_t timestamp_ns)
 {
+  using enum Phase;
   if (expired(timestamp_ns)) reset();
-  phase = Phase::IGNORED;
+  phase = IGNORED;
   last_ns = std::max(last_ns, timestamp_ns);
 }
 
 void SwipeGesture::reset()
 {
-  phase = Phase::IDLE;
+  using enum Phase;
+  phase = IDLE;
   travel_x = 0.0f;
   travel_y = 0.0f;
   last_ns = 0;
@@ -64,16 +67,17 @@ void SwipeGesture::reset()
 
 float SwipeGesture::progress(std::uint64_t now_ns) const
 {
+  using enum Phase;
   if (expired(now_ns)) return 0.0f;
   switch (phase)
   {
-    case Phase::SIDEWAYS:
+    case SIDEWAYS:
       return std::clamp(travel_x / tuning.threshold, -1.0f, 1.0f);
-    case Phase::DONE:
+    case DONE:
       return travel_x > 0.0f ? 1.0f : -1.0f;
-    case Phase::IDLE:
-    case Phase::UNDECIDED:
-    case Phase::IGNORED:
+    case IDLE:
+    case UNDECIDED:
+    case IGNORED:
       return 0.0f;
   }
   return 0.0f;

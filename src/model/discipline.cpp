@@ -39,10 +39,10 @@ void Discipline::processMatch(const MatchReport& report,
   for (auto key = active_bans.begin(); key != active_bans.end();)
   {
     DisciplinaryRecord& record = by_player.at(*key);
-    const auto player = record.scope == report.match_type
-                            ? gamedata.getPlayer(record.player_id)
-                            : std::nullopt;
-    if (player && (player->get().getTeamId() == report.home_team_id ||
+    if (const auto player = record.scope == report.match_type
+                                ? gamedata.getPlayer(record.player_id)
+                                : std::nullopt;
+        player && (player->get().getTeamId() == report.home_team_id ||
                    player->get().getTeamId() == report.away_team_id))
       --record.ban_matches;
     key = record.ban_matches == 0 ? active_bans.erase(key) : std::next(key);
@@ -56,18 +56,18 @@ void Discipline::processMatch(const MatchReport& report,
   }
   if (cards.empty())
   {
+    using enum MatchEventKind;
     // Engines without per-player lines: fall back to the card events.
     for (const MatchReportEvent& event : report.events)
     {
       if (event.player == 0) continue;
-      if (event.kind == MatchEventKind::YELLOW_CARD)
-        ++cards[event.player].yellows;
-      if (event.kind == MatchEventKind::SECOND_YELLOW)
+      if (event.kind == YELLOW_CARD) ++cards[event.player].yellows;
+      if (event.kind == SECOND_YELLOW)
       {
         ++cards[event.player].yellows;
         ++cards[event.player].reds;
       }
-      if (event.kind == MatchEventKind::RED_CARD) ++cards[event.player].reds;
+      if (event.kind == RED_CARD) ++cards[event.player].reds;
     }
   }
 
@@ -86,7 +86,7 @@ void Discipline::processMatch(const MatchReport& report,
 }
 
 void Discipline::book(DisciplinaryRecord& record, unsigned yellows,
-                      unsigned reds)
+                      unsigned reds) const
 {
   if (reds > 0 && yellows >= 2)
   {

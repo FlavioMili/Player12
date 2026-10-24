@@ -58,10 +58,10 @@ class CallUpScene : public ManagementScene
     std::string competition;
   };
 
-  void renderTiles();
+  void renderTiles() const;
   void renderSquad(float width);
   void renderCandidates(float width);
-  void renderFixtures(float width);
+  void renderFixtures(float width) const;
   void renderTable(const char* id, const std::vector<const Row*>& rows,
                    bool squad);
   void renderDetail(const Row& row, bool squad);

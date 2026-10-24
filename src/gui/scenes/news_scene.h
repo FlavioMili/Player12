@@ -28,7 +28,10 @@ class NewsScene : public ManagementScene
  public:
   explicit NewsScene(GUIView* parent);
 
-  void update(float /*deltaTime*/) override {}
+  void update(float /*deltaTime*/) override
+  {
+    // Rendering reads current state; there is no per-frame update work.
+  }
   [[nodiscard]] SceneID getID() const override { return SceneID::NEWS; }
 
   /** Stories in the feed, and those the filters keep. */

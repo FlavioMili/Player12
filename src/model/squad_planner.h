@@ -11,6 +11,7 @@
 #include <array>
 #include <cstddef>
 #include <cstdint>
+#include <utility>
 #include <vector>
 
 #include "global/types.h"
@@ -33,7 +34,7 @@ enum class PlannerGroup : std::uint8_t
 };
 
 inline constexpr std::size_t PLANNER_GROUP_COUNT =
-    static_cast<std::size_t>(PlannerGroup::COUNT);
+    static_cast<std::size_t>(std::to_underlying(PlannerGroup::COUNT));
 
 /** @brief Place of a player in his group's depth chart. */
 enum class DepthTier : std::uint8_t

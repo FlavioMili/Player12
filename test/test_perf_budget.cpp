@@ -83,7 +83,7 @@ void* countedAllocation(std::size_t size)
 void* countedAlignedAllocation(std::size_t size, std::align_val_t alignment)
 {
   heap_allocations.fetch_add(1, std::memory_order_relaxed);
-  const auto align = static_cast<std::size_t>(alignment);
+  const auto align = std::to_underlying(alignment);
   const std::size_t rounded =
       (std::max<std::size_t>(size, 1) + align - 1) / align * align;
   if (void* memory = std::aligned_alloc(align, rounded)) return memory;
@@ -197,11 +197,15 @@ constexpr std::uint64_t WORLD_SEED = 20250702;
 
 int uniqueSlot(int offset)
 {
-  return 900'000 + static_cast<int>(getpid() % 10'000) * 10 + offset;
+  return 900'000 + (getpid() % 10'000) * 10 + offset;
 }
 
 struct SlotCleanup
 {
+  explicit SlotCleanup(int saveSlot) : slot(saveSlot) {}
+  SlotCleanup(const SlotCleanup&) = delete;
+  SlotCleanup& operator=(const SlotCleanup&) = delete;
+
   int slot;
   ~SlotCleanup() { RuntimePaths::removeSave(slot); }
 };
@@ -336,7 +340,8 @@ std::uint64_t worldFingerprint(const GameController& controller)
     std::string line = std::format(
         "player {} {} {} {} {} {} {}/{} {} {} {} {}", id, player.getTeamId(),
         dynamics.condition, dynamics.sharpness, dynamics.morale,
-        dynamics.playing_share, static_cast<int>(dynamics.injury),
+        dynamics.playing_share,
+        static_cast<int>(std::to_underlying(dynamics.injury)),
         dynamics.injury_days, dynamics.last_match_day,
         dynamics.season_appearances, dynamics.season_minutes, player.getAge());
     for (const float rating : dynamics.recent_ratings)
@@ -358,7 +363,7 @@ std::uint64_t worldFingerprint(const GameController& controller)
     fnv.add(std::format("transfer {} {} {} {} {} {}", record.player_id,
                         record.date.toString(), record.from_team,
                         record.to_team, record.fee,
-                        static_cast<int>(record.kind)));
+                        static_cast<int>(std::to_underlying(record.kind))));
   fnv.add(controller.getCurrentDate().toString());
   return fnv.hash;
 }
@@ -497,8 +502,8 @@ TEST(PerfBudget, ManagementScreenFrames)
   ASSERT_TRUE(Bridge::initialize(view));
   view.refreshTheme();
   SDL_SetWindowSize(view.getWindow(), 2560, 1440);
-  SDL_Event resized{};
-  resized.type = SDL_EVENT_WINDOW_RESIZED;
+  SDL_Event resized{.window = {}};
+  resized.window.type = SDL_EVENT_WINDOW_RESIZED;
   resized.window.windowID = SDL_GetWindowID(view.getWindow());
   resized.window.data1 = 2560;
   resized.window.data2 = 1440;
@@ -552,18 +557,19 @@ TEST(PerfBudget, ManagementScreenFrames)
       {NavSection::PLANNING, "planning"},
   }};
   for (const auto& [section, name] : sections)
-    screens.push_back(
-        {name, [&view, section] { Navigation::open(&view, section); }});
-  screens.push_back({"player profile",
-                     [&view, star] { Navigation::openPlayer(&view, star); }});
-  screens.push_back(
-      {"other club", [&view, rival] { Navigation::openClub(&view, rival); }});
+    screens.emplace_back(
+        name, [&view, section] { Navigation::open(&view, section); });
+  screens.emplace_back("player profile",
+                       [&view, star] { Navigation::openPlayer(&view, star); });
+  screens.emplace_back("other club",
+                       [&view, rival] { Navigation::openClub(&view, rival); });
   if (played)
-    screens.push_back({"match report", [&view, &played]
-                       {
-                         const auto& [date, home, away] = *played;
-                         Navigation::openMatchReport(&view, date, home, away);
-                       }});
+    screens.emplace_back("match report",
+                         [&view, &played]
+                         {
+                           const auto& [date, home, away] = *played;
+                           Navigation::openMatchReport(&view, date, home, away);
+                         });
 
   std::cout << std::format(
       "[perf] screen frames at 2560x1440, scale 2, {} frames each\n"

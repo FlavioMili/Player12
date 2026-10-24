@@ -11,9 +11,14 @@
 #include <unistd.h>
 
 #include <algorithm>
+#include <atomic>
+#include <format>
+#include <latch>
 #include <map>
 #include <memory>
 #include <string>
+#include <thread>
+#include <utility>
 #include <vector>
 
 #include "controller/game_controller.h"
@@ -26,17 +31,55 @@
 #include "model/staff.h"
 #include "model/world_rng.h"
 
+TEST(StaffCache, ConcurrentEffectsAndInvalidationKeepSnapshotsStable)
+{
+  StaffRoster roster;
+  StaffMember coach;
+  coach.id = 1;
+  coach.team_id = 42;
+  coach.role = StaffRole::AssistantManager;
+  coach.attributes.fill(70);
+  coach.wage = 1000;
+  coach.contract_years = 2;
+  roster.add(coach);
+  std::atomic<bool> consistent{true};
+  std::latch start(8);
+  std::vector<std::jthread> readers;
+  for (int thread = 0; thread < 8; ++thread)
+    readers.emplace_back(
+        [&, thread]
+        {
+          start.arrive_and_wait();
+          for (int attempt = 0; attempt < 500; ++attempt)
+          {
+            if (thread == 0) roster.invalidate();
+            if (roster.effects(42).weekly_payroll != 1000)
+              consistent.store(false);
+          }
+        });
+  readers.clear();
+  EXPECT_TRUE(consistent.load());
+  const auto& snapshot = roster.effects(42);
+  roster.clear();
+  EXPECT_EQ(snapshot.weekly_payroll, 1000);
+  EXPECT_EQ(roster.effects(42).weekly_payroll, 0);
+}
+
 namespace
 {
 constexpr std::uint64_t WORLD_SEED = 20250702;
 
 int uniqueSlot(int offset)
 {
-  return 300'000 + static_cast<int>(getpid() % 100'000) * 10 + offset;
+  return 300'000 + (getpid() % 100'000) * 10 + offset;
 }
 
 struct SlotCleanup
 {
+  explicit SlotCleanup(int saveSlot) : slot(saveSlot) {}
+  SlotCleanup(const SlotCleanup&) = delete;
+  SlotCleanup& operator=(const SlotCleanup&) = delete;
+
   int slot;
   ~SlotCleanup() { RuntimePaths::removeSave(slot); }
 };
@@ -121,8 +164,8 @@ TEST(StaffModelTest, BetterStaffGiveBoundedBetterEffects)
             static_cast<std::int64_t>(STAFF_ROLE_COUNT) * 1000);
 
   // A bigger scouting network sees more; no scouts, little insight.
-  std::vector<StaffMember> one_scout = {member(StaffRole::Scout, 80)};
-  std::vector<StaffMember> network(5, member(StaffRole::Scout, 80));
+  std::vector one_scout = {member(StaffRole::Scout, 80)};
+  std::vector network(5, member(StaffRole::Scout, 80));
   EXPECT_GT(effectsOf(network).scouting_accuracy,
             effectsOf(one_scout).scouting_accuracy);
   EXPECT_LT(
@@ -372,9 +415,10 @@ TEST(StaffPersistenceTest, DepartedStaffIdsAreNotReusedAfterReload)
   {
     std::map<StaffID, std::string> result;
     for (const auto& [id, member] : staff.all())
-      result.emplace(id, member.name() + "/" +
-                             std::to_string(static_cast<int>(member.role)) +
-                             "/" + std::to_string(member.team_id));
+      result.try_emplace(
+          id, std::format("{}/{}/{}", member.name(),
+                          static_cast<int>(std::to_underlying(member.role)),
+                          member.team_id));
     return result;
   };
   const auto uninterrupted = snapshot(roster);

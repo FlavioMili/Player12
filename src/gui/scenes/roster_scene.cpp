@@ -16,6 +16,7 @@
 #include <format>
 #include <string>
 #include <tuple>
+#include <utility>
 
 #include "global/language_manager.h"
 #include "gui/gui_view.h"
@@ -52,34 +53,31 @@ enum class RosterColumn : ImGuiID
 
 constexpr ImGuiID columnId(RosterColumn column)
 {
-  return static_cast<ImGuiID>(column);
+  return std::to_underlying(column);
 }
 
 // Unscaled widths; the highest priority numbers hide first on narrow windows.
 const std::array<UI::Column, 11>& rosterColumns()
 {
+  using enum RosterColumn;
   constexpr ImGuiTableColumnFlags DESCENDING =
       ImGuiTableColumnFlags_PreferSortDescending;
   static const std::array<UI::Column, 11> columns = {{
       {"ROSTER_COL_NUMBER", 36.0f, 0, ImGuiTableColumnFlags_None,
-       columnId(RosterColumn::NUMBER)},
+       columnId(NUMBER)},
       {"ROSTER_COL_NAME", 0.0f, 0, ImGuiTableColumnFlags_DefaultSort,
-       columnId(RosterColumn::NAME)},
-      {"ROSTER_COL_ROLE", 56.0f, 1, ImGuiTableColumnFlags_None,
-       columnId(RosterColumn::ROLE)},
-      {"ROSTER_COL_AGE", 44.0f, 3, ImGuiTableColumnFlags_None,
-       columnId(RosterColumn::AGE)},
-      {"ROSTER_COL_OVERALL", 60.0f, 0, DESCENDING,
-       columnId(RosterColumn::OVERALL)},
-      {"ROSTER_COL_CONDITION", 78.0f, 2, DESCENDING,
-       columnId(RosterColumn::CONDITION)},
-      {"ROSTER_COL_FORM", 54.0f, 4, DESCENDING, columnId(RosterColumn::FORM)},
-      {"ROSTER_COL_VALUE", 88.0f, 3, DESCENDING, columnId(RosterColumn::VALUE)},
-      {"ROSTER_COL_WAGE", 84.0f, 4, DESCENDING, columnId(RosterColumn::WAGE)},
+       columnId(NAME)},
+      {"ROSTER_COL_ROLE", 56.0f, 1, ImGuiTableColumnFlags_None, columnId(ROLE)},
+      {"ROSTER_COL_AGE", 44.0f, 3, ImGuiTableColumnFlags_None, columnId(AGE)},
+      {"ROSTER_COL_OVERALL", 60.0f, 0, DESCENDING, columnId(OVERALL)},
+      {"ROSTER_COL_CONDITION", 78.0f, 2, DESCENDING, columnId(CONDITION)},
+      {"ROSTER_COL_FORM", 54.0f, 4, DESCENDING, columnId(FORM)},
+      {"ROSTER_COL_VALUE", 88.0f, 3, DESCENDING, columnId(VALUE)},
+      {"ROSTER_COL_WAGE", 84.0f, 4, DESCENDING, columnId(WAGE)},
       {"ROSTER_COL_CONTRACT", 70.0f, 5, ImGuiTableColumnFlags_None,
-       columnId(RosterColumn::CONTRACT)},
+       columnId(CONTRACT)},
       {"ROSTER_COL_STATUS", 150.0f, 2, ImGuiTableColumnFlags_None,
-       columnId(RosterColumn::STATUS)},
+       columnId(STATUS)},
   }};
   return columns;
 }
@@ -105,15 +103,16 @@ constexpr std::array<const char*, 5> GROUP_FILTER_KEYS = {
 ImVec4 groupColor(PlayerView::PositionGroup group)
 {
   const Theme::Palette& palette = Theme::palette();
+  using enum PlayerView::PositionGroup;
   switch (group)
   {
-    case PlayerView::PositionGroup::GOALKEEPER:
+    case GOALKEEPER:
       return palette.warning;
-    case PlayerView::PositionGroup::DEFENDER:
+    case DEFENDER:
       return palette.info;
-    case PlayerView::PositionGroup::MIDFIELDER:
+    case MIDFIELDER:
       return palette.positive;
-    case PlayerView::PositionGroup::FORWARD:
+    case FORWARD:
       return palette.negative;
   }
   return palette.muted;
@@ -131,8 +130,8 @@ void RosterScene::update(float deltaTime) { (void)deltaTime; }
 
 std::optional<NavEntry> RosterScene::historyEntry() const
 {
-  return team_id ? NavEntry::ofClub(*team_id)
-                 : NavEntry::ofSection(NavSection::SQUAD);
+  return team_id.has_value() ? NavEntry::ofClub(*team_id)
+                             : NavEntry::ofSection(NavSection::SQUAD);
 }
 
 NavSection RosterScene::navSection() const
@@ -143,7 +142,8 @@ NavSection RosterScene::navSection() const
 bool RosterScene::isManagedClub() const
 {
   const auto managed = guiView->getController().getManagedTeam();
-  return !team_id || (managed && managed->get().getId() == *team_id);
+  return !team_id.has_value() ||
+         (managed && managed->get().getId() == *team_id);
 }
 
 void RosterScene::renderContent()
@@ -227,11 +227,11 @@ void RosterScene::renderFilters()
   const std::size_t selectedRoleIndex =
       role_filter_index > 0 ? static_cast<std::size_t>(role_filter_index - 1)
                             : 0U;
-  const std::string rolePreview =
-      role_filter_index == 0
-          ? LOC("ROSTER_ALL_ROLES")
-          : RoleUtils::shortName(FILTER_ROLES[selectedRoleIndex]);
-  if (ImGui::BeginCombo("##roster_role", rolePreview.c_str()))
+  if (const std::string rolePreview =
+          role_filter_index == 0
+              ? LOC("ROSTER_ALL_ROLES")
+              : RoleUtils::shortName(FILTER_ROLES[selectedRoleIndex]);
+      ImGui::BeginCombo("##roster_role", rolePreview.c_str()))
   {
     if (ImGui::Selectable(LOC("ROSTER_ALL_ROLES"), role_filter_index == 0))
       role_filter_index = 0;
@@ -267,8 +267,8 @@ void RosterScene::applyFilter()
     if (role_filter_index > 0 &&
         row.role_id != FILTER_ROLES[static_cast<size_t>(role_filter_index - 1)])
       continue;
-    if (group_filter_index > 0 &&
-        static_cast<int>(row.group) != group_filter_index - 1)
+    if (group_filter_index > 0 && static_cast<int>(std::to_underlying(
+                                      row.group)) != group_filter_index - 1)
       continue;
     visible_rows.push_back(index);
   }
@@ -277,6 +277,7 @@ void RosterScene::applyFilter()
 
 void RosterScene::applySort()
 {
+  using enum RosterColumn;
   const auto column = static_cast<RosterColumn>(sort_column);
   std::ranges::sort(
       visible_rows,
@@ -287,40 +288,40 @@ void RosterScene::applySort()
         int comparison = 0;
         switch (column)
         {
-          case RosterColumn::NAME:
+          case NAME:
             comparison = a.name.compare(b.name);
             break;
-          case RosterColumn::NUMBER:
+          case NUMBER:
             // Players without a number go last.
             comparison =
                 UI::compare(a.squad_number == 0 ? 100 : a.squad_number,
                             b.squad_number == 0 ? 100 : b.squad_number);
             break;
-          case RosterColumn::ROLE:
+          case ROLE:
             comparison = UI::compare(a.role_id, b.role_id);
             break;
-          case RosterColumn::AGE:
+          case AGE:
             comparison = UI::compare(a.age, b.age);
             break;
-          case RosterColumn::OVERALL:
+          case OVERALL:
             comparison = UI::compare(a.overall, b.overall);
             break;
-          case RosterColumn::CONDITION:
+          case CONDITION:
             comparison = UI::compare(a.condition, b.condition);
             break;
-          case RosterColumn::FORM:
+          case FORM:
             comparison = UI::compare(a.form, b.form);
             break;
-          case RosterColumn::VALUE:
+          case VALUE:
             comparison = UI::compare(a.market_value, b.market_value);
             break;
-          case RosterColumn::WAGE:
+          case WAGE:
             comparison = UI::compare(a.wage, b.wage);
             break;
-          case RosterColumn::CONTRACT:
+          case CONTRACT:
             comparison = UI::compare(a.contract_years, b.contract_years);
             break;
-          case RosterColumn::STATUS:
+          case STATUS:
             comparison =
                 UI::compare(std::tuple(a.injury_days > 0, a.suspension > 0,
                                        starters.contains(a.id)),
@@ -350,10 +351,10 @@ void RosterScene::renderTable()
   const UI::ColumnMask mask =
       UI::fitColumns(columns, ImGui::GetContentRegionAvail().x, 160.0f, hidden);
   table_mask = mask;
-  const ImGuiTableFlags flags = ImGuiTableFlags_RowBg |
-                                ImGuiTableFlags_BordersInnerH |
-                                ImGuiTableFlags_Sortable;
-  if (!UI::beginResponsiveTable("RosterTable", columns, mask, flags,
+  if (const ImGuiTableFlags flags = ImGuiTableFlags_RowBg |
+                                    ImGuiTableFlags_BordersInnerH |
+                                    ImGuiTableFlags_Sortable;
+      !UI::beginResponsiveTable("RosterTable", columns, mask, flags,
                                 UI::TableHeader::SORTABLE))
     return;
 
@@ -363,8 +364,9 @@ void RosterScene::renderTable()
       sortSpecs != nullptr && sortSpecs->SpecsCount > 0)
   {
     const ImGuiTableColumnSortSpecs& spec = sortSpecs->Specs[0];
-    const bool ascending = spec.SortDirection == ImGuiSortDirection_Ascending;
-    if (sortSpecs->SpecsDirty || spec.ColumnUserID != sort_column ||
+    if (const bool ascending =
+            spec.SortDirection == ImGuiSortDirection_Ascending;
+        sortSpecs->SpecsDirty || spec.ColumnUserID != sort_column ||
         ascending != sort_ascending)
     {
       sort_column = spec.ColumnUserID;
@@ -387,9 +389,9 @@ void RosterScene::renderTable()
       ImGui::PushID(static_cast<int>(row.id));
       const bool selected = selected_player_id == row.id;
       // The row's selectable lives in the first column so it spans them all.
-      const std::string number =
-          row.squad_number > 0 ? std::to_string(row.squad_number) : "–";
-      if (ImGui::Selectable(number.c_str(), selected,
+      if (const std::string number =
+              row.squad_number > 0 ? std::to_string(row.squad_number) : "–";
+          ImGui::Selectable(number.c_str(), selected,
                             ImGuiSelectableFlags_SpanAllColumns |
                                 ImGuiSelectableFlags_AllowDoubleClick |
                                 ImGuiSelectableFlags_AllowOverlap))
@@ -465,8 +467,8 @@ void RosterScene::renderDetails()
     Navigation::openPlayer(guiView, player->getId());
   if (!isManagedClub()) return;
   GameController& controller = guiView->getController();
-  const bool listed = controller.isPlayerListed(player->getId());
-  if (UI::secondaryButton(
+  if (const bool listed = controller.isPlayerListed(player->getId());
+      UI::secondaryButton(
           LOC(listed ? "TRANSFER_UNLIST" : "PROFILE_TRANSFER_LIST"),
           ImVec2(-FLT_MIN, 0.0f)))
   {
@@ -520,17 +522,18 @@ void RosterScene::renderNumberEditor(const Player& player)
         teammate.get().getSquadNumber() == number_edit)
       holder = teammate.get().getName();
   const std::string name = player.getName();
+  using enum SquadNumbers::Change;
   switch (controller.setSquadNumber(player_id, number_edit))
   {
-    case SquadNumbers::Change::Changed:
+    case Changed:
       showToast(
           fmt::sprintf(LOC("ROSTER_NUMBER_CHANGED_TOAST"), name, number_edit));
       break;
-    case SquadNumbers::Change::Swapped:
+    case Swapped:
       showToast(fmt::sprintf(LOC("ROSTER_NUMBER_SWAPPED_TOAST"), name,
                              number_edit, holder, previous));
       break;
-    case SquadNumbers::Change::Invalid:
+    case Invalid:
       showToast(LOC("ROSTER_NUMBER_REFUSED_TOAST"), true);
       break;
   }
@@ -541,14 +544,15 @@ void RosterScene::loadRoster()
 {
   GameController& controller = guiView->getController();
   const auto managed = controller.getManagedTeam();
-  const std::optional<TeamID> clubId =
-      team_id ? team_id
-              : (managed ? std::optional<TeamID>(managed->get().getId())
-                         : std::nullopt);
+  std::optional<TeamID> clubId;
+  if (team_id.has_value())
+    clubId = team_id;
+  else if (managed)
+    clubId = managed->get().getId();
   roster_players.clear();
   rows.clear();
   starters.clear();
-  if (!clubId) return;
+  if (!clubId.has_value()) return;
   const auto club = controller.getTeamById(*clubId);
   club_name = club ? club->get().getName() : std::string();
   roster_players = controller.getPlayersForTeam(*clubId);
@@ -590,7 +594,7 @@ SceneID RosterScene::getID() const { return SceneID::ROSTER; }
 
 const Player* RosterScene::selectedPlayer() const
 {
-  if (!selected_player_id) return nullptr;
+  if (!selected_player_id.has_value()) return nullptr;
   const auto found = std::ranges::find_if(
       roster_players, [this](const std::reference_wrapper<const Player>& player)
       { return player.get().getId() == *selected_player_id; });

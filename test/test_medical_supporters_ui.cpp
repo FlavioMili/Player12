@@ -18,6 +18,7 @@
 #include <unistd.h>
 
 #include <algorithm>
+#include <cstddef>
 #include <filesystem>
 #include <memory>
 #include <string>
@@ -62,7 +63,7 @@ class GameFlowTest_GUIFlowLifecycle_Test
     return scene.chart_empty;
   }
   static void select(MedicalScene& scene, PlayerID id) { scene.select(id); }
-  static void setFlag(MedicalScene& scene, std::uint8_t flag)
+  static void setFlag(MedicalScene& scene, std::byte flag)
   {
     scene.setFlag(flag, true);
   }
@@ -84,11 +85,15 @@ constexpr std::uint64_t WORLD_SEED = 20250702;
 
 int uniqueSlot(int offset)
 {
-  return 870'000 + static_cast<int>(getpid() % 100'000) * 10 + offset;
+  return 870'000 + getpid() % 100'000 * 10 + offset;
 }
 
 struct SlotCleanup
 {
+  explicit SlotCleanup(int saveSlot) : slot(saveSlot) {}
+  SlotCleanup(const SlotCleanup&) = delete;
+  SlotCleanup& operator=(const SlotCleanup&) = delete;
+
   int slot;
   ~SlotCleanup() { RuntimePaths::removeSave(slot); }
 };
@@ -113,7 +118,7 @@ void setUiScale(GUIView& view, float scale)
 }
 
 template <typename Scene>
-Scene* active(GUIView& view)
+Scene* active(const GUIView& view)
 {
   return dynamic_cast<Scene*>(Bridge::activeScene(view));
 }
@@ -143,7 +148,7 @@ TEST(MedicalSupportersUiTest, LoadChartInstructionsAndSupportersRender)
   ASSERT_NE(medical, nullptr);
   EXPECT_NE(Bridge::selected(*medical), 0u) << "a player is selected at once";
   Bridge::select(*medical, player);
-  Bridge::setFlag(*medical, MEDICAL_FLAG_LIMIT_MINUTES);
+  Bridge::setFlag(*medical, static_cast<std::byte>(MEDICAL_FLAG_LIMIT_MINUTES));
   EXPECT_EQ(Bridge::selected(*medical), player);
   EXPECT_FALSE(Bridge::chartEmpty(*medical));
   EXPECT_TRUE(controller.getGame()->getMedical().hasFlag(

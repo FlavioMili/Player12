@@ -13,63 +13,64 @@
 
 std::string_view matchEventTypeName(MatchEventType type)
 {
+  using enum MatchEventType;
   switch (type)
   {
-    case MatchEventType::INFO:
+    case INFO:
       return "info";
-    case MatchEventType::KICK_OFF:
+    case KICK_OFF:
       return "kick_off";
-    case MatchEventType::GOAL:
+    case GOAL:
       return "goal";
-    case MatchEventType::OWN_GOAL:
+    case OWN_GOAL:
       return "own_goal";
-    case MatchEventType::SHOT:
+    case SHOT:
       return "shot";
-    case MatchEventType::SAVE:
+    case SAVE:
       return "save";
-    case MatchEventType::SHOT_BLOCKED:
+    case SHOT_BLOCKED:
       return "shot_blocked";
-    case MatchEventType::SHOT_OFF_TARGET:
+    case SHOT_OFF_TARGET:
       return "shot_off_target";
-    case MatchEventType::WOODWORK:
+    case WOODWORK:
       return "woodwork";
-    case MatchEventType::FOUL:
+    case FOUL:
       return "foul";
-    case MatchEventType::ADVANTAGE:
+    case ADVANTAGE:
       return "advantage";
-    case MatchEventType::YELLOW_CARD:
+    case YELLOW_CARD:
       return "yellow_card";
-    case MatchEventType::SECOND_YELLOW:
+    case SECOND_YELLOW:
       return "second_yellow";
-    case MatchEventType::RED_CARD:
+    case RED_CARD:
       return "red_card";
-    case MatchEventType::INJURY:
+    case INJURY:
       return "injury";
-    case MatchEventType::SUBSTITUTION:
+    case SUBSTITUTION:
       return "substitution";
-    case MatchEventType::OFFSIDE:
+    case OFFSIDE:
       return "offside";
-    case MatchEventType::CORNER:
+    case CORNER:
       return "corner";
-    case MatchEventType::FREE_KICK:
+    case FREE_KICK:
       return "free_kick";
-    case MatchEventType::PENALTY:
+    case PENALTY:
       return "penalty";
-    case MatchEventType::PENALTY_MISSED:
+    case PENALTY_MISSED:
       return "penalty_missed";
-    case MatchEventType::THROW_IN:
+    case THROW_IN:
       return "throw_in";
-    case MatchEventType::GOAL_KICK:
+    case GOAL_KICK:
       return "goal_kick";
-    case MatchEventType::ADDED_TIME:
+    case ADDED_TIME:
       return "added_time";
-    case MatchEventType::HALF_TIME:
+    case HALF_TIME:
       return "half_time";
-    case MatchEventType::SECOND_HALF:
+    case SECOND_HALF:
       return "second_half";
-    case MatchEventType::FULL_TIME:
+    case FULL_TIME:
       return "full_time";
-    case MatchEventType::PENALTY_SHOOTOUT:
+    case PENALTY_SHOOTOUT:
       return "penalty_shootout";
   }
   return "unknown";
@@ -80,9 +81,11 @@ namespace MatchRules
 int computeAddedMinutes(const StoppageLog& log, int period)
 {
   using T = MatchTuning::Stoppage;
-  const float base = period == 1   ? T::FIRST_HALF_BASE_MINUTES
-                     : period == 2 ? T::SECOND_HALF_BASE_MINUTES
-                                   : T::EXTRA_TIME_BASE_MINUTES;
+  float base = T::EXTRA_TIME_BASE_MINUTES;
+  if (period == 1)
+    base = T::FIRST_HALF_BASE_MINUTES;
+  else if (period == 2)
+    base = T::SECOND_HALF_BASE_MINUTES;
   const float minutes =
       base + static_cast<float>(log.goals) * T::MINUTES_PER_GOAL +
       static_cast<float>(log.substitutions) * T::MINUTES_PER_SUBSTITUTION +
@@ -113,8 +116,8 @@ float periodEndMinute(int period)
 
 bool shootoutDecided(int homeGoals, int homeKicks, int awayGoals, int awayKicks)
 {
-  constexpr int KICKS = MatchTuning::Timing::SHOOTOUT_KICKS;
-  if (homeKicks <= KICKS && awayKicks <= KICKS)
+  if (constexpr int KICKS = MatchTuning::Timing::SHOOTOUT_KICKS;
+      homeKicks <= KICKS && awayKicks <= KICKS)
   {
     if (homeGoals > awayGoals + (KICKS - awayKicks) ||
         awayGoals > homeGoals + (KICKS - homeKicks))
@@ -232,6 +235,7 @@ float aerialDuelStrength(float heightMetres, float physicality,
 
 FoulSanction decideFoulSanction(const FoulContext& context)
 {
+  using enum FoulSanction;
   using D = MatchTuning::Discipline;
   const float bias =
       context.offenderIsAway ? D::AWAY_CARD_BIAS : D::HOME_CARD_BIAS;
@@ -241,13 +245,13 @@ FoulSanction decideFoulSanction(const FoulContext& context)
       (1.0f + (bias - 1.0f) * context.venueBiasScale);
 
   if (context.severityRoll >= 1.0f - D::SERIOUS_FOUL_PLAY_SHARE * strictness)
-    return FoulSanction::RED;
+    return RED;
   if (context.denyingGoalChance)
   {
     const float redChance = context.inPenaltyArea
                                 ? D::PENALTY_AREA_DOGSO_RED_CHANCE
                                 : D::DOGSO_RED_CHANCE;
-    if (context.cardRoll < redChance) return FoulSanction::RED;
+    if (context.cardRoll < redChance) return RED;
   }
 
   const bool reckless = context.severityRoll >= 1.0f - D::RECKLESS_SHARE;
@@ -256,9 +260,8 @@ FoulSanction decideFoulSanction(const FoulContext& context)
   if (context.tactical || context.denyingGoalChance)
     yellowChance = std::max(yellowChance, D::TACTICAL_YELLOW_CHANCE);
   yellowChance = std::clamp(yellowChance * strictness, 0.0f, 0.95f);
-  if (context.cardRoll >= yellowChance) return FoulSanction::NONE;
-  return context.offenderAlreadyBooked ? FoulSanction::SECOND_YELLOW
-                                       : FoulSanction::YELLOW;
+  if (context.cardRoll >= yellowChance) return NONE;
+  return context.offenderAlreadyBooked ? SECOND_YELLOW : YELLOW;
 }
 
 float tackleWinChance(const TackleContext& context)

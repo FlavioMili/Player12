@@ -40,7 +40,7 @@ void bindOptionalRole(sqlite3_stmt* stmt, int index,
                       const std::optional<SquadRole>& role)
 {
   if (role)
-    sqlite3_bind_int(stmt, index, static_cast<int>(*role));
+    sqlite3_bind_int(stmt, index, static_cast<int>(std::to_underlying(*role)));
   else
     sqlite3_bind_null(stmt, index);
 }
@@ -51,14 +51,14 @@ std::optional<SquadRole> columnOptionalRole(sqlite3_stmt* stmt, int column)
   return static_cast<SquadRole>(sqlite3_column_int(stmt, column));
 }
 
-void execute(DatabaseConnection& db, const char* sql)
+void execute(const DatabaseConnection& db, const char* sql)
 {
   sqlite3_stmt* stmt = db.prepareStatement(sql);
   db.executeStep(stmt);
   sqlite3_finalize(stmt);
 }
 
-void finishRow(DatabaseConnection& db, sqlite3_stmt* stmt)
+void finishRow(const DatabaseConnection& db, sqlite3_stmt* stmt)
 {
   db.executeStep(stmt);
   sqlite3_reset(stmt);
@@ -93,7 +93,7 @@ OfferTerms offerFromJson(const nlohmann::json& json)
 
 nlohmann::json toJson(const LoanTerms& terms)
 {
-  return {{"duration", static_cast<int>(terms.duration)},
+  return {{"duration", static_cast<int>(std::to_underlying(terms.duration))},
           {"wage_share", terms.wage_share},
           {"loan_fee", terms.loan_fee},
           {"option_fee", terms.option_fee},
@@ -162,7 +162,8 @@ void TransferRepository::appendHistory(
     sqlite3_bind_int(stmt, 4, record.from_team);
     sqlite3_bind_int(stmt, 5, record.to_team);
     sqlite3_bind_int64(stmt, 6, record.fee);
-    sqlite3_bind_int(stmt, 7, static_cast<int>(record.kind));
+    sqlite3_bind_int(stmt, 7,
+                     static_cast<int>(std::to_underlying(record.kind)));
     finishRow(*db_conn, stmt);
   }
   sqlite3_finalize(stmt);
@@ -206,7 +207,8 @@ void TransferRepository::replaceObligations(
   for (const TransferObligation& obligation : obligations)
   {
     sqlite3_bind_int64(stmt, 1, obligation.id);
-    sqlite3_bind_int(stmt, 2, static_cast<int>(obligation.kind));
+    sqlite3_bind_int(stmt, 2,
+                     static_cast<int>(std::to_underlying(obligation.kind)));
     sqlite3_bind_int64(stmt, 3, obligation.player_id);
     sqlite3_bind_int(stmt, 4, obligation.payer);
     sqlite3_bind_int(stmt, 5, obligation.payee);
@@ -449,7 +451,8 @@ void TransferRepository::loadOffers(
     const auto offer = std::ranges::find(offers, offer_id, &IncomingOffer::id);
     const auto move = sqlite3_column_int(stmt, 2);
     if (offer == offers.end() || move < 0 ||
-        move >= static_cast<int>(BuyerNegotiation::Move::COUNT))
+        move >=
+            static_cast<int>(std::to_underlying(BuyerNegotiation::Move::COUNT)))
       continue;
     const auto json =
         nlohmann::json::parse(columnText(stmt, 3), nullptr, false);
@@ -489,16 +492,18 @@ void TransferRepository::replaceOffers(
                        {"asked_loan", toJson(offer.asked_loan)}}
             .dump();
     sqlite3_bind_int64(stmt, 1, offer.id);
-    sqlite3_bind_int(stmt, 2,
-                     static_cast<int>(offer.loan ? OfferRow::IncomingLoan
-                                                 : OfferRow::IncomingTransfer));
+    sqlite3_bind_int(
+        stmt, 2,
+        std::to_underlying(offer.loan ? OfferRow::IncomingLoan
+                                      : OfferRow::IncomingTransfer));
     sqlite3_bind_int64(stmt, 3, offer.player_id);
     sqlite3_bind_int(stmt, 4, offer.buyer);
     sqlite3_bind_int(stmt, 5, dateToInt(offer.created));
     sqlite3_bind_int(stmt, 6, dateToInt(offer.expires));
     sqlite3_bind_int(stmt, 7, offer.round);
     sqlite3_bind_text(stmt, 8, terms.c_str(), -1, SQLITE_TRANSIENT);
-    sqlite3_bind_int(stmt, 9, static_cast<int>(offer.status));
+    sqlite3_bind_int(stmt, 9,
+                     static_cast<int>(std::to_underlying(offer.status)));
     sqlite3_bind_int(stmt, 10,
                      offer.status == OfferStatus::AwaitingBuyer
                          ? dateToInt(offer.respond_on)
@@ -509,12 +514,12 @@ void TransferRepository::replaceOffers(
   {
     const std::string terms = nlohmann::json{
         {"offer", toJson(talk.agreed)},
-        {"contract_kind", static_cast<int>(talk.kind)},
+        {"contract_kind", static_cast<int>(std::to_underlying(talk.kind))},
         {"club_agreed", talk.club_agreed},
         {"player_rounds",
          talk.player_rounds}}.dump();
     sqlite3_bind_int64(stmt, 1, 0);
-    sqlite3_bind_int(stmt, 2, static_cast<int>(OfferRow::Negotiation));
+    sqlite3_bind_int(stmt, 2, std::to_underlying(OfferRow::Negotiation));
     sqlite3_bind_int64(stmt, 3, player_id);
     sqlite3_bind_int(stmt, 4, talk.seller);
     sqlite3_bind_int(stmt, 5, dateToInt(talk.expires));
@@ -528,7 +533,7 @@ void TransferRepository::replaceOffers(
   for (const TalksCooldown& cooldown : cooldowns)
   {
     sqlite3_bind_int64(stmt, 1, 0);
-    sqlite3_bind_int(stmt, 2, static_cast<int>(OfferRow::ClosedTalks));
+    sqlite3_bind_int(stmt, 2, std::to_underlying(OfferRow::ClosedTalks));
     sqlite3_bind_int64(stmt, 3, cooldown.player_id);
     sqlite3_bind_int(stmt, 4, cooldown.buyer);
     sqlite3_bind_int(stmt, 5, dateToInt(cooldown.until));
@@ -555,7 +560,8 @@ void TransferRepository::replaceOffers(
       sqlite3_bind_int64(stmt, 1, offer.id);
       sqlite3_bind_int64(stmt, 2, static_cast<sqlite3_int64>(seq));
       sqlite3_bind_int(stmt, 3, dateToInt(round.date));
-      sqlite3_bind_int(stmt, 4, static_cast<int>(round.move));
+      sqlite3_bind_int(stmt, 4,
+                       static_cast<int>(std::to_underlying(round.move)));
       sqlite3_bind_text(stmt, 5, terms.c_str(), -1, SQLITE_TRANSIENT);
       finishRow(*db_conn, stmt);
     }

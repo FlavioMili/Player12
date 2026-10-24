@@ -12,6 +12,7 @@
 #include <array>
 #include <bitset>
 #include <cstddef>
+#include <utility>
 #include <vector>
 
 namespace
@@ -36,41 +37,45 @@ enum class Slot : std::uint8_t
 
 Slot slotOf(PlayerRole role)
 {
+  using enum Slot;
+  using enum PlayerRole;
   switch (role)
   {
-    case PlayerRole::GK:
-      return Slot::Goalkeeper;
-    case PlayerRole::RB:
-      return Slot::RightBack;
-    case PlayerRole::LB:
-      return Slot::LeftBack;
-    case PlayerRole::CB:
-      return Slot::CentreBack;
-    case PlayerRole::CDM:
-      return Slot::Holding;
-    case PlayerRole::CAM:
-      return Slot::Playmaker;
-    case PlayerRole::RM:
-    case PlayerRole::RW:
-      return Slot::RightWing;
-    case PlayerRole::LM:
-    case PlayerRole::LW:
-      return Slot::LeftWing;
-    case PlayerRole::ST:
-      return Slot::Striker;
-    case PlayerRole::CM:
-    case PlayerRole::UNKNOWN:
+    case GK:
+      return Goalkeeper;
+    case RB:
+      return RightBack;
+    case LB:
+      return LeftBack;
+    case CB:
+      return CentreBack;
+    case CDM:
+      return Holding;
+    case CAM:
+      return Playmaker;
+    case RM:
+    case RW:
+      return RightWing;
+    case LM:
+    case LW:
+      return LeftWing;
+    case ST:
+      return Striker;
+    case CM:
+    case UNKNOWN:
       break;
   }
-  return Slot::Centre;
+  return Centre;
 }
 
 /** Regular places of each slot in a squad numbered from scratch (11). */
-constexpr std::array<int, static_cast<std::size_t>(Slot::COUNT)> REGULARS = {
-    1, 1, 1, 2, 1, 1, 1, 1, 1, 1};
+constexpr std::array<int,
+                     static_cast<std::size_t>(std::to_underlying(Slot::COUNT))>
+    REGULARS = {1, 1, 1, 2, 1, 1, 1, 1, 1, 1};
 
 /** Traditional numbers of each slot, most fitting first (0: none). */
-constexpr std::array<std::array<int, 2>, static_cast<std::size_t>(Slot::COUNT)>
+constexpr std::array<std::array<int, 2>,
+                     static_cast<std::size_t>(std::to_underlying(Slot::COUNT))>
     TRADITIONAL = {{{1, 0},
                     {2, 0},
                     {3, 0},
@@ -160,11 +165,13 @@ void SquadNumbers::assign(std::span<Entry> squad)
   std::vector<Entry*> waiting;
   waiting.reserve(order.size());
   std::vector<Entry*> others;
-  std::array<int, static_cast<std::size_t>(Slot::COUNT)> filled{};
+  std::array<int, static_cast<std::size_t>(std::to_underlying(Slot::COUNT))>
+      filled{};
   for (Entry* entry : order)
   {
     if (entry->number != 0) continue;
-    const auto slot = static_cast<std::size_t>(slotOf(entry->role));
+    const auto slot =
+        static_cast<std::size_t>(std::to_underlying(slotOf(entry->role)));
     if (numbered || filled[slot] < REGULARS[slot])
     {
       ++filled[slot];
@@ -185,8 +192,8 @@ void SquadNumbers::assign(std::span<Entry> squad)
       continue;
     }
     int number = 0;
-    for (const int candidate :
-         TRADITIONAL[static_cast<std::size_t>(slotOf(entry->role))])
+    for (const int candidate : TRADITIONAL[static_cast<std::size_t>(
+             std::to_underlying(slotOf(entry->role)))])
     {
       if (candidate != 0 && !taken.test(static_cast<std::size_t>(candidate)))
       {

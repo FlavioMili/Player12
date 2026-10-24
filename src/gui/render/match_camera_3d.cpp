@@ -34,8 +34,8 @@ Vec3 lookAhead(const MatchCameraFocus& focus)
 {
   Vec3 ahead = focus.ballVelocity * Tuning::Camera::LOOKAHEAD_SECONDS;
   ahead.z = 0.0f;
-  const float aheadLength = RenderMath::length(ahead);
-  if (aheadLength > Tuning::Camera::MAX_LOOKAHEAD)
+  if (const float aheadLength = RenderMath::length(ahead);
+      aheadLength > Tuning::Camera::MAX_LOOKAHEAD)
     ahead = ahead * (Tuning::Camera::MAX_LOOKAHEAD / aheadLength);
   return ahead;
 }
@@ -203,6 +203,7 @@ MatchCamera3D::Rig MatchCamera3D::directorRig(
     const MatchCameraFocus& focus) const
 {
   using D = Tuning::Director;
+  using enum MatchDirectorShot;
   const auto aimFrom = [](Vec3 eye, Vec3 target, float fov)
   {
     Rig rig;
@@ -216,9 +217,9 @@ MatchCamera3D::Rig MatchCamera3D::directorRig(
   };
   switch (shot)
   {
-    case MatchDirectorShot::BROADCAST:
+    case BROADCAST:
       break;
-    case MatchDirectorShot::REVERSE_ANGLE:
+    case REVERSE_ANGLE:
     {
       // The main camera's framing mirrored into the opposite stand.
       Rig rig = desiredRig(focus, MatchCameraMode::BROADCAST);
@@ -228,7 +229,7 @@ MatchCamera3D::Rig MatchCamera3D::directorRig(
                      Tuning::Broadcast::EYE_HEIGHT};
       return aimFrom(eye, rig.target, rig.fov);
     }
-    case MatchDirectorShot::CLOSE_UP:
+    case CLOSE_UP:
     {
       // Tight and low from the main camera's side of the pitch.
       Rig rig;
@@ -243,7 +244,7 @@ MatchCamera3D::Rig MatchCamera3D::directorRig(
       clampToBowl(rig.target, rig.yaw, rig.pitch, rig.distance, EyeBounds{});
       return rig;
     }
-    case MatchDirectorShot::GOAL_LINE:
+    case GOAL_LINE:
     {
       // Low on the goal line beside the posts, looking out at the shooter.
       const float outward = goalLineX < HALF_LENGTH ? -1.0f : 1.0f;
@@ -292,10 +293,15 @@ bool MatchCamera3D::direct(const MatchCameraFocus& focus, float deltaSeconds)
   {
     // The goal the ball is flying at, when it is close enough to matter.
     const float heading = focus.ballVelocity.x;
-    const float goal =
-        std::abs(heading) > 1.0f
-            ? (heading > 0.0f ? PITCH_LENGTH : 0.0f)
-            : (focus.attackDirection >= 0.0f ? PITCH_LENGTH : 0.0f);
+    float goal = 0.0f;
+    if (std::abs(heading) > 1.0f)
+    {
+      if (heading > 0.0f) goal = PITCH_LENGTH;
+    }
+    else if (focus.attackDirection >= 0.0f)
+    {
+      goal = PITCH_LENGTH;
+    }
     if (std::abs(goal - focus.ball.x) < D::SHOT_RANGE_METRES)
     {
       next = MatchDirectorShot::GOAL_LINE;

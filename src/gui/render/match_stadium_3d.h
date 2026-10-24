@@ -88,13 +88,13 @@ inline constexpr std::size_t CROWD_PHASES = 16;
 /** Allegiance and props of a spectator (bit flags). */
 namespace CrowdFlags
 {
-inline constexpr std::uint8_t HOME_FAN = 1U << 0U;
-inline constexpr std::uint8_t AWAY_FAN = 1U << 1U;
+inline constexpr std::byte HOME_FAN = std::byte{1} << 0U;
+inline constexpr std::byte AWAY_FAN = std::byte{1} << 1U;
 /** Jumps up when the home or the away side scores. */
-inline constexpr std::uint8_t CHEERS_HOME = 1U << 2U;
-inline constexpr std::uint8_t CHEERS_AWAY = 1U << 3U;
+inline constexpr std::byte CHEERS_HOME = std::byte{1} << 2U;
+inline constexpr std::byte CHEERS_AWAY = std::byte{1} << 3U;
 /** Holds a scarf in the team colours over the head when celebrating. */
-inline constexpr std::uint8_t SCARF = 1U << 4U;
+inline constexpr std::byte SCARF = std::byte{1} << 4U;
 }  // namespace CrowdFlags
 
 /** One spectator: a small upright billboard on a tier. */
@@ -103,7 +103,7 @@ struct CrowdDot
   Vec3 base;
   ImU32 body = 0;
   ImU32 head = 0;
-  std::uint8_t flags = 0;
+  std::byte flags{};
   /** Index into the per-frame motion tables (< CROWD_PHASES). */
   std::uint8_t phase = 0;
 };
@@ -115,7 +115,7 @@ struct CrowdFlag
   Vec3 along; /**< Unit vector along the row (the cloth streams this way). */
   ImU32 primary = 0;
   ImU32 secondary = 0;
-  std::uint8_t flags = 0;
+  std::byte flags{};
   std::uint8_t phase = 0;
 };
 
@@ -136,7 +136,7 @@ struct CrowdClump
   std::uint32_t dotBegin = 0;
   std::uint32_t dotEnd = 0;
   /** CHEERS_* bits held by most members (the far clump hops with them). */
-  std::uint8_t flags = 0;
+  std::byte flags{};
   std::uint8_t phase = 0;
 };
 
@@ -250,7 +250,7 @@ struct Geometry
    * lighting is baked into the colours: floodlights at night, the sun (with
    * the roofs' shadows) by day.
    */
-  void build(const MatchKits& kits, bool daylight = false);
+  void build(const MatchKits& kits, bool daylightView = false);
   /** Whether a ground point lies in a stand's shadow (always false at
    * night). */
   bool inStandShadow(Vec3 point) const;

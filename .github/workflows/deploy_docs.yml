@@ -47,6 +47,10 @@ jobs:
           cd main
           doxygen Doxyfile
 
+      - name: Test documentation renderer
+        working-directory: main
+        run: '"$RUNNER_TEMP/player12-docs/bin/python" -B -m unittest discover -s test -p "test_website_docs.py"'
+
       - name: Copy Doxygen Output to Website
         run: |
           # Clean old api docs and copy new ones

@@ -14,6 +14,7 @@
 #include <cmath>
 #include <nlohmann/json.hpp>
 #include <random>
+#include <utility>
 
 #include "database/database_connection.h"
 #include "database/gamedata.h"
@@ -78,22 +79,24 @@ enum class RoleGroup : uint8_t
 
 RoleGroup roleGroup(PlayerRole role)
 {
+  using enum RoleGroup;
+  using enum PlayerRole;
   switch (role)
   {
-    case PlayerRole::GK:
-      return RoleGroup::Goalkeeper;
-    case PlayerRole::CB:
-    case PlayerRole::LB:
-    case PlayerRole::RB:
-      return RoleGroup::Defender;
-    case PlayerRole::CDM:
-    case PlayerRole::CM:
-    case PlayerRole::CAM:
-    case PlayerRole::LM:
-    case PlayerRole::RM:
-      return RoleGroup::Midfielder;
+    case GK:
+      return Goalkeeper;
+    case CB:
+    case LB:
+    case RB:
+      return Defender;
+    case CDM:
+    case CM:
+    case CAM:
+    case LM:
+    case RM:
+      return Midfielder;
     default:
-      return RoleGroup::Forward;
+      return Forward;
   }
 }
 
@@ -154,13 +157,14 @@ std::string nationArg(Language nation)
 
 const char* International::confederationKey(Confederation confederation)
 {
+  using enum Confederation;
   switch (confederation)
   {
-    case Confederation::Europe:
+    case Europe:
       return "INTL_CONF_EUROPE";
-    case Confederation::Americas:
+    case Americas:
       return "INTL_CONF_AMERICAS";
-    case Confederation::Asia:
+    case Asia:
       return "INTL_CONF_ASIA";
   }
   return "INTL_CONF_EUROPE";
@@ -168,19 +172,21 @@ const char* International::confederationKey(Confederation confederation)
 
 Confederation International::confederationOf(Language nation)
 {
+  using enum Language;
+  using enum Confederation;
   switch (nation)
   {
-    case Language::MX:
-    case Language::BR:
-    case Language::US:
-      return Confederation::Americas;
-    case Language::CN:
-    case Language::JP:
-    case Language::KR:
-    case Language::AR:
-      return Confederation::Asia;
+    case MX:
+    case BR:
+    case US:
+      return Americas;
+    case CN:
+    case JP:
+    case KR:
+    case AR:
+      return Asia;
     default:
-      return Confederation::Europe;
+      return Europe;
   }
 }
 
@@ -193,21 +199,22 @@ std::string International::teamNameKey(Language nation)
 
 const char* International::competitionKey(Competition competition)
 {
+  using enum Competition;
   switch (competition)
   {
-    case Competition::Friendly:
+    case Friendly:
       return "INTL_FRIENDLY";
-    case Competition::WorldQualifier:
+    case WorldQualifier:
       return "INTL_WORLD_QUALIFIER";
-    case Competition::ContinentalQualifier:
+    case ContinentalQualifier:
       return "INTL_CONTINENTAL_QUALIFIER";
-    case Competition::NationsLeague:
+    case NationsLeague:
       return "INTL_NATIONS_LEAGUE";
-    case Competition::NationsLeagueFinals:
+    case NationsLeagueFinals:
       return "INTL_NATIONS_LEAGUE_FINALS";
-    case Competition::WorldFinals:
+    case WorldFinals:
       return "INTL_WORLD_FINALS";
-    case Competition::ContinentalFinals:
+    case ContinentalFinals:
       return "INTL_CONTINENTAL_FINALS";
   }
   return "INTL_FRIENDLY";
@@ -215,23 +222,24 @@ const char* International::competitionKey(Competition competition)
 
 const char* International::callUpResultKey(CallUpResult result)
 {
+  using enum CallUpResult;
   switch (result)
   {
-    case CallUpResult::Ok:
+    case Ok:
       return "CALLUP_RESULT_OK";
-    case CallUpResult::NoSquad:
+    case NoSquad:
       return "CALLUP_RESULT_NO_SQUAD";
-    case CallUpResult::Locked:
+    case Locked:
       return "CALLUP_RESULT_LOCKED";
-    case CallUpResult::TooMany:
+    case TooMany:
       return "CALLUP_RESULT_TOO_MANY";
-    case CallUpResult::TooFew:
+    case TooFew:
       return "CALLUP_RESULT_TOO_FEW";
-    case CallUpResult::NeedGoalkeepers:
+    case NeedGoalkeepers:
       return "CALLUP_RESULT_GOALKEEPERS";
-    case CallUpResult::Ineligible:
+    case Ineligible:
       return "CALLUP_RESULT_INELIGIBLE";
-    case CallUpResult::Duplicate:
+    case Duplicate:
       break;
   }
   return "CALLUP_RESULT_DUPLICATE";
@@ -239,22 +247,23 @@ const char* International::callUpResultKey(CallUpResult result)
 
 bool International::isFinals(Competition competition)
 {
-  return competition == Competition::WorldFinals ||
-         competition == Competition::ContinentalFinals ||
-         competition == Competition::NationsLeagueFinals;
+  using enum Competition;
+  return competition == WorldFinals || competition == ContinentalFinals ||
+         competition == NationsLeagueFinals;
 }
 
 const char* International::stageKey(Stage stage)
 {
+  using enum Stage;
   switch (stage)
   {
-    case Stage::Group:
+    case Group:
       return "INTL_STAGE_GROUP";
-    case Stage::QuarterFinal:
+    case QuarterFinal:
       return "CONT_ROUND_QUARTER_FINAL";
-    case Stage::SemiFinal:
+    case SemiFinal:
       return "CONT_ROUND_SEMI_FINAL";
-    case Stage::Final:
+    case Final:
       return "CONT_ROUND_FINAL";
   }
   return "INTL_STAGE_GROUP";
@@ -409,7 +418,8 @@ double International::selectionScore(const Player& player, uint16_t caps,
 }
 
 std::vector<PlayerID> International::selectSquad(
-    std::vector<const Player*> eligible, size_t size, const StatsConfig& config,
+    const std::vector<const Player*>& eligible, size_t size,
+    const StatsConfig& config,
     const std::unordered_map<PlayerID, uint16_t>& caps)
 {
   constexpr size_t GOALKEEPERS = 3;
@@ -441,7 +451,7 @@ std::vector<PlayerID> International::selectSquad(
   for (size_t index = 0; index < ranked.size() && squad.size() < size; ++index)
   {
     const auto group =
-        static_cast<size_t>(roleGroup(ranked[index].second->getRole()));
+        std::to_underlying(roleGroup(ranked[index].second->getRole()));
     if (picked_by_group[group] >= quota[group]) continue;
     ++picked_by_group[group];
     used[index] = 1;
@@ -451,7 +461,7 @@ std::vector<PlayerID> International::selectSquad(
   {
     if (used[index]) continue;
     const auto group =
-        static_cast<size_t>(roleGroup(ranked[index].second->getRole()));
+        std::to_underlying(roleGroup(ranked[index].second->getRole()));
     if (group == 0 && picked_by_group[0] >= MAX_GOALKEEPERS) continue;
     ++picked_by_group[group];
     squad.push_back(ranked[index].second->getId());
@@ -471,7 +481,7 @@ NationalTeams::NationalTeams(std::shared_ptr<GameData> game_data)
 const NationalTeams::Team* NationalTeams::getTeam(Language nation) const
 {
   const auto it = std::ranges::find(teams, nation, &Team::nation);
-  return it == teams.end() ? nullptr : &*it;
+  return it == teams.end() ? nullptr : std::to_address(it);
 }
 
 std::vector<Language> NationalTeams::ranking() const
@@ -593,15 +603,15 @@ International::CallUpResult NationalTeams::validateSquad(
     const GameDateValue& today) const
 {
   using International::CallUpResult;
+  using enum International::CallUpResult;
   const Squad* squad = squadOf(nation, today);
-  if (!squad) return CallUpResult::NoSquad;
-  if (!(today < squad->start)) return CallUpResult::Locked;
-  if (players.size() > squadLimit(*squad)) return CallUpResult::TooMany;
-  if (players.size() < International::MIN_CALL_UPS) return CallUpResult::TooFew;
+  if (!squad) return NoSquad;
+  if (!(today < squad->start)) return Locked;
+  if (players.size() > squadLimit(*squad)) return TooMany;
+  if (players.size() < International::MIN_CALL_UPS) return TooFew;
   std::vector<PlayerID> sorted = players;
   std::ranges::sort(sorted);
-  if (std::ranges::adjacent_find(sorted) != sorted.end())
-    return CallUpResult::Duplicate;
+  if (std::ranges::adjacent_find(sorted) != sorted.end()) return Duplicate;
   size_t goalkeepers = 0;
   for (const PlayerID player_id : players)
   {
@@ -680,11 +690,11 @@ void NationalTeams::refreshNations()
     team.rating =
         RATING_BASE + RATING_PER_OVERALL * total / static_cast<double>(sample);
     const auto& first = names.firstNames(nation);
-    const auto& last = names.lastNames(nation);
-    if (!first.empty() && !last.empty())
+    if (const auto& last = names.lastNames(nation);
+        !first.empty() && !last.empty())
     {
-      const uint32_t hash = Competitions::mixSeed(
-          seed32, static_cast<uint32_t>(nation), COACH_SALT);
+      const uint32_t hash =
+          Competitions::mixSeed(seed32, std::to_underlying(nation), COACH_SALT);
       team.coach =
           first[hash % first.size()] + " " + last[(hash / 7U) % last.size()];
     }
@@ -786,8 +796,7 @@ void NationalTeams::planQualifiers(uint16_t season_year, uint16_t finals_year,
       drawn[g].index = static_cast<uint8_t>(next_group + g);
     }
     std::mt19937 rng(Competitions::mixSeed(
-        season_year, static_cast<uint32_t>(entry.confederation),
-        GROUP_DRAW_SALT));
+        season_year, std::to_underlying(entry.confederation), GROUP_DRAW_SALT));
     for (size_t first = 0; first < nations.size(); first += group_count)
     {
       std::vector<Language> pot(
@@ -856,7 +865,7 @@ void NationalTeams::planSeason(uint16_t season_year, const GameDateValue& today,
   // Older cycles: keep last season's results for reference, nothing older.
   constexpr int KEEP_DAYS = 400;
   std::erase_if(
-      fixtures, [&](const Fixture& fixture)
+      fixtures, [today](const Fixture& fixture)
       { return dayOrdinal(today) - dayOrdinal(fixture.date) > KEEP_DAYS; });
   std::erase_if(finals, [season_year](const Finals& entry)
                 { return entry.year < season_year; });
@@ -880,8 +889,8 @@ void NationalTeams::planSeason(uint16_t season_year, const GameDateValue& today,
       if (window.start.month >= 9) autumn.push_back(day);
     }
   }
-  const auto finals_year = static_cast<uint16_t>(season_year + 1);
-  if (finals_year % 2 == 0)
+  if (const auto finals_year = static_cast<uint16_t>(season_year + 1);
+      finals_year % 2 == 0)
     planQualifiers(season_year, finals_year, slots, summer_start);
   else
     planNationsLeague(season_year, autumn, summer_start);
@@ -914,8 +923,8 @@ std::vector<PlayerID> NationalTeams::pickSquad(
       caps[id] = record->second.caps;
   }
   std::ranges::sort(eligible, {}, &Player::getId);
-  return International::selectSquad(std::move(eligible), size,
-                                    gamedata->getStatsConfig(), caps);
+  return International::selectSquad(eligible, size, gamedata->getStatsConfig(),
+                                    caps);
 }
 
 const NationalTeams::Finals* NationalTeams::finalsFor(
@@ -1001,16 +1010,17 @@ void NationalTeams::announceWindow(const GameDateValue& today,
   for (const Team& team : teams)
   {
     const Finals* tournament = finalsFor(team.nation, start);
-    const bool plays =
-        tournament ||
-        std::ranges::any_of(fixtures,
-                            [&](const Fixture& fixture)
-                            {
-                              return between(fixture.date, start, end) &&
-                                     (fixture.home == team.nation ||
-                                      fixture.away == team.nation);
-                            });
-    if (!plays) continue;
+    if (const bool plays =
+            tournament ||
+            std::ranges::any_of(fixtures,
+                                [&](const Fixture& fixture)
+                                {
+                                  return between(fixture.date, start, end) &&
+                                         (fixture.home == team.nation ||
+                                          fixture.away == team.nation);
+                                });
+        !plays)
+      continue;
     if (std::ranges::any_of(
             squads, [&](const Squad& squad)
             { return squad.nation == team.nation && !(squad.until < start); }))
@@ -1065,7 +1075,7 @@ void NationalTeams::replaceInjured(const GameDateValue& today)
     if (!(squad.start == today)) continue;
     std::vector<PlayerID> removed;
     std::erase_if(squad.players,
-                  [&](PlayerID player_id)
+                  [this, &removed](PlayerID player_id)
                   {
                     const auto player = gamedata->getPlayer(player_id);
                     const bool gone = !player || !player->get().isAvailable();
@@ -1095,20 +1105,21 @@ void NationalTeams::replaceInjured(const GameDateValue& today)
 
 void NationalTeams::updateRatings(const Fixture& fixture)
 {
+  using enum Competition;
   auto home = std::ranges::find(teams, fixture.home, &Team::nation);
   auto away = std::ranges::find(teams, fixture.away, &Team::nation);
   if (home == teams.end() || away == teams.end()) return;
   double k = 20.0;
   switch (fixture.competition)
   {
-    case Competition::Friendly:
+    case Friendly:
       k = 20.0;
       break;
-    case Competition::NationsLeague:
+    case NationsLeague:
       k = 30.0;
       break;
-    case Competition::WorldQualifier:
-    case Competition::ContinentalQualifier:
+    case WorldQualifier:
+    case ContinentalQualifier:
       k = 40.0;
       break;
     default:
@@ -1123,7 +1134,11 @@ void NationalTeams::updateRatings(const Fixture& fixture)
   if (fixture.home_goals > fixture.away_goals) actual = 1.0;
   if (fixture.home_goals < fixture.away_goals) actual = 0.0;
   const int margin = std::abs(fixture.home_goals - fixture.away_goals);
-  const double weight = margin <= 1 ? 1.0 : (margin == 2 ? 1.5 : 1.75);
+  double weight = 1.75;
+  if (margin <= 1)
+    weight = 1.0;
+  else if (margin == 2)
+    weight = 1.5;
   const double change = k * weight * (actual - expected);
   home->rating += change;
   away->rating -= change;
@@ -1148,7 +1163,9 @@ void NationalTeams::playMatches(const GameDateValue& today,
     // Loaded in the middle of a window: pick the squad now.
     Squad squad;
     squad.nation = nation;
-    squad.announced = squad.start = squad.until = today;
+    squad.announced = today;
+    squad.start = today;
+    squad.until = today;
     squad.players = pickSquad(nation, International::WINDOW_SQUAD, today, {});
     squads.push_back(std::move(squad));
     rebuildDutyIndex();
@@ -1201,9 +1218,9 @@ void NationalTeams::playMatches(const GameDateValue& today,
     Fixture& fixture = fixtures[index];
     MatchSimulationInput input;
     input.home_id =
-        static_cast<TeamID>(TEAM_ID_BASE + static_cast<TeamID>(fixture.home));
+        static_cast<TeamID>(TEAM_ID_BASE + std::to_underlying(fixture.home));
     input.away_id =
-        static_cast<TeamID>(TEAM_ID_BASE + static_cast<TeamID>(fixture.away));
+        static_cast<TeamID>(TEAM_ID_BASE + std::to_underlying(fixture.away));
     input.seed = Competitions::mixSeed(static_cast<uint32_t>(dayOrdinal(today)),
                                        fixture.id, MATCH_SEED_SALT);
     input.home_lineup = lineupFor(fixture.home);
@@ -1280,12 +1297,11 @@ void NationalTeams::drawFinals(Finals& entry, const GameDateValue& today,
 
   std::vector<Language> qualified;
   std::vector<International::GroupRow> runners_up;
-  const Competition qualifier =
-      entry.competition == Competition::WorldFinals
-          ? Competition::WorldQualifier
-      : entry.competition == Competition::ContinentalFinals
-          ? Competition::ContinentalQualifier
-          : Competition::NationsLeague;
+  Competition qualifier = Competition::NationsLeague;
+  if (entry.competition == Competition::WorldFinals)
+    qualifier = Competition::WorldQualifier;
+  else if (entry.competition == Competition::ContinentalFinals)
+    qualifier = Competition::ContinentalQualifier;
   const size_t advancing =
       entry.competition == Competition::NationsLeagueFinals ? 1 : 2;
   for (const Group& group : groups)
@@ -1358,8 +1374,8 @@ void NationalTeams::drawFinals(Finals& entry, const GameDateValue& today,
   {
     const size_t group_count = qualified.size() / 4;
     std::mt19937 rng(Competitions::mixSeed(
-        entry.year, static_cast<uint32_t>(entry.competition),
-        GROUP_DRAW_SALT + static_cast<uint32_t>(entry.confederation)));
+        entry.year, std::to_underlying(entry.competition),
+        GROUP_DRAW_SALT + std::to_underlying(entry.confederation)));
     entry.groups.assign(group_count, Group{});
     for (size_t g = 0; g < group_count; ++g)
     {
@@ -1446,9 +1462,9 @@ void NationalTeams::progressFinals(Finals& entry, const GameDateValue& today,
     // Group stage over: winners and runners-up cross over.
     std::vector<std::vector<International::GroupRow>> tables;
     for (const Group& group : entry.groups) tables.push_back(table(group));
-    for (size_t g = 0; g < tables.size(); ++g)
-      for (size_t i = 2; i < tables[g].size(); ++i)
-        releaseNation(tables[g][i].nation);
+    for (const auto& group_table : tables)
+      for (size_t i = 2; i < group_table.size(); ++i)
+        releaseNation(group_table[i].nation);
     if (tables.size() == 1)
     {
       next.emplace_back(tables[0][0].nation, tables[0][1].nation);
@@ -1461,9 +1477,12 @@ void NationalTeams::progressFinals(Finals& entry, const GameDateValue& today,
         next.emplace_back(tables[g + 1][0].nation, tables[g][1].nation);
       }
     }
-    next_stage = next.size() >= 4   ? Stage::QuarterFinal
-                 : next.size() == 2 ? Stage::SemiFinal
-                                    : Stage::Final;
+    if (next.size() >= 4)
+      next_stage = Stage::QuarterFinal;
+    else if (next.size() == 2)
+      next_stage = Stage::SemiFinal;
+    else
+      next_stage = Stage::Final;
   }
   else
   {
@@ -1511,10 +1530,10 @@ void NationalTeams::progressFinals(Finals& entry, const GameDateValue& today,
     }
     for (size_t i = 0; i + 1 < winners.size(); i += 2)
       next.emplace_back(winners[i], winners[i + 1]);
-    next_stage = static_cast<Stage>(static_cast<uint8_t>(latest) + 1);
+    next_stage = static_cast<Stage>(std::to_underlying(latest) + 1);
     const auto rounds_played = static_cast<size_t>(
-        static_cast<uint8_t>(latest) -
-        static_cast<uint8_t>(
+        std::to_underlying(latest) -
+        std::to_underlying(
             std::ranges::min(knockouts, {}, &Fixture::stage)->stage));
     round_index = rounds_played + 1;
   }
@@ -1622,7 +1641,7 @@ void NationalTeams::onDay(const GameDateValue& today, MatchScheduler& scheduler,
 std::string NationalTeams::serialize() const
 {
   using nlohmann::json;
-  const auto nation = [](Language value) { return static_cast<int>(value); };
+  const auto nation = [](Language value) { return std::to_underlying(value); };
   json root;
   root["planned_season"] = planned_season;
   root["next_fixture_id"] = next_fixture_id;
@@ -1635,8 +1654,8 @@ std::string NationalTeams::serialize() const
   json fixtures_json = json::array();
   for (const Fixture& f : fixtures)
     fixtures_json.push_back({f.id, f.date.toString(), nation(f.home),
-                             nation(f.away), static_cast<int>(f.competition),
-                             f.group, static_cast<int>(f.stage), f.neutral,
+                             nation(f.away), std::to_underlying(f.competition),
+                             f.group, std::to_underlying(f.stage), f.neutral,
                              f.played, f.home_goals, f.away_goals, f.extra_time,
                              f.penalties, f.home_penalties, f.away_penalties});
   root["fixtures"] = std::move(fixtures_json);
@@ -1645,7 +1664,7 @@ std::string NationalTeams::serialize() const
     json members = json::array();
     for (const Language member : group.members)
       members.push_back(nation(member));
-    return json{{"competition", static_cast<int>(group.competition)},
+    return json{{"competition", std::to_underlying(group.competition)},
                 {"index", group.index},
                 {"members", std::move(members)}};
   };
@@ -1662,9 +1681,9 @@ std::string NationalTeams::serialize() const
     for (const Group& group : entry.groups)
       entry_groups.push_back(groupJson(group));
     finals_json.push_back(
-        {{"competition", static_cast<int>(entry.competition)},
+        {{"competition", std::to_underlying(entry.competition)},
          {"year", entry.year},
-         {"confederation", static_cast<int>(entry.confederation)},
+         {"confederation", std::to_underlying(entry.confederation)},
          {"size", entry.size},
          {"start", entry.start.toString()},
          {"drawn", entry.drawn},
@@ -1685,7 +1704,7 @@ std::string NationalTeams::serialize() const
   root["squads"] = std::move(squads_json);
   json honours_json = json::array();
   for (const Honour& honour : honours)
-    honours_json.push_back({honour.year, static_cast<int>(honour.competition),
+    honours_json.push_back({honour.year, std::to_underlying(honour.competition),
                             nation(honour.winner), nation(honour.runner_up)});
   root["honours"] = std::move(honours_json);
   std::vector<PlayerID> record_ids;
@@ -1738,9 +1757,9 @@ void NationalTeams::deserialize(const std::string& data)
   planned_season = root.value("planned_season", uint16_t{0});
   next_fixture_id = root.value("next_fixture_id", uint32_t{1});
   for (const json& item : root.value("teams", json::array()))
-    teams.push_back({nation(item.at("nation")),
-                     item.value("coach", std::string()),
-                     item.value("rating", 1500.0)});
+    teams.emplace_back(nation(item.at("nation")),
+                       item.value("coach", std::string()),
+                       item.value("rating", 1500.0));
   for (const json& f : root.value("fixtures", json::array()))
   {
     if (!f.is_array() || f.size() < 15) continue;

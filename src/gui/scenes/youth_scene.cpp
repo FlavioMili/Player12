@@ -12,8 +12,10 @@
 
 #include <algorithm>
 #include <cmath>
+#include <cstddef>
 #include <cstdio>
 #include <format>
+#include <utility>
 
 #include "database/gamedata.h"
 #include "global/language_manager.h"
@@ -130,23 +132,24 @@ std::string nationalityName(Language nationality)
 
 std::string range(float low, float high)
 {
-  const int lo = static_cast<int>(std::lround(low));
-  const int hi = static_cast<int>(std::lround(high));
+  const auto lo = static_cast<int>(std::lround(low));
+  const auto hi = static_cast<int>(std::lround(high));
   return lo == hi ? std::to_string(lo) : std::format("{}-{}", lo, hi);
 }
 
 ImVec4 qualityColor(IntakeQuality quality)
 {
   const Theme::Palette& palette = Theme::palette();
+  using enum IntakeQuality;
   switch (quality)
   {
-    case IntakeQuality::Golden:
+    case Golden:
       return palette.positive;
-    case IntakeQuality::Promising:
+    case Promising:
       return palette.info;
-    case IntakeQuality::Weak:
+    case Weak:
       return palette.warning;
-    case IntakeQuality::Average:
+    case Average:
       break;
   }
   return palette.muted;
@@ -160,7 +163,11 @@ GameDateValue dateOfDay(const GameDateValue& today, std::int32_t ordinal)
 
 YouthScene::YouthScene(GUIView* parent) : ManagementScene(parent) {}
 
-void YouthScene::update(float /*deltaTime*/) {}
+void YouthScene::update(float /*deltaTime*/)
+{
+  /* Youth data refreshes after explicit controller actions and date changes;
+   * the screen has no frame-driven state. */
+}
 
 YouthScene::Row YouthScene::makeRow(
     const GameController::YouthPlayerView& view) const
@@ -207,7 +214,7 @@ YouthScene::Row YouthScene::makeRow(
 
 void YouthScene::refresh()
 {
-  GameController& controller = guiView->getController();
+  const GameController& controller = guiView->getController();
   cached_date = controller.getCurrentDate();
   squad_rows.clear();
   eligible_rows.clear();
@@ -229,10 +236,10 @@ void YouthScene::refresh()
   development_rows = squad_rows;
   for (const auto& view : controller.getYouthPlayers(YouthStatus::Graduated))
     development_rows.push_back(makeRow(view));
-  const bool known =
-      std::ranges::any_of(development_rows, [this](const Row& row)
-                          { return row.view.id == chart_player; });
-  if (!known)
+  if (const bool known =
+          std::ranges::any_of(development_rows, [this](const Row& row)
+                              { return row.view.id == chart_player; });
+      !known)
     chart_player =
         development_rows.empty() ? 0 : development_rows.front().view.id;
 
@@ -250,8 +257,8 @@ void YouthScene::refresh()
   for (const Row* row : ranked) improver_values.push_back(row->growth_text);
   const Theme::Palette& palette = Theme::palette();
   for (std::size_t i = 0; i < ranked.size(); ++i)
-    improvers.push_back({ranked[i]->view.name, ranked[i]->growth,
-                         palette.positive, improver_values[i]});
+    improvers.emplace_back(ranked[i]->view.name, ranked[i]->growth,
+                           palette.positive, improver_values[i]);
 
   // Overview texts.
   head_rating = overview.head.id != 0 ? std::to_string(overview.ratings.head)
@@ -325,11 +332,12 @@ void YouthScene::refresh()
         "{} ({})", opponent ? opponent->get().getName() : std::string("?"),
         LOC(result.home ? "YOUTH_HOME" : "YOUTH_AWAY"));
     line.score = std::format("{}-{}", result.goals_for, result.goals_against);
-    line.outcome =
-        result.goals_for > result.goals_against
-            ? UI::Outcome::WIN
-            : (result.goals_for == result.goals_against ? UI::Outcome::DRAW
-                                                        : UI::Outcome::LOSS);
+    if (result.goals_for > result.goals_against)
+      line.outcome = UI::Outcome::WIN;
+    else if (result.goals_for == result.goals_against)
+      line.outcome = UI::Outcome::DRAW;
+    else
+      line.outcome = UI::Outcome::LOSS;
     form.push_back(line.outcome);
     results.push_back(std::move(line));
   }
@@ -372,7 +380,7 @@ void YouthScene::openTab(Tab tab)
 
 void YouthScene::renderContent()
 {
-  GameController& controller = guiView->getController();
+  const GameController& controller = guiView->getController();
   if (!controller.hasSelectedTeam()) return;
   if (!(cached_date == controller.getCurrentDate())) refresh();
   UI::pageHeader(LOC("YOUTH_TITLE"), LOC("YOUTH_SUBTITLE"));
@@ -631,7 +639,8 @@ void YouthScene::renderTable(const char* id, const std::vector<Row>& rows,
                              ListKind kind)
 {
   const Theme::Palette& palette = Theme::palette();
-  const std::span<const ColumnSpec> specs = columnsFor(static_cast<int>(kind));
+  const std::span<const ColumnSpec> specs =
+      columnsFor(static_cast<int>(std::to_underlying(kind)));
   std::array<UI::Column, SQUAD_COLUMNS.size()> localized{};
   for (std::size_t i = 0; i < specs.size(); ++i)
   {
@@ -650,6 +659,7 @@ void YouthScene::renderTable(const char* id, const std::vector<Row>& rows,
   // there and continues with the same id (shared column widths).
   UI::TableHeader header = UI::TableHeader::STATIC;
   std::size_t first = 0;
+  using enum Cell;
   while (first < rows.size())
   {
     if (!UI::beginResponsiveTable("rows", columns, mask, flags, header)) break;
@@ -670,7 +680,7 @@ void YouthScene::renderTable(const char* id, const std::vector<Row>& rows,
         if (!UI::cell(mask, static_cast<int>(column))) continue;
         switch (specs[column].cell)
         {
-          case Cell::NAME:
+          case NAME:
           {
             // The row selects (details or chart); the name opens the profile.
             const float x = ImGui::GetCursorPosX();
@@ -692,37 +702,37 @@ void YouthScene::renderTable(const char* id, const std::vector<Row>& rows,
               Navigation::openPlayer(guiView, view.id);
             break;
           }
-          case Cell::POS:
+          case POS:
             ImGui::TextColored(palette.muted, "%s", row.role.c_str());
             break;
-          case Cell::AGE:
+          case AGE:
             ImGui::Text("%d", view.age);
             break;
-          case Cell::ABILITY:
+          case ABILITY:
             ImGui::TextUnformatted(row.ability.c_str());
             break;
-          case Cell::POTENTIAL:
+          case POTENTIAL:
             ImGui::TextColored(
                 Theme::ratingColor(0.5f * (view.estimate.potential_low +
                                            view.estimate.potential_high)),
                 "%s", row.potential.c_str());
             break;
-          case Cell::CONTRACT:
+          case CONTRACT:
             ImGui::TextColored(
                 view.contract_years <= 1 ? palette.warning : palette.text, "%s",
                 row.contract.c_str());
             break;
-          case Cell::APPS:
+          case APPS:
             ImGui::Text("%d", view.appearances);
             break;
-          case Cell::RATING:
+          case RATING:
             ImGui::TextUnformatted(row.rating.c_str());
             break;
-          case Cell::PERSONALITY:
+          case PERSONALITY:
             UI::textFitted(LOC(view.personality_key),
                            ImGui::GetContentRegionAvail().x, palette.muted);
             break;
-          case Cell::HOMEGROWN:
+          case HOMEGROWN:
             if (view.homegrown)
             {
               UI::badge(LOC("YOUTH_HOMEGROWN_BADGE"), palette.info);
@@ -730,19 +740,23 @@ void YouthScene::renderTable(const char* id, const std::vector<Row>& rows,
                 ImGui::SetTooltip("%s", LOC("YOUTH_HOMEGROWN_HINT"));
             }
             break;
-          case Cell::NATION:
+          case NATION:
             UI::textFitted(row.nationality, ImGui::GetContentRegionAvail().x,
                            palette.muted);
             break;
-          case Cell::HEIGHT:
+          case HEIGHT:
             ImGui::TextUnformatted(row.height.c_str());
             break;
-          case Cell::GROWTH:
-            ImGui::TextColored(row.growth > 0.05f    ? palette.positive
-                               : row.growth < -0.05f ? palette.negative
-                                                     : palette.muted,
-                               "%s", row.growth_text.c_str());
+          case GROWTH:
+          {
+            ImVec4 growthColor = palette.muted;
+            if (row.growth > 0.05f)
+              growthColor = palette.positive;
+            else if (row.growth < -0.05f)
+              growthColor = palette.negative;
+            ImGui::TextColored(growthColor, "%s", row.growth_text.c_str());
             break;
+          }
         }
       }
       ImGui::PopID();
@@ -898,7 +912,7 @@ void YouthScene::renderDevelopment()
   ImGui::EndGroup();
 }
 
-void YouthScene::renderChart(const Row& row, float width)
+void YouthScene::renderChart(const Row& row, float width) const
 {
   const Theme::Palette& palette = Theme::palette();
   const float scale = Theme::scale();
@@ -955,10 +969,14 @@ void YouthScene::renderChart(const Row& row, float width)
     const float y = y_of(value);
     drawList->AddLine(ImVec2(plot_min.x, y), ImVec2(plot_max.x, y),
                       Theme::toU32(palette.border));
-    char label[8];
-    std::snprintf(label, sizeof(label), "%.0f", static_cast<double>(value));
+    std::array<char, 8> label{};
+    const auto formatted = std::format_to_n(
+        label.data(), static_cast<std::ptrdiff_t>(label.size() - 1), "{:.0f}",
+        static_cast<double>(value));
+    label[std::min(static_cast<std::size_t>(formatted.size),
+                   label.size() - 1)] = '\0';
     drawList->AddText(ImVec2(origin.x, y - line_height * 0.5f),
-                      Theme::toU32(palette.faint), label);
+                      Theme::toU32(palette.faint), label.data());
   }
   for (std::size_t i = 1; i < points.size(); ++i)
     drawList->AddLine(
@@ -1050,8 +1068,8 @@ void YouthScene::runPending()
     {
       const auto row = std::ranges::find(
           squad_rows, action.id, [](const Row& line) { return line.view.id; });
-      const bool listed = row != squad_rows.end() && row->view.loan_listed;
-      if (controller.setLoanListed(action.id, !listed))
+      if (const bool listed = row != squad_rows.end() && row->view.loan_listed;
+          controller.setLoanListed(action.id, !listed))
         showToast(formatLocalized(
             listed ? "YOUTH_TOAST_LOAN_WITHDRAWN" : "YOUTH_TOAST_LOAN_OFFERED",
             {name}));

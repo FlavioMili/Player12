@@ -79,8 +79,8 @@ class TrainingScene : public ManagementScene
   void renderControls();
   void renderMicrocycle(float width);
   void renderSlot(int day, bool compact);
-  void renderWeek();
-  void renderAdvice(float width);
+  void renderWeek() const;
+  void renderAdvice(float width) const;
   void renderPlayers();
   void sortRows();
 

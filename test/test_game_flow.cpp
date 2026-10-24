@@ -31,6 +31,8 @@
 #include <spawn.h>
 #include <sys/wait.h>
 #include <unistd.h>
+
+#include <utility>
 extern char** environ;
 #endif
 
@@ -583,7 +585,7 @@ TEST_F(GameFlowTest, GUIFlowLifecycle)
     {
       const std::string_view name(window->Name);
       if (window->Active && name.starts_with(PAGE) &&
-          name.find('/', PAGE.size()) == std::string_view::npos)
+          !name.substr(PAGE.size()).contains('/'))
         page = window;
     }
     if (page == nullptr) return std::string("no page");
@@ -637,8 +639,7 @@ TEST_F(GameFlowTest, GUIFlowLifecycle)
       if (window->Active &&
           std::string_view(window->Name)
               .starts_with("##management_shell/##content") &&
-          std::string_view(window->Name).find('/', 29) ==
-              std::string_view::npos)
+          !std::string_view(window->Name).substr(29).contains('/'))
         ImGui::SetScrollY(window, 1150.0f);
     step_frame();
     step_frame();
@@ -783,7 +784,7 @@ TEST_F(GameFlowTest, GUIFlowLifecycle)
   EXPECT_TRUE(analysis.contains("shot"));
   EXPECT_TRUE(analysis.contains("carry"));
   EXPECT_TRUE(analysis.contains("shield"));
-  const auto chosenUtility = [&debugSnapshot, &analysis]() -> float
+  const auto chosenUtility = [&debugSnapshot, &analysis]()
   {
     const std::string action =
         debugSnapshot["decision"]["action"].get<std::string>();
@@ -1053,15 +1054,16 @@ TEST_F(GameFlowTest, ManagementScreensMidSeason)
     step_frame();
     capture(squad);
   };
-  appearance(static_cast<int>(Theme::Preset::LIGHT), false, 0.0f,
-             "theme_light_home.bmp", "theme_light_squad.bmp");
-  appearance(static_cast<int>(Theme::Preset::HIGH_CONTRAST), true, 0.0f,
-             "theme_contrast_home.bmp", "theme_contrast_squad.bmp");
-  appearance(static_cast<int>(Theme::Preset::MIDNIGHT_BLUE), false, 1.5f,
-             "theme_scaled_home.bmp", "theme_scaled_squad.bmp");
+  appearance(static_cast<int>(std::to_underlying(Theme::Preset::LIGHT)), false,
+             0.0f, "theme_light_home.bmp", "theme_light_squad.bmp");
+  appearance(static_cast<int>(std::to_underlying(Theme::Preset::HIGH_CONTRAST)),
+             true, 0.0f, "theme_contrast_home.bmp", "theme_contrast_squad.bmp");
+  appearance(static_cast<int>(std::to_underlying(Theme::Preset::MIDNIGHT_BLUE)),
+             false, 1.5f, "theme_scaled_home.bmp", "theme_scaled_squad.bmp");
   EXPECT_FLOAT_EQ(Theme::scale(), 1.5f);
-  appearance(static_cast<int>(Theme::Preset::TRUE_DARK), false, 0.0f,
-             "theme_truedark_home.bmp", "theme_truedark_squad.bmp");
+  appearance(static_cast<int>(std::to_underlying(Theme::Preset::TRUE_DARK)),
+             false, 0.0f, "theme_truedark_home.bmp",
+             "theme_truedark_squad.bmp");
   settings = original;
   view.refreshTheme();
 
@@ -1241,10 +1243,9 @@ TEST_F(GameFlowTest, RuntimeRootDoesNotTouchExternalSentinels)
   const auto sourceRoot = std::filesystem::path(FM_SOURCE_DIR);
   EXPECT_NE(runtimeRoot, sourceRoot);
 
-  const auto sentinel =
-      runtimeRoot.parent_path() /
-      ("football-management-sentinel-" +
-       std::to_string(static_cast<unsigned long>(SDL_GetTicks())));
+  const auto sentinel = runtimeRoot.parent_path() /
+                        std::format("football-management-sentinel-{}",
+                                    static_cast<unsigned long>(SDL_GetTicks()));
   {
     std::ofstream output(sentinel);
     ASSERT_TRUE(output.is_open());
@@ -1290,7 +1291,7 @@ std::optional<Match> nextFixtureOf(GameController& controller, TeamID club)
   return std::nullopt;
 }
 
-Player& worldPlayer(GameController& controller, PlayerID id)
+Player& worldPlayer(const GameController& controller, PlayerID id)
 {
   return controller.getGameData()->getPlayers().at(id);
 }
@@ -1548,9 +1549,9 @@ TEST_F(GameFlowTest, WatchedCupTieIsPlayedToAWinner)
          ++step)
       engine.update(0.05f);
     // Commentary names the clubs, not "home side".
-    EXPECT_TRUE(std::ranges::any_of(
-        engine.getEvents(), [&](const MatchEvent& event)
-        { return event.description.find(homeName) != std::string::npos; }))
+    EXPECT_TRUE(
+        std::ranges::any_of(engine.getEvents(), [&](const MatchEvent& event)
+                            { return event.description.contains(homeName); }))
         << homeName;
     if (engine.getState() == MatchState::FULL_TIME) continue;
     extraTime = true;
@@ -1794,11 +1795,11 @@ TEST(RuntimeRoot, ChildHelperWritesACapture)
 
 TEST(RuntimeRoot, TestProcessesRemoveTheirRootAtExit)
 {
-  const auto base = std::filesystem::temp_directory_path() /
-                    std::format("fm-root-probe-{}", getpid());
+  const auto base =
+      RuntimePaths::root() / std::format("fm-root-probe-{}", getpid());
   std::filesystem::remove_all(base);
   const std::string exe = std::filesystem::read_symlink("/proc/self/exe");
-  const auto runChild = [&](bool keep)
+  const auto runChild = [&](bool keep, bool succeeds = true)
   {
     std::vector<std::string> variables;
     for (char** entry = environ; *entry != nullptr; ++entry)
@@ -1823,16 +1824,30 @@ TEST(RuntimeRoot, TestProcessesRemoveTheirRootAtExit)
               0);
     int status = 0;
     ASSERT_EQ(waitpid(child, &status, 0), child);
-    EXPECT_TRUE(WIFEXITED(status) && WEXITSTATUS(status) == 0);
+    ASSERT_TRUE(WIFEXITED(status));
+    EXPECT_EQ(WEXITSTATUS(status), succeeds ? 0 : 1);
   };
 
   // A test process leaves nothing behind...
   runChild(false);
   ASSERT_TRUE(std::filesystem::exists(base));
+  EXPECT_EQ(std::filesystem::status(base).permissions() &
+                (std::filesystem::perms::group_all |
+                 std::filesystem::perms::others_all),
+            std::filesystem::perms::none);
   EXPECT_TRUE(std::filesystem::is_empty(base));
   // ...unless its artifacts were asked for.
   runChild(true);
   EXPECT_FALSE(std::filesystem::is_empty(base));
   std::filesystem::remove_all(base);
+
+  // A planted symlink must not redirect captures into another directory.
+  const auto outside = base.string() + "-outside";
+  std::filesystem::create_directory(outside);
+  std::filesystem::create_directory_symlink(outside, base);
+  runChild(false, false);
+  EXPECT_TRUE(std::filesystem::is_empty(outside));
+  std::filesystem::remove(base);
+  std::filesystem::remove(outside);
 }
 #endif

@@ -14,6 +14,7 @@
 
 #include <algorithm>
 #include <memory>
+#include <utility>
 #include <vector>
 
 #include "controller/game_controller.h"
@@ -41,7 +42,7 @@ PlannerPlayer make(PlayerID id, PlayerRole role, int age, float overall,
 
 const GroupDepth& group(const SquadPlan& plan, PlannerGroup which)
 {
-  return plan.groups[static_cast<std::size_t>(which)];
+  return plan.groups[static_cast<std::size_t>(std::to_underlying(which))];
 }
 
 bool hasNeed(const SquadPlan& plan, PlannerGroup which, NeedKind kind)
@@ -92,9 +93,9 @@ TEST(SquadPlannerTest, GroupsMatchTheClubsRecruitmentTargets)
 
 TEST(SquadPlannerTest, DepthTiersPreferTheSelectedXiThenAbility)
 {
-  std::vector<PlannerPlayer> squad = {
-      make(1, PlayerRole::ST, 27, 80.0f), make(2, PlayerRole::ST, 29, 75.0f),
-      make(3, PlayerRole::ST, 19, 60.0f), make(4, PlayerRole::ST, 26, 65.0f)};
+  using enum PlayerRole;
+  std::vector squad = {make(1, ST, 27, 80.0f), make(2, ST, 29, 75.0f),
+                       make(3, ST, 19, 60.0f), make(4, ST, 26, 65.0f)};
   squad[1].in_xi = true;  // The manager starts the weaker striker.
   const SquadPlan plan = SquadPlanner::build(squad, 0);
   const GroupDepth& strikers = group(plan, PlannerGroup::Striker);
@@ -190,12 +191,17 @@ TEST(SquadPlannerTest, NextSeasonDropsExpiringContractsAndAgesTheSquad)
 TEST(SquadPlannerTest, ControllerPlanCoversTheManagedSquad)
 {
   Logger::init();
-  const int slot = 700'000 + static_cast<int>(getpid() % 100'000) * 10 + 5;
+  const int slot = 700'000 + getpid() % 100'000 * 10 + 5;
   struct Cleanup
   {
+    explicit Cleanup(int saveSlot) : slot(saveSlot) {}
+    Cleanup(const Cleanup&) = delete;
+    Cleanup& operator=(const Cleanup&) = delete;
+
     int slot;
     ~Cleanup() { RuntimePaths::removeSave(slot); }
-  } cleanup{slot};
+  };
+  const Cleanup cleanup{slot};
   GameController controller;
   controller.newGame(slot, WORLD_SEED);
   const TeamID club = controller.getTeams().front().get().getId();
@@ -206,7 +212,7 @@ TEST(SquadPlannerTest, ControllerPlanCoversTheManagedSquad)
   int first_choices = 0;
   for (const GroupDepth& depth : plan.groups)
     for (const DepthEntry& entry : depth.players)
-      first_choices += entry.tier == DepthTier::FirstChoice;
+      if (entry.tier == DepthTier::FirstChoice) ++first_choices;
   EXPECT_EQ(first_choices, 11) << "the selected XI fills the first choices";
   const SquadPlan next = controller.getSquadPlan(1);
   EXPECT_EQ(next.squad_size + static_cast<int>(next.departures.size()),

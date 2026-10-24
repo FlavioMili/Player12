@@ -9,6 +9,7 @@
 #include <gtest/gtest.h>
 
 #include <algorithm>
+#include <array>
 #include <cstdint>
 #include <map>
 #include <memory>
@@ -43,19 +44,25 @@ StatsConfig createStatsConfig()
 Team createDummyTeam(TeamID id, const std::string& name, int rating,
                      std::vector<std::unique_ptr<Player>>& players)
 {
+  using enum PlayerRole;
   Team team(id, 1, name, 50'000'000, {}, Strategy{}, Lineup{});
-  static constexpr PlayerRole ROLES[11] = {
-      PlayerRole::GK, PlayerRole::LB, PlayerRole::CB, PlayerRole::CB,
-      PlayerRole::RB, PlayerRole::CM, PlayerRole::CM, PlayerRole::LW,
-      PlayerRole::RW, PlayerRole::ST, PlayerRole::ST};
-  static constexpr Vector2F POSITIONS[11] = {
-      {0.04f, 0.50f}, {0.18f, 0.12f}, {0.18f, 0.38f}, {0.18f, 0.62f},
-      {0.18f, 0.88f}, {0.43f, 0.35f}, {0.43f, 0.65f}, {0.68f, 0.16f},
-      {0.68f, 0.84f}, {0.78f, 0.38f}, {0.78f, 0.62f}};
+  static constexpr std::array ROLES = {GK, LB, CB, CB, RB, CM,
+                                       CM, LW, RW, ST, ST};
+  static constexpr std::array<Vector2F, 11> POSITIONS = {{{0.04f, 0.50f},
+                                                          {0.18f, 0.12f},
+                                                          {0.18f, 0.38f},
+                                                          {0.18f, 0.62f},
+                                                          {0.18f, 0.88f},
+                                                          {0.43f, 0.35f},
+                                                          {0.43f, 0.65f},
+                                                          {0.68f, 0.16f},
+                                                          {0.68f, 0.84f},
+                                                          {0.78f, 0.38f},
+                                                          {0.78f, 0.62f}}};
 
   for (uint32_t index = 0; index < 11; ++index)
   {
-    const float value = static_cast<float>(rating);
+    const auto value = static_cast<float>(rating);
     const std::map<std::string, float> stats = {
         {"Pace", value},      {"Shooting", value},  {"Passing", value},
         {"Dribbling", value}, {"Defending", value}, {"Physicality", value},
@@ -64,7 +71,7 @@ Team createDummyTeam(TeamID id, const std::string& name, int rating,
         static_cast<PlayerID>(id) * 100U + index, id, "First",
         std::to_string(index), ROLES[index], Language::EN, 100'000, 0, 25, 3,
         180, Foot::Right, stats);
-    if (ROLES[index] == PlayerRole::GK)
+    if (ROLES[index] == GK)
       team.getLineup().setGoalkeeper(player.get());
     else
       team.getLineup().addOutfieldPlayer(player.get(), POSITIONS[index]);
@@ -93,23 +100,35 @@ Ids collectIds(const std::vector<std::unique_ptr<Player>>& pool)
 std::map<std::uint32_t, Vector2F> standardHomeAttackLayout(const Ids& ids)
 {
   // Home (left to right) building out of a settled block; away parked deep.
-  const std::pair<std::uint32_t, Vector2F> homeSlots[] = {
-      {ids.home[0], {0.02f, 0.50f}}, {ids.home[1], {0.16f, 0.12f}},
-      {ids.home[2], {0.17f, 0.35f}}, {ids.home[3], {0.17f, 0.65f}},
-      {ids.home[4], {0.16f, 0.88f}}, {ids.home[5], {0.42f, 0.45f}},
-      {ids.home[6], {0.42f, 0.55f}}, {ids.home[7], {0.62f, 0.12f}},
-      {ids.home[8], {0.62f, 0.88f}}, {ids.home[9], {0.68f, 0.42f}},
-      {ids.home[10], {0.68f, 0.58f}}};
-  const std::pair<std::uint32_t, Vector2F> awaySlots[] = {
-      {ids.away[0], {0.965f, 0.50f}}, {ids.away[1], {0.88f, 0.12f}},
-      {ids.away[2], {0.88f, 0.38f}},  {ids.away[3], {0.88f, 0.62f}},
-      {ids.away[4], {0.88f, 0.88f}},  {ids.away[5], {0.74f, 0.42f}},
-      {ids.away[6], {0.74f, 0.58f}},  {ids.away[7], {0.60f, 0.12f}},
-      {ids.away[8], {0.60f, 0.88f}},  {ids.away[9], {0.45f, 0.42f}},
-      {ids.away[10], {0.45f, 0.58f}}};
+  const std::array<std::pair<std::uint32_t, Vector2F>, 11> homeSlots = {
+      {{ids.home[0], {0.02f, 0.50f}},
+       {ids.home[1], {0.16f, 0.12f}},
+       {ids.home[2], {0.17f, 0.35f}},
+       {ids.home[3], {0.17f, 0.65f}},
+       {ids.home[4], {0.16f, 0.88f}},
+       {ids.home[5], {0.42f, 0.45f}},
+       {ids.home[6], {0.42f, 0.55f}},
+       {ids.home[7], {0.62f, 0.12f}},
+       {ids.home[8], {0.62f, 0.88f}},
+       {ids.home[9], {0.68f, 0.42f}},
+       {ids.home[10], {0.68f, 0.58f}}}};
+  const std::array<std::pair<std::uint32_t, Vector2F>, 11> awaySlots = {
+      {{ids.away[0], {0.965f, 0.50f}},
+       {ids.away[1], {0.88f, 0.12f}},
+       {ids.away[2], {0.88f, 0.38f}},
+       {ids.away[3], {0.88f, 0.62f}},
+       {ids.away[4], {0.88f, 0.88f}},
+       {ids.away[5], {0.74f, 0.42f}},
+       {ids.away[6], {0.74f, 0.58f}},
+       {ids.away[7], {0.60f, 0.12f}},
+       {ids.away[8], {0.60f, 0.88f}},
+       {ids.away[9], {0.45f, 0.42f}},
+       {ids.away[10], {0.45f, 0.58f}}}};
   std::map<std::uint32_t, Vector2F> layout;
-  for (const auto& slot : homeSlots) layout[slot.first] = slot.second;
-  for (const auto& slot : awaySlots) layout[slot.first] = slot.second;
+  for (const auto& [playerId, position] : homeSlots)
+    layout[playerId] = position;
+  for (const auto& [playerId, position] : awaySlots)
+    layout[playerId] = position;
   return layout;
 }
 

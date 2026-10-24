@@ -15,6 +15,7 @@
 #include <map>
 #include <memory>
 #include <string>
+#include <utility>
 #include <vector>
 
 #include "controller/game_controller.h"
@@ -43,11 +44,15 @@ Player makePlayer(PlayerID id, PlayerRole role, float shooting, float passing,
 
 int uniqueSlot(int offset)
 {
-  return 700'000 + static_cast<int>(getpid() % 100'000) * 10 + offset;
+  return 700'000 + (getpid() % 100'000) * 10 + offset;
 }
 
 struct SlotCleanup
 {
+  explicit SlotCleanup(int saveSlot) : slot(saveSlot) {}
+  SlotCleanup(const SlotCleanup&) = delete;
+  SlotCleanup& operator=(const SlotCleanup&) = delete;
+
   int slot;
   ~SlotCleanup() { RuntimePaths::removeSave(slot); }
 };
@@ -79,7 +84,7 @@ TEST(SetPiecesTest, ScoresFollowTheRelevantAttributes)
         << "goalkeepers take no set pieces";
   EXPECT_EQ(score(SetPieceDuty::Captain, striker), 0.0f);
 
-  const std::vector<const Player*> candidates = {&keeper, &striker, &playmaker};
+  const std::vector candidates = {&keeper, &striker, &playmaker};
   EXPECT_EQ(SetPieces::best(SetPieceDuty::Penalties, candidates), &striker);
   EXPECT_EQ(SetPieces::best(SetPieceDuty::Captain, candidates), nullptr);
 }
@@ -153,7 +158,8 @@ TEST(SetPiecesTest, ControllerDesignationsAutoPickAndSaveRoundTrip)
   const PlayerID chosen = lineup.starters().back()->getId();
   ASSERT_TRUE(
       controller.setSetPieceDesignation(SetPieceDuty::Penalties, chosen));
-  picked[static_cast<std::size_t>(SetPieceDuty::Penalties)] = chosen;
+  picked[static_cast<std::size_t>(
+      std::to_underlying(SetPieceDuty::Penalties))] = chosen;
   EXPECT_EQ(controller.getEffectiveSetPieceTaker(SetPieceDuty::Penalties),
             chosen);
 

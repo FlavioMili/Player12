@@ -10,6 +10,7 @@
 // tactic round robins or whole-world seasons and compares the results with
 // the spec's calibration targets (Markdown + JSON report, CI exit codes).
 
+#include <SDL3/SDL.h>
 #include <spdlog/spdlog.h>
 
 #include <chrono>
@@ -19,6 +20,7 @@
 #include <fstream>
 #include <iostream>
 #include <map>
+#include <memory>
 #include <optional>
 #include <stdexcept>
 #include <string>
@@ -38,6 +40,12 @@
 
 namespace
 {
+class ScratchDirectoryError : public std::runtime_error
+{
+ public:
+  using std::runtime_error::runtime_error;
+};
+
 constexpr unsigned DEFAULT_THREADS = 4;
 constexpr int DEFAULT_MATCHES = 2000;
 constexpr int DEFAULT_TACTIC_SEEDS = 200;
@@ -84,7 +92,7 @@ rate below 90%, 3 invalid arguments, 4 simulation error.
 struct Arguments
 {
   std::string mode;
-  std::map<std::string, std::string> values;
+  std::map<std::string, std::string, std::less<>> values;
   std::vector<std::string> flags;
 
   bool has(std::string_view flag) const
@@ -153,7 +161,11 @@ Number parseNumber(const Arguments& arguments, const std::string& key,
       throw UsageError("");
     return value;
   }
-  catch (const std::exception&)
+  catch (const std::invalid_argument&)
+  {
+    throw UsageError(std::format("invalid value '{}' for {}", *text, key));
+  }
+  catch (const std::out_of_range&)
   {
     throw UsageError(std::format("invalid value '{}' for {}", *text, key));
   }
@@ -168,7 +180,11 @@ unsigned threadCount(const Arguments& arguments)
     {
       fallback = static_cast<unsigned>(std::stoul(env));
     }
-    catch (const std::exception&)
+    catch (const std::invalid_argument&)
+    {
+      fallback = DEFAULT_THREADS;
+    }
+    catch (const std::out_of_range&)
     {
       fallback = DEFAULT_THREADS;
     }
@@ -180,19 +196,28 @@ unsigned threadCount(const Arguments& arguments)
 
 std::filesystem::path makeTempDirectory(const std::string& prefix)
 {
+#if !defined(_WIN32)
   std::string pattern =
       (std::filesystem::temp_directory_path() / (prefix + "XXXXXX")).string();
-#if !defined(_WIN32)
   if (mkdtemp(pattern.data()) == nullptr)
-    throw std::runtime_error("cannot create a scratch directory");
+    throw ScratchDirectoryError("cannot create a scratch directory");
   return pattern;
 #else
-  const auto path =
-      std::filesystem::temp_directory_path() /
-      std::format("{}{}", prefix,
-                  std::chrono::steady_clock::now().time_since_epoch().count());
-  std::filesystem::create_directories(path);
-  return path;
+  // SDL chooses per-user storage; do not reuse a predictable directory in a
+  // shared temporary area, even if an earlier process left one behind.
+  const std::unique_ptr<char, decltype(&SDL_free)> pref_path(
+      SDL_GetPrefPath("FlavioMili", "FootballManagementLab"), &SDL_free);
+  if (pref_path == nullptr)
+    throw ScratchDirectoryError("cannot locate private lab storage");
+  const std::filesystem::path base(pref_path.get());
+  const auto stamp =
+      std::chrono::steady_clock::now().time_since_epoch().count();
+  for (unsigned attempt = 0; attempt < 100; ++attempt)
+  {
+    const auto path = base / std::format("{}{}-{}", prefix, stamp, attempt);
+    if (std::filesystem::create_directory(path)) return path;
+  }
+  throw ScratchDirectoryError("cannot create a scratch directory");
 #endif
 }
 
@@ -200,7 +225,7 @@ std::filesystem::path makeTempDirectory(const std::string& prefix)
 class ScratchRuntime
 {
  public:
-  ScratchRuntime() : path(makeTempDirectory("fm-lab-runtime-"))
+  ScratchRuntime()
   {
 #if !defined(_WIN32)
     setenv("FM_RUNTIME_ROOT", path.c_str(), 1);
@@ -217,7 +242,7 @@ class ScratchRuntime
   ScratchRuntime& operator=(const ScratchRuntime&) = delete;
 
  private:
-  std::filesystem::path path;
+  std::filesystem::path path = makeTempDirectory("fm-lab-runtime-");
 };
 
 void quietLogging()
@@ -264,7 +289,7 @@ Lab::LabReport runMatchesMode(const Arguments& arguments, unsigned threads)
     jobs[i].background = background;
     if (spread)
     {
-      const auto uniform = [&](std::uint64_t salt)
+      const auto uniform = [minRating, maxRating, seed, i](std::uint64_t salt)
       {
         return minRating +
                static_cast<float>(Lab::matchSeed(seed ^ salt, i) / TWO_POW_32) *
@@ -282,7 +307,7 @@ Lab::LabReport runMatchesMode(const Arguments& arguments, unsigned threads)
 
   const StatsConfig config = Lab::loadStatsConfig();
   const auto started = std::chrono::steady_clock::now();
-  const auto progress = [&](std::size_t done)
+  const auto progress = [&jobs](std::size_t done)
   {
     if (done % 512 < 64 || done == jobs.size())
       std::cerr << std::format("[fm_lab] {}/{} matches\n", done, jobs.size());
@@ -311,12 +336,12 @@ Lab::LabReport runMatchesMode(const Arguments& arguments, unsigned threads)
   static constexpr std::array SCOPES = {Lab::Scope::Match, Lab::Scope::Engine};
   report.rows = Lab::evaluateTargets(Lab::matchMetrics(samples), SCOPES);
   report.tables = Lab::matchTables(samples);
-  report.tables.push_back(Lab::ratingGapTable(samples));
-  report.notes.push_back(
+  report.tables.emplace_back(Lab::ratingGapTable(samples));
+  report.notes.emplace_back(
       "Synthetic 4-4-2 squads (lab_fixtures.cpp), default strategies, full "
       "condition; per-match seeds are splitmix64(seed, index).");
   if (!spread)
-    report.notes.push_back(
+    report.notes.emplace_back(
         "Fixed ratings: results between equal teams overstate draws compared "
         "with a real league; use --spread for league-like rating gaps.");
   return report;
@@ -337,7 +362,7 @@ Lab::LabReport runTacticsMode(const Arguments& arguments, unsigned threads)
   const auto started = std::chrono::steady_clock::now();
   const std::vector<Lab::MatchSample> samples = Lab::simulateMatches(
       jobs, config, threads,
-      [&](std::size_t done)
+      [&jobs](std::size_t done)
       {
         if (done % 512 < 64 || done == jobs.size())
           std::cerr << std::format("[fm_lab] {}/{} matches\n", done,
@@ -361,7 +386,7 @@ Lab::LabReport runTacticsMode(const Arguments& arguments, unsigned threads)
   report.parameters["fidelity"] = background ? "background" : "full";
   static constexpr std::array SCOPES = {Lab::Scope::Tactics};
   report.rows = Lab::evaluateTargets(metrics, SCOPES);
-  report.notes.push_back(
+  report.notes.emplace_back(
       "FR-030 (no placebo controls): compare the per-preset columns; "
       "presets whose points-share intervals all contain 50% have no "
       "measurable result effect at this sample size.");

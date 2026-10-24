@@ -15,9 +15,11 @@
 #include <memory>
 #include <optional>
 #include <string>
+#include <thread>
 #include <vector>
 
 #include "audio/match_audio.h"
+#include "global/background_task.h"
 #include "gui/gui_scene.h"
 #include "gui/render/imatch_renderer.h"
 #include "gui/render/match_play_overlay.h"
@@ -107,6 +109,7 @@ class MatchScene : public GUIScene
   std::unique_ptr<MatchEngine> engine;
   /** Quick result running on a worker thread (declared after the engine
    * so it is joined before the engine is destroyed). */
+  std::jthread quick_result_worker;
   std::future<void> quick_result;
   /** Crowd, whistle and ball sounds of the live match. */
   std::unique_ptr<MatchAudio> audio;
@@ -273,7 +276,7 @@ class MatchScene : public GUIScene
   void renderPlayConfirm();
   void renderPlayMenu();
   /** Keyboard and gamepad layout, as text rows. */
-  void renderPlayControlsHelp();
+  void renderPlayControlsHelp() const;
   void setPlaybackSpeed(float speed);
   void setHighlightsOnly(bool enabled);
   void setViewMode(MatchViewMode mode);

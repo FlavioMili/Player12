@@ -36,7 +36,10 @@ class TimelineScene : public ManagementScene
 
   explicit TimelineScene(GUIView* parent);
 
-  void update(float /*deltaTime*/) override {}
+  void update(float /*deltaTime*/) override
+  {
+    // Rendering reads current state; there is no per-frame update work.
+  }
   [[nodiscard]] SceneID getID() const override { return SceneID::TIMELINE; }
 
   [[nodiscard]] std::size_t entryCount() const { return entries.size(); }
@@ -73,7 +76,7 @@ class TimelineScene : public ManagementScene
   };
 
   void regroup();
-  void renderSummary();
+  void renderSummary() const;
   void renderControls();
   void renderEntry(std::size_t index);
 

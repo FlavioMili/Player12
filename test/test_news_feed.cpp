@@ -15,12 +15,14 @@
 
 #include <algorithm>
 #include <filesystem>
+#include <format>
 #include <fstream>
 #include <memory>
 #include <set>
 #include <sstream>
 #include <string>
 #include <tuple>
+#include <utility>
 #include <vector>
 
 #include "controller/game_controller.h"
@@ -48,11 +50,15 @@ constexpr std::uint64_t WORLD_SEED = 20250702;
 
 int uniqueSlot(int offset)
 {
-  return 6'400'000 + static_cast<int>(getpid() % 100'000) * 10 + offset;
+  return 6'400'000 + getpid() % 100'000 * 10 + offset;
 }
 
 struct SlotCleanup
 {
+  explicit SlotCleanup(int saveSlot) : slot(saveSlot) {}
+  SlotCleanup(const SlotCleanup&) = delete;
+  SlotCleanup& operator=(const SlotCleanup&) = delete;
+
   int slot;
   ~SlotCleanup() { RuntimePaths::removeSave(slot); }
 };
@@ -82,8 +88,8 @@ class SyntheticWorld : public ::testing::Test
     for (PlayerID id = 1; id <= 4; ++id)
       gamedata.addPlayer(
           id, Player(id, static_cast<TeamID>(id), "Nico",
-                     "Player" + std::to_string(id), PlayerRole::ST,
-                     Language::IT, 10'000, 0, 24, 3, 180, Foot::Right, {}));
+                     std::format("Player{}", id), PlayerRole::ST, Language::IT,
+                     10'000, 0, 24, 3, 180, Foot::Right, {}));
   }
 
   GameData gamedata;
@@ -93,7 +99,8 @@ std::string describe(const std::vector<NewsItem>& items)
 {
   std::ostringstream out;
   for (const NewsItem& item : items)
-    out << item.date.toString() << " " << static_cast<int>(item.kind) << " "
+    out << item.date.toString() << " "
+        << static_cast<int>(std::to_underlying(item.kind)) << " "
         << item.headline() << "\n";
   return out.str();
 }
@@ -214,7 +221,7 @@ TEST_F(SyntheticWorld, HeadlinesComeFromSavedFactsAndCiteTheirEntities)
   // The dismissal names the departed manager.
   const auto sacked = std::ranges::find_if(
       items, [](const NewsItem& item)
-      { return item.headline().find("Gino Panchina") != std::string::npos; });
+      { return item.headline().contains("Gino Panchina"); });
   EXPECT_NE(sacked, items.end());
 
   // Same facts, same stories in the same order.
@@ -402,8 +409,8 @@ TEST_F(SyntheticWorld, TimelineOfTwoClubsAndASacking)
                                             GameDateValue(2026, 4, 1)),
             "career-fl-vio-o-coach-2026-04-01.md");
 
-  const auto folder = std::filesystem::temp_directory_path() /
-                      ("fm-journal-" + std::to_string(getpid()));
+  const auto folder =
+      RuntimePaths::root() / std::format("fm-journal-{}", getpid());
   const auto path = CareerTimeline::writeJournal(markdown, folder, "career.md");
   ASSERT_TRUE(path.has_value());
   std::ifstream file(*path);

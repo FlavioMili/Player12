@@ -222,13 +222,12 @@ bool nationalCoach = false;
 /** Out of work only the manager's own screens and the world stay open. */
 bool sectionOpen(NavSection section, bool unemployed)
 {
-  if (section == NavSection::CALL_UPS) return nationalCoach;
-  if (!unemployed) return section != NavSection::NONE;
-  return section == NavSection::HOME || section == NavSection::INBOX ||
-         section == NavSection::STANDINGS || section == NavSection::MANAGER ||
-         section == NavSection::INTERNATIONAL ||
-         section == NavSection::AWARDS || section == NavSection::RECORDS ||
-         section == NavSection::NEWS || section == NavSection::TIMELINE;
+  using enum NavSection;
+  if (section == CALL_UPS) return nationalCoach;
+  if (!unemployed) return section != NONE;
+  return section == HOME || section == INBOX || section == STANDINGS ||
+         section == MANAGER || section == INTERNATIONAL || section == AWARDS ||
+         section == RECORDS || section == NEWS || section == TIMELINE;
 }
 
 const char* labelKeyOf(NavSection section)
@@ -246,7 +245,7 @@ const NavHub* hubOf(NavSection section)
       {
         return std::ranges::find(hub.sections, section) != hub.sections.end();
       });
-  return found != NAV_HUBS.end() ? &*found : nullptr;
+  return found != NAV_HUBS.end() ? std::to_address(found) : nullptr;
 }
 
 /**
@@ -268,11 +267,12 @@ const char* shortcutLabel(std::string_view actionId)
     cache.clear();
     revision = registry.revision();
   }
-  const auto found = std::ranges::find(cache, actionId, &Cached::id);
-  if (found != cache.end()) return found->label.c_str();
+  if (const auto found = std::ranges::find(cache, actionId, &Cached::id);
+      found != cache.end())
+    return found->label.c_str();
   const auto action = registry.find(actionId);
-  cache.push_back(
-      {actionId, action ? registry.label(*action) : std::string("-")});
+  cache.emplace_back(actionId,
+                     action ? registry.label(*action) : std::string("-"));
   return cache.back().label.c_str();
 }
 
@@ -398,7 +398,7 @@ void renderHubTabs(GUIView* view, NavSection current)
     }
     else
     {
-      ImGui::PushID(static_cast<int>(section));
+      ImGui::PushID(static_cast<int>(std::to_underlying(section)));
       if (ImGui::InvisibleButton("##tab", ImVec2(width, height)))
         Navigation::open(view, section);
       hovered = ImGui::IsItemHovered();
@@ -439,7 +439,7 @@ void renderHubTabs(GUIView* view, NavSection current)
   ImGui::Dummy(ImVec2(available, Theme::Space::S * scale));
 }
 
-MainGameScene* careerHub(GUIView* view)
+MainGameScene* careerHub(const GUIView* view)
 {
   return dynamic_cast<MainGameScene*>(view->getBaseScene());
 }
@@ -574,9 +574,9 @@ bool subNavItem(const char* label, bool selected, float height, size_t badge)
     drawCountPill(drawList, ImVec2(labelRight - pill, start.y), size.y, badge);
     labelRight -= pill + Theme::Space::XS * scale;
   }
-  const ImU32 color =
-      Theme::toU32(selected || hovered ? palette.text : palette.muted);
-  if (UI::drawTextFitted(
+  if (const ImU32 color =
+          Theme::toU32(selected || hovered ? palette.text : palette.muted);
+      UI::drawTextFitted(
           drawList,
           ImVec2(textX, start.y + (size.y - ImGui::GetTextLineHeight()) * 0.5f),
           color, label, labelRight - textX) &&
@@ -648,101 +648,103 @@ namespace Navigation
 
 void open(GUIView* view, NavSection section)
 {
+  using enum NavSection;
+  if (section == NONE) return;
   switch (section)
   {
-    case NavSection::HOME:
-    case NavSection::FINANCES:
+    case HOME:
+    case FINANCES:
       if (MainGameScene* hub = careerHub(view))
         hub->showPage(section == NavSection::HOME
                           ? MainGameScene::Page::OVERVIEW
                           : MainGameScene::Page::FINANCES);
       view->navigateTo(nullptr);
       return;
-    case NavSection::INBOX:
+    case INBOX:
       view->navigateTo(std::make_unique<InboxScene>(view));
       return;
-    case NavSection::CLUB:
+    case CLUB:
       view->navigateTo(std::make_unique<ClubScene>(view));
       return;
-    case NavSection::SQUAD:
+    case SQUAD:
       view->navigateTo(std::make_unique<RosterScene>(view));
       return;
-    case NavSection::LINEUP:
+    case LINEUP:
       view->navigateTo(std::make_unique<LineupScene>(view));
       return;
-    case NavSection::TACTICS:
+    case TACTICS:
       view->navigateTo(std::make_unique<StrategyScene>(view));
       return;
-    case NavSection::FIXTURES:
+    case FIXTURES:
       view->navigateTo(std::make_unique<FixturesScene>(view));
       return;
-    case NavSection::STANDINGS:
+    case STANDINGS:
       view->navigateTo(std::make_unique<StandingsScene>(view));
       return;
-    case NavSection::TRANSFERS:
+    case TRANSFERS:
       view->navigateTo(std::make_unique<TransferMarketScene>(view));
       return;
-    case NavSection::SCOUTING:
+    case SCOUTING:
       view->navigateTo(std::make_unique<ScoutingScene>(view));
       return;
-    case NavSection::TRAINING:
+    case TRAINING:
       view->navigateTo(std::make_unique<TrainingScene>(view));
       return;
-    case NavSection::STAFF:
+    case STAFF:
       view->navigateTo(std::make_unique<StaffScene>(view));
       return;
-    case NavSection::YOUTH:
+    case YOUTH:
       view->navigateTo(std::make_unique<YouthScene>(view));
       return;
-    case NavSection::MANAGER:
+    case MANAGER:
       view->navigateTo(std::make_unique<ManagerScene>(view));
       return;
-    case NavSection::MEDICAL:
+    case MEDICAL:
       view->navigateTo(std::make_unique<MedicalScene>(view));
       return;
-    case NavSection::CALENDAR:
+    case CALENDAR:
       view->navigateTo(std::make_unique<CalendarScene>(view));
       return;
-    case NavSection::SQUAD_PLANNER:
+    case SQUAD_PLANNER:
       view->navigateTo(std::make_unique<SquadPlannerScene>(view));
       return;
-    case NavSection::COMPARE:
+    case COMPARE:
       view->navigateTo(std::make_unique<PlayerCompareScene>(view, PlayerID{}));
       return;
-    case NavSection::DELEGATION:
+    case DELEGATION:
       view->navigateTo(std::make_unique<DelegationScene>(view));
       return;
-    case NavSection::DATA_HUB:
+    case DATA_HUB:
       view->navigateTo(std::make_unique<DataHubScene>(view));
       return;
-    case NavSection::OPPOSITION:
+    case OPPOSITION:
       view->navigateTo(std::make_unique<OppositionScene>(view));
       return;
-    case NavSection::INTERNATIONAL:
+    case INTERNATIONAL:
       view->navigateTo(std::make_unique<InternationalScene>(view));
       return;
-    case NavSection::AWARDS:
+    case AWARDS:
       view->navigateTo(std::make_unique<AwardsScene>(view));
       return;
-    case NavSection::RECORDS:
+    case RECORDS:
       view->navigateTo(std::make_unique<RecordsScene>(view));
       return;
-    case NavSection::PLANNING:
+    case PLANNING:
       view->navigateTo(std::make_unique<PreseasonScene>(view));
       return;
-    case NavSection::RESERVES:
+    case RESERVES:
       view->navigateTo(std::make_unique<ReservesScene>(view));
       return;
-    case NavSection::CALL_UPS:
+    case CALL_UPS:
       view->navigateTo(std::make_unique<CallUpScene>(view));
       return;
-    case NavSection::NEWS:
+    case NEWS:
       view->navigateTo(std::make_unique<NewsScene>(view));
       return;
-    case NavSection::TIMELINE:
+    case TIMELINE:
       view->navigateTo(std::make_unique<TimelineScene>(view));
       return;
-    case NavSection::NONE:
+    default:
       return;
   }
 }
@@ -808,7 +810,7 @@ bool canOpen(const GUIView* view, const NavEntry& entry)
 namespace
 {
 /** History entries the manager can still open. */
-auto opensIn(GUIView* view)
+auto opensIn(const GUIView* view)
 {
   return [view](const NavEntry& entry) { return canOpen(view, entry); };
 }
@@ -915,9 +917,11 @@ void close(GUIView* view)
   // Beneath a hub page (Finances) is Home; Home itself has nothing beneath.
   if (atBase && view->getTopScene()->historyEntry() == home) return;
   const GUIScene* below = view->getSceneBelowTop();
-  const std::optional<NavEntry> beneath =
-      atBase ? std::optional<NavEntry>(home)
-             : (below != nullptr ? below->historyEntry() : std::nullopt);
+  std::optional<NavEntry> beneath;
+  if (atBase)
+    beneath = home;
+  else if (below != nullptr)
+    beneath = below->historyEntry();
   const auto valid = opensIn(view);
   if (const std::optional<NavEntry> previous =
           view->navHistory().peekBack(valid);
@@ -1037,7 +1041,7 @@ void ManagementScene::showToast(std::string message, bool isError)
   toast_seconds = TOAST_SECONDS;
 }
 
-void ManagementScene::syncClubAccent()
+void ManagementScene::syncClubAccent() const
 {
   const auto managed = guiView->getController().getManagedTeam();
   Theme::setClub(managed ? std::optional<TeamID>(managed->get().getId())
@@ -1149,7 +1153,7 @@ void ManagementScene::renderSidebar(bool collapsed)
   // stay pinned and reachable at any window height and UI scale.
   const float spacing = ImGui::GetStyle().ItemSpacing.y;
   const bool unemployed = controller.isUnemployed();
-  const size_t itemCount = static_cast<size_t>(std::ranges::count_if(
+  const auto itemCount = static_cast<size_t>(std::ranges::count_if(
       NAV_HUBS, [unemployed](const NavHub& hub)
       { return firstOpenSection(hub, unemployed) != NavSection::NONE; }));
   // The current hub lists its screens under its label (one hub expanded at
@@ -1473,12 +1477,13 @@ void ManagementScene::renderTopBar(float height)
       hub != nullptr && continueWidth > 0.0f && controller.hasSelectedTeam()
           ? UI::buttonHeight()
           : 0.0f;
-  const float continueBlock =
-      continueWidth > 0.0f
-          ? continueWidth + gap +
-                (holidayWidth > 0.0f ? holidayWidth + style.ItemSpacing.x
-                                     : 0.0f)
-          : 0.0f;
+  float continueBlock = 0.0f;
+  if (continueWidth > 0.0f)
+  {
+    continueBlock = continueWidth + gap;
+    if (holidayWidth > 0.0f)
+      continueBlock += holidayWidth + style.ItemSpacing.x;
+  }
   const float available = rightEdge - leftEdge - backWidth - continueBlock -
                           balanceBlock - style.ItemSpacing.x;
   const bool showDate = available - dateWidth - gap >= compactSearchWidth;
@@ -1489,8 +1494,12 @@ void ManagementScene::renderTopBar(float height)
   const bool showSave =
       showDate && saveWidth > 0.0f &&
       available - dateWidth - gap - saveWidth >= fullSearchWidth;
-  const float dateBlock =
-      showDate ? dateWidth + gap + (showSave ? saveWidth : 0.0f) : 0.0f;
+  float dateBlock = 0.0f;
+  if (showDate)
+  {
+    dateBlock = dateWidth + gap;
+    if (showSave) dateBlock += saveWidth;
+  }
   const float searchRoom = available - dateBlock;
   const bool fullSearch = searchRoom >= fullSearchWidth;
   const float searchWidth = fullSearch ? fullSearchWidth : compactSearchWidth;
@@ -1629,8 +1638,8 @@ void ManagementScene::renderTopBar(float height)
   {
     ImGui::SameLine(0.0f, gap);
     ImGui::SetCursorPosY((height - UI::buttonHeight()) * 0.5f);
-    const std::string label = continueText + "###shell_continue";
-    if (UI::primaryButton(label.c_str(), ImVec2(continueWidth, 0.0f)))
+    if (const std::string label = continueText + "###shell_continue";
+        UI::primaryButton(label.c_str(), ImVec2(continueWidth, 0.0f)))
       hub->requestContinue();
     if (ImGui::IsItemHovered())
       ImGui::SetTooltip("%s", LOC("SHELL_CONTINUE_TOOLTIP"));
@@ -1685,8 +1694,7 @@ void ManagementScene::pollSaveStatus()
     return;
   }
   save_label = std::format(
-      "{} \u00B7 {}",
-      LOC(status.autosave ? "SAVE_AUTOSAVED" : "SAVE_STATUS_OK"),
+      "{} · {}", LOC(status.autosave ? "SAVE_AUTOSAVED" : "SAVE_STATUS_OK"),
       Format::dayMonth(GameDateValue::fromString(status.game_date)));
 }
 
@@ -1729,9 +1737,11 @@ void ManagementScene::handleShortcuts()
     {
       const ImGuiInputFlags route =
           ImGuiInputFlags_RouteGlobal | ImGuiInputFlags_Repeat;
-      const int step = ImGui::Shortcut(ImGuiKey_DownArrow, route) ? 1
-                       : ImGui::Shortcut(ImGuiKey_UpArrow, route) ? -1
-                                                                  : 0;
+      int step = 0;
+      if (ImGui::Shortcut(ImGuiKey_DownArrow, route))
+        step = 1;
+      else if (ImGui::Shortcut(ImGuiKey_UpArrow, route))
+        step = -1;
       std::array<NavSection, MAX_HUB_SECTIONS> sections{};
       const auto count =
           static_cast<int>(openSections(*hub, unemployed, sections));
@@ -1800,10 +1810,10 @@ void ManagementScene::renderSwipeIndicator()
                             Theme::toU32(palette.raised, alpha));
   drawList->AddCircle(centre, radius, Theme::toU32(palette.border, alpha), 0,
                       1.0f * scale);
-  const ImU32 ink = Theme::toU32(armed       ? palette.accent
-                                 : available ? palette.text
-                                             : palette.faint,
-                                 alpha);
+  ImVec4 inkColor = palette.faint;
+  if (available) inkColor = palette.text;
+  if (armed) inkColor = palette.accent;
+  const ImU32 ink = Theme::toU32(inkColor, alpha);
   const float arm = radius * 0.36f;
   const float pointing = back ? -1.0f : 1.0f;
   const ImVec2 tip(centre.x + pointing * arm * 0.5f, centre.y);
@@ -1825,7 +1835,7 @@ void ManagementScene::openPalette()
 void ManagementScene::buildPaletteIndex()
 {
   palette_entries.clear();
-  GameController& controller = guiView->getController();
+  const GameController& controller = guiView->getController();
   // Pending work first: shown while the query is empty.
   palette_actions = controller.getNextActions(PALETTE_MAX_ACTIONS);
   for (size_t index = 0; index < palette_actions.size(); ++index)
@@ -1850,7 +1860,7 @@ void ManagementScene::buildPaletteIndex()
     else if (hub != nullptr)
       detail += std::format("  ·  {}", LOC(hub->label_key));
     PaletteEntry item{PaletteEntry::Kind::SECTION,
-                      static_cast<uint32_t>(entry.section),
+                      static_cast<uint32_t>(std::to_underlying(entry.section)),
                       LOC(entry.label_key),
                       {},
                       std::move(detail)};
@@ -1927,13 +1937,14 @@ void ManagementScene::filterPalette()
   palette_filtered_query = palette_query.data();
   palette_matches.clear();
   palette_selection = 0;
+  using enum PaletteEntry::Kind;
   const std::string query = PlayerView::toLower(palette_filtered_query);
   if (query.empty())
   {
     for (size_t index = 0; index < palette_entries.size(); ++index)
-      if (palette_entries[index].kind == PaletteEntry::Kind::ACTION ||
-          palette_entries[index].kind == PaletteEntry::Kind::SECTION ||
-          (palette_entries[index].kind == PaletteEntry::Kind::HELP &&
+      if (palette_entries[index].kind == ACTION ||
+          palette_entries[index].kind == SECTION ||
+          (palette_entries[index].kind == HELP &&
            palette_entries[index].id == 0))
         palette_matches.push_back(index);
     return;
@@ -1963,25 +1974,26 @@ void ManagementScene::filterPalette()
 
 void ManagementScene::activatePaletteEntry(const PaletteEntry& entry)
 {
+  using enum PaletteEntry::Kind;
   switch (entry.kind)
   {
-    case PaletteEntry::Kind::SECTION:
+    case SECTION:
       Navigation::open(guiView, static_cast<NavSection>(entry.id));
       break;
-    case PaletteEntry::Kind::CLUB:
+    case CLUB:
       Navigation::openClub(guiView, static_cast<TeamID>(entry.id));
       break;
-    case PaletteEntry::Kind::PLAYER:
+    case PLAYER:
       Navigation::openPlayer(guiView, entry.id);
       break;
-    case PaletteEntry::Kind::ACTION:
+    case ACTION:
       if (entry.id < palette_actions.size())
         GuidanceUI::openAction(guiView, palette_actions[entry.id]);
       break;
-    case PaletteEntry::Kind::ABOUT:
+    case ABOUT:
       guiView->navigateTo(std::make_unique<AboutScene>(guiView, true));
       break;
-    case PaletteEntry::Kind::HELP:
+    case HELP:
       guiView->navigateTo(std::make_unique<HelpScene>(
           guiView, true,
           entry.id == 0 ? std::nullopt
@@ -2036,7 +2048,7 @@ void ManagementScene::renderPalette()
                                    ImGuiInputTextFlags_CallbackHistory,
                                paletteHistoryCallback, &palette_selection);
   if (palette_filtered_query != palette_query.data()) filterPalette();
-  const int matchCount = static_cast<int>(palette_matches.size());
+  const auto matchCount = static_cast<int>(palette_matches.size());
   if (matchCount > 0)
     palette_selection = std::clamp(palette_selection, 0, matchCount - 1);
 
@@ -2056,8 +2068,8 @@ void ManagementScene::renderPalette()
     const PaletteEntry& entry =
         palette_entries[palette_matches[static_cast<size_t>(row)]];
     ImGui::PushID(row);
-    const bool selected = row == palette_selection;
-    if (ImGui::Selectable("##palette_row", selected, 0,
+    if (const bool selected = row == palette_selection;
+        ImGui::Selectable("##palette_row", selected, 0,
                           ImVec2(0.0f, ImGui::GetTextLineHeight())))
       chosen = &entry;
     ImGui::SameLine(Theme::Space::M * Theme::scale());

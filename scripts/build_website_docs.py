@@ -10,6 +10,7 @@ from __future__ import annotations
 import argparse
 import html
 from html.parser import HTMLParser
+import json
 import os
 from pathlib import Path
 import re
@@ -138,79 +139,136 @@ def normalize_lists(text: str) -> str:
     return "\n".join(lines) + "\n"
 
 
-def diagrams(text: str, output: Path, site: Path) -> tuple[str, dict[str, str]]:
+def diagram_parts(code: str) -> tuple[dict[str, str], list[tuple[str, str]]]:
+    """Read our flowchart subset in one pass, including malformed input."""
+    nodes = {}
+    edges = []
+    last_node = None
+    source = None
+    # Each token can match independently: an identifier never backtracks to
+    # find a trailing bracket or arrow. Label scans also stop at the next '['.
+    for token in re.finditer(r"\[([^\[\]]*)\]|(\w+)|(-->)", code):
+        label, node, arrow = token.groups()
+        if label is not None and last_node is not None:
+            nodes[last_node] = label
+        elif arrow:
+            source = last_node
+        elif node:
+            last_node = node
+            if source is not None:
+                edges.append((source, node))
+                source = None
+    return nodes, edges
+
+
+def theme_diagram(rendered: str, label: str) -> str:
+    svg = ET.fromstring(rendered)
+    ET.register_namespace("", "http://www.w3.org/2000/svg")
+    width = float(svg.attrib["viewBox"].split()[2]) * 96 / 72
+    svg.set("style", f"--diagram-width:{width:.1f}px")
+    svg.set("role", "img")
+    svg.set("aria-label", label)
+    colors = {
+        "#f6f7f9": "var(--surface, #f6f7f9)",
+        "#21a663": "var(--accent, #087b43)",
+        "#14171c": "var(--ink, #14171c)",
+    }
+    for element in svg.iter():
+        for attr in ("fill", "stroke"):
+            if element.get(attr) in colors:
+                element.set(attr, colors[element.get(attr)])
+    return ET.tostring(svg, encoding="unicode")
+
+
+def diagrams(text: str) -> tuple[str, dict[str, str]]:
     replacements: dict[str, str] = {}
     def convert(match):
         code = match.group(1)
-        nodes = dict(re.findall(r"(\w+)\[([^\]]+)\]", code))
-        edges = re.findall(r"(\w+)(?:\[[^\]]+\])?\s*-->\s*(\w+)", code)
+        nodes, edges = diagram_parts(code)
         if not nodes or not edges or not shutil.which("dot"):
             return match.group(0)
         rank = "LR" if "flowchart LR" in code else "TB"
         # Graphviz sizes are points; 12pt becomes 16 CSS pixels at the SVG's
         # natural 96dpi browser size. Keep that scale consistent across flows.
         dot = 'digraph G { graph [bgcolor="transparent", rankdir=' + rank + ', pad="0.2", nodesep="0.35", ranksep="0.5"]; node [shape=box, style="rounded,filled", fillcolor="#f6f7f9", color="#21a663", fontcolor="#14171c", fontname="sans-serif", fontsize=12, margin="0.2,0.14"]; edge [color="#21a663"];'
-        import json
         dot += "".join(f'{key} [label={json.dumps(textwrap.fill(label, width=24, break_long_words=False, break_on_hyphens=False))}];' for key, label in nodes.items())
         dot += "".join(f"{a} -> {b};" for a, b in edges) + "}"
         rendered = subprocess.run(["dot", "-Tsvg"], input=dot, text=True, check=True, capture_output=True).stdout
         token = f"WEBSITEDIAGRAM{len(replacements)}"
         # Inline SVG inherits the page theme. Preserve its natural size inside
         # a scroll viewport so long flows never reduce labels to unreadable text.
-        svg = ET.fromstring(rendered)
-        ET.register_namespace("", "http://www.w3.org/2000/svg")
-        width = float(svg.attrib["viewBox"].split()[2]) * 96 / 72
-        svg.set("style", f"--diagram-width:{width:.1f}px")
-        svg.set("role", "img")
         label = "Flow diagram: " + "; ".join(nodes.values())
-        svg.set("aria-label", label)
-        for element in svg.iter():
-            for attr in ("fill", "stroke"):
-                value = element.get(attr)
-                if value == "#f6f7f9":
-                    element.set(attr, "var(--surface, #f6f7f9)")
-                elif value == "#21a663":
-                    element.set(attr, "var(--accent, #087b43)")
-                elif value == "#14171c":
-                    element.set(attr, "var(--ink, #14171c)")
-        inline_svg = ET.tostring(svg, encoding="unicode")
+        inline_svg = theme_diagram(rendered, label)
         replacements[token] = f'<figure class="diagram"><div class="diagram-viewport" tabindex="0" role="region" aria-label="{html.escape(label, quote=True)}">{inline_svg}</div><figcaption>Scroll horizontally to follow wider diagrams.</figcaption><details><summary>View diagram source</summary><pre><code>{html.escape(code)}</code></pre></details></figure>'
         return "\n\n" + token + "\n\n"
     return re.sub(r"```mermaid\n(.*?)\n```", convert, text, flags=re.S), replacements
 
 
+def contained_path(root: Path, route: str) -> Path:
+    """Reject absolute paths, traversal and symlinks out of a checkout."""
+    path = (root / route).resolve()
+    if Path(route).is_absolute() or not path.is_relative_to(root) or path == root:
+        raise ValueError(f"Path escapes checkout: {route}")
+    return path
+
+
+def write_site_text(site: Path, route: str, content: str) -> None:
+    """Revalidate every generated text destination at the filesystem sink."""
+    output = contained_path(site, route)
+    output.parent.mkdir(parents=True, exist_ok=True)
+    output.write_text(content)
+
+
+def sidebar(site: Path, output: Path, destination: str) -> str:
+    parts = []
+    for section in ("Play", "Develop", "Contribute"):
+        parts.append(f"<h2>{section}</h2>")
+        for _, route, category, label, _ in GUIDES:
+            if category == section:
+                current = ' aria-current="page"' if route == destination else ''
+                parts.append(f'<a href="{relative(contained_path(site, route), output)}"{current}>{html.escape(label)}</a>')
+    return "".join(parts)
+
+
+def guide_content(source: Path, root: Path, output: Path, site: Path, mapping: dict[Path, Path]) -> tuple[str, str]:
+    text, replacements = diagrams(normalize_lists(source.read_text()))
+    renderer = markdown.Markdown(extensions=["tables", "fenced_code", "toc", "sane_lists"], extension_configs={"toc": {"permalink": False}})
+    rewrite = RewriteLinks(source, root, output, site, mapping)
+    rewrite.feed(renderer.convert(text))
+    content = "".join(rewrite.parts)
+    for token, replacement in replacements.items():
+        content = content.replace(f"<p>{token}</p>", replacement)
+    content = content.replace("<table>", '<div class="table-wrap" tabindex="0" role="region" aria-label="Scrollable data table"><table>').replace("</table>", "</table></div>")
+    return content, renderer.toc
+
+
 def build(root: Path, site: Path) -> None:
-    name = re.search(r"^# (.+)$", (root / "README.md").read_text(), re.M).group(1)
-    mapping = {(root / source).resolve(): site / output for source, output, *_ in GUIDES}
-    if root == site:
+    root, site = root.resolve(), site.resolve()
+    if root.is_relative_to(site) or site.is_relative_to(root):
         raise ValueError("Use a separate website checkout, not the source tree")
+    name = re.search(r"^# (.+)$", contained_path(root, "README.md").read_text(), re.M).group(1)
+    mapping = {contained_path(root, source): contained_path(site, output) for source, output, *_ in GUIDES}
+    index = contained_path(site, "docs/index.html")
+    license_output = contained_path(site, "LICENSE")
     site.mkdir(parents=True, exist_ok=True)
-    shutil.copyfile(root / "LICENSE", site / "LICENSE")
+    shutil.copyfile(contained_path(root, "LICENSE"), license_output)
     for source_name, destination, group, title, description in GUIDES:
-        source, output = root / source_name, site / destination
-        output.parent.mkdir(parents=True, exist_ok=True)
-        text, replacements = diagrams(normalize_lists(source.read_text()), output, site)
-        renderer = markdown.Markdown(extensions=["tables", "fenced_code", "toc", "sane_lists"], extension_configs={"toc": {"permalink": False}})
-        content = renderer.convert(text)
-        rewrite = RewriteLinks(source, root, output, site, mapping)
-        rewrite.feed(content)
-        content = "".join(rewrite.parts)
-        for token, replacement in replacements.items():
-            content = content.replace(f"<p>{token}</p>", replacement)
-        content = content.replace("<table>", '<div class="table-wrap" tabindex="0" role="region" aria-label="Scrollable data table"><table>').replace("</table>", "</table></div>")
-        sidebar = ""
-        for section in ("Play", "Develop", "Contribute"):
-            sidebar += f"<h2>{section}</h2>"
-            for _, route, category, label, _ in GUIDES:
-                if category == section:
-                    sidebar += f'<a href="{relative(site / route, output)}"' + (' aria-current="page"' if route == destination else '') + f'>{html.escape(label)}</a>'
+        source, output = contained_path(root, source_name), contained_path(site, destination)
+        content, outline = guide_content(source, root, output, site, mapping)
+        navigation_links = sidebar(site, output, destination)
         edit_url = f"{REPOSITORY}/edit/main/{quote(source_name, safe='/')}"
-        body = f'<div class="container doc-layout"><aside class="doc-sidebar" aria-label="Documentation navigation">{sidebar}</aside><article class="doc-article"><p class="doc-meta">{group} / {html.escape(title)} · <a href="{relative(site / "docs/index.html", output)}">All guides</a> · <a href="{edit_url}">Improve this page ↗</a></p><details class="doc-outline"><summary>On this page</summary>{renderer.toc}</details>{content}</article></div>'
-        output.write_text(document(site, output, title, description, body, name))
+        body = f'<div class="container doc-layout"><aside class="doc-sidebar" aria-label="Documentation navigation">{navigation_links}</aside><article class="doc-article"><p class="doc-meta">{group} / {html.escape(title)} · <a href="{relative(index, output)}">All guides</a> · <a href="{edit_url}">Improve this page ↗</a></p><details class="doc-outline"><summary>On this page</summary>{outline}</details>{content}</article></div>'
+        write_site_text(
+            site, destination, document(site, output, title, description, body, name)
+        )
     cards = "".join(f'<a class="doc-card" data-search="{html.escape((group + " " + title + " " + description).lower(), quote=True)}" href="{relative(site / destination, site / "docs/index.html")}"><h2>{html.escape(title)}</h2><p>{html.escape(description)}</p><span>{group} ↗</span></a>' for _, destination, group, title, description in GUIDES)
     api = '<p><a class="text-link" href="../api/index.html">Browse the generated C++ API reference ↗</a></p>' if (site / "api/index.html").is_file() else ""
     body = f'<div class="container"><header class="page-intro"><p class="eyebrow">Play. Understand. Make it yours.</p><h1>A guide for<br>your next step.</h1><p>Start a career, find your first contribution or follow a decision through the match engine. These guides come from the maintained project documentation.</p></header><section class="section" style="padding-top:0"><label for="docs-search">Find a guide</label><br><input class="search-field" id="docs-search" type="search" placeholder="Try match, player, build or contribute" autocomplete="off"><p class="search-count" id="search-count" aria-live="polite">{len(GUIDES)} guides</p><div class="doc-cards">{cards}</div>{api}</section></div>'
-    (site / "docs/index.html").write_text(document(site, site / "docs/index.html", "Documentation", "Player, developer and contributor guides for the game.", body, name))
+    write_site_text(
+        site,
+        "docs/index.html",
+        document(site, index, "Documentation", "Player, developer and contributor guides for the game.", body, name),
+    )
     print(f"Rendered {len(GUIDES)} guides and the searchable documentation index")
 
 

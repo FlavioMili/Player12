@@ -12,6 +12,7 @@
 #include <algorithm>
 #include <limits>
 #include <string>
+#include <string_view>
 
 #include "database/gamedata.h"
 #include "model/competition.h"
@@ -53,8 +54,8 @@ Game::CupRun Game::cupRun(TeamID team_id) const
       if (tie.getHomeTeamId() == team_id || tie.getAwayTeamId() == team_id)
         furthest = std::max<int>(furthest, round.stage);
   if (furthest > 0) run.rounds_left = status.total_rounds - furthest;
-  run.won = status.winner && *status.winner == team_id;
-  run.still_in = !status.winner && !status.rounds.empty() &&
+  run.won = status.winner.has_value() && *status.winner == team_id;
+  run.still_in = !status.winner.has_value() && !status.rounds.empty() &&
                  std::ranges::contains(status.remaining, team_id);
   return run;
 }
@@ -77,7 +78,7 @@ void Game::fillLineupGap(Team& team, const Player& departed)
 void Game::postLineupRepairs()
 {
   if (lineup_repairs.empty() || managed_team_id == FREE_AGENTS_TEAM_ID) return;
-  const auto join = [](std::string& list, const std::string& name)
+  const auto join = [](std::string& list, std::string_view name)
   {
     if (name.empty()) return;
     if (!list.empty()) list += ", ";
@@ -241,8 +242,8 @@ void Game::finishSeasonReview()
   if (!closing_review) return;
   SeasonReview review = std::move(*closing_review);
   closing_review.reset();
-  const BoardState& board = world.getBoardState();
-  if (managed_team_id == review.team_id && board.team_id == review.team_id)
+  if (const BoardState& board = world.getBoardState();
+      managed_team_id == review.team_id && board.team_id == review.team_id)
   {
     review.next_objective = board.objective;
     review.next_target = board.target_position;

@@ -24,11 +24,15 @@ constexpr std::uint64_t WORLD_SEED = 20250702;
 
 int uniqueSlot(int offset)
 {
-  return 4'000'000 + static_cast<int>(getpid() % 100'000) * 10 + offset;
+  return 4'000'000 + getpid() % 100'000 * 10 + offset;
 }
 
 struct SlotCleanup
 {
+  explicit SlotCleanup(int saveSlot) : slot(saveSlot) {}
+  SlotCleanup(const SlotCleanup&) = delete;
+  SlotCleanup& operator=(const SlotCleanup&) = delete;
+
   int slot;
   ~SlotCleanup() { RuntimePaths::removeSave(slot); }
 };
@@ -149,8 +153,7 @@ TEST(Mentoring, GroupRulesAndWeeklyEffect)
   EXPECT_GT(controller->getMentoringMultiplier(pair.mentee), 1.03f);
   EXPECT_FLOAT_EQ(controller->getMentoringMultiplier(pair.second_mentee), 1.0f);
 
-  MentoringSystem& system =
-      const_cast<Game*>(controller->getGame())->getWorld().getMentoring();
+  MentoringSystem& system = controller->getGame()->getWorld().getMentoring();
   for (int week = 0; week < 26; ++week)
     system.onWeek(*controller->getGameData());
   const int after_half = mentee.getTraits().professionalism;

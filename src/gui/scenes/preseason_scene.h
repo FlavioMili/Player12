@@ -12,6 +12,7 @@
 #include <cstdint>
 #include <optional>
 #include <string>
+#include <utility>
 #include <vector>
 
 #include "gui/scenes/management_scene.h"
@@ -29,7 +30,10 @@ class PreseasonScene : public ManagementScene
  public:
   explicit PreseasonScene(GUIView* parent);
 
-  void update(float /*deltaTime*/) override {}
+  void update(float /*deltaTime*/) override
+  {
+    // Pre-season planning is driven by explicit user actions and the calendar.
+  }
   [[nodiscard]] SceneID getID() const override { return SceneID::PLANNING; }
 
  protected:
@@ -73,7 +77,7 @@ class PreseasonScene : public ManagementScene
 
   std::vector<FriendlyLine> friendlies;
   int selected_friendly = -1;
-  int level = static_cast<int>(OpponentLevel::Similar);
+  int level = static_cast<int>(std::to_underlying(OpponentLevel::Similar));
   int region = 0; /**< 0 domestic, 1 abroad. */
   int venue = 0;  /**< 0 home, 1 away. */
   bool tour = false;

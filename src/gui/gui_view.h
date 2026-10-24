@@ -208,8 +208,8 @@ class GUIView
   GUIScene* getActiveScene() const;
 
   GameController& controller;
-  SDL_Window* window;
-  SDL_Renderer* renderer;
+  SDL_Window* window = nullptr;
+  SDL_Renderer* renderer = nullptr;
   bool running;
   bool screenshotPending = false;
   bool backdropPending = false;

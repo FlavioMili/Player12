@@ -42,11 +42,13 @@
 #include <mutex>
 #include <numeric>
 #include <optional>
+#include <print>
 #include <set>
 #include <string>
 #include <thread>
 #include <unordered_map>
 #include <unordered_set>
+#include <utility>
 #include <vector>
 
 #include "backends/imgui_impl_sdl3.h"
@@ -164,7 +166,10 @@ class GameFlowTest_GUIFlowLifecycle_Test
       scene.openOfferDialog(scene.targets.front());
     return true;
   }
-  static MatchEngine* engine(MatchScene& scene) { return scene.engine.get(); }
+  static MatchEngine* engine(const MatchScene& scene)
+  {
+    return scene.engine.get();
+  }
   static bool finished(const MatchScene& scene) { return scene.match_finished; }
   static void setSpeed(MatchScene& scene, float speed)
   {
@@ -253,7 +258,7 @@ std::vector<std::string> checkWorld(const GameController& controller)
                                        player->get().getTeamId()));
     }
     const Lineup& lineup = team.getLineup();
-    std::vector<const Player*> selected{lineup.getGoalkeeper()};
+    std::vector selected{lineup.getGoalkeeper()};
     for (const auto& positioned : lineup.getOutfieldPlayers())
       selected.push_back(positioned.player);
     for (const Player* reserve : lineup.getReserves())
@@ -358,8 +363,8 @@ class Driver
   void key(SDL_Keycode code, SDL_Scancode scancode,
            SDL_Keymod mod = SDL_KMOD_NONE)
   {
-    SDL_Event event{};
-    event.type = SDL_EVENT_KEY_DOWN;
+    SDL_Event event{.key = {}};
+    event.key.type = SDL_EVENT_KEY_DOWN;
     event.key.windowID = SDL_GetWindowID(view.getWindow());
     event.key.key = code;
     event.key.scancode = scancode;
@@ -367,7 +372,7 @@ class Driver
     event.key.down = true;
     SDL_PushEvent(&event);
     frame();
-    event.type = SDL_EVENT_KEY_UP;
+    event.key.type = SDL_EVENT_KEY_UP;
     event.key.down = false;
     event.key.mod = SDL_KMOD_NONE;
     SDL_PushEvent(&event);
@@ -400,8 +405,7 @@ class Driver
   {
     ImGuiID id = 0;
     for (ImGuiWindow* window : GImGui->Windows)
-      if (window->Active && std::string_view(window->Name).find("##topbar") !=
-                                std::string_view::npos)
+      if (window->Active && std::string_view(window->Name).contains("##topbar"))
         id = window->GetID("###shell_continue");
     if (id == 0) return std::nullopt;
     const ImVec2 display = ImGui::GetIO().DisplaySize;
@@ -410,17 +414,19 @@ class Driver
     // clicked, so a layout shift of a few pixels cannot move it away.
     std::optional<float> right;
     std::optional<float> left;
-    for (float x = display.x - 4.0f; x > display.x * 0.3f && !left; x -= 4.0f)
+    for (int stepIndex = 0; !left.has_value(); ++stepIndex)
     {
+      const float x = display.x - 4.0f - static_cast<float>(stepIndex) * 4.0f;
+      if (!(x > display.x * 0.3f)) break;
       ImGui::GetIO().AddMousePosEvent(x, y);
       frame();
       const bool hovered = GImGui->HoveredId == id;
-      if (hovered && !right) right = x;
-      if (!hovered && right) left = x + 4.0f;
+      if (hovered && !right.has_value()) right = x;
+      if (!hovered && right.has_value()) left = x + 4.0f;
     }
     ImGui::GetIO().AddMousePosEvent(-FLT_MAX, -FLT_MAX);
     frame();
-    if (!right) return std::nullopt;
+    if (!right.has_value()) return std::nullopt;
     return ImVec2((*right + left.value_or(*right)) * 0.5f, y);
   }
 
@@ -441,8 +447,10 @@ class Driver
                              Bridge::continueRequested(*hub()) &&
                              active() == hub();
       const auto* match = dynamic_cast<const MatchScene*>(active());
-      const bool quick = match != nullptr && Bridge::quickResultPending(*match);
-      if (!advancing() && !loading && !requested && !quick) break;
+      if (const bool quick =
+              match != nullptr && Bridge::quickResultPending(*match);
+          !advancing() && !loading && !requested && !quick)
+        break;
       frame();
     }
     frames(2);
@@ -549,7 +557,7 @@ class Adversarial : public ::testing::Test
     return std::nullopt;
   }
 
-  void expectWorldConsistent(const std::string& stage)
+  void expectWorldConsistent(const std::string& stage) const
   {
     const auto problems = checkWorld(*controller);
     EXPECT_TRUE(problems.empty()) << stage << ":" << joined(problems);
@@ -567,7 +575,7 @@ class Adversarial : public ::testing::Test
 TEST_F(Adversarial, TripleClickContinueIsOneContinue)
 {
   openGui();
-  MainGameScene* hub = driver->hub();
+  const MainGameScene* hub = driver->hub();
   const auto next = Bridge::nextFixtureDate(*hub);
   ASSERT_TRUE(next.has_value());
   ASSERT_FALSE(*next == controller->getCurrentDate());
@@ -595,7 +603,7 @@ TEST_F(Adversarial, TripleClickContinueIsOneContinue)
 TEST_F(Adversarial, InputDuringContinueIsIgnored)
 {
   openGui();
-  MainGameScene* hub = driver->hub();
+  const MainGameScene* hub = driver->hub();
   const auto next = Bridge::nextFixtureDate(*hub);
   ASSERT_TRUE(next.has_value());
   disableAutosave(*controller);
@@ -656,7 +664,8 @@ TEST_F(Adversarial, InputDuringContinueIsIgnored)
   const std::string state = std::format(
       "scene {} overlays {} popup {} active id {} text input {} nav {} "
       "mashes {}",
-      static_cast<int>(driver->activeId()), view->getOverlayDepth(),
+      static_cast<int>(std::to_underlying(driver->activeId())),
+      view->getOverlayDepth(),
       ImGui::IsPopupOpen(
           "", ImGuiPopupFlags_AnyPopupId | ImGuiPopupFlags_AnyPopupLevel),
       GImGui->ActiveId, ImGui::GetIO().WantTextInput, ImGui::GetIO().NavVisible,
@@ -752,8 +761,8 @@ class ShutdownWatchdog
               std::unique_lock lock(mutex);
               if (!finished.wait_for(lock, LIMIT, [this] { return done; }))
               {
-                std::fprintf(stderr, "%s did not finish within %lld s\n", what,
-                             static_cast<long long>(LIMIT.count()));
+                std::print(stderr, "{} did not finish within {} s\n", what,
+                           LIMIT.count());
                 std::abort();
               }
             })
@@ -776,7 +785,7 @@ class ShutdownWatchdog
   std::mutex mutex;
   std::condition_variable finished;
   bool done = false;
-  std::thread watcher;  // Last: starts once the state above exists.
+  std::jthread watcher;  // Last: starts once the state above exists.
 };
 
 /** Played fixtures of the whole world (every league and cup). */
@@ -891,8 +900,8 @@ std::optional<PlayerID> agreeFee(GameController& controller, TeamID managed)
 }
 
 /** Terms the player demands for the pending talks. */
-TransferNegotiation::ContractOffer demandedTerms(GameController& controller,
-                                                 PlayerID player)
+TransferNegotiation::ContractOffer demandedTerms(
+    const GameController& controller, PlayerID player)
 {
   TransferNegotiation::ContractOffer offer;
   const auto kind = controller.getContractTalkKind(player);
@@ -909,7 +918,7 @@ TransferNegotiation::ContractOffer demandedTerms(GameController& controller,
 TEST_F(Adversarial, OfferForPlayerWhoRetiresMeanwhile)
 {
   const auto target = agreeFee(*controller, managed_id);
-  if (!target) GTEST_SKIP() << "no affordable target in this world";
+  if (!target.has_value()) GTEST_SKIP() << "no affordable target in this world";
   const TeamID seller =
       controller->getGameData()->getPlayer(*target)->get().getTeamId();
   // WorldSimulation::retirePlayers: out of the squad, lineups rebuilt,
@@ -937,7 +946,7 @@ TEST_F(Adversarial, OfferForPlayerWhoRetiresMeanwhile)
 TEST_F(Adversarial, OfferForPlayerSoldMeanwhile)
 {
   const auto target = agreeFee(*controller, managed_id);
-  if (!target) GTEST_SKIP() << "no affordable target in this world";
+  if (!target.has_value()) GTEST_SKIP() << "no affordable target in this world";
   const TeamID seller =
       controller->getGameData()->getPlayer(*target)->get().getTeamId();
   // An AI club completes a deal for him first (the AI transfer path).
@@ -973,15 +982,17 @@ TEST_F(Adversarial, WindowClosesMidNegotiation)
 {
   for (int guard = 0; guard < 120; ++guard)
   {
-    const auto window = controller->getTransferWindow();
-    if (window.open && window.days_to_deadline == 0) break;
+    if (const auto window = controller->getTransferWindow();
+        window.open && window.days_to_deadline == 0)
+      break;
     controller->advanceDay();
   }
   const auto window = controller->getTransferWindow();
   ASSERT_TRUE(window.open && window.days_to_deadline == 0)
       << "deadline day not reached";
   const auto target = agreeFee(*controller, managed_id);
-  if (!target) GTEST_SKIP() << "no affordable target on deadline day";
+  if (!target.has_value())
+    GTEST_SKIP() << "no affordable target on deadline day";
   const TeamID seller =
       controller->getGameData()->getPlayer(*target)->get().getTeamId();
   controller->advanceDay();
@@ -1005,16 +1016,16 @@ TEST_F(Adversarial, ZeroCashThenSignFreeAgent)
         return player.get().getId();
     return std::nullopt;
   };
-  for (int day = 0; day < 20 && !findFreeAgent(); ++day)
+  for (int day = 0; day < 20 && !findFreeAgent().has_value(); ++day)
     controller->advanceDay();
   std::optional<PlayerID> freeAgent = findFreeAgent();
-  if (!freeAgent)
+  if (!freeAgent.has_value())
   {
     // None in the world yet: release a fringe player and try to re-sign him.
     const PlayerID fringe = club().getPlayerIDs().back();
     if (controller->releasePlayer(fringe)) freeAgent = fringe;
   }
-  if (!freeAgent) GTEST_SKIP() << "no free agent available";
+  if (!freeAgent.has_value()) GTEST_SKIP() << "no free agent available";
   Team& team = mutableClub();
   team.getFinances().record(controller->getCurrentDate(),
                             FinanceCategory::Adjustment,
@@ -1068,7 +1079,7 @@ TEST_F(Adversarial, ReleasingAReserveKeepsTheChosenLineup)
   const PlayerID dropped = lineup.getOutfieldPlayers().front().player->getId();
   ASSERT_TRUE(lineup.swapPlayers(pick, dropped));
   // A player outside the starting XI leaves.
-  std::unordered_set<PlayerID> starting{dropped};
+  std::unordered_set starting{dropped};
   if (lineup.getGoalkeeper()) starting.insert(lineup.getGoalkeeper()->getId());
   for (const auto& positioned : lineup.getOutfieldPlayers())
     starting.insert(positioned.player->getId());
@@ -1178,7 +1189,7 @@ TEST_F(Adversarial, AllPlayersInjuredOnMatchDay)
     driver->frames(3);
     if (auto* match = dynamic_cast<MatchScene*>(driver->active()))
     {
-      if (MatchEngine* engine = Bridge::engine(*match))
+      if (const MatchEngine* engine = Bridge::engine(*match))
       {
         kickedOff = true;
         // The assistant fielded a full XI of players who play through
@@ -1339,8 +1350,8 @@ TEST_F(Adversarial, ResizeAndMinimizeDuringMatch)
   SDL_Window* window = view->getWindow();
   const auto pushWindowEvent = [&](SDL_EventType type, int width, int height)
   {
-    SDL_Event event{};
-    event.type = type;
+    SDL_Event event{.window = {}};
+    event.window.type = type;
     event.window.windowID = SDL_GetWindowID(window);
     event.window.data1 = width;
     event.window.data2 = height;
@@ -1464,9 +1475,9 @@ TEST_F(Adversarial, QuitWithoutSavingKeepsTheSave)
   {
     std::vector<PlayerID> ids = team.get().getPlayerIDs();
     std::ranges::sort(ids);
-    changedSquads += ids != squads[team.get().getId()];
-    changedBalances +=
-        team.get().getFinances().getBalance() != balances[team.get().getId()];
+    if (ids != squads[team.get().getId()]) ++changedSquads;
+    if (team.get().getFinances().getBalance() != balances[team.get().getId()])
+      ++changedBalances;
   }
   const auto problems = checkWorld(*controller);
   if (changedSquads > 0 || changedBalances > 0 || !problems.empty())
@@ -1499,8 +1510,10 @@ TEST_F(Adversarial, SeasonRolloverWithOpenDeals)
     {
       for (const auto& player : controller->getGameData()->getPlayersVector())
       {
-        const auto kind = controller->getContractTalkKind(player.get().getId());
-        if (kind != TransferNegotiation::ContractKind::PreContract) continue;
+        if (const auto kind =
+                controller->getContractTalkKind(player.get().getId());
+            kind != TransferNegotiation::ContractKind::PreContract)
+          continue;
         preContract = controller
                           ->proposeContract(
                               player.get().getId(),
@@ -1544,7 +1557,7 @@ TEST_F(Adversarial, SameSaveSameMonth)
       std::ranges::sort(ids);
       out += std::format("{}:{}:", team.get().getId(),
                          team.get().getFinances().getBalance());
-      for (const PlayerID id : ids) out += std::to_string(id) + ",";
+      for (const PlayerID id : ids) out += std::format("{},", id);
       out += "\n";
     }
     for (const auto& [date, matches] :
@@ -1567,7 +1580,7 @@ TEST_F(Adversarial, SameSaveSameMonth)
     size_t index = 0;
     while (index < first.size() && index < second.size() &&
            first[index] == second[index])
-      line += first[index++] == '\n';
+      if (first[index++] == '\n') ++line;
     ADD_FAILURE() << "two runs of the same month differ from line " << line
                   << ":\n  " << first.substr(first.rfind('\n', index) + 1, 120)
                   << "\n  "
@@ -1683,22 +1696,20 @@ TEST_F(Adversarial, EscapeClosesEveryDialog)
 /** Switching language mid-session re-renders every screen cleanly. */
 TEST_F(Adversarial, SwitchLanguageMidSession)
 {
+  using enum NavSection;
   openGui();
   for (const Language language : {Language::IT, Language::EN})
   {
     SettingsManager::instance()->get().language = language;
     LanguageManager::instance().loadLanguage(language);
     for (const NavSection section :
-         {NavSection::HOME, NavSection::INBOX, NavSection::CLUB,
-          NavSection::SQUAD, NavSection::LINEUP, NavSection::TACTICS,
-          NavSection::TRAINING, NavSection::FIXTURES, NavSection::STANDINGS,
-          NavSection::TRANSFERS, NavSection::SCOUTING, NavSection::STAFF,
-          NavSection::FINANCES})
+         {HOME, INBOX, CLUB, SQUAD, LINEUP, TACTICS, TRAINING, FIXTURES,
+          STANDINGS, TRANSFERS, SCOUTING, STAFF, FINANCES})
     {
       Navigation::open(view.get(), section);
       driver->frames(3);
     }
-    Navigation::open(view.get(), NavSection::HOME);
+    Navigation::open(view.get(), HOME);
     driver->frames(2);
   }
   EXPECT_STREQ(LOC("NAV_HOME"), "Home");
@@ -1716,7 +1727,7 @@ TEST_F(Adversarial, CorruptSettingsRecovery)
       R"({"resolution": [1000000000, 1000000000], "fps_limit": -5})",
       R"({"resolution": [800], "theme_preset": 99, "ui_scale": 1e30})",
       R"({"language": 250, "accent_rgb": -1, "fullscreen": "yes"})",
-      std::string("\0\xff\xfe garbage", 12)};
+      std::string("\0\x{ff}\x{fe} garbage", 12)};
   for (const std::string& content : files)
   {
     SCOPED_TRACE(content);
@@ -1814,7 +1825,7 @@ TEST_F(Adversarial, HiDpiUiFillsTheFramebuffer)
         Uint8 b = 0;
         Uint8 a = 0;
         SDL_ReadSurfacePixel(surface, x, y, &r, &g, &b, &a);
-        clear += r == 255 && g == 0 && b == 255;
+        if (r == 255 && g == 0 && b == 255) ++clear;
         ++total;
       }
     return total > 0 ? static_cast<double>(clear) / total : 1.0;

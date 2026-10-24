@@ -189,7 +189,7 @@ void CompetitionManager::closeSeason(const Calendar& calendar, uint16_t season,
   std::vector<LeagueID> league_ids;
   for (const auto& [id, league] : gamedata->getLeagues())
   {
-    tables.emplace(id, Standings::compute(league, calendar, *gamedata));
+    tables.try_emplace(id, Standings::compute(league, calendar, *gamedata));
     league_ids.push_back(id);
   }
   std::ranges::sort(league_ids);
@@ -202,7 +202,7 @@ void CompetitionManager::closeSeason(const Calendar& calendar, uint16_t season,
   for (const LeagueID root : Competitions::countryRoots(*gamedata))
   {
     const auto status = Competitions::cupStatus(calendar, *gamedata, root);
-    if (status.winner) cup_winners[root] = *status.winner;
+    if (status.winner.has_value()) cup_winners[root] = *status.winner;
   }
   continental.closeSeason(calendar, start_year, tables, cup_winners);
   for (const ContinentalCompetitions::Season& competition :
@@ -306,8 +306,10 @@ std::optional<Competitions::CupStatus> CompetitionManager::getCupStatus(
 std::optional<MatchReport> CompetitionManager::getMatchReport(
     const GameDateValue& date, TeamID home_id, TeamID away_id) const
 {
-  const auto pending = pending_reports.find(FixtureKey{date, home_id, away_id});
-  if (pending != pending_reports.end()) return pending->second;
+  if (const auto pending =
+          pending_reports.find(FixtureKey{date, home_id, away_id});
+      pending != pending_reports.end())
+    return pending->second;
   return FixtureRepository(db_conn).loadMatchReport(date, home_id, away_id);
 }
 
@@ -381,7 +383,7 @@ CompetitionManager::benchSuspendedPlayers(const Match& match)
   std::vector<LineupSwap> swaps;
   if (match.getMatchType() == MatchType::FRIENDLY) return swaps;
   const MatchType scope = match.getMatchType();
-  const auto eligible = [&](const Player* player)
+  const auto eligible = [this, scope](const Player* player)
   {
     return player && player->isAvailable() &&
            !discipline.isSuspended(player->getId(), scope);

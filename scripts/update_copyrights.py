@@ -18,7 +18,7 @@ def main():
     for d in directories:
         for root, _, files in os.walk(d):
             for file in files:
-                if file.endswith('.cpp') or file.endswith('.h'):
+                if file.endswith(('.cpp', '.h')):
                     files_to_update.append(os.path.join(root, file))
 
     needs_update = False

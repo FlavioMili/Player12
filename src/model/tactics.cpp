@@ -12,6 +12,7 @@
 #include <array>
 #include <cmath>
 #include <string>
+#include <utility>
 
 #include "model/lineup.h"
 #include "model/player.h"
@@ -54,7 +55,8 @@ constexpr std::array<TacticalRole, 3> WIDE_ROLES = {Standard, InsideForward,
 constexpr std::array<TacticalRole, 5> STRIKER_ROLES = {
     Standard, TargetForward, Poacher, PressingForward, FalseNine};
 
-constexpr std::array<const char*, static_cast<std::size_t>(TacticalRole::COUNT)>
+constexpr std::array<const char*, static_cast<std::size_t>(
+                                      std::to_underlying(TacticalRole::COUNT))>
     ROLE_KEYS = {
         "ROLE_STANDARD",         "ROLE_LINE_KEEPER",    "ROLE_SWEEPER_KEEPER",
         "ROLE_INSIDE_FULL_BACK", "ROLE_STOPPER",        "ROLE_COVER_DEFENDER",
@@ -63,7 +65,8 @@ constexpr std::array<const char*, static_cast<std::size_t>(TacticalRole::COUNT)>
         "ROLE_TARGET_FORWARD",   "ROLE_POACHER",        "ROLE_PRESSING_FORWARD",
         "ROLE_FALSE_NINE"};
 
-constexpr std::array<const char*, static_cast<std::size_t>(TacticalRole::COUNT)>
+constexpr std::array<const char*, static_cast<std::size_t>(
+                                      std::to_underlying(TacticalRole::COUNT))>
     ROLE_DESCRIPTION_KEYS = {
         "ROLE_STANDARD_HELP",         "ROLE_LINE_KEEPER_HELP",
         "ROLE_SWEEPER_KEEPER_HELP",   "ROLE_INSIDE_FULL_BACK_HELP",
@@ -74,17 +77,19 @@ constexpr std::array<const char*, static_cast<std::size_t>(TacticalRole::COUNT)>
         "ROLE_TARGET_FORWARD_HELP",   "ROLE_POACHER_HELP",
         "ROLE_PRESSING_FORWARD_HELP", "ROLE_FALSE_NINE_HELP"};
 
-constexpr std::array<const char*, static_cast<std::size_t>(RoleFamily::COUNT)>
+constexpr std::array<const char*, static_cast<std::size_t>(
+                                      std::to_underlying(RoleFamily::COUNT))>
     FAMILY_KEYS = {"ROLE_FAMILY_GOALKEEPER",  "ROLE_FAMILY_FULL_BACK",
                    "ROLE_FAMILY_CENTRE_BACK", "ROLE_FAMILY_HOLDING",
                    "ROLE_FAMILY_CENTRAL",     "ROLE_FAMILY_ATTACKING",
                    "ROLE_FAMILY_WIDE",        "ROLE_FAMILY_STRIKER"};
 
-constexpr std::array<const char*, static_cast<std::size_t>(RoleDuty::COUNT)>
+constexpr std::array<const char*, static_cast<std::size_t>(
+                                      std::to_underlying(RoleDuty::COUNT))>
     DUTY_KEYS = {"ROLE_DUTY_DEFEND", "ROLE_DUTY_SUPPORT", "ROLE_DUTY_ATTACK"};
 
-constexpr std::array<const char*,
-                     static_cast<std::size_t>(PossessionShape::COUNT)>
+constexpr std::array<const char*, static_cast<std::size_t>(std::to_underlying(
+                                      PossessionShape::COUNT))>
     SHAPE_KEYS = {"TACTIC_SHAPE_KEEP", "TACTIC_SHAPE_FULL_BACKS",
                   "TACTIC_SHAPE_BACK_THREE", "TACTIC_SHAPE_NARROW"};
 
@@ -161,40 +166,37 @@ namespace Tactics
 {
 RoleFamily familyForSlot(Vector2F anchor)
 {
+  using enum RoleFamily;
   const float width = std::abs(anchor.y - 0.5f);
   const bool wide = width > WIDE_DEVIATION;
-  if (anchor.x < DEFENCE_LINE_X)
-    return wide ? RoleFamily::FullBack : RoleFamily::CentreBack;
-  if (anchor.x < HOLDING_LINE_X)
-    return wide ? RoleFamily::FullBack : RoleFamily::Holding;
-  if (anchor.x < MIDFIELD_LINE_X)
-    return wide ? RoleFamily::Wide : RoleFamily::Central;
-  if (anchor.x < ATTACKING_LINE_X)
-    return wide ? RoleFamily::Wide : RoleFamily::Attacking;
-  return width > STRIKER_WIDE_DEVIATION ? RoleFamily::Wide
-                                        : RoleFamily::Striker;
+  if (anchor.x < DEFENCE_LINE_X) return wide ? FullBack : CentreBack;
+  if (anchor.x < HOLDING_LINE_X) return wide ? FullBack : Holding;
+  if (anchor.x < MIDFIELD_LINE_X) return wide ? Wide : Central;
+  if (anchor.x < ATTACKING_LINE_X) return wide ? Wide : Attacking;
+  return width > STRIKER_WIDE_DEVIATION ? Wide : Striker;
 }
 
 std::span<const TacticalRole> rolesFor(RoleFamily family)
 {
+  using enum RoleFamily;
   switch (family)
   {
-    case RoleFamily::Goalkeeper:
+    case Goalkeeper:
       return GOALKEEPER_ROLES;
-    case RoleFamily::FullBack:
+    case FullBack:
       return FULL_BACK_ROLES;
-    case RoleFamily::CentreBack:
+    case CentreBack:
       return CENTRE_BACK_ROLES;
-    case RoleFamily::Holding:
+    case Holding:
       return HOLDING_ROLES;
-    case RoleFamily::Central:
+    case Central:
       return CENTRAL_ROLES;
-    case RoleFamily::Attacking:
+    case Attacking:
       return ATTACKING_ROLES;
-    case RoleFamily::Wide:
+    case Wide:
       return WIDE_ROLES;
-    case RoleFamily::Striker:
-    case RoleFamily::COUNT:
+    case Striker:
+    case COUNT:
       break;
   }
   return STRIKER_ROLES;
@@ -209,6 +211,7 @@ bool hasDuty(RoleFamily family) { return family != RoleFamily::Goalkeeper; }
 
 RoleProfile profile(TacticalRole role, RoleDuty duty)
 {
+  using enum RoleDuty;
   // Roles are composable numeric biases over the common match AI, rather than
   // separate player controllers. Start neutral, apply the role, then the duty.
   // To add a role, also register its allowed families, text keys and attribute
@@ -217,7 +220,7 @@ RoleProfile profile(TacticalRole role, RoleDuty duty)
   switch (role)
   {
     case Standard:
-    case COUNT:
+    case TacticalRole::COUNT:
       break;
     case LineKeeper:
       result.keeperDepthMetres = -2.5f;
@@ -311,22 +314,22 @@ RoleProfile profile(TacticalRole role, RoleDuty duty)
   if (role == LineKeeper || role == SweeperKeeper) return result;
   switch (duty)
   {
-    case RoleDuty::Defend:
+    case Defend:
       result.possessionAdvanceMetres -= 5.0f;
       result.runBias -= 0.5f;
       result.overlapBias -= 1.0f;
       result.passDaring -= 0.1f;
       result.shotBias -= 0.1f;
       break;
-    case RoleDuty::Attack:
+    case Attack:
       result.possessionAdvanceMetres += 5.0f;
       result.runBias += 0.5f;
       result.overlapBias += 0.6f;
       result.passDaring += 0.05f;
       result.shotBias += 0.05f;
       break;
-    case RoleDuty::Support:
-    case RoleDuty::COUNT:
+    case Support:
+    case COUNT:
       break;
   }
   return result;
@@ -334,32 +337,35 @@ RoleProfile profile(TacticalRole role, RoleDuty duty)
 
 const char* familyKey(RoleFamily family)
 {
-  return keyOf(FAMILY_KEYS, static_cast<std::size_t>(family));
+  return keyOf(FAMILY_KEYS,
+               static_cast<std::size_t>(std::to_underlying(family)));
 }
 
 const char* roleKey(TacticalRole role)
 {
-  return keyOf(ROLE_KEYS, static_cast<std::size_t>(role));
+  return keyOf(ROLE_KEYS, static_cast<std::size_t>(std::to_underlying(role)));
 }
 
 const char* roleDescriptionKey(TacticalRole role)
 {
-  return keyOf(ROLE_DESCRIPTION_KEYS, static_cast<std::size_t>(role));
+  return keyOf(ROLE_DESCRIPTION_KEYS,
+               static_cast<std::size_t>(std::to_underlying(role)));
 }
 
 const char* dutyKey(RoleDuty duty)
 {
-  return keyOf(DUTY_KEYS, static_cast<std::size_t>(duty));
+  return keyOf(DUTY_KEYS, static_cast<std::size_t>(std::to_underlying(duty)));
 }
 
 const char* possessionShapeKey(PossessionShape shape)
 {
-  return keyOf(SHAPE_KEYS, static_cast<std::size_t>(shape));
+  return keyOf(SHAPE_KEYS, static_cast<std::size_t>(std::to_underlying(shape)));
 }
 
 std::span<const std::string_view> keyAttributes(RoleFamily family,
                                                 TacticalRole role)
 {
+  using enum RoleFamily;
   switch (role)
   {
     case LineKeeper:
@@ -393,27 +399,27 @@ std::span<const std::string_view> keyAttributes(RoleFamily family,
     case FalseNine:
       return FALSE_NINE;
     case Standard:
-    case COUNT:
+    case TacticalRole::COUNT:
       break;
   }
   switch (family)
   {
-    case RoleFamily::Goalkeeper:
+    case Goalkeeper:
       return GOALKEEPER_STANDARD;
-    case RoleFamily::FullBack:
+    case FullBack:
       return FULL_BACK_STANDARD;
-    case RoleFamily::CentreBack:
+    case CentreBack:
       return CENTRE_BACK_STANDARD;
-    case RoleFamily::Holding:
+    case Holding:
       return HOLDING_STANDARD;
-    case RoleFamily::Central:
+    case Central:
       return CENTRAL_STANDARD;
-    case RoleFamily::Attacking:
+    case Attacking:
       return ATTACKING_STANDARD;
-    case RoleFamily::Wide:
+    case Wide:
       return WIDE_STANDARD;
-    case RoleFamily::Striker:
-    case RoleFamily::COUNT:
+    case Striker:
+    case COUNT:
       break;
   }
   return STRIKER_STANDARD;
@@ -437,13 +443,14 @@ float roleFit(const Player& player, RoleFamily family, TacticalRole role)
 
 RoleDuty suggestedDuty(const Player& player, RoleFamily family)
 {
-  if (family != RoleFamily::FullBack) return RoleDuty::Support;
+  using enum RoleDuty;
+  if (family != RoleFamily::FullBack) return Support;
   const float defending = stat(player, "Defending");
   const float engine = (stat(player, "Pace") + stat(player, "Stamina")) * 0.5f;
   const float flair = (stat(player, "Pace") + stat(player, "Dribbling")) * 0.5f;
-  if (engine >= defending + ATTACKING_FULL_BACK_MARGIN) return RoleDuty::Attack;
-  if (defending >= flair + DEFENSIVE_FULL_BACK_MARGIN) return RoleDuty::Defend;
-  return RoleDuty::Support;
+  if (engine >= defending + ATTACKING_FULL_BACK_MARGIN) return Attack;
+  if (defending >= flair + DEFENSIVE_FULL_BACK_MARGIN) return Defend;
+  return Support;
 }
 
 TacticalRole suggestedRole(const Player& player, RoleFamily family)
@@ -465,17 +472,18 @@ TacticalRole suggestedRole(const Player& player, RoleFamily family)
 
 Vector2F possessionOffset(PossessionShape shape, Vector2F anchor)
 {
+  using enum PossessionShape;
   const RoleFamily family = familyForSlot(anchor);
   switch (shape)
   {
-    case PossessionShape::KeepShape:
-    case PossessionShape::COUNT:
+    case KeepShape:
+    case COUNT:
       break;
-    case PossessionShape::FullBacksPush:
+    case FullBacksPush:
       if (family == RoleFamily::FullBack) return {0.22f, 0.0f};
       if (family == RoleFamily::Wide) return {0.05f, inward(anchor, 0.08f)};
       break;
-    case PossessionShape::BuildWithThree:
+    case BuildWithThree:
       // The left full-back becomes a third centre-back, the right one a
       // wing-back; the holding player screens and the wide men push on.
       if (family == RoleFamily::FullBack)
@@ -485,7 +493,7 @@ Vector2F possessionOffset(PossessionShape shape, Vector2F anchor)
       if (family == RoleFamily::Holding) return {-0.04f, 0.0f};
       if (family == RoleFamily::Central) return {0.03f, 0.0f};
       break;
-    case PossessionShape::NarrowFront:
+    case NarrowFront:
       if (family == RoleFamily::FullBack) return {0.20f, 0.0f};
       if (family == RoleFamily::Wide) return {0.04f, inward(anchor, 0.18f)};
       if (family == RoleFamily::Attacking) return {0.03f, 0.0f};

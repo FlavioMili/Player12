@@ -17,6 +17,7 @@
 #include <limits>
 #include <optional>
 #include <unordered_map>
+#include <utility>
 
 #include "controller/game_controller.h"
 #include "database/gamedata.h"
@@ -35,7 +36,8 @@ namespace
 {
 constexpr float FILTER_LABEL_WIDTH = 240.0f;
 constexpr size_t SEARCH_LIMIT = 250;
-constexpr int ROLE_COUNT = static_cast<int>(PlayerRole::UNKNOWN);
+constexpr int ROLE_COUNT =
+    static_cast<int>(std::to_underlying(PlayerRole::UNKNOWN));
 /** Saved column view shared by the search and shortlist tables. */
 constexpr const char* PLAYER_TABLE_KEY = "scouting";
 
@@ -63,9 +65,9 @@ const std::array<UI::Column, 9>& playerColumns()
 /** Column picker at the right end of the current line (or the next). */
 void playerColumnPicker(UI::ColumnMask fitted)
 {
-  const float width =
-      UI::buttonWidth(LOC("TABLE_COLUMNS"), UI::ButtonSize::COMPACT);
-  if (UI::sameLineIfFits(width))
+  if (const float width =
+          UI::buttonWidth(LOC("TABLE_COLUMNS"), UI::ButtonSize::COMPACT);
+      UI::sameLineIfFits(width))
     ImGui::SetCursorPosX(ImGui::GetCursorPosX() +
                          ImGui::GetContentRegionAvail().x - width);
   UI::columnPicker(PLAYER_TABLE_KEY, playerColumns(), fitted);
@@ -96,14 +98,15 @@ std::string rangeText(float low, float high)
 
 ImVec4 gradeColor(ScoutGrade grade)
 {
+  using enum ScoutGrade;
   const Theme::Palette& palette = Theme::palette();
   switch (grade)
   {
-    case ScoutGrade::A:
+    case A:
       return palette.positive;
-    case ScoutGrade::B:
+    case B:
       return palette.warning;
-    case ScoutGrade::C:
+    case C:
       break;
   }
   return palette.muted;
@@ -111,13 +114,14 @@ ImVec4 gradeColor(ScoutGrade grade)
 
 const char* gradeLabel(ScoutGrade grade)
 {
+  using enum ScoutGrade;
   switch (grade)
   {
-    case ScoutGrade::A:
+    case A:
       return "A";
-    case ScoutGrade::B:
+    case B:
       return "B";
-    case ScoutGrade::C:
+    case C:
       break;
   }
   return "C";
@@ -132,9 +136,13 @@ void knowledgeBar(uint8_t knowledge)
   const ImVec2 start = ImGui::GetCursorScreenPos();
   const float offset = (ImGui::GetTextLineHeight() - height) * 0.5f;
   const ImVec2 top(start.x, start.y + offset);
-  const ImVec4 color = knowledge < 35   ? palette.negative
-                       : knowledge < 65 ? palette.warning
-                                        : palette.positive;
+  ImVec4 color;
+  if (knowledge < 35)
+    color = palette.negative;
+  else if (knowledge < 65)
+    color = palette.warning;
+  else
+    color = palette.positive;
   ImDrawList* drawList = ImGui::GetWindowDrawList();
   drawList->AddRectFilled(top, ImVec2(top.x + width, top.y + height),
                           Theme::toU32(palette.raised), height * 0.5f);
@@ -194,11 +202,15 @@ ScoutingScene::ScoutingScene(GUIView* parent, Tab initialTab)
 {
 }
 
-void ScoutingScene::update(float /*deltaTime*/) {}
+void ScoutingScene::update(float /*deltaTime*/)
+{
+  // Scouting has no frame-by-frame state; refresh() and user actions rebuild
+  // its cached rows when data changes.
+}
 
 void ScoutingScene::refresh()
 {
-  GameController& controller = guiView->getController();
+  const GameController& controller = guiView->getController();
   scouts = controller.getScouts();
   leagues.clear();
   for (const League& league : controller.getLeagues())
@@ -213,7 +225,7 @@ void ScoutingScene::refresh()
 
 void ScoutingScene::rebuildReports()
 {
-  GameController& controller = guiView->getController();
+  const GameController& controller = guiView->getController();
   reports.clear();
   const auto& source = controller.getScoutReports();
   reports.reserve(source.size());
@@ -296,9 +308,7 @@ void ScoutingScene::rebuildSearch()
     {
       const auto player =
           guiView->getController().getGameData()->getPlayer(row.player_id);
-      if (!player ||
-          lower(player->get().getName()).find(query) == std::string::npos)
-        continue;
+      if (!player || !lower(player->get().getName()).contains(query)) continue;
     }
     search_rows.push_back(makeLine(row));
     if (search_rows.size() >= SEARCH_LIMIT) break;
@@ -310,23 +320,24 @@ void ScoutingScene::sortSearch()
 {
   const auto key = [this](const PlayerLine& a, const PlayerLine& b)
   {
+    using enum SearchColumn;
     switch (sort_column)
     {
-      case SearchColumn::NAME:
+      case NAME:
         return UI::compare(a.name_lower, b.name_lower);
-      case SearchColumn::CLUB:
+      case CLUB:
         return UI::compare(a.club, b.club);
-      case SearchColumn::ROLE:
+      case ROLE:
         return UI::compare(a.row.role, b.row.role);
-      case SearchColumn::AGE:
+      case AGE:
         return UI::compare(a.row.age, b.row.age);
-      case SearchColumn::ABILITY:
+      case ABILITY:
         return UI::compare(a.row.overall, b.row.overall);
-      case SearchColumn::POTENTIAL:
+      case POTENTIAL:
         return UI::compare(a.row.potential_high, b.row.potential_high);
-      case SearchColumn::KNOWLEDGE:
+      case KNOWLEDGE:
         return UI::compare(a.row.knowledge, b.row.knowledge);
-      case SearchColumn::VALUE:
+      case VALUE:
         return UI::compare(a.row.estimated_value, b.row.estimated_value);
     }
     return 0;
@@ -341,7 +352,7 @@ void ScoutingScene::sortSearch()
 
 void ScoutingScene::rebuildShortlist()
 {
-  GameController& controller = guiView->getController();
+  const GameController& controller = guiView->getController();
   shortlist_rows.clear();
   for (const ShortlistEntry& entry : controller.getShortlist())
   {
@@ -377,8 +388,8 @@ void ScoutingScene::rebuildShortlist()
 
 void ScoutingScene::renderContent()
 {
-  GameController& controller = guiView->getController();
-  if (!controller.getManagedTeam())
+  if (GameController& controller = guiView->getController();
+      !controller.getManagedTeam())
   {
     UI::emptyState(LOC("DASHBOARD_CHOOSE_CLUB"), nullptr);
     return;
@@ -438,7 +449,7 @@ bool ScoutingScene::playerCell(PlayerID playerId, const std::string& name,
   return clicked;
 }
 
-void ScoutingScene::selectPlayer(PlayerID playerId, const std::string& name)
+void ScoutingScene::selectPlayer(PlayerID playerId, std::string_view name)
 {
   selected_player = playerId;
   selected_name = name;
@@ -601,12 +612,13 @@ void ScoutingScene::renderSearchFilters()
   changed |= roleCombo("##role", &filter_role);
   ImGui::SameLine();
   ImGui::SetNextItemWidth(field);
-  const std::string leagueLabel =
-      filter_league == 0
-          ? std::string(LOC("SCOUTING_ALL_LEAGUES"))
-          : (filter_league == 1
-                 ? std::string(LOC("SCOUTING_TARGET_FREE_AGENTS"))
-                 : leagues[static_cast<size_t>(filter_league - 2)].second);
+  std::string leagueLabel;
+  if (filter_league == 0)
+    leagueLabel = LOC("SCOUTING_ALL_LEAGUES");
+  else if (filter_league == 1)
+    leagueLabel = LOC("SCOUTING_TARGET_FREE_AGENTS");
+  else
+    leagueLabel = leagues[static_cast<size_t>(filter_league - 2)].second;
   if (ImGui::BeginCombo("##league", leagueLabel.c_str()))
   {
     if (ImGui::Selectable(LOC("SCOUTING_ALL_LEAGUES"), filter_league == 0))
@@ -707,9 +719,9 @@ void ScoutingScene::renderPlayerTable(const char* id,
       sortable && specs != nullptr && specs->SpecsCount > 0)
   {
     const auto column = static_cast<SearchColumn>(specs->Specs[0].ColumnUserID);
-    const bool ascending =
-        specs->Specs[0].SortDirection == ImGuiSortDirection_Ascending;
-    if (specs->SpecsDirty || column != sort_column ||
+    if (const bool ascending =
+            specs->Specs[0].SortDirection == ImGuiSortDirection_Ascending;
+        specs->SpecsDirty || column != sort_column ||
         ascending != sort_ascending)
     {
       sort_column = column;
@@ -806,7 +818,7 @@ void ScoutingScene::renderComparison()
   for (const ComparisonLine& line : comparison)
   {
     const SquadComparisonRow& row = line.row;
-    ImGui::PushID(static_cast<int>(row.role));
+    ImGui::PushID(static_cast<int>(std::to_underlying(row.role)));
     ImGui::TableNextRow();
     ImGui::TableNextColumn();
     ImGui::TextUnformatted(line.role.c_str());
@@ -880,7 +892,7 @@ void ScoutingScene::renderFocus()
         LOC("SCOUTING_FOCUS_SUMMARY"),
         roleLabel(focus.role == PlayerRole::UNKNOWN
                       ? 0
-                      : static_cast<int>(focus.role) + 1)
+                      : static_cast<int>(std::to_underlying(focus.role)) + 1)
             .c_str(),
         focus.min_age, focus.max_age, focus.min_ability,
         limit(focus.max_fee).c_str(), limit(focus.max_wage).c_str());
@@ -894,7 +906,7 @@ void ScoutingScene::renderFocus()
       focus_draft = focus;
       focus_role = focus.role == PlayerRole::UNKNOWN
                        ? 0
-                       : static_cast<int>(focus.role) + 1;
+                       : static_cast<int>(std::to_underlying(focus.role)) + 1;
       focus_min_age = focus.min_age;
       focus_max_age = focus.max_age;
       focus_min_ability = focus.min_ability;

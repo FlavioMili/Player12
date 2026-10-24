@@ -11,6 +11,7 @@
 #include <algorithm>
 #include <cmath>
 #include <numbers>
+#include <utility>
 
 namespace Audio
 {
@@ -113,14 +114,15 @@ float Drift::step(float seconds)
 
 bool isCrowdSound(Sound sound)
 {
+  using enum Sound;
   switch (sound)
   {
-    case Sound::CROWD_OOH:
-    case Sound::CROWD_CHEER:
-    case Sound::CROWD_GROAN:
-    case Sound::CROWD_BOO:
-    case Sound::CROWD_WHISTLES:
-    case Sound::CROWD_APPLAUSE:
+    case CROWD_OOH:
+    case CROWD_CHEER:
+    case CROWD_GROAN:
+    case CROWD_BOO:
+    case CROWD_WHISTLES:
+    case CROWD_APPLAUSE:
       return true;
     default:
       return false;
@@ -156,10 +158,10 @@ void Voice::start(const SoundCommand& soundCommand, std::uint32_t seed)
   const float pan = std::clamp(command.pan, -1.0f, 1.0f);
   const float angle = (pan + 1.0f) * PI * 0.25f;
   const float gain =
-      command.gain *
-      (command.sound < Sound::COUNT
-           ? SOUND_LEVELS[static_cast<std::size_t>(command.sound)]
-           : 0.0f);
+      command.gain * (command.sound < Sound::COUNT
+                          ? SOUND_LEVELS[static_cast<std::size_t>(
+                                std::to_underlying(command.sound))]
+                          : 0.0f);
   leftGain = std::cos(angle) * std::numbers::sqrt2_v<float> * gain;
   rightGain = std::sin(angle) * std::numbers::sqrt2_v<float> * gain;
 
@@ -481,6 +483,7 @@ float Voice::renderApplause(float& right)
 
 bool Voice::render(float* out, int frames)
 {
+  using enum Sound;
   if (!playing) return false;
   for (int frame = 0; frame < frames; ++frame)
   {
@@ -494,7 +497,7 @@ bool Voice::render(float* out, int frames)
       updateControl();
       if (isCrowdSound(command.sound))
         envelope = crowdEnvelope();
-      else if (command.sound == Sound::WHISTLE)
+      else if (command.sound == WHISTLE)
         excitation = whistleEnvelope();
     }
     controlCounter = (controlCounter + 1) % CONTROL_BLOCK;
@@ -503,46 +506,50 @@ bool Voice::render(float* out, int frames)
     float right = 0.0f;
     switch (command.sound)
     {
-      case Sound::KICK:
-        left = right = renderKick();
+      case KICK:
+        right = renderKick();
+        left = right;
         break;
-      case Sound::NET:
-        left = right = renderNet();
+      case NET:
+        right = renderNet();
+        left = right;
         break;
-      case Sound::WOODWORK:
-        left = right = renderWoodwork();
+      case WOODWORK:
+        right = renderWoodwork();
+        left = right;
         break;
-      case Sound::WHISTLE:
-        left = right = renderWhistle();
+      case WHISTLE:
+        right = renderWhistle();
+        left = right;
         break;
-      case Sound::CROWD_OOH:
+      case CROWD_OOH:
         left = renderCrowdVowel(1.0f, 0.55f) * 0.9f * envelope;
         right = excitationRight * 0.9f * envelope;
         break;
-      case Sound::CROWD_CHEER:
+      case CROWD_CHEER:
         left = renderCrowdVowel(0.9f, 0.7f) * 1.1f * envelope;
         right = excitationRight * 1.1f * envelope;
         break;
-      case Sound::CROWD_GROAN:
+      case CROWD_GROAN:
         left = renderCrowdVowel(1.0f, 0.5f) * 0.85f * envelope;
         right = excitationRight * 0.85f * envelope;
         break;
-      case Sound::CROWD_BOO:
+      case CROWD_BOO:
         left = renderCrowdVowel(1.0f, 0.4f) * 0.8f * envelope;
         right = excitationRight * 0.8f * envelope;
         break;
-      case Sound::CROWD_WHISTLES:
+      case CROWD_WHISTLES:
       {
         const float mono = renderCrowdWhistles() * envelope;
         left = mono;
         right = mono;
         break;
       }
-      case Sound::CROWD_APPLAUSE:
+      case CROWD_APPLAUSE:
         left = renderApplause(right) * envelope;
         right *= envelope;
         break;
-      case Sound::COUNT:
+      case COUNT:
         break;
     }
     out[2 * frame] += left * leftGain;
@@ -567,7 +574,7 @@ CrowdBed::Channel::Channel(std::uint32_t seed)
   air.set(5200.0f, 0.6f);
 }
 
-CrowdBed::CrowdBed() : left(0xC0FFEEU), right(0xBADA55U) {}
+CrowdBed::CrowdBed() = default;
 
 void CrowdBed::setTargets(float intensityValue, float levelValue)
 {

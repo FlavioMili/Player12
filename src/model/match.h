@@ -163,7 +163,7 @@ class Match
   GameDateValue match_date;
   MatchType match_type;
   uint8_t home_score;
-  uint8_t away_score;
+  uint8_t away_score = 0;
   LeagueID competition_id;
   uint8_t stage;
   uint16_t kickoff = 0;

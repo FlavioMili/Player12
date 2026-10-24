@@ -11,6 +11,7 @@
 #include <fstream>
 #include <nlohmann/json.hpp>
 #include <string>
+#include <utility>
 
 #include "global/paths.h"
 #include "model/match_commentary.h"
@@ -228,10 +229,14 @@ TEST(MatchCommentaryTest, EveryEventHasALineInBothLanguages)
 {
   const nlohmann::json english = languageFile("English.json");
   const nlohmann::json italian = languageFile("Italian.json");
-  for (int type = 0; type <= static_cast<int>(MatchEventType::PENALTY_SHOOTOUT);
+  for (int type = 0;
+       type <=
+       static_cast<int>(std::to_underlying(MatchEventType::PENALTY_SHOOTOUT));
        ++type)
   {
-    for (int detail = 0; detail <= static_cast<int>(MatchEventDetail::MISSED);
+    for (int detail = 0;
+         detail <=
+         static_cast<int>(std::to_underlying(MatchEventDetail::MISSED));
          ++detail)
     {
       MatchEvent event;

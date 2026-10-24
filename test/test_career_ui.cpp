@@ -94,11 +94,15 @@ constexpr std::uint64_t WORLD_SEED = 20250702;
 
 int uniqueSlot(int offset)
 {
-  return 8'000'000 + static_cast<int>(getpid() % 100'000) * 10 + offset;
+  return 8'000'000 + getpid() % 100'000 * 10 + offset;
 }
 
 struct SlotCleanup
 {
+  explicit SlotCleanup(int saveSlot) : slot(saveSlot) {}
+  SlotCleanup(const SlotCleanup&) = delete;
+  SlotCleanup& operator=(const SlotCleanup&) = delete;
+
   int slot;
   ~SlotCleanup() { RuntimePaths::removeSave(slot); }
 };
@@ -114,8 +118,8 @@ void capture(GUIView& view, const char* name)
 void resize(GUIView& view, int width, int height)
 {
   SDL_SetWindowSize(view.getWindow(), width, height);
-  SDL_Event event{};
-  event.type = SDL_EVENT_WINDOW_RESIZED;
+  SDL_Event event{.window = {}};
+  event.window.type = SDL_EVENT_WINDOW_RESIZED;
   event.window.windowID = SDL_GetWindowID(view.getWindow());
   event.window.data1 = width;
   event.window.data2 = height;
@@ -147,6 +151,7 @@ Scene* open(GUIView& view, NavSection section)
 
 TEST(CareerUiTest, PlanningHolidayAwardsAndRecords)
 {
+  using enum NavSection;
   SDL_SetHint(SDL_HINT_VIDEO_DRIVER, "dummy");
   Logger::init();
   const SlotCleanup slot{uniqueSlot(0)};
@@ -177,7 +182,7 @@ TEST(CareerUiTest, PlanningHolidayAwardsAndRecords)
   view.changeScene(std::make_unique<MainGameScene>(&view));
   frames(view, 3);
 
-  auto* planning = open<PreseasonScene>(view, NavSection::PLANNING);
+  auto* planning = open<PreseasonScene>(view, PLANNING);
   ASSERT_NE(planning, nullptr);
   EXPECT_EQ(Bridge::friendlies(*planning), 4u);
   capture(view, "career_planning.bmp");
@@ -224,13 +229,13 @@ TEST(CareerUiTest, PlanningHolidayAwardsAndRecords)
   capture(view, "career_holiday_summary.bmp");
   pressEscape(view);
 
-  auto* awards = open<AwardsScene>(view, NavSection::AWARDS);
+  auto* awards = open<AwardsScene>(view, AWARDS);
   ASSERT_NE(awards, nullptr);
   EXPECT_GT(Bridge::monthRows(*awards), 0u);
   EXPECT_GT(Bridge::raceRows(*awards), 0u);
   capture(view, "career_awards.bmp");
 
-  auto* records = open<RecordsScene>(view, NavSection::RECORDS);
+  auto* records = open<RecordsScene>(view, RECORDS);
   ASSERT_NE(records, nullptr);
   EXPECT_GT(Bridge::clubRecords(*records), 0u);
   capture(view, "career_records_club.bmp");
@@ -255,9 +260,8 @@ TEST(CareerUiTest, PlanningHolidayAwardsAndRecords)
     resize(view, width, height);
     frames(view, 3);
     for (const auto& [section, name] :
-         {std::pair{NavSection::AWARDS, "awards"},
-          std::pair{NavSection::RECORDS, "records"},
-          std::pair{NavSection::PLANNING, "planning"}})
+         {std::pair{AWARDS, "awards"}, std::pair{RECORDS, "records"},
+          std::pair{PLANNING, "planning"}})
     {
       Navigation::open(&view, section);
       frames(view, 4);

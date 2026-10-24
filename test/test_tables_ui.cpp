@@ -97,11 +97,15 @@ constexpr std::uint64_t WORLD_SEED = 20250702;
 
 int uniqueSlot(int offset)
 {
-  return 820'000 + static_cast<int>(getpid() % 100'000) * 10 + offset;
+  return 820'000 + (getpid() % 100'000) * 10 + offset;
 }
 
 struct SlotCleanup
 {
+  explicit SlotCleanup(int saveSlot) : slot(saveSlot) {}
+  SlotCleanup(const SlotCleanup&) = delete;
+  SlotCleanup& operator=(const SlotCleanup&) = delete;
+
   int slot;
   ~SlotCleanup() { RuntimePaths::removeSave(slot); }
 };
@@ -109,11 +113,22 @@ struct SlotCleanup
 /** Restores the user's settings (memory and file) when a test ends. */
 struct SettingsRestore
 {
+  SettingsRestore() = default;
+  SettingsRestore(const SettingsRestore&) = delete;
+  SettingsRestore& operator=(const SettingsRestore&) = delete;
+
   Settings original = SettingsManager::instance()->get();
   ~SettingsRestore()
   {
-    SettingsManager::instance()->get() = original;
-    SettingsManager::instance()->save();
+    try
+    {
+      SettingsManager::instance()->get() = original;
+      SettingsManager::instance()->save();
+    }
+    catch (const std::exception& error)
+    {
+      ADD_FAILURE() << "Could not restore test settings: " << error.what();
+    }
   }
 };
 
@@ -128,8 +143,8 @@ void capture(GUIView& view, const std::string& name)
 void resize(GUIView& view, int width, int height)
 {
   SDL_SetWindowSize(view.getWindow(), width, height);
-  SDL_Event event{};
-  event.type = SDL_EVENT_WINDOW_RESIZED;
+  SDL_Event event{.window = {}};
+  event.window.type = SDL_EVENT_WINDOW_RESIZED;
   event.window.windowID = SDL_GetWindowID(view.getWindow());
   event.window.data1 = width;
   event.window.data2 = height;
@@ -265,7 +280,7 @@ TEST(TablesUiTest, SavedColumnViewsSurviveReloadAndWideWindows)
 
   Navigation::open(&view, NavSection::SCOUTING);
   frames(view, 3);
-  if (auto* scouting = active<ScoutingScene>(view))
+  if (const auto* scouting = active<ScoutingScene>(view))
   {
     frames(view, 3);
     const UI::ColumnMask players = Bridge::mask(*scouting);

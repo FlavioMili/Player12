@@ -49,9 +49,9 @@ std::vector<EffectLine> effectLines(const DilemmaEffects& effects,
   {
     const int points = rounded(value);
     if (points == 0) return;
-    lines.push_back({name.empty() ? fmt::sprintf(LOC(key), points)
-                                  : fmt::sprintf(LOC(key), name, points),
-                     points > 0 ? 1 : -1});
+    lines.emplace_back(name.empty() ? fmt::sprintf(LOC(key), points)
+                                    : fmt::sprintf(LOC(key), name, points),
+                       points > 0 ? 1 : -1);
   };
   add(effects.morale, "INBOX_DILEMMA_EFFECT_MORALE", subject);
   add(effects.trust, "INBOX_DILEMMA_EFFECT_TRUST", subject);
@@ -61,11 +61,11 @@ std::vector<EffectLine> effectLines(const DilemmaEffects& effects,
   add(effects.squad_morale, "INBOX_DILEMMA_EFFECT_SQUAD", std::string());
   if (effects.money != 0)
   {
-    lines.push_back(
-        {fmt::sprintf(LOC(effects.money > 0 ? "INBOX_DILEMMA_EFFECT_INCOME"
-                                            : "INBOX_DILEMMA_EFFECT_COST"),
-                      Format::money(std::abs(effects.money))),
-         effects.money > 0 ? 1 : -1});
+    lines.emplace_back(
+        fmt::sprintf(LOC(effects.money > 0 ? "INBOX_DILEMMA_EFFECT_INCOME"
+                                           : "INBOX_DILEMMA_EFFECT_COST"),
+                     Format::money(std::abs(effects.money))),
+        effects.money > 0 ? 1 : -1);
   }
   return lines;
 }
@@ -118,7 +118,7 @@ std::optional<int> render(GameController& controller)
     if (UI::secondaryButton(label) && controller.resolveDilemma(option))
       taken = option;
     ImGui::PopID();
-    if (taken) break;
+    if (taken.has_value()) break;
   }
   ImGui::EndTable();
   return taken;

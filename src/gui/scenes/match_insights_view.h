@@ -32,12 +32,12 @@ class MatchInsightsView
  public:
   /** Caches the view of a played match; available() is false when the
    * match was not tracked (other clubs' fixtures, quick results). */
-  void build(GameController& controller, const MatchReport& report,
+  void build(const GameController& controller, const MatchReport& report,
              const std::optional<ManagedMatchSnapshot>& snapshot,
              const std::string& home_name, const std::string& away_name);
   [[nodiscard]] bool available() const { return has_data; }
 
-  void render(GUIView* view);
+  void render(const GUIView* view);
 
  private:
   friend class GameFlowTest_GUIFlowLifecycle_Test;
@@ -98,7 +98,7 @@ class MatchInsightsView
     int most = 0;
   };
 
-  void renderSummary(float width);
+  void renderSummary(float width) const;
   void renderTimeline(float width);
   void renderShotMap(float width);
   void renderMoments(float width);

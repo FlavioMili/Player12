@@ -9,16 +9,41 @@ permissions:
   contents: read
 
 concurrency:
-  group: ci-${{ github.workflow }}-${{ github.ref }}
-  cancel-in-progress: true
+  # Each main commit keeps its own run so a newer push does not cancel its release.
+  group: ci-${{ github.workflow }}-${{ github.event_name == 'push' && github.ref == 'refs/heads/main' && github.sha || github.ref }}
+  cancel-in-progress: ${{ github.event_name != 'push' || github.ref != 'refs/heads/main' }}
 
 jobs:
+  metadata:
+    name: Build version
+    runs-on: ubuntu-24.04
+    outputs:
+      version: ${{ steps.version.outputs.version }}
+      tag: ${{ steps.version.outputs.tag }}
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6.1.0
+
+      - name: Choose version
+        id: version
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          REF_NAME: ${{ github.ref }}
+        run: |
+          version=$(packaging/release_version.sh)
+          if [[ $EVENT_NAME == push && $REF_NAME == refs/heads/main ]]; then
+            version="$version-dev.sha${GITHUB_SHA:0:12}"
+            echo "tag=dev-$GITHUB_SHA" >> "$GITHUB_OUTPUT"
+          fi
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+
   # Release builds, headless tests and package smoke tests on Linux, macOS
   # and Windows. Full tests run here; release builds run package smoke checks.
-  # Packages are kept as short-lived artifacts.
+  # Successful main commits also publish these packages as development releases.
   packages:
+    needs: metadata
     uses: ./.github/workflows/build.yml
     with:
+      version: ${{ needs.metadata.outputs.version }}
       retention-days: 3
 
   # Debug build with AddressSanitizer and UndefinedBehaviorSanitizer (GCC 14)
@@ -83,3 +108,57 @@ jobs:
         run: >
           ctest --preset debug-sanitized --parallel 2 --timeout 900
           -L "core|sanitizer" -LE "playtest|monkey|slow"
+
+  development-release:
+    name: Publish development pre-release
+    needs: [metadata, packages, sanitized]
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: write
+    env:
+      GH_TOKEN: ${{ github.token }}
+      GH_REPO: ${{ github.repository }}
+      DEVELOPMENT_TAG: ${{ needs.metadata.outputs.tag }}
+      DEVELOPMENT_VERSION: ${{ needs.metadata.outputs.version }}
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6.1.0
+
+      - name: Download tested packages
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          pattern: package-*
+          path: dist
+          merge-multiple: true
+
+      - name: Check packages and write checksums
+        working-directory: dist
+        run: |
+          compgen -G "*-linux-x86_64.tar.gz" > /dev/null
+          compgen -G "*-linux-x86_64.AppImage" > /dev/null
+          compgen -G "*-macos-arm64.zip" > /dev/null
+          compgen -G "*-windows-x86_64.zip" > /dev/null
+          sha256sum -- * > SHA256SUMS.txt
+
+      - name: Write development release notes
+        run: |
+          {
+            printf 'Development build `%s` from main.\n\n' "$DEVELOPMENT_VERSION"
+            printf 'Commit: [%s](https://github.com/%s/commit/%s)\n\n' \
+              "$GITHUB_SHA" "$GH_REPO" "$GITHUB_SHA"
+            git log -1 --format=%s
+            printf '\nPackages passed CI tests, sanitizers, and package smoke checks.\n'
+            printf '\nCheck downloads with `sha256sum -c SHA256SUMS.txt`.\n'
+          } > "$RUNNER_TEMP/development-notes.md"
+
+      - name: Create or update development pre-release
+        run: |
+          if gh release view "$DEVELOPMENT_TAG" > /dev/null 2>&1; then
+            gh release upload "$DEVELOPMENT_TAG" dist/* --clobber
+          else
+            gh release create "$DEVELOPMENT_TAG" dist/* \
+              --target "$GITHUB_SHA" \
+              --title "Development $DEVELOPMENT_VERSION" \
+              --notes-file "$RUNNER_TEMP/development-notes.md" \
+              --prerelease --latest=false
+          fi

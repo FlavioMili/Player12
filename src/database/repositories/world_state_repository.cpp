@@ -87,9 +87,9 @@ bool WorldStateRepository::loadBoard(BoardState& board) const
         static_cast<std::uint8_t>(sqlite3_column_int(stmt, 7));
     loaded.dismissed = sqlite3_column_int(stmt, 8) != 0;
     const unsigned char* text = sqlite3_column_text(stmt, 9);
-    const auto deltas = nlohmann::json::parse(
-        text ? reinterpret_cast<const char*>(text) : "[]", nullptr, false);
-    if (deltas.is_array())
+    if (const auto deltas = nlohmann::json::parse(
+            text ? reinterpret_cast<const char*>(text) : "[]", nullptr, false);
+        deltas.is_array())
     {
       for (const auto& delta : deltas)
       {
@@ -129,7 +129,8 @@ void WorldStateRepository::saveBoard(const BoardState& board) const
       "targets_set) VALUES (1, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);");
   sqlite3_bind_int(stmt, 1, board.team_id);
   sqlite3_bind_int(stmt, 2, board.season_year);
-  sqlite3_bind_int(stmt, 3, static_cast<int>(board.objective));
+  sqlite3_bind_int(stmt, 3,
+                   static_cast<int>(std::to_underlying(board.objective)));
   sqlite3_bind_int(stmt, 4, board.expected_position);
   sqlite3_bind_int(stmt, 5, board.target_position);
   sqlite3_bind_double(stmt, 6, static_cast<double>(board.confidence));
@@ -137,8 +138,10 @@ void WorldStateRepository::saveBoard(const BoardState& board) const
   sqlite3_bind_int(stmt, 8, board.league_matches);
   sqlite3_bind_int(stmt, 9, board.dismissed ? 1 : 0);
   sqlite3_bind_text(stmt, 10, deltas_text.c_str(), -1, SQLITE_TRANSIENT);
-  sqlite3_bind_int(stmt, 11, static_cast<int>(board.cup_objective));
-  sqlite3_bind_int(stmt, 12, static_cast<int>(board.finance_objective));
+  sqlite3_bind_int(stmt, 11,
+                   static_cast<int>(std::to_underlying(board.cup_objective)));
+  sqlite3_bind_int(
+      stmt, 12, static_cast<int>(std::to_underlying(board.finance_objective)));
   sqlite3_bind_int(stmt, 13, board.youth_target);
   sqlite3_bind_int64(stmt, 14, board.start_balance);
   sqlite3_bind_int(stmt, 15, board.targets_set ? 1 : 0);

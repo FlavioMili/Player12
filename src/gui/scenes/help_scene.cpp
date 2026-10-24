@@ -11,6 +11,7 @@
 #include <imgui.h>
 
 #include <algorithm>
+#include <utility>
 
 #include "controller/game_controller.h"
 #include "global/language_manager.h"
@@ -93,7 +94,7 @@ void HelpScene::filterTerms()
   const std::string needle = PlayerView::toLower(filtered_query);
   matches.clear();
   for (std::size_t index = 0; index < TERMS.size(); ++index)
-    if (needle.empty() || search_text[index].find(needle) != std::string::npos)
+    if (needle.empty() || search_text[index].contains(needle))
       matches.push_back(index);
 }
 
@@ -138,7 +139,7 @@ void HelpScene::render()
   renderStart();
   renderShortcuts();
   renderGlossary();
-  if (focus_pending && focus_screen_y)
+  if (focus_pending && focus_screen_y.has_value())
   {
     ImGui::SetScrollFromPosY(*focus_screen_y - ImGui::GetWindowPos().y, 0.3f);
     focus_pending = false;
@@ -165,9 +166,10 @@ void HelpScene::renderStart()
     ImGui::TextUnformatted(LOC(key));
   }
   ImGui::PopTextWrapPos();
-  auto* hub = in_career ? dynamic_cast<MainGameScene*>(guiView->getBaseScene())
-                        : nullptr;
-  if (hub != nullptr && guiView->getController().getManagedTeam())
+  if (auto* hub = in_career
+                      ? dynamic_cast<MainGameScene*>(guiView->getBaseScene())
+                      : nullptr;
+      hub != nullptr && guiView->getController().getManagedTeam())
   {
     ImGui::Dummy(ImVec2(0.0f, Theme::Space::XS * Theme::scale()));
     if (UI::secondaryButton(LOC("HELP_REPLAY_TOUR")))
@@ -207,25 +209,28 @@ void HelpScene::rebuildShortcuts()
   shortcuts_revision = registry.revision();
   shortcut_rows.clear();
   for (std::size_t index = 0;
-       index < static_cast<std::size_t>(Input::Category::COUNT); ++index)
+       index <
+       static_cast<std::size_t>(std::to_underlying(Input::Category::COUNT));
+       ++index)
   {
     const auto category = static_cast<Input::Category>(index);
     bool heading = false;
     registry.forEach(
         category,
-        [&](Input::ActionId id, const Input::Action& action)
+        [this, &heading, category, &registry](Input::ActionId id,
+                                              const Input::Action& action)
         {
           if (!heading)
           {
-            shortcut_rows.push_back(
-                {Input::categoryKey(category), {}, true, true});
+            shortcut_rows.emplace_back(Input::categoryKey(category),
+                                       std::string{}, true, true);
             heading = true;
           }
           std::string keys = Input::chordLabel(action.chords[0]);
           if (action.chords[1] != ImGuiKey_None)
             keys += "  /  " + Input::chordLabel(action.chords[1]);
-          shortcut_rows.push_back({action.def.label_key, std::move(keys), false,
-                                   registry.isDefault(id)});
+          shortcut_rows.emplace_back(action.def.label_key, std::move(keys),
+                                     false, registry.isDefault(id));
         });
   }
 }
@@ -272,7 +277,7 @@ void HelpScene::renderGlossary()
   ImGui::PushTextWrapPos(0.0f);
   for (const std::size_t index : matches)
   {
-    const bool focused = focus_term && *focus_term == index;
+    const bool focused = focus_term.has_value() && *focus_term == index;
     const ImVec2 start = ImGui::GetCursorScreenPos();
     ImGui::Dummy(ImVec2(0.0f, Theme::Space::XS * scale));
     {

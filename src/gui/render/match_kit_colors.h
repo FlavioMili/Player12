@@ -10,6 +10,7 @@
 
 #include <imgui.h>
 
+#include <cmath>
 #include <cstdint>
 
 #include "global/types.h"
@@ -92,10 +93,12 @@ inline ImU32 shadeColor(ImU32 color, float factor)
   {
     const float scaled =
         static_cast<float>((value >> shift) & 0xFFU) * factor + 0.5f;
-    return static_cast<ImU32>(scaled < 0.0f     ? 0.0f
-                              : scaled > 255.0f ? 255.0f
-                                                : scaled)
-           << shift;
+    float bounded = scaled;
+    if (scaled < 0.0f)
+      bounded = 0.0f;
+    else if (scaled > 255.0f)
+      bounded = 255.0f;
+    return static_cast<ImU32>(bounded) << shift;
   };
   return scale(color, IM_COL32_R_SHIFT) | scale(color, IM_COL32_G_SHIFT) |
          scale(color, IM_COL32_B_SHIFT) | (color & IM_COL32_A_MASK);
@@ -106,9 +109,9 @@ inline ImU32 mixColor(ImU32 first, ImU32 second, float t)
 {
   const auto blend = [t](ImU32 a, ImU32 b, int shift)
   {
-    const float from = static_cast<float>((a >> shift) & 0xFFU);
-    const float to = static_cast<float>((b >> shift) & 0xFFU);
-    return static_cast<ImU32>(from + (to - from) * t + 0.5f) << shift;
+    const auto from = static_cast<float>((a >> shift) & 0xFFU);
+    const auto to = static_cast<float>((b >> shift) & 0xFFU);
+    return static_cast<ImU32>(std::lerp(from, to, t) + 0.5f) << shift;
   };
   return blend(first, second, IM_COL32_R_SHIFT) |
          blend(first, second, IM_COL32_G_SHIFT) |

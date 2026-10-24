@@ -15,8 +15,10 @@
 #include <cmath>
 #include <cstdint>
 #include <cstdio>
+#include <format>
 #include <map>
 #include <memory>
+#include <print>
 #include <string>
 #include <vector>
 
@@ -48,6 +50,7 @@ StatsConfig createStatsConfig()
 std::map<std::string, float> roleStats(PlayerRole role, float base,
                                        std::uint32_t salt)
 {
+  using enum PlayerRole;
   // Small deterministic spread by squad slot keeps squads from being clones
   // while equal-rated squads stay exactly equal.
   const float jitter = static_cast<float>((salt * 2654435761U) % 11U) - 5.0f;
@@ -61,47 +64,47 @@ std::map<std::string, float> roleStats(PlayerRole role, float base,
       {"Goalkeeping", 15.0f}};
   switch (role)
   {
-    case PlayerRole::GK:
+    case GK:
       stats["Goalkeeping"] = value(4.0f);
       stats["Shooting"] = value(-40.0f);
       stats["Dribbling"] = value(-30.0f);
       stats["Pace"] = value(-20.0f);
       break;
-    case PlayerRole::CB:
+    case CB:
       stats["Defending"] = value(8.0f);
       stats["Physicality"] = value(8.0f);
       stats["Shooting"] = value(-25.0f);
       stats["Dribbling"] = value(-15.0f);
       break;
-    case PlayerRole::LB:
-    case PlayerRole::RB:
+    case LB:
+    case RB:
       stats["Defending"] = value(4.0f);
       stats["Pace"] = value(4.0f);
       stats["Shooting"] = value(-20.0f);
       break;
-    case PlayerRole::LM:
-    case PlayerRole::RM:
-    case PlayerRole::LW:
-    case PlayerRole::RW:
+    case LM:
+    case RM:
+    case LW:
+    case RW:
       stats["Pace"] = value(6.0f);
       stats["Dribbling"] = value(4.0f);
       stats["Defending"] = value(-15.0f);
       stats["Shooting"] = value(-4.0f);
       break;
-    case PlayerRole::CM:
-    case PlayerRole::CDM:
-    case PlayerRole::CAM:
+    case CM:
+    case CDM:
+    case CAM:
       stats["Passing"] = value(6.0f);
       stats["Vision"] = value(6.0f);
       stats["Stamina"] = value(6.0f);
       stats["Defending"] = value(-6.0f);
       break;
-    case PlayerRole::ST:
+    case ST:
       stats["Shooting"] = value(8.0f);
       stats["Defending"] = value(-30.0f);
       stats["Dribbling"] = value(2.0f);
       break;
-    case PlayerRole::UNKNOWN:
+    case UNKNOWN:
       break;
   }
   return stats;
@@ -111,17 +114,24 @@ std::map<std::string, float> roleStats(PlayerRole role, float base,
 Team createCalibrationTeam(TeamID id, float rating,
                            std::vector<std::unique_ptr<Player>>& pool)
 {
-  Team team(id, 1, "Calibration " + std::to_string(id), 50'000'000, {},
+  Team team(id, 1, std::format("Calibration {}", id), 50'000'000, {},
             Strategy{}, Lineup{});
-  static constexpr PlayerRole ROLES[11] = {
+  static constexpr std::array ROLES = {
       PlayerRole::GK, PlayerRole::LB, PlayerRole::CB, PlayerRole::CB,
       PlayerRole::RB, PlayerRole::LM, PlayerRole::CM, PlayerRole::CM,
       PlayerRole::RM, PlayerRole::ST, PlayerRole::ST};
-  static constexpr Vector2F POSITIONS[11] = {
-      {0.04f, 0.50f}, {0.20f, 0.12f}, {0.20f, 0.38f}, {0.20f, 0.62f},
-      {0.20f, 0.88f}, {0.43f, 0.12f}, {0.43f, 0.38f}, {0.43f, 0.62f},
-      {0.43f, 0.88f}, {0.78f, 0.38f}, {0.78f, 0.62f}};
-  static constexpr PlayerRole BENCH[7] = {
+  static constexpr std::array<Vector2F, 11> POSITIONS = {{{0.04f, 0.50f},
+                                                          {0.20f, 0.12f},
+                                                          {0.20f, 0.38f},
+                                                          {0.20f, 0.62f},
+                                                          {0.20f, 0.88f},
+                                                          {0.43f, 0.12f},
+                                                          {0.43f, 0.38f},
+                                                          {0.43f, 0.62f},
+                                                          {0.43f, 0.88f},
+                                                          {0.78f, 0.38f},
+                                                          {0.78f, 0.62f}}};
+  static constexpr std::array BENCH = {
       PlayerRole::GK, PlayerRole::CB, PlayerRole::RB, PlayerRole::CM,
       PlayerRole::LM, PlayerRole::ST, PlayerRole::ST};
 
@@ -292,20 +302,21 @@ void accumulate(CalibrationTotals& totals, const MatchEngine& engine)
   for (const PlayerMatchStats& entry : engine.getPlayerStats())
   {
     (entry.isHomeTeam ? homeGoalsByPlayers : awayGoalsByPlayers) += entry.goals;
+    using enum PlayerRole;
     switch (entry.role)
     {
-      case PlayerRole::ST:
-      case PlayerRole::LW:
-      case PlayerRole::RW:
+      case ST:
+      case LW:
+      case RW:
         totals.forwardGoals += entry.goals;
         break;
-      case PlayerRole::CB:
-      case PlayerRole::LB:
-      case PlayerRole::RB:
+      case CB:
+      case LB:
+      case RB:
         totals.defenderGoals += entry.goals;
         break;
-      case PlayerRole::GK:
-      case PlayerRole::UNKNOWN:
+      case GK:
+      case UNKNOWN:
         break;
       default:
         totals.midfieldGoals += entry.goals;
@@ -319,9 +330,10 @@ void accumulate(CalibrationTotals& totals, const MatchEngine& engine)
     totals.maximumRating = std::max(totals.maximumRating, entry.rating);
     totals.ratingSum += entry.rating;
     ++totals.ratedPlayers;
-    const bool fullMatch = entry.started && !entry.substitutedOff &&
-                           !entry.sentOff && !entry.injured;
-    if (!fullMatch || entry.role == PlayerRole::GK) continue;
+    if (const bool fullMatch = entry.started && !entry.substitutedOff &&
+                               !entry.sentOff && !entry.injured;
+        !fullMatch || entry.role == PlayerRole::GK)
+      continue;
     ++totals.fullMatchPlayers;
     totals.fullMatchDistance += entry.distanceMetres;
     totals.fullMatchSecondHalfDistance += entry.secondHalfDistanceMetres;
@@ -674,8 +686,7 @@ void simulateCalibrationSeason(std::vector<Team>& clubs,
       engine.simulateToEnd();
       ASSERT_EQ(engine.getState(), MatchState::FULL_TIME);
       const int homeGoals = engine.getHomeScore();
-      const int awayGoals = engine.getAwayScore();
-      if (homeGoals > awayGoals)
+      if (const int awayGoals = engine.getAwayScore(); homeGoals > awayGoals)
       {
         ++sample.home_wins;
         sample.points.at(home) += WIN_POINTS;

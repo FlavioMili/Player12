@@ -98,7 +98,7 @@ class SquadPlannerScene : public ManagementScene
     int expiring = 0;
   };
 
-  void build(View& view, int season_offset);
+  void build(View& view, int season_offset) const;
   void renderDepth(float width);
   void renderGroup(const Group& group);
   void renderDetail(const Row& row);

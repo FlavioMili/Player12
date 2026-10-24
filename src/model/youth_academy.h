@@ -27,6 +27,9 @@
 class DatabaseConnection;
 class GameData;
 class Inbox;
+class NameRegistry;
+class SquadSurnames;
+struct StatsConfig;
 class WorldRng;
 
 /** @brief Where an academy player stands (values are persisted). */
@@ -497,6 +500,23 @@ class YouthAcademy
                                       Inbox& inbox);
 
  private:
+  struct YouthRound
+  {
+    const GameDateValue& date;
+    TeamID managed_team_id;
+    YouthStatus status;
+    const std::vector<std::vector<TeamID>>& groups;
+    YouthTableRow AcademyClub::* row_of;
+    std::vector<YouthResult>& results;
+    std::uint64_t salt;
+    float stand_in;
+  };
+  struct YouthMatchSheet
+  {
+    std::vector<std::pair<float, Player*>> players;
+    float strength = 0.0f;
+  };
+
   void bootstrap();
   /** Sets Player::isAcademyPlayer() from the records (after loading). */
   void syncFlags();
@@ -504,12 +524,28 @@ class YouthAcademy
    * football (released trialists and scholars nobody keeps). */
   void leaveFootball(TeamID team_id, PlayerID player_id);
   void promoteComputerAcademies(TeamID managed_team_id);
+  void processComputerAcademyPlayer(TeamID team_id, PlayerID player_id,
+                                    float overall, float level,
+                                    std::size_t& seniors,
+                                    std::size_t& reserve_size,
+                                    std::vector<PlayerID>& leaving);
   AcademyClub& clubState(TeamID team_id);
   void prune();
   void postPreview(const GameDateValue& date, TeamID managed_team_id,
                    Inbox& inbox) const;
   void runIntake(const GameDateValue& date, TeamID managed_team_id,
                  Inbox& inbox);
+  void processIntakeTeam(const GameDateValue& date, TeamID team_id,
+                         TeamID managed_team_id, std::uint64_t seed,
+                         const StatsConfig& config, NameRegistry& names,
+                         Inbox& inbox,
+                         std::unordered_map<TeamID, int>& u18_sizes);
+  PlayerID materializeIntakeCandidate(TeamID team_id, bool managed,
+                                      Language country,
+                                      const CandidateProfile& profile,
+                                      const StatsConfig& config,
+                                      NameRegistry& names,
+                                      SquadSurnames& surnames, WorldRng& rng);
   void closeDecisions(const GameDateValue& date, TeamID managed_team_id,
                       Inbox& inbox);
   void remindDecisions(const GameDateValue& date, TeamID managed_team_id,
@@ -521,12 +557,18 @@ class YouthAcademy
    * the players with @p status, stand-ins of @p stand_in ability for short
    * sheets, results in @p row_of and the managed club's @p results.
    */
-  void playRound(const GameDateValue& date, TeamID managed_team_id,
-                 YouthStatus status,
-                 const std::vector<std::vector<TeamID>>& groups,
-                 YouthTableRow AcademyClub::* row_of,
-                 std::vector<YouthResult>& results, std::uint64_t salt,
-                 float stand_in);
+  void playRound(const YouthRound& round);
+  void playGroup(const YouthRound& round, const std::vector<TeamID>& group,
+                 std::int32_t round_number, std::uint16_t season,
+                 const StatsConfig& config,
+                 std::unordered_map<TeamID, YouthMatchSheet>& sheets);
+  void playMatch(const YouthRound& round, TeamID home, TeamID away,
+                 const StatsConfig& config,
+                 std::unordered_map<TeamID, YouthMatchSheet>& sheets);
+  void recordMatchSide(const YouthRound& round, TeamID team_id,
+                       TeamID opponent_id, bool home, YouthMatchSheet& sheet,
+                       int scored, int conceded, WorldRng& rng,
+                       const StatsConfig& config);
   /** Computer-managed clubs without a U21 squad yet (new worlds and older
    * saves) move young players outside their senior plans down. */
   void setUpReserves(TeamID managed_team_id);
@@ -539,8 +581,12 @@ class YouthAcademy
   /** Season start: U21 players beyond the age rules move on. */
   void advanceReserves(TeamID managed_team_id,
                        std::vector<std::string>& to_first_team);
+  void processReservePlayer(bool managed, float level, PlayerID player_id,
+                            ReserveQuota& kept, std::size_t& seniors,
+                            std::vector<PlayerID>& leaving,
+                            std::vector<std::string>& to_first_team);
   /** Joins the U21 squad; resets the season's youth statistics. */
-  void enterReserves(Player& player, YouthRecord& youth);
+  void enterReserves(const Player& player, YouthRecord& youth);
   void completeProjects(const GameDateValue& date, TeamID managed_team_id,
                         Inbox& inbox);
   void snapshotProgress(const GameDateValue& date, TeamID managed_team_id);

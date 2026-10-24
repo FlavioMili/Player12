@@ -178,8 +178,8 @@ bool MatchPlayController::handleEvent(const SDL_Event& event)
         return false;
       const Control control = controlForButton(event.gbutton.button);
       if (control == CONTROL_COUNT) return false;
-      const bool down = event.type == SDL_EVENT_GAMEPAD_BUTTON_DOWN;
-      if (down != padHolds[control])
+      if (const bool down = event.type == SDL_EVENT_GAMEPAD_BUTTON_DOWN;
+          down != padHolds[control])
       {
         padHolds[control] = down;
         if (down)
@@ -322,15 +322,16 @@ void MatchPlayController::readStick(float& x, float& y) const
 
 void MatchPlayController::switchTo(MatchEngine& engine, PlayerID player)
 {
+  using enum MatchInputAction;
   if (player == 0 || player == engine.getControlledPlayer()) return;
   if (!engine.setControlledPlayer(player)) return;
   last_switch_seconds = engine.getSimulatedSeconds();
   // The new man starts from the held stick (the switch record clears it).
-  charging = MatchInputAction::NONE;
-  pending = MatchInputAction::NONE;
+  charging = NONE;
+  pending = NONE;
   submitted_any = false;
   MatchPlayerInput carried = submitted;
-  carried.action = MatchInputAction::NONE;
+  carried.action = NONE;
   carried.power = 0.0f;
   engine.submitInput(carried);
   submitted = carried;
@@ -359,20 +360,21 @@ void MatchPlayController::applySwitchingRules(MatchEngine& engine,
   // The side's pass: its receiver, so he can be moved onto the ball.
   if (!carrier && ball.isPass && ball.passByHome == home)
   {
-    const MatchPlayer* receiver =
-        ball.intendedReceiver
-            ? findPlayer(engine, ball.intendedReceiver->getId())
-            : nullptr;
-    if (receiver && receiver->onPitch && !receiver->isGoalkeeper &&
+    if (const MatchPlayer* receiver =
+            ball.intendedReceiver
+                ? findPlayer(engine, ball.intendedReceiver->getId())
+                : nullptr;
+        receiver && receiver->onPitch && !receiver->isGoalkeeper &&
         receiver->player->getId() != current)
       switchTo(engine, receiver->player->getId());
     return;
   }
   // Defending or a loose ball: the best placed team-mate, not too often.
   const bool autoLevel = settings.autoSwitch == PlayAutoSwitch::AUTO;
-  const double hold =
-      autoLevel ? AUTO_SWITCH_HOLD_SECONDS : ASSISTED_SWITCH_HOLD_SECONDS;
-  if (now - last_switch_seconds < hold) return;
+  if (const double hold =
+          autoLevel ? AUTO_SWITCH_HOLD_SECONDS : ASSISTED_SWITCH_HOLD_SECONDS;
+      now - last_switch_seconds < hold)
+    return;
   if (!autoLevel && !(idle && now - idle_since >= ASSISTED_IDLE_SECONDS))
     return;
   const PlayerID best = engine.suggestActivePlayer(home, current);
@@ -396,8 +398,8 @@ void MatchPlayController::update(MatchEngine& engine, float simulatedSeconds,
   // Who is the man: a lost one (substituted, sent off) is replaced at once;
   // otherwise the switching rules apply while the ball is in play.
   PlayerID current = engine.getControlledPlayer();
-  const MatchPlayer* man = findPlayer(engine, current);
-  if (!man || !man->onPitch || man->isGoalkeeper)
+  if (const MatchPlayer* man = findPlayer(engine, current);
+      !man || !man->onPitch || man->isGoalkeeper)
   {
     switchTo(engine, engine.suggestActivePlayer(home, 0));
   }
@@ -475,11 +477,13 @@ void MatchPlayController::update(MatchEngine& engine, float simulatedSeconds,
     if (pressed[SHOOT]) startCharge(MatchInputAction::SHOOT);
     if (pressed[THROUGH]) startCharge(MatchInputAction::THROUGH_BALL);
     if (pressed[LOB]) startCharge(MatchInputAction::LOFTED_PASS);
-    const Control chargeControl =
-        charging == MatchInputAction::SHOOT          ? SHOOT
-        : charging == MatchInputAction::THROUGH_BALL ? THROUGH
-        : charging == MatchInputAction::LOFTED_PASS  ? LOB
-                                                     : CONTROL_COUNT;
+    Control chargeControl = CONTROL_COUNT;
+    if (charging == MatchInputAction::SHOOT)
+      chargeControl = SHOOT;
+    else if (charging == MatchInputAction::THROUGH_BALL)
+      chargeControl = THROUGH;
+    else if (charging == MatchInputAction::LOFTED_PASS)
+      chargeControl = LOB;
     if (chargeControl != CONTROL_COUNT &&
         (released[chargeControl] || !held(chargeControl)))
     {
@@ -496,9 +500,9 @@ void MatchPlayController::update(MatchEngine& engine, float simulatedSeconds,
   if (!engine.stepsWithin(simulatedSeconds)) return;
   MatchPlayerInput input;
   // Screen direction to pitch metres through the view's projection.
-  const float determinant =
-      basis.lengthX * basis.widthY - basis.widthX * basis.lengthY;
-  if (!idle && std::abs(determinant) > 1e-6f)
+  if (const float determinant =
+          basis.lengthX * basis.widthY - basis.widthX * basis.lengthY;
+      !idle && std::abs(determinant) > 1e-6f)
   {
     const float alongX =
         (stickX * basis.widthY - basis.widthX * stickY) / determinant;

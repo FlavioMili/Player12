@@ -11,6 +11,7 @@
 #include <algorithm>
 #include <charconv>
 #include <filesystem>
+#include <format>
 #include <fstream>
 #include <iterator>
 #include <map>
@@ -202,8 +203,8 @@ std::vector<Player> DataGenerator::generatePlayers(const GameData& gamedata)
   // Complete every club's 30-man squad around its reputation-based level.
   const auto economies = buildLeagueEconomies(gamedata);
   const auto& teams = gamedata.getTeamsVector();
-  Logger::debug("Ensuring player rosters for " + std::to_string(teams.size()) +
-                " teams.");
+  Logger::debug(
+      std::format("Ensuring player rosters for {} teams.", teams.size()));
   // Sorted so that player ids do not depend on hash-map iteration order.
   std::vector<std::reference_wrapper<const Team>> ordered(teams.begin(),
                                                           teams.end());
@@ -223,7 +224,7 @@ std::vector<Player> DataGenerator::generatePlayers(const GameData& gamedata)
     generated_players += squad.size();
     std::ranges::move(squad, std::back_inserter(players));
   }
-  Logger::debug("Generated " + std::to_string(generated_players) +
-                " players to complete all rosters.");
+  Logger::debug(std::format("Generated {} players to complete all rosters.",
+                            generated_players));
   return players;
 }

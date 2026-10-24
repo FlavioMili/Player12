@@ -12,6 +12,7 @@
 
 #include <algorithm>
 #include <optional>
+#include <utility>
 
 #include "controller/game_controller.h"
 #include "database/gamedata.h"
@@ -41,20 +42,21 @@ float scaled(float value) { return value * Theme::scale(); }
 ImVec4 hintColor(TalkHint hint)
 {
   const Theme::Palette& palette = Theme::palette();
+  using enum TalkHint;
   switch (hint)
   {
-    case TalkHint::LikelyPositive:
+    case LikelyPositive:
       return palette.positive;
-    case TalkHint::Uncertain:
+    case Uncertain:
       return palette.muted;
-    case TalkHint::Risky:
+    case Risky:
       break;
   }
   return palette.warning;
 }
 }  // namespace
 
-void TeamTalkDialog::open(GameController& controller, TeamTalkMoment when,
+void TeamTalkDialog::open(const GameController& controller, TeamTalkMoment when,
                           int own, int other)
 {
   moment = when;
@@ -68,23 +70,27 @@ void TeamTalkDialog::open(GameController& controller, TeamTalkMoment when,
                                                  : "TEAMTALK_TITLE_HALF");
   if (moment == TeamTalkMoment::HalfTime)
   {
-    const char* state_key = own_goals > other_goals   ? "TEAMTALK_LEADING"
-                            : own_goals < other_goals ? "TEAMTALK_TRAILING"
-                                                      : "TEAMTALK_LEVEL";
+    const char* state_key = "TEAMTALK_LEVEL";
+    if (own_goals > other_goals)
+      state_key = "TEAMTALK_LEADING";
+    else if (own_goals < other_goals)
+      state_key = "TEAMTALK_TRAILING";
     situation = fmt::sprintf(LOC("TEAMTALK_SCORE"), own_goals, other_goals,
                              LOC(state_key));
   }
   else
   {
-    const char* expect_key =
-        context.expected_points >= 1.9f   ? "TEAMTALK_EXPECT_FAVOURITE"
-        : context.expected_points <= 1.0f ? "TEAMTALK_EXPECT_UNDERDOG"
-                                          : "TEAMTALK_EXPECT_EVEN";
+    const char* expect_key = "TEAMTALK_EXPECT_EVEN";
+    if (context.expected_points >= 1.9f)
+      expect_key = "TEAMTALK_EXPECT_FAVOURITE";
+    else if (context.expected_points <= 1.0f)
+      expect_key = "TEAMTALK_EXPECT_UNDERDOG";
     situation = LOC(expect_key);
   }
   tags.clear();
-  if (context.final) tags.emplace_back(LOC("TEAMTALK_TAG_FINAL"));
-  if (context.cup && !context.final) tags.emplace_back(LOC("TEAMTALK_TAG_CUP"));
+  if (context.final_match) tags.emplace_back(LOC("TEAMTALK_TAG_FINAL"));
+  if (context.cup && !context.final_match)
+    tags.emplace_back(LOC("TEAMTALK_TAG_CUP"));
   if (context.derby) tags.emplace_back(LOC("TEAMTALK_TAG_DERBY"));
 
   const DressingRoom room = controller.getDressingRoom();
@@ -203,7 +209,7 @@ void TeamTalkDialog::renderOptions(GameController& controller)
   std::optional<TeamTalkTone> chosen;
   for (const ToneRow& row : rows)
   {
-    ImGui::PushID(static_cast<int>(row.tone));
+    ImGui::PushID(static_cast<int>(std::to_underlying(row.tone)));
     const float width = ImGui::GetContentRegionAvail().x;
     const ImVec2 start = ImGui::GetCursorScreenPos();
     if (ImGui::Selectable("##tone", false, ImGuiSelectableFlags_None,
@@ -231,8 +237,9 @@ void TeamTalkDialog::renderOptions(GameController& controller)
         ImVec2(barStart.x + barWidth * std::clamp(row.positive, 0.0f, 1.0f),
                barY + barHeight),
         Theme::toU32(palette.positive), barHeight * 0.5f);
-    const float negativeWidth = barWidth * std::clamp(row.negative, 0.0f, 1.0f);
-    if (negativeWidth > 0.5f)
+    if (const float negativeWidth =
+            barWidth * std::clamp(row.negative, 0.0f, 1.0f);
+        negativeWidth > 0.5f)
       drawList->AddRectFilled(
           ImVec2(barStart.x + barWidth - negativeWidth, barY),
           ImVec2(barStart.x + barWidth, barY + barHeight),
@@ -260,7 +267,7 @@ void TeamTalkDialog::renderOptions(GameController& controller)
   has_result = true;
 }
 
-void TeamTalkDialog::renderResult()
+void TeamTalkDialog::renderResult() const
 {
   const Theme::Palette& palette = Theme::palette();
   ImGui::Dummy(ImVec2(0.0f, scaled(Theme::Space::XS)));
@@ -275,6 +282,7 @@ void TeamTalkDialog::renderForMatch(GameController& controller,
                                     MatchEngine& engine, TeamID home_id,
                                     TeamID away_id)
 {
+  using enum TeamTalkMoment;
   const auto team = controller.getManagedTeam();
   const TeamID managed = team ? team->get().getId() : 0;
   const MatchState state = engine.getState();
@@ -289,24 +297,23 @@ void TeamTalkDialog::renderForMatch(GameController& controller,
     if (!pre_offered && period == 1 && minute < PRE_MATCH_OFFER_MINUTES)
     {
       pre_offered = true;
-      if (controller.canGiveTeamTalk(TeamTalkMoment::PreMatch))
-        open(controller, TeamTalkMoment::PreMatch);
+      if (controller.canGiveTeamTalk(PreMatch)) open(controller, PreMatch);
     }
     else if (!half_offered && (state == MatchState::HALF_TIME || period >= 2))
     {
       pre_offered = true;
       half_offered = true;
-      if (controller.canGiveTeamTalk(TeamTalkMoment::HalfTime))
-        open(controller, TeamTalkMoment::HalfTime, own, other);
+      if (controller.canGiveTeamTalk(HalfTime))
+        open(controller, HalfTime, own, other);
     }
   }
   // An unanswered talk lapses once play has moved on.
-  const bool lapsed = state == MatchState::FULL_TIME ||
-                      (moment == TeamTalkMoment::PreMatch &&
-                       (period > 1 || minute >= PRE_MATCH_LAPSE_MINUTES)) ||
-                      (moment == TeamTalkMoment::HalfTime && period >= 2 &&
-                       minute >= HALF_TIME_LAPSE_MINUTES);
-  if (lapsed && (visible || open_requested))
+  if (const bool lapsed = state == MatchState::FULL_TIME ||
+                          (moment == PreMatch &&
+                           (period > 1 || minute >= PRE_MATCH_LAPSE_MINUTES)) ||
+                          (moment == HalfTime && period >= 2 &&
+                           minute >= HALF_TIME_LAPSE_MINUTES);
+      lapsed && (visible || open_requested))
   {
     open_requested = false;
     dismiss_requested = visible;

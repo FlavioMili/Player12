@@ -9,11 +9,16 @@
 #include <gtest/gtest.h>
 
 #include <algorithm>
+#include <array>
+#include <atomic>
 #include <chrono>
 #include <filesystem>
 #include <iostream>
+#include <latch>
 #include <limits>
 #include <memory>
+#include <thread>
+#include <utility>
 
 #include "controller/game_controller.h"
 #include "database/database_connection.h"
@@ -289,8 +294,8 @@ PlayerID findWillingTarget(const GameController& controller, TeamID club,
       const PlayerID id = player.get().getId();
       if (player.get().getAge() > 21 &&
           player.get().getRole() != PlayerRole::GK && market.canBeTraded(id) &&
-          static_cast<int>(controller.getSquadRole(id)) >=
-              static_cast<int>(min_role) &&
+          static_cast<int>(std::to_underlying(controller.getSquadRole(id))) >=
+              static_cast<int>(std::to_underlying(min_role)) &&
           market.wouldJoin(id, club, ContractKind::Transfer))
         return id;
     }
@@ -310,7 +315,7 @@ TeamID manageFirstClub(GameController& controller)
  * save) so tests can run its calendar without simulating matches. */
 struct MarketHarness
 {
-  explicit MarketHarness(GameController& controller)
+  explicit MarketHarness(const GameController& controller)
       : world(controller.getGameData()),
         competitions(controller.getGameData(), controller.getDbConn()),
         market(controller.getGameData(), world, competitions)
@@ -411,6 +416,28 @@ TEST_F(TransferMarketTest, StructuredOfferContractTalksAndLedger)
                 .committedPayables(managed, GameDateValue(2026, 7, 3)),
             static_cast<int64_t>(instalments.front()))
       << "next season's instalment is reserved from next season's budget";
+
+  // Queries for different seasons must not overwrite one another's totals.
+  const auto& market = marketOf(*controller);
+  const std::array dates = {GameDateValue(2026, 7, 3),
+                            GameDateValue(2027, 7, 3)};
+  const std::array expected = {market.committedPayables(managed, dates[0]),
+                               market.committedPayables(managed, dates[1])};
+  std::atomic<bool> consistent{true};
+  std::latch start(8);
+  std::vector<std::jthread> readers;
+  for (std::size_t thread = 0; thread < 8; ++thread)
+    readers.emplace_back(
+        [&, index = thread % dates.size()]
+        {
+          start.arrive_and_wait();
+          for (int attempt = 0; attempt < 100; ++attempt)
+            if (market.committedPayables(managed, dates[index]) !=
+                expected[index])
+              consistent.store(false);
+        });
+  readers.clear();
+  EXPECT_TRUE(consistent.load());
 }
 
 TEST_F(TransferMarketTest, InstalmentsAddOnsAndSellOnsArePaid)
@@ -488,7 +515,8 @@ TEST_F(TransferMarketTest, LoanOfferLifecycleSurvivesReload)
       const PlayerID id = player.get().getId();
       std::vector<TransferNegotiation::Reason> reasons;
       const SquadRole role = controller->getSquadRole(id);
-      if (static_cast<int>(role) >= static_cast<int>(SquadRole::Backup) &&
+      if (static_cast<int>(std::to_underlying(role)) >=
+              static_cast<int>(std::to_underlying(SquadRole::Backup)) &&
           market.canBeTraded(id) &&
           TransferNegotiation::playerAcceptsLoan(
               role, market.projectedRole(id, managed),
@@ -767,8 +795,8 @@ KeenOffer openKeenOffer(GameController& controller, TeamID managed,
       offer.created = today;
       offer.expires = today + 5;
       const std::uint32_t id = market.addIncomingOffer(offer);
-      const auto view = controller.getIncomingOfferView(id);
-      if (view &&
+      if (const auto view = controller.getIncomingOfferView(id);
+          view &&
           (view->stance == BuyerNegotiation::PlayerStance::WantsBiggerClub ||
            view->stance == BuyerNegotiation::PlayerStance::AskedToLeave))
       {
@@ -786,9 +814,10 @@ void waitForAnswer(GameController& controller, std::uint32_t offer_id)
 {
   for (int day = 0; day < 3; ++day)
   {
-    const IncomingOffer* offer =
-        controller.getGame()->getTransfers().findIncomingOffer(offer_id);
-    if (offer == nullptr || offer->status != OfferStatus::AwaitingBuyer) return;
+    if (const IncomingOffer* offer =
+            controller.getGame()->getTransfers().findIncomingOffer(offer_id);
+        offer == nullptr || offer->status != OfferStatus::AwaitingBuyer)
+      return;
     controller.advanceDay();
   }
 }
@@ -1183,6 +1212,7 @@ TEST_F(TransferMarketTest, NegotiationStateSurvivesSaveAndReload)
 
 TEST_F(TransferMarketTest, SummerMarketIsMostlyFreeAndLoanMoves)
 {
+  using enum TransferKind;
   manageFirstClub(*controller);
   const auto started = std::chrono::steady_clock::now();
   for (int day = 0; day < 40; ++day) controller->advanceDay();
@@ -1195,9 +1225,9 @@ TEST_F(TransferMarketTest, SummerMarketIsMostlyFreeAndLoanMoves)
   int loans = 0;
   for (const TransferRecord& record : marketOf(*controller).history())
   {
-    if (record.kind == TransferKind::Permanent) ++fee_moves;
-    if (record.kind == TransferKind::Free) ++free_moves;
-    if (record.kind == TransferKind::Loan) ++loans;
+    if (record.kind == Permanent) ++fee_moves;
+    if (record.kind == Free) ++free_moves;
+    if (record.kind == Loan) ++loans;
   }
   const int moves = fee_moves + free_moves + loans;
   const double fee_share =
@@ -1229,20 +1259,20 @@ TEST_F(TransferMarketTest, FreeAgentsNeedCashNotTransferBudget)
   auto gamedata = controller->getGameData();
   // The club with the most wage room, so only the fee budget is at stake:
   // many lower-league clubs start at their wage cap.
-  const auto wageRoom = [&](const Team& team)
+  const auto wageRoom = [this](const Team& team)
   {
     return team.getFinances().getWageBudget() -
            controller->getWeeklyWageBill(team.getId());
   };
-  const auto roomiest =
-      std::ranges::max_element(controller->getTeams(), {}, [&](const auto& team)
-                               { return wageRoom(team.get()); });
+  const auto roomiest = std::ranges::max_element(
+      controller->getTeams(), {},
+      [&wageRoom](const auto& team) { return wageRoom(team.get()); });
   ASSERT_NE(roomiest, controller->getTeams().end());
   const TeamID managed = roomiest->get().getId();
   controller->selectManagedTeam(managed);
   const auto& squad = controller->getPlayersForTeam(managed);
   const auto best = std::ranges::max_element(
-      squad, {}, [&](const auto& player)
+      squad, {}, [&gamedata](const auto& player)
       { return player.get().getOverall(gamedata->getStatsConfig()); });
   ASSERT_NE(best, squad.end());
   const PlayerID player = best->get().getId();
@@ -1802,7 +1832,7 @@ struct LoanCase
   std::uint32_t wage = 0;
 };
 
-LoanCase loanCase(GameController& controller, TeamID managed)
+LoanCase loanCase(const GameController& controller, TeamID managed)
 {
   auto data = controller.getGameData();
   const TransferMarket& market = marketOf(controller);
@@ -1998,8 +2028,9 @@ TEST_F(TransferMarketTest, BorrowersAndBuyersStayWithinTheirWageBudget)
       addLoanOffer(*controller, loan, 20, 1'000'000'000);
   TransferNegotiation::LoanTerms asked;
   asked.wage_share = 100;
-  const OfferOutcome sent = controller->counterLoanOffer(offer_id, asked);
-  if (sent == OfferOutcome::AwaitingReply) waitForAnswer(*controller, offer_id);
+  if (const OfferOutcome sent = controller->counterLoanOffer(offer_id, asked);
+      sent == OfferOutcome::AwaitingReply)
+    waitForAnswer(*controller, offer_id);
   EXPECT_NE(data->getPlayer(loan.player)->get().getTeamId(), loan.borrower);
   const IncomingOffer* countered =
       marketOf(*controller).findIncomingOffer(offer_id);
@@ -2014,9 +2045,9 @@ TEST_F(TransferMarketTest, BorrowersAndBuyersStayWithinTheirWageBudget)
   data->getTeams().at(keen.buyer).getFinances().setWageBudget(0);
   TransferNegotiation::OfferTerms counter;
   counter.fee = 1'100'000;
-  const OfferOutcome answer =
-      controller->counterIncomingOffer(keen.offer_id, counter);
-  if (answer == OfferOutcome::AwaitingReply)
+  if (const OfferOutcome answer =
+          controller->counterIncomingOffer(keen.offer_id, counter);
+      answer == OfferOutcome::AwaitingReply)
     waitForAnswer(*controller, keen.offer_id);
   EXPECT_EQ(marketOf(*controller).findIncomingOffer(keen.offer_id), nullptr);
   EXPECT_NE(data->getPlayer(keen.player)->get().getTeamId(), keen.buyer);

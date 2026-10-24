@@ -11,6 +11,8 @@
 #include <algorithm>
 #include <array>
 #include <cmath>
+#include <numbers>
+#include <utility>
 
 namespace
 {
@@ -32,7 +34,8 @@ struct PresetColors
   bool light;
 };
 
-constexpr std::array<PresetColors, static_cast<size_t>(Theme::Preset::COUNT)>
+constexpr std::array<PresetColors, static_cast<size_t>(std::to_underlying(
+                                       Theme::Preset::COUNT))>
     PRESETS = {{
         // Slate (default): a soft graphite with clear elevation steps.
         {ImVec4(0.118f, 0.133f, 0.153f, 1.0f),  // #1E2227
@@ -101,8 +104,8 @@ struct StatusColors
 // Status colours per colour-vision mode, for the dark presets and for the
 // light one. Each keeps at least 4.5:1 against the page background and 3:1
 // against cards and raised controls of every preset (see the contrast test).
-constexpr std::array<StatusColors,
-                     static_cast<size_t>(Theme::ColorVision::COUNT)>
+constexpr std::array<StatusColors, static_cast<size_t>(std::to_underlying(
+                                       Theme::ColorVision::COUNT))>
     STATUS_DARK = {{
         {ImVec4(0.235f, 0.770f, 0.486f, 1.0f),
          ImVec4(0.945f, 0.706f, 0.255f, 1.0f),
@@ -117,8 +120,8 @@ constexpr std::array<StatusColors,
          ImVec4(0.960f, 0.420f, 0.520f, 1.0f),
          ImVec4(0.640f, 0.660f, 0.980f, 1.0f)},
     }};
-constexpr std::array<StatusColors,
-                     static_cast<size_t>(Theme::ColorVision::COUNT)>
+constexpr std::array<StatusColors, static_cast<size_t>(std::to_underlying(
+                                       Theme::ColorVision::COUNT))>
     STATUS_LIGHT = {{
         {ImVec4(0.090f, 0.470f, 0.250f, 1.0f),
          ImVec4(0.560f, 0.360f, 0.000f, 1.0f),
@@ -154,10 +157,10 @@ using RatingScale = std::array<RatingStop, 5>;
 
 // Weak to strong: red to green, or diverging scales that avoid the
 // red-green (orange to blue) and blue-yellow (magenta to teal) confusions.
-constexpr std::array<RatingScale,
-                     static_cast<size_t>(Theme::ColorVision::COUNT)>
+constexpr std::array<RatingScale, static_cast<size_t>(std::to_underlying(
+                                      Theme::ColorVision::COUNT))>
     RATING_SCALES = {{
-        {{{35.0f, ImVec4(0.898f, 0.337f, 0.318f, 1.0f)},
+        {{{35.0f, ImVec4(0.898f, 0.337f, std::numbers::inv_pi_v<float>, 1.0f)},
           {50.0f, ImVec4(0.945f, 0.560f, 0.255f, 1.0f)},
           {60.0f, ImVec4(0.905f, 0.740f, 0.250f, 1.0f)},
           {70.0f, ImVec4(0.520f, 0.780f, 0.330f, 1.0f)},
@@ -187,14 +190,16 @@ ImVec4 mix(const ImVec4& a, const ImVec4& b, float t)
 
 const PresetColors& presetColors()
 {
-  const auto index = std::min(static_cast<size_t>(activeAppearance.preset),
-                              PRESETS.size() - 1);
+  const auto index =
+      std::min(static_cast<size_t>(std::to_underlying(activeAppearance.preset)),
+               PRESETS.size() - 1);
   return PRESETS[index];
 }
 
 size_t visionIndex(Theme::ColorVision vision)
 {
-  return std::min(static_cast<size_t>(vision), STATUS_DARK.size() - 1);
+  return std::min(static_cast<size_t>(std::to_underlying(vision)),
+                  STATUS_DARK.size() - 1);
 }
 
 void buildPalette()
@@ -318,8 +323,8 @@ namespace Theme
 
 Palette presetPalette(Preset preset, ColorVision vision, const ImVec4& accent)
 {
-  const PresetColors& colors =
-      PRESETS[std::min(static_cast<size_t>(preset), PRESETS.size() - 1)];
+  const PresetColors& colors = PRESETS[std::min(
+      static_cast<size_t>(std::to_underlying(preset)), PRESETS.size() - 1)];
   Palette p{};
   p.background = colors.background;
   p.sidebar = colors.sidebar;
@@ -345,14 +350,15 @@ Palette presetPalette(Preset preset, ColorVision vision, const ImVec4& accent)
 
 const char* colorVisionKey(ColorVision vision)
 {
+  using enum ColorVision;
   switch (vision)
   {
-    case ColorVision::RED_GREEN:
+    case RED_GREEN:
       return "SETTINGS_COLOR_VISION_RED_GREEN";
-    case ColorVision::BLUE_YELLOW:
+    case BLUE_YELLOW:
       return "SETTINGS_COLOR_VISION_BLUE_YELLOW";
-    case ColorVision::STANDARD:
-    case ColorVision::COUNT:
+    case STANDARD:
+    case COUNT:
       break;
   }
   return "SETTINGS_COLOR_VISION_STANDARD";
@@ -432,28 +438,29 @@ bool reducedMotion() { return activeAppearance.reduced_motion; }
 
 Swatch presetSwatch(Preset preset)
 {
-  const PresetColors& colors =
-      PRESETS[std::min(static_cast<size_t>(preset), PRESETS.size() - 1)];
+  const PresetColors& colors = PRESETS[std::min(
+      static_cast<size_t>(std::to_underlying(preset)), PRESETS.size() - 1)];
   return {colors.background, colors.surface, colors.text, colors.muted};
 }
 
 const char* presetKey(Preset preset)
 {
+  using enum Preset;
   switch (preset)
   {
-    case Preset::DARK_SLATE:
+    case DARK_SLATE:
       return "THEME_PRESET_DARK_SLATE";
-    case Preset::MIDNIGHT_BLUE:
+    case MIDNIGHT_BLUE:
       return "THEME_PRESET_MIDNIGHT";
-    case Preset::PITCH_GREEN:
+    case PITCH_GREEN:
       return "THEME_PRESET_PITCH";
-    case Preset::LIGHT:
+    case LIGHT:
       return "THEME_PRESET_LIGHT";
-    case Preset::HIGH_CONTRAST:
+    case HIGH_CONTRAST:
       return "THEME_PRESET_HIGH_CONTRAST";
-    case Preset::TRUE_DARK:
+    case TRUE_DARK:
       return "THEME_PRESET_TRUE_DARK";
-    case Preset::COUNT:
+    case COUNT:
       break;
   }
   return "THEME_PRESET_DARK_SLATE";
@@ -495,19 +502,20 @@ ImVec4 ratingColor(double value)
 
 float textSize(Text level)
 {
+  using enum Text;
   switch (level)
   {
-    case Text::CAPTION:
+    case CAPTION:
       return 12.5f;
-    case Text::SMALL:
+    case SMALL:
       return 14.0f;
-    case Text::BODY:
+    case BODY:
       return BASE_FONT_SIZE;
-    case Text::TITLE:
+    case TITLE:
       return 18.0f;
-    case Text::HEADING:
+    case HEADING:
       return 25.0f;
-    case Text::DISPLAY:
+    case DISPLAY:
       return 28.0f;
   }
   return BASE_FONT_SIZE;

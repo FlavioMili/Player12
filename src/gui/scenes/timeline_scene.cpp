@@ -127,14 +127,16 @@ void TimelineScene::regroup()
   {
     const TimelineEntry& entry = entries[index];
     if (club_filter != 0 && entry.team_id != club_filter) continue;
-    std::string label =
-        zoom == Zoom::SEASON
-            ? formatLocalized("TIMELINE_SEASON_HEADER",
-                              {seasonLabel(entry.season_year)})
-            : std::string(LOC(MONTH_KEYS[static_cast<std::size_t>(
-                  std::clamp<int>(entry.date.month, 1, 12) - 1)])) +
-                  " " + std::to_string(entry.date.year);
-    if (groups.empty() || groups.back().label != label)
+    if (std::string label =
+            zoom == Zoom::SEASON
+                ? formatLocalized("TIMELINE_SEASON_HEADER",
+                                  {seasonLabel(entry.season_year)})
+                : std::format(
+                      "{} {}",
+                      LOC(MONTH_KEYS[static_cast<std::size_t>(
+                          std::clamp<int>(entry.date.month, 1, 12) - 1)]),
+                      entry.date.year);
+        groups.empty() || groups.back().label != label)
       groups.push_back({std::move(label), {}});
     groups.back().entries.push_back(index);
   }
@@ -157,7 +159,7 @@ std::optional<std::filesystem::path> TimelineScene::exportJournal()
       CareerTimeline::journalFileName(sources.manager_name, today));
 }
 
-void TimelineScene::renderSummary()
+void TimelineScene::renderSummary() const
 {
   const Theme::Palette& palette = Theme::palette();
   UI::TileRow tiles(4);
@@ -179,9 +181,9 @@ void TimelineScene::renderSummary()
 void TimelineScene::renderControls()
 {
   const float scale = Theme::scale();
-  const std::array<const char*, 2> zooms = {LOC("TIMELINE_BY_SEASON"),
-                                            LOC("TIMELINE_BY_MONTH")};
-  if (UI::segmented("##timeline_zoom", zoom_index, zooms, 260.0f * scale))
+  if (const std::array<const char*, 2> zooms = {LOC("TIMELINE_BY_SEASON"),
+                                                LOC("TIMELINE_BY_MONTH")};
+      UI::segmented("##timeline_zoom", zoom_index, zooms, 260.0f * scale))
     setZoom(zoom_index == 0 ? Zoom::SEASON : Zoom::MONTH);
   const float comboWidth =
       std::min(COMBO_WIDTH * scale, ImGui::GetContentRegionAvail().x);

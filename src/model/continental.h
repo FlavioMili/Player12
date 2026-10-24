@@ -414,7 +414,7 @@ class ContinentalCompetitions
   void payPrize(TeamID team_id, const GameDateValue& date, int64_t amount);
   void postNews(const GameDateValue& date, std::string title_key,
                 std::string body_key, std::vector<std::string> args,
-                std::vector<TeamID> involved, bool headline) const;
+                const std::vector<TeamID>& involved, bool headline) const;
   std::vector<const Match*> competitionMatches(const Calendar& calendar,
                                                LeagueID competition_id) const;
   const Match* findLeg(const Calendar& calendar, LeagueID competition_id,

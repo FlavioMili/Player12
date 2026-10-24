@@ -13,6 +13,7 @@
 #include <algorithm>
 #include <array>
 #include <cmath>
+#include <cstddef>
 #include <format>
 #include <tuple>
 
@@ -40,13 +41,16 @@ constexpr float CHART_HEIGHT = 132.0f;
 constexpr float CHART_RATIO_TOP = 2.0f;
 constexpr float CHART_LOAD_TOP = TrainingModel::MATCH_LOAD * 1.25f;
 constexpr float BAND_ALPHA = 0.14f;
+constexpr std::byte REST_FLAG = static_cast<std::byte>(MEDICAL_FLAG_REST);
+constexpr std::byte LIMIT_MINUTES_FLAG =
+    static_cast<std::byte>(MEDICAL_FLAG_LIMIT_MINUTES);
 
 /** Short tags of the medical instructions, e.g. "Rest · 60'". */
-std::string flagTags(std::uint8_t flags)
+std::string flagTags(std::byte flags)
 {
   std::string tags;
-  if ((flags & MEDICAL_FLAG_REST) != 0) tags = LOC("MEDICAL_TAG_REST");
-  if ((flags & MEDICAL_FLAG_LIMIT_MINUTES) != 0)
+  if ((flags & REST_FLAG) != std::byte{}) tags = LOC("MEDICAL_TAG_REST");
+  if ((flags & LIMIT_MINUTES_FLAG) != std::byte{})
   {
     if (!tags.empty()) tags += " · ";
     tags += LOC("MEDICAL_TAG_LIMIT");
@@ -57,19 +61,20 @@ std::string flagTags(std::uint8_t flags)
 ImVec4 bandColor(RiskBand band)
 {
   const Theme::Palette& palette = Theme::palette();
+  using enum RiskBand;
   switch (band)
   {
-    case RiskBand::High:
+    case High:
       return palette.negative;
-    case RiskBand::Moderate:
+    case Moderate:
       return palette.warning;
-    case RiskBand::Low:
+    case Low:
       break;
   }
   return palette.positive;
 }
 
-std::string reasonsText(std::uint8_t reasons)
+std::string reasonsText(std::byte reasons)
 {
   static constexpr std::array<std::pair<RiskReason, const char*>, 5> KEYS = {{
       {RISK_REASON_WORKLOAD, "MEDICAL_REASON_WORKLOAD"},
@@ -81,7 +86,7 @@ std::string reasonsText(std::uint8_t reasons)
   std::string text;
   for (const auto& [flag, key] : KEYS)
   {
-    if ((reasons & flag) == 0) continue;
+    if ((reasons & static_cast<std::byte>(flag)) == std::byte{}) continue;
     if (!text.empty()) text += ", ";
     text += LOC(key);
   }
@@ -155,7 +160,11 @@ void conditionBar(float value)
 
 MedicalScene::MedicalScene(GUIView* parent) : ManagementScene(parent) {}
 
-void MedicalScene::update(float /*deltaTime*/) {}
+void MedicalScene::update(float /*deltaTime*/)
+{
+  /* Medical data changes after an explicit player or instruction action; no
+   * frame-driven state needs updating. */
+}
 
 void MedicalScene::refresh()
 {
@@ -206,24 +215,27 @@ void MedicalScene::refresh()
     line.band = row.risk.band;
     line.condition = row.condition;
     line.sharpness = row.sharpness;
-    line.load_trend = row.workload_ratio > RISING_LOAD    ? 1
-                      : row.workload_ratio < FALLING_LOAD ? -1
-                                                          : 0;
+    line.load_trend = 0;
+    if (row.workload_ratio > RISING_LOAD)
+      line.load_trend = 1;
+    else if (row.workload_ratio < FALLING_LOAD)
+      line.load_trend = -1;
     line.load = std::format("{:.2f}  ·  {}", row.workload_ratio,
                             LOC(line.load_trend > 0   ? "MEDICAL_LOAD_RISING"
                                 : line.load_trend < 0 ? "MEDICAL_LOAD_FALLING"
                                                       : "MEDICAL_LOAD_STABLE"));
-    line.reasons = reasonsText(row.risk.reasons);
+    line.reasons = reasonsText(static_cast<std::byte>(row.risk.reasons));
     line.returning = row.returning;
     if (const Game* game = controller.getGame())
-      line.flags = game->getMedical().flags(row.player_id);
+      line.flags =
+          static_cast<std::byte>(game->getMedical().flags(row.player_id));
     if (row.risk.band == RiskBand::High) ++high_risk;
     risks.push_back(std::move(line));
   }
 
   for (const StaffMember* member : report.medical_staff)
-    staff.push_back({member->name(), LOC(StaffModel::roleKey(member->role)),
-                     StaffModel::rating(*member)});
+    staff.emplace_back(member->name(), LOC(StaffModel::roleKey(member->role)),
+                       StaffModel::rating(*member));
   recovery_effect = percentChange(report.effects.layoff_multiplier);
   prevention_effect = percentChange(report.effects.injury_prevention);
   recovery_good = report.effects.layoff_multiplier <= 1.0f;
@@ -248,7 +260,7 @@ void MedicalScene::select(PlayerID id)
 {
   selected = id;
   selected_name.clear();
-  selected_flags = 0;
+  selected_flags = std::byte{};
   chart = {};
   chart_empty = true;
   GameController& controller = guiView->getController();
@@ -257,19 +269,21 @@ void MedicalScene::select(PlayerID id)
   if (id == 0 || !game || !data) return;
   if (const auto player = data->getPlayer(id))
     selected_name = player->get().getName();
-  selected_flags = game->getMedical().flags(id);
+  selected_flags = static_cast<std::byte>(game->getMedical().flags(id));
   // Today's load is complete only once the day is over.
   chart_today = dayOrdinal(controller.getCurrentDate());
   chart = game->getMedical().loadChart(id, chart_today - 1);
   chart_empty = std::ranges::none_of(chart, &LoadChartDay::recorded);
 }
 
-void MedicalScene::setFlag(std::uint8_t flag, bool enabled)
+void MedicalScene::setFlag(std::byte flag, bool enabled)
 {
   Game* game = guiView->getController().getGame();
   if (!game || selected == 0) return;
-  game->getMedical().setFlag(selected, static_cast<MedicalFlag>(flag), enabled);
-  selected_flags = game->getMedical().flags(selected);
+  game->getMedical().setFlag(
+      selected, static_cast<MedicalFlag>(std::to_integer<std::uint8_t>(flag)),
+      enabled);
+  selected_flags = static_cast<std::byte>(game->getMedical().flags(selected));
   for (RiskLine& line : risks)
     if (line.id == selected) line.flags = selected_flags;
 }
@@ -349,9 +363,9 @@ void MedicalScene::renderInjured(float width)
     return;
   }
   const auto columns = localized(injuryColumns());
-  const UI::ColumnMask mask =
-      UI::fitColumns(columns, ImGui::GetContentRegionAvail().x);
-  if (UI::beginResponsiveTable(
+  if (const UI::ColumnMask mask =
+          UI::fitColumns(columns, ImGui::GetContentRegionAvail().x);
+      UI::beginResponsiveTable(
           "injured", columns, mask,
           ImGuiTableFlags_RowBg | ImGuiTableFlags_BordersInnerH))
   {
@@ -365,11 +379,14 @@ void MedicalScene::renderInjured(float width)
         UI::textFitted(line.injury, ImGui::GetContentRegionAvail().x,
                        palette.muted);
       if (UI::cell(mask, 2))
-        UI::textRightColored(
-            line.severity == InjurySeverity::Major      ? palette.negative
-            : line.severity == InjurySeverity::Moderate ? palette.warning
-                                                        : palette.text,
-            line.days.c_str());
+      {
+        ImVec4 severityColor = palette.text;
+        if (line.severity == InjurySeverity::Major)
+          severityColor = palette.negative;
+        else if (line.severity == InjurySeverity::Moderate)
+          severityColor = palette.warning;
+        UI::textRightColored(severityColor, line.days.c_str());
+      }
       if (UI::cell(mask, 3)) ImGui::TextUnformatted(line.back.c_str());
       if (UI::cell(mask, 4))
         ImGui::TextColored(bandColor(line.reinjury), "%s",
@@ -392,20 +409,22 @@ void MedicalScene::renderRisk(float width)
       "MEDICAL_FILTER_RAISED", "MEDICAL_FILTER_ALL"};
   const std::array<const char*, 2> filters = {LOC(FILTER_KEYS[0]),
                                               LOC(FILTER_KEYS[1])};
-  int filter = show_all ? 1 : 0;
-  if (UI::segmented("##risk_filter", filter, filters)) show_all = filter == 1;
-  const auto raised = static_cast<std::size_t>(std::ranges::count_if(
-      risks, [](const RiskLine& line) { return line.band != RiskBand::Low; }));
-  if (!show_all && raised == 0)
+  if (int filter = show_all ? 1 : 0;
+      UI::segmented("##risk_filter", filter, filters))
+    show_all = filter == 1;
+  if (const auto raised = static_cast<std::size_t>(
+          std::ranges::count_if(risks, [](const RiskLine& line)
+                                { return line.band != RiskBand::Low; }));
+      !show_all && raised == 0)
   {
     UI::emptyState(LOC("MEDICAL_NO_RISK"), LOC("MEDICAL_NO_RISK_BODY"));
     UI::endCard();
     return;
   }
   const auto columns = localized(riskColumns());
-  const UI::ColumnMask mask =
-      UI::fitColumns(columns, ImGui::GetContentRegionAvail().x);
-  if (UI::beginResponsiveTable(
+  if (const UI::ColumnMask mask =
+          UI::fitColumns(columns, ImGui::GetContentRegionAvail().x);
+      UI::beginResponsiveTable(
           "risk", columns, mask,
           ImGuiTableFlags_RowBg | ImGuiTableFlags_BordersInnerH))
   {
@@ -426,7 +445,7 @@ void MedicalScene::renderRisk(float width)
                            "%s", line.load.c_str());
       if (UI::cell(mask, 5))
       {
-        if (line.flags != MEDICAL_FLAG_NONE)
+        if (line.flags != std::byte{})
         {
           ImGui::TextColored(palette.warning, "%s",
                              flagTags(line.flags).c_str());
@@ -538,22 +557,22 @@ void MedicalScene::renderPlayerLoad(float width)
 
   ImGui::Dummy(ImVec2(0.0f, Theme::Space::XS * Theme::scale()));
   UI::sectionLabel(LOC("MEDICAL_INSTRUCTIONS"));
-  bool rest = (selected_flags & MEDICAL_FLAG_REST) != 0;
-  if (ImGui::Checkbox(LOC("MEDICAL_FLAG_REST"), &rest))
-    setFlag(MEDICAL_FLAG_REST, rest);
+  if (bool rest = (selected_flags & REST_FLAG) != std::byte{};
+      ImGui::Checkbox(LOC("MEDICAL_FLAG_REST"), &rest))
+    setFlag(REST_FLAG, rest);
   if (ImGui::IsItemHovered(ImGuiHoveredFlags_DelayShort))
     ImGui::SetTooltip("%s", LOC("MEDICAL_FLAG_REST_HINT"));
-  bool limit = (selected_flags & MEDICAL_FLAG_LIMIT_MINUTES) != 0;
-  if (ImGui::Checkbox(LOC("MEDICAL_FLAG_LIMIT"), &limit))
-    setFlag(MEDICAL_FLAG_LIMIT_MINUTES, limit);
+  if (bool limit = (selected_flags & LIMIT_MINUTES_FLAG) != std::byte{};
+      ImGui::Checkbox(LOC("MEDICAL_FLAG_LIMIT"), &limit))
+    setFlag(LIMIT_MINUTES_FLAG, limit);
   if (ImGui::IsItemHovered(ImGuiHoveredFlags_DelayShort))
     ImGui::SetTooltip("%s", LOC("MEDICAL_FLAG_LIMIT_HINT"));
-  if (selected_flags != MEDICAL_FLAG_NONE)
+  if (selected_flags != std::byte{})
   {
     ImGui::PushTextWrapPos(0.0f);
-    if ((selected_flags & MEDICAL_FLAG_REST) != 0)
+    if ((selected_flags & REST_FLAG) != std::byte{})
       ImGui::TextColored(palette.muted, "%s", LOC("MEDICAL_FLAG_REST_HINT"));
-    if ((selected_flags & MEDICAL_FLAG_LIMIT_MINUTES) != 0)
+    if ((selected_flags & LIMIT_MINUTES_FLAG) != std::byte{})
       ImGui::TextColored(palette.muted, "%s", LOC("MEDICAL_FLAG_LIMIT_HINT"));
     ImGui::PopTextWrapPos();
   }

@@ -87,7 +87,7 @@ class StatsSaxParser final : public nlohmann::json_sax<nlohmann::json>
   bool addValue(float value)
   {
     if (depth != ROOT_OBJECT_DEPTH || currentKey.empty()) return false;
-    stats.emplace(std::move(currentKey), value);
+    stats.try_emplace(std::move(currentKey), value);
     currentKey.clear();
     return true;
   }
@@ -165,11 +165,13 @@ void appendDynamics(std::string& out, const PlayerDynamics& dynamics)
   out.push_back(',');
   appendFixed(out, dynamics.playing_share, 3);
   for (const int value :
-       {static_cast<int>(dynamics.injury), int{dynamics.injury_days},
-        static_cast<int>(dynamics.last_injury), dynamics.last_injury_day,
-        dynamics.last_match_day, int{dynamics.season_appearances},
-        int{dynamics.season_minutes}, int{dynamics.week_minutes},
-        int{dynamics.transfer_interest_weeks}, int{dynamics.rating_count}})
+       {static_cast<int>(std::to_underlying(dynamics.injury)),
+        int{dynamics.injury_days},
+        static_cast<int>(std::to_underlying(dynamics.last_injury)),
+        dynamics.last_injury_day, dynamics.last_match_day,
+        int{dynamics.season_appearances}, int{dynamics.season_minutes},
+        int{dynamics.week_minutes}, int{dynamics.transfer_interest_weeks},
+        int{dynamics.rating_count}})
   {
     out.push_back(',');
     appendInt(out, value);
@@ -271,7 +273,8 @@ PlayerDynamics decodeDynamics(std::string_view text)
   const auto injury = [](double value)
   {
     const auto raw = static_cast<int>(value);
-    return raw > 0 && raw < static_cast<int>(InjuryType::COUNT)
+    return raw > 0 &&
+                   raw < static_cast<int>(std::to_underlying(InjuryType::COUNT))
                ? static_cast<InjuryType>(raw)
                : InjuryType::None;
   };
@@ -304,12 +307,18 @@ const char* columnText(sqlite3_stmt* stmt, int column)
 
 constexpr int PLAYER_PARAM_COUNT = 16;
 
+class InvalidPlayerStatsError : public std::runtime_error
+{
+ public:
+  using std::runtime_error::runtime_error;
+};
+
 std::map<std::string, float> parsePlayerStats(std::string_view encodedStats)
 {
   StatsSaxParser parser;
   if (!nlohmann::json::sax_parse(encodedStats, &parser))
   {
-    throw std::runtime_error("Invalid player stats JSON in database");
+    throw InvalidPlayerStatsError("Invalid player stats JSON in database");
   }
   return parser.takeStats();
 }
@@ -368,8 +377,9 @@ std::vector<Player> PlayerRepository::loadAllPlayers() const
     Player& player = players.emplace_back(
         id, team_id, first_name, last_name, playerRole, nationality, wage,
         status, age, contract_years, height, foot, std::move(stats));
-    const double potential = sqlite3_column_double(stmt, 13);
-    if (potential > 0.0) player.setPotential(static_cast<float>(potential));
+    if (const double potential = sqlite3_column_double(stmt, 13);
+        potential > 0.0)
+      player.setPotential(static_cast<float>(potential));
     player.setTraits(decodeTraits(columnText(stmt, 14)));
     player.mutableDynamics() = decodeDynamics(columnText(stmt, 15));
     const int squad_number = sqlite3_column_int(stmt, 16);

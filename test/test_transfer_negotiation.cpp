@@ -10,6 +10,7 @@
 
 #include <algorithm>
 #include <numeric>
+#include <utility>
 
 #include "model/transfer_negotiation.h"
 #include "model/transfer_tuning.h"
@@ -384,9 +385,8 @@ TEST(TransferNegotiationTest, WindowsDeadlinesAndContractCalendar)
 
 TEST(TransferNegotiationTest, OpeningBidsAtValueAreCounteredForEveryRole)
 {
-  for (const SquadRole role :
-       {SquadRole::KeyPlayer, SquadRole::FirstTeam, SquadRole::Rotation,
-        SquadRole::Backup, SquadRole::Fringe})
+  using enum SquadRole;
+  for (const SquadRole role : {KeyPlayer, FirstTeam, Rotation, Backup, Fringe})
   {
     SaleContext context = rotationPlayer();
     context.role = role;
@@ -395,11 +395,11 @@ TEST(TransferNegotiationTest, OpeningBidsAtValueAreCounteredForEveryRole)
     at_value.fee = context.market_value;
     const ClubResponse response = evaluateOffer(context, at_value, 0);
     ASSERT_EQ(response.decision, ClubResponse::Decision::Counter)
-        << static_cast<int>(role);
+        << static_cast<int>(std::to_underlying(role));
     const double premium = static_cast<double>(response.counter_fee) /
                            static_cast<double>(context.market_value);
-    EXPECT_GE(premium, 1.07) << static_cast<int>(role);
-    EXPECT_LE(premium, 1.41) << static_cast<int>(role);
+    EXPECT_GE(premium, 1.07) << static_cast<int>(std::to_underlying(role));
+    EXPECT_LE(premium, 1.41) << static_cast<int>(std::to_underlying(role));
     EXPECT_FALSE(response.reasons.empty());
 
     // AI buyers bid the valuation in cash and must still be accepted.
@@ -408,7 +408,7 @@ TEST(TransferNegotiationTest, OpeningBidsAtValueAreCounteredForEveryRole)
     ASSERT_EQ(ai.instalment_years, 0);
     EXPECT_EQ(evaluateOffer(context, ai, 0).decision,
               ClubResponse::Decision::Accept)
-        << static_cast<int>(role);
+        << static_cast<int>(std::to_underlying(role));
   }
 }
 

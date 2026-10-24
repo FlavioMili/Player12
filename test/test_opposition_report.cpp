@@ -10,6 +10,7 @@
 #include <unistd.h>
 
 #include <algorithm>
+#include <format>
 #include <memory>
 #include <vector>
 
@@ -62,7 +63,7 @@ OppositionPlayer player(PlayerID id, PlayerRole role, bool starter, int goals,
 {
   OppositionPlayer entry;
   entry.player = id;
-  entry.name = "Player " + std::to_string(id);
+  entry.name = std::format("Player {}", id);
   entry.role = role;
   entry.likely_starter = starter;
   entry.appearances = 6;
@@ -74,27 +75,20 @@ OppositionPlayer player(PlayerID id, PlayerRole role, bool starter, int goals,
 
 std::vector<OppositionPlayer> squad()
 {
-  return {player(1, PlayerRole::GK, true, 0),
-          player(2, PlayerRole::CB, true, 0),
-          player(3, PlayerRole::CB, true, 0),
-          player(4, PlayerRole::LB, true, 0),
-          player(5, PlayerRole::RB, true, 0),
-          player(6, PlayerRole::CM, true, 1),
-          player(7, PlayerRole::CM, true, 0, 3),
-          player(8, PlayerRole::CAM, true, 1),
-          player(9, PlayerRole::LW, true, 0),
-          player(10, PlayerRole::RW, true, 1),
-          player(11, PlayerRole::ST, true, 6),
-          player(12, PlayerRole::ST, false, 0)};
+  using enum PlayerRole;
+  return {player(1, GK, true, 0),    player(2, CB, true, 0),
+          player(3, CB, true, 0),    player(4, LB, true, 0),
+          player(5, RB, true, 0),    player(6, CM, true, 1),
+          player(7, CM, true, 0, 3), player(8, CAM, true, 1),
+          player(9, LW, true, 0),    player(10, RW, true, 1),
+          player(11, ST, true, 6),   player(12, ST, false, 0)};
 }
 }  // namespace
 
 TEST(OppositionReportTest, FormationFromTheLikelyEleven)
 {
-  const std::vector<PlayerRole> roles = {
-      PlayerRole::GK, PlayerRole::CB,  PlayerRole::CB, PlayerRole::LB,
-      PlayerRole::RB, PlayerRole::CDM, PlayerRole::CM, PlayerRole::LM,
-      PlayerRole::RM, PlayerRole::ST,  PlayerRole::ST};
+  using enum PlayerRole;
+  const std::vector roles = {GK, CB, CB, LB, RB, CDM, CM, LM, RM, ST, ST};
   EXPECT_EQ(formationLabel(roles), "4-4-2");
   EXPECT_EQ(formationLabel({}), "");
 }
@@ -102,14 +96,13 @@ TEST(OppositionReportTest, FormationFromTheLikelyEleven)
 TEST(OppositionReportTest, AveragesAndFormComeFromTheLatestFiveMatches)
 {
   // Seven matches: an old 0-5 defeat falls out of the window.
-  std::vector<MatchReport> reports = {
-      report(1, OPPONENT, 50, 0, 5, 0.2f, 3.0f),
-      report(2, OPPONENT, 51, 0, 5, 0.2f, 3.0f),
-      report(3, OPPONENT, 52, 2, 0, 2.0f, 0.5f),
-      report(4, 53, OPPONENT, 0, 2, 0.5f, 2.0f),
-      report(5, OPPONENT, 54, 1, 1, 2.0f, 0.5f),
-      report(6, 55, OPPONENT, 1, 3, 0.5f, 2.0f),
-      report(7, OPPONENT, 56, 2, 1, 2.0f, 0.5f)};
+  std::vector reports = {report(1, OPPONENT, 50, 0, 5, 0.2f, 3.0f),
+                         report(2, OPPONENT, 51, 0, 5, 0.2f, 3.0f),
+                         report(3, OPPONENT, 52, 2, 0, 2.0f, 0.5f),
+                         report(4, 53, OPPONENT, 0, 2, 0.5f, 2.0f),
+                         report(5, OPPONENT, 54, 1, 1, 2.0f, 0.5f),
+                         report(6, 55, OPPONENT, 1, 3, 0.5f, 2.0f),
+                         report(7, OPPONENT, 56, 2, 1, 2.0f, 0.5f)};
   const std::vector<MatchReport> leagueReports = league();
   OppositionInput input;
   input.opponent = OPPONENT;
@@ -195,8 +188,7 @@ TEST(OppositionReportTest, PossessionSidesAreCounteredCompactly)
 
 TEST(OppositionReportTest, TooFewMatchesGiveNoTacticalAdvice)
 {
-  const std::vector<MatchReport> reports = {
-      report(1, OPPONENT, 80, 3, 0, 2.5f, 0.2f)};
+  const std::vector reports = {report(1, OPPONENT, 80, 3, 0, 2.5f, 0.2f)};
   const std::vector<MatchReport> leagueReports = league();
   OppositionInput input;
   input.opponent = OPPONENT;
@@ -213,14 +205,15 @@ TEST(OppositionReportTest, TooFewMatchesGiveNoTacticalAdvice)
 
 TEST(OppositionReportTest, PlanStoresOneInstructionPerPlayer)
 {
+  using enum OppositionInstruction;
   OppositionPlan plan;
-  plan.set(OPPONENT, 11, OppositionInstruction::TightMark);
-  plan.set(OPPONENT, 11, OppositionInstruction::Press);
-  plan.set(OPPONENT, 9, OppositionInstruction::ShowWeakFoot);
-  plan.set(8, 3, OppositionInstruction::Press);
-  EXPECT_EQ(plan.get(OPPONENT, 11), OppositionInstruction::Press);
+  plan.set(OPPONENT, 11, TightMark);
+  plan.set(OPPONENT, 11, Press);
+  plan.set(OPPONENT, 9, ShowWeakFoot);
+  plan.set(8, 3, Press);
+  EXPECT_EQ(plan.get(OPPONENT, 11), Press);
   EXPECT_EQ(plan.forOpponent(OPPONENT).size(), 2U);
-  plan.set(OPPONENT, 9, OppositionInstruction::None);
+  plan.set(OPPONENT, 9, None);
   EXPECT_EQ(plan.forOpponent(OPPONENT).size(), 1U);
   plan.clear(OPPONENT);
   EXPECT_TRUE(plan.forOpponent(OPPONENT).empty());
@@ -230,12 +223,17 @@ TEST(OppositionReportTest, PlanStoresOneInstructionPerPlayer)
 TEST(OppositionReportTest, ControllerReportUsesScoutedEstimatesOnly)
 {
   Logger::init();
-  const int slot = 330'000 + static_cast<int>(getpid() % 100'000) * 10;
+  const int slot = 330'000 + getpid() % 100'000 * 10;
   struct Cleanup
   {
+    explicit Cleanup(int saveSlot) : slot(saveSlot) {}
+    Cleanup(const Cleanup&) = delete;
+    Cleanup& operator=(const Cleanup&) = delete;
+
     int slot;
     ~Cleanup() { RuntimePaths::removeSave(slot); }
-  } cleanup{slot};
+  };
+  const Cleanup cleanup{slot};
   GameController controller;
   controller.newGame(slot, WORLD_SEED);
   controller.selectManagedTeam(controller.getTeams().front().get().getId());

@@ -12,9 +12,11 @@
 #include <array>
 #include <cstddef>
 #include <cstdint>
+#include <mutex>
 #include <span>
 #include <string>
 #include <unordered_map>
+#include <utility>
 #include <vector>
 
 #include "global/languages.h"
@@ -44,7 +46,7 @@ enum class StaffRole : std::uint8_t
 };
 
 inline constexpr std::size_t STAFF_ROLE_COUNT =
-    static_cast<std::size_t>(StaffRole::COUNT);
+    static_cast<std::size_t>(std::to_underlying(StaffRole::COUNT));
 
 /** @brief Staff attributes on a 1-100 scale (order is persisted). */
 enum class StaffAttribute : std::uint8_t
@@ -63,7 +65,7 @@ enum class StaffAttribute : std::uint8_t
 };
 
 inline constexpr std::size_t STAFF_ATTRIBUTE_COUNT =
-    static_cast<std::size_t>(StaffAttribute::COUNT);
+    static_cast<std::size_t>(std::to_underlying(StaffAttribute::COUNT));
 
 /**
  * @struct StaffMember
@@ -88,7 +90,7 @@ struct StaffMember
   std::string name() const { return first_name + " " + last_name; }
   std::uint8_t attribute(StaffAttribute which) const
   {
-    return attributes[static_cast<std::size_t>(which)];
+    return attributes[static_cast<std::size_t>(std::to_underlying(which))];
   }
 };
 
@@ -129,6 +131,8 @@ struct StaffEffects
 /**
  * @class StaffRoster
  * @brief Every staff member of the world with per-club effect caches.
+ * Concurrent effects queries return independent snapshots. Roster mutations
+ * and access through borrowed member pointers require exclusive career access.
  */
 class StaffRoster
 {
@@ -172,10 +176,14 @@ class StaffRoster
   std::size_t roleCount(TeamID team_id, StaffRole role) const;
 
   /** Cached effects of a club's staff (clubs without staff get baselines). */
-  const StaffEffects& effects(TeamID team_id) const;
+  StaffEffects effects(TeamID team_id) const;
 
   /** Marks the effect caches stale after a change. */
-  void invalidate() { cache_valid = false; }
+  void invalidate()
+  {
+    const std::scoped_lock lock(cache_mutex);
+    cache_valid = false;
+  }
 
   /** Replaces the roster with persisted members. */
   void restore(std::vector<StaffMember> loaded);
@@ -184,6 +192,7 @@ class StaffRoster
   void rebuildCache() const;
 
   std::unordered_map<StaffID, StaffMember> members;
+  mutable std::mutex cache_mutex;
   mutable std::unordered_map<TeamID, StaffEffects> effects_cache;
   mutable bool cache_valid = false;
   StaffID next_id = 1;
