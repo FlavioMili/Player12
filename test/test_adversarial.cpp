@@ -363,8 +363,8 @@ class Driver
   void key(SDL_Keycode code, SDL_Scancode scancode,
            SDL_Keymod mod = SDL_KMOD_NONE)
   {
-    SDL_Event event{};
-    event.type = SDL_EVENT_KEY_DOWN;
+    SDL_Event event{.key = {}};
+    event.key.type = SDL_EVENT_KEY_DOWN;
     event.key.windowID = SDL_GetWindowID(view.getWindow());
     event.key.key = code;
     event.key.scancode = scancode;
@@ -372,7 +372,7 @@ class Driver
     event.key.down = true;
     SDL_PushEvent(&event);
     frame();
-    event.type = SDL_EVENT_KEY_UP;
+    event.key.type = SDL_EVENT_KEY_UP;
     event.key.down = false;
     event.key.mod = SDL_KMOD_NONE;
     SDL_PushEvent(&event);
@@ -1350,8 +1350,8 @@ TEST_F(Adversarial, ResizeAndMinimizeDuringMatch)
   SDL_Window* window = view->getWindow();
   const auto pushWindowEvent = [&](SDL_EventType type, int width, int height)
   {
-    SDL_Event event{};
-    event.type = type;
+    SDL_Event event{.window = {}};
+    event.window.type = type;
     event.window.windowID = SDL_GetWindowID(window);
     event.window.data1 = width;
     event.window.data2 = height;

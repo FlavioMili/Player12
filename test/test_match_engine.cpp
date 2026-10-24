@@ -20,6 +20,7 @@
 #include <numbers>
 #include <optional>
 #include <print>
+#include <stdexcept>
 #include <string>
 #include <vector>
 
@@ -2719,6 +2720,8 @@ Vector2F aimAt(const MatchEngine& engine, PlayerID from, PlayerID to)
 {
   const MatchPlayer* source = findOnPitch(engine, from);
   const MatchPlayer* target = findOnPitch(engine, to);
+  if (source == nullptr || target == nullptr)
+    throw std::invalid_argument("Aim requires both players on the pitch");
   return {(target->position.x - source->position.x) * 105.0f,
           (target->position.y - source->position.y) * 68.0f};
 }
@@ -2726,14 +2729,15 @@ Vector2F aimAt(const MatchEngine& engine, PlayerID from, PlayerID to)
 /** Pitch-metre direction between two players of the play-mode scenario. */
 Vector2F scenarioAim(PlayerID from, PlayerID to)
 {
-  Vector2F source;
-  Vector2F target;
-  for (const MatchScenarioPlayer& placement : playModeScenario().players)
-  {
-    if (placement.playerId == from) source = placement.position;
-    if (placement.playerId == to) target = placement.position;
-  }
-  return {(target.x - source.x) * 105.0f, (target.y - source.y) * 68.0f};
+  const MatchScenario scenario = playModeScenario();
+  const auto source =
+      std::ranges::find(scenario.players, from, &MatchScenarioPlayer::playerId);
+  const auto target =
+      std::ranges::find(scenario.players, to, &MatchScenarioPlayer::playerId);
+  if (source == scenario.players.end() || target == scenario.players.end())
+    throw std::invalid_argument("Aim requires both players in the scenario");
+  return {(target->position.x - source->position.x) * 105.0f,
+          (target->position.y - source->position.y) * 68.0f};
 }
 
 /**
@@ -2808,6 +2812,15 @@ float meanPassError(int rating)
   return passes > 0 ? total / static_cast<float>(passes) : 0.0f;
 }
 }  // namespace
+
+TEST(PlayModeTest, ScenarioAimRejectsMissingPlayers)
+{
+  const Vector2F direction = scenarioAim(105, 109);
+  EXPECT_FLOAT_EQ(direction.x, (0.66f - 0.45f) * 105.0f);
+  EXPECT_FLOAT_EQ(direction.y, (0.32f - 0.50f) * 68.0f);
+  EXPECT_THROW(scenarioAim(0, 109), std::invalid_argument);
+  EXPECT_THROW(scenarioAim(105, 0), std::invalid_argument);
+}
 
 TEST(PlayModeTest, WeakPasserStaysImpreciseUnderTheSameInput)
 {
