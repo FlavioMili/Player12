@@ -1425,14 +1425,15 @@ TEST(MatchEngineTest, GoalkeeperStateMachineCoversTheMatch)
   EXPECT_EQ(goalkeeperStateName(GoalkeeperState::DIVE), "dive");
 }
 
-TEST(MatchEngineTest, FullHeadlessMatchIsFast)
+TEST(MatchEngineTest, FullHeadlessMatchesCompleteWithinSimulationBounds)
 {
   std::vector<std::unique_ptr<Player>> players;
   Team home = createSquadWithBench(1, "Home", 70, players);
   Team away = createSquadWithBench(2, "Away", 70, players);
   const StatsConfig config = createStatsConfig();
-  // Processor time of the fastest of several matches: robust against other
-  // processes competing for the machine, still a hard budget per match.
+  // CPU time still depends on clock limits, compiler and runner hardware.
+  // Report it for diagnosis; gate correctness on simulated match duration.
+  // Compare performance with the opt-in match benchmarks on the same machine.
   constexpr int MATCHES = 10;
   double fastest = std::numeric_limits<double>::max();
   double total = 0.0;
@@ -1447,11 +1448,15 @@ TEST(MatchEngineTest, FullHeadlessMatchIsFast)
     fastest = std::min(fastest, milliseconds);
     total += milliseconds;
     EXPECT_EQ(engine.getState(), MatchState::FULL_TIME);
+    EXPECT_GE(engine.getSimulatedSeconds(), 5'400.0);
+    EXPECT_LE(engine.getSimulatedSeconds(), 7'300.0);
+    ASSERT_FALSE(engine.getEvents().empty());
+    EXPECT_EQ(engine.getEvents().back().type, MatchEventType::FULL_TIME);
   }
   RecordProperty("milliseconds_per_match", std::to_string(total / MATCHES));
+  RecordProperty("fastest_milliseconds_per_match", std::to_string(fastest));
   std::print("[timing] headless match cpu {:.2f} ms (fastest {:.2f} ms)\n",
              total / MATCHES, fastest);
-  EXPECT_LT(fastest, 150.0);
 }
 
 TEST(MatchEngineTest, BackgroundFidelityIsDeterministicAndCompletes)

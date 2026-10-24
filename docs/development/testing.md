@@ -85,6 +85,12 @@ The `profile` preset enables machine-local native optimizations; use comparable
 builds and hardware when reporting results. Benchmark target definitions are
 in [benchmarks/CMakeLists.txt](../../benchmarks/CMakeLists.txt).
 
+The ten-seed headless match unit test checks full-time state, simulated match
+duration and the final event. It reports average and fastest CPU times as
+GoogleTest properties, without enforcing a machine-specific millisecond limit.
+CPU time still varies with frequency limits, compiler and hosted-runner hardware;
+use the opt-in match benchmarks for comparable before/after performance results.
+
 ## Historical calibration failures
 
 Verification on 2026-10-07 reproduced these failures with the original engine
