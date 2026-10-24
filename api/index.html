@@ -104,7 +104,7 @@ Schema versions</h1>
 <li><code><a class="el" href="namespaceMigrations.html#a53d303531a97a1e882b21e67f2c32b82">Migrations::currentSchemaVersion()</a></code> is the highest number in <code><a class="el" href="registry_8cpp.html">registry.cpp</a></code>. A save with a higher version is refused before anything is written (<code>FutureVersionError</code>, lang key <code>SAVE_ERROR_FUTURE_VERSION</code>).</li>
 <li>Saves from before versioning have no <code>save_meta</code> and count as version 0. All migrations check for existence explicitly, so every intermediate layout (tables and columns added over time) upgrades from version 0.</li>
 </ul>
-<p><code><a class="el" href="namespaceMigrations.html#af9fab9e020d020285a4cac619644616b">Migrations::migrate()</a></code> (called by <code><a class="el" href="classGameData.html" title="Singleton class that acts as an in-memory cache for the database state.">GameData</a></code> for new and loaded worlds):</p>
+<p><code><a class="el" href="namespaceMigrations.html#a98ca4e379e3030f4e80c1abae06f6d05">Migrations::migrate()</a></code> (called by <code><a class="el" href="classGameData.html" title="Singleton class that acts as an in-memory cache for the database state.">GameData</a></code> for new and loaded worlds):</p>
 <ol type="1">
 <li>reads the version (read-only) and rejects future versions;</li>
 <li>runs <code>assets/db/schema.sql</code> (<code>CREATE TABLE IF NOT EXISTS</code>, outside a transaction because it sets the journal mode): tables that did not exist when the save was written are created with their full definition;</li>
@@ -125,8 +125,8 @@ Save protocol</h1>
 <p>Commit points (<code><a class="el" href="classGameController.html#aa9be158f421cbd91b8958b68ca544414" title="Saves the current state of the game to its slot.">GameController::saveGame()</a></code> / autosave):</p>
 <ol type="1">
 <li><code><a class="el" href="classGame.html#a9f7ad0384767e46fa072891c123b7d9c" title="Saves the current game state, including calendar and game variables, to the database.">Game::saveGame()</a></code> flushes the in-memory aggregates (game state, calendar, competitions, world, transfers, players, teams) to the working database in one transaction; dirty flags are cleared only after the commit. Fixtures are diffed against the stored rows (only new, changed and dropped ones are written); every player changes daily, so player rows are rewritten with reused statements and allocation-free encoders.</li>
-<li><code><a class="el" href="classSaveManager.html#ad496b022b22d7bd65beec688807c58a3">SaveManager::stampMetadata()</a></code> updates <code>save_meta</code> (game, engine, RNG and simulation versions of the build, world seed, last saved in-game date, playtime, UTC timestamp).</li>
-<li><code><a class="el" href="classSaveManager.html#ad9a6a999a1620286e469aece8975f6ed">SaveManager::persist()</a></code>:<ol type="a">
+<li><code><a class="el" href="classSaveManager.html#aed75221f3d3ce81d3d4ee47b95ce33d3">SaveManager::stampMetadata()</a></code> updates <code>save_meta</code> (game, engine, RNG and simulation versions of the build, world seed, last saved in-game date, playtime, UTC timestamp).</li>
+<li><code><a class="el" href="classSaveManager.html#a2218aae2de305fe7186e90a9999d77fd">SaveManager::persist()</a></code>:<ol type="a">
 <li>online backup of the working database to <code>&lt;slot&gt;.tmp</code>, switched to a rollback journal so the file is self-contained (no <code>-wal</code> sidecar);</li>
 <li><code>PRAGMA quick_check</code> on the temporary file, then <code>fsync</code>;</li>
 <li>rotation: <code>.bak.N-1</code> -&gt; <code>.bak.N</code> ... and the current slot file is hard-linked (copied if links are unsupported) to <code>.bak.1</code>;</li>

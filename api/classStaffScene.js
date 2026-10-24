@@ -12,7 +12,7 @@ var classStaffScene =
     [ "renderDetail", "classStaffScene.html#a589adb7704432542f86f8916a885ead7", null ],
     [ "renderFilters", "classStaffScene.html#a097c13c11b1eab8d41743ca429ec47a6", null ],
     [ "renderGroups", "classStaffScene.html#ab8226b949a9694cca653ff06cccd53e8", null ],
-    [ "renderImpact", "classStaffScene.html#a53b725bc81a5f4ba7570cda68f70d6d3", null ],
+    [ "renderImpact", "classStaffScene.html#a87fb39763cbd7f387d21559d544dec02", null ],
     [ "renderMarket", "classStaffScene.html#a0163ab1b3269842d3158cff1ce7f189e", null ],
     [ "renderReleaseConfirm", "classStaffScene.html#a6bde29fdf4638dc0a61cd27cfa014109", null ],
     [ "renderStaff", "classStaffScene.html#a2f5b00654525f4fa91966027f879b142", null ],

@@ -9,7 +9,7 @@ var classMatchReportScene =
     [ "navSection", "classMatchReportScene.html#a475eee466d1c4cee50b0e250b8626172", null ],
     [ "refresh", "classMatchReportScene.html#aa6a2b318a5cba1f6dbfcf4ba4ae70540", null ],
     [ "renderContent", "classMatchReportScene.html#ab113b3e9cddaefca22ec4fcbe2cf9fdb", null ],
-    [ "renderEvents", "classMatchReportScene.html#ac8e014d339f80ec30c4217a6265cde60", null ],
+    [ "renderEvents", "classMatchReportScene.html#aec8941f545ffa61c1a3ed865a64ed070", null ],
     [ "renderRatings", "classMatchReportScene.html#a52f46e96211f03e7f5c20bda3e7e63cf", null ],
     [ "renderScore", "classMatchReportScene.html#a8fa3432506b17f66c9459cdd6074f22c", null ],
     [ "renderStats", "classMatchReportScene.html#a8fb46203d66ddeb3e48b7b41b16f887e", null ],

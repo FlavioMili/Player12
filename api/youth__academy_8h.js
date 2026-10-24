@@ -15,6 +15,8 @@ var youth__academy_8h =
     [ "YouthEstimate", "structYouthEstimate.html", "structYouthEstimate" ],
     [ "UpgradeQuote", "structUpgradeQuote.html", "structUpgradeQuote" ],
     [ "YouthAcademy", "classYouthAcademy.html", "classYouthAcademy" ],
+    [ "YouthAcademy::YouthRound", "structYouthAcademy_1_1YouthRound.html", "structYouthAcademy_1_1YouthRound" ],
+    [ "YouthAcademy::YouthMatchSheet", "structYouthAcademy_1_1YouthMatchSheet.html", "structYouthAcademy_1_1YouthMatchSheet" ],
     [ "AcademyUpgrade", "youth__academy_8h.html#af7f73daeacbc451c2306d146f2a97862", [
       [ "None", "youth__academy_8h.html#af7f73daeacbc451c2306d146f2a97862a6adf97f83acf6453d4a6a4b1070f3754", null ],
       [ "Facilities", "youth__academy_8h.html#af7f73daeacbc451c2306d146f2a97862aa226e46f37e55af902b2f1608a6aca06", null ],

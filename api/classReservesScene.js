@@ -23,7 +23,7 @@ var classReservesScene =
     [ "renderContent", "classReservesScene.html#af97c4691a33584c063a915a92fa615dd", null ],
     [ "renderDetail", "classReservesScene.html#aa49774c64a9e7e5a8d70fe86448300a6", null ],
     [ "renderLeague", "classReservesScene.html#a18aeecad3fce967519f63476f4b36013", null ],
-    [ "renderQuotaCard", "classReservesScene.html#ac0bdbb6dbd93723b8e1249e009aef2eb", null ],
+    [ "renderQuotaCard", "classReservesScene.html#a97994ed0a21f84bd4f960ad63deff994", null ],
     [ "renderResultsCard", "classReservesScene.html#a36a3707b2aeb8cf1fb3071728802894a", null ],
     [ "renderSquad", "classReservesScene.html#a774bb63216702877fb2dce54c436fb9d", null ],
     [ "renderTable", "classReservesScene.html#a8fd5f5ba5b87fb48b848933f74774d96", null ],

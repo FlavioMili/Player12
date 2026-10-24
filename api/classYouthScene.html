@@ -249,8 +249,8 @@ Private Member Functions</h2></td></tr>
 <tr class="separator:acea3d003f1ee9567c8c9fd25179bd7c0"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:ae4c60cf0b3b9252206cac04c7bb9821a" id="r_ae4c60cf0b3b9252206cac04c7bb9821a"><td class="memItemLeft" align="right" valign="top">void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classYouthScene.html#ae4c60cf0b3b9252206cac04c7bb9821a">renderDetail</a> (const <a class="el" href="structYouthScene_1_1Row.html">Row</a> &amp;row, <a class="el" href="classYouthScene.html#a2bba9614b1b25cdd9dc4b96459f99580">ListKind</a> kind)</td></tr>
 <tr class="separator:ae4c60cf0b3b9252206cac04c7bb9821a"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a0d6014d4db0fc9ece6c682619ee95316" id="r_a0d6014d4db0fc9ece6c682619ee95316"><td class="memItemLeft" align="right" valign="top">void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classYouthScene.html#a0d6014d4db0fc9ece6c682619ee95316">renderChart</a> (const <a class="el" href="structYouthScene_1_1Row.html">Row</a> &amp;row, float width)</td></tr>
-<tr class="separator:a0d6014d4db0fc9ece6c682619ee95316"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:af3e85d3997b7718ae4d643125315685e" id="r_af3e85d3997b7718ae4d643125315685e"><td class="memItemLeft" align="right" valign="top">void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classYouthScene.html#af3e85d3997b7718ae4d643125315685e">renderChart</a> (const <a class="el" href="structYouthScene_1_1Row.html">Row</a> &amp;row, float width) const</td></tr>
+<tr class="separator:af3e85d3997b7718ae4d643125315685e"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a4d5c35e0496302dabf66a2aa25e23a06" id="r_a4d5c35e0496302dabf66a2aa25e23a06"><td class="memItemLeft" align="right" valign="top">void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classYouthScene.html#a4d5c35e0496302dabf66a2aa25e23a06">renderConfirm</a> ()</td></tr>
 <tr class="separator:a4d5c35e0496302dabf66a2aa25e23a06"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a2b9899e24b92650f421dea3bf603bbb9" id="r_a2b9899e24b92650f421dea3bf603bbb9"><td class="memItemLeft" align="right" valign="top">void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classYouthScene.html#a2b9899e24b92650f421dea3bf603bbb9">runPending</a> ()</td></tr>
@@ -448,7 +448,7 @@ Additional Inherited Members</h2></td></tr>
 
 <p>Gets the ID of the scene. </p>
 <dl class="section return"><dt>Returns</dt><dd>The SceneID of this scene.</dd></dl>
-<p>This function might be used to check what we are rendering. we would simply do something like this: <a class="el" href="classMainMenuScene.html#ac65f4aa576ae71cb9fac4a1154edca49" title="Gets the ID of this scene.">MainMenuScene::getID()</a> { return <a class="el" href="gui__scene_8h.html#aaf4bddc3ff70ab62a07943e024b9942faa16d505f03a4b6f35486f65f6a61317e">SceneID::MAIN_MENU</a>; } TODO : remove or not? </p>
+<p><a class="el" href="classGUIView.html" title="Main view manager for the GUI. Handles scenes and overlays.">GUIView</a> uses this identifier to apply match-specific event and scene behavior. </p>
 
 <p>Implements <a class="el" href="classGUIScene.html#adc23f98639a131403f09cc46133fcd04">GUIScene</a>.</p>
 
@@ -590,8 +590,8 @@ Additional Inherited Members</h2></td></tr>
 
 </div>
 </div>
-<a id="a0d6014d4db0fc9ece6c682619ee95316" name="a0d6014d4db0fc9ece6c682619ee95316"></a>
-<h2 class="memtitle"><span class="permalink"><a href="#a0d6014d4db0fc9ece6c682619ee95316">&#9670;&#160;</a></span>renderChart()</h2>
+<a id="af3e85d3997b7718ae4d643125315685e" name="af3e85d3997b7718ae4d643125315685e"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#af3e85d3997b7718ae4d643125315685e">&#9670;&#160;</a></span>renderChart()</h2>
 
 <div class="memitem">
 <div class="memproto">
@@ -614,7 +614,7 @@ Additional Inherited Members</h2></td></tr>
         <tr>
           <td></td>
           <td>)</td>
-          <td></td><td></td>
+          <td></td><td> const</td>
         </tr>
       </table>
   </td>

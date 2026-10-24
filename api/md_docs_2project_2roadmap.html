@@ -96,8 +96,8 @@ $(document).ready(function(){initNavTree('md_docs_2project_2roadmap.html',''); i
   <div class="headertitle"><div class="title">Roadmap</div></div>
 </div><!--header-->
 <div class="contents">
-<div class="textblock"><p><a class="anchor" id="autotoc_md137"></a> Player12 has a playable career, live 2D/3D matches and direct player control. This roadmap describes the gap between that game and the game we want to build. It is not a release schedule. Priorities can change with playtesting and contributor availability. The <a class="el" href="md_docs_2project_2features.html">feature tour</a> describes current capabilities; the changelog records shipped changes.</p>
-<h1><a class="anchor" id="autotoc_md138"></a>
+<div class="textblock"><p><a class="anchor" id="autotoc_md138"></a> Player12 has a playable career, live 2D/3D matches and direct player control. This roadmap describes the gap between that game and the game we want to build. It is not a release schedule. Priorities can change with playtesting and contributor availability. The <a class="el" href="md_docs_2project_2features.html">feature tour</a> describes current capabilities; the changelog records shipped changes.</p>
+<h1><a class="anchor" id="autotoc_md139"></a>
 Start from what already works</h1>
 <p>Do not open tasks to add features that are already present:</p>
 <ul>
@@ -109,7 +109,7 @@ Start from what already works</h1>
 <li>Play mode already has automatic restart release and pass-button release for the restart side. Do not describe all restart input as missing.</li>
 <li>National-team jobs and call-ups already exist. Their matches are simulated; watching or directing those matches live is a separate missing capability.</li>
 </ul>
-<h1><a class="anchor" id="autotoc_md139"></a>
+<h1><a class="anchor" id="autotoc_md140"></a>
 First priority: make existing decisions easier</h1>
 <p>Work from observed player problems, not a list of new screens. Start with five journeys: create a career, select a lineup, change tactics, negotiate a signing and play the next match.</p>
 <ol type="1">
@@ -119,7 +119,7 @@ First priority: make existing decisions easier</h1>
 <li><b>Retest with players.</b> A finished improvement lets a newcomer complete the affected task and explain the decision without maintainer guidance. Include evidence of that outcome, not just a screenshot of the new layout.</li>
 </ol>
 <p>The first contribution can be one documented usability problem or one corrected screen. A wholesale interface rewrite is not a prerequisite.</p>
-<h1><a class="anchor" id="autotoc_md140"></a>
+<h1><a class="anchor" id="autotoc_md141"></a>
 Release confidence and football quality</h1>
 <p>A playable download and trustworthy results are part of the player experience.</p>
 <ul>
@@ -130,25 +130,25 @@ Release confidence and football quality</h1>
 <li><b>Close career gaps.</b> Add live national-team matchday through the existing match pipeline; introduce multiple nationalities and eligibility rules before exposing them in a world editor. Support country-specific season shapes for Brazil, Argentina and the United States instead of the current August–May assumption. Validate season rollover, transfers and international windows.</li>
 </ul>
 <p><a class="el" href="namespaceAudio.html">Audio</a> refinements, club chants/commentary, Italian club articles and loan appearance clauses remain smaller follow-up directions. They should not displace release blockers or the highest-impact usability findings.</p>
-<h1><a class="anchor" id="autotoc_md141"></a>
+<h1><a class="anchor" id="autotoc_md142"></a>
 In-game editing: safe changes before arbitrary worlds</h1>
 <p>The end goal is to create countries, clubs, players and competitions without editing database files. Reach it through useful, testable stages.</p>
-<h2><a class="anchor" id="autotoc_md142"></a>
+<h2><a class="anchor" id="autotoc_md143"></a>
 1. Edit supported data for a new career</h2>
 <p>Build a browser/editor for the entities the loader already understands. Start with players and clubs, then leagues. Expose fields supported by the game, preview changes and validate IDs, required values and references before saving. Add staff and venue editing when their creation/import lifecycle is supported; those are not existing JSON pack capabilities to assume.</p>
 <p>A first release should let a creator clone a small example, edit a club and its players, and start a new career that contains them. Preserve the original data, provide a recoverable draft and report errors against the relevant field. Editing an active save is a separate feature with explicit compatibility rules.</p>
-<h2><a class="anchor" id="autotoc_md143"></a>
+<h2><a class="anchor" id="autotoc_md144"></a>
 2. Make creations shareable and recoverable</h2>
 <p>Add pack metadata, authorship/version information, export/import, dependency and conflict reporting. Show which records will change before applying a pack. Test that export/import preserves the edited world and an invalid pack cannot damage an existing career. Do not promise that unrelated packs can always be combined.</p>
-<h2><a class="anchor" id="autotoc_md144"></a>
+<h2><a class="anchor" id="autotoc_md145"></a>
 3. Separate countries from today's league-pyramid convention</h2>
 <p>Currently a domestic competition's country is represented by its root league, with linked divisions and a domestic cup. <a class="el" href="classLeague.html" title="Represents a football league containing teams and a leaderboard.">League</a> economy/nationality profiles also live in C++ tuning tables, and unknown player nationalities fall back to English. Arbitrary countries and associations need an explicit model and migration plan before an editor can safely expose flags, regions, nationalities, national teams and calendar rules.</p>
 <p>First support one added country with a valid league pyramid and generated national team. Verify generated players, nationality, club membership, season rollover and existing-save compatibility. Then expand associations, continental membership and national-team eligibility, including multiple nationalities.</p>
-<h2><a class="anchor" id="autotoc_md145"></a>
+<h2><a class="anchor" id="autotoc_md146"></a>
 4. Expose competition rules, then expand supported formats</h2>
 <p>Begin with editable versions of formats the game already runs: domestic leagues and cups, continental phases and national-team qualifiers/finals. Make participants, promotion/relegation and qualification routes explicit. Preserve current worlds as a compatibility example.</p>
 <p>Broader formats need reusable rules for stages, calendars, squad eligibility, tie-breakers, extra time/penalties and prize money. Add one format at a time for both clubs and nations. Before starting a career, preview fixtures and diagnose missing participants, impossible qualification paths and scheduling conflicts. Validate a complete season/tournament, the resulting qualifiers and the next season, not only that a bracket can be drawn.</p>
-<h1><a class="anchor" id="autotoc_md146"></a>
+<h1><a class="anchor" id="autotoc_md147"></a>
 Friendlies, invitations and summer competitions</h1>
 <p>Build on the existing preseason planner rather than adding basic friendlies again. These can advance independently of the complete world editor.</p>
 <ol type="1">
@@ -157,7 +157,7 @@ Friendlies, invitations and summer competitions</h1>
 <li><b>Summer tournaments.</b> Add a small invited-club tournament, initially one supported round-robin or knockout format. Reuse invitation status, calendar checks and existing match rules. Show confirmed participants and pending replies; handle a declined invitation or withdrawal before confirmation. Validate fixtures, travel/recovery, standings or the winner, and settlement of costs and receipts. More hosts and formats follow that working slice.</li>
 </ol>
 <p>These proposals concern computer-controlled clubs in a career. Online multiplayer would require its own design and is not implied.</p>
-<h1><a class="anchor" id="autotoc_md147"></a>
+<h1><a class="anchor" id="autotoc_md148"></a>
 Community building: people and ownership</h1>
 <p>This is a parallel, nontechnical initiative, not a game-engine milestone. Contribution guides, optional contributor credits and player cameos already exist; the next step is helping people use them.</p>
 <ul>
@@ -167,7 +167,7 @@ Community building: people and ownership</h1>
 <li>Grow towards regular career/tactics showcases, custom-world sharing and community challenges when people volunteer to sustain them.</li>
 </ul>
 <p>Progress means participants can find help, receive a response and see their contributions acknowledged. A new platform or a feature ticket alone does not establish a community.</p>
-<h1><a class="anchor" id="autotoc_md148"></a>
+<h1><a class="anchor" id="autotoc_md149"></a>
 Turn the roadmap into a contribution</h1>
 <p>Use the <a class="el" href="md_CONTRIBUTING.html">contribution guide</a> and <a href="https://github.com/FlavioMili/FootballManagement/issues">existing issues</a>. For a task, describe today's behaviour, the desired outcome, a bounded first change, dependencies and how a player or test will demonstrate improvement. Large editor features should start with a focused design discussion; community activities need an organiser and a practical invitation rather than architecture. </p>
 </div></div><!-- contents -->

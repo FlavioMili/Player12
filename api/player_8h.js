@@ -3,6 +3,7 @@ var player_8h =
     [ "PlayerTraits", "structPlayerTraits.html", "structPlayerTraits" ],
     [ "PlayerDynamics", "structPlayerDynamics.html", "structPlayerDynamics" ],
     [ "Player", "classPlayer.html", "classPlayer" ],
+    [ "Player::MarketValueCache", "structPlayer_1_1MarketValueCache.html", "structPlayer_1_1MarketValueCache" ],
     [ "Foot", "player_8h.html#a29a274bfa86b6e9dbfae8cddbae6e606", [
       [ "Left", "player_8h.html#a29a274bfa86b6e9dbfae8cddbae6e606a945d5e233cf7d6240f6b783b36a374ff", null ],
       [ "Right", "player_8h.html#a29a274bfa86b6e9dbfae8cddbae6e606a92b09c7c48c520c3c55e497875da437c", null ]

@@ -10,7 +10,7 @@ var classAudio_1_1AudioDevice =
     [ "chunk", "classAudio_1_1AudioDevice.html#a2ed394ccceb7a90bc2c0377d83f6c1cb", null ],
     [ "CHUNK_FRAMES", "classAudio_1_1AudioDevice.html#a2b44e52c808c5f19159a54a40d17a5d2", null ],
     [ "mixer", "classAudio_1_1AudioDevice.html#a61fa3b6cbe8e48582c8a112d367d210b", null ],
-    [ "opener", "classAudio_1_1AudioDevice.html#a2d203a6fa843c2cde8c74716740fec1a", null ],
+    [ "opener", "classAudio_1_1AudioDevice.html#a407e5421aea19932e1e1bb2297c689dd", null ],
     [ "stream", "classAudio_1_1AudioDevice.html#a09dced7f6e0768c5193a810824616740", null ],
     [ "subsystemStarted", "classAudio_1_1AudioDevice.html#ac4ab924bc36c154254c7831e2897e9c3", null ]
 ];

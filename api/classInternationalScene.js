@@ -20,7 +20,7 @@ var classInternationalScene =
     [ "refreshContinental", "classInternationalScene.html#a0d0f97862735fd8eee619c639247cc1a", null ],
     [ "refreshNational", "classInternationalScene.html#a3894829fd19e2145eb30651b716481f1", null ],
     [ "renderAssociations", "classInternationalScene.html#a5b4d32e53b44e289429d7243299fc66d", null ],
-    [ "renderBracket", "classInternationalScene.html#a31bfad7fd9b7d1ee1ca5b4b45417575f", null ],
+    [ "renderBracket", "classInternationalScene.html#a1777ae82630ddca13a22a8dba8bb7ae9", null ],
     [ "renderCalledUp", "classInternationalScene.html#a5b469fd801f936651927f86803875281", null ],
     [ "renderCompetitionPicker", "classInternationalScene.html#a8b809a34e27f82841fc990630a90179e", null ],
     [ "renderContent", "classInternationalScene.html#a603786d09b1fd3c8dff41f51c3382463", null ],

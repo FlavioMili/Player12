@@ -1,5 +1,6 @@
 var dir_fd5b32b71e21b15bc8655c1952d69168 =
 [
+    [ "background_task.h", "background__task_8h.html", "background__task_8h" ],
     [ "build_info.cpp", "build__info_8cpp.html", "build__info_8cpp" ],
     [ "build_info.h", "build__info_8h.html", "build__info_8h" ],
     [ "crash_report.cpp", "crash__report_8cpp.html", "crash__report_8cpp" ],

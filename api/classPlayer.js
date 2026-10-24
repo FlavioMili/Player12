@@ -1,5 +1,6 @@
 var classPlayer =
 [
+    [ "MarketValueCache", "structPlayer_1_1MarketValueCache.html", "structPlayer_1_1MarketValueCache" ],
     [ "Player", "classPlayer.html#a435ec014d4b6b6bf5c5cd281ff51742c", null ],
     [ "advanceContractYear", "classPlayer.html#af23b45a1706279bae92aa8573a109417", null ],
     [ "agePlayer", "classPlayer.html#a6e12b3575e64a3fb25b7bd6c8f1a0624", null ],
@@ -43,7 +44,7 @@ var classPlayer =
     [ "updateMarketValue", "classPlayer.html#a56423aa8e7b773a080a0477f40e63230", null ],
     [ "valueFor", "classPlayer.html#a8cf9a2b5a4234117cb7b24fb19ae3d31", null ],
     [ "_age", "classPlayer.html#a96afedde0e2f0672eda0f5df82abbf23", null ],
-    [ "_cached_market_value", "classPlayer.html#a9c5efee2136c594d4d9ea46bc39eef2a", null ],
+    [ "_cached_market_value", "classPlayer.html#a75028124b9b958e268765ea7a4aa138a", null ],
     [ "_contract_years", "classPlayer.html#ac6645056500a8798bf3502ccf234d837", null ],
     [ "_dynamics", "classPlayer.html#a8ce21ee2a123447ccaafc359d771284e", null ],
     [ "_first_name", "classPlayer.html#a71057df9bb971e2d00f6f09b6adcea8e", null ],

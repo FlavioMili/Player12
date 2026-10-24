@@ -144,7 +144,7 @@ var namespaces_dup =
     [ "GuidanceUI", "namespaceGuidanceUI.html", [
       [ "noteVisit", "namespaceGuidanceUI.html#a21d4651b8f2c7e02206dcc4e15bafa22", null ],
       [ "openAction", "namespaceGuidanceUI.html#a541c1f06d4d0f46814bd78ffe8b17c5b", null ],
-      [ "renderReclaimNotice", "namespaceGuidanceUI.html#a7a9f1948b4283cd0cfbecd28f82b4f37", null ],
+      [ "renderReclaimNotice", "namespaceGuidanceUI.html#a759053c9e92b6287289e7aad8c7d500c", null ],
       [ "renderScreenTip", "namespaceGuidanceUI.html#a1dcf127cb10a8cbdc628d65a2ed10526", null ],
       [ "sectionForTask", "namespaceGuidanceUI.html#abc43611ccfc0c0a43ca095c8754a2c9f", null ],
       [ "taskForSection", "namespaceGuidanceUI.html#afa689d883df097b2b9009b729b1cfc4b", null ],
@@ -719,7 +719,7 @@ var namespaces_dup =
       [ "directGrowth", "namespaceTrainingSystem.html#a864b2e6465e1df14180db70c94135533", null ],
       [ "endWeek", "namespaceTrainingSystem.html#a619800f7829c8c134e1be90e135dc4a8", null ],
       [ "planDay", "namespaceTrainingSystem.html#a0e16137329e84f1345fa0a10d432be61", null ],
-      [ "recordMatchLoad", "namespaceTrainingSystem.html#a6a94474ae0084219ba94a1a754b7e7e0", null ],
+      [ "recordMatchLoad", "namespaceTrainingSystem.html#a662226ff32203b57df6ba2da158649b7", null ],
       [ "recordTeamMatch", "namespaceTrainingSystem.html#af6641002ce56e3138ba904a0a7acd47e", null ],
       [ "recordWeeklyGrowth", "namespaceTrainingSystem.html#a8439f0c96126b2ba214b11e1354c64fe", null ],
       [ "rollWorkloads", "namespaceTrainingSystem.html#af43d69ab26bc736ef7d9b7a7c8f74254", null ],

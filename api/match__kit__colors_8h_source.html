@@ -113,170 +113,173 @@ $(document).ready(function(){initNavTree('match__kit__colors_8h_source.html','')
 <div class="line"><a id="l00010" name="l00010"></a><span class="lineno">   10</span> </div>
 <div class="line"><a id="l00011" name="l00011"></a><span class="lineno">   11</span><span class="preprocessor">#include &lt;imgui.h&gt;</span></div>
 <div class="line"><a id="l00012" name="l00012"></a><span class="lineno">   12</span> </div>
-<div class="line"><a id="l00013" name="l00013"></a><span class="lineno">   13</span><span class="preprocessor">#include &lt;cstdint&gt;</span></div>
-<div class="line"><a id="l00014" name="l00014"></a><span class="lineno">   14</span> </div>
-<div class="line"><a id="l00015" name="l00015"></a><span class="lineno">   15</span><span class="preprocessor">#include &quot;<a class="code" href="types_8h.html">global/types.h</a>&quot;</span></div>
-<div class="line"><a id="l00016" name="l00016"></a><span class="lineno">   16</span> </div>
-<div class="line"><a id="l00017" name="l00017"></a><span class="lineno">   17</span><span class="keyword">struct </span><a class="code hl_struct" href="structClubIdentity.html">ClubIdentity</a>;</div>
-<div class="line"><a id="l00018" name="l00018"></a><span class="lineno">   18</span> </div>
-<div class="foldopen" id="foldopen00020" data-start="{" data-end="};">
-<div class="line"><a id="l00020" name="l00020"></a><span class="lineno"><a class="line" href="structKitColors.html">   20</a></span><span class="keyword">struct </span><a class="code hl_struct" href="structKitColors.html">KitColors</a></div>
-<div class="line"><a id="l00021" name="l00021"></a><span class="lineno">   21</span>{</div>
-<div class="line"><a id="l00022" name="l00022"></a><span class="lineno"><a class="line" href="structKitColors.html#aaf10e445e993cdfd572ac7850fe7205a">   22</a></span>  ImU32 <a class="code hl_variable" href="structKitColors.html#aaf10e445e993cdfd572ac7850fe7205a">shirt</a> = 0;</div>
-<div class="line"><a id="l00023" name="l00023"></a><span class="lineno"><a class="line" href="structKitColors.html#a4fe1316a3ec8cd261090e9513a646c42">   23</a></span>  ImU32 <a class="code hl_variable" href="structKitColors.html#a4fe1316a3ec8cd261090e9513a646c42">trim</a> = 0;</div>
-<div class="line"><a id="l00024" name="l00024"></a><span class="lineno"><a class="line" href="structKitColors.html#a3a9d278241d77b6165fc58c5ddbd15ba">   24</a></span>  ImU32 <a class="code hl_variable" href="structKitColors.html#a3a9d278241d77b6165fc58c5ddbd15ba">shorts</a> = 0;</div>
-<div class="line"><a id="l00025" name="l00025"></a><span class="lineno"><a class="line" href="structKitColors.html#aa8e5c5b858dd8a6276361baa2da90433">   25</a></span>  ImU32 <a class="code hl_variable" href="structKitColors.html#aa8e5c5b858dd8a6276361baa2da90433">socks</a> = 0;</div>
-<div class="line"><a id="l00026" name="l00026"></a><span class="lineno">   26</span>};</div>
+<div class="line"><a id="l00013" name="l00013"></a><span class="lineno">   13</span><span class="preprocessor">#include &lt;cmath&gt;</span></div>
+<div class="line"><a id="l00014" name="l00014"></a><span class="lineno">   14</span><span class="preprocessor">#include &lt;cstdint&gt;</span></div>
+<div class="line"><a id="l00015" name="l00015"></a><span class="lineno">   15</span> </div>
+<div class="line"><a id="l00016" name="l00016"></a><span class="lineno">   16</span><span class="preprocessor">#include &quot;<a class="code" href="types_8h.html">global/types.h</a>&quot;</span></div>
+<div class="line"><a id="l00017" name="l00017"></a><span class="lineno">   17</span> </div>
+<div class="line"><a id="l00018" name="l00018"></a><span class="lineno">   18</span><span class="keyword">struct </span><a class="code hl_struct" href="structClubIdentity.html">ClubIdentity</a>;</div>
+<div class="line"><a id="l00019" name="l00019"></a><span class="lineno">   19</span> </div>
+<div class="foldopen" id="foldopen00021" data-start="{" data-end="};">
+<div class="line"><a id="l00021" name="l00021"></a><span class="lineno"><a class="line" href="structKitColors.html">   21</a></span><span class="keyword">struct </span><a class="code hl_struct" href="structKitColors.html">KitColors</a></div>
+<div class="line"><a id="l00022" name="l00022"></a><span class="lineno">   22</span>{</div>
+<div class="line"><a id="l00023" name="l00023"></a><span class="lineno"><a class="line" href="structKitColors.html#aaf10e445e993cdfd572ac7850fe7205a">   23</a></span>  ImU32 <a class="code hl_variable" href="structKitColors.html#aaf10e445e993cdfd572ac7850fe7205a">shirt</a> = 0;</div>
+<div class="line"><a id="l00024" name="l00024"></a><span class="lineno"><a class="line" href="structKitColors.html#a4fe1316a3ec8cd261090e9513a646c42">   24</a></span>  ImU32 <a class="code hl_variable" href="structKitColors.html#a4fe1316a3ec8cd261090e9513a646c42">trim</a> = 0;</div>
+<div class="line"><a id="l00025" name="l00025"></a><span class="lineno"><a class="line" href="structKitColors.html#a3a9d278241d77b6165fc58c5ddbd15ba">   25</a></span>  ImU32 <a class="code hl_variable" href="structKitColors.html#a3a9d278241d77b6165fc58c5ddbd15ba">shorts</a> = 0;</div>
+<div class="line"><a id="l00026" name="l00026"></a><span class="lineno"><a class="line" href="structKitColors.html#aa8e5c5b858dd8a6276361baa2da90433">   26</a></span>  ImU32 <a class="code hl_variable" href="structKitColors.html#aa8e5c5b858dd8a6276361baa2da90433">socks</a> = 0;</div>
+<div class="line"><a id="l00027" name="l00027"></a><span class="lineno">   27</span>};</div>
 </div>
-<div class="line"><a id="l00027" name="l00027"></a><span class="lineno">   27</span> </div>
-<div class="foldopen" id="foldopen00029" data-start="{" data-end="};">
-<div class="line"><a id="l00029" name="l00029"></a><span class="lineno"><a class="line" href="structMatchKits.html">   29</a></span><span class="keyword">struct </span><a class="code hl_struct" href="structMatchKits.html">MatchKits</a></div>
-<div class="line"><a id="l00030" name="l00030"></a><span class="lineno">   30</span>{</div>
-<div class="line"><a id="l00031" name="l00031"></a><span class="lineno"><a class="line" href="structMatchKits.html#ac12f6e1d0c500aa3c3fe1b9be2e65082">   31</a></span>  <a class="code hl_struct" href="structKitColors.html">KitColors</a> <a class="code hl_variable" href="structMatchKits.html#ac12f6e1d0c500aa3c3fe1b9be2e65082">home</a>;</div>
-<div class="line"><a id="l00032" name="l00032"></a><span class="lineno"><a class="line" href="structMatchKits.html#a1bff5a957fbdea97fff2b02183c80bcb">   32</a></span>  <a class="code hl_struct" href="structKitColors.html">KitColors</a> <a class="code hl_variable" href="structMatchKits.html#a1bff5a957fbdea97fff2b02183c80bcb">away</a>;</div>
-<div class="line"><a id="l00033" name="l00033"></a><span class="lineno"><a class="line" href="structMatchKits.html#a6aadc26e829f8296c92fd3bfa3c5335b">   33</a></span>  <a class="code hl_struct" href="structKitColors.html">KitColors</a> <a class="code hl_variable" href="structMatchKits.html#a6aadc26e829f8296c92fd3bfa3c5335b">homeGoalkeeper</a>;</div>
-<div class="line"><a id="l00034" name="l00034"></a><span class="lineno"><a class="line" href="structMatchKits.html#af86df46484df2828428165593185dc92">   34</a></span>  <a class="code hl_struct" href="structKitColors.html">KitColors</a> <a class="code hl_variable" href="structMatchKits.html#af86df46484df2828428165593185dc92">awayGoalkeeper</a>;</div>
-<div class="line"><a id="l00035" name="l00035"></a><span class="lineno">   35</span>};</div>
+<div class="line"><a id="l00028" name="l00028"></a><span class="lineno">   28</span> </div>
+<div class="foldopen" id="foldopen00030" data-start="{" data-end="};">
+<div class="line"><a id="l00030" name="l00030"></a><span class="lineno"><a class="line" href="structMatchKits.html">   30</a></span><span class="keyword">struct </span><a class="code hl_struct" href="structMatchKits.html">MatchKits</a></div>
+<div class="line"><a id="l00031" name="l00031"></a><span class="lineno">   31</span>{</div>
+<div class="line"><a id="l00032" name="l00032"></a><span class="lineno"><a class="line" href="structMatchKits.html#ac12f6e1d0c500aa3c3fe1b9be2e65082">   32</a></span>  <a class="code hl_struct" href="structKitColors.html">KitColors</a> <a class="code hl_variable" href="structMatchKits.html#ac12f6e1d0c500aa3c3fe1b9be2e65082">home</a>;</div>
+<div class="line"><a id="l00033" name="l00033"></a><span class="lineno"><a class="line" href="structMatchKits.html#a1bff5a957fbdea97fff2b02183c80bcb">   33</a></span>  <a class="code hl_struct" href="structKitColors.html">KitColors</a> <a class="code hl_variable" href="structMatchKits.html#a1bff5a957fbdea97fff2b02183c80bcb">away</a>;</div>
+<div class="line"><a id="l00034" name="l00034"></a><span class="lineno"><a class="line" href="structMatchKits.html#a6aadc26e829f8296c92fd3bfa3c5335b">   34</a></span>  <a class="code hl_struct" href="structKitColors.html">KitColors</a> <a class="code hl_variable" href="structMatchKits.html#a6aadc26e829f8296c92fd3bfa3c5335b">homeGoalkeeper</a>;</div>
+<div class="line"><a id="l00035" name="l00035"></a><span class="lineno"><a class="line" href="structMatchKits.html#af86df46484df2828428165593185dc92">   35</a></span>  <a class="code hl_struct" href="structKitColors.html">KitColors</a> <a class="code hl_variable" href="structMatchKits.html#af86df46484df2828428165593185dc92">awayGoalkeeper</a>;</div>
+<div class="line"><a id="l00036" name="l00036"></a><span class="lineno">   36</span>};</div>
 </div>
-<div class="line"><a id="l00036" name="l00036"></a><span class="lineno">   36</span> </div>
-<div class="foldopen" id="foldopen00038" data-start="{" data-end="};">
-<div class="line"><a id="l00038" name="l00038"></a><span class="lineno"><a class="line" href="structClubColours.html">   38</a></span><span class="keyword">struct </span><a class="code hl_struct" href="structClubColours.html">ClubColours</a></div>
-<div class="line"><a id="l00039" name="l00039"></a><span class="lineno">   39</span>{</div>
-<div class="line"><a id="l00040" name="l00040"></a><span class="lineno"><a class="line" href="structClubColours.html#a31a3e2da736998428205d87929e13307">   40</a></span>  ImU32 <a class="code hl_variable" href="structClubColours.html#a31a3e2da736998428205d87929e13307">primary</a> = 0;</div>
-<div class="line"><a id="l00041" name="l00041"></a><span class="lineno"><a class="line" href="structClubColours.html#ae1d06203b70ecf385ed02c836460b8d2">   41</a></span>  ImU32 <a class="code hl_variable" href="structClubColours.html#ae1d06203b70ecf385ed02c836460b8d2">secondary</a> = 0;</div>
-<div class="line"><a id="l00042" name="l00042"></a><span class="lineno">   42</span>};</div>
+<div class="line"><a id="l00037" name="l00037"></a><span class="lineno">   37</span> </div>
+<div class="foldopen" id="foldopen00039" data-start="{" data-end="};">
+<div class="line"><a id="l00039" name="l00039"></a><span class="lineno"><a class="line" href="structClubColours.html">   39</a></span><span class="keyword">struct </span><a class="code hl_struct" href="structClubColours.html">ClubColours</a></div>
+<div class="line"><a id="l00040" name="l00040"></a><span class="lineno">   40</span>{</div>
+<div class="line"><a id="l00041" name="l00041"></a><span class="lineno"><a class="line" href="structClubColours.html#a31a3e2da736998428205d87929e13307">   41</a></span>  ImU32 <a class="code hl_variable" href="structClubColours.html#a31a3e2da736998428205d87929e13307">primary</a> = 0;</div>
+<div class="line"><a id="l00042" name="l00042"></a><span class="lineno"><a class="line" href="structClubColours.html#ae1d06203b70ecf385ed02c836460b8d2">   42</a></span>  ImU32 <a class="code hl_variable" href="structClubColours.html#ae1d06203b70ecf385ed02c836460b8d2">secondary</a> = 0;</div>
+<div class="line"><a id="l00043" name="l00043"></a><span class="lineno">   43</span>};</div>
 </div>
-<div class="line"><a id="l00043" name="l00043"></a><span class="lineno">   43</span> </div>
-<div class="line"><a id="l00053" name="l00053"></a><span class="lineno">   53</span><a class="code hl_struct" href="structMatchKits.html">MatchKits</a> <a class="code hl_function" href="match__kit__colors_8h.html#a352be325f9655a08c1bc761b602cf882">chooseMatchKits</a>(<a class="code hl_typedef" href="types_8h.html#a57143f6ccbdf5a5d9724b986cbdafb31">TeamID</a> homeTeam, <a class="code hl_typedef" href="types_8h.html#a57143f6ccbdf5a5d9724b986cbdafb31">TeamID</a> awayTeam);</div>
-<div class="line"><a id="l00054" name="l00054"></a><span class="lineno">   54</span> </div>
-<div class="line"><a id="l00056" name="l00056"></a><span class="lineno">   56</span><a class="code hl_struct" href="structMatchKits.html">MatchKits</a> <a class="code hl_function" href="match__kit__colors_8h.html#a352be325f9655a08c1bc761b602cf882">chooseMatchKits</a>(<a class="code hl_typedef" href="types_8h.html#a57143f6ccbdf5a5d9724b986cbdafb31">TeamID</a> homeTeam, <a class="code hl_typedef" href="types_8h.html#a57143f6ccbdf5a5d9724b986cbdafb31">TeamID</a> awayTeam,</div>
-<div class="line"><a id="l00057" name="l00057"></a><span class="lineno">   57</span>                          <span class="keyword">const</span> <a class="code hl_struct" href="structClubColours.html">ClubColours</a>* homeColours,</div>
-<div class="line"><a id="l00058" name="l00058"></a><span class="lineno">   58</span>                          <span class="keyword">const</span> <a class="code hl_struct" href="structClubColours.html">ClubColours</a>* awayColours);</div>
-<div class="line"><a id="l00059" name="l00059"></a><span class="lineno">   59</span> </div>
-<div class="line"><a id="l00064" name="l00064"></a><span class="lineno">   64</span><span class="keyword">const</span> <a class="code hl_struct" href="structClubIdentity.html">ClubIdentity</a>* <a class="code hl_function" href="match__kit__colors_8h.html#a777df80e3b370ff26966441d18a202eb">findClubIdentity</a>(<a class="code hl_typedef" href="types_8h.html#a57143f6ccbdf5a5d9724b986cbdafb31">TeamID</a> team);</div>
-<div class="line"><a id="l00065" name="l00065"></a><span class="lineno">   65</span> </div>
-<div class="foldopen" id="foldopen00067" data-start="{" data-end="}">
-<div class="line"><a id="l00067" name="l00067"></a><span class="lineno"><a class="line" href="match__kit__colors_8h.html#abe9fb8e1a849005661f826cd65b58e9d">   67</a></span><span class="keyword">constexpr</span> ImU32 <a class="code hl_function" href="match__kit__colors_8h.html#abe9fb8e1a849005661f826cd65b58e9d">kitColorFromRgb</a>(std::uint32_t rgb)</div>
-<div class="line"><a id="l00068" name="l00068"></a><span class="lineno">   68</span>{</div>
-<div class="line"><a id="l00069" name="l00069"></a><span class="lineno">   69</span>  <span class="keywordflow">return</span> IM_COL32((rgb &gt;&gt; 16U) &amp; 0xFFU, (rgb &gt;&gt; 8U) &amp; 0xFFU, rgb &amp; 0xFFU, 255);</div>
-<div class="line"><a id="l00070" name="l00070"></a><span class="lineno">   70</span>}</div>
+<div class="line"><a id="l00044" name="l00044"></a><span class="lineno">   44</span> </div>
+<div class="line"><a id="l00054" name="l00054"></a><span class="lineno">   54</span><a class="code hl_struct" href="structMatchKits.html">MatchKits</a> <a class="code hl_function" href="match__kit__colors_8h.html#a352be325f9655a08c1bc761b602cf882">chooseMatchKits</a>(<a class="code hl_typedef" href="types_8h.html#a57143f6ccbdf5a5d9724b986cbdafb31">TeamID</a> homeTeam, <a class="code hl_typedef" href="types_8h.html#a57143f6ccbdf5a5d9724b986cbdafb31">TeamID</a> awayTeam);</div>
+<div class="line"><a id="l00055" name="l00055"></a><span class="lineno">   55</span> </div>
+<div class="line"><a id="l00057" name="l00057"></a><span class="lineno">   57</span><a class="code hl_struct" href="structMatchKits.html">MatchKits</a> <a class="code hl_function" href="match__kit__colors_8h.html#a352be325f9655a08c1bc761b602cf882">chooseMatchKits</a>(<a class="code hl_typedef" href="types_8h.html#a57143f6ccbdf5a5d9724b986cbdafb31">TeamID</a> homeTeam, <a class="code hl_typedef" href="types_8h.html#a57143f6ccbdf5a5d9724b986cbdafb31">TeamID</a> awayTeam,</div>
+<div class="line"><a id="l00058" name="l00058"></a><span class="lineno">   58</span>                          <span class="keyword">const</span> <a class="code hl_struct" href="structClubColours.html">ClubColours</a>* homeColours,</div>
+<div class="line"><a id="l00059" name="l00059"></a><span class="lineno">   59</span>                          <span class="keyword">const</span> <a class="code hl_struct" href="structClubColours.html">ClubColours</a>* awayColours);</div>
+<div class="line"><a id="l00060" name="l00060"></a><span class="lineno">   60</span> </div>
+<div class="line"><a id="l00065" name="l00065"></a><span class="lineno">   65</span><span class="keyword">const</span> <a class="code hl_struct" href="structClubIdentity.html">ClubIdentity</a>* <a class="code hl_function" href="match__kit__colors_8h.html#a777df80e3b370ff26966441d18a202eb">findClubIdentity</a>(<a class="code hl_typedef" href="types_8h.html#a57143f6ccbdf5a5d9724b986cbdafb31">TeamID</a> team);</div>
+<div class="line"><a id="l00066" name="l00066"></a><span class="lineno">   66</span> </div>
+<div class="foldopen" id="foldopen00068" data-start="{" data-end="}">
+<div class="line"><a id="l00068" name="l00068"></a><span class="lineno"><a class="line" href="match__kit__colors_8h.html#abe9fb8e1a849005661f826cd65b58e9d">   68</a></span><span class="keyword">constexpr</span> ImU32 <a class="code hl_function" href="match__kit__colors_8h.html#abe9fb8e1a849005661f826cd65b58e9d">kitColorFromRgb</a>(std::uint32_t rgb)</div>
+<div class="line"><a id="l00069" name="l00069"></a><span class="lineno">   69</span>{</div>
+<div class="line"><a id="l00070" name="l00070"></a><span class="lineno">   70</span>  <span class="keywordflow">return</span> IM_COL32((rgb &gt;&gt; 16U) &amp; 0xFFU, (rgb &gt;&gt; 8U) &amp; 0xFFU, rgb &amp; 0xFFU, 255);</div>
+<div class="line"><a id="l00071" name="l00071"></a><span class="lineno">   71</span>}</div>
 </div>
-<div class="line"><a id="l00071" name="l00071"></a><span class="lineno">   71</span> </div>
-<div class="line"><a id="l00073" name="l00073"></a><span class="lineno">   73</span><span class="keywordtype">float</span> <a class="code hl_function" href="match__kit__colors_8h.html#a134c5144d6c371880c0e32600073b593">kitColorDistance</a>(ImU32 first, ImU32 second);</div>
-<div class="line"><a id="l00074" name="l00074"></a><span class="lineno">   74</span> </div>
-<div class="line"><a id="l00076" name="l00076"></a><span class="lineno"><a class="line" href="match__kit__colors_8h.html#a2f3fe19df295b06b1be979dd67a92e9f">   76</a></span><span class="keyword">inline</span> <span class="keyword">constexpr</span> <span class="keywordtype">float</span> <a class="code hl_variable" href="match__kit__colors_8h.html#a2f3fe19df295b06b1be979dd67a92e9f">KIT_CLASH_DISTANCE</a> = 190.0f;</div>
-<div class="line"><a id="l00077" name="l00077"></a><span class="lineno">   77</span> </div>
-<div class="line"><a id="l00083" name="l00083"></a><span class="lineno">   83</span>ImU32 <a class="code hl_function" href="match__kit__colors_8h.html#af8c8c7395a66f175656e6ab39c9adb8d">kitNumberColor</a>(<span class="keyword">const</span> <a class="code hl_struct" href="structKitColors.html">KitColors</a>&amp; kit);</div>
-<div class="line"><a id="l00084" name="l00084"></a><span class="lineno">   84</span> </div>
-<div class="line"><a id="l00086" name="l00086"></a><span class="lineno">   86</span>ImU32 <a class="code hl_function" href="match__kit__colors_8h.html#ae8aaa7cd972e686f19420976a594cf86">goalkeeperGloveColor</a>(<span class="keyword">const</span> <a class="code hl_struct" href="structKitColors.html">KitColors</a>&amp; kit);</div>
-<div class="line"><a id="l00087" name="l00087"></a><span class="lineno">   87</span> </div>
-<div class="foldopen" id="foldopen00089" data-start="{" data-end="}">
-<div class="line"><a id="l00089" name="l00089"></a><span class="lineno"><a class="line" href="match__kit__colors_8h.html#af79c3e03611330b9101f0aca2c91e619">   89</a></span><span class="keyword">inline</span> ImU32 <a class="code hl_function" href="match__kit__colors_8h.html#af79c3e03611330b9101f0aca2c91e619">shadeColor</a>(ImU32 color, <span class="keywordtype">float</span> factor)</div>
-<div class="line"><a id="l00090" name="l00090"></a><span class="lineno">   90</span>{</div>
-<div class="line"><a id="l00091" name="l00091"></a><span class="lineno">   91</span>  <span class="keyword">const</span> <span class="keyword">auto</span> scale = [factor](ImU32 value, <span class="keywordtype">int</span> shift)</div>
-<div class="line"><a id="l00092" name="l00092"></a><span class="lineno">   92</span>  {</div>
-<div class="line"><a id="l00093" name="l00093"></a><span class="lineno">   93</span>    <span class="keyword">const</span> <span class="keywordtype">float</span> scaled =</div>
-<div class="line"><a id="l00094" name="l00094"></a><span class="lineno">   94</span>        <span class="keyword">static_cast&lt;</span><span class="keywordtype">float</span><span class="keyword">&gt;</span>((value &gt;&gt; shift) &amp; 0xFFU) * factor + 0.5f;</div>
-<div class="line"><a id="l00095" name="l00095"></a><span class="lineno">   95</span>    <span class="keywordflow">return</span> <span class="keyword">static_cast&lt;</span>ImU32<span class="keyword">&gt;</span>(scaled &lt; 0.0f     ? 0.0f</div>
-<div class="line"><a id="l00096" name="l00096"></a><span class="lineno">   96</span>                              : scaled &gt; 255.0f ? 255.0f</div>
-<div class="line"><a id="l00097" name="l00097"></a><span class="lineno">   97</span>                                                : scaled)</div>
-<div class="line"><a id="l00098" name="l00098"></a><span class="lineno">   98</span>           &lt;&lt; shift;</div>
-<div class="line"><a id="l00099" name="l00099"></a><span class="lineno">   99</span>  };</div>
-<div class="line"><a id="l00100" name="l00100"></a><span class="lineno">  100</span>  <span class="keywordflow">return</span> scale(color, IM_COL32_R_SHIFT) | scale(color, IM_COL32_G_SHIFT) |</div>
-<div class="line"><a id="l00101" name="l00101"></a><span class="lineno">  101</span>         scale(color, IM_COL32_B_SHIFT) | (color &amp; IM_COL32_A_MASK);</div>
-<div class="line"><a id="l00102" name="l00102"></a><span class="lineno">  102</span>}</div>
+<div class="line"><a id="l00072" name="l00072"></a><span class="lineno">   72</span> </div>
+<div class="line"><a id="l00074" name="l00074"></a><span class="lineno">   74</span><span class="keywordtype">float</span> <a class="code hl_function" href="match__kit__colors_8h.html#a134c5144d6c371880c0e32600073b593">kitColorDistance</a>(ImU32 first, ImU32 second);</div>
+<div class="line"><a id="l00075" name="l00075"></a><span class="lineno">   75</span> </div>
+<div class="line"><a id="l00077" name="l00077"></a><span class="lineno"><a class="line" href="match__kit__colors_8h.html#a2f3fe19df295b06b1be979dd67a92e9f">   77</a></span><span class="keyword">inline</span> <span class="keyword">constexpr</span> <span class="keywordtype">float</span> <a class="code hl_variable" href="match__kit__colors_8h.html#a2f3fe19df295b06b1be979dd67a92e9f">KIT_CLASH_DISTANCE</a> = 190.0f;</div>
+<div class="line"><a id="l00078" name="l00078"></a><span class="lineno">   78</span> </div>
+<div class="line"><a id="l00084" name="l00084"></a><span class="lineno">   84</span>ImU32 <a class="code hl_function" href="match__kit__colors_8h.html#af8c8c7395a66f175656e6ab39c9adb8d">kitNumberColor</a>(<span class="keyword">const</span> <a class="code hl_struct" href="structKitColors.html">KitColors</a>&amp; kit);</div>
+<div class="line"><a id="l00085" name="l00085"></a><span class="lineno">   85</span> </div>
+<div class="line"><a id="l00087" name="l00087"></a><span class="lineno">   87</span>ImU32 <a class="code hl_function" href="match__kit__colors_8h.html#ae8aaa7cd972e686f19420976a594cf86">goalkeeperGloveColor</a>(<span class="keyword">const</span> <a class="code hl_struct" href="structKitColors.html">KitColors</a>&amp; kit);</div>
+<div class="line"><a id="l00088" name="l00088"></a><span class="lineno">   88</span> </div>
+<div class="foldopen" id="foldopen00090" data-start="{" data-end="}">
+<div class="line"><a id="l00090" name="l00090"></a><span class="lineno"><a class="line" href="match__kit__colors_8h.html#af79c3e03611330b9101f0aca2c91e619">   90</a></span><span class="keyword">inline</span> ImU32 <a class="code hl_function" href="match__kit__colors_8h.html#af79c3e03611330b9101f0aca2c91e619">shadeColor</a>(ImU32 color, <span class="keywordtype">float</span> factor)</div>
+<div class="line"><a id="l00091" name="l00091"></a><span class="lineno">   91</span>{</div>
+<div class="line"><a id="l00092" name="l00092"></a><span class="lineno">   92</span>  <span class="keyword">const</span> <span class="keyword">auto</span> scale = [factor](ImU32 value, <span class="keywordtype">int</span> shift)</div>
+<div class="line"><a id="l00093" name="l00093"></a><span class="lineno">   93</span>  {</div>
+<div class="line"><a id="l00094" name="l00094"></a><span class="lineno">   94</span>    <span class="keyword">const</span> <span class="keywordtype">float</span> scaled =</div>
+<div class="line"><a id="l00095" name="l00095"></a><span class="lineno">   95</span>        <span class="keyword">static_cast&lt;</span><span class="keywordtype">float</span><span class="keyword">&gt;</span>((value &gt;&gt; shift) &amp; 0xFFU) * factor + 0.5f;</div>
+<div class="line"><a id="l00096" name="l00096"></a><span class="lineno">   96</span>    <span class="keywordtype">float</span> bounded = scaled;</div>
+<div class="line"><a id="l00097" name="l00097"></a><span class="lineno">   97</span>    <span class="keywordflow">if</span> (scaled &lt; 0.0f)</div>
+<div class="line"><a id="l00098" name="l00098"></a><span class="lineno">   98</span>      bounded = 0.0f;</div>
+<div class="line"><a id="l00099" name="l00099"></a><span class="lineno">   99</span>    <span class="keywordflow">else</span> <span class="keywordflow">if</span> (scaled &gt; 255.0f)</div>
+<div class="line"><a id="l00100" name="l00100"></a><span class="lineno">  100</span>      bounded = 255.0f;</div>
+<div class="line"><a id="l00101" name="l00101"></a><span class="lineno">  101</span>    <span class="keywordflow">return</span> <span class="keyword">static_cast&lt;</span>ImU32<span class="keyword">&gt;</span>(bounded) &lt;&lt; shift;</div>
+<div class="line"><a id="l00102" name="l00102"></a><span class="lineno">  102</span>  };</div>
+<div class="line"><a id="l00103" name="l00103"></a><span class="lineno">  103</span>  <span class="keywordflow">return</span> scale(color, IM_COL32_R_SHIFT) | scale(color, IM_COL32_G_SHIFT) |</div>
+<div class="line"><a id="l00104" name="l00104"></a><span class="lineno">  104</span>         scale(color, IM_COL32_B_SHIFT) | (color &amp; IM_COL32_A_MASK);</div>
+<div class="line"><a id="l00105" name="l00105"></a><span class="lineno">  105</span>}</div>
 </div>
-<div class="line"><a id="l00103" name="l00103"></a><span class="lineno">  103</span> </div>
-<div class="foldopen" id="foldopen00105" data-start="{" data-end="}">
-<div class="line"><a id="l00105" name="l00105"></a><span class="lineno"><a class="line" href="match__kit__colors_8h.html#a8bf520c407bfac5879e4c9e716c8d0e9">  105</a></span><span class="keyword">inline</span> ImU32 <a class="code hl_function" href="match__kit__colors_8h.html#a8bf520c407bfac5879e4c9e716c8d0e9">mixColor</a>(ImU32 first, ImU32 second, <span class="keywordtype">float</span> t)</div>
-<div class="line"><a id="l00106" name="l00106"></a><span class="lineno">  106</span>{</div>
-<div class="line"><a id="l00107" name="l00107"></a><span class="lineno">  107</span>  <span class="keyword">const</span> <span class="keyword">auto</span> blend = [t](ImU32 a, ImU32 b, <span class="keywordtype">int</span> shift)</div>
-<div class="line"><a id="l00108" name="l00108"></a><span class="lineno">  108</span>  {</div>
-<div class="line"><a id="l00109" name="l00109"></a><span class="lineno">  109</span>    <span class="keyword">const</span> <span class="keywordtype">float</span> from = <span class="keyword">static_cast&lt;</span><span class="keywordtype">float</span><span class="keyword">&gt;</span>((a &gt;&gt; shift) &amp; 0xFFU);</div>
-<div class="line"><a id="l00110" name="l00110"></a><span class="lineno">  110</span>    <span class="keyword">const</span> <span class="keywordtype">float</span> to = <span class="keyword">static_cast&lt;</span><span class="keywordtype">float</span><span class="keyword">&gt;</span>((b &gt;&gt; shift) &amp; 0xFFU);</div>
-<div class="line"><a id="l00111" name="l00111"></a><span class="lineno">  111</span>    <span class="keywordflow">return</span> <span class="keyword">static_cast&lt;</span>ImU32<span class="keyword">&gt;</span>(from + (to - from) * t + 0.5f) &lt;&lt; shift;</div>
-<div class="line"><a id="l00112" name="l00112"></a><span class="lineno">  112</span>  };</div>
-<div class="line"><a id="l00113" name="l00113"></a><span class="lineno">  113</span>  <span class="keywordflow">return</span> blend(first, second, IM_COL32_R_SHIFT) |</div>
-<div class="line"><a id="l00114" name="l00114"></a><span class="lineno">  114</span>         blend(first, second, IM_COL32_G_SHIFT) |</div>
-<div class="line"><a id="l00115" name="l00115"></a><span class="lineno">  115</span>         blend(first, second, IM_COL32_B_SHIFT) |</div>
-<div class="line"><a id="l00116" name="l00116"></a><span class="lineno">  116</span>         blend(first, second, IM_COL32_A_SHIFT);</div>
-<div class="line"><a id="l00117" name="l00117"></a><span class="lineno">  117</span>}</div>
+<div class="line"><a id="l00106" name="l00106"></a><span class="lineno">  106</span> </div>
+<div class="foldopen" id="foldopen00108" data-start="{" data-end="}">
+<div class="line"><a id="l00108" name="l00108"></a><span class="lineno"><a class="line" href="match__kit__colors_8h.html#a8bf520c407bfac5879e4c9e716c8d0e9">  108</a></span><span class="keyword">inline</span> ImU32 <a class="code hl_function" href="match__kit__colors_8h.html#a8bf520c407bfac5879e4c9e716c8d0e9">mixColor</a>(ImU32 first, ImU32 second, <span class="keywordtype">float</span> t)</div>
+<div class="line"><a id="l00109" name="l00109"></a><span class="lineno">  109</span>{</div>
+<div class="line"><a id="l00110" name="l00110"></a><span class="lineno">  110</span>  <span class="keyword">const</span> <span class="keyword">auto</span> blend = [t](ImU32 a, ImU32 b, <span class="keywordtype">int</span> shift)</div>
+<div class="line"><a id="l00111" name="l00111"></a><span class="lineno">  111</span>  {</div>
+<div class="line"><a id="l00112" name="l00112"></a><span class="lineno">  112</span>    <span class="keyword">const</span> <span class="keyword">auto</span> from = <span class="keyword">static_cast&lt;</span><span class="keywordtype">float</span><span class="keyword">&gt;</span>((a &gt;&gt; shift) &amp; 0xFFU);</div>
+<div class="line"><a id="l00113" name="l00113"></a><span class="lineno">  113</span>    <span class="keyword">const</span> <span class="keyword">auto</span> to = <span class="keyword">static_cast&lt;</span><span class="keywordtype">float</span><span class="keyword">&gt;</span>((b &gt;&gt; shift) &amp; 0xFFU);</div>
+<div class="line"><a id="l00114" name="l00114"></a><span class="lineno">  114</span>    <span class="keywordflow">return</span> <span class="keyword">static_cast&lt;</span>ImU32<span class="keyword">&gt;</span>(std::lerp(from, to, t) + 0.5f) &lt;&lt; shift;</div>
+<div class="line"><a id="l00115" name="l00115"></a><span class="lineno">  115</span>  };</div>
+<div class="line"><a id="l00116" name="l00116"></a><span class="lineno">  116</span>  <span class="keywordflow">return</span> blend(first, second, IM_COL32_R_SHIFT) |</div>
+<div class="line"><a id="l00117" name="l00117"></a><span class="lineno">  117</span>         blend(first, second, IM_COL32_G_SHIFT) |</div>
+<div class="line"><a id="l00118" name="l00118"></a><span class="lineno">  118</span>         blend(first, second, IM_COL32_B_SHIFT) |</div>
+<div class="line"><a id="l00119" name="l00119"></a><span class="lineno">  119</span>         blend(first, second, IM_COL32_A_SHIFT);</div>
+<div class="line"><a id="l00120" name="l00120"></a><span class="lineno">  120</span>}</div>
 </div>
-<div class="line"><a id="l00118" name="l00118"></a><span class="lineno">  118</span> </div>
-<div class="foldopen" id="foldopen00123" data-start="{" data-end="}">
-<div class="line"><a id="l00123" name="l00123"></a><span class="lineno"><a class="line" href="match__kit__colors_8h.html#af6119b010b5bf8f435857c42935a09d1">  123</a></span><span class="keyword">constexpr</span> ImU32 <a class="code hl_function" href="match__kit__colors_8h.html#af6119b010b5bf8f435857c42935a09d1">mixColor256</a>(ImU32 first, ImU32 second, std::uint32_t t256)</div>
-<div class="line"><a id="l00124" name="l00124"></a><span class="lineno">  124</span>{</div>
-<div class="line"><a id="l00125" name="l00125"></a><span class="lineno">  125</span>  <span class="keyword">const</span> std::uint32_t keep = 256U - t256;</div>
-<div class="line"><a id="l00126" name="l00126"></a><span class="lineno">  126</span>  <span class="keyword">const</span> std::uint32_t evenChannels =</div>
-<div class="line"><a id="l00127" name="l00127"></a><span class="lineno">  127</span>      (((first &amp; 0x00FF00FFU) * keep + (second &amp; 0x00FF00FFU) * t256) &gt;&gt; 8U) &amp;</div>
-<div class="line"><a id="l00128" name="l00128"></a><span class="lineno">  128</span>      0x00FF00FFU;</div>
-<div class="line"><a id="l00129" name="l00129"></a><span class="lineno">  129</span>  <span class="keyword">const</span> std::uint32_t oddChannels = ((((first &gt;&gt; 8U) &amp; 0x00FF00FFU) * keep +</div>
-<div class="line"><a id="l00130" name="l00130"></a><span class="lineno">  130</span>                                      ((second &gt;&gt; 8U) &amp; 0x00FF00FFU) * t256) &gt;&gt;</div>
-<div class="line"><a id="l00131" name="l00131"></a><span class="lineno">  131</span>                                     8U) &amp;</div>
-<div class="line"><a id="l00132" name="l00132"></a><span class="lineno">  132</span>                                    0x00FF00FFU;</div>
-<div class="line"><a id="l00133" name="l00133"></a><span class="lineno">  133</span>  <span class="keywordflow">return</span> evenChannels | (oddChannels &lt;&lt; 8U);</div>
-<div class="line"><a id="l00134" name="l00134"></a><span class="lineno">  134</span>}</div>
+<div class="line"><a id="l00121" name="l00121"></a><span class="lineno">  121</span> </div>
+<div class="foldopen" id="foldopen00126" data-start="{" data-end="}">
+<div class="line"><a id="l00126" name="l00126"></a><span class="lineno"><a class="line" href="match__kit__colors_8h.html#af6119b010b5bf8f435857c42935a09d1">  126</a></span><span class="keyword">constexpr</span> ImU32 <a class="code hl_function" href="match__kit__colors_8h.html#af6119b010b5bf8f435857c42935a09d1">mixColor256</a>(ImU32 first, ImU32 second, std::uint32_t t256)</div>
+<div class="line"><a id="l00127" name="l00127"></a><span class="lineno">  127</span>{</div>
+<div class="line"><a id="l00128" name="l00128"></a><span class="lineno">  128</span>  <span class="keyword">const</span> std::uint32_t keep = 256U - t256;</div>
+<div class="line"><a id="l00129" name="l00129"></a><span class="lineno">  129</span>  <span class="keyword">const</span> std::uint32_t evenChannels =</div>
+<div class="line"><a id="l00130" name="l00130"></a><span class="lineno">  130</span>      (((first &amp; 0x00FF00FFU) * keep + (second &amp; 0x00FF00FFU) * t256) &gt;&gt; 8U) &amp;</div>
+<div class="line"><a id="l00131" name="l00131"></a><span class="lineno">  131</span>      0x00FF00FFU;</div>
+<div class="line"><a id="l00132" name="l00132"></a><span class="lineno">  132</span>  <span class="keyword">const</span> std::uint32_t oddChannels = ((((first &gt;&gt; 8U) &amp; 0x00FF00FFU) * keep +</div>
+<div class="line"><a id="l00133" name="l00133"></a><span class="lineno">  133</span>                                      ((second &gt;&gt; 8U) &amp; 0x00FF00FFU) * t256) &gt;&gt;</div>
+<div class="line"><a id="l00134" name="l00134"></a><span class="lineno">  134</span>                                     8U) &amp;</div>
+<div class="line"><a id="l00135" name="l00135"></a><span class="lineno">  135</span>                                    0x00FF00FFU;</div>
+<div class="line"><a id="l00136" name="l00136"></a><span class="lineno">  136</span>  <span class="keywordflow">return</span> evenChannels | (oddChannels &lt;&lt; 8U);</div>
+<div class="line"><a id="l00137" name="l00137"></a><span class="lineno">  137</span>}</div>
 </div>
-<div class="line"><a id="l00135" name="l00135"></a><span class="lineno">  135</span> </div>
-<div class="foldopen" id="foldopen00136" data-start="{" data-end="}">
-<div class="line"><a id="l00136" name="l00136"></a><span class="lineno"><a class="line" href="match__kit__colors_8h.html#a745c4cc66178141a8146f0821f544d9b">  136</a></span><span class="keyword">constexpr</span> ImU32 <a class="code hl_function" href="match__kit__colors_8h.html#a745c4cc66178141a8146f0821f544d9b">shadeColor256</a>(ImU32 color, std::uint32_t factor256)</div>
-<div class="line"><a id="l00137" name="l00137"></a><span class="lineno">  137</span>{</div>
-<div class="line"><a id="l00138" name="l00138"></a><span class="lineno">  138</span>  <span class="keyword">const</span> <span class="keyword">auto</span> channel = [&amp;](<span class="keywordtype">int</span> shift)</div>
-<div class="line"><a id="l00139" name="l00139"></a><span class="lineno">  139</span>  {</div>
-<div class="line"><a id="l00140" name="l00140"></a><span class="lineno">  140</span>    <span class="keyword">const</span> std::uint32_t value = (((color &gt;&gt; shift) &amp; 0xFFU) * factor256) &gt;&gt; 8U;</div>
-<div class="line"><a id="l00141" name="l00141"></a><span class="lineno">  141</span>    <span class="keywordflow">return</span> (value &gt; 255U ? 255U : value) &lt;&lt; shift;</div>
-<div class="line"><a id="l00142" name="l00142"></a><span class="lineno">  142</span>  };</div>
-<div class="line"><a id="l00143" name="l00143"></a><span class="lineno">  143</span>  <span class="keywordflow">return</span> channel(IM_COL32_R_SHIFT) | channel(IM_COL32_G_SHIFT) |</div>
-<div class="line"><a id="l00144" name="l00144"></a><span class="lineno">  144</span>         channel(IM_COL32_B_SHIFT) | (color &amp; IM_COL32_A_MASK);</div>
-<div class="line"><a id="l00145" name="l00145"></a><span class="lineno">  145</span>}</div>
+<div class="line"><a id="l00138" name="l00138"></a><span class="lineno">  138</span> </div>
+<div class="foldopen" id="foldopen00139" data-start="{" data-end="}">
+<div class="line"><a id="l00139" name="l00139"></a><span class="lineno"><a class="line" href="match__kit__colors_8h.html#a745c4cc66178141a8146f0821f544d9b">  139</a></span><span class="keyword">constexpr</span> ImU32 <a class="code hl_function" href="match__kit__colors_8h.html#a745c4cc66178141a8146f0821f544d9b">shadeColor256</a>(ImU32 color, std::uint32_t factor256)</div>
+<div class="line"><a id="l00140" name="l00140"></a><span class="lineno">  140</span>{</div>
+<div class="line"><a id="l00141" name="l00141"></a><span class="lineno">  141</span>  <span class="keyword">const</span> <span class="keyword">auto</span> channel = [&amp;](<span class="keywordtype">int</span> shift)</div>
+<div class="line"><a id="l00142" name="l00142"></a><span class="lineno">  142</span>  {</div>
+<div class="line"><a id="l00143" name="l00143"></a><span class="lineno">  143</span>    <span class="keyword">const</span> std::uint32_t value = (((color &gt;&gt; shift) &amp; 0xFFU) * factor256) &gt;&gt; 8U;</div>
+<div class="line"><a id="l00144" name="l00144"></a><span class="lineno">  144</span>    <span class="keywordflow">return</span> (value &gt; 255U ? 255U : value) &lt;&lt; shift;</div>
+<div class="line"><a id="l00145" name="l00145"></a><span class="lineno">  145</span>  };</div>
+<div class="line"><a id="l00146" name="l00146"></a><span class="lineno">  146</span>  <span class="keywordflow">return</span> channel(IM_COL32_R_SHIFT) | channel(IM_COL32_G_SHIFT) |</div>
+<div class="line"><a id="l00147" name="l00147"></a><span class="lineno">  147</span>         channel(IM_COL32_B_SHIFT) | (color &amp; IM_COL32_A_MASK);</div>
+<div class="line"><a id="l00148" name="l00148"></a><span class="lineno">  148</span>}</div>
 </div>
-<div class="line"><a id="l00146" name="l00146"></a><span class="lineno">  146</span> </div>
-<div class="foldopen" id="foldopen00148" data-start="{" data-end="}">
-<div class="line"><a id="l00148" name="l00148"></a><span class="lineno"><a class="line" href="match__kit__colors_8h.html#a1dae4de6f0fbe7a0c80c4714d8be496e">  148</a></span><span class="keyword">constexpr</span> ImU32 <a class="code hl_function" href="match__kit__colors_8h.html#a1dae4de6f0fbe7a0c80c4714d8be496e">withAlpha</a>(ImU32 color, std::uint8_t alpha)</div>
-<div class="line"><a id="l00149" name="l00149"></a><span class="lineno">  149</span>{</div>
-<div class="line"><a id="l00150" name="l00150"></a><span class="lineno">  150</span>  <span class="keywordflow">return</span> (color &amp; ~IM_COL32_A_MASK) |</div>
-<div class="line"><a id="l00151" name="l00151"></a><span class="lineno">  151</span>         (<span class="keyword">static_cast&lt;</span>ImU32<span class="keyword">&gt;</span>(alpha) &lt;&lt; IM_COL32_A_SHIFT);</div>
-<div class="line"><a id="l00152" name="l00152"></a><span class="lineno">  152</span>}</div>
+<div class="line"><a id="l00149" name="l00149"></a><span class="lineno">  149</span> </div>
+<div class="foldopen" id="foldopen00151" data-start="{" data-end="}">
+<div class="line"><a id="l00151" name="l00151"></a><span class="lineno"><a class="line" href="match__kit__colors_8h.html#a1dae4de6f0fbe7a0c80c4714d8be496e">  151</a></span><span class="keyword">constexpr</span> ImU32 <a class="code hl_function" href="match__kit__colors_8h.html#a1dae4de6f0fbe7a0c80c4714d8be496e">withAlpha</a>(ImU32 color, std::uint8_t alpha)</div>
+<div class="line"><a id="l00152" name="l00152"></a><span class="lineno">  152</span>{</div>
+<div class="line"><a id="l00153" name="l00153"></a><span class="lineno">  153</span>  <span class="keywordflow">return</span> (color &amp; ~IM_COL32_A_MASK) |</div>
+<div class="line"><a id="l00154" name="l00154"></a><span class="lineno">  154</span>         (<span class="keyword">static_cast&lt;</span>ImU32<span class="keyword">&gt;</span>(alpha) &lt;&lt; IM_COL32_A_SHIFT);</div>
+<div class="line"><a id="l00155" name="l00155"></a><span class="lineno">  155</span>}</div>
 </div>
-<div class="line"><a id="l00153" name="l00153"></a><span class="lineno">  153</span> </div>
-<div class="foldopen" id="foldopen00155" data-start="{" data-end="}">
-<div class="line"><a id="l00155" name="l00155"></a><span class="lineno"><a class="line" href="match__kit__colors_8h.html#a82f2976903dda80f618569781babdd9b">  155</a></span><span class="keyword">constexpr</span> std::uint32_t <a class="code hl_function" href="match__kit__colors_8h.html#a82f2976903dda80f618569781babdd9b">cosmeticHash</a>(std::uint32_t value)</div>
-<div class="line"><a id="l00156" name="l00156"></a><span class="lineno">  156</span>{</div>
-<div class="line"><a id="l00157" name="l00157"></a><span class="lineno">  157</span>  value ^= value &gt;&gt; 16;</div>
-<div class="line"><a id="l00158" name="l00158"></a><span class="lineno">  158</span>  value *= 0x7feb352dU;</div>
-<div class="line"><a id="l00159" name="l00159"></a><span class="lineno">  159</span>  value ^= value &gt;&gt; 15;</div>
-<div class="line"><a id="l00160" name="l00160"></a><span class="lineno">  160</span>  value *= 0x846ca68bU;</div>
-<div class="line"><a id="l00161" name="l00161"></a><span class="lineno">  161</span>  value ^= value &gt;&gt; 16;</div>
-<div class="line"><a id="l00162" name="l00162"></a><span class="lineno">  162</span>  <span class="keywordflow">return</span> value;</div>
-<div class="line"><a id="l00163" name="l00163"></a><span class="lineno">  163</span>}</div>
+<div class="line"><a id="l00156" name="l00156"></a><span class="lineno">  156</span> </div>
+<div class="foldopen" id="foldopen00158" data-start="{" data-end="}">
+<div class="line"><a id="l00158" name="l00158"></a><span class="lineno"><a class="line" href="match__kit__colors_8h.html#a82f2976903dda80f618569781babdd9b">  158</a></span><span class="keyword">constexpr</span> std::uint32_t <a class="code hl_function" href="match__kit__colors_8h.html#a82f2976903dda80f618569781babdd9b">cosmeticHash</a>(std::uint32_t value)</div>
+<div class="line"><a id="l00159" name="l00159"></a><span class="lineno">  159</span>{</div>
+<div class="line"><a id="l00160" name="l00160"></a><span class="lineno">  160</span>  value ^= value &gt;&gt; 16;</div>
+<div class="line"><a id="l00161" name="l00161"></a><span class="lineno">  161</span>  value *= 0x7feb352dU;</div>
+<div class="line"><a id="l00162" name="l00162"></a><span class="lineno">  162</span>  value ^= value &gt;&gt; 15;</div>
+<div class="line"><a id="l00163" name="l00163"></a><span class="lineno">  163</span>  value *= 0x846ca68bU;</div>
+<div class="line"><a id="l00164" name="l00164"></a><span class="lineno">  164</span>  value ^= value &gt;&gt; 16;</div>
+<div class="line"><a id="l00165" name="l00165"></a><span class="lineno">  165</span>  <span class="keywordflow">return</span> value;</div>
+<div class="line"><a id="l00166" name="l00166"></a><span class="lineno">  166</span>}</div>
 </div>
-<div class="ttc" id="amatch__kit__colors_8h_html_a134c5144d6c371880c0e32600073b593"><div class="ttname"><a href="match__kit__colors_8h.html#a134c5144d6c371880c0e32600073b593">kitColorDistance</a></div><div class="ttdeci">float kitColorDistance(ImU32 first, ImU32 second)</div><div class="ttdef"><b>Definition</b> match_kit_colors.cpp:114</div></div>
-<div class="ttc" id="amatch__kit__colors_8h_html_a1dae4de6f0fbe7a0c80c4714d8be496e"><div class="ttname"><a href="match__kit__colors_8h.html#a1dae4de6f0fbe7a0c80c4714d8be496e">withAlpha</a></div><div class="ttdeci">constexpr ImU32 withAlpha(ImU32 color, std::uint8_t alpha)</div><div class="ttdef"><b>Definition</b> match_kit_colors.h:148</div></div>
-<div class="ttc" id="amatch__kit__colors_8h_html_a2f3fe19df295b06b1be979dd67a92e9f"><div class="ttname"><a href="match__kit__colors_8h.html#a2f3fe19df295b06b1be979dd67a92e9f">KIT_CLASH_DISTANCE</a></div><div class="ttdeci">constexpr float KIT_CLASH_DISTANCE</div><div class="ttdef"><b>Definition</b> match_kit_colors.h:76</div></div>
-<div class="ttc" id="amatch__kit__colors_8h_html_a352be325f9655a08c1bc761b602cf882"><div class="ttname"><a href="match__kit__colors_8h.html#a352be325f9655a08c1bc761b602cf882">chooseMatchKits</a></div><div class="ttdeci">MatchKits chooseMatchKits(TeamID homeTeam, TeamID awayTeam)</div><div class="ttdef"><b>Definition</b> match_kit_colors.cpp:160</div></div>
-<div class="ttc" id="amatch__kit__colors_8h_html_a745c4cc66178141a8146f0821f544d9b"><div class="ttname"><a href="match__kit__colors_8h.html#a745c4cc66178141a8146f0821f544d9b">shadeColor256</a></div><div class="ttdeci">constexpr ImU32 shadeColor256(ImU32 color, std::uint32_t factor256)</div><div class="ttdef"><b>Definition</b> match_kit_colors.h:136</div></div>
-<div class="ttc" id="amatch__kit__colors_8h_html_a777df80e3b370ff26966441d18a202eb"><div class="ttname"><a href="match__kit__colors_8h.html#a777df80e3b370ff26966441d18a202eb">findClubIdentity</a></div><div class="ttdeci">const ClubIdentity * findClubIdentity(TeamID team)</div><div class="ttdef"><b>Definition</b> match_kit_colors.cpp:107</div></div>
-<div class="ttc" id="amatch__kit__colors_8h_html_a82f2976903dda80f618569781babdd9b"><div class="ttname"><a href="match__kit__colors_8h.html#a82f2976903dda80f618569781babdd9b">cosmeticHash</a></div><div class="ttdeci">constexpr std::uint32_t cosmeticHash(std::uint32_t value)</div><div class="ttdef"><b>Definition</b> match_kit_colors.h:155</div></div>
-<div class="ttc" id="amatch__kit__colors_8h_html_a8bf520c407bfac5879e4c9e716c8d0e9"><div class="ttname"><a href="match__kit__colors_8h.html#a8bf520c407bfac5879e4c9e716c8d0e9">mixColor</a></div><div class="ttdeci">ImU32 mixColor(ImU32 first, ImU32 second, float t)</div><div class="ttdef"><b>Definition</b> match_kit_colors.h:105</div></div>
-<div class="ttc" id="amatch__kit__colors_8h_html_abe9fb8e1a849005661f826cd65b58e9d"><div class="ttname"><a href="match__kit__colors_8h.html#abe9fb8e1a849005661f826cd65b58e9d">kitColorFromRgb</a></div><div class="ttdeci">constexpr ImU32 kitColorFromRgb(std::uint32_t rgb)</div><div class="ttdef"><b>Definition</b> match_kit_colors.h:67</div></div>
-<div class="ttc" id="amatch__kit__colors_8h_html_ae8aaa7cd972e686f19420976a594cf86"><div class="ttname"><a href="match__kit__colors_8h.html#ae8aaa7cd972e686f19420976a594cf86">goalkeeperGloveColor</a></div><div class="ttdeci">ImU32 goalkeeperGloveColor(const KitColors &amp;kit)</div><div class="ttdef"><b>Definition</b> match_kit_colors.cpp:141</div></div>
-<div class="ttc" id="amatch__kit__colors_8h_html_af6119b010b5bf8f435857c42935a09d1"><div class="ttname"><a href="match__kit__colors_8h.html#af6119b010b5bf8f435857c42935a09d1">mixColor256</a></div><div class="ttdeci">constexpr ImU32 mixColor256(ImU32 first, ImU32 second, std::uint32_t t256)</div><div class="ttdef"><b>Definition</b> match_kit_colors.h:123</div></div>
-<div class="ttc" id="amatch__kit__colors_8h_html_af79c3e03611330b9101f0aca2c91e619"><div class="ttname"><a href="match__kit__colors_8h.html#af79c3e03611330b9101f0aca2c91e619">shadeColor</a></div><div class="ttdeci">ImU32 shadeColor(ImU32 color, float factor)</div><div class="ttdef"><b>Definition</b> match_kit_colors.h:89</div></div>
-<div class="ttc" id="amatch__kit__colors_8h_html_af8c8c7395a66f175656e6ab39c9adb8d"><div class="ttname"><a href="match__kit__colors_8h.html#af8c8c7395a66f175656e6ab39c9adb8d">kitNumberColor</a></div><div class="ttdeci">ImU32 kitNumberColor(const KitColors &amp;kit)</div><div class="ttdef"><b>Definition</b> match_kit_colors.cpp:130</div></div>
-<div class="ttc" id="astructClubColours_html"><div class="ttname"><a href="structClubColours.html">ClubColours</a></div><div class="ttdef"><b>Definition</b> match_kit_colors.h:39</div></div>
-<div class="ttc" id="astructClubColours_html_a31a3e2da736998428205d87929e13307"><div class="ttname"><a href="structClubColours.html#a31a3e2da736998428205d87929e13307">ClubColours::primary</a></div><div class="ttdeci">ImU32 primary</div><div class="ttdef"><b>Definition</b> match_kit_colors.h:40</div></div>
-<div class="ttc" id="astructClubColours_html_ae1d06203b70ecf385ed02c836460b8d2"><div class="ttname"><a href="structClubColours.html#ae1d06203b70ecf385ed02c836460b8d2">ClubColours::secondary</a></div><div class="ttdeci">ImU32 secondary</div><div class="ttdef"><b>Definition</b> match_kit_colors.h:41</div></div>
+<div class="ttc" id="amatch__kit__colors_8h_html_a134c5144d6c371880c0e32600073b593"><div class="ttname"><a href="match__kit__colors_8h.html#a134c5144d6c371880c0e32600073b593">kitColorDistance</a></div><div class="ttdeci">float kitColorDistance(ImU32 first, ImU32 second)</div><div class="ttdef"><b>Definition</b> match_kit_colors.cpp:115</div></div>
+<div class="ttc" id="amatch__kit__colors_8h_html_a1dae4de6f0fbe7a0c80c4714d8be496e"><div class="ttname"><a href="match__kit__colors_8h.html#a1dae4de6f0fbe7a0c80c4714d8be496e">withAlpha</a></div><div class="ttdeci">constexpr ImU32 withAlpha(ImU32 color, std::uint8_t alpha)</div><div class="ttdef"><b>Definition</b> match_kit_colors.h:151</div></div>
+<div class="ttc" id="amatch__kit__colors_8h_html_a2f3fe19df295b06b1be979dd67a92e9f"><div class="ttname"><a href="match__kit__colors_8h.html#a2f3fe19df295b06b1be979dd67a92e9f">KIT_CLASH_DISTANCE</a></div><div class="ttdeci">constexpr float KIT_CLASH_DISTANCE</div><div class="ttdef"><b>Definition</b> match_kit_colors.h:77</div></div>
+<div class="ttc" id="amatch__kit__colors_8h_html_a352be325f9655a08c1bc761b602cf882"><div class="ttname"><a href="match__kit__colors_8h.html#a352be325f9655a08c1bc761b602cf882">chooseMatchKits</a></div><div class="ttdeci">MatchKits chooseMatchKits(TeamID homeTeam, TeamID awayTeam)</div><div class="ttdef"><b>Definition</b> match_kit_colors.cpp:161</div></div>
+<div class="ttc" id="amatch__kit__colors_8h_html_a745c4cc66178141a8146f0821f544d9b"><div class="ttname"><a href="match__kit__colors_8h.html#a745c4cc66178141a8146f0821f544d9b">shadeColor256</a></div><div class="ttdeci">constexpr ImU32 shadeColor256(ImU32 color, std::uint32_t factor256)</div><div class="ttdef"><b>Definition</b> match_kit_colors.h:139</div></div>
+<div class="ttc" id="amatch__kit__colors_8h_html_a777df80e3b370ff26966441d18a202eb"><div class="ttname"><a href="match__kit__colors_8h.html#a777df80e3b370ff26966441d18a202eb">findClubIdentity</a></div><div class="ttdeci">const ClubIdentity * findClubIdentity(TeamID team)</div><div class="ttdef"><b>Definition</b> match_kit_colors.cpp:108</div></div>
+<div class="ttc" id="amatch__kit__colors_8h_html_a82f2976903dda80f618569781babdd9b"><div class="ttname"><a href="match__kit__colors_8h.html#a82f2976903dda80f618569781babdd9b">cosmeticHash</a></div><div class="ttdeci">constexpr std::uint32_t cosmeticHash(std::uint32_t value)</div><div class="ttdef"><b>Definition</b> match_kit_colors.h:158</div></div>
+<div class="ttc" id="amatch__kit__colors_8h_html_a8bf520c407bfac5879e4c9e716c8d0e9"><div class="ttname"><a href="match__kit__colors_8h.html#a8bf520c407bfac5879e4c9e716c8d0e9">mixColor</a></div><div class="ttdeci">ImU32 mixColor(ImU32 first, ImU32 second, float t)</div><div class="ttdef"><b>Definition</b> match_kit_colors.h:108</div></div>
+<div class="ttc" id="amatch__kit__colors_8h_html_abe9fb8e1a849005661f826cd65b58e9d"><div class="ttname"><a href="match__kit__colors_8h.html#abe9fb8e1a849005661f826cd65b58e9d">kitColorFromRgb</a></div><div class="ttdeci">constexpr ImU32 kitColorFromRgb(std::uint32_t rgb)</div><div class="ttdef"><b>Definition</b> match_kit_colors.h:68</div></div>
+<div class="ttc" id="amatch__kit__colors_8h_html_ae8aaa7cd972e686f19420976a594cf86"><div class="ttname"><a href="match__kit__colors_8h.html#ae8aaa7cd972e686f19420976a594cf86">goalkeeperGloveColor</a></div><div class="ttdeci">ImU32 goalkeeperGloveColor(const KitColors &amp;kit)</div><div class="ttdef"><b>Definition</b> match_kit_colors.cpp:142</div></div>
+<div class="ttc" id="amatch__kit__colors_8h_html_af6119b010b5bf8f435857c42935a09d1"><div class="ttname"><a href="match__kit__colors_8h.html#af6119b010b5bf8f435857c42935a09d1">mixColor256</a></div><div class="ttdeci">constexpr ImU32 mixColor256(ImU32 first, ImU32 second, std::uint32_t t256)</div><div class="ttdef"><b>Definition</b> match_kit_colors.h:126</div></div>
+<div class="ttc" id="amatch__kit__colors_8h_html_af79c3e03611330b9101f0aca2c91e619"><div class="ttname"><a href="match__kit__colors_8h.html#af79c3e03611330b9101f0aca2c91e619">shadeColor</a></div><div class="ttdeci">ImU32 shadeColor(ImU32 color, float factor)</div><div class="ttdef"><b>Definition</b> match_kit_colors.h:90</div></div>
+<div class="ttc" id="amatch__kit__colors_8h_html_af8c8c7395a66f175656e6ab39c9adb8d"><div class="ttname"><a href="match__kit__colors_8h.html#af8c8c7395a66f175656e6ab39c9adb8d">kitNumberColor</a></div><div class="ttdeci">ImU32 kitNumberColor(const KitColors &amp;kit)</div><div class="ttdef"><b>Definition</b> match_kit_colors.cpp:131</div></div>
+<div class="ttc" id="astructClubColours_html"><div class="ttname"><a href="structClubColours.html">ClubColours</a></div><div class="ttdef"><b>Definition</b> match_kit_colors.h:40</div></div>
+<div class="ttc" id="astructClubColours_html_a31a3e2da736998428205d87929e13307"><div class="ttname"><a href="structClubColours.html#a31a3e2da736998428205d87929e13307">ClubColours::primary</a></div><div class="ttdeci">ImU32 primary</div><div class="ttdef"><b>Definition</b> match_kit_colors.h:41</div></div>
+<div class="ttc" id="astructClubColours_html_ae1d06203b70ecf385ed02c836460b8d2"><div class="ttname"><a href="structClubColours.html#ae1d06203b70ecf385ed02c836460b8d2">ClubColours::secondary</a></div><div class="ttdeci">ImU32 secondary</div><div class="ttdef"><b>Definition</b> match_kit_colors.h:42</div></div>
 <div class="ttc" id="astructClubIdentity_html"><div class="ttname"><a href="structClubIdentity.html">ClubIdentity</a></div><div class="ttdoc">Descriptive club data read from the team files of the data pack.</div><div class="ttdef"><b>Definition</b> datagenerator.h:29</div></div>
-<div class="ttc" id="astructKitColors_html"><div class="ttname"><a href="structKitColors.html">KitColors</a></div><div class="ttdef"><b>Definition</b> match_kit_colors.h:21</div></div>
-<div class="ttc" id="astructKitColors_html_a3a9d278241d77b6165fc58c5ddbd15ba"><div class="ttname"><a href="structKitColors.html#a3a9d278241d77b6165fc58c5ddbd15ba">KitColors::shorts</a></div><div class="ttdeci">ImU32 shorts</div><div class="ttdef"><b>Definition</b> match_kit_colors.h:24</div></div>
-<div class="ttc" id="astructKitColors_html_a4fe1316a3ec8cd261090e9513a646c42"><div class="ttname"><a href="structKitColors.html#a4fe1316a3ec8cd261090e9513a646c42">KitColors::trim</a></div><div class="ttdeci">ImU32 trim</div><div class="ttdef"><b>Definition</b> match_kit_colors.h:23</div></div>
-<div class="ttc" id="astructKitColors_html_aa8e5c5b858dd8a6276361baa2da90433"><div class="ttname"><a href="structKitColors.html#aa8e5c5b858dd8a6276361baa2da90433">KitColors::socks</a></div><div class="ttdeci">ImU32 socks</div><div class="ttdef"><b>Definition</b> match_kit_colors.h:25</div></div>
-<div class="ttc" id="astructKitColors_html_aaf10e445e993cdfd572ac7850fe7205a"><div class="ttname"><a href="structKitColors.html#aaf10e445e993cdfd572ac7850fe7205a">KitColors::shirt</a></div><div class="ttdeci">ImU32 shirt</div><div class="ttdef"><b>Definition</b> match_kit_colors.h:22</div></div>
-<div class="ttc" id="astructMatchKits_html"><div class="ttname"><a href="structMatchKits.html">MatchKits</a></div><div class="ttdef"><b>Definition</b> match_kit_colors.h:30</div></div>
-<div class="ttc" id="astructMatchKits_html_a1bff5a957fbdea97fff2b02183c80bcb"><div class="ttname"><a href="structMatchKits.html#a1bff5a957fbdea97fff2b02183c80bcb">MatchKits::away</a></div><div class="ttdeci">KitColors away</div><div class="ttdef"><b>Definition</b> match_kit_colors.h:32</div></div>
-<div class="ttc" id="astructMatchKits_html_a6aadc26e829f8296c92fd3bfa3c5335b"><div class="ttname"><a href="structMatchKits.html#a6aadc26e829f8296c92fd3bfa3c5335b">MatchKits::homeGoalkeeper</a></div><div class="ttdeci">KitColors homeGoalkeeper</div><div class="ttdef"><b>Definition</b> match_kit_colors.h:33</div></div>
-<div class="ttc" id="astructMatchKits_html_ac12f6e1d0c500aa3c3fe1b9be2e65082"><div class="ttname"><a href="structMatchKits.html#ac12f6e1d0c500aa3c3fe1b9be2e65082">MatchKits::home</a></div><div class="ttdeci">KitColors home</div><div class="ttdef"><b>Definition</b> match_kit_colors.h:31</div></div>
-<div class="ttc" id="astructMatchKits_html_af86df46484df2828428165593185dc92"><div class="ttname"><a href="structMatchKits.html#af86df46484df2828428165593185dc92">MatchKits::awayGoalkeeper</a></div><div class="ttdeci">KitColors awayGoalkeeper</div><div class="ttdef"><b>Definition</b> match_kit_colors.h:34</div></div>
+<div class="ttc" id="astructKitColors_html"><div class="ttname"><a href="structKitColors.html">KitColors</a></div><div class="ttdef"><b>Definition</b> match_kit_colors.h:22</div></div>
+<div class="ttc" id="astructKitColors_html_a3a9d278241d77b6165fc58c5ddbd15ba"><div class="ttname"><a href="structKitColors.html#a3a9d278241d77b6165fc58c5ddbd15ba">KitColors::shorts</a></div><div class="ttdeci">ImU32 shorts</div><div class="ttdef"><b>Definition</b> match_kit_colors.h:25</div></div>
+<div class="ttc" id="astructKitColors_html_a4fe1316a3ec8cd261090e9513a646c42"><div class="ttname"><a href="structKitColors.html#a4fe1316a3ec8cd261090e9513a646c42">KitColors::trim</a></div><div class="ttdeci">ImU32 trim</div><div class="ttdef"><b>Definition</b> match_kit_colors.h:24</div></div>
+<div class="ttc" id="astructKitColors_html_aa8e5c5b858dd8a6276361baa2da90433"><div class="ttname"><a href="structKitColors.html#aa8e5c5b858dd8a6276361baa2da90433">KitColors::socks</a></div><div class="ttdeci">ImU32 socks</div><div class="ttdef"><b>Definition</b> match_kit_colors.h:26</div></div>
+<div class="ttc" id="astructKitColors_html_aaf10e445e993cdfd572ac7850fe7205a"><div class="ttname"><a href="structKitColors.html#aaf10e445e993cdfd572ac7850fe7205a">KitColors::shirt</a></div><div class="ttdeci">ImU32 shirt</div><div class="ttdef"><b>Definition</b> match_kit_colors.h:23</div></div>
+<div class="ttc" id="astructMatchKits_html"><div class="ttname"><a href="structMatchKits.html">MatchKits</a></div><div class="ttdef"><b>Definition</b> match_kit_colors.h:31</div></div>
+<div class="ttc" id="astructMatchKits_html_a1bff5a957fbdea97fff2b02183c80bcb"><div class="ttname"><a href="structMatchKits.html#a1bff5a957fbdea97fff2b02183c80bcb">MatchKits::away</a></div><div class="ttdeci">KitColors away</div><div class="ttdef"><b>Definition</b> match_kit_colors.h:33</div></div>
+<div class="ttc" id="astructMatchKits_html_a6aadc26e829f8296c92fd3bfa3c5335b"><div class="ttname"><a href="structMatchKits.html#a6aadc26e829f8296c92fd3bfa3c5335b">MatchKits::homeGoalkeeper</a></div><div class="ttdeci">KitColors homeGoalkeeper</div><div class="ttdef"><b>Definition</b> match_kit_colors.h:34</div></div>
+<div class="ttc" id="astructMatchKits_html_ac12f6e1d0c500aa3c3fe1b9be2e65082"><div class="ttname"><a href="structMatchKits.html#ac12f6e1d0c500aa3c3fe1b9be2e65082">MatchKits::home</a></div><div class="ttdeci">KitColors home</div><div class="ttdef"><b>Definition</b> match_kit_colors.h:32</div></div>
+<div class="ttc" id="astructMatchKits_html_af86df46484df2828428165593185dc92"><div class="ttname"><a href="structMatchKits.html#af86df46484df2828428165593185dc92">MatchKits::awayGoalkeeper</a></div><div class="ttdeci">KitColors awayGoalkeeper</div><div class="ttdef"><b>Definition</b> match_kit_colors.h:35</div></div>
 <div class="ttc" id="atypes_8h_html"><div class="ttname"><a href="types_8h.html">types.h</a></div></div>
 <div class="ttc" id="atypes_8h_html_a57143f6ccbdf5a5d9724b986cbdafb31"><div class="ttname"><a href="types_8h.html#a57143f6ccbdf5a5d9724b986cbdafb31">TeamID</a></div><div class="ttdeci">uint16_t TeamID</div><div class="ttdoc">Type alias for Team identifiers.</div><div class="ttdef"><b>Definition</b> types.h:18</div></div>
 </div><!-- fragment --></div><!-- contents -->

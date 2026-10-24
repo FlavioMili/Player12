@@ -6,7 +6,7 @@ var classSquadPlannerScene =
     [ "View", "structSquadPlannerScene_1_1View.html", "structSquadPlannerScene_1_1View" ],
     [ "SquadPlannerScene", "classSquadPlannerScene.html#a2893c86c0fb8767e1c4f530ef9ec8a0f", null ],
     [ "addFocus", "classSquadPlannerScene.html#afb33822c1ebe5c9cc5a14f513d6e239b", null ],
-    [ "build", "classSquadPlannerScene.html#aa47fc5fe29f89dd90bd8826bba2a1149", null ],
+    [ "build", "classSquadPlannerScene.html#a30cff94a45983826f4affc574a34bfc4", null ],
     [ "getID", "classSquadPlannerScene.html#a405b3ab54fb36f5d45e79d2c07866e13", null ],
     [ "navSection", "classSquadPlannerScene.html#a5398c84e0ceae8e3e829995c056734d0", null ],
     [ "refresh", "classSquadPlannerScene.html#a2adf26ab6c183db237db4e53aa2b7234", null ],

@@ -21,12 +21,12 @@ var match__stadium__3d_8h =
       [ "NONE", "match__stadium__3d_8h.html#a9b24db065c9c6d42eae11238b4acbe2eab50339a10e1de285ac99d4c3990b8693", null ]
     ] ],
     [ "makeAxisBox", "match__stadium__3d_8h.html#a4a95d806375a3b288ef98efb0a6ce53e", null ],
-    [ "AWAY_FAN", "match__stadium__3d_8h.html#a449abefd4ca7680f1d8aa9279a9d3f59", null ],
+    [ "AWAY_FAN", "match__stadium__3d_8h.html#adc21b6ab8c23ae2c6ec57e63f389fd9e", null ],
     [ "BOX_FACES", "match__stadium__3d_8h.html#a8afa0b02dac2152216b1eb5781030c72", null ],
-    [ "CHEERS_AWAY", "match__stadium__3d_8h.html#ab1127e0049ff69319e3df4516ff8aa3c", null ],
-    [ "CHEERS_HOME", "match__stadium__3d_8h.html#a2c1c148ee5467df5b6fbf3a81eef3492", null ],
+    [ "CHEERS_AWAY", "match__stadium__3d_8h.html#a218f82390e15899349c2a0e91c5ab6b2", null ],
+    [ "CHEERS_HOME", "match__stadium__3d_8h.html#ad9bfea1b533406e5926736fefb7feed4", null ],
     [ "CROWD_PHASES", "match__stadium__3d_8h.html#acd739eb379404c05a4c7767884d06004", null ],
-    [ "HOME_FAN", "match__stadium__3d_8h.html#aa7efb31da61cc8ecc8347aecb04c5fcc", null ],
-    [ "SCARF", "match__stadium__3d_8h.html#a03105d22bf08e138bcb7fec8a67daab0", null ],
+    [ "HOME_FAN", "match__stadium__3d_8h.html#a99830621a167adfbb2c267e53bf6397b", null ],
+    [ "SCARF", "match__stadium__3d_8h.html#acdb17c60574fc93a6c361be6f04589b7", null ],
     [ "SPONSORS", "match__stadium__3d_8h.html#a7597d546b68102a34db678b001ba3b5c", null ]
 ];

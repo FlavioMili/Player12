@@ -233,8 +233,8 @@ Private Member Functions</h2></td></tr>
 <tr class="separator:a66e84bf48539b39ef9c20ff126f4fead"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a9526c2e61bfc72ca67dfc66e8c48b83e" id="r_a9526c2e61bfc72ca67dfc66e8c48b83e"><td class="memItemLeft" align="right" valign="top">void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classMatchScene.html#a9526c2e61bfc72ca67dfc66e8c48b83e">renderPlayMenu</a> ()</td></tr>
 <tr class="separator:a9526c2e61bfc72ca67dfc66e8c48b83e"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a67934a3d12175115537ec3f30ef30f9b" id="r_a67934a3d12175115537ec3f30ef30f9b"><td class="memItemLeft" align="right" valign="top">void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classMatchScene.html#a67934a3d12175115537ec3f30ef30f9b">renderPlayControlsHelp</a> ()</td></tr>
-<tr class="separator:a67934a3d12175115537ec3f30ef30f9b"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:ac71106860066a25dc0fa758dc9f66a7a" id="r_ac71106860066a25dc0fa758dc9f66a7a"><td class="memItemLeft" align="right" valign="top">void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classMatchScene.html#ac71106860066a25dc0fa758dc9f66a7a">renderPlayControlsHelp</a> () const</td></tr>
+<tr class="separator:ac71106860066a25dc0fa758dc9f66a7a"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:ac5bc4bbe14075e4c8ca5095367b2909c" id="r_ac5bc4bbe14075e4c8ca5095367b2909c"><td class="memItemLeft" align="right" valign="top">void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classMatchScene.html#ac5bc4bbe14075e4c8ca5095367b2909c">setPlaybackSpeed</a> (float speed)</td></tr>
 <tr class="separator:ac5bc4bbe14075e4c8ca5095367b2909c"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:af99fc56cd32d41d4eec87471826c7ff9" id="r_af99fc56cd32d41d4eec87471826c7ff9"><td class="memItemLeft" align="right" valign="top">void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classMatchScene.html#af99fc56cd32d41d4eec87471826c7ff9">setHighlightsOnly</a> (bool enabled)</td></tr>
@@ -308,6 +308,8 @@ Private Attributes</h2></td></tr>
 <tr class="separator:a449bc55926883c46b606a29bfe1bf3cc"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:aa6ea50d899a0eb9d7c38b9784f6c061e" id="r_aa6ea50d899a0eb9d7c38b9784f6c061e"><td class="memItemLeft" align="right" valign="top">std::unique_ptr&lt; <a class="el" href="classMatchEngine.html">MatchEngine</a> &gt;&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classMatchScene.html#aa6ea50d899a0eb9d7c38b9784f6c061e">engine</a></td></tr>
 <tr class="separator:aa6ea50d899a0eb9d7c38b9784f6c061e"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a0618a131c3a4040663fa7bd0a4135b4b" id="r_a0618a131c3a4040663fa7bd0a4135b4b"><td class="memItemLeft" align="right" valign="top">std::jthread&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classMatchScene.html#a0618a131c3a4040663fa7bd0a4135b4b">quick_result_worker</a></td></tr>
+<tr class="separator:a0618a131c3a4040663fa7bd0a4135b4b"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a7e043d9fd9b4cf4307c1e1d67f21eb0e" id="r_a7e043d9fd9b4cf4307c1e1d67f21eb0e"><td class="memItemLeft" align="right" valign="top">std::future&lt; void &gt;&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classMatchScene.html#a7e043d9fd9b4cf4307c1e1d67f21eb0e">quick_result</a></td></tr>
 <tr class="separator:a7e043d9fd9b4cf4307c1e1d67f21eb0e"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a9108032cd4e3ff6c3d6dcf10a3447fcc" id="r_a9108032cd4e3ff6c3d6dcf10a3447fcc"><td class="memItemLeft" align="right" valign="top">std::unique_ptr&lt; <a class="el" href="classMatchAudio.html">MatchAudio</a> &gt;&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classMatchScene.html#a9108032cd4e3ff6c3d6dcf10a3447fcc">audio</a></td></tr>
@@ -771,7 +773,7 @@ Additional Inherited Members</h2></td></tr>
 
 <p>Gets the ID of the scene. </p>
 <dl class="section return"><dt>Returns</dt><dd>The SceneID of this scene.</dd></dl>
-<p>This function might be used to check what we are rendering. we would simply do something like this: <a class="el" href="classMainMenuScene.html#ac65f4aa576ae71cb9fac4a1154edca49" title="Gets the ID of this scene.">MainMenuScene::getID()</a> { return <a class="el" href="gui__scene_8h.html#aaf4bddc3ff70ab62a07943e024b9942faa16d505f03a4b6f35486f65f6a61317e">SceneID::MAIN_MENU</a>; } TODO : remove or not? </p>
+<p><a class="el" href="classGUIView.html" title="Main view manager for the GUI. Handles scenes and overlays.">GUIView</a> uses this identifier to apply match-specific event and scene behavior. </p>
 
 <p>Implements <a class="el" href="classGUIScene.html#adc23f98639a131403f09cc46133fcd04">GUIScene</a>.</p>
 
@@ -1426,8 +1428,8 @@ Additional Inherited Members</h2></td></tr>
 
 </div>
 </div>
-<a id="a67934a3d12175115537ec3f30ef30f9b" name="a67934a3d12175115537ec3f30ef30f9b"></a>
-<h2 class="memtitle"><span class="permalink"><a href="#a67934a3d12175115537ec3f30ef30f9b">&#9670;&#160;</a></span>renderPlayControlsHelp()</h2>
+<a id="ac71106860066a25dc0fa758dc9f66a7a" name="ac71106860066a25dc0fa758dc9f66a7a"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#ac71106860066a25dc0fa758dc9f66a7a">&#9670;&#160;</a></span>renderPlayControlsHelp()</h2>
 
 <div class="memitem">
 <div class="memproto">
@@ -1439,7 +1441,7 @@ Additional Inherited Members</h2></td></tr>
           <td class="memname">void MatchScene::renderPlayControlsHelp </td>
           <td>(</td>
           <td class="paramname"></td><td>)</td>
-          <td></td>
+          <td> const</td>
         </tr>
       </table>
   </td>
@@ -3466,6 +3468,28 @@ Additional Inherited Members</h2></td></tr>
       <table class="memname">
         <tr>
           <td class="memname">std::future&lt;void&gt; MatchScene::quick_result</td>
+        </tr>
+      </table>
+  </td>
+  <td class="mlabels-right">
+<span class="mlabels"><span class="mlabel">private</span></span>  </td>
+  </tr>
+</table>
+</div><div class="memdoc">
+
+</div>
+</div>
+<a id="a0618a131c3a4040663fa7bd0a4135b4b" name="a0618a131c3a4040663fa7bd0a4135b4b"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a0618a131c3a4040663fa7bd0a4135b4b">&#9670;&#160;</a></span>quick_result_worker</h2>
+
+<div class="memitem">
+<div class="memproto">
+<table class="mlabels">
+  <tr>
+  <td class="mlabels-left">
+      <table class="memname">
+        <tr>
+          <td class="memname">std::jthread MatchScene::quick_result_worker</td>
         </tr>
       </table>
   </td>

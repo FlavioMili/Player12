@@ -94,7 +94,8 @@ $(document).ready(function(){initNavTree('match__renderer__3d_8cpp.html',''); in
 
 <div class="header">
   <div class="summary">
-<a href="#nested-classes">Classes</a>  </div>
+<a href="#nested-classes">Classes</a> &#124;
+<a href="#func-members">Functions</a>  </div>
   <div class="headertitle"><div class="title">match_renderer_3d.cpp File Reference</div></div>
 </div><!--header-->
 <div class="contents">
@@ -105,11 +106,13 @@ $(document).ready(function(){initNavTree('match__renderer__3d_8cpp.html',''); in
 <code>#include &lt;array&gt;</code><br />
 <code>#include &lt;cfloat&gt;</code><br />
 <code>#include &lt;cmath&gt;</code><br />
+<code>#include &lt;cstddef&gt;</code><br />
 <code>#include &lt;cstdint&gt;</code><br />
-<code>#include &lt;cstdio&gt;</code><br />
+<code>#include &lt;format&gt;</code><br />
 <code>#include &lt;numbers&gt;</code><br />
 <code>#include &lt;span&gt;</code><br />
 <code>#include &lt;string&gt;</code><br />
+<code>#include &lt;utility&gt;</code><br />
 <code>#include &lt;vector&gt;</code><br />
 <code>#include &quot;<a class="el" href="language__manager_8h_source.html">global/language_manager.h</a>&quot;</code><br />
 <code>#include &quot;<a class="el" href="match__camera__3d_8h_source.html">gui/render/match_camera_3d.h</a>&quot;</code><br />
@@ -129,7 +132,2216 @@ $(document).ready(function(){initNavTree('match__renderer__3d_8cpp.html',''); in
 Classes</h2></td></tr>
 <tr class="memitem:"><td class="memItemLeft" align="right" valign="top">struct &#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structMatchRenderer3D_1_1State.html">MatchRenderer3D::State</a></td></tr>
 <tr class="separator:"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:"><td class="memItemLeft" align="right" valign="top">struct &#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structCrowdFaceLayout.html">CrowdFaceLayout</a></td></tr>
+<tr class="separator:"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:"><td class="memItemLeft" align="right" valign="top">struct &#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structGaitFrame.html">GaitFrame</a></td></tr>
+<tr class="separator:"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:"><td class="memItemLeft" align="right" valign="top">struct &#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structPlayerTorsoFrame.html">PlayerTorsoFrame</a></td></tr>
+<tr class="separator:"><td class="memSeparator" colspan="2">&#160;</td></tr>
+</table><table class="memberdecls">
+<tr class="heading"><td colspan="2"><h2 class="groupheader"><a id="func-members" name="func-members"></a>
+Functions</h2></td></tr>
+<tr class="memitem:a11c1a5acae13532e9ecdf23451a3d2d5" id="r_a11c1a5acae13532e9ecdf23451a3d2d5"><td class="memItemLeft" align="right" valign="top">ImVec2&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="match__renderer__3d_8cpp.html#a11c1a5acae13532e9ecdf23451a3d2d5">crowdPoint</a> (const <a class="el" href="structCrowdFaceLayout.html">CrowdFaceLayout</a> &amp;layout, float x, float y, float across, float up, float dx, float dy)</td></tr>
+<tr class="separator:a11c1a5acae13532e9ecdf23451a3d2d5"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:abcdbd41b1c021df699912f32b17c48da" id="r_abcdbd41b1c021df699912f32b17c48da"><td class="memTemplParams" colspan="2">template&lt;class RendererState &gt; </td></tr>
+<tr class="memitem:abcdbd41b1c021df699912f32b17c48da"><td class="memTemplItemLeft" align="right" valign="top">void&#160;</td><td class="memTemplItemRight" valign="bottom"><a class="el" href="match__renderer__3d_8cpp.html#abcdbd41b1c021df699912f32b17c48da">drawCrowdDot</a> (RendererState &amp;state, const <a class="el" href="structCrowdFaceLayout.html">CrowdFaceLayout</a> &amp;layout, const <a class="el" href="structStadium3D_1_1CrowdClump.html">Stadium3D::CrowdClump</a> &amp;clump, const <a class="el" href="structStadium3D_1_1CrowdDot.html">Stadium3D::CrowdDot</a> &amp;dot, std::uint32_t detail)</td></tr>
+<tr class="separator:abcdbd41b1c021df699912f32b17c48da"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a26f9072baa9d917f29bbd198b1cc5c53" id="r_a26f9072baa9d917f29bbd198b1cc5c53"><td class="memTemplParams" colspan="2">template&lt;class RendererState &gt; </td></tr>
+<tr class="memitem:a26f9072baa9d917f29bbd198b1cc5c53"><td class="memTemplItemLeft" align="right" valign="top">void&#160;</td><td class="memTemplItemRight" valign="bottom"><a class="el" href="match__renderer__3d_8cpp.html#a26f9072baa9d917f29bbd198b1cc5c53">drawPitchCell</a> (RendererState &amp;state, const <a class="el" href="structStadium3D_1_1PitchGrid.html">Stadium3D::PitchGrid</a> &amp;grid, std::size_t cell, std::size_t rows, std::size_t cellsPerStripe)</td></tr>
+<tr class="separator:a26f9072baa9d917f29bbd198b1cc5c53"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a4d200cfee0fa54b2db49cd90eac5fad6" id="r_a4d200cfee0fa54b2db49cd90eac5fad6"><td class="memTemplParams" colspan="2">template&lt;class RendererState &gt; </td></tr>
+<tr class="memitem:a4d200cfee0fa54b2db49cd90eac5fad6"><td class="memTemplItemLeft" align="right" valign="top">void&#160;</td><td class="memTemplItemRight" valign="bottom"><a class="el" href="match__renderer__3d_8cpp.html#a4d200cfee0fa54b2db49cd90eac5fad6">initializeAnimationSlot</a> (RendererState &amp;state, const <a class="el" href="structMatchRenderPlayer.html">MatchRenderPlayer</a> &amp;player, AnimationSlot &amp;slot, Vec3 root, float yaw)</td></tr>
+<tr class="separator:a4d200cfee0fa54b2db49cd90eac5fad6"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a3f4283db1d2b59a923ed44d22084acad" id="r_a3f4283db1d2b59a923ed44d22084acad"><td class="memTemplParams" colspan="2">template&lt;class RendererState &gt; </td></tr>
+<tr class="memitem:a3f4283db1d2b59a923ed44d22084acad"><td class="memTemplItemLeft" align="right" valign="top">float&#160;</td><td class="memTemplItemRight" valign="bottom"><a class="el" href="match__renderer__3d_8cpp.html#a3f4283db1d2b59a923ed44d22084acad">jumpTargetFor</a> (const RendererState &amp;state, const <a class="el" href="structMatchRenderPlayer.html">MatchRenderPlayer</a> &amp;player, Vec3 root, float scale)</td></tr>
+<tr class="separator:a3f4283db1d2b59a923ed44d22084acad"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a203884d866c6a59d278a421534da6be9" id="r_a203884d866c6a59d278a421534da6be9"><td class="memItemLeft" align="right" valign="top">float&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="match__renderer__3d_8cpp.html#a203884d866c6a59d278a421534da6be9">attackDirectionFor</a> (std::span&lt; const <a class="el" href="structMatchRenderPlayer.html">MatchRenderPlayer</a> &gt; players, const <a class="el" href="structMatchRenderPlayer.html">MatchRenderPlayer</a> &amp;carrier)</td></tr>
+<tr class="separator:a203884d866c6a59d278a421534da6be9"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:ad7cac83bebc144606b430203b851e08a" id="r_ad7cac83bebc144606b430203b851e08a"><td class="memItemLeft" align="right" valign="top">void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="match__renderer__3d_8cpp.html#ad7cac83bebc144606b430203b851e08a">setCelebrationFocus</a> (<a class="el" href="structMatchCameraFocus.html">MatchCameraFocus</a> &amp;focus, std::span&lt; const <a class="el" href="structMatchRenderPlayer.html">MatchRenderPlayer</a> &gt; players, std::uint32_t scorer, float alpha)</td></tr>
+<tr class="separator:ad7cac83bebc144606b430203b851e08a"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a7080a4c38f21d5aacca5ac713ad1a55b" id="r_a7080a4c38f21d5aacca5ac713ad1a55b"><td class="memTemplParams" colspan="2">template&lt;class RendererState &gt; </td></tr>
+<tr class="memitem:a7080a4c38f21d5aacca5ac713ad1a55b"><td class="memTemplItemLeft" align="right" valign="top">void&#160;</td><td class="memTemplItemRight" valign="bottom"><a class="el" href="match__renderer__3d_8cpp.html#a7080a4c38f21d5aacca5ac713ad1a55b">drawPlayerMarker</a> (RendererState &amp;state, const <a class="el" href="structMatchRenderPlayer.html">MatchRenderPlayer</a> &amp;player, Vec3 root, float pixelHeight)</td></tr>
+<tr class="separator:a7080a4c38f21d5aacca5ac713ad1a55b"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a13117f58b303180eb52b1c521185cba6" id="r_a13117f58b303180eb52b1c521185cba6"><td class="memTemplParams" colspan="2">template&lt;class RendererState &gt; </td></tr>
+<tr class="memitem:a13117f58b303180eb52b1c521185cba6"><td class="memTemplItemLeft" align="right" valign="top">void&#160;</td><td class="memTemplItemRight" valign="bottom"><a class="el" href="match__renderer__3d_8cpp.html#a13117f58b303180eb52b1c521185cba6">drawDayPlayerShadow</a> (RendererState &amp;state, Vec3 root, float standing, Vec3 sunAway, float sunLength)</td></tr>
+<tr class="separator:a13117f58b303180eb52b1c521185cba6"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a8621deaa4899a7de858798b9be2e2f4c" id="r_a8621deaa4899a7de858798b9be2e2f4c"><td class="memTemplParams" colspan="2">template&lt;class RendererState &gt; </td></tr>
+<tr class="memitem:a8621deaa4899a7de858798b9be2e2f4c"><td class="memTemplItemLeft" align="right" valign="top">void&#160;</td><td class="memTemplItemRight" valign="bottom"><a class="el" href="match__renderer__3d_8cpp.html#a8621deaa4899a7de858798b9be2e2f4c">drawFloodlightPlayerShadows</a> (RendererState &amp;state, Vec3 root, float pixelHeight, float standing, std::span&lt; const Vec3 &gt; lights)</td></tr>
+<tr class="separator:a8621deaa4899a7de858798b9be2e2f4c"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a5acbe48a4a6eeedabeda097d110bcd2d" id="r_a5acbe48a4a6eeedabeda097d110bcd2d"><td class="memTemplParams" colspan="2">template&lt;class RendererState &gt; </td></tr>
+<tr class="memitem:a5acbe48a4a6eeedabeda097d110bcd2d"><td class="memTemplItemLeft" align="right" valign="top">void&#160;</td><td class="memTemplItemRight" valign="bottom"><a class="el" href="match__renderer__3d_8cpp.html#a5acbe48a4a6eeedabeda097d110bcd2d">drawPossessionRing</a> (RendererState &amp;state, Vec3 root)</td></tr>
+<tr class="separator:a5acbe48a4a6eeedabeda097d110bcd2d"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a448e5eda7f09b36ebed4b3baa2375fd2" id="r_a448e5eda7f09b36ebed4b3baa2375fd2"><td class="memTemplParams" colspan="2">template&lt;class RendererState &gt; </td></tr>
+<tr class="memitem:a448e5eda7f09b36ebed4b3baa2375fd2"><td class="memTemplItemLeft" align="right" valign="top">void&#160;</td><td class="memTemplItemRight" valign="bottom"><a class="el" href="match__renderer__3d_8cpp.html#a448e5eda7f09b36ebed4b3baa2375fd2">drawPlayerShadow</a> (RendererState &amp;state, const <a class="el" href="structMatchRenderPlayer.html">MatchRenderPlayer</a> &amp;player, Vec3 root, float pixelHeight, float standing, Vec3 sunAway, float sunLength, std::span&lt; const Vec3 &gt; lights)</td></tr>
+<tr class="separator:a448e5eda7f09b36ebed4b3baa2375fd2"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a6da02de5dd743ecb085192a36391e625" id="r_a6da02de5dd743ecb085192a36391e625"><td class="memTemplParams" colspan="2">template&lt;class RendererState &gt; </td></tr>
+<tr class="memitem:a6da02de5dd743ecb085192a36391e625"><td class="memTemplItemLeft" align="right" valign="top">void&#160;</td><td class="memTemplItemRight" valign="bottom"><a class="el" href="match__renderer__3d_8cpp.html#a6da02de5dd743ecb085192a36391e625">drawDistantCrowdClump</a> (RendererState &amp;state, const <a class="el" href="structStadium3D_1_1CrowdClump.html">Stadium3D::CrowdClump</a> &amp;clump, const <a class="el" href="structCrowdFaceLayout.html">CrowdFaceLayout</a> &amp;layout, Vec4 clumpClip, float inverseDepth)</td></tr>
+<tr class="separator:a6da02de5dd743ecb085192a36391e625"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a95b5afbe3acaa68a6080213a8fb2ce61" id="r_a95b5afbe3acaa68a6080213a8fb2ce61"><td class="memTemplParams" colspan="2">template&lt;class RendererState &gt; </td></tr>
+<tr class="memitem:a95b5afbe3acaa68a6080213a8fb2ce61"><td class="memTemplItemLeft" align="right" valign="top">void&#160;</td><td class="memTemplItemRight" valign="bottom"><a class="el" href="match__renderer__3d_8cpp.html#a95b5afbe3acaa68a6080213a8fb2ce61">drawNearCrowdClump</a> (RendererState &amp;state, const <a class="el" href="structStadium3D_1_1CrowdClump.html">Stadium3D::CrowdClump</a> &amp;clump, const <a class="el" href="structCrowdFaceLayout.html">CrowdFaceLayout</a> &amp;layout, Vec4 clumpClip, float seatPixels)</td></tr>
+<tr class="separator:a95b5afbe3acaa68a6080213a8fb2ce61"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a903de250aeb5b82b87cb1b10bc4b1431" id="r_a903de250aeb5b82b87cb1b10bc4b1431"><td class="memTemplParams" colspan="2">template&lt;class RendererState &gt; </td></tr>
+<tr class="memitem:a903de250aeb5b82b87cb1b10bc4b1431"><td class="memTemplItemLeft" align="right" valign="top">void&#160;</td><td class="memTemplItemRight" valign="bottom"><a class="el" href="match__renderer__3d_8cpp.html#a903de250aeb5b82b87cb1b10bc4b1431">drawCrowdClump</a> (RendererState &amp;state, const <a class="el" href="structStadium3D_1_1CrowdClump.html">Stadium3D::CrowdClump</a> &amp;clump, const <a class="el" href="structCrowdFaceLayout.html">CrowdFaceLayout</a> &amp;layout, float seatFocal)</td></tr>
+<tr class="separator:a903de250aeb5b82b87cb1b10bc4b1431"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:aedef04ff5116cc1a8acc28c33c28e720" id="r_aedef04ff5116cc1a8acc28c33c28e720"><td class="memTemplParams" colspan="2">template&lt;class RendererState &gt; </td></tr>
+<tr class="memitem:aedef04ff5116cc1a8acc28c33c28e720"><td class="memTemplItemLeft" align="right" valign="top">void&#160;</td><td class="memTemplItemRight" valign="bottom"><a class="el" href="match__renderer__3d_8cpp.html#aedef04ff5116cc1a8acc28c33c28e720">drawStadiumFace</a> (RendererState &amp;state, const <a class="el" href="structStadium3D_1_1Face.html">Stadium3D::Face</a> &amp;face)</td></tr>
+<tr class="separator:aedef04ff5116cc1a8acc28c33c28e720"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:af9a1fdbae8df055d487f3d68f9d1dc55" id="r_af9a1fdbae8df055d487f3d68f9d1dc55"><td class="memItemLeft" align="right" valign="top"><a class="el" href="structGaitFrame.html">GaitFrame</a>&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="match__renderer__3d_8cpp.html#af9a1fdbae8df055d487f3d68f9d1dc55">advanceGait</a> (AnimationSlot &amp;slot, const <a class="el" href="structMatchRenderPlayer.html">MatchRenderPlayer</a> &amp;player, Vec3 root, float scale, float deltaSeconds)</td></tr>
+<tr class="separator:af9a1fdbae8df055d487f3d68f9d1dc55"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a768c9fc1a9086777ce9e496d5a09f31f" id="r_a768c9fc1a9086777ce9e496d5a09f31f"><td class="memItemLeft" align="right" valign="top">void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="match__renderer__3d_8cpp.html#a768c9fc1a9086777ce9e496d5a09f31f">updateMotionRates</a> (AnimationSlot &amp;slot, float groundSpeed, float yaw, float simSeconds)</td></tr>
+<tr class="separator:a768c9fc1a9086777ce9e496d5a09f31f"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a09cfb8e12c5a23328c3b80ec2b835fe4" id="r_a09cfb8e12c5a23328c3b80ec2b835fe4"><td class="memTemplParams" colspan="2">template&lt;class RendererState &gt; </td></tr>
+<tr class="memitem:a09cfb8e12c5a23328c3b80ec2b835fe4"><td class="memTemplItemLeft" align="right" valign="top">void&#160;</td><td class="memTemplItemRight" valign="bottom"><a class="el" href="match__renderer__3d_8cpp.html#a09cfb8e12c5a23328c3b80ec2b835fe4">updateKeeperPose</a> (RendererState &amp;state, const <a class="el" href="structMatchRenderPlayer.html">MatchRenderPlayer</a> &amp;player, AnimationSlot &amp;slot, Vec3 root, float yaw, float blend)</td></tr>
+<tr class="separator:a09cfb8e12c5a23328c3b80ec2b835fe4"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a19ece4039491c6b08ebfcc6f83b16770" id="r_a19ece4039491c6b08ebfcc6f83b16770"><td class="memItemLeft" align="right" valign="top">void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="match__renderer__3d_8cpp.html#a19ece4039491c6b08ebfcc6f83b16770">updateFootPlanting</a> (AnimationSlot &amp;slot, Vec3 root, float yaw, float scale, float cycleMetres, float groundSpeed, float simSeconds)</td></tr>
+<tr class="separator:a19ece4039491c6b08ebfcc6f83b16770"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a84470f8722db1c26dae9dc28290c982c" id="r_a84470f8722db1c26dae9dc28290c982c"><td class="memItemLeft" align="right" valign="top">Pose&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="match__renderer__3d_8cpp.html#a84470f8722db1c26dae9dc28290c982c">poseForTimedEvent</a> (Pose pose, <a class="el" href="namespacePlayerRig.html#aa8ee7148b8793b8c1a0ca832f10fef9e">PlayerRig::Event</a> event, float eventTime, float eventWeight, std::size_t eventLeg)</td></tr>
+<tr class="separator:a84470f8722db1c26dae9dc28290c982c"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a3bdbbcb81e01e927b71eb9afcbc02450" id="r_a3bdbbcb81e01e927b71eb9afcbc02450"><td class="memItemLeft" align="right" valign="top">Pose&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="match__renderer__3d_8cpp.html#a3bdbbcb81e01e927b71eb9afcbc02450">poseForKeeper</a> (Pose pose, bool keeper, float setBlend, float diveBlend, float diveSide, float stride)</td></tr>
+<tr class="separator:a3bdbbcb81e01e927b71eb9afcbc02450"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:acab315287fdea314afcabe95a831672c" id="r_acab315287fdea314afcabe95a831672c"><td class="memItemLeft" align="right" valign="top">Pose&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="match__renderer__3d_8cpp.html#acab315287fdea314afcabe95a831672c">poseForCelebration</a> (Pose pose, GoalMood mood, bool reducedMotion, float elapsedSeconds, std::uint32_t seed, float stride, float celebrationWeight)</td></tr>
+<tr class="separator:acab315287fdea314afcabe95a831672c"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a11a4419d2007a8bac42e90e9e58a6688" id="r_a11a4419d2007a8bac42e90e9e58a6688"><td class="memItemLeft" align="right" valign="top">void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="match__renderer__3d_8cpp.html#a11a4419d2007a8bac42e90e9e58a6688">applyEventFootTargets</a> (std::array&lt; Vec3, 2 &gt; &amp;ankleTargets, std::array&lt; bool, 2 &gt; &amp;planted, const AnimationSlot &amp;slot, Vec3 pelvis, float ankleHeight, float scale, float eventTime, float eventWeight)</td></tr>
+<tr class="separator:a11a4419d2007a8bac42e90e9e58a6688"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a7c04bd5b45bfb99ebdfd70b7506ea9a5" id="r_a7c04bd5b45bfb99ebdfd70b7506ea9a5"><td class="memTemplParams" colspan="2">template&lt;class RendererState &gt; </td></tr>
+<tr class="memitem:a7c04bd5b45bfb99ebdfd70b7506ea9a5"><td class="memTemplItemLeft" align="right" valign="top">void&#160;</td><td class="memTemplItemRight" valign="bottom"><a class="el" href="match__renderer__3d_8cpp.html#a7c04bd5b45bfb99ebdfd70b7506ea9a5">drawPlayerLeg</a> (RendererState &amp;state, const AnimationSlot &amp;slot, std::size_t <a class="el" href="runtime__editor_8cpp.html#a750b5d744c39a06bfb13e6eb010e35d0">index</a>, const std::array&lt; Vec3, 2 &gt; &amp;hipJoint, const std::array&lt; Vec3, 2 &gt; &amp;knee, const std::array&lt; Vec3, 2 &gt; &amp;ankle, const std::array&lt; float, 2 &gt; &amp;heel, const std::array&lt; bool, 2 &gt; &amp;planted, Vec3 bodySide, float scale, float bulk, float objectDepth, PlayerLod lod, const <a class="el" href="structKitColors.html">KitColors</a> &amp;kit, const PlayerLook &amp;look, ImU32 skin)</td></tr>
+<tr class="separator:a7c04bd5b45bfb99ebdfd70b7506ea9a5"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:aaba2fcc1564013a00515517d85506de5" id="r_aaba2fcc1564013a00515517d85506de5"><td class="memTemplParams" colspan="2">template&lt;class RendererState &gt; </td></tr>
+<tr class="memitem:aaba2fcc1564013a00515517d85506de5"><td class="memTemplItemLeft" align="right" valign="top">void&#160;</td><td class="memTemplItemRight" valign="bottom"><a class="el" href="match__renderer__3d_8cpp.html#aaba2fcc1564013a00515517d85506de5">drawPlayerLegs</a> (RendererState &amp;state, const AnimationSlot &amp;slot, const std::array&lt; Vec3, 2 &gt; &amp;hipJoint, const std::array&lt; Vec3, 2 &gt; &amp;knee, const std::array&lt; Vec3, 2 &gt; &amp;ankle, const std::array&lt; float, 2 &gt; &amp;heel, const std::array&lt; bool, 2 &gt; &amp;planted, Vec3 bodySide, float scale, float bulk, float objectDepth, PlayerLod lod, const <a class="el" href="structKitColors.html">KitColors</a> &amp;kit, const PlayerLook &amp;look, ImU32 skin)</td></tr>
+<tr class="separator:aaba2fcc1564013a00515517d85506de5"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a992f06312eb43e3804247a18cfb92018" id="r_a992f06312eb43e3804247a18cfb92018"><td class="memItemLeft" align="right" valign="top">float&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="match__renderer__3d_8cpp.html#a992f06312eb43e3804247a18cfb92018">fitPelvisToPlantedFeet</a> (float pelvisHeight, const AnimationSlot &amp;slot, Vec3 root, Vec3 flatSide, Vec3 forward, float scale, float poseLift)</td></tr>
+<tr class="separator:a992f06312eb43e3804247a18cfb92018"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:aabdb64c8d55713fdc546f441f2314ec2" id="r_aabdb64c8d55713fdc546f441f2314ec2"><td class="memItemLeft" align="right" valign="top">void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="match__renderer__3d_8cpp.html#aabdb64c8d55713fdc546f441f2314ec2">buildPlayerAnkleTargets</a> (const AnimationSlot &amp;slot, const Pose &amp;pose, Vec3 root, Vec3 pelvis, Vec3 bodyUp, Vec3 bodySide, Vec3 forward, float scale, float ankleHeight, std::array&lt; Vec3, 2 &gt; &amp;hipJoint, std::array&lt; Vec3, 2 &gt; &amp;ankleTarget, std::array&lt; bool, 2 &gt; &amp;planted)</td></tr>
+<tr class="separator:aabdb64c8d55713fdc546f441f2314ec2"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a351a65e698d181d97695fc9cb0b6d866" id="r_a351a65e698d181d97695fc9cb0b6d866"><td class="memItemLeft" align="right" valign="top">void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="match__renderer__3d_8cpp.html#a351a65e698d181d97695fc9cb0b6d866">solvePlayerLegJoints</a> (const AnimationSlot &amp;slot, const std::array&lt; Vec3, 2 &gt; &amp;hipJoint, const std::array&lt; Vec3, 2 &gt; &amp;ankleTarget, const std::array&lt; bool, 2 &gt; &amp;planted, Vec3 forward, Vec3 bodyUp, float scale, std::array&lt; Vec3, 2 &gt; &amp;knee, std::array&lt; Vec3, 2 &gt; &amp;ankle, std::array&lt; float, 2 &gt; &amp;heel)</td></tr>
+<tr class="separator:a351a65e698d181d97695fc9cb0b6d866"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:af48c34ef8098661318c9bc2ee55752d4" id="r_af48c34ef8098661318c9bc2ee55752d4"><td class="memTemplParams" colspan="2">template&lt;class RendererState &gt; </td></tr>
+<tr class="memitem:af48c34ef8098661318c9bc2ee55752d4"><td class="memTemplItemLeft" align="right" valign="top"><a class="el" href="structPlayerTorsoFrame.html">PlayerTorsoFrame</a>&#160;</td><td class="memTemplItemRight" valign="bottom"><a class="el" href="match__renderer__3d_8cpp.html#af48c34ef8098661318c9bc2ee55752d4">drawPlayerTorso</a> (RendererState &amp;state, const AnimationSlot &amp;slot, const Pose &amp;pose, Vec3 pelvis, Vec3 bodyUp, Vec3 bodySide, Vec3 forward, float scale, float bulk, float objectDepth, PlayerLod lod, bool detailed, std::size_t kitIndex, const <a class="el" href="structKitColors.html">KitColors</a> &amp;kit)</td></tr>
+<tr class="separator:af48c34ef8098661318c9bc2ee55752d4"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a325532381a5ab8dd803c01b711f11a01" id="r_a325532381a5ab8dd803c01b711f11a01"><td class="memTemplParams" colspan="2">template&lt;class RendererState &gt; </td></tr>
+<tr class="memitem:a325532381a5ab8dd803c01b711f11a01"><td class="memTemplItemLeft" align="right" valign="top">void&#160;</td><td class="memTemplItemRight" valign="bottom"><a class="el" href="match__renderer__3d_8cpp.html#a325532381a5ab8dd803c01b711f11a01">detectTackleActions</a> (RendererState &amp;state, const <a class="el" href="structMatchRenderSnapshot.html">MatchRenderSnapshot</a> &amp;snapshot, float alpha)</td></tr>
+<tr class="separator:a325532381a5ab8dd803c01b711f11a01"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a4b2ff52b880f5a2704060a9192a1968d" id="r_a4b2ff52b880f5a2704060a9192a1968d"><td class="memTemplParams" colspan="2">template&lt;class RendererState &gt; </td></tr>
+<tr class="memitem:a4b2ff52b880f5a2704060a9192a1968d"><td class="memTemplItemLeft" align="right" valign="top">void&#160;</td><td class="memTemplItemRight" valign="bottom"><a class="el" href="match__renderer__3d_8cpp.html#a4b2ff52b880f5a2704060a9192a1968d">detectKickAction</a> (RendererState &amp;state, const <a class="el" href="structMatchRenderSnapshot.html">MatchRenderSnapshot</a> &amp;snapshot, float alpha)</td></tr>
+<tr class="separator:a4b2ff52b880f5a2704060a9192a1968d"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:aa0de552df9dfc73f24f65d764cb6742c" id="r_aa0de552df9dfc73f24f65d764cb6742c"><td class="memTemplParams" colspan="2">template&lt;class RendererState &gt; </td></tr>
+<tr class="memitem:aa0de552df9dfc73f24f65d764cb6742c"><td class="memTemplItemLeft" align="right" valign="top">void&#160;</td><td class="memTemplItemRight" valign="bottom"><a class="el" href="match__renderer__3d_8cpp.html#aa0de552df9dfc73f24f65d764cb6742c">captureGoalEvent</a> (RendererState &amp;state, const <a class="el" href="structMatchRenderSnapshot.html">MatchRenderSnapshot</a> &amp;snapshot)</td></tr>
+<tr class="separator:aa0de552df9dfc73f24f65d764cb6742c"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a6e6b96c0bad9f61bd8933081630f70c3" id="r_a6e6b96c0bad9f61bd8933081630f70c3"><td class="memTemplParams" colspan="2">template&lt;class RendererState &gt; </td></tr>
+<tr class="memitem:a6e6b96c0bad9f61bd8933081630f70c3"><td class="memTemplItemLeft" align="right" valign="top">void&#160;</td><td class="memTemplItemRight" valign="bottom"><a class="el" href="match__renderer__3d_8cpp.html#a6e6b96c0bad9f61bd8933081630f70c3">addGoalNetPanel</a> (RendererState &amp;state, const <a class="el" href="structStadium3D_1_1NetPanel.html">Stadium3D::NetPanel</a> &amp;net, bool rippling, float age, Vec3 mouth)</td></tr>
+<tr class="separator:a6e6b96c0bad9f61bd8933081630f70c3"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a108fc305ea5daa78bfd9cee9d6fde6ac" id="r_a108fc305ea5daa78bfd9cee9d6fde6ac"><td class="memTemplParams" colspan="2">template&lt;class RendererState &gt; </td></tr>
+<tr class="memitem:a108fc305ea5daa78bfd9cee9d6fde6ac"><td class="memTemplItemLeft" align="right" valign="top">void&#160;</td><td class="memTemplItemRight" valign="bottom"><a class="el" href="match__renderer__3d_8cpp.html#a108fc305ea5daa78bfd9cee9d6fde6ac">addGoalFrame</a> (RendererState &amp;state, const <a class="el" href="structStadium3D_1_1Goal.html">Stadium3D::Goal</a> &amp;frame, std::size_t goalIndex)</td></tr>
+<tr class="separator:a108fc305ea5daa78bfd9cee9d6fde6ac"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a526e318cb174adf17c70f43e2daa8299" id="r_a526e318cb174adf17c70f43e2daa8299"><td class="memTemplParams" colspan="2">template&lt;class RendererState &gt; </td></tr>
+<tr class="memitem:a526e318cb174adf17c70f43e2daa8299"><td class="memTemplItemLeft" align="right" valign="top">void&#160;</td><td class="memTemplItemRight" valign="bottom"><a class="el" href="match__renderer__3d_8cpp.html#a526e318cb174adf17c70f43e2daa8299">updateBallRotation</a> (RendererState &amp;state, Vec3 world, Vec3 moved, float distance, const ScreenPoint &amp;screen)</td></tr>
+<tr class="separator:a526e318cb174adf17c70f43e2daa8299"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:ae0b25cf43a472cd6fb56bd426a3cc507" id="r_ae0b25cf43a472cd6fb56bd426a3cc507"><td class="memTemplParams" colspan="2">template&lt;class RendererState &gt; </td></tr>
+<tr class="memitem:ae0b25cf43a472cd6fb56bd426a3cc507"><td class="memTemplItemLeft" align="right" valign="top">void&#160;</td><td class="memTemplItemRight" valign="bottom"><a class="el" href="match__renderer__3d_8cpp.html#ae0b25cf43a472cd6fb56bd426a3cc507">updateMatchSimulation</a> (RendererState &amp;state, const <a class="el" href="structMatchRenderSnapshot.html">MatchRenderSnapshot</a> &amp;snapshot, float deltaSeconds, float alpha)</td></tr>
+<tr class="separator:ae0b25cf43a472cd6fb56bd426a3cc507"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a0875965831932eeb3bac282303f32268" id="r_a0875965831932eeb3bac282303f32268"><td class="memTemplParams" colspan="2">template&lt;class RendererState &gt; </td></tr>
+<tr class="memitem:a0875965831932eeb3bac282303f32268"><td class="memTemplItemLeft" align="right" valign="top">void&#160;</td><td class="memTemplItemRight" valign="bottom"><a class="el" href="match__renderer__3d_8cpp.html#a0875965831932eeb3bac282303f32268">updateRenderCamera</a> (RendererState &amp;state, const <a class="el" href="structMatchRenderSnapshot.html">MatchRenderSnapshot</a> &amp;snapshot, const <a class="el" href="structMatchRenderOptions.html">MatchRenderOptions</a> &amp;options, const <a class="el" href="structMatchViewport.html">MatchViewport</a> &amp;viewport, float deltaSeconds, float alpha)</td></tr>
+<tr class="separator:a0875965831932eeb3bac282303f32268"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a80abfcd463633529808fd5931eee6ff0" id="r_a80abfcd463633529808fd5931eee6ff0"><td class="memTemplParams" colspan="2">template&lt;class RendererState &gt; </td></tr>
+<tr class="memitem:a80abfcd463633529808fd5931eee6ff0"><td class="memTemplItemLeft" align="right" valign="top">void&#160;</td><td class="memTemplItemRight" valign="bottom"><a class="el" href="match__renderer__3d_8cpp.html#a80abfcd463633529808fd5931eee6ff0">drawWorldLayers</a> (RendererState &amp;state, const <a class="el" href="structMatchRenderSnapshot.html">MatchRenderSnapshot</a> &amp;snapshot, const <a class="el" href="structMatchRenderOptions.html">MatchRenderOptions</a> &amp;options, float alpha)</td></tr>
+<tr class="separator:a80abfcd463633529808fd5931eee6ff0"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:ad1e42c209dfcdd9b582824c62795af2b" id="r_ad1e42c209dfcdd9b582824c62795af2b"><td class="memTemplParams" colspan="2">template&lt;class RendererState &gt; </td></tr>
+<tr class="memitem:ad1e42c209dfcdd9b582824c62795af2b"><td class="memTemplItemLeft" align="right" valign="top">void&#160;</td><td class="memTemplItemRight" valign="bottom"><a class="el" href="match__renderer__3d_8cpp.html#ad1e42c209dfcdd9b582824c62795af2b">drawSortedLayers</a> (RendererState &amp;state, const <a class="el" href="structMatchRenderSnapshot.html">MatchRenderSnapshot</a> &amp;snapshot, const <a class="el" href="structMatchRenderOptions.html">MatchRenderOptions</a> &amp;options, float alpha)</td></tr>
+<tr class="separator:ad1e42c209dfcdd9b582824c62795af2b"><td class="memSeparator" colspan="2">&#160;</td></tr>
 </table>
+<h2 class="groupheader">Function Documentation</h2>
+<a id="a108fc305ea5daa78bfd9cee9d6fde6ac" name="a108fc305ea5daa78bfd9cee9d6fde6ac"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a108fc305ea5daa78bfd9cee9d6fde6ac">&#9670;&#160;</a></span>addGoalFrame()</h2>
+
+<div class="memitem">
+<div class="memproto">
+<div class="memtemplate">
+template&lt;class RendererState &gt; </div>
+      <table class="memname">
+        <tr>
+          <td class="memname">void addGoalFrame </td>
+          <td>(</td>
+          <td class="paramtype">RendererState &amp;&#160;</td>
+          <td class="paramname"><em>state</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">const <a class="el" href="structStadium3D_1_1Goal.html">Stadium3D::Goal</a> &amp;&#160;</td>
+          <td class="paramname"><em>frame</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">std::size_t&#160;</td>
+          <td class="paramname"><em>goalIndex</em>&#160;</td>
+        </tr>
+        <tr>
+          <td></td>
+          <td>)</td>
+          <td></td><td></td>
+        </tr>
+      </table>
+</div><div class="memdoc">
+
+</div>
+</div>
+<a id="a6e6b96c0bad9f61bd8933081630f70c3" name="a6e6b96c0bad9f61bd8933081630f70c3"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a6e6b96c0bad9f61bd8933081630f70c3">&#9670;&#160;</a></span>addGoalNetPanel()</h2>
+
+<div class="memitem">
+<div class="memproto">
+<div class="memtemplate">
+template&lt;class RendererState &gt; </div>
+      <table class="memname">
+        <tr>
+          <td class="memname">void addGoalNetPanel </td>
+          <td>(</td>
+          <td class="paramtype">RendererState &amp;&#160;</td>
+          <td class="paramname"><em>state</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">const <a class="el" href="structStadium3D_1_1NetPanel.html">Stadium3D::NetPanel</a> &amp;&#160;</td>
+          <td class="paramname"><em>net</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">bool&#160;</td>
+          <td class="paramname"><em>rippling</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">float&#160;</td>
+          <td class="paramname"><em>age</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">Vec3&#160;</td>
+          <td class="paramname"><em>mouth</em>&#160;</td>
+        </tr>
+        <tr>
+          <td></td>
+          <td>)</td>
+          <td></td><td></td>
+        </tr>
+      </table>
+</div><div class="memdoc">
+
+</div>
+</div>
+<a id="af9a1fdbae8df055d487f3d68f9d1dc55" name="af9a1fdbae8df055d487f3d68f9d1dc55"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#af9a1fdbae8df055d487f3d68f9d1dc55">&#9670;&#160;</a></span>advanceGait()</h2>
+
+<div class="memitem">
+<div class="memproto">
+      <table class="memname">
+        <tr>
+          <td class="memname"><a class="el" href="structGaitFrame.html">GaitFrame</a> advanceGait </td>
+          <td>(</td>
+          <td class="paramtype">AnimationSlot &amp;&#160;</td>
+          <td class="paramname"><em>slot</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">const <a class="el" href="structMatchRenderPlayer.html">MatchRenderPlayer</a> &amp;&#160;</td>
+          <td class="paramname"><em>player</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">Vec3&#160;</td>
+          <td class="paramname"><em>root</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">float&#160;</td>
+          <td class="paramname"><em>scale</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">float&#160;</td>
+          <td class="paramname"><em>deltaSeconds</em>&#160;</td>
+        </tr>
+        <tr>
+          <td></td>
+          <td>)</td>
+          <td></td><td></td>
+        </tr>
+      </table>
+</div><div class="memdoc">
+
+</div>
+</div>
+<a id="a11a4419d2007a8bac42e90e9e58a6688" name="a11a4419d2007a8bac42e90e9e58a6688"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a11a4419d2007a8bac42e90e9e58a6688">&#9670;&#160;</a></span>applyEventFootTargets()</h2>
+
+<div class="memitem">
+<div class="memproto">
+      <table class="memname">
+        <tr>
+          <td class="memname">void applyEventFootTargets </td>
+          <td>(</td>
+          <td class="paramtype">std::array&lt; Vec3, 2 &gt; &amp;&#160;</td>
+          <td class="paramname"><em>ankleTargets</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">std::array&lt; bool, 2 &gt; &amp;&#160;</td>
+          <td class="paramname"><em>planted</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">const AnimationSlot &amp;&#160;</td>
+          <td class="paramname"><em>slot</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">Vec3&#160;</td>
+          <td class="paramname"><em>pelvis</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">float&#160;</td>
+          <td class="paramname"><em>ankleHeight</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">float&#160;</td>
+          <td class="paramname"><em>scale</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">float&#160;</td>
+          <td class="paramname"><em>eventTime</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">float&#160;</td>
+          <td class="paramname"><em>eventWeight</em>&#160;</td>
+        </tr>
+        <tr>
+          <td></td>
+          <td>)</td>
+          <td></td><td></td>
+        </tr>
+      </table>
+</div><div class="memdoc">
+
+</div>
+</div>
+<a id="a203884d866c6a59d278a421534da6be9" name="a203884d866c6a59d278a421534da6be9"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a203884d866c6a59d278a421534da6be9">&#9670;&#160;</a></span>attackDirectionFor()</h2>
+
+<div class="memitem">
+<div class="memproto">
+      <table class="memname">
+        <tr>
+          <td class="memname">float attackDirectionFor </td>
+          <td>(</td>
+          <td class="paramtype">std::span&lt; const <a class="el" href="structMatchRenderPlayer.html">MatchRenderPlayer</a> &gt;&#160;</td>
+          <td class="paramname"><em>players</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">const <a class="el" href="structMatchRenderPlayer.html">MatchRenderPlayer</a> &amp;&#160;</td>
+          <td class="paramname"><em>carrier</em>&#160;</td>
+        </tr>
+        <tr>
+          <td></td>
+          <td>)</td>
+          <td></td><td></td>
+        </tr>
+      </table>
+</div><div class="memdoc">
+
+</div>
+</div>
+<a id="aabdb64c8d55713fdc546f441f2314ec2" name="aabdb64c8d55713fdc546f441f2314ec2"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#aabdb64c8d55713fdc546f441f2314ec2">&#9670;&#160;</a></span>buildPlayerAnkleTargets()</h2>
+
+<div class="memitem">
+<div class="memproto">
+      <table class="memname">
+        <tr>
+          <td class="memname">void buildPlayerAnkleTargets </td>
+          <td>(</td>
+          <td class="paramtype">const AnimationSlot &amp;&#160;</td>
+          <td class="paramname"><em>slot</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">const Pose &amp;&#160;</td>
+          <td class="paramname"><em>pose</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">Vec3&#160;</td>
+          <td class="paramname"><em>root</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">Vec3&#160;</td>
+          <td class="paramname"><em>pelvis</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">Vec3&#160;</td>
+          <td class="paramname"><em>bodyUp</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">Vec3&#160;</td>
+          <td class="paramname"><em>bodySide</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">Vec3&#160;</td>
+          <td class="paramname"><em>forward</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">float&#160;</td>
+          <td class="paramname"><em>scale</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">float&#160;</td>
+          <td class="paramname"><em>ankleHeight</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">std::array&lt; Vec3, 2 &gt; &amp;&#160;</td>
+          <td class="paramname"><em>hipJoint</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">std::array&lt; Vec3, 2 &gt; &amp;&#160;</td>
+          <td class="paramname"><em>ankleTarget</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">std::array&lt; bool, 2 &gt; &amp;&#160;</td>
+          <td class="paramname"><em>planted</em>&#160;</td>
+        </tr>
+        <tr>
+          <td></td>
+          <td>)</td>
+          <td></td><td></td>
+        </tr>
+      </table>
+</div><div class="memdoc">
+
+</div>
+</div>
+<a id="aa0de552df9dfc73f24f65d764cb6742c" name="aa0de552df9dfc73f24f65d764cb6742c"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#aa0de552df9dfc73f24f65d764cb6742c">&#9670;&#160;</a></span>captureGoalEvent()</h2>
+
+<div class="memitem">
+<div class="memproto">
+<div class="memtemplate">
+template&lt;class RendererState &gt; </div>
+      <table class="memname">
+        <tr>
+          <td class="memname">void captureGoalEvent </td>
+          <td>(</td>
+          <td class="paramtype">RendererState &amp;&#160;</td>
+          <td class="paramname"><em>state</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">const <a class="el" href="structMatchRenderSnapshot.html">MatchRenderSnapshot</a> &amp;&#160;</td>
+          <td class="paramname"><em>snapshot</em>&#160;</td>
+        </tr>
+        <tr>
+          <td></td>
+          <td>)</td>
+          <td></td><td></td>
+        </tr>
+      </table>
+</div><div class="memdoc">
+
+</div>
+</div>
+<a id="a11c1a5acae13532e9ecdf23451a3d2d5" name="a11c1a5acae13532e9ecdf23451a3d2d5"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a11c1a5acae13532e9ecdf23451a3d2d5">&#9670;&#160;</a></span>crowdPoint()</h2>
+
+<div class="memitem">
+<div class="memproto">
+      <table class="memname">
+        <tr>
+          <td class="memname">ImVec2 crowdPoint </td>
+          <td>(</td>
+          <td class="paramtype">const <a class="el" href="structCrowdFaceLayout.html">CrowdFaceLayout</a> &amp;&#160;</td>
+          <td class="paramname"><em>layout</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">float&#160;</td>
+          <td class="paramname"><em>x</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">float&#160;</td>
+          <td class="paramname"><em>y</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">float&#160;</td>
+          <td class="paramname"><em>across</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">float&#160;</td>
+          <td class="paramname"><em>up</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">float&#160;</td>
+          <td class="paramname"><em>dx</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">float&#160;</td>
+          <td class="paramname"><em>dy</em>&#160;</td>
+        </tr>
+        <tr>
+          <td></td>
+          <td>)</td>
+          <td></td><td></td>
+        </tr>
+      </table>
+</div><div class="memdoc">
+
+</div>
+</div>
+<a id="a4b2ff52b880f5a2704060a9192a1968d" name="a4b2ff52b880f5a2704060a9192a1968d"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a4b2ff52b880f5a2704060a9192a1968d">&#9670;&#160;</a></span>detectKickAction()</h2>
+
+<div class="memitem">
+<div class="memproto">
+<div class="memtemplate">
+template&lt;class RendererState &gt; </div>
+      <table class="memname">
+        <tr>
+          <td class="memname">void detectKickAction </td>
+          <td>(</td>
+          <td class="paramtype">RendererState &amp;&#160;</td>
+          <td class="paramname"><em>state</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">const <a class="el" href="structMatchRenderSnapshot.html">MatchRenderSnapshot</a> &amp;&#160;</td>
+          <td class="paramname"><em>snapshot</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">float&#160;</td>
+          <td class="paramname"><em>alpha</em>&#160;</td>
+        </tr>
+        <tr>
+          <td></td>
+          <td>)</td>
+          <td></td><td></td>
+        </tr>
+      </table>
+</div><div class="memdoc">
+
+</div>
+</div>
+<a id="a325532381a5ab8dd803c01b711f11a01" name="a325532381a5ab8dd803c01b711f11a01"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a325532381a5ab8dd803c01b711f11a01">&#9670;&#160;</a></span>detectTackleActions()</h2>
+
+<div class="memitem">
+<div class="memproto">
+<div class="memtemplate">
+template&lt;class RendererState &gt; </div>
+      <table class="memname">
+        <tr>
+          <td class="memname">void detectTackleActions </td>
+          <td>(</td>
+          <td class="paramtype">RendererState &amp;&#160;</td>
+          <td class="paramname"><em>state</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">const <a class="el" href="structMatchRenderSnapshot.html">MatchRenderSnapshot</a> &amp;&#160;</td>
+          <td class="paramname"><em>snapshot</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">float&#160;</td>
+          <td class="paramname"><em>alpha</em>&#160;</td>
+        </tr>
+        <tr>
+          <td></td>
+          <td>)</td>
+          <td></td><td></td>
+        </tr>
+      </table>
+</div><div class="memdoc">
+
+</div>
+</div>
+<a id="a903de250aeb5b82b87cb1b10bc4b1431" name="a903de250aeb5b82b87cb1b10bc4b1431"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a903de250aeb5b82b87cb1b10bc4b1431">&#9670;&#160;</a></span>drawCrowdClump()</h2>
+
+<div class="memitem">
+<div class="memproto">
+<div class="memtemplate">
+template&lt;class RendererState &gt; </div>
+      <table class="memname">
+        <tr>
+          <td class="memname">void drawCrowdClump </td>
+          <td>(</td>
+          <td class="paramtype">RendererState &amp;&#160;</td>
+          <td class="paramname"><em>state</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">const <a class="el" href="structStadium3D_1_1CrowdClump.html">Stadium3D::CrowdClump</a> &amp;&#160;</td>
+          <td class="paramname"><em>clump</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">const <a class="el" href="structCrowdFaceLayout.html">CrowdFaceLayout</a> &amp;&#160;</td>
+          <td class="paramname"><em>layout</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">float&#160;</td>
+          <td class="paramname"><em>seatFocal</em>&#160;</td>
+        </tr>
+        <tr>
+          <td></td>
+          <td>)</td>
+          <td></td><td></td>
+        </tr>
+      </table>
+</div><div class="memdoc">
+
+</div>
+</div>
+<a id="abcdbd41b1c021df699912f32b17c48da" name="abcdbd41b1c021df699912f32b17c48da"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#abcdbd41b1c021df699912f32b17c48da">&#9670;&#160;</a></span>drawCrowdDot()</h2>
+
+<div class="memitem">
+<div class="memproto">
+<div class="memtemplate">
+template&lt;class RendererState &gt; </div>
+      <table class="memname">
+        <tr>
+          <td class="memname">void drawCrowdDot </td>
+          <td>(</td>
+          <td class="paramtype">RendererState &amp;&#160;</td>
+          <td class="paramname"><em>state</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">const <a class="el" href="structCrowdFaceLayout.html">CrowdFaceLayout</a> &amp;&#160;</td>
+          <td class="paramname"><em>layout</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">const <a class="el" href="structStadium3D_1_1CrowdClump.html">Stadium3D::CrowdClump</a> &amp;&#160;</td>
+          <td class="paramname"><em>clump</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">const <a class="el" href="structStadium3D_1_1CrowdDot.html">Stadium3D::CrowdDot</a> &amp;&#160;</td>
+          <td class="paramname"><em>dot</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">std::uint32_t&#160;</td>
+          <td class="paramname"><em>detail</em>&#160;</td>
+        </tr>
+        <tr>
+          <td></td>
+          <td>)</td>
+          <td></td><td></td>
+        </tr>
+      </table>
+</div><div class="memdoc">
+
+</div>
+</div>
+<a id="a13117f58b303180eb52b1c521185cba6" name="a13117f58b303180eb52b1c521185cba6"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a13117f58b303180eb52b1c521185cba6">&#9670;&#160;</a></span>drawDayPlayerShadow()</h2>
+
+<div class="memitem">
+<div class="memproto">
+<div class="memtemplate">
+template&lt;class RendererState &gt; </div>
+      <table class="memname">
+        <tr>
+          <td class="memname">void drawDayPlayerShadow </td>
+          <td>(</td>
+          <td class="paramtype">RendererState &amp;&#160;</td>
+          <td class="paramname"><em>state</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">Vec3&#160;</td>
+          <td class="paramname"><em>root</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">float&#160;</td>
+          <td class="paramname"><em>standing</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">Vec3&#160;</td>
+          <td class="paramname"><em>sunAway</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">float&#160;</td>
+          <td class="paramname"><em>sunLength</em>&#160;</td>
+        </tr>
+        <tr>
+          <td></td>
+          <td>)</td>
+          <td></td><td></td>
+        </tr>
+      </table>
+</div><div class="memdoc">
+
+</div>
+</div>
+<a id="a6da02de5dd743ecb085192a36391e625" name="a6da02de5dd743ecb085192a36391e625"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a6da02de5dd743ecb085192a36391e625">&#9670;&#160;</a></span>drawDistantCrowdClump()</h2>
+
+<div class="memitem">
+<div class="memproto">
+<div class="memtemplate">
+template&lt;class RendererState &gt; </div>
+      <table class="memname">
+        <tr>
+          <td class="memname">void drawDistantCrowdClump </td>
+          <td>(</td>
+          <td class="paramtype">RendererState &amp;&#160;</td>
+          <td class="paramname"><em>state</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">const <a class="el" href="structStadium3D_1_1CrowdClump.html">Stadium3D::CrowdClump</a> &amp;&#160;</td>
+          <td class="paramname"><em>clump</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">const <a class="el" href="structCrowdFaceLayout.html">CrowdFaceLayout</a> &amp;&#160;</td>
+          <td class="paramname"><em>layout</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">Vec4&#160;</td>
+          <td class="paramname"><em>clumpClip</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">float&#160;</td>
+          <td class="paramname"><em>inverseDepth</em>&#160;</td>
+        </tr>
+        <tr>
+          <td></td>
+          <td>)</td>
+          <td></td><td></td>
+        </tr>
+      </table>
+</div><div class="memdoc">
+
+</div>
+</div>
+<a id="a8621deaa4899a7de858798b9be2e2f4c" name="a8621deaa4899a7de858798b9be2e2f4c"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a8621deaa4899a7de858798b9be2e2f4c">&#9670;&#160;</a></span>drawFloodlightPlayerShadows()</h2>
+
+<div class="memitem">
+<div class="memproto">
+<div class="memtemplate">
+template&lt;class RendererState &gt; </div>
+      <table class="memname">
+        <tr>
+          <td class="memname">void drawFloodlightPlayerShadows </td>
+          <td>(</td>
+          <td class="paramtype">RendererState &amp;&#160;</td>
+          <td class="paramname"><em>state</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">Vec3&#160;</td>
+          <td class="paramname"><em>root</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">float&#160;</td>
+          <td class="paramname"><em>pixelHeight</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">float&#160;</td>
+          <td class="paramname"><em>standing</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">std::span&lt; const Vec3 &gt;&#160;</td>
+          <td class="paramname"><em>lights</em>&#160;</td>
+        </tr>
+        <tr>
+          <td></td>
+          <td>)</td>
+          <td></td><td></td>
+        </tr>
+      </table>
+</div><div class="memdoc">
+
+</div>
+</div>
+<a id="a95b5afbe3acaa68a6080213a8fb2ce61" name="a95b5afbe3acaa68a6080213a8fb2ce61"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a95b5afbe3acaa68a6080213a8fb2ce61">&#9670;&#160;</a></span>drawNearCrowdClump()</h2>
+
+<div class="memitem">
+<div class="memproto">
+<div class="memtemplate">
+template&lt;class RendererState &gt; </div>
+      <table class="memname">
+        <tr>
+          <td class="memname">void drawNearCrowdClump </td>
+          <td>(</td>
+          <td class="paramtype">RendererState &amp;&#160;</td>
+          <td class="paramname"><em>state</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">const <a class="el" href="structStadium3D_1_1CrowdClump.html">Stadium3D::CrowdClump</a> &amp;&#160;</td>
+          <td class="paramname"><em>clump</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">const <a class="el" href="structCrowdFaceLayout.html">CrowdFaceLayout</a> &amp;&#160;</td>
+          <td class="paramname"><em>layout</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">Vec4&#160;</td>
+          <td class="paramname"><em>clumpClip</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">float&#160;</td>
+          <td class="paramname"><em>seatPixels</em>&#160;</td>
+        </tr>
+        <tr>
+          <td></td>
+          <td>)</td>
+          <td></td><td></td>
+        </tr>
+      </table>
+</div><div class="memdoc">
+
+</div>
+</div>
+<a id="a26f9072baa9d917f29bbd198b1cc5c53" name="a26f9072baa9d917f29bbd198b1cc5c53"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a26f9072baa9d917f29bbd198b1cc5c53">&#9670;&#160;</a></span>drawPitchCell()</h2>
+
+<div class="memitem">
+<div class="memproto">
+<div class="memtemplate">
+template&lt;class RendererState &gt; </div>
+      <table class="memname">
+        <tr>
+          <td class="memname">void drawPitchCell </td>
+          <td>(</td>
+          <td class="paramtype">RendererState &amp;&#160;</td>
+          <td class="paramname"><em>state</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">const <a class="el" href="structStadium3D_1_1PitchGrid.html">Stadium3D::PitchGrid</a> &amp;&#160;</td>
+          <td class="paramname"><em>grid</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">std::size_t&#160;</td>
+          <td class="paramname"><em>cell</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">std::size_t&#160;</td>
+          <td class="paramname"><em>rows</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">std::size_t&#160;</td>
+          <td class="paramname"><em>cellsPerStripe</em>&#160;</td>
+        </tr>
+        <tr>
+          <td></td>
+          <td>)</td>
+          <td></td><td></td>
+        </tr>
+      </table>
+</div><div class="memdoc">
+
+</div>
+</div>
+<a id="a7c04bd5b45bfb99ebdfd70b7506ea9a5" name="a7c04bd5b45bfb99ebdfd70b7506ea9a5"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a7c04bd5b45bfb99ebdfd70b7506ea9a5">&#9670;&#160;</a></span>drawPlayerLeg()</h2>
+
+<div class="memitem">
+<div class="memproto">
+<div class="memtemplate">
+template&lt;class RendererState &gt; </div>
+      <table class="memname">
+        <tr>
+          <td class="memname">void drawPlayerLeg </td>
+          <td>(</td>
+          <td class="paramtype">RendererState &amp;&#160;</td>
+          <td class="paramname"><em>state</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">const AnimationSlot &amp;&#160;</td>
+          <td class="paramname"><em>slot</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">std::size_t&#160;</td>
+          <td class="paramname"><em>index</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">const std::array&lt; Vec3, 2 &gt; &amp;&#160;</td>
+          <td class="paramname"><em>hipJoint</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">const std::array&lt; Vec3, 2 &gt; &amp;&#160;</td>
+          <td class="paramname"><em>knee</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">const std::array&lt; Vec3, 2 &gt; &amp;&#160;</td>
+          <td class="paramname"><em>ankle</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">const std::array&lt; float, 2 &gt; &amp;&#160;</td>
+          <td class="paramname"><em>heel</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">const std::array&lt; bool, 2 &gt; &amp;&#160;</td>
+          <td class="paramname"><em>planted</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">Vec3&#160;</td>
+          <td class="paramname"><em>bodySide</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">float&#160;</td>
+          <td class="paramname"><em>scale</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">float&#160;</td>
+          <td class="paramname"><em>bulk</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">float&#160;</td>
+          <td class="paramname"><em>objectDepth</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">PlayerLod&#160;</td>
+          <td class="paramname"><em>lod</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">const <a class="el" href="structKitColors.html">KitColors</a> &amp;&#160;</td>
+          <td class="paramname"><em>kit</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">const PlayerLook &amp;&#160;</td>
+          <td class="paramname"><em>look</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">ImU32&#160;</td>
+          <td class="paramname"><em>skin</em>&#160;</td>
+        </tr>
+        <tr>
+          <td></td>
+          <td>)</td>
+          <td></td><td></td>
+        </tr>
+      </table>
+</div><div class="memdoc">
+
+</div>
+</div>
+<a id="aaba2fcc1564013a00515517d85506de5" name="aaba2fcc1564013a00515517d85506de5"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#aaba2fcc1564013a00515517d85506de5">&#9670;&#160;</a></span>drawPlayerLegs()</h2>
+
+<div class="memitem">
+<div class="memproto">
+<div class="memtemplate">
+template&lt;class RendererState &gt; </div>
+      <table class="memname">
+        <tr>
+          <td class="memname">void drawPlayerLegs </td>
+          <td>(</td>
+          <td class="paramtype">RendererState &amp;&#160;</td>
+          <td class="paramname"><em>state</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">const AnimationSlot &amp;&#160;</td>
+          <td class="paramname"><em>slot</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">const std::array&lt; Vec3, 2 &gt; &amp;&#160;</td>
+          <td class="paramname"><em>hipJoint</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">const std::array&lt; Vec3, 2 &gt; &amp;&#160;</td>
+          <td class="paramname"><em>knee</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">const std::array&lt; Vec3, 2 &gt; &amp;&#160;</td>
+          <td class="paramname"><em>ankle</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">const std::array&lt; float, 2 &gt; &amp;&#160;</td>
+          <td class="paramname"><em>heel</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">const std::array&lt; bool, 2 &gt; &amp;&#160;</td>
+          <td class="paramname"><em>planted</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">Vec3&#160;</td>
+          <td class="paramname"><em>bodySide</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">float&#160;</td>
+          <td class="paramname"><em>scale</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">float&#160;</td>
+          <td class="paramname"><em>bulk</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">float&#160;</td>
+          <td class="paramname"><em>objectDepth</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">PlayerLod&#160;</td>
+          <td class="paramname"><em>lod</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">const <a class="el" href="structKitColors.html">KitColors</a> &amp;&#160;</td>
+          <td class="paramname"><em>kit</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">const PlayerLook &amp;&#160;</td>
+          <td class="paramname"><em>look</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">ImU32&#160;</td>
+          <td class="paramname"><em>skin</em>&#160;</td>
+        </tr>
+        <tr>
+          <td></td>
+          <td>)</td>
+          <td></td><td></td>
+        </tr>
+      </table>
+</div><div class="memdoc">
+
+</div>
+</div>
+<a id="a7080a4c38f21d5aacca5ac713ad1a55b" name="a7080a4c38f21d5aacca5ac713ad1a55b"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a7080a4c38f21d5aacca5ac713ad1a55b">&#9670;&#160;</a></span>drawPlayerMarker()</h2>
+
+<div class="memitem">
+<div class="memproto">
+<div class="memtemplate">
+template&lt;class RendererState &gt; </div>
+      <table class="memname">
+        <tr>
+          <td class="memname">void drawPlayerMarker </td>
+          <td>(</td>
+          <td class="paramtype">RendererState &amp;&#160;</td>
+          <td class="paramname"><em>state</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">const <a class="el" href="structMatchRenderPlayer.html">MatchRenderPlayer</a> &amp;&#160;</td>
+          <td class="paramname"><em>player</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">Vec3&#160;</td>
+          <td class="paramname"><em>root</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">float&#160;</td>
+          <td class="paramname"><em>pixelHeight</em>&#160;</td>
+        </tr>
+        <tr>
+          <td></td>
+          <td>)</td>
+          <td></td><td></td>
+        </tr>
+      </table>
+</div><div class="memdoc">
+
+</div>
+</div>
+<a id="a448e5eda7f09b36ebed4b3baa2375fd2" name="a448e5eda7f09b36ebed4b3baa2375fd2"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a448e5eda7f09b36ebed4b3baa2375fd2">&#9670;&#160;</a></span>drawPlayerShadow()</h2>
+
+<div class="memitem">
+<div class="memproto">
+<div class="memtemplate">
+template&lt;class RendererState &gt; </div>
+      <table class="memname">
+        <tr>
+          <td class="memname">void drawPlayerShadow </td>
+          <td>(</td>
+          <td class="paramtype">RendererState &amp;&#160;</td>
+          <td class="paramname"><em>state</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">const <a class="el" href="structMatchRenderPlayer.html">MatchRenderPlayer</a> &amp;&#160;</td>
+          <td class="paramname"><em>player</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">Vec3&#160;</td>
+          <td class="paramname"><em>root</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">float&#160;</td>
+          <td class="paramname"><em>pixelHeight</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">float&#160;</td>
+          <td class="paramname"><em>standing</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">Vec3&#160;</td>
+          <td class="paramname"><em>sunAway</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">float&#160;</td>
+          <td class="paramname"><em>sunLength</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">std::span&lt; const Vec3 &gt;&#160;</td>
+          <td class="paramname"><em>lights</em>&#160;</td>
+        </tr>
+        <tr>
+          <td></td>
+          <td>)</td>
+          <td></td><td></td>
+        </tr>
+      </table>
+</div><div class="memdoc">
+
+</div>
+</div>
+<a id="af48c34ef8098661318c9bc2ee55752d4" name="af48c34ef8098661318c9bc2ee55752d4"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#af48c34ef8098661318c9bc2ee55752d4">&#9670;&#160;</a></span>drawPlayerTorso()</h2>
+
+<div class="memitem">
+<div class="memproto">
+<div class="memtemplate">
+template&lt;class RendererState &gt; </div>
+      <table class="memname">
+        <tr>
+          <td class="memname"><a class="el" href="structPlayerTorsoFrame.html">PlayerTorsoFrame</a> drawPlayerTorso </td>
+          <td>(</td>
+          <td class="paramtype">RendererState &amp;&#160;</td>
+          <td class="paramname"><em>state</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">const AnimationSlot &amp;&#160;</td>
+          <td class="paramname"><em>slot</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">const Pose &amp;&#160;</td>
+          <td class="paramname"><em>pose</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">Vec3&#160;</td>
+          <td class="paramname"><em>pelvis</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">Vec3&#160;</td>
+          <td class="paramname"><em>bodyUp</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">Vec3&#160;</td>
+          <td class="paramname"><em>bodySide</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">Vec3&#160;</td>
+          <td class="paramname"><em>forward</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">float&#160;</td>
+          <td class="paramname"><em>scale</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">float&#160;</td>
+          <td class="paramname"><em>bulk</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">float&#160;</td>
+          <td class="paramname"><em>objectDepth</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">PlayerLod&#160;</td>
+          <td class="paramname"><em>lod</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">bool&#160;</td>
+          <td class="paramname"><em>detailed</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">std::size_t&#160;</td>
+          <td class="paramname"><em>kitIndex</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">const <a class="el" href="structKitColors.html">KitColors</a> &amp;&#160;</td>
+          <td class="paramname"><em>kit</em>&#160;</td>
+        </tr>
+        <tr>
+          <td></td>
+          <td>)</td>
+          <td></td><td></td>
+        </tr>
+      </table>
+</div><div class="memdoc">
+
+</div>
+</div>
+<a id="a5acbe48a4a6eeedabeda097d110bcd2d" name="a5acbe48a4a6eeedabeda097d110bcd2d"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a5acbe48a4a6eeedabeda097d110bcd2d">&#9670;&#160;</a></span>drawPossessionRing()</h2>
+
+<div class="memitem">
+<div class="memproto">
+<div class="memtemplate">
+template&lt;class RendererState &gt; </div>
+      <table class="memname">
+        <tr>
+          <td class="memname">void drawPossessionRing </td>
+          <td>(</td>
+          <td class="paramtype">RendererState &amp;&#160;</td>
+          <td class="paramname"><em>state</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">Vec3&#160;</td>
+          <td class="paramname"><em>root</em>&#160;</td>
+        </tr>
+        <tr>
+          <td></td>
+          <td>)</td>
+          <td></td><td></td>
+        </tr>
+      </table>
+</div><div class="memdoc">
+
+</div>
+</div>
+<a id="ad1e42c209dfcdd9b582824c62795af2b" name="ad1e42c209dfcdd9b582824c62795af2b"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#ad1e42c209dfcdd9b582824c62795af2b">&#9670;&#160;</a></span>drawSortedLayers()</h2>
+
+<div class="memitem">
+<div class="memproto">
+<div class="memtemplate">
+template&lt;class RendererState &gt; </div>
+      <table class="memname">
+        <tr>
+          <td class="memname">void drawSortedLayers </td>
+          <td>(</td>
+          <td class="paramtype">RendererState &amp;&#160;</td>
+          <td class="paramname"><em>state</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">const <a class="el" href="structMatchRenderSnapshot.html">MatchRenderSnapshot</a> &amp;&#160;</td>
+          <td class="paramname"><em>snapshot</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">const <a class="el" href="structMatchRenderOptions.html">MatchRenderOptions</a> &amp;&#160;</td>
+          <td class="paramname"><em>options</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">float&#160;</td>
+          <td class="paramname"><em>alpha</em>&#160;</td>
+        </tr>
+        <tr>
+          <td></td>
+          <td>)</td>
+          <td></td><td></td>
+        </tr>
+      </table>
+</div><div class="memdoc">
+
+</div>
+</div>
+<a id="aedef04ff5116cc1a8acc28c33c28e720" name="aedef04ff5116cc1a8acc28c33c28e720"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#aedef04ff5116cc1a8acc28c33c28e720">&#9670;&#160;</a></span>drawStadiumFace()</h2>
+
+<div class="memitem">
+<div class="memproto">
+<div class="memtemplate">
+template&lt;class RendererState &gt; </div>
+      <table class="memname">
+        <tr>
+          <td class="memname">void drawStadiumFace </td>
+          <td>(</td>
+          <td class="paramtype">RendererState &amp;&#160;</td>
+          <td class="paramname"><em>state</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">const <a class="el" href="structStadium3D_1_1Face.html">Stadium3D::Face</a> &amp;&#160;</td>
+          <td class="paramname"><em>face</em>&#160;</td>
+        </tr>
+        <tr>
+          <td></td>
+          <td>)</td>
+          <td></td><td></td>
+        </tr>
+      </table>
+</div><div class="memdoc">
+
+</div>
+</div>
+<a id="a80abfcd463633529808fd5931eee6ff0" name="a80abfcd463633529808fd5931eee6ff0"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a80abfcd463633529808fd5931eee6ff0">&#9670;&#160;</a></span>drawWorldLayers()</h2>
+
+<div class="memitem">
+<div class="memproto">
+<div class="memtemplate">
+template&lt;class RendererState &gt; </div>
+      <table class="memname">
+        <tr>
+          <td class="memname">void drawWorldLayers </td>
+          <td>(</td>
+          <td class="paramtype">RendererState &amp;&#160;</td>
+          <td class="paramname"><em>state</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">const <a class="el" href="structMatchRenderSnapshot.html">MatchRenderSnapshot</a> &amp;&#160;</td>
+          <td class="paramname"><em>snapshot</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">const <a class="el" href="structMatchRenderOptions.html">MatchRenderOptions</a> &amp;&#160;</td>
+          <td class="paramname"><em>options</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">float&#160;</td>
+          <td class="paramname"><em>alpha</em>&#160;</td>
+        </tr>
+        <tr>
+          <td></td>
+          <td>)</td>
+          <td></td><td></td>
+        </tr>
+      </table>
+</div><div class="memdoc">
+
+</div>
+</div>
+<a id="a992f06312eb43e3804247a18cfb92018" name="a992f06312eb43e3804247a18cfb92018"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a992f06312eb43e3804247a18cfb92018">&#9670;&#160;</a></span>fitPelvisToPlantedFeet()</h2>
+
+<div class="memitem">
+<div class="memproto">
+      <table class="memname">
+        <tr>
+          <td class="memname">float fitPelvisToPlantedFeet </td>
+          <td>(</td>
+          <td class="paramtype">float&#160;</td>
+          <td class="paramname"><em>pelvisHeight</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">const AnimationSlot &amp;&#160;</td>
+          <td class="paramname"><em>slot</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">Vec3&#160;</td>
+          <td class="paramname"><em>root</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">Vec3&#160;</td>
+          <td class="paramname"><em>flatSide</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">Vec3&#160;</td>
+          <td class="paramname"><em>forward</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">float&#160;</td>
+          <td class="paramname"><em>scale</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">float&#160;</td>
+          <td class="paramname"><em>poseLift</em>&#160;</td>
+        </tr>
+        <tr>
+          <td></td>
+          <td>)</td>
+          <td></td><td></td>
+        </tr>
+      </table>
+</div><div class="memdoc">
+
+</div>
+</div>
+<a id="a4d200cfee0fa54b2db49cd90eac5fad6" name="a4d200cfee0fa54b2db49cd90eac5fad6"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a4d200cfee0fa54b2db49cd90eac5fad6">&#9670;&#160;</a></span>initializeAnimationSlot()</h2>
+
+<div class="memitem">
+<div class="memproto">
+<div class="memtemplate">
+template&lt;class RendererState &gt; </div>
+      <table class="memname">
+        <tr>
+          <td class="memname">void initializeAnimationSlot </td>
+          <td>(</td>
+          <td class="paramtype">RendererState &amp;&#160;</td>
+          <td class="paramname"><em>state</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">const <a class="el" href="structMatchRenderPlayer.html">MatchRenderPlayer</a> &amp;&#160;</td>
+          <td class="paramname"><em>player</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">AnimationSlot &amp;&#160;</td>
+          <td class="paramname"><em>slot</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">Vec3&#160;</td>
+          <td class="paramname"><em>root</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">float&#160;</td>
+          <td class="paramname"><em>yaw</em>&#160;</td>
+        </tr>
+        <tr>
+          <td></td>
+          <td>)</td>
+          <td></td><td></td>
+        </tr>
+      </table>
+</div><div class="memdoc">
+
+</div>
+</div>
+<a id="a3f4283db1d2b59a923ed44d22084acad" name="a3f4283db1d2b59a923ed44d22084acad"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a3f4283db1d2b59a923ed44d22084acad">&#9670;&#160;</a></span>jumpTargetFor()</h2>
+
+<div class="memitem">
+<div class="memproto">
+<div class="memtemplate">
+template&lt;class RendererState &gt; </div>
+      <table class="memname">
+        <tr>
+          <td class="memname">float jumpTargetFor </td>
+          <td>(</td>
+          <td class="paramtype">const RendererState &amp;&#160;</td>
+          <td class="paramname"><em>state</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">const <a class="el" href="structMatchRenderPlayer.html">MatchRenderPlayer</a> &amp;&#160;</td>
+          <td class="paramname"><em>player</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">Vec3&#160;</td>
+          <td class="paramname"><em>root</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">float&#160;</td>
+          <td class="paramname"><em>scale</em>&#160;</td>
+        </tr>
+        <tr>
+          <td></td>
+          <td>)</td>
+          <td></td><td></td>
+        </tr>
+      </table>
+</div><div class="memdoc">
+
+</div>
+</div>
+<a id="acab315287fdea314afcabe95a831672c" name="acab315287fdea314afcabe95a831672c"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#acab315287fdea314afcabe95a831672c">&#9670;&#160;</a></span>poseForCelebration()</h2>
+
+<div class="memitem">
+<div class="memproto">
+      <table class="memname">
+        <tr>
+          <td class="memname">Pose poseForCelebration </td>
+          <td>(</td>
+          <td class="paramtype">Pose&#160;</td>
+          <td class="paramname"><em>pose</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">GoalMood&#160;</td>
+          <td class="paramname"><em>mood</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">bool&#160;</td>
+          <td class="paramname"><em>reducedMotion</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">float&#160;</td>
+          <td class="paramname"><em>elapsedSeconds</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">std::uint32_t&#160;</td>
+          <td class="paramname"><em>seed</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">float&#160;</td>
+          <td class="paramname"><em>stride</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">float&#160;</td>
+          <td class="paramname"><em>celebrationWeight</em>&#160;</td>
+        </tr>
+        <tr>
+          <td></td>
+          <td>)</td>
+          <td></td><td></td>
+        </tr>
+      </table>
+</div><div class="memdoc">
+
+</div>
+</div>
+<a id="a3bdbbcb81e01e927b71eb9afcbc02450" name="a3bdbbcb81e01e927b71eb9afcbc02450"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a3bdbbcb81e01e927b71eb9afcbc02450">&#9670;&#160;</a></span>poseForKeeper()</h2>
+
+<div class="memitem">
+<div class="memproto">
+      <table class="memname">
+        <tr>
+          <td class="memname">Pose poseForKeeper </td>
+          <td>(</td>
+          <td class="paramtype">Pose&#160;</td>
+          <td class="paramname"><em>pose</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">bool&#160;</td>
+          <td class="paramname"><em>keeper</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">float&#160;</td>
+          <td class="paramname"><em>setBlend</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">float&#160;</td>
+          <td class="paramname"><em>diveBlend</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">float&#160;</td>
+          <td class="paramname"><em>diveSide</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">float&#160;</td>
+          <td class="paramname"><em>stride</em>&#160;</td>
+        </tr>
+        <tr>
+          <td></td>
+          <td>)</td>
+          <td></td><td></td>
+        </tr>
+      </table>
+</div><div class="memdoc">
+
+</div>
+</div>
+<a id="a84470f8722db1c26dae9dc28290c982c" name="a84470f8722db1c26dae9dc28290c982c"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a84470f8722db1c26dae9dc28290c982c">&#9670;&#160;</a></span>poseForTimedEvent()</h2>
+
+<div class="memitem">
+<div class="memproto">
+      <table class="memname">
+        <tr>
+          <td class="memname">Pose poseForTimedEvent </td>
+          <td>(</td>
+          <td class="paramtype">Pose&#160;</td>
+          <td class="paramname"><em>pose</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype"><a class="el" href="namespacePlayerRig.html#aa8ee7148b8793b8c1a0ca832f10fef9e">PlayerRig::Event</a>&#160;</td>
+          <td class="paramname"><em>event</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">float&#160;</td>
+          <td class="paramname"><em>eventTime</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">float&#160;</td>
+          <td class="paramname"><em>eventWeight</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">std::size_t&#160;</td>
+          <td class="paramname"><em>eventLeg</em>&#160;</td>
+        </tr>
+        <tr>
+          <td></td>
+          <td>)</td>
+          <td></td><td></td>
+        </tr>
+      </table>
+</div><div class="memdoc">
+
+</div>
+</div>
+<a id="ad7cac83bebc144606b430203b851e08a" name="ad7cac83bebc144606b430203b851e08a"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#ad7cac83bebc144606b430203b851e08a">&#9670;&#160;</a></span>setCelebrationFocus()</h2>
+
+<div class="memitem">
+<div class="memproto">
+      <table class="memname">
+        <tr>
+          <td class="memname">void setCelebrationFocus </td>
+          <td>(</td>
+          <td class="paramtype"><a class="el" href="structMatchCameraFocus.html">MatchCameraFocus</a> &amp;&#160;</td>
+          <td class="paramname"><em>focus</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">std::span&lt; const <a class="el" href="structMatchRenderPlayer.html">MatchRenderPlayer</a> &gt;&#160;</td>
+          <td class="paramname"><em>players</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">std::uint32_t&#160;</td>
+          <td class="paramname"><em>scorer</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">float&#160;</td>
+          <td class="paramname"><em>alpha</em>&#160;</td>
+        </tr>
+        <tr>
+          <td></td>
+          <td>)</td>
+          <td></td><td></td>
+        </tr>
+      </table>
+</div><div class="memdoc">
+
+</div>
+</div>
+<a id="a351a65e698d181d97695fc9cb0b6d866" name="a351a65e698d181d97695fc9cb0b6d866"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a351a65e698d181d97695fc9cb0b6d866">&#9670;&#160;</a></span>solvePlayerLegJoints()</h2>
+
+<div class="memitem">
+<div class="memproto">
+      <table class="memname">
+        <tr>
+          <td class="memname">void solvePlayerLegJoints </td>
+          <td>(</td>
+          <td class="paramtype">const AnimationSlot &amp;&#160;</td>
+          <td class="paramname"><em>slot</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">const std::array&lt; Vec3, 2 &gt; &amp;&#160;</td>
+          <td class="paramname"><em>hipJoint</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">const std::array&lt; Vec3, 2 &gt; &amp;&#160;</td>
+          <td class="paramname"><em>ankleTarget</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">const std::array&lt; bool, 2 &gt; &amp;&#160;</td>
+          <td class="paramname"><em>planted</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">Vec3&#160;</td>
+          <td class="paramname"><em>forward</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">Vec3&#160;</td>
+          <td class="paramname"><em>bodyUp</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">float&#160;</td>
+          <td class="paramname"><em>scale</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">std::array&lt; Vec3, 2 &gt; &amp;&#160;</td>
+          <td class="paramname"><em>knee</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">std::array&lt; Vec3, 2 &gt; &amp;&#160;</td>
+          <td class="paramname"><em>ankle</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">std::array&lt; float, 2 &gt; &amp;&#160;</td>
+          <td class="paramname"><em>heel</em>&#160;</td>
+        </tr>
+        <tr>
+          <td></td>
+          <td>)</td>
+          <td></td><td></td>
+        </tr>
+      </table>
+</div><div class="memdoc">
+
+</div>
+</div>
+<a id="a526e318cb174adf17c70f43e2daa8299" name="a526e318cb174adf17c70f43e2daa8299"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a526e318cb174adf17c70f43e2daa8299">&#9670;&#160;</a></span>updateBallRotation()</h2>
+
+<div class="memitem">
+<div class="memproto">
+<div class="memtemplate">
+template&lt;class RendererState &gt; </div>
+      <table class="memname">
+        <tr>
+          <td class="memname">void updateBallRotation </td>
+          <td>(</td>
+          <td class="paramtype">RendererState &amp;&#160;</td>
+          <td class="paramname"><em>state</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">Vec3&#160;</td>
+          <td class="paramname"><em>world</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">Vec3&#160;</td>
+          <td class="paramname"><em>moved</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">float&#160;</td>
+          <td class="paramname"><em>distance</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">const ScreenPoint &amp;&#160;</td>
+          <td class="paramname"><em>screen</em>&#160;</td>
+        </tr>
+        <tr>
+          <td></td>
+          <td>)</td>
+          <td></td><td></td>
+        </tr>
+      </table>
+</div><div class="memdoc">
+
+</div>
+</div>
+<a id="a19ece4039491c6b08ebfcc6f83b16770" name="a19ece4039491c6b08ebfcc6f83b16770"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a19ece4039491c6b08ebfcc6f83b16770">&#9670;&#160;</a></span>updateFootPlanting()</h2>
+
+<div class="memitem">
+<div class="memproto">
+      <table class="memname">
+        <tr>
+          <td class="memname">void updateFootPlanting </td>
+          <td>(</td>
+          <td class="paramtype">AnimationSlot &amp;&#160;</td>
+          <td class="paramname"><em>slot</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">Vec3&#160;</td>
+          <td class="paramname"><em>root</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">float&#160;</td>
+          <td class="paramname"><em>yaw</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">float&#160;</td>
+          <td class="paramname"><em>scale</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">float&#160;</td>
+          <td class="paramname"><em>cycleMetres</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">float&#160;</td>
+          <td class="paramname"><em>groundSpeed</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">float&#160;</td>
+          <td class="paramname"><em>simSeconds</em>&#160;</td>
+        </tr>
+        <tr>
+          <td></td>
+          <td>)</td>
+          <td></td><td></td>
+        </tr>
+      </table>
+</div><div class="memdoc">
+
+</div>
+</div>
+<a id="a09cfb8e12c5a23328c3b80ec2b835fe4" name="a09cfb8e12c5a23328c3b80ec2b835fe4"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a09cfb8e12c5a23328c3b80ec2b835fe4">&#9670;&#160;</a></span>updateKeeperPose()</h2>
+
+<div class="memitem">
+<div class="memproto">
+<div class="memtemplate">
+template&lt;class RendererState &gt; </div>
+      <table class="memname">
+        <tr>
+          <td class="memname">void updateKeeperPose </td>
+          <td>(</td>
+          <td class="paramtype">RendererState &amp;&#160;</td>
+          <td class="paramname"><em>state</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">const <a class="el" href="structMatchRenderPlayer.html">MatchRenderPlayer</a> &amp;&#160;</td>
+          <td class="paramname"><em>player</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">AnimationSlot &amp;&#160;</td>
+          <td class="paramname"><em>slot</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">Vec3&#160;</td>
+          <td class="paramname"><em>root</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">float&#160;</td>
+          <td class="paramname"><em>yaw</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">float&#160;</td>
+          <td class="paramname"><em>blend</em>&#160;</td>
+        </tr>
+        <tr>
+          <td></td>
+          <td>)</td>
+          <td></td><td></td>
+        </tr>
+      </table>
+</div><div class="memdoc">
+
+</div>
+</div>
+<a id="ae0b25cf43a472cd6fb56bd426a3cc507" name="ae0b25cf43a472cd6fb56bd426a3cc507"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#ae0b25cf43a472cd6fb56bd426a3cc507">&#9670;&#160;</a></span>updateMatchSimulation()</h2>
+
+<div class="memitem">
+<div class="memproto">
+<div class="memtemplate">
+template&lt;class RendererState &gt; </div>
+      <table class="memname">
+        <tr>
+          <td class="memname">void updateMatchSimulation </td>
+          <td>(</td>
+          <td class="paramtype">RendererState &amp;&#160;</td>
+          <td class="paramname"><em>state</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">const <a class="el" href="structMatchRenderSnapshot.html">MatchRenderSnapshot</a> &amp;&#160;</td>
+          <td class="paramname"><em>snapshot</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">float&#160;</td>
+          <td class="paramname"><em>deltaSeconds</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">float&#160;</td>
+          <td class="paramname"><em>alpha</em>&#160;</td>
+        </tr>
+        <tr>
+          <td></td>
+          <td>)</td>
+          <td></td><td></td>
+        </tr>
+      </table>
+</div><div class="memdoc">
+
+</div>
+</div>
+<a id="a768c9fc1a9086777ce9e496d5a09f31f" name="a768c9fc1a9086777ce9e496d5a09f31f"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a768c9fc1a9086777ce9e496d5a09f31f">&#9670;&#160;</a></span>updateMotionRates()</h2>
+
+<div class="memitem">
+<div class="memproto">
+      <table class="memname">
+        <tr>
+          <td class="memname">void updateMotionRates </td>
+          <td>(</td>
+          <td class="paramtype">AnimationSlot &amp;&#160;</td>
+          <td class="paramname"><em>slot</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">float&#160;</td>
+          <td class="paramname"><em>groundSpeed</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">float&#160;</td>
+          <td class="paramname"><em>yaw</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">float&#160;</td>
+          <td class="paramname"><em>simSeconds</em>&#160;</td>
+        </tr>
+        <tr>
+          <td></td>
+          <td>)</td>
+          <td></td><td></td>
+        </tr>
+      </table>
+</div><div class="memdoc">
+
+</div>
+</div>
+<a id="a0875965831932eeb3bac282303f32268" name="a0875965831932eeb3bac282303f32268"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a0875965831932eeb3bac282303f32268">&#9670;&#160;</a></span>updateRenderCamera()</h2>
+
+<div class="memitem">
+<div class="memproto">
+<div class="memtemplate">
+template&lt;class RendererState &gt; </div>
+      <table class="memname">
+        <tr>
+          <td class="memname">void updateRenderCamera </td>
+          <td>(</td>
+          <td class="paramtype">RendererState &amp;&#160;</td>
+          <td class="paramname"><em>state</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">const <a class="el" href="structMatchRenderSnapshot.html">MatchRenderSnapshot</a> &amp;&#160;</td>
+          <td class="paramname"><em>snapshot</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">const <a class="el" href="structMatchRenderOptions.html">MatchRenderOptions</a> &amp;&#160;</td>
+          <td class="paramname"><em>options</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">const <a class="el" href="structMatchViewport.html">MatchViewport</a> &amp;&#160;</td>
+          <td class="paramname"><em>viewport</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">float&#160;</td>
+          <td class="paramname"><em>deltaSeconds</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">float&#160;</td>
+          <td class="paramname"><em>alpha</em>&#160;</td>
+        </tr>
+        <tr>
+          <td></td>
+          <td>)</td>
+          <td></td><td></td>
+        </tr>
+      </table>
+</div><div class="memdoc">
+
+</div>
+</div>
 </div><!-- contents -->
 </div><!-- doc-content -->
 <!-- start footer part -->

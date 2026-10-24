@@ -6,7 +6,7 @@ var classLeague =
     [ "getId", "classLeague.html#a71c775ec5ecabb6d4cf21caaea0454f8", null ],
     [ "getLeaderboard", "classLeague.html#ad4d772876f6933c544ed658e7fd00ac8", null ],
     [ "getName", "classLeague.html#ad9526adea2221962853d0c05bb03c937", null ],
-    [ "getParentLeagueID", "classLeague.html#aa2c21ea196ad15949fe3e8a50fde2a84", null ],
+    [ "getParentLeagueID", "classLeague.html#a37a22be2e3a23fa57eb7ec6d5542d58c", null ],
     [ "getPoints", "classLeague.html#a74b858c91e65ce10d727fa9c407b5ce2", null ],
     [ "getTeamIDs", "classLeague.html#a4d9965f30ac5defec1cb0ffa3dd02bbc", null ],
     [ "getTieBreakRule", "classLeague.html#a0e92d21e733939ca9c99b17a45a2b710", null ],

@@ -105,6 +105,7 @@ $(document).ready(function(){initNavTree('squad__planner_8h.html',''); initResiz
 <div class="textblock"><code>#include &lt;array&gt;</code><br />
 <code>#include &lt;cstddef&gt;</code><br />
 <code>#include &lt;cstdint&gt;</code><br />
+<code>#include &lt;utility&gt;</code><br />
 <code>#include &lt;vector&gt;</code><br />
 <code>#include &quot;<a class="el" href="types_8h_source.html">global/types.h</a>&quot;</code><br />
 </div>
@@ -358,7 +359,7 @@ Variables</h2></td></tr>
 </table>
 </div><div class="memdoc">
 <b>Initial value:</b><div class="fragment"><div class="line">=</div>
-<div class="line">    <span class="keyword">static_cast&lt;</span>std::size_t<span class="keyword">&gt;</span>(<a class="code hl_enumvalue" href="squad__planner_8h.html#a54a302ffe3a25407ad38fe85aef18408a4905ac9d6a22bdfc1ae096094ce6248d">PlannerGroup::COUNT</a>)</div>
+<div class="line">    <span class="keyword">static_cast&lt;</span>std::size_t<span class="keyword">&gt;</span>(std::to_underlying(<a class="code hl_enumvalue" href="squad__planner_8h.html#a54a302ffe3a25407ad38fe85aef18408a4905ac9d6a22bdfc1ae096094ce6248d">PlannerGroup::COUNT</a>))</div>
 <div class="ttc" id="asquad__planner_8h_html_a54a302ffe3a25407ad38fe85aef18408a4905ac9d6a22bdfc1ae096094ce6248d"><div class="ttname"><a href="squad__planner_8h.html#a54a302ffe3a25407ad38fe85aef18408a4905ac9d6a22bdfc1ae096094ce6248d">PlannerGroup::COUNT</a></div><div class="ttdeci">@ COUNT</div></div>
 </div><!-- fragment -->
 </div>

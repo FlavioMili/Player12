@@ -107,9 +107,11 @@ $(document).ready(function(){initNavTree('staff_8h.html',''); initResizable(); }
 <code>#include &lt;array&gt;</code><br />
 <code>#include &lt;cstddef&gt;</code><br />
 <code>#include &lt;cstdint&gt;</code><br />
+<code>#include &lt;mutex&gt;</code><br />
 <code>#include &lt;span&gt;</code><br />
 <code>#include &lt;string&gt;</code><br />
 <code>#include &lt;unordered_map&gt;</code><br />
+<code>#include &lt;utility&gt;</code><br />
 <code>#include &lt;vector&gt;</code><br />
 <code>#include &quot;<a class="el" href="languages_8h_source.html">global/languages.h</a>&quot;</code><br />
 <code>#include &quot;<a class="el" href="types_8h_source.html">global/types.h</a>&quot;</code><br />
@@ -125,7 +127,7 @@ Classes</h2></td></tr>
 <tr class="memdesc:"><td class="mdescLeft">&#160;</td><td class="mdescRight">What a club's staff does for the squad (all bounded).  <a href="structStaffEffects.html#details">More...</a><br /></td></tr>
 <tr class="separator:"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:"><td class="memItemLeft" align="right" valign="top">class &#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classStaffRoster.html">StaffRoster</a></td></tr>
-<tr class="memdesc:"><td class="mdescLeft">&#160;</td><td class="mdescRight">Every staff member of the world with per-club effect caches.  <a href="classStaffRoster.html#details">More...</a><br /></td></tr>
+<tr class="memdesc:"><td class="mdescLeft">&#160;</td><td class="mdescRight">Every staff member of the world with per-club effect caches. Concurrent effects queries return independent snapshots. Roster mutations and access through borrowed member pointers require exclusive career access.  <a href="classStaffRoster.html#details">More...</a><br /></td></tr>
 <tr class="separator:"><td class="memSeparator" colspan="2">&#160;</td></tr>
 </table><table class="memberdecls">
 <tr class="heading"><td colspan="2"><h2 class="groupheader"><a id="namespaces" name="namespaces"></a>
@@ -349,7 +351,7 @@ Variables</h2></td></tr>
 </table>
 </div><div class="memdoc">
 <b>Initial value:</b><div class="fragment"><div class="line">=</div>
-<div class="line">    <span class="keyword">static_cast&lt;</span>std::size_t<span class="keyword">&gt;</span>(<a class="code hl_enumvalue" href="staff_8h.html#aae09d0ac82ac02c9f14da22f734754fda4905ac9d6a22bdfc1ae096094ce6248d">StaffAttribute::COUNT</a>)</div>
+<div class="line">    <span class="keyword">static_cast&lt;</span>std::size_t<span class="keyword">&gt;</span>(std::to_underlying(<a class="code hl_enumvalue" href="staff_8h.html#aae09d0ac82ac02c9f14da22f734754fda4905ac9d6a22bdfc1ae096094ce6248d">StaffAttribute::COUNT</a>))</div>
 <div class="ttc" id="astaff_8h_html_aae09d0ac82ac02c9f14da22f734754fda4905ac9d6a22bdfc1ae096094ce6248d"><div class="ttname"><a href="staff_8h.html#aae09d0ac82ac02c9f14da22f734754fda4905ac9d6a22bdfc1ae096094ce6248d">StaffAttribute::COUNT</a></div><div class="ttdeci">@ COUNT</div></div>
 </div><!-- fragment -->
 </div>
@@ -374,7 +376,7 @@ Variables</h2></td></tr>
 </table>
 </div><div class="memdoc">
 <b>Initial value:</b><div class="fragment"><div class="line">=</div>
-<div class="line">    <span class="keyword">static_cast&lt;</span>std::size_t<span class="keyword">&gt;</span>(<a class="code hl_enumvalue" href="staff_8h.html#abc021cbda2f5ab03ec42c7ace8d1e02aa4905ac9d6a22bdfc1ae096094ce6248d">StaffRole::COUNT</a>)</div>
+<div class="line">    <span class="keyword">static_cast&lt;</span>std::size_t<span class="keyword">&gt;</span>(std::to_underlying(<a class="code hl_enumvalue" href="staff_8h.html#abc021cbda2f5ab03ec42c7ace8d1e02aa4905ac9d6a22bdfc1ae096094ce6248d">StaffRole::COUNT</a>))</div>
 <div class="ttc" id="astaff_8h_html_abc021cbda2f5ab03ec42c7ace8d1e02aa4905ac9d6a22bdfc1ae096094ce6248d"><div class="ttname"><a href="staff_8h.html#abc021cbda2f5ab03ec42c7ace8d1e02aa4905ac9d6a22bdfc1ae096094ce6248d">StaffRole::COUNT</a></div><div class="ttdeci">@ COUNT</div></div>
 </div><!-- fragment -->
 </div>

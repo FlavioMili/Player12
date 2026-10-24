@@ -81,6 +81,7 @@ var classMainGameScene =
     [ "continue_progress", "classMainGameScene.html#a682261dcc56b94f34a831a1c5abb2f75", null ],
     [ "continue_start_date", "classMainGameScene.html#a337d0f2cdc93ad6ae66ca3f6ded0c7a6", null ],
     [ "continue_started_at", "classMainGameScene.html#a17842146176b4d1089b12ac53d197ebf", null ],
+    [ "continue_worker", "classMainGameScene.html#a368b36303d5a03e8a2e19740405794f9", null ],
     [ "finance_show_month", "classMainGameScene.html#ac4513858f23a4dc035f88ca8c5669294", null ],
     [ "holiday_running", "classMainGameScene.html#a617d92b7639e9be0e83b5655be53e60d", null ],
     [ "match_report", "classMainGameScene.html#a4eb2619943415f8232d906f1a85c6c21", null ],

@@ -9,7 +9,7 @@ var namespaceMigrations =
     [ "columnExists", "namespaceMigrations.html#a46f854932514b975da7ee455af8cdf4c", null ],
     [ "currentSchemaVersion", "namespaceMigrations.html#a53d303531a97a1e882b21e67f2c32b82", null ],
     [ "foreignKeyIssues", "namespaceMigrations.html#ae106c16984a45cb20b8cf1ec6c465856", null ],
-    [ "migrate", "namespaceMigrations.html#af9fab9e020d020285a4cac619644616b", null ],
+    [ "migrate", "namespaceMigrations.html#a98ca4e379e3030f4e80c1abae06f6d05", null ],
     [ "readSchemaVersion", "namespaceMigrations.html#a6e4f4fa346a7282a108d01bd6fcea5ae", null ],
     [ "registry", "namespaceMigrations.html#acdc24ad81e1e80934ed5c6f2a3133f26", null ],
     [ "tableExists", "namespaceMigrations.html#a8e02b739b993cb05678f19be63b552a0", null ]

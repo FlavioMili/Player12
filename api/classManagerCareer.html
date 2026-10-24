@@ -189,8 +189,8 @@ Public Member Functions</h2></td></tr>
 <tr class="separator:a44fc77135a64195953cb2327d57d56b9"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a715b10b3dee4514f4c94f9619f857674" id="r_a715b10b3dee4514f4c94f9619f857674"><td class="memItemLeft" align="right" valign="top"><a class="el" href="structCareerDayEvents.html">CareerDayEvents</a>&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classManagerCareer.html#a715b10b3dee4514f4c94f9619f857674">onDayAdvanced</a> (const <a class="el" href="structGameDateValue.html">GameDateValue</a> &amp;date, <a class="el" href="types_8h.html#a57143f6ccbdf5a5d9724b986cbdafb31">TeamID</a> managed_team_id, float board_confidence, int board_expected_position, const <a class="el" href="classManagerCareer.html#ad5e77c69defb597002b1bfc9fa371459">PositionProvider</a> &amp;positions, <a class="el" href="classInbox.html">Inbox</a> &amp;inbox)</td></tr>
 <tr class="separator:a715b10b3dee4514f4c94f9619f857674"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a756ef42ecfc64673dcdd8041a8c7661b" id="r_a756ef42ecfc64673dcdd8041a8c7661b"><td class="memItemLeft" align="right" valign="top">void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classManagerCareer.html#a756ef42ecfc64673dcdd8041a8c7661b">onMatchPlayed</a> (<a class="el" href="types_8h.html#a57143f6ccbdf5a5d9724b986cbdafb31">TeamID</a> home_id, <a class="el" href="types_8h.html#a57143f6ccbdf5a5d9724b986cbdafb31">TeamID</a> away_id, int home_goals, int away_goals, bool league, float home_expected, float away_expected, <a class="el" href="types_8h.html#a57143f6ccbdf5a5d9724b986cbdafb31">TeamID</a> managed_team_id)</td></tr>
-<tr class="separator:a756ef42ecfc64673dcdd8041a8c7661b"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:abb4dce7f4d6bc94cbff9a3fc66500f58" id="r_abb4dce7f4d6bc94cbff9a3fc66500f58"><td class="memItemLeft" align="right" valign="top">void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classManagerCareer.html#abb4dce7f4d6bc94cbff9a3fc66500f58">onMatchPlayed</a> (const <a class="el" href="structManagerMatchEvent.html">ManagerMatchEvent</a> &amp;match)</td></tr>
+<tr class="separator:abb4dce7f4d6bc94cbff9a3fc66500f58"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:ac038f85e3ae6e7f82a9cb6c66e65d94d" id="r_ac038f85e3ae6e7f82a9cb6c66e65d94d"><td class="memItemLeft" align="right" valign="top">bool&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classManagerCareer.html#ac038f85e3ae6e7f82a9cb6c66e65d94d">onSeasonEnd</a> (const <a class="el" href="structGameDateValue.html">GameDateValue</a> &amp;date, <a class="el" href="types_8h.html#a57143f6ccbdf5a5d9724b986cbdafb31">TeamID</a> managed_team_id, int expected_position, float board_confidence, const <a class="el" href="classManagerCareer.html#ad5e77c69defb597002b1bfc9fa371459">PositionProvider</a> &amp;positions, std::span&lt; const <a class="el" href="structSeasonHistoryEntry.html">SeasonHistoryEntry</a> &gt; finished, <a class="el" href="classInbox.html">Inbox</a> &amp;inbox)</td></tr>
 <tr class="separator:ac038f85e3ae6e7f82a9cb6c66e65d94d"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:afe692f9eb985678fc67e2651a8566333" id="r_afe692f9eb985678fc67e2651a8566333"><td class="memItemLeft" align="right" valign="top">void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classManagerCareer.html#afe692f9eb985678fc67e2651a8566333">load</a> (const std::shared_ptr&lt; <a class="el" href="classDatabaseConnection.html">DatabaseConnection</a> &gt; &amp;db_conn)</td></tr>
@@ -206,8 +206,22 @@ Private Member Functions</h2></td></tr>
 <tr class="separator:a56f8a2d2425edaca97b18bc7f2a89ee2"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a0ec72a113d702a8b678e8b5af3458ecb" id="r_a0ec72a113d702a8b678e8b5af3458ecb"><td class="memItemLeft" align="right" valign="top">void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classManagerCareer.html#a0ec72a113d702a8b678e8b5af3458ecb">weeklyReviews</a> (const <a class="el" href="structGameDateValue.html">GameDateValue</a> &amp;date, <a class="el" href="types_8h.html#a57143f6ccbdf5a5d9724b986cbdafb31">TeamID</a> managed_team_id, <a class="el" href="classInbox.html">Inbox</a> &amp;inbox, <a class="el" href="structCareerDayEvents.html">CareerDayEvents</a> &amp;events)</td></tr>
 <tr class="separator:a0ec72a113d702a8b678e8b5af3458ecb"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a165c7e93ac229b806c44c5c8577bd7c3" id="r_a165c7e93ac229b806c44c5c8577bd7c3"><td class="memItemLeft" align="right" valign="top">void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classManagerCareer.html#a165c7e93ac229b806c44c5c8577bd7c3">weeklyAiReviews</a> (const <a class="el" href="structGameDateValue.html">GameDateValue</a> &amp;date, <a class="el" href="types_8h.html#a57143f6ccbdf5a5d9724b986cbdafb31">TeamID</a> managed_team_id, <a class="el" href="classInbox.html">Inbox</a> &amp;inbox, <a class="el" href="structCareerDayEvents.html">CareerDayEvents</a> &amp;events)</td></tr>
+<tr class="separator:a165c7e93ac229b806c44c5c8577bd7c3"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a94ecfefa1034d4157f470c4ff772cd81" id="r_a94ecfefa1034d4157f470c4ff772cd81"><td class="memItemLeft" align="right" valign="top">void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classManagerCareer.html#a94ecfefa1034d4157f470c4ff772cd81">weeklyManagerReview</a> (const <a class="el" href="structGameDateValue.html">GameDateValue</a> &amp;date, <a class="el" href="types_8h.html#a57143f6ccbdf5a5d9724b986cbdafb31">TeamID</a> managed_team_id, <a class="el" href="classInbox.html">Inbox</a> &amp;inbox, <a class="el" href="structCareerDayEvents.html">CareerDayEvents</a> &amp;events)</td></tr>
+<tr class="separator:a94ecfefa1034d4157f470c4ff772cd81"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a3bb7e50adfa5bf35725229b9041974e7" id="r_a3bb7e50adfa5bf35725229b9041974e7"><td class="memItemLeft" align="right" valign="top">void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classManagerCareer.html#a3bb7e50adfa5bf35725229b9041974e7">monthlyReviews</a> (const <a class="el" href="structGameDateValue.html">GameDateValue</a> &amp;date, <a class="el" href="types_8h.html#a57143f6ccbdf5a5d9724b986cbdafb31">TeamID</a> managed_team_id, float board_confidence, int board_expected_position, const <a class="el" href="classManagerCareer.html#ad5e77c69defb597002b1bfc9fa371459">PositionProvider</a> &amp;positions, <a class="el" href="classInbox.html">Inbox</a> &amp;inbox, <a class="el" href="structCareerDayEvents.html">CareerDayEvents</a> &amp;events)</td></tr>
 <tr class="separator:a3bb7e50adfa5bf35725229b9041974e7"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a36ee8eb0b389b3463fb83ef4db4b5bdb" id="r_a36ee8eb0b389b3463fb83ef4db4b5bdb"><td class="memItemLeft" align="right" valign="top">void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classManagerCareer.html#a36ee8eb0b389b3463fb83ef4db4b5bdb">monthlyAiReviews</a> (const std::map&lt; <a class="el" href="types_8h.html#a23de5420c0b18be78144797767703d6f">LeagueID</a>, std::vector&lt; std::pair&lt; std::uint8_t, <a class="el" href="types_8h.html#a57143f6ccbdf5a5d9724b986cbdafb31">TeamID</a> &gt; &gt; &gt; &amp;league_ranks, const <a class="el" href="classManagerCareer.html#ad5e77c69defb597002b1bfc9fa371459">PositionProvider</a> &amp;positions)</td></tr>
+<tr class="separator:a36ee8eb0b389b3463fb83ef4db4b5bdb"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:ad4963b3763ba62c99a859736f7c5fc4d" id="r_ad4963b3763ba62c99a859736f7c5fc4d"><td class="memItemLeft" align="right" valign="top">void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classManagerCareer.html#ad4963b3763ba62c99a859736f7c5fc4d">monthlyManagerReview</a> (const <a class="el" href="structGameDateValue.html">GameDateValue</a> &amp;date, <a class="el" href="types_8h.html#a57143f6ccbdf5a5d9724b986cbdafb31">TeamID</a> managed_team_id, float board_confidence, int board_expected_position, const <a class="el" href="classManagerCareer.html#ad5e77c69defb597002b1bfc9fa371459">PositionProvider</a> &amp;positions, const std::map&lt; <a class="el" href="types_8h.html#a23de5420c0b18be78144797767703d6f">LeagueID</a>, std::vector&lt; std::pair&lt; std::uint8_t, <a class="el" href="types_8h.html#a57143f6ccbdf5a5d9724b986cbdafb31">TeamID</a> &gt; &gt; &gt; &amp;league_ranks, <a class="el" href="classInbox.html">Inbox</a> &amp;inbox, <a class="el" href="structCareerDayEvents.html">CareerDayEvents</a> &amp;events)</td></tr>
+<tr class="separator:ad4963b3763ba62c99a859736f7c5fc4d"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:ab1e400b96e186b56ad6c3136140683db" id="r_ab1e400b96e186b56ad6c3136140683db"><td class="memItemLeft" align="right" valign="top">void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classManagerCareer.html#ab1e400b96e186b56ad6c3136140683db">reviewAiManagersAtSeasonEnd</a> (const <a class="el" href="structGameDateValue.html">GameDateValue</a> &amp;date, <a class="el" href="types_8h.html#a57143f6ccbdf5a5d9724b986cbdafb31">TeamID</a> managed_team_id, const <a class="el" href="classManagerCareer.html#ad5e77c69defb597002b1bfc9fa371459">PositionProvider</a> &amp;positions, <a class="el" href="classInbox.html">Inbox</a> &amp;inbox)</td></tr>
+<tr class="separator:ab1e400b96e186b56ad6c3136140683db"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:aebb9b0173e908c1675fa5a2e4ab5ef1e" id="r_aebb9b0173e908c1675fa5a2e4ab5ef1e"><td class="memItemLeft" align="right" valign="top">void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classManagerCareer.html#aebb9b0173e908c1675fa5a2e4ab5ef1e">ageManagersAtSeasonEnd</a> (const <a class="el" href="structGameDateValue.html">GameDateValue</a> &amp;date)</td></tr>
+<tr class="separator:aebb9b0173e908c1675fa5a2e4ab5ef1e"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:ae628b732d3ae9eedc83c19cf190a6b09" id="r_ae628b732d3ae9eedc83c19cf190a6b09"><td class="memItemLeft" align="right" valign="top">float&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classManagerCareer.html#ae628b732d3ae9eedc83c19cf190a6b09">applySeasonHonours</a> (const <a class="el" href="structManagerSeasonLine.html">ManagerSeasonLine</a> &amp;line, std::span&lt; const <a class="el" href="structSeasonHistoryEntry.html">SeasonHistoryEntry</a> &gt; finished, std::uint16_t start_year)</td></tr>
+<tr class="separator:ae628b732d3ae9eedc83c19cf190a6b09"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a3d032305489ffc15d729c5c39071047d" id="r_a3d032305489ffc15d729c5c39071047d"><td class="memItemLeft" align="right" valign="top">void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classManagerCareer.html#a3d032305489ffc15d729c5c39071047d">dismissAi</a> (<a class="el" href="structAiManager.html">AiManager</a> &amp;manager, const <a class="el" href="structGameDateValue.html">GameDateValue</a> &amp;date, <a class="el" href="classInbox.html">Inbox</a> &amp;inbox, <a class="el" href="types_8h.html#a57143f6ccbdf5a5d9724b986cbdafb31">TeamID</a> managed_team_id)</td></tr>
 <tr class="separator:a3d032305489ffc15d729c5c39071047d"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a1f220b185a294f77c656b7466c49b917" id="r_a1f220b185a294f77c656b7466c49b917"><td class="memItemLeft" align="right" valign="top">void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classManagerCareer.html#a1f220b185a294f77c656b7466c49b917">openVacancy</a> (<a class="el" href="types_8h.html#a57143f6ccbdf5a5d9724b986cbdafb31">TeamID</a> team_id, const <a class="el" href="structGameDateValue.html">GameDateValue</a> &amp;date)</td></tr>
@@ -341,6 +355,32 @@ Private Attributes</h2></td></tr>
 
 </div>
 </div>
+<a id="aebb9b0173e908c1675fa5a2e4ab5ef1e" name="aebb9b0173e908c1675fa5a2e4ab5ef1e"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#aebb9b0173e908c1675fa5a2e4ab5ef1e">&#9670;&#160;</a></span>ageManagersAtSeasonEnd()</h2>
+
+<div class="memitem">
+<div class="memproto">
+<table class="mlabels">
+  <tr>
+  <td class="mlabels-left">
+      <table class="memname">
+        <tr>
+          <td class="memname">void ManagerCareer::ageManagersAtSeasonEnd </td>
+          <td>(</td>
+          <td class="paramtype">const <a class="el" href="structGameDateValue.html">GameDateValue</a> &amp;&#160;</td>
+          <td class="paramname"><em>date</em></td><td>)</td>
+          <td></td>
+        </tr>
+      </table>
+  </td>
+  <td class="mlabels-right">
+<span class="mlabels"><span class="mlabel">private</span></span>  </td>
+  </tr>
+</table>
+</div><div class="memdoc">
+
+</div>
+</div>
 <a id="ae1e9159398329032afa439d855bbc445" name="ae1e9159398329032afa439d855bbc445"></a>
 <h2 class="memtitle"><span class="permalink"><a href="#ae1e9159398329032afa439d855bbc445">&#9670;&#160;</a></span>applicationChance()</h2>
 
@@ -384,6 +424,48 @@ Private Attributes</h2></td></tr>
           <td></td><td></td>
         </tr>
       </table>
+</div><div class="memdoc">
+
+</div>
+</div>
+<a id="ae628b732d3ae9eedc83c19cf190a6b09" name="ae628b732d3ae9eedc83c19cf190a6b09"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#ae628b732d3ae9eedc83c19cf190a6b09">&#9670;&#160;</a></span>applySeasonHonours()</h2>
+
+<div class="memitem">
+<div class="memproto">
+<table class="mlabels">
+  <tr>
+  <td class="mlabels-left">
+      <table class="memname">
+        <tr>
+          <td class="memname">float ManagerCareer::applySeasonHonours </td>
+          <td>(</td>
+          <td class="paramtype">const <a class="el" href="structManagerSeasonLine.html">ManagerSeasonLine</a> &amp;&#160;</td>
+          <td class="paramname"><em>line</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">std::span&lt; const <a class="el" href="structSeasonHistoryEntry.html">SeasonHistoryEntry</a> &gt;&#160;</td>
+          <td class="paramname"><em>finished</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">std::uint16_t&#160;</td>
+          <td class="paramname"><em>start_year</em>&#160;</td>
+        </tr>
+        <tr>
+          <td></td>
+          <td>)</td>
+          <td></td><td></td>
+        </tr>
+      </table>
+  </td>
+  <td class="mlabels-right">
+<span class="mlabels"><span class="mlabel">private</span></span>  </td>
+  </tr>
+</table>
 </div><div class="memdoc">
 
 </div>
@@ -1351,6 +1433,114 @@ Private Attributes</h2></td></tr>
 
 </div>
 </div>
+<a id="a36ee8eb0b389b3463fb83ef4db4b5bdb" name="a36ee8eb0b389b3463fb83ef4db4b5bdb"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a36ee8eb0b389b3463fb83ef4db4b5bdb">&#9670;&#160;</a></span>monthlyAiReviews()</h2>
+
+<div class="memitem">
+<div class="memproto">
+<table class="mlabels">
+  <tr>
+  <td class="mlabels-left">
+      <table class="memname">
+        <tr>
+          <td class="memname">void ManagerCareer::monthlyAiReviews </td>
+          <td>(</td>
+          <td class="paramtype">const std::map&lt; <a class="el" href="types_8h.html#a23de5420c0b18be78144797767703d6f">LeagueID</a>, std::vector&lt; std::pair&lt; std::uint8_t, <a class="el" href="types_8h.html#a57143f6ccbdf5a5d9724b986cbdafb31">TeamID</a> &gt; &gt; &gt; &amp;&#160;</td>
+          <td class="paramname"><em>league_ranks</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">const <a class="el" href="classManagerCareer.html#ad5e77c69defb597002b1bfc9fa371459">PositionProvider</a> &amp;&#160;</td>
+          <td class="paramname"><em>positions</em>&#160;</td>
+        </tr>
+        <tr>
+          <td></td>
+          <td>)</td>
+          <td></td><td></td>
+        </tr>
+      </table>
+  </td>
+  <td class="mlabels-right">
+<span class="mlabels"><span class="mlabel">private</span></span>  </td>
+  </tr>
+</table>
+</div><div class="memdoc">
+
+</div>
+</div>
+<a id="ad4963b3763ba62c99a859736f7c5fc4d" name="ad4963b3763ba62c99a859736f7c5fc4d"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#ad4963b3763ba62c99a859736f7c5fc4d">&#9670;&#160;</a></span>monthlyManagerReview()</h2>
+
+<div class="memitem">
+<div class="memproto">
+<table class="mlabels">
+  <tr>
+  <td class="mlabels-left">
+      <table class="memname">
+        <tr>
+          <td class="memname">void ManagerCareer::monthlyManagerReview </td>
+          <td>(</td>
+          <td class="paramtype">const <a class="el" href="structGameDateValue.html">GameDateValue</a> &amp;&#160;</td>
+          <td class="paramname"><em>date</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype"><a class="el" href="types_8h.html#a57143f6ccbdf5a5d9724b986cbdafb31">TeamID</a>&#160;</td>
+          <td class="paramname"><em>managed_team_id</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">float&#160;</td>
+          <td class="paramname"><em>board_confidence</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">int&#160;</td>
+          <td class="paramname"><em>board_expected_position</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">const <a class="el" href="classManagerCareer.html#ad5e77c69defb597002b1bfc9fa371459">PositionProvider</a> &amp;&#160;</td>
+          <td class="paramname"><em>positions</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">const std::map&lt; <a class="el" href="types_8h.html#a23de5420c0b18be78144797767703d6f">LeagueID</a>, std::vector&lt; std::pair&lt; std::uint8_t, <a class="el" href="types_8h.html#a57143f6ccbdf5a5d9724b986cbdafb31">TeamID</a> &gt; &gt; &gt; &amp;&#160;</td>
+          <td class="paramname"><em>league_ranks</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype"><a class="el" href="classInbox.html">Inbox</a> &amp;&#160;</td>
+          <td class="paramname"><em>inbox</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype"><a class="el" href="structCareerDayEvents.html">CareerDayEvents</a> &amp;&#160;</td>
+          <td class="paramname"><em>events</em>&#160;</td>
+        </tr>
+        <tr>
+          <td></td>
+          <td>)</td>
+          <td></td><td></td>
+        </tr>
+      </table>
+  </td>
+  <td class="mlabels-right">
+<span class="mlabels"><span class="mlabel">private</span></span>  </td>
+  </tr>
+</table>
+</div><div class="memdoc">
+
+</div>
+</div>
 <a id="a3bb7e50adfa5bf35725229b9041974e7" name="a3bb7e50adfa5bf35725229b9041974e7"></a>
 <h2 class="memtitle"><span class="permalink"><a href="#a3bb7e50adfa5bf35725229b9041974e7">&#9670;&#160;</a></span>monthlyReviews()</h2>
 
@@ -1511,8 +1701,8 @@ Private Attributes</h2></td></tr>
 
 </div>
 </div>
-<a id="a756ef42ecfc64673dcdd8041a8c7661b" name="a756ef42ecfc64673dcdd8041a8c7661b"></a>
-<h2 class="memtitle"><span class="permalink"><a href="#a756ef42ecfc64673dcdd8041a8c7661b">&#9670;&#160;</a></span>onMatchPlayed()</h2>
+<a id="abb4dce7f4d6bc94cbff9a3fc66500f58" name="abb4dce7f4d6bc94cbff9a3fc66500f58"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#abb4dce7f4d6bc94cbff9a3fc66500f58">&#9670;&#160;</a></span>onMatchPlayed()</h2>
 
 <div class="memitem">
 <div class="memproto">
@@ -1520,55 +1710,9 @@ Private Attributes</h2></td></tr>
         <tr>
           <td class="memname">void ManagerCareer::onMatchPlayed </td>
           <td>(</td>
-          <td class="paramtype"><a class="el" href="types_8h.html#a57143f6ccbdf5a5d9724b986cbdafb31">TeamID</a>&#160;</td>
-          <td class="paramname"><em>home_id</em>, </td>
-        </tr>
-        <tr>
-          <td class="paramkey"></td>
+          <td class="paramtype">const <a class="el" href="structManagerMatchEvent.html">ManagerMatchEvent</a> &amp;&#160;</td>
+          <td class="paramname"><em>match</em></td><td>)</td>
           <td></td>
-          <td class="paramtype"><a class="el" href="types_8h.html#a57143f6ccbdf5a5d9724b986cbdafb31">TeamID</a>&#160;</td>
-          <td class="paramname"><em>away_id</em>, </td>
-        </tr>
-        <tr>
-          <td class="paramkey"></td>
-          <td></td>
-          <td class="paramtype">int&#160;</td>
-          <td class="paramname"><em>home_goals</em>, </td>
-        </tr>
-        <tr>
-          <td class="paramkey"></td>
-          <td></td>
-          <td class="paramtype">int&#160;</td>
-          <td class="paramname"><em>away_goals</em>, </td>
-        </tr>
-        <tr>
-          <td class="paramkey"></td>
-          <td></td>
-          <td class="paramtype">bool&#160;</td>
-          <td class="paramname"><em>league</em>, </td>
-        </tr>
-        <tr>
-          <td class="paramkey"></td>
-          <td></td>
-          <td class="paramtype">float&#160;</td>
-          <td class="paramname"><em>home_expected</em>, </td>
-        </tr>
-        <tr>
-          <td class="paramkey"></td>
-          <td></td>
-          <td class="paramtype">float&#160;</td>
-          <td class="paramname"><em>away_expected</em>, </td>
-        </tr>
-        <tr>
-          <td class="paramkey"></td>
-          <td></td>
-          <td class="paramtype"><a class="el" href="types_8h.html#a57143f6ccbdf5a5d9724b986cbdafb31">TeamID</a>&#160;</td>
-          <td class="paramname"><em>managed_team_id</em>&#160;</td>
-        </tr>
-        <tr>
-          <td></td>
-          <td>)</td>
-          <td></td><td></td>
         </tr>
       </table>
 </div><div class="memdoc">
@@ -1789,6 +1933,54 @@ Private Attributes</h2></td></tr>
 
 </div>
 </div>
+<a id="ab1e400b96e186b56ad6c3136140683db" name="ab1e400b96e186b56ad6c3136140683db"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#ab1e400b96e186b56ad6c3136140683db">&#9670;&#160;</a></span>reviewAiManagersAtSeasonEnd()</h2>
+
+<div class="memitem">
+<div class="memproto">
+<table class="mlabels">
+  <tr>
+  <td class="mlabels-left">
+      <table class="memname">
+        <tr>
+          <td class="memname">void ManagerCareer::reviewAiManagersAtSeasonEnd </td>
+          <td>(</td>
+          <td class="paramtype">const <a class="el" href="structGameDateValue.html">GameDateValue</a> &amp;&#160;</td>
+          <td class="paramname"><em>date</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype"><a class="el" href="types_8h.html#a57143f6ccbdf5a5d9724b986cbdafb31">TeamID</a>&#160;</td>
+          <td class="paramname"><em>managed_team_id</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">const <a class="el" href="classManagerCareer.html#ad5e77c69defb597002b1bfc9fa371459">PositionProvider</a> &amp;&#160;</td>
+          <td class="paramname"><em>positions</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype"><a class="el" href="classInbox.html">Inbox</a> &amp;&#160;</td>
+          <td class="paramname"><em>inbox</em>&#160;</td>
+        </tr>
+        <tr>
+          <td></td>
+          <td>)</td>
+          <td></td><td></td>
+        </tr>
+      </table>
+  </td>
+  <td class="mlabels-right">
+<span class="mlabels"><span class="mlabel">private</span></span>  </td>
+  </tr>
+</table>
+</div><div class="memdoc">
+
+</div>
+</div>
 <a id="a06385d1e3033e718d4e5641a7549a6b4" name="a06385d1e3033e718d4e5641a7549a6b4"></a>
 <h2 class="memtitle"><span class="permalink"><a href="#a06385d1e3033e718d4e5641a7549a6b4">&#9670;&#160;</a></span>save()</h2>
 
@@ -1938,6 +2130,102 @@ Private Attributes</h2></td></tr>
           <td> const</td>
         </tr>
       </table>
+</div><div class="memdoc">
+
+</div>
+</div>
+<a id="a165c7e93ac229b806c44c5c8577bd7c3" name="a165c7e93ac229b806c44c5c8577bd7c3"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a165c7e93ac229b806c44c5c8577bd7c3">&#9670;&#160;</a></span>weeklyAiReviews()</h2>
+
+<div class="memitem">
+<div class="memproto">
+<table class="mlabels">
+  <tr>
+  <td class="mlabels-left">
+      <table class="memname">
+        <tr>
+          <td class="memname">void ManagerCareer::weeklyAiReviews </td>
+          <td>(</td>
+          <td class="paramtype">const <a class="el" href="structGameDateValue.html">GameDateValue</a> &amp;&#160;</td>
+          <td class="paramname"><em>date</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype"><a class="el" href="types_8h.html#a57143f6ccbdf5a5d9724b986cbdafb31">TeamID</a>&#160;</td>
+          <td class="paramname"><em>managed_team_id</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype"><a class="el" href="classInbox.html">Inbox</a> &amp;&#160;</td>
+          <td class="paramname"><em>inbox</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype"><a class="el" href="structCareerDayEvents.html">CareerDayEvents</a> &amp;&#160;</td>
+          <td class="paramname"><em>events</em>&#160;</td>
+        </tr>
+        <tr>
+          <td></td>
+          <td>)</td>
+          <td></td><td></td>
+        </tr>
+      </table>
+  </td>
+  <td class="mlabels-right">
+<span class="mlabels"><span class="mlabel">private</span></span>  </td>
+  </tr>
+</table>
+</div><div class="memdoc">
+
+</div>
+</div>
+<a id="a94ecfefa1034d4157f470c4ff772cd81" name="a94ecfefa1034d4157f470c4ff772cd81"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a94ecfefa1034d4157f470c4ff772cd81">&#9670;&#160;</a></span>weeklyManagerReview()</h2>
+
+<div class="memitem">
+<div class="memproto">
+<table class="mlabels">
+  <tr>
+  <td class="mlabels-left">
+      <table class="memname">
+        <tr>
+          <td class="memname">void ManagerCareer::weeklyManagerReview </td>
+          <td>(</td>
+          <td class="paramtype">const <a class="el" href="structGameDateValue.html">GameDateValue</a> &amp;&#160;</td>
+          <td class="paramname"><em>date</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype"><a class="el" href="types_8h.html#a57143f6ccbdf5a5d9724b986cbdafb31">TeamID</a>&#160;</td>
+          <td class="paramname"><em>managed_team_id</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype"><a class="el" href="classInbox.html">Inbox</a> &amp;&#160;</td>
+          <td class="paramname"><em>inbox</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype"><a class="el" href="structCareerDayEvents.html">CareerDayEvents</a> &amp;&#160;</td>
+          <td class="paramname"><em>events</em>&#160;</td>
+        </tr>
+        <tr>
+          <td></td>
+          <td>)</td>
+          <td></td><td></td>
+        </tr>
+      </table>
+  </td>
+  <td class="mlabels-right">
+<span class="mlabels"><span class="mlabel">private</span></span>  </td>
+  </tr>
+</table>
 </div><div class="memdoc">
 
 </div>

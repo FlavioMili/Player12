@@ -102,7 +102,7 @@ $(document).ready(function(){initNavTree('classStaffRoster.html',''); initResiza
 </div><!--header-->
 <div class="contents">
 
-<p>Every staff member of the world with per-club effect caches.  
+<p>Every staff member of the world with per-club effect caches. Concurrent effects queries return independent snapshots. Roster mutations and access through borrowed member pointers require exclusive career access.  
  <a href="classStaffRoster.html#details">More...</a></p>
 
 <p><code>#include &lt;<a class="el" href="staff_8h_source.html">staff.h</a>&gt;</code></p>
@@ -135,8 +135,8 @@ Public Member Functions</h2></td></tr>
 <tr class="separator:a951946bf24fdc4f2d299552067a5c33e"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a1b35e656c220d02486f2d8b803a9cabe" id="r_a1b35e656c220d02486f2d8b803a9cabe"><td class="memItemLeft" align="right" valign="top">std::size_t&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classStaffRoster.html#a1b35e656c220d02486f2d8b803a9cabe">roleCount</a> (<a class="el" href="types_8h.html#a57143f6ccbdf5a5d9724b986cbdafb31">TeamID</a> team_id, <a class="el" href="staff_8h.html#abc021cbda2f5ab03ec42c7ace8d1e02a">StaffRole</a> role) const</td></tr>
 <tr class="separator:a1b35e656c220d02486f2d8b803a9cabe"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a829310b573809014306f86ecd7fa082f" id="r_a829310b573809014306f86ecd7fa082f"><td class="memItemLeft" align="right" valign="top">const <a class="el" href="structStaffEffects.html">StaffEffects</a> &amp;&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classStaffRoster.html#a829310b573809014306f86ecd7fa082f">effects</a> (<a class="el" href="types_8h.html#a57143f6ccbdf5a5d9724b986cbdafb31">TeamID</a> team_id) const</td></tr>
-<tr class="separator:a829310b573809014306f86ecd7fa082f"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a8a71644c7fcce3619f79e9ad608610b2" id="r_a8a71644c7fcce3619f79e9ad608610b2"><td class="memItemLeft" align="right" valign="top"><a class="el" href="structStaffEffects.html">StaffEffects</a>&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classStaffRoster.html#a8a71644c7fcce3619f79e9ad608610b2">effects</a> (<a class="el" href="types_8h.html#a57143f6ccbdf5a5d9724b986cbdafb31">TeamID</a> team_id) const</td></tr>
+<tr class="separator:a8a71644c7fcce3619f79e9ad608610b2"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a7bbbfd2cd39a890130cd8b761abba81c" id="r_a7bbbfd2cd39a890130cd8b761abba81c"><td class="memItemLeft" align="right" valign="top">void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classStaffRoster.html#a7bbbfd2cd39a890130cd8b761abba81c">invalidate</a> ()</td></tr>
 <tr class="separator:a7bbbfd2cd39a890130cd8b761abba81c"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a6e6344b7843f6a608b77dda5c7dbf002" id="r_a6e6344b7843f6a608b77dda5c7dbf002"><td class="memItemLeft" align="right" valign="top">void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classStaffRoster.html#a6e6344b7843f6a608b77dda5c7dbf002">restore</a> (std::vector&lt; <a class="el" href="structStaffMember.html">StaffMember</a> &gt; loaded)</td></tr>
@@ -151,6 +151,8 @@ Private Member Functions</h2></td></tr>
 Private Attributes</h2></td></tr>
 <tr class="memitem:ada036275dfc984ef35eba2f4f339efdd" id="r_ada036275dfc984ef35eba2f4f339efdd"><td class="memItemLeft" align="right" valign="top">std::unordered_map&lt; <a class="el" href="staff_8h.html#a433116d230d9527be6fe87bc0ce3e966">StaffID</a>, <a class="el" href="structStaffMember.html">StaffMember</a> &gt;&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classStaffRoster.html#ada036275dfc984ef35eba2f4f339efdd">members</a></td></tr>
 <tr class="separator:ada036275dfc984ef35eba2f4f339efdd"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a2407e886faab5a86485398264c689e23" id="r_a2407e886faab5a86485398264c689e23"><td class="memItemLeft" align="right" valign="top">std::mutex&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classStaffRoster.html#a2407e886faab5a86485398264c689e23">cache_mutex</a></td></tr>
+<tr class="separator:a2407e886faab5a86485398264c689e23"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a2156bb3eba01c8c5569da84a802773f4" id="r_a2156bb3eba01c8c5569da84a802773f4"><td class="memItemLeft" align="right" valign="top">std::unordered_map&lt; <a class="el" href="types_8h.html#a57143f6ccbdf5a5d9724b986cbdafb31">TeamID</a>, <a class="el" href="structStaffEffects.html">StaffEffects</a> &gt;&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classStaffRoster.html#a2156bb3eba01c8c5569da84a802773f4">effects_cache</a></td></tr>
 <tr class="separator:a2156bb3eba01c8c5569da84a802773f4"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a41ac6df2fb556372bf882a31022b1748" id="r_a41ac6df2fb556372bf882a31022b1748"><td class="memItemLeft" align="right" valign="top">bool&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classStaffRoster.html#a41ac6df2fb556372bf882a31022b1748">cache_valid</a> = false</td></tr>
@@ -159,7 +161,7 @@ Private Attributes</h2></td></tr>
 <tr class="separator:aa41a7c8f1d3106616a74310792e07de5"><td class="memSeparator" colspan="2">&#160;</td></tr>
 </table>
 <a name="details" id="details"></a><h2 class="groupheader">Detailed Description</h2>
-<div class="textblock"><p>Every staff member of the world with per-club effect caches. </p>
+<div class="textblock"><p>Every staff member of the world with per-club effect caches. Concurrent effects queries return independent snapshots. Roster mutations and access through borrowed member pointers require exclusive career access. </p>
 </div><h2 class="groupheader">Member Function Documentation</h2>
 <a id="aec1935a88e0aedd8bd9ede4d17afeb6d" name="aec1935a88e0aedd8bd9ede4d17afeb6d"></a>
 <h2 class="memtitle"><span class="permalink"><a href="#aec1935a88e0aedd8bd9ede4d17afeb6d">&#9670;&#160;</a></span>add()</h2>
@@ -267,14 +269,14 @@ Private Attributes</h2></td></tr>
 
 </div>
 </div>
-<a id="a829310b573809014306f86ecd7fa082f" name="a829310b573809014306f86ecd7fa082f"></a>
-<h2 class="memtitle"><span class="permalink"><a href="#a829310b573809014306f86ecd7fa082f">&#9670;&#160;</a></span>effects()</h2>
+<a id="a8a71644c7fcce3619f79e9ad608610b2" name="a8a71644c7fcce3619f79e9ad608610b2"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a8a71644c7fcce3619f79e9ad608610b2">&#9670;&#160;</a></span>effects()</h2>
 
 <div class="memitem">
 <div class="memproto">
       <table class="memname">
         <tr>
-          <td class="memname">const <a class="el" href="structStaffEffects.html">StaffEffects</a> &amp; StaffRoster::effects </td>
+          <td class="memname"><a class="el" href="structStaffEffects.html">StaffEffects</a> StaffRoster::effects </td>
           <td>(</td>
           <td class="paramtype"><a class="el" href="types_8h.html#a57143f6ccbdf5a5d9724b986cbdafb31">TeamID</a>&#160;</td>
           <td class="paramname"><em>team_id</em></td><td>)</td>
@@ -538,6 +540,28 @@ Private Attributes</h2></td></tr>
 </div>
 </div>
 <h2 class="groupheader">Member Data Documentation</h2>
+<a id="a2407e886faab5a86485398264c689e23" name="a2407e886faab5a86485398264c689e23"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a2407e886faab5a86485398264c689e23">&#9670;&#160;</a></span>cache_mutex</h2>
+
+<div class="memitem">
+<div class="memproto">
+<table class="mlabels">
+  <tr>
+  <td class="mlabels-left">
+      <table class="memname">
+        <tr>
+          <td class="memname">std::mutex StaffRoster::cache_mutex</td>
+        </tr>
+      </table>
+  </td>
+  <td class="mlabels-right">
+<span class="mlabels"><span class="mlabel">mutable</span><span class="mlabel">private</span></span>  </td>
+  </tr>
+</table>
+</div><div class="memdoc">
+
+</div>
+</div>
 <a id="a41ac6df2fb556372bf882a31022b1748" name="a41ac6df2fb556372bf882a31022b1748"></a>
 <h2 class="memtitle"><span class="permalink"><a href="#a41ac6df2fb556372bf882a31022b1748">&#9670;&#160;</a></span>cache_valid</h2>
 

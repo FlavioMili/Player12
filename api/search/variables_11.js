@@ -5,14 +5,15 @@ var searchData=
   ['quality_2',['quality',['../structStaffScene_1_1Responsibility.html#a01d5dfe10c6d6bba02b6b97aab6d4ed5',1,'StaffScene::Responsibility::quality'],['../structIntakeClass.html#a24e8e0e090b45b7213242af09c09bcbb',1,'IntakeClass::quality'],['../structIntakePreview.html#acca07c0b6c8ce2bc5b1c8ab8c1240336',1,'IntakePreview::quality']]],
   ['quarter_5ffinal_3',['quarter_final',['../structContinental_1_1Prizes.html#a8803cb2ecca2853d116ba2eee58e9727',1,'Continental::Prizes']]],
   ['queries_5f_4',['queries_',['../classSQLLoader.html#ac56e379115c14a9a295c9f11671e6bb8',1,'SQLLoader']]],
-  ['query_5',['query',['../structQueryMapEntry.html#a096046e539a59bc66f662f85574bb1b2',1,'QueryMapEntry::query'],['../classHelpScene.html#a35e8339da26a06d63c328424d18d07bb',1,'HelpScene::query']]],
+  ['query_5',['query',['../classHelpScene.html#a35e8339da26a06d63c328424d18d07bb',1,'HelpScene::query'],['../structQueryMapEntry.html#a096046e539a59bc66f662f85574bb1b2',1,'QueryMapEntry::query']]],
   ['queued_5ffinals_6',['queued_finals',['../classNationalManagement.html#a8a08e9bf1a2f31723aa33de29b609adf',1,'NationalManagement']]],
   ['queued_5fresults_7',['queued_results',['../classNationalManagement.html#abb05fdc3b0caaf397dbaf3a18e42a920',1,'NationalManagement']]],
   ['quick_5fresult_8',['quick_result',['../classMatchScene.html#a7e043d9fd9b4cf4307c1e1d67f21eb0e',1,'MatchScene']]],
-  ['quiet_5fdays_9',['quiet_days',['../structTalkOutcome.html#a189555cb9c48c91a8827a87e0fc0d60d',1,'TalkOutcome']]],
-  ['quiet_5funtil_10',['quiet_until',['../structPlayerRelation.html#a9015cb065c1783b358f5eb1959cb442d',1,'PlayerRelation']]],
-  ['quota_11',['quota',['../structGameController_1_1ReserveOverview.html#a8a674ae1778ab01a64139864bd824018',1,'GameController::ReserveOverview']]],
-  ['quota_5fkeepers_12',['quota_keepers',['../classReservesScene.html#a58eff211c1b63a1fce17efd693c741b0',1,'ReservesScene']]],
-  ['quota_5foutfield_13',['quota_outfield',['../classReservesScene.html#a3582e6133ab3fc962f6df66883a08d27',1,'ReservesScene']]],
-  ['quote_14',['quote',['../structPreseasonScene_1_1ProjectLine.html#acba0437555ea838cf3a46353e20bb37b',1,'PreseasonScene::ProjectLine::quote'],['../structYouthScene_1_1UpgradeLine.html#a53d6cda52e31d750166b9e1106e122c8',1,'YouthScene::UpgradeLine::quote']]]
+  ['quick_5fresult_5fworker_9',['quick_result_worker',['../classMatchScene.html#a0618a131c3a4040663fa7bd0a4135b4b',1,'MatchScene']]],
+  ['quiet_5fdays_10',['quiet_days',['../structTalkOutcome.html#a189555cb9c48c91a8827a87e0fc0d60d',1,'TalkOutcome']]],
+  ['quiet_5funtil_11',['quiet_until',['../structPlayerRelation.html#a9015cb065c1783b358f5eb1959cb442d',1,'PlayerRelation']]],
+  ['quota_12',['quota',['../structGameController_1_1ReserveOverview.html#a8a674ae1778ab01a64139864bd824018',1,'GameController::ReserveOverview']]],
+  ['quota_5fkeepers_13',['quota_keepers',['../classReservesScene.html#a58eff211c1b63a1fce17efd693c741b0',1,'ReservesScene']]],
+  ['quota_5foutfield_14',['quota_outfield',['../classReservesScene.html#a3582e6133ab3fc962f6df66883a08d27',1,'ReservesScene']]],
+  ['quote_15',['quote',['../structPreseasonScene_1_1ProjectLine.html#acba0437555ea838cf3a46353e20bb37b',1,'PreseasonScene::ProjectLine::quote'],['../structYouthScene_1_1UpgradeLine.html#a53d6cda52e31d750166b9e1106e122c8',1,'YouthScene::UpgradeLine::quote']]]
 ];

@@ -25,7 +25,7 @@ var classManagementScene =
     [ "renderSwipeIndicator", "classManagementScene.html#a3810c490bfbac0741425597b3b38312d", null ],
     [ "renderTopBar", "classManagementScene.html#a3c695bfbb589602a81e438b913818a9c", null ],
     [ "showToast", "classManagementScene.html#a2f8e03d579276bee8760a49d393e7364", null ],
-    [ "syncClubAccent", "classManagementScene.html#aeec31fff2f276d5b1fe16da5640e447d", null ],
+    [ "syncClubAccent", "classManagementScene.html#a0744592e1a97eb4c7b9c60b275f3247f", null ],
     [ "GameFlowTest_GUIFlowLifecycle_Test", "classManagementScene.html#af70851c82f5c5d3e1b6b40e55b6d8532", null ],
     [ "GameFlowTest_ManagementScreensMidSeason_Test", "classManagementScene.html#ab98c28ce1d196409d4f2a22257ad8990", null ],
     [ "flyout_anchor", "classManagementScene.html#ae730456411c6fd737525ed735c14a254", null ],

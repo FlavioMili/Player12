@@ -1,7 +1,7 @@
 var structMatchRenderer3D_1_1State =
 [
     [ "State", "structMatchRenderer3D_1_1State.html#aa4a984d6e1fc08cd540ff5c5a76ab2ac", null ],
-    [ "addBackPrint", "structMatchRenderer3D_1_1State.html#adbd954f24e4bbe808bd1d5dc1100193c", null ],
+    [ "addBackPrint", "structMatchRenderer3D_1_1State.html#a72ff8f53ae4f68129156509f97f0eabf", null ],
     [ "addBall", "structMatchRenderer3D_1_1State.html#a171bc1e803036e750607c0b41ab81248", null ],
     [ "addBoards", "structMatchRenderer3D_1_1State.html#af2254db03e590eb1ceb4024fe0b76cda", null ],
     [ "addBox", "structMatchRenderer3D_1_1State.html#afbd85d01b528eb84db1c0eb018aaed1a", null ],
@@ -11,7 +11,7 @@ var structMatchRenderer3D_1_1State =
     [ "addPlayer", "structMatchRenderer3D_1_1State.html#a29a258ddd7ed8720bb02e0597c28a63c", null ],
     [ "addPolygon", "structMatchRenderer3D_1_1State.html#acd24ac1a6b2484d428d1ed23f32c4a04", null ],
     [ "addPrism", "structMatchRenderer3D_1_1State.html#a7cd81cf11aa4a5d139c79b93f492410c", null ],
-    [ "addSegment", "structMatchRenderer3D_1_1State.html#a5e0a5138ddc15448e9fca7d98510cd27", null ],
+    [ "addSegment", "structMatchRenderer3D_1_1State.html#a8c343468da43f6b20ed65870ccc136ff", null ],
     [ "batchFan", "structMatchRenderer3D_1_1State.html#a58be6f47faf07bde9301d0debc809b56", null ],
     [ "batchQuad", "structMatchRenderer3D_1_1State.html#aaffe73f976fa7f79482efbfa4990a60b", null ],
     [ "cameraControl", "structMatchRenderer3D_1_1State.html#a0dee78eebc8ff405f5c90fe794d8ba6c", null ],
@@ -56,7 +56,7 @@ var structMatchRenderer3D_1_1State =
     [ "batchVertices", "structMatchRenderer3D_1_1State.html#a0cb6a58152a4ee37c46f2b6e391d3f53", null ],
     [ "camera", "structMatchRenderer3D_1_1State.html#ab63cce1fcca1535ac410bf1eaa4dd9d1", null ],
     [ "celebrationWeight", "structMatchRenderer3D_1_1State.html#a3915b9ce7e024f995f6335ec59408198", null ],
-    [ "cheeringMask", "structMatchRenderer3D_1_1State.html#a4d981681c094a7c9e562500df84e9dbf", null ],
+    [ "cheeringMask", "structMatchRenderer3D_1_1State.html#acd028930537ee07e3b9b8de7efd7d41c", null ],
     [ "crowdCelebration", "structMatchRenderer3D_1_1State.html#ab94cd9a78df296c2bda907beffc2a0dd", null ],
     [ "crowdHop", "structMatchRenderer3D_1_1State.html#aabb95f2fb9ad71b8bd87109d7a8c6965", null ],
     [ "crowdRise", "structMatchRenderer3D_1_1State.html#a141424e2d1b15257067c538984e7315e", null ],

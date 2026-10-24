@@ -137,8 +137,8 @@ Private Attributes</h2></td></tr>
 <tr class="separator:a09dced7f6e0768c5193a810824616740"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:ac4ab924bc36c154254c7831e2897e9c3" id="r_ac4ab924bc36c154254c7831e2897e9c3"><td class="memItemLeft" align="right" valign="top">bool&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classAudio_1_1AudioDevice.html#ac4ab924bc36c154254c7831e2897e9c3">subsystemStarted</a> = false</td></tr>
 <tr class="separator:ac4ab924bc36c154254c7831e2897e9c3"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a2d203a6fa843c2cde8c74716740fec1a" id="r_a2d203a6fa843c2cde8c74716740fec1a"><td class="memItemLeft" align="right" valign="top">std::thread&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classAudio_1_1AudioDevice.html#a2d203a6fa843c2cde8c74716740fec1a">opener</a></td></tr>
-<tr class="separator:a2d203a6fa843c2cde8c74716740fec1a"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a407e5421aea19932e1e1bb2297c689dd" id="r_a407e5421aea19932e1e1bb2297c689dd"><td class="memItemLeft" align="right" valign="top">std::jthread&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classAudio_1_1AudioDevice.html#a407e5421aea19932e1e1bb2297c689dd">opener</a></td></tr>
+<tr class="separator:a407e5421aea19932e1e1bb2297c689dd"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a2ed394ccceb7a90bc2c0377d83f6c1cb" id="r_a2ed394ccceb7a90bc2c0377d83f6c1cb"><td class="memItemLeft" align="right" valign="top">std::array&lt; float, 2 *<a class="el" href="classAudio_1_1AudioDevice.html#a2b44e52c808c5f19159a54a40d17a5d2">CHUNK_FRAMES</a> &gt;&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classAudio_1_1AudioDevice.html#a2ed394ccceb7a90bc2c0377d83f6c1cb">chunk</a> {}</td></tr>
 <tr class="separator:a2ed394ccceb7a90bc2c0377d83f6c1cb"><td class="memSeparator" colspan="2">&#160;</td></tr>
 </table><table class="memberdecls">
@@ -406,8 +406,8 @@ Static Private Attributes</h2></td></tr>
 
 </div>
 </div>
-<a id="a2d203a6fa843c2cde8c74716740fec1a" name="a2d203a6fa843c2cde8c74716740fec1a"></a>
-<h2 class="memtitle"><span class="permalink"><a href="#a2d203a6fa843c2cde8c74716740fec1a">&#9670;&#160;</a></span>opener</h2>
+<a id="a407e5421aea19932e1e1bb2297c689dd" name="a407e5421aea19932e1e1bb2297c689dd"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a407e5421aea19932e1e1bb2297c689dd">&#9670;&#160;</a></span>opener</h2>
 
 <div class="memitem">
 <div class="memproto">
@@ -416,7 +416,7 @@ Static Private Attributes</h2></td></tr>
   <td class="mlabels-left">
       <table class="memname">
         <tr>
-          <td class="memname">std::thread Audio::AudioDevice::opener</td>
+          <td class="memname">std::jthread Audio::AudioDevice::opener</td>
         </tr>
       </table>
   </td>

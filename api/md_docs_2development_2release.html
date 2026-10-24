@@ -101,7 +101,7 @@ $(document).ready(function(){initNavTree('md_docs_2development_2release.html',''
 <tr class="markdownTableHead">
 <th class="markdownTableHeadNone">Workflow   </th><th class="markdownTableHeadNone">Trigger   </th><th class="markdownTableHeadNone">What it does    </th></tr>
 <tr class="markdownTableRowOdd">
-<td class="markdownTableBodyNone"><code>ci.yml</code>   </td><td class="markdownTableBodyNone">push to any branch, pull request   </td><td class="markdownTableBodyNone">Runs <code>build.yml</code> (packages kept 3 days) plus a Linux ASan/UBSan job on the core tests    </td></tr>
+<td class="markdownTableBodyNone"><code>ci.yml</code>   </td><td class="markdownTableBodyNone">push to any branch, pull request   </td><td class="markdownTableBodyNone">Runs <code>build.yml</code> (artifacts kept 3 days) plus Linux ASan/UBSan; successful main pushes publish development pre-releases    </td></tr>
 <tr class="markdownTableRowEven">
 <td class="markdownTableBodyNone"><code>release.yml</code>   </td><td class="markdownTableBodyNone">tag <code>v*</code>, manual run   </td><td class="markdownTableBodyNone">Builds and smoke-tests packages, then publishes a GitHub Release with checksums    </td></tr>
 <tr class="markdownTableRowOdd">
@@ -109,6 +109,11 @@ $(document).ready(function(){initNavTree('md_docs_2development_2release.html',''
 </table>
 <p><code>deploy_docs.yml</code> (Doxygen site) is unrelated; it publishes the API docs and the public project, player and contributor guides.</p>
 <h1><a class="anchor" id="autotoc_md70"></a>
+Development builds for main commits</h1>
+<p>Every successful push to <code>main</code> publishes a development pre-release using the packages already produced by CI. Publication waits for all platform package jobs and the sanitizer job. Pushes to other branches and pull requests keep workflow artifacts only.</p>
+<p>For source commit <code>0123456789abcdef...</code> with project version <code>1.0.0</code>, packages report <code>1.0.0-dev.sha0123456789ab</code>. The GitHub release tag is <code>dev-&lt;full commit SHA&gt;</code>, so each pushed main revision has a separate download page. A rerun updates the same release's assets. When one push contains multiple commits, the release belongs to that push's head commit.</p>
+<p>Each pre-release includes the Linux tarball and AppImage, macOS ARM64 ZIP, Windows ZIP, and <code>SHA256SUMS.txt</code>. It is explicitly excluded from GitHub's Latest designation; official <code>v*</code> releases continue through <code>release.yml</code>. Main runs use separate concurrency groups for each source commit, so a newer push does not cancel the previous commit's build or publication. These releases use the workflow's scoped <code>GITHUB_TOKEN</code>; no extra secret or duplicate platform build is needed.</p>
+<h1><a class="anchor" id="autotoc_md71"></a>
 Cutting a release</h1>
 <ol type="1">
 <li>Make sure CI is green on the commit you want to ship, and run the full test suite locally (CI skips the slow labels, see below).</li>
@@ -138,7 +143,7 @@ Cutting a release</h1>
 <div class="line">gh release edit v1.0.0 --draft=false</div>
 </div><!-- fragment --><p>The last command makes the draft public; run it only after reviewing the packages. Manual builds also upload workflow artifacts, kept for 30 days. GitHub Releases hosts the ready-to-play game archives; GitHub Packages is for supported package registries such as npm, NuGet and containers.</p>
 <p>The version is the project version from <code>CMakeLists.txt</code>. A tagged build passes the tag (without the <code>v</code>, after <code>release_version.sh</code> has checked it) to CMake as <code>-DFM_VERSION=...</code>, so a pre-release suffix such as <code>-rc1</code> is kept. The version ends up in the game (About screen, crash reports, saves), the package names, the macOS <code>Info.plist</code> and the Linux desktop entry (<code>X-AppImage-Version</code>). Local builds report the project version and the commit they were built from.</p>
-<h1><a class="anchor" id="autotoc_md71"></a>
+<h1><a class="anchor" id="autotoc_md72"></a>
 What each job does</h1>
 <p>All jobs build <code>Release</code> with pinned FetchContent dependencies and cache the fetched sources (<code>build/_deps/*-src</code>). CMake subbuilds contain absolute paths and are never cached; source-cache keys also include the repository name. Linux and macOS also cache compiler output with ccache. Packages use two extra CMake options so they carry no library dependencies beyond the OS: <code>-DSDLTTF_VENDORED=ON</code> (FreeType, HarfBuzz and PlutoSVG built in) and <code>-DCMAKE_DISABLE_FIND_PACKAGE_SQLite3=ON</code> (static SQLite from <code>sjinks/sqlite3-cmake</code>). SDL3 is already built from source as a static library.</p>
 <p>CI tests run headless (<code>SDL_VIDEO_DRIVER=dummy</code>, <code>SDL_AUDIO_DRIVER=dummy</code>) with <code>ctest -LE "playtest|monkey|slow"</code>. That also skips the <code>adversarial</code>, <code>qa</code>, <code>perf</code> and <code>soak</code> suites, which are labelled <code>slow</code>. The sanitizer job in <code>ci.yml</code> (Debug, ASan and UBSan) runs only the headless core tests and the sanitizer probe (<code>-L "core|sanitizer"</code>), because the GUI suites are too slow under the sanitizers. Release jobs build the game and balance lab without test executables and run the package smoke checks on every platform. The full test suites remain in <code>ci.yml</code>; require green CI on the source commit before tagging. Run the full suite locally before a release.</p>
@@ -152,7 +157,7 @@ What each job does</h1>
 <div class="line">XDG_DATA_HOME=/tmp/fm-xdg packaging/smoke_test.sh \</div>
 <div class="line">  &quot;$package_dir&quot; &quot;$package_dir/bin/Player12&quot; \</div>
 <div class="line">  /tmp/fm-xdg/FlavioMili/FootballManagement</div>
-</div><!-- fragment --><h1><a class="anchor" id="autotoc_md72"></a>
+</div><!-- fragment --><h1><a class="anchor" id="autotoc_md73"></a>
 Package layout and runtime paths</h1>
 <p>Installing and packaging live in <code>cmake/Packaging.cmake</code>. Only the <code>game</code> install component is packaged, so the install rules of fetched dependencies never add headers or static libraries.</p>
 <table class="markdownTable">
@@ -174,11 +179,11 @@ Package layout and runtime paths</h1>
 <li>macOS: <code>~/Library/Application Support/FlavioMili/FootballManagement</code></li>
 <li>Windows: <code>APPDATA%\FlavioMili\FootballManagement</code></li>
 </ul>
-<h2><a class="anchor" id="autotoc_md73"></a>
+<h2><a class="anchor" id="autotoc_md74"></a>
 Crash reports and save recovery</h2>
 <p>If the game dies on a fatal signal, an uncaught exception or <code>std::terminate</code>, it writes <code>crash-&lt;date&gt;.txt</code> to <code>&lt;user data&gt;/logs</code> with the version, the commit, the platform and the reason, and keeps the log of that session next to it (<code>crash-&lt;date&gt;.log</code>). At the next start a notice offers to open the folder; only the newest reports are kept. Ask testers for these two files when they report a crash.</p>
 <p>When a save fails to load, the load screen offers to restore the newest numbered backup that loads; the damaged file is kept aside, never deleted.</p>
-<h1><a class="anchor" id="autotoc_md74"></a>
+<h1><a class="anchor" id="autotoc_md75"></a>
 Building a package locally (Linux)</h1>
 <p>Use a separate build tree:</p>
 <div class="fragment"><div class="line">cmake -S . -B /tmp/fm-pkg -G Ninja -DCMAKE_BUILD_TYPE=Release -DBUILD_TESTING=OFF \</div>
@@ -186,7 +191,7 @@ Building a package locally (Linux)</h1>
 <div class="line">  &quot;-DCMAKE_EXE_LINKER_FLAGS=-static-libstdc++ -static-libgcc&quot;</div>
 <div class="line">cmake --build /tmp/fm-pkg --parallel 2 --target FootballManagement</div>
 <div class="line">cpack --config /tmp/fm-pkg/CPackConfig.cmake -B /tmp/fm-pkg/dist</div>
-</div><!-- fragment --><h1><a class="anchor" id="autotoc_md75"></a>
+</div><!-- fragment --><h1><a class="anchor" id="autotoc_md76"></a>
 Known limitations</h1>
 <ul>
 <li><b>macOS packages are not notarized or signed with a Developer ID</b> (only ad-hoc signed). The first launch is blocked by Gatekeeper. On macOS 15, open the app once, then go to <em>System <a class="el" href="structSettings.html" title="Stores the game&#39;s configuration settings.">Settings</a> &gt; Privacy &amp; Security</em> and click <em>Open Anyway</em>. Alternatively run <code>xattr -dr com.apple.quarantine Player12.app</code>. On older systems, right-click the app and choose <em>Open</em>. Real signing needs an Apple Developer account and <code>codesign</code>/<code>notarytool</code> secrets in the workflow.</li>

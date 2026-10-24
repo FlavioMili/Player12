@@ -13,6 +13,7 @@ var manager__career_8h =
     [ "ClubVision", "structClubVision.html", "structClubVision" ],
     [ "InterviewResult", "structInterviewResult.html", "structInterviewResult" ],
     [ "CareerDayEvents", "structCareerDayEvents.html", "structCareerDayEvents" ],
+    [ "ManagerMatchEvent", "structManagerMatchEvent.html", "structManagerMatchEvent" ],
     [ "ManagerCareer", "classManagerCareer.html", "classManagerCareer" ],
     [ "ApplicationStage", "manager__career_8h.html#a3c49ebb8fea620a3c3ddecada918e054", [
       [ "Pending", "manager__career_8h.html#a3c49ebb8fea620a3c3ddecada918e054a2d13df6f8b5e4c5af9f87e0dc39df69d", null ],

@@ -9,7 +9,7 @@ var migrations_8h =
     [ "columnExists", "migrations_8h.html#a46f854932514b975da7ee455af8cdf4c", null ],
     [ "currentSchemaVersion", "migrations_8h.html#a53d303531a97a1e882b21e67f2c32b82", null ],
     [ "foreignKeyIssues", "migrations_8h.html#ae106c16984a45cb20b8cf1ec6c465856", null ],
-    [ "migrate", "migrations_8h.html#af9fab9e020d020285a4cac619644616b", null ],
+    [ "migrate", "migrations_8h.html#a98ca4e379e3030f4e80c1abae06f6d05", null ],
     [ "readSchemaVersion", "migrations_8h.html#a6e4f4fa346a7282a108d01bd6fcea5ae", null ],
     [ "registry", "migrations_8h.html#acdc24ad81e1e80934ed5c6f2a3133f26", null ],
     [ "tableExists", "migrations_8h.html#a8e02b739b993cb05678f19be63b552a0", null ],

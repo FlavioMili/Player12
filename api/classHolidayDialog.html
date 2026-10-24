@@ -117,8 +117,8 @@ Classes</h2></td></tr>
 Public Member Functions</h2></td></tr>
 <tr class="memitem:ad5bef82352458a76e1b3652f287e6eb5" id="r_ad5bef82352458a76e1b3652f287e6eb5"><td class="memItemLeft" align="right" valign="top">void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classHolidayDialog.html#ad5bef82352458a76e1b3652f287e6eb5">open</a> (<a class="el" href="classGameController.html">GameController</a> &amp;controller)</td></tr>
 <tr class="separator:ad5bef82352458a76e1b3652f287e6eb5"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a9b7036eee4b47c9d585fef42ebede17e" id="r_a9b7036eee4b47c9d585fef42ebede17e"><td class="memItemLeft" align="right" valign="top">void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classHolidayDialog.html#a9b7036eee4b47c9d585fef42ebede17e">showSummary</a> (<a class="el" href="classGameController.html">GameController</a> &amp;controller, const <a class="el" href="structHolidaySummary.html">HolidaySummary</a> &amp;summary)</td></tr>
-<tr class="separator:a9b7036eee4b47c9d585fef42ebede17e"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:acc71959643e235aa172e8e8ff4dd78a3" id="r_acc71959643e235aa172e8e8ff4dd78a3"><td class="memItemLeft" align="right" valign="top">void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classHolidayDialog.html#acc71959643e235aa172e8e8ff4dd78a3">showSummary</a> (const <a class="el" href="classGameController.html">GameController</a> &amp;controller, const <a class="el" href="structHolidaySummary.html">HolidaySummary</a> &amp;summary)</td></tr>
+<tr class="separator:acc71959643e235aa172e8e8ff4dd78a3"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:ab0b347d6698a687fe88af0ad77366ac3" id="r_ab0b347d6698a687fe88af0ad77366ac3"><td class="memItemLeft" align="right" valign="top">std::optional&lt; <a class="el" href="structHolidayPlan.html">HolidayPlan</a> &gt;&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classHolidayDialog.html#ab0b347d6698a687fe88af0ad77366ac3">render</a> (<a class="el" href="classGameController.html">GameController</a> &amp;controller)</td></tr>
 <tr class="separator:ab0b347d6698a687fe88af0ad77366ac3"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:ae99d7fe454454625c472c53401208d24" id="r_ae99d7fe454454625c472c53401208d24"><td class="memItemLeft" align="right" valign="top">bool&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classHolidayDialog.html#ae99d7fe454454625c472c53401208d24">isOpen</a> () const</td></tr>
@@ -130,8 +130,8 @@ Private Member Functions</h2></td></tr>
 <tr class="separator:aaff9c5a309216688a429c2ea66f69322"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a8e1e3bdc79c94f45db36a295cdfe1326" id="r_a8e1e3bdc79c94f45db36a295cdfe1326"><td class="memItemLeft" align="right" valign="top">void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classHolidayDialog.html#a8e1e3bdc79c94f45db36a295cdfe1326">renderSummary</a> ()</td></tr>
 <tr class="separator:a8e1e3bdc79c94f45db36a295cdfe1326"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:ab94d59b7289ba8f9c7eb08ede9fa4b4a" id="r_ab94d59b7289ba8f9c7eb08ede9fa4b4a"><td class="memItemLeft" align="right" valign="top">void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classHolidayDialog.html#ab94d59b7289ba8f9c7eb08ede9fa4b4a">refreshTarget</a> (<a class="el" href="classGameController.html">GameController</a> &amp;controller)</td></tr>
-<tr class="separator:ab94d59b7289ba8f9c7eb08ede9fa4b4a"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a940f51ea4f480d1e6b08d547c74b0246" id="r_a940f51ea4f480d1e6b08d547c74b0246"><td class="memItemLeft" align="right" valign="top">void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classHolidayDialog.html#a940f51ea4f480d1e6b08d547c74b0246">refreshTarget</a> (const <a class="el" href="classGameController.html">GameController</a> &amp;controller)</td></tr>
+<tr class="separator:a940f51ea4f480d1e6b08d547c74b0246"><td class="memSeparator" colspan="2">&#160;</td></tr>
 </table><table class="memberdecls">
 <tr class="heading"><td colspan="2"><h2 class="groupheader"><a id="pri-attribs" name="pri-attribs"></a>
 Private Attributes</h2></td></tr>
@@ -176,7 +176,7 @@ Private Attributes</h2></td></tr>
 </table>
 <a name="details" id="details"></a><h2 class="groupheader">Detailed Description</h2>
 <div class="textblock"><p>"Go on holiday" planner and the assistant's report on return. </p>
-<p>The planner chooses how long the manager is away (a date, the next match, the next decision or the end of the transfer window), what brings him back early and which duties the assistant takes over. <a class="el" href="classHolidayDialog.html#ab0b347d6698a687fe88af0ad77366ac3">render()</a> hands the plan back on the frame the manager leaves; the career hub runs it on the Continue machinery and calls <a class="el" href="classHolidayDialog.html#a9b7036eee4b47c9d585fef42ebede17e">showSummary()</a> when it is done. </p>
+<p>The planner chooses how long the manager is away (a date, the next match, the next decision or the end of the transfer window), what brings him back early and which duties the assistant takes over. <a class="el" href="classHolidayDialog.html#ab0b347d6698a687fe88af0ad77366ac3">render()</a> hands the plan back on the frame the manager leaves; the career hub runs it on the Continue machinery and calls <a class="el" href="classHolidayDialog.html#acc71959643e235aa172e8e8ff4dd78a3">showSummary()</a> when it is done. </p>
 </div><h2 class="groupheader">Member Function Documentation</h2>
 <a id="ae99d7fe454454625c472c53401208d24" name="ae99d7fe454454625c472c53401208d24"></a>
 <h2 class="memtitle"><span class="permalink"><a href="#ae99d7fe454454625c472c53401208d24">&#9670;&#160;</a></span>isOpen()</h2>
@@ -222,8 +222,8 @@ Private Attributes</h2></td></tr>
 
 </div>
 </div>
-<a id="ab94d59b7289ba8f9c7eb08ede9fa4b4a" name="ab94d59b7289ba8f9c7eb08ede9fa4b4a"></a>
-<h2 class="memtitle"><span class="permalink"><a href="#ab94d59b7289ba8f9c7eb08ede9fa4b4a">&#9670;&#160;</a></span>refreshTarget()</h2>
+<a id="a940f51ea4f480d1e6b08d547c74b0246" name="a940f51ea4f480d1e6b08d547c74b0246"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a940f51ea4f480d1e6b08d547c74b0246">&#9670;&#160;</a></span>refreshTarget()</h2>
 
 <div class="memitem">
 <div class="memproto">
@@ -234,7 +234,7 @@ Private Attributes</h2></td></tr>
         <tr>
           <td class="memname">void HolidayDialog::refreshTarget </td>
           <td>(</td>
-          <td class="paramtype"><a class="el" href="classGameController.html">GameController</a> &amp;&#160;</td>
+          <td class="paramtype">const <a class="el" href="classGameController.html">GameController</a> &amp;&#160;</td>
           <td class="paramname"><em>controller</em></td><td>)</td>
           <td></td>
         </tr>
@@ -318,8 +318,8 @@ Private Attributes</h2></td></tr>
 
 </div>
 </div>
-<a id="a9b7036eee4b47c9d585fef42ebede17e" name="a9b7036eee4b47c9d585fef42ebede17e"></a>
-<h2 class="memtitle"><span class="permalink"><a href="#a9b7036eee4b47c9d585fef42ebede17e">&#9670;&#160;</a></span>showSummary()</h2>
+<a id="acc71959643e235aa172e8e8ff4dd78a3" name="acc71959643e235aa172e8e8ff4dd78a3"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#acc71959643e235aa172e8e8ff4dd78a3">&#9670;&#160;</a></span>showSummary()</h2>
 
 <div class="memitem">
 <div class="memproto">
@@ -327,7 +327,7 @@ Private Attributes</h2></td></tr>
         <tr>
           <td class="memname">void HolidayDialog::showSummary </td>
           <td>(</td>
-          <td class="paramtype"><a class="el" href="classGameController.html">GameController</a> &amp;&#160;</td>
+          <td class="paramtype">const <a class="el" href="classGameController.html">GameController</a> &amp;&#160;</td>
           <td class="paramname"><em>controller</em>, </td>
         </tr>
         <tr>

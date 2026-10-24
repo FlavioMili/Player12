@@ -162,8 +162,8 @@ Public Member Functions</h2></td></tr>
 <tr class="separator:a8b6df09f97edaaaa9629405275047892"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a72de1f65297d310651195e3db8120cbc" id="r_a72de1f65297d310651195e3db8120cbc"><td class="memItemLeft" align="right" valign="top">std::int64_t&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classTransferMarket.html#a72de1f65297d310651195e3db8120cbc">spendableBudget</a> (<a class="el" href="types_8h.html#a57143f6ccbdf5a5d9724b986cbdafb31">TeamID</a> team_id, const <a class="el" href="structGameDateValue.html">GameDateValue</a> &amp;date) const</td></tr>
 <tr class="separator:a72de1f65297d310651195e3db8120cbc"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a21c7b2609e82cfb4fe1716144c24fadf" id="r_a21c7b2609e82cfb4fe1716144c24fadf"><td class="memItemLeft" align="right" valign="top">void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classTransferMarket.html#a21c7b2609e82cfb4fe1716144c24fadf">removeFromLineup</a> (<a class="el" href="classTeam.html">Team</a> &amp;team, const <a class="el" href="classPlayer.html">Player</a> &amp;departed)</td></tr>
-<tr class="separator:a21c7b2609e82cfb4fe1716144c24fadf"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a0cb044c72167e3bb228f9f520197f2e6" id="r_a0cb044c72167e3bb228f9f520197f2e6"><td class="memItemLeft" align="right" valign="top">void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classTransferMarket.html#a0cb044c72167e3bb228f9f520197f2e6">removeFromLineup</a> (<a class="el" href="classTeam.html">Team</a> &amp;team, const <a class="el" href="classPlayer.html">Player</a> &amp;departed) const</td></tr>
+<tr class="separator:a0cb044c72167e3bb228f9f520197f2e6"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:acff18474bc83ae7f2cae5e457867ac09" id="r_acff18474bc83ae7f2cae5e457867ac09"><td class="memItemLeft" align="right" valign="top">std::int64_t&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classTransferMarket.html#acff18474bc83ae7f2cae5e457867ac09">wageRoom</a> (<a class="el" href="types_8h.html#a57143f6ccbdf5a5d9724b986cbdafb31">TeamID</a> club_id) const</td></tr>
 <tr class="separator:acff18474bc83ae7f2cae5e457867ac09"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:ad971e8dcb09f770240917649b5e681b6" id="r_ad971e8dcb09f770240917649b5e681b6"><td class="memItemLeft" align="right" valign="top">std::int64_t&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classTransferMarket.html#ad971e8dcb09f770240917649b5e681b6">nextSeasonWageRoom</a> (<a class="el" href="types_8h.html#a57143f6ccbdf5a5d9724b986cbdafb31">TeamID</a> club_id) const</td></tr>
@@ -379,6 +379,8 @@ Private Attributes</h2></td></tr>
 <tr class="separator:a6100ea8b9578d275693711efdcc8e4fb"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:aaa9512c5a6acd2c96b414fdccf9af81e" id="r_aaa9512c5a6acd2c96b414fdccf9af81e"><td class="memItemLeft" align="right" valign="top">std::uint32_t&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classTransferMarket.html#aaa9512c5a6acd2c96b414fdccf9af81e">next_id</a> = 1</td></tr>
 <tr class="separator:aaa9512c5a6acd2c96b414fdccf9af81e"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:ab57e7a471bb97e2c0c1cbb4322195551" id="r_ab57e7a471bb97e2c0c1cbb4322195551"><td class="memItemLeft" align="right" valign="top">std::mutex&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classTransferMarket.html#ab57e7a471bb97e2c0c1cbb4322195551">payables_cache_mutex</a></td></tr>
+<tr class="separator:ab57e7a471bb97e2c0c1cbb4322195551"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:ac6d1e9bf543166e7f806da809c46e4a4" id="r_ac6d1e9bf543166e7f806da809c46e4a4"><td class="memItemLeft" align="right" valign="top">std::unordered_map&lt; <a class="el" href="types_8h.html#a57143f6ccbdf5a5d9724b986cbdafb31">TeamID</a>, std::int64_t &gt;&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classTransferMarket.html#ac6d1e9bf543166e7f806da809c46e4a4">payables_cache</a></td></tr>
 <tr class="separator:ac6d1e9bf543166e7f806da809c46e4a4"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a50fdfd1a914ff47d7658640d50ac94a2" id="r_a50fdfd1a914ff47d7658640d50ac94a2"><td class="memItemLeft" align="right" valign="top">std::int32_t&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classTransferMarket.html#a50fdfd1a914ff47d7658640d50ac94a2">payables_day</a> = -1</td></tr>
@@ -3051,8 +3053,8 @@ Private Attributes</h2></td></tr>
 
 </div>
 </div>
-<a id="a21c7b2609e82cfb4fe1716144c24fadf" name="a21c7b2609e82cfb4fe1716144c24fadf"></a>
-<h2 class="memtitle"><span class="permalink"><a href="#a21c7b2609e82cfb4fe1716144c24fadf">&#9670;&#160;</a></span>removeFromLineup()</h2>
+<a id="a0cb044c72167e3bb228f9f520197f2e6" name="a0cb044c72167e3bb228f9f520197f2e6"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a0cb044c72167e3bb228f9f520197f2e6">&#9670;&#160;</a></span>removeFromLineup()</h2>
 
 <div class="memitem">
 <div class="memproto">
@@ -3072,7 +3074,7 @@ Private Attributes</h2></td></tr>
         <tr>
           <td></td>
           <td>)</td>
-          <td></td><td></td>
+          <td></td><td> const</td>
         </tr>
       </table>
 </div><div class="memdoc">
@@ -4001,6 +4003,28 @@ Private Attributes</h2></td></tr>
       <table class="memname">
         <tr>
           <td class="memname">std::unordered_map&lt;<a class="el" href="types_8h.html#a57143f6ccbdf5a5d9724b986cbdafb31">TeamID</a>, std::int64_t&gt; TransferMarket::payables_cache</td>
+        </tr>
+      </table>
+  </td>
+  <td class="mlabels-right">
+<span class="mlabels"><span class="mlabel">mutable</span><span class="mlabel">private</span></span>  </td>
+  </tr>
+</table>
+</div><div class="memdoc">
+
+</div>
+</div>
+<a id="ab57e7a471bb97e2c0c1cbb4322195551" name="ab57e7a471bb97e2c0c1cbb4322195551"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#ab57e7a471bb97e2c0c1cbb4322195551">&#9670;&#160;</a></span>payables_cache_mutex</h2>
+
+<div class="memitem">
+<div class="memproto">
+<table class="mlabels">
+  <tr>
+  <td class="mlabels-left">
+      <table class="memname">
+        <tr>
+          <td class="memname">std::mutex TransferMarket::payables_cache_mutex</td>
         </tr>
       </table>
   </td>

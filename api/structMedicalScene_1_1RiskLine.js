@@ -2,7 +2,7 @@ var structMedicalScene_1_1RiskLine =
 [
     [ "band", "structMedicalScene_1_1RiskLine.html#adfbb44b5158636a3aacb164f39a212b1", null ],
     [ "condition", "structMedicalScene_1_1RiskLine.html#a1b6ba2242bc3d130d928cb19e0711267", null ],
-    [ "flags", "structMedicalScene_1_1RiskLine.html#a0a217d42768a87d6502bb39a801d315b", null ],
+    [ "flags", "structMedicalScene_1_1RiskLine.html#ade098ce3ab9cc125d9c9fcc17fdece03", null ],
     [ "id", "structMedicalScene_1_1RiskLine.html#a4cfe10de0e6b8a129c1ab9e9d055c57d", null ],
     [ "load", "structMedicalScene_1_1RiskLine.html#ad6e88a900b72ff5465d45997db01cf54", null ],
     [ "load_trend", "structMedicalScene_1_1RiskLine.html#a05f3dac6eb2e395345ed9094431055f9", null ],

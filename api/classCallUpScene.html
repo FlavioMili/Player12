@@ -207,14 +207,14 @@ Protected Member Functions</h2></td></tr>
 </table><table class="memberdecls">
 <tr class="heading"><td colspan="2"><h2 class="groupheader"><a id="pri-methods" name="pri-methods"></a>
 Private Member Functions</h2></td></tr>
-<tr class="memitem:a0ad4a7a7a5a4345eb8b9f8ebc22fea81" id="r_a0ad4a7a7a5a4345eb8b9f8ebc22fea81"><td class="memItemLeft" align="right" valign="top">void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classCallUpScene.html#a0ad4a7a7a5a4345eb8b9f8ebc22fea81">renderTiles</a> ()</td></tr>
-<tr class="separator:a0ad4a7a7a5a4345eb8b9f8ebc22fea81"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a9829acf66583bfa6163e48db24704662" id="r_a9829acf66583bfa6163e48db24704662"><td class="memItemLeft" align="right" valign="top">void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classCallUpScene.html#a9829acf66583bfa6163e48db24704662">renderTiles</a> () const</td></tr>
+<tr class="separator:a9829acf66583bfa6163e48db24704662"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a83f543ed3458f8223b201175131cd4f1" id="r_a83f543ed3458f8223b201175131cd4f1"><td class="memItemLeft" align="right" valign="top">void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classCallUpScene.html#a83f543ed3458f8223b201175131cd4f1">renderSquad</a> (float width)</td></tr>
 <tr class="separator:a83f543ed3458f8223b201175131cd4f1"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:ac1ef95ad9c03d1a6df000eec900d54f5" id="r_ac1ef95ad9c03d1a6df000eec900d54f5"><td class="memItemLeft" align="right" valign="top">void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classCallUpScene.html#ac1ef95ad9c03d1a6df000eec900d54f5">renderCandidates</a> (float width)</td></tr>
 <tr class="separator:ac1ef95ad9c03d1a6df000eec900d54f5"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a7cc67bcad3332288837417518df0b1bf" id="r_a7cc67bcad3332288837417518df0b1bf"><td class="memItemLeft" align="right" valign="top">void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classCallUpScene.html#a7cc67bcad3332288837417518df0b1bf">renderFixtures</a> (float width)</td></tr>
-<tr class="separator:a7cc67bcad3332288837417518df0b1bf"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a516fd8ce27b3f35e5b25d0c204248785" id="r_a516fd8ce27b3f35e5b25d0c204248785"><td class="memItemLeft" align="right" valign="top">void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classCallUpScene.html#a516fd8ce27b3f35e5b25d0c204248785">renderFixtures</a> (float width) const</td></tr>
+<tr class="separator:a516fd8ce27b3f35e5b25d0c204248785"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a4e389acdcc34c84f498263e7c278807f" id="r_a4e389acdcc34c84f498263e7c278807f"><td class="memItemLeft" align="right" valign="top">void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classCallUpScene.html#a4e389acdcc34c84f498263e7c278807f">renderTable</a> (const char *id, const std::vector&lt; const <a class="el" href="structCallUpScene_1_1Row.html">Row</a> * &gt; &amp;<a class="el" href="classCallUpScene.html#abce6f391a7bde0b500d4664a8a08c36a">rows</a>, bool squad)</td></tr>
 <tr class="separator:a4e389acdcc34c84f498263e7c278807f"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:abd690c32b10612cb7643f00635f88ea4" id="r_abd690c32b10612cb7643f00635f88ea4"><td class="memItemLeft" align="right" valign="top">void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classCallUpScene.html#abd690c32b10612cb7643f00635f88ea4">renderDetail</a> (const <a class="el" href="structCallUpScene_1_1Row.html">Row</a> &amp;row, bool squad)</td></tr>
@@ -356,7 +356,7 @@ Additional Inherited Members</h2></td></tr>
 
 <p>Gets the ID of the scene. </p>
 <dl class="section return"><dt>Returns</dt><dd>The SceneID of this scene.</dd></dl>
-<p>This function might be used to check what we are rendering. we would simply do something like this: <a class="el" href="classMainMenuScene.html#ac65f4aa576ae71cb9fac4a1154edca49" title="Gets the ID of this scene.">MainMenuScene::getID()</a> { return <a class="el" href="gui__scene_8h.html#aaf4bddc3ff70ab62a07943e024b9942faa16d505f03a4b6f35486f65f6a61317e">SceneID::MAIN_MENU</a>; } TODO : remove or not? </p>
+<p><a class="el" href="classGUIView.html" title="Main view manager for the GUI. Handles scenes and overlays.">GUIView</a> uses this identifier to apply match-specific event and scene behavior. </p>
 
 <p>Implements <a class="el" href="classGUIScene.html#adc23f98639a131403f09cc46133fcd04">GUIScene</a>.</p>
 
@@ -536,8 +536,8 @@ Additional Inherited Members</h2></td></tr>
 
 </div>
 </div>
-<a id="a7cc67bcad3332288837417518df0b1bf" name="a7cc67bcad3332288837417518df0b1bf"></a>
-<h2 class="memtitle"><span class="permalink"><a href="#a7cc67bcad3332288837417518df0b1bf">&#9670;&#160;</a></span>renderFixtures()</h2>
+<a id="a516fd8ce27b3f35e5b25d0c204248785" name="a516fd8ce27b3f35e5b25d0c204248785"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a516fd8ce27b3f35e5b25d0c204248785">&#9670;&#160;</a></span>renderFixtures()</h2>
 
 <div class="memitem">
 <div class="memproto">
@@ -550,7 +550,7 @@ Additional Inherited Members</h2></td></tr>
           <td>(</td>
           <td class="paramtype">float&#160;</td>
           <td class="paramname"><em>width</em></td><td>)</td>
-          <td></td>
+          <td> const</td>
         </tr>
       </table>
   </td>
@@ -630,8 +630,8 @@ Additional Inherited Members</h2></td></tr>
 
 </div>
 </div>
-<a id="a0ad4a7a7a5a4345eb8b9f8ebc22fea81" name="a0ad4a7a7a5a4345eb8b9f8ebc22fea81"></a>
-<h2 class="memtitle"><span class="permalink"><a href="#a0ad4a7a7a5a4345eb8b9f8ebc22fea81">&#9670;&#160;</a></span>renderTiles()</h2>
+<a id="a9829acf66583bfa6163e48db24704662" name="a9829acf66583bfa6163e48db24704662"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a9829acf66583bfa6163e48db24704662">&#9670;&#160;</a></span>renderTiles()</h2>
 
 <div class="memitem">
 <div class="memproto">
@@ -643,7 +643,7 @@ Additional Inherited Members</h2></td></tr>
           <td class="memname">void CallUpScene::renderTiles </td>
           <td>(</td>
           <td class="paramname"></td><td>)</td>
-          <td></td>
+          <td> const</td>
         </tr>
       </table>
   </td>

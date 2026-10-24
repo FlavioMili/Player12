@@ -212,8 +212,8 @@ Private Member Functions</h2></td></tr>
 <tr class="separator:a913108a829e4893a179c827d3099db9b"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:afbd165b746bcc96d0e7925d51e9827d0" id="r_afbd165b746bcc96d0e7925d51e9827d0"><td class="memItemLeft" align="right" valign="top">void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classContinentalCompetitions.html#afbd165b746bcc96d0e7925d51e9827d0">payPrize</a> (<a class="el" href="types_8h.html#a57143f6ccbdf5a5d9724b986cbdafb31">TeamID</a> team_id, const <a class="el" href="structGameDateValue.html">GameDateValue</a> &amp;date, int64_t amount)</td></tr>
 <tr class="separator:afbd165b746bcc96d0e7925d51e9827d0"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a53a531457144d30e90ffb9c093f196bc" id="r_a53a531457144d30e90ffb9c093f196bc"><td class="memItemLeft" align="right" valign="top">void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classContinentalCompetitions.html#a53a531457144d30e90ffb9c093f196bc">postNews</a> (const <a class="el" href="structGameDateValue.html">GameDateValue</a> &amp;date, std::string title_key, std::string body_key, std::vector&lt; std::string &gt; args, std::vector&lt; <a class="el" href="types_8h.html#a57143f6ccbdf5a5d9724b986cbdafb31">TeamID</a> &gt; involved, bool headline) const</td></tr>
-<tr class="separator:a53a531457144d30e90ffb9c093f196bc"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:aee3b47cd0d9ddf7d4ce849b856203682" id="r_aee3b47cd0d9ddf7d4ce849b856203682"><td class="memItemLeft" align="right" valign="top">void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classContinentalCompetitions.html#aee3b47cd0d9ddf7d4ce849b856203682">postNews</a> (const <a class="el" href="structGameDateValue.html">GameDateValue</a> &amp;date, std::string title_key, std::string body_key, std::vector&lt; std::string &gt; args, const std::vector&lt; <a class="el" href="types_8h.html#a57143f6ccbdf5a5d9724b986cbdafb31">TeamID</a> &gt; &amp;involved, bool headline) const</td></tr>
+<tr class="separator:aee3b47cd0d9ddf7d4ce849b856203682"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a0772b55834962e86ec63d8bfe87d7d17" id="r_a0772b55834962e86ec63d8bfe87d7d17"><td class="memItemLeft" align="right" valign="top">std::vector&lt; const <a class="el" href="classMatch.html">Match</a> * &gt;&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classContinentalCompetitions.html#a0772b55834962e86ec63d8bfe87d7d17">competitionMatches</a> (const <a class="el" href="classCalendar.html">Calendar</a> &amp;calendar, <a class="el" href="types_8h.html#a23de5420c0b18be78144797767703d6f">LeagueID</a> competition_id) const</td></tr>
 <tr class="separator:a0772b55834962e86ec63d8bfe87d7d17"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a23363f1860924d334a6b53b33471f180" id="r_a23363f1860924d334a6b53b33471f180"><td class="memItemLeft" align="right" valign="top">const <a class="el" href="classMatch.html">Match</a> *&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classContinentalCompetitions.html#a23363f1860924d334a6b53b33471f180">findLeg</a> (const <a class="el" href="classCalendar.html">Calendar</a> &amp;calendar, <a class="el" href="types_8h.html#a23de5420c0b18be78144797767703d6f">LeagueID</a> competition_id, uint8_t stage, <a class="el" href="types_8h.html#a57143f6ccbdf5a5d9724b986cbdafb31">TeamID</a> home_id, <a class="el" href="types_8h.html#a57143f6ccbdf5a5d9724b986cbdafb31">TeamID</a> away_id) const</td></tr>
@@ -1036,8 +1036,8 @@ Private Attributes</h2></td></tr>
 
 </div>
 </div>
-<a id="a53a531457144d30e90ffb9c093f196bc" name="a53a531457144d30e90ffb9c093f196bc"></a>
-<h2 class="memtitle"><span class="permalink"><a href="#a53a531457144d30e90ffb9c093f196bc">&#9670;&#160;</a></span>postNews()</h2>
+<a id="aee3b47cd0d9ddf7d4ce849b856203682" name="aee3b47cd0d9ddf7d4ce849b856203682"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#aee3b47cd0d9ddf7d4ce849b856203682">&#9670;&#160;</a></span>postNews()</h2>
 
 <div class="memitem">
 <div class="memproto">
@@ -1072,7 +1072,7 @@ Private Attributes</h2></td></tr>
         <tr>
           <td class="paramkey"></td>
           <td></td>
-          <td class="paramtype">std::vector&lt; <a class="el" href="types_8h.html#a57143f6ccbdf5a5d9724b986cbdafb31">TeamID</a> &gt;&#160;</td>
+          <td class="paramtype">const std::vector&lt; <a class="el" href="types_8h.html#a57143f6ccbdf5a5d9724b986cbdafb31">TeamID</a> &gt; &amp;&#160;</td>
           <td class="paramname"><em>involved</em>, </td>
         </tr>
         <tr>

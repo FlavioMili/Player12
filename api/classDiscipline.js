@@ -3,7 +3,7 @@ var classDiscipline =
     [ "Key", "classDiscipline.html#ab446792b1287438a656710a0a0df9cba", null ],
     [ "Discipline", "classDiscipline.html#ab01c0d23158ad4353312dcaf67aa92ba", null ],
     [ "banMatches", "classDiscipline.html#af2b31687fa2fb8f14e75d5135007441a", null ],
-    [ "book", "classDiscipline.html#a9ed4ee94e20bd7fa313d0c3eab26a96d", null ],
+    [ "book", "classDiscipline.html#a9705b9204294b2d32809f69baef6e079", null ],
     [ "isSuspended", "classDiscipline.html#ada65b209ba28ce88cd7ebb0dec79d395", null ],
     [ "processMatch", "classDiscipline.html#a8188712ee51eece4d55b83cfce007b3d", null ],
     [ "records", "classDiscipline.html#ae84e357eab3a3673eebaa53f8ca8d066", null ],

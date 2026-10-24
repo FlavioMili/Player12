@@ -96,8 +96,8 @@ $(document).ready(function(){initNavTree('md_docs_2user_2installation.html','');
   <div class="headertitle"><div class="title">Install and run</div></div>
 </div><!--header-->
 <div class="contents">
-<div class="textblock"><p><a class="anchor" id="autotoc_md127"></a> </p>
-<h1><a class="anchor" id="autotoc_md128"></a>
+<div class="textblock"><p><a class="anchor" id="autotoc_md128"></a> </p>
+<h1><a class="anchor" id="autotoc_md129"></a>
 Download and play</h1>
 <p>Download the package for your system from <a href="https://github.com/FlavioMili/FootballManagement/releases">GitHub Releases</a>. Release publication requires the Linux, macOS and Windows package checks to pass.</p>
 <ul>
@@ -106,11 +106,11 @@ Download and play</h1>
 <li><b>macOS 15+, Apple silicon:</b> extract the ARM64 ZIP and open <code>Player12.app</code>. The app is ad-hoc signed; if Gatekeeper blocks the first launch, open it once and use <em>System <a class="el" href="structSettings.html" title="Stores the game&#39;s configuration settings.">Settings</a> &gt; Privacy &amp; Security &gt; Open Anyway</em>.</li>
 </ul>
 <p>If there is no release yet, a successful <a href="https://github.com/FlavioMili/FootballManagement/actions">Actions build</a> provides <code>package-&lt;platform&gt;</code> artifacts while they are retained. Sign in to GitHub to download an artifact, extract it, then extract the game ZIP inside.</p>
-<h1><a class="anchor" id="autotoc_md129"></a>
+<h1><a class="anchor" id="autotoc_md130"></a>
 Build from source</h1>
 <p>The game builds with CMake 3.29 or newer and a C++23 compiler. The first configure needs Git and network access: SDL3, SDL3_ttf, Dear ImGui, fmt, spdlog and nlohmann/json (and GoogleTest when tests are enabled) are fetched at pinned versions. SQLite comes from the system if CMake finds it and is fetched otherwise.</p>
 <p>CI builds Linux with GCC 14, macOS with Homebrew LLVM and Windows with Visual Studio 2022 and clang-cl. All three platform packages must pass CI; Windows has had less manual playtesting than Linux.</p>
-<h2><a class="anchor" id="autotoc_md130"></a>
+<h2><a class="anchor" id="autotoc_md131"></a>
 Linux</h2>
 <p>SDL is built from source, so you need its build dependencies. On Ubuntu 24.04 or Debian:</p>
 <div class="fragment"><div class="line">sudo apt install git g++-14 ninja-build pkg-config \</div>
@@ -127,7 +127,7 @@ Linux</h2>
 <div class="line">cmake --build --preset release --parallel 4</div>
 <div class="line">./build/release/src/Player12</div>
 </div><!-- fragment --><p>If CMake cannot find FreeType or HarfBuzz, add <code>-DSDLTTF_VENDORED=ON</code> to the configure command to build them as well.</p>
-<h2><a class="anchor" id="autotoc_md131"></a>
+<h2><a class="anchor" id="autotoc_md132"></a>
 macOS</h2>
 <p>macOS 15 on Apple silicon is the supported setup. AppleClang's standard library is missing parts of C++23 that the game uses, so build with Homebrew's LLVM and link its libc++ statically, as CI does:</p>
 <div class="fragment"><div class="line">git clone https://github.com/FlavioMili/FootballManagement.git</div>
@@ -140,7 +140,7 @@ macOS</h2>
 <div class="line">  &quot;-DCMAKE_EXE_LINKER_FLAGS=-nostdlib++ $LLVM/lib/c++/libc++.a $LLVM/lib/c++/libc++abi.a&quot;</div>
 <div class="line">cmake --build build --parallel 4</div>
 <div class="line">open build/src/Player12.app</div>
-</div><!-- fragment --><h2><a class="anchor" id="autotoc_md132"></a>
+</div><!-- fragment --><h2><a class="anchor" id="autotoc_md133"></a>
 Windows</h2>
 <p>Install Visual Studio 2022 with the <em>Desktop development with C++</em> workload and its <em>C++ Clang tools for Windows</em> component (clang-cl), CMake 3.29 or newer and Git. From a Developer PowerShell:</p>
 <div class="fragment"><div class="line">git clone https://github.com/FlavioMili/FootballManagement</div>
@@ -150,10 +150,10 @@ Windows</h2>
 <div class="line">cmake --build build --config Release --target FootballManagement</div>
 <div class="line">.\build\src\Release\Player12.exe</div>
 </div><!-- fragment --><p>The test suites use POSIX APIs, so tests are not built on Windows.</p>
-<h2><a class="anchor" id="autotoc_md133"></a>
+<h2><a class="anchor" id="autotoc_md134"></a>
 Other build options</h2>
 <p>The presets in <a href="../../CMakePresets.json"><code>CMakePresets.json</code></a> are <code>release</code>, <code>release-tests</code>, <code>debug-sanitized</code> (AddressSanitizer and UBSan), <code>profile</code> and <code>clang-tidy</code>; their build trees go to <code>build/&lt;preset&gt;</code>. A plain build directory works as well (<code>cmake -S . -B build -G Ninja</code>). See <a class="el" href="md_docs_2development_2builds.html">docs/development/builds.md</a> for the details and <a class="el" href="md_docs_2development_2release.html">docs/development/release.md</a> for packaging.</p>
-<h1><a class="anchor" id="autotoc_md134"></a>
+<h1><a class="anchor" id="autotoc_md135"></a>
 Running</h1>
 <p>Start the executable from the build tree (see the commands above). A development build reads the game data from the source checkout, so it runs from any working directory; <code>FM_ASSET_ROOT</code> points it at another directory containing <code>assets/</code>. Installed packages use the data next to the executable.</p>
 <p>To install a Linux build for your user (including all game assets):</p>

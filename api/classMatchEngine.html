@@ -96,6 +96,7 @@ $(document).ready(function(){initNavTree('classMatchEngine.html',''); initResiza
   <div class="summary">
 <a href="#nested-classes">Classes</a> &#124;
 <a href="#pub-methods">Public Member Functions</a> &#124;
+<a href="#pri-types">Private Types</a> &#124;
 <a href="#pri-methods">Private Member Functions</a> &#124;
 <a href="#pri-static-methods">Static Private Member Functions</a> &#124;
 <a href="#pri-attribs">Private Attributes</a> &#124;
@@ -338,6 +339,14 @@ Public Member Functions</h2></td></tr>
 <tr class="memitem:a20fc9c5c395de91d24d613be93071a04" id="r_a20fc9c5c395de91d24d613be93071a04"><td class="memItemLeft" align="right" valign="top">const <a class="el" href="structScenarioDecision.html">ScenarioDecision</a> &amp;&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classMatchEngine.html#a20fc9c5c395de91d24d613be93071a04">getLastScenarioDecision</a> () const</td></tr>
 <tr class="separator:a20fc9c5c395de91d24d613be93071a04"><td class="memSeparator" colspan="2">&#160;</td></tr>
 </table><table class="memberdecls">
+<tr class="heading"><td colspan="2"><h2 class="groupheader"><a id="pri-types" name="pri-types"></a>
+Private Types</h2></td></tr>
+<tr class="memitem:a8cef8b905e5c54a95850815e353da3ea" id="r_a8cef8b905e5c54a95850815e353da3ea"><td class="memItemLeft" align="right" valign="top">enum class &#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classMatchEngine.html#a8cef8b905e5c54a95850815e353da3ea">TacticalArrival</a> { <a class="el" href="classMatchEngine.html#a8cef8b905e5c54a95850815e353da3eaa4d957768dcc72908ab3b9e28dc867052">MIDFIELDER</a>
+, <a class="el" href="classMatchEngine.html#a8cef8b905e5c54a95850815e353da3eaacd22aec401df432e1dbd840c51a9c4c5">FAR_POST</a>
+, <a class="el" href="classMatchEngine.html#a8cef8b905e5c54a95850815e353da3eaa5e66e883e75a7f3f61ae63c48e9bdbcf">FULLBACK</a>
+ }</td></tr>
+<tr class="separator:a8cef8b905e5c54a95850815e353da3ea"><td class="memSeparator" colspan="2">&#160;</td></tr>
+</table><table class="memberdecls">
 <tr class="heading"><td colspan="2"><h2 class="groupheader"><a id="pri-methods" name="pri-methods"></a>
 Private Member Functions</h2></td></tr>
 <tr class="memitem:ae1156670dfc204cf22917a3348b8b51d" id="r_ae1156670dfc204cf22917a3348b8b51d"><td class="memItemLeft" align="right" valign="top">float&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classMatchEngine.html#ae1156670dfc204cf22917a3348b8b51d">matchClockRate</a> () const</td></tr>
@@ -412,14 +421,14 @@ Private Member Functions</h2></td></tr>
 <tr class="separator:a2adaef0bb49486b87a24052d6161310b"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:ade5f4a92aebb98d967a6d95b7a4bee00" id="r_ade5f4a92aebb98d967a6d95b7a4bee00"><td class="memItemLeft" align="right" valign="top">float&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classMatchEngine.html#ade5f4a92aebb98d967a6d95b7a4bee00">currentTopSpeed</a> (const <a class="el" href="structMatchPlayer.html">MatchPlayer</a> &amp;player) const</td></tr>
 <tr class="separator:ade5f4a92aebb98d967a6d95b7a4bee00"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a01d83d410b431c6b405a9eaa0f69b358" id="r_a01d83d410b431c6b405a9eaa0f69b358"><td class="memItemLeft" align="right" valign="top">void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classMatchEngine.html#a01d83d410b431c6b405a9eaa0f69b358">integrateMovements</a> (const std::uint8_t *slots, std::size_t count, float dt, bool walking)</td></tr>
-<tr class="separator:a01d83d410b431c6b405a9eaa0f69b358"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a2af25286c2d19a327a8006a32a1617b9" id="r_a2af25286c2d19a327a8006a32a1617b9"><td class="memItemLeft" align="right" valign="top">void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classMatchEngine.html#a2af25286c2d19a327a8006a32a1617b9">integrateMovements</a> (std::span&lt; const std::uint8_t &gt; slots, float dt, bool walking)</td></tr>
+<tr class="separator:a2af25286c2d19a327a8006a32a1617b9"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:ad85c6da51a161eb9b335846f5d89d2ee" id="r_ad85c6da51a161eb9b335846f5d89d2ee"><td class="memItemLeft" align="right" valign="top">void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classMatchEngine.html#ad85c6da51a161eb9b335846f5d89d2ee">updateRestartMovement</a> (float dt)</td></tr>
 <tr class="separator:ad85c6da51a161eb9b335846f5d89d2ee"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a7c0748275dea8c21074a68125f2cb87b" id="r_a7c0748275dea8c21074a68125f2cb87b"><td class="memItemLeft" align="right" valign="top">bool&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classMatchEngine.html#a7c0748275dea8c21074a68125f2cb87b">userRestartPassRequested</a> () const</td></tr>
 <tr class="separator:a7c0748275dea8c21074a68125f2cb87b"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a6407728042435434c2edd50d490e912e" id="r_a6407728042435434c2edd50d490e912e"><td class="memItemLeft" align="right" valign="top">void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classMatchEngine.html#a6407728042435434c2edd50d490e912e">updateRestartSupport</a> (<a class="el" href="structMatchPlayer.html">MatchPlayer</a> &amp;player, const <a class="el" href="structMatchPlayer.html">MatchPlayer</a> *taker)</td></tr>
-<tr class="separator:a6407728042435434c2edd50d490e912e"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a42af5103bafc23db8f24349b559169ad" id="r_a42af5103bafc23db8f24349b559169ad"><td class="memItemLeft" align="right" valign="top">void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classMatchEngine.html#a42af5103bafc23db8f24349b559169ad">updateRestartSupport</a> (<a class="el" href="structMatchPlayer.html">MatchPlayer</a> &amp;player, const <a class="el" href="structMatchPlayer.html">MatchPlayer</a> *taker) const</td></tr>
+<tr class="separator:a42af5103bafc23db8f24349b559169ad"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:ac11611c3d7224756fb8adff4b7e738c0" id="r_ac11611c3d7224756fb8adff4b7e738c0"><td class="memItemLeft" align="right" valign="top">void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classMatchEngine.html#ac11611c3d7224756fb8adff4b7e738c0">separatePlayers</a> ()</td></tr>
 <tr class="separator:ac11611c3d7224756fb8adff4b7e738c0"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a7cca1abac6923190b69d00066bd3beab" id="r_a7cca1abac6923190b69d00066bd3beab"><td class="memItemLeft" align="right" valign="top"><a class="el" href="structVector2F.html">Vector2F</a>&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classMatchEngine.html#a7cca1abac6923190b69d00066bd3beab">goalkeeperTarget</a> (<a class="el" href="structMatchPlayer.html">MatchPlayer</a> &amp;keeper, const <a class="el" href="structMatchPlayer.html">MatchPlayer</a> *carrier)</td></tr>
@@ -544,10 +553,30 @@ Private Member Functions</h2></td></tr>
 <tr class="separator:a4a98a1ac96110022166e728a6e2df050"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a8d54abd5c2d1a2d6f8c65a98196cea37" id="r_a8d54abd5c2d1a2d6f8c65a98196cea37"><td class="memItemLeft" align="right" valign="top">void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classMatchEngine.html#a8d54abd5c2d1a2d6f8c65a98196cea37">updateTeamPhases</a> ()</td></tr>
 <tr class="separator:a8d54abd5c2d1a2d6f8c65a98196cea37"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a9e94cf2e77a4d07034f7c77cbd13fd14" id="r_a9e94cf2e77a4d07034f7c77cbd13fd14"><td class="memItemLeft" align="right" valign="top">void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classMatchEngine.html#a9e94cf2e77a4d07034f7c77cbd13fd14">setTransitionPhases</a> (bool attackingHome)</td></tr>
+<tr class="separator:a9e94cf2e77a4d07034f7c77cbd13fd14"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a7397008c6c3b901ed0b231ceb2aa07c1" id="r_a7397008c6c3b901ed0b231ceb2aa07c1"><td class="memItemLeft" align="right" valign="top">void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classMatchEngine.html#a7397008c6c3b901ed0b231ceb2aa07c1">setControlledPhases</a> (bool attackingHome, float ballX)</td></tr>
+<tr class="separator:a7397008c6c3b901ed0b231ceb2aa07c1"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a5614da3f0e7b70a668a2a8ad4925e77e" id="r_a5614da3f0e7b70a668a2a8ad4925e77e"><td class="memItemLeft" align="right" valign="top">void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classMatchEngine.html#a5614da3f0e7b70a668a2a8ad4925e77e">updateMovement</a> (float dt)</td></tr>
 <tr class="separator:a5614da3f0e7b70a668a2a8ad4925e77e"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a6c0ac29af934d485e2f2c58d76101bc5" id="r_a6c0ac29af934d485e2f2c58d76101bc5"><td class="memItemLeft" align="right" valign="top">void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classMatchEngine.html#a6c0ac29af934d485e2f2c58d76101bc5">refreshTacticalTargets</a> (float dt)</td></tr>
 <tr class="separator:a6c0ac29af934d485e2f2c58d76101bc5"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a0a3b6e3122cd7dc949f6af697ad9b3f6" id="r_a0a3b6e3122cd7dc949f6af697ad9b3f6"><td class="memItemLeft" align="right" valign="top">float&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classMatchEngine.html#a0a3b6e3122cd7dc949f6af697ad9b3f6">estimatedArrivalTime</a> (const <a class="el" href="structMatchPlayer.html">MatchPlayer</a> &amp;candidate, <a class="el" href="structVector2F.html">Vector2F</a> pressurePosition, const <a class="el" href="structMatchPlayer.html">MatchPlayer</a> *carrier)</td></tr>
+<tr class="separator:a0a3b6e3122cd7dc949f6af697ad9b3f6"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:ab92d21d74b89f4f33fd550f05831e6d9" id="r_ab92d21d74b89f4f33fd550f05831e6d9"><td class="memItemLeft" align="right" valign="top">std::array&lt; <a class="el" href="structMatchPlayer.html">MatchPlayer</a> *, 2 &gt;&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classMatchEngine.html#ab92d21d74b89f4f33fd550f05831e6d9">closestOutfieldPair</a> (bool homeTeam, const <a class="el" href="structMatchPlayer.html">MatchPlayer</a> *carrier, <a class="el" href="structVector2F.html">Vector2F</a> pressurePosition)</td></tr>
+<tr class="separator:ab92d21d74b89f4f33fd550f05831e6d9"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:aa62fa1c23292c1d0571a0d072592a088" id="r_aa62fa1c23292c1d0571a0d072592a088"><td class="memItemLeft" align="right" valign="top">float&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classMatchEngine.html#aa62fa1c23292c1d0571a0d072592a088">runPriority</a> (const <a class="el" href="structMatchPlayer.html">MatchPlayer</a> &amp;candidate, const <a class="el" href="structMatchPlayer.html">MatchPlayer</a> *carrier)</td></tr>
+<tr class="separator:aa62fa1c23292c1d0571a0d072592a088"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a6845f2c18467e39124ca0b52d4608eae" id="r_a6845f2c18467e39124ca0b52d4608eae"><td class="memItemLeft" align="right" valign="top">std::array&lt; <a class="el" href="structMatchPlayer.html">MatchPlayer</a> *, <a class="el" href="structMatchTuning_1_1Shape.html#ab32856cf70adf0ea267e23e91abb0102">MatchTuning::Shape::MAX_COMMITTED_RUNNERS</a> &gt;&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classMatchEngine.html#a6845f2c18467e39124ca0b52d4608eae">selectAttackingRunners</a> (bool homeTeam, const <a class="el" href="structMatchPlayer.html">MatchPlayer</a> *carrier, const <a class="el" href="structMatchPlayer.html">MatchPlayer</a> *transitionSource)</td></tr>
+<tr class="separator:a6845f2c18467e39124ca0b52d4608eae"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:aa9ec4e676b8bb0491a92c87eae9c02c5" id="r_aa9ec4e676b8bb0491a92c87eae9c02c5"><td class="memItemLeft" align="right" valign="top">float&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classMatchEngine.html#aa9ec4e676b8bb0491a92c87eae9c02c5">runChannel</a> (const <a class="el" href="structMatchPlayer.html">MatchPlayer</a> &amp;runner) const</td></tr>
+<tr class="separator:aa9ec4e676b8bb0491a92c87eae9c02c5"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:ae1a70004ca0f73737f4b9be10d434a41" id="r_ae1a70004ca0f73737f4b9be10d434a41"><td class="memItemLeft" align="right" valign="top"><a class="el" href="structMatchPlayer.html">MatchPlayer</a> *&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classMatchEngine.html#ae1a70004ca0f73737f4b9be10d434a41">selectFinalThirdPlayer</a> (bool homeTeam, <a class="el" href="classMatchEngine.html#a8cef8b905e5c54a95850815e353da3ea">TacticalArrival</a> arrival, const <a class="el" href="structMatchPlayer.html">MatchPlayer</a> *carrier, const std::array&lt; <a class="el" href="structMatchPlayer.html">MatchPlayer</a> *, <a class="el" href="structMatchTuning_1_1Shape.html#ab32856cf70adf0ea267e23e91abb0102">MatchTuning::Shape::MAX_COMMITTED_RUNNERS</a> &gt; &amp;homeRunners, const std::array&lt; <a class="el" href="structMatchPlayer.html">MatchPlayer</a> *, <a class="el" href="structMatchTuning_1_1Shape.html#ab32856cf70adf0ea267e23e91abb0102">MatchTuning::Shape::MAX_COMMITTED_RUNNERS</a> &gt; &amp;awayRunners)</td></tr>
+<tr class="separator:ae1a70004ca0f73737f4b9be10d434a41"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:aaee6c8084f2ae3166e051b7027397940" id="r_aaee6c8084f2ae3166e051b7027397940"><td class="memItemLeft" align="right" valign="top">std::array&lt; <a class="el" href="structMatchPlayer.html">MatchPlayer</a> *, <a class="el" href="structMatchTuning_1_1Shape.html#af7f33f0b5009f25e452878fc165192fe">MatchTuning::Shape::MAX_ACTIVE_SUPPORTERS</a> &gt;&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classMatchEngine.html#aaee6c8084f2ae3166e051b7027397940">selectActiveSupporters</a> (bool homeTeam, const <a class="el" href="structMatchPlayer.html">MatchPlayer</a> *carrier, const std::array&lt; <a class="el" href="structMatchPlayer.html">MatchPlayer</a> *, <a class="el" href="structMatchTuning_1_1Shape.html#ab32856cf70adf0ea267e23e91abb0102">MatchTuning::Shape::MAX_COMMITTED_RUNNERS</a> &gt; &amp;runners, const <a class="el" href="structMatchPlayer.html">MatchPlayer</a> *midfieldArrival, const <a class="el" href="structMatchPlayer.html">MatchPlayer</a> *farPostRunner, const <a class="el" href="structMatchPlayer.html">MatchPlayer</a> *overlappingFullback)</td></tr>
+<tr class="separator:aaee6c8084f2ae3166e051b7027397940"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a5dfc5eb92a6a57e7b2705fb4fa70b531" id="r_a5dfc5eb92a6a57e7b2705fb4fa70b531"><td class="memItemLeft" align="right" valign="top">const <a class="el" href="structMatchPlayer.html">MatchPlayer</a> *&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classMatchEngine.html#a5dfc5eb92a6a57e7b2705fb4fa70b531">findCoverOutlet</a> (bool defendingHome, const <a class="el" href="structMatchPlayer.html">MatchPlayer</a> *carrier) const</td></tr>
+<tr class="separator:a5dfc5eb92a6a57e7b2705fb4fa70b531"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:aaafe0d794ba25fc3017bc443daa9d600" id="r_aaafe0d794ba25fc3017bc443daa9d600"><td class="memItemLeft" align="right" valign="top">void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classMatchEngine.html#aaafe0d794ba25fc3017bc443daa9d600">updateBall</a> (float dt)</td></tr>
 <tr class="separator:aaafe0d794ba25fc3017bc443daa9d600"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a5adf6bd22f3fbb4c6aabf8b26c09445d" id="r_a5adf6bd22f3fbb4c6aabf8b26c09445d"><td class="memItemLeft" align="right" valign="top">void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classMatchEngine.html#a5adf6bd22f3fbb4c6aabf8b26c09445d">integrateBall</a> (float dt)</td></tr>
@@ -556,8 +585,8 @@ Private Member Functions</h2></td></tr>
 <tr class="separator:a8a3551fda2606b389067bab16e732243"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:ae23314ec317ec4d7d9465bd64ce82393" id="r_ae23314ec317ec4d7d9465bd64ce82393"><td class="memItemLeft" align="right" valign="top">void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classMatchEngine.html#ae23314ec317ec4d7d9465bd64ce82393">resolvePossessionAndActions</a> (float dt)</td></tr>
 <tr class="separator:ae23314ec317ec4d7d9465bd64ce82393"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:acc4c6d16a13d71b1de83bdd6af73ca00" id="r_acc4c6d16a13d71b1de83bdd6af73ca00"><td class="memItemLeft" align="right" valign="top">bool&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classMatchEngine.html#acc4c6d16a13d71b1de83bdd6af73ca00">updateDribble</a> (<a class="el" href="structMatchPlayer.html">MatchPlayer</a> &amp;carrier, float dt)</td></tr>
-<tr class="separator:acc4c6d16a13d71b1de83bdd6af73ca00"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a41e0bb7e564b40ceb8687d972063819f" id="r_a41e0bb7e564b40ceb8687d972063819f"><td class="memItemLeft" align="right" valign="top">bool&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classMatchEngine.html#a41e0bb7e564b40ceb8687d972063819f">updateDribble</a> (const <a class="el" href="structMatchPlayer.html">MatchPlayer</a> &amp;carrier, float dt)</td></tr>
+<tr class="separator:a41e0bb7e564b40ceb8687d972063819f"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:ad4651515c377d8b5181ebf0014c85ffa" id="r_ad4651515c377d8b5181ebf0014c85ffa"><td class="memItemLeft" align="right" valign="top">float&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classMatchEngine.html#ad4651515c377d8b5181ebf0014c85ffa">dribbleExposureShare</a> () const</td></tr>
 <tr class="separator:ad4651515c377d8b5181ebf0014c85ffa"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:ada14ba1b63e4cabccbbda57f944e4b06" id="r_ada14ba1b63e4cabccbbda57f944e4b06"><td class="memItemLeft" align="right" valign="top">bool&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classMatchEngine.html#ada14ba1b63e4cabccbbda57f944e4b06">attemptTakeOn</a> (<a class="el" href="structMatchPlayer.html">MatchPlayer</a> &amp;carrier, <a class="el" href="structMatchPlayer.html">MatchPlayer</a> &amp;defender)</td></tr>
@@ -602,14 +631,14 @@ Private Member Functions</h2></td></tr>
 <tr class="separator:a212d1091f1647bceaf99ffbafb1544ea"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a88795571fd42f94c9d5f8b4d32775e2e" id="r_a88795571fd42f94c9d5f8b4d32775e2e"><td class="memItemLeft" align="right" valign="top">float&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classMatchEngine.html#a88795571fd42f94c9d5f8b4d32775e2e">switchSeconds</a> (const <a class="el" href="structMatchPlayer.html">MatchPlayer</a> &amp;candidate) const</td></tr>
 <tr class="separator:a88795571fd42f94c9d5f8b4d32775e2e"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a1a842793a56bf40cd382fcb2a61c62ee" id="r_a1a842793a56bf40cd382fcb2a61c62ee"><td class="memItemLeft" align="right" valign="top">void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classMatchEngine.html#a1a842793a56bf40cd382fcb2a61c62ee">stepKinematics</a> (<a class="el" href="structMatchPlayer.html">MatchPlayer</a> &amp;player, <a class="el" href="structVector2F.html">Vector2F</a> desired, float desiredSpeed, float topSpeed, float fatigue, float dt)</td></tr>
-<tr class="separator:a1a842793a56bf40cd382fcb2a61c62ee"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a215f85667aaea1a7caabd515a7c908a3" id="r_a215f85667aaea1a7caabd515a7c908a3"><td class="memItemLeft" align="right" valign="top">void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classMatchEngine.html#a215f85667aaea1a7caabd515a7c908a3">stepKinematics</a> (<a class="el" href="structMatchPlayer.html">MatchPlayer</a> &amp;player, <a class="el" href="structVector2F.html">Vector2F</a> desired, float desiredSpeed, float topSpeed, float fatigue, float dt) const</td></tr>
+<tr class="separator:a215f85667aaea1a7caabd515a7c908a3"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a57065a66bc44c10fc8a7a40007ba5ead" id="r_a57065a66bc44c10fc8a7a40007ba5ead"><td class="memItemLeft" align="right" valign="top">void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classMatchEngine.html#a57065a66bc44c10fc8a7a40007ba5ead">passBall</a> (<a class="el" href="structMatchPlayer.html">MatchPlayer</a> &amp;passer, const <a class="el" href="structMatchEngine_1_1PassOption.html">PassOption</a> &amp;option, bool forceLofted=false)</td></tr>
 <tr class="separator:a57065a66bc44c10fc8a7a40007ba5ead"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a1c5735ac4cabf4a15ef626089da89985" id="r_a1c5735ac4cabf4a15ef626089da89985"><td class="memItemLeft" align="right" valign="top">void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classMatchEngine.html#a1c5735ac4cabf4a15ef626089da89985">takeShot</a> (<a class="el" href="structMatchPlayer.html">MatchPlayer</a> &amp;shooter, float forcedXG=-1.0f, bool header=false, bool freeKick=false)</td></tr>
 <tr class="separator:a1c5735ac4cabf4a15ef626089da89985"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a5de644f387547593d4e1e0efb623b7bf" id="r_a5de644f387547593d4e1e0efb623b7bf"><td class="memItemLeft" align="right" valign="top">float&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classMatchEngine.html#a5de644f387547593d4e1e0efb623b7bf">strikeShot</a> (<a class="el" href="structMatchPlayer.html">MatchPlayer</a> &amp;shooter, float forcedXG, bool header, bool penalty, bool freeKick=false)</td></tr>
-<tr class="separator:a5de644f387547593d4e1e0efb623b7bf"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a627f795e818673e72d772ed9f3f461e9" id="r_a627f795e818673e72d772ed9f3f461e9"><td class="memItemLeft" align="right" valign="top">float&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classMatchEngine.html#a627f795e818673e72d772ed9f3f461e9">strikeShot</a> (const <a class="el" href="structMatchPlayer.html">MatchPlayer</a> &amp;shooter, float forcedXG, bool header, bool penalty, bool freeKick=false)</td></tr>
+<tr class="separator:a627f795e818673e72d772ed9f3f461e9"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a753fb700a7472db8e10b9b7dfca0ae15" id="r_a753fb700a7472db8e10b9b7dfca0ae15"><td class="memItemLeft" align="right" valign="top"><a class="el" href="structMatchEngine_1_1SaveAttempt.html">SaveAttempt</a>&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classMatchEngine.html#a753fb700a7472db8e10b9b7dfca0ae15">attemptSave</a> (const <a class="el" href="structMatchPlayer.html">MatchPlayer</a> &amp;keeper)</td></tr>
 <tr class="separator:a753fb700a7472db8e10b9b7dfca0ae15"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a7da67d8748b325d463d7bf18b080487f" id="r_a7da67d8748b325d463d7bf18b080487f"><td class="memItemLeft" align="right" valign="top">void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classMatchEngine.html#a7da67d8748b325d463d7bf18b080487f">setPossession</a> (<a class="el" href="structMatchPlayer.html">MatchPlayer</a> &amp;player)</td></tr>
@@ -628,8 +657,8 @@ Private Member Functions</h2></td></tr>
 <tr class="separator:acbe7a7c2fba4882d978a42884bc50e8d"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a8e6de46ed3172090a6a9b5f218f743a8" id="r_a8e6de46ed3172090a6a9b5f218f743a8"><td class="memItemLeft" align="right" valign="top">std::optional&lt; <a class="el" href="structMatchEngine_1_1PassOption.html">PassOption</a> &gt;&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classMatchEngine.html#a8e6de46ed3172090a6a9b5f218f743a8">choosePassTarget</a> (<a class="el" href="structMatchPlayer.html">MatchPlayer</a> &amp;passer)</td></tr>
 <tr class="separator:a8e6de46ed3172090a6a9b5f218f743a8"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:adfbd03d57e0808353661cb6581f4587b" id="r_adfbd03d57e0808353661cb6581f4587b"><td class="memItemLeft" align="right" valign="top"><a class="el" href="structMatchEngine_1_1PassOption.html">PassOption</a>&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classMatchEngine.html#adfbd03d57e0808353661cb6581f4587b">evaluatePassOption</a> (<a class="el" href="structMatchPlayer.html">MatchPlayer</a> &amp;passer, <a class="el" href="structMatchPlayer.html">MatchPlayer</a> &amp;receiver) const</td></tr>
-<tr class="separator:adfbd03d57e0808353661cb6581f4587b"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a2d1f3a943efda10225e142f06c2d2713" id="r_a2d1f3a943efda10225e142f06c2d2713"><td class="memItemLeft" align="right" valign="top"><a class="el" href="structMatchEngine_1_1PassOption.html">PassOption</a>&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classMatchEngine.html#a2d1f3a943efda10225e142f06c2d2713">evaluatePassOption</a> (const <a class="el" href="structMatchPlayer.html">MatchPlayer</a> &amp;passer, <a class="el" href="structMatchPlayer.html">MatchPlayer</a> &amp;receiver) const</td></tr>
+<tr class="separator:a2d1f3a943efda10225e142f06c2d2713"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:ad5407925814dd1dc9b4da6730aa79fd2" id="r_ad5407925814dd1dc9b4da6730aa79fd2"><td class="memItemLeft" align="right" valign="top"><a class="el" href="structMatchPlayer.html">MatchPlayer</a> *&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classMatchEngine.html#ad5407925814dd1dc9b4da6730aa79fd2">findClosestPlayer</a> (<a class="el" href="structVector2F.html">Vector2F</a> position, bool homeTeam, bool includeGoalkeeper=true)</td></tr>
 <tr class="separator:ad5407925814dd1dc9b4da6730aa79fd2"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a5407fac9415d528a4e85fc09f5218706" id="r_a5407fac9415d528a4e85fc09f5218706"><td class="memItemLeft" align="right" valign="top"><a class="el" href="structMatchPlayer.html">MatchPlayer</a> *&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classMatchEngine.html#a5407fac9415d528a4e85fc09f5218706">findGoalkeeper</a> (bool homeTeam)</td></tr>
@@ -979,7 +1008,35 @@ Private Attributes</h2></td></tr>
 <div class="textblock"><p>Stateful, deterministic-when-seeded live match simulation in real match time: in watch mode one simulated second is one second of the match (a full match with stoppages and added time is roughly 5,900 simulated seconds). Play mode can accelerate the match clock while body/ball physics retain the same timestep; see <a class="el" href="classMatchEngine.html#a77849ebfea35196812ceb995ae31675f">setPlayHalfMinutes()</a>.</p>
 <p><a class="el" href="classMatchEngine.html#a5a577339f0adf339c5bdf2d0385ae321">update()</a> uses a fixed internal timestep, so the same seed produces the same match at different render frame rates. Home attacks toward x=1 and away attacks toward x=0. The engine is copyable, which highlight prediction uses to look ahead deterministically.</p>
 <p>Strategies and simulation state are owned by value. <a class="el" href="classPlayer.html" title="Persistent career identity, attributes, traits and day-to-day state.">Player</a> pointers and the <a class="el" href="structStatsConfig.html" title="Configuration mapping roles to their focus areas and listing all possible stats.">StatsConfig</a> reference are borrowed: keep them alive and unchanged for the engine's lifetime, including any prediction copies and worker batches. The engine records match consequences; the career applies them afterwards. See <a class="el" href="match-engine_8md.html">docs/development/match-engine.md</a> for the step order and extension map, and <a class="el" href="player-behavior_8md.html">docs/development/player-behavior.md</a> for movement and action selection. </p>
-</div><h2 class="groupheader">Constructor &amp; Destructor Documentation</h2>
+</div><h2 class="groupheader">Member Enumeration Documentation</h2>
+<a id="a8cef8b905e5c54a95850815e353da3ea" name="a8cef8b905e5c54a95850815e353da3ea"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a8cef8b905e5c54a95850815e353da3ea">&#9670;&#160;</a></span>TacticalArrival</h2>
+
+<div class="memitem">
+<div class="memproto">
+<table class="mlabels">
+  <tr>
+  <td class="mlabels-left">
+      <table class="memname">
+        <tr>
+          <td class="memname">enum class <a class="el" href="classMatchEngine.html#a8cef8b905e5c54a95850815e353da3ea">MatchEngine::TacticalArrival</a></td>
+        </tr>
+      </table>
+  </td>
+  <td class="mlabels-right">
+<span class="mlabels"><span class="mlabel">strong</span><span class="mlabel">private</span></span>  </td>
+  </tr>
+</table>
+</div><div class="memdoc">
+<table class="fieldtable">
+<tr><th colspan="2">Enumerator</th></tr><tr><td class="fieldname"><a id="a8cef8b905e5c54a95850815e353da3eaa4d957768dcc72908ab3b9e28dc867052" name="a8cef8b905e5c54a95850815e353da3eaa4d957768dcc72908ab3b9e28dc867052"></a>MIDFIELDER&#160;</td><td class="fielddoc"></td></tr>
+<tr><td class="fieldname"><a id="a8cef8b905e5c54a95850815e353da3eaacd22aec401df432e1dbd840c51a9c4c5" name="a8cef8b905e5c54a95850815e353da3eaacd22aec401df432e1dbd840c51a9c4c5"></a>FAR_POST&#160;</td><td class="fielddoc"></td></tr>
+<tr><td class="fieldname"><a id="a8cef8b905e5c54a95850815e353da3eaa5e66e883e75a7f3f61ae63c48e9bdbcf" name="a8cef8b905e5c54a95850815e353da3eaa5e66e883e75a7f3f61ae63c48e9bdbcf"></a>FULLBACK&#160;</td><td class="fielddoc"></td></tr>
+</table>
+
+</div>
+</div>
+<h2 class="groupheader">Constructor &amp; Destructor Documentation</h2>
 <a id="a1554a8a0ffea407a5437bb8a30fce6b4" name="a1554a8a0ffea407a5437bb8a30fce6b4"></a>
 <h2 class="memtitle"><span class="permalink"><a href="#a1554a8a0ffea407a5437bb8a30fce6b4">&#9670;&#160;</a></span>MatchEngine() <span class="overload">[1/2]</span></h2>
 
@@ -1985,6 +2042,48 @@ Private Attributes</h2></td></tr>
 
 </div>
 </div>
+<a id="ab92d21d74b89f4f33fd550f05831e6d9" name="ab92d21d74b89f4f33fd550f05831e6d9"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#ab92d21d74b89f4f33fd550f05831e6d9">&#9670;&#160;</a></span>closestOutfieldPair()</h2>
+
+<div class="memitem">
+<div class="memproto">
+<table class="mlabels">
+  <tr>
+  <td class="mlabels-left">
+      <table class="memname">
+        <tr>
+          <td class="memname">std::array&lt; <a class="el" href="structMatchPlayer.html">MatchPlayer</a> *, 2 &gt; MatchEngine::closestOutfieldPair </td>
+          <td>(</td>
+          <td class="paramtype">bool&#160;</td>
+          <td class="paramname"><em>homeTeam</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">const <a class="el" href="structMatchPlayer.html">MatchPlayer</a> *&#160;</td>
+          <td class="paramname"><em>carrier</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype"><a class="el" href="structVector2F.html">Vector2F</a>&#160;</td>
+          <td class="paramname"><em>pressurePosition</em>&#160;</td>
+        </tr>
+        <tr>
+          <td></td>
+          <td>)</td>
+          <td></td><td></td>
+        </tr>
+      </table>
+  </td>
+  <td class="mlabels-right">
+<span class="mlabels"><span class="mlabel">private</span></span>  </td>
+  </tr>
+</table>
+</div><div class="memdoc">
+
+</div>
+</div>
 <a id="a89e9a3711dcaf256d87b1ce0cfd91cc0" name="a89e9a3711dcaf256d87b1ce0cfd91cc0"></a>
 <h2 class="memtitle"><span class="permalink"><a href="#a89e9a3711dcaf256d87b1ce0cfd91cc0">&#9670;&#160;</a></span>commitFoul()</h2>
 
@@ -2776,6 +2875,48 @@ Private Attributes</h2></td></tr>
 
 </div>
 </div>
+<a id="a0a3b6e3122cd7dc949f6af697ad9b3f6" name="a0a3b6e3122cd7dc949f6af697ad9b3f6"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a0a3b6e3122cd7dc949f6af697ad9b3f6">&#9670;&#160;</a></span>estimatedArrivalTime()</h2>
+
+<div class="memitem">
+<div class="memproto">
+<table class="mlabels">
+  <tr>
+  <td class="mlabels-left">
+      <table class="memname">
+        <tr>
+          <td class="memname">float MatchEngine::estimatedArrivalTime </td>
+          <td>(</td>
+          <td class="paramtype">const <a class="el" href="structMatchPlayer.html">MatchPlayer</a> &amp;&#160;</td>
+          <td class="paramname"><em>candidate</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype"><a class="el" href="structVector2F.html">Vector2F</a>&#160;</td>
+          <td class="paramname"><em>pressurePosition</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">const <a class="el" href="structMatchPlayer.html">MatchPlayer</a> *&#160;</td>
+          <td class="paramname"><em>carrier</em>&#160;</td>
+        </tr>
+        <tr>
+          <td></td>
+          <td>)</td>
+          <td></td><td></td>
+        </tr>
+      </table>
+  </td>
+  <td class="mlabels-right">
+<span class="mlabels"><span class="mlabel">private</span></span>  </td>
+  </tr>
+</table>
+</div><div class="memdoc">
+
+</div>
+</div>
 <a id="a8d67c21b3bd1f3542ef51b2a3c4d59e1" name="a8d67c21b3bd1f3542ef51b2a3c4d59e1"></a>
 <h2 class="memtitle"><span class="permalink"><a href="#a8d67c21b3bd1f3542ef51b2a3c4d59e1">&#9670;&#160;</a></span>estimateShotXG()</h2>
 
@@ -2802,8 +2943,8 @@ Private Attributes</h2></td></tr>
 
 </div>
 </div>
-<a id="adfbd03d57e0808353661cb6581f4587b" name="adfbd03d57e0808353661cb6581f4587b"></a>
-<h2 class="memtitle"><span class="permalink"><a href="#adfbd03d57e0808353661cb6581f4587b">&#9670;&#160;</a></span>evaluatePassOption()</h2>
+<a id="a2d1f3a943efda10225e142f06c2d2713" name="a2d1f3a943efda10225e142f06c2d2713"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a2d1f3a943efda10225e142f06c2d2713">&#9670;&#160;</a></span>evaluatePassOption()</h2>
 
 <div class="memitem">
 <div class="memproto">
@@ -2814,7 +2955,7 @@ Private Attributes</h2></td></tr>
         <tr>
           <td class="memname"><a class="el" href="structMatchEngine_1_1PassOption.html">MatchEngine::PassOption</a> MatchEngine::evaluatePassOption </td>
           <td>(</td>
-          <td class="paramtype"><a class="el" href="structMatchPlayer.html">MatchPlayer</a> &amp;&#160;</td>
+          <td class="paramtype">const <a class="el" href="structMatchPlayer.html">MatchPlayer</a> &amp;&#160;</td>
           <td class="paramname"><em>passer</em>, </td>
         </tr>
         <tr>
@@ -2975,6 +3116,42 @@ Private Attributes</h2></td></tr>
           <td></td>
           <td>)</td>
           <td></td><td></td>
+        </tr>
+      </table>
+  </td>
+  <td class="mlabels-right">
+<span class="mlabels"><span class="mlabel">private</span></span>  </td>
+  </tr>
+</table>
+</div><div class="memdoc">
+
+</div>
+</div>
+<a id="a5dfc5eb92a6a57e7b2705fb4fa70b531" name="a5dfc5eb92a6a57e7b2705fb4fa70b531"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a5dfc5eb92a6a57e7b2705fb4fa70b531">&#9670;&#160;</a></span>findCoverOutlet()</h2>
+
+<div class="memitem">
+<div class="memproto">
+<table class="mlabels">
+  <tr>
+  <td class="mlabels-left">
+      <table class="memname">
+        <tr>
+          <td class="memname">const <a class="el" href="structMatchPlayer.html">MatchPlayer</a> * MatchEngine::findCoverOutlet </td>
+          <td>(</td>
+          <td class="paramtype">bool&#160;</td>
+          <td class="paramname"><em>defendingHome</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">const <a class="el" href="structMatchPlayer.html">MatchPlayer</a> *&#160;</td>
+          <td class="paramname"><em>carrier</em>&#160;</td>
+        </tr>
+        <tr>
+          <td></td>
+          <td>)</td>
+          <td></td><td> const</td>
         </tr>
       </table>
   </td>
@@ -4944,8 +5121,8 @@ Private Attributes</h2></td></tr>
 
 </div>
 </div>
-<a id="a01d83d410b431c6b405a9eaa0f69b358" name="a01d83d410b431c6b405a9eaa0f69b358"></a>
-<h2 class="memtitle"><span class="permalink"><a href="#a01d83d410b431c6b405a9eaa0f69b358">&#9670;&#160;</a></span>integrateMovements()</h2>
+<a id="a2af25286c2d19a327a8006a32a1617b9" name="a2af25286c2d19a327a8006a32a1617b9"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a2af25286c2d19a327a8006a32a1617b9">&#9670;&#160;</a></span>integrateMovements()</h2>
 
 <div class="memitem">
 <div class="memproto">
@@ -4956,14 +5133,8 @@ Private Attributes</h2></td></tr>
         <tr>
           <td class="memname"><a class="el" href="match__engine_8cpp.html#a59529efb3773485de69af24290bcb73f">FM_KERNEL_CLONES</a> void MatchEngine::integrateMovements </td>
           <td>(</td>
-          <td class="paramtype">const std::uint8_t *&#160;</td>
+          <td class="paramtype">std::span&lt; const std::uint8_t &gt;&#160;</td>
           <td class="paramname"><em>slots</em>, </td>
-        </tr>
-        <tr>
-          <td class="paramkey"></td>
-          <td></td>
-          <td class="paramtype">std::size_t&#160;</td>
-          <td class="paramname"><em>count</em>, </td>
         </tr>
         <tr>
           <td class="paramkey"></td>
@@ -6769,6 +6940,32 @@ Private Attributes</h2></td></tr>
 
 </div>
 </div>
+<a id="aa9ec4e676b8bb0491a92c87eae9c02c5" name="aa9ec4e676b8bb0491a92c87eae9c02c5"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#aa9ec4e676b8bb0491a92c87eae9c02c5">&#9670;&#160;</a></span>runChannel()</h2>
+
+<div class="memitem">
+<div class="memproto">
+<table class="mlabels">
+  <tr>
+  <td class="mlabels-left">
+      <table class="memname">
+        <tr>
+          <td class="memname">float MatchEngine::runChannel </td>
+          <td>(</td>
+          <td class="paramtype">const <a class="el" href="structMatchPlayer.html">MatchPlayer</a> &amp;&#160;</td>
+          <td class="paramname"><em>runner</em></td><td>)</td>
+          <td> const</td>
+        </tr>
+      </table>
+  </td>
+  <td class="mlabels-right">
+<span class="mlabels"><span class="mlabel">private</span></span>  </td>
+  </tr>
+</table>
+</div><div class="memdoc">
+
+</div>
+</div>
 <a id="a25bef1678e4a3a78d2622def03073312" name="a25bef1678e4a3a78d2622def03073312"></a>
 <h2 class="memtitle"><span class="permalink"><a href="#a25bef1678e4a3a78d2622def03073312">&#9670;&#160;</a></span>runMedicalSubstitutions()</h2>
 
@@ -6796,6 +6993,42 @@ Private Attributes</h2></td></tr>
 
 </div>
 </div>
+<a id="aa62fa1c23292c1d0571a0d072592a088" name="aa62fa1c23292c1d0571a0d072592a088"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#aa62fa1c23292c1d0571a0d072592a088">&#9670;&#160;</a></span>runPriority()</h2>
+
+<div class="memitem">
+<div class="memproto">
+<table class="mlabels">
+  <tr>
+  <td class="mlabels-left">
+      <table class="memname">
+        <tr>
+          <td class="memname">float MatchEngine::runPriority </td>
+          <td>(</td>
+          <td class="paramtype">const <a class="el" href="structMatchPlayer.html">MatchPlayer</a> &amp;&#160;</td>
+          <td class="paramname"><em>candidate</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">const <a class="el" href="structMatchPlayer.html">MatchPlayer</a> *&#160;</td>
+          <td class="paramname"><em>carrier</em>&#160;</td>
+        </tr>
+        <tr>
+          <td></td>
+          <td>)</td>
+          <td></td><td></td>
+        </tr>
+      </table>
+  </td>
+  <td class="mlabels-right">
+<span class="mlabels"><span class="mlabel">private</span></span>  </td>
+  </tr>
+</table>
+</div><div class="memdoc">
+
+</div>
+</div>
 <a id="a4f26062786188b2bf18fa796848fb09c" name="a4f26062786188b2bf18fa796848fb09c"></a>
 <h2 class="memtitle"><span class="permalink"><a href="#a4f26062786188b2bf18fa796848fb09c">&#9670;&#160;</a></span>scoreGoal()</h2>
 
@@ -6811,6 +7044,162 @@ Private Attributes</h2></td></tr>
           <td class="paramtype">bool&#160;</td>
           <td class="paramname"><em>homeTeam</em></td><td>)</td>
           <td></td>
+        </tr>
+      </table>
+  </td>
+  <td class="mlabels-right">
+<span class="mlabels"><span class="mlabel">private</span></span>  </td>
+  </tr>
+</table>
+</div><div class="memdoc">
+
+</div>
+</div>
+<a id="aaee6c8084f2ae3166e051b7027397940" name="aaee6c8084f2ae3166e051b7027397940"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#aaee6c8084f2ae3166e051b7027397940">&#9670;&#160;</a></span>selectActiveSupporters()</h2>
+
+<div class="memitem">
+<div class="memproto">
+<table class="mlabels">
+  <tr>
+  <td class="mlabels-left">
+      <table class="memname">
+        <tr>
+          <td class="memname">std::array&lt; <a class="el" href="structMatchPlayer.html">MatchPlayer</a> *, <a class="el" href="structMatchTuning_1_1Shape.html#af7f33f0b5009f25e452878fc165192fe">MatchTuning::Shape::MAX_ACTIVE_SUPPORTERS</a> &gt; MatchEngine::selectActiveSupporters </td>
+          <td>(</td>
+          <td class="paramtype">bool&#160;</td>
+          <td class="paramname"><em>homeTeam</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">const <a class="el" href="structMatchPlayer.html">MatchPlayer</a> *&#160;</td>
+          <td class="paramname"><em>carrier</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">const std::array&lt; <a class="el" href="structMatchPlayer.html">MatchPlayer</a> *, <a class="el" href="structMatchTuning_1_1Shape.html#ab32856cf70adf0ea267e23e91abb0102">MatchTuning::Shape::MAX_COMMITTED_RUNNERS</a> &gt; &amp;&#160;</td>
+          <td class="paramname"><em>runners</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">const <a class="el" href="structMatchPlayer.html">MatchPlayer</a> *&#160;</td>
+          <td class="paramname"><em>midfieldArrival</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">const <a class="el" href="structMatchPlayer.html">MatchPlayer</a> *&#160;</td>
+          <td class="paramname"><em>farPostRunner</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">const <a class="el" href="structMatchPlayer.html">MatchPlayer</a> *&#160;</td>
+          <td class="paramname"><em>overlappingFullback</em>&#160;</td>
+        </tr>
+        <tr>
+          <td></td>
+          <td>)</td>
+          <td></td><td></td>
+        </tr>
+      </table>
+  </td>
+  <td class="mlabels-right">
+<span class="mlabels"><span class="mlabel">private</span></span>  </td>
+  </tr>
+</table>
+</div><div class="memdoc">
+
+</div>
+</div>
+<a id="a6845f2c18467e39124ca0b52d4608eae" name="a6845f2c18467e39124ca0b52d4608eae"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a6845f2c18467e39124ca0b52d4608eae">&#9670;&#160;</a></span>selectAttackingRunners()</h2>
+
+<div class="memitem">
+<div class="memproto">
+<table class="mlabels">
+  <tr>
+  <td class="mlabels-left">
+      <table class="memname">
+        <tr>
+          <td class="memname">std::array&lt; <a class="el" href="structMatchPlayer.html">MatchPlayer</a> *, <a class="el" href="structMatchTuning_1_1Shape.html#ab32856cf70adf0ea267e23e91abb0102">MatchTuning::Shape::MAX_COMMITTED_RUNNERS</a> &gt; MatchEngine::selectAttackingRunners </td>
+          <td>(</td>
+          <td class="paramtype">bool&#160;</td>
+          <td class="paramname"><em>homeTeam</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">const <a class="el" href="structMatchPlayer.html">MatchPlayer</a> *&#160;</td>
+          <td class="paramname"><em>carrier</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">const <a class="el" href="structMatchPlayer.html">MatchPlayer</a> *&#160;</td>
+          <td class="paramname"><em>transitionSource</em>&#160;</td>
+        </tr>
+        <tr>
+          <td></td>
+          <td>)</td>
+          <td></td><td></td>
+        </tr>
+      </table>
+  </td>
+  <td class="mlabels-right">
+<span class="mlabels"><span class="mlabel">private</span></span>  </td>
+  </tr>
+</table>
+</div><div class="memdoc">
+
+</div>
+</div>
+<a id="ae1a70004ca0f73737f4b9be10d434a41" name="ae1a70004ca0f73737f4b9be10d434a41"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#ae1a70004ca0f73737f4b9be10d434a41">&#9670;&#160;</a></span>selectFinalThirdPlayer()</h2>
+
+<div class="memitem">
+<div class="memproto">
+<table class="mlabels">
+  <tr>
+  <td class="mlabels-left">
+      <table class="memname">
+        <tr>
+          <td class="memname"><a class="el" href="structMatchPlayer.html">MatchPlayer</a> * MatchEngine::selectFinalThirdPlayer </td>
+          <td>(</td>
+          <td class="paramtype">bool&#160;</td>
+          <td class="paramname"><em>homeTeam</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype"><a class="el" href="classMatchEngine.html#a8cef8b905e5c54a95850815e353da3ea">TacticalArrival</a>&#160;</td>
+          <td class="paramname"><em>arrival</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">const <a class="el" href="structMatchPlayer.html">MatchPlayer</a> *&#160;</td>
+          <td class="paramname"><em>carrier</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">const std::array&lt; <a class="el" href="structMatchPlayer.html">MatchPlayer</a> *, <a class="el" href="structMatchTuning_1_1Shape.html#ab32856cf70adf0ea267e23e91abb0102">MatchTuning::Shape::MAX_COMMITTED_RUNNERS</a> &gt; &amp;&#160;</td>
+          <td class="paramname"><em>homeRunners</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">const std::array&lt; <a class="el" href="structMatchPlayer.html">MatchPlayer</a> *, <a class="el" href="structMatchTuning_1_1Shape.html#ab32856cf70adf0ea267e23e91abb0102">MatchTuning::Shape::MAX_COMMITTED_RUNNERS</a> &gt; &amp;&#160;</td>
+          <td class="paramname"><em>awayRunners</em>&#160;</td>
+        </tr>
+        <tr>
+          <td></td>
+          <td>)</td>
+          <td></td><td></td>
         </tr>
       </table>
   </td>
@@ -6873,6 +7262,42 @@ Private Attributes</h2></td></tr>
       </table>
 </div><div class="memdoc">
 <p>AI substitutions (fatigue, injuries, cards, game state) are enabled for both sides by default so headless matches manage themselves. A side managed by the human should disable its own. </p>
+
+</div>
+</div>
+<a id="a7397008c6c3b901ed0b231ceb2aa07c1" name="a7397008c6c3b901ed0b231ceb2aa07c1"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a7397008c6c3b901ed0b231ceb2aa07c1">&#9670;&#160;</a></span>setControlledPhases()</h2>
+
+<div class="memitem">
+<div class="memproto">
+<table class="mlabels">
+  <tr>
+  <td class="mlabels-left">
+      <table class="memname">
+        <tr>
+          <td class="memname">void MatchEngine::setControlledPhases </td>
+          <td>(</td>
+          <td class="paramtype">bool&#160;</td>
+          <td class="paramname"><em>attackingHome</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">float&#160;</td>
+          <td class="paramname"><em>ballX</em>&#160;</td>
+        </tr>
+        <tr>
+          <td></td>
+          <td>)</td>
+          <td></td><td></td>
+        </tr>
+      </table>
+  </td>
+  <td class="mlabels-right">
+<span class="mlabels"><span class="mlabel">private</span></span>  </td>
+  </tr>
+</table>
+</div><div class="memdoc">
 
 </div>
 </div>
@@ -7317,6 +7742,32 @@ Private Attributes</h2></td></tr>
   </td>
   <td class="mlabels-right">
 <span class="mlabels"><span class="mlabel">inline</span></span>  </td>
+  </tr>
+</table>
+</div><div class="memdoc">
+
+</div>
+</div>
+<a id="a9e94cf2e77a4d07034f7c77cbd13fd14" name="a9e94cf2e77a4d07034f7c77cbd13fd14"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a9e94cf2e77a4d07034f7c77cbd13fd14">&#9670;&#160;</a></span>setTransitionPhases()</h2>
+
+<div class="memitem">
+<div class="memproto">
+<table class="mlabels">
+  <tr>
+  <td class="mlabels-left">
+      <table class="memname">
+        <tr>
+          <td class="memname">void MatchEngine::setTransitionPhases </td>
+          <td>(</td>
+          <td class="paramtype">bool&#160;</td>
+          <td class="paramname"><em>attackingHome</em></td><td>)</td>
+          <td></td>
+        </tr>
+      </table>
+  </td>
+  <td class="mlabels-right">
+<span class="mlabels"><span class="mlabel">private</span></span>  </td>
   </tr>
 </table>
 </div><div class="memdoc">
@@ -7845,8 +8296,8 @@ result" of a match the user may have been watching). </p>
 
 </div>
 </div>
-<a id="a1a842793a56bf40cd382fcb2a61c62ee" name="a1a842793a56bf40cd382fcb2a61c62ee"></a>
-<h2 class="memtitle"><span class="permalink"><a href="#a1a842793a56bf40cd382fcb2a61c62ee">&#9670;&#160;</a></span>stepKinematics()</h2>
+<a id="a215f85667aaea1a7caabd515a7c908a3" name="a215f85667aaea1a7caabd515a7c908a3"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a215f85667aaea1a7caabd515a7c908a3">&#9670;&#160;</a></span>stepKinematics()</h2>
 
 <div class="memitem">
 <div class="memproto">
@@ -7893,7 +8344,7 @@ result" of a match the user may have been watching). </p>
         <tr>
           <td></td>
           <td>)</td>
-          <td></td><td></td>
+          <td></td><td> const</td>
         </tr>
       </table>
   </td>
@@ -7951,8 +8402,8 @@ result" of a match the user may have been watching). </p>
 
 </div>
 </div>
-<a id="a5de644f387547593d4e1e0efb623b7bf" name="a5de644f387547593d4e1e0efb623b7bf"></a>
-<h2 class="memtitle"><span class="permalink"><a href="#a5de644f387547593d4e1e0efb623b7bf">&#9670;&#160;</a></span>strikeShot()</h2>
+<a id="a627f795e818673e72d772ed9f3f461e9" name="a627f795e818673e72d772ed9f3f461e9"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a627f795e818673e72d772ed9f3f461e9">&#9670;&#160;</a></span>strikeShot()</h2>
 
 <div class="memitem">
 <div class="memproto">
@@ -7963,7 +8414,7 @@ result" of a match the user may have been watching). </p>
         <tr>
           <td class="memname">float MatchEngine::strikeShot </td>
           <td>(</td>
-          <td class="paramtype"><a class="el" href="structMatchPlayer.html">MatchPlayer</a> &amp;&#160;</td>
+          <td class="paramtype">const <a class="el" href="structMatchPlayer.html">MatchPlayer</a> &amp;&#160;</td>
           <td class="paramname"><em>shooter</em>, </td>
         </tr>
         <tr>
@@ -8723,8 +9174,8 @@ result" of a match the user may have been watching). </p>
 
 </div>
 </div>
-<a id="acc4c6d16a13d71b1de83bdd6af73ca00" name="acc4c6d16a13d71b1de83bdd6af73ca00"></a>
-<h2 class="memtitle"><span class="permalink"><a href="#acc4c6d16a13d71b1de83bdd6af73ca00">&#9670;&#160;</a></span>updateDribble()</h2>
+<a id="a41e0bb7e564b40ceb8687d972063819f" name="a41e0bb7e564b40ceb8687d972063819f"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a41e0bb7e564b40ceb8687d972063819f">&#9670;&#160;</a></span>updateDribble()</h2>
 
 <div class="memitem">
 <div class="memproto">
@@ -8735,7 +9186,7 @@ result" of a match the user may have been watching). </p>
         <tr>
           <td class="memname">bool MatchEngine::updateDribble </td>
           <td>(</td>
-          <td class="paramtype"><a class="el" href="structMatchPlayer.html">MatchPlayer</a> &amp;&#160;</td>
+          <td class="paramtype">const <a class="el" href="structMatchPlayer.html">MatchPlayer</a> &amp;&#160;</td>
           <td class="paramname"><em>carrier</em>, </td>
         </tr>
         <tr>
@@ -8863,8 +9314,8 @@ result" of a match the user may have been watching). </p>
 
 </div>
 </div>
-<a id="a6407728042435434c2edd50d490e912e" name="a6407728042435434c2edd50d490e912e"></a>
-<h2 class="memtitle"><span class="permalink"><a href="#a6407728042435434c2edd50d490e912e">&#9670;&#160;</a></span>updateRestartSupport()</h2>
+<a id="a42af5103bafc23db8f24349b559169ad" name="a42af5103bafc23db8f24349b559169ad"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a42af5103bafc23db8f24349b559169ad">&#9670;&#160;</a></span>updateRestartSupport()</h2>
 
 <div class="memitem">
 <div class="memproto">
@@ -8887,7 +9338,7 @@ result" of a match the user may have been watching). </p>
         <tr>
           <td></td>
           <td>)</td>
-          <td></td><td></td>
+          <td></td><td> const</td>
         </tr>
       </table>
   </td>

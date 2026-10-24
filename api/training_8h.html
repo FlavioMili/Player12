@@ -112,6 +112,7 @@ $(document).ready(function(){initNavTree('training_8h.html',''); initResizable()
 <code>#include &lt;optional&gt;</code><br />
 <code>#include &lt;string&gt;</code><br />
 <code>#include &lt;unordered_map&gt;</code><br />
+<code>#include &lt;utility&gt;</code><br />
 <code>#include &lt;vector&gt;</code><br />
 <code>#include &quot;<a class="el" href="types_8h_source.html">global/types.h</a>&quot;</code><br />
 </div>
@@ -310,8 +311,8 @@ Functions</h2></td></tr>
 <tr class="separator:af43d69ab26bc736ef7d9b7a7c8f74254"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a38c99cfc6d7c6d855b3f713bc381533c" id="r_a38c99cfc6d7c6d855b3f713bc381533c"><td class="memItemLeft" align="right" valign="top">double&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="namespaceTrainingSystem.html#a38c99cfc6d7c6d855b3f713bc381533c">TrainingSystem::trainPlayer</a> (<a class="el" href="classGameData.html">GameData</a> &amp;gamedata, <a class="el" href="classPlayer.html">Player</a> &amp;player, std::int32_t ordinal)</td></tr>
 <tr class="separator:a38c99cfc6d7c6d855b3f713bc381533c"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a6a94474ae0084219ba94a1a754b7e7e0" id="r_a6a94474ae0084219ba94a1a754b7e7e0"><td class="memItemLeft" align="right" valign="top">double&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="namespaceTrainingSystem.html#a6a94474ae0084219ba94a1a754b7e7e0">TrainingSystem::recordMatchLoad</a> (<a class="el" href="classGameData.html">GameData</a> &amp;gamedata, <a class="el" href="classPlayer.html">Player</a> &amp;player, std::uint8_t minutes)</td></tr>
-<tr class="separator:a6a94474ae0084219ba94a1a754b7e7e0"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a662226ff32203b57df6ba2da158649b7" id="r_a662226ff32203b57df6ba2da158649b7"><td class="memItemLeft" align="right" valign="top">double&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="namespaceTrainingSystem.html#a662226ff32203b57df6ba2da158649b7">TrainingSystem::recordMatchLoad</a> (<a class="el" href="classGameData.html">GameData</a> &amp;gamedata, const <a class="el" href="classPlayer.html">Player</a> &amp;player, std::uint8_t minutes)</td></tr>
+<tr class="separator:a662226ff32203b57df6ba2da158649b7"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:af6641002ce56e3138ba904a0a7acd47e" id="r_af6641002ce56e3138ba904a0a7acd47e"><td class="memItemLeft" align="right" valign="top">void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="namespaceTrainingSystem.html#af6641002ce56e3138ba904a0a7acd47e">TrainingSystem::recordTeamMatch</a> (<a class="el" href="classGameData.html">GameData</a> &amp;gamedata, <a class="el" href="types_8h.html#a57143f6ccbdf5a5d9724b986cbdafb31">TeamID</a> team_id, std::int32_t ordinal)</td></tr>
 <tr class="separator:af6641002ce56e3138ba904a0a7acd47e"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a1b1be01c9fe28aaab0d75793a4b438d9" id="r_a1b1be01c9fe28aaab0d75793a4b438d9"><td class="memItemLeft" align="right" valign="top">float&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="namespaceTrainingSystem.html#a1b1be01c9fe28aaab0d75793a4b438d9">TrainingSystem::trainingQuality</a> (const <a class="el" href="classGameData.html">GameData</a> &amp;gamedata, const <a class="el" href="classPlayer.html">Player</a> &amp;player)</td></tr>
@@ -634,7 +635,7 @@ Variables</h2></td></tr>
 </table>
 </div><div class="memdoc">
 <b>Initial value:</b><div class="fragment"><div class="line">=</div>
-<div class="line">    <span class="keyword">static_cast&lt;</span>std::size_t<span class="keyword">&gt;</span>(<a class="code hl_enumvalue" href="training_8h.html#a4f7541ba864f118a40c9dabed727f5d0a4905ac9d6a22bdfc1ae096094ce6248d">MicrocycleDay::COUNT</a>)</div>
+<div class="line">    <span class="keyword">static_cast&lt;</span>std::size_t<span class="keyword">&gt;</span>(std::to_underlying(<a class="code hl_enumvalue" href="training_8h.html#a4f7541ba864f118a40c9dabed727f5d0a4905ac9d6a22bdfc1ae096094ce6248d">MicrocycleDay::COUNT</a>))</div>
 <div class="ttc" id="atraining_8h_html_a4f7541ba864f118a40c9dabed727f5d0a4905ac9d6a22bdfc1ae096094ce6248d"><div class="ttname"><a href="training_8h.html#a4f7541ba864f118a40c9dabed727f5d0a4905ac9d6a22bdfc1ae096094ce6248d">MicrocycleDay::COUNT</a></div><div class="ttdeci">@ COUNT</div></div>
 </div><!-- fragment -->
 </div>
@@ -659,7 +660,7 @@ Variables</h2></td></tr>
 </table>
 </div><div class="memdoc">
 <b>Initial value:</b><div class="fragment"><div class="line">=</div>
-<div class="line">    <span class="keyword">static_cast&lt;</span>std::size_t<span class="keyword">&gt;</span>(<a class="code hl_enumvalue" href="training_8h.html#a424b786fa8ddb2dfb397f2bb2ecd1b25a4905ac9d6a22bdfc1ae096094ce6248d">SessionType::COUNT</a>)</div>
+<div class="line">    <span class="keyword">static_cast&lt;</span>std::size_t<span class="keyword">&gt;</span>(std::to_underlying(<a class="code hl_enumvalue" href="training_8h.html#a424b786fa8ddb2dfb397f2bb2ecd1b25a4905ac9d6a22bdfc1ae096094ce6248d">SessionType::COUNT</a>))</div>
 <div class="ttc" id="atraining_8h_html_a424b786fa8ddb2dfb397f2bb2ecd1b25a4905ac9d6a22bdfc1ae096094ce6248d"><div class="ttname"><a href="training_8h.html#a424b786fa8ddb2dfb397f2bb2ecd1b25a4905ac9d6a22bdfc1ae096094ce6248d">SessionType::COUNT</a></div><div class="ttdeci">@ COUNT</div></div>
 </div><!-- fragment -->
 </div>
@@ -684,7 +685,7 @@ Variables</h2></td></tr>
 </table>
 </div><div class="memdoc">
 <b>Initial value:</b><div class="fragment"><div class="line">=</div>
-<div class="line">    <span class="keyword">static_cast&lt;</span>std::size_t<span class="keyword">&gt;</span>(<a class="code hl_enumvalue" href="training_8h.html#a9a4e3a7d02610ffdee695682fff65a61a4905ac9d6a22bdfc1ae096094ce6248d">TrainingFocus::COUNT</a>)</div>
+<div class="line">    <span class="keyword">static_cast&lt;</span>std::size_t<span class="keyword">&gt;</span>(std::to_underlying(<a class="code hl_enumvalue" href="training_8h.html#a9a4e3a7d02610ffdee695682fff65a61a4905ac9d6a22bdfc1ae096094ce6248d">TrainingFocus::COUNT</a>))</div>
 <div class="ttc" id="atraining_8h_html_a9a4e3a7d02610ffdee695682fff65a61a4905ac9d6a22bdfc1ae096094ce6248d"><div class="ttname"><a href="training_8h.html#a9a4e3a7d02610ffdee695682fff65a61a4905ac9d6a22bdfc1ae096094ce6248d">TrainingFocus::COUNT</a></div><div class="ttdeci">@ COUNT</div></div>
 </div><!-- fragment -->
 </div>

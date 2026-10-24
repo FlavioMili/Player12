@@ -39,7 +39,7 @@ var searchData=
   ['unsolicited_36',['unsolicited',['../structNationalJobOffer.html#a0acc7353ca113f41e52d1377c60de599',1,'NationalJobOffer::unsolicited'],['../structJobOffer.html#a17a997194801833fa7c16244b7136655',1,'JobOffer::unsolicited'],['../structManagerScene_1_1NationalOfferRow.html#a1050e46c07614bf69e714048830bc2c2',1,'ManagerScene::NationalOfferRow::unsolicited'],['../structManagerScene_1_1OfferRow.html#a0400c3654c15cb5ddb1b3194081909bc',1,'ManagerScene::OfferRow::unsolicited']]],
   ['until_37',['until',['../structGameController_1_1CallUpView.html#a6f41c610844efdf51549354ad2928a8c',1,'GameController::CallUpView::until'],['../structHolidayPlan.html#a6968b33776377a79cb46077bea2e542e',1,'HolidayPlan::until'],['../structNationalTeams_1_1Squad.html#a32ada97e0fd30b20cd1fdcbea3a27147',1,'NationalTeams::Squad::until'],['../structTalksCooldown.html#af7a7e9512da84adf9199bdad57a812b9',1,'TalksCooldown::until']]],
   ['until_5ftext_38',['until_text',['../structTransferMarketScene_1_1LoanRow.html#aa17eb20a285582ac9876a8b1ab89b853',1,'TransferMarketScene::LoanRow']]],
-  ['up_39',['up',['../structRenderMath_1_1Projection.html#a4a64941352e03af0288c5c4933f79914',1,'RenderMath::Projection::up'],['../structPlayerRig_1_1Swing.html#a08fe4af282fa475a5534c1eef368a7ee',1,'PlayerRig::Swing::up'],['../namespacePlayerRig.html#af012e9ebfa01c42ada738c3e7d49ad21',1,'PlayerRig::UP']]],
+  ['up_39',['up',['../namespacePlayerRig.html#af012e9ebfa01c42ada738c3e7d49ad21',1,'PlayerRig::UP'],['../structPlayerRig_1_1Swing.html#a08fe4af282fa475a5534c1eef368a7ee',1,'PlayerRig::Swing::up'],['../structPlayerTorsoFrame.html#a826aed396b0ec78558f9fdb25fb8b0f9',1,'PlayerTorsoFrame::up'],['../structRenderMath_1_1Projection.html#a4a64941352e03af0288c5c4933f79914',1,'RenderMath::Projection::up']]],
   ['upcoming_40',['upcoming',['../classInternationalScene.html#a8d07771ab23db1efbb2b709a7cfb2c7e',1,'InternationalScene']]],
   ['updated_5fat_5futc_41',['updated_at_utc',['../structSaveMetadata.html#a9aad7afa10d1e007ae2a97a52e47ece4',1,'SaveMetadata']]],
   ['updated_5fday_42',['updated_day',['../classSupporters.html#a2ae39f7b9f500ae489d239ac2e687b81',1,'Supporters']]],
@@ -59,10 +59,12 @@ var searchData=
   ['upper_5fdepth_56',['UPPER_DEPTH',['../structMatchRender3DTuning_1_1Stands.html#a19e82c299122191aef73dade8c680350',1,'MatchRender3DTuning::Stands']]],
   ['upper_5ftop_57',['UPPER_TOP',['../structMatchRender3DTuning_1_1Stands.html#af7716ba51a9c62120c8a76c559a53a56',1,'MatchRender3DTuning::Stands']]],
   ['upset_5freputation_5fgap_58',['UPSET_REPUTATION_GAP',['../namespaceNewsFeed.html#aa58734a618d1587c88cece4b938355f9',1,'NewsFeed']]],
-  ['urgency_5fdistance_5fmetres_59',['URGENCY_DISTANCE_METRES',['../structMatchTuning_1_1Player.html#a9887c0c6fc51e4c75ccf933fdc859f34',1,'MatchTuning::Player']]],
-  ['urgent_5ftarget_5fresponse_5fper_5fsecond_60',['URGENT_TARGET_RESPONSE_PER_SECOND',['../structMatchTuning_1_1Player.html#a83dae1717b3086f759a93f7cf798c273',1,'MatchTuning::Player']]],
-  ['urgentmovement_61',['urgentMovement',['../structMatchPlayer.html#a0139325b6ce77fb91a0ae454359d8fff',1,'MatchPlayer']]],
-  ['used_62',['used',['../classRenderMath_1_1ShirtNumbers.html#a2bc4c02f3a966aac6f48fd9cd541bd21',1,'RenderMath::ShirtNumbers']]],
-  ['user_5fid_63',['user_id',['../structUI_1_1Column.html#ab0c913e8f6c4bcb3d8cf736c27ba0dd8',1,'UI::Column']]],
-  ['utility_64',['utility',['../structMatchEngine_1_1PassOption.html#a5c46f3f4c7b24787e680bb108d5cf42b',1,'MatchEngine::PassOption::utility'],['../structPassDecision.html#a73aab420f3640ffeb8b356ef09e6b570',1,'PassDecision::utility']]]
+  ['upx_59',['upX',['../structCrowdFaceLayout.html#a938c2f535db857a0601d84fb9b3e76ac',1,'CrowdFaceLayout']]],
+  ['upy_60',['upY',['../structCrowdFaceLayout.html#aecb9b4e63d8de0061faf465417f257b6',1,'CrowdFaceLayout']]],
+  ['urgency_5fdistance_5fmetres_61',['URGENCY_DISTANCE_METRES',['../structMatchTuning_1_1Player.html#a9887c0c6fc51e4c75ccf933fdc859f34',1,'MatchTuning::Player']]],
+  ['urgent_5ftarget_5fresponse_5fper_5fsecond_62',['URGENT_TARGET_RESPONSE_PER_SECOND',['../structMatchTuning_1_1Player.html#a83dae1717b3086f759a93f7cf798c273',1,'MatchTuning::Player']]],
+  ['urgentmovement_63',['urgentMovement',['../structMatchPlayer.html#a0139325b6ce77fb91a0ae454359d8fff',1,'MatchPlayer']]],
+  ['used_64',['used',['../classRenderMath_1_1ShirtNumbers.html#a2bc4c02f3a966aac6f48fd9cd541bd21',1,'RenderMath::ShirtNumbers']]],
+  ['user_5fid_65',['user_id',['../structUI_1_1Column.html#ab0c913e8f6c4bcb3d8cf736c27ba0dd8',1,'UI::Column']]],
+  ['utility_66',['utility',['../structMatchEngine_1_1PassOption.html#a5c46f3f4c7b24787e680bb108d5cf42b',1,'MatchEngine::PassOption::utility'],['../structPassDecision.html#a73aab420f3640ffeb8b356ef09e6b570',1,'PassDecision::utility']]]
 ];

@@ -96,16 +96,16 @@ $(document).ready(function(){initNavTree('md_docs_2contributing_2player-cameo.ht
   <div class="headertitle"><div class="title">Add yourself as a player</div></div>
 </div><!--header-->
 <div class="contents">
-<div class="textblock"><p><a class="anchor" id="autotoc_md149"></a> As an optional thank-you for contributing, you can add your name or nickname to <a class="el" href="md_CONTRIBUTORS.html">CONTRIBUTORS.md</a>, or give a fictional player your name at your favorite existing club. You can choose both forms of credit.</p>
+<div class="textblock"><p><a class="anchor" id="autotoc_md150"></a> As an optional thank-you for contributing, you can add your name or nickname to <a class="el" href="md_CONTRIBUTORS.html">CONTRIBUTORS.md</a>, or give a fictional player your name at your favorite existing club. You can choose both forms of credit.</p>
 <p>The game loads hand-made players from <code>assets/user_made_data/players/*.json</code> when it creates a new career. This is the actual folder name in the repository. The rest of each squad is filled with generated players. A cameo changes the starting world; it does not insert a player into an existing save or guarantee that the player will start every match.</p>
-<h1><a class="anchor" id="autotoc_md150"></a>
+<h1><a class="anchor" id="autotoc_md151"></a>
 1. Choose your club and an unused player ID</h1>
 <p>Find your favorite club in <a href="../../assets/user_made_data/teams">the team data</a>. Its <code>id</code> is your player's <code>team_id</code>. For example, Lecce is team <b>103</b> in the default pack. Use an existing club so that no league or scheduling changes are needed.</p>
 <p>Choose a positive player <code>id</code> below <b>50000</b> that is not already used in <a href="../../assets/user_made_data/players">the player data</a>. Generated players start at 50000. The example uses <b>20001</b>, unused when this guide was written; check again before submitting it. If another contribution takes the same ID, choose another before merging.</p>
 <p>For a quick local search:</p>
 <div class="fragment"><div class="line">rg -n &#39;Lecce&#39; assets/user_made_data/teams</div>
 <div class="line">rg -n &#39;&quot;id&quot;\s*:\s*20001\b&#39; assets/user_made_data/players</div>
-</div><!-- fragment --><h1><a class="anchor" id="autotoc_md151"></a>
+</div><!-- fragment --><h1><a class="anchor" id="autotoc_md152"></a>
 2. Create a player file</h1>
 <p>Create <code>assets/user_made_data/players/your-handle.json</code>. Use lowercase words and hyphens for the filename. Each file contains a JSON <b>array</b>, even if you add only one player. Replace the example names with your own chosen name or nickname, change <code>team_id</code> to your club, and check the ID is free.</p>
 <div class="fragment"><div class="line">[</div>
@@ -136,7 +136,7 @@ $(document).ready(function(){initNavTree('md_docs_2contributing_2player-cameo.ht
 <div class="line">]</div>
 </div><!-- fragment --><p><code>role</code> accepts <code>GK</code>, <code>CB</code>, <code>LB</code>, <code>RB</code>, <code>CDM</code>, <code>CM</code>, <code>CAM</code>, <code>LM</code>, <code>RM</code>, <code>LW</code>, <code>RW</code> and <code>ST</code>. Height is in centimetres and wage is weekly. Use <code>Left</code> or <code>Right</code> for the preferred foot. Nationality is a demonym, such as <code>Italian</code>, <code>English</code> or <code>French</code>; supported values are in <a href="../../src/global/languages.h">languages.h</a>.</p>
 <p>Attributes use the names in <a href="../../assets/config/stats_config.json">stats_config.json</a> and values from 1 to 100. Keep attributes and wages plausible for the club; a cameo should fit the squad's level. The example's age, height and nationality describe the fictional player, so they do not need to be your personal details.</p>
-<h1><a class="anchor" id="autotoc_md152"></a>
+<h1><a class="anchor" id="autotoc_md153"></a>
 3. Check it in a new career</h1>
 <p>Check the JSON syntax from the repository root:</p>
 <div class="fragment"><div class="line">python3 -m json.tool assets/user_made_data/players/your-handle.json &gt; /dev/null</div>
@@ -144,7 +144,7 @@ $(document).ready(function(){initNavTree('md_docs_2contributing_2player-cameo.ht
 <div class="fragment"><div class="line">FM_RUNTIME_ROOT=/tmp/fm-player-cameo FM_WORLD_SEED=424242 \</div>
 <div class="line">  ./build/release/src/Player12</div>
 </div><!-- fragment --><p>Create a <b>new career</b>, choose your club, open its squad and find your player. Use the executable path from your own build if you used another preset or followed the <a class="el" href="md_docs_2user_2installation.html">macOS/Windows setup</a>. On PowerShell, set environment variables with <code>$env:FM_RUNTIME_ROOT</code> and <code>$env:FM_WORLD_SEED</code> before launching the executable.</p>
-<h1><a class="anchor" id="autotoc_md153"></a>
+<h1><a class="anchor" id="autotoc_md154"></a>
 4. Include it in your contribution</h1>
 <p>Add the JSON file to your pull request and state the chosen club, player ID and how you checked the new career. You can also add your name to <a class="el" href="md_CONTRIBUTORS.html">CONTRIBUTORS.md</a>. Use your own name or nickname that you want publicly credited. The default pack keeps professional players, real club badges and copied kits out of its content.</p>
 <p>If you prefer credits only, editing <a class="el" href="CONTRIBUTORS_8md.html">CONTRIBUTORS.md</a> is enough. For all fields and the wider world format, see the data reference. </p>

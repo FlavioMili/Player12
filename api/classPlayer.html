@@ -94,6 +94,7 @@ $(document).ready(function(){initNavTree('classPlayer.html',''); initResizable()
 
 <div class="header">
   <div class="summary">
+<a href="#nested-classes">Classes</a> &#124;
 <a href="#pub-methods">Public Member Functions</a> &#124;
 <a href="#pub-static-methods">Static Public Member Functions</a> &#124;
 <a href="#pub-static-attribs">Static Public Attributes</a> &#124;
@@ -108,6 +109,11 @@ $(document).ready(function(){initNavTree('classPlayer.html',''); initResizable()
 
 <p><code>#include &lt;<a class="el" href="player_8h_source.html">player.h</a>&gt;</code></p>
 <table class="memberdecls">
+<tr class="heading"><td colspan="2"><h2 class="groupheader"><a id="nested-classes" name="nested-classes"></a>
+Classes</h2></td></tr>
+<tr class="memitem:"><td class="memItemLeft" align="right" valign="top">struct &#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structPlayer_1_1MarketValueCache.html">MarketValueCache</a></td></tr>
+<tr class="separator:"><td class="memSeparator" colspan="2">&#160;</td></tr>
+</table><table class="memberdecls">
 <tr class="heading"><td colspan="2"><h2 class="groupheader"><a id="pub-methods" name="pub-methods"></a>
 Public Member Functions</h2></td></tr>
 <tr class="memitem:a435ec014d4b6b6bf5c5cd281ff51742c" id="r_a435ec014d4b6b6bf5c5cd281ff51742c"><td class="memItemLeft" align="right" valign="top">&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classPlayer.html#a435ec014d4b6b6bf5c5cd281ff51742c">Player</a> (<a class="el" href="types_8h.html#a93dcecc4aec7387438b9cabd8a28dfdb">PlayerID</a> new_id, <a class="el" href="types_8h.html#a57143f6ccbdf5a5d9724b986cbdafb31">TeamID</a> new_team_id, std::string_view new_first_name, std::string_view new_last_name, <a class="el" href="types_8h.html#ae1e198be4ce1cfce8be42795524c8900">PlayerRole</a> new_role, <a class="el" href="languages_8h.html#ac401b05356bfe6d1335ddaf14ad31d0c">Language</a> new_nationality, uint32_t new_wage, uint32_t new_status, uint8_t new_age, uint8_t new_contract_years, uint8_t new_height, <a class="el" href="player_8h.html#a29a274bfa86b6e9dbfae8cddbae6e606">Foot</a> new_foot, std::map&lt; std::string, float &gt; new_stats)</td></tr>
@@ -256,8 +262,8 @@ Private Attributes</h2></td></tr>
 <tr class="separator:aaa7f507f293fb96b9bac21fd49d82854"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a12122f838d032c80bbfa77a8965e1248" id="r_a12122f838d032c80bbfa77a8965e1248"><td class="memItemLeft" align="right" valign="top">uint32_t&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classPlayer.html#a12122f838d032c80bbfa77a8965e1248">_status</a></td></tr>
 <tr class="separator:a12122f838d032c80bbfa77a8965e1248"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a9c5efee2136c594d4d9ea46bc39eef2a" id="r_a9c5efee2136c594d4d9ea46bc39eef2a"><td class="memItemLeft" align="right" valign="top">uint32_t&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classPlayer.html#a9c5efee2136c594d4d9ea46bc39eef2a">_cached_market_value</a> = 0</td></tr>
-<tr class="separator:a9c5efee2136c594d4d9ea46bc39eef2a"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a75028124b9b958e268765ea7a4aa138a" id="r_a75028124b9b958e268765ea7a4aa138a"><td class="memItemLeft" align="right" valign="top"><a class="el" href="structPlayer_1_1MarketValueCache.html">MarketValueCache</a>&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classPlayer.html#a75028124b9b958e268765ea7a4aa138a">_cached_market_value</a></td></tr>
+<tr class="separator:a75028124b9b958e268765ea7a4aa138a"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a71057df9bb971e2d00f6f09b6adcea8e" id="r_a71057df9bb971e2d00f6f09b6adcea8e"><td class="memItemLeft" align="right" valign="top">std::string&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classPlayer.html#a71057df9bb971e2d00f6f09b6adcea8e">_first_name</a></td></tr>
 <tr class="separator:a71057df9bb971e2d00f6f09b6adcea8e"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a0576f8dee6a1fca292ded0d4deafe181" id="r_a0576f8dee6a1fca292ded0d4deafe181"><td class="memItemLeft" align="right" valign="top">std::string&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classPlayer.html#a0576f8dee6a1fca292ded0d4deafe181">_last_name</a></td></tr>
@@ -289,7 +295,7 @@ Private Attributes</h2></td></tr>
 </table>
 <a name="details" id="details"></a><h2 class="groupheader">Detailed Description</h2>
 <div class="textblock"><p>Persistent career identity, attributes, traits and day-to-day state. </p>
-<p>On-pitch positions, intentions and live fatigue belong to <a class="el" href="structMatchPlayer.html">MatchPlayer</a> in <a class="el" href="match__engine_8h.html">match_engine.h</a>. The engine borrows this <a class="el" href="classPlayer.html" title="Persistent career identity, attributes, traits and day-to-day state.">Player</a> as read-only input and the career later applies its match consequences. <a class="el" href="namespacePlayerAgent.html" title="The player&#39;s agent in the managed club&#39;s purchase and contract talks: what he asks for and what he sa...">PlayerAgent</a> models contract negotiations, not on-pitch AI. See <a class="el" href="player-behavior_8md.html">docs/development/player-behavior.md</a>. </p>
+<p>On-pitch positions, intentions and live fatigue belong to <a class="el" href="structMatchPlayer.html">MatchPlayer</a> in <a class="el" href="match__engine_8h.html">match_engine.h</a>. The engine borrows this <a class="el" href="classPlayer.html" title="Persistent career identity, attributes, traits and day-to-day state.">Player</a> as read-only input and the career later applies its match consequences. <a class="el" href="namespacePlayerAgent.html" title="The player&#39;s agent in the managed club&#39;s purchase and contract talks: what he asks for and what he sa...">PlayerAgent</a> models contract negotiations, not on-pitch AI. See <a class="el" href="player-behavior_8md.html">docs/development/player-behavior.md</a>. Concurrent const queries may refresh the price cache. Attribute mutations require exclusive career ownership, as with other persistent model state. </p>
 </div><h2 class="groupheader">Constructor &amp; Destructor Documentation</h2>
 <a id="a435ec014d4b6b6bf5c5cd281ff51742c" name="a435ec014d4b6b6bf5c5cd281ff51742c"></a>
 <h2 class="memtitle"><span class="permalink"><a href="#a435ec014d4b6b6bf5c5cd281ff51742c">&#9670;&#160;</a></span>Player()</h2>
@@ -1292,8 +1298,8 @@ Private Attributes</h2></td></tr>
 
 </div>
 </div>
-<a id="a9c5efee2136c594d4d9ea46bc39eef2a" name="a9c5efee2136c594d4d9ea46bc39eef2a"></a>
-<h2 class="memtitle"><span class="permalink"><a href="#a9c5efee2136c594d4d9ea46bc39eef2a">&#9670;&#160;</a></span>_cached_market_value</h2>
+<a id="a75028124b9b958e268765ea7a4aa138a" name="a75028124b9b958e268765ea7a4aa138a"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a75028124b9b958e268765ea7a4aa138a">&#9670;&#160;</a></span>_cached_market_value</h2>
 
 <div class="memitem">
 <div class="memproto">
@@ -1302,12 +1308,12 @@ Private Attributes</h2></td></tr>
   <td class="mlabels-left">
       <table class="memname">
         <tr>
-          <td class="memname">uint32_t Player::_cached_market_value = 0</td>
+          <td class="memname"><a class="el" href="structPlayer_1_1MarketValueCache.html">MarketValueCache</a> Player::_cached_market_value</td>
         </tr>
       </table>
   </td>
   <td class="mlabels-right">
-<span class="mlabels"><span class="mlabel">mutable</span><span class="mlabel">private</span></span>  </td>
+<span class="mlabels"><span class="mlabel">private</span></span>  </td>
   </tr>
 </table>
 </div><div class="memdoc">

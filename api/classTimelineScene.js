@@ -17,7 +17,7 @@ var classTimelineScene =
     [ "renderContent", "classTimelineScene.html#a7065762fe20e5b1a9ab87c13bff40078", null ],
     [ "renderControls", "classTimelineScene.html#a3c37ac656665eeddafdd06563bd06de3", null ],
     [ "renderEntry", "classTimelineScene.html#acb0b7d2bb16883d9980f4568d5d9a07b", null ],
-    [ "renderSummary", "classTimelineScene.html#a2a0953d1227526b0d9f418fd5a29571c", null ],
+    [ "renderSummary", "classTimelineScene.html#ad9d51208dbdb5bcdf3e5756832475299", null ],
     [ "setZoom", "classTimelineScene.html#aae9e5e7bbdf4cc09d6d9f7d0136a8c1b", null ],
     [ "update", "classTimelineScene.html#abd478ee7903cbf19c88dec6a76df3fc1", null ],
     [ "club_filter", "classTimelineScene.html#adf14f18295984d3b6547cbfaca24baa1", null ],

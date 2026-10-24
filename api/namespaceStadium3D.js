@@ -1,11 +1,11 @@
 var namespaceStadium3D =
 [
     [ "CrowdFlags", "namespaceStadium3D_1_1CrowdFlags.html", [
-      [ "AWAY_FAN", "namespaceStadium3D_1_1CrowdFlags.html#a449abefd4ca7680f1d8aa9279a9d3f59", null ],
-      [ "CHEERS_AWAY", "namespaceStadium3D_1_1CrowdFlags.html#ab1127e0049ff69319e3df4516ff8aa3c", null ],
-      [ "CHEERS_HOME", "namespaceStadium3D_1_1CrowdFlags.html#a2c1c148ee5467df5b6fbf3a81eef3492", null ],
-      [ "HOME_FAN", "namespaceStadium3D_1_1CrowdFlags.html#aa7efb31da61cc8ecc8347aecb04c5fcc", null ],
-      [ "SCARF", "namespaceStadium3D_1_1CrowdFlags.html#a03105d22bf08e138bcb7fec8a67daab0", null ]
+      [ "AWAY_FAN", "namespaceStadium3D_1_1CrowdFlags.html#adc21b6ab8c23ae2c6ec57e63f389fd9e", null ],
+      [ "CHEERS_AWAY", "namespaceStadium3D_1_1CrowdFlags.html#a218f82390e15899349c2a0e91c5ab6b2", null ],
+      [ "CHEERS_HOME", "namespaceStadium3D_1_1CrowdFlags.html#ad9bfea1b533406e5926736fefb7feed4", null ],
+      [ "HOME_FAN", "namespaceStadium3D_1_1CrowdFlags.html#a99830621a167adfbb2c267e53bf6397b", null ],
+      [ "SCARF", "namespaceStadium3D_1_1CrowdFlags.html#acdb17c60574fc93a6c361be6f04589b7", null ]
     ] ],
     [ "AdBoard", "structStadium3D_1_1AdBoard.html", "structStadium3D_1_1AdBoard" ],
     [ "Box", "structStadium3D_1_1Box.html", "structStadium3D_1_1Box" ],

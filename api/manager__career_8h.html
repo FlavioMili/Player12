@@ -105,10 +105,12 @@ $(document).ready(function(){initNavTree('manager__career_8h.html',''); initResi
 <div class="textblock"><code>#include &lt;array&gt;</code><br />
 <code>#include &lt;cstdint&gt;</code><br />
 <code>#include &lt;functional&gt;</code><br />
+<code>#include &lt;map&gt;</code><br />
 <code>#include &lt;memory&gt;</code><br />
 <code>#include &lt;optional&gt;</code><br />
 <code>#include &lt;span&gt;</code><br />
 <code>#include &lt;string&gt;</code><br />
+<code>#include &lt;utility&gt;</code><br />
 <code>#include &lt;vector&gt;</code><br />
 <code>#include &quot;<a class="el" href="languages_8h_source.html">global/languages.h</a>&quot;</code><br />
 <code>#include &quot;<a class="el" href="types_8h_source.html">global/types.h</a>&quot;</code><br />
@@ -154,6 +156,8 @@ Classes</h2></td></tr>
 <tr class="separator:"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:"><td class="memItemLeft" align="right" valign="top">struct &#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structCareerDayEvents.html">CareerDayEvents</a></td></tr>
 <tr class="memdesc:"><td class="mdescLeft">&#160;</td><td class="mdescRight">What changed during one simulated day.  <a href="structCareerDayEvents.html#details">More...</a><br /></td></tr>
+<tr class="separator:"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:"><td class="memItemLeft" align="right" valign="top">struct &#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structManagerMatchEvent.html">ManagerMatchEvent</a></td></tr>
 <tr class="separator:"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:"><td class="memItemLeft" align="right" valign="top">class &#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classManagerCareer.html">ManagerCareer</a></td></tr>
 <tr class="memdesc:"><td class="mdescLeft">&#160;</td><td class="mdescRight">The human manager's career and the market for managers.  <a href="classManagerCareer.html#details">More...</a><br /></td></tr>
@@ -712,7 +716,7 @@ Variables</h2></td></tr>
 </table>
 </div><div class="memdoc">
 <b>Initial value:</b><div class="fragment"><div class="line">=</div>
-<div class="line">    <span class="keyword">static_cast&lt;</span>std::size_t<span class="keyword">&gt;</span>(<a class="code hl_enumvalue" href="manager__career_8h.html#a0ebe2a89ee81608c30e995e9df7d49f9a4905ac9d6a22bdfc1ae096094ce6248d">InterviewTopic::COUNT</a>)</div>
+<div class="line">    <span class="keyword">static_cast&lt;</span>std::size_t<span class="keyword">&gt;</span>(std::to_underlying(<a class="code hl_enumvalue" href="manager__career_8h.html#a0ebe2a89ee81608c30e995e9df7d49f9a4905ac9d6a22bdfc1ae096094ce6248d">InterviewTopic::COUNT</a>))</div>
 <div class="ttc" id="amanager__career_8h_html_a0ebe2a89ee81608c30e995e9df7d49f9a4905ac9d6a22bdfc1ae096094ce6248d"><div class="ttname"><a href="manager__career_8h.html#a0ebe2a89ee81608c30e995e9df7d49f9a4905ac9d6a22bdfc1ae096094ce6248d">InterviewTopic::COUNT</a></div><div class="ttdeci">@ COUNT</div></div>
 </div><!-- fragment -->
 </div>

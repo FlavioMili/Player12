@@ -2,11 +2,11 @@ var classTeamTalkDialog =
 [
     [ "ToneRow", "structTeamTalkDialog_1_1ToneRow.html", "structTeamTalkDialog_1_1ToneRow" ],
     [ "isOpen", "classTeamTalkDialog.html#ad8dae8e83277d9387bc24de4b3744db7", null ],
-    [ "open", "classTeamTalkDialog.html#aa941fb976cc5c4a69d47fab4a1bce26a", null ],
+    [ "open", "classTeamTalkDialog.html#af459ab4492ef261dc24a5cc90c9b791d", null ],
     [ "render", "classTeamTalkDialog.html#a0da054952be9061938bb7ed12e382594", null ],
     [ "renderForMatch", "classTeamTalkDialog.html#a398cab29ca921f4362fec62229d3dfdc", null ],
     [ "renderOptions", "classTeamTalkDialog.html#a89185a308d83e8ad1e5726922735c7d6", null ],
-    [ "renderResult", "classTeamTalkDialog.html#a71964f1ef1654576a98a78625f45e87b", null ],
+    [ "renderResult", "classTeamTalkDialog.html#aa85ece22e099d279eb068ed8221d7dcf", null ],
     [ "applied_talk", "classTeamTalkDialog.html#a51199bed0ec327587581e0ad26c7ffc2", null ],
     [ "dismiss_requested", "classTeamTalkDialog.html#a9e8f61297584592830947dc1170cd136", null ],
     [ "half_offered", "classTeamTalkDialog.html#a3e9c77bfe8d0026b4113495b67a83991", null ],

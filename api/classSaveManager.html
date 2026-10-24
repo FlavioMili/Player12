@@ -126,10 +126,10 @@ Static Public Member Functions</h2></td></tr>
 <tr class="separator:a4b44dfb353d4db1b4f4be538793f1958"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a3977deee681ab3775034cca6a1b42385" id="r_a3977deee681ab3775034cca6a1b42385"><td class="memItemLeft" align="right" valign="top">static std::shared_ptr&lt; <a class="el" href="classDatabaseConnection.html">DatabaseConnection</a> &gt;&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classSaveManager.html#a3977deee681ab3775034cca6a1b42385">createWorkingCopy</a> ()</td></tr>
 <tr class="separator:a3977deee681ab3775034cca6a1b42385"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:ad496b022b22d7bd65beec688807c58a3" id="r_ad496b022b22d7bd65beec688807c58a3"><td class="memItemLeft" align="right" valign="top">static void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classSaveManager.html#ad496b022b22d7bd65beec688807c58a3">stampMetadata</a> (<a class="el" href="classDatabaseConnection.html">DatabaseConnection</a> &amp;working, std::uint64_t world_seed, const <a class="el" href="structGameDateValue.html">GameDateValue</a> &amp;game_date, std::int64_t playtime_seconds)</td></tr>
-<tr class="separator:ad496b022b22d7bd65beec688807c58a3"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:ad9a6a999a1620286e469aece8975f6ed" id="r_ad9a6a999a1620286e469aece8975f6ed"><td class="memItemLeft" align="right" valign="top">static <a class="el" href="structSaveTimings.html">SaveTimings</a>&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classSaveManager.html#ad9a6a999a1620286e469aece8975f6ed">persist</a> (<a class="el" href="classDatabaseConnection.html">DatabaseConnection</a> &amp;working, const std::filesystem::path &amp;file, int backups)</td></tr>
-<tr class="separator:ad9a6a999a1620286e469aece8975f6ed"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:aed75221f3d3ce81d3d4ee47b95ce33d3" id="r_aed75221f3d3ce81d3d4ee47b95ce33d3"><td class="memItemLeft" align="right" valign="top">static void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classSaveManager.html#aed75221f3d3ce81d3d4ee47b95ce33d3">stampMetadata</a> (const <a class="el" href="classDatabaseConnection.html">DatabaseConnection</a> &amp;working, std::uint64_t world_seed, const <a class="el" href="structGameDateValue.html">GameDateValue</a> &amp;game_date, std::int64_t playtime_seconds)</td></tr>
+<tr class="separator:aed75221f3d3ce81d3d4ee47b95ce33d3"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a2218aae2de305fe7186e90a9999d77fd" id="r_a2218aae2de305fe7186e90a9999d77fd"><td class="memItemLeft" align="right" valign="top">static <a class="el" href="structSaveTimings.html">SaveTimings</a>&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classSaveManager.html#a2218aae2de305fe7186e90a9999d77fd">persist</a> (const <a class="el" href="classDatabaseConnection.html">DatabaseConnection</a> &amp;working, const std::filesystem::path &amp;file, int backups)</td></tr>
+<tr class="separator:a2218aae2de305fe7186e90a9999d77fd"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a03c4b1b97bbbac6f338fa88f93918b78" id="r_a03c4b1b97bbbac6f338fa88f93918b78"><td class="memItemLeft" align="right" valign="top">static void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classSaveManager.html#a03c4b1b97bbbac6f338fa88f93918b78">preserveBeforeMigration</a> (const std::filesystem::path &amp;file, int schema_version)</td></tr>
 <tr class="separator:a03c4b1b97bbbac6f338fa88f93918b78"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a43a85ae53cdc6b776e9613b338c4e02f" id="r_a43a85ae53cdc6b776e9613b338c4e02f"><td class="memItemLeft" align="right" valign="top">static int&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classSaveManager.html#a43a85ae53cdc6b776e9613b338c4e02f">countBackups</a> (const std::filesystem::path &amp;file)</td></tr>
@@ -538,8 +538,8 @@ Static Public Member Functions</h2></td></tr>
 
 </div>
 </div>
-<a id="ad9a6a999a1620286e469aece8975f6ed" name="ad9a6a999a1620286e469aece8975f6ed"></a>
-<h2 class="memtitle"><span class="permalink"><a href="#ad9a6a999a1620286e469aece8975f6ed">&#9670;&#160;</a></span>persist()</h2>
+<a id="a2218aae2de305fe7186e90a9999d77fd" name="a2218aae2de305fe7186e90a9999d77fd"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a2218aae2de305fe7186e90a9999d77fd">&#9670;&#160;</a></span>persist()</h2>
 
 <div class="memitem">
 <div class="memproto">
@@ -550,7 +550,7 @@ Static Public Member Functions</h2></td></tr>
         <tr>
           <td class="memname"><a class="el" href="structSaveTimings.html">SaveTimings</a> SaveManager::persist </td>
           <td>(</td>
-          <td class="paramtype"><a class="el" href="classDatabaseConnection.html">DatabaseConnection</a> &amp;&#160;</td>
+          <td class="paramtype">const <a class="el" href="classDatabaseConnection.html">DatabaseConnection</a> &amp;&#160;</td>
           <td class="paramname"><em>working</em>, </td>
         </tr>
         <tr>
@@ -692,8 +692,8 @@ Static Public Member Functions</h2></td></tr>
 
 </div>
 </div>
-<a id="ad496b022b22d7bd65beec688807c58a3" name="ad496b022b22d7bd65beec688807c58a3"></a>
-<h2 class="memtitle"><span class="permalink"><a href="#ad496b022b22d7bd65beec688807c58a3">&#9670;&#160;</a></span>stampMetadata()</h2>
+<a id="aed75221f3d3ce81d3d4ee47b95ce33d3" name="aed75221f3d3ce81d3d4ee47b95ce33d3"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#aed75221f3d3ce81d3d4ee47b95ce33d3">&#9670;&#160;</a></span>stampMetadata()</h2>
 
 <div class="memitem">
 <div class="memproto">
@@ -704,7 +704,7 @@ Static Public Member Functions</h2></td></tr>
         <tr>
           <td class="memname">void SaveManager::stampMetadata </td>
           <td>(</td>
-          <td class="paramtype"><a class="el" href="classDatabaseConnection.html">DatabaseConnection</a> &amp;&#160;</td>
+          <td class="paramtype">const <a class="el" href="classDatabaseConnection.html">DatabaseConnection</a> &amp;&#160;</td>
           <td class="paramname"><em>working</em>, </td>
         </tr>
         <tr>

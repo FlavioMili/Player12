@@ -225,8 +225,8 @@ Private Member Functions</h2></td></tr>
 <tr class="separator:a7012bffb4844776577893279ebe868f7"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a1e429c7d6a14153d7e85cd0824129d71" id="r_a1e429c7d6a14153d7e85cd0824129d71"><td class="memItemLeft" align="right" valign="top">void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classMedicalScene.html#a1e429c7d6a14153d7e85cd0824129d71">nameCell</a> (<a class="el" href="types_8h.html#a93dcecc4aec7387438b9cabd8a28dfdb">PlayerID</a> id, const std::string &amp;<a class="el" href="input__actions_8cpp.html#a8f8f80d37794cde9472343e4487ba3eb">name</a>, const std::string &amp;role, bool returning)</td></tr>
 <tr class="separator:a1e429c7d6a14153d7e85cd0824129d71"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a2c1827947dc71b6d1790f82457db80c3" id="r_a2c1827947dc71b6d1790f82457db80c3"><td class="memItemLeft" align="right" valign="top">void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classMedicalScene.html#a2c1827947dc71b6d1790f82457db80c3">setFlag</a> (std::uint8_t flag, bool enabled)</td></tr>
-<tr class="separator:a2c1827947dc71b6d1790f82457db80c3"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a6a5a5555c219fd814d511f5e3387882f" id="r_a6a5a5555c219fd814d511f5e3387882f"><td class="memItemLeft" align="right" valign="top">void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classMedicalScene.html#a6a5a5555c219fd814d511f5e3387882f">setFlag</a> (std::byte flag, bool enabled)</td></tr>
+<tr class="separator:a6a5a5555c219fd814d511f5e3387882f"><td class="memSeparator" colspan="2">&#160;</td></tr>
 </table><table class="memberdecls">
 <tr class="heading"><td colspan="2"><h2 class="groupheader"><a id="pri-attribs" name="pri-attribs"></a>
 Private Attributes</h2></td></tr>
@@ -258,8 +258,8 @@ Private Attributes</h2></td></tr>
 <tr class="separator:ae04d874ec7dc7ce1f552fdf80eec6a1c"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:adb453459ec526223b6b632c9918360f5" id="r_adb453459ec526223b6b632c9918360f5"><td class="memItemLeft" align="right" valign="top">std::string&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classMedicalScene.html#adb453459ec526223b6b632c9918360f5">selected_name</a></td></tr>
 <tr class="separator:adb453459ec526223b6b632c9918360f5"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:ae1f1d259cdefefa5998e65970edd66a5" id="r_ae1f1d259cdefefa5998e65970edd66a5"><td class="memItemLeft" align="right" valign="top">std::uint8_t&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classMedicalScene.html#ae1f1d259cdefefa5998e65970edd66a5">selected_flags</a> = 0</td></tr>
-<tr class="separator:ae1f1d259cdefefa5998e65970edd66a5"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a0c988f39facbae1a68ad937afe207ac7" id="r_a0c988f39facbae1a68ad937afe207ac7"><td class="memItemLeft" align="right" valign="top">std::byte&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classMedicalScene.html#a0c988f39facbae1a68ad937afe207ac7">selected_flags</a> {}</td></tr>
+<tr class="separator:a0c988f39facbae1a68ad937afe207ac7"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a47fd0fab56e9809f6a737ee850a2ca92" id="r_a47fd0fab56e9809f6a737ee850a2ca92"><td class="memItemLeft" align="right" valign="top">std::int32_t&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classMedicalScene.html#a47fd0fab56e9809f6a737ee850a2ca92">chart_today</a> = 0</td></tr>
 <tr class="separator:a47fd0fab56e9809f6a737ee850a2ca92"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:ad129f8ebb095e6c445e9ae21cdbf1778" id="r_ad129f8ebb095e6c445e9ae21cdbf1778"><td class="memItemLeft" align="right" valign="top">std::array&lt; <a class="el" href="structLoadChartDay.html">LoadChartDay</a>, <a class="el" href="namespaceMedicalCentre.html#aeb25d2f708acc22ea100b880dbe08698">MedicalCentre::LOAD_CHART_DAYS</a> &gt;&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classMedicalScene.html#ad129f8ebb095e6c445e9ae21cdbf1778">chart</a> {}</td></tr>
@@ -333,7 +333,7 @@ Additional Inherited Members</h2></td></tr>
 
 <p>Gets the ID of the scene. </p>
 <dl class="section return"><dt>Returns</dt><dd>The SceneID of this scene.</dd></dl>
-<p>This function might be used to check what we are rendering. we would simply do something like this: <a class="el" href="classMainMenuScene.html#ac65f4aa576ae71cb9fac4a1154edca49" title="Gets the ID of this scene.">MainMenuScene::getID()</a> { return <a class="el" href="gui__scene_8h.html#aaf4bddc3ff70ab62a07943e024b9942faa16d505f03a4b6f35486f65f6a61317e">SceneID::MAIN_MENU</a>; } TODO : remove or not? </p>
+<p><a class="el" href="classGUIView.html" title="Main view manager for the GUI. Handles scenes and overlays.">GUIView</a> uses this identifier to apply match-specific event and scene behavior. </p>
 
 <p>Implements <a class="el" href="classGUIScene.html#adc23f98639a131403f09cc46133fcd04">GUIScene</a>.</p>
 
@@ -633,8 +633,8 @@ Additional Inherited Members</h2></td></tr>
 
 </div>
 </div>
-<a id="a2c1827947dc71b6d1790f82457db80c3" name="a2c1827947dc71b6d1790f82457db80c3"></a>
-<h2 class="memtitle"><span class="permalink"><a href="#a2c1827947dc71b6d1790f82457db80c3">&#9670;&#160;</a></span>setFlag()</h2>
+<a id="a6a5a5555c219fd814d511f5e3387882f" name="a6a5a5555c219fd814d511f5e3387882f"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a6a5a5555c219fd814d511f5e3387882f">&#9670;&#160;</a></span>setFlag()</h2>
 
 <div class="memitem">
 <div class="memproto">
@@ -645,7 +645,7 @@ Additional Inherited Members</h2></td></tr>
         <tr>
           <td class="memname">void MedicalScene::setFlag </td>
           <td>(</td>
-          <td class="paramtype">std::uint8_t&#160;</td>
+          <td class="paramtype">std::byte&#160;</td>
           <td class="paramname"><em>flag</em>, </td>
         </tr>
         <tr>
@@ -1040,8 +1040,8 @@ Additional Inherited Members</h2></td></tr>
 
 </div>
 </div>
-<a id="ae1f1d259cdefefa5998e65970edd66a5" name="ae1f1d259cdefefa5998e65970edd66a5"></a>
-<h2 class="memtitle"><span class="permalink"><a href="#ae1f1d259cdefefa5998e65970edd66a5">&#9670;&#160;</a></span>selected_flags</h2>
+<a id="a0c988f39facbae1a68ad937afe207ac7" name="a0c988f39facbae1a68ad937afe207ac7"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a0c988f39facbae1a68ad937afe207ac7">&#9670;&#160;</a></span>selected_flags</h2>
 
 <div class="memitem">
 <div class="memproto">
@@ -1050,7 +1050,7 @@ Additional Inherited Members</h2></td></tr>
   <td class="mlabels-left">
       <table class="memname">
         <tr>
-          <td class="memname">std::uint8_t MedicalScene::selected_flags = 0</td>
+          <td class="memname">std::byte MedicalScene::selected_flags {}</td>
         </tr>
       </table>
   </td>

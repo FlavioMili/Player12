@@ -198,14 +198,14 @@ Protected Member Functions</h2></td></tr>
 </table><table class="memberdecls">
 <tr class="heading"><td colspan="2"><h2 class="groupheader"><a id="pri-methods" name="pri-methods"></a>
 Private Member Functions</h2></td></tr>
-<tr class="memitem:a74b0244073b18b97d9e4864ae57a5eb9" id="r_a74b0244073b18b97d9e4864ae57a5eb9"><td class="memItemLeft" align="right" valign="top">void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classOppositionScene.html#a74b0244073b18b97d9e4864ae57a5eb9">renderSummary</a> ()</td></tr>
-<tr class="separator:a74b0244073b18b97d9e4864ae57a5eb9"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a1e089e1e2d52ab26d6603f1a80a3e495" id="r_a1e089e1e2d52ab26d6603f1a80a3e495"><td class="memItemLeft" align="right" valign="top">void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classOppositionScene.html#a1e089e1e2d52ab26d6603f1a80a3e495">renderSummary</a> () const</td></tr>
+<tr class="separator:a1e089e1e2d52ab26d6603f1a80a3e495"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a54a717840c44d59a7bcb6a66bd40f81e" id="r_a54a717840c44d59a7bcb6a66bd40f81e"><td class="memItemLeft" align="right" valign="top">void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classOppositionScene.html#a54a717840c44d59a7bcb6a66bd40f81e">renderLikelyXi</a> (float width)</td></tr>
 <tr class="separator:a54a717840c44d59a7bcb6a66bd40f81e"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a9e535d887e6e7d5993d412134754d72d" id="r_a9e535d887e6e7d5993d412134754d72d"><td class="memItemLeft" align="right" valign="top">void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classOppositionScene.html#a9e535d887e6e7d5993d412134754d72d">renderKeyPlayers</a> (float width)</td></tr>
 <tr class="separator:a9e535d887e6e7d5993d412134754d72d"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:aa1b5b50cdd189015667caa2772e55e5e" id="r_aa1b5b50cdd189015667caa2772e55e5e"><td class="memItemLeft" align="right" valign="top">void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classOppositionScene.html#aa1b5b50cdd189015667caa2772e55e5e">renderProfile</a> (float width)</td></tr>
-<tr class="separator:aa1b5b50cdd189015667caa2772e55e5e"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:abf833953605b18cbd5a75ee699812662" id="r_abf833953605b18cbd5a75ee699812662"><td class="memItemLeft" align="right" valign="top">void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classOppositionScene.html#abf833953605b18cbd5a75ee699812662">renderProfile</a> (float width) const</td></tr>
+<tr class="separator:abf833953605b18cbd5a75ee699812662"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:aaa871774b81e100c74c7d4e5ee41c272" id="r_aaa871774b81e100c74c7d4e5ee41c272"><td class="memItemLeft" align="right" valign="top">void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classOppositionScene.html#aaa871774b81e100c74c7d4e5ee41c272">renderCounters</a> (float width)</td></tr>
 <tr class="separator:aaa871774b81e100c74c7d4e5ee41c272"><td class="memSeparator" colspan="2">&#160;</td></tr>
 </table><table class="memberdecls">
@@ -288,7 +288,7 @@ Additional Inherited Members</h2></td></tr>
 
 <p>Gets the ID of the scene. </p>
 <dl class="section return"><dt>Returns</dt><dd>The SceneID of this scene.</dd></dl>
-<p>This function might be used to check what we are rendering. we would simply do something like this: <a class="el" href="classMainMenuScene.html#ac65f4aa576ae71cb9fac4a1154edca49" title="Gets the ID of this scene.">MainMenuScene::getID()</a> { return <a class="el" href="gui__scene_8h.html#aaf4bddc3ff70ab62a07943e024b9942faa16d505f03a4b6f35486f65f6a61317e">SceneID::MAIN_MENU</a>; } TODO : remove or not? </p>
+<p><a class="el" href="classGUIView.html" title="Main view manager for the GUI. Handles scenes and overlays.">GUIView</a> uses this identifier to apply match-specific event and scene behavior. </p>
 
 <p>Implements <a class="el" href="classGUIScene.html#adc23f98639a131403f09cc46133fcd04">GUIScene</a>.</p>
 
@@ -459,8 +459,8 @@ Additional Inherited Members</h2></td></tr>
 
 </div>
 </div>
-<a id="aa1b5b50cdd189015667caa2772e55e5e" name="aa1b5b50cdd189015667caa2772e55e5e"></a>
-<h2 class="memtitle"><span class="permalink"><a href="#aa1b5b50cdd189015667caa2772e55e5e">&#9670;&#160;</a></span>renderProfile()</h2>
+<a id="abf833953605b18cbd5a75ee699812662" name="abf833953605b18cbd5a75ee699812662"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#abf833953605b18cbd5a75ee699812662">&#9670;&#160;</a></span>renderProfile()</h2>
 
 <div class="memitem">
 <div class="memproto">
@@ -473,7 +473,7 @@ Additional Inherited Members</h2></td></tr>
           <td>(</td>
           <td class="paramtype">float&#160;</td>
           <td class="paramname"><em>width</em></td><td>)</td>
-          <td></td>
+          <td> const</td>
         </tr>
       </table>
   </td>
@@ -485,8 +485,8 @@ Additional Inherited Members</h2></td></tr>
 
 </div>
 </div>
-<a id="a74b0244073b18b97d9e4864ae57a5eb9" name="a74b0244073b18b97d9e4864ae57a5eb9"></a>
-<h2 class="memtitle"><span class="permalink"><a href="#a74b0244073b18b97d9e4864ae57a5eb9">&#9670;&#160;</a></span>renderSummary()</h2>
+<a id="a1e089e1e2d52ab26d6603f1a80a3e495" name="a1e089e1e2d52ab26d6603f1a80a3e495"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a1e089e1e2d52ab26d6603f1a80a3e495">&#9670;&#160;</a></span>renderSummary()</h2>
 
 <div class="memitem">
 <div class="memproto">
@@ -498,7 +498,7 @@ Additional Inherited Members</h2></td></tr>
           <td class="memname">void OppositionScene::renderSummary </td>
           <td>(</td>
           <td class="paramname"></td><td>)</td>
-          <td></td>
+          <td> const</td>
         </tr>
       </table>
   </td>

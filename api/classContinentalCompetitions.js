@@ -33,7 +33,7 @@ var classContinentalCompetitions =
     [ "needsExtraTime", "classContinentalCompetitions.html#ae7422b2dbf78fc7335f9bdfe6cce7db0", null ],
     [ "onResult", "classContinentalCompetitions.html#abc68c9d98269940b0fa890dbb77816b7", null ],
     [ "payPrize", "classContinentalCompetitions.html#afbd165b746bcc96d0e7925d51e9827d0", null ],
-    [ "postNews", "classContinentalCompetitions.html#a53a531457144d30e90ffb9c093f196bc", null ],
+    [ "postNews", "classContinentalCompetitions.html#aee3b47cd0d9ddf7d4ce849b856203682", null ],
     [ "qualify", "classContinentalCompetitions.html#aefdee124df4417f99d2ee23f90cb501d", null ],
     [ "qualifyByReputation", "classContinentalCompetitions.html#a988e1fe6c511e69fc6685d7e51e6035e", null ],
     [ "rankedAssociations", "classContinentalCompetitions.html#a14ca515bbbe142494de1d533da3b6241", null ],

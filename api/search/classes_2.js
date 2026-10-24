@@ -61,9 +61,10 @@ var searchData=
   ['crowdbed_58',['CrowdBed',['../classAudio_1_1CrowdBed.html',1,'Audio']]],
   ['crowdclump_59',['CrowdClump',['../structStadium3D_1_1CrowdClump.html',1,'Stadium3D']]],
   ['crowddot_60',['CrowdDot',['../structStadium3D_1_1CrowdDot.html',1,'Stadium3D']]],
-  ['crowdflag_61',['CrowdFlag',['../structStadium3D_1_1CrowdFlag.html',1,'Stadium3D']]],
-  ['cupdraw_62',['CupDraw',['../structCompetitions_1_1CupDraw.html',1,'Competitions']]],
-  ['cupround_63',['CupRound',['../structCompetitions_1_1CupRound.html',1,'Competitions']]],
-  ['cuprun_64',['CupRun',['../structGame_1_1CupRun.html',1,'Game']]],
-  ['cupstatus_65',['CupStatus',['../structCompetitions_1_1CupStatus.html',1,'Competitions']]]
+  ['crowdfacelayout_61',['CrowdFaceLayout',['../structCrowdFaceLayout.html',1,'']]],
+  ['crowdflag_62',['CrowdFlag',['../structStadium3D_1_1CrowdFlag.html',1,'Stadium3D']]],
+  ['cupdraw_63',['CupDraw',['../structCompetitions_1_1CupDraw.html',1,'Competitions']]],
+  ['cupround_64',['CupRound',['../structCompetitions_1_1CupRound.html',1,'Competitions']]],
+  ['cuprun_65',['CupRun',['../structGame_1_1CupRun.html',1,'Game']]],
+  ['cupstatus_66',['CupStatus',['../structCompetitions_1_1CupStatus.html',1,'Competitions']]]
 ];

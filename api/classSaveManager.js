@@ -17,10 +17,10 @@ var classSaveManager =
     [ "listBackups", "classSaveManager.html#a64d09395de13f21b7677dccc06015be6", null ],
     [ "newestUsable", "classSaveManager.html#ae07f22c0f97db5dec0362fddef2cdccc", null ],
     [ "openWorkingCopy", "classSaveManager.html#a4b44dfb353d4db1b4f4be538793f1958", null ],
-    [ "persist", "classSaveManager.html#ad9a6a999a1620286e469aece8975f6ed", null ],
+    [ "persist", "classSaveManager.html#a2218aae2de305fe7186e90a9999d77fd", null ],
     [ "preserveBeforeMigration", "classSaveManager.html#a03c4b1b97bbbac6f338fa88f93918b78", null ],
     [ "restoreBackup", "classSaveManager.html#a4a320db55d062961dfd759320c8ec8a1", null ],
     [ "setFaultHook", "classSaveManager.html#af1d6f01e6a2fae700434cea8878b5d10", null ],
-    [ "stampMetadata", "classSaveManager.html#ad496b022b22d7bd65beec688807c58a3", null ],
+    [ "stampMetadata", "classSaveManager.html#aed75221f3d3ce81d3d4ee47b95ce33d3", null ],
     [ "tempPath", "classSaveManager.html#abe3df53cec6ea65f0d9856a058b3ade3", null ]
 ];

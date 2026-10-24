@@ -23,7 +23,7 @@ var classYouthScene =
     [ "openTab", "classYouthScene.html#a6e0b673a33e60b6b82be54b4cc71f7bf", null ],
     [ "refresh", "classYouthScene.html#aee6af716788372ac8907554a20db489d", null ],
     [ "renderBoardCard", "classYouthScene.html#adcfdeed7c8cda0f686cf3070bf95e423", null ],
-    [ "renderChart", "classYouthScene.html#a0d6014d4db0fc9ece6c682619ee95316", null ],
+    [ "renderChart", "classYouthScene.html#af3e85d3997b7718ae4d643125315685e", null ],
     [ "renderConfirm", "classYouthScene.html#a4d5c35e0496302dabf66a2aa25e23a06", null ],
     [ "renderContent", "classYouthScene.html#a6cbd96282742f9cb2df0b489e1ff36fd", null ],
     [ "renderDetail", "classYouthScene.html#ae4c60cf0b3b9252206cac04c7bb9821a", null ],

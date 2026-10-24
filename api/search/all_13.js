@@ -3,7 +3,7 @@ var searchData=
   ['japanese_0',['Japanese',['../scout__expertise_8h.html#abcc854802601d1e9a2c8f007a226a121af32ced6a9ba164c4b3c047fd1d7c882e',1,'scout_expertise.h']]],
   ['jitter_1',['JITTER',['../structMatchRender3DTuning_1_1Crowd.html#af1c65098f5e67832027df86f249f808b',1,'MatchRender3DTuning::Crowd']]],
   ['job_2',['job',['../classNationalManagement.html#ad777168d7275a84d647b423b65ebe6e2',1,'NationalManagement']]],
-  ['job_20does_3',['What each job does',['../md_docs_2development_2release.html#autotoc_md71',1,'']]],
+  ['job_20does_3',['What each job does',['../md_docs_2development_2release.html#autotoc_md72',1,'']]],
   ['job_5fcentre_4',['JOB_CENTRE',['../classManagerScene.html#a9a2fd9fab81d57fb2314df375bd8433aaa6a21c1f42c6c977d287782efa0ecfcb',1,'ManagerScene']]],
   ['job_5fended_5',['job_ended',['../structNationalDayEvents.html#a3cd3084b4e794310966fa6ad8c80b00e',1,'NationalDayEvents']]],
   ['jobapplication_6',['JobApplication',['../structJobApplication.html',1,'']]],
@@ -13,7 +13,7 @@ var searchData=
   ['jockey_5fcontain_5fmetres_10',['JOCKEY_CONTAIN_METRES',['../structMatchTuning_1_1Control.html#adcd92042d3514b0dddbb0dc74aa0bc29',1,'MatchTuning::Control']]],
   ['jockey_5fspeed_5fshare_11',['JOCKEY_SPEED_SHARE',['../structMatchTuning_1_1Control.html#aa251fdd1e16f246d361e3d7f6d51b7c7',1,'MatchTuning::Control']]],
   ['jockey_5ftake_5fon_5fpenalty_12',['JOCKEY_TAKE_ON_PENALTY',['../structMatchTuning_1_1Control.html#afee063ec9a037a5b150db55ef9e3dc22',1,'MatchTuning::Control']]],
-  ['jog_13',['jog',['../structPlayerRig_1_1GaitBands.html#af597ac997fecf21f335f2e93c6b34474',1,'PlayerRig::GaitBands::jog'],['../namespacePlayerRig.html#a03d6fa85e3be60b2cfbf681db5a6ccd8ae1de386f24e4aa660e9d29ab9473a46e',1,'PlayerRig::JOG'],['../structMatchRender3DTuning_1_1Gait.html#a31e9722cf467c12e37f19ea758c2b1ff',1,'MatchRender3DTuning::Gait::JOG']]],
+  ['jog_13',['jog',['../structMatchRender3DTuning_1_1Gait.html#a31e9722cf467c12e37f19ea758c2b1ff',1,'MatchRender3DTuning::Gait::JOG'],['../namespacePlayerRig.html#a03d6fa85e3be60b2cfbf681db5a6ccd8ae1de386f24e4aa660e9d29ab9473a46e',1,'PlayerRig::JOG'],['../structPlayerRig_1_1GaitBands.html#af597ac997fecf21f335f2e93c6b34474',1,'PlayerRig::GaitBands::jog']]],
   ['jog_5fspeed_5fshare_14',['JOG_SPEED_SHARE',['../structMatchTuning_1_1Control.html#a7ff57845fd710fc4164174e604db9b7a',1,'MatchTuning::Control']]],
   ['joined_5fage_15',['joined_age',['../structYouthRecord.html#a8829dc9abadce11838b9635dc196e27c',1,'YouthRecord']]],
   ['joined_5fday_16',['joined_day',['../structPlayerRelation.html#a44dd5e3cddfbfcc7663b9c04ad2bcce9',1,'PlayerRelation']]],
@@ -37,5 +37,6 @@ var searchData=
   ['jump_5fsim_5fseconds_34',['JUMP_SIM_SECONDS',['../structMatchRender3DTuning_1_1Camera.html#a50f55224eb9c01ae3f57512eb54ff941',1,'MatchRender3DTuning::Camera']]],
   ['jump_5ftuck_35',['JUMP_TUCK',['../structMatchRender3DTuning_1_1Rig.html#a09deb85bc0fb619febc396ab40a5e123',1,'MatchRender3DTuning::Rig']]],
   ['jumped_36',['jumped',['../structMatchRenderer3D_1_1State.html#a009390a5a9fd75ee2a5e4fac3d40bfbd',1,'MatchRenderer3D::State']]],
-  ['junior_5fcoaching_37',['junior_coaching',['../structAcademyRatings.html#aafef8a544972c9f87954c15f96102c0c',1,'AcademyRatings::junior_coaching'],['../structIntakeInputs.html#aa6adf9f7e2bf30697c433b1153bcfbbd',1,'IntakeInputs::junior_coaching']]]
+  ['jumptargetfor_37',['jumpTargetFor',['../match__renderer__3d_8cpp.html#a3f4283db1d2b59a923ed44d22084acad',1,'match_renderer_3d.cpp']]],
+  ['junior_5fcoaching_38',['junior_coaching',['../structAcademyRatings.html#aafef8a544972c9f87954c15f96102c0c',1,'AcademyRatings::junior_coaching'],['../structIntakeInputs.html#aa6adf9f7e2bf30697c433b1153bcfbbd',1,'IntakeInputs::junior_coaching']]]
 ];

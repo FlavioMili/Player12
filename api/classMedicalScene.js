@@ -15,7 +15,7 @@ var classMedicalScene =
     [ "renderRisk", "classMedicalScene.html#a388716a43fa5082b8bbc3d119364755f", null ],
     [ "renderStaff", "classMedicalScene.html#ad84d003e9ed4580e66f26a1d3c6617a7", null ],
     [ "select", "classMedicalScene.html#a7012bffb4844776577893279ebe868f7", null ],
-    [ "setFlag", "classMedicalScene.html#a2c1827947dc71b6d1790f82457db80c3", null ],
+    [ "setFlag", "classMedicalScene.html#a6a5a5555c219fd814d511f5e3387882f", null ],
     [ "update", "classMedicalScene.html#a37a55be0e27c53d412bdd9630910d315", null ],
     [ "GameFlowTest_GUIFlowLifecycle_Test", "classMedicalScene.html#af70851c82f5c5d3e1b6b40e55b6d8532", null ],
     [ "average_condition", "classMedicalScene.html#ae7351a26c37bff27dbb3a6be0fc176c7", null ],
@@ -32,7 +32,7 @@ var classMedicalScene =
     [ "recovery_good", "classMedicalScene.html#a66afa769e88ee5c18fe2eea782224c2b", null ],
     [ "risks", "classMedicalScene.html#a19216d54c640f1f5f949485dcce08c13", null ],
     [ "selected", "classMedicalScene.html#ae04d874ec7dc7ce1f552fdf80eec6a1c", null ],
-    [ "selected_flags", "classMedicalScene.html#ae1f1d259cdefefa5998e65970edd66a5", null ],
+    [ "selected_flags", "classMedicalScene.html#a0c988f39facbae1a68ad937afe207ac7", null ],
     [ "selected_name", "classMedicalScene.html#adb453459ec526223b6b632c9918360f5", null ],
     [ "show_all", "classMedicalScene.html#a927ea6a705e85d9dfb3b5fb9b1a26b74", null ],
     [ "staff", "classMedicalScene.html#a450fa1677f8f61aa62e9d6cbb133d167", null ]

@@ -229,8 +229,8 @@ Private Member Functions</h2></td></tr>
 <tr class="separator:ac96b43cf509a83a71b5a4a0c721be6b4"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a9043fc0d5d38209b435cd628c361072b" id="r_a9043fc0d5d38209b435cd628c361072b"><td class="memItemLeft" align="right" valign="top">void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classWorldSimulation.html#a9043fc0d5d38209b435cd628c361072b">reviewCash</a> (const <a class="el" href="structGameDateValue.html">GameDateValue</a> &amp;date, <a class="el" href="types_8h.html#a57143f6ccbdf5a5d9724b986cbdafb31">TeamID</a> managed_team_id, bool monthly)</td></tr>
 <tr class="separator:a9043fc0d5d38209b435cd628c361072b"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a3648439803b158dabe82d34e3637c157" id="r_a3648439803b158dabe82d34e3637c157"><td class="memItemLeft" align="right" valign="top">void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classWorldSimulation.html#a3648439803b158dabe82d34e3637c157">rescueByOwner</a> (const <a class="el" href="structGameDateValue.html">GameDateValue</a> &amp;date, <a class="el" href="classTeam.html">Team</a> &amp;team)</td></tr>
-<tr class="separator:a3648439803b158dabe82d34e3637c157"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a6e7c61bd6c9c720f8573965fb12adc8e" id="r_a6e7c61bd6c9c720f8573965fb12adc8e"><td class="memItemLeft" align="right" valign="top">void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classWorldSimulation.html#a6e7c61bd6c9c720f8573965fb12adc8e">rescueByOwner</a> (const <a class="el" href="structGameDateValue.html">GameDateValue</a> &amp;date, <a class="el" href="classTeam.html">Team</a> &amp;team) const</td></tr>
+<tr class="separator:a6e7c61bd6c9c720f8573965fb12adc8e"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a53f2051c590d24977da4aaef40148069" id="r_a53f2051c590d24977da4aaef40148069"><td class="memItemLeft" align="right" valign="top">std::unordered_map&lt; <a class="el" href="types_8h.html#a57143f6ccbdf5a5d9724b986cbdafb31">TeamID</a>, double &gt;&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classWorldSimulation.html#a53f2051c590d24977da4aaef40148069">parachutes</a> (const std::unordered_map&lt; <a class="el" href="types_8h.html#a23de5420c0b18be78144797767703d6f">LeagueID</a>, <a class="el" href="structLeagueEconomy.html">LeagueEconomy</a> &gt; &amp;economies, std::vector&lt; <a class="el" href="types_8h.html#a57143f6ccbdf5a5d9724b986cbdafb31">TeamID</a> &gt; *relegated_now=nullptr) const</td></tr>
 <tr class="separator:a53f2051c590d24977da4aaef40148069"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:abdb7daed6f09765136c546b69931f9e1" id="r_abdb7daed6f09765136c546b69931f9e1"><td class="memItemLeft" align="right" valign="top">void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classWorldSimulation.html#abdb7daed6f09765136c546b69931f9e1">applyRelegationWageCuts</a> (const std::vector&lt; <a class="el" href="types_8h.html#a57143f6ccbdf5a5d9724b986cbdafb31">TeamID</a> &gt; &amp;relegated, <a class="el" href="types_8h.html#a57143f6ccbdf5a5d9724b986cbdafb31">TeamID</a> managed_team_id)</td></tr>
@@ -319,6 +319,8 @@ Private Attributes</h2></td></tr>
 <tr class="separator:ae0a7d2cf1ad0f984dda4f7819d6e718e"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a3ac4ad92559421fee26e6712b147122b" id="r_a3ac4ad92559421fee26e6712b147122b"><td class="memItemLeft" align="right" valign="top"><a class="el" href="structBoardState.html">BoardState</a>&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classWorldSimulation.html#a3ac4ad92559421fee26e6712b147122b">board</a></td></tr>
 <tr class="separator:a3ac4ad92559421fee26e6712b147122b"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a7f1f57ae4b61d51b690817cf18d70333" id="r_a7f1f57ae4b61d51b690817cf18d70333"><td class="memItemLeft" align="right" valign="top">std::mutex&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classWorldSimulation.html#a7f1f57ae4b61d51b690817cf18d70333">focus_cache_mutex</a></td></tr>
+<tr class="separator:a7f1f57ae4b61d51b690817cf18d70333"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:ac1a050656e28203158981fc05d729bd6" id="r_ac1a050656e28203158981fc05d729bd6"><td class="memItemLeft" align="right" valign="top">std::unordered_map&lt; std::string, <a class="el" href="structWorldSimulation_1_1FocusStats.html">FocusStats</a> &gt;&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classWorldSimulation.html#ac1a050656e28203158981fc05d729bd6">focus_by_category</a></td></tr>
 <tr class="separator:ac1a050656e28203158981fc05d729bd6"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a135001c5ec62897cb8a7212712169efb" id="r_a135001c5ec62897cb8a7212712169efb"><td class="memItemLeft" align="right" valign="top">std::unordered_map&lt; <a class="el" href="types_8h.html#a57143f6ccbdf5a5d9724b986cbdafb31">TeamID</a>, std::uint32_t &gt;&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classWorldSimulation.html#a135001c5ec62897cb8a7212712169efb">last_attendance</a></td></tr>
@@ -2296,8 +2298,8 @@ Private Attributes</h2></td></tr>
 
 </div>
 </div>
-<a id="a3648439803b158dabe82d34e3637c157" name="a3648439803b158dabe82d34e3637c157"></a>
-<h2 class="memtitle"><span class="permalink"><a href="#a3648439803b158dabe82d34e3637c157">&#9670;&#160;</a></span>rescueByOwner()</h2>
+<a id="a6e7c61bd6c9c720f8573965fb12adc8e" name="a6e7c61bd6c9c720f8573965fb12adc8e"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a6e7c61bd6c9c720f8573965fb12adc8e">&#9670;&#160;</a></span>rescueByOwner()</h2>
 
 <div class="memitem">
 <div class="memproto">
@@ -2320,7 +2322,7 @@ Private Attributes</h2></td></tr>
         <tr>
           <td></td>
           <td>)</td>
-          <td></td><td></td>
+          <td></td><td> const</td>
         </tr>
       </table>
   </td>
@@ -2893,6 +2895,28 @@ Private Attributes</h2></td></tr>
       <table class="memname">
         <tr>
           <td class="memname">std::unordered_map&lt;std::string, <a class="el" href="structWorldSimulation_1_1FocusStats.html">FocusStats</a>&gt; WorldSimulation::focus_by_category</td>
+        </tr>
+      </table>
+  </td>
+  <td class="mlabels-right">
+<span class="mlabels"><span class="mlabel">mutable</span><span class="mlabel">private</span></span>  </td>
+  </tr>
+</table>
+</div><div class="memdoc">
+
+</div>
+</div>
+<a id="a7f1f57ae4b61d51b690817cf18d70333" name="a7f1f57ae4b61d51b690817cf18d70333"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a7f1f57ae4b61d51b690817cf18d70333">&#9670;&#160;</a></span>focus_cache_mutex</h2>
+
+<div class="memitem">
+<div class="memproto">
+<table class="mlabels">
+  <tr>
+  <td class="mlabels-left">
+      <table class="memname">
+        <tr>
+          <td class="memname">std::mutex WorldSimulation::focus_cache_mutex</td>
         </tr>
       </table>
   </td>

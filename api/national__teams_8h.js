@@ -50,7 +50,7 @@ var national__teams_8h =
     [ "isFinals", "national__teams_8h.html#a0003e0761bd37bd998ae784913981576", null ],
     [ "roundRobin", "national__teams_8h.html#a1f04a8e9dee6a7690a9290abb67ae7fb", null ],
     [ "selectionScore", "national__teams_8h.html#a2832f70c5de2f33da1813f5f0d75f680", null ],
-    [ "selectSquad", "national__teams_8h.html#aeb24b2e030f1c6666508a2eae0383249", null ],
+    [ "selectSquad", "national__teams_8h.html#a173a931ae9ee5f2e7fd1050ae7eade61", null ],
     [ "stageKey", "national__teams_8h.html#ac03a863ce9a944cb2c387584fb879eb1", null ],
     [ "teamNameKey", "national__teams_8h.html#a2b39cdd766bfab0dc477a9ed1353cbbc", null ],
     [ "winnerOf", "national__teams_8h.html#aa150fbff240df8213eb67293dbf697f2", null ],

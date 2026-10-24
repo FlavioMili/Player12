@@ -223,8 +223,8 @@ Protected Member Functions</h2></td></tr>
 Private Member Functions</h2></td></tr>
 <tr class="memitem:ae3ce5ca6c6ffbf80186bf32793ce9a8c" id="r_ae3ce5ca6c6ffbf80186bf32793ce9a8c"><td class="memItemLeft" align="right" valign="top">void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classTimelineScene.html#ae3ce5ca6c6ffbf80186bf32793ce9a8c">regroup</a> ()</td></tr>
 <tr class="separator:ae3ce5ca6c6ffbf80186bf32793ce9a8c"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a2a0953d1227526b0d9f418fd5a29571c" id="r_a2a0953d1227526b0d9f418fd5a29571c"><td class="memItemLeft" align="right" valign="top">void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classTimelineScene.html#a2a0953d1227526b0d9f418fd5a29571c">renderSummary</a> ()</td></tr>
-<tr class="separator:a2a0953d1227526b0d9f418fd5a29571c"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:ad9d51208dbdb5bcdf3e5756832475299" id="r_ad9d51208dbdb5bcdf3e5756832475299"><td class="memItemLeft" align="right" valign="top">void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classTimelineScene.html#ad9d51208dbdb5bcdf3e5756832475299">renderSummary</a> () const</td></tr>
+<tr class="separator:ad9d51208dbdb5bcdf3e5756832475299"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a3c37ac656665eeddafdd06563bd06de3" id="r_a3c37ac656665eeddafdd06563bd06de3"><td class="memItemLeft" align="right" valign="top">void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classTimelineScene.html#a3c37ac656665eeddafdd06563bd06de3">renderControls</a> ()</td></tr>
 <tr class="separator:a3c37ac656665eeddafdd06563bd06de3"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:acb0b7d2bb16883d9980f4568d5d9a07b" id="r_acb0b7d2bb16883d9980f4568d5d9a07b"><td class="memItemLeft" align="right" valign="top">void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classTimelineScene.html#acb0b7d2bb16883d9980f4568d5d9a07b">renderEntry</a> (std::size_t <a class="el" href="runtime__editor_8cpp.html#a750b5d744c39a06bfb13e6eb010e35d0">index</a>)</td></tr>
@@ -390,7 +390,7 @@ Additional Inherited Members</h2></td></tr>
 
 <p>Gets the ID of the scene. </p>
 <dl class="section return"><dt>Returns</dt><dd>The SceneID of this scene.</dd></dl>
-<p>This function might be used to check what we are rendering. we would simply do something like this: <a class="el" href="classMainMenuScene.html#ac65f4aa576ae71cb9fac4a1154edca49" title="Gets the ID of this scene.">MainMenuScene::getID()</a> { return <a class="el" href="gui__scene_8h.html#aaf4bddc3ff70ab62a07943e024b9942faa16d505f03a4b6f35486f65f6a61317e">SceneID::MAIN_MENU</a>; } TODO : remove or not? </p>
+<p><a class="el" href="classGUIView.html" title="Main view manager for the GUI. Handles scenes and overlays.">GUIView</a> uses this identifier to apply match-specific event and scene behavior. </p>
 
 <p>Implements <a class="el" href="classGUIScene.html#adc23f98639a131403f09cc46133fcd04">GUIScene</a>.</p>
 
@@ -584,8 +584,8 @@ Additional Inherited Members</h2></td></tr>
 
 </div>
 </div>
-<a id="a2a0953d1227526b0d9f418fd5a29571c" name="a2a0953d1227526b0d9f418fd5a29571c"></a>
-<h2 class="memtitle"><span class="permalink"><a href="#a2a0953d1227526b0d9f418fd5a29571c">&#9670;&#160;</a></span>renderSummary()</h2>
+<a id="ad9d51208dbdb5bcdf3e5756832475299" name="ad9d51208dbdb5bcdf3e5756832475299"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#ad9d51208dbdb5bcdf3e5756832475299">&#9670;&#160;</a></span>renderSummary()</h2>
 
 <div class="memitem">
 <div class="memproto">
@@ -597,7 +597,7 @@ Additional Inherited Members</h2></td></tr>
           <td class="memname">void TimelineScene::renderSummary </td>
           <td>(</td>
           <td class="paramname"></td><td>)</td>
-          <td></td>
+          <td> const</td>
         </tr>
       </table>
   </td>

@@ -8,7 +8,7 @@ var searchData=
   ['jockey_5fcontain_5fmetres_5',['JOCKEY_CONTAIN_METRES',['../structMatchTuning_1_1Control.html#adcd92042d3514b0dddbb0dc74aa0bc29',1,'MatchTuning::Control']]],
   ['jockey_5fspeed_5fshare_6',['JOCKEY_SPEED_SHARE',['../structMatchTuning_1_1Control.html#aa251fdd1e16f246d361e3d7f6d51b7c7',1,'MatchTuning::Control']]],
   ['jockey_5ftake_5fon_5fpenalty_7',['JOCKEY_TAKE_ON_PENALTY',['../structMatchTuning_1_1Control.html#afee063ec9a037a5b150db55ef9e3dc22',1,'MatchTuning::Control']]],
-  ['jog_8',['jog',['../structMatchRender3DTuning_1_1Gait.html#a31e9722cf467c12e37f19ea758c2b1ff',1,'MatchRender3DTuning::Gait::JOG'],['../structPlayerRig_1_1GaitBands.html#af597ac997fecf21f335f2e93c6b34474',1,'PlayerRig::GaitBands::jog']]],
+  ['jog_8',['jog',['../structPlayerRig_1_1GaitBands.html#af597ac997fecf21f335f2e93c6b34474',1,'PlayerRig::GaitBands::jog'],['../structMatchRender3DTuning_1_1Gait.html#a31e9722cf467c12e37f19ea758c2b1ff',1,'MatchRender3DTuning::Gait::JOG']]],
   ['jog_5fspeed_5fshare_9',['JOG_SPEED_SHARE',['../structMatchTuning_1_1Control.html#a7ff57845fd710fc4164174e604db9b7a',1,'MatchTuning::Control']]],
   ['joined_5fage_10',['joined_age',['../structYouthRecord.html#a8829dc9abadce11838b9635dc196e27c',1,'YouthRecord']]],
   ['joined_5fday_11',['joined_day',['../structPlayerRelation.html#a44dd5e3cddfbfcc7663b9c04ad2bcce9',1,'PlayerRelation']]],
