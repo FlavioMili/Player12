@@ -6,7 +6,13 @@ import tempfile
 import unittest
 from unittest.mock import patch
 
-from scripts.build_website_docs import build, contained_path, diagram_parts, diagrams
+from scripts.build_website_docs import (
+    build,
+    contained_path,
+    diagram_parts,
+    diagrams,
+    write_site_text,
+)
 
 
 class DocumentationTests(unittest.TestCase):
@@ -28,6 +34,17 @@ class DocumentationTests(unittest.TestCase):
             for route in ("../outside.html", str(root / "absolute.html"), "."):
                 with self.subTest(route=route), self.assertRaises(ValueError):
                     contained_path(root, route)
+
+    def test_text_writer_revalidates_route_at_write_boundary(self):
+        with tempfile.TemporaryDirectory() as directory:
+            base = Path(directory)
+            site = base / "site"
+            site.mkdir()
+            write_site_text(site, "docs/index.html", "safe")
+            self.assertEqual((site / "docs/index.html").read_text(), "safe")
+            with self.assertRaises(ValueError):
+                write_site_text(site, "../outside.html", "unsafe")
+            self.assertFalse((base / "outside.html").exists())
 
     def test_symlink_escape_is_rejected_before_writing(self):
         with tempfile.TemporaryDirectory() as directory:

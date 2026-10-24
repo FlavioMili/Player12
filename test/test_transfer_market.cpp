@@ -9,11 +9,15 @@
 #include <gtest/gtest.h>
 
 #include <algorithm>
+#include <array>
+#include <atomic>
 #include <chrono>
 #include <filesystem>
 #include <iostream>
+#include <latch>
 #include <limits>
 #include <memory>
+#include <thread>
 #include <utility>
 
 #include "controller/game_controller.h"
@@ -412,6 +416,28 @@ TEST_F(TransferMarketTest, StructuredOfferContractTalksAndLedger)
                 .committedPayables(managed, GameDateValue(2026, 7, 3)),
             static_cast<int64_t>(instalments.front()))
       << "next season's instalment is reserved from next season's budget";
+
+  // Queries for different seasons must not overwrite one another's totals.
+  const auto& market = marketOf(*controller);
+  const std::array dates = {GameDateValue(2026, 7, 3),
+                            GameDateValue(2027, 7, 3)};
+  const std::array expected = {market.committedPayables(managed, dates[0]),
+                               market.committedPayables(managed, dates[1])};
+  std::atomic<bool> consistent{true};
+  std::latch start(8);
+  std::vector<std::jthread> readers;
+  for (std::size_t thread = 0; thread < 8; ++thread)
+    readers.emplace_back(
+        [&, index = thread % dates.size()]
+        {
+          start.arrive_and_wait();
+          for (int attempt = 0; attempt < 100; ++attempt)
+            if (market.committedPayables(managed, dates[index]) !=
+                expected[index])
+              consistent.store(false);
+        });
+  readers.clear();
+  EXPECT_TRUE(consistent.load());
 }
 
 TEST_F(TransferMarketTest, InstalmentsAddOnsAndSellOnsArePaid)

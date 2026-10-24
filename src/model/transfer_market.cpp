@@ -575,7 +575,10 @@ bool TransferMarket::completeTransfer(const Deal& deal,
       obligation.due = date;
       pending_obligations.push_back(obligation);
     }
-    payables_dirty = true;
+    {
+      const std::scoped_lock lock(payables_cache_mutex);
+      payables_dirty = true;
+    }
   }
   else
   {
@@ -912,6 +915,7 @@ bool TransferMarket::loanWithinLimits(PlayerID player_id, TeamID parent,
 std::int64_t TransferMarket::committedPayables(TeamID team_id,
                                                const GameDateValue& date) const
 {
+  const std::scoped_lock lock(payables_cache_mutex);
   if (const std::int32_t day = dayOrdinal(date);
       payables_dirty || payables_day != day)
   {
@@ -1218,7 +1222,10 @@ void TransferMarket::payDueInstalments(const GameDateValue& date,
                   return true;
                 });
   if (due.empty()) return;
-  payables_dirty = true;
+  {
+    const std::scoped_lock lock(payables_cache_mutex);
+    payables_dirty = true;
+  }
   for (const TransferObligation& obligation : due)
   {
     pay(obligation.payer, obligation.payee, obligation.amount, date);
@@ -2822,7 +2829,10 @@ void TransferMarket::load(const std::shared_ptr<DatabaseConnection>& db_conn)
     if (offer.patience == 0)
       offer.patience = TransferTuning::Buyer::DEFAULT_PATIENCE;
   }
-  payables_dirty = true;
+  {
+    const std::scoped_lock lock(payables_cache_mutex);
+    payables_dirty = true;
+  }
 }
 
 void TransferMarket::save(

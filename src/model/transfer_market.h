@@ -11,6 +11,7 @@
 #include <cstddef>
 #include <cstdint>
 #include <memory>
+#include <mutex>
 #include <optional>
 #include <string>
 #include <unordered_map>
@@ -588,6 +589,8 @@ class TransferMarket
   std::uint32_t next_id = 1;
 
   // Instalments due before season end, per payer (rebuilt when dirty).
+  // Guards the lazy cache; the remaining market state is game-thread owned.
+  mutable std::mutex payables_cache_mutex;
   mutable std::unordered_map<TeamID, std::int64_t> payables_cache;
   mutable std::int32_t payables_day = -1;
   mutable bool payables_dirty = true;

@@ -106,7 +106,7 @@ class TestRuntimeRoot
   {
     // A forked child (e.g. a death test) must not delete its parent's root.
     if (processId() != owner) return;
-    if (keepTestArtifacts()) return;
+    if (keep_artifacts) return;
     std::error_code error;
     std::filesystem::remove_all(path, error);
   }
@@ -117,6 +117,9 @@ class TestRuntimeRoot
 
  private:
   const unsigned long owner = processId();
+  // Read configuration while construction can still report allocation errors.
+  // Destruction uses the filesystem cleanup overload that reports error codes.
+  const bool keep_artifacts = keepTestArtifacts();
 };
 }  // namespace
 

@@ -11,6 +11,7 @@
 #include <cstdint>
 #include <functional>
 #include <memory>
+#include <mutex>
 #include <optional>
 #include <string>
 #include <unordered_map>
@@ -384,6 +385,8 @@ class WorldSimulation
   HolidayPreferences holiday_preferences;
   Inbox inbox;
   BoardState board;
+  // Entries are initialized once and never changed after insertion.
+  mutable std::mutex focus_cache_mutex;
   mutable std::unordered_map<std::string, FocusStats> focus_by_category;
   std::unordered_map<TeamID, std::uint32_t> last_attendance;
   std::function<std::vector<TeamID>(LeagueID)> standings_provider;

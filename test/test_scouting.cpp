@@ -154,11 +154,12 @@ TEST(ScoutingTest, ConcurrentConstQueriesKeepSnapshotsAndPriorsStable)
   std::vector<std::jthread> readers;
   for (int thread = 0; thread < 8; ++thread)
     readers.emplace_back(
-        [&]
+        [&, thread]
         {
           start.arrive_and_wait();
           for (int attempt = 0; attempt < 20; ++attempt)
           {
+            if (thread == 0) scouting.invalidatePriors();
             const auto row = scouting.row(target);
             if (!row.has_value() || row->overall != expected->overall ||
                 scouting.getScouts().size() != expected_count ||

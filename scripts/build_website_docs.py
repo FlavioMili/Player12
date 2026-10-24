@@ -212,6 +212,13 @@ def contained_path(root: Path, route: str) -> Path:
     return path
 
 
+def write_site_text(site: Path, route: str, content: str) -> None:
+    """Revalidate every generated text destination at the filesystem sink."""
+    output = contained_path(site, route)
+    output.parent.mkdir(parents=True, exist_ok=True)
+    output.write_text(content)
+
+
 def sidebar(site: Path, output: Path, destination: str) -> str:
     parts = []
     for section in ("Play", "Develop", "Contribute"):
@@ -247,17 +254,21 @@ def build(root: Path, site: Path) -> None:
     shutil.copyfile(contained_path(root, "LICENSE"), license_output)
     for source_name, destination, group, title, description in GUIDES:
         source, output = contained_path(root, source_name), contained_path(site, destination)
-        output.parent.mkdir(parents=True, exist_ok=True)
         content, outline = guide_content(source, root, output, site, mapping)
         navigation_links = sidebar(site, output, destination)
         edit_url = f"{REPOSITORY}/edit/main/{quote(source_name, safe='/')}"
         body = f'<div class="container doc-layout"><aside class="doc-sidebar" aria-label="Documentation navigation">{navigation_links}</aside><article class="doc-article"><p class="doc-meta">{group} / {html.escape(title)} · <a href="{relative(index, output)}">All guides</a> · <a href="{edit_url}">Improve this page ↗</a></p><details class="doc-outline"><summary>On this page</summary>{outline}</details>{content}</article></div>'
-        output.write_text(document(site, output, title, description, body, name))
+        write_site_text(
+            site, destination, document(site, output, title, description, body, name)
+        )
     cards = "".join(f'<a class="doc-card" data-search="{html.escape((group + " " + title + " " + description).lower(), quote=True)}" href="{relative(site / destination, site / "docs/index.html")}"><h2>{html.escape(title)}</h2><p>{html.escape(description)}</p><span>{group} ↗</span></a>' for _, destination, group, title, description in GUIDES)
     api = '<p><a class="text-link" href="../api/index.html">Browse the generated C++ API reference ↗</a></p>' if (site / "api/index.html").is_file() else ""
     body = f'<div class="container"><header class="page-intro"><p class="eyebrow">Play. Understand. Make it yours.</p><h1>A guide for<br>your next step.</h1><p>Start a career, find your first contribution or follow a decision through the match engine. These guides come from the maintained project documentation.</p></header><section class="section" style="padding-top:0"><label for="docs-search">Find a guide</label><br><input class="search-field" id="docs-search" type="search" placeholder="Try match, player, build or contribute" autocomplete="off"><p class="search-count" id="search-count" aria-live="polite">{len(GUIDES)} guides</p><div class="doc-cards">{cards}</div>{api}</section></div>'
-    index.parent.mkdir(parents=True, exist_ok=True)
-    index.write_text(document(site, index, "Documentation", "Player, developer and contributor guides for the game.", body, name))
+    write_site_text(
+        site,
+        "docs/index.html",
+        document(site, index, "Documentation", "Player, developer and contributor guides for the game.", body, name),
+    )
     print(f"Rendered {len(GUIDES)} guides and the searchable documentation index")
 
 

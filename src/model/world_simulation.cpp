@@ -345,6 +345,7 @@ std::uint16_t WorldSimulation::seasonYear(const GameDateValue& date)
 const WorldSimulation::FocusStats& WorldSimulation::focusFor(
     const Player& player) const
 {
+  const std::scoped_lock lock(focus_cache_mutex);
   // Built on first use: the stats configuration is loaded with the save.
   if (focus_by_category.empty())
   {
