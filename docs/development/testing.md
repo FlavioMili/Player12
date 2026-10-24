@@ -85,6 +85,12 @@ The `profile` preset enables machine-local native optimizations; use comparable
 builds and hardware when reporting results. Benchmark target definitions are
 in [benchmarks/CMakeLists.txt](../../benchmarks/CMakeLists.txt).
 
+The ten-seed headless match unit test compares each completed match with the
+same seed advanced one fixed step at a time. It checks identical simulation-step
+counts, final debug snapshots and event types/player IDs, without an elapsed-time
+threshold or estimated match-duration range. Use the opt-in match benchmarks on
+comparable builds and hardware to measure performance changes.
+
 ## Historical calibration failures
 
 Verification on 2026-10-07 reproduced these failures with the original engine
