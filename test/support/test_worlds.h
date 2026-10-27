@@ -17,8 +17,8 @@
  * out independent copies:
  *
  *  - in memory, once per process (a SQLite backup of the generated world);
- *  - on disk, once per build of the test executable (a save file in the system
- *    temporary folder keyed by the executable's size and timestamp, because
+ *  - on disk, once per build of the test executable (a save file in the build tree
+ *    next to the executable, keyed by the executable's size and timestamp, because
  *    CTest runs every test case in its own process).
  *
  * The calendar is not jumped: the model advances players, finances, the
@@ -72,6 +72,15 @@ using CareerPrepare = std::function<void(GameController&)>;
  * The slot is the caller's: remove it with RuntimePaths::removeSave.
  */
 std::unique_ptr<GameController> career(
+    int slot, const std::string& key, const CareerPrepare& prepare = {},
+    std::uint64_t seed = DEFAULT_SEED);
+
+/**
+ * Like career(), but no club is managed (what newGame leaves): the whole world
+ * is played by the computer. The state is stored as a save, so the key must
+ * identify @p prepare as for career().
+ */
+std::unique_ptr<GameController> unmanagedWorld(
     int slot, const std::string& key, const CareerPrepare& prepare = {},
     std::uint64_t seed = DEFAULT_SEED);
 

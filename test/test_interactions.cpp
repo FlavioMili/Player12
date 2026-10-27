@@ -30,6 +30,7 @@
 #include "model/stories.h"
 #include "model/world_rng.h"
 #include "model/world_simulation.h"
+#include "test_worlds.h"
 
 namespace
 {
@@ -1098,10 +1099,10 @@ TEST(InteractionsCareerTest, RelationsPromisesAndStoriesSurviveSaveAndLoad)
 TEST(InteractionsCareerTest, ASeasonStartStaysCalmAndConsistent)
 {
   const SlotCleanup slot{uniqueSlot(14)};
-  auto controller = makeCareer(slot.slot);
+  // The three months of play are a shared checkpoint.
+  auto controller =
+      TestWorlds::careerAt(slot.slot, GameDateValue(2025, 10, 1), WORLD_SEED);
   const TeamID managed = managedId(*controller);
-  while (controller->getCurrentDate() < GameDateValue(2025, 10, 1))
-    controller->advanceDay();
   std::map<std::int32_t, int> stories_by_week;
   int requests = 0;
   for (const InboxMessage& message : controller->getInbox())

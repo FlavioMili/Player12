@@ -41,8 +41,84 @@ function(fm_discover target)
       TIMEOUT ${timeout})
 endfunction()
 
+# Fuzz-lane tests listed in test_budgets.txt: {lane, timeout, name}.
+set(FM_TEST_FUZZ_ENTRIES)
+file(STRINGS "${CMAKE_CURRENT_SOURCE_DIR}/test_budgets.txt" _fm_budget_lines)
+foreach(_line IN LISTS _fm_budget_lines)
+  if(_line MATCHES "^fuzz[ \t]+([0-9]+)[ \t]+(.+)$")
+    list(APPEND FM_TEST_FUZZ_ENTRIES "${CMAKE_MATCH_1}|${CMAKE_MATCH_2}")
+  endif()
+endforeach()
+
+# Opt-in: one CTest entry per GoogleTest case (for debugging a single test).
+option(FM_TEST_PER_CASE "Register every GoogleTest case as its own CTest test" OFF)
+# Default-lane timeout of a shard (cold checkpoints are built inside it).
+set(FM_TEST_SHARD_TIMEOUT 1200)
+
+# fm_register(<target> [PREFIX <p>] LABELS <l...> SHARDS <n> [FUZZ_HOME])
+# The default lanes run the executable as <n> processes, each one a shard of
+# the cases (GTEST_SHARD_INDEX), so shared worlds and checkpoints are loaded
+# once per process. Tests of the fuzz lane (test_budgets.txt) are excluded
+# from the shards and registered one by one under the `fuzz;slow` labels.
+# With FM_TEST_PER_CASE every case is its own test (fm_discover).
+function(fm_register target)
+  cmake_parse_arguments(ARG "FUZZ_HOME" "PREFIX;SHARDS" "LABELS" ${ARGN})
+  if(FM_TEST_PER_CASE)
+    fm_discover(${target} PREFIX "${ARG_PREFIX}" LABELS ${ARG_LABELS})
+    return()
+  endif()
+  target_link_libraries(${target} PRIVATE fm_test_support)
+  set(excluded)
+  foreach(entry IN LISTS FM_TEST_FUZZ_ENTRIES)
+    string(REPLACE "|" ";" parts "${entry}")
+    list(GET parts 0 fuzz_timeout)
+    list(GET parts 1 full_name)
+    if(ARG_PREFIX)
+      if(NOT full_name MATCHES "^${ARG_PREFIX}")
+        continue()
+      endif()
+      string(LENGTH "${ARG_PREFIX}" prefix_length)
+      string(SUBSTRING "${full_name}" ${prefix_length} -1 case_name)
+    else()
+      if(NOT ARG_FUZZ_HOME OR full_name MATCHES "::")
+        continue()
+      endif()
+      set(case_name "${full_name}")
+    endif()
+    list(APPEND excluded "${case_name}")
+    math(EXPR timeout "${fuzz_timeout} * ${FM_TEST_TIMEOUT_SCALE}")
+    add_test(NAME "${full_name}"
+      COMMAND ${target} "--gtest_filter=${case_name}")
+    set_tests_properties("${full_name}" PROPERTIES
+      ENVIRONMENT "${FM_TEST_ENVIRONMENT}"
+      LABELS "fuzz;slow;${ARG_LABELS}"
+      TIMEOUT ${timeout})
+  endforeach()
+  set(filter "*")
+  if(excluded)
+    list(JOIN excluded ":" negative)
+    set(filter "*-${negative}")
+  endif()
+  math(EXPR last "${ARG_SHARDS} - 1")
+  math(EXPR shard_timeout "${FM_TEST_SHARD_TIMEOUT} * ${FM_TEST_TIMEOUT_SCALE}")
+  foreach(index RANGE ${last})
+    set(shard_name "shard${index}of${ARG_SHARDS}::${target}")
+    add_test(NAME "${shard_name}"
+      COMMAND ${target} "--gtest_filter=${filter}")
+    set_tests_properties("${shard_name}" PROPERTIES
+      ENVIRONMENT
+        "${FM_TEST_ENVIRONMENT};GTEST_TOTAL_SHARDS=${ARG_SHARDS};GTEST_SHARD_INDEX=${index}"
+      LABELS "${ARG_LABELS}"
+      TIMEOUT ${shard_timeout})
+  endforeach()
+endfunction()
+
 # Cached worlds and careers shared by the tests.
-add_library(fm_test_support STATIC support/test_worlds.cpp)
+# An OBJECT library: the state guard registers itself when the executable
+# starts, so its object file must be linked even though nothing calls it.
+add_library(fm_test_support OBJECT
+  support/test_worlds.cpp
+  support/test_state_guard.cpp)
 target_include_directories(fm_test_support PUBLIC support)
 target_link_libraries(fm_test_support PUBLIC fm_core GTest::gtest)
 
@@ -156,8 +232,8 @@ include(GoogleTest)
 fm_discover(runtime_editor_tests LABELS "unit;core;editor")
 fm_discover(runtime_editor_ui_tests LABELS "unit;gui;editor")
 fm_discover(world_editor_ui_tests LABELS "unit;gui;editor")
-fm_discover(unit_tests LABELS "unit;gui")
-fm_discover(core_unit_tests PREFIX "core::" LABELS "unit;core;leak-check")
+fm_register(unit_tests LABELS "unit;gui" SHARDS 2 FUZZ_HOME)
+fm_register(core_unit_tests PREFIX "core::" LABELS "unit;core;leak-check" SHARDS 4)
 
 # Match audio: mixer, procedural sounds and event mapping (headless, rendered
 # by hand; the device test uses the dummy audio driver).

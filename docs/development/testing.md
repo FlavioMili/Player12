@@ -11,41 +11,56 @@ cmake --preset release-tests
 cmake --build --preset release-tests --parallel 4
 
 # The default lanes (unit + scenario); this is also what CI runs
-ctest --preset release-tests -LE "playtest|monkey|slow"
+ctest --preset release-tests
 ```
 
-`ctest` without a label filter runs exactly the fast lanes: the slow lanes
-(fuzz, soak, monkey, playtest, adversarial, QA hunts, perf budgets) are not
-built or registered unless you configure with `-DFM_TEST_SLOW_LANES=ON`:
+The default presets run the fast lanes; the slow lanes (fuzz, soak, monkey,
+playtest, adversarial, QA hunts, perf budgets) are excluded by them
+(`slow|fuzz`) and selected by label:
 
 ```sh
-cmake -S . -B build -DFM_TEST_SLOW_LANES=ON
-ctest --test-dir build -L slow          # only the slow lanes
+ctest --preset release-tests            # unit + scenario
 ctest --test-dir build -L fuzz          # the fuzz lane
+ctest --test-dir build -L slow          # every slow lane
 ```
 
 Tests run headless (SDL's dummy video driver) with fixed seeds and a scratch
 data directory under `/tmp/football-management-tests`, so they never touch
 your saves.
 
-## Lanes, labels and budgets
+## Lanes, labels and shards
 
-Every test runs once; each executable is compiled from distinct files
-(`core_unit_tests` holds the headless model tests, `unit_tests` only the
-files that need the GUI library). CTest enforces a timeout per lane, so a
-test that grows slow fails loudly instead of creeping back:
+Every test runs once. Each executable is compiled from distinct files
+(`core_unit_tests` holds the headless model tests, `unit_tests` the files
+that need the GUI library).
 
-| Label | Timeout | Contents |
-|-------|---------|----------|
-| `unit` | 5 s | The default lane; tests should take well under a second |
-| `scenario` | 20 s | A test that needs a real career scene or a few simulated seasons |
-| `slow` | listed per test | Opt-in lanes (`FM_TEST_SLOW_LANES`): `fuzz`, `soak`, `monkey`, `playtest`, `adversarial`, `qa`, `perf` |
+The default lanes do **not** register one CTest entry per GoogleTest case.
+`core_unit_tests` runs as 4 CTest entries (`shard0of4::core_unit_tests`, ...)
+and `unit_tests` as 2, each a single process running its share of the cases
+(`GTEST_TOTAL_SHARDS` / `GTEST_SHARD_INDEX`). A process builds or loads the
+shared worlds and checkpoints once and every test gets its own copy. The other
+GUI executables hold a handful of tests and keep one entry per case.
+
+| Label | Contents |
+|-------|----------|
+| `unit` | The default lane: the shards and the per-case GUI executables |
+| `slow` | Opt-in lanes, never part of the default run: `fuzz`, `soak`, `monkey`, `playtest`, `adversarial`, `qa`, `perf` (run with `-L fuzz` or the `fuzz` test preset) |
 
 Further labels select areas: `core` (headless), `gui`, `lab`, `audio`,
-`editor`, and `leak-check` (see below). `test/test_budgets.txt` moves single
-tests out of the default lane (`scenario`, or `slow` with its own timeout);
-every line there is a test waiting to be made faster, so when you speed one
-up, delete its line. Do not raise a timeout to make a test pass.
+`editor`, and `leak-check` (see below). `test/test_budgets.txt` lists the
+tests that are kept out of the shards and run one by one in the `fuzz` lane
+(with their own timeout); every line there is a test waiting to be made faster
+or replaced by targeted tests, so when you speed one up, delete its line.
+
+To debug one test, configure with `-DFM_TEST_PER_CASE=ON`: every case is then
+registered separately (`ctest -R 'core::Holiday.Sacking'`). Without it, run the
+executable directly: `build/test/core_unit_tests --gtest_filter=Holiday.*`.
+
+Tests share a process, so they must not leak global state. `fm_test_support`
+installs a listener in every executable that fingerprints the installed world,
+its league profiles and the nationality registry before and after each test:
+a test that leaves another world installed fails and the built-in world is put
+back (call `World::install(nullptr)`).
 
 Debug and sanitizer builds are several times slower: configure with
 `-DFM_TEST_TIMEOUT_SCALE=10` (the `debug-sanitized` preset does) to scale
@@ -80,9 +95,9 @@ auto custom = TestWorlds::career(slot, "my-state-key",
 ```
 
 How it works: the first process to need a state builds it (one real
-simulation) and stores a checkpoint save under the temporary folder, keyed
-by the test executable's size and timestamp; later processes (CTest runs each
-test in its own process) copy the file into their own save slot and load it.
+simulation) and stores a checkpoint save in a `fm-test-fixtures` folder next to the test executable (the build tree), keyed
+by the test executable's size and timestamp; later processes (a sharded process, or a
+per-case test process) copy the file into their own save slot and load it.
 A rebuilt executable never sees an older build's checkpoints. The calendar is
 deliberately not jumped: the model advances players, finances, the market and
 competitions day by day, so a state reached by a shortcut could never occur

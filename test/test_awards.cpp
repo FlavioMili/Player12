@@ -21,6 +21,7 @@
 #include "model/board.h"
 #include "model/inbox.h"
 #include "model/match_report.h"
+#include "test_worlds.h"
 
 namespace
 {
@@ -299,10 +300,10 @@ TEST(Awards, MonthlyAwardsFromMatchReports)
 TEST(Awards, CareerAwardsAugustAndSurvivesSaveLoad)
 {
   const SlotCleanup slot{uniqueSlot(1)};
-  auto controller = makeCareer(slot.slot);
+  // August of play is a shared checkpoint.
+  auto controller =
+      TestWorlds::careerAt(slot.slot, GameDateValue(2025, 9, 1), WORLD_SEED);
   const LeagueID league = controller->getManagedTeam()->get().getLeagueId();
-  while (controller->getCurrentDate() < GameDateValue(2025, 9, 1))
-    controller->advanceDay();
   const std::vector<AwardRecord> august =
       controller->getLeagueAwards(league, 2025);
   ASSERT_FALSE(august.empty());

@@ -20,6 +20,7 @@
 #include "model/holiday.h"
 #include "model/transfer_negotiation.h"
 #include "model/world_tuning.h"
+#include "test_worlds.h"
 
 namespace
 {
@@ -42,11 +43,20 @@ struct SlotCleanup
 
 std::unique_ptr<GameController> makeCareer(int slot)
 {
-  Logger::init();
-  auto controller = std::make_unique<GameController>();
-  controller->newGame(slot, WORLD_SEED);
-  controller->selectManagedTeam(controller->getTeams().front().get().getId());
-  return controller;
+  return TestWorlds::newCareer(slot, WORLD_SEED);
+}
+
+/** A holiday plan that never stops early. */
+HolidayPlan untilDate(const GameDateValue& date)
+{
+  HolidayPlan result;
+  result.mode = HolidayMode::UntilDate;
+  result.until = date;
+  result.preferences.stop_big_bid = false;
+  result.preferences.stop_injury_crisis = false;
+  result.preferences.stop_key_injury = false;
+  result.preferences.stop_sacking_warning = false;
+  return result;
 }
 
 HolidayPlan plan(HolidayMode mode)
@@ -234,39 +244,50 @@ TEST(Holiday, DayLimitAndOpenEndedHolidays)
   EXPECT_NE(summary.reason, HolidayStop::Completed);
 }
 
-TEST(Holiday, SackingEndsTheHoliday)
+namespace
 {
-  const SlotCleanup slot{uniqueSlot(3)};
-  auto controller = makeCareer(slot.slot);
-  HolidayPlan until = plan(HolidayMode::UntilDate);
-  until.preferences.stop_big_bid = false;
-  until.preferences.stop_injury_crisis = false;
-  until.preferences.stop_key_injury = false;
-  until.preferences.stop_sacking_warning = false;
-  until.until = GameDateValue(2025, 9, 30);
-  controller->goOnHoliday(until);
-  ASSERT_EQ(controller->getCurrentDate(), until.until);
-  ASSERT_FALSE(controller->isUnemployed());
-  ASSERT_TRUE(controller->saveGame());
-
-  // The board has run out of patience: the October review dismisses him.
-  using Tuning = WorldTuning::Board;
+/**
+ * A career on 30 September (a shared checkpoint) whose board record is then
+ * rewritten in the save: October's review is the one that may dismiss him.
+ */
+std::unique_ptr<GameController> onTheEveOfTheOctoberReview(int slot,
+                                                           int lowReviews,
+                                                           int leagueMatches,
+                                                           double confidence)
+{
+  const HolidayPlan until = untilDate(GameDateValue(2025, 9, 30));
+  auto controller = TestWorlds::career(
+      slot, "holiday-to-september-30", [&until](GameController& prepared)
+      { prepared.goOnHoliday(until); }, WORLD_SEED);
+  EXPECT_EQ(controller->getCurrentDate(), until.until);
+  EXPECT_FALSE(controller->isUnemployed());
   sqlite3* db = nullptr;
-  ASSERT_EQ(
-      sqlite3_open(RuntimePaths::savePath(slot.slot).string().c_str(), &db),
-      SQLITE_OK);
+  EXPECT_EQ(sqlite3_open(RuntimePaths::savePath(slot).string().c_str(), &db),
+            SQLITE_OK);
   const std::string update = std::format(
-      "UPDATE BoardState SET confidence = 0, low_reviews = {}, league_matches "
+      "UPDATE BoardState SET confidence = {}, low_reviews = {}, league_matches "
       "= {};",
-      Tuning::DISMISSAL_REVIEWS - 1, Tuning::MIN_MATCHES_FOR_DISMISSAL);
-  ASSERT_EQ(sqlite3_exec(db, update.c_str(), nullptr, nullptr, nullptr),
+      confidence, lowReviews, leagueMatches);
+  EXPECT_EQ(sqlite3_exec(db, update.c_str(), nullptr, nullptr, nullptr),
             SQLITE_OK);
   sqlite3_close(db);
   controller = std::make_unique<GameController>();
-  ASSERT_TRUE(controller->loadGame(slot.slot));
+  EXPECT_TRUE(controller->loadGame(slot));
+  return controller;
+}
+}  // namespace
+
+TEST(Holiday, SackingEndsTheHoliday)
+{
+  using Tuning = WorldTuning::Board;
+  const SlotCleanup slot{uniqueSlot(3)};
+  // The board has run out of patience: the October review dismisses him.
+  auto controller =
+      onTheEveOfTheOctoberReview(slot.slot, Tuning::DISMISSAL_REVIEWS - 1,
+                                 Tuning::MIN_MATCHES_FOR_DISMISSAL, 0.0);
   ASSERT_FALSE(controller->isUnemployed());
 
-  until.until = GameDateValue(2025, 10, 20);
+  const HolidayPlan until = untilDate(GameDateValue(2025, 10, 20));
   EXPECT_EQ(controller->goOnHoliday(until), 1);
   const HolidaySummary& summary = controller->getHolidaySummary();
   EXPECT_EQ(summary.reason, HolidayStop::Dismissed);
@@ -275,6 +296,49 @@ TEST(Holiday, SackingEndsTheHoliday)
   ASSERT_FALSE(controller->getManagerStints().empty());
   EXPECT_EQ(controller->getManagerStints().back().reason,
             DepartureReason::Sacked);
+}
+
+// Edge: a one-day holiday that lands on the review day reports the sacking,
+// not the day limit.
+TEST(Holiday, SackingOnTheLastHolidayDayIsReportedAsSacking)
+{
+  using Tuning = WorldTuning::Board;
+  const SlotCleanup slot{uniqueSlot(5)};
+  auto controller =
+      onTheEveOfTheOctoberReview(slot.slot, Tuning::DISMISSAL_REVIEWS - 1,
+                                 Tuning::MIN_MATCHES_FOR_DISMISSAL, 0.0);
+  HolidayPlan until = untilDate(GameDateValue(2025, 10, 20));
+  until.max_days = 1;
+  EXPECT_EQ(controller->goOnHoliday(until), 1);
+  EXPECT_EQ(controller->getHolidaySummary().reason, HolidayStop::Dismissed);
+  EXPECT_TRUE(controller->isUnemployed());
+}
+
+// Edges: one review short of the limit, or one league match short of the
+// minimum, nobody is sacked and the holiday runs to its date.
+TEST(Holiday, NoSackingJustBelowTheDismissalThresholds)
+{
+  using Tuning = WorldTuning::Board;
+  const struct
+  {
+    int low_reviews;
+    int matches;
+  } cases[] = {
+      {Tuning::DISMISSAL_REVIEWS - 2, Tuning::MIN_MATCHES_FOR_DISMISSAL},
+      {Tuning::DISMISSAL_REVIEWS - 1, Tuning::MIN_MATCHES_FOR_DISMISSAL - 1}};
+  int index = 0;
+  for (const auto& edge : cases)
+  {
+    SCOPED_TRACE(std::format("low_reviews {} matches {}", edge.low_reviews,
+                             edge.matches));
+    const SlotCleanup slot{uniqueSlot(6 + index++)};
+    auto controller = onTheEveOfTheOctoberReview(slot.slot, edge.low_reviews,
+                                                 edge.matches, 0.0);
+    const HolidayPlan until = untilDate(GameDateValue(2025, 10, 2));
+    controller->goOnHoliday(until);
+    EXPECT_FALSE(controller->isUnemployed());
+    EXPECT_NE(controller->getHolidaySummary().reason, HolidayStop::Dismissed);
+  }
 }
 
 TEST(Holiday, AutosavesKeepTheManagersOwnDuties)

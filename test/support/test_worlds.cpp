@@ -10,10 +10,13 @@
 
 #include <sqlite3.h>
 
+#include <cerrno>
 #include <chrono>
+#include <csignal>
 #include <cstdlib>
 #include <filesystem>
 #include <format>
+#include <fstream>
 #include <map>
 #include <mutex>
 #include <stdexcept>
@@ -29,6 +32,8 @@
 #elif defined(__APPLE__)
 #include <mach-o/dyld.h>
 #else
+#include <signal.h>
+#include <sys/types.h>
 #include <unistd.h>
 #endif
 
@@ -77,10 +82,27 @@ std::string buildStamp()
   return stamp;
 }
 
+long processId()
+{
+#if defined(_WIN32)
+  return static_cast<long>(GetCurrentProcessId());
+#else
+  return static_cast<long>(getpid());
+#endif
+}
+
+/**
+ * Where checkpoints live: next to the test executable (inside the build
+ * tree, so a clean build starts clean and nothing leaks into the system
+ * temporary folder); the temporary folder when that is not writable.
+ */
 fs::path cacheDirectory()
 {
   std::error_code error;
-  fs::path directory = fs::temp_directory_path(error);
+  fs::path directory = executablePath().parent_path() / "fm-test-fixtures";
+  fs::create_directories(directory, error);
+  if (!error) return directory;
+  directory = fs::temp_directory_path(error);
   if (error) return {};
   directory /= "fm-test-fixtures";
   fs::create_directories(directory, error);
@@ -96,6 +118,40 @@ std::string safeName(const std::string& text)
             ? c
             : '_';
   return result;
+}
+
+/** Records the producing process in its lock, so a killed one is noticed. */
+void writeOwner(const fs::path& lock)
+{
+  std::ofstream(lock / "owner") << processId();
+}
+
+/** True when the process that took @p lock is known to be gone (POSIX). */
+bool ownerGone(const fs::path& lock)
+{
+#if defined(_WIN32)
+  (void)lock;
+  return false;
+#else
+  std::ifstream in(lock / "owner");
+  long pid = 0;
+  if (!(in >> pid) || pid <= 0) return false;
+  return kill(static_cast<pid_t>(pid), 0) != 0 && errno == ESRCH;
+#endif
+}
+
+/** Deletes the checkpoints of earlier builds of this executable. */
+void removeOtherBuilds(const fs::path& directory, const std::string& stamp)
+{
+  const std::string own = safeName(stamp);
+  const std::string name = safeName(executablePath().filename().string()) + "-";
+  std::error_code error;
+  for (const auto& entry : fs::directory_iterator(directory, error))
+  {
+    const std::string file = entry.path().filename().string();
+    if (file.starts_with(name) && !file.starts_with(own + "."))
+      fs::remove_all(entry.path(), error);
+  }
 }
 
 /**
@@ -132,6 +188,8 @@ fs::path diskCheckpoint(const std::string& key,
           fs::remove(path, ignored);
         }
       } unlock{lock};
+      writeOwner(lock);
+      removeOtherBuilds(directory, stamp);
       if (fs::exists(file, error)) return file;
       const fs::path temp = fs::path(file).concat(std::format(
           ".tmp{}",
@@ -146,7 +204,7 @@ fs::path diskCheckpoint(const std::string& key,
       return file;
     }
     if (fs::exists(file, error)) return file;
-    if (std::chrono::steady_clock::now() > deadline)
+    if (ownerGone(lock) || std::chrono::steady_clock::now() > deadline)
     {
       // The producer died or is hopelessly slow: take the lock over.
       fs::remove(lock, error);
@@ -208,17 +266,21 @@ int uniqueSlot(int offset)
   return 7'000'000 + pid % 100'000 * 10 + offset;
 }
 
-std::unique_ptr<GameController> career(int slot, const std::string& key,
-                                       const CareerPrepare& prepare,
-                                       std::uint64_t seed)
+namespace
+{
+std::unique_ptr<GameController> loadOrBuild(int slot, const std::string& key,
+                                            const CareerPrepare& prepare,
+                                            std::uint64_t seed, bool managed)
 {
   Logger::init();
-  const std::string full_key = std::format("{}.{}", seed, key);
+  const std::string full_key =
+      std::format("{}.{}{}", seed, managed ? "" : "unmanaged.", key);
   const auto build = [&](int build_slot)
   {
     GameController controller;
     controller.newGame(build_slot, seed);
-    controller.selectManagedTeam(controller.getTeams().front().get().getId());
+    if (managed)
+      controller.selectManagedTeam(controller.getTeams().front().get().getId());
     if (prepare) prepare(controller);
     if (!controller.saveGame())
       throw std::runtime_error("TestWorlds: cannot save checkpoint " + key);
@@ -258,6 +320,21 @@ std::unique_ptr<GameController> career(int slot, const std::string& key,
   if (!controller->loadGame(slot))
     throw std::runtime_error("TestWorlds: cannot load checkpoint " + key);
   return controller;
+}
+}  // namespace
+
+std::unique_ptr<GameController> career(int slot, const std::string& key,
+                                       const CareerPrepare& prepare,
+                                       std::uint64_t seed)
+{
+  return loadOrBuild(slot, key, prepare, seed, true);
+}
+
+std::unique_ptr<GameController> unmanagedWorld(int slot, const std::string& key,
+                                               const CareerPrepare& prepare,
+                                               std::uint64_t seed)
+{
+  return loadOrBuild(slot, key, prepare, seed, false);
 }
 
 std::unique_ptr<GameController> newCareer(int slot, std::uint64_t seed)

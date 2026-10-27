@@ -85,7 +85,10 @@
       "configurePreset": "release-tests",
       "output": { "outputOnFailure": true },
       "execution": { "jobs": 2 },
-      "filter": { "include": { "label": "unit|scenario" } }
+      "filter": {
+        "include": { "label": "unit|scenario" },
+        "exclude": { "label": "slow|fuzz" }
+      }
     },
     {
       "name": "fuzz",
@@ -99,7 +102,10 @@
       "configurePreset": "debug-sanitized",
       "output": { "outputOnFailure": true },
       "execution": { "jobs": 1 },
-      "filter": { "include": { "label": "unit|scenario" } }
+      "filter": {
+        "include": { "label": "unit|scenario" },
+        "exclude": { "label": "slow|fuzz" }
+      }
     }
   ]
 }
