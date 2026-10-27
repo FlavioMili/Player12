@@ -13,6 +13,7 @@ fuzz 460 core::NationalTeamsTest.SeasonOpeningJourney
 fuzz 430 career_ui::CareerUiTest.PlanningHolidayAwardsAndRecords
 fuzz 420 insights_ui::MatchInsightsUiTest.AnalysisAndSeasonAnalyticsAtEverySize
 fuzz 410 core::NationalJobTest.OfferAcceptanceCallUpsAndResults
+fuzz 400 career_jobs_ui::NationalCallUpUiTest.CallUpScreenSquadEditingAndSizes
 fuzz 350 core::NewsWorldTest.SeededSeasonFeedDrawsAndTimelineSurviveAReload
 fuzz 330 tactics_ui::TacticsUiTest.TacticsScreenAtEverySize
 fuzz 310 core::SquadStatusTest.DemotingTheBestPlayerLowersHisMorale
