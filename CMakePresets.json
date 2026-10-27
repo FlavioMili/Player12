@@ -42,6 +42,7 @@
         "BUILD_BENCHMARKS": "OFF",
         "BUILD_UI_AUTOMATION": "OFF",
         "FM_ENABLE_SANITIZERS": "ON",
+        "FM_TEST_TIMEOUT_SCALE": "10",
         "FM_ENABLE_NATIVE_OPTIMIZATIONS": "OFF"
       }
     },
@@ -83,13 +84,22 @@
       "name": "release-tests",
       "configurePreset": "release-tests",
       "output": { "outputOnFailure": true },
-      "execution": { "jobs": 2 }
+      "execution": { "jobs": 2 },
+      "filter": { "include": { "label": "unit|scenario" } }
+    },
+    {
+      "name": "fuzz",
+      "configurePreset": "release-tests",
+      "output": { "outputOnFailure": true },
+      "execution": { "jobs": 2 },
+      "filter": { "include": { "label": "fuzz|soak|perf" } }
     },
     {
       "name": "debug-sanitized",
       "configurePreset": "debug-sanitized",
       "output": { "outputOnFailure": true },
-      "execution": { "jobs": 1 }
+      "execution": { "jobs": 1 },
+      "filter": { "include": { "label": "unit|scenario" } }
     }
   ]
 }

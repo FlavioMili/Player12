@@ -10,17 +10,88 @@ instead of the preset; a preset always targets its own `build/` directory.
 cmake --preset release-tests
 cmake --build --preset release-tests --parallel 4
 
-# The fast suites, as in CI
+# The default lanes (unit + scenario); this is also what CI runs
 ctest --preset release-tests -LE "playtest|monkey|slow"
+```
 
-# Everything, including the long playtest, GUI monkey and adversarial suites
-ctest --preset release-tests
+`ctest` without a label filter runs exactly the fast lanes: the slow lanes
+(fuzz, soak, monkey, playtest, adversarial, QA hunts, perf budgets) are not
+built or registered unless you configure with `-DFM_TEST_SLOW_LANES=ON`:
+
+```sh
+cmake -S . -B build -DFM_TEST_SLOW_LANES=ON
+ctest --test-dir build -L slow          # only the slow lanes
+ctest --test-dir build -L fuzz          # the fuzz lane
 ```
 
 Tests run headless (SDL's dummy video driver) with fixed seeds and a scratch
 data directory under `/tmp/football-management-tests`, so they never touch
-your saves. Labels: `unit`, `core` (no GUI), `gui`, `lab`, `playtest`,
-`monkey`, `adversarial` and `slow`.
+your saves.
+
+## Lanes, labels and budgets
+
+Every test runs once; each executable is compiled from distinct files
+(`core_unit_tests` holds the headless model tests, `unit_tests` only the
+files that need the GUI library). CTest enforces a timeout per lane, so a
+test that grows slow fails loudly instead of creeping back:
+
+| Label | Timeout | Contents |
+|-------|---------|----------|
+| `unit` | 5 s | The default lane; tests should take well under a second |
+| `scenario` | 20 s | A test that needs a real career scene or a few simulated seasons |
+| `slow` | listed per test | Opt-in lanes (`FM_TEST_SLOW_LANES`): `fuzz`, `soak`, `monkey`, `playtest`, `adversarial`, `qa`, `perf` |
+
+Further labels select areas: `core` (headless), `gui`, `lab`, `audio`,
+`editor`, and `leak-check` (see below). `test/test_budgets.txt` moves single
+tests out of the default lane (`scenario`, or `slow` with its own timeout);
+every line there is a test waiting to be made faster, so when you speed one
+up, delete its line. Do not raise a timeout to make a test pass.
+
+Debug and sanitizer builds are several times slower: configure with
+`-DFM_TEST_TIMEOUT_SCALE=10` (the `debug-sanitized` preset does) to scale
+every timeout.
+
+The leak-check lane is the `core` label run under the sanitizer build
+(`ctest --preset debug-sanitized -L core`, as in CI); it is the same
+executable as the normal lane, not a second copy of the tests, so the
+default Release run does not repeat it.
+
+## Shared fixtures (`test/support/test_worlds.h`)
+
+Generating a world or simulating weeks of a career is the main cost of the
+suite, so do not do it per test. Link is automatic (`fm_test_support`);
+include `"test_worlds.h"`:
+
+```cpp
+// A copy of the generated world (GameData + in-memory connection).
+auto world = TestWorlds::defaultWorld();
+
+// A started career, club chosen, first day: independent of other tests.
+const int slot = TestWorlds::uniqueSlot();
+auto controller = TestWorlds::newCareer(slot);
+
+// A career at a date or at its n-th managed fixture.
+auto at = TestWorlds::careerAt(slot, GameDateValue(2025, 8, 20));
+auto match = TestWorlds::careerAtManagedFixture(slot, 3);
+
+// Any other state: the first caller runs `prepare`, everyone else loads it.
+auto custom = TestWorlds::career(slot, "my-state-key",
+                                 [](GameController& c) { /* build state */ });
+```
+
+How it works: the first process to need a state builds it (one real
+simulation) and stores a checkpoint save under the temporary folder, keyed
+by the test executable's size and timestamp; later processes (CTest runs each
+test in its own process) copy the file into their own save slot and load it.
+A rebuilt executable never sees an older build's checkpoints. The calendar is
+deliberately not jumped: the model advances players, finances, the market and
+competitions day by day, so a state reached by a shortcut could never occur
+in a game. `defaultWorld()` also keeps a per-process template and clones it
+with a SQLite backup into a new in-memory connection.
+
+Rules: give a different `key` to every different `prepare`; remove your slot
+with `RuntimePaths::removeSave(slot)` when done; keep the same seeds and the
+same assertions as the long version of the test.
 
 ## Run one area first
 
@@ -30,9 +101,7 @@ ctest --preset release-tests -R '^core::MatchScenarioTest\.'
 ```
 
 CTest lists each GoogleTest case separately. Core cases have a `core::` prefix;
-the main `unit_tests` cases have no prefix. Engine and Play tests currently
-live in `unit_tests`; match scenarios, rules, tactics and scheduler tests also
-have headless coverage. Use `-N` to confirm that a filter selects actual tests
+the `unit_tests` cases (engine, Play, view models, game flow) have no prefix. Use `-N` to confirm that a filter selects actual tests
 before relying on its result.
 
 The [engine guide](match-engine.md) maps behaviors to tests. For larger code

@@ -225,8 +225,8 @@ GoogleTest suites in `test/`, discovered by CTest with labels:
 
 | Label | Executables | Contents |
 |-------|-------------|----------|
-| `unit` | `unit_tests`, plus the GUI and lab suites | Model, persistence and view-model tests |
-| `core` | `core_unit_tests` (prefix `core::`) | The headless tests linked against `fm_core` only; also `leak-check` |
+| `unit` | `unit_tests`, plus the GUI and lab suites | Model, persistence and view-model tests (5 s timeout; `scenario`: 20 s) |
+| `core` | `core_unit_tests` (prefix `core::`) | The headless tests linked against `fm_core` only (each test runs once); `leak-check` selects them under the sanitizer build |
 | `gui` | `scouting_ui_tests`, `youth_ui_tests`, `squad_ui_tests`, `manager_ui_tests`, `navigation_ui_tests`, `guidance_ui_tests`, `career_ui_tests` | Screens driven through a real `GUIView` with the dummy video driver, with captures at several sizes and scales |
 | `lab` | `lab_tests` | Balance lab reports |
 | `playtest`, `slow` | `playtest_tests` | A scripted career journey through the real UI |
