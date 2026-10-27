@@ -13,6 +13,7 @@
 #include <cmath>
 
 #include "database/runtime_editor.h"
+#include "database/world/world_json.h"
 #include "database/world/world_schema.h"
 #include "global/language_manager.h"
 #include "gui/scenes/world_editor_state.h"
@@ -381,12 +382,17 @@ void State::setRoute(std::size_t index, const char* key, json value)
 {
   json* list = confederationList("routes");
   if (list == nullptr || index >= list->size() ||
-      (*list)[index].value(key, json()) == value)
+      (World::Json::field((*list)[index], key) != nullptr &&
+       *World::Json::field((*list)[index], key) == value))
   {
     return;
   }
   snapshot("route:" + std::to_string(selected) + ":" + std::to_string(index) +
            ":" + key);
+  if (!(*list)[index].is_object())
+  {
+    (*list)[index] = json::object();
+  }
   (*list)[index][key] = std::move(value);
   changed();
 }

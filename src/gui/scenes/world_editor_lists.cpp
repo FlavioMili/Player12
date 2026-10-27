@@ -16,6 +16,7 @@
 
 #include "database/runtime_editor.h"
 #include "database/world/world_edit.h"
+#include "database/world/world_json.h"
 #include "database/world/world_schema.h"
 #include "global/language_manager.h"
 #include "gui/scenes/world_editor_state.h"
@@ -293,7 +294,7 @@ std::string cellText(const State& state, Kind kind, const json& item,
       {
         const std::string region =
             referenceName(doc, Kind::Region, item, "region_id");
-        return region.empty() ? item.value("region", std::string()) : region;
+        return region.empty() ? World::Json::text(item, "region") : region;
       }
       return column == 2 ? number(item, "reputation")
                          : World::entityName(kind, item);
@@ -321,7 +322,7 @@ std::string cellText(const State& state, Kind kind, const json& item,
     {
       if (column == 1)
       {
-        return item.value("role", std::string());
+        return World::Json::text(item, "role");
       }
       if (column == 3)
       {

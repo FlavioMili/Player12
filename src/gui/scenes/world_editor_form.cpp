@@ -13,6 +13,7 @@
 #include <cmath>
 
 #include "database/runtime_editor.h"
+#include "database/world/world_json.h"
 #include "database/world/world_schema.h"
 #include "global/language_manager.h"
 #include "global/nationality.h"
@@ -177,7 +178,10 @@ std::string toText(const World::FieldSpec& spec, const json* value)
       for (const json& name :
            present && value->is_array() ? *value : json::array())
       {
-        names += (names.empty() ? "" : ", ") + name.get<std::string>();
+        if (name.is_string())
+        {
+          names += (names.empty() ? "" : ", ") + name.get<std::string>();
+        }
       }
       return names;
     }

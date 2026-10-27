@@ -11,6 +11,7 @@
 #include <algorithm>
 #include <array>
 
+#include "database/world/world_json.h"
 #include "database/world/world_runtime.h"
 #include "database/world/world_schema.h"
 #include "global/nationality.h"
@@ -118,7 +119,7 @@ Geography geographyOf(const Document& world, bool with_nations)
     data.id = static_cast<ConfederationID>(entityId(item));
     data.name = text(item, "name");
     data.label = item.contains("name_key") ? text(item, "name_key") : data.name;
-    data.national_finals = item.value("national_finals", true);
+    data.national_finals = Json::boolean(item, "national_finals", true);
     if (const auto cups = item.find("cups");
         cups != item.end() && cups->is_array())
     {
@@ -129,9 +130,12 @@ Geography geographyOf(const Document& world, bool with_nations)
     {
       for (const json& route : *routes)
       {
-        data.routes.push_back({text(route, "to"),
-                               route.value("km", std::uint16_t{0}),
-                               route.value("hours", std::uint8_t{0})});
+        data.routes.push_back(
+            {text(route, "to"),
+             static_cast<std::uint16_t>(std::clamp<std::int64_t>(
+                 Json::integer(route, "km"), 0, UINT16_MAX)),
+             static_cast<std::uint8_t>(std::clamp<std::int64_t>(
+                 Json::integer(route, "hours"), 0, UINT8_MAX))});
       }
     }
     result.confederations.push_back(std::move(data));
@@ -148,9 +152,10 @@ Geography geographyOf(const Document& world, bool with_nations)
     region.id = static_cast<RegionID>(entityId(item));
     region.name = text(item, "name");
     const auto parent = item.find("confederation_id");
-    const auto parent_id = parent != item.end() && parent->is_number_integer()
-                               ? static_cast<ConfederationID>(parent->get<int>())
-                               : ConfederationID{0};
+    const auto parent_id =
+        parent != item.end() && parent->is_number_integer()
+            ? static_cast<ConfederationID>(parent->get<int>())
+            : ConfederationID{0};
     region.confederation =
         result.confederation(parent_id) != nullptr ? parent_id
         : result.confederations.empty() ? ConfederationID{0}
@@ -177,8 +182,8 @@ Geography geographyOf(const Document& world, bool with_nations)
                                   ? nationalityFromName(name.get<std::string>())
                                   : std::nullopt)
       {
-        result.nations.try_emplace(*nation,
-                                   static_cast<ConfederationID>(entityId(item)));
+        result.nations.try_emplace(
+            *nation, static_cast<ConfederationID>(entityId(item)));
       }
     }
   }

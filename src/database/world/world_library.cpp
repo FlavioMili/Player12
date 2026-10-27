@@ -95,29 +95,42 @@ std::vector<Entry> list()
 {
   std::vector<Entry> entries;
   std::error_code error;
-  for (const auto& item : fs::directory_iterator(directory(), error))
+  fs::directory_iterator it(directory(), error);
+  const fs::directory_iterator end;
+  // Increment with an error code too: a file that vanishes mid-scan must not
+  // throw. Each file is isolated, so one bad entry never hides the others.
+  for (; !error && it != end; it.increment(error))
   {
-    if (!item.is_regular_file(error) ||
-        pathToUtf8(item.path().extension()) != FILE_EXTENSION)
+    try
     {
-      continue;
+      const fs::path path = it->path();
+      if (!it->is_regular_file(error) ||
+          pathToUtf8(path.extension()) != FILE_EXTENSION)
+      {
+        error.clear();
+        continue;
+      }
+      const LoadResult loaded = readFile(path);
+      Entry entry;
+      if (loaded.document)
+      {
+        entry = summarise(*loaded.document, loaded.issues);
+      }
+      else
+      {
+        entry.errors = loaded.issues.size();
+      }
+      if (entry.manifest.name.empty())
+      {
+        entry.manifest.name = pathToUtf8(path.stem());
+      }
+      entry.path = path;
+      entries.push_back(std::move(entry));
     }
-    const LoadResult loaded = readFile(item.path());
-    Entry entry;
-    if (loaded.document)
+    catch (...)
     {
-      entry = summarise(*loaded.document, loaded.issues);
+      error.clear();
     }
-    else
-    {
-      entry.errors = loaded.issues.size();
-    }
-    if (entry.manifest.name.empty())
-    {
-      entry.manifest.name = pathToUtf8(item.path().stem());
-    }
-    entry.path = item.path();
-    entries.push_back(std::move(entry));
   }
   std::ranges::sort(entries, {}, [](const Entry& entry)
                     { return normalise(entry.manifest.name); });

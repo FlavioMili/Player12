@@ -15,6 +15,8 @@
 #include <sstream>
 #include <system_error>
 
+#include "database/world/world_json.h"
+
 using json = nlohmann::json;
 namespace fs = std::filesystem;
 
@@ -91,7 +93,8 @@ void upgrade(json& root)
   {
     return;
   }
-  const int schema = manifest.value("schema", SCHEMA);
+  const int schema =
+      static_cast<int>(Json::integer(manifest, "schema", SCHEMA));
   if (schema >= SCHEMA)
   {
     return;
@@ -128,8 +131,7 @@ void upgrade(json& root)
       const auto club = club_root.find(integer(player, "team_id"));
       if (club != club_root.end())
       {
-        ++nationality_votes[club->second]
-                           [player.value("nationality", std::string())];
+        ++nationality_votes[club->second][Json::text(player, "nationality")];
       }
     }
   }
@@ -153,7 +155,7 @@ void upgrade(json& root)
       }
     }
     countries.push_back({{"id", id},
-                         {"name", league.value("name", std::string())},
+                         {"name", Json::text(league, "name")},
                          {"nationality", nationality}});
     country_of_root[entityId(league)] = id;
   }
@@ -177,7 +179,7 @@ void upgrade(json& root)
   manifest["schema"] = SCHEMA;
 }
 
-LoadResult readText(std::string_view text)
+static LoadResult parseText(std::string_view text)
 {
   LoadResult result;
   if (text.size() > MAX_FILE_BYTES)
@@ -208,8 +210,8 @@ LoadResult readText(std::string_view text)
     {
       result.issues.push_back(
           fileIssue(IssueCode::NewerSchema,
-                    manifest->value("min_game_version",
-                                    std::to_string(schema->get<int>()))));
+                    Json::text(*manifest, "min_game_version",
+                               std::to_string(schema->get<int>()))));
       return result;
     }
   }
@@ -217,6 +219,22 @@ LoadResult readText(std::string_view text)
   result.document.emplace(std::move(root));
   result.issues = validate(*result.document);
   return result;
+}
+
+LoadResult readText(std::string_view text)
+{
+  try
+  {
+    return parseText(text);
+  }
+  catch (...)
+  {
+    // Last line of defence: whatever a hostile file does, loading reports
+    // NotJson instead of crashing the game.
+    LoadResult failed;
+    failed.issues.push_back(fileIssue(IssueCode::NotJson));
+    return failed;
+  }
 }
 
 LoadResult readFile(const fs::path& path)

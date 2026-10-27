@@ -10,6 +10,7 @@
 
 #include <algorithm>
 #include <filesystem>
+#include <fstream>
 #include <memory>
 #include <set>
 #include <string>
@@ -140,4 +141,61 @@ TEST(WorldFlow, ImportedTemplateWorldStartsACareer)
 
   EXPECT_TRUE(World::Library::remove(imported.stored));
   World::install(nullptr);
+}
+
+TEST(WorldLibrary, ListNeverThrowsForAnyFile)
+{
+  const fs::path dir = World::Library::directory();
+  fs::create_directories(dir);
+  std::vector<fs::path> files;
+  const auto drop = [&](const std::string& text)
+  {
+    const fs::path file =
+        dir / ("fm_wrongtype_" + std::to_string(files.size()) + ".fmdb");
+    std::ofstream(file, std::ios::binary) << text;
+    files.push_back(file);
+  };
+  drop(R"({"manifest":{"name":"x","schema":99,"min_game_version":3}})");
+  drop(R"({"manifest":{"name":"x","schema":1},"leagues":[5]})");
+  drop("\xff\xfe not json");
+  drop("");
+  // A valid world with one club's short name replaced by a number.
+  nlohmann::json valid = World::templateDocument().root();
+  valid["clubs"][0]["short_name"] = 5;
+  drop(valid.dump());
+  // The same world with every field of every entity in every wrong type.
+  for (const nlohmann::json& wrong :
+       {nlohmann::json(5), nlohmann::json("x"), nlohmann::json(true),
+        nlohmann::json::array({1}), nlohmann::json::object(),
+        nlohmann::json(nullptr)})
+  {
+    nlohmann::json root = World::templateDocument().root();
+    for (auto& [key, section] : root.items())
+    {
+      if (key == "manifest" || !section.is_array())
+      {
+        continue;
+      }
+      for (nlohmann::json& entity : section)
+      {
+        for (auto& [field, value] : entity.items())
+        {
+          if (field != "id")
+          {
+            value = wrong;
+          }
+        }
+      }
+    }
+    drop(root.dump());
+  }
+  std::vector<World::Library::Entry> entries;
+  EXPECT_NO_THROW(entries = World::Library::list());
+  for (const fs::path& file : files)
+  {
+    EXPECT_NE(std::ranges::find(entries, file, &World::Library::Entry::path),
+              entries.end())
+        << file;
+    fs::remove(file);
+  }
 }

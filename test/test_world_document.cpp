@@ -11,8 +11,11 @@
 #include <chrono>
 #include <filesystem>
 #include <fstream>
+#include <set>
 #include <string>
 
+#include "database/world/world_edit.h"
+#include "database/world/world_geography.h"
 #include "database/world/world_io.h"
 #include "database/world/world_schema.h"
 #include "database/world/world_validate.h"
@@ -305,4 +308,161 @@ TEST(WorldDocument, LargeWorldIsFastAndCompact)
   EXPECT_LT(text.size(), 10U * 1024U * 1024U);
   // Generous bound for slow CI machines; the benchmark tracks the real time.
   EXPECT_LT(std::chrono::duration<double>(elapsed).count(), 10.0);
+}
+
+namespace
+{
+/** One JSON value of every type a field is not supposed to have. */
+const std::vector<json>& wrongValues()
+{
+  static const std::vector<json> values = {5,
+                                           -7,
+                                           1.5,
+                                           "x",
+                                           true,
+                                           json::array({1, "a"}),
+                                           json::object({{"a", 1}}),
+                                           json(nullptr)};
+  return values;
+}
+
+/** Everything the game does with a file it was handed, none of which may
+ * throw: load, validate, check playability, write, duplicate, create. */
+void useWithoutThrowing(const std::string& text, const std::string& label)
+{
+  World::LoadResult loaded;
+  ASSERT_NO_THROW(loaded = World::readText(text)) << label;
+  if (!loaded.document)
+  {
+    return;
+  }
+  World::Document document = *loaded.document;
+  ASSERT_NO_THROW((void)World::validate(document)) << label;
+  ASSERT_NO_THROW((void)World::playability(document)) << label;
+  ASSERT_NO_THROW((void)World::write(document)) << label;
+  ASSERT_NO_THROW((void)World::geographyOf(document, true)) << label;
+  for (const Kind kind : World::KINDS)
+  {
+    std::vector<std::int64_t> ids;
+    for (const json& entity : document.section(kind))
+    {
+      ids.push_back(World::entityId(entity));
+    }
+    for (const std::int64_t id : ids)
+    {
+      ASSERT_NO_THROW((void)World::duplicate(document, kind, id)) << label;
+      ASSERT_NO_THROW((void)World::create(document, kind, id)) << label;
+    }
+    ASSERT_NO_THROW((void)World::create(document, kind)) << label;
+  }
+}
+
+/** Top-level keys an entity of @p kind has or may have. */
+std::set<std::string> fieldKeys(Kind kind, const json& entity)
+{
+  std::set<std::string> keys;
+  if (entity.is_object())
+  {
+    for (const auto& item : entity.items())
+    {
+      keys.insert(item.key());
+    }
+  }
+  for (const World::FieldSpec& spec : World::fields(kind))
+  {
+    keys.insert(std::string(spec.path.substr(0, spec.path.find('.'))));
+  }
+  return keys;
+}
+}  // namespace
+
+TEST(WorldWrongTypes, IssueReproductionsNeverThrow)
+{
+  const std::vector<std::string> texts = {
+      R"({"manifest":{"name":"x","schema":99,"min_game_version":3}})",
+      R"({"manifest":{"name":"x","schema":1},"leagues":[5]})",
+      R"({"manifest":{"name":"x","schema":1},"leagues":[{"id":1,"name":7}],)"
+      R"("clubs":[{"id":1,"league_id":1}],)"
+      R"("players":[{"id":1,"team_id":1,"nationality":9}]})",
+      R"({"manifest":{"name":"x","schema":1},"leagues":"no","clubs":[5],)"
+      R"("players":[null,[1]]})",
+      R"({"manifest":{"name":7,"author":[],"version":{},"season":"s"}})",
+  };
+  for (const std::string& text : texts)
+  {
+    World::LoadResult result;
+    ASSERT_NO_THROW(result = World::readText(text)) << text;
+    EXPECT_FALSE(result.issues.empty() && !result.document) << text;
+    useWithoutThrowing(text, text);
+  }
+  // A newer schema still names the minimum version when it is a string, and
+  // reports the schema when it is not.
+  const auto newer = World::readText(
+      R"({"manifest":{"name":"x","schema":99,"min_game_version":3}})");
+  EXPECT_TRUE(hasIssue(newer.issues, IssueCode::NewerSchema));
+}
+
+TEST(WorldWrongTypes, EveryFieldOfEveryKindWithEveryWrongType)
+{
+  const json original = World::templateDocument().root();
+  for (const Kind kind : World::KINDS)
+  {
+    const std::string key(World::sectionKey(kind));
+    const json* section = original.contains(key) ? &original.at(key) : nullptr;
+    const json entity =
+        section != nullptr && section->is_array() && !section->empty()
+            ? section->front()
+            : json::object();
+    for (const std::string& field : fieldKeys(kind, entity))
+    {
+      for (const json& wrong : wrongValues())
+      {
+        json root = original;
+        if (!root.contains(key))
+        {
+          root[key] = json::array({json::object()});
+        }
+        // Every entity of the section carries the wrong value, so that
+        // whichever one a code path looks at is the broken one.
+        for (json& item : root[key])
+        {
+          if (item.is_object())
+          {
+            item[field] = wrong;
+          }
+        }
+        useWithoutThrowing(root.dump(),
+                           key + "." + field + " = " + wrong.dump());
+      }
+    }
+    for (const json& wrong : wrongValues())
+    {
+      json root = original;
+      root[key] = wrong;
+      useWithoutThrowing(root.dump(), key + " = " + wrong.dump());
+      root[key] = json::array({wrong, json::array({wrong})});
+      useWithoutThrowing(root.dump(), key + " entries = " + wrong.dump());
+    }
+  }
+  for (const char* field : {"name", "author", "version", "description",
+                            "min_game_version", "schema", "season"})
+  {
+    for (const json& wrong : wrongValues())
+    {
+      json root = original;
+      root["manifest"][field] = wrong;
+      useWithoutThrowing(root.dump(), std::string("manifest.") + field);
+      root["manifest"]["schema"] = 1;
+      useWithoutThrowing(root.dump(), std::string("schema 1 ") + field);
+    }
+  }
+  for (const char* section : {"first_names", "last_names"})
+  {
+    for (const json& wrong : wrongValues())
+    {
+      json root = original;
+      root[section] = wrong;
+      useWithoutThrowing(root.dump(), section);
+    }
+  }
 }

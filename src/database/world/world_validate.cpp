@@ -16,6 +16,7 @@
 #include <unordered_map>
 #include <unordered_set>
 
+#include "database/world/world_json.h"
 #include "database/world/world_schema.h"
 #include "global/languages.h"
 #include "model/role_utils.h"
@@ -429,8 +430,9 @@ void checkSection(const Document& document, Kind kind,
     {
       checkConfederation(context);
     }
-    if (kind == Kind::Travel &&
-        entity.value("from", json()) == entity.value("to", json()))
+    if (kind == Kind::Travel && Json::field(entity, "from") != nullptr &&
+        Json::field(entity, "to") != nullptr &&
+        *Json::field(entity, "from") == *Json::field(entity, "to"))
     {
       context.add(Severity::Error, IssueCode::OutOfRange, "to");
     }
@@ -539,7 +541,7 @@ std::vector<Issue> playability(const Document& document)
       issues.push_back(entityIssue(Severity::Blocking, IssueCode::DuplicateName,
                                    Kind::Club, club));
     }
-    std::string code = club.value("short_name", std::string());
+    std::string code = Json::text(club, "short_name");
     std::ranges::transform(
         code, code.begin(),
         [](char c)

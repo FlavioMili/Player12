@@ -14,6 +14,7 @@
 #include <string>
 #include <unordered_set>
 
+#include "database/world/world_json.h"
 #include "database/world/world_schema.h"
 
 using json = nlohmann::json;
@@ -61,7 +62,7 @@ std::string uniqueShortName(const Document& document, const std::string& seed)
   std::unordered_set<std::string> used;
   for (const json& club : document.section(Kind::Club))
   {
-    std::string code = club.value("short_name", std::string());
+    std::string code = Json::text(club, "short_name");
     std::ranges::transform(
         code, code.begin(),
         [](char c)
@@ -198,7 +199,7 @@ std::int64_t duplicate(Document& document, Kind kind, std::int64_t id)
   }
   if (kind == Kind::Club)
   {
-    copy["short_name"] = uniqueShortName(document, copy.value("name", ""));
+    copy["short_name"] = uniqueShortName(document, Json::text(copy, "name"));
   }
   document.add(kind, std::move(copy));
   return *fresh;
