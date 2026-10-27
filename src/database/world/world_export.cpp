@@ -159,6 +159,12 @@ Document exportCareer(const GameData& data, const Document& source,
     row["id"] = team->getId();
     row["name"] = team->getName();
     row["league_id"] = team->getLeagueId();
+    // The club's current stature, so a new career from this world starts
+    // with the same pecking order.
+    if (team->getReputation() > 0)
+    {
+      row["reputation"] = team->getReputation();
+    }
     if (known == nullptr)
     {
       if (const auto identity = identities.find(team->getId());

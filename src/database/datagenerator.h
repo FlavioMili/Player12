@@ -48,6 +48,9 @@ struct ClubIdentity
   std::uint32_t stadium_capacity = 0; /*!< Nominal seats; 0 if unknown. */
   std::uint16_t founded = 0;          /*!< Founding year; 0 if unknown. */
   std::string nickname;
+  /** Stature the world gives the club (1-100); 0 when the world leaves it
+   * to generation. New careers rank and rate the club by it. */
+  std::uint8_t reputation = 0;
 };
 
 /**

@@ -4775,6 +4775,7 @@
   "WORLD_FIELD_SHORT_NAME": "Short name (3 letters)",
   "WORLD_FIELD_NICKNAME": "Nickname",
   "WORLD_FIELD_FOUNDED": "Founded",
+  "WORLD_FIELD_CLUB_STATURE": "Stature · 1–100, strongest clubs highest",
   "WORLD_FIELD_STADIUM_NAME": "Stadium name",
   "WORLD_FIELD_PRIMARY_COLOUR": "Primary colour",
   "WORLD_FIELD_SECONDARY_COLOUR": "Secondary colour",

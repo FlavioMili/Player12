@@ -404,6 +404,12 @@ std::unordered_map<TeamID, ClubIdentity> DataGenerator::loadClubIdentities()
       identity.stadium_name = stadium->value("name", std::string());
       identity.stadium_capacity = stadium->value<std::uint32_t>("capacity", 0);
     }
+    if (const auto reputation = item.find("reputation");
+        reputation != item.end() && reputation->is_number())
+    {
+      identity.reputation = static_cast<std::uint8_t>(
+          std::clamp(reputation->get<double>(), 0.0, 100.0));
+    }
     identities.emplace(item.at("id").get<TeamID>(), std::move(identity));
   }
   return identities;

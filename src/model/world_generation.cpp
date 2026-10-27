@@ -13,6 +13,8 @@
 #include <cctype>
 #include <cmath>
 #include <fstream>
+#include <functional>
+#include <limits>
 #include <map>
 #include <memory>
 #include <nlohmann/json.hpp>
@@ -760,8 +762,10 @@ double overallFor(PlayerRole role, const std::map<std::string, float>& stats,
   return overall;
 }
 
-void generateClubProfiles(std::unordered_map<TeamID, Team>& teams,
-                          std::uint64_t world_seed, bool assign_opening_balance)
+void generateClubProfiles(
+    std::unordered_map<TeamID, Team>& teams, std::uint64_t world_seed,
+    bool assign_opening_balance,
+    const std::unordered_map<TeamID, std::uint8_t>* stature)
 {
   using Generation = WorldTuning::Generation;
   if (assign_opening_balance) generationRegistry().clear();
@@ -777,23 +781,73 @@ void generateClubProfiles(std::unordered_map<TeamID, Team>& teams,
     std::ranges::sort(team_ids);
     WorldRng rng =
         WorldRng::stream(world_seed, RngDomain::Generation, league_id);
-    rng.shuffle(std::span<TeamID>(team_ids));
     const LeagueProfile& league = leagueProfile(league_id);
-
-    // The league's shape ranks the (shuffled) clubs; reputation, and with it
-    // revenue, follows the first-team level they are generated at.
+    const float centre = reputationCentre(league, team_ids.size());
+    // The league's shape gives one reputation slot per rank; reputation,
+    // and with it revenue, follows the first-team level of the slot.
     const std::vector<float> offsets =
         levelOffsets(league.shape, team_ids.size());
-    const float centre = reputationCentre(league, team_ids.size());
+    const auto slotValue = [&](std::size_t slot)
+    { return centre + Generation::REPUTATION_PER_LEVEL * offsets[slot]; };
+    const auto stated = [&](TeamID team_id) -> std::uint8_t
+    {
+      if (stature == nullptr) return 0;
+      const auto found = stature->find(team_id);
+      return found != stature->end() ? found->second : 0;
+    };
+    if (stature == nullptr)
+    {
+      rng.shuffle(std::span<TeamID>(team_ids));
+    }
+    else
+    {
+      // Clubs with a stated stature, strongest first, take the free slot
+      // nearest to it; the others fill the remaining slots in club-id
+      // order. The seed never decides the pecking order.
+      std::vector<TeamID> by_stature;
+      std::vector<TeamID> open;
+      for (const TeamID team_id : team_ids)
+        (stated(team_id) > 0 ? by_stature : open).push_back(team_id);
+      std::ranges::stable_sort(by_stature, std::greater{}, stated);
+      std::vector<TeamID> ranked(team_ids.size(), FREE_AGENTS_TEAM_ID);
+      std::vector<bool> taken(team_ids.size(), false);
+      for (const TeamID team_id : by_stature)
+      {
+        std::size_t best = 0;
+        float best_gap = std::numeric_limits<float>::max();
+        for (std::size_t slot = 0; slot < ranked.size(); ++slot)
+        {
+          const float gap =
+              std::abs(slotValue(slot) - static_cast<float>(stated(team_id)));
+          if (!taken[slot] && gap < best_gap)
+          {
+            best = slot;
+            best_gap = gap;
+          }
+        }
+        taken[best] = true;
+        ranked[best] = team_id;
+      }
+      auto next_open = open.begin();
+      for (std::size_t slot = 0; slot < ranked.size(); ++slot)
+        if (!taken[slot]) ranked[slot] = *next_open++;
+      team_ids = std::move(ranked);
+    }
+
     std::vector<std::uint8_t> reputations;
     reputations.reserve(team_ids.size());
     for (std::size_t i = 0; i < team_ids.size(); ++i)
     {
       ClubProfile profile;
+      // A stature the world states is kept as it is.
+      const std::uint8_t given = stated(team_ids[i]);
       profile.reputation =
-          clampRating(centre + Generation::REPUTATION_PER_LEVEL * offsets[i] +
-                          rng.normal(0.0f, Generation::CLUB_REPUTATION_NOISE),
-                      15.0f);
+          given > 0
+              ? given
+              : clampRating(
+                    slotValue(i) +
+                        rng.normal(0.0f, Generation::CLUB_REPUTATION_NOISE),
+                    15.0f);
       profile.training_facilities = clampRating(
           static_cast<float>(profile.reputation) + rng.normal(0.0f, 8.0f),
           10.0f);

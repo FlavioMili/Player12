@@ -244,6 +244,8 @@ std::vector<FieldSpec> clubFields()
       field("short_name", Text, "WORLD_FIELD_SHORT_NAME", GENERAL, 0, 3),
       field("nickname", Text, "WORLD_FIELD_NICKNAME", GENERAL, 0, 64),
       field("founded", Integer, "WORLD_FIELD_FOUNDED", GENERAL, 1800, 2100),
+      field("reputation", Integer, "WORLD_FIELD_CLUB_STATURE", GENERAL, 1,
+            MAX_RATING),
       field("stadium.name", Text, "WORLD_FIELD_STADIUM_NAME", STADIUM, 0, 96),
       field("stadium.capacity", Integer, "EDITOR_STADIUM_SEATS", STADIUM, 0,
             250'000),

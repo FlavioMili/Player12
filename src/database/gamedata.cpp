@@ -215,7 +215,13 @@ void GameData::generateAndSaveInitialData()
     {
       _teams.try_emplace(team.getId(), team);
     }
-    WorldGeneration::generateClubProfiles(_teams, world_seed, true);
+    // The world's club statures fix the pecking order of every new career.
+    std::unordered_map<TeamID, std::uint8_t> stature;
+    for (const auto& [id, identity] : DataGenerator::clubIdentities())
+    {
+      if (identity.reputation > 0) stature.emplace(id, identity.reputation);
+    }
+    WorldGeneration::generateClubProfiles(_teams, world_seed, true, &stature);
 
     // Populate _teamsVec so we can use insertTeamsWithId
     _teamsVec.clear();
