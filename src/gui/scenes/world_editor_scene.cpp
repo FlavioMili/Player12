@@ -337,6 +337,7 @@ void State::restore(const Snapshot& snapshot_)
   conflicts = snapshot_.conflicts;
   duplicates = snapshot_.duplicates;
   last_edit.clear();
+  form_stale = true;
   if (const auto k = kind(); k && entity(*k, selected) == nullptr)
   {
     selected = -1;
@@ -380,6 +381,7 @@ void State::setPage(Page next)
 {
   page = next;
   selected = -1;
+  cup = -1;
   search.clear();
   parent_filter = -1;
   form_stale = true;
@@ -394,6 +396,7 @@ void State::select(Kind target, std::int64_t key)
     setPage(pageOf(target));
   }
   selected = key;
+  cup = -1;
   form_stale = true;
   scroll_to_selected = true;
 }

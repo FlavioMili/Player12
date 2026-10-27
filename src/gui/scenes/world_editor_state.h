@@ -112,6 +112,13 @@ struct WorldEditorScene::State
   std::vector<std::string> original;
   bool form_stale = true;
 
+  // Confederation page: the cup being edited and its form.
+  int cup = -1;  ///< Position in the confederation's "cups", -1 none.
+  std::vector<EditorForm::Value> cup_values;
+  std::vector<EditorField> cup_descriptors;
+  std::vector<std::string> cup_original;
+  bool cup_stale = true;
+
   // Problems, recomputed lazily after edits.
   std::vector<World::Issue> issues;
   bool issues_stale = true;
@@ -183,6 +190,20 @@ struct WorldEditorScene::State
   void rebuildRows();
   const std::vector<World::Issue>& problems(bool force = false);
 
+  // Confederation cups and routes (the selected confederation's lists).
+  /** Its list at @p key ("cups", "routes"); nullptr when it has none. */
+  nlohmann::json* confederationList(const char* key, bool create = false);
+  std::string cupName(std::size_t index);
+  void selectCup(int index);
+  void addCup();
+  void removeCup();
+  void moveCup(int step);
+  void buildCup();
+  bool applyCup();
+  void addRoute();
+  void removeRoute(std::size_t index);
+  void setRoute(std::size_t index, const char* key, nlohmann::json value);
+
   // Combining.
   void resolveSelected(World::Choice choice);
   void resolveChosenFields();
@@ -205,6 +226,9 @@ struct WorldEditorScene::State
   void renderNavigationCombo();
   void renderList(float width, float height);
   void renderForm(float width, float height);
+  void renderConfederation();
+  void renderCups();
+  void renderRoutes();
   void renderDetails(float width, float height);
   void renderProblems(float width, float height);
   void renderConflicts(float width, float height);

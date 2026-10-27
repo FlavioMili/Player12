@@ -11,6 +11,7 @@
 
 #include <algorithm>
 #include <memory>
+#include <set>
 #include <string>
 
 #include "controller/game_controller.h"
@@ -455,6 +456,68 @@ TEST(WorldPeoples, FantasyWorldPlaysASeasonWithItsOwnPeoplesAndCups)
   EXPECT_EQ(nationalityFromName("Westerosi"), westerosi);
 }
 
+TEST(WorldPeoples, AnEditedCupStartsACareerWithItsOwnFormat)
+{
+  World::Document document = *fantasyWorld();
+  json& cup = (*document.find(Kind::Confederation, 1))["cups"][0];
+  cup["clubs"] = 8;
+  cup["matches"] = 4;
+  cup["places"] = {3, 1};
+  cup["weekday_offsets"] = {3, 4};
+  cup["final_offset"] = 9;
+  cup["prizes"] = {{"win", 123'456}};
+  cup["note"] = "kept";
+  (*document.find(Kind::Confederation, 1))["routes"] = {
+      {{"to", "Free Cities"}, {"km", 9000}, {"hours", 4}}};
+  EXPECT_TRUE(World::validate(document).empty());
+  const Slot slot{731'207};
+  auto controller =
+      career(slot.slot, std::make_shared<const World::Document>(document));
+  const Continental::CompetitionRules* rules = Continental::rules(250);
+  ASSERT_NE(rules, nullptr);
+  EXPECT_EQ(rules->clubs, 8);
+  EXPECT_EQ(rules->matches, 4);
+  EXPECT_EQ(rules->base_places, (std::vector<std::uint8_t>{3, 1}));
+  EXPECT_EQ(rules->weekday_offsets[0], 3);
+  EXPECT_EQ(rules->weekday_offsets[1], 4);
+  EXPECT_EQ(rules->final_offset, 9);
+  EXPECT_EQ(rules->prizes.win, 123'456);
+  // What the cup leaves out keeps the preset of its tier.
+  const json preset = Continental::presetCupJson(1);
+  EXPECT_EQ(rules->prizes.final_fee, preset["prizes"]["final_fee"]);
+  EXPECT_EQ(Continental::rules(251)->clubs, preset["clubs"]);
+  controller->selectManagedTeam(101);
+  for (int days = 0; days < 30; ++days)
+  {
+    controller->advanceDay();
+  }
+}
+
+TEST(WorldPeoples, BadCupsAndRoutesAreReportedWithTheirFieldPaths)
+{
+  World::Document document = *fantasyWorld();
+  json& confederation = *document.find(Kind::Confederation, 1);
+  confederation["national_finals"] = "yes";
+  confederation["cups"] = {{{"name", "Fine"}},
+                           {{"clubs", 2},
+                            {"places", {4, "x"}},
+                            {"weekday_offsets", {1}},
+                            {"prizes", {{"win", -5}}}},
+                           5};
+  confederation["routes"] = {{{"to", "Nowhere"}, {"km", 70'000}}, {{"km", 5}}};
+  std::set<std::string> fields;
+  for (const World::Issue& issue : World::validate(document))
+  {
+    EXPECT_EQ(issue.kind, Kind::Confederation);
+    fields.insert(issue.field);
+  }
+  EXPECT_EQ(fields,
+            (std::set<std::string>{
+                "national_finals", "cups[1].clubs", "cups[1].places",
+                "cups[1].weekday_offsets", "cups[1].prizes.win", "cups[2]",
+                "routes[0].to", "routes[0].km", "routes[1].to"}));
+}
+
 TEST(WorldPeoples, SixteenBitIdsHoldHundredsOfPeoplesAndManyCups)
 {
   const Slot slot{731'206};
@@ -475,13 +538,13 @@ TEST(WorldPeoples, SixteenBitIdsHoldHundredsOfPeoplesAndManyCups)
     for (int league = 1; league <= 10 && !played; ++league)
     {
       const TeamID club = static_cast<TeamID>(league * 100 + 1);
-      played = std::ranges::any_of(
-          controller->getTeamFixtures(club),
-          [](const Match& match)
-          {
-            return match.getMatchType() == MatchType::CONTINENTAL &&
-                   match.isPlayed();
-          });
+      played = std::ranges::any_of(controller->getTeamFixtures(club),
+                                   [](const Match& match)
+                                   {
+                                     return match.getMatchType() ==
+                                                MatchType::CONTINENTAL &&
+                                            match.isPlayed();
+                                   });
     }
   }
   EXPECT_TRUE(played);

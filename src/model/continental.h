@@ -13,6 +13,7 @@
 #include <functional>
 #include <map>
 #include <memory>
+#include <nlohmann/json_fwd.hpp>
 #include <optional>
 #include <string>
 #include <unordered_map>
@@ -112,6 +113,10 @@ inline constexpr LeagueID FIRST_CUP_ID = CHAMPIONS_CUP_ID;
  * shield of Europe and the Americas' cup.
  */
 const std::vector<CompetitionRules>& competitions();
+
+/** Values a cup of @p tier takes for every field its definition leaves out
+ * (same keys as a world's cup: "clubs", "places", "prizes"...). */
+nlohmann::json presetCupJson(int tier);
 
 /** Rules of a competition ID; nullptr for anything else. */
 const CompetitionRules* rules(LeagueID competition_id);

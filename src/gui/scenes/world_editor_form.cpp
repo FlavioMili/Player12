@@ -183,8 +183,8 @@ std::string toText(const World::FieldSpec& spec, const json* value)
     }
     case FieldType::Stats:
       return present ? value->dump() : "{}";
-    case FieldType::Json:
-      return present ? value->dump() : std::string();
+    case FieldType::Boolean:
+      return present && value->is_boolean() && !value->get<bool>() ? "0" : "1";
     case FieldType::Text:
     case FieldType::Colour:
     case FieldType::Choice:
@@ -266,15 +266,8 @@ std::optional<json> fromText(const World::FieldSpec& spec,
       json stats = json::parse(text, nullptr, false);
       return stats.is_object() ? std::optional<json>(stats) : std::nullopt;
     }
-    case FieldType::Json:
-    {
-      if (text.empty())
-      {
-        return json();
-      }
-      json value = json::parse(text, nullptr, false);
-      return value.is_discarded() ? std::nullopt : std::optional<json>(value);
-    }
+    case FieldType::Boolean:
+      return json(text != "0");
     case FieldType::Text:
       return text.empty() && !spec.required ? json() : json(text);
     case FieldType::Colour:
@@ -306,7 +299,10 @@ EditorField describe(const World::FieldSpec& spec)
       break;
     case FieldType::Text:
     case FieldType::List:
-    case FieldType::Json:
+      break;
+    case FieldType::Boolean:
+      field.control = EditorField::Control::Toggle;
+      field.hint = std::string(spec.label) + "_HINT";
       break;
     case FieldType::Colour:
       field.control = EditorField::Control::Colour;
@@ -451,6 +447,7 @@ bool State::applyForm()
 void State::buildForm()
 {
   form_stale = false;
+  cup_stale = true;
   values.clear();
   descriptors.clear();
   original.clear();
@@ -521,6 +518,10 @@ void State::renderForm(float width, float height)
   if (selected < 0 || values.empty())
   {
     UI::emptyState(LOC("WORLD_SELECT_TITLE"), LOC("WORLD_SELECT_HINT"));
+  }
+  else if (page == Page::Confederation)
+  {
+    renderConfederation();
   }
   else if (EditorForm::render(values, descriptors, true, "##world_sections"))
   {

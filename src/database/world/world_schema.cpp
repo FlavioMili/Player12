@@ -94,8 +94,48 @@ std::vector<FieldSpec> confederationFields()
   return {
       required(field("name", Text, "WORLD_FIELD_NAME", GENERAL, 1, 64)),
       field("nationalities", List, "WORLD_FIELD_NATIONALITIES", GENERAL),
-      field("cups", Json, "WORLD_FIELD_CUPS", GENERAL),
-      field("routes", Json, "WORLD_FIELD_ROUTES", GENERAL),
+      field("national_finals", Boolean, "WORLD_FIELD_NATIONAL_FINALS", GENERAL),
+  };
+}
+
+std::vector<FieldSpec> cupSpecs()
+{
+  constexpr std::string_view DATES = "WORLD_SECTION_CUP_DATES";
+  constexpr std::string_view BONUS = "WORLD_SECTION_CUP_BONUS";
+  constexpr std::string_view PRIZES = "WORLD_SECTION_CUP_PRIZES";
+  std::vector<FieldSpec> specs = {
+      field("name", Text, "WORLD_CUP_NAME", GENERAL, 1, 64),
+      field("tier", Integer, "WORLD_CUP_TIER", GENERAL, 1, 9),
+      field("clubs", Integer, "WORLD_CUP_CLUBS", GENERAL, 4, 64),
+      field("matches", Integer, "WORLD_CUP_MATCHES", GENERAL, 2, 12),
+      field("final_offset", Integer, "WORLD_CUP_FINAL_OFFSET", DATES, 0, 60),
+      field("participation_bonus", Number, "WORLD_CUP_PARTICIPATION_BONUS",
+            BONUS, 0, 100),
+      field("ranking_bonus", Number, "WORLD_CUP_RANKING_BONUS", BONUS, 0, 100),
+      field("knockout_bonus", Number, "WORLD_CUP_KNOCKOUT_BONUS", BONUS, 0,
+            100),
+  };
+  const auto prize = [&](std::string_view path, std::string_view label)
+  { specs.push_back(field(path, Integer, label, PRIZES, 0, MAX_MONEY)); };
+  prize("prizes.participation", "WORLD_PRIZE_PARTICIPATION");
+  prize("prizes.win", "WORLD_PRIZE_WIN");
+  prize("prizes.draw", "WORLD_PRIZE_DRAW");
+  prize("prizes.ranking_step", "WORLD_PRIZE_RANKING_STEP");
+  prize("prizes.playoff", "WORLD_PRIZE_PLAYOFF");
+  prize("prizes.round_of_16", "WORLD_PRIZE_ROUND_OF_16");
+  prize("prizes.quarter_final", "WORLD_PRIZE_QUARTER_FINAL");
+  prize("prizes.semi_final", "WORLD_PRIZE_SEMI_FINAL");
+  prize("prizes.final_fee", "WORLD_PRIZE_FINAL_FEE");
+  prize("prizes.winner_bonus", "WORLD_PRIZE_WINNER_BONUS");
+  return specs;
+}
+
+std::vector<FieldSpec> routeSpecs()
+{
+  return {
+      required(field("to", Text, "WORLD_ROUTE_TO", GENERAL, 1, 64)),
+      field("km", Integer, "WORLD_ROUTE_KM", GENERAL, 0, 65'535),
+      field("hours", Integer, "WORLD_ROUTE_HOURS", GENERAL, 0, 255),
   };
 }
 
@@ -346,6 +386,18 @@ const std::vector<FieldSpec>& fields(Kind kind)
       leagueFields(),   clubFields(),          playerFields(),
   };
   return TABLES.at(static_cast<std::size_t>(kind));
+}
+
+const std::vector<FieldSpec>& cupFields()
+{
+  static const std::vector<FieldSpec> SPECS = cupSpecs();
+  return SPECS;
+}
+
+const std::vector<FieldSpec>& routeFields()
+{
+  static const std::vector<FieldSpec> SPECS = routeSpecs();
+  return SPECS;
 }
 
 const std::vector<std::string>& choiceValues(ChoiceSet set)

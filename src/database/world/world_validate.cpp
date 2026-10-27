@@ -263,17 +263,121 @@ void checkField(const Context& context, const FieldSpec& spec)
     case FieldType::List:
       checkList(context, spec, *value);
       break;
-    case FieldType::Json:
-      // Cups and routes: lists of objects; their members are read leniently.
-      if (!value->is_array() ||
-          !std::ranges::all_of(
-              *value, [](const json& item) { return item.is_object(); }))
+    case FieldType::Boolean:
+      if (!value->is_boolean())
       {
         context.add(Severity::Error, IssueCode::WrongType,
-                    std::string(spec.path), "list");
+                    std::string(spec.path), "yes/no");
       }
       break;
   }
+}
+
+/** Checks @p item against @p specs; issues belong to the entity of
+ * @p context and name the field as @p prefix + its path ("cups[0].clubs"). */
+void checkNested(const Context& context, const std::string& prefix,
+                 const json& item, const std::vector<FieldSpec>& specs)
+{
+  std::vector<Issue> found;
+  const Context inner{context.document, found, context.kind,
+                      context.index,    item,  context.nations};
+  for (const FieldSpec& spec : specs)
+  {
+    checkField(inner, spec);
+  }
+  for (Issue& issue : found)
+  {
+    issue.id = entityId(context.entity);
+    issue.name = entityName(context.kind, context.entity);
+    issue.field = prefix + "." + issue.field;
+    context.issues.push_back(std::move(issue));
+  }
+}
+
+/** A cup's list of whole numbers: "places" (@p count 0: at least one, each
+ * 0-64) or "weekday_offsets" (2 days, 0-6). The code reads them as bytes, so
+ * anything else would fail. */
+void checkByteList(const Context& context, const std::string& path,
+                   const json& item, std::string_view key, std::size_t count)
+{
+  const auto found = item.find(std::string(key));
+  if (found == item.end())
+  {
+    return;
+  }
+  const bool fits = found->is_array() &&
+                    (count == 0 ? !found->empty() : found->size() == count);
+  if (!fits || !std::ranges::all_of(*found, [](const json& number)
+                                    { return number.is_number_integer(); }))
+  {
+    context.add(Severity::Error, IssueCode::WrongType, path,
+                count == 0 ? "numbers" : "2 numbers");
+  }
+  else if (!std::ranges::all_of(*found,
+                                [&](const json& number)
+                                {
+                                  return number.get<std::int64_t>() >= 0 &&
+                                         number.get<std::int64_t>() <=
+                                             (count == 0 ? 64 : 6);
+                                }))
+  {
+    context.add(Severity::Error, IssueCode::OutOfRange, path,
+                count == 0 ? "0-64" : "0-6");
+  }
+}
+
+/** Cups and routes of a confederation (lists of objects, read leniently). */
+void checkConfederation(const Context& context)
+{
+  const auto list =
+      [&](const char* key, const std::vector<FieldSpec>& specs, auto&& extra)
+  {
+    const auto found = context.entity.find(key);
+    if (found == context.entity.end() || found->is_null())
+    {
+      return;
+    }
+    if (!found->is_array())
+    {
+      context.add(Severity::Error, IssueCode::WrongType, key, "list");
+      return;
+    }
+    for (std::size_t i = 0; i < found->size(); ++i)
+    {
+      const std::string path = std::string(key) + "[" + std::to_string(i) + "]";
+      if (!(*found)[i].is_object())
+      {
+        context.add(Severity::Error, IssueCode::WrongType, path, "object");
+        continue;
+      }
+      checkNested(context, path, (*found)[i], specs);
+      extra(path, (*found)[i]);
+    }
+  };
+  list("cups", cupFields(),
+       [&](const std::string& path, const json& cup)
+       {
+         checkByteList(context, path + ".places", cup, "places", 0);
+         checkByteList(context, path + ".weekday_offsets", cup,
+                       "weekday_offsets", 2);
+       });
+  list("routes", routeFields(),
+       [&](const std::string& path, const json& route)
+       {
+         const std::string name =
+             route.contains("to") && route["to"].is_string()
+                 ? route["to"].get<std::string>()
+                 : std::string();
+         const json& all = context.document.section(Kind::Confederation);
+         if (!name.empty() &&
+             std::ranges::none_of(
+                 all, [&](const json& other)
+                 { return other.contains("name") && other["name"] == name; }))
+         {
+           context.add(Severity::Warning, IssueCode::BadReference, path + ".to",
+                       name);
+         }
+       });
 }
 
 void checkSection(const Document& document, Kind kind,
@@ -320,6 +424,10 @@ void checkSection(const Document& document, Kind kind,
     for (const FieldSpec& spec : fields(kind))
     {
       checkField(context, spec);
+    }
+    if (kind == Kind::Confederation)
+    {
+      checkConfederation(context);
     }
     if (kind == Kind::Travel &&
         entity.value("from", json()) == entity.value("to", json()))

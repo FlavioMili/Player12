@@ -461,6 +461,7 @@ set(FM_UI_SOURCES
     gui/scenes/world_editor_scene.cpp
     gui/scenes/world_editor_lists.cpp
     gui/scenes/world_editor_form.cpp
+    gui/scenes/world_editor_confederation.cpp
     gui/scenes/world_editor_problems.cpp
     gui/scenes/world_editor_conflicts.cpp
     gui/scenes/awards_scene.h

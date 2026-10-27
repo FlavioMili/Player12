@@ -33,7 +33,7 @@ enum class FieldType : std::uint8_t
   Reference,  ///< Id of an entity of FieldSpec::reference.
   Stats,      ///< Object of attribute name -> 0..100.
   List,       ///< Array of non-empty texts (name pools).
-  Json,       ///< Any JSON value, edited as text (nested definitions).
+  Boolean,    ///< true / false, edited as a toggle.
 };
 
 /** Closed value lists used by Choice fields. */
@@ -64,6 +64,12 @@ struct FieldSpec
 
 /** Fields of @p kind in editor order (the id is not listed: never edited). */
 const std::vector<FieldSpec>& fields(Kind kind);
+/** Scalar fields of one continental cup of a confederation's "cups" (dotted
+ * paths: "prizes.win"). Its "places" and "weekday_offsets" lists are checked
+ * apart. Labels have a "_HINT" key that explains them. */
+const std::vector<FieldSpec>& cupFields();
+/** Fields of one trip of a confederation's "routes". */
+const std::vector<FieldSpec>& routeFields();
 /** Allowed values of @p set (stored strings, not translated). */
 const std::vector<std::string>& choiceValues(ChoiceSet set);
 /** Built-in nationalities plus the demonyms of @p document's countries. */

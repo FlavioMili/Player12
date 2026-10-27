@@ -440,7 +440,8 @@ T number(const nlohmann::json& object, const char* key, T fallback)
                                                      : fallback;
 }
 
-CompetitionRules cupFrom(const nlohmann::json& item, ConfederationID confederation,
+CompetitionRules cupFrom(const nlohmann::json& item,
+                         ConfederationID confederation,
                          const std::string& confederation_name, LeagueID id)
 {
   CompetitionRules cup = presetCup(number(item, "tier", 1));
@@ -486,6 +487,32 @@ CompetitionRules cupFrom(const nlohmann::json& item, ConfederationID confederati
   return cup;
 }
 }  // namespace
+
+nlohmann::json Continental::presetCupJson(int tier)
+{
+  const CompetitionRules cup = presetCup(tier);
+  const Prizes& p = cup.prizes;
+  return {{"tier", cup.tier},
+          {"clubs", cup.clubs},
+          {"matches", cup.matches},
+          {"places", cup.base_places},
+          {"weekday_offsets", cup.weekday_offsets},
+          {"final_offset", cup.final_offset},
+          {"participation_bonus", cup.participation_bonus},
+          {"ranking_bonus", cup.ranking_bonus},
+          {"knockout_bonus", cup.knockout_bonus},
+          {"prizes",
+           {{"participation", p.participation},
+            {"win", p.win},
+            {"draw", p.draw},
+            {"ranking_step", p.ranking_step},
+            {"playoff", p.playoff},
+            {"round_of_16", p.round_of_16},
+            {"quarter_final", p.quarter_final},
+            {"semi_final", p.semi_final},
+            {"final_fee", p.final_fee},
+            {"winner_bonus", p.winner_bonus}}}};
+}
 
 const std::vector<CompetitionRules>& Continental::competitions()
 {

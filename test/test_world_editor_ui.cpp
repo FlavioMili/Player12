@@ -500,3 +500,119 @@ TEST(WorldEditorUI, LanguagesConfederationsAndRegionsAreEditedLikeAnyPage)
     frames(*view, 2);
   }
 }
+
+TEST(WorldEditorUI, ConfederationCupsAndRoutesAreEditedWithoutJson)
+{
+  GameController controller;
+  auto view = openEditor(controller, World::templateDocument());
+  State& state = WorldEditorTestAccess::state(*view);
+  state.setPage(State::Page::Confederation);
+  state.add();
+  const std::int64_t home = state.selected;
+  state.add();
+  const std::int64_t other = state.selected;
+  (*state.doc.find(Kind::Confederation, other))["name"] = "Other";
+  // Undo replaces the document: always look the confederation up again.
+  const auto conf = [&]() -> nlohmann::json&
+  { return *state.doc.find(Kind::Confederation, home); };
+  nlohmann::json& union_ = conf();
+  union_["name"] = "Union";
+  union_["name_key"] = "UNION_KEY";
+  union_["cups"] = {{{"name", "Old"}, {"note", 7}}};
+  state.select(Kind::Confederation, home);
+  frames(*view);
+
+  // The form has a toggle for the finals; cups, routes and the key stay out.
+  const auto descriptor = [&](std::string_view name)
+  { return std::ranges::find(state.descriptors, name, &EditorField::column); };
+  ASSERT_NE(descriptor("national_finals"), state.descriptors.end());
+  EXPECT_EQ(descriptor("national_finals")->control,
+            EditorField::Control::Toggle);
+  EXPECT_FALSE(descriptor("national_finals")->hint.empty());
+  for (const char* hidden : {"cups", "routes", "name_key"})
+  {
+    EXPECT_EQ(descriptor(hidden), state.descriptors.end());
+  }
+  setField(state, "national_finals", "0");
+  ASSERT_TRUE(state.applyForm());
+  EXPECT_EQ(union_.at("national_finals"), false);
+  EXPECT_EQ(union_.at("name_key"), "UNION_KEY");
+
+  // A new cup: fields show what the game would use, edits are written alone.
+  state.addCup();
+  EXPECT_EQ(union_.at("cups").size(), 2U);
+  EXPECT_EQ(state.cup, 1);
+  frames(*view);
+  const auto cupField = [&](std::string_view name)
+  {
+    if (state.cup_stale)
+    {
+      state.buildCup();  // Drawn with the Cups tab, which is not open here.
+    }
+    const auto found =
+        std::ranges::find(state.cup_values, name, &EditorForm::Value::name);
+    EXPECT_NE(found, state.cup_values.end());
+    return found;
+  };
+  EXPECT_EQ(cupField("clubs")->text, "36");
+  EXPECT_EQ(cupField("places")->text, "4, 4, 4, 4, 4, 3, 2, 2");
+  EXPECT_FALSE(state.applyCup());
+  const auto setCup = [&](std::string_view name, std::string text)
+  {
+    cupField(name)->text = std::move(text);
+    EXPECT_TRUE(state.applyCup());
+  };
+  setCup("clubs", "16");
+  setCup("places", "3, 2, 1");
+  setCup("weekday_offsets.1", "4");
+  setCup("prizes.win", "1000");
+  setCup("participation_bonus", "2.5");
+  setCup("name", "Plate");
+  const nlohmann::json& cup = union_.at("cups").at(1);
+  EXPECT_EQ(cup.at("clubs"), 16);
+  EXPECT_EQ(cup.at("places"), (nlohmann::json{3, 2, 1}));
+  EXPECT_EQ(cup.at("weekday_offsets"), (nlohmann::json{0, 4}));
+  EXPECT_EQ(cup.at("prizes"), (nlohmann::json{{"win", 1000}}));
+  EXPECT_EQ(cup.at("participation_bonus"), 2.5);
+  EXPECT_EQ(cup.at("name"), "Plate");
+  EXPECT_FALSE(cup.contains("matches"));
+  setCup("tier", "2");
+  frames(*view);
+  EXPECT_EQ(cupField("matches")->text, "6");  // The shield's default.
+  // Bad text is ignored; the other cup keeps its unknown keys.
+  cupField("places")->text = "3, x";
+  EXPECT_FALSE(state.applyCup());
+  EXPECT_EQ(union_.at("cups").at(0).at("note"), 7);
+  state.moveCup(-1);
+  EXPECT_EQ(state.cup, 0);
+  EXPECT_EQ(union_.at("cups").at(0).at("name"), "Plate");
+  EXPECT_EQ(union_.at("cups").at(1).at("note"), 7);
+  EXPECT_TRUE(state.dirty);
+
+  // Routes: a destination chosen among the other confederations.
+  state.addRoute();
+  ASSERT_EQ(union_.at("routes").size(), 1U);
+  EXPECT_EQ(union_.at("routes").at(0).at("to"), "Other");
+  state.setRoute(0, "km", 5000);
+  state.setRoute(0, "hours", 7);
+  EXPECT_EQ(union_.at("routes").at(0),
+            (nlohmann::json{{"to", "Other"}, {"km", 5000}, {"hours", 7}}));
+  state.undoStep();
+  EXPECT_EQ(conf().at("routes").at(0).at("hours"), 12);
+  state.undoStep();
+  state.undoStep();
+  EXPECT_FALSE(conf().contains("routes"));
+  state.redoStep();
+  ASSERT_EQ(conf().at("routes").size(), 1U);
+  state.removeRoute(0);
+  EXPECT_TRUE(conf().at("routes").empty());
+
+  // Bad values are reported with their field path.
+  conf().at("cups")[0]["clubs"] = 2;
+  const auto& issues = state.problems(true);
+  EXPECT_TRUE(std::ranges::any_of(issues, [](const World::Issue& issue)
+                                  { return issue.field == "cups[0].clubs"; }));
+  state.removeCup();
+  frames(*view);
+  EXPECT_EQ(conf().at("cups").size(), 1U);
+}

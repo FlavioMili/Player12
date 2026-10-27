@@ -165,7 +165,8 @@ void capture(GUIView& view, const std::filesystem::path& folder,
       << path.string() << ": " << SDL_GetError();
   SDL_DestroySurface(surface);
   ASSERT_TRUE(std::filesystem::exists(path)) << name;
-  EXPECT_GT(std::filesystem::file_size(path), width >= WIDTH ? 50'000u : 20'000u)
+  EXPECT_GT(std::filesystem::file_size(path),
+            width >= WIDTH ? 50'000u : 20'000u)
       << name;
 }
 
@@ -545,17 +546,68 @@ TEST(ShowcaseCaptures, WorldScreens)
   shoot("world_editor_player");
 
   auto& club = *clubs.doc.find(Kind::Club, 102);
-  club["colours"]["home"] = {{"shirt", "#1D428A"}, {"shorts", "#FFFFFF"},
-                             {"socks", "#1D428A"}, {"trim", "#FDB913"}};
-  club["colours"]["away"] = {{"shirt", "#FFFFFF"}, {"shorts", "#1D428A"},
-                             {"socks", "#FFFFFF"}, {"trim", "#1D428A"}};
-  club["colours"]["third"] = {{"shirt", "#00843D"}, {"shorts", "#00843D"},
-                              {"socks", "#FFFFFF"}, {"trim", "#FFFFFF"}};
+  club["colours"]["home"] = {{"shirt", "#1D428A"},
+                             {"shorts", "#FFFFFF"},
+                             {"socks", "#1D428A"},
+                             {"trim", "#FDB913"}};
+  club["colours"]["away"] = {{"shirt", "#FFFFFF"},
+                             {"shorts", "#1D428A"},
+                             {"socks", "#FFFFFF"},
+                             {"trim", "#1D428A"}};
+  club["colours"]["third"] = {{"shirt", "#00843D"},
+                              {"shorts", "#00843D"},
+                              {"socks", "#FFFFFF"},
+                              {"trim", "#FFFFFF"}};
   clubs.setPage(EditorState::Page::Club);
   clubs.select(Kind::Club, 102);
   frames(view, 3);
   selectTab(LOC("WORLD_SECTION_KIT"));
   shoot("world_editor_kits");
+
+  World::Document geography = showcaseWorld();
+  geography.add(Kind::Language, {{"id", 1},
+                                 {"name", "Freelandic"},
+                                 {"first_names", {"Aldo", "Bram", "Cael"}},
+                                 {"last_names", {"Marsh", "Venn", "Holt"}}});
+  geography.add(
+      Kind::Confederation,
+      {{"id", 1},
+       {"name", "Freeland Union"},
+       {"nationalities", {"Freelander"}},
+       {"cups",
+        {{{"name", "Union Cup"},
+          {"clubs", 32},
+          {"matches", 8},
+          {"places", {4, 4, 3, 2}},
+          {"weekday_offsets", {0, 1}},
+          {"prizes", {{"participation", 15'000'000}}}},
+         {{"name", "Union Shield"}, {"tier", 2}}}},
+       {"routes", {{{"to", "Overseas League"}, {"km", 9500}, {"hours", 11}}}}});
+  geography.add(Kind::Confederation, {{"id", 2},
+                                      {"name", "Overseas League"},
+                                      {"cups", nlohmann::json::array()}});
+  geography.add(Kind::Region, {{"id", 1},
+                               {"name", "The Northlands"},
+                               {"confederation_id", 1},
+                               {"base", "Europe"}});
+  auto& country = *geography.find(
+      Kind::Country, World::entityId(geography.section(Kind::Country).front()));
+  country["demonym"] = "Freelander";
+  country["language"] = 1;
+  country["region_id"] = 1;
+  EditorState& cups = openWorldEditor(view, std::move(geography));
+  cups.setPage(EditorState::Page::Confederation);
+  cups.select(Kind::Confederation, 1);
+  frames(view, 3);
+  selectTab(LOC("WORLD_TAB_CUPS"));
+  frames(view, 2);
+  cups.selectCup(0);
+  shoot("world_editor_confederation");
+
+  cups.setPage(EditorState::Page::Country);
+  cups.select(Kind::Country,
+              World::entityId(cups.doc.section(Kind::Country).front()));
+  shoot("world_editor_country");
 
   World::Document small = World::templateDocument();
   World::removeEntity(small, Kind::Club, 104);
@@ -565,14 +617,19 @@ TEST(ShowcaseCaptures, WorldScreens)
   shoot("world_editor_problems");
 
   World::Document incoming = World::Document::empty("Coastal Cup World");
-  incoming.add(Kind::Country, {{"id", 7}, {"name", "Freeland"},
-                               {"nationality", "English"}});
+  incoming.add(Kind::Country,
+               {{"id", 7}, {"name", "Freeland"}, {"nationality", "English"}});
   incoming.add(Kind::League,
                {{"id", 3}, {"name", "Freeland League"}, {"country_id", 7}});
-  incoming.add(Kind::Club, {{"id", 9}, {"league_id", 3}, {"name", "Northport"},
-                            {"short_name", "NOR"}, {"nickname", "The Ports"},
+  incoming.add(Kind::Club, {{"id", 9},
+                            {"league_id", 3},
+                            {"name", "Northport"},
+                            {"short_name", "NOR"},
+                            {"nickname", "The Ports"},
                             {"founded", 1888}});
-  incoming.add(Kind::Club, {{"id", 10}, {"league_id", 3}, {"name", "Midtown"},
+  incoming.add(Kind::Club, {{"id", 10},
+                            {"league_id", 3},
+                            {"name", "Midtown"},
                             {"short_name", "MID"}});
   EditorState& merged = openWorldEditor(view, World::templateDocument());
   merged.combineDocument(incoming, "Coastal Cup World");
@@ -580,7 +637,8 @@ TEST(ShowcaseCaptures, WorldScreens)
   const auto conflict =
       std::ranges::find(merged.conflicts, Kind::Club, &World::Conflict::kind);
   ASSERT_NE(conflict, merged.conflicts.end());
-  merged.conflict_selected = static_cast<int>(conflict - merged.conflicts.begin());
+  merged.conflict_selected =
+      static_cast<int>(conflict - merged.conflicts.begin());
   frames(view, 3);
   merged.popup = EditorState::Popup::None;
   shoot("world_editor_conflicts");
