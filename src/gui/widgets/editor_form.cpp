@@ -41,7 +41,10 @@ void muted(const char* text)
 {
   ImGui::PushStyleColor(ImGuiCol_Text,
                         ImGui::GetStyleColorVec4(ImGuiCol_TextDisabled));
+  // Wrap at the field's column, so hints never run under the next column.
+  ImGui::PushTextWrapPos(0.0F);
   ImGui::TextUnformatted(text);
+  ImGui::PopTextWrapPos();
   ImGui::PopStyleColor();
 }
 
