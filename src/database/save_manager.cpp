@@ -28,7 +28,7 @@
 
 #include "database/database_connection.h"
 #include "database/migrations/migrations.h"
-#include "database/user_database.h"
+#include "database/world/world_runtime.h"
 #include "global/logger.h"
 #include "model/world_rng.h"
 
@@ -526,19 +526,15 @@ void SaveManager::stampMetadata(const DatabaseConnection& working,
       "last_saved_game_date = ?, playtime_seconds = ?, packs = ? WHERE id = 1;");
   const std::string updated = utcNow("{:%FT%TZ}");
   const std::string date = game_date.toString();
-  // Provenance of the custom database this save was built with, if any.
+  // Provenance of the world database the career was built from.
   std::string packs = "[]";
-  if (const auto manifest = UserDatabase::activeManifest())
+  if (const auto world = World::current(); world != World::defaultWorld())
   {
-    std::string id = manifest->name;
-    if (!manifest->version.empty()) id += " " + manifest->version;
-    std::string escaped;
-    for (char c : id)
-    {
-      if (c == '"' || c == '\\') escaped += '\\';
-      escaped += c;
-    }
-    packs = "[\"" + escaped + "\"]";
+    const World::Manifest manifest = world->manifest();
+    packs = nlohmann::json::array({{{"name", manifest.name},
+                                    {"author", manifest.author},
+                                    {"version", manifest.version}}})
+                .dump();
   }
   sqlite3_bind_text(stmt, 1, SaveFormat::GAME_VERSION.data(),
                     static_cast<int>(SaveFormat::GAME_VERSION.size()),

@@ -84,10 +84,7 @@ KitColors pickGoalkeeperKit(TeamID team, std::initializer_list<ImU32> avoid)
 
 const std::unordered_map<TeamID, ClubIdentity>& clubIdentities()
 {
-  // The pack is read-only while the game runs: parse it once.
-  static const std::unordered_map<TeamID, ClubIdentity> identities =
-      DataGenerator::loadClubIdentities();
-  return identities;
+  return DataGenerator::clubIdentities();
 }
 
 std::optional<ClubColours> packColours(TeamID team)

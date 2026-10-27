@@ -59,8 +59,24 @@ set(FM_CORE_SOURCES
     database/repositories/text_encoding.h
     database/datagenerator.h
     database/datagenerator.cpp
-    database/user_database.h
-    database/user_database.cpp
+    database/world/world_document.h
+    database/world/world_document.cpp
+    database/world/world_schema.h
+    database/world/world_schema.cpp
+    database/world/world_validate.h
+    database/world/world_validate.cpp
+    database/world/world_io.h
+    database/world/world_io.cpp
+    database/world/world_runtime.h
+    database/world/world_runtime.cpp
+    database/world/world_library.h
+    database/world/world_library.cpp
+    database/world/world_edit.h
+    database/world/world_edit.cpp
+    database/world/world_export.h
+    database/world/world_export.cpp
+    database/world/world_combine.h
+    database/world/world_combine.cpp
     database/SQLLoader.h
     database/SQLLoader.cpp
     database/gamedata.h
@@ -237,6 +253,7 @@ set(FM_CORE_SOURCES
     model/player_agent.cpp
     model/world_generation.h
     model/world_generation.cpp
+    model/league_profiles.cpp
     model/world_rng.h
     model/world_rng.cpp
     model/world_simulation.h
@@ -368,6 +385,8 @@ set(FM_UI_SOURCES
     gui/scenes/main_game_scene.cpp
     gui/scenes/main_menu_scene.h
     gui/scenes/main_menu_scene.cpp
+    gui/scenes/world_choice_dialog.h
+    gui/scenes/world_choice_dialog.cpp
     gui/scenes/roster_scene.h
     gui/scenes/roster_scene.cpp
     gui/scenes/settings_scene.h
@@ -433,6 +452,13 @@ set(FM_UI_SOURCES
     gui/scenes/club_scene.cpp
     gui/scenes/about_scene.h
     gui/scenes/about_scene.cpp
+    gui/scenes/world_editor_scene.h
+    gui/scenes/world_editor_state.h
+    gui/scenes/world_editor_scene.cpp
+    gui/scenes/world_editor_lists.cpp
+    gui/scenes/world_editor_form.cpp
+    gui/scenes/world_editor_problems.cpp
+    gui/scenes/world_editor_conflicts.cpp
     gui/scenes/awards_scene.h
     gui/scenes/awards_scene.cpp
     gui/scenes/records_scene.h
@@ -479,8 +505,6 @@ set(FM_UI_SOURCES
     gui/scenes/player_compare_scene.cpp
     gui/scenes/set_pieces_dialog.h
     gui/scenes/set_pieces_dialog.cpp
-    gui/scenes/import_database_dialog.h
-    gui/scenes/import_database_dialog.cpp
     gui/view_models/competition_view.h
     gui/view_models/competition_view.cpp
     gui/view_models/formation.h
@@ -494,6 +518,10 @@ set(FM_UI_SOURCES
     gui/view_models/editor_fields.h
     gui/view_models/editor_fields.cpp
     gui/view_models/player_view.cpp
+    gui/widgets/editor_form.h
+    gui/widgets/editor_form.cpp
+    gui/widgets/file_dialog.h
+    gui/widgets/file_dialog.cpp
     gui/widgets/format.h
     gui/widgets/format.cpp
     gui/widgets/icons.h

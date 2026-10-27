@@ -20,6 +20,7 @@
 #include <vector>
 
 #include "database/datagenerator.h"
+#include "database/world/world_document.h"
 #include "database/save_manager.h"
 #include "global/stats_config.h"
 #include "model/competition.h"
@@ -115,9 +116,12 @@ class GameController
    * @brief Starts a new game on the given save slot.
    * @param world_seed Seed of the generated world and of every random stream
    * of the world simulation. Without it FM_WORLD_SEED or the clock is used.
+   * @param world World database to build the career from (null: the
+   * built-in world). It must be playable (World::playability).
    */
   void newGame(int slot,
-               std::optional<std::uint64_t> world_seed = std::nullopt);
+               std::optional<std::uint64_t> world_seed = std::nullopt,
+               std::shared_ptr<const World::Document> world = nullptr);
 
   /**
    * @brief Loads an existing game from the given save slot.
@@ -1471,10 +1475,6 @@ class GameController
   std::int64_t playtime_before_session = 0;
   std::chrono::steady_clock::time_point session_started;
   std::optional<SaveError> last_load_error;
-  mutable std::mutex club_identity_mutex;
-  /** Data-pack club identities, read on the first getClubIdentity(). */
-  mutable std::optional<std::unordered_map<TeamID, ClubIdentity>>
-      club_identities;
   mutable std::mutex save_status_mutex;
   SaveStatusInfo save_status;
   /** Flushes the game and atomically replaces the slot file. */

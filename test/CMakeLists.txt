@@ -15,6 +15,10 @@ add_executable(runtime_editor_ui_tests test_runtime_editor_ui.cpp)
 target_link_libraries(runtime_editor_ui_tests PRIVATE GTest::gtest_main fm_ui)
 set_property(TARGET runtime_editor_ui_tests PROPERTY TEST_LAUNCHER "${FM_TEST_LAUNCHER}")
 
+add_executable(world_editor_ui_tests test_world_editor_ui.cpp)
+target_link_libraries(world_editor_ui_tests PRIVATE GTest::gtest_main fm_ui)
+set_property(TARGET world_editor_ui_tests PROPERTY TEST_LAUNCHER "${FM_TEST_LAUNCHER}")
+
 add_executable(unit_tests
   test_background_task.cpp
   test_localization.cpp
@@ -127,7 +131,12 @@ add_executable(core_unit_tests
   test_portable_rng.cpp
   test_transfer_windows.cpp
   test_squad_numbers.cpp
-  test_user_database.cpp
+  test_world_export.cpp
+  test_world_document.cpp
+  test_world_fingerprint.cpp
+  test_world_runtime.cpp
+  test_world_combine.cpp
+  test_world_edit.cpp
 )
 target_link_libraries(core_unit_tests PRIVATE GTest::gtest_main fm_core)
 target_compile_definitions(core_unit_tests PRIVATE
@@ -144,6 +153,9 @@ gtest_discover_tests(runtime_editor_tests
   DISCOVERY_MODE PRE_TEST
   PROPERTIES ENVIRONMENT "${FM_TEST_ENVIRONMENT}" LABELS "unit;core;editor")
 gtest_discover_tests(runtime_editor_ui_tests
+  DISCOVERY_MODE PRE_TEST
+  PROPERTIES ENVIRONMENT "${FM_TEST_ENVIRONMENT}" LABELS "unit;gui;editor")
+gtest_discover_tests(world_editor_ui_tests
   DISCOVERY_MODE PRE_TEST
   PROPERTIES ENVIRONMENT "${FM_TEST_ENVIRONMENT}" LABELS "unit;gui;editor")
 gtest_discover_tests(

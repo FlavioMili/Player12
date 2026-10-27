@@ -19,9 +19,9 @@
 
 /**
  * @struct ClubIdentity
- * @brief Descriptive club data read from the team files of the data pack.
+ * @brief Descriptive club data of the installed world database.
  *
- * Not persisted: the data pack stays the source. The stadium capacity used by
+ * Read from the world, which saves keep a copy of. The stadium capacity used by
  * the simulation lives in ClubProfile and is derived from reputation when the
  * world is generated; the capacity here is the pack's nominal figure.
  */
@@ -78,20 +78,23 @@ class DataGenerator
    */
   static std::unordered_map<TeamID, ClubIdentity> loadClubIdentities();
 
-  /**
-   * @brief Reads the optional Italian article ("article_it": "la", "il",
-   * "lo" or "l'") of the clubs that set one, for ClubArticle.
-   * @return Articles keyed by club name.
-   */
-  static std::unordered_map<std::string, std::string> loadClubArticles();
+  /** loadClubIdentities() of the installed world, parsed once per world. */
+  static const std::unordered_map<TeamID, ClubIdentity>& clubIdentities();
 
   /**
-   * @brief Reads the optional skin tone ("skin": 0 lightest .. 7 darkest) of
-   * predefined players, so faces match the real person. Players without the
-   * field are absent from the map and get a deterministic tone from their id.
-   * @return Skin tones keyed by player id.
+   * @brief Optional Italian article ("article_it": "la", "il", "lo" or "l'")
+   * of the clubs of the installed world that set one, for ClubArticle.
+   * @return Articles keyed by club name, parsed once per world.
    */
-  static std::unordered_map<PlayerID, std::uint8_t> loadPlayerSkinTones();
+  static const std::unordered_map<std::string, std::string>& clubArticles();
+
+  /**
+   * @brief Skin tone (0 lightest .. 7 darkest) of every authored player of
+   * the installed world: the "skin" field, else a plausible tone for the
+   * nationality. Generated players get a deterministic tone from their id.
+   * @return Skin tones keyed by player id, built once per world.
+   */
+  static const std::unordered_map<PlayerID, std::uint8_t>& playerSkinTones();
 
   /**
    * @brief Loads the predefined players and completes every club's squad

@@ -19,7 +19,9 @@
 #include "gui/gui_constants.h"
 #include "gui/gui_scene.h"
 #include "gui/gui_view.h"
-#include "gui/scenes/import_database_dialog.h"
+#include "database/world/world_document.h"
+#include "gui/scenes/world_choice_dialog.h"
+#include "gui/widgets/file_dialog.h"
 #include "gui/input_actions.h"
 #include "settings_manager.h"
 
@@ -92,6 +94,9 @@ class SettingsScene : public GUIScene
   void renderControlRow(Input::ActionId id, const Input::Action& action,
                         float labelWidth);
   void renderData();
+  void renderWorlds();
+  /** The running career as a world database. */
+  World::Document careerWorld() const;
   void renderSaving();
   void previewAppearance();
   /** Handles a key pressed while a binding waits for one. */
@@ -111,7 +116,11 @@ class SettingsScene : public GUIScene
 
   bool showWipeDataOverlay = false;
   float wipeDataTimer = 0.0f;
-  ImportDatabaseDialog import_database_dialog;
+  WorldChoiceDialog world_manager;
+  FileDialog export_dialog;
+  std::optional<World::Document> export_world; /**< Awaiting a file name. */
+  std::string world_message;
+  bool world_message_error = false;
 
   bool in_career = false;
   Settings original_settings;

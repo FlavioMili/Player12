@@ -77,7 +77,8 @@ squad, tactics and first match.
 | Make my first contribution | [Contributor guide](CONTRIBUTING.md) |
 | Understand the implementation | [Developer guide](docs/development/README.md) · [Architecture](docs/ARCHITECTURE.md) |
 | Work on matches or player AI | [Match engine](docs/development/match-engine.md) · [Player behavior](docs/development/player-behavior.md) |
-| Change game data or extend behavior | [Modding guide](docs/development/extending-and-modding.md) · [Data format](assets/user_made_data/README.md) |
+| Build, share or remix worlds | [World editor](docs/user/world-editor.md) · [World database format](assets/world/README.md) |
+| Change game data or extend behavior | [Modding guide](docs/development/extending-and-modding.md) |
 | Run tests or balance experiments | [Tests and tools](docs/development/testing.md) |
 
 ## Help build the game
@@ -87,9 +88,9 @@ all welcome. The [contributor guide](CONTRIBUTING.md) helps you choose a small
 first change and send a pull request.
 
 Add your name to [CONTRIBUTORS.md](CONTRIBUTORS.md). You can also add yourself
-as a player at your favorite club in `assets/user_made_data/players/`:
-the [player cameo guide](docs/contributing/player-cameo.md) has a complete
-example. Both forms of credit are optional.
+as a player at your favorite club in the built-in world
+(`assets/world/default.fmdb`): the
+[player cameo guide](docs/contributing/player-cameo.md) shows how. Both forms of credit are optional.
 
 ## Open source
 

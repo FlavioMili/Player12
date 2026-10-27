@@ -19,11 +19,16 @@
 #include <utility>
 
 #include "controller/game_controller.h"
+#include "database/world/world_export.h"
+#include "database/world/world_io.h"
+#include "database/world/world_library.h"
+#include "database/world/world_runtime.h"
 #include "global/language_manager.h"
 #include "global/paths.h"
 #include "global/runtime_paths.h"
 #include "gui/gui_constants.h"
 #include "gui/scenes/main_menu_scene.h"
+#include "gui/scenes/world_editor_scene.h"
 #include "gui/widgets/theme.h"
 #include "gui/widgets/widgets.h"
 #include "model/inbox.h"
@@ -301,6 +306,7 @@ void SettingsScene::render()
   renderAudio();
   renderControls();
   renderSaving();
+  renderWorlds();
   // Wiping is offered only with no career in memory: a career left for the
   // main menu is still loaded and would be saved back on exit.
   if (!in_career && !guiView->getController().isGameLoaded()) renderData();
@@ -866,15 +872,80 @@ void SettingsScene::renderData()
     }
     ImGui::EndPopup();
   }
-  ImGui::Separator();
-  const std::optional<std::string> active_database =
-      UserDatabase::activeName();
-  ImGui::TextColored(palette.muted, "%s %s", LOC("DB_SETTINGS_ACTIVE"),
-                     active_database ? active_database->c_str()
-                                     : LOC("DB_IMPORT_NONE"));
-  if (UI::secondaryButton(LOC("DB_SETTINGS_MANAGE")))
-    import_database_dialog.open();
-  import_database_dialog.render(getWindow());
+  UI::endCard();
+}
+
+World::Document SettingsScene::careerWorld() const
+{
+  const GameController& controller = guiView->getController();
+  const auto team = controller.getManagedTeam();
+  return World::exportCareer(
+      *controller.getGameData(), *World::current(),
+      team ? team->get().getName() : std::string(),
+      controller.getCurrentDate().toString(), controller.getCurrentSeason());
+}
+
+void SettingsScene::renderWorlds()
+{
+  const Theme::Palette& palette = Theme::palette();
+  UI::beginAutoHeightCard("settings_worlds", LOC("WORLD_SETTINGS_TITLE"));
+  const bool career = guiView->getController().isGameLoaded();
+  ImGui::AlignTextToFramePadding();
+  ImGui::TextColored(
+      palette.muted, "%s",
+      fmt::sprintf(LOC("WORLD_SETTINGS_COUNT"),
+                   static_cast<int>(World::Library::list().size()))
+          .c_str());
+  ImGui::SameLine();
+  if (UI::secondaryButton(LOC("WORLD_SETTINGS_MANAGE")))
+    world_manager.open(WorldChoiceDialog::Mode::Manage);
+  world_manager.render(getWindow());
+  if (!career)
+  {
+    ImGui::SameLine();
+    if (UI::secondaryButton(LOC("WORLD_SETTINGS_EDITOR")))
+      changeScene(std::make_unique<WorldEditorScene>(
+          guiView, WorldEditorScene::Options{}));
+  }
+  else
+  {
+    // Export: pick where to write the file, or keep it in the worlds list.
+    ImGui::PushTextWrapPos(0.0f);
+    ImGui::TextColored(palette.muted, "%s", LOC("WORLD_EXPORT_HELP"));
+    ImGui::PopTextWrapPos();
+    if (UI::secondaryButton(LOC("WORLD_EXPORT_FILE")) && !export_dialog.busy())
+    {
+      export_world = careerWorld();
+      export_dialog.save(
+          getWindow(),
+          World::Library::fileStem(export_world->manifest().name) +
+              std::string(World::FILE_EXTENSION));
+    }
+    ImGui::SameLine();
+    if (UI::secondaryButton(LOC("WORLD_EXPORT_LIBRARY")))
+    {
+      const std::filesystem::path stored = World::Library::save(careerWorld());
+      world_message_error = stored.empty();
+      world_message =
+          stored.empty()
+              ? LOC("WORLD_EXPORT_FAILED")
+              : fmt::sprintf(LOC("WORLD_EXPORT_LIBRARY_DONE"),
+                             World::pathToUtf8(stored.filename()));
+    }
+    if (const auto target = export_dialog.take(); target && export_world)
+    {
+      world_message_error = !World::writeFile(*export_world, *target);
+      world_message =
+          world_message_error
+              ? LOC("WORLD_EXPORT_FAILED")
+              : fmt::sprintf(LOC("WORLD_EXPORT_DONE"),
+                             World::pathToUtf8(target->filename()));
+      export_world.reset();
+    }
+  }
+  if (!world_message.empty())
+    ImGui::TextColored(world_message_error ? palette.negative : palette.positive,
+                       "%s", world_message.c_str());
   UI::endCard();
 }
 

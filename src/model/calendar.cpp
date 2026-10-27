@@ -8,6 +8,8 @@
 
 #include "model/calendar.h"
 
+#include "database/world/world_runtime.h"
+
 #include <algorithm>
 #include <array>
 #include <charconv>
@@ -576,20 +578,17 @@ std::vector<DaySlot> parseSlots(const json& list,
   return slots;
 }
 
-/** Day patterns of the data pack (round_days in leagues.json) by league. */
+/** Day patterns of the installed world (round_days of its leagues). */
 std::unordered_map<LeagueID, RoundPattern> loadRoundPatterns()
 {
   std::unordered_map<LeagueID, RoundPattern> patterns;
-  std::ifstream file(AssetPaths::leagues());
-  if (!file) return patterns;
-  const json data = json::parse(file, nullptr, false);
-  if (!data.is_array()) return patterns;
-  for (const json& league : data)
+  const auto world = World::current();
+  for (const json& league : world->section(World::Kind::League))
   {
     if (!league.is_object()) continue;
     const auto id = league.find("id");
     const auto days = league.find("round_days");
-    if (id == league.end() || !id->is_number_unsigned() ||
+    if (id == league.end() || !id->is_number_integer() ||
         days == league.end() || !days->is_object())
       continue;
     RoundPattern pattern;

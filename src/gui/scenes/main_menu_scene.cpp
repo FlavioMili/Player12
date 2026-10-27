@@ -20,14 +20,17 @@
 #include <string>
 #include <utility>
 
+#include "database/world/world_library.h"
 #include "global/build_info.h"
 #include "global/language_manager.h"
 #include "global/logger.h"
 #include "gui/gui_view.h"
 #include "gui/scenes/about_scene.h"
 #include "gui/scenes/main_game_scene.h"
+#include "gui/scenes/career_start.h"
 #include "gui/scenes/settings_scene.h"
 #include "gui/scenes/team_selection_scene.h"
+#include "gui/scenes/world_editor_scene.h"
 #include "gui/widgets/theme.h"
 #include "gui/widgets/widgets.h"
 #include "model/inbox.h"
@@ -129,6 +132,102 @@ void MainMenuScene::startSlot(int slot, bool newGame)
   is_loading_rendered = false;
 }
 
+void MainMenuScene::beginCareer(int slot,
+                                std::shared_ptr<const World::Document> world)
+{
+  start_world = std::move(world);
+  startSlot(slot, true);
+}
+
+void MainMenuScene::chooseSlotFor(std::shared_ptr<const World::Document> world)
+{
+  pending_world = std::move(world);
+  is_new_game = true;
+  slot_picker_requested = true;
+}
+
+void MainMenuScene::beginNewCareer(int slot)
+{
+  world_slot = slot;
+  if (pending_world)
+  {
+    beginCareer(slot, std::move(pending_world));
+    return;
+  }
+  world_choice.open(WorldChoiceDialog::Mode::Choose);
+  if (!dropped_file.empty())
+  {
+    world_choice.importFile(dropped_file);
+    dropped_file.clear();
+  }
+}
+
+void MainMenuScene::handleEvent(const SDL_Event& event)
+{
+  const auto file = FileDialog::dropped(event);
+  if (!file || loading_slot > 0) return;
+  if (world_choice.isOpen())
+  {
+    world_choice.importFile(*file);
+  }
+  else if (!ImGui::IsPopupOpen("", ImGuiPopupFlags_AnyPopupId |
+                                       ImGuiPopupFlags_AnyPopupLevel))
+  {
+    // Nothing is open: a dropped world starts the new-career flow, which
+    // asks for the slot first and then shows the file.
+    dropped_file = *file;
+    pending_world.reset();
+    is_new_game = true;
+    slot_picker_requested = true;
+  }
+}
+
+void MainMenuScene::handleWorldChoice(const WorldChoiceDialog::Result& choice)
+{
+  using Action = WorldChoiceDialog::Action;
+  switch (choice.action)
+  {
+    case Action::None:
+      break;
+    case Action::DefaultWorld:
+      beginCareer(world_slot, nullptr);
+      break;
+    case Action::Start:
+      beginCareer(world_slot, choice.world);
+      break;
+    case Action::EditDefault:
+    case Action::EditFile:
+      changeScene(std::make_unique<WorldEditorScene>(
+          guiView,
+          WorldEditorScene::Options{choice.world, choice.file, world_slot}));
+      break;
+  }
+}
+
+namespace CareerStart
+{
+std::unique_ptr<GUIScene> startCareer(
+    GUIView* view, int slot, std::shared_ptr<const World::Document> world)
+{
+  auto menu = std::make_unique<MainMenuScene>(view);
+  menu->beginCareer(slot, std::move(world));
+  return menu;
+}
+
+std::unique_ptr<GUIScene> chooseSlot(
+    GUIView* view, std::shared_ptr<const World::Document> world)
+{
+  auto menu = std::make_unique<MainMenuScene>(view);
+  menu->chooseSlotFor(std::move(world));
+  return menu;
+}
+
+std::unique_ptr<GUIScene> mainMenu(GUIView* view)
+{
+  return std::make_unique<MainMenuScene>(view);
+}
+}  // namespace CareerStart
+
 void MainMenuScene::update(float deltaTime)
 {
   (void)deltaTime;
@@ -139,16 +238,17 @@ void MainMenuScene::update(float deltaTime)
     {
       const int slot = loading_slot;
       const bool createNewGame = is_new_game;
+      const std::shared_ptr<const World::Document> world = start_world;
       const std::filesystem::path restore = pending_restore;
       pending_restore.clear();
       GameController* controller = &guiView->getController();
       loading_operation = launchBackgroundTask(
           loading_worker,
-          [controller, slot, createNewGame, restore]()
+          [controller, slot, createNewGame, restore, world]()
           {
             if (createNewGame)
             {
-              controller->newGame(slot);
+              controller->newGame(slot, std::nullopt, world);
               return true;
             }
             if (!restore.empty())
@@ -347,6 +447,8 @@ void MainMenuScene::render()
   {
     slot_picker_requested = true;
     is_new_game = true;
+    pending_world.reset();
+    dropped_file.clear();
   }
   const bool anySave = std::ranges::any_of(
       cached_metadata, [](const auto& metadata) { return metadata.exists; });
@@ -357,14 +459,15 @@ void MainMenuScene::render()
     is_new_game = false;
   }
   ImGui::EndDisabled();
-  if (UI::secondaryButton(LOC("DB_MENU_BUTTON"), buttonSize))
-    import_database_dialog.open();
+  if (UI::secondaryButton(LOC("WORLD_MENU_EDITOR"), buttonSize))
+    changeScene(std::make_unique<WorldEditorScene>(guiView,
+                                                   WorldEditorScene::Options{}));
   if (UI::secondaryButton(LOC("MENU_SETTINGS"), buttonSize))
     changeScene(std::make_unique<SettingsScene>(guiView));
   if (UI::secondaryButton(LOC("MENU_ABOUT"), buttonSize))
     changeScene(std::make_unique<AboutScene>(guiView, false));
   if (UI::secondaryButton(LOC("MENU_QUIT"), buttonSize)) quit();
-  import_database_dialog.render(getWindow());
+  handleWorldChoice(world_choice.render(getWindow()));
   ImGui::PopFont();
   renderSlotPicker();
   renderLoadError();
@@ -691,7 +794,10 @@ void MainMenuScene::renderSlotPicker()
         }
         else
         {
-          startSlot(i, is_new_game);
+          if (is_new_game)
+            beginNewCareer(i);
+          else
+            startSlot(i, false);
           ImGui::CloseCurrentPopup();
         }
       }
@@ -787,7 +893,7 @@ void MainMenuScene::renderSlotPicker()
     renderBackups();
     if (result == UI::DialogResult::CONFIRM)
     {
-      startSlot(overwrite_slot, true);
+      beginNewCareer(overwrite_slot);
       overwrite_slot = 0;
       ImGui::CloseCurrentPopup();
     }

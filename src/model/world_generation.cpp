@@ -23,7 +23,7 @@
 
 #include "global/global.h"
 #include "global/paths.h"
-#include "database/user_database.h"
+#include "database/world/world_runtime.h"
 #include "model/role_utils.h"
 #include "model/world_rng.h"
 
@@ -440,33 +440,21 @@ NamePool loadPool(const nlohmann::json& first, const nlohmann::json& last)
 
 const NamePool& NamePool::instance()
 {
-  // Rebuilds when the active user database changes, so names follow an
-  // import in the same session like leagues, clubs and players do.
-  static std::unique_ptr<NamePool> pool;
-  static std::string built_for;
-  const std::string active = UserDatabase::activeName().value_or("");
-  if (!pool || built_for != active)
-  {
-    const auto read = [](const std::string& path)
-    {
-      std::ifstream file(path);
-      if (!file.is_open())
-        throw std::runtime_error(std::string("Could not open ") + path);
-      return nlohmann::json::parse(file);
-    };
-    const std::optional<UserDatabase::Content> user_db =
-        UserDatabase::activeContent();
-    const nlohmann::json first =
-        (user_db && !user_db->first_names.is_null())
-            ? user_db->first_names
-            : read(AssetPaths::firstNames());
-    const nlohmann::json last =
-        (user_db && !user_db->last_names.is_null()) ? user_db->last_names
-                                                   : read(AssetPaths::lastNames());
-    pool = std::make_unique<NamePool>(loadPool(first, last));
-    built_for = active;
-  }
-  return *pool;
+  // Built once per installed world; a world without its own pools uses the
+  // built-in ones, so partial worlds still get names.
+  static World::PerWorld<NamePool> pools;
+  return pools.get(
+      []
+      {
+        const auto world = World::current();
+        const auto builtin = World::defaultWorld();
+        const auto pool = [&](bool first) -> const nlohmann::json&
+        {
+          const nlohmann::json& own = world->names(first);
+          return own.is_object() ? own : builtin->names(first);
+        };
+        return loadPool(pool(true), pool(false));
+      });
 }
 
 std::string NamePool::normalizeName(std::string_view name)

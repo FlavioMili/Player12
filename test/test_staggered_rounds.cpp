@@ -25,6 +25,7 @@
 #include <string>
 #include <vector>
 
+#include "database/world/world_runtime.h"
 #include "database/database_connection.h"
 #include "database/gamedata.h"
 #include "database/migrations/migrations.h"
@@ -44,8 +45,8 @@ constexpr size_t ROUND_MATCHES = CLUBS_PER_LEAGUE / 2;
 /** The stock leagues (ids, pyramid) with 20 placeholder clubs each. */
 void buildStockWorld(GameData& gamedata)
 {
-  std::ifstream file(AssetPaths::leagues());
-  const nlohmann::json data = nlohmann::json::parse(file);
+  const nlohmann::json& data =
+      World::defaultWorld()->section(World::Kind::League);
   for (const auto& item : data)
   {
     const auto league_id = item.at("id").get<LeagueID>();

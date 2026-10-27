@@ -418,8 +418,7 @@ PlayerLook lookFor(std::uint32_t playerId)
   look.seed = looks;
   std::size_t tone = looks % SKIN_TONES.size();
   // A real skin tone from the data pack overrides the deterministic roll.
-  static const std::unordered_map<PlayerID, std::uint8_t> skinTones =
-      DataGenerator::loadPlayerSkinTones();
+  const auto& skinTones = DataGenerator::playerSkinTones();
   if (const auto found = skinTones.find(static_cast<PlayerID>(playerId));
       found != skinTones.end())
     tone = std::min<std::size_t>(found->second, SKIN_TONES.size() - 1);

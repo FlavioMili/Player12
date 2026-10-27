@@ -30,6 +30,7 @@
 #include <utility>
 #include <vector>
 
+#include "database/world/world_runtime.h"
 #include "controller/game_controller.h"
 #include "database/gamedata.h"
 #include "global/global.h"
@@ -379,7 +380,7 @@ TEST(WorldGenerationTest, NamesFollowNationalityAndAreUnique)
 TEST(WorldGenerationTest, LeagueShapesStratifyTopDivisions)
 {
   // Shape arithmetic: zero mean, the league's spread, the elite pulled clear.
-  for (const LeagueProfile& profile : LEAGUE_PROFILES)
+  for (const LeagueProfile& profile : leagueProfiles())
   {
     const std::vector<float> offsets =
         WorldGeneration::levelOffsets(profile.shape, 20);
@@ -1465,8 +1466,7 @@ TEST(WorldGenerationTest, ExcludedNamesAreHashedAndNeverGenerated)
   EXPECT_TRUE(registry.isAvailable("Zzz Testnam"));
 
   // The asset holds no plain list of names to avoid.
-  std::ifstream file(AssetPaths::firstNames());
-  const auto json = nlohmann::json::parse(file);
+  const nlohmann::json& json = World::defaultWorld()->names(true);
   EXPECT_FALSE(json.contains("excluded_full_names"));
   ASSERT_TRUE(json.contains("excluded_name_hashes"));
   EXPECT_EQ(json.at("excluded_name_hashes").size(),

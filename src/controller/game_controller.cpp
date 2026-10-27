@@ -8,6 +8,8 @@
 
 #include "controller/game_controller.h"
 
+#include "database/world/world_runtime.h"
+
 #include <SDL3/SDL.h>
 
 #include <algorithm>
@@ -54,7 +56,36 @@ std::uint32_t transferSeed(const GameData& gamedata, const GameDateValue& date)
 
 GameController::GameController() = default;
 
-void GameController::newGame(int slot, std::optional<std::uint64_t> world_seed)
+namespace
+{
+/** Installs a world for a career being created or loaded and restores the
+ * previous one unless commit() is reached. */
+class WorldGuard
+{
+ public:
+  explicit WorldGuard(std::shared_ptr<const World::Document> world)
+      : previous(World::current())
+  {
+    World::install(std::move(world));
+  }
+  WorldGuard(const WorldGuard&) = delete;
+  WorldGuard& operator=(const WorldGuard&) = delete;
+  WorldGuard(WorldGuard&&) = delete;
+  WorldGuard& operator=(WorldGuard&&) = delete;
+  ~WorldGuard()
+  {
+    if (!committed) World::install(previous);
+  }
+  void commit() const { committed = true; }
+
+ private:
+  std::shared_ptr<const World::Document> previous;
+  mutable bool committed = false;
+};
+}  // namespace
+
+void GameController::newGame(int slot, std::optional<std::uint64_t> world_seed,
+                             std::shared_ptr<const World::Document> world)
 {
   const std::scoped_lock runtime_lock(runtime_mutex);
   editor_session.reset();
@@ -64,10 +95,15 @@ void GameController::newGame(int slot, std::optional<std::uint64_t> world_seed)
   // replaces it atomically and keeps the previous file as a rotation backup,
   // so a failure while creating the world never loses the old career.
   // The new world is built aside, so a failure keeps the current career.
+  // The chosen world is installed before generation and kept in the save;
+  // a failure puts the running career's world back.
+  const WorldGuard world_guard(world);
   auto new_data = std::make_shared<GameData>();
   if (world_seed.has_value()) new_data->setWorldSeed(*world_seed);
   auto connection = SaveManager::createWorkingCopy();
   auto new_game = std::make_unique<Game>(new_data, connection);
+  World::storeInSave(connection->getRaw(), *World::current());
+  world_guard.commit();
   last_load_error.reset();
   gamedata = std::move(new_data);
   db_conn = std::move(connection);
@@ -153,9 +189,12 @@ bool GameController::loadGame(int slot)
   }
   try
   {
-    auto loaded_data = std::make_shared<GameData>();
     auto connection = SaveManager::openWorkingCopy(path);
+    // Saves made before world databases were built from the built-in world.
+    const WorldGuard world_guard(World::fromSave(connection->getRaw()));
+    auto loaded_data = std::make_shared<GameData>();
     auto loaded_game = std::make_unique<Game>(loaded_data, connection);
+    world_guard.commit();
     gamedata = std::move(loaded_data);
     db_conn = std::move(connection);
     game = std::move(loaded_game);
@@ -326,10 +365,9 @@ std::optional<std::reference_wrapper<const Team>> GameController::getTeamById(
 
 const ClubIdentity* GameController::getClubIdentity(TeamID team_id) const
 {
-  const std::scoped_lock identity_lock(club_identity_mutex);
-  if (!club_identities) club_identities = DataGenerator::loadClubIdentities();
-  const auto found = club_identities->find(team_id);
-  return found != club_identities->end() ? &found->second : nullptr;
+  const auto& identities = DataGenerator::clubIdentities();
+  const auto found = identities.find(team_id);
+  return found != identities.end() ? &found->second : nullptr;
 }
 
 const StatsConfig& GameController::getStatsConfig() const

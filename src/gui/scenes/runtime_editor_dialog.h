@@ -19,6 +19,7 @@
 #include "controller/game_controller.h"
 #include "gui/nav_history.h"
 #include "gui/view_models/editor_context.h"
+#include "gui/widgets/editor_form.h"
 
 /** Contextual gameplay editor with feature-owned presentation. Owns a draft;
  * apply requests are consumed by GUIView at the next frame boundary. */
@@ -54,24 +55,12 @@ class RuntimeEditorDialog
 
  private:
   friend class GameFlowTest_GUIFlowLifecycle_Test;
-  struct Field
-  {
-    std::string name;
-    std::string text;
-    int type = SQLITE_TEXT;
-    bool readonly = false;
-  };
+  using Field = EditorForm::Value;
   void refresh();
   void chooseTable(const std::string& name);
-  static void renderAttributes(Field& field);
   void selectRow(std::size_t index);
   void stage();
   void renderForm();
-  static void renderField(Field& field, const EditorField& descriptor);
-  static void renderNumber(Field& field, const EditorField& descriptor);
-  static void renderChoice(Field& field, const EditorField& descriptor);
-  void renderSection(std::string_view section,
-                     const std::vector<EditorField>& descriptors);
   void renderNavigation();
   void renderBody(float footer);
   void renderActions();
