@@ -24,6 +24,7 @@
 #include <thread>
 
 #include "global/logger.h"
+#include "global/paths.h"
 #include "global/runtime_paths.h"
 
 #if defined(_WIN32)
@@ -76,8 +77,16 @@ std::string buildStamp()
     if (error) return std::string();
     const auto time = fs::last_write_time(exe, error);
     if (error) return std::string();
-    return std::format("{}-{}-{}", exe.filename().string(), size,
-                       time.time_since_epoch().count());
+    // The built-in world is read at run time: editing it must not reuse
+    // checkpoints generated from the old one.
+    const fs::path world = AssetPaths::defaultWorld();
+    const auto world_size = fs::file_size(world, error);
+    if (error) return std::string();
+    const auto world_time = fs::last_write_time(world, error);
+    if (error) return std::string();
+    return std::format("{}-{}-{}-{}-{}", exe.filename().string(), size,
+                       time.time_since_epoch().count(), world_size,
+                       world_time.time_since_epoch().count());
   }();
   return stamp;
 }
