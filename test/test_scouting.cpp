@@ -536,15 +536,21 @@ TEST(ScoutingTest, ShortlistRaisesAlertsOnStatusChanges)
   controller->advanceDay();
   EXPECT_TRUE(inboxHas(*controller, "SCOUT_ALERT_LISTED_TITLE", listed_id));
   EXPECT_TRUE(inboxHas(*controller, "SCOUT_ALERT_INJURED_TITLE", injured_id));
-  const auto alerts = std::ranges::count_if(
-      controller->getInbox(), [](const InboxMessage& message)
-      { return message.title_key.starts_with("SCOUT_ALERT_"); });
+  // Only the two changes made above count: the world may meanwhile move a
+  // shortlisted player for real, which is a new status with its own alert.
+  const auto repeated = [&]
+  {
+    return std::ranges::count_if(
+        controller->getInbox(),
+        [](const InboxMessage& message)
+        {
+          return message.title_key == "SCOUT_ALERT_LISTED_TITLE" ||
+                 message.title_key == "SCOUT_ALERT_INJURED_TITLE";
+        });
+  };
+  const auto alerts = repeated();
   controller->advanceDay();
-  EXPECT_EQ(std::ranges::count_if(
-                controller->getInbox(), [](const InboxMessage& message)
-                { return message.title_key.starts_with("SCOUT_ALERT_"); }),
-            alerts)
-      << "An unchanged status must not alert again";
+  EXPECT_EQ(repeated(), alerts) << "An unchanged status must not alert again";
 
   const auto comparison = controller->compareShortlistWithSquad();
   ASSERT_EQ(comparison.size(), ScoutingSystem::ROLE_COUNT);
