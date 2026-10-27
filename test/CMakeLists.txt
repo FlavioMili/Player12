@@ -1,7 +1,8 @@
 # ---------------------------------------------------------------------------
 # Test lanes and budgets (see docs/development/testing.md)
 #
-#   unit      default lane, every test must finish in 5 s (instant, ideally)
+#   unit      default lane, every test must finish in 5 s (instant, ideally);
+#             GUI cases (real screens) get the scenario budget
 #   scenario  a whole career scene or a few seasons of AI, 30 s
 #   fuzz, soak, perf, monkey, playtest, adversarial, qa   (all also `slow`)
 #             opt-in lanes: `ctest -L fuzz`. The default presets select only
@@ -19,12 +20,15 @@ set(FM_TEST_SCENARIO_TIMEOUT 30)
 
 # fm_discover(<target> [PREFIX <p>] LABELS <l1> [<l2>...] [OLD_TIMEOUT <s>])
 # Registers the GoogleTest cases of <target>. Targets labelled `slow` get
-# OLD_TIMEOUT; everything else gets the unit timeout.
+# OLD_TIMEOUT; GUI targets (a window, fonts and real screens per case) get the
+# scenario timeout; everything else gets the unit timeout.
 function(fm_discover target)
   cmake_parse_arguments(ARG "" "PREFIX;OLD_TIMEOUT" "LABELS" ${ARGN})
   target_link_libraries(${target} PRIVATE fm_test_support)
   if("slow" IN_LIST ARG_LABELS)
     math(EXPR timeout "${ARG_OLD_TIMEOUT} * ${FM_TEST_TIMEOUT_SCALE}")
+  elseif("gui" IN_LIST ARG_LABELS)
+    math(EXPR timeout "${FM_TEST_SCENARIO_TIMEOUT} * ${FM_TEST_TIMEOUT_SCALE}")
   else()
     math(EXPR timeout "${FM_TEST_UNIT_TIMEOUT} * ${FM_TEST_TIMEOUT_SCALE}")
   endif()
