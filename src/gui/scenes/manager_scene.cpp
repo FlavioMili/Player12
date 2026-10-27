@@ -21,6 +21,7 @@
 #include "database/gamedata.h"
 #include "global/global.h"
 #include "global/language_manager.h"
+#include "global/nationality.h"
 #include "gui/gui_view.h"
 #include "gui/widgets/format.h"
 #include "gui/widgets/theme.h"
@@ -43,15 +44,6 @@ constexpr const char* ACCEPT_POPUP_ID = "##accept_job";
 constexpr const char* INTERVIEW_POPUP_ID = "##job_interview";
 constexpr int MAX_YEARS = 4;
 constexpr std::array<const char*, MAX_YEARS> YEAR_LABELS = {"1", "2", "3", "4"};
-
-std::string nationName(Language nationality)
-{
-  const auto name = languageToString.find(nationality);
-  if (name == languageToString.end()) return {};
-  const std::string key = "NATION_" + name->second;
-  const char* localized = LOC(key.c_str());
-  return key == localized ? name->second : std::string(localized);
-}
 
 const char* stageKey(ApplicationStage stage)
 {
@@ -276,14 +268,18 @@ ManagerSetupPanel::Action ManagerSetupPanel::render(
   end();
 
   next(LOC("MANAGER_SETUP_NATIONALITY"));
-  if (const std::string nation = nationName(static_cast<Language>(nationality));
+  if (const std::string nation =
+          nationalityLabel(static_cast<Language>(nationality));
       ImGui::BeginCombo("##nationality", nation.c_str()))
   {
-    for (int index = 0;
-         index <= static_cast<int>(std::to_underlying(Language::MU)); ++index)
+    auto peoples = allNationalities();
+    std::ranges::sort(peoples, {}, [](const auto& entry)
+                      { return std::to_underlying(entry.first); });
+    for (const auto& [people, name] : peoples)
     {
-      const std::string option = nationName(static_cast<Language>(index));
-      if (ImGui::Selectable(option.c_str(), index == nationality))
+      const int index = static_cast<int>(std::to_underlying(people));
+      if (ImGui::Selectable(nationalityLabel(people).c_str(),
+                            index == nationality))
         nationality = index;
     }
     ImGui::EndCombo();
@@ -387,7 +383,8 @@ void ManagerScene::refresh()
 
   // ---- Profile ----
   subtitle = std::format(
-      "{}  ·  {}  ·  {}", profile->name(), nationName(profile->nationality),
+      "{}  ·  {}  ·  {}", profile->name(),
+      nationalityLabel(profile->nationality),
       formatLocalized("MANAGER_AGE", {std::to_string(profile->age)}));
   reputation = profile->reputation;
   reputation_value = std::format("{:.0f}", profile->reputation);

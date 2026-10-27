@@ -59,7 +59,7 @@ class League
    * @brief Gets the league ID.
    * @return The ID of the league.
    */
-  uint8_t getId() const;
+  LeagueID getId() const;
 
   /**
    * @brief Gets the name of the league.

@@ -13,6 +13,8 @@
 #include <cmath>
 #include <utility>
 
+#include "database/world/world_geography.h"
+#include "global/nationality.h"
 #include "model/world_rng.h"
 #include "model/world_tuning.h"
 
@@ -332,6 +334,15 @@ Continent homeContinent(Language nationality)
 {
   using enum Continent;
   using enum Language;
+  // A people of the world is at home where its country's region is.
+  if (const auto people = customNationality(nationality))
+  {
+    const World::Region* own = World::geography().region(people->region);
+    const WorldRegion region = own ? own->flavour : WorldRegion::Europe;
+    return region == WorldRegion::NorthAmerica   ? Continent::NorthAmerica
+           : region == WorldRegion::SouthAmerica ? Continent::SouthAmerica
+                                                 : Continent::Europe;
+  }
   switch (nationality)
   {
     case Language::US:

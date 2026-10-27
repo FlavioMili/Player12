@@ -6,10 +6,10 @@
 //  See the LICENSE file in the project root.
 // -----------------------------------------------------------------------------
 
-#include <array>
 #include <atomic>
 #include <deque>
 #include <mutex>
+#include <unordered_map>
 #include <utility>
 #include <vector>
 
@@ -22,7 +22,7 @@ struct Table
 {
   std::vector<LeagueProfile> profiles;
   /** Position + 1 of each league id's profile; 0 when absent. */
-  std::array<std::uint16_t, 256> index{};
+  std::unordered_map<LeagueID, std::uint16_t> index;
 };
 
 struct Registry
@@ -61,7 +61,7 @@ void installLeagueProfiles(std::vector<LeagueProfile> profiles)
   added.profiles = std::move(profiles);
   for (std::size_t i = 0; i < added.profiles.size(); ++i)
   {
-    added.index.at(added.profiles[i].league_id) =
+    added.index[added.profiles[i].league_id] =
         static_cast<std::uint16_t>(i + 1);
   }
   shared.current.store(&added, std::memory_order_release);
@@ -70,9 +70,9 @@ void installLeagueProfiles(std::vector<LeagueProfile> profiles)
 const LeagueProfile& leagueProfile(LeagueID league_id)
 {
   const Table& installed = table();
-  const std::uint16_t position = installed.index.at(league_id);
-  return position == 0 ? DEFAULT_LEAGUE_PROFILE
-                       : installed.profiles[position - 1];
+  const auto found = installed.index.find(league_id);
+  return found == installed.index.end() ? DEFAULT_LEAGUE_PROFILE
+                                        : installed.profiles[found->second - 1];
 }
 
 std::span<const LeagueProfile> leagueProfiles() { return table().profiles; }

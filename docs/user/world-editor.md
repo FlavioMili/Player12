@@ -38,7 +38,10 @@ The left side lists the layers of the world:
 | Page | What you edit |
 |------|---------------|
 | World details | Name, author, version, description and the season ages refer to |
-| Countries | Name, nationality of its people, region, football and economic level |
+| Languages | A language with the first and last names of its speakers |
+| Confederations | Groups of regions: the continental cups, national finals and trips of their national teams (cups are written as data) |
+| Regions | A name and its confederation; pre-season tours stay inside a region |
+| Countries | Name, the people (demonym), language, region, football and economic level |
 | Cities and Travel | Cities with their population and travel times between them (stored for future features; no effect on matches yet) |
 | Competitions | Divisions, the division above for promotion and relegation, tie-break rule and the economy and match profile |
 | Clubs | Name, three-letter code, competition, city, colours and full kits, stadium |

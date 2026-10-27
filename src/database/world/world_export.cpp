@@ -19,6 +19,7 @@
 #include "database/gamedata.h"
 #include "database/world/world_runtime.h"
 #include "global/languages.h"
+#include "global/nationality.h"
 #include "model/role_utils.h"
 
 using json = nlohmann::json;
@@ -193,10 +194,10 @@ Document exportCareer(const GameData& data, const Document& source,
     }
     row["age"] = player->getAge();
     row["role"] = RoleUtils::toString(player->getRole());
-    if (const auto name = languageToString.find(player->getNationality());
-        name != languageToString.end())
+    if (const std::string name = nationalityName(player->getNationality());
+        !name.empty())
     {
-      row["nationality"] = name->second;
+      row["nationality"] = name;
     }
     row["preferred_foot"] = footName(player->getFoot());
     row["height"] = player->getHeight();

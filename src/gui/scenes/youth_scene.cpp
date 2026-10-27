@@ -19,6 +19,7 @@
 
 #include "database/gamedata.h"
 #include "global/language_manager.h"
+#include "global/nationality.h"
 #include "gui/gui_view.h"
 #include "gui/widgets/format.h"
 #include "gui/widgets/theme.h"
@@ -120,16 +121,6 @@ std::span<const ColumnSpec> columnsFor(int kind)
   }
 }
 
-std::string nationalityName(Language nationality)
-{
-  const auto name = languageToString.find(nationality);
-  if (name == languageToString.end()) return {};
-  const std::string key = "NATION_" + name->second;
-  const char* localized = LOC(key.c_str());
-  // LOC returns the key itself when a translation is missing.
-  return key == localized ? name->second : std::string(localized);
-}
-
 std::string range(float low, float high)
 {
   const auto lo = static_cast<int>(std::lround(low));
@@ -178,7 +169,7 @@ YouthScene::Row YouthScene::makeRow(
   row.ability = range(view.estimate.current_low, view.estimate.current_high);
   row.potential =
       range(view.estimate.potential_low, view.estimate.potential_high);
-  row.nationality = nationalityName(view.nationality);
+  row.nationality = nationalityLabel(view.nationality);
   row.height = std::format("{} cm", view.height);
   row.wage = formatLocalized("YOUTH_PER_WEEK", {Format::money(view.wage)});
   if (view.status == YouthStatus::Candidate)

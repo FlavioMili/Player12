@@ -74,13 +74,50 @@ FieldSpec reference(std::string_view path, Kind kind, std::string_view label,
   return spec;
 }
 
+FieldSpec withAlias(FieldSpec spec, std::string_view alias)
+{
+  spec.alias = alias;
+  return spec;
+}
+
+std::vector<FieldSpec> languageFields()
+{
+  return {
+      required(field("name", Text, "WORLD_FIELD_NAME", GENERAL, 1, 64)),
+      field("first_names", List, "WORLD_FIELD_FIRST_NAMES", GENERAL),
+      field("last_names", List, "WORLD_FIELD_LAST_NAMES", GENERAL),
+  };
+}
+
+std::vector<FieldSpec> confederationFields()
+{
+  return {
+      required(field("name", Text, "WORLD_FIELD_NAME", GENERAL, 1, 64)),
+      field("nationalities", List, "WORLD_FIELD_NATIONALITIES", GENERAL),
+      field("cups", Json, "WORLD_FIELD_CUPS", GENERAL),
+      field("routes", Json, "WORLD_FIELD_ROUTES", GENERAL),
+  };
+}
+
+std::vector<FieldSpec> regionFields()
+{
+  return {
+      required(field("name", Text, "WORLD_FIELD_NAME", GENERAL, 1, 64)),
+      reference("confederation_id", Kind::Confederation,
+                "WORLD_FIELD_CONFEDERATION", GENERAL),
+      choice("base", ChoiceSet::Region, "WORLD_FIELD_REGION_BASE", GENERAL),
+  };
+}
+
 std::vector<FieldSpec> countryFields()
 {
   return {
       required(field("name", Text, "WORLD_FIELD_NAME", GENERAL, 1, 64)),
-      required(choice("nationality", ChoiceSet::Nationality,
-                      "PROFILE_NATIONALITY", GENERAL)),
-      choice("region", ChoiceSet::Region, "WORLD_FIELD_REGION", GENERAL),
+      required(withAlias(
+          field("demonym", Text, "WORLD_FIELD_DEMONYM", GENERAL, 1, 64),
+          "nationality")),
+      reference("language", Kind::Language, "WORLD_FIELD_LANGUAGE", GENERAL),
+      reference("region_id", Kind::Region, "WORLD_FIELD_REGION", GENERAL),
       field("reputation", Integer, "WORLD_FIELD_FOOTBALL_LEVEL", GENERAL, 1,
             MAX_RATING),
       field("economy", Integer, "WORLD_FIELD_ECONOMY_LEVEL", GENERAL, 1,
@@ -213,7 +250,7 @@ std::vector<FieldSpec> playerFields()
   };
 }
 
-std::vector<std::string> nationalities()
+std::vector<std::string> builtInNationalities()
 {
   std::vector<std::string> values;
   values.reserve(languageToString.size());
@@ -303,9 +340,10 @@ void collectDiffs(const json& left, const json& right, const std::string& path,
 
 const std::vector<FieldSpec>& fields(Kind kind)
 {
-  static const std::array<std::vector<FieldSpec>, 6> TABLES = {
-      countryFields(), cityFields(), travelFields(),
-      leagueFields(),  clubFields(), playerFields(),
+  static const std::array<std::vector<FieldSpec>, 9> TABLES = {
+      languageFields(), confederationFields(), regionFields(),
+      countryFields(),  cityFields(),          travelFields(),
+      leagueFields(),   clubFields(),          playerFields(),
   };
   return TABLES.at(static_cast<std::size_t>(kind));
 }
@@ -313,7 +351,7 @@ const std::vector<FieldSpec>& fields(Kind kind)
 const std::vector<std::string>& choiceValues(ChoiceSet set)
 {
   static const std::vector<std::string> NONE;
-  static const std::vector<std::string> NATIONALITIES = nationalities();
+  static const std::vector<std::string> NATIONALITIES = builtInNationalities();
   static const std::vector<std::string> ROLES = roles();
   static const std::vector<std::string> FEET = {"Left", "Right", "Both"};
   static const std::vector<std::string> REGIONS = {
@@ -336,6 +374,44 @@ const std::vector<std::string>& choiceValues(ChoiceSet set)
       break;
   }
   return NONE;
+}
+
+std::vector<std::string> nationalities(const Document& document)
+{
+  std::vector<std::string> values = choiceValues(ChoiceSet::Nationality);
+  for (const json& country : document.section(Kind::Country))
+  {
+    const std::string name = demonym(country);
+    if (!name.empty() && std::ranges::find(values, name) == values.end())
+    {
+      values.push_back(name);
+    }
+  }
+  std::ranges::sort(values);
+  return values;
+}
+
+std::string demonym(const json& country)
+{
+  for (const char* key : {"demonym", "nationality"})
+  {
+    if (const json* value = get(country, key);
+        value != nullptr && value->is_string())
+    {
+      return value->get<std::string>();
+    }
+  }
+  return {};
+}
+
+const json* read(const json& entity, const FieldSpec& spec)
+{
+  const json* value = get(entity, spec.path);
+  if ((value == nullptr || value->is_null()) && !spec.alias.empty())
+  {
+    value = get(entity, spec.alias);
+  }
+  return value;
 }
 
 const json* get(const json& entity, std::string_view path)

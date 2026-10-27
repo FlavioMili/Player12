@@ -18,8 +18,10 @@
 
 #include "database/database_connection.h"
 #include "database/gamedata.h"
+#include "database/world/world_geography.h"
 #include "global/global.h"
 #include "global/language_manager.h"
+#include "global/nationality.h"
 #include "model/calendar.h"
 #include "model/competition.h"
 #include "model/lineup.h"
@@ -124,23 +126,29 @@ Confederation clubConfederation(const GameData& gamedata, TeamID team_id,
 {
   const auto team = gamedata.getTeam(team_id);
   if (!team || team_id == FREE_AGENTS_TEAM_ID) return fallback;
-  switch (leagueProfile(team->get().getLeagueId()).region)
-  {
-    case WorldRegion::NorthAmerica:
-    case WorldRegion::SouthAmerica:
-      return Confederation::Americas;
-    default:
-      return Confederation::Europe;
-  }
+  const Confederation own =
+      leagueProfile(team->get().getLeagueId()).confederation;
+  return own != 0 ? own : fallback;
 }
 
+/** Distance and zones between two confederations: the route their worlds
+ * declare (either way), else the other side of the world. */
 std::pair<uint16_t, uint8_t> tripBetween(Confederation from, Confederation to)
 {
   if (from == to) return {SAME_REGION_KM, 1};
-  const auto pair = [&](Confederation a, Confederation b)
-  { return (from == a && to == b) || (from == b && to == a); };
-  if (pair(Confederation::Europe, Confederation::Americas)) return {16'000, 6};
-  if (pair(Confederation::Europe, Confederation::Asia)) return {14'000, 7};
+  const World::Geography& geography = World::geography();
+  const auto* origin = geography.confederation(from);
+  const auto* target = geography.confederation(to);
+  const auto declared = [](const auto* source, const auto* other)
+  {
+    if (source == nullptr || other == nullptr)
+      return std::pair<uint16_t, uint8_t>{};
+    for (const World::Route& route : source->routes)
+      if (route.to == other->name) return std::pair{route.km, route.hours};
+    return std::pair<uint16_t, uint8_t>{};
+  };
+  if (const auto trip = declared(origin, target); trip.first != 0) return trip;
+  if (const auto trip = declared(target, origin); trip.first != 0) return trip;
   return {24'000, 12};
 }
 
@@ -155,148 +163,17 @@ std::string nationArg(Language nation)
 // International helpers
 // ---------------------------------------------------------------------------
 
-const char* International::confederationKey(Confederation confederation)
-{
-  using enum Confederation;
-  switch (confederation)
-  {
-    case Europe:
-      return "INTL_CONF_EUROPE";
-    case Americas:
-      return "INTL_CONF_AMERICAS";
-    case Asia:
-      return "INTL_CONF_ASIA";
-    case Confederation::Africa:
-      return "INTL_CONF_AFRICA";
-  }
-  return "INTL_CONF_EUROPE";
-}
-
 Confederation International::confederationOf(Language nation)
 {
-  using enum Language;
-  using enum Confederation;
-  switch (nation)
-  {
-    case Language::MX:
-    case Language::BR:
-    case Language::US:
-    case Language::AN:
-    case Language::UY:
-    case Language::CO:
-    case Language::EC:
-    case Language::PY:
-    case Language::CL:
-    case Language::PE:
-    case Language::VE:
-    case Language::CA:
-    case Language::CR:
-    case Language::JM:
-    case Language::HT:
-    case Language::BM:
-    case Language::MQ:
-    case Language::TT:
-    case Language::BB:
-    case Language::PA:
-    case Language::DO:
-    case Language::GP:
-    case Language::SR:
-    case Language::GF:
-    case Language::KY:
-    case Language::CU:
-    case Language::CW:
-    case Language::GD:
-    case Language::GT:
-    case Language::HN:
-    case Language::KN:
-    case Language::PR:
-    case Language::LC:
-    case Language::SV:
-    case Language::VC:
-    case Language::BO:
-    case Language::BZ:
-    case Language::NC:
-      return Confederation::Americas;
-    case Language::CN:
-    case Language::JP:
-    case Language::KR:
-    case Language::AR:
-    case Language::AU:
-    case Language::UZ:
-    case Language::NZ:
-    case Language::KZ:
-    case Language::ID:
-    case Language::BD:
-    case Language::SG:
-    case Language::AE:
-    case Language::PH:
-    case Language::MY:
-    case Language::LB:
-    case Language::PS:
-    case Language::SY:
-    case Language::YE:
-    case Language::TH:
-    case Language::JO:
-    case Language::SA:
-    case Language::AF:
-    case Language::IQ:
-    case Language::KG:
-    case Language::TJ:
-    case Language::TM:
-    case Language::IR:
-      return Confederation::Asia;
-    case Language::MA:
-    case Language::SN:
-    case Language::CI:
-    case Language::CM:
-    case Language::GH:
-    case Language::NG:
-    case Language::EG:
-    case Language::DZ:
-    case Language::TN:
-    case Language::ML:
-    case Language::ZA:
-    case Language::BF:
-    case Language::CG:
-    case Language::GM:
-    case Language::GN:
-    case Language::MR:
-    case Language::MZ:
-    case Language::BJ:
-    case Language::KM:
-    case Language::KE:
-    case Language::NA:
-    case Language::NR:
-    case Language::GW:
-    case Language::AO:
-    case Language::CV:
-    case Language::TD:
-    case Language::GQ:
-    case Language::GA:
-    case Language::LY:
-    case Language::TG:
-    case Language::ZM:
-    case Language::MG:
-    case Language::MW:
-    case Language::UG:
-    case Language::BI:
-    case Language::CF:
-    case Language::TZ:
-    case Language::LR:
-    case Language::RW:
-    case Language::SO:
-    case Language::MU:
-      return Confederation::Africa;
-    default:
-      return Europe;
-  }
+  return World::geography().confederationOf(nation);
 }
 
 std::string International::teamNameKey(Language nation)
 {
-  const auto name = languageToString.find(nation);
-  return "NT_" + (name == languageToString.end() ? std::string("English")
-                                                 : name->second);
+  const std::string name = nationalityName(nation);
+  // Peoples of a world have no translation: the key is their plain name.
+  if (customNationality(nation)) return name;
+  return "NT_" + (name.empty() ? std::string("English") : name);
 }
 
 const char* International::competitionKey(Competition competition)
@@ -869,9 +746,9 @@ void NationalTeams::planQualifiers(uint16_t season_year, uint16_t finals_year,
   if (world)
     scopes.emplace_back(std::nullopt);
   else
-    for (const Confederation confederation :
-         {Confederation::Europe, Confederation::Americas, Confederation::Asia})
-      scopes.emplace_back(confederation);
+    for (const World::ConfederationData& confederation :
+         World::geography().confederations)
+      if (confederation.national_finals) scopes.emplace_back(confederation.id);
 
   uint8_t next_group = 1;
   for (const auto& scope : scopes)
@@ -883,7 +760,8 @@ void NationalTeams::planQualifiers(uint16_t season_year, uint16_t finals_year,
     entry.competition =
         world ? Competition::WorldFinals : Competition::ContinentalFinals;
     entry.year = finals_year;
-    entry.confederation = scope.value_or(Confederation::Europe);
+    entry.confederation =
+        scope.value_or(World::geography().confederations.front().id);
     entry.size = static_cast<uint8_t>(size);
     entry.start = summer_start;
     finals.push_back(entry);
@@ -898,7 +776,7 @@ void NationalTeams::planQualifiers(uint16_t season_year, uint16_t finals_year,
       drawn[g].index = static_cast<uint8_t>(next_group + g);
     }
     std::mt19937 rng(Competitions::mixSeed(
-        season_year, std::to_underlying(entry.confederation), GROUP_DRAW_SALT));
+        season_year, entry.confederation - 1U, GROUP_DRAW_SALT));
     for (size_t first = 0; first < nations.size(); first += group_count)
     {
       std::vector<Language> pot(
@@ -1475,9 +1353,9 @@ void NationalTeams::drawFinals(Finals& entry, const GameDateValue& today,
   else
   {
     const size_t group_count = qualified.size() / 4;
-    std::mt19937 rng(Competitions::mixSeed(
-        entry.year, std::to_underlying(entry.competition),
-        GROUP_DRAW_SALT + std::to_underlying(entry.confederation)));
+    std::mt19937 rng(
+        Competitions::mixSeed(entry.year, std::to_underlying(entry.competition),
+                              GROUP_DRAW_SALT + entry.confederation - 1U));
     entry.groups.assign(group_count, Group{});
     for (size_t g = 0; g < group_count; ++g)
     {
@@ -1785,7 +1663,7 @@ std::string NationalTeams::serialize() const
     finals_json.push_back(
         {{"competition", std::to_underlying(entry.competition)},
          {"year", entry.year},
-         {"confederation", std::to_underlying(entry.confederation)},
+         {"confederation_id", entry.confederation},
          {"size", entry.size},
          {"start", entry.start.toString()},
          {"drawn", entry.drawn},
@@ -1899,8 +1777,9 @@ void NationalTeams::deserialize(const std::string& data)
     Finals entry;
     entry.competition = static_cast<Competition>(item.value("competition", 0));
     entry.year = item.value("year", uint16_t{0});
-    entry.confederation =
-        static_cast<Confederation>(item.value("confederation", 0));
+    // Older saves numbered the four built-in confederations from 0.
+    entry.confederation = static_cast<Confederation>(
+        item.value("confederation_id", item.value("confederation", 0) + 1));
     entry.size = item.value("size", uint8_t{0});
     entry.start = GameDateValue::fromString(item.value("start", std::string()));
     entry.drawn = item.value("drawn", false);

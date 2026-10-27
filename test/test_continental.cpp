@@ -456,7 +456,7 @@ TEST(ContinentalTest, FullCompetitionRunsToAWinnerAndPays)
       shield, [&](const auto& entrant)
       { return entrant.team_id == cup_winner && entrant.cup_winner; }));
   const auto ranking =
-      continental.associationRanking(Continental::Continent::Europe);
+      continental.associationRanking(1);  // Europe in the built-in world.
   EXPECT_EQ(ranking.size(), 7u);
 
   // The next season starts from that qualification.

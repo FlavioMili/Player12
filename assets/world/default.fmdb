@@ -1,17 +1,29 @@
 {
   "manifest": {"author":"Player12","description":"The built-in world: eleven countries with two divisions each. Clubs are named after real cities and towns; kits, nicknames, stadiums and players are fictional.","name":"Default world","schema":2,"version":"1.0"},
+  "confederations": [
+    {"cups":[{"clubs":36,"final_offset":14,"knockout_bonus":1.5,"matches":8,"name":"Champions Cup","name_key":"CONT_CHAMPIONS_CUP","participation_bonus":6.0,"places":[4,4,4,4,4,3,2,2],"prizes":{"draw":700000,"final_fee":18500000,"participation":18620000,"playoff":1000000,"quarter_final":12500000,"ranking_step":275000,"round_of_16":11000000,"semi_final":15000000,"win":2100000,"winner_bonus":6500000},"ranking_bonus":12.0,"tier":1,"weekday_offsets":[0,1]},{"clubs":24,"final_offset":4,"knockout_bonus":1.0,"matches":6,"name":"Continental Shield","name_key":"CONT_SHIELD","participation_bonus":4.0,"places":[2,2,2,2,2,2,1,1],"prizes":{"draw":150000,"final_fee":6000000,"participation":4310000,"playoff":300000,"quarter_final":2500000,"ranking_step":75000,"round_of_16":1750000,"semi_final":3500000,"win":450000,"winner_bonus":4000000},"ranking_bonus":6.0,"tier":2,"weekday_offsets":[2,2]}],"id":1,"name":"Europe","name_key":"INTL_CONF_EUROPE","routes":[{"hours":6,"km":16000,"to":"Americas"},{"hours":7,"km":14000,"to":"Asia"}]},
+    {"cups":[{"clubs":24,"final_offset":14,"knockout_bonus":1.0,"matches":6,"name":"Americas Cup","name_key":"CONT_AMERICAS_CUP","participation_bonus":4.0,"places":[4,4,4,4,3,3,2,2],"prizes":{"draw":100000,"final_fee":6000000,"participation":1000000,"playoff":250000,"quarter_final":1550000,"ranking_step":40000,"round_of_16":1150000,"semi_final":2100000,"win":300000,"winner_bonus":16000000},"ranking_bonus":6.0,"tier":1,"weekday_offsets":[1,0]}],"id":2,"name":"Americas","name_key":"INTL_CONF_AMERICAS","nationalities":["Mexican","Brazilian","American","Argentinian","Uruguayan","Colombian","Ecuadorian","Paraguayan","Chilean","Peruvian","Venezuelan","Canadian","Costa Rican","Jamaican","Haitian","Bermudian","Martinican","Trinidadian","Barbadian","Panamanian","Dominican","Guadeloupean","Surinamese","French Guianese","Caymanian","Cuban","Curaçaoan","Grenadian","Guatemalan","Honduran","Kittitian","Puerto Rican","Saint Lucian","Salvadoran","Vincentian","Bolivian","Belizean","Nicaraguan"]},
+    {"cups":[],"id":3,"name":"Asia","name_key":"INTL_CONF_ASIA","nationalities":["Chinese","Japanese","Korean","Arabic","Australian","Uzbek","New Zealander","Kazakh","Indonesian","Bangladeshi","Singaporean","Emirati","Filipino","Malaysian","Lebanese","Palestinian","Syrian","Yemeni","Thai","Jordanian","Saudi","Afghan","Iraqi","Kyrgyz","Tajik","Turkmen","Iranian"]},
+    {"cups":[],"id":4,"name":"Africa","name_key":"INTL_CONF_AFRICA","national_finals":false,"nationalities":["Moroccan","Senegalese","Ivorian","Cameroonian","Ghanaian","Nigerian","Egyptian","Algerian","Tunisian","Malian","South African","Burkinabe","Congolese","Gambian","Guinean","Mauritanian","Mozambican","Beninese","Comorian","Kenyan","Namibian","Nigerien","Bissau-Guinean","Angolan","Cape Verdean","Chadian","Equatorial Guinean","Gabonese","Libyan","Togolese","Zambian","Malagasy","Malawian","Ugandan","Burundian","Central African","Tanzanian","Liberian","Rwandan","Somali","Mauritian"]}
+  ],
+  "regions": [
+    {"confederation_id":1,"id":1,"name":"Europe"},
+    {"base":"EasternEurope","confederation_id":1,"id":2,"name":"Eastern Europe"},
+    {"base":"NorthAmerica","confederation_id":2,"id":3,"name":"North America"},
+    {"base":"SouthAmerica","confederation_id":2,"id":4,"name":"South America"}
+  ],
   "countries": [
-    {"id":1,"name":"Italy","nationality":"Italian","region":"Europe","reputation":85},
-    {"id":2,"name":"Spain","nationality":"Spanish","region":"Europe","reputation":87},
-    {"id":3,"name":"England","nationality":"English","region":"Europe","reputation":92},
-    {"id":4,"name":"Germany","nationality":"German","region":"Europe","reputation":84},
-    {"id":5,"name":"France","nationality":"French","region":"Europe","reputation":80},
-    {"id":6,"name":"United States","nationality":"American","region":"NorthAmerica","reputation":60},
-    {"id":7,"name":"Russia","nationality":"Russian","region":"EasternEurope","reputation":62},
-    {"id":8,"name":"Mexico","nationality":"Mexican","region":"NorthAmerica","reputation":62},
-    {"id":9,"name":"Argentina","nationality":"Argentinian","region":"SouthAmerica","reputation":64},
-    {"id":10,"name":"Brazil","nationality":"Brazilian","region":"SouthAmerica","reputation":70},
-    {"id":11,"name":"Portugal","nationality":"Portuguese","region":"Europe","reputation":70}
+    {"demonym":"Italian","id":1,"language":"Italian","name":"Italy","region_id":1,"reputation":85},
+    {"demonym":"Spanish","id":2,"language":"Spanish","name":"Spain","region_id":1,"reputation":87},
+    {"demonym":"English","id":3,"language":"English","name":"England","region_id":1,"reputation":92},
+    {"demonym":"German","id":4,"language":"German","name":"Germany","region_id":1,"reputation":84},
+    {"demonym":"French","id":5,"language":"French","name":"France","region_id":1,"reputation":80},
+    {"demonym":"American","id":6,"language":"American","name":"United States","region_id":3,"reputation":60},
+    {"demonym":"Russian","id":7,"language":"Russian","name":"Russia","region_id":2,"reputation":62},
+    {"demonym":"Mexican","id":8,"language":"Mexican","name":"Mexico","region_id":3,"reputation":62},
+    {"demonym":"Argentinian","id":9,"language":"Argentinian","name":"Argentina","region_id":4,"reputation":64},
+    {"demonym":"Brazilian","id":10,"language":"Brazilian","name":"Brazil","region_id":4,"reputation":70},
+    {"demonym":"Portuguese","id":11,"language":"Portuguese","name":"Portugal","region_id":1,"reputation":70}
   ],
   "leagues": [
     {"country_id":1,"id":1,"name":"Italian League","profile":{"average_attendance":28000,"average_revenue_eur":146000000.0,"coach_changes":0.55,"commercial_share":0.35,"continental_share":0.12,"domestic_nationality":"Italian","domestic_share":0.4,"gate_share":0.15,"match_style":{"goals":2.54,"home_edge":9,"referee_spread":0.3,"yellow_cards":4.09},"region":"Europe","reputation":85,"shape":{"elite_clubs":4,"elite_gap":0.6,"level_offset":0,"level_sd":9.5},"stadium_fill":0.81,"tv_share":0.38,"wage_ratio":0.66},"round_days":{"midweek":[{"day":"tue","kickoffs":["18:30","20:45"],"matches":5},{"day":"wed","kickoffs":["18:30","20:45"],"matches":5}],"weekend":[{"day":"fri","kickoffs":["20:45"],"matches":1},{"day":"sat","kickoffs":["15:00","18:00","20:45"],"matches":3},{"day":"sun","kickoffs":["12:30","15:00","15:00","18:00","20:45"],"matches":5},{"day":"mon","kickoffs":["20:45"],"matches":1}]},"tiebreak":"head_to_head"},

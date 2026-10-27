@@ -32,6 +32,8 @@ enum class FieldType : std::uint8_t
   Choice,     ///< One of choiceValues(set).
   Reference,  ///< Id of an entity of FieldSpec::reference.
   Stats,      ///< Object of attribute name -> 0..100.
+  List,       ///< Array of non-empty texts (name pools).
+  Json,       ///< Any JSON value, edited as text (nested definitions).
 };
 
 /** Closed value lists used by Choice fields. */
@@ -56,12 +58,23 @@ struct FieldSpec
   std::string_view section;  ///< Localisation key of the editor tab.
   ChoiceSet choices = ChoiceSet::None;
   std::optional<Kind> reference;
+  /** Older name of the field that is still read (and replaced on edit). */
+  std::string_view alias;
 };
 
 /** Fields of @p kind in editor order (the id is not listed: never edited). */
 const std::vector<FieldSpec>& fields(Kind kind);
 /** Allowed values of @p set (stored strings, not translated). */
 const std::vector<std::string>& choiceValues(ChoiceSet set);
+/** Built-in nationalities plus the demonyms of @p document's countries. */
+std::vector<std::string> nationalities(const Document& document);
+
+/** Demonym of a country: "demonym", else the older "nationality"; empty when
+ * it has neither. */
+std::string demonym(const nlohmann::json& country);
+
+/** Value of @p spec in @p entity: its path, else its alias, else nullptr. */
+const nlohmann::json* read(const nlohmann::json& entity, const FieldSpec& spec);
 
 /** Value at a dotted @p path, or nullptr. */
 const nlohmann::json* get(const nlohmann::json& entity, std::string_view path);

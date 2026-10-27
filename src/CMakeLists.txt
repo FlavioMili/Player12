@@ -67,6 +67,8 @@ set(FM_CORE_SOURCES
     database/world/world_validate.cpp
     database/world/world_io.h
     database/world/world_io.cpp
+    database/world/world_geography.h
+    database/world/world_geography.cpp
     database/world/world_runtime.h
     database/world/world_runtime.cpp
     database/world/world_library.h
@@ -97,6 +99,8 @@ set(FM_CORE_SOURCES
     global/languages.h
     global/language_manager.h
     global/language_manager.cpp
+    global/nationality.h
+    global/nationality.cpp
     global/logger.h
     global/logger.cpp
     global/number_format.h

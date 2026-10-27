@@ -12,7 +12,9 @@
 
 #include <algorithm>
 #include <cmath>
+#include <limits>
 #include <memory>
+#include <mutex>
 #include <nlohmann/json.hpp>
 #include <numeric>
 #include <random>
@@ -21,6 +23,8 @@
 
 #include "database/database_connection.h"
 #include "database/gamedata.h"
+#include "database/world/world_geography.h"
+#include "database/world/world_runtime.h"
 #include "global/global.h"
 #include "model/calendar.h"
 #include "model/competition.h"
@@ -382,9 +386,140 @@ coefficientsFrom(const nlohmann::json& json)
 // Continental (rules and algorithms)
 // ---------------------------------------------------------------------------
 
+namespace
+{
+/** Names that must outlive every world (rules hold plain pointers). */
+const char* intern(const std::string& text)
+{
+  static std::mutex mutex;
+  static std::set<std::string> known;
+  const std::scoped_lock lock(mutex);
+  return known.insert(text).first->c_str();
+}
+
+/** Values a cup leaves out: the champions' cup for the top tier, the shield
+ * below it. Worlds normally state every value (see default.fmdb). */
+CompetitionRules presetCup(int tier)
+{
+  CompetitionRules cup;
+  cup.tier = static_cast<uint8_t>(tier);
+  if (tier <= 1)
+  {
+    cup.clubs = 36;
+    cup.matches = 8;
+    cup.base_places = {4, 4, 4, 4, 4, 3, 2, 2};
+    cup.weekday_offsets = {0, 1};
+    cup.final_offset = 14;
+    cup.prizes = {18'620'000, 2'100'000,  700'000,    275'000,    1'000'000,
+                  11'000'000, 12'500'000, 15'000'000, 18'500'000, 6'500'000};
+    cup.participation_bonus = 6.0;
+    cup.ranking_bonus = 12.0;
+    cup.knockout_bonus = 1.5;
+  }
+  else
+  {
+    cup.clubs = 24;
+    cup.matches = 6;
+    cup.base_places = {2, 2, 2, 2, 2, 2, 1, 1};
+    cup.weekday_offsets = {2, 2};
+    cup.final_offset = 4;
+    cup.prizes = {4'310'000, 450'000,   150'000,   75'000,    300'000,
+                  1'750'000, 2'500'000, 3'500'000, 6'000'000, 4'000'000};
+    cup.participation_bonus = 4.0;
+    cup.ranking_bonus = 6.0;
+    cup.knockout_bonus = 1.0;
+  }
+  return cup;
+}
+
+template <typename T>
+T number(const nlohmann::json& object, const char* key, T fallback)
+{
+  const auto found = object.find(key);
+  return found != object.end() && found->is_number() ? found->get<T>()
+                                                     : fallback;
+}
+
+CompetitionRules cupFrom(const nlohmann::json& item, ConfederationID confederation,
+                         const std::string& confederation_name, LeagueID id)
+{
+  CompetitionRules cup = presetCup(number(item, "tier", 1));
+  cup.id = id;
+  cup.continent = confederation;
+  std::string name = item.value("name", confederation_name + " Cup");
+  cup.name_key = intern(item.value("name_key", name));
+  cup.clubs =
+      std::clamp(number(item, "clubs", cup.clubs), uint8_t{4}, uint8_t{64});
+  cup.matches =
+      std::clamp(number(item, "matches", cup.matches), uint8_t{2}, uint8_t{12});
+  if (const auto places = item.find("places");
+      places != item.end() && places->is_array() && !places->empty())
+  {
+    cup.base_places = places->get<std::vector<uint8_t>>();
+  }
+  if (const auto days = item.find("weekday_offsets");
+      days != item.end() && days->is_array() && days->size() == 2)
+  {
+    cup.weekday_offsets = {days->at(0).get<uint8_t>(),
+                           days->at(1).get<uint8_t>()};
+  }
+  cup.final_offset = number(item, "final_offset", cup.final_offset);
+  cup.participation_bonus =
+      number(item, "participation_bonus", cup.participation_bonus);
+  cup.ranking_bonus = number(item, "ranking_bonus", cup.ranking_bonus);
+  cup.knockout_bonus = number(item, "knockout_bonus", cup.knockout_bonus);
+  if (const auto prizes = item.find("prizes");
+      prizes != item.end() && prizes->is_object())
+  {
+    Continental::Prizes& p = cup.prizes;
+    p.participation = number(*prizes, "participation", p.participation);
+    p.win = number(*prizes, "win", p.win);
+    p.draw = number(*prizes, "draw", p.draw);
+    p.ranking_step = number(*prizes, "ranking_step", p.ranking_step);
+    p.playoff = number(*prizes, "playoff", p.playoff);
+    p.round_of_16 = number(*prizes, "round_of_16", p.round_of_16);
+    p.quarter_final = number(*prizes, "quarter_final", p.quarter_final);
+    p.semi_final = number(*prizes, "semi_final", p.semi_final);
+    p.final_fee = number(*prizes, "final_fee", p.final_fee);
+    p.winner_bonus = number(*prizes, "winner_bonus", p.winner_bonus);
+  }
+  return cup;
+}
+}  // namespace
+
+const std::vector<CompetitionRules>& Continental::competitions()
+{
+  static World::PerWorld<std::vector<CompetitionRules>> cups;
+  return cups.get(
+      []
+      {
+        std::vector<CompetitionRules> result;
+        for (const World::ConfederationData& confederation :
+             World::geography().confederations)
+        {
+          // A confederation that lists no cups gets one of its own; an empty
+          // list means it plays none.
+          const nlohmann::json single =
+              nlohmann::json::array({nlohmann::json::object()});
+          const nlohmann::json& list =
+              confederation.cups.is_array() ? confederation.cups : single;
+          for (const nlohmann::json& item : list)
+          {
+            constexpr std::size_t MAX_CUPS =
+                std::numeric_limits<LeagueID>::max() - FIRST_CUP_ID + 1;
+            if (result.size() >= MAX_CUPS || !item.is_object()) break;
+            result.push_back(
+                cupFrom(item, confederation.id, confederation.name,
+                        static_cast<LeagueID>(FIRST_CUP_ID + result.size())));
+          }
+        }
+        return result;
+      });
+}
+
 const CompetitionRules* Continental::rules(LeagueID competition_id)
 {
-  for (const CompetitionRules& candidate : COMPETITIONS)
+  for (const CompetitionRules& candidate : competitions())
     if (candidate.id == competition_id) return &candidate;
   return nullptr;
 }
@@ -393,17 +528,9 @@ std::optional<Continental::Continent> Continental::continentOf(
     LeagueID league_id)
 {
   const LeagueProfile& profile = leagueProfile(league_id);
-  if (profile.league_id != league_id) return std::nullopt;
-  switch (profile.region)
-  {
-    case WorldRegion::Europe:
-    case WorldRegion::EasternEurope:
-      return Continent::Europe;
-    case WorldRegion::NorthAmerica:
-    case WorldRegion::SouthAmerica:
-      return Continent::Americas;
-  }
-  return std::nullopt;
+  if (profile.league_id != league_id || profile.confederation == 0)
+    return std::nullopt;
+  return profile.confederation;
 }
 
 uint8_t Continental::directPlaces(uint8_t clubs) { return clubs >= 24 ? 8 : 4; }
@@ -819,7 +946,7 @@ bool ContinentalCompetitions::isLowestTier(const CompetitionRules& rules) const
 {
   bool lower_exists = false;
   bool higher_exists = false;
-  for (const CompetitionRules& other : Continental::COMPETITIONS)
+  for (const CompetitionRules& other : Continental::competitions())
   {
     if (other.continent != rules.continent || other.id == rules.id) continue;
     if (other.tier > rules.tier) lower_exists = true;
@@ -1012,7 +1139,7 @@ void ContinentalCompetitions::startSeason(uint16_t season_year,
     draw_date = plusDays(draw_date, 1);
   if (!(today < draw_date)) draw_date = plusDays(today, 1);
 
-  for (const CompetitionRules& rules : Continental::COMPETITIONS)
+  for (const CompetitionRules& rules : Continental::competitions())
   {
     std::vector<Entrant> entrants;
     if (computed)
@@ -1736,7 +1863,7 @@ void ContinentalCompetitions::closeSeason(
   std::vector<TeamID> taken;
   const GameDateValue today(static_cast<uint16_t>(season_year + 1),
                             SeasonCalendar::SEASON_START_MONTH, 1);
-  for (const CompetitionRules& rules : Continental::COMPETITIONS)
+  for (const CompetitionRules& rules : Continental::competitions())
   {
     std::vector<Entrant> entrants =
         qualify(rules, final_tables, cup_winners, taken);

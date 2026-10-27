@@ -18,6 +18,7 @@
 struct sqlite3;
 
 #include "database/world/world_document.h"
+#include "global/nationality.h"
 #include "model/world_tuning.h"
 
 /**
@@ -45,6 +46,11 @@ void storeInSave(sqlite3* db, const Document& world);
 /** The world stored in a save; null for saves made before world databases
  * (they use the built-in world) or when the stored copy cannot be read. */
 std::shared_ptr<const Document> fromSave(sqlite3* db);
+
+/** Peoples (demonyms) of the world's countries that are not built-in
+ * nationalities, in country order; install() hands them to the nationality
+ * registry. */
+std::vector<CustomNationality> peoplesOf(const Document& world);
 
 /** League profile <-> JSON ("profile" object of a league). */
 nlohmann::json profileToJson(const LeagueProfile& profile);

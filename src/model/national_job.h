@@ -216,8 +216,7 @@ class NationalManagement
   {
     International::Competition competition =
         International::Competition::WorldFinals;
-    International::Confederation confederation =
-        International::Confederation::Europe;
+    International::Confederation confederation = 0;
     std::vector<Language> qualified;
     std::optional<Language> winner;
     std::optional<Language> runner_up;

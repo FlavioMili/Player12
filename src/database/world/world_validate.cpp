@@ -17,6 +17,7 @@
 #include <unordered_set>
 
 #include "database/world/world_schema.h"
+#include "global/languages.h"
 #include "model/role_utils.h"
 
 using json = nlohmann::json;
@@ -37,6 +38,7 @@ struct Context
   Kind kind;
   std::int64_t index;
   const json& entity;
+  const std::vector<std::string>& nations;  ///< Accepted nationalities.
 
   void add(Severity severity, IssueCode code, std::string field = {},
            std::string detail = {}) const
@@ -124,7 +126,9 @@ void checkChoice(const Context& context, const FieldSpec& spec,
     }
     return;
   }
-  const auto& allowed = choiceValues(spec.choices);
+  const auto& allowed = spec.choices == ChoiceSet::Nationality
+                            ? context.nations
+                            : choiceValues(spec.choices);
   if (std::ranges::find(allowed, text) != allowed.end())
   {
     return;
@@ -144,6 +148,17 @@ void checkChoice(const Context& context, const FieldSpec& spec,
 void checkReference(const Context& context, const FieldSpec& spec,
                     const json& value)
 {
+  // A language may also be named: any built-in language.
+  if (spec.reference == Kind::Language && value.is_string())
+  {
+    const auto& text = value.get_ref<const std::string&>();
+    if (!stringToLanguage.contains(text))
+    {
+      context.add(Severity::Error, IssueCode::BadReference,
+                  std::string(spec.path), text);
+    }
+    return;
+  }
   if (!value.is_number_integer())
   {
     context.add(Severity::Error, IssueCode::WrongType, std::string(spec.path),
@@ -186,9 +201,20 @@ void checkStats(const Context& context, const FieldSpec& spec,
   }
 }
 
+void checkList(const Context& context, const FieldSpec& spec, const json& value)
+{
+  if (!value.is_array() ||
+      !std::ranges::all_of(value, [](const json& name)
+                           { return name.is_string() && !name.empty(); }))
+  {
+    context.add(Severity::Error, IssueCode::WrongType, std::string(spec.path),
+                "names");
+  }
+}
+
 void checkField(const Context& context, const FieldSpec& spec)
 {
-  const json* value = get(context.entity, spec.path);
+  const json* value = read(context.entity, spec);
   if (value == nullptr || value->is_null())
   {
     if (spec.required)
@@ -234,11 +260,25 @@ void checkField(const Context& context, const FieldSpec& spec)
     case FieldType::Stats:
       checkStats(context, spec, *value);
       break;
+    case FieldType::List:
+      checkList(context, spec, *value);
+      break;
+    case FieldType::Json:
+      // Cups and routes: lists of objects; their members are read leniently.
+      if (!value->is_array() ||
+          !std::ranges::all_of(
+              *value, [](const json& item) { return item.is_object(); }))
+      {
+        context.add(Severity::Error, IssueCode::WrongType,
+                    std::string(spec.path), "list");
+      }
+      break;
   }
 }
 
 void checkSection(const Document& document, Kind kind,
-                  std::vector<Issue>& issues)
+                  std::vector<Issue>& issues,
+                  const std::vector<std::string>& nations)
 {
   const json& root = document.root();
   if (const auto found = root.find(std::string(sectionKey(kind)));
@@ -256,7 +296,7 @@ void checkSection(const Document& document, Kind kind,
   {
     const json& entity = array[i];
     const Context context{document, issues, kind, static_cast<std::int64_t>(i),
-                          entity};
+                          entity,   nations};
     if (!entity.is_object())
     {
       context.add(Severity::Error, IssueCode::NotAnObject);
@@ -357,9 +397,10 @@ std::vector<Issue> validate(const Document& document)
     issue.field = "manifest.name";
     issues.push_back(std::move(issue));
   }
+  const std::vector<std::string> nations = nationalities(document);
   for (const Kind kind : KINDS)
   {
-    checkSection(document, kind, issues);
+    checkSection(document, kind, issues, nations);
   }
   checkNames(document, true, issues);
   checkNames(document, false, issues);

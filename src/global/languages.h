@@ -13,6 +13,8 @@
 #include <string_view>
 #include <unordered_map>
 
+#include "global/types.h"
+
 /**
  * @enum Language
  * @brief Enum representing supported languages in the game.
@@ -20,7 +22,7 @@
  * Used in the settings manager to set the text language and also
  * acts as the nationality of Players.
  */
-enum class Language : uint8_t
+enum class Language : NationalityID
 {
   EN,
   IT,

@@ -42,16 +42,11 @@ class WorldSimulation;
  */
 namespace International
 {
-enum class Confederation : uint8_t
-{
-  Europe,
-  Americas,
-  Asia,
-  Africa
-};
+/** A confederation of the world, by id (see World::Geography). */
+using Confederation = ConfederationID;
 
-/** Language key naming a confederation. */
-const char* confederationKey(Confederation confederation);
+/** Confederation of a nationality: the list of the confederations that name
+ * it, else the region of its country, else the first confederation. */
 Confederation confederationOf(Language nation);
 /** Language key of a national team's name (e.g. "NT_Italian"). */
 std::string teamNameKey(Language nation);
@@ -242,8 +237,7 @@ class NationalTeams
     International::Competition competition =
         International::Competition::WorldFinals;
     uint16_t year = 0;
-    International::Confederation confederation =
-        International::Confederation::Europe;
+    International::Confederation confederation = 0;
     uint8_t size = 0;
     GameDateValue start; /*!< Monday players report. */
     bool drawn = false;

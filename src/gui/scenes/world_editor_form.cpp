@@ -15,6 +15,7 @@
 #include "database/runtime_editor.h"
 #include "database/world/world_schema.h"
 #include "global/language_manager.h"
+#include "global/nationality.h"
 #include "gui/scenes/world_editor_state.h"
 
 using json = nlohmann::json;
@@ -59,6 +60,17 @@ std::vector<std::pair<std::string, std::string>> referenceChoices(
     choices.emplace_back(std::to_string(World::entityId(entity)),
                          referenceLabel(doc, kind, entity));
   }
+  if (kind == Kind::Language)
+  {
+    // Any built-in language can be spoken too; those are stored by name.
+    for (const auto& [language, name] : allNationalities())
+    {
+      if (!customNationality(language))
+      {
+        choices.emplace_back(name, nationalityLabel(language));
+      }
+    }
+  }
   std::ranges::sort(
       choices, [](const auto& a, const auto& b)
       { return World::normalise(a.second) < World::normalise(b.second); });
@@ -76,7 +88,7 @@ std::string localised(const std::string& key, const std::string& fallback)
 }
 /** Closed value lists shown with translated labels where the game has them. */
 std::vector<std::pair<std::string, std::string>> listChoices(
-    const World::FieldSpec& spec)
+    const World::Document& doc, const World::FieldSpec& spec)
 {
   using World::ChoiceSet;
   std::vector<std::pair<std::string, std::string>> choices;
@@ -84,7 +96,9 @@ std::vector<std::pair<std::string, std::string>> listChoices(
   {
     choices.emplace_back("", LOC("WORLD_NONE"));
   }
-  for (const std::string& value : World::choiceValues(spec.choices))
+  const bool people = spec.choices == ChoiceSet::Nationality;
+  for (const std::string& value :
+       people ? World::nationalities(doc) : World::choiceValues(spec.choices))
   {
     std::string key;
     switch (spec.choices)
@@ -149,12 +163,28 @@ std::string toText(const World::FieldSpec& spec, const json* value)
       return spec.required ? numberText(spec, defaultNumber(spec))
                            : std::string();
     case FieldType::Reference:
+      if (present && value->is_string())
+      {
+        return value->get<std::string>();  // A built-in language.
+      }
       return present && value->is_number_integer() &&
                      value->get<std::int64_t>() != 0
                  ? std::to_string(value->get<std::int64_t>())
                  : std::string();
+    case FieldType::List:
+    {
+      std::string names;
+      for (const json& name :
+           present && value->is_array() ? *value : json::array())
+      {
+        names += (names.empty() ? "" : ", ") + name.get<std::string>();
+      }
+      return names;
+    }
     case FieldType::Stats:
       return present ? value->dump() : "{}";
+    case FieldType::Json:
+      return present ? value->dump() : std::string();
     case FieldType::Text:
     case FieldType::Colour:
     case FieldType::Choice:
@@ -182,9 +212,39 @@ std::optional<json> fromText(const World::FieldSpec& spec,
           std::from_chars(text.data(), text.data() + text.size(), number);
       if (parsed.ec != std::errc() || parsed.ptr != text.data() + text.size())
       {
-        return std::nullopt;
+        // A built-in language is stored by name.
+        return spec.reference == Kind::Language ? std::optional<json>(text)
+                                                : std::nullopt;
       }
       return number;
+    }
+    case FieldType::List:
+    {
+      json names = json::array();
+      std::string current;
+      const auto flush = [&]
+      {
+        const auto first = current.find_first_not_of(' ');
+        if (first != std::string::npos)
+        {
+          names.push_back(
+              current.substr(first, current.find_last_not_of(' ') - first + 1));
+        }
+        current.clear();
+      };
+      for (const char c : text)
+      {
+        if (c == ',')
+        {
+          flush();
+        }
+        else
+        {
+          current += c;
+        }
+      }
+      flush();
+      return names.empty() ? json() : names;
     }
     case FieldType::Number:
     {
@@ -205,6 +265,15 @@ std::optional<json> fromText(const World::FieldSpec& spec,
     {
       json stats = json::parse(text, nullptr, false);
       return stats.is_object() ? std::optional<json>(stats) : std::nullopt;
+    }
+    case FieldType::Json:
+    {
+      if (text.empty())
+      {
+        return json();
+      }
+      json value = json::parse(text, nullptr, false);
+      return value.is_discarded() ? std::nullopt : std::optional<json>(value);
     }
     case FieldType::Text:
       return text.empty() && !spec.required ? json() : json(text);
@@ -236,6 +305,8 @@ EditorField describe(const World::FieldSpec& spec)
       field.initial = numberText(spec, defaultNumber(spec));
       break;
     case FieldType::Text:
+    case FieldType::List:
+    case FieldType::Json:
       break;
     case FieldType::Colour:
       field.control = EditorField::Control::Colour;
@@ -362,6 +433,10 @@ bool State::applyForm()
       snapshot(std::to_string(static_cast<int>(*k)) + ":" +
                std::to_string(selected) + ":" + std::string(specs.at(i).path));
       World::set(*target, specs.at(i).path, *parsed);
+      if (!specs.at(i).alias.empty())
+      {
+        World::set(*target, specs.at(i).alias, json());
+      }
       original[i] = values[i].text;
       any = true;
     }
@@ -414,12 +489,12 @@ void State::buildForm()
       }
       else if (spec.type == World::FieldType::Choice)
       {
-        field.choices = listChoices(spec);
+        field.choices = listChoices(doc, spec);
       }
       field.translate_choices = false;
       values.push_back(
           {.name = std::string(spec.path),
-           .text = toText(spec, World::get(source, spec.path)),
+           .text = toText(spec, World::read(source, spec)),
            .type = spec.type == World::FieldType::Integer  ? SQLITE_INTEGER
                    : spec.type == World::FieldType::Number ? SQLITE_FLOAT
                                                            : SQLITE_TEXT});
@@ -434,6 +509,11 @@ void State::buildForm()
 
 void State::renderForm(float width, float height)
 {
+  // The selection may have changed earlier in this frame.
+  if (form_stale)
+  {
+    buildForm();
+  }
   const std::string name = selectedName();
   UI::beginCard("##world_form",
                 name.empty() ? LOC("WORLD_FORM_TITLE") : name.c_str(),

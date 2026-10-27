@@ -24,6 +24,7 @@
 
 #include "database/SQLLoader.h"
 #include "database/repositories/text_encoding.h"
+#include "global/nationality.h"
 #include "model/role_utils.h"
 #include "model/squad_numbers.h"
 
@@ -224,13 +225,12 @@ class PlayerRowBinder
     appendTraits(traits, player.getTraits());
     dynamics.clear();
     appendDynamics(dynamics, player.getDynamics());
-    const auto nationality = languageToString.find(player.getNationality());
+    const std::string nationality = nationalityName(player.getNationality());
     const std::string_view nationality_text =
-        nationality != languageToString.end()
-            ? std::string_view(nationality->second)
-            : std::string_view("English");
+        nationality.empty() ? std::string_view("English")
+                            : std::string_view(nationality);
     const Foot foot_value = player.getFoot();
-    const std::string_view foot = foot_value == Foot::Left ? "Left"
+    const std::string_view foot = foot_value == Foot::Left   ? "Left"
                                   : foot_value == Foot::Both ? "Both"
                                                              : "Right";
 
@@ -368,12 +368,10 @@ std::vector<Player> PlayerRepository::loadAllPlayers() const
     int status = sqlite3_column_int(stmt, 12);
 
     std::string nat_str(nationality_str);
-    auto it = stringToLanguage.find(nat_str);
-    Language nationality =
-        (it != stringToLanguage.end()) ? it->second : Language::EN;
+    Language nationality = nationalityFromName(nat_str).value_or(Language::EN);
     const std::string foot_text =
         foot_str ? reinterpret_cast<const char*>(foot_str) : "";
-    Foot foot = foot_text == "Left" ? Foot::Left
+    Foot foot = foot_text == "Left"   ? Foot::Left
                 : foot_text == "Both" ? Foot::Both
                                       : Foot::Right;
 
@@ -396,8 +394,8 @@ std::vector<Player> PlayerRepository::loadAllPlayers() const
     // empty nickname.
     if (sqlite3_column_count(stmt) > 17 &&
         sqlite3_column_text(stmt, 17) != nullptr)
-      player.setNickname(reinterpret_cast<const char*>(
-          sqlite3_column_text(stmt, 17)));
+      player.setNickname(
+          reinterpret_cast<const char*>(sqlite3_column_text(stmt, 17)));
   }
 
   sqlite3_finalize(stmt);

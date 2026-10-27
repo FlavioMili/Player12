@@ -238,7 +238,7 @@ class GameController
    * @return A vector of constant reference wrappers to the teams in the league.
    */
   std::vector<std::reference_wrapper<const Team>> getTeamsInLeague(
-      uint8_t league_id) const;
+      LeagueID league_id) const;
 
   /**
    * @brief Gets a league by its ID.
@@ -246,7 +246,7 @@ class GameController
    * @return An optional reference wrapper to the league.
    */
   std::optional<std::reference_wrapper<const League>> getLeagueById(
-      uint8_t league_id) const;
+      LeagueID league_id) const;
 
   /**
    * @brief Gets a team by its ID.

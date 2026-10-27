@@ -119,18 +119,18 @@ State::State(GUIView* owner, Options start)
 
 std::optional<Kind> State::kindOf(Page page)
 {
-  if (page < Page::Country || page > Page::Player)
+  if (page < Page::Language || page > Page::Player)
   {
     return std::nullopt;
   }
   return static_cast<Kind>(static_cast<int>(page) -
-                           static_cast<int>(Page::Country));
+                           static_cast<int>(Page::Language));
 }
 
 State::Page State::pageOf(Kind kind)
 {
   return static_cast<Page>(static_cast<int>(kind) +
-                           static_cast<int>(Page::Country));
+                           static_cast<int>(Page::Language));
 }
 
 json* State::entity(Kind kind, std::int64_t key)
@@ -382,8 +382,9 @@ void State::setPage(Page next)
   selected = -1;
   search.clear();
   parent_filter = -1;
-  rows_dirty = true;
   form_stale = true;
+  // Rebuilt now, not at the next frame: the list may draw in this frame.
+  rebuildRows();
 }
 
 void State::select(Kind target, std::int64_t key)

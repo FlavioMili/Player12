@@ -19,10 +19,10 @@
 
 /**
  * World databases: one shareable JSON document ("*.fmdb") holding any subset
- * of a football world (countries, cities, travel times, competitions, clubs,
- * players and name pools). The built-in world and user worlds share the
- * format, the loader and the validator. Unknown keys are preserved, so mods
- * can carry extra data through the in-game tools unchanged.
+ * of a football world (languages, regions, countries, cities, travel times,
+ * competitions, clubs, players and name pools). The built-in world and user
+ * worlds share the format, the loader and the validator. Unknown keys are
+ * preserved, so mods can carry extra data through the in-game tools unchanged.
  * Format reference: assets/world/README.md.
  */
 namespace World
@@ -36,6 +36,9 @@ inline constexpr std::uintmax_t MAX_FILE_BYTES = 64ULL * 1024 * 1024;
 /** Entity kinds, in dependency order (parents before children). */
 enum class Kind : std::uint8_t
 {
+  Language,       ///< A language: name plus optional first/last name pools.
+  Confederation,  ///< Group of regions: continental cups, national finals.
+  Region,         ///< Football region (pre-season tours stay inside it).
   Country,
   City,
   Travel,
@@ -44,9 +47,10 @@ enum class Kind : std::uint8_t
   Player,
   COUNT,
 };
-inline constexpr std::array<Kind, 6> KINDS = {
-    Kind::Country, Kind::City, Kind::Travel,
-    Kind::League,  Kind::Club, Kind::Player,
+inline constexpr std::array<Kind, 9> KINDS = {
+    Kind::Language, Kind::Confederation, Kind::Region,
+    Kind::Country,  Kind::City,          Kind::Travel,
+    Kind::League,   Kind::Club,          Kind::Player,
 };
 
 /** JSON key of the section holding @p kind ("countries", "clubs", ...). */

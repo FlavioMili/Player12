@@ -186,7 +186,7 @@ MatchKits chooseMatchKits(TeamID homeTeam, TeamID awayTeam)
   const bool clash =
       homeTeam == awayTeam ||
       !contrastsWithAll(kits.away.shirt, {kits.home.shirt});
-  if (clash && homeTeam != awayTeam)
+  if (clash)
   {
     const auto useIfContrasts = [&](const KitPalette& palette)
     {
@@ -243,7 +243,7 @@ MatchKits chooseMatchKits(TeamID homeTeam, TeamID awayTeam,
   // A club's own reversed colours come before any generic change strip.
   if (const bool clash = homeTeam == awayTeam ||
                          !contrastsWithAll(kits.away.shirt, {kits.home.shirt});
-      clash && awayColours && homeTeam != awayTeam &&
+      clash && awayColours &&
       contrastsWithAll(awayColours->secondary, {kits.home.shirt}))
   {
     kits.away = {awayColours->secondary, awayColours->primary,

@@ -8,8 +8,6 @@
 
 #include "model/calendar.h"
 
-#include "database/world/world_runtime.h"
-
 #include <algorithm>
 #include <array>
 #include <charconv>
@@ -29,6 +27,7 @@
 #include <vector>
 
 #include "database/gamedata.h"
+#include "database/world/world_runtime.h"
 #include "global/global.h"
 #include "global/logger.h"
 #include "global/paths.h"
@@ -1337,11 +1336,11 @@ void Calendar::generateFriendlies(const class GameData& gamedata,
   // Pre-season tours stay in the club's region (same country or nearby):
   // clubs are paired within their region, and leftovers of odd-sized
   // regions play each other.
-  std::map<WorldRegion, std::vector<TeamID>> regions;
+  std::map<RegionID, std::vector<TeamID>> regions;
   for (const auto& [id, team] : gamedata.getTeams())
   {
     if (id != FREE_AGENTS_TEAM_ID)
-      regions[leagueProfile(team.getLeagueId()).region].push_back(id);
+      regions[leagueProfile(team.getLeagueId()).region_id].push_back(id);
   }
   for (auto& [region, team_ids] : regions) std::ranges::sort(team_ids);
 

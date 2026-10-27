@@ -90,7 +90,7 @@ void LeagueRepository::insertLeagueWithId(const League& league) const
 
   if (league.getParentLeagueID().has_value())
   {
-    uint8_t parentID = *league.getParentLeagueID();
+    LeagueID parentID = *league.getParentLeagueID();
     sqlite3_bind_int(stmt, 3, parentID);
   }
   else

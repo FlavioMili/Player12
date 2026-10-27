@@ -94,6 +94,9 @@ std::string keyFor(Kind kind, const json& entity, const Document& document,
 {
   switch (kind)
   {
+    case Kind::Language:
+    case Kind::Confederation:
+    case Kind::Region:
     case Kind::Country:
       return normalise(textField(entity, "name"));
     case Kind::City:

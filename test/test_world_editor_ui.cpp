@@ -409,3 +409,94 @@ TEST(WorldEditorUI, OptionalNumbersStartUnsetAndCanBeSetAndCleared)
   EXPECT_FALSE(state.doc.find(Kind::Club, 101)->contains("founded"));
   frames(*view);
 }
+
+TEST(WorldEditorUI, SwitchingPagesAfterAddingALeagueNeverShowsStaleRows)
+{
+  GameController controller;
+  auto view = openEditor(controller, World::templateDocument());
+  State& state = WorldEditorTestAccess::state(*view);
+  state.setPage(State::Page::League);
+  frames(*view, 1);
+  // The reported crash: add a league, then open an empty page.
+  state.setPage(State::Page::City);
+  state.doc.setSection(Kind::City, nlohmann::json::array());
+  state.changed();
+  state.setPage(State::Page::League);
+  frames(*view, 1);
+  state.setPage(State::Page::City);
+  EXPECT_TRUE(state.rows.empty());
+  frames(*view, 2);
+  for (int page = 0; page <= static_cast<int>(State::Page::Player); ++page)
+  {
+    state.setPage(static_cast<State::Page>(page));
+    if (const auto kind = state.kind())
+    {
+      for (const std::uint32_t row : state.rows)
+      {
+        EXPECT_LT(row, state.doc.count(*kind));
+      }
+    }
+    frames(*view, 1);
+  }
+}
+
+TEST(WorldEditorUI, LanguagesConfederationsAndRegionsAreEditedLikeAnyPage)
+{
+  GameController controller;
+  auto view = openEditor(controller, World::templateDocument());
+  State& state = WorldEditorTestAccess::state(*view);
+  // Pages exist even while empty, then add, edit and delete work on each.
+  for (const auto page :
+       {State::Page::Language, State::Page::Confederation, State::Page::Region})
+  {
+    state.setPage(page);
+    frames(*view, 2);
+    EXPECT_TRUE(state.rows.empty());
+    state.add();
+    frames(*view, 2);
+    ASSERT_EQ(state.rows.size(), 1U);
+    EXPECT_GE(state.selected, 1);
+    frames(*view, 2);
+  }
+  // The language takes names as text and a country can speak it.
+  state.setPage(State::Page::Language);
+  state.select(Kind::Language, 1);
+  frames(*view);
+  const auto field = [&](std::string_view name)
+  {
+    const auto found =
+        std::ranges::find(state.values, name, &EditorForm::Value::name);
+    EXPECT_NE(found, state.values.end());
+    return static_cast<std::size_t>(found - state.values.begin());
+  };
+  state.values[field("first_names")].text = "Aegon, Rhaenys";
+  ASSERT_TRUE(state.applyForm());
+  EXPECT_EQ(state.doc.find(Kind::Language, 1)->at("first_names"),
+            (nlohmann::json{"Aegon", "Rhaenys"}));
+  state.setPage(State::Page::Country);
+  state.select(Kind::Country, 1);
+  frames(*view);
+  state.values[field("language")].text = "1";
+  state.values[field("demonym")].text = "Westerosi";
+  ASSERT_TRUE(state.applyForm());
+  EXPECT_EQ(state.doc.find(Kind::Country, 1)->at("language"), 1);
+  EXPECT_EQ(state.doc.find(Kind::Country, 1)->at("demonym"), "Westerosi");
+  // Removing the language detaches the country; the form shows no Nationality.
+  state.setPage(State::Page::Language);
+  state.select(Kind::Language, 1);
+  state.removeSelected();
+  EXPECT_FALSE(state.doc.find(Kind::Country, 1)->contains("language"));
+  state.setPage(State::Page::Country);
+  state.select(Kind::Country, 1);
+  frames(*view);
+  for (const auto& descriptor : state.descriptors)
+  {
+    EXPECT_NE(descriptor.label, "PROFILE_NATIONALITY");
+  }
+  // Every page still draws after the edits.
+  for (int page = 0; page <= static_cast<int>(State::Page::Player); ++page)
+  {
+    state.setPage(static_cast<State::Page>(page));
+    frames(*view, 2);
+  }
+}

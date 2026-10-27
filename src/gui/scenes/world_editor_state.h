@@ -40,6 +40,9 @@ struct WorldEditorScene::State
   enum class Page : std::uint8_t
   {
     Details,
+    Language,
+    Confederation,
+    Region,
     Country,
     City,
     Travel,

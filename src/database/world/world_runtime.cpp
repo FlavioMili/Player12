@@ -19,9 +19,12 @@
 #include <stdexcept>
 #include <string>
 
+#include "database/world/world_geography.h"
 #include "database/world/world_io.h"
+#include "database/world/world_schema.h"
 #include "global/languages.h"
 #include "global/logger.h"
+#include "global/nationality.h"
 #include "global/paths.h"
 
 using json = nlohmann::json;
@@ -94,21 +97,33 @@ Language readNationality(const json& object, const char* key, Language fallback)
   {
     return fallback;
   }
-  const auto language = stringToLanguage.find(found->get<std::string>());
-  return language != stringToLanguage.end() ? language->second : fallback;
+  return nationalityFromName(found->get<std::string>()).value_or(fallback);
+}
+
+/** Built-in region called @p name ("Eastern Europe" and "EasternEurope"
+ * alike); @p fallback when it is none of them. */
+WorldRegion regionByName(std::string_view name, WorldRegion fallback)
+{
+  std::string wanted = normalise(name);
+  std::erase(wanted, ' ');
+  for (std::size_t i = 0; i < REGIONS.size(); ++i)
+  {
+    std::string known = normalise(REGIONS[i]);
+    std::erase(known, ' ');
+    if (known == wanted)
+    {
+      return static_cast<WorldRegion>(i);
+    }
+  }
+  return fallback;
 }
 
 WorldRegion readRegion(const json& object, const char* key,
                        WorldRegion fallback)
 {
   const auto found = object.find(key);
-  if (found == object.end() || !found->is_string())
-  {
-    return fallback;
-  }
-  const auto region = std::ranges::find(REGIONS, found->get<std::string>());
-  return region != REGIONS.end()
-             ? static_cast<WorldRegion>(region - REGIONS.begin())
+  return found != object.end() && found->is_string()
+             ? regionByName(found->get<std::string>(), fallback)
              : fallback;
 }
 
@@ -122,7 +137,8 @@ std::int64_t integerField(const json& entity, const char* key)
 
 /** Profile of a league without authored values: country level, minus a step
  * per division, drives reputation, revenue and crowds. */
-LeagueProfile synthesise(const Document& world, const json& league)
+LeagueProfile synthesise(const Document& world, const Geography& geo,
+                         const json& league)
 {
   LeagueProfile profile = DEFAULT_LEAGUE_PROFILE;
   profile.league_id = static_cast<LeagueID>(entityId(league));
@@ -140,9 +156,14 @@ LeagueProfile synthesise(const Document& world, const json& league)
   {
     football = readFloat(*country, "reputation", DEFAULT_LEVEL);
     economy = readFloat(*country, "economy", football);
-    profile.domestic_nationality =
-        readNationality(*country, "nationality", profile.domestic_nationality);
-    profile.region = readRegion(*country, "region", profile.region);
+    profile.domestic_nationality = nationalityFromName(demonym(*country))
+                                       .value_or(profile.domestic_nationality);
+    profile.region_id = regionIdOf(geo, *country);
+    if (const Region* region = geo.region(profile.region_id))
+    {
+      profile.region = region->flavour;
+      profile.confederation = region->confederation;
+    }
   }
   const float step = TIER_REPUTATION_STEP * static_cast<float>(tier);
   football = std::clamp(football - step, 1.0f, 99.0f);
@@ -157,6 +178,31 @@ LeagueProfile synthesise(const Document& world, const json& league)
   return profile;
 }
 }  // namespace
+
+std::vector<CustomNationality> peoplesOf(const Document& world)
+{
+  std::vector<const json*> countries;
+  for (const json& country : world.section(Kind::Country))
+  {
+    countries.push_back(&country);
+  }
+  std::ranges::stable_sort(countries, [](const json* a, const json* b)
+                           { return entityId(*a) < entityId(*b); });
+  const Geography geo = geographyOf(world);
+  std::vector<CustomNationality> peoples;
+  for (const json* country : countries)
+  {
+    const std::string name = demonym(*country);
+    if (name.empty() || stringToLanguage.contains(name) ||
+        std::ranges::any_of(peoples, [&](const CustomNationality& known)
+                            { return known.name == name; }))
+    {
+      continue;
+    }
+    peoples.push_back({name, regionIdOf(geo, *country), entityId(*country)});
+  }
+  return peoples;
+}
 
 std::shared_ptr<const Document> defaultWorld()
 {
@@ -206,6 +252,7 @@ void install(std::shared_ptr<const Document> world)
     }
     shared.world = world;
   }
+  setCustomNationalities(peoplesOf(*world));
   installLeagueProfiles(buildProfiles(*world));
   shared.generation.fetch_add(1);
 }
@@ -267,7 +314,7 @@ std::shared_ptr<const Document> fromSave(sqlite3* db)
 
 json profileToJson(const LeagueProfile& profile)
 {
-  const auto nationality = languageToString.find(profile.domestic_nationality);
+  const std::string nationality = nationalityName(profile.domestic_nationality);
   return {
       {"reputation", profile.reputation},
       {"average_revenue_eur", number(profile.average_revenue_eur)},
@@ -277,9 +324,8 @@ json profileToJson(const LeagueProfile& profile)
       {"commercial_share", number(profile.commercial_share)},
       {"wage_ratio", number(profile.wage_ratio)},
       {"average_attendance", number(profile.average_attendance)},
-      {"domestic_nationality", nationality != languageToString.end()
-                                   ? nationality->second
-                                   : std::string("English")},
+      {"domestic_nationality",
+       nationality.empty() ? std::string("English") : nationality},
       {"domestic_share", number(profile.domestic_share)},
       {"region",
        std::string(REGIONS.at(static_cast<std::size_t>(profile.region)))},
@@ -356,6 +402,7 @@ LeagueProfile profileFromJson(const json& object, const LeagueProfile& base)
 std::vector<LeagueProfile> buildProfiles(const Document& world)
 {
   std::vector<LeagueProfile> profiles;
+  const Geography geo = geographyOf(world);
   for (const json& league : world.section(Kind::League))
   {
     const std::int64_t id = entityId(league);
@@ -363,7 +410,7 @@ std::vector<LeagueProfile> buildProfiles(const Document& world)
     {
       continue;
     }
-    LeagueProfile profile = synthesise(world, league);
+    LeagueProfile profile = synthesise(world, geo, league);
     if (const auto authored = league.find("profile"); authored != league.end())
     {
       profile = profileFromJson(*authored, profile);

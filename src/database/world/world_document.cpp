@@ -13,6 +13,7 @@
 #include <limits>
 #include <utility>
 
+#include "global/types.h"
 #include "model/world_generation.h"
 
 using json = nlohmann::json;
@@ -47,6 +48,12 @@ std::string_view sectionKey(Kind kind)
 {
   switch (kind)
   {
+    case Kind::Language:
+      return "languages";
+    case Kind::Confederation:
+      return "confederations";
+    case Kind::Region:
+      return "regions";
     case Kind::Country:
       return "countries";
     case Kind::City:
@@ -69,6 +76,12 @@ std::string_view kindLabel(Kind kind)
 {
   switch (kind)
   {
+    case Kind::Language:
+      return "WORLD_KIND_LANGUAGES";
+    case Kind::Confederation:
+      return "WORLD_KIND_CONFEDERATIONS";
+    case Kind::Region:
+      return "WORLD_KIND_REGIONS";
     case Kind::Country:
       return "WORLD_KIND_COUNTRIES";
     case Kind::City:
@@ -93,14 +106,21 @@ std::int64_t maxId(Kind kind)
 {
   switch (kind)
   {
+    case Kind::Language:
+      return std::numeric_limits<LanguageID>::max();
+    case Kind::Confederation:
+      return std::numeric_limits<ConfederationID>::max();
+    case Kind::Region:
+      return std::numeric_limits<RegionID>::max();
     case Kind::Country:
-      return std::numeric_limits<std::uint8_t>::max();
+      return std::numeric_limits<CountryID>::max();
     case Kind::League:
       // 250 and above are the continental competitions.
       return 249;
     case Kind::City:
-    case Kind::Club:
       return std::numeric_limits<std::uint16_t>::max();
+    case Kind::Club:
+      return std::numeric_limits<TeamID>::max();
     case Kind::Player:
       return std::numeric_limits<std::int32_t>::max();
     case Kind::Travel:

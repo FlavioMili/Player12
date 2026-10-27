@@ -19,6 +19,7 @@
 #include "database/database_connection.h"
 #include "database/gamedata.h"
 #include "global/global.h"
+#include "global/nationality.h"
 #include "model/competition.h"
 #include "model/inbox.h"
 #include "model/season_history.h"
@@ -253,7 +254,7 @@ ManagerProfile readManagerProfile(sqlite3_stmt* stmt)
   profile.first_name = columnText(stmt, 0);
   profile.last_name = columnText(stmt, 1);
   profile.nationality = static_cast<Language>(std::clamp<std::int64_t>(
-      sqlite3_column_int64(stmt, 2), 0, std::to_underlying(Language::MU)));
+      sqlite3_column_int64(stmt, 2), 0, LAST_CUSTOM_NATIONALITY));
   profile.age = columnAs<std::uint8_t>(stmt, 3);
   profile.reputation = columnFloat(stmt, 4);
   profile.licence = enumFrom(sqlite3_column_int64(stmt, 5),
@@ -1988,7 +1989,7 @@ void ManagerCareer::load(const std::shared_ptr<DatabaseConnection>& db_conn)
                manager.last_name = columnText(stmt, 2);
                manager.nationality = static_cast<Language>(
                    std::clamp<std::int64_t>(sqlite3_column_int64(stmt, 3), 0,
-                                            std::to_underlying(Language::MU)));
+                                            LAST_CUSTOM_NATIONALITY));
                manager.age = columnAs<std::uint8_t>(stmt, 4);
                manager.reputation = columnFloat(stmt, 5);
                manager.ability = columnFloat(stmt, 6);

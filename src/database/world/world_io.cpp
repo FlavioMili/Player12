@@ -344,8 +344,8 @@ Document templateDocument()
   document.setManifest(manifest);
   document.add(Kind::Country, {{"id", 1},
                                {"name", "Freeland"},
-                               {"nationality", "English"},
-                               {"region", "Europe"},
+                               {"demonym", "English"},
+                               {"language", "English"},
                                {"reputation", 60},
                                {"economy", 60}});
   const std::array<std::pair<const char*, const char*>, 4> clubs = {{

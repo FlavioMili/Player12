@@ -115,6 +115,18 @@ void clearReferences(Document& document, Kind kind, std::int64_t id,
 {
   switch (kind)
   {
+    case Kind::Language:
+      clearReference(document.section(Kind::Country), "language", id,
+                     result.countries);
+      break;
+    case Kind::Confederation:
+      clearReference(document.section(Kind::Region), "confederation_id", id,
+                     result.countries);
+      break;
+    case Kind::Region:
+      clearReference(document.section(Kind::Country), "region_id", id,
+                     result.countries);
+      break;
     case Kind::Country:
       clearReference(document.section(Kind::City), "country_id", id,
                      result.cities);
@@ -228,10 +240,19 @@ std::int64_t create(Document& document, Kind kind,
   json entity = {{"id", *fresh}};
   switch (kind)
   {
+    case Kind::Language:
+      entity["name"] = uniqueName(document, kind, "New language");
+      break;
+    case Kind::Confederation:
+      entity["name"] = uniqueName(document, kind, "New confederation");
+      break;
+    case Kind::Region:
+      entity["name"] = uniqueName(document, kind, "New region");
+      break;
     case Kind::Country:
       entity["name"] = uniqueName(document, kind, "New country");
-      entity["nationality"] = "English";
-      entity["region"] = "Europe";
+      entity["demonym"] = "English";
+      entity["language"] = "English";
       entity["reputation"] = DEFAULT_STAT;
       entity["economy"] = DEFAULT_STAT;
       break;
@@ -300,6 +321,15 @@ RemoveImpact impact(const Document& document, Kind kind, std::int64_t id)
   RemoveImpact result;
   switch (kind)
   {
+    case Kind::Language:
+      result.countries = count(Kind::Country, "language");
+      break;
+    case Kind::Confederation:
+      result.countries = count(Kind::Region, "confederation_id");
+      break;
+    case Kind::Region:
+      result.countries = count(Kind::Country, "region_id");
+      break;
     case Kind::Country:
       result.cities = count(Kind::City, "country_id");
       result.leagues = count(Kind::League, "country_id");

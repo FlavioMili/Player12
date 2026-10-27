@@ -16,6 +16,7 @@
 
 #include "database/runtime_editor.h"
 #include "database/world/world_edit.h"
+#include "database/world/world_schema.h"
 #include "global/language_manager.h"
 #include "gui/scenes/world_editor_state.h"
 #include "gui/widgets/theme.h"
@@ -153,6 +154,17 @@ void State::rebuildRows()
       ++counts[integer(item, leagues ? "league_id" : "team_id")];
     }
   }
+  else if (*k == Kind::Language || *k == Kind::Region ||
+           *k == Kind::Confederation)
+  {
+    const bool regions = *k == Kind::Confederation;
+    for (const json& item : doc.section(regions ? Kind::Region : Kind::Country))
+    {
+      ++counts[integer(item, regions                ? "confederation_id"
+                             : *k == Kind::Language ? "language"
+                                                    : "region_id")];
+    }
+  }
 }
 
 namespace
@@ -179,10 +191,20 @@ std::vector<ColumnDef> columnDefs(Kind kind)
 {
   switch (kind)
   {
+    case Kind::Language:
+      return {{"WORLD_FIELD_NAME", 0, 0}, {"WORLD_COL_COUNTRIES", 100, 1}};
+    case Kind::Confederation:
+      return {{"WORLD_FIELD_NAME", 0, 0}, {"WORLD_COL_REGIONS", 100, 1}};
+    case Kind::Region:
+      return {{"WORLD_FIELD_NAME", 0, 0},
+              {"WORLD_FIELD_CONFEDERATION", 150, 2},
+              {"WORLD_COL_COUNTRIES", 100, 1}};
     case Kind::Country:
       return {{"WORLD_FIELD_NAME", 0, 0},
-              {"PROFILE_NATIONALITY", 130, 1},
-              {"WORLD_COL_LEVEL", 80, 2}};
+              {"WORLD_FIELD_DEMONYM", 130, 1},
+              {"WORLD_COL_LEVEL", 80, 2},
+              {"WORLD_FIELD_LANGUAGE", 120, 3},
+              {"WORLD_FIELD_REGION", 120, 4}};
     case Kind::City:
       return {{"WORLD_FIELD_NAME", 0, 0},
               {"WORLD_FIELD_COUNTRY", 150, 1},
@@ -242,16 +264,40 @@ std::string cellText(const State& state, Kind kind, const json& item,
   };
   switch (kind)
   {
+    case Kind::Language:
+    case Kind::Confederation:
+      return column == 1 ? count(World::entityId(item))
+                         : World::entityName(kind, item);
+    case Kind::Region:
+      return column == 1   ? count(World::entityId(item))
+             : column == 2 ? referenceName(doc, Kind::Confederation, item,
+                                           "confederation_id")
+                           : World::entityName(kind, item);
     case Kind::Country:
+    {
       if (column == 1)
       {
-        const std::string nation = item.value("nationality", std::string());
+        const std::string nation = World::demonym(item);
         const std::string key = "NATION_" + nation;
         return nation.empty() || key == LOC(key.c_str()) ? nation
                                                          : LOC(key.c_str());
       }
+      if (column == 3)
+      {
+        const auto spoken = item.find("language");
+        return spoken != item.end() && spoken->is_string()
+                   ? spoken->get<std::string>()
+                   : referenceName(doc, Kind::Language, item, "language");
+      }
+      if (column == 4)
+      {
+        const std::string region =
+            referenceName(doc, Kind::Region, item, "region_id");
+        return region.empty() ? item.value("region", std::string()) : region;
+      }
       return column == 2 ? number(item, "reputation")
                          : World::entityName(kind, item);
+    }
     case Kind::City:
       return column == 1 ? referenceName(doc, Kind::Country, item, "country_id")
              : column == 2 ? number(item, "population")
@@ -392,18 +438,27 @@ void State::renderList(float width, float height)
     line(effect.clubs, "WORLD_IMPACT_CLUBS");
     line(effect.leagues, "WORLD_IMPACT_LEAGUES");
     line(effect.cities, "WORLD_IMPACT_CITIES");
+    line(effect.countries, "WORLD_IMPACT_COUNTRIES");
     line(effect.travel, "WORLD_IMPACT_TRAVEL");
     popup_text += LOC("WORLD_DELETE_BODY");
     open_popup = Popup::Delete;
   }
   ImGui::Dummy(ImVec2(0.0F, scaled(Theme::Space::XS)));
+  // A page switched earlier in this frame: rows must match the shown kind.
+  if (rows_dirty)
+  {
+    rebuildRows();
+  }
   if (rows.empty())
   {
     if (doc.count(k) == 0)
     {
-      static const std::array<const char*, 6> HINTS = {
-          "WORLD_EMPTY_COUNTRY", "WORLD_EMPTY_CITY", "WORLD_EMPTY_TRAVEL",
-          "WORLD_EMPTY_LEAGUE",  "WORLD_EMPTY_CLUB", "WORLD_EMPTY_PLAYER"};
+      static const std::array<const char*, 9> HINTS = {
+          "WORLD_EMPTY_LANGUAGE", "WORLD_EMPTY_CONFEDERATION",
+          "WORLD_EMPTY_REGION",   "WORLD_EMPTY_COUNTRY",
+          "WORLD_EMPTY_CITY",     "WORLD_EMPTY_TRAVEL",
+          "WORLD_EMPTY_LEAGUE",   "WORLD_EMPTY_CLUB",
+          "WORLD_EMPTY_PLAYER"};
       UI::emptyState(LOC("WORLD_EMPTY_TITLE"),
                      LOC(HINTS.at(static_cast<std::size_t>(k))));
     }
@@ -432,7 +487,7 @@ void State::renderList(float width, float height)
     int target = -1;
     if (scroll_to_selected && selected >= 0)
     {
-      for (std::size_t i = 0; i < rows.size(); ++i)
+      for (std::size_t i = 0; i < rows.size() && rows[i] < section.size(); ++i)
       {
         const json& item = section[rows[i]];
         if ((k == Kind::Travel ? static_cast<std::int64_t>(rows[i])
@@ -451,6 +506,10 @@ void State::renderList(float width, float height)
       for (int i = clipper.DisplayStart; i < clipper.DisplayEnd; ++i)
       {
         const std::uint32_t position = rows[static_cast<std::size_t>(i)];
+        if (position >= section.size())
+        {
+          continue;
+        }
         const json& item = section[position];
         const std::int64_t key = k == Kind::Travel
                                      ? static_cast<std::int64_t>(position)

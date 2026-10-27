@@ -24,13 +24,17 @@ namespace World
 /** What removing an entity changes elsewhere. */
 struct RemoveImpact
 {
-  std::size_t players = 0;  ///< Players that become free agents.
-  std::size_t clubs = 0;    ///< Clubs that lose their competition or city.
-  std::size_t leagues = 0;  ///< Competitions that lose their parent/country.
-  std::size_t cities = 0;   ///< Cities that lose their country.
-  std::size_t travel = 0;   ///< Travel rows removed with a city.
+  std::size_t players = 0;    ///< Players that become free agents.
+  std::size_t clubs = 0;      ///< Clubs that lose their competition or city.
+  std::size_t leagues = 0;    ///< Competitions that lose their parent/country.
+  std::size_t cities = 0;     ///< Cities that lose their country.
+  std::size_t countries = 0;  ///< Countries/regions that lose a link.
+  std::size_t travel = 0;     ///< Travel rows removed with a city.
 
-  bool any() const { return players + clubs + leagues + cities + travel != 0; }
+  bool any() const
+  {
+    return players + clubs + leagues + cities + countries + travel != 0;
+  }
 };
 
 /** Copy of an entity under a free id (travel: position) with " (2)" added to

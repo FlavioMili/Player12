@@ -338,7 +338,7 @@ GameController::getPlayersForTeam(uint16_t team_id) const
 }
 
 std::vector<std::reference_wrapper<const Team>>
-GameController::getTeamsInLeague(uint8_t league_id) const
+GameController::getTeamsInLeague(LeagueID league_id) const
 {
   std::vector<std::reference_wrapper<const Team>> teams;
   for (const auto& team : (*gamedata).getTeamsVector())
@@ -352,7 +352,7 @@ GameController::getTeamsInLeague(uint8_t league_id) const
 }
 
 std::optional<std::reference_wrapper<const League>>
-GameController::getLeagueById(uint8_t league_id) const
+GameController::getLeagueById(LeagueID league_id) const
 {
   return (*gamedata).getLeague(league_id);
 }
