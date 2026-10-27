@@ -523,12 +523,13 @@ void SaveManager::stampMetadata(const DatabaseConnection& working,
   sqlite3_stmt* stmt = working.prepareStatement(
       "UPDATE save_meta SET game_version = ?, engine_version = ?, "
       "rng_version = ?, sim_version = ?, world_seed = ?, updated_at_utc = ?, "
-      "last_saved_game_date = ?, playtime_seconds = ?, packs = ? WHERE id = 1;");
+      "last_saved_game_date = ?, playtime_seconds = ?, packs = ? WHERE id = "
+      "1;");
   const std::string updated = utcNow("{:%FT%TZ}");
   const std::string date = game_date.toString();
   // Provenance of the world database the career was built from.
   std::string packs = "[]";
-  if (const auto world = World::current(); world != World::defaultWorld())
+  if (const auto world = World::current(); !World::isBuiltIn(*world))
   {
     const World::Manifest manifest = world->manifest();
     packs = nlohmann::json::array({{{"name", manifest.name},

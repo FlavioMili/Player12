@@ -278,6 +278,26 @@ void storeInSave(sqlite3* db, const Document& world)
   }
 }
 
+bool isBuiltIn(const Document& world)
+{
+  const auto builtin = defaultWorld();
+  if (&world == builtin.get())
+  {
+    return true;
+  }
+  const Manifest left = world.manifest();
+  const Manifest right = builtin->manifest();
+  if (left.name != right.name || left.author != right.author ||
+      left.version != right.version || left.description != right.description ||
+      left.season != right.season)
+  {
+    return false;
+  }
+  return std::ranges::all_of(
+      KINDS,
+      [&](Kind kind) { return world.count(kind) == builtin->count(kind); });
+}
+
 std::shared_ptr<const Document> fromSave(sqlite3* db)
 {
   sqlite3_stmt* stmt = nullptr;
@@ -301,12 +321,15 @@ std::shared_ptr<const Document> fromSave(sqlite3* db)
   {
     return nullptr;
   }
+  // A stored world with errors is not installed: the career still loads, on
+  // the built-in world, instead of running on a world the validator rejects
+  // (or refusing to open the save at all).
   LoadResult loaded = readText(text);
-  if (!loaded.document)
+  if (!loaded.ok())
   {
     Logger::warn(
-        "The world stored in the save cannot be read; using the "
-        "built-in world.");
+        "The world stored in the save cannot be used (unreadable or "
+        "invalid); using the built-in world.");
     return nullptr;
   }
   return std::make_shared<const Document>(std::move(*loaded.document));

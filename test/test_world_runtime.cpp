@@ -555,3 +555,84 @@ TEST(WorldPeoples, SixteenBitIdsHoldHundredsOfPeoplesAndManyCups)
     EXPECT_TRUE(season->drawn);
   }
 }
+
+namespace
+{
+std::string savedPacks(int slot)
+{
+  sqlite3* db = nullptr;
+  std::string packs;
+  if (sqlite3_open(RuntimePaths::savePath(slot).string().c_str(), &db) ==
+      SQLITE_OK)
+  {
+    sqlite3_stmt* stmt = nullptr;
+    if (sqlite3_prepare_v2(db, "SELECT packs FROM save_meta WHERE id = 1;", -1,
+                           &stmt, nullptr) == SQLITE_OK &&
+        sqlite3_step(stmt) == SQLITE_ROW)
+    {
+      packs = reinterpret_cast<const char*>(sqlite3_column_text(stmt, 0));
+    }
+    sqlite3_finalize(stmt);
+  }
+  sqlite3_close(db);
+  return packs;
+}
+}  // namespace
+
+TEST(WorldRuntime, BuiltInWorldIsRecognisedByContentNotPointer)
+{
+  const World::Document copy = *World::defaultWorld();
+  EXPECT_TRUE(World::isBuiltIn(*World::defaultWorld()));
+  EXPECT_TRUE(World::isBuiltIn(copy));
+  EXPECT_FALSE(World::isBuiltIn(*customWorld()));
+  World::Document renamed = copy;
+  World::Manifest manifest = renamed.manifest();
+  manifest.name += " (edited)";
+  renamed.setManifest(manifest);
+  EXPECT_FALSE(World::isBuiltIn(renamed));
+}
+
+TEST(WorldRuntime, ReloadedBuiltInCareerKeepsEmptyPacks)
+{
+  const Slot slot{731'205};
+  {
+    auto controller = career(slot.slot, nullptr);
+    controller->selectManagedTeam(103);
+    controller->saveGame();
+  }
+  EXPECT_EQ(savedPacks(slot.slot), "[]");
+  World::install(nullptr);
+  auto loaded = std::make_unique<GameController>();
+  ASSERT_TRUE(loaded->loadGame(slot.slot));
+  EXPECT_NE(World::current(), World::defaultWorld());  // the stored copy
+  loaded->saveGame();
+  EXPECT_EQ(savedPacks(slot.slot), "[]");
+}
+
+TEST(WorldRuntime, StoredWorldWithErrorsFallsBackToTheBuiltInWorld)
+{
+  const Slot slot{731'206};
+  {
+    auto controller = career(slot.slot, customWorld());
+    controller->selectManagedTeam(201);
+    controller->saveGame();
+  }
+  {
+    sqlite3* db = nullptr;
+    ASSERT_EQ(
+        sqlite3_open(RuntimePaths::savePath(slot.slot).string().c_str(), &db),
+        SQLITE_OK);
+    ASSERT_EQ(sqlite3_exec(db,
+                           "UPDATE WorldDocument SET content = "
+                           "'{\"manifest\":{\"name\":\"Broken\"},"
+                           "\"clubs\":[{\"id\":-3}]}' WHERE id = 1;",
+                           nullptr, nullptr, nullptr),
+              SQLITE_OK);
+    sqlite3_close(db);
+  }
+  World::install(customWorld());
+  auto loaded = std::make_unique<GameController>();
+  // The career itself still loads; only the invalid world is not installed.
+  ASSERT_TRUE(loaded->loadGame(slot.slot));
+  EXPECT_EQ(World::current(), World::defaultWorld());
+}

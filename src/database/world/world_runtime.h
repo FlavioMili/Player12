@@ -40,11 +40,17 @@ std::uint64_t generation();
  * the asset is missing or invalid: the installation is broken. */
 std::shared_ptr<const Document> defaultWorld();
 
+/** True when @p world is the built-in world, by pointer or by manifest
+ * identity and content size (a reloaded career holds its own copy of the
+ * built-in world, so pointers alone are not enough). */
+bool isBuiltIn(const Document& world);
+
 /** Keeps @p world in the save (table WorldDocument), so a career always
  * reloads the world it was created from. */
 void storeInSave(sqlite3* db, const Document& world);
 /** The world stored in a save; null for saves made before world databases
- * (they use the built-in world) or when the stored copy cannot be read. */
+ * (they use the built-in world), when the stored copy cannot be read or when
+ * it has validation errors (the caller then uses the built-in world). */
 std::shared_ptr<const Document> fromSave(sqlite3* db);
 
 /** Peoples (demonyms) of the world's countries that are not built-in
