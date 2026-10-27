@@ -140,9 +140,9 @@ void SquadPlannerScene::build(View& view, int season_offset) const
     Group& group = view.groups[index];
     group.group = depth.group;
     group.missing = depth.missing;
-    group.header = std::format("{}  \u{B7}  {} / {}",
-                               LOC(SquadPlanner::groupKey(depth.group)),
-                               depth.players.size(), depth.target);
+    group.header =
+        std::format("{}  ·  {} / {}", LOC(SquadPlanner::groupKey(depth.group)),
+                    depth.players.size(), depth.target);
     for (const DepthEntry& entry : depth.players)
     {
       Row row;

@@ -12,7 +12,6 @@
 
 #include <algorithm>
 #include <cmath>
-#include <cstddef>
 #include <string>
 #include <unordered_set>
 #include <utility>
@@ -133,15 +132,13 @@ RiskBand MedicalCentre::reinjuryRisk(InjuryType type, std::uint16_t days_left,
 InjuryRiskAssessment MedicalCentre::assess(const InjuryRiskInputs& inputs)
 {
   InjuryRiskAssessment result;
-  std::byte reasons{0};
   float multiplier = 1.0f;
   if (inputs.age > AGE_FROM)
   {
     multiplier *=
         std::exp(AGE_SLOPE * static_cast<float>(inputs.age - AGE_FROM));
     // Only flagged once it matters (about +16% at 30).
-    if (inputs.age >= VETERAN_AGE)
-      reasons |= static_cast<std::byte>(RISK_REASON_AGE);
+    if (inputs.age >= VETERAN_AGE) result.reasons |= RISK_REASON_AGE;
   }
   if (inputs.days_since_match >= 0 &&
       inputs.days_since_match <= CONGESTION_DAYS)
@@ -150,27 +147,26 @@ InjuryRiskAssessment MedicalCentre::assess(const InjuryRiskInputs& inputs)
     multiplier *=
         static_cast<float>(0.5 * (Fitness::CONGESTION_MUSCLE_MULTIPLIER +
                                   Fitness::CONGESTION_OTHER_MULTIPLIER));
-    reasons |= static_cast<std::byte>(RISK_REASON_CONGESTION);
+    result.reasons |= RISK_REASON_CONGESTION;
   }
   if (inputs.days_since_injury >= 0 &&
       inputs.days_since_injury <= RECURRENCE_WINDOW_DAYS)
   {
     multiplier *= RECENT_INJURY;
-    reasons |= static_cast<std::byte>(RISK_REASON_RECENT_INJURY);
+    result.reasons |= RISK_REASON_RECENT_INJURY;
   }
   if (inputs.condition < FATIGUE_CONDITION)
   {
     multiplier *= FATIGUE;
-    reasons |= static_cast<std::byte>(RISK_REASON_FATIGUE);
+    result.reasons |= RISK_REASON_FATIGUE;
   }
   if (inputs.workload_ratio > WORKLOAD_THRESHOLD)
   {
     multiplier *= std::min(
         WORKLOAD_CAP,
         1.0f + WORKLOAD_SLOPE * (inputs.workload_ratio - WORKLOAD_THRESHOLD));
-    reasons |= static_cast<std::byte>(RISK_REASON_WORKLOAD);
+    result.reasons |= RISK_REASON_WORKLOAD;
   }
-  result.reasons = std::to_integer<std::uint8_t>(reasons);
   multiplier *= inputs.staff_prevention;
   result.multiplier = multiplier;
   if (multiplier >= HIGH_FROM)
@@ -207,9 +203,7 @@ RiskBand MedicalCentre::loadBand(float ratio)
 
 bool MedicalCentre::substitutionDue(std::uint8_t flags, int minute)
 {
-  const std::byte stored = static_cast<std::byte>(flags);
-  const std::byte limit = static_cast<std::byte>(MEDICAL_FLAG_LIMIT_MINUTES);
-  return (stored & limit) != std::byte{0} && minute >= MINUTE_LIMIT;
+  return (flags & MEDICAL_FLAG_LIMIT_MINUTES) != 0 && minute >= MINUTE_LIMIT;
 }
 
 // ---------------------------------------------------------------------------
@@ -225,13 +219,12 @@ std::uint8_t MedicalDesk::flags(PlayerID player_id) const
 
 void MedicalDesk::setFlag(PlayerID player_id, MedicalFlag flag, bool enabled)
 {
-  const std::byte current = static_cast<std::byte>(flags(player_id));
-  const std::byte bit = static_cast<std::byte>(flag);
-  const std::byte value = enabled ? current | bit : current & ~bit;
-  if (value == std::byte{0})
+  const auto value = static_cast<std::uint8_t>(
+      enabled ? flags(player_id) | flag : flags(player_id) & ~flag);
+  if (value == MEDICAL_FLAG_NONE)
     player_flags.erase(player_id);
   else
-    player_flags[player_id] = std::to_integer<std::uint8_t>(value);
+    player_flags[player_id] = value;
 }
 
 bool MedicalDesk::afterMatch(GameData& gamedata, const GameDateValue& date,

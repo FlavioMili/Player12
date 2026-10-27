@@ -196,13 +196,6 @@ enum class ShortlistFlag : std::uint8_t
   Injured = 0x04
 };
 
-inline constexpr std::uint8_t SHORTLIST_LISTED =
-    std::to_underlying(ShortlistFlag::Listed);
-inline constexpr std::uint8_t SHORTLIST_EXPIRING =
-    std::to_underlying(ShortlistFlag::Expiring);
-inline constexpr std::uint8_t SHORTLIST_INJURED =
-    std::to_underlying(ShortlistFlag::Injured);
-
 /**
  * @struct ShortlistEntry
  * @brief A tracked player with the last status alerts were based on.

@@ -159,14 +159,11 @@ unsigned ThreadPool::defaultThreadCount()
   const auto free_value = [](char* allocation) { std::free(allocation); };
   const std::unique_ptr<char, decltype(free_value)> owned(environment,
                                                           free_value);
-#endif
-  if (const char* configured =
-#if defined(_WIN32)
-          owned.get();
+  const char* configured = owned.get();
 #else
-          std::getenv("FM_SIM_THREADS");
+  const char* configured = std::getenv("FM_SIM_THREADS");
 #endif
-      configured != nullptr)
+  if (configured != nullptr)
   {
     unsigned value = 0;
     const std::string_view text(configured);

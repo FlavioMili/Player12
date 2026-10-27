@@ -149,29 +149,6 @@ std::string nationArg(Language nation)
   return "@" + International::teamNameKey(nation);
 }
 
-template <typename AddFixture>
-void pairFriendlyNations(std::vector<Language>& nations,
-                         const GameDateValue& day, std::mt19937& rng,
-                         AddFixture&& add_fixture,
-                         std::vector<Language>* leftovers)
-{
-  std::ranges::shuffle(nations, rng);
-  size_t index = 0;
-  for (; index + 1 < nations.size(); index += 2)
-  {
-    Fixture fixture;
-    fixture.date = day;
-    fixture.home = nations[index];
-    fixture.away = nations[index + 1];
-    fixture.competition = Competition::Friendly;
-    add_fixture(fixture);
-  }
-  if (index < nations.size() && leftovers)
-  {
-    leftovers->push_back(nations[index]);
-  }
-}
-
 void recordAppearance(
     const PlayerMatchLine& line, bool finals_match, const GameDateValue& today,
     GameData& gamedata,
@@ -298,43 +275,6 @@ void extendFinalsSquadUntil(NationalTeams::Squad& squad,
       [](const GameDateValue& a, const GameDateValue& b) { return a < b; });
 }
 
-template <typename PickSquad>
-bool replaceUnavailablePlayers(NationalTeams::Squad& squad,
-                               const GameDateValue& today, GameData& gamedata,
-                               const PickSquad& pick_squad)
-{
-  std::vector<PlayerID> removed;
-  std::erase_if(squad.players,
-                [&gamedata, &removed](PlayerID player_id)
-                {
-                  const auto player = gamedata.getPlayer(player_id);
-                  const bool gone = !player || !player->get().isAvailable();
-                  if (gone && player)
-                  {
-                    removed.push_back(player_id);
-                  }
-                  return gone;
-                });
-  const bool changed = !removed.empty();
-  for (const PlayerID player_id : removed)
-  {
-    const PlayerRole role = gamedata.getPlayer(player_id)->get().getRole();
-    std::vector<PlayerID> exclude = squad.players;
-    exclude.insert(exclude.end(), removed.begin(), removed.end());
-    for (const PlayerID candidate :
-         pick_squad(squad.nation, International::FINALS_SQUAD, today, exclude))
-    {
-      if (roleGroup(gamedata.getPlayer(candidate)->get().getRole()) ==
-          roleGroup(role))
-      {
-        squad.players.push_back(candidate);
-        break;
-      }
-    }
-  }
-  return changed;
-}
-
 void boostFinalists(NationalTeams::Finals const& entry,
                     const std::vector<NationalTeams::Squad>& squads,
                     GameData& gamedata)
@@ -356,34 +296,6 @@ void boostFinalists(NationalTeams::Finals const& entry,
         dynamics.morale = std::min(100.0f, dynamics.morale + boost);
       }
     }
-  }
-}
-
-template <typename Ranking, typename HasFixture, typename FinalsFor,
-          typename AddFixture>
-void scheduleWindowFriendlies(const std::vector<GameDateValue>& match_days,
-                              Ranking&& ranking, HasFixture&& has_fixture,
-                              FinalsFor&& finals_for, AddFixture&& add_fixture)
-{
-  for (const GameDateValue& day : match_days)
-  {
-    std::map<Confederation, std::vector<Language>> idle;
-    for (const Language nation : ranking())
-    {
-      if (has_fixture(nation, day) || finals_for(nation, day))
-      {
-        continue;
-      }
-      idle[International::confederationOf(nation)].push_back(nation);
-    }
-    std::mt19937 rng(Competitions::mixSeed(
-        static_cast<uint32_t>(dayOrdinal(day)), FRIENDLY_SALT, 0));
-    std::vector<Language> leftovers;
-    for (auto& [confederation, nations] : idle)
-    {
-      pairFriendlyNations(nations, day, rng, add_fixture, &leftovers);
-    }
-    pairFriendlyNations(leftovers, day, rng, add_fixture, nullptr);
   }
 }
 
@@ -442,6 +354,88 @@ void processReleasedSquad(
 }
 
 }  // namespace
+
+void NationalTeams::pairFriendlyNations(std::vector<Language>& nations,
+                                        const GameDateValue& day,
+                                        std::mt19937& rng,
+                                        std::vector<Language>* leftovers)
+{
+  std::ranges::shuffle(nations, rng);
+  size_t index = 0;
+  for (; index + 1 < nations.size(); index += 2)
+  {
+    Fixture fixture;
+    fixture.date = day;
+    fixture.home = nations[index];
+    fixture.away = nations[index + 1];
+    fixture.competition = Competition::Friendly;
+    addFixture(std::move(fixture));
+  }
+  if (index < nations.size() && leftovers)
+  {
+    leftovers->push_back(nations[index]);
+  }
+}
+
+bool NationalTeams::replaceUnavailablePlayers(Squad& squad,
+                                              const GameDateValue& today)
+{
+  std::vector<PlayerID> removed;
+  std::erase_if(squad.players,
+                [this, &removed](PlayerID player_id)
+                {
+                  const auto player = gamedata->getPlayer(player_id);
+                  const bool gone = !player || !player->get().isAvailable();
+                  if (gone && player)
+                  {
+                    removed.push_back(player_id);
+                  }
+                  return gone;
+                });
+  const bool changed = !removed.empty();
+  for (const PlayerID player_id : removed)
+  {
+    const PlayerRole role = gamedata->getPlayer(player_id)->get().getRole();
+    std::vector<PlayerID> exclude = squad.players;
+    exclude.insert(exclude.end(), removed.begin(), removed.end());
+    for (const PlayerID candidate :
+         pickSquad(squad.nation, International::FINALS_SQUAD, today, exclude))
+    {
+      if (roleGroup(gamedata->getPlayer(candidate)->get().getRole()) ==
+          roleGroup(role))
+      {
+        squad.players.push_back(candidate);
+        break;
+      }
+    }
+  }
+  return changed;
+}
+
+void NationalTeams::scheduleWindowFriendlies(
+    const std::vector<GameDateValue>& match_days)
+{
+  for (const GameDateValue& day : match_days)
+  {
+    std::map<Confederation, std::vector<Language>> idle;
+    for (const Language nation : ranking())
+    {
+      if (hasFixture(nation, day) || finalsFor(nation, day))
+      {
+        continue;
+      }
+      idle[International::confederationOf(nation)].push_back(nation);
+    }
+    std::mt19937 rng(Competitions::mixSeed(
+        static_cast<uint32_t>(dayOrdinal(day)), FRIENDLY_SALT, 0));
+    std::vector<Language> leftovers;
+    for (auto& [confederation, nations] : idle)
+    {
+      pairFriendlyNations(nations, day, rng, &leftovers);
+    }
+    pairFriendlyNations(leftovers, day, rng, nullptr);
+  }
+}
 
 // ---------------------------------------------------------------------------
 // International helpers
@@ -1275,13 +1269,7 @@ void NationalTeams::announceWindow(const GameDateValue& today,
 {
   // Friendlies for every nation without a match, within the confederation
   // first.
-  scheduleWindowFriendlies(
-      match_days, [this] { return ranking(); },
-      [this](Language nation, const GameDateValue& day)
-      { return hasFixture(nation, day); },
-      [this](Language nation, const GameDateValue& day)
-      { return finalsFor(nation, day); },
-      [this](const Fixture& fixture) { addFixture(fixture); });
+  scheduleWindowFriendlies(match_days);
 
   std::vector<std::string> called;
   for (const Team& team : teams)
@@ -1334,13 +1322,7 @@ void NationalTeams::replaceInjured(const GameDateValue& today)
   for (Squad& squad : squads)
   {
     if (!(squad.start == today)) continue;
-    changed =
-        replaceUnavailablePlayers(
-            squad, today, *gamedata,
-            [this](Language nation, size_t size, const GameDateValue& date,
-                   const std::vector<PlayerID>& exclude)
-            { return pickSquad(nation, size, date, exclude); }) ||
-        changed;
+    changed = replaceUnavailablePlayers(squad, today) || changed;
   }
   if (changed) rebuildDutyIndex();
 }

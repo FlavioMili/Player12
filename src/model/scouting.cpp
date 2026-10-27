@@ -1433,15 +1433,15 @@ bool ScoutingSystem::removeFocus(std::uint32_t focus_id)
 
 std::uint8_t ScoutingSystem::shortlistFlags(const Player& player) const
 {
-  std::byte flags{0};
+  std::uint8_t flags = 0;
   if (player.getTransferStatus() == TransferStatus::Listed)
-    flags |= std::byte{std::to_underlying(ShortlistFlag::Listed)};
+    flags |= std::to_underlying(ShortlistFlag::Listed);
   if (player.getTeamId() != FREE_AGENTS_TEAM_ID &&
       player.getContractYears() <= 1)
-    flags |= std::byte{std::to_underlying(ShortlistFlag::Expiring)};
+    flags |= std::to_underlying(ShortlistFlag::Expiring);
   if (player.getDynamics().injury_days > 0)
-    flags |= std::byte{std::to_underlying(ShortlistFlag::Injured)};
-  return std::to_integer<std::uint8_t>(flags);
+    flags |= std::to_underlying(ShortlistFlag::Injured);
+  return flags;
 }
 
 bool ScoutingSystem::isShortlisted(PlayerID player_id) const
@@ -1480,11 +1480,10 @@ void ScoutingSystem::checkShortlist(const GameDateValue& date, Inbox& inbox)
       continue;
     }
     const Player& player = player_ref->get();
-    const std::byte flags = static_cast<std::byte>(shortlistFlags(player));
-    const std::byte raised = flags & ~static_cast<std::byte>(entry->last_flags);
+    const std::uint8_t flags = shortlistFlags(player);
+    const auto raised = static_cast<std::uint8_t>(flags & ~entry->last_flags);
     const std::string name = player.getName();
-    if ((raised & std::byte{std::to_underlying(ShortlistFlag::Listed)}) !=
-        std::byte{0})
+    if ((raised & std::to_underlying(ShortlistFlag::Listed)) != 0)
       post(inbox, InboxMessage{.date = date,
                                .category = InboxCategory::Transfer,
                                .title_key = "SCOUT_ALERT_LISTED_TITLE",
@@ -1492,8 +1491,7 @@ void ScoutingSystem::checkShortlist(const GameDateValue& date, Inbox& inbox)
                                .args = {name},
                                .player_id = player.getId(),
                                .team_id = player.getTeamId()});
-    if ((raised & std::byte{std::to_underlying(ShortlistFlag::Expiring)}) !=
-        std::byte{0})
+    if ((raised & std::to_underlying(ShortlistFlag::Expiring)) != 0)
       post(inbox, InboxMessage{.date = date,
                                .category = InboxCategory::Contract,
                                .title_key = "SCOUT_ALERT_EXPIRING_TITLE",
@@ -1501,8 +1499,7 @@ void ScoutingSystem::checkShortlist(const GameDateValue& date, Inbox& inbox)
                                .args = {name},
                                .player_id = player.getId(),
                                .team_id = player.getTeamId()});
-    if ((raised & std::byte{std::to_underlying(ShortlistFlag::Injured)}) !=
-        std::byte{0})
+    if ((raised & std::to_underlying(ShortlistFlag::Injured)) != 0)
       post(inbox,
            InboxMessage{
                .date = date,
@@ -1526,7 +1523,7 @@ void ScoutingSystem::checkShortlist(const GameDateValue& date, Inbox& inbox)
                                .player_id = player.getId(),
                                .team_id = player.getTeamId()});
     }
-    entry->last_flags = std::to_integer<std::uint8_t>(flags);
+    entry->last_flags = flags;
     entry->last_team = player.getTeamId();
     ++entry;
   }

@@ -372,8 +372,8 @@ void StaffScene::renderGroups(const char* id, const std::vector<StaffRow>& rows,
     while (end < rows.size() && departmentOf(rows[end].role) == department)
       ++end;
     ImGui::Dummy(ImVec2(0.0f, Theme::Space::XS * Theme::scale()));
-    const std::string header = std::format(
-        "{}  \u{B7}  {}", LOC(DEPARTMENT_KEYS[department]), end - begin);
+    const std::string header =
+        std::format("{}  ·  {}", LOC(DEPARTMENT_KEYS[department]), end - begin);
     UI::sectionLabel(header.c_str());
     ImGui::PushID(static_cast<int>(department));
 
