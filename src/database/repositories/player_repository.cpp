@@ -225,10 +225,12 @@ class PlayerRowBinder
     appendTraits(traits, player.getTraits());
     dynamics.clear();
     appendDynamics(dynamics, player.getDynamics());
-    const std::string nationality = nationalityName(player.getNationality());
-    const std::string_view nationality_text =
-        nationality.empty() ? std::string_view("English")
-                            : std::string_view(nationality);
+    // Bound with SQLITE_STATIC: the text must outlive bind(), like stats.
+    nationality = nationalityName(player.getNationality());
+    if (nationality.empty())
+    {
+      nationality = "English";
+    }
     const Foot foot_value = player.getFoot();
     const std::string_view foot = foot_value == Foot::Left   ? "Left"
                                   : foot_value == Foot::Both ? "Both"
@@ -239,7 +241,7 @@ class PlayerRowBinder
     bindText(stmt, index++, player.getLastName());
     sqlite3_bind_int(stmt, index++, player.getAge());
     bindText(stmt, index++, role);
-    bindText(stmt, index++, nationality_text);
+    bindText(stmt, index++, nationality);
     sqlite3_bind_int(stmt, index++, static_cast<int>(player.getWage()));
     sqlite3_bind_int(stmt, index++, player.getContractYears());
     sqlite3_bind_int(stmt, index++, player.getHeight());
@@ -262,6 +264,7 @@ class PlayerRowBinder
   }
 
   std::string stats;
+  std::string nationality;
   std::string role;
   std::string traits;
   std::string dynamics;
