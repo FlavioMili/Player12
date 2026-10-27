@@ -12,6 +12,7 @@
 #include <cstdint>
 #include <functional>
 #include <memory>
+#include <mutex>
 #include <optional>
 #include <string>
 #include <string_view>
@@ -28,8 +29,12 @@ struct ClubProfile;
 class DatabaseConnection;
 class GameData;
 class Inbox;
+struct InboxMessage;
 class InteractionSystem;
+class Player;
+class WorldRng;
 struct MatchReport;
+struct PlayerMatchLine;
 
 /**
  * @brief Story chains that grow out of what actually happens in the save.
@@ -323,19 +328,60 @@ class StoryEngine
   bool firedSince(StoryKind kind, std::uint32_t entity,
                   std::int32_t since_day) const;
   /** Posts when the weekly cap allows; records the story either way. */
-  bool post(const GameDateValue& date, StoryKind kind, std::uint32_t entity,
-            std::uint32_t key, const char* title_key, const char* body_key,
-            std::vector<std::string> args, std::optional<PlayerID> player_id,
-            std::optional<TeamID> team_id, Inbox& inbox,
+  bool post(StoryRecord record, InboxMessage message, Inbox& inbox,
             bool with_choice = false);
   CareerTotals careerBefore(PlayerID player_id);
   void trackFollows(const GameDateValue& date, TeamID managed_team_id,
                     const AwardSystem* awards, Inbox& inbox);
+  void trackFollow(const GameDateValue& date, TeamID managed_team_id,
+                   const AwardSystem* awards, FollowedPlayer& followed,
+                   Inbox& inbox);
+  void reportFollowChanges(const GameDateValue& date, TeamID managed_team_id,
+                           FollowedPlayer& followed, const Player& player,
+                           const std::string& name, TeamID team_id,
+                           Inbox& inbox);
+  void reportFollowHonours(const GameDateValue& date, TeamID managed_team_id,
+                           const AwardSystem& awards, FollowedPlayer& followed,
+                           const Player& player, const std::string& name,
+                           Inbox& inbox);
   void followMatch(const MatchReport& report, TeamID managed_team_id,
                    Inbox& inbox);
   void raiseDilemma(const GameDateValue& date, TeamID managed_team_id,
                     const InteractionSystem& interactions,
                     const StoryDayContext& context, Inbox& inbox);
+  struct DilemmaCandidate
+  {
+    StoryKind kind;
+    std::vector<const Player*> players;
+    std::uint32_t other = 0;
+  };
+  std::vector<DilemmaCandidate> dilemmaCandidates(
+      std::int32_t today, TeamID managed_team_id,
+      const InteractionSystem& interactions, const GameDateValue& date,
+      const StoryDayContext& context,
+      const std::vector<const Player*>& squad) const;
+  void postDilemmaPick(const GameDateValue& date, TeamID managed_team_id,
+                       const ClubProfile& profile, DilemmaCandidate& pick,
+                       WorldRng& rng, Inbox& inbox);
+  void updateInjuries(std::int32_t today, TeamID managed_team_id);
+  void postCaptainDispute(const GameDateValue& date, std::int32_t today,
+                          TeamID managed_team_id,
+                          const InteractionSystem& interactions, Inbox& inbox);
+  void processMatchPlayer(const MatchReport& report,
+                          const PlayerMatchLine& line, TeamID managed_team_id,
+                          const std::string& opponent_name, bool competitive,
+                          Inbox& inbox);
+  void postCareerMilestones(const GameDateValue& date,
+                            const PlayerMatchLine& line, const Player& player,
+                            const std::string& name,
+                            const std::string& opponent_name, Inbox& inbox);
+  void postBreakout(const GameDateValue& date, const PlayerMatchLine& line,
+                    const Player& player, const std::string& name,
+                    Inbox& inbox);
+  void postTeamMatchStories(const MatchReport& report, TeamID managed_team_id,
+                            bool home, const std::string& recent_form,
+                            TeamID opponent_id,
+                            const std::string& opponent_name, Inbox& inbox);
 
   std::shared_ptr<GameData> gamedata;
   StoryState state;
@@ -343,4 +389,5 @@ class StoryEngine
   /** Transient cache of career totals, advanced from match reports. */
   std::unordered_map<PlayerID, CareerTotals> career_cache;
   mutable std::unordered_map<TeamID, std::optional<TeamID>> rivals;
+  mutable std::mutex rivals_mutex;
 };

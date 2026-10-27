@@ -117,12 +117,11 @@ void PlayerCompareScene::setSlot(std::size_t index, PlayerID id)
   slot.own = view->own;
   slot.name = p.getName();
   const auto team = controller.getTeamById(p.getTeamId());
-  slot.subtitle =
-      std::format("{}  \u00B7  {}  \u00B7  {}",
-                  RoleUtils::shortName(p.getRole()), p.getAge(),
-                  team && p.getTeamId() != FREE_AGENTS_TEAM_ID
-                      ? team->get().getName()
-                      : std::string(LOC("TRANSFER_FREE_AGENT_LABEL")));
+  slot.subtitle = std::format(
+      "{}  ·  {}  ·  {}", RoleUtils::shortName(p.getRole()), p.getAge(),
+      team && p.getTeamId() != FREE_AGENTS_TEAM_ID
+          ? team->get().getName()
+          : std::string(LOC("TRANSFER_FREE_AGENT_LABEL")));
   slot.knowledge = view->own
                        ? std::string(LOC("COMPARE_OWN_PLAYER"))
                        : formatLocalized("COMPARE_KNOWLEDGE",
@@ -189,7 +188,7 @@ void PlayerCompareScene::rebuildAxes()
 void PlayerCompareScene::buildCandidates()
 {
   candidates.clear();
-  filtered_query.assign(1, '\001');  // Forces the filter to run.
+  filtered_query.assign(1, char{1});  // Forces the filter to run.
   GameController& controller = guiView->getController();
   const auto data = controller.getGameData();
   if (!data) return;
@@ -214,9 +213,9 @@ void PlayerCompareScene::buildCandidates()
     candidate.id = id;
     candidate.label = player->get().getName();
     candidate.lower = PlayerView::toLower(candidate.label);
-    candidate.detail = std::format(
-        "{}  \u00B7  {}", RoleUtils::shortName(player->get().getRole()),
-        team ? team->get().getName() : std::string());
+    candidate.detail =
+        std::format("{}  ·  {}", RoleUtils::shortName(player->get().getRole()),
+                    team ? team->get().getName() : std::string());
     candidates.push_back(std::move(candidate));
   }
 }

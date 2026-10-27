@@ -141,6 +141,15 @@ class MatchAudio
   };
 
   void react(const MatchEvent& event);
+  void reactToKickOff();
+  void reactToHalfTime(const MatchEvent& event, float x);
+  void reactToFullTime(const MatchEvent& event, float x);
+  void reactToSave(bool away, float x);
+  void reactToWoodwork(bool home, float x);
+  void reactToCorner(bool home, float x);
+  void reactToFoul(bool away, float x);
+  void reactToCard(MatchEventType type, bool home, bool away);
+  void reactToPenalty(bool home, bool away, float x);
   void reactToGoal(const MatchEvent& event);
   void reactToMiss(float x);
   /** `replaying`: a moment already heard (seek back); history only. */

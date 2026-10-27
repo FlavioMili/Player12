@@ -15,6 +15,7 @@
 #include <memory>
 #include <stdexcept>
 #include <string>
+#include <system_error>
 #include <utility>
 
 #include "global/logger.h"
@@ -33,9 +34,9 @@ std::string environmentValue(const char* name)
 {
 #if defined(_WIN32)
   char* value = nullptr;
-  std::size_t size = 0;
-  if (_dupenv_s(&value, &size, name) != 0) return {};
-  const std::unique_ptr<char, decltype(&std::free)> owned(value, &std::free);
+  if (std::size_t size = 0; _dupenv_s(&value, &size, name) != 0) return {};
+  const auto free_value = [](char* allocation) { std::free(allocation); };
+  const std::unique_ptr<char, decltype(free_value)> owned(value, free_value);
   return owned ? std::string(owned.get()) : std::string{};
 #else
   const char* value = std::getenv(name);
@@ -59,14 +60,18 @@ std::filesystem::path ensureTestDirectory(std::filesystem::path path)
 {
   std::filesystem::create_directories(path);
   if (std::filesystem::is_symlink(std::filesystem::symlink_status(path)))
-    throw std::runtime_error("Test storage must not be a symbolic link");
+    throw std::filesystem::filesystem_error(
+        "Test storage must not be a symbolic link", path,
+        std::make_error_code(std::errc::operation_not_permitted));
 #if !defined(_WIN32)
   // A shared /tmp parent may already exist. Do not trust a directory planted
   // by another account, and keep process files private even with a loose umask.
   struct stat status{};
   if (lstat(path.c_str(), &status) != 0 || !S_ISDIR(status.st_mode) ||
       status.st_uid != geteuid())
-    throw std::runtime_error("Test storage must be owned by the current user");
+    throw std::filesystem::filesystem_error(
+        "Test storage must be owned by the current user", path,
+        std::make_error_code(std::errc::permission_denied));
   std::filesystem::permissions(path, std::filesystem::perms::owner_all,
                                std::filesystem::perm_options::replace);
 #endif
@@ -153,8 +158,9 @@ std::filesystem::path RuntimePaths::root()
 
   // A predictable directory in the system temporary area can be planted by
   // another user. Never store careers there when the preference path fails.
-  throw std::runtime_error(std::string("Cannot locate private game storage: ") +
-                           SDL_GetError());
+  throw std::filesystem::filesystem_error(
+      std::string("Cannot locate private game storage: ") + SDL_GetError(),
+      std::make_error_code(std::errc::io_error));
 }
 
 std::filesystem::path RuntimePaths::saveDirectory()

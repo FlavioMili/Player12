@@ -14,6 +14,35 @@
 #include "model/calendar.h"
 #include "model/transfer_windows.h"
 
+namespace
+{
+bool hasBigBid(const HolidayPreferences& rules,
+               const std::vector<HolidayOffer>& offers)
+{
+  if (!rules.stop_big_bid) return false;
+  for (const HolidayOffer& offer : offers)
+  {
+    if (offer.loan) continue;
+    const bool big =
+        rules.big_bid_threshold > 0
+            ? static_cast<std::int64_t>(offer.fee) >= rules.big_bid_threshold
+            : offer.key_player;
+    if (big) return true;
+  }
+  return false;
+}
+
+bool hasKeyPlayerInjury(const HolidayPreferences& rules,
+                        const std::vector<HolidayInjury>& injuries)
+{
+  if (!rules.stop_key_injury) return false;
+  for (const HolidayInjury& injury : injuries)
+    if (injury.key_player && injury.days >= Holiday::KEY_INJURY_DAYS)
+      return true;
+  return false;
+}
+}  // namespace
+
 namespace Holiday
 {
 GameDateValue windowEndDate(LeagueID league, const GameDateValue& today)
@@ -49,30 +78,17 @@ std::optional<GameDateValue> targetDate(
 std::optional<HolidayStop> checkStop(const HolidayPlan& plan,
                                      const HolidayDay& day)
 {
+  using enum HolidayStop;
   const HolidayPreferences& rules = plan.preferences;
-  if (day.dismissed) return HolidayStop::Dismissed;
-  if (rules.stop_sacking_warning && day.board_warning)
-    return HolidayStop::SackingWarning;
-  if (rules.stop_big_bid)
-    for (const HolidayOffer& offer : day.new_offers)
-    {
-      if (offer.loan) continue;
-      const bool big =
-          rules.big_bid_threshold > 0
-              ? static_cast<std::int64_t>(offer.fee) >= rules.big_bid_threshold
-              : offer.key_player;
-      if (big) return HolidayStop::BigBid;
-    }
-  if (rules.stop_key_injury)
-    for (const HolidayInjury& injury : day.new_injuries)
-      if (injury.key_player && injury.days >= KEY_INJURY_DAYS)
-        return HolidayStop::KeyPlayerInjured;
+  if (day.dismissed) return Dismissed;
+  if (rules.stop_sacking_warning && day.board_warning) return SackingWarning;
+  if (hasBigBid(rules, day.new_offers)) return BigBid;
+  if (hasKeyPlayerInjury(rules, day.new_injuries)) return KeyPlayerInjured;
   if (rules.stop_injury_crisis && day.injured > day.injured_at_start &&
       day.injured >= static_cast<int>(rules.injury_crisis_count))
-    return HolidayStop::InjuryCrisis;
+    return InjuryCrisis;
   using enum HolidayMode;
-  if (plan.mode == NextDecision && day.new_decision)
-    return HolidayStop::Decision;
+  if (plan.mode == NextDecision && day.new_decision) return Decision;
   return std::nullopt;
 }
 

@@ -19,6 +19,7 @@
 #include <optional>
 #include <random>
 #include <set>
+#include <stdexcept>
 #include <string>
 #include <unordered_map>
 #include <vector>
@@ -107,6 +108,20 @@ void settleCupTies(Calendar& calendar, const GameDateValue& date)
 }  // namespace
 
 // ---------------- Season calendar rules ----------------
+
+TEST(GameDateTest, ParsingRejectsMisplacedHyphensAndImpossibleDates)
+{
+  EXPECT_EQ(GameDateValue::fromString("2000-02-29").toString(), "2000-02-29");
+  EXPECT_EQ(GameDateValue::fromString("2025-12-31").toString(), "2025-12-31");
+  for (const char* invalid :
+       {"202--01-01", "2025-0--01", "2025-01-0-", "2025-02-29", "1900-02-29",
+        "2025-04-31", "2025-13-01", "2025-00-01", "2025-01-00", "2025-01-32",
+        "2025-1-01", "2025-01-01extra", "abcd-01-01"})
+  {
+    EXPECT_THROW(GameDateValue::fromString(invalid), std::invalid_argument)
+        << invalid;
+  }
+}
 
 TEST(SeasonCalendarTest, WeekdaysAndDayArithmetic)
 {

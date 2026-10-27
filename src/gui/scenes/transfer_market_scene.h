@@ -12,7 +12,6 @@
 
 #include <array>
 #include <cstdint>
-#include <functional>
 #include <optional>
 #include <string>
 #include <vector>
@@ -22,6 +21,7 @@
 #include "gui/scenes/offer_negotiation_dialog.h"
 #include "gui/scenes/transfer_market_scene_tuning.h"
 #include "gui/view_models/player_view.h"
+#include "gui/widgets/theme.h"
 #include "model/transfer_negotiation.h"
 
 struct ScoutedPlayerRow;
@@ -270,6 +270,17 @@ class TransferMarketScene : public ManagementScene
     std::string body;
   };
 
+  struct OfferFigures
+  {
+    int64_t upfront = 0;
+    int64_t agent = 0;
+    int64_t signing = 0;
+    std::vector<uint32_t> instalments;
+    int64_t add_ons = 0;
+    int64_t expected_wage = 0;
+    bool over_budget = false;
+  };
+
   void refreshData();
   void openPendingDeal();
   void refreshNeeds();
@@ -284,6 +295,9 @@ class TransferMarketScene : public ManagementScene
    * plus every free agent (no fee) the filters allow. */
   std::vector<TargetRow> searchRows(ScoutSearchFilter search,
                                     bool affordable) const;
+  void appendSearchResults(std::vector<TargetRow>& rows,
+                           const ScoutSearchFilter& search,
+                           bool exclude_free_agents) const;
   void refreshShortlist();
   void refreshSquad();
   void refreshOffers();
@@ -298,21 +312,49 @@ class TransferMarketScene : public ManagementScene
   void renderSearchTab();
   void renderRecommendedTab();
   void renderFilters();
+  void renderRoleFilter(bool& changed);
+  void renderLeagueFilter(bool& changed);
+  void renderAvailabilityFilter(bool& changed);
+  void renderContractFilter();
+  void renderAgeAndOverallFilters(bool& changed);
+  void renderValueFilter(bool& changed);
+  void renderBudgetFilters(bool& changed);
   void renderTargetTable(const char* id, const std::vector<TargetRow>& rows,
                          std::vector<size_t>& visible, SortState& sort);
+  void renderTargetHeader(const std::vector<TargetRow>& rows,
+                          std::vector<size_t>& visible, SortState& sort);
+  bool renderTargetRows(const std::vector<TargetRow>& rows,
+                        std::vector<size_t>& visible, uint32_t mask);
+  bool renderTargetRow(const TargetRow& row, uint32_t mask);
   void renderTargetActions(const TargetRow& row);
+  void renderReleaseClauseAction(const TargetRow& row,
+                                 ImGuiSelectableFlags deal_flags);
   /** Values of the columns the last target table hid for lack of width. */
   void renderHiddenTargetValues(const TargetRow& row) const;
   void renderOffersTab();
+  bool renderIncomingOffers();
+  void renderIncomingOfferRow(const OfferRow& row, uint32_t mask,
+                              const Theme::Palette& palette,
+                              const char* negotiate, const char* view_talks);
+  void renderTalksTable();
   void renderLoansTab();
+  bool renderLoanRow(const LoanRow& row);
   void renderSquadTab();
+  bool renderSquadRow(const SquadRow& row);
   void renderHistoryTab();
+  void renderHistoryRow(const HistoryRow& row, int line, const ImVec4& muted,
+                        const ImVec4& accent, const ImVec4& text);
 
   void openOfferDialog(const TargetRow& row);
   void openContractDialog(PlayerID player_id);
   void openLoanDialog(const TargetRow& row);
   void renderOfferDialog();
+  void renderOfferTermsColumn(bool accepted);
+  void renderOfferSummaryColumn(const OfferFigures& figures, bool accepted);
+  void renderOfferBudgetSuggestion(const OfferFigures& figures, bool accepted);
   void renderLoanDialog();
+  void renderLoanTermsColumn();
+  void renderLoanSummaryColumn(int64_t weekly, int weeks);
   void renderListingDialog();
   void renderReleaseDialog();
   void renderReasons(const std::vector<TransferNegotiation::Reason>& reasons,
@@ -320,8 +362,32 @@ class TransferMarketScene : public ManagementScene
   void renderClubResponse(const TransferNegotiation::ClubResponse& response,
                           const std::string& detail) const;
   /** Terms and summary side by side on wide screens, stacked otherwise. */
-  void renderDialogColumns(const std::function<void()>& terms,
-                           const std::function<void()>& summary) const;
+  template <typename TermsRenderer, typename SummaryRenderer>
+  void renderDialogColumns(TermsRenderer&& terms,
+                           SummaryRenderer&& summary) const
+  {
+    // Terms on the left, a summary card on the right; stacked when narrow.
+    if (wideDialogs() && ImGui::BeginTable("##dialog_columns", 2,
+                                           ImGuiTableFlags_SizingStretchProp))
+    {
+      ImGui::TableSetupColumn(
+          "##terms", ImGuiTableColumnFlags_WidthStretch,
+          TransferMarketSceneTuning::Layout::TERMS_COLUMN_WEIGHT);
+      ImGui::TableSetupColumn(
+          "##summary", ImGuiTableColumnFlags_WidthStretch,
+          TransferMarketSceneTuning::Layout::SUMMARY_COLUMN_WEIGHT);
+      ImGui::TableNextRow();
+      ImGui::TableNextColumn();
+      terms();
+      ImGui::TableNextColumn();
+      summary();
+      ImGui::EndTable();
+      return;
+    }
+    terms();
+    ImGui::Dummy(ImVec2(0.0f, Theme::Space::S * Theme::scale()));
+    summary();
+  }
   [[nodiscard]] bool wideDialogs() const;
   float dialogWidth() const;
 
