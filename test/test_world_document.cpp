@@ -19,6 +19,7 @@
 #include "database/world/world_io.h"
 #include "database/world/world_schema.h"
 #include "database/world/world_validate.h"
+#include "global/runtime_paths.h"
 
 using json = nlohmann::json;
 namespace fs = std::filesystem;
@@ -87,7 +88,8 @@ World::Document bigWorld(int players)
 
 fs::path scratchFile(const std::string& name)
 {
-  const fs::path dir = fs::temp_directory_path() / "fm_world_document_tests";
+  // The test process's own runtime folder, not the shared temporary one.
+  const fs::path dir = RuntimePaths::root() / "fm_world_document_tests";
   fs::create_directories(dir);
   return dir / name;
 }

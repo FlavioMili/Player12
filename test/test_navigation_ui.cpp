@@ -559,9 +559,11 @@ TEST(NavigationUiTest, WorldChoiceClosesWithEscapeAndDropsOpenTheSlotPicker)
 
   // A world file dropped on the menu asks for the new career's slot first.
   const std::string path = "dropped_world.fmdb";
+  SDL_DropEvent dropped{};
+  dropped.type = SDL_EVENT_DROP_FILE;
+  dropped.data = path.c_str();
   SDL_Event drop{};
-  drop.type = SDL_EVENT_DROP_FILE;
-  drop.drop.data = path.c_str();
+  drop.drop = dropped;
   menu->handleEvent(drop);
   frames(view, 2);
   EXPECT_TRUE(Bridge::dropPending(*menu));

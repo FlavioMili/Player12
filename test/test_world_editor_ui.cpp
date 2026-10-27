@@ -263,9 +263,11 @@ TEST(WorldEditorUI, DroppedFilesOpenOrAsk)
   const auto path = RuntimePaths::root() / "dropped-world.fmdb";
   ASSERT_TRUE(World::writeFile(World::Document::empty("Dropped"), path));
   const std::string utf8 = World::pathToUtf8(path);
+  SDL_DropEvent dropped{};
+  dropped.type = SDL_EVENT_DROP_FILE;
+  dropped.data = utf8.c_str();
   SDL_Event drop{};
-  drop.type = SDL_EVENT_DROP_FILE;
-  drop.drop.data = utf8.c_str();
+  drop.drop = dropped;
   WorldEditorTestAccess::scene(*view).handleEvent(drop);
   EXPECT_EQ(state.doc.manifest().name, "Dropped");
   state.setPage(State::Page::Country);

@@ -1353,7 +1353,9 @@ void NationalTeams::drawFinals(Finals& entry, const GameDateValue& today,
   else
   {
     const size_t group_count = qualified.size() / 4;
-    std::mt19937 rng(
+    // WorldRng: the same draw on every platform (std::ranges::shuffle is
+    // implementation-defined).
+    WorldRng rng(
         Competitions::mixSeed(entry.year, std::to_underlying(entry.competition),
                               GROUP_DRAW_SALT + entry.confederation - 1U));
     entry.groups.assign(group_count, Group{});
@@ -1368,7 +1370,7 @@ void NationalTeams::drawFinals(Finals& entry, const GameDateValue& today,
           qualified.begin() + static_cast<std::ptrdiff_t>(pot * group_count),
           qualified.begin() +
               static_cast<std::ptrdiff_t>((pot + 1) * group_count));
-      std::ranges::shuffle(members, rng);
+      rng.shuffle(std::span(members));
       for (size_t g = 0; g < group_count; ++g)
         entry.groups[g].members.push_back(members[g]);
     }

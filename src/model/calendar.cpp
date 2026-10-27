@@ -1066,6 +1066,9 @@ void Calendar::generateSeasonFixtures(const class GameData& gamedata,
   {
     const size_t half_rounds = plan.first_half.size();
     const size_t rounds = plan.rounds.size();
+    // A league without rounds (one club in a custom world) has nothing to
+    // schedule.
+    if (half_rounds == 0) continue;
     std::unordered_map<TeamID, int> last_played;
     const auto lastPlayed = [&last_played](TeamID team)
     {
