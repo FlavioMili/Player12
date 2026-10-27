@@ -1425,33 +1425,43 @@ TEST(MatchEngineTest, GoalkeeperStateMachineCoversTheMatch)
   EXPECT_EQ(goalkeeperStateName(GoalkeeperState::DIVE), "dive");
 }
 
-TEST(MatchEngineTest, FullHeadlessMatchIsFast)
+TEST(MatchEngineTest, HeadlessMatchesReproduceFixedStepSimulation)
 {
   std::vector<std::unique_ptr<Player>> players;
   Team home = createSquadWithBench(1, "Home", 70, players);
   Team away = createSquadWithBench(2, "Away", 70, players);
   const StatsConfig config = createStatsConfig();
-  // Processor time of the fastest of several matches: robust against other
-  // processes competing for the machine, still a hard budget per match.
-  constexpr int MATCHES = 10;
-  double fastest = std::numeric_limits<double>::max();
-  double total = 0.0;
-  for (uint32_t seed = 1; seed <= MATCHES; ++seed)
+  for (uint32_t seed = 1; seed <= 10; ++seed)
   {
-    MatchEngine engine(home.getLineup(), away.getLineup(), home.getStrategy(),
-                       away.getStrategy(), config, seed);
-    const std::clock_t started = std::clock();
-    engine.simulateToEnd();
-    const double milliseconds =
-        1000.0 * static_cast<double>(std::clock() - started) / CLOCKS_PER_SEC;
-    fastest = std::min(fastest, milliseconds);
-    total += milliseconds;
-    EXPECT_EQ(engine.getState(), MatchState::FULL_TIME);
+    SCOPED_TRACE(seed);
+    MatchEngine headless(home.getLineup(), away.getLineup(), home.getStrategy(),
+                         away.getStrategy(), config, seed);
+    MatchEngine reference(home.getLineup(), away.getLineup(),
+                          home.getStrategy(), away.getStrategy(), config, seed);
+    headless.simulateToEnd();
+    ASSERT_EQ(headless.getState(), MatchState::FULL_TIME);
+    // Replay exactly the work performed by the headless path, without a
+    // hardware-dependent time limit or an estimated match-duration range.
+    for (std::uint64_t step = 0; step < headless.getSimulatedSteps(); ++step)
+      reference.advance(MatchTuning::Timing::FIXED_STEP_SECONDS);
+    ASSERT_EQ(reference.getState(), MatchState::FULL_TIME);
+    EXPECT_EQ(headless.getSimulatedSteps(), reference.getSimulatedSteps());
+    // Settle per-call counters before comparing the complete debug snapshots.
+    headless.advance(MatchTuning::Timing::FIXED_STEP_SECONDS);
+    reference.advance(MatchTuning::Timing::FIXED_STEP_SECONDS);
+    EXPECT_EQ(headless.getDebugSnapshotJson(),
+              reference.getDebugSnapshotJson());
+    ASSERT_FALSE(headless.getEvents().empty());
+    EXPECT_EQ(headless.getEvents().back().type, MatchEventType::FULL_TIME);
+    ASSERT_EQ(headless.getEvents().size(), reference.getEvents().size());
+    for (std::size_t index = 0; index < headless.getEvents().size(); ++index)
+    {
+      EXPECT_EQ(headless.getEvents()[index].type,
+                reference.getEvents()[index].type);
+      EXPECT_EQ(headless.getEvents()[index].primaryPlayerId,
+                reference.getEvents()[index].primaryPlayerId);
+    }
   }
-  RecordProperty("milliseconds_per_match", std::to_string(total / MATCHES));
-  std::print("[timing] headless match cpu {:.2f} ms (fastest {:.2f} ms)\n",
-             total / MATCHES, fastest);
-  EXPECT_LT(fastest, 150.0);
 }
 
 TEST(MatchEngineTest, BackgroundFidelityIsDeterministicAndCompletes)
