@@ -133,6 +133,7 @@ Performance benchmarks</h1>
 <div class="line">./build/profile/benchmarks/db_benchmarks</div>
 <div class="line">./build/profile/benchmarks/match_benchmarks</div>
 </div><!-- fragment --><p>The <code>profile</code> preset enables machine-local native optimizations; use comparable builds and hardware when reporting results. Benchmark target definitions are in <a href="../../benchmarks/CMakeLists.txt">benchmarks/CMakeLists.txt</a>.</p>
+<p>The ten-seed headless match unit test compares each completed match with the same seed advanced one fixed step at a time. It checks identical simulation-step counts, final debug snapshots and event types/player IDs, without an elapsed-time threshold or estimated match-duration range. Use the opt-in match benchmarks on comparable builds and hardware to measure performance changes.</p>
 <h1><a class="anchor" id="autotoc_md88"></a>
 Historical calibration failures</h1>
 <p>Verification on 2026-10-07 reproduced these failures with the original engine from revision <code>8b0aafb</code>, before the documentation/context-override changes:</p>
