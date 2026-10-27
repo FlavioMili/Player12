@@ -45,19 +45,23 @@ function(fm_discover target)
       TIMEOUT ${timeout})
 endfunction()
 
+# Default-lane timeout of a shard (cold checkpoints are built inside it).
+set(FM_TEST_SHARD_TIMEOUT 1200)
+
 # Fuzz-lane tests listed in test_budgets.txt: {lane, timeout, name}.
 set(FM_TEST_FUZZ_ENTRIES)
 file(STRINGS "${CMAKE_CURRENT_SOURCE_DIR}/test_budgets.txt" _fm_budget_lines)
 foreach(_line IN LISTS _fm_budget_lines)
   if(_line MATCHES "^fuzz[ \t]+([0-9]+)[ \t]+(.+)$")
     list(APPEND FM_TEST_FUZZ_ENTRIES "${CMAKE_MATCH_1}|${CMAKE_MATCH_2}")
+  elseif(FM_ENABLE_SANITIZERS AND _line MATCHES "^heavy[ \t]+(.+)$")
+    # Sanitizer builds move the heavy cases out of the shards, like fuzz ones.
+    list(APPEND FM_TEST_FUZZ_ENTRIES "${FM_TEST_SHARD_TIMEOUT}|${CMAKE_MATCH_1}|heavy")
   endif()
 endforeach()
 
 # Opt-in: one CTest entry per GoogleTest case (for debugging a single test).
 option(FM_TEST_PER_CASE "Register every GoogleTest case as its own CTest test" OFF)
-# Default-lane timeout of a shard (cold checkpoints are built inside it).
-set(FM_TEST_SHARD_TIMEOUT 1200)
 
 # fm_register(<target> [PREFIX <p>] LABELS <l...> SHARDS <n> [FUZZ_HOME])
 # The default lanes run the executable as <n> processes, each one a shard of
@@ -77,6 +81,11 @@ function(fm_register target)
     string(REPLACE "|" ";" parts "${entry}")
     list(GET parts 0 fuzz_timeout)
     list(GET parts 1 full_name)
+    set(lane fuzz)
+    list(LENGTH parts part_count)
+    if(part_count GREATER 2)
+      list(GET parts 2 lane)
+    endif()
     if(ARG_PREFIX)
       if(NOT full_name MATCHES "^${ARG_PREFIX}")
         continue()
@@ -95,7 +104,7 @@ function(fm_register target)
       COMMAND ${target} "--gtest_filter=${case_name}")
     set_tests_properties("${full_name}" PROPERTIES
       ENVIRONMENT "${FM_TEST_ENVIRONMENT}"
-      LABELS "fuzz;slow;${ARG_LABELS}"
+      LABELS "${lane};slow;${ARG_LABELS}"
       TIMEOUT ${timeout})
   endforeach()
   set(filter "*")

@@ -35,13 +35,13 @@ fuzz 140 core::MatchPrefetchTest.PrefetchedMatchdayEqualsFreshSimulation
 fuzz 130 core::WorldPeoples.FantasyWorldPlaysASeasonWithItsOwnPeoplesAndCups
 fuzz 130 core::FinanceWorldTest.LedgersReconcileThroughMonthsOfPlayAndReload
 fuzz 130 MatchEngineTest.MatchContextMovesGoalsCardsAndHomeAdvantage
-fuzz 130 core::TrainingWorldTest.ScheduleShapesConditionFamiliarityAndDevelopment
+fuzz 300 core::TrainingWorldTest.ScheduleShapesConditionFamiliarityAndDevelopment
 fuzz 120 core::MatchPrefetchTest.Probe2
 fuzz 120 core::TransferMarketTest.SummerMarketIsMostlyFreeAndLoanMoves
 fuzz 110 scouting_ui::ScoutingUiTest.NewReportsAreBadgedUntilTheScoutPageIsOpened
 fuzz 110 core::SeasonEndFlow.ATitleSeasonEndsWithItsNewsSummaryAndArchive
 fuzz 110 core::Preseason.TourFeeCampAndRoundTrip
-fuzz 110 core::MatchEngineCalibration.LeagueSeasonProducesARealisticTable
+fuzz 300 core::MatchEngineCalibration.LeagueSeasonProducesARealisticTable
 fuzz 110 core::ScoutingTest.CoverageAssignmentFollowsTheRecruitmentFocus
 fuzz 100 core::StaffWorldTest.HiringReleasingAndPayrollUseTheLedger
 fuzz 100 core::TransferMarketTest.TakingChargeLeavesListingsToTheManager
@@ -62,3 +62,54 @@ fuzz 60 core::ManagerCareerFlow.ResignedManagerLosesControlAndTimeRuns
 fuzz 60 inbox_ui::InboxUiTest.FiltersSurviveASceneChangeAndAReload
 fuzz 60 core::NationalTeamsTest.CycleRunsQualifiersAndFinals
 fuzz 60 MatchEngineTest.AggregateScoreDecidesWhetherExtraTimeIsPlayed
+
+# Heavy in sanitizer builds (ASan/UBSan run these many times slower): season
+# simulations (over 1.5 s in Release) and tests that check their own run time.
+# Sanitizer builds leave them out of the default lanes and register them one
+# by one under `heavy;slow`; other builds run them in the shards as usual.
+heavy core::CombinePerformance.FifteenThousandPlayersUnderOneSecond
+heavy core::ContinentalTest.ExtraTimeResultCountsForTheManager
+heavy core::DelegationTest.CareersFromBeforeTheChecklistSkipIt
+heavy core::EconomyCalibrationTest.MedianClubsBreakEvenInEveryLeague
+heavy core::Holiday.AssistantRunsTheClubUntilADate
+heavy core::Holiday.DayLimitAndOpenEndedHolidays
+heavy core::Holiday.NextMatchStopsOnTheFixtureDay
+heavy core::Holiday.NoSackingJustBelowTheDismissalThresholds
+heavy core::Holiday.SackingEndsTheHoliday
+heavy core::KnockoutPipelineTest.CupTiesArePlayedToAWinnerByTheEngine
+heavy core::ManagerCareerFlow.PoachingPaysTheFormerClub
+heavy core::ManagerCareerFlow.SackedManagerIsPaidOffAndFindsANewClub
+heavy core::MatchInsightsTest.TrackingCostIsSmall
+heavy core::MatchSchedulerTest.BatchResultsDoNotDependOnTheThreadCount
+heavy core::MatchSchedulerTest.ContinueReportsMatchdayProgress
+heavy core::MatchSchedulerTest.ControllerShutsDownCleanlyAfterParallelMatchdays
+heavy core::MatchSchedulerTest.ParallelMatchdaysMatchSequentialMatchdays
+heavy core::MatchSchedulerTest.SchedulerKeepsTheFixtureVenue
+heavy core::MedicalDeskTest.StaffWarnAboutAnInjuredStarterOnceAWeek
+heavy core::MedicalSupportersPersistenceTest.FlagsLoadLogAndMoodSurviveAReload
+heavy core::ReserveSquadTest.TwoSeasonsKeepComputerSeniorSquadsFull
+heavy core::SaveSafety.AutosaveFrequencies
+heavy core::SaveSafety.FailedNewGameKeepsTheOldCareer
+heavy core::SaveSafety.InterruptedSaveKeepsThePreviousSave
+heavy core::SaveSafety.LegacyCareerUpgradesAndKeepsAPreUpgradeCopy
+heavy core::SaveSafety.ProcessKilledMidSaveKeepsThePreviousSave
+heavy core::SaveSafety.SaveAndLoadTimesAtStandardWorldSize
+heavy core::SaveSafety.UnsavedProgressNeverReachesTheSlot
+heavy core::SaveSafety.VersionNineCareerUpgradesAndRecordsTheCurrentVersions
+heavy core::SaveWrites.CareerStateRoundTripsExactly
+heavy core::ScoutingTest.AffordabilityUsesTheCashAwareBudget
+heavy core::ScoutingTest.ContinentAssignmentsCoverEveryCountryOnIt
+heavy core::ScoutingTest.FacingAnOpponentTeachesAboutHisPlayers
+heavy core::ScoutingTest.PlayerAssignmentCostsMoneyAndFilesAGradedReport
+heavy core::ScoutingTest.StateSurvivesSaveAndLoad
+heavy core::SeasonRolloverTest.SeasonEndRecordsHistoryPromotesAndRegenerates
+heavy core::StaffWorldTest.ContractsRunOutAndAiClubsRefill
+heavy core::StandingsRaceTest.FullSizeLeagueRunInStaysFast
+heavy core::TacticsTest.TightlyMarkedPlayerGetsFewerTouches
+heavy core::WorldDocument.LargeWorldIsFastAndCompact
+heavy core::WorldPeoples.AnEditedCupStartsACareerWithItsOwnFormat
+heavy core::WorldRuntime.CustomWorldPlaysAWholeSeason
+heavy core::WorldSimulationTest.AYearOfDevelopmentInjuriesYouthFinanceAndNews
+heavy core::WorldSimulationTest.SameSeedSameHistory
+heavy core::YouthAcademyTest.TwoSeasonsKeepSeniorSquadsAndU18sApart
+heavy core::YouthPerformanceTest.AYearOfAcademiesCostsLittle

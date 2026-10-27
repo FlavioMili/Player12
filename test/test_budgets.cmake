@@ -2,12 +2,15 @@
 # CTest, see test/CMakeLists.txt). One line per test:
 #   scenario <timeout-seconds> <test name>
 #   fuzz <timeout-seconds> <test name>
+#   heavy <test name>   (sanitizer builds; handled in test/CMakeLists.txt)
 # Blank lines and lines starting with '#' are ignored; names of tests that do
 # not exist are ignored too. Only add_test/set_tests_properties exist at this
 # stage, so the area labels are derived from the name prefix.
 file(STRINGS "${FM_BUDGET_FILE}" fm_budget_lines)
 foreach(line IN LISTS fm_budget_lines)
-  if(line MATCHES "^[ \t]*(#.*)?$")
+  # `heavy <name>` lines are applied when the shards are registered
+  # (sanitizer builds only, see test/CMakeLists.txt).
+  if(line MATCHES "^[ \t]*(#.*)?$" OR line MATCHES "^heavy[ \t]")
     continue()
   endif()
   if(NOT line MATCHES "^(scenario|fuzz)[ \t]+([0-9]+)[ \t]+(.+)$")

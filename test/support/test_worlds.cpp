@@ -32,6 +32,9 @@
 #include <windows.h>
 #elif defined(__APPLE__)
 #include <mach-o/dyld.h>
+#include <signal.h>
+#include <sys/types.h>
+#include <unistd.h>
 #else
 #include <signal.h>
 #include <sys/types.h>
