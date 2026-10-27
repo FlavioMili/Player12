@@ -118,7 +118,7 @@ void PlayerCompareScene::setSlot(std::size_t index, PlayerID id)
   slot.name = p.getName();
   const auto team = controller.getTeamById(p.getTeamId());
   slot.subtitle =
-      std::format("{}  \u00B7  {}  \u00B7  {}",
+      std::format("{}  \u{B7}  {}  \u{B7}  {}",
                   RoleUtils::shortName(p.getRole()), p.getAge(),
                   team && p.getTeamId() != FREE_AGENTS_TEAM_ID
                       ? team->get().getName()
@@ -189,7 +189,7 @@ void PlayerCompareScene::rebuildAxes()
 void PlayerCompareScene::buildCandidates()
 {
   candidates.clear();
-  filtered_query.assign(1, '\001');  // Forces the filter to run.
+  filtered_query.assign(1, '\o{1}');  // Forces the filter to run.
   GameController& controller = guiView->getController();
   const auto data = controller.getGameData();
   if (!data) return;
@@ -215,7 +215,7 @@ void PlayerCompareScene::buildCandidates()
     candidate.label = player->get().getName();
     candidate.lower = PlayerView::toLower(candidate.label);
     candidate.detail = std::format(
-        "{}  \u00B7  {}", RoleUtils::shortName(player->get().getRole()),
+        "{}  \u{B7}  {}", RoleUtils::shortName(player->get().getRole()),
         team ? team->get().getName() : std::string());
     candidates.push_back(std::move(candidate));
   }

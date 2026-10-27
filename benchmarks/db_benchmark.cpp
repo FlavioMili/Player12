@@ -15,6 +15,7 @@
 #include <memory>
 #include <string>
 
+#include "benchmark_environment.h"
 #include "database/database_connection.h"
 #include "database/gamedata.h"
 #include "database/repositories/game_state_repository.h"
@@ -188,4 +189,7 @@ BENCHMARK_REGISTER_F(DatabaseFixture, BM_GetPlayersForTeam)
     ->Range(8192, 16384)
     ->Unit(benchmark::kMicrosecond);
 
-BENCHMARK_MAIN();
+int main(int argc, char** argv)
+{
+  return BenchmarkEnvironment::run(argc, argv);
+}

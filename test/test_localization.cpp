@@ -407,6 +407,9 @@ TEST_F(LanguageFormatTest, MessageMoneyAndKeysAreShownInTheReadersLanguage)
   // Messages saved before keep their text; a lone "@" is not a key.
   EXPECT_EQ(alone("€1.25M"), "€1.25M");
   EXPECT_EQ(alone("-€2.0M and €350K"), "-€2.0M and €350K");
+  EXPECT_EQ(alone("€text and €"), "€text and €");
+  EXPECT_EQ(alone("€text; €1000; €1.25M; €2000000"),
+            "€text; €1.0K; €1.25M; €2.00M");
   EXPECT_EQ(alone("@"), "@");
   EXPECT_EQ(alone("Rossi @ Roma, @UNKNOWN_KEY_X"),
             "Rossi @ Roma, @UNKNOWN_KEY_X");

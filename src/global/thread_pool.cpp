@@ -25,7 +25,11 @@
 #elif defined(_WIN32)
 #define WIN32_LEAN_AND_MEAN
 #define NOMINMAX
+#ifdef _MSC_VER
+#include <Windows.h>
+#else
 #include <windows.h>
+#endif
 #endif
 
 namespace
@@ -148,15 +152,21 @@ void ThreadPool::parallelFor(std::size_t count,
 unsigned ThreadPool::defaultThreadCount()
 {
 #if defined(_WIN32)
-  char* value = nullptr;
-  std::size_t size = 0;
-  if (_dupenv_s(&value, &size, "FM_SIM_THREADS") != 0) value = nullptr;
-  const std::unique_ptr<char, decltype(&std::free)> owned(value, &std::free);
-  const char* configured = owned.get();
-#else
-  const char* configured = std::getenv("FM_SIM_THREADS");
+  char* environment = nullptr;
+  if (std::size_t size = 0;
+      _dupenv_s(&environment, &size, "FM_SIM_THREADS") != 0)
+    environment = nullptr;
+  const auto free_value = [](char* allocation) { std::free(allocation); };
+  const std::unique_ptr<char, decltype(free_value)> owned(environment,
+                                                          free_value);
 #endif
-  if (configured != nullptr)
+  if (const char* configured =
+#if defined(_WIN32)
+          owned.get();
+#else
+          std::getenv("FM_SIM_THREADS");
+#endif
+      configured != nullptr)
   {
     unsigned value = 0;
     const std::string_view text(configured);

@@ -242,6 +242,55 @@ std::vector<int> spreadPick(const std::vector<int>& candidates, size_t count)
   }
   return picked;
 }
+/** Lower divisions use spare midweeks, late weekends, then shared weeks. */
+std::vector<int> lowerDivisionPool(const std::vector<int>& midweeks, int last,
+                                   size_t needed)
+{
+  std::vector<int> pool = midweeks;
+  const std::vector<int> top_flight =
+      spreadPick(midweeks, std::min(needed, midweeks.size()));
+  std::erase_if(pool, [&top_flight](int day)
+                { return std::ranges::contains(top_flight, day); });
+  constexpr int LATE_WEEKENDS = 2;
+  for (int week = 1; week <= LATE_WEEKENDS; ++week)
+  {
+    if (pool.size() >= needed)
+    {
+      break;
+    }
+    const int saturday = last + (7 * week);
+    if (!SeasonCalendar::isBlackout(fromDayNumber(saturday)) &&
+        !SeasonCalendar::isBlackout(fromDayNumber(saturday + 1)))
+    {
+      pool.push_back(saturday);
+    }
+  }
+  if (pool.size() < needed)
+  {
+    const std::vector<int> shared =
+        spreadPick(top_flight, needed - pool.size());
+    pool.insert(pool.end(), shared.begin(), shared.end());
+  }
+  std::ranges::sort(pool);
+  return pool;
+}
+
+/** Extra league dates avoid cup and continental midweeks. */
+std::vector<int> extraLeagueDates(uint16_t season_year, int first, int last)
+{
+  const std::vector<int> cup_days = cupMidweekCandidates(season_year);
+  std::vector<int> midweeks;
+  for (int day = first + 4; day < last; day += 7)
+  {
+    if (!SeasonCalendar::isBlackout(fromDayNumber(day)) &&
+        !std::ranges::contains(cup_days, day) && !inContinentalWeek(day))
+    {
+      midweeks.push_back(day);
+    }
+  }
+  return midweeks;
+}
+
 }  // namespace
 
 // ---------------- SeasonCalendar ----------------
@@ -391,48 +440,22 @@ std::vector<GameDateValue> SeasonCalendar::leagueRoundDates(
   }
   else
   {
-    const std::vector<int> cup_days = cupMidweekCandidates(season_year);
-    std::vector<int> midweeks;
-    for (int day = first + 4; day < last; day += 7)
-    {
-      if (!isBlackout(fromDayNumber(day)) &&
-          !std::ranges::contains(cup_days, day) && !inContinentalWeek(day))
-        midweeks.push_back(day);
-    }
+    const std::vector<int> midweeks =
+        extraLeagueDates(season_year, first, last);
     const size_t needed = rounds - weekends.size();
     picked = weekends;
-    std::vector<int> pool = midweeks;
-    if (variant > 0)
-    {
-      // Weeks the top divisions leave free first, then up to two weekends
-      // after the top flight has finished; shared weeks only as a last
-      // resort.
-      constexpr int LATE_WEEKENDS = 2;
-      const std::vector<int> top_flight =
-          spreadPick(midweeks, std::min(needed, midweeks.size()));
-      std::erase_if(pool, [&top_flight](int day)
-                    { return std::ranges::contains(top_flight, day); });
-      for (int week = 1; week <= LATE_WEEKENDS && pool.size() < needed; ++week)
-      {
-        const int saturday = last + 7 * week;
-        if (!isBlackout(fromDayNumber(saturday)) &&
-            !isBlackout(fromDayNumber(saturday + 1)))
-          pool.push_back(saturday);
-      }
-      if (pool.size() < needed)
-      {
-        const std::vector<int> shared =
-            spreadPick(top_flight, needed - pool.size());
-        pool.insert(pool.end(), shared.begin(), shared.end());
-      }
-      std::ranges::sort(pool);
-    }
+    const std::vector<int> pool =
+        variant > 0 ? lowerDivisionPool(midweeks, last, needed) : midweeks;
     const std::vector<int> extra =
         spreadPick(pool, std::min(needed, pool.size()));
     picked.insert(picked.end(), extra.begin(), extra.end());
     // Oversized leagues spill into June, skipping the cup final weekend.
-    for (int day = last + 14; picked.size() < rounds; day += 7)
+    int day = last + 14;
+    while (picked.size() < rounds)
+    {
       if (!std::ranges::contains(picked, day)) picked.push_back(day);
+      day += 7;
+    }
     std::ranges::sort(picked);
   }
 
@@ -448,8 +471,12 @@ std::vector<GameDateValue> SeasonCalendar::friendlyDates(
   std::vector<GameDateValue> dates;
   const int latest = toDayNumber(leagueStart(seasonStartYear(from))) - 7;
   for (int day = firstWeekdayOnOrAfter(toDayNumber(from) + 7, SATURDAY);
-       day <= latest && dates.size() < count; day += 7)
+       day <= latest; day += 7)
   {
+    if (dates.size() >= count)
+    {
+      break;
+    }
     dates.push_back(fromDayNumber(day));
   }
   return dates;
@@ -539,6 +566,30 @@ std::optional<uint16_t> parseKickoff(std::string_view text)
   return minutesOf(hour, minute);
 }
 
+/** Valid kickoff times of one day slot, retaining duplicates and sorting. */
+std::vector<uint16_t> slotKickoffs(const json& item)
+{
+  std::vector<uint16_t> times;
+  if (const auto kickoffs = item.find("kickoffs");
+      kickoffs != item.end() && kickoffs->is_array())
+  {
+    for (const json& time : *kickoffs)
+    {
+      if (!time.is_string())
+      {
+        continue;
+      }
+      if (const auto minutes = parseKickoff(time.get<std::string>());
+          minutes.has_value())
+      {
+        times.push_back(*minutes);
+      }
+    }
+  }
+  std::ranges::sort(times);
+  return times;
+}
+
 std::vector<DaySlot> parseSlots(const json& list,
                                 std::span<const uint8_t> allowed)
 {
@@ -561,16 +612,7 @@ std::vector<DaySlot> parseSlots(const json& list,
     slot.weekday = *weekday;
     slot.weight =
         static_cast<uint16_t>(std::min(matches->get<uint64_t>(), MAX_WEIGHT));
-    if (const auto kickoffs = item.find("kickoffs");
-        kickoffs != item.end() && kickoffs->is_array())
-    {
-      for (const json& time : *kickoffs)
-        if (time.is_string())
-          if (const auto minutes = parseKickoff(time.get<std::string>());
-              minutes.has_value())
-            slot.kickoffs.push_back(*minutes);
-    }
-    std::ranges::sort(slot.kickoffs);
+    slot.kickoffs = slotKickoffs(item);
     slots.push_back(std::move(slot));
   }
   return slots;
@@ -640,6 +682,31 @@ struct RoundDay
   std::vector<size_t> matches;  // Indices into the round's pairs.
 };
 
+/** Transfers an unavailable day's weight to the nearest least-loaded day. */
+void redistributeDay(const RoundDay& dropped, std::vector<RoundDay>& kept,
+                     bool weekend, int anchor)
+{
+  // The weekend's Thursday only takes matches when balancing asks for it.
+  RoundDay* target = nullptr;
+  const auto rank = [&](const RoundDay& day)
+  {
+    return std::tuple{day.weight, std::abs(day.day - dropped.day),
+                      std::abs(day.day - anchor)};
+  };
+  for (RoundDay& day : kept)
+  {
+    if ((!weekend || day.weekday != SeasonCalendar::THURSDAY) &&
+        ((target == nullptr) || rank(day) < rank(*target)))
+    {
+      target = &day;
+    }
+  }
+  if (target != nullptr)
+  {
+    target->weight = static_cast<uint16_t>(target->weight + dropped.weight);
+  }
+}
+
 /**
  * The days a round starting from @p anchor uses: those of the league's
  * pattern that are @p usable. The matches meant for an unusable day go to
@@ -688,19 +755,7 @@ std::vector<RoundDay> roundDays(int anchor, const RoundPattern& pattern,
   for (const RoundDay& dropped : days)
   {
     if (playable(dropped) || dropped.weight == 0) continue;
-    // The weekend's Thursday only takes matches when balancing asks for it.
-    RoundDay* target = nullptr;
-    const auto rank = [&](const RoundDay& day)
-    {
-      return std::tuple{day.weight, std::abs(day.day - dropped.day),
-                        std::abs(day.day - anchor)};
-    };
-    for (RoundDay& day : kept)
-      if (!(weekend && day.weekday == SeasonCalendar::THURSDAY) &&
-          (!target || rank(day) < rank(*target)))
-        target = &day;
-    if (!target) continue;
-    target->weight = static_cast<uint16_t>(target->weight + dropped.weight);
+    redistributeDay(dropped, kept, weekend, anchor);
   }
   if (std::ranges::all_of(kept,
                           [](const RoundDay& day) { return day.weight == 0; }))
@@ -740,7 +795,6 @@ void setQuotas(std::vector<RoundDay>& days, size_t matches)
 /** A round of one league, planned before its fixtures get their days. */
 struct PlannedRound
 {
-  size_t league = 0;  // Index into the planned leagues.
   bool top_flight = false;
   size_t moves_left = 0;  // Matches that may leave their pattern day.
   std::vector<RoundDay> days;
@@ -757,61 +811,79 @@ constexpr size_t CROWDED_DAY = 40;
  * 288 matches over eight Tuesday-Thursday weeks). */
 constexpr size_t CONTINENTAL_DAY_MATCHES = 12;
 
+/** A single fixture move; equal gaps favor lower divisions, then input order.
+ */
+struct RoundMove
+{
+  PlannedRound* round = nullptr;
+  RoundDay* from = nullptr;
+  RoundDay* to = nullptr;
+  size_t gap = 1;
+};
+
+void considerRoundMoves(PlannedRound& round,
+                        std::unordered_map<int, size_t>& load,
+                        size_t comfortable, RoundMove& best)
+{
+  if (round.moves_left == 0)
+  {
+    return;
+  }
+  size_t matches = 0;
+  for (const RoundDay& day : round.days)
+  {
+    matches += day.quota;
+  }
+  const size_t limit = ((matches * 7) + 9) / 10;
+  for (RoundDay& busy : round.days)
+  {
+    if (busy.quota == 0)
+    {
+      continue;
+    }
+    for (RoundDay& quiet : round.days)
+    {
+      if (&quiet == &busy || quiet.quota >= limit ||
+          load[busy.day] < load[quiet.day] + 2 ||
+          (quiet.reserve && load[busy.day] <= comfortable))
+      {
+        continue;
+      }
+      const size_t gap = load[busy.day] - load[quiet.day];
+      if (gap > best.gap || (gap == best.gap && (best.round != nullptr) &&
+                             best.round->top_flight && !round.top_flight))
+      {
+        best = {.round = &round, .from = &busy, .to = &quiet, .gap = gap};
+      }
+    }
+  }
+}
+
 /**
- * Evens out the busiest days of the world. The rounds of every window move
- * single matches from a day that is at least two matches busier (all
- * leagues together) to a quieter day of their own round, never putting more
- * than 70% of a round on one day. Lower divisions do most of it; a top
- * flight moves at most TOP_FLIGHT_MOVES matches. Reserve days only take
- * matches from days busier than @p comfortable (e.g. both tiers in the same
- * midweek).
+ * Evens out the busiest days of the world. Move one fixture at a time to a
+ * day at least two matches quieter, without exceeding 70% of its round.
+ * Lower divisions take priority over top flights for equal improvements.
+ * Reserve days only take matches from days busier than comfortable.
  */
 void balanceRounds(const std::vector<PlannedRound*>& window,
                    std::unordered_map<int, size_t>& load, size_t comfortable)
 {
-  const auto cap = [](const PlannedRound& round)
-  {
-    size_t matches = 0;
-    for (const RoundDay& day : round.days) matches += day.quota;
-    return (matches * 7 + 9) / 10;
-  };
   for (;;)
   {
-    PlannedRound* mover = nullptr;
-    RoundDay* from = nullptr;
-    RoundDay* to = nullptr;
-    size_t best_gap = 1;
+    RoundMove best;
     for (PlannedRound* round : window)
     {
-      if (round->moves_left == 0) continue;
-      const size_t limit = cap(*round);
-      for (RoundDay& busy : round->days)
-      {
-        if (busy.quota == 0) continue;
-        for (RoundDay& quiet : round->days)
-        {
-          if (&quiet == &busy || quiet.quota >= limit ||
-              load[busy.day] < load[quiet.day] + 2 ||
-              (quiet.reserve && load[busy.day] <= comfortable))
-            continue;
-          const size_t gap = load[busy.day] - load[quiet.day];
-          if (gap > best_gap || (gap == best_gap && mover &&
-                                 mover->top_flight && !round->top_flight))
-          {
-            best_gap = gap;
-            mover = round;
-            from = &busy;
-            to = &quiet;
-          }
-        }
-      }
+      considerRoundMoves(*round, load, comfortable, best);
     }
-    if (!mover) return;
-    --mover->moves_left;
-    --from->quota;
-    --load[from->day];
-    ++to->quota;
-    ++load[to->day];
+    if (best.round == nullptr)
+    {
+      return;
+    }
+    --best.round->moves_left;
+    --best.from->quota;
+    --load[best.from->day];
+    ++best.to->quota;
+    ++load[best.to->day];
   }
 }
 
@@ -831,6 +903,300 @@ uint16_t kickoffOf(const RoundDay& day, size_t index, size_t count)
   else
     slot = count == 1 ? size - 1 : index * (size - 1) / (count - 1);
   return day.kickoffs[std::min(slot, size - 1)];
+}
+
+using RoundPairs = std::vector<std::pair<TeamID, TeamID>>;
+
+/** Pairings and available days for one league's season. */
+struct PlannedLeague
+{
+  LeagueID id = 0;
+  std::vector<RoundPairs> first_half;
+  std::vector<PlannedRound> rounds;
+};
+
+RoundPattern leaguePattern(
+    const std::unordered_map<LeagueID, RoundPattern>& patterns,
+    LeagueID league_id, uint8_t tier)
+{
+  const auto found = patterns.find(league_id);
+  RoundPattern pattern =
+      found != patterns.end() ? found->second : defaultPattern(tier);
+  const RoundPattern fallback = defaultPattern(tier);
+  if (pattern.weekend.empty())
+  {
+    pattern.weekend = fallback.weekend;
+  }
+  if (pattern.midweek.empty())
+  {
+    pattern.midweek = fallback.midweek;
+  }
+  return pattern;
+}
+
+/** Seeded circle method; venues flip each round and odd leagues receive a bye.
+ */
+std::vector<RoundPairs> leaguePairings(std::vector<TeamID> team_ids,
+                                       uint16_t season_year, LeagueID league_id)
+{
+  std::ranges::sort(team_ids);
+  std::mt19937 rng(Competitions::mixSeed(season_year, league_id, 1));
+  std::ranges::shuffle(team_ids, rng);
+  if (team_ids.size() % 2 != 0)
+  {
+    team_ids.push_back(FREE_AGENTS_TEAM_ID);
+  }
+  const size_t num_teams = team_ids.size();
+  std::vector<RoundPairs> pairings(num_teams - 1);
+  for (size_t round = 0; round < pairings.size(); ++round)
+  {
+    for (size_t i = 0; i < num_teams / 2; ++i)
+    {
+      TeamID home_id = team_ids[i];
+      TeamID away_id = team_ids[num_teams - 1 - i];
+      if (home_id == FREE_AGENTS_TEAM_ID || away_id == FREE_AGENTS_TEAM_ID)
+      {
+        continue;
+      }
+      if (round % 2 == 1)
+      {
+        std::swap(home_id, away_id);
+      }
+      pairings[round].emplace_back(home_id, away_id);
+    }
+    const TeamID last_id = team_ids.back();
+    team_ids.pop_back();
+    team_ids.insert(team_ids.begin() + 1, last_id);
+  }
+  return pairings;
+}
+
+/** Plan usable days around breaks, continental ties and the next league round.
+ */
+void planLeagueRounds(PlannedLeague& plan, uint8_t tier, uint16_t season_year,
+                      const RoundPattern& pattern,
+                      const std::vector<int>& continental_days)
+{
+  const size_t half_rounds = plan.first_half.size();
+  const std::vector<GameDateValue> round_dates =
+      SeasonCalendar::leagueRoundDates(season_year, half_rounds * 2,
+                                       tier <= 1 ? 0 : 1);
+  const size_t rounds = std::min(half_rounds * 2, round_dates.size());
+  plan.rounds.resize(rounds);
+  for (size_t round = 0; round < rounds; ++round)
+  {
+    const int anchor = toDayNumber(round_dates[round]);
+    const bool weekend = weekdayOf(anchor) == SeasonCalendar::SATURDAY;
+    const int next_start = round + 1 < rounds
+                               ? toDayNumber(round_dates[round + 1]) - 1
+                               : INT_MAX / 2;
+    const auto usable =
+        [weekend, anchor, tier, next_start, &continental_days](int day)
+    {
+      if (SeasonCalendar::isBlackout(fromDayNumber(day)))
+      {
+        return false;
+      }
+      // Only lower divisions bring weekend matches forward to Thursday.
+      if (weekend && day < anchor - 1 && tier <= 1)
+      {
+        return false;
+      }
+      if (weekend && next_start - day < SeasonCalendar::MIN_REST_DAYS)
+      {
+        return false;
+      }
+      return tier > 1 ||
+             std::ranges::none_of(continental_days, [day](int continental)
+                                  { return std::abs(continental - day) <= 1; });
+    };
+    PlannedRound& planned = plan.rounds[round];
+    const size_t matches = plan.first_half[round % half_rounds].size();
+    planned.top_flight = tier <= 1;
+    planned.moves_left = tier <= 1 ? TOP_FLIGHT_MOVES : matches * 4;
+    planned.days = roundDays(anchor, pattern, usable);
+    setQuotas(planned.days, matches);
+  }
+}
+
+/** Balance all leagues' round windows; retain the planned load for day
+ * selection. */
+std::unordered_map<int, size_t> balanceLeaguePlans(
+    std::vector<PlannedLeague>& plans, const std::vector<int>& continental_days)
+{
+  std::unordered_map<int, size_t> load;
+  std::map<int, std::vector<PlannedRound*>> windows;
+  size_t round_matches = 0;
+  for (PlannedLeague& plan : plans)
+  {
+    if (!plan.first_half.empty())
+    {
+      round_matches += plan.first_half.front().size();
+    }
+    for (PlannedRound& round : plan.rounds)
+    {
+      for (const RoundDay& day : round.days)
+      {
+        load[day.day] += day.quota;
+      }
+      windows[round.days.front().day - weekdayOf(round.days.front().day)]
+          .push_back(&round);
+    }
+  }
+  for (const int day : continental_days)
+  {
+    load[day] += CONTINENTAL_DAY_MATCHES;
+  }
+  const size_t comfortable =
+      std::max(round_matches / WEEKEND_DAYS.size(), CROWDED_DAY);
+  for (auto& [week, window] : windows)
+  {
+    balanceRounds(window, load, comfortable);
+  }
+  return load;
+}
+
+/** Latest planned date in the next round, so every club can still fit it. */
+int nextRoundLatest(const PlannedLeague& plan, size_t round)
+{
+  int latest = INT_MAX / 2;
+  if (round + 1 < plan.rounds.size())
+  {
+    latest = plan.rounds[round + 1].days.back().day;
+    for (const RoundDay& day : plan.rounds[round + 1].days)
+    {
+      if (day.quota > 0)
+      {
+        latest = day.day;
+      }
+    }
+  }
+  return latest;
+}
+
+template <typename Fits>
+std::vector<size_t> constrainedMatchOrder(const RoundPairs& pairs,
+                                          const std::vector<RoundDay>& days,
+                                          uint32_t seed, const Fits& fits)
+{
+  std::vector<size_t> order(pairs.size());
+  std::iota(order.begin(), order.end(), size_t{0});
+  std::mt19937 rng(seed);
+  std::ranges::shuffle(order, rng);
+  std::vector<size_t> options(pairs.size(), 0);
+  for (size_t pair = 0; pair < pairs.size(); ++pair)
+  {
+    for (const RoundDay& day : days)
+    {
+      if (fits(pair, day.day))
+      {
+        ++options[pair];
+      }
+    }
+  }
+  std::ranges::stable_sort(order, {},
+                           [&options](size_t pair) { return options[pair]; });
+  return order;
+}
+
+/** Prefer planned days with spare quota, retaining original traversal on ties.
+ */
+template <typename Fits, typename LastPlayed>
+RoundDay& chooseLeagueDay(size_t pair, const RoundPairs& pairs,
+                          std::vector<RoundDay>& days,
+                          std::unordered_map<int, size_t>& load,
+                          const Fits& fits, const LastPlayed& last_played)
+{
+  const auto left = [](const RoundDay& day)
+  {
+    return static_cast<long>(day.quota) - static_cast<long>(day.matches.size());
+  };
+  RoundDay* chosen = nullptr;
+  const bool planned_day =
+      std::ranges::any_of(days, [&](const RoundDay& day)
+                          { return day.quota > 0 && fits(pair, day.day); });
+  for (RoundDay& day : days)
+  {
+    if (!fits(pair, day.day) || (planned_day && day.quota == 0))
+    {
+      continue;
+    }
+    if (!chosen || left(day) > left(*chosen) ||
+        (left(day) == left(*chosen) && load[day.day] < load[chosen->day]))
+    {
+      chosen = &day;
+    }
+  }
+  if (!chosen)
+  {
+    // Cannot happen with the stock calendar: keep the longest rest.
+    const auto rest = [&](const RoundDay& day)
+    {
+      return std::min(day.day - last_played(pairs[pair].first),
+                      day.day - last_played(pairs[pair].second));
+    };
+    chosen = std::to_address(std::ranges::max_element(days, {}, rest));
+    Logger::warn("No rested day for a league fixture on " +
+                 fromDayNumber(chosen->day).toString());
+  }
+  return *chosen;
+}
+
+void assignLeagueRound(PlannedLeague& plan, size_t round, uint16_t season_year,
+                       std::unordered_map<int, size_t>& load,
+                       std::unordered_map<TeamID, int>& last_played)
+{
+  const auto lastPlayed = [&last_played](TeamID team)
+  {
+    const auto it = last_played.find(team);
+    return it == last_played.end() ? NEVER : it->second;
+  };
+  const auto& pairs = plan.first_half[round % plan.first_half.size()];
+  std::vector<RoundDay>& days = plan.rounds[round].days;
+  const int next_latest = nextRoundLatest(plan, round);
+  const auto fits = [&pairs, &lastPlayed, next_latest](size_t pair, int day)
+  {
+    return day - lastPlayed(pairs[pair].first) >=
+               SeasonCalendar::MIN_REST_DAYS &&
+           day - lastPlayed(pairs[pair].second) >=
+               SeasonCalendar::MIN_REST_DAYS &&
+           next_latest - day >= SeasonCalendar::MIN_REST_DAYS;
+  };
+  const uint32_t seed = Competitions::mixSeed(
+      season_year,
+      (static_cast<uint32_t>(plan.id) << 8U) | static_cast<uint32_t>(round),
+      ROUND_DAY_SALT);
+  const std::vector<size_t> order =
+      constrainedMatchOrder(pairs, days, seed, fits);
+  for (const size_t pair : order)
+  {
+    RoundDay& chosen =
+        chooseLeagueDay(pair, pairs, days, load, fits, lastPlayed);
+    chosen.matches.push_back(pair);
+    last_played[pairs[pair].first] = chosen.day;
+    last_played[pairs[pair].second] = chosen.day;
+  }
+}
+
+void addLeagueRound(Calendar& calendar, const PlannedLeague& plan, size_t round)
+{
+  const bool second_half = round >= plan.first_half.size();
+  const auto& pairs = plan.first_half[round % plan.first_half.size()];
+  const auto stage = static_cast<uint8_t>(round + 1);
+  for (const RoundDay& day : plan.rounds[round].days)
+  {
+    const GameDateValue date = fromDayNumber(day.day);
+    for (size_t index = 0; index < day.matches.size(); ++index)
+    {
+      const auto [home_id, away_id] = pairs[day.matches[index]];
+      Match match = second_half ? Match(away_id, home_id, date,
+                                        MatchType::LEAGUE, plan.id, stage)
+                                : Match(home_id, away_id, date,
+                                        MatchType::LEAGUE, plan.id, stage);
+      match.setKickoff(kickoffOf(day, index, day.matches.size()));
+      calendar.addMatch(match);
+    }
+  }
 }
 
 }  // namespace
@@ -869,8 +1235,7 @@ const std::vector<Match>& Calendar::getMatchesForDate(
     const GameDateValue& date) const
 {
   static const std::vector<Match> no_matches;
-  auto it = schedule.find(date);
-  if (it != schedule.end())
+  if (const auto it = schedule.find(date); it != schedule.end())
   {
     return it->second;
   }
@@ -930,13 +1295,12 @@ std::vector<Match> Calendar::getTeamFixtures(TeamID team_id) const
 void Calendar::generateSeasonFixtures(const class GameData& gamedata,
                                       uint16_t season_year)
 {
-  // Top flights first, so the lower divisions can fill the quieter days.
+  // Top flights first, so lower divisions can fill the quieter days.
   std::vector<std::pair<uint8_t, LeagueID>> league_order;
   league_order.reserve(gamedata.getLeagues().size());
   for (const auto& [id, league] : gamedata.getLeagues())
     league_order.emplace_back(Competitions::leagueTier(gamedata, id), id);
   std::ranges::sort(league_order);
-
   const std::unordered_map<LeagueID, RoundPattern> patterns =
       loadRoundPatterns();
   std::vector<int> continental_days;
@@ -944,389 +1308,299 @@ void Calendar::generateSeasonFixtures(const class GameData& gamedata,
     for (int offset = 0; offset < CONTINENTAL_DAYS_PER_WEEK; ++offset)
       continental_days.push_back(tuesday + offset);
 
-  // 1. Pairings, round dates and the days every round may use.
-  struct PlannedLeague
-  {
-    LeagueID id = 0;
-    std::vector<std::vector<std::pair<TeamID, TeamID>>> first_half;
-    std::vector<PlannedRound> rounds;
-  };
   std::vector<PlannedLeague> plans;
   for (const auto& [tier, league_id] : league_order)
   {
     const League& league = gamedata.getLeagues().at(league_id);
-    std::vector<TeamID> team_ids = league.getTeamIDs();
-
-    if (team_ids.size() < 2)
+    if (league.getTeamIDs().size() < 2)
     {
       Logger::warn("Not enough teams to generate fixtures in: " +
                    league.getName());
       continue;
     }
-
-    const auto found = patterns.find(league_id);
-    RoundPattern pattern =
-        found != patterns.end() ? found->second : defaultPattern(tier);
-    const RoundPattern fallback = defaultPattern(tier);
-    if (pattern.weekend.empty()) pattern.weekend = fallback.weekend;
-    if (pattern.midweek.empty()) pattern.midweek = fallback.midweek;
-
-    std::ranges::sort(team_ids);
-    std::mt19937 rng(Competitions::mixSeed(season_year, league_id, 1));
-    std::ranges::shuffle(team_ids, rng);
-    if (team_ids.size() % 2 != 0)
-    {
-      team_ids.push_back(FREE_AGENTS_TEAM_ID);  // Bye for round robin
-    }
-
-    const size_t num_teams = team_ids.size();
-    const size_t half_rounds = num_teams - 1;
-    const std::vector<GameDateValue> round_dates =
-        SeasonCalendar::leagueRoundDates(season_year, half_rounds * 2,
-                                         tier <= 1 ? 0 : 1);
-
+    const RoundPattern pattern = leaguePattern(patterns, league_id, tier);
     PlannedLeague plan;
     plan.id = league_id;
-    // Circle method; venues flip every round so teams alternate home/away.
-    plan.first_half.resize(half_rounds);
-    for (size_t round = 0; round < half_rounds; ++round)
-    {
-      for (size_t i = 0; i < num_teams / 2; ++i)
-      {
-        TeamID home_id = team_ids[i];
-        TeamID away_id = team_ids[num_teams - 1 - i];
-        if (home_id == FREE_AGENTS_TEAM_ID || away_id == FREE_AGENTS_TEAM_ID)
-          continue;
-        if (round % 2 == 1) std::swap(home_id, away_id);
-        plan.first_half[round].emplace_back(home_id, away_id);
-      }
-      const TeamID last_id = team_ids.back();
-      team_ids.pop_back();
-      team_ids.insert(team_ids.begin() + 1, last_id);
-    }
-
-    // Days a round may not use: breaks, the days next to a continental
-    // matchday for top flights (their clubs play in Europe) and a Monday
-    // followed by a midweek round.
-    const size_t rounds = std::min(half_rounds * 2, round_dates.size());
-    plan.rounds.resize(rounds);
-    for (size_t round = 0; round < rounds; ++round)
-    {
-      const int anchor = toDayNumber(round_dates[round]);
-      const bool weekend = weekdayOf(anchor) == SeasonCalendar::SATURDAY;
-      const int next_start = round + 1 < rounds
-                                 ? toDayNumber(round_dates[round + 1]) - 1
-                                 : INT_MAX / 2;
-      const auto usable =
-          [weekend, anchor, tier, next_start, &continental_days](int day)
-      {
-        if (SeasonCalendar::isBlackout(fromDayNumber(day))) return false;
-        // Only lower divisions (whose clubs rarely play in Europe) bring a
-        // weekend match forward to Thursday.
-        if (weekend && day < anchor - 1 && tier <= 1) return false;
-        if (weekend && next_start - day < SeasonCalendar::MIN_REST_DAYS)
-          return false;
-        return tier > 1 || std::ranges::none_of(
-                               continental_days, [day](int continental)
-                               { return std::abs(continental - day) <= 1; });
-      };
-      PlannedRound& planned = plan.rounds[round];
-      planned.league = plans.size();
-      const size_t matches = plan.first_half[round % half_rounds].size();
-      planned.top_flight = tier <= 1;
-      planned.moves_left = tier <= 1 ? TOP_FLIGHT_MOVES : matches * 4;
-      planned.days = roundDays(anchor, pattern, usable);
-      setQuotas(planned.days, matches);
-    }
+    plan.first_half =
+        leaguePairings(league.getTeamIDs(), season_year, league_id);
+    planLeagueRounds(plan, tier, season_year, pattern, continental_days);
     plans.push_back(std::move(plan));
   }
-
-  // 2. The lower divisions even out the busiest days of each round window.
-  std::unordered_map<int, size_t> load;  // Planned league matches per day.
-  std::map<int, std::vector<PlannedRound*>> windows;  // By first day.
-  size_t round_matches = 0;  // One round of every league.
+  std::unordered_map<int, size_t> load =
+      balanceLeaguePlans(plans, continental_days);
   for (PlannedLeague& plan : plans)
   {
-    if (!plan.first_half.empty())
-      round_matches += plan.first_half.front().size();
-    for (PlannedRound& round : plan.rounds)
-    {
-      for (const RoundDay& day : round.days) load[day.day] += day.quota;
-      windows[round.days.front().day - weekdayOf(round.days.front().day)]
-          .push_back(&round);
-    }
-  }
-  // Continental matchdays carry their own matches (drawn later).
-  for (const int day : continental_days) load[day] += CONTINENTAL_DAY_MATCHES;
-  // Reserve days only relieve days that are crowded for the whole world.
-  const size_t comfortable =
-      std::max(round_matches / WEEKEND_DAYS.size(), CROWDED_DAY);
-  for (auto& [week, window] : windows) balanceRounds(window, load, comfortable);
-
-  // 3. Every match gets a day of its round, resting both clubs.
-  for (PlannedLeague& plan : plans)
-  {
-    const size_t half_rounds = plan.first_half.size();
-    const size_t rounds = plan.rounds.size();
     std::unordered_map<TeamID, int> last_played;
-    const auto lastPlayed = [&last_played](TeamID team)
+    for (size_t round = 0; round < plan.rounds.size(); ++round)
     {
-      const auto it = last_played.find(team);
-      return it == last_played.end() ? NEVER : it->second;
-    };
-    for (size_t round = 0; round < rounds; ++round)
-    {
-      const bool second_half = round >= half_rounds;
-      const auto& pairs = plan.first_half[round % half_rounds];
-      std::vector<RoundDay>& days = plan.rounds[round].days;
-
-      // The next round must still find a planned day for every club.
-      int next_latest = INT_MAX / 2;
-      if (round + 1 < rounds)
-      {
-        next_latest = plan.rounds[round + 1].days.back().day;
-        for (const RoundDay& day : plan.rounds[round + 1].days)
-          if (day.quota > 0) next_latest = day.day;
-      }
-      const auto fits = [&pairs, &lastPlayed, next_latest](size_t pair, int day)
-      {
-        return day - lastPlayed(pairs[pair].first) >=
-                   SeasonCalendar::MIN_REST_DAYS &&
-               day - lastPlayed(pairs[pair].second) >=
-                   SeasonCalendar::MIN_REST_DAYS &&
-               next_latest - day >= SeasonCalendar::MIN_REST_DAYS;
-      };
-
-      // Most constrained matches pick first; otherwise a seeded order.
-      std::vector<size_t> order(pairs.size());
-      std::iota(order.begin(), order.end(), size_t{0});
-      std::mt19937 day_rng(Competitions::mixSeed(
-          season_year,
-          (static_cast<uint32_t>(plan.id) << 8U) | static_cast<uint32_t>(round),
-          ROUND_DAY_SALT));
-      std::ranges::shuffle(order, day_rng);
-      std::vector<size_t> options(pairs.size(), 0);
-      for (size_t pair = 0; pair < pairs.size(); ++pair)
-        for (const RoundDay& day : days)
-          if (fits(pair, day.day)) ++options[pair];
-      std::ranges::stable_sort(
-          order, {}, [&options](size_t pair) { return options[pair]; });
-
-      const auto left = [](const RoundDay& day)
-      {
-        return static_cast<long>(day.quota) -
-               static_cast<long>(day.matches.size());
-      };
-      for (const size_t pair : order)
-      {
-        // Days given matches by the plan first; reserve days only if the
-        // clubs cannot play on any of them.
-        RoundDay* chosen = nullptr;
-        const bool planned_day = std::ranges::any_of(
-            days, [&](const RoundDay& day)
-            { return day.quota > 0 && fits(pair, day.day); });
-        for (RoundDay& day : days)
-        {
-          if (!fits(pair, day.day) || (planned_day && day.quota == 0)) continue;
-          if (!chosen || left(day) > left(*chosen) ||
-              (left(day) == left(*chosen) && load[day.day] < load[chosen->day]))
-            chosen = &day;
-        }
-        if (!chosen)
-        {
-          // Cannot happen with the stock calendar: keep the longest rest.
-          const auto rest = [&](const RoundDay& day)
-          {
-            return std::min(day.day - lastPlayed(pairs[pair].first),
-                            day.day - lastPlayed(pairs[pair].second));
-          };
-          chosen = std::to_address(std::ranges::max_element(days, {}, rest));
-          Logger::warn("No rested day for a league fixture on " +
-                       fromDayNumber(chosen->day).toString());
-        }
-        chosen->matches.push_back(pair);
-        last_played[pairs[pair].first] = chosen->day;
-        last_played[pairs[pair].second] = chosen->day;
-      }
-
-      const auto stage = static_cast<uint8_t>(round + 1);
-      for (const RoundDay& day : days)
-      {
-        const GameDateValue date = fromDayNumber(day.day);
-        for (size_t index = 0; index < day.matches.size(); ++index)
-        {
-          const auto [home_id, away_id] = pairs[day.matches[index]];
-          Match match = second_half ? Match(away_id, home_id, date,
-                                            MatchType::LEAGUE, plan.id, stage)
-                                    : Match(home_id, away_id, date,
-                                            MatchType::LEAGUE, plan.id, stage);
-          match.setKickoff(kickoffOf(day, index, day.matches.size()));
-          addMatch(match);
-        }
-      }
+      assignLeagueRound(plan, round, season_year, load, last_played);
+      addLeagueRound(*this, plan, round);
     }
   }
 }
 
-size_t Calendar::protectRest(const GameDateValue& after)
+namespace
 {
-  using enum MatchType;
-  if (!rest_check_pending) return 0;
-  rest_check_pending = false;
+struct BusyFixture
+{
+  int day = 0;
+  MatchType type = MatchType::LEAGUE;
+};
 
-  // Competitive fixtures of every club, by day.
-  struct Busy
-  {
-    int day = 0;
-    MatchType type = LEAGUE;
-  };
-  std::unordered_map<TeamID, std::vector<Busy>> busy;
-  struct LeagueFixture
-  {
-    GameDateValue date;
-    TeamID home_id;
-    TeamID away_id;
-    LeagueID competition;
-    uint8_t stage;
-  };
-  std::vector<LeagueFixture> league_fixtures;
-  const int first = toDayNumber(after);
+struct LeagueFixture
+{
+  GameDateValue date;
+  TeamID home_id;
+  TeamID away_id;
+  LeagueID competition;
+  uint8_t stage;
+};
+
+using FixtureSchedule = std::map<GameDateValue, std::vector<Match>>;
+using ClubBusyDays = std::unordered_map<TeamID, std::vector<BusyFixture>>;
+
+/** Record competitive commitments and the unplayed league fixtures to review.
+ */
+std::vector<LeagueFixture> collectRestFixtures(const FixtureSchedule& schedule,
+                                               int first, ClubBusyDays& busy)
+{
+  std::vector<LeagueFixture> fixtures;
   for (const auto& [date, matches] : schedule)
   {
     const int day = toDayNumber(date);
     for (const Match& match : matches)
     {
-      if (match.getMatchType() == FRIENDLY) continue;
-      busy[match.getHomeTeamId()].push_back({day, match.getMatchType()});
-      busy[match.getAwayTeamId()].push_back({day, match.getMatchType()});
-      if (match.getMatchType() == LEAGUE && !match.isPlayed() && day > first)
-        league_fixtures.push_back({date, match.getHomeTeamId(),
-                                   match.getAwayTeamId(),
-                                   match.getCompetitionId(), match.getStage()});
-    }
-  }
-
-  // Whether a club could play its league fixture of @p from on @p day.
-  const auto rested = [&busy](TeamID team, int from, int day)
-  {
-    bool skipped = false;
-    for (const Busy& other : busy[team])
-    {
-      if (!skipped && other.day == from && other.type == LEAGUE)
+      if (match.getMatchType() == MatchType::FRIENDLY)
       {
-        skipped = true;
         continue;
       }
-      if (other.day == day) return false;
-      if (other.day < day &&
-          day - other.day < SeasonCalendar::restDays(other.type, LEAGUE))
-        return false;
-      if (other.day > day &&
-          other.day - day < SeasonCalendar::restDays(LEAGUE, other.type))
-        return false;
+      busy[match.getHomeTeamId()].push_back(
+          {.day = day, .type = match.getMatchType()});
+      busy[match.getAwayTeamId()].push_back(
+          {.day = day, .type = match.getMatchType()});
+      if (match.getMatchType() == MatchType::LEAGUE && !match.isPlayed() &&
+          day > first)
+      {
+        fixtures.push_back({.date = date,
+                            .home_id = match.getHomeTeamId(),
+                            .away_id = match.getAwayTeamId(),
+                            .competition = match.getCompetitionId(),
+                            .stage = match.getStage()});
+      }
     }
-    return true;
-  };
+  }
+  return fixtures;
+}
 
-  size_t moved = 0;
-  // Whether the round of a Thursday fixture continues at the weekend.
-  const auto weekendRoundAfter =
-      [this](const GameDateValue& thursday, LeagueID competition, uint8_t stage)
+/** A club can move the league fixture at from to day without losing rest. */
+bool isRested(const std::vector<BusyFixture>& fixtures, int from, int day)
+{
+  using enum MatchType;
+  bool skipped = false;
+  for (const BusyFixture& other : fixtures)
   {
-    for (int ahead = 1; ahead <= 4; ++ahead)
-      for (const Match& match :
-           getMatchesForDate(SeasonCalendar::addDays(thursday, ahead)))
-        if (match.getMatchType() == LEAGUE &&
-            match.getCompetitionId() == competition &&
-            match.getStage() == stage)
-          return true;
-    return false;
-  };
-  // Leagues that bring weekend matches forward to Thursday (lower
-  // divisions) may also move a fixture there.
-  std::set<LeagueID> thursday_leagues;
+    if (!skipped && other.day == from && other.type == LEAGUE)
+    {
+      skipped = true;
+      continue;
+    }
+    if (other.day == day)
+    {
+      return false;
+    }
+    if (other.day < day &&
+        day - other.day < SeasonCalendar::restDays(other.type, LEAGUE))
+    {
+      return false;
+    }
+    if (other.day > day &&
+        other.day - day < SeasonCalendar::restDays(LEAGUE, other.type))
+    {
+      return false;
+    }
+  }
+  return true;
+}
+
+/** Whether a Thursday fixture belongs to the following weekend round. */
+bool weekendRoundAfter(const FixtureSchedule& schedule,
+                       const GameDateValue& thursday, LeagueID competition,
+                       uint8_t stage)
+{
+  for (int ahead = 1; ahead <= 4; ++ahead)
+  {
+    const auto found = schedule.find(SeasonCalendar::addDays(thursday, ahead));
+    if (found == schedule.end())
+    {
+      continue;
+    }
+    for (const Match& match : found->second)
+    {
+      if (match.getMatchType() == MatchType::LEAGUE &&
+          match.getCompetitionId() == competition && match.getStage() == stage)
+      {
+        return true;
+      }
+    }
+  }
+  return false;
+}
+
+/** Lower divisions whose weekend rounds may start on Thursday. */
+std::set<LeagueID> thursdayLeagues(const FixtureSchedule& schedule)
+{
+  std::set<LeagueID> leagues;
   for (const auto& [date, matches] : schedule)
   {
-    if (weekdayOf(toDayNumber(date)) != SeasonCalendar::THURSDAY) continue;
+    if (weekdayOf(toDayNumber(date)) != SeasonCalendar::THURSDAY)
+    {
+      continue;
+    }
     for (const Match& match : matches)
-      if (match.getMatchType() == LEAGUE &&
-          !thursday_leagues.contains(match.getCompetitionId()) &&
-          weekendRoundAfter(date, match.getCompetitionId(), match.getStage()))
-        thursday_leagues.insert(match.getCompetitionId());
-  }
-  for (const auto& [date, home_id, away_id, competition, stage] :
-       league_fixtures)
-  {
-    const int day = toDayNumber(date);
-    if (rested(home_id, day, day) && rested(away_id, day, day)) continue;
-
-    // Other days of the same round: Friday-Monday or Tuesday-Thursday.
-    const auto weekday = static_cast<uint8_t>(weekdayOf(day));
-    bool midweek = weekday >= SeasonCalendar::TUESDAY &&
-                   weekday <= SeasonCalendar::THURSDAY;
-    int window_start = midweek ? day - (weekday - SeasonCalendar::TUESDAY)
-                               : day - anchorOffset(weekday, true) - 1;
-    int window_days = midweek ? 3 : 4;
-    if (!midweek && thursday_leagues.contains(competition))
     {
-      --window_start;
-      ++window_days;
-    }
-    if (weekday == SeasonCalendar::THURSDAY &&
-        weekendRoundAfter(date, competition, stage))
-    {
-      // A weekend match brought forward: Thursday to Monday.
-      window_start = day;
-      window_days = 5;
-    }
-    std::optional<int> target;
-    for (int candidate = window_start; candidate < window_start + window_days;
-         ++candidate)
-    {
-      if (candidate == day || candidate <= first ||
-          SeasonCalendar::isBlackout(fromDayNumber(candidate)) ||
-          !rested(home_id, day, candidate) || !rested(away_id, day, candidate))
-        continue;
-      // The quietest day (matches of every competition), then the nearest.
-      const auto load = [this](int candidate_day)
+      if (match.getMatchType() == MatchType::LEAGUE &&
+          !leagues.contains(match.getCompetitionId()) &&
+          weekendRoundAfter(schedule, date, match.getCompetitionId(),
+                            match.getStage()))
       {
-        const auto found = schedule.find(fromDayNumber(candidate_day));
-        return found == schedule.end() ? size_t{0} : found->second.size();
-      };
-      if (!target.has_value() ||
-          std::pair{load(candidate), std::abs(candidate - day)} <
-              std::pair{load(*target), std::abs(*target - day)})
-        target = candidate;
+        leagues.insert(match.getCompetitionId());
+      }
     }
-    if (!target.has_value()) continue;
+  }
+  return leagues;
+}
 
-    std::vector<Match>& from_day = schedule[date];
-    const auto it =
-        std::ranges::find_if(from_day,
-                             [&](const Match& match)
-                             {
-                               return match.getHomeTeamId() == home_id &&
-                                      match.getAwayTeamId() == away_id;
-                             });
-    if (it == from_day.end()) continue;
-    const GameDateValue to = fromDayNumber(*target);
-    Match match(home_id, away_id, to, LEAGUE, it->getCompetitionId(),
-                it->getStage());
-    match.setKickoff(it->getScheduledKickoff());
-    from_day.erase(it);
-    if (from_day.empty()) schedule.erase(date);
-    schedule[to].push_back(match);
-    for (const TeamID team : {home_id, away_id})
+/** Other days of the same weekend or midweek league round. */
+std::pair<int, int> restWindow(const FixtureSchedule& schedule,
+                               const LeagueFixture& fixture,
+                               const std::set<LeagueID>& thursday_leagues)
+{
+  const int day = toDayNumber(fixture.date);
+  const auto weekday = static_cast<uint8_t>(weekdayOf(day));
+  const bool midweek =
+      weekday >= SeasonCalendar::TUESDAY && weekday <= SeasonCalendar::THURSDAY;
+  int start = midweek ? day - (weekday - SeasonCalendar::TUESDAY)
+                      : day - anchorOffset(weekday, true) - 1;
+  int count = midweek ? 3 : 4;
+  if (!midweek && thursday_leagues.contains(fixture.competition))
+  {
+    --start;
+    ++count;
+  }
+  if (weekday == SeasonCalendar::THURSDAY &&
+      weekendRoundAfter(schedule, fixture.date, fixture.competition,
+                        fixture.stage))
+  {
+    start = day;
+    count = 5;
+  }
+  return {start, count};
+}
+
+/** Quietest rested day, then the nearest; retain the first day on ties. */
+std::optional<int> restedTarget(const FixtureSchedule& schedule,
+                                const LeagueFixture& fixture, int first,
+                                const std::set<LeagueID>& thursday_leagues,
+                                ClubBusyDays& busy)
+{
+  const int day = toDayNumber(fixture.date);
+  const auto [start, count] = restWindow(schedule, fixture, thursday_leagues);
+  const auto load = [&schedule](int candidate_day)
+  {
+    const auto found = schedule.find(fromDayNumber(candidate_day));
+    return found == schedule.end() ? size_t{0} : found->second.size();
+  };
+  std::optional<int> target;
+  for (int candidate = start; candidate < start + count; ++candidate)
+  {
+    if (candidate == day || candidate <= first ||
+        SeasonCalendar::isBlackout(fromDayNumber(candidate)) ||
+        !isRested(busy[fixture.home_id], day, candidate) ||
+        !isRested(busy[fixture.away_id], day, candidate))
     {
-      std::vector<Busy>& days = busy[team];
-      if (const auto entry = std::ranges::find_if(
-              days, [day](const Busy& other)
-              { return other.day == day && other.type == LEAGUE; });
-          entry != days.end())
-        entry->day = *target;
-      std::ranges::sort(days, {}, &Busy::day);
+      continue;
     }
-    ++moved;
+    if (!target.has_value() ||
+        std::pair{load(candidate), std::abs(candidate - day)} <
+            std::pair{load(*target), std::abs(*target - day)})
+    {
+      target = candidate;
+    }
+  }
+  return target;
+}
+
+/** Move one fixture, keeping its kickoff and both clubs' commitment lists. */
+bool moveRestFixture(FixtureSchedule& schedule, const LeagueFixture& fixture,
+                     int target, ClubBusyDays& busy)
+{
+  using enum MatchType;
+  std::vector<Match>& from_day = schedule[fixture.date];
+  const auto it =
+      std::ranges::find_if(from_day,
+                           [&fixture](const Match& match)
+                           {
+                             return match.getHomeTeamId() == fixture.home_id &&
+                                    match.getAwayTeamId() == fixture.away_id;
+                           });
+  if (it == from_day.end())
+  {
+    return false;
+  }
+  const GameDateValue to = fromDayNumber(target);
+  Match match(fixture.home_id, fixture.away_id, to, LEAGUE,
+              it->getCompetitionId(), it->getStage());
+  match.setKickoff(it->getScheduledKickoff());
+  from_day.erase(it);
+  if (from_day.empty())
+  {
+    schedule.erase(fixture.date);
+  }
+  schedule[to].push_back(match);
+  const int day = toDayNumber(fixture.date);
+  for (const TeamID team : {fixture.home_id, fixture.away_id})
+  {
+    std::vector<BusyFixture>& days = busy[team];
+    if (const auto entry = std::ranges::find_if(
+            days, [day](const BusyFixture& other)
+            { return other.day == day && other.type == LEAGUE; });
+        entry != days.end())
+    {
+      entry->day = target;
+    }
+    std::ranges::sort(days, {}, &BusyFixture::day);
+  }
+  return true;
+}
+}  // namespace
+
+size_t Calendar::protectRest(const GameDateValue& after)
+{
+  if (!rest_check_pending)
+  {
+    return 0;
+  }
+  rest_check_pending = false;
+  const int first = toDayNumber(after);
+  ClubBusyDays busy;
+  const std::vector<LeagueFixture> fixtures =
+      collectRestFixtures(schedule, first, busy);
+  const std::set<LeagueID> thursday_leagues = thursdayLeagues(schedule);
+  size_t moved = 0;
+  for (const LeagueFixture& fixture : fixtures)
+  {
+    const int day = toDayNumber(fixture.date);
+    if (isRested(busy[fixture.home_id], day, day) &&
+        isRested(busy[fixture.away_id], day, day))
+    {
+      continue;
+    }
+    if (const std::optional<int> target =
+            restedTarget(schedule, fixture, first, thursday_leagues, busy);
+        target.has_value() && moveRestFixture(schedule, fixture, *target, busy))
+    {
+      ++moved;
+    }
   }
   return moved;
 }

@@ -124,6 +124,59 @@ struct DrawSlot
   size_t i;
 };
 
+bool rowsFeasibleAfterPlacement(const DrawState& state, const DrawSlot& slot)
+{
+  for (size_t i = slot.i + 1; i < state.pot_size; ++i)
+  {
+    bool any = false;
+    for (size_t j = 0; j < state.pot_size && !any; ++j)
+    {
+      any = state.allowed(slot.p, slot.q, i, j);
+    }
+    if (!any)
+    {
+      return false;
+    }
+  }
+  return true;
+}
+
+void preparePairingCandidates(const DrawState& state, const DrawSlot& slot,
+                              std::vector<size_t>& candidates, size_t& cursor,
+                              std::mt19937& rng)
+{
+  candidates.clear();
+  for (size_t j = 0; j < state.pot_size; ++j)
+  {
+    if (state.allowed(slot.p, slot.q, slot.i, j))
+    {
+      candidates.push_back(j);
+    }
+  }
+  std::ranges::shuffle(candidates, rng);
+  cursor = 0;
+}
+
+bool tryPlacePairing(DrawState& state, const DrawSlot& slot,
+                     const std::vector<size_t>& candidates, size_t& cursor)
+{
+  while (cursor < candidates.size())
+  {
+    const size_t candidate = candidates[cursor++];
+    if (!state.allowed(slot.p, slot.q, slot.i, candidate))
+    {
+      continue;
+    }
+    state.place(slot.p, slot.q, slot.i, candidate, true);
+    if (rowsFeasibleAfterPlacement(state, slot))
+    {
+      return true;
+    }
+    state.place(slot.p, slot.q, slot.i, candidate, false);
+  }
+  return false;
+}
+
 /** Randomised depth-first search over every (pot, pot, row) slot. */
 bool searchPairings(DrawState& state, const std::vector<DrawSlot>& slots,
                     std::mt19937& rng)
@@ -132,61 +185,156 @@ bool searchPairings(DrawState& state, const std::vector<DrawSlot>& slots,
   std::vector<size_t> cursor(slots.size(), 0);
   size_t depth = 0;
   size_t steps = 0;
-  const auto prepare = [&](size_t level)
-  {
-    const DrawSlot& slot = slots[level];
-    auto& list = candidates[level];
-    list.clear();
-    for (size_t j = 0; j < state.pot_size; ++j)
-      if (state.allowed(slot.p, slot.q, slot.i, j)) list.push_back(j);
-    std::ranges::shuffle(list, rng);
-    cursor[level] = 0;
-  };
-  // A row of the current permutation that has no option left is a dead end.
-  const auto rowsFeasible = [&](size_t level)
-  {
-    const DrawSlot& slot = slots[level];
-    for (size_t i = slot.i + 1; i < state.pot_size; ++i)
-    {
-      bool any = false;
-      for (size_t j = 0; j < state.pot_size && !any; ++j)
-        any = state.allowed(slot.p, slot.q, i, j);
-      if (!any) return false;
-    }
-    return true;
-  };
-
-  prepare(0);
+  preparePairingCandidates(state, slots[0], candidates[0], cursor[0], rng);
   while (true)
   {
-    if (++steps > DRAW_STEP_BUDGET) return false;
+    if (++steps > DRAW_STEP_BUDGET)
+    {
+      return false;
+    }
     const DrawSlot& slot = slots[depth];
     if (state.host[slot.p][slot.q][slot.i] >= 0)
+    {
       state.place(slot.p, slot.q, slot.i,
                   static_cast<size_t>(state.host[slot.p][slot.q][slot.i]),
                   false);
-    bool placed = false;
-    while (cursor[depth] < candidates[depth].size())
-    {
-      const size_t j = candidates[depth][cursor[depth]++];
-      if (!state.allowed(slot.p, slot.q, slot.i, j)) continue;
-      state.place(slot.p, slot.q, slot.i, j, true);
-      if (rowsFeasible(depth))
-      {
-        placed = true;
-        break;
-      }
-      state.place(slot.p, slot.q, slot.i, j, false);
     }
-    if (placed)
+    if (tryPlacePairing(state, slot, candidates[depth], cursor[depth]))
     {
-      if (++depth == slots.size()) return true;
-      prepare(depth);
+      if (++depth == slots.size())
+      {
+        return true;
+      }
+      preparePairingCandidates(state, slots[depth], candidates[depth],
+                               cursor[depth], rng);
       continue;
     }
-    if (depth == 0) return false;
+    if (depth == 0)
+    {
+      return false;
+    }
     --depth;
   }
+}
+
+std::vector<size_t> matchdayOptions(
+    size_t team, const std::vector<std::vector<size_t>>& incident,
+    const std::vector<uint8_t>& matchday, const std::vector<uint8_t>& busy,
+    const std::vector<std::pair<size_t, size_t>>& edges, std::mt19937& rng)
+{
+  std::vector<size_t> list;
+  for (const size_t edge : incident[team])
+  {
+    if (matchday[edge] != 0)
+    {
+      continue;
+    }
+    const size_t other =
+        edges[edge].first == team ? edges[edge].second : edges[edge].first;
+    if (busy[other] == 0u)
+    {
+      list.push_back(edge);
+    }
+  }
+  std::ranges::shuffle(list, rng);
+  return list;
+}
+
+std::optional<size_t> pickMatchdayTeam(
+    size_t teams, const std::vector<std::vector<size_t>>& incident,
+    const std::vector<uint8_t>& matchday, const std::vector<uint8_t>& busy,
+    const std::vector<std::pair<size_t, size_t>>& edges)
+{
+  std::optional<size_t> best;
+  size_t best_count = SIZE_MAX;
+  for (size_t team = 0; team < teams; ++team)
+  {
+    if (busy[team] != 0u)
+    {
+      continue;
+    }
+    size_t count = 0;
+    for (const size_t edge : incident[team])
+    {
+      if (matchday[edge] != 0)
+      {
+        continue;
+      }
+      const size_t other =
+          edges[edge].first == team ? edges[edge].second : edges[edge].first;
+      if (busy[other] == 0u)
+      {
+        ++count;
+      }
+    }
+    if (count < best_count)
+    {
+      best_count = count;
+      best = team;
+    }
+  }
+  return best;
+}
+
+bool tryAssignMatchdayRound(size_t teams, size_t round,
+                            const std::vector<std::vector<size_t>>& incident,
+                            const std::vector<std::pair<size_t, size_t>>& edges,
+                            std::vector<uint8_t>& matchday, std::mt19937& rng)
+{
+  std::vector<uint8_t> busy(teams, 0);
+  std::vector<size_t> chosen;
+  std::vector<std::vector<size_t>> stack;
+  size_t steps = 0;
+  bool matched = false;
+  while (++steps < DRAW_STEP_BUDGET)
+  {
+    const std::optional<size_t> team =
+        pickMatchdayTeam(teams, incident, matchday, busy, edges);
+    if (!team.has_value())
+    {
+      matched = true;
+      break;
+    }
+    stack.push_back(
+        matchdayOptions(*team, incident, matchday, busy, edges, rng));
+    bool advanced = false;
+    while (!stack.empty())
+    {
+      auto& list = stack.back();
+      if (!list.empty())
+      {
+        const size_t edge = list.back();
+        list.pop_back();
+        busy[edges[edge].first] = 1;
+        busy[edges[edge].second] = 1;
+        chosen.push_back(edge);
+        advanced = true;
+        break;
+      }
+      stack.pop_back();
+      if (chosen.empty())
+      {
+        break;
+      }
+      const size_t undo = chosen.back();
+      chosen.pop_back();
+      busy[edges[undo].first] = 0;
+      busy[edges[undo].second] = 0;
+    }
+    if (!advanced)
+    {
+      break;
+    }
+  }
+  if (!matched)
+  {
+    return false;
+  }
+  for (const size_t edge : chosen)
+  {
+    matchday[edge] = static_cast<uint8_t>(round);
+  }
+  return true;
 }
 
 /** Splits the pairings into rounds where every team plays once. */
@@ -209,85 +357,11 @@ std::vector<uint8_t> assignMatchdays(
     {
       // Perfect matching on the unassigned edges: always extend the team
       // with the fewest options first, random among its options.
-      std::vector<uint8_t> busy(teams, 0);
-      std::vector<size_t> chosen;
-      std::vector<std::pair<size_t, std::vector<size_t>>> stack;
-      size_t steps = 0;
-      const auto options = [&](size_t team)
-      {
-        std::vector<size_t> list;
-        for (const size_t e : incident[team])
-        {
-          if (matchday[e] != 0) continue;
-          const size_t other =
-              edges[e].first == team ? edges[e].second : edges[e].first;
-          if (!busy[other]) list.push_back(e);
-        }
-        std::ranges::shuffle(list, rng);
-        return list;
-      };
-      const auto pickTeam = [&]()
-      {
-        std::optional<size_t> best;
-        size_t best_count = SIZE_MAX;
-        for (size_t team = 0; team < teams; ++team)
-        {
-          if (busy[team]) continue;
-          size_t count = 0;
-          for (const size_t e : incident[team])
-          {
-            if (matchday[e] != 0) continue;
-            const size_t other =
-                edges[e].first == team ? edges[e].second : edges[e].first;
-            if (!busy[other]) ++count;
-          }
-          if (count < best_count)
-          {
-            best_count = count;
-            best = team;
-          }
-        }
-        return best;
-      };
-      bool matched = false;
-      while (++steps < DRAW_STEP_BUDGET)
-      {
-        const std::optional<size_t> team = pickTeam();
-        if (!team.has_value())
-        {
-          matched = true;
-          break;
-        }
-        stack.emplace_back(*team, options(*team));
-        bool advanced = false;
-        while (!stack.empty())
-        {
-          auto& [owner, list] = stack.back();
-          if (!list.empty())
-          {
-            const size_t e = list.back();
-            list.pop_back();
-            busy[edges[e].first] = 1;
-            busy[edges[e].second] = 1;
-            chosen.push_back(e);
-            advanced = true;
-            break;
-          }
-          stack.pop_back();
-          if (chosen.empty()) break;
-          const size_t undo = chosen.back();
-          chosen.pop_back();
-          busy[edges[undo].first] = 0;
-          busy[edges[undo].second] = 0;
-        }
-        if (!advanced) break;
-      }
-      if (!matched)
+      if (!tryAssignMatchdayRound(teams, round, incident, edges, matchday, rng))
       {
         ok = false;
         break;
       }
-      for (const size_t e : chosen) matchday[e] = static_cast<uint8_t>(round);
     }
     if (ok) return matchday;
   }
@@ -375,6 +449,83 @@ coefficientsFrom(const nlohmann::json& json)
   for (size_t i = 0; i < seasons.size() && i < json.size(); ++i)
     seasons[i] = json[i].get<double>();
   return seasons;
+}
+
+using PotEntrant = ContinentalCompetitions::Entrant;
+
+void recordPotPlacement(PotEntrant entrant, size_t pot,
+                        std::vector<std::map<LeagueID, size_t>>& counts,
+                        std::vector<size_t>& filled,
+                        std::vector<PotEntrant>& placed)
+{
+  ++counts[pot][entrant.association];
+  ++filled[pot];
+  entrant.pot = static_cast<uint8_t>(pot);
+  placed.push_back(entrant);
+}
+
+void fillPotsByAssociation(std::vector<PotEntrant>& waiting,
+                           std::vector<PotEntrant>& placed,
+                           std::vector<std::map<LeagueID, size_t>>& counts,
+                           std::vector<size_t>& filled, size_t pot_size,
+                           size_t per_association)
+{
+  for (size_t pot = 0; pot < filled.size(); ++pot)
+  {
+    for (auto it = waiting.begin();
+         it != waiting.end() && filled[pot] < pot_size;)
+    {
+      if (counts[pot][it->association] >= per_association)
+      {
+        ++it;
+        continue;
+      }
+      recordPotPlacement(*it, pot, counts, filled, placed);
+      it = waiting.erase(it);
+    }
+  }
+}
+
+void placeOverflowEntrants(const std::vector<PotEntrant>& waiting,
+                           std::vector<PotEntrant>& placed,
+                           std::vector<std::map<LeagueID, size_t>>& counts,
+                           std::vector<size_t>& filled, size_t pots,
+                           size_t pot_size, size_t per_association)
+{
+  for (const PotEntrant& entrant : waiting)
+  {
+    size_t room = pots - 1;
+    for (size_t pot = 0; pot < pots; ++pot)
+    {
+      if (filled[pot] < pot_size)
+      {
+        room = pot;
+        break;
+      }
+    }
+    bool swapped = false;
+    for (size_t index = 0; index < placed.size() && !swapped; ++index)
+    {
+      const PotEntrant other = placed[index];
+      const size_t pot = other.pot;
+      if (pot == room || other.association == entrant.association ||
+          counts[pot][entrant.association] >= per_association ||
+          counts[room][other.association] >= per_association)
+      {
+        continue;
+      }
+      --counts[pot][other.association];
+      ++counts[pot][entrant.association];
+      placed[index] = entrant;
+      placed[index].pot = static_cast<uint8_t>(pot);
+      recordPotPlacement(other, room, counts, filled, placed);
+      swapped = true;
+    }
+    if (!swapped)
+    {
+      recordPotPlacement(entrant, room, counts, filled, placed);
+    }
+  }
 }
 }  // namespace
 
@@ -930,57 +1081,13 @@ void ContinentalCompetitions::assignPots(Season& season) const
   std::vector<Entrant> waiting = season.entrants;
   std::vector<Entrant> placed;
   placed.reserve(season.entrants.size());
-  const auto put = [&](Entrant entrant, size_t pot)
-  {
-    ++counts[pot][entrant.association];
-    ++filled[pot];
-    entrant.pot = static_cast<uint8_t>(pot);
-    placed.push_back(entrant);
-  };
-  for (size_t pot = 0; pot < pots; ++pot)
-  {
-    for (auto it = waiting.begin();
-         it != waiting.end() && filled[pot] < pot_size;)
-    {
-      if (counts[pot][it->association] >= per_association)
-      {
-        ++it;
-        continue;
-      }
-      put(*it, pot);
-      it = waiting.erase(it);
-    }
-  }
+  fillPotsByAssociation(waiting, placed, counts, filled, pot_size,
+                        per_association);
   // A club no pot with room could take (its association is full there)
   // swaps with a club of another association in a full pot that still has
   // room for it; that club moves to the pot with room.
-  for (const Entrant& entrant : waiting)
-  {
-    size_t room = pots - 1;
-    for (size_t pot = 0; pot < pots; ++pot)
-      if (filled[pot] < pot_size)
-      {
-        room = pot;
-        break;
-      }
-    bool swapped = false;
-    for (size_t index = 0; index < placed.size() && !swapped; ++index)
-    {
-      const Entrant other = placed[index];
-      const size_t pot = other.pot;
-      if (pot == room || other.association == entrant.association ||
-          counts[pot][entrant.association] >= per_association ||
-          counts[room][other.association] >= per_association)
-        continue;
-      --counts[pot][other.association];
-      ++counts[pot][entrant.association];
-      placed[index] = entrant;
-      placed[index].pot = static_cast<uint8_t>(pot);
-      put(other, room);
-      swapped = true;
-    }
-    if (!swapped) put(entrant, room);
-  }
+  placeOverflowEntrants(waiting, placed, counts, filled, pots, pot_size,
+                        per_association);
   std::ranges::sort(placed,
                     [](const Entrant& left, const Entrant& right)
                     {

@@ -460,48 +460,61 @@ void NationalManagement::handleFinals(const QueuedFinals& queued,
   const std::vector<Language> ranking = teams.ranking();
   if (!queued.decided)
   {
-    // The qualifiers are over: nations that missed out may change coach.
-    for (const Language nation : ranking)
-    {
-      if (!targetFinals(queued.competition, queued.confederation, nation) ||
-          std::ranges::contains(queued.qualified, nation) ||
-          (job.active && job.nation == nation))
-        continue;
-      if (uniform(*gamedata, static_cast<std::uint64_t>(dayOrdinal(date)),
-                  mixHash(std::to_underlying(nation), VACANCY_SALT)) <
-          MISSED_FINALS_VACANCY_CHANCE)
-        openVacancy(nation, date);
-    }
-    if (!job.active ||
-        !targetFinals(queued.competition, queued.confederation, job.nation))
-      return;
-    if (std::ranges::contains(queued.qualified, job.nation))
-    {
-      job.qualified = true;
-      career.adjustReputation(QUALIFIED_REPUTATION);
-      post(inbox, date, "INBOX_NT_QUALIFIED_TITLE", "INBOX_NT_QUALIFIED_BODY",
-           {nationArg(job.nation),
-            std::string("@") +
-                International::competitionKey(queued.competition)});
-      return;
-    }
-    career.adjustReputation(-MISSED_REPUTATION);
-    // Big nations expect to be there: the federation lets him go.
-    if (stature(teams, job.nation) >= QUALIFY_EXPECTED_STATURE)
-    {
-      leave(DepartureReason::Sacked, date, teams, career, inbox);
-      events.job_ended = true;
-    }
-    else
-    {
-      post(inbox, date, "INBOX_NT_MISSED_TITLE", "INBOX_NT_MISSED_BODY",
-           {nationArg(job.nation),
-            std::string("@") +
-                International::competitionKey(queued.competition)});
-    }
+    handleQualificationFinals(queued, date, ranking, teams, career, inbox,
+                              events);
     return;
   }
+  handleDecidedFinals(queued, date, career, inbox);
+}
 
+void NationalManagement::handleQualificationFinals(
+    const QueuedFinals& queued, const GameDateValue& date,
+    const std::vector<Language>& ranking, NationalTeams& teams,
+    ManagerCareer& career, Inbox& inbox, NationalDayEvents& events)
+{
+  // The qualifiers are over: nations that missed out may change coach.
+  for (const Language nation : ranking)
+  {
+    if (!targetFinals(queued.competition, queued.confederation, nation) ||
+        std::ranges::contains(queued.qualified, nation) ||
+        (job.active && job.nation == nation))
+      continue;
+    if (uniform(*gamedata, static_cast<std::uint64_t>(dayOrdinal(date)),
+                mixHash(std::to_underlying(nation), VACANCY_SALT)) <
+        MISSED_FINALS_VACANCY_CHANCE)
+      openVacancy(nation, date);
+  }
+  if (!job.active ||
+      !targetFinals(queued.competition, queued.confederation, job.nation))
+    return;
+  if (std::ranges::contains(queued.qualified, job.nation))
+  {
+    job.qualified = true;
+    career.adjustReputation(QUALIFIED_REPUTATION);
+    post(
+        inbox, date, "INBOX_NT_QUALIFIED_TITLE", "INBOX_NT_QUALIFIED_BODY",
+        {nationArg(job.nation),
+         std::string("@") + International::competitionKey(queued.competition)});
+    return;
+  }
+  career.adjustReputation(-MISSED_REPUTATION);
+  // Big nations expect to be there: the federation lets him go.
+  if (stature(teams, job.nation) >= QUALIFY_EXPECTED_STATURE)
+  {
+    leave(DepartureReason::Sacked, date, teams, career, inbox);
+    events.job_ended = true;
+    return;
+  }
+  post(inbox, date, "INBOX_NT_MISSED_TITLE", "INBOX_NT_MISSED_BODY",
+       {nationArg(job.nation),
+        std::string("@") + International::competitionKey(queued.competition)});
+}
+
+void NationalManagement::handleDecidedFinals(const QueuedFinals& queued,
+                                             const GameDateValue& date,
+                                             ManagerCareer& career,
+                                             Inbox& inbox)
+{
   // Finals decided: honours for the finalists, changes among the others.
   for (const Language nation : queued.qualified)
   {
@@ -547,7 +560,7 @@ bool NationalManagement::recentlyLeft(Language nation,
                                       const GameDateValue& date) const
 {
   return std::ranges::any_of(
-      history, [this, nation, date](const NationalStint& stint)
+      history, [nation, date](const NationalStint& stint)
       { return stint.nation == nation && daysBetween(stint.end, date) < 365; });
 }
 

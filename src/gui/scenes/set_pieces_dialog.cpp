@@ -72,7 +72,7 @@ void SetPiecesDialog::rebuild(const GameController& controller)
       for (const Player* player : leaders)
         list.emplace_back(
             player->getId(),
-            std::format("{}  \u00B7  {}", player->getName(), player->getAge()));
+            std::format("{}  \u{B7}  {}", player->getName(), player->getAge()));
       // What "automatic" means: the top of the hierarchy (the next one for
       // the vice-captain, after whoever captains).
       const PlayerID captain =
@@ -102,7 +102,7 @@ void SetPiecesDialog::rebuild(const GameController& controller)
       for (const auto& [value, player] : ranked)
         list.emplace_back(
             player->getId(),
-            std::format("{}  \u00B7  {:.0f}", player->getName(), value));
+            std::format("{}  \u{B7}  {:.0f}", player->getName(), value));
       const Player* best = SetPieces::best(duty, xi);
       automatic[index] = formatLocalized(
           "SET_PIECES_AUTOMATIC",

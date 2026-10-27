@@ -568,6 +568,10 @@ class ManagerCareer
                        Inbox& inbox, CareerDayEvents& events);
   void weeklyManagerReview(const GameDateValue& date, TeamID managed_team_id,
                            Inbox& inbox, CareerDayEvents& events);
+  TeamID unsolicitedVacancyPick(std::int32_t today, double chance);
+  TeamID desperateVacancyPick(const GameDateValue& date, TeamID managed_team_id,
+                              Inbox& inbox, CareerDayEvents& events,
+                              double chance);
   void monthlyReviews(const GameDateValue& date, TeamID managed_team_id,
                       float board_confidence, int board_expected_position,
                       const PositionProvider& positions, Inbox& inbox,
@@ -577,7 +581,7 @@ class ManagerCareer
           league_ranks,
       const PositionProvider& positions);
   void monthlyManagerReview(
-      const GameDateValue& date, TeamID managed_team_id, float board_confidence,
+      const GameDateValue& date, float board_confidence,
       int board_expected_position, const PositionProvider& positions,
       const std::map<LeagueID, std::vector<std::pair<std::uint8_t, TeamID>>>&
           league_ranks,
@@ -587,9 +591,16 @@ class ManagerCareer
                                    const PositionProvider& positions,
                                    Inbox& inbox);
   void ageManagersAtSeasonEnd(const GameDateValue& date);
+  bool updateManagedMatchResult(const ManagerMatchEvent& match, TeamID team_id,
+                                int own, int other, float earned,
+                                float expected);
   float applySeasonHonours(const ManagerSeasonLine& line,
                            std::span<const SeasonHistoryEntry> finished,
                            std::uint16_t start_year);
+  bool applyCompetitionHonours(const ManagerSeasonLine& line,
+                               std::span<const SeasonHistoryEntry> finished,
+                               std::uint16_t start_year, std::uint8_t tier,
+                               float& delta);
   void dismissAi(AiManager& manager, const GameDateValue& date, Inbox& inbox,
                  TeamID managed_team_id);
   void openVacancy(TeamID team_id, const GameDateValue& date);

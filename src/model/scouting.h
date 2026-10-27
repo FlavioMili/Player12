@@ -189,12 +189,19 @@ struct RecruitmentFocus
 };
 
 /** @brief Status bits of a shortlisted player (values are persisted). */
-enum ShortlistFlag : std::uint8_t
+enum class ShortlistFlag : std::uint8_t
 {
-  SHORTLIST_LISTED = 0x01,
-  SHORTLIST_EXPIRING = 0x02,
-  SHORTLIST_INJURED = 0x04
+  Listed = 0x01,
+  Expiring = 0x02,
+  Injured = 0x04
 };
+
+inline constexpr std::uint8_t SHORTLIST_LISTED =
+    std::to_underlying(ShortlistFlag::Listed);
+inline constexpr std::uint8_t SHORTLIST_EXPIRING =
+    std::to_underlying(ShortlistFlag::Expiring);
+inline constexpr std::uint8_t SHORTLIST_INJURED =
+    std::to_underlying(ShortlistFlag::Injured);
 
 /**
  * @struct ShortlistEntry
@@ -567,6 +574,16 @@ class ScoutingSystem
   std::int64_t estimatedFee(const Player& player,
                             const ScoutedPlayerRow& row) const;
   bool anyFocusMatches(const ScoutedPlayerRow& row) const;
+  std::vector<float> coverageWeights(
+      const std::vector<PlayerID>& candidates,
+      const std::array<float, ROLE_COUNT>& best_own) const;
+  void observeCoveragePick(ScoutAssignment& assignment, PlayerID player_id,
+                           const ScoutProfile& scout, float multiplier,
+                           std::vector<LeagueID>& leagues_seen);
+  void fileCoverageReport(ScoutAssignment& assignment, PlayerID player_id,
+                          const ScoutProfile& scout, const GameDateValue& date,
+                          std::int32_t ordinal, int& reports_today,
+                          Inbox& inbox);
   std::vector<LeagueID> worldCountries() const;
   /** Stores the generated background of scouts seen for the first time. */
   void ensureExpertise();
@@ -595,6 +612,12 @@ class ScoutingSystem
                                 std::uint32_t assignment_id);
   void finishAssignment(ScoutAssignment& assignment, const GameDateValue& date,
                         Inbox& inbox);
+  void finishPlayerAssignment(ScoutAssignment& assignment,
+                              const ScoutProfile& scout,
+                              const GameDateValue& date, Inbox& inbox);
+  void finishCoverageAssignment(const ScoutAssignment& assignment,
+                                const ScoutProfile& scout,
+                                const GameDateValue& date, Inbox& inbox);
   void checkShortlist(const GameDateValue& date, Inbox& inbox);
   void pruneHistory();
   std::uint8_t shortlistFlags(const Player& player) const;

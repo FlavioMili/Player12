@@ -76,7 +76,7 @@ void SQLLoader::parseQueries(const std::string& content)
 
     // skip empty lines or comments (except query ID)
     if (line.empty() ||
-        (line.substr(0, 2) == "--" && !line.contains("@QUERY_ID:")))
+        (line.starts_with("--") && !line.contains("@QUERY_ID:")))
     {
       continue;
     }

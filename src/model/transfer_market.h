@@ -500,6 +500,10 @@ class TransferMarket
   PlayerMarketFlags& mutableFlags(PlayerID player_id);
   void pruneFlags(PlayerID player_id);
   void clearOnMove(PlayerID player_id);
+  void recordTransferClauses(const Deal& deal, TeamID seller_id,
+                             TeamID buyer_id,
+                             const TransferNegotiation::OfferTerms& terms,
+                             const GameDateValue& date);
 
   /** Position group an AI club wants to strengthen and the level a
    * signing must reach. */
@@ -540,6 +544,19 @@ class TransferMarket
                      const std::vector<std::pair<double, PlayerID>>& ranked,
                      const GameDateValue& date, TeamID managed_team_id,
                      WorldRng& rng);
+  bool releaseSeniorSurplus(
+      const std::vector<std::pair<double, PlayerID>>& ranked,
+      const GameDateValue& date, TeamID managed_team_id,
+      std::size_t max_squad_size);
+  bool placeSurplusLoans(TeamID club_id,
+                         const std::vector<std::pair<double, PlayerID>>& ranked,
+                         const GameDateValue& date, TeamID managed_team_id,
+                         WorldRng& rng);
+  bool placeSurplusLoan(TeamID club_id, PlayerID player_id,
+                        const GameDateValue& date, TeamID managed_team_id,
+                        WorldRng& rng);
+  std::optional<PlayerID> bestLoanCandidate(TeamID club_id, const AiNeed& need,
+                                            TeamID managed_team_id) const;
   bool aiSignFreeAgent(TeamID club_id, const AiNeed& need,
                        std::int64_t wage_room, const GameDateValue& date,
                        TeamID managed_team_id);
@@ -549,6 +566,19 @@ class TransferMarket
   bool aiBuy(TeamID club_id, const AiNeed& need, std::int64_t wage_room,
              const std::unordered_map<PlayerID, TransferListing>& listings,
              const GameDateValue& date, TeamID managed_team_id, WorldRng& rng);
+  std::vector<std::pair<double, PlayerID>> aiBuyCandidates(
+      TeamID club_id, const AiNeed& need,
+      const std::unordered_map<PlayerID, TransferListing>& listings,
+      TeamID managed_team_id, WorldRng& rng) const;
+  bool tryAiBuyCandidate(
+      TeamID club_id, PlayerID player_id, std::int64_t budget,
+      std::int64_t wage_room,
+      const std::unordered_map<PlayerID, TransferListing>& listings,
+      const GameDateValue& date, TeamID managed_team_id);
+  bool tryPreContractClub(TeamID club_id,
+                          const std::vector<PlayerID>& candidates,
+                          const GameDateValue& date, TeamID managed_team_id,
+                          WorldRng& rng);
 
   void payLoanWageShares(const GameDateValue& date);
   void processLoanEnds(const GameDateValue& date, TeamID managed_team_id);
@@ -560,6 +590,19 @@ class TransferMarket
   void postNewsDigest(const GameDateValue& date, TeamID managed_team_id);
   /** On the day a window shuts: the deals of its last days. */
   void postDeadlineSummary(const GameDateValue& date, TeamID managed_team_id);
+  struct DeadlineSummary
+  {
+    int fee_moves = 0;
+    int loan_moves = 0;
+    int other_moves = 0;
+    std::int64_t spent = 0;
+    std::vector<const TransferRecord*> biggest;
+    std::vector<const TransferRecord*> ours;
+  };
+  DeadlineSummary collectDeadlineSummary(std::int32_t first, std::int32_t last,
+                                         TeamID managed_team_id) const;
+  std::string describeDeadlineDeals(
+      const std::vector<const TransferRecord*>& deals) const;
   /** Yearly rises due on @p date and weekly appearance money. */
   void applyWageRises(const GameDateValue& date);
   void payAppearanceFees(const GameDateValue& date);

@@ -16,6 +16,7 @@
 #include <string>
 #include <vector>
 
+#include "benchmark_environment.h"
 #include "model/match_engine.h"
 #include "model/player.h"
 #include "model/team.h"
@@ -141,4 +142,7 @@ void BM_FullMatchSimulation(benchmark::State& state)
 BENCHMARK(BM_LiveMatchSimulation)->Unit(benchmark::kMillisecond);
 BENCHMARK(BM_FullMatchSimulation)->Unit(benchmark::kMillisecond);
 
-BENCHMARK_MAIN();
+int main(int argc, char** argv)
+{
+  return BenchmarkEnvironment::run(argc, argv);
+}
