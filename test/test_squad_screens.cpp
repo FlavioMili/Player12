@@ -41,6 +41,7 @@
 #include "gui/scenes/player_compare_scene.h"
 #include "gui/scenes/squad_planner_scene.h"
 #include "model/settings_manager.h"
+#include "test_worlds.h"
 
 /**
  * The GUI classes grant their internals to this name (the lifecycle test of
@@ -161,12 +162,17 @@ TEST(SquadScreensTest, ScreensRenderAtEverySizeAndScale)
   SDL_SetHint(SDL_HINT_VIDEO_DRIVER, "dummy");
   Logger::init();
   const SlotCleanup slot{uniqueSlot(0)};
-  GameController controller;
-  controller.newGame(slot.slot, WORLD_SEED);
-  const TeamID club = controller.getTeams().front().get().getId();
-  controller.selectManagedTeam(club);
-  // A few weeks in: friendlies played, loads built up; two injuries.
-  for (int day = 0; day < 40; ++day) controller.advanceDay();
+  // A few weeks in: friendlies played, loads built up; two injuries (the
+  // weeks are a shared checkpoint).
+  const auto holder = TestWorlds::career(
+      slot.slot, "days-40",
+      [](GameController& prepared)
+      {
+        for (int day = 0; day < 40; ++day) prepared.advanceDay();
+      },
+      WORLD_SEED);
+  GameController& controller = *holder;
+  const TeamID club = controller.getManagedTeam()->get().getId();
   auto& players = controller.getGameData()->getPlayers();
   const auto& squad = controller.getPlayersForTeam(club);
   ASSERT_GE(squad.size(), 16u);
