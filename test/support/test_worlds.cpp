@@ -105,20 +105,17 @@ long processId()
 
 /**
  * Where checkpoints live: next to the test executable (inside the build
- * tree, so a clean build starts clean and nothing leaks into the system
- * temporary folder); the temporary folder when that is not writable.
+ * tree, so a clean build starts clean and nothing leaks into the shared
+ * temporary folder). Empty when that is not writable: the disk cache is
+ * then off and every process builds its own states.
  */
 fs::path cacheDirectory()
 {
   std::error_code error;
   fs::path directory = executablePath().parent_path() / "fm-test-fixtures";
   fs::create_directories(directory, error);
-  if (!error) return directory;
-  directory = fs::temp_directory_path(error);
   if (error) return {};
-  directory /= "fm-test-fixtures";
-  fs::create_directories(directory, error);
-  return error ? fs::path() : directory;
+  return directory;
 }
 
 std::string safeName(const std::string& text)
