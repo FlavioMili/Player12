@@ -879,10 +879,10 @@ World::Document SettingsScene::careerWorld() const
 {
   const GameController& controller = guiView->getController();
   const auto team = controller.getManagedTeam();
-  return World::exportCareer(
-      *controller.getGameData(), *World::current(),
-      team ? team->get().getName() : std::string(),
-      controller.getCurrentDate().toString(), controller.getCurrentSeason());
+  return World::exportCareer(*controller.getGameData(), *World::current(),
+                             team ? team->get().getName() : std::string(),
+                             controller.getCurrentDate().toString(),
+                             controller.getCurrentSeason());
 }
 
 void SettingsScene::renderWorlds()
@@ -917,35 +917,33 @@ void SettingsScene::renderWorlds()
     {
       export_world = careerWorld();
       export_dialog.save(
-          getWindow(),
-          World::Library::fileStem(export_world->manifest().name) +
-              std::string(World::FILE_EXTENSION));
+          getWindow(), World::Library::fileStem(export_world->manifest().name) +
+                           std::string(World::FILE_EXTENSION));
     }
     ImGui::SameLine();
     if (UI::secondaryButton(LOC("WORLD_EXPORT_LIBRARY")))
     {
       const std::filesystem::path stored = World::Library::save(careerWorld());
       world_message_error = stored.empty();
-      world_message =
-          stored.empty()
-              ? LOC("WORLD_EXPORT_FAILED")
-              : fmt::sprintf(LOC("WORLD_EXPORT_LIBRARY_DONE"),
-                             World::pathToUtf8(stored.filename()));
+      world_message = stored.empty()
+                          ? LOC("WORLD_EXPORT_FAILED")
+                          : fmt::sprintf(LOC("WORLD_EXPORT_LIBRARY_DONE"),
+                                         World::pathToUtf8(stored.filename()));
     }
     if (const auto target = export_dialog.take(); target && export_world)
     {
       world_message_error = !World::writeFile(*export_world, *target);
-      world_message =
-          world_message_error
-              ? LOC("WORLD_EXPORT_FAILED")
-              : fmt::sprintf(LOC("WORLD_EXPORT_DONE"),
-                             World::pathToUtf8(target->filename()));
+      world_message = world_message_error
+                          ? LOC("WORLD_EXPORT_FAILED")
+                          : fmt::sprintf(LOC("WORLD_EXPORT_DONE"),
+                                         World::pathToUtf8(target->filename()));
       export_world.reset();
     }
   }
   if (!world_message.empty())
-    ImGui::TextColored(world_message_error ? palette.negative : palette.positive,
-                       "%s", world_message.c_str());
+    ImGui::TextColored(
+        world_message_error ? palette.negative : palette.positive, "%s",
+        world_message.c_str());
   UI::endCard();
 }
 

@@ -9,6 +9,7 @@
 #include <imgui.h>
 
 #include <algorithm>
+#include <cctype>
 #include <cfloat>
 #include <set>
 
@@ -77,13 +78,23 @@ void State::applyCombined()
   doc = std::move(combined->document);
   conflicts = std::move(combined->conflicts);
   duplicates = std::move(combined->possible_duplicates);
+  auto_merges = std::move(combined->auto_merges);
+  additions = std::move(combined->additions);
+  review_selected = -1;
   combined.reset();
   conflict_selected = 0;
   take_incoming.clear();
   changed();
   form_stale = true;
   notify(format("WORLD_COMBINED", {combined_name}));
-  setPage(openConflicts() != 0 ? Page::Conflicts : page);
+  if (openConflicts() != 0)
+  {
+    setPage(Page::Conflicts);
+  }
+  else if (!additions.empty() || !auto_merges.empty())
+  {
+    setPage(Page::Review);
+  }
 }
 
 void State::resolveSelected(World::Choice choice)
@@ -165,6 +176,51 @@ void State::keepSeparate()
   snapshot();
   duplicates.erase(duplicates.begin() + static_cast<std::ptrdiff_t>(index));
   settleConflicts();
+}
+
+void State::keepAllAsIs()
+{
+  if (openConflicts() == 0)
+  {
+    return;
+  }
+  snapshot();
+  conflicts.clear();
+  duplicates.clear();
+  settleConflicts();
+}
+
+void State::separateMerged(std::size_t index)
+{
+  if (index >= auto_merges.size())
+  {
+    return;
+  }
+  snapshot();
+  const auto id = World::separate(doc, auto_merges[index]);
+  if (!id)
+  {
+    undo.pop_back();
+    notify(LOC("WORLD_ERR_NO_FREE_ID"), true);
+    return;
+  }
+  auto_merges.erase(auto_merges.begin() + static_cast<std::ptrdiff_t>(index));
+  review_selected = -1;
+  changed();
+  form_stale = true;
+  notify(LOC("WORLD_KEPT_BOTH"));
+}
+
+bool State::decisionsPending()
+{
+  if (openConflicts() == 0)
+  {
+    return false;
+  }
+  setPage(Page::Conflicts);
+  notify(format("WORLD_PENDING_DECISIONS", {std::to_string(openConflicts())}),
+         true);
+  return true;
 }
 
 std::vector<std::string> State::sources() const
@@ -250,6 +306,18 @@ void comparison(const State& state, Kind kind, const json* current,
   }
   ImGui::EndTable();
 }
+/** Localised description of a combine match basis ("name+country" ...). */
+std::string basisText(const std::string& basis)
+{
+  std::string key = "WORLD_BASIS_";
+  for (const char c : basis)
+  {
+    key += std::isalnum(static_cast<unsigned char>(c))
+               ? static_cast<char>(std::toupper(static_cast<unsigned char>(c)))
+               : '_';
+  }
+  return format("WORLD_BASIS_LINE", {LOC(key.c_str())});
+}
 std::string conflictName(State& state, const World::Conflict& conflict)
 {
   const json* base = state.entity(conflict.kind, conflict.base_id);
@@ -266,6 +334,10 @@ void State::renderConflictDetail()
   take_incoming.resize(conflict.fields.size(), 0);
   muted(format("WORLD_CONFLICT_HINT",
                {conflict.base_source, conflict.incoming_source}));
+  if (!conflict.basis.empty())
+  {
+    muted(basisText(conflict.basis));
+  }
   bool first = true;
   const bool any =
       std::ranges::any_of(take_incoming, [](char c) { return c != 0; });
@@ -308,6 +380,10 @@ void State::renderDuplicateDetail()
   const std::string base_name = World::entityName(pair.kind, *base);
   const std::string incoming_name = World::entityName(pair.kind, *incoming);
   muted(LOC("WORLD_DUP_HINT"));
+  if (!pair.basis.empty())
+  {
+    muted(basisText(pair.basis));
+  }
   bool first = true;
   if (flowButton(
           (format("WORLD_MERGE_INTO", {base_name}) + "##merge_base").c_str(),
@@ -365,6 +441,13 @@ void State::renderConflicts(float width, float height)
       UI::endCard();
       return;
     }
+  }
+  if (openConflicts() != 0 &&
+      UI::secondaryButton(LOC("WORLD_KEEP_ALL"), ImVec2(-FLT_MIN, 0)))
+  {
+    keepAllAsIs();
+    UI::endCard();
+    return;
   }
   ImGui::Separator();
   const int total = static_cast<int>(openConflicts());
@@ -443,16 +526,24 @@ void State::renderSummary()
   const std::size_t found = combined->conflicts.size();
   const std::size_t similar = combined->possible_duplicates.size();
   ImGui::Spacing();
+  // Every category is listed; each has its own page after Apply.
+  ImGui::TextUnformatted(format("WORLD_SUMMARY_TOTAL_ADDED",
+                                {std::to_string(combined->additions.size())})
+                             .c_str());
+  ImGui::TextUnformatted(format("WORLD_SUMMARY_TOTAL_MERGED",
+                                {std::to_string(combined->auto_merges.size())})
+                             .c_str());
+  ImGui::TextUnformatted(
+      format("WORLD_SUMMARY_CONFLICTS", {std::to_string(found)}).c_str());
+  ImGui::TextUnformatted(
+      format("WORLD_SUMMARY_DUPLICATES", {std::to_string(similar)}).c_str());
   if (found + similar == 0)
   {
     muted(LOC("WORLD_SUMMARY_CLEAN"));
   }
   else
   {
-    ImGui::TextUnformatted(
-        format("WORLD_SUMMARY_CONFLICTS", {std::to_string(found)}).c_str());
-    ImGui::TextUnformatted(
-        format("WORLD_SUMMARY_DUPLICATES", {std::to_string(similar)}).c_str());
+    muted(LOC("WORLD_SUMMARY_DECIDE"));
   }
   ImGui::Spacing();
   const bool apply = UI::primaryButton(LOC("WORLD_BTN_APPLY"));
@@ -467,4 +558,82 @@ void State::renderSummary()
     combined.reset();
   }
   endModal(apply || cancel);
+}
+
+void State::renderReview(float width, float height)
+{
+  UI::beginCard("##world_review", LOC("WORLD_NAV_REVIEW"),
+                ImVec2(width, height), true);
+  const std::string added_tab =
+      format("WORLD_REVIEW_ADDED_TAB", {std::to_string(additions.size())}) +
+      "##review_added";
+  const std::string merged_tab =
+      format("WORLD_REVIEW_MERGED_TAB", {std::to_string(auto_merges.size())}) +
+      "##review_merged";
+  bool first = true;
+  if (flowButton(added_tab.c_str(), first, true, review_tab == 0))
+  {
+    review_tab = 0;
+    review_selected = -1;
+  }
+  if (flowButton(merged_tab.c_str(), first, true, review_tab == 1))
+  {
+    review_tab = 1;
+    review_selected = -1;
+  }
+  const bool merged = review_tab == 1;
+  muted(LOC(merged ? "WORLD_REVIEW_MERGED_HINT" : "WORLD_REVIEW_ADDED_HINT"));
+  if (merged)
+  {
+    const bool ready = review_selected >= 0 &&
+                       review_selected < static_cast<int>(auto_merges.size());
+    if (flowButton(LOC("WORLD_KEEP_BOTH_DIFFERENT"), first, ready, ready))
+    {
+      separateMerged(static_cast<std::size_t>(review_selected));
+    }
+  }
+  ImGui::Separator();
+  const int total =
+      static_cast<int>(merged ? auto_merges.size() : additions.size());
+  ImGui::BeginChild("##world_review_rows", ImVec2(0, 0));
+  ImGuiListClipper clipper;
+  clipper.Begin(total);
+  while (clipper.Step())
+  {
+    for (int i = clipper.DisplayStart; i < clipper.DisplayEnd; ++i)
+    {
+      const auto row = static_cast<std::size_t>(i);
+      std::string label;
+      if (merged)
+      {
+        const World::AutoMerge& merge = auto_merges[row];
+        const json* target = entity(merge.kind, merge.base_id);
+        label = kindName(merge.kind) + ": " +
+                World::entityName(merge.kind,
+                                  target != nullptr ? *target : *merge.entity) +
+                "  (" + basisText(merge.basis) + ")";
+      }
+      else
+      {
+        const World::Addition& added = additions[row];
+        const json* target = entity(added.kind, added.new_id);
+        label = kindName(added.kind) + ": " +
+                (target != nullptr ? World::entityName(added.kind, *target)
+                                   : std::string("-"));
+        if (added.old_id >= 0)
+        {
+          label += "  (#" + std::to_string(added.old_id) + " -> #" +
+                   std::to_string(added.new_id) + ")";
+        }
+      }
+      ImGui::PushID(i);
+      if (ImGui::Selectable(label.c_str(), i == review_selected))
+      {
+        review_selected = i;
+      }
+      ImGui::PopID();
+    }
+  }
+  ImGui::EndChild();
+  UI::endCard();
 }

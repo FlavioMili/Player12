@@ -183,9 +183,8 @@ MatchKits chooseMatchKits(TeamID homeTeam, TeamID awayTeam)
   kits.home = homeStrip(homeTeam, homeIdentity, homeColours);
   kits.away = homeStrip(awayTeam, awayIdentity, awayColours);
 
-  const bool clash =
-      homeTeam == awayTeam ||
-      !contrastsWithAll(kits.away.shirt, {kits.home.shirt});
+  const bool clash = homeTeam == awayTeam ||
+                     !contrastsWithAll(kits.away.shirt, {kits.home.shirt});
   if (clash)
   {
     const auto useIfContrasts = [&](const KitPalette& palette)
@@ -198,7 +197,8 @@ MatchKits chooseMatchKits(TeamID homeTeam, TeamID awayTeam)
     };
     // The club's own away strip, then its third, then reversed colours,
     // then any generic change strip that reads against the home shirt.
-    const bool usedAway = awayIdentity && useIfContrasts(awayIdentity->away_kit);
+    const bool usedAway =
+        awayIdentity && useIfContrasts(awayIdentity->away_kit);
     const bool usedThird =
         !usedAway && awayIdentity && useIfContrasts(awayIdentity->third_kit);
     const bool usedReverse =

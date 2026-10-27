@@ -74,14 +74,25 @@ and every club placed in a competition.
 blocks: for example a file of historic players, someone's league and your own
 fantasy league.
 
-- Ids never clash: the added world is renumbered automatically.
-- Identical entries (the same club with the same data) merge silently.
+- Ids never clash: the added world is renumbered automatically. The
+  **Combine review** page lists everything added, with ids shown as old -> new.
+- Nothing different is merged or dropped for you. Entries that are identical
+  and clearly the same (same club in the same league of the same country,
+  same player at the same club, and so on) merge for convenience, and are
+  listed under **Merged automatically** with the reason. If one is really a
+  different thing, select it and choose **These are different: keep both**.
 - The same club, player, competition or country with different data becomes a
   **conflict**. For each one, keep your version, keep the other one, keep
-  both, or pick field by field. With many conflicts, choose one world as the
-  source of truth for all those remaining.
-- Similar names, such as "Real Madrid" and "Real Madrid CF", are only
-  flagged: merge them or keep them separate.
+  both, or pick field by field. With many conflicts, you can choose one world
+  as the source of truth for all those remaining; that is always your click.
+- Weaker matches are **possible duplicates**: a club with the same name in
+  another division, a player with the same name, nationality and age at
+  another club, several equally good candidates, or similar names such as
+  "Real Madrid" and "Real Madrid CF". Both are kept; merge them or keep them
+  separate. Each shows why it was flagged ("Matched on ...").
+- While conflicts or possible duplicates are undecided, the world cannot be
+  saved or used to start a career. Decide each one, or choose **Keep
+  everything as it is**.
 
 Players of a club that merged into another follow the club that remains.
 

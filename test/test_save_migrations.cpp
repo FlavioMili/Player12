@@ -160,11 +160,9 @@ std::string databaseDigest(sqlite3* db)
 std::string firstDifferentTable(const std::string& left,
                                 const std::string& right)
 {
-  const auto [mismatch, unused] =
-      std::ranges::mismatch(left, right);
+  const auto [mismatch, unused] = std::ranges::mismatch(left, right);
   (void)unused;
-  const auto position =
-      static_cast<std::size_t>(mismatch - left.begin());
+  const auto position = static_cast<std::size_t>(mismatch - left.begin());
   const std::size_t marker = left.rfind("\n#table ", position);
   if (marker == std::string::npos) return "<schema>";
   const std::size_t start = marker + 8;

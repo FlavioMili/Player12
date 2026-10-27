@@ -14,7 +14,8 @@
 /** @brief Type alias for League identifiers. */
 using LeagueID = uint16_t;
 
-/** @brief Type alias for nationality identifiers (underlying type of Language). */
+/** @brief Type alias for nationality identifiers (underlying type of Language).
+ */
 using NationalityID = uint16_t;
 
 /** @brief Type aliases for world entity identifiers. */

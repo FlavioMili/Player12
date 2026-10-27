@@ -16,13 +16,13 @@
 #include <utility>
 #include <vector>
 
+#include "database/world/world_document.h"
 #include "gui/gui_constants.h"
 #include "gui/gui_scene.h"
 #include "gui/gui_view.h"
-#include "database/world/world_document.h"
+#include "gui/input_actions.h"
 #include "gui/scenes/world_choice_dialog.h"
 #include "gui/widgets/file_dialog.h"
-#include "gui/input_actions.h"
 #include "settings_manager.h"
 
 /**

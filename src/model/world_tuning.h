@@ -92,7 +92,7 @@ struct LeagueProfile
   LeagueShape shape;             /*!< Quality hierarchy of the clubs. */
   float coach_changes;           /*!< Manager changes per club-season. */
   LeagueMatchStyle match_style;  /*!< Real match averages. */
-  RegionID region_id = 0; /*!< World region (tours); 0 = none. */
+  RegionID region_id = 0;        /*!< World region (tours); 0 = none. */
   ConfederationID confederation = 0; /*!< Its confederation (cups); 0 = none. */
 };
 

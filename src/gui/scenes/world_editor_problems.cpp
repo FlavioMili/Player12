@@ -114,6 +114,23 @@ void State::renderProblems(float width, float height)
 {
   UI::beginCard("##world_problems", LOC("WORLD_NAV_PROBLEMS"),
                 ImVec2(width, height), true);
+  if (openConflicts() != 0)
+  {
+    ImGui::PushStyleColor(ImGuiCol_Text, Theme::palette().warning);
+    ImGui::TextWrapped("%s", format("WORLD_PENDING_DECISIONS",
+                                    {std::to_string(openConflicts())})
+                                 .c_str());
+    ImGui::PopStyleColor();
+    if (UI::secondaryButton(LOC("WORLD_NAV_CONFLICTS")))
+    {
+      setPage(Page::Conflicts);
+    }
+  }
+  if (issues.empty() && openConflicts() != 0)
+  {
+    UI::endCard();
+    return;
+  }
   if (issues.empty())
   {
     UI::emptyState(LOC("WORLD_NO_PROBLEMS_TITLE"),

@@ -91,7 +91,6 @@ std::string rowLabel(const RuntimeEditor::Table& table,
   return label;
 }
 
-
 std::string tableLabel(const std::string& name)
 {
   static const std::map<std::string, const char*, std::less<>> labels = {

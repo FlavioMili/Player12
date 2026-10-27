@@ -30,9 +30,9 @@
 #include <utility>
 #include <vector>
 
-#include "database/world/world_runtime.h"
 #include "controller/game_controller.h"
 #include "database/gamedata.h"
+#include "database/world/world_runtime.h"
 #include "global/global.h"
 #include "global/language_manager.h"
 #include "global/logger.h"

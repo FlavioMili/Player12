@@ -9,6 +9,8 @@
 #include "database/world/world_combine.h"
 
 #include <algorithm>
+#include <array>
+#include <iterator>
 #include <optional>
 #include <set>
 #include <unordered_set>
@@ -80,7 +82,9 @@ std::int64_t countryOf(Kind kind, const json& entity, const Document& document)
   }
 }
 
-std::string playerKey(const json& entity, std::optional<int> season)
+/** Name, nationality and birth year (or age without seasons): the weak
+ * identity of a player. Different players can share it. */
+std::string playerWeakKey(const json& entity, std::optional<int> season)
 {
   const std::int64_t age = intField(entity, "age").value_or(0);
   const std::int64_t birth = season ? *season - age : age;
@@ -89,6 +93,41 @@ std::string playerKey(const json& entity, std::optional<int> season)
          "|" + textField(entity, "nationality") + "|" + std::to_string(birth);
 }
 
+/** Country and name: the weak identity of a club. Names are only unique
+ * within a league, so this can match clubs of different divisions. */
+std::string clubWeakKey(const json& entity, const Document& document)
+{
+  const auto league = intField(entity, "league_id");
+  const json* found = league ? document.find(Kind::League, *league) : nullptr;
+  const std::string country =
+      found != nullptr ? countryKey(document, intField(*found, "country_id"))
+                       : std::string();
+  return country + "|" + normalise(textField(entity, "name"));
+}
+
+/** Country, league (by name) and name: the strong identity of a club. */
+std::string clubStrongKey(const json& entity, const Document& document)
+{
+  const auto league = intField(entity, "league_id");
+  const json* found = league ? document.find(Kind::League, *league) : nullptr;
+  const std::string country =
+      found != nullptr ? countryKey(document, intField(*found, "country_id"))
+                       : std::string();
+  const std::string division =
+      found != nullptr ? normalise(textField(*found, "name")) : std::string();
+  return country + "|" + division + "|" + normalise(textField(entity, "name"));
+}
+
+/** Identity of the club a player is at; empty for free agents. */
+std::string playerClubKey(const json& entity, const Document& document)
+{
+  const auto team = intField(entity, "team_id");
+  const json* club =
+      team && *team != 0 ? document.find(Kind::Club, *team) : nullptr;
+  return club != nullptr ? clubStrongKey(*club, document) : std::string();
+}
+
+/** Strong identity: what automatic merging and conflicts are based on. */
 std::string keyFor(Kind kind, const json& entity, const Document& document,
                    std::optional<int> season)
 {
@@ -104,16 +143,7 @@ std::string keyFor(Kind kind, const json& entity, const Document& document,
       return countryKey(document, intField(entity, "country_id")) + "|" +
              normalise(textField(entity, "name"));
     case Kind::Club:
-    {
-      const auto league = intField(entity, "league_id");
-      const json* found =
-          league ? document.find(Kind::League, *league) : nullptr;
-      const std::string country =
-          found != nullptr
-              ? countryKey(document, intField(*found, "country_id"))
-              : std::string();
-      return country + "|" + normalise(textField(entity, "name"));
-    }
+      return clubStrongKey(entity, document);
     case Kind::Travel:
     {
       const std::int64_t from = intField(entity, "from").value_or(-1);
@@ -122,11 +152,57 @@ std::string keyFor(Kind kind, const json& entity, const Document& document,
              std::to_string(std::max(from, to));
     }
     case Kind::Player:
-      return playerKey(entity, season);
+      return playerWeakKey(entity, season) + "|" +
+             playerClubKey(entity, document);
     case Kind::COUNT:
       break;
   }
   return {};
+}
+
+/** Weaker identity, only ever flagged for the user: empty when the kind has
+ * none. */
+std::string weakKeyFor(Kind kind, const json& entity, const Document& document,
+                       std::optional<int> season)
+{
+  switch (kind)
+  {
+    case Kind::Club:
+      return clubWeakKey(entity, document);
+    case Kind::Player:
+      return playerWeakKey(entity, season);
+    default:
+      return {};
+  }
+}
+
+/** Short machine-readable description of what a strong match rests on. */
+std::string strongBasis(Kind kind, bool by_year)
+{
+  switch (kind)
+  {
+    case Kind::City:
+    case Kind::League:
+      return "name+country";
+    case Kind::Club:
+      return "name+country+league";
+    case Kind::Travel:
+      return "route";
+    case Kind::Player:
+      return by_year ? "name+nationality+birth_year+club"
+                     : "name+nationality+age+club";
+    default:
+      return "name";
+  }
+}
+
+std::string weakBasis(Kind kind, bool by_year)
+{
+  if (kind == Kind::Club)
+  {
+    return "name+country";
+  }
+  return by_year ? "name+nationality+birth_year" : "name+nationality+age";
 }
 
 enum class Pass : std::uint8_t
@@ -310,7 +386,8 @@ void flagLookAlikes(Kind kind, const Document& document,
     {
       if (lookAlikePrepared(name, stripped, other.name, other.stripped))
       {
-        result.possible_duplicates.push_back({kind, other.id, id});
+        result.possible_duplicates.push_back(
+            {kind, other.id, id, "similar_name"});
       }
     }
   }
@@ -325,9 +402,12 @@ void combineKind(Kind kind, const Document& base, const Document& incoming,
   const json& base_rows = combined.section(kind);
   const std::size_t base_count = base_rows.size();
 
-  // identity -> id (travel: row position) over what the combined document has.
-  std::unordered_map<std::string, std::int64_t> known;
+  // Strong identity -> id (travel: row position) over what the combined
+  // document has. Several entries under one key make the key ambiguous.
+  std::unordered_multimap<std::string, std::int64_t> known;
   known.reserve(base_count + incoming.count(kind));
+  // Weak identity -> ids, flagged for the user but never merged by itself.
+  std::unordered_multimap<std::string, std::int64_t> weak;
   std::unordered_set<std::int64_t> used;
   std::vector<std::int64_t> base_ids;
   for (std::size_t i = 0; i < base_count; ++i)
@@ -338,14 +418,20 @@ void combineKind(Kind kind, const Document& base, const Document& incoming,
     {
       continue;
     }
-    known.try_emplace(keyFor(kind, entity, combined, base_season),
-                      travel ? static_cast<std::int64_t>(i) : id);
+    known.emplace(keyFor(kind, entity, combined, base_season),
+                  travel ? static_cast<std::int64_t>(i) : id);
     if (!travel)
     {
+      if (std::string key = weakKeyFor(kind, entity, combined, base_season);
+          !key.empty())
+      {
+        weak.emplace(std::move(key), id);
+      }
       used.insert(id);
       base_ids.push_back(id);
     }
   }
+  const bool by_year = base_season.has_value();
 
   const std::int64_t shift = base.highestId(kind);
   std::int64_t cursor = minId(kind);
@@ -368,12 +454,14 @@ void combineKind(Kind kind, const Document& base, const Document& incoming,
     return cursor;
   };
 
-  // Pass 1: decide the combined id of every incoming entity.
+  // Pass 0: rewrite references and compute the strong identity of every
+  // incoming entity, counting how many share one.
   const json& rows = incoming.section(kind);
   std::vector<Record> records;
   records.reserve(rows.size());
-  std::vector<std::size_t> fresh;  // records that are new, in order
-  std::unordered_map<std::int64_t, std::size_t> fresh_by_id;
+  std::unordered_map<std::string, std::size_t> incoming_count;
+  std::vector<std::string> keys;
+  keys.reserve(rows.size());
   for (const json& row : rows)
   {
     Record record;
@@ -385,19 +473,35 @@ void combineKind(Kind kind, const Document& base, const Document& incoming,
     {
       continue;  // an end of the route was not part of the incoming world
     }
-    const std::string key =
-        keyFor(kind, record.entity, combined, incoming_season);
-    const auto match = known.find(key);
-    if (match != known.end())
+    keys.push_back(keyFor(kind, record.entity, combined, incoming_season));
+    ++incoming_count[keys.back()];
+    records.push_back(std::move(record));
+  }
+
+  // Pass 1: decide the combined id of every incoming entity. It is matched
+  // with an existing one only when the identity is strong and unambiguous
+  // (exactly one candidate on each side). Anything else is added as a new
+  // entity, and flagged for the user when a weaker or ambiguous match exists.
+  std::vector<std::size_t> fresh;  // records that are new, in order
+  std::vector<Record> kept;
+  kept.reserve(records.size());
+  std::vector<PossibleDuplicate> flagged;
+  for (std::size_t n = 0; n < records.size(); ++n)
+  {
+    Record& record = records[n];
+    const std::string& key = keys[n];
+    const auto [first, last] = known.equal_range(key);
+    const auto candidates =
+        static_cast<std::size_t>(std::distance(first, last));
+    if (candidates == 1 && incoming_count.at(key) == 1)
     {
       record.matched = true;
-      record.target = match->second;
+      record.target = first->second;
     }
     else if (travel)
     {
       record.target = static_cast<std::int64_t>(base_count + fresh.size());
-      known.emplace(key, record.target);
-      fresh.push_back(records.size());
+      fresh.push_back(kept.size());
     }
     else
     {
@@ -410,16 +514,32 @@ void combineKind(Kind kind, const Document& base, const Document& incoming,
       }
       used.insert(*id);
       record.target = *id;
-      known.emplace(key, *id);
-      fresh_by_id.emplace(*id, records.size());
-      fresh.push_back(records.size());
+      fresh.push_back(kept.size());
+      if (candidates > 0)
+      {
+        for (auto it = first; it != last; ++it)
+        {
+          flagged.push_back({kind, it->second, *id, "ambiguous"});
+        }
+      }
+      else if (const std::string weak_key =
+                   weakKeyFor(kind, record.entity, combined, incoming_season);
+               !weak_key.empty())
+      {
+        const auto [weak_first, weak_last] = weak.equal_range(weak_key);
+        for (auto it = weak_first; it != weak_last; ++it)
+        {
+          flagged.push_back({kind, it->second, *id, weakBasis(kind, by_year)});
+        }
+      }
     }
     if (!travel && record.old_id >= 0)
     {
       result.id_map[slot(kind)][record.old_id] = record.target;
     }
-    records.push_back(std::move(record));
+    kept.push_back(std::move(record));
   }
+  records = std::move(kept);
 
   // Pass 2: same-kind references (parent leagues), then merge or add.
   std::vector<json> additions;
@@ -436,10 +556,7 @@ void combineKind(Kind kind, const Document& base, const Document& incoming,
     {
       if (travel)
       {
-        const auto position = static_cast<std::size_t>(record.target);
-        existing = position < base_count
-                       ? &base_rows[position]
-                       : &records[fresh[position - base_count]].entity;
+        existing = &base_rows[static_cast<std::size_t>(record.target)];
         if (intField(*existing, "from") == intField(record.entity, "to") &&
             intField(*existing, "to") == intField(record.entity, "from"))
         {
@@ -451,16 +568,23 @@ void combineKind(Kind kind, const Document& base, const Document& incoming,
       else
       {
         existing = combined.find(kind, record.target);
-        if (existing == nullptr)
-        {
-          existing = &records[fresh_by_id.at(record.target)].entity;
-        }
+      }
+      if (existing == nullptr)
+      {
+        continue;
       }
       const std::vector<std::string> differing =
           differingPaths(*existing, record.entity);
       if (differing.empty())
       {
         ++result.merged[slot(kind)];
+        AutoMerge merge;
+        merge.kind = kind;
+        merge.base_id = record.target;
+        merge.incoming_id = travel ? -1 : record.old_id;
+        merge.entity = std::make_shared<const json>(record.entity);
+        merge.basis = strongBasis(kind, by_year);
+        result.auto_merges.push_back(std::move(merge));
         continue;
       }
       Conflict conflict;
@@ -470,10 +594,13 @@ void combineKind(Kind kind, const Document& base, const Document& incoming,
       conflict.base_source = base.manifest().name;
       conflict.incoming_source = incoming.manifest().name;
       conflict.fields = differing;
+      conflict.basis = strongBasis(kind, by_year);
       result.conflicts.push_back(std::move(conflict));
       continue;
     }
     ++result.added[slot(kind)];
+    result.additions.push_back(
+        {kind, travel ? -1 : record.old_id, record.target});
     if (!travel)
     {
       new_ids.push_back(record.target);
@@ -487,10 +614,69 @@ void combineKind(Kind kind, const Document& base, const Document& incoming,
     section.push_back(std::move(entity));
   }
   combined.invalidate();
+  result.possible_duplicates.insert(result.possible_duplicates.end(),
+                                    flagged.begin(), flagged.end());
 
   if (kind != Kind::Player && kind != Kind::Travel)
   {
     flagLookAlikes(kind, combined, base_ids, new_ids, result);
+  }
+}
+
+/** Records which added entities point at an automatically merged one, so the
+ * merge can be undone later. */
+void linkChildren(const Document& incoming, CombineResult& result)
+{
+  std::array<std::unordered_map<std::int64_t, std::size_t>,
+             static_cast<std::size_t>(Kind::COUNT)>
+      merged;
+  for (std::size_t i = 0; i < result.auto_merges.size(); ++i)
+  {
+    const AutoMerge& merge = result.auto_merges[i];
+    if (merge.kind != Kind::Travel)
+    {
+      merged[slot(merge.kind)].emplace(merge.incoming_id, i);
+    }
+  }
+  std::array<std::unordered_set<std::int64_t>,
+             static_cast<std::size_t>(Kind::COUNT)>
+      added;
+  for (const Addition& addition : result.additions)
+  {
+    added[slot(addition.kind)].insert(addition.new_id);
+  }
+  for (const Kind kind : KINDS)
+  {
+    if (kind == Kind::Travel)
+    {
+      continue;
+    }
+    for (const FieldSpec& spec : fields(kind))
+    {
+      if (spec.type != FieldType::Reference || !spec.reference ||
+          merged[slot(*spec.reference)].empty())
+      {
+        continue;
+      }
+      for (const json& row : incoming.section(kind))
+      {
+        const json* value = get(row, spec.path);
+        const auto child = result.id_map[slot(kind)].find(entityId(row));
+        if (value == nullptr || !value->is_number_integer() ||
+            child == result.id_map[slot(kind)].end() ||
+            !added[slot(kind)].contains(child->second))
+        {
+          continue;
+        }
+        const auto parent =
+            merged[slot(*spec.reference)].find(value->get<std::int64_t>());
+        if (parent != merged[slot(*spec.reference)].end())
+        {
+          result.auto_merges[parent->second].children.push_back(
+              {kind, child->second, std::string(spec.path)});
+        }
+      }
+    }
   }
 }
 
@@ -604,6 +790,7 @@ CombineResult combine(const Document& base, const Document& incoming)
     combineKind(kind, base, incoming, use_season ? base_season : std::nullopt,
                 use_season ? incoming_season : std::nullopt, result);
   }
+  linkChildren(incoming, result);
   combineNames(incoming, result.document);
   for (const auto& [key, value] : incoming.root().items())
   {
@@ -618,6 +805,38 @@ CombineResult combine(const Document& base, const Document& incoming)
     document = Document(std::move(root));
   }
   return result;
+}
+
+std::optional<std::int64_t> separate(Document& document, const AutoMerge& merge)
+{
+  if (!merge.entity)
+  {
+    return std::nullopt;
+  }
+  if (merge.kind == Kind::Travel)
+  {
+    json& rows = document.section(Kind::Travel);
+    rows.push_back(*merge.entity);
+    document.invalidate();
+    return static_cast<std::int64_t>(rows.size()) - 1;
+  }
+  const auto id = document.freeId(merge.kind);
+  if (!id)
+  {
+    return std::nullopt;
+  }
+  json entity = *merge.entity;
+  entity["id"] = *id;
+  document.add(merge.kind, std::move(entity));
+  for (const ChildLink& link : merge.children)
+  {
+    if (json* child = document.find(link.kind, link.id))
+    {
+      set(*child, link.path, *id);
+    }
+  }
+  document.invalidate();
+  return *id;
 }
 
 void resolve(Document& document, const Conflict& conflict, Choice choice)

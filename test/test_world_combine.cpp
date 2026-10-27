@@ -246,8 +246,9 @@ TEST(CombinePlayers, IdentityWithAndWithoutSeason)
   const CombineResult without = combine(base_no, incoming_no);
   EXPECT_EQ(without.document.count(Kind::Player), 2U);
 
+  // Free agents have an empty club part.
   EXPECT_EQ(identityKey(Kind::Player, base.section(Kind::Player)[0], base),
-            "mario rossi|Italy|2006");
+            "mario rossi|Italy|2006|");
 }
 
 TEST(CombineTravel, ReversedPairMatches)
@@ -340,4 +341,233 @@ TEST(CombinePerformance, FifteenThousandPlayersUnderOneSecond)
   const auto elapsed = std::chrono::steady_clock::now() - start;
   EXPECT_EQ(result.document.count(Kind::Player), 30000U);
   EXPECT_LT(elapsed, std::chrono::seconds(1));
+}
+
+namespace
+{
+/** Spain with two divisions; both worlds are built by this. */
+Document twoDivisions(const std::string& name)
+{
+  Document d = makeDocument(name);
+  addCountry(d, 1, "Spain");
+  addLeague(d, 1, "La Liga", 1);
+  addLeague(d, 2, "Segunda", 1);
+  return d;
+}
+
+const PossibleDuplicate* flagged(const CombineResult& result, std::int64_t base,
+                                 std::int64_t incoming)
+{
+  for (const PossibleDuplicate& duplicate : result.possible_duplicates)
+  {
+    if (duplicate.base_id == base && duplicate.incoming_id == incoming)
+    {
+      return &duplicate;
+    }
+  }
+  return nullptr;
+}
+}  // namespace
+
+TEST(CombineStrong, SameNamedClubsInOtherDivisionsAreKeptAndFlagged)
+{
+  Document base = twoDivisions("Base");
+  addClub(base, 1, "Rovers", 1);
+  addPlayer(base, 1, "Ana", "Base", 25, 1);
+  Document incoming = twoDivisions("Other");
+  addClub(incoming, 1, "Rovers", 2);
+  addPlayer(incoming, 1, "Bea", "Incoming", 26, 1);
+
+  const CombineResult result = combine(base, incoming);
+  EXPECT_TRUE(result.conflicts.empty());
+  ASSERT_EQ(result.document.count(Kind::Club), 2U);
+  const std::int64_t club = result.id_map[slot(Kind::Club)].at(1);
+  EXPECT_NE(club, 1);
+  // Each club stays in its own division and its players follow it.
+  EXPECT_EQ(result.document.find(Kind::Club, 1)->at("league_id"), 1);
+  EXPECT_EQ(result.document.find(Kind::Club, club)->at("league_id"),
+            result.id_map[slot(Kind::League)].at(2));
+  EXPECT_EQ(result.document.find(Kind::Player, 1)->at("team_id"), 1);
+  const std::int64_t player = result.id_map[slot(Kind::Player)].at(1);
+  EXPECT_EQ(result.document.find(Kind::Player, player)->at("team_id"), club);
+  const PossibleDuplicate* duplicate = flagged(result, 1, club);
+  ASSERT_NE(duplicate, nullptr);
+  EXPECT_EQ(duplicate->kind, Kind::Club);
+  EXPECT_EQ(duplicate->basis, "name+country");
+}
+
+TEST(CombineStrong, SameClubInSameDivisionStillMatches)
+{
+  Document base = twoDivisions("Base");
+  addClub(base, 1, "Rovers", 2, 1000);
+  addClub(base, 2, "Rovers", 1, 1000);
+  Document incoming = twoDivisions("Other");
+  addClub(incoming, 1, "Rovers", 2, 1000);
+  addClub(incoming, 2, "Rovers", 1, 7000);
+  const CombineResult result = combine(base, incoming);
+  EXPECT_EQ(result.document.count(Kind::Club), 2U);
+  EXPECT_TRUE(result.possible_duplicates.empty());
+  ASSERT_EQ(result.conflicts.size(), 1U);
+  EXPECT_EQ(result.conflicts.front().base_id, 2);
+  EXPECT_EQ(result.conflicts.front().basis, "name+country+league");
+}
+
+TEST(CombineStrong, HomonymPlayersAtDifferentClubsAreKeptAndFlagged)
+{
+  Document base = spain();
+  Document incoming = makeDocument("Other");
+  addCountry(incoming, 1, "Spain");
+  addLeague(incoming, 1, "La Liga", 1);
+  addClub(incoming, 1, "Real Madrid", 1);
+  addClub(incoming, 2, "Barcelona", 1);
+  // Same name, nationality and age as the base player, at another club.
+  addPlayer(incoming, 1, "Luka", "Modric", 30, 2);
+  const CombineResult result = combine(base, incoming);
+  EXPECT_TRUE(result.conflicts.empty());
+  ASSERT_EQ(result.document.count(Kind::Player), 2U);
+  const std::int64_t player = result.id_map[slot(Kind::Player)].at(1);
+  EXPECT_NE(player, 1);
+  const PossibleDuplicate* duplicate = flagged(result, 1, player);
+  ASSERT_NE(duplicate, nullptr);
+  EXPECT_EQ(duplicate->kind, Kind::Player);
+  EXPECT_EQ(duplicate->basis, "name+nationality+age");
+  EXPECT_EQ(result.document.find(Kind::Player, 1)->at("team_id"), 1);
+}
+
+TEST(CombineStrong, FreeAgentHomonymIsFlaggedNotMerged)
+{
+  const Document base = spain();
+  Document incoming = spain("Other");
+  incoming.find(Kind::Player, 1)->operator[]("team_id") = 0;
+  const CombineResult result = combine(base, incoming);
+  EXPECT_EQ(result.document.count(Kind::Player), 2U);
+  EXPECT_EQ(result.possible_duplicates.size(), 1U);
+  EXPECT_TRUE(result.conflicts.empty());
+}
+
+TEST(CombineStrong, StrongPlayerMatchStatesItsBasis)
+{
+  Document base = spain();
+  Document incoming = spain("Other");
+  incoming.find(Kind::Player, 1)->operator[]("wage") = 9;
+  const CombineResult result = combine(base, incoming);
+  ASSERT_EQ(result.conflicts.size(), 1U);
+  EXPECT_EQ(result.conflicts.front().kind, Kind::Player);
+  EXPECT_EQ(result.conflicts.front().basis, "name+nationality+age+club");
+  EXPECT_TRUE(result.possible_duplicates.empty());
+}
+
+TEST(CombineStrong, AmbiguousKeysAreNeverMerged)
+{
+  // Two base players with the same strong identity, one incoming look-alike.
+  Document base = spain();
+  addPlayer(base, 2, "Luka", "Modric", 30, 1);
+  const Document incoming = spain("Other");
+  const CombineResult result = combine(base, incoming);
+  EXPECT_EQ(result.document.count(Kind::Player), 3U);
+  EXPECT_TRUE(result.conflicts.empty());
+  ASSERT_EQ(result.possible_duplicates.size(), 2U);
+  for (const PossibleDuplicate& duplicate : result.possible_duplicates)
+  {
+    EXPECT_EQ(duplicate.basis, "ambiguous");
+  }
+
+  // Ambiguity on the incoming side: two incoming rows, one base entity.
+  const Document single = spain();
+  Document twins = spain("Other");
+  addPlayer(twins, 2, "Luka", "Modric", 30, 1);
+  const CombineResult other = combine(single, twins);
+  EXPECT_EQ(other.document.count(Kind::Player), 3U);
+  EXPECT_TRUE(other.conflicts.empty());
+  ASSERT_EQ(other.possible_duplicates.size(), 2U);
+  EXPECT_EQ(other.possible_duplicates.front().basis, "ambiguous");
+}
+
+TEST(CombineStrong, PossibleDuplicatesAreOnlyMergedWhenTheUserChooses)
+{
+  Document base = twoDivisions("Base");
+  addClub(base, 1, "Rovers", 1);
+  Document incoming = twoDivisions("Other");
+  addClub(incoming, 1, "Rovers", 2);
+  CombineResult result = combine(base, incoming);
+  ASSERT_EQ(result.possible_duplicates.size(), 1U);
+  EXPECT_EQ(result.document.count(Kind::Club), 2U);
+  const PossibleDuplicate& pair = result.possible_duplicates.front();
+  mergeInto(result.document, pair.kind, pair.base_id, pair.incoming_id);
+  EXPECT_EQ(result.document.count(Kind::Club), 1U);
+}
+
+TEST(CombineStrong, BulkSourceOfTruthStillResolvesStrongConflicts)
+{
+  const Document base = spain("Base", 1000);
+  Document incoming = spain("Other", 5000);
+  addClub(incoming, 2, "Barcelona", 1);
+  CombineResult result = combine(base, incoming);
+  ASSERT_EQ(result.conflicts.size(), 1U);
+  resolveAll(result.document, result.conflicts, "Other");
+  EXPECT_EQ(result.document.find(Kind::Club, 1)->at("balance"), 5000);
+  EXPECT_EQ(result.document.count(Kind::Club), 2U);
+}
+
+TEST(CombineReview, AutomaticMergesAreRecordedAndCanBeUndone)
+{
+  const Document base = spain();
+  Document incoming = spain("Other");
+  addClub(incoming, 2, "Barcelona", 1);
+  addPlayer(incoming, 2, "Pedri", "Gonzalez", 20, 2);
+  CombineResult result = combine(base, incoming);
+  // Country, league, club and player were identical: merged, but listed.
+  EXPECT_EQ(result.auto_merges.size(), 4U);
+  for (const Kind kind :
+       {Kind::Country, Kind::League, Kind::Club, Kind::Player})
+  {
+    EXPECT_EQ(std::ranges::count(result.auto_merges, kind, &AutoMerge::kind),
+              1);
+  }
+  const auto league =
+      std::ranges::find(result.auto_merges, Kind::League, &AutoMerge::kind);
+  ASSERT_NE(league, result.auto_merges.end());
+  EXPECT_EQ(league->basis, "name+country");
+  // The added club (Barcelona) pointed at the merged league.
+  ASSERT_EQ(league->children.size(), 1U);
+  EXPECT_EQ(league->children.front().kind, Kind::Club);
+  EXPECT_EQ(league->children.front().path, "league_id");
+
+  const std::int64_t barcelona = league->children.front().id;
+  ASSERT_EQ(result.document.find(Kind::Club, barcelona)->at("league_id"), 1);
+  const auto fresh = separate(result.document, *league);
+  ASSERT_TRUE(fresh.has_value());
+  EXPECT_NE(*fresh, 1);
+  EXPECT_EQ(result.document.count(Kind::League), 2U);
+  EXPECT_EQ(result.document.find(Kind::League, *fresh)->at("name"), "La Liga");
+  // The child follows the restored entity; the base club stays where it was.
+  EXPECT_EQ(result.document.find(Kind::Club, barcelona)->at("league_id"),
+            *fresh);
+  EXPECT_EQ(result.document.find(Kind::Club, 1)->at("league_id"), 1);
+}
+
+TEST(CombineReview, SummaryListsMatchTheResult)
+{
+  Document base = spain("Base", 1000);
+  Document incoming = spain("Other", 5000);         // club conflict
+  addClub(incoming, 2, "Barcelona", 1);             // added
+  addPlayer(incoming, 2, "Luka", "Modric", 30, 2);  // homonym elsewhere
+  const CombineResult result = combine(base, incoming);
+  std::size_t added = 0;
+  std::size_t merged = 0;
+  for (const Kind kind : KINDS)
+  {
+    added += result.added[slot(kind)];
+    merged += result.merged[slot(kind)];
+  }
+  EXPECT_EQ(result.additions.size(), added);
+  EXPECT_EQ(result.auto_merges.size(), merged);
+  for (const Addition& addition : result.additions)
+  {
+    ASSERT_NE(result.document.find(addition.kind, addition.new_id), nullptr);
+    EXPECT_EQ(result.id_map[slot(addition.kind)].at(addition.old_id),
+              addition.new_id);
+  }
+  EXPECT_EQ(result.conflicts.size(), 1U);
+  EXPECT_EQ(result.possible_duplicates.size(), 1U);
 }

@@ -11,7 +11,9 @@
 #include <array>
 #include <cstddef>
 #include <cstdint>
+#include <memory>
 #include <nlohmann/json.hpp>
+#include <optional>
 #include <string>
 #include <string_view>
 #include <unordered_map>
@@ -20,10 +22,14 @@
 #include "database/world/world_document.h"
 
 /**
- * Combining two world databases. Entities are matched by identity (names in
- * the context of their parents, never by numeric id), identical duplicates
- * merge silently, differing ones become conflicts the player resolves, and
- * the children of a matched entity follow it (cascade).
+ * Combining two world databases. Nothing different is ever merged or dropped
+ * automatically. Entities match only on a strong identity (names in the
+ * context of their parents, never by numeric id) that is unambiguous, with
+ * exactly one candidate on each side: identical matches merge silently,
+ * differing ones become conflicts the player resolves, and the children of a
+ * matched entity follow it (cascade). Weaker matches (same club name in
+ * another league, same player at another club, ambiguous keys, look-alike
+ * names) are added as new entities and flagged as possible duplicates.
  */
 namespace World
 {
@@ -38,15 +44,52 @@ struct Conflict
   std::string base_source;          ///< Manifest name of the base document.
   std::string incoming_source;      ///< Manifest name of the incoming document.
   std::vector<std::string> fields;  ///< differingPaths(base, incoming).
+  /** What the match rests on, e.g. "name+nationality+birth_year+club". Only
+   * strong, unambiguous matches become conflicts. */
+  std::string basis;
 };
 
-/** A new entity whose name resembles an existing one; both are in the result.
- */
+/** A new entity that may be the same as an existing one without a strong,
+ * unambiguous match; both are in the result and only the user can merge. */
 struct PossibleDuplicate
 {
   Kind kind = Kind::Country;
   std::int64_t base_id = 0;
   std::int64_t incoming_id = 0;
+  /** Why they may be the same: "name+country" (club in another league),
+   * "name+nationality+birth_year" (player at another club), "ambiguous"
+   * (several candidates) or "similar_name". Never merged automatically. */
+  std::string basis;
+};
+
+/** A reference from a child entity to an automatically merged one. */
+struct ChildLink
+{
+  Kind kind = Kind::Club;
+  std::int64_t id = 0;  ///< Combined id of the child.
+  std::string path;     ///< Reference field of the child.
+};
+
+/** An incoming entity that was identical to an existing one (strong,
+ * unambiguous match) and was merged for convenience. The user can review it
+ * and undo it with separate(). */
+struct AutoMerge
+{
+  Kind kind = Kind::Country;
+  std::int64_t base_id = 0;       ///< Entity it merged into (travel: position).
+  std::int64_t incoming_id = -1;  ///< Id in the incoming world.
+  std::shared_ptr<const nlohmann::json> entity;  ///< The merged entity.
+  std::string basis;                             ///< As Conflict::basis.
+  /** Added children that were pointed at base_id because of the merge. */
+  std::vector<ChildLink> children;
+};
+
+/** An incoming entity that is new in the combined world. */
+struct Addition
+{
+  Kind kind = Kind::Country;
+  std::int64_t old_id = -1;  ///< Id in the incoming world (travel: -1).
+  std::int64_t new_id = 0;   ///< Id in the combined world (travel: position).
 };
 
 struct CombineResult
@@ -54,6 +97,10 @@ struct CombineResult
   Document document;
   std::vector<Conflict> conflicts;
   std::vector<PossibleDuplicate> possible_duplicates;
+  /** Everything merged because it was identical; reviewable and undoable. */
+  std::vector<AutoMerge> auto_merges;
+  /** Everything added, with its old and new id. */
+  std::vector<Addition> additions;
   /** Incoming id -> combined id, per kind. */
   std::array<std::unordered_map<std::int64_t, std::int64_t>,
              static_cast<std::size_t>(Kind::COUNT)>
@@ -66,10 +113,11 @@ struct CombineResult
 CombineResult combine(const Document& base, const Document& incoming);
 
 /**
- * Identity of @p entity inside @p document: normalised name in the context of
- * the parent country (leagues, cities, clubs), the unordered city pair
- * (travel), or name, nationality and birth year (players; the birth year is
- * the document's season minus the age when it has one, else the age).
+ * Strong identity of @p entity inside @p document: normalised name in the
+ * context of the parent country (leagues, cities), country plus league plus
+ * name (clubs), the unordered city pair (travel), or name, nationality, birth
+ * year and club (players; the birth year is the document's season minus the
+ * age when it has one, else the age; free agents have an empty club).
  */
 std::string identityKey(Kind kind, const nlohmann::json& entity,
                         const Document& document);
@@ -83,6 +131,12 @@ enum class Choice : std::uint8_t
   KeepIncoming,
   KeepBoth,
 };
+
+/** Undoes one automatic merge: re-adds the incoming entity under a free id and
+ * points its added children back to it. Returns the new id (travel: row
+ * position), nullopt when no id is free. */
+std::optional<std::int64_t> separate(Document& document,
+                                     const AutoMerge& merge);
 
 /** Applies @p choice for @p conflict to the combined @p document. Keeping both
  * is not possible for travel rows (treated as keeping the base). */

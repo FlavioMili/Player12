@@ -51,6 +51,7 @@ struct WorldEditorScene::State
     Player,
     Problems,
     Conflicts,
+    Review,
   };
   enum class Popup : std::uint8_t
   {
@@ -81,6 +82,7 @@ struct WorldEditorScene::State
     std::string text;
     std::vector<World::Conflict> conflicts;
     std::vector<World::PossibleDuplicate> duplicates;
+    std::vector<World::AutoMerge> auto_merges;
   };
 
   State(GUIView* owner, Options start);
@@ -127,6 +129,12 @@ struct WorldEditorScene::State
   // Combine session.
   std::vector<World::Conflict> conflicts;
   std::vector<World::PossibleDuplicate> duplicates;
+  /** Identical entities merged by the last combine, reviewable. */
+  std::vector<World::AutoMerge> auto_merges;
+  /** Entities the last combine added, with their old and new ids. */
+  std::vector<World::Addition> additions;
+  int review_tab = 0;  ///< 0 added, 1 merged automatically.
+  int review_selected = -1;
   std::optional<World::CombineResult> combined;
   std::string combined_name;
   int conflict_selected = 0;  ///< Conflicts first, then possible duplicates.
@@ -210,6 +218,14 @@ struct WorldEditorScene::State
   void resolveAllFrom(const std::string& source);
   void mergeSelected(bool keep_base);
   void keepSeparate();
+  /** Explicit choice: keep every open conflict and possible duplicate as it
+   * is (current versions, both entities of each duplicate). */
+  void keepAllAsIs();
+  /** Undoes the automatic merge at @p index: keeps both entities. */
+  void separateMerged(std::size_t index);
+  /** True (with a message and the Conflicts page) while decisions are open;
+   * saving, exporting and starting a career wait for them. */
+  bool decisionsPending();
   void settleConflicts();
   std::vector<std::string> sources() const;
   std::size_t openConflicts() const
@@ -232,6 +248,7 @@ struct WorldEditorScene::State
   void renderDetails(float width, float height);
   void renderProblems(float width, float height);
   void renderConflicts(float width, float height);
+  void renderReview(float width, float height);
   void renderPopups();
   /** Opens the current popup as a titled modal; closes it when it is gone. */
   bool modal(const std::string& title);

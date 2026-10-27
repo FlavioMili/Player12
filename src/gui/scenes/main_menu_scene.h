@@ -16,11 +16,11 @@
 #include <thread>
 #include <vector>
 
+#include "database/world/world_document.h"
 #include "global/background_task.h"
 #include "global/crash_report.h"
 #include "gui/gui_scene.h"
 #include "gui/gui_view.h"
-#include "database/world/world_document.h"
 #include "gui/scenes/world_choice_dialog.h"
 
 /**

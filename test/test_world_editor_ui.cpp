@@ -616,3 +616,73 @@ TEST(WorldEditorUI, ConfederationCupsAndRoutesAreEditedWithoutJson)
   frames(*view);
   EXPECT_EQ(conf().at("cups").size(), 1U);
 }
+
+TEST(WorldEditorUI, PendingCombineDecisionsBlockSaveAndStartUntilChosen)
+{
+  GameController controller;
+  auto view = openEditor(controller, World::templateDocument());
+  State& state = WorldEditorTestAccess::state(*view);
+  ASSERT_TRUE(state.combineDocument(otherWorld(), "other"));
+  state.applyCombined();
+  frames(*view);
+  ASSERT_GT(state.openConflicts(), 0U);
+  state.setPage(State::Page::Details);
+  EXPECT_FALSE(state.save());
+  EXPECT_EQ(state.page, State::Page::Conflicts);
+  EXPECT_TRUE(state.status_error);
+  EXPECT_TRUE(state.file.empty());
+  EXPECT_FALSE(state.exportTo(std::filesystem::temp_directory_path() /
+                              "fm_pending_export.fmdb"));
+  EXPECT_FALSE(state.startCareer());
+  EXPECT_EQ(state.next_scene, nullptr);
+  frames(*view);
+  // The Problems page names the pending decisions.
+  state.setPage(State::Page::Problems);
+  frames(*view);
+
+  state.keepAllAsIs();
+  EXPECT_EQ(state.openConflicts(), 0U);
+  ASSERT_TRUE(state.save());
+  World::Library::remove(state.file);
+}
+
+TEST(WorldEditorUI, ReviewListsTheCombineAndKeepsBothOnRequest)
+{
+  GameController controller;
+  World::Document base = World::templateDocument();
+  World::Document incoming = base;
+  incoming.add(Kind::Club,
+               {{"id", 50}, {"league_id", 1}, {"name", "Newtown Athletic"}});
+  auto view = openEditor(controller, base);
+  State& state = WorldEditorTestAccess::state(*view);
+  ASSERT_TRUE(state.combineDocument(incoming, "other"));
+  frames(*view);
+  const std::size_t added = state.combined->additions.size();
+  const std::size_t merged = state.combined->auto_merges.size();
+  EXPECT_EQ(added, 1U);
+  EXPECT_GT(merged, 0U);
+  state.applyCombined();
+  frames(*view);
+  EXPECT_EQ(state.page, State::Page::Review);
+  EXPECT_EQ(state.additions.size(), added);
+  EXPECT_EQ(state.auto_merges.size(), merged);
+  state.review_tab = 1;
+  frames(*view);
+  state.review_tab = 0;
+  frames(*view);
+
+  const auto league = std::ranges::find(state.auto_merges, Kind::League,
+                                        &World::AutoMerge::kind);
+  ASSERT_NE(league, state.auto_merges.end());
+  const std::size_t leagues = state.doc.count(Kind::League);
+  state.separateMerged(
+      static_cast<std::size_t>(league - state.auto_merges.begin()));
+  EXPECT_EQ(state.doc.count(Kind::League), leagues + 1);
+  EXPECT_EQ(state.auto_merges.size(), merged - 1);
+  const std::int64_t club = state.additions.front().new_id;
+  EXPECT_NE(state.doc.find(Kind::Club, club)->at("league_id"), 1);
+  // Undo brings the merge back for review.
+  state.undoStep();
+  EXPECT_EQ(state.doc.count(Kind::League), leagues);
+  EXPECT_EQ(state.auto_merges.size(), merged);
+}

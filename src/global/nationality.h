@@ -40,7 +40,7 @@ inline constexpr unsigned LAST_CUSTOM_NATIONALITY =
 struct CustomNationality
 {
   std::string name;            /*!< Demonym ("Westerosi"). */
-  RegionID region = 0;          /*!< Id of its country's region. */
+  RegionID region = 0;         /*!< Id of its country's region. */
   std::int64_t country_id = 0; /*!< World country it belongs to. */
 };
 

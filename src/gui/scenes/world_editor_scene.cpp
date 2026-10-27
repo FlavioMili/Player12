@@ -171,6 +171,9 @@ void State::load(World::Document document, std::filesystem::path path,
   last_edit.clear();
   conflicts.clear();
   duplicates.clear();
+  auto_merges.clear();
+  additions.clear();
+  review_selected = -1;
   combined.reset();
   setPage(Page::Details);
   issues_stale = true;
@@ -204,6 +207,10 @@ bool State::openFile(const std::filesystem::path& path)
 
 bool State::save()
 {
+  if (decisionsPending())
+  {
+    return false;
+  }
   if (World::hasErrors(problems(true)))
   {
     notify(LOC("WORLD_ERR_ERRORS"), true);
@@ -223,6 +230,10 @@ bool State::save()
 
 bool State::exportTo(const std::filesystem::path& chosen)
 {
+  if (decisionsPending())
+  {
+    return false;
+  }
   if (World::hasErrors(problems(true)))
   {
     notify(LOC("WORLD_ERR_ERRORS"), true);
@@ -284,6 +295,10 @@ void State::perform(Action action, const std::filesystem::path& path)
 
 bool State::startCareer()
 {
+  if (decisionsPending())
+  {
+    return false;
+  }
   const bool blocked = World::hasErrors(problems(true)) ||
                        World::countOf(issues, World::Severity::Blocking) != 0;
   if (blocked)
@@ -301,7 +316,7 @@ bool State::startCareer()
 
 State::Snapshot State::capture() const
 {
-  return {doc.root().dump(), conflicts, duplicates};
+  return {doc.root().dump(), conflicts, duplicates, auto_merges};
 }
 
 void State::snapshot(const std::string& key)
@@ -336,6 +351,7 @@ void State::restore(const Snapshot& snapshot_)
   doc = World::Document(std::move(root));
   conflicts = snapshot_.conflicts;
   duplicates = snapshot_.duplicates;
+  auto_merges = snapshot_.auto_merges;
   last_edit.clear();
   form_stale = true;
   if (const auto k = kind(); k && entity(*k, selected) == nullptr)
@@ -453,6 +469,14 @@ std::vector<std::pair<Page, std::string>> navigation(const State& state)
     items.emplace_back(Page::Conflicts,
                        std::string(LOC("WORLD_NAV_CONFLICTS")) + " (" +
                            std::to_string(state.openConflicts()) + ")");
+  }
+  if (!state.additions.empty() || !state.auto_merges.empty())
+  {
+    items.emplace_back(
+        Page::Review,
+        std::string(LOC("WORLD_NAV_REVIEW")) + " (" +
+            std::to_string(state.additions.size() + state.auto_merges.size()) +
+            ")");
   }
   return items;
 }
@@ -848,6 +872,10 @@ void State::render()
   else if (page == Page::Problems)
   {
     renderProblems(width, height);
+  }
+  else if (page == Page::Review)
+  {
+    renderReview(width, height);
   }
   else
   {

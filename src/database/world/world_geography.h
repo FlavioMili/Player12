@@ -76,6 +76,5 @@ Geography geographyOf(const Document& world, bool with_nations = false);
 const Geography& geography();
 /** Id of the region of @p country: region_id, else the older "region" text
  * matched by name, else the first region. */
-RegionID regionIdOf(const Geography& geography,
-                        const nlohmann::json& country);
+RegionID regionIdOf(const Geography& geography, const nlohmann::json& country);
 }  // namespace World

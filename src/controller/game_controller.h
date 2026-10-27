@@ -20,8 +20,8 @@
 #include <vector>
 
 #include "database/datagenerator.h"
-#include "database/world/world_document.h"
 #include "database/save_manager.h"
+#include "database/world/world_document.h"
 #include "global/stats_config.h"
 #include "model/competition.h"
 #include "model/game.h"
@@ -119,8 +119,7 @@ class GameController
    * @param world World database to build the career from (null: the
    * built-in world). It must be playable (World::playability).
    */
-  void newGame(int slot,
-               std::optional<std::uint64_t> world_seed = std::nullopt,
+  void newGame(int slot, std::optional<std::uint64_t> world_seed = std::nullopt,
                std::shared_ptr<const World::Document> world = nullptr);
 
   /**

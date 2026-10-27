@@ -26,8 +26,8 @@
 #include "global/logger.h"
 #include "gui/gui_view.h"
 #include "gui/scenes/about_scene.h"
-#include "gui/scenes/main_game_scene.h"
 #include "gui/scenes/career_start.h"
+#include "gui/scenes/main_game_scene.h"
 #include "gui/scenes/settings_scene.h"
 #include "gui/scenes/team_selection_scene.h"
 #include "gui/scenes/world_editor_scene.h"
@@ -170,8 +170,8 @@ void MainMenuScene::handleEvent(const SDL_Event& event)
   {
     world_choice.importFile(*file);
   }
-  else if (!ImGui::IsPopupOpen("", ImGuiPopupFlags_AnyPopupId |
-                                       ImGuiPopupFlags_AnyPopupLevel))
+  else if (!ImGui::IsPopupOpen(
+               "", ImGuiPopupFlags_AnyPopupId | ImGuiPopupFlags_AnyPopupLevel))
   {
     // Nothing is open: a dropped world starts the new-career flow, which
     // asks for the slot first and then shows the file.
@@ -460,8 +460,8 @@ void MainMenuScene::render()
   }
   ImGui::EndDisabled();
   if (UI::secondaryButton(LOC("WORLD_MENU_EDITOR"), buttonSize))
-    changeScene(std::make_unique<WorldEditorScene>(guiView,
-                                                   WorldEditorScene::Options{}));
+    changeScene(std::make_unique<WorldEditorScene>(
+        guiView, WorldEditorScene::Options{}));
   if (UI::secondaryButton(LOC("MENU_SETTINGS"), buttonSize))
     changeScene(std::make_unique<SettingsScene>(guiView));
   if (UI::secondaryButton(LOC("MENU_ABOUT"), buttonSize))

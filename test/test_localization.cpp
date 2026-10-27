@@ -132,8 +132,7 @@ TEST(LanguageFilesTest, EveryPackLeagueAndCupHasADisplayName)
   ASSERT_TRUE(LanguageManager::instance().loadLanguage(Language::EN));
   const nlohmann::json english = languageFile("English.json");
   const nlohmann::json italian = languageFile("Italian.json");
-  for (const auto& item :
-       World::defaultWorld()->section(World::Kind::League))
+  for (const auto& item : World::defaultWorld()->section(World::Kind::League))
   {
     const League league(item.at("id").get<LeagueID>(),
                         item.at("name").get<std::string>());

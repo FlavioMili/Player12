@@ -191,14 +191,35 @@ use the built-in ones; combining worlds merges pools.
 
 ## Combining worlds
 
-The World editor can load several worlds into one. The same thing defined in
-two worlds is recognised by name: languages, confederations, regions and
-countries by name, leagues/clubs/cities by
-name within their country, players by name, nationality and birth year.
-Identical copies merge silently; copies with different values become
-conflicts you resolve (keep one, choose field by field, keep both, or use one
-world as the source of truth for all the rest). Similar names ("Real Madrid"
-and "Real Madrid CF") are only flagged.
+The World editor can load several worlds into one. Nothing different is ever
+merged or dropped automatically; the player decides.
+
+Two entities are the same only on a **strong, unambiguous** match, with
+exactly one candidate on each side:
+
+- languages, confederations, regions and countries: by name;
+- cities and leagues: by name within their country;
+- clubs: the same country, the same league (by name) and the same name;
+- players: the same name, nationality and birth year (age when the worlds have
+  no season) at the same club (or both free agents).
+
+Strong matches that are identical merge for convenience, but are listed on the
+Combine review page ("Merged automatically") with the basis of the match; for
+each one the player can say "these are different: keep both", which restores
+the incoming entity under a new id with its added children. Strong matches
+with different values become conflicts the player resolves (keep one, choose
+field by field, keep both, or use one world as the source of truth for the
+rest, which is always an explicit action).
+
+Weaker matches are added as new entities and flagged as possible duplicates,
+never merged unless the player chooses to: a club with the same name and
+country in another league, a player with the same name, nationality and birth
+year at another club or as a free agent, keys with several candidates
+("ambiguous") and similar names ("Real Madrid" and "Real Madrid CF"). Each
+conflict and possible duplicate shows its basis (for example
+`name+nationality+birth_year+club`, `name+country`, `ambiguous`). A world with
+undecided conflicts or possible duplicates cannot be saved or used to start a
+career until each is decided or "Keep everything as it is" is chosen.
 
 ## Before a career can start
 

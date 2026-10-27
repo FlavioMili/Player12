@@ -14,8 +14,8 @@
 #include <numbers>
 #include <utility>
 
-#include "gui/render/match_kit_colors.h"
 #include "database/datagenerator.h"
+#include "gui/render/match_kit_colors.h"
 
 namespace
 {
@@ -477,9 +477,7 @@ ImVec4 clubAccent(TeamID teamId)
   {
     std::uint32_t rgb = identity->primary_colour;
     const auto channel = [](std::uint32_t value, int shift)
-    {
-      return static_cast<float>((value >> shift) & 0xFFU) / 255.0f;
-    };
+    { return static_cast<float>((value >> shift) & 0xFFU) / 255.0f; };
     const float luminance = 0.2126f * channel(rgb, 16) +
                             0.7152f * channel(rgb, 8) +
                             0.0722f * channel(rgb, 0);

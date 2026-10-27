@@ -8,8 +8,6 @@
 
 #include "controller/game_controller.h"
 
-#include "database/world/world_runtime.h"
-
 #include <SDL3/SDL.h>
 
 #include <algorithm>
@@ -29,6 +27,7 @@
 #include "database/migrations/migrations.h"
 #include "database/repositories/player_repository.h"
 #include "database/repositories/team_repository.h"
+#include "database/world/world_runtime.h"
 #include "global/global.h"
 #include "global/logger.h"
 #include "global/runtime_paths.h"
