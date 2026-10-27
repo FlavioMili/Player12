@@ -46,7 +46,8 @@ enum class Confederation : uint8_t
 {
   Europe,
   Americas,
-  Asia
+  Asia,
+  Africa
 };
 
 /** Language key naming a confederation. */

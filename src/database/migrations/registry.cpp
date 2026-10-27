@@ -217,9 +217,13 @@ void boardTargetsSet(const Migrations::MigrationContext& context)
   if (rc != SQLITE_OK) throw DatabaseException("BoardState: " + message);
 }
 
+constexpr std::array PLAYER_NICKNAME = {
+    Migrations::ColumnSpec{"Players", "nickname", "TEXT NOT NULL DEFAULT ''"},
+};
+
 // Append new migrations at the end with the next number; never renumber,
 // edit or remove a released one (see README.md).
-constexpr std::array<Migrations::Migration, 14> REGISTRY = {{
+constexpr std::array<Migrations::Migration, 15> REGISTRY = {{
     {1, "0001_version_metadata", {}, &versionMetadata},
     {2, "0002_league_tiebreak", LEAGUE_TIEBREAK, nullptr},
     {3, "0003_fixture_competitions", FIXTURE_COMPETITIONS, nullptr},
@@ -234,6 +238,7 @@ constexpr std::array<Migrations::Migration, 14> REGISTRY = {{
     {12, "0012_board_objectives", BOARD_OBJECTIVES, nullptr},
     {13, "0013_squad_numbers", SQUAD_NUMBERS, nullptr},
     {14, "0014_board_targets_set", BOARD_TARGETS_SET, &boardTargetsSet},
+    {15, "0015_player_nickname", PLAYER_NICKNAME, nullptr},
 }};
 
 static_assert(std::ranges::is_sorted(REGISTRY, {},

@@ -14,13 +14,16 @@
 #include <cmath>
 #include <fstream>
 #include <map>
+#include <memory>
 #include <nlohmann/json.hpp>
+#include <optional>
 #include <span>
 #include <stdexcept>
 #include <string_view>
 
 #include "global/global.h"
 #include "global/paths.h"
+#include "database/user_database.h"
 #include "model/role_utils.h"
 #include "model/world_rng.h"
 
@@ -400,11 +403,50 @@ const std::vector<std::string>& NamePool::lastNames(Language nationality) const
   return found == last_by_nationality.end() ? last_names : found->second;
 }
 
+namespace
+{
+void fillByNationality(
+    const nlohmann::json& json,
+    std::unordered_map<Language, std::vector<std::string>>& out)
+{
+  if (!json.contains("by_nationality")) return;
+  for (const auto& [name, list] : json.at("by_nationality").items())
+  {
+    const auto language = stringToLanguage.find(name);
+    auto names = list.get<std::vector<std::string>>();
+    if (language != stringToLanguage.end() && !names.empty())
+      out.emplace(language->second, std::move(names));
+  }
+}
+
+NamePool loadPool(const nlohmann::json& first, const nlohmann::json& last)
+{
+  NamePool loaded;
+  loaded.first_names = first.at("names").get<std::vector<std::string>>();
+  loaded.last_names = last.at("names").get<std::vector<std::string>>();
+  if (loaded.first_names.empty() || loaded.last_names.empty())
+    throw std::runtime_error("Name files must not be empty");
+  fillByNationality(first, loaded.first_by_nationality);
+  fillByNationality(last, loaded.last_by_nationality);
+  if (first.contains("excluded_name_hashes"))
+  {
+    for (const auto& hash : first.at("excluded_name_hashes"))
+      loaded.excluded_name_hashes.insert(
+          std::stoull(hash.get<std::string>(), nullptr, 16));
+  }
+  return loaded;
+}
+}  // namespace
+
 const NamePool& NamePool::instance()
 {
-  static const NamePool pool = []
+  // Rebuilds when the active user database changes, so names follow an
+  // import in the same session like leagues, clubs and players do.
+  static std::unique_ptr<NamePool> pool;
+  static std::string built_for;
+  const std::string active = UserDatabase::activeName().value_or("");
+  if (!pool || built_for != active)
   {
-    NamePool loaded;
     const auto read = [](const std::string& path)
     {
       std::ifstream file(path);
@@ -412,36 +454,19 @@ const NamePool& NamePool::instance()
         throw std::runtime_error(std::string("Could not open ") + path);
       return nlohmann::json::parse(file);
     };
-    const auto byNationality =
-        [](const nlohmann::json& json,
-           std::unordered_map<Language, std::vector<std::string>>& out)
-    {
-      if (!json.contains("by_nationality")) return;
-      for (const auto& [name, list] : json.at("by_nationality").items())
-      {
-        const auto language = stringToLanguage.find(name);
-        auto names = list.get<std::vector<std::string>>();
-        if (language != stringToLanguage.end() && !names.empty())
-          out.try_emplace(language->second, std::move(names));
-      }
-    };
-    const nlohmann::json first = read(AssetPaths::firstNames());
-    const nlohmann::json last = read(AssetPaths::lastNames());
-    loaded.first_names = first.at("names").get<std::vector<std::string>>();
-    loaded.last_names = last.at("names").get<std::vector<std::string>>();
-    if (loaded.first_names.empty() || loaded.last_names.empty())
-      throw std::runtime_error("Name files must not be empty");
-    byNationality(first, loaded.first_by_nationality);
-    byNationality(last, loaded.last_by_nationality);
-    if (first.contains("excluded_name_hashes"))
-    {
-      for (const auto& hash : first.at("excluded_name_hashes"))
-        loaded.excluded_name_hashes.insert(
-            std::stoull(hash.get<std::string>(), nullptr, 16));
-    }
-    return loaded;
-  }();
-  return pool;
+    const std::optional<UserDatabase::Content> user_db =
+        UserDatabase::activeContent();
+    const nlohmann::json first =
+        (user_db && !user_db->first_names.is_null())
+            ? user_db->first_names
+            : read(AssetPaths::firstNames());
+    const nlohmann::json last =
+        (user_db && !user_db->last_names.is_null()) ? user_db->last_names
+                                                   : read(AssetPaths::lastNames());
+    pool = std::make_unique<NamePool>(loadPool(first, last));
+    built_for = active;
+  }
+  return *pool;
 }
 
 std::string NamePool::normalizeName(std::string_view name)

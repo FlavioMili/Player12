@@ -60,8 +60,9 @@ INSERT INTO Players (
   potential,
   traits,
   dynamics,
-  squad_number
-  ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
+  squad_number,
+  nickname
+  ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
 
 -- @QUERY_ID: INSERT_PLAYER_WITH_ID
 INSERT OR IGNORE INTO Players (
@@ -81,8 +82,9 @@ INSERT OR IGNORE INTO Players (
   potential,
   traits,
   dynamics,
-  squad_number
-  ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
+  squad_number,
+  nickname
+  ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
 
 -- @QUERY_ID: SELECT_PLAYERS_BY_TEAM
 SELECT id,
@@ -117,7 +119,8 @@ SELECT id,
   potential,
   traits,
   dynamics,
-  squad_number
+  squad_number,
+  nickname
 FROM Players;
 
 -- @QUERY_ID: UPDATE_PLAYER
@@ -138,7 +141,8 @@ SET
   potential = ?,
   traits = ?,
   dynamics = ?,
-  squad_number = ?
+  squad_number = ?,
+  nickname = ?
 WHERE id = ?;
 
 -- @QUERY_ID: DELETE_PLAYER

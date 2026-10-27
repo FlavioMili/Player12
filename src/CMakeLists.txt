@@ -59,6 +59,8 @@ set(FM_CORE_SOURCES
     database/repositories/text_encoding.h
     database/datagenerator.h
     database/datagenerator.cpp
+    database/user_database.h
+    database/user_database.cpp
     database/SQLLoader.h
     database/SQLLoader.cpp
     database/gamedata.h
@@ -477,6 +479,8 @@ set(FM_UI_SOURCES
     gui/scenes/player_compare_scene.cpp
     gui/scenes/set_pieces_dialog.h
     gui/scenes/set_pieces_dialog.cpp
+    gui/scenes/import_database_dialog.h
+    gui/scenes/import_database_dialog.cpp
     gui/view_models/competition_view.h
     gui/view_models/competition_view.cpp
     gui/view_models/formation.h

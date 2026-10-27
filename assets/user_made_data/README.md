@@ -75,7 +75,7 @@ generated players, so this directory may be empty.
 | `age`, `height`  | Years, centimetres.                                           |
 | `nationality`    | Demonym such as `"Italian"` (see `stringToLanguage` in `src/global/languages.h`; unknown values fall back to English). |
 | `role`           | Role name understood by `RoleUtils::fromString`.              |
-| `stats`          | Map of the attribute names in `assets/config/stats_config.json` to 1-100 values. |
+| `stats`          | Map of attribute name to 1-100 value. The nine attributes are `Pace`, `Shooting`, `Passing`, `Dribbling`, `Defending`, `Physicality`, `Stamina`, `Vision` and `Goalkeeping` (see `possible_stats` in `assets/config/stats_config.json`). |
 | `contract_years`, `wage` | Contract length and weekly wage.                      |
 | `preferred_foot` | `"Left"` or `"Right"`.                                        |
 | `status`         | Optional, defaults to 0.                                      |
@@ -98,3 +98,49 @@ the name in lower case, Latin accents folded, single spaces; see
 `src/model/world_generation.cpp`). A generated first and last name pair whose
 hash is on the list is drawn again. Do not add plain names to the pack for
 this purpose.
+
+## Custom databases (`*.fmdb`)
+
+A custom database is one JSON file (extension `.fmdb`) that replaces this
+pack for new careers. Import it in-game (Main menu → Custom database, or
+Settings → Data); the active database is stored under the writable runtime
+root and recorded in `save_meta.packs`, so the repository itself never
+contains real-world data. Player `nickname`, `preferred_foot: "Both"`,
+`skin` (0-7) and full `home`/`away`/`third` kit strips from the pack format
+are all honoured.
+
+```json
+{
+  "manifest": {"name": "My Database", "author": "Me", "version": "1.0",
+               "schema": 1, "min_game_version": "1.0.0"},
+  "leagues": [ {"id": 1, "name": "Serie A", "tiebreak": "head_to_head"} ],
+  "clubs": [ {"id": 101, "league_id": 1, "name": "Lecce",
+              "short_name": "LEC", "nickname": "I Giallorossi",
+              "colours": {"primary": "#EAB543", "secondary": "#C0392B",
+                          "home": {"shirt": "#EAB543", "shorts": "#C0392B",
+                                   "socks": "#EAB543", "trim": "#FFFFFF"}},
+              "stadium": {"name": "Stadio Comunale", "capacity": 31000},
+              "founded": 1908} ],
+  "players": [ {"id": 1001, "team_id": 101, "first_name": "Kilian",
+               "last_name": "Dubois", "nickname": "Kiki", "age": 24,
+               "nationality": "French", "role": "ST",
+               "stats": {"Pace": 75, "Shooting": 80},
+               "contract_years": 3, "wage": 55000, "height": 182,
+               "preferred_foot": "Both", "skin": 2} ],
+  "first_names": {"names": ["Luca", "Mateo"]},
+  "last_names": {"names": ["Rossi", "Dubois"]}
+}
+```
+
+Player `stats` holds the nine pack attributes (`Pace`, `Shooting`,
+`Passing`, `Dribbling`, `Defending`, `Physicality`, `Stamina`, `Vision`,
+`Goalkeeping`), each 0–100.
+
+`manifest.schema` must be `1`. `leagues` and `clubs` are required and
+non-empty; `players` may be empty (short squads are generated to 30 as
+usual); `first_names`/`last_names` are optional and fall back to the pack.
+Every `league_id` must reference a league in the file and every `team_id` a
+club in the file; ids and names are unique within their section. Unknown
+player roles, malformed `#RRGGBB` colours and dangling references are import
+errors; unknown nationalities fall back to English with a warning. The
+importer reports every finding per field before anything is applied.

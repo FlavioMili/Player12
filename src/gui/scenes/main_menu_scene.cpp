@@ -357,11 +357,14 @@ void MainMenuScene::render()
     is_new_game = false;
   }
   ImGui::EndDisabled();
+  if (UI::secondaryButton(LOC("DB_MENU_BUTTON"), buttonSize))
+    import_database_dialog.open();
   if (UI::secondaryButton(LOC("MENU_SETTINGS"), buttonSize))
     changeScene(std::make_unique<SettingsScene>(guiView));
   if (UI::secondaryButton(LOC("MENU_ABOUT"), buttonSize))
     changeScene(std::make_unique<AboutScene>(guiView, false));
   if (UI::secondaryButton(LOC("MENU_QUIT"), buttonSize)) quit();
+  import_database_dialog.render(getWindow());
   ImGui::PopFont();
   renderSlotPicker();
   renderLoadError();

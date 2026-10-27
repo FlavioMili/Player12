@@ -166,6 +166,8 @@ const char* International::confederationKey(Confederation confederation)
       return "INTL_CONF_AMERICAS";
     case Asia:
       return "INTL_CONF_ASIA";
+    case Confederation::Africa:
+      return "INTL_CONF_AFRICA";
   }
   return "INTL_CONF_EUROPE";
 }
@@ -176,15 +178,115 @@ Confederation International::confederationOf(Language nation)
   using enum Confederation;
   switch (nation)
   {
-    case MX:
-    case BR:
-    case US:
-      return Americas;
-    case CN:
-    case JP:
-    case KR:
-    case AR:
-      return Asia;
+    case Language::MX:
+    case Language::BR:
+    case Language::US:
+    case Language::AN:
+    case Language::UY:
+    case Language::CO:
+    case Language::EC:
+    case Language::PY:
+    case Language::CL:
+    case Language::PE:
+    case Language::VE:
+    case Language::CA:
+    case Language::CR:
+    case Language::JM:
+    case Language::HT:
+    case Language::BM:
+    case Language::MQ:
+    case Language::TT:
+    case Language::BB:
+    case Language::PA:
+    case Language::DO:
+    case Language::GP:
+    case Language::SR:
+    case Language::GF:
+    case Language::KY:
+    case Language::CU:
+    case Language::CW:
+    case Language::GD:
+    case Language::GT:
+    case Language::HN:
+    case Language::KN:
+    case Language::PR:
+    case Language::LC:
+    case Language::SV:
+    case Language::VC:
+    case Language::BO:
+    case Language::BZ:
+    case Language::NC:
+      return Confederation::Americas;
+    case Language::CN:
+    case Language::JP:
+    case Language::KR:
+    case Language::AR:
+    case Language::AU:
+    case Language::UZ:
+    case Language::NZ:
+    case Language::KZ:
+    case Language::ID:
+    case Language::BD:
+    case Language::SG:
+    case Language::AE:
+    case Language::PH:
+    case Language::MY:
+    case Language::LB:
+    case Language::PS:
+    case Language::SY:
+    case Language::YE:
+    case Language::TH:
+    case Language::JO:
+    case Language::SA:
+    case Language::AF:
+    case Language::IQ:
+    case Language::KG:
+    case Language::TJ:
+    case Language::TM:
+    case Language::IR:
+      return Confederation::Asia;
+    case Language::MA:
+    case Language::SN:
+    case Language::CI:
+    case Language::CM:
+    case Language::GH:
+    case Language::NG:
+    case Language::EG:
+    case Language::DZ:
+    case Language::TN:
+    case Language::ML:
+    case Language::ZA:
+    case Language::BF:
+    case Language::CG:
+    case Language::GM:
+    case Language::GN:
+    case Language::MR:
+    case Language::MZ:
+    case Language::BJ:
+    case Language::KM:
+    case Language::KE:
+    case Language::NA:
+    case Language::NR:
+    case Language::GW:
+    case Language::AO:
+    case Language::CV:
+    case Language::TD:
+    case Language::GQ:
+    case Language::GA:
+    case Language::LY:
+    case Language::TG:
+    case Language::ZM:
+    case Language::MG:
+    case Language::MW:
+    case Language::UG:
+    case Language::BI:
+    case Language::CF:
+    case Language::TZ:
+    case Language::LR:
+    case Language::RW:
+    case Language::SO:
+    case Language::MU:
+      return Confederation::Africa;
     default:
       return Europe;
   }

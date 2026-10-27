@@ -7,12 +7,14 @@
 // -----------------------------------------------------------------------------
 
 #include "database/datagenerator.h"
+#include "database/user_database.h"
 
 #include <algorithm>
 #include <charconv>
 #include <filesystem>
 #include <format>
 #include <fstream>
+#include <initializer_list>
 #include <iterator>
 #include <map>
 #include <nlohmann/json.hpp>
@@ -52,6 +54,40 @@ void forEachPackItem(const std::string& directory, Visitor&& visit)
   }
 }
 
+/**
+ * Calls @p visit for every club of the active user database, else every
+ * element of the pack team files. The repository never ships real data; an
+ * imported database replaces the pack for this process.
+ */
+template <typename Visitor>
+void visitClubItems(Visitor&& visit)
+{
+  if (const auto db = UserDatabase::activeContent())
+  {
+    for (const auto& item : db->clubs) visit(item);
+    return;
+  }
+  forEachPackItem(AssetPaths::teamsDir(), std::forward<Visitor>(visit));
+}
+
+/** Same overlay for the pack player files. */
+template <typename Visitor>
+void visitPlayerItems(Visitor&& visit)
+{
+  if (const auto db = UserDatabase::activeContent())
+  {
+    for (const auto& item : db->players) visit(item);
+    return;
+  }
+  for (const auto& entry : fs::directory_iterator(AssetPaths::playersDir()))
+  {
+    if (!entry.is_regular_file() || entry.path().extension() != ".json")
+      continue;
+    std::ifstream f(entry.path());
+    for (const auto& item : json::parse(f)) visit(item);
+  }
+}
+
 /** Parses "#RRGGBB" into 0xRRGGBB; keeps @p fallback when malformed. */
 std::uint32_t parseColour(const json& value, std::uint32_t fallback)
 {
@@ -64,12 +100,136 @@ std::uint32_t parseColour(const json& value, std::uint32_t fallback)
   return error == std::errc{} && end == text.data() + text.size() ? rgb
                                                                   : fallback;
 }
+
+KitPalette parseKitPalette(const json& value)
+{
+  KitPalette kit;
+  if (!value.is_object() || !value.contains("shirt")) return kit;
+  const auto rgb = [&value](const char* key, std::uint32_t fallback)
+  { return parseColour(value.value(key, json()), fallback); };
+  kit.shirt = rgb("shirt", 0);
+  kit.shorts = rgb("shorts", kit.shirt);
+  kit.socks = rgb("socks", kit.shorts);
+  kit.trim = rgb("trim", kit.shorts);
+  kit.valid = true;
+  return kit;
+}
+
+/** Squared RGB distance between two 0xRRGGBB colours. */
+int colourDistanceSquared(std::uint32_t first, std::uint32_t second)
+{
+  const auto channel = [](std::uint32_t rgb, int shift)
+  { return static_cast<int>((rgb >> shift) & 0xFFU); };
+  const int dr = channel(first, 16) - channel(second, 16);
+  const int dg = channel(first, 8) - channel(second, 8);
+  const int db = channel(first, 0) - channel(second, 0);
+  return dr * dr + dg * dg + db * db;
+}
+
+/** The candidate colour that reads best against the shirt (for the badge). */
+std::uint32_t contrastingColour(std::uint32_t shirt,
+                                std::initializer_list<std::uint32_t> options)
+{
+  std::uint32_t best = shirt;
+  int bestDistance = -1;
+  for (const std::uint32_t option : options)
+  {
+    const int distance = colourDistanceSquared(shirt, option);
+    if (distance > bestDistance)
+    {
+      bestDistance = distance;
+      best = option;
+    }
+  }
+  return best;
+}
+
+/**
+ * Plausible skin tone (0 lightest .. 7 darkest) for a player with no authored
+ * value, from his nationality with a small deterministic spread so mixed
+ * squads vary. Exact tones come from the optional "skin" field instead.
+ */
+std::uint8_t defaultSkinTone(Language nationality, PlayerID id)
+{
+  const auto jitter = [id](int base, int spread)
+  {
+    const std::uint32_t hash =
+        static_cast<std::uint32_t>(id) * 2654435761U;
+    const int span = spread * 2 + 1;
+    const int delta =
+        static_cast<int>((hash >> 27U) % static_cast<std::uint32_t>(span)) -
+        spread;
+    return static_cast<std::uint8_t>(std::clamp(base + delta, 0, 7));
+  };
+  using L = Language;
+  switch (nationality)
+  {
+    // Northern, Central and Eastern Europe: fair.
+    case L::SE: case L::NO: case L::DK: case L::FI: case L::IS:
+    case L::FO: case L::EE: case L::LV: case L::LT:
+    case L::EN: case L::SC: case L::WA: case L::NI: case L::IE:
+    case L::NL: case L::DE: case L::AT: case L::CH: case L::BE:
+    case L::LX: case L::PL: case L::CZ: case L::SK: case L::HU:
+    case L::SI: case L::RU: case L::UA: case L::BY: case L::AU:
+    case L::NZ:
+      return jitter(0, 1);
+    // Southern Europe, the Balkans, Turkey and Israel: olive.
+    case L::IT: case L::ES: case L::PT: case L::GR: case L::TR:
+    case L::FR: case L::IL: case L::CY: case L::MT: case L::RO:
+    case L::BU: case L::AL: case L::MD: case L::KV: case L::RS:
+    case L::HR: case L::BA: case L::ME: case L::MO:
+    case L::GE: case L::AM: case L::AR:
+      return jitter(2, 1);
+    // North Africa, the Middle East and Central Asia.
+    case L::MA: case L::DZ: case L::TN: case L::LY: case L::EG:
+    case L::MR: case L::SA: case L::AE: case L::JO: case L::LB:
+    case L::SY: case L::PS: case L::IQ: case L::IR: case L::AF:
+    case L::YE: case L::KZ: case L::UZ: case L::KG: case L::TJ:
+    case L::TM: case L::AZ:
+      return jitter(3, 1);
+    // Latin America: a broad mix.
+    case L::MX: case L::BR: case L::CO: case L::EC: case L::PE:
+    case L::PY: case L::CL: case L::VE: case L::UY: case L::BO:
+    case L::AN: case L::CR: case L::PA: case L::GT: case L::HN:
+    case L::SV: case L::NC: case L::BZ: case L::CU: case L::DO:
+    case L::PR: case L::SR: case L::US: case L::CA:
+      return jitter(3, 2);
+    // East Asia.
+    case L::JP: case L::KR: case L::CN:
+      return jitter(1, 1);
+    // South and South-East Asia.
+    case L::TH: case L::PH: case L::MY: case L::ID: case L::SG:
+    case L::BD:
+      return jitter(4, 1);
+    // Sub-Saharan Africa and the African diaspora.
+    case L::SN: case L::CI: case L::CM: case L::GH: case L::NG:
+    case L::ML: case L::GN: case L::BF: case L::CG: case L::GM:
+    case L::GW: case L::AO: case L::CV: case L::TD: case L::GQ:
+    case L::GA: case L::ZM: case L::KM: case L::SL: case L::KE:
+    case L::NA: case L::NR: case L::BI: case L::CF: case L::ZW:
+    case L::TZ: case L::RW: case L::SO: case L::MU: case L::MG:
+    case L::MW: case L::MZ: case L::UG: case L::ZA:
+    case L::JM: case L::TT: case L::BB: case L::HT: case L::CW:
+    case L::GP: case L::MQ: case L::GF: case L::KY: case L::BM:
+    case L::GD: case L::LC: case L::VC: case L::KN:
+      return jitter(6, 1);
+    default:
+      return jitter(2, 2);
+  }
+}
 }  // namespace
 
 std::vector<League> DataGenerator::generateLeagues()
 {
-  std::ifstream f(AssetPaths::leagues());
-  json data = json::parse(f);
+  // An imported user database replaces the pack leagues for this process.
+  json data;
+  if (const auto db = UserDatabase::activeContent())
+    data = db->leagues;
+  else
+  {
+    std::ifstream f(AssetPaths::leagues());
+    data = json::parse(f);
+  }
 
   std::vector<League> leagues;
 
@@ -96,8 +256,7 @@ std::vector<League> DataGenerator::generateLeagues()
 std::vector<Team> DataGenerator::generateTeams()
 {
   std::vector<Team> teams;
-  forEachPackItem(AssetPaths::teamsDir(),
-                  [&teams](const json& item)
+  visitClubItems([&teams](const json& item)
                   {
                     teams.emplace_back(
                         item.at("id").get<uint16_t>(),
@@ -111,9 +270,7 @@ std::vector<Team> DataGenerator::generateTeams()
 std::unordered_map<TeamID, ClubIdentity> DataGenerator::loadClubIdentities()
 {
   std::unordered_map<TeamID, ClubIdentity> identities;
-  forEachPackItem(
-      AssetPaths::teamsDir(),
-      [&identities](const json& item)
+  visitClubItems([&identities](const json& item)
       {
         ClubIdentity identity;
         identity.short_name = item.value("short_name", std::string());
@@ -125,6 +282,22 @@ std::unordered_map<TeamID, ClubIdentity> DataGenerator::loadClubIdentities()
               colours->value("primary", json()), identity.primary_colour);
           identity.secondary_colour = parseColour(
               colours->value("secondary", json()), identity.secondary_colour);
+          identity.home_kit =
+              parseKitPalette(colours->value("home", json()));
+          identity.away_kit =
+              parseKitPalette(colours->value("away", json()));
+          identity.third_kit =
+              parseKitPalette(colours->value("third", json()));
+          // The badge and UI theme follow the home strip: the shirt colour
+          // leads, with the most contrasting piece as the second tone.
+          if (identity.home_kit.valid)
+          {
+            identity.primary_colour = identity.home_kit.shirt;
+            identity.secondary_colour = contrastingColour(
+                identity.home_kit.shirt,
+                {identity.home_kit.trim, identity.home_kit.shorts,
+                 identity.home_kit.socks, identity.secondary_colour});
+          }
         }
         if (const auto stadium = item.find("stadium"); stadium != item.end())
         {
@@ -140,8 +313,7 @@ std::unordered_map<TeamID, ClubIdentity> DataGenerator::loadClubIdentities()
 std::unordered_map<std::string, std::string> DataGenerator::loadClubArticles()
 {
   std::unordered_map<std::string, std::string> articles;
-  forEachPackItem(AssetPaths::teamsDir(),
-                  [&articles](const json& item)
+  visitClubItems([&articles](const json& item)
                   {
                     std::string article =
                         item.value("article_it", std::string());
@@ -152,6 +324,41 @@ std::unordered_map<std::string, std::string> DataGenerator::loadClubArticles()
   return articles;
 }
 
+std::unordered_map<PlayerID, std::uint8_t>
+DataGenerator::loadPlayerSkinTones()
+{
+  std::unordered_map<PlayerID, std::uint8_t> tones;
+  const auto record = [&tones](const json& item)
+  {
+    const PlayerID id = item.at("id").get<PlayerID>();
+    if (item.contains("skin"))
+    {
+      tones[id] = static_cast<std::uint8_t>(item.at("skin").get<int>());
+      return;
+    }
+    const std::string nationality = item.value("nationality", std::string());
+    const auto found = stringToLanguage.find(nationality);
+    tones[id] = defaultSkinTone(
+        found != stringToLanguage.end() ? found->second : Language::EN, id);
+  };
+  // An imported database replaces the pack player files for this process.
+  if (const auto db = UserDatabase::activeContent())
+  {
+    for (const auto& item : db->players) record(item);
+    return tones;
+  }
+  for (const auto& entry : fs::directory_iterator(AssetPaths::playersDir()))
+  {
+    if (!entry.is_regular_file() || entry.path().extension() != ".json")
+      continue;
+    std::ifstream file(entry.path());
+    json data = json::parse(file, nullptr, false);
+    if (data.is_discarded() || !data.is_array()) continue;
+    for (const auto& item : data) record(item);
+  }
+  return tones;
+}
+
 std::vector<Player> DataGenerator::generatePlayers(const GameData& gamedata)
 {
   const StatsConfig& stats_config = gamedata.getStatsConfig();
@@ -160,14 +367,10 @@ std::vector<Player> DataGenerator::generatePlayers(const GameData& gamedata)
   std::map<TeamID, std::int64_t> player_wages;
   PlayerID next_player_id = 50'000;
 
-  // Load pre-defined players from JSON and count them
-  for (const auto& entry : fs::directory_iterator(AssetPaths::playersDir()))
-  {
-    if (entry.is_regular_file() && entry.path().extension() == ".json")
-    {
-      std::ifstream f(entry.path());
-      json data = json::parse(f);
-      for (const auto& item : data)
+  // Load pre-defined players from JSON and count them; an imported user
+  // database replaces the pack player files for this process.
+  visitPlayerItems(
+      [&](const json& item)
       {
         TeamID team_id = item.at("team_id").get<uint16_t>();
         player_counts[team_id]++;
@@ -176,9 +379,13 @@ std::vector<Player> DataGenerator::generatePlayers(const GameData& gamedata)
             stringToLanguage.find(item.at("nationality").get<std::string>());
         Language nationality =
             (it != stringToLanguage.end()) ? it->second : Language::EN;
-        Foot foot = (item.at("preferred_foot").get<std::string>() == "Left")
-                        ? Foot::Left
-                        : Foot::Right;
+        const std::string foot_text =
+            item.at("preferred_foot").get<std::string>();
+        // "Both" is stored; where a single side is required it behaves as
+        // Right, matching the pre-Both fallback.
+        Foot foot = foot_text == "Left" ? Foot::Left
+                    : foot_text == "Both" ? Foot::Both
+                                          : Foot::Right;
 
         Player& player = players.emplace_back(
             item.at("id").get<uint32_t>(), team_id,
@@ -190,15 +397,14 @@ std::vector<Player> DataGenerator::generatePlayers(const GameData& gamedata)
             item.at("contract_years").get<uint8_t>(),
             item.at("height").get<uint8_t>(), foot,
             item.at("stats").get<std::map<std::string, float>>());
+        player.setNickname(item.value("nickname", std::string()));
         WorldRng rng = WorldRng::stream(gamedata.getWorldSeed(),
                                         RngDomain::Generation, player.getId());
         WorldGeneration::initializeHiddenAttributes(player, rng, stats_config);
         player_wages[team_id] += player.getWage();
         next_player_id =
             std::max(next_player_id, item.at("id").get<PlayerID>() + 1U);
-      }
-    }
-  }
+      });
 
   // Complete every club's 30-man squad around its reputation-based level.
   const auto economies = buildLeagueEconomies(gamedata);

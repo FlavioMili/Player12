@@ -646,8 +646,10 @@ void PlayerProfileScene::renderBio(const Player& current, float width,
   const float keyWidth = keyWidthFor(BIO_KEY_WIDTH);
   const std::string age = std::to_string(current.getAge());
   const std::string heightText = std::format("{} cm", current.getHeight());
-  const char* foot = current.getFoot() == Foot::Right ? LOC("PLAYER_FOOT_RIGHT")
-                                                      : LOC("PLAYER_FOOT_LEFT");
+  const Foot foot_value = current.getFoot();
+  const char* foot = foot_value == Foot::Left ? LOC("PLAYER_FOOT_LEFT")
+                     : foot_value == Foot::Both ? LOC("PLAYER_FOOT_BOTH")
+                                                : LOC("PLAYER_FOOT_RIGHT");
   UI::keyValue(LOC("PLAYER_AGE"), age.c_str(), keyWidth);
   UI::keyValue(LOC("PROFILE_NATIONALITY"), nationality.c_str(), keyWidth);
   UI::keyValue(LOC("PROFILE_HEIGHT"), heightText.c_str(), keyWidth);

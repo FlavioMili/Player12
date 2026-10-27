@@ -131,6 +131,8 @@ const char* continentKey(Continent continent)
     case Asia:
     case COUNT:
       break;
+    case Continent::Africa:
+      return "SCOUT_CONTINENT_AFRICA";
   }
   return "SCOUT_CONTINENT_ASIA";
 }
@@ -141,37 +143,154 @@ SpokenLanguage nativeLanguage(Language nationality)
   using enum SpokenLanguage;
   switch (nationality)
   {
-    case EN:
-    case IE:
-    case US:
+    case Language::EN:
+    case Language::IE:
+    case Language::US:
+    case Language::GH:
+    case Language::NG:
+    case Language::ZA:
+    case Language::CA:
+    case Language::JM:
+    case Language::AU:
+    case Language::SI:
+    case Language::IL:
+    case Language::GM:
+    case Language::IS:
+    case Language::NZ:
+    case Language::LT:
+    case Language::ZW:
+    case Language::SL:
+    case Language::ID:
+    case Language::KE:
+    case Language::NA:
+    case Language::BD:
+    case Language::BM:
+    case Language::SG:
+    case Language::TT:
+    case Language::BB:
+    case Language::ZM:
+    case Language::PH:
+    case Language::MY:
+    case Language::MW:
+    case Language::TH:
+    case Language::UG:
+    case Language::MT:
+    case Language::TZ:
+    case Language::KY:
+    case Language::GD:
+    case Language::KN:
+    case Language::LR:
+    case Language::LC:
+    case Language::VC:
+    case Language::AF:
+    case Language::IR:
+    case Language::BZ:
+    case Language::MU:
       return English;
-    case IT:
+    case Language::IT:
+    case Language::AL:
       return Italian;
-    case ES:
-    case MX:
+    case Language::ES:
+    case Language::MX:
+    case Language::AN:
+    case Language::UY:
+    case Language::CO:
+    case Language::EC:
+    case Language::PY:
+    case Language::CL:
+    case Language::PE:
+    case Language::VE:
+    case Language::CR:
+    case Language::PA:
+    case Language::DO:
+    case Language::GQ:
+    case Language::AD:
+    case Language::CU:
+    case Language::GT:
+    case Language::HN:
+    case Language::PR:
+    case Language::SV:
+    case Language::BO:
+    case Language::NC:
       return Spanish;
-    case FR:
-    case BE:
+    case Language::FR:
+    case Language::BE:
+    case Language::SN:
+    case Language::CI:
+    case Language::CM:
+    case Language::ML:
+    case Language::BF:
+    case Language::CG:
+    case Language::GN:
+    case Language::HT:
+    case Language::BJ:
+    case Language::KM:
+    case Language::MQ:
+    case Language::NR:
+    case Language::TD:
+    case Language::GA:
+    case Language::GP:
+    case Language::TG:
+    case Language::MG:
+    case Language::BI:
+    case Language::CF:
+    case Language::GF:
+    case Language::RW:
       return French;
-    case DE:
-    case CH:
+    case Language::DE:
+    case Language::CH:
+    case Language::AT:
+    case Language::LX:
       return German;
-    case PT:
-    case BR:
+    case Language::PT:
+    case Language::BR:
+    case Language::MZ:
+    case Language::GW:
+    case Language::AO:
+    case Language::CV:
       return Portuguese;
-    case NL:
+    case Language::NL:
+    case Language::SR:
+    case Language::CW:
       return Dutch;
-    case RU:
+    case Language::RU:
+    case Language::GE:
+    case Language::BU:
+    case Language::UZ:
+    case Language::KZ:
+    case Language::LV:
+    case Language::AM:
+    case Language::AZ:
+    case Language::BY:
+    case Language::KG:
+    case Language::TJ:
+    case Language::TM:
       return Russian;
     case SE:
       return Swedish;
     case PL:
       return Polish;
-    case GR:
+    case Language::GR:
+    case Language::CY:
       return Greek;
     case TR:
       return Turkish;
-    case AR:
+    case Language::AR:
+    case Language::MA:
+    case Language::DZ:
+    case Language::TN:
+    case Language::EG:
+    case Language::MR:
+    case Language::LY:
+    case Language::AE:
+    case Language::LB:
+    case Language::PS:
+    case Language::SY:
+    case Language::YE:
+    case Language::JO:
+    case Language::SA:
+    case Language::IQ:
+    case Language::SO:
       return Arabic;
     case JP:
       return Japanese;
@@ -179,13 +298,21 @@ SpokenLanguage nativeLanguage(Language nationality)
       return Chinese;
     case KR:
       return Korean;
-    case RO:
+    case Language::RO:
+    case Language::MO:
       return Romanian;
-    case HR:
+    case Language::HR:
+    case Language::RS:
+    case Language::BA:
+    case Language::ME:
+    case Language::KV:
+    case Language::MD:
       return Croatian;
-    case DK:
+    case Language::DK:
+    case Language::FO:
       return Danish;
-    case FI:
+    case Language::FI:
+    case Language::EE:
       return Finnish;
     case NO:
       return Norwegian;
@@ -207,16 +334,116 @@ Continent homeContinent(Language nationality)
   using enum Language;
   switch (nationality)
   {
-    case US:
-    case MX:
-      return NorthAmerica;
-    case BR:
-      return SouthAmerica;
-    case CN:
-    case JP:
-    case KR:
-    case AR:
-      return Asia;
+    case Language::US:
+    case Language::MX:
+    case Language::CA:
+    case Language::CR:
+    case Language::JM:
+    case Language::HT:
+    case Language::BM:
+    case Language::MQ:
+    case Language::TT:
+    case Language::BB:
+    case Language::PA:
+    case Language::DO:
+    case Language::GP:
+    case Language::KY:
+    case Language::CU:
+    case Language::CW:
+    case Language::GD:
+    case Language::GT:
+    case Language::HN:
+    case Language::KN:
+    case Language::PR:
+    case Language::LC:
+    case Language::SV:
+    case Language::VC:
+    case Language::BZ:
+    case Language::NC:
+      return Continent::NorthAmerica;
+    case Language::BR:
+    case Language::AN:
+    case Language::UY:
+    case Language::CO:
+    case Language::EC:
+    case Language::PY:
+    case Language::CL:
+    case Language::PE:
+    case Language::VE:
+    case Language::SR:
+    case Language::GF:
+    case Language::BO:
+      return Continent::SouthAmerica;
+    case Language::CN:
+    case Language::JP:
+    case Language::KR:
+    case Language::AR:
+    case Language::AU:
+    case Language::UZ:
+    case Language::NZ:
+    case Language::KZ:
+    case Language::ID:
+    case Language::BD:
+    case Language::SG:
+    case Language::AE:
+    case Language::PH:
+    case Language::MY:
+    case Language::LB:
+    case Language::PS:
+    case Language::SY:
+    case Language::YE:
+    case Language::TH:
+    case Language::JO:
+    case Language::SA:
+    case Language::AF:
+    case Language::IQ:
+    case Language::KG:
+    case Language::TJ:
+    case Language::TM:
+    case Language::IR:
+      return Continent::Asia;
+    case Language::MA:
+    case Language::SN:
+    case Language::CI:
+    case Language::CM:
+    case Language::GH:
+    case Language::NG:
+    case Language::EG:
+    case Language::DZ:
+    case Language::TN:
+    case Language::ML:
+    case Language::ZA:
+    case Language::BF:
+    case Language::CG:
+    case Language::GM:
+    case Language::GN:
+    case Language::MR:
+    case Language::MZ:
+    case Language::BJ:
+    case Language::KM:
+    case Language::KE:
+    case Language::NA:
+    case Language::NR:
+    case Language::GW:
+    case Language::AO:
+    case Language::CV:
+    case Language::TD:
+    case Language::GQ:
+    case Language::GA:
+    case Language::LY:
+    case Language::TG:
+    case Language::ZM:
+    case Language::MG:
+    case Language::MW:
+    case Language::UG:
+    case Language::BI:
+    case Language::CF:
+    case Language::TZ:
+    case Language::LR:
+    case Language::RW:
+    case Language::SO:
+    case Language::MU:
+      return Continent::Africa;
     default:
       return Europe;
   }

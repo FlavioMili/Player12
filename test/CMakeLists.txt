@@ -127,6 +127,7 @@ add_executable(core_unit_tests
   test_portable_rng.cpp
   test_transfer_windows.cpp
   test_squad_numbers.cpp
+  test_user_database.cpp
 )
 target_link_libraries(core_unit_tests PRIVATE GTest::gtest_main fm_core)
 target_compile_definitions(core_unit_tests PRIVATE

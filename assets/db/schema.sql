@@ -45,6 +45,7 @@ CREATE TABLE IF NOT EXISTS Players (
   traits TEXT NOT NULL DEFAULT '',    -- professionalism,ambition,temperament,loyalty,injury_proneness
   dynamics TEXT NOT NULL DEFAULT '',  -- condition, sharpness, morale, injury, form (CSV)
   squad_number INTEGER NOT NULL DEFAULT 0, -- 1-99, unique per club; 0: none
+  nickname TEXT NOT NULL DEFAULT '',
   FOREIGN KEY(team_id) REFERENCES Teams(id)
 );
 

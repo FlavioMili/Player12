@@ -25,11 +25,25 @@
  * the simulation lives in ClubProfile and is derived from reputation when the
  * world is generated; the capacity here is the pack's nominal figure.
  */
+/** One full strip (shirt, shorts, socks and a trim), 0xRRGGBB each. */
+struct KitPalette
+{
+  std::uint32_t shirt = 0;
+  std::uint32_t shorts = 0;
+  std::uint32_t socks = 0;
+  std::uint32_t trim = 0;
+  bool valid = false; /*!< True when the pack described this strip. */
+};
+
 struct ClubIdentity
 {
   std::string short_name;                    /*!< Three-letter code. */
   std::uint32_t primary_colour = 0xFFFFFF;   /*!< Kit colour, 0xRRGGBB. */
   std::uint32_t secondary_colour = 0x1A1A1A; /*!< Kit colour, 0xRRGGBB. */
+  /** Optional real strips; when absent the club wears primary/secondary. */
+  KitPalette home_kit;
+  KitPalette away_kit;
+  KitPalette third_kit;
   std::string stadium_name;
   std::uint32_t stadium_capacity = 0; /*!< Nominal seats; 0 if unknown. */
   std::uint16_t founded = 0;          /*!< Founding year; 0 if unknown. */
@@ -70,6 +84,14 @@ class DataGenerator
    * @return Articles keyed by club name.
    */
   static std::unordered_map<std::string, std::string> loadClubArticles();
+
+  /**
+   * @brief Reads the optional skin tone ("skin": 0 lightest .. 7 darkest) of
+   * predefined players, so faces match the real person. Players without the
+   * field are absent from the map and get a deterministic tone from their id.
+   * @return Skin tones keyed by player id.
+   */
+  static std::unordered_map<PlayerID, std::uint8_t> loadPlayerSkinTones();
 
   /**
    * @brief Loads the predefined players and completes every club's squad

@@ -866,6 +866,15 @@ void SettingsScene::renderData()
     }
     ImGui::EndPopup();
   }
+  ImGui::Separator();
+  const std::optional<std::string> active_database =
+      UserDatabase::activeName();
+  ImGui::TextColored(palette.muted, "%s %s", LOC("DB_SETTINGS_ACTIVE"),
+                     active_database ? active_database->c_str()
+                                     : LOC("DB_IMPORT_NONE"));
+  if (UI::secondaryButton(LOC("DB_SETTINGS_MANAGE")))
+    import_database_dialog.open();
+  import_database_dialog.render(getWindow());
   UI::endCard();
 }
 

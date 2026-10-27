@@ -253,7 +253,7 @@ ManagerProfile readManagerProfile(sqlite3_stmt* stmt)
   profile.first_name = columnText(stmt, 0);
   profile.last_name = columnText(stmt, 1);
   profile.nationality = static_cast<Language>(std::clamp<std::int64_t>(
-      sqlite3_column_int64(stmt, 2), 0, std::to_underlying(Language::US)));
+      sqlite3_column_int64(stmt, 2), 0, std::to_underlying(Language::MU)));
   profile.age = columnAs<std::uint8_t>(stmt, 3);
   profile.reputation = columnFloat(stmt, 4);
   profile.licence = enumFrom(sqlite3_column_int64(stmt, 5),
@@ -1988,7 +1988,7 @@ void ManagerCareer::load(const std::shared_ptr<DatabaseConnection>& db_conn)
                manager.last_name = columnText(stmt, 2);
                manager.nationality = static_cast<Language>(
                    std::clamp<std::int64_t>(sqlite3_column_int64(stmt, 3), 0,
-                                            std::to_underlying(Language::US)));
+                                            std::to_underlying(Language::MU)));
                manager.age = columnAs<std::uint8_t>(stmt, 4);
                manager.reputation = columnFloat(stmt, 5);
                manager.ability = columnFloat(stmt, 6);

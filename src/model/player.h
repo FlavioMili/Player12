@@ -27,10 +27,12 @@
  * @enum Foot
  * @brief Represents a player's preferred foot.
  */
-enum class Foot : bool
+enum class Foot : std::uint8_t
 {
-  Left = false,
-  Right = true
+  Left,
+  Right,
+  /** Uses either foot; behaves as Right where a single side is required. */
+  Both
 };
 
 /**
@@ -142,6 +144,12 @@ class Player
 
   /** @brief Gets the player's last name. */
   const std::string& getLastName() const;
+
+  /** @brief Gets the player's nickname (empty when he has none). */
+  const std::string& getNickname() const;
+
+  /** @brief Sets the player's nickname. */
+  void setNickname(std::string_view nickname);
 
   /** @brief Gets the player's age. */
   int getAge() const;
@@ -327,6 +335,7 @@ class Player
   // strings (non-POD, heap allocated, alignment not a problem)
   std::string _first_name;
   std::string _last_name;
+  std::string _nickname;
 
   // Enums and small ints grouped together
   PlayerRole _role;

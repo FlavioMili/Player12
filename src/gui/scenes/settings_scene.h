@@ -19,6 +19,7 @@
 #include "gui/gui_constants.h"
 #include "gui/gui_scene.h"
 #include "gui/gui_view.h"
+#include "gui/scenes/import_database_dialog.h"
 #include "gui/input_actions.h"
 #include "settings_manager.h"
 
@@ -110,6 +111,7 @@ class SettingsScene : public GUIScene
 
   bool showWipeDataOverlay = false;
   float wipeDataTimer = 0.0f;
+  ImportDatabaseDialog import_database_dialog;
 
   bool in_career = false;
   Settings original_settings;

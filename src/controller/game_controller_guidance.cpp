@@ -449,7 +449,7 @@ OppositionReport GameController::getOppositionReport(TeamID opponent) const
     entry.name = player.getName();
     entry.role = player.getRole();
     entry.likely_starter = std::ranges::contains(starters, player.getId());
-    entry.right_footed = player.getFoot() == Foot::Right;
+    entry.right_footed = player.getFoot() != Foot::Left;
     entry.knowledge = getScoutingKnowledge(player.getId());
     if (const auto row = getScoutedRow(player.getId());
         row && row->knowledge > 0)
