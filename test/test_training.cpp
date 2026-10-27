@@ -370,10 +370,16 @@ TEST(TrainingWorldTest, ScheduleShapesConditionFamiliarityAndDevelopment)
 
   ASSERT_TRUE(controller->setTrainingPreset(TrainingPreset::Light));
   ASSERT_TRUE(controller->setTrainingIntensity(TrainingIntensity::Low));
-  TeamTrainingPlan& hard = gamedata->getTraining().plan(other);
-  hard.preset = TrainingPreset::Fitness;
-  hard.slots = TrainingModel::presetMicrocycle(TrainingPreset::Fitness);
-  hard.intensity = TrainingIntensity::High;
+
+  // The same club in a twin world (same seed, same squad and fixtures) on a
+  // hard schedule: only the training differs, so the condition gap is the
+  // schedule's and not two squads' or two fixture lists'.
+  const SlotCleanup twin_slot{uniqueSlot(2)};
+  const auto twin = makeWorld(twin_slot.slot);
+  auto twin_data = twin->getGameData();
+  twin->selectManagedTeam(managed);
+  ASSERT_TRUE(twin->setTrainingPreset(TrainingPreset::Fitness));
+  ASSERT_TRUE(twin->setTrainingIntensity(TrainingIntensity::High));
 
   float light_condition = 0.0f;
   float hard_condition = 0.0f;
@@ -381,12 +387,15 @@ TEST(TrainingWorldTest, ScheduleShapesConditionFamiliarityAndDevelopment)
   for (int day = 0; day < DAYS; ++day)
   {
     controller->advanceDay();
+    twin->advanceDay();
     light_condition += averageCondition(*gamedata, managed);
-    hard_condition += averageCondition(*gamedata, other);
+    hard_condition += averageCondition(*twin_data, managed);
   }
   EXPECT_GT(light_condition / DAYS, hard_condition / DAYS + 2.0f);
+  const float hard_load =
+      twin_data->getTraining().findPlan(managed)->last_week_load;
   EXPECT_LT(gamedata->getTraining().findPlan(managed)->last_week_load,
-            gamedata->getTraining().findPlan(other)->last_week_load);
+            hard_load);
 
   // Development: the light schedule trains less than the hard one.
   const Player& young = [&]() -> const Player&
@@ -397,8 +406,7 @@ TEST(TrainingWorldTest, ScheduleShapesConditionFamiliarityAndDevelopment)
   }();
   const float light_quality = TrainingSystem::trainingQuality(*gamedata, young);
   ASSERT_TRUE(controller->setTrainingPreset(TrainingPreset::Fitness));
-  gamedata->getTraining().plan(managed).week_load =
-      gamedata->getTraining().findPlan(other)->last_week_load;
+  gamedata->getTraining().plan(managed).week_load = hard_load;
   EXPECT_GT(TrainingSystem::trainingQuality(*gamedata, young), light_quality);
 
   // Familiarity: a new tactic costs familiarity, tactical work rebuilds it.
