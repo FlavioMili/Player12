@@ -2518,6 +2518,43 @@ class MatchEngine
   /** First-touch timing: how often a player who let the ball come closer
    * then lost it out of his reach untouched (should stay 0). */
   std::uint32_t getFirstTouchWaitsMissed() const { return firstTouchWaitsMissed; }
+  /** The lost waits split by cause (observed only; wait dead zone plan
+   * step 1). Each lost wait counts once in deadZone or outOfReach, and in
+   * any of the others that apply. */
+  struct FirstTouchWaitLosses
+  {
+    /** Within his reach, but behind him in his dead zone. */
+    std::uint32_t deadZone = 0;
+    /** Beyond his reach (or not a contact for another reason). */
+    std::uint32_t outOfReach = 0;
+    /** Lost in the same step he last chose to wait: he had not moved since,
+     * so the ball's path was misread (not his move). */
+    std::uint32_t sameStep = 0;
+    /** His brain or chase changed his intent (target, run, facing asked
+     * of him, or for his own ball the meet) at this step's start. */
+    std::uint32_t intentChanged = 0;
+    /** Run into by someone in this step's movement. */
+    std::uint32_t bumped = 0;
+    /** After a move (not sameStep), Binturong bodies: how far his facing
+     * ended from the one the wait read expected (radians, on the pitch). */
+    double facingErrorSum = 0.0;
+    float facingErrorMax = 0.0f;
+    std::uint32_t facingSamples = 0;
+    /** The same, for the lost waits whose intent did not change: how many,
+     * bumped, and the facing error after a move. */
+    std::uint32_t unchanged = 0;
+    std::uint32_t unchangedBumped = 0;
+    double unchangedFacingErrorSum = 0.0;
+    float unchangedFacingErrorMax = 0.0f;
+    std::uint32_t unchangedFacingSamples = 0;
+    /** Steps on which the brain's move would have left a ball he waits on
+     * unplayable, so he carried on as the wait read predicted (step 3);
+     * and of those, how many the carry-on did not save either (he then
+     * keeps the brain's move). */
+    std::uint32_t carriedOn = 0;
+    std::uint32_t carriedOnStillLost = 0;
+  };
+  const FirstTouchWaitLosses& getFirstTouchWaitLosses() const { return firstTouchWaitLosses; }
   /** Restart line-ups (a Binturong body's taker), counted as he kicks. */
   struct RestartLineUpStats
   {
@@ -3316,7 +3353,22 @@ class MatchEngine
   /** Movement jitter (observed only), and what each slot's observation
    * compares with. */
   std::array<MovementJitterStats, 2> movementJitter{};
+  /** For the lost-wait split: he chose to wait (remembers the facing the
+   * wait read expects after his next move), and he lost it. */
+  void noteWaitChosen(std::size_t slot, float stepSeconds);
+  void splitLostWait(std::size_t slot, bool inDeadZone);
+  /** Whether a ball he waits on is still his to play in the first ball
+   * sub-step of this step, as he now stands: on his feet, within his reach
+   * and not in his dead zone (the contact sweep's feet test). */
+  bool waitPlayableNextSubstep(const MatchPlayer& player, float dt) const;
   std::uint32_t firstTouchWaitsMissed = 0;
+  FirstTouchWaitLosses firstTouchWaitLosses;
+  /** Per slot, for the split: the facing the wait read expected after his
+   * next move (Binturong bodies), and the step he last chose to wait in. */
+  std::array<float, 32> waitPredictedFacing{};
+  std::array<std::uint64_t, 32> waitChosenStep{};
+  /** Waiting players whose intent this step's brain or chase changed. */
+  std::uint32_t waitIntentChanged = 0;
   std::uint32_t dribbleTouches = 0;
   double dribbleContactGapSum = 0.0;
   std::uint32_t dribbleFailedTouches = 0;

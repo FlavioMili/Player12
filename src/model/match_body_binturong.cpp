@@ -7416,6 +7416,20 @@ bool MatchEngine::ballBehindReachBinturong(const MatchPlayer& player,
   // An outfielder cannot touch a ball behind him beyond the comfort gap
   // (the dead zone).
   if (player.isGoalkeeper) return false;
+  const float angle = predictedFacingBinturong(player, turnSeconds);
+  const Vector2F facing = normalized(
+      {std::cos(angle) * MatchTuning::Pitch::LENGTH_METRES,
+       std::sin(angle) * MatchTuning::Pitch::WIDTH_METRES});
+  const Vector2F toBall =
+      gap > EPSILON ? Vector2F{-gapX / gap, -gapY / gap} : facing;
+  return inTouchDeadZone(facing, toBall, gap,
+                         touchKnobs[TouchKnob::COMFORT_GAP],
+                         touchKnobs[TouchKnob::DEAD_ZONE_ANGLE]);
+}
+
+float MatchEngine::predictedFacingBinturong(const MatchPlayer& player,
+                                            float turnSeconds) const
+{
   float angle = player.facingAngle;
   if (turnSeconds > 0.0f)
   {
@@ -7445,14 +7459,7 @@ bool MatchEngine::ballBehindReachBinturong(const MatchPlayer& player,
       angle += std::clamp(difference, -turn, turn);
     }
   }
-  const Vector2F facing = normalized(
-      {std::cos(angle) * MatchTuning::Pitch::LENGTH_METRES,
-       std::sin(angle) * MatchTuning::Pitch::WIDTH_METRES});
-  const Vector2F toBall =
-      gap > EPSILON ? Vector2F{-gapX / gap, -gapY / gap} : facing;
-  return inTouchDeadZone(facing, toBall, gap,
-                         touchKnobs[TouchKnob::COMFORT_GAP],
-                         touchKnobs[TouchKnob::DEAD_ZONE_ANGLE]);
+  return angle;
 }
 
 Vector2F MatchEngine::strikePointBinturong(const MatchPlayer& /*striker*/) const

@@ -627,6 +627,7 @@ bool runFirstTouchChecks(const std::vector<const Team*>& clubs,
     int angleFailed = 0;
     int weightFailed = 0;
     std::uint32_t waitsMissed = 0;
+    MatchEngine::FirstTouchWaitLosses losses;
     std::uint64_t dribbleTouches = 0;
     double dribbleContactGapSum = 0.0;
     std::uint64_t dribbleFailed = 0;
@@ -804,6 +805,26 @@ bool runFirstTouchChecks(const std::vector<const Team*>& clubs,
                         ball.position.y - holder->position.y};
       }
       setup.waitsMissed += engine->getFirstTouchWaitsMissed();
+      {
+        const MatchEngine::FirstTouchWaitLosses& split = engine->getFirstTouchWaitLosses();
+        MatchEngine::FirstTouchWaitLosses& sum = setup.losses;
+        sum.deadZone += split.deadZone;
+        sum.outOfReach += split.outOfReach;
+        sum.sameStep += split.sameStep;
+        sum.intentChanged += split.intentChanged;
+        sum.bumped += split.bumped;
+        sum.facingErrorSum += split.facingErrorSum;
+        sum.facingErrorMax = std::max(sum.facingErrorMax, split.facingErrorMax);
+        sum.facingSamples += split.facingSamples;
+        sum.unchanged += split.unchanged;
+        sum.unchangedBumped += split.unchangedBumped;
+        sum.unchangedFacingErrorSum += split.unchangedFacingErrorSum;
+        sum.unchangedFacingErrorMax =
+            std::max(sum.unchangedFacingErrorMax, split.unchangedFacingErrorMax);
+        sum.unchangedFacingSamples += split.unchangedFacingSamples;
+        sum.carriedOn += split.carriedOn;
+        sum.carriedOnStillLost += split.carriedOnStillLost;
+      }
       setup.dribbleTouches += engine->getDribbleTouches();
       setup.dribbleContactGapSum += engine->getDribbleContactGapSum();
       setup.dribbleFailed += engine->getDribbleFailedTouches();
@@ -873,6 +894,32 @@ bool runFirstTouchChecks(const std::vector<const Team*>& clubs,
             : 0.0,
         physical ? "yes" : "NO", std::max(setup.worstExcess, 0.0f),
         std::max(setup.worstCollectJump, 0.0f), setup.waitsMissed);
+    std::cout << std::format(
+        "    waits carried on as read (the brain's move would have lost it): {}, of which "
+        "still lost {}\n",
+        setup.losses.carriedOn, setup.losses.carriedOnStillLost);
+    if (setup.waitsMissed > 0)
+    {
+      const MatchEngine::FirstTouchWaitLosses& split = setup.losses;
+      std::cout << std::format(
+          "    lost waits: dead zone {}, out of reach {}; in the step he chose to wait {}; "
+          "intent changed that step {}; bumped {}; facing vs the wait read's after a move: "
+          "mean {:.0f}°, worst {:.0f}° ({} lost)\n",
+          split.deadZone, split.outOfReach, split.sameStep, split.intentChanged, split.bumped,
+          split.facingSamples ? split.facingErrorSum / split.facingSamples * 180.0 / std::numbers::pi
+                              : 0.0,
+          split.facingErrorMax * 180.0f / std::numbers::pi_v<float>, split.facingSamples);
+      if (split.unchanged > 0)
+        std::cout << std::format(
+            "    of which intent unchanged: {} (bumped {}; facing vs the read's mean {:.0f}°, "
+            "worst {:.0f}°)\n",
+            split.unchanged, split.unchangedBumped,
+            split.unchangedFacingSamples
+                ? split.unchangedFacingErrorSum / split.unchangedFacingSamples * 180.0 /
+                      std::numbers::pi
+                : 0.0,
+            split.unchangedFacingErrorMax * 180.0f / std::numbers::pi_v<float>);
+    }
     ok = ok && physical && all.collected > 0 && setup.waitsMissed == 0;
   }
   return ok;

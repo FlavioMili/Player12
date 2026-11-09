@@ -1930,6 +1930,27 @@ void MatchEngine::updateMovement(float dt)
     }
   lastJitterStep = stepCounter;
 
+  // Wait dead zone plan step 1 (observed only): the intent each waiting
+  // player held, to see whether this step's brain or chase changes it.
+  struct HeldIntent
+  {
+    Vector2F target{};
+    Vector2F run{};
+    bool asked = false;
+    float facing = 0.0f;
+  };
+  std::array<HeldIntent, 32> held{};
+  const std::uint32_t waiting = ball.touchWaiting;
+  const Vector2F heldMeetPoint = ball.meetPoint;
+  const float heldMeetPace = ball.meetPace;
+  for (std::size_t slot = 0; slot < players.size() && slot < held.size(); ++slot)
+    if ((waiting & (1U << slot)) != 0U)
+    {
+      const MatchPlayer& player = players[slot];
+      held[slot] = {player.tacticalTarget, player.targetVelocity, player.facingRequested,
+                    player.facingRequest};
+    }
+
   // Off-ball targets refresh at the tactical rate, and immediately when the
   // ball changes hands or starts/ends a flight; bodies move every step.
   const std::uint8_t flags = static_cast<std::uint8_t>(
@@ -2004,6 +2025,25 @@ void MatchEngine::updateMovement(float dt)
   else
     ball.meetFor = nullptr;
 
+  waitIntentChanged = 0;
+  for (std::size_t slot = 0; slot < players.size() && slot < held.size(); ++slot)
+  {
+    if ((waiting & (1U << slot)) == 0U) continue;
+    const MatchPlayer& player = players[slot];
+    const HeldIntent& was = held[slot];
+    bool changed = player.tacticalTarget.x != was.target.x ||
+                   player.tacticalTarget.y != was.target.y ||
+                   player.targetVelocity.x != was.run.x ||
+                   player.targetVelocity.y != was.run.y ||
+                   player.facingRequested != was.asked ||
+                   (was.asked && player.facingRequest != was.facing);
+    // His own ball: the meet he runs to is his intent too.
+    if (player.player == ball.possessedBy)
+      changed = changed || ball.meetPoint.x != heldMeetPoint.x ||
+                ball.meetPoint.y != heldMeetPoint.y || ball.meetPace != heldMeetPace;
+    if (changed) waitIntentChanged |= 1U << slot;
+  }
+
   // Every target was read from the same snapshot of the play; now the bodies
   // move: diving keepers, players coasting after a collision, the
   // controlled player and a batch of the rest.
@@ -2029,7 +2069,56 @@ void MatchEngine::updateMovement(float dt)
     else
       batch[batched++] = static_cast<std::uint8_t>(slot);
   }
+  // Wait dead zone plan step 3: a player waiting on the ball (Binturong
+  // brain and body) whose move this step would leave it unplayable carries
+  // on instead as his wait read predicted. Before the bumps, which then see
+  // only final moves.
+  struct Waiter
+  {
+    std::uint8_t slot = 0;
+    MatchPlayer before;
+  };
+  std::array<Waiter, 4> waiters{};
+  std::size_t waiterCount = 0;
+  for (std::size_t index = 0; index < batched && waiting != 0U; ++index)
+  {
+    const std::uint8_t slot = batch[index];
+    const MatchPlayer& player = players[slot];
+    if ((waiting & (1U << slot)) == 0U || player.isGoalkeeper ||
+        getBrain(player.isHomeTeam) != BrainId::BINTURONG ||
+        getBody(player.isHomeTeam) != BodyId::BINTURONG || waiterCount >= waiters.size())
+      continue;
+    waiters[waiterCount++] = {slot, player};
+  }
   movePlayers(batch.data(), batched, dt, false);
+  for (std::size_t index = 0; index < waiterCount; ++index)
+  {
+    const Waiter& waiter = waiters[index];
+    MatchPlayer& player = players[waiter.slot];
+    if (waitPlayableNextSubstep(player, dt)) continue;
+    const MatchPlayer moved = player;
+    const MatchPlayer& before = waiter.before;
+    // As the read had him: the facing asked of him when he chose to wait.
+    MatchPlayer reader = before;
+    reader.facingRequested = held[waiter.slot].asked;
+    reader.facingRequest = held[waiter.slot].facing;
+    const float facing = predictedFacingBinturong(reader, dt);
+    player = before;
+    const Vector2F step = toPitch({before.velocity.x * dt, before.velocity.y * dt});
+    const Vector2F wanted{before.position.x + step.x, before.position.y + step.y};
+    player.position = moveBody(before.position, wanted);
+    if (player.position.x != wanted.x) player.velocity.x = 0.0f;
+    if (player.position.y != wanted.y) player.velocity.y = 0.0f;
+    player.facingAngle = facing;
+    player.targetAngle = facing;
+    ++firstTouchWaitLosses.carriedOn;
+    if (!waitPlayableNextSubstep(player, dt))
+    {
+      // Not saved either way: the brain's move stands.
+      player = moved;
+      ++firstTouchWaitLosses.carriedOnStillLost;
+    }
+  }
   updateTouchline(dt);
   collidePlayers(dt);
   observeRunJitter(dt);
@@ -3810,6 +3899,8 @@ void MatchEngine::resolveLooseBall(bool beforeLine)
   std::array<std::optional<ShotBodyHit>, 32> bodyHits{};
   std::uint32_t touchCandidates = 0;
   std::uint32_t bodyOnlyIfDeclined = 0;
+  // Within reach but in his dead zone (for the lost-wait split).
+  std::uint32_t behindReach = 0;
   const MatchPlayer* lastPlayedBy = findMatchPlayer(ball.lastPossessor);
   // A ball his head can meet on this stretch is his head's (headInSweep,
   // which may let it come closer first): not his body's.
@@ -4091,6 +4182,7 @@ void MatchEngine::resolveLooseBall(bool beforeLine)
       // His body may not reach a ball behind him at all.
       if (ballBehindReach(player, gapX, gapY, gap))
       {
+        if (reach > 0.0f && gap <= reach) behindReach |= 1U << slot;
         observePossessionGate(player, PossessionContactGate::BEHIND_REACH);
         continue;
       }
@@ -4126,6 +4218,8 @@ void MatchEngine::resolveLooseBall(bool beforeLine)
       inReach |= 1U << contacts[index].slot;
     const std::uint32_t lost = ball.touchWaiting & ~inReach;
     firstTouchWaitsMissed += static_cast<std::uint32_t>(std::popcount(lost));
+    for (std::size_t slot = 0; slot < players.size() && slot < waitChosenStep.size(); ++slot)
+      if ((lost & (1U << slot)) != 0U) splitLostWait(slot, (behindReach & (1U << slot)) != 0U);
     ball.touchWaiting &= inReach;
   }
   insertionSort(contacts, contactCount,
@@ -4267,6 +4361,7 @@ void MatchEngine::resolveLooseBall(bool beforeLine)
       if (!dribbleTouchNow(player, moment))
       {
         ball.touchWaiting |= bit;
+        noteWaitChosen(contact.slot, moment.stepSeconds);
         continue;
       }
       ball.touchWaiting &= ~bit;
@@ -4281,6 +4376,7 @@ void MatchEngine::resolveLooseBall(bool beforeLine)
     {
       observePossessionGate(player, PossessionContactGate::WAIT_FOR_CLOSER);
       ball.touchWaiting |= 1U << contact.slot;
+      noteWaitChosen(contact.slot, moment.stepSeconds);
       continue;
     }
     // The commit rule: a feet first touch on a ball he receives, a loose
@@ -6569,6 +6665,95 @@ void MatchEngine::updateTouch(MatchPlayer& carrier, float dt)
   ball.touchPeakGap = std::max(ball.touchPeakGap, gap);
   ball.dribbleExposure = gap;
   ball.dribbleTouchLength = std::max(ball.touchPeakGap, R::MAX_TOUCH_METRES);
+}
+
+bool MatchEngine::waitPlayableNextSubstep(const MatchPlayer& player, float dt) const
+{
+  // The ball's first sub-step of this step, read with its own physics
+  // (spin turns it too little in one sub-step to matter).
+  const int substeps = MatchTuning::Timing::BALL_SUBSTEPS * static_cast<int>(stepTicks);
+  const float substep = dt / static_cast<float>(std::max(substeps, 1));
+  const float speed = length(ball.velocity);
+  const Vector2F heading = speed > EPSILON
+                               ? Vector2F{ball.velocity.x / speed, ball.velocity.y / speed}
+                               : Vector2F{0.0f, 0.0f};
+  FlightState flight{speed, ball.velocityZ, ball.z * MatchTuning::Units::BALL_Z_METRES, false,
+                     ball.spin};
+  const float startHeight = flight.height;
+  const float rolled = stepFlight(flight, substep);
+  // Off his feet the whole way: not a wait this is about.
+  const float feet = bodyLines(player).feet;
+  if (startHeight > feet && flight.height > feet) return true;
+  const Vector2F start = toMetres(ball.position);
+  const Vector2F segment{heading.x * rolled, heading.y * rolled};
+  const Vector2F him = toMetres(player.position);
+  const float segmentSquared = segment.x * segment.x + segment.y * segment.y;
+  const float along =
+      segmentSquared > EPSILON
+          ? std::clamp(((him.x - start.x) * segment.x + (him.y - start.y) * segment.y) /
+                           segmentSquared,
+                       0.0f, 1.0f)
+          : 0.0f;
+  const float gapX = him.x - (start.x + segment.x * along);
+  const float gapY = him.y - (start.y + segment.y * along);
+  const float gap = std::sqrt(gapX * gapX + gapY * gapY);
+  if (gap > feetReach(player)) return false;
+  return !ballBehindReach(player, gapX, gapY, gap);
+}
+
+void MatchEngine::noteWaitChosen(std::size_t slot, float stepSeconds)
+{
+  if (slot >= waitChosenStep.size()) return;
+  const MatchPlayer& player = players[slot];
+  waitChosenStep[slot] = stepCounter;
+  if (getBody(player.isHomeTeam) == BodyId::BINTURONG)
+    waitPredictedFacing[slot] = predictedFacingBinturong(player, stepSeconds);
+}
+
+void MatchEngine::splitLostWait(std::size_t slot, bool inDeadZone)
+{
+  FirstTouchWaitLosses& split = firstTouchWaitLosses;
+  const MatchPlayer& player = players[slot];
+  ++(inDeadZone ? split.deadZone : split.outOfReach);
+  const bool changed = (waitIntentChanged & (1U << slot)) != 0U;
+  if (changed)
+    ++split.intentChanged;
+  else
+    ++split.unchanged;
+  for (const CollisionHit& hit : lastCollisions)
+    if (hit.sides[0].player == player.player->getId() ||
+        hit.sides[1].player == player.player->getId())
+    {
+      ++split.bumped;
+      if (!changed) ++split.unchangedBumped;
+      break;
+    }
+  if (waitChosenStep[slot] == stepCounter)
+  {
+    ++split.sameStep;
+    return;
+  }
+  if (getBody(player.isHomeTeam) != BodyId::BINTURONG) return;
+  // On the pitch (metres), not in normalised pitch space.
+  const auto onPitch = [](float angle)
+  {
+    return std::atan2(std::sin(angle) * MatchTuning::Pitch::WIDTH_METRES,
+                      std::cos(angle) * MatchTuning::Pitch::LENGTH_METRES);
+  };
+  float error = onPitch(player.facingAngle) - onPitch(waitPredictedFacing[slot]);
+  if (error > std::numbers::pi_v<float>)
+    error -= TWO_PI;
+  else if (error < -std::numbers::pi_v<float>)
+    error += TWO_PI;
+  split.facingErrorSum += std::abs(error);
+  split.facingErrorMax = std::max(split.facingErrorMax, std::abs(error));
+  ++split.facingSamples;
+  if (!changed)
+  {
+    split.unchangedFacingErrorSum += std::abs(error);
+    split.unchangedFacingErrorMax = std::max(split.unchangedFacingErrorMax, std::abs(error));
+    ++split.unchangedFacingSamples;
+  }
 }
 
 void MatchEngine::chaseTouchedBall()

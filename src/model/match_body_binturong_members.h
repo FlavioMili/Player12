@@ -425,6 +425,10 @@
   float feetReachBinturong(const MatchPlayer& player) const;
   BodyLines bodyLinesBinturong(const MatchPlayer& player) const;
   bool ballBehindReachBinturong(const MatchPlayer& player, float gapX, float gapY, float gap, float turnSeconds) const;
+  /** The facing (normalised pitch space) the wait read expects him to have
+   * after turnSeconds: toward his facing asked of him, else his current run,
+   * at his turn rate (as ballBehindReachBinturong reads it). */
+  float predictedFacingBinturong(const MatchPlayer& player, float turnSeconds) const;
   Vector2F strikePointBinturong(const MatchPlayer& striker) const;
   Kick strikeAsBinturong(const MatchPlayer& striker, StrikeKind kind, Vector2F target, float speed, float lift);
   float clearanceDistanceBinturong(const MatchPlayer& defender, Vector2F origin, const ClearanceAim& aim) const;

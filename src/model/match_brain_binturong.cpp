@@ -2786,13 +2786,15 @@ bool MatchEngine::waitsForCloserBinturong(const MatchPlayer& player,
       std::clamp(static_cast<int>(knob[K::TIMING_LOOKAHEAD] / STEP + 0.5f), 0,
                  MAX_LOOKAHEAD);
   const float speed = length(ball.velocity);
-  const Vector2F heading = speed > EPSILON ? Vector2F{ball.velocity.x / speed,
-                                                      ball.velocity.y / speed}
-                                           : Vector2F{0.0f, 0.0f};
+  // Its heading turns as its sidespin bends it (wait dead zone plan step 2).
+  Vector2F heading = speed > EPSILON ? Vector2F{ball.velocity.x / speed,
+                                                ball.velocity.y / speed}
+                                     : Vector2F{0.0f, 0.0f};
   FlightState flight{speed, ball.velocityZ,
                      ball.z * MatchTuning::Units::BALL_Z_METRES, false,
                      ball.spin};
   const Vector2F ballStart = toMetres(ball.position);
+  Vector2F ballAt = ballStart;
   const Vector2F playerStart = toMetres(player.position);
   // He stands still through the rest of this step's ball sub-steps, then
   // moves at the step boundaries (read from his current velocity).
@@ -2805,7 +2807,6 @@ bool MatchEngine::waitsForCloserBinturong(const MatchPlayer& player,
                : 0;
   };
   std::array<Vector2F, MAX_LOOKAHEAD + 1> path{};
-  float travelled = 0.0f;
   float bestGap = moment.gap;
   int bestStep = 0;
   float gapAfterMove = 0.0f;
@@ -2815,12 +2816,14 @@ bool MatchEngine::waitsForCloserBinturong(const MatchPlayer& player,
   const float feetLine = bodyLines(player).feet;
   for (int step = 1; step <= LOOKAHEAD; ++step)
   {
-    travelled += stepFlight(flight, STEP);
+    const float rolled = stepFlight(flight, STEP);
     if (risesAt > LOOKAHEAD && flight.height > feetLine)
       risesAt = step;
-    path[static_cast<std::size_t>(step)] = {
-        ballStart.x + heading.x * travelled,
-        ballStart.y + heading.y * travelled};
+    ballAt = {ballAt.x + heading.x * rolled, ballAt.y + heading.y * rolled};
+    path[static_cast<std::size_t>(step)] = ballAt;
+    const float turn = flight.turnRate * STEP;
+    heading = {heading.x * std::cos(turn) - heading.y * std::sin(turn),
+               heading.x * std::sin(turn) + heading.y * std::cos(turn)};
     const float moved = moment.stepSeconds * static_cast<float>(movesBy(step));
     const Vector2F gapVector{path[static_cast<std::size_t>(step)].x -
                                  (playerStart.x + player.velocity.x * moved),
