@@ -181,6 +181,10 @@ decides which restart or period comes next.
 
 ## Determinism, replay and observation
 
+For the read-only possession projection, invariant diagnostics and paired
+`--trace-possession` command, see [Possession](possession.md). These Stage 1
+tools observe the existing implementation; they do not change ownership policy.
+
 The match uses seeded `std::mt19937` streams for play and incidents, with
 in-tree sampling helpers. Hash/epoch noise supplies stable variation for some
 tactical choices. World simulation separately uses `WorldRng`. A seed alone

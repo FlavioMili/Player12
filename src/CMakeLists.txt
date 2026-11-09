@@ -203,6 +203,8 @@ set(FM_CORE_SOURCES
     model/match_engine.h
     model/match_engine_internal.h
     model/match_engine.cpp
+    model/match_possession.h
+    model/match_possession.cpp
     model/match_engine_tracking.cpp
     model/match_engine_drills.cpp
     model/match_collisions.cpp
@@ -703,6 +705,8 @@ add_executable(match_sandbox
     tools/match_sandbox_debugger.cpp
     tools/match_sandbox_checks.h
     tools/match_sandbox_checks.cpp
+    tools/match_sandbox_possession_trace.h
+    tools/match_sandbox_possession_trace.cpp
     tools/match_sandbox_rewind.h
     tools/match_sandbox_rewind.cpp
     tools/match_sandbox_review.h
@@ -744,3 +748,10 @@ add_executable(match_sandbox
 )
 target_link_libraries(match_sandbox PRIVATE fm_drills)
 target_compile_options(match_sandbox PRIVATE ${FM_WARNING_FLAGS})
+
+# Small, dependency-free possession contract checks for offline builds where
+# GoogleTest is unavailable. Explicit target; not part of the default build.
+add_executable(possession_contract_check EXCLUDE_FROM_ALL
+    ../test/possession_contract_check.cpp)
+target_include_directories(possession_contract_check PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}")
+target_compile_options(possession_contract_check PRIVATE ${FM_WARNING_FLAGS})

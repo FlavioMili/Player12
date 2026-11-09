@@ -1,0 +1,245 @@
+// -----------------------------------------------------------------------------
+// Football Management Project
+// Copyright (c) 2025 - 2026 Flavio Milinanni. All Rights Reserved.
+// See the LICENSE file in the project root.
+// -----------------------------------------------------------------------------
+#pragma once
+
+#include <cstdint>
+#include <optional>
+#include <string_view>
+
+#include "global/types.h"
+
+/** Per-match version vocabulary. Stage 1 observes the legacy implementation;
+ * selecting/dispatching Binturong is introduced during the mutation migration.
+ */
+enum class PossessionId : std::uint8_t
+{
+  AARDVARK,
+  BINTURONG
+};
+
+constexpr std::string_view possessionKey(PossessionId id)
+{
+  return id == PossessionId::BINTURONG ? "binturong" : "aardvark";
+}
+
+constexpr std::optional<PossessionId> possessionFromKey(std::string_view key)
+{
+  if (key == "aardvark") return PossessionId::AARDVARK;
+  if (key == "binturong") return PossessionId::BINTURONG;
+  return std::nullopt;
+}
+
+/** What existing state actually establishes, not a new control policy.
+ * LegacyAttached and RestartOwner deliberately avoid claiming physical foot
+ * control/custody where the old owner pointer does not establish it. */
+enum class PossessionMode : std::uint8_t
+{
+  UNCONTROLLED,
+  TOUCH_CLAIM,
+  FOOT_CONTROL,
+  KEEPER_HANDS,
+  LEGACY_ATTACHED,
+  RESTART_OWNER
+};
+
+constexpr std::string_view possessionModeName(PossessionMode mode)
+{
+  switch (mode)
+  {
+    case PossessionMode::UNCONTROLLED:
+      return "uncontrolled";
+    case PossessionMode::TOUCH_CLAIM:
+      return "touch-claim";
+    case PossessionMode::FOOT_CONTROL:
+      return "collected-touch";
+    case PossessionMode::KEEPER_HANDS:
+      return "keeper-hands";
+    case PossessionMode::LEGACY_ATTACHED:
+      return "legacy-attached";
+    case PossessionMode::RESTART_OWNER:
+      return "restart-owner";
+  }
+  return "unknown";
+}
+
+/** Value-only projection: safe to retain across steps and engine copies.
+ * IDs are historical identities, not pitch slots. No observer owns a second
+ * writable simulation state. Missing physical/deliberate-contact history is
+ * left unknown: lastPossessor/kicker cannot reliably reconstruct those facts.
+ */
+struct PossessionSnapshot
+{
+  PossessionId implementation = PossessionId::AARDVARK;
+  PossessionMode mode = PossessionMode::UNCONTROLLED;
+  std::uint64_t tick = 0;
+  double seconds = 0.0;
+  bool openPlay = false;
+  PlayerID legacyOwner = 0;
+  PlayerID controller = 0;
+  PlayerID claimant = 0;
+  PlayerID expectedReceiver = 0;
+  PlayerID pendingPasser = 0;
+  PlayerID legacyLastPossessor = 0;
+  PlayerID legacyKicker = 0;
+  PlayerID legacyDeflector = 0;
+  std::optional<PlayerID> lastPhysicalTouch;
+  std::optional<PlayerID> lastDeliberatePlay;
+  std::optional<bool> lastControlledTeamHome;
+  bool ownerKnown = false;
+  bool ownerActive = false;
+  bool ownerGoalkeeper = false;
+  bool ownerInOwnArea = false;
+  bool inTouch = false;
+  bool collected = false;
+  bool dropping = false;
+  bool inHands = false;
+  bool pass = false;
+  bool shot = false;
+  PlayerID meetFor = 0;
+  double pathSince = 0.0;
+  float ownerGapMetres = 0.0f;
+  bool operator==(const PossessionSnapshot&) const = default;
+};
+
+/** Interpret the legacy flags without inventing missing control evidence.
+ * Invalid combinations remain available to possessionIssues for diagnosis. */
+constexpr PossessionSnapshot interpretLegacyPossession(PossessionSnapshot state)
+{
+  state.controller = 0;
+  state.claimant = state.inTouch ? state.legacyOwner : 0;
+  state.mode = PossessionMode::UNCONTROLLED;
+  if (state.legacyOwner == 0) return state;
+  if (!state.openPlay)
+    state.mode = PossessionMode::RESTART_OWNER;
+  else if (state.inHands)
+  {
+    state.mode = PossessionMode::KEEPER_HANDS;
+    state.controller = state.legacyOwner;
+  }
+  else if (state.inTouch)
+  {
+    state.mode = state.collected ? PossessionMode::FOOT_CONTROL
+                                 : PossessionMode::TOUCH_CLAIM;
+    if (state.collected) state.controller = state.legacyOwner;
+  }
+  else
+    state.mode = PossessionMode::LEGACY_ATTACHED;
+  return state;
+}
+
+/** Reports legacy inconsistencies without asserting, repairing or changing
+ * eligibility. Call on completed steps; helper-boundary states can be partial.
+ */
+enum class PossessionIssue : std::uint32_t
+{
+  TOUCH_WITHOUT_OWNER = 1U << 0,
+  TOUCH_OUTSIDE_OPEN_PLAY = 1U << 1,
+  COLLECTION_WITHOUT_TOUCH = 1U << 2,
+  DROPPING_WITHOUT_TOUCH = 1U << 3,
+  HANDS_WITHOUT_OWNER = 1U << 4,
+  HANDS_AND_TOUCH = 1U << 5,
+  OWNER_UNKNOWN = 1U << 6,
+  OWNER_INACTIVE = 1U << 7,
+  HANDS_NOT_KEEPER = 1U << 8,
+  HANDS_OUTSIDE_AREA = 1U << 9,
+  MEET_OWNER_MISMATCH = 1U << 10,
+  PASS_AND_SHOT = 1U << 11,
+};
+
+constexpr std::uint32_t possessionIssues(const PossessionSnapshot& state)
+{
+  std::uint32_t issues = 0;
+  const auto add = [&](bool failed, PossessionIssue issue)
+  {
+    if (failed) issues |= static_cast<std::uint32_t>(issue);
+  };
+  add(state.inTouch && state.legacyOwner == 0,
+      PossessionIssue::TOUCH_WITHOUT_OWNER);
+  add(state.inTouch && !state.openPlay,
+      PossessionIssue::TOUCH_OUTSIDE_OPEN_PLAY);
+  add(state.collected && !state.inTouch,
+      PossessionIssue::COLLECTION_WITHOUT_TOUCH);
+  add(state.dropping && !state.inTouch,
+      PossessionIssue::DROPPING_WITHOUT_TOUCH);
+  add(state.inHands && state.legacyOwner == 0,
+      PossessionIssue::HANDS_WITHOUT_OWNER);
+  add(state.inHands && state.inTouch, PossessionIssue::HANDS_AND_TOUCH);
+  add(state.legacyOwner != 0 && !state.ownerKnown,
+      PossessionIssue::OWNER_UNKNOWN);
+  add(state.legacyOwner != 0 && state.ownerKnown && !state.ownerActive,
+      PossessionIssue::OWNER_INACTIVE);
+  add(state.inHands && state.ownerKnown && !state.ownerGoalkeeper,
+      PossessionIssue::HANDS_NOT_KEEPER);
+  add(state.inHands && state.ownerKnown && !state.ownerInOwnArea,
+      PossessionIssue::HANDS_OUTSIDE_AREA);
+  add(state.meetFor != 0 &&
+          (!state.inTouch || state.meetFor != state.legacyOwner),
+      PossessionIssue::MEET_OWNER_MISMATCH);
+  add(state.pass && state.shot, PossessionIssue::PASS_AND_SHOT);
+  return issues;
+}
+
+/** Stage 1 observations identify existing helper calls, not an invented
+ * complete contact event stream. Direct writes remain visible in step samples.
+ */
+enum class PossessionObservation : std::uint8_t
+{
+  ASSIGN_OWNER,
+  ACQUIRE,
+  CLEAR_OWNER,
+  CLEAR_FLIGHT
+};
+
+enum class PossessionContactGate : std::uint8_t
+{
+  OWNER_NOT_COLLECTED,
+  OWNER_PROTECTED,
+  FRIENDLY_CLAIM,
+  FRIENDLY_PASS,
+  KICKER_LOCKOUT,
+  ALREADY_ATTEMPTED,
+  FOOT_RECOVERING,
+  WAIT_FOR_CLOSER,
+  CONTACT_NOT_COMMITTED,
+  KEEPER_NOT_READY,
+  OUT_OF_REACH,
+  BEHIND_REACH,
+  PHYSICAL_RECOVERY
+};
+
+constexpr std::string_view possessionGateName(PossessionContactGate gate)
+{
+  switch (gate)
+  {
+    case PossessionContactGate::OWNER_NOT_COLLECTED:
+      return "owner-not-collected";
+    case PossessionContactGate::OWNER_PROTECTED:
+      return "owner-in-reach";
+    case PossessionContactGate::FRIENDLY_CLAIM:
+      return "friendly-claim-distance";
+    case PossessionContactGate::FRIENDLY_PASS:
+      return "friendly-pass-intended-for-another";
+    case PossessionContactGate::KICKER_LOCKOUT:
+      return "kicker-lockout";
+    case PossessionContactGate::ALREADY_ATTEMPTED:
+      return "already-attempted";
+    case PossessionContactGate::FOOT_RECOVERING:
+      return "foot-recovering";
+    case PossessionContactGate::WAIT_FOR_CLOSER:
+      return "wait-for-closer";
+    case PossessionContactGate::CONTACT_NOT_COMMITTED:
+      return "path-too-new-to-commit";
+    case PossessionContactGate::KEEPER_NOT_READY:
+      return "keeper-gather-not-ready";
+    case PossessionContactGate::OUT_OF_REACH:
+      return "outside-contact-reach";
+    case PossessionContactGate::BEHIND_REACH:
+      return "behind-contact-reach";
+    case PossessionContactGate::PHYSICAL_RECOVERY:
+      return "trapping-airborne-fallen-or-diving";
+  }
+  return "unknown";
+}

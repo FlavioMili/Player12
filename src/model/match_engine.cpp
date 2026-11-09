@@ -3726,7 +3726,11 @@ void MatchEngine::resolveLooseBall(bool beforeLine)
   const float ownerGap =
       touchOwner ? distance(touchOwner->position, ball.position) : 0.0f;
   const bool ownerHasIt = touchOwner && ballInReach(*touchOwner);
-  if (ownerHasIt && !ball.touchCollected) return;
+  if (ownerHasIt && !ball.touchCollected)
+  {
+    observePossessionGate(*touchOwner, PossessionContactGate::OWNER_NOT_COLLECTED);
+    return;
+  }
 
   const float endHeight = ball.z * MatchTuning::Units::BALL_Z_METRES;
   // Each player's head line is his own (a Binturong body's, from his
@@ -3936,7 +3940,11 @@ void MatchEngine::resolveLooseBall(bool beforeLine)
     // In a dive, a keeper plays nothing: only his body meets it.
     if (!active(player) || (player.trapTimer > 0.0f && !shotIntoBody) ||
         (player.airborne() && !shotIntoBody) || player.fallen || (diving && !shotIntoBody))
+    {
+      if (active(player))
+        observePossessionGate(player, PossessionContactGate::PHYSICAL_RECOVERY);
       continue;
+    }
     if (touchOwner)
     {
       // He plays his own ball once collected; in his reach nobody else
@@ -3950,22 +3958,38 @@ void MatchEngine::resolveLooseBall(bool beforeLine)
                (player.isHomeTeam == touchOwner->isHomeTeam &&
                 ownerGap <= touchKnobs[TouchKnob::TEAMMATE_DISTANCE]))
       {
+        observePossessionGate(player, ownerHasIt ? PossessionContactGate::OWNER_PROTECTED
+                                                 : PossessionContactGate::FRIENDLY_CLAIM);
         continue;
       }
     }
-    if (ball.kickerLockout > 0.0f && ball.kicker == player.player) continue;
+    if (ball.kickerLockout > 0.0f && ball.kicker == player.player)
+    {
+      observePossessionGate(player, PossessionContactGate::KICKER_LOCKOUT);
+      continue;
+    }
     // (A shot meets his body even after his touch had its go: a keeper's
     // hands that left an on-target shot to his plane.)
-    if ((ball.touchAttempts & (1U << slot)) != 0U && !shotIntoBody) continue;
+    if ((ball.touchAttempts & (1U << slot)) != 0U && !shotIntoBody)
+    {
+      observePossessionGate(player, PossessionContactGate::ALREADY_ATTEMPTED);
+      continue;
+    }
     // His foot is committed from a contest swing.
     if (&player != touchOwner && player.footCooldown > 1e-4f && !shotIntoBody)
+    {
+      observePossessionGate(player, PossessionContactGate::FOOT_RECOVERING);
       continue;
+    }
     // Team-mates let a pass run to its receiver, and (an Aardvark body)
     // never meet their own side's shot.
     if (ball.isPass && player.isHomeTeam == ball.passByHome &&
         player.player != ball.intendedReceiver &&
         ballSpeed > B::MAX_HEAVY_TOUCH_SPEED)
+    {
+      observePossessionGate(player, PossessionContactGate::FRIENDLY_PASS);
       continue;
+    }
     if (ball.isShot && player.isHomeTeam == ball.shotByHome && !binturong) continue;
 
     const float along = segmentSquared > EPSILON
@@ -3997,7 +4021,11 @@ void MatchEngine::resolveLooseBall(bool beforeLine)
       continue;
     // Moving faster than a walk, or not yet bent to it, his hands can't
     // gather it (goalkeeper plan step 8): his body meets it.
-    if (hands && binturong && !shotIntoBody && !keeperCanGatherBinturong(player)) continue;
+    if (hands && binturong && !shotIntoBody && !keeperCanGatherBinturong(player))
+    {
+      observePossessionGate(player, PossessionContactGate::KEEPER_NOT_READY);
+      continue;
+    }
     if (shotIntoBody)
     {
       // His torso, or a leg where his stride has it (shot block plan §3c),
@@ -4061,9 +4089,17 @@ void MatchEngine::resolveLooseBall(bool beforeLine)
         if (gapX * facing.x + gapY * facing.y > 0.0f) continue;
       }
       // His body may not reach a ball behind him at all.
-      if (ballBehindReach(player, gapX, gapY, gap)) continue;
+      if (ballBehindReach(player, gapX, gapY, gap))
+      {
+        observePossessionGate(player, PossessionContactGate::BEHIND_REACH);
+        continue;
+      }
     }
-    if (reach <= 0.0f || gap > reach) continue;
+    if (reach <= 0.0f || gap > reach)
+    {
+      observePossessionGate(player, PossessionContactGate::OUT_OF_REACH);
+      continue;
+    }
     contacts[contactCount++] = {slot, along, gap, height, reach, ShotBodyPart::TORSO, {},
                                 shotAsLoose};
     touchCandidates |= 1U << slot;
@@ -4243,6 +4279,7 @@ void MatchEngine::resolveLooseBall(bool beforeLine)
     if ((!ball.isShot || contact.asLoose) && playsFirstTouch(player, hands, contact.height) &&
         !touchNow(player, moment))
     {
+      observePossessionGate(player, PossessionContactGate::WAIT_FOR_CLOSER);
       ball.touchWaiting |= 1U << contact.slot;
       continue;
     }
@@ -4259,6 +4296,7 @@ void MatchEngine::resolveLooseBall(bool beforeLine)
         ballNow() - ball.pathSince <
             MatchTuning::Dribble::FIRST_TOUCH_COMMIT_SECONDS - 1e-6)
     {
+      observePossessionGate(player, PossessionContactGate::CONTACT_NOT_COMMITTED);
       const std::uint32_t bit = 1U << contact.slot;
       ball.touchWaiting &= ~bit;
       if ((ball.commitMisses & bit) == 0U)
@@ -5431,6 +5469,7 @@ void MatchEngine::takePossession(MatchPlayer& player)
   if (length(ball.dribbleDirection) <= EPSILON)
     ball.dribbleDirection = {player.isHomeTeam ? 1.0f : -1.0f, 0.0f};
   updateTeamPhases();
+  observePossession(PossessionObservation::ACQUIRE);
 }
 
 void MatchEngine::noteFreeBallTackle(MatchPlayer& tackler, bool contest)
@@ -5669,6 +5708,7 @@ void MatchEngine::clearPossession()
   ball.touchDropping = false;
   ball.touchPasser = nullptr;
   ball.touchWaiting = 0;
+  observePossession(PossessionObservation::CLEAR_OWNER);
 }
 
 void MatchEngine::handBallTo(const Player* holder)
@@ -5681,6 +5721,7 @@ void MatchEngine::handBallTo(const Player* holder)
   ball.touchDropping = false;
   ball.touchPasser = nullptr;
   ball.touchWaiting = 0;
+  observePossession(PossessionObservation::ASSIGN_OWNER);
 }
 
 bool MatchEngine::possessionConsistent() const
@@ -6621,6 +6662,7 @@ void MatchEngine::clearFlightState()
   ball.throwEntering = false;
   ball.shotOffWoodwork = false;
   ball.spin = {};
+  observePossession(PossessionObservation::CLEAR_FLIGHT);
 }
 
 void MatchEngine::makeSave(MatchPlayer& goalkeeper)

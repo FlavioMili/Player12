@@ -42,6 +42,7 @@
 //   --true-view  open the true view (a player as the engine models him)
 
 #include <charconv>
+#include <cmath>
 #include <cstdint>
 #include <cstdlib>
 #include <exception>
@@ -92,6 +93,8 @@ int main(int argc, char* argv[])
   bool kickOff = false;
   std::optional<double> traceLapsSeconds;
   std::optional<double> traceMatchSeconds;
+  std::optional<double> tracePossessionSeconds;
+  std::string tracePossessionPath;
   int traceMatchCases = 12;
   std::string traceMatchKind = "neither";
   std::string traceLapsFollow;
@@ -240,6 +243,21 @@ int main(int argc, char* argv[])
       while (++index < argc) measureArguments.emplace_back(argv[index]);
       break;
     }
+    else if (argument == "--trace-possession" && index + 2 < argc)
+    {
+      const std::string_view duration(argv[++index]);
+      double seconds = 0.0;
+      const auto parsed = std::from_chars(duration.data(), duration.data() + duration.size(), seconds);
+      if (parsed.ec != std::errc() || parsed.ptr != duration.data() + duration.size() ||
+          !std::isfinite(seconds) || seconds <= 0.0 || seconds > 3600.0)
+      {
+        std::cerr << "--trace-possession requires seconds in (0, 3600] and an output path.\n";
+        return 2;
+      }
+      tracePossessionSeconds = seconds;
+      tracePossessionPath = argv[++index];
+      continue;
+    }
     else if (argument == "--trace-match" && index + 1 < argc)
     {
       traceMatchSeconds = std::stod(argv[++index]);
@@ -282,6 +300,7 @@ int main(int argc, char* argv[])
            " [--out-of-play O]"
            " [--home-advantage X] [--kick-off] [--drill NAME]"
            " [--check [MATCHES]] [--trace-laps SECONDS [PLAYER]]"
+           " [--trace-possession SECONDS OUTPUT.jsonl]"
            " [--trace-match SECONDS [CASES [neither|giveway|spot|all]]]\n"
            "  (--brains, --bodies, --managers: aardvark or binturong per side, "
            "one name for both; before --measure or --shot-map)\n"
@@ -304,6 +323,14 @@ int main(int argc, char* argv[])
     return 2;
   }
 
+  if (tracePossessionSeconds &&
+      (checkMatches || traceMatchSeconds || traceLapsSeconds || measureDrill ||
+       shotMapArguments || benchArguments || kickOff || !drill.empty()))
+  {
+    std::cerr << "--trace-possession must be used without another run mode.\n";
+    return 2;
+  }
+
   // The checks compare with the inherited engine, which had the full home
   // edge and the Aardvark handshake; everything else plays at a neutral
   // venue with the Binturong handshake unless asked.
@@ -320,6 +347,8 @@ int main(int argc, char* argv[])
     Logger::info("Match sandbox: generating world " + std::to_string(worldSeed));
     controller.newGame(SANDBOX_SAVE_SLOT, worldSeed);
     if (checkMatches) return runSandboxChecks(controller, *checkMatches);
+    if (tracePossessionSeconds)
+      return runPossessionTrace(controller, *tracePossessionSeconds, tracePossessionPath);
     if (traceMatchSeconds)
       return runMatchTrace(controller, *traceMatchSeconds, traceMatchCases, traceMatchKind);
     if (shotMapArguments)

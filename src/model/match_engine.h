@@ -30,6 +30,7 @@
 #include "model/match_handshake.h"
 #include "model/match_manager.h"
 #include "model/match_out_of_play.h"
+#include "model/match_possession.h"
 #include "model/match_context.h"
 #include "model/match_derived_stats.h"
 #include "model/match_first_touch_knobs.h"
@@ -2448,6 +2449,10 @@ class MatchEngine
   /** Whether the ball's ownership state is coherent: a ball in a first touch
    * has an owner, in open play. The sandbox checks this every step. */
   bool possessionConsistent() const;
+  /** Stage 1: value-only legacy projection. Never changes gameplay state,
+   * consumes randomness, or upgrades a claim into physical control. */
+  PossessionSnapshot getPossessionSnapshot() const;
+  std::uint32_t getPossessionIssues() const;
   const std::vector<MatchEvent>& getEvents() const { return events; }
   /**
    * Team names used in the commentary lines (MatchEvent::description) from
@@ -4384,6 +4389,9 @@ class MatchEngine
   /** Engine seconds on the ball's clock: inside the ball's sub-steps, the
    * sub-step's own time. */
   double ballNow() const;
+  /** Opt-in observations; attached recorders are detached on engine copy. */
+  void observePossession(PossessionObservation observation);
+  void observePossessionGate(const MatchPlayer& player, PossessionContactGate gate);
   double ballClockSeconds = 0.0;
   bool ballClockRunning = false;
   /** Whether `player` can contest `owner`'s collected ball while it is

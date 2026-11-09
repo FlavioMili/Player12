@@ -365,4 +365,16 @@ class MatchRecorder
 
   /** The end of a fixed step: read the engine's state through its getters. */
   virtual void onStepEnd(const MatchEngine& /*engine*/) {}
+
+  /** Stage 1 possession diagnostics are opt-in and observational. Helper
+   * snapshots may be intermediate; validate invariants only at step end. */
+  [[nodiscard]] virtual bool wantsPossession() const { return false; }
+  virtual void onPossessionObservation(const MatchEngine& /*engine*/,
+                                      PossessionObservation /*observation*/,
+                                      const PossessionSnapshot& /*snapshot*/) {}
+  /** An actual gate taken in the contact sweep. Some gates precede reach
+   * testing: a gate observation does not prove the ball was playable. */
+  virtual void onPossessionContactGate(const MatchEngine& /*engine*/,
+                                      const MatchPlayer& /*player*/,
+                                      PossessionContactGate /*gate*/) {}
 };

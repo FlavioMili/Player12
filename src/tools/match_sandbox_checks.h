@@ -22,6 +22,11 @@ class GameController;
  */
 int runSandboxChecks(GameController& controller, int matches);
 
+/** Stage 1: JSONL ownership/contact-gate trace, paired with an unobserved
+ * engine at the same seed. Seconds must be finite and in (0, 3600]. */
+int runPossessionTrace(GameController& controller, double seconds,
+                        const std::string& outputPath);
+
 /** Diagnostic (match_sandbox --trace-match SECONDS [CASES]): a match between
  * the first two clubs of the first league; each stumble or fall between two
  * players getting into position, with both players' last 1.2 s. */

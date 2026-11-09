@@ -15,6 +15,7 @@
 #include <cstdio>
 #include <cstring>
 #include <deque>
+#include <fstream>
 #include <filesystem>
 #include <algorithm>
 #include <format>
@@ -44,6 +45,7 @@
 #include "tools/match_sandbox_recording.h"
 #include "tools/match_sandbox_setup.h"
 #include "tools/match_sandbox_rewind.h"
+#include "tools/match_sandbox_possession_trace.h"
 #include "tools/match_sandbox_scenario.h"
 
 #if defined(_WIN32)
@@ -963,6 +965,36 @@ bool runRestartChecks(const std::vector<const Team*>& clubs,
     ok = ok && good;
   }
   return ok;
+}
+
+int runPossessionTrace(GameController& controller, double seconds,
+                        const std::string& outputPath)
+{
+  if (!std::isfinite(seconds) || seconds <= 0.0 || seconds > 3600.0) return 2;
+  std::vector<const Team*> clubs;
+  const auto& leagues = controller.getLeagues();
+  for (const auto& team : controller.getTeams())
+    if (!leagues.empty() && team.get().getLeagueId() == leagues.front().get().getId())
+      clubs.push_back(&team.get());
+  if (clubs.size() < 2) return 2;
+  std::ofstream output(outputPath);
+  if (!output)
+  {
+    std::cerr << "Cannot write possession trace: " << outputPath << '\n';
+    return 2;
+  }
+  auto observed = makeEngine(*clubs[0], *clubs[1], controller.getStatsConfig(), 1000);
+  auto reference = makeEngine(*clubs[0], *clubs[1], controller.getStatsConfig(), 1000);
+  const int result = tracePossessionPair(*observed, *reference, seconds, output);
+  const auto observedFingerprint = fingerprint(*observed);
+  const bool same = observedFingerprint == fingerprint(*reference);
+  output << std::format("{{\"type\":\"final-fingerprint\",\"seed\":1000,"
+                        "\"fingerprint\":\"{:016x}\",\"matches_reference\":{}}}\n",
+                        observedFingerprint, same ? "true" : "false");
+  output.flush();
+  std::cout << "Possession trace: " << outputPath << "; observed/reference "
+            << (same && result == 0 ? "identical" : "FAILED") << '\n';
+  return !output ? 2 : result != 0 ? result : same ? 0 : 1;
 }
 
 int runSandboxChecks(GameController& controller, int matches)
