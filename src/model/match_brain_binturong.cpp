@@ -269,8 +269,8 @@ void MatchEngine::refreshTacticalTargetsBinturong(float dt, bool planHome)
   // Bodies stay still until updateMovement integrates all targets, so player
   // iteration order cannot make later players see an already-moved opponent.
   // Add an off-ball behavior here; physical acceleration belongs downstream.
-  const MatchPlayer* carrier = findMatchPlayer(ball.possessedBy);
-  const MatchPlayer* transitionSource = findMatchPlayer(ball.lastPossessor);
+  const MatchPlayer* carrier = findMatchPlayer(getPossessionAttachment());
+  const MatchPlayer* transitionSource = findMatchPlayer(getLastPossessionAttachment());
   // The players on the pitch of each side, in slot order (index 0 home).
   std::array<std::array<MatchPlayer*, 16>, 2> sides{};
   std::array<std::size_t, 2> sideSizes{};
@@ -296,7 +296,7 @@ void MatchEngine::refreshTacticalTargetsBinturong(float dt, bool planHome)
   // travels, where it is going, so the block shifts once instead of
   // sliding with the ball. Pressing and loose balls still go to the ball.
   const Vector2F shapeAnchor =
-      !carrier && ball.isPass ? ball.passTarget : pressurePosition;
+      !carrier && getPossessionState().isPass ? getPossessionState().passTarget : pressurePosition;
   const StrategySliders homeSliders = getEffectiveSliders(true);
   const StrategySliders awaySliders = getEffectiveSliders(false);
 
@@ -440,9 +440,9 @@ void MatchEngine::refreshTacticalTargetsBinturong(float dt, bool planHome)
 
     // A purposeful pass creates a receiving run. Prioritizing that receiver
     // prevents a merely nearby teammate from making the play look arbitrary.
-    if (!carrier && ball.isPass && ball.passByHome == homeTeam)
+    if (!carrier && getPossessionState().isPass && getPossessionState().passByHome == homeTeam)
     {
-      MatchPlayer* intended = findMatchPlayer(ball.intendedReceiver);
+      MatchPlayer* intended = findMatchPlayer(getExpectedReceiver());
       if (intended && active(*intended) && !intended->isGoalkeeper &&
           closest[0] != intended)
       {
@@ -477,7 +477,7 @@ void MatchEngine::refreshTacticalTargetsBinturong(float dt, bool planHome)
   challengePath.clear();
   keeperClaimMeet = {};
   const float lowestHead = lowestHeadLine();
-  if (!carrier && !ball.isShot &&
+  if (!carrier && !getPossessionState().isShot &&
       (ball.z * MatchTuning::Units::BALL_Z_METRES > lowestHead ||
        ball.velocityZ > 0.0f))
   {
@@ -559,8 +559,8 @@ void MatchEngine::refreshTacticalTargetsBinturong(float dt, bool planHome)
     for (std::size_t side = 0; side < 2; ++side)
     {
       const bool home = side == 0;
-      MatchPlayer* receiver = ball.isPass && ball.passByHome == home
-                                  ? findMatchPlayer(ball.intendedReceiver)
+      MatchPlayer* receiver = getPossessionState().isPass && getPossessionState().passByHome == home
+                                  ? findMatchPlayer(getExpectedReceiver())
                                   : nullptr;
       if (receiver && active(*receiver) && !receiver->isGoalkeeper)
         if (const std::optional<Meet> meet = earliestMeet(*receiver))
@@ -584,7 +584,7 @@ void MatchEngine::refreshTacticalTargetsBinturong(float dt, bool planHome)
       // attacked (running jump), as for a header. Not his own side's pass.
       MatchPlayer* keeper = findGoalkeeper(home);
       if (keeper && getBody(home) == BodyId::BINTURONG && !keeperInDive(*keeper) &&
-          !keeper->fallen && !(ball.isPass && ball.passByHome == home))
+          !keeper->fallen && !(getPossessionState().isPass && getPossessionState().passByHome == home))
       {
         const float height = keeper->heightMetres;
         const float shoulder = MatchTuning::Goalkeeper::SHOULDER_HEIGHT_SHARE * height;
@@ -703,7 +703,7 @@ void MatchEngine::refreshTacticalTargetsBinturong(float dt, bool planHome)
     scores.fill(-std::numeric_limits<float>::infinity());
     const bool possessionContext = carrier && carrier->isHomeTeam == homeTeam;
     const bool looseTransitionContext =
-        !carrier && !ball.isPass && transitionSource &&
+        !carrier && !getPossessionState().isPass && transitionSource &&
         transitionSource->isHomeTeam == homeTeam;
     if (!possessionContext && !looseTransitionContext) return runners;
 
@@ -1118,8 +1118,8 @@ void MatchEngine::refreshTacticalTargetsBinturong(float dt, bool planHome)
     // otherwise from the formation.
     const bool ownControl =
         carrier ? ownPossession
-                : lastControlledTeamHome &&
-                      *lastControlledTeamHome == player.isHomeTeam;
+                : getPossessionHistory().lastControlledTeamHome &&
+                      *getPossessionHistory().lastControlledTeamHome == player.isHomeTeam;
     Vector2F target =
         ownControl ? possessionAnchorBinturong(player) : player.basePosition;
     // How fast the target itself moves, when it is pinned to a moving man
@@ -1157,8 +1157,8 @@ void MatchEngine::refreshTacticalTargetsBinturong(float dt, bool planHome)
     const bool defending =
         !goalkeeper &&
         (carrier ? carrier->isHomeTeam != player.isHomeTeam
-                 : lastControlledTeamHome &&
-                       *lastControlledTeamHome != player.isHomeTeam);
+                 : getPossessionHistory().lastControlledTeamHome &&
+                       *getPossessionHistory().lastControlledTeamHome != player.isHomeTeam);
     if (defending)
     {
       using S = MatchTuning::Shape;
@@ -1528,11 +1528,11 @@ void MatchEngine::refreshTacticalTargetsBinturong(float dt, bool planHome)
     else
     {
       const bool receivingPass =
-          ball.isPass && ball.passByHome == player.isHomeTeam;
+          getPossessionState().isPass && getPossessionState().passByHome == player.isHomeTeam;
       const auto& pressers = player.isHomeTeam ? homePressers : awayPressers;
       if (receivingPass)
       {
-        if (player.player == ball.intendedReceiver)
+        if (player.player == getExpectedReceiver())
         {
           // Meet the ball on its path instead of chasing where it is: the
           // closest point of the remaining flight line ahead of the ball.
@@ -1626,10 +1626,10 @@ void MatchEngine::refreshTacticalTargetsBinturong(float dt, bool planHome)
               attackDirection * MatchTuning::Player::COVER_LOOSE_BALL_OFFSET;
         }
       }
-      else if (ball.isPass || ball.isShot)
+      else if (getPossessionState().isPass || getPossessionState().isShot)
       {
         const MatchPlayer* tight =
-            ball.isPass && ball.passByHome != player.isHomeTeam
+            getPossessionState().isPass && getPossessionState().passByHome != player.isHomeTeam
                 ? tightMarkTargetBinturong(player)
                 : nullptr;
         if (tight)
@@ -1717,8 +1717,8 @@ void MatchEngine::refreshTacticalTargetsBinturong(float dt, bool planHome)
     // A lofted delivery into the box is attacked by the receiver while the
     // defenders hold their marks instead of drifting back into shape; the
     // one going for it (above) is released from his.
-    if (ball.isAerialDelivery && !carrier && !challenging &&
-        ball.passByHome != player.isHomeTeam &&
+    if (getPossessionState().isAerialDelivery && !carrier && !challenging &&
+        getPossessionState().passByHome != player.isHomeTeam &&
         player.intent != PlayerIntent::CLAIM_LOOSE_BALL)
     {
       target = player.tacticalTarget;
@@ -1730,7 +1730,7 @@ void MatchEngine::refreshTacticalTargetsBinturong(float dt, bool planHome)
     if (goalkeeper)
     {
       const bool receivingBackPass =
-          ball.isPass && ball.intendedReceiver == player.player &&
+          getPossessionState().isPass && getExpectedReceiver() == player.player &&
           player.intent == PlayerIntent::RECEIVE_PASS;
       player.intent = PlayerIntent::GOALKEEP;
       targetVelocity = {0.0f, 0.0f};
@@ -1860,7 +1860,7 @@ void MatchEngine::planOvertakeBinturong(std::size_t slot)
   MatchPlayer& runner = players[slot];
   // Only a body that follows routes can go round.
   if (!active(runner) || runner.isGoalkeeper || !followsRoutes(runner) ||
-      ball.possessedBy == runner.player)
+      getPossessionAttachment() == runner.player)
   {
     runner.overtaking = -1;
     return;
@@ -2074,7 +2074,7 @@ void MatchEngine::planWayRoundBinturong(std::size_t slot)
   // piece's phase everywhere but the box it attacks, until the ball has
   // been in that box and come out.
   if (runner.chasingLooseBall
-          ? setPiecePhaseRemaining > 0.0f || ball.possessedBy != nullptr
+          ? setPiecePhaseRemaining > 0.0f || getPossessionAttachment() != nullptr
           : setPiecePhaseRemaining > 0.0f && !setPieceBoxCleared &&
                 inPenaltyArea(runner.position, !setPieceHome))
     return;
@@ -2749,7 +2749,7 @@ bool MatchEngine::touchNowBinturong(const MatchPlayer& player,
   // Control is easier the closer the ball is: he lets it come to the
   // closest comfortable point it will pass, unless waiting would risk
   // losing it. Nobody waits to steal a ball another player is playing.
-  if (moment.gap <= touchKnobs[TouchKnob::COMFORT_GAP] || ball.inTouch)
+  if (moment.gap <= touchKnobs[TouchKnob::COMFORT_GAP] || hasTouchClaim())
     return true;
   // Off the ground (his chest) he plays it where it meets him, for now
   // (chest and thigh control plan step 5 decides waiting).
@@ -2916,7 +2916,7 @@ TouchIntent MatchEngine::chooseFirstTouchBinturong(
   // Not expecting it: a pass meant for someone else. A stand-in until the
   // brain has the mental attributes to read it (known issues).
   intent.surprise =
-      ball.isPass && ball.intendedReceiver != player.player ? 1.0f : 0.0f;
+      getPossessionState().isPass && getExpectedReceiver() != player.player ? 1.0f : 0.0f;
   // Pressed: an opponent close enough to be in the way. Also a stand-in
   // (known issues).
   intent.pressure = contactPressure(nearestOpponentDistance(player),
@@ -3009,7 +3009,7 @@ MatchEngine::Challenge MatchEngine::chooseChallengeBinturong(
   // (step 2), both in resolveLooseBall. No standing challenge; slides stay
   // as they are until their own plan. (Only a Binturong body contests; an
   // Aardvark one still rolls inside the carrier's reach.)
-  if (ball.inTouch && ballDistance <= reach &&
+  if (hasTouchClaim() && ballDistance <= reach &&
       (!ballInReach(carrier) ||
        getBody(defender->isHomeTeam) == BodyId::BINTURONG))
     return challenge;
@@ -3336,7 +3336,7 @@ MatchEngine::BallAction MatchEngine::chooseBallActionBinturong(
   // The longer a player has had the ball, the keener he is to release it:
   // individual possessions last about a second, rarely more than three.
   const auto heldSeconds =
-      static_cast<float>(getSimulatedSeconds() - possessionStartSeconds);
+      static_cast<float>(getSimulatedSeconds() - getPossessionHistory().possessionStartSeconds);
   float carryScore =
       opennessAhead * MatchTuning::Decision::CARRY_OPENNESS_WEIGHT +
       carrier.dribbling * MatchTuning::Decision::CARRY_DRIBBLING_BONUS -
@@ -4101,7 +4101,7 @@ Vector2F MatchEngine::goalkeeperTargetBinturong(MatchPlayer& keeper,
   const float ballDepth =
       keeper.isHomeTeam ? ball.position.x : 1.0f - ball.position.x;
 
-  if (ball.possessedBy == keeper.player)
+  if (getPossessionAttachment() == keeper.player)
   {
     setState(GoalkeeperState::HOLD);
     return keeper.position;
@@ -4123,15 +4123,15 @@ Vector2F MatchEngine::goalkeeperTargetBinturong(MatchPlayer& keeper,
   if (getBody(keeper.isHomeTeam) == BodyId::BINTURONG)
   {
     if (const auto& meet = keeperClaimMeet[keeper.isHomeTeam ? 0 : 1];
-        meet && (!ball.possessedBy || ball.inTouch) && !ball.isShot)
+        meet && (!getPossessionAttachment() || hasTouchClaim()) && !getPossessionState().isShot)
     {
       setState(GoalkeeperState::CLAIM);
       return clampToPitch(*meet);
     }
   }
   // Claim a high delivery dropping into the own box.
-  else if (!ball.possessedBy && ball.isAerialDelivery &&
-           ball.passByHome != keeper.isHomeTeam)
+  else if (!getPossessionAttachment() && getPossessionState().isAerialDelivery &&
+           getPossessionState().passByHome != keeper.isHomeTeam)
   {
     // Anticipate high flight, then close on the ball itself once it drops
     // within handling height. Continuing to lead a low cross keeps the
@@ -4158,11 +4158,11 @@ Vector2F MatchEngine::goalkeeperTargetBinturong(MatchPlayer& keeper,
   // Sweep a loose ball or through ball he can reach before any attacker; a
   // sweeper keeper comes further and sooner, a line keeper hardly at all.
   const float keeperSweep = roleProfileOf(keeper).keeperSweep;
-  if (!carrier && !ball.isShot &&
+  if (!carrier && !getPossessionState().isShot &&
       ballDepth <
           MatchTuning::Pitch::GOALKEEPER_SWEEP_DEPTH *
               (1.0f + keeperSweep * TacticsTuning::KEEPER_SWEEP_DEPTH_GAIN) &&
-      !(ball.isPass && ball.passByHome == keeper.isHomeTeam))
+      !(getPossessionState().isPass && getPossessionState().passByHome == keeper.isHomeTeam))
   {
     const float keeperDistance = distance(keeper.position, ball.position);
     bool keeperFirst = true;
@@ -4986,9 +4986,9 @@ float MatchEngine::chooseGetUpBinturong(const MatchPlayer& player)
   // with a team-mate of his on it): he jumps up.
   if (distance(player.position, ball.position) <= C::GET_UP_BALL_METRES)
   {
-    const MatchPlayer* holder = findMatchPlayer(ball.possessedBy);
+    const MatchPlayer* holder = findMatchPlayer(getPossessionAttachment());
     bool chance = holder == nullptr || holder->isHomeTeam == player.isHomeTeam;
-    if (holder == nullptr && ball.isPass) chance = ball.passByHome == player.isHomeTeam;
+    if (holder == nullptr && getPossessionState().isPass) chance = getPossessionState().passByHome == player.isHomeTeam;
     if (!chance)
       for (const MatchPlayer& mate : players)
         if (active(mate) && &mate != &player && mate.isHomeTeam == player.isHomeTeam &&

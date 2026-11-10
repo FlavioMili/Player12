@@ -162,7 +162,7 @@ const PlayerMatchStats* statsOf(const MatchEngine& engine, PlayerID id)
 
 bool homeHasBall(const MatchEngine& engine)
 {
-  const Player* carrier = engine.getBall().possessedBy;
+  const Player* carrier = engine.getBall().possessionState().possessedBy;
   return carrier && carrier->getTeamId() == 1;
 }
 }  // namespace

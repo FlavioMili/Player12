@@ -344,7 +344,8 @@ void MatchPlayController::applySwitchingRules(MatchEngine& engine,
   const double now = engine.getSimulatedSeconds();
   const MatchPlayer* carrier = nullptr;
   for (const MatchPlayer& player : engine.getPlayers())
-    if (player.player && player.player == ball.possessedBy) carrier = &player;
+    if (player.player && player.player == engine.getPossessionAttachment())
+      carrier = &player;
 
   // The carrier is always the man (whatever the level), unless it is the
   // keeper: goalkeeping stays with the AI.
@@ -357,11 +358,11 @@ void MatchPlayController::applySwitchingRules(MatchEngine& engine,
   }
   if (settings.autoSwitch == PlayAutoSwitch::OFF) return;
   // The side's pass: its receiver, so he can be moved onto the ball.
-  if (!carrier && ball.isPass && ball.passByHome == home)
+  if (!carrier && ball.possessionState().isPass && ball.possessionState().passByHome == home)
   {
     const MatchPlayer* receiver =
-        ball.intendedReceiver
-            ? findPlayer(engine, ball.intendedReceiver->getId())
+        engine.getExpectedReceiver()
+            ? findPlayer(engine, engine.getExpectedReceiver()->getId())
             : nullptr;
     if (receiver && receiver->onPitch && !receiver->isGoalkeeper &&
         receiver->player->getId() != current)
@@ -383,7 +384,6 @@ void MatchPlayController::update(MatchEngine& engine, float simulatedSeconds,
                                  const PlayScreenBasis& basis)
 {
   if (!active) return;
-  const MatchBall& ball = engine.getBall();
   const double now = engine.getSimulatedSeconds();
 
   float stickX = 0.0f;
@@ -402,9 +402,10 @@ void MatchPlayController::update(MatchEngine& engine, float simulatedSeconds,
     switchTo(engine, engine.suggestActivePlayer(home, 0));
   }
   else if (engine.getState() != MatchState::PLAYING &&
-           ball.possessedBy != nullptr)
+           engine.getPossessionAttachment() != nullptr)
   {
-    const MatchPlayer* taker = findPlayer(engine, ball.possessedBy->getId());
+    const MatchPlayer* taker =
+        findPlayer(engine, engine.getPossessionAttachment()->getId());
     if (taker != nullptr && taker->isHomeTeam == home && !taker->isGoalkeeper &&
         taker->player->getId() != current)
     {
@@ -417,12 +418,13 @@ void MatchPlayController::update(MatchEngine& engine, float simulatedSeconds,
   }
   current = engine.getControlledPlayer();
 
-  const bool hasBall = ball.possessedBy && ball.possessedBy->getId() == current;
+  const bool hasBall = engine.getPossessionAttachment() &&
+                       engine.getPossessionAttachment()->getId() == current;
   // Defending: an opponent has the ball. Otherwise the buttons attack (a
   // press before the ball arrives is a first-time finish or pass).
   bool defending = false;
   for (const MatchPlayer& player : engine.getPlayers())
-    if (player.player && player.player == ball.possessedBy)
+    if (player.player && player.player == engine.getPossessionAttachment())
       defending = player.isHomeTeam != home;
 
   // Manual switch: the next best candidate; repeated presses cycle.

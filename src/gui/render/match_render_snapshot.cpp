@@ -43,7 +43,7 @@ void fillMatchRenderSnapshot(const MatchEngine& engine,
     renderPlayer.currentFacingAngle = source.facingAngle;
     renderPlayer.stamina = source.stamina;
     renderPlayer.possessesBall = source.player != nullptr &&
-                                 engine.getBall().possessedBy == source.player;
+                                 engine.getPossessionAttachment() == source.player;
     renderPlayer.onPitch = source.onPitch;
     renderPlayer.hidden = inTunnel(source.position);
     renderPlayer.isGoalkeeper = source.isGoalkeeper;
@@ -107,16 +107,16 @@ void fillMatchRenderSnapshot(const MatchEngine& engine,
   snapshot.ball.previousPosition = engine.getPreviousBallPosition();
   snapshot.ball.currentZ = ball.z;
   snapshot.ball.previousZ = engine.getPreviousBallZ();
-  snapshot.ball.possessedBy = ball.possessedBy;
+  snapshot.ball.possessedBy = engine.getPossessionAttachment();
   snapshot.ball.outOfSight = engine.ballOutOfSight();
   snapshot.ball.currentHeightMetres =
       ball.z * MatchTuning::Units::BALL_Z_METRES;
   snapshot.ball.previousHeightMetres =
       engine.getPreviousBallZ() * MatchTuning::Units::BALL_Z_METRES;
-  snapshot.ball.isShot = ball.isShot;
-  snapshot.ball.isAerialDelivery = ball.isAerialDelivery;
-  snapshot.ball.fromThrowIn = ball.fromThrowIn;
-  snapshot.ball.kicker = ball.kicker;
+  snapshot.ball.isShot = ball.possessionState().isShot;
+  snapshot.ball.isAerialDelivery = ball.possessionState().isAerialDelivery;
+  snapshot.ball.fromThrowIn = ball.possessionState().fromThrowIn;
+  snapshot.ball.kicker = engine.getLegacyContactActor();
   snapshot.ball.kickerLockout = ball.kickerLockout;
 
   snapshot.state = engine.getState();

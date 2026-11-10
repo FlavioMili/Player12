@@ -157,8 +157,8 @@ void MatchEngine::refreshTacticalTargetsAardvark(float dt, bool planHome)
   // Bodies stay still until updateMovement integrates all targets, so player
   // iteration order cannot make later players see an already-moved opponent.
   // Add an off-ball behavior here; physical acceleration belongs downstream.
-  const MatchPlayer* carrier = findMatchPlayer(ball.possessedBy);
-  const MatchPlayer* transitionSource = findMatchPlayer(ball.lastPossessor);
+  const MatchPlayer* carrier = findMatchPlayer(getPossessionAttachment());
+  const MatchPlayer* transitionSource = findMatchPlayer(getLastPossessionAttachment());
   // The players on the pitch of each side, in slot order (index 0 home).
   std::array<std::array<MatchPlayer*, 16>, 2> sides{};
   std::array<std::size_t, 2> sideSizes{};
@@ -238,9 +238,9 @@ void MatchEngine::refreshTacticalTargetsAardvark(float dt, bool planHome)
 
     // A purposeful pass creates a receiving run. Prioritizing that receiver
     // prevents a merely nearby teammate from making the play look arbitrary.
-    if (!carrier && ball.isPass && ball.passByHome == homeTeam)
+    if (!carrier && getPossessionState().isPass && getPossessionState().passByHome == homeTeam)
     {
-      MatchPlayer* intended = findMatchPlayer(ball.intendedReceiver);
+      MatchPlayer* intended = findMatchPlayer(getExpectedReceiver());
       if (intended && active(*intended) && !intended->isGoalkeeper &&
           closest[0] != intended)
       {
@@ -305,7 +305,7 @@ void MatchEngine::refreshTacticalTargetsAardvark(float dt, bool planHome)
     scores.fill(-std::numeric_limits<float>::infinity());
     const bool possessionContext = carrier && carrier->isHomeTeam == homeTeam;
     const bool looseTransitionContext =
-        !carrier && !ball.isPass && transitionSource &&
+        !carrier && !getPossessionState().isPass && transitionSource &&
         transitionSource->isHomeTeam == homeTeam;
     if (!possessionContext && !looseTransitionContext) return runners;
 
@@ -720,8 +720,8 @@ void MatchEngine::refreshTacticalTargetsAardvark(float dt, bool planHome)
     // otherwise from the formation.
     const bool ownControl =
         carrier ? ownPossession
-                : lastControlledTeamHome &&
-                      *lastControlledTeamHome == player.isHomeTeam;
+                : getPossessionHistory().lastControlledTeamHome &&
+                      *getPossessionHistory().lastControlledTeamHome == player.isHomeTeam;
     Vector2F target =
         ownControl ? possessionAnchorAardvark(player) : player.basePosition;
     player.intent = PlayerIntent::HOLD_SHAPE;
@@ -751,8 +751,8 @@ void MatchEngine::refreshTacticalTargetsAardvark(float dt, bool planHome)
     const bool defending =
         !goalkeeper &&
         (carrier ? carrier->isHomeTeam != player.isHomeTeam
-                 : lastControlledTeamHome &&
-                       *lastControlledTeamHome != player.isHomeTeam);
+                 : getPossessionHistory().lastControlledTeamHome &&
+                       *getPossessionHistory().lastControlledTeamHome != player.isHomeTeam);
     if (defending)
     {
       using S = MatchTuning::Shape;
@@ -1139,11 +1139,11 @@ void MatchEngine::refreshTacticalTargetsAardvark(float dt, bool planHome)
     else
     {
       const bool receivingPass =
-          ball.isPass && ball.passByHome == player.isHomeTeam;
+          getPossessionState().isPass && getPossessionState().passByHome == player.isHomeTeam;
       const auto& pressers = player.isHomeTeam ? homePressers : awayPressers;
       if (receivingPass)
       {
-        if (player.player == ball.intendedReceiver)
+        if (player.player == getExpectedReceiver())
         {
           // Meet the ball on its path instead of chasing where it is: the
           // closest point of the remaining flight line ahead of the ball.
@@ -1242,10 +1242,10 @@ void MatchEngine::refreshTacticalTargetsAardvark(float dt, bool planHome)
               attackDirection * MatchTuning::Player::COVER_LOOSE_BALL_OFFSET;
         }
       }
-      else if (ball.isPass || ball.isShot)
+      else if (getPossessionState().isPass || getPossessionState().isShot)
       {
         const MatchPlayer* tight =
-            ball.isPass && ball.passByHome != player.isHomeTeam
+            getPossessionState().isPass && getPossessionState().passByHome != player.isHomeTeam
                 ? tightMarkTargetAardvark(player)
                 : nullptr;
         if (tight)
@@ -1303,8 +1303,8 @@ void MatchEngine::refreshTacticalTargetsAardvark(float dt, bool planHome)
 
     // A lofted delivery into the box is attacked by the receiver while the
     // defenders hold their marks instead of drifting back into shape.
-    if (ball.isAerialDelivery && !carrier &&
-        ball.passByHome != player.isHomeTeam &&
+    if (getPossessionState().isAerialDelivery && !carrier &&
+        getPossessionState().passByHome != player.isHomeTeam &&
         player.intent != PlayerIntent::CLAIM_LOOSE_BALL)
     {
       target = player.movementTarget;
@@ -1313,7 +1313,7 @@ void MatchEngine::refreshTacticalTargetsAardvark(float dt, bool planHome)
     if (goalkeeper)
     {
       const bool receivingBackPass =
-          ball.isPass && ball.intendedReceiver == player.player &&
+          getPossessionState().isPass && getExpectedReceiver() == player.player &&
           player.intent == PlayerIntent::RECEIVE_PASS;
       player.intent = PlayerIntent::GOALKEEP;
       if (keepers[player.isHomeTeam ? 0 : 1].state == GoalkeeperState::DIVE)
@@ -1919,7 +1919,7 @@ MatchEngine::BallAction MatchEngine::chooseBallActionAardvark(
   // The longer a player has had the ball, the keener he is to release it:
   // individual possessions last about a second, rarely more than three.
   const auto heldSeconds =
-      static_cast<float>(getSimulatedSeconds() - possessionStartSeconds);
+      static_cast<float>(getSimulatedSeconds() - getPossessionHistory().possessionStartSeconds);
   float carryScore =
       opennessAhead * MatchTuning::Decision::CARRY_OPENNESS_WEIGHT +
       carrier.dribbling * MatchTuning::Decision::CARRY_DRIBBLING_BONUS -
@@ -2606,7 +2606,7 @@ float MatchEngine::choosePenaltyGuessAardvark(const MatchPlayer& keeper)
 {
   // He picks a side, and a good keeper reads the taker a little more often.
   const float shotSide =
-      ball.shotTargetY < MatchTuning::Pitch::CENTRE ? -1.0f : 1.0f;
+      getPossessionState().shotTargetY < MatchTuning::Pitch::CENTRE ? -1.0f : 1.0f;
   float guess = randomFloat(0.0f, 1.0f) < 0.5f ? -1.0f : 1.0f;
   if (randomFloat(0.0f, 1.0f) <
       MatchTuning::Goalkeeper::PENALTY_READ_BASE +
@@ -2638,7 +2638,7 @@ Vector2F MatchEngine::goalkeeperTargetAardvark(MatchPlayer& keeper,
   const float ballDepth =
       keeper.isHomeTeam ? ball.position.x : 1.0f - ball.position.x;
 
-  if (ball.possessedBy == keeper.player)
+  if (getPossessionAttachment() == keeper.player)
   {
     setState(GoalkeeperState::HOLD);
     return keeper.position;
@@ -2655,8 +2655,8 @@ Vector2F MatchEngine::goalkeeperTargetAardvark(MatchPlayer& keeper,
   }
 
   // Claim a high delivery dropping into the own box.
-  if (!ball.possessedBy && ball.isAerialDelivery &&
-      ball.passByHome != keeper.isHomeTeam)
+  if (!getPossessionAttachment() && getPossessionState().isAerialDelivery &&
+      getPossessionState().passByHome != keeper.isHomeTeam)
   {
     // Anticipate high flight, then close on the ball itself once it drops
     // within handling height. Continuing to lead a low cross keeps the
@@ -2683,11 +2683,11 @@ Vector2F MatchEngine::goalkeeperTargetAardvark(MatchPlayer& keeper,
   // Sweep a loose ball or through ball he can reach before any attacker; a
   // sweeper keeper comes further and sooner, a line keeper hardly at all.
   const float keeperSweep = roleProfileOf(keeper).keeperSweep;
-  if (!carrier && !ball.isShot &&
+  if (!carrier && !getPossessionState().isShot &&
       ballDepth <
           MatchTuning::Pitch::GOALKEEPER_SWEEP_DEPTH *
               (1.0f + keeperSweep * TacticsTuning::KEEPER_SWEEP_DEPTH_GAIN) &&
-      !(ball.isPass && ball.passByHome == keeper.isHomeTeam))
+      !(getPossessionState().isPass && getPossessionState().passByHome == keeper.isHomeTeam))
   {
     const float keeperDistance = distance(keeper.position, ball.position);
     bool keeperFirst = true;

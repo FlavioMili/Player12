@@ -1196,14 +1196,35 @@ enum class HeldRelease : std::uint8_t
   PUNT,
 };
 
-struct MatchBall
+/** Legacy bookkeeping, retained across whole-ball lifecycle resets. */
+struct PossessionHistory
 {
-  Vector2F position{MatchTuning::Pitch::CENTRE, MatchTuning::Pitch::CENTRE};
-  float z = 0.0f;
-  Vector2F velocity{0.0f, 0.0f};
-  float velocityZ = 0.0f;
-  BallSpin spin{};
+  struct PendingTackle
+  {
+    const Player* tackler = nullptr;
+    bool homeTeam = false;
+    bool contest = false;
+  };
+  std::optional<bool> lastControlledTeamHome;
+  /** When the current attachment began (simulated seconds). */
+  double possessionStartSeconds = 0.0;
+  /** Legacy assist/key-pass chain; not complete physical-touch history. */
+  const Player* lastCompletedPasser = nullptr;
+  const Player* lastCompletedReceiver = nullptr;
+  const Player* lastShooter = nullptr;
+  const Player* shotAssistCandidate = nullptr;
+  /** A free-ball tackle not yet won or lost; play stopping lapses it. */
+  std::optional<PendingTackle> pendingTackle;
+  /** Header sequence length and the side of its last header. */
+  int headerRun = 0;
+  bool headerRunLastHome = false;
+};
 
+/** Single stored account of attachment, receipt, flight and provenance.
+ * Consumers receive const views; selected possession implementations own writes.
+ * Legacy facts are retained without introducing new control/claim policy. */
+struct MatchPossessionState
+{
   /** In its owner's hands, a Binturong keeper's (goalkeeper plan step 5):
    * where it was against him when he took it (metres from his centre, z
    * up) and when (simulated s), to bring it to his chest; and, as he lets
@@ -1222,34 +1243,6 @@ struct MatchBall
   /** A claimed ball he has collected (reached and moving with him): from
    * then on he dribbles it, touch by touch. */
   bool touchCollected = false;
-  /** While dribbling: where he means to carry it (his plan's target, kept
-   * from the last plan refresh, as the chase overrides his movement), and
-   * the time until he may touch it again (s). */
-  Vector2F dribbleGoal{MatchTuning::Pitch::CENTRE, MatchTuning::Pitch::CENTRE};
-  float ownTouchCooldown = 0.0f;
-  /** His next meet with his ball (dribble meet plan, Binturong body),
-   * replanned every step: whose plan it is (none: he chases it), where on
-   * its roll he plays it and how long until it is there (s), where that
-   * touch sends it (metric unit) and how far (m), where his run to it
-   * began (his last touch), and the pace he carries it at (m/s). */
-  const Player* meetFor = nullptr;
-  /** His last touch went wrong (angle or weight): he runs straight to it
-   * to collect it, no corner, until his next touch. */
-  bool meetRecovering = false;
-  /** His last touch knocked it on into space: he sprints after it at his
-   * full pace, until his next touch. */
-  bool knockedOn = false;
-  /** Until he means to play it again (s, counting down; dribble meet plan
-   * 3d), and the way his last touch sent it (metric unit): before then he
-   * plays it only if it needs it. */
-  float plannedTouchIn = 0.0f;
-  Vector2F pushDirection{1.0f, 0.0f};
-  float meetPace = 0.0f;
-  Vector2F meetPoint{};
-  float meetSeconds = 0.0f;
-  Vector2F meetOut{1.0f, 0.0f};
-  float meetPush = 0.0f;
-  Vector2F meetLegStart{};
   /** Tackling plan step 6: his touch was a win-it nudge off this
    * attacker; until he collects it he runs to put himself between them. */
   const Player* nudgedBy = nullptr;
@@ -1257,64 +1250,24 @@ struct MatchBall
   /** While in a touch: the team-mate whose pass he is receiving, credited
    * with the completion only once the ball is collected. */
   const Player* touchPasser = nullptr;
-  /** While in a touch: the gap (m) to the owner at the last check, and the
-   * largest gap so far. */
-  float touchGap = 0.0f;
-  float touchPeakGap = 0.0f;
-  /** Where the last contact sent it off from (normalised; for drills and
-   * reports, read by nothing in play). */
-  Vector2F sentFrom{};
-  /** How high it was there (m; the same: for drills and reports). */
-  float sentHeightMetres = 0.0f;
   /** The current touch was off his head, chest or thigh: he collects it
    * only once it is down at his feet. */
   bool touchDropping = false;
-  /** The current touch: what was tried, and how far from his centre (m)
-   * he met the ball. */
-  TouchIntent::Kind touchKind = TouchIntent::Kind::SET;
-  float touchContactGap = 0.0f;
-  float touchContactHeight = 0.0f;
-  /** How the current touch went (TouchResult). */
-  float touchAngleError = 0.0f;
-  float touchWeightError = 0.0f;
-  float touchAngleDifficulty = 0.0f;
-  float touchWeightDifficulty = 0.0f;
-  bool touchAngleFailed = false;
-  bool touchWeightFailed = false;
-  float touchTurn = 0.0f;
-  bool touchOutward = false;
-  float touchPaceChange = 0.0f;
-  /** The pace it left the current touch at, along the ground (m/s). */
-  float touchLaunchSpeed = 0.0f;
   const Player* lastPossessor = nullptr;
   const Player* intendedReceiver = nullptr;
   /** The player who last kicked or deflected the ball. */
   const Player* kicker = nullptr;
-  /** Seconds during which the kicker cannot touch the ball again. */
-  float kickerLockout = 0.0f;
-  /** Players (by slot bit) who already tried to reach this ball in flight. */
-  std::uint32_t touchAttempts = 0;
   /** When its path last changed (a touch, kick or deflection; engine
    * seconds): a feet first touch needs it COMMIT_SECONDS old (tackling plan,
    * the commit rule). And the players (by slot bit) whose touch it has
    * already left too soon on this path. */
   double pathSince = 0.0;
-  std::uint32_t commitMisses = 0;
   /** Collision plan step 6: the fallen player it last bounced off, his last
    * touch for restarts only (not a pass, possession or a deliberate play);
    * it stands while the path and last possessor it left are unchanged. */
   const Player* deflectedBy = nullptr;
   double deflectedPathSince = 0.0;
   const Player* deflectedAfter = nullptr;
-  /** Players (by slot bit) letting this loose ball come closer before they
-   * touch it (first-touch timing). */
-  std::uint32_t touchWaiting = 0;
-  /** While dribbled: metres ahead of the carrier's feet and the metric
-   * direction of the last touch. */
-  float dribbleExposure = 0.0f;
-  float dribbleTouchLength = 0.0f;
-  Vector2F dribbleDirection{1.0f, 0.0f};
-  float touchTimer = 0.0f;
 
   bool isPass = false;
   /** Where the pass in flight is heading (the kick's real target, as its
@@ -1356,10 +1309,95 @@ struct MatchBall
   double woodworkPathSince = 0.0;
   const Player* woodworkLastPossessor = nullptr;
   const Player* woodworkDeflectedBy = nullptr;
+
+  PossessionHistory history;
+};
+
+struct MatchBall
+{
+  Vector2F position{MatchTuning::Pitch::CENTRE, MatchTuning::Pitch::CENTRE};
+  float z = 0.0f;
+  Vector2F velocity{0.0f, 0.0f};
+  float velocityZ = 0.0f;
+  BallSpin spin{};
+  /** While dribbling: where he means to carry it (his plan's target, kept
+   * from the last plan refresh, as the chase overrides his movement), and
+   * the time until he may touch it again (s). */
+  Vector2F dribbleGoal{MatchTuning::Pitch::CENTRE, MatchTuning::Pitch::CENTRE};
+  float ownTouchCooldown = 0.0f;
+  /** His next meet with his ball (dribble meet plan, Binturong body),
+   * replanned every step: whose plan it is (none: he chases it), where on
+   * its roll he plays it and how long until it is there (s), where that
+   * touch sends it (metric unit) and how far (m), where his run to it
+   * began (his last touch), and the pace he carries it at (m/s). */
+  const Player* meetFor = nullptr;
+  /** His last touch went wrong (angle or weight): he runs straight to it
+   * to collect it, no corner, until his next touch. */
+  bool meetRecovering = false;
+  /** His last touch knocked it on into space: he sprints after it at his
+   * full pace, until his next touch. */
+  bool knockedOn = false;
+  /** Until he means to play it again (s, counting down; dribble meet plan
+   * 3d), and the way his last touch sent it (metric unit): before then he
+   * plays it only if it needs it. */
+  float plannedTouchIn = 0.0f;
+  Vector2F pushDirection{1.0f, 0.0f};
+  float meetPace = 0.0f;
+  Vector2F meetPoint{};
+  float meetSeconds = 0.0f;
+  Vector2F meetOut{1.0f, 0.0f};
+  float meetPush = 0.0f;
+  Vector2F meetLegStart{};
+  /** While in a touch: the gap (m) to the owner at the last check, and the
+   * largest gap so far. */
+  float touchGap = 0.0f;
+  float touchPeakGap = 0.0f;
+  /** Where the last contact sent it off from (normalised; for drills and
+   * reports, read by nothing in play). */
+  Vector2F sentFrom{};
+  /** How high it was there (m; the same: for drills and reports). */
+  float sentHeightMetres = 0.0f;
+  /** The current touch: what was tried, and how far from his centre (m)
+   * he met the ball. */
+  TouchIntent::Kind touchKind = TouchIntent::Kind::SET;
+  float touchContactGap = 0.0f;
+  float touchContactHeight = 0.0f;
+  /** How the current touch went (TouchResult). */
+  float touchAngleError = 0.0f;
+  float touchWeightError = 0.0f;
+  float touchAngleDifficulty = 0.0f;
+  float touchWeightDifficulty = 0.0f;
+  bool touchAngleFailed = false;
+  bool touchWeightFailed = false;
+  float touchTurn = 0.0f;
+  bool touchOutward = false;
+  float touchPaceChange = 0.0f;
+  /** The pace it left the current touch at, along the ground (m/s). */
+  float touchLaunchSpeed = 0.0f;
+  /** Seconds during which the kicker cannot touch the ball again. */
+  float kickerLockout = 0.0f;
+  /** Players (by slot bit) who already tried to reach this ball in flight. */
+  std::uint32_t touchAttempts = 0;
+  std::uint32_t commitMisses = 0;
+  /** Players (by slot bit) letting this loose ball come closer before they
+   * touch it (first-touch timing). */
+  std::uint32_t touchWaiting = 0;
+  /** While dribbled: metres ahead of the carrier's feet and the metric
+   * direction of the last touch. */
+  float dribbleExposure = 0.0f;
+  float dribbleTouchLength = 0.0f;
+  Vector2F dribbleDirection{1.0f, 0.0f};
+  float touchTimer = 0.0f;
   /** Its centre went over a goal line inside the frame (1 the right goal,
    * -1 the left) and has not come back out: a goal once the whole ball is
    * over (Binturong out of play). */
   std::int8_t inGoalMouth = 0;
+  /** Borrowed read-only compatibility view. No second writable projection. */
+  const MatchPossessionState& possessionState() const { return possession; }
+
+ private:
+  friend class MatchEngine;
+  MatchPossessionState possession;
 };
 
 /** Binturong out of play: the ball after it has gone out (a throw-in, goal
@@ -2457,12 +2495,24 @@ class MatchEngine
   /** Stage 1: value-only legacy projection. Never changes gameplay state,
    * consumes randomness, or upgrades a claim into physical control. */
   PossessionSnapshot getPossessionSnapshot() const;
+  /** Borrowed const view of legacy flight/provenance and continuity history. */
+  const MatchPossessionState& getPossessionState() const
+  { return ball.possessionState(); }
+  const PossessionHistory& getPossessionHistory() const
+  { return ball.possessionState().history; }
   /** Compatibility attachment: may be a claim or restart owner, not control. */
   const Player* getPossessionAttachment() const;
   const Player* getTouchClaimant() const;
   const Player* getConfirmedController() const;
   const Player* getRestartOwner() const;
   const Player* getExpectedReceiver() const;
+  bool hasTouchClaim() const;
+  bool isTouchCollected() const;
+  bool isTouchDropping() const;
+  bool isKeeperHoldingBall() const;
+  const Player* getLastPossessionAttachment() const;
+  const Player* getLegacyContactActor() const;
+  const Player* getPendingPasser() const;
   std::uint32_t getPossessionIssues() const;
   const std::vector<MatchEvent>& getEvents() const { return events; }
   /**
@@ -3202,11 +3252,6 @@ class MatchEngine
   };
   PendingAdvantage pendingAdvantage;
 
-  /** Chain used for assists and key passes. */
-  const Player* lastCompletedPasser = nullptr;
-  const Player* lastCompletedReceiver = nullptr;
-  const Player* shotAssistCandidate = nullptr;
-  const Player* lastShooter = nullptr;
   bool restartIsSetPiece = false;
   /** Shots by the attacking side shortly after a corner or attacking free
    * kick count as set-piece shots, until the defence wins the ball or play
@@ -3261,7 +3306,6 @@ class MatchEngine
   MatchState state = MatchState::KICK_OFF;
   TeamPhase homePhase = TeamPhase::SET_PIECE;
   TeamPhase awayPhase = TeamPhase::SET_PIECE;
-  std::optional<bool> lastControlledTeamHome;
   float transitionSecondsRemaining = 0.0f;
   /** Slot index of the restart taker (an index keeps the engine copyable). */
   std::optional<std::size_t> restartTakerIndex;
@@ -3276,8 +3320,6 @@ class MatchEngine
   float goalCelebrationRemaining = 0.0f;
   float accumulator = 0.0f;
   float ratingRefreshTimer = 0.0f;
-  /** When the current carrier gained the ball (simulated seconds). */
-  double possessionStartSeconds = 0.0;
   /** Ball state at the start of the current ball sub-step. */
   Vector2F substepBallPosition{MatchTuning::Pitch::CENTRE,
                                MatchTuning::Pitch::CENTRE};
@@ -4244,10 +4286,6 @@ class MatchEngine
   bool headInSweep();
   /** The part of his head of the last unchallenged header. */
   std::optional<HeadPart> lastHeadPart;
-  /** The header sequence under way (MatchStats::headerSequences): headers
-   * so far, and whether the last was by the home side. */
-  int headerRun = 0;
-  bool headerRunLastHome = false;
   /** Ends the header sequence under way once someone has the ball or play
    * has stopped (read at the start of each step). */
   void trackHeaderRun();
@@ -4770,14 +4808,7 @@ class MatchEngine
                            bool reacting) const;
   /** A contest swing at nothing: his foot committed for `seconds`. */
   void swingAtNothing(MatchPlayer& player, float seconds, bool carrier);
-  struct PendingTackle
-  {
-    const Player* tackler = nullptr;
-    bool homeTeam = false;
-    bool contest = false;
-  };
-  /** A free-ball tackle not yet won or lost; play stopping lapses it. */
-  std::optional<PendingTackle> pendingTackle;
+  using PendingTackle = PossessionHistory::PendingTackle;
   /** Gives the player the ball without moving it: for a contact that sends
    * it on from where he met it. */
   void takePossession(MatchPlayer& player);

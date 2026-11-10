@@ -300,13 +300,13 @@ TEST(MatchEngineTest, LivePlayAlwaysAssignsPressureOrBallRecovery)
       awayEngagesBall = awayEngagesBall || engagesBall;
   }
 
-  if (engine.getBall().possessedBy)
+  if (engine.getBall().possessionState().possessedBy)
   {
     const bool homeHasBall = std::ranges::any_of(
         engine.getPlayers(),
         [&engine](const MatchPlayer& player)
         {
-          return player.player == engine.getBall().possessedBy &&
+          return player.player == engine.getBall().possessionState().possessedBy &&
                  player.isHomeTeam;
         });
     EXPECT_TRUE(homeHasBall ? awayEngagesBall : homeEngagesBall);
@@ -317,7 +317,7 @@ TEST(MatchEngineTest, LivePlayAlwaysAssignsPressureOrBallRecovery)
   {
     EXPECT_TRUE(homeEngagesBall);
     EXPECT_TRUE(awayEngagesBall);
-    const bool attackingHome = engine.getBall().passByHome;
+    const bool attackingHome = engine.getBall().possessionState().passByHome;
     if (engine.getTransitionSecondsRemaining() > 0.0f)
     {
       EXPECT_EQ(attackingHome ? engine.getHomePhase() : engine.getAwayPhase(),
@@ -363,16 +363,16 @@ TEST(MatchEngineTest, ControlledPassDoesNotInventAPossessionTransition)
   {
     engine.update(TEST_FRAME_SECONDS);
     const MatchBall& matchBall = engine.getBall();
-    if (engine.getState() != MatchState::PLAYING || !matchBall.isPass ||
+    if (engine.getState() != MatchState::PLAYING || !matchBall.possessionState().isPass ||
         engine.getTransitionSecondsRemaining() > 0.0f)
     {
       continue;
     }
 
     const TeamPhase attackingPhase =
-        matchBall.passByHome ? engine.getHomePhase() : engine.getAwayPhase();
+        matchBall.possessionState().passByHome ? engine.getHomePhase() : engine.getAwayPhase();
     const TeamPhase defendingPhase =
-        matchBall.passByHome ? engine.getAwayPhase() : engine.getHomePhase();
+        matchBall.possessionState().passByHome ? engine.getAwayPhase() : engine.getHomePhase();
     EXPECT_TRUE(attackingPhase == TeamPhase::POSSESSION ||
                 attackingPhase == TeamPhase::FINAL_THIRD);
     EXPECT_EQ(defendingPhase, TeamPhase::DEFENSIVE_BLOCK);
@@ -380,7 +380,7 @@ TEST(MatchEngineTest, ControlledPassDoesNotInventAPossessionTransition)
     int attackingPlayersRecoveringShape = 0;
     for (const MatchPlayer& player : engine.getPlayers())
     {
-      if (player.isHomeTeam == matchBall.passByHome &&
+      if (player.isHomeTeam == matchBall.possessionState().passByHome &&
           player.player->getRole() != PlayerRole::GK &&
           player.intent == PlayerIntent::RECOVER_SHAPE)
       {
@@ -411,7 +411,7 @@ TEST(MatchEngineTest, TurnoverCreatesTimedTeamTransitions)
   {
     engine.update(TEST_FRAME_SECONDS);
     if (engine.getState() != MatchState::PLAYING ||
-        !engine.getBall().possessedBy ||
+        !engine.getBall().possessionState().possessedBy ||
         engine.getTransitionSecondsRemaining() <= 0.0f)
     {
       continue;
@@ -419,7 +419,7 @@ TEST(MatchEngineTest, TurnoverCreatesTimedTeamTransitions)
 
     const auto carrier = std::ranges::find_if(
         engine.getPlayers(), [&engine](const MatchPlayer& player)
-        { return player.player == engine.getBall().possessedBy; });
+        { return player.player == engine.getBall().possessionState().possessedBy; });
     ASSERT_NE(carrier, engine.getPlayers().end());
     EXPECT_EQ(
         carrier->isHomeTeam ? engine.getHomePhase() : engine.getAwayPhase(),
@@ -453,14 +453,14 @@ TEST(MatchEngineTest, PossessionBuildsDistinctSupportAngles)
   {
     engine.update(TEST_FRAME_SECONDS);
     if (engine.getState() != MatchState::PLAYING ||
-        !engine.getBall().possessedBy)
+        !engine.getBall().possessionState().possessedBy)
     {
       continue;
     }
 
     const auto carrier = std::ranges::find_if(
         engine.getPlayers(), [&engine](const MatchPlayer& player)
-        { return player.player == engine.getBall().possessedBy; });
+        { return player.player == engine.getBall().possessionState().possessedBy; });
     ASSERT_NE(carrier, engine.getPlayers().end());
     int nearbySupporters = 0;
     bool supportAbove = false;
@@ -509,14 +509,14 @@ TEST(MatchEngineTest, FinalThirdPossessionKeepsRestDefenseBehindTheBall)
   {
     engine.update(TEST_FRAME_SECONDS);
     if (engine.getState() != MatchState::PLAYING ||
-        !engine.getBall().possessedBy)
+        !engine.getBall().possessionState().possessedBy)
     {
       continue;
     }
 
     const auto carrier = std::ranges::find_if(
         engine.getPlayers(), [&engine](const MatchPlayer& player)
-        { return player.player == engine.getBall().possessedBy; });
+        { return player.player == engine.getBall().possessionState().possessedBy; });
     ASSERT_NE(carrier, engine.getPlayers().end());
     const TeamPhase attackingPhase =
         carrier->isHomeTeam ? engine.getHomePhase() : engine.getAwayPhase();
@@ -561,7 +561,7 @@ TEST(MatchEngineTest, PossessionCreatesCoordinatedRunsAndSupport)
   {
     engine.update(TEST_FRAME_SECONDS);
     if (engine.getState() != MatchState::PLAYING ||
-        !engine.getBall().possessedBy)
+        !engine.getBall().possessionState().possessedBy)
     {
       continue;
     }
@@ -569,11 +569,11 @@ TEST(MatchEngineTest, PossessionCreatesCoordinatedRunsAndSupport)
     // Possession can be established after movement resolution. Advance one
     // fixed step so the team has applied its possession-phase assignments.
     engine.update(MatchTuning::Timing::FIXED_STEP_SECONDS);
-    if (!engine.getBall().possessedBy) continue;
+    if (!engine.getBall().possessionState().possessedBy) continue;
 
     const auto carrier = std::ranges::find_if(
         engine.getPlayers(), [&engine](const MatchPlayer& player)
-        { return player.player == engine.getBall().possessedBy; });
+        { return player.player == engine.getBall().possessionState().possessedBy; });
     ASSERT_NE(carrier, engine.getPlayers().end());
 
     int committedRuns = 0;
@@ -660,9 +660,9 @@ TEST(MatchEngineTest, MovementAssignmentsRemainCoherentAcrossLivePlay)
               static_cast<int>(MatchTuning::Shape::MAX_COMMITTED_RUNNERS));
     EXPECT_LE(homeReceivers, 1);
     EXPECT_LE(awayReceivers, 1);
-    if (engine.getBall().isPass)
+    if (engine.getBall().possessionState().isPass)
     {
-      EXPECT_EQ(engine.getBall().passByHome ? homeRunners : awayRunners, 0)
+      EXPECT_EQ(engine.getBall().possessionState().passByHome ? homeRunners : awayRunners, 0)
           << "A normal pass must not make every forward start a transition run";
     }
 
@@ -1028,8 +1028,8 @@ TEST(MatchEngineTest, SentOffPlayerLeavesThePitchForGood)
           EXPECT_FALSE(player.onPitch);
       }
       EXPECT_LE(activePlayers(engine, sentOffHome), 10);
-      EXPECT_NE(engine.getBall().possessedBy &&
-                    engine.getBall().possessedBy->getId() == sentOff,
+      EXPECT_NE(engine.getBall().possessionState().possessedBy &&
+                    engine.getBall().possessionState().possessedBy->getId() == sentOff,
                 true);
       inspected = true;
     }
@@ -1779,8 +1779,8 @@ TEST(MatchEngineTest, PlayersAndBallMoveAtRealisticSpeeds)
     engine.advance(MatchTuning::Timing::FIXED_STEP_SECONDS);
     const MatchBall& ball = engine.getBall();
     const float ballSpeed = std::hypot(ball.velocity.x, ball.velocity.y);
-    if (ball.isPass) fastestPass = std::max(fastestPass, ballSpeed);
-    if (ball.isShot) fastestShot = std::max(fastestShot, ballSpeed);
+    if (ball.possessionState().isPass) fastestPass = std::max(fastestPass, ballSpeed);
+    if (ball.possessionState().isShot) fastestShot = std::max(fastestShot, ballSpeed);
     for (const MatchPlayer& player : engine.getPlayers())
     {
       fastestPlayer = std::max(
@@ -1960,7 +1960,7 @@ TEST(MatchEngineTest, PossessionIsOnlyGainedWithinReach)
   constexpr float STEP = MatchTuning::Timing::FIXED_STEP_SECONDS;
   constexpr float SLACK = MatchTuning::Aerial::GOALKEEPER_CLAIM_RADIUS_METRES +
                           10.0f * STEP + 0.05f;
-  const Player* previousOwner = engine.getBall().possessedBy;
+  const Player* previousOwner = engine.getBall().possessionState().possessedBy;
   int gains = 0;
   while (engine.getState() != MatchState::FULL_TIME)
   {
@@ -1968,13 +1968,13 @@ TEST(MatchEngineTest, PossessionIsOnlyGainedWithinReach)
     const MatchState stateBefore = engine.getState();
     engine.advance(STEP);
     const MatchBall& after = engine.getBall();
-    if (after.possessedBy && after.possessedBy != previousOwner &&
-        !before.possessedBy && stateBefore == MatchState::PLAYING &&
+    if (after.possessionState().possessedBy && after.possessionState().possessedBy != previousOwner &&
+        !before.possessionState().possessedBy && stateBefore == MatchState::PLAYING &&
         engine.getState() == MatchState::PLAYING)
     {
       const auto owner = std::ranges::find_if(
           engine.getPlayers(), [&after](const MatchPlayer& player)
-          { return player.player == after.possessedBy; });
+          { return player.player == after.possessionState().possessedBy; });
       ASSERT_NE(owner, engine.getPlayers().end());
       const Vector2F travel{
           before.velocity.x * STEP / MatchTuning::Pitch::LENGTH_METRES,
@@ -1984,7 +1984,7 @@ TEST(MatchEngineTest, PossessionIsOnlyGainedWithinReach)
       EXPECT_LE(metresToSegment(owner->position, before.position, end), SLACK);
       ++gains;
     }
-    previousOwner = after.possessedBy;
+    previousOwner = after.possessionState().possessedBy;
   }
   EXPECT_GT(gains, 100);
 }
@@ -2037,9 +2037,9 @@ double dribblerBeatsTheDefender(int dribblerRating, int defenderRating)
         engine.getStats().homePassesAttempted + engine.getStats().homeShots !=
         usedBefore;
     const bool homeHasIt =
-        ball.possessedBy
-            ? ball.possessedBy->getTeamId() == 1
-            : ball.lastPossessor && ball.lastPossessor->getTeamId() == 1;
+        ball.possessionState().possessedBy
+            ? ball.possessionState().possessedBy->getTeamId() == 1
+            : ball.possessionState().lastPossessor && ball.possessionState().lastPossessor->getTeamId() == 1;
     if (used || homeHasIt) ++beaten;
   }
   return duels > 20 ? static_cast<double>(beaten) / duels : -1.0;
@@ -2413,7 +2413,7 @@ const MatchPlayer* advanceUntilOutfieldCarrier(MatchEngine& engine,
   {
     engine.advance(MatchTuning::Timing::FIXED_STEP_SECONDS);
     if (engine.getState() != MatchState::PLAYING) continue;
-    const Player* holder = engine.getBall().possessedBy;
+    const Player* holder = engine.getBall().possessionState().possessedBy;
     if (!holder) continue;
     for (const auto& candidate : engine.getPlayers())
     {
@@ -2544,11 +2544,11 @@ TEST(MatchEngineTest, ControlledCarrierPassesTowardTheAim)
   for (int step = 0; step < buffered && !passed; ++step)
   {
     engine.advance(MatchTuning::Timing::FIXED_STEP_SECONDS);
-    passed = engine.getBall().possessedBy != carrier->player &&
-             engine.getBall().isPass;
+    passed = engine.getBall().possessionState().possessedBy != carrier->player &&
+             engine.getBall().possessionState().isPass;
   }
   ASSERT_TRUE(passed);
-  const Player* receiver = engine.getBall().intendedReceiver;
+  const Player* receiver = engine.getBall().possessionState().intendedReceiver;
   ASSERT_NE(receiver, nullptr);
   const MatchPlayer* target = findOnPitch(engine, receiver->getId());
   ASSERT_NE(target, nullptr);
@@ -2678,7 +2678,7 @@ bool loadControlled(MatchEngine& engine, const MatchScenario& scenario,
 void controlledAction(MatchEngine& engine, MatchPlayerInput input)
 {
   ASSERT_TRUE(loadControlled(engine, playModeScenario(), 105));
-  ASSERT_EQ(engine.getBall().possessedBy->getId(), 105u);
+  ASSERT_EQ(engine.getBall().possessionState().possessedBy->getId(), 105u);
   engine.submitInput(input);
   engine.advance(MatchTuning::Timing::FIXED_STEP_SECONDS);
 }
@@ -2723,7 +2723,7 @@ float meanPassError(int rating)
     input.action = MatchInputAction::PASS;
     input.passAssist = 0;
     controlledAction(engine, input);
-    if (!engine.getBall().isPass ||
+    if (!engine.getBall().possessionState().isPass ||
         engine.getLastPassDecision().receiverId != 109)
       continue;
     total += launchError(engine);
@@ -2777,10 +2777,10 @@ TEST(PlayModeTest, SwitchingTakesTheCarrierTheReceiverAndTheInterceptor)
   ASSERT_TRUE(engine.setControlledPlayer(105));
   engine.submitInput(input);
   engine.advance(MatchTuning::Timing::FIXED_STEP_SECONDS);
-  ASSERT_TRUE(engine.getBall().isPass);
-  ASSERT_NE(engine.getBall().intendedReceiver, nullptr);
+  ASSERT_TRUE(engine.getBall().possessionState().isPass);
+  ASSERT_NE(engine.getBall().possessionState().intendedReceiver, nullptr);
   EXPECT_EQ(engine.suggestActivePlayer(true, 105),
-            engine.getBall().intendedReceiver->getId());
+            engine.getBall().possessionState().intendedReceiver->getId());
 
   // Defending: the away striker 209 on the ball, home centre-back 103 right
   // next to him and everyone else far away.
@@ -2929,7 +2929,7 @@ TEST(PlayModeTest, ShotPowerAndAimShapeTheStrike)
     input.power = power;
     engine.submitInput(input);
     engine.advance(MatchTuning::Timing::FIXED_STEP_SECONDS);
-    EXPECT_TRUE(engine.getBall().isShot);
+    EXPECT_TRUE(engine.getBall().possessionState().isShot);
     return engine.getBall();
   };
   const MatchBall soft = strike(0.1f, 0.0f);
@@ -2939,7 +2939,7 @@ TEST(PlayModeTest, ShotPowerAndAimShapeTheStrike)
   // The stick picks the side of the goal (same seed, same error draw).
   const MatchBall left = strike(0.6f, -3.0f);
   const MatchBall right = strike(0.6f, 3.0f);
-  EXPECT_LT(left.shotTargetY, right.shotTargetY);
+  EXPECT_LT(left.possessionState().shotTargetY, right.possessionState().shotTargetY);
 }
 
 TEST(PlayModeTest, ThroughBallIsPlayedIntoTheRunnersPath)
@@ -2957,7 +2957,7 @@ TEST(PlayModeTest, ThroughBallIsPlayedIntoTheRunnersPath)
   input.action = MatchInputAction::THROUGH_BALL;
   input.power = 1.0f;
   controlledAction(engine, input);
-  ASSERT_TRUE(engine.getBall().isPass);
+  ASSERT_TRUE(engine.getBall().possessionState().isPass);
   const PassDecision& pass = engine.getLastPassDecision();
   EXPECT_EQ(pass.receiverId, 109u);
   EXPECT_EQ(pass.intent, PassIntent::THROUGH_BALL);
@@ -2990,7 +2990,7 @@ TEST(PlayModeTest, JockeyingDefenderHoldsAGoalSideLine)
       if (engine.getState() != MatchState::PLAYING) continue;
       for (const MatchPlayer& candidate : engine.getPlayers())
         if (candidate.player &&
-            candidate.player == engine.getBall().possessedBy &&
+            candidate.player == engine.getBall().possessionState().possessedBy &&
             !candidate.isHomeTeam && !candidate.isGoalkeeper)
           carrier = &candidate;
     }
@@ -3009,7 +3009,7 @@ TEST(PlayModeTest, JockeyingDefenderHoldsAGoalSideLine)
     for (; held < 10; ++held)
     {
       engine.advance(STEP);
-      if (engine.getBall().possessedBy != holder ||
+      if (engine.getBall().possessionState().possessedBy != holder ||
           engine.getState() != MatchState::PLAYING ||
           engine.getControlledPlayer() != defenderId)
         break;
@@ -3406,7 +3406,7 @@ TEST(PlayModeTest, PassButtonReleasesOutOfPlayBallForTheRestartSide)
     if (state != MatchState::THROW_IN && state != MatchState::GOAL_KICK &&
         state != MatchState::CORNER_KICK && state != MatchState::FREE_KICK)
       continue;
-    const Player* owner = engine.getBall().possessedBy;
+    const Player* owner = engine.getBall().possessionState().possessedBy;
     ASSERT_NE(owner, nullptr);
     const bool homeRestart = owner->getTeamId() == home.getId();
     const PlayerID controller = homeRestart ? 105 : 205;
@@ -3418,10 +3418,10 @@ TEST(PlayModeTest, PassButtonReleasesOutOfPlayBallForTheRestartSide)
     engine.submitInput(input);
     engine.advance(0.1f);
     EXPECT_EQ(engine.getState(), MatchState::PLAYING);
-    EXPECT_EQ(engine.getBall().possessedBy, nullptr);
-    EXPECT_TRUE(engine.getBall().isPass);
+    EXPECT_EQ(engine.getBall().possessionState().possessedBy, nullptr);
+    EXPECT_TRUE(engine.getBall().possessionState().isPass);
     if (state == MatchState::THROW_IN)
-      EXPECT_TRUE(engine.getBall().fromThrowIn);
+      EXPECT_TRUE(engine.getBall().possessionState().fromThrowIn);
     EXPECT_GT(engine.getControlledActions(homeRestart), 0);
     engine.setControlledPlayer(0);
     ++passes;

@@ -56,7 +56,7 @@ void MatchEngine::checkOutOfBoundsAardvark()
     constexpr float HALF_GOAL = MatchTuning::Shooting::GOAL_HALF_WIDTH_METRES;
     constexpr float BAR = MatchTuning::Units::CROSSBAR_HEIGHT_METRES;
     if (lateralMetres < HALF_GOAL - RADIUS && crossingHeight < BAR - RADIUS &&
-        !ball.fromThrowIn)
+        !getPossessionState().fromThrowIn)
     {
       // Any ball that crosses the line inside the frame is a goal.
       ball.position.y = crossingY;
@@ -71,9 +71,9 @@ void MatchEngine::checkOutOfBoundsAardvark()
         lateralMetres < HALF_GOAL + RADIUS &&
         std::abs(crossingHeight - BAR) <
             RADIUS + MatchTuning::Shooting::WOODWORK_BAND_METRES;
-    if (ball.isShot && (hitsPost || hitsBar))
+    if (getPossessionState().isShot && (hitsPost || hitsBar))
     {
-      MatchPlayer* shooter = findMatchPlayer(lastShooter);
+      MatchPlayer* shooter = findMatchPlayer(getPossessionHistory().lastShooter);
       MatchEvent& event = logEvent(MatchEventType::WOODWORK);
       if (shooter)
       {
@@ -122,8 +122,8 @@ void MatchEngine::checkOutOfBoundsAardvark()
 
 void MatchEngine::scoreGoalAardvark(bool homeTeam)
 {
-  MatchPlayer* last = findMatchPlayer(ball.lastPossessor);
-  MatchPlayer* shooter = findMatchPlayer(lastShooter);
+  MatchPlayer* last = findMatchPlayer(getLastPossessionAttachment());
+  MatchPlayer* shooter = findMatchPlayer(getPossessionHistory().lastShooter);
   MatchPlayer* scorer = last;
   // A shot parried or deflected in stays the shooter's goal; only a
   // defender's own deliberate touch makes it an own goal.
@@ -141,13 +141,13 @@ void MatchEngine::scoreGoalAardvark(bool homeTeam)
   slidersStale = true;
   ++stoppageLogs[static_cast<std::size_t>(period - 1)].goals;
 
-  if (ball.isShot && scorer && !ownGoal)
+  if (getPossessionState().isShot && scorer && !ownGoal)
   {
-    if (ball.shotIsHeader)
+    if (getPossessionState().shotIsHeader)
       ++(homeTeam ? stats.homeHeadedGoals : stats.awayHeadedGoals);
-    if (ball.shotFromSetPiece)
+    if (getPossessionState().shotFromSetPiece)
       ++(homeTeam ? stats.homeSetPieceGoals : stats.awaySetPieceGoals);
-    if (ball.shotIsPenalty)
+    if (getPossessionState().shotIsPenalty)
       ++(homeTeam ? stats.homePenaltyGoals : stats.awayPenaltyGoals);
   }
   if (scorer && !ownGoal)
@@ -167,7 +167,7 @@ void MatchEngine::scoreGoalAardvark(bool homeTeam)
   if (scorer && !ownGoal)
   {
     ++statsOf(*scorer).goals;
-    if (MatchPlayer* assister = findMatchPlayer(shotAssistCandidate);
+    if (MatchPlayer* assister = findMatchPlayer(getPossessionHistory().shotAssistCandidate);
         assister && assister != scorer && assister->isHomeTeam == homeTeam)
     {
       ++statsOf(*assister).assists;
@@ -193,7 +193,7 @@ void MatchEngine::scoreGoalAardvark(bool homeTeam)
   event.primaryPlayerId = scorer ? scorer->player->getId() : 0;
   event.secondaryPlayerId = assisterId;
   event.position = scorer ? scorer->position : ball.position;
-  event.xg = ball.isShot ? ball.shotXG : 0.0f;
+  event.xg = getPossessionState().isShot ? getPossessionState().shotXG : 0.0f;
 
   goalScoredByHome = homeTeam;
   goalCelebrationRemaining = getGoalCelebrationDuration();
@@ -216,7 +216,7 @@ void MatchEngine::updateBallInNetAardvark(float dt)
 {
   integrateBall(dt);
   const float netDepth = MatchTuning::Ball::GOAL_NET_BALL_DEPTH;
-  if (ball.shotByHome)
+  if (getPossessionState().shotByHome)
   {
     ball.position.x = std::clamp(ball.position.x, 1.0f, 1.0f + netDepth);
   }

@@ -26,26 +26,26 @@ void MatchEngine::takePossessionAardvark(MatchPlayer& player)
   // interception code should use this path so phases and statistics agree.
   // The ball itself is not moved.
   trackTouch(player);
-  ball.nudgedBy = nullptr;
+  ball.possession.nudgedBy = nullptr;
   // A set piece's phase ends once the defending side has the ball.
   if (player.isHomeTeam != setPieceHome) setPiecePhaseRemaining = 0.0f;
-  if (state == MatchState::PLAYING && lastControlledTeamHome &&
-      *lastControlledTeamHome != player.isHomeTeam)
+  if (state == MatchState::PLAYING && ball.possession.history.lastControlledTeamHome &&
+      *ball.possession.history.lastControlledTeamHome != player.isHomeTeam)
   {
     transitionSecondsRemaining =
         MatchTuning::Timing::POSSESSION_TRANSITION_SECONDS;
-    lastCompletedPasser = nullptr;
-    lastCompletedReceiver = nullptr;
+    ball.possession.history.lastCompletedPasser = nullptr;
+    ball.possession.history.lastCompletedReceiver = nullptr;
   }
-  lastControlledTeamHome = player.isHomeTeam;
-  lastShooter = nullptr;
-  if (ball.possessedBy != player.player)
+  ball.possession.history.lastControlledTeamHome = player.isHomeTeam;
+  ball.possession.history.lastShooter = nullptr;
+  if (ball.possession.possessedBy != player.player)
   {
-    possessionStartSeconds = getSimulatedSeconds();
+    ball.possession.history.possessionStartSeconds = getSimulatedSeconds();
     ++statsOf(player).touches;
   }
   handBallTo(player.player);
-  ball.lastPossessor = player.player;
+  ball.possession.lastPossessor = player.player;
   clearFlightState();
   // The first touch brings the ball under close control in front of him.
   ball.dribbleExposure = 0.0f;
@@ -62,27 +62,27 @@ void MatchEngine::takePossessionAardvark(MatchPlayer& player)
 
 void MatchEngine::clearPossessionAardvark()
 {
-  ball.inKeeperHands = false;
-  ball.heldRelease = HeldRelease::NONE;
-  ball.possessedBy = nullptr;
-  ball.nudgedBy = nullptr;
-  ball.inTouch = false;
-  ball.touchCollected = false;
-  ball.touchDropping = false;
-  ball.touchPasser = nullptr;
+  ball.possession.inKeeperHands = false;
+  ball.possession.heldRelease = HeldRelease::NONE;
+  ball.possession.possessedBy = nullptr;
+  ball.possession.nudgedBy = nullptr;
+  ball.possession.inTouch = false;
+  ball.possession.touchCollected = false;
+  ball.possession.touchDropping = false;
+  ball.possession.touchPasser = nullptr;
   ball.touchWaiting = 0;
   observePossession(PossessionObservation::CLEAR_OWNER, PossessionId::AARDVARK);
 }
 
 void MatchEngine::handBallToAardvark(const Player* holder)
 {
-  ball.inKeeperHands = false;
-  ball.heldRelease = HeldRelease::NONE;
-  ball.possessedBy = holder;
-  ball.inTouch = false;
-  ball.touchCollected = false;
-  ball.touchDropping = false;
-  ball.touchPasser = nullptr;
+  ball.possession.inKeeperHands = false;
+  ball.possession.heldRelease = HeldRelease::NONE;
+  ball.possession.possessedBy = holder;
+  ball.possession.inTouch = false;
+  ball.possession.touchCollected = false;
+  ball.possession.touchDropping = false;
+  ball.possession.touchPasser = nullptr;
   ball.touchWaiting = 0;
   observePossession(PossessionObservation::ASSIGN_OWNER,
                     PossessionId::AARDVARK);
@@ -90,23 +90,23 @@ void MatchEngine::handBallToAardvark(const Player* holder)
 
 void MatchEngine::clearFlightStateAardvark()
 {
-  ball.intendedReceiver = nullptr;
-  ball.isPass = false;
-  ball.passWasOffside = false;
-  ball.isShot = false;
-  ball.shotOnTarget = false;
-  ball.shotXG = 0.0f;
-  ball.shotIsHeader = false;
-  ball.shotIsPenalty = false;
-  ball.shotFromSetPiece = false;
-  ball.shotSaveResolved = false;
-  ball.shotBlocked = false;
-  ball.shotFromDirectFreeKick = false;
-  ball.shotElapsedSeconds = 0.0f;
-  ball.isAerialDelivery = false;
-  ball.fromThrowIn = false;
-  ball.throwEntering = false;
-  ball.shotOffWoodwork = false;
+  ball.possession.intendedReceiver = nullptr;
+  ball.possession.isPass = false;
+  ball.possession.passWasOffside = false;
+  ball.possession.isShot = false;
+  ball.possession.shotOnTarget = false;
+  ball.possession.shotXG = 0.0f;
+  ball.possession.shotIsHeader = false;
+  ball.possession.shotIsPenalty = false;
+  ball.possession.shotFromSetPiece = false;
+  ball.possession.shotSaveResolved = false;
+  ball.possession.shotBlocked = false;
+  ball.possession.shotFromDirectFreeKick = false;
+  ball.possession.shotElapsedSeconds = 0.0f;
+  ball.possession.isAerialDelivery = false;
+  ball.possession.fromThrowIn = false;
+  ball.possession.throwEntering = false;
+  ball.possession.shotOffWoodwork = false;
   ball.spin = {};
   observePossession(PossessionObservation::CLEAR_FLIGHT,
                     PossessionId::AARDVARK);
@@ -121,20 +121,20 @@ void MatchEngine::updateTouchAardvark(MatchPlayer& carrier, float dt)
   ball.ownTouchCooldown = std::max(0.0f, ball.ownTouchCooldown - dt);
   ball.plannedTouchIn = std::max(0.0f, ball.plannedTouchIn - dt);
 
-  if (!ball.touchCollected && gap <= R::KICK_REACH_METRES &&
+  if (!ball.possession.touchCollected && gap <= R::KICK_REACH_METRES &&
       length(relative) <= touchKnobs[TouchKnob::COLLECT_RELATIVE_SPEED] &&
-      (!ball.touchDropping ||
+      (!ball.possession.touchDropping ||
        ball.z * MatchTuning::Units::BALL_Z_METRES <= bodyLines(carrier).feet))
   {
     // Collected: the pass is complete and he can think about his next
     // action. The ball stays loose: from here he dribbles it, touch by touch.
     using F = MatchTuning::FirstTouch;
-    ball.touchCollected = true;
-    ball.touchDropping = false;
-    ball.nudgedBy = nullptr;
+    ball.possession.touchCollected = true;
+    ball.possession.touchDropping = false;
+    ball.possession.nudgedBy = nullptr;
     settleTackle(carrier.isHomeTeam);
-    if (ball.touchPasser) creditPassCompletion(carrier, ball.touchPasser);
-    ball.touchPasser = nullptr;
+    if (ball.possession.touchPasser) creditPassCompletion(carrier, ball.possession.touchPasser);
+    ball.possession.touchPasser = nullptr;
     carrier.actionCooldown =
         randomFloat(F::MIN_DECISION_DELAY, F::MAX_DECISION_DELAY);
   }
@@ -176,10 +176,10 @@ void MatchEngine::noteTouchOnBallAardvark(const MatchPlayer& player,
 
 void MatchEngine::beginTouchClaimAardvark(const Player* passer, bool dropping)
 {
-  ball.inTouch = true;
-  ball.touchCollected = false;
-  if (dropping) ball.touchDropping = true;
-  ball.touchPasser = passer;
+  ball.possession.inTouch = true;
+  ball.possession.touchCollected = false;
+  if (dropping) ball.possession.touchDropping = true;
+  ball.possession.touchPasser = passer;
   observePossession(PossessionObservation::BEGIN_TOUCH_CLAIM,
                     PossessionId::AARDVARK);
 }
@@ -187,9 +187,9 @@ void MatchEngine::beginTouchClaimAardvark(const Player* passer, bool dropping)
 void MatchEngine::beginCollectedDribbleAardvark(const MatchPlayer& carrier)
 {
   using R = MatchTuning::Dribble;
-  ball.inTouch = true;
-  ball.touchCollected = true;
-  ball.touchPasser = nullptr;
+  ball.possession.inTouch = true;
+  ball.possession.touchCollected = true;
+  ball.possession.touchPasser = nullptr;
   ball.ownTouchCooldown = 0.0f;
   ball.dribbleGoal = carrier.tacticalTarget;
   ball.touchGap = R::FEET_METRES;
@@ -239,10 +239,10 @@ void MatchEngine::recordPassCompletionAardvark(MatchPlayer& receiver)
 {
   observePossession(PossessionObservation::RECORD_PASS_COMPLETION,
                     PossessionId::AARDVARK);
-  if (!ball.isPass) return;
-  if (receiver.isHomeTeam == ball.passByHome)
+  if (!ball.possession.isPass) return;
+  if (receiver.isHomeTeam == ball.possession.passByHome)
   {
-    creditPassCompletion(receiver, ball.lastPossessor);
+    creditPassCompletion(receiver, ball.possession.lastPossessor);
     return;
   }
   ++statsOf(receiver).interceptions;
@@ -261,8 +261,8 @@ void MatchEngine::creditPassCompletionAardvark(MatchPlayer& receiver,
   {
     ++statsOf(*passer).passesCompleted;
     trackPassCompletion(*passer, receiver);
-    lastCompletedPasser = passer->player;
-    lastCompletedReceiver = receiver.player;
+    ball.possession.history.lastCompletedPasser = passer->player;
+    ball.possession.history.lastCompletedReceiver = receiver.player;
   }
   observePossession(PossessionObservation::CREDIT_PASS_COMPLETION,
                     PossessionId::AARDVARK);
@@ -271,7 +271,7 @@ void MatchEngine::creditPassCompletionAardvark(MatchPlayer& receiver,
 void MatchEngine::releasePossessionAardvark(const MatchPlayer& kicker)
 {
   clearPossession();
-  ball.lastPossessor = kicker.player;
+  ball.possession.lastPossessor = kicker.player;
   observePossession(PossessionObservation::RELEASE, PossessionId::AARDVARK);
 }
 
@@ -280,10 +280,10 @@ void MatchEngine::beginPassFlightAardvark(const MatchPlayer& passer,
 {
   MatchPlayer* const receiver = option.receiver;
   clearFlightState();
-  ball.intendedReceiver = receiver ? receiver->player : nullptr;
-  ball.isPass = true;
-  ball.passByHome = passer.isHomeTeam;
-  ball.passWasOffside =
+  ball.possession.intendedReceiver = receiver ? receiver->player : nullptr;
+  ball.possession.isPass = true;
+  ball.possession.passByHome = passer.isHomeTeam;
+  ball.possession.passWasOffside =
       receiver && judgeOffside(passer, option, offsideLine(passer.isHomeTeam));
   observePossession(PossessionObservation::BEGIN_PASS_FLIGHT,
                     PossessionId::AARDVARK);
@@ -291,8 +291,8 @@ void MatchEngine::beginPassFlightAardvark(const MatchPlayer& passer,
 
 void MatchEngine::finishPassFlightAardvark(bool aerialDelivery)
 {
-  ball.isAerialDelivery = aerialDelivery;
-  ball.fromThrowIn = state == MatchState::THROW_IN;
+  ball.possession.isAerialDelivery = aerialDelivery;
+  ball.possession.fromThrowIn = state == MatchState::THROW_IN;
   observePossession(PossessionObservation::FINISH_PASS_FLIGHT,
                     PossessionId::AARDVARK);
 }
@@ -302,18 +302,18 @@ void MatchEngine::noteShotFlightAardvark(const MatchPlayer& shooter,
                                          float crossingZ, bool header,
                                          bool penalty)
 {
-  ball.isShot = true;
-  ball.shotByHome = shooter.isHomeTeam;
-  ball.shotOnTarget = onTarget;
-  ball.shotXG = xg;
-  ball.shotTargetY = targetY;
-  ball.shotTargetHeightMetres = crossingZ;
-  ball.shotElapsedSeconds = 0.0f;
-  ball.shotIsHeader = header;
-  ball.shotIsPenalty = penalty;
-  ball.shotSaveResolved = false;
-  ball.shotBlocked = false;
-  lastShooter = shooter.player;
+  ball.possession.isShot = true;
+  ball.possession.shotByHome = shooter.isHomeTeam;
+  ball.possession.shotOnTarget = onTarget;
+  ball.possession.shotXG = xg;
+  ball.possession.shotTargetY = targetY;
+  ball.possession.shotTargetHeightMetres = crossingZ;
+  ball.possession.shotElapsedSeconds = 0.0f;
+  ball.possession.shotIsHeader = header;
+  ball.possession.shotIsPenalty = penalty;
+  ball.possession.shotSaveResolved = false;
+  ball.possession.shotBlocked = false;
+  ball.possession.history.lastShooter = shooter.player;
   observePossession(PossessionObservation::NOTE_SHOT_FLIGHT,
                     PossessionId::AARDVARK);
 }
@@ -351,7 +351,7 @@ void MatchEngine::noteFreeBallTackleAardvark(MatchPlayer& tackler, bool contest)
     ++(tackler.isHomeTeam ? stats.homeFreeBallTackles
                           : stats.awayFreeBallTackles);
   ++statsOf(tackler).tacklesAttempted;
-  pendingTackle = PendingTackle{tackler.player, tackler.isHomeTeam, contest};
+  ball.possession.history.pendingTackle = PendingTackle{tackler.player, tackler.isHomeTeam, contest};
   observePossession(PossessionObservation::NOTE_FREE_BALL_TACKLE,
                     PossessionId::AARDVARK);
 }
@@ -360,9 +360,9 @@ void MatchEngine::settleTackleAardvark(bool homeTeam)
 {
   observePossession(PossessionObservation::SETTLE_TACKLE,
                     PossessionId::AARDVARK);
-  if (!pendingTackle) return;
-  const PendingTackle tackle = *pendingTackle;
-  pendingTackle.reset();
+  if (!ball.possession.history.pendingTackle) return;
+  const PendingTackle tackle = *ball.possession.history.pendingTackle;
+  ball.possession.history.pendingTackle.reset();
   if (tackle.homeTeam != homeTeam) return;
   ++(homeTeam ? stats.homeTackles : stats.awayTackles);
   if (tackle.contest)
@@ -380,25 +380,25 @@ void MatchEngine::trackHeaderRunAardvark()
   // Over once someone has it (a touch he owns, or in his hands) or play has
   // stopped; a ball still loose (in the air or not) keeps it going.
   const bool stopped = state != MatchState::PLAYING;
-  if (!stopped && !ball.possessedBy) return;
+  if (!stopped && !ball.possession.possessedBy) return;
   ++stats.headerSequences;
-  stats.headerSequenceHeaders += headerRun;
-  if (headerRun >= 3) ++stats.headerSequencesLong;
+  stats.headerSequenceHeaders += ball.possession.history.headerRun;
+  if (ball.possession.history.headerRun >= 3) ++stats.headerSequencesLong;
   stats.headerSequenceLongest =
-      std::max(stats.headerSequenceLongest, headerRun);
+      std::max(stats.headerSequenceLongest, ball.possession.history.headerRun);
   if (!stopped)
   {
     ++stats.headerSequencesToControl;
-    if (const MatchPlayer* holder = findMatchPlayer(ball.possessedBy);
-        holder && holder->isHomeTeam == headerRunLastHome)
+    if (const MatchPlayer* holder = findMatchPlayer(ball.possession.possessedBy);
+        holder && holder->isHomeTeam == ball.possession.history.headerRunLastHome)
       ++stats.headerSequencesKept;
   }
-  headerRun = 0;
+  ball.possession.history.headerRun = 0;
 }
 
 void MatchEngine::cancelPendingTackleAardvark()
 {
-  pendingTackle.reset();
+  ball.possession.history.pendingTackle.reset();
   observePossession(PossessionObservation::CANCEL_PENDING_TACKLE,
                     PossessionId::AARDVARK);
 }
@@ -406,8 +406,8 @@ void MatchEngine::cancelPendingTackleAardvark()
 void MatchEngine::noteHeaderContactAardvark(const MatchPlayer& header)
 {
   trackTouch(header);
-  ++headerRun;
-  headerRunLastHome = header.isHomeTeam;
+  ++ball.possession.history.headerRun;
+  ball.possession.history.headerRunLastHome = header.isHomeTeam;
   observePossession(PossessionObservation::NOTE_HEADER_CONTACT,
                     PossessionId::AARDVARK);
 }
@@ -424,11 +424,11 @@ void MatchEngine::creditHeaderShotAardvark(const MatchPlayer& header,
       ++stats.homePassesCompleted;
     else
       ++stats.awayPassesCompleted;
-    shotAssistCandidate = deliverer->player;
+    ball.possession.history.shotAssistCandidate = deliverer->player;
   }
   else
   {
-    shotAssistCandidate = nullptr;
+    ball.possession.history.shotAssistCandidate = nullptr;
   }
   observePossession(PossessionObservation::CREDIT_HEADER_SHOT,
                     PossessionId::AARDVARK);
@@ -439,11 +439,11 @@ void MatchEngine::beginHeaderPlayAardvark(MatchPlayer& header,
 {
   if (fromTeammate)
     recordPassCompletion(header);
-  else if (ball.isPass)
+  else if (ball.possession.isPass)
     ++statsOf(header).interceptions;
   clearFlightState();
-  ball.lastPossessor = header.player;
-  lastShooter = nullptr;
+  ball.possession.lastPossessor = header.player;
+  ball.possession.history.lastShooter = nullptr;
   observePossession(PossessionObservation::BEGIN_HEADER_PLAY,
                     PossessionId::AARDVARK);
 }
@@ -470,8 +470,8 @@ void MatchEngine::noteCushionedHeaderAardvark(const MatchPlayer& header,
 void MatchEngine::noteTackleNudgeAardvark(const MatchPlayer& tackler,
                                           const MatchPlayer& attacker)
 {
-  ball.nudgedBy = tackler.player;
-  ball.nudgedFrom = attacker.player;
+  ball.possession.nudgedBy = tackler.player;
+  ball.possession.nudgedFrom = attacker.player;
   observePossession(PossessionObservation::NOTE_TACKLE_NUDGE,
                     PossessionId::AARDVARK);
 }
@@ -479,7 +479,7 @@ void MatchEngine::noteTackleNudgeAardvark(const MatchPlayer& tackler,
 void MatchEngine::beginPokedTackleAardvark(const MatchPlayer& defender)
 {
   clearPossession();
-  ball.lastPossessor = defender.player;
+  ball.possession.lastPossessor = defender.player;
   clearFlightState();
   observePossession(PossessionObservation::BEGIN_POKED_TACKLE,
                     PossessionId::AARDVARK);
@@ -487,7 +487,7 @@ void MatchEngine::beginPokedTackleAardvark(const MatchPlayer& defender)
 
 void MatchEngine::finishPokedTackleAardvark(const MatchPlayer& defender)
 {
-  lastControlledTeamHome = defender.isHomeTeam;
+  ball.possession.history.lastControlledTeamHome = defender.isHomeTeam;
   transitionSecondsRemaining =
       MatchTuning::Timing::POSSESSION_TRANSITION_SECONDS;
   updateTeamPhases();
@@ -523,8 +523,8 @@ void MatchEngine::loseBallOnFallAardvark(MatchPlayer& player)
 {
   // He can't play it from the floor: a ball he had runs on loose (a
   // keeper's in his hands he keeps hold of).
-  if (player.player && ball.possessedBy == player.player &&
-      !(player.isGoalkeeper && !ball.inTouch))
+  if (player.player && ball.possession.possessedBy == player.player &&
+      !(player.isGoalkeeper && !ball.possession.inTouch))
   {
     clearPossession();
     ++stats.collisionFallsLosingBall;
@@ -539,9 +539,9 @@ void MatchEngine::noteFallenDeflectionAardvark(const MatchPlayer& player)
 {
   // His last touch for restarts; not a pass, possession or a deliberate play.
   notePathChange();
-  ball.deflectedBy = player.player;
-  ball.deflectedPathSince = ball.pathSince;
-  ball.deflectedAfter = ball.lastPossessor;
+  ball.possession.deflectedBy = player.player;
+  ball.possession.deflectedPathSince = ball.possession.pathSince;
+  ball.possession.deflectedAfter = ball.possession.lastPossessor;
   ball.touchAttempts = 0;
   ++stats.collisionBallOffFallen;
   observePossession(PossessionObservation::NOTE_FALLEN_DEFLECTION,
@@ -556,7 +556,7 @@ void MatchEngine::noteBodyDeflectionHitAardvark(MatchPlayer& player,
   if (legPutOut) ++stats.ballReactionBlocks;
   if (!opponents)
     ++stats.ballDeflections;
-  else if (ball.isPass)
+  else if (ball.possession.isPass)
   {
     ++stats.passesBlocked;
     ++statsOf(player).blockedPasses;
@@ -567,10 +567,10 @@ void MatchEngine::noteBodyDeflectionHitAardvark(MatchPlayer& player,
 
 void MatchEngine::beginBodyDeflectionAardvark(const MatchPlayer& player)
 {
-  if (ball.inTouch) clearPossession();
+  if (ball.possession.inTouch) clearPossession();
   clearFlightState();
-  ball.lastPossessor = player.player;
-  ball.kicker = player.player;
+  ball.possession.lastPossessor = player.player;
+  ball.possession.kicker = player.player;
   observePossession(PossessionObservation::BEGIN_BODY_DEFLECTION,
                     PossessionId::AARDVARK);
 }
@@ -578,13 +578,13 @@ void MatchEngine::beginBodyDeflectionAardvark(const MatchPlayer& player)
 void MatchEngine::beginShotDeflectionAardvark(const MatchPlayer& player,
                                               float lockout)
 {
-  ball.lastPossessor = player.player;
-  ball.kicker = player.player;
+  ball.possession.lastPossessor = player.player;
+  ball.possession.kicker = player.player;
   // Afterwards (shot block plan step 4): off his torso or stride just
   // the ball coming off him; off a leg he put out, until it is back.
   ball.kickerLockout = lockout;
   ball.touchAttempts = 0;
-  ball.fromThrowIn = false;
+  ball.possession.fromThrowIn = false;
   notePathChange();
   observePossession(PossessionObservation::BEGIN_SHOT_DEFLECTION,
                     PossessionId::AARDVARK);
@@ -592,8 +592,8 @@ void MatchEngine::beginShotDeflectionAardvark(const MatchPlayer& player,
 
 void MatchEngine::endDeflectedShotFlightAardvark()
 {
-  ball.isShot = false;
-  ball.shotOnTarget = false;
+  ball.possession.isShot = false;
+  ball.possession.shotOnTarget = false;
   observePossession(PossessionObservation::END_DEFLECTED_SHOT_FLIGHT,
                     PossessionId::AARDVARK);
 }
@@ -608,8 +608,8 @@ void MatchEngine::finishShotDeflectionAardvark(MatchPlayer& player,
     ++stats.shotDeflections;
     return;
   }
-  ball.shotBlocked = true;
-  if (ball.shotFromDirectFreeKick) ++stats.directFreeKicksBlocked;
+  ball.possession.shotBlocked = true;
+  if (ball.possession.shotFromDirectFreeKick) ++stats.directFreeKicksBlocked;
   ++(offBody ? statsOf(player).blockedShots : statsOf(player).clearances);
   logEvent(MatchEventType::SHOT_BLOCKED, player);
   return;
@@ -617,8 +617,8 @@ void MatchEngine::finishShotDeflectionAardvark(MatchPlayer& player,
 
 void MatchEngine::noteFailedTouchAardvark(const MatchPlayer& player)
 {
-  ball.lastPossessor = player.player;
-  ball.kicker = player.player;
+  ball.possession.lastPossessor = player.player;
+  ball.possession.kicker = player.player;
   ball.kickerLockout = MatchTuning::Ball::FAILED_TOUCH_LOCKOUT;
   ball.touchAttempts = 0;
   observePossession(PossessionObservation::NOTE_FAILED_TOUCH,
@@ -627,31 +627,31 @@ void MatchEngine::noteFailedTouchAardvark(const MatchPlayer& player)
 
 void MatchEngine::beginKeeperHoldAardvark(Point3F from)
 {
-  ball.inKeeperHands = true;
-  ball.heldFrom = from;
-  ball.heldSince = getSimulatedSeconds();
+  ball.possession.inKeeperHands = true;
+  ball.possession.heldFrom = from;
+  ball.possession.heldSince = getSimulatedSeconds();
   observePossession(PossessionObservation::BEGIN_KEEPER_HOLD,
                     PossessionId::AARDVARK);
 }
 
 void MatchEngine::rebaseKeeperHoldAardvark(Point3F from)
 {
-  ball.heldFrom = from;
-  ball.heldSince = getSimulatedSeconds();
+  ball.possession.heldFrom = from;
+  ball.possession.heldSince = getSimulatedSeconds();
   observePossession(PossessionObservation::REBASE_KEEPER_HOLD,
                     PossessionId::AARDVARK);
 }
 
 void MatchEngine::endKeeperHoldAardvark()
 {
-  ball.inKeeperHands = false;
+  ball.possession.inKeeperHands = false;
   observePossession(PossessionObservation::END_KEEPER_HOLD,
                     PossessionId::AARDVARK);
 }
 
 void MatchEngine::noteKeeperDistributionAardvark(bool lofted, bool overarm)
 {
-  ball.heldRelease = lofted    ? HeldRelease::PUNT
+  ball.possession.heldRelease = lofted    ? HeldRelease::PUNT
                      : overarm ? HeldRelease::OVERARM
                                : HeldRelease::ROLL;
   ++(lofted    ? stats.keeperPunts
@@ -663,10 +663,10 @@ void MatchEngine::noteKeeperDistributionAardvark(bool lofted, bool overarm)
 
 void MatchEngine::beginKeeperHandReboundAardvark(const MatchPlayer& keeper)
 {
-  if (ball.inTouch) clearPossession();
+  if (ball.possession.inTouch) clearPossession();
   clearFlightState();
-  ball.lastPossessor = keeper.player;
-  ball.kicker = keeper.player;
+  ball.possession.lastPossessor = keeper.player;
+  ball.possession.kicker = keeper.player;
   ball.kickerLockout = MatchTuning::ShotBlock::RECOVERY_BODY_SECONDS;
   ball.touchAttempts = 0;
   notePathChange();
@@ -676,23 +676,23 @@ void MatchEngine::beginKeeperHandReboundAardvark(const MatchPlayer& keeper)
 
 void MatchEngine::noteKeeperShotResolvedAardvark()
 {
-  ball.shotSaveResolved = true;
+  ball.possession.shotSaveResolved = true;
   observePossession(PossessionObservation::NOTE_KEEPER_SHOT_RESOLVED,
                     PossessionId::AARDVARK);
 }
 
 void MatchEngine::finishKeeperParryAardvark(const MatchPlayer& keeper)
 {
-  ball.isShot = false;
-  ball.shotOnTarget = false;
-  ball.lastPossessor = keeper.player;
+  ball.possession.isShot = false;
+  ball.possession.shotOnTarget = false;
+  ball.possession.lastPossessor = keeper.player;
   observePossession(PossessionObservation::FINISH_KEEPER_PARRY,
                     PossessionId::AARDVARK);
 }
 
 void MatchEngine::creditKeeperSaveAardvark(MatchPlayer& keeper)
 {
-  MatchPlayer* shooter = findMatchPlayer(lastShooter);
+  MatchPlayer* shooter = findMatchPlayer(ball.possession.history.lastShooter);
   if (keeper.isHomeTeam)
   {
     ++stats.homeSaves;
@@ -720,7 +720,7 @@ void MatchEngine::completeKeeperSaveAardvark(const MatchPlayer& goalkeeper)
 
 void MatchEngine::beginLegacyKeeperPunchAardvark(const MatchPlayer& player)
 {
-  ball.lastPossessor = player.player;
+  ball.possession.lastPossessor = player.player;
   clearFlightState();
   notePathChange();
   observePossession(PossessionObservation::BEGIN_LEGACY_KEEPER_PUNCH,
@@ -729,7 +729,7 @@ void MatchEngine::beginLegacyKeeperPunchAardvark(const MatchPlayer& player)
 
 void MatchEngine::finishLegacyKeeperPunchAardvark(const MatchPlayer& player)
 {
-  ball.kicker = player.player;
+  ball.possession.kicker = player.player;
   ball.kickerLockout = MatchTuning::Ball::FAILED_TOUCH_LOCKOUT;
   ball.touchAttempts = 0;
   observePossession(PossessionObservation::FINISH_LEGACY_KEEPER_PUNCH,
@@ -738,18 +738,18 @@ void MatchEngine::finishLegacyKeeperPunchAardvark(const MatchPlayer& player)
 
 void MatchEngine::rearmShotAfterBounceAardvark(float targetY, float height)
 {
-  ball.shotOnTarget = true;
-  ball.shotSaveResolved = false;
-  ball.shotTargetY = targetY;
-  ball.shotTargetHeightMetres = height;
+  ball.possession.shotOnTarget = true;
+  ball.possession.shotSaveResolved = false;
+  ball.possession.shotTargetY = targetY;
+  ball.possession.shotTargetHeightMetres = height;
   observePossession(PossessionObservation::REARM_SHOT_AFTER_BOUNCE,
                     PossessionId::AARDVARK);
 }
 
 void MatchEngine::endSpentKeeperShotAardvark()
 {
-  ball.isShot = false;
-  ball.shotOnTarget = false;
+  ball.possession.isShot = false;
+  ball.possession.shotOnTarget = false;
   ball.touchAttempts = 0;
   observePossession(PossessionObservation::END_SPENT_KEEPER_SHOT,
                     PossessionId::AARDVARK);
@@ -758,14 +758,14 @@ void MatchEngine::endSpentKeeperShotAardvark()
 void MatchEngine::assignRestartOwnerAardvark(const Player* owner)
 {
   handBallTo(owner);
-  ball.lastPossessor = ball.possessedBy;
+  ball.possession.lastPossessor = ball.possession.possessedBy;
   observePossession(PossessionObservation::ASSIGN_RESTART_OWNER,
                     PossessionId::AARDVARK);
 }
 
 void MatchEngine::markThrowEntryAardvark(bool entering)
 {
-  ball.throwEntering = entering;
+  ball.possession.throwEntering = entering;
   observePossession(PossessionObservation::MARK_THROW_ENTRY,
                     PossessionId::AARDVARK);
 }
@@ -776,10 +776,10 @@ void MatchEngine::noteWoodworkContactAardvark(bool shot)
   ball.touchAttempts = 0;
   if (shot)
   {
-    ball.shotOffWoodwork = true;
-    ball.woodworkPathSince = ball.pathSince;
-    ball.woodworkLastPossessor = ball.lastPossessor;
-    ball.woodworkDeflectedBy = ball.deflectedBy;
+    ball.possession.shotOffWoodwork = true;
+    ball.possession.woodworkPathSince = ball.possession.pathSince;
+    ball.possession.woodworkLastPossessor = ball.possession.lastPossessor;
+    ball.possession.woodworkDeflectedBy = ball.possession.deflectedBy;
   }
   observePossession(PossessionObservation::NOTE_WOODWORK_CONTACT,
                     PossessionId::AARDVARK);
@@ -787,17 +787,17 @@ void MatchEngine::noteWoodworkContactAardvark(bool shot)
 
 void MatchEngine::markWallStoppedShotAardvark()
 {
-  ball.isShot = false;
-  ball.shotOnTarget = false;
-  ball.shotSaveResolved = true;
+  ball.possession.isShot = false;
+  ball.possession.shotOnTarget = false;
+  ball.possession.shotSaveResolved = true;
   observePossession(PossessionObservation::MARK_WALL_STOPPED_SHOT,
                     PossessionId::AARDVARK);
 }
 
 void MatchEngine::creditWallBlockerAardvark(MatchPlayer& player)
 {
-  ball.lastPossessor = player.player;
-  ball.kicker = player.player;
+  ball.possession.lastPossessor = player.player;
+  ball.possession.kicker = player.player;
   ball.kickerLockout = MatchTuning::Passing::KICKER_LOCKOUT_SECONDS;
   ++statsOf(player).clearances;
   logEvent(MatchEventType::SHOT_BLOCKED, player).detail =
@@ -808,21 +808,23 @@ void MatchEngine::creditWallBlockerAardvark(MatchPlayer& player)
 
 void MatchEngine::noteShotSetPieceOriginAardvark(bool setPiece)
 {
-  ball.shotFromSetPiece = setPiece;
+  ball.possession.shotFromSetPiece = setPiece;
   observePossession(PossessionObservation::NOTE_SHOT_SET_PIECE_ORIGIN,
                     PossessionId::AARDVARK);
 }
 
 void MatchEngine::noteDirectFreeKickShotAardvark()
 {
-  ball.shotFromDirectFreeKick = true;
+  ball.possession.shotFromDirectFreeKick = true;
   observePossession(PossessionObservation::NOTE_DIRECT_FREE_KICK_SHOT,
                     PossessionId::AARDVARK);
 }
 
 void MatchEngine::resetShootoutBallAardvark()
 {
+  const PossessionHistory history = ball.possession.history;
   ball = MatchBall{};
+  ball.possession.history = history;
   observePossession(PossessionObservation::RESET_SHOOTOUT_BALL,
                     PossessionId::AARDVARK);
 }
@@ -836,7 +838,9 @@ void MatchEngine::resetRuleContactAttemptsAardvark()
 
 void MatchEngine::resetLifecycleBallAardvark()
 {
+  const PossessionHistory history = ball.possession.history;
   ball = MatchBall{};
+  ball.possession.history = history;
   observePossession(PossessionObservation::RESET_LIFECYCLE_BALL,
                     PossessionId::AARDVARK);
 }
@@ -844,7 +848,7 @@ void MatchEngine::resetLifecycleBallAardvark()
 void MatchEngine::assignScenarioOwnerAardvark(const MatchPlayer& carrier)
 {
   handBallTo(carrier.player);
-  ball.lastPossessor = carrier.player;
+  ball.possession.lastPossessor = carrier.player;
   if (carrier.isHomeTeam)
   {
     homePhase = TeamPhase::POSSESSION;
@@ -869,16 +873,16 @@ void MatchEngine::beginFedBallAardvark()
 
 void MatchEngine::finishFedBallAardvark(const MatchPlayer* receiver)
 {
-  ball.lastPossessor = nullptr;
-  ball.kicker = nullptr;
+  ball.possession.lastPossessor = nullptr;
+  ball.possession.kicker = nullptr;
   ball.kickerLockout = 0.0f;
   ball.touchAttempts = 0;
   if (receiver)
   {
-    ball.isPass = true;
-    ball.intendedReceiver = receiver->player;
-    ball.passByHome = receiver->isHomeTeam;
-    ball.passTarget = receiver->position;
+    ball.possession.isPass = true;
+    ball.possession.intendedReceiver = receiver->player;
+    ball.possession.passByHome = receiver->isHomeTeam;
+    ball.possession.passTarget = receiver->position;
   }
   observePossession(PossessionObservation::FINISH_FED_BALL,
                     PossessionId::AARDVARK);
@@ -886,14 +890,14 @@ void MatchEngine::finishFedBallAardvark(const MatchPlayer* receiver)
 
 void MatchEngine::rememberPhaseTeamAardvark(bool homeTeam)
 {
-  lastControlledTeamHome = homeTeam;
+  ball.possession.history.lastControlledTeamHome = homeTeam;
   observePossession(PossessionObservation::REMEMBER_PHASE_TEAM,
                     PossessionId::AARDVARK);
 }
 
 void MatchEngine::noteCarrierHistoryAardvark(const MatchPlayer& carrier)
 {
-  ball.lastPossessor = carrier.player;
+  ball.possession.lastPossessor = carrier.player;
   observePossession(PossessionObservation::NOTE_CARRIER_HISTORY,
                     PossessionId::AARDVARK);
 }
@@ -903,15 +907,15 @@ void MatchEngine::substitutePossessionAardvark(bool hadPossession,
                                                const Player* inPlayer)
 {
   if (hadPossession) handBallTo(inPlayer);
-  if (ball.lastPossessor && ball.lastPossessor->getId() == outgoingId)
-    ball.lastPossessor = inPlayer;
+  if (ball.possession.lastPossessor && ball.possession.lastPossessor->getId() == outgoingId)
+    ball.possession.lastPossessor = inPlayer;
   observePossession(PossessionObservation::SUBSTITUTE_POSSESSION,
                     PossessionId::AARDVARK);
 }
 
 bool MatchEngine::releaseRemovedPlayerAardvark(const Player* player)
 {
-  const bool owned = ball.possessedBy == player;
+  const bool owned = ball.possession.possessedBy == player;
   if (owned) clearPossession();
   observePossession(PossessionObservation::RELEASE_REMOVED_PLAYER,
                     PossessionId::AARDVARK);
@@ -920,14 +924,14 @@ bool MatchEngine::releaseRemovedPlayerAardvark(const Player* player)
 
 void MatchEngine::clearShooterHistoryAardvark()
 {
-  lastShooter = nullptr;
+  ball.possession.history.lastShooter = nullptr;
   observePossession(PossessionObservation::CLEAR_SHOOTER_HISTORY,
                     PossessionId::AARDVARK);
 }
 
 void MatchEngine::setPassFlightTargetAardvark(Vector2F target)
 {
-  ball.passTarget = {std::clamp(target.x, 0.0f, 1.0f),
+  ball.possession.passTarget = {std::clamp(target.x, 0.0f, 1.0f),
                      std::clamp(target.y, 0.0f, 1.0f)};
   observePossession(PossessionObservation::SET_PASS_FLIGHT_TARGET,
                     PossessionId::AARDVARK);
@@ -935,7 +939,7 @@ void MatchEngine::setPassFlightTargetAardvark(Vector2F target)
 
 void MatchEngine::noteGoalSideAardvark(bool homeTeam)
 {
-  ball.shotByHome = homeTeam;
+  ball.possession.shotByHome = homeTeam;
   observePossession(PossessionObservation::NOTE_GOAL_SIDE,
                     PossessionId::AARDVARK);
 }
@@ -945,8 +949,8 @@ void MatchEngine::prepareShotAssistAardvark(const MatchPlayer& shooter,
 {
   if (!header)
   {
-    shotAssistCandidate =
-        lastCompletedReceiver == shooter.player ? lastCompletedPasser : nullptr;
+    ball.possession.history.shotAssistCandidate =
+        ball.possession.history.lastCompletedReceiver == shooter.player ? ball.possession.history.lastCompletedPasser : nullptr;
   }
   observePossession(PossessionObservation::PREPARE_SHOT_ASSIST,
                     PossessionId::AARDVARK);
@@ -955,7 +959,7 @@ void MatchEngine::prepareShotAssistAardvark(const MatchPlayer& shooter,
 void MatchEngine::noteContactActorAardvark(const Player* player, float lockout,
                                            bool resetAttempts)
 {
-  ball.kicker = player;
+  ball.possession.kicker = player;
   ball.kickerLockout = lockout;
   if (resetAttempts) ball.touchAttempts = 0;
   observePossession(PossessionObservation::NOTE_CONTACT_ACTOR,
@@ -964,7 +968,7 @@ void MatchEngine::noteContactActorAardvark(const Player* player, float lockout,
 
 void MatchEngine::notePathChangeAardvark()
 {
-  ball.pathSince = ballNow();
+  ball.possession.pathSince = ballNow();
   ball.commitMisses = 0;
   observePossession(PossessionObservation::NOTE_PATH_CHANGE,
                     PossessionId::AARDVARK);
@@ -972,7 +976,7 @@ void MatchEngine::notePathChangeAardvark()
 
 void MatchEngine::advanceShotFlightClockAardvark(float dt)
 {
-  ball.shotElapsedSeconds += dt;
+  ball.possession.shotElapsedSeconds += dt;
   observePossession(PossessionObservation::ADVANCE_SHOT_FLIGHT_CLOCK,
                     PossessionId::AARDVARK);
 }
@@ -984,14 +988,14 @@ void MatchEngine::setBallMotionAardvark(const BallMotion& motion)
   ball.velocity = motion.velocity;
   ball.velocityZ = motion.velocityZ;
   ball.spin = motion.spin;
-  ball.isAerialDelivery = motion.isAerialDelivery;
+  ball.possession.isAerialDelivery = motion.isAerialDelivery;
 }
 
-void MatchEngine::endAerialDeliveryAardvark() { ball.isAerialDelivery = false; }
+void MatchEngine::endAerialDeliveryAardvark() { ball.possession.isAerialDelivery = false; }
 
 void MatchEngine::noteThrowTeamAardvark(bool homeTeam)
 {
-  ball.throwByHome = homeTeam;
+  ball.possession.throwByHome = homeTeam;
   observePossession(PossessionObservation::NOTE_THROW_TEAM,
                     PossessionId::AARDVARK);
 }

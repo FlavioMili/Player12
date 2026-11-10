@@ -138,7 +138,7 @@ const MatchPlayer* findPlayer(const MatchEngine& engine, PlayerID id)
 const MatchPlayer* managedCarrier(const MatchEngine& engine, bool home)
 {
   for (const MatchPlayer& player : engine.getPlayers())
-    if (player.player && player.player == engine.getBall().possessedBy &&
+    if (player.player && player.player == engine.getBall().possessionState().possessedBy &&
         player.isHomeTeam == home && !player.isGoalkeeper &&
         engine.getState() == MatchState::PLAYING)
       return &player;

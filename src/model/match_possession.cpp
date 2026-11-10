@@ -11,30 +11,62 @@ using namespace MatchEngineInternal;
 
 const Player* MatchEngine::getPossessionAttachment() const
 {
-  return ball.possessedBy;
+  return getPossessionState().possessedBy;
 }
 
 const Player* MatchEngine::getTouchClaimant() const
 {
-  return ball.inTouch ? ball.possessedBy : nullptr;
+  return getPossessionState().inTouch ? getPossessionState().possessedBy
+                                      : nullptr;
 }
 
 const Player* MatchEngine::getConfirmedController() const
 {
   if (state != MatchState::PLAYING) return nullptr;
-  return ball.inKeeperHands || (ball.inTouch && ball.touchCollected)
-             ? ball.possessedBy
+  return getPossessionState().inKeeperHands ||
+                 (getPossessionState().inTouch &&
+                  getPossessionState().touchCollected)
+             ? getPossessionState().possessedBy
              : nullptr;
 }
 
 const Player* MatchEngine::getRestartOwner() const
 {
-  return state != MatchState::PLAYING ? ball.possessedBy : nullptr;
+  return state != MatchState::PLAYING ? getPossessionState().possessedBy
+                                      : nullptr;
 }
 
 const Player* MatchEngine::getExpectedReceiver() const
 {
-  return ball.intendedReceiver;
+  return getPossessionState().intendedReceiver;
+}
+
+// Preserve individual legacy facts, including inconsistent helper-boundary
+// combinations. These do not infer eligibility or a complete contact history.
+bool MatchEngine::hasTouchClaim() const { return getPossessionState().inTouch; }
+bool MatchEngine::isTouchCollected() const
+{
+  return getPossessionState().touchCollected;
+}
+bool MatchEngine::isTouchDropping() const
+{
+  return getPossessionState().touchDropping;
+}
+bool MatchEngine::isKeeperHoldingBall() const
+{
+  return getPossessionState().inKeeperHands;
+}
+const Player* MatchEngine::getLastPossessionAttachment() const
+{
+  return getPossessionState().lastPossessor;
+}
+const Player* MatchEngine::getLegacyContactActor() const
+{
+  return getPossessionState().kicker;
+}
+const Player* MatchEngine::getPendingPasser() const
+{
+  return getPossessionState().touchPasser;
 }
 
 PossessionSnapshot MatchEngine::getPossessionSnapshot() const
@@ -46,24 +78,24 @@ PossessionSnapshot MatchEngine::getPossessionSnapshot() const
   view.tick = stepCounter;
   view.seconds = ballNow();
   view.openPlay = state == MatchState::PLAYING;
-  view.legacyOwner = id(ball.possessedBy);
-  view.expectedReceiver = id(ball.intendedReceiver);
-  view.pendingPasser = id(ball.touchPasser);
-  view.legacyLastPossessor = id(ball.lastPossessor);
-  view.legacyKicker = id(ball.kicker);
-  view.legacyDeflector = id(ball.deflectedBy);
-  view.lastControlledTeamHome = lastControlledTeamHome;
-  view.inTouch = ball.inTouch;
-  view.collected = ball.touchCollected;
-  view.dropping = ball.touchDropping;
-  view.inHands = ball.inKeeperHands;
-  view.pass = ball.isPass;
-  view.shot = ball.isShot;
+  view.legacyOwner = id(getPossessionState().possessedBy);
+  view.expectedReceiver = id(getPossessionState().intendedReceiver);
+  view.pendingPasser = id(getPossessionState().touchPasser);
+  view.legacyLastPossessor = id(getPossessionState().lastPossessor);
+  view.legacyKicker = id(getPossessionState().kicker);
+  view.legacyDeflector = id(getPossessionState().deflectedBy);
+  view.lastControlledTeamHome = getPossessionHistory().lastControlledTeamHome;
+  view.inTouch = getPossessionState().inTouch;
+  view.collected = getPossessionState().touchCollected;
+  view.dropping = getPossessionState().touchDropping;
+  view.inHands = getPossessionState().inKeeperHands;
+  view.pass = getPossessionState().isPass;
+  view.shot = getPossessionState().isShot;
   view.meetFor = id(ball.meetFor);
-  view.pathSince = ball.pathSince;
-  if (ball.possessedBy)
+  view.pathSince = getPossessionState().pathSince;
+  if (getPossessionState().possessedBy)
     for (const MatchPlayer& player : players)
-      if (player.player == ball.possessedBy)
+      if (player.player == getPossessionState().possessedBy)
       {
         view.ownerKnown = true;
         view.ownerActive = active(player);

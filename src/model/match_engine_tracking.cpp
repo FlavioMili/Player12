@@ -49,7 +49,7 @@ void MatchEngine::trackShot(const MatchPlayer& shooter, float xg, bool setPiece,
                             bool header, bool penalty)
 {
   if (!tracker.isEnabled()) return;
-  const MatchPlayer* creator = findMatchPlayer(shotAssistCandidate);
+  const MatchPlayer* creator = findMatchPlayer(getPossessionHistory().shotAssistCandidate);
   const bool credited = creator != nullptr && creator != &shooter &&
                         creator->isHomeTeam == shooter.isHomeTeam;
   tracker.shot(credited ? creator->statsIndex : MatchTracking::MAX_PLAYERS, xg,
@@ -59,7 +59,7 @@ void MatchEngine::trackShot(const MatchPlayer& shooter, float xg, bool setPiece,
 void MatchEngine::trackPressures()
 {
   if (!tracker.isEnabled() || state != MatchState::PLAYING) return;
-  const MatchPlayer* carrier = findMatchPlayer(ball.possessedBy);
+  const MatchPlayer* carrier = findMatchPlayer(getPossessionAttachment());
   if (carrier == nullptr) return;
   // The closest pressing opponent applies the pressure.
   const MatchPlayer* presser = nullptr;
@@ -77,5 +77,5 @@ void MatchEngine::trackPressures()
     }
   }
   if (presser != nullptr)
-    tracker.pressure(presser->statsIndex, possessionStartSeconds);
+    tracker.pressure(presser->statsIndex, getPossessionHistory().possessionStartSeconds);
 }

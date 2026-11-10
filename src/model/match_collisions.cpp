@@ -641,7 +641,7 @@ std::optional<std::pair<std::size_t, float>> MatchEngine::fallenBodyInPath(
     float seconds) const
 {
   using C = MatchTuning::Collision;
-  if (state != MatchState::PLAYING || (ball.possessedBy && !ball.inTouch)) return std::nullopt;
+  if (state != MatchState::PLAYING || (getPossessionAttachment() && !hasTouchClaim())) return std::nullopt;
   const Vector2F start = toMetres(ball.position);
   const Vector2F move = scaled(ball.velocity, seconds);
   const float startHeight = ball.z * MatchTuning::Units::BALL_Z_METRES;
@@ -690,10 +690,10 @@ void MatchEngine::bounceOffFallen(MatchPlayer& player)
 
 const Player* MatchEngine::lastTouchForRestart() const
 {
-  if (ball.deflectedBy && ball.pathSince == ball.deflectedPathSince &&
-      ball.lastPossessor == ball.deflectedAfter)
-    return ball.deflectedBy;
-  return ball.lastPossessor;
+  if (getPossessionState().deflectedBy && getPossessionState().pathSince == getPossessionState().deflectedPathSince &&
+      getLastPossessionAttachment() == getPossessionState().deflectedAfter)
+    return getPossessionState().deflectedBy;
+  return getLastPossessionAttachment();
 }
 
 std::size_t MatchEngine::knockSituation(std::size_t slot, std::size_t otherSlot,

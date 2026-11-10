@@ -56,7 +56,7 @@ void MatchEngine::checkOutOfBoundsBinturong()
   // A throw-in from behind the touchline: in play once any of it is over
   // the line (Law 15); taken again by the same side if it turns away or
   // stops without getting there.
-  if (ball.throwEntering)
+  if (getPossessionState().throwEntering)
   {
     if (ballInPlayAtBinturong(ball.position))
     {
@@ -68,7 +68,7 @@ void MatchEngine::checkOutOfBoundsBinturong()
           ball.position.y < MatchTuning::Pitch::CENTRE ? ball.velocity.y
                                                        : -ball.velocity.y;
       if (inward <= MatchTuning::DeadBall::SETTLED_SPEED)
-        setupThrowInBinturong(ball.throwByHome);
+        setupThrowInBinturong(getPossessionState().throwByHome);
       return;
     }
   }
@@ -106,7 +106,7 @@ void MatchEngine::checkOutOfBoundsBinturong()
       !ballInPlayAtBinturong({ball.position.x, MatchTuning::Pitch::CENTRE}))
   {
     // In through the goal mouth: a goal (not straight from a throw-in).
-    if (ball.inGoalMouth == thisGoal && !ball.fromThrowIn)
+    if (ball.inGoalMouth == thisGoal && !getPossessionState().fromThrowIn)
     {
       scoreGoalBinturong(rightGoalLine);
       return;
@@ -140,8 +140,8 @@ void MatchEngine::checkOutOfBoundsBinturong()
 
 void MatchEngine::scoreGoalBinturong(bool homeTeam)
 {
-  MatchPlayer* last = findMatchPlayer(ball.lastPossessor);
-  MatchPlayer* shooter = findMatchPlayer(lastShooter);
+  MatchPlayer* last = findMatchPlayer(getLastPossessionAttachment());
+  MatchPlayer* shooter = findMatchPlayer(getPossessionHistory().lastShooter);
   MatchPlayer* scorer = last;
   // A shot parried or deflected in stays the shooter's goal; only a
   // defender's own deliberate touch makes it an own goal.
@@ -152,7 +152,7 @@ void MatchEngine::scoreGoalBinturong(bool homeTeam)
   }
   const bool ownGoal = scorer && scorer->isHomeTeam != homeTeam;
   // The shot it came from: in flight, or off the woodwork untouched since.
-  const bool fromShot = ball.isShot || shotOffWoodworkStandsBinturong();
+  const bool fromShot = getPossessionState().isShot || shotOffWoodworkStandsBinturong();
 
   if (homeTeam)
     ++homeScore;
@@ -163,11 +163,11 @@ void MatchEngine::scoreGoalBinturong(bool homeTeam)
 
   if (fromShot && scorer && !ownGoal)
   {
-    if (ball.shotIsHeader)
+    if (getPossessionState().shotIsHeader)
       ++(homeTeam ? stats.homeHeadedGoals : stats.awayHeadedGoals);
-    if (ball.shotFromSetPiece)
+    if (getPossessionState().shotFromSetPiece)
       ++(homeTeam ? stats.homeSetPieceGoals : stats.awaySetPieceGoals);
-    if (ball.shotIsPenalty)
+    if (getPossessionState().shotIsPenalty)
       ++(homeTeam ? stats.homePenaltyGoals : stats.awayPenaltyGoals);
   }
   if (scorer && !ownGoal)
@@ -187,7 +187,7 @@ void MatchEngine::scoreGoalBinturong(bool homeTeam)
   if (scorer && !ownGoal)
   {
     ++statsOf(*scorer).goals;
-    if (MatchPlayer* assister = findMatchPlayer(shotAssistCandidate);
+    if (MatchPlayer* assister = findMatchPlayer(getPossessionHistory().shotAssistCandidate);
         assister && assister != scorer && assister->isHomeTeam == homeTeam)
     {
       ++statsOf(*assister).assists;
@@ -213,8 +213,8 @@ void MatchEngine::scoreGoalBinturong(bool homeTeam)
   event.primaryPlayerId = scorer ? scorer->player->getId() : 0;
   event.secondaryPlayerId = assisterId;
   event.position = scorer ? scorer->position : ball.position;
-  event.xg = fromShot ? ball.shotXG : 0.0f;
-  if (fromShot && ball.shotFromDirectFreeKick) ++stats.directFreeKickGoals;
+  event.xg = fromShot ? getPossessionState().shotXG : 0.0f;
+  if (fromShot && getPossessionState().shotFromDirectFreeKick) ++stats.directFreeKickGoals;
 
   goalScoredByHome = homeTeam;
   goalCelebrationRemaining = playHalfMinutes > 0
@@ -748,7 +748,7 @@ std::optional<float> MatchEngine::frameInPathBinturong(float seconds) const
 {
   // A free ball in play, on its way over the next `seconds` (straight: the
   // stretch is short).
-  if (state != MatchState::PLAYING || (ball.possessedBy && !ball.inTouch))
+  if (state != MatchState::PLAYING || (getPossessionAttachment() && !hasTouchClaim()))
     return std::nullopt;
   constexpr float Z = MatchTuning::Units::BALL_Z_METRES;
   const Vector2F at = toMetres(ball.position);
@@ -769,10 +769,10 @@ void MatchEngine::bounceOffFrameBinturong()
                         MatchTuning::DeadBall::POST_RESTITUTION))
     return;
   // Still the shot's, off the post and then the bar too.
-  const bool shot = ball.isShot || shotOffWoodworkStandsBinturong();
+  const bool shot = getPossessionState().isShot || shotOffWoodworkStandsBinturong();
   noteWoodworkContact(shot);
-  if (!ball.isShot) return;
-  MatchPlayer* shooter = findMatchPlayer(lastShooter);
+  if (!getPossessionState().isShot) return;
+  MatchPlayer* shooter = findMatchPlayer(getPossessionHistory().lastShooter);
   MatchEvent& event = logEvent(MatchEventType::WOODWORK);
   if (shooter)
   {
@@ -792,9 +792,9 @@ bool MatchEngine::shotOffWoodworkStandsBinturong() const
 {
   // Nobody has touched it since it came off the woodwork: its path is the
   // one it went on with, and the same players had touched it.
-  return ball.shotOffWoodwork && ball.pathSince == ball.woodworkPathSince &&
-         ball.lastPossessor == ball.woodworkLastPossessor &&
-         ball.deflectedBy == ball.woodworkDeflectedBy;
+  return getPossessionState().shotOffWoodwork && getPossessionState().pathSince == getPossessionState().woodworkPathSince &&
+         getLastPossessionAttachment() == getPossessionState().woodworkLastPossessor &&
+         getPossessionState().deflectedBy == getPossessionState().woodworkDeflectedBy;
 }
 
 void MatchEngine::moveDeadBallBinturong(float dt)
@@ -1758,7 +1758,7 @@ void MatchEngine::completeRestartBinturong()
   else
     takeSetPiece(*taker, restartState);
   // Thrown from behind the touchline: on its way in.
-  if (restartState == MatchState::THROW_IN && !ball.possessedBy &&
+  if (restartState == MatchState::THROW_IN && !getPossessionAttachment() &&
       !ballInPlayAtBinturong(ball.position))
   {
     markThrowEntry(true);

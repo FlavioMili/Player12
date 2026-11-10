@@ -271,7 +271,7 @@ struct BallWatch
   void observe(const MatchEngine& engine, const MatchPlayer& player)
   {
     const MatchBall& ball = engine.getBall();
-    const bool has = ball.possessedBy == player.player;
+    const bool has = engine.getPossessionAttachment() == player.player;
     if (had && !has) ++lost;
     had = has;
     if (has)
@@ -461,7 +461,7 @@ class MovementDrill : public Drill
     {
       ballWatch.observe(engine, *player);
       const MatchBall& ball = engine.getBall();
-      if (!ball.possessedBy)
+      if (!engine.getPossessionAttachment())
       {
         looseBall = ball.position;
         if (path == AI) engine.setDrillTarget(id, ball.position, true);
@@ -2591,8 +2591,7 @@ class LooseBallDrill final : public Drill
     const double now = secondsOf(engine);
     if (!wonAt)
     {
-      const MatchBall& ball = engine.getBall();
-      const Player* holder = ball.possessedBy;
+      const Player* holder = engine.getPossessionAttachment();
       if (holder)
       {
         wonAt = now;
@@ -2847,28 +2846,28 @@ class TackleDrill final : public Drill
     }
     if (nudgeFrom && !nudgeEnd &&
         (std::hypot(ball.velocity.x, ball.velocity.y) < 0.5f ||
-         ball.possessedBy != defender->player || now - nudgeSince > 1.5))
+         engine.getPossessionAttachment() != defender->player || now - nudgeSince > 1.5))
     {
       nudgeEnd = ball.position;
       nudgeAttackerGap = metresBetween(attacker->position, ball.position);
     }
     after = engine.getStats();
     lastGap = metresBetween(attacker->position, ball.position);
-    if (outcome == Outcome::NONE && ball.possessedBy == attacker->player)
+    if (outcome == Outcome::NONE && engine.getPossessionAttachment() == attacker->player)
       largestGap = std::max(largestGap, lastGap);
     if (outcome == Outcome::NONE)
     {
       const MatchPlayer* mate = mateId ? slotOf(engine, mateId) : nullptr;
       const bool sideHasIt =
-          ball.possessedBy &&
-          (ball.possessedBy == defender->player ||
-           (mate && ball.possessedBy == mate->player)) &&
-          (!ball.inTouch || ball.touchCollected);
+          engine.getPossessionAttachment() &&
+          (engine.getPossessionAttachment() == defender->player ||
+           (mate && engine.getPossessionAttachment() == mate->player)) &&
+          (!engine.hasTouchClaim() || engine.isTouchCollected());
       if (engine.getState() != MatchState::PLAYING)
         outcome = Outcome::STOPPED;
       else if (sideHasIt)
         outcome = Outcome::WON;
-      else if (ball.possessedBy == attacker->player &&
+      else if (engine.getPossessionAttachment() == attacker->player &&
                attacker->position.x >= endPoint.x)
         outcome = Outcome::KEPT;
       else if (now > TIME_LIMIT_SECONDS)
@@ -3261,7 +3260,7 @@ class CollisionDrill final : public Drill
     const int offCount = engine.getStats().collisionBallOffFallen;
     if (ballFedAt && !ballOff && offCount > ballOffAtFeed)
     {
-      ballOff = BallOff{ballNow.deflectedBy && ballNow.deflectedBy->getId() == aId ? 'A' : 'B',
+      ballOff = BallOff{ballNow.possessionState().deflectedBy && ballNow.possessionState().deflectedBy->getId() == aId ? 'A' : 'B',
                         ballSpeedBefore, length2(ballNow.velocity), now - *ballFedAt};
     }
     ballSpeedBefore = length2(ballNow.velocity);
@@ -3648,8 +3647,8 @@ class ShotDrill final : public Drill
           event.primaryPlayerId == shooterId)
       {
         const MatchBall& ball = engine.getBall();
-        shot = Shot{event.position, event.xg, ball.shotOnTarget,
-                    ball.shotTargetY, now};
+        shot = Shot{event.position, event.xg, ball.possessionState().shotOnTarget,
+                    ball.possessionState().shotTargetY, now};
         continue;
       }
       if (!shot)
@@ -3677,12 +3676,12 @@ class ShotDrill final : public Drill
       }
     }
     const MatchBall& ball = engine.getBall();
-    if (outcome.empty() && shot && !ball.isShot && ball.possessedBy &&
-        ball.possessedBy->getId() == keeperId)
+    if (outcome.empty() && shot && !ball.possessionState().isShot && engine.getPossessionAttachment() &&
+        engine.getPossessionAttachment()->getId() == keeperId)
       // Gathered with no event: a weak shot the keeper simply picks up.
       outcome = shot->onTarget ? "saved" : "off target";
-    if (outcome.empty() && !shot && ball.possessedBy &&
-        ball.possessedBy->getId() != shooterId)
+    if (outcome.empty() && !shot && engine.getPossessionAttachment() &&
+        engine.getPossessionAttachment()->getId() != shooterId)
       outcome = "no shot (lost the ball)";
     if (outcome.empty() && !shot && now >= (forced ? 8.0 : 15.0))
       outcome = "no shot (time up)";
@@ -4034,7 +4033,7 @@ class ShotBlockDrill final : public Drill
     if (ballKind > 0.5f && shotAimed && defender)
     {
       const MatchBall& ball = engine.getBall();
-      if (!shotAt && ball.isPass && !(ball.possessedBy && ball.possessedBy->getId() == shooterId))
+      if (!shotAt && ball.possessionState().isPass && !(engine.getPossessionAttachment() && engine.getPossessionAttachment()->getId() == shooterId))
       {
         shotAt = now;
         speedAtShot = speedOf(*defender);
@@ -4052,7 +4051,7 @@ class ShotBlockDrill final : public Drill
           hits += stats.ballBodyHitsByPart[index] - bodyHitsBefore[index];
         if (hits > 0)
           outcome = "blocked";
-        else if (ball.possessedBy && ball.possessedBy->getId() == defenderId)
+        else if (engine.getPossessionAttachment() && engine.getPossessionAttachment()->getId() == defenderId)
           outcome = "intercepted";
         else if (now >= *shotAt + 4.0)
           outcome = "past him";
@@ -4126,7 +4125,7 @@ class ShotBlockDrill final : public Drill
                     ? " (reaction block)"
                     : " (stride)";
       // Still going in off him: still the shot (shot block plan step 4).
-      stillShot = engine.getBall().isShot;
+      stillShot = engine.getBall().possessionState().isShot;
     }
     // After a block: what came of it (a goal, in off him or from a rebound;
     // a save; out; or someone's).
@@ -4143,9 +4142,8 @@ class ShotBlockDrill final : public Drill
           case MatchEventType::THROW_IN: afterBlock = "out"; break;
           default: break;
         }
-      const MatchBall& ball = engine.getBall();
-      if (afterBlock.empty() && ball.possessedBy && !ball.inTouch)
-        afterBlock = ball.possessedBy->getId() == defenderId ? "his" : "shooter's";
+      if (afterBlock.empty() && engine.getPossessionAttachment() && !engine.hasTouchClaim())
+        afterBlock = engine.getPossessionAttachment()->getId() == defenderId ? "his" : "shooter's";
       if (afterBlock.empty() && endAt && now >= *endAt + 4.0) afterBlock = "loose";
     }
     if (outcome.empty() && !shotAt && now >= 10.0) outcome = "no shot";
@@ -4598,9 +4596,9 @@ class FirstTouchDrill final : public Drill
     if (fed && engine.getSimulatedSteps() % 2 == 0)
       ballPath.push_back(ball.position);
 
-    const bool his = ball.possessedBy && ball.possessedBy->getId() == receiverId;
+    const bool his = engine.getPossessionAttachment() && engine.getPossessionAttachment()->getId() == receiverId;
     const bool theirs =
-        ball.possessedBy && hasDefender && ball.possessedBy->getId() == defenderId;
+        engine.getPossessionAttachment() && hasDefender && engine.getPossessionAttachment()->getId() == defenderId;
     if (fed && outcome.empty())
     {
       if (his && !touch)
@@ -4608,7 +4606,7 @@ class FirstTouchDrill final : public Drill
         // His touch: read what it was from the ball as it leaves him.
         Touch reading;
         reading.at = now;
-        reading.inTouch = ball.inTouch;
+        reading.inTouch = engine.hasTouchClaim();
         reading.contactGap = ball.touchContactGap;
         reading.height = ball.touchContactHeight;
         reading.angleError = ball.touchAngleError;
@@ -4638,10 +4636,10 @@ class FirstTouchDrill final : public Drill
         touch = reading;
         if (runUp > 0.0f) engine.setDrillTarget(receiverId, std::nullopt, false);
         // The old trap (a ball off his feet): the ball is his at once.
-        if (!ball.inTouch) outcome = "collected (old trap)";
+        if (!engine.hasTouchClaim()) outcome = "collected (old trap)";
       }
       // Rolling to him until he collects it (then he dribbles it on).
-      const bool rolling = ball.inTouch && !ball.touchCollected;
+      const bool rolling = engine.hasTouchClaim() && !engine.isTouchCollected();
       if (touch && rolling && his)
         peakGap = std::max(peakGap, ball.touchPeakGap);
       if (touch && his && !rolling && outcome.empty())
@@ -4649,7 +4647,7 @@ class FirstTouchDrill final : public Drill
       if (theirs) outcome = touch ? "lost to the defender" : "intercepted";
       if (engine.getState() != MatchState::PLAYING)
         outcome = touch ? "lost (out of play)" : "out of play";
-      if (touch && !ball.possessedBy) released = true;
+      if (touch && !engine.getPossessionAttachment()) released = true;
       if (outcome.empty() && now >= fedAt + TIME_LIMIT)
         outcome = touch ? "no result" : "never touched";
     }
@@ -5327,7 +5325,7 @@ class PassDrill final : public Drill
         closestHeight = ball.z * MatchTuning::Units::BALL_Z_METRES;
         closestSpeed = std::hypot(ball.velocity.x, ball.velocity.y);
       }
-      const PlayerID owner = ball.possessedBy ? ball.possessedBy->getId() : 0;
+      const PlayerID owner = engine.getPossessionAttachment() ? engine.getPossessionAttachment()->getId() : 0;
       if (!hasReceiver && flight.settled(pass->kind, ball))
         outcome = flight.landing ? std::format("landed {:.1f} m off",
                                                flight.landingMiss)
@@ -5789,7 +5787,7 @@ class FirstTimePassDrill final : public Drill
     if (!pass && outcome.empty())
     {
       // His first touch, if he takes one: the ball his before he passes.
-      if (ball.possessedBy && ball.possessedBy->getId() == playerId)
+      if (engine.getPossessionAttachment() && engine.getPossessionAttachment()->getId() == playerId)
         touchedFirst = true;
       const StrikeContactStats& after = engine.getStrikeContacts();
       for (std::size_t kind = 0; kind < STRIKE_KIND_COUNT; ++kind)
@@ -7343,7 +7341,7 @@ class ShotTargetDrill final : public Drill
     else if (ordered && !strike)
     {
       // A ball played to him: his touch, if he takes one, before the shot.
-      if (ball.possessedBy && ball.possessedBy->getId() == shooterId)
+      if (engine.getPossessionAttachment() && engine.getPossessionAttachment()->getId() == shooterId)
         touchedFirst = true;
       readStrike(engine, now);
       if (strike && shooter)
@@ -7378,13 +7376,13 @@ class ShotTargetDrill final : public Drill
       const auto& events = engine.getEvents();
       for (std::size_t index = eventsAtStrike; index < events.size(); ++index)
         if (events[index].type == MatchEventType::SAVE) outcome = "saved";
-      if (ball.possessedBy && ball.possessedBy->getId() == keeperId)
+      if (engine.getPossessionAttachment() && engine.getPossessionAttachment()->getId() == keeperId)
         outcome = "saved";
     }
     if (strike && outcome.empty())
     {
       // The last reading before it crosses the line: its pace there.
-      if (ball.isShot && ball.position.x < 1.0f)
+      if (ball.possessionState().isShot && ball.position.x < 1.0f)
       {
         strike->lineSpeed = std::sqrt(ball.velocity.x * ball.velocity.x +
                                       ball.velocity.y * ball.velocity.y +
@@ -7393,7 +7391,7 @@ class ShotTargetDrill final : public Drill
       }
       if (ball.position.x >= 1.0f || engine.getState() != MatchState::PLAYING)
         outcome = result();
-      else if (!ball.isShot || now >= strike->at + 6.0)
+      else if (!ball.possessionState().isShot || now >= strike->at + 6.0)
         outcome = "short";
     }
     if (!outcome.empty() && !endAt) endAt = now;
@@ -7658,8 +7656,8 @@ class ShotTargetDrill final : public Drill
           static_cast<float>(b.factorSum[factor] - a.factorSum[factor]);
     reading.speed = std::hypot(ball.velocity.x, ball.velocity.y);
     reading.lift = ball.velocityZ;
-    reading.crossingY = (ball.shotTargetY - 0.5f) * WIDTH;
-    reading.crossingZ = ball.shotTargetHeightMetres;
+    reading.crossingY = (ball.possessionState().shotTargetY - 0.5f) * WIDTH;
+    reading.crossingZ = ball.possessionState().shotTargetHeightMetres;
     strike = reading;
   }
 
@@ -7999,7 +7997,7 @@ class HeaderTargetDrill final : public Drill
     const MatchBall& ball = engine.getBall();
     const MatchPlayer* player = slotOf(engine, playerId);
     if (engine.getSimulatedSteps() % 2 == 0) ballPath.push_back(ball.position);
-    const bool his = ball.possessedBy && ball.possessedBy->getId() == playerId;
+    const bool his = engine.getPossessionAttachment() && engine.getPossessionAttachment()->getId() == playerId;
     if (runIn > 0.0f && !running && now >= fedAt + runDelay)
     {
       // Off he goes, flat out up the pitch through his spot.
@@ -8063,7 +8061,7 @@ class HeaderTargetDrill final : public Drill
           dropped = ball.position;
           droppedAt = now;
         }
-        if (his && (!ball.inTouch || ball.touchCollected))
+        if (his && (!engine.hasTouchClaim() || engine.isTouchCollected()))
         {
           outcome = "cushioned and kept";
           collectedAt = now;
@@ -8396,7 +8394,7 @@ class HeaderTargetDrill final : public Drill
     const MatchBall& ball = engine.getBall();
     Header reading;
     reading.at = now;
-    reading.shot = ball.isShot;
+    reading.shot = ball.possessionState().isShot;
     reading.angleFailed = b.angleFailed > a.angleFailed;
     reading.weightFailed = b.weightFailed > a.weightFailed;
     reading.angleError = static_cast<float>(b.angleErrorSum - a.angleErrorSum);
@@ -8438,8 +8436,8 @@ class HeaderTargetDrill final : public Drill
           {body.x / bodyLength, body.y / bodyLength},
           {ball.velocity.x / reading.speed, ball.velocity.y / reading.speed});
     }
-    reading.crossingY = (ball.shotTargetY - 0.5f) * WIDTH;
-    reading.crossingZ = ball.shotTargetHeightMetres;
+    reading.crossingY = (ball.possessionState().shotTargetY - 0.5f) * WIDTH;
+    reading.crossingZ = ball.possessionState().shotTargetHeightMetres;
     header = reading;
   }
 
@@ -8693,12 +8691,12 @@ class BodyControlDrill final : public Drill
     const MatchBall& ball = engine.getBall();
     const MatchPlayer* player = slotOf(engine, playerId);
     if (engine.getSimulatedSteps() % 2 == 0) ballPath.push_back(ball.position);
-    const bool his = ball.possessedBy && ball.possessedBy->getId() == playerId;
+    const bool his = engine.getPossessionAttachment() && engine.getPossessionAttachment()->getId() == playerId;
     if (!met && outcome.empty())
     {
       // Off his head, chest or thigh, by the height he met it at.
       const char* part =
-          !(his && ball.inTouch && ball.touchDropping) ? nullptr
+          !(his && engine.hasTouchClaim() && engine.isTouchDropping()) ? nullptr
           : ball.touchContactHeight > lines.head       ? "head"
           : ball.touchContactHeight > lines.chest      ? "chest"
                                                        : "thigh";
@@ -8741,7 +8739,7 @@ class BodyControlDrill final : public Drill
       {
         outcome = std::format(
             "not his {} ({})", partName(),
-            ball.inTouch ? "his feet" : "trapped dead: the old trap");
+            engine.hasTouchClaim() ? "his feet" : "trapped dead: the old trap");
       }
       else if (engine.getLastHeadPart())
       {
@@ -8761,7 +8759,7 @@ class BodyControlDrill final : public Drill
         dropped = ball.position;
         droppedAt = now;
       }
-      if (his && ball.inTouch && ball.touchCollected)
+      if (his && engine.hasTouchClaim() && engine.isTouchCollected())
       {
         outcome = "kept";
         collectedAt = now;
@@ -9040,8 +9038,8 @@ class LooseHighBallDrill final : public Drill
     if (!contact)
     {
       // The first of them to play it (head, chest or foot), or it lands.
-      const PlayerID kicker = ball.kicker ? ball.kicker->getId() : 0;
-      const PlayerID holder = ball.possessedBy ? ball.possessedBy->getId() : 0;
+      const PlayerID kicker = engine.getLegacyContactActor() ? engine.getLegacyContactActor()->getId() : 0;
+      const PlayerID holder = engine.getPossessionAttachment() ? engine.getPossessionAttachment()->getId() : 0;
       const PlayerID by = kicker == homeId || kicker == awayId ? kicker : holder;
       if (by == homeId || by == awayId)
       {

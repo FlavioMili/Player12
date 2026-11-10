@@ -270,7 +270,7 @@ void DebugInspector::renderTeam(const SandboxRecorder& recorder,
     ImGui::TableSetupColumn("Stamina");
     ImGui::TableHeadersRow();
     const PlayerID owner =
-        engine.getBall().possessedBy ? engine.getBall().possessedBy->getId() : 0;
+        engine.getPossessionAttachment() ? engine.getPossessionAttachment()->getId() : 0;
     for (const MatchPlayer& slot : engine.getPlayers())
     {
       if (!slot.player || slot.isHomeTeam != home || !slot.onPitch) continue;
@@ -381,7 +381,7 @@ void DebugInspector::renderPlayer(const SandboxRecorder& recorder,
                       "a player switches this off.");
   ImGui::SameLine();
   const PlayerID owner =
-      engine.getBall().possessedBy ? engine.getBall().possessedBy->getId() : 0;
+      engine.getPossessionAttachment() ? engine.getPossessionAttachment()->getId() : 0;
   if (follow_ball && owner != 0) followed = owner;
   const PlayerID inspected = follow_ball && followed != 0 ? followed : selected;
 

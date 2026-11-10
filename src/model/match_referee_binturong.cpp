@@ -37,7 +37,7 @@ bool MatchEngine::deniesGoalChanceBinturong(const MatchPlayer& victim,
                                             const MatchPlayer& offender) const
 {
   // Only the player in control of the ball can be denied an obvious chance.
-  if (ball.possessedBy != victim.player) return false;
+  if (getPossessionAttachment() != victim.player) return false;
   const float goalX = victim.isHomeTeam ? 1.0f : 0.0f;
   const Vector2F goal{goalX, MatchTuning::Pitch::CENTRE};
   if (distance(victim.position, goal) >
@@ -106,7 +106,7 @@ void MatchEngine::commitFoulBinturong(MatchPlayer& offender,
 
   // Advantage: the fouled side kept the ball in a promising attack outside
   // the box, so play continues unless the attack breaks down quickly.
-  const bool victimKeepsBall = ball.possessedBy == victim.player;
+  const bool victimKeepsBall = getPossessionAttachment() == victim.player;
   const bool playAdvantage =
       !ballWon && victimKeepsBall && !inBox && promisingAttack &&
       sanction != MatchRules::FoulSanction::RED &&
@@ -145,7 +145,7 @@ void MatchEngine::commitFoulBinturong(MatchPlayer& offender,
 void MatchEngine::updatePendingAdvantageBinturong(float dt)
 {
   if (!pendingAdvantage.active) return;
-  const MatchPlayer* carrier = findMatchPlayer(ball.possessedBy);
+  const MatchPlayer* carrier = findMatchPlayer(getPossessionAttachment());
   if (carrier && carrier->isHomeTeam != pendingAdvantage.fouledTeamHome)
   {
     // The advantage did not materialise: back for the original free kick.

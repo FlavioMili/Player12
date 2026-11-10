@@ -162,7 +162,7 @@ void SandboxRecorder::onStepEnd(const MatchEngine& engine)
   }
 
   // Possession: only a new owner is a change (a kicked ball is in flight).
-  if (const Player* owner = engine.getBall().possessedBy;
+  if (const Player* owner = engine.getPossessionAttachment();
       owner && owner != possessor)
   {
     bool ownerHome = true;
@@ -233,6 +233,6 @@ std::uint64_t SandboxRecorder::stateChecksum(const MatchEngine& engine)
   add(ball.position.x);
   add(ball.position.y);
   add(ball.z);
-  add(idOf(ball.possessedBy));
+  add(idOf(engine.getPossessionAttachment()));
   return hash == 0 ? 1 : hash;
 }

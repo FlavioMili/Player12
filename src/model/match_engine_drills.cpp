@@ -134,7 +134,7 @@ bool MatchEngine::startDrill(const MatchScenario& scenario)
     return false;
   if (scenario.carrierInHands)
     if (MatchPlayer* carrier = drillPlayer(scenario.carrierId);
-        carrier && ball.possessedBy == carrier->player)
+        carrier && getPossessionAttachment() == carrier->player)
       takeInHandsBinturong(*carrier, ball.position, ball.z * MatchTuning::Units::BALL_Z_METRES);
   captureInterpolationFrame();
   return true;

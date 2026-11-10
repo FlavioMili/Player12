@@ -688,7 +688,7 @@ void MatchEngine::readShotAardvark(const MatchPlayer& keeper,
           ? std::clamp((keeper.position.x - ball.position.x) / span, 0.0f, 1.0f)
           : 1.0f;
   const float predictedY =
-      ball.position.y + (ball.shotTargetY - ball.position.y) * t;
+      ball.position.y + (getPossessionState().shotTargetY - ball.position.y) * t;
   const float readError =
       gaussian(rng) * MatchTuning::Goalkeeper::READ_ERROR_METRES *
       (1.0f - keeper.goalkeeping * 0.6f) / MatchTuning::Pitch::WIDTH_METRES;
@@ -705,7 +705,7 @@ void MatchEngine::readShotAardvark(const MatchPlayer& keeper,
     const float along = (other.position.x - ball.position.x) / span;
     if (along <= 0.05f || along >= 0.95f) continue;
     const float laneY =
-        ball.position.y + (ball.shotTargetY - ball.position.y) * along;
+        ball.position.y + (getPossessionState().shotTargetY - ball.position.y) * along;
     if (std::abs(other.position.y - laneY) * MatchTuning::Pitch::WIDTH_METRES <
         MatchTuning::Goalkeeper::SCREEN_WIDTH_METRES)
     {
@@ -725,7 +725,7 @@ void MatchEngine::diveGoalkeeperAardvark(MatchPlayer& keeper, float dt)
 {
   GoalkeeperControl& control = keepers[keeper.isHomeTeam ? 0 : 1];
   control.timer += dt;
-  if (!ball.isShot || ball.shotSaveResolved)
+  if (!getPossessionState().isShot || getPossessionState().shotSaveResolved)
   {
     control.state = GoalkeeperState::RECOVER;
     control.timer = 0.0f;
@@ -807,7 +807,7 @@ MatchEngine::SaveAttempt MatchEngine::attemptSaveAardvark(
                   MatchTuning::Goalkeeper::SAVE_SKILL_BONUS,
           MatchTuning::Goalkeeper::MIN_SAVE_CHANCE,
           MatchTuning::Goalkeeper::MAX_SAVE_CHANCE) *
-      (ball.shotIsPenalty ? MatchTuning::Goalkeeper::PENALTY_SAVE_FACTOR
+      (getPossessionState().shotIsPenalty ? MatchTuning::Goalkeeper::PENALTY_SAVE_FACTOR
                           : 1.0f);
   if (randomFloat(0.0f, 1.0f) >= saveChance) return {};
   return {true, stretch, speedExcess, crossingHeight};
@@ -1246,7 +1246,7 @@ MatchEngine::BallRelease MatchEngine::releaseFromAardvark(const MatchPlayer& kic
       break;
     case ReleaseKind::CLEARANCE:
       // A loose ball where it lies, else where he meets it; off the ground.
-      from.position = ball.inTouch ? ball.position : strikePointAardvark(kicker);
+      from.position = hasTouchClaim() ? ball.position : strikePointAardvark(kicker);
       break;
     case ReleaseKind::CLEAR_BEHIND:
     case ReleaseKind::HEADER:

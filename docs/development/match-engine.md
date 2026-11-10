@@ -158,8 +158,9 @@ position. Aerial deliveries also go through `resolveAerialContest()`.
 
 `setPossession()` centralizes ownership, flight cleanup, touch statistics and
 team transitions. Use it when adding a new reception mechanism. `launchBall()`
-and `clearFlightState()` maintain kick/flight bookkeeping. Setting only
-`ball.possessedBy` in a new feature risks leaving stale pass or shot state.
+and `clearFlightState()` maintain kick/flight bookkeeping. Possession storage is
+private; new transitions must use the selected possession helpers, preserving
+receipt, flight and history together.
 
 Expected goals estimates chance quality and influences shot selection. Goals
 are resolved through the struck ball, blocks, saves and goal-line crossing;
@@ -181,10 +182,10 @@ decides which restart or period comes next.
 
 ## Determinism, replay and observation
 
-For the read-only possession projection, invariant diagnostics and paired
-`--trace-possession` command, see [Possession](possession.md). These Stage 1
-tools observe ownership without changing policy. The first Stage 2 slice adds
-per-match Aardvark/Binturong selection and dispatch for the shared ownership helpers.
+For the consolidated possession record, per-match Aardvark/Binturong selection,
+const reader queries, boundary audit and paired `--trace-possession` command, see
+[Possession](possession.md). Stages 1–3 preserve existing behaviour; control/claim
+policy changes remain Stage 4 work.
 
 The match uses seeded `std::mt19937` streams for play and incidents, with
 in-tree sampling helpers. Hash/epoch noise supplies stable variation for some

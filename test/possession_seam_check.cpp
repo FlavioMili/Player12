@@ -9,6 +9,8 @@
 #include <memory>
 #include <nlohmann/json.hpp>
 #include <tuple>
+#include <type_traits>
+#include <utility>
 #include <vector>
 
 #include "model/match_engine.h"
@@ -36,6 +38,88 @@ void check(bool value, const char* message)
   }
 }
 
+template <class T>
+concept ExposesPossessionStorage = requires(T& value) { value.possession; };
+template <class T>
+concept ExposesLegacyOwner = requires(T& value) { value.possessedBy; };
+static_assert(!ExposesPossessionStorage<MatchBall>);
+static_assert(!ExposesLegacyOwner<MatchBall>);
+static_assert(
+    std::is_same_v<decltype(std::declval<MatchBall&>().possessionState()),
+                   const MatchPossessionState&>);
+static_assert(
+    std::is_same_v<decltype(std::declval<MatchEngine&>().getPossessionState()),
+                   const MatchPossessionState&>);
+static_assert(std::is_same_v<
+              decltype(std::declval<MatchEngine&>().getPossessionHistory()),
+              const PossessionHistory&>);
+
+// Compare every stored possession/history field, without padding or object
+// addresses.
+auto possessionStateKey(const MatchEngine& engine)
+{
+  const auto& s = engine.getPossessionState();
+  return std::tuple{
+      s.inKeeperHands,
+      s.heldFrom.x,
+      s.heldFrom.y,
+      s.heldFrom.z,
+      s.heldSince,
+      s.heldRelease,
+      s.possessedBy,
+      s.inTouch,
+      s.touchCollected,
+      s.nudgedBy,
+      s.nudgedFrom,
+      s.touchPasser,
+      s.touchDropping,
+      s.lastPossessor,
+      s.intendedReceiver,
+      s.kicker,
+      s.pathSince,
+      s.deflectedBy,
+      s.deflectedPathSince,
+      s.deflectedAfter,
+      s.isPass,
+      s.passTarget.x,
+      s.passTarget.y,
+      s.passByHome,
+      s.passWasOffside,
+      s.isShot,
+      s.shotByHome,
+      s.shotOnTarget,
+      s.shotXG,
+      s.shotTargetY,
+      s.shotTargetHeightMetres,
+      s.shotElapsedSeconds,
+      s.shotIsHeader,
+      s.shotIsPenalty,
+      s.shotFromSetPiece,
+      s.shotSaveResolved,
+      s.shotBlocked,
+      s.shotFromDirectFreeKick,
+      s.isAerialDelivery,
+      s.fromThrowIn,
+      s.throwEntering,
+      s.throwByHome,
+      s.shotOffWoodwork,
+      s.woodworkPathSince,
+      s.woodworkLastPossessor,
+      s.woodworkDeflectedBy,
+      s.history.lastControlledTeamHome,
+      s.history.possessionStartSeconds,
+      s.history.lastCompletedPasser,
+      s.history.lastCompletedReceiver,
+      s.history.lastShooter,
+      s.history.shotAssistCandidate,
+      s.history.headerRun,
+      s.history.headerRunLastHome,
+      s.history.pendingTackle.has_value(),
+      s.history.pendingTackle ? s.history.pendingTackle->tackler : nullptr,
+      s.history.pendingTackle ? s.history.pendingTackle->homeTeam : false,
+      s.history.pendingTackle ? s.history.pendingTackle->contest : false};
+}
+
 class Routes final : public MatchRecorder
 {
  public:
@@ -57,6 +141,15 @@ class Routes final : public MatchRecorder
                   (state.openPlay ? 0 : state.legacyOwner) &&
               playerId(engine.getExpectedReceiver()) == state.expectedReceiver,
           "possession reader queries agree with value projection");
+    check(engine.hasTouchClaim() == state.inTouch &&
+              engine.isTouchCollected() == state.collected &&
+              engine.isTouchDropping() == state.dropping &&
+              engine.isKeeperHoldingBall() == state.inHands &&
+              playerId(engine.getLastPossessionAttachment()) ==
+                  state.legacyLastPossessor &&
+              playerId(engine.getLegacyContactActor()) == state.legacyKicker &&
+              playerId(engine.getPendingPasser()) == state.pendingPasser,
+          "touch and history queries agree with independent value projection");
     const auto& ball = engine.getBall();
     const std::array<float, 8> motion{
         ball.position.x, ball.position.y, ball.z,         ball.velocity.x,
@@ -64,38 +157,51 @@ class Routes final : public MatchRecorder
     if (kind == PossessionObservation::RECORD_PASS_COMPLETION)
     {
       incoming = motion;
-      incomingDelivery = ball.isAerialDelivery;
+      incomingDelivery = ball.possessionState().isAerialDelivery;
       haveIncoming = true;
     }
     if (kind == PossessionObservation::CONSUME_FIRST_TIME_INTENT)
-      preservesIncoming = preservesIncoming && haveIncoming &&
-                          motion == incoming &&
-                          incomingDelivery == ball.isAerialDelivery;
+      preservesIncoming =
+          preservesIncoming && haveIncoming && motion == incoming &&
+          incomingDelivery == ball.possessionState().isAerialDelivery;
     if (kind == PossessionObservation::NOTE_CUSHIONED_HEADER)
-      contactStates = contactStates && ball.inTouch && !ball.touchCollected &&
-                      ball.touchDropping && ball.possessedBy;
+      contactStates = contactStates && ball.possessionState().inTouch &&
+                      !ball.possessionState().touchCollected &&
+                      ball.possessionState().touchDropping &&
+                      ball.possessionState().possessedBy;
     if (kind == PossessionObservation::NOTE_TACKLE_NUDGE)
-      contactStates = contactStates && ball.inTouch && ball.nudgedBy &&
-                      ball.nudgedFrom && ball.nudgedBy == ball.possessedBy;
-    if (kind == PossessionObservation::BEGIN_POKED_TACKLE)
-      contactStates = contactStates && !ball.possessedBy && !ball.inTouch &&
-                      !ball.isPass && !ball.isShot;
-    if (kind == PossessionObservation::NOTE_FALLEN_DEFLECTION)
-      contactStates = contactStates && ball.deflectedBy &&
-                      ball.deflectedPathSince == ball.pathSince &&
-                      ball.deflectedAfter == ball.lastPossessor;
-    if (kind == PossessionObservation::BEGIN_BODY_DEFLECTION)
-      contactStates = contactStates && !ball.isPass && !ball.isShot;
-    if (kind == PossessionObservation::END_DEFLECTED_SHOT_FLIGHT)
-      contactStates = contactStates && !ball.isShot && !ball.shotOnTarget;
-    if (kind == PossessionObservation::BEGIN_KEEPER_HOLD)
-      contactStates = contactStates && ball.inKeeperHands && ball.possessedBy &&
-                      !ball.inTouch;
-    if (kind == PossessionObservation::END_KEEPER_HOLD)
-      contactStates = contactStates && !ball.inKeeperHands;
-    if (kind == PossessionObservation::BEGIN_KEEPER_HAND_REBOUND)
       contactStates =
-          contactStates && !ball.isPass && !ball.isShot && ball.kicker;
+          contactStates && ball.possessionState().inTouch &&
+          ball.possessionState().nudgedBy &&
+          ball.possessionState().nudgedFrom &&
+          ball.possessionState().nudgedBy == ball.possessionState().possessedBy;
+    if (kind == PossessionObservation::BEGIN_POKED_TACKLE)
+      contactStates = contactStates && !ball.possessionState().possessedBy &&
+                      !ball.possessionState().inTouch &&
+                      !ball.possessionState().isPass &&
+                      !ball.possessionState().isShot;
+    if (kind == PossessionObservation::NOTE_FALLEN_DEFLECTION)
+      contactStates = contactStates && ball.possessionState().deflectedBy &&
+                      ball.possessionState().deflectedPathSince ==
+                          ball.possessionState().pathSince &&
+                      ball.possessionState().deflectedAfter ==
+                          ball.possessionState().lastPossessor;
+    if (kind == PossessionObservation::BEGIN_BODY_DEFLECTION)
+      contactStates = contactStates && !ball.possessionState().isPass &&
+                      !ball.possessionState().isShot;
+    if (kind == PossessionObservation::END_DEFLECTED_SHOT_FLIGHT)
+      contactStates = contactStates && !ball.possessionState().isShot &&
+                      !ball.possessionState().shotOnTarget;
+    if (kind == PossessionObservation::BEGIN_KEEPER_HOLD)
+      contactStates = contactStates && ball.possessionState().inKeeperHands &&
+                      ball.possessionState().possessedBy &&
+                      !ball.possessionState().inTouch;
+    if (kind == PossessionObservation::END_KEEPER_HOLD)
+      contactStates = contactStates && !ball.possessionState().inKeeperHands;
+    if (kind == PossessionObservation::BEGIN_KEEPER_HAND_REBOUND)
+      contactStates = contactStates && !ball.possessionState().isPass &&
+                      !ball.possessionState().isShot &&
+                      ball.possessionState().kicker;
   }
   bool correct = true;
   std::array<unsigned, OBSERVATION_COUNT> counts{};
@@ -189,8 +295,26 @@ void compareVersions(const Lineup& home, const Lineup& away,
             "reject version change during play after the first step");
     auto left = legacy.getPossessionSnapshot(),
          right = developing.getPossessionSnapshot();
+    if (ticks % 5000 == 0)
+    {
+      const auto original = possessionStateKey(developing);
+      std::optional<MatchEngine> restored;
+      restored.emplace(developing);
+      check(!restored->getRecorder() &&
+                possessionStateKey(*restored) == original,
+            "complete possession/history survives detached engine copy");
+      restored->advance(0.1f);
+      check(possessionStateKey(developing) == original,
+            "advancing an engine copy leaves original possession unchanged");
+      restored.emplace(developing);
+      check(!restored->getRecorder() &&
+                possessionStateKey(*restored) == original,
+            "engine reconstruction restores complete possession/history");
+    }
     right.implementation = left.implementation;
-    equal = left == right && legacy.getState() == developing.getState() &&
+    equal = left == right &&
+            possessionStateKey(legacy) == possessionStateKey(developing) &&
+            legacy.getState() == developing.getState() &&
             legacy.getEvents().size() == developing.getEvents().size() &&
             SandboxRecorder::stateChecksum(legacy) ==
                 SandboxRecorder::stateChecksum(developing);
@@ -474,39 +598,50 @@ void compareContactDrill(const StatsConfig& config, const char* name,
     const auto& rb = right.engine().getBall();
     const auto& lst = left.engine().getStats();
     const auto& rst = right.engine().getStats();
-    equal = ls == rs && left.finished() == right.finished() &&
-            SandboxRecorder::stateChecksum(left.engine()) ==
-                SandboxRecorder::stateChecksum(right.engine()) &&
-            lb.velocity.x == rb.velocity.x && lb.velocity.y == rb.velocity.y &&
-            lb.velocityZ == rb.velocityZ && lb.spin == rb.spin &&
-            id(lb.nudgedBy) == id(rb.nudgedBy) &&
-            id(lb.nudgedFrom) == id(rb.nudgedFrom) &&
-            id(lb.deflectedBy) == id(rb.deflectedBy) &&
-            id(lb.deflectedAfter) == id(rb.deflectedAfter) &&
-            lb.deflectedPathSince == rb.deflectedPathSince &&
-            lb.isShot == rb.isShot && lb.shotOnTarget == rb.shotOnTarget &&
-            lb.shotBlocked == rb.shotBlocked &&
-            lb.touchAttempts == rb.touchAttempts &&
-            lb.inKeeperHands == rb.inKeeperHands &&
-            lb.heldRelease == rb.heldRelease && lb.heldSince == rb.heldSince &&
-            lb.heldFrom.x == rb.heldFrom.x && lb.heldFrom.y == rb.heldFrom.y &&
-            lb.heldFrom.z == rb.heldFrom.z &&
-            lst.homeTackles == rst.homeTackles &&
-            lst.awayTackles == rst.awayTackles &&
-            lst.homePassesCompleted == rst.homePassesCompleted &&
-            lst.awayPassesCompleted == rst.awayPassesCompleted &&
-            lst.passesBlocked == rst.passesBlocked &&
-            lst.shotDeflections == rst.shotDeflections &&
-            lst.collisionFallsLosingBall == rst.collisionFallsLosingBall &&
-            lst.collisionBallOffFallen == rst.collisionBallOffFallen &&
-            lst.homeSaves == rst.homeSaves && lst.awaySaves == rst.awaySaves &&
-            lst.homeOnTarget == rst.homeOnTarget &&
-            lst.awayOnTarget == rst.awayOnTarget &&
-            lst.keeperRolls == rst.keeperRolls &&
-            lst.keeperThrows == rst.keeperThrows &&
-            lst.keeperPunts == rst.keeperPunts &&
-            lst.homePossession == rst.homePossession &&
-            lst.awayPossession == rst.awayPossession;
+    equal =
+        ls == rs && left.finished() == right.finished() &&
+        SandboxRecorder::stateChecksum(left.engine()) ==
+            SandboxRecorder::stateChecksum(right.engine()) &&
+        lb.velocity.x == rb.velocity.x && lb.velocity.y == rb.velocity.y &&
+        lb.velocityZ == rb.velocityZ && lb.spin == rb.spin &&
+        id(lb.possessionState().nudgedBy) ==
+            id(rb.possessionState().nudgedBy) &&
+        id(lb.possessionState().nudgedFrom) ==
+            id(rb.possessionState().nudgedFrom) &&
+        id(lb.possessionState().deflectedBy) ==
+            id(rb.possessionState().deflectedBy) &&
+        id(lb.possessionState().deflectedAfter) ==
+            id(rb.possessionState().deflectedAfter) &&
+        lb.possessionState().deflectedPathSince ==
+            rb.possessionState().deflectedPathSince &&
+        lb.possessionState().isShot == rb.possessionState().isShot &&
+        lb.possessionState().shotOnTarget ==
+            rb.possessionState().shotOnTarget &&
+        lb.possessionState().shotBlocked == rb.possessionState().shotBlocked &&
+        lb.touchAttempts == rb.touchAttempts &&
+        lb.possessionState().inKeeperHands ==
+            rb.possessionState().inKeeperHands &&
+        lb.possessionState().heldRelease == rb.possessionState().heldRelease &&
+        lb.possessionState().heldSince == rb.possessionState().heldSince &&
+        lb.possessionState().heldFrom.x == rb.possessionState().heldFrom.x &&
+        lb.possessionState().heldFrom.y == rb.possessionState().heldFrom.y &&
+        lb.possessionState().heldFrom.z == rb.possessionState().heldFrom.z &&
+        lst.homeTackles == rst.homeTackles &&
+        lst.awayTackles == rst.awayTackles &&
+        lst.homePassesCompleted == rst.homePassesCompleted &&
+        lst.awayPassesCompleted == rst.awayPassesCompleted &&
+        lst.passesBlocked == rst.passesBlocked &&
+        lst.shotDeflections == rst.shotDeflections &&
+        lst.collisionFallsLosingBall == rst.collisionFallsLosingBall &&
+        lst.collisionBallOffFallen == rst.collisionBallOffFallen &&
+        lst.homeSaves == rst.homeSaves && lst.awaySaves == rst.awaySaves &&
+        lst.homeOnTarget == rst.homeOnTarget &&
+        lst.awayOnTarget == rst.awayOnTarget &&
+        lst.keeperRolls == rst.keeperRolls &&
+        lst.keeperThrows == rst.keeperThrows &&
+        lst.keeperPunts == rst.keeperPunts &&
+        lst.homePossession == rst.homePossession &&
+        lst.awayPossession == rst.awayPossession;
   }
   check(equal && left.finished() && right.finished(),
         "contact fixture ownership, attribution, stats and motion match every "
@@ -519,7 +654,7 @@ void compareContactDrill(const StatsConfig& config, const char* name,
   // Catalogue shot drills stop on a catch. Continue the engines through the
   // remaining dive and gather so the held-ball path is exercised as well.
   if (std::string_view(name) == "Shot target" &&
-      left.engine().getBall().inKeeperHands)
+      left.engine().getBall().possessionState().inKeeperHands)
     for (unsigned i = 0; i < 20; ++i)
     {
       left.engine().advance(0.1f);
@@ -569,24 +704,28 @@ void participantLifecycle(const Lineup& home, const Lineup& away,
     check(engine->substitutePlayer(outgoing->getId(), incoming),
           "substitute a current owner");
     check(
-        engine->getBall().possessedBy == incoming &&
-            engine->getBall().lastPossessor == incoming,
+        engine->getBall().possessionState().possessedBy == incoming &&
+            engine->getBall().possessionState().lastPossessor == incoming,
         "substitution preserves legacy incoming ownership and history rewrite");
     const auto copied = *engine;
-    check(!copied.getRecorder() &&
-              copied.getPossessionVersion() == engine->getPossessionVersion() &&
-              copied.getPossessionSnapshot() == engine->getPossessionSnapshot(),
-          "copy retains lifecycle state/version and detaches recorder");
+    check(
+        !copied.getRecorder() &&
+            copied.getPossessionVersion() == engine->getPossessionVersion() &&
+            copied.getPossessionSnapshot() == engine->getPossessionSnapshot() &&
+            possessionStateKey(copied) == possessionStateKey(*engine),
+        "copy retains lifecycle state/version and detaches recorder");
     check(engine->removeBeforeKickOff(incoming->getId()),
           "remove a scenario owner");
-    check(!engine->getBall().possessedBy, "removing owner releases claim");
+    check(!engine->getBall().possessionState().possessedBy,
+          "removing owner releases claim");
     check(engine->removeBeforeKickOff(
               away.getOutfieldPlayers().front().player->getId()),
           "remove a non-owner without transferring control");
     engine->feedBall({0.4f, 0.1f}, {3.0f, 0.0f}, 0.0f,
                      away.getOutfieldPlayers()[1].player->getId());
-    check(!engine->getBall().possessedBy && !engine->getBall().lastPossessor &&
-              engine->getBall().isPass,
+    check(!engine->getBall().possessionState().possessedBy &&
+              !engine->getBall().possessionState().lastPossessor &&
+              engine->getBall().possessionState().isPass,
           "feed creates expectation without control or last player");
   }
   auto ls = a.getPossessionSnapshot(), rs = b.getPossessionSnapshot();

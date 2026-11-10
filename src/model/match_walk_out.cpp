@@ -562,7 +562,7 @@ void MatchEngine::updateSubstitutions(float dt)
           deadBall.phase = DeadBallReturn::Phase::LOOSE;
           deadBall.seconds = 0.0f;
         }
-        else if (ball.possessedBy == player.player)
+        else if (getPossessionAttachment() == player.player)
         {
           clearPossession();
         }

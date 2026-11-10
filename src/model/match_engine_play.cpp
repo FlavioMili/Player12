@@ -157,7 +157,7 @@ void MatchEngine::integrateControlled(MatchPlayer& player, float dt)
   using C = MatchTuning::Control;
   const float topSpeed = currentTopSpeed(player);
   const float fatigue = fuelFatigue(player);
-  const MatchPlayer* carrier = findMatchPlayer(ball.possessedBy);
+  const MatchPlayer* carrier = findMatchPlayer(getPossessionAttachment());
   const bool jockeying = controlInput.jockey && carrier &&
                          carrier->isHomeTeam != player.isHomeTeam;
   float runSpeed =
@@ -215,8 +215,8 @@ std::optional<Vector2F> MatchEngine::controlledAssistTarget(
     const MatchPlayer& player) const
 {
   using C = MatchTuning::Control;
-  if (ball.isPass && !ball.possessedBy &&
-      ball.intendedReceiver == player.player)
+  if (getPossessionState().isPass && !getPossessionAttachment() &&
+      getExpectedReceiver() == player.player)
   {
     // The point of the ball's path nearest to him, but never behind a
     // moment's travel of the ball: he steps toward it to meet it.
@@ -237,10 +237,10 @@ std::optional<Vector2F> MatchEngine::controlledAssistTarget(
         clampToPitchX(ball.position.x + ahead.x),
         clampToPitchY(ball.position.y + ahead.y)};
   }
-  if (!controlInput.jockey || !ball.possessedBy) return std::nullopt;
+  if (!controlInput.jockey || !getPossessionAttachment()) return std::nullopt;
   for (const MatchPlayer& carrier : players)
   {
-    if (carrier.player != ball.possessedBy) continue;
+    if (carrier.player != getPossessionAttachment()) continue;
     if (carrier.isHomeTeam == player.isHomeTeam) return std::nullopt;
     // Goal-side of the carrier, between him and the centre of our goal.
     const Vector2F toGoal = metricDirection(
@@ -461,9 +461,9 @@ float MatchEngine::switchSeconds(const MatchPlayer& candidate) const
   using C = MatchTuning::Control;
   // Where the ball goes: with its carrier on his run, or rolling to a stop.
   const MatchPlayer* carrier = nullptr;
-  if (ball.possessedBy)
+  if (getPossessionAttachment())
     for (const MatchPlayer& player : players)
-      if (player.player == ball.possessedBy) carrier = &player;
+      if (player.player == getPossessionAttachment()) carrier = &player;
   const Vector2F start = toMetres(carrier ? carrier->position : ball.position);
   const Vector2F velocity = carrier ? carrier->velocity : ball.velocity;
   const float speed = length(velocity);
@@ -515,15 +515,15 @@ PlayerID MatchEngine::suggestActivePlayer(bool homeTeam, PlayerID current) const
     if (!eligible(player)) continue;
     if (player.player->getId() == current) currentPlayer = &player;
     // The side's carrier, or the receiver of its pass, is the man.
-    if (player.player == ball.possessedBy ||
-        (!ball.possessedBy && ball.isPass && ball.passByHome == homeTeam &&
-         player.player == ball.intendedReceiver))
+    if (player.player == getPossessionAttachment() ||
+        (!getPossessionAttachment() && getPossessionState().isPass && getPossessionState().passByHome == homeTeam &&
+         player.player == getExpectedReceiver()))
       return player.player->getId();
   }
   // The side's keeper has the ball: nobody to chase it, stay with the man.
-  if (currentPlayer && ball.possessedBy)
+  if (currentPlayer && getPossessionAttachment())
     for (const MatchPlayer& player : players)
-      if (player.player == ball.possessedBy && player.isHomeTeam == homeTeam)
+      if (player.player == getPossessionAttachment() && player.isHomeTeam == homeTeam)
         return current;
   PlayerID best = 0;
   float bestSeconds = std::numeric_limits<float>::infinity();

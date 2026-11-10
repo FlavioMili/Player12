@@ -243,7 +243,7 @@ bool runDrillChecks(const Team& home, const Team& away,
           return std::string("off target");
       }
       // A weak miss the keeper simply picks up is logged as nothing either.
-      if (engine->getBall().possessedBy == keeper && !engine->getBall().isShot)
+      if (engine->getPossessionAttachment() == keeper && !engine->getBall().possessionState().isShot)
         return std::string("off target (gathered)");
     }
     return std::string("no outcome");
@@ -695,20 +695,20 @@ bool runFirstTouchChecks(const std::vector<const Team*>& clubs,
         const MatchBall& ball = engine->getBall();
         // A first touch runs from the touch to collection (then he dribbles
         // the same claimed ball).
-        const bool inTouch = ball.inTouch && !ball.touchCollected;
-        const bool claimed = ball.inTouch;
+        const bool inTouch = engine->hasTouchClaim() && !engine->isTouchCollected();
+        const bool claimed = engine->hasTouchClaim();
         const double now = engine->getSimulatedSeconds();
         // The same touch only while its owner has not re-claimed the ball:
         // someone else can play it and he touch it again within one step.
         const bool sameTouch = wasInTouch && inTouch &&
-                               ball.possessedBy == owner &&
+                               engine->getPossessionAttachment() == owner &&
                                touchesOf(owner) == ownerTouches;
         const auto recordEnd = [&](std::size_t Outcomes::* field)
         {
           ++(setup.outcomes[0].*field);
           if (reception) ++(setup.outcomes[1].*field);
         };
-        if (wasClaimed && claimed && ball.possessedBy == claimOwner &&
+        if (wasClaimed && claimed && engine->getPossessionAttachment() == claimOwner &&
             touchesOf(claimOwner) == claimTouches)
         {
           // Rolling on to him, or dribbled: nothing but the ball's own
@@ -745,12 +745,12 @@ bool runFirstTouchChecks(const std::vector<const Team*>& clubs,
           {
             recordEnd(&Outcomes::stopped);
           }
-          else if (ball.possessedBy == owner &&
+          else if (engine->getPossessionAttachment() == owner &&
                    touchesOf(owner) != ownerTouches)
           {
             recordEnd(&Outcomes::replayed);
           }
-          else if (ball.possessedBy == owner)
+          else if (engine->getPossessionAttachment() == owner)
           {
             recordEnd(&Outcomes::collected);
             setup.collectSeconds += now - touchStart;
@@ -767,7 +767,7 @@ bool runFirstTouchChecks(const std::vector<const Team*>& clubs,
                       (lastSpeed + speedOf(holder->velocity)) * DT);
             }
           }
-          else if (!ball.possessedBy)
+          else if (!engine->getPossessionAttachment())
           {
             recordEnd(&Outcomes::released);
           }
@@ -778,9 +778,9 @@ bool runFirstTouchChecks(const std::vector<const Team*>& clubs,
         }
         if (inTouch && !sameTouch)
         {
-          owner = ball.possessedBy;
+          owner = engine->getPossessionAttachment();
           ownerTouches = touchesOf(owner);
-          reception = ball.touchPasser != nullptr;
+          reception = engine->getPendingPasser() != nullptr;
           touchStart = now;
           ++setup.outcomes[0].started;
           if (reception) ++setup.outcomes[1].started;
@@ -794,7 +794,7 @@ bool runFirstTouchChecks(const std::vector<const Team*>& clubs,
         }
         wasInTouch = inTouch;
         wasClaimed = claimed;
-        claimOwner = claimed ? ball.possessedBy : nullptr;
+        claimOwner = claimed ? engine->getPossessionAttachment() : nullptr;
         claimTouches = touchesOf(claimOwner);
         lastPeakGap = inTouch ? ball.touchPeakGap : 0.0f;
         lastPosition = ball.position;
@@ -1708,7 +1708,7 @@ int runMatchTrace(GameController& controller, double seconds, int cases, const s
                     player.routeWaypoints, player.wayRoundOf,    player.wayRoundSide,
                     player.wayRoundBlockedBy, player.givingWayTo, player.rightOfWayOver,
                     player.giveWaySpeed,   player.steersRound,
-                    engine->getBall().possessedBy != nullptr,
+                    engine->getPossessionAttachment() != nullptr,
                     engine->getSetPiecePhaseRemaining() > 0.0f ||
                         engine->getState() != MatchState::PLAYING};
       history[slot].push_back(moment);

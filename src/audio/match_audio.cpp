@@ -124,9 +124,9 @@ MatchAudioFrame captureMatchAudioFrame(const MatchEngine& engine,
   const MatchBall& ball = engine.getBall();
   frame.ballX = ball.position.x;
   frame.ballSpeed = std::hypot(ball.velocity.x, ball.velocity.y);
-  frame.ballIsShot = ball.isShot;
-  frame.ballLoose = ball.possessedBy == nullptr;
-  frame.kickerId = ball.kicker != nullptr ? ball.kicker->getId() : 0;
+  frame.ballIsShot = ball.possessionState().isShot;
+  frame.ballLoose = engine.getPossessionAttachment() == nullptr;
+  frame.kickerId = engine.getLegacyContactActor() != nullptr ? engine.getLegacyContactActor()->getId() : 0;
   frame.homeInPossession = engine.getHomePhase() == TeamPhase::POSSESSION;
   frame.awayInPossession = engine.getAwayPhase() == TeamPhase::POSSESSION;
   frame.matchMinute = engine.getMatchTimeMinutes();
