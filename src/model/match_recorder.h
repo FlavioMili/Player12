@@ -371,7 +371,8 @@ class MatchRecorder
   [[nodiscard]] virtual bool wantsPossession() const { return false; }
   virtual void onPossessionObservation(const MatchEngine& /*engine*/,
                                       PossessionObservation /*observation*/,
-                                      const PossessionSnapshot& /*snapshot*/) {}
+                                      const PossessionSnapshot& /*snapshot*/,
+                                      PossessionId /*executedVersion*/) {}
   /** An actual gate taken in the contact sweep. Some gates precede reach
    * testing: a gate observation does not prove the ball was playable. */
   virtual void onPossessionContactGate(const MatchEngine& /*engine*/,

@@ -523,7 +523,7 @@ MatchSample simulateMatch(const MatchJob& job, const StatsConfig& config)
   awayStrategy.setAllSliders(job.away.sliders);
 
   MatchEngine engine(home, away, homeStrategy, awayStrategy, config, job.seed,
-                     job.handshake);
+                     job.handshake, job.possession);
   // Setting a context redraws the referee, so the default is left alone.
   if (job.homeAdvantage != 1.0f)
   {

@@ -946,7 +946,7 @@ bool MatchEngine::tryOwnGoalTouchAardvark(MatchPlayer& defender)
              target,
              randomFloat(S::OWN_GOAL_MIN_SPEED, S::OWN_GOAL_MAX_SPEED),
              randomFloat(0.0f, S::OWN_GOAL_MAX_LIFT), BallSpin{});
-  lastShooter = nullptr;
+  clearShooterHistory();
   return true;
 }
 
@@ -1132,7 +1132,7 @@ void MatchEngine::takeDirectFreeKickAardvark(MatchPlayer& taker)
     const float outward = taker.isHomeTeam ? -1.0f : 1.0f;
     const float speed =
         length(ball.velocity) * MatchTuning::SetPiece::WALL_REBOUND_SPEED_SHARE;
-    ball.touchAttempts = 0;
+    resetRuleContactAttempts();
     MatchPlayer* wallPlayer = nullptr;
     float best = std::numeric_limits<float>::max();
     for (auto& player : players)
@@ -1147,21 +1147,14 @@ void MatchEngine::takeDirectFreeKickAardvark(MatchPlayer& taker)
         wallPlayer = &player;
       }
     }
-    ball.isShot = false;
-    ball.shotOnTarget = false;
-    ball.shotSaveResolved = true;
+    markWallStoppedShot();
     ball.velocity = {outward * speed * randomFloat(0.3f, 1.0f),
                      speed * randomFloat(-0.8f, 0.8f)};
     ball.velocityZ = randomFloat(0.0f, MatchTuning::Aerial::HEADER_LIFT);
     if (wallPlayer)
     {
       ball.position = wallPlayer->position;
-      ball.lastPossessor = wallPlayer->player;
-      ball.kicker = wallPlayer->player;
-      ball.kickerLockout = MatchTuning::Passing::KICKER_LOCKOUT_SECONDS;
-      ++statsOf(*wallPlayer).clearances;
-      logEvent(MatchEventType::SHOT_BLOCKED, *wallPlayer).detail =
-          MatchEventDetail::WALL;
+      creditWallBlocker(*wallPlayer);
     }
     return;
   }

@@ -81,14 +81,13 @@ void MatchEngine::checkOutOfBoundsAardvark()
         event.isHomeTeam = shooter->isHomeTeam;
         event.primaryPlayerId = shooter->player->getId();
       }
-      ball.isShot = false;
-      ball.shotOnTarget = false;
+      endDeflectedShotFlight();
       ball.position.x = rightGoalLine ? 1.0f - 0.004f : 0.004f;
       ball.position.y = crossingY;
       ball.velocity = {
           -ball.velocity.x * MatchTuning::Shooting::WOODWORK_REBOUND,
           ball.velocity.y + randomFloat(-3.0f, 3.0f)};
-      ball.touchAttempts = 0;
+      resetRuleContactAttempts();
       ball.velocityZ = std::abs(ball.velocityZ) * 0.3f;
       return;
     }
@@ -200,7 +199,7 @@ void MatchEngine::scoreGoalAardvark(bool homeTeam)
   goalCelebrationRemaining = getGoalCelebrationDuration();
   state = MatchState::GOAL;
   clearPossession();
-  ball.shotByHome = homeTeam;
+  noteGoalSide(homeTeam);
   pendingAdvantage.active = false;
   restartTakerIndex.reset();
   restartLineUp.reset();
@@ -251,8 +250,7 @@ void MatchEngine::setupThrowInAardvark(bool homeTeam)
   // The taker walks to the touchline spot during the stoppage.
   if (taker) taker->movementTarget = ball.position;
   ball.velocity = {0.0f, 0.0f};
-  handBallTo(taker ? taker->player : nullptr);
-  ball.lastPossessor = ball.possessedBy;
+  assignRestartOwner(taker ? taker->player : nullptr);
   clearFlightState();
   state = MatchState::THROW_IN;
   setPieceTimer = MatchTuning::Timing::THROW_IN_DELAY_SECONDS;
@@ -278,8 +276,7 @@ void MatchEngine::setupGoalKickAardvark(bool homeTeam)
   setRestartTaker(taker);
   if (taker) taker->movementTarget = ball.position;
   ball.velocity = {0.0f, 0.0f};
-  handBallTo(taker ? taker->player : nullptr);
-  ball.lastPossessor = ball.possessedBy;
+  assignRestartOwner(taker ? taker->player : nullptr);
   clearFlightState();
   state = MatchState::GOAL_KICK;
   setPieceTimer = MatchTuning::Timing::GOAL_KICK_DELAY_SECONDS;
@@ -307,8 +304,7 @@ void MatchEngine::setupCornerAardvark(bool homeTeam, bool topCorner)
   setRestartTaker(taker);
   if (taker) placeTakerAardvark(*taker, ball.position);
   ball.velocity = {0.0f, 0.0f};
-  handBallTo(taker ? taker->player : nullptr);
-  ball.lastPossessor = ball.possessedBy;
+  assignRestartOwner(taker ? taker->player : nullptr);
   clearFlightState();
   arrangeSetPiece(homeTeam, ball.position);
   state = MatchState::CORNER_KICK;
@@ -349,8 +345,7 @@ void MatchEngine::setupFreeKickAardvark(bool homeTeam, Vector2F foulPos)
   else if (taker)
     taker->movementTarget = ball.position;
   ball.velocity = {0.0f, 0.0f};
-  handBallTo(taker ? taker->player : nullptr);
-  ball.lastPossessor = ball.possessedBy;
+  assignRestartOwner(taker ? taker->player : nullptr);
   clearFlightState();
   if (restartIsSetPiece) arrangeSetPiece(homeTeam, ball.position);
   state = MatchState::FREE_KICK;
@@ -380,8 +375,7 @@ void MatchEngine::setupPenaltyAardvark(bool homeTeam)
   ball.z = 0.0f;
   ball.velocityZ = 0.0f;
   ball.velocity = {0.0f, 0.0f};
-  handBallTo(taker ? taker->player : nullptr);
-  ball.lastPossessor = ball.possessedBy;
+  assignRestartOwner(taker ? taker->player : nullptr);
   if (taker) placeTakerAardvark(*taker, spot);
   // Everyone else waits outside the area; the keeper stands on his line.
   const float edge = homeTeam ? MatchTuning::Pitch::RIGHT_PENALTY_AREA_EDGE -

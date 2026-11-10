@@ -60,7 +60,7 @@ Usage:
                  [--brains HOME,AWAY] [--bodies HOME,AWAY] [--threads T]
                  [--handshake H] [--referee R] [--managers HOME,AWAY]
                  [--ball B] [--out-of-play O] [--home-advantage X] [--uniform]
-                 [--knockout]
+                 [--knockout] [--possession aardvark|binturong]
                  [--knobs "Name=value;Name=value"] [--out-dir DIR]
   fm_lab season  [--leagues all|top|ID,ID...] [--seasons N] [--seed S]
                  [--threads T] [--max-days D] [--reload] [--out-dir DIR]
@@ -68,11 +68,11 @@ Usage:
                  [--fidelity full|background] [--brains HOME,AWAY]
                  [--bodies HOME,AWAY] [--handshake H] [--referee R]
                  [--managers HOME,AWAY] [--ball B] [--out-of-play O]
-                 [--home-advantage X]
+                 [--home-advantage X] [--possession aardvark|binturong]
                  [--out-dir DIR]
   fm_lab drill   [--brains HOME,AWAY] [--bodies HOME,AWAY] [--handshake H]
                  [--referee R] [--managers HOME,AWAY] [--ball B]
-                 [--out-of-play O]
+                 [--out-of-play O] [--possession aardvark|binturong]
                  "DRILL" --sweep "Setting=FROM:TO:COUNT" [--by ...]
                  [--preset NAME] [--set "Setting=value"]... [--repeats N]
                  [--seed S] [--csv [FILE]]
@@ -185,13 +185,13 @@ Arguments parseArguments(int argc, char** argv)
 {
   static constexpr std::array<std::string_view, 6> FLAGS = {
       "--spread", "--uniform", "--knockout", "--reload", "--help", "-h"};
-  static constexpr std::array<std::string_view, 22> OPTIONS = {
+  static constexpr std::array<std::string_view, 23> OPTIONS = {
       "--n",       "--seed",       "--home-rating", "--away-rating",
       "--rating",  "--rating-min", "--rating-max",  "--threads",
       "--out-dir", "--leagues",    "--seasons",     "--max-days",
       "--fidelity", "--brains",    "--bodies",      "--handshake",
       "--referee", "--managers",   "--ball",        "--out-of-play",
-      "--home-advantage", "--knobs"};
+      "--home-advantage", "--knobs", "--possession"};
   Arguments arguments;
   if (argc < 2) throw UsageError("missing mode");
   arguments.mode = argv[1];
@@ -426,6 +426,7 @@ struct SeamChoices
   std::array<ManagerId, 2> managers{ManagerId::AARDVARK, ManagerId::AARDVARK};
   BallPhysicsId ball = BallPhysicsId::AARDVARK;
   OutOfPlayId outOfPlay = OutOfPlayId::AARDVARK;
+  PossessionId possession = PossessionId::AARDVARK;
 };
 
 SeamChoices seamChoices(const Arguments& arguments)
@@ -451,6 +452,9 @@ SeamChoices seamChoices(const Arguments& arguments)
   if (!outOfPlay)
     throw UsageError("--out-of-play must be aardvark or binturong");
   choice.outOfPlay = *outOfPlay;
+  const auto possession = possessionFromKey(arguments.value("--possession").value_or("aardvark"));
+  if (!possession) throw UsageError("--possession must be aardvark or binturong");
+  choice.possession = *possession;
   return choice;
 }
 
@@ -464,6 +468,7 @@ void setSeamChoices(std::vector<Lab::MatchJob>& jobs,
     job.away.manager = choice.managers[1];
     job.ballPhysics = choice.ball;
     job.outOfPlay = choice.outOfPlay;
+    job.possession = choice.possession;
   }
 }
 
@@ -476,6 +481,7 @@ void reportSeamChoices(Lab::LabReport& report, const SeamChoices& choice)
   report.parameters["ball_physics"] = std::string(ballPhysicsName(choice.ball));
   report.parameters["out_of_play"] =
       std::string(outOfPlayName(choice.outOfPlay));
+  report.parameters["possession"] = std::string(possessionName(choice.possession));
 }
 
 /** --home-advantage X, 0 (a neutral venue, the default) to 2. */
@@ -742,6 +748,12 @@ int runDrillMode(int argc, char** argv)
       if (!ball) throw UsageError("--ball must be aardvark or binturong");
       sandboxBallPhysics() = *ball;
     }
+    else if (option == "--possession")
+    {
+      const auto version = possessionFromKey(value);
+      if (!version) throw UsageError("--possession must be aardvark or binturong");
+      sandboxPossession() = *version;
+    }
     else if (option == "--out-of-play")
     {
       const auto version = outOfPlayFromKey(value);
@@ -753,7 +765,7 @@ int runDrillMode(int argc, char** argv)
     {
       throw UsageError(std::format(
           "drill: '{}' before the drill's name (only --brains, --bodies, "
-          "--handshake, --referee, --managers, --ball and --out-of-play go "
+          "--handshake, --referee, --managers, --ball, --out-of-play and --possession go "
           "there)",
           option));
     }
@@ -771,6 +783,8 @@ int runDrillMode(int argc, char** argv)
 
 int main(int argc, char** argv)
 {
+  // Lab commands preserve the legacy default, independently of sandbox UI defaults.
+  sandboxPossession() = PossessionId::AARDVARK;
   if (argc >= 2 && std::string_view(argv[1]) == "touch-sensitivity")
   {
     try
@@ -820,6 +834,8 @@ int main(int argc, char** argv)
     if (arguments.mode != "matches" && arguments.mode != "season" &&
         arguments.mode != "tactics")
       throw UsageError(std::format("unknown mode '{}'", arguments.mode));
+    if (arguments.mode == "season" && arguments.value("--possession"))
+      throw UsageError("--possession is supported by matches, tactics and drill, not season");
   }
   catch (const UsageError& error)
   {

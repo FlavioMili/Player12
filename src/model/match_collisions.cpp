@@ -211,16 +211,7 @@ void MatchEngine::knockOver(MatchPlayer& player, CollisionSide& side)
   player.isPressing = false;
   player.isMakingRun = false;
 
-  // He can't play it from the floor: a ball he had runs on loose (a
-  // keeper's in his hands he keeps hold of).
-  if (player.player && ball.possessedBy == player.player &&
-      !(player.isGoalkeeper && !ball.inTouch))
-  {
-    clearPossession();
-    ++stats.collisionFallsLosingBall;
-  }
-  if (pendingStrike && pendingStrike->striker == &player) pendingStrike.reset();
-  if (ball.meetFor == player.player) ball.meetFor = nullptr;
+  loseBallOnFall(player);
 }
 
 void MatchEngine::standUp(MatchPlayer& player)
@@ -694,13 +685,7 @@ void MatchEngine::bounceOffFallen(MatchPlayer& player)
   const Vector2F alongSurface = add(ball.velocity, scaled(normal, -into));
   ball.velocity = add(scaled(alongSurface, C::FALLEN_ALONG_KEPT_SHARE),
                       scaled(normal, -into * C::FALLEN_BOUNCE_BACK_SHARE));
-  // His last touch for restarts; not a pass, possession or a deliberate play.
-  notePathChange();
-  ball.deflectedBy = player.player;
-  ball.deflectedPathSince = ball.pathSince;
-  ball.deflectedAfter = ball.lastPossessor;
-  ball.touchAttempts = 0;
-  ++stats.collisionBallOffFallen;
+  noteFallenDeflection(player);
 }
 
 const Player* MatchEngine::lastTouchForRestart() const

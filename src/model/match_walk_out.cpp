@@ -63,7 +63,7 @@ void MatchEngine::beginWalkOut(bool homeKickingOff, bool lineUp)
   restartLineUp.reset();
   deadBall = {};
   clearPossession();
-  lastShooter = nullptr;
+  clearShooterHistory();
   state = MatchState::KICK_OFF;
   kickOffWalkIn = false;
   setPieceTimer = MatchTuning::Timing::KICKOFF_DELAY_SECONDS;

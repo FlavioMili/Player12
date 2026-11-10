@@ -9,13 +9,40 @@
 
 using namespace MatchEngineInternal;
 
+const Player* MatchEngine::getPossessionAttachment() const
+{
+  return ball.possessedBy;
+}
+
+const Player* MatchEngine::getTouchClaimant() const
+{
+  return ball.inTouch ? ball.possessedBy : nullptr;
+}
+
+const Player* MatchEngine::getConfirmedController() const
+{
+  if (state != MatchState::PLAYING) return nullptr;
+  return ball.inKeeperHands || (ball.inTouch && ball.touchCollected)
+             ? ball.possessedBy
+             : nullptr;
+}
+
+const Player* MatchEngine::getRestartOwner() const
+{
+  return state != MatchState::PLAYING ? ball.possessedBy : nullptr;
+}
+
+const Player* MatchEngine::getExpectedReceiver() const
+{
+  return ball.intendedReceiver;
+}
+
 PossessionSnapshot MatchEngine::getPossessionSnapshot() const
 {
   const auto id = [](const Player* player) -> PlayerID
   { return player ? player->getId() : 0; };
   PossessionSnapshot view;
-  // No new implementation is dispatched in Stage 1, regardless of body/brain.
-  view.implementation = PossessionId::AARDVARK;
+  view.implementation = possessionId;
   view.tick = stepCounter;
   view.seconds = ballNow();
   view.openPlay = state == MatchState::PLAYING;
@@ -53,12 +80,13 @@ std::uint32_t MatchEngine::getPossessionIssues() const
   return possessionIssues(getPossessionSnapshot());
 }
 
-void MatchEngine::observePossession(PossessionObservation observation)
+void MatchEngine::observePossession(PossessionObservation observation,
+                                    PossessionId executedVersion)
 {
   if (MatchRecorder* recorder = getRecorder();
       recorder && recorder->wantsPossession())
     recorder->onPossessionObservation(*this, observation,
-                                      getPossessionSnapshot());
+                                      getPossessionSnapshot(), executedVersion);
 }
 
 void MatchEngine::observePossessionGate(const MatchPlayer& player,

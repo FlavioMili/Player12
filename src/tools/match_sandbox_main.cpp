@@ -108,6 +108,7 @@ int main(int argc, char* argv[])
   bool bodiesGiven = false;
   bool homeAdvantageGiven = false;
   bool handshakeGiven = false;
+  bool possessionGiven = false;
   for (int index = 1; index < argc; ++index)
   {
     const std::string_view argument(argv[index]);
@@ -174,6 +175,15 @@ int main(int argc, char* argv[])
       if (const auto version = outOfPlayFromKey(argv[++index]))
       {
         sandboxOutOfPlay() = *version;
+        continue;
+      }
+    }
+    else if (argument == "--possession" && index + 1 < argc)
+    {
+      if (const auto version = possessionFromKey(argv[++index]))
+      {
+        sandboxPossession() = *version;
+        possessionGiven = true;
         continue;
       }
     }
@@ -298,6 +308,7 @@ int main(int argc, char* argv[])
         << " [--world-seed N] [--brains HOME,AWAY] [--bodies HOME,AWAY]"
            " [--handshake H] [--referee R] [--managers HOME,AWAY] [--ball B]"
            " [--out-of-play O]"
+           " [--possession aardvark|binturong]"
            " [--home-advantage X] [--kick-off] [--drill NAME]"
            " [--check [MATCHES]] [--trace-laps SECONDS [PLAYER]]"
            " [--trace-possession SECONDS OUTPUT.jsonl]"
@@ -306,6 +317,8 @@ int main(int argc, char* argv[])
            "one name for both; before --measure or --shot-map)\n"
            "  (--referee: binturong (default) or aardvark; --ball, "
            "--out-of-play: binturong (default) or aardvark)\n"
+           "  (--possession: binturong for new sandbox matches; --check "
+           "defaults to aardvark unless explicitly selected)\n"
            "  (--home-advantage: 0 neutral venue (default) to 2, 1 the "
            "game's full home edge; --check defaults to 1)\n"
            "  (--handshake: binturong (default) or aardvark; --check "
@@ -337,6 +350,8 @@ int main(int argc, char* argv[])
   if (checkMatches && !homeAdvantageGiven) sandboxHomeAdvantage() = 1.0f;
   if (checkMatches && !handshakeGiven)
     sandboxHandshake() = HandshakeId::AARDVARK;
+  if (checkMatches && !possessionGiven)
+    sandboxPossession() = PossessionId::AARDVARK;
 
   // Before anything resolves a runtime path (logs, settings, saves).
   useOwnRuntimeRoot();

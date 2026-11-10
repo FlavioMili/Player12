@@ -2140,7 +2140,8 @@ class MatchEngine
   MatchEngine(const Lineup& home_lineup, const Lineup& away_lineup,
               const Strategy& home_strat, const Strategy& away_strat,
               const StatsConfig& config, uint32_t seed,
-              HandshakeId handshake = HandshakeId::AARDVARK);
+              HandshakeId handshake = HandshakeId::AARDVARK,
+              PossessionId possession = PossessionId::AARDVARK);
   /** The handshake this match was built with. */
   HandshakeId getHandshake() const { return handshakeId; }
 
@@ -2262,6 +2263,10 @@ class MatchEngine
    * otherwise. */
   void setOutOfPlay(OutOfPlayId version) { outOfPlayId = version; }
   OutOfPlayId getOutOfPlay() const { return outOfPlayId; }
+  /** Selected before the first step, independent of either team's body/brain.
+   * Changing to another version during a match is rejected. */
+  bool setPossessionVersion(PossessionId version);
+  PossessionId getPossessionVersion() const { return possessionId; }
   /** The AI manager a side is run by when the engine manages it (see
    * match_manager.h, setAutoSubstitutions). Set before kickoff; Aardvark
    * unless told otherwise. */
@@ -2452,6 +2457,12 @@ class MatchEngine
   /** Stage 1: value-only legacy projection. Never changes gameplay state,
    * consumes randomness, or upgrades a claim into physical control. */
   PossessionSnapshot getPossessionSnapshot() const;
+  /** Compatibility attachment: may be a claim or restart owner, not control. */
+  const Player* getPossessionAttachment() const;
+  const Player* getTouchClaimant() const;
+  const Player* getConfirmedController() const;
+  const Player* getRestartOwner() const;
+  const Player* getExpectedReceiver() const;
   std::uint32_t getPossessionIssues() const;
   const std::vector<MatchEvent>& getEvents() const { return events; }
   /**
@@ -3098,6 +3109,7 @@ class MatchEngine
   RefereeId refereeId = RefereeId::AARDVARK;
   /** The match's out-of-play version; see setOutOfPlay. */
   OutOfPlayId outOfPlayId = OutOfPlayId::AARDVARK;
+  PossessionId possessionId = PossessionId::AARDVARK;
   /** Each side's AI manager (home, away); see setManager. */
   std::array<ManagerId, 2> managers{ManagerId::AARDVARK, ManagerId::AARDVARK};
   /** The match's ball physics; see setBallPhysics. */
@@ -4442,8 +4454,288 @@ class MatchEngine
    * sub-step's own time. */
   double ballNow() const;
   /** Opt-in observations; attached recorders are detached on engine copy. */
-  void observePossession(PossessionObservation observation);
-  void observePossessionGate(const MatchPlayer& player, PossessionContactGate gate);
+  void observePossession(PossessionObservation observation, PossessionId executedVersion);
+  void updateTouchAardvark(MatchPlayer& carrier, float dt);
+  void updateTouchBinturong(MatchPlayer& carrier, float dt);
+  void noteTouchOnBallAardvark(const MatchPlayer& player,
+                               const TouchIntent& intent,
+                               const TouchResult& touch,
+                               const TouchMoment& moment);
+  void noteTouchOnBallBinturong(const MatchPlayer& player,
+                                const TouchIntent& intent,
+                                const TouchResult& touch,
+                                const TouchMoment& moment);
+  void beginTouchClaim(const Player* passer, bool dropping);
+  void beginTouchClaimAardvark(const Player* passer, bool dropping);
+  void beginTouchClaimBinturong(const Player* passer, bool dropping);
+  void beginCollectedDribble(const MatchPlayer& carrier);
+  void beginCollectedDribbleAardvark(const MatchPlayer& carrier);
+  void beginCollectedDribbleBinturong(const MatchPlayer& carrier);
+  void noteDribbleTouch(const MatchPlayer& player, const TouchIntent& intent,
+                        const TouchResult& touch, const TouchMoment& moment);
+  void noteDribbleTouchAardvark(const MatchPlayer& player,
+                                const TouchIntent& intent,
+                                const TouchResult& touch,
+                                const TouchMoment& moment);
+  void noteDribbleTouchBinturong(const MatchPlayer& player,
+                                 const TouchIntent& intent,
+                                 const TouchResult& touch,
+                                 const TouchMoment& moment);
+  // Release/receipt bookkeeping; physical launch stays with the engine/body.
+  void recordPassCompletionAardvark(MatchPlayer& receiver);
+  void recordPassCompletionBinturong(MatchPlayer& receiver);
+  void creditPassCompletionAardvark(MatchPlayer& receiver,
+                                    const Player* passerPlayer);
+  void creditPassCompletionBinturong(MatchPlayer& receiver,
+                                     const Player* passerPlayer);
+  void releasePossession(const MatchPlayer& kicker);
+  void releasePossessionAardvark(const MatchPlayer& kicker);
+  void releasePossessionBinturong(const MatchPlayer& kicker);
+  void beginPassFlight(const MatchPlayer& passer, const PassOption& option);
+  void beginPassFlightAardvark(const MatchPlayer& passer,
+                               const PassOption& option);
+  void beginPassFlightBinturong(const MatchPlayer& passer,
+                                const PassOption& option);
+  void finishPassFlight(bool aerialDelivery);
+  void finishPassFlightAardvark(bool aerialDelivery);
+  void finishPassFlightBinturong(bool aerialDelivery);
+  void noteShotFlight(const MatchPlayer& shooter, bool onTarget, float xg,
+                      float targetY, float crossingZ, bool header,
+                      bool penalty);
+  void noteShotFlightAardvark(const MatchPlayer& shooter, bool onTarget,
+                              float xg, float targetY, float crossingZ,
+                              bool header, bool penalty);
+  void noteShotFlightBinturong(const MatchPlayer& shooter, bool onTarget,
+                               float xg, float targetY, float crossingZ,
+                               bool header, bool penalty);
+  void consumeFirstTimeIntent(const MatchPlayer& player);
+  void consumeFirstTimeIntentAardvark(const MatchPlayer& player);
+  void consumeFirstTimeIntentBinturong(const MatchPlayer& player);
+  PendingStrike consumePendingStrike();
+  PendingStrike consumePendingStrikeAardvark();
+  PendingStrike consumePendingStrikeBinturong();
+  // Tackle/header ownership, provenance and deferred credit.
+  void noteFreeBallTackleAardvark(MatchPlayer& tackler, bool contest);
+  void noteFreeBallTackleBinturong(MatchPlayer& tackler, bool contest);
+  void settleTackleAardvark(bool homeTeam);
+  void settleTackleBinturong(bool homeTeam);
+  void trackHeaderRunAardvark();
+  void trackHeaderRunBinturong();
+  void cancelPendingTackle();
+  void cancelPendingTackleAardvark();
+  void cancelPendingTackleBinturong();
+  void noteHeaderContact(const MatchPlayer& header);
+  void noteHeaderContactAardvark(const MatchPlayer& header);
+  void noteHeaderContactBinturong(const MatchPlayer& header);
+  void creditHeaderShot(const MatchPlayer& header,
+                        const MatchPlayer* deliverer);
+  void creditHeaderShotAardvark(const MatchPlayer& header,
+                                const MatchPlayer* deliverer);
+  void creditHeaderShotBinturong(const MatchPlayer& header,
+                                 const MatchPlayer* deliverer);
+  void beginHeaderPlay(MatchPlayer& header, bool fromTeammate);
+  void beginHeaderPlayAardvark(MatchPlayer& header, bool fromTeammate);
+  void beginHeaderPlayBinturong(MatchPlayer& header, bool fromTeammate);
+  void noteCushionedHeader(const MatchPlayer& header, const Player* passer,
+                           const TouchMoment& moment, float launchSpeed);
+  void noteCushionedHeaderAardvark(const MatchPlayer& header,
+                                   const Player* passer,
+                                   const TouchMoment& moment,
+                                   float launchSpeed);
+  void noteCushionedHeaderBinturong(const MatchPlayer& header,
+                                    const Player* passer,
+                                    const TouchMoment& moment,
+                                    float launchSpeed);
+  void noteTackleNudge(const MatchPlayer& tackler, const MatchPlayer& attacker);
+  void noteTackleNudgeAardvark(const MatchPlayer& tackler,
+                               const MatchPlayer& attacker);
+  void noteTackleNudgeBinturong(const MatchPlayer& tackler,
+                                const MatchPlayer& attacker);
+  void beginPokedTackle(const MatchPlayer& defender);
+  void beginPokedTackleAardvark(const MatchPlayer& defender);
+  void beginPokedTackleBinturong(const MatchPlayer& defender);
+  void finishPokedTackle(const MatchPlayer& defender);
+  void finishPokedTackleAardvark(const MatchPlayer& defender);
+  void finishPokedTackleBinturong(const MatchPlayer& defender);
+  void creditImmediateTackleWin(MatchPlayer& defender);
+  void creditImmediateTackleWinAardvark(MatchPlayer& defender);
+  void creditImmediateTackleWinBinturong(MatchPlayer& defender);
+  void armTackleStrike(MatchPlayer& tackler,
+                       const std::optional<PassOption>& pass);
+  void armTackleStrikeAardvark(MatchPlayer& tackler,
+                               const std::optional<PassOption>& pass);
+  void armTackleStrikeBinturong(MatchPlayer& tackler,
+                                const std::optional<PassOption>& pass);
+  // Deflection/collision ownership and contact attribution.
+  void loseBallOnFall(MatchPlayer& player);
+  void loseBallOnFallAardvark(MatchPlayer& player);
+  void loseBallOnFallBinturong(MatchPlayer& player);
+  void noteFallenDeflection(const MatchPlayer& player);
+  void noteFallenDeflectionAardvark(const MatchPlayer& player);
+  void noteFallenDeflectionBinturong(const MatchPlayer& player);
+  void noteBodyDeflectionHit(MatchPlayer& player, ShotBodyPart part,
+                             bool legPutOut, bool opponents);
+  void noteBodyDeflectionHitAardvark(MatchPlayer& player, ShotBodyPart part,
+                                     bool legPutOut, bool opponents);
+  void noteBodyDeflectionHitBinturong(MatchPlayer& player, ShotBodyPart part,
+                                      bool legPutOut, bool opponents);
+  void beginBodyDeflection(const MatchPlayer& player);
+  void beginBodyDeflectionAardvark(const MatchPlayer& player);
+  void beginBodyDeflectionBinturong(const MatchPlayer& player);
+  void beginShotDeflection(const MatchPlayer& player, float lockout);
+  void beginShotDeflectionAardvark(const MatchPlayer& player, float lockout);
+  void beginShotDeflectionBinturong(const MatchPlayer& player, float lockout);
+  void endDeflectedShotFlight();
+  void endDeflectedShotFlightAardvark();
+  void endDeflectedShotFlightBinturong();
+  void finishShotDeflection(MatchPlayer& player, bool offBody, bool deflection);
+  void finishShotDeflectionAardvark(MatchPlayer& player, bool offBody,
+                                    bool deflection);
+  void finishShotDeflectionBinturong(MatchPlayer& player, bool offBody,
+                                     bool deflection);
+  void noteFailedTouch(const MatchPlayer& player);
+  void noteFailedTouchAardvark(const MatchPlayer& player);
+  void noteFailedTouchBinturong(const MatchPlayer& player);
+  // Keeper hold, save, release and rebound consequences.
+  void beginKeeperHold(Point3F from);
+  void beginKeeperHoldAardvark(Point3F from);
+  void beginKeeperHoldBinturong(Point3F from);
+  void rebaseKeeperHold(Point3F from);
+  void rebaseKeeperHoldAardvark(Point3F from);
+  void rebaseKeeperHoldBinturong(Point3F from);
+  void endKeeperHold();
+  void endKeeperHoldAardvark();
+  void endKeeperHoldBinturong();
+  void noteKeeperDistribution(bool lofted, bool overarm);
+  void noteKeeperDistributionAardvark(bool lofted, bool overarm);
+  void noteKeeperDistributionBinturong(bool lofted, bool overarm);
+  void beginKeeperHandRebound(const MatchPlayer& keeper);
+  void beginKeeperHandReboundAardvark(const MatchPlayer& keeper);
+  void beginKeeperHandReboundBinturong(const MatchPlayer& keeper);
+  void noteKeeperShotResolved();
+  void noteKeeperShotResolvedAardvark();
+  void noteKeeperShotResolvedBinturong();
+  void finishKeeperParry(const MatchPlayer& keeper);
+  void finishKeeperParryAardvark(const MatchPlayer& keeper);
+  void finishKeeperParryBinturong(const MatchPlayer& keeper);
+  void creditKeeperSave(MatchPlayer& keeper);
+  void creditKeeperSaveAardvark(MatchPlayer& keeper);
+  void creditKeeperSaveBinturong(MatchPlayer& keeper);
+  void completeKeeperSave(const MatchPlayer& goalkeeper);
+  void completeKeeperSaveAardvark(const MatchPlayer& goalkeeper);
+  void completeKeeperSaveBinturong(const MatchPlayer& goalkeeper);
+  void beginLegacyKeeperPunch(const MatchPlayer& player);
+  void beginLegacyKeeperPunchAardvark(const MatchPlayer& player);
+  void beginLegacyKeeperPunchBinturong(const MatchPlayer& player);
+  void finishLegacyKeeperPunch(const MatchPlayer& player);
+  void finishLegacyKeeperPunchAardvark(const MatchPlayer& player);
+  void finishLegacyKeeperPunchBinturong(const MatchPlayer& player);
+  void rearmShotAfterBounce(float targetY, float height);
+  void rearmShotAfterBounceAardvark(float targetY, float height);
+  void rearmShotAfterBounceBinturong(float targetY, float height);
+  void endSpentKeeperShot();
+  void endSpentKeeperShotAardvark();
+  void endSpentKeeperShotBinturong();
+  // Restart custody, rule provenance and shootout reset boundaries.
+  void assignRestartOwner(const Player* owner);
+  void assignRestartOwnerAardvark(const Player* owner);
+  void assignRestartOwnerBinturong(const Player* owner);
+  void markThrowEntry(bool entering);
+  void markThrowEntryAardvark(bool entering);
+  void markThrowEntryBinturong(bool entering);
+  void noteWoodworkContact(bool shot);
+  void noteWoodworkContactAardvark(bool shot);
+  void noteWoodworkContactBinturong(bool shot);
+  void markWallStoppedShot();
+  void markWallStoppedShotAardvark();
+  void markWallStoppedShotBinturong();
+  void creditWallBlocker(MatchPlayer& player);
+  void creditWallBlockerAardvark(MatchPlayer& player);
+  void creditWallBlockerBinturong(MatchPlayer& player);
+  void noteShotSetPieceOrigin(bool setPiece);
+  void noteShotSetPieceOriginAardvark(bool setPiece);
+  void noteShotSetPieceOriginBinturong(bool setPiece);
+  void noteDirectFreeKickShot();
+  void noteDirectFreeKickShotAardvark();
+  void noteDirectFreeKickShotBinturong();
+  void resetShootoutBall();
+  void resetShootoutBallAardvark();
+  void resetShootoutBallBinturong();
+  void resetRuleContactAttempts();
+  void resetRuleContactAttemptsAardvark();
+  void resetRuleContactAttemptsBinturong();
+  // Lifecycle, scenario/feed, participant and attribution boundaries.
+  void resetLifecycleBall();
+  void resetLifecycleBallAardvark();
+  void resetLifecycleBallBinturong();
+  void assignScenarioOwner(const MatchPlayer& carrier);
+  void assignScenarioOwnerAardvark(const MatchPlayer& carrier);
+  void assignScenarioOwnerBinturong(const MatchPlayer& carrier);
+  void beginFedBall();
+  void beginFedBallAardvark();
+  void beginFedBallBinturong();
+  void finishFedBall(const MatchPlayer* receiver);
+  void finishFedBallAardvark(const MatchPlayer* receiver);
+  void finishFedBallBinturong(const MatchPlayer* receiver);
+  void rememberPhaseTeam(bool homeTeam);
+  void rememberPhaseTeamAardvark(bool homeTeam);
+  void rememberPhaseTeamBinturong(bool homeTeam);
+  void noteCarrierHistory(const MatchPlayer& carrier);
+  void noteCarrierHistoryAardvark(const MatchPlayer& carrier);
+  void noteCarrierHistoryBinturong(const MatchPlayer& carrier);
+  void substitutePossession(bool hadPossession, PlayerID outgoingId,
+                            const Player* inPlayer);
+  void substitutePossessionAardvark(bool hadPossession, PlayerID outgoingId,
+                                    const Player* inPlayer);
+  void substitutePossessionBinturong(bool hadPossession, PlayerID outgoingId,
+                                     const Player* inPlayer);
+  bool releaseRemovedPlayer(const Player* player);
+  bool releaseRemovedPlayerAardvark(const Player* player);
+  bool releaseRemovedPlayerBinturong(const Player* player);
+  void clearShooterHistory();
+  void clearShooterHistoryAardvark();
+  void clearShooterHistoryBinturong();
+  void setPassFlightTarget(Vector2F target);
+  void setPassFlightTargetAardvark(Vector2F target);
+  void setPassFlightTargetBinturong(Vector2F target);
+  void noteGoalSide(bool homeTeam);
+  void noteGoalSideAardvark(bool homeTeam);
+  void noteGoalSideBinturong(bool homeTeam);
+  void prepareShotAssist(const MatchPlayer& shooter, bool header);
+  void prepareShotAssistAardvark(const MatchPlayer& shooter, bool header);
+  void prepareShotAssistBinturong(const MatchPlayer& shooter, bool header);
+  void noteContactActor(const Player* player, float lockout,
+                        bool resetAttempts);
+  void noteContactActorAardvark(const Player* player, float lockout,
+                                bool resetAttempts);
+  void noteContactActorBinturong(const Player* player, float lockout,
+                                 bool resetAttempts);
+  void notePathChangeAardvark();
+  void notePathChangeBinturong();
+  void advanceShotFlightClock(float dt);
+  void advanceShotFlightClockAardvark(float dt);
+  void advanceShotFlightClockBinturong(float dt);
+  void setBallMotionAardvark(const BallMotion& motion);
+  void setBallMotionBinturong(const BallMotion& motion);
+  void endAerialDelivery();
+  void endAerialDeliveryAardvark();
+  void endAerialDeliveryBinturong();
+  void noteThrowTeam(bool homeTeam);
+  void noteThrowTeamAardvark(bool homeTeam);
+  void noteThrowTeamBinturong(bool homeTeam);
+  // Frozen legacy implementation and developing, initially identical version.
+  void setPossessionAardvark(MatchPlayer& player);
+  void takePossessionAardvark(MatchPlayer& player);
+  void clearPossessionAardvark();
+  void handBallToAardvark(const Player* holder);
+  void clearFlightStateAardvark();
+  void setPossessionBinturong(MatchPlayer& player);
+  void takePossessionBinturong(MatchPlayer& player);
+  void clearPossessionBinturong();
+  void handBallToBinturong(const Player* holder);
+  void clearFlightStateBinturong();
+  void observePossessionGate(const MatchPlayer& player,
+                             PossessionContactGate gate);
   double ballClockSeconds = 0.0;
   bool ballClockRunning = false;
   /** Whether `player` can contest `owner`'s collected ball while it is

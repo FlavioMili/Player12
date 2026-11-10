@@ -71,6 +71,12 @@ float& sandboxHomeAdvantage()
   return homeAdvantage;
 }
 
+PossessionId& sandboxPossession()
+{
+  static PossessionId version = PossessionId::BINTURONG;
+  return version;
+}
+
 void applyHomeAdvantage(MatchEngine& engine, float scale)
 {
   // Setting a context redraws the referee, so the default is left alone.
@@ -137,6 +143,7 @@ MatchSetup MatchSetup::capture(const GameController& controller, TeamID home,
   setup.managers = sandboxManagers();
   setup.ballPhysics = sandboxBallPhysics();
   setup.outOfPlay = sandboxOutOfPlay();
+  setup.possession = sandboxPossession();
   setup.homeAdvantage = sandboxHomeAdvantage();
   return setup;
 }
@@ -144,6 +151,11 @@ MatchSetup MatchSetup::capture(const GameController& controller, TeamID home,
 std::unique_ptr<MatchEngine> MatchSetup::build(const GameController& controller,
                                                std::string& error) const
 {
+  if (possession != PossessionId::AARDVARK && possession != PossessionId::BINTURONG)
+  {
+    error = "setup: invalid possession version";
+    return nullptr;
+  }
   const auto data = controller.getGameData();
   if (!data)
   {
@@ -185,7 +197,7 @@ std::unique_ptr<MatchEngine> MatchSetup::build(const GameController& controller,
 
   auto engine = std::make_unique<MatchEngine>(
       lineups[0], lineups[1], sides[0].strategy, sides[1].strategy,
-      controller.getStatsConfig(), matchSeed, handshake);
+      controller.getStatsConfig(), matchSeed, handshake, possession);
   applyHomeAdvantage(*engine, homeAdvantage);
   engine->setTeamNames(sides[0].name, sides[1].name);
   for (const auto& [id, condition] : conditions)
@@ -300,6 +312,7 @@ json SandboxJson::toJson(const MatchSetup& setup)
            {managerKey(setup.managers[0]), managerKey(setup.managers[1])}},
           {"ball_physics", ballPhysicsKey(setup.ballPhysics)},
           {"out_of_play", outOfPlayKey(setup.outOfPlay)},
+          {"possession", possessionKey(setup.possession)},
           {"home_advantage", setup.homeAdvantage}};
 }
 
@@ -420,6 +433,17 @@ bool SandboxJson::fromJson(const json& value, MatchSetup& setup,
         return false;
       }
       setup.outOfPlay = *converted;
+    }
+    if (const auto version = value.find("possession"); version != value.end())
+    {
+      const auto key = version->get<std::string>();
+      const auto converted = possessionFromKey(key);
+      if (!converted)
+      {
+        error = std::format("setup: unknown possession '{}'", key);
+        return false;
+      }
+      setup.possession = *converted;
     }
     // Nor a home advantage: they were played with the full edge.
     if (const auto home = value.find("home_advantage"); home != value.end())

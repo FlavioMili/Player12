@@ -360,6 +360,8 @@ struct MatchJob
   /** Tuning knobs for the match (defaults: the tuned constants). */
   FirstTouchKnobs touchKnobs;
   StrikeKnobs strikeKnobs;
+  /** Independent per-match possession; legacy unless explicitly selected. */
+  PossessionId possession = PossessionId::AARDVARK;
 };
 
 /** A match that did not reach full time or produced invalid numbers. */

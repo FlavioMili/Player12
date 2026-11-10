@@ -38,7 +38,7 @@ class SandboxRecorder;
  */
 struct MatchRecording
 {
-  static constexpr int VERSION = 1;
+  static constexpr int VERSION = 2;
 
   struct Decision
   {
@@ -105,5 +105,6 @@ Replay replay(const MatchRecording& recording,
               const GameController& controller,
               std::optional<std::array<BrainId, 2>> brains = {},
               std::optional<std::array<BodyId, 2>> bodies = {},
-              std::optional<HandshakeId> handshake = {});
+              std::optional<HandshakeId> handshake = {},
+              std::optional<PossessionId> possession = {});
 }  // namespace Recordings

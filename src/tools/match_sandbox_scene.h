@@ -121,12 +121,14 @@ class MatchSandboxScene : public GUIScene
   void loadRecording(const std::filesystem::path& path,
                      std::optional<std::array<BrainId, 2>> brains = {},
                      std::optional<std::array<BodyId, 2>> bodies = {},
-                     std::optional<HandshakeId> handshake = {});
+                     std::optional<HandshakeId> handshake = {},
+                     std::optional<PossessionId> possession = {});
   /** The brains and bodies chosen for "Replay with" in the Recordings
    * window. */
   std::array<BrainId, 2> replay_brains{BrainId::BINTURONG, BrainId::BINTURONG};
   std::array<BodyId, 2> replay_bodies{BodyId::AARDVARK, BodyId::AARDVARK};
   HandshakeId replay_handshake = HandshakeId::BINTURONG;
+  PossessionId replay_possession = PossessionId::BINTURONG;
 
   /** What the current (or last) match was built from. */
   std::optional<MatchSetup> match_setup;

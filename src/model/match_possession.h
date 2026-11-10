@@ -5,24 +5,45 @@
 // -----------------------------------------------------------------------------
 #pragma once
 
+#include <array>
 #include <cstdint>
 #include <optional>
 #include <string_view>
 
 #include "global/types.h"
 
-/** Per-match version vocabulary. Stage 1 observes the legacy implementation;
- * selecting/dispatching Binturong is introduced during the mutation migration.
- */
+/** Independent per-match possession implementation. */
 enum class PossessionId : std::uint8_t
 {
   AARDVARK,
   BINTURONG
 };
 
+inline constexpr std::array<PossessionId, 2> ALL_POSSESSIONS = {
+    PossessionId::AARDVARK, PossessionId::BINTURONG};
+
+constexpr std::string_view possessionName(PossessionId id)
+{
+  switch (id)
+  {
+    case PossessionId::AARDVARK:
+      return "Aardvark";
+    case PossessionId::BINTURONG:
+      return "Binturong";
+  }
+  return "Unknown";
+}
+
 constexpr std::string_view possessionKey(PossessionId id)
 {
-  return id == PossessionId::BINTURONG ? "binturong" : "aardvark";
+  switch (id)
+  {
+    case PossessionId::AARDVARK:
+      return "aardvark";
+    case PossessionId::BINTURONG:
+      return "binturong";
+  }
+  return "unknown";
 }
 
 constexpr std::optional<PossessionId> possessionFromKey(std::string_view key)
@@ -190,7 +211,80 @@ enum class PossessionObservation : std::uint8_t
   ASSIGN_OWNER,
   ACQUIRE,
   CLEAR_OWNER,
-  CLEAR_FLIGHT
+  CLEAR_FLIGHT,
+  UPDATE_TOUCH,
+  NOTE_TOUCH,
+  BEGIN_TOUCH_CLAIM,
+  BEGIN_COLLECTED_DRIBBLE,
+  NOTE_DRIBBLE_TOUCH,
+  RECORD_PASS_COMPLETION,
+  CREDIT_PASS_COMPLETION,
+  RELEASE,
+  BEGIN_PASS_FLIGHT,
+  FINISH_PASS_FLIGHT,
+  NOTE_SHOT_FLIGHT,
+  CONSUME_FIRST_TIME_INTENT,
+  CONSUME_PENDING_STRIKE,
+  NOTE_FREE_BALL_TACKLE,
+  SETTLE_TACKLE,
+  TRACK_HEADER_RUN,
+  CANCEL_PENDING_TACKLE,
+  NOTE_HEADER_CONTACT,
+  CREDIT_HEADER_SHOT,
+  BEGIN_HEADER_PLAY,
+  NOTE_CUSHIONED_HEADER,
+  NOTE_TACKLE_NUDGE,
+  BEGIN_POKED_TACKLE,
+  FINISH_POKED_TACKLE,
+  CREDIT_IMMEDIATE_TACKLE_WIN,
+  ARM_TACKLE_STRIKE,
+  LOSE_BALL_ON_FALL,
+  NOTE_FALLEN_DEFLECTION,
+  NOTE_BODY_DEFLECTION_HIT,
+  BEGIN_BODY_DEFLECTION,
+  BEGIN_SHOT_DEFLECTION,
+  END_DEFLECTED_SHOT_FLIGHT,
+  FINISH_SHOT_DEFLECTION,
+  NOTE_FAILED_TOUCH,
+  BEGIN_KEEPER_HOLD,
+  REBASE_KEEPER_HOLD,
+  END_KEEPER_HOLD,
+  NOTE_KEEPER_DISTRIBUTION,
+  BEGIN_KEEPER_HAND_REBOUND,
+  NOTE_KEEPER_SHOT_RESOLVED,
+  FINISH_KEEPER_PARRY,
+  CREDIT_KEEPER_SAVE,
+  COMPLETE_KEEPER_SAVE,
+  BEGIN_LEGACY_KEEPER_PUNCH,
+  FINISH_LEGACY_KEEPER_PUNCH,
+  REARM_SHOT_AFTER_BOUNCE,
+  END_SPENT_KEEPER_SHOT,
+  ASSIGN_RESTART_OWNER,
+  MARK_THROW_ENTRY,
+  NOTE_WOODWORK_CONTACT,
+  MARK_WALL_STOPPED_SHOT,
+  CREDIT_WALL_BLOCKER,
+  NOTE_SHOT_SET_PIECE_ORIGIN,
+  NOTE_DIRECT_FREE_KICK_SHOT,
+  RESET_SHOOTOUT_BALL,
+  RESET_RULE_CONTACT_ATTEMPTS,
+  RESET_LIFECYCLE_BALL,
+  ASSIGN_SCENARIO_OWNER,
+  BEGIN_FED_BALL,
+  FINISH_FED_BALL,
+  REMEMBER_PHASE_TEAM,
+  NOTE_CARRIER_HISTORY,
+  SUBSTITUTE_POSSESSION,
+  RELEASE_REMOVED_PLAYER,
+  CLEAR_SHOOTER_HISTORY,
+  SET_PASS_FLIGHT_TARGET,
+  NOTE_GOAL_SIDE,
+  PREPARE_SHOT_ASSIST,
+  NOTE_CONTACT_ACTOR,
+  NOTE_PATH_CHANGE,
+  ADVANCE_SHOT_FLIGHT_CLOCK,
+  NOTE_THROW_TEAM,
+  COUNT
 };
 
 enum class PossessionContactGate : std::uint8_t

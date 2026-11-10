@@ -482,6 +482,13 @@ std::optional<MatchRecording> Recordings::load(
       error = "not a match recording";
       return std::nullopt;
     }
+    const int version = document.value("version", 1);
+    if (version < 1 || version > MatchRecording::VERSION ||
+        (version >= 2 && !document.at("setup").contains("possession")))
+    {
+      error = "unsupported recording version or missing possession selection";
+      return std::nullopt;
+    }
     MatchRecording recording;
     recording.created = document.value("created", "");
     recording.build = document.value("build", "");
@@ -513,7 +520,8 @@ Recordings::Replay Recordings::replay(
     const MatchRecording& recording, const GameController& controller,
     std::optional<std::array<BrainId, 2>> brains,
     std::optional<std::array<BodyId, 2>> bodies,
-    std::optional<HandshakeId> handshake)
+    std::optional<HandshakeId> handshake,
+    std::optional<PossessionId> possession)
 {
   Replay result;
   if (recording.setup.worldSeed != controller.getWorldSeed())
@@ -529,6 +537,7 @@ Recordings::Replay Recordings::replay(
   if (brains) setup.brains = *brains;
   if (bodies) setup.bodies = *bodies;
   if (handshake) setup.handshake = *handshake;
+  if (possession) setup.possession = *possession;
   auto engine = setup.build(controller, result.error);
   if (!engine) return result;
   engine->loadCommandReplay(recording.commands);

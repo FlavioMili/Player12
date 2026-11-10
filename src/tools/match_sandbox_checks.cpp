@@ -131,7 +131,7 @@ std::unique_ptr<MatchEngine> makeEngine(const Team& home, const Team& away,
 {
   auto engine = std::make_unique<MatchEngine>(
       home.getLineup(), away.getLineup(), home.getStrategy(),
-      away.getStrategy(), config, seed, sandboxHandshake());
+      away.getStrategy(), config, seed, sandboxHandshake(), sandboxPossession());
   applyHomeAdvantage(*engine, sandboxHomeAdvantage());
   engine->setTeamNames(home.getName(), away.getName());
   engine->setBrain(true, sandboxBrains()[0]);
@@ -1380,18 +1380,36 @@ int runSandboxChecks(GameController& controller, int matches)
       std::optional<MatchRecording> loaded =
           roundTrip ? Recordings::load(path, error) : std::nullopt;
       std::filesystem::remove(path);
-      roundTrip = loaded.has_value();
+      roundTrip = loaded && loaded->setup.possession == recording.setup.possession;
       bool exact = false;
       bool tickFound = false;
       bool decisionFound = false;
       std::string newBrainReplay = "not run";
       std::string newBodyReplay = "not run";
       std::string newHandshakeReplay = "not run";
+      bool possessionReplay = false;
+      std::string possessionOverride = "not run";
       if (loaded)
       {
         const Recordings::Replay replay = Recordings::replay(*loaded, controller);
         exact = replay.match && !replay.divergedAt &&
                 !replay.firstDifferentDecision;
+        const auto selected = [](const Recordings::Replay& result, PossessionId version)
+        {
+          if (!result.match) return false;
+          const auto guard = result.match->lock();
+          const auto& frames = result.match->keyframes();
+          return !frames.empty() && frames.front().engine->getPossessionVersion() == version;
+        };
+        const auto other = loaded->setup.possession == PossessionId::AARDVARK
+                               ? PossessionId::BINTURONG : PossessionId::AARDVARK;
+        const auto overridden = Recordings::replay(*loaded, controller, std::nullopt,
+                                                   std::nullopt, std::nullopt, other);
+        possessionReplay = selected(replay, loaded->setup.possession) && selected(overridden, other);
+        possessionOverride = std::format("{} selected: {}; {}",
+            possessionName(other), selected(overridden, other) ? "yes" : "NO",
+            overridden.match && !overridden.divergedAt && !overridden.firstDifferentDecision
+                ? "same as recording" : "different/failed");
         // Side by side with the brain being developed (information only:
         // identical while Binturong is still a copy of the Aardvark brain).
         const Recordings::Replay withNew = Recordings::replay(
@@ -1437,7 +1455,7 @@ int runSandboxChecks(GameController& controller, int matches)
             Recordings::replay(tampered, controller);
         decisionFound = decision.firstDifferentDecision == which;
       }
-      const bool recordingsWork = roundTrip && exact && tickFound && decisionFound;
+      const bool recordingsWork = roundTrip && exact && tickFound && decisionFound && possessionReplay;
       rewindExact = rewindExact && recordingsWork;
       std::cout << std::format(
           "Recording: {} decisions with detail, {:.0f} KB, captured in {:.2f} "
@@ -1456,6 +1474,8 @@ int runSandboxChecks(GameController& controller, int matches)
       std::cout << std::format(
           "Replay with handshake Binturong (recorded with {}): {}\n",
           handshakeName(recording.setup.handshake), newHandshakeReplay);
+      std::cout << std::format("Possession {} retained: {}; replay override {}\n",
+          possessionName(recording.setup.possession), possessionReplay ? "yes" : "NO", possessionOverride);
     }
     std::cout << std::format(
         "\nFull detail: {} stretches, {:.1f} ms each; {} decisions, {} pass "

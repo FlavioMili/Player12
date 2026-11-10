@@ -25,6 +25,7 @@
 #include "model/match_handshake.h"
 #include "model/match_manager.h"
 #include "model/match_out_of_play.h"
+#include "model/match_possession.h"
 #include "model/match_referee.h"
 #include "model/strategy.h"
 
@@ -51,6 +52,9 @@ RefereeId& sandboxReferee();
 std::array<ManagerId, 2>& sandboxManagers();
 BallPhysicsId& sandboxBallPhysics();
 OutOfPlayId& sandboxOutOfPlay();
+/** Independent per-match possession; new sandbox matches default Binturong,
+ * --check defaults Aardvark unless explicitly selected. */
+PossessionId& sandboxPossession();
 /** The home advantage new sandbox matches, checks and drills are played
  * with (MatchContext::homeAdvantageScale: 0 a neutral venue, 1 the game's
  * full home edge on attributes, execution and refereeing, up to 2): the
@@ -107,6 +111,8 @@ struct MatchSetup
   BallPhysicsId ballPhysics = BallPhysicsId::AARDVARK;
   /** The match's out-of-play version (older recordings: Aardvark). */
   OutOfPlayId outOfPlay = OutOfPlayId::AARDVARK;
+  /** Missing in old setups/recordings: legacy possession, independent of bodies. */
+  PossessionId possession = PossessionId::AARDVARK;
   /** The match's home advantage (older recordings: 1, the full edge). */
   float homeAdvantage = 1.0f;
 

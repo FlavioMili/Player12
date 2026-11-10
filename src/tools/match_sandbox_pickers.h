@@ -13,6 +13,7 @@
 #include "model/match_brain.h"
 #include "model/match_manager.h"
 #include "model/match_out_of_play.h"
+#include "model/match_possession.h"
 #include "model/match_referee.h"
 
 /**
@@ -29,4 +30,5 @@ void manager(const char* id, ManagerId& manager, float width);
 void referee(const char* id, RefereeId& referee, float width);
 void ballPhysics(const char* id, BallPhysicsId& physics, float width);
 void outOfPlay(const char* id, OutOfPlayId& version, float width);
+void possession(const char* id, PossessionId& version, float width);
 }  // namespace SandboxPickers

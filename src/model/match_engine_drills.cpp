@@ -28,7 +28,7 @@ std::optional<MatchPlayer*> MatchEngine::placeScenario(
     float scenarioMatchTime, int scenarioHomeScore, int scenarioAwayScore,
     bool resetCondition)
 {
-  ball = MatchBall{};
+  resetLifecycleBall();
   obstacles.clear();
   state = scenarioState;
   transitionSecondsRemaining = 0.0f;
@@ -100,18 +100,7 @@ std::optional<MatchPlayer*> MatchEngine::placeScenario(
       });
   if (carrier == players.end()) return std::nullopt;
 
-  handBallTo(carrier->player);
-  ball.lastPossessor = carrier->player;
-  if (carrier->isHomeTeam)
-  {
-    homePhase = TeamPhase::POSSESSION;
-    awayPhase = TeamPhase::DEFENSIVE_BLOCK;
-  }
-  else
-  {
-    awayPhase = TeamPhase::POSSESSION;
-    homePhase = TeamPhase::DEFENSIVE_BLOCK;
-  }
+  assignScenarioOwner(*carrier);
   return &*carrier;
 }
 
@@ -176,7 +165,7 @@ bool MatchEngine::removeBeforeKickOff(PlayerID playerId)
   player->targetVelocity = {0.0f, 0.0f};
   player->arriveAtSpeed = false;
   player->routeWaypoints = 0;
-  if (ball.possessedBy == player->player) clearPossession();
+  (void)releaseRemovedPlayer(player->player);
   return true;
 }
 

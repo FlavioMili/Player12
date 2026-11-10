@@ -60,7 +60,7 @@ void MatchEngine::checkOutOfBoundsBinturong()
   {
     if (ballInPlayAtBinturong(ball.position))
     {
-      ball.throwEntering = false;
+      markThrowEntry(false);
     }
     else
     {
@@ -222,7 +222,7 @@ void MatchEngine::scoreGoalBinturong(bool homeTeam)
                                  : MatchTuning::DeadBall::CELEBRATION_SECONDS;
   state = MatchState::GOAL;
   clearPossession();
-  ball.shotByHome = homeTeam;
+  noteGoalSide(homeTeam);
   pendingAdvantage.active = false;
   restartTakerIndex.reset();
   restartLineUp.reset();
@@ -291,7 +291,7 @@ void MatchEngine::kickOffAfterGoalBinturong(bool homeKickingOff)
   }
   // The ball is not moved: the keeper has it on its way to the centre (or
   // the taker already has it on the spot), chosen when the goal went in.
-  lastShooter = nullptr;
+  clearShooterHistory();
   MatchPlayer* taker = restartTaker();
   if (!taker)
   {
@@ -770,15 +770,7 @@ void MatchEngine::bounceOffFrameBinturong()
     return;
   // Still the shot's, off the post and then the bar too.
   const bool shot = ball.isShot || shotOffWoodworkStandsBinturong();
-  notePathChange();
-  ball.touchAttempts = 0;
-  if (shot)
-  {
-    ball.shotOffWoodwork = true;
-    ball.woodworkPathSince = ball.pathSince;
-    ball.woodworkLastPossessor = ball.lastPossessor;
-    ball.woodworkDeflectedBy = ball.deflectedBy;
-  }
+  noteWoodworkContact(shot);
   if (!ball.isShot) return;
   MatchPlayer* shooter = findMatchPlayer(lastShooter);
   MatchEvent& event = logEvent(MatchEventType::WOODWORK);
@@ -792,8 +784,7 @@ void MatchEngine::bounceOffFrameBinturong()
   // otherwise a loose ball (shot block plan step 4).
   if (!shotStaysOnGoalBinturong())
   {
-    ball.isShot = false;
-    ball.shotOnTarget = false;
+    endDeflectedShotFlight();
   }
 }
 
@@ -1116,8 +1107,7 @@ void MatchEngine::placeDeadBallBinturong(MatchPlayer* taker)
              MatchTuning::Units::BALL_Z_METRES;
   }
   deadBall.active = false;
-  handBallTo(taker ? taker->player : nullptr);
-  ball.lastPossessor = ball.possessedBy;
+  assignRestartOwner(taker ? taker->player : nullptr);
   if (taker) taker->movementTarget = deadBall.spot;
 }
 
@@ -1771,8 +1761,8 @@ void MatchEngine::completeRestartBinturong()
   if (restartState == MatchState::THROW_IN && !ball.possessedBy &&
       !ballInPlayAtBinturong(ball.position))
   {
-    ball.throwEntering = true;
-    ball.throwByHome = taker->isHomeTeam;
+    markThrowEntry(true);
+    noteThrowTeam(taker->isHomeTeam);
   }
   if (state == restartState) state = MatchState::PLAYING;
   restartIsSetPiece = false;

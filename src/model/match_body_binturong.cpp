@@ -2401,15 +2401,7 @@ bool MatchEngine::updateDribbleBinturong(MatchPlayer& carrier, float dt)
                      std::clamp(carrier.position.y + offset.y, 0.001f, 0.999f)};
     ball.z = 0.0f;
     ball.velocity = carrier.velocity;
-    ball.inTouch = true;
-    ball.touchCollected = true;
-    ball.touchPasser = nullptr;
-    ball.ownTouchCooldown = 0.0f;
-    ball.dribbleGoal = carrier.tacticalTarget;
-    ball.touchGap = R::FEET_METRES;
-    ball.touchPeakGap = R::FEET_METRES;
-    ball.dribbleExposure = R::FEET_METRES;
-    ball.dribbleTouchLength = R::MAX_TOUCH_METRES;
+    beginCollectedDribble(carrier);
     return true;
   }
   if (inHands && ball.inKeeperHands)
@@ -2423,11 +2415,10 @@ bool MatchEngine::updateDribbleBinturong(MatchPlayer& carrier, float dt)
       const KeeperDivePose pose = keeperDivePoseBinturong(
           carrier, keepers[carrier.isHomeTeam ? 0 : 1].dive, getSimulatedSeconds());
       const Vector2F centre = toMetres(carrier.position);
-      ball.heldFrom = {0.5f * (pose.hands[0].x + pose.hands[1].x) - centre.x,
-                       0.5f * (pose.hands[0].y + pose.hands[1].y) - centre.y,
-                       std::max(0.5f * (pose.hands[0].z + pose.hands[1].z),
-                                MatchTuning::Units::BALL_RADIUS_METRES)};
-      ball.heldSince = getSimulatedSeconds();
+      rebaseKeeperHold({0.5f * (pose.hands[0].x + pose.hands[1].x) - centre.x,
+                        0.5f * (pose.hands[0].y + pose.hands[1].y) - centre.y,
+                        std::max(0.5f * (pose.hands[0].z + pose.hands[1].z),
+                                 MatchTuning::Units::BALL_RADIUS_METRES)});
     }
     const Point3F held = heldBallBinturong(carrier);
     ball.position = {std::clamp(toPitch({held.x, held.y}).x, 0.001f, 0.999f),
@@ -2438,7 +2429,7 @@ bool MatchEngine::updateDribbleBinturong(MatchPlayer& carrier, float dt)
     return true;
   }
   // Out of his area with it in his hands: at his feet from here.
-  ball.inKeeperHands = false;
+  endKeeperHold();
   if (inHands)
   {
     ball.dribbleExposure = 0.0f;
@@ -3866,8 +3857,7 @@ MatchEngine::Kick MatchEngine::kickPassBinturong(const MatchPlayer& passer,
                        distance(ball.position, target) > MatchTuning::KeeperHeld::ROLL_LONGEST_METRES;
   if (fromHands)
   {
-    ball.heldRelease = lofted ? HeldRelease::PUNT : overarm ? HeldRelease::OVERARM : HeldRelease::ROLL;
-    ++(lofted ? stats.keeperPunts : overarm ? stats.keeperThrows : stats.keeperRolls);
+    noteKeeperDistribution(lofted, overarm);
   }
   const PassTechnique how = technique.value_or(
       lofted ? PassTechnique::LOFTED : PassTechnique::GROUND);
@@ -5626,10 +5616,7 @@ bool MatchEngine::shotStaysOnGoalBinturong()
       crossing.height >=
           MatchTuning::Units::CROSSBAR_HEIGHT_METRES - MatchTuning::Units::BALL_RADIUS_METRES)
     return false;
-  ball.shotOnTarget = true;
-  ball.shotSaveResolved = false;
-  ball.shotTargetY = P::CENTRE + crossing.sideways / P::WIDTH_METRES;
-  ball.shotTargetHeightMetres = crossing.height;
+  rearmShotAfterBounce(P::CENTRE + crossing.sideways / P::WIDTH_METRES, crossing.height);
   planGoalkeeperDive(!ball.shotByHome, false);
   return true;
 }
@@ -5838,21 +5825,10 @@ void MatchEngine::ballMeetsBodyBinturong(MatchPlayer& player, std::size_t slot,
   const bool opponents = lastPlayedBy && lastPlayedBy->isHomeTeam != player.isHomeTeam;
   const ShotLegs* legs = slot < shotLegPoses.size() ? &shotLegPoses[slot] : nullptr;
   const bool legPutOut = legs && legs->blocking && isLegPart(hit.part);
-  ++stats.ballBodyHitsByPart[static_cast<std::size_t>(hit.part)];
-  if (legPutOut) ++stats.ballReactionBlocks;
-  if (!opponents)
-    ++stats.ballDeflections;
-  else if (ball.isPass)
-  {
-    ++stats.passesBlocked;
-    ++statsOf(player).blockedPasses;
-  }
+  noteBodyDeflectionHit(player, hit.part, legPutOut, opponents);
   // A loose ball now, nobody's pass; him kept off it while it comes off
   // him (off a leg put out, until it is back), as after a shot block.
-  if (ball.inTouch) clearPossession();
-  clearFlightState();
-  ball.lastPossessor = player.player;
-  ball.kicker = player.player;
+  beginBodyDeflection(player);
   ball.kickerLockout = legPutOut ? legs->outShare * legs->legSeconds +
                                        MatchTuning::ShotBlock::RECOVERY_LEG_EXTRA_SECONDS
                                  : MatchTuning::ShotBlock::RECOVERY_BODY_SECONDS;
@@ -6158,13 +6134,7 @@ std::optional<KeeperReach> MatchEngine::keeperReachBinturong(const MatchPlayer& 
 
 void MatchEngine::bounceOffKeeperHandBinturong(MatchPlayer& keeper, const ShotBodyHit& hit)
 {
-  if (ball.inTouch) clearPossession();
-  clearFlightState();
-  ball.lastPossessor = keeper.player;
-  ball.kicker = keeper.player;
-  ball.kickerLockout = MatchTuning::ShotBlock::RECOVERY_BODY_SECONDS;
-  ball.touchAttempts = 0;
-  notePathChange();
+  beginKeeperHandRebound(keeper);
   bounceShotOffBodyBinturong(keeper, hit);
 }
 
@@ -6433,9 +6403,7 @@ void MatchEngine::takeInHandsBinturong(const MatchPlayer& keeper, Vector2F wasAt
     return;
   const Vector2F centre = toMetres(keeper.position);
   const Vector2F at = toMetres(wasAt);
-  ball.inKeeperHands = true;
-  ball.heldFrom = {at.x - centre.x, at.y - centre.y, std::max(wasMetres, 0.0f)};
-  ball.heldSince = getSimulatedSeconds();
+  beginKeeperHold({at.x - centre.x, at.y - centre.y, std::max(wasMetres, 0.0f)});
   const Point3F held = heldBallBinturong(keeper);
   ball.position = toPitch({held.x, held.y});
   ball.z = held.z / MatchTuning::Units::BALL_Z_METRES;
@@ -6787,18 +6755,8 @@ void MatchEngine::cushionHeaderBinturong(MatchPlayer& header)
               moment.height / MatchTuning::Units::BALL_Z_METRES,
               result.outcome.velocity, result.outcome.verticalSpeed, BallSpin{},
               0.0f);
-  ball.inTouch = true;
-  ball.touchCollected = false;
-  ball.touchDropping = true;
-  ball.touchPasser = receivingPass ? passer : nullptr;
-  ball.touchContactGap = moment.gap;
-  ball.touchContactHeight = moment.height;
-  ball.touchLaunchSpeed = result.outcome.actualSpeed;
-  const float gap = distance(header.position, ball.position);
-  ball.touchGap = gap;
-  ball.touchPeakGap = gap;
-  ball.dribbleExposure = gap;
-  ball.dribbleTouchLength = std::max(gap, MatchTuning::Dribble::MAX_TOUCH_METRES);
+  noteCushionedHeader(header, receivingPass ? passer : nullptr, moment,
+                      result.outcome.actualSpeed);
 }
 
 void MatchEngine::bodyTouchLimitsBinturong(const MatchPlayer& player,
@@ -6876,10 +6834,7 @@ void MatchEngine::playBodyTouchBinturong(MatchPlayer& player,
               moment.height / MatchTuning::Units::BALL_Z_METRES,
               result.outcome.velocity, result.outcome.verticalSpeed, BallSpin{},
               0.0f);
-  ball.inTouch = true;
-  ball.touchCollected = false;
-  ball.touchDropping = true;
-  ball.touchPasser = receivingPass ? passer : nullptr;
+  beginTouchClaim(receivingPass ? passer : nullptr, true);
   ball.touchContactGap = moment.gap;
   ball.touchContactHeight = moment.height;
   ball.touchLaunchSpeed = result.outcome.actualSpeed;
@@ -7375,7 +7330,7 @@ void MatchEngine::takeDirectFreeKickBinturong(MatchPlayer& taker)
   // no screening delay; a real wall comes later). The xG is a label for the
   // statistics only.
   takeShot(taker, MatchTuning::SetPiece::DIRECT_FREE_KICK_XG, false, true);
-  ball.shotFromDirectFreeKick = true;
+  noteDirectFreeKickShot();
   ++stats.directFreeKicks;
   if (ball.shotOnTarget) ++stats.directFreeKicksOnTarget;
 }

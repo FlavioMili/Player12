@@ -183,7 +183,8 @@ decides which restart or period comes next.
 
 For the read-only possession projection, invariant diagnostics and paired
 `--trace-possession` command, see [Possession](possession.md). These Stage 1
-tools observe the existing implementation; they do not change ownership policy.
+tools observe ownership without changing policy. The first Stage 2 slice adds
+per-match Aardvark/Binturong selection and dispatch for the shared ownership helpers.
 
 The match uses seeded `std::mt19937` streams for play and incidents, with
 in-tree sampling helpers. Hash/epoch noise supplies stable variation for some
@@ -212,7 +213,7 @@ cross-thread publishing. The 2D and 3D views interpolate the same state.
 | Change | Start here | Focused coverage |
 |--------|------------|------------------|
 | Targets, actions, contact integration | `match_engine.cpp` | [Engine](../../test/test_match_engine.cpp), [scenarios](../../test/test_match_scenarios.cpp) |
-| Swappable parts (brain, body, handshake, referee, AI manager, ball physics, out of play) | `match_<part>.h`, `match_<part>_<version>.cpp`, `match_<part>_dispatch.cpp` | `match_sandbox --check`, `fm_lab` with the part's option |
+| Swappable parts (brain, body, handshake, referee, AI manager, ball physics, out of play, possession) | `match_<part>.h`, `match_<part>_<version>.cpp`, `match_<part>_dispatch.cpp` | `match_sandbox --check`, `fm_lab` with the part's option |
 | Ground, touchline people, officials, walk-outs, substitutions on foot | `match_ground.h`, `match_touchline_people.cpp`, `match_walk_out.cpp` | `match_sandbox --check` |
 | Roles, duties, shape and opposition orders | `tactics.*`, `strategy.*` | [Tactics](../../test/test_tactics.cpp) |
 | Pure football rules | `match_rules.*` | [Rules](../../test/test_match_rules.cpp) |

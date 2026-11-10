@@ -107,7 +107,7 @@ void MatchEngine::integrateBallAardvark(float dt)
                      ball.z * MatchTuning::Units::BALL_Z_METRES, false};
   const float travelled = stepFlightAardvark(flight, dt);
   // A delivery that has bounced is no longer a clean aerial ball.
-  if (flight.bounced) ball.isAerialDelivery = false;
+  if (flight.bounced) endAerialDelivery();
   const Vector2F step =
       toPitch({direction.x * travelled, direction.y * travelled});
   ball.position.x += step.x;

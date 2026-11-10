@@ -1026,6 +1026,10 @@ void MatchSandboxScene::renderFooter()
   ImGui::SameLine();
   SandboxPickers::outOfPlay("##out_of_play", sandboxOutOfPlay(),
                             120.0f * scale);
+  // Begin a new row so the additional per-match selector fits the setup.
+  ImGui::TextUnformatted("Possession");
+  ImGui::SameLine();
+  SandboxPickers::possession("##possession", sandboxPossession(), 120.0f * scale);
   ImGui::SameLine(0.0f, Theme::Space::XL * scale);
   ImGui::TextUnformatted("Home advantage");
   ImGui::SameLine();
@@ -1118,7 +1122,8 @@ void MatchSandboxScene::loadRecording(
     const std::filesystem::path& path,
     std::optional<std::array<BrainId, 2>> brains,
     std::optional<std::array<BodyId, 2>> bodies,
-    std::optional<HandshakeId> handshake)
+    std::optional<HandshakeId> handshake,
+    std::optional<PossessionId> possession)
 {
   std::string error;
   std::optional<MatchRecording> recording = Recordings::load(path, error);
@@ -1129,7 +1134,7 @@ void MatchSandboxScene::loadRecording(
   }
   Recordings::Replay replayed =
       Recordings::replay(*recording, guiView->getController(), brains, bodies,
-                         handshake);
+                         handshake, possession);
   if (!replayed.match)
   {
     status = "Could not replay: " + replayed.error;
@@ -1141,6 +1146,7 @@ void MatchSandboxScene::loadRecording(
   if (brains) match_setup->brains = *brains;
   if (bodies) match_setup->bodies = *bodies;
   if (handshake) match_setup->handshake = *handshake;
+  if (possession) match_setup->possession = *possession;
   match_home = recording->setup.sides[0].team;
   match_away = recording->setup.sides[1].team;
   debugger.reset();
@@ -1155,7 +1161,7 @@ void MatchSandboxScene::loadRecording(
       "{} {} - {} {} (recording, seed {}, {})", loaded->setup.sides[0].name,
       replay_info->homeScore, replay_info->awayScore,
       loaded->setup.sides[1].name, loaded->setup.matchSeed,
-      brains || bodies || handshake
+      brains || bodies || handshake || possession
           ? std::format("replayed with brains {}, bodies {}, handshake {}; "
                         "recorded with brains {}, bodies {}, handshake {}",
                         brainPairName(match_setup->brains),
@@ -1168,6 +1174,9 @@ void MatchSandboxScene::loadRecording(
                         brainPairName(loaded->setup.brains),
                         bodyPairName(loaded->setup.bodies),
                         handshakeName(loaded->setup.handshake)));
+  last_result += std::format("; possession {} (recorded {})",
+                             possessionName(match_setup->possession),
+                             possessionName(loaded->setup.possession));
   status = "Opened " + path.filename().string();
 }
 
@@ -1250,6 +1259,9 @@ void MatchSandboxScene::renderRecordings()
         replay_handshake = option;
     ImGui::EndCombo();
   }
+  ImGui::TextUnformatted("Possession:");
+  ImGui::SameLine();
+  SandboxPickers::possession("##replay_possession", replay_possession, 120.0f * scale);
   ImGui::Separator();
   if (recording_files.empty()) ImGui::TextDisabled("No recordings yet.");
   for (const std::filesystem::path& path : recording_files)
@@ -1258,10 +1270,10 @@ void MatchSandboxScene::renderRecordings()
     if (ImGui::SmallButton("Open")) loadRecording(path);
     ImGui::SameLine();
     if (ImGui::SmallButton("Replay with"))
-      loadRecording(path, replay_brains, replay_bodies, replay_handshake);
+      loadRecording(path, replay_brains, replay_bodies, replay_handshake, replay_possession);
     if (ImGui::IsItemHovered())
       ImGui::SetTooltip("Play this match again with the brains, bodies and "
-                        "handshake chosen above and compare it with the "
+                        "handshake and possession chosen above and compare it with the "
                         "recording.");
     ImGui::SameLine();
     ImGui::TextUnformatted(path.stem().string().c_str());

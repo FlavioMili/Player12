@@ -118,4 +118,19 @@ void outOfPlay(const char* id, OutOfPlayId& version, float width)
         "up and taken. Who takes it and what he does with it are the brain's. "
         "Aardvark is the inherited engine; Binturong is being developed.");
 }
+void possession(const char* id, PossessionId& version, float width)
+{
+  ImGui::SetNextItemWidth(width);
+  if (ImGui::BeginCombo(id, possessionName(version).data()))
+  {
+    for (const PossessionId option : ALL_POSSESSIONS)
+      if (ImGui::Selectable(possessionName(option).data(), option == version))
+        version = option;
+    ImGui::EndCombo();
+  }
+  if (ImGui::IsItemHovered())
+    ImGui::SetTooltip("The possession system for the whole match, independent "
+                      "of the brains and bodies. Aardvark preserves the baseline; "
+                      "Binturong is being developed. Both currently play identically.");
+}
 }  // namespace SandboxPickers
