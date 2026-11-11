@@ -9,6 +9,8 @@ your first change and [platform setup](../user/installation.md) for dependencies
 | Guide | What it explains |
 |-------|------------------|
 | [Match engine](match-engine.md) | State ownership, time and units, tick order, ball physics, rules, replay and scheduling |
+| [Possession](possession.md) | Consolidated control, claims, receipt, history and version compatibility |
+| [Possession validation](possession-validation.md) | Migration close-out, all 45 scenario rows, evidence and remaining acceptance gaps |
 | [Player behavior](player-behavior.md) | Attributes, team shape, roles, movement, action selection, defending and goalkeepers |
 | [Extending and modding](extending-and-modding.md) | Working JSON edits, C++ extension points, custom match contexts and validation |
 | [Design notes and Spec Kitty history](design-notes.md) | Recovered rationale, original source references and differences between plans and shipped code |

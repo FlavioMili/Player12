@@ -269,8 +269,7 @@ void DebugInspector::renderTeam(const SandboxRecorder& recorder,
     ImGui::TableSetupColumn("Speed");
     ImGui::TableSetupColumn("Stamina");
     ImGui::TableHeadersRow();
-    const PlayerID owner =
-        engine.getPossessionAttachment() ? engine.getPossessionAttachment()->getId() : 0;
+    const PossessionSnapshot possession = engine.getPossessionSnapshot();
     for (const MatchPlayer& slot : engine.getPlayers())
     {
       if (!slot.player || slot.isHomeTeam != home || !slot.onPitch) continue;
@@ -278,10 +277,20 @@ void DebugInspector::renderTeam(const SandboxRecorder& recorder,
       ImGui::TableNextRow();
       ImGui::TableNextColumn();
       selectable(recorder, id);
-      if (id == owner)
+      const char* ballStatus = id == possession.controller ? "(control)"
+                               : id == possession.claimant ? "(claim)"
+                               : id == possession.legacyOwner
+                                   ? (possession.openPlay ? "(attached)" : "(restart)")
+                                   : nullptr;
+      if (ballStatus)
       {
         ImGui::SameLine();
-        ImGui::TextColored(Theme::palette().positive, "(ball)");
+        ImGui::TextColored(Theme::palette().positive, "%s", ballStatus);
+      }
+      if (id == possession.expectedReceiver)
+      {
+        ImGui::SameLine();
+        ImGui::TextDisabled("(expected)");
       }
       ImGui::TableNextColumn();
       ImGui::TextUnformatted(RoleUtils::shortName(slot.player->getRole()));
@@ -377,8 +386,10 @@ void DebugInspector::renderPlayer(const SandboxRecorder& recorder,
   }
   ImGui::Checkbox("Follow the ball", &follow_ball);
   if (ImGui::IsItemHovered())
-    ImGui::SetTooltip("Inspect whoever has the ball (or last had it). Picking "
-                      "a player switches this off.");
+    ImGui::SetTooltip("Follow the controller, touch claimant or restart taker; "
+                      "keep following the last attachment while the ball is free. "
+                      "An expected receiver does not have control. Picking a "
+                      "player switches this off.");
   ImGui::SameLine();
   const PlayerID owner =
       engine.getPossessionAttachment() ? engine.getPossessionAttachment()->getId() : 0;

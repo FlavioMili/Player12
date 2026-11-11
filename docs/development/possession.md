@@ -7,6 +7,11 @@ Binturong foot-control establishment/retention, claim expiry and friendly
 collection coordination. Reaction/awareness timing and broader chaser tuning
 remain separate work; Aardvark retains its legacy policy.
 
+Stage 5 ownership/compatibility review and documentation close-out are complete.
+See [validation and the 45-row coverage inventory](possession-validation.md) for
+evidence, preserved debt and explicit gaps. Visual acceptance of the motivating
+watching-teammate behaviour remains separate and has not been claimed.
+
 ## Storage and mutation ownership
 
 `MatchPossessionState` contains 43 former ball fields, Binturong's current foot-
@@ -33,8 +38,8 @@ Selected implementations in `match_possession_aardvark.cpp` and
 There is no delayed transition queue. Aardvark retains compatibility behaviour
 validated against first-touch-fix baseline `a95680a`; Binturong policy changes are
 compared against Stage 3 checkpoint `be6c744`.
-The control/expiry slice is committed as `abe384e`; coordination is compared with
-that checkpoint.
+The control/expiry slice is committed as `abe384e`; coordination is committed as
+`5525926` and compared with that checkpoint. Stage 5 preserves both policies.
 
 `MatchBall` retains 44 fields outside possession: physical/rules geometry,
 brain/body plans, eligibility masks/timers and contact diagnostics/exposure.
@@ -83,13 +88,13 @@ engine views; their compatibility fields are not live possession storage. Sandbo
 reports/checks, inspector, audio, controllers and recorder checksum also read the
 consolidated record.
 
-## Stage 4 policy decisions and first slice
+## Foot-control policy
 
 Agreed policy: actual collection establishes foot control; normal dribbling
-retains it with brief separation tolerance. Uncollected claims will use
+retains it with brief separation tolerance. Uncollected claims use
 recoverability, brief tolerance and a maximum duration. Any teammate may contest
-a playable ball, even during existing control. Competing teammate intentions will
-be coordinated by arrival time and collection speed/direction: a marginally
+a playable ball, even during existing control. Competing teammate intentions are
+coordinated by arrival time and collection speed/direction: a marginally
 earlier arrival can defer to a better attacking collection. Intended receivers
 get a tie-break preference only. Two-team continuity statistics remain unchanged.
 
@@ -106,8 +111,8 @@ values in `match_possession_control.h`, not user-agreed numerical constants.
 Control loss clears current foot control while keeping its claimant, completed
 receipt, path and physical motion. Regaining control does not repeat pass credit
 or first-collection decision delay. Initial receipt still uses the existing
-bookkeeping once. Claim expiry is described below; teammate collection coordination
-and target-ranking changes are still separate steps.
+bookkeeping once. Claim expiry and teammate collection coordination are described
+below; broader pursuit forecasting and reaction timing remain separate work.
 Legacy attached Aardvark-body states retain their compatibility interpretation;
 the new policy applies to Binturong possession's touch-based path, independently
 of which body produced the touch. Keeper hand custody is unchanged.
