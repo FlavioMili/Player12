@@ -17,10 +17,10 @@ const fields = text => [...text.matchAll(/^  (?!struct\b)(?:const\s+)?[\w:<>]+(?
 const owned = fields(declaration('MatchPossessionState')).filter(f => f !== 'history');
 const residual = fields(declaration('MatchBall')).filter(f => f !== 'possession');
 const context = fields(declaration('PossessionHistory'));
-const policyFields = ['footControlled','footControlSeparationSeconds','claimUncontrolledSeconds','claimUnrecoverableSeconds'];
-if(owned.length !== 47 || residual.length !== 44 || context.length !== 9 ||
-   !policyFields.every(f => owned.includes(f)) || new Set([...owned,...residual]).size !== 91)
-  throw Error('Review possession inventory: expected 43 legacy facts plus four policy fields, 44 residual fields and nine history fields');
+const policyFields = ['footControlled','footControlSeparationSeconds','claimUncontrolledSeconds','claimUnrecoverableSeconds','passOffsidePlayers'];
+if(owned.length !== 48 || residual.length !== 44 || context.length !== 9 ||
+   !policyFields.every(f => owned.includes(f)) || new Set([...owned,...residual]).size !== 92)
+  throw Error('Review possession inventory: expected 43 legacy facts plus five policy fields, 44 residual fields and nine history fields');
 if(!/private:\s*friend class MatchEngine;\s*MatchPossessionState possession;/.test(declaration('MatchBall')) ||
    !/const MatchPossessionState& possessionState\(\) const/.test(declaration('MatchBall')) ||
    !/const MatchPossessionState& getPossessionState\(\) const/.test(cleanHeader) ||
@@ -86,7 +86,7 @@ for(const full of files.sort()) {
       aliases.push([file,index+1,method,raw[index].trim()]);
   });
 }
-const result={schema:3,fields:91,legacyBallFields:87,policyFields,guardedBallFields:owned,guardedEngineContext:context,
+const result={schema:3,fields:92,legacyBallFields:87,policyFields,guardedBallFields:owned,guardedEngineContext:context,
   fieldClassification:policy,sourceFilesScanned:files.length,namedWriterRows:rows.length,
   wholeBallAssignments:aggregates,aliasReview:aliases,violations,readerViolations,
   sourceHeaderSha256:crypto.createHash('sha256').update(header).digest('hex'),
@@ -102,7 +102,7 @@ const arg=process.argv.indexOf('--out-dir');if(arg>=0) {
   fs.writeFileSync(path.join(out,'aggregate-restore-review.csv'),csv(['file','line','method_hint','source'],aggregates));
   fs.writeFileSync(path.join(out,'alias-review.csv'),csv(['file','line','method_hint','source'],aliases));
 }
-console.log(JSON.stringify({fields:91,guardedBallFields:owned.length,guardedEngineContext:context.length,
+console.log(JSON.stringify({fields:92,guardedBallFields:owned.length,guardedEngineContext:context.length,
   writerRows:rows.length,wholeBallAssignments:aggregates.length,violations:violations.length,readerViolations:readerViolations.length}));
 for(const r of [...violations,...readerViolations])console.error(r.join(': '));
 process.exitCode=violations.length||readerViolations.length?1:0;

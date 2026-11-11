@@ -105,6 +105,7 @@ void MatchEngine::clearFlightStateBinturong()
   ball.possession.intendedReceiver = nullptr;
   ball.possession.isPass = false;
   ball.possession.passWasOffside = false;
+  ball.possession.passOffsidePlayers.clear();
   ball.possession.isShot = false;
   ball.possession.shotOnTarget = false;
   ball.possession.shotXG = 0.0f;
@@ -396,6 +397,23 @@ void MatchEngine::beginPassFlightBinturong(const MatchPlayer& passer,
   ball.possession.passByHome = passer.isHomeTeam;
   ball.possession.passWasOffside =
       receiver && judgeOffside(passer, option, offsideLine(passer.isHomeTeam));
+  // Friendly eligibility is open, so release-time rules must cover every
+  // possible collector, not just the player the passer intended to find.
+  const float line = offsideLine(passer.isHomeTeam);
+  for (MatchPlayer& candidate : players)
+  {
+    if (!active(candidate) || !candidate.player || &candidate == &passer ||
+        candidate.isHomeTeam != passer.isHomeTeam)
+      continue;
+    PassOption candidatePass = option;
+    candidatePass.receiver = &candidate;
+    candidatePass.progression = (candidate.position.x - passer.position.x) *
+                                (passer.isHomeTeam ? 1.0f : -1.0f);
+    const bool offside = &candidate == receiver
+                            ? ball.possession.passWasOffside
+                            : judgeOffside(passer, candidatePass, line);
+    if (offside) ball.possession.passOffsidePlayers.push_back(candidate.player->getId());
+  }
   observePossession(PossessionObservation::BEGIN_PASS_FLIGHT,
                     PossessionId::BINTURONG);
 }

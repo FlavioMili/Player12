@@ -8071,6 +8071,19 @@ void MatchEngine::planHeaderTurnBinturong()
   else if (getPossessionState().isPass && getExpectedReceiver())
   {
     MatchPlayer* receiver = findMatchPlayer(getExpectedReceiver());
+    if (possessionId == PossessionId::BINTURONG)
+    {
+      receiver = nullptr;
+      for (MatchPlayer& candidate : players)
+        if (active(candidate) && !candidate.isGoalkeeper &&
+            candidate.isHomeTeam == getPossessionState().passByHome &&
+            (candidate.intent == PlayerIntent::RECEIVE_PASS ||
+             candidate.intent == PlayerIntent::CLAIM_LOOSE_BALL))
+        {
+          receiver = &candidate;
+          break;
+        }
+    }
     if (!receiver || receiver->isHomeTeam != getPossessionState().passByHome ||
         getBody(receiver->isHomeTeam) != BodyId::BINTURONG)
       return;

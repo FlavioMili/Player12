@@ -3,14 +3,15 @@
 Stages 1–3 consolidated existing behaviour. One per-match possession version owns
 one stored account of attachment, receipt, flight and attribution. Old writable
 possession fields on `MatchBall` and `MatchEngine` are removed. Stage 4 now changes
-Binturong foot-control establishment/retention and claim expiry. Friendly takeover,
-receiver priority and reaction/chaser behaviour are subsequent steps; Aardvark
-retains its legacy policy.
+Binturong foot-control establishment/retention, claim expiry and friendly
+collection coordination. Reaction/awareness timing and broader chaser tuning
+remain separate work; Aardvark retains its legacy policy.
 
 ## Storage and mutation ownership
 
 `MatchPossessionState` contains 43 former ball fields, Binturong's current foot-
-control bit/separation timer and two claim clocks, plus `PossessionHistory`
+control bit/separation timer, two claim clocks and release-time offside collector
+identities, plus `PossessionHistory`
 with nine former engine fields: continuity team/time, completed-pass and shot
 attribution, pending tackle credit and header-sequence bookkeeping. Its sole live
 instance is private `MatchBall::possession`. It is value-owned: engine copies and
@@ -32,6 +33,8 @@ Selected implementations in `match_possession_aardvark.cpp` and
 There is no delayed transition queue. Aardvark retains compatibility behaviour
 validated against first-touch-fix baseline `a95680a`; Binturong policy changes are
 compared against Stage 3 checkpoint `be6c744`.
+The control/expiry slice is committed as `abe384e`; coordination is compared with
+that checkpoint.
 
 `MatchBall` retains 44 fields outside possession: physical/rules geometry,
 brain/body plans, eligibility masks/timers and contact diagnostics/exposure.
@@ -158,6 +161,43 @@ while approaching. Kick-off setup keeps its existing sequence. Aardvark possessi
 and Binturong out-of-play keep their existing paths. `--check-restarts` runs the
 focused restart checks; no line-up timeout or contact tolerance was increased.
 
+## Friendly collection and receiver preference
+
+Binturong permits any teammate to attempt a playable contact, including a ball
+inside the current claimant's reach or a fast delivery intended for someone
+else. This removes identity-based protection; reach, body orientation, recovery,
+commitment, kicker lockout, keeper handling and opponent contests still apply.
+Keeper-held and genuinely attached balls keep their existing handling paths.
+There is still only one actual attachment/controller. Candidates are temporary
+choices, not extra stored owners. A friendly foot/body takeover cancels the previous
+claimant's pending strike/meet plan and creates no tackle or interception credit.
+
+`match_possession_coordination.h` shares one choice rule between Binturong's
+receiving/chasing plans and playable swept contacts. Arrival time is reduced by
+up to 0.10 seconds for collection quality: current attacking velocity into space,
+and movement along the delivery. A clearly earlier player therefore still wins.
+The adjusted cost is grouped into 0.005-second bins; receiver intention breaks a
+tie, then stable player identity. These are initial tuning values. Ground-contact
+coordination is limited to chronological groups from one side; it cannot cross an
+earlier opponent, body collision or shot block. If the preferred player declines
+or misses, remaining candidates still run. Header choices similarly preserve an
+earlier opponent's opportunity. The existing physical forecast and reaction/
+commitment models are unchanged; this is not full turning/route prediction.
+
+The selected Binturong collector receives the receiving run and preparation;
+the named receiver no longer forces that role. First-touch surprise follows the
+player's preparation intent, rather than delivery identity. Aardvark brains keep
+their legacy planning, even when paired with Binturong possession permission.
+
+Opening collection also requires release-time offside judgements for other
+collectors. Binturong records judged-offside player identities when a real pass is
+released, using the selected referee and its restart exemptions. Foot/body and
+header contacts consult that record. Substitutes cannot inherit another player's
+judgement through a pitch slot. The intended receiver's existing judgement is
+retained. Synthetic drill feeds have no actual release judgement. Snapshots and
+traces expose `passOffsidePlayers` / `pass_offside_players`; flight cleanup resets
+it and engine copies preserve it. Team possession continuity remains unchanged.
+
 ## Version selection and persistence
 
 `PossessionId` is independent of brains, bodies and out-of-play, including mixed
@@ -185,7 +225,7 @@ guaranteed.
 Run `node scripts/check_possession_boundary.cjs`; the older
 `check_possession_writers.cjs` forwards to it. `--out-dir <directory>` exports
 classifications, writes, whole-ball restores and alias review. It checks all 87
-original ball fields, four added policy fields and nine history fields,
+original ball fields, five added policy fields and nine history fields,
 private backing, const views,
 selected-owner access, removed fields and documented restore sites. The 3D
 renderer's separate projection is explicitly recognized. C++ private/const access
@@ -213,7 +253,7 @@ The trace compares observed/unobserved engines and copy recorder detachment.
 Standalone offline checks:
 
 ```text
-cmake --build build --config Release --target possession_contract_check possession_control_check possession_claim_check possession_seam_check
+cmake --build build --config Release --target possession_contract_check possession_control_check possession_claim_check possession_coordination_check possession_friendly_check possession_seam_check
 ```
 
 Run these executables, sandbox checks and recorded baseline comparisons. The seam

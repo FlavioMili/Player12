@@ -8,6 +8,7 @@
 
 #include "model/match_engine.h"
 #include "model/match_possession_control.h"
+#include "model/match_possession_coordination.h"
 #include "model/match_restart_approach.h"
 
 
@@ -2883,6 +2884,9 @@ bool MatchEngine::attemptTakeOn(MatchPlayer& carrier, MatchPlayer& defender)
     notePathChange();
     ball.velocity = {ball.dribbleDirection.x * push,
                      ball.dribbleDirection.y * push};
+    // A take-on is a real dribble launch too. Retain its intermediate speed
+    // for motion diagnostics: drag can make both step endpoints slower.
+    if (possessionId == PossessionId::BINTURONG) ball.touchLaunchSpeed = push;
     ball.touchAttempts = 0;
     ball.ownTouchCooldown = R::LOOSE_TOUCH_INTERVAL;
     ++dribbleTouches;
@@ -3733,7 +3737,7 @@ void MatchEngine::resolveLooseBall(bool beforeLine)
   const float ownerGap =
       touchOwner ? distance(touchOwner->position, ball.position) : 0.0f;
   const bool ownerHasIt = touchOwner && ballInReach(*touchOwner);
-  if (ownerHasIt && !isTouchCollected())
+  if (ownerHasIt && !isTouchCollected() && possessionId == PossessionId::AARDVARK)
   {
     observePossessionGate(*touchOwner, PossessionContactGate::OWNER_NOT_COLLECTED);
     return;
@@ -3829,7 +3833,7 @@ void MatchEngine::resolveLooseBall(bool beforeLine)
   const auto headHasIt = [&](const MatchPlayer& player, std::size_t slot)
   {
     if (player.isGoalkeeper || player.trapTimer > 0.0f ||
-        (hasTouchClaim() && getPossessionAttachment() == player.player))
+        (possessionId == PossessionId::AARDVARK && hasTouchClaim() && getPossessionAttachment() == player.player))
       return false;
     const Vector2F was =
         slot < previousPlayerPositions.size() ? previousPlayerPositions[slot] : player.position;
@@ -3963,9 +3967,11 @@ void MatchEngine::resolveLooseBall(bool beforeLine)
       {
         if (!isTouchCollected()) continue;
       }
-      else if ((ownerHasIt && !contestsBall(player, *touchOwner)) ||
+      else if (!(possessionId == PossessionId::BINTURONG &&
+                 player.isHomeTeam == touchOwner->isHomeTeam) &&
+               ((ownerHasIt && !contestsBall(player, *touchOwner)) ||
                (player.isHomeTeam == touchOwner->isHomeTeam &&
-                ownerGap <= touchKnobs[TouchKnob::TEAMMATE_DISTANCE]))
+                ownerGap <= touchKnobs[TouchKnob::TEAMMATE_DISTANCE])))
       {
         observePossessionGate(player, ownerHasIt ? PossessionContactGate::OWNER_PROTECTED
                                                  : PossessionContactGate::FRIENDLY_CLAIM);
@@ -3992,7 +3998,7 @@ void MatchEngine::resolveLooseBall(bool beforeLine)
     }
     // Team-mates let a pass run to its receiver, and (an Aardvark body)
     // never meet their own side's shot.
-    if (getPossessionState().isPass && player.isHomeTeam == getPossessionState().passByHome &&
+    if (possessionId == PossessionId::AARDVARK && getPossessionState().isPass && player.isHomeTeam == getPossessionState().passByHome &&
         player.player != getExpectedReceiver() &&
         ballSpeed > B::MAX_HEAVY_TOUCH_SPEED)
     {
@@ -4147,6 +4153,29 @@ void MatchEngine::resolveLooseBall(bool beforeLine)
                     return first.along < second.along;
                   return first.slot < second.slot;
                 });
+
+  if (possessionId == PossessionId::BINTURONG)
+  {
+    PossessionCoordination::prioritise(
+        contacts, contactCount,
+        [](const Contact& c) { return !c.body && !c.shotBody; },
+        [&](const Contact& a, const Contact& b)
+        { return players[a.slot].isHomeTeam == players[b.slot].isHomeTeam; },
+        [&](const Contact& c)
+        {
+          const MatchPlayer& p = players[c.slot];
+          float space = 8.0f;
+          for (const MatchPlayer& rival : players)
+            if (active(rival) && rival.isHomeTeam != p.isHomeTeam)
+              space = std::min(space, distance(p.position, rival.position));
+          return PossessionCoordination::Candidate{
+              c.along * substepStretchSeconds,
+              PossessionCoordination::quality(p.velocity, ball.velocity, p.isHomeTeam, space),
+              getPossessionState().isPass && p.player == getExpectedReceiver() &&
+                  p.isHomeTeam == getPossessionState().passByHome,
+              p.player ? p.player->getId() : 0};
+        });
+  }
 
   for (std::size_t index = 0; index < contactCount; ++index)
   {
@@ -4442,7 +4471,7 @@ void MatchEngine::resolveLooseBall(bool beforeLine)
     // Anyone other than the intended receiver has to stretch and react to
     // get a touch: close balls are met, fast wide ones fly past.
     const bool intended = getPossessionState().isPass && getExpectedReceiver() == player.player;
-    if (!intended && !hands && ballSpeed > B::MAX_HEAVY_TOUCH_SPEED &&
+    if ((!intended || possessionId == PossessionId::BINTURONG) && !hands && ballSpeed > B::MAX_HEAVY_TOUCH_SPEED &&
         !reachesBall(player, ballSpeed, stretch))
     {
       // Row 6: he went for it and missed; his foot is committed.
@@ -4473,6 +4502,18 @@ void MatchEngine::resolveLooseBall(bool beforeLine)
     bool blockCommitted = false;
     if (hasTouchClaim())
     {
+      if (possessionId == PossessionId::BINTURONG && touchOwner &&
+          touchOwner->isHomeTeam == player.isHomeTeam)
+      {
+        if (pendingStrike && pendingStrike->striker == touchOwner) pendingStrike.reset();
+        if (ball.meetFor == touchOwner->player)
+        {
+          ball.meetFor = nullptr;
+          ball.meetRecovering = false;
+          ball.knockedOn = false;
+          ball.plannedTouchIn = 0.0f;
+        }
+      }
       if (touchOwner && touchOwner->isHomeTeam != player.isHomeTeam &&
           isTouchCollected())
       {
@@ -4531,7 +4572,11 @@ void MatchEngine::resolveLooseBall(bool beforeLine)
     // The receiver of an offside pass is penalised when he plays it.
     const auto whistledOffside = [&]
     {
-      if (!getPossessionState().isPass || !getPossessionState().passWasOffside || !intended) return false;
+      if (!getPossessionState().isPass || player.isHomeTeam != getPossessionState().passByHome ||
+          !(possessionId == PossessionId::BINTURONG
+                ? PossessionCoordination::offsideCollector(getPossessionState().passWasOffside,
+                      intended, getPossessionState().passOffsidePlayers, player.player->getId())
+                : getPossessionState().passWasOffside && intended)) return false;
       if (player.isHomeTeam)
         ++stats.homeOffsides;
       else
@@ -4810,7 +4855,7 @@ bool MatchEngine::headInSweep()
     // Not his own touched ball (a cushion dropping to him).
     if (!active(player) || player.isGoalkeeper || player.trapTimer > 0.0f || player.fallen ||
         (ball.kickerLockout > 0.0f && getLegacyContactActor() == player.player) ||
-        (hasTouchClaim() && getPossessionAttachment() == player.player) ||
+        (possessionId == PossessionId::AARDVARK && hasTouchClaim() && getPossessionAttachment() == player.player) ||
         getBody(player.isHomeTeam) != BodyId::BINTURONG)
       continue;
     const Vector2F was = slot < previousPlayerPositions.size()
@@ -4878,12 +4923,14 @@ bool MatchEngine::headInSweep()
     return false;
   };
   std::optional<Meet> first;
+  std::array<Meet, 32> playableMeets{};
+  std::size_t playableCount = 0;
   for (std::size_t index = 0; index < headerCount; ++index)
   {
     const Header& header = headers[index];
     const MatchPlayer& player = players[header.slot];
     const std::optional<Meet> meet = meetNow(header);
-    if (!meet || (first && meet->along >= first->along)) continue;
+    if (!meet || (possessionId == PossessionId::AARDVARK && first && meet->along >= first->along)) continue;
     // Still closing on him at the stretch's end: he lets it come closer to
     // the middle of his head, if a sub-step on (or where it passes closest,
     // if sooner) it will still be his to head, and no opponent's head could
@@ -4901,7 +4948,38 @@ bool MatchEngine::headInSweep()
           !opponentFirst(player, wait))
         continue;
     }
-    first = meet;
+    if (possessionId == PossessionId::BINTURONG) playableMeets[playableCount++] = *meet;
+    if (!first || meet->along < first->along) first = meet;
+  }
+
+  if (possessionId == PossessionId::BINTURONG && first)
+  {
+    const bool home = players[first->slot].isHomeTeam;
+    float opponentAlong = 2.0f;
+    for (std::size_t i = 0; i < playableCount; ++i)
+      if (players[playableMeets[i].slot].isHomeTeam != home)
+        opponentAlong = std::min(opponentAlong, playableMeets[i].along);
+    const auto candidate = [&](const Meet& meet)
+    {
+      const MatchPlayer& p = players[meet.slot];
+      float space = 8.0f;
+      for (const MatchPlayer& rival : players)
+        if (active(rival) && rival.isHomeTeam != home)
+          space = std::min(space, distance(p.position, rival.position));
+      return PossessionCoordination::Candidate{
+          meet.along * substepStretchSeconds,
+          PossessionCoordination::quality(p.velocity, ball.velocity, home, space),
+          getPossessionState().isPass && getPossessionState().passByHome == home &&
+              getExpectedReceiver() == p.player,
+          p.player ? p.player->getId() : 0};
+    };
+    for (std::size_t i = 0; i < playableCount; ++i)
+    {
+      const Meet& meet = playableMeets[i];
+      if (players[meet.slot].isHomeTeam == home && meet.along <= opponentAlong &&
+          PossessionCoordination::better(candidate(meet), candidate(*first)))
+        first = meet;
+    }
   }
 
   // A keeper's hands in his area (goalkeeper plan step 7): where the
@@ -5248,8 +5326,12 @@ void MatchEngine::headBall(MatchPlayer& header)
   noteHeaderContact(header);
   const bool fromTeammate = getPossessionState().isPass && getPossessionState().passByHome == header.isHomeTeam;
   const MatchPlayer* deliverer = findMatchPlayer(getLastPossessionAttachment());
-  if (fromTeammate && getPossessionState().passWasOffside &&
-      getExpectedReceiver() == header.player)
+  if (fromTeammate &&
+      (possessionId == PossessionId::BINTURONG
+           ? PossessionCoordination::offsideCollector(getPossessionState().passWasOffside,
+                 getExpectedReceiver() == header.player, getPossessionState().passOffsidePlayers,
+                 header.player->getId())
+           : getPossessionState().passWasOffside && getExpectedReceiver() == header.player))
   {
     ++(header.isHomeTeam ? stats.homeOffsides : stats.awayOffsides);
     MatchEvent& event = logEvent(MatchEventType::OFFSIDE, header);

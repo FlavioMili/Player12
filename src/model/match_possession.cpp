@@ -82,6 +82,7 @@ PossessionSnapshot MatchEngine::getPossessionSnapshot() const
   view.openPlay = state == MatchState::PLAYING;
   view.legacyOwner = id(getPossessionState().possessedBy);
   view.expectedReceiver = id(getPossessionState().intendedReceiver);
+  view.passOffsidePlayers = getPossessionState().passOffsidePlayers;
   view.pendingPasser = id(getPossessionState().touchPasser);
   view.legacyLastPossessor = id(getPossessionState().lastPossessor);
   view.legacyKicker = id(getPossessionState().kicker);

@@ -738,7 +738,7 @@ bool runFirstTouchChecks(const std::vector<const Team*>& clubs,
           const float allowed =
               (fastest + rollingLoss) * seconds + SLACK_METRES;
           const float excess = metres(lastPosition, ball.position) - allowed;
-          if (excess > setup.worstExcess && excess > 0.001f)
+          if (excess > setup.worstExcess && excess > 0.0f)
             std::cerr << std::format(
                 "Motion budget diagnostic: seed {} brain {} body {} tick {} owner {} "
                 "moved {:.6f} allowed {:.6f} speeds {:.6f}/{:.6f} launch {:.6f}/{:.6f} "

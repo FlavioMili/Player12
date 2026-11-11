@@ -85,6 +85,7 @@ auto possessionStateKey(const MatchEngine& engine)
       s.footControlSeparationSeconds,
       s.claimUncontrolledSeconds,
       s.claimUnrecoverableSeconds,
+      s.passOffsidePlayers,
       s.nudgedBy,
       s.nudgedFrom,
       s.touchPasser,
@@ -1058,14 +1059,28 @@ int main(int argc, char** argv)
   // legal branch. Keep explicit deterministic coverage instead of dropping it.
   if (testedPossession == PossessionId::BINTURONG)
   {
-    const auto operation = static_cast<std::size_t>(
-        PossessionObservation::NOTE_DIRECT_FREE_KICK_SHOT);
+    const auto missingRare = [&]
+    {
+      for (auto op : {PossessionObservation::NOTE_DIRECT_FREE_KICK_SHOT,
+                      PossessionObservation::MARK_WALL_STOPPED_SHOT,
+                      PossessionObservation::CREDIT_WALL_BLOCKER})
+        if (totalRoutes[static_cast<std::size_t>(op)] == 0) return true;
+      return false;
+    };
     // Bounded deterministic coverage search; all compared runs must still
     // match. Emitted result lines identify every seed used for reproduction.
-    for (unsigned seed = 9; seed <= 32 && totalRoutes[operation] == 0; ++seed)
-      compareVersions(home, away, config, BrainId::AARDVARK, BrainId::AARDVARK,
-                      BodyId::BINTURONG, BodyId::BINTURONG, false,
-                      OutOfPlayId::AARDVARK, seed);
+    for (unsigned seed = 9; seed <= 32 && missingRare(); ++seed)
+    {
+      if (totalRoutes[static_cast<std::size_t>(PossessionObservation::MARK_WALL_STOPPED_SHOT)] == 0 ||
+          totalRoutes[static_cast<std::size_t>(PossessionObservation::CREDIT_WALL_BLOCKER)] == 0)
+        compareVersions(home, away, config, BrainId::AARDVARK, BrainId::AARDVARK,
+                        BodyId::AARDVARK, BodyId::AARDVARK, false,
+                        OutOfPlayId::AARDVARK, seed);
+      if (totalRoutes[static_cast<std::size_t>(PossessionObservation::NOTE_DIRECT_FREE_KICK_SHOT)] == 0)
+        compareVersions(home, away, config, BrainId::AARDVARK, BrainId::AARDVARK,
+                        BodyId::BINTURONG, BodyId::BINTURONG, false,
+                        OutOfPlayId::AARDVARK, seed);
+    }
   }
   for (std::size_t i = 0; i < totalRoutes.size(); ++i)
   {

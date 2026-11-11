@@ -45,6 +45,7 @@ Json snapshot(const PossessionSnapshot& state)
           {"in_touch", state.inTouch},
           {"collected", state.collected},
           {"claim_uncontrolled_seconds", state.claimUncontrolledSeconds},
+          {"pass_offside_players", state.passOffsidePlayers},
           {"claim_unrecoverable_seconds", state.claimUnrecoverableSeconds},
           {"foot_control", state.footControlled ? Json(*state.footControlled) : Json(nullptr)},
           {"dropping", state.dropping},

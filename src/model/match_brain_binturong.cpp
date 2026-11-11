@@ -31,6 +31,7 @@
 #include "model/match_body_shape_binturong.h"
 #include "model/match_contact_binturong.h"
 #include "model/match_engine.h"
+#include "model/match_possession_coordination.h"
 #include "model/match_engine_internal.h"
 #include "model/match_recorder.h"
 #include "model/player.h"
@@ -383,7 +384,7 @@ void MatchEngine::refreshTacticalTargetsBinturong(float dt, bool planHome)
       // A loose ball: when he can meet it, the one already after it a tick
       // ahead (so a near tie does not swap who goes, step to step).
       float arrival = interception(candidate).first;
-      if (candidate.intent == PlayerIntent::CLAIM_LOOSE_BALL)
+      if (possessionId == PossessionId::AARDVARK && candidate.intent == PlayerIntent::CLAIM_LOOSE_BALL)
         arrival = std::max(0.0f, arrival - LOOSE_BALL_CONTINUITY_SECONDS);
       return arrival;
     }
@@ -414,6 +415,17 @@ void MatchEngine::refreshTacticalTargetsBinturong(float dt, bool planHome)
     return arrivalTime;
   };
 
+  const auto collectionCandidate = [&](const MatchPlayer& p, float arrival)
+  {
+    float space = 8.0f;
+    for (const MatchPlayer* rival : onPitch(!p.isHomeTeam))
+      space = std::min(space, distance(p.position, rival->position));
+    return PossessionCoordination::Candidate{
+        arrival, PossessionCoordination::quality(p.velocity, ball.velocity, p.isHomeTeam, space),
+        getPossessionState().isPass && getPossessionState().passByHome == p.isHomeTeam &&
+            getExpectedReceiver() == p.player,
+        p.player ? p.player->getId() : 0};
+  };
   const auto closestOutfieldPair = [&](bool homeTeam)
   {
     std::array<MatchPlayer*, 2> closest{nullptr, nullptr};
@@ -424,14 +436,22 @@ void MatchEngine::refreshTacticalTargetsBinturong(float dt, bool planHome)
       MatchPlayer& candidate = *pointer;
       if (candidate.isGoalkeeper) continue;
       const float arrivalTime = estimatedArrivalTime(candidate);
-      if (arrivalTime < arrivalTimes[0])
+      const auto preferred = [&](std::size_t place)
+      {
+        if (!closest[place]) return true;
+        if (possessionId == PossessionId::BINTURONG && !carrier)
+          return PossessionCoordination::better(collectionCandidate(candidate, arrivalTime),
+              collectionCandidate(*closest[place], arrivalTimes[place]));
+        return arrivalTime < arrivalTimes[place];
+      };
+      if (preferred(0))
       {
         closest[1] = closest[0];
         arrivalTimes[1] = arrivalTimes[0];
         closest[0] = &candidate;
         arrivalTimes[0] = arrivalTime;
       }
-      else if (arrivalTime < arrivalTimes[1])
+      else if (preferred(1))
       {
         closest[1] = &candidate;
         arrivalTimes[1] = arrivalTime;
@@ -440,7 +460,7 @@ void MatchEngine::refreshTacticalTargetsBinturong(float dt, bool planHome)
 
     // A purposeful pass creates a receiving run. Prioritizing that receiver
     // prevents a merely nearby teammate from making the play look arbitrary.
-    if (!carrier && getPossessionState().isPass && getPossessionState().passByHome == homeTeam)
+    if (possessionId == PossessionId::AARDVARK && !carrier && getPossessionState().isPass && getPossessionState().passByHome == homeTeam)
     {
       MatchPlayer* intended = findMatchPlayer(getExpectedReceiver());
       if (intended && active(*intended) && !intended->isGoalkeeper &&
@@ -562,7 +582,7 @@ void MatchEngine::refreshTacticalTargetsBinturong(float dt, bool planHome)
       MatchPlayer* receiver = getPossessionState().isPass && getPossessionState().passByHome == home
                                   ? findMatchPlayer(getExpectedReceiver())
                                   : nullptr;
-      if (receiver && active(*receiver) && !receiver->isGoalkeeper)
+      if (possessionId == PossessionId::AARDVARK && receiver && active(*receiver) && !receiver->isGoalkeeper)
         if (const std::optional<Meet> meet = earliestMeet(*receiver))
         {
           best[side] = meet;
@@ -573,7 +593,11 @@ void MatchEngine::refreshTacticalTargetsBinturong(float dt, bool planHome)
       {
         if (candidate->isGoalkeeper) continue;
         const std::optional<Meet> meet = earliestMeet(*candidate);
-        if (meet && (!best[side] || meet->seconds < best[side]->seconds))
+        if (meet && (!best[side] ||
+            (possessionId == PossessionId::BINTURONG
+                 ? PossessionCoordination::better(collectionCandidate(*candidate, meet->seconds),
+                       collectionCandidate(*bestPlayer[side], best[side]->seconds))
+                 : meet->seconds < best[side]->seconds)))
         {
           best[side] = meet;
           bestPlayer[side] = candidate;
@@ -1532,7 +1556,8 @@ void MatchEngine::refreshTacticalTargetsBinturong(float dt, bool planHome)
       const auto& pressers = player.isHomeTeam ? homePressers : awayPressers;
       if (receivingPass)
       {
-        if (player.player == getExpectedReceiver())
+        if (possessionId == PossessionId::BINTURONG ? pressers[0] == &player
+                                                    : player.player == getExpectedReceiver())
         {
           // Meet the ball on its path instead of chasing where it is: the
           // closest point of the remaining flight line ahead of the ball.
@@ -2915,8 +2940,11 @@ TouchIntent MatchEngine::chooseFirstTouchBinturong(
   TouchIntent intent;
   // Not expecting it: a pass meant for someone else. A stand-in until the
   // brain has the mental attributes to read it (known issues).
-  intent.surprise =
-      getPossessionState().isPass && getExpectedReceiver() != player.player ? 1.0f : 0.0f;
+  intent.surprise = getPossessionState().isPass &&
+      (possessionId == PossessionId::BINTURONG
+           ? player.intent != PlayerIntent::RECEIVE_PASS &&
+                 player.intent != PlayerIntent::CLAIM_LOOSE_BALL
+           : getExpectedReceiver() != player.player) ? 1.0f : 0.0f;
   // Pressed: an opponent close enough to be in the way. Also a stand-in
   // (known issues).
   intent.pressure = contactPressure(nearestOpponentDistance(player),

@@ -1282,6 +1282,9 @@ struct MatchPossessionState
   Vector2F passTarget{MatchTuning::Pitch::CENTRE, MatchTuning::Pitch::CENTRE};
   bool passByHome = false;
   bool passWasOffside = false;
+  /** Binturong: release-time offside judgements for other possible collectors.
+   * Player identities survive copies and cannot transfer to a substitute. */
+  std::vector<PlayerID> passOffsidePlayers;
   bool isShot = false;
   bool shotByHome = false;
   /** Whether the shot's flight crosses the goal line inside the frame. */

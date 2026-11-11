@@ -9,6 +9,7 @@
 #include <cstdint>
 #include <optional>
 #include <string_view>
+#include <vector>
 
 #include "global/types.h"
 
@@ -102,6 +103,7 @@ struct PossessionSnapshot
   PlayerID controller = 0;
   PlayerID claimant = 0;
   PlayerID expectedReceiver = 0;
+  std::vector<PlayerID> passOffsidePlayers;
   PlayerID pendingPasser = 0;
   PlayerID legacyLastPossessor = 0;
   PlayerID legacyKicker = 0;
