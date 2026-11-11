@@ -147,6 +147,10 @@ struct MatchRenderSnapshot
   TeamPhase homePhase = TeamPhase::SET_PIECE;
   TeamPhase awayPhase = TeamPhase::SET_PIECE;
   float transitionSecondsRemaining = 0.0f;
+  /** A restart is set: everyone ready and the taker looking up. */
+  bool restartReady = false;
+  /** Advantage is being played (the free kick can still be called back). */
+  bool advantagePending = false;
   int homeScore = 0;
   int awayScore = 0;
   bool goalScoredByHome = false;

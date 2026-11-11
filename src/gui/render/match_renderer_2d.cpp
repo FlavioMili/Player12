@@ -17,8 +17,10 @@
 #include <cmath>
 #include <cstdint>
 #include <numbers>
+#include <optional>
 #include <span>
 #include <string>
+#include <utility>
 #include <vector>
 
 #include "global/language_manager.h"
@@ -199,6 +201,40 @@ struct MatchRenderer2D::State
   float offsideSeconds = -1.0f;
   float offsideX = 0.0f;
 
+  // --- referee signals -------------------------------------------------------
+  /** What the referee's chip shows, one signal (beat) after another. */
+  enum class RefIcon : std::uint8_t
+  {
+    STOP,
+    YELLOW,
+    SECOND_YELLOW,
+    RED,
+    PLAY_ON,
+    ARROW,
+    GO
+  };
+  struct RefBeat
+  {
+    RefIcon icon = RefIcon::STOP;
+    /** The side a play-on or arrow is for. */
+    bool home = false;
+  };
+  std::array<RefBeat, 6> refBeats{};
+  std::size_t refBeatCount = 0;
+  float refBeatSeconds = 0.0f;
+  /** The arrow's restart is a free kick or penalty: it ends with the green
+   * whistle (an out-of-play restart's simply ends when it is taken). */
+  bool refFoulRestart = false;
+  /** Shown while the chip shrinks back after the last beat. */
+  RefBeat refShown{};
+  float refGrowth = 0.0f;
+  /** The free-kick spot (or the foul's, fainter, while advantage is played). */
+  bool markerOn = false;
+  bool markerFaint = false;
+  bool markerHome = false;
+  Vector2F markerSpot{};
+  float markerAlpha = 0.0f;
+
   // --- pitch control ---------------------------------------------------------
   std::array<float,
              (Tuning::Pressure::COLUMNS + 1) * (Tuning::Pressure::ROWS + 1)>
@@ -241,6 +277,12 @@ struct MatchRenderer2D::State
   void buildStands();
   void updateBall(const MatchRenderSnapshot& snapshot, float alpha);
   void updateEvents(const MatchRenderSnapshot& snapshot);
+  void onRefereeEvent(const MatchEvent& event);
+  void pushRefBeat(RefIcon icon, bool home);
+  void popRefBeat();
+  /** Clears the beats, returning a card still to be shown (or nullopt). */
+  std::optional<RefBeat> clearRefBeats();
+  void updateRefereeSignal(const MatchRenderSnapshot& snapshot);
   void detectKick(const MatchRenderSnapshot& snapshot);
   void updateFlights(const MatchRenderSnapshot& snapshot);
   void updatePressure(const MatchRenderSnapshot& snapshot, float alpha);
@@ -254,6 +296,8 @@ struct MatchRenderer2D::State
   void drawMarkings();
   void drawGoal(bool left);
   void drawOffside();
+  void drawFreeKickMarker();
+  void drawRefereeSignal(const MatchRenderSnapshot& snapshot, float alpha);
   void drawTouchline(const MatchRenderSnapshot& snapshot, float alpha);
   void drawFlights();
   void drawTrail();
@@ -352,6 +396,10 @@ void MatchRenderer2D::State::prepareMatch(const MatchRenderSnapshot& snapshot)
   lastPossessor = nullptr;
   eventsSeen = false;
   offsideSeconds = -1.0f;
+  refBeatCount = 0;
+  refGrowth = 0.0f;
+  markerOn = false;
+  markerAlpha = 0.0f;
   pressureValid = false;
   standWidth = 0.0f;
 
@@ -646,6 +694,7 @@ void MatchRenderer2D::State::updateEvents(const MatchRenderSnapshot& snapshot)
   for (std::size_t index = seenEvents; index < events.size(); ++index)
   {
     const MatchEvent& event = events[index];
+    onRefereeEvent(event);
     if (event.type != MatchEventType::OFFSIDE) continue;
     // The line is where the defence stood when the pass was played.
     const bool fromKick =
@@ -654,6 +703,182 @@ void MatchRenderer2D::State::updateEvents(const MatchRenderSnapshot& snapshot)
     offsideSeconds = 0.0f;
   }
   seenEvents = events.size();
+}
+
+void MatchRenderer2D::State::pushRefBeat(RefIcon icon, bool home)
+{
+  if (refBeatCount == 0) refBeatSeconds = 0.0f;
+  if (refBeatCount < refBeats.size()) refBeats[refBeatCount++] = {icon, home};
+}
+
+void MatchRenderer2D::State::popRefBeat()
+{
+  if (refBeatCount == 0) return;
+  for (std::size_t index = 1; index < refBeatCount; ++index)
+    refBeats[index - 1] = refBeats[index];
+  --refBeatCount;
+  refBeatSeconds = 0.0f;
+}
+
+std::optional<MatchRenderer2D::State::RefBeat>
+MatchRenderer2D::State::clearRefBeats()
+{
+  std::optional<RefBeat> card;
+  for (std::size_t index = 0; index < refBeatCount; ++index)
+  {
+    const RefIcon icon = refBeats[index].icon;
+    if (icon == RefIcon::YELLOW || icon == RefIcon::SECOND_YELLOW ||
+        icon == RefIcon::RED)
+      card = refBeats[index];
+  }
+  refBeatCount = 0;
+  refBeatSeconds = 0.0f;
+  return card;
+}
+
+void MatchRenderer2D::State::onRefereeEvent(const MatchEvent& event)
+{
+  // The engine logs one decision in a single step: FOUL (or OFFSIDE), then
+  // any card, then ADVANTAGE or the FREE_KICK / PENALTY; an advantage called
+  // back comes later as a FREE_KICK on its own.
+  switch (event.type)
+  {
+    case MatchEventType::FOUL:
+    case MatchEventType::OFFSIDE:
+      clearRefBeats();
+      markerOn = false;
+      pushRefBeat(RefIcon::STOP, false);
+      return;
+    case MatchEventType::YELLOW_CARD:
+      pushRefBeat(RefIcon::YELLOW, event.isHomeTeam);
+      return;
+    case MatchEventType::SECOND_YELLOW:
+      pushRefBeat(RefIcon::SECOND_YELLOW, event.isHomeTeam);
+      return;
+    case MatchEventType::RED_CARD:
+      pushRefBeat(RefIcon::RED, event.isHomeTeam);
+      return;
+    case MatchEventType::ADVANTAGE:
+    {
+      // Play goes on: no whistle; a card for the foul once it is over.
+      const std::optional<RefBeat> card = clearRefBeats();
+      pushRefBeat(RefIcon::PLAY_ON, event.isHomeTeam);
+      if (card) pushRefBeat(card->icon, card->home);
+      markerOn = true;
+      markerFaint = true;
+      markerHome = event.isHomeTeam;
+      markerSpot = event.position;
+      return;
+    }
+    case MatchEventType::FREE_KICK:
+    case MatchEventType::PENALTY:
+    {
+      // Stopped (again, for an advantage called back), any card, then the
+      // way the free kick goes until it is ready to be taken.
+      const std::optional<RefBeat> card = clearRefBeats();
+      pushRefBeat(RefIcon::STOP, false);
+      if (card) pushRefBeat(card->icon, card->home);
+      pushRefBeat(RefIcon::ARROW, event.isHomeTeam);
+      refFoulRestart = true;
+      markerOn = true;
+      markerFaint = false;
+      markerHome = event.isHomeTeam;
+      markerSpot = event.position;
+      return;
+    }
+    case MatchEventType::THROW_IN:
+    case MatchEventType::CORNER:
+    case MatchEventType::GOAL_KICK:
+    {
+      // Out of play: no whistle, just the way the restart goes (after a
+      // card still owed from an advantage).
+      const std::optional<RefBeat> card = clearRefBeats();
+      if (card) pushRefBeat(card->icon, card->home);
+      pushRefBeat(RefIcon::ARROW, event.isHomeTeam);
+      refFoulRestart = false;
+      markerOn = false;
+      return;
+    }
+    case MatchEventType::GOAL:
+    case MatchEventType::OWN_GOAL:
+    case MatchEventType::KICK_OFF:
+    case MatchEventType::HALF_TIME:
+    case MatchEventType::SECOND_HALF:
+    case MatchEventType::FULL_TIME:
+    case MatchEventType::PENALTY_SHOOTOUT:
+      clearRefBeats();
+      markerOn = false;
+      return;
+    default:
+      return;
+  }
+}
+
+void MatchRenderer2D::State::updateRefereeSignal(
+    const MatchRenderSnapshot& snapshot)
+{
+  using R = Tuning::RefereeSignal;
+  refBeatSeconds += frameSeconds;
+  while (refBeatCount > 0)
+  {
+    RefBeat& beat = refBeats[0];
+    bool done = false;
+    switch (beat.icon)
+    {
+      case RefIcon::STOP:
+        done = refBeatSeconds >= R::STOP_SECONDS;
+        break;
+      case RefIcon::YELLOW:
+      case RefIcon::SECOND_YELLOW:
+      case RefIcon::RED:
+        done = refBeatSeconds >= R::CARD_SECONDS;
+        break;
+      case RefIcon::PLAY_ON:
+        done = refBeatSeconds >= R::PLAY_ON_MIN_SECONDS &&
+               !snapshot.advantagePending;
+        if (done) markerOn = false;
+        break;
+      case RefIcon::ARROW:
+        if (refBeatSeconds < R::ARROW_MIN_SECONDS) break;
+        if (!refFoulRestart)
+        {
+          done = snapshot.state == MatchState::PLAYING;
+          break;
+        }
+        // Everyone set (or already taken): the spot goes, the whistle blows.
+        if (snapshot.restartReady || snapshot.state == MatchState::PLAYING)
+        {
+          beat.icon = RefIcon::GO;
+          refBeatSeconds = 0.0f;
+          markerOn = false;
+        }
+        break;
+      case RefIcon::GO:
+        done = refBeatSeconds >= R::GO_SECONDS;
+        break;
+    }
+    if (!done) break;
+    popRefBeat();
+  }
+
+  if (refBeatCount > 0) refShown = refBeats[0];
+  const float growTarget = refBeatCount > 0 ? 1.0f : 0.0f;
+  if (reducedMotion)
+  {
+    refGrowth = growTarget;
+  }
+  else
+  {
+    const float step = frameSeconds / R::GROW_SECONDS;
+    refGrowth = growTarget > refGrowth ? std::min(refGrowth + step, growTarget)
+                                       : std::max(refGrowth - step, growTarget);
+  }
+  const float markerTarget =
+      markerOn ? (markerFaint ? R::ADVANTAGE_MARKER_SHARE : 1.0f) : 0.0f;
+  const float fade = frameSeconds / R::MARKER_FADE_SECONDS;
+  markerAlpha = markerTarget > markerAlpha
+                    ? std::min(markerAlpha + fade, markerTarget)
+                    : std::max(markerAlpha - fade, markerTarget);
 }
 
 void MatchRenderer2D::State::detectKick(const MatchRenderSnapshot& snapshot)
@@ -1180,6 +1405,152 @@ void MatchRenderer2D::State::drawOffside()
     drawList->AddLine({x, y},
                       {x, std::min(y + dash, viewport.y + viewport.height)},
                       color, thickness);
+  }
+}
+
+namespace
+{
+/** The colour with its own alpha scaled by `opacity` (0..1). */
+ImU32 fadedColor(ImU32 color, float opacity)
+{
+  const float own = static_cast<float>((color >> IM_COL32_A_SHIFT) & 0xFFU);
+  return withAlpha(color, static_cast<std::uint8_t>(
+                              own * std::clamp(opacity, 0.0f, 1.0f)));
+}
+}  // namespace
+
+void MatchRenderer2D::State::drawFreeKickMarker()
+{
+  using R = Tuning::RefereeSignal;
+  if (markerAlpha <= 0.0f) return;
+  const ImVec2 centre = atMetres(markerSpot.x * LENGTH, markerSpot.y * WIDTH);
+  const float radius = std::max(px(5.0f), R::MARKER_RADIUS_METRES * ppm);
+  const float thickness = std::max(px(2.0f), 0.2f * ppm);
+  const ImU32 team = markerHome ? kits.home.shirt : kits.away.shirt;
+  // A ring in the awarded side's colour, edged dark to read on any grass,
+  // round a white spot.
+  drawList->AddCircle(centre, radius, fadedColor(IM_COL32(10, 12, 16, 200), markerAlpha),
+                      0, thickness + std::max(1.0f, px(1.5f)));
+  drawList->AddCircle(centre, radius, fadedColor(team, markerAlpha), 0, thickness);
+  drawList->AddCircleFilled(centre, thickness * 0.8f,
+                            fadedColor(IM_COL32(245, 245, 245, 235), markerAlpha));
+}
+
+void MatchRenderer2D::State::drawRefereeSignal(
+    const MatchRenderSnapshot& snapshot, float alpha)
+{
+  using R = Tuning::RefereeSignal;
+  if (refGrowth <= 0.0f) return;
+  const MatchRenderTouchlinePerson* referee = nullptr;
+  for (const MatchRenderTouchlinePerson& person : snapshot.touchline)
+  {
+    if (person.role == TouchlineRole::REFEREE && !person.hidden)
+    {
+      referee = &person;
+      break;
+    }
+  }
+  if (!referee) return;
+  const Vector2F at = lerpRenderPosition(referee->previousPosition,
+                                         referee->currentPosition, alpha);
+  const ImVec2 c = atMetres(at.x * LENGTH, at.y * WIDTH);
+
+  // From his body to a player's size, eased.
+  const float body = std::max(px(Tuning::Touchline::MIN_RADIUS_PIXELS),
+                              Tuning::Touchline::RADIUS_METRES * ppm);
+  const float grown =
+      std::max(px(R::MIN_GROWN_PIXELS), Tuning::Token::RADIUS_METRES * ppm);
+  const float eased = refGrowth * refGrowth * (3.0f - 2.0f * refGrowth);
+  const float r = body + (grown - body) * eased;
+  const float outline = std::max(1.0f, px(1.2f));
+  drawList->AddCircleFilled(c, r + outline * 1.5f, officialsShirtColor(kits));
+  drawList->AddCircleFilled(c, r, R::CHIP_COLOR);
+
+  // The sign shows once the chip is half grown.
+  const float shown = std::clamp((eased - 0.5f) * 2.0f, 0.0f, 1.0f);
+  if (shown <= 0.0f) return;
+  const float s = r * 0.62f;
+  const ImU32 edge = fadedColor(IM_COL32(245, 245, 245, 230), shown);
+  const float dir = refShown.home ? 1.0f : -1.0f;
+  const ImU32 team =
+      fadedColor(refShown.home ? kits.home.shirt : kits.away.shirt, shown);
+
+  const auto whistle = [&](ImU32 color)
+  {
+    // Side-on pea whistle: a round chamber, the mouthpiece out to the right.
+    const ImU32 fill = fadedColor(color, shown);
+    drawList->AddRectFilled({c.x - 0.25f * s, c.y - 0.42f * s},
+                            {c.x + 0.80f * s, c.y + 0.02f * s}, fill, 0.08f * s);
+    drawList->AddCircleFilled({c.x - 0.25f * s, c.y + 0.12f * s}, 0.52f * s, fill);
+    drawList->AddCircleFilled({c.x - 0.25f * s, c.y + 0.12f * s}, 0.16f * s,
+                              R::CHIP_COLOR);
+  };
+  const auto card = [&](ImU32 color, float offsetX, float tilt)
+  {
+    const float w = 0.36f * s;
+    const float h = 0.52f * s;
+    const ImVec2 o{c.x + offsetX * s, c.y};
+    const float cs = std::cos(tilt);
+    const float sn = std::sin(tilt);
+    const auto corner = [&](float x, float y)
+    { return ImVec2{o.x + x * cs - y * sn, o.y + x * sn + y * cs}; };
+    const ImVec2 corners[4] = {corner(-w, -h), corner(w, -h), corner(w, h),
+                               corner(-w, h)};
+    drawList->AddConvexPolyFilled(corners, 4, fadedColor(color, shown));
+    drawList->AddPolyline(corners, 4, edge, ImDrawFlags_Closed,
+                          std::max(1.0f, px(0.8f)));
+  };
+
+  switch (refShown.icon)
+  {
+    case RefIcon::STOP:
+      whistle(R::STOP_COLOR);
+      break;
+    case RefIcon::GO:
+      whistle(R::GO_COLOR);
+      break;
+    case RefIcon::YELLOW:
+      card(R::YELLOW_CARD_COLOR, 0.0f, 0.12f);
+      break;
+    case RefIcon::RED:
+      card(R::RED_CARD_COLOR, 0.0f, 0.12f);
+      break;
+    case RefIcon::SECOND_YELLOW:
+      card(R::YELLOW_CARD_COLOR, -0.22f, -0.15f);
+      card(R::RED_CARD_COLOR, 0.22f, 0.15f);
+      break;
+    case RefIcon::ARROW:
+    {
+      // The way the awarded side attacks, in its colour, edged white.
+      const auto p = [&](float x, float y) { return ImVec2{c.x + dir * x * s, c.y + y * s}; };
+      const ImVec2 outlinePoints[7] = {p(-0.75f, -0.17f), p(0.10f, -0.17f), p(0.10f, -0.52f),
+                                       p(0.80f, 0.0f),    p(0.10f, 0.52f),  p(0.10f, 0.17f),
+                                       p(-0.75f, 0.17f)};
+      drawList->AddRectFilled(dir > 0.0f ? p(-0.75f, -0.17f) : p(0.12f, -0.17f),
+                              dir > 0.0f ? p(0.12f, 0.17f) : p(-0.75f, 0.17f), team);
+      // Clockwise on screen whichever way it points (ImGui's fringe).
+      ImVec2 head[3] = {p(0.10f, -0.52f), p(0.80f, 0.0f), p(0.10f, 0.52f)};
+      if (dir < 0.0f) std::swap(head[0], head[2]);
+      drawList->AddConvexPolyFilled(head, 3, team);
+      drawList->AddPolyline(outlinePoints, 7, edge, ImDrawFlags_Closed,
+                            std::max(1.0f, px(0.9f)));
+      break;
+    }
+    case RefIcon::PLAY_ON:
+    {
+      // Play on: two chevrons the way the fouled side attacks.
+      const float thick = std::max(px(1.5f), 0.2f * s);
+      for (const float offset : {-0.28f, 0.22f})
+      {
+        const ImVec2 chevron[3] = {{c.x + dir * (offset - 0.22f) * s, c.y - 0.48f * s},
+                                   {c.x + dir * (offset + 0.24f) * s, c.y},
+                                   {c.x + dir * (offset - 0.22f) * s, c.y + 0.48f * s}};
+        drawList->AddPolyline(chevron, 3, edge, ImDrawFlags_None,
+                              thick + std::max(1.0f, px(1.6f)));
+        drawList->AddPolyline(chevron, 3, team, ImDrawFlags_None, thick);
+      }
+      break;
+    }
   }
 }
 
@@ -1759,6 +2130,7 @@ void MatchRenderer2D::render(const MatchRenderSnapshot& snapshot,
   s.detectKick(snapshot);
   s.updateFlights(snapshot);
   s.updateEvents(snapshot);
+  s.updateRefereeSignal(snapshot);
   if (options.pressureOverlay)
     s.updatePressure(snapshot, alpha);
   else
@@ -1794,10 +2166,12 @@ void MatchRenderer2D::render(const MatchRenderSnapshot& snapshot,
 
   s.drawTouchline(snapshot, alpha);
   s.drawOffside();
+  s.drawFreeKickMarker();
   s.drawFlights();
   s.drawTokens(snapshot, options, alpha);
   s.drawTrail();
   if (!snapshot.ball.outOfSight) s.drawBall();
+  s.drawRefereeSignal(snapshot, alpha);
 
   if (snapshot.state == MatchState::GOAL)
   {

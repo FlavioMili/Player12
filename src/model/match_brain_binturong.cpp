@@ -1762,8 +1762,30 @@ void MatchEngine::refreshTacticalTargetsBinturong(float dt, bool planHome)
       pinned = false;
       if (keeperInDive(player))
         continue;
+      // A ball going into his own goal that nobody else gets to (user
+      // 2026-11-11): once he has reacted, between it and the goal, at
+      // once (no hands: it is played with his feet or body).
+      GoalkeeperControl& control = keepers[player.isHomeTeam ? 0 : 1];
+      const std::optional<Vector2F> ownGoal = ownGoalThreatBinturong(player);
+      if (!ownGoal)
+        control.ownGoalThreatSince.reset();
+      else if (!control.ownGoalThreatSince)
+        control.ownGoalThreatSince = getSimulatedSeconds();
+      const float reflexes = std::clamp(
+          (player.derivedStat(DerivedStat::REFLEXES) - STAT_1_RATING) /
+              (STAT_99_RATING - STAT_1_RATING),
+          0.0f, 1.0f);
+      using H = MatchTuning::KeeperHands;
+      const double reaction =
+          H::REACTION_SECONDS_POOR + (H::REACTION_SECONDS_BEST - H::REACTION_SECONDS_POOR) * reflexes;
+      if (ownGoal && getSimulatedSeconds() >= *control.ownGoalThreatSince + reaction)
+      {
+        control.state = GoalkeeperState::SWEEP;
+        target = clampToPitch(*ownGoal);
+        job = planJob(PlanBranch::GOALKEEPER, 1U);
+      }
       // A keeper receiving a team-mate's pass steps onto the ball's path.
-      if (!receivingBackPass)
+      else if (!receivingBackPass)
       {
         target = goalkeeperTargetBinturong(player, carrier);
         job = planJob(PlanBranch::GOALKEEPER);

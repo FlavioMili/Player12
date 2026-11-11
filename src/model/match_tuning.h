@@ -2361,6 +2361,12 @@ struct MatchTuning final
   /** Goalkeeper model in real seconds, metres and m/s. */
   struct Goalkeeper final
   {
+    /** A ball (not a shot) going into his own goal that nobody else reaches
+     * first (user 2026-11-11): read this far ahead along its roll, in these
+     * steps (design choices, not researched). He reacts after his
+     * KeeperHands reaction time, from when it first reads as going in. */
+    static constexpr float OWN_GOAL_LOOK_SECONDS = 4.0f;
+    static constexpr float OWN_GOAL_LOOK_STEP_SECONDS = 0.04f;
     // A set keeper reads the striker's body shape, so his effective
     // reaction to a struck ball is shorter than a raw 0.21 s reaction time.
     static constexpr float REACTION_BASE_SECONDS = 0.12f;
@@ -2856,6 +2862,11 @@ struct MatchTuning final
      * technical areas, 1 m out), each along half of it: the top one the
      * left half, the bottom one (the dugouts' side) the right. */
     static constexpr float ASSISTANT_OUT_METRES = 0.5f;
+    /** A throw-in on his touchline: he stands this far further out than
+     * the thrower (DeadBall::THROW_IN_STAND_BEHIND_METRES), behind him
+     * (user; the distance is a design choice). An assistant never steps
+     * onto the pitch to keep clear of a player. */
+    static constexpr float ASSISTANT_BEHIND_THROWER_METRES = 1.0f;
   };
 
   /** Walk-outs and walk-offs (touchline plan stage 4, Binturong out of play

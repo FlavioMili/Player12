@@ -189,6 +189,34 @@ struct MatchRender2DTuning final
     static constexpr ImU32 COLOR = IM_COL32(255, 226, 64, 230);
   };
 
+  /** The referee's signals: his chip grows to a player's size to show a
+   * whistle (red: play stopped; green: restart), a card, play-on for an
+   * advantage or an arrow the way the awarded side attacks; and the
+   * free-kick spot marked on the grass. Timings are wall-clock seconds
+   * (design choices, not researched). */
+  struct RefereeSignal final
+  {
+    static constexpr float GROW_SECONDS = 0.25f;
+    /** Each signal is held at least this long, whatever the match speed. */
+    static constexpr float STOP_SECONDS = 1.5f;
+    static constexpr float CARD_SECONDS = 1.3f;
+    static constexpr float PLAY_ON_MIN_SECONDS = 1.0f;
+    static constexpr float ARROW_MIN_SECONDS = 1.0f;
+    static constexpr float GO_SECONDS = 0.8f;
+    /** The grown chip is never smaller than this (pixels at scale 1). */
+    static constexpr float MIN_GROWN_PIXELS = 11.0f;
+    static constexpr ImU32 CHIP_COLOR = IM_COL32(24, 26, 32, 235);
+    static constexpr ImU32 STOP_COLOR = IM_COL32(232, 64, 56, 255);
+    static constexpr ImU32 GO_COLOR = IM_COL32(72, 204, 96, 255);
+    static constexpr ImU32 YELLOW_CARD_COLOR = IM_COL32(245, 200, 40, 255);
+    static constexpr ImU32 RED_CARD_COLOR = IM_COL32(220, 50, 50, 255);
+    /** Free-kick spot ring (metres), and its fade in and out. */
+    static constexpr float MARKER_RADIUS_METRES = 1.0f;
+    static constexpr float MARKER_FADE_SECONDS = 0.5f;
+    /** The foul spot while advantage is played: drawn fainter. */
+    static constexpr float ADVANTAGE_MARKER_SHARE = 0.45f;
+  };
+
   /** Pitch-control overlay: who would reach each spot first. */
   struct Pressure final
   {

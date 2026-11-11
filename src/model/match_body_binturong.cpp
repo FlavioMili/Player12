@@ -6397,6 +6397,88 @@ bool MatchEngine::considerSmotherBinturong(MatchPlayer& keeper)
   return true;
 }
 
+std::optional<Vector2F> MatchEngine::ownGoalThreatBinturong(const MatchPlayer& keeper)
+{
+  // Only a free ball (nobody has it, not a shot) in his half, rolling
+  // towards his goal line.
+  using G = MatchTuning::Goalkeeper;
+  using U = MatchTuning::Units;
+  if (!keeper.isGoalkeeper || !active(keeper) || state != MatchState::PLAYING ||
+      getPossessionState().isShot || getPossessionAttachment())
+    return std::nullopt;
+  const auto depthOf = [&keeper](Vector2F at)
+  { return keeper.isHomeTeam ? at.x : 1.0f - at.x; };
+  if (depthOf(ball.position) > MatchTuning::Pitch::CENTRE ||
+      ball.velocity.x * (keeper.isHomeTeam ? -1.0f : 1.0f) <= 0.0f)
+    return std::nullopt;
+
+  // How fast a runner is going towards a point (m/s).
+  const auto towards = [](const MatchPlayer& runner, Vector2F from, Vector2F to)
+  {
+    const Vector2F way{to.x - from.x, to.y - from.y};
+    const float size = length(way);
+    return size > EPSILON
+               ? std::max(0.0f, (runner.velocity.x * way.x + runner.velocity.y * way.y) / size)
+               : 0.0f;
+  };
+  // Whether he gets his feet (or body: no hands) to the ball at `at`, `z`
+  // metres up, within `seconds`: his sprint profile, as the smother's.
+  const auto reaches = [&](const MatchPlayer& runner, Vector2F at, float z, float seconds)
+  {
+    if (z > runner.heightMetres) return false;
+    const Vector2F them = toMetres(runner.position);
+    const float metres =
+        std::max(length(Vector2F{at.x - them.x, at.y - them.y}) - feetReach(runner), 0.0f);
+    return sprintSeconds(metres, towards(runner, them, at), playerAcceleration(runner, 1.0f),
+                         std::max(currentTopSpeed(runner), 1.0f)) <= seconds;
+  };
+
+  // Its roll ahead (its own physics, run and put back).
+  const BallMotion saved = ballMotion();
+  std::optional<Vector2F> meet;
+  std::optional<Vector2F> crossing;
+  for (float seconds = G::OWN_GOAL_LOOK_STEP_SECONDS; seconds <= G::OWN_GOAL_LOOK_SECONDS;
+       seconds += G::OWN_GOAL_LOOK_STEP_SECONDS)
+  {
+    const Vector2F before = ball.position;
+    integrateBall(G::OWN_GOAL_LOOK_STEP_SECONDS);
+    const float z = ball.z * U::BALL_Z_METRES;
+    const float depth = depthOf(ball.position);
+    if (depth <= 0.0f)
+    {
+      // Over his line: in, if between the posts and under the bar.
+      const float beforeDepth = depthOf(before);
+      const float share = beforeDepth / std::max(beforeDepth - depth, EPSILON);
+      const float y = before.y + (ball.position.y - before.y) * share;
+      if (std::abs(y - MatchTuning::Pitch::CENTRE) * MatchTuning::Pitch::WIDTH_METRES <=
+              MatchTuning::Shooting::GOAL_HALF_WIDTH_METRES + U::BALL_RADIUS_METRES &&
+          z < U::CROSSBAR_HEIGHT_METRES + U::BALL_RADIUS_METRES)
+        crossing = Vector2F{keeper.isHomeTeam ? 0.0f : 1.0f, y};
+      break;
+    }
+    // Stopped short.
+    if (length(ball.velocity) < 0.2f && z <= U::BALL_RADIUS_METRES + 0.01f) break;
+    const Vector2F at = toMetres(ball.position);
+    // Someone else gets to it first (the pass's receiver, a defender, an
+    // attacker): it is played before it goes in, not his to cover.
+    bool someoneElse = false;
+    for (const MatchPlayer& other : players)
+    {
+      if (&other == &keeper || !active(other) || other.fallen) continue;
+      if (reaches(other, at, z, seconds))
+      {
+        someoneElse = true;
+        break;
+      }
+    }
+    if (someoneElse) break;
+    if (!meet && reaches(keeper, at, z, seconds)) meet = ball.position;
+  }
+  setBallMotion(saved);
+  if (!crossing) return std::nullopt;
+  return meet ? meet : crossing;
+}
+
 void MatchEngine::takeInHandsBinturong(const MatchPlayer& keeper, Vector2F wasAt, float wasMetres)
 {
   if (getBody(keeper.isHomeTeam) != BodyId::BINTURONG || !keeper.isGoalkeeper ||

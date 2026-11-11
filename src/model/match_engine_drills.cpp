@@ -306,7 +306,7 @@ void MatchEngine::setDerivedStat(PlayerID playerId, DerivedStat stat,
   {
     const auto index = static_cast<std::size_t>(stat);
     player->derived[index] = std::clamp(rating, 0.0f, 1.0f);
-    player->derivedOverrides |= 1U << index;
+    player->derivedOverrides |= std::uint64_t{1} << index;
     // What is derived from it follows (a set future stat moves the
     // match-engine-only stats built on it).
     deriveStats(*player);

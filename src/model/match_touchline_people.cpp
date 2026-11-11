@@ -451,7 +451,6 @@ Vector2F MatchEngine::officialSpot(const MatchPlayer& body, const TouchlinePerso
     // His half: the top one the left (the home side defends it: home
     // attacks +x), the bottom one the right.
     const bool top = person.topLine;
-    const float y = top ? -O::ASSISTANT_OUT_METRES : G::WIDTH + O::ASSISTANT_OUT_METRES;
     if (state == MatchState::PENALTY && (restartAt.x < G::HALFWAY) == top)
     {
       // A penalty in his half: on the goal line where the area meets it.
@@ -476,8 +475,19 @@ Vector2F MatchEngine::officialSpot(const MatchPlayer& body, const TouchlinePerso
         secondLast = x;
       }
     }
-    const float x = top ? std::min(secondLast, ballAt.x) : std::max(secondLast, ballAt.x);
-    return {top ? std::clamp(x, 0.0f, G::HALFWAY) : std::clamp(x, G::HALFWAY, G::LENGTH), y};
+    const float level = top ? std::min(secondLast, ballAt.x) : std::max(secondLast, ballAt.x);
+    const float x =
+        top ? std::clamp(level, 0.0f, G::HALFWAY) : std::clamp(level, G::HALFWAY, G::LENGTH);
+    // A throw-in on his touchline near him (within the clearance he keeps
+    // from players): behind the thrower, not beside him.
+    const bool throwInNearHim = state == MatchState::THROW_IN &&
+                                (restartAt.y < CENTRE_Y) == top &&
+                                std::abs(x - restartAt.x) <= O::CLEARANCE_METRES;
+    const float out = throwInNearHim
+                          ? MatchTuning::DeadBall::THROW_IN_STAND_BEHIND_METRES +
+                                O::ASSISTANT_BEHIND_THROWER_METRES
+                          : O::ASSISTANT_OUT_METRES;
+    return {x, top ? -out : G::WIDTH + out};
   }
 
   // The referee: on his diagonal (play between him and the assistant on
@@ -682,8 +692,12 @@ void MatchEngine::moveOfficial(MatchPlayer& body, const TouchlinePerson& person,
     float bestCost = cost(desired);
     if (soonest(desired) <= O::LOOK_AHEAD_SECONDS)
     {
+      // An assistant keeps off the pitch: he steps along or back from his
+      // touchline, never in over it.
+      const float inward = person.topLine ? 1.0f : -1.0f;
       const auto consider = [&](Vector2F velocity)
       {
+        if (assistant && velocity.y * inward > 0.0f) return;
         const float value = cost(velocity);
         if (value < bestCost)
         {

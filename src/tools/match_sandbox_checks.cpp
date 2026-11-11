@@ -454,7 +454,8 @@ bool runDerivedStatChecks(const std::vector<const Team*>& clubs,
     float total = 0.0f;
     for (const float weight : recipe.weights) total += weight;
     for (const float weight : recipe.futureWeights) total += weight;
-    registryOk = registryOk && std::abs(total - 1.0f) < 1e-4f;
+    registryOk = registryOk && std::abs(total - 1.0f) < 1e-4f &&
+                 recipe.spread >= 0.0f && recipe.spread <= 0.25f;
   }
 
   // The layers: every future game stat before any match-engine-only stat

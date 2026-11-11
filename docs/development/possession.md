@@ -1,5 +1,10 @@
 # Possession architecture
 
+Policy acceptance is reopened: the numeric control/claim/coordination constants
+were implementation heuristics, not user-validated or empirically calibrated.
+The non-receiver offside extension was not agreed as part of possession work.
+The descriptions below document current code, not approval of those choices.
+
 Stages 1–3 consolidated existing behaviour. One per-match possession version owns
 one stored account of attachment, receipt, flight and attribution. Old writable
 possession fields on `MatchBall` and `MatchEngine` are removed. Stage 4 now changes

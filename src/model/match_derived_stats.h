@@ -46,6 +46,7 @@
 #include <array>
 #include <cstddef>
 #include <cstdint>
+#include <initializer_list>
 #include <string_view>
 
 #include "model/match_tuning.h"
@@ -67,6 +68,29 @@ enum class DerivedStat : std::uint8_t
   AERIAL_REACH,
   THROWING,
   COMMAND_OF_AREA,
+  // The player profile's attributes (UX design), slots for later plans:
+  // nothing reads them yet.
+  FINISHING,
+  LONG_SHOTS,
+  PENALTIES,
+  CROSSING,
+  CORNERS,
+  FREE_KICKS,
+  MARKING,
+  ANTICIPATION,
+  DECISIONS,
+  FLAIR,
+  COMPOSURE,
+  OFF_THE_BALL,
+  POSITIONING,
+  CONCENTRATION,
+  WORK_RATE,
+  TEAMWORK,
+  LEADERSHIP,
+  DETERMINATION,
+  BRAVERY,
+  AGGRESSION,
+  NATURAL_FITNESS,
   // Match-engine-only stats.
   ENDURANCE,
   BURST_CAPACITY,
@@ -74,7 +98,7 @@ enum class DerivedStat : std::uint8_t
   RECOVERY_RATE,
   FAST_RECOVERY,
 };
-inline constexpr std::size_t DERIVED_STAT_COUNT = 19;
+inline constexpr std::size_t DERIVED_STAT_COUNT = 40;
 
 enum class DerivedLayer : std::uint8_t
 {
@@ -98,8 +122,8 @@ enum class BaseAttribute : std::uint8_t
 inline constexpr std::size_t BASE_ATTRIBUTE_COUNT = 9;
 
 /** A derived stat's rating: the weighted blend of current stats and (for a
- * match-engine-only stat) future stats; the weights sum to 1; clamped to
- * 0-1. */
+ * match-engine-only stat) future stats; the weights sum to 1; plus his own
+ * deviation (spread x playerStatDeviation); clamped to 0-1. */
 struct DerivedRecipe
 {
   std::array<float, BASE_ATTRIBUTE_COUNT> weights{};
@@ -113,6 +137,11 @@ struct DerivedRecipe
    * Both 0: not built on his height. */
   float heightPartLow = 0.0f;
   float heightPartHigh = 0.0f;
+  /** How far one player's rating strays from the blend: the standard
+   * deviation (as a rating, 0.10 = 10 stat points) of his own deviation,
+   * keyed on his id so it is the same every match. 0: the blend exactly.
+   * The tighter a stat follows the current stats, the smaller. */
+  float spread = 0.0f;
   [[nodiscard]] constexpr bool onHeight() const
   {
     return heightPartLow != 0.0f || heightPartHigh != 0.0f;
@@ -232,6 +261,72 @@ inline constexpr std::array<DerivedStatInfo, DERIVED_STAT_COUNT> DERIVED_STATS{{
     {DerivedLayer::FUTURE_GAME_STAT, "Command of area", "Cmd",
      "A keeper coming for high balls: how close an attacker can be before "
      "he punches rather than catches (2.0 m at 1 to 0.5 m at 99).",
+     "", 0.0f, 0.0f, 0.0f, 0.0f},
+    // The player profile's attributes (UX design). Their blends and spreads
+    // are our own estimates (agreed 2026-11-11), not research values.
+    {DerivedLayer::FUTURE_GAME_STAT, "Finishing", "Fin",
+     "Putting a chance away: placing a shot from inside the box.", "", 0.0f,
+     0.0f, 0.0f, 0.0f},
+    {DerivedLayer::FUTURE_GAME_STAT, "Long shots", "Lon",
+     "Shooting with power and accuracy from outside the box.", "", 0.0f,
+     0.0f, 0.0f, 0.0f},
+    {DerivedLayer::FUTURE_GAME_STAT, "Penalties", "Pen",
+     "Scoring from the penalty spot.", "", 0.0f, 0.0f, 0.0f, 0.0f},
+    {DerivedLayer::FUTURE_GAME_STAT, "Crossing", "Cro",
+     "Delivering the ball into the box from wide.", "", 0.0f, 0.0f, 0.0f,
+     0.0f},
+    {DerivedLayer::FUTURE_GAME_STAT, "Corners", "Cor",
+     "Delivering a corner kick to where he means it.", "", 0.0f, 0.0f, 0.0f,
+     0.0f},
+    {DerivedLayer::FUTURE_GAME_STAT, "Free kicks", "Fre",
+     "Striking a dead ball: shots and deliveries from free kicks.", "", 0.0f,
+     0.0f, 0.0f, 0.0f},
+    {DerivedLayer::FUTURE_GAME_STAT, "Marking", "Mar",
+     "Staying tight to an opponent he is picking up.", "", 0.0f, 0.0f, 0.0f,
+     0.0f},
+    {DerivedLayer::FUTURE_GAME_STAT, "Anticipation", "Ant",
+     "Reading what will happen next, and reacting before it does.", "", 0.0f,
+     0.0f, 0.0f, 0.0f},
+    {DerivedLayer::FUTURE_GAME_STAT, "Decisions", "Dec",
+     "Choosing the right option, with or without the ball.", "", 0.0f, 0.0f,
+     0.0f, 0.0f},
+    {DerivedLayer::FUTURE_GAME_STAT, "Flair", "Fla",
+     "Trying the unexpected: the inventive option over the safe one.", "",
+     0.0f, 0.0f, 0.0f, 0.0f},
+    {DerivedLayer::FUTURE_GAME_STAT, "Composure", "Cmp",
+     "Keeping his technique under pressure: on the ball, and in front of "
+     "goal.",
+     "", 0.0f, 0.0f, 0.0f, 0.0f},
+    {DerivedLayer::FUTURE_GAME_STAT, "Off the ball", "OtB",
+     "Moving into space to receive the ball in attack.", "", 0.0f, 0.0f, 0.0f,
+     0.0f},
+    {DerivedLayer::FUTURE_GAME_STAT, "Positioning", "Pos",
+     "Taking up the right place when his side defends.", "", 0.0f, 0.0f, 0.0f,
+     0.0f},
+    {DerivedLayer::FUTURE_GAME_STAT, "Concentration", "Con",
+     "Staying switched on through the match: how seldom he loses focus.", "",
+     0.0f, 0.0f, 0.0f, 0.0f},
+    {DerivedLayer::FUTURE_GAME_STAT, "Work rate", "Wor",
+     "How willingly he puts in the running, with or without the ball.", "",
+     0.0f, 0.0f, 0.0f, 0.0f},
+    {DerivedLayer::FUTURE_GAME_STAT, "Teamwork", "Tea",
+     "Playing for the side: following the plan and the team's movement.", "",
+     0.0f, 0.0f, 0.0f, 0.0f},
+    {DerivedLayer::FUTURE_GAME_STAT, "Leadership", "Ldr",
+     "His influence on his teammates.", "", 0.0f, 0.0f, 0.0f, 0.0f},
+    {DerivedLayer::FUTURE_GAME_STAT, "Determination", "Det",
+     "His will to succeed, and to keep going when the match goes against "
+     "him.",
+     "", 0.0f, 0.0f, 0.0f, 0.0f},
+    {DerivedLayer::FUTURE_GAME_STAT, "Bravery", "Bra",
+     "Committing to a ball where he may get hurt: a block, a header in "
+     "traffic.",
+     "", 0.0f, 0.0f, 0.0f, 0.0f},
+    {DerivedLayer::FUTURE_GAME_STAT, "Aggression", "Agg",
+     "How hard he goes into physical contests.", "", 0.0f, 0.0f, 0.0f, 0.0f},
+    {DerivedLayer::FUTURE_GAME_STAT, "Natural fitness", "Nat",
+     "How well his body holds its fitness and recovers between efforts and "
+     "between matches.",
      "", 0.0f, 0.0f, 0.0f, 0.0f},
     // ---- Match-engine-only stats ------------------------------------------
     // The fatigue plan (4.1): from the research ranges, a little wider.
@@ -355,6 +450,41 @@ constexpr DerivedRecipe balanceRecipe()
   return recipe;
 }
 
+struct Part
+{
+  BaseAttribute attribute;
+  float weight;
+};
+
+/** A blend of current stats (weights summing to 1) with a spread. */
+constexpr DerivedRecipe blend(std::initializer_list<Part> parts, float spread)
+{
+  DerivedRecipe recipe;
+  for (const Part& part : parts)
+    recipe.weights[static_cast<std::size_t>(part.attribute)] = part.weight;
+  recipe.spread = spread;
+  return recipe;
+}
+
+/** His general level (the nine equally) with a spread: for a stat the
+ * current stats say little about. A keeper's level comes out a little
+ * lower, his outfield stats being weak. */
+constexpr DerivedRecipe levelRecipe(float spread)
+{
+  DerivedRecipe recipe;
+  recipe.weights.fill(1.0f / static_cast<float>(BASE_ATTRIBUTE_COUNT));
+  recipe.spread = spread;
+  return recipe;
+}
+
+/** Spreads for the player profile's attributes: TIGHT for a stat that is
+ * nearly its current stat (Finishing and Shooting), WIDE for one the
+ * current stats barely predict (Leadership). Our own estimates. */
+inline constexpr float SPREAD_TIGHT = 0.06f;
+inline constexpr float SPREAD_MEDIUM = 0.10f;
+inline constexpr float SPREAD_LOOSE = 0.12f;
+inline constexpr float SPREAD_WIDE = 0.15f;
+
 constexpr DerivedRecipe burstRecipe()
 {
   // D' grows with the speed reserve above critical speed, so half Stamina,
@@ -373,9 +503,10 @@ constexpr DerivedRecipe burstRecipe()
  * heading Shooting and Defending, jumping reach his height plus a jump from
  * Pace and Physicality, tackling Defending, strength Physicality, balance
  * half Physicality and half Agility's blend, reflexes, handling,
- * throwing and command of area Goalkeeping. Match-engine-only: the
- * endurance stats echo Stamina, except burst capacity (half Stamina, half
- * Acceleration). */
+ * throwing and command of area Goalkeeping. The player profile's
+ * attributes blend the current stats nearest them, each with a spread of
+ * its own (our estimates). Match-engine-only: the endurance stats echo
+ * Stamina, except burst capacity (half Stamina, half Acceleration). */
 inline constexpr DerivedRecipes DEFAULT_DERIVED_RECIPES{{
     DerivedStats::agilityRecipe(),
     DerivedStats::firstTouchRecipe(),
@@ -391,6 +522,70 @@ inline constexpr DerivedRecipes DEFAULT_DERIVED_RECIPES{{
     DerivedStats::aerialReachRecipe(),
     DerivedStats::only(BaseAttribute::GOALKEEPING),
     DerivedStats::only(BaseAttribute::GOALKEEPING),
+    // The player profile's attributes.
+    DerivedStats::blend({{BaseAttribute::SHOOTING, 1.0f}},
+                        DerivedStats::SPREAD_TIGHT),  // Finishing
+    DerivedStats::blend({{BaseAttribute::SHOOTING, 0.7f},
+                         {BaseAttribute::PASSING, 0.3f}},
+                        DerivedStats::SPREAD_MEDIUM),  // Long shots
+    DerivedStats::blend({{BaseAttribute::SHOOTING, 0.8f},
+                         {BaseAttribute::PASSING, 0.2f}},
+                        DerivedStats::SPREAD_LOOSE),  // Penalties
+    DerivedStats::blend({{BaseAttribute::PASSING, 0.7f},
+                         {BaseAttribute::VISION, 0.3f}},
+                        DerivedStats::SPREAD_TIGHT),  // Crossing
+    DerivedStats::blend({{BaseAttribute::PASSING, 0.6f},
+                         {BaseAttribute::VISION, 0.4f}},
+                        DerivedStats::SPREAD_MEDIUM),  // Corners
+    DerivedStats::blend({{BaseAttribute::SHOOTING, 0.5f},
+                         {BaseAttribute::PASSING, 0.5f}},
+                        DerivedStats::SPREAD_LOOSE),  // Free kicks
+    DerivedStats::blend({{BaseAttribute::DEFENDING, 0.8f},
+                         {BaseAttribute::PHYSICALITY, 0.2f}},
+                        DerivedStats::SPREAD_TIGHT),  // Marking
+    DerivedStats::blend({{BaseAttribute::VISION, 0.5f},
+                         {BaseAttribute::DEFENDING, 0.25f},
+                         {BaseAttribute::SHOOTING, 0.25f}},
+                        DerivedStats::SPREAD_MEDIUM),  // Anticipation
+    DerivedStats::blend({{BaseAttribute::VISION, 0.6f},
+                         {BaseAttribute::PASSING, 0.4f}},
+                        DerivedStats::SPREAD_MEDIUM),  // Decisions
+    DerivedStats::blend({{BaseAttribute::DRIBBLING, 0.6f},
+                         {BaseAttribute::VISION, 0.4f}},
+                        DerivedStats::SPREAD_LOOSE),  // Flair
+    DerivedStats::blend({{BaseAttribute::SHOOTING, 0.35f},
+                         {BaseAttribute::PASSING, 0.35f},
+                         {BaseAttribute::DRIBBLING, 0.3f}},
+                        DerivedStats::SPREAD_MEDIUM),  // Composure
+    DerivedStats::blend({{BaseAttribute::SHOOTING, 0.5f},
+                         {BaseAttribute::VISION, 0.3f},
+                         {BaseAttribute::PACE, 0.2f}},
+                        DerivedStats::SPREAD_MEDIUM),  // Off the ball
+    DerivedStats::blend({{BaseAttribute::DEFENDING, 0.7f},
+                         {BaseAttribute::VISION, 0.3f}},
+                        DerivedStats::SPREAD_TIGHT),  // Positioning
+    DerivedStats::blend({{BaseAttribute::DEFENDING, 0.5f},
+                         {BaseAttribute::VISION, 0.5f}},
+                        DerivedStats::SPREAD_MEDIUM),  // Concentration
+    DerivedStats::blend({{BaseAttribute::STAMINA, 0.7f},
+                         {BaseAttribute::DEFENDING, 0.3f}},
+                        DerivedStats::SPREAD_LOOSE),  // Work rate
+    DerivedStats::blend({{BaseAttribute::PASSING, 0.4f},
+                         {BaseAttribute::VISION, 0.3f},
+                         {BaseAttribute::STAMINA, 0.3f}},
+                        DerivedStats::SPREAD_LOOSE),  // Teamwork
+    DerivedStats::levelRecipe(DerivedStats::SPREAD_WIDE),  // Leadership
+    DerivedStats::levelRecipe(DerivedStats::SPREAD_WIDE),  // Determination
+    DerivedStats::blend({{BaseAttribute::PHYSICALITY, 0.6f},
+                         {BaseAttribute::DEFENDING, 0.4f}},
+                        DerivedStats::SPREAD_LOOSE),  // Bravery
+    DerivedStats::blend({{BaseAttribute::PHYSICALITY, 0.5f},
+                         {BaseAttribute::DEFENDING, 0.5f}},
+                        DerivedStats::SPREAD_WIDE),  // Aggression
+    DerivedStats::blend({{BaseAttribute::STAMINA, 0.6f},
+                         {BaseAttribute::PHYSICALITY, 0.4f}},
+                        DerivedStats::SPREAD_LOOSE),  // Natural fitness
+    // Match-engine-only.
     DerivedStats::only(BaseAttribute::STAMINA),
     DerivedStats::burstRecipe(),
     DerivedStats::only(BaseAttribute::STAMINA),
@@ -401,6 +596,37 @@ inline constexpr DerivedRecipes DEFAULT_DERIVED_RECIPES{{
 inline const DerivedStatInfo& derivedStatInfo(DerivedStat stat)
 {
   return DERIVED_STATS[static_cast<std::size_t>(stat)];
+}
+
+/** One player's own deviation in a stat, in standard deviations: keyed on
+ * his id and the stat's name, so it is the same every match and draws
+ * nothing from the match's random numbers. A sum of four uniforms (close to
+ * a normal, held within +/-3.46) from integer hashing and plain float
+ * arithmetic, so it is identical on every platform. Renaming a stat
+ * re-deals it. */
+inline float playerStatDeviation(std::uint32_t playerId,
+                                 std::string_view statName)
+{
+  std::uint64_t key = 14695981039346656037ULL;  // FNV-1a of the name.
+  for (const char c : statName)
+  {
+    key ^= static_cast<unsigned char>(c);
+    key *= 1099511628211ULL;
+  }
+  std::uint64_t state = key ^ (std::uint64_t{playerId} * 0x9E3779B97F4A7C15ULL);
+  float sum = 0.0f;
+  for (int draw = 0; draw < 4; ++draw)
+  {
+    // SplitMix64.
+    state += 0x9E3779B97F4A7C15ULL;
+    std::uint64_t mixed = state;
+    mixed = (mixed ^ (mixed >> 30)) * 0xBF58476D1CE4E5B9ULL;
+    mixed = (mixed ^ (mixed >> 27)) * 0x94D049BB133111EBULL;
+    mixed ^= mixed >> 31;
+    sum += static_cast<float>(mixed >> 40) / 16777216.0f;  // [0, 1)
+  }
+  // Four uniforms: mean 2, variance 1/3.
+  return (sum - 2.0f) * 1.7320508f;
 }
 
 inline std::string_view derivedLayerName(DerivedLayer layer)

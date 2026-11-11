@@ -415,8 +415,8 @@ struct MatchPlayer
    * above when he is loaded. */
   std::array<float, DERIVED_STAT_COUNT> derived{};
   /** Bit per derived stat set by a drill (kept when the rest re-derive). */
-  std::uint32_t derivedOverrides = 0;
-  static_assert(DERIVED_STAT_COUNT <= 32, "derivedOverrides holds a bit per derived stat");
+  std::uint64_t derivedOverrides = 0;
+  static_assert(DERIVED_STAT_COUNT <= 64, "derivedOverrides holds a bit per derived stat");
   float derivedStat(DerivedStat stat) const
   {
     return derived[static_cast<std::size_t>(stat)];
@@ -2538,6 +2538,11 @@ class MatchEngine
   {
     return transitionSecondsRemaining;
   }
+  /** A restart's players are all set and the taker is looking up (Binturong
+   * out of play; a countdown restart never sets it). */
+  bool isRestartReady() const { return restartReadiness.ready; }
+  /** Advantage is being played: the foul's free kick can still be given. */
+  bool isAdvantagePending() const { return pendingAdvantage.active; }
   const PassDecision& getLastPassDecision() const { return lastPassDecision; }
 
   /**
@@ -3300,6 +3305,10 @@ class MatchEngine
     KeeperDive dive;
     /** His penalty guess is made (step 9: as the taker set off). */
     bool penaltyGuessed = false;
+    /** Since when a ball (not a shot) has read as going into his own goal
+     * with nobody else getting to it (simulated seconds); he reacts to it
+     * after his reaction time. */
+    std::optional<double> ownGoalThreatSince;
   };
   /** Whether this keeper is diving or down from a dive (or set for a shot):
    * his body is the dive's, not the brain's. */

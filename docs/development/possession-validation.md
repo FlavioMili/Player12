@@ -1,5 +1,10 @@
 # Possession migration close-out
 
+Policy review is reopened following the user's objections to unvalidated numeric
+thresholds and the unagreed offside extension. The passing checks below establish
+implementation consistency and preservation only; they do not establish approval
+or empirical validity of those gameplay choices.
+
 Stage 5 closes the storage/ownership audit, scenario evidence inventory, sandbox
 labels and documentation. Gameplay checkpoints are Stage 3 `be6c744`, control and
 claim expiry `abe384e`, and teammate coordination `5525926`. Stage 5 changes no

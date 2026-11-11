@@ -325,6 +325,11 @@
    * but his dive would not (goalkeeper plan step 8): he dives for it, as
    * late as he still gets there first. Whether he went. */
   bool considerSmotherBinturong(MatchPlayer& keeper);
+  /** A ball that is not a shot rolling into his own goal (a back-pass gone
+   * wrong, a miscontrol) that nobody else, either side, gets to first: where
+   * he gets his feet to it on its way (pitch units), else where it crosses
+   * his line. Nothing if it is not going in, or someone else meets it. */
+  std::optional<Vector2F> ownGoalThreatBinturong(const MatchPlayer& keeper);
   /** How far from where he stands his midriff can land in a smother (m):
    * his feet's dive reach plus his midriff's height. */
   float smotherReachBinturong(const MatchPlayer& keeper) const;

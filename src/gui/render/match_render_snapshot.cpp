@@ -123,6 +123,8 @@ void fillMatchRenderSnapshot(const MatchEngine& engine,
   snapshot.homePhase = engine.getHomePhase();
   snapshot.awayPhase = engine.getAwayPhase();
   snapshot.transitionSecondsRemaining = engine.getTransitionSecondsRemaining();
+  snapshot.restartReady = engine.isRestartReady();
+  snapshot.advantagePending = engine.isAdvantagePending();
   snapshot.homeScore = engine.getHomeScore();
   snapshot.awayScore = engine.getAwayScore();
   snapshot.goalScoredByHome = engine.getGoalScoredByHome();
