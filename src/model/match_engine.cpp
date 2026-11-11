@@ -7,6 +7,8 @@
 // -----------------------------------------------------------------------------
 
 #include "model/match_engine.h"
+#include "model/match_possession_control.h"
+#include "model/match_restart_approach.h"
 
 
 // Implementation map (search these function names to find each subsystem):
@@ -2282,6 +2284,14 @@ void MatchEngine::updateRestartMovement(float dt)
     player.routeWaypoints = 0;
     player.arriveAtSpeed = false;
     player.facingRequested = false;
+    if (&player == taker && possessionId == PossessionId::BINTURONG &&
+        outOfPlayId == OutOfPlayId::AARDVARK && !restartLineUp &&
+        linesUpRestart(player, state))
+    {
+      player.movementTarget = toPitch(RestartApproach::target(toMetres(player.position),
+          toMetres(ball.position), MatchTuning::Player::ARRIVAL_DEAD_ZONE_METRES));
+      player.tacticalTarget = player.movementTarget;
+    }
     if (&player == taker && restartLineUp) steerRestartLineUp(player, dt);
     if (player.fallen)
       fallenBinturong(player, dt);
@@ -2594,6 +2604,9 @@ void MatchEngine::resolvePossessionAndActions(float dt)
     // A claimed ball rolls free: he runs onto it and plays it touch by
     // touch (in the ball's sweep); he can be challenged meanwhile.
     updateTouch(*carrier, dt);
+    // Claim expiry may release the owner. Do not challenge or act using the
+    // former carrier later in this step (Aardvark retains its claim policy).
+    if (getPossessionAttachment() != carrier->player) return;
   }
   else if (!updateDribble(*carrier, dt))
   {
@@ -2648,7 +2661,7 @@ void MatchEngine::resolvePossessionAndActions(float dt)
 
   // Nobody plays a ball that is still rolling to him: he acts once he has
   // collected it, and only with it at his feet.
-  if (hasTouchClaim() && !isTouchCollected()) return;
+  if (hasTouchClaim() && getConfirmedController() != carrier->player) return;
 
   // The AI waits out its decision time after a touch; a controlled player
   // can play the ball as soon as it is under control.
@@ -5659,8 +5672,7 @@ void MatchEngine::playFirstTouch(MatchPlayer& player, const TouchMoment& moment,
   takePossession(player);
   // It keeps the height he met it at: the touch changes only its velocity.
   sendBallOff(player,
-              {std::clamp(contactPoint.x, 0.001f, 0.999f),
-               std::clamp(contactPoint.y, 0.001f, 0.999f)},
+              PossessionControl::retainingTouchPosition(possessionId, contactPoint),
               moment.height / MatchTuning::Units::BALL_Z_METRES, touch.velocity,
               touch.verticalSpeed, BallSpin{}, 0.0f);
   beginTouchClaim(receivingPass ? passer : nullptr, false);
@@ -5705,7 +5717,8 @@ bool MatchEngine::holdStrikeForSweep(const PendingStrike& strike)
   // Only while he decides on a loose ball at his feet: a dead ball, a ball
   // in a keeper's hands or a header is struck at once.
   if (!strikesWaitForSweep || !strike.striker ||
-      state != MatchState::PLAYING || !hasTouchClaim() || !isTouchCollected() ||
+      state != MatchState::PLAYING || !hasTouchClaim() ||
+      getConfirmedController() != strike.striker->player ||
       getPossessionAttachment() != strike.striker->player)
     return false;
   pendingStrike = strike;
@@ -6292,8 +6305,7 @@ void MatchEngine::playDribbleTouch(MatchPlayer& player, const TouchMoment& momen
   trackTouch(player);
   // It keeps the height he met it at: the touch changes only its velocity.
   sendBallOff(player,
-              {std::clamp(moment.contactPoint.x, 0.001f, 0.999f),
-               std::clamp(moment.contactPoint.y, 0.001f, 0.999f)},
+              PossessionControl::retainingTouchPosition(possessionId, moment.contactPoint),
               moment.height / MatchTuning::Units::BALL_Z_METRES, touch.velocity,
               touch.verticalSpeed, BallSpin{}, 0.0f);
   noteDribbleTouch(player, intent, touch, moment);
@@ -6692,6 +6704,17 @@ void MatchEngine::steerRestartLineUp(MatchPlayer& taker, float dt)
   // comes at it.
   RestartLineUp& lineUp = *restartLineUp;
   lineUp.seconds += dt;
+  if (possessionId == PossessionId::BINTURONG && outOfPlayId == OutOfPlayId::AARDVARK &&
+      taker.position.y * PITCH_WIDTH >= MatchGround::BOARDS_Y &&
+      ball.position.y * PITCH_WIDTH < MatchGround::BOARDS_Y)
+  {
+    // A controller's queued restart is retained while he approaches too.
+    taker.movementTarget = toPitch(RestartApproach::target(toMetres(taker.position),
+        toMetres(ball.position), MatchTuning::Player::ARRIVAL_DEAD_ZONE_METRES));
+    taker.tacticalTarget = taker.movementTarget;
+    taker.facingRequested = false;
+    return;
+  }
   const Vector2F line =
       lineUp.line.value_or(metricDirection(taker.position, ball.position));
   const float back = touchKnobs[TouchKnob::COMFORT_GAP] *

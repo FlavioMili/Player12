@@ -44,6 +44,9 @@ Json snapshot(const PossessionSnapshot& state)
                                        : Json(nullptr)},
           {"in_touch", state.inTouch},
           {"collected", state.collected},
+          {"claim_uncontrolled_seconds", state.claimUncontrolledSeconds},
+          {"claim_unrecoverable_seconds", state.claimUnrecoverableSeconds},
+          {"foot_control", state.footControlled ? Json(*state.footControlled) : Json(nullptr)},
           {"dropping", state.dropping},
           {"hands", state.inHands},
           {"pass", state.pass},
@@ -160,7 +163,7 @@ class PossessionTrace final : public MatchRecorder
                                             "prepare-shot-assist",
                                             "note-contact-actor",
                                             "note-path-change",
-                                            "advance-shot-flight-clock", "note-throw-team"};
+                                            "advance-shot-flight-clock", "note-throw-team", "expire-touch-claim"};
     static_assert(sizeof(NAMES) / sizeof(NAMES[0]) ==
                   static_cast<unsigned>(PossessionObservation::COUNT));
     emit({{"type", "helper"},

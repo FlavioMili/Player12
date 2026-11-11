@@ -66,6 +66,19 @@ int main()
   check(view.mode == PossessionMode::RESTART_OWNER && view.controller == 0,
         "restart entitlement must not become live control");
 
+  auto separated = touch;
+  separated.collected = true;
+  separated.footControlled = false;
+  view = interpretLegacyPossession(separated);
+  check(view.mode == PossessionMode::TOUCH_CLAIM && view.controller == 0 &&
+            view.claimant == separated.legacyOwner && view.collected,
+        "Binturong control loss preserves completed receipt and claimant");
+  separated.footControlled = true;
+  view = interpretLegacyPossession(separated);
+  check(view.mode == PossessionMode::FOOT_CONTROL &&
+            view.controller == separated.legacyOwner,
+        "Binturong current foot control is independent evidence");
+
   PossessionSnapshot keeper;
   keeper.openPlay = true;
   keeper.legacyOwner = 1;

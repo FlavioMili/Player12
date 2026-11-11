@@ -13,6 +13,7 @@
 // and a case in each function here.
 
 #include "model/match_engine.h"
+#include "model/match_engine_internal.h"
 
 void MatchEngine::checkOutOfBounds()
 {
@@ -219,6 +220,13 @@ void MatchEngine::completeRestart()
   switch (outOfPlayId)
   {
     case OutOfPlayId::AARDVARK:
+        if (possessionId == PossessionId::BINTURONG && !restartLineUp &&
+            state != MatchState::KICK_OFF && !userRestartPassRequested())
+          if (const MatchPlayer* taker = restartTaker(); taker &&
+              MatchEngineInternal::active(*taker) && linesUpRestart(*taker, state) &&
+              MatchEngineInternal::distance(taker->position, ball.position) >
+                  touchKnobs[TouchKnob::COMFORT_GAP])
+            return;
       break;
     case OutOfPlayId::BINTURONG:
       completeRestartBinturong();

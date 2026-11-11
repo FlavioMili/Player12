@@ -115,6 +115,11 @@ struct PossessionSnapshot
   bool ownerInOwnArea = false;
   bool inTouch = false;
   bool collected = false;
+  /** Current Binturong control; absent preserves the Aardvark interpretation.
+   */
+  std::optional<bool> footControlled;
+  float claimUncontrolledSeconds = 0.0f;
+  float claimUnrecoverableSeconds = 0.0f;
   bool dropping = false;
   bool inHands = false;
   bool pass = false;
@@ -142,9 +147,10 @@ constexpr PossessionSnapshot interpretLegacyPossession(PossessionSnapshot state)
   }
   else if (state.inTouch)
   {
-    state.mode = state.collected ? PossessionMode::FOOT_CONTROL
-                                 : PossessionMode::TOUCH_CLAIM;
-    if (state.collected) state.controller = state.legacyOwner;
+    const bool controlled = state.footControlled.value_or(state.collected);
+    state.mode =
+        controlled ? PossessionMode::FOOT_CONTROL : PossessionMode::TOUCH_CLAIM;
+    if (controlled) state.controller = state.legacyOwner;
   }
   else
     state.mode = PossessionMode::LEGACY_ATTACHED;
@@ -284,6 +290,7 @@ enum class PossessionObservation : std::uint8_t
   NOTE_PATH_CHANGE,
   ADVANCE_SHOT_FLIGHT_CLOCK,
   NOTE_THROW_TEAM,
+  EXPIRE_TOUCH_CLAIM,
   COUNT
 };
 

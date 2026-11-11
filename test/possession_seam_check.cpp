@@ -14,6 +14,8 @@
 #include <vector>
 
 #include "model/match_engine.h"
+#include "model/match_possession_claim.h"
+#include "model/match_possession_control.h"
 #include "model/match_recorder.h"
 #include "model/player.h"
 #include "tools/lab_fixtures.h"
@@ -25,10 +27,20 @@
 namespace
 {
 int failures = 0;
+PossessionId testedPossession = PossessionId::AARDVARK;
+PossessionId otherPossession()
+{
+  return testedPossession == PossessionId::AARDVARK ? PossessionId::BINTURONG
+                                                    : PossessionId::AARDVARK;
+}
 constexpr auto OBSERVATION_COUNT =
     static_cast<std::size_t>(PossessionObservation::COUNT);
 std::array<unsigned, OBSERVATION_COUNT> totalRoutes{};
 unsigned contestedHeaders = 0;
+unsigned controlCollections = 0, controlLosses = 0, controlGraceSamples = 0;
+unsigned controlReacquisitions = 0;
+unsigned claimExpiries = 0;
+unsigned retainedBeyondCollectionReach = 0;
 void check(bool value, const char* message)
 {
   if (!value)
@@ -69,6 +81,10 @@ auto possessionStateKey(const MatchEngine& engine)
       s.possessedBy,
       s.inTouch,
       s.touchCollected,
+      s.footControlled,
+      s.footControlSeparationSeconds,
+      s.claimUncontrolledSeconds,
+      s.claimUnrecoverableSeconds,
       s.nudgedBy,
       s.nudgedFrom,
       s.touchPasser,
@@ -120,6 +136,22 @@ auto possessionStateKey(const MatchEngine& engine)
       s.history.pendingTackle ? s.history.pendingTackle->contest : false};
 }
 
+auto historyKey(const PossessionHistory& h)
+{
+  return std::tuple{h.lastControlledTeamHome,
+                    h.possessionStartSeconds,
+                    h.lastCompletedPasser,
+                    h.lastCompletedReceiver,
+                    h.lastShooter,
+                    h.shotAssistCandidate,
+                    h.headerRun,
+                    h.headerRunLastHome,
+                    h.pendingTackle.has_value(),
+                    h.pendingTackle ? h.pendingTackle->tackler : nullptr,
+                    h.pendingTackle ? h.pendingTackle->homeTeam : false,
+                    h.pendingTackle ? h.pendingTackle->contest : false};
+}
+
 class Routes final : public MatchRecorder
 {
  public:
@@ -154,6 +186,100 @@ class Routes final : public MatchRecorder
     const std::array<float, 8> motion{
         ball.position.x, ball.position.y, ball.z,         ball.velocity.x,
         ball.velocity.y, ball.velocityZ,  ball.spin.side, ball.spin.top};
+    const float separation =
+        engine.getPossessionState().footControlSeparationSeconds;
+    const bool controlled = state.footControlled.value_or(state.collected);
+    check(state.claimUncontrolledSeconds >= 0.0f &&
+              state.claimUnrecoverableSeconds >= 0.0f,
+          "claim clocks remain nonnegative");
+    if (controlled || testedPossession == PossessionId::AARDVARK)
+      check(state.claimUncontrolledSeconds == 0.0f &&
+                state.claimUnrecoverableSeconds == 0.0f,
+            "control and Aardvark do not age uncollected claims");
+    check(separation >= 0.0f &&
+              separation < PossessionControl::SEPARATION_GRACE_SECONDS,
+          "control tolerance remains bounded");
+    if (testedPossession == PossessionId::AARDVARK)
+      check(separation == 0.0f,
+            "Aardvark never uses Binturong control tolerance");
+    if (!controlled)
+      check(separation == 0.0f,
+            "uncollected claim does not inherit control tolerance");
+    if (kind == PossessionObservation::NOTE_CARRIER_HISTORY)
+    {
+      beforeTouch = state;
+      beforeTouchMotion = motion;
+      beforePassCredits = counts[static_cast<std::size_t>(
+          PossessionObservation::CREDIT_PASS_COMPLETION)];
+      for (const auto& player : engine.getPlayers())
+        if (player.player && player.player->getId() == state.legacyOwner)
+          beforeTouchCooldown = player.actionCooldown;
+    }
+    if (kind == PossessionObservation::UPDATE_TOUCH)
+    {
+      check(beforeTouch && beforeTouch->inTouch &&
+                beforeTouch->legacyOwner == state.legacyOwner &&
+                beforeTouchMotion == motion,
+            "control update preserves claimant and physical motion");
+      if (beforeTouch)
+      {
+        const bool beforeControl =
+            beforeTouch->footControlled.value_or(beforeTouch->collected);
+        if (!beforeControl && controlled) ++controlCollections;
+        if (!beforeControl && controlled && beforeTouch->collected)
+        {
+          ++controlReacquisitions;
+          check(counts[static_cast<std::size_t>(
+                    PossessionObservation::CREDIT_PASS_COMPLETION)] ==
+                    beforePassCredits,
+                "regaining current control does not credit the completed "
+                "receipt again");
+          for (const auto& player : engine.getPlayers())
+            if (player.player && player.player->getId() == state.legacyOwner)
+              check(player.actionCooldown == beforeTouchCooldown,
+                    "regaining control does not restart first-collection "
+                    "decision delay");
+        }
+        if (beforeControl && !controlled)
+        {
+          ++controlLosses;
+          check(
+              state.controller == 0 &&
+                  state.claimant == beforeTouch->claimant &&
+                  state.collected == beforeTouch->collected,
+              "loss of foot control preserves claimant and collection history");
+        }
+      }
+      if (separation > 0.0f) ++controlGraceSamples;
+      if (controlled &&
+          state.ownerGapMetres > MatchTuning::Dribble::KICK_REACH_METRES)
+        ++retainedBeyondCollectionReach;
+      beforeTouch.reset();
+      lastClaimUpdate = state;
+      lastClaimHistory = historyKey(engine.getPossessionHistory());
+    }
+    if (kind == PossessionObservation::EXPIRE_TOUCH_CLAIM)
+    {
+      ++claimExpiries;
+      check(testedPossession == PossessionId::BINTURONG && lastClaimUpdate &&
+                lastClaimUpdate->claimant != 0 &&
+                !lastClaimUpdate->footControlled.value_or(true) &&
+                state.legacyOwner == 0 && state.claimant == 0 &&
+                state.controller == 0,
+            "only an uncontrolled Binturong claim expires into a free ball");
+      check(motion == beforeTouchMotion && lastClaimUpdate &&
+                state.pathSince == lastClaimUpdate->pathSince &&
+                state.legacyLastPossessor ==
+                    lastClaimUpdate->legacyLastPossessor &&
+                state.legacyKicker == lastClaimUpdate->legacyKicker &&
+                state.legacyDeflector == lastClaimUpdate->legacyDeflector &&
+                lastClaimHistory &&
+                *lastClaimHistory == historyKey(engine.getPossessionHistory()),
+            "expiry preserves motion, path, rules provenance and "
+            "continuity/credit history");
+      check(lastClaimUpdate && state.meetFor != lastClaimUpdate->legacyOwner,
+            "expired claimant has no remaining meet plan");
+    }
     if (kind == PossessionObservation::RECORD_PASS_COMPLETION)
     {
       incoming = motion;
@@ -209,6 +335,13 @@ class Routes final : public MatchRecorder
   bool contactStates = true;
 
  private:
+  std::optional<PossessionSnapshot> beforeTouch;
+  std::optional<PossessionSnapshot> lastClaimUpdate;
+  std::optional<decltype(historyKey(std::declval<const PossessionHistory&>()))>
+      lastClaimHistory;
+  std::array<float, 8> beforeTouchMotion{};
+  float beforeTouchCooldown = 0.0f;
+  unsigned beforePassCredits = 0;
   bool haveIncoming = false;
   bool incomingDelivery = false;
   std::array<float, 8> incoming{};
@@ -249,6 +382,9 @@ void compareVersions(const Lineup& home, const Lineup& away,
         "select Binturong before kickoff");
   check(!developing.setPossessionVersion(static_cast<PossessionId>(255)),
         "reject invalid version");
+  check(legacy.setPossessionVersion(testedPossession) &&
+            developing.setPossessionVersion(testedPossession),
+        "select the policy under test for both independent runs");
   for (MatchEngine* engine : {&legacy, &developing})
   {
     engine->setBrain(true, homeBrain);
@@ -280,7 +416,7 @@ void compareVersions(const Lineup& home, const Lineup& away,
             "create a tied knockout at the final whistle");
     }
   const MatchEngine copied(developing);
-  check(copied.getPossessionVersion() == PossessionId::BINTURONG &&
+  check(copied.getPossessionVersion() == testedPossession &&
             !copied.getRecorder(),
         "copy preserves implementation and detaches observer");
   bool equal = true;
@@ -291,7 +427,7 @@ void compareVersions(const Lineup& home, const Lineup& away,
     legacy.advance(0.1f);
     developing.advance(0.1f);
     if (ticks == 1)
-      check(!developing.setPossessionVersion(PossessionId::AARDVARK),
+      check(!developing.setPossessionVersion(otherPossession()),
             "reject version change during play after the first step");
     auto left = legacy.getPossessionSnapshot(),
          right = developing.getPossessionSnapshot();
@@ -300,16 +436,16 @@ void compareVersions(const Lineup& home, const Lineup& away,
       const auto original = possessionStateKey(developing);
       std::optional<MatchEngine> restored;
       restored.emplace(developing);
-      check(!restored->getRecorder() &&
-                possessionStateKey(*restored) == original,
-            "complete possession/history survives detached engine copy");
+      check(
+          !restored->getRecorder() && possessionStateKey(*restored) == original,
+          "complete possession/history survives detached engine copy");
       restored->advance(0.1f);
       check(possessionStateKey(developing) == original,
             "advancing an engine copy leaves original possession unchanged");
       restored.emplace(developing);
-      check(!restored->getRecorder() &&
-                possessionStateKey(*restored) == original,
-            "engine reconstruction restores complete possession/history");
+      check(
+          !restored->getRecorder() && possessionStateKey(*restored) == original,
+          "engine reconstruction restores complete possession/history");
     }
     right.implementation = left.implementation;
     equal = left == right &&
@@ -321,7 +457,7 @@ void compareVersions(const Lineup& home, const Lineup& away,
   }
   check(equal && legacy.getState() == MatchState::FULL_TIME &&
             developing.getState() == MatchState::FULL_TIME,
-        "both versions reach full time with matching projections, checksums "
+        "same-policy runs reach full time with matching projections, checksums "
         "and event counts");
   check(a.correct && b.correct && a.counts == b.counts,
         "correct implementation executes every helper");
@@ -373,13 +509,13 @@ void compareVersions(const Lineup& home, const Lineup& away,
   contestedHeaders += legacy.getStats().aerialDuelsContested;
   for (std::size_t i = 0; i < b.counts.size(); ++i)
     totalRoutes[i] += b.counts[i];
-  check(!developing.setPossessionVersion(PossessionId::AARDVARK),
+  check(!developing.setPossessionVersion(otherPossession()),
         "reject version change after the match");
-  check(developing.setPossessionVersion(PossessionId::BINTURONG),
+  check(developing.setPossessionVersion(testedPossession),
         "same-version query remains harmless");
   legacy.setRecorder(nullptr);
   developing.setRecorder(nullptr);
-  std::cout << "Compared versions for " << ticks << " steps\n";
+  std::cout << "Compared independent runs for " << ticks << " steps\n";
 }
 
 void compareFirstTimeDrill(const StatsConfig& config, const char* name,
@@ -408,9 +544,9 @@ void compareFirstTimeDrill(const StatsConfig& config, const char* name,
   sandboxBrains() = {BrainId::BINTURONG, BrainId::BINTURONG};
   sandboxBodies() = {BodyId::BINTURONG, BodyId::BINTURONG};
   sandboxBallPhysics() = BallPhysicsId::BINTURONG;
-  sandboxPossession() = PossessionId::AARDVARK;
+  sandboxPossession() = testedPossession;
   DrillRun left(*a, config, false);
-  sandboxPossession() = PossessionId::BINTURONG;
+  sandboxPossession() = testedPossession;
   DrillRun right(*b, config, false);
   left.engine().setRecorder(&ar);
   right.engine().setRecorder(&br);
@@ -579,9 +715,9 @@ void compareContactDrill(const StatsConfig& config, const char* name,
                                 1.0f);
         }
   };
-  sandboxPossession() = PossessionId::AARDVARK;
+  sandboxPossession() = testedPossession;
   DrillRun left(*a, config, false, prepare);
-  sandboxPossession() = PossessionId::BINTURONG;
+  sandboxPossession() = testedPossession;
   DrillRun right(*b, config, false, prepare);
   left.engine().setRecorder(&ar);
   right.engine().setRecorder(&br);
@@ -683,9 +819,9 @@ void participantLifecycle(const Lineup& home, const Lineup& away,
   auto withBench = home;
   withBench.setReserves({incoming});
   MatchEngine a(withBench, away, Strategy{}, Strategy{}, config, 11,
-                HandshakeId::BINTURONG, PossessionId::AARDVARK);
+                HandshakeId::BINTURONG, testedPossession);
   MatchEngine b(withBench, away, Strategy{}, Strategy{}, config, 11,
-                HandshakeId::BINTURONG, PossessionId::BINTURONG);
+                HandshakeId::BINTURONG, testedPossession);
   Routes ar, br;
   a.setRecorder(&ar);
   b.setRecorder(&br);
@@ -808,10 +944,14 @@ void persistence()
 
 int main(int argc, char** argv)
 {
-  const bool legacyProbe =
-      argc == 2 && std::string_view(argv[1]) == "--legacy-probe";
-  const bool lifecycleProbe =
-      argc == 2 && std::string_view(argv[1]) == "--pre-lifecycle-core";
+  if (argc == 3 && std::string_view(argv[1]) == "--possession")
+  {
+    const auto selected = possessionFromKey(argv[2]);
+    if (!selected) return 2;
+    testedPossession = *selected;
+  }
+  else if (argc != 1)
+    return 2;
   persistence();
   auto config = Lab::loadStatsConfig();
   std::vector<std::unique_ptr<Player>> pool;
@@ -914,16 +1054,46 @@ int main(int argc, char** argv)
                            {"Power share", 0.4f}},
                           BodyId::BINTURONG, BodyId::BINTURONG, seed);
   }
+  // A changed live policy can stop the old match seeds exercising a rare
+  // legal branch. Keep explicit deterministic coverage instead of dropping it.
+  if (testedPossession == PossessionId::BINTURONG)
+  {
+    const auto operation = static_cast<std::size_t>(
+        PossessionObservation::NOTE_DIRECT_FREE_KICK_SHOT);
+    // Bounded deterministic coverage search; all compared runs must still
+    // match. Emitted result lines identify every seed used for reproduction.
+    for (unsigned seed = 9; seed <= 32 && totalRoutes[operation] == 0; ++seed)
+      compareVersions(home, away, config, BrainId::AARDVARK, BrainId::AARDVARK,
+                      BodyId::BINTURONG, BodyId::BINTURONG, false,
+                      OutOfPlayId::AARDVARK, seed);
+  }
   for (std::size_t i = 0; i < totalRoutes.size(); ++i)
   {
-    if (legacyProbe && i >= 51)
-      continue;  // The saved pre-restart core has 51 labels.
-    if (lifecycleProbe && i >= 60) continue;
+    if (i == static_cast<std::size_t>(
+                 PossessionObservation::EXPIRE_TOUCH_CLAIM) &&
+        testedPossession == PossessionId::AARDVARK)
+    {
+      check(totalRoutes[i] == 0,
+            "Aardvark never expires touch claims through the new policy");
+      continue;
+    }
     if (totalRoutes[i] == 0)
       std::cerr << "Unexercised observation: " << i << '\n';
     check(totalRoutes[i] > 0,
           "all observable possession operations exercised across fixtures");
   }
+  if (testedPossession == PossessionId::BINTURONG)
+    check(controlCollections > 0 && controlReacquisitions > 0 &&
+              controlLosses > 0 && controlGraceSamples > 0 &&
+              retainedBeyondCollectionReach > 0,
+          "integration fixtures exercise acquisition, loss, grace and retained "
+          "dribbles");
+  std::cout << "Control observations: collections " << controlCollections
+            << ", reacquisitions " << controlReacquisitions << ", losses "
+            << controlLosses << ", grace " << controlGraceSamples
+            << ", retained beyond collection reach "
+            << retainedBeyondCollectionReach << '\n';
+  std::cout << "Claim expiry observations: " << claimExpiries << '\n';
   if (failures == 0)
     std::cout << "PASS: possession version dispatch, compatibility and copy "
                  "contracts\n";

@@ -1222,7 +1222,7 @@ struct PossessionHistory
 
 /** Single stored account of attachment, receipt, flight and provenance.
  * Consumers receive const views; selected possession implementations own writes.
- * Legacy facts are retained without introducing new control/claim policy. */
+ * Aardvark retains legacy facts; Binturong applies the selected evolving policy. */
 struct MatchPossessionState
 {
   /** In its owner's hands, a Binturong keeper's (goalkeeper plan step 5):
@@ -1240,9 +1240,16 @@ struct MatchPossessionState
    * touch and dribble touches plans). Only ever set with an owner in open
    * play; the possession helpers clear it. */
   bool inTouch = false;
-  /** A claimed ball he has collected (reached and moving with him): from
-   * then on he dribbles it, touch by touch. */
+  /** This touch has completed collection/receipt. Losing current foot control
+   * does not undo that history or repeat its bookkeeping. */
   bool touchCollected = false;
+  /** Binturong's current control, distinct from completed collection history. */
+  bool footControlled = false;
+  /** Binturong control hysteresis only; not an uncollected-claim timeout. */
+  float footControlSeparationSeconds = 0.0f;
+  /** Binturong claim clocks; separate from control-separation hysteresis. */
+  float claimUncontrolledSeconds = 0.0f;
+  float claimUnrecoverableSeconds = 0.0f;
   /** Tackling plan step 6: his touch was a win-it nudge off this
    * attacker; until he collects it he runs to put himself between them. */
   const Player* nudgedBy = nullptr;

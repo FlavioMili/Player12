@@ -204,6 +204,9 @@ set(FM_CORE_SOURCES
     model/match_engine_internal.h
     model/match_engine.cpp
     model/match_possession.h
+    model/match_possession_control.h
+    model/match_possession_claim.h
+    model/match_restart_approach.h
     model/match_possession.cpp
     model/match_possession_dispatch.cpp
     model/match_possession_aardvark.cpp
@@ -758,6 +761,15 @@ add_executable(possession_contract_check EXCLUDE_FROM_ALL
     ../test/possession_contract_check.cpp)
 target_include_directories(possession_contract_check PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}")
 target_compile_options(possession_contract_check PRIVATE ${FM_WARNING_FLAGS})
+
+add_executable(possession_control_check EXCLUDE_FROM_ALL
+    ../test/possession_control_check.cpp)
+target_include_directories(possession_control_check PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}")
+target_compile_options(possession_control_check PRIVATE ${FM_WARNING_FLAGS})
+
+add_executable(possession_claim_check EXCLUDE_FROM_ALL ../test/possession_claim_check.cpp)
+target_include_directories(possession_claim_check PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}")
+target_compile_options(possession_claim_check PRIVATE ${FM_WARNING_FLAGS})
 
 add_executable(possession_seam_check EXCLUDE_FROM_ALL
     ../test/possession_seam_check.cpp

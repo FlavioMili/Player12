@@ -683,6 +683,8 @@ bool runFirstTouchChecks(const std::vector<const Team*>& clubs,
       Vector2F lastOffset{0.0f, 0.0f};
       float lastSpeed = 0.0f;
       float lastCooldown = 0.0f;
+      float lastLaunchSpeed = engine->getBall().touchLaunchSpeed;
+      double lastPathSince = engine->getPossessionState().pathSince;
       std::uint64_t lastSteps = engine->getSimulatedSteps();
       while (engine->getState() != MatchState::FULL_TIME)
       {
@@ -735,8 +737,21 @@ bool runFirstTouchChecks(const std::vector<const Team*>& clubs,
               seconds;
           const float allowed =
               (fastest + rollingLoss) * seconds + SLACK_METRES;
-          setup.worstExcess = std::max(
-              setup.worstExcess, metres(lastPosition, ball.position) - allowed);
+          const float excess = metres(lastPosition, ball.position) - allowed;
+          if (excess > setup.worstExcess && excess > 0.001f)
+            std::cerr << std::format(
+                "Motion budget diagnostic: seed {} brain {} body {} tick {} owner {} "
+                "moved {:.6f} allowed {:.6f} speeds {:.6f}/{:.6f} launch {:.6f}/{:.6f} "
+                "cooldown {:.6f}/{:.6f} touched {} path {:.6f}/{:.6f} "
+                "position {:.9f},{:.9f}/{:.9f},{:.9f} sent {:.9f},{:.9f}\n",
+                3000 + match, static_cast<unsigned>(setup.brain), static_cast<unsigned>(setup.body),
+                steps, claimOwner ? claimOwner->getId() : 0, metres(lastPosition, ball.position),
+                allowed, lastSpeed, speedOf(ball.velocity), lastLaunchSpeed, ball.touchLaunchSpeed,
+                lastCooldown, ball.ownTouchCooldown, touchedThisStep,
+                lastPathSince, engine->getPossessionState().pathSince,
+                lastPosition.x, lastPosition.y, ball.position.x, ball.position.y,
+                ball.sentFrom.x, ball.sentFrom.y);
+          setup.worstExcess = std::max(setup.worstExcess, excess);
         }
         if (!sameTouch && wasInTouch)
         {
@@ -800,6 +815,8 @@ bool runFirstTouchChecks(const std::vector<const Team*>& clubs,
         lastPosition = ball.position;
         lastSpeed = speedOf(ball.velocity);
         lastCooldown = ball.ownTouchCooldown;
+        lastLaunchSpeed = ball.touchLaunchSpeed;
+        lastPathSince = engine->getPossessionState().pathSince;
         if (const MatchPlayer* holder = inTouch ? ownerOf(owner) : nullptr)
           lastOffset = {ball.position.x - holder->position.x,
                         ball.position.y - holder->position.y};
@@ -962,11 +979,30 @@ bool runRestartChecks(const std::vector<const Team*>& clubs,
       engine->setOutOfPlay(version);
       MatchState previous = engine->getState();
       std::size_t steps = 0;
+      bool reportedStall = false;
       while (engine->getState() != MatchState::FULL_TIME && steps < 2'000'000)
       {
         (void)engine->advance(MatchTuning::Timing::FIXED_STEP_SECONDS);
         ++steps;
         longest = std::max(longest, engine->getRestartLineUpSeconds());
+        if (!reportedStall && engine->getRestartLineUpSeconds() >= STUCK_SECONDS)
+        {
+          reportedStall = true;
+          const auto& b = engine->getBall();
+          for (const auto& player : engine->getPlayers())
+            if (player.player == engine->getPossessionAttachment())
+              std::cerr << std::format("Restart stall diagnostic: seed {} out-of-play {} tick {} state {} "
+                  "ball {:.9f},{:.9f} taker {} at {:.9f},{:.9f} target {:.9f},{:.9f} "
+                  "speed {:.4f},{:.4f} fallen {} injured {} facing {:.5f} requested {} {:.5f} "
+                  "feet {:.4f} stamina {:.4f} reserve {:.4f}\n",
+                  3000 + match, static_cast<unsigned>(version), engine->getSimulatedSteps(),
+                  static_cast<unsigned>(engine->getState()), b.position.x, b.position.y,
+                  player.player->getId(), player.position.x, player.position.y,
+                  player.movementTarget.x, player.movementTarget.y, player.velocity.x,
+                  player.velocity.y, player.fallen, player.isInjured,
+                  player.facingAngle, player.facingRequested, player.facingRequest,
+                  player.feetHeight, player.stamina, player.sprintReserve);
+        }
         // A restart taken: play resumes from it.
         const MatchState now = engine->getState();
         if (now == MatchState::PLAYING && previous != MatchState::PLAYING)
@@ -1044,7 +1080,7 @@ int runPossessionTrace(GameController& controller, double seconds,
   return !output ? 2 : result != 0 ? result : same ? 0 : 1;
 }
 
-int runSandboxChecks(GameController& controller, int matches)
+int runSandboxChecks(GameController& controller, int matches, SandboxCheckGroup group)
 {
   // Pairs of clubs from the first league: 1 v 2, 3 v 4, ...
   std::vector<const Team*> clubs;
@@ -1059,6 +1095,21 @@ int runSandboxChecks(GameController& controller, int matches)
     return 1;
   }
   const StatsConfig& config = controller.getStatsConfig();
+
+  if (group == SandboxCheckGroup::FIRST_TOUCH)
+  {
+    const bool good = runFirstTouchChecks(clubs, config);
+    std::cout << (good ? "PASS: first touches roll under physics and are collected.\n"
+                       : "FAIL: a first-touch check failed.\n");
+    return good ? 0 : 1;
+  }
+  if (group == SandboxCheckGroup::RESTARTS)
+  {
+    const bool good = runRestartChecks(clubs, config);
+    std::cout << (good ? "PASS: restarts are lined up and taken, the ball inside his comfort gap.\n"
+                       : "FAIL: a restart check failed.\n");
+    return good ? 0 : 1;
+  }
 
   std::cout << "Match sandbox checks: " << matches << " matches\n\n";
   std::cout << "  #  match                              score  plain s  rec s  "

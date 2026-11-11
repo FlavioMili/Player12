@@ -3,6 +3,8 @@
 // Developing possession implementation; initially identical to a95680a.
 #include "model/match_engine.h"
 #include "model/match_engine_internal.h"
+#include "model/match_possession_claim.h"
+#include "model/match_possession_control.h"
 
 using namespace MatchEngineInternal;
 
@@ -29,7 +31,8 @@ void MatchEngine::takePossessionBinturong(MatchPlayer& player)
   ball.possession.nudgedBy = nullptr;
   // A set piece's phase ends once the defending side has the ball.
   if (player.isHomeTeam != setPieceHome) setPiecePhaseRemaining = 0.0f;
-  if (state == MatchState::PLAYING && ball.possession.history.lastControlledTeamHome &&
+  if (state == MatchState::PLAYING &&
+      ball.possession.history.lastControlledTeamHome &&
       *ball.possession.history.lastControlledTeamHome != player.isHomeTeam)
   {
     transitionSecondsRemaining =
@@ -68,6 +71,10 @@ void MatchEngine::clearPossessionBinturong()
   ball.possession.nudgedBy = nullptr;
   ball.possession.inTouch = false;
   ball.possession.touchCollected = false;
+  ball.possession.footControlled = false;
+  ball.possession.footControlSeparationSeconds = 0.0f;
+  ball.possession.claimUncontrolledSeconds = 0.0f;
+  ball.possession.claimUnrecoverableSeconds = 0.0f;
   ball.possession.touchDropping = false;
   ball.possession.touchPasser = nullptr;
   ball.touchWaiting = 0;
@@ -82,6 +89,10 @@ void MatchEngine::handBallToBinturong(const Player* holder)
   ball.possession.possessedBy = holder;
   ball.possession.inTouch = false;
   ball.possession.touchCollected = false;
+  ball.possession.footControlled = false;
+  ball.possession.footControlSeparationSeconds = 0.0f;
+  ball.possession.claimUncontrolledSeconds = 0.0f;
+  ball.possession.claimUnrecoverableSeconds = 0.0f;
   ball.possession.touchDropping = false;
   ball.possession.touchPasser = nullptr;
   ball.touchWaiting = 0;
@@ -122,10 +133,33 @@ void MatchEngine::updateTouchBinturong(MatchPlayer& carrier, float dt)
   ball.ownTouchCooldown = std::max(0.0f, ball.ownTouchCooldown - dt);
   ball.plannedTouchIn = std::max(0.0f, ball.plannedTouchIn - dt);
 
-  if (!ball.possession.touchCollected && gap <= R::KICK_REACH_METRES &&
-      length(relative) <= touchKnobs[TouchKnob::COLLECT_RELATIVE_SPEED] &&
-      (!ball.possession.touchDropping ||
-       ball.z * MatchTuning::Units::BALL_Z_METRES <= bodyLines(carrier).feet))
+  const Vector2F offset = toMetres({ball.position.x - carrier.position.x,
+                                    ball.position.y - carrier.position.y});
+  const Vector2F predicted{
+      offset.x + relative.x * PossessionControl::PREDICT_SECONDS,
+      offset.y + relative.y * PossessionControl::PREDICT_SECONDS};
+  const PossessionControl::Evidence evidence{
+      active(carrier) && !carrier.fallen && state == MatchState::PLAYING,
+      gap,
+      length(predicted),
+      length(relative),
+      ball.z * MatchTuning::Units::BALL_Z_METRES,
+      bodyLines(carrier).feet,
+      R::KICK_REACH_METRES,
+      touchKnobs[TouchKnob::COLLECT_RELATIVE_SPEED]};
+  const auto control = PossessionControl::evaluate(
+      ball.possession.footControlled,
+      ball.possession.footControlSeparationSeconds, evidence, dt);
+  ball.possession.footControlled = control.collected;
+  ball.possession.footControlSeparationSeconds = control.separationSeconds;
+  if (control.collected)
+  {
+    // Nested receipt/credit observations must already see the claim clocks
+    // reset; do not expose stale age alongside newly confirmed control.
+    ball.possession.claimUncontrolledSeconds = 0.0f;
+    ball.possession.claimUnrecoverableSeconds = 0.0f;
+  }
+  if (control.newlyCollected && !ball.possession.touchCollected)
   {
     // Collected: the pass is complete and he can think about his next
     // action. The ball stays loose: from here he dribbles it, touch by touch.
@@ -134,20 +168,88 @@ void MatchEngine::updateTouchBinturong(MatchPlayer& carrier, float dt)
     ball.possession.touchDropping = false;
     ball.possession.nudgedBy = nullptr;
     settleTackle(carrier.isHomeTeam);
-    if (ball.possession.touchPasser) creditPassCompletion(carrier, ball.possession.touchPasser);
+    if (ball.possession.touchPasser)
+      creditPassCompletion(carrier, ball.possession.touchPasser);
     ball.possession.touchPasser = nullptr;
     carrier.actionCooldown =
         randomFloat(F::MIN_DECISION_DELAY, F::MAX_DECISION_DELAY);
   }
 
-  // Defenders read how far it is from his foot. He keeps the claim however
-  // far it runs: only an opponent playing it, or play stopping, ends it.
+  bool recoverable = ball.possession.footControlled;
+  if (!recoverable && evidence.playerAvailable)
+  {
+    FlightState flight{length(ball.velocity), ball.velocityZ,
+                       ball.z * MatchTuning::Units::BALL_Z_METRES, false,
+                       ball.spin};
+    Vector2F at = toMetres(ball.position);
+    Vector2F heading = length(ball.velocity) > EPSILON
+                           ? normalized(ball.velocity)
+                           : Vector2F{1.0f, 0.0f};
+    const Vector2F from = toMetres(carrier.position);
+    constexpr int SUBSTEPS = MatchTuning::Timing::BALL_SUBSTEPS;
+    constexpr float SUBSTEP = PossessionClaim::SAMPLE_SECONDS / SUBSTEPS;
+    for (float seconds = PossessionClaim::SAMPLE_SECONDS;
+         seconds <= PossessionClaim::RECOVERY_HORIZON_SECONDS + 1e-5f;
+         seconds += PossessionClaim::SAMPLE_SECONDS)
+    {
+      for (int step = 0; step < SUBSTEPS; ++step)
+      {
+        const float moved = stepFlight(flight, SUBSTEP);
+        at = {at.x + heading.x * moved, at.y + heading.y * moved};
+        const float turn = flight.turnRate * SUBSTEP;
+        heading = {heading.x * std::cos(turn) - heading.y * std::sin(turn),
+                   heading.x * std::sin(turn) + heading.y * std::cos(turn)};
+      }
+      const Vector2F delta{at.x - from.x, at.y - from.y};
+      const float metres = length(delta);
+      const float toward =
+          metres > EPSILON
+              ? (carrier.velocity.x * delta.x + carrier.velocity.y * delta.y) /
+                    metres
+              : 0.0f;
+      // The centre can be slightly outside while part of the ball is still
+      // in play. Use the same whole-ball geometry as Binturong's line rules.
+      const bool onPitch = ballInPlayAtBinturong(toPitch(at));
+      if (PossessionClaim::canRecoverAt(
+              metres, toward, currentTopSpeed(carrier), carrier.acceleration,
+              seconds, std::max(carrier.footCooldown, ball.ownTouchCooldown),
+              R::KICK_REACH_METRES, flight.height, evidence.feetHeightMetres,
+              onPitch))
+      {
+        recoverable = true;
+        break;
+      }
+    }
+  }
+  const auto claim = PossessionClaim::evaluate(
+      evidence.playerAvailable, ball.possession.footControlled, recoverable,
+      ball.possession.claimUncontrolledSeconds,
+      ball.possession.claimUnrecoverableSeconds, dt);
+  ball.possession.claimUncontrolledSeconds = claim.uncontrolledSeconds;
+  ball.possession.claimUnrecoverableSeconds = claim.unrecoverableSeconds;
   ball.touchGap = gap;
   ball.touchPeakGap = std::max(ball.touchPeakGap, gap);
   ball.dribbleExposure = gap;
   ball.dribbleTouchLength = std::max(ball.touchPeakGap, R::MAX_TOUCH_METRES);
   observePossession(PossessionObservation::UPDATE_TOUCH,
                     PossessionId::BINTURONG);
+  if (claim.expiry != PossessionClaim::Expiry::NONE)
+  {
+    // End the exclusive legacy claim, not its physical flight or rules history.
+    // Deferred tackle credit still resolves when someone actually acquires it.
+    if (pendingStrike && pendingStrike->striker == &carrier)
+      pendingStrike.reset();
+    if (ball.meetFor == carrier.player)
+    {
+      ball.meetFor = nullptr;
+      ball.meetRecovering = false;
+      ball.knockedOn = false;
+      ball.plannedTouchIn = 0.0f;
+    }
+    clearPossession();
+    observePossession(PossessionObservation::EXPIRE_TOUCH_CLAIM,
+                      PossessionId::BINTURONG);
+  }
 }
 
 void MatchEngine::noteTouchOnBallBinturong(const MatchPlayer& player,
@@ -179,6 +281,10 @@ void MatchEngine::beginTouchClaimBinturong(const Player* passer, bool dropping)
 {
   ball.possession.inTouch = true;
   ball.possession.touchCollected = false;
+  ball.possession.footControlled = false;
+  ball.possession.footControlSeparationSeconds = 0.0f;
+  ball.possession.claimUncontrolledSeconds = 0.0f;
+  ball.possession.claimUnrecoverableSeconds = 0.0f;
   if (dropping) ball.possession.touchDropping = true;
   ball.possession.touchPasser = passer;
   observePossession(PossessionObservation::BEGIN_TOUCH_CLAIM,
@@ -190,6 +296,10 @@ void MatchEngine::beginCollectedDribbleBinturong(const MatchPlayer& carrier)
   using R = MatchTuning::Dribble;
   ball.possession.inTouch = true;
   ball.possession.touchCollected = true;
+  ball.possession.footControlled = true;
+  ball.possession.footControlSeparationSeconds = 0.0f;
+  ball.possession.claimUncontrolledSeconds = 0.0f;
+  ball.possession.claimUnrecoverableSeconds = 0.0f;
   ball.possession.touchPasser = nullptr;
   ball.ownTouchCooldown = 0.0f;
   ball.dribbleGoal = carrier.tacticalTarget;
@@ -353,7 +463,8 @@ void MatchEngine::noteFreeBallTackleBinturong(MatchPlayer& tackler,
     ++(tackler.isHomeTeam ? stats.homeFreeBallTackles
                           : stats.awayFreeBallTackles);
   ++statsOf(tackler).tacklesAttempted;
-  ball.possession.history.pendingTackle = PendingTackle{tackler.player, tackler.isHomeTeam, contest};
+  ball.possession.history.pendingTackle =
+      PendingTackle{tackler.player, tackler.isHomeTeam, contest};
   observePossession(PossessionObservation::NOTE_FREE_BALL_TACKLE,
                     PossessionId::BINTURONG);
 }
@@ -391,8 +502,10 @@ void MatchEngine::trackHeaderRunBinturong()
   if (!stopped)
   {
     ++stats.headerSequencesToControl;
-    if (const MatchPlayer* holder = findMatchPlayer(ball.possession.possessedBy);
-        holder && holder->isHomeTeam == ball.possession.history.headerRunLastHome)
+    if (const MatchPlayer* holder =
+            findMatchPlayer(ball.possession.possessedBy);
+        holder &&
+        holder->isHomeTeam == ball.possession.history.headerRunLastHome)
       ++stats.headerSequencesKept;
   }
   ball.possession.history.headerRun = 0;
@@ -629,6 +742,10 @@ void MatchEngine::noteFailedTouchBinturong(const MatchPlayer& player)
 
 void MatchEngine::beginKeeperHoldBinturong(Point3F from)
 {
+  ball.possession.footControlled = false;
+  ball.possession.footControlSeparationSeconds = 0.0f;
+  ball.possession.claimUncontrolledSeconds = 0.0f;
+  ball.possession.claimUnrecoverableSeconds = 0.0f;
   ball.possession.inKeeperHands = true;
   ball.possession.heldFrom = from;
   ball.possession.heldSince = getSimulatedSeconds();
@@ -654,8 +771,8 @@ void MatchEngine::endKeeperHoldBinturong()
 void MatchEngine::noteKeeperDistributionBinturong(bool lofted, bool overarm)
 {
   ball.possession.heldRelease = lofted    ? HeldRelease::PUNT
-                     : overarm ? HeldRelease::OVERARM
-                               : HeldRelease::ROLL;
+                                : overarm ? HeldRelease::OVERARM
+                                          : HeldRelease::ROLL;
   ++(lofted    ? stats.keeperPunts
      : overarm ? stats.keeperThrows
                : stats.keeperRolls);
@@ -909,7 +1026,8 @@ void MatchEngine::substitutePossessionBinturong(bool hadPossession,
                                                 const Player* inPlayer)
 {
   if (hadPossession) handBallTo(inPlayer);
-  if (ball.possession.lastPossessor && ball.possession.lastPossessor->getId() == outgoingId)
+  if (ball.possession.lastPossessor &&
+      ball.possession.lastPossessor->getId() == outgoingId)
     ball.possession.lastPossessor = inPlayer;
   observePossession(PossessionObservation::SUBSTITUTE_POSSESSION,
                     PossessionId::BINTURONG);
@@ -934,7 +1052,7 @@ void MatchEngine::clearShooterHistoryBinturong()
 void MatchEngine::setPassFlightTargetBinturong(Vector2F target)
 {
   ball.possession.passTarget = {std::clamp(target.x, 0.0f, 1.0f),
-                     std::clamp(target.y, 0.0f, 1.0f)};
+                                std::clamp(target.y, 0.0f, 1.0f)};
   observePossession(PossessionObservation::SET_PASS_FLIGHT_TARGET,
                     PossessionId::BINTURONG);
 }
@@ -952,7 +1070,9 @@ void MatchEngine::prepareShotAssistBinturong(const MatchPlayer& shooter,
   if (!header)
   {
     ball.possession.history.shotAssistCandidate =
-        ball.possession.history.lastCompletedReceiver == shooter.player ? ball.possession.history.lastCompletedPasser : nullptr;
+        ball.possession.history.lastCompletedReceiver == shooter.player
+            ? ball.possession.history.lastCompletedPasser
+            : nullptr;
   }
   observePossession(PossessionObservation::PREPARE_SHOT_ASSIST,
                     PossessionId::BINTURONG);

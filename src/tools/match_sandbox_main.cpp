@@ -90,6 +90,7 @@ int main(int argc, char* argv[])
 {
   std::uint64_t worldSeed = DEFAULT_WORLD_SEED;
   std::optional<int> checkMatches;
+  SandboxCheckGroup checkGroup = SandboxCheckGroup::ALL;
   bool kickOff = false;
   std::optional<double> traceLapsSeconds;
   std::optional<double> traceMatchSeconds;
@@ -286,6 +287,18 @@ int main(int argc, char* argv[])
       kickOff = true;
       continue;
     }
+    else if (argument == "--check-first-touch")
+    {
+      checkMatches = DEFAULT_CHECK_MATCHES;
+      checkGroup = SandboxCheckGroup::FIRST_TOUCH;
+      continue;
+    }
+    else if (argument == "--check-restarts")
+    {
+      checkMatches = DEFAULT_CHECK_MATCHES;
+      checkGroup = SandboxCheckGroup::RESTARTS;
+      continue;
+    }
     else if (argument == "--check")
     {
       checkMatches = DEFAULT_CHECK_MATCHES;
@@ -310,7 +323,7 @@ int main(int argc, char* argv[])
            " [--out-of-play O]"
            " [--possession aardvark|binturong]"
            " [--home-advantage X] [--kick-off] [--drill NAME]"
-           " [--check [MATCHES]] [--trace-laps SECONDS [PLAYER]]"
+           " [--check [MATCHES]] [--check-first-touch] [--check-restarts] [--trace-laps SECONDS [PLAYER]]"
            " [--trace-possession SECONDS OUTPUT.jsonl]"
            " [--trace-match SECONDS [CASES [neither|giveway|spot|all]]]\n"
            "  (--brains, --bodies, --managers: aardvark or binturong per side, "
@@ -361,7 +374,7 @@ int main(int argc, char* argv[])
     GameController controller;
     Logger::info("Match sandbox: generating world " + std::to_string(worldSeed));
     controller.newGame(SANDBOX_SAVE_SLOT, worldSeed);
-    if (checkMatches) return runSandboxChecks(controller, *checkMatches);
+    if (checkMatches) return runSandboxChecks(controller, *checkMatches, checkGroup);
     if (tracePossessionSeconds)
       return runPossessionTrace(controller, *tracePossessionSeconds, tracePossessionPath);
     if (traceMatchSeconds)

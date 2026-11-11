@@ -23,9 +23,11 @@ const Player* MatchEngine::getTouchClaimant() const
 const Player* MatchEngine::getConfirmedController() const
 {
   if (state != MatchState::PLAYING) return nullptr;
+  const bool foot = possessionId == PossessionId::BINTURONG
+                        ? getPossessionState().footControlled
+                        : getPossessionState().touchCollected;
   return getPossessionState().inKeeperHands ||
-                 (getPossessionState().inTouch &&
-                  getPossessionState().touchCollected)
+                 (getPossessionState().inTouch && foot)
              ? getPossessionState().possessedBy
              : nullptr;
 }
@@ -87,6 +89,11 @@ PossessionSnapshot MatchEngine::getPossessionSnapshot() const
   view.lastControlledTeamHome = getPossessionHistory().lastControlledTeamHome;
   view.inTouch = getPossessionState().inTouch;
   view.collected = getPossessionState().touchCollected;
+  view.claimUncontrolledSeconds = getPossessionState().claimUncontrolledSeconds;
+  view.claimUnrecoverableSeconds =
+      getPossessionState().claimUnrecoverableSeconds;
+  if (possessionId == PossessionId::BINTURONG)
+    view.footControlled = getPossessionState().footControlled;
   view.dropping = getPossessionState().touchDropping;
   view.inHands = getPossessionState().inKeeperHands;
   view.pass = getPossessionState().isPass;

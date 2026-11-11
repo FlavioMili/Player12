@@ -34,6 +34,7 @@
 #include "model/match_body_shape_binturong.h"
 #include "model/match_contact_binturong.h"
 #include "model/match_engine.h"
+#include "model/match_possession_control.h"
 #include "model/match_engine_internal.h"
 #include "model/match_recorder.h"
 #include "model/match_rules.h"
@@ -6750,8 +6751,7 @@ void MatchEngine::cushionHeaderBinturong(MatchPlayer& header)
 
   takePossession(header);
   sendBallOff(header,
-              {std::clamp(moment.contactPoint.x, 0.001f, 0.999f),
-               std::clamp(moment.contactPoint.y, 0.001f, 0.999f)},
+              PossessionControl::retainingTouchPosition(possessionId, moment.contactPoint),
               moment.height / MatchTuning::Units::BALL_Z_METRES,
               result.outcome.velocity, result.outcome.verticalSpeed, BallSpin{},
               0.0f);
@@ -6829,8 +6829,7 @@ void MatchEngine::playBodyTouchBinturong(MatchPlayer& player,
 
   takePossession(player);
   sendBallOff(player,
-              {std::clamp(moment.contactPoint.x, 0.001f, 0.999f),
-               std::clamp(moment.contactPoint.y, 0.001f, 0.999f)},
+              PossessionControl::retainingTouchPosition(possessionId, moment.contactPoint),
               moment.height / MatchTuning::Units::BALL_Z_METRES,
               result.outcome.velocity, result.outcome.verticalSpeed, BallSpin{},
               0.0f);
