@@ -161,6 +161,14 @@ float movementSpeedScale(PlayerIntent intent)
 }
 }  // namespace
 
+const MatchEngine::BrainTraits& MatchEngine::brainTraitsBinturong() const
+{
+  // Waits for a ball, decides ahead of his meet with it, pushes it by
+  // intent and marks its loose-ball chasers.
+  static constexpr BrainTraits traits{true, true, true, true};
+  return traits;
+}
+
 const MatchEngine::MovementStyle& MatchEngine::movementStyleBinturong()
 {
   using P = MatchTuning::Player;
@@ -2150,7 +2158,7 @@ void MatchEngine::planWayRoundBinturong(std::size_t slot)
   {
     return active(other) && &other != &runner && !other.fallen &&
            !other.chasingLooseBall &&
-           !(brainOf(other.isHomeTeam) == BrainId::AARDVARK &&
+           !(!brainTraits(other.isHomeTeam).flagsLooseBallChasers &&
              other.intent == PlayerIntent::CLAIM_LOOSE_BALL);
   };
 

@@ -2080,7 +2080,7 @@ void MatchEngine::updateMovement(float dt)
     const std::uint8_t slot = batch[index];
     const MatchPlayer& player = players[slot];
     if ((waiting & (1U << slot)) == 0U || player.isGoalkeeper ||
-        getBrain(player.isHomeTeam) != BrainId::BINTURONG ||
+        !brainTraits(player.isHomeTeam).waitsForTouches ||
         getBody(player.isHomeTeam) != BodyId::BINTURONG || waiterCount >= waiters.size())
       continue;
     waiters[waiterCount++] = {slot, player};
@@ -2667,14 +2667,14 @@ void MatchEngine::resolvePossessionAndActions(float dt)
   // The AI waits out its decision time after a touch; a controlled player
   // can play the ball as soon as it is under control.
   const bool controlled = isControlled(*carrier);
-  // A Binturong brain dribbling on a Binturong body decides for his next
-  // meet with the ball, as soon as his decision time is up (dribble meet
-  // plan 2a); a strike so decided waits for that meet.
+  // A brain that decides for its meet, dribbling on a Binturong body,
+  // decides for his next meet with the ball as soon as his decision time is
+  // up (dribble meet plan 2a); a strike so decided waits for that meet.
   const bool forMeet = !controlled && hasTouchClaim() &&
                        ball.meetFor == carrier->player &&
                        ball.meetSeconds <=
                            MatchTuning::Dribble::MEET_DECISION_HORIZON_SECONDS &&
-                       brainOf(carrier->isHomeTeam) == BrainId::BINTURONG &&
+                       brainTraits(carrier->isHomeTeam).decidesForMeet &&
                        getBody(carrier->isHomeTeam) == BodyId::BINTURONG;
   if (pendingStrike && (pendingStrike->atMeet || pendingStrike->turning) &&
       pendingStrike->striker == carrier)
@@ -5560,7 +5560,7 @@ void MatchEngine::playBlock(MatchPlayer& tackler, MatchPlayer& owner,
       target = tackleNudgeSpotBinturong(tackler, owner, contact);
       break;
     case TackleIntent::PASS:
-      if (const auto pass = choosePassTargetBinturong(tackler))
+      if (const auto pass = choosePassTarget(tackler))
       {
         target = pass->targetPoint;
         break;
@@ -5716,7 +5716,7 @@ bool MatchEngine::playTackleIntent(MatchPlayer& tackler,
       // clears it.
       takePossession(tackler);
       std::optional<PassOption> pass;
-      if (intent == TackleIntent::PASS) pass = choosePassTargetBinturong(tackler);
+      if (intent == TackleIntent::PASS) pass = choosePassTarget(tackler);
       armTackleStrike(tackler, pass);
       playPendingStrike(moment);
       return true;
@@ -6103,8 +6103,8 @@ MatchEngine::DribbleAim MatchEngine::dribbleAim(const MatchPlayer& player,
                     .high;
     if (getBody(player.isHomeTeam) == BodyId::BINTURONG)
     {
-      if (brainOf(player.isHomeTeam) == BrainId::BINTURONG)
-        aim.speed = carryPaceBinturong(player);
+      if (const std::optional<float> pace = chooseCarryPace(player))
+        aim.speed = *pace;
       else
         aim.speed += std::max(0.0f, currentTopSpeed(player) - aim.speed) *
                      std::clamp(player.dribbling, 0.0f, 1.0f);
@@ -6226,7 +6226,7 @@ TouchIntent MatchEngine::dribbleTouchIntent(const MatchPlayer& player,
   DribbleTurnAhead turnAhead;
   float speedingUp = 0.0f;
   const bool intentPush =
-      meetPlanned && brainOf(player.isHomeTeam) == BrainId::BINTURONG;
+      meetPlanned && brainTraits(player.isHomeTeam).pushesByIntent;
   float touchSeconds = 0.0f;
   if (meetPlanned)
   {
@@ -6252,8 +6252,10 @@ TouchIntent MatchEngine::dribbleTouchIntent(const MatchPlayer& player,
     const float toEnd = std::min(
         turnAhead.toTurn, drilled && aim.metres ? *aim.metres
                                                 : std::numeric_limits<float>::max());
+    const std::optional<float> planned =
+        intentPush ? chooseTouchSeconds(player, aim.speed, toEnd) : std::nullopt;
     touchSeconds =
-        intentPush ? chooseTouchSecondsBinturong(player, aim.speed, toEnd)
+        planned ? *planned
                    : std::max(dribbleTouchIntervalBinturong(player),
                               R::LOOSE_LEAD_SECONDS * (1.3f - player.dribbling));
     // No faster than he can be running on average over the push: from his
@@ -6284,11 +6286,13 @@ TouchIntent MatchEngine::dribbleTouchIntent(const MatchPlayer& player,
   // A Binturong brain pushes it as far as he runs until he wants it again,
   // held short where he wouldn't get there first (dribble meet plan 3c); a
   // long one is a knock into space, chased at his full pace.
+  const std::optional<float> pushed =
+      intentPush ? choosePushMetres(player, moment.contactPoint, aim.direction,
+                                    moment.gap, aim.speed, touchSeconds,
+                                    aim.metres)
+                 : std::nullopt;
   float metres = std::min(
-      intentPush ? pushMetresBinturong(player, moment.contactPoint,
-                                       aim.direction, moment.gap, aim.speed,
-                                       touchSeconds, aim.metres)
-                 : dribblePushMetres(player, aim.speed, aim.metres),
+      pushed ? *pushed : dribblePushMetres(player, aim.speed, aim.metres),
       std::max(turnAhead.furthest, touchKnobs[TouchKnob::SET_OFFSET]));
   // On a route, aimed where his line will be when it gets there: into a
   // bend ahead, angled into it (how true it goes is the contact's).

@@ -94,6 +94,8 @@
    * the space along his way, the team's phase and its risk-taking, walk to
    * sprint; Dribbling caps how much of his pace he can use with it. */
   float carryPaceBinturong(const MatchPlayer& player) const;
+  /** What this brain decides for itself (MatchEngine::BrainTraits). */
+  const BrainTraits& brainTraitsBinturong() const;
   /** How urgently he carries it (0-1): what carryPaceBinturong maps onto
    * his bands. */
   float carryUrgencyBinturong(const MatchPlayer& player) const;

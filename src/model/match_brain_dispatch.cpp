@@ -26,6 +26,73 @@ const MatchEngine::MovementStyle& MatchEngine::movementStyle(
   return movementStyleAardvark();
 }
 
+const MatchEngine::BrainTraits& MatchEngine::brainTraits(bool homeTeam) const
+{
+  switch (brainOf(homeTeam))
+  {
+    case BrainId::AARDVARK:
+      break;
+    case BrainId::BINTURONG:
+      return brainTraitsBinturong();
+  }
+  // The Aardvark brain decides none of these: the engine's defaults.
+  static constexpr BrainTraits none{};
+  return none;
+}
+
+std::optional<float> MatchEngine::chooseCarryPace(const MatchPlayer& player) const
+{
+  switch (brainOf(player.isHomeTeam))
+  {
+    case BrainId::AARDVARK:
+      break;
+    case BrainId::BINTURONG:
+      return carryPaceBinturong(player);
+  }
+  return std::nullopt;
+}
+
+std::optional<float> MatchEngine::chooseTouchSeconds(const MatchPlayer& player,
+                                                     float pace, float toEnd) const
+{
+  switch (brainOf(player.isHomeTeam))
+  {
+    case BrainId::AARDVARK:
+      break;
+    case BrainId::BINTURONG:
+      return chooseTouchSecondsBinturong(player, pace, toEnd);
+  }
+  return std::nullopt;
+}
+
+std::optional<float> MatchEngine::choosePushMetres(
+    const MatchPlayer& player, Vector2F from, Vector2F direction, float startGap,
+    float pace, float seconds, std::optional<float> toGoal) const
+{
+  switch (brainOf(player.isHomeTeam))
+  {
+    case BrainId::AARDVARK:
+      break;
+    case BrainId::BINTURONG:
+      return pushMetresBinturong(player, from, direction, startGap, pace,
+                                 seconds, toGoal);
+  }
+  return std::nullopt;
+}
+
+std::optional<MatchEngine::PassOption> MatchEngine::choosePassTarget(
+    MatchPlayer& passer)
+{
+  switch (brainOf(passer.isHomeTeam))
+  {
+    case BrainId::AARDVARK:
+      break;
+    case BrainId::BINTURONG:
+      return choosePassTargetBinturong(passer);
+  }
+  return choosePassTargetAardvark(passer);
+}
+
 void MatchEngine::refreshTacticalTargets(float dt, bool planHome)
 {
   switch (brainOf(planHome))

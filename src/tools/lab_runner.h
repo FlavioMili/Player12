@@ -12,6 +12,7 @@
 #include <cstdint>
 #include <functional>
 #include <map>
+#include <optional>
 #include <span>
 #include <stdexcept>
 #include <string>
@@ -27,6 +28,7 @@
 #include "model/match_out_of_play.h"
 #include "model/match_referee.h"
 #include "model/strategy.h"
+#include "tools/lab_fixtures.h"
 #include "tools/lab_report.h"
 #include "tools/lab_stats.h"
 
@@ -336,6 +338,8 @@ struct TeamSetup
   /** Every stat of every player is `rating` (buildUniformLineup) instead
    * of the role-shaped squad. */
   bool uniform = false;
+  /** The side's formation (fm_lab matches --formation); none: the 4-4-2. */
+  std::optional<FormationSlots> formation;
 };
 
 struct MatchJob
@@ -410,6 +414,9 @@ std::vector<TextTable> matchTables(std::span<const MatchSample> samples);
 
 /** Stronger-side results by rating-gap band (NFR-019). */
 TextTable ratingGapTable(std::span<const MatchSample> samples);
+/** Home and away side by side, per match: results, shots, xG, possession,
+ * passing, fouls and duels (for comparing two brains or bodies). */
+TextTable perSideTable(std::span<const MatchSample> samples);
 
 /**
  * Round robin of TACTIC_PRESETS between equal teams: for each pair and each

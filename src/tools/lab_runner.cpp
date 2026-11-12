@@ -512,8 +512,11 @@ MatchSample simulateMatch(const MatchJob& job, const StatsConfig& config)
   std::vector<std::unique_ptr<Player>> pool;
   const auto build = [&](TeamID id, const TeamSetup& side)
   {
-    return side.uniform ? buildUniformLineup(id, side.rating, config, pool)
-                        : buildLabLineup(id, side.rating, pool);
+    const FormationSlots* formation =
+        side.formation ? &*side.formation : nullptr;
+    return side.uniform
+               ? buildUniformLineup(id, side.rating, config, pool, formation)
+               : buildLabLineup(id, side.rating, pool, formation);
   };
   const Lineup home = build(HOME_TEAM_ID, job.home);
   const Lineup away = build(AWAY_TEAM_ID, job.away);
@@ -1792,6 +1795,73 @@ TextTable ratingGapTable(std::span<const MatchSample> samples)
                           percent(share(draws, matches)),
                           percent(share(matches - wins - draws, matches)),
                           TARGETS[b]});
+  }
+  return table;
+}
+
+TextTable perSideTable(std::span<const MatchSample> samples)
+{
+  struct Side
+  {
+    double wins = 0, goals = 0, shots = 0, onTarget = 0, xg = 0,
+           possession = 0, passes = 0, completed = 0, fouls = 0, takeOns = 0,
+           takeOnsWon = 0, duels = 0, duelsWon = 0;
+  };
+  std::array<Side, 2> sides{};
+  double matches = 0;
+  double draws = 0;
+  for (const MatchSample& sample : samples)
+  {
+    if (sample.abandoned) continue;
+    ++matches;
+    if (sample.goals[0] == sample.goals[1]) ++draws;
+    for (std::size_t s = 0; s < 2; ++s)
+    {
+      Side& side = sides[s];
+      side.wins += sample.goals[s] > sample.goals[1 - s] ? 1 : 0;
+      side.goals += sample.goals[s];
+      side.shots += sample.shots[s];
+      side.onTarget += sample.on_target[s];
+      side.xg += sample.xg[s];
+      side.possession += s == 0 ? sample.home_possession
+                                : 100.0 - sample.home_possession;
+      side.passes += sample.passes_attempted[s];
+      side.completed += sample.passes_completed[s];
+      side.fouls += sample.fouls[s];
+      side.takeOns += sample.take_ons[s];
+      side.takeOnsWon += sample.take_ons_won[s];
+      side.duels += sample.tackle_duels[s];
+      side.duelsWon += sample.tackle_duels_won[s];
+    }
+  }
+  TextTable table{std::format("Per side, per match ({:.0f} matches, draws "
+                              "{:.1f}%)",
+                              matches, matches > 0 ? 100.0 * draws / matches
+                                                   : 0.0),
+                  {"Side", "Wins", "Goals", "Shots", "On target", "xG",
+                   "Goals/shot", "Possession", "Passes", "Completion",
+                   "Fouls", "Take-ons (won)", "Tackle duels (won)"},
+                  {}};
+  const auto per = [&](double value)
+  { return std::format("{:.2f}", matches > 0 ? value / matches : 0.0); };
+  const auto ratio = [](double part, double whole)
+  {
+    return whole > 0 ? std::format("{:.1f}%", 100.0 * part / whole)
+                     : std::string("-");
+  };
+  for (std::size_t s = 0; s < 2; ++s)
+  {
+    const Side& side = sides[s];
+    table.rows.push_back(
+        {s == 0 ? "Home" : "Away", ratio(side.wins, matches), per(side.goals),
+         per(side.shots), per(side.onTarget), per(side.xg),
+         ratio(side.goals, side.shots),
+         std::format("{:.1f}%", matches > 0 ? side.possession / matches : 0.0),
+         per(side.passes), ratio(side.completed, side.passes), per(side.fouls),
+         std::format("{} ({})", per(side.takeOns),
+                     ratio(side.takeOnsWon, side.takeOns)),
+         std::format("{} ({})", per(side.duels),
+                     ratio(side.duelsWon, side.duels))});
   }
   return table;
 }

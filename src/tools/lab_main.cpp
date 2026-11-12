@@ -28,6 +28,7 @@
 #include "global/logger.h"
 #include "global/thread_pool.h"
 #include "model/match_tuning.h"
+#include "gui/view_models/formation.h"
 #include "tools/lab_fixtures.h"
 #include "tools/lab_report.h"
 #include "tools/lab_runner.h"
@@ -61,6 +62,7 @@ Usage:
                  [--handshake H] [--referee R] [--managers HOME,AWAY]
                  [--ball B] [--out-of-play O] [--home-advantage X] [--uniform]
                  [--knockout] [--possession aardvark|binturong]
+                 [--formation F|HOME,AWAY]
                  [--knobs "Name=value;Name=value"] [--out-dir DIR]
   fm_lab season  [--leagues all|top|ID,ID...] [--seasons N] [--seed S]
                  [--threads T] [--max-days D] [--reload] [--out-dir DIR]
@@ -185,7 +187,8 @@ Arguments parseArguments(int argc, char** argv)
 {
   static constexpr std::array<std::string_view, 6> FLAGS = {
       "--spread", "--uniform", "--knockout", "--reload", "--help", "-h"};
-  static constexpr std::array<std::string_view, 23> OPTIONS = {
+  static constexpr std::array<std::string_view, 24> OPTIONS = {
+      "--formation",
       "--n",       "--seed",       "--home-rating", "--away-rating",
       "--rating",  "--rating-min", "--rating-max",  "--threads",
       "--out-dir", "--leagues",    "--seasons",     "--max-days",
@@ -323,6 +326,34 @@ std::array<BrainId, 2> brainPair(const Arguments& arguments)
     throw UsageError(
         "--brains must be HOME,AWAY or one brain, each aardvark or binturong");
   return *brains;
+}
+
+/** --formation F (both sides) or HOME,AWAY: the game's formation presets
+ * (4-4-2, 4-3-3, 4-2-3-1, 3-5-2, 5-3-2); none given, the lab's 4-4-2. */
+std::array<std::optional<Lab::FormationSlots>, 2>
+formationPair(const Arguments& arguments)
+{
+  const auto text = arguments.value("--formation");
+  if (!text) return {};
+  const auto lookup = [](std::string_view name)
+  {
+    for (const Formation::Preset& preset : Formation::PRESETS)
+    {
+      if (name != preset.name) continue;
+      Lab::FormationSlots slots;
+      for (std::size_t index = 0; index < slots.size(); ++index)
+        slots[index] = {preset.slots[index].role,
+                        preset.slots[index].position};
+      return slots;
+    }
+    throw UsageError(std::format(
+        "--formation: unknown '{}' (4-4-2, 4-3-3, 4-2-3-1, 3-5-2, 5-3-2)",
+        name));
+  };
+  const std::size_t comma = text->find(',');
+  if (comma == std::string::npos) return {lookup(*text), lookup(*text)};
+  return {lookup(std::string_view(*text).substr(0, comma)),
+          lookup(std::string_view(*text).substr(comma + 1))};
 }
 
 /** --bodies HOME,AWAY (or one body for both sides); default aardvark. */
@@ -544,8 +575,11 @@ Lab::LabReport runMatchesMode(const Arguments& arguments, unsigned threads)
   const bool uniform = arguments.has("--uniform");
   const bool knockout = arguments.has("--knockout");
   const KnobSettings knobs = knobsOption(arguments);
+  const auto formations = formationPair(arguments);
   for (Lab::MatchJob& job : jobs)
   {
+    job.home.formation = formations[0];
+    job.away.formation = formations[1];
     job.handshake = handshake;
     job.homeAdvantage = homeAdvantage;
     job.home.uniform = uniform;
@@ -591,10 +625,13 @@ Lab::LabReport runMatchesMode(const Arguments& arguments, unsigned threads)
   report.parameters["squads"] =
       uniform ? "uniform (every stat at the rating)" : "role-shaped";
   if (!knobs.text.empty()) report.parameters["knobs"] = knobs.text;
+  report.parameters["formation"] =
+      arguments.value("--formation").value_or("4-4-2 (lab)");
   static constexpr std::array SCOPES = {Lab::Scope::Match, Lab::Scope::Engine};
   report.rows = Lab::evaluateTargets(Lab::matchMetrics(samples), SCOPES);
   report.tables = Lab::matchTables(samples);
   report.tables.push_back(Lab::ratingGapTable(samples));
+  report.tables.push_back(Lab::perSideTable(samples));
   report.notes.push_back(
       "Synthetic 4-4-2 squads (lab_fixtures.cpp), default strategies, full "
       "condition; per-match seeds are splitmix64(seed, index).");

@@ -7848,22 +7848,23 @@ void MatchEngine::planDribbleMeetBinturong(MatchPlayer& owner)
                                         ball.dribbleGoal.y - meet.y}));
   // On a route, no further than its next turn allows (as the touch).
   const DribbleTurnAhead turnAhead = dribbleTurnAheadBinturong(owner, meet);
-  // A Binturong brain pushes it by its intent (dribble meet plan 3c), as
+  // A brain that pushes by intent (dribble meet plan 3c) does here too, as
   // the touch will.
-  const bool intentPush = brainOf(owner.isHomeTeam) == BrainId::BINTURONG;
+  const bool intentPush = brainTraits(owner.isHomeTeam).pushesByIntent;
   const bool drilled =
       owner.player && std::ranges::find(ballKeepers, owner.player->getId()) !=
                           ballKeepers.end();
   const float toEnd =
       std::min(turnAhead.toTurn, drilled ? toGoal : std::numeric_limits<float>::max());
+  std::optional<float> pushed;
+  if (out && aim.speed >= R::LOOSE_START_SPEED && intentPush)
+    if (const std::optional<float> seconds =
+            chooseTouchSeconds(owner, aim.speed, toEnd))
+      pushed = choosePushMetres(owner, meet, *out, 0.0f, aim.speed, *seconds,
+                                toGoal);
   ball.meetPush =
       out && aim.speed >= R::LOOSE_START_SPEED
-          ? std::min(intentPush
-                         ? pushMetresBinturong(
-                               owner, meet, *out, 0.0f, aim.speed,
-                               chooseTouchSecondsBinturong(owner, aim.speed, toEnd),
-                               toGoal)
-                         : dribblePushMetres(owner, aim.speed, toGoal),
+          ? std::min(pushed ? *pushed : dribblePushMetres(owner, aim.speed, toGoal),
                      std::max(turnAhead.furthest,
                               touchKnobs[TouchKnob::SET_OFFSET]))
           : 0.0f;

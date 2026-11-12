@@ -151,18 +151,26 @@ constexpr std::array<PlayerRole, RESERVES> BENCH = {
     PlayerRole::GK, PlayerRole::CB, PlayerRole::RB, PlayerRole::CM,
     PlayerRole::LM, PlayerRole::ST, PlayerRole::ST};
 
-/** The 4-4-2 and bench of ROLES/BENCH, each player from `make`. */
+/** The 4-4-2 (or `formation`'s outfield slots) and bench of ROLES/BENCH,
+ * each player from `make`. */
 template <typename MakePlayer>
-Lineup assembleLineup(MakePlayer make)
+Lineup assembleLineup(MakePlayer make, const FormationSlots* formation)
 {
   Lineup lineup;
   for (std::uint32_t index = 0; index < STARTERS; ++index)
   {
-    const Player* player = make(index, ROLES[index]);
     if (ROLES[index] == PlayerRole::GK)
-      lineup.setGoalkeeper(player);
+    {
+      lineup.setGoalkeeper(make(index, ROLES[index]));
+      continue;
+    }
+    if (formation)
+    {
+      const FormationSlot& slot = (*formation)[index - 1];
+      lineup.addOutfieldPlayer(make(index, slot.role), slot.position);
+    }
     else
-      lineup.addOutfieldPlayer(player, POSITIONS[index]);
+      lineup.addOutfieldPlayer(make(index, ROLES[index]), POSITIONS[index]);
   }
   std::vector<const Player*> reserves;
   for (std::uint32_t index = 0; index < RESERVES; ++index)
@@ -173,7 +181,8 @@ Lineup assembleLineup(MakePlayer make)
 }  // namespace
 
 Lineup buildLabLineup(TeamID team_id, float rating,
-                      std::vector<std::unique_ptr<Player>>& pool)
+                      std::vector<std::unique_ptr<Player>>& pool,
+                      const FormationSlots* formation)
 {
   return assembleLineup(
       [&](std::uint32_t index, PlayerRole role)
@@ -187,12 +196,14 @@ Lineup buildLabLineup(TeamID team_id, float rating,
             Language::EN, PLAYER_WAGE, 0, PLAYER_AGE, CONTRACT_YEARS, height,
             Foot::Right, roleStats(role, rating, index + 1)));
         return static_cast<const Player*>(pool.back().get());
-      });
+      },
+      formation);
 }
 
 Lineup buildUniformLineup(TeamID team_id, float rating,
                           const StatsConfig& config,
-                          std::vector<std::unique_ptr<Player>>& pool)
+                          std::vector<std::unique_ptr<Player>>& pool,
+                          const FormationSlots* formation)
 {
   std::map<std::string, float> stats;
   for (const std::string& stat : config.possible_stats) stats[stat] = rating;
@@ -205,7 +216,8 @@ Lineup buildUniformLineup(TeamID team_id, float rating,
             Language::EN, PLAYER_WAGE, 0, PLAYER_AGE, CONTRACT_YEARS,
             UNIFORM_HEIGHT_CM, Foot::Right, stats));
         return static_cast<const Player*>(pool.back().get());
-      });
+      },
+      formation);
 }
 
 float lineupRating(const Lineup& lineup, const StatsConfig& config)

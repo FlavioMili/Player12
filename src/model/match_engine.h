@@ -3758,6 +3758,42 @@ class MatchEngine
   BodyId bodyOf(bool homeTeam) const { return bodies[homeTeam ? 0 : 1]; }
   /** The movement style of a side's brain. */
   const MovementStyle& movementStyle(bool homeTeam) const;
+  /** What a side's brain decides for itself where the engine and body
+   * otherwise use their own defaults (false: the default). The engine and
+   * body ask these, never which brain it is, so a brain copied from another
+   * keeps its behaviour. */
+  struct BrainTraits
+  {
+    /** Lets a ball come to a waiting player (touchNow), so the movement
+     * step holds him where he waits. */
+    bool waitsForTouches = false;
+    /** Dribbling on a Binturong body, decides for his next meet with the
+     * ball before he reaches it (dribble meet plan 2a). */
+    bool decidesForMeet = false;
+    /** On a Binturong body, pushes the ball by his intent: when he wants it
+     * again and how far (chooseTouchSeconds, choosePushMetres; dribble meet
+     * plan 3c). */
+    bool pushesByIntent = false;
+    /** Marks a loose-ball chaser (MatchPlayer::chasingLooseBall); else only
+     * his intent (CLAIM_LOOSE_BALL) says so. */
+    bool flagsLooseBallChasers = false;
+  };
+  const BrainTraits& brainTraits(bool homeTeam) const;
+  /** The pace (m/s) he carries the ball at, if his brain picks it (dribble
+   * meet plan 2c); none: the body's default. */
+  std::optional<float> chooseCarryPace(const MatchPlayer& player) const;
+  /** How long until he wants his ball again after a touch (s), for a brain
+   * that pushes by intent; none otherwise. */
+  std::optional<float> chooseTouchSeconds(const MatchPlayer& player, float pace,
+                                          float toEnd) const;
+  /** How far a push goes (m), for a brain that pushes by intent; none
+   * otherwise (see pushMetresBinturong for the arguments). */
+  std::optional<float> choosePushMetres(const MatchPlayer& player, Vector2F from,
+                                        Vector2F direction, float startGap,
+                                        float pace, float seconds,
+                                        std::optional<float> toGoal) const;
+  /** The passer's best pass, by his side's brain (none: no pass on). */
+  std::optional<PassOption> choosePassTarget(MatchPlayer& passer);
 
   /** The carrier's choice: shoot, carry, shield, clear or pass. */
   struct BallAction
