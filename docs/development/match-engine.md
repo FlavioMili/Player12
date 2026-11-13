@@ -55,7 +55,7 @@ matches read players concurrently without racing with career mutations.
 | Velocity / acceleration | Metres per simulated second / metres per second squared |
 | Ball z | Metres above the ground |
 | RoleProfile distances | Metres |
-| Facing angle | Radians in normalized pitch space (`cos × length, sin × width`), not a metric velocity heading |
+| Facing angle | Radians on the ground: points along `(cos, sin)` in metres, so turn rates are the same whichever way a player faces |
 | `stepCounter` | Integer ticks of `Timing::FIXED_STEP_SECONDS` (0.1 s) |
 | Match clock | Minutes displayed for the current period, plus announced added time |
 
