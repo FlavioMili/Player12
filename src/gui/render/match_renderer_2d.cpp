@@ -1811,8 +1811,8 @@ void MatchRenderer2D::State::drawTokens(const MatchRenderSnapshot& snapshot,
     // Facing is measured in normalised pitch space: scale it to metres.
     const float facing = RenderMath::lerpAngle(
         player.previousFacingAngle, player.currentFacingAngle, alpha);
-    float dx = std::cos(facing) * LENGTH;
-    float dy = std::sin(facing) * WIDTH;
+    float dx = PITCH.fromFacingX(std::cos(facing));
+    float dy = PITCH.fromFacingY(std::sin(facing));
     const float length = std::max(std::hypot(dx, dy), 1e-4f);
     dx /= length;
     dy /= length;

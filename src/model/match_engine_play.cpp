@@ -260,8 +260,8 @@ Vector2F MatchEngine::controlledAim(const MatchPlayer& carrier) const
     aim = {controlInput.moveX, controlInput.moveY};
   if (aim.x * aim.x + aim.y * aim.y <= EPSILON) aim = carrier.velocity;
   if (aim.x * aim.x + aim.y * aim.y <= EPSILON)
-    aim = {std::cos(carrier.facingAngle) * pitch.length,
-           std::sin(carrier.facingAngle) * pitch.width};
+    aim = {pitch.fromFacingX(std::cos(carrier.facingAngle)),
+           pitch.fromFacingY(std::sin(carrier.facingAngle))};
   return normalized(aim);
 }
 

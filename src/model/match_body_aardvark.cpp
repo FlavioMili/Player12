@@ -113,8 +113,7 @@ FM_KERNEL_CLONES void MatchEngine::integrateMovementsAardvark(
   // a time) do not read it again after each store.
   // Facing angles are in normalised pitch space (fractions); positions
   // step in point units, with the pitch limits in point units too.
-  const float inverseLength = pitch.inverseLength;
-  const float inverseWidth = pitch.inverseWidth;
+  const MatchPitch facingSpace = pitch;
   const float unitsPerMetreX = 1.0f;
   const float unitsPerMetreY = 1.0f;
   const float minX = pitch.atX(Pitch::PLAYER_MIN_X);
@@ -300,8 +299,8 @@ FM_KERNEL_CLONES void MatchEngine::integrateMovementsAardvark(
 
     // Facing (normalised pitch space, for the renderers) turns toward the
     // run at a limited rate; fastAtan2() without branches.
-    const float y = nextVelocityY * inverseWidth;
-    const float x = nextVelocityX * inverseLength;
+    const float y = facingSpace.toFacingYByInverse(nextVelocityY);
+    const float x = facingSpace.toFacingXByInverse(nextVelocityX);
     const float absX = std::abs(x);
     const float absY = std::abs(y);
     const float ratio = std::min(absX, absY) / std::max(absX, absY);
@@ -412,8 +411,8 @@ FM_KERNEL_CLONES void MatchEngine::integrateMovementsAardvark(
       P::MOVEMENT_FACING_THRESHOLD * P::MOVEMENT_FACING_THRESHOLD)
   {
     // Facing is kept in normalised pitch space for the renderers.
-    player.targetAngle = fastAtan2(player.velocity.y * pitch.inverseWidth,
-                                   player.velocity.x * pitch.inverseLength);
+    player.targetAngle = fastAtan2(pitch.toFacingYByInverse(player.velocity.y),
+                                   pitch.toFacingXByInverse(player.velocity.x));
     float angleDifference = player.targetAngle - player.facingAngle;
     if (angleDifference > std::numbers::pi_v<float>)
       angleDifference -= TWO_PI;

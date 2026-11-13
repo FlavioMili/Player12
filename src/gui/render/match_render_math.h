@@ -385,7 +385,8 @@ inline Vec3 worldFromPitch(PitchPoint normalized, float heightMetres = 0.0f)
  */
 inline float worldYawFromFacing(float facingAngle)
 {
-  return std::atan2(-std::sin(facingAngle) * MatchTuning::Pitch::MATCH_WIDTH_METRES,
-                    std::cos(facingAngle) * MatchTuning::Pitch::MATCH_LENGTH_METRES);
+  const MatchPitch& pitch = MatchPitch::matchSize();
+  return std::atan2(-pitch.fromFacingY(std::sin(facingAngle)),
+                    pitch.fromFacingX(std::cos(facingAngle)));
 }
 }  // namespace RenderMath

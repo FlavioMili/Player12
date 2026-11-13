@@ -1295,8 +1295,8 @@ int runLapsTrace(const std::vector<TrainingPlayer>& squad, const StatsConfig& co
             const MatchEngine::CollisionSide& entry = hit.sides[side];
             const Vector2F before{entry.after.x - entry.jolt.x, entry.after.y - entry.jolt.y};
             const Vector2F facing{
-                std::cos(player.facingAngle) * MatchTuning::Pitch::MATCH_LENGTH_METRES,
-                std::sin(player.facingAngle) * MatchTuning::Pitch::MATCH_WIDTH_METRES};
+                PITCH.fromFacingX(std::cos(player.facingAngle)),
+                PITCH.fromFacingY(std::sin(player.facingAngle))};
             const float off =
                 std::acos(std::clamp((before.x * facing.x + before.y * facing.y) /
                                          std::max(length(before) * length(facing), 1e-6f),
@@ -1324,8 +1324,8 @@ int runLapsTrace(const std::vector<TrainingPlayer>& squad, const StatsConfig& co
       if (speed > 3.0f)
       {
         const Vector2F facing{
-            std::cos(player.facingAngle) * MatchTuning::Pitch::MATCH_LENGTH_METRES,
-            std::sin(player.facingAngle) * MatchTuning::Pitch::MATCH_WIDTH_METRES};
+            PITCH.fromFacingX(std::cos(player.facingAngle)),
+            PITCH.fromFacingY(std::sin(player.facingAngle))};
         const float off =
             std::acos(std::clamp((player.velocity.x * facing.x + player.velocity.y * facing.y) /
                                      std::max(speed * length(facing), 1e-6f),

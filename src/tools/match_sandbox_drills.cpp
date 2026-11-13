@@ -79,7 +79,7 @@ Vector2F directionBetween(PitchPoint from, PitchPoint to)
  * only directions along its axes keep their angle). */
 float facingAngleOf(float radians)
 {
-  return std::atan2(std::sin(radians) / WIDTH, std::cos(radians) / LENGTH);
+  return std::atan2(PITCH.toFacingY(std::sin(radians)), PITCH.toFacingX(std::cos(radians)));
 }
 Vector2F rotated(Vector2F direction, float radians)
 {
@@ -3428,7 +3428,7 @@ class CollisionDrill final : public Drill
   /** A direction in metres as a facing angle (normalised pitch space). */
   static float facingOf(Vector2F direction)
   {
-    return std::atan2(direction.y / WIDTH, direction.x / LENGTH);
+    return std::atan2(PITCH.toFacingY(direction.y), PITCH.toFacingX(direction.x));
   }
   static float weightOf(const MatchEngine& engine, PlayerID id)
   {
@@ -4626,8 +4626,8 @@ class FirstTouchDrill final : public Drill
         {
           reading.speed = speedOf(*receiver);
           const Vector2F facing = directionBetween(
-              PitchPoint{}, at(std::cos(receiver->facingAngle),
-                             std::sin(receiver->facingAngle)));
+              PitchPoint{}, PitchPoint{PITCH.fromFacingX(std::cos(receiver->facingAngle)),
+                             PITCH.fromFacingY(std::sin(receiver->facingAngle))});
           const float speed =
               std::hypot(lastBallVelocity.x, lastBallVelocity.y);
           reading.facingVsBall =
@@ -5520,8 +5520,8 @@ class PassDrill final : public Drill
   static float bodyAngleTo(const MatchPlayer& player, Vector2F line)
   {
     const PitchPoint body{
-        std::cos(player.facingAngle) * MatchTuning::Pitch::MATCH_LENGTH_METRES,
-        std::sin(player.facingAngle) * MatchTuning::Pitch::MATCH_WIDTH_METRES};
+        PITCH.fromFacingX(std::cos(player.facingAngle)),
+        PITCH.fromFacingY(std::sin(player.facingAngle))};
     const float lengths = std::hypot(body.x, body.y) * std::hypot(line.x, line.y);
     if (lengths <= 0.0f) return 0.0f;
     return std::acos(std::clamp((body.x * line.x + body.y * line.y) / lengths,
@@ -5827,8 +5827,8 @@ class FirstTimePassDrill final : public Drill
         if (player)
         {
           reading.playerSpeed = speedOf(*player);
-          const PitchPoint body{std::cos(player->facingAngle) * LENGTH,
-                              std::sin(player->facingAngle) * WIDTH};
+          const PitchPoint body{PITCH.fromFacingX(std::cos(player->facingAngle)),
+                              PITCH.fromFacingY(std::sin(player->facingAngle))};
           const Vector2F way = ball.velocity;
           const float lengths =
               std::hypot(body.x, body.y) * std::hypot(way.x, way.y);
@@ -7613,8 +7613,8 @@ class ShotTargetDrill final : public Drill
   static float bodyAngleTo(const MatchPlayer& player, Vector2F line)
   {
     const PitchPoint body{
-        std::cos(player.facingAngle) * MatchTuning::Pitch::MATCH_LENGTH_METRES,
-        std::sin(player.facingAngle) * MatchTuning::Pitch::MATCH_WIDTH_METRES};
+        PITCH.fromFacingX(std::cos(player.facingAngle)),
+        PITCH.fromFacingY(std::sin(player.facingAngle))};
     const float lengths = std::hypot(body.x, body.y) * std::hypot(line.x, line.y);
     if (lengths <= 0.0f) return 0.0f;
     return std::acos(std::clamp((body.x * line.x + body.y * line.y) / lengths,
@@ -8430,8 +8430,8 @@ class HeaderTargetDrill final : public Drill
     if (const MatchPlayer* player = slotOf(engine, playerId);
         player && reading.speed > 0.1f)
     {
-      const PitchPoint body{std::cos(player->facingAngle) * LENGTH,
-                          std::sin(player->facingAngle) * WIDTH};
+      const PitchPoint body{PITCH.fromFacingX(std::cos(player->facingAngle)),
+                          PITCH.fromFacingY(std::sin(player->facingAngle))};
       const float bodyLength = std::hypot(body.x, body.y);
       reading.bodyOff = turnDegrees(
           {body.x / bodyLength, body.y / bodyLength},

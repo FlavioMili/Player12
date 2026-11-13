@@ -124,4 +124,43 @@ struct MatchPitch final
   {
     return width - units;
   }
+
+  // ---------------------------------------------------------------------
+  // Heading angles (training ground T1 stage 3). A facing angle f is still
+  // measured in the squashed space of pitch fractions: it points along the
+  // metric vector (fromFacingX(cos f), fromFacingY(sin f)), and a metric
+  // vector v has the facing atan2(toFacingY(v.y), toFacingX(v.x)). Stage 3b
+  // makes facings true angles by changing only these; each keeps the exact
+  // float operation of the code it replaced, so 3a plays bit for bit the
+  // same.
+  // ---------------------------------------------------------------------
+
+  /** A metric component (metres, m/s, or a unit direction's) in the facing
+   * space. */
+  [[nodiscard]] constexpr float toFacingX(float metres) const
+  {
+    return metres / length;
+  }
+  [[nodiscard]] constexpr float toFacingY(float metres) const
+  {
+    return metres / width;
+  }
+  /** The same, through the inverse (the form some code had). */
+  [[nodiscard]] constexpr float toFacingXByInverse(float metres) const
+  {
+    return metres * inverseLength;
+  }
+  [[nodiscard]] constexpr float toFacingYByInverse(float metres) const
+  {
+    return metres * inverseWidth;
+  }
+  /** A facing-space component (cos f or sin f) as a metric one. */
+  [[nodiscard]] constexpr float fromFacingX(float component) const
+  {
+    return component * length;
+  }
+  [[nodiscard]] constexpr float fromFacingY(float component) const
+  {
+    return component * width;
+  }
 };

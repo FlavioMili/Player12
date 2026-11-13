@@ -2492,8 +2492,8 @@ void MatchEngine::accumulatePlayerLoad(float dt)
     if (player.facingRequested && movedMetres > EPSILON)
     {
       const Vector2F body = normalized(
-          {std::cos(player.facingAngle) * pitch.length,
-           std::sin(player.facingAngle) * pitch.width});
+          {pitch.fromFacingX(std::cos(player.facingAngle)),
+           pitch.fromFacingY(std::sin(player.facingAngle))});
       const float alignment = std::clamp(
           (body.x * moved.x + body.y * moved.y) / movedMetres, -1.0f, 1.0f);
       directionCost = directionValue(MatchTuning::Player::DIRECTION_ENERGY,
@@ -4097,8 +4097,8 @@ void MatchEngine::resolveLooseBall(bool beforeLine)
         if (thigh && length(player.velocity) > B::THIGH_MAX_SPEED) continue;
         reach = thigh ? B::THIGH_REACH_METRES : B::CHEST_REACH_METRES;
         const Vector2F facing = normalized(
-            {std::cos(player.facingAngle) * pitch.length,
-             std::sin(player.facingAngle) * pitch.width});
+            {pitch.fromFacingX(std::cos(player.facingAngle)),
+             pitch.fromFacingY(std::sin(player.facingAngle))});
         if (gapX * facing.x + gapY * facing.y > 0.0f) continue;
       }
       // His body may not reach a ball behind him at all.
@@ -5503,8 +5503,8 @@ float MatchEngine::ballStretch(const MatchPlayer& player, PitchPoint point) cons
   const Vector2F toBall = point - player.position;
   const float gap = length(toBall);
   const Vector2F facing = normalized(
-      {std::cos(player.facingAngle) * pitch.length,
-       std::sin(player.facingAngle) * pitch.width});
+      {pitch.fromFacingX(std::cos(player.facingAngle)),
+       pitch.fromFacingY(std::sin(player.facingAngle))});
   const float off =
       gap > EPSILON
           ? std::acos(std::clamp((toBall.x * facing.x + toBall.y * facing.y) / gap,
@@ -6147,8 +6147,8 @@ bool MatchEngine::dribbleTouchDue(const MatchPlayer& player,
       aim.speed >= R::LOOSE_START_SPEED)
   {
     const Vector2F facing = normalized(
-        {std::cos(player.facingAngle) * pitch.length,
-         std::sin(player.facingAngle) * pitch.width});
+        {pitch.fromFacingX(std::cos(player.facingAngle)),
+         pitch.fromFacingY(std::sin(player.facingAngle))});
     const float allowed =
         (R::REVERSAL_TOUCH_DEGREES_POOR +
          (R::REVERSAL_TOUCH_DEGREES_BEST - R::REVERSAL_TOUCH_DEGREES_POOR) *
@@ -6460,8 +6460,8 @@ void MatchEngine::splitLostWait(std::size_t slot, bool inDeadZone)
   // On the pitch (metres), not in normalised pitch space.
   const auto onPitch = [this](float angle)
   {
-    return std::atan2(std::sin(angle) * pitch.width,
-                      std::cos(angle) * pitch.length);
+    return std::atan2(pitch.fromFacingY(std::sin(angle)),
+                      pitch.fromFacingX(std::cos(angle)));
   };
   float error = onPitch(player.facingAngle) - onPitch(waitPredictedFacing[slot]);
   if (error > std::numbers::pi_v<float>)
@@ -6769,8 +6769,8 @@ bool MatchEngine::lineUpRestart(MatchPlayer& taker, MatchState restart,
       lineUp.seconds >= MatchTuning::Dribble::TURN_TO_PASS_MAX_SECONDS)
     return true;
   const Vector2F facing = normalized(
-      {std::cos(taker.facingAngle) * pitch.length,
-       std::sin(taker.facingAngle) * pitch.width});
+      {pitch.fromFacingX(std::cos(taker.facingAngle)),
+       pitch.fromFacingY(std::sin(taker.facingAngle))});
   return facing.x * lineUp.line->x + facing.y * lineUp.line->y >=
          std::cos(MatchTuning::Dribble::TURN_TO_PASS_READY_DEGREES *
                   std::numbers::pi_v<float> / 180.0f);
@@ -6818,8 +6818,8 @@ void MatchEngine::steerRestartLineUp(MatchPlayer& taker, float dt)
   {
     taker.facingRequested = true;
     taker.facingRequest =
-        std::atan2(line.y / pitch.width,
-                   line.x / pitch.length);
+        std::atan2(pitch.toFacingY(line.y),
+                   pitch.toFacingX(line.x));
   }
 }
 
@@ -6842,8 +6842,8 @@ void MatchEngine::noteRestartKick(const MatchPlayer& taker,
   if (lineUp.line)
   {
     const Vector2F facing = normalized(
-        {std::cos(taker.facingAngle) * pitch.length,
-         std::sin(taker.facingAngle) * pitch.width});
+        {pitch.fromFacingX(std::cos(taker.facingAngle)),
+         pitch.fromFacingY(std::sin(taker.facingAngle))});
     const bool turned =
         facing.x * lineUp.line->x + facing.y * lineUp.line->y >=
         std::cos(MatchTuning::Dribble::TURN_TO_PASS_READY_DEGREES *
