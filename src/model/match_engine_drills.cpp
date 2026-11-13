@@ -135,7 +135,7 @@ bool MatchEngine::startDrill(const MatchScenario& scenario)
   if (scenario.carrierInHands)
     if (MatchPlayer* carrier = drillPlayer(scenario.carrierId);
         carrier && getPossessionAttachment() == carrier->player)
-      takeInHandsBinturong(*carrier, ball.position, ball.z * MatchTuning::Units::BALL_Z_METRES);
+      takeInHandsBinturong(*carrier, ball.position, pitch.heightMetres(ball.z));
   captureInterpolationFrame();
   return true;
 }
@@ -154,12 +154,12 @@ bool MatchEngine::removeBeforeKickOff(PlayerID playerId)
   player->isGoalkeeper = false;
   player->intent = PlayerIntent::HOLD_SHAPE;
   player->velocity = {0.0f, 0.0f};
-  player->position = PitchPoint{MatchTuning::Pitch::CENTRE +
+  player->position = pitch.at(MatchTuning::Pitch::CENTRE +
                           (player->isHomeTeam ? -1.0f : 1.0f) *
                               (MatchTuning::Rules::PARKED_PLAYER_OFFSET +
                                static_cast<float>(parked) *
                                    MatchTuning::Rules::PARKED_PLAYER_SPACING),
-                      MatchTuning::Pitch::PLAYER_MIN_Y};
+                              MatchTuning::Pitch::PLAYER_MIN_Y);
   player->movementTarget = player->position;
   player->tacticalTarget = player->position;
   player->targetVelocity = {0.0f, 0.0f};

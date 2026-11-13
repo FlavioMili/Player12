@@ -642,7 +642,7 @@ std::optional<std::pair<std::size_t, float>> MatchEngine::fallenBodyInPath(
   if (state != MatchState::PLAYING || (getPossessionAttachment() && !hasTouchClaim())) return std::nullopt;
   const Vector2F start = toMetres(ball.position);
   const Vector2F move = scaled(ball.velocity, seconds);
-  const float startHeight = ball.z * MatchTuning::Units::BALL_Z_METRES;
+  const float startHeight = pitch.heightMetres(ball.z);
   const float reach =
       0.5f * MatchTuning::Body::DIAMETER_METRES + MatchTuning::Units::BALL_RADIUS_METRES;
   std::optional<std::pair<std::size_t, float>> first;

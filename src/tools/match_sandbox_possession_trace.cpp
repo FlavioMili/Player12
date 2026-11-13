@@ -60,18 +60,18 @@ Json snapshot(const PossessionSnapshot& state)
 Json playerState(const MatchEngine& engine, const MatchPlayer& player)
 {
   const MatchBall& ball = engine.getBall();
-  const float dx =
-      (player.position.x - ball.position.x) * MatchTuning::Pitch::MATCH_LENGTH_METRES;
-  const float dy =
-      (player.position.y - ball.position.y) * MatchTuning::Pitch::MATCH_WIDTH_METRES;
+  const MatchPitch& pitch = engine.getPitch();
+  const float dx = pitch.metresX(player.position.x - ball.position.x);
+  const float dy = pitch.metresY(player.position.y - ball.position.y);
   return {{"id", player.player ? player.player->getId() : 0},
           {"home", player.isHomeTeam},
-          {"position", {player.position.x, player.position.y}},
+          {"position", {pitch.fractionX(player.position), pitch.fractionY(player.position)}},
           {"velocity_mps", {player.velocity.x, player.velocity.y}},
           {"facing_rad", player.facingAngle},
           {"gap_m", std::hypot(dx, dy)},
           {"intent", SandboxNames::intent(player.intent)},
-          {"target", {player.tacticalTarget.x, player.tacticalTarget.y}},
+          {"target",
+           {pitch.fractionX(player.tacticalTarget), pitch.fractionY(player.tacticalTarget)}},
           {"chasing", player.chasingLooseBall},
           {"meet_seconds", player.looseBallMeetSeconds},
           {"foot_cooldown", player.footCooldown},
@@ -193,7 +193,8 @@ class PossessionTrace final : public MatchRecorder
           {"actor", actor},
           {"state", snapshot(engine.getPossessionSnapshot())},
           {"ball_position",
-           {engine.getBall().position.x, engine.getBall().position.y}},
+           {engine.getPitch().fractionX(engine.getBall().position),
+            engine.getPitch().fractionY(engine.getBall().position)}},
           {"ball_velocity_mps",
            {engine.getBall().velocity.x, engine.getBall().velocity.y}}});
   }
@@ -222,8 +223,10 @@ class PossessionTrace final : public MatchRecorder
           {"state", snapshot(state)},
           {"issue_mask", issues},
           {"match_state", static_cast<int>(engine.getState())},
-          {"ball_position", {ball.position.x, ball.position.y}},
-          {"ball_height_m", ball.z * MatchTuning::Units::BALL_Z_METRES},
+          {"ball_position",
+           {engine.getPitch().fractionX(ball.position),
+            engine.getPitch().fractionY(ball.position)}},
+          {"ball_height_m", engine.getPitch().heightMetres(ball.z)},
           {"ball_velocity_mps",
            {ball.velocity.x, ball.velocity.y, ball.velocityZ}},
           {"actors", std::move(actors)}});

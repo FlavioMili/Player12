@@ -39,10 +39,10 @@ bool MatchEngine::deniesGoalChanceBinturong(const MatchPlayer& victim,
   // Only the player in control of the ball can be denied an obvious chance.
   if (getPossessionAttachment() != victim.player) return false;
   const float goalX = victim.isHomeTeam ? 1.0f : 0.0f;
-  const PitchPoint goal{goalX, MatchTuning::Pitch::CENTRE};
+  const PitchPoint goal = pitch.at(goalX, MatchTuning::Pitch::CENTRE);
   if (distance(victim.position, goal) >
           MatchTuning::Discipline::DOGSO_MAX_DISTANCE_METRES ||
-      std::abs(victim.position.y - MatchTuning::Pitch::CENTRE) >
+      std::abs(pitch.fractionY(victim.position) - MatchTuning::Pitch::CENTRE) >
           MatchTuning::Discipline::DOGSO_MAX_WIDTH_DEVIATION)
   {
     return false;
@@ -75,7 +75,8 @@ void MatchEngine::commitFoulBinturong(MatchPlayer& offender,
   const PitchPoint foulPosition = victim.position;
   const bool inBox = inPenaltyArea(foulPosition, offender.isHomeTeam);
   const float carrierDepth =
-      victim.isHomeTeam ? victim.position.x : 1.0f - victim.position.x;
+      victim.isHomeTeam ? pitch.fractionX(victim.position)
+                        : 1.0f - pitch.fractionX(victim.position);
   const TeamPhase victimPhase = victim.isHomeTeam ? homePhase : awayPhase;
   const bool promisingAttack =
       carrierDepth > MatchTuning::Pitch::CENTRE &&
@@ -173,11 +174,12 @@ bool MatchEngine::judgeOffsideBinturong(const MatchPlayer& passer,
   {
     // A runner level with the line at the moment of the pass has often
     // timed his run a fraction early: the tighter, the likelier.
-    const float gap = (defenderLine - receiver.position.x) *
+    const float gap = pitch.fractionX(defenderLine - receiver.position.x) *
                       (passer.isHomeTeam ? 1.0f : -1.0f);
     const bool opponentHalf =
-        passer.isHomeTeam ? receiver.position.x > MatchTuning::Pitch::CENTRE
-                          : receiver.position.x < MatchTuning::Pitch::CENTRE;
+        passer.isHomeTeam
+            ? receiver.position.x > pitch.atX(MatchTuning::Pitch::CENTRE)
+            : receiver.position.x < pitch.atX(MatchTuning::Pitch::CENTRE);
     if (opponentHalf && gap >= 0.0f &&
         gap < MatchTuning::Passing::OFFSIDE_TIMING_WINDOW)
     {

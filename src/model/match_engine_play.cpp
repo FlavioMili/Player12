@@ -244,7 +244,7 @@ std::optional<PitchPoint> MatchEngine::controlledAssistTarget(
     // Goal-side of the carrier, between him and the centre of our goal.
     const Vector2F toGoal = metricDirection(
         carrier.position,
-        PitchPoint{player.isHomeTeam ? 0.0f : 1.0f, MatchTuning::Pitch::CENTRE});
+        pitch.at(player.isHomeTeam ? 0.0f : 1.0f, MatchTuning::Pitch::CENTRE));
     const PitchOffset gap = toPitchOffset({toGoal.x * C::JOCKEY_CONTAIN_METRES,
                                   toGoal.y * C::JOCKEY_CONTAIN_METRES});
     return PitchPoint{carrier.position.x + gap.x, carrier.position.y + gap.y};
@@ -424,7 +424,7 @@ void MatchEngine::playControlledPass(MatchPlayer& carrier,
   PassOption option = evaluatePassOption(carrier, *chaser);
   option.targetPoint = target;
   option.passDistance = distance(carrier.position, target);
-  option.progression = (target.x - carrier.position.x) * forward;
+  option.progression = pitch.fractionX(target.x - carrier.position.x) * forward;
   option.intent =
       option.progression >= MatchTuning::Passing::PROGRESSIVE_PASS_MINIMUM
           ? PassIntent::PROGRESSIVE

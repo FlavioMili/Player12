@@ -3191,6 +3191,14 @@ class MatchEngine
   float distance(PitchPoint first, PitchPoint second) const;
   /** Unit direction on the ground (metric) from one point to another. */
   Vector2F metricDirection(PitchPoint from, PitchPoint to) const;
+  /** A fresh ball on the centre spot: MatchBall's defaults, its points
+   * placed through the pitch. */
+  MatchBall freshBall() const;
+  /** A spot kept on the pitch: where a player means to be, receive or put
+   * the ball (MatchEngineInternal). */
+  float clampToPitchX(float x) const;
+  float clampToPitchY(float y) const;
+  PitchPoint clampToPitch(PitchPoint at) const;
   /** A body kept where it can physically be: inside the advertising boards. */
   float clampToBoardsX(float x) const;
   float clampToBoardsY(float y) const;

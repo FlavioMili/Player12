@@ -31,15 +31,16 @@ using namespace MatchEngineInternal;
 bool MatchEngine::ballInPlayAtAardvark(PitchPoint at) const
 {
   // Out once its centre is over a line.
-  return at.x > 0.0f && at.x < 1.0f && at.y > 0.0f && at.y < 1.0f;
+  return at.x > 0.0f && at.x < pitch.atX(1.0f) && at.y > 0.0f &&
+         at.y < pitch.atY(1.0f);
 }
 
 void MatchEngine::checkOutOfBoundsAardvark()
 {
-  if (ball.position.x <= 0.0f || ball.position.x >= 1.0f)
+  if (ball.position.x <= 0.0f || ball.position.x >= pitch.atX(1.0f))
   {
-    const bool rightGoalLine = ball.position.x >= 1.0f;
-    const float lineX = rightGoalLine ? 1.0f : 0.0f;
+    const bool rightGoalLine = ball.position.x >= pitch.atX(1.0f);
+    const float lineX = rightGoalLine ? pitch.atX(1.0f) : 0.0f;
     const float span = ball.position.x - substepBallPosition.x;
     const float t =
         std::abs(span) > EPSILON
@@ -47,11 +48,10 @@ void MatchEngine::checkOutOfBoundsAardvark()
             : 1.0f;
     const float crossingY =
         substepBallPosition.y + (ball.position.y - substepBallPosition.y) * t;
-    const float crossingHeight = (substepBallZ + (ball.z - substepBallZ) * t) *
-                                 MatchTuning::Units::BALL_Z_METRES;
+    const float crossingHeight =
+        pitch.heightMetres(substepBallZ + (ball.z - substepBallZ) * t);
     const float lateralMetres =
-        std::abs(crossingY - MatchTuning::Pitch::CENTRE) *
-        pitch.width;
+        pitch.metresY(std::abs(crossingY - pitch.atY(MatchTuning::Pitch::CENTRE)));
     constexpr float RADIUS = MatchTuning::Units::BALL_RADIUS_METRES;
     constexpr float HALF_GOAL = MatchTuning::Shooting::GOAL_HALF_WIDTH_METRES;
     constexpr float BAR = MatchTuning::Units::CROSSBAR_HEIGHT_METRES;
@@ -82,7 +82,8 @@ void MatchEngine::checkOutOfBoundsAardvark()
         event.primaryPlayerId = shooter->player->getId();
       }
       endDeflectedShotFlight();
-      ball.position.x = rightGoalLine ? 1.0f - 0.004f : 0.004f;
+      ball.position.x =
+          rightGoalLine ? pitch.atX(1.0f - 0.004f) : pitch.atX(0.004f);
       ball.position.y = crossingY;
       ball.velocity = {
           -ball.velocity.x * MatchTuning::Shooting::WOODWORK_REBOUND,
@@ -98,7 +99,7 @@ void MatchEngine::checkOutOfBoundsAardvark()
       // Home defends the left goal.
       if (lastTouchHome)
         setupCornerAardvark(false,
-                            ball.position.y < MatchTuning::Pitch::CENTRE);
+                            ball.position.y < pitch.atY(MatchTuning::Pitch::CENTRE));
       else
         setupGoalKickAardvark(true);
     }
@@ -106,14 +107,14 @@ void MatchEngine::checkOutOfBoundsAardvark()
     {
       // Away defends the right goal.
       if (!lastTouchHome && lastTouchForRestart())
-        setupCornerAardvark(true, ball.position.y < MatchTuning::Pitch::CENTRE);
+        setupCornerAardvark(true, ball.position.y < pitch.atY(MatchTuning::Pitch::CENTRE));
       else
         setupGoalKickAardvark(false);
     }
     return;
   }
 
-  if (ball.position.y <= 0.0f || ball.position.y >= 1.0f)
+  if (ball.position.y <= 0.0f || ball.position.y >= pitch.atY(1.0f))
   {
     const bool receivingHome = !isHomePlayer(lastTouchForRestart());
     setupThrowInAardvark(receivingHome);
@@ -218,14 +219,15 @@ void MatchEngine::updateBallInNetAardvark(float dt)
   const float netDepth = MatchTuning::Ball::GOAL_NET_BALL_DEPTH;
   if (getPossessionState().shotByHome)
   {
-    ball.position.x = std::clamp(ball.position.x, 1.0f, 1.0f + netDepth);
+    ball.position.x =
+        std::clamp(ball.position.x, pitch.atX(1.0f), pitch.atX(1.0f + netDepth));
   }
   else
   {
-    ball.position.x = std::clamp(ball.position.x, -netDepth, 0.0f);
+    ball.position.x = std::clamp(ball.position.x, pitch.atX(-netDepth), 0.0f);
   }
-  ball.position.y = std::clamp(ball.position.y, MatchTuning::Pitch::GOAL_TOP,
-                               MatchTuning::Pitch::GOAL_BOTTOM);
+  ball.position.y = std::clamp(ball.position.y, pitch.atY(MatchTuning::Pitch::GOAL_TOP),
+                               pitch.atY(MatchTuning::Pitch::GOAL_BOTTOM));
   // The ball settles into the net instead of bouncing out of the goal mouth.
   ball.velocityZ = 0.0f;
   ball.z = 0.0f;
@@ -237,11 +239,11 @@ void MatchEngine::setupThrowInAardvark(bool homeTeam)
   beginStoppage();
   restartIsSetPiece = false;
   ball.position.x = std::clamp(
-      ball.position.x, MatchTuning::Pitch::RESTART_LONGITUDINAL_MARGIN,
-      1.0f - MatchTuning::Pitch::RESTART_LONGITUDINAL_MARGIN);
-  ball.position.y = ball.position.y < MatchTuning::Pitch::CENTRE
-                        ? MatchTuning::Pitch::RESTART_INSET
-                        : 1.0f - MatchTuning::Pitch::RESTART_INSET;
+      ball.position.x, pitch.atX(MatchTuning::Pitch::RESTART_LONGITUDINAL_MARGIN),
+      pitch.atX(1.0f - MatchTuning::Pitch::RESTART_LONGITUDINAL_MARGIN));
+  ball.position.y = ball.position.y < pitch.atY(MatchTuning::Pitch::CENTRE)
+                        ? pitch.atY(MatchTuning::Pitch::RESTART_INSET)
+                        : pitch.atY(1.0f - MatchTuning::Pitch::RESTART_INSET);
   ball.z = 0.0f;
   ball.velocityZ = 0.0f;
   MatchPlayer* taker =
@@ -266,9 +268,9 @@ void MatchEngine::setupGoalKickAardvark(bool homeTeam)
 {
   beginStoppage();
   restartIsSetPiece = false;
-  ball.position = PitchPoint{homeTeam ? MatchTuning::Pitch::LEFT_GOAL_KICK_X
-                            : MatchTuning::Pitch::RIGHT_GOAL_KICK_X,
-                   MatchTuning::Pitch::CENTRE};
+  ball.position = pitch.at(homeTeam ? MatchTuning::Pitch::LEFT_GOAL_KICK_X
+                                    : MatchTuning::Pitch::RIGHT_GOAL_KICK_X,
+                           MatchTuning::Pitch::CENTRE);
   ball.z = 0.0f;
   ball.velocityZ = 0.0f;
   MatchPlayer* taker =
@@ -291,10 +293,10 @@ void MatchEngine::setupCornerAardvark(bool homeTeam, bool topCorner)
 {
   beginStoppage();
   restartIsSetPiece = true;
-  ball.position = PitchPoint{homeTeam ? 1.0f - MatchTuning::Pitch::RESTART_INSET
-                            : MatchTuning::Pitch::RESTART_INSET,
-                   topCorner ? MatchTuning::Pitch::RESTART_INSET
-                             : 1.0f - MatchTuning::Pitch::RESTART_INSET};
+  ball.position = pitch.at(homeTeam ? 1.0f - MatchTuning::Pitch::RESTART_INSET
+                                    : MatchTuning::Pitch::RESTART_INSET,
+                           topCorner ? MatchTuning::Pitch::RESTART_INSET
+                                     : 1.0f - MatchTuning::Pitch::RESTART_INSET);
   ball.z = 0.0f;
   ball.velocityZ = 0.0f;
   // Left and right follow the formation: the corner on the side of the
@@ -326,13 +328,14 @@ void MatchEngine::setupFreeKickAardvark(bool homeTeam, PitchPoint foulPos)
   beginStoppage();
   pendingAdvantage.active = false;
   ball.position = PitchPoint{
-      std::clamp(foulPos.x, MatchTuning::Pitch::RESTART_LONGITUDINAL_MARGIN,
-                 1.0f - MatchTuning::Pitch::RESTART_LONGITUDINAL_MARGIN),
-      std::clamp(foulPos.y, MatchTuning::Pitch::RESTART_LONGITUDINAL_MARGIN,
-                 1.0f - MatchTuning::Pitch::RESTART_LONGITUDINAL_MARGIN)};
+      std::clamp(foulPos.x, pitch.atX(MatchTuning::Pitch::RESTART_LONGITUDINAL_MARGIN),
+                 pitch.atX(1.0f - MatchTuning::Pitch::RESTART_LONGITUDINAL_MARGIN)),
+      std::clamp(foulPos.y, pitch.atY(MatchTuning::Pitch::RESTART_LONGITUDINAL_MARGIN),
+                 pitch.atY(1.0f - MatchTuning::Pitch::RESTART_LONGITUDINAL_MARGIN))};
   ball.z = 0.0f;
   ball.velocityZ = 0.0f;
-  const PitchPoint goal{homeTeam ? 1.0f : 0.0f, MatchTuning::Pitch::CENTRE};
+  const PitchPoint goal =
+      pitch.at(homeTeam ? 1.0f : 0.0f, MatchTuning::Pitch::CENTRE);
   const float goalMetres = distance(ball.position, goal);
   // Free kicks in the attacking third are set pieces taken by the specialist.
   restartIsSetPiece =
@@ -365,9 +368,10 @@ void MatchEngine::setupPenaltyAardvark(bool homeTeam)
   beginStoppage();
   restartIsSetPiece = true;
   pendingAdvantage.active = false;
-  const PitchPoint spot{homeTeam ? MatchTuning::Pitch::RIGHT_PENALTY_SPOT_X
-                               : MatchTuning::Pitch::LEFT_PENALTY_SPOT_X,
-                      MatchTuning::Pitch::CENTRE};
+  const PitchPoint spot =
+      pitch.at(homeTeam ? MatchTuning::Pitch::RIGHT_PENALTY_SPOT_X
+                        : MatchTuning::Pitch::LEFT_PENALTY_SPOT_X,
+               MatchTuning::Pitch::CENTRE);
   MatchPlayer* taker =
       chooseRestartTaker(MatchState::PENALTY, homeTeam, ball.position);
   setRestartTaker(taker);
@@ -378,19 +382,21 @@ void MatchEngine::setupPenaltyAardvark(bool homeTeam)
   assignRestartOwner(taker ? taker->player : nullptr);
   if (taker) placeTakerAardvark(*taker, spot);
   // Everyone else waits outside the area; the keeper stands on his line.
-  const float edge = homeTeam ? MatchTuning::Pitch::RIGHT_PENALTY_AREA_EDGE -
-                                    MatchTuning::SetPiece::PENALTY_WAIT_OFFSET
-                              : MatchTuning::Pitch::LEFT_PENALTY_AREA_EDGE +
-                                    MatchTuning::SetPiece::PENALTY_WAIT_OFFSET;
+  const float edge = pitch.atX(
+      homeTeam ? MatchTuning::Pitch::RIGHT_PENALTY_AREA_EDGE -
+                     MatchTuning::SetPiece::PENALTY_WAIT_OFFSET
+               : MatchTuning::Pitch::LEFT_PENALTY_AREA_EDGE +
+                     MatchTuning::SetPiece::PENALTY_WAIT_OFFSET);
   for (auto& player : players)
   {
     if (!active(player) || &player == taker) continue;
     if (player.isGoalkeeper && player.isHomeTeam != homeTeam)
     {
       // Law 14: the defending keeper stays on his goal line.
-      player.movementTarget = PitchPoint{homeTeam ? MatchTuning::Pitch::PLAYER_MAX_X
-                                        : MatchTuning::Pitch::PLAYER_MIN_X,
-                               MatchTuning::Pitch::CENTRE};
+      player.movementTarget =
+          pitch.at(homeTeam ? MatchTuning::Pitch::PLAYER_MAX_X
+                            : MatchTuning::Pitch::PLAYER_MIN_X,
+                   MatchTuning::Pitch::CENTRE);
       player.position = player.movementTarget;
       continue;
     }
@@ -417,34 +423,27 @@ void MatchEngine::setupPenaltyAardvark(bool homeTeam)
 
 void MatchEngine::placeTakerAardvark(MatchPlayer& taker, PitchPoint spot)
 {
-  taker.position = PitchPoint{std::clamp(spot.x, MatchTuning::Pitch::PLAYER_MIN_X,
-                               MatchTuning::Pitch::PLAYER_MAX_X),
-                    std::clamp(spot.y, MatchTuning::Pitch::PLAYER_MIN_Y,
-                               MatchTuning::Pitch::PLAYER_MAX_Y)};
+  taker.position = PitchPoint{clampToPitchX(spot.x), clampToPitchY(spot.y)};
   taker.movementTarget = taker.position;
   taker.velocity = {0.0f, 0.0f};
   // Anyone standing on the spot steps aside for the taker.
   for (auto& other : players)
   {
     if (!active(other) || &other == &taker) continue;
-    const float dx = (other.position.x - taker.position.x) *
-                     pitch.length;
-    const float dy = (other.position.y - taker.position.y) *
-                     pitch.width;
+    const float dx = pitch.metresX(other.position.x - taker.position.x);
+    const float dy = pitch.metresY(other.position.y - taker.position.y);
     const float gap = std::sqrt(dx * dx + dy * dy);
     if (gap >= MatchTuning::Player::MINIMUM_BODY_SEPARATION_METRES) continue;
     const float towardCentre =
-        taker.position.y < MatchTuning::Pitch::CENTRE ? 1.0f : -1.0f;
+        taker.position.y < pitch.atY(MatchTuning::Pitch::CENTRE) ? 1.0f : -1.0f;
     const Vector2F away = gap > EPSILON ? Vector2F{dx / gap, dy / gap}
                                         : Vector2F{0.0f, towardCentre};
     const float push =
         MatchTuning::Player::MINIMUM_BODY_SEPARATION_METRES - gap;
-    other.position.x = std::clamp(
-        other.position.x + away.x * push / pitch.length,
-        MatchTuning::Pitch::PLAYER_MIN_X, MatchTuning::Pitch::PLAYER_MAX_X);
-    other.position.y = std::clamp(
-        other.position.y + away.y * push / pitch.width,
-        MatchTuning::Pitch::PLAYER_MIN_Y, MatchTuning::Pitch::PLAYER_MAX_Y);
+    other.position.x =
+        clampToPitchX(other.position.x + pitch.fromMetresX(away.x * push));
+    other.position.y =
+        clampToPitchY(other.position.y + pitch.fromMetresY(away.y * push));
   }
 }
 
@@ -497,7 +496,8 @@ void MatchEngine::completeRestartAardvark()
   // Corners, free kicks near goal and throw-ins in the attacking third open
   // a set-piece phase for the side taking them.
   const float restartDepth =
-      taker->isHomeTeam ? ball.position.x : 1.0f - ball.position.x;
+      taker->isHomeTeam ? pitch.fractionX(ball.position)
+                        : 1.0f - pitch.fractionX(ball.position);
   if (restartIsSetPiece ||
       (restartState == MatchState::THROW_IN &&
        restartDepth >= MatchTuning::Rules::HOME_FINAL_THIRD_START))

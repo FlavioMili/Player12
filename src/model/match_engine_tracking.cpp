@@ -18,8 +18,8 @@ namespace
 {
 float metresBetween(const MatchPitch& pitch, PitchPoint first, PitchPoint second)
 {
-  const float dx = (first.x - second.x) * pitch.length;
-  const float dy = (first.y - second.y) * pitch.width;
+  const float dx = pitch.metresX(first.x - second.x);
+  const float dy = pitch.metresY(first.y - second.y);
   return std::sqrt(dx * dx + dy * dy);
 }
 }  // namespace
@@ -27,14 +27,14 @@ float metresBetween(const MatchPitch& pitch, PitchPoint first, PitchPoint second
 void MatchEngine::trackTouch(const MatchPlayer& player)
 {
   if (!tracker.isEnabled() || player.player == nullptr) return;
-  tracker.touch(player.statsIndex, player.isHomeTeam, player.position,
+  tracker.touch(player.statsIndex, player.isHomeTeam, player.position, pitch,
                 matchTimeMinutes, period);
 }
 
 void MatchEngine::trackPassRelease(const MatchPlayer& passer)
 {
   if (!tracker.isEnabled()) return;
-  tracker.passReleased(passer.position, state == MatchState::PLAYING);
+  tracker.passReleased(passer.position, pitch, state == MatchState::PLAYING);
 }
 
 void MatchEngine::trackPassCompletion(const MatchPlayer& passer,
@@ -42,7 +42,7 @@ void MatchEngine::trackPassCompletion(const MatchPlayer& passer,
 {
   if (!tracker.isEnabled()) return;
   tracker.passCompleted(passer.statsIndex, receiver.statsIndex,
-                        passer.isHomeTeam, receiver.position, pitch.length);
+                        passer.isHomeTeam, receiver.position, pitch);
 }
 
 void MatchEngine::trackShot(const MatchPlayer& shooter, float xg, bool setPiece,

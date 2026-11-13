@@ -278,10 +278,11 @@ void MatchEngine::refreshTacticalTargetsAardvark(float dt, bool planHome)
       default:
         return -std::numeric_limits<float>::infinity();
     }
-    const float depth = candidate.isHomeTeam ? candidate.position.x
-                                             : 1.0f - candidate.position.x;
+    const float depth = candidate.isHomeTeam
+                                             ? pitch.fractionX(candidate.position)
+                                             : 1.0f - pitch.fractionX(candidate.position);
     const float separation =
-        carrier ? std::abs(candidate.position.y - carrier->position.y) : 0.0f;
+        carrier ? pitch.fractionY(std::abs(candidate.position.y - carrier->position.y)) : 0.0f;
     // Who makes the run also varies from attack to attack, so strike
     // partners share the runs in behind.
     const float variety = epochNoise(candidate.player->getId(), 0x7a11edU,
@@ -312,7 +313,8 @@ void MatchEngine::refreshTacticalTargetsAardvark(float dt, bool planHome)
     const float attackingPosition =
         carrier ? carrier->position.x : ball.position.x;
     const float attackingProgress =
-        homeTeam ? attackingPosition : 1.0f - attackingPosition;
+        homeTeam ? pitch.fractionX(attackingPosition)
+                 : 1.0f - pitch.fractionX(attackingPosition);
     const float attackingCommitment =
         sliders.offensiveBias + sliders.riskTaking;
     const TeamPhase phase = homeTeam ? homePhase : awayPhase;
@@ -358,7 +360,7 @@ void MatchEngine::refreshTacticalTargetsAardvark(float dt, bool planHome)
   const auto homeRunners = selectAttackingRunners(true);
   const auto awayRunners = selectAttackingRunners(false);
 
-  const auto runChannel = [](const MatchPlayer& runner)
+  const auto runChannel = [this](const MatchPlayer& runner)
   {
     const PlayerRole role = runner.player->getRole();
     if (role == PlayerRole::LW)
@@ -369,9 +371,9 @@ void MatchEngine::refreshTacticalTargetsAardvark(float dt, bool planHome)
       return MatchTuning::Shape::LEFT_WIDE_ATTACK_CHANNEL;
     if (role == PlayerRole::RM)
       return MatchTuning::Shape::RIGHT_WIDE_ATTACK_CHANNEL;
-    if (runner.basePosition.y < MatchTuning::Pitch::CENTRE)
+    if (runner.basePosition.y < pitch.atY(MatchTuning::Pitch::CENTRE))
       return MatchTuning::Shape::LEFT_STRIKER_ATTACK_CHANNEL;
-    if (runner.basePosition.y > MatchTuning::Pitch::CENTRE)
+    if (runner.basePosition.y > pitch.atY(MatchTuning::Pitch::CENTRE))
       return MatchTuning::Shape::RIGHT_STRIKER_ATTACK_CHANNEL;
     return MatchTuning::Shape::CENTRAL_ATTACK_CHANNEL;
   };
@@ -391,7 +393,8 @@ void MatchEngine::refreshTacticalTargetsAardvark(float dt, bool planHome)
     if (!carrier || carrier->isHomeTeam != homeTeam) return nullptr;
     const TeamPhase phase = homeTeam ? homePhase : awayPhase;
     if (phase != TeamPhase::FINAL_THIRD) return nullptr;
-    const float ballSide = carrier->position.y - MatchTuning::Pitch::CENTRE;
+    const float ballSide =
+        pitch.fractionY(carrier->position.y - pitch.atY(MatchTuning::Pitch::CENTRE));
     if (arrival == Arrival::FAR_POST &&
         std::abs(ballSide) < MatchTuning::Shape::FAR_POST_MIN_BALL_WIDTH)
       return nullptr;
@@ -408,7 +411,7 @@ void MatchEngine::refreshTacticalTargetsAardvark(float dt, bool planHome)
       const bool wide = role == PlayerRole::LM || role == PlayerRole::RM ||
                         role == PlayerRole::LW || role == PlayerRole::RW;
       const bool farSide =
-          (candidate.basePosition.y - MatchTuning::Pitch::CENTRE) * ballSide <
+          (candidate.basePosition.y - pitch.atY(MatchTuning::Pitch::CENTRE)) * ballSide <
           0.0f;
       const bool eligible =
           arrival == Arrival::FULLBACK
@@ -423,7 +426,8 @@ void MatchEngine::refreshTacticalTargetsAardvark(float dt, bool planHome)
                                     : 0.0f;
       if (overlapBias <= -1.0f) continue;
 
-      float score = std::abs(candidate.basePosition.y - carrier->position.y) -
+      float score =
+          pitch.fractionY(std::abs(candidate.basePosition.y - carrier->position.y)) -
                     overlapBias * TacticsTuning::OVERLAP_BIAS_WEIGHT;
       if (arrival == Arrival::FAR_POST) score = -score;
       const PlayerIntent continuityIntent = arrival == Arrival::FULLBACK
@@ -652,10 +656,11 @@ void MatchEngine::refreshTacticalTargetsAardvark(float dt, bool planHome)
           default:
             break;
         }
-        const float depth = candidate.isHomeTeam ? candidate.position.x
-                                                 : 1.0f - candidate.position.x;
+        const float depth = candidate.isHomeTeam
+                                                 ? pitch.fractionX(candidate.position)
+                                                 : 1.0f - pitch.fractionX(candidate.position);
         const float separation =
-            carrier ? std::abs(candidate.position.y - carrier->position.y)
+            carrier ? pitch.fractionY(std::abs(candidate.position.y - carrier->position.y))
                     : 0.0f;
         score.add("his position (ST, W, CAM…)", TermSource::NATURAL_POSITION,
                   rolePriority);
@@ -732,14 +737,15 @@ void MatchEngine::refreshTacticalTargetsAardvark(float dt, bool planHome)
     const float widthScale =
         MatchTuning::Shape::MIN_WIDTH_SCALE +
         sliders.widthUsage * MatchTuning::Shape::WIDTH_SLIDER_SCALE;
-    target.y = MatchTuning::Pitch::CENTRE +
-               (target.y - MatchTuning::Pitch::CENTRE) * widthScale;
-    target.x += (pressurePosition.x - MatchTuning::Pitch::CENTRE) *
+    const float centreX = pitch.atX(MatchTuning::Pitch::CENTRE);
+    const float centreY = pitch.atY(MatchTuning::Pitch::CENTRE);
+    target.y = centreY + (target.y - centreY) * widthScale;
+    target.x += (pressurePosition.x - centreX) *
                 (MatchTuning::Shape::BASE_LONGITUDINAL_SHIFT +
                  sliders.compactness *
                      MatchTuning::Shape::COMPACTNESS_LONGITUDINAL_SHIFT);
     target.y +=
-        (pressurePosition.y - MatchTuning::Pitch::CENTRE) *
+        (pressurePosition.y - centreY) *
         (MatchTuning::Shape::BASE_LATERAL_SHIFT +
          sliders.compactness * MatchTuning::Shape::COMPACTNESS_LATERAL_SHIFT);
 
@@ -755,7 +761,10 @@ void MatchEngine::refreshTacticalTargetsAardvark(float dt, bool planHome)
     {
       using S = MatchTuning::Shape;
       const auto ownGoalDepth = [&](float x)
-      { return player.isHomeTeam ? x : 1.0f - x; };
+      {
+        const float fraction = pitch.fractionX(x);
+        return player.isHomeTeam ? fraction : 1.0f - fraction;
+      };
       const float ballDepth = ownGoalDepth(pressurePosition.x);
       const float lineDepth = std::clamp(
           S::BLOCK_LINE_BASE + ballDepth * S::BLOCK_LINE_BALL_FACTOR +
@@ -774,12 +783,12 @@ void MatchEngine::refreshTacticalTargetsAardvark(float dt, bool planHome)
               (S::BLOCK_FORMATION_FRONT - S::BLOCK_FORMATION_BACK),
           0.0f, 1.0f);
       const float depth = lineDepth + formationShare * teamLength;
-      target.x = player.isHomeTeam ? depth : 1.0f - depth;
-      target.y = MatchTuning::Pitch::CENTRE +
-                 (player.basePosition.y - MatchTuning::Pitch::CENTRE) *
+      target.x = pitch.atX(player.isHomeTeam ? depth : 1.0f - depth);
+      target.y = centreY +
+                 (player.basePosition.y - centreY) *
                      (S::BLOCK_WIDTH_SCALE -
                       sliders.compactness * S::BLOCK_COMPACTNESS_NARROWING) +
-                 (pressurePosition.y - MatchTuning::Pitch::CENTRE) *
+                 (pressurePosition.y - centreY) *
                      S::BLOCK_BALL_SIDE_SHIFT;
       target.x += defensiveRoleShiftAardvark(player);
     }
@@ -788,15 +797,15 @@ void MatchEngine::refreshTacticalTargetsAardvark(float dt, bool planHome)
     {
       player.intent = PlayerIntent::CARRY_BALL;
       target = player.position;
-      target.x +=
+      target.x += pitch.atX(
           attackDirection *
           (MatchTuning::Shape::CARRIER_BASE_ADVANCE +
            player.dribbling * MatchTuning::Shape::CARRIER_DRIBBLING_ADVANCE +
-           sliders.riskTaking * MatchTuning::Shape::CARRIER_RISK_ADVANCE);
+           sliders.riskTaking * MatchTuning::Shape::CARRIER_RISK_ADVANCE));
       if (teamPhase == TeamPhase::ATTACKING_TRANSITION)
       {
-        target.x += attackDirection *
-                    MatchTuning::Shape::ATTACKING_TRANSITION_CARRIER_ADVANCE;
+        target.x += pitch.atX(attackDirection *
+                              MatchTuning::Shape::ATTACKING_TRANSITION_CARRIER_ADVANCE);
       }
 
       // Carry away from the nearest defender instead of running directly
@@ -821,22 +830,21 @@ void MatchEngine::refreshTacticalTargetsAardvark(float dt, bool planHome)
           (role == PlayerRole::LM || role == PlayerRole::RM ||
            role == PlayerRole::LW || role == PlayerRole::RW ||
            role == PlayerRole::LB || role == PlayerRole::RB) &&
-          std::abs(player.position.y - MatchTuning::Pitch::CENTRE) >
+          std::abs(pitch.fractionY(player.position) - MatchTuning::Pitch::CENTRE) >
               S::WIDE_LANE_DEVIATION;
       if (cutsInsideAardvark(player))
       {
         target.y = player.position.y +
-                   (MatchTuning::Pitch::CENTRE - player.position.y) *
-                       S::CUT_INSIDE_PULL;
+                   (centreY - player.position.y) * S::CUT_INSIDE_PULL;
       }
       else if (closestOpponent &&
                closestDistance < S::CARRIER_EVASION_RANGE_METRES)
       {
         const float evadeDirection =
             player.position.y <= closestOpponent->position.y ? -1.0f : 1.0f;
-        target.y +=
+        target.y += pitch.atY(
             evadeDirection * (S::CARRIER_BASE_EVASION +
-                              player.dribbling * S::CARRIER_DRIBBLING_EVASION);
+                              player.dribbling * S::CARRIER_DRIBBLING_EVASION));
       }
       else if (wideLane)
       {
@@ -844,24 +852,24 @@ void MatchEngine::refreshTacticalTargetsAardvark(float dt, bool planHome)
       }
       else
       {
-        target.y += (MatchTuning::Pitch::CENTRE - player.position.y) *
-                    S::CARRIER_CENTRALITY;
+        target.y += (centreY - player.position.y) * S::CARRIER_CENTRALITY;
       }
     }
     else if (ownPossession)
     {
       player.intent = PlayerIntent::HOLD_SHAPE;
       const float attackingProgress =
-          player.isHomeTeam ? carrier->position.x : 1.0f - carrier->position.x;
-      target.x +=
+          player.isHomeTeam ? pitch.fractionX(carrier->position)
+                            : 1.0f - pitch.fractionX(carrier->position);
+      target.x += pitch.atX(
           attackDirection *
           std::max(0.0f, attackingProgress -
                              MatchTuning::Shape::POSSESSION_PROGRESS_START) *
-          MatchTuning::Shape::POSSESSION_BLOCK_PROGRESS;
-      target.x +=
+          MatchTuning::Shape::POSSESSION_BLOCK_PROGRESS);
+      target.x += pitch.atX(
           attackDirection * (MatchTuning::Shape::SUPPORT_BASE_ADVANCE +
                              sliders.offensiveBias *
-                                 MatchTuning::Shape::SUPPORT_OFFENSIVE_ADVANCE);
+                                 MatchTuning::Shape::SUPPORT_OFFENSIVE_ADVANCE));
       const PlayerRole role = player.player->getRole();
       const bool forward = role == PlayerRole::ST || role == PlayerRole::LW ||
                            role == PlayerRole::RW || role == PlayerRole::CAM;
@@ -879,9 +887,10 @@ void MatchEngine::refreshTacticalTargetsAardvark(float dt, bool planHome)
         const float legalRunLine =
             player.isHomeTeam ? std::max(defenderLine, ball.position.x)
                               : std::min(defenderLine, ball.position.x);
-        target.x += attackDirection *
-                    (MatchTuning::Shape::RUN_BASE_ADVANCE +
-                     sliders.riskTaking * MatchTuning::Shape::RUN_RISK_ADVANCE);
+        target.x += pitch.atX(
+            attackDirection *
+            (MatchTuning::Shape::RUN_BASE_ADVANCE +
+             sliders.riskTaking * MatchTuning::Shape::RUN_RISK_ADVANCE));
         // Run timing is imperfect: runners hover around the line and now and
         // then drift beyond it, which is where offsides come from.
         const float timing =
@@ -894,10 +903,12 @@ void MatchEngine::refreshTacticalTargetsAardvark(float dt, bool planHome)
                 : 0.0f;
         const float onsideTarget =
             legalRunLine -
-            attackDirection * (MatchTuning::Shape::RUN_ONSIDE_BUFFER - timing);
+            pitch.atX(attackDirection *
+                      (MatchTuning::Shape::RUN_ONSIDE_BUFFER - timing));
         const float runDepthTarget =
-            onsideTarget - attackDirection * static_cast<float>(runnerSlot) *
-                               MatchTuning::Shape::SECONDARY_RUN_DEPTH_STAGGER;
+            onsideTarget -
+            pitch.atX(attackDirection * static_cast<float>(runnerSlot) *
+                      MatchTuning::Shape::SECONDARY_RUN_DEPTH_STAGGER);
         target.x += (runDepthTarget - target.x) *
                     MatchTuning::Shape::RUN_DEPTH_TARGET_PULL;
         target.x = player.isHomeTeam ? std::min(target.x, onsideTarget)
@@ -916,13 +927,13 @@ void MatchEngine::refreshTacticalTargetsAardvark(float dt, bool planHome)
           }
         }
         target.y +=
-            (channel - target.y) * MatchTuning::Shape::RUN_CHANNEL_BLEND;
+            (pitch.atY(channel) - target.y) * MatchTuning::Shape::RUN_CHANNEL_BLEND;
 
         // Only a runner caught clearly beyond the line checks back; one who
         // is marginally off relies on his timing (and sometimes gets caught).
         if (isOffside(player, player.isHomeTeam, defenderLine,
                       MatchTuning::Passing::RUN_TIMING_GAMBLE * 0.75f))
-          target.x -= attackDirection * MatchTuning::Shape::ONSIDE_RECOVERY;
+          target.x -= pitch.atX(attackDirection * MatchTuning::Shape::ONSIDE_RECOVERY);
       }
       else
       {
@@ -946,24 +957,24 @@ void MatchEngine::refreshTacticalTargetsAardvark(float dt, bool planHome)
           const bool farPost = &player == farPostRunner;
           const float goalX = player.isHomeTeam ? 1.0f : 0.0f;
           const float ballSide =
-              carrier->position.y < MatchTuning::Pitch::CENTRE ? -1.0f : 1.0f;
-          const float arrivalX =
+              carrier->position.y < centreY ? -1.0f : 1.0f;
+          const float arrivalX = pitch.atX(
               goalX - attackDirection * (farPost ? S::FAR_POST_ARRIVAL_DEPTH
-                                                 : S::MIDFIELD_ARRIVAL_DEPTH);
+                                                 : S::MIDFIELD_ARRIVAL_DEPTH));
           const float onside =
               lineFor(player.isHomeTeam) -
-              attackDirection * MatchTuning::Shape::RUN_ONSIDE_BUFFER;
+              pitch.atX(attackDirection * MatchTuning::Shape::RUN_ONSIDE_BUFFER);
           target.x = player.isHomeTeam ? std::min(arrivalX, onside)
                                        : std::max(arrivalX, onside);
-          target.y = MatchTuning::Pitch::CENTRE -
-                     ballSide * (farPost ? S::FAR_POST_ARRIVAL_WIDTH
-                                         : S::MIDFIELD_ARRIVAL_WIDTH);
+          target.y = pitch.atY(MatchTuning::Pitch::CENTRE -
+                               ballSide * (farPost ? S::FAR_POST_ARRIVAL_WIDTH
+                                                   : S::MIDFIELD_ARRIVAL_WIDTH));
         }
         else if (&player == overlappingFullback)
         {
           player.intent = PlayerIntent::OVERLAP;
-          target.x += attackDirection *
-                      MatchTuning::Shape::FINAL_THIRD_FULLBACK_OVERLAP;
+          target.x += pitch.atX(attackDirection *
+                                MatchTuning::Shape::FINAL_THIRD_FULLBACK_OVERLAP);
         }
         else if (supportPosition != supporters.end())
         {
@@ -992,12 +1003,12 @@ void MatchEngine::refreshTacticalTargetsAardvark(float dt, bool planHome)
           }
 
           target = carrier->position;
-          target.x -= attackDirection * supportDepth;
-          target.y += supportSide * supportWidth;
+          target.x -= pitch.atX(attackDirection * supportDepth);
+          target.y += pitch.atY(supportSide * supportWidth);
           if (teamPhase == TeamPhase::ATTACKING_TRANSITION)
           {
-            target.x += attackDirection *
-                        MatchTuning::Shape::TRANSITION_SUPPORT_FORWARD_BONUS;
+            target.x += pitch.atX(attackDirection *
+                                  MatchTuning::Shape::TRANSITION_SUPPORT_FORWARD_BONUS);
           }
         }
         else if (forward)
@@ -1008,13 +1019,13 @@ void MatchEngine::refreshTacticalTargetsAardvark(float dt, bool planHome)
           // a marker.
           target.x =
               carrier->position.x -
-              attackDirection * MatchTuning::Shape::FORWARD_SHORT_OPTION_DEPTH;
+              pitch.atX(attackDirection * MatchTuning::Shape::FORWARD_SHORT_OPTION_DEPTH);
           const float lateralDirection =
               player.basePosition.y <= carrier->position.y ? -1.0f : 1.0f;
           target.y =
               carrier->position.y +
-              lateralDirection *
-                  MatchTuning::Shape::FORWARD_SHORT_OPTION_LATERAL_SEPARATION;
+              pitch.atY(lateralDirection *
+                        MatchTuning::Shape::FORWARD_SHORT_OPTION_LATERAL_SEPARATION);
         }
         if (distance(target, carrier->position) >
             MatchTuning::Shape::MAX_SUPPORT_DISTANCE_METRES)
@@ -1039,7 +1050,7 @@ void MatchEngine::refreshTacticalTargetsAardvark(float dt, bool planHome)
                  MatchTuning::Shape::PRESSING_STANDOFF_CAUTIOUS_BONUS) *
             pressStandOffShareAardvark(player, *carrier);
         target = pressurePosition;
-        target.x -= attackDirection * standOff;
+        target.x -= pitch.atX(attackDirection * standOff);
         target.y += weakFootShadeAardvark(*carrier);
       }
       else if (const auto doubling =
@@ -1067,8 +1078,7 @@ void MatchEngine::refreshTacticalTargetsAardvark(float dt, bool planHome)
           target.y = pressurePosition.y +
                      (coverOutlet->position.y - pressurePosition.y) *
                          MatchTuning::Shape::COVER_LANE_INTERCEPTION_POINT;
-          target.x -=
-              attackDirection * MatchTuning::Shape::COVER_LANE_GOAL_SIDE_OFFSET;
+          target.x -= pitch.atX(attackDirection * MatchTuning::Shape::COVER_LANE_GOAL_SIDE_OFFSET);
         }
         else
         {
@@ -1076,10 +1086,10 @@ void MatchEngine::refreshTacticalTargetsAardvark(float dt, bool planHome)
           const float lateralSide =
               player.position.y <= pressurePosition.y ? -1.0f : 1.0f;
           target.x = pressurePosition.x -
-                     attackDirection * MatchTuning::Shape::COVER_FALLBACK_DEPTH;
+                     pitch.atX(attackDirection * MatchTuning::Shape::COVER_FALLBACK_DEPTH);
           target.y =
               pressurePosition.y +
-              lateralSide * MatchTuning::Shape::COVER_FALLBACK_LATERAL_OFFSET;
+              pitch.atY(lateralSide * MatchTuning::Shape::COVER_FALLBACK_LATERAL_OFFSET);
         }
       }
       else if (const MatchPlayer* tight = tightMarkTargetAardvark(player))
@@ -1095,8 +1105,7 @@ void MatchEngine::refreshTacticalTargetsAardvark(float dt, bool planHome)
         // goal-side and narrows toward the danger before settling into the
         // normal defensive block.
         player.intent = PlayerIntent::RECOVER_SHAPE;
-        target.x -=
-            attackDirection * MatchTuning::Shape::DEFENSIVE_TRANSITION_RECOVERY;
+        target.x -= pitch.atX(attackDirection * MatchTuning::Shape::DEFENSIVE_TRANSITION_RECOVERY);
         target.y += (pressurePosition.y - target.y) *
                     MatchTuning::Shape::DEFENSIVE_TRANSITION_BALL_COMPACTNESS;
       }
@@ -1119,15 +1128,15 @@ void MatchEngine::refreshTacticalTargetsAardvark(float dt, bool planHome)
               sliders.compactness * MatchTuning::Shape::COMPACTNESS_MARK_WEIGHT;
           PitchPoint markPoint = mark->position;
           const float markDanger =
-              player.isHomeTeam ? 1.0f - mark->position.x : mark->position.x;
+              player.isHomeTeam ? 1.0f - pitch.fractionX(mark->position)
+                                : pitch.fractionX(mark->position);
           if (markDanger >= MatchTuning::Shape::TIGHT_MARK_DANGER_DEPTH)
           {
             // Near the own goal a marker stays tight and goal-side.
             markWeight =
                 std::max(markWeight, MatchTuning::Shape::TIGHT_MARK_WEIGHT);
-            markPoint.x -= attackDirection *
-                           MatchTuning::Shape::GOAL_SIDE_MARK_METRES /
-                           pitch.length;
+            markPoint.x -= pitch.fromMetresX(attackDirection *
+                                           MatchTuning::Shape::GOAL_SIDE_MARK_METRES);
           }
           target.x += (markPoint.x - target.x) * markWeight;
           target.y += (markPoint.y - target.y) * markWeight;
@@ -1154,7 +1163,7 @@ void MatchEngine::refreshTacticalTargetsAardvark(float dt, bool planHome)
                    MatchTuning::Player::PASS_RECEIVER_LOOKAHEAD_SECONDS});
           Vector2F meet{ball.position.x + lookahead.x,
                         ball.position.y + lookahead.y};
-          const float heightMetres = ball.z * MatchTuning::Units::BALL_Z_METRES;
+          const float heightMetres = pitch.heightMetres(ball.z);
           if (heightMetres > MatchTuning::Aerial::CONTROL_CEILING_METRES ||
               ball.velocityZ > 0.0f)
           {
@@ -1187,10 +1196,7 @@ void MatchEngine::refreshTacticalTargetsAardvark(float dt, bool planHome)
               meet = {ball.position.x + ahead.x, ball.position.y + ahead.y};
             }
           }
-          target = PitchPoint{std::clamp(meet.x, MatchTuning::Pitch::PLAYER_MIN_X,
-                               MatchTuning::Pitch::PLAYER_MAX_X),
-                    std::clamp(meet.y, MatchTuning::Pitch::PLAYER_MIN_Y,
-                               MatchTuning::Pitch::PLAYER_MAX_Y)};
+          target = PitchPoint{clampToPitchX(meet.x), clampToPitchY(meet.y)};
         }
         else
         {
@@ -1200,9 +1206,7 @@ void MatchEngine::refreshTacticalTargetsAardvark(float dt, bool planHome)
           // duration of each pass; drift gently forward and toward the ball
           // (rates per second, so a long pass does not accumulate a run).
           target = player.movementTarget;
-          target.x += attackDirection *
-                      MatchTuning::Shape::IN_FLIGHT_SUPPORT_ADVANCE_PER_SECOND *
-                      dt;
+          target.x += pitch.atX(attackDirection * MatchTuning::Shape::IN_FLIGHT_SUPPORT_ADVANCE_PER_SECOND * dt);
           target.y +=
               (ball.position.y - target.y) *
               MatchTuning::Shape::IN_FLIGHT_SUPPORT_BALL_PULL_PER_SECOND * dt;
@@ -1227,16 +1231,11 @@ void MatchEngine::refreshTacticalTargetsAardvark(float dt, bool planHome)
                      MatchTuning::Player::MAX_LOOSE_BALL_LOOKAHEAD_SECONDS);
         const PitchOffset lead = toPitchOffset({ball.velocity.x * lookaheadSeconds,
                                        ball.velocity.y * lookaheadSeconds});
-        target = PitchPoint{std::clamp(pressurePosition.x + lead.x,
-                             MatchTuning::Pitch::PLAYER_MIN_X,
-                             MatchTuning::Pitch::PLAYER_MAX_X),
-                  std::clamp(pressurePosition.y + lead.y,
-                             MatchTuning::Pitch::PLAYER_MIN_Y,
-                             MatchTuning::Pitch::PLAYER_MAX_Y)};
+        target = PitchPoint{clampToPitchX(pressurePosition.x + lead.x),
+                            clampToPitchY(pressurePosition.y + lead.y)};
         if (pressers[1] == &player)
         {
-          target.x -=
-              attackDirection * MatchTuning::Player::COVER_LOOSE_BALL_OFFSET;
+          target.x -= pitch.atX(attackDirection * MatchTuning::Player::COVER_LOOSE_BALL_OFFSET);
         }
       }
       else if (getPossessionState().isPass || getPossessionState().isShot)
@@ -1254,8 +1253,7 @@ void MatchEngine::refreshTacticalTargetsAardvark(float dt, bool planHome)
         else if (teamPhase == TeamPhase::DEFENSIVE_TRANSITION)
         {
           player.intent = PlayerIntent::RECOVER_SHAPE;
-          target.x -= attackDirection *
-                      MatchTuning::Shape::DEFENSIVE_TRANSITION_RECOVERY;
+          target.x -= pitch.atX(attackDirection * MatchTuning::Shape::DEFENSIVE_TRANSITION_RECOVERY);
           target.y += (pressurePosition.y - target.y) *
                       MatchTuning::Shape::DEFENSIVE_TRANSITION_BALL_COMPACTNESS;
         }
@@ -1276,24 +1274,19 @@ void MatchEngine::refreshTacticalTargetsAardvark(float dt, bool planHome)
           player.intent = transitionRunner ? PlayerIntent::RUN_IN_BEHIND
                                            : PlayerIntent::OFFER_SUPPORT;
           player.isMakingRun = transitionRunner;
-          target.x +=
-              attackDirection *
-              (transitionRunner
-                   ? MatchTuning::Shape::ATTACKING_TRANSITION_RUN_ADVANCE
-                   : MatchTuning::Shape::ATTACKING_TRANSITION_SUPPORT_ADVANCE);
+          target.x += pitch.atX(attackDirection * (transitionRunner ? MatchTuning::Shape::ATTACKING_TRANSITION_RUN_ADVANCE : MatchTuning::Shape::ATTACKING_TRANSITION_SUPPORT_ADVANCE));
           target.y += (pressurePosition.y - target.y) *
                       MatchTuning::Shape::ATTACKING_TRANSITION_BALL_PULL;
           if (transitionRunner &&
               isOffside(player, player.isHomeTeam, lineFor(player.isHomeTeam)))
           {
-            target.x -= attackDirection * MatchTuning::Shape::ONSIDE_RECOVERY;
+            target.x -= pitch.atX(attackDirection * MatchTuning::Shape::ONSIDE_RECOVERY);
           }
         }
         else
         {
           player.intent = PlayerIntent::RECOVER_SHAPE;
-          target.x -= attackDirection *
-                      MatchTuning::Shape::DEFENSIVE_TRANSITION_RECOVERY;
+          target.x -= pitch.atX(attackDirection * MatchTuning::Shape::DEFENSIVE_TRANSITION_RECOVERY);
         }
       }
     }
@@ -1335,8 +1328,9 @@ bool MatchEngine::cutsInsideAardvark(const MatchPlayer& player) const
   const PlayerRole role = player.player->getRole();
   const bool wideForward = role == PlayerRole::LM || role == PlayerRole::RM ||
                            role == PlayerRole::LW || role == PlayerRole::RW;
-  const float depth =
-      player.isHomeTeam ? player.position.x : 1.0f - player.position.x;
+  const float depth = player.isHomeTeam
+                          ? pitch.fractionX(player.position)
+                          : 1.0f - pitch.fractionX(player.position);
   // An inside forward always looks to come inside, a touchline winger
   // never does, whatever his natural position.
   const float roleCut = roleProfileOf(player).cutInside;
@@ -1372,7 +1366,8 @@ bool MatchEngine::cutsInsideAardvark(const MatchPlayer& player) const
     return player.basePosition;
   using Pitch = MatchTuning::Pitch;
   const float direction = player.isHomeTeam ? 1.0f : -1.0f;
-  const float lateral = player.basePosition.y - Pitch::CENTRE;
+  const float lateral =
+      pitch.fractionY(player.basePosition.y - pitch.atY(Pitch::CENTRE));
   // Width pushes toward his own touchline; a central player has none.
   const float flank = std::abs(lateral) < 0.05f ? 0.0f
                       : lateral > 0.0f          ? 1.0f
@@ -1380,20 +1375,18 @@ bool MatchEngine::cutsInsideAardvark(const MatchPlayer& player) const
   PitchPoint anchor = player.basePosition;
   anchor.x += direction *
               (tactic.possessionOffset.x +
-               tactic.profile.possessionAdvanceMetres / pitch.length);
+               pitch.fromMetresX(tactic.profile.possessionAdvanceMetres));
   anchor.y +=
       tactic.possessionOffset.y +
-      flank * tactic.profile.possessionWidthMetres / pitch.width;
-  return PitchPoint{std::clamp(anchor.x, Pitch::PLAYER_MIN_X, Pitch::PLAYER_MAX_X),
-          std::clamp(anchor.y, Pitch::PLAYER_MIN_Y, Pitch::PLAYER_MAX_Y)};
+      pitch.fromMetresY(flank * tactic.profile.possessionWidthMetres);
+  return PitchPoint{clampToPitchX(anchor.x), clampToPitchY(anchor.y)};
 }
 
 [[gnu::always_inline]] inline float MatchEngine::defensiveRoleShiftAardvark(
     const MatchPlayer& player) const
 {
-  return (player.isHomeTeam ? 1.0f : -1.0f) *
-         roleProfileOf(player).defensiveAdvanceMetres /
-         pitch.length;
+  return pitch.fromMetresX((player.isHomeTeam ? 1.0f : -1.0f) *
+                          roleProfileOf(player).defensiveAdvanceMetres);
 }
 
 [[gnu::always_inline]] inline const MatchPlayer*
@@ -1416,8 +1409,7 @@ PitchPoint MatchEngine::tightMarkPointAardvark(const MatchPlayer& marker,
   namespace T = TacticsTuning;
   const float direction = marker.isHomeTeam ? 1.0f : -1.0f;
   const Vector2F point{
-      target.position.x - direction * T::TIGHT_MARK_GOAL_SIDE_METRES /
-                              pitch.length,
+      target.position.x - pitch.fromMetresX(direction * T::TIGHT_MARK_GOAL_SIDE_METRES),
       target.position.y};
   return PitchPoint{current.x + (point.x - current.x) * T::TIGHT_MARK_WEIGHT,
           current.y + (point.y - current.y) * T::TIGHT_MARK_WEIGHT};
@@ -1499,8 +1491,7 @@ float MatchEngine::weakFootShadeAardvark(const MatchPlayer& carrier) const
   const float strongSide =
       (carrier.player->getFoot() == Foot::Right ? 1.0f : -1.0f) *
       (carrier.isHomeTeam ? 1.0f : -1.0f);
-  return strongSide * TacticsTuning::WEAK_FOOT_SHADE_METRES /
-         pitch.width;
+  return pitch.fromMetresY(strongSide * TacticsTuning::WEAK_FOOT_SHADE_METRES);
 }
 
 std::optional<PitchPoint> MatchEngine::doubleUpPointAardvark(
@@ -1519,14 +1510,8 @@ std::optional<PitchPoint> MatchEngine::doubleUpPointAardvark(
   const float direction = helper.isHomeTeam ? 1.0f : -1.0f;
   const float reach = TacticsTuning::DOUBLE_UP_SUPPORT_METRES;
   return PitchPoint{
-      std::clamp(carrier.position.x - direction * reach * 0.5f /
-                                          pitch.length,
-                 MatchTuning::Pitch::PLAYER_MIN_X,
-                 MatchTuning::Pitch::PLAYER_MAX_X),
-      std::clamp(carrier.position.y +
-                     lateral * reach / pitch.width,
-                 MatchTuning::Pitch::PLAYER_MIN_Y,
-                 MatchTuning::Pitch::PLAYER_MAX_Y)};
+      clampToPitchX(carrier.position.x - pitch.fromMetresX(direction * reach * 0.5f)),
+      clampToPitchY(carrier.position.y + pitch.fromMetresY(lateral * reach))};
 }
 
 void MatchEngine::assignMarksAardvark(bool home)
@@ -1538,8 +1523,9 @@ void MatchEngine::assignMarksAardvark(bool home)
        slot < players.size() && slot < markAssignments.size(); ++slot)
     if (players[slot].isHomeTeam == home) markAssignments[slot] = -1;
   const auto score =
-      [](bool markerHome, PitchPoint base, float opponentX, float opponentY)
+      [](bool markerHome, Vector2F base, float opponentX, float opponentY)
   {
+    // All in fractions of the pitch.
     const float dangerDepth = markerHome ? 1.0f - opponentX : opponentX;
     return std::abs(opponentY - base.y) * MatchTuning::Shape::CHANNEL_WEIGHT +
            std::abs(opponentX - base.x) -
@@ -1564,13 +1550,13 @@ void MatchEngine::assignMarksAardvark(bool home)
     std::array<float, 16> opponentY{};
     for (std::size_t o = 0; o < opponentCount; ++o)
     {
-      opponentX[o] = players[opponents[o]].position.x;
-      opponentY[o] = players[opponents[o]].position.y;
+      opponentX[o] = pitch.fractionX(players[opponents[o]].position);
+      opponentY[o] = pitch.fractionY(players[opponents[o]].position);
     }
     for (std::size_t m = 0; m < markerCount; ++m)
     {
       const MatchPlayer& marker = players[markers[m]];
-      const PitchPoint base = marker.basePosition;
+      const Vector2F base = pitch.fractions(marker.basePosition);
       for (std::size_t o = 0; o < opponentCount; ++o)
         scores[m * 16 + o] =
             score(marker.isHomeTeam, base, opponentX[o], opponentY[o]);
@@ -1637,14 +1623,12 @@ void MatchEngine::updateRestartSupportAardvark(MatchPlayer& player,
     if (gap < MatchTuning::Timing::RESTART_SUPPORT_DISTANCE_METRES)
     {
       // Offer a lane inside the pitch, with teammates spread along it.
-      player.movementTarget.x = std::clamp(
+      player.movementTarget.x = clampToPitchX(
           ball.position.x + (player.basePosition.x - ball.position.x) *
-                                MatchTuning::Timing::RESTART_SUPPORT_BLEND,
-          MatchTuning::Pitch::PLAYER_MIN_X, MatchTuning::Pitch::PLAYER_MAX_X);
-      player.movementTarget.y = std::clamp(
+                                MatchTuning::Timing::RESTART_SUPPORT_BLEND);
+      player.movementTarget.y = clampToPitchY(
           ball.position.y + (player.basePosition.y - ball.position.y) *
-                                MatchTuning::Timing::RESTART_SUPPORT_BLEND,
-          MatchTuning::Pitch::PLAYER_MIN_Y, MatchTuning::Pitch::PLAYER_MAX_Y);
+                                MatchTuning::Timing::RESTART_SUPPORT_BLEND);
     }
   }
   else if (taker)
@@ -1685,7 +1669,8 @@ MatchEngine::Challenge MatchEngine::chooseChallengeAardvark(
   const float ballDistance = distance(defender->position, ball.position);
   if (ballDistance >= D::SLIDE_TACKLE_DISTANCE_METRES) return challenge;
   const float carrierDepth =
-      carrier.isHomeTeam ? carrier.position.x : 1.0f - carrier.position.x;
+      carrier.isHomeTeam ? pitch.fractionX(carrier.position)
+                           : 1.0f - pitch.fractionX(carrier.position);
   const float engageRate =
       D::ENGAGE_RATE_PER_SECOND *
       (1.0f + getEffectiveSliders(defender->isHomeTeam).pressing *
@@ -1833,10 +1818,11 @@ MatchEngine::BallAction MatchEngine::chooseBallActionAardvark(
             candidate.receiver == option->receiver->player->getId())
           passTerms->terms = candidate.utility.terms;
     const float carrierDepth =
-        carrier.isHomeTeam ? carrier.position.x : 1.0f - carrier.position.x;
+        carrier.isHomeTeam ? pitch.fractionX(carrier.position)
+                           : 1.0f - pitch.fractionX(carrier.position);
     const bool pinnedToByline =
         carrierDepth >= MatchTuning::Rules::HOME_FINAL_THIRD_START &&
-        std::abs(MatchTuning::Pitch::CENTRE - carrier.position.y) >=
+        std::abs(MatchTuning::Pitch::CENTRE - pitch.fractionY(carrier.position)) >=
             MatchTuning::Decision::WIDE_SHOT_WIDTH_DEVIATION;
     if (pinnedToByline && option->targetPoint.x <= carrier.position.x)
     {
@@ -1857,7 +1843,8 @@ MatchEngine::BallAction MatchEngine::chooseBallActionAardvark(
                        MatchTuning::Decision::SHOT_ELIGIBILITY_RANGE,
                    0.0f, 1.0f);
     const float carrierDepth =
-        carrier.isHomeTeam ? carrier.position.x : 1.0f - carrier.position.x;
+        carrier.isHomeTeam ? pitch.fractionX(carrier.position)
+                           : 1.0f - pitch.fractionX(carrier.position);
     const float finalThirdBonus =
         carrierDepth >= MatchTuning::Rules::HOME_FINAL_THIRD_START
             ? MatchTuning::Decision::FINAL_THIRD_SHOT_BONUS
@@ -1885,7 +1872,7 @@ MatchEngine::BallAction MatchEngine::chooseBallActionAardvark(
     note(shotTerms, "touchline shout", TermSource::MORALE,
          shoutShotBiasAardvark(carrier.isHomeTeam) * rangeEligibility);
     if (carrierDepth >= MatchTuning::Rules::HOME_FINAL_THIRD_START &&
-        std::abs(MatchTuning::Pitch::CENTRE - carrier.position.y) >=
+        std::abs(MatchTuning::Pitch::CENTRE - pitch.fractionY(carrier.position)) >=
             MatchTuning::Decision::WIDE_SHOT_WIDTH_DEVIATION)
     {
       note(shotTerms, "wide-angle discount", TermSource::LOCATION,
@@ -2016,7 +2003,8 @@ MatchEngine::BallAction MatchEngine::chooseBallActionAardvark(
   {
     // The same comparisons as the branches below, in the same order.
     const float ownThird =
-        carrier.isHomeTeam ? carrier.position.x : 1.0f - carrier.position.x;
+        carrier.isHomeTeam ? pitch.fractionX(carrier.position)
+                           : 1.0f - pitch.fractionX(carrier.position);
     const auto winner =
         [ownThird](float pass, float shot, float carry, float shield)
     {
@@ -2102,7 +2090,8 @@ MatchEngine::BallAction MatchEngine::chooseBallActionAardvark(
     return action;
   }
   const float ownDepth =
-      carrier.isHomeTeam ? carrier.position.x : 1.0f - carrier.position.x;
+      carrier.isHomeTeam ? pitch.fractionX(carrier.position)
+                           : 1.0f - pitch.fractionX(carrier.position);
   if (shieldScore >= passScore &&
       ownDepth < MatchTuning::Defending::CLEARANCE_MAX_DEPTH)
   {
@@ -2149,7 +2138,7 @@ MatchEngine::PassOption MatchEngine::evaluatePassOptionAardvark(
   const float direction = passer.isHomeTeam ? 1.0f : -1.0f;
   const float passDistance = distance(passer.position, receiver.position);
   const float progression =
-      (receiver.position.x - passer.position.x) * direction;
+      pitch.fractionX(receiver.position.x - passer.position.x) * direction;
   const float openness =
       std::clamp(nearestOpponentDistance(receiver) /
                      MatchTuning::Passing::OPENNESS_RADIUS_METRES,
@@ -2165,15 +2154,17 @@ MatchEngine::PassOption MatchEngine::evaluatePassOptionAardvark(
   const bool forwardRole = role == PlayerRole::ST || role == PlayerRole::LW ||
                            role == PlayerRole::RW || role == PlayerRole::CAM;
   const float passerDepth =
-      passer.isHomeTeam ? passer.position.x : 1.0f - passer.position.x;
+      passer.isHomeTeam ? pitch.fractionX(passer.position)
+                        : 1.0f - pitch.fractionX(passer.position);
   const float receiverDepth =
-      receiver.isHomeTeam ? receiver.position.x : 1.0f - receiver.position.x;
+      receiver.isHomeTeam ? pitch.fractionX(receiver.position)
+                          : 1.0f - pitch.fractionX(receiver.position);
   const bool widePasser =
-      passer.position.y <= MatchTuning::Passing::WIDE_ATTACK_MINIMUM_Y ||
-      passer.position.y >= MatchTuning::Passing::WIDE_ATTACK_MAXIMUM_Y;
+      pitch.fractionY(passer.position) <= MatchTuning::Passing::WIDE_ATTACK_MINIMUM_Y ||
+      pitch.fractionY(passer.position) >= MatchTuning::Passing::WIDE_ATTACK_MAXIMUM_Y;
   const bool centralReceiver =
-      receiver.position.y >= MatchTuning::Passing::CENTRAL_TARGET_MINIMUM_Y &&
-      receiver.position.y <= MatchTuning::Passing::CENTRAL_TARGET_MAXIMUM_Y;
+      pitch.fractionY(receiver.position) >= MatchTuning::Passing::CENTRAL_TARGET_MINIMUM_Y &&
+      pitch.fractionY(receiver.position) <= MatchTuning::Passing::CENTRAL_TARGET_MAXIMUM_Y;
   const bool cutbackOption =
       widePasser && centralReceiver &&
       passerDepth >= MatchTuning::Passing::CUTBACK_MINIMUM_PASSER_DEPTH &&
@@ -2194,8 +2185,8 @@ MatchEngine::PassOption MatchEngine::evaluatePassOptionAardvark(
   if (receiver.isMakingRun && progression > 0.0f)
   {
     const float line = offsideLine(passer.isHomeTeam);
-    const float spaceBehind = (passer.isHomeTeam ? 1.0f - line : line) *
-                              pitch.length;
+    const float spaceBehind =
+        pitch.metresX(passer.isHomeTeam ? pitch.atX(1.0f) - line : line);
     spaceBehindShare = std::clamp(
         (spaceBehind - MatchTuning::Passing::SPACE_BEHIND_MIN_METRES) /
             MatchTuning::Passing::SPACE_BEHIND_RANGE_METRES,
@@ -2267,7 +2258,7 @@ MatchEngine::PassOption MatchEngine::evaluatePassOptionAardvark(
   {
     intent = PassIntent::PRESSURE_RELEASE;
   }
-  else if (std::abs(receiver.position.y - passer.position.y) >=
+  else if (pitch.fractionY(std::abs(receiver.position.y - passer.position.y)) >=
            MatchTuning::Passing::SWITCH_PLAY_MINIMUM_WIDTH)
   {
     intent = PassIntent::SWITCH_PLAY;
@@ -2290,19 +2281,17 @@ MatchEngine::PassOption MatchEngine::evaluatePassOptionAardvark(
                    MatchTuning::Passing::RECEIVER_LEAD_SCALE,
                receiver.velocity.y * flightEstimate *
                    MatchTuning::Passing::RECEIVER_LEAD_SCALE});
-  PitchPoint target{std::clamp(receiver.position.x + lead.x, 0.0f, 1.0f),
-                  std::clamp(receiver.position.y + lead.y, 0.0f, 1.0f)};
+  PitchPoint target{std::clamp(receiver.position.x + lead.x, 0.0f, pitch.atX(1.0f)),
+                    std::clamp(receiver.position.y + lead.y, 0.0f, pitch.atY(1.0f))};
   if (intent == PassIntent::THROUGH_BALL)
   {
     target.x += (receiver.movementTarget.x - target.x) *
                 MatchTuning::Passing::THROUGH_BALL_TARGET_BLEND;
     target.y += (receiver.movementTarget.y - target.y) *
                 MatchTuning::Passing::THROUGH_BALL_TARGET_BLEND;
-    target.x += direction * MatchTuning::Passing::THROUGH_BALL_FORWARD_LEAD;
-    target.x = std::clamp(target.x, MatchTuning::Pitch::PLAYER_MIN_X,
-                          MatchTuning::Pitch::PLAYER_MAX_X);
-    target.y = std::clamp(target.y, MatchTuning::Pitch::PLAYER_MIN_Y,
-                          MatchTuning::Pitch::PLAYER_MAX_Y);
+    target.x += pitch.atX(direction * MatchTuning::Passing::THROUGH_BALL_FORWARD_LEAD);
+    target.x = clampToPitchX(target.x);
+    target.y = clampToPitchY(target.y);
   }
   else if (intent == PassIntent::CROSS)
   {
@@ -2556,8 +2545,8 @@ MatchEngine::ShotAim MatchEngine::chooseShotAimAardvark(
   constexpr float HALF_GOAL = MatchTuning::Shooting::GOAL_HALF_WIDTH_METRES;
   const MatchPlayer* keeper = findGoalkeeper(!shooter.isHomeTeam);
   const float keeperOffset =
-      keeper ? (keeper->position.y - MatchTuning::Pitch::CENTRE) *
-                   pitch.width
+      keeper ? pitch.metresY(keeper->position.y -
+                              pitch.atY(MatchTuning::Pitch::CENTRE))
              : 0.0f;
   float side = keeperOffset > 0.0f ? -1.0f : 1.0f;
   if (std::abs(keeperOffset) < MatchTuning::Shooting::KEEPER_CENTRED_METRES ||
@@ -2603,7 +2592,8 @@ float MatchEngine::choosePenaltyGuessAardvark(const MatchPlayer& keeper)
 {
   // He picks a side, and a good keeper reads the taker a little more often.
   const float shotSide =
-      getPossessionState().shotTargetY < MatchTuning::Pitch::CENTRE ? -1.0f : 1.0f;
+      getPossessionState().shotTargetY < pitch.atY(MatchTuning::Pitch::CENTRE) ? -1.0f
+                                                                             : 1.0f;
   float guess = randomFloat(0.0f, 1.0f) < 0.5f ? -1.0f : 1.0f;
   if (randomFloat(0.0f, 1.0f) <
       MatchTuning::Goalkeeper::PENALTY_READ_BASE +
@@ -2631,9 +2621,10 @@ PitchPoint MatchEngine::goalkeeperTargetAardvark(MatchPlayer& keeper,
   control.timer += stepSeconds();
   const float goalX = keeper.isHomeTeam ? 0.0f : 1.0f;
   const float outward = keeper.isHomeTeam ? 1.0f : -1.0f;
-  const PitchPoint goalCentre{goalX, MatchTuning::Pitch::CENTRE};
-  const float ballDepth =
-      keeper.isHomeTeam ? ball.position.x : 1.0f - ball.position.x;
+  const PitchPoint goalCentre = pitch.at(goalX, MatchTuning::Pitch::CENTRE);
+  const float ballDepth = keeper.isHomeTeam
+                              ? pitch.fractionX(ball.position)
+                              : 1.0f - pitch.fractionX(ball.position);
 
   if (getPossessionAttachment() == keeper.player)
   {
@@ -2658,7 +2649,7 @@ PitchPoint MatchEngine::goalkeeperTargetAardvark(MatchPlayer& keeper,
     // Anticipate high flight, then close on the ball itself once it drops
     // within handling height. Continuing to lead a low cross keeps the
     // keeper several metres ahead of it and prevents a physical catch.
-    const float height = ball.z * MatchTuning::Units::BALL_Z_METRES;
+    const float height = pitch.heightMetres(ball.z);
     const float lookahead =
         height > MatchRules::goalkeeperReachMetres(keeper.heightMetres,
                                                    keeper.goalkeeping)
@@ -2760,18 +2751,15 @@ PitchPoint MatchEngine::goalkeeperTargetAardvark(MatchPlayer& keeper,
   depthMetres = std::clamp(
       depthMetres + keeperDepth * std::min(1.0f, threatMetres / 40.0f), 0.5f,
       MatchTuning::Goalkeeper::MAX_DEPTH_METRES + std::max(0.0f, keeperDepth));
-  const float dxMetres =
-      (threat.x - goalCentre.x) * pitch.length;
-  const float dyMetres =
-      (threat.y - goalCentre.y) * pitch.width;
+  const float dxMetres = pitch.metresX(threat.x - goalCentre.x);
+  const float dyMetres = pitch.metresY(threat.y - goalCentre.y);
   const float norm =
       std::max(std::sqrt(dxMetres * dxMetres + dyMetres * dyMetres), EPSILON);
-  return PitchPoint{goalCentre.x +
-              dxMetres / norm * depthMetres / pitch.length,
-          std::clamp(goalCentre.y + dyMetres / norm * depthMetres /
-                                        pitch.width,
-                     MatchTuning::Pitch::GOALKEEPER_MIN_Y,
-                     MatchTuning::Pitch::GOALKEEPER_MAX_Y)};
+  return PitchPoint{
+      goalCentre.x + pitch.fromMetresX(dxMetres / norm * depthMetres),
+      std::clamp(goalCentre.y + pitch.fromMetresY(dyMetres / norm * depthMetres),
+                 pitch.atY(MatchTuning::Pitch::GOALKEEPER_MIN_Y),
+                 pitch.atY(MatchTuning::Pitch::GOALKEEPER_MAX_Y))};
 }
 
 bool MatchEngine::choosesToBlockAardvark(const MatchPlayer& /*player*/)
@@ -2784,7 +2772,7 @@ bool MatchEngine::choosesToPutBlockBehindAardvark(const MatchPlayer& player)
 {
   // Deep in his own half a blocker knocks the loose ball out of play.
   const float ownDepth =
-      player.isHomeTeam ? player.position.x : 1.0f - player.position.x;
+      player.isHomeTeam ? pitch.fractionX(player.position) : 1.0f - pitch.fractionX(player.position);
   return ownDepth < MatchTuning::SetPiece::BLOCK_BEHIND_DEPTH &&
          randomFloat(0.0f, 1.0f) < MatchTuning::SetPiece::BLOCK_BEHIND_CHANCE;
 }
@@ -2803,12 +2791,12 @@ PitchPoint MatchEngine::chooseClearBehindTargetAardvark(
   // Over the own goal line, wide of the posts on his side.
   const float goalX = defender.isHomeTeam ? 0.0f : 1.0f;
   const float side =
-      defender.position.y < MatchTuning::Pitch::CENTRE ? -1.0f : 1.0f;
-  return PitchPoint{goalX + (defender.isHomeTeam ? -0.02f : 0.02f),
-          MatchTuning::Pitch::CENTRE +
-              side * randomFloat(MatchTuning::Pitch::GOAL_BOTTOM -
-                                     MatchTuning::Pitch::CENTRE + 0.06f,
-                                 0.45f)};
+      defender.position.y < pitch.atY(MatchTuning::Pitch::CENTRE) ? -1.0f : 1.0f;
+  return pitch.at(goalX + (defender.isHomeTeam ? -0.02f : 0.02f),
+                  MatchTuning::Pitch::CENTRE +
+                      side * randomFloat(MatchTuning::Pitch::GOAL_BOTTOM -
+                                             MatchTuning::Pitch::CENTRE + 0.06f,
+                                         0.45f));
 }
 
 MatchEngine::ClearanceAim MatchEngine::chooseClearanceAimAardvark(
@@ -2817,7 +2805,7 @@ MatchEngine::ClearanceAim MatchEngine::chooseClearanceAimAardvark(
   // A long, high clearance upfield and towards the nearer touchline.
   const float forward = defender.isHomeTeam ? 1.0f : -1.0f;
   const float touchline =
-      defender.position.y < MatchTuning::Pitch::CENTRE ? -1.0f : 1.0f;
+      defender.position.y < pitch.atY(MatchTuning::Pitch::CENTRE) ? -1.0f : 1.0f;
   ClearanceAim aim;
   aim.metres =
       randomFloat(MatchTuning::Defending::CLEARANCE_MIN_DISTANCE_METRES,
@@ -2834,12 +2822,13 @@ MatchEngine::ClearanceAim MatchEngine::chooseClearanceAimAardvark(
 MatchEngine::HeaderAttempt MatchEngine::chooseHeaderAttemptAardvark(
     const MatchPlayer& header, bool fromTeammate)
 {
-  const float depth =
-      header.isHomeTeam ? header.position.x : 1.0f - header.position.x;
+  const float depth = header.isHomeTeam
+                          ? pitch.fractionX(header.position)
+                          : 1.0f - pitch.fractionX(header.position);
   // A header at goal needs a real chance; from further out the ball is
   // nodded down for a team-mate instead.
   if (fromTeammate && depth >= MatchTuning::Aerial::HEADER_SHOT_MIN_DEPTH &&
-      std::abs(header.position.y - MatchTuning::Pitch::CENTRE) <=
+      std::abs(pitch.fractionY(header.position) - MatchTuning::Pitch::CENTRE) <=
           MatchTuning::Aerial::HEADER_SHOT_WIDTH &&
       estimateShotXG(header) * MatchTuning::Shooting::HEADER_XG_FACTOR >=
           MatchTuning::Aerial::HEADER_SHOT_MIN_XG)
@@ -2854,8 +2843,9 @@ MatchEngine::HeaderPlay MatchEngine::chooseHeaderPlayAardvark(
     const MatchPlayer& header, bool fromTeammate)
 {
   const float attackDirection = header.isHomeTeam ? 1.0f : -1.0f;
-  const float ownDepth =
-      header.isHomeTeam ? 1.0f - header.position.x : header.position.x;
+  const float ownDepth = header.isHomeTeam
+                             ? 1.0f - pitch.fractionX(header.position)
+                             : pitch.fractionX(header.position);
   HeaderPlay play;
   // Near his own goal a defender often plays safe and heads it behind.
   if (!fromTeammate &&
@@ -2869,7 +2859,7 @@ MatchEngine::HeaderPlay MatchEngine::chooseHeaderPlayAardvark(
   {
     // Defensive header: clear the danger, upfield and away from the middle.
     const float wide =
-        header.position.y < MatchTuning::Pitch::CENTRE ? -1.0f : 1.0f;
+        header.position.y < pitch.atY(MatchTuning::Pitch::CENTRE) ? -1.0f : 1.0f;
     const Vector2F direction =
         normalized({attackDirection * randomFloat(0.5f, 1.0f),
                     wide * randomFloat(0.1f, 0.8f)});
@@ -2886,8 +2876,7 @@ MatchEngine::HeaderPlay MatchEngine::chooseHeaderPlayAardvark(
     if (!active(other) || &other == &header ||
         other.isHomeTeam != header.isHomeTeam || other.isGoalkeeper)
       continue;
-    if ((other.position.x - header.position.x) * attackDirection *
-            pitch.length <
+    if (pitch.metresX((other.position.x - header.position.x) * attackDirection) <
         -MatchTuning::Aerial::KNOCK_DOWN_MAX_BACKWARD_METRES)
       continue;
     const float d = distance(other.position, header.position);
@@ -2899,8 +2888,8 @@ MatchEngine::HeaderPlay MatchEngine::chooseHeaderPlayAardvark(
   }
   play.kind = HeaderPlay::Kind::KNOCK_DOWN;
   play.aim = play.target ? play.target->position
-                         : PitchPoint{header.position.x + attackDirection * 0.1f,
-                                    header.position.y};
+                         : PitchPoint{header.position.x + pitch.atX(attackDirection * 0.1f),
+                                      header.position.y};
   return play;
 }
 
@@ -2962,13 +2951,13 @@ MatchEngine::SetPieceAttackers MatchEngine::arrangeSetPieceAttackAardvark(
   const float goalX = attackingHome ? 1.0f : 0.0f;
   const float inward = attackingHome ? -1.0f : 1.0f;
   const float ballSide =
-      ballPosition.y < MatchTuning::Pitch::CENTRE ? -1.0f : 1.0f;
+      ballPosition.y < pitch.atY(MatchTuning::Pitch::CENTRE) ? -1.0f : 1.0f;
   const auto spot = [&](float depthMetres, float lateralMetres)
   {
     return PitchPoint{
-        goalX + inward * depthMetres / pitch.length,
-        MatchTuning::Pitch::CENTRE +
-            ballSide * lateralMetres / pitch.width};
+        pitch.atX(goalX) + pitch.fromMetresX(inward * depthMetres),
+        pitch.atY(MatchTuning::Pitch::CENTRE) +
+            pitch.fromMetresY(ballSide * lateralMetres)};
   };
   const std::array<PitchPoint, 5> attackSlots = {
       spot(5.5f, 3.0f), spot(6.5f, -3.5f), spot(10.5f, 0.0f), spot(8.0f, 1.0f),
@@ -3043,13 +3032,13 @@ void MatchEngine::arrangeSetPieceDefenceAardvark(
   const float goalX = defendingHome ? 0.0f : 1.0f;
   const float inward = defendingHome ? 1.0f : -1.0f;
   const float ballSide =
-      ballPosition.y < MatchTuning::Pitch::CENTRE ? -1.0f : 1.0f;
+      ballPosition.y < pitch.atY(MatchTuning::Pitch::CENTRE) ? -1.0f : 1.0f;
   const auto spot = [&](float depthMetres, float lateralMetres)
   {
     return PitchPoint{
-        goalX + inward * depthMetres / pitch.length,
-        MatchTuning::Pitch::CENTRE +
-            ballSide * lateralMetres / pitch.width};
+        pitch.atX(goalX) + pitch.fromMetresX(inward * depthMetres),
+        pitch.atY(MatchTuning::Pitch::CENTRE) +
+            pitch.fromMetresY(ballSide * lateralMetres)};
   };
   const std::size_t boxAttackers = attackers.count;
 
@@ -3083,7 +3072,7 @@ void MatchEngine::arrangeSetPieceDefenceAardvark(
   {
     const PitchPoint mark = attackers.players[index]->movementTarget;
     defenders[next]->movementTarget = PitchPoint{
-        mark.x - inward * MatchTuning::SetPiece::MARKING_GOAL_SIDE_OFFSET,
+        mark.x - pitch.atX(inward * MatchTuning::SetPiece::MARKING_GOAL_SIDE_OFFSET),
         mark.y};
   }
   const std::array<PitchPoint, 3> zones = {spot(3.0f, 2.5f), spot(6.0f, 0.0f),
@@ -3127,7 +3116,8 @@ MatchPlayer* MatchEngine::chooseRestartTakerAardvark(MatchState restart,
     {
       // A designated long-throw specialist takes the throws in the attacking
       // third; elsewhere (and without one) the nearest player does.
-      const float attackingDepth = homeTeam ? spot.x : 1.0f - spot.x;
+      const float attackingDepth =
+          homeTeam ? pitch.fractionX(spot) : 1.0f - pitch.fractionX(spot);
       if (attackingDepth >= MatchTuning::Rules::HOME_FINAL_THIRD_START)
         if (MatchPlayer* taker =
                 dutyTakerAardvark(homeTeam, SetPieceDuty::LongThrows))
@@ -3146,12 +3136,11 @@ MatchEngine::RestartPlay MatchEngine::chooseRestartPlayAardvark(
     return chooseCornerPlayAardvark(taker);
   if (restartState == MatchState::FREE_KICK && restartIsSetPiece)
   {
-    const PitchPoint goal{taker.isHomeTeam ? 1.0f : 0.0f,
-                        MatchTuning::Pitch::CENTRE};
+    const PitchPoint goal =
+      pitch.at(taker.isHomeTeam ? 1.0f : 0.0f, MatchTuning::Pitch::CENTRE);
     const float goalMetres = distance(ball.position, goal);
-    const float lateralMetres =
-        std::abs(ball.position.y - MatchTuning::Pitch::CENTRE) *
-        pitch.width;
+    const float lateralMetres = pitch.metresY(
+        std::abs(ball.position.y - pitch.atY(MatchTuning::Pitch::CENTRE)));
     const bool shootingRange =
         goalMetres <= MatchTuning::SetPiece::DIRECT_FREE_KICK_METRES &&
         lateralMetres <= MatchTuning::SetPiece::DIRECT_FREE_KICK_WIDTH_METRES;
@@ -3215,8 +3204,8 @@ MatchEngine::RestartPlay MatchEngine::chooseCornerPlayAardvark(
       return {RestartPlay::Kind::PASS, groundPass, false};
     }
   }
-  const PitchPoint goal{taker.isHomeTeam ? 1.0f : 0.0f,
-                      MatchTuning::Pitch::CENTRE};
+  const PitchPoint goal =
+      pitch.at(taker.isHomeTeam ? 1.0f : 0.0f, MatchTuning::Pitch::CENTRE);
   float bestScore = -std::numeric_limits<float>::infinity();
   const float nearPostShare = MatchTuning::SetPiece::NEAR_POST_CHANCE;
   const bool nearPost =
@@ -3228,10 +3217,10 @@ MatchEngine::RestartPlay MatchEngine::chooseCornerPlayAardvark(
       continue;
     if (!inPenaltyArea(candidate.movementTarget, !taker.isHomeTeam)) continue;
     const float targetMetres = distance(candidate.movementTarget, goal);
+    const float centreY = pitch.atY(MatchTuning::Pitch::CENTRE);
     const float sideMetres =
-        (candidate.movementTarget.y - MatchTuning::Pitch::CENTRE) *
-        (ball.position.y < MatchTuning::Pitch::CENTRE ? -1.0f : 1.0f) *
-        pitch.width;
+        pitch.metresY((candidate.movementTarget.y - centreY) *
+                      (ball.position.y < centreY ? -1.0f : 1.0f));
     const float threat = MatchRules::headerReachMetres(candidate.heightMetres,
                                                        candidate.physicality);
     const float zone = nearPost ? sideMetres : -sideMetres;

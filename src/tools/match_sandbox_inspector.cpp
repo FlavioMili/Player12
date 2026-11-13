@@ -28,8 +28,6 @@ namespace
 using Recorder = SandboxRecorder;
 using Job = SandboxRecorder::Job;
 
-constexpr float LENGTH_METRES = 105.0f;
-constexpr float WIDTH_METRES = 68.0f;
 constexpr float SECONDS_PER_TICK = MatchTuning::Timing::FIXED_STEP_SECONDS;
 /** A decision this recent (ticks) still shows its pass options. */
 constexpr std::uint64_t PASS_OPTION_TICKS = 30;
@@ -38,8 +36,8 @@ constexpr std::size_t INTENTS =
 
 float metres(PitchPoint from, PitchPoint to)
 {
-  return std::hypot((to.x - from.x) * LENGTH_METRES,
-                    (to.y - from.y) * WIDTH_METRES);
+  const MatchPitch& pitch = MatchPitch::matchSize();
+  return std::hypot(pitch.metresX(to.x - from.x), pitch.metresY(to.y - from.y));
 }
 
 float seconds(std::uint64_t ticks)

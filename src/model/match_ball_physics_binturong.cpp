@@ -154,7 +154,7 @@ void MatchEngine::integrateBallBinturong(float dt)
                                                   ball.velocity.y / speed}
                                        : Vector2F{0.0f, 0.0f};
   FlightState flight{speed, ball.velocityZ,
-                     ball.z * MatchTuning::Units::BALL_Z_METRES, false,
+                     pitch.heightMetres(ball.z), false,
                      ball.spin};
   const float travelled = stepFlightBinturong(flight, dt);
   ball.spin = flight.spin;
@@ -173,7 +173,7 @@ void MatchEngine::integrateBallBinturong(float dt)
       toPitchOffset({direction.x * travelled, direction.y * travelled});
   ball.position.x += step.x;
   ball.position.y += step.y;
-  ball.z = flight.height / MatchTuning::Units::BALL_Z_METRES;
+  ball.z = pitch.heightUnits(flight.height);
   ball.velocityZ = flight.verticalSpeed;
   ball.velocity = {direction.x * flight.horizontalSpeed,
                    direction.y * flight.horizontalSpeed};

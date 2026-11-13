@@ -18,6 +18,8 @@
 namespace
 {
 namespace R = MatchAnalysisRules;
+/** A match pitch, for reading event points as fractions. */
+const MatchPitch& MATCH_PITCH = MatchPitch::matchSize();
 
 constexpr float FLANK_EDGE = 1.0f / 3.0f;
 
@@ -121,8 +123,12 @@ std::vector<ShotRecord> extractShots(std::span<const MatchEvent> events)
       shot.home = event.isHomeTeam;
       shot.player = event.primaryPlayerId;
       // Home attacks towards x = 1 with y = 0 on its left; away mirrored.
-      shot.x = event.isHomeTeam ? event.position.x : 1.0f - event.position.x;
-      shot.y = event.isHomeTeam ? event.position.y : 1.0f - event.position.y;
+      // Events carry engine points; shots are kept as fractions of a match
+      // pitch (the views' size, plan §15 choice 8).
+      const float x = MATCH_PITCH.fractionX(event.position);
+      const float y = MATCH_PITCH.fractionY(event.position);
+      shot.x = event.isHomeTeam ? x : 1.0f - x;
+      shot.y = event.isHomeTeam ? y : 1.0f - y;
       shot.xg = event.xg;
       shot.header = event.detail == MatchEventDetail::HEADER;
       shots.push_back(shot);

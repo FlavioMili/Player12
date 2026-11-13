@@ -22,7 +22,7 @@ namespace
 /** The ball's height in metres. */
 float ballHeightMetres(const MatchEngine& engine)
 {
-  return engine.getBall().z * MatchTuning::Units::BALL_Z_METRES;
+  return engine.getPitch().heightMetres(engine.getBall().z);
 }
 }  // namespace
 

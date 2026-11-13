@@ -143,7 +143,7 @@ void MatchEngine::updateTouchBinturong(MatchPlayer& carrier, float dt)
       gap,
       length(predicted),
       length(relative),
-      ball.z * MatchTuning::Units::BALL_Z_METRES,
+      pitch.heightMetres(ball.z),
       bodyLines(carrier).feet,
       R::KICK_REACH_METRES,
       touchKnobs[TouchKnob::COLLECT_RELATIVE_SPEED]};
@@ -179,7 +179,7 @@ void MatchEngine::updateTouchBinturong(MatchPlayer& carrier, float dt)
   if (!recoverable && evidence.playerAvailable)
   {
     FlightState flight{length(ball.velocity), ball.velocityZ,
-                       ball.z * MatchTuning::Units::BALL_Z_METRES, false,
+                       pitch.heightMetres(ball.z), false,
                        ball.spin};
     Vector2F at = toMetres(ball.position);
     Vector2F heading = length(ball.velocity) > EPSILON
@@ -405,7 +405,8 @@ void MatchEngine::beginPassFlightBinturong(const MatchPlayer& passer,
       continue;
     PassOption candidatePass = option;
     candidatePass.receiver = &candidate;
-    candidatePass.progression = (candidate.position.x - passer.position.x) *
+    candidatePass.progression =
+        pitch.fractionX(candidate.position.x - passer.position.x) *
                                 (passer.isHomeTeam ? 1.0f : -1.0f);
     const bool offside = &candidate == receiver
                             ? ball.possession.passWasOffside
@@ -958,7 +959,7 @@ void MatchEngine::noteDirectFreeKickShotBinturong()
 void MatchEngine::resetShootoutBallBinturong()
 {
   const PossessionHistory history = ball.possession.history;
-  ball = MatchBall{};
+  ball = freshBall();
   ball.possession.history = history;
   observePossession(PossessionObservation::RESET_SHOOTOUT_BALL,
                     PossessionId::BINTURONG);
@@ -974,7 +975,7 @@ void MatchEngine::resetRuleContactAttemptsBinturong()
 void MatchEngine::resetLifecycleBallBinturong()
 {
   const PossessionHistory history = ball.possession.history;
-  ball = MatchBall{};
+  ball = freshBall();
   ball.possession.history = history;
   observePossession(PossessionObservation::RESET_LIFECYCLE_BALL,
                     PossessionId::BINTURONG);
@@ -1067,8 +1068,9 @@ void MatchEngine::clearShooterHistoryBinturong()
 
 void MatchEngine::setPassFlightTargetBinturong(PitchPoint target)
 {
-  ball.possession.passTarget = PitchPoint{std::clamp(target.x, 0.0f, 1.0f),
-                                std::clamp(target.y, 0.0f, 1.0f)};
+  ball.possession.passTarget =
+      PitchPoint{std::clamp(target.x, 0.0f, pitch.atX(1.0f)),
+                 std::clamp(target.y, 0.0f, pitch.atY(1.0f))};
   observePossession(PossessionObservation::SET_PASS_FLIGHT_TARGET,
                     PossessionId::BINTURONG);
 }

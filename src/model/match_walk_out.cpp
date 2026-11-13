@@ -35,11 +35,11 @@ constexpr float FACING_STAND = 0.5f * std::numbers::pi_v<float>;
 
 Vector2F metresOf(const MatchPitch& pitch, PitchPoint at)
 {
-  return {at.x * pitch.length, at.y * pitch.width};
+  return {pitch.metresX(at), pitch.metresY(at)};
 }
 PitchPoint pitchOf(const MatchPitch& pitch, Vector2F metres)
 {
-  return PitchPoint{metres.x / pitch.length, metres.y / pitch.width};
+  return PitchPoint{pitch.fromMetresX(metres.x), pitch.fromMetresY(metres.y)};
 }
 
 /** Where a body waits in the tunnel: its file (home left, away right,
@@ -393,7 +393,7 @@ void MatchEngine::updateWalk(float dt)
       // Second half: on once every player is out through the boards.
       const bool out = std::ranges::all_of(
           players, [this](const MatchPlayer& player)
-          { return player.position.y * pitch.width < pitch.ground.boardsY - 0.5f; });
+          { return pitch.metresY(player.position) < pitch.ground.boardsY - 0.5f; });
       if (out || timedOut) finishWalkOut();
       break;
     }
@@ -607,8 +607,8 @@ void MatchEngine::updateSubstitutions(float dt)
       if (sub) put(*sub, pitchOf(pitch, waitSpot));
     }
     const bool subReady =
-        !sub || std::hypot(sub->position.x * pitch.length - waitSpot.x,
-                           sub->position.y * pitch.width - waitSpot.y) <= 1.0f;
+        !sub || std::hypot(pitch.metresX(sub->position) - waitSpot.x,
+                           pitch.metresY(sub->position) - waitSpot.y) <= 1.0f;
     if (pending.stage == PendingSubstitution::Stage::LEAVING && subReady &&
         outside(metresOf(pitch, player.position)))
     {
@@ -689,7 +689,7 @@ void MatchEngine::benchSubstitutedPlayer(const MatchPlayer& body)
       if (touchlineBodies[index].isHomeTeam == home &&
           touchlinePeople[index].role != TouchlineRole::MANAGER &&
           !isOfficial(touchlinePeople[index].role) &&
-          std::abs(touchlinePeople[index].seat.x * pitch.length - seatX) < 0.1f)
+          std::abs(pitch.metresX(touchlinePeople[index].seat) - seatX) < 0.1f)
         taken = true;
     if (!taken) break;
   }

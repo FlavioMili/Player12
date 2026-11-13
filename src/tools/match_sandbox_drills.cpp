@@ -29,8 +29,6 @@ constexpr float LENGTH = MatchTuning::Pitch::MATCH_LENGTH_METRES;
 constexpr float WIDTH = MatchTuning::Pitch::MATCH_WIDTH_METRES;
 constexpr float STEP = MatchTuning::Timing::FIXED_STEP_SECONDS;
 constexpr float PI = std::numbers::pi_v<float>;
-/** Where drills park the ball when nobody should touch it. */
-constexpr PitchPoint BALL_OUT_OF_THE_WAY{0.97f, 0.97f};
 /** How far past a point a runner aims to run through it, in metres. */
 constexpr float RUN_THROUGH_METRES = 8.0f;
 
@@ -51,28 +49,36 @@ double secondsOf(const MatchEngine& engine)
   return static_cast<double>(engine.getSimulatedSteps()) * STEP;
 }
 
-// Pitch coordinates are fractions of the length (x) and width (y); drills
-// think in metres.
-Vector2F toMetres(PitchPoint pitch) { return {pitch.x * LENGTH, pitch.y * WIDTH}; }
-Vector2F toMetres(PitchOffset step) { return {step.x * LENGTH, step.y * WIDTH}; }
+// Drills play on a match pitch. They place things by fractions of it
+// (`at`: x of the length, y of the width) and think in metres; engine
+// points go through the pitch either way.
+const MatchPitch& PITCH = MatchPitch::matchSize();
+PitchPoint at(float fx, float fy) { return PITCH.at(fx, fy); }
+/** Where drills park the ball when nobody should touch it. */
+PitchPoint ballOutOfTheWay() { return at(0.97f, 0.97f); }
+Vector2F toMetres(PitchPoint pitch) { return {PITCH.metresX(pitch), PITCH.metresY(pitch)}; }
+Vector2F toMetres(PitchOffset step)
+{
+  return {PITCH.metresX(step.x), PITCH.metresY(step.y)};
+}
 PitchPoint toPitch(Vector2F metres)
 {
-  return PitchPoint{metres.x / LENGTH, metres.y / WIDTH};
+  return PitchPoint{PITCH.fromMetresX(metres.x), PITCH.fromMetresY(metres.y)};
 }
 float metresBetween(PitchPoint from, PitchPoint to)
 {
-  return std::hypot((to.x - from.x) * LENGTH, (to.y - from.y) * WIDTH);
+  return std::hypot(PITCH.metresX(to.x - from.x), PITCH.metresY(to.y - from.y));
 }
 /** `from` moved `metres` along the unit direction `direction` (metres). */
 PitchPoint along(PitchPoint from, Vector2F direction, float metres)
 {
-  return PitchPoint{from.x + direction.x * metres / LENGTH,
-                    from.y + direction.y * metres / WIDTH};
+  return PitchPoint{from.x + PITCH.fromMetresX(direction.x * metres),
+                    from.y + PITCH.fromMetresY(direction.y * metres)};
 }
 /** Unit direction from one pitch point to another, in metres. */
 Vector2F directionBetween(PitchPoint from, PitchPoint to)
 {
-  const Vector2F offset{(to.x - from.x) * LENGTH, (to.y - from.y) * WIDTH};
+  const Vector2F offset{PITCH.metresX(to.x - from.x), PITCH.metresY(to.y - from.y)};
   const float size = std::hypot(offset.x, offset.y);
   if (size < 1e-6f) return {1.0f, 0.0f};
   return {offset.x / size, offset.y / size};
@@ -395,7 +401,7 @@ class MovementDrill : public Drill
     withBall = ballChoice >= 0.5f;
     MatchScenario scenario;
     scenario.players.push_back({id, at, false});
-    scenario.ballPosition = withBall ? at : BALL_OUT_OF_THE_WAY;
+    scenario.ballPosition = withBall ? at : ballOutOfTheWay();
     if (withBall) scenario.carrierId = id;
     engine.startDrill(scenario);
     if (path != AI) engine.setControlledPlayer(id);
@@ -616,19 +622,19 @@ class SprintDrill final : public MovementDrill
   {
     metres = static_cast<int>(distance);
     runUpMetres = static_cast<int>(runUp);
-    startX = START_LINE;
-    finishX = START_LINE + static_cast<float>(metres) / LENGTH;
-    const float from =
-        std::max(0.02f, startX - static_cast<float>(runUpMetres) / LENGTH);
+    startX = PITCH.atX(START_LINE);
+    finishX = startX + PITCH.fromMetresX(static_cast<float>(metres));
+    const float from = std::max(PITCH.atX(0.02f),
+                                startX - PITCH.fromMetresX(static_cast<float>(runUpMetres)));
     runs = static_cast<int>(runsChoice + 0.5f);
-    startRunner(engine, ids, PitchPoint{from, 0.5f});
+    startRunner(engine, ids, PitchPoint{from, PITCH.atY(0.5f)});
     // Through the line: the target lies beyond the finish. His body faces
     // down the track (0), back up it, across it (his left or right to the
     // run), or at 45 deg on the diagonals (real angles, as facings).
     constexpr std::array<float, 8> FACINGS{0.0f,        PI,          0.5f * PI,
                                            -0.5f * PI,  0.25f * PI,  -0.25f * PI,
                                            0.75f * PI,  -0.75f * PI};
-    steerTo(engine, PitchPoint{finishX + RUN_THROUGH_METRES / LENGTH, 0.5f}, true, {},
+    steerTo(engine, PitchPoint{finishX + PITCH.fromMetresX(RUN_THROUGH_METRES), PITCH.atY(0.5f)}, true, {},
             0.0f, 0.0f,
             runs == 0 ? std::nullopt
                       : std::optional<float>(facingAngleOf(
@@ -659,12 +665,13 @@ class SprintDrill final : public MovementDrill
     };
     for (std::size_t mark = 0; mark < crossings.size(); ++mark)
       if (!crossings[mark])
-        crossings[mark] = crossed(startX + static_cast<float>(mark * 10) / LENGTH);
+        crossings[mark] =
+            crossed(startX + PITCH.fromMetresX(static_cast<float>(mark * 10)));
     if (!finishTime) finishTime = crossed(finishX);
     if (crossings[0] && x <= finishX && speed > topSpeed)
     {
       topSpeed = speed;
-      topSpeedAt = (x - startX) * LENGTH;
+      topSpeedAt = PITCH.metresX(x - startX);
     }
     lastX = x;
     // Over half a second after the finish, or a minute at most.
@@ -674,22 +681,23 @@ class SprintDrill final : public MovementDrill
   void drawOverlay(const IMatchRenderer& renderer, ImDrawList& draw) const override
   {
     const float scale = Theme::scale();
-    const float half = 4.0f / WIDTH;
+    const float half = PITCH.fromMetresY(4.0f);
+    const float middle = PITCH.atY(0.5f);
     for (std::size_t mark = 0; mark < crossings.size(); ++mark)
     {
-      const float x = startX + static_cast<float>(mark * 10) / LENGTH;
-      DrillDraw::line(renderer, draw, PitchPoint{x, 0.5f - half}, PitchPoint{x, 0.5f + half},
+      const float x = startX + PITCH.fromMetresX(static_cast<float>(mark * 10));
+      DrillDraw::line(renderer, draw, PitchPoint{x, middle - half}, PitchPoint{x, middle + half},
                       IM_COL32(255, 255, 255, 120), 1.5f * scale);
     }
-    DrillDraw::line(renderer, draw, PitchPoint{startX, 0.5f - half * 1.5f},
-                    PitchPoint{startX, 0.5f + half * 1.5f}, IM_COL32(90, 220, 120, 255),
+    DrillDraw::line(renderer, draw, PitchPoint{startX, middle - half * 1.5f},
+                    PitchPoint{startX, middle + half * 1.5f}, IM_COL32(90, 220, 120, 255),
                     3.0f * scale);
-    DrillDraw::line(renderer, draw, PitchPoint{finishX, 0.5f - half * 1.5f},
-                    PitchPoint{finishX, 0.5f + half * 1.5f}, IM_COL32(240, 80, 80, 255),
+    DrillDraw::line(renderer, draw, PitchPoint{finishX, middle - half * 1.5f},
+                    PitchPoint{finishX, middle + half * 1.5f}, IM_COL32(240, 80, 80, 255),
                     3.0f * scale);
-    DrillDraw::label(renderer, draw, PitchPoint{startX, 0.5f - half * 2.4f}, "start",
+    DrillDraw::label(renderer, draw, PitchPoint{startX, middle - half * 2.4f}, "start",
                      IM_COL32(90, 220, 120, 255));
-    DrillDraw::label(renderer, draw, PitchPoint{finishX, 0.5f - half * 2.4f},
+    DrillDraw::label(renderer, draw, PitchPoint{finishX, middle - half * 2.4f},
                      std::format("{} m", metres).c_str(),
                      IM_COL32(240, 80, 80, 255));
     drawTrail(renderer, draw);
@@ -2332,7 +2340,7 @@ class OvertakeDrill final : public Drill
            along(leaderAt, {0.0f, 1.0f}, third == 1 ? THIRD_SIDE_METRES
                                                      : -THIRD_SIDE_METRES),
            false});
-    scenario.ballPosition = BALL_OUT_OF_THE_WAY;
+    scenario.ballPosition = ballOutOfTheWay();
     engine.startDrill(scenario);
     // They all race for the same point beyond the line.
     const PitchPoint target = along(finishLine, {1.0f, 0.0f}, RUN_THROUGH_METRES);
@@ -3187,7 +3195,7 @@ class CollisionDrill final : public Drill
     MatchScenario scenario;
     scenario.players.push_back({aId, startA, false});
     scenario.players.push_back({bId, startB, false});
-    scenario.ballPosition = BALL_OUT_OF_THE_WAY;
+    scenario.ballPosition = ballOutOfTheWay();
     engine.startDrill(scenario);
     // When each sets off: the later arrival first, so they meet.
     const float timeA = a.runUp > 0.0f ? runTime(engine, aId, a.runUp) : 0.0f;

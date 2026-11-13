@@ -124,7 +124,7 @@ void MatchEngine::updateTouchAardvark(MatchPlayer& carrier, float dt)
   if (!ball.possession.touchCollected && gap <= R::KICK_REACH_METRES &&
       length(relative) <= touchKnobs[TouchKnob::COLLECT_RELATIVE_SPEED] &&
       (!ball.possession.touchDropping ||
-       ball.z * MatchTuning::Units::BALL_Z_METRES <= bodyLines(carrier).feet))
+       pitch.heightMetres(ball.z) <= bodyLines(carrier).feet))
   {
     // Collected: the pass is complete and he can think about his next
     // action. The ball stays loose: from here he dribbles it, touch by touch.
@@ -822,7 +822,7 @@ void MatchEngine::noteDirectFreeKickShotAardvark()
 void MatchEngine::resetShootoutBallAardvark()
 {
   const PossessionHistory history = ball.possession.history;
-  ball = MatchBall{};
+  ball = freshBall();
   ball.possession.history = history;
   observePossession(PossessionObservation::RESET_SHOOTOUT_BALL,
                     PossessionId::AARDVARK);
@@ -838,7 +838,7 @@ void MatchEngine::resetRuleContactAttemptsAardvark()
 void MatchEngine::resetLifecycleBallAardvark()
 {
   const PossessionHistory history = ball.possession.history;
-  ball = MatchBall{};
+  ball = freshBall();
   ball.possession.history = history;
   observePossession(PossessionObservation::RESET_LIFECYCLE_BALL,
                     PossessionId::AARDVARK);
@@ -930,8 +930,9 @@ void MatchEngine::clearShooterHistoryAardvark()
 
 void MatchEngine::setPassFlightTargetAardvark(PitchPoint target)
 {
-  ball.possession.passTarget = PitchPoint{std::clamp(target.x, 0.0f, 1.0f),
-                     std::clamp(target.y, 0.0f, 1.0f)};
+  ball.possession.passTarget =
+      PitchPoint{std::clamp(target.x, 0.0f, pitch.atX(1.0f)),
+                 std::clamp(target.y, 0.0f, pitch.atY(1.0f))};
   observePossession(PossessionObservation::SET_PASS_FLIGHT_TARGET,
                     PossessionId::AARDVARK);
 }

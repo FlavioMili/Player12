@@ -33,12 +33,12 @@ constexpr float FACING_PITCH = -0.5f * std::numbers::pi_v<float>;
 
 Vector2F metresOf(const MatchPitch& pitch, PitchPoint at)
 {
-  return {at.x * pitch.length, at.y * pitch.width};
+  return {pitch.metresX(at), pitch.metresY(at)};
 }
 
 PitchPoint pitchOf(const MatchPitch& pitch, Vector2F metres)
 {
-  return PitchPoint{metres.x / pitch.length, metres.y / pitch.width};
+  return PitchPoint{pitch.fromMetresX(metres.x), pitch.fromMetresY(metres.y)};
 }
 
 /**
@@ -409,8 +409,8 @@ void MatchEngine::updateTouchline(float dt)
       body.velocity = {0.0f, 0.0f};
       if (manager)
         turnToward(body,
-                   std::atan2(ball.position.y - body.position.y,
-                              ball.position.x - body.position.x),
+                   std::atan2(pitch.fractionY(ball.position.y - body.position.y),
+                              pitch.fractionX(ball.position.x - body.position.x)),
                    dt);
       else if (comingOnNow)
         turnToward(body, FACING_PITCH, dt);
@@ -463,7 +463,7 @@ Vector2F MatchEngine::officialSpot(const MatchPlayer& body, const TouchlinePerso
     for (const MatchPlayer& player : players)
     {
       if (!active(player) || player.isHomeTeam != top) continue;
-      const float x = player.position.x * pitch.length;
+      const float x = pitch.metresX(player.position);
       if (top ? x < last : x > last)
       {
         secondLast = last;
@@ -636,7 +636,8 @@ void MatchEngine::moveOfficial(MatchPlayer& body, const TouchlinePerson& person,
                              : O::TOP_SPEED;
   // The referee watches the ball; the others face the pitch.
   const float facing =
-      referee ? std::atan2(ball.position.y - body.position.y, ball.position.x - body.position.x)
+      referee ? std::atan2(pitch.fractionY(ball.position.y - body.position.y),
+                           pitch.fractionX(ball.position.x - body.position.x))
       : person.topLine ? -FACING_PITCH
                        : FACING_PITCH;
   const Vector2F at = metresOf(pitch, body.position);

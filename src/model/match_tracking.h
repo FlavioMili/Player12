@@ -14,6 +14,7 @@
 #include <vector>
 
 #include "global/types.h"
+#include "model/match_pitch.h"
 #include "model/match_point.h"
 
 /**
@@ -89,14 +90,14 @@ class MatchTracker
   [[nodiscard]] bool isEnabled() const { return enabled; }
 
   /** A touch at a pitch position (engine frame: home attacks x = 1). */
-  void touch(std::size_t player, bool home, PitchPoint position, float minute,
+  void touch(std::size_t player, bool home, PitchPoint position,
+             const MatchPitch& pitch, float minute,
              int period);
   /** A pass leaves the passer's foot (origin in the engine frame). */
-  void passReleased(PitchPoint origin, bool open_play);
-  /** The last released pass reached a team-mate, on a pitch this long
-   * (metres). */
+  void passReleased(PitchPoint origin, const MatchPitch& pitch, bool open_play);
+  /** The last released pass reached a team-mate, on this pitch. */
   void passCompleted(std::size_t passer, std::size_t receiver, bool home,
-                     PitchPoint reception, float pitchLengthMetres);
+                     PitchPoint reception, const MatchPitch& pitch);
   /** A shot; @p creator is the stats index of the chance creator, or
    * MatchTracking::MAX_PLAYERS when none. */
   void shot(std::size_t creator, float xg, TrackedShot kind);
@@ -130,6 +131,8 @@ class MatchTracker
   std::vector<TrackedShot> shot_kinds;
   std::array<std::array<std::uint16_t, MatchTracking::BUCKETS>, 2>
       final_third{};
-  PitchPoint pass_origin{0.5f, 0.5f};
+  /** Where the last pass left, as fractions of the pitch (x of the length,
+   * y of the width). */
+  Vector2F pass_origin{0.5f, 0.5f};
   bool pass_open_play = false;
 };
