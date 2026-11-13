@@ -33,15 +33,6 @@ using W = MatchTuning::WalkOut;
 /** Facing the bottom touchline's stand (normalised pitch space). */
 constexpr float FACING_STAND = 0.5f * std::numbers::pi_v<float>;
 
-Vector2F metresOf(const MatchPitch& pitch, PitchPoint at)
-{
-  return {pitch.metresX(at), pitch.metresY(at)};
-}
-PitchPoint pitchOf(const MatchPitch& pitch, Vector2F metres)
-{
-  return PitchPoint{pitch.fromMetresX(metres.x), pitch.fromMetresY(metres.y)};
-}
-
 /** Where a body waits in the tunnel: its file (home left, away right,
  * officials in the middle). */
 Vector2F waitSpot(const MatchPitch& pitch, float file)
@@ -183,7 +174,7 @@ void MatchEngine::startInTunnel()
   // the tunnel, out of sight.
   const auto wait = [this](MatchPlayer& body, float file)
   {
-    body.position = pitchOf(pitch, waitSpot(pitch, file));
+    body.position = asPoint(waitSpot(pitch, file));
     body.velocity = {0.0f, 0.0f};
     body.movementTarget = body.position;
     body.tacticalTarget = body.position;
@@ -269,7 +260,7 @@ void MatchEngine::updateWalk(float dt)
   {
     MatchPlayer& player = players[slot];
     if (!active(player)) continue;
-    const Vector2F at = metresOf(pitch, player.position);
+    const Vector2F at = asVector(player.position);
     const float file = player.isHomeTeam ? -1.0f : 1.0f;
     Vector2F target = at;
     bool waits = false;
@@ -285,7 +276,7 @@ void MatchEngine::updateWalk(float dt)
         break;
       case WalkPhase::OUT:
         waits = walk.seconds < walk.playerRelease[slot];
-        target = lineUp ? walk.playerSpot[slot] : metresOf(pitch, kickOffPosition(player));
+        target = lineUp ? walk.playerSpot[slot] : asVector(kickOffPosition(player));
         facesStand = lineUp && metresBetween(at, target) <= W::ARRIVED_METRES;
         break;
       case WalkPhase::LINED_UP:
@@ -303,7 +294,7 @@ void MatchEngine::updateWalk(float dt)
         facesStand = false;
         if (walk.through[slot])
         {
-          target = metresOf(pitch, kickOffPosition(player));
+          target = asVector(kickOffPosition(player));
           break;
         }
         // Along the lane in front of the line, a hand at a time.
@@ -329,7 +320,7 @@ void MatchEngine::updateWalk(float dt)
       player.velocity = {0.0f, 0.0f};
       continue;
     }
-    player.movementTarget = pitchOf(pitch, routeViaTunnel(at, target));
+    player.movementTarget = asPoint(routeViaTunnel(at, target));
     player.tacticalTarget = player.movementTarget;
     player.targetVelocity = {0.0f, 0.0f};
     player.routeWaypoints = 0;
@@ -375,12 +366,12 @@ void MatchEngine::updateWalk(float dt)
         bool lined = true;
         for (std::size_t slot = 0; slot < players.size(); ++slot)
           if (active(players[slot]) &&
-              metresBetween(metresOf(pitch, players[slot].position), walk.playerSpot[slot]) >
+              metresBetween(asVector(players[slot].position), walk.playerSpot[slot]) >
                   W::ARRIVED_METRES)
             lined = false;
         for (std::size_t index = 0; index < touchlineBodies.size(); ++index)
           if (isOfficial(touchlinePeople[index].role) &&
-              metresBetween(metresOf(pitch, touchlineBodies[index].position), walk.touchlineSpot[index]) >
+              metresBetween(asVector(touchlineBodies[index].position), walk.touchlineSpot[index]) >
                   W::ARRIVED_METRES)
             lined = false;
         if (lined || timedOut)
@@ -393,7 +384,7 @@ void MatchEngine::updateWalk(float dt)
       // Second half: on once every player is out through the boards.
       const bool out = std::ranges::all_of(
           players, [this](const MatchPlayer& player)
-          { return pitch.metresY(player.position) < pitch.ground.boardsY - 0.5f; });
+          { return player.position.y < pitch.ground.boardsY - 0.5f; });
       if (out || timedOut) finishWalkOut();
       break;
     }
@@ -540,7 +531,7 @@ void MatchEngine::updateSubstitutions(float dt)
                                    static_cast<std::ptrdiff_t>(index));
         continue;
       }
-      pending.exit = nearestExit(metresOf(pitch, player.position));
+      pending.exit = nearestExit(asVector(player.position));
       pending.stage = PendingSubstitution::Stage::LEAVING;
       if (deadBall.fetcherIndex == pending.slot) deadBall.fetcherIndex.reset();
       // He takes no restart: another does.
@@ -603,14 +594,14 @@ void MatchEngine::updateSubstitutions(float dt)
     };
     if (overdue && pending.stage == PendingSubstitution::Stage::LEAVING)
     {
-      put(player, pitchOf(pitch, pending.exit));
-      if (sub) put(*sub, pitchOf(pitch, waitSpot));
+      put(player, asPoint(pending.exit));
+      if (sub) put(*sub, asPoint(waitSpot));
     }
     const bool subReady =
-        !sub || std::hypot(pitch.metresX(sub->position) - waitSpot.x,
-                           pitch.metresY(sub->position) - waitSpot.y) <= 1.0f;
+        !sub || std::hypot(sub->position.x - waitSpot.x,
+                           sub->position.y - waitSpot.y) <= 1.0f;
     if (pending.stage == PendingSubstitution::Stage::LEAVING && subReady &&
-        outside(metresOf(pitch, player.position)))
+        outside(asVector(player.position)))
     {
       const MatchPlayer leaving = player;
       pending.stage = PendingSubstitution::Stage::ENTERING;
@@ -662,7 +653,7 @@ void MatchEngine::updateSubstitutions(float dt)
     }
     // On the pitch: the change is made.
     if (pendingSubstitutions[index].stage == PendingSubstitution::Stage::ENTERING &&
-        inside(metresOf(pitch, players[pendingSubstitutions[index].slot].position)))
+        inside(asVector(players[pendingSubstitutions[index].slot].position)))
     {
       pendingSubstitutions.erase(pendingSubstitutions.begin() +
                                  static_cast<std::ptrdiff_t>(index));
@@ -689,7 +680,7 @@ void MatchEngine::benchSubstitutedPlayer(const MatchPlayer& body)
       if (touchlineBodies[index].isHomeTeam == home &&
           touchlinePeople[index].role != TouchlineRole::MANAGER &&
           !isOfficial(touchlinePeople[index].role) &&
-          std::abs(pitch.metresX(touchlinePeople[index].seat) - seatX) < 0.1f)
+          std::abs(touchlinePeople[index].seat.x - seatX) < 0.1f)
         taken = true;
     if (!taken) break;
   }
@@ -700,7 +691,7 @@ void MatchEngine::benchSubstitutedPlayer(const MatchPlayer& body)
   bench.facingRequested = false;
   TouchlinePerson& person = touchlinePeople.emplace_back();
   person.role = TouchlineRole::SUBSTITUTE;
-  person.seat = pitchOf(pitch, {seatX, pitch.ground.standY - MatchTuning::Body::RADIUS_METRES});
+  person.seat = asPoint({seatX, pitch.ground.standY - MatchTuning::Body::RADIUS_METRES});
   person.seated = false;
   // Off at the boundary: round the pitch's edge to his technical area. In
   // the tunnel (a half-time change): out with the staff.
@@ -725,7 +716,7 @@ void MatchEngine::sendToTunnel(const MatchPlayer& body)
   off.intent = PlayerIntent::HOLD_SHAPE;
   TouchlinePerson& person = touchlinePeople.emplace_back();
   person.role = TouchlineRole::SENT_OFF;
-  person.seat = pitchOf(pitch, nearestExit(metresOf(pitch, body.position)));
+  person.seat = asPoint(nearestExit(asVector(body.position)));
   person.walkingRound = true;
   previousTouchlinePositions.push_back(body.position);
   previousTouchlineFacingAngles.push_back(body.facingAngle);
@@ -739,7 +730,7 @@ bool MatchEngine::sentOffStillOn() const
   for (std::size_t index = 0; index < touchlinePeople.size(); ++index)
   {
     if (touchlinePeople[index].role != TouchlineRole::SENT_OFF) continue;
-    const Vector2F at = metresOf(pitch, touchlineBodies[index].position);
+    const Vector2F at = asVector(touchlineBodies[index].position);
     if (at.x > -edge && at.x < pitch.length + edge && at.y > -edge && at.y < pitch.width + edge)
       return true;
   }

@@ -154,7 +154,7 @@ void MatchEngine::integrateBallBinturong(float dt)
                                                   ball.velocity.y / speed}
                                        : Vector2F{0.0f, 0.0f};
   FlightState flight{speed, ball.velocityZ,
-                     pitch.heightMetres(ball.z), false,
+                     ball.z, false,
                      ball.spin};
   const float travelled = stepFlightBinturong(flight, dt);
   ball.spin = flight.spin;
@@ -169,11 +169,11 @@ void MatchEngine::integrateBallBinturong(float dt)
   }
   // A delivery that has bounced is no longer a clean aerial ball.
   if (flight.bounced) endAerialDelivery();
-  const PitchOffset step =
-      toPitchOffset({direction.x * travelled, direction.y * travelled});
+  const Vector2F step =
+      {direction.x * travelled, direction.y * travelled};
   ball.position.x += step.x;
   ball.position.y += step.y;
-  ball.z = pitch.heightUnits(flight.height);
+  ball.z = flight.height;
   ball.velocityZ = flight.verticalSpeed;
   ball.velocity = {direction.x * flight.horizontalSpeed,
                    direction.y * flight.horizontalSpeed};

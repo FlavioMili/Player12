@@ -263,7 +263,7 @@ void MatchEngine::resolveTacticsBinturong(bool homeTeam)
                         : TacticalRole::Standard;
       tactic.profile = Tactics::profile(tactic.role, instruction->duty);
       tactic.possessionOffset =
-          PitchOffset{pitch.atX(instruction->possessionOffset.x),
+          Vector2F{pitch.atX(instruction->possessionOffset.x),
                       pitch.atY(instruction->possessionOffset.y)};
     }
     slotTactics[side][slot] = tactic;

@@ -63,8 +63,7 @@ struct MatchPitch final
   // Point units (training ground T1 stage 2). A PitchPoint's coordinates
   // and the ball's height are metres. Tuning given as a fraction of the
   // pitch goes through `at`/`atX`/`atY` (and back through `fraction`);
-  // stage 4 decides each of those. The metres conversions below do nothing
-  // now and go in stage 2c.
+  // stage 4 decides each of those.
   // ---------------------------------------------------------------------
 
   /** A match pitch (MATCH_LENGTH_METRES x MATCH_WIDTH_METRES), for code with
@@ -115,34 +114,6 @@ struct MatchPitch final
   {
     return {point.x / length, point.y / width};
   }
-  /** Metres along the length (width) in point units: the same (2c). */
-  [[nodiscard]] constexpr float fromMetresX(float metres) const
-  {
-    return metres;
-  }
-  [[nodiscard]] constexpr float fromMetresY(float metres) const
-  {
-    return metres;
-  }
-  [[nodiscard]] constexpr float fromMetresXByInverse(float metres) const
-  {
-    return metres;
-  }
-  [[nodiscard]] constexpr float fromMetresYByInverse(float metres) const
-  {
-    return metres;
-  }
-  /** A coordinate or a step in point units, in metres: the same (2c). */
-  [[nodiscard]] constexpr float metresX(float units) const { return units; }
-  [[nodiscard]] constexpr float metresY(float units) const { return units; }
-  [[nodiscard]] constexpr float metresX(PitchPoint point) const
-  {
-    return point.x;
-  }
-  [[nodiscard]] constexpr float metresY(PitchPoint point) const
-  {
-    return point.y;
-  }
   /** The x coordinate seen from the other end (1 - x as a fraction). */
   [[nodiscard]] constexpr float mirrorX(float units) const
   {
@@ -152,12 +123,5 @@ struct MatchPitch final
   [[nodiscard]] constexpr float mirrorY(float units) const
   {
     return width - units;
-  }
-
-  /** The ball's height in metres: the same (2c). */
-  [[nodiscard]] static constexpr float heightMetres(float z) { return z; }
-  [[nodiscard]] static constexpr float heightUnits(float metres)
-  {
-    return metres;
   }
 };

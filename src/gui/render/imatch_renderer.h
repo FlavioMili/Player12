@@ -106,7 +106,7 @@ class IMatchRenderer
                       const MatchViewport& viewport) = 0;
 
   /**
-   * Screen position (logical pixels) of a normalised pitch point at a height
+   * Screen position (logical pixels) of a pitch point (metres) at a height
    * in metres, as drawn by the last render(), so overlays can be drawn in
    * the view's projection. False before the first frame or when the point
    * is behind the camera.

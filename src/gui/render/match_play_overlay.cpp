@@ -68,9 +68,8 @@ void drawRing(ImDrawList& drawList, const IMatchRenderer& renderer,
     const float angle = static_cast<float>(index) * 2.0f *
                         std::numbers::pi_v<float> /
                         static_cast<float>(RING_POINTS);
-    const MatchPitch& pitch = MatchPitch::matchSize();
-    const PitchPoint around{centre.x + pitch.fromMetresX(std::cos(angle) * metres),
-                          centre.y + pitch.fromMetresY(std::sin(angle) * metres)};
+    const PitchPoint around{centre.x + (std::cos(angle) * metres),
+                          centre.y + (std::sin(angle) * metres)};
     if (!project(renderer, around, 0.03f,
                  points[static_cast<std::size_t>(index)]))
       return;

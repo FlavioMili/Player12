@@ -36,8 +36,7 @@ constexpr std::size_t INTENTS =
 
 float metres(PitchPoint from, PitchPoint to)
 {
-  const MatchPitch& pitch = MatchPitch::matchSize();
-  return std::hypot(pitch.metresX(to.x - from.x), pitch.metresY(to.y - from.y));
+  return std::hypot(to.x - from.x, to.y - from.y);
 }
 
 float seconds(std::uint64_t ticks)

@@ -16,10 +16,10 @@
 
 namespace
 {
-float metresBetween(const MatchPitch& pitch, PitchPoint first, PitchPoint second)
+float metresBetween(PitchPoint first, PitchPoint second)
 {
-  const float dx = pitch.metresX(first.x - second.x);
-  const float dy = pitch.metresY(first.y - second.y);
+  const float dx = first.x - second.x;
+  const float dy = first.y - second.y;
   return std::sqrt(dx * dx + dy * dy);
 }
 }  // namespace
@@ -69,7 +69,7 @@ void MatchEngine::trackPressures()
     if (!player.isPressing || !player.onPitch || player.player == nullptr ||
         player.isHomeTeam == carrier->isHomeTeam)
       continue;
-    const float metres = metresBetween(pitch, player.position, carrier->position);
+    const float metres = metresBetween(player.position, carrier->position);
     if (metres <= closest)
     {
       closest = metres;

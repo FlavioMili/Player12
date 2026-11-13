@@ -17,9 +17,10 @@
  *
  * The simulation runs in real match time: one simulated second is one second
  * of the match, speeds are in metres per second, accelerations in m/s^2 and
- * durations in seconds unless a name says otherwise. Pitch positions stay
- * normalised (x along the 105 m length, home attacking from 0 to 1; y across
- * the 68 m width). Tactical offsets (Shape) are therefore pitch fractions,
+ * durations in seconds unless a name says otherwise. Pitch positions are
+ * metres (x along the 105 m length, home attacking +x; y across the 68 m
+ * width). Tactical offsets (Shape) and other `_X`/`_Y`/fraction tuning stay
+ * pitch fractions, taken into metres through MatchPitch::at/atX/atY,
  * while radii, reaches and distances compared with the metric distance
  * between players are in metres.
  */

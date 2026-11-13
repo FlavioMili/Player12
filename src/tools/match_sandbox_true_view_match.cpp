@@ -181,8 +181,8 @@ PlayerID MatchTrueView::drawOverlay(const IMatchRenderer& renderer, const MatchE
   {
     float x = 0.0f;
     float y = 0.0f;
-    if (!renderer.projectPitch(PitchPoint{MatchPitch::matchSize().fromMetresX(point.x),
-                                            MatchPitch::matchSize().fromMetresY(point.y)},
+    if (!renderer.projectPitch(PitchPoint{point.x,
+                                            point.y},
                                  point.z,
                                x, y))
       return false;
@@ -205,7 +205,7 @@ PlayerID MatchTrueView::drawOverlay(const IMatchRenderer& renderer, const MatchE
     const PitchPoint at =
         lerpRenderPosition(shown.previousPosition, shown.currentPosition, alpha);
     TrueView::Body& body = bodies[index];
-    body.at = {MatchPitch::matchSize().metresX(at), MatchPitch::matchSize().metresY(at), 0.0f};
+    body.at = {at.x, at.y, 0.0f};
     body.facing = compassOf(
         RenderMath::lerpAngle(shown.previousFacingAngle, shown.currentFacingAngle, alpha));
     body.height = player.heightMetres;

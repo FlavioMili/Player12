@@ -619,8 +619,8 @@ bool MatchEngine::ballBehindReach(const MatchPlayer& player, float gapX,
 
 bool MatchEngine::ballInReach(const MatchPlayer& player) const
 {
-  const float gapX = pitch.metresX(player.position.x - ball.position.x);
-  const float gapY = pitch.metresY(player.position.y - ball.position.y);
+  const float gapX = player.position.x - ball.position.x;
+  const float gapY = player.position.y - ball.position.y;
   const float gap = std::hypot(gapX, gapY);
   return gap <= feetReach(player) && !ballBehindReach(player, gapX, gapY, gap);
 }

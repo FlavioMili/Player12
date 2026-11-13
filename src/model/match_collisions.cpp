@@ -286,7 +286,7 @@ void MatchEngine::collidePlayers(float dt)
         const MatchPlayer& player = players[slot];
         near = active(player) && bodyOf(player.isHomeTeam) == BodyId::BINTURONG &&
                !deepInTunnel(player.position) &&
-               length(toMetres(player.position - body.position)) <=
+               length(player.position - body.position) <=
                    MatchTuning::TouchlinePeople::COLLISION_RANGE_METRES;
       }
       if (!near) continue;
@@ -303,8 +303,8 @@ void MatchEngine::collidePlayers(float dt)
       if (onLine(index))
       {
         // Someone round the touchline: a stand-in's weight, a sub's own.
-        const Vector2F start = toMetres(touchlineStepStart[touchlineIndex[index]]);
-        const Vector2F end = toMetres(player.position);
+        const Vector2F start = asVector(touchlineStepStart[touchlineIndex[index]]);
+        const Vector2F end = asVector(player.position);
         path.takesPart = true;
         path.anchor = start;
         path.velocity = scaled({end.x - start.x, end.y - start.y}, 1.0f / dt);
@@ -324,13 +324,13 @@ void MatchEngine::collidePlayers(float dt)
           !(player.onPitch && player.isGoalkeeper &&
             keeperInDive(player));
       if (!path.takesPart) continue;
-      const Vector2F end = toMetres(player.position);
+      const Vector2F end = asVector(player.position);
       if (!player.onPitch)
       {
         path.anchor = end;
         continue;
       }
-      const Vector2F start = toMetres(stepStartPositions[index]);
+      const Vector2F start = asVector(stepStartPositions[index]);
       path.velocity = scaled({end.x - start.x, end.y - start.y}, 1.0f / dt);
       path.anchor = start;
       path.inverseMass =
@@ -404,7 +404,7 @@ void MatchEngine::collidePlayers(float dt)
       CollisionHit record;
       record.step = stepCounter;
       record.atSeconds = now;
-      record.where = toPitch(scaled(add(oneAt, twoAt), 0.5f));
+      record.where = asPoint(scaled(add(oneAt, twoAt), 0.5f));
       const std::array<std::size_t, 2> indices{firstIndex, secondIndex};
       const bool bothPlayers = !onLine(firstIndex) && !onLine(secondIndex);
       for (std::size_t side = 0; side < 2; ++side)
@@ -518,7 +518,7 @@ void MatchEngine::collidePlayers(float dt)
     {
       if (!paths[index].hit) continue;
       MatchPlayer& player = *bodies[index];
-      const PitchPoint end = toPitch(at(index, dt));
+      const PitchPoint end = asPoint(at(index, dt));
       player.position = moveBody(player.position, end);
       player.velocity = paths[index].velocity;
     }
@@ -536,7 +536,7 @@ void MatchEngine::collidePlayers(float dt)
         if (inverseTotal <= 0.0f) continue;
         MatchPlayer& one = *bodies[first];
         MatchPlayer& two = *bodies[second];
-        const Vector2F gap = toMetres(two.position - one.position);
+        const Vector2F gap = two.position - one.position;
         const float apart = length(gap);
         const float overlap = MatchTuning::Body::DIAMETER_METRES - apart;
         if (overlap <= 0.0f) continue;
@@ -575,7 +575,7 @@ LyingBody lyingBody(const MatchPitch& pitch, const MatchPlayer& player)
   const Vector2F along{std::cos(player.lyingAngle) * pitch.length,
                        std::sin(player.lyingAngle) * pitch.width};
   const float alongLength = std::max(length(along), EPSILON);
-  return {toMetres(pitch, player.position),
+  return {asVector(player.position),
           scaled(along, 1.0f / alongLength),
           std::max(0.0f, 0.5f * player.heightMetres - 0.5f * MatchTuning::Body::DIAMETER_METRES)};
 }
@@ -640,9 +640,9 @@ std::optional<std::pair<std::size_t, float>> MatchEngine::fallenBodyInPath(
 {
   using C = MatchTuning::Collision;
   if (state != MatchState::PLAYING || (getPossessionAttachment() && !hasTouchClaim())) return std::nullopt;
-  const Vector2F start = toMetres(ball.position);
+  const Vector2F start = asVector(ball.position);
   const Vector2F move = scaled(ball.velocity, seconds);
-  const float startHeight = pitch.heightMetres(ball.z);
+  const float startHeight = ball.z;
   const float reach =
       0.5f * MatchTuning::Body::DIAMETER_METRES + MatchTuning::Units::BALL_RADIUS_METRES;
   std::optional<std::pair<std::size_t, float>> first;
@@ -667,7 +667,7 @@ void MatchEngine::bounceOffFallen(MatchPlayer& player)
   // Off the surface where it meets him (it may have been sent another way
   // on the way there: then it is not coming into him).
   const LyingBody body = lyingBody(pitch, player);
-  const Vector2F at = toMetres(ball.position);
+  const Vector2F at = asVector(ball.position);
   const Vector2F nearest = nearestOnBody(body, at);
   Vector2F normal{at.x - nearest.x, at.y - nearest.y};
   const float apart = length(normal);
@@ -710,7 +710,7 @@ std::size_t MatchEngine::knockSituation(std::size_t slot, std::size_t otherSlot,
   if (player.lastContactSlot == static_cast<std::int8_t>(otherSlot) &&
       at - player.lastContactAt <= REHIT_SECONDS)
     return 0;
-  const Vector2F ballAt = toMetres(ball.position);
+  const Vector2F ballAt = asVector(ball.position);
   if (length({ballAt.x - where.x, ballAt.y - where.y}) <= BALL_METRES) return 1;
   if (distance(player.tacticalTarget, other.position) <= AIMED_METRES) return 2;
   if (player.overtaking == static_cast<std::int8_t>(otherSlot)) return 3;

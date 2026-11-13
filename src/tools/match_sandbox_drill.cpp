@@ -276,7 +276,7 @@ void DrillDraw::cone(const IMatchRenderer& renderer, ImDrawList& draw,
   ImVec2 edge;
   if (!project(renderer, at, centre) ||
       !project(renderer,
-               PitchPoint{at.x + MatchPitch::matchSize().fromMetresX(CONE_RADIUS_METRES), at.y},
+               PitchPoint{at.x + CONE_RADIUS_METRES, at.y},
                edge))
     return;
   const float radius =
@@ -326,8 +326,8 @@ void DrillDraw::circle(const IMatchRenderer& renderer, ImDrawList& draw,
     const float angle = 2.0f * std::numbers::pi_v<float> *
                         static_cast<float>(index) / static_cast<float>(POINTS);
     const PitchPoint at{
-        centre.x + MatchPitch::matchSize().fromMetresX(std::cos(angle) * radiusMetres),
-        centre.y + MatchPitch::matchSize().fromMetresY(std::sin(angle) * radiusMetres)};
+        centre.x + (std::cos(angle) * radiusMetres),
+        centre.y + (std::sin(angle) * radiusMetres)};
     if (!project(renderer, at, screen[static_cast<std::size_t>(index)])) return;
   }
   if (fill != 0) draw.AddConvexPolyFilled(screen.data(), POINTS, fill);

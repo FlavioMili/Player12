@@ -182,7 +182,7 @@ void MatchEngine::integrateControlled(MatchPlayer& player, float dt)
     // jockeying, keeps his goal-side spot; he arrives without overshooting.
     if (const auto assist = controlledAssistTarget(player))
     {
-      const Vector2F offset = toMetres(*assist - player.position);
+      const Vector2F offset = *assist - player.position;
       const float metres = length(offset);
       if (metres > MatchTuning::Player::ARRIVAL_DEAD_ZONE_METRES &&
           runSpeed > EPSILON)
@@ -202,9 +202,9 @@ void MatchEngine::integrateControlled(MatchPlayer& player, float dt)
                  jockeying ? carrier : nullptr);
   // When the AI takes him back it picks up the run where his momentum
   // carries him instead of braking to the spot he stands on.
-  const PitchOffset carry =
-      toPitchOffset({player.velocity.x * C::RELEASE_MOMENTUM_SECONDS,
-               player.velocity.y * C::RELEASE_MOMENTUM_SECONDS});
+  const Vector2F carry =
+      {player.velocity.x * C::RELEASE_MOMENTUM_SECONDS,
+               player.velocity.y * C::RELEASE_MOMENTUM_SECONDS};
   player.movementTarget = PitchPoint{
       clampToPitchX(player.position.x + carry.x),
       clampToPitchY(player.position.y + carry.y)};
@@ -219,8 +219,8 @@ std::optional<PitchPoint> MatchEngine::controlledAssistTarget(
   {
     // The point of the ball's path nearest to him, but never behind a
     // moment's travel of the ball: he steps toward it to meet it.
-    const Vector2F ballMetres = toMetres(ball.position);
-    const Vector2F self = toMetres(player.position);
+    const Vector2F ballMetres = asVector(ball.position);
+    const Vector2F self = asVector(player.position);
     const float speedSquared =
         ball.velocity.x * ball.velocity.x + ball.velocity.y * ball.velocity.y;
     float seconds = C::MEET_PASS_LOOKAHEAD_SECONDS;
@@ -230,8 +230,8 @@ std::optional<PitchPoint> MatchEngine::controlledAssistTarget(
                       (self.y - ballMetres.y) * ball.velocity.y) /
                          speedSquared,
                      C::MEET_PASS_LOOKAHEAD_SECONDS, C::SWITCH_HORIZON_SECONDS);
-    const PitchOffset ahead =
-        toPitchOffset({ball.velocity.x * seconds, ball.velocity.y * seconds});
+    const Vector2F ahead =
+        {ball.velocity.x * seconds, ball.velocity.y * seconds};
     return PitchPoint{
         clampToPitchX(ball.position.x + ahead.x),
         clampToPitchY(ball.position.y + ahead.y)};
@@ -245,8 +245,8 @@ std::optional<PitchPoint> MatchEngine::controlledAssistTarget(
     const Vector2F toGoal = metricDirection(
         carrier.position,
         pitch.at(player.isHomeTeam ? 0.0f : 1.0f, MatchTuning::Pitch::CENTRE));
-    const PitchOffset gap = toPitchOffset({toGoal.x * C::JOCKEY_CONTAIN_METRES,
-                                  toGoal.y * C::JOCKEY_CONTAIN_METRES});
+    const Vector2F gap = {toGoal.x * C::JOCKEY_CONTAIN_METRES,
+                                  toGoal.y * C::JOCKEY_CONTAIN_METRES};
     return PitchPoint{carrier.position.x + gap.x, carrier.position.y + gap.y};
   }
   return std::nullopt;
@@ -294,7 +294,7 @@ bool MatchEngine::performControlledAction(MatchPlayer& carrier)
     constexpr float MIN_GOALWARD_AIM = 0.2f;
     if (aim.x * forward > MIN_GOALWARD_AIM)
     {
-      const Vector2F from = toMetres(carrier.position);
+      const Vector2F from = asVector(carrier.position);
       const float goalLine = carrier.isHomeTeam ? pitch.length : 0.0f;
       const float crossing = from.y + aim.y * (goalLine - from.x) / aim.x;
       controlledShot.aimMetres =
@@ -330,7 +330,7 @@ MatchPlayer* MatchEngine::controlledPassReceiver(MatchPlayer& carrier,
         !active(candidate) || (throughBall && candidate.isGoalkeeper))
       continue;
     const Vector2F offset =
-        toMetres(candidate.position - carrier.position);
+        candidate.position - carrier.position;
     const float separation = length(offset);
     if (separation <= EPSILON) continue;
     const float alignment = (offset.x * aim.x + offset.y * aim.y) / separation;
@@ -379,7 +379,7 @@ void MatchEngine::playControlledPass(MatchPlayer& carrier,
       const float lead =
           C::THROUGH_LEAD_MIN_METRES +
           (C::THROUGH_LEAD_MAX_METRES - C::THROUGH_LEAD_MIN_METRES) * power;
-      const PitchOffset reach = toPitchOffset({run.x * lead, run.y * lead});
+      const Vector2F reach = {run.x * lead, run.y * lead};
       option.targetPoint = PitchPoint{
           clampToPitchX(receiver->position.x + reach.x),
           clampToPitchY(receiver->position.y + reach.y)};
@@ -399,7 +399,7 @@ void MatchEngine::playControlledPass(MatchPlayer& carrier,
                 (C::SPACE_LOFT_MAX_METRES - C::SPACE_LOFT_MIN_METRES) * power
           : C::SPACE_PASS_MIN_METRES +
                 (C::SPACE_PASS_MAX_METRES - C::SPACE_PASS_MIN_METRES) * power;
-  const PitchOffset reach = toPitchOffset({aim.x * metres, aim.y * metres});
+  const Vector2F reach = {aim.x * metres, aim.y * metres};
   const PitchPoint target{clampToPitchX(carrier.position.x + reach.x),
                         clampToPitchY(carrier.position.y + reach.y)};
   MatchPlayer* chaser = nullptr;
@@ -462,13 +462,13 @@ float MatchEngine::switchSeconds(const MatchPlayer& candidate) const
   if (getPossessionAttachment())
     for (const MatchPlayer& player : players)
       if (player.player == getPossessionAttachment()) carrier = &player;
-  const Vector2F start = toMetres(carrier ? carrier->position : ball.position);
+  const Vector2F start = asVector(carrier ? carrier->position : ball.position);
   const Vector2F velocity = carrier ? carrier->velocity : ball.velocity;
   const float speed = length(velocity);
   const Vector2F heading =
       speed > EPSILON ? Vector2F{velocity.x / speed, velocity.y / speed}
                       : Vector2F{0.0f, 0.0f};
-  const Vector2F self = toMetres(candidate.position);
+  const Vector2F self = asVector(candidate.position);
   const float topSpeed = std::max(currentTopSpeed(candidate), 1.0f);
   const float stopSeconds = carrier ? std::numeric_limits<float>::infinity()
                                     : speed / C::SWITCH_BALL_DECELERATION;

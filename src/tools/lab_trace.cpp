@@ -17,31 +17,20 @@
 
 namespace Lab
 {
-namespace
-{
-/** The ball's height in metres. */
-float ballHeightMetres(const MatchEngine& engine)
-{
-  return engine.getPitch().heightMetres(engine.getBall().z);
-}
-}  // namespace
-
 void writeTraceHeader(std::ostream& out) { out << "run,tick,who,x,y,z\n"; }
 
 void writeTraceRows(std::ostream& out, std::string_view run, int tick,
                     const MatchEngine& engine)
 {
-  const MatchPitch& pitch = engine.getPitch();
   const auto& players = engine.getPlayers();
   for (std::size_t index = 0; index < players.size(); ++index)
   {
-    const Vector2F at =
-        MatchEngineInternal::toMetres(pitch, players[index].position);
+    const PitchPoint at = players[index].position;
     out << std::format("{},{},p{},{:.5f},{:.5f},0\n", run, tick, index, at.x,
                        at.y);
   }
-  const Vector2F ball = MatchEngineInternal::toMetres(pitch, engine.getBall().position);
+  const PitchPoint ball = engine.getBall().position;
   out << std::format("{},{},ball,{:.5f},{:.5f},{:.5f}\n", run, tick, ball.x,
-                     ball.y, ballHeightMetres(engine));
+                     ball.y, engine.getBall().z);
 }
 }  // namespace Lab

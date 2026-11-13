@@ -56,29 +56,20 @@ const MatchPitch& PITCH = MatchPitch::matchSize();
 PitchPoint at(float fx, float fy) { return MatchPitch::matchSize().at(fx, fy); }
 /** Where drills park the ball when nobody should touch it. */
 PitchPoint ballOutOfTheWay() { return at(0.97f, 0.97f); }
-Vector2F toMetres(PitchPoint pitch) { return {PITCH.metresX(pitch), PITCH.metresY(pitch)}; }
-Vector2F toMetres(PitchOffset step)
-{
-  return {PITCH.metresX(step.x), PITCH.metresY(step.y)};
-}
-PitchPoint toPitch(Vector2F metres)
-{
-  return PitchPoint{PITCH.fromMetresX(metres.x), PITCH.fromMetresY(metres.y)};
-}
 float metresBetween(PitchPoint from, PitchPoint to)
 {
-  return std::hypot(PITCH.metresX(to.x - from.x), PITCH.metresY(to.y - from.y));
+  return std::hypot(to.x - from.x, to.y - from.y);
 }
 /** `from` moved `metres` along the unit direction `direction` (metres). */
 PitchPoint along(PitchPoint from, Vector2F direction, float metres)
 {
-  return PitchPoint{from.x + PITCH.fromMetresX(direction.x * metres),
-                    from.y + PITCH.fromMetresY(direction.y * metres)};
+  return PitchPoint{from.x + (direction.x * metres),
+                    from.y + (direction.y * metres)};
 }
 /** Unit direction from one pitch point to another, in metres. */
 Vector2F directionBetween(PitchPoint from, PitchPoint to)
 {
-  const Vector2F offset{PITCH.metresX(to.x - from.x), PITCH.metresY(to.y - from.y)};
+  const Vector2F offset{to.x - from.x, to.y - from.y};
   const float size = std::hypot(offset.x, offset.y);
   if (size < 1e-6f) return {1.0f, 0.0f};
   return {offset.x / size, offset.y / size};
@@ -111,8 +102,8 @@ float turnDegrees(Vector2F before, Vector2F after)
 std::optional<float> entryShare(PitchPoint from, PitchPoint to, PitchPoint centre,
                                 float radius)
 {
-  const Vector2F start = toMetres(from - centre);
-  const Vector2F move = toMetres(to - from);
+  const Vector2F start = from - centre;
+  const Vector2F move = to - from;
   const float c = start.x * start.x + start.y * start.y - radius * radius;
   if (c <= 0.0f) return 0.0f;
   const float a = move.x * move.x + move.y * move.y;
@@ -132,8 +123,8 @@ std::optional<float> entryShare(PitchPoint from, PitchPoint to, PitchPoint centr
 std::optional<float> crossingShare(PitchPoint from, PitchPoint to, PitchPoint point,
                                    Vector2F direction)
 {
-  const Vector2F a = toMetres(from - point);
-  const Vector2F b = toMetres(to - point);
+  const Vector2F a = from - point;
+  const Vector2F b = to - point;
   const float before = a.x * direction.x + a.y * direction.y;
   const float after = b.x * direction.x + b.y * direction.y;
   if (before >= 0.0f || after < 0.0f) return std::nullopt;
@@ -623,9 +614,9 @@ class SprintDrill final : public MovementDrill
     metres = static_cast<int>(distance);
     runUpMetres = static_cast<int>(runUp);
     startX = PITCH.atX(START_LINE);
-    finishX = startX + PITCH.fromMetresX(static_cast<float>(metres));
+    finishX = startX + (static_cast<float>(metres));
     const float from = std::max(PITCH.atX(0.02f),
-                                startX - PITCH.fromMetresX(static_cast<float>(runUpMetres)));
+                                startX - (static_cast<float>(runUpMetres)));
     runs = static_cast<int>(runsChoice + 0.5f);
     startRunner(engine, ids, PitchPoint{from, PITCH.atY(0.5f)});
     // Through the line: the target lies beyond the finish. His body faces
@@ -634,7 +625,7 @@ class SprintDrill final : public MovementDrill
     constexpr std::array<float, 8> FACINGS{0.0f,        PI,          0.5f * PI,
                                            -0.5f * PI,  0.25f * PI,  -0.25f * PI,
                                            0.75f * PI,  -0.75f * PI};
-    steerTo(engine, PitchPoint{finishX + PITCH.fromMetresX(RUN_THROUGH_METRES), PITCH.atY(0.5f)}, true, {},
+    steerTo(engine, PitchPoint{finishX + RUN_THROUGH_METRES, PITCH.atY(0.5f)}, true, {},
             0.0f, 0.0f,
             runs == 0 ? std::nullopt
                       : std::optional<float>(facingAngleOf(
@@ -666,12 +657,12 @@ class SprintDrill final : public MovementDrill
     for (std::size_t mark = 0; mark < crossings.size(); ++mark)
       if (!crossings[mark])
         crossings[mark] =
-            crossed(startX + PITCH.fromMetresX(static_cast<float>(mark * 10)));
+            crossed(startX + (static_cast<float>(mark * 10)));
     if (!finishTime) finishTime = crossed(finishX);
     if (crossings[0] && x <= finishX && speed > topSpeed)
     {
       topSpeed = speed;
-      topSpeedAt = PITCH.metresX(x - startX);
+      topSpeedAt = x - startX;
     }
     lastX = x;
     // Over half a second after the finish, or a minute at most.
@@ -681,11 +672,11 @@ class SprintDrill final : public MovementDrill
   void drawOverlay(const IMatchRenderer& renderer, ImDrawList& draw) const override
   {
     const float scale = Theme::scale();
-    const float half = PITCH.fromMetresY(4.0f);
+    const float half = 4.0f;
     const float middle = PITCH.atY(0.5f);
     for (std::size_t mark = 0; mark < crossings.size(); ++mark)
     {
-      const float x = startX + PITCH.fromMetresX(static_cast<float>(mark * 10));
+      const float x = startX + (static_cast<float>(mark * 10));
       DrillDraw::line(renderer, draw, PitchPoint{x, middle - half}, PitchPoint{x, middle + half},
                       IM_COL32(255, 255, 255, 120), 1.5f * scale);
     }
@@ -992,7 +983,7 @@ class TurnDrill final : public CourseDrill
     // Where he passes the cone: his closest to it, inside the turn or out.
     if (!finished)
     {
-      const Vector2F off = toMetres(player->position - cone);
+      const Vector2F off = player->position - cone;
       const float metres = std::hypot(off.x, off.y);
       if (!closest || metres < std::abs(*closest))
       {
@@ -1005,7 +996,7 @@ class TurnDrill final : public CourseDrill
       // Through the turn: the slowest moment and how wide he swings off the
       // line from the cone to the finish.
       if (!minSpeed || speed < *minSpeed) minSpeed = speed;
-      const Vector2F off = toMetres(player->position - cone);
+      const Vector2F off = player->position - cone;
       overshoot = std::max(
           overshoot, std::abs(off.x * exitDirection.y - off.y * exitDirection.x));
     }
@@ -1206,7 +1197,7 @@ class SlalomDrill final : public CourseDrill
     stagger = coneStagger;
     line = lineOffset > 0.0f ? std::max(lineOffset, MIN_LINE_METRES)
                              : courseLine(gap, stagger);
-    const PitchPoint start{PITCH.fromMetresX(END_ROOM_METRES), PITCH.atY(0.5f)};
+    const PitchPoint start{END_ROOM_METRES, PITCH.atY(0.5f)};
     conePoints.clear();
     std::vector<PitchPoint> course;
     for (int cone = 0; cone < count; ++cone)
@@ -1380,7 +1371,7 @@ class SlalomDrill final : public CourseDrill
   {
     if (points.size() < 2) return points.back();
     const float across =
-        std::clamp(PITCH.metresY(points[points.size() - 2].y - points.back().y),
+        std::clamp(points[points.size() - 2].y - points.back().y,
                    -FINISH_AIM_METRES, FINISH_AIM_METRES);
     return along(points.back(), {0.0f, 1.0f}, across);
   }
@@ -1472,7 +1463,7 @@ class SlalomDrill final : public CourseDrill
         const auto share = crossingShare(from, to, cone, {1.0f, 0.0f});
         if (!share) return std::nullopt;
         const float y = from.y + (to.y - from.y) * *share;
-        const float out = PITCH.metresY(y - cone.y) * sideOf(due);
+        const float out = (y - cone.y) * sideOf(due);
         return std::pair{out >= GATE_BUFFER_METRES,
                          secondsOf(engine) - STEP + STEP * static_cast<double>(*share)};
       };
@@ -1625,7 +1616,7 @@ class RepeatedSprintsDrill final : public MovementDrill
   void drawOverlay(const IMatchRenderer& renderer, ImDrawList& draw) const override
   {
     const float scale = Theme::scale();
-    const float half = PITCH.fromMetresY(4.0f);
+    const float half = 4.0f;
     const float middle = PITCH.atY(0.5f);
     for (std::size_t index = 0; index < 2; ++index)
     {
@@ -1828,9 +1819,9 @@ class FlagChaseDrill final : public CourseDrill
   void drawOverlay(const IMatchRenderer& renderer, ImDrawList& draw) const override
   {
     const float scale = Theme::scale();
-    DrillDraw::area(renderer, draw, toPitch({LENGTH * 0.5f - halfLength,
+    DrillDraw::area(renderer, draw, asPoint({LENGTH * 0.5f - halfLength,
                                              WIDTH * 0.5f - halfWidth}),
-                    toPitch({LENGTH * 0.5f + halfLength, WIDTH * 0.5f + halfWidth}),
+                    asPoint({LENGTH * 0.5f + halfLength, WIDTH * 0.5f + halfWidth}),
                     IM_COL32(255, 170, 40, 200), 2.0f * scale);
     drawTrail(renderer, draw);
     for (std::size_t index = 0; index < reached.size(); ++index)
@@ -1951,7 +1942,7 @@ class FlagChaseDrill final : public CourseDrill
       return std::abs(metres.x - LENGTH * 0.5f) <= halfLength - MARGIN &&
              std::abs(metres.y - WIDTH * 0.5f) <= halfWidth - MARGIN;
     };
-    const Vector2F from = toMetres(last);
+    const Vector2F from = asVector(last);
     std::optional<Vector2F> found;
     float turn = 0.0f;
     // Within the turn limits if it can be, any direction if not.
@@ -1974,9 +1965,9 @@ class FlagChaseDrill final : public CourseDrill
     {
       // An area too small for the legs: its centre.
       found = Vector2F{LENGTH * 0.5f, WIDTH * 0.5f};
-      turn = turnDegrees(heading, directionBetween(last, toPitch(*found)));
+      turn = turnDegrees(heading, directionBetween(last, asPoint(*found)));
     }
-    const PitchPoint flag = toPitch(*found);
+    const PitchPoint flag = asPoint(*found);
     heading = directionBetween(last, flag);
     last = flag;
     turns.push_back(turn);
@@ -3750,8 +3741,8 @@ class ShotDrill final : public Drill
     if (shot)
       lines.push_back(std::format(
           "Shot after {:.1f} s from {:.1f} m out, {:+.1f} m: xG {:.3f}, {}",
-          shot->at, PITCH.metresX(PITCH.mirrorX(shot->from.x)),
-          PITCH.metresY(shot->from.y - PITCH.atY(0.5f)), shot->xg,
+          shot->at, PITCH.mirrorX(shot->from.x),
+          shot->from.y - PITCH.atY(0.5f), shot->xg,
           shot->onTarget ? "on target" : "off target"));
     if (!outcome.empty()) lines.push_back("OUTCOME  " + outcome);
     // Every run with these settings so far (Watch: restart for another).
@@ -3782,8 +3773,8 @@ class ShotDrill final : public Drill
       out.push_back({"Off target", is("off target")});
       out.push_back({"Woodwork", is("woodwork")});
       out.push_back({"Blocked", is("blocked")});
-      out.push_back({"Shot from goal line (m)", PITCH.metresX(PITCH.mirrorX(shot->from.x))});
-      out.push_back({"Shot off centre (m)", PITCH.metresY(shot->from.y - PITCH.atY(0.5f))});
+      out.push_back({"Shot from goal line (m)", PITCH.mirrorX(shot->from.x)});
+      out.push_back({"Shot off centre (m)", shot->from.y - PITCH.atY(0.5f)});
       out.push_back({"Seconds to shoot", shot->at});
     }
     else
@@ -4033,8 +4024,8 @@ class ShotBlockDrill final : public Drill
       constexpr float BALL_SPEED = 27.0f;
       constexpr float STRIKE_DELAY = 0.1f;
       const float lead = defenderOut / BALL_SPEED + STRIKE_DELAY;
-      const Vector2F at = toMetres(defender->position);
-      const Vector2F mark = toMetres(defenderAt);
+      const Vector2F at = asVector(defender->position);
+      const Vector2F mark = asVector(defenderAt);
       const float ahead = (at.x + defender->velocity.x * lead - mark.x) * runLeft.x +
                           (at.y + defender->velocity.y * lead - mark.y) * runLeft.y;
       if (ahead >= 0.0f) shoot(engine);
@@ -4048,8 +4039,8 @@ class ShotBlockDrill final : public Drill
       {
         shotAt = now;
         speedAtShot = speedOf(*defender);
-        const Vector2F at = toMetres(defender->position);
-        const Vector2F from = toMetres(spot);
+        const Vector2F at = asVector(defender->position);
+        const Vector2F from = asVector(spot);
         offLineAtShot = (at.x - from.x) * runLeft.x + (at.y - from.y) * runLeft.y;
         seenEvents = engine.getEvents().size();
       }
@@ -4078,8 +4069,8 @@ class ShotBlockDrill final : public Drill
         speedAtShot = defender ? speedOf(*defender) : 0.0f;
         if (defender)
         {
-          const Vector2F at = toMetres(defender->position);
-          const Vector2F from = toMetres(spot);
+          const Vector2F at = asVector(defender->position);
+          const Vector2F from = asVector(spot);
           offLineAtShot = (at.x - from.x) * runLeft.x + (at.y - from.y) * runLeft.y;
         }
         continue;
@@ -4814,7 +4805,7 @@ class FirstTouchDrill final : public Drill
       // from where he will be when the ball gets there (his current
       // velocity over its exact travel time), still `passesBy` to his side.
       const float seconds = rollSeconds(engine, feedDistance) + STEP;
-      const PitchPoint ahead = toPitch({receiver->velocity.x * seconds,
+      const PitchPoint ahead = asPoint({receiver->velocity.x * seconds,
                                       receiver->velocity.y * seconds});
       const PitchPoint meet{receiver->position.x + ahead.x,
                           receiver->position.y + ahead.y};
@@ -4915,7 +4906,7 @@ struct PassFlight
 
   void observe(const MatchBall& ball)
   {
-    const float height = MatchPitch::heightMetres(ball.z);
+    const float height = ball.z;
     const float gap = metresBetween(ball.position, target);
     if (gap < closest)
     {
@@ -4938,8 +4929,8 @@ struct PassFlight
             (lastLift + std::sqrt(lastLift * lastLift +
                                   2.0f * G * std::max(lastHeight, 0.0f))) /
             G;
-        landing = PitchPoint{lastPosition.x + PITCH.fromMetresX(lastVelocity.x * fall),
-                           lastPosition.y + PITCH.fromMetresY(lastVelocity.y * fall)};
+        landing = PitchPoint{lastPosition.x + (lastVelocity.x * fall),
+                           lastPosition.y + (lastVelocity.y * fall)};
         landingMiss = metresBetween(*landing, target);
       }
     }
@@ -4981,7 +4972,7 @@ struct PassFlight
   {
     lastPosition = ball.position;
     lastVelocity = ball.velocity;
-    lastHeight = MatchPitch::heightMetres(ball.z);
+    lastHeight = ball.z;
     lastLift = ball.velocityZ;
   }
 
@@ -5217,7 +5208,7 @@ class PassDrill final : public Drill
       const float across = length * std::sin(radians);
       const float lowX = std::min(0.0f, runUp + ahead);
       const float highX = std::max(runUp, runUp + ahead);
-      passerStart = toPitch({LENGTH * 0.5f - (lowX + highX) * 0.5f,
+      passerStart = asPoint({LENGTH * 0.5f - (lowX + highX) * 0.5f,
                              WIDTH * 0.5f - across * 0.5f});
     }
     else
@@ -5333,7 +5324,7 @@ class PassDrill final : public Drill
       if (gap < closest)
       {
         closest = gap;
-        closestHeight = MatchPitch::heightMetres(ball.z);
+        closestHeight = ball.z;
         closestSpeed = std::hypot(ball.velocity.x, ball.velocity.y);
       }
       const PlayerID owner = engine.getPossessionAttachment() ? engine.getPossessionAttachment()->getId() : 0;
@@ -5521,8 +5512,8 @@ class PassDrill final : public Drill
   float bodyAngleToTarget(const MatchPlayer& player, PitchPoint ballAt) const
   {
     return bodyAngleTo(player,
-                       Vector2F{PITCH.metresX(receiverSpot.x - ballAt.x),
-                        PITCH.metresY(receiverSpot.y - ballAt.y)});
+                       Vector2F{receiverSpot.x - ballAt.x,
+                        receiverSpot.y - ballAt.y});
   }
 
   /** His body's angle (deg) to a direction (metres). */
@@ -6197,7 +6188,7 @@ class PassTargetDrill : public Drill
    * towards the target) and across it (+ to his right). */
   static Vector2F lineMetres(PitchPoint point)
   {
-    const Vector2F offset = toMetres(point - SPOT);
+    const Vector2F offset = point - SPOT;
     return {offset.x * UP.x + offset.y * UP.y, offset.y * UP.x - offset.x * UP.y};
   }
   /** A point given in metres along and across the line. */
@@ -6816,8 +6807,8 @@ class BullseyePassDrill : public PassTargetDrill
     const float fall = (was.lift + std::sqrt(was.lift * was.lift +
                                              2.0f * G * std::max(was.height, 0.0f))) /
                        G;
-    const PitchPoint point{was.position.x + PITCH.fromMetresX(was.velocity.x * fall),
-                         was.position.y + PITCH.fromMetresY(was.velocity.y * fall)};
+    const PitchPoint point{was.position.x + (was.velocity.x * fall),
+                         was.position.y + (was.velocity.y * fall)};
     Landing down;
     down.point = point;
     const Vector2F offset = lineMetres(point);
@@ -6847,7 +6838,7 @@ class BullseyePassDrill : public PassTargetDrill
   static BallState stateOf(const MatchBall& ball)
   {
     return {ball.position, ball.velocity,
-            MatchPitch::heightMetres(ball.z), ball.velocityZ};
+            ball.z, ball.velocityZ};
   }
   struct Landing
   {
@@ -7284,7 +7275,7 @@ class ShotTargetDrill final : public Drill
                        powerShare > 0.0f ? std::optional<float>(powerShare)
                                          : std::nullopt,
                        feedChoice < 1.5f, technique());
-      const Vector2F travel = toMetres(spot - feedFrom);
+      const Vector2F travel = spot - feedFrom;
       const float metres = std::hypot(travel.x, travel.y);
       lastBallVelocity = metres > 0.0f ? Vector2F{travel.x / metres * ballSpeed,
                                                   travel.y / metres * ballSpeed}
@@ -7383,7 +7374,7 @@ class ShotTargetDrill final : public Drill
     {
       // Over the keeper: its height as it passes where he stood.
       if (strike->overKeeper < 0.0f && ball.position.x >= keeperAt.x)
-        strike->overKeeper = MatchPitch::heightMetres(ball.z);
+        strike->overKeeper = ball.z;
       const auto& events = engine.getEvents();
       for (std::size_t index = eventsAtStrike; index < events.size(); ++index)
         if (events[index].type == MatchEventType::SAVE) outcome = "saved";
@@ -7615,8 +7606,8 @@ class ShotTargetDrill final : public Drill
   /** From the ball to the spot he aims at (metres). */
   [[nodiscard]] Vector2F lineToAim(PitchPoint ballAt) const
   {
-    return {PITCH.metresX(PITCH.mirrorX(ballAt.x)),
-            PITCH.metresY(PITCH.atY(0.5f + aimAcross / WIDTH) - ballAt.y)};
+    return {PITCH.mirrorX(ballAt.x),
+            PITCH.atY(0.5f + aimAcross / WIDTH) - ballAt.y};
   }
   /** His body's angle (deg) to a direction (metres). */
   static float bodyAngleTo(const MatchPlayer& player, Vector2F line)
@@ -7667,7 +7658,7 @@ class ShotTargetDrill final : public Drill
           static_cast<float>(b.factorSum[factor] - a.factorSum[factor]);
     reading.speed = std::hypot(ball.velocity.x, ball.velocity.y);
     reading.lift = ball.velocityZ;
-    reading.crossingY = PITCH.metresY(ball.possessionState().shotTargetY - PITCH.atY(0.5f));
+    reading.crossingY = ball.possessionState().shotTargetY - PITCH.atY(0.5f);
     reading.crossingZ = ball.possessionState().shotTargetHeightMetres;
     strike = reading;
   }
@@ -8051,7 +8042,7 @@ class HeaderTargetDrill final : public Drill
     }
     else if (header && outcome.empty())
     {
-      peakAfter = std::max(peakAfter, MatchPitch::heightMetres(ball.z));
+      peakAfter = std::max(peakAfter, ball.z);
       if (aim() == ForcedHeaderAim::SPOT)
       {
         flight.observe(ball);
@@ -8308,7 +8299,7 @@ class HeaderTargetDrill final : public Drill
   };
   static State stateOf(const MatchBall& ball)
   {
-    return {ball.position, ball.velocity, MatchPitch::heightMetres(ball.z), ball.velocityZ};
+    return {ball.position, ball.velocity, ball.z, ball.velocityZ};
   }
   static float paceOf(const State& state)
   {
@@ -8446,7 +8437,7 @@ class HeaderTargetDrill final : public Drill
           {body.x / bodyLength, body.y / bodyLength},
           {ball.velocity.x / reading.speed, ball.velocity.y / reading.speed});
     }
-    reading.crossingY = PITCH.metresY(ball.possessionState().shotTargetY - PITCH.atY(0.5f));
+    reading.crossingY = ball.possessionState().shotTargetY - PITCH.atY(0.5f);
     reading.crossingZ = ball.possessionState().shotTargetHeightMetres;
     header = reading;
   }
@@ -8464,7 +8455,7 @@ class HeaderTargetDrill final : public Drill
   [[nodiscard]] Vector2F lineOffset(PitchPoint point) const
   {
     const Vector2F way = directionBetween(stand, target);
-    const Vector2F offset = toMetres(point - target);
+    const Vector2F offset = point - target;
     return Vector2F{offset.x * way.x + offset.y * way.y, offset.y * way.x - offset.x * way.y};
   }
 
@@ -8871,7 +8862,7 @@ class BodyControlDrill final : public Drill
   };
   static State stateOf(const MatchBall& ball)
   {
-    return {ball.position, ball.velocity, MatchPitch::heightMetres(ball.z), ball.velocityZ};
+    return {ball.position, ball.velocity, ball.z, ball.velocityZ};
   }
   struct Touch
   {

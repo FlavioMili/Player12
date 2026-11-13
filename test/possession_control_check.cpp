@@ -34,12 +34,12 @@ int main()
   const auto legacy =
       retainingTouchPosition(MatchPitch{}, PossessionId::AARDVARK, partlyOverLine);
   check(physical.x == partlyOverLine.x && physical.y == partlyOverLine.y &&
-            legacy.x == partlyOverLine.x && legacy.y == 0.001f,
+            legacy.x == partlyOverLine.x && legacy.y == PITCH.atY(0.001f),
         "playable boundary touch retains its actual point; Aardvark keeps its "
         "legacy inset");
   const auto ordinary =
       retainingTouchPosition(MatchPitch{}, PossessionId::BINTURONG, PITCH.at(0.4f, 0.6f));
-  check(ordinary.x == 0.4f && ordinary.y == 0.6f,
+  check(ordinary.x == PITCH.atX(0.4f) && ordinary.y == PITCH.atY(0.6f),
         "ordinary retaining touch leaves the contact point unchanged");
   Evidence atFeet{true, 0.4f, 0.5f, 0.4f, 0.0f, 0.35f, 0.9f, 1.5f};
   const auto collection = evaluate(false, 0.0f, atFeet, 0.1f);

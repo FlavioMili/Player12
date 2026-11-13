@@ -190,8 +190,8 @@ bool runDrillChecks(const Team& home, const Team& away,
       engine->advance(MatchTuning::Timing::FIXED_STEP_SECONDS);
       for (const MatchPlayer& slot : engine->getPlayers())
         if (slot.player == runner &&
-            std::hypot(PITCH.metresX(slot.position.x - target.x),
-                       PITCH.metresY(slot.position.y - target.y)) < 1.0f)
+            std::hypot(slot.position.x - target.x,
+                       slot.position.y - target.y) < 1.0f)
           arrived = engine->getSimulatedSteps();
     }
     return std::pair{arrived, SandboxRecorder::stateChecksum(*engine)};
@@ -595,15 +595,15 @@ bool runFirstTouchChecks(const std::vector<const Team*>& clubs,
   constexpr float HEAVY_GAP_METRES = 2.0f;
   const auto metres = [](PitchPoint from, PitchPoint to)
   {
-    const float x = MatchPitch::matchSize().metresX(to.x - from.x);
-    const float y = MatchPitch::matchSize().metresY(to.y - from.y);
+    const float x = to.x - from.x;
+    const float y = to.y - from.y;
     return std::sqrt(x * x + y * y);
   };
   /** The same for the change between two steps (ball from holder). */
-  const auto offsetMetres = [](PitchOffset from, PitchOffset to)
+  const auto offsetMetres = [](Vector2F from, Vector2F to)
   {
-    const float x = MatchPitch::matchSize().metresX(to.x - from.x);
-    const float y = MatchPitch::matchSize().metresY(to.y - from.y);
+    const float x = to.x - from.x;
+    const float y = to.y - from.y;
     return std::sqrt(x * x + y * y);
   };
   const auto speedOf = [](Vector2F velocity)
@@ -690,7 +690,7 @@ bool runFirstTouchChecks(const std::vector<const Team*>& clubs,
       const Player* owner = nullptr;
       double touchStart = 0.0;
       PitchPoint lastPosition = engine->getBall().position;
-      PitchOffset lastOffset{0.0f, 0.0f};
+      Vector2F lastOffset{0.0f, 0.0f};
       float lastSpeed = 0.0f;
       float lastCooldown = 0.0f;
       float lastLaunchSpeed = engine->getBall().touchLaunchSpeed;
@@ -784,7 +784,7 @@ bool runFirstTouchChecks(const std::vector<const Team*>& clubs,
             if (const MatchPlayer* holder = ownerOf(owner);
                 holder && stepCount == 1.0f)
             {
-              const PitchOffset offset = ball.position - holder->position;
+              const Vector2F offset = ball.position - holder->position;
               setup.worstCollectJump = std::max(
                   setup.worstCollectJump,
                   offsetMetres(lastOffset, offset) -
@@ -1630,8 +1630,8 @@ int runMatchTrace(GameController& controller, double seconds, int cases, const s
   std::vector<std::deque<Moment>> history(players.size());
   const auto metres = [](PitchPoint pitch)
   {
-    return Vector2F{MatchPitch::matchSize().metresX(pitch),
-                    MatchPitch::matchSize().metresY(pitch)};
+    return Vector2F{pitch.x,
+                    pitch.y};
   };
   const auto nameOf = [&](std::size_t slot)
   {

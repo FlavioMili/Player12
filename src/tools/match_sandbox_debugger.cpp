@@ -40,8 +40,7 @@ std::string score(float value)
 
 float metres(PitchPoint from, PitchPoint to)
 {
-  const MatchPitch& pitch = MatchPitch::matchSize();
-  return std::hypot(pitch.metresX(to.x - from.x), pitch.metresY(to.y - from.y));
+  return std::hypot(to.x - from.x, to.y - from.y);
 }
 
 /** Match clock "mm:ss". */

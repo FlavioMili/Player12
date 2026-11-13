@@ -182,7 +182,7 @@ struct ScenarioDecision
 
 /**
  * One on-pitch slot. `position`, `basePosition` and `movementTarget` are
- * normalised pitch coordinates; `velocity` is in metres per second (x along
+ * metres on the pitch; `velocity` is in metres per second (x along
  * the length, y across the width). `facingAngle` is the heading in
  * normalised pitch space, as renderers expect.
  */
@@ -225,7 +225,7 @@ struct MatchPlayer
    * corner to widen the turn. Together they set how fast he takes it. */
   float routeApexOffset = 0.0f;
   float routeOutwardRoom = 0.0f;
-  /** Where his line points now (normalised pitch), on a route: what his
+  /** Where his line points now (metres), on a route: what his
    * touches aim at when he is dribbling. */
   PitchPoint routeAim{};
   /** The player he is overtaking (slot, -1: none) and on which side (+1
@@ -490,7 +490,7 @@ struct WalkState
 struct TouchlinePerson
 {
   TouchlineRole role = TouchlineRole::SUBSTITUTE;
-  /** His seat on his side's dugout bench (normalised pitch); the manager's
+  /** His seat on his side's dugout bench (metres); the manager's
    * is his spot in his technical area, moved with the play. */
   PitchPoint seat{};
   /** Sitting on it (else on his feet). */
@@ -503,7 +503,7 @@ struct TouchlinePerson
 };
 
 /** What a first touch tries to do (first-touch plan): send the ball to
- * `targetSpot` (normalised), arriving at `arrivalSpeed` m/s. */
+ * `targetSpot` (metres), arriving at `arrivalSpeed` m/s. */
 struct TouchIntent
 {
   enum class Kind : std::uint8_t
@@ -1370,7 +1370,7 @@ struct MatchBall
    * largest gap so far. */
   float touchGap = 0.0f;
   float touchPeakGap = 0.0f;
-  /** Where the last contact sent it off from (normalised; for drills and
+  /** Where the last contact sent it off from (metres; for drills and
    * reports, read by nothing in play). */
   PitchPoint sentFrom{};
   /** How high it was there (m; the same: for drills and reports). */
@@ -2956,7 +2956,7 @@ class MatchEngine
   bool startDrill(const MatchScenario& scenario);
 
   /**
-   * Drills: holds a player's tactical target (normalised pitch), which then
+   * Drills: holds a player's tactical target (metres), which then
    * replaces the planner's; `urgent` makes him run at it flat out. A route
    * gives up to two waypoints on the way, and his line through them: how
    * far inside each the turn's apex may pass (`apexOffsetMetres`; negative
@@ -2997,7 +2997,7 @@ class MatchEngine
    * `style` can force it along the ground or lofted. Logged and replayed. */
   void forcePass(PlayerID playerId, PlayerID receiverId,
                  ForcedPassStyle style);
-  /** Drills: the next header the player wins goes to `spot` (normalised;
+  /** Drills: the next header the player wins goes to `spot` (metres;
    * SPOT), at `goalAim` in the goal (metres across from the middle and up;
    * GOAL), or is cushioned and kept (KEEP), instead of what the brain
    * would choose. Logged and replayed. */
@@ -3020,7 +3020,7 @@ class MatchEngine
   {
     return lastHeadPart;
   }
-  /** Drills: the player passes to `spot` (normalised), with nobody there,
+  /** Drills: the player passes to `spot` (metres), with nobody there,
    * as soon as he has the ball and can act: weighted as for a man standing
    * on it, and a lofted pass is aimed to land on it; `spin` is the spin he
    * means (PassOption::spin), `arrivalSpeed` its pace there. `firstTime`:
@@ -3037,7 +3037,7 @@ class MatchEngine
    * Binturong brain's carry urgency: 0 a walk, 1/3 a jog, 2/3 a run, 1 a
    * sprint). Logged and replayed. */
   void keepBall(PlayerID playerId, bool keep, float urgency = 1.0f);
-  /** Drills: plays the ball in from `from` (normalised) with `velocity`
+  /** Drills: plays the ball in from `from` (metres) with `velocity`
    * along the ground (m/s) and `lift` upward (m/s): as a pass to
    * `receiverId` (his own pass to receive), or loose for 0. Nobody kicked
    * it, so a completion credits only his side. In play only; logged and
@@ -3185,14 +3185,6 @@ class MatchEngine
   // This pitch's geometry, under the names the engine's code has always
   // used (defined in match_engine_internal.h, on the helpers there that
   // take a pitch).
-  /** A point as a position in metres (from the left goal line and the top
-   * touchline), and a step between points as a metric vector. */
-  Vector2F toMetres(PitchPoint point) const;
-  Vector2F toMetres(PitchOffset step) const;
-  /** A position in metres as a point, and a metric vector as a step
-   * between points. */
-  PitchPoint toPitch(Vector2F metres) const;
-  PitchOffset toPitchOffset(Vector2F metres) const;
   /** Distance in metres between two points. */
   float distance(PitchPoint first, PitchPoint second) const;
   /** Unit direction on the ground (metric) from one point to another. */
@@ -3469,7 +3461,7 @@ class MatchEngine
   {
     TacticalRole role = TacticalRole::Standard;
     RoleProfile profile;
-    PitchOffset possessionOffset{0.0f, 0.0f};
+    Vector2F possessionOffset{0.0f, 0.0f};
   };
   /** Slot roles by side (index 0 home), indexed by formation slot. */
   std::array<std::array<SlotTactic, 16>, 2> slotTactics{};
@@ -4158,7 +4150,7 @@ class MatchEngine
     float speed = 0.0f;
     float verticalSpeed = 0.0f;
     bool launchSet = false;
-    /** The spin it leaves with, and a point (normalised) along the way it
+    /** The spin it leaves with, and a point (metres) along the way it
      * leaves when that isn't straight at where it crosses the line (a
      * curled shot). */
     BallSpin spin{};
@@ -4975,7 +4967,7 @@ class MatchEngine
      * with `turnSpeed` left for him to stop it with a touch. */
     bool stop = false;
   };
-  /** `from`: where he plays it (normalised pitch). A Binturong body then
+  /** `from`: where he plays it (metres). A Binturong body then
    * aims from there (dribbleOutFromBinturong). */
   DribbleAim dribbleAim(const MatchPlayer& player,
                         std::optional<PitchPoint> from = std::nullopt) const;
@@ -5069,7 +5061,7 @@ class MatchEngine
   /** An advantage being played: ends it, or calls back the free kick. */
   void updatePendingAdvantage(float dt);
   /** Whether `passer`'s pass to `option`'s receiver is given offside, the
-   * defenders' line at `defenderLine` (normalised x). */
+   * defenders' line at `defenderLine` (metres along the length). */
   bool judgeOffside(const MatchPlayer& passer, const PassOption& option,
                     float defenderLine) const;
   /** Whole added minutes due for the current period from its stoppages. */
@@ -5103,7 +5095,7 @@ class MatchEngine
   void meetWithHead(const MatchPlayer& header);
   /**
    * Sends the ball from `from` (where his body released it) toward `target`
-   * (normalised) with a horizontal speed and vertical speed in m/s; the
+   * (metres) with a horizontal speed and vertical speed in m/s; the
    * kicker is locked out of touching it again for a moment. Shared: it only
    * sets the ball off as the body released it.
    */
@@ -5111,7 +5103,7 @@ class MatchEngine
                   PitchPoint target, float horizontalSpeed, float verticalSpeed,
                   BallSpin spin);
   /** What every contact does to the ball (unified kick plan): it leaves
-   * from `position` (normalised) at height `z` (length units) with the
+   * from `position` at height `z` (metres) with the
    * velocity off his foot, played by `kicker`, who may not touch it again
    * for `kickerLockout` seconds. Possession is the caller's. */
   void sendBallOff(const MatchPlayer& kicker, PitchPoint position, float z,

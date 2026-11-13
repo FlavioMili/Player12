@@ -134,7 +134,7 @@ void MatchEngine::updateTouchBinturong(MatchPlayer& carrier, float dt)
   ball.ownTouchCooldown = std::max(0.0f, ball.ownTouchCooldown - dt);
   ball.plannedTouchIn = std::max(0.0f, ball.plannedTouchIn - dt);
 
-  const Vector2F offset = toMetres(ball.position - carrier.position);
+  const Vector2F offset = ball.position - carrier.position;
   const Vector2F predicted{
       offset.x + relative.x * PossessionControl::PREDICT_SECONDS,
       offset.y + relative.y * PossessionControl::PREDICT_SECONDS};
@@ -143,7 +143,7 @@ void MatchEngine::updateTouchBinturong(MatchPlayer& carrier, float dt)
       gap,
       length(predicted),
       length(relative),
-      pitch.heightMetres(ball.z),
+      ball.z,
       bodyLines(carrier).feet,
       R::KICK_REACH_METRES,
       touchKnobs[TouchKnob::COLLECT_RELATIVE_SPEED]};
@@ -179,13 +179,13 @@ void MatchEngine::updateTouchBinturong(MatchPlayer& carrier, float dt)
   if (!recoverable && evidence.playerAvailable)
   {
     FlightState flight{length(ball.velocity), ball.velocityZ,
-                       pitch.heightMetres(ball.z), false,
+                       ball.z, false,
                        ball.spin};
-    Vector2F at = toMetres(ball.position);
+    Vector2F at = asVector(ball.position);
     Vector2F heading = length(ball.velocity) > EPSILON
                            ? normalized(ball.velocity)
                            : Vector2F{1.0f, 0.0f};
-    const Vector2F from = toMetres(carrier.position);
+    const Vector2F from = asVector(carrier.position);
     constexpr int SUBSTEPS = MatchTuning::Timing::BALL_SUBSTEPS;
     constexpr float SUBSTEP = PossessionClaim::SAMPLE_SECONDS / SUBSTEPS;
     for (float seconds = PossessionClaim::SAMPLE_SECONDS;
@@ -209,7 +209,7 @@ void MatchEngine::updateTouchBinturong(MatchPlayer& carrier, float dt)
               : 0.0f;
       // The centre can be slightly outside while part of the ball is still
       // in play. Use the same whole-ball geometry as Binturong's line rules.
-      const bool onPitch = ballInPlayAtBinturong(toPitch(at));
+      const bool onPitch = ballInPlayAtBinturong(asPoint(at));
       if (PossessionClaim::canRecoverAt(
               metres, toward, currentTopSpeed(carrier), carrier.acceleration,
               seconds, std::max(carrier.footCooldown, ball.ownTouchCooldown),
@@ -330,7 +330,7 @@ void MatchEngine::noteDribbleTouchBinturong(const MatchPlayer& player,
   ball.plannedTouchIn = intent.plannedSeconds;
   {
     const Vector2F sent =
-        toMetres(intent.targetSpot - moment.contactPoint);
+        intent.targetSpot - moment.contactPoint;
     const float sentMetres = length(sent);
     if (sentMetres > EPSILON)
       ball.pushDirection = {sent.x / sentMetres, sent.y / sentMetres};

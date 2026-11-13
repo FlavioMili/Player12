@@ -106,14 +106,14 @@
    * urgently he carries it. */
   float chooseTouchSecondsBinturong(const MatchPlayer& player, float pace,
                                     float toEnd) const;
-  /** How far a push from `from` (normalised pitch) along `direction`
+  /** How far a push from `from` (metres) along `direction`
    * (metric unit) goes (m): as far as he runs at `pace` in `seconds` from
    * `startGap` behind it, never past `toGoal` (less room to roll on), and
    * no further than he still gets to it first. */
   float pushMetresBinturong(const MatchPlayer& player, PitchPoint from,
                             Vector2F direction, float startGap, float pace,
                             float seconds, std::optional<float> toGoal) const;
-  /** Signed x shift of the role in the defensive block (normalised). */
+  /** Signed x shift of the role in the defensive block (metres). */
   float defensiveRoleShiftBinturong(const MatchPlayer& player) const;
   /** Second presser's spot when doubling up on the carrier, if ordered. */
   std::optional<PitchPoint> doubleUpPointBinturong(const MatchPlayer& helper,
@@ -148,7 +148,7 @@
   Vector2F tightMarkVelocityBinturong(const MatchPlayer& target) const;
   /** The man this player marks when he is under a tight-marking order. */
   const MatchPlayer* tightMarkTargetBinturong(const MatchPlayer& marker) const;
-  /** Presser's lateral shade onto the carrier's stronger side (normalised
+  /** Presser's lateral shade onto the carrier's stronger side (metres
    * y; 0 without a weaker-foot order). */
   float weakFootShadeBinturong(const MatchPlayer& carrier) const;
   /** Collision plan step 5: a fallen player gets up by urgency: jumps up

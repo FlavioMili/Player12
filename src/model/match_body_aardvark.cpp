@@ -115,8 +115,8 @@ FM_KERNEL_CLONES void MatchEngine::integrateMovementsAardvark(
   // step in point units, with the pitch limits in point units too.
   const float inverseLength = pitch.inverseLength;
   const float inverseWidth = pitch.inverseWidth;
-  const float unitsPerMetreX = pitch.fromMetresXByInverse(1.0f);
-  const float unitsPerMetreY = pitch.fromMetresYByInverse(1.0f);
+  const float unitsPerMetreX = 1.0f;
+  const float unitsPerMetreY = 1.0f;
   const float minX = pitch.atX(Pitch::PLAYER_MIN_X);
   const float maxX = pitch.atX(Pitch::PLAYER_MAX_X);
   const float minY = pitch.atY(Pitch::PLAYER_MIN_Y);
@@ -166,7 +166,7 @@ FM_KERNEL_CLONES void MatchEngine::integrateMovementsAardvark(
     player.movementTarget.y +=
         (target.y - player.movementTarget.y) * targetBlend;
     const Vector2F offset =
-        toMetres(player.movementTarget - player.position);
+        player.movementTarget - player.position;
     // A player standing on his spot stays put (the common case in stoppages).
     if (offset.x * offset.x + offset.y * offset.y <=
             P::ARRIVAL_DEAD_ZONE_METRES * P::ARRIVAL_DEAD_ZONE_METRES &&
@@ -400,7 +400,7 @@ FM_KERNEL_CLONES void MatchEngine::integrateMovementsAardvark(
   }
   player.velocity = velocity;
 
-  const PitchOffset step = toPitchOffset({velocity.x * dt, velocity.y * dt});
+  const Vector2F step = {velocity.x * dt, velocity.y * dt};
   const float nextX = player.position.x + step.x;
   const float nextY = player.position.y + step.y;
   player.position.x = clampToPitchX(nextX);
@@ -440,8 +440,8 @@ void MatchEngine::spendEnergyAardvark(FitnessLanes& lanes, std::size_t begin,
          stepBrakingAnaerobicEnergy, fastDebt, nextFastDebt] = lanes;
   for (std::size_t lane = begin; lane < end; ++lane)
   {
-    const float metresX = pitch.metresX(fromX[lane] - toX[lane]);
-    const float metresY = pitch.metresY(fromY[lane] - toY[lane]);
+    const float metresX = fromX[lane] - toX[lane];
+    const float metresY = fromY[lane] - toY[lane];
     const float metres = std::sqrt(metresX * metresX + metresY * metresY);
     const float speed = metres / dt;
     const float drain = MatchRules::staminaDrainPerSecond(
@@ -539,9 +539,9 @@ bool MatchEngine::updateDribbleAardvark(MatchPlayer& carrier, float dt)
                                (ball.touchTimer / (ball.touchTimer + dt));
     }
   }
-  const PitchOffset ahead =
-      toPitchOffset({ball.dribbleDirection.x * ball.dribbleExposure,
-               ball.dribbleDirection.y * ball.dribbleExposure});
+  const Vector2F ahead =
+      {ball.dribbleDirection.x * ball.dribbleExposure,
+               ball.dribbleDirection.y * ball.dribbleExposure};
   ball.position = PitchPoint{std::clamp(carrier.position.x + ahead.x, pitch.atX(0.001f), pitch.atX(0.999f)),
                    std::clamp(carrier.position.y + ahead.y, pitch.atY(0.001f), pitch.atY(0.999f))};
   ball.z = 0.0f;
@@ -574,7 +574,7 @@ MatchEngine::Kick MatchEngine::kickPassAardvark(const MatchPlayer& passer,
        pressure * MatchTuning::Passing::PRESSURE_ERROR_METRES +
        passDistance * MatchTuning::Passing::DISTANCE_ERROR) *
       executionErrorScaleAardvark(passer) * care * randomFloat(-1.0f, 1.0f);
-  const PitchOffset miss = toPitchOffset({-direct.y * error, direct.x * error});
+  const Vector2F miss = {-direct.y * error, direct.x * error};
   Kick kick;
   kick.target = PitchPoint{std::clamp(target.x + miss.x, 0.0f, pitch.atX(1.0f)),
                  std::clamp(target.y + miss.y, 0.0f, pitch.atY(1.0f))};
@@ -699,8 +699,8 @@ void MatchEngine::readShotAardvark(const MatchPlayer& keeper,
   const float predictedY =
       ball.position.y + (getPossessionState().shotTargetY - ball.position.y) * t;
   const float readError =
-      pitch.fromMetresY(gaussian(rng) * MatchTuning::Goalkeeper::READ_ERROR_METRES *
-                        (1.0f - keeper.goalkeeping * 0.6f));
+      gaussian(rng) * MatchTuning::Goalkeeper::READ_ERROR_METRES *
+                        (1.0f - keeper.goalkeeping * 0.6f);
   control.diveTargetY = std::clamp(
       predictedY + readError,
       pitch.atY(MatchTuning::Pitch::GOAL_TOP - MatchTuning::Goalkeeper::DIVE_POST_MARGIN),
@@ -715,7 +715,7 @@ void MatchEngine::readShotAardvark(const MatchPlayer& keeper,
     if (along <= 0.05f || along >= 0.95f) continue;
     const float laneY =
         ball.position.y + (getPossessionState().shotTargetY - ball.position.y) * along;
-    if (pitch.metresY(std::abs(other.position.y - laneY)) <
+    if (std::abs(other.position.y - laneY) <
         MatchTuning::Goalkeeper::SCREEN_WIDTH_METRES)
     {
       screened = true;
@@ -752,14 +752,12 @@ void MatchEngine::diveGoalkeeperAardvark(MatchPlayer& keeper, float dt)
   // Lateral dive dynamics in m/s (the keeper moves across the width).
   // Move the visible body into reach rather than granting a distant save.
   constexpr float DIVE_CLOSING_GAIN = 1.25F;
-  const float acceleration = pitch.fromMetresY(
-      MatchTuning::Goalkeeper::DIVE_ACCELERATION_METRES * DIVE_CLOSING_GAIN);
-  const float maximumSpeed = pitch.fromMetresY(
-      std::min(currentTopSpeedAardvark(keeper),
+  const float acceleration = MatchTuning::Goalkeeper::DIVE_ACCELERATION_METRES * DIVE_CLOSING_GAIN;
+  const float maximumSpeed = std::min(currentTopSpeedAardvark(keeper),
                (MatchTuning::Goalkeeper::DIVE_BASE_SPEED_METRES +
                 keeper.goalkeeping *
                     MatchTuning::Goalkeeper::DIVE_SKILL_SPEED_METRES) *
-                   DIVE_CLOSING_GAIN));
+                   DIVE_CLOSING_GAIN);
   const float offset = control.diveTargetY - keeper.position.y;
   const float direction = offset >= 0.0f ? 1.0f : -1.0f;
   control.lateralVelocity =
@@ -772,7 +770,7 @@ void MatchEngine::diveGoalkeeperAardvark(MatchPlayer& keeper, float dt)
     control.lateralVelocity = 0.0f;
   }
   keeper.position.y = clampToPitchY(keeper.position.y + step);
-  keeper.velocity = {0.0f, pitch.metresY(step) / std::max(dt, EPSILON)};
+  keeper.velocity = {0.0f, step / std::max(dt, EPSILON)};
   keeper.movementTarget = keeper.position;
   keeper.isDiving = true;
 }
@@ -789,8 +787,8 @@ MatchEngine::SaveAttempt MatchEngine::attemptSaveAardvark(
   const float crossingY =
       substepBallPosition.y + (ball.position.y - substepBallPosition.y) * t;
   const float crossingHeight =
-      pitch.heightMetres(substepBallZ + (ball.z - substepBallZ) * t);
-  const float gapMetres = pitch.metresY(std::abs(crossingY - keeper.position.y));
+      substepBallZ + (ball.z - substepBallZ) * t;
+  const float gapMetres = std::abs(crossingY - keeper.position.y);
 
   const float lateralReach = MatchRules::goalkeeperHandlingRadiusMetres(
       keeper.heightMetres, keeper.goalkeeping, crossingHeight, keeper.isDiving);
@@ -924,10 +922,9 @@ bool MatchEngine::tryOwnGoalTouchAardvark(MatchPlayer& defender)
   using S = MatchTuning::SetPiece;
   // Only a touch in front of his own goal can go in off a defender.
   const float goalLineMetres =
-      pitch.metresX(defender.isHomeTeam ? defender.position.x
-                                        : pitch.atX(1.0f) - defender.position.x);
-  const float lateralMetres = pitch.metresY(
-      std::abs(defender.position.y - pitch.atY(MatchTuning::Pitch::CENTRE)));
+      defender.isHomeTeam ? defender.position.x
+                                        : pitch.atX(1.0f) - defender.position.x;
+  const float lateralMetres = std::abs(defender.position.y - pitch.atY(MatchTuning::Pitch::CENTRE));
   if (goalLineMetres > S::OWN_GOAL_TOUCH_DEPTH_METRES ||
       lateralMetres > S::OWN_GOAL_TOUCH_WIDTH_METRES ||
       randomFloat(0.0f, 1.0f) >= S::OWN_GOAL_TOUCH_CHANCE)
@@ -938,13 +935,13 @@ bool MatchEngine::tryOwnGoalTouchAardvark(MatchPlayer& defender)
       randomFloat(-MatchTuning::Shooting::GOAL_HALF_WIDTH_METRES,
                   MatchTuning::Shooting::GOAL_HALF_WIDTH_METRES);
   const PitchPoint target{goalX, pitch.atY(MatchTuning::Pitch::CENTRE) +
-                                   pitch.fromMetresY(aimMetres)};
+                                   aimMetres};
   const float height = ball.z;
   clearFlightState();
   // It skews off him at the height it met him.
   launchBall(defender,
              BallRelease{ball.position, height,
-                         pitch.heightMetres(height)},
+                         height},
              target,
              randomFloat(S::OWN_GOAL_MIN_SPEED, S::OWN_GOAL_MAX_SPEED),
              randomFloat(0.0f, S::OWN_GOAL_MAX_LIFT), BallSpin{});
@@ -1237,13 +1234,13 @@ MatchEngine::BallRelease MatchEngine::releaseFromAardvark(const MatchPlayer& kic
       // From where the ball is, at the shot's release height.
       from.position = ball.position;
       from.heightMetres = MatchTuning::Shooting::RELEASE_HEIGHT_METRES;
-      from.z = pitch.heightUnits(from.heightMetres);
+      from.z = from.heightMetres;
       break;
     case ReleaseKind::HEADED_SHOT:
       // From where the ball is, at its height.
       from.position = ball.position;
-      from.heightMetres = pitch.heightMetres(ball.z);
-      from.z = pitch.heightUnits(from.heightMetres);
+      from.heightMetres = ball.z;
+      from.z = from.heightMetres;
       break;
     case ReleaseKind::CLEARANCE:
       // A loose ball where it lies, else where he meets it; off the ground.
@@ -1254,7 +1251,7 @@ MatchEngine::BallRelease MatchEngine::releaseFromAardvark(const MatchPlayer& kic
       // Where he meets it, at its height.
       from.position = strikePointAardvark(kicker);
       from.z = ball.z;
-      from.heightMetres = pitch.heightMetres(ball.z);
+      from.heightMetres = ball.z;
       break;
   }
   return from;

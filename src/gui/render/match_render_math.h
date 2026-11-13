@@ -373,8 +373,8 @@ class ShirtNumbers
 inline Vec3 worldFromPitch(PitchPoint normalized, float heightMetres = 0.0f)
 {
   const MatchPitch& pitch = MatchPitch::matchSize();
-  return {pitch.metresX(normalized),
-          pitch.metresY(pitch.mirrorY(normalized.y)),
+  return {normalized.x,
+          pitch.mirrorY(normalized.y),
           heightMetres};
 }
 

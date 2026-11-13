@@ -124,7 +124,7 @@ void MatchEngine::updateTouchAardvark(MatchPlayer& carrier, float dt)
   if (!ball.possession.touchCollected && gap <= R::KICK_REACH_METRES &&
       length(relative) <= touchKnobs[TouchKnob::COLLECT_RELATIVE_SPEED] &&
       (!ball.possession.touchDropping ||
-       pitch.heightMetres(ball.z) <= bodyLines(carrier).feet))
+       ball.z <= bodyLines(carrier).feet))
   {
     // Collected: the pass is complete and he can think about his next
     // action. The ball stays loose: from here he dribbles it, touch by touch.
@@ -219,7 +219,7 @@ void MatchEngine::noteDribbleTouchAardvark(const MatchPlayer& player,
   ball.plannedTouchIn = intent.plannedSeconds;
   {
     const Vector2F sent =
-        toMetres(intent.targetSpot - moment.contactPoint);
+        intent.targetSpot - moment.contactPoint;
     const float sentMetres = length(sent);
     if (sentMetres > EPSILON)
       ball.pushDirection = {sent.x / sentMetres, sent.y / sentMetres};

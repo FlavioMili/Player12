@@ -44,11 +44,11 @@ int main()
         scenario.carrierId = delivery ? 0 : owner;
         scenario.ballPosition = at;
         scenario.players = {{owner, at, false},
-                            {friendId, PitchPoint{at.x + PITCH.fromMetresX((delivery ? sign : 1.0f) * 0.70f), at.y}, false}};
+                            {friendId, PitchPoint{at.x + (delivery ? sign : 1.0f) * 0.70f, at.y}, false}};
         if (delivery)
         {
-          scenario.players[0].position.x += PITCH.fromMetresX(sign * 10.0f);
-          scenario.players[1].position.x += PITCH.fromMetresX(sign * 1.3f);
+          scenario.players[0].position.x += sign * 10.0f;
+          scenario.players[1].position.x += sign * 1.3f;
         }
         if (!engine.startDrill(scenario)) return 2;
         for (const auto& p : scenario.players)

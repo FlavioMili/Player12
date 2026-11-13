@@ -147,7 +147,7 @@
   /** The most spin he can put on a pass (rad/s), from his Passing
    * (MatchTuning::Passing::MIN_SPIN_REVS to MAX_SPIN_REVS). */
   static float spinCapacityBinturong(const MatchPlayer& player);
-  /** Where to aim (normalised) for a ball curled `curl` rad round
+  /** Where to aim (metres) for a ball curled `curl` rad round
    * (curlAngle) to get to `target`: that far the other way round the
    * ball. */
   PitchPoint curlAimBinturong(PitchPoint target, float curl) const;
@@ -327,7 +327,7 @@
   bool considerSmotherBinturong(MatchPlayer& keeper);
   /** A ball that is not a shot rolling into his own goal (a back-pass gone
    * wrong, a miscontrol) that nobody else, either side, gets to first: where
-   * he gets his feet to it on its way (pitch units), else where it crosses
+   * he gets his feet to it on its way (metres), else where it crosses
    * his line. Nothing if it is not going in, or someone else meets it. */
   std::optional<PitchPoint> ownGoalThreatBinturong(const MatchPlayer& keeper);
   /** How far from where he stands his midriff can land in a smother (m):
@@ -449,12 +449,12 @@
    * Dribbling (movementRating): with the ball, his run band's top over his
    * top speed; without it, 1. */
   float freeShareBinturong(const MatchPlayer& player, bool withBall) const;
-  /** Where a dribble touch at `from` (normalised pitch) sends his ball
+  /** Where a dribble touch at `from` (metres) sends his ball
    * (dribble meet plan): along his route's line from there, else toward
    * ball.dribbleGoal. Metric unit; none when he is at his goal. */
   std::optional<Vector2F> dribbleOutFromBinturong(const MatchPlayer& player,
                                                   PitchPoint from) const;
-  /** On a route, the way from `from` (normalised pitch) to where his line
+  /** On a route, the way from `from` (metres) to where his line
    * will be `metres` on, traced along it (into a bend, a push angled into
    * it lands back on his line), clear of obstacles (`metres` shortened when
    * it is turned round one). Metric unit; none off a route. */
@@ -492,7 +492,7 @@
   /** The facing his body turns to for a strike he means: a pass or shot he
    * holds, else a header he means. */
   std::optional<float> strikeFacingBinturong(const MatchPlayer& player) const;
-  /** Where his held strike is aimed (normalised): a pass's target, a
+  /** Where his held strike is aimed (metres): a pass's target, a
    * shot's spot on the goal line; none for a clearance or no strike. */
   std::optional<PitchPoint> heldStrikeTargetBinturong(const MatchPlayer& player) const;
   /** Whether a pass held while he turns is to be struck now: turned to it,
@@ -520,7 +520,7 @@
                                         const TouchMoment& moment,
                                         float pace) const;
   /** His route's next turn seen from a dribble touch at `from`
-   * (normalised pitch). */
+   * (metres). */
   DribbleTurnAhead dribbleTurnAheadBinturong(const MatchPlayer& player,
                                              PitchPoint from) const;
   /** Where a tackle's "win it" nudge sends a free ball met at `contact`

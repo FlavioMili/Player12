@@ -35,8 +35,8 @@ using namespace MatchEngineInternal;
 bool MatchEngine::ballInPlayAtBinturong(PitchPoint at) const
 {
   // In play until the whole ball is over a line (Law 9).
-  const float OVER_X = pitch.fromMetresX(MatchTuning::Units::BALL_RADIUS_METRES);
-  const float OVER_Y = pitch.fromMetresY(MatchTuning::Units::BALL_RADIUS_METRES);
+  const float OVER_X = MatchTuning::Units::BALL_RADIUS_METRES;
+  const float OVER_Y = MatchTuning::Units::BALL_RADIUS_METRES;
   return at.x > -OVER_X && at.x < pitch.atX(1.0f) + OVER_X && at.y > -OVER_Y &&
          at.y < pitch.atY(1.0f) + OVER_Y;
 }
@@ -89,9 +89,9 @@ void MatchEngine::checkOutOfBoundsBinturong()
     const float crossingY =
         substepBallPosition.y + (ball.position.y - substepBallPosition.y) * t;
     const float crossingHeight =
-        pitch.heightMetres(substepBallZ + (ball.z - substepBallZ) * t);
+        substepBallZ + (ball.z - substepBallZ) * t;
     const float lateralMetres =
-        pitch.metresY(std::abs(crossingY - pitch.atY(MatchTuning::Pitch::CENTRE)));
+        std::abs(crossingY - pitch.atY(MatchTuning::Pitch::CENTRE));
     if (lateralMetres < HALF_GOAL - RADIUS && crossingHeight < BAR - RADIUS)
       ball.inGoalMouth = thisGoal;
   }
@@ -269,7 +269,7 @@ void MatchEngine::kickOffAfterGoalBinturong(bool homeKickingOff)
     // His kick-off position, kept in his own half and, for the side not
     // kicking off, outside the centre circle (with a little to spare).
     PitchPoint target = kickOffPosition(player);
-    const float halfway = pitch.fromMetresX(CLEAR_METRES);
+    const float halfway = CLEAR_METRES;
     const float centreX = pitch.atX(MatchTuning::Pitch::CENTRE);
     target.x = player.isHomeTeam ? std::min(target.x, centreX - halfway)
                                  : std::max(target.x, centreX + halfway);
@@ -279,7 +279,7 @@ void MatchEngine::kickOffAfterGoalBinturong(bool homeKickingOff)
         distance(target, centre) < CIRCLE)
     {
       const Vector2F out = metricDirection(centre, target);
-      const PitchOffset reach = toPitchOffset({out.x * CIRCLE, out.y * CIRCLE});
+      const Vector2F reach = {out.x * CIRCLE, out.y * CIRCLE};
       target = PitchPoint{centre.x + reach.x, centre.y + reach.y};
     }
     player.movementTarget = target;
@@ -351,7 +351,7 @@ void MatchEngine::setupThrowInBinturong(bool homeTeam)
       PitchPoint{outX, top ? 0.0f : pitch.atY(1.0f)});
   setRestartTaker(taker);
   const float BEHIND =
-      pitch.fromMetresY(MatchTuning::DeadBall::THROW_IN_STAND_BEHIND_METRES);
+      MatchTuning::DeadBall::THROW_IN_STAND_BEHIND_METRES;
   const PitchPoint spot =
       taker && getBody(taker->isHomeTeam) == BodyId::BINTURONG
           ? PitchPoint{outX, top ? -BEHIND : pitch.atY(1.0f) + BEHIND}
@@ -506,7 +506,7 @@ bool bounceOffFace(bool alongX, float plane, float low, float high, float top,
 }
 
 /**
- * Where a player at `from` heads first to get to `to` (pitch units) without
+ * Where a player at `from` heads first to get to `to` (metres) without
  * walking into a goal frame (MatchEngineInternal::keepOutOfGoalFrames): out
  * through the goal mouth if he is in the goal, else round the outside of
  * the frame by its nearest corner when the straight line crosses a net.
@@ -526,13 +526,13 @@ PitchPoint routeRoundGoalFrames(const MatchPitch& pitch, PitchPoint from,
   // Local metres at that goal: u behind its line, v across from its centre.
   const auto local = [&](PitchPoint at)
   {
-    return Vector2F{(pitch.metresX(at) - line) * behind,
-                    pitch.metresY(at.y - pitch.atY(P::CENTRE))};
+    return Vector2F{(at.x - line) * behind,
+                    at.y - pitch.atY(P::CENTRE)};
   };
   const auto onPitch = [&](Vector2F at)
   {
-    return PitchPoint{pitch.fromMetresX(line + at.x * behind),
-                      pitch.atY(P::CENTRE) + pitch.fromMetresY(at.y)};
+    return PitchPoint{line + at.x * behind,
+                      pitch.atY(P::CENTRE) + at.y};
   };
   const Vector2F a = local(from);
   const Vector2F b = local(to);
@@ -594,11 +594,11 @@ PitchPoint throwInHold(const MatchPitch& pitch, PitchPoint thrower, PitchPoint s
   using D = MatchTuning::DeadBall;
   using P = MatchTuning::Pitch;
   constexpr float NEAR_METRES = 1.0f;
-  const float FORWARD = pitch.fromMetresY(D::THROW_IN_FORWARD_METRES);
-  const float CLEAR = pitch.fromMetresY(D::THROW_IN_STAND_BEHIND_METRES -
-                                        D::THROW_IN_FORWARD_METRES);
+  const float FORWARD = D::THROW_IN_FORWARD_METRES;
+  const float CLEAR = D::THROW_IN_STAND_BEHIND_METRES -
+                                        D::THROW_IN_FORWARD_METRES;
   const PitchPoint from =
-      distance(pitch, thrower, spot) <= NEAR_METRES ? thrower : spot;
+      distance(thrower, spot) <= NEAR_METRES ? thrower : spot;
   return spot.y < pitch.atY(P::CENTRE)
              ? PitchPoint{from.x, std::min(from.y + FORWARD, -CLEAR)}
              : PitchPoint{from.x, std::max(from.y - FORWARD, pitch.atY(1.0f) + CLEAR)};
@@ -754,8 +754,8 @@ std::optional<float> MatchEngine::frameInPathBinturong(float seconds) const
   // stretch is short).
   if (state != MatchState::PLAYING || (getPossessionAttachment() && !hasTouchClaim()))
     return std::nullopt;
-  const Vector2F at = toMetres(ball.position);
-  const Point3 from{at.x, at.y, pitch.heightMetres(ball.z)};
+  const Vector2F at = asVector(ball.position);
+  const Point3 from{at.x, at.y, ball.z};
   const Point3 to{from.x + ball.velocity.x * seconds,
                   from.y + ball.velocity.y * seconds,
                   from.z + ball.velocityZ * seconds};
@@ -766,8 +766,8 @@ void MatchEngine::bounceOffFrameBinturong()
 {
   // Off the post or the bar where it meets it. A shot that hits it is a
   // shot no longer (in off it, a goal as any other).
-  const Vector2F at = toMetres(ball.position);
-  if (!bounceOffFrameAt(pitch, {at.x, at.y, pitch.heightMetres(ball.z)}, ball.velocity, ball.velocityZ,
+  const Vector2F at = asVector(ball.position);
+  if (!bounceOffFrameAt(pitch, {at.x, at.y, ball.z}, ball.velocity, ball.velocityZ,
                         MatchTuning::DeadBall::POST_RESTITUTION))
     return;
   // Still the shot's, off the post and then the bar too.
@@ -807,16 +807,16 @@ void MatchEngine::moveDeadBallBinturong(float dt)
   constexpr int SUBSTEPS = MatchTuning::Timing::BALL_SUBSTEPS;
   for (int sub = 0; sub < SUBSTEPS; ++sub)
   {
-    const Vector2F from{pitch.metresX(ball.position), pitch.metresY(ball.position)};
-    const float fromHeight = pitch.heightMetres(ball.z);
+    const Vector2F from{ball.position.x, ball.position.y};
+    const float fromHeight = ball.z;
     const float seconds = dt / static_cast<float>(SUBSTEPS);
     integrateBall(seconds);
     // The woodwork on its way: off it where it meets it, then on through
     // the rest of the sub-step.
     {
       const Point3 start{from.x, from.y, fromHeight};
-      const Point3 end{pitch.metresX(ball.position), pitch.metresY(ball.position),
-                       pitch.heightMetres(ball.z)};
+      const Point3 end{ball.position.x, ball.position.y,
+                       ball.z};
       if (const std::optional<float> share = frameContactShare(pitch, start, end))
       {
         const Point3 at = lerp(start, end, *share);
@@ -825,14 +825,14 @@ void MatchEngine::moveDeadBallBinturong(float dt)
         {
           const float rest = (1.0f - *share) * seconds;
           ball.position =
-              PitchPoint{pitch.fromMetresX(at.x + ball.velocity.x * rest),
-                         pitch.fromMetresY(at.y + ball.velocity.y * rest)};
-          ball.z = pitch.heightUnits(std::max(0.0f, at.z + ball.velocityZ * rest));
+              PitchPoint{at.x + ball.velocity.x * rest,
+                         at.y + ball.velocity.y * rest};
+          ball.z = std::max(0.0f, at.z + ball.velocityZ * rest);
         }
       }
     }
-    Vector2F to{pitch.metresX(ball.position), pitch.metresY(ball.position)};
-    const float height = pitch.heightMetres(ball.z);
+    Vector2F to{ball.position.x, ball.position.y};
+    const float height = ball.z;
     Vector2F velocity = ball.velocity;
 
     // The advertising boards and the stand's front wall, from either side
@@ -902,7 +902,7 @@ void MatchEngine::moveDeadBallBinturong(float dt)
       ball.velocityZ = ball.velocityZ < -D::SETTLED_SPEED
                            ? -ball.velocityZ * D::DUGOUT_RESTITUTION
                            : 0.0f;
-      ball.z = pitch.heightUnits(surface + (surface - height) * D::DUGOUT_RESTITUTION);
+      ball.z = surface + (surface - height) * D::DUGOUT_RESTITUTION;
       velocity.y -= GRAVITY * SLOPE / std::sqrt(1.0f + SLOPE * SLOPE) * seconds;
     }
 
@@ -924,7 +924,7 @@ void MatchEngine::moveDeadBallBinturong(float dt)
       if (fromHeight < P::TUNNEL_HEIGHT_METRES && height > ceiling &&
           ball.velocityZ > 0.0f)
       {
-        ball.z = pitch.heightUnits(ceiling - (height - ceiling) * D::TUNNEL_RESTITUTION);
+        ball.z = ceiling - (height - ceiling) * D::TUNNEL_RESTITUTION;
         ball.velocityZ = -ball.velocityZ * D::TUNNEL_RESTITUTION;
       }
     }
@@ -991,13 +991,13 @@ void MatchEngine::moveDeadBallBinturong(float dt)
         const float roof = netTop(std::clamp(u, 0.0f, 1.0f)) - RADIUS;
         if (u >= 0.0f && u <= 1.0f && height > roof && ball.velocityZ > 0.0f)
         {
-          ball.z = pitch.heightUnits(roof - (height - roof) * D::NET_RESTITUTION);
+          ball.z = roof - (height - roof) * D::NET_RESTITUTION;
           ball.velocityZ = -ball.velocityZ * D::NET_RESTITUTION;
         }
       }
     }
 
-    ball.position = PitchPoint{pitch.fromMetresX(to.x), pitch.fromMetresY(to.y)};
+    ball.position = PitchPoint{to.x, to.y};
     ball.velocity = velocity;
 
     // Into the stand: a fan in the rows shown catches it within his reach;
@@ -1005,7 +1005,7 @@ void MatchEngine::moveDeadBallBinturong(float dt)
     // under the seats: a steward fetches it from there.
     const float depth = G::beyond(pitch, to, G::WALL_X, G::WALL_Y);
     if (depth <= 0.0f || (pitch.ground.tunnel.contains(to.x, to.y) &&
-                          pitch.heightMetres(ball.z) < P::TUNNEL_HEIGHT_METRES))
+                          ball.z < P::TUNNEL_HEIGHT_METRES))
       continue;
     if (depth > P::VISIBLE_CROWD_METRES)
     {
@@ -1017,7 +1017,7 @@ void MatchEngine::moveDeadBallBinturong(float dt)
       front.y = std::clamp(front.y, -G::WALL_Y - FRONT_ROW,
                            pitch.width + G::WALL_Y + FRONT_ROW);
       deadBall.returnFrom =
-          PitchPoint{pitch.fromMetresX(front.x), pitch.fromMetresY(front.y)};
+          PitchPoint{front.x, front.y};
       deadBall.phase = DeadBallReturn::Phase::OUT_OF_SIGHT;
       deadBall.seconds = 0.0f;
       return;
@@ -1042,8 +1042,8 @@ void MatchEngine::throwDeadBallBinturong(float releaseMetres)
   constexpr float GRAVITY = 9.81f;
   const float errorAngle = randomFloat(0.0f, 6.2831853f);
   const float errorMetres = randomFloat(0.0f, D::THROW_ERROR_METRES);
-  const PitchOffset aim = toPitchOffset({std::cos(errorAngle) * errorMetres,
-                                std::sin(errorAngle) * errorMetres});
+  const Vector2F aim = {std::cos(errorAngle) * errorMetres,
+                                std::sin(errorAngle) * errorMetres};
   const PitchPoint target{deadBall.spot.x + aim.x, deadBall.spot.y + aim.y};
   const Vector2F way = metricDirection(ball.position, target);
   const float metres = distance(ball.position, target);
@@ -1054,7 +1054,7 @@ void MatchEngine::throwDeadBallBinturong(float releaseMetres)
       root >= 0.0f && metres > 0.01f
           ? std::atan((v * v - std::sqrt(root)) / (GRAVITY * metres))
           : 0.7853982f;
-  ball.z = pitch.heightUnits(releaseMetres);
+  ball.z = releaseMetres;
   ball.velocity = {way.x * v * std::cos(angle), way.y * v * std::cos(angle)};
   ball.velocityZ = v * std::sin(angle);
   ball.spin = {};
@@ -1072,15 +1072,15 @@ void MatchEngine::dropKickDeadBallBinturong(MatchPlayer& keeper)
   constexpr float GRAVITY = 9.81f;
   const float errorAngle = randomFloat(0.0f, 6.2831853f);
   const float errorMetres = randomFloat(0.0f, D::DROP_KICK_ERROR_METRES);
-  const PitchOffset aim = toPitchOffset({std::cos(errorAngle) * errorMetres,
-                                std::sin(errorAngle) * errorMetres});
+  const Vector2F aim = {std::cos(errorAngle) * errorMetres,
+                                std::sin(errorAngle) * errorMetres};
   const PitchPoint target{deadBall.spot.x + aim.x, deadBall.spot.y + aim.y};
   const Vector2F way = metricDirection(keeper.position, target);
   const float angle = D::DROP_KICK_ANGLE_DEGREES * 3.14159265f / 180.0f;
   const float pace = std::sqrt(GRAVITY * distance(keeper.position, target) /
                                std::sin(2.0f * angle));
   ball.position = keeper.position;
-  ball.z = pitch.heightUnits(D::DROP_KICK_RELEASE_METRES);
+  ball.z = D::DROP_KICK_RELEASE_METRES;
   ball.velocity = {way.x * pace * std::cos(angle), way.y * pace * std::cos(angle)};
   ball.velocityZ = pace * std::sin(angle);
   ball.spin = {};
@@ -1105,8 +1105,8 @@ void MatchEngine::placeDeadBallBinturong(MatchPlayer* taker)
       !ballInPlayAtBinturong(deadBall.spot))
   {
     ball.position = throwInHold(pitch, taker->position, deadBall.spot);
-    ball.z = pitch.heightUnits(taker->heightMetres +
-                                MatchTuning::DeadBall::THROW_IN_ABOVE_HEAD_METRES);
+    ball.z = taker->heightMetres +
+                                MatchTuning::DeadBall::THROW_IN_ABOVE_HEAD_METRES;
   }
   deadBall.active = false;
   assignRestartOwner(taker ? taker->player : nullptr);
@@ -1139,7 +1139,7 @@ void MatchEngine::updateDeadBallBinturong(float dt)
     case Phase::CAUGHT:
       if (deadBall.seconds >= D::CATCH_THROW_SECONDS)
       {
-        const Vector2F at{pitch.metresX(ball.position), pitch.metresY(ball.position)};
+        const Vector2F at{ball.position.x, ball.position.y};
         const float depth = Ground::beyond(pitch, at, Ground::WALL_X, Ground::WALL_Y);
         throwDeadBallBinturong(Ground::seating(depth) + D::THROW_RELEASE_METRES);
       }
@@ -1164,16 +1164,16 @@ void MatchEngine::updateDeadBallBinturong(float dt)
                                 : nullptr;
       MatchPlayer& carrier = keeper ? *keeper : *taker;
       ball.position = carrier.position;
-      ball.z = pitch.heightUnits(D::CARRY_HEIGHT_METRES);
+      ball.z = D::CARRY_HEIGHT_METRES;
       ball.velocity = carrier.velocity;
       ball.velocityZ = 0.0f;
       if (keeper)
       {
         if (keeper != taker) taker->movementTarget = deadBall.spot;
         const bool right = keeper->position.x > pitch.atX(P::CENTRE);
-        const float OUT = pitch.fromMetresX(D::GOAL_AREA_DEPTH_METRES);
+        const float OUT = D::GOAL_AREA_DEPTH_METRES;
         const float ACROSS =
-            pitch.fromMetresY(P::GOAL_AREA_HALF_WIDTH_METRES - 1.0f);
+            P::GOAL_AREA_HALF_WIDTH_METRES - 1.0f;
         const float middle = pitch.atY(P::CENTRE);
         const PitchPoint kickFrom{right ? pitch.atX(1.0f) - OUT : OUT,
                                   std::clamp(keeper->position.y, middle - ACROSS,
@@ -1214,8 +1214,8 @@ void MatchEngine::updateDeadBallBinturong(float dt)
       taker->movementTarget = deadBall.spot;
       ball.position = PitchPoint{taker->position.x + (hold.x - taker->position.x) * share,
                        taker->position.y + (hold.y - taker->position.y) * share};
-      ball.z = pitch.heightUnits(D::CARRY_HEIGHT_METRES +
-                                (overhead - D::CARRY_HEIGHT_METRES) * share);
+      ball.z = D::CARRY_HEIGHT_METRES +
+                                (overhead - D::CARRY_HEIGHT_METRES) * share;
       ball.velocity = taker->velocity;
       ball.velocityZ = 0.0f;
       if (share >= 1.0f) placeDeadBallBinturong(taker);
@@ -1225,8 +1225,8 @@ void MatchEngine::updateDeadBallBinturong(float dt)
     {
       moveDeadBallBinturong(dt);
       if (deadBall.phase != Phase::LOOSE) break;
-      const Vector2F at{pitch.metresX(ball.position), pitch.metresY(ball.position)};
-      const float height = pitch.heightMetres(ball.z);
+      const Vector2F at{ball.position.x, ball.position.y};
+      const float height = ball.z;
       const float speed = length(ball.velocity);
       // Out of the taker's reach (behind the boards; for an Aardvark body,
       // which stays on the pitch, off it): a steward throws it back once it
@@ -1367,10 +1367,10 @@ bool MatchEngine::keptOutBinturong(const MatchPlayer& player,
   const bool right = spot.x > pitch.atX(P::CENTRE);
   const float edge =
       pitch.atX(right ? P::RIGHT_PENALTY_AREA_EDGE : P::LEFT_PENALTY_AREA_EDGE);
-  const float slackX = pitch.fromMetresX(slack);
+  const float slackX = slack;
   const bool inArea =
       (right ? at.x > edge + slackX : at.x < edge - slackX) &&
-      pitch.metresY(std::abs(at.y - pitch.atY(P::CENTRE))) <
+      std::abs(at.y - pitch.atY(P::CENTRE)) <
           P::PENALTY_AREA_HALF_WIDTH_METRES - slack;
   const float gap = distance(at, spot);
   if (state == MatchState::PENALTY)
@@ -1411,11 +1411,11 @@ void MatchEngine::keepRestartDistanceBinturong(MatchPlayer& player)
     const bool inside =
         (right ? target.x > pitch.atX(P::RIGHT_PENALTY_AREA_EDGE)
                : target.x < pitch.atX(P::LEFT_PENALTY_AREA_EDGE)) &&
-        pitch.metresY(std::abs(target.y - pitch.atY(P::CENTRE))) <
+        std::abs(target.y - pitch.atY(P::CENTRE)) <
             P::PENALTY_AREA_HALF_WIDTH_METRES;
     if (inside)
-      target.x = right ? pitch.atX(P::RIGHT_PENALTY_AREA_EDGE) - pitch.fromMetresX(MARGIN)
-                       : pitch.atX(P::LEFT_PENALTY_AREA_EDGE) + pitch.fromMetresX(MARGIN);
+      target.x = right ? pitch.atX(P::RIGHT_PENALTY_AREA_EDGE) - MARGIN
+                       : pitch.atX(P::LEFT_PENALTY_AREA_EDGE) + MARGIN;
   }
   const float minimum =
       (state == MatchState::THROW_IN
@@ -1429,7 +1429,7 @@ void MatchEngine::keepRestartDistanceBinturong(MatchPlayer& player)
         distance(target, spot) > EPSILON
             ? metricDirection(spot, target)
             : Vector2F{player.isHomeTeam ? -1.0f : 1.0f, 0.0f};
-    const PitchOffset offset = toPitchOffset({away.x * minimum, away.y * minimum});
+    const Vector2F offset = {away.x * minimum, away.y * minimum};
     target = PitchPoint{spot.x + offset.x, spot.y + offset.y};
   }
   player.movementTarget = clampToPitch(target);
@@ -1617,8 +1617,8 @@ void MatchEngine::placeTakerBinturong(MatchPlayer& taker, PitchPoint spot)
   for (auto& other : players)
   {
     if (!active(other) || &other == &taker) continue;
-    const float dx = pitch.metresX(other.position.x - taker.position.x);
-    const float dy = pitch.metresY(other.position.y - taker.position.y);
+    const float dx = other.position.x - taker.position.x;
+    const float dy = other.position.y - taker.position.y;
     const float gap = std::sqrt(dx * dx + dy * dy);
     if (gap >= MatchTuning::Player::MINIMUM_BODY_SEPARATION_METRES) continue;
     const float towardCentre =
@@ -1629,8 +1629,8 @@ void MatchEngine::placeTakerBinturong(MatchPlayer& taker, PitchPoint spot)
         MatchTuning::Player::MINIMUM_BODY_SEPARATION_METRES - gap;
     other.position = moveBody(
         other.position,
-        PitchPoint{other.position.x + pitch.fromMetresX(away.x * push),
-                   other.position.y + pitch.fromMetresY(away.y * push)});
+        PitchPoint{other.position.x + (away.x * push),
+                   other.position.y + (away.y * push)});
   }
 }
 

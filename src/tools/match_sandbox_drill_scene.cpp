@@ -260,8 +260,8 @@ void DrillScene::updateBasis()
   // The stick follows the screen: pixels per metre along the pitch's length
   // and width at the runner, from the view's projection (as in Play).
   const PlayerID active = run->engine().getControlledPlayer();
-  const float METRE_X = run->engine().getPitch().fromMetresX(1.0f);
-  const float METRE_Y = run->engine().getPitch().fromMetresY(1.0f);
+  const float METRE_X = 1.0f;
+  const float METRE_Y = 1.0f;
   for (const MatchPlayer& player : run->engine().getPlayers())
   {
     if (!player.player || player.player->getId() != active) continue;

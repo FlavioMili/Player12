@@ -36,11 +36,10 @@ struct MatchStats;
  * record or a cross-thread publication format. See
  * docs/development/match-engine.md.
  *
- * Units: positions are normalised pitch coordinates (x along the pitch's
- * length, home attacking +x; y across its width: MatchRenderSnapshot's
- * pitchLengthMetres and pitchWidthMetres, a match's 105 x 68 m). Ball `currentZ` and
- * `previousZ` are in length units (metres = z * 105); the `*HeightMetres`
- * fields carry the same value already converted to metres.
+ * Units: positions are metres (x along the pitch's length, home attacking
+ * +x; y across its width: MatchRenderSnapshot's pitchLengthMetres and
+ * pitchWidthMetres, a match's 105 x 68 m). Ball `currentZ` and `previousZ`
+ * are metres, the same as the `*HeightMetres` fields.
  */
 struct MatchRenderPlayer
 {

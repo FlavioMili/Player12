@@ -11,14 +11,14 @@
 #include "global/types.h"
 
 /**
- * A point on an engine's pitch, in pitch units: x is a fraction of the
- * pitch's length (0 at the left goal line, 1 at the right; the home side
- * attacks +x), y a fraction of its width (0 at the top touchline).
+ * A point on an engine's pitch, in metres: x along its length (0 at the
+ * left goal line; the home side attacks +x), y across its width (0 at the
+ * top touchline).
  *
  * Its own type so that a point is never taken for a metric vector (a
  * velocity, a direction, a position in metres: all Vector2F) or the other
  * way round. Nothing converts silently: a point is made by writing
- * `PitchPoint{x, y}`, and turned into metres with the engine's `toMetres`.
+ * `PitchPoint{x, y}` (or `asPoint`), and read as a vector with `asVector`.
  */
 struct PitchPoint final
 {
@@ -31,30 +31,24 @@ struct PitchPoint final
   float y = 0.0f;
 };
 
-/**
- * The step from one PitchPoint to another, in pitch units (fractions of the
- * length and the width): not a distance, since a unit of x and a unit of y
- * are different lengths on the ground. `toMetres` makes it a metric vector.
- */
-struct PitchOffset final
+/** The step from `from` to `to`, in metres. */
+constexpr Vector2F operator-(PitchPoint to, PitchPoint from)
 {
-  constexpr PitchOffset() = default;
-  constexpr explicit PitchOffset(float pitchX, float pitchY) : x(pitchX), y(pitchY)
-  {
-  }
-
-  float x = 0.0f;
-  float y = 0.0f;
-};
-
-/** The step from `from` to `to`. */
-constexpr PitchOffset operator-(PitchPoint to, PitchPoint from)
-{
-  return PitchOffset{to.x - from.x, to.y - from.y};
+  return Vector2F{to.x - from.x, to.y - from.y};
 }
 
-/** `from` moved by `step`. */
-constexpr PitchPoint operator+(PitchPoint from, PitchOffset step)
+/** `from` moved by `step` (metres). */
+constexpr PitchPoint operator+(PitchPoint from, Vector2F step)
 {
   return PitchPoint{from.x + step.x, from.y + step.y};
+}
+
+/** The point as a metric vector from the top left corner, for geometry
+ * worked in Vector2F (the same numbers: both are metres). */
+constexpr Vector2F asVector(PitchPoint point) { return {point.x, point.y}; }
+
+/** A metric vector from the top left corner as a point. */
+constexpr PitchPoint asPoint(Vector2F metres)
+{
+  return PitchPoint{metres.x, metres.y};
 }

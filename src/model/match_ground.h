@@ -20,8 +20,8 @@
  * views read the match pitch's (MatchGround::Match), which is the same
  * shapes, so all of them agree.
  *
- * Metres: x from the left goal line, y from the top touchline (the engine's
- * pitch units times the length and the width). Everything here is on the
+ * Metres: x from the left goal line, y from the top touchline (the same as
+ * the engine's points). Everything here is on the
  * bottom touchline (y = width).
  */
 namespace MatchGround

@@ -331,7 +331,7 @@ TEST(TacticsTest, AttackingFullBackPlaysHigherThanDefendingOne)
     engine.advance(0.1f);
     for (const MatchPlayer& player : engine.getPlayers())
       if (player.player->getId() == playerId(1, LEFT_BACK))
-        return player.tacticalTarget.x;
+        return PITCH.fractionX(player.tacticalTarget);
     ADD_FAILURE() << "Full-back missing from scenario";
     return 0.0f;
   };
@@ -377,7 +377,7 @@ TEST(TacticsTest, InPossessionShapeMovesTheSlotWithTheBallOnly)
     engine.advance(0.1f);
     for (const MatchPlayer& player : engine.getPlayers())
       if (player.player->getId() == playerId(1, LEFT_BACK))
-        return player.tacticalTarget.y;
+        return PITCH.fractionY(player.tacticalTarget);
     ADD_FAILURE() << "Full-back missing from scenario";
     return 0.0f;
   };

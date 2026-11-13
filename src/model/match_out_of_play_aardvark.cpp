@@ -49,9 +49,9 @@ void MatchEngine::checkOutOfBoundsAardvark()
     const float crossingY =
         substepBallPosition.y + (ball.position.y - substepBallPosition.y) * t;
     const float crossingHeight =
-        pitch.heightMetres(substepBallZ + (ball.z - substepBallZ) * t);
+        substepBallZ + (ball.z - substepBallZ) * t;
     const float lateralMetres =
-        pitch.metresY(std::abs(crossingY - pitch.atY(MatchTuning::Pitch::CENTRE)));
+        std::abs(crossingY - pitch.atY(MatchTuning::Pitch::CENTRE));
     constexpr float RADIUS = MatchTuning::Units::BALL_RADIUS_METRES;
     constexpr float HALF_GOAL = MatchTuning::Shooting::GOAL_HALF_WIDTH_METRES;
     constexpr float BAR = MatchTuning::Units::CROSSBAR_HEIGHT_METRES;
@@ -430,8 +430,8 @@ void MatchEngine::placeTakerAardvark(MatchPlayer& taker, PitchPoint spot)
   for (auto& other : players)
   {
     if (!active(other) || &other == &taker) continue;
-    const float dx = pitch.metresX(other.position.x - taker.position.x);
-    const float dy = pitch.metresY(other.position.y - taker.position.y);
+    const float dx = other.position.x - taker.position.x;
+    const float dy = other.position.y - taker.position.y;
     const float gap = std::sqrt(dx * dx + dy * dy);
     if (gap >= MatchTuning::Player::MINIMUM_BODY_SEPARATION_METRES) continue;
     const float towardCentre =
@@ -441,9 +441,9 @@ void MatchEngine::placeTakerAardvark(MatchPlayer& taker, PitchPoint spot)
     const float push =
         MatchTuning::Player::MINIMUM_BODY_SEPARATION_METRES - gap;
     other.position.x =
-        clampToPitchX(other.position.x + pitch.fromMetresX(away.x * push));
+        clampToPitchX(other.position.x + (away.x * push));
     other.position.y =
-        clampToPitchY(other.position.y + pitch.fromMetresY(away.y * push));
+        clampToPitchY(other.position.y + (away.y * push));
   }
 }
 

@@ -61,8 +61,8 @@ Json playerState(const MatchEngine& engine, const MatchPlayer& player)
 {
   const MatchBall& ball = engine.getBall();
   const MatchPitch& pitch = engine.getPitch();
-  const float dx = pitch.metresX(player.position.x - ball.position.x);
-  const float dy = pitch.metresY(player.position.y - ball.position.y);
+  const float dx = player.position.x - ball.position.x;
+  const float dy = player.position.y - ball.position.y;
   return {{"id", player.player ? player.player->getId() : 0},
           {"home", player.isHomeTeam},
           {"position", {pitch.fractionX(player.position), pitch.fractionY(player.position)}},
@@ -226,7 +226,7 @@ class PossessionTrace final : public MatchRecorder
           {"ball_position",
            {engine.getPitch().fractionX(ball.position),
             engine.getPitch().fractionY(ball.position)}},
-          {"ball_height_m", engine.getPitch().heightMetres(ball.z)},
+          {"ball_height_m", ball.z},
           {"ball_velocity_mps",
            {ball.velocity.x, ball.velocity.y, ball.velocityZ}},
           {"actors", std::move(actors)}});

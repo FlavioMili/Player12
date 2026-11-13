@@ -280,9 +280,9 @@ TEST(MatchEngineTest, LivePlayAlwaysAssignsPressureOrBallRecovery)
   EXPECT_GT(engine.getLastPassDecision().completionProbability, 0.0f);
   EXPECT_LE(engine.getLastPassDecision().completionProbability, 1.0f);
   EXPECT_GE(engine.getLastPassDecision().targetPoint.x, 0.0f);
-  EXPECT_LE(engine.getLastPassDecision().targetPoint.x, 1.0f);
+  EXPECT_LE(engine.getLastPassDecision().targetPoint.x, PITCH.atX(1.0f));
   EXPECT_GE(engine.getLastPassDecision().targetPoint.y, 0.0f);
-  EXPECT_LE(engine.getLastPassDecision().targetPoint.y, 1.0f);
+  EXPECT_LE(engine.getLastPassDecision().targetPoint.y, PITCH.atY(1.0f));
   EXPECT_NE(engine.getDebugSnapshotJson().find("\"last_pass\":{"),
             std::string::npos);
   EXPECT_NE(engine.getDebugSnapshotJson().find("\"completion_probability\":"),
@@ -676,9 +676,9 @@ TEST(MatchEngineTest, MovementAssignmentsRemainCoherentAcrossLivePlay)
            ++second)
       {
         const float dxMetres =
-            PITCH.metresX(matchPlayers[second].position.x - matchPlayers[first].position.x);
+            matchPlayers[second].position.x - matchPlayers[first].position.x;
         const float dyMetres =
-            PITCH.metresY(matchPlayers[second].position.y - matchPlayers[first].position.y);
+            matchPlayers[second].position.y - matchPlayers[first].position.y;
         observedMinimumSeparation =
             std::min(observedMinimumSeparation, std::hypot(dxMetres, dyMetres));
       }
@@ -1905,17 +1905,17 @@ namespace
 {
 float metresBetweenPoints(Vector2F first, Vector2F second)
 {
-  return std::hypot(PITCH.metresX(first.x - second.x),
-                    PITCH.metresY(first.y - second.y));
+  return std::hypot(first.x - second.x,
+                    first.y - second.y);
 }
 
 /** Metric distance from a point to the segment [start, end]. */
 float metresToSegment(PitchPoint point, PitchPoint start, PitchPoint end)
 {
-  const float sx = PITCH.metresX(end.x - start.x);
-  const float sy = PITCH.metresY(end.y - start.y);
-  const float px = PITCH.metresX(point.x - start.x);
-  const float py = PITCH.metresY(point.y - start.y);
+  const float sx = end.x - start.x;
+  const float sy = end.y - start.y;
+  const float px = point.x - start.x;
+  const float py = point.y - start.y;
   const float squared = sx * sx + sy * sy;
   const float along =
       squared > 0.0f ? std::clamp((px * sx + py * sy) / squared, 0.0f, 1.0f)
@@ -1978,9 +1978,9 @@ TEST(MatchEngineTest, PossessionIsOnlyGainedWithinReach)
           engine.getPlayers(), [&after](const MatchPlayer& player)
           { return player.player == after.possessionState().possessedBy; });
       ASSERT_NE(owner, engine.getPlayers().end());
-      const PitchOffset travel{
-          PITCH.fromMetresX(before.velocity.x * STEP),
-          PITCH.fromMetresY(before.velocity.y * STEP)};
+      const Vector2F travel{
+          before.velocity.x * STEP,
+          before.velocity.y * STEP};
       const PitchPoint end{before.position.x + travel.x,
                          before.position.y + travel.y};
       EXPECT_LE(metresToSegment(owner->position, before.position, end), SLACK);
@@ -2485,7 +2485,7 @@ TEST(MatchEngineTest, ControlledPlayerFollowsTheStickWithinHisPhysics)
   // Accelerates realistically: a hard 2.5 s run nears top speed.
   EXPECT_GT(fastest, 0.8f * player->maxSpeed);
   const float runMetres =
-      PITCH.metresY(std::abs(player->position.y - start.y));
+      std::abs(player->position.y - start.y);
   EXPECT_GT(runMetres, 10.0f);
   EXPECT_LT(runMetres, 25.0f);
 
@@ -2526,8 +2526,8 @@ TEST(MatchEngineTest, ControlledCarrierPassesTowardTheAim)
     if (!mate.player || !mate.onPitch || mate.isHomeTeam != true ||
         mate.isGoalkeeper || mate.player->getId() == carrierId)
       continue;
-    const float metres = std::hypot(PITCH.metresX(mate.position.x - from.x),
-                                    PITCH.metresY(mate.position.y - from.y));
+    const float metres = std::hypot(mate.position.x - from.x,
+                                    mate.position.y - from.y);
     if (metres > farthest && metres < 40.0f)
     {
       farthest = metres;
@@ -2536,8 +2536,8 @@ TEST(MatchEngineTest, ControlledCarrierPassesTowardTheAim)
   }
   ASSERT_NE(aimed, nullptr);
   MatchPlayerInput input;
-  input.aimX = PITCH.metresX(aimed->position.x - from.x);
-  input.aimY = PITCH.metresY(aimed->position.y - from.y);
+  input.aimX = aimed->position.x - from.x;
+  input.aimY = aimed->position.y - from.y;
   input.action = MatchInputAction::PASS;
   engine.submitInput(input);
   bool passed = false;
@@ -2555,8 +2555,8 @@ TEST(MatchEngineTest, ControlledCarrierPassesTowardTheAim)
   ASSERT_NE(receiver, nullptr);
   const MatchPlayer* target = findOnPitch(engine, receiver->getId());
   ASSERT_NE(target, nullptr);
-  const float toTargetX = PITCH.metresX(target->position.x - from.x);
-  const float toTargetY = PITCH.metresY(target->position.y - from.y);
+  const float toTargetX = target->position.x - from.x;
+  const float toTargetY = target->position.y - from.y;
   const float alignment =
       (toTargetX * input.aimX + toTargetY * input.aimY) /
       (std::hypot(toTargetX, toTargetY) * std::hypot(input.aimX, input.aimY));
@@ -2647,8 +2647,8 @@ Vector2F aimAt(const MatchEngine& engine, PlayerID from, PlayerID to)
 {
   const MatchPlayer* source = findOnPitch(engine, from);
   const MatchPlayer* target = findOnPitch(engine, to);
-  return {PITCH.metresX(target->position.x - source->position.x),
-          PITCH.metresY(target->position.y - source->position.y)};
+  return {target->position.x - source->position.x,
+          target->position.y - source->position.y};
 }
 
 /** Pitch-metre direction between two players of the play-mode scenario. */
@@ -2661,7 +2661,7 @@ Vector2F scenarioAim(PlayerID from, PlayerID to)
     if (placement.playerId == from) source = placement.position;
     if (placement.playerId == to) target = placement.position;
   }
-  return {PITCH.metresX(target.x - source.x), PITCH.metresY(target.y - source.y)};
+  return {target.x - source.x, target.y - source.y};
 }
 
 /**
@@ -2699,8 +2699,8 @@ float launchError(const MatchEngine& engine)
 {
   const MatchBall& ball = engine.getBall();
   const PitchPoint target = engine.getLastPassDecision().targetPoint;
-  const float toX = PITCH.metresX(target.x - ball.position.x);
-  const float toY = PITCH.metresY(target.y - ball.position.y);
+  const float toX = target.x - ball.position.x;
+  const float toY = target.y - ball.position.y;
   const float cross = ball.velocity.x * toY - ball.velocity.y * toX;
   const float dot = ball.velocity.x * toX + ball.velocity.y * toY;
   return std::abs(std::atan2(cross, dot));
@@ -2967,7 +2967,7 @@ TEST(PlayModeTest, ThroughBallIsPlayedIntoTheRunnersPath)
   // Into space well ahead of him, toward the goal he attacks.
   const MatchPlayer* runner = findOnPitch(engine, 109);
   ASSERT_NE(runner, nullptr);
-  EXPECT_GT(pass.targetPoint.x, runner->position.x + PITCH.fromMetresX(8.0f));
+  EXPECT_GT(pass.targetPoint.x, runner->position.x + 8.0f);
 }
 
 TEST(PlayModeTest, JockeyingDefenderHoldsAGoalSideLine)
@@ -3031,17 +3031,17 @@ TEST(PlayModeTest, JockeyingDefenderHoldsAGoalSideLine)
       ASSERT_NE(attacker, nullptr);
       // Heading for the spot goal-side of the carrier (between him and the
       // home goal), and facing the ball.
-      const float toGoalX = PITCH.metresX(PITCH.atX(0.0f) - attacker->position.x);
-      const float toGoalY = PITCH.metresY(PITCH.atY(0.5f) - attacker->position.y);
+      const float toGoalX = PITCH.atX(0.0f) - attacker->position.x;
+      const float toGoalY = PITCH.atY(0.5f) - attacker->position.y;
       const float toGoal = std::hypot(toGoalX, toGoalY);
       const float spotX =
-          PITCH.metresX(attacker->position.x) +
+          attacker->position.x +
           toGoalX / toGoal * MatchTuning::Control::JOCKEY_CONTAIN_METRES;
       const float spotY =
-          PITCH.metresY(attacker->position.y) +
+          attacker->position.y +
           toGoalY / toGoal * MatchTuning::Control::JOCKEY_CONTAIN_METRES;
-      const float offsetX = spotX - PITCH.metresX(defender->position.x);
-      const float offsetY = spotY - PITCH.metresY(defender->position.y);
+      const float offsetX = spotX - defender->position.x;
+      const float offsetY = spotY - defender->position.y;
       const float metres = std::hypot(offsetX, offsetY);
       if (metres > 1.0f && previous > 0.5f)
         EXPECT_GT(

@@ -55,7 +55,7 @@
   /** Whether a wide forward in the final third is cutting inside toward
    * the box rather than going down the line to cross. */
   bool cutsInsideAardvark(const MatchPlayer& player) const;
-  /** Signed x shift of the role in the defensive block (normalised). */
+  /** Signed x shift of the role in the defensive block (metres). */
   float defensiveRoleShiftAardvark(const MatchPlayer& player) const;
   /** Second presser's spot when doubling up on the carrier, if ordered. */
   std::optional<PitchPoint> doubleUpPointAardvark(const MatchPlayer& helper,
@@ -84,7 +84,7 @@
                           PitchPoint current) const;
   /** The man this player marks when he is under a tight-marking order. */
   const MatchPlayer* tightMarkTargetAardvark(const MatchPlayer& marker) const;
-  /** Presser's lateral shade onto the carrier's stronger side (normalised
+  /** Presser's lateral shade onto the carrier's stronger side (metres
    * y; 0 without a weaker-foot order). */
   float weakFootShadeAardvark(const MatchPlayer& carrier) const;
   /** Collision plan step 4: no get-up cues; up at once, by Agility. */

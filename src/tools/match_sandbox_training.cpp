@@ -50,21 +50,21 @@ double secondsOf(const MatchEngine& engine)
 
 float metresBetween(PitchPoint from, PitchPoint to)
 {
-  return std::hypot(PITCH.metresX(to.x - from.x), PITCH.metresY(to.y - from.y));
+  return std::hypot(to.x - from.x, to.y - from.y);
 }
 
 /** `from` moved `metres` along the unit direction `direction` (metres). */
 PitchPoint along(PitchPoint from, Vector2F direction, float metres)
 {
-  return PitchPoint{from.x + PITCH.fromMetresX(direction.x * metres),
-                    from.y + PITCH.fromMetresY(direction.y * metres)};
+  return PitchPoint{from.x + (direction.x * metres),
+                    from.y + (direction.y * metres)};
 }
 
 /** Unit direction from one pitch point to another, in metres. */
 Vector2F directionBetween(PitchPoint from, PitchPoint to)
 {
-  const float x = PITCH.metresX(to.x - from.x);
-  const float y = PITCH.metresY(to.y - from.y);
+  const float x = to.x - from.x;
+  const float y = to.y - from.y;
   const float size = std::hypot(x, y);
   if (size < 1e-6f) return {1.0f, 0.0f};
   return {x / size, y / size};
@@ -312,10 +312,10 @@ class AcrossAndBackDrill final : public TrainingDrill
 std::optional<float> crossingShare(PitchPoint from, PitchPoint to, PitchPoint point,
                                    Vector2F direction)
 {
-  const float before = PITCH.metresX(from.x - point.x) * direction.x +
-                       PITCH.metresY(from.y - point.y) * direction.y;
-  const float after = PITCH.metresX(to.x - point.x) * direction.x +
-                      PITCH.metresY(to.y - point.y) * direction.y;
+  const float before = (from.x - point.x) * direction.x +
+                       (from.y - point.y) * direction.y;
+  const float after = (to.x - point.x) * direction.x +
+                      (to.y - point.y) * direction.y;
   if (before >= 0.0f || after < 0.0f) return std::nullopt;
   return -before / (after - before);
 }
@@ -450,7 +450,7 @@ class SlalomDrill final : public TrainingDrill
   void drawOverlay(const IMatchRenderer& renderer, ImDrawList& draw) const override
   {
     const float scale = Theme::scale();
-    const float half = PITCH.fromMetresY(4.0f);
+    const float half = 4.0f;
     DrillDraw::line(renderer, draw, PitchPoint{START.x, START.y - half},
                     PitchPoint{START.x, START.y + half}, IM_COL32(90, 220, 120, 255),
                     3.0f * scale);
@@ -684,7 +684,7 @@ class SlalomDrill final : public TrainingDrill
     // line counts anywhere along it), within the line as drawn.
     const float across = gates.empty()
                              ? 0.0f
-                             : std::clamp(PITCH.metresY(gates.back().y - finish.y),
+                             : std::clamp(gates.back().y - finish.y,
                                           -FINISH_AIM_METRES, FINISH_AIM_METRES);
     const PitchPoint end = along(along(finish, {0.0f, 1.0f}, across), {1.0f, 0.0f},
                                RUN_THROUGH_METRES);
@@ -746,7 +746,7 @@ class SlalomDrill final : public TrainingDrill
       if (!share) return;
       const float y =
           runner.previous.y + (player.position.y - runner.previous.y) * *share;
-      const float out = PITCH.metresY(y - cone.y) * sideOf(due);
+      const float out = (y - cone.y) * sideOf(due);
       // What his body had moved on from includes this gate (and the point
       // behind it, going back), now behind him either way.
       const std::size_t behind = runner.goingBack ? 2 : 1;
@@ -1115,16 +1115,16 @@ class LapsDrill final : public TrainingDrill
     const Vector2F ahead = directionBetween(from, to);
     // Out wide: square to the leg, away from the middle of the pitch.
     Vector2F wide{-ahead.y, ahead.x};
-    const PitchOffset middle{(from.x + to.x) * 0.5f - PITCH.atX(0.5f),
+    const Vector2F middle{(from.x + to.x) * 0.5f - PITCH.atX(0.5f),
                           (from.y + to.y) * 0.5f - PITCH.atY(0.5f)};
-    if (wide.x * PITCH.metresX(middle.x) + wide.y * PITCH.metresY(middle.y) < 0.0f)
+    if (wide.x * middle.x + wide.y * middle.y < 0.0f)
       wide = {-wide.x, -wide.y};
     bool blocked = false;
     for (const Runner& other : runners)
     {
       if (&other == &runner || other.doneAt) continue;
-      const float x = PITCH.metresX(other.previous.x - at.x);
-      const float y = PITCH.metresY(other.previous.y - at.y);
+      const float x = other.previous.x - at.x;
+      const float y = other.previous.y - at.y;
       const float front = x * ahead.x + y * ahead.y;
       const float side = x * wide.x + y * wide.y;
       if (front > 0.0f && front < BLOCKED_AHEAD_METRES &&
@@ -1136,8 +1136,8 @@ class LapsDrill final : public TrainingDrill
     {
       // Refresh the point ahead now and then, not every step.
       if (runner.passing && ++runner.passSteps < PASS_REFRESH_STEPS) return;
-      const float alongLeg = PITCH.metresX(at.x - from.x) * ahead.x +
-                              PITCH.metresY(at.y - from.y) * ahead.y;
+      const float alongLeg = (at.x - from.x) * ahead.x +
+                              (at.y - from.y) * ahead.y;
       engine.setDrillTarget(
           runner.id,
           along(along(from, ahead, alongLeg + PASS_LEAD_METRES), wide,
@@ -1343,13 +1343,13 @@ int runLapsTrace(const std::vector<TrainingPlayer>& squad, const StatsConfig& co
         const PitchPoint at = player.position;
         const auto metres = [&](PitchPoint to)
         {
-          return std::hypot(PITCH.metresX(to.x - at.x),
-                            PITCH.metresY(to.y - at.y));
+          return std::hypot(to.x - at.x,
+                            to.y - at.y);
         };
         return std::format(
             "at ({:.1f},{:.1f}) m speed {:.2f} · route {} next {:.1f} m then {:.1f} m · "
             "target {:.1f} m · pause {:.2f} stumble {:.2f} fallen {} · stamina {:.2f}",
-            PITCH.metresX(at), PITCH.metresY(at),
+            at.x, at.y,
             speed, player.routeWaypoints, metres(player.movementTarget),
             metres(player.nextTarget), metres(player.tacticalTarget),
             player.collisionPause, player.stumbleSeconds, player.fallen, player.stamina);
@@ -1359,12 +1359,12 @@ int runLapsTrace(const std::vector<TrainingPlayer>& squad, const StatsConfig& co
           std::fmod(now + 1e-6, 0.5) < step)
         std::printf("%6.1f  [%s] vel (%.2f,%.2f) movT (%.1f,%.1f) nextT (%.1f,%.1f) tacT (%.1f,%.1f) wp %d apex %.2f room %.2f intent %d ovt %d %s\n",
                     now, follow.c_str(), player.velocity.x, player.velocity.y,
-                    PITCH.metresX(player.movementTarget),
-                    PITCH.metresY(player.movementTarget),
-                    PITCH.metresX(player.nextTarget),
-                    PITCH.metresY(player.nextTarget),
-                    PITCH.metresX(player.tacticalTarget),
-                    PITCH.metresY(player.tacticalTarget),
+                    player.movementTarget.x,
+                    player.movementTarget.y,
+                    player.nextTarget.x,
+                    player.nextTarget.y,
+                    player.tacticalTarget.x,
+                    player.tacticalTarget.y,
                     player.routeWaypoints, player.routeApexOffset, player.routeOutwardRoom,
                     static_cast<int>(player.intent), player.overtaking, describe().c_str());
       if (player.overtaking != overtaking[index])

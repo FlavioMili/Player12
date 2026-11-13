@@ -126,7 +126,7 @@ struct MatchActionRecord
   bool homeTeam = true;
   /** Intended receiver (pass), beaten or tackling opponent (duels). */
   PlayerID target = 0;
-  /** Where it was played from and aimed at (normalised pitch). */
+  /** Where it was played from and aimed at (metres). */
   PitchPoint from{0.0f, 0.0f};
   PitchPoint to{0.0f, 0.0f};
   /** Launch speeds (m/s) and curve (rad/s) of a kick. */

@@ -245,7 +245,7 @@ class MatchScene : public GUIScene
   bool watch_focus = false;
   /** ImGui keyboard navigation is off while the keys drive the pitch. */
   bool nav_keyboard_suspended = false;
-  /** Damped centre of the zoomed 2D play view (normalised pitch). */
+  /** Damped centre of the zoomed 2D play view (metres). */
   PitchPoint play_follow{MatchTuning::Pitch::MATCH_CENTRE_X_METRES,
                          MatchTuning::Pitch::MATCH_CENTRE_Y_METRES};
   bool play_follow_ready = false;
