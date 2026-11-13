@@ -430,7 +430,7 @@
   float feetReachBinturong(const MatchPlayer& player) const;
   BodyLines bodyLinesBinturong(const MatchPlayer& player) const;
   bool ballBehindReachBinturong(const MatchPlayer& player, float gapX, float gapY, float gap, float turnSeconds) const;
-  /** The facing (normalised pitch space) the wait read expects him to have
+  /** The facing (a true angle) the wait read expects him to have
    * after turnSeconds: toward his facing asked of him, else his current run,
    * at his turn rate (as ballBehindReachBinturong reads it). */
   float predictedFacingBinturong(const MatchPlayer& player, float turnSeconds) const;

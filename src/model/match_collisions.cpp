@@ -171,11 +171,11 @@ void MatchEngine::knockOver(MatchPlayer& player, CollisionSide& side)
   const Vector2F slide = speed > STILL ? side.after : side.jolt;
   const float slideLength = length(slide);
   const float slideAngle =
-      slideLength > EPSILON ? std::atan2(pitch.toFacingY(slide.y),
-                                         pitch.toFacingX(slide.x))
+      slideLength > EPSILON ? std::atan2(slide.y,
+                                         slide.x)
                             : player.facingAngle;
-  const Vector2F facing{pitch.fromFacingX(std::cos(player.facingAngle)),
-                        pitch.fromFacingY(std::sin(player.facingAngle))};
+  const Vector2F facing{std::cos(player.facingAngle),
+                        std::sin(player.facingAngle)};
   const float facingLength = std::max(length(facing), EPSILON);
   const float alignment =
       jolt > EPSILON ? std::abs(dot(side.jolt, facing)) / (jolt * facingLength) : 1.0f;
@@ -185,10 +185,10 @@ void MatchEngine::knockOver(MatchPlayer& player, CollisionSide& side)
   float lying = slideAngle;
   if (side.lyingAcross)
   {
-    const Vector2F along{pitch.fromFacingX(std::cos(slideAngle)),
-                         pitch.fromFacingY(std::sin(slideAngle))};
-    lying = std::atan2(pitch.toFacingY(along.x),
-                       pitch.toFacingX(-along.y));
+    const Vector2F along{std::cos(slideAngle),
+                         std::sin(slideAngle)};
+    lying = std::atan2(along.x,
+                       -along.y);
   }
 
   player.fallen = true;
@@ -572,8 +572,8 @@ struct LyingBody
 
 LyingBody lyingBody(const MatchPitch& pitch, const MatchPlayer& player)
 {
-  const Vector2F along{pitch.fromFacingX(std::cos(player.lyingAngle)),
-                       pitch.fromFacingY(std::sin(player.lyingAngle))};
+  const Vector2F along{std::cos(player.lyingAngle),
+                       std::sin(player.lyingAngle)};
   const float alongLength = std::max(length(along), EPSILON);
   return {asVector(player.position),
           scaled(along, 1.0f / alongLength),

@@ -30,7 +30,7 @@ namespace
 {
 using W = MatchTuning::WalkOut;
 
-/** Facing the bottom touchline's stand (normalised pitch space). */
+/** Facing the bottom touchline's stand (radians). */
 constexpr float FACING_STAND = 0.5f * std::numbers::pi_v<float>;
 
 /** Where a body waits in the tunnel: its file (home left, away right,

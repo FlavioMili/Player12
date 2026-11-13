@@ -3051,8 +3051,8 @@ TEST(PlayModeTest, JockeyingDefenderHoldsAGoalSideLine)
             << "attempt " << attempt;
       EXPECT_LE(previous, cap + 1e-3f) << "attempt " << attempt;
       const float toBall =
-          std::atan2(PITCH.toFacingY(attacker->position.y - defender->position.y),
-                     PITCH.toFacingX(attacker->position.x - defender->position.x));
+          std::atan2(attacker->position.y - defender->position.y,
+                     attacker->position.x - defender->position.x);
       float turn = std::abs(toBall - defender->facingAngle);
       if (turn > std::numbers::pi_v<float>)
         turn = 2.0f * std::numbers::pi_v<float> - turn;

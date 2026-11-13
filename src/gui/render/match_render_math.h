@@ -379,14 +379,14 @@ inline Vec3 worldFromPitch(PitchPoint normalized, float heightMetres = 0.0f)
 }
 
 /**
- * Converts an engine facing angle (measured in normalised pitch space) to a
+ * Converts an engine facing angle (a true angle on the ground) to a
  * world yaw around +z, accounting for the anisotropic pitch scale and the
  * flipped y axis.
  */
 inline float worldYawFromFacing(float facingAngle)
 {
   const MatchPitch& pitch = MatchPitch::matchSize();
-  return std::atan2(-pitch.fromFacingY(std::sin(facingAngle)),
-                    pitch.fromFacingX(std::cos(facingAngle)));
+  return std::atan2(-std::sin(facingAngle),
+                    std::cos(facingAngle));
 }
 }  // namespace RenderMath

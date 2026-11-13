@@ -33,12 +33,12 @@ constexpr float PICK_PIXELS = 40.0f;
 /** A stride rolled for a shot shows this long (ball-clock seconds). */
 constexpr float LEG_GHOST_SECONDS = 1.5f;
 
-/** An engine angle (normalised pitch space) as a compass angle in the
+/** An engine angle (a true angle on the ground) as a compass angle in the
  * engine's metric frame. */
 float compassOf(float engineAngle)
 {
-  return std::atan2(std::cos(engineAngle) * P::MATCH_LENGTH_METRES,
-                    std::sin(engineAngle) * P::MATCH_WIDTH_METRES);
+  return std::atan2(std::cos(engineAngle),
+                    std::sin(engineAngle));
 }
 
 /** "Home Name" for a MatchPlayer or a MatchRenderPlayer. */

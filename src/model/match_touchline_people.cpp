@@ -28,7 +28,7 @@ using namespace MatchEngineInternal;
 
 namespace
 {
-/** Facing the pitch from the bottom touchline (normalised pitch space). */
+/** Facing the pitch from the bottom touchline (radians). */
 constexpr float FACING_PITCH = -0.5f * std::numbers::pi_v<float>;
 
 /**
@@ -399,8 +399,8 @@ void MatchEngine::updateTouchline(float dt)
       body.velocity = {0.0f, 0.0f};
       if (manager)
         turnToward(body,
-                   std::atan2(pitch.toFacingY(ball.position.y - body.position.y),
-                              pitch.toFacingX(ball.position.x - body.position.x)),
+                   std::atan2(ball.position.y - body.position.y,
+                              ball.position.x - body.position.x),
                    dt);
       else if (comingOnNow)
         turnToward(body, FACING_PITCH, dt);
@@ -626,8 +626,8 @@ void MatchEngine::moveOfficial(MatchPlayer& body, const TouchlinePerson& person,
                              : O::TOP_SPEED;
   // The referee watches the ball; the others face the pitch.
   const float facing =
-      referee ? std::atan2(pitch.toFacingY(ball.position.y - body.position.y),
-                           pitch.toFacingX(ball.position.x - body.position.x))
+      referee ? std::atan2(ball.position.y - body.position.y,
+                           ball.position.x - body.position.x)
       : person.topLine ? -FACING_PITCH
                        : FACING_PITCH;
   const Vector2F at = asVector(body.position);

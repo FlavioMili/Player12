@@ -1808,11 +1808,11 @@ void MatchRenderer2D::State::drawTokens(const MatchRenderSnapshot& snapshot,
     if (player.hidden) continue;
     const PitchPoint interpolated = lerpRenderPosition(
         player.previousPosition, player.currentPosition, alpha);
-    // Facing is measured in normalised pitch space: scale it to metres.
+    // Facing is a true angle on the ground.
     const float facing = RenderMath::lerpAngle(
         player.previousFacingAngle, player.currentFacingAngle, alpha);
-    float dx = PITCH.fromFacingX(std::cos(facing));
-    float dy = PITCH.fromFacingY(std::sin(facing));
+    float dx = std::cos(facing);
+    float dy = std::sin(facing);
     const float length = std::max(std::hypot(dx, dy), 1e-4f);
     dx /= length;
     dy /= length;

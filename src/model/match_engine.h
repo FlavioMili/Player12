@@ -184,7 +184,7 @@ struct ScenarioDecision
  * One on-pitch slot. `position`, `basePosition` and `movementTarget` are
  * metres on the pitch; `velocity` is in metres per second (x along
  * the length, y across the width). `facingAngle` is the heading in
- * normalised pitch space, as renderers expect.
+ * radians on the ground (0 along +x, towards the right-hand goal).
  */
 struct MatchPlayer
 {
@@ -261,7 +261,7 @@ struct MatchPlayer
   std::int8_t givingWayTo = -1;
   std::int8_t rightOfWayOver = -1;
   /** A body orientation asked of him (orientation plan, stage 1), as an
-   * angle like facingAngle (normalised pitch space): his body turns to it
+   * angle like facingAngle (a true angle): his body turns to it
    * and he moves forward, sideways or backward relative to it. Without one
    * his body follows his run. Set by drills (the brain, later); cleared at
    * each refresh and on restart walks. */

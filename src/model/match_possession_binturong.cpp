@@ -54,8 +54,8 @@ void MatchEngine::takePossessionBinturong(MatchPlayer& player)
   ball.dribbleExposure = 0.0f;
   ball.dribbleTouchLength = 0.0f;
   ball.touchTimer = 0.0f;
-  const Vector2F facing{pitch.fromFacingX(std::cos(player.facingAngle)),
-                        pitch.fromFacingY(std::sin(player.facingAngle))};
+  const Vector2F facing{std::cos(player.facingAngle),
+                        std::sin(player.facingAngle)};
   ball.dribbleDirection = normalized(facing);
   if (length(ball.dribbleDirection) <= EPSILON)
     ball.dribbleDirection = {player.isHomeTeam ? 1.0f : -1.0f, 0.0f};
