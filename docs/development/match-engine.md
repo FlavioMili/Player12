@@ -49,31 +49,36 @@ matches read players concurrently without racing with career mutations.
 
 | Quantity | Convention |
 |----------|------------|
-| Player/ball x, y | Normalized pitch coordinates; x × the engine's pitch length and y × its width give metres (`MatchPitch`; a match is 105 × 68) |
-| Attack direction | Home toward x = 1; away toward x = 0 throughout the match |
-| Lineup coordinates | Own goal at x = 0 for both teams; away x is mirrored when loaded |
+| Player/ball x, y | Metres (`PitchPoint`): x from the left goal line along the engine's pitch length, y from the top touchline across its width (`MatchPitch`; a match is 105 × 68) |
+| Attack direction | Home toward x = length; away toward x = 0 throughout the match |
+| Lineup coordinates | Fractions of the pitch, own goal at x = 0 for both teams; placed through `MatchPitch::at`, away x mirrored when loaded |
 | Velocity / acceleration | Metres per simulated second / metres per second squared |
-| Ball z | Historical renderer unit: multiply by `Units::BALL_Z_METRES` (105) for metres |
-| RoleProfile distances | Metres; convert with the appropriate pitch dimension |
-| Facing angle | Radians in normalized pitch space, not a metric velocity heading |
+| Ball z | Metres above the ground |
+| RoleProfile distances | Metres |
+| Facing angle | Radians in normalized pitch space (`cos × length, sin × width`), not a metric velocity heading |
 | `stepCounter` | Integer ticks of `Timing::FIXED_STEP_SECONDS` (0.1 s) |
 | Match clock | Minutes displayed for the current period, plus announced added time |
 
-Use `toMetres`, `toPitch`, `distance` and `metricDirection` for geometry.
-Computing Euclidean distances directly on normalized coordinates makes the
-rectangular pitch behave like a square.
+Points and the steps between them are metres: `point - point` is a metric
+`Vector2F`, and `point + vector` is a point. `distance` and `metricDirection`
+measure between points. Geometry worked in `Vector2F` reads points through
+`asVector(point)` and writes them back with `asPoint(vector)` (both only change
+the type). Tuning given as a fraction of the pitch (`_X`, `_Y`, shape offsets)
+becomes metres through `pitch.at`, `atX` and `atY`, and goes back through
+`fractionX`/`fractionY`.
 
 Each engine holds its own pitch size ([MatchPitch](../../src/model/match_pitch.h),
 `MatchEngine::pitch`): length, width and the values built from them (body
 limits inside the boards, the furniture round the pitch). Inside a
-`MatchEngine` member the helpers above are members that use it; a free
-function takes the pitch as its first argument (`toMetres(pitch, ...)`,
-[match_engine_internal.h](../../src/model/match_engine_internal.h)). Engine
+`MatchEngine` member the pitch helpers (`clampToPitch`, the goal frames) are
+members that use it; a free function takes the pitch as its first argument
+([match_engine_internal.h](../../src/model/match_engine_internal.h)). Engine
 code never reads `MatchTuning::Pitch::MATCH_LENGTH_METRES` /
 `MATCH_WIDTH_METRES`: those are the match pitch's size, the default, for
 code outside the engine (views, tactics screens, tools). Pitch fractions in
-the tuning (goal mouth, penalty area edges, player limits) still assume the
-match pitch.
+the tuning (goal mouth, penalty area edges, player limits) are scaled by the
+engine's pitch. Training ground stage 4 decides which of them stay fractions
+and which become metres.
 
 There are three different notions of time:
 
