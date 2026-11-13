@@ -874,7 +874,7 @@ void MatchEngine::clearShooterHistory()
   throw std::logic_error("Unknown possession implementation");
 }
 
-void MatchEngine::setPassFlightTarget(Vector2F target)
+void MatchEngine::setPassFlightTarget(PitchPoint target)
 {
   switch (possessionId)
   {

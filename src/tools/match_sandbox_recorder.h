@@ -78,7 +78,7 @@ class SandboxRecorder : public MatchRecorder
     bool homeTeam = true;
     PlayerIntent from = PlayerIntent::HOLD_SHAPE;
     PlayerIntent to = PlayerIntent::HOLD_SHAPE;
-    Vector2F target{0.0f, 0.0f};
+    PitchPoint target;
     /** His team-wide job when the intent changed, if any. */
     Job job = Job::NONE;
   };

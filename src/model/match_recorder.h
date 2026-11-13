@@ -16,6 +16,7 @@
 
 #include "global/types.h"
 #include "model/match_engine.h"
+#include "model/match_point.h"
 #include "model/match_tuning.h"
 
 /**
@@ -126,8 +127,8 @@ struct MatchActionRecord
   /** Intended receiver (pass), beaten or tackling opponent (duels). */
   PlayerID target = 0;
   /** Where it was played from and aimed at (normalised pitch). */
-  Vector2F from{0.0f, 0.0f};
-  Vector2F to{0.0f, 0.0f};
+  PitchPoint from{0.0f, 0.0f};
+  PitchPoint to{0.0f, 0.0f};
   /** Launch speeds (m/s) and curve (rad/s) of a kick. */
   float speed = 0.0f;
   float verticalSpeed = 0.0f;

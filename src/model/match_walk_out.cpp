@@ -33,13 +33,13 @@ using W = MatchTuning::WalkOut;
 /** Facing the bottom touchline's stand (normalised pitch space). */
 constexpr float FACING_STAND = 0.5f * std::numbers::pi_v<float>;
 
-Vector2F metresOf(const MatchPitch& pitch, Vector2F at)
+Vector2F metresOf(const MatchPitch& pitch, PitchPoint at)
 {
   return {at.x * pitch.length, at.y * pitch.width};
 }
-Vector2F pitchOf(const MatchPitch& pitch, Vector2F metres)
+PitchPoint pitchOf(const MatchPitch& pitch, Vector2F metres)
 {
-  return {metres.x / pitch.length, metres.y / pitch.width};
+  return PitchPoint{metres.x / pitch.length, metres.y / pitch.width};
 }
 
 /** Where a body waits in the tunnel: its file (home left, away right,
@@ -593,7 +593,7 @@ void MatchEngine::updateSubstitutions(float dt)
     // once, the player going off put over the line and the sub on his spot.
     if (pending.stage != PendingSubstitution::Stage::WAITING) pending.seconds += dt;
     const bool overdue = pending.seconds >= W::SUBSTITUTION_LIMIT_SECONDS;
-    const auto put = [this](MatchPlayer& body, Vector2F at)
+    const auto put = [this](MatchPlayer& body, PitchPoint at)
     {
       if (body.fallen) standUp(body);
       body.position = at;

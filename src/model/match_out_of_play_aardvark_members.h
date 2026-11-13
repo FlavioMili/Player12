@@ -13,14 +13,14 @@
 // clang-format off
   // --- Aardvark out of play --------------------------------------------------
   void checkOutOfBoundsAardvark();
-  bool ballInPlayAtAardvark(Vector2F at) const;
+  bool ballInPlayAtAardvark(PitchPoint at) const;
   void scoreGoalAardvark(bool homeTeam);
   void updateBallInNetAardvark(float dt);
   void setupThrowInAardvark(bool homeTeam);
   void setupGoalKickAardvark(bool homeTeam);
   void setupCornerAardvark(bool homeTeam, bool topCorner);
-  void setupFreeKickAardvark(bool homeTeam, Vector2F foulPos);
+  void setupFreeKickAardvark(bool homeTeam, PitchPoint foulPos);
   void setupPenaltyAardvark(bool homeTeam);
-  void placeTakerAardvark(MatchPlayer& taker, Vector2F spot);
+  void placeTakerAardvark(MatchPlayer& taker, PitchPoint spot);
   void completeRestartAardvark();
 // clang-format on

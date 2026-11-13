@@ -34,20 +34,18 @@ class MatchEngine;
 
 /**
  * The brains (home, away) new sandbox matches, checks and drills start with:
- * the sandbox's --brains option, else Aardvark for both sides (the window
- * opens on Binturong v Aardvark instead; see match_sandbox_main.cpp).
+ * the sandbox's --brains option or the Set-up page, else Binturong for both.
  */
 std::array<BrainId, 2>& sandboxBrains();
-/** The same for bodies: the --bodies option, else Aardvark for both (the
- * window: Binturong v Aardvark). */
+/** The same for bodies: --bodies or Set-up, else Binturong for both. */
 std::array<BodyId, 2>& sandboxBodies();
 /** The handshake new sandbox matches, checks and drills are built with:
  * the --handshake option, else Binturong (--check: Aardvark). */
 HandshakeId& sandboxHandshake();
 /** The referee, AI managers (home, away), ball physics and out-of-play
  * version new sandbox matches, checks and drills are played with: the
- * --referee, --managers, --ball and --out-of-play options, else Aardvark
- * (the ball: Binturong). */
+ * --referee, --managers, --ball and --out-of-play options or Set-up,
+ * else Binturong. */
 RefereeId& sandboxReferee();
 std::array<ManagerId, 2>& sandboxManagers();
 BallPhysicsId& sandboxBallPhysics();

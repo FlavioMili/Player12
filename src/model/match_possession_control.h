@@ -4,6 +4,7 @@
 
 #include <algorithm>
 
+#include "model/match_point.h"
 #include "model/match_possession.h"
 
 namespace PossessionControl
@@ -11,12 +12,12 @@ namespace PossessionControl
 // A retaining contact changes velocity, not position. A ball whose centre is
 // slightly over a line can still be legally in play. Preserve the legacy inset
 // only for Aardvark; Binturong must not snap such a touch back onto the pitch.
-constexpr Vector2F retainingTouchPosition(PossessionId version,
-                                          Vector2F contact)
+constexpr PitchPoint retainingTouchPosition(PossessionId version,
+                                          PitchPoint contact)
 {
   if (version == PossessionId::BINTURONG) return contact;
-  return {std::clamp(contact.x, 0.001f, 0.999f),
-          std::clamp(contact.y, 0.001f, 0.999f)};
+  return PitchPoint{std::clamp(contact.x, 0.001f, 0.999f),
+                    std::clamp(contact.y, 0.001f, 0.999f)};
 }
 // Initial Binturong policy values, in metres and simulated seconds. These
 // describe current control, not claim expiry or permission to contest a ball.

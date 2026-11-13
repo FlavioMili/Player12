@@ -111,6 +111,6 @@ class IMatchRenderer
    * the view's projection. False before the first frame or when the point
    * is behind the camera.
    */
-  virtual bool projectPitch(Vector2F pitch, float heightMetres, float& screenX,
+  virtual bool projectPitch(PitchPoint pitch, float heightMetres, float& screenX,
                             float& screenY) const = 0;
 };

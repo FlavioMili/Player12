@@ -36,7 +36,7 @@ constexpr std::uint64_t PASS_OPTION_TICKS = 30;
 constexpr std::size_t INTENTS =
     static_cast<std::size_t>(PlayerIntent::GOALKEEP) + 1;
 
-float metres(Vector2F from, Vector2F to)
+float metres(PitchPoint from, PitchPoint to)
 {
   return std::hypot((to.x - from.x) * LENGTH_METRES,
                     (to.y - from.y) * WIDTH_METRES);
@@ -897,7 +897,7 @@ void DebugInspector::drawOverlays(const SandboxRecorder& recorder,
   refresh(recorder, tick);
   const float scale = Theme::scale();
   ImDrawList* drawList = ImGui::GetWindowDrawList();
-  const auto project = [&renderer](Vector2F pitch, ImVec2& screen)
+  const auto project = [&renderer](PitchPoint pitch, ImVec2& screen)
   { return renderer.projectPitch(pitch, 0.0f, screen.x, screen.y); };
 
   const ImVec2 mouse = ImGui::GetIO().MousePos;

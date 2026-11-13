@@ -1314,7 +1314,7 @@ void MatchRenderer3D::State::drawShadows(const MatchRenderSnapshot& snapshot,
     releaseBatch();
     return;
   }
-  const Vector2F ball = lerpRenderPosition(
+  const PitchPoint ball = lerpRenderPosition(
       snapshot.ball.previousPosition, snapshot.ball.currentPosition, alpha);
   const float height = ballHeightMetres(snapshot.ball, alpha);
   const float radius = Tuning::Ball::SHADOW_RADIUS *
@@ -3663,7 +3663,7 @@ void MatchRenderer3D::State::addBall(const MatchRenderSnapshot& snapshot,
                                      float alpha)
 {
   using B = Tuning::Ball;
-  const Vector2F ball = lerpRenderPosition(
+  const PitchPoint ball = lerpRenderPosition(
       snapshot.ball.previousPosition, snapshot.ball.currentPosition, alpha);
   const float height = ballHeightMetres(snapshot.ball, alpha);
   // Held in the hands (keeper, throw-in) it is drawn where the hands are.
@@ -4087,7 +4087,7 @@ MatchRenderer3D::MatchRenderer3D() : state(std::make_unique<State>()) {}
 
 MatchRenderer3D::~MatchRenderer3D() = default;
 
-bool MatchRenderer3D::projectPitch(Vector2F pitch, float heightMetres,
+bool MatchRenderer3D::projectPitch(PitchPoint pitch, float heightMetres,
                                    float& screenX, float& screenY) const
 {
   const State& s = *state;

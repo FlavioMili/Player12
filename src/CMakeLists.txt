@@ -706,6 +706,8 @@ target_compile_options(fm_lab PRIVATE ${FM_WARNING_FLAGS})
 # -----------------------------
 add_executable(match_sandbox
     tools/match_sandbox_main.cpp
+    tools/match_sandbox_splash.h
+    tools/match_sandbox_splash.cpp
     tools/match_sandbox_scene.h
     tools/match_sandbox_scene.cpp
     tools/match_sandbox_debugger.h
@@ -755,6 +757,13 @@ add_executable(match_sandbox
 )
 target_link_libraries(match_sandbox PRIVATE fm_drills)
 target_compile_options(match_sandbox PRIVATE ${FM_WARNING_FLAGS})
+
+# Headless integration check for shared Sandbox engine settings.
+add_executable(sandbox_settings_check EXCLUDE_FROM_ALL
+    ../test/sandbox_settings_check.cpp
+    tools/match_sandbox_test_teams.cpp)
+target_link_libraries(sandbox_settings_check PRIVATE fm_drills)
+target_compile_options(sandbox_settings_check PRIVATE ${FM_WARNING_FLAGS})
 
 # Small, dependency-free possession contract checks for offline builds where
 # GoogleTest is unavailable. Explicit target; not part of the default build.

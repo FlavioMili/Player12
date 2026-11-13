@@ -16,7 +16,7 @@
 
 namespace
 {
-float metresBetween(const MatchPitch& pitch, Vector2F first, Vector2F second)
+float metresBetween(const MatchPitch& pitch, PitchPoint first, PitchPoint second)
 {
   const float dx = (first.x - second.x) * pitch.length;
   const float dy = (first.y - second.y) * pitch.width;

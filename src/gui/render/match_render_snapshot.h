@@ -46,11 +46,11 @@ struct MatchRenderPlayer
 {
   const Player* player = nullptr;
   bool isHomeTeam = false;
-  Vector2F previousPosition{MatchTuning::Pitch::CENTRE,
+  PitchPoint previousPosition{MatchTuning::Pitch::CENTRE,
                             MatchTuning::Pitch::CENTRE};
-  Vector2F currentPosition{MatchTuning::Pitch::CENTRE,
+  PitchPoint currentPosition{MatchTuning::Pitch::CENTRE,
                            MatchTuning::Pitch::CENTRE};
-  Vector2F movementTarget{MatchTuning::Pitch::CENTRE,
+  PitchPoint movementTarget{MatchTuning::Pitch::CENTRE,
                           MatchTuning::Pitch::CENTRE};
   PlayerIntent intent = PlayerIntent::HOLD_SHAPE;
   float previousFacingAngle = 0.0f;
@@ -96,8 +96,8 @@ struct MatchRenderTouchlinePerson
   bool seated = false;
   /** Deep in the tunnel (walk-outs and walk-offs): not drawn. */
   bool hidden = false;
-  Vector2F previousPosition{};
-  Vector2F currentPosition{};
+  PitchPoint previousPosition{};
+  PitchPoint currentPosition{};
   float previousFacingAngle = 0.0f;
   float currentFacingAngle = 0.0f;
   float heightMetres = MatchTuning::Units::DEFAULT_PLAYER_HEIGHT_METRES;
@@ -111,9 +111,9 @@ struct MatchRenderTouchlinePerson
 
 struct MatchRenderBall
 {
-  Vector2F previousPosition{MatchTuning::Pitch::CENTRE,
+  PitchPoint previousPosition{MatchTuning::Pitch::CENTRE,
                             MatchTuning::Pitch::CENTRE};
-  Vector2F currentPosition{MatchTuning::Pitch::CENTRE,
+  PitchPoint currentPosition{MatchTuning::Pitch::CENTRE,
                            MatchTuning::Pitch::CENTRE};
   float previousZ = 0.0f;
   float currentZ = 0.0f;
@@ -186,8 +186,8 @@ void fillMatchRenderSnapshot(const MatchEngine& engine,
 MatchRenderSnapshot buildMatchRenderSnapshot(const MatchEngine& engine);
 
 /** Linear interpolation of a 2D point used by renderers. */
-inline Vector2F lerpRenderPosition(Vector2F first, Vector2F second, float alpha)
+inline PitchPoint lerpRenderPosition(PitchPoint first, PitchPoint second, float alpha)
 {
-  return {first.x + (second.x - first.x) * alpha,
-          first.y + (second.y - first.y) * alpha};
+  return PitchPoint{first.x + (second.x - first.x) * alpha,
+                    first.y + (second.y - first.y) * alpha};
 }

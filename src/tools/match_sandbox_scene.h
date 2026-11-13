@@ -31,6 +31,7 @@
 class Lineup;
 class Strategy;
 class Team;
+struct ImFont;
 
 /**
  * @brief Setup screen of the match sandbox (match_sandbox): two clubs of a
@@ -52,8 +53,7 @@ class MatchSandboxScene : public GUIScene
    * drill).
    */
   explicit MatchSandboxScene(GUIView* guiView_ptr, bool kick_off_now = false,
-                             std::string open_drill = {},
-                             int open_view = 0);
+                             std::string open_drill = {}, int open_view = 0);
 
   void onEnter() override;
   void update(float deltaTime) override;
@@ -61,6 +61,8 @@ class MatchSandboxScene : public GUIScene
   SceneID getID() const override;
 
  private:
+  void renderSidebar();
+  void renderDeveloperSetup();
   /** One side of the match. */
   struct Side
   {
@@ -69,12 +71,6 @@ class MatchSandboxScene : public GUIScene
 
   void renderSide(Side& side, bool home, float width, float height);
   void renderClubPicker(Side& side, bool home);
-  /** Which brain the side plays with (edits sandboxBrains()). */
-  void renderBrainPicker(bool home);
-  /** Which body the side's players play with (edits sandboxBodies()). */
-  void renderBodyPicker(bool home);
-  /** Which AI manager runs the side (edits sandboxManagers()). */
-  void renderManagerPicker(bool home);
   void renderFormation(Team& team);
   void renderInstructions(Strategy& strategy);
   void renderSelection(Team& team);
@@ -99,8 +95,10 @@ class MatchSandboxScene : public GUIScene
 
   // Drills.
   void renderDrills();
-  /** 0: match setup, 1: drills, 2: training, 3: visualisers. */
+  /** 0: matches (initial page), 1: drills, 2: training, 3: tools,
+   * 4: developer set-up. */
   int mode = 0;
+  ImFont* sidebar_font = nullptr;
   std::vector<std::unique_ptr<Drill>> drills = makeDrills();
   int drill_index = 0;
 
@@ -123,12 +121,6 @@ class MatchSandboxScene : public GUIScene
                      std::optional<std::array<BodyId, 2>> bodies = {},
                      std::optional<HandshakeId> handshake = {},
                      std::optional<PossessionId> possession = {});
-  /** The brains and bodies chosen for "Replay with" in the Recordings
-   * window. */
-  std::array<BrainId, 2> replay_brains{BrainId::BINTURONG, BrainId::BINTURONG};
-  std::array<BodyId, 2> replay_bodies{BodyId::AARDVARK, BodyId::AARDVARK};
-  HandshakeId replay_handshake = HandshakeId::BINTURONG;
-  PossessionId replay_possession = PossessionId::BINTURONG;
 
   /** What the current (or last) match was built from. */
   std::optional<MatchSetup> match_setup;

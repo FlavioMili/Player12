@@ -246,7 +246,7 @@ class MatchScene : public GUIScene
   /** ImGui keyboard navigation is off while the keys drive the pitch. */
   bool nav_keyboard_suspended = false;
   /** Damped centre of the zoomed 2D play view (normalised pitch). */
-  Vector2F play_follow{MatchTuning::Pitch::CENTRE, MatchTuning::Pitch::CENTRE};
+  PitchPoint play_follow{MatchTuning::Pitch::CENTRE, MatchTuning::Pitch::CENTRE};
   bool play_follow_ready = false;
   /** Stick-to-pitch mapping of the view on screen (last frame). */
   PlayScreenBasis play_basis;

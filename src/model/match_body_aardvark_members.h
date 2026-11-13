@@ -41,7 +41,7 @@
   bool updateDribbleAardvark(MatchPlayer& carrier, float dt);
   /** The passer's strike: execution error, weight, height and curve. */
   Kick kickPassAardvark(const MatchPlayer& passer, const MatchPlayer* receiver,
-                Vector2F target, float passDistance, bool lofted,
+                PitchPoint target, float passDistance, bool lofted,
                 bool delivery, std::optional<BallSpin> spin,
                 std::optional<float> arrivalSpeed);
   float recoverySecondsAardvark(const MatchPlayer& player, Recovery after);
@@ -54,10 +54,10 @@
   float clearanceSpeedAardvark(const MatchPlayer& defender);
   float headerClearanceSpeedAardvark(const MatchPlayer& header);
   /** Where a knock-down meant for `aim` really goes. */
-  Vector2F knockDownPointAardvark(const MatchPlayer& header, Vector2F aim);
+  PitchPoint knockDownPointAardvark(const MatchPlayer& header, PitchPoint aim);
   /** A header's pace: the brain's, as set. */
   std::pair<float, float> headerPaceAardvark(const MatchPlayer& header,
-                                             HeaderPace purpose, Vector2F target,
+                                             HeaderPace purpose, PitchPoint target,
                                              float speed, float lift) const;
   /** Brings a received ball under control: trap time and when he can act
    * (a keeper with it in his hands: how long he holds it). */
@@ -106,9 +106,9 @@
   float feetReachAardvark(const MatchPlayer& player) const;
   BodyLines bodyLinesAardvark(const MatchPlayer& player) const;
   bool ballBehindReachAardvark(const MatchPlayer& player, float gapX, float gapY, float gap, float turnSeconds) const;
-  Vector2F strikePointAardvark(const MatchPlayer& striker) const;
-  Kick strikeAsAardvark(const MatchPlayer& striker, StrikeKind kind, Vector2F target, float speed, float lift);
-  float clearanceDistanceAardvark(const MatchPlayer& defender, Vector2F origin, const ClearanceAim& aim) const;
+  PitchPoint strikePointAardvark(const MatchPlayer& striker) const;
+  Kick strikeAsAardvark(const MatchPlayer& striker, StrikeKind kind, PitchPoint target, float speed, float lift);
+  float clearanceDistanceAardvark(const MatchPlayer& defender, PitchPoint origin, const ClearanceAim& aim) const;
   /** A direct free kick: blocked by the wall, or a shot over it. */
   void takeDirectFreeKickAardvark(MatchPlayer& taker);
   BallRelease releaseFromAardvark(const MatchPlayer& kicker, ReleaseKind kind) const;

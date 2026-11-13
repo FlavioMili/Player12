@@ -133,8 +133,8 @@ TEST(MatchRender3DMath, NearPlaneClippingKeepsOnlyVisiblePart)
 
 TEST(MatchRender3DMath, PitchMappingAndAngles)
 {
-  const Vec3 origin = RenderMath::worldFromPitch({0.0f, 0.0f});
-  const Vec3 corner = RenderMath::worldFromPitch({1.0f, 1.0f});
+  const Vec3 origin = RenderMath::worldFromPitch(PitchPoint{0.0f, 0.0f});
+  const Vec3 corner = RenderMath::worldFromPitch(PitchPoint{1.0f, 1.0f});
   EXPECT_FLOAT_EQ(origin.x, 0.0f);
   EXPECT_FLOAT_EQ(origin.y, MatchTuning::Pitch::MATCH_WIDTH_METRES);
   EXPECT_FLOAT_EQ(corner.x, MatchTuning::Pitch::MATCH_LENGTH_METRES);
@@ -1479,7 +1479,7 @@ TEST_F(MatchRenderer3DSceneTest, SwitchesViewsAndCapturesFrames)
     MatchEvent& offside = offsideEvents.emplace_back();
     offside.type = MatchEventType::OFFSIDE;
     offside.hasTeam = true;
-    offside.position = {0.7f, 0.4f};
+    offside.position = PitchPoint{0.7f, 0.4f};
     std::cout << "[match-2d] pressure overlay 1280x800 render CPU median "
               << direct(overlayRenderer, overlayOptions, 40, &offsideEvents)
               << " ms (renderer only), draw list "

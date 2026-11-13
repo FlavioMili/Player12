@@ -22,6 +22,7 @@
 #include "controller/game_controller.h"
 #include "database/gamedata.h"
 #include "global/language_manager.h"
+#include "global/paths.h"
 #include "gui/gui_view.h"
 #include "gui/scenes/match_scene.h"
 #include "gui/view_models/formation.h"
@@ -197,6 +198,11 @@ SceneID MatchSandboxScene::getID() const { return SceneID::MATCH_SANDBOX; }
 
 void MatchSandboxScene::onEnter()
 {
+  if (sidebar_font == nullptr)
+  {
+    const std::string fontPath = AssetPaths::file("assets/fonts/Manrope-Bold.ttf");
+    sidebar_font = ImGui::GetIO().Fonts->AddFontFromFileTTF(fontPath.c_str(), 28.0f);
+  }
   // Told apart from the game in the taskbar, and opened maximised (once:
   // a size the user picks afterwards is kept).
   static bool maximised = false;
@@ -320,56 +326,175 @@ void MatchSandboxScene::render()
   ImGui::SetNextWindowPos(viewport->WorkPos);
   ImGui::SetNextWindowSize(viewport->WorkSize);
   const float scale = Theme::scale();
-  ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding,
-                      ImVec2(Theme::Space::XL * scale, Theme::Space::L * scale));
+  const ImVec4 contentBackground = ImGui::GetStyleColorVec4(ImGuiCol_WindowBg);
+  ImGui::PushStyleColor(ImGuiCol_WindowBg,
+                        ImVec4(0.094f, 0.078f, 0.059f, 1.0f));
+  ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(0.0f, 0.0f));
+  ImGui::PushStyleVar(ImGuiStyleVar_WindowBorderSize, 0.0f);
+  ImGui::PushStyleVar(ImGuiStyleVar_WindowRounding, 0.0f);
   ImGui::Begin("##match_sandbox", nullptr,
                ImGuiWindowFlags_NoDecoration | ImGuiWindowFlags_NoMove |
                    ImGuiWindowFlags_NoSavedSettings |
-                   ImGuiWindowFlags_NoBringToFrontOnFocus);
-  ImGui::PopStyleVar();
+                   ImGuiWindowFlags_NoBringToFrontOnFocus |
+                   ImGuiWindowFlags_NoScrollbar |
+                   ImGuiWindowFlags_NoScrollWithMouse);
+  ImGui::PopStyleVar(3);
+  ImGui::PopStyleColor();
 
-  UI::pageHeader("Match sandbox",
-                 "Pick two clubs and both sides' tactics, then play the "
-                 "match as the home side, or run a drill that isolates one "
-                 "behaviour. Nothing here is saved.");
-  constexpr std::array<const char*, 4> MODES{"Match", "Drills", "Training",
-                                           "Visualisers"};
-  UI::segmented("##mode", mode, MODES, 460.0f * scale);
-  ImGui::Spacing();
-  if (mode == 1)
+  renderSidebar();
+  ImGui::SameLine(0.0f, 6.0f * scale);
+  // Only the page content keeps the original padding; navigation touches the
+  // window edges and its own child owns any navigation scrolling.
+  ImGui::PushStyleVar(
+      ImGuiStyleVar_WindowPadding,
+      ImVec2(Theme::Space::XL * scale, Theme::Space::L * scale));
+  ImGui::PushStyleColor(ImGuiCol_ChildBg, contentBackground);
+  ImGui::BeginChild("##sandbox_content", ImVec2(0.0f, 0.0f),
+                    ImGuiChildFlags_AlwaysUseWindowPadding);
+  ImGui::PopStyleColor();
+  ImGui::PopStyleVar();
+  if (mode == 4)
+    UI::pageHeader("Set-up",
+                   "Choose the engine versions used by new matches, drills and "
+                   "training runs.");
+  else
+    UI::pageHeader("Match sandbox",
+                   "Pick two clubs and both sides' tactics, then play the "
+                   "match as the home side, or run a drill that isolates one "
+                   "behaviour. Nothing here is saved.");
+  if (mode == 4)
+  {
+    renderDeveloperSetup();
+  }
+  else if (mode == 1)
   {
     renderDrills();
-    ImGui::End();
-    return;
   }
-  if (mode == 2)
+  else if (mode == 2)
   {
     renderTraining();
-    ImGui::End();
-    return;
   }
-  if (mode == 3)
+  else if (mode == 3)
   {
     renderVisualisers();
-    ImGui::End();
-    return;
   }
+  else
+  {
+    const float gap = Theme::Space::L * scale;
+    const ImVec2 available = ImGui::GetContentRegionAvail();
+    const float columnWidth = std::floor((available.x - gap) * 0.5f);
+    const float columnHeight =
+        std::max(200.0f * scale, available.y - FOOTER_HEIGHT * scale);
+    renderSide(sides[HOME], true, columnWidth, columnHeight);
+    ImGui::SameLine(0.0f, gap);
+    renderSide(sides[AWAY], false, columnWidth, columnHeight);
 
-  const float gap = Theme::Space::L * scale;
-  const ImVec2 available = ImGui::GetContentRegionAvail();
-  const float columnWidth = std::floor((available.x - gap) * 0.5f);
-  const float columnHeight =
-      std::max(200.0f * scale, available.y - FOOTER_HEIGHT * scale);
-  renderSide(sides[HOME], true, columnWidth, columnHeight);
-  ImGui::SameLine(0.0f, gap);
-  renderSide(sides[AWAY], false, columnWidth, columnHeight);
-
-  renderFooter();
+    renderFooter();
+  }
+  ImGui::EndChild();
   ImGui::End();
   renderDebugTools(nullptr, nullptr);
   if ((show_review || show_debugger) && loaded && replay_info)
     comparison.render(*loaded, *replay_info, recorder.get(), review, inspector);
   renderRecordings();
+}
+
+void MatchSandboxScene::renderDeveloperSetup()
+{
+  UI::beginAutoHeightCard("##engine_setup", "Engine versions");
+  ImGui::TextWrapped(
+      "Click Aardvark or Binturong for each setting. Changes apply to new "
+      "runs; existing runs keep their settings.");
+  ImGui::Spacing();
+  SandboxPickers::engineVersionsTable();
+  UI::endCard();
+
+  UI::beginAutoHeightCard("##simulation_setup", "Simulation settings");
+  ImGui::SetNextItemWidth(180.0f * Theme::scale());
+  ImGui::SliderFloat("Home advantage", &sandboxHomeAdvantage(), 0.0f,
+                     MatchTuning::Context::MAX_HOME_ADVANTAGE_SCALE, "%.2f");
+  if (ImGui::IsItemHovered())
+    ImGui::SetTooltip(
+        "Applies to new matches, drills and training runs. 0 is neutral, 1 the "
+        "game's full home edge, 2 double.");
+  ImGui::Checkbox("Full tactical familiarity", &full_familiarity);
+  if (ImGui::IsItemHovered())
+    ImGui::SetTooltip(
+        "New matches start with both sides knowing their tactics perfectly. "
+        "Otherwise use each club's familiarity.");
+  ImGui::Checkbox("Debug at kick-off", &debug_at_kick_off);
+  if (ImGui::IsItemHovered())
+    ImGui::SetTooltip(
+        "Open the review and debugger in the match's side panel at kick-off.");
+  UI::endCard();
+}
+
+void MatchSandboxScene::renderSidebar()
+{
+  const float scale = Theme::scale();
+  constexpr ImVec4 NAV_BG(0.094f, 0.078f, 0.059f, 1.0f);
+  constexpr ImVec4 TEXT(0.941f, 0.918f, 0.886f, 1.0f);
+  constexpr ImVec4 MUTED(0.627f, 0.584f, 0.541f, 1.0f);
+  constexpr ImVec4 SELECTED(0.180f, 0.153f, 0.125f, 1.0f);
+  constexpr ImVec4 HOVER(0.227f, 0.196f, 0.161f, 1.0f);
+  constexpr ImVec4 LIME(0.608f, 0.816f, 0.420f, 1.0f);
+  ImGui::PushStyleColor(ImGuiCol_ChildBg, NAV_BG);
+  ImGui::PushStyleColor(ImGuiCol_Text, TEXT);
+  ImGui::PushStyleColor(ImGuiCol_Header, SELECTED);
+  ImGui::PushStyleColor(ImGuiCol_HeaderHovered, HOVER);
+  ImGui::PushStyleColor(ImGuiCol_HeaderActive, HOVER);
+  ImGui::PushStyleVar(ImGuiStyleVar_ChildRounding, 0.0f);
+  ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding,
+                      ImVec2(16.0f * scale, 24.0f * scale));
+  ImGui::BeginChild("##sandbox_sidebar", ImVec2(220.0f * scale, 0.0f),
+                    ImGuiChildFlags_AlwaysUseWindowPadding);
+  {
+    ImGui::PushFont(sidebar_font, 28.0f * scale);
+    ImGui::TextColored(LIME, "Player 12");
+    ImGui::PopFont();
+  }
+  ImGui::TextColored(MUTED, "MATCH ENGINE SANDBOX");
+  ImGui::Dummy(ImVec2(0.0f, 32.0f * scale));
+
+  constexpr std::array<const char*, 5> LABELS{"Set-up", "Drills", "Training",
+                                              "Matches", "Tools"};
+  constexpr std::array<int, 5> MODES{4, 1, 2, 0, 3};
+  for (std::size_t index = 0; index < LABELS.size(); ++index)
+  {
+    const bool selected = mode == MODES[index];
+    const ImVec2 row = ImGui::GetCursorScreenPos();
+    ImGui::PushFont(sidebar_font, 28.0f * scale);
+    const float tracking = 0.5f * scale;
+    const float textHeight = ImGui::GetFontSize();
+    // Hidden selectable text lets the label use the reference's letter spacing.
+    ImGui::PushID(static_cast<int>(index));
+    // A full-width hit target retains keyboard navigation and hover feedback.
+    if (ImGui::Selectable("##section", selected, 0,
+                          ImVec2(0.0f, 44.0f * scale)))
+    {
+      mode = MODES[index];
+      show_recordings = false;
+    }
+    ImGui::PopID();
+    ImVec2 labelPos(row.x, row.y + (44.0f * scale - textHeight) * 0.5f);
+    for (const char* letter = LABELS[index]; *letter != '\0'; ++letter)
+    {
+      ImGui::GetWindowDrawList()->AddText(
+          labelPos, ImGui::ColorConvertFloat4ToU32(selected ? LIME : TEXT),
+          letter, letter + 1);
+      labelPos.x += ImGui::CalcTextSize(letter, letter + 1).x + tracking;
+    }
+    ImGui::PopFont();
+    if (selected)
+      ImGui::GetWindowDrawList()->AddRectFilled(
+          ImVec2(row.x - 8.0f * scale, row.y),
+          ImVec2(row.x - 5.0f * scale, row.y + 44.0f * scale),
+          ImGui::ColorConvertFloat4ToU32(LIME));
+    ImGui::Dummy(ImVec2(0.0f, 6.0f * scale));
+  }
+  ImGui::EndChild();
+  ImGui::PopStyleVar(2);
+  ImGui::PopStyleColor(5);
 }
 
 void MatchSandboxScene::renderDrills()
@@ -383,8 +508,9 @@ void MatchSandboxScene::renderDrills()
       drill_index = static_cast<int>(index);
   ImGui::Spacing();
   ImGui::PushTextWrapPos(0.0f);
-  ImGui::TextDisabled("Movement drills run by the AI, by a scripted bot on "
-                      "the stick, or by you. Shooting drills are on the way.");
+  ImGui::TextDisabled(
+      "Movement drills run by the AI, by a scripted bot on "
+      "the stick, or by you. Shooting drills are on the way.");
   ImGui::PopTextWrapPos();
   UI::endCard();
   ImGui::SameLine();
@@ -655,11 +781,6 @@ void MatchSandboxScene::renderSide(Side& side, bool home, float width,
                 home ? "Home - you manage this side" : "Away - played by the AI",
                 ImVec2(width, height), true);
   renderClubPicker(side, home);
-  renderBrainPicker(home);
-  ImGui::SameLine(0.0f, Theme::Space::L * Theme::scale());
-  renderBodyPicker(home);
-  ImGui::SameLine(0.0f, Theme::Space::L * Theme::scale());
-  renderManagerPicker(home);
   if (const auto team = mutableTeam(guiView, side.team))
   {
     ImGui::Spacing();
@@ -703,33 +824,6 @@ void MatchSandboxScene::renderClubPicker(Side& side, bool home)
     }
   }
   ImGui::EndCombo();
-}
-
-void MatchSandboxScene::renderBrainPicker(bool home)
-{
-  ImGui::AlignTextToFramePadding();
-  ImGui::TextUnformatted("Brain");
-  ImGui::SameLine();
-  SandboxPickers::brain("##brain", sandboxBrains()[home ? 0 : 1],
-                        160.0f * Theme::scale());
-}
-
-void MatchSandboxScene::renderBodyPicker(bool home)
-{
-  ImGui::AlignTextToFramePadding();
-  ImGui::TextUnformatted("Body");
-  ImGui::SameLine();
-  SandboxPickers::body("##body", sandboxBodies()[home ? 0 : 1],
-                       160.0f * Theme::scale());
-}
-
-void MatchSandboxScene::renderManagerPicker(bool home)
-{
-  ImGui::AlignTextToFramePadding();
-  ImGui::TextUnformatted("Manager");
-  ImGui::SameLine();
-  SandboxPickers::manager("##manager", sandboxManagers()[home ? 0 : 1],
-                          160.0f * Theme::scale());
 }
 
 void MatchSandboxScene::renderFormation(Team& team)
@@ -989,65 +1083,6 @@ void MatchSandboxScene::renderFooter()
         "The same seed, clubs and tactics replay the same match.");
   ImGui::SameLine();
   ImGui::Checkbox("New seed each match", &new_seed_each_match);
-  ImGui::SameLine(0.0f, Theme::Space::XL * scale);
-  ImGui::Checkbox("Full tactical familiarity", &full_familiarity);
-  if (ImGui::IsItemHovered())
-    ImGui::SetTooltip(
-        "Both sides know their tactics perfectly. Off: familiarity comes "
-        "from the clubs' training, and noisier decisions with it.");
-  ImGui::SameLine(0.0f, Theme::Space::XL * scale);
-  ImGui::TextUnformatted("Handshake");
-  ImGui::SameLine();
-  ImGui::SetNextItemWidth(120.0f * scale);
-  HandshakeId& handshake = sandboxHandshake();
-  if (ImGui::BeginCombo("##handshake", handshakeName(handshake).data()))
-  {
-    for (const HandshakeId option : ALL_HANDSHAKES)
-      if (ImGui::Selectable(handshakeName(option).data(), option == handshake))
-        handshake = option;
-    ImGui::EndCombo();
-  }
-  if (ImGui::IsItemHovered())
-    ImGui::SetTooltip(
-        "How the game's inputs become the match's numbers, for both sides: "
-        "the attribute scale (level shift, stretch), top speed and "
-        "acceleration, roles, positions, match context. Aardvark is the "
-        "inherited engine; Binturong is being developed.");
-  ImGui::SameLine(0.0f, Theme::Space::XL * scale);
-  ImGui::TextUnformatted("Referee");
-  ImGui::SameLine();
-  SandboxPickers::referee("##referee", sandboxReferee(), 120.0f * scale);
-  ImGui::SameLine(0.0f, Theme::Space::XL * scale);
-  ImGui::TextUnformatted("Ball");
-  ImGui::SameLine();
-  SandboxPickers::ballPhysics("##ball", sandboxBallPhysics(), 120.0f * scale);
-  ImGui::SameLine(0.0f, Theme::Space::XL * scale);
-  ImGui::TextUnformatted("Out of play");
-  ImGui::SameLine();
-  SandboxPickers::outOfPlay("##out_of_play", sandboxOutOfPlay(),
-                            120.0f * scale);
-  // Begin a new row so the additional per-match selector fits the setup.
-  ImGui::TextUnformatted("Possession");
-  ImGui::SameLine();
-  SandboxPickers::possession("##possession", sandboxPossession(), 120.0f * scale);
-  ImGui::SameLine(0.0f, Theme::Space::XL * scale);
-  ImGui::TextUnformatted("Home advantage");
-  ImGui::SameLine();
-  ImGui::SetNextItemWidth(110.0f * scale);
-  ImGui::SliderFloat("##home_advantage", &sandboxHomeAdvantage(), 0.0f,
-                     MatchTuning::Context::MAX_HOME_ADVANTAGE_SCALE, "%.2f");
-  if (ImGui::IsItemHovered())
-    ImGui::SetTooltip(
-        "The home side's edge: a lift on its skill attributes, sharper "
-        "execution and duels, and kinder refereeing. 0 is a neutral venue "
-        "(the sandbox default), 1 the game's full edge, 2 double.");
-  ImGui::SameLine(0.0f, Theme::Space::XL * scale);
-  ImGui::Checkbox("Debug at kick-off", &debug_at_kick_off);
-  if (ImGui::IsItemHovered())
-    ImGui::SetTooltip("Start the match in debug: the review and the debugger "
-                      "in its side panel (pause, step one tick at a time and "
-                      "read the decision log). In the match, the Debug and "
-                      "True view buttons turn them on and off.");
   if (recorder)
   {
     // The last match's review and debugger, as windows (no match pitch
@@ -1208,60 +1243,9 @@ void MatchSandboxScene::renderRecordings()
   ImGui::TextDisabled(
       "Opening replays the recording on this engine: review it like a live "
       "match, and see where it plays differently.");
-  // Side by side: the same match (setup, seed, manager's changes) played
-  // by other brains or bodies, compared with the recording.
-  ImGui::AlignTextToFramePadding();
-  ImGui::TextUnformatted("Replay with brains:");
-  for (std::size_t side = 0; side < replay_brains.size(); ++side)
-  {
-    ImGui::SameLine();
-    ImGui::PushID(static_cast<int>(side));
-    ImGui::SetNextItemWidth(120.0f * scale);
-    if (ImGui::BeginCombo(side == 0 ? "home" : "away",
-                          brainName(replay_brains[side]).data()))
-    {
-      for (const BrainId option : ALL_BRAINS)
-        if (ImGui::Selectable(brainName(option).data(),
-                              option == replay_brains[side]))
-          replay_brains[side] = option;
-      ImGui::EndCombo();
-    }
-    ImGui::PopID();
-  }
-  ImGui::AlignTextToFramePadding();
-  ImGui::TextUnformatted("and bodies:          ");
-  for (std::size_t side = 0; side < replay_bodies.size(); ++side)
-  {
-    ImGui::SameLine();
-    ImGui::PushID(static_cast<int>(side) + 2);
-    ImGui::SetNextItemWidth(120.0f * scale);
-    if (ImGui::BeginCombo(side == 0 ? "home" : "away",
-                          bodyName(replay_bodies[side]).data()))
-    {
-      for (const BodyId option : ALL_BODIES)
-        if (ImGui::Selectable(bodyName(option).data(),
-                              option == replay_bodies[side]))
-          replay_bodies[side] = option;
-      ImGui::EndCombo();
-    }
-    ImGui::PopID();
-  }
-  ImGui::AlignTextToFramePadding();
-  ImGui::TextUnformatted("and handshake:       ");
-  ImGui::SameLine();
-  ImGui::SetNextItemWidth(120.0f * scale);
-  if (ImGui::BeginCombo("##replay_handshake",
-                        handshakeName(replay_handshake).data()))
-  {
-    for (const HandshakeId option : ALL_HANDSHAKES)
-      if (ImGui::Selectable(handshakeName(option).data(),
-                            option == replay_handshake))
-        replay_handshake = option;
-    ImGui::EndCombo();
-  }
-  ImGui::TextUnformatted("Possession:");
-  ImGui::SameLine();
-  SandboxPickers::possession("##replay_possession", replay_possession, 120.0f * scale);
+  ImGui::TextWrapped(
+      "Replay with uses the brains, bodies, handshake and possession selected "
+      "in Set-up.");
   ImGui::Separator();
   if (recording_files.empty()) ImGui::TextDisabled("No recordings yet.");
   for (const std::filesystem::path& path : recording_files)
@@ -1270,11 +1254,13 @@ void MatchSandboxScene::renderRecordings()
     if (ImGui::SmallButton("Open")) loadRecording(path);
     ImGui::SameLine();
     if (ImGui::SmallButton("Replay with"))
-      loadRecording(path, replay_brains, replay_bodies, replay_handshake, replay_possession);
+      loadRecording(path, sandboxBrains(), sandboxBodies(), sandboxHandshake(),
+                    sandboxPossession());
     if (ImGui::IsItemHovered())
-      ImGui::SetTooltip("Play this match again with the brains, bodies and "
-                        "handshake and possession chosen above and compare it with the "
-                        "recording.");
+      ImGui::SetTooltip(
+          "Play this match again with the brains, bodies and "
+          "handshake and possession selected in Set-up and compare it with the "
+          "recording.");
     ImGui::SameLine();
     ImGui::TextUnformatted(path.stem().string().c_str());
     ImGui::PopID();

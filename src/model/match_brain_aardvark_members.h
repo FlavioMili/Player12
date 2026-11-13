@@ -14,7 +14,7 @@
   // --- Aardvark brain: decisions (see the dispatchers' comments) -------------
   void refreshTacticalTargetsAardvark(float dt, bool planHome);
   void assignMarksAardvark(bool home);
-  Vector2F goalkeeperTargetAardvark(MatchPlayer& keeper, const MatchPlayer* carrier);
+  PitchPoint goalkeeperTargetAardvark(MatchPlayer& keeper, const MatchPlayer* carrier);
   BallAction chooseBallActionAardvark(MatchPlayer& carrier);
   MatchPlayer* chooseTakeOnAardvark(MatchPlayer& carrier);
   void planOvertakeAardvark(std::size_t slot);
@@ -29,7 +29,7 @@
                         bool freeKick);
   float choosePenaltyGuessAardvark(const MatchPlayer& keeper);
   ClearanceAim chooseClearanceAimAardvark(const MatchPlayer& defender);
-  Vector2F chooseClearBehindTargetAardvark(const MatchPlayer& defender);
+  PitchPoint chooseClearBehindTargetAardvark(const MatchPlayer& defender);
   HeaderAttempt chooseHeaderAttemptAardvark(const MatchPlayer& header,
                                     bool fromTeammate);
   HeaderPlay chooseHeaderPlayAardvark(const MatchPlayer& header, bool fromTeammate);
@@ -38,13 +38,13 @@
   bool choosesToPutBlockBehindAardvark(const MatchPlayer& player);
   bool choosesToClearCrossBehindAardvark(const MatchPlayer& player);
   MatchPlayer* chooseRestartTakerAardvark(MatchState restart, bool homeTeam,
-                                  Vector2F spot, bool topCorner = false);
+                                  PitchPoint spot, bool topCorner = false);
   RestartPlay chooseRestartPlayAardvark(MatchPlayer& taker, MatchState restartState);
   RestartPlay chooseCornerPlayAardvark(MatchPlayer& taker);
   void applyTeamMentalityAardvark(StrategySliders& sliders, bool homeTeam) const;
   SetPieceAttackers arrangeSetPieceAttackAardvark(bool attackingHome,
-                                          Vector2F ballPosition);
-  void arrangeSetPieceDefenceAardvark(bool defendingHome, Vector2F ballPosition,
+                                          PitchPoint ballPosition);
+  void arrangeSetPieceDefenceAardvark(bool defendingHome, PitchPoint ballPosition,
                               const SetPieceAttackers& attackers);
   MatchPlayer* dutyTakerAardvark(bool homeTeam, SetPieceDuty duty);
   MatchPlayer* bestSetPieceTakerAardvark(bool homeTeam, bool shooting);
@@ -58,7 +58,7 @@
   /** Signed x shift of the role in the defensive block (normalised). */
   float defensiveRoleShiftAardvark(const MatchPlayer& player) const;
   /** Second presser's spot when doubling up on the carrier, if ordered. */
-  std::optional<Vector2F> doubleUpPointAardvark(const MatchPlayer& helper,
+  std::optional<PitchPoint> doubleUpPointAardvark(const MatchPlayer& helper,
                                         const MatchPlayer& carrier,
                                         const MatchPlayer* firstPresser) const;
   /** Multiplier of a defender's rate of engaging the carrier. */
@@ -68,7 +68,7 @@
   float passingRoleBiasAardvark(const MatchPlayer& passer, const MatchPlayer& receiver,
                         float progression, float completion) const;
   /** Formation spot while his side has the ball (role and shape shift). */
-  Vector2F possessionAnchorAardvark(const MatchPlayer& player) const;
+  PitchPoint possessionAnchorAardvark(const MatchPlayer& player) const;
   /** Seconds a role is quicker (+) or slower to close the ball down. */
   float pressEagernessAardvark(const MatchPlayer& candidate,
                        const MatchPlayer* carrier) const;
@@ -80,8 +80,8 @@
   /** Pass utility lost to a tight marker standing next to the receiver. */
   float tightMarkPenaltyAardvark(const MatchPlayer& receiver) const;
   /** Moves a marker's target tight and goal-side of his man. */
-  Vector2F tightMarkPointAardvark(const MatchPlayer& marker, const MatchPlayer& target,
-                          Vector2F current) const;
+  PitchPoint tightMarkPointAardvark(const MatchPlayer& marker, const MatchPlayer& target,
+                          PitchPoint current) const;
   /** The man this player marks when he is under a tight-marking order. */
   const MatchPlayer* tightMarkTargetAardvark(const MatchPlayer& marker) const;
   /** Presser's lateral shade onto the carrier's stronger side (normalised

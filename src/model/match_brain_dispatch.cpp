@@ -66,7 +66,7 @@ std::optional<float> MatchEngine::chooseTouchSeconds(const MatchPlayer& player,
 }
 
 std::optional<float> MatchEngine::choosePushMetres(
-    const MatchPlayer& player, Vector2F from, Vector2F direction, float startGap,
+    const MatchPlayer& player, PitchPoint from, Vector2F direction, float startGap,
     float pace, float seconds, std::optional<float> toGoal) const
 {
   switch (brainOf(player.isHomeTeam))
@@ -119,7 +119,7 @@ void MatchEngine::assignMarks(bool home)
   assignMarksAardvark(home);
 }
 
-Vector2F MatchEngine::goalkeeperTarget(MatchPlayer& keeper,
+PitchPoint MatchEngine::goalkeeperTarget(MatchPlayer& keeper,
                                        const MatchPlayer* carrier)
 {
   switch (brainOf(keeper.isHomeTeam))
@@ -236,7 +236,7 @@ MatchEngine::ClearanceAim MatchEngine::chooseClearanceAim(
   return chooseClearanceAimAardvark(defender);
 }
 
-Vector2F MatchEngine::chooseClearBehindTarget(const MatchPlayer& defender)
+PitchPoint MatchEngine::chooseClearBehindTarget(const MatchPlayer& defender)
 {
   switch (brainOf(defender.isHomeTeam))
   {
@@ -331,7 +331,7 @@ MatchEngine::Challenge MatchEngine::chooseChallenge(const MatchPlayer& carrier,
 }
 
 bool MatchEngine::goesIntoContest(MatchPlayer& defender, const MatchPlayer& owner,
-                                  Vector2F contact)
+                                  PitchPoint contact)
 {
   // Decided once a step: held, he holds the whole step.
   if (defender.goInStep != stepCounter)
@@ -356,7 +356,7 @@ bool MatchEngine::goesIntoContest(MatchPlayer& defender, const MatchPlayer& owne
 
 TackleIntent MatchEngine::chooseTackleIntent(const MatchPlayer& tackler,
                                              const MatchPlayer& attacker,
-                                             Vector2F contact, bool freeBall)
+                                             PitchPoint contact, bool freeBall)
 {
   switch (brainOf(tackler.isHomeTeam))
   {
@@ -405,7 +405,7 @@ bool MatchEngine::choosesToClearCrossBehind(const MatchPlayer& player)
 }
 
 MatchPlayer* MatchEngine::chooseRestartTaker(MatchState restart, bool homeTeam,
-                                             Vector2F spot, bool topCorner)
+                                             PitchPoint spot, bool topCorner)
 {
   switch (brainOf(homeTeam))
   {
@@ -445,7 +445,7 @@ void MatchEngine::applyTeamMentality(StrategySliders& sliders,
 }
 
 MatchEngine::SetPieceAttackers MatchEngine::arrangeSetPieceAttack(
-    bool attackingHome, Vector2F ballPosition)
+    bool attackingHome, PitchPoint ballPosition)
 {
   switch (brainOf(attackingHome))
   {
@@ -458,7 +458,7 @@ MatchEngine::SetPieceAttackers MatchEngine::arrangeSetPieceAttack(
 }
 
 void MatchEngine::arrangeSetPieceDefence(bool defendingHome,
-                                         Vector2F ballPosition,
+                                         PitchPoint ballPosition,
                                          const SetPieceAttackers& attackers)
 {
   switch (brainOf(defendingHome))

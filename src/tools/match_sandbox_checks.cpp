@@ -177,10 +177,10 @@ bool runDrillChecks(const Team& home, const Team& away,
     auto engine = drillEngine(home, away, config, 7, {runner->getId()});
     engine->setRecorder(recorder);
     MatchScenario scenario;
-    scenario.players.push_back({runner->getId(), {0.30f, 0.50f}, false});
-    scenario.ballPosition = {0.95f, 0.95f};
+    scenario.players.push_back({runner->getId(), PitchPoint{0.30f, 0.50f}, false});
+    scenario.ballPosition = PitchPoint{0.95f, 0.95f};
     const bool started = engine->startDrill(scenario);
-    const Vector2F target{0.60f, 0.50f};
+    const PitchPoint target{0.60f, 0.50f};
     engine->setDrillTarget(runner->getId(), target, true);
     std::uint64_t arrived = 0;
     for (int tick = 0; started && tick < 300 && arrived == 0; ++tick)
@@ -219,10 +219,10 @@ bool runDrillChecks(const Team& home, const Team& away,
     auto engine = drillEngine(home, away, config, seed,
                               {shooter->getId(), keeper->getId()});
     MatchScenario scenario;
-    scenario.players.push_back({shooter->getId(), {0.84f, 0.55f}, false});
-    scenario.players.push_back({keeper->getId(), {0.985f, 0.50f}, false});
+    scenario.players.push_back({shooter->getId(), PitchPoint{0.84f, 0.55f}, false});
+    scenario.players.push_back({keeper->getId(), PitchPoint{0.985f, 0.50f}, false});
     scenario.carrierId = shooter->getId();
-    scenario.ballPosition = {0.84f, 0.55f};
+    scenario.ballPosition = PitchPoint{0.84f, 0.55f};
     if (!engine->startDrill(scenario)) return std::string("not started");
     engine->forceShot(shooter->getId());
     // The run ends at the first stoppage or once the shot is dealt with.
@@ -591,7 +591,14 @@ bool runFirstTouchChecks(const std::vector<const Team*>& clubs,
   constexpr float SLACK_METRES = 0.02f;
   // A touch that let the ball this far from him counts as heavy.
   constexpr float HEAVY_GAP_METRES = 2.0f;
-  const auto metres = [](Vector2F from, Vector2F to)
+  const auto metres = [](PitchPoint from, PitchPoint to)
+  {
+    const float x = (to.x - from.x) * MatchTuning::Pitch::MATCH_LENGTH_METRES;
+    const float y = (to.y - from.y) * MatchTuning::Pitch::MATCH_WIDTH_METRES;
+    return std::sqrt(x * x + y * y);
+  };
+  /** The same for the change between two steps (ball from holder). */
+  const auto offsetMetres = [](PitchOffset from, PitchOffset to)
   {
     const float x = (to.x - from.x) * MatchTuning::Pitch::MATCH_LENGTH_METRES;
     const float y = (to.y - from.y) * MatchTuning::Pitch::MATCH_WIDTH_METRES;
@@ -680,8 +687,8 @@ bool runFirstTouchChecks(const std::vector<const Team*>& clubs,
       float lastPeakGap = 0.0f;
       const Player* owner = nullptr;
       double touchStart = 0.0;
-      Vector2F lastPosition = engine->getBall().position;
-      Vector2F lastOffset{0.0f, 0.0f};
+      PitchPoint lastPosition = engine->getBall().position;
+      PitchOffset lastOffset{0.0f, 0.0f};
       float lastSpeed = 0.0f;
       float lastCooldown = 0.0f;
       float lastLaunchSpeed = engine->getBall().touchLaunchSpeed;
@@ -775,11 +782,10 @@ bool runFirstTouchChecks(const std::vector<const Team*>& clubs,
             if (const MatchPlayer* holder = ownerOf(owner);
                 holder && stepCount == 1.0f)
             {
-              const Vector2F offset{ball.position.x - holder->position.x,
-                                    ball.position.y - holder->position.y};
+              const PitchOffset offset = ball.position - holder->position;
               setup.worstCollectJump = std::max(
                   setup.worstCollectJump,
-                  metres(lastOffset, offset) -
+                  offsetMetres(lastOffset, offset) -
                       (lastSpeed + speedOf(holder->velocity)) * DT);
             }
           }
@@ -819,8 +825,7 @@ bool runFirstTouchChecks(const std::vector<const Team*>& clubs,
         lastLaunchSpeed = ball.touchLaunchSpeed;
         lastPathSince = engine->getPossessionState().pathSince;
         if (const MatchPlayer* holder = inTouch ? ownerOf(owner) : nullptr)
-          lastOffset = {ball.position.x - holder->position.x,
-                        ball.position.y - holder->position.y};
+          lastOffset = ball.position - holder->position;
       }
       setup.waitsMissed += engine->getFirstTouchWaitsMissed();
       {
@@ -1601,12 +1606,12 @@ int runMatchTrace(GameController& controller, double seconds, int cases, const s
   auto engine = makeEngine(*clubs[0], *clubs[1], controller.getStatsConfig(), 1000);
   struct Moment
   {
-    Vector2F position{};
+    PitchPoint position{};
     Vector2F velocity{};
     float facing = 0.0f;
     PlayerIntent intent = PlayerIntent::HOLD_SHAPE;
-    Vector2F target{};
-    Vector2F heading{};
+    PitchPoint target{};
+    PitchPoint heading{};
     int waypoints = 0;
     int roundOf = -1;
     int roundSide = 0;
@@ -1621,7 +1626,7 @@ int runMatchTrace(GameController& controller, double seconds, int cases, const s
   constexpr std::size_t HISTORY = 20;
   const auto& players = engine->getPlayers();
   std::vector<std::deque<Moment>> history(players.size());
-  const auto metres = [](Vector2F pitch)
+  const auto metres = [](PitchPoint pitch)
   {
     return Vector2F{pitch.x * MatchTuning::Pitch::MATCH_LENGTH_METRES,
                     pitch.y * MatchTuning::Pitch::MATCH_WIDTH_METRES};

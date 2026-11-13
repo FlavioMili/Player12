@@ -64,7 +64,7 @@ json toJson(const MatchCommandRecord& command)
   for (const Vector2F& slot : command.formation)
     formation.push_back({slot.x, slot.y});
   json route = json::array();
-  for (const Vector2F& waypoint : command.route)
+  for (const PitchPoint& waypoint : command.route)
     route.push_back({waypoint.x, waypoint.y});
   return {{"step", command.step},
           {"type", static_cast<int>(command.type)},
@@ -128,12 +128,12 @@ MatchCommandRecord commandFromJson(const json& value)
   // Drill commands (older recordings have none).
   if (const auto target = value.find("target");
       target != value.end() && !target->is_null())
-    command.target = Vector2F{target->at(0).get<float>(), target->at(1).get<float>()};
+    command.target = PitchPoint{target->at(0).get<float>(), target->at(1).get<float>()};
   command.urgent = value.value("urgent", false);
   if (const auto route = value.find("route"); route != value.end())
     for (const auto& waypoint : *route)
       command.route.push_back(
-          {waypoint.at(0).get<float>(), waypoint.at(1).get<float>()});
+          PitchPoint{waypoint.at(0).get<float>(), waypoint.at(1).get<float>()});
   command.apexOffset = value.value("apex_offset", 0.0f);
   command.outwardRoom = value.value("outward_room", 0.0f);
   if (const auto facing = value.find("facing");

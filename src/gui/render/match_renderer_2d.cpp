@@ -189,7 +189,7 @@ struct MatchRenderer2D::State
 
   // --- kicks, flights and offside --------------------------------------------
   const Player* lastPossessor = nullptr;
-  Vector2F lastBallPosition{-1.0f, -1.0f};
+  PitchPoint lastBallPosition{-1.0f, -1.0f};
   float lastBallStepSpeed = 0.0f;
   std::array<Flight, 2> flights{};
   std::size_t currentFlight = 0;
@@ -232,7 +232,7 @@ struct MatchRenderer2D::State
   bool markerOn = false;
   bool markerFaint = false;
   bool markerHome = false;
-  Vector2F markerSpot{};
+  PitchPoint markerSpot{};
   float markerAlpha = 0.0f;
 
   // --- pitch control ---------------------------------------------------------
@@ -592,7 +592,7 @@ void MatchRenderer2D::State::updateBall(const MatchRenderSnapshot& snapshot,
                                         float alpha)
 {
   const MatchRenderBall& source = snapshot.ball;
-  const Vector2F position = lerpRenderPosition(source.previousPosition,
+  const PitchPoint position = lerpRenderPosition(source.previousPosition,
                                                source.currentPosition, alpha);
   const float previousX = ball.x;
   const float previousY = ball.y;
@@ -996,7 +996,7 @@ void MatchRenderer2D::State::updatePressure(const MatchRenderSnapshot& snapshot,
   for (const MatchRenderPlayer& player : snapshot.players)
   {
     if (!player.onPitch || count >= sources.size()) continue;
-    const Vector2F at = lerpRenderPosition(player.previousPosition,
+    const PitchPoint at = lerpRenderPosition(player.previousPosition,
                                            player.currentPosition, alpha);
     const float vx = (player.currentPosition.x - player.previousPosition.x) *
                      LENGTH / MatchTuning::Timing::FIXED_STEP_SECONDS;
@@ -1350,7 +1350,7 @@ void MatchRenderer2D::State::drawTouchline(const MatchRenderSnapshot& snapshot,
   for (const MatchRenderTouchlinePerson& person : snapshot.touchline)
   {
     if (person.hidden) continue;
-    const Vector2F at =
+    const PitchPoint at =
         lerpRenderPosition(person.previousPosition, person.currentPosition, alpha);
     const ImVec2 centre = atMetres(at.x * LENGTH, at.y * WIDTH);
     // His body only: he can't play the ball.
@@ -1451,7 +1451,7 @@ void MatchRenderer2D::State::drawRefereeSignal(
     }
   }
   if (!referee) return;
-  const Vector2F at = lerpRenderPosition(referee->previousPosition,
+  const PitchPoint at = lerpRenderPosition(referee->previousPosition,
                                          referee->currentPosition, alpha);
   const ImVec2 c = atMetres(at.x * LENGTH, at.y * WIDTH);
 
@@ -1802,7 +1802,7 @@ void MatchRenderer2D::State::drawTokens(const MatchRenderSnapshot& snapshot,
   for (const MatchRenderPlayer& player : snapshot.players)
   {
     if (player.hidden) continue;
-    const Vector2F interpolated = lerpRenderPosition(
+    const PitchPoint interpolated = lerpRenderPosition(
         player.previousPosition, player.currentPosition, alpha);
     // Facing is measured in normalised pitch space: scale it to metres.
     const float facing = RenderMath::lerpAngle(
@@ -2096,7 +2096,7 @@ MatchRenderer2D::MatchRenderer2D() : state(std::make_unique<State>()) {}
 
 MatchRenderer2D::~MatchRenderer2D() = default;
 
-bool MatchRenderer2D::projectPitch(Vector2F pitch, float /*heightMetres*/,
+bool MatchRenderer2D::projectPitch(PitchPoint pitch, float /*heightMetres*/,
                                    float& screenX, float& screenY) const
 {
   // Top-down: height does not move a point on the plan.

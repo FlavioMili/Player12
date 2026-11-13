@@ -144,7 +144,7 @@ FM_KERNEL_CLONES void MatchEngine::integrateMovementsAardvark(
   for (std::size_t index = 0; index < count; ++index)
   {
     MatchPlayer& player = players[slots[index]];
-    Vector2F target = walking ? player.movementTarget : player.tacticalTarget;
+    PitchPoint target = walking ? player.movementTarget : player.tacticalTarget;
     target.x = std::clamp(target.x, Pitch::PLAYER_MIN_X, Pitch::PLAYER_MAX_X);
     target.y = std::clamp(target.y, Pitch::PLAYER_MIN_Y, Pitch::PLAYER_MAX_Y);
     // Players react to a moving target with a perception/intent lag; a side
@@ -157,8 +157,7 @@ FM_KERNEL_CLONES void MatchEngine::integrateMovementsAardvark(
     player.movementTarget.y +=
         (target.y - player.movementTarget.y) * targetBlend;
     const Vector2F offset =
-        toMetres({player.movementTarget.x - player.position.x,
-                  player.movementTarget.y - player.position.y});
+        toMetres(player.movementTarget - player.position);
     // A player standing on his spot stays put (the common case in stoppages).
     if (offset.x * offset.x + offset.y * offset.y <=
             P::ARRIVAL_DEAD_ZONE_METRES * P::ARRIVAL_DEAD_ZONE_METRES &&
@@ -329,7 +328,7 @@ FM_KERNEL_CLONES void MatchEngine::integrateMovementsAardvark(
   {
     MatchPlayer& player = *movers[lane];
     player.velocity = {velocityX[lane], velocityY[lane]};
-    player.position = {positionX[lane], positionY[lane]};
+    player.position = PitchPoint{positionX[lane], positionY[lane]};
     player.facingAngle = nextFacing[lane];
     if (turning[lane] != 0) player.targetAngle = nextHeading[lane];
   }
@@ -394,7 +393,7 @@ FM_KERNEL_CLONES void MatchEngine::integrateMovementsAardvark(
   }
   player.velocity = velocity;
 
-  const Vector2F step = toPitch({velocity.x * dt, velocity.y * dt});
+  const PitchOffset step = toPitchOffset({velocity.x * dt, velocity.y * dt});
   const float nextX = player.position.x + step.x;
   const float nextY = player.position.y + step.y;
   player.position.x = std::clamp(nextX, MatchTuning::Pitch::PLAYER_MIN_X,
@@ -506,9 +505,9 @@ bool MatchEngine::updateDribbleAardvark(MatchPlayer& carrier, float dt)
       {
         const float push = speed + randomFloat(R::MIN_HEAVY_PUSH_SPEED,
                                                R::MAX_HEAVY_PUSH_SPEED);
-        const Vector2F origin = ball.position;
+        const PitchPoint origin = ball.position;
         launchBall(carrier, BallRelease{origin, 0.0f, 0.0f},
-                   {origin.x + ball.dribbleDirection.x,
+                   PitchPoint{origin.x + ball.dribbleDirection.x,
                     origin.y + ball.dribbleDirection.y},
                    push, 0.0f, BallSpin{});
         ball.velocity = {ball.dribbleDirection.x * push,
@@ -534,10 +533,10 @@ bool MatchEngine::updateDribbleAardvark(MatchPlayer& carrier, float dt)
                                (ball.touchTimer / (ball.touchTimer + dt));
     }
   }
-  const Vector2F ahead =
-      toPitch({ball.dribbleDirection.x * ball.dribbleExposure,
+  const PitchOffset ahead =
+      toPitchOffset({ball.dribbleDirection.x * ball.dribbleExposure,
                ball.dribbleDirection.y * ball.dribbleExposure});
-  ball.position = {std::clamp(carrier.position.x + ahead.x, 0.001f, 0.999f),
+  ball.position = PitchPoint{std::clamp(carrier.position.x + ahead.x, 0.001f, 0.999f),
                    std::clamp(carrier.position.y + ahead.y, 0.001f, 0.999f)};
   ball.z = 0.0f;
   ball.velocity = carrier.velocity;
@@ -546,7 +545,7 @@ bool MatchEngine::updateDribbleAardvark(MatchPlayer& carrier, float dt)
 
 MatchEngine::Kick MatchEngine::kickPassAardvark(const MatchPlayer& passer,
                                                 const MatchPlayer* receiver,
-                                                Vector2F target,
+                                                PitchPoint target,
                                                 float passDistance, bool lofted,
                                                 bool delivery,
                                                 std::optional<BallSpin> /*spin*/,
@@ -569,9 +568,9 @@ MatchEngine::Kick MatchEngine::kickPassAardvark(const MatchPlayer& passer,
        pressure * MatchTuning::Passing::PRESSURE_ERROR_METRES +
        passDistance * MatchTuning::Passing::DISTANCE_ERROR) *
       executionErrorScaleAardvark(passer) * care * randomFloat(-1.0f, 1.0f);
-  const Vector2F miss = toPitch({-direct.y * error, direct.x * error});
+  const PitchOffset miss = toPitchOffset({-direct.y * error, direct.x * error});
   Kick kick;
-  kick.target = {std::clamp(target.x + miss.x, 0.0f, 1.0f),
+  kick.target = PitchPoint{std::clamp(target.x + miss.x, 0.0f, 1.0f),
                  std::clamp(target.y + miss.y, 0.0f, 1.0f)};
   const float travel = distance(passer.position, kick.target);
   if (lofted)
@@ -938,7 +937,7 @@ bool MatchEngine::tryOwnGoalTouchAardvark(MatchPlayer& defender)
   const float aimMetres =
       randomFloat(-MatchTuning::Shooting::GOAL_HALF_WIDTH_METRES,
                   MatchTuning::Shooting::GOAL_HALF_WIDTH_METRES);
-  const Vector2F target{goalX,
+  const PitchPoint target{goalX,
                         MatchTuning::Pitch::CENTRE +
                             aimMetres / pitch.width};
   const float height = ball.z;
@@ -966,19 +965,19 @@ float MatchEngine::headerClearanceSpeedAardvark(const MatchPlayer& /*header*/)
 }
 
 std::pair<float, float> MatchEngine::headerPaceAardvark(
-    const MatchPlayer& /*header*/, HeaderPace /*purpose*/, Vector2F /*target*/,
+    const MatchPlayer& /*header*/, HeaderPace /*purpose*/, PitchPoint /*target*/,
     float speed, float lift) const
 {
   return {speed, lift};
 }
 
-Vector2F MatchEngine::knockDownPointAardvark(const MatchPlayer& /*header*/,
-                                             Vector2F aim)
+PitchPoint MatchEngine::knockDownPointAardvark(const MatchPlayer& /*header*/,
+                                             PitchPoint aim)
 {
   // A knock-down is never quite where it was meant to go.
   const float x = aim.x + randomFloat(-0.03f, 0.03f);
   const float y = aim.y + randomFloat(-0.03f, 0.03f);
-  return {x, y};
+  return PitchPoint{x, y};
 }
 
 void MatchEngine::settleOnBallAardvark(MatchPlayer& player, float touchSkill,
@@ -1198,7 +1197,7 @@ bool MatchEngine::ballBehindReachAardvark(const MatchPlayer& /*player*/,
   return false;
 }
 
-Vector2F MatchEngine::strikePointAardvark(const MatchPlayer& striker) const
+PitchPoint MatchEngine::strikePointAardvark(const MatchPlayer& striker) const
 {
   // Measured from his centre.
   return striker.position;
@@ -1206,7 +1205,7 @@ Vector2F MatchEngine::strikePointAardvark(const MatchPlayer& striker) const
 
 MatchEngine::Kick MatchEngine::strikeAsAardvark(const MatchPlayer& /*striker*/,
                                                 StrikeKind /*kind*/,
-                                                Vector2F target, float speed,
+                                                PitchPoint target, float speed,
                                                 float lift)
 {
   // Struck exactly as asked.
@@ -1218,7 +1217,7 @@ MatchEngine::Kick MatchEngine::strikeAsAardvark(const MatchPlayer& /*striker*/,
 }
 
 float MatchEngine::clearanceDistanceAardvark(const MatchPlayer& /*defender*/,
-                                             Vector2F /*origin*/,
+                                             PitchPoint /*origin*/,
                                              const ClearanceAim& aim) const
 {
   // The distance his brain aimed for.

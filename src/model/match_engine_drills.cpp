@@ -154,7 +154,7 @@ bool MatchEngine::removeBeforeKickOff(PlayerID playerId)
   player->isGoalkeeper = false;
   player->intent = PlayerIntent::HOLD_SHAPE;
   player->velocity = {0.0f, 0.0f};
-  player->position = {MatchTuning::Pitch::CENTRE +
+  player->position = PitchPoint{MatchTuning::Pitch::CENTRE +
                           (player->isHomeTeam ? -1.0f : 1.0f) *
                               (MatchTuning::Rules::PARKED_PLAYER_OFFSET +
                                static_cast<float>(parked) *
@@ -170,8 +170,8 @@ bool MatchEngine::removeBeforeKickOff(PlayerID playerId)
 }
 
 void MatchEngine::setDrillTarget(PlayerID playerId,
-                                 std::optional<Vector2F> target, bool urgent,
-                                 const std::vector<Vector2F>& route,
+                                 std::optional<PitchPoint> target, bool urgent,
+                                 const std::vector<PitchPoint>& route,
                                  float apexOffsetMetres,
                                  float outwardRoomMetres,
                                  std::optional<float> facing, bool atSpeed)
@@ -191,7 +191,7 @@ void MatchEngine::setDrillTarget(PlayerID playerId,
   recordCommand(command);
 }
 
-std::optional<Vector2F> MatchEngine::getDrillTarget(PlayerID playerId) const
+std::optional<PitchPoint> MatchEngine::getDrillTarget(PlayerID playerId) const
 {
   for (const DrillTarget& held : drillTargets)
     if (held.player == playerId) return held.target;
@@ -223,7 +223,7 @@ void MatchEngine::forcePass(PlayerID playerId, PlayerID receiverId,
   recordCommand(command);
 }
 
-void MatchEngine::forcePassTo(PlayerID playerId, Vector2F spot,
+void MatchEngine::forcePassTo(PlayerID playerId, PitchPoint spot,
                               ForcedPassStyle style,
                               std::optional<BallSpin> spin,
                               std::optional<float> arrivalSpeed,
@@ -250,7 +250,7 @@ void MatchEngine::forceTackleIntent(PlayerID playerId, TackleIntent intent)
 }
 
 void MatchEngine::forceHeader(PlayerID playerId, ForcedHeaderAim aim,
-                              std::optional<Vector2F> spot,
+                              std::optional<PitchPoint> spot,
                               std::optional<Vector2F> goalAim, bool knownEarly)
 {
   MatchCommandRecord command;
@@ -280,7 +280,7 @@ void MatchEngine::keepBall(PlayerID playerId, bool keep, float urgency)
   recordCommand(command);
 }
 
-void MatchEngine::feedBall(Vector2F from, Vector2F velocity, float lift,
+void MatchEngine::feedBall(PitchPoint from, Vector2F velocity, float lift,
                            PlayerID receiverId)
 {
   MatchCommandRecord command;

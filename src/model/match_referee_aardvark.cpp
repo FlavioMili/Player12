@@ -33,7 +33,7 @@ bool MatchEngine::deniesGoalChanceAardvark(const MatchPlayer& victim,
   // Only the player in control of the ball can be denied an obvious chance.
   if (getPossessionAttachment() != victim.player) return false;
   const float goalX = victim.isHomeTeam ? 1.0f : 0.0f;
-  const Vector2F goal{goalX, MatchTuning::Pitch::CENTRE};
+  const PitchPoint goal{goalX, MatchTuning::Pitch::CENTRE};
   if (distance(victim.position, goal) >
           MatchTuning::Discipline::DOGSO_MAX_DISTANCE_METRES ||
       std::abs(victim.position.y - MatchTuning::Pitch::CENTRE) >
@@ -65,7 +65,7 @@ void MatchEngine::commitFoulAardvark(MatchPlayer& offender, MatchPlayer& victim,
   ++statsOf(offender).foulsCommitted;
   ++statsOf(victim).foulsSuffered;
 
-  const Vector2F foulPosition = victim.position;
+  const PitchPoint foulPosition = victim.position;
   const bool inBox = inPenaltyArea(foulPosition, offender.isHomeTeam);
   const float carrierDepth =
       victim.isHomeTeam ? victim.position.x : 1.0f - victim.position.x;

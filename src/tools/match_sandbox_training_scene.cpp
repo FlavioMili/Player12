@@ -22,7 +22,6 @@
 #include "gui/render/match_renderer_2d.h"
 #include "gui/widgets/theme.h"
 #include "gui/widgets/widgets.h"
-#include "tools/match_sandbox_pickers.h"
 #include "tools/match_sandbox_setup.h"
 
 namespace
@@ -38,14 +37,12 @@ constexpr std::array<float, 8> SPEEDS{0.5f, 1.0f, 2.0f, 4.0f, 8.0f, 16.0f,
                                       32.0f, 64.0f};
 }  // namespace
 
-TrainingSessionScene::TrainingSessionScene(GUIView* guiView_ptr,
-                             std::unique_ptr<TrainingSession> session_ptr,
-                             std::string club_name)
+TrainingSessionScene::TrainingSessionScene(
+    GUIView* guiView_ptr, std::unique_ptr<TrainingSession> session_ptr,
+    std::string club_name)
     : GUIScene(guiView_ptr),
       session(std::move(session_ptr)),
       club(std::move(club_name)),
-      brain(sandboxBrains()[0]),
-      body(sandboxBodies()[0]),
       renderer(std::make_unique<MatchRenderer2D>())
 {
 }
@@ -66,8 +63,7 @@ void TrainingSessionScene::startDrill(std::size_t index)
   current = index;
   run.reset();
   run = startTrainingRun(*session->drills[current],
-                         guiView->getController().getStatsConfig(), brain,
-                         body);
+                         guiView->getController().getStatsConfig());
   accumulator = 0.0f;
   skipping = false;
   paused = false;
@@ -141,23 +137,13 @@ void TrainingSessionScene::renderPanel(float width)
   ImGui::TextDisabled("%s", drill.summary());
   ImGui::PopTextWrapPos();
 
-  // The whole squad on one engine.
-  const float pickerWidth = 140.0f * Theme::scale();
-  ImGui::AlignTextToFramePadding();
-  ImGui::TextUnformatted("Brain");
-  ImGui::SameLine();
-  SandboxPickers::brain("##brain", brain, pickerWidth);
-  ImGui::SameLine();
-  ImGui::TextUnformatted("Body");
-  ImGui::SameLine();
-  SandboxPickers::body("##body", body, pickerWidth);
-  ImGui::SameLine();
-  ImGui::TextDisabled("(on restart)");
+  ImGui::TextDisabled("Engine versions come from Set-up.");
 
   // Run controls.
   if (ImGui::Button("Restart drill (R)")) startDrill(current);
   ImGui::SameLine();
-  if (ImGui::Button(paused ? "Play (Space)" : "Pause (Space)")) paused = !paused;
+  if (ImGui::Button(paused ? "Play (Space)" : "Pause (Space)"))
+    paused = !paused;
   ImGui::SameLine();
   ImGui::SetNextItemWidth(70.0f * Theme::scale());
   const std::string label = std::format("{:g}x", speed);

@@ -21,7 +21,7 @@
    * way (Notes and plans/match_engine_way_round_plan.md). */
   void planWayRoundBinturong(std::size_t slot);
   void assignMarksBinturong(bool home);
-  Vector2F goalkeeperTargetBinturong(MatchPlayer& keeper, const MatchPlayer* carrier);
+  PitchPoint goalkeeperTargetBinturong(MatchPlayer& keeper, const MatchPlayer* carrier);
   BallAction chooseBallActionBinturong(MatchPlayer& carrier);
   MatchPlayer* chooseTakeOnBinturong(MatchPlayer& carrier);
   void afterPassReleasedBinturong(const MatchPlayer& passer, const MatchPlayer& receiver);
@@ -35,16 +35,16 @@
                         bool freeKick);
   float choosePenaltyGuessBinturong(const MatchPlayer& keeper);
   ClearanceAim chooseClearanceAimBinturong(const MatchPlayer& defender);
-  Vector2F chooseClearBehindTargetBinturong(const MatchPlayer& defender);
+  PitchPoint chooseClearBehindTargetBinturong(const MatchPlayer& defender);
   HeaderAttempt chooseHeaderAttemptBinturong(const MatchPlayer& header,
                                     bool fromTeammate);
   HeaderPlay chooseHeaderPlayBinturong(const MatchPlayer& header, bool fromTeammate);
   Challenge chooseChallengeBinturong(const MatchPlayer& carrier, float dt);
   bool goesIntoContestBinturong(const MatchPlayer& defender,
-                                const MatchPlayer& owner, Vector2F contact);
+                                const MatchPlayer& owner, PitchPoint contact);
   TackleIntent chooseTackleIntentBinturong(const MatchPlayer& tackler,
                                            const MatchPlayer& attacker,
-                                           Vector2F contact, bool freeBall);
+                                           PitchPoint contact, bool freeBall);
   /** No outfield team-mate goal-side of him (the last man), and one
    * goal-side within COVER_METRES (cover). */
   struct DefensiveCover
@@ -66,13 +66,13 @@
   bool choosesToPutBlockBehindBinturong(const MatchPlayer& player);
   bool choosesToClearCrossBehindBinturong(const MatchPlayer& player);
   MatchPlayer* chooseRestartTakerBinturong(MatchState restart, bool homeTeam,
-                                  Vector2F spot, bool topCorner = false);
+                                  PitchPoint spot, bool topCorner = false);
   RestartPlay chooseRestartPlayBinturong(MatchPlayer& taker, MatchState restartState);
   RestartPlay chooseCornerPlayBinturong(MatchPlayer& taker);
   void applyTeamMentalityBinturong(StrategySliders& sliders, bool homeTeam) const;
   SetPieceAttackers arrangeSetPieceAttackBinturong(bool attackingHome,
-                                          Vector2F ballPosition);
-  void arrangeSetPieceDefenceBinturong(bool defendingHome, Vector2F ballPosition,
+                                          PitchPoint ballPosition);
+  void arrangeSetPieceDefenceBinturong(bool defendingHome, PitchPoint ballPosition,
                               const SetPieceAttackers& attackers);
   MatchPlayer* dutyTakerBinturong(bool homeTeam, SetPieceDuty duty);
   MatchPlayer* bestSetPieceTakerBinturong(bool homeTeam, bool shooting);
@@ -89,7 +89,7 @@
   HeaderPlay chooseHeaderOutBinturong(const MatchPlayer& header) const;
   /** Where the carrier heads with the ball: forward, away from the nearest
    * opponent, inside or down his lane. */
-  Vector2F carryTargetBinturong(const MatchPlayer& player) const;
+  PitchPoint carryTargetBinturong(const MatchPlayer& player) const;
   /** The pace (m/s) he carries the ball at (dribble meet plan 2c): from
    * the space along his way, the team's phase and its risk-taking, walk to
    * sprint; Dribbling caps how much of his pace he can use with it. */
@@ -110,13 +110,13 @@
    * (metric unit) goes (m): as far as he runs at `pace` in `seconds` from
    * `startGap` behind it, never past `toGoal` (less room to roll on), and
    * no further than he still gets to it first. */
-  float pushMetresBinturong(const MatchPlayer& player, Vector2F from,
+  float pushMetresBinturong(const MatchPlayer& player, PitchPoint from,
                             Vector2F direction, float startGap, float pace,
                             float seconds, std::optional<float> toGoal) const;
   /** Signed x shift of the role in the defensive block (normalised). */
   float defensiveRoleShiftBinturong(const MatchPlayer& player) const;
   /** Second presser's spot when doubling up on the carrier, if ordered. */
-  std::optional<Vector2F> doubleUpPointBinturong(const MatchPlayer& helper,
+  std::optional<PitchPoint> doubleUpPointBinturong(const MatchPlayer& helper,
                                         const MatchPlayer& carrier,
                                         const MatchPlayer* firstPresser) const;
   /** Multiplier of a defender's rate of engaging the carrier. */
@@ -130,7 +130,7 @@
   float passingRoleBiasBinturong(const MatchPlayer& passer, const MatchPlayer& receiver,
                         float progression, float completion) const;
   /** Formation spot while his side has the ball (role and shape shift). */
-  Vector2F possessionAnchorBinturong(const MatchPlayer& player) const;
+  PitchPoint possessionAnchorBinturong(const MatchPlayer& player) const;
   /** Seconds a role is quicker (+) or slower to close the ball down. */
   float pressEagernessBinturong(const MatchPlayer& candidate,
                        const MatchPlayer* carrier) const;
@@ -142,8 +142,8 @@
   /** Pass utility lost to a tight marker standing next to the receiver. */
   float tightMarkPenaltyBinturong(const MatchPlayer& receiver) const;
   /** Moves a marker's target tight and goal-side of his man. */
-  Vector2F tightMarkPointBinturong(const MatchPlayer& marker, const MatchPlayer& target,
-                          Vector2F current) const;
+  PitchPoint tightMarkPointBinturong(const MatchPlayer& marker, const MatchPlayer& target,
+                          PitchPoint current) const;
   /** How fast that tight-marking point moves with his man (m/s). */
   Vector2F tightMarkVelocityBinturong(const MatchPlayer& target) const;
   /** The man this player marks when he is under a tight-marking order. */

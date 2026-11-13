@@ -158,7 +158,7 @@ bool MatchEngine::updateDribble(MatchPlayer& carrier, float dt)
 
 MatchEngine::Kick MatchEngine::kickPass(const MatchPlayer& passer,
                                         const MatchPlayer* receiver,
-                                        Vector2F target, float passDistance,
+                                        PitchPoint target, float passDistance,
                                         bool lofted, bool delivery,
                                         std::optional<BallSpin> spin,
                                         std::optional<float> arrivalSpeed,
@@ -245,7 +245,7 @@ float MatchEngine::headerClearanceSpeed(const MatchPlayer& header)
 
 std::pair<float, float> MatchEngine::headerPace(const MatchPlayer& header,
                                                 HeaderPace purpose,
-                                                Vector2F target, float speed,
+                                                PitchPoint target, float speed,
                                                 float lift) const
 {
   switch (bodyOf(header.isHomeTeam))
@@ -258,7 +258,7 @@ std::pair<float, float> MatchEngine::headerPace(const MatchPlayer& header,
   return headerPaceAardvark(header, purpose, target, speed, lift);
 }
 
-Vector2F MatchEngine::knockDownPoint(const MatchPlayer& header, Vector2F aim)
+PitchPoint MatchEngine::knockDownPoint(const MatchPlayer& header, PitchPoint aim)
 {
   switch (bodyOf(header.isHomeTeam))
   {
@@ -627,7 +627,7 @@ bool MatchEngine::ballInReach(const MatchPlayer& player) const
   return gap <= feetReach(player) && !ballBehindReach(player, gapX, gapY, gap);
 }
 
-Vector2F MatchEngine::strikePoint(const MatchPlayer& striker) const
+PitchPoint MatchEngine::strikePoint(const MatchPlayer& striker) const
 {
   switch (bodyOf(striker.isHomeTeam))
   {
@@ -640,7 +640,7 @@ Vector2F MatchEngine::strikePoint(const MatchPlayer& striker) const
 }
 
 MatchEngine::Kick MatchEngine::strikeAs(const MatchPlayer& striker,
-                                        StrikeKind kind, Vector2F target,
+                                        StrikeKind kind, PitchPoint target,
                                         float speed, float lift)
 {
   switch (bodyOf(striker.isHomeTeam))
@@ -654,7 +654,7 @@ MatchEngine::Kick MatchEngine::strikeAs(const MatchPlayer& striker,
 }
 
 float MatchEngine::clearanceDistance(const MatchPlayer& defender,
-                                     Vector2F origin,
+                                     PitchPoint origin,
                                      const ClearanceAim& aim) const
 {
   switch (bodyOf(defender.isHomeTeam))

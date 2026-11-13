@@ -14,6 +14,7 @@
 #include <vector>
 
 #include "global/types.h"
+#include "model/match_point.h"
 
 /**
  * Grid and thresholds of the per-match tracking. Positions are stored in
@@ -88,14 +89,14 @@ class MatchTracker
   [[nodiscard]] bool isEnabled() const { return enabled; }
 
   /** A touch at a pitch position (engine frame: home attacks x = 1). */
-  void touch(std::size_t player, bool home, Vector2F position, float minute,
+  void touch(std::size_t player, bool home, PitchPoint position, float minute,
              int period);
   /** A pass leaves the passer's foot (origin in the engine frame). */
-  void passReleased(Vector2F origin, bool open_play);
+  void passReleased(PitchPoint origin, bool open_play);
   /** The last released pass reached a team-mate, on a pitch this long
    * (metres). */
   void passCompleted(std::size_t passer, std::size_t receiver, bool home,
-                     Vector2F reception, float pitchLengthMetres);
+                     PitchPoint reception, float pitchLengthMetres);
   /** A shot; @p creator is the stats index of the chance creator, or
    * MatchTracking::MAX_PLAYERS when none. */
   void shot(std::size_t creator, float xg, TrackedShot kind);
@@ -129,6 +130,6 @@ class MatchTracker
   std::vector<TrackedShot> shot_kinds;
   std::array<std::array<std::uint16_t, MatchTracking::BUCKETS>, 2>
       final_third{};
-  Vector2F pass_origin{0.5f, 0.5f};
+  PitchPoint pass_origin{0.5f, 0.5f};
   bool pass_open_play = false;
 };

@@ -25,7 +25,7 @@ MatchEvent shot(bool home, PlayerID player, float x, float y, float xg,
   event.hasTeam = true;
   event.isHomeTeam = home;
   event.primaryPlayerId = player;
-  event.position = {x, y};
+  event.position = PitchPoint{x, y};
   event.xg = xg;
   event.timeMinute = minute;
   return event;

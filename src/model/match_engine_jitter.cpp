@@ -46,8 +46,7 @@ void MatchEngine::observePlanJitter(bool scheduled)
       continue;
     }
     MovementJitterStats& side = movementJitter[player.isHomeTeam ? 0 : 1];
-    const Vector2F move = toMetres({player.tacticalTarget.x - track.lastTarget.x,
-                                    player.tacticalTarget.y - track.lastTarget.y});
+    const Vector2F move = toMetres(player.tacticalTarget - track.lastTarget);
     const float moved = length(move);
     const bool switched = player.intent != track.intent;
     ++track.refreshesSinceSwitch;
@@ -145,14 +144,12 @@ void MatchEngine::observeRunJitter(float dt)
     {
       track.speedTrend = 0;
     }
-    track.windowPath += length(toMetres({player.position.x - track.lastPosition.x,
-                                         player.position.y - track.lastPosition.y}));
+    track.windowPath += length(toMetres(player.position - track.lastPosition));
     track.lastPosition = player.position;
     if (windowEnds)
     {
       side.pathMetres += track.windowPath;
-      side.netMetres += length(toMetres({player.position.x - track.windowStart.x,
-                                         player.position.y - track.windowStart.y}));
+      side.netMetres += length(toMetres(player.position - track.windowStart));
       track.windowStart = player.position;
       track.windowPath = 0.0;
     }

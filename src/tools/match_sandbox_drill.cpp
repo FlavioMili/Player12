@@ -232,14 +232,14 @@ void Drill::renderSettings()
 
 // --- Drawing ---------------------------------------------------------------
 
-bool DrillDraw::project(const IMatchRenderer& renderer, Vector2F pitch,
+bool DrillDraw::project(const IMatchRenderer& renderer, PitchPoint pitch,
                         ImVec2& screen)
 {
   return renderer.projectPitch(pitch, 0.0f, screen.x, screen.y);
 }
 
 void DrillDraw::line(const IMatchRenderer& renderer, ImDrawList& draw,
-                     Vector2F from, Vector2F to, ImU32 color, float thickness)
+                     PitchPoint from, PitchPoint to, ImU32 color, float thickness)
 {
   ImVec2 a;
   ImVec2 b;
@@ -248,7 +248,7 @@ void DrillDraw::line(const IMatchRenderer& renderer, ImDrawList& draw,
 }
 
 void DrillDraw::label(const IMatchRenderer& renderer, ImDrawList& draw,
-                      Vector2F at, const char* text, ImU32 color)
+                      PitchPoint at, const char* text, ImU32 color)
 {
   ImVec2 point;
   if (!project(renderer, at, point)) return;
@@ -260,23 +260,23 @@ void DrillDraw::label(const IMatchRenderer& renderer, ImDrawList& draw,
 }
 
 void DrillDraw::area(const IMatchRenderer& renderer, ImDrawList& draw,
-                     Vector2F min, Vector2F max, ImU32 color, float thickness)
+                     PitchPoint min, PitchPoint max, ImU32 color, float thickness)
 {
-  line(renderer, draw, {min.x, min.y}, {max.x, min.y}, color, thickness);
-  line(renderer, draw, {max.x, min.y}, {max.x, max.y}, color, thickness);
-  line(renderer, draw, {max.x, max.y}, {min.x, max.y}, color, thickness);
-  line(renderer, draw, {min.x, max.y}, {min.x, min.y}, color, thickness);
+  line(renderer, draw, PitchPoint{min.x, min.y}, PitchPoint{max.x, min.y}, color, thickness);
+  line(renderer, draw, PitchPoint{max.x, min.y}, PitchPoint{max.x, max.y}, color, thickness);
+  line(renderer, draw, PitchPoint{max.x, max.y}, PitchPoint{min.x, max.y}, color, thickness);
+  line(renderer, draw, PitchPoint{min.x, max.y}, PitchPoint{min.x, min.y}, color, thickness);
 }
 
 void DrillDraw::cone(const IMatchRenderer& renderer, ImDrawList& draw,
-                     Vector2F at, ImU32 color, const char* text)
+                     PitchPoint at, ImU32 color, const char* text)
 {
   // To scale: its radius across the pitch as drawn (at least a pixel).
   ImVec2 centre;
   ImVec2 edge;
   if (!project(renderer, at, centre) ||
       !project(renderer,
-               {at.x + CONE_RADIUS_METRES / MatchTuning::Pitch::MATCH_LENGTH_METRES, at.y},
+               PitchPoint{at.x + CONE_RADIUS_METRES / MatchTuning::Pitch::MATCH_LENGTH_METRES, at.y},
                edge))
     return;
   const float radius =
@@ -289,7 +289,7 @@ void DrillDraw::cone(const IMatchRenderer& renderer, ImDrawList& draw,
 }
 
 void DrillDraw::marker(const IMatchRenderer& renderer, ImDrawList& draw,
-                       Vector2F at, float radius, ImU32 color, const char* text)
+                       PitchPoint at, float radius, ImU32 color, const char* text)
 {
   ImVec2 point;
   if (!project(renderer, at, point)) return;
@@ -307,7 +307,7 @@ void DrillDraw::marker(const IMatchRenderer& renderer, ImDrawList& draw,
 }
 
 void DrillDraw::path(const IMatchRenderer& renderer, ImDrawList& draw,
-                     const std::vector<Vector2F>& points, ImU32 color,
+                     const std::vector<PitchPoint>& points, ImU32 color,
                      float thickness)
 {
   for (std::size_t index = 1; index < points.size(); ++index)
@@ -315,7 +315,7 @@ void DrillDraw::path(const IMatchRenderer& renderer, ImDrawList& draw,
 }
 
 void DrillDraw::circle(const IMatchRenderer& renderer, ImDrawList& draw,
-                       Vector2F centre, float radiusMetres, ImU32 fill,
+                       PitchPoint centre, float radiusMetres, ImU32 fill,
                        ImU32 outline, float thickness)
 {
   // Points round it on the ground, each projected (the view may tilt).
@@ -325,7 +325,7 @@ void DrillDraw::circle(const IMatchRenderer& renderer, ImDrawList& draw,
   {
     const float angle = 2.0f * std::numbers::pi_v<float> *
                         static_cast<float>(index) / static_cast<float>(POINTS);
-    const Vector2F at{
+    const PitchPoint at{
         centre.x + std::cos(angle) * radiusMetres / MatchTuning::Pitch::MATCH_LENGTH_METRES,
         centre.y + std::sin(angle) * radiusMetres / MatchTuning::Pitch::MATCH_WIDTH_METRES};
     if (!project(renderer, at, screen[static_cast<std::size_t>(index)])) return;

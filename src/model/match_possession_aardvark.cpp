@@ -219,8 +219,7 @@ void MatchEngine::noteDribbleTouchAardvark(const MatchPlayer& player,
   ball.plannedTouchIn = intent.plannedSeconds;
   {
     const Vector2F sent =
-        toMetres({intent.targetSpot.x - moment.contactPoint.x,
-                  intent.targetSpot.y - moment.contactPoint.y});
+        toMetres(intent.targetSpot - moment.contactPoint);
     const float sentMetres = length(sent);
     if (sentMetres > EPSILON)
       ball.pushDirection = {sent.x / sentMetres, sent.y / sentMetres};
@@ -929,9 +928,9 @@ void MatchEngine::clearShooterHistoryAardvark()
                     PossessionId::AARDVARK);
 }
 
-void MatchEngine::setPassFlightTargetAardvark(Vector2F target)
+void MatchEngine::setPassFlightTargetAardvark(PitchPoint target)
 {
-  ball.possession.passTarget = {std::clamp(target.x, 0.0f, 1.0f),
+  ball.possession.passTarget = PitchPoint{std::clamp(target.x, 0.0f, 1.0f),
                      std::clamp(target.y, 0.0f, 1.0f)};
   observePossession(PossessionObservation::SET_PASS_FLIGHT_TARGET,
                     PossessionId::AARDVARK);

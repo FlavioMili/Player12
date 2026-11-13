@@ -83,9 +83,9 @@ inline float clampToPitchY(float y)
 {
   return std::clamp(y, MatchTuning::Pitch::PLAYER_MIN_Y, MatchTuning::Pitch::PLAYER_MAX_Y);
 }
-inline Vector2F clampToPitch(Vector2F at)
+inline PitchPoint clampToPitch(PitchPoint at)
 {
-  return {clampToPitchX(at.x), clampToPitchY(at.y)};
+  return PitchPoint{clampToPitchX(at.x), clampToPitchY(at.y)};
 }
 
 /** A body kept where it can physically be: inside the advertising boards. */
@@ -97,9 +97,9 @@ inline float clampToBoardsY(const MatchPitch& pitch, float y)
 {
   return std::clamp(y, pitch.bodyMinY, pitch.bodyMaxY);
 }
-inline Vector2F clampToBoards(const MatchPitch& pitch, Vector2F at)
+inline PitchPoint clampToBoards(const MatchPitch& pitch, PitchPoint at)
 {
-  return {clampToBoardsX(pitch, at.x), clampToBoardsY(pitch, at.y)};
+  return PitchPoint{clampToBoardsX(pitch, at.x), clampToBoardsY(pitch, at.y)};
 }
 
 /**
@@ -108,8 +108,8 @@ inline Vector2F clampToBoards(const MatchPitch& pitch, Vector2F at)
  * at the front, under the bar), and he stays on the side of each he started
  * on, his footprint clear of it. An axis left alone is returned exactly.
  */
-inline Vector2F keepOutOfGoalFrames(const MatchPitch& pitch, Vector2F from,
-                                    Vector2F to)
+inline PitchPoint keepOutOfGoalFrames(const MatchPitch& pitch, PitchPoint from,
+                                      PitchPoint to)
 {
   using P = MatchTuning::Pitch;
   constexpr float R = MatchTuning::Body::RADIUS_METRES;
@@ -171,8 +171,8 @@ inline Vector2F keepOutOfGoalFrames(const MatchPitch& pitch, Vector2F from,
       movedU = true;
       movedV = true;
     }
-  return {movedU ? (lineX + u * behind) / pitch.length : to.x,
-          movedV ? P::CENTRE + v / pitch.width : to.y};
+  return PitchPoint{movedU ? (lineX + u * behind) / pitch.length : to.x,
+                    movedV ? P::CENTRE + v / pitch.width : to.y};
 }
 
 /**
@@ -232,13 +232,14 @@ inline bool keepOffWallEnd(Vector2F end, Vector2F from, Vector2F& to)
  * their open ends) and down the tunnel. An axis left alone is returned
  * exactly.
  */
-inline Vector2F keepOffGround(const MatchPitch& pitch, Vector2F from, Vector2F to)
+inline PitchPoint keepOffGround(const MatchPitch& pitch, PitchPoint from,
+                                PitchPoint to)
 {
   using P = MatchTuning::Pitch;
   const MatchGround::Layout& G = pitch.ground;
   constexpr float R = MatchTuning::Body::RADIUS_METRES;
   // Inside the boards, before and after: nothing to meet.
-  const auto insideBoards = [&pitch](Vector2F at)
+  const auto insideBoards = [&pitch](PitchPoint at)
   {
     return at.x >= pitch.bodyMinX && at.x <= pitch.bodyMaxX &&
            at.y >= pitch.bodyMinY && at.y <= pitch.bodyMaxY;
@@ -280,13 +281,13 @@ inline Vector2F keepOffGround(const MatchPitch& pitch, Vector2F from, Vector2F t
     moved |= keepOffWallEnd({side, G.tunnel.y0}, start, end);
   }
   if (!moved) return to;
-  return {end.x != wanted.x ? end.x / pitch.length : to.x,
-          end.y != wanted.y ? end.y / pitch.width : to.y};
+  return PitchPoint{end.x != wanted.x ? end.x / pitch.length : to.x,
+                    end.y != wanted.y ? end.y / pitch.width : to.y};
 }
 
 /** Deep in the tunnel (touchline plan stage 4): out of sight and out of
  * play. */
-inline bool deepInTunnel(const MatchPitch& pitch, Vector2F at)
+inline bool deepInTunnel(const MatchPitch& pitch, PitchPoint at)
 {
   return at.y * pitch.width >
          pitch.ground.standY + MatchTuning::WalkOut::IN_METRES;
@@ -294,7 +295,7 @@ inline bool deepInTunnel(const MatchPitch& pitch, Vector2F at)
 
 /** Where a walker may mean to go: inside the boards, or the tunnel and
  * its walkway. */
-inline Vector2F clampToReach(const MatchPitch& pitch, Vector2F at)
+inline PitchPoint clampToReach(const MatchPitch& pitch, PitchPoint at)
 {
   const MatchGround::Layout& G = pitch.ground;
   const float x = at.x * pitch.length;
@@ -354,7 +355,7 @@ inline Vector2F nearestExit(const MatchPitch& pitch, Vector2F at)
 
 /** A body's step from `from` to `to`, where it can physically go: round
  * the pitch (keepOffGround) and out of the goal frames. */
-inline Vector2F moveBody(const MatchPitch& pitch, Vector2F from, Vector2F to)
+inline PitchPoint moveBody(const MatchPitch& pitch, PitchPoint from, PitchPoint to)
 {
   return keepOutOfGoalFrames(pitch, from, keepOffGround(pitch, from, to));
 }
@@ -384,25 +385,36 @@ inline float fastAtan2(float y, float x)
   return y < 0.0f ? -angle : angle;
 }
 
-/** Metric offset (metres) of a normalised pitch displacement. */
-inline Vector2F toMetres(const MatchPitch& pitch, Vector2F normalisedDelta)
+/** A point as a position in metres, from the left goal line and the top
+ * touchline. */
+inline Vector2F toMetres(const MatchPitch& pitch, PitchPoint point)
 {
-  return {normalisedDelta.x * pitch.length, normalisedDelta.y * pitch.width};
+  return {point.x * pitch.length, point.y * pitch.width};
+}
+/** A step between points as a metric vector (metres). */
+inline Vector2F toMetres(const MatchPitch& pitch, PitchOffset step)
+{
+  return {step.x * pitch.length, step.y * pitch.width};
 }
 
 constexpr float INVERSE_FATIGUE_RANGE =
     1.0f / (1.0f - MatchTuning::Player::MINIMUM_STAMINA);
 
-/** Normalised pitch displacement of a metric offset. */
-inline Vector2F toPitch(const MatchPitch& pitch, Vector2F metres)
+/** A position in metres as a point. */
+inline PitchPoint toPitch(const MatchPitch& pitch, Vector2F metres)
 {
-  return {metres.x * pitch.inverseLength, metres.y * pitch.inverseWidth};
+  return PitchPoint{metres.x * pitch.inverseLength, metres.y * pitch.inverseWidth};
+}
+/** A metric vector (metres) as a step between points. */
+inline PitchOffset toPitchOffset(const MatchPitch& pitch, Vector2F metres)
+{
+  return PitchOffset{metres.x * pitch.inverseLength, metres.y * pitch.inverseWidth};
 }
 
-/** Isotropic distance in metres between two normalised pitch points. */
-inline float distance(const MatchPitch& pitch, Vector2F first, Vector2F second)
+/** Distance in metres between two points. */
+inline float distance(const MatchPitch& pitch, PitchPoint first, PitchPoint second)
 {
-  return length(toMetres(pitch, {first.x - second.x, first.y - second.y}));
+  return length(toMetres(pitch, first - second));
 }
 
 inline Vector2F normalized(Vector2F vector)
@@ -412,10 +424,11 @@ inline Vector2F normalized(Vector2F vector)
   return {vector.x / magnitude, vector.y / magnitude};
 }
 
-/** Unit direction in metric space from one pitch point to another. */
-inline Vector2F metricDirection(const MatchPitch& pitch, Vector2F from, Vector2F to)
+/** Unit direction on the ground (metric) from one point to another. */
+inline Vector2F metricDirection(const MatchPitch& pitch, PitchPoint from,
+                                PitchPoint to)
 {
-  return normalized(toMetres(pitch, {to.x - from.x, to.y - from.y}));
+  return normalized(toMetres(pitch, to - from));
 }
 
 inline float uniform01(std::mt19937& engine)
@@ -455,7 +468,7 @@ inline bool isHighlightTrigger(MatchEventType type)
 }
 
 /** Whether a point lies in the penalty area defended by the given side. */
-inline bool inPenaltyArea(const MatchPitch& pitch, Vector2F position,
+inline bool inPenaltyArea(const MatchPitch& pitch, PitchPoint position,
                           bool defendingHome)
 {
   const float HALF_WIDTH =
@@ -650,19 +663,27 @@ inline std::string_view scenarioActionName(ScenarioAction action)
 
 // The engine's own pitch, under the helpers' names: inside a MatchEngine
 // member these are what an unqualified call finds.
-inline Vector2F MatchEngine::toMetres(Vector2F normalisedDelta) const
+inline Vector2F MatchEngine::toMetres(PitchPoint point) const
 {
-  return MatchEngineInternal::toMetres(pitch, normalisedDelta);
+  return MatchEngineInternal::toMetres(pitch, point);
 }
-inline Vector2F MatchEngine::toPitch(Vector2F metres) const
+inline Vector2F MatchEngine::toMetres(PitchOffset step) const
+{
+  return MatchEngineInternal::toMetres(pitch, step);
+}
+inline PitchPoint MatchEngine::toPitch(Vector2F metres) const
 {
   return MatchEngineInternal::toPitch(pitch, metres);
 }
-inline float MatchEngine::distance(Vector2F first, Vector2F second) const
+inline PitchOffset MatchEngine::toPitchOffset(Vector2F metres) const
+{
+  return MatchEngineInternal::toPitchOffset(pitch, metres);
+}
+inline float MatchEngine::distance(PitchPoint first, PitchPoint second) const
 {
   return MatchEngineInternal::distance(pitch, first, second);
 }
-inline Vector2F MatchEngine::metricDirection(Vector2F from, Vector2F to) const
+inline Vector2F MatchEngine::metricDirection(PitchPoint from, PitchPoint to) const
 {
   return MatchEngineInternal::metricDirection(pitch, from, to);
 }
@@ -674,27 +695,27 @@ inline float MatchEngine::clampToBoardsY(float y) const
 {
   return MatchEngineInternal::clampToBoardsY(pitch, y);
 }
-inline Vector2F MatchEngine::clampToBoards(Vector2F at) const
+inline PitchPoint MatchEngine::clampToBoards(PitchPoint at) const
 {
   return MatchEngineInternal::clampToBoards(pitch, at);
 }
-inline Vector2F MatchEngine::clampToReach(Vector2F at) const
+inline PitchPoint MatchEngine::clampToReach(PitchPoint at) const
 {
   return MatchEngineInternal::clampToReach(pitch, at);
 }
-inline Vector2F MatchEngine::keepOutOfGoalFrames(Vector2F from, Vector2F to) const
+inline PitchPoint MatchEngine::keepOutOfGoalFrames(PitchPoint from, PitchPoint to) const
 {
   return MatchEngineInternal::keepOutOfGoalFrames(pitch, from, to);
 }
-inline Vector2F MatchEngine::keepOffGround(Vector2F from, Vector2F to) const
+inline PitchPoint MatchEngine::keepOffGround(PitchPoint from, PitchPoint to) const
 {
   return MatchEngineInternal::keepOffGround(pitch, from, to);
 }
-inline Vector2F MatchEngine::moveBody(Vector2F from, Vector2F to) const
+inline PitchPoint MatchEngine::moveBody(PitchPoint from, PitchPoint to) const
 {
   return MatchEngineInternal::moveBody(pitch, from, to);
 }
-inline bool MatchEngine::deepInTunnel(Vector2F at) const
+inline bool MatchEngine::deepInTunnel(PitchPoint at) const
 {
   return MatchEngineInternal::deepInTunnel(pitch, at);
 }
@@ -706,7 +727,7 @@ inline Vector2F MatchEngine::nearestExit(Vector2F at) const
 {
   return MatchEngineInternal::nearestExit(pitch, at);
 }
-inline bool MatchEngine::inPenaltyArea(Vector2F position, bool defendingHome) const
+inline bool MatchEngine::inPenaltyArea(PitchPoint position, bool defendingHome) const
 {
   return MatchEngineInternal::inPenaltyArea(pitch, position, defendingHome);
 }

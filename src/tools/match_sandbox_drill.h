@@ -186,29 +186,29 @@ std::vector<std::unique_ptr<Drill>> makeDrills();
 /** Drawing helpers for drill overlays (pitch coordinates → screen). */
 namespace DrillDraw
 {
-bool project(const IMatchRenderer& renderer, Vector2F pitch, ImVec2& screen);
-void line(const IMatchRenderer& renderer, ImDrawList& draw, Vector2F from,
-          Vector2F to, ImU32 color, float thickness);
-void label(const IMatchRenderer& renderer, ImDrawList& draw, Vector2F at,
+bool project(const IMatchRenderer& renderer, PitchPoint pitch, ImVec2& screen);
+void line(const IMatchRenderer& renderer, ImDrawList& draw, PitchPoint from,
+          PitchPoint to, ImU32 color, float thickness);
+void label(const IMatchRenderer& renderer, ImDrawList& draw, PitchPoint at,
            const char* text, ImU32 color);
 /** An area of the pitch (a cordon), as a rectangle. */
-void area(const IMatchRenderer& renderer, ImDrawList& draw, Vector2F min,
-          Vector2F max, ImU32 color, float thickness);
+void area(const IMatchRenderer& renderer, ImDrawList& draw, PitchPoint min,
+          PitchPoint max, ImU32 color, float thickness);
 /** A round marker (flag, spot) with an optional label beside it. */
-void marker(const IMatchRenderer& renderer, ImDrawList& draw, Vector2F at,
+void marker(const IMatchRenderer& renderer, ImDrawList& draw, PitchPoint at,
             float radius, ImU32 color, const char* text = nullptr);
 /** A training cone's radius (m): 20 cm across. */
 inline constexpr float CONE_RADIUS_METRES = 0.1f;
 /** A training cone, drawn to scale (CONE_RADIUS_METRES), with an optional
  * label beside it. */
-void cone(const IMatchRenderer& renderer, ImDrawList& draw, Vector2F at,
+void cone(const IMatchRenderer& renderer, ImDrawList& draw, PitchPoint at,
           ImU32 color, const char* text = nullptr);
 /** A path through pitch points. */
 void path(const IMatchRenderer& renderer, ImDrawList& draw,
-          const std::vector<Vector2F>& points, ImU32 color, float thickness);
+          const std::vector<PitchPoint>& points, ImU32 color, float thickness);
 /** A circle on the ground round `centre`, `radiusMetres` across the pitch
  * as drawn: filled with `fill` (0: not filled) and outlined in `outline`
  * (0: no outline). */
-void circle(const IMatchRenderer& renderer, ImDrawList& draw, Vector2F centre,
+void circle(const IMatchRenderer& renderer, ImDrawList& draw, PitchPoint centre,
             float radiusMetres, ImU32 fill, ImU32 outline, float thickness);
 }  // namespace DrillDraw

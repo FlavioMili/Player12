@@ -6,7 +6,7 @@
 //  See the LICENSE file in the project root.
 // -----------------------------------------------------------------------------
 
-// Match sandbox: open straight on a setup screen, pick two clubs and both
+// Match sandbox: open with a splash, then pick two clubs and both
 // sides' tactics, and play the match as the home side. Its world is
 // generated in a folder of its own (never the game's saves or settings).
 //
@@ -63,6 +63,7 @@
 #include "tools/match_sandbox_measure.h"
 #include "tools/match_sandbox_shot_map.h"
 #include "tools/match_sandbox_scene.h"
+#include "tools/match_sandbox_splash.h"
 #include "tools/match_sandbox_setup.h"
 #include "tools/match_sandbox_test_teams.h"
 #include "tools/match_sandbox_training.h"
@@ -373,6 +374,28 @@ int main(int argc, char* argv[])
   {
     GameController controller;
     Logger::info("Match sandbox: generating world " + std::to_string(worldSeed));
+    // Normal startup opens the window before generating the world. Diagnostic
+    // commands and explicit match/drill entry points retain their direct path.
+    const bool splash = !checkMatches && !tracePossessionSeconds &&
+                        !traceMatchSeconds && !traceLapsSeconds &&
+                        !shotMapArguments && !benchArguments && !measureDrill &&
+                        !kickOff && drill.empty() && drillView == 0;
+    if (splash)
+    {
+      GUIView view(controller);
+      view.run(
+          [&controller, worldSeed](GUIView* gui)
+          {
+            return std::make_unique<SandboxSplashScene>(
+                gui,
+                [&controller, worldSeed]
+                {
+                  controller.newGame(SANDBOX_SAVE_SLOT, worldSeed);
+                  addSandboxTestTeams(*controller.getGameData());
+                });
+          });
+      return 0;
+    }
     controller.newGame(SANDBOX_SAVE_SLOT, worldSeed);
     if (checkMatches) return runSandboxChecks(controller, *checkMatches, checkGroup);
     if (tracePossessionSeconds)

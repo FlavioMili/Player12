@@ -35,7 +35,7 @@ void MatchEngine::checkOutOfBounds()
   checkOutOfBoundsAardvark();
 }
 
-bool MatchEngine::ballInPlayAt(Vector2F at) const
+bool MatchEngine::ballInPlayAt(PitchPoint at) const
 {
   switch (outOfPlayId)
   {
@@ -176,7 +176,7 @@ void MatchEngine::setupCorner(bool homeTeam, bool topCorner)
   setupCornerAardvark(homeTeam, topCorner);
 }
 
-void MatchEngine::setupFreeKick(bool homeTeam, Vector2F foulPos)
+void MatchEngine::setupFreeKick(bool homeTeam, PitchPoint foulPos)
 {
   switch (outOfPlayId)
   {
@@ -202,7 +202,7 @@ void MatchEngine::setupPenalty(bool homeTeam)
   setupPenaltyAardvark(homeTeam);
 }
 
-void MatchEngine::placeTaker(MatchPlayer& taker, Vector2F spot)
+void MatchEngine::placeTaker(MatchPlayer& taker, PitchPoint spot)
 {
   switch (outOfPlayId)
   {

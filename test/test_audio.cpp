@@ -87,7 +87,7 @@ MatchEvent makeEvent(MatchEventType type, float minute, bool home,
   event.primaryPlayerId = home ? 105 : 205;
   event.homeScore = homeScore;
   event.awayScore = awayScore;
-  event.position = {home ? 0.9f : 0.1f, 0.5f};
+  event.position = PitchPoint{home ? 0.9f : 0.1f, 0.5f};
   return event;
 }
 

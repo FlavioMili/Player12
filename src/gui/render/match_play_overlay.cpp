@@ -44,13 +44,13 @@ constexpr float RADAR_MAX_WIDTH = 240.0f;
 /** Share of the bar from which the shot gets hard to keep down. */
 constexpr float OVERPOWER_FROM = MatchTuning::Control::SHOT_OVERPOWER_FROM;
 
-Vector2F positionOf(const MatchRenderPlayer& player, float alpha)
+PitchPoint positionOf(const MatchRenderPlayer& player, float alpha)
 {
   return lerpRenderPosition(player.previousPosition, player.currentPosition,
                             alpha);
 }
 
-bool project(const IMatchRenderer& renderer, Vector2F pitch, float height,
+bool project(const IMatchRenderer& renderer, PitchPoint pitch, float height,
              ImVec2& out)
 {
   return renderer.projectPitch(pitch, height, out.x, out.y);
@@ -58,7 +58,7 @@ bool project(const IMatchRenderer& renderer, Vector2F pitch, float height,
 
 /** A ring on the grass around `centre` in the view's projection. */
 void drawRing(ImDrawList& drawList, const IMatchRenderer& renderer,
-              Vector2F centre, float metres, ImU32 color, float thickness,
+              PitchPoint centre, float metres, ImU32 color, float thickness,
               bool dashed)
 {
   std::array<ImVec2, RING_POINTS> points{};
@@ -67,7 +67,7 @@ void drawRing(ImDrawList& drawList, const IMatchRenderer& renderer,
     const float angle = static_cast<float>(index) * 2.0f *
                         std::numbers::pi_v<float> /
                         static_cast<float>(RING_POINTS);
-    const Vector2F around{centre.x + std::cos(angle) * metres / LENGTH,
+    const PitchPoint around{centre.x + std::cos(angle) * metres / LENGTH,
                           centre.y + std::sin(angle) * metres / WIDTH};
     if (!project(renderer, around, 0.03f,
                  points[static_cast<std::size_t>(index)]))
@@ -202,7 +202,7 @@ void drawRadar(ImDrawList& drawList, const MatchRenderSnapshot& snapshot,
   // Bottom centre, clear of the event ticker (left) and the HUD (top).
   const ImVec2 origin{(viewMin.x + viewMax.x - width) * 0.5f,
                       viewMax.y - margin - height};
-  const auto at = [&](Vector2F pitch)
+  const auto at = [&](PitchPoint pitch)
   { return ImVec2{origin.x + pitch.x * width, origin.y + pitch.y * height}; };
   drawList.AddRectFilled(origin, {origin.x + width, origin.y + height},
                          RADAR_BACK, 4.0f * scale);
@@ -273,7 +273,7 @@ void drawMatchPlayOverlay(ImDrawList& drawList, const IMatchRenderer& renderer,
   }
   if (active)
   {
-    const Vector2F position = positionOf(*active, alpha);
+    const PitchPoint position = positionOf(*active, alpha);
     drawRing(drawList, renderer, position, RING_METRES, MARKER_COLOR,
              2.5f * scale, false);
     ImVec2 feet;

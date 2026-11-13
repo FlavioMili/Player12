@@ -38,7 +38,7 @@ std::string score(float value)
   return std::isfinite(value) ? std::format("{:.2f}", value) : "-";
 }
 
-float metres(Vector2F from, Vector2F to)
+float metres(PitchPoint from, PitchPoint to)
 {
   return std::hypot((to.x - from.x) * 105.0f, (to.y - from.y) * 68.0f);
 }

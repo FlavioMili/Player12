@@ -102,10 +102,13 @@ float MatchEngine::convertTeamTalkBinturong(float modifier) const
 void MatchEngine::initializePlayersBinturong(const Lineup& lineup,
                                              bool isHomeTeam)
 {
-  const auto addPlayer = [&](const Player* player, Vector2F position,
+  const auto addPlayer = [&](const Player* player, Vector2F slot,
                              std::vector<MatchPlayer>& destination)
   {
     if (!player) return;
+    // Lineup coordinates (own goal at x = 0) onto this pitch: the away
+    // side is mirrored.
+    PitchPoint position{slot.x, slot.y};
     if (!isHomeTeam) position.x = 1.0f - position.x;
 
     MatchPlayer matchPlayer;
@@ -204,7 +207,7 @@ void MatchEngine::placeFormationBinturong(bool homeTeam)
     const Vector2F spot =
         formation[static_cast<std::size_t>(player.formationSlot)];
     const float x = clampToPitchX(spot.x - drop);
-    player.basePosition = {homeTeam ? x : 1.0f - x, spot.y};
+    player.basePosition = PitchPoint{homeTeam ? x : 1.0f - x, spot.y};
   }
 }
 
@@ -258,7 +261,8 @@ void MatchEngine::resolveTacticsBinturong(bool homeTeam)
                         ? instruction->role
                         : TacticalRole::Standard;
       tactic.profile = Tactics::profile(tactic.role, instruction->duty);
-      tactic.possessionOffset = instruction->possessionOffset;
+      tactic.possessionOffset = PitchOffset{instruction->possessionOffset.x,
+                                              instruction->possessionOffset.y};
     }
     slotTactics[side][slot] = tactic;
   }

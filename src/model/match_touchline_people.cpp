@@ -31,14 +31,14 @@ namespace
 /** Facing the pitch from the bottom touchline (normalised pitch space). */
 constexpr float FACING_PITCH = -0.5f * std::numbers::pi_v<float>;
 
-Vector2F metresOf(const MatchPitch& pitch, Vector2F at)
+Vector2F metresOf(const MatchPitch& pitch, PitchPoint at)
 {
   return {at.x * pitch.length, at.y * pitch.width};
 }
 
-Vector2F pitchOf(const MatchPitch& pitch, Vector2F metres)
+PitchPoint pitchOf(const MatchPitch& pitch, Vector2F metres)
 {
-  return {metres.x / pitch.length, metres.y / pitch.width};
+  return PitchPoint{metres.x / pitch.length, metres.y / pitch.width};
 }
 
 /**

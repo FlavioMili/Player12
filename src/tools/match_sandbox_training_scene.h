@@ -53,9 +53,6 @@ class TrainingSessionScene : public GUIScene
   float accumulator = 0.0f;
   /** Run the rest of the drill as fast as it goes. */
   bool skipping = false;
-  /** The squad's brain and body (the home side's to begin with). */
-  BrainId brain = BrainId::BINTURONG;
-  BodyId body = BodyId::BINTURONG;
 
   std::unique_ptr<IMatchRenderer> renderer;
   MatchRenderSnapshot snapshot;

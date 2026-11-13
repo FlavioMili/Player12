@@ -90,7 +90,12 @@ class TrainingDrill : public Drill
   const std::vector<TrainingPlayer>& squad;
 };
 
-/** A run of a training drill with the whole squad on one brain and body
+/** A training run using all current Set-up settings, including each side's
+ * independent brain and body. No recorder. */
+std::unique_ptr<DrillRun> startTrainingRun(TrainingDrill& drill,
+                                        const StatsConfig& config);
+
+/** A diagnostic run with the whole squad on one brain and body
  * (a drill run takes each side's from the sandbox, and the squad is split
  * across both sides). No recorder. */
 std::unique_ptr<DrillRun> startTrainingRun(TrainingDrill& drill,

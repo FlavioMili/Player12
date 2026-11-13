@@ -169,8 +169,8 @@ void MatchEngine::integrateBallBinturong(float dt)
   }
   // A delivery that has bounced is no longer a clean aerial ball.
   if (flight.bounced) endAerialDelivery();
-  const Vector2F step =
-      toPitch({direction.x * travelled, direction.y * travelled});
+  const PitchOffset step =
+      toPitchOffset({direction.x * travelled, direction.y * travelled});
   ball.position.x += step.x;
   ball.position.y += step.y;
   ball.z = flight.height / MatchTuning::Units::BALL_Z_METRES;

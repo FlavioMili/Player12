@@ -31,6 +31,7 @@
 #include "model/match_manager.h"
 #include "model/match_out_of_play.h"
 #include "model/match_pitch.h"
+#include "model/match_point.h"
 #include "model/match_possession.h"
 #include "model/match_context.h"
 #include "model/match_derived_stats.h"
@@ -147,7 +148,7 @@ struct PassDecision
 {
   std::uint32_t passerId = 0;
   std::uint32_t receiverId = 0;
-  Vector2F targetPoint{MatchTuning::Pitch::CENTRE, MatchTuning::Pitch::CENTRE};
+  PitchPoint targetPoint{MatchTuning::Pitch::CENTRE, MatchTuning::Pitch::CENTRE};
   PassIntent intent = PassIntent::RECYCLE;
   float utility = 0.0f;
   float progression = 0.0f;
@@ -188,15 +189,15 @@ struct MatchPlayer
 {
   const Player* player = nullptr;
   bool isHomeTeam = false;
-  Vector2F position{MatchTuning::Pitch::CENTRE, MatchTuning::Pitch::CENTRE};
+  PitchPoint position{MatchTuning::Pitch::CENTRE, MatchTuning::Pitch::CENTRE};
   Vector2F velocity{0.0f, 0.0f};
-  Vector2F basePosition{MatchTuning::Pitch::CENTRE, MatchTuning::Pitch::CENTRE};
-  Vector2F movementTarget{MatchTuning::Pitch::CENTRE,
+  PitchPoint basePosition{MatchTuning::Pitch::CENTRE, MatchTuning::Pitch::CENTRE};
+  PitchPoint movementTarget{MatchTuning::Pitch::CENTRE,
                           MatchTuning::Pitch::CENTRE};
   PlayerIntent intent = PlayerIntent::HOLD_SHAPE;
   /** Latest tactical target (refreshed at the tactical rate) and whether it
    * is chased urgently. */
-  Vector2F tacticalTarget{MatchTuning::Pitch::CENTRE,
+  PitchPoint tacticalTarget{MatchTuning::Pitch::CENTRE,
                           MatchTuning::Pitch::CENTRE};
   bool urgentMovement = false;
   /** How fast the tactical target itself moves (m/s): a man pressed or
@@ -212,7 +213,7 @@ struct MatchPlayer
    * how many of the two are waypoints short of the tactical target (0: both
    * are it). Planned by the brain, advanced by the body as he reaches each
    * waypoint, and cleared by every other writer of the tactical target. */
-  Vector2F nextTarget{MatchTuning::Pitch::CENTRE, MatchTuning::Pitch::CENTRE};
+  PitchPoint nextTarget{MatchTuning::Pitch::CENTRE, MatchTuning::Pitch::CENTRE};
   std::uint8_t routeWaypoints = 0;
   /** His line through each waypoint of the route (movement targets plan
    * 3b): how far (m) inside the waypoint the turn's apex may pass
@@ -222,7 +223,7 @@ struct MatchPlayer
   float routeOutwardRoom = 0.0f;
   /** Where his line points now (normalised pitch), on a route: what his
    * touches aim at when he is dribbling. */
-  Vector2F routeAim{};
+  PitchPoint routeAim{};
   /** The player he is overtaking (slot, -1: none) and on which side (+1
    * his left), kept between refreshes so he does not swap sides on a near
    * tie (movement targets plan 4a). */
@@ -270,19 +271,19 @@ struct MatchPlayer
   float sinceStopSeconds = 1.0e6f;
   /** Where the leg to his waypoint began (the waypoint before, or where he
    * was when given it), and that waypoint (body's own bookkeeping). */
-  Vector2F routeLegStart{};
-  Vector2F routeLegEnd{};
+  PitchPoint routeLegStart{};
+  PitchPoint routeLegEnd{};
   /** The point after his waypoint, as his line last had it. */
-  Vector2F routeLegNext{};
+  PitchPoint routeLegNext{};
   /** His route moved on before the curve he was on ended, and finishing it
    * was the quicker way on: his line holds that curve (its leg in, its
    * waypoint and the way out) to its end, then takes up his route. */
   bool holdingTurn = false;
-  Vector2F heldLegStart{};
-  Vector2F heldWaypoint{};
-  Vector2F heldNext{};
+  PitchPoint heldLegStart{};
+  PitchPoint heldWaypoint{};
+  PitchPoint heldNext{};
   /** Where on the held curve he hands over to his route's line. */
-  Vector2F heldUntil{};
+  PitchPoint heldUntil{};
 
   float facingAngle = 0.0f;
   float targetAngle = 0.0f;
@@ -378,7 +379,7 @@ struct MatchPlayer
    * planner's branch and the choices made in it), the step and the plan
    * epoch. A refresh on the same job turns the target's move since then
    * into targetVelocity. */
-  Vector2F plannedTarget{};
+  PitchPoint plannedTarget{};
   std::uint64_t plannedJob = 0;
   std::uint64_t plannedStep = 0;
   std::uint32_t plannedEpoch = 0;
@@ -487,7 +488,7 @@ struct TouchlinePerson
   TouchlineRole role = TouchlineRole::SUBSTITUTE;
   /** His seat on his side's dugout bench (normalised pitch); the manager's
    * is his spot in his technical area, moved with the play. */
-  Vector2F seat{};
+  PitchPoint seat{};
   /** Sitting on it (else on his feet). */
   bool seated = false;
   /** An assistant referee on the top touchline (else the bottom one). */
@@ -507,7 +508,7 @@ struct TouchIntent
     INTO_STRIDE,
   };
   Kind kind = Kind::SET;
-  Vector2F targetSpot{0.0f, 0.0f};
+  PitchPoint targetSpot{0.0f, 0.0f};
   float arrivalSpeed = 0.0f;
   /** How little he expected the ball (0-1), the brain's read: for now 1
    * for a pass meant for someone else, else 0 (to be revisited with the
@@ -535,7 +536,7 @@ struct TouchIntent
  * comes every `stepSeconds`. */
 struct TouchMoment
 {
-  Vector2F contactPoint{0.0f, 0.0f};
+  PitchPoint contactPoint{0.0f, 0.0f};
   float gap = 0.0f;
   float reach = 0.0f;
   /** Ball height there (m). */
@@ -1280,7 +1281,7 @@ struct MatchPossessionState
   bool isPass = false;
   /** Where the pass in flight is heading (the kick's real target, as its
    * flight shows it). */
-  Vector2F passTarget{MatchTuning::Pitch::CENTRE, MatchTuning::Pitch::CENTRE};
+  PitchPoint passTarget{MatchTuning::Pitch::CENTRE, MatchTuning::Pitch::CENTRE};
   bool passByHome = false;
   bool passWasOffside = false;
   /** Binturong: release-time offside judgements for other possible collectors.
@@ -1326,7 +1327,7 @@ struct MatchPossessionState
 
 struct MatchBall
 {
-  Vector2F position{MatchTuning::Pitch::CENTRE, MatchTuning::Pitch::CENTRE};
+  PitchPoint position{MatchTuning::Pitch::CENTRE, MatchTuning::Pitch::CENTRE};
   float z = 0.0f;
   Vector2F velocity{0.0f, 0.0f};
   float velocityZ = 0.0f;
@@ -1334,7 +1335,7 @@ struct MatchBall
   /** While dribbling: where he means to carry it (his plan's target, kept
    * from the last plan refresh, as the chase overrides his movement), and
    * the time until he may touch it again (s). */
-  Vector2F dribbleGoal{MatchTuning::Pitch::CENTRE, MatchTuning::Pitch::CENTRE};
+  PitchPoint dribbleGoal{MatchTuning::Pitch::CENTRE, MatchTuning::Pitch::CENTRE};
   float ownTouchCooldown = 0.0f;
   /** His next meet with his ball (dribble meet plan, Binturong body),
    * replanned every step: whose plan it is (none: he chases it), where on
@@ -1354,18 +1355,18 @@ struct MatchBall
   float plannedTouchIn = 0.0f;
   Vector2F pushDirection{1.0f, 0.0f};
   float meetPace = 0.0f;
-  Vector2F meetPoint{};
+  PitchPoint meetPoint{};
   float meetSeconds = 0.0f;
   Vector2F meetOut{1.0f, 0.0f};
   float meetPush = 0.0f;
-  Vector2F meetLegStart{};
+  PitchPoint meetLegStart{};
   /** While in a touch: the gap (m) to the owner at the last check, and the
    * largest gap so far. */
   float touchGap = 0.0f;
   float touchPeakGap = 0.0f;
   /** Where the last contact sent it off from (normalised; for drills and
    * reports, read by nothing in play). */
-  Vector2F sentFrom{};
+  PitchPoint sentFrom{};
   /** How high it was there (m; the same: for drills and reports). */
   float sentHeightMetres = 0.0f;
   /** The current touch: what was tried, and how far from his centre (m)
@@ -1432,18 +1433,18 @@ struct DeadBallReturn
   bool active = false;
   Phase phase = Phase::LOOSE;
   /** Where the restart is taken from. */
-  Vector2F spot{};
+  PitchPoint spot{};
   /** Seconds in this phase, behind the boards, and in all. */
   float seconds = 0.0f;
   float gapSeconds = 0.0f;
   float totalSeconds = 0.0f;
   /** Out of sight: the front-row spot a replacement is thrown from. */
-  Vector2F returnFrom{};
+  PitchPoint returnFrom{};
   /** A free kick or penalty: the fouled side's player nearest the ball
    * goes to it and plays it to stop on the spot (slot index), then goes
    * back to his restart position. */
   std::optional<std::size_t> fetcherIndex;
-  Vector2F fetcherTarget{};
+  PitchPoint fetcherTarget{};
   /** Played towards the spot: the taker lets it roll, sets it on the spot
    * if it stops near enough, and fetches it if it drifts. */
   bool passedToSpot = false;
@@ -1908,11 +1909,11 @@ struct MatchCommandRecord
   /** DRILL_TARGET: the target (normalised pitch; none releases it) and
    * whether he runs at it urgently. KEEP_BALL: `urgent` on keeps it, off
    * releases him. */
-  std::optional<Vector2F> target;
+  std::optional<PitchPoint> target;
   bool urgent = false;
   /** DRILL_TARGET: up to two waypoints on the way to `target`, and his
    * line through them (MatchPlayer::routeApexOffset, routeOutwardRoom). */
-  std::vector<Vector2F> route;
+  std::vector<PitchPoint> route;
   float apexOffset = 0.0f;
   float outwardRoom = 0.0f;
   /** DRILL_TARGET: a body orientation asked of him (MatchPlayer::
@@ -2492,7 +2493,7 @@ class MatchEngine
    * index for index. */
   const std::vector<MatchPlayer>& getTouchlineBodies() const { return touchlineBodies; }
   const std::vector<TouchlinePerson>& getTouchlinePeople() const { return touchlinePeople; }
-  const std::vector<Vector2F>& getPreviousTouchlinePositions() const
+  const std::vector<PitchPoint>& getPreviousTouchlinePositions() const
   {
     return previousTouchlinePositions;
   }
@@ -2726,7 +2727,7 @@ class MatchEngine
   {
     std::uint64_t step = 0;
     float atSeconds = 0.0f;
-    Vector2F where{};
+    PitchPoint where{};
     std::array<CollisionSide, 2> sides{};
   };
   /** The run-ins of the last movement step. */
@@ -2832,7 +2833,7 @@ class MatchEngine
    * derived from the engine accumulator. In [0, 1).
    */
   float getInterpolationAlpha() const;
-  const std::vector<Vector2F>& getPreviousPlayerPositions() const
+  const std::vector<PitchPoint>& getPreviousPlayerPositions() const
   {
     return previousPlayerPositions;
   }
@@ -2844,7 +2845,7 @@ class MatchEngine
   {
     return previousPlayerFeetHeights;
   }
-  Vector2F getPreviousBallPosition() const { return previousBallPosition; }
+  PitchPoint getPreviousBallPosition() const { return previousBallPosition; }
   float getPreviousBallZ() const { return previousBallZ; }
   /** The ball has gone beyond the crowd the views show (not drawn). */
   bool ballOutOfSight() const
@@ -2893,7 +2894,7 @@ class MatchEngine
   struct Obstacle
   {
     /** Normalised pitch. */
-    Vector2F position{0.0f, 0.0f};
+    PitchPoint position{0.0f, 0.0f};
     /** How far round it (m) the ball must not touch. */
     float radiusMetres = 0.0f;
   };
@@ -2960,14 +2961,14 @@ class MatchEngine
    * releases him to the planner. Logged and replayed like any manager
    * change.
    */
-  void setDrillTarget(PlayerID playerId, std::optional<Vector2F> target,
-                      bool urgent, const std::vector<Vector2F>& route = {},
+  void setDrillTarget(PlayerID playerId, std::optional<PitchPoint> target,
+                      bool urgent, const std::vector<PitchPoint>& route = {},
                       float apexOffsetMetres = 0.0f,
                       float outwardRoomMetres = 0.0f,
                       std::optional<float> facing = std::nullopt,
                       bool atSpeed = false);
   /** The target a drill holds for a player, if any. */
-  std::optional<Vector2F> getDrillTarget(PlayerID playerId) const;
+  std::optional<PitchPoint> getDrillTarget(PlayerID playerId) const;
 
   /** Drills: overrides one of a player's derived stats (a 0-1 rating),
    * replacing what his recipe worked out. Before kick-off; a substitute
@@ -3001,10 +3002,10 @@ class MatchEngine
   void forceTackleIntent(PlayerID playerId, TackleIntent intent);
   /** Where the last free-ball tackle's "win it" nudge was aimed to stop,
    * and how many there have been. For drills. */
-  [[nodiscard]] Vector2F getLastNudgeSpot() const { return lastNudgeSpot; }
+  [[nodiscard]] PitchPoint getLastNudgeSpot() const { return lastNudgeSpot; }
   [[nodiscard]] int getNudges() const { return nudges; }
   void forceHeader(PlayerID playerId, ForcedHeaderAim aim,
-                   std::optional<Vector2F> spot = std::nullopt,
+                   std::optional<PitchPoint> spot = std::nullopt,
                    std::optional<Vector2F> goalAim = std::nullopt,
                    bool knownEarly = true);
   /** The part of his head the last unchallenged header was met with (met in
@@ -3020,7 +3021,7 @@ class MatchEngine
    * a pass played to him he plays on as it reaches him, without a touch (a
    * ground ball, Binturong body; otherwise after his touch, as usual).
    * Logged and replayed. */
-  void forcePassTo(PlayerID playerId, Vector2F spot, ForcedPassStyle style,
+  void forcePassTo(PlayerID playerId, PitchPoint spot, ForcedPassStyle style,
                    std::optional<BallSpin> spin = std::nullopt,
                    std::optional<float> arrivalSpeed = std::nullopt,
                    bool firstTime = false);
@@ -3035,7 +3036,7 @@ class MatchEngine
    * `receiverId` (his own pass to receive), or loose for 0. Nobody kicked
    * it, so a completion credits only his side. In play only; logged and
    * replayed. */
-  void feedBall(Vector2F from, Vector2F velocity, float lift,
+  void feedBall(PitchPoint from, Vector2F velocity, float lift,
                 PlayerID receiverId);
 
   /** Drills and the lab: the first-touch knobs (match_first_touch_knobs.h),
@@ -3077,10 +3078,10 @@ class MatchEngine
   struct DrillTarget
   {
     PlayerID player = 0;
-    Vector2F target{0.0f, 0.0f};
+    PitchPoint target{0.0f, 0.0f};
     bool urgent = false;
     /** Up to two waypoints before it, and his line through them. */
-    std::vector<Vector2F> route;
+    std::vector<PitchPoint> route;
     float apexOffset = 0.0f;
     float outwardRoom = 0.0f;
     /** A body orientation asked of him, if any. */
@@ -3106,7 +3107,7 @@ class MatchEngine
   {
     PlayerID player = 0;
     ForcedHeaderAim aim = ForcedHeaderAim::SPOT;
-    Vector2F spot{};
+    PitchPoint spot{};
     Vector2F goalAim{};
     bool knownEarly = true;
   };
@@ -3119,7 +3120,7 @@ class MatchEngine
     PlayerID receiver = 0;
     ForcedPassStyle style = ForcedPassStyle::AS_CHOSEN;
     /** A pass to a spot instead (receiver 0). */
-    std::optional<Vector2F> spot;
+    std::optional<PitchPoint> spot;
     std::optional<BallSpin> spin;
     std::optional<float> arrivalSpeed;
     /** Off a pass to him, played as it reaches him (decideFirstTimePass). */
@@ -3131,7 +3132,7 @@ class MatchEngine
   /** Drills: players whose free-ball tackles mean something other than
    * control (forceTackleIntent). */
   std::vector<std::pair<PlayerID, TackleIntent>> forcedTackleIntents;
-  Vector2F lastNudgeSpot{};
+  PitchPoint lastNudgeSpot{};
   int nudges = 0;
   std::vector<std::pair<PlayerID, float>> ballKeeperUrgency;
   /** Places the scenario's players and ball; the carrier (null when the
@@ -3148,7 +3149,7 @@ class MatchEngine
   MatchPlayer* drillPlayer(PlayerID playerId);
   /** Completes a kick's report from the launched ball and sends it. */
   void reportKick(MatchActionRecord& action, const MatchPlayer& kicker,
-                  Vector2F target) const;
+                  PitchPoint target) const;
 
   std::vector<MatchPlayer> players;
   /** The people round the touchline, index for index (touchline plan
@@ -3156,9 +3157,9 @@ class MatchEngine
    * interpolation frame and at the start of this step's movement. */
   std::vector<MatchPlayer> touchlineBodies;
   std::vector<TouchlinePerson> touchlinePeople;
-  std::vector<Vector2F> previousTouchlinePositions;
+  std::vector<PitchPoint> previousTouchlinePositions;
   std::vector<float> previousTouchlineFacingAngles;
-  std::vector<Vector2F> touchlineStepStart;
+  std::vector<PitchPoint> touchlineStepStart;
   bool touchlineSetUp = false;
   /** Touchline plan stage 4: the walk-out or walk-off in progress. */
   WalkState walk;
@@ -3178,34 +3179,38 @@ class MatchEngine
   // This pitch's geometry, under the names the engine's code has always
   // used (defined in match_engine_internal.h, on the helpers there that
   // take a pitch).
-  /** Metric offset (metres) of a normalised pitch displacement. */
-  Vector2F toMetres(Vector2F normalisedDelta) const;
-  /** Normalised pitch displacement of a metric offset. */
-  Vector2F toPitch(Vector2F metres) const;
-  /** Isotropic distance in metres between two normalised pitch points. */
-  float distance(Vector2F first, Vector2F second) const;
-  /** Unit direction in metric space from one pitch point to another. */
-  Vector2F metricDirection(Vector2F from, Vector2F to) const;
+  /** A point as a position in metres (from the left goal line and the top
+   * touchline), and a step between points as a metric vector. */
+  Vector2F toMetres(PitchPoint point) const;
+  Vector2F toMetres(PitchOffset step) const;
+  /** A position in metres as a point, and a metric vector as a step
+   * between points. */
+  PitchPoint toPitch(Vector2F metres) const;
+  PitchOffset toPitchOffset(Vector2F metres) const;
+  /** Distance in metres between two points. */
+  float distance(PitchPoint first, PitchPoint second) const;
+  /** Unit direction on the ground (metric) from one point to another. */
+  Vector2F metricDirection(PitchPoint from, PitchPoint to) const;
   /** A body kept where it can physically be: inside the advertising boards. */
   float clampToBoardsX(float x) const;
   float clampToBoardsY(float y) const;
-  Vector2F clampToBoards(Vector2F at) const;
+  PitchPoint clampToBoards(PitchPoint at) const;
   /** Where a walker may mean to go: inside the boards, or the tunnel and
    * its walkway. */
-  Vector2F clampToReach(Vector2F at) const;
+  PitchPoint clampToReach(PitchPoint at) const;
   /** A body's step kept out of the goal frames, off the furniture round
    * the pitch, and both (MatchEngineInternal). */
-  Vector2F keepOutOfGoalFrames(Vector2F from, Vector2F to) const;
-  Vector2F keepOffGround(Vector2F from, Vector2F to) const;
-  Vector2F moveBody(Vector2F from, Vector2F to) const;
+  PitchPoint keepOutOfGoalFrames(PitchPoint from, PitchPoint to) const;
+  PitchPoint keepOffGround(PitchPoint from, PitchPoint to) const;
+  PitchPoint moveBody(PitchPoint from, PitchPoint to) const;
   /** Deep in the tunnel: out of sight and out of play. */
-  bool deepInTunnel(Vector2F at) const;
+  bool deepInTunnel(PitchPoint at) const;
   /** The next point on a body's way (metres) through the tunnel, and
    * where a player (metres) leaves the pitch (MatchEngineInternal). */
   Vector2F routeViaTunnel(Vector2F at, Vector2F target) const;
   Vector2F nearestExit(Vector2F at) const;
   /** Whether a point lies in the penalty area defended by the given side. */
-  bool inPenaltyArea(Vector2F position, bool defendingHome) const;
+  bool inPenaltyArea(PitchPoint position, bool defendingHome) const;
   /** The match's handshake (constructor). */
   HandshakeId handshakeId = HandshakeId::AARDVARK;
   /** The match's referee; see setReferee. */
@@ -3300,7 +3305,7 @@ class MatchEngine
   {
     bool active = false;
     bool fouledTeamHome = false;
-    Vector2F position{MatchTuning::Pitch::CENTRE, MatchTuning::Pitch::CENTRE};
+    PitchPoint position{MatchTuning::Pitch::CENTRE, MatchTuning::Pitch::CENTRE};
     float secondsRemaining = 0.0f;
   };
   PendingAdvantage pendingAdvantage;
@@ -3317,10 +3322,10 @@ class MatchEngine
   bool setPieceBallInBox = false;
   bool setPieceBoxCleared = false;
 
-  std::vector<Vector2F> previousPlayerPositions;
+  std::vector<PitchPoint> previousPlayerPositions;
   std::vector<float> previousPlayerFacingAngles;
   std::vector<float> previousPlayerFeetHeights;
-  Vector2F previousBallPosition{MatchTuning::Pitch::CENTRE,
+  PitchPoint previousBallPosition{MatchTuning::Pitch::CENTRE,
                                 MatchTuning::Pitch::CENTRE};
   float previousBallZ = 0.0f;
 
@@ -3378,7 +3383,7 @@ class MatchEngine
   float accumulator = 0.0f;
   float ratingRefreshTimer = 0.0f;
   /** Ball state at the start of the current ball sub-step. */
-  Vector2F substepBallPosition{MatchTuning::Pitch::CENTRE,
+  PitchPoint substepBallPosition{MatchTuning::Pitch::CENTRE,
                                MatchTuning::Pitch::CENTRE};
   float substepBallZ = 0.0f;
   /** Ball sub-steps still to come in the current step after this one, and
@@ -3391,7 +3396,7 @@ class MatchEngine
    * contact is played where the ball reaches it, part way through. */
   struct BallMotion
   {
-    Vector2F position{};
+    PitchPoint position{};
     float z = 0.0f;
     Vector2F velocity{};
     float velocityZ = 0.0f;
@@ -3449,7 +3454,7 @@ class MatchEngine
   {
     TacticalRole role = TacticalRole::Standard;
     RoleProfile profile;
-    Vector2F possessionOffset{0.0f, 0.0f};
+    PitchOffset possessionOffset{0.0f, 0.0f};
   };
   /** Slot roles by side (index 0 home), indexed by formation slot. */
   std::array<std::array<SlotTactic, 16>, 2> slotTactics{};
@@ -3494,14 +3499,14 @@ class MatchEngine
   {
     const Player* player = nullptr;
     bool planned = false;
-    Vector2F lastTarget{};
+    PitchPoint lastTarget{};
     Vector2F lastMove{};
     PlayerIntent intent = PlayerIntent::HOLD_SHAPE;
     PlayerIntent intentBefore = PlayerIntent::HOLD_SHAPE;
     std::uint32_t refreshesSinceSwitch = 0;
     bool moving = false;
-    Vector2F lastPosition{};
-    Vector2F windowStart{};
+    PitchPoint lastPosition{};
+    PitchPoint windowStart{};
     double windowPath = 0.0;
     Vector2F lastVelocity{};
     /** Speed last step, and whether it was last rising (1) or falling (-1). */
@@ -3514,11 +3519,11 @@ class MatchEngine
   std::size_t separationCount = 0;
   /** Positions after the last separation pass and whether it found no
    * contact (an unchanged, contact-free field needs no new pass). */
-  std::array<Vector2F, 32> separationPositions{};
+  std::array<PitchPoint, 32> separationPositions{};
   bool separationClear = false;
   /** Collision plan: everyone's position before this step's movement (the
    * start of each swept path), and the run-ins it found. */
-  std::array<Vector2F, 32> stepStartPositions{};
+  std::array<PitchPoint, 32> stepStartPositions{};
   std::vector<CollisionHit> lastCollisions;
   /** Ball situation at the last tactical refresh (event-driven refresh). */
   const Player* tacticalOwner = nullptr;
@@ -3528,7 +3533,7 @@ class MatchEngine
   std::uint32_t planEpoch = 0;
   /** Seconds and anchor positions since the last load accounting. */
   float loadSeconds = 0.0f;
-  std::vector<Vector2F> loadAnchors;
+  std::vector<PitchPoint> loadAnchors;
   /** Opponent slot each outfield player marks (-1 when unassigned). */
   std::array<std::int8_t, 32> markAssignments{};
   /** Medical staff instructions by squad player (see setMedicalFlags). */
@@ -3596,7 +3601,7 @@ class MatchEngine
   struct PassOption
   {
     MatchPlayer* receiver = nullptr;
-    Vector2F targetPoint{MatchTuning::Pitch::CENTRE,
+    PitchPoint targetPoint{MatchTuning::Pitch::CENTRE,
                          MatchTuning::Pitch::CENTRE};
     PassIntent intent = PassIntent::RECYCLE;
     float utility = 0.0f;
@@ -3656,7 +3661,7 @@ class MatchEngine
     std::optional<std::size_t> receiverSlot;
     bool atMeet = false;
     float heldSeconds = 0.0f;
-    Vector2F meetPoint{};
+    PitchPoint meetPoint{};
     /** A pass or shot held while his body turns to it (Binturong body),
      * for at most turnSeconds. */
     bool turning = false;
@@ -3673,7 +3678,7 @@ class MatchEngine
   {
     float seconds = 0.0f;
     float heightMetres = 0.0f;
-    Vector2F point{};
+    PitchPoint point{};
   };
   [[nodiscard]] std::optional<FirstTimeMeet> firstTimeMeet(
       const MatchPlayer& player) const;
@@ -3826,7 +3831,7 @@ class MatchEngine
                                           float toEnd) const;
   /** How far a push goes (m), for a brain that pushes by intent; none
    * otherwise (see pushMetresBinturong for the arguments). */
-  std::optional<float> choosePushMetres(const MatchPlayer& player, Vector2F from,
+  std::optional<float> choosePushMetres(const MatchPlayer& player, PitchPoint from,
                                         Vector2F direction, float startGap,
                                         float pace, float seconds,
                                         std::optional<float> toGoal) const;
@@ -3861,12 +3866,12 @@ class MatchEngine
   /** Where a clearance is aimed and how far it should go. */
   struct ClearanceAim
   {
-    Vector2F target;
+    PitchPoint target;
     float metres = 0.0f;
   };
   ClearanceAim chooseClearanceAim(const MatchPlayer& defender);
   /** Where to knock the ball over the own goal line, wide of the posts. */
-  Vector2F chooseClearBehindTarget(const MatchPlayer& defender);
+  PitchPoint chooseClearBehindTarget(const MatchPlayer& defender);
   /** What a header is for: a shot, cushioning a team-mate's ball, or play. */
   enum class HeaderAttempt
   {
@@ -3895,7 +3900,7 @@ class MatchEngine
     };
     Kind kind = Kind::KNOCK_DOWN;
     /** CLEAR and KNOCK_DOWN: the point headed toward. */
-    Vector2F aim;
+    PitchPoint aim;
     /** KNOCK_DOWN: the team-mate it is meant for (may be null). */
     const MatchPlayer* target = nullptr;
     /** BEHIND with a speed: headed out along `aim` at this pace over the
@@ -3915,10 +3920,10 @@ class MatchEngine
    * attacker's (a contest), whether he goes in this step or holds
    * (decided once a step, kept for the step). */
   bool goesIntoContest(MatchPlayer& defender, const MatchPlayer& owner,
-                       Vector2F contact);
+                       PitchPoint contact);
   /** Tackling plan step 5: what his tackle means to do. */
   TackleIntent chooseTackleIntent(const MatchPlayer& tackler,
-                                  const MatchPlayer& attacker, Vector2F contact,
+                                  const MatchPlayer& attacker, PitchPoint contact,
                                   bool freeBall);
   /** First touch: whether he plays the ball now or lets it come closer
    * (asked every ball sub-step it is in his reach). */
@@ -3937,7 +3942,7 @@ class MatchEngine
   bool choosesToClearCrossBehind(const MatchPlayer& player);
   /** Who takes a restart of the given kind (spot: where it is taken). */
   MatchPlayer* chooseRestartTaker(MatchState restart, bool homeTeam,
-                                  Vector2F spot, bool topCorner = false);
+                                  PitchPoint spot, bool topCorner = false);
   /** How a restart is released: a direct shot, a pass or kept. */
   struct RestartPlay
   {
@@ -3999,8 +4004,8 @@ class MatchEngine
     std::size_t count = 0;
   };
   SetPieceAttackers arrangeSetPieceAttack(bool attackingHome,
-                                          Vector2F ballPosition);
-  void arrangeSetPieceDefence(bool defendingHome, Vector2F ballPosition,
+                                          PitchPoint ballPosition);
+  void arrangeSetPieceDefence(bool defendingHome, PitchPoint ballPosition,
                               const SetPieceAttackers& attackers);
 
   // The brain functions above take the decision for a side: each dispatches
@@ -4099,7 +4104,7 @@ class MatchEngine
    * and its launch (the world's launchBall then flies it). */
   struct Kick
   {
-    Vector2F target;
+    PitchPoint target;
     float speed = 0.0f;
     float verticalSpeed = 0.0f;
     /** The spin it leaves with (rad/s). */
@@ -4113,7 +4118,7 @@ class MatchEngine
    * `spin`: the spin he means (PassOption::spin); `arrivalSpeed`: the
    * pace a ground pass is to arrive at (PassOption::arrivalSpeed). */
   Kick kickPass(const MatchPlayer& passer, const MatchPlayer* receiver,
-                Vector2F target, float passDistance, bool lofted,
+                PitchPoint target, float passDistance, bool lofted,
                 bool delivery, std::optional<BallSpin> spin,
                 std::optional<float> arrivalSpeed,
                 std::optional<PassTechnique> technique = std::nullopt);
@@ -4142,7 +4147,7 @@ class MatchEngine
      * leaves when that isn't straight at where it crosses the line (a
      * curled shot). */
     BallSpin spin{};
-    std::optional<Vector2F> launchToward;
+    std::optional<PitchPoint> launchToward;
   };
   /** @param powerScale Play mode's power (1 for the AI).
    * @param technique How it is struck (Binturong body; none: driven). */
@@ -4152,13 +4157,13 @@ class MatchEngine
   float clearanceSpeed(const MatchPlayer& defender);
   float headerClearanceSpeed(const MatchPlayer& header);
   /** Where a knock-down meant for `aim` really goes. */
-  Vector2F knockDownPoint(const MatchPlayer& header, Vector2F aim);
+  PitchPoint knockDownPoint(const MatchPlayer& header, PitchPoint aim);
   /** A header's pace over the ground and upward (m/s), for its purpose,
    * towards `target`; `speed` and `lift` are the brain's (the Aardvark body
    * heads it at those; the Binturong body takes only their elevation, for
    * FULL). */
   std::pair<float, float> headerPace(const MatchPlayer& header,
-                                     HeaderPace purpose, Vector2F target,
+                                     HeaderPace purpose, PitchPoint target,
                                      float speed, float lift) const;
   /** Brings a received ball under control: trap time and when he can act
    * (a keeper with it in his hands: how long he holds it). */
@@ -4229,7 +4234,7 @@ class MatchEngine
   void sendToTunnel(const MatchPlayer& body);
   /** Whether a sent-off player is still on the pitch (the restart waits). */
   [[nodiscard]] bool sentOffStillOn() const;
-  void rebalanceShape(bool homeTeam, Vector2F vacatedBase,
+  void rebalanceShape(bool homeTeam, PitchPoint vacatedBase,
                       std::int8_t vacatedSlot);
   void ensureGoalkeeper(bool homeTeam);
   void beginStoppage();
@@ -4357,7 +4362,7 @@ class MatchEngine
    * time down, starts getting up now; how long it takes (s), else 0 (the
    * side's brain). */
   float chooseGetUp(const MatchPlayer& player);
-  Vector2F goalkeeperTarget(MatchPlayer& keeper, const MatchPlayer* carrier);
+  PitchPoint goalkeeperTarget(MatchPlayer& keeper, const MatchPlayer* carrier);
   void diveGoalkeeper(MatchPlayer& keeper, float dt);
   void planGoalkeeperDive(bool defendingHome, bool penalty);
   /** A Binturong keeper's blind penalty guess (goalkeeper plan step 9),
@@ -4368,7 +4373,7 @@ class MatchEngine
   std::optional<double> penaltyStrikeAt;
   /** Where each keeper (index 0 home) goes to claim a high ball, when he
    * meets it first (goalkeeper plan step 7; set at each plan). */
-  std::array<std::optional<Vector2F>, 2> keeperClaimMeet{};
+  std::array<std::optional<PitchPoint>, 2> keeperClaimMeet{};
   void resolveShotAtGoalkeeper(MatchPlayer& goalkeeper);
   /** A keeper's claim, or a duel for a high ball (true when it was played).
    * A lone side under it on a Binturong body is left to headInSweep. */
@@ -4394,7 +4399,7 @@ class MatchEngine
   void parryShot(MatchPlayer& goalkeeper, bool overTheBar);
   /** Releases a restart the way the taker's brain chooses. */
   void takeSetPiece(MatchPlayer& taker, MatchState restartState);
-  void arrangeSetPiece(bool attackingHome, Vector2F ballPosition);
+  void arrangeSetPiece(bool attackingHome, PitchPoint ballPosition);
   /**
    * Taker of a dead-ball duty right now: the side's designated player while
    * he is on the pitch and fit (so substitutions are followed), otherwise
@@ -4539,7 +4544,7 @@ class MatchEngine
                            float& spread) const;
   /** Movement target of the controlled player with the stick idle (meeting
    * a pass to him, or the goal-side spot while jockeying); nullopt to stand. */
-  std::optional<Vector2F> controlledAssistTarget(
+  std::optional<PitchPoint> controlledAssistTarget(
       const MatchPlayer& player) const;
   /** Seconds a team-mate needs to get to the ball (see
    * suggestActivePlayer). */
@@ -4826,9 +4831,9 @@ class MatchEngine
   void clearShooterHistory();
   void clearShooterHistoryAardvark();
   void clearShooterHistoryBinturong();
-  void setPassFlightTarget(Vector2F target);
-  void setPassFlightTargetAardvark(Vector2F target);
-  void setPassFlightTargetBinturong(Vector2F target);
+  void setPassFlightTarget(PitchPoint target);
+  void setPassFlightTargetAardvark(PitchPoint target);
+  void setPassFlightTargetBinturong(PitchPoint target);
   void noteGoalSide(bool homeTeam);
   void noteGoalSideAardvark(bool homeTeam);
   void noteGoalSideBinturong(bool homeTeam);
@@ -4897,7 +4902,7 @@ class MatchEngine
   void playBlock(MatchPlayer& tackler, MatchPlayer& owner,
                  const TouchMoment& moment, bool committed);
   /** A block push's strength (m/s, as if unopposed). */
-  float blockPushBinturong(const MatchPlayer& player, Vector2F contact,
+  float blockPushBinturong(const MatchPlayer& player, PitchPoint contact,
                            bool reacting) const;
   /** A contest swing at nothing: his foot committed for `seconds`. */
   void swingAtNothing(MatchPlayer& player, float seconds, bool carrier);
@@ -4925,11 +4930,11 @@ class MatchEngine
   /** What his tackle is for: a drill's forced intent, or his brain's
    * (tackling plan step 5). */
   TackleIntent tackleIntentOf(const MatchPlayer& tackler,
-                              const MatchPlayer& attacker, Vector2F contact,
+                              const MatchPlayer& attacker, PitchPoint contact,
                               bool freeBall);
   /** How far he would stretch for the ball at `point` (0 at his feet, 1 at
    * full stretch; the stretch map). */
-  float ballStretch(const MatchPlayer& player, Vector2F point) const;
+  float ballStretch(const MatchPlayer& player, PitchPoint point) const;
   /** Where a dribbler wants to go: the metric direction and the pace he
    * wants (m/s): the AI toward his plan's target (ball.dribbleGoal) at the
    * pace his brain would run there, the controlled player along his stick. */
@@ -4958,7 +4963,7 @@ class MatchEngine
   /** `from`: where he plays it (normalised pitch). A Binturong body then
    * aims from there (dribbleOutFromBinturong). */
   DribbleAim dribbleAim(const MatchPlayer& player,
-                        std::optional<Vector2F> from = std::nullopt) const;
+                        std::optional<PitchPoint> from = std::nullopt) const;
   /** How far a dribble touch at `pace` (m/s) puts the ball ahead of where
    * he meets it: into his stride at pace, else the set offset; never past
    * his goal `toGoal` (m) away. */
@@ -4997,7 +5002,7 @@ class MatchEngine
                                 PassCandidateDetail* detail = nullptr) const;
   /** Whether the attached recorder asks for score breakdowns. */
   [[nodiscard]] bool wantsDetail() const;
-  MatchPlayer* findClosestPlayer(Vector2F position, bool homeTeam,
+  MatchPlayer* findClosestPlayer(PitchPoint position, bool homeTeam,
                                  bool includeGoalkeeper = true);
   MatchPlayer* findGoalkeeper(bool homeTeam);
   MatchPlayer* findMatchPlayer(const Player* player);
@@ -5016,7 +5021,7 @@ class MatchEngine
   void setupKickOff(bool homeKickingOff);
   void resetPositions();
   /** Kick-off formation spot of a player (his own half). */
-  Vector2F kickOffPosition(const MatchPlayer& player) const;
+  PitchPoint kickOffPosition(const MatchPlayer& player) const;
 
   void recordHighlight(MatchEventType type);
   float attribute(const Player* player, std::string_view name) const;
@@ -5073,7 +5078,7 @@ class MatchEngine
    * a shot's flight is worked out from. */
   struct BallRelease
   {
-    Vector2F position{};
+    PitchPoint position{};
     float z = 0.0f;
     float heightMetres = 0.0f;
   };
@@ -5088,13 +5093,13 @@ class MatchEngine
    * sets the ball off as the body released it.
    */
   void launchBall(const MatchPlayer& kicker, const BallRelease& from,
-                  Vector2F target, float horizontalSpeed, float verticalSpeed,
+                  PitchPoint target, float horizontalSpeed, float verticalSpeed,
                   BallSpin spin);
   /** What every contact does to the ball (unified kick plan): it leaves
    * from `position` (normalised) at height `z` (length units) with the
    * velocity off his foot, played by `kicker`, who may not touch it again
    * for `kickerLockout` seconds. Possession is the caller's. */
-  void sendBallOff(const MatchPlayer& kicker, Vector2F position, float z,
+  void sendBallOff(const MatchPlayer& kicker, PitchPoint position, float z,
                    Vector2F velocity, float velocityZ, BallSpin spin,
                    float kickerLockout);
   /** A touch's record on the ball: what he tried, how it went, and how far
@@ -5121,13 +5126,13 @@ class MatchEngine
   bool ballBehindReach(const MatchPlayer& player, float gapX, float gapY,
                        float gap, float turnSeconds = 0.0f) const;
   /** Where his strike starts. */
-  Vector2F strikePoint(const MatchPlayer& striker) const;
+  PitchPoint strikePoint(const MatchPlayer& striker) const;
   /** A strike towards `target` at `speed` over the ground and `lift`
    * upward, as `kind`: where it really goes and how. */
-  Kick strikeAs(const MatchPlayer& striker, StrikeKind kind, Vector2F target,
+  Kick strikeAs(const MatchPlayer& striker, StrikeKind kind, PitchPoint target,
                 float speed, float lift);
   /** How far a clearance struck from `origin` toward `aim` is lofted for. */
-  float clearanceDistance(const MatchPlayer& defender, Vector2F origin,
+  float clearanceDistance(const MatchPlayer& defender, PitchPoint origin,
                           const ClearanceAim& aim) const;
   /** A direct free kick: blocked by the wall, or a shot over it. */
   void takeDirectFreeKick(MatchPlayer& taker);
@@ -5140,7 +5145,7 @@ class MatchEngine
   void checkOutOfBounds();
   /** Whether a ball at `at` is still in play (not over a line), by the
    * match's out-of-play version. */
-  bool ballInPlayAt(Vector2F at) const;
+  bool ballInPlayAt(PitchPoint at) const;
   /** A goal for the home side (`homeTeam`) or the away side. */
   void scoreGoal(bool homeTeam);
   /** The kick-off once the goal celebration is over. */
@@ -5157,7 +5162,7 @@ class MatchEngine
   void bounceOffFrame();
   /** Where the restart is taken from: the spot the ball is on its way back
    * to, or the ball. */
-  Vector2F restartSpot() const
+  PitchPoint restartSpot() const
   {
     return deadBall.active ? deadBall.spot : ball.position;
   }
@@ -5166,10 +5171,10 @@ class MatchEngine
   void setupThrowIn(bool homeTeam);
   void setupGoalKick(bool homeTeam);
   void setupCorner(bool homeTeam, bool topCorner);
-  void setupFreeKick(bool homeTeam, Vector2F foulPos);
+  void setupFreeKick(bool homeTeam, PitchPoint foulPos);
   void setupPenalty(bool homeTeam);
   /** Puts the taker on the spot; anyone standing there steps aside. */
-  void placeTaker(MatchPlayer& taker, Vector2F spot);
+  void placeTaker(MatchPlayer& taker, PitchPoint spot);
   /** The restart's wait is over: the taker plays it. */
   void completeRestart();
 

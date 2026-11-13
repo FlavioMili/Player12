@@ -26,11 +26,11 @@ void bump(std::uint16_t& counter)
 }
 
 /** Engine frame to the side's attacking frame. */
-Vector2F attackingFrame(Vector2F position, bool home)
+PitchPoint attackingFrame(PitchPoint position, bool home)
 {
   const float x = std::clamp(position.x, 0.0f, 1.0f);
   const float y = std::clamp(position.y, 0.0f, 1.0f);
-  return home ? Vector2F{x, y} : Vector2F{1.0f - x, 1.0f - y};
+  return home ? PitchPoint{x, y} : PitchPoint{1.0f - x, 1.0f - y};
 }
 }  // namespace
 
@@ -78,13 +78,13 @@ std::uint16_t MatchTracker::passes(std::size_t from, std::size_t to) const
   return pass_matrix[from * T::MAX_PLAYERS + to];
 }
 
-void MatchTracker::touch(std::size_t index, bool home, Vector2F position,
+void MatchTracker::touch(std::size_t index, bool home, PitchPoint position,
                          float minute, int period)
 {
   if (!enabled) return;
   TrackedPlayer* tracked = slot(index);
   if (tracked == nullptr) return;
-  const Vector2F at = attackingFrame(position, home);
+  const PitchPoint at = attackingFrame(position, home);
   bump(tracked->touches[T::cellOf(at.x, at.y)]);
   bump(tracked->touch_count);
   tracked->sum_x += at.x;
@@ -93,7 +93,7 @@ void MatchTracker::touch(std::size_t index, bool home, Vector2F position,
     bump(final_third[home ? 0 : 1][T::bucketOf(minute, period)]);
 }
 
-void MatchTracker::passReleased(Vector2F origin, bool open_play)
+void MatchTracker::passReleased(PitchPoint origin, bool open_play)
 {
   if (!enabled) return;
   pass_origin = origin;
@@ -101,7 +101,7 @@ void MatchTracker::passReleased(Vector2F origin, bool open_play)
 }
 
 void MatchTracker::passCompleted(std::size_t passer, std::size_t receiver,
-                                 bool home, Vector2F reception,
+                                 bool home, PitchPoint reception,
                                  float pitchLengthMetres)
 {
   if (!enabled || passer >= T::MAX_PLAYERS || receiver >= T::MAX_PLAYERS)
@@ -111,8 +111,8 @@ void MatchTracker::passCompleted(std::size_t passer, std::size_t receiver,
   bump(pass_matrix[passer * T::MAX_PLAYERS + receiver]);
   TrackedPlayer* tracked = slot(passer);
   if (tracked == nullptr || !pass_open_play) return;
-  const Vector2F from = attackingFrame(pass_origin, home);
-  const Vector2F to = attackingFrame(reception, home);
+  const PitchPoint from = attackingFrame(pass_origin, home);
+  const PitchPoint to = attackingFrame(reception, home);
   const float gained = (to.x - from.x) * pitchLengthMetres;
   if (gained >= T::PROGRESSIVE_METRES && to.x >= T::PROGRESSIVE_MIN_END_X)
     bump(tracked->progressive_passes);

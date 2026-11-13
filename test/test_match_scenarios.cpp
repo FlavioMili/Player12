@@ -132,12 +132,13 @@ MatchScenario buildScenario(const ScenarioSpec& spec)
   {
     MatchScenarioPlayer placement;
     placement.playerId = id;
-    placement.position = position;
+    placement.position = PitchPoint{position.x, position.y};
     placement.makingRun = spec.makeRuns.contains(id) && spec.makeRuns.at(id);
     scenario.players.push_back(placement);
   }
   scenario.carrierId = spec.carrierId;
-  scenario.ballPosition = spec.layout.at(spec.carrierId);
+  const Vector2F ball = spec.layout.at(spec.carrierId);
+  scenario.ballPosition = PitchPoint{ball.x, ball.y};
   return scenario;
 }
 

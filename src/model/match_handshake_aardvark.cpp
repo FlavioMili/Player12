@@ -98,10 +98,13 @@ float MatchEngine::convertTeamTalkAardvark(float modifier) const
 void MatchEngine::initializePlayersAardvark(const Lineup& lineup,
                                             bool isHomeTeam)
 {
-  const auto addPlayer = [&](const Player* player, Vector2F position,
+  const auto addPlayer = [&](const Player* player, Vector2F slot,
                              std::vector<MatchPlayer>& destination)
   {
     if (!player) return;
+    // Lineup coordinates (own goal at x = 0) onto this pitch: the away
+    // side is mirrored.
+    PitchPoint position{slot.x, slot.y};
     if (!isHomeTeam) position.x = 1.0f - position.x;
 
     MatchPlayer matchPlayer;
@@ -195,7 +198,7 @@ void MatchEngine::placeFormationAardvark(bool homeTeam)
         formation[static_cast<std::size_t>(player.formationSlot)];
     const float x = std::clamp(spot.x - drop, MatchTuning::Pitch::PLAYER_MIN_X,
                                MatchTuning::Pitch::PLAYER_MAX_X);
-    player.basePosition = {homeTeam ? x : 1.0f - x, spot.y};
+    player.basePosition = PitchPoint{homeTeam ? x : 1.0f - x, spot.y};
   }
 }
 
@@ -249,7 +252,8 @@ void MatchEngine::resolveTacticsAardvark(bool homeTeam)
                         ? instruction->role
                         : TacticalRole::Standard;
       tactic.profile = Tactics::profile(tactic.role, instruction->duty);
-      tactic.possessionOffset = instruction->possessionOffset;
+      tactic.possessionOffset = PitchOffset{instruction->possessionOffset.x,
+                                              instruction->possessionOffset.y};
     }
     slotTactics[side][slot] = tactic;
   }

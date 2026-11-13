@@ -302,13 +302,15 @@ TEST(TacticsTest, AttackingFullBackPlaysHigherThanDefendingOne)
   const StatsConfig config = createStatsConfig();
   MatchScenario scenario;
   scenario.carrierId = playerId(1, LEFT_CENTRAL_MIDFIELDER);
-  scenario.ballPosition = POSITIONS[LEFT_CENTRAL_MIDFIELDER];
+  scenario.ballPosition = PitchPoint{POSITIONS[LEFT_CENTRAL_MIDFIELDER].x,
+                                       POSITIONS[LEFT_CENTRAL_MIDFIELDER].y};
   for (size_t index = 0; index < POSITIONS.size(); ++index)
   {
-    scenario.players.push_back({playerId(1, index), POSITIONS[index], false});
+    scenario.players.push_back({playerId(1, index),
+         PitchPoint{POSITIONS[index].x, POSITIONS[index].y}, false});
     scenario.players.push_back(
         {playerId(2, index),
-         {1.0f - POSITIONS[index].x, 1.0f - POSITIONS[index].y},
+         PitchPoint{1.0f - POSITIONS[index].x, 1.0f - POSITIONS[index].y},
          false});
   }
   const auto targetX = [&](RoleDuty duty)
@@ -353,13 +355,15 @@ TEST(TacticsTest, InPossessionShapeMovesTheSlotWithTheBallOnly)
                        config, SEEDS[0]);
     MatchScenario scenario;
     scenario.carrierId = playerId(withBall ? 1 : 2, LEFT_CENTRAL_MIDFIELDER);
-    scenario.ballPosition = POSITIONS[LEFT_CENTRAL_MIDFIELDER];
+    scenario.ballPosition = PitchPoint{POSITIONS[LEFT_CENTRAL_MIDFIELDER].x,
+                                       POSITIONS[LEFT_CENTRAL_MIDFIELDER].y};
     for (size_t index = 0; index < POSITIONS.size(); ++index)
     {
-      scenario.players.push_back({playerId(1, index), POSITIONS[index], false});
+      scenario.players.push_back({playerId(1, index),
+         PitchPoint{POSITIONS[index].x, POSITIONS[index].y}, false});
       scenario.players.push_back(
           {playerId(2, index),
-           {1.0f - POSITIONS[index].x, 1.0f - POSITIONS[index].y},
+           PitchPoint{1.0f - POSITIONS[index].x, 1.0f - POSITIONS[index].y},
            false});
     }
     engine.setControlledPlayer(scenario.carrierId);

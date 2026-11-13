@@ -186,11 +186,11 @@ MatchViewport MatchScene::playViewport2D(const MatchViewport& fitted,
 {
   // Follow a point between the active footballer and the ball, damped with
   // real frame time so the camera glides at any frame rate.
-  Vector2F focus = engine->getBall().position;
+  PitchPoint focus = engine->getBall().position;
   const PlayerID active = engine->getControlledPlayer();
   for (const MatchPlayer& player : engine->getPlayers())
     if (active != 0 && player.player && player.player->getId() == active)
-      focus = {
+      focus = PitchPoint{
           player.position.x + (focus.x - player.position.x) * FOLLOW_BALL_SHARE,
           player.position.y +
               (focus.y - player.position.y) * FOLLOW_BALL_SHARE};
@@ -248,9 +248,9 @@ void MatchScene::renderPlayOverlay(const IMatchRenderer& renderer,
     constexpr float METRE_X = 1.0f / MatchTuning::Pitch::MATCH_LENGTH_METRES;
     constexpr float METRE_Y = 1.0f / MatchTuning::Pitch::MATCH_WIDTH_METRES;
     if (renderer.projectPitch(player.position, 0.0f, originX, originY) &&
-        renderer.projectPitch({player.position.x + METRE_X, player.position.y},
+        renderer.projectPitch(PitchPoint{player.position.x + METRE_X, player.position.y},
                               0.0f, lengthX, lengthY) &&
-        renderer.projectPitch({player.position.x, player.position.y + METRE_Y},
+        renderer.projectPitch(PitchPoint{player.position.x, player.position.y + METRE_Y},
                               0.0f, widthX, widthY))
     {
       play_basis = {lengthX - originX, lengthY - originY, widthX - originX,

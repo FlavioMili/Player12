@@ -275,7 +275,8 @@ void MatchSubsPanel::collectMarkers(const TouchlineContext& context)
     {
       // Base positions are in match coordinates: the away side attacks
       // toward x = 0.
-      marker.spot = context.home ? player.basePosition
+      marker.spot = context.home ? Vector2F{player.basePosition.x,
+                                            player.basePosition.y}
                                  : Vector2F{1.0f - player.basePosition.x,
                                             1.0f - player.basePosition.y};
     }

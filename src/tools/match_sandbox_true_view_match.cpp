@@ -181,7 +181,7 @@ PlayerID MatchTrueView::drawOverlay(const IMatchRenderer& renderer, const MatchE
   {
     float x = 0.0f;
     float y = 0.0f;
-    if (!renderer.projectPitch({point.x / P::MATCH_LENGTH_METRES, point.y / P::MATCH_WIDTH_METRES}, point.z,
+    if (!renderer.projectPitch(PitchPoint{point.x / P::MATCH_LENGTH_METRES, point.y / P::MATCH_WIDTH_METRES}, point.z,
                                x, y))
       return false;
     out = {x, y};
@@ -200,7 +200,7 @@ PlayerID MatchTrueView::drawOverlay(const IMatchRenderer& renderer, const MatchE
     const MatchRenderPlayer& shown = snapshot.players[index];
     const MatchPlayer& player = players[index];
     if (!shown.onPitch) continue;
-    const Vector2F at =
+    const PitchPoint at =
         lerpRenderPosition(shown.previousPosition, shown.currentPosition, alpha);
     TrueView::Body& body = bodies[index];
     body.at = {at.x * P::MATCH_LENGTH_METRES, at.y * P::MATCH_WIDTH_METRES, 0.0f};

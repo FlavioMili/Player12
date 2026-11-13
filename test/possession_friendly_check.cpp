@@ -32,12 +32,12 @@ int main()
           if (p.player && p.player->getId() != owner && p.player->getId() != friendId)
             engine.removeBeforeKickOff(p.player->getId());
         const float sign = mirror ? -1.0f : 1.0f;
-        const Vector2F at{0.5f, 0.5f};
+        const PitchPoint at{0.5f, 0.5f};
         MatchScenario scenario;
         scenario.carrierId = delivery ? 0 : owner;
         scenario.ballPosition = at;
         scenario.players = {{owner, at, false},
-                            {friendId, {at.x + (delivery ? sign : 1.0f) * 0.70f / MatchTuning::Pitch::MATCH_LENGTH_METRES, at.y}, false}};
+                            {friendId, PitchPoint{at.x + (delivery ? sign : 1.0f) * 0.70f / MatchTuning::Pitch::MATCH_LENGTH_METRES, at.y}, false}};
         if (delivery)
         {
           scenario.players[0].position.x += sign * 10.0f / MatchTuning::Pitch::MATCH_LENGTH_METRES;
@@ -104,16 +104,16 @@ int main()
       const auto x = [&](float value) { return mirror ? 1.0f - value : value; };
       MatchScenario scenario;
       scenario.carrierId = passer;
-      scenario.players = {{passer, {x(0.55f), 0.5f}, false},
-                          {collector, {x(0.72f), 0.5f}, false},
-                          {defender, {x(offside ? 0.68f : 0.80f), 0.1f}, false},
-                          {defender2, {x(offside ? 0.68f : 0.80f), 0.9f}, false}};
+      scenario.players = {{passer, PitchPoint{x(0.55f), 0.5f}, false},
+                          {collector, PitchPoint{x(0.72f), 0.5f}, false},
+                          {defender, PitchPoint{x(offside ? 0.68f : 0.80f), 0.1f}, false},
+                          {defender2, PitchPoint{x(offside ? 0.68f : 0.80f), 0.9f}, false}};
       if (!engine.startDrill(scenario)) return 2;
       for (const auto& p : scenario.players)
         engine.setDrillTarget(p.playerId, p.position, false, {}, 0, 0,
                               p.playerId == collector ? (mirror ? 0.0f : 3.14159265f)
                                                       : (mirror ? 3.14159265f : 0.0f));
-      engine.forcePassTo(passer, {x(0.82f), 0.5f}, ForcedPassStyle::GROUND,
+      engine.forcePassTo(passer, PitchPoint{x(0.82f), 0.5f}, ForcedPassStyle::GROUND,
                          std::nullopt, 8.0f);
       bool captured = false, touched = false;
       for (int step = 0; step < 100; ++step)

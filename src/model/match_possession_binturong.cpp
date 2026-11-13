@@ -134,8 +134,7 @@ void MatchEngine::updateTouchBinturong(MatchPlayer& carrier, float dt)
   ball.ownTouchCooldown = std::max(0.0f, ball.ownTouchCooldown - dt);
   ball.plannedTouchIn = std::max(0.0f, ball.plannedTouchIn - dt);
 
-  const Vector2F offset = toMetres({ball.position.x - carrier.position.x,
-                                    ball.position.y - carrier.position.y});
+  const Vector2F offset = toMetres(ball.position - carrier.position);
   const Vector2F predicted{
       offset.x + relative.x * PossessionControl::PREDICT_SECONDS,
       offset.y + relative.y * PossessionControl::PREDICT_SECONDS};
@@ -331,8 +330,7 @@ void MatchEngine::noteDribbleTouchBinturong(const MatchPlayer& player,
   ball.plannedTouchIn = intent.plannedSeconds;
   {
     const Vector2F sent =
-        toMetres({intent.targetSpot.x - moment.contactPoint.x,
-                  intent.targetSpot.y - moment.contactPoint.y});
+        toMetres(intent.targetSpot - moment.contactPoint);
     const float sentMetres = length(sent);
     if (sentMetres > EPSILON)
       ball.pushDirection = {sent.x / sentMetres, sent.y / sentMetres};
@@ -1067,9 +1065,9 @@ void MatchEngine::clearShooterHistoryBinturong()
                     PossessionId::BINTURONG);
 }
 
-void MatchEngine::setPassFlightTargetBinturong(Vector2F target)
+void MatchEngine::setPassFlightTargetBinturong(PitchPoint target)
 {
-  ball.possession.passTarget = {std::clamp(target.x, 0.0f, 1.0f),
+  ball.possession.passTarget = PitchPoint{std::clamp(target.x, 0.0f, 1.0f),
                                 std::clamp(target.y, 0.0f, 1.0f)};
   observePossession(PossessionObservation::SET_PASS_FLIGHT_TARGET,
                     PossessionId::BINTURONG);

@@ -110,7 +110,7 @@
    * as a contact (contactBinturong; its angle error times `precision`).
    * The kick's target gives only its direction. */
   Kick strikeContactBinturong(const MatchPlayer& striker, StrikeKind kind,
-                              Vector2F target, float speed, float lift,
+                              PitchPoint target, float speed, float lift,
                               float precision = 1.0f, BallSpin spin = {},
                               float spinCapacity = 0.0f);
   /** Carries an assessed contact out with `skill` (0-1): each job's chance
@@ -150,7 +150,7 @@
   /** Where to aim (normalised) for a ball curled `curl` rad round
    * (curlAngle) to get to `target`: that far the other way round the
    * ball. */
-  Vector2F curlAimBinturong(Vector2F target, float curl) const;
+  PitchPoint curlAimBinturong(PitchPoint target, float curl) const;
   /** A lofted pass struck at `speed` (his kick power) for a target
    * further than his usual flight can carry at it: (along, up) m/s, the
    * flattest launch that comes down through `arrivalHeight` that far out,
@@ -162,7 +162,7 @@
                                                  BallSpin spin) const;
   /** The passer's strike: execution error, weight, height and curve. */
   Kick kickPassBinturong(const MatchPlayer& passer, const MatchPlayer* receiver,
-                Vector2F target, float passDistance, bool lofted,
+                PitchPoint target, float passDistance, bool lofted,
                 bool delivery, std::optional<BallSpin> spin,
                 std::optional<float> arrivalSpeed,
                 std::optional<PassTechnique> technique);
@@ -205,7 +205,7 @@
   float clearanceSpeedBinturong(const MatchPlayer& defender);
   float headerClearanceSpeedBinturong(const MatchPlayer& header);
   /** Where a knock-down meant for `aim` really goes. */
-  Vector2F knockDownPointBinturong(const MatchPlayer& header, Vector2F aim);
+  PitchPoint knockDownPointBinturong(const MatchPlayer& header, PitchPoint aim);
   /** His header power (m/s): the pace he gives a ball with almost none of
    * its own, by Heading (heading technique plan step 3). */
   float headerPowerBinturong(const MatchPlayer& header) const;
@@ -242,7 +242,7 @@
   float headerCeilingBinturong(const MatchPlayer& header, Vector2F aim,
                                float elevation, bool byAngle = true) const;
   std::pair<float, float> headerPaceBinturong(const MatchPlayer& header,
-                                              HeaderPace purpose, Vector2F target,
+                                              HeaderPace purpose, PitchPoint target,
                                               float speed, float lift) const;
   /** The launch pace at `elevation` (rad) from `startHeight` (m) that first
    * lands `metres` away. */
@@ -329,7 +329,7 @@
    * wrong, a miscontrol) that nobody else, either side, gets to first: where
    * he gets his feet to it on its way (pitch units), else where it crosses
    * his line. Nothing if it is not going in, or someone else meets it. */
-  std::optional<Vector2F> ownGoalThreatBinturong(const MatchPlayer& keeper);
+  std::optional<PitchPoint> ownGoalThreatBinturong(const MatchPlayer& keeper);
   /** How far from where he stands his midriff can land in a smother (m):
    * his feet's dive reach plus his midriff's height. */
   float smotherReachBinturong(const MatchPlayer& keeper) const;
@@ -385,13 +385,13 @@
   /** A Binturong keeper in his area has just been given the ball with his
    * hands (goalkeeper plan step 5): it was at `wasAt` (pitch), `wasMetres`
    * up; from there it is brought to his chest and held. Others: nothing. */
-  void takeInHandsBinturong(const MatchPlayer& keeper, Vector2F wasAt, float wasMetres);
+  void takeInHandsBinturong(const MatchPlayer& keeper, PitchPoint wasAt, float wasMetres);
   /** Where a ball in his hands is now (pitch metres, z up): brought from
    * where he took it to his chest; in a dive, between his hands. */
   Point3F heldBallBinturong(const MatchPlayer& keeper) const;
   /** Where he lets go of the ball in his hands for `how` (pitch, and
    * metres up). */
-  std::pair<Vector2F, float> heldReleaseBinturong(const MatchPlayer& keeper,
+  std::pair<PitchPoint, float> heldReleaseBinturong(const MatchPlayer& keeper,
                                                   HeldRelease how) const;
   /** Whether he reads and reaches a ball not meant for him. */
   bool reachesBallBinturong(const MatchPlayer& player, float ballSpeed, float stretch);
@@ -434,9 +434,9 @@
    * after turnSeconds: toward his facing asked of him, else his current run,
    * at his turn rate (as ballBehindReachBinturong reads it). */
   float predictedFacingBinturong(const MatchPlayer& player, float turnSeconds) const;
-  Vector2F strikePointBinturong(const MatchPlayer& striker) const;
-  Kick strikeAsBinturong(const MatchPlayer& striker, StrikeKind kind, Vector2F target, float speed, float lift);
-  float clearanceDistanceBinturong(const MatchPlayer& defender, Vector2F origin, const ClearanceAim& aim) const;
+  PitchPoint strikePointBinturong(const MatchPlayer& striker) const;
+  Kick strikeAsBinturong(const MatchPlayer& striker, StrikeKind kind, PitchPoint target, float speed, float lift);
+  float clearanceDistanceBinturong(const MatchPlayer& defender, PitchPoint origin, const ClearanceAim& aim) const;
   /** A direct free kick: blocked by the wall, or a shot over it. */
   void takeDirectFreeKickBinturong(MatchPlayer& taker);
   BallRelease releaseFromBinturong(const MatchPlayer& kicker, ReleaseKind kind) const;
@@ -453,13 +453,13 @@
    * (dribble meet plan): along his route's line from there, else toward
    * ball.dribbleGoal. Metric unit; none when he is at his goal. */
   std::optional<Vector2F> dribbleOutFromBinturong(const MatchPlayer& player,
-                                                  Vector2F from) const;
+                                                  PitchPoint from) const;
   /** On a route, the way from `from` (normalised pitch) to where his line
    * will be `metres` on, traced along it (into a bend, a push angled into
    * it lands back on his line), clear of obstacles (`metres` shortened when
    * it is turned round one). Metric unit; none off a route. */
   std::optional<Vector2F> dribbleOutAlongBinturong(const MatchPlayer& player,
-                                                   Vector2F from,
+                                                   PitchPoint from,
                                                    float& metres) const;
   /** A push from `start` (metres) along `direction` (metric unit) for
    * `metres`, turned round any obstacle it would touch or pass the other
@@ -481,7 +481,7 @@
   /** The soonest (s) an opponent of `owner` could get to `point`, with the
    * moment it takes him to read it; very large with none. */
   float opponentArrivalSecondsBinturong(const MatchPlayer& owner,
-                                        Vector2F point) const;
+                                        PitchPoint point) const;
   /** Turning to pass: the facing (an angle like facingAngle) a held pass
    * asks of its passer, along its line from the ball, turned no further
    * than keeps the ball clear of his dead zone; none without one. */
@@ -494,7 +494,7 @@
   std::optional<float> strikeFacingBinturong(const MatchPlayer& player) const;
   /** Where his held strike is aimed (normalised): a pass's target, a
    * shot's spot on the goal line; none for a clearance or no strike. */
-  std::optional<Vector2F> heldStrikeTargetBinturong(const MatchPlayer& player) const;
+  std::optional<PitchPoint> heldStrikeTargetBinturong(const MatchPlayer& player) const;
   /** Whether a pass held while he turns is to be struck now: turned to it,
    * or out of time. */
   bool turnedToPassBinturong(const MatchPlayer& player) const;
@@ -522,11 +522,11 @@
   /** His route's next turn seen from a dribble touch at `from`
    * (normalised pitch). */
   DribbleTurnAhead dribbleTurnAheadBinturong(const MatchPlayer& player,
-                                             Vector2F from) const;
+                                             PitchPoint from) const;
   /** Where a tackle's "win it" nudge sends a free ball met at `contact`
    * (tackling plan step 3): out of the attacker's line to the defender's
    * side, or, goal-side and face on, forward and to the side past him. */
-  Vector2F tackleNudgeSpotBinturong(const MatchPlayer& tackler,
+  PitchPoint tackleNudgeSpotBinturong(const MatchPlayer& tackler,
                                     const MatchPlayer& attacker,
-                                    Vector2F contact) const;
+                                    PitchPoint contact) const;
 // clang-format on

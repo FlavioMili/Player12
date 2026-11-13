@@ -28,7 +28,7 @@
 
 using namespace MatchEngineInternal;
 
-bool MatchEngine::ballInPlayAtAardvark(Vector2F at) const
+bool MatchEngine::ballInPlayAtAardvark(PitchPoint at) const
 {
   // Out once its centre is over a line.
   return at.x > 0.0f && at.x < 1.0f && at.y > 0.0f && at.y < 1.0f;
@@ -266,7 +266,7 @@ void MatchEngine::setupGoalKickAardvark(bool homeTeam)
 {
   beginStoppage();
   restartIsSetPiece = false;
-  ball.position = {homeTeam ? MatchTuning::Pitch::LEFT_GOAL_KICK_X
+  ball.position = PitchPoint{homeTeam ? MatchTuning::Pitch::LEFT_GOAL_KICK_X
                             : MatchTuning::Pitch::RIGHT_GOAL_KICK_X,
                    MatchTuning::Pitch::CENTRE};
   ball.z = 0.0f;
@@ -291,7 +291,7 @@ void MatchEngine::setupCornerAardvark(bool homeTeam, bool topCorner)
 {
   beginStoppage();
   restartIsSetPiece = true;
-  ball.position = {homeTeam ? 1.0f - MatchTuning::Pitch::RESTART_INSET
+  ball.position = PitchPoint{homeTeam ? 1.0f - MatchTuning::Pitch::RESTART_INSET
                             : MatchTuning::Pitch::RESTART_INSET,
                    topCorner ? MatchTuning::Pitch::RESTART_INSET
                              : 1.0f - MatchTuning::Pitch::RESTART_INSET};
@@ -321,18 +321,18 @@ void MatchEngine::setupCornerAardvark(bool homeTeam, bool topCorner)
   if (taker && taker->player) event.primaryPlayerId = taker->player->getId();
 }
 
-void MatchEngine::setupFreeKickAardvark(bool homeTeam, Vector2F foulPos)
+void MatchEngine::setupFreeKickAardvark(bool homeTeam, PitchPoint foulPos)
 {
   beginStoppage();
   pendingAdvantage.active = false;
-  ball.position = {
+  ball.position = PitchPoint{
       std::clamp(foulPos.x, MatchTuning::Pitch::RESTART_LONGITUDINAL_MARGIN,
                  1.0f - MatchTuning::Pitch::RESTART_LONGITUDINAL_MARGIN),
       std::clamp(foulPos.y, MatchTuning::Pitch::RESTART_LONGITUDINAL_MARGIN,
                  1.0f - MatchTuning::Pitch::RESTART_LONGITUDINAL_MARGIN)};
   ball.z = 0.0f;
   ball.velocityZ = 0.0f;
-  const Vector2F goal{homeTeam ? 1.0f : 0.0f, MatchTuning::Pitch::CENTRE};
+  const PitchPoint goal{homeTeam ? 1.0f : 0.0f, MatchTuning::Pitch::CENTRE};
   const float goalMetres = distance(ball.position, goal);
   // Free kicks in the attacking third are set pieces taken by the specialist.
   restartIsSetPiece =
@@ -365,7 +365,7 @@ void MatchEngine::setupPenaltyAardvark(bool homeTeam)
   beginStoppage();
   restartIsSetPiece = true;
   pendingAdvantage.active = false;
-  const Vector2F spot{homeTeam ? MatchTuning::Pitch::RIGHT_PENALTY_SPOT_X
+  const PitchPoint spot{homeTeam ? MatchTuning::Pitch::RIGHT_PENALTY_SPOT_X
                                : MatchTuning::Pitch::LEFT_PENALTY_SPOT_X,
                       MatchTuning::Pitch::CENTRE};
   MatchPlayer* taker =
@@ -388,7 +388,7 @@ void MatchEngine::setupPenaltyAardvark(bool homeTeam)
     if (player.isGoalkeeper && player.isHomeTeam != homeTeam)
     {
       // Law 14: the defending keeper stays on his goal line.
-      player.movementTarget = {homeTeam ? MatchTuning::Pitch::PLAYER_MAX_X
+      player.movementTarget = PitchPoint{homeTeam ? MatchTuning::Pitch::PLAYER_MAX_X
                                         : MatchTuning::Pitch::PLAYER_MIN_X,
                                MatchTuning::Pitch::CENTRE};
       player.position = player.movementTarget;
@@ -415,9 +415,9 @@ void MatchEngine::setupPenaltyAardvark(bool homeTeam)
   if (taker && taker->player) event.primaryPlayerId = taker->player->getId();
 }
 
-void MatchEngine::placeTakerAardvark(MatchPlayer& taker, Vector2F spot)
+void MatchEngine::placeTakerAardvark(MatchPlayer& taker, PitchPoint spot)
 {
-  taker.position = {std::clamp(spot.x, MatchTuning::Pitch::PLAYER_MIN_X,
+  taker.position = PitchPoint{std::clamp(spot.x, MatchTuning::Pitch::PLAYER_MIN_X,
                                MatchTuning::Pitch::PLAYER_MAX_X),
                     std::clamp(spot.y, MatchTuning::Pitch::PLAYER_MIN_Y,
                                MatchTuning::Pitch::PLAYER_MAX_Y)};

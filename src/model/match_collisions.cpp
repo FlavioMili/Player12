@@ -286,8 +286,7 @@ void MatchEngine::collidePlayers(float dt)
         const MatchPlayer& player = players[slot];
         near = active(player) && bodyOf(player.isHomeTeam) == BodyId::BINTURONG &&
                !deepInTunnel(player.position) &&
-               length(toMetres({player.position.x - body.position.x,
-                                player.position.y - body.position.y})) <=
+               length(toMetres(player.position - body.position)) <=
                    MatchTuning::TouchlinePeople::COLLISION_RANGE_METRES;
       }
       if (!near) continue;
@@ -519,7 +518,7 @@ void MatchEngine::collidePlayers(float dt)
     {
       if (!paths[index].hit) continue;
       MatchPlayer& player = *bodies[index];
-      const Vector2F end = toPitch(at(index, dt));
+      const PitchPoint end = toPitch(at(index, dt));
       player.position = moveBody(player.position, end);
       player.velocity = paths[index].velocity;
     }
@@ -537,8 +536,7 @@ void MatchEngine::collidePlayers(float dt)
         if (inverseTotal <= 0.0f) continue;
         MatchPlayer& one = *bodies[first];
         MatchPlayer& two = *bodies[second];
-        const Vector2F gap = toMetres({two.position.x - one.position.x,
-                                       two.position.y - one.position.y});
+        const Vector2F gap = toMetres(two.position - one.position);
         const float apart = length(gap);
         const float overlap = MatchTuning::Body::DIAMETER_METRES - apart;
         if (overlap <= 0.0f) continue;

@@ -13,11 +13,11 @@
 // clang-format off
   // --- Binturong out of play -------------------------------------------------
   void checkOutOfBoundsBinturong();
-  bool ballInPlayAtBinturong(Vector2F at) const;
+  bool ballInPlayAtBinturong(PitchPoint at) const;
   void scoreGoalBinturong(bool homeTeam);
   void kickOffAfterGoalBinturong(bool homeKickingOff);
   bool kickOffReadyBinturong();
-  void startDeadBallBinturong(Vector2F spot);
+  void startDeadBallBinturong(PitchPoint spot);
   void updateDeadBallBinturong(float dt);
   void moveDeadBallBinturong(float dt);
   void throwDeadBallBinturong(float releaseMetres);
@@ -25,7 +25,7 @@
   void chooseDeadBallFetcherBinturong(bool homeTeam);
   void dropKickDeadBallBinturong(MatchPlayer& keeper);
   bool keptOutBinturong(const MatchPlayer& player, const MatchPlayer& taker,
-                        Vector2F at, float slack) const;
+                        PitchPoint at, float slack) const;
   void keepRestartDistanceBinturong(MatchPlayer& player);
   void updateRestartReadinessBinturong(float dt);
   bool restartReadyBinturong() const;
@@ -36,8 +36,8 @@
   void setupThrowInBinturong(bool homeTeam);
   void setupGoalKickBinturong(bool homeTeam);
   void setupCornerBinturong(bool homeTeam, bool topCorner);
-  void setupFreeKickBinturong(bool homeTeam, Vector2F foulPos);
+  void setupFreeKickBinturong(bool homeTeam, PitchPoint foulPos);
   void setupPenaltyBinturong(bool homeTeam);
-  void placeTakerBinturong(MatchPlayer& taker, Vector2F spot);
+  void placeTakerBinturong(MatchPlayer& taker, PitchPoint spot);
   void completeRestartBinturong();
 // clang-format on

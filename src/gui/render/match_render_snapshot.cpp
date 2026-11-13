@@ -16,7 +16,7 @@
 namespace
 {
 /** Deep in the tunnel, out of sight (as the engine's deepInTunnel). */
-bool inTunnel(Vector2F at)
+bool inTunnel(PitchPoint at)
 {
   return at.y * MatchGround::Match::WIDTH > MatchGround::Match::STAND_Y + MatchTuning::WalkOut::IN_METRES;
 }
