@@ -628,7 +628,7 @@ class KeeperClaimFixture final : public Drill
     scenario.players.push_back({keeper, {0.08f, 0.5f}, false});
     scenario.players.push_back(
         {opponent,
-         {0.08f, 0.5f + gap / MatchTuning::Pitch::WIDTH_METRES},
+         {0.08f, 0.5f + gap / MatchTuning::Pitch::MATCH_WIDTH_METRES},
          false});
     scenario.carrierId = 0;
     scenario.ballPosition = {0.20f, 0.5f};
@@ -636,12 +636,12 @@ class KeeperClaimFixture final : public Drill
     engine.setDrillTarget(keeper, Vector2F{0.08f, 0.5f}, false);
     engine.setDrillTarget(
         opponent,
-        Vector2F{0.08f, 0.5f + gap / MatchTuning::Pitch::WIDTH_METRES}, false);
+        Vector2F{0.08f, 0.5f + gap / MatchTuning::Pitch::MATCH_WIDTH_METRES}, false);
     if (!legacy && rating > 90.0f)
-      engine.feedBall({0.08f + 1.8f / MatchTuning::Pitch::LENGTH_METRES, 0.5f},
+      engine.feedBall({0.08f + 1.8f / MatchTuning::Pitch::MATCH_LENGTH_METRES, 0.5f},
                       {0.0f, 0.0f}, 0.0f, 0);
     else if (legacy)
-      engine.feedBall({0.08f + 6.0f / MatchTuning::Pitch::LENGTH_METRES, 0.5f},
+      engine.feedBall({0.08f + 6.0f / MatchTuning::Pitch::MATCH_LENGTH_METRES, 0.5f},
                       {-8.0f, 0.0f}, 6.4f, 0);
     else
       engine.feedBall({0.20f, 0.5f}, {-12.0f, 0.0f}, 7.0f, 0);

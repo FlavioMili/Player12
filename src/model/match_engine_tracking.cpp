@@ -16,10 +16,10 @@
 
 namespace
 {
-float metresBetween(Vector2F first, Vector2F second)
+float metresBetween(const MatchPitch& pitch, Vector2F first, Vector2F second)
 {
-  const float dx = (first.x - second.x) * MatchTuning::Pitch::LENGTH_METRES;
-  const float dy = (first.y - second.y) * MatchTuning::Pitch::WIDTH_METRES;
+  const float dx = (first.x - second.x) * pitch.length;
+  const float dy = (first.y - second.y) * pitch.width;
   return std::sqrt(dx * dx + dy * dy);
 }
 }  // namespace
@@ -42,7 +42,7 @@ void MatchEngine::trackPassCompletion(const MatchPlayer& passer,
 {
   if (!tracker.isEnabled()) return;
   tracker.passCompleted(passer.statsIndex, receiver.statsIndex,
-                        passer.isHomeTeam, receiver.position);
+                        passer.isHomeTeam, receiver.position, pitch.length);
 }
 
 void MatchEngine::trackShot(const MatchPlayer& shooter, float xg, bool setPiece,
@@ -69,7 +69,7 @@ void MatchEngine::trackPressures()
     if (!player.isPressing || !player.onPitch || player.player == nullptr ||
         player.isHomeTeam == carrier->isHomeTeam)
       continue;
-    const float metres = metresBetween(player.position, carrier->position);
+    const float metres = metresBetween(pitch, player.position, carrier->position);
     if (metres <= closest)
     {
       closest = metres;

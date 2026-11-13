@@ -136,8 +136,8 @@ TEST(MatchRender3DMath, PitchMappingAndAngles)
   const Vec3 origin = RenderMath::worldFromPitch({0.0f, 0.0f});
   const Vec3 corner = RenderMath::worldFromPitch({1.0f, 1.0f});
   EXPECT_FLOAT_EQ(origin.x, 0.0f);
-  EXPECT_FLOAT_EQ(origin.y, MatchTuning::Pitch::WIDTH_METRES);
-  EXPECT_FLOAT_EQ(corner.x, MatchTuning::Pitch::LENGTH_METRES);
+  EXPECT_FLOAT_EQ(origin.y, MatchTuning::Pitch::MATCH_WIDTH_METRES);
+  EXPECT_FLOAT_EQ(corner.x, MatchTuning::Pitch::MATCH_LENGTH_METRES);
   EXPECT_FLOAT_EQ(corner.y, 0.0f);
 
   EXPECT_NEAR(RenderMath::worldYawFromFacing(0.0f), 0.0f, 1e-5f);
@@ -380,7 +380,7 @@ TEST(MatchCamera3DTest, FreeCameraClampsPitchZoomAndTarget)
   camera.update(focus, MatchCameraMode::FREE, pan, 1.0f / 60.0f);
   EXPECT_FLOAT_EQ(camera.freeTarget().x, -Free::TARGET_MARGIN);
   EXPECT_FLOAT_EQ(camera.freeTarget().y,
-                  MatchTuning::Pitch::WIDTH_METRES + Free::TARGET_MARGIN);
+                  MatchTuning::Pitch::MATCH_WIDTH_METRES + Free::TARGET_MARGIN);
 
   // Low, long views never end up inside a stand.
   MatchCameraControl low;
@@ -436,8 +436,8 @@ TEST(MatchCamera3DTest, FreeCameraIsFrameRateIndependent)
 TEST(MatchRender3DProportions, WorldIsBuiltAtRealScale)
 {
   using T = MatchRender3DTuning;
-  EXPECT_FLOAT_EQ(MatchTuning::Pitch::LENGTH_METRES, 105.0f);
-  EXPECT_FLOAT_EQ(MatchTuning::Pitch::WIDTH_METRES, 68.0f);
+  EXPECT_FLOAT_EQ(MatchTuning::Pitch::MATCH_LENGTH_METRES, 105.0f);
+  EXPECT_FLOAT_EQ(MatchTuning::Pitch::MATCH_WIDTH_METRES, 68.0f);
   EXPECT_FLOAT_EQ(T::Goal::WIDTH, 7.32f);
   EXPECT_FLOAT_EQ(T::Goal::HEIGHT, 2.44f);
   EXPECT_FLOAT_EQ(T::Markings::PENALTY_AREA_DEPTH, 16.5f);
@@ -987,7 +987,7 @@ TEST(MatchRenderer3DStadium, DaylightLightsTheStandsAndShadesUnderTheRoof)
   float dayCrowd = 0.0f;
   for (std::size_t index = 0; index < day.crowd.size(); ++index)
   {
-    if (day.crowd[index].base.y < MatchTuning::Pitch::WIDTH_METRES + 8.0f)
+    if (day.crowd[index].base.y < MatchTuning::Pitch::MATCH_WIDTH_METRES + 8.0f)
       continue;
     nightCrowd += luminance(night.crowd[index].body);
     dayCrowd += luminance(day.crowd[index].body);

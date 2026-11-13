@@ -31,14 +31,14 @@ namespace
 /** Facing the pitch from the bottom touchline (normalised pitch space). */
 constexpr float FACING_PITCH = -0.5f * std::numbers::pi_v<float>;
 
-Vector2F metresOf(Vector2F at)
+Vector2F metresOf(const MatchPitch& pitch, Vector2F at)
 {
-  return {at.x * MatchGround::LENGTH, at.y * MatchGround::WIDTH};
+  return {at.x * pitch.length, at.y * pitch.width};
 }
 
-Vector2F pitchOf(Vector2F metres)
+Vector2F pitchOf(const MatchPitch& pitch, Vector2F metres)
 {
-  return {metres.x / MatchGround::LENGTH, metres.y / MatchGround::WIDTH};
+  return {metres.x / pitch.length, metres.y / pitch.width};
 }
 
 /**
@@ -47,16 +47,15 @@ Vector2F pitchOf(Vector2F metres)
  * rectangle 2 m outside the touchlines and 3 m outside the goal lines
  * (clear of the nets), the shorter way round.
  */
-Vector2F roundThePitch(Vector2F at, Vector2F goal)
+Vector2F roundThePitch(const MatchPitch& pitch, Vector2F at, Vector2F goal)
 {
-  namespace G = MatchGround;
-  static constexpr float X0 = -3.0f;
-  static constexpr float X1 = G::LENGTH + 3.0f;
-  static constexpr float Y0 = -2.0f;
-  static constexpr float Y1 = G::WIDTH + 2.0f;
+  constexpr float X0 = -3.0f;
+  const float X1 = pitch.length + 3.0f;
+  constexpr float Y0 = -2.0f;
+  const float Y1 = pitch.width + 2.0f;
   // Where along the lap (clockwise from the top-left corner: top, right,
   // bottom, left), from the nearest point on it.
-  const auto along = [](Vector2F p)
+  const auto along = [&](Vector2F p)
   {
     const float x = std::clamp(p.x, X0, X1);
     const float y = std::clamp(p.y, Y0, Y1);
@@ -137,7 +136,7 @@ void turnToward(MatchPlayer& body, float angle, float dt)
 void MatchEngine::setUpTouchline()
 {
   using T = MatchTuning::TouchlinePeople;
-  namespace G = MatchGround;
+  const MatchGround::Layout& G = pitch.ground;
   static_assert(T::STAND_IN_ATTRIBUTE == MatchTuning::Player::DEFAULT_ATTRIBUTE,
                 "staff (no player) load the stand-in stats");
   touchlineSetUp = true;
@@ -146,11 +145,11 @@ void MatchEngine::setUpTouchline()
   for (const bool home : {true, false})
   {
     if (bodyOf(home) != BodyId::BINTURONG) continue;
-    const G::Rect& dugout = G::DUGOUTS[home ? 0 : 1];
+    const MatchGround::Rect& dugout = G.dugouts[home ? 0 : 1];
     // Along the bench from the dugout's halfway end, backs to the stand.
     const float end = home ? dugout.x1 : dugout.x0;
     const float inward = home ? -1.0f : 1.0f;
-    const float seatY = G::STAND_Y - MatchTuning::Body::RADIUS_METRES;
+    const float seatY = G.standY - MatchTuning::Body::RADIUS_METRES;
     int seats = 0;
     const auto add = [&](TouchlineRole role, const Player* player)
     {
@@ -173,7 +172,7 @@ void MatchEngine::setUpTouchline()
       body.onPitch = false;
       // A sub's own stats; staff, the stand-ins (every stat 50).
       loadAttributes(body, player);
-      body.position = pitchOf(at);
+      body.position = pitchOf(pitch, at);
       body.movementTarget = body.position;
       body.tacticalTarget = body.position;
       body.facingAngle = FACING_PITCH;
@@ -206,7 +205,7 @@ void MatchEngine::setUpTouchline()
       person.topLine = topLine;
       // On their spots for the kick-off (the teams are placed too, until
       // they walk out: stage 4).
-      body.position = pitchOf(officialSpot(body, person));
+      body.position = pitchOf(pitch, officialSpot(body, person));
       body.movementTarget = body.position;
       body.tacticalTarget = body.position;
       person.seat = body.position;
@@ -232,9 +231,9 @@ void MatchEngine::setUpTouchline()
 void MatchEngine::updateTouchline(float dt)
 {
   using T = MatchTuning::TouchlinePeople;
-  namespace G = MatchGround;
+  const MatchGround::Layout& G = pitch.ground;
   constexpr float R = MatchTuning::Body::RADIUS_METRES;
-  const Vector2F ballAt = metresOf(ball.position);
+  const Vector2F ballAt = metresOf(pitch, ball.position);
   for (std::size_t index = 0; index < touchlineBodies.size(); ++index)
   {
     MatchPlayer& body = touchlineBodies[index];
@@ -266,7 +265,7 @@ void MatchEngine::updateTouchline(float dt)
       if (walkTarget)
       {
         person.seated = false;
-        const Vector2F at = metresOf(body.position);
+        const Vector2F at = metresOf(pitch, body.position);
         const Vector2F next = routeViaTunnel(at, *walkTarget);
         const Vector2F way{next.x - at.x, next.y - at.y};
         const float gap = std::hypot(way.x, way.y);
@@ -279,7 +278,7 @@ void MatchEngine::updateTouchline(float dt)
           continue;
         }
         const float speed = std::min(T::WALK_SPEED, final ? gap * 2.0f : T::WALK_SPEED);
-        body.movementTarget = pitchOf(next);
+        body.movementTarget = pitchOf(pitch, next);
         moveControlledBinturong(body, {way.x / gap * speed, way.y / gap * speed}, speed,
                                 T::WALK_SPEED, 0.0f, dt, nullptr);
         continue;
@@ -291,24 +290,24 @@ void MatchEngine::updateTouchline(float dt)
     // boards, and in he stays.
     if (person.role == TouchlineRole::SENT_OFF)
     {
-      const Vector2F at = metresOf(body.position);
+      const Vector2F at = metresOf(pitch, body.position);
       if (deepInTunnel(body.position))
       {
         body.velocity = {0.0f, 0.0f};
         continue;
       }
-      const bool on = at.x > -R && at.x < G::LENGTH + R && at.y > -R && at.y < G::WIDTH + R;
-      const Vector2F front{G::HALFWAY, G::WIDTH + 1.5f};
+      const bool on = at.x > -R && at.x < pitch.length + R && at.y > -R && at.y < pitch.width + R;
+      const Vector2F front{G.halfway, pitch.width + 1.5f};
       if (!on && person.walkingRound && std::hypot(front.x - at.x, front.y - at.y) <= 1.5f)
         person.walkingRound = false;
       const float file = body.isHomeTeam ? -1.0f : 1.0f;
-      const Vector2F tunnel{G::HALFWAY + file * MatchTuning::WalkOut::FILE_METRES,
-                            G::STAND_Y + MatchTuning::WalkOut::WAIT_METRES};
-      const Vector2F next = on && person.walkingRound ? metresOf(person.seat)
-                            : person.walkingRound    ? roundThePitch(at, front)
+      const Vector2F tunnel{G.halfway + file * MatchTuning::WalkOut::FILE_METRES,
+                            G.standY + MatchTuning::WalkOut::WAIT_METRES};
+      const Vector2F next = on && person.walkingRound ? metresOf(pitch, person.seat)
+                            : person.walkingRound    ? roundThePitch(pitch, at, front)
                                                      : routeViaTunnel(at, tunnel);      const Vector2F way{next.x - at.x, next.y - at.y};
       const float gap = std::max(std::hypot(way.x, way.y), 1e-4f);
-      body.movementTarget = pitchOf(next);
+      body.movementTarget = pitchOf(pitch, next);
       moveControlledBinturong(body, {way.x / gap * T::WALK_SPEED, way.y / gap * T::WALK_SPEED},
                               T::WALK_SPEED, T::WALK_SPEED, 0.0f, dt, nullptr);
       continue;
@@ -317,8 +316,8 @@ void MatchEngine::updateTouchline(float dt)
     if (isOfficial(person.role))
     {
       const Vector2F spot = officialSpot(body, person);
-      person.seat = pitchOf(spot);
-      moveOfficial(body, person, routeViaTunnel(metresOf(body.position), spot), dt);
+      person.seat = pitchOf(pitch, spot);
+      moveOfficial(body, person, routeViaTunnel(metresOf(pitch, body.position), spot), dt);
       continue;
     }
 
@@ -328,17 +327,17 @@ void MatchEngine::updateTouchline(float dt)
       // Level with the play along his technical area; up at its front edge
       // while the ball is near it or just after his side's shout, else a
       // little in front of his dugout.
-      const G::Rect& area = G::TECHNICAL_AREAS[side];
+      const MatchGround::Rect& area = G.technicalAreas[side];
       const float dx = std::max({area.x0 - ballAt.x, 0.0f, ballAt.x - area.x1});
       const float dy = std::max(area.y0 - ballAt.y, 0.0f);
       const bool forward =
           (state == MatchState::PLAYING && std::hypot(dx, dy) <= T::MANAGER_BALL_NEAR_METRES) ||
           shouts[side].remainingSeconds >
               MatchTuning::Touchline::SHOUT_DURATION_SECONDS - T::MANAGER_SHOUT_SECONDS;
-      const Vector2F spot = metresOf(person.seat);
-      const float y = forward ? area.y0 + R : G::DUGOUTS[side].y0 - T::MANAGER_SPOT_OUT_METRES;
+      const Vector2F spot = metresOf(pitch, person.seat);
+      const float y = forward ? area.y0 + R : G.dugouts[side].y0 - T::MANAGER_SPOT_OUT_METRES;
       const float x = std::clamp(ballAt.x, area.x0 + R, area.x1 - R);
-      person.seat = pitchOf({std::abs(x - spot.x) >= T::MANAGER_FOLLOW_METRES ? x : spot.x, y});
+      person.seat = pitchOf(pitch, {std::abs(x - spot.x) >= T::MANAGER_FOLLOW_METRES ? x : spot.x, y});
     }
     // A sub coming on (stage 5): up from the bench to wait on the touchline.
     const bool comingOnNow = person.role == TouchlineRole::SUBSTITUTE && comingOn(body.player);
@@ -354,9 +353,9 @@ void MatchEngine::updateTouchline(float dt)
     // To his seat (into the dugout by its nearer open end when he is out
     // in front of it), his spot, or where he waits to come on; out of the
     // dugout the same way; round the pitch's edge when just substituted.
-    const Vector2F at = metresOf(body.position);
-    const Vector2F goal = comingOnNow ? substituteWaitSpot(body.isHomeTeam, body.player) : metresOf(person.seat);
-    const G::Rect& dugout = G::DUGOUTS[side];
+    const Vector2F at = metresOf(pitch, body.position);
+    const Vector2F goal = comingOnNow ? substituteWaitSpot(body.isHomeTeam, body.player) : metresOf(pitch, person.seat);
+    const MatchGround::Rect& dugout = G.dugouts[side];
     const float middleY = 0.5f * (dugout.y0 + dugout.y1);
     const bool inDugout = at.x > dugout.x0 && at.x < dugout.x1 && at.y > dugout.y0;
     const bool goalInDugout = !manager && !comingOnNow;
@@ -367,16 +366,16 @@ void MatchEngine::updateTouchline(float dt)
     {
       // Round the pitch's edge (inside the boards) to the front of his
       // technical area; from there to his seat.
-      const G::Rect& area = G::TECHNICAL_AREAS[side];
-      const Vector2F front{0.5f * (area.x0 + area.x1), G::WIDTH + 1.5f};
+      const MatchGround::Rect& area = G.technicalAreas[side];
+      const Vector2F front{0.5f * (area.x0 + area.x1), pitch.width + 1.5f};
       if (std::hypot(front.x - at.x, front.y - at.y) <= 1.5f) person.walkingRound = false;
     }
     Vector2F target = routeViaTunnel(at, goal);
     const bool viaTunnel = target.x != goal.x || target.y != goal.y;
     if (person.walkingRound)
     {
-      const G::Rect& area = G::TECHNICAL_AREAS[side];
-      target = roundThePitch(at, {0.5f * (area.x0 + area.x1), G::WIDTH + 1.5f});
+      const MatchGround::Rect& area = G.technicalAreas[side];
+      target = roundThePitch(pitch, at, {0.5f * (area.x0 + area.x1), pitch.width + 1.5f});
     }
     else if (!viaTunnel && goalInDugout && !inDugout &&
              std::abs(at.y - middleY) > 2.0f * T::ARRIVED_METRES)
@@ -422,7 +421,7 @@ void MatchEngine::updateTouchline(float dt)
     // A walk, easing in to stop on it.
     const float speed = std::min(T::WALK_SPEED, home ? gap * 2.0f : T::WALK_SPEED);
     const Vector2F desired{way.x / gap * speed, way.y / gap * speed};
-    body.movementTarget = pitchOf(target);
+    body.movementTarget = pitchOf(pitch, target);
     moveControlledBinturong(body, desired, speed, T::WALK_SPEED, 0.0f, dt, nullptr);
   }
 }
@@ -431,40 +430,40 @@ Vector2F MatchEngine::officialSpot(const MatchPlayer& body, const TouchlinePerso
 {
   using O = MatchTuning::Officials;
   using P = MatchTuning::Pitch;
-  namespace G = MatchGround;
-  constexpr float CENTRE_Y = 0.5f * G::WIDTH;
-  const Vector2F at = metresOf(body.position);
-  const Vector2F ballAt = metresOf(ball.position);
-  const Vector2F restartAt = metresOf(deadBall.active ? deadBall.spot : ball.position);
+  const MatchGround::Layout& G = pitch.ground;
+  const float CENTRE_Y = 0.5f * pitch.width;
+  const Vector2F at = metresOf(pitch, body.position);
+  const Vector2F ballAt = metresOf(pitch, ball.position);
+  const Vector2F restartAt = metresOf(pitch, deadBall.active ? deadBall.spot : ball.position);
   const MatchPlayer* taker = restartTaker();
-  const auto inside = [](Vector2F spot)
+  const auto inside = [this](Vector2F spot)
   {
-    return Vector2F{std::clamp(spot.x, O::INSIDE_LINES_METRES, G::LENGTH - O::INSIDE_LINES_METRES),
-                    std::clamp(spot.y, O::INSIDE_LINES_METRES, G::WIDTH - O::INSIDE_LINES_METRES)};
+    return Vector2F{std::clamp(spot.x, O::INSIDE_LINES_METRES, pitch.length - O::INSIDE_LINES_METRES),
+                    std::clamp(spot.y, O::INSIDE_LINES_METRES, pitch.width - O::INSIDE_LINES_METRES)};
   };
 
   if (person.role == TouchlineRole::FOURTH_OFFICIAL)
-    return {G::FOURTH_OFFICIAL_X, G::FOURTH_OFFICIAL_Y};
+    return {G.fourthOfficialX, G.fourthOfficialY};
 
   if (person.role == TouchlineRole::ASSISTANT_REFEREE)
   {
     // His half: the top one the left (the home side defends it: home
     // attacks +x), the bottom one the right.
     const bool top = person.topLine;
-    if (state == MatchState::PENALTY && (restartAt.x < G::HALFWAY) == top)
+    if (state == MatchState::PENALTY && (restartAt.x < G.halfway) == top)
     {
       // A penalty in his half: on the goal line where the area meets it.
-      return {top ? 0.0f : G::LENGTH,
+      return {top ? 0.0f : pitch.length,
               CENTRE_Y + (top ? -1.0f : 1.0f) * P::PENALTY_AREA_HALF_WIDTH_METRES};
     }
     // Level with the second-last defender, or the ball if it is nearer his
     // goal line; never out of his half.
-    float last = top ? G::LENGTH : 0.0f;
+    float last = top ? pitch.length : 0.0f;
     float secondLast = last;
     for (const MatchPlayer& player : players)
     {
       if (!active(player) || player.isHomeTeam != top) continue;
-      const float x = player.position.x * G::LENGTH;
+      const float x = player.position.x * pitch.length;
       if (top ? x < last : x > last)
       {
         secondLast = last;
@@ -477,7 +476,7 @@ Vector2F MatchEngine::officialSpot(const MatchPlayer& body, const TouchlinePerso
     }
     const float level = top ? std::min(secondLast, ballAt.x) : std::max(secondLast, ballAt.x);
     const float x =
-        top ? std::clamp(level, 0.0f, G::HALFWAY) : std::clamp(level, G::HALFWAY, G::LENGTH);
+        top ? std::clamp(level, 0.0f, G.halfway) : std::clamp(level, G.halfway, pitch.length);
     // A throw-in on his touchline near him (within the clearance he keeps
     // from players): behind the thrower, not beside him.
     const bool throwInNearHim = state == MatchState::THROW_IN &&
@@ -487,17 +486,17 @@ Vector2F MatchEngine::officialSpot(const MatchPlayer& body, const TouchlinePerso
                           ? MatchTuning::DeadBall::THROW_IN_STAND_BEHIND_METRES +
                                 O::ASSISTANT_BEHIND_THROWER_METRES
                           : O::ASSISTANT_OUT_METRES;
-    return {x, top ? -out : G::WIDTH + out};
+    return {x, top ? -out : pitch.width + out};
   }
 
   // The referee: on his diagonal (play between him and the assistant on
   // that half).
   const float x0 = O::DIAGONAL_END_X_METRES;
-  const float x1 = G::LENGTH - O::DIAGONAL_END_X_METRES;
+  const float x1 = pitch.length - O::DIAGONAL_END_X_METRES;
   const auto diagonalY = [&](float x)
   {
     const float share = std::clamp((x - x0) / (x1 - x0), 0.0f, 1.0f);
-    const float low = G::WIDTH - O::DIAGONAL_END_Y_METRES;
+    const float low = pitch.width - O::DIAGONAL_END_Y_METRES;
     return low + (O::DIAGONAL_END_Y_METRES - low) * share;
   };
   const auto rotate = [](Vector2F v, float angle)
@@ -513,18 +512,18 @@ Vector2F MatchEngine::officialSpot(const MatchPlayer& body, const TouchlinePerso
       {
         // In the half of the side not kicking off (home's half is the left).
         const float into = !taker || taker->isHomeTeam ? 1.0f : -1.0f;
-        return Vector2F{G::HALFWAY + into * O::KICK_OFF_INTO_HALF_METRES,
+        return Vector2F{G.halfway + into * O::KICK_OFF_INTO_HALF_METRES,
                         CENTRE_Y + O::KICK_OFF_BELOW_CENTRE_METRES};
       }
       case MatchState::GOAL_KICK:
       {
         const float into = taker && !taker->isHomeTeam ? 1.0f : -1.0f;
-        const float x = G::HALFWAY + into * O::GOAL_KICK_FROM_HALFWAY_METRES;
+        const float x = G.halfway + into * O::GOAL_KICK_FROM_HALFWAY_METRES;
         return Vector2F{x, diagonalY(x)};
       }
       case MatchState::CORNER_KICK:
       {
-        const float goalX = restartAt.x < G::HALFWAY ? 0.0f : G::LENGTH;
+        const float goalX = restartAt.x < G.halfway ? 0.0f : pitch.length;
         const float inward = goalX == 0.0f ? 1.0f : -1.0f;
         const float across = restartAt.y < CENTRE_Y ? 1.0f : -1.0f;
         return inside({goalX + inward * O::CORNER_OUT_METRES,
@@ -535,7 +534,7 @@ Vector2F MatchEngine::officialSpot(const MatchPlayer& body, const TouchlinePerso
       {
         // To the side, where he sees the wall: of the two, the one with more
         // pitch round it.
-        const Vector2F goal{taker && taker->isHomeTeam ? G::LENGTH : 0.0f, CENTRE_Y};
+        const Vector2F goal{taker && taker->isHomeTeam ? pitch.length : 0.0f, CENTRE_Y};
         Vector2F toGoal{goal.x - restartAt.x, goal.y - restartAt.y};
         const float gap = std::max(std::hypot(toGoal.x, toGoal.y), 1e-3f);
         toGoal = {toGoal.x / gap * O::FREE_KICK_METRES, toGoal.y / gap * O::FREE_KICK_METRES};
@@ -549,10 +548,10 @@ Vector2F MatchEngine::officialSpot(const MatchPlayer& body, const TouchlinePerso
       {
         // Outside the area by the end of the arc (user): a clear view of the
         // kicker, the defenders and the attackers. The end he is nearer.
-        const float goalX = restartAt.x < G::HALFWAY ? 0.0f : G::LENGTH;
+        const float goalX = restartAt.x < G.halfway ? 0.0f : pitch.length;
         const float outward = goalX == 0.0f ? 1.0f : -1.0f;
-        const float areaDepth = P::LEFT_PENALTY_AREA_EDGE * G::LENGTH;
-        const float spotDepth = P::LEFT_PENALTY_SPOT_X * G::LENGTH;
+        const float areaDepth = P::LEFT_PENALTY_AREA_EDGE * pitch.length;
+        const float spotDepth = P::LEFT_PENALTY_SPOT_X * pitch.length;
         const float arc = MatchTuning::Timing::KICK_OPPONENT_DISTANCE_METRES;
         const float arcEnd = std::sqrt(
             std::max(arc * arc - (areaDepth - spotDepth) * (areaDepth - spotDepth), 0.0f));
@@ -561,7 +560,7 @@ Vector2F MatchEngine::officialSpot(const MatchPlayer& body, const TouchlinePerso
                         CENTRE_Y + side * (arcEnd + O::PENALTY_BEYOND_ARC_METRES)};
       }
       case MatchState::GOAL:
-        return Vector2F{G::HALFWAY, CENTRE_Y + O::GOAL_BELOW_CENTRE_METRES};
+        return Vector2F{G.halfway, CENTRE_Y + O::GOAL_BELOW_CENTRE_METRES};
       case MatchState::PLAYING:
       case MatchState::THROW_IN:
         break;
@@ -575,7 +574,7 @@ Vector2F MatchEngine::officialSpot(const MatchPlayer& body, const TouchlinePerso
     if (apart < 1e-3f)
     {
       // On the diagonal itself: away from the assistant on that half.
-      away = {0.0f, ballAt.x < G::HALFWAY ? 1.0f : -1.0f};
+      away = {0.0f, ballAt.x < G.halfway ? 1.0f : -1.0f};
       apart = 1.0f;
     }
     const float keep =
@@ -593,7 +592,7 @@ Vector2F MatchEngine::officialSpot(const MatchPlayer& body, const TouchlinePerso
     for (const MatchPlayer& player : players)
     {
       if (!active(player)) continue;
-      const Vector2F them = metresOf(player.position);
+      const Vector2F them = metresOf(pitch, player.position);
       nearest = std::min(nearest, std::hypot(them.x - spot.x, them.y - spot.y));
     }
     return nearest;
@@ -640,10 +639,10 @@ void MatchEngine::moveOfficial(MatchPlayer& body, const TouchlinePerson& person,
       referee ? std::atan2(ball.position.y - body.position.y, ball.position.x - body.position.x)
       : person.topLine ? -FACING_PITCH
                        : FACING_PITCH;
-  const Vector2F at = metresOf(body.position);
+  const Vector2F at = metresOf(pitch, body.position);
   const Vector2F way{spot.x - at.x, spot.y - at.y};
   const float gap = std::hypot(way.x, way.y);
-  body.movementTarget = pitchOf(spot);
+  body.movementTarget = pitchOf(pitch, spot);
   const bool there = gap <= O::DEAD_BAND_METRES;
   // As fast as lets him pull up on it.
   float speed = there ? 0.0f : std::min(topSpeed, std::sqrt(2.0f * O::ARRIVE_BRAKING * gap));
@@ -662,7 +661,7 @@ void MatchEngine::moveOfficial(MatchPlayer& body, const TouchlinePerson& person,
       for (const MatchPlayer& player : players)
       {
         if (!active(player)) continue;
-        const Vector2F them = metresOf(player.position);
+        const Vector2F them = metresOf(pitch, player.position);
         const Vector2F rel{them.x - at.x, them.y - at.y};
         const Vector2F closing{player.velocity.x - velocity.x, player.velocity.y - velocity.y};
         const float along = rel.x * closing.x + rel.y * closing.y;

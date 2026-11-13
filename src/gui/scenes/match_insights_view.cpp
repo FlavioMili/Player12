@@ -37,7 +37,7 @@ constexpr float AXIS_LEFT = 34.0f;
 /** Share of the timeline height for the xG race (the rest is pressure). */
 constexpr float XG_SHARE = 0.6f;
 constexpr float PITCH_ASPECT =
-    MatchTuning::Pitch::WIDTH_METRES / MatchTuning::Pitch::LENGTH_METRES;
+    MatchTuning::Pitch::MATCH_WIDTH_METRES / MatchTuning::Pitch::MATCH_LENGTH_METRES;
 /** Pass links shown in the network (fewer are noise). */
 constexpr int MIN_LINK = 3;
 constexpr float HIT_RADIUS = 12.0f;
@@ -156,8 +156,8 @@ void drawPitch(ImDrawList* drawList, ImVec2 min, ImVec2 size, bool half_line)
   const ImVec2 max(min.x + size.x, min.y + size.y);
   drawList->AddRectFilled(min, max, grass, scaled(3.0f));
   drawList->AddRect(min, max, line, scaled(3.0f), 0, thickness);
-  constexpr float L = MatchTuning::Pitch::LENGTH_METRES;
-  constexpr float W = MatchTuning::Pitch::WIDTH_METRES;
+  constexpr float L = MatchTuning::Pitch::MATCH_LENGTH_METRES;
+  constexpr float W = MatchTuning::Pitch::MATCH_WIDTH_METRES;
   const auto px = [&](float metres) { return size.x * metres / L; };
   const auto py = [&](float metres) { return size.y * metres / W; };
   if (half_line)

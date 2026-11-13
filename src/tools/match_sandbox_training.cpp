@@ -22,8 +22,8 @@
 
 namespace
 {
-constexpr float LENGTH = MatchTuning::Pitch::LENGTH_METRES;
-constexpr float WIDTH = MatchTuning::Pitch::WIDTH_METRES;
+constexpr float LENGTH = MatchTuning::Pitch::MATCH_LENGTH_METRES;
+constexpr float WIDTH = MatchTuning::Pitch::MATCH_WIDTH_METRES;
 constexpr float STEP = MatchTuning::Timing::FIXED_STEP_SECONDS;
 constexpr float MPH_PER_METRE_PER_SECOND = 2.236936f;
 
@@ -1279,8 +1279,8 @@ int runLapsTrace(const std::vector<TrainingPlayer>& squad, const StatsConfig& co
             const MatchEngine::CollisionSide& entry = hit.sides[side];
             const Vector2F before{entry.after.x - entry.jolt.x, entry.after.y - entry.jolt.y};
             const Vector2F facing{
-                std::cos(player.facingAngle) * MatchTuning::Pitch::LENGTH_METRES,
-                std::sin(player.facingAngle) * MatchTuning::Pitch::WIDTH_METRES};
+                std::cos(player.facingAngle) * MatchTuning::Pitch::MATCH_LENGTH_METRES,
+                std::sin(player.facingAngle) * MatchTuning::Pitch::MATCH_WIDTH_METRES};
             const float off =
                 std::acos(std::clamp((before.x * facing.x + before.y * facing.y) /
                                          std::max(length(before) * length(facing), 1e-6f),
@@ -1308,8 +1308,8 @@ int runLapsTrace(const std::vector<TrainingPlayer>& squad, const StatsConfig& co
       if (speed > 3.0f)
       {
         const Vector2F facing{
-            std::cos(player.facingAngle) * MatchTuning::Pitch::LENGTH_METRES,
-            std::sin(player.facingAngle) * MatchTuning::Pitch::WIDTH_METRES};
+            std::cos(player.facingAngle) * MatchTuning::Pitch::MATCH_LENGTH_METRES,
+            std::sin(player.facingAngle) * MatchTuning::Pitch::MATCH_WIDTH_METRES};
         const float off =
             std::acos(std::clamp((player.velocity.x * facing.x + player.velocity.y * facing.y) /
                                      std::max(speed * length(facing), 1e-6f),
@@ -1327,13 +1327,13 @@ int runLapsTrace(const std::vector<TrainingPlayer>& squad, const StatsConfig& co
         const Vector2F at = player.position;
         const auto metres = [&](Vector2F to)
         {
-          return std::hypot((to.x - at.x) * MatchTuning::Pitch::LENGTH_METRES,
-                            (to.y - at.y) * MatchTuning::Pitch::WIDTH_METRES);
+          return std::hypot((to.x - at.x) * MatchTuning::Pitch::MATCH_LENGTH_METRES,
+                            (to.y - at.y) * MatchTuning::Pitch::MATCH_WIDTH_METRES);
         };
         return std::format(
             "at ({:.1f},{:.1f}) m speed {:.2f} · route {} next {:.1f} m then {:.1f} m · "
             "target {:.1f} m · pause {:.2f} stumble {:.2f} fallen {} · stamina {:.2f}",
-            at.x * MatchTuning::Pitch::LENGTH_METRES, at.y * MatchTuning::Pitch::WIDTH_METRES,
+            at.x * MatchTuning::Pitch::MATCH_LENGTH_METRES, at.y * MatchTuning::Pitch::MATCH_WIDTH_METRES,
             speed, player.routeWaypoints, metres(player.movementTarget),
             metres(player.nextTarget), metres(player.tacticalTarget),
             player.collisionPause, player.stumbleSeconds, player.fallen, player.stamina);
@@ -1343,12 +1343,12 @@ int runLapsTrace(const std::vector<TrainingPlayer>& squad, const StatsConfig& co
           std::fmod(now + 1e-6, 0.5) < step)
         std::printf("%6.1f  [%s] vel (%.2f,%.2f) movT (%.1f,%.1f) nextT (%.1f,%.1f) tacT (%.1f,%.1f) wp %d apex %.2f room %.2f intent %d ovt %d %s\n",
                     now, follow.c_str(), player.velocity.x, player.velocity.y,
-                    player.movementTarget.x * MatchTuning::Pitch::LENGTH_METRES,
-                    player.movementTarget.y * MatchTuning::Pitch::WIDTH_METRES,
-                    player.nextTarget.x * MatchTuning::Pitch::LENGTH_METRES,
-                    player.nextTarget.y * MatchTuning::Pitch::WIDTH_METRES,
-                    player.tacticalTarget.x * MatchTuning::Pitch::LENGTH_METRES,
-                    player.tacticalTarget.y * MatchTuning::Pitch::WIDTH_METRES,
+                    player.movementTarget.x * MatchTuning::Pitch::MATCH_LENGTH_METRES,
+                    player.movementTarget.y * MatchTuning::Pitch::MATCH_WIDTH_METRES,
+                    player.nextTarget.x * MatchTuning::Pitch::MATCH_LENGTH_METRES,
+                    player.nextTarget.y * MatchTuning::Pitch::MATCH_WIDTH_METRES,
+                    player.tacticalTarget.x * MatchTuning::Pitch::MATCH_LENGTH_METRES,
+                    player.tacticalTarget.y * MatchTuning::Pitch::MATCH_WIDTH_METRES,
                     player.routeWaypoints, player.routeApexOffset, player.routeOutwardRoom,
                     static_cast<int>(player.intent), player.overtaking, describe().c_str());
       if (player.overtaking != overtaking[index])

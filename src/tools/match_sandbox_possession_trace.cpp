@@ -61,9 +61,9 @@ Json playerState(const MatchEngine& engine, const MatchPlayer& player)
 {
   const MatchBall& ball = engine.getBall();
   const float dx =
-      (player.position.x - ball.position.x) * MatchTuning::Pitch::LENGTH_METRES;
+      (player.position.x - ball.position.x) * MatchTuning::Pitch::MATCH_LENGTH_METRES;
   const float dy =
-      (player.position.y - ball.position.y) * MatchTuning::Pitch::WIDTH_METRES;
+      (player.position.y - ball.position.y) * MatchTuning::Pitch::MATCH_WIDTH_METRES;
   return {{"id", player.player ? player.player->getId() : 0},
           {"home", player.isHomeTeam},
           {"position", {player.position.x, player.position.y}},

@@ -413,7 +413,7 @@ void ShotMapScene::renderMap(ImVec2 size)
   ImGui::InvisibleButton("##map", size);
   ImDrawList& draw = *ImGui::GetWindowDrawList();
   const float depth = std::max(spec.lineFrom, spec.lineTo) + map->lineStep() + 2.0f;
-  const float width = MatchTuning::Pitch::WIDTH_METRES;
+  const float width = MatchTuning::Pitch::MATCH_WIDTH_METRES;
   const float margin = 24.0f * scale;
   const float ppm = std::min((size.x - margin * 2.0f) / width,
                              (size.y - margin * 2.0f) / depth);

@@ -36,8 +36,9 @@ struct MatchStats;
  * record or a cross-thread publication format. See
  * docs/development/match-engine.md.
  *
- * Units: positions are normalised pitch coordinates (x along the 105 m
- * length, home attacking +x; y across the 68 m width). Ball `currentZ` and
+ * Units: positions are normalised pitch coordinates (x along the pitch's
+ * length, home attacking +x; y across its width: MatchRenderSnapshot's
+ * pitchLengthMetres and pitchWidthMetres, a match's 105 x 68 m). Ball `currentZ` and
  * `previousZ` are in length units (metres = z * 105); the `*HeightMetres`
  * fields carry the same value already converted to metres.
  */
@@ -136,6 +137,11 @@ struct MatchRenderBall
 
 struct MatchRenderSnapshot
 {
+  /** The size of the pitch the positions are fractions of (the engine's
+   * MatchPitch). The match views still draw the match pitch whatever this
+   * says; they read it once training pitches are drawn. */
+  float pitchLengthMetres = MatchTuning::Pitch::MATCH_LENGTH_METRES;
+  float pitchWidthMetres = MatchTuning::Pitch::MATCH_WIDTH_METRES;
   std::vector<MatchRenderPlayer> players;
   std::vector<MatchRenderTouchlinePerson> touchline;
   /** Sides whose strips the views draw (the match screen's own ids, so its

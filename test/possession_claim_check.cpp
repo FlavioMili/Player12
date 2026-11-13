@@ -20,17 +20,17 @@ int main()
 {
   using namespace PossessionClaim;
   const Vector2F stuck{
-      9.3f, MatchGround::BOARDS_Y + MatchTuning::Body::RADIUS_METRES};
-  const auto gapTarget = RestartApproach::target(stuck, {9.4f, 65.28f}, 0.6f);
+      9.3f, MatchGround::Match::BOARDS_Y + MatchTuning::Body::RADIUS_METRES};
+  const auto gapTarget = RestartApproach::target(MatchPitch{}, stuck, {9.4f, 65.28f}, 0.6f);
   bool throughGap = false;
-  for (std::size_t i = 1; i < MatchGround::BOTTOM_BOARDS.size(); ++i)
+  for (std::size_t i = 1; i < MatchGround::Match::BOTTOM_BOARDS.size(); ++i)
     throughGap =
-        throughGap || (gapTarget.x > MatchGround::BOTTOM_BOARDS[i - 1].to &&
-                       gapTarget.x < MatchGround::BOTTOM_BOARDS[i].from);
-  check(throughGap && gapTarget.y < MatchGround::BOARDS_Y,
+        throughGap || (gapTarget.x > MatchGround::Match::BOTTOM_BOARDS[i - 1].to &&
+                       gapTarget.x < MatchGround::Match::BOTTOM_BOARDS[i].from);
+  check(throughGap && gapTarget.y < MatchGround::Match::BOARDS_Y,
         "restart taker behind a solid board approaches through an actual gap");
   const auto approach =
-      RestartApproach::target({50.0f, 50.0f}, {51.0f, 50.0f}, 0.6f);
+      RestartApproach::target(MatchPitch{}, {50.0f, 50.0f}, {51.0f, 50.0f}, 0.6f);
   check(approach.x > 51.0f && approach.y == 50.0f,
         "restart approach aims through the arrival dead zone without moving "
         "the taker");

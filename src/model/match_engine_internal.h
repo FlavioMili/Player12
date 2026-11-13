@@ -35,8 +35,6 @@ namespace MatchEngineInternal
 {
 constexpr float EPSILON = 0.00001f;
 
-constexpr float PITCH_LENGTH = MatchTuning::Pitch::LENGTH_METRES;
-constexpr float PITCH_WIDTH = MatchTuning::Pitch::WIDTH_METRES;
 constexpr float TWO_PI = 2.0f * std::numbers::pi_v<float>;
 /** Share of the drag-free horizontal travel a lofted ball really covers. */
 constexpr float AIR_TRAVEL_SHARE = 0.88f;
@@ -91,17 +89,17 @@ inline Vector2F clampToPitch(Vector2F at)
 }
 
 /** A body kept where it can physically be: inside the advertising boards. */
-inline float clampToBoardsX(float x)
+inline float clampToBoardsX(const MatchPitch& pitch, float x)
 {
-  return std::clamp(x, MatchTuning::Pitch::BODY_MIN_X, MatchTuning::Pitch::BODY_MAX_X);
+  return std::clamp(x, pitch.bodyMinX, pitch.bodyMaxX);
 }
-inline float clampToBoardsY(float y)
+inline float clampToBoardsY(const MatchPitch& pitch, float y)
 {
-  return std::clamp(y, MatchTuning::Pitch::BODY_MIN_Y, MatchTuning::Pitch::BODY_MAX_Y);
+  return std::clamp(y, pitch.bodyMinY, pitch.bodyMaxY);
 }
-inline Vector2F clampToBoards(Vector2F at)
+inline Vector2F clampToBoards(const MatchPitch& pitch, Vector2F at)
 {
-  return {clampToBoardsX(at.x), clampToBoardsY(at.y)};
+  return {clampToBoardsX(pitch, at.x), clampToBoardsY(pitch, at.y)};
 }
 
 /**
@@ -110,7 +108,8 @@ inline Vector2F clampToBoards(Vector2F at)
  * at the front, under the bar), and he stays on the side of each he started
  * on, his footprint clear of it. An axis left alone is returned exactly.
  */
-inline Vector2F keepOutOfGoalFrames(Vector2F from, Vector2F to)
+inline Vector2F keepOutOfGoalFrames(const MatchPitch& pitch, Vector2F from,
+                                    Vector2F to)
 {
   using P = MatchTuning::Pitch;
   constexpr float R = MatchTuning::Body::RADIUS_METRES;
@@ -120,12 +119,12 @@ inline Vector2F keepOutOfGoalFrames(Vector2F from, Vector2F to)
   // Local metres at the nearer goal: u behind its line, v across from its
   // centre.
   const bool right = to.x > P::CENTRE;
-  const float lineX = right ? P::LENGTH_METRES : 0.0f;
+  const float lineX = right ? pitch.length : 0.0f;
   const float behind = right ? 1.0f : -1.0f;
-  const float u0 = (from.x * P::LENGTH_METRES - lineX) * behind;
-  const float v0 = (from.y - P::CENTRE) * P::WIDTH_METRES;
-  float u = (to.x * P::LENGTH_METRES - lineX) * behind;
-  float v = (to.y - P::CENTRE) * P::WIDTH_METRES;
+  const float u0 = (from.x * pitch.length - lineX) * behind;
+  const float v0 = (from.y - P::CENTRE) * pitch.width;
+  float u = (to.x * pitch.length - lineX) * behind;
+  float v = (to.y - P::CENTRE) * pitch.width;
   // Nowhere near this frame, before or after: nothing to meet.
   if (std::max(u0, u) < -R || std::min(u0, u) > D + R ||
       std::min(v0, v) > W + R || std::max(v0, v) < -(W + R))
@@ -172,8 +171,8 @@ inline Vector2F keepOutOfGoalFrames(Vector2F from, Vector2F to)
       movedU = true;
       movedV = true;
     }
-  return {movedU ? (lineX + u * behind) / P::LENGTH_METRES : to.x,
-          movedV ? P::CENTRE + v / P::WIDTH_METRES : to.y};
+  return {movedU ? (lineX + u * behind) / pitch.length : to.x,
+          movedV ? P::CENTRE + v / pitch.width : to.y};
 }
 
 /**
@@ -233,39 +232,39 @@ inline bool keepOffWallEnd(Vector2F end, Vector2F from, Vector2F& to)
  * their open ends) and down the tunnel. An axis left alone is returned
  * exactly.
  */
-inline Vector2F keepOffGround(Vector2F from, Vector2F to)
+inline Vector2F keepOffGround(const MatchPitch& pitch, Vector2F from, Vector2F to)
 {
   using P = MatchTuning::Pitch;
-  namespace G = MatchGround;
+  const MatchGround::Layout& G = pitch.ground;
   constexpr float R = MatchTuning::Body::RADIUS_METRES;
   // Inside the boards, before and after: nothing to meet.
-  const auto insideBoards = [](Vector2F at)
+  const auto insideBoards = [&pitch](Vector2F at)
   {
-    return at.x >= P::BODY_MIN_X && at.x <= P::BODY_MAX_X &&
-           at.y >= P::BODY_MIN_Y && at.y <= P::BODY_MAX_Y;
+    return at.x >= pitch.bodyMinX && at.x <= pitch.bodyMaxX &&
+           at.y >= pitch.bodyMinY && at.y <= pitch.bodyMaxY;
   };
   if (insideBoards(from) && insideBoards(to)) return to;
-  const Vector2F start{from.x * G::LENGTH, from.y * G::WIDTH};
-  const Vector2F wanted{to.x * G::LENGTH, to.y * G::WIDTH};
+  const Vector2F start{from.x * pitch.length, from.y * pitch.width};
+  const Vector2F wanted{to.x * pitch.length, to.y * pitch.width};
   // The stands' front walls (and the tunnel's far end) all round.
   Vector2F end{
-      std::clamp(wanted.x, -P::STAND_END_METRES + R, G::LENGTH + P::STAND_END_METRES - R),
-      std::clamp(wanted.y, -P::STAND_SIDE_METRES + R, G::TUNNEL.y1 - R)};
+      std::clamp(wanted.x, -P::STAND_END_METRES + R, pitch.length + P::STAND_END_METRES - R),
+      std::clamp(wanted.y, -P::STAND_SIDE_METRES + R, G.tunnel.y1 - R)};
   bool moved = end.x != wanted.x || end.y != wanted.y;
   // The boards: whole along the top and the ends, open along the bottom.
   moved |= keepOffWall(true, -P::BOARDS_SIDE_METRES, -P::BOARDS_END_METRES,
-                       G::LENGTH + P::BOARDS_END_METRES, start, end);
-  for (const float plane : {-P::BOARDS_END_METRES, G::LENGTH + P::BOARDS_END_METRES})
-    moved |= keepOffWall(false, plane, -P::BOARDS_SIDE_METRES, G::BOARDS_Y,
+                       pitch.length + P::BOARDS_END_METRES, start, end);
+  for (const float plane : {-P::BOARDS_END_METRES, pitch.length + P::BOARDS_END_METRES})
+    moved |= keepOffWall(false, plane, -P::BOARDS_SIDE_METRES, G.boardsY,
                          start, end);
-  for (const G::Span& span : G::BOTTOM_BOARDS)
+  for (const MatchGround::Span& span : G.bottomBoards)
   {
-    moved |= keepOffWall(true, G::BOARDS_Y, span.from, span.to, start, end);
-    moved |= keepOffWallEnd({span.from, G::BOARDS_Y}, start, end);
-    moved |= keepOffWallEnd({span.to, G::BOARDS_Y}, start, end);
+    moved |= keepOffWall(true, G.boardsY, span.from, span.to, start, end);
+    moved |= keepOffWallEnd({span.from, G.boardsY}, start, end);
+    moved |= keepOffWallEnd({span.to, G.boardsY}, start, end);
   }
   // The dugouts' fronts (their backs are the stand wall).
-  for (const G::Rect& dugout : G::DUGOUTS)
+  for (const MatchGround::Rect& dugout : G.dugouts)
   {
     moved |= keepOffWall(true, dugout.y0, dugout.x0, dugout.x1, start, end);
     moved |= keepOffWallEnd({dugout.x0, dugout.y0}, start, end);
@@ -273,36 +272,36 @@ inline Vector2F keepOffGround(Vector2F from, Vector2F to)
   }
   // The bottom stand's front wall, open at the tunnel mouth, and the
   // tunnel's sides.
-  for (const G::Span& span : G::BOTTOM_STAND_WALL)
-    moved |= keepOffWall(true, G::STAND_Y, span.from, span.to, start, end);
-  for (const float side : {G::TUNNEL.x0, G::TUNNEL.x1})
+  for (const MatchGround::Span& span : G.bottomStandWall)
+    moved |= keepOffWall(true, G.standY, span.from, span.to, start, end);
+  for (const float side : {G.tunnel.x0, G.tunnel.x1})
   {
-    moved |= keepOffWall(false, side, G::TUNNEL.y0, G::TUNNEL.y1, start, end);
-    moved |= keepOffWallEnd({side, G::TUNNEL.y0}, start, end);
+    moved |= keepOffWall(false, side, G.tunnel.y0, G.tunnel.y1, start, end);
+    moved |= keepOffWallEnd({side, G.tunnel.y0}, start, end);
   }
   if (!moved) return to;
-  return {end.x != wanted.x ? end.x / G::LENGTH : to.x,
-          end.y != wanted.y ? end.y / G::WIDTH : to.y};
+  return {end.x != wanted.x ? end.x / pitch.length : to.x,
+          end.y != wanted.y ? end.y / pitch.width : to.y};
 }
 
 /** Deep in the tunnel (touchline plan stage 4): out of sight and out of
  * play. */
-inline bool deepInTunnel(Vector2F at)
+inline bool deepInTunnel(const MatchPitch& pitch, Vector2F at)
 {
-  return at.y * MatchGround::WIDTH >
-         MatchGround::STAND_Y + MatchTuning::WalkOut::IN_METRES;
+  return at.y * pitch.width >
+         pitch.ground.standY + MatchTuning::WalkOut::IN_METRES;
 }
 
 /** Where a walker may mean to go: inside the boards, or the tunnel and
  * its walkway. */
-inline Vector2F clampToReach(Vector2F at)
+inline Vector2F clampToReach(const MatchPitch& pitch, Vector2F at)
 {
-  namespace G = MatchGround;
-  const float x = at.x * G::LENGTH;
-  const float y = at.y * G::WIDTH;
-  if (x >= G::TUNNEL.x0 && x <= G::TUNNEL.x1 && y >= G::BOARDS_Y - 1.0f && y <= G::TUNNEL.y1)
+  const MatchGround::Layout& G = pitch.ground;
+  const float x = at.x * pitch.length;
+  const float y = at.y * pitch.width;
+  if (x >= G.tunnel.x0 && x <= G.tunnel.x1 && y >= G.boardsY - 1.0f && y <= G.tunnel.y1)
     return at;
-  return clampToBoards(at);
+  return clampToBoards(pitch, at);
 }
 
 /**
@@ -310,23 +309,24 @@ inline Vector2F clampToReach(Vector2F at)
  * the tunnel: out along it and through the gap in the boards before
  * crossing the pitch, or to the gap and straight in. Otherwise the target.
  */
-inline Vector2F routeViaTunnel(Vector2F at, Vector2F target)
+inline Vector2F routeViaTunnel(const MatchPitch& pitch, Vector2F at,
+                               Vector2F target)
 {
-  namespace G = MatchGround;
+  const MatchGround::Layout& G = pitch.ground;
   constexpr float MARGIN = 0.6f;
-  const auto inLane = [](Vector2F p)
-  { return p.x > G::TUNNEL.x0 && p.x < G::TUNNEL.x1 && p.y > G::BOARDS_Y - 0.5f; };
-  const auto inTunnel = [](Vector2F p) { return p.y > G::STAND_Y - 0.2f; };
-  const float laneX = std::clamp(at.x, G::TUNNEL.x0 + MARGIN, G::TUNNEL.x1 - MARGIN);
+  const auto inLane = [&G](Vector2F p)
+  { return p.x > G.tunnel.x0 && p.x < G.tunnel.x1 && p.y > G.boardsY - 0.5f; };
+  const auto inTunnel = [&G](Vector2F p) { return p.y > G.standY - 0.2f; };
+  const float laneX = std::clamp(at.x, G.tunnel.x0 + MARGIN, G.tunnel.x1 - MARGIN);
   // Coming out: up the tunnel, then through the gap.
-  if (inTunnel(at) && !inTunnel(target)) return {laneX, G::STAND_Y - 1.0f};
-  if (inLane(at) && target.y < G::BOARDS_Y - 0.5f) return {laneX, G::BOARDS_Y - 1.5f};
+  if (inTunnel(at) && !inTunnel(target)) return {laneX, G.standY - 1.0f};
+  if (inLane(at) && target.y < G.boardsY - 0.5f) return {laneX, G.boardsY - 1.5f};
   // Going in: to the gap first, unless already lined up with it.
   if (inTunnel(target) && !inLane(at))
   {
-    const float x = std::clamp(target.x, G::TUNNEL.x0 + MARGIN, G::TUNNEL.x1 - MARGIN);
-    const bool lined = std::abs(at.x - x) < 0.5f && at.y > G::BOARDS_Y - 3.0f;
-    if (!lined) return {x, G::BOARDS_Y - 1.5f};
+    const float x = std::clamp(target.x, G.tunnel.x0 + MARGIN, G.tunnel.x1 - MARGIN);
+    const bool lined = std::abs(at.x - x) < 0.5f && at.y > G.boardsY - 3.0f;
+    if (!lined) return {x, G.boardsY - 1.5f};
   }
   return target;
 }
@@ -335,28 +335,28 @@ inline Vector2F routeViaTunnel(Vector2F at, Vector2F target)
  * Where a player at `at` (metres) leaves the pitch: the nearest point of
  * the boundary, a little over it (beside the goal, not through it).
  */
-inline Vector2F nearestExit(Vector2F at)
+inline Vector2F nearestExit(const MatchPitch& pitch, Vector2F at)
 {
-  namespace G = MatchGround;
+  const MatchGround::Layout& G = pitch.ground;
   const float out = MatchTuning::Body::RADIUS_METRES + 0.3f;
   const std::array<std::pair<float, Vector2F>, 4> exits{{
       {at.y, {at.x, -out}},
-      {G::WIDTH - at.y, {at.x, G::WIDTH + out}},
+      {pitch.width - at.y, {at.x, pitch.width + out}},
       {at.x, {-out, at.y}},
-      {G::LENGTH - at.x, {G::LENGTH + out, at.y}},
+      {pitch.length - at.x, {pitch.length + out, at.y}},
   }};
   Vector2F exit = std::ranges::min(exits, {}, &std::pair<float, Vector2F>::first).second;
   constexpr float CLEAR_OF_POST = MatchTuning::Shooting::GOAL_HALF_WIDTH_METRES + 1.5f;
-  if ((exit.x < 0.0f || exit.x > G::LENGTH) && std::abs(exit.y - 0.5f * G::WIDTH) < CLEAR_OF_POST)
-    exit.y = 0.5f * G::WIDTH + (exit.y < 0.5f * G::WIDTH ? -CLEAR_OF_POST : CLEAR_OF_POST);
+  if ((exit.x < 0.0f || exit.x > pitch.length) && std::abs(exit.y - 0.5f * pitch.width) < CLEAR_OF_POST)
+    exit.y = 0.5f * pitch.width + (exit.y < 0.5f * pitch.width ? -CLEAR_OF_POST : CLEAR_OF_POST);
   return exit;
 }
 
 /** A body's step from `from` to `to`, where it can physically go: round
  * the pitch (keepOffGround) and out of the goal frames. */
-inline Vector2F moveBody(Vector2F from, Vector2F to)
+inline Vector2F moveBody(const MatchPitch& pitch, Vector2F from, Vector2F to)
 {
-  return keepOutOfGoalFrames(from, keepOffGround(from, to));
+  return keepOutOfGoalFrames(pitch, from, keepOffGround(pitch, from, to));
 }
 
 inline float length(Vector2F vector)
@@ -385,26 +385,24 @@ inline float fastAtan2(float y, float x)
 }
 
 /** Metric offset (metres) of a normalised pitch displacement. */
-inline Vector2F toMetres(Vector2F normalisedDelta)
+inline Vector2F toMetres(const MatchPitch& pitch, Vector2F normalisedDelta)
 {
-  return {normalisedDelta.x * PITCH_LENGTH, normalisedDelta.y * PITCH_WIDTH};
+  return {normalisedDelta.x * pitch.length, normalisedDelta.y * pitch.width};
 }
 
-constexpr float INVERSE_LENGTH = 1.0f / PITCH_LENGTH;
-constexpr float INVERSE_WIDTH = 1.0f / PITCH_WIDTH;
 constexpr float INVERSE_FATIGUE_RANGE =
     1.0f / (1.0f - MatchTuning::Player::MINIMUM_STAMINA);
 
 /** Normalised pitch displacement of a metric offset. */
-inline Vector2F toPitch(Vector2F metres)
+inline Vector2F toPitch(const MatchPitch& pitch, Vector2F metres)
 {
-  return {metres.x * INVERSE_LENGTH, metres.y * INVERSE_WIDTH};
+  return {metres.x * pitch.inverseLength, metres.y * pitch.inverseWidth};
 }
 
 /** Isotropic distance in metres between two normalised pitch points. */
-inline float distance(Vector2F first, Vector2F second)
+inline float distance(const MatchPitch& pitch, Vector2F first, Vector2F second)
 {
-  return length(toMetres({first.x - second.x, first.y - second.y}));
+  return length(toMetres(pitch, {first.x - second.x, first.y - second.y}));
 }
 
 inline Vector2F normalized(Vector2F vector)
@@ -415,9 +413,9 @@ inline Vector2F normalized(Vector2F vector)
 }
 
 /** Unit direction in metric space from one pitch point to another. */
-inline Vector2F metricDirection(Vector2F from, Vector2F to)
+inline Vector2F metricDirection(const MatchPitch& pitch, Vector2F from, Vector2F to)
 {
-  return normalized(toMetres({to.x - from.x, to.y - from.y}));
+  return normalized(toMetres(pitch, {to.x - from.x, to.y - from.y}));
 }
 
 inline float uniform01(std::mt19937& engine)
@@ -457,11 +455,11 @@ inline bool isHighlightTrigger(MatchEventType type)
 }
 
 /** Whether a point lies in the penalty area defended by the given side. */
-inline bool inPenaltyArea(Vector2F position, bool defendingHome)
+inline bool inPenaltyArea(const MatchPitch& pitch, Vector2F position,
+                          bool defendingHome)
 {
-  constexpr float HALF_WIDTH =
-      MatchTuning::Pitch::PENALTY_AREA_HALF_WIDTH_METRES /
-      MatchTuning::Pitch::WIDTH_METRES;
+  const float HALF_WIDTH =
+      MatchTuning::Pitch::PENALTY_AREA_HALF_WIDTH_METRES / pitch.width;
   if (std::abs(position.y - MatchTuning::Pitch::CENTRE) > HALF_WIDTH)
     return false;
   return defendingHome
@@ -649,3 +647,66 @@ inline std::string_view scenarioActionName(ScenarioAction action)
   return "unknown";
 }
 }  // namespace MatchEngineInternal
+
+// The engine's own pitch, under the helpers' names: inside a MatchEngine
+// member these are what an unqualified call finds.
+inline Vector2F MatchEngine::toMetres(Vector2F normalisedDelta) const
+{
+  return MatchEngineInternal::toMetres(pitch, normalisedDelta);
+}
+inline Vector2F MatchEngine::toPitch(Vector2F metres) const
+{
+  return MatchEngineInternal::toPitch(pitch, metres);
+}
+inline float MatchEngine::distance(Vector2F first, Vector2F second) const
+{
+  return MatchEngineInternal::distance(pitch, first, second);
+}
+inline Vector2F MatchEngine::metricDirection(Vector2F from, Vector2F to) const
+{
+  return MatchEngineInternal::metricDirection(pitch, from, to);
+}
+inline float MatchEngine::clampToBoardsX(float x) const
+{
+  return MatchEngineInternal::clampToBoardsX(pitch, x);
+}
+inline float MatchEngine::clampToBoardsY(float y) const
+{
+  return MatchEngineInternal::clampToBoardsY(pitch, y);
+}
+inline Vector2F MatchEngine::clampToBoards(Vector2F at) const
+{
+  return MatchEngineInternal::clampToBoards(pitch, at);
+}
+inline Vector2F MatchEngine::clampToReach(Vector2F at) const
+{
+  return MatchEngineInternal::clampToReach(pitch, at);
+}
+inline Vector2F MatchEngine::keepOutOfGoalFrames(Vector2F from, Vector2F to) const
+{
+  return MatchEngineInternal::keepOutOfGoalFrames(pitch, from, to);
+}
+inline Vector2F MatchEngine::keepOffGround(Vector2F from, Vector2F to) const
+{
+  return MatchEngineInternal::keepOffGround(pitch, from, to);
+}
+inline Vector2F MatchEngine::moveBody(Vector2F from, Vector2F to) const
+{
+  return MatchEngineInternal::moveBody(pitch, from, to);
+}
+inline bool MatchEngine::deepInTunnel(Vector2F at) const
+{
+  return MatchEngineInternal::deepInTunnel(pitch, at);
+}
+inline Vector2F MatchEngine::routeViaTunnel(Vector2F at, Vector2F target) const
+{
+  return MatchEngineInternal::routeViaTunnel(pitch, at, target);
+}
+inline Vector2F MatchEngine::nearestExit(Vector2F at) const
+{
+  return MatchEngineInternal::nearestExit(pitch, at);
+}
+inline bool MatchEngine::inPenaltyArea(Vector2F position, bool defendingHome) const
+{
+  return MatchEngineInternal::inPenaltyArea(pitch, position, defendingHome);
+}

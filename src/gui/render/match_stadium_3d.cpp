@@ -22,8 +22,8 @@ namespace
 {
 using Tuning = MatchRender3DTuning;
 
-constexpr float LENGTH = MatchTuning::Pitch::LENGTH_METRES;
-constexpr float WIDTH = MatchTuning::Pitch::WIDTH_METRES;
+constexpr float LENGTH = MatchTuning::Pitch::MATCH_LENGTH_METRES;
+constexpr float WIDTH = MatchTuning::Pitch::MATCH_WIDTH_METRES;
 constexpr float HALF_LENGTH = LENGTH * 0.5f;
 constexpr float HALF_WIDTH = WIDTH * 0.5f;
 constexpr Vec3 UP{0.0f, 0.0f, 1.0f};
@@ -327,7 +327,7 @@ void buildMarkings(Geometry& geometry)
               x0 + (x1 - x0) * b, WIDTH - (y0 + (y1 - y0) * b));
     }
   };
-  for (const MatchGround::Rect& area : MatchGround::TECHNICAL_AREAS)
+  for (const MatchGround::Match::Rect& area : MatchGround::Match::TECHNICAL_AREAS)
   {
     dashed(area.x0, area.y0, area.x1, area.y0);
     dashed(area.x0, area.y0, area.x0, area.y1);
@@ -1013,7 +1013,7 @@ void buildBoards(Geometry& geometry)
   // The near side (the engine's bottom touchline): open at the technical
   // areas and the tunnel, each stretch filled edge to edge.
   const Vec3 right{1.0f, 0.0f, 0.0f};
-  for (const MatchGround::Span& span : MatchGround::BOTTOM_BOARDS)
+  for (const MatchGround::Match::Span& span : MatchGround::Match::BOTTOM_BOARDS)
   {
     const float from = std::max(span.from, -B::END_OFFSET + 2.0f);
     const float to = std::min(span.to, LENGTH + B::END_OFFSET - 2.0f);
@@ -1024,7 +1024,7 @@ void buildBoards(Geometry& geometry)
     {
       AdBoard& board = geometry.boards.emplace_back();
       board.origin = {from + pitch * static_cast<float>(index) + B::GAP * 0.5f,
-                      WIDTH - MatchGround::BOARDS_Y, 0.0f};
+                      WIDTH - MatchGround::Match::BOARDS_Y, 0.0f};
       board.right = right;
       board.normal = {0.0f, 1.0f, 0.0f};
       board.length = pitch - B::GAP;
@@ -1041,7 +1041,7 @@ void buildFixtures(Geometry& geometry)
   using F = Tuning::Fixtures;
   using P = MatchTuning::Pitch;
   const auto worldY = [](float groundY) { return WIDTH - groundY; };
-  for (const MatchGround::Rect& dugout : MatchGround::DUGOUTS)
+  for (const MatchGround::Match::Rect& dugout : MatchGround::Match::DUGOUTS)
   {
     const float front = worldY(dugout.y0);
     const float back = worldY(dugout.y1);
@@ -1066,10 +1066,10 @@ void buildFixtures(Geometry& geometry)
     Box roof = makeAxisBox({dugout.x0, back, 0.0f}, {dugout.x1, front, F::PANEL},
                            F::PERSPEX_COLOR);
     for (Vec3& corner : roof.corners)
-      corner.z += MatchGround::dugoutRoofHeight(dugout, WIDTH - corner.y);
+      corner.z += MatchGround::Match::dugoutRoofHeight(dugout, WIDTH - corner.y);
     geometry.fixtures.push_back(roof);
   }
-  const MatchGround::Rect& tunnel = MatchGround::TUNNEL;
+  const MatchGround::Match::Rect& tunnel = MatchGround::Match::TUNNEL;
   const float wall = worldY(tunnel.y0);
   const float top = P::TUNNEL_HEIGHT_METRES;
   geometry.fixtures.push_back(

@@ -63,8 +63,8 @@ const Player* benchPlayer(std::span<const Player* const> bench, PlayerID id)
 
 float metresBetween(Vector2F first, Vector2F second)
 {
-  return std::hypot((first.x - second.x) * MatchTuning::Pitch::LENGTH_METRES,
-                    (first.y - second.y) * MatchTuning::Pitch::WIDTH_METRES);
+  return std::hypot((first.x - second.x) * MatchTuning::Pitch::MATCH_LENGTH_METRES,
+                    (first.y - second.y) * MatchTuning::Pitch::MATCH_WIDTH_METRES);
 }
 
 }  // namespace

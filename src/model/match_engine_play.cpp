@@ -261,8 +261,8 @@ Vector2F MatchEngine::controlledAim(const MatchPlayer& carrier) const
     aim = {controlInput.moveX, controlInput.moveY};
   if (aim.x * aim.x + aim.y * aim.y <= EPSILON) aim = carrier.velocity;
   if (aim.x * aim.x + aim.y * aim.y <= EPSILON)
-    aim = {std::cos(carrier.facingAngle) * MatchTuning::Pitch::LENGTH_METRES,
-           std::sin(carrier.facingAngle) * MatchTuning::Pitch::WIDTH_METRES};
+    aim = {std::cos(carrier.facingAngle) * pitch.length,
+           std::sin(carrier.facingAngle) * pitch.width};
   return normalized(aim);
 }
 
@@ -296,10 +296,10 @@ bool MatchEngine::performControlledAction(MatchPlayer& carrier)
     if (aim.x * forward > MIN_GOALWARD_AIM)
     {
       const Vector2F from = toMetres(carrier.position);
-      const float goalLine = carrier.isHomeTeam ? PITCH_LENGTH : 0.0f;
+      const float goalLine = carrier.isHomeTeam ? pitch.length : 0.0f;
       const float crossing = from.y + aim.y * (goalLine - from.x) / aim.x;
       controlledShot.aimMetres =
-          crossing - MatchTuning::Pitch::CENTRE * PITCH_WIDTH;
+          crossing - MatchTuning::Pitch::CENTRE * pitch.width;
     }
     takeShot(carrier);
     controlledShot = {};
@@ -486,8 +486,8 @@ float MatchEngine::switchSeconds(const MatchPlayer& candidate) const
                 : speed * rolling -
                       0.5f * C::SWITCH_BALL_DECELERATION * rolling * rolling;
     const Vector2F point{
-        std::clamp(start.x + heading.x * travelled, 0.0f, PITCH_LENGTH),
-        std::clamp(start.y + heading.y * travelled, 0.0f, PITCH_WIDTH)};
+        std::clamp(start.x + heading.x * travelled, 0.0f, pitch.length),
+        std::clamp(start.y + heading.y * travelled, 0.0f, pitch.width)};
     const float reach = C::SWITCH_REACTION_SECONDS +
                         length({point.x - self.x, point.y - self.y}) / topSpeed;
     best = std::min(best, std::max(seconds, reach));

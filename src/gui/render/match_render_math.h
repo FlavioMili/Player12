@@ -371,8 +371,8 @@ class ShirtNumbers
 /** Maps normalised engine coordinates to metric world space (z = 0). */
 constexpr Vec3 worldFromPitch(Vector2F normalized, float heightMetres = 0.0f)
 {
-  return {normalized.x * MatchTuning::Pitch::LENGTH_METRES,
-          (1.0f - normalized.y) * MatchTuning::Pitch::WIDTH_METRES,
+  return {normalized.x * MatchTuning::Pitch::MATCH_LENGTH_METRES,
+          (1.0f - normalized.y) * MatchTuning::Pitch::MATCH_WIDTH_METRES,
           heightMetres};
 }
 
@@ -383,7 +383,7 @@ constexpr Vec3 worldFromPitch(Vector2F normalized, float heightMetres = 0.0f)
  */
 inline float worldYawFromFacing(float facingAngle)
 {
-  return std::atan2(-std::sin(facingAngle) * MatchTuning::Pitch::WIDTH_METRES,
-                    std::cos(facingAngle) * MatchTuning::Pitch::LENGTH_METRES);
+  return std::atan2(-std::sin(facingAngle) * MatchTuning::Pitch::MATCH_WIDTH_METRES,
+                    std::cos(facingAngle) * MatchTuning::Pitch::MATCH_LENGTH_METRES);
 }
 }  // namespace RenderMath

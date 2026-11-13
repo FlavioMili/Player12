@@ -18,7 +18,7 @@ namespace
 /** Deep in the tunnel, out of sight (as the engine's deepInTunnel). */
 bool inTunnel(Vector2F at)
 {
-  return at.y * MatchGround::WIDTH > MatchGround::STAND_Y + MatchTuning::WalkOut::IN_METRES;
+  return at.y * MatchGround::Match::WIDTH > MatchGround::Match::STAND_Y + MatchTuning::WalkOut::IN_METRES;
 }
 }  // namespace
 
@@ -119,6 +119,8 @@ void fillMatchRenderSnapshot(const MatchEngine& engine,
   snapshot.ball.kicker = engine.getLegacyContactActor();
   snapshot.ball.kickerLockout = ball.kickerLockout;
 
+  snapshot.pitchLengthMetres = engine.getPitch().length;
+  snapshot.pitchWidthMetres = engine.getPitch().width;
   snapshot.state = engine.getState();
   snapshot.homePhase = engine.getHomePhase();
   snapshot.awayPhase = engine.getAwayPhase();

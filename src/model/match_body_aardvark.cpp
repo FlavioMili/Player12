@@ -108,6 +108,10 @@ FM_KERNEL_CLONES void MatchEngine::integrateMovementsAardvark(
   using P = MatchTuning::Player;
   using Pitch = MatchTuning::Pitch;
   constexpr float PI = std::numbers::pi_v<float>;
+  // This engine's pitch, read once, so the loops below (several players at
+  // a time) do not read it again after each store.
+  const float inverseLength = pitch.inverseLength;
+  const float inverseWidth = pitch.inverseWidth;
   // The movers are gathered into arrays and advanced with straight-line code
   // (every branch of stepKinematicsAardvark() evaluated and selected per
   // player), so the compiler can process several players at once. The
@@ -275,8 +279,8 @@ FM_KERNEL_CLONES void MatchEngine::integrateMovementsAardvark(
     nextVelocityX = capped ? nextVelocityX * capScale : nextVelocityX;
     nextVelocityY = capped ? nextVelocityY * capScale : nextVelocityY;
 
-    const float nextX = positionX[lane] + nextVelocityX * dt * INVERSE_LENGTH;
-    const float nextY = positionY[lane] + nextVelocityY * dt * INVERSE_WIDTH;
+    const float nextX = positionX[lane] + nextVelocityX * dt * inverseLength;
+    const float nextY = positionY[lane] + nextVelocityY * dt * inverseWidth;
     const float clampedX =
         std::clamp(nextX, Pitch::PLAYER_MIN_X, Pitch::PLAYER_MAX_X);
     const float clampedY =
@@ -290,8 +294,8 @@ FM_KERNEL_CLONES void MatchEngine::integrateMovementsAardvark(
 
     // Facing (normalised pitch space, for the renderers) turns toward the
     // run at a limited rate; fastAtan2() without branches.
-    const float y = nextVelocityY * INVERSE_WIDTH;
-    const float x = nextVelocityX * INVERSE_LENGTH;
+    const float y = nextVelocityY * inverseWidth;
+    const float x = nextVelocityX * inverseLength;
     const float absX = std::abs(x);
     const float absY = std::abs(y);
     const float ratio = std::min(absX, absY) / std::max(absX, absY);
@@ -404,8 +408,8 @@ FM_KERNEL_CLONES void MatchEngine::integrateMovementsAardvark(
       P::MOVEMENT_FACING_THRESHOLD * P::MOVEMENT_FACING_THRESHOLD)
   {
     // Facing is kept in normalised pitch space for the renderers.
-    player.targetAngle = fastAtan2(player.velocity.y * INVERSE_WIDTH,
-                                   player.velocity.x * INVERSE_LENGTH);
+    player.targetAngle = fastAtan2(player.velocity.y * pitch.inverseWidth,
+                                   player.velocity.x * pitch.inverseLength);
     float angleDifference = player.targetAngle - player.facingAngle;
     if (angleDifference > std::numbers::pi_v<float>)
       angleDifference -= TWO_PI;
@@ -432,8 +436,8 @@ void MatchEngine::spendEnergyAardvark(FitnessLanes& lanes, std::size_t begin,
          stepBrakingAnaerobicEnergy, fastDebt, nextFastDebt] = lanes;
   for (std::size_t lane = begin; lane < end; ++lane)
   {
-    const float metresX = (fromX[lane] - toX[lane]) * PITCH_LENGTH;
-    const float metresY = (fromY[lane] - toY[lane]) * PITCH_WIDTH;
+    const float metresX = (fromX[lane] - toX[lane]) * pitch.length;
+    const float metresY = (fromY[lane] - toY[lane]) * pitch.width;
     const float metres = std::sqrt(metresX * metresX + metresY * metresY);
     const float speed = metres / dt;
     const float drain = MatchRules::staminaDrainPerSecond(
@@ -691,7 +695,7 @@ void MatchEngine::readShotAardvark(const MatchPlayer& keeper,
       ball.position.y + (getPossessionState().shotTargetY - ball.position.y) * t;
   const float readError =
       gaussian(rng) * MatchTuning::Goalkeeper::READ_ERROR_METRES *
-      (1.0f - keeper.goalkeeping * 0.6f) / MatchTuning::Pitch::WIDTH_METRES;
+      (1.0f - keeper.goalkeeping * 0.6f) / pitch.width;
   control.diveTargetY = std::clamp(
       predictedY + readError,
       MatchTuning::Pitch::GOAL_TOP - MatchTuning::Goalkeeper::DIVE_POST_MARGIN,
@@ -706,7 +710,7 @@ void MatchEngine::readShotAardvark(const MatchPlayer& keeper,
     if (along <= 0.05f || along >= 0.95f) continue;
     const float laneY =
         ball.position.y + (getPossessionState().shotTargetY - ball.position.y) * along;
-    if (std::abs(other.position.y - laneY) * MatchTuning::Pitch::WIDTH_METRES <
+    if (std::abs(other.position.y - laneY) * pitch.width <
         MatchTuning::Goalkeeper::SCREEN_WIDTH_METRES)
     {
       screened = true;
@@ -745,14 +749,14 @@ void MatchEngine::diveGoalkeeperAardvark(MatchPlayer& keeper, float dt)
   constexpr float DIVE_CLOSING_GAIN = 1.25F;
   const float acceleration = MatchTuning::Goalkeeper::DIVE_ACCELERATION_METRES *
                              DIVE_CLOSING_GAIN /
-                             MatchTuning::Pitch::WIDTH_METRES;
+                             pitch.width;
   const float maximumSpeed =
       std::min(currentTopSpeedAardvark(keeper),
                (MatchTuning::Goalkeeper::DIVE_BASE_SPEED_METRES +
                 keeper.goalkeeping *
                     MatchTuning::Goalkeeper::DIVE_SKILL_SPEED_METRES) *
                    DIVE_CLOSING_GAIN) /
-      MatchTuning::Pitch::WIDTH_METRES;
+      pitch.width;
   const float offset = control.diveTargetY - keeper.position.y;
   const float direction = offset >= 0.0f ? 1.0f : -1.0f;
   control.lateralVelocity =
@@ -768,7 +772,7 @@ void MatchEngine::diveGoalkeeperAardvark(MatchPlayer& keeper, float dt)
       std::clamp(keeper.position.y + step, MatchTuning::Pitch::PLAYER_MIN_Y,
                  MatchTuning::Pitch::PLAYER_MAX_Y);
   keeper.velocity = {
-      0.0f, step * MatchTuning::Pitch::WIDTH_METRES / std::max(dt, EPSILON)};
+      0.0f, step * pitch.width / std::max(dt, EPSILON)};
   keeper.movementTarget = keeper.position;
   keeper.isDiving = true;
 }
@@ -787,7 +791,7 @@ MatchEngine::SaveAttempt MatchEngine::attemptSaveAardvark(
   const float crossingHeight = (substepBallZ + (ball.z - substepBallZ) * t) *
                                MatchTuning::Units::BALL_Z_METRES;
   const float gapMetres = std::abs(crossingY - keeper.position.y) *
-                          MatchTuning::Pitch::WIDTH_METRES;
+                          pitch.width;
 
   const float lateralReach = MatchRules::goalkeeperHandlingRadiusMetres(
       keeper.heightMetres, keeper.goalkeeping, crossingHeight, keeper.isDiving);
@@ -921,10 +925,10 @@ bool MatchEngine::tryOwnGoalTouchAardvark(MatchPlayer& defender)
   // Only a touch in front of his own goal can go in off a defender.
   const float goalLineMetres =
       (defender.isHomeTeam ? defender.position.x : 1.0f - defender.position.x) *
-      MatchTuning::Pitch::LENGTH_METRES;
+      pitch.length;
   const float lateralMetres =
       std::abs(defender.position.y - MatchTuning::Pitch::CENTRE) *
-      MatchTuning::Pitch::WIDTH_METRES;
+      pitch.width;
   if (goalLineMetres > S::OWN_GOAL_TOUCH_DEPTH_METRES ||
       lateralMetres > S::OWN_GOAL_TOUCH_WIDTH_METRES ||
       randomFloat(0.0f, 1.0f) >= S::OWN_GOAL_TOUCH_CHANCE)
@@ -936,7 +940,7 @@ bool MatchEngine::tryOwnGoalTouchAardvark(MatchPlayer& defender)
                   MatchTuning::Shooting::GOAL_HALF_WIDTH_METRES);
   const Vector2F target{goalX,
                         MatchTuning::Pitch::CENTRE +
-                            aimMetres / MatchTuning::Pitch::WIDTH_METRES};
+                            aimMetres / pitch.width};
   const float height = ball.z;
   clearFlightState();
   // It skews off him at the height it met him.

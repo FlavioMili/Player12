@@ -53,8 +53,8 @@ std::string lastName(const std::string& name)
 }
 
 // Pitch proportions of the attacking half (metres).
-constexpr float HALF_LENGTH = MatchTuning::Pitch::LENGTH_METRES * 0.5f;
-constexpr float PITCH_WIDTH = MatchTuning::Pitch::WIDTH_METRES;
+constexpr float HALF_LENGTH = MatchTuning::Pitch::MATCH_LENGTH_METRES * 0.5f;
+constexpr float PITCH_WIDTH = MatchTuning::Pitch::MATCH_WIDTH_METRES;
 constexpr float BOX_DEPTH = 16.5f;
 constexpr float BOX_WIDTH = 40.32f;
 constexpr float SIX_DEPTH = 5.5f;

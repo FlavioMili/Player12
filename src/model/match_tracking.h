@@ -92,9 +92,10 @@ class MatchTracker
              int period);
   /** A pass leaves the passer's foot (origin in the engine frame). */
   void passReleased(Vector2F origin, bool open_play);
-  /** The last released pass reached a team-mate. */
+  /** The last released pass reached a team-mate, on a pitch this long
+   * (metres). */
   void passCompleted(std::size_t passer, std::size_t receiver, bool home,
-                     Vector2F reception);
+                     Vector2F reception, float pitchLengthMetres);
   /** A shot; @p creator is the stats index of the chance creator, or
    * MatchTracking::MAX_PLAYERS when none. */
   void shot(std::size_t creator, float xg, TrackedShot kind);

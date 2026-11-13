@@ -51,7 +51,7 @@ void MatchEngine::checkOutOfBoundsAardvark()
                                  MatchTuning::Units::BALL_Z_METRES;
     const float lateralMetres =
         std::abs(crossingY - MatchTuning::Pitch::CENTRE) *
-        MatchTuning::Pitch::WIDTH_METRES;
+        pitch.width;
     constexpr float RADIUS = MatchTuning::Units::BALL_RADIUS_METRES;
     constexpr float HALF_GOAL = MatchTuning::Shooting::GOAL_HALF_WIDTH_METRES;
     constexpr float BAR = MatchTuning::Units::CROSSBAR_HEIGHT_METRES;
@@ -428,9 +428,9 @@ void MatchEngine::placeTakerAardvark(MatchPlayer& taker, Vector2F spot)
   {
     if (!active(other) || &other == &taker) continue;
     const float dx = (other.position.x - taker.position.x) *
-                     MatchTuning::Pitch::LENGTH_METRES;
+                     pitch.length;
     const float dy = (other.position.y - taker.position.y) *
-                     MatchTuning::Pitch::WIDTH_METRES;
+                     pitch.width;
     const float gap = std::sqrt(dx * dx + dy * dy);
     if (gap >= MatchTuning::Player::MINIMUM_BODY_SEPARATION_METRES) continue;
     const float towardCentre =
@@ -440,10 +440,10 @@ void MatchEngine::placeTakerAardvark(MatchPlayer& taker, Vector2F spot)
     const float push =
         MatchTuning::Player::MINIMUM_BODY_SEPARATION_METRES - gap;
     other.position.x = std::clamp(
-        other.position.x + away.x * push / MatchTuning::Pitch::LENGTH_METRES,
+        other.position.x + away.x * push / pitch.length,
         MatchTuning::Pitch::PLAYER_MIN_X, MatchTuning::Pitch::PLAYER_MAX_X);
     other.position.y = std::clamp(
-        other.position.y + away.y * push / MatchTuning::Pitch::WIDTH_METRES,
+        other.position.y + away.y * push / pitch.width,
         MatchTuning::Pitch::PLAYER_MIN_Y, MatchTuning::Pitch::PLAYER_MAX_Y);
   }
 }

@@ -358,8 +358,10 @@ struct MatchTuning final
 
   struct Pitch final
   {
-    static constexpr float LENGTH_METRES = 105.0f;
-    static constexpr float WIDTH_METRES = 68.0f;
+    /** The match pitch: the size every match is played on, and each
+     * engine's default (MatchPitch holds the engine's own). */
+    static constexpr float MATCH_LENGTH_METRES = 105.0f;
+    static constexpr float MATCH_WIDTH_METRES = 68.0f;
     static constexpr float CENTRE = 0.5f;
     static constexpr float GOAL_TOP = 0.446f;
     static constexpr float GOAL_BOTTOM = 0.554f;
@@ -430,15 +432,6 @@ struct MatchTuning final
      * behind the line at the ground. The 3D view draws them here too. */
     static constexpr float GOAL_POST_METRES = 0.12f;
     static constexpr float GOAL_NET_DEPTH_METRES = 2.0f;
-    /** Inside the boards, his body touching them (MatchEngineInternal::
-     * clampToBoards): where a player may mean to go to fetch a ball. His
-     * body can go further, through the gaps in the boards (moveBody). */
-    static constexpr float BODY_MIN_X =
-        -(BOARDS_END_METRES - Body::RADIUS_METRES) / LENGTH_METRES;
-    static constexpr float BODY_MAX_X = 1.0f - BODY_MIN_X;
-    static constexpr float BODY_MIN_Y =
-        -(BOARDS_SIDE_METRES - Body::RADIUS_METRES) / WIDTH_METRES;
-    static constexpr float BODY_MAX_Y = 1.0f - BODY_MIN_Y;
   };
 
   /** Binturong out of play: the ball after it has gone out, until the
@@ -2472,8 +2465,8 @@ struct MatchTuning final
   };
 
   /**
-   * Unit conventions. Pitch x is normalised by LENGTH_METRES and y by
-   * WIDTH_METRES. The public ball height `MatchBall::z` stays in length units
+   * Unit conventions. Pitch x is normalised by the engine's pitch length and y by
+   * its width (MatchPitch). The public ball height `MatchBall::z` stays in length units
    * (z * BALL_Z_METRES = metres) for renderers; velocities are in m/s.
    */
   struct Units final

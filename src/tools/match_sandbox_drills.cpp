@@ -25,8 +25,8 @@
 
 namespace
 {
-constexpr float LENGTH = MatchTuning::Pitch::LENGTH_METRES;
-constexpr float WIDTH = MatchTuning::Pitch::WIDTH_METRES;
+constexpr float LENGTH = MatchTuning::Pitch::MATCH_LENGTH_METRES;
+constexpr float WIDTH = MatchTuning::Pitch::MATCH_WIDTH_METRES;
 constexpr float STEP = MatchTuning::Timing::FIXED_STEP_SECONDS;
 constexpr float PI = std::numbers::pi_v<float>;
 /** Where drills park the ball when nobody should touch it. */
@@ -5510,16 +5510,16 @@ class PassDrill final : public Drill
   float bodyAngleToTarget(const MatchPlayer& player, Vector2F ballAt) const
   {
     return bodyAngleTo(player,
-                       {(receiverSpot.x - ballAt.x) * MatchTuning::Pitch::LENGTH_METRES,
-                        (receiverSpot.y - ballAt.y) * MatchTuning::Pitch::WIDTH_METRES});
+                       {(receiverSpot.x - ballAt.x) * MatchTuning::Pitch::MATCH_LENGTH_METRES,
+                        (receiverSpot.y - ballAt.y) * MatchTuning::Pitch::MATCH_WIDTH_METRES});
   }
 
   /** His body's angle (deg) to a direction (metres). */
   static float bodyAngleTo(const MatchPlayer& player, Vector2F line)
   {
     const Vector2F body{
-        std::cos(player.facingAngle) * MatchTuning::Pitch::LENGTH_METRES,
-        std::sin(player.facingAngle) * MatchTuning::Pitch::WIDTH_METRES};
+        std::cos(player.facingAngle) * MatchTuning::Pitch::MATCH_LENGTH_METRES,
+        std::sin(player.facingAngle) * MatchTuning::Pitch::MATCH_WIDTH_METRES};
     const float lengths = std::hypot(body.x, body.y) * std::hypot(line.x, line.y);
     if (lengths <= 0.0f) return 0.0f;
     return std::acos(std::clamp((body.x * line.x + body.y * line.y) / lengths,
@@ -7611,8 +7611,8 @@ class ShotTargetDrill final : public Drill
   static float bodyAngleTo(const MatchPlayer& player, Vector2F line)
   {
     const Vector2F body{
-        std::cos(player.facingAngle) * MatchTuning::Pitch::LENGTH_METRES,
-        std::sin(player.facingAngle) * MatchTuning::Pitch::WIDTH_METRES};
+        std::cos(player.facingAngle) * MatchTuning::Pitch::MATCH_LENGTH_METRES,
+        std::sin(player.facingAngle) * MatchTuning::Pitch::MATCH_WIDTH_METRES};
     const float lengths = std::hypot(body.x, body.y) * std::hypot(line.x, line.y);
     if (lengths <= 0.0f) return 0.0f;
     return std::acos(std::clamp((body.x * line.x + body.y * line.y) / lengths,

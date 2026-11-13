@@ -1742,7 +1742,7 @@ void MatchEngine::updateShootout(float dt)
           (substepBallPosition.y +
            (ball.position.y - substepBallPosition.y) * t -
            MatchTuning::Pitch::CENTRE) *
-          MatchTuning::Pitch::WIDTH_METRES;
+          pitch.width;
       const float heightMetres = (substepBallZ + (ball.z - substepBallZ) * t) *
                                  MatchTuning::Units::BALL_Z_METRES;
       const bool inside =
@@ -1783,7 +1783,7 @@ void MatchEngine::shootoutBallOut()
     const float lateralMetres =
         (substepBallPosition.y + (ball.position.y - substepBallPosition.y) * t -
          MatchTuning::Pitch::CENTRE) *
-        MatchTuning::Pitch::WIDTH_METRES;
+        pitch.width;
     const float heightMetres =
         (substepBallZ + (ball.z - substepBallZ) * t) * MatchTuning::Units::BALL_Z_METRES;
     inside = std::abs(lateralMetres) < MatchTuning::Shooting::GOAL_HALF_WIDTH_METRES -
@@ -2274,8 +2274,8 @@ void MatchEngine::updateRestartMovement(float dt)
     // Going off for a sub (touchline plan stage 5): to his exit, and only
     // that.
     if (const PendingSubstitution* leaving = leavingFrom(slot))
-      player.movementTarget = {leaving->exit.x / MatchTuning::Pitch::LENGTH_METRES,
-                               leaving->exit.y / MatchTuning::Pitch::WIDTH_METRES};
+      player.movementTarget = {leaving->exit.x / pitch.length,
+                               leaving->exit.y / pitch.width};
     player.intent = player.isGoalkeeper ? PlayerIntent::GOALKEEP
                                         : PlayerIntent::RECOVER_SHAPE;
     // His restart spot is where he is going: his tactical target too, as
@@ -2289,7 +2289,7 @@ void MatchEngine::updateRestartMovement(float dt)
         outOfPlayId == OutOfPlayId::AARDVARK && !restartLineUp &&
         linesUpRestart(player, state))
     {
-      player.movementTarget = toPitch(RestartApproach::target(toMetres(player.position),
+      player.movementTarget = toPitch(RestartApproach::target(pitch, toMetres(player.position),
           toMetres(ball.position), MatchTuning::Player::ARRIVAL_DEAD_ZONE_METRES));
       player.tacticalTarget = player.movementTarget;
     }
@@ -2318,7 +2318,7 @@ void MatchEngine::separatePlayers()
   if (bodyOf(true) == BodyId::BINTURONG && bodyOf(false) == BodyId::BINTURONG)
     return;
   constexpr float MINIMUM = MatchTuning::Player::MINIMUM_BODY_SEPARATION_METRES;
-  constexpr float MINIMUM_X = MINIMUM / MatchTuning::Pitch::LENGTH_METRES;
+  const float MINIMUM_X = MINIMUM / pitch.length;
   // The order persists between steps: players move little per step, so the
   // insertion sort is nearly linear. Ties break on the slot index, so the
   // result does not depend on the previous order.
@@ -2495,8 +2495,8 @@ void MatchEngine::accumulatePlayerLoad(float dt)
     if (player.facingRequested && movedMetres > EPSILON)
     {
       const Vector2F body = normalized(
-          {std::cos(player.facingAngle) * MatchTuning::Pitch::LENGTH_METRES,
-           std::sin(player.facingAngle) * MatchTuning::Pitch::WIDTH_METRES});
+          {std::cos(player.facingAngle) * pitch.length,
+           std::sin(player.facingAngle) * pitch.width});
       const float alignment = std::clamp(
           (body.x * moved.x + body.y * moved.y) / movedMetres, -1.0f, 1.0f);
       directionCost = directionValue(MatchTuning::Player::DIRECTION_ENERGY,
@@ -3335,7 +3335,7 @@ float MatchEngine::strikeShot(MatchPlayer& shooter, float forcedXG, bool header,
       crossingZ < MatchTuning::Units::CROSSBAR_HEIGHT_METRES -
                       MatchTuning::Units::BALL_RADIUS_METRES;
   const float targetY =
-      MatchTuning::Pitch::CENTRE + crossingY / MatchTuning::Pitch::WIDTH_METRES;
+      MatchTuning::Pitch::CENTRE + crossingY / pitch.width;
 
   const float speed = strike.speed;
   const Vector2F goalPoint{goalX, targetY};
@@ -3521,7 +3521,7 @@ void MatchEngine::planGoalkeeperDive(bool defendingHome, bool penalty)
     const float guess = choosePenaltyGuess(*keeper);
     control.diveTargetY = MatchTuning::Pitch::CENTRE +
                           guess * MatchTuning::Goalkeeper::PENALTY_DIVE_METRES /
-                              MatchTuning::Pitch::WIDTH_METRES;
+                              pitch.width;
     control.reactionRemaining = 0.0f;
     return;
   }
@@ -4099,8 +4099,8 @@ void MatchEngine::resolveLooseBall(bool beforeLine)
         if (thigh && length(player.velocity) > B::THIGH_MAX_SPEED) continue;
         reach = thigh ? B::THIGH_REACH_METRES : B::CHEST_REACH_METRES;
         const Vector2F facing = normalized(
-            {std::cos(player.facingAngle) * MatchTuning::Pitch::LENGTH_METRES,
-             std::sin(player.facingAngle) * MatchTuning::Pitch::WIDTH_METRES});
+            {std::cos(player.facingAngle) * pitch.length,
+             std::sin(player.facingAngle) * pitch.width});
         if (gapX * facing.x + gapY * facing.y > 0.0f) continue;
       }
       // His body may not reach a ball behind him at all.
@@ -5505,8 +5505,8 @@ float MatchEngine::ballStretch(const MatchPlayer& player, Vector2F point) const
                                     point.y - player.position.y});
   const float gap = length(toBall);
   const Vector2F facing = normalized(
-      {std::cos(player.facingAngle) * MatchTuning::Pitch::LENGTH_METRES,
-       std::sin(player.facingAngle) * MatchTuning::Pitch::WIDTH_METRES});
+      {std::cos(player.facingAngle) * pitch.length,
+       std::sin(player.facingAngle) * pitch.width});
   const float off =
       gap > EPSILON
           ? std::acos(std::clamp((toBall.x * facing.x + toBall.y * facing.y) / gap,
@@ -6154,8 +6154,8 @@ bool MatchEngine::dribbleTouchDue(const MatchPlayer& player,
       aim.speed >= R::LOOSE_START_SPEED)
   {
     const Vector2F facing = normalized(
-        {std::cos(player.facingAngle) * MatchTuning::Pitch::LENGTH_METRES,
-         std::sin(player.facingAngle) * MatchTuning::Pitch::WIDTH_METRES});
+        {std::cos(player.facingAngle) * pitch.length,
+         std::sin(player.facingAngle) * pitch.width});
     const float allowed =
         (R::REVERSAL_TOUCH_DEGREES_POOR +
          (R::REVERSAL_TOUCH_DEGREES_BEST - R::REVERSAL_TOUCH_DEGREES_POOR) *
@@ -6466,10 +6466,10 @@ void MatchEngine::splitLostWait(std::size_t slot, bool inDeadZone)
   }
   if (getBody(player.isHomeTeam) != BodyId::BINTURONG) return;
   // On the pitch (metres), not in normalised pitch space.
-  const auto onPitch = [](float angle)
+  const auto onPitch = [this](float angle)
   {
-    return std::atan2(std::sin(angle) * MatchTuning::Pitch::WIDTH_METRES,
-                      std::cos(angle) * MatchTuning::Pitch::LENGTH_METRES);
+    return std::atan2(std::sin(angle) * pitch.width,
+                      std::cos(angle) * pitch.length);
   };
   float error = onPitch(player.facingAngle) - onPitch(waitPredictedFacing[slot]);
   if (error > std::numbers::pi_v<float>)
@@ -6776,8 +6776,8 @@ bool MatchEngine::lineUpRestart(MatchPlayer& taker, MatchState restart,
       lineUp.seconds >= MatchTuning::Dribble::TURN_TO_PASS_MAX_SECONDS)
     return true;
   const Vector2F facing = normalized(
-      {std::cos(taker.facingAngle) * MatchTuning::Pitch::LENGTH_METRES,
-       std::sin(taker.facingAngle) * MatchTuning::Pitch::WIDTH_METRES});
+      {std::cos(taker.facingAngle) * pitch.length,
+       std::sin(taker.facingAngle) * pitch.width});
   return facing.x * lineUp.line->x + facing.y * lineUp.line->y >=
          std::cos(MatchTuning::Dribble::TURN_TO_PASS_READY_DEGREES *
                   std::numbers::pi_v<float> / 180.0f);
@@ -6791,11 +6791,11 @@ void MatchEngine::steerRestartLineUp(MatchPlayer& taker, float dt)
   RestartLineUp& lineUp = *restartLineUp;
   lineUp.seconds += dt;
   if (possessionId == PossessionId::BINTURONG && outOfPlayId == OutOfPlayId::AARDVARK &&
-      taker.position.y * PITCH_WIDTH >= MatchGround::BOARDS_Y &&
-      ball.position.y * PITCH_WIDTH < MatchGround::BOARDS_Y)
+      taker.position.y * pitch.width >= pitch.ground.boardsY &&
+      ball.position.y * pitch.width < pitch.ground.boardsY)
   {
     // A controller's queued restart is retained while he approaches too.
-    taker.movementTarget = toPitch(RestartApproach::target(toMetres(taker.position),
+    taker.movementTarget = toPitch(RestartApproach::target(pitch, toMetres(taker.position),
         toMetres(ball.position), MatchTuning::Player::ARRIVAL_DEAD_ZONE_METRES));
     taker.tacticalTarget = taker.movementTarget;
     taker.facingRequested = false;
@@ -6826,8 +6826,8 @@ void MatchEngine::steerRestartLineUp(MatchPlayer& taker, float dt)
   {
     taker.facingRequested = true;
     taker.facingRequest =
-        std::atan2(line.y / MatchTuning::Pitch::WIDTH_METRES,
-                   line.x / MatchTuning::Pitch::LENGTH_METRES);
+        std::atan2(line.y / pitch.width,
+                   line.x / pitch.length);
   }
 }
 
@@ -6851,8 +6851,8 @@ void MatchEngine::noteRestartKick(const MatchPlayer& taker,
   if (lineUp.line)
   {
     const Vector2F facing = normalized(
-        {std::cos(taker.facingAngle) * MatchTuning::Pitch::LENGTH_METRES,
-         std::sin(taker.facingAngle) * MatchTuning::Pitch::WIDTH_METRES});
+        {std::cos(taker.facingAngle) * pitch.length,
+         std::sin(taker.facingAngle) * pitch.width});
     const bool turned =
         facing.x * lineUp.line->x + facing.y * lineUp.line->y >=
         std::cos(MatchTuning::Dribble::TURN_TO_PASS_READY_DEGREES *
@@ -7013,10 +7013,10 @@ float MatchEngine::estimateShotXG(const MatchPlayer& shooter) const
   using S = MatchTuning::Shooting;
   const float goalX = shooter.isHomeTeam ? 1.0f : 0.0f;
   const float lineMetres =
-      std::abs(goalX - shooter.position.x) * MatchTuning::Pitch::LENGTH_METRES;
+      std::abs(goalX - shooter.position.x) * pitch.length;
   const float lateralMetres =
       std::abs(MatchTuning::Pitch::CENTRE - shooter.position.y) *
-      MatchTuning::Pitch::WIDTH_METRES;
+      pitch.width;
   const float metres =
       std::sqrt(lineMetres * lineMetres + lateralMetres * lateralMetres);
   // The fitted surface is only valid within shooting range.
@@ -7341,8 +7341,8 @@ void MatchEngine::removeFromPitch(MatchPlayer& player, bool walksOff)
   player.position =
       walksOff
           ? Vector2F{MatchTuning::Pitch::CENTRE,
-                     (MatchGround::STAND_Y + MatchTuning::WalkOut::WAIT_METRES) /
-                         MatchTuning::Pitch::WIDTH_METRES}
+                     (pitch.ground.standY + MatchTuning::WalkOut::WAIT_METRES) /
+                         pitch.width}
           : Vector2F{MatchTuning::Pitch::CENTRE +
                          (homeTeam ? -1.0f : 1.0f) *
                              (MatchTuning::Rules::PARKED_PLAYER_OFFSET +

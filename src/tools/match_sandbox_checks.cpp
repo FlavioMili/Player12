@@ -593,8 +593,8 @@ bool runFirstTouchChecks(const std::vector<const Team*>& clubs,
   constexpr float HEAVY_GAP_METRES = 2.0f;
   const auto metres = [](Vector2F from, Vector2F to)
   {
-    const float x = (to.x - from.x) * MatchTuning::Pitch::LENGTH_METRES;
-    const float y = (to.y - from.y) * MatchTuning::Pitch::WIDTH_METRES;
+    const float x = (to.x - from.x) * MatchTuning::Pitch::MATCH_LENGTH_METRES;
+    const float y = (to.y - from.y) * MatchTuning::Pitch::MATCH_WIDTH_METRES;
     return std::sqrt(x * x + y * y);
   };
   const auto speedOf = [](Vector2F velocity)
@@ -1623,8 +1623,8 @@ int runMatchTrace(GameController& controller, double seconds, int cases, const s
   std::vector<std::deque<Moment>> history(players.size());
   const auto metres = [](Vector2F pitch)
   {
-    return Vector2F{pitch.x * MatchTuning::Pitch::LENGTH_METRES,
-                    pitch.y * MatchTuning::Pitch::WIDTH_METRES};
+    return Vector2F{pitch.x * MatchTuning::Pitch::MATCH_LENGTH_METRES,
+                    pitch.y * MatchTuning::Pitch::MATCH_WIDTH_METRES};
   };
   const auto nameOf = [&](std::size_t slot)
   {

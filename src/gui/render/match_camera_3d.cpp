@@ -19,8 +19,8 @@ namespace
 using RenderMath::Vec3;
 using Tuning = MatchRender3DTuning;
 
-constexpr float PITCH_LENGTH = MatchTuning::Pitch::LENGTH_METRES;
-constexpr float PITCH_WIDTH = MatchTuning::Pitch::WIDTH_METRES;
+constexpr float PITCH_LENGTH = MatchTuning::Pitch::MATCH_LENGTH_METRES;
+constexpr float PITCH_WIDTH = MatchTuning::Pitch::MATCH_WIDTH_METRES;
 constexpr float HALF_LENGTH = PITCH_LENGTH * 0.5f;
 constexpr float HALF_WIDTH = PITCH_WIDTH * 0.5f;
 

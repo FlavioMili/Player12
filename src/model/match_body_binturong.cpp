@@ -858,17 +858,18 @@ struct LineLeg
 /** His line's turns from now, in order: a curve he is holding, then the one
  * at his waypoint, then the one at the waypoint after (on into `end`,
  * metres). Empty off a route. */
-std::vector<LineLeg> lineLegsOf(const MatchPlayer& player, Vector2F end)
+std::vector<LineLeg> lineLegsOf(const MatchPitch& pitch, const MatchPlayer& player,
+                                Vector2F end)
 {
   std::vector<LineLeg> legs;
   if (player.routeWaypoints <= 0) return legs;
   if (player.holdingTurn)
-    legs.push_back({toMetres(player.heldLegStart), toMetres(player.heldWaypoint),
-                    toMetres(player.heldNext), true});
-  legs.push_back({toMetres(player.routeLegStart), toMetres(player.movementTarget),
-                  toMetres(player.nextTarget), false});
+    legs.push_back({toMetres(pitch, player.heldLegStart), toMetres(pitch, player.heldWaypoint),
+                    toMetres(pitch, player.heldNext), true});
+  legs.push_back({toMetres(pitch, player.routeLegStart), toMetres(pitch, player.movementTarget),
+                  toMetres(pitch, player.nextTarget), false});
   if (player.routeWaypoints > 1)
-    legs.push_back({toMetres(player.movementTarget), toMetres(player.nextTarget), end,
+    legs.push_back({toMetres(pitch, player.movementTarget), toMetres(pitch, player.nextTarget), end,
                     false});
   return legs;
 }
@@ -921,7 +922,8 @@ float joinSecondsOf(const MatchPlayer& player, Vector2F from, Vector2F heading,
  * the curve or is past its end (none then, or when holding is no quicker).
  * Each way is timed at his speed now, held to what the curve, and coming
  * round onto his line, allow. */
-std::optional<Vector2F> holdTurnHandoverOf(const MatchPlayer& player,
+std::optional<Vector2F> holdTurnHandoverOf(const MatchPitch& pitch,
+                                           const MatchPlayer& player,
                                            const LineLeg& held, Vector2F waypoint,
                                            Vector2F next, Vector2F switchFrom,
                                            float freeShare)
@@ -931,7 +933,7 @@ std::optional<Vector2F> holdTurnHandoverOf(const MatchPlayer& player,
   const Turn turn = turnThrough(held.from, held.waypoint, held.next,
                                 player.routeApexOffset, player.routeOutwardRoom);
   if (turn.straight || turn.radius <= 0.0f) return std::nullopt;
-  const Vector2F at = toMetres(player.position);
+  const Vector2F at = toMetres(pitch, player.position);
   const LineAim aim =
       aimThrough(turn, held.waypoint, at, held.next, speed, 0.0f, false);
   if (aim.exited || aim.toTurn > ON_ARC_METRES) return std::nullopt;
@@ -1084,8 +1086,8 @@ float MatchEngine::directionTopSpeedBinturong(const MatchPlayer& player,
 {
   using P = MatchTuning::Player;
   // His body's facing, in metres (facingAngle is in normalised pitch space).
-  const Vector2F body{std::cos(player.facingAngle) * MatchTuning::Pitch::LENGTH_METRES,
-                      std::sin(player.facingAngle) * MatchTuning::Pitch::WIDTH_METRES};
+  const Vector2F body{std::cos(player.facingAngle) * pitch.length,
+                      std::sin(player.facingAngle) * pitch.width};
   const float bodyLength = std::max(length(body), EPSILON);
   const float speed = length(velocity);
   const float alignment =
@@ -1152,8 +1154,8 @@ void MatchEngine::stumbleBinturong(MatchPlayer& player, float dt)
   // copes best), at his normal rate.
   if (speed > EPSILON)
   {
-    const float target = std::atan2(before.y / MatchTuning::Pitch::WIDTH_METRES,
-                                    before.x / MatchTuning::Pitch::LENGTH_METRES);
+    const float target = std::atan2(before.y / pitch.width,
+                                    before.x / pitch.length);
     float difference = target - player.facingAngle;
     while (difference > PI) difference -= TWO_PI;
     while (difference < -PI) difference += TWO_PI;
@@ -1175,7 +1177,7 @@ void MatchEngine::fallenBinturong(MatchPlayer& player, float dt)
   player.downSeconds += dt;
   stats.collisionDownSeconds += dt;
   if (state == MatchState::PLAYING) stats.collisionDownPlaySeconds += dt;
-  const auto moveBy = [&player](Vector2F metres)
+  const auto moveBy = [this, &player](Vector2F metres)
   {
     const Vector2F moved = toPitch(metres);
     player.position =
@@ -1206,8 +1208,8 @@ void MatchEngine::fallenBinturong(MatchPlayer& player, float dt)
   {
     const float rolling = std::min(player.rollSeconds, dt);
     // Across his body: a quarter turn from the way he lies.
-    const Vector2F along{std::cos(player.lyingAngle) * Pitch::LENGTH_METRES,
-                         std::sin(player.lyingAngle) * Pitch::WIDTH_METRES};
+    const Vector2F along{std::cos(player.lyingAngle) * pitch.length,
+                         std::sin(player.lyingAngle) * pitch.width};
     const float alongLength = std::max(length(along), EPSILON);
     const Vector2F across{-along.y / alongLength, along.x / alongLength};
     const float metres = C::ROLL_SPEED * rolling * player.rollDirection;
@@ -1266,6 +1268,12 @@ FM_KERNEL_CLONES void MatchEngine::integrateMovementsBinturong(
   using P = MatchTuning::Player;
   using Pitch = MatchTuning::Pitch;
   constexpr float PI = std::numbers::pi_v<float>;
+  // This engine's pitch, read once, so the loops below (several players at
+  // a time) do not read it again after each store.
+  const float pitchLength = pitch.length;
+  const float pitchWidth = pitch.width;
+  const float inverseLength = pitch.inverseLength;
+  const float inverseWidth = pitch.inverseWidth;
   planHeaderTurnBinturong();
   // The movers are gathered into arrays and advanced with straight-line code
   // (every branch of stepKinematicsBinturong() evaluated and selected per
@@ -1429,7 +1437,7 @@ FM_KERNEL_CLONES void MatchEngine::integrateMovementsBinturong(
     const auto holdCurve = [&](const LineLeg& curve, Vector2F switchFrom)
     {
       const std::optional<Vector2F> handover =
-          holdTurnHandoverOf(player, curve, toMetres(player.movementTarget),
+          holdTurnHandoverOf(pitch, player, curve, toMetres(player.movementTarget),
                              toMetres(player.nextTarget), switchFrom, freeShare);
       if (!handover) return false;
       player.holdingTurn = true;
@@ -1533,7 +1541,7 @@ FM_KERNEL_CLONES void MatchEngine::integrateMovementsBinturong(
     if (hasRoute)
     {
       std::tie(turn, line) =
-          lineThrough(lineLegsOf(player, toMetres(routeEnd)).front());
+          lineThrough(lineLegsOf(pitch, player, toMetres(routeEnd)).front());
       if (turn.radius <= 0.0f && !turn.straight &&
           line.toTurn <= P::PLANT_METRES && speedNow > PIVOT_BLEND_SPEED)
       {
@@ -1549,8 +1557,8 @@ FM_KERNEL_CLONES void MatchEngine::integrateMovementsBinturong(
                  statShare(player, DerivedStat::AGILITY, freeShare)) *
             PI / 180.0f;
         const Vector2F body = rotatedBy(run, std::clamp(wanted, -twist, twist));
-        plantFacing = std::atan2(body.y / Pitch::WIDTH_METRES,
-                                 body.x / Pitch::LENGTH_METRES);
+        plantFacing = std::atan2(body.y / pitchWidth,
+                                 body.x / pitchLength);
         planting = true;
       }
       // Where his line points, at least as far on as he runs in
@@ -1566,7 +1574,7 @@ FM_KERNEL_CLONES void MatchEngine::integrateMovementsBinturong(
                          player.position.y + aimed.y};
       // The turn after: holding a curve, the one at his waypoint; with a
       // second waypoint, the one there (into the end).
-      const std::vector<LineLeg> legs = lineLegsOf(player, toMetres(routeEnd));
+      const std::vector<LineLeg> legs = lineLegsOf(pitch, player, toMetres(routeEnd));
       if (legs.size() > 1)
         nextTurn = turnThrough(legs[1].from, legs[1].waypoint, legs[1].next,
                                player.routeApexOffset, player.routeOutwardRoom);
@@ -1614,7 +1622,7 @@ FM_KERNEL_CLONES void MatchEngine::integrateMovementsBinturong(
       {
         // His line's turn now (a curve he holds, else the one at his
         // waypoint) and the waypoint of the one after.
-        const std::vector<LineLeg> legs = lineLegsOf(player, toMetres(routeEnd));
+        const std::vector<LineLeg> legs = lineLegsOf(pitch, player, toMetres(routeEnd));
         const Vector2F meet = toMetres(ball.meetPoint);
         const Vector2F waypoint = legs.front().waypoint;
         const Vector2F next = legs.front().next;
@@ -1665,7 +1673,7 @@ FM_KERNEL_CLONES void MatchEngine::integrateMovementsBinturong(
           hasRoute && !ball.meetRecovering && !striking && ahead &&
           [&]
           {
-            const LineLeg now = lineLegsOf(player, toMetres(routeEnd)).front();
+            const LineLeg now = lineLegsOf(pitch, player, toMetres(routeEnd)).front();
             return metresOffLine(turn, now.from, now.waypoint, now.next, meet);
           }() <= MatchTuning::Dribble::KICK_REACH_METRES;
       bool straight = !onLine && (ball.meetRecovering || !ahead);
@@ -1927,8 +1935,8 @@ FM_KERNEL_CLONES void MatchEngine::integrateMovementsBinturong(
     // glides at first, then drives more as the turn completes. With nothing
     // asked his body follows his run, as before.
     const bool bodyAsked = bodyRequested[lane] != 0;
-    const float bodyMetresX = std::cos(facing[lane]) * Pitch::LENGTH_METRES;
-    const float bodyMetresY = std::sin(facing[lane]) * Pitch::WIDTH_METRES;
+    const float bodyMetresX = std::cos(facing[lane]) * pitchLength;
+    const float bodyMetresY = std::sin(facing[lane]) * pitchWidth;
     const float bodyLength = std::max(
         std::sqrt(bodyMetresX * bodyMetresX + bodyMetresY * bodyMetresY),
         EPSILON);
@@ -2118,8 +2126,8 @@ FM_KERNEL_CLONES void MatchEngine::integrateMovementsBinturong(
     nextVelocityX = capped ? nextVelocityX * capScale : nextVelocityX;
     nextVelocityY = capped ? nextVelocityY * capScale : nextVelocityY;
 
-    const float nextX = positionX[lane] + nextVelocityX * dt * INVERSE_LENGTH;
-    const float nextY = positionY[lane] + nextVelocityY * dt * INVERSE_WIDTH;
+    const float nextX = positionX[lane] + nextVelocityX * dt * inverseLength;
+    const float nextY = positionY[lane] + nextVelocityY * dt * inverseWidth;
     const Vector2F clamped =
         moveBody({positionX[lane], positionY[lane]}, {nextX, nextY});
     const float clampedX = clamped.x;
@@ -2134,8 +2142,8 @@ FM_KERNEL_CLONES void MatchEngine::integrateMovementsBinturong(
     // His body's facing (normalised pitch space, as the renderers read it)
     // turns at his turn rate toward the facing asked of him, else toward the
     // run; fastAtan2() without branches.
-    const float y = nextVelocityY * INVERSE_WIDTH;
-    const float x = nextVelocityX * INVERSE_LENGTH;
+    const float y = nextVelocityY * inverseWidth;
+    const float x = nextVelocityX * inverseLength;
     const float absX = std::abs(x);
     const float absY = std::abs(y);
     const float ratio = std::min(absX, absY) / std::max(absX, absY);
@@ -2269,8 +2277,8 @@ FM_KERNEL_CLONES void MatchEngine::integrateMovementsBinturong(
       P::MOVEMENT_FACING_THRESHOLD * P::MOVEMENT_FACING_THRESHOLD)
   {
     // Facing is kept in normalised pitch space for the renderers.
-    player.targetAngle = fastAtan2(player.velocity.y * INVERSE_WIDTH,
-                                   player.velocity.x * INVERSE_LENGTH);
+    player.targetAngle = fastAtan2(player.velocity.y * pitch.inverseWidth,
+                                   player.velocity.x * pitch.inverseLength);
     float angleDifference = player.targetAngle - player.facingAngle;
     if (angleDifference > std::numbers::pi_v<float>)
       angleDifference -= TWO_PI;
@@ -2299,8 +2307,8 @@ void MatchEngine::spendEnergyBinturong(FitnessLanes& lanes, std::size_t begin,
   const EnduranceLanes& physiology = enduranceLanes;
   for (std::size_t lane = begin; lane < end; ++lane)
   {
-    const float metresX = (fromX[lane] - toX[lane]) * PITCH_LENGTH;
-    const float metresY = (fromY[lane] - toY[lane]) * PITCH_WIDTH;
+    const float metresX = (fromX[lane] - toX[lane]) * pitch.length;
+    const float metresY = (fromY[lane] - toY[lane]) * pitch.width;
     const float metres = std::sqrt(metresX * metresX + metresY * metresY);
     const float speed = metres / dt;
     stepMetres[lane] = metres;
@@ -2974,8 +2982,8 @@ ContactAssessment MatchEngine::assessContactBinturong(
 {
   ContactSituation situation;
   situation.facing = normalized(
-      {std::cos(player.facingAngle) * MatchTuning::Pitch::LENGTH_METRES,
-       std::sin(player.facingAngle) * MatchTuning::Pitch::WIDTH_METRES});
+      {std::cos(player.facingAngle) * pitch.length,
+       std::sin(player.facingAngle) * pitch.width});
   situation.aim = aim;
   situation.intendedSpeed = intendedSpeed;
   situation.intendedLift = intendedLift;
@@ -3538,8 +3546,8 @@ TouchResult MatchEngine::firstTouchBinturong(const MatchPlayer& player,
                                  intent.targetSpot.y - moment.contactPoint.y});
   const float metres = length(gap);
   const Vector2F facing = normalized(
-      {std::cos(player.facingAngle) * MatchTuning::Pitch::LENGTH_METRES,
-       std::sin(player.facingAngle) * MatchTuning::Pitch::WIDTH_METRES});
+      {std::cos(player.facingAngle) * pitch.length,
+       std::sin(player.facingAngle) * pitch.width});
   const Vector2F aim =
       metres > EPSILON ? Vector2F{gap.x / metres, gap.y / metres} : facing;
   // A knock-on into space is as hard as he means it.
@@ -4103,15 +4111,16 @@ GoalLineCrossing predictGoalLineCrossing(const MatchEngine& engine,
   // Flown with its spin: sidespin turns its heading as it goes (a curled
   // shot), topspin and backspin bring it down or hold it up.
   using P = MatchTuning::Pitch;
+  const MatchPitch& pitch = engine.getPitch();
   constexpr float DT = MatchTuning::Timing::FIXED_STEP_SECONDS /
                        static_cast<float>(MatchTuning::Timing::BALL_SUBSTEPS);
-  const float lineMetres = (goalX - origin.x) * P::LENGTH_METRES;
-  const float sidewaysAtOrigin = (origin.y - P::CENTRE) * P::WIDTH_METRES;
+  const float lineMetres = (goalX - origin.x) * pitch.length;
+  const float sidewaysAtOrigin = (origin.y - P::CENTRE) * pitch.width;
   GoalLineCrossing crossing;
   // Struck away from the goal line: far wide, on the ground.
   if (heading.x * lineMetres <= EPSILON)
   {
-    crossing.sideways = heading.y >= 0.0f ? P::WIDTH_METRES : -P::WIDTH_METRES;
+    crossing.sideways = heading.y >= 0.0f ? pitch.width : -pitch.width;
     return crossing;
   }
   // A ball that stops short: where its line meets the goal line, on the
@@ -4171,7 +4180,7 @@ MatchEngine::ShotStrike MatchEngine::strikeShotBodyBinturong(
   const float goalX = shooter.isHomeTeam ? 1.0f : 0.0f;
   const Vector2F origin = ball.position;
   const Vector2F aimPoint{goalX, MatchTuning::Pitch::CENTRE +
-                                     aimY / MatchTuning::Pitch::WIDTH_METRES};
+                                     aimY / pitch.width};
   // From the height the ball is at, as it is released (releaseFromBinturong).
   const float startHeight = ball.z * MatchTuning::Units::BALL_Z_METRES;
   const float metres = distance(origin, aimPoint);
@@ -4336,7 +4345,7 @@ void MatchEngine::readShotBinturong(const MatchPlayer& keeper,
       ball.position.y + (getPossessionState().shotTargetY - ball.position.y) * t;
   const float readError =
       gaussian(rng) * MatchTuning::Goalkeeper::READ_ERROR_METRES *
-      (1.0f - keeper.goalkeeping * 0.6f) / MatchTuning::Pitch::WIDTH_METRES;
+      (1.0f - keeper.goalkeeping * 0.6f) / pitch.width;
   control.diveTargetY = std::clamp(
       predictedY + readError,
       MatchTuning::Pitch::GOAL_TOP - MatchTuning::Goalkeeper::DIVE_POST_MARGIN,
@@ -4351,7 +4360,7 @@ void MatchEngine::readShotBinturong(const MatchPlayer& keeper,
     if (along <= 0.05f || along >= 0.95f) continue;
     const float laneY =
         ball.position.y + (getPossessionState().shotTargetY - ball.position.y) * along;
-    if (std::abs(other.position.y - laneY) * MatchTuning::Pitch::WIDTH_METRES <
+    if (std::abs(other.position.y - laneY) * pitch.width <
         MatchTuning::Goalkeeper::SCREEN_WIDTH_METRES)
     {
       screened = true;
@@ -4479,8 +4488,8 @@ void MatchEngine::planKeeperDiveBinturong(MatchPlayer& keeper, KeeperDive& dive,
   const float height = keeper.heightMetres;
   const Vector2F centre = toMetres(keeper.position);
   const Vector2F facing = normalized(
-      {std::cos(keeper.facingAngle) * MatchTuning::Pitch::LENGTH_METRES,
-       std::sin(keeper.facingAngle) * MatchTuning::Pitch::WIDTH_METRES});
+      {std::cos(keeper.facingAngle) * pitch.length,
+       std::sin(keeper.facingAngle) * pitch.width});
   const Vector2F left{-facing.y, facing.x};
   const float fullReach = D::REACH_HEIGHT_SHARE * height + D::REACH_AGILITY_METRES * agility;
   const float fullStretch =
@@ -4810,8 +4819,8 @@ KeeperDivePose MatchEngine::keeperDivePoseBinturong(const MatchPlayer& keeper, c
   {
     // His left shoulder on his left as he faced at push-off.
     const Vector2F facing = normalized(
-        {std::cos(keeper.facingAngle) * MatchTuning::Pitch::LENGTH_METRES,
-         std::sin(keeper.facingAngle) * MatchTuning::Pitch::WIDTH_METRES});
+        {std::cos(keeper.facingAngle) * pitch.length,
+         std::sin(keeper.facingAngle) * pitch.width});
     const Vector2F left{-facing.y, facing.x};
     const float sign = (left.x * dive.across.x + left.y * dive.across.y >= 0.0f ? 1.0f : -1.0f) *
                        (index == 0 ? 1.0f : -1.0f);
@@ -4873,7 +4882,7 @@ MatchEngine::SaveAttempt MatchEngine::attemptSaveBinturong(
   const float crossingHeight = (substepBallZ + (ball.z - substepBallZ) * t) *
                                MatchTuning::Units::BALL_Z_METRES;
   const float gapMetres = std::abs(crossingY - keeper.position.y) *
-                          MatchTuning::Pitch::WIDTH_METRES;
+                          pitch.width;
 
   const float lateralReach = MatchRules::goalkeeperHandlingRadiusMetres(
       keeper.heightMetres, keeper.goalkeeping, crossingHeight, keeper.isDiving);
@@ -5195,8 +5204,8 @@ std::optional<ShotBodyHit> MatchEngine::shotMeetsBodyBinturong(const MatchPlayer
   if (shotLegPoses.size() < players.size()) shotLegPoses.resize(players.size());
   ShotLegs& legs = shotLegPoses[slot];
   const Vector2F facing = normalized(
-      {std::cos(player.facingAngle) * MatchTuning::Pitch::LENGTH_METRES,
-       std::sin(player.facingAngle) * MatchTuning::Pitch::WIDTH_METRES});
+      {std::cos(player.facingAngle) * pitch.length,
+       std::sin(player.facingAngle) * pitch.width});
   if (legs.pathFor != getPossessionState().pathSince)
   {
     std::array<float, 6> rolls{};
@@ -5617,7 +5626,7 @@ bool MatchEngine::shotStaysOnGoalBinturong()
       crossing.height >=
           MatchTuning::Units::CROSSBAR_HEIGHT_METRES - MatchTuning::Units::BALL_RADIUS_METRES)
     return false;
-  rearmShotAfterBounce(P::CENTRE + crossing.sideways / P::WIDTH_METRES, crossing.height);
+  rearmShotAfterBounce(P::CENTRE + crossing.sideways / pitch.width, crossing.height);
   planGoalkeeperDive(!getPossessionState().shotByHome, false);
   return true;
 }
@@ -5848,8 +5857,8 @@ void MatchEngine::planShotBlockBinturong(const MatchPlayer& player, ShotLegs& le
   { return std::clamp((stat - STAT_1_RATING) / (STAT_99_RATING - STAT_1_RATING), 0.0f, 1.0f); };
   const float tackling = rating(player.derivedStat(DerivedStat::TACKLING));
   const Vector2F facing = normalized(
-      {std::cos(player.facingAngle) * MatchTuning::Pitch::LENGTH_METRES,
-       std::sin(player.facingAngle) * MatchTuning::Pitch::WIDTH_METRES});
+      {std::cos(player.facingAngle) * pitch.length,
+       std::sin(player.facingAngle) * pitch.width});
 
   const auto refuse = [&](ShotLegOutcome outcome, const char* why)
   {
@@ -5942,8 +5951,8 @@ Point3F MatchEngine::keeperHandReachBinturong(const MatchPlayer& player, std::si
 {
   using H = MatchTuning::KeeperHands;
   const Vector2F facing = normalized(
-      {std::cos(player.facingAngle) * MatchTuning::Pitch::LENGTH_METRES,
-       std::sin(player.facingAngle) * MatchTuning::Pitch::WIDTH_METRES});
+      {std::cos(player.facingAngle) * pitch.length,
+       std::sin(player.facingAngle) * pitch.width});
   const Vector2F left{-facing.y, facing.x};
   // Not far behind him (the more agile, the further).
   const float behind = alongStatScale(player.derivedStat(DerivedStat::AGILITY),
@@ -6076,8 +6085,8 @@ std::optional<KeeperReach> MatchEngine::keeperReachBinturong(const MatchPlayer& 
   using H = MatchTuning::KeeperHands;
   const float height = keeper.heightMetres;
   const Vector2F facing = normalized(
-      {std::cos(keeper.facingAngle) * MatchTuning::Pitch::LENGTH_METRES,
-       std::sin(keeper.facingAngle) * MatchTuning::Pitch::WIDTH_METRES});
+      {std::cos(keeper.facingAngle) * pitch.length,
+       std::sin(keeper.facingAngle) * pitch.width});
   const Vector2F left{-facing.y, facing.x};
   const float off = H::SHOULDER_OFF_CENTRE_SHARE * height;
   const float shoulderZ = feet + MatchTuning::Goalkeeper::SHOULDER_HEIGHT_SHARE * height;
@@ -6450,7 +6459,7 @@ std::optional<Vector2F> MatchEngine::ownGoalThreatBinturong(const MatchPlayer& k
       const float beforeDepth = depthOf(before);
       const float share = beforeDepth / std::max(beforeDepth - depth, EPSILON);
       const float y = before.y + (ball.position.y - before.y) * share;
-      if (std::abs(y - MatchTuning::Pitch::CENTRE) * MatchTuning::Pitch::WIDTH_METRES <=
+      if (std::abs(y - MatchTuning::Pitch::CENTRE) * pitch.width <=
               MatchTuning::Shooting::GOAL_HALF_WIDTH_METRES + U::BALL_RADIUS_METRES &&
           z < U::CROSSBAR_HEIGHT_METRES + U::BALL_RADIUS_METRES)
         crossing = Vector2F{keeper.isHomeTeam ? 0.0f : 1.0f, y};
@@ -6501,8 +6510,8 @@ Point3F MatchEngine::heldBallBinturong(const MatchPlayer& keeper) const
   using K = MatchTuning::KeeperHeld;
   const Vector2F centre = toMetres(keeper.position);
   const Vector2F facing = normalized(
-      {std::cos(keeper.facingAngle) * MatchTuning::Pitch::LENGTH_METRES,
-       std::sin(keeper.facingAngle) * MatchTuning::Pitch::WIDTH_METRES});
+      {std::cos(keeper.facingAngle) * pitch.length,
+       std::sin(keeper.facingAngle) * pitch.width});
   const Point3F chest{centre.x + facing.x * K::AHEAD_METRES, centre.y + facing.y * K::AHEAD_METRES,
                       K::HEIGHT_SHARE * keeper.heightMetres};
   const Point3F from{centre.x + getPossessionState().heldFrom.x, centre.y + getPossessionState().heldFrom.y, getPossessionState().heldFrom.z};
@@ -6517,8 +6526,8 @@ std::pair<Vector2F, float> MatchEngine::heldReleaseBinturong(const MatchPlayer& 
   using K = MatchTuning::KeeperHeld;
   const Vector2F centre = toMetres(keeper.position);
   const Vector2F facing = normalized(
-      {std::cos(keeper.facingAngle) * MatchTuning::Pitch::LENGTH_METRES,
-       std::sin(keeper.facingAngle) * MatchTuning::Pitch::WIDTH_METRES});
+      {std::cos(keeper.facingAngle) * pitch.length,
+       std::sin(keeper.facingAngle) * pitch.width});
   const auto at = [&](float ahead)
   { return toPitch({centre.x + facing.x * ahead, centre.y + facing.y * ahead}); };
   switch (how)
@@ -6546,8 +6555,8 @@ void MatchEngine::planKeeperHandsBinturong(const MatchPlayer& player, ShotHands&
   const float agility = rating(player.derivedStat(DerivedStat::AGILITY));
   const float handSpeed = H::HAND_SPEED_POOR + (H::HAND_SPEED_BEST - H::HAND_SPEED_POOR) * agility;
   const Vector2F facing = normalized(
-      {std::cos(player.facingAngle) * MatchTuning::Pitch::LENGTH_METRES,
-       std::sin(player.facingAngle) * MatchTuning::Pitch::WIDTH_METRES});
+      {std::cos(player.facingAngle) * pitch.length,
+       std::sin(player.facingAngle) * pitch.width});
   const Vector2F left{-facing.y, facing.x};
 
   // The ball's line as it passes him, moving as he is; past him already,
@@ -6816,8 +6825,8 @@ void MatchEngine::cushionHeaderBinturong(MatchPlayer& header)
   request.strike = StrikeKind::HEADER;
   const float level = length(ball.velocity);
   const Vector2F facing = normalized(
-      {std::cos(header.facingAngle) * MatchTuning::Pitch::LENGTH_METRES,
-       std::sin(header.facingAngle) * MatchTuning::Pitch::WIDTH_METRES});
+      {std::cos(header.facingAngle) * pitch.length,
+       std::sin(header.facingAngle) * pitch.width});
   request.aim = level > MatchTuning::Ball::STOP_SPEED
                     ? Vector2F{-ball.velocity.x / level, -ball.velocity.y / level}
                     : facing;
@@ -6850,8 +6859,8 @@ void MatchEngine::bodyTouchLimitsBinturong(const MatchPlayer& player,
   using B = MatchTuning::Ball;
   constexpr float DEGREES = std::numbers::pi_v<float> / 180.0f;
   const Vector2F facing = normalized(
-      {std::cos(player.facingAngle) * MatchTuning::Pitch::LENGTH_METRES,
-       std::sin(player.facingAngle) * MatchTuning::Pitch::WIDTH_METRES});
+      {std::cos(player.facingAngle) * pitch.length,
+       std::sin(player.facingAngle) * pitch.width});
   const float off = std::atan2(facing.x * request.aim.y - facing.y * request.aim.x,
                                facing.x * request.aim.x + facing.y * request.aim.y);
   const float side =
@@ -6882,8 +6891,8 @@ void MatchEngine::playBodyTouchBinturong(MatchPlayer& player,
   const Player* passer = getLastPossessionAttachment();
   if (!receivingPass) recordPassCompletion(player);
   const Vector2F facing = normalized(
-      {std::cos(player.facingAngle) * MatchTuning::Pitch::LENGTH_METRES,
-       std::sin(player.facingAngle) * MatchTuning::Pitch::WIDTH_METRES});
+      {std::cos(player.facingAngle) * pitch.length,
+       std::sin(player.facingAngle) * pitch.width});
   const float level = length(ball.velocity);
   ContactRequest request;
   request.kind =
@@ -6946,8 +6955,8 @@ float MatchEngine::headerCeilingBinturong(const MatchPlayer& header,
   {
     const ContactProfile profile = strikeProfileBinturong(StrikeKind::HEADER);
     const Vector2F facing = normalized(
-        {std::cos(header.facingAngle) * MatchTuning::Pitch::LENGTH_METRES,
-         std::sin(header.facingAngle) * MatchTuning::Pitch::WIDTH_METRES});
+        {std::cos(header.facingAngle) * pitch.length,
+         std::sin(header.facingAngle) * pitch.width});
     const float degrees =
         std::acos(std::clamp(aim.x * facing.x + aim.y * facing.y, -1.0f, 1.0f)) *
         180.0f / std::numbers::pi_v<float>;
@@ -7065,8 +7074,8 @@ std::optional<HeadPart> MatchEngine::headMeetBinturong(const MatchPlayer& player
       heightMetres > band.top + MatchTuning::Units::BALL_RADIUS_METRES)
     return std::nullopt;
   const Vector2F facing = normalized(
-      {std::cos(player.facingAngle) * MatchTuning::Pitch::LENGTH_METRES,
-       std::sin(player.facingAngle) * MatchTuning::Pitch::WIDTH_METRES});
+      {std::cos(player.facingAngle) * pitch.length,
+       std::sin(player.facingAngle) * pitch.width});
   // Beside or behind him the forehead can't get to it: only the top of his
   // head, for a ball at it.
   if (inTouchDeadZone(facing, toBall, gap, A::HEAD_COMFORT_GAP_METRES,
@@ -7454,8 +7463,8 @@ bool MatchEngine::ballBehindReachBinturong(const MatchPlayer& player,
   if (player.isGoalkeeper) return false;
   const float angle = predictedFacingBinturong(player, turnSeconds);
   const Vector2F facing = normalized(
-      {std::cos(angle) * MatchTuning::Pitch::LENGTH_METRES,
-       std::sin(angle) * MatchTuning::Pitch::WIDTH_METRES});
+      {std::cos(angle) * pitch.length,
+       std::sin(angle) * pitch.width});
   const Vector2F toBall =
       gap > EPSILON ? Vector2F{-gapX / gap, -gapY / gap} : facing;
   return inTouchDeadZone(facing, toBall, gap,
@@ -7482,8 +7491,8 @@ float MatchEngine::predictedFacingBinturong(const MatchPlayer& player,
       const float target =
           passFacing                ? *passFacing
           : player.facingRequested ? player.facingRequest
-                                   : fastAtan2(player.velocity.y / MatchTuning::Pitch::WIDTH_METRES,
-                          player.velocity.x / MatchTuning::Pitch::LENGTH_METRES);
+                                   : fastAtan2(player.velocity.y / pitch.width,
+                          player.velocity.x / pitch.length);
       float difference = target - angle;
       if (difference > std::numbers::pi_v<float>)
         difference -= TWO_PI;
@@ -7606,7 +7615,7 @@ std::optional<Vector2F> MatchEngine::dribbleOutAlongBinturong(
   constexpr int MOST_STEPS = 64;
   const float speed = length(player.velocity);
   const Vector2F start = toMetres(from);
-  const std::vector<LineLeg> legs = lineLegsOf(player, toMetres(ball.dribbleGoal));
+  const std::vector<LineLeg> legs = lineLegsOf(pitch, player, toMetres(ball.dribbleGoal));
   std::size_t leg = 0;
   Vector2F at = start;
   Vector2F waypoint = legs[0].waypoint;
@@ -7679,7 +7688,7 @@ Vector2F MatchEngine::clearOfObstaclesBinturong(const MatchPlayer& player,
   // line goes round it by.
   constexpr float ROUTE_BESIDE_METRES = 1.5f;
   const LineLeg now = player.routeWaypoints > 0
-                          ? lineLegsOf(player, toMetres(ball.dribbleGoal)).front()
+                          ? lineLegsOf(pitch, player, toMetres(ball.dribbleGoal)).front()
                           : LineLeg{toMetres(player.routeLegStart),
                                     toMetres(player.movementTarget), {}, false};
   const std::array<Vector2F, 2> route{now.from, now.waypoint};
@@ -7737,7 +7746,7 @@ std::optional<Vector2F> MatchEngine::dribbleOutFromBinturong(
   Vector2F towards = toMetres(ball.dribbleGoal);
   if (player.routeWaypoints > 0)
   {
-    const LineLeg now = lineLegsOf(player, towards).front();
+    const LineLeg now = lineLegsOf(pitch, player, towards).front();
     const Vector2F waypoint = now.waypoint;
     const Vector2F next = now.next;
     const Turn turn = turnThrough(now.from, waypoint, next, player.routeApexOffset,
@@ -7953,7 +7962,7 @@ MatchEngine::DribbleTurnAhead MatchEngine::dribbleTurnAheadBinturong(
   DribbleTurnAhead ahead;
   if (player.routeWaypoints == 0) return ahead;
   const Vector2F at = toMetres(from);
-  const std::vector<LineLeg> legs = lineLegsOf(player, toMetres(ball.dribbleGoal));
+  const std::vector<LineLeg> legs = lineLegsOf(pitch, player, toMetres(ball.dribbleGoal));
   Turn turn = turnThrough(legs[0].from, legs[0].waypoint, legs[0].next,
                           player.routeApexOffset, player.routeOutwardRoom);
   LineAim line = aimThrough(turn, legs[0].waypoint, at, legs[0].next,
@@ -8070,7 +8079,7 @@ std::optional<Vector2F> MatchEngine::heldStrikeTargetBinturong(
                       MatchTuning::Pitch::CENTRE +
                           (pendingStrike->shotAim ? pendingStrike->shotAim->aimY
                                                   : 0.0f) /
-                              MatchTuning::Pitch::WIDTH_METRES};
+                              pitch.width};
     case PendingStrike::Kind::CLEAR:
       break;
   }
@@ -8108,8 +8117,8 @@ std::optional<float> MatchEngine::turnToPassFacingBinturong(
     if (std::abs(off) > limit)
       line = rotatedBy(toBall, off > 0.0f ? limit : -limit);
   }
-  return std::atan2(line.y / MatchTuning::Pitch::WIDTH_METRES,
-                    line.x / MatchTuning::Pitch::LENGTH_METRES);
+  return std::atan2(line.y / pitch.width,
+                    line.x / pitch.length);
 }
 
 void MatchEngine::planHeaderTurnBinturong()
@@ -8144,7 +8153,7 @@ void MatchEngine::planHeaderTurnBinturong()
       case ForcedHeaderAim::GOAL:
         aimAt = Vector2F{header->isHomeTeam ? 1.0f : 0.0f,
                          MatchTuning::Pitch::CENTRE +
-                             forcedHeader->goalAim.x / MatchTuning::Pitch::WIDTH_METRES};
+                             forcedHeader->goalAim.x / pitch.width};
         break;
       case ForcedHeaderAim::KEEP:
         faceBall = true;
@@ -8196,8 +8205,8 @@ void MatchEngine::planHeaderTurnBinturong()
     way = unitOf(toMetres({aimAt->x - header->position.x, aimAt->y - header->position.y}));
     if (way.x == 0.0f && way.y == 0.0f) return;
   }
-  headerTurn = HeaderTurn{header, std::atan2(way.y / MatchTuning::Pitch::WIDTH_METRES,
-                                             way.x / MatchTuning::Pitch::LENGTH_METRES)};
+  headerTurn = HeaderTurn{header, std::atan2(way.y / pitch.width,
+                                             way.x / pitch.length)};
 }
 
 std::optional<float> MatchEngine::strikeFacingBinturong(const MatchPlayer& player) const
@@ -8213,10 +8222,10 @@ bool MatchEngine::turnedToPassBinturong(const MatchPlayer& player) const
     return true;
   const std::optional<float> wanted = turnToPassFacingBinturong(player);
   if (!wanted) return true;
-  const auto metric = [](float angle)
+  const auto metric = [this](float angle)
   {
-    return normalized({std::cos(angle) * MatchTuning::Pitch::LENGTH_METRES,
-                       std::sin(angle) * MatchTuning::Pitch::WIDTH_METRES});
+    return normalized({std::cos(angle) * pitch.length,
+                       std::sin(angle) * pitch.width});
   };
   const Vector2F body = metric(player.facingAngle);
   const Vector2F want = metric(*wanted);

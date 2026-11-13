@@ -49,7 +49,7 @@ matches read players concurrently without racing with career mutations.
 
 | Quantity | Convention |
 |----------|------------|
-| Player/ball x, y | Normalized pitch coordinates; x × 105 and y × 68 give metres |
+| Player/ball x, y | Normalized pitch coordinates; x × the engine's pitch length and y × its width give metres (`MatchPitch`; a match is 105 × 68) |
 | Attack direction | Home toward x = 1; away toward x = 0 throughout the match |
 | Lineup coordinates | Own goal at x = 0 for both teams; away x is mirrored when loaded |
 | Velocity / acceleration | Metres per simulated second / metres per second squared |
@@ -59,10 +59,21 @@ matches read players concurrently without racing with career mutations.
 | `stepCounter` | Integer ticks of `Timing::FIXED_STEP_SECONDS` (0.1 s) |
 | Match clock | Minutes displayed for the current period, plus announced added time |
 
-Use `toMetres`, `toPitch`, `distance` and `metricDirection` in
-[match_engine.cpp](../../src/model/match_engine.cpp) for geometry. Computing
-Euclidean distances directly on normalized coordinates makes the rectangular
-pitch behave like a square.
+Use `toMetres`, `toPitch`, `distance` and `metricDirection` for geometry.
+Computing Euclidean distances directly on normalized coordinates makes the
+rectangular pitch behave like a square.
+
+Each engine holds its own pitch size ([MatchPitch](../../src/model/match_pitch.h),
+`MatchEngine::pitch`): length, width and the values built from them (body
+limits inside the boards, the furniture round the pitch). Inside a
+`MatchEngine` member the helpers above are members that use it; a free
+function takes the pitch as its first argument (`toMetres(pitch, ...)`,
+[match_engine_internal.h](../../src/model/match_engine_internal.h)). Engine
+code never reads `MatchTuning::Pitch::MATCH_LENGTH_METRES` /
+`MATCH_WIDTH_METRES`: those are the match pitch's size, the default, for
+code outside the engine (views, tactics screens, tools). Pitch fractions in
+the tuning (goal mouth, penalty area edges, player limits) still assume the
+match pitch.
 
 There are three different notions of time:
 
@@ -108,8 +119,10 @@ substitutions under way move on every step (`updateSubstitutions()`).
 ### Round the pitch
 
 [MatchGround](../../src/model/match_ground.h) builds the tunnel, the dugouts,
-the technical areas and the gaps in the boards from `MatchTuning::Pitch`; the
-engine's walls (`keepOffGround()`), the dead ball and both views read it.
+the technical areas and the gaps in the boards from `MatchTuning::Pitch` and a
+pitch size (`MatchGround::Layout`). The engine's walls (`keepOffGround()`) and
+the dead ball read their engine's own (`pitch.ground`); both views read the
+match pitch's (`MatchGround::Match`).
 Besides the players, the engine moves `touchlineBodies`, with
 `touchlinePeople` saying who each is: each Binturong-bodied side's subs,
 staff and manager, and the match officials (`match_touchline_people.cpp`).

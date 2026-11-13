@@ -38,8 +38,8 @@ namespace
 {
 using Tuning = MatchRender2DTuning;
 
-constexpr float LENGTH = MatchTuning::Pitch::LENGTH_METRES;
-constexpr float WIDTH = MatchTuning::Pitch::WIDTH_METRES;
+constexpr float LENGTH = MatchTuning::Pitch::MATCH_LENGTH_METRES;
+constexpr float WIDTH = MatchTuning::Pitch::MATCH_WIDTH_METRES;
 constexpr float PI = std::numbers::pi_v<float>;
 constexpr float TWO_PI = 2.0f * PI;
 constexpr int BATCH_CHUNK_VERTICES = 2048;
@@ -524,7 +524,7 @@ void MatchRenderer2D::State::buildStands()
   };
   boards(-endBoard, width + endBoard, -sideBoard - board, true, 0U);
   // Along the bottom, open at the technical areas and the tunnel.
-  for (const MatchGround::Span& span : MatchGround::BOTTOM_BOARDS)
+  for (const MatchGround::Match::Span& span : MatchGround::Match::BOTTOM_BOARDS)
     boards(span.from * ppm, span.to * ppm, height + sideBoard, true, 1U);
   boards(-sideBoard, height + sideBoard, -endBoard - board, false, 2U);
   boards(-sideBoard, height + sideBoard, width + endBoard, false, 3U);
@@ -1076,8 +1076,8 @@ void MatchRenderer2D::State::drawStadium()
       Tuning::Grass::RUN_OFF_COLOR);
   const auto screen = [this](float xMetres, float yMetres)
   { return ImVec2{viewport.x + xMetres * ppm, viewport.y + yMetres * ppm}; };
-  for (const MatchGround::Rect& area : MatchGround::TECHNICAL_AREAS)
-    drawList->AddRectFilled(screen(area.x0, MatchGround::BOARDS_Y),
+  for (const MatchGround::Match::Rect& area : MatchGround::Match::TECHNICAL_AREAS)
+    drawList->AddRectFilled(screen(area.x0, MatchGround::Match::BOARDS_Y),
                             screen(area.x1, area.y1),
                             Tuning::Grass::RUN_OFF_COLOR);
 
@@ -1109,11 +1109,11 @@ void MatchRenderer2D::State::drawStadium()
 
   // The tunnel under the stand, the dugouts' roofs, and the technical
   // areas' dashed lines (1 m from the touchline, and out to the dugouts).
-  const MatchGround::Rect& tunnel = MatchGround::TUNNEL;
+  const MatchGround::Match::Rect& tunnel = MatchGround::Match::TUNNEL;
   drawList->AddRectFilled(screen(tunnel.x0, tunnel.y0),
                           screen(tunnel.x1, tunnel.y1), S::TUNNEL_COLOR);
   const float edge = std::max(1.0f, px(1.0f));
-  for (const MatchGround::Rect& dugout : MatchGround::DUGOUTS)
+  for (const MatchGround::Match::Rect& dugout : MatchGround::Match::DUGOUTS)
   {
     drawList->AddRectFilled(screen(dugout.x0, dugout.y0),
                             screen(dugout.x1, dugout.y1), S::DUGOUT_ROOF_COLOR);
@@ -1136,7 +1136,7 @@ void MatchRenderer2D::State::drawStadium()
                         S::TECHNICAL_LINE_COLOR, line);
     }
   };
-  for (const MatchGround::Rect& area : MatchGround::TECHNICAL_AREAS)
+  for (const MatchGround::Match::Rect& area : MatchGround::Match::TECHNICAL_AREAS)
   {
     dashed(area.x0, area.y0, area.x1, area.y0);
     dashed(area.x0, area.y0, area.x0, area.y1);

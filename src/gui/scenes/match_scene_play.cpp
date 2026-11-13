@@ -245,8 +245,8 @@ void MatchScene::renderPlayOverlay(const IMatchRenderer& renderer,
     float lengthY = 0.0f;
     float widthX = 0.0f;
     float widthY = 0.0f;
-    constexpr float METRE_X = 1.0f / MatchTuning::Pitch::LENGTH_METRES;
-    constexpr float METRE_Y = 1.0f / MatchTuning::Pitch::WIDTH_METRES;
+    constexpr float METRE_X = 1.0f / MatchTuning::Pitch::MATCH_LENGTH_METRES;
+    constexpr float METRE_Y = 1.0f / MatchTuning::Pitch::MATCH_WIDTH_METRES;
     if (renderer.projectPitch(player.position, 0.0f, originX, originY) &&
         renderer.projectPitch({player.position.x + METRE_X, player.position.y},
                               0.0f, lengthX, lengthY) &&

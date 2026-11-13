@@ -1550,7 +1550,7 @@ void MatchEngine::refreshTacticalTargetsBinturong(float dt, bool planHome)
                 std::max(markWeight, MatchTuning::Shape::TIGHT_MARK_WEIGHT);
             markPoint.x -= attackDirection *
                            MatchTuning::Shape::GOAL_SIDE_MARK_METRES /
-                           MatchTuning::Pitch::LENGTH_METRES;
+                           pitch.length;
           }
           target.x += (markPoint.x - target.x) * markWeight;
           target.y += (markPoint.y - target.y) * markWeight;
@@ -1859,7 +1859,7 @@ void MatchEngine::planOvertakeBinturong(std::size_t slot)
   // under the clearance) before he gets there. He goes round, on the
   // shorter side that still wins the race and that nobody else is about to
   // run into; else he carries on (and bumps).
-  const auto metresAt = [](Vector2F pitch) { return toMetres(pitch); };
+  const auto metresAt = [this](Vector2F point) { return toMetres(point); };
   const auto lengthOf = [](Vector2F v) { return std::sqrt(v.x * v.x + v.y * v.y); };
   const auto clearanceFor = [](const MatchPlayer& a, const MatchPlayer& b)
   {
@@ -2281,10 +2281,10 @@ void MatchEngine::planWayRoundBinturong(std::size_t slot)
     if (active(other) && other.isHomeTeam != runner.isHomeTeam && other.chasingLooseBall &&
         other.looseBallMeetSeconds > 0.0f)
       rival = std::min(rival, other.looseBallMeetSeconds);
-  const float minX = MatchTuning::Pitch::PLAYER_MIN_X * MatchTuning::Pitch::LENGTH_METRES;
-  const float maxX = MatchTuning::Pitch::PLAYER_MAX_X * MatchTuning::Pitch::LENGTH_METRES;
-  const float minY = MatchTuning::Pitch::PLAYER_MIN_Y * MatchTuning::Pitch::WIDTH_METRES;
-  const float maxY = MatchTuning::Pitch::PLAYER_MAX_Y * MatchTuning::Pitch::WIDTH_METRES;
+  const float minX = MatchTuning::Pitch::PLAYER_MIN_X * pitch.length;
+  const float maxX = MatchTuning::Pitch::PLAYER_MAX_X * pitch.length;
+  const float minY = MatchTuning::Pitch::PLAYER_MIN_Y * pitch.width;
+  const float maxY = MatchTuning::Pitch::PLAYER_MAX_Y * pitch.width;
 
   struct Option
   {
@@ -2513,10 +2513,10 @@ bool MatchEngine::cutsInsideBinturong(const MatchPlayer& player) const
   Vector2F anchor = player.basePosition;
   anchor.x += direction *
               (tactic.possessionOffset.x +
-               tactic.profile.possessionAdvanceMetres / Pitch::LENGTH_METRES);
+               tactic.profile.possessionAdvanceMetres / pitch.length);
   anchor.y +=
       tactic.possessionOffset.y +
-      flank * tactic.profile.possessionWidthMetres / Pitch::WIDTH_METRES;
+      flank * tactic.profile.possessionWidthMetres / pitch.width;
   return clampToPitch(anchor);
 }
 
@@ -2525,7 +2525,7 @@ bool MatchEngine::cutsInsideBinturong(const MatchPlayer& player) const
 {
   return (player.isHomeTeam ? 1.0f : -1.0f) *
          roleProfileOf(player).defensiveAdvanceMetres /
-         MatchTuning::Pitch::LENGTH_METRES;
+         pitch.length;
 }
 
 [[gnu::always_inline]] inline const MatchPlayer*
@@ -2549,7 +2549,7 @@ Vector2F MatchEngine::tightMarkPointBinturong(const MatchPlayer& marker,
   const float direction = marker.isHomeTeam ? 1.0f : -1.0f;
   const Vector2F point{
       target.position.x - direction * T::TIGHT_MARK_GOAL_SIDE_METRES /
-                              MatchTuning::Pitch::LENGTH_METRES,
+                              pitch.length,
       target.position.y};
   return {current.x + (point.x - current.x) * T::TIGHT_MARK_WEIGHT,
           current.y + (point.y - current.y) * T::TIGHT_MARK_WEIGHT};
@@ -2640,7 +2640,7 @@ float MatchEngine::weakFootShadeBinturong(const MatchPlayer& carrier) const
       (carrier.player->getFoot() == Foot::Right ? 1.0f : -1.0f) *
       (carrier.isHomeTeam ? 1.0f : -1.0f);
   return strongSide * TacticsTuning::WEAK_FOOT_SHADE_METRES /
-         MatchTuning::Pitch::WIDTH_METRES;
+         pitch.width;
 }
 
 std::optional<Vector2F> MatchEngine::doubleUpPointBinturong(
@@ -2660,8 +2660,8 @@ std::optional<Vector2F> MatchEngine::doubleUpPointBinturong(
   const float reach = TacticsTuning::DOUBLE_UP_SUPPORT_METRES;
   return clampToPitch(
       {carrier.position.x -
-           direction * reach * 0.5f / MatchTuning::Pitch::LENGTH_METRES,
-       carrier.position.y + lateral * reach / MatchTuning::Pitch::WIDTH_METRES});
+           direction * reach * 0.5f / pitch.length,
+       carrier.position.y + lateral * reach / pitch.width});
 }
 
 void MatchEngine::assignMarksBinturong(bool home)
@@ -3728,7 +3728,7 @@ MatchEngine::PassOption MatchEngine::evaluatePassOptionBinturong(
   {
     const float line = offsideLine(passer.isHomeTeam);
     const float spaceBehind = (passer.isHomeTeam ? 1.0f - line : line) *
-                              MatchTuning::Pitch::LENGTH_METRES;
+                              pitch.length;
     spaceBehindShare = std::clamp(
         (spaceBehind - MatchTuning::Passing::SPACE_BEHIND_MIN_METRES) /
             MatchTuning::Passing::SPACE_BEHIND_RANGE_METRES,
@@ -4087,7 +4087,7 @@ MatchEngine::ShotAim MatchEngine::chooseShotAimBinturong(
   const MatchPlayer* keeper = findGoalkeeper(!shooter.isHomeTeam);
   const float keeperOffset =
       keeper ? (keeper->position.y - MatchTuning::Pitch::CENTRE) *
-                   MatchTuning::Pitch::WIDTH_METRES
+                   pitch.width
              : 0.0f;
   float side = keeperOffset > 0.0f ? -1.0f : 1.0f;
   if (std::abs(keeperOffset) < MatchTuning::Shooting::KEEPER_CENTRED_METRES ||
@@ -4297,15 +4297,15 @@ Vector2F MatchEngine::goalkeeperTargetBinturong(MatchPlayer& keeper,
       depthMetres + keeperDepth * std::min(1.0f, threatMetres / 40.0f), 0.5f,
       MatchTuning::Goalkeeper::MAX_DEPTH_METRES + std::max(0.0f, keeperDepth));
   const float dxMetres =
-      (threat.x - goalCentre.x) * MatchTuning::Pitch::LENGTH_METRES;
+      (threat.x - goalCentre.x) * pitch.length;
   const float dyMetres =
-      (threat.y - goalCentre.y) * MatchTuning::Pitch::WIDTH_METRES;
+      (threat.y - goalCentre.y) * pitch.width;
   const float norm =
       std::max(std::sqrt(dxMetres * dxMetres + dyMetres * dyMetres), EPSILON);
   return {goalCentre.x +
-              dxMetres / norm * depthMetres / MatchTuning::Pitch::LENGTH_METRES,
+              dxMetres / norm * depthMetres / pitch.length,
           std::clamp(goalCentre.y + dyMetres / norm * depthMetres /
-                                        MatchTuning::Pitch::WIDTH_METRES,
+                                        pitch.width,
                      MatchTuning::Pitch::GOALKEEPER_MIN_Y,
                      MatchTuning::Pitch::GOALKEEPER_MAX_Y)};
 }
@@ -4355,7 +4355,7 @@ MatchEngine::HeaderPlay MatchEngine::chooseHeaderOutBinturong(
   constexpr float BEYOND = 0.05f;
   const Vector2F from = ball.position;
   const float lateralMetres =
-      (from.y - MatchTuning::Pitch::CENTRE) * MatchTuning::Pitch::WIDTH_METRES;
+      (from.y - MatchTuning::Pitch::CENTRE) * pitch.width;
   const float sideY = lateralMetres < 0.0f ? -BEYOND : 1.0f + BEYOND;
   HeaderPlay play;
   play.kind = HeaderPlay::Kind::BEHIND;
@@ -4377,7 +4377,7 @@ MatchEngine::HeaderPlay MatchEngine::chooseHeaderOutBinturong(
   const float overSpeed = pace * std::cos(A::HEADER_OVER_ELEVATION);
   const float overLift = pace * std::sin(A::HEADER_OVER_ELEVATION);
   const float lineMetres = std::max(
-      std::abs(from.x - goalX) * MatchTuning::Pitch::LENGTH_METRES, 0.5f);
+      std::abs(from.x - goalX) * pitch.length, 0.5f);
   if (loftVerticalSpeed(lineMetres, overSpeed,
                         ball.z * MatchTuning::Units::BALL_Z_METRES,
                         MatchTuning::Units::CROSSBAR_HEIGHT_METRES +
@@ -4475,7 +4475,7 @@ MatchEngine::HeaderPlay MatchEngine::chooseHeaderPlayBinturong(
         other.isHomeTeam != header.isHomeTeam || other.isGoalkeeper)
       continue;
     if ((other.position.x - header.position.x) * attackDirection *
-            MatchTuning::Pitch::LENGTH_METRES <
+            pitch.length <
         -MatchTuning::Aerial::KNOCK_DOWN_MAX_BACKWARD_METRES)
       continue;
     const float d = distance(other.position, header.position);
@@ -4554,9 +4554,9 @@ MatchEngine::SetPieceAttackers MatchEngine::arrangeSetPieceAttackBinturong(
   const auto spot = [&](float depthMetres, float lateralMetres)
   {
     return Vector2F{
-        goalX + inward * depthMetres / MatchTuning::Pitch::LENGTH_METRES,
+        goalX + inward * depthMetres / pitch.length,
         MatchTuning::Pitch::CENTRE +
-            ballSide * lateralMetres / MatchTuning::Pitch::WIDTH_METRES};
+            ballSide * lateralMetres / pitch.width};
   };
   const std::array<Vector2F, 5> attackSlots = {
       spot(5.5f, 3.0f), spot(6.5f, -3.5f), spot(10.5f, 0.0f), spot(8.0f, 1.0f),
@@ -4635,9 +4635,9 @@ void MatchEngine::arrangeSetPieceDefenceBinturong(
   const auto spot = [&](float depthMetres, float lateralMetres)
   {
     return Vector2F{
-        goalX + inward * depthMetres / MatchTuning::Pitch::LENGTH_METRES,
+        goalX + inward * depthMetres / pitch.length,
         MatchTuning::Pitch::CENTRE +
-            ballSide * lateralMetres / MatchTuning::Pitch::WIDTH_METRES};
+            ballSide * lateralMetres / pitch.width};
   };
   const std::size_t boxAttackers = attackers.count;
 
@@ -4739,7 +4739,7 @@ MatchEngine::RestartPlay MatchEngine::chooseRestartPlayBinturong(
     const float goalMetres = distance(ball.position, goal);
     const float lateralMetres =
         std::abs(ball.position.y - MatchTuning::Pitch::CENTRE) *
-        MatchTuning::Pitch::WIDTH_METRES;
+        pitch.width;
     const bool shootingRange =
         goalMetres <= MatchTuning::SetPiece::DIRECT_FREE_KICK_METRES &&
         lateralMetres <= MatchTuning::SetPiece::DIRECT_FREE_KICK_WIDTH_METRES;
@@ -4819,7 +4819,7 @@ MatchEngine::RestartPlay MatchEngine::chooseCornerPlayBinturong(
     const float sideMetres =
         (candidate.tacticalTarget.y - MatchTuning::Pitch::CENTRE) *
         (ball.position.y < MatchTuning::Pitch::CENTRE ? -1.0f : 1.0f) *
-        MatchTuning::Pitch::WIDTH_METRES;
+        pitch.width;
     const float threat = MatchRules::headerReachMetres(candidate.heightMetres,
                                                        candidate.physicality);
     const float zone = nearPost ? sideMetres : -sideMetres;
@@ -4991,8 +4991,8 @@ float MatchEngine::pushMetresBinturong(const MatchPlayer& player, Vector2F from,
   {
     const Vector2F point{start.x + direction.x * along,
                          start.y + direction.y * along};
-    const Vector2F pitch = toPitch(point);
-    if (pitch.x < 0.01f || pitch.x > 0.99f || pitch.y < 0.01f || pitch.y > 0.99f)
+    const Vector2F spot = toPitch(point);
+    if (spot.x < 0.01f || spot.x > 0.99f || spot.y < 0.01f || spot.y > 0.99f)
       return std::max(shortest, along - STEP_METRES);
     const float his = hisSeconds(along);
     for (const MatchPlayer& opponent : players)

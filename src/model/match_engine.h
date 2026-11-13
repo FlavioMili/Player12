@@ -30,6 +30,7 @@
 #include "model/match_handshake.h"
 #include "model/match_manager.h"
 #include "model/match_out_of_play.h"
+#include "model/match_pitch.h"
 #include "model/match_possession.h"
 #include "model/match_context.h"
 #include "model/match_derived_stats.h"
@@ -2192,6 +2193,9 @@ class MatchEngine
               PossessionId possession = PossessionId::AARDVARK);
   /** The handshake this match was built with. */
   HandshakeId getHandshake() const { return handshakeId; }
+  /** The pitch this engine plays on: its size in metres (a match's is
+   * 105 x 68). */
+  const MatchPitch& getPitch() const { return pitch; }
 
   /**
    * Live update: advances `deltaTime` simulated seconds (wall-clock seconds
@@ -3168,6 +3172,40 @@ class MatchEngine
   std::array<BrainId, 2> brains{BrainId::AARDVARK, BrainId::AARDVARK};
   /** Each side's body (home, away); see setBody. */
   std::array<BodyId, 2> bodies{BodyId::AARDVARK, BodyId::AARDVARK};
+  /** The pitch this engine plays on (the match pitch; a training zone's
+   * own size comes with the training ground). */
+  MatchPitch pitch;
+  // This pitch's geometry, under the names the engine's code has always
+  // used (defined in match_engine_internal.h, on the helpers there that
+  // take a pitch).
+  /** Metric offset (metres) of a normalised pitch displacement. */
+  Vector2F toMetres(Vector2F normalisedDelta) const;
+  /** Normalised pitch displacement of a metric offset. */
+  Vector2F toPitch(Vector2F metres) const;
+  /** Isotropic distance in metres between two normalised pitch points. */
+  float distance(Vector2F first, Vector2F second) const;
+  /** Unit direction in metric space from one pitch point to another. */
+  Vector2F metricDirection(Vector2F from, Vector2F to) const;
+  /** A body kept where it can physically be: inside the advertising boards. */
+  float clampToBoardsX(float x) const;
+  float clampToBoardsY(float y) const;
+  Vector2F clampToBoards(Vector2F at) const;
+  /** Where a walker may mean to go: inside the boards, or the tunnel and
+   * its walkway. */
+  Vector2F clampToReach(Vector2F at) const;
+  /** A body's step kept out of the goal frames, off the furniture round
+   * the pitch, and both (MatchEngineInternal). */
+  Vector2F keepOutOfGoalFrames(Vector2F from, Vector2F to) const;
+  Vector2F keepOffGround(Vector2F from, Vector2F to) const;
+  Vector2F moveBody(Vector2F from, Vector2F to) const;
+  /** Deep in the tunnel: out of sight and out of play. */
+  bool deepInTunnel(Vector2F at) const;
+  /** The next point on a body's way (metres) through the tunnel, and
+   * where a player (metres) leaves the pitch (MatchEngineInternal). */
+  Vector2F routeViaTunnel(Vector2F at, Vector2F target) const;
+  Vector2F nearestExit(Vector2F at) const;
+  /** Whether a point lies in the penalty area defended by the given side. */
+  bool inPenaltyArea(Vector2F position, bool defendingHome) const;
   /** The match's handshake (constructor). */
   HandshakeId handshakeId = HandshakeId::AARDVARK;
   /** The match's referee; see setReferee. */

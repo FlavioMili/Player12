@@ -43,8 +43,8 @@ using RenderMath::Vec3;
 using RenderMath::Vec4;
 using Tuning = MatchRender3DTuning;
 
-constexpr float LENGTH = MatchTuning::Pitch::LENGTH_METRES;
-constexpr float WIDTH = MatchTuning::Pitch::WIDTH_METRES;
+constexpr float LENGTH = MatchTuning::Pitch::MATCH_LENGTH_METRES;
+constexpr float WIDTH = MatchTuning::Pitch::MATCH_WIDTH_METRES;
 constexpr Vec3 UP{0.0f, 0.0f, 1.0f};
 constexpr float TWO_PI = 2.0f * std::numbers::pi_v<float>;
 constexpr std::size_t MAX_POLYGON_POINTS = 13;

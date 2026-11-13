@@ -673,10 +673,10 @@ TEST(MatchEngineTest, MovementAssignmentsRemainCoherentAcrossLivePlay)
       {
         const float dxMetres =
             (matchPlayers[second].position.x - matchPlayers[first].position.x) *
-            MatchTuning::Pitch::LENGTH_METRES;
+            MatchTuning::Pitch::MATCH_LENGTH_METRES;
         const float dyMetres =
             (matchPlayers[second].position.y - matchPlayers[first].position.y) *
-            MatchTuning::Pitch::WIDTH_METRES;
+            MatchTuning::Pitch::MATCH_WIDTH_METRES;
         observedMinimumSeparation =
             std::min(observedMinimumSeparation, std::hypot(dxMetres, dyMetres));
       }
@@ -1903,17 +1903,17 @@ namespace
 {
 float metresBetweenPoints(Vector2F first, Vector2F second)
 {
-  return std::hypot((first.x - second.x) * MatchTuning::Pitch::LENGTH_METRES,
-                    (first.y - second.y) * MatchTuning::Pitch::WIDTH_METRES);
+  return std::hypot((first.x - second.x) * MatchTuning::Pitch::MATCH_LENGTH_METRES,
+                    (first.y - second.y) * MatchTuning::Pitch::MATCH_WIDTH_METRES);
 }
 
 /** Metric distance from a point to the segment [start, end]. */
 float metresToSegment(Vector2F point, Vector2F start, Vector2F end)
 {
-  const float sx = (end.x - start.x) * MatchTuning::Pitch::LENGTH_METRES;
-  const float sy = (end.y - start.y) * MatchTuning::Pitch::WIDTH_METRES;
-  const float px = (point.x - start.x) * MatchTuning::Pitch::LENGTH_METRES;
-  const float py = (point.y - start.y) * MatchTuning::Pitch::WIDTH_METRES;
+  const float sx = (end.x - start.x) * MatchTuning::Pitch::MATCH_LENGTH_METRES;
+  const float sy = (end.y - start.y) * MatchTuning::Pitch::MATCH_WIDTH_METRES;
+  const float px = (point.x - start.x) * MatchTuning::Pitch::MATCH_LENGTH_METRES;
+  const float py = (point.y - start.y) * MatchTuning::Pitch::MATCH_WIDTH_METRES;
   const float squared = sx * sx + sy * sy;
   const float along =
       squared > 0.0f ? std::clamp((px * sx + py * sy) / squared, 0.0f, 1.0f)
@@ -1977,8 +1977,8 @@ TEST(MatchEngineTest, PossessionIsOnlyGainedWithinReach)
           { return player.player == after.possessionState().possessedBy; });
       ASSERT_NE(owner, engine.getPlayers().end());
       const Vector2F travel{
-          before.velocity.x * STEP / MatchTuning::Pitch::LENGTH_METRES,
-          before.velocity.y * STEP / MatchTuning::Pitch::WIDTH_METRES};
+          before.velocity.x * STEP / MatchTuning::Pitch::MATCH_LENGTH_METRES,
+          before.velocity.y * STEP / MatchTuning::Pitch::MATCH_WIDTH_METRES};
       const Vector2F end{before.position.x + travel.x,
                          before.position.y + travel.y};
       EXPECT_LE(metresToSegment(owner->position, before.position, end), SLACK);
@@ -2267,7 +2267,7 @@ TEST(MatchEngineTest, FormationChangeReshapesTheSideForAWhile)
     EXPECT_FALSE(changed.setFormation(true, broken));
     // Everyone ten metres further up the pitch.
     for (Vector2F& spot : shape)
-      spot.x += 10.0f / MatchTuning::Pitch::LENGTH_METRES;
+      spot.x += 10.0f / MatchTuning::Pitch::MATCH_LENGTH_METRES;
     ASSERT_TRUE(changed.setFormation(true, shape));
     EXPECT_NEAR(changed.getFormation(true)[0].x, shape[0].x, 1e-6f);
     const float reshaped = changed.getTacticalFamiliarity(true);
@@ -2482,7 +2482,7 @@ TEST(MatchEngineTest, ControlledPlayerFollowsTheStickWithinHisPhysics)
   // Accelerates realistically: a hard 2.5 s run nears top speed.
   EXPECT_GT(fastest, 0.8f * player->maxSpeed);
   const float runMetres =
-      std::abs(player->position.y - start.y) * MatchTuning::Pitch::WIDTH_METRES;
+      std::abs(player->position.y - start.y) * MatchTuning::Pitch::MATCH_WIDTH_METRES;
   EXPECT_GT(runMetres, 10.0f);
   EXPECT_LT(runMetres, 25.0f);
 

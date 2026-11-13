@@ -224,7 +224,7 @@ void MatchEngine::completeRestart()
             state != MatchState::KICK_OFF && !userRestartPassRequested())
           if (const MatchPlayer* taker = restartTaker(); taker &&
               MatchEngineInternal::active(*taker) && linesUpRestart(*taker, state) &&
-              MatchEngineInternal::distance(taker->position, ball.position) >
+              distance(taker->position, ball.position) >
                   touchKnobs[TouchKnob::COMFORT_GAP])
             return;
       break;

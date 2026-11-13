@@ -1129,7 +1129,7 @@ void MatchEngine::refreshTacticalTargetsAardvark(float dt, bool planHome)
                 std::max(markWeight, MatchTuning::Shape::TIGHT_MARK_WEIGHT);
             markPoint.x -= attackDirection *
                            MatchTuning::Shape::GOAL_SIDE_MARK_METRES /
-                           MatchTuning::Pitch::LENGTH_METRES;
+                           pitch.length;
           }
           target.x += (markPoint.x - target.x) * markWeight;
           target.y += (markPoint.y - target.y) * markWeight;
@@ -1383,10 +1383,10 @@ bool MatchEngine::cutsInsideAardvark(const MatchPlayer& player) const
   Vector2F anchor = player.basePosition;
   anchor.x += direction *
               (tactic.possessionOffset.x +
-               tactic.profile.possessionAdvanceMetres / Pitch::LENGTH_METRES);
+               tactic.profile.possessionAdvanceMetres / pitch.length);
   anchor.y +=
       tactic.possessionOffset.y +
-      flank * tactic.profile.possessionWidthMetres / Pitch::WIDTH_METRES;
+      flank * tactic.profile.possessionWidthMetres / pitch.width;
   return {std::clamp(anchor.x, Pitch::PLAYER_MIN_X, Pitch::PLAYER_MAX_X),
           std::clamp(anchor.y, Pitch::PLAYER_MIN_Y, Pitch::PLAYER_MAX_Y)};
 }
@@ -1396,7 +1396,7 @@ bool MatchEngine::cutsInsideAardvark(const MatchPlayer& player) const
 {
   return (player.isHomeTeam ? 1.0f : -1.0f) *
          roleProfileOf(player).defensiveAdvanceMetres /
-         MatchTuning::Pitch::LENGTH_METRES;
+         pitch.length;
 }
 
 [[gnu::always_inline]] inline const MatchPlayer*
@@ -1420,7 +1420,7 @@ Vector2F MatchEngine::tightMarkPointAardvark(const MatchPlayer& marker,
   const float direction = marker.isHomeTeam ? 1.0f : -1.0f;
   const Vector2F point{
       target.position.x - direction * T::TIGHT_MARK_GOAL_SIDE_METRES /
-                              MatchTuning::Pitch::LENGTH_METRES,
+                              pitch.length,
       target.position.y};
   return {current.x + (point.x - current.x) * T::TIGHT_MARK_WEIGHT,
           current.y + (point.y - current.y) * T::TIGHT_MARK_WEIGHT};
@@ -1503,7 +1503,7 @@ float MatchEngine::weakFootShadeAardvark(const MatchPlayer& carrier) const
       (carrier.player->getFoot() == Foot::Right ? 1.0f : -1.0f) *
       (carrier.isHomeTeam ? 1.0f : -1.0f);
   return strongSide * TacticsTuning::WEAK_FOOT_SHADE_METRES /
-         MatchTuning::Pitch::WIDTH_METRES;
+         pitch.width;
 }
 
 std::optional<Vector2F> MatchEngine::doubleUpPointAardvark(
@@ -1523,11 +1523,11 @@ std::optional<Vector2F> MatchEngine::doubleUpPointAardvark(
   const float reach = TacticsTuning::DOUBLE_UP_SUPPORT_METRES;
   return Vector2F{
       std::clamp(carrier.position.x - direction * reach * 0.5f /
-                                          MatchTuning::Pitch::LENGTH_METRES,
+                                          pitch.length,
                  MatchTuning::Pitch::PLAYER_MIN_X,
                  MatchTuning::Pitch::PLAYER_MAX_X),
       std::clamp(carrier.position.y +
-                     lateral * reach / MatchTuning::Pitch::WIDTH_METRES,
+                     lateral * reach / pitch.width,
                  MatchTuning::Pitch::PLAYER_MIN_Y,
                  MatchTuning::Pitch::PLAYER_MAX_Y)};
 }
@@ -2198,7 +2198,7 @@ MatchEngine::PassOption MatchEngine::evaluatePassOptionAardvark(
   {
     const float line = offsideLine(passer.isHomeTeam);
     const float spaceBehind = (passer.isHomeTeam ? 1.0f - line : line) *
-                              MatchTuning::Pitch::LENGTH_METRES;
+                              pitch.length;
     spaceBehindShare = std::clamp(
         (spaceBehind - MatchTuning::Passing::SPACE_BEHIND_MIN_METRES) /
             MatchTuning::Passing::SPACE_BEHIND_RANGE_METRES,
@@ -2560,7 +2560,7 @@ MatchEngine::ShotAim MatchEngine::chooseShotAimAardvark(
   const MatchPlayer* keeper = findGoalkeeper(!shooter.isHomeTeam);
   const float keeperOffset =
       keeper ? (keeper->position.y - MatchTuning::Pitch::CENTRE) *
-                   MatchTuning::Pitch::WIDTH_METRES
+                   pitch.width
              : 0.0f;
   float side = keeperOffset > 0.0f ? -1.0f : 1.0f;
   if (std::abs(keeperOffset) < MatchTuning::Shooting::KEEPER_CENTRED_METRES ||
@@ -2764,15 +2764,15 @@ Vector2F MatchEngine::goalkeeperTargetAardvark(MatchPlayer& keeper,
       depthMetres + keeperDepth * std::min(1.0f, threatMetres / 40.0f), 0.5f,
       MatchTuning::Goalkeeper::MAX_DEPTH_METRES + std::max(0.0f, keeperDepth));
   const float dxMetres =
-      (threat.x - goalCentre.x) * MatchTuning::Pitch::LENGTH_METRES;
+      (threat.x - goalCentre.x) * pitch.length;
   const float dyMetres =
-      (threat.y - goalCentre.y) * MatchTuning::Pitch::WIDTH_METRES;
+      (threat.y - goalCentre.y) * pitch.width;
   const float norm =
       std::max(std::sqrt(dxMetres * dxMetres + dyMetres * dyMetres), EPSILON);
   return {goalCentre.x +
-              dxMetres / norm * depthMetres / MatchTuning::Pitch::LENGTH_METRES,
+              dxMetres / norm * depthMetres / pitch.length,
           std::clamp(goalCentre.y + dyMetres / norm * depthMetres /
-                                        MatchTuning::Pitch::WIDTH_METRES,
+                                        pitch.width,
                      MatchTuning::Pitch::GOALKEEPER_MIN_Y,
                      MatchTuning::Pitch::GOALKEEPER_MAX_Y)};
 }
@@ -2890,7 +2890,7 @@ MatchEngine::HeaderPlay MatchEngine::chooseHeaderPlayAardvark(
         other.isHomeTeam != header.isHomeTeam || other.isGoalkeeper)
       continue;
     if ((other.position.x - header.position.x) * attackDirection *
-            MatchTuning::Pitch::LENGTH_METRES <
+            pitch.length <
         -MatchTuning::Aerial::KNOCK_DOWN_MAX_BACKWARD_METRES)
       continue;
     const float d = distance(other.position, header.position);
@@ -2969,9 +2969,9 @@ MatchEngine::SetPieceAttackers MatchEngine::arrangeSetPieceAttackAardvark(
   const auto spot = [&](float depthMetres, float lateralMetres)
   {
     return Vector2F{
-        goalX + inward * depthMetres / MatchTuning::Pitch::LENGTH_METRES,
+        goalX + inward * depthMetres / pitch.length,
         MatchTuning::Pitch::CENTRE +
-            ballSide * lateralMetres / MatchTuning::Pitch::WIDTH_METRES};
+            ballSide * lateralMetres / pitch.width};
   };
   const std::array<Vector2F, 5> attackSlots = {
       spot(5.5f, 3.0f), spot(6.5f, -3.5f), spot(10.5f, 0.0f), spot(8.0f, 1.0f),
@@ -3050,9 +3050,9 @@ void MatchEngine::arrangeSetPieceDefenceAardvark(
   const auto spot = [&](float depthMetres, float lateralMetres)
   {
     return Vector2F{
-        goalX + inward * depthMetres / MatchTuning::Pitch::LENGTH_METRES,
+        goalX + inward * depthMetres / pitch.length,
         MatchTuning::Pitch::CENTRE +
-            ballSide * lateralMetres / MatchTuning::Pitch::WIDTH_METRES};
+            ballSide * lateralMetres / pitch.width};
   };
   const std::size_t boxAttackers = attackers.count;
 
@@ -3154,7 +3154,7 @@ MatchEngine::RestartPlay MatchEngine::chooseRestartPlayAardvark(
     const float goalMetres = distance(ball.position, goal);
     const float lateralMetres =
         std::abs(ball.position.y - MatchTuning::Pitch::CENTRE) *
-        MatchTuning::Pitch::WIDTH_METRES;
+        pitch.width;
     const bool shootingRange =
         goalMetres <= MatchTuning::SetPiece::DIRECT_FREE_KICK_METRES &&
         lateralMetres <= MatchTuning::SetPiece::DIRECT_FREE_KICK_WIDTH_METRES;
@@ -3234,7 +3234,7 @@ MatchEngine::RestartPlay MatchEngine::chooseCornerPlayAardvark(
     const float sideMetres =
         (candidate.movementTarget.y - MatchTuning::Pitch::CENTRE) *
         (ball.position.y < MatchTuning::Pitch::CENTRE ? -1.0f : 1.0f) *
-        MatchTuning::Pitch::WIDTH_METRES;
+        pitch.width;
     const float threat = MatchRules::headerReachMetres(candidate.heightMetres,
                                                        candidate.physicality);
     const float zone = nearPost ? sideMetres : -sideMetres;

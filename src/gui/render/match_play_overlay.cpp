@@ -19,8 +19,8 @@
 
 namespace
 {
-constexpr float LENGTH = MatchTuning::Pitch::LENGTH_METRES;
-constexpr float WIDTH = MatchTuning::Pitch::WIDTH_METRES;
+constexpr float LENGTH = MatchTuning::Pitch::MATCH_LENGTH_METRES;
+constexpr float WIDTH = MatchTuning::Pitch::MATCH_WIDTH_METRES;
 
 constexpr ImU32 MARKER_COLOR = IM_COL32(255, 222, 89, 255);
 constexpr ImU32 MARKER_SHADOW = IM_COL32(10, 14, 22, 170);

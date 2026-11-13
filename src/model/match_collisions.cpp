@@ -171,11 +171,11 @@ void MatchEngine::knockOver(MatchPlayer& player, CollisionSide& side)
   const Vector2F slide = speed > STILL ? side.after : side.jolt;
   const float slideLength = length(slide);
   const float slideAngle =
-      slideLength > EPSILON ? std::atan2(slide.y / MatchTuning::Pitch::WIDTH_METRES,
-                                         slide.x / MatchTuning::Pitch::LENGTH_METRES)
+      slideLength > EPSILON ? std::atan2(slide.y / pitch.width,
+                                         slide.x / pitch.length)
                             : player.facingAngle;
-  const Vector2F facing{std::cos(player.facingAngle) * MatchTuning::Pitch::LENGTH_METRES,
-                        std::sin(player.facingAngle) * MatchTuning::Pitch::WIDTH_METRES};
+  const Vector2F facing{std::cos(player.facingAngle) * pitch.length,
+                        std::sin(player.facingAngle) * pitch.width};
   const float facingLength = std::max(length(facing), EPSILON);
   const float alignment =
       jolt > EPSILON ? std::abs(dot(side.jolt, facing)) / (jolt * facingLength) : 1.0f;
@@ -185,10 +185,10 @@ void MatchEngine::knockOver(MatchPlayer& player, CollisionSide& side)
   float lying = slideAngle;
   if (side.lyingAcross)
   {
-    const Vector2F along{std::cos(slideAngle) * MatchTuning::Pitch::LENGTH_METRES,
-                         std::sin(slideAngle) * MatchTuning::Pitch::WIDTH_METRES};
-    lying = std::atan2(along.x / MatchTuning::Pitch::WIDTH_METRES,
-                       -along.y / MatchTuning::Pitch::LENGTH_METRES);
+    const Vector2F along{std::cos(slideAngle) * pitch.length,
+                         std::sin(slideAngle) * pitch.width};
+    lying = std::atan2(along.x / pitch.width,
+                       -along.y / pitch.length);
   }
 
   player.fallen = true;
@@ -452,7 +452,7 @@ void MatchEngine::collidePlayers(float dt)
             const std::size_t mine = indices[side];
             const std::size_t theirs = indices[otherSide];
             constexpr float AT_SPOT_METRES = 2.0f;
-            const auto atSpot = [](const MatchPlayer& man)
+            const auto atSpot = [this](const MatchPlayer& man)
             { return distance(man.position, man.tacticalTarget) <= AT_SPOT_METRES; };
             const bool givingWay =
                 player.givingWayTo == static_cast<std::int8_t>(theirs) ||
@@ -572,12 +572,12 @@ struct LyingBody
   float half = 0.0f;
 };
 
-LyingBody lyingBody(const MatchPlayer& player)
+LyingBody lyingBody(const MatchPitch& pitch, const MatchPlayer& player)
 {
-  const Vector2F along{std::cos(player.lyingAngle) * MatchTuning::Pitch::LENGTH_METRES,
-                       std::sin(player.lyingAngle) * MatchTuning::Pitch::WIDTH_METRES};
+  const Vector2F along{std::cos(player.lyingAngle) * pitch.length,
+                       std::sin(player.lyingAngle) * pitch.width};
   const float alongLength = std::max(length(along), EPSILON);
-  return {toMetres(player.position),
+  return {toMetres(pitch, player.position),
           scaled(along, 1.0f / alongLength),
           std::max(0.0f, 0.5f * player.heightMetres - 0.5f * MatchTuning::Body::DIAMETER_METRES)};
 }
@@ -653,7 +653,7 @@ std::optional<std::pair<std::size_t, float>> MatchEngine::fallenBodyInPath(
     const MatchPlayer& player = players[slot];
     if (!active(player) || !player.fallen) continue;
     const std::optional<float> time =
-        bodyContactTime(lyingBody(player), start, move, reach);
+        bodyContactTime(lyingBody(pitch, player), start, move, reach);
     if (!time) continue;
     // Over him, it goes on.
     if (startHeight + ball.velocityZ * seconds * *time > C::FALLEN_BALL_BELOW_METRES)
@@ -668,7 +668,7 @@ void MatchEngine::bounceOffFallen(MatchPlayer& player)
   using C = MatchTuning::Collision;
   // Off the surface where it meets him (it may have been sent another way
   // on the way there: then it is not coming into him).
-  const LyingBody body = lyingBody(player);
+  const LyingBody body = lyingBody(pitch, player);
   const Vector2F at = toMetres(ball.position);
   const Vector2F nearest = nearestOnBody(body, at);
   Vector2F normal{at.x - nearest.x, at.y - nearest.y};

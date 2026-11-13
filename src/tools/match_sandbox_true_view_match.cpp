@@ -37,8 +37,8 @@ constexpr float LEG_GHOST_SECONDS = 1.5f;
  * engine's metric frame. */
 float compassOf(float engineAngle)
 {
-  return std::atan2(std::cos(engineAngle) * P::LENGTH_METRES,
-                    std::sin(engineAngle) * P::WIDTH_METRES);
+  return std::atan2(std::cos(engineAngle) * P::MATCH_LENGTH_METRES,
+                    std::sin(engineAngle) * P::MATCH_WIDTH_METRES);
 }
 
 /** "Home Name" for a MatchPlayer or a MatchRenderPlayer. */
@@ -181,7 +181,7 @@ PlayerID MatchTrueView::drawOverlay(const IMatchRenderer& renderer, const MatchE
   {
     float x = 0.0f;
     float y = 0.0f;
-    if (!renderer.projectPitch({point.x / P::LENGTH_METRES, point.y / P::WIDTH_METRES}, point.z,
+    if (!renderer.projectPitch({point.x / P::MATCH_LENGTH_METRES, point.y / P::MATCH_WIDTH_METRES}, point.z,
                                x, y))
       return false;
     out = {x, y};
@@ -203,7 +203,7 @@ PlayerID MatchTrueView::drawOverlay(const IMatchRenderer& renderer, const MatchE
     const Vector2F at =
         lerpRenderPosition(shown.previousPosition, shown.currentPosition, alpha);
     TrueView::Body& body = bodies[index];
-    body.at = {at.x * P::LENGTH_METRES, at.y * P::WIDTH_METRES, 0.0f};
+    body.at = {at.x * P::MATCH_LENGTH_METRES, at.y * P::MATCH_WIDTH_METRES, 0.0f};
     body.facing = compassOf(
         RenderMath::lerpAngle(shown.previousFacingAngle, shown.currentFacingAngle, alpha));
     body.height = player.heightMetres;

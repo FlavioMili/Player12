@@ -101,7 +101,8 @@ void MatchTracker::passReleased(Vector2F origin, bool open_play)
 }
 
 void MatchTracker::passCompleted(std::size_t passer, std::size_t receiver,
-                                 bool home, Vector2F reception)
+                                 bool home, Vector2F reception,
+                                 float pitchLengthMetres)
 {
   if (!enabled || passer >= T::MAX_PLAYERS || receiver >= T::MAX_PLAYERS)
     return;
@@ -112,7 +113,7 @@ void MatchTracker::passCompleted(std::size_t passer, std::size_t receiver,
   if (tracked == nullptr || !pass_open_play) return;
   const Vector2F from = attackingFrame(pass_origin, home);
   const Vector2F to = attackingFrame(reception, home);
-  const float gained = (to.x - from.x) * MatchTuning::Pitch::LENGTH_METRES;
+  const float gained = (to.x - from.x) * pitchLengthMetres;
   if (gained >= T::PROGRESSIVE_METRES && to.x >= T::PROGRESSIVE_MIN_END_X)
     bump(tracked->progressive_passes);
 }
