@@ -7747,7 +7747,6 @@ class HeaderTargetDrill final : public Drill
   static constexpr float GOAL_HALF_WIDTH = MatchTuning::Shooting::GOAL_HALF_WIDTH_METRES;
   static constexpr float BALL_RADIUS = MatchTuning::Units::BALL_RADIUS_METRES;
   static constexpr float CROSSBAR = MatchTuning::Units::CROSSBAR_HEIGHT_METRES;
-  static constexpr float Z_METRES = MatchTuning::Units::BALL_Z_METRES;
 
   const char* name() const override { return "Header target"; }
   const char* summary() const override
@@ -8556,7 +8555,6 @@ class BodyControlDrill final : public Drill
   /** After the touch: the run ends this long after it at most. */
   static constexpr double KEEP_LIMIT = 5.0;
   static constexpr double LINGER_SECONDS = 0.4;
-  static constexpr float Z_METRES = MatchTuning::Units::BALL_Z_METRES;
 
   explicit BodyControlDrill(bool thighDrill)
       : thigh(thighDrill), arrivalHeight(thighDrill ? 0.8f : 1.3f)
@@ -8930,7 +8928,6 @@ class BodyControlDrill final : public Drill
 class LooseHighBallDrill final : public Drill
 {
  public:
-  static constexpr float Z_METRES = MatchTuning::Units::BALL_Z_METRES;
   /** Where the ball comes down (pitch). */
   static inline const PitchPoint LANDS = at(0.55f, 0.5f);
 

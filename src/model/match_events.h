@@ -103,7 +103,8 @@ struct MatchEvent
   bool isHomeTeam = false;
   PlayerID primaryPlayerId = 0;
   PlayerID secondaryPlayerId = 0;
-  PitchPoint position{MatchTuning::Pitch::CENTRE, MatchTuning::Pitch::CENTRE};
+  PitchPoint position{MatchTuning::Pitch::MATCH_CENTRE_X_METRES,
+                      MatchTuning::Pitch::MATCH_CENTRE_Y_METRES};
   float xg = 0.0f;
   MatchEventDetail detail = MatchEventDetail::NONE;
   /** Score once the event happened (after the goal for a goal). */

@@ -148,7 +148,8 @@ struct PassDecision
 {
   std::uint32_t passerId = 0;
   std::uint32_t receiverId = 0;
-  PitchPoint targetPoint{MatchTuning::Pitch::CENTRE, MatchTuning::Pitch::CENTRE};
+  PitchPoint targetPoint{MatchTuning::Pitch::MATCH_CENTRE_X_METRES,
+                         MatchTuning::Pitch::MATCH_CENTRE_Y_METRES};
   PassIntent intent = PassIntent::RECYCLE;
   float utility = 0.0f;
   float progression = 0.0f;
@@ -189,16 +190,18 @@ struct MatchPlayer
 {
   const Player* player = nullptr;
   bool isHomeTeam = false;
-  PitchPoint position{MatchTuning::Pitch::CENTRE, MatchTuning::Pitch::CENTRE};
+  PitchPoint position{MatchTuning::Pitch::MATCH_CENTRE_X_METRES,
+                      MatchTuning::Pitch::MATCH_CENTRE_Y_METRES};
   Vector2F velocity{0.0f, 0.0f};
-  PitchPoint basePosition{MatchTuning::Pitch::CENTRE, MatchTuning::Pitch::CENTRE};
-  PitchPoint movementTarget{MatchTuning::Pitch::CENTRE,
-                          MatchTuning::Pitch::CENTRE};
+  PitchPoint basePosition{MatchTuning::Pitch::MATCH_CENTRE_X_METRES,
+                          MatchTuning::Pitch::MATCH_CENTRE_Y_METRES};
+  PitchPoint movementTarget{MatchTuning::Pitch::MATCH_CENTRE_X_METRES,
+                            MatchTuning::Pitch::MATCH_CENTRE_Y_METRES};
   PlayerIntent intent = PlayerIntent::HOLD_SHAPE;
   /** Latest tactical target (refreshed at the tactical rate) and whether it
    * is chased urgently. */
-  PitchPoint tacticalTarget{MatchTuning::Pitch::CENTRE,
-                          MatchTuning::Pitch::CENTRE};
+  PitchPoint tacticalTarget{MatchTuning::Pitch::MATCH_CENTRE_X_METRES,
+                            MatchTuning::Pitch::MATCH_CENTRE_Y_METRES};
   bool urgentMovement = false;
   /** How fast the tactical target itself moves (m/s): a man pressed or
    * marked tight, or (Binturong brain) the target's own move since the last
@@ -213,7 +216,8 @@ struct MatchPlayer
    * how many of the two are waypoints short of the tactical target (0: both
    * are it). Planned by the brain, advanced by the body as he reaches each
    * waypoint, and cleared by every other writer of the tactical target. */
-  PitchPoint nextTarget{MatchTuning::Pitch::CENTRE, MatchTuning::Pitch::CENTRE};
+  PitchPoint nextTarget{MatchTuning::Pitch::MATCH_CENTRE_X_METRES,
+                        MatchTuning::Pitch::MATCH_CENTRE_Y_METRES};
   std::uint8_t routeWaypoints = 0;
   /** His line through each waypoint of the route (movement targets plan
    * 3b): how far (m) inside the waypoint the turn's apex may pass
@@ -1185,8 +1189,7 @@ struct ContactResult
 };
 
 /**
- * The ball.`position` is normalised; `z` is the height in length units
- * (z * MatchTuning::Units::BALL_Z_METRES = metres) for renderers. Velocities
+ * The ball: `position` and the height `z` are metres. Velocities
  * are in m/s and `spin` in rad/s (BallSpin).
  */
 /** How a keeper lets go of a ball in his hands (goalkeeper plan step 5). */
@@ -1281,7 +1284,8 @@ struct MatchPossessionState
   bool isPass = false;
   /** Where the pass in flight is heading (the kick's real target, as its
    * flight shows it). */
-  PitchPoint passTarget{MatchTuning::Pitch::CENTRE, MatchTuning::Pitch::CENTRE};
+  PitchPoint passTarget{MatchTuning::Pitch::MATCH_CENTRE_X_METRES,
+                        MatchTuning::Pitch::MATCH_CENTRE_Y_METRES};
   bool passByHome = false;
   bool passWasOffside = false;
   /** Binturong: release-time offside judgements for other possible collectors.
@@ -1293,7 +1297,7 @@ struct MatchPossessionState
   bool shotOnTarget = false;
   float shotXG = 0.0f;
   /** Predicted goal-line crossing of the current shot (y and metres high). */
-  float shotTargetY = MatchTuning::Pitch::CENTRE;
+  float shotTargetY = MatchTuning::Pitch::MATCH_CENTRE_Y_METRES;
   float shotTargetHeightMetres = 0.0f;
   float shotElapsedSeconds = 0.0f;
   bool shotIsHeader = false;
@@ -1327,7 +1331,8 @@ struct MatchPossessionState
 
 struct MatchBall
 {
-  PitchPoint position{MatchTuning::Pitch::CENTRE, MatchTuning::Pitch::CENTRE};
+  PitchPoint position{MatchTuning::Pitch::MATCH_CENTRE_X_METRES,
+                      MatchTuning::Pitch::MATCH_CENTRE_Y_METRES};
   float z = 0.0f;
   Vector2F velocity{0.0f, 0.0f};
   float velocityZ = 0.0f;
@@ -1335,7 +1340,8 @@ struct MatchBall
   /** While dribbling: where he means to carry it (his plan's target, kept
    * from the last plan refresh, as the chase overrides his movement), and
    * the time until he may touch it again (s). */
-  PitchPoint dribbleGoal{MatchTuning::Pitch::CENTRE, MatchTuning::Pitch::CENTRE};
+  PitchPoint dribbleGoal{MatchTuning::Pitch::MATCH_CENTRE_X_METRES,
+                         MatchTuning::Pitch::MATCH_CENTRE_Y_METRES};
   float ownTouchCooldown = 0.0f;
   /** His next meet with his ball (dribble meet plan, Binturong body),
    * replanned every step: whose plan it is (none: he chases it), where on
@@ -3313,7 +3319,8 @@ class MatchEngine
   {
     bool active = false;
     bool fouledTeamHome = false;
-    PitchPoint position{MatchTuning::Pitch::CENTRE, MatchTuning::Pitch::CENTRE};
+    PitchPoint position{MatchTuning::Pitch::MATCH_CENTRE_X_METRES,
+                      MatchTuning::Pitch::MATCH_CENTRE_Y_METRES};
     float secondsRemaining = 0.0f;
   };
   PendingAdvantage pendingAdvantage;
@@ -3333,8 +3340,8 @@ class MatchEngine
   std::vector<PitchPoint> previousPlayerPositions;
   std::vector<float> previousPlayerFacingAngles;
   std::vector<float> previousPlayerFeetHeights;
-  PitchPoint previousBallPosition{MatchTuning::Pitch::CENTRE,
-                                MatchTuning::Pitch::CENTRE};
+  PitchPoint previousBallPosition{MatchTuning::Pitch::MATCH_CENTRE_X_METRES,
+                                  MatchTuning::Pitch::MATCH_CENTRE_Y_METRES};
   float previousBallZ = 0.0f;
 
   std::vector<MatchEvent> events;
@@ -3350,7 +3357,7 @@ class MatchEngine
     GoalkeeperState state = GoalkeeperState::SET_POSITION;
     float timer = 0.0f;
     float reactionRemaining = 0.0f;
-    float diveTargetY = MatchTuning::Pitch::CENTRE;
+    float diveTargetY = MatchTuning::Pitch::MATCH_CENTRE_Y_METRES;
     float lateralVelocity = 0.0f;
     /** A Binturong keeper's dive (goalkeeper plan step 3). */
     KeeperDive dive;
@@ -3391,8 +3398,8 @@ class MatchEngine
   float accumulator = 0.0f;
   float ratingRefreshTimer = 0.0f;
   /** Ball state at the start of the current ball sub-step. */
-  PitchPoint substepBallPosition{MatchTuning::Pitch::CENTRE,
-                               MatchTuning::Pitch::CENTRE};
+  PitchPoint substepBallPosition{MatchTuning::Pitch::MATCH_CENTRE_X_METRES,
+                                 MatchTuning::Pitch::MATCH_CENTRE_Y_METRES};
   float substepBallZ = 0.0f;
   /** Ball sub-steps still to come in the current step after this one, and
    * the step's length: players move only between steps. */
@@ -3609,8 +3616,8 @@ class MatchEngine
   struct PassOption
   {
     MatchPlayer* receiver = nullptr;
-    PitchPoint targetPoint{MatchTuning::Pitch::CENTRE,
-                         MatchTuning::Pitch::CENTRE};
+    PitchPoint targetPoint{MatchTuning::Pitch::MATCH_CENTRE_X_METRES,
+                         MatchTuning::Pitch::MATCH_CENTRE_Y_METRES};
     PassIntent intent = PassIntent::RECYCLE;
     float utility = 0.0f;
     float progression = 0.0f;

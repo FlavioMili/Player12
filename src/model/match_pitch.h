@@ -17,8 +17,9 @@
  * Each MatchEngine holds its own; a match's is 105 x 68 m
  * (MatchTuning::Pitch::MATCH_LENGTH_METRES / MATCH_WIDTH_METRES).
  *
- * Positions are still fractions of this pitch (x of its length, y of its
- * width); velocities and `_METRES` tuning are metres.
+ * Positions are in metres from the top left corner (x along the length, y
+ * across the width); the ball's height is in metres; velocities and
+ * `_METRES` tuning are metres.
  */
 struct MatchPitch final
 {
@@ -32,13 +33,11 @@ struct MatchPitch final
         inverseLength(1.0f / lengthMetres),
         inverseWidth(1.0f / widthMetres),
         bodyMinX(-(MatchTuning::Pitch::BOARDS_END_METRES -
-                   MatchTuning::Body::RADIUS_METRES) /
-                 lengthMetres),
-        bodyMaxX(1.0f - bodyMinX),
+                   MatchTuning::Body::RADIUS_METRES)),
+        bodyMaxX(lengthMetres - bodyMinX),
         bodyMinY(-(MatchTuning::Pitch::BOARDS_SIDE_METRES -
-                   MatchTuning::Body::RADIUS_METRES) /
-                 widthMetres),
-        bodyMaxY(1.0f - bodyMinY),
+                   MatchTuning::Body::RADIUS_METRES)),
+        bodyMaxY(widthMetres - bodyMinY),
         ground(lengthMetres, widthMetres)
   {
   }
@@ -49,9 +48,9 @@ struct MatchPitch final
   /** 1 / length and 1 / width: metres to pitch fractions. */
   float inverseLength;
   float inverseWidth;
-  /** Inside the boards, his body touching them (pitch fractions): where a
-   * player may mean to go to fetch a ball (MatchEngine::clampToBoards). His
-   * body can go further, through the gaps in the boards (moveBody). */
+  /** Inside the boards, his body touching them (metres): where a player
+   * may mean to go to fetch a ball (MatchEngine::clampToBoards). His body
+   * can go further, through the gaps in the boards (moveBody). */
   float bodyMinX;
   float bodyMaxX;
   float bodyMinY;
@@ -62,13 +61,10 @@ struct MatchPitch final
 
   // ---------------------------------------------------------------------
   // Point units (training ground T1 stage 2). A PitchPoint's coordinates
-  // and the ball's height are in point units: for now fractions of the
-  // length and the width, and the height in pitch lengths of
-  // BALL_Z_METRES. Stage 2b makes them metres by changing only these. Code
-  // that means a fraction of the pitch, or metres, goes through them; code
-  // that only adds, subtracts or compares points needs neither. Each keeps
-  // the exact float operations of the code it replaced, so that stage 2a
-  // plays bit for bit the same.
+  // and the ball's height are metres. Tuning given as a fraction of the
+  // pitch goes through `at`/`atX`/`atY` (and back through `fraction`);
+  // stage 4 decides each of those. The metres conversions below do nothing
+  // now and go in stage 2c.
   // ---------------------------------------------------------------------
 
   /** A match pitch (MATCH_LENGTH_METRES x MATCH_WIDTH_METRES), for code with
@@ -84,88 +80,84 @@ struct MatchPitch final
    * corner. */
   [[nodiscard]] constexpr PitchPoint at(float fx, float fy) const
   {
-    return PitchPoint{fx, fy};
+    return PitchPoint{fx * length, fy * width};
   }
-  /** A fraction of the length (or of the width) in point units: an x (y)
+  /** A fraction of the length (or of the width) in metres: an x (y)
    * coordinate, or a step of that size. */
-  [[nodiscard]] constexpr float atX(float fraction) const { return fraction; }
-  [[nodiscard]] constexpr float atY(float fraction) const { return fraction; }
+  [[nodiscard]] constexpr float atX(float fraction) const
+  {
+    return fraction * length;
+  }
+  [[nodiscard]] constexpr float atY(float fraction) const
+  {
+    return fraction * width;
+  }
   /** A point's x (y) as a fraction of the length (width); also a coordinate
-   * or a step already in point units. */
+   * or a step in metres. */
   [[nodiscard]] constexpr float fractionX(PitchPoint point) const
   {
-    return point.x;
+    return point.x / length;
   }
   [[nodiscard]] constexpr float fractionY(PitchPoint point) const
   {
-    return point.y;
+    return point.y / width;
   }
-  [[nodiscard]] constexpr float fractionX(float units) const { return units; }
-  [[nodiscard]] constexpr float fractionY(float units) const { return units; }
+  [[nodiscard]] constexpr float fractionX(float units) const
+  {
+    return units / length;
+  }
+  [[nodiscard]] constexpr float fractionY(float units) const
+  {
+    return units / width;
+  }
   /** The point as fractions (x of the length, y of the width). */
   [[nodiscard]] constexpr Vector2F fractions(PitchPoint point) const
   {
-    return {point.x, point.y};
+    return {point.x / length, point.y / width};
   }
-  /** Metres along the length (width) in point units. */
+  /** Metres along the length (width) in point units: the same (2c). */
   [[nodiscard]] constexpr float fromMetresX(float metres) const
   {
-    return metres / length;
+    return metres;
   }
   [[nodiscard]] constexpr float fromMetresY(float metres) const
   {
-    return metres / width;
+    return metres;
   }
-  /** The same, through the inverse (the form some code had). */
   [[nodiscard]] constexpr float fromMetresXByInverse(float metres) const
   {
-    return metres * inverseLength;
+    return metres;
   }
   [[nodiscard]] constexpr float fromMetresYByInverse(float metres) const
   {
-    return metres * inverseWidth;
+    return metres;
   }
-  /** A coordinate or a step in point units, in metres. */
-  [[nodiscard]] constexpr float metresX(float units) const
-  {
-    return units * length;
-  }
-  [[nodiscard]] constexpr float metresY(float units) const
-  {
-    return units * width;
-  }
+  /** A coordinate or a step in point units, in metres: the same (2c). */
+  [[nodiscard]] constexpr float metresX(float units) const { return units; }
+  [[nodiscard]] constexpr float metresY(float units) const { return units; }
   [[nodiscard]] constexpr float metresX(PitchPoint point) const
   {
-    return point.x * length;
+    return point.x;
   }
   [[nodiscard]] constexpr float metresY(PitchPoint point) const
   {
-    return point.y * width;
+    return point.y;
   }
   /** The x coordinate seen from the other end (1 - x as a fraction). */
   [[nodiscard]] constexpr float mirrorX(float units) const
   {
-    return 1.0f - units;
+    return length - units;
   }
   /** The y coordinate seen from the other touchline (1 - y as a fraction). */
   [[nodiscard]] constexpr float mirrorY(float units) const
   {
-    return 1.0f - units;
+    return width - units;
   }
 
-  /** A height in point units (pitch lengths of BALL_Z_METRES) in metres. */
-  [[nodiscard]] static constexpr float heightMetres(float z)
-  {
-    return z * MatchTuning::Units::BALL_Z_METRES;
-  }
-  /** A height in metres in point units. */
+  /** The ball's height in metres: the same (2c). */
+  [[nodiscard]] static constexpr float heightMetres(float z) { return z; }
   [[nodiscard]] static constexpr float heightUnits(float metres)
   {
-    return metres / MatchTuning::Units::BALL_Z_METRES;
+    return metres;
   }
-  /** A height given in pitch lengths of BALL_Z_METRES (the old unit, as
-   * some tuning is), in point units. */
-  [[nodiscard]] static constexpr float atZ(float lengths) { return lengths; }
-  /** A height in point units as pitch lengths of BALL_Z_METRES. */
-  [[nodiscard]] static constexpr float fractionZ(float z) { return z; }
 };

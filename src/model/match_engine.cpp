@@ -7702,7 +7702,7 @@ std::string MatchEngine::getDebugSnapshotJson() const
   }
   output << "},\"ball\":{\"x\":" << pitch.fractionX(ball.position)
          << ",\"y\":" << pitch.fractionY(ball.position)
-         << ",\"z\":" << pitch.fractionZ(ball.z)
+         << ",\"z_metres\":" << ball.z
          << ",\"possessed_by\":";
   if (getPossessionAttachment())
     output << getPossessionAttachment()->getId();

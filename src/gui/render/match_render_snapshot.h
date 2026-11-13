@@ -46,12 +46,12 @@ struct MatchRenderPlayer
 {
   const Player* player = nullptr;
   bool isHomeTeam = false;
-  PitchPoint previousPosition{MatchTuning::Pitch::CENTRE,
-                            MatchTuning::Pitch::CENTRE};
-  PitchPoint currentPosition{MatchTuning::Pitch::CENTRE,
-                           MatchTuning::Pitch::CENTRE};
-  PitchPoint movementTarget{MatchTuning::Pitch::CENTRE,
-                          MatchTuning::Pitch::CENTRE};
+  PitchPoint previousPosition{MatchTuning::Pitch::MATCH_CENTRE_X_METRES,
+                              MatchTuning::Pitch::MATCH_CENTRE_Y_METRES};
+  PitchPoint currentPosition{MatchTuning::Pitch::MATCH_CENTRE_X_METRES,
+                             MatchTuning::Pitch::MATCH_CENTRE_Y_METRES};
+  PitchPoint movementTarget{MatchTuning::Pitch::MATCH_CENTRE_X_METRES,
+                            MatchTuning::Pitch::MATCH_CENTRE_Y_METRES};
   PlayerIntent intent = PlayerIntent::HOLD_SHAPE;
   float previousFacingAngle = 0.0f;
   float currentFacingAngle = 0.0f;
@@ -111,10 +111,10 @@ struct MatchRenderTouchlinePerson
 
 struct MatchRenderBall
 {
-  PitchPoint previousPosition{MatchTuning::Pitch::CENTRE,
-                            MatchTuning::Pitch::CENTRE};
-  PitchPoint currentPosition{MatchTuning::Pitch::CENTRE,
-                           MatchTuning::Pitch::CENTRE};
+  PitchPoint previousPosition{MatchTuning::Pitch::MATCH_CENTRE_X_METRES,
+                              MatchTuning::Pitch::MATCH_CENTRE_Y_METRES};
+  PitchPoint currentPosition{MatchTuning::Pitch::MATCH_CENTRE_X_METRES,
+                             MatchTuning::Pitch::MATCH_CENTRE_Y_METRES};
   float previousZ = 0.0f;
   float currentZ = 0.0f;
   const Player* possessedBy = nullptr;

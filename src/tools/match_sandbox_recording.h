@@ -38,7 +38,9 @@ class SandboxRecorder;
  */
 struct MatchRecording
 {
-  static constexpr int VERSION = 2;
+  // 3: points and the ball height in metres (training ground T1 stage 2b);
+  // older recordings hold fractions and are refused.
+  static constexpr int VERSION = 3;
 
   struct Decision
   {

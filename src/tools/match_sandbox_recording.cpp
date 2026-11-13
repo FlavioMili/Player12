@@ -483,10 +483,12 @@ std::optional<MatchRecording> Recordings::load(
       return std::nullopt;
     }
     const int version = document.value("version", 1);
-    if (version < 1 || version > MatchRecording::VERSION ||
-        (version >= 2 && !document.at("setup").contains("possession")))
+    if (version != MatchRecording::VERSION ||
+        !document.at("setup").contains("possession"))
     {
-      error = "unsupported recording version or missing possession selection";
+      error = version < MatchRecording::VERSION
+                  ? "recording from an older engine (positions in pitch fractions); record it again"
+                  : "unsupported recording version or missing possession selection";
       return std::nullopt;
     }
     MatchRecording recording;

@@ -363,6 +363,10 @@ struct MatchTuning final
     static constexpr float MATCH_LENGTH_METRES = 105.0f;
     static constexpr float MATCH_WIDTH_METRES = 68.0f;
     static constexpr float CENTRE = 0.5f;
+    /** The centre spot of a match pitch in metres: where points and the
+     * ball start before the engine places them. */
+    static constexpr float MATCH_CENTRE_X_METRES = MATCH_LENGTH_METRES * CENTRE;
+    static constexpr float MATCH_CENTRE_Y_METRES = MATCH_WIDTH_METRES * CENTRE;
     static constexpr float GOAL_TOP = 0.446f;
     static constexpr float GOAL_BOTTOM = 0.554f;
     static constexpr float LINEUP_GOALKEEPER_X = 0.04f;
@@ -2465,13 +2469,11 @@ struct MatchTuning final
   };
 
   /**
-   * Unit conventions. Pitch x is normalised by the engine's pitch length and y by
-   * its width (MatchPitch). The public ball height `MatchBall::z` stays in length units
-   * (z * BALL_Z_METRES = metres) for renderers; velocities are in m/s.
+   * Unit conventions. Positions and the ball height `MatchBall::z` are
+   * metres (MatchPitch); velocities are in m/s.
    */
   struct Units final
   {
-    static constexpr float BALL_Z_METRES = 105.0f;
     static constexpr float CROSSBAR_HEIGHT_METRES = 2.44f;
     static constexpr float BALL_RADIUS_METRES = 0.11f;
     static constexpr float DEFAULT_PLAYER_HEIGHT_METRES = 1.80f;
