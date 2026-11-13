@@ -17,7 +17,10 @@
 
 namespace Lab
 {
-void writeTraceHeader(std::ostream& out) { out << "run,tick,who,x,y,z\n"; }
+void writeTraceHeader(std::ostream& out)
+{
+  out << "run,tick,who,x,y,z,facing\n";
+}
 
 void writeTraceRows(std::ostream& out, std::string_view run, int tick,
                     const MatchEngine& engine)
@@ -26,11 +29,11 @@ void writeTraceRows(std::ostream& out, std::string_view run, int tick,
   for (std::size_t index = 0; index < players.size(); ++index)
   {
     const PitchPoint at = players[index].position;
-    out << std::format("{},{},p{},{:.5f},{:.5f},0\n", run, tick, index, at.x,
-                       at.y);
+    out << std::format("{},{},p{},{:.5f},{:.5f},0,{:.5f}\n", run, tick, index,
+                       at.x, at.y, players[index].facingAngle);
   }
   const PitchPoint ball = engine.getBall().position;
-  out << std::format("{},{},ball,{:.5f},{:.5f},{:.5f}\n", run, tick, ball.x,
+  out << std::format("{},{},ball,{:.5f},{:.5f},{:.5f},0\n", run, tick, ball.x,
                      ball.y, engine.getBall().z);
 }
 }  // namespace Lab

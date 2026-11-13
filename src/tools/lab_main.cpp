@@ -99,7 +99,7 @@ season   whole AI-only world via GameController in a scratch directory
          after every season
 trace    the first --seconds (default 10) of each match matches would play
          with the same options: every player and the ball in metres after
-         every fixed step, as CSV (run,tick,who,x,y,z) in --out; for
+         every fixed step, as CSV (run,tick,who,x,y,z,facing) in --out; for
          comparing two builds tick by tick
 tactics  round robin of the tactic presets between equal teams; each seed is
          played twice with home and away swapped

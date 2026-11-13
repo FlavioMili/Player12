@@ -487,7 +487,7 @@ std::optional<MatchRecording> Recordings::load(
         !document.at("setup").contains("possession"))
     {
       error = version < MatchRecording::VERSION
-                  ? "recording from an older engine (positions in pitch fractions); record it again"
+                  ? "recording from an older engine (squashed facings or pitch fractions); record it again"
                   : "unsupported recording version or missing possession selection";
       return std::nullopt;
     }
