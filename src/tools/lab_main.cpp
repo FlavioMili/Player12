@@ -13,6 +13,7 @@
 #include <spdlog/spdlog.h>
 
 #include <chrono>
+#include <cmath>
 #include <cstdlib>
 #include <filesystem>
 #include <format>
@@ -34,6 +35,7 @@
 #include "tools/lab_runner.h"
 #include "tools/lab_season.h"
 #include "tools/lab_touch_sensitivity.h"
+#include "tools/lab_trace.h"
 #include "tools/match_sandbox_measure.h"
 #include "tools/match_sandbox_setup.h"
 
@@ -64,6 +66,7 @@ Usage:
                  [--knockout] [--possession aardvark|binturong]
                  [--formation F|HOME,AWAY]
                  [--knobs "Name=value;Name=value"] [--out-dir DIR]
+  fm_lab trace   [the matches options] --out FILE [--seconds S]
   fm_lab season  [--leagues all|top|ID,ID...] [--seasons N] [--seed S]
                  [--threads T] [--max-days D] [--reload] [--out-dir DIR]
   fm_lab tactics [--n SEEDS_PER_PAIR] [--seed S] [--rating X] [--threads T]
@@ -78,6 +81,8 @@ Usage:
                  "DRILL" --sweep "Setting=FROM:TO:COUNT" [--by ...]
                  [--preset NAME] [--set "Setting=value"]... [--repeats N]
                  [--seed S] [--csv [FILE]]
+                 (or, for one run, [--preset NAME] [--set ...] [--seed S]
+                 --trace FILE [--seconds S])
   fm_lab touch-sensitivity [--repeats N] [--ratings A,B,...]
                  [--situations all|NAME;NAME] [--only NAME;NAME] [--step S]
                  [--range "Name=LOW:HIGH"]... [--seed S] [--out-dir DIR]
@@ -92,6 +97,10 @@ season   whole AI-only world via GameController in a scratch directory
          population, ability, finances by tier, competitions, save size and
          day timings season by season; --reload saves and reloads the career
          after every season
+trace    the first --seconds (default 10) of each match matches would play
+         with the same options: every player and the ball in metres after
+         every fixed step, as CSV (run,tick,who,x,y,z) in --out; for
+         comparing two builds tick by tick
 tactics  round robin of the tactic presets between equal teams; each seed is
          played twice with home and away swapped
 drill    a match sandbox drill measured headless: the same options as
@@ -187,14 +196,14 @@ Arguments parseArguments(int argc, char** argv)
 {
   static constexpr std::array<std::string_view, 6> FLAGS = {
       "--spread", "--uniform", "--knockout", "--reload", "--help", "-h"};
-  static constexpr std::array<std::string_view, 24> OPTIONS = {
+  static constexpr std::array<std::string_view, 26> OPTIONS = {
       "--formation",
       "--n",       "--seed",       "--home-rating", "--away-rating",
       "--rating",  "--rating-min", "--rating-max",  "--threads",
       "--out-dir", "--leagues",    "--seasons",     "--max-days",
       "--fidelity", "--brains",    "--bodies",      "--handshake",
       "--referee", "--managers",   "--ball",        "--out-of-play",
-      "--home-advantage", "--knobs", "--possession"};
+      "--home-advantage", "--knobs", "--possession", "--out", "--seconds"};
   Arguments arguments;
   if (argc < 2) throw UsageError("missing mode");
   arguments.mode = argv[1];
@@ -522,72 +531,145 @@ float homeAdvantageOption(const Arguments& arguments)
                             MatchTuning::Context::MAX_HOME_ADVANTAGE_SCALE);
 }
 
-Lab::LabReport runMatchesMode(const Arguments& arguments, unsigned threads)
+/** The options of matches (and trace): who plays, with what, how often. */
+struct MatchesOptions
 {
-  const int count =
-      parseNumber<int>(arguments, "--n", DEFAULT_MATCHES, 1, 10'000'000);
-  const auto seed =
+  int count = DEFAULT_MATCHES;
+  std::uint64_t seed = 1;
+  bool spread = false;
+  float homeRating = DEFAULT_RATING;
+  float awayRating = DEFAULT_RATING;
+  float minRating = SPREAD_MIN_RATING;
+  float maxRating = SPREAD_MAX_RATING;
+  bool background = false;
+  std::array<BrainId, 2> brains{};
+  std::array<BodyId, 2> bodies{};
+  HandshakeId handshake = HandshakeId::BINTURONG;
+  float homeAdvantage = 0.0f;
+  SeamChoices seams;
+  bool uniform = false;
+  bool knockout = false;
+  KnobSettings knobs;
+  std::array<std::optional<Lab::FormationSlots>, 2> formations;
+};
+
+MatchesOptions matchesOptions(const Arguments& arguments)
+{
+  MatchesOptions o;
+  o.count = parseNumber<int>(arguments, "--n", DEFAULT_MATCHES, 1, 10'000'000);
+  o.seed =
       parseNumber<std::uint64_t>(arguments, "--seed", 1, 0, UINT64_MAX / 2);
-  const bool spread = arguments.has("--spread");
-  const float homeRating = parseNumber<float>(arguments, "--home-rating",
-                                              DEFAULT_RATING, 1.0f, 99.0f);
-  const float awayRating = parseNumber<float>(arguments, "--away-rating",
-                                              DEFAULT_RATING, 1.0f, 99.0f);
-  const float minRating = parseNumber<float>(arguments, "--rating-min",
-                                             SPREAD_MIN_RATING, 1.0f, 99.0f);
-  const float maxRating = parseNumber<float>(arguments, "--rating-max",
-                                             SPREAD_MAX_RATING, 1.0f, 99.0f);
-  if (spread &&
+  o.spread = arguments.has("--spread");
+  o.homeRating = parseNumber<float>(arguments, "--home-rating", DEFAULT_RATING,
+                                    1.0f, 99.0f);
+  o.awayRating = parseNumber<float>(arguments, "--away-rating", DEFAULT_RATING,
+                                    1.0f, 99.0f);
+  o.minRating = parseNumber<float>(arguments, "--rating-min", SPREAD_MIN_RATING,
+                                   1.0f, 99.0f);
+  o.maxRating = parseNumber<float>(arguments, "--rating-max", SPREAD_MAX_RATING,
+                                   1.0f, 99.0f);
+  if (o.spread &&
       (arguments.value("--home-rating") || arguments.value("--away-rating")))
     throw UsageError("--spread cannot be combined with fixed ratings");
-  if (minRating > maxRating) throw UsageError("--rating-min > --rating-max");
-  const bool background = backgroundFidelity(arguments);
-  const std::array<BrainId, 2> brains = brainPair(arguments);
-  const std::array<BodyId, 2> bodies = bodyPair(arguments);
-  const HandshakeId handshake = handshakeOption(arguments);
-  const float homeAdvantage = homeAdvantageOption(arguments);
-  const SeamChoices seams = seamChoices(arguments);
+  if (o.minRating > o.maxRating) throw UsageError("--rating-min > --rating-max");
+  o.background = backgroundFidelity(arguments);
+  o.brains = brainPair(arguments);
+  o.bodies = bodyPair(arguments);
+  o.handshake = handshakeOption(arguments);
+  o.homeAdvantage = homeAdvantageOption(arguments);
+  o.seams = seamChoices(arguments);
+  o.uniform = arguments.has("--uniform");
+  o.knockout = arguments.has("--knockout");
+  o.knobs = knobsOption(arguments);
+  o.formations = formationPair(arguments);
+  return o;
+}
 
-  std::vector<Lab::MatchJob> jobs(static_cast<std::size_t>(count));
+std::vector<Lab::MatchJob> matchJobs(const MatchesOptions& o)
+{
+  std::vector<Lab::MatchJob> jobs(static_cast<std::size_t>(o.count));
   for (std::size_t i = 0; i < jobs.size(); ++i)
   {
-    jobs[i].seed = Lab::matchSeed(seed, i);
-    jobs[i].background = background;
-    if (spread)
+    jobs[i].seed = Lab::matchSeed(o.seed, i);
+    jobs[i].background = o.background;
+    if (o.spread)
     {
       const auto uniform = [&](std::uint64_t salt)
       {
-        return minRating +
-               static_cast<float>(Lab::matchSeed(seed ^ salt, i) / TWO_POW_32) *
-                   (maxRating - minRating);
+        return o.minRating +
+               static_cast<float>(Lab::matchSeed(o.seed ^ salt, i) /
+                                  TWO_POW_32) *
+                   (o.maxRating - o.minRating);
       };
       jobs[i].home.rating = uniform(SPREAD_SALT);
       jobs[i].away.rating = uniform(SPREAD_SALT + 1);
     }
     else
     {
-      jobs[i].home.rating = homeRating;
-      jobs[i].away.rating = awayRating;
+      jobs[i].home.rating = o.homeRating;
+      jobs[i].away.rating = o.awayRating;
     }
   }
-  setBrainsAndBodies(jobs, brains, bodies);
-  setSeamChoices(jobs, seams);
-  const bool uniform = arguments.has("--uniform");
-  const bool knockout = arguments.has("--knockout");
-  const KnobSettings knobs = knobsOption(arguments);
-  const auto formations = formationPair(arguments);
+  setBrainsAndBodies(jobs, o.brains, o.bodies);
+  setSeamChoices(jobs, o.seams);
   for (Lab::MatchJob& job : jobs)
   {
-    job.home.formation = formations[0];
-    job.away.formation = formations[1];
-    job.handshake = handshake;
-    job.homeAdvantage = homeAdvantage;
-    job.home.uniform = uniform;
-    job.away.uniform = uniform;
-    job.knockout = knockout;
-    job.touchKnobs = knobs.touch;
-    job.strikeKnobs = knobs.strike;
+    job.home.formation = o.formations[0];
+    job.away.formation = o.formations[1];
+    job.handshake = o.handshake;
+    job.homeAdvantage = o.homeAdvantage;
+    job.home.uniform = o.uniform;
+    job.away.uniform = o.uniform;
+    job.knockout = o.knockout;
+    job.touchKnobs = o.knobs.touch;
+    job.strikeKnobs = o.knobs.strike;
   }
+  return jobs;
+}
+
+/** trace: the first --seconds (default 10) of each match that matches would
+ * play, every player and the ball every fixed step, to --out (CSV, one run
+ * per match, labelled by its index). */
+int runTraceMode(const Arguments& arguments)
+{
+  const MatchesOptions options = matchesOptions(arguments);
+  const float seconds =
+      parseNumber<float>(arguments, "--seconds", 10.0f, 0.1f, 600.0f);
+  const std::optional<std::string> path = arguments.value("--out");
+  if (!path) throw UsageError("trace: --out FILE is required");
+  const int ticks = static_cast<int>(
+      std::lround(seconds / MatchTuning::Timing::FIXED_STEP_SECONDS));
+  const std::vector<Lab::MatchJob> jobs = matchJobs(options);
+  const StatsConfig config = Lab::loadStatsConfig();
+  std::ofstream out(*path, std::ios::binary);
+  if (!out) throw std::runtime_error("trace: cannot write " + *path);
+  Lab::writeTraceHeader(out);
+  for (std::size_t index = 0; index < jobs.size(); ++index)
+    Lab::traceMatch(jobs[index], config, ticks, std::format("m{}", index),
+                    out);
+  std::cerr << std::format("[fm_lab] trace: {} matches, {} ticks each, {}\n",
+                           jobs.size(), ticks, *path);
+  return out ? Lab::ExitCode::OK : Lab::ExitCode::SIMULATION_ERROR;
+}
+
+Lab::LabReport runMatchesMode(const Arguments& arguments, unsigned threads)
+{
+  const MatchesOptions options = matchesOptions(arguments);
+  const std::uint64_t seed = options.seed;
+  const bool spread = options.spread;
+  const float homeRating = options.homeRating;
+  const float awayRating = options.awayRating;
+  const float minRating = options.minRating;
+  const float maxRating = options.maxRating;
+  const bool background = options.background;
+  const std::array<BrainId, 2> brains = options.brains;
+  const std::array<BodyId, 2> bodies = options.bodies;
+  const HandshakeId handshake = options.handshake;
+  const float homeAdvantage = options.homeAdvantage;
+  const SeamChoices& seams = options.seams;
+  const bool uniform = options.uniform;
+  const KnobSettings& knobs = options.knobs;
+  const std::vector<Lab::MatchJob> jobs = matchJobs(options);
 
   const StatsConfig config = Lab::loadStatsConfig();
   const auto started = std::chrono::steady_clock::now();
@@ -869,7 +951,7 @@ int main(int argc, char** argv)
       return Lab::ExitCode::OK;
     }
     if (arguments.mode != "matches" && arguments.mode != "season" &&
-        arguments.mode != "tactics")
+        arguments.mode != "tactics" && arguments.mode != "trace")
       throw UsageError(std::format("unknown mode '{}'", arguments.mode));
     if (arguments.mode == "season" && arguments.value("--possession"))
       throw UsageError("--possession is supported by matches, tactics and drill, not season");
@@ -891,6 +973,7 @@ int main(int argc, char** argv)
     const std::optional<std::string> outDir = arguments.value("--out-dir");
     const ScratchRuntime runtime;
     quietLogging();
+    if (arguments.mode == "trace") return runTraceMode(arguments);
     Lab::LabReport report;
     if (arguments.mode == "matches")
       report = runMatchesMode(arguments, threads);

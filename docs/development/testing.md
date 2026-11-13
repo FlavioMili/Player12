@@ -56,6 +56,12 @@ ranges:
 results using the same seeds, ratings, count and fidelity; see
 [Extending and modding](extending-and-modding.md#validate-a-behavior-change).
 
+For a change that should only alter float rounding, compare position traces
+from two builds tick by tick. `fm_lab trace` takes the `matches` options plus
+`--out FILE` and writes every player and the ball, in metres, at every fixed
+step for the first `--seconds` (default 10) of each match. `fm_lab drill
+"NAME" --trace FILE` does the same for one run of a drill.
+
 ## Screenshots
 
 The screenshots in `docs/images` come from a real career, captured by the

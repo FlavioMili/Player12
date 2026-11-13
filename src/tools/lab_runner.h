@@ -15,7 +15,9 @@
 #include <optional>
 #include <span>
 #include <stdexcept>
+#include <iosfwd>
 #include <string>
+#include <string_view>
 #include <vector>
 
 #include "global/stats_config.h"
@@ -76,6 +78,13 @@ struct MatchSample
   std::array<double, 2> xg{};
   float home_possession = 50.0f;
   int corners = 0;
+  /** Restarts counted from the event log (engine only); the log keeps the
+   * last MatchTuning::Timing::MAX_EVENTS events, so `event_log_full` marks
+   * a match whose early restarts may be missing. */
+  int throw_ins = 0;
+  int goal_kicks = 0;
+  int free_kicks = 0;
+  bool event_log_full = false;
   int yellows = 0;
   int reds = 0;
   int offsides = 0;
@@ -387,6 +396,14 @@ std::uint32_t matchSeed(std::uint64_t seed, std::uint64_t index);
  * state is shared between jobs). Throws SimulationError.
  */
 MatchSample simulateMatch(const MatchJob& job, const StatsConfig& config);
+
+/**
+ * Plays the first `ticks` fixed steps of the job's match and writes every
+ * player and the ball after each (tick 0 before the first) to `out` as
+ * trace rows labelled `run` (lab_trace.h).
+ */
+void traceMatch(const MatchJob& job, const StatsConfig& config, int ticks,
+                std::string_view run, std::ostream& out);
 
 /**
  * Simulates every job on `threads` threads (caller included) through the

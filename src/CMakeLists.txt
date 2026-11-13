@@ -665,6 +665,8 @@ add_library(fm_lab_lib STATIC
     tools/lab_runner.cpp
     tools/lab_season.h
     tools/lab_season.cpp
+    tools/lab_trace.h
+    tools/lab_trace.cpp
 )
 target_link_libraries(fm_lab_lib PUBLIC fm_core)
 target_compile_options(fm_lab_lib PRIVATE ${FM_WARNING_FLAGS})

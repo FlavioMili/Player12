@@ -21,6 +21,9 @@
 #include <iostream>
 #include <string_view>
 
+#include "model/match_tuning.h"
+#include "tools/lab_trace.h"
+
 namespace
 {
 using Clock = std::chrono::steady_clock;
@@ -406,6 +409,8 @@ int runMeasureCommand(const StatsConfig& config, const std::string& drillName,
   bool csvAuto = false;
   std::string error;
   std::optional<std::string> presetName;
+  std::optional<std::filesystem::path> tracePath;
+  float traceSeconds = 10.0f;
   for (std::size_t index = 0; index < arguments.size(); ++index)
   {
     const std::string& argument = arguments[index];
@@ -448,6 +453,14 @@ int runMeasureCommand(const StatsConfig& config, const std::string& drillName,
     {
       spec.firstSeed = static_cast<std::uint32_t>(toFloat(value).value_or(1.0f));
     }
+    else if (argument == "--trace" && hasValue)
+    {
+      tracePath = value;
+    }
+    else if (argument == "--seconds" && hasValue)
+    {
+      traceSeconds = toFloat(value).value_or(traceSeconds);
+    }
     else if (argument == "--csv")
     {
       if (hasValue && !arguments[index + 1].starts_with("--"))
@@ -480,6 +493,35 @@ int runMeasureCommand(const StatsConfig& config, const std::string& drillName,
       for (const auto& [name, value] : found->settings)
         spec.fixed.try_emplace(name, value);
     }
+  }
+  // --trace: one run (the preset, --set, --seed), every player and the ball
+  // every fixed step for --seconds, instead of a sweep (lab_trace.h).
+  if (error.empty() && tracePath)
+  {
+    for (const DrillParameter& parameter : drill->parameters())
+      if (parameter.value && spec.fixed.contains(parameter.name))
+        *parameter.value = spec.fixed.at(parameter.name);
+    drill->seed = spec.firstSeed;
+    const int ticks = static_cast<int>(
+        std::lround(traceSeconds / MatchTuning::Timing::FIXED_STEP_SECONDS));
+    std::ofstream out(*tracePath, std::ios::binary);
+    if (!out)
+    {
+      std::cerr << "Measure: cannot write " << tracePath->string() << '\n';
+      return 2;
+    }
+    Lab::writeTraceHeader(out);
+    DrillRun run(*drill, config, false);
+    Lab::writeTraceRows(out, "d", 0, run.engine());
+    for (int tick = 1; tick <= ticks; ++tick)
+    {
+      const bool going = run.step();
+      Lab::writeTraceRows(out, "d", tick, run.engine());
+      if (!going) break;
+    }
+    std::cout << std::format("{}: trace written to {}\n", drill->name(),
+                             tracePath->string());
+    return out ? 0 : 2;
   }
   if (error.empty() && spec.sweep.values.empty())
     error = "--sweep is required, e.g. --sweep \"Pace=40:95:12\"";

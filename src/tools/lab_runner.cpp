@@ -23,6 +23,7 @@
 #include "model/match_report.h"
 #include "model/player.h"
 #include "tools/lab_fixtures.h"
+#include "tools/lab_trace.h"
 
 namespace Lab
 {
@@ -165,6 +166,14 @@ void extractEngine(MatchSample& sample, const MatchEngine& engine)
                static_cast<double>(stats.awayShotXG)};
   sample.home_possession = stats.homePossession;
   sample.corners = stats.homeCorners + stats.awayCorners;
+  for (const MatchEvent& event : engine.getEvents())
+  {
+    sample.throw_ins += event.type == MatchEventType::THROW_IN ? 1 : 0;
+    sample.goal_kicks += event.type == MatchEventType::GOAL_KICK ? 1 : 0;
+    sample.free_kicks += event.type == MatchEventType::FREE_KICK ? 1 : 0;
+  }
+  sample.event_log_full =
+      engine.getEvents().size() >= MatchTuning::Timing::MAX_EVENTS;
   sample.yellows = stats.homeYellowCards + stats.awayYellowCards;
   sample.reds = stats.homeRedCards + stats.awayRedCards;
   sample.offsides = stats.homeOffsides + stats.awayOffsides;
@@ -507,7 +516,12 @@ std::uint32_t matchSeed(std::uint64_t seed, std::uint64_t index)
   return static_cast<std::uint32_t>(z >> 32);
 }
 
-MatchSample simulateMatch(const MatchJob& job, const StatsConfig& config)
+namespace
+{
+/** Builds the job's squads and engine, sets every seam, and hands the engine
+ * and both lineups to `use` (simulateMatch, traceMatch). */
+template <typename Use>
+auto withMatchEngine(const MatchJob& job, const StatsConfig& config, Use&& use)
 {
   std::vector<std::unique_ptr<Player>> pool;
   const auto build = [&](TeamID id, const TeamSetup& side)
@@ -554,15 +568,44 @@ MatchSample simulateMatch(const MatchJob& job, const StatsConfig& config)
   }
   MatchdaySquad::carryCondition(engine, home);
   MatchdaySquad::carryCondition(engine, away);
-  runToFullTime(engine, job.seed, job.background);
+  return use(engine, home, away);
+}
+}  // namespace
 
-  MatchSample sample;
-  sample.seed = job.seed;
-  sample.rating = {lineupRating(home, config), lineupRating(away, config)};
-  extractEngine(sample, engine);
-  if (!finite(sample))
-    throw SimulationError(job.seed, "match produced non-finite statistics");
-  return sample;
+MatchSample simulateMatch(const MatchJob& job, const StatsConfig& config)
+{
+  return withMatchEngine(
+      job, config,
+      [&](MatchEngine& engine, const Lineup& home, const Lineup& away)
+      {
+        runToFullTime(engine, job.seed, job.background);
+        MatchSample sample;
+        sample.seed = job.seed;
+        sample.rating = {lineupRating(home, config),
+                         lineupRating(away, config)};
+        extractEngine(sample, engine);
+        if (!finite(sample))
+          throw SimulationError(job.seed,
+                                "match produced non-finite statistics");
+        return sample;
+      });
+}
+
+void traceMatch(const MatchJob& job, const StatsConfig& config, int ticks,
+                std::string_view run, std::ostream& out)
+{
+  withMatchEngine(job, config,
+                  [&](MatchEngine& engine, const Lineup&, const Lineup&)
+                  {
+                    writeTraceRows(out, run, 0, engine);
+                    for (int tick = 1; tick <= ticks; ++tick)
+                    {
+                      if (engine.getState() == MatchState::FULL_TIME) break;
+                      engine.advance(MatchTuning::Timing::FIXED_STEP_SECONDS);
+                      writeTraceRows(out, run, tick, engine);
+                    }
+                    return 0;
+                  });
 }
 
 std::vector<MatchSample> simulateMatches(
@@ -902,6 +945,14 @@ std::map<std::string, Estimate> matchMetrics(
   const std::vector<double> penalties =
       column([](const MatchSample& s) { return s.penalties; });
   metrics["penalties_per_match"] = meanEstimate(penalties);
+  metrics["throw_ins_per_match"] =
+      meanEstimate(column([](const MatchSample& s) { return s.throw_ins; }));
+  metrics["goal_kicks_per_match"] =
+      meanEstimate(column([](const MatchSample& s) { return s.goal_kicks; }));
+  metrics["free_kicks_per_match"] =
+      meanEstimate(column([](const MatchSample& s) { return s.free_kicks; }));
+  metrics["event_log_full_share"] = meanEstimate(
+      column([](const MatchSample& s) { return s.event_log_full ? 1 : 0; }));
   metrics["penalty_conversion"] = ratioEstimate(
       column([](const MatchSample& s) { return s.penalty_goals; }), penalties);
   const std::vector<double> substitutions =
