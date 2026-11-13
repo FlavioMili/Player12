@@ -29,6 +29,13 @@
 #include "model/player.h"
 #include "model/tactics.h"
 #include "model/team.h"
+#include "model/match_pitch.h"
+
+namespace
+{
+// Tests play on a match pitch, placed by fractions of it.
+const MatchPitch& PITCH = MatchPitch::matchSize();
+}  // namespace
 
 namespace
 {
@@ -302,15 +309,14 @@ TEST(TacticsTest, AttackingFullBackPlaysHigherThanDefendingOne)
   const StatsConfig config = createStatsConfig();
   MatchScenario scenario;
   scenario.carrierId = playerId(1, LEFT_CENTRAL_MIDFIELDER);
-  scenario.ballPosition = PitchPoint{POSITIONS[LEFT_CENTRAL_MIDFIELDER].x,
-                                       POSITIONS[LEFT_CENTRAL_MIDFIELDER].y};
+  scenario.ballPosition = PITCH.at(POSITIONS[LEFT_CENTRAL_MIDFIELDER].x, POSITIONS[LEFT_CENTRAL_MIDFIELDER].y);
   for (size_t index = 0; index < POSITIONS.size(); ++index)
   {
     scenario.players.push_back({playerId(1, index),
-         PitchPoint{POSITIONS[index].x, POSITIONS[index].y}, false});
+         PITCH.at(POSITIONS[index].x, POSITIONS[index].y), false});
     scenario.players.push_back(
         {playerId(2, index),
-         PitchPoint{1.0f - POSITIONS[index].x, 1.0f - POSITIONS[index].y},
+         PITCH.at(1.0f - POSITIONS[index].x, 1.0f - POSITIONS[index].y),
          false});
   }
   const auto targetX = [&](RoleDuty duty)
@@ -355,15 +361,14 @@ TEST(TacticsTest, InPossessionShapeMovesTheSlotWithTheBallOnly)
                        config, SEEDS[0]);
     MatchScenario scenario;
     scenario.carrierId = playerId(withBall ? 1 : 2, LEFT_CENTRAL_MIDFIELDER);
-    scenario.ballPosition = PitchPoint{POSITIONS[LEFT_CENTRAL_MIDFIELDER].x,
-                                       POSITIONS[LEFT_CENTRAL_MIDFIELDER].y};
+    scenario.ballPosition = PITCH.at(POSITIONS[LEFT_CENTRAL_MIDFIELDER].x, POSITIONS[LEFT_CENTRAL_MIDFIELDER].y);
     for (size_t index = 0; index < POSITIONS.size(); ++index)
     {
       scenario.players.push_back({playerId(1, index),
-         PitchPoint{POSITIONS[index].x, POSITIONS[index].y}, false});
+         PITCH.at(POSITIONS[index].x, POSITIONS[index].y), false});
       scenario.players.push_back(
           {playerId(2, index),
-           PitchPoint{1.0f - POSITIONS[index].x, 1.0f - POSITIONS[index].y},
+           PITCH.at(1.0f - POSITIONS[index].x, 1.0f - POSITIONS[index].y),
            false});
     }
     engine.setControlledPlayer(scenario.carrierId);

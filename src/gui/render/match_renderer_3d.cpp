@@ -784,7 +784,8 @@ MatchCameraFocus MatchRenderer3D::State::computeFocus(
       if (player.isHomeTeam == carrier->isHomeTeam && player.isGoalkeeper &&
           player.onPitch)
       {
-        direction = player.currentPosition.x < MatchTuning::Pitch::CENTRE
+        direction = player.currentPosition.x <
+                            MatchPitch::matchSize().atX(MatchTuning::Pitch::CENTRE)
                         ? 1.0f
                         : -1.0f;
       }

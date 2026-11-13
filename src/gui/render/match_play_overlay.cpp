@@ -15,6 +15,7 @@
 #include <numbers>
 
 #include "gui/widgets/theme.h"
+#include "model/match_pitch.h"
 #include "model/player.h"
 
 namespace
@@ -67,8 +68,9 @@ void drawRing(ImDrawList& drawList, const IMatchRenderer& renderer,
     const float angle = static_cast<float>(index) * 2.0f *
                         std::numbers::pi_v<float> /
                         static_cast<float>(RING_POINTS);
-    const PitchPoint around{centre.x + std::cos(angle) * metres / LENGTH,
-                          centre.y + std::sin(angle) * metres / WIDTH};
+    const MatchPitch& pitch = MatchPitch::matchSize();
+    const PitchPoint around{centre.x + pitch.fromMetresX(std::cos(angle) * metres),
+                          centre.y + pitch.fromMetresY(std::sin(angle) * metres)};
     if (!project(renderer, around, 0.03f,
                  points[static_cast<std::size_t>(index)]))
       return;
@@ -203,7 +205,11 @@ void drawRadar(ImDrawList& drawList, const MatchRenderSnapshot& snapshot,
   const ImVec2 origin{(viewMin.x + viewMax.x - width) * 0.5f,
                       viewMax.y - margin - height};
   const auto at = [&](PitchPoint pitch)
-  { return ImVec2{origin.x + pitch.x * width, origin.y + pitch.y * height}; };
+  {
+    const MatchPitch& match = MatchPitch::matchSize();
+    return ImVec2{origin.x + match.fractionX(pitch) * width,
+                  origin.y + match.fractionY(pitch) * height};
+  };
   drawList.AddRectFilled(origin, {origin.x + width, origin.y + height},
                          RADAR_BACK, 4.0f * scale);
   drawList.AddRect(origin, {origin.x + width, origin.y + height}, RADAR_LINE,

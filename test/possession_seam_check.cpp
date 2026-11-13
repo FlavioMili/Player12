@@ -15,14 +15,21 @@
 
 #include "model/match_engine.h"
 #include "model/match_possession_claim.h"
-#include "model/match_possession_control.h"
 #include "model/match_recorder.h"
-#include "model/player.h"
+#include "model/match_possession_control.h"
 #include "tools/lab_fixtures.h"
-#include "tools/match_sandbox_drill.h"
-#include "tools/match_sandbox_recorder.h"
-#include "tools/match_sandbox_recording.h"
+#include "model/player.h"
+#include "model/match_pitch.h"
 #include "tools/match_sandbox_setup.h"
+#include "tools/match_sandbox_recording.h"
+#include "tools/match_sandbox_recorder.h"
+#include "tools/match_sandbox_drill.h"
+
+namespace
+{
+// Tests play on a match pitch, placed by fractions of it.
+const MatchPitch& PITCH = MatchPitch::matchSize();
+}  // namespace
 
 namespace
 {
@@ -410,7 +417,7 @@ void compareVersions(const Lineup& home, const Lineup& away,
         if (player.player && player.isGoalkeeper && player.isHomeTeam)
         {
           empty.carrierId = player.player->getId();
-          empty.players.push_back({empty.carrierId, PitchPoint{0.08f, 0.5f}, false});
+          empty.players.push_back({empty.carrierId, PITCH.at(0.08f, 0.5f), false});
           break;
         }
       check(engine->applyScenario(empty, MatchState::PLAYING, 120.0f, 0, 0),
@@ -625,26 +632,26 @@ class KeeperClaimFixture final : public Drill
     keeper = ids[0];
     opponent = ids[1];
     MatchScenario scenario;
-    scenario.players.push_back({keeper, PitchPoint{0.08f, 0.5f}, false});
+    scenario.players.push_back({keeper, PITCH.at(0.08f, 0.5f), false});
     scenario.players.push_back(
         {opponent,
-         PitchPoint{0.08f, 0.5f + gap / MatchTuning::Pitch::MATCH_WIDTH_METRES},
+         PITCH.at(0.08f, 0.5f + gap / MatchTuning::Pitch::MATCH_WIDTH_METRES),
          false});
     scenario.carrierId = 0;
-    scenario.ballPosition = PitchPoint{0.20f, 0.5f};
+    scenario.ballPosition = PITCH.at(0.20f, 0.5f);
     (void)engine.startDrill(scenario);
-    engine.setDrillTarget(keeper, PitchPoint{0.08f, 0.5f}, false);
+    engine.setDrillTarget(keeper, PITCH.at(0.08f, 0.5f), false);
     engine.setDrillTarget(
         opponent,
-        PitchPoint{0.08f, 0.5f + gap / MatchTuning::Pitch::MATCH_WIDTH_METRES}, false);
+        PITCH.at(0.08f, 0.5f + gap / MatchTuning::Pitch::MATCH_WIDTH_METRES), false);
     if (!legacy && rating > 90.0f)
-      engine.feedBall(PitchPoint{0.08f + 1.8f / MatchTuning::Pitch::MATCH_LENGTH_METRES, 0.5f},
+      engine.feedBall(PITCH.at(0.08f + 1.8f / MatchTuning::Pitch::MATCH_LENGTH_METRES, 0.5f),
                       {0.0f, 0.0f}, 0.0f, 0);
     else if (legacy)
-      engine.feedBall(PitchPoint{0.08f + 6.0f / MatchTuning::Pitch::MATCH_LENGTH_METRES, 0.5f},
+      engine.feedBall(PITCH.at(0.08f + 6.0f / MatchTuning::Pitch::MATCH_LENGTH_METRES, 0.5f),
                       {-8.0f, 0.0f}, 6.4f, 0);
     else
-      engine.feedBall(PitchPoint{0.20f, 0.5f}, {-12.0f, 0.0f}, 7.0f, 0);
+      engine.feedBall(PITCH.at(0.20f, 0.5f), {-12.0f, 0.0f}, 7.0f, 0);
   }
   bool afterStep(MatchEngine& engine) override
   {
@@ -834,9 +841,9 @@ void participantLifecycle(const Lineup& home, const Lineup& away,
         OutOfPlayId::AARDVARK);  // Immediate substitution path.
     const auto* outgoing = home.getOutfieldPlayers().front().player;
     MatchScenario s;
-    s.players.push_back({outgoing->getId(), PitchPoint{0.3f, 0.05f}, false});
+    s.players.push_back({outgoing->getId(), PITCH.at(0.3f, 0.05f), false});
     s.carrierId = outgoing->getId();
-    s.ballPosition = PitchPoint{0.3f, 0.05f};
+    s.ballPosition = PITCH.at(0.3f, 0.05f);
     check(engine->startDrill(s), "set up lifecycle owner");
     check(engine->substitutePlayer(outgoing->getId(), incoming),
           "substitute a current owner");
@@ -858,7 +865,7 @@ void participantLifecycle(const Lineup& home, const Lineup& away,
     check(engine->removeBeforeKickOff(
               away.getOutfieldPlayers().front().player->getId()),
           "remove a non-owner without transferring control");
-    engine->feedBall(PitchPoint{0.4f, 0.1f}, {3.0f, 0.0f}, 0.0f,
+    engine->feedBall(PITCH.at(0.4f, 0.1f), {3.0f, 0.0f}, 0.0f,
                      away.getOutfieldPlayers()[1].player->getId());
     check(!engine->getBall().possessionState().possessedBy &&
               !engine->getBall().possessionState().lastPossessor &&

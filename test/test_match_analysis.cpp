@@ -14,6 +14,13 @@
 
 #include "model/match_analysis.h"
 #include "model/match_engine.h"
+#include "model/match_pitch.h"
+
+namespace
+{
+// Tests play on a match pitch, placed by fractions of it.
+const MatchPitch& PITCH = MatchPitch::matchSize();
+}  // namespace
 
 namespace
 {
@@ -25,7 +32,7 @@ MatchEvent shot(bool home, PlayerID player, float x, float y, float xg,
   event.hasTeam = true;
   event.isHomeTeam = home;
   event.primaryPlayerId = player;
-  event.position = PitchPoint{x, y};
+  event.position = PITCH.at(x, y);
   event.xg = xg;
   event.timeMinute = minute;
   return event;

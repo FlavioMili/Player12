@@ -4,6 +4,13 @@
 #include <iostream>
 
 #include "model/match_possession_control.h"
+#include "model/match_pitch.h"
+
+namespace
+{
+// Tests play on a match pitch, placed by fractions of it.
+const MatchPitch& PITCH = MatchPitch::matchSize();
+}  // namespace
 
 namespace
 {
@@ -21,7 +28,7 @@ void check(bool condition, const char* message)
 int main()
 {
   using namespace PossessionControl;
-  const PitchPoint partlyOverLine{0.36f, -0.00037f};
+  const PitchPoint partlyOverLine = PITCH.at(0.36f, -0.00037f);
   const auto physical =
       retainingTouchPosition(MatchPitch{}, PossessionId::BINTURONG, partlyOverLine);
   const auto legacy =
@@ -31,7 +38,7 @@ int main()
         "playable boundary touch retains its actual point; Aardvark keeps its "
         "legacy inset");
   const auto ordinary =
-      retainingTouchPosition(MatchPitch{}, PossessionId::BINTURONG, PitchPoint{0.4f, 0.6f});
+      retainingTouchPosition(MatchPitch{}, PossessionId::BINTURONG, PITCH.at(0.4f, 0.6f));
   check(ordinary.x == 0.4f && ordinary.y == 0.6f,
         "ordinary retaining touch leaves the contact point unchanged");
   Evidence atFeet{true, 0.4f, 0.5f, 0.4f, 0.0f, 0.35f, 0.9f, 1.5f};

@@ -40,6 +40,8 @@ using Tuning = MatchRender2DTuning;
 
 constexpr float LENGTH = MatchTuning::Pitch::MATCH_LENGTH_METRES;
 constexpr float WIDTH = MatchTuning::Pitch::MATCH_WIDTH_METRES;
+// Engine points on the match pitch (choice 8: views draw a match-sized pitch).
+const MatchPitch& PITCH = MatchPitch::matchSize();
 constexpr float PI = std::numbers::pi_v<float>;
 constexpr float TWO_PI = 2.0f * PI;
 constexpr int BATCH_CHUNK_VERTICES = 2048;
@@ -596,16 +598,16 @@ void MatchRenderer2D::State::updateBall(const MatchRenderSnapshot& snapshot,
                                                source.currentPosition, alpha);
   const float previousX = ball.x;
   const float previousY = ball.y;
-  ball.x = position.x * LENGTH;
-  ball.y = position.y * WIDTH;
+  ball.x = PITCH.metresX(position.x);
+  ball.y = PITCH.metresY(position.y);
   ball.height = std::max(
       0.0f,
       source.previousHeightMetres +
           (source.currentHeightMetres - source.previousHeightMetres) * alpha);
   const float stepX =
-      (source.currentPosition.x - source.previousPosition.x) * LENGTH;
+      PITCH.metresX(source.currentPosition.x - source.previousPosition.x);
   const float stepY =
-      (source.currentPosition.y - source.previousPosition.y) * WIDTH;
+      PITCH.metresY(source.currentPosition.y - source.previousPosition.y);
   ballSpeed =
       std::hypot(stepX, stepY) / MatchTuning::Timing::FIXED_STEP_SECONDS;
   if (std::hypot(stepX, stepY) > 1e-4f)
@@ -651,7 +653,7 @@ float MatchRenderer2D::State::defendingLine(const MatchRenderSnapshot& snapshot,
   for (const MatchRenderPlayer& player : snapshot.players)
   {
     if (player.isHomeTeam == attackersHome || !player.onPitch) continue;
-    if (player.isGoalkeeper) keeperX = player.currentPosition.x * LENGTH;
+    if (player.isGoalkeeper) keeperX = PITCH.metresX(player.currentPosition.x);
   }
   // The defenders' own goal is the one their keeper guards.
   const bool towardsHigh = keeperX > LENGTH * 0.5f;
@@ -660,7 +662,7 @@ float MatchRenderer2D::State::defendingLine(const MatchRenderSnapshot& snapshot,
   for (const MatchRenderPlayer& player : snapshot.players)
   {
     if (player.isHomeTeam == attackersHome || !player.onPitch) continue;
-    const float x = player.currentPosition.x * LENGTH;
+    const float x = PITCH.metresX(player.currentPosition.x);
     const float fromGoal = towardsHigh ? LENGTH - x : x;
     if (fromGoal < first)
     {
@@ -699,7 +701,7 @@ void MatchRenderer2D::State::updateEvents(const MatchRenderSnapshot& snapshot)
     // The line is where the defence stood when the pass was played.
     const bool fromKick =
         lineAtKick >= 0.0f && event.hasTeam && event.isHomeTeam == kickByHome;
-    offsideX = fromKick ? lineAtKick : event.position.x * LENGTH;
+    offsideX = fromKick ? lineAtKick : PITCH.metresX(event.position.x);
     offsideSeconds = 0.0f;
   }
   seenEvents = events.size();
@@ -895,10 +897,10 @@ void MatchRenderer2D::State::detectKick(const MatchRenderSnapshot& snapshot)
     return;
   }
   lastBallPosition = source.currentPosition;
-  const float fromX = source.previousPosition.x * LENGTH;
-  const float fromY = source.previousPosition.y * WIDTH;
-  const float stepMetres = std::hypot(source.currentPosition.x * LENGTH - fromX,
-                                      source.currentPosition.y * WIDTH - fromY);
+  const float fromX = PITCH.metresX(source.previousPosition.x);
+  const float fromY = PITCH.metresY(source.previousPosition.y);
+  const float stepMetres = std::hypot(PITCH.metresX(source.currentPosition.x) - fromX,
+                                      PITCH.metresY(source.currentPosition.y) - fromY);
   const float speed = stepMetres / MatchTuning::Timing::FIXED_STEP_SECONDS;
   const float previousSpeed = lastBallStepSpeed;
   lastBallStepSpeed = speed;
@@ -922,8 +924,8 @@ void MatchRenderer2D::State::detectKick(const MatchRenderSnapshot& snapshot)
       {
         if (!player.onPitch) continue;
         const float distance =
-            std::hypot(player.previousPosition.x * LENGTH - fromX,
-                       player.previousPosition.y * WIDTH - fromY);
+            std::hypot(PITCH.metresX(player.previousPosition.x) - fromX,
+                       PITCH.metresY(player.previousPosition.y) - fromY);
         if (distance < best)
         {
           best = distance;
@@ -998,12 +1000,14 @@ void MatchRenderer2D::State::updatePressure(const MatchRenderSnapshot& snapshot,
     if (!player.onPitch || count >= sources.size()) continue;
     const PitchPoint at = lerpRenderPosition(player.previousPosition,
                                            player.currentPosition, alpha);
-    const float vx = (player.currentPosition.x - player.previousPosition.x) *
-                     LENGTH / MatchTuning::Timing::FIXED_STEP_SECONDS;
-    const float vy = (player.currentPosition.y - player.previousPosition.y) *
-                     WIDTH / MatchTuning::Timing::FIXED_STEP_SECONDS;
-    sources[count++] = {at.x * LENGTH + vx * P::LOOKAHEAD_SECONDS,
-                        at.y * WIDTH + vy * P::LOOKAHEAD_SECONDS,
+    const float vx =
+        PITCH.metresX(player.currentPosition.x - player.previousPosition.x) /
+        MatchTuning::Timing::FIXED_STEP_SECONDS;
+    const float vy =
+        PITCH.metresY(player.currentPosition.y - player.previousPosition.y) /
+        MatchTuning::Timing::FIXED_STEP_SECONDS;
+    sources[count++] = {PITCH.metresX(at.x) + vx * P::LOOKAHEAD_SECONDS,
+                        PITCH.metresY(at.y) + vy * P::LOOKAHEAD_SECONDS,
                         player.isHomeTeam ? 1.0f : -1.0f};
   }
   const float inverseReach = 1.0f / (P::REACH_METRES * P::REACH_METRES);
@@ -1352,7 +1356,7 @@ void MatchRenderer2D::State::drawTouchline(const MatchRenderSnapshot& snapshot,
     if (person.hidden) continue;
     const PitchPoint at =
         lerpRenderPosition(person.previousPosition, person.currentPosition, alpha);
-    const ImVec2 centre = atMetres(at.x * LENGTH, at.y * WIDTH);
+    const ImVec2 centre = atMetres(PITCH.metresX(at.x), PITCH.metresY(at.y));
     // His body only: he can't play the ball.
     const float radius = std::max(px(T::MIN_RADIUS_PIXELS), T::RADIUS_METRES * ppm);
     if (isOfficial(person.role))
@@ -1423,7 +1427,7 @@ void MatchRenderer2D::State::drawFreeKickMarker()
 {
   using R = Tuning::RefereeSignal;
   if (markerAlpha <= 0.0f) return;
-  const ImVec2 centre = atMetres(markerSpot.x * LENGTH, markerSpot.y * WIDTH);
+  const ImVec2 centre = atMetres(PITCH.metresX(markerSpot.x), PITCH.metresY(markerSpot.y));
   const float radius = std::max(px(5.0f), R::MARKER_RADIUS_METRES * ppm);
   const float thickness = std::max(px(2.0f), 0.2f * ppm);
   const ImU32 team = markerHome ? kits.home.shirt : kits.away.shirt;
@@ -1453,7 +1457,7 @@ void MatchRenderer2D::State::drawRefereeSignal(
   if (!referee) return;
   const PitchPoint at = lerpRenderPosition(referee->previousPosition,
                                          referee->currentPosition, alpha);
-  const ImVec2 c = atMetres(at.x * LENGTH, at.y * WIDTH);
+  const ImVec2 c = atMetres(PITCH.metresX(at.x), PITCH.metresY(at.y));
 
   // From his body to a player's size, eased.
   const float body = std::max(px(Tuning::Touchline::MIN_RADIUS_PIXELS),
@@ -1813,7 +1817,7 @@ void MatchRenderer2D::State::drawTokens(const MatchRenderSnapshot& snapshot,
     dx /= length;
     dy /= length;
     tokens.push_back({&player,
-                      atMetres(interpolated.x * LENGTH, interpolated.y * WIDTH),
+                      atMetres(PITCH.metresX(interpolated.x), PITCH.metresY(interpolated.y)),
                       {dx, dy},
                       numbers.numberFor(player, snapshot.playerStats)});
   }
@@ -2102,7 +2106,7 @@ bool MatchRenderer2D::projectPitch(PitchPoint pitch, float /*heightMetres*/,
   // Top-down: height does not move a point on the plan.
   const State& s = *state;
   if (s.ppm <= 0.0f || s.drawList == nullptr) return false;
-  const ImVec2 point = s.atMetres(pitch.x * LENGTH, pitch.y * WIDTH);
+  const ImVec2 point = s.atMetres(PITCH.metresX(pitch.x), PITCH.metresY(pitch.y));
   screenX = point.x;
   screenY = point.y;
   return true;
@@ -2152,9 +2156,9 @@ void MatchRenderer2D::render(const MatchRenderSnapshot& snapshot,
       const Vector2F interpolated = lerpRenderPosition(
           player.previousPosition, player.currentPosition, alpha);
       const ImVec2 position =
-          s.atMetres(interpolated.x * LENGTH, interpolated.y * WIDTH);
-      const ImVec2 target = s.atMetres(player.movementTarget.x * LENGTH,
-                                       player.movementTarget.y * WIDTH);
+          s.atMetres(PITCH.metresX(interpolated.x), PITCH.metresY(interpolated.y));
+      const ImVec2 target = s.atMetres(PITCH.metresX(player.movementTarget.x),
+                                       PITCH.metresY(player.movementTarget.y));
       const ImU32 debugColor = intentDebugColor(player.intent);
       drawList->AddLine(position, target, debugColor,
                         MatchSceneTuning::Marker::DEBUG_LINE_THICKNESS);

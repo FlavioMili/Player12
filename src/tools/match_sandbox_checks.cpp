@@ -57,6 +57,8 @@
 
 namespace
 {
+// Checks play on a match pitch, placed by fractions of it.
+const MatchPitch& PITCH = MatchPitch::matchSize();
 using Clock = std::chrono::steady_clock;
 
 /** Private memory of the process in bytes (empty where unsupported). */
@@ -177,10 +179,10 @@ bool runDrillChecks(const Team& home, const Team& away,
     auto engine = drillEngine(home, away, config, 7, {runner->getId()});
     engine->setRecorder(recorder);
     MatchScenario scenario;
-    scenario.players.push_back({runner->getId(), PitchPoint{0.30f, 0.50f}, false});
-    scenario.ballPosition = PitchPoint{0.95f, 0.95f};
+    scenario.players.push_back({runner->getId(), PITCH.at(0.30f, 0.50f), false});
+    scenario.ballPosition = PITCH.at(0.95f, 0.95f);
     const bool started = engine->startDrill(scenario);
-    const PitchPoint target{0.60f, 0.50f};
+    const PitchPoint target = PITCH.at(0.60f, 0.50f);
     engine->setDrillTarget(runner->getId(), target, true);
     std::uint64_t arrived = 0;
     for (int tick = 0; started && tick < 300 && arrived == 0; ++tick)
@@ -188,8 +190,8 @@ bool runDrillChecks(const Team& home, const Team& away,
       engine->advance(MatchTuning::Timing::FIXED_STEP_SECONDS);
       for (const MatchPlayer& slot : engine->getPlayers())
         if (slot.player == runner &&
-            std::hypot((slot.position.x - target.x) * 105.0f,
-                       (slot.position.y - target.y) * 68.0f) < 1.0f)
+            std::hypot(PITCH.metresX(slot.position.x - target.x),
+                       PITCH.metresY(slot.position.y - target.y)) < 1.0f)
           arrived = engine->getSimulatedSteps();
     }
     return std::pair{arrived, SandboxRecorder::stateChecksum(*engine)};
@@ -219,10 +221,10 @@ bool runDrillChecks(const Team& home, const Team& away,
     auto engine = drillEngine(home, away, config, seed,
                               {shooter->getId(), keeper->getId()});
     MatchScenario scenario;
-    scenario.players.push_back({shooter->getId(), PitchPoint{0.84f, 0.55f}, false});
-    scenario.players.push_back({keeper->getId(), PitchPoint{0.985f, 0.50f}, false});
+    scenario.players.push_back({shooter->getId(), PITCH.at(0.84f, 0.55f), false});
+    scenario.players.push_back({keeper->getId(), PITCH.at(0.985f, 0.50f), false});
     scenario.carrierId = shooter->getId();
-    scenario.ballPosition = PitchPoint{0.84f, 0.55f};
+    scenario.ballPosition = PITCH.at(0.84f, 0.55f);
     if (!engine->startDrill(scenario)) return std::string("not started");
     engine->forceShot(shooter->getId());
     // The run ends at the first stoppage or once the shot is dealt with.
@@ -593,15 +595,15 @@ bool runFirstTouchChecks(const std::vector<const Team*>& clubs,
   constexpr float HEAVY_GAP_METRES = 2.0f;
   const auto metres = [](PitchPoint from, PitchPoint to)
   {
-    const float x = (to.x - from.x) * MatchTuning::Pitch::MATCH_LENGTH_METRES;
-    const float y = (to.y - from.y) * MatchTuning::Pitch::MATCH_WIDTH_METRES;
+    const float x = MatchPitch::matchSize().metresX(to.x - from.x);
+    const float y = MatchPitch::matchSize().metresY(to.y - from.y);
     return std::sqrt(x * x + y * y);
   };
   /** The same for the change between two steps (ball from holder). */
   const auto offsetMetres = [](PitchOffset from, PitchOffset to)
   {
-    const float x = (to.x - from.x) * MatchTuning::Pitch::MATCH_LENGTH_METRES;
-    const float y = (to.y - from.y) * MatchTuning::Pitch::MATCH_WIDTH_METRES;
+    const float x = MatchPitch::matchSize().metresX(to.x - from.x);
+    const float y = MatchPitch::matchSize().metresY(to.y - from.y);
     return std::sqrt(x * x + y * y);
   };
   const auto speedOf = [](Vector2F velocity)
@@ -1628,8 +1630,8 @@ int runMatchTrace(GameController& controller, double seconds, int cases, const s
   std::vector<std::deque<Moment>> history(players.size());
   const auto metres = [](PitchPoint pitch)
   {
-    return Vector2F{pitch.x * MatchTuning::Pitch::MATCH_LENGTH_METRES,
-                    pitch.y * MatchTuning::Pitch::MATCH_WIDTH_METRES};
+    return Vector2F{MatchPitch::matchSize().metresX(pitch),
+                    MatchPitch::matchSize().metresY(pitch)};
   };
   const auto nameOf = [&](std::size_t slot)
   {

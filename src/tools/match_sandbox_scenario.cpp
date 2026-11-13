@@ -126,7 +126,8 @@ std::string ScenarioExport::testCase(const MatchEngine& before,
     const MatchPlayer& player = *entry.player;
     text += std::format(
         "  spec.layout[slotId(ids, {})] = {{{:.4f}f, {:.4f}f}};  // {} ({}, {})\n",
-        entry.slot, player.position.x, player.position.y,
+        entry.slot, MatchPitch::matchSize().fractionX(player.position),
+        MatchPitch::matchSize().fractionY(player.position),
         player.player->getName(), RoleUtils::toString(player.player->getRole()),
         player.isHomeTeam ? "home" : "away");
     if (player.isMakingRun)

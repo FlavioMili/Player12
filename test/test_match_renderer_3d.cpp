@@ -23,23 +23,30 @@
 
 #include "backends/imgui_impl_sdl3.h"
 #include "backends/imgui_impl_sdlrenderer3.h"
-#include "controller/game_controller.h"
-#include "database/datagenerator.h"
-#include "global/language_manager.h"
-#include "global/logger.h"
-#include "global/paths.h"
-#include "global/runtime_paths.h"
-#include "gui/gui_view.h"
-#include "gui/render/match_camera_3d.h"
-#include "gui/render/match_kit_colors.h"
-#include "gui/render/match_player_rig.h"
-#include "gui/render/match_render_3d_tuning.h"
-#include "gui/render/match_render_math.h"
-#include "gui/render/match_renderer_2d.h"
-#include "gui/render/match_renderer_3d.h"
-#include "gui/render/match_stadium_3d.h"
-#include "gui/scenes/match_scene.h"
+#include "model/match_pitch.h"
 #include "gui/widgets/theme.h"
+#include "gui/scenes/match_scene.h"
+#include "gui/render/match_stadium_3d.h"
+#include "gui/render/match_renderer_3d.h"
+#include "gui/render/match_renderer_2d.h"
+#include "gui/render/match_render_math.h"
+#include "gui/render/match_render_3d_tuning.h"
+#include "gui/render/match_player_rig.h"
+#include "gui/render/match_kit_colors.h"
+#include "gui/render/match_camera_3d.h"
+#include "gui/gui_view.h"
+#include "global/runtime_paths.h"
+#include "global/paths.h"
+#include "global/logger.h"
+#include "global/language_manager.h"
+#include "database/datagenerator.h"
+#include "controller/game_controller.h"
+
+namespace
+{
+// Tests play on a match pitch, placed by fractions of it.
+const MatchPitch& PITCH = MatchPitch::matchSize();
+}  // namespace
 
 namespace
 {
@@ -133,8 +140,8 @@ TEST(MatchRender3DMath, NearPlaneClippingKeepsOnlyVisiblePart)
 
 TEST(MatchRender3DMath, PitchMappingAndAngles)
 {
-  const Vec3 origin = RenderMath::worldFromPitch(PitchPoint{0.0f, 0.0f});
-  const Vec3 corner = RenderMath::worldFromPitch(PitchPoint{1.0f, 1.0f});
+  const Vec3 origin = RenderMath::worldFromPitch(PITCH.at(0.0f, 0.0f));
+  const Vec3 corner = RenderMath::worldFromPitch(PITCH.at(1.0f, 1.0f));
   EXPECT_FLOAT_EQ(origin.x, 0.0f);
   EXPECT_FLOAT_EQ(origin.y, MatchTuning::Pitch::MATCH_WIDTH_METRES);
   EXPECT_FLOAT_EQ(corner.x, MatchTuning::Pitch::MATCH_LENGTH_METRES);
@@ -1479,7 +1486,7 @@ TEST_F(MatchRenderer3DSceneTest, SwitchesViewsAndCapturesFrames)
     MatchEvent& offside = offsideEvents.emplace_back();
     offside.type = MatchEventType::OFFSIDE;
     offside.hasTeam = true;
-    offside.position = PitchPoint{0.7f, 0.4f};
+    offside.position = PITCH.at(0.7f, 0.4f);
     std::cout << "[match-2d] pressure overlay 1280x800 render CPU median "
               << direct(overlayRenderer, overlayOptions, 40, &offsideEvents)
               << " ms (renderer only), draw list "

@@ -16,7 +16,7 @@
 #include <span>
 
 #include "global/types.h"
-#include "model/match_point.h"
+#include "model/match_pitch.h"
 #include "model/match_tuning.h"
 
 /**
@@ -370,10 +370,11 @@ class ShirtNumbers
 };
 
 /** Maps normalised engine coordinates to metric world space (z = 0). */
-constexpr Vec3 worldFromPitch(PitchPoint normalized, float heightMetres = 0.0f)
+inline Vec3 worldFromPitch(PitchPoint normalized, float heightMetres = 0.0f)
 {
-  return {normalized.x * MatchTuning::Pitch::MATCH_LENGTH_METRES,
-          (1.0f - normalized.y) * MatchTuning::Pitch::MATCH_WIDTH_METRES,
+  const MatchPitch& pitch = MatchPitch::matchSize();
+  return {pitch.metresX(normalized),
+          pitch.metresY(pitch.mirrorY(normalized.y)),
           heightMetres};
 }
 

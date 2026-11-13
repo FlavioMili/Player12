@@ -223,9 +223,9 @@ MatchViewport MatchScene::playViewport2D(const MatchViewport& fitted,
                             : std::clamp(origin, lowest, highest);
   };
   zoomed.x =
-      place(centreX, zoomed.width, play_follow.x, viewMin.x, viewMax.x, apron.x);
+      place(centreX, zoomed.width, MatchPitch::matchSize().fractionX(play_follow.x), viewMin.x, viewMax.x, apron.x);
   zoomed.y =
-      place(centreY, zoomed.height, play_follow.y, viewMin.y, viewMax.y, apron.y);
+      place(centreY, zoomed.height, MatchPitch::matchSize().fractionY(play_follow.y), viewMin.y, viewMax.y, apron.y);
   return zoomed;
 }
 

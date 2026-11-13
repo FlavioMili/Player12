@@ -23,11 +23,18 @@
 
 #include "audio/audio_mixer.h"
 #include "audio/match_audio.h"
-#include "audio/synth.h"
 #include "model/match_engine.h"
-#include "model/player.h"
-#include "model/settings_manager.h"
+#include "audio/synth.h"
+#include "model/match_pitch.h"
 #include "model/team.h"
+#include "model/settings_manager.h"
+#include "model/player.h"
+
+namespace
+{
+// Tests play on a match pitch, placed by fractions of it.
+const MatchPitch& PITCH = MatchPitch::matchSize();
+}  // namespace
 
 using Audio::BusLevels;
 using Audio::Mixer;
@@ -87,7 +94,7 @@ MatchEvent makeEvent(MatchEventType type, float minute, bool home,
   event.primaryPlayerId = home ? 105 : 205;
   event.homeScore = homeScore;
   event.awayScore = awayScore;
-  event.position = PitchPoint{home ? 0.9f : 0.1f, 0.5f};
+  event.position = PITCH.at(home ? 0.9f : 0.1f, 0.5f);
   return event;
 }
 

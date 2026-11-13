@@ -18,7 +18,7 @@ namespace
 /** Deep in the tunnel, out of sight (as the engine's deepInTunnel). */
 bool inTunnel(PitchPoint at)
 {
-  return at.y * MatchGround::Match::WIDTH > MatchGround::Match::STAND_Y + MatchTuning::WalkOut::IN_METRES;
+  return MatchPitch::matchSize().metresY(at) > MatchGround::Match::STAND_Y + MatchTuning::WalkOut::IN_METRES;
 }
 }  // namespace
 
@@ -110,9 +110,9 @@ void fillMatchRenderSnapshot(const MatchEngine& engine,
   snapshot.ball.possessedBy = engine.getPossessionAttachment();
   snapshot.ball.outOfSight = engine.ballOutOfSight();
   snapshot.ball.currentHeightMetres =
-      ball.z * MatchTuning::Units::BALL_Z_METRES;
+      MatchPitch::heightMetres(ball.z);
   snapshot.ball.previousHeightMetres =
-      engine.getPreviousBallZ() * MatchTuning::Units::BALL_Z_METRES;
+      MatchPitch::heightMetres(engine.getPreviousBallZ());
   snapshot.ball.isShot = ball.possessionState().isShot;
   snapshot.ball.isAerialDelivery = ball.possessionState().isAerialDelivery;
   snapshot.ball.fromThrowIn = ball.possessionState().fromThrowIn;

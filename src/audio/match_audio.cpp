@@ -122,7 +122,8 @@ MatchAudioFrame captureMatchAudioFrame(const MatchEngine& engine,
 {
   MatchAudioFrame frame;
   const MatchBall& ball = engine.getBall();
-  frame.ballX = ball.position.x;
+  // Audio pans and builds by fractions of a match pitch (plan section 15, choice 8).
+  frame.ballX = MatchPitch::matchSize().fractionX(ball.position);
   frame.ballSpeed = std::hypot(ball.velocity.x, ball.velocity.y);
   frame.ballIsShot = ball.possessionState().isShot;
   frame.ballLoose = engine.getPossessionAttachment() == nullptr;
@@ -362,7 +363,7 @@ void MatchAudio::reactToMiss(float x)
 
 void MatchAudio::react(const MatchEvent& event)
 {
-  const float x = event.position.x;
+  const float x = MatchPitch::matchSize().fractionX(event.position);
   const bool home = event.hasTeam && event.isHomeTeam;
   const bool away = event.hasTeam && !event.isHomeTeam;
   switch (event.type)
