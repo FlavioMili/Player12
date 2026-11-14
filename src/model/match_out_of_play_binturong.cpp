@@ -300,9 +300,9 @@ void MatchEngine::kickOffAfterGoalBinturong(bool homeKickingOff)
   }
   if (taker && !deadBall.active)
     taker->movementTarget =
-        pitch.at(homeKickingOff ? MatchTuning::Pitch::HOME_KICKOFF_X
-                                : MatchTuning::Pitch::AWAY_KICKOFF_X,
-                 MatchTuning::Pitch::CENTRE);
+        PitchPoint{pitch.atX(MatchTuning::Pitch::CENTRE) +
+                                (homeKickingOff ? -1.0f : 1.0f) * MatchTuning::Pitch::KICKOFF_TAKER_BEHIND_METRES,
+                 pitch.atY(MatchTuning::Pitch::CENTRE)};
   state = MatchState::KICK_OFF;
   kickOffWalkIn = true;
   setPieceTimer = MatchTuning::Timing::KICKOFF_DELAY_SECONDS;
@@ -356,10 +356,10 @@ void MatchEngine::setupThrowInBinturong(bool homeTeam)
       taker && getBody(taker->isHomeTeam) == BodyId::BINTURONG
           ? PitchPoint{outX, top ? -BEHIND : pitch.atY(1.0f) + BEHIND}
           : PitchPoint{std::clamp(ball.position.x,
-                                  pitch.atX(MatchTuning::Pitch::RESTART_LONGITUDINAL_MARGIN),
-                                  pitch.atX(1.0f - MatchTuning::Pitch::RESTART_LONGITUDINAL_MARGIN)),
-                       top ? pitch.atY(MatchTuning::Pitch::RESTART_INSET)
-                           : pitch.atY(1.0f - MatchTuning::Pitch::RESTART_INSET)};
+                                  MatchTuning::Pitch::RESTART_END_MARGIN_METRES,
+                                  pitch.length - MatchTuning::Pitch::RESTART_END_MARGIN_METRES),
+                       top ? MatchTuning::Pitch::RESTART_INSET_SIDE_METRES
+                           : pitch.width - MatchTuning::Pitch::RESTART_INSET_SIDE_METRES};
   startDeadBallBinturong(spot);
   state = MatchState::THROW_IN;
   // Taken once everyone is ready (restartReadyBinturong), not on a
@@ -400,10 +400,10 @@ void MatchEngine::setupCornerBinturong(bool homeTeam, bool topCorner)
   beginStoppage();
   restartIsSetPiece = true;
   const PitchPoint spot =
-      pitch.at(homeTeam ? 1.0f - MatchTuning::Pitch::RESTART_INSET
-                        : MatchTuning::Pitch::RESTART_INSET,
-               topCorner ? MatchTuning::Pitch::RESTART_INSET
-                         : 1.0f - MatchTuning::Pitch::RESTART_INSET);
+      PitchPoint{homeTeam ? pitch.length - MatchTuning::Pitch::RESTART_INSET_END_METRES
+                        : MatchTuning::Pitch::RESTART_INSET_END_METRES,
+               topCorner ? MatchTuning::Pitch::RESTART_INSET_SIDE_METRES
+                         : pitch.width - MatchTuning::Pitch::RESTART_INSET_SIDE_METRES};
   // Left and right follow the formation: the corner on the side of the
   // team's left-sided positions (low y) is its left corner.
   MatchPlayer* taker =
@@ -1503,10 +1503,10 @@ void MatchEngine::setupFreeKickBinturong(bool homeTeam, PitchPoint foulPos)
   // The spot is where the foul was; the ball goes on from where play
   // stopped and is played back to it (startDeadBallBinturong).
   const PitchPoint spot{
-      std::clamp(foulPos.x, pitch.atX(MatchTuning::Pitch::RESTART_LONGITUDINAL_MARGIN),
-                 pitch.atX(1.0f - MatchTuning::Pitch::RESTART_LONGITUDINAL_MARGIN)),
-      std::clamp(foulPos.y, pitch.atY(MatchTuning::Pitch::RESTART_LONGITUDINAL_MARGIN),
-                 pitch.atY(1.0f - MatchTuning::Pitch::RESTART_LONGITUDINAL_MARGIN))};
+      std::clamp(foulPos.x, MatchTuning::Pitch::RESTART_END_MARGIN_METRES,
+                 pitch.length - MatchTuning::Pitch::RESTART_END_MARGIN_METRES),
+      std::clamp(foulPos.y, MatchTuning::Pitch::RESTART_SIDE_MARGIN_METRES,
+                 pitch.width - MatchTuning::Pitch::RESTART_SIDE_MARGIN_METRES)};
   const PitchPoint goal =
       pitch.at(homeTeam ? 1.0f : 0.0f, MatchTuning::Pitch::CENTRE);
   const float goalMetres = distance(spot, goal);
@@ -1545,11 +1545,11 @@ void MatchEngine::setupPenaltyBinturong(bool homeTeam)
   setRestartTaker(taker);
   startDeadBallBinturong(spot);
   // Everyone else waits outside the area; the keeper walks to his line.
-  const float edge = pitch.atX(
-      homeTeam ? MatchTuning::Pitch::RIGHT_PENALTY_AREA_EDGE -
-                     MatchTuning::SetPiece::PENALTY_WAIT_OFFSET
-               : MatchTuning::Pitch::LEFT_PENALTY_AREA_EDGE +
-                     MatchTuning::SetPiece::PENALTY_WAIT_OFFSET);
+  const float edge =
+      homeTeam ? pitch.atX(MatchTuning::Pitch::RIGHT_PENALTY_AREA_EDGE) -
+                     MatchTuning::SetPiece::PENALTY_WAIT_OFFSET_METRES
+               : pitch.atX(MatchTuning::Pitch::LEFT_PENALTY_AREA_EDGE) +
+                     MatchTuning::SetPiece::PENALTY_WAIT_OFFSET_METRES;
   for (auto& player : players)
   {
     if (!active(player) || &player == taker) continue;
@@ -1557,9 +1557,9 @@ void MatchEngine::setupPenaltyBinturong(bool homeTeam)
     {
       // Law 14: the defending keeper stays on his goal line.
       player.movementTarget =
-          pitch.at(homeTeam ? MatchTuning::Pitch::PLAYER_MAX_X
-                            : MatchTuning::Pitch::PLAYER_MIN_X,
-                   MatchTuning::Pitch::CENTRE);
+          PitchPoint{homeTeam ? pitch.length - MatchTuning::Pitch::PLAYER_EDGE_END_METRES
+                            : MatchTuning::Pitch::PLAYER_EDGE_END_METRES,
+                   pitch.atY(MatchTuning::Pitch::CENTRE)};
       continue;
     }
     if (player.isGoalkeeper) continue;

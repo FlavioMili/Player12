@@ -638,10 +638,10 @@ TEST(MatchEngineTest, MovementAssignmentsRemainCoherentAcrossLivePlay)
       EXPECT_TRUE(std::isfinite(player.position.y));
       EXPECT_TRUE(std::isfinite(player.movementTarget.x));
       EXPECT_TRUE(std::isfinite(player.movementTarget.y));
-      EXPECT_GE(player.position.x, PITCH.atX(MatchTuning::Pitch::PLAYER_MIN_X));
-      EXPECT_LE(player.position.x, PITCH.atX(MatchTuning::Pitch::PLAYER_MAX_X));
-      EXPECT_GE(player.position.y, PITCH.atY(MatchTuning::Pitch::PLAYER_MIN_Y));
-      EXPECT_LE(player.position.y, PITCH.atY(MatchTuning::Pitch::PLAYER_MAX_Y));
+      EXPECT_GE(player.position.x, MatchTuning::Pitch::PLAYER_EDGE_END_METRES);
+      EXPECT_LE(player.position.x, PITCH.length - MatchTuning::Pitch::PLAYER_EDGE_END_METRES);
+      EXPECT_GE(player.position.y, MatchTuning::Pitch::PLAYER_EDGE_SIDE_METRES);
+      EXPECT_LE(player.position.y, PITCH.width - MatchTuning::Pitch::PLAYER_EDGE_SIDE_METRES);
       if (player.isMakingRun)
       {
         if (player.isHomeTeam)

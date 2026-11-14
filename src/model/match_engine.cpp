@@ -506,8 +506,8 @@ bool MatchEngine::executeCommand(const MatchCommandRecord& command)
       // A fresh ball in flight: nobody owns it or last played it.
       beginFedBall();
       ball.position = PitchPoint{
-          std::clamp(command.target->x, pitch.atX(0.001f), pitch.atX(0.999f)),
-          std::clamp(command.target->y, pitch.atY(0.001f), pitch.atY(0.999f))};
+          std::clamp(command.target->x, MatchTuning::Pitch::BALL_INSIDE_END_METRES, pitch.length - MatchTuning::Pitch::BALL_INSIDE_END_METRES),
+          std::clamp(command.target->y, MatchTuning::Pitch::BALL_INSIDE_SIDE_METRES, pitch.width - MatchTuning::Pitch::BALL_INSIDE_SIDE_METRES)};
       ball.z = 0.0f;
       notePathChange();
       ball.velocity = command.feedVelocity;
@@ -550,8 +550,8 @@ bool MatchEngine::executeCommand(const MatchCommandRecord& command)
         // x = 0): clamped as fractions, measured as points on the pitch.
         const Vector2F wanted = command.formation[slot];
         if (!std::isfinite(wanted.x) || !std::isfinite(wanted.y)) return false;
-        const Vector2F kept{std::clamp(wanted.x, Pitch::PLAYER_MIN_X, Pitch::PLAYER_MAX_X),
-                            std::clamp(wanted.y, Pitch::PLAYER_MIN_Y, Pitch::PLAYER_MAX_Y)};
+        const Vector2F kept{std::clamp(wanted.x, Pitch::PLAYER_MIN_X_SHARE, Pitch::PLAYER_MAX_X_SHARE),
+                            std::clamp(wanted.y, Pitch::PLAYER_MIN_Y_SHARE, Pitch::PLAYER_MAX_Y_SHARE)};
         shape.push_back(kept);
         moved += distance(pitch.at(kept.x, kept.y),
                           pitch.at(formation[slot].x, formation[slot].y));
@@ -1565,9 +1565,9 @@ void MatchEngine::startShootout()
     {
       keepers[side].state = GoalkeeperState::SET_POSITION;
       keepers[side].dive = {};
-      player.position = pitch.at(player.isHomeTeam ? MatchTuning::Pitch::PLAYER_MIN_X
-                                                   : MatchTuning::Pitch::PLAYER_MAX_X,
-                                MatchTuning::Pitch::CENTRE);
+      player.position = PitchPoint{player.isHomeTeam ? MatchTuning::Pitch::PLAYER_EDGE_END_METRES
+                                                   : pitch.length - MatchTuning::Pitch::PLAYER_EDGE_END_METRES,
+                                pitch.atY(MatchTuning::Pitch::CENTRE)};
     }
     else
     {
@@ -1606,9 +1606,9 @@ void MatchEngine::beginShootoutKick()
   }
   if (MatchPlayer* keeper = findGoalkeeper(!home))
   {
-    keeper->position = pitch.at(home ? MatchTuning::Pitch::PLAYER_MAX_X
-                                    : MatchTuning::Pitch::PLAYER_MIN_X,
-                               MatchTuning::Pitch::CENTRE);
+    keeper->position = PitchPoint{home ? pitch.length - MatchTuning::Pitch::PLAYER_EDGE_END_METRES
+                                    : MatchTuning::Pitch::PLAYER_EDGE_END_METRES,
+                               pitch.atY(MatchTuning::Pitch::CENTRE)};
     keeper->velocity = {0.0f, 0.0f};
     keeper->movementTarget = keeper->position;
     // On his line, on his feet, for each kick.
@@ -4547,15 +4547,14 @@ void MatchEngine::resolveLooseBall(bool beforeLine)
     // A defender meeting a cross close to his own goal line often plays safe
     // and puts it behind; an Aardvark body now and then turns it into his
     // own net (tryOwnGoalTouch).
-    const float ownDepth = player.isHomeTeam
-                               ? pitch.fractionX(player.position)
-                               : 1.0f - pitch.fractionX(player.position);
+    const float fromOwnGoal =
+                               pitch.fromOwnGoalLine(player.position, player.isHomeTeam);
     const bool delivery = getPossessionState().isPass && getPossessionState().passByHome != player.isHomeTeam &&
                           !player.isGoalkeeper &&
                           (lastPassDecision.intent == PassIntent::CROSS ||
                            lastPassDecision.intent == PassIntent::CUTBACK ||
                            lastPassDecision.intent == PassIntent::SET_PIECE);
-    if (delivery && ownDepth < MatchTuning::SetPiece::CROSS_CLEARANCE_DEPTH)
+    if (delivery && fromOwnGoal < MatchTuning::SetPiece::CROSS_CLEARANCE_WITHIN_METRES)
     {
       ++statsOf(player).interceptions;
       if (tryOwnGoalTouch(player)) return;
@@ -5626,7 +5625,7 @@ void MatchEngine::playBlock(MatchPlayer& tackler, MatchPlayer& owner,
   }
   const Vector2F velocity{line.x * along + across.x, line.y * along + across.y};
   sendBallOff(tackler,
-              PitchPoint{std::clamp(contact.x, pitch.atX(0.001f), pitch.atX(0.999f)), std::clamp(contact.y, pitch.atY(0.001f), pitch.atY(0.999f))},
+              PitchPoint{std::clamp(contact.x, MatchTuning::Pitch::BALL_INSIDE_END_METRES, pitch.length - MatchTuning::Pitch::BALL_INSIDE_END_METRES), std::clamp(contact.y, MatchTuning::Pitch::BALL_INSIDE_SIDE_METRES, pitch.width - MatchTuning::Pitch::BALL_INSIDE_SIDE_METRES)},
               moment.height, velocity, lift,
               BallSpin{}, 0.0f);
   // Loose: nobody's. Both feet are committed.
@@ -5661,7 +5660,7 @@ TouchIntent MatchEngine::defaultTouchIntent(const MatchPlayer& player) const
   const Vector2F ahead = {(player.isHomeTeam ? 1.0f : -1.0f) *
            touchKnobs[TouchKnob::SET_OFFSET],
        0.0f};
-  intent.targetSpot = PitchPoint{std::clamp(player.position.x + ahead.x, pitch.atX(0.001f), pitch.atX(0.999f)),
+  intent.targetSpot = PitchPoint{std::clamp(player.position.x + ahead.x, MatchTuning::Pitch::BALL_INSIDE_END_METRES, pitch.length - MatchTuning::Pitch::BALL_INSIDE_END_METRES),
                        player.position.y};
   return intent;
 }
@@ -6353,8 +6352,8 @@ TouchIntent MatchEngine::dribbleTouchIntent(const MatchPlayer& player,
   const Vector2F ahead =
       {aim.direction.x * metres, aim.direction.y * metres};
   intent.targetSpot = PitchPoint{
-      std::clamp(moment.contactPoint.x + ahead.x, pitch.atX(0.001f), pitch.atX(0.999f)),
-      std::clamp(moment.contactPoint.y + ahead.y, pitch.atY(0.001f), pitch.atY(0.999f))};
+      std::clamp(moment.contactPoint.x + ahead.x, MatchTuning::Pitch::BALL_INSIDE_END_METRES, pitch.length - MatchTuning::Pitch::BALL_INSIDE_END_METRES),
+      std::clamp(moment.contactPoint.y + ahead.y, MatchTuning::Pitch::BALL_INSIDE_SIDE_METRES, pitch.width - MatchTuning::Pitch::BALL_INSIDE_SIDE_METRES)};
   // At a stop on his route (a sharp reversal), his touch stops it: all its
   // pace off, where he meets it.
   if (meetPlanned && turnAhead.stop && turnAhead.toTurn <= R::STOP_TOUCH_METRES &&
@@ -6536,8 +6535,8 @@ void MatchEngine::chaseTouchedBall()
       const Vector2F across = metricDirection(meet, attacker->position);
       const Vector2F shift = {across.x * MatchTuning::Defending::STEP_ACROSS_METRES,
                                       across.y * MatchTuning::Defending::STEP_ACROSS_METRES};
-      meet = PitchPoint{std::clamp(meet.x + shift.x, pitch.atX(0.001f), pitch.atX(0.999f)),
-              std::clamp(meet.y + shift.y, pitch.atY(0.001f), pitch.atY(0.999f))};
+      meet = PitchPoint{std::clamp(meet.x + shift.x, MatchTuning::Pitch::BALL_INSIDE_END_METRES, pitch.length - MatchTuning::Pitch::BALL_INSIDE_END_METRES),
+              std::clamp(meet.y + shift.y, MatchTuning::Pitch::BALL_INSIDE_SIDE_METRES, pitch.width - MatchTuning::Pitch::BALL_INSIDE_SIDE_METRES)};
     }
   }
   // His body chases the ball; a route he has stays, for his touches (and
@@ -6615,9 +6614,9 @@ void MatchEngine::setupKickOff(bool homeKickingOff)
   setRestartTaker(taker);
   if (taker)
   {
-    taker->position = pitch.at(homeKickingOff ? MatchTuning::Pitch::HOME_KICKOFF_X
-                                             : MatchTuning::Pitch::AWAY_KICKOFF_X,
-                              MatchTuning::Pitch::CENTRE);
+    taker->position = PitchPoint{pitch.atX(MatchTuning::Pitch::CENTRE) +
+                                             (homeKickingOff ? -1.0f : 1.0f) * MatchTuning::Pitch::KICKOFF_TAKER_BEHIND_METRES,
+                              pitch.atY(MatchTuning::Pitch::CENTRE)};
     taker->movementTarget = taker->position;
     assignRestartOwner(taker->player);
   }
@@ -6935,10 +6934,14 @@ float MatchEngine::nearestOpponentDistance(const MatchPlayer& player) const
 float MatchEngine::openSpaceAhead(const MatchPlayer& carrier) const
 {
   constexpr float OPEN_SPACE_RADIUS_METRES = 13.5f;
+  // Probed 16.8 m ahead of him, kept 2.1 m off the goal lines; across, in
+  // three lanes at shares of the width (on purpose).
+  constexpr float PROBE_AHEAD_METRES = 16.8f;
+  constexpr float PROBE_END_MARGIN_METRES = 2.1f;
   const float direction = carrier.isHomeTeam ? 1.0f : -1.0f;
   const float probeDepth =
-      std::clamp(carrier.position.x + pitch.atX(direction * 0.16f), pitch.atX(0.02f),
-                 pitch.atX(0.98f));
+      std::clamp(carrier.position.x + direction * PROBE_AHEAD_METRES, PROBE_END_MARGIN_METRES,
+                 pitch.length - PROBE_END_MARGIN_METRES);
   constexpr float CHANNELS[3] = {0.25f, 0.50f, 0.75f};
   float openness = 0.0f;
   for (const float channelY : CHANNELS)
@@ -7086,10 +7089,10 @@ bool MatchEngine::isOffside(const MatchPlayer& receiver, bool attackingHome,
                             float defenderLine, float lineTolerance) const
 {
   if (!drillRules.offside) return false;
-  // The margins are fractions of the length (tuning).
+  // The margins and the tolerance are metres.
   const float margin =
-      pitch.atX(MatchTuning::Passing::OFFSIDE_MARGIN + lineTolerance);
-  const float ballMargin = pitch.atX(MatchTuning::Passing::OFFSIDE_MARGIN);
+      MatchTuning::Passing::OFFSIDE_MARGIN_METRES + lineTolerance;
+  const float ballMargin = MatchTuning::Passing::OFFSIDE_MARGIN_METRES;
   const float halfway = pitch.atX(MatchTuning::Pitch::CENTRE);
 
   if (attackingHome)
@@ -7224,9 +7227,9 @@ bool MatchEngine::applySubstitution(MatchPlayer& outgoing,
       }
     }
     outgoing.basePosition =
-        pitch.at(homeTeam ? MatchTuning::Pitch::LINEUP_GOALKEEPER_X
-                          : 1.0f - MatchTuning::Pitch::LINEUP_GOALKEEPER_X,
-                 MatchTuning::Pitch::CENTRE);
+        PitchPoint{homeTeam ? MatchTuning::Pitch::LINEUP_GOALKEEPER_METRES
+                          : pitch.length - MatchTuning::Pitch::LINEUP_GOALKEEPER_METRES,
+                 pitch.atY(MatchTuning::Pitch::CENTRE)};
     outgoing.isGoalkeeper = true;
   }
   outgoing.player = inPlayer;
@@ -7332,12 +7335,12 @@ void MatchEngine::removeFromPitch(MatchPlayer& player, bool walksOff)
           ? PitchPoint{pitch.atX(MatchTuning::Pitch::CENTRE),
                        pitch.ground.standY +
                                          MatchTuning::WalkOut::WAIT_METRES}
-          : pitch.at(MatchTuning::Pitch::CENTRE +
+          : PitchPoint{pitch.atX(MatchTuning::Pitch::CENTRE) +
                          (homeTeam ? -1.0f : 1.0f) *
-                             (MatchTuning::Rules::PARKED_PLAYER_OFFSET +
+                             (MatchTuning::Rules::PARKED_PLAYER_OFFSET_METRES +
                               static_cast<float>(parked) *
-                                  MatchTuning::Rules::PARKED_PLAYER_SPACING),
-                     MatchTuning::Pitch::PLAYER_MIN_Y);
+                                  MatchTuning::Rules::PARKED_PLAYER_SPACING_METRES),
+                     MatchTuning::Pitch::PLAYER_EDGE_SIDE_METRES};
   player.movementTarget = player.position;
   if (walksOff)
   {
@@ -7475,9 +7478,9 @@ void MatchEngine::ensureGoalkeeper(bool homeTeam)
   if (!emergency) return;
   emergency->isGoalkeeper = true;
   emergency->basePosition =
-      pitch.at(homeTeam ? MatchTuning::Pitch::LINEUP_GOALKEEPER_X
-                        : 1.0f - MatchTuning::Pitch::LINEUP_GOALKEEPER_X,
-               MatchTuning::Pitch::CENTRE);
+      PitchPoint{homeTeam ? MatchTuning::Pitch::LINEUP_GOALKEEPER_METRES
+                        : pitch.length - MatchTuning::Pitch::LINEUP_GOALKEEPER_METRES,
+               pitch.atY(MatchTuning::Pitch::CENTRE)};
 }
 
 MatchEvent& MatchEngine::logEvent(MatchEventType type)

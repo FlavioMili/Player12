@@ -5019,7 +5019,7 @@ class MatchEngine
                         const MatchPlayer& receiver) const;
   float estimateShotXG(const MatchPlayer& shooter) const;
   /** Whether `receiver` stands offside against the given offside line
-   * (see offsideLine()), with an extra tolerance for misjudged lines. */
+   * (see offsideLine()), with an extra tolerance (metres) for misjudged lines. */
   bool isOffside(const MatchPlayer& receiver, bool attackingHome,
                  float defenderLine, float lineTolerance = 0.0f) const;
   float offsideLine(bool attackingHome) const;

@@ -154,12 +154,12 @@ bool MatchEngine::removeBeforeKickOff(PlayerID playerId)
   player->isGoalkeeper = false;
   player->intent = PlayerIntent::HOLD_SHAPE;
   player->velocity = {0.0f, 0.0f};
-  player->position = pitch.at(MatchTuning::Pitch::CENTRE +
+  player->position = PitchPoint{pitch.atX(MatchTuning::Pitch::CENTRE) +
                           (player->isHomeTeam ? -1.0f : 1.0f) *
-                              (MatchTuning::Rules::PARKED_PLAYER_OFFSET +
+                              (MatchTuning::Rules::PARKED_PLAYER_OFFSET_METRES +
                                static_cast<float>(parked) *
-                                   MatchTuning::Rules::PARKED_PLAYER_SPACING),
-                              MatchTuning::Pitch::PLAYER_MIN_Y);
+                                   MatchTuning::Rules::PARKED_PLAYER_SPACING_METRES),
+                              MatchTuning::Pitch::PLAYER_EDGE_SIDE_METRES};
   player->movementTarget = player->position;
   player->tacticalTarget = player->position;
   player->targetVelocity = {0.0f, 0.0f};

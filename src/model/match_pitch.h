@@ -124,4 +124,17 @@ struct MatchPitch final
   {
     return width - units;
   }
+  /** Metres from the goal line a team defends (the home side defends
+   * x = 0), along the length. */
+  [[nodiscard]] constexpr float fromOwnGoalLine(PitchPoint point,
+                                                bool homeTeam) const
+  {
+    return homeTeam ? point.x : length - point.x;
+  }
+  /** Metres to the goal line a team attacks, along the length. */
+  [[nodiscard]] constexpr float toGoalLine(PitchPoint point,
+                                           bool homeTeam) const
+  {
+    return homeTeam ? length - point.x : point.x;
+  }
 };

@@ -370,10 +370,16 @@ struct MatchTuning final
     static constexpr float MATCH_CENTRE_Y_METRES = MATCH_WIDTH_METRES * CENTRE;
     static constexpr float GOAL_TOP = 0.446f;
     static constexpr float GOAL_BOTTOM = 0.554f;
-    static constexpr float LINEUP_GOALKEEPER_X = 0.04f;
-    static constexpr float GOALKEEPER_MIN_Y = 0.38f;
-    static constexpr float GOALKEEPER_MAX_Y = 0.62f;
-    static constexpr float GOALKEEPER_SWEEP_DEPTH = 0.18f;
+    /** The keeper's line-up spot, out from his goal line (m). */
+    static constexpr float LINEUP_GOALKEEPER_METRES = 4.2f;
+    /** The same spot as a share of the length, for the formation frame
+     * (handshake line-up, substitutions panel). */
+    static constexpr float LINEUP_GOALKEEPER_X_SHARE = 0.04f;
+    /** A keeper stays within this of his goal's centre, across (m). */
+    static constexpr float GOALKEEPER_SIDE_LIMIT_METRES = 8.16f;
+    /** He sweeps a loose ball within this of his goal line (m), further for
+     * a sweeper keeper. */
+    static constexpr float GOALKEEPER_SWEEP_METRES = 18.9f;
     static constexpr float LEFT_GOAL_KICK_X = 0.065f;
     static constexpr float RIGHT_GOAL_KICK_X = 0.935f;
     static constexpr float LEFT_PENALTY_SPOT_X = 0.105f;
@@ -382,18 +388,38 @@ struct MatchTuning final
     static constexpr float RIGHT_PENALTY_AREA_EDGE = 0.843f;
     static constexpr float PENALTY_AREA_HALF_WIDTH_METRES = 20.16f;
     static constexpr float GOAL_AREA_HALF_WIDTH_METRES = 9.16f;
-    static constexpr float RESTART_INSET = 0.01f;
-    static constexpr float RESTART_LONGITUDINAL_MARGIN = 0.04f;
-    static constexpr float HOME_KICKOFF_X = 0.49f;
-    static constexpr float AWAY_KICKOFF_X = 0.51f;
+    /** A corner's spot in from the goal line, and a throw-in's and a
+     * corner's in from the touchline (m). */
+    static constexpr float RESTART_INSET_END_METRES = 1.05f;
+    static constexpr float RESTART_INSET_SIDE_METRES = 0.68f;
+    /** Throw-ins and free kicks are kept this far from the goal lines, and
+     * free kicks this far from the touchlines (m). */
+    static constexpr float RESTART_END_MARGIN_METRES = 4.2f;
+    static constexpr float RESTART_SIDE_MARGIN_METRES = 2.72f;
+    /** The kick-off taker stands this far behind the centre spot (m). */
+    static constexpr float KICKOFF_TAKER_BEHIND_METRES = 1.05f;
+    /** The formation squeezed into its own half for kick-off: shares of the
+     * length, on purpose (they scale with the pitch). */
     static constexpr float KICKOFF_FORMATION_INSET = 0.02f;
     static constexpr float KICKOFF_FORMATION_SCALE = 0.56f;
     /** The pitch edge as a player reads it: where he means to be, receive
-     * or put the ball (MatchEngineInternal::clampToPitch). */
-    static constexpr float PLAYER_MIN_X = 0.005f;
-    static constexpr float PLAYER_MAX_X = 0.995f;
-    static constexpr float PLAYER_MIN_Y = 0.01f;
-    static constexpr float PLAYER_MAX_Y = 0.99f;
+     * or put the ball (MatchEngineInternal::clampToPitch), in metres in
+     * from the goal lines (END) and the touchlines (SIDE). */
+    static constexpr float PLAYER_EDGE_END_METRES = 0.525f;
+    static constexpr float PLAYER_EDGE_SIDE_METRES = 0.68f;
+    /** The same edge as shares of the pitch, for the formation frame
+     * (building the shape, the handshake line-up, the substitutions view). */
+    static constexpr float PLAYER_MIN_X_SHARE = 0.005f;
+    static constexpr float PLAYER_MAX_X_SHARE = 0.995f;
+    static constexpr float PLAYER_MIN_Y_SHARE = 0.01f;
+    static constexpr float PLAYER_MAX_Y_SHARE = 0.99f;
+    /** The ball, or a point it is aimed at, is kept this far inside the goal
+     * lines (END) and the touchlines (SIDE) (m). */
+    static constexpr float BALL_INSIDE_END_METRES = 0.105f;
+    static constexpr float BALL_INSIDE_SIDE_METRES = 0.068f;
+    /** A shot off the woodwork comes back this far in front of the goal
+     * line (m). */
+    static constexpr float OFF_WOODWORK_METRES = 0.42f;
     /** The advertising boards (a hard wall), out from the touchlines and
      * the goal lines; the 3D view draws them here too. */
     static constexpr float BOARDS_SIDE_METRES = 4.0f;
@@ -809,7 +835,7 @@ struct MatchTuning final
     static constexpr float BODY_MASS_INDEX_AT_STRENGTH_99 = 31.0f;
     static constexpr float SUBSTITUTION_SETTLE_SECONDS = 1.5f;
     static constexpr float MAX_LOOSE_BALL_LOOKAHEAD_SECONDS = 1.2f;
-    static constexpr float COVER_LOOSE_BALL_OFFSET = 0.055f;
+    static constexpr float COVER_LOOSE_BALL_OFFSET_METRES = 5.775f;
     static constexpr float PASS_RECEIVER_LOOKAHEAD_SECONDS = 0.8f;
     static constexpr float MINIMUM_PURSUIT_SPEED = 1.4f;
     static constexpr float CURRENT_VELOCITY_PURSUIT_WEIGHT = 0.55f;
@@ -1289,18 +1315,23 @@ struct MatchTuning final
 
   struct Shape final
   {
+    // Units (training ground plan section 17): a value named _METRES is a
+    // distance from the ball, a player, a line or a goal. The rest of the
+    // distances here are shares of the pitch on purpose (along: of the
+    // length; across: of the width), so the team's shape and its moves from
+    // the formation scale with the pitch.
     static constexpr float MIN_WIDTH_SCALE = 0.72f;
     static constexpr float WIDTH_SLIDER_SCALE = 0.54f;
     static constexpr float BASE_LONGITUDINAL_SHIFT = 0.12f;
     static constexpr float COMPACTNESS_LONGITUDINAL_SHIFT = 0.12f;
     static constexpr float BASE_LATERAL_SHIFT = 0.10f;
     static constexpr float COMPACTNESS_LATERAL_SHIFT = 0.10f;
-    static constexpr float CARRIER_BASE_ADVANCE = 0.10f;
-    static constexpr float CARRIER_DRIBBLING_ADVANCE = 0.08f;
-    static constexpr float CARRIER_RISK_ADVANCE = 0.05f;
+    static constexpr float CARRIER_BASE_ADVANCE_METRES = 10.5f;
+    static constexpr float CARRIER_DRIBBLING_ADVANCE_METRES = 8.4f;
+    static constexpr float CARRIER_RISK_ADVANCE_METRES = 5.25f;
     static constexpr float CARRIER_EVASION_RANGE_METRES = 8.0f;
-    static constexpr float CARRIER_BASE_EVASION = 0.035f;
-    static constexpr float CARRIER_DRIBBLING_EVASION = 0.045f;
+    static constexpr float CARRIER_BASE_EVASION_METRES = 2.38f;
+    static constexpr float CARRIER_DRIBBLING_EVASION_METRES = 3.06f;
     static constexpr float CARRIER_CENTRALITY = 0.16f;
     // Wide players carrying down the flank keep their lane to cross.
     static constexpr float WIDE_LANE_DEVIATION = 0.24f;
@@ -1318,16 +1349,16 @@ struct MatchTuning final
     static constexpr std::size_t SQUARE_SUPPORT_SLOT = 1;
     static constexpr std::size_t TRAILING_SUPPORT_SLOT = 2;
     static constexpr float SUPPORT_SELECTION_CONTINUITY_METRES = 7.0f;
-    static constexpr float NEAR_SUPPORT_DEPTH = 0.065f;
-    static constexpr float NEAR_SUPPORT_WIDTH = 0.105f;
-    static constexpr float SQUARE_SUPPORT_DEPTH = 0.025f;
-    static constexpr float SQUARE_SUPPORT_WIDTH = 0.165f;
-    static constexpr float TRAILING_SUPPORT_DEPTH = 0.125f;
-    static constexpr float TRAILING_SUPPORT_WIDTH = 0.045f;
+    static constexpr float NEAR_SUPPORT_DEPTH_METRES = 6.825f;
+    static constexpr float NEAR_SUPPORT_WIDTH_METRES = 7.14f;
+    static constexpr float SQUARE_SUPPORT_DEPTH_METRES = 2.625f;
+    static constexpr float SQUARE_SUPPORT_WIDTH_METRES = 11.22f;
+    static constexpr float TRAILING_SUPPORT_DEPTH_METRES = 13.125f;
+    static constexpr float TRAILING_SUPPORT_WIDTH_METRES = 3.06f;
     static constexpr float TRANSITION_SUPPORT_FORWARD_BONUS = 0.055f;
     static constexpr float RUN_BASE_ADVANCE = 0.045f;
     static constexpr float RUN_RISK_ADVANCE = 0.09f;
-    static constexpr float ONSIDE_RECOVERY = 0.055f;
+    static constexpr float ONSIDE_RECOVERY_METRES = 5.775f;
     static constexpr float MAX_SUPPORT_DISTANCE_METRES = 29.0f;
     static constexpr float SUPPORT_LONGITUDINAL_PULL = 0.20f;
     static constexpr float SUPPORT_LATERAL_PULL = 0.14f;
@@ -1349,9 +1380,9 @@ struct MatchTuning final
     static constexpr float RUN_CONTINUITY_PRIORITY = 0.24f;
     /** Spread of the per-attack variation in who makes the runs. */
     static constexpr float RUN_VARIETY_PRIORITY = 0.15f;
-    static constexpr float RUN_ONSIDE_BUFFER = 0.012f;
+    static constexpr float RUN_ONSIDE_BUFFER_METRES = 1.26f;
     static constexpr float RUN_DEPTH_TARGET_PULL = 0.82f;
-    static constexpr float SECONDARY_RUN_DEPTH_STAGGER = 0.055f;
+    static constexpr float SECONDARY_RUN_DEPTH_STAGGER_METRES = 5.775f;
     static constexpr float RUN_CHANNEL_BLEND = 0.55f;
     static constexpr float LEFT_WIDE_ATTACK_CHANNEL = 0.18f;
     static constexpr float RIGHT_WIDE_ATTACK_CHANNEL = 0.82f;
@@ -1361,42 +1392,42 @@ struct MatchTuning final
     static constexpr float RIGHT_STRIKER_ATTACK_CHANNEL = 0.58f;
     static constexpr float CENTRAL_ATTACK_CHANNEL = 0.50f;
     static constexpr float MINIMUM_RUN_CHANNEL_SEPARATION = 0.16f;
-    static constexpr float FORWARD_SHORT_OPTION_DEPTH = 0.09f;
-    static constexpr float FORWARD_SHORT_OPTION_LATERAL_SEPARATION = 0.13f;
-    /** Late runs into the box in the final third (pitch fractions from the
-     * goal line and from the centre, away from the ball's side). */
-    static constexpr float MIDFIELD_ARRIVAL_DEPTH = 0.12f;
-    static constexpr float MIDFIELD_ARRIVAL_WIDTH = 0.05f;
-    static constexpr float FAR_POST_ARRIVAL_DEPTH = 0.07f;
-    static constexpr float FAR_POST_ARRIVAL_WIDTH = 0.10f;
+    static constexpr float FORWARD_SHORT_OPTION_DEPTH_METRES = 9.45f;
+    static constexpr float FORWARD_SHORT_OPTION_LATERAL_SEPARATION_METRES = 8.84f;
+    /** Late runs into the box in the final third (metres out from the
+     * goal line, and from the centre away from the ball's side). */
+    static constexpr float MIDFIELD_ARRIVAL_DEPTH_METRES = 12.6f;
+    static constexpr float MIDFIELD_ARRIVAL_WIDTH_METRES = 3.4f;
+    static constexpr float FAR_POST_ARRIVAL_DEPTH_METRES = 7.35f;
+    static constexpr float FAR_POST_ARRIVAL_WIDTH_METRES = 6.8f;
     /** The far-post run needs the ball out wide. */
-    static constexpr float FAR_POST_MIN_BALL_WIDTH = 0.14f;
+    static constexpr float FAR_POST_MIN_BALL_WIDTH_METRES = 9.52f;
     static constexpr float FINAL_THIRD_FULLBACK_OVERLAP = 0.17f;
     static constexpr float FINAL_THIRD_SELECTION_CONTINUITY = 0.16f;
     // A presser jockeys goal-side 1.5-2.5 m off the carrier.
-    static constexpr float PRESSING_STANDOFF_BASE = 0.014f;
-    static constexpr float PRESSING_STANDOFF_CAUTIOUS_BONUS = 0.01f;
+    static constexpr float PRESSING_STANDOFF_BASE_METRES = 1.47f;
+    static constexpr float PRESSING_STANDOFF_CAUTIOUS_BONUS_METRES = 1.05f;
     static constexpr float PRESSER_CONTINUITY_SECONDS = 0.75f;
     static constexpr float COVER_PRESS_MINIMUM = 0.35f;
     static constexpr float COVER_LANE_INTERCEPTION_POINT = 0.52f;
-    static constexpr float COVER_LANE_GOAL_SIDE_OFFSET = 0.018f;
+    static constexpr float COVER_LANE_GOAL_SIDE_OFFSET_METRES = 1.89f;
     static constexpr float COVER_OUTLET_MAX_DISTANCE_METRES = 29.0f;
     static constexpr float COVER_FORWARD_OPTION_METRES = 7.0f;
-    static constexpr float COVER_FALLBACK_DEPTH = 0.035f;
-    static constexpr float COVER_FALLBACK_LATERAL_OFFSET = 0.055f;
+    static constexpr float COVER_FALLBACK_DEPTH_METRES = 3.675f;
+    static constexpr float COVER_FALLBACK_LATERAL_OFFSET_METRES = 3.74f;
     static constexpr float CHANNEL_WEIGHT = 1.4f;
     static constexpr float DANGER_DEPTH_WEIGHT = 0.12f;
     static constexpr float BASE_MARK_WEIGHT = 0.12f;
     static constexpr float COMPACTNESS_MARK_WEIGHT = 0.20f;
     static constexpr std::uint64_t MARK_REFRESH_STEPS = 20;
-    static constexpr float TIGHT_MARK_DANGER_DEPTH = 0.62f;
+    static constexpr float TIGHT_MARK_WITHIN_METRES = 39.9f;
     static constexpr float TIGHT_MARK_WEIGHT = 0.7f;
     static constexpr float GOAL_SIDE_MARK_METRES = 1.5f;
     static constexpr float SECOND_LOOSE_BALL_PRESS_THRESHOLD = 0.9f;
     static constexpr float ATTACKING_TRANSITION_SUPPORT_ADVANCE = 0.065f;
     static constexpr float ATTACKING_TRANSITION_RUN_ADVANCE = 0.13f;
     static constexpr float ATTACKING_TRANSITION_BALL_PULL = 0.12f;
-    static constexpr float ATTACKING_TRANSITION_CARRIER_ADVANCE = 0.055f;
+    static constexpr float ATTACKING_TRANSITION_CARRIER_ADVANCE_METRES = 5.775f;
     static constexpr float IN_FLIGHT_SUPPORT_ADVANCE_PER_SECOND = 0.03f;
     static constexpr float IN_FLIGHT_SUPPORT_BALL_PULL_PER_SECOND = 0.25f;
     static constexpr float DEFENSIVE_TRANSITION_RECOVERY = 0.055f;
@@ -1459,7 +1490,7 @@ struct MatchTuning final
     static constexpr float COMFORTABLE_LEAD_SHOT_PENALTY = 3.0f;
     static constexpr float CLEAR_CHANCE_XG = 0.30f;
     static constexpr float COMFORTABLE_LEAD_CARRY_PENALTY = 0.5f;
-    static constexpr float WIDE_SHOT_WIDTH_DEVIATION = 0.32f;
+    static constexpr float WIDE_SHOT_WIDTH_METRES = 21.76f;
     static constexpr float WIDE_SHOT_DISCOUNT = 0.12f;
     static constexpr float WIDE_RECYCLE_BONUS = 0.85f;
   };
@@ -1480,6 +1511,8 @@ struct MatchTuning final
     static constexpr float FORWARD_ROLE_BONUS = 0.0f;
     static constexpr float MIN_ACCEPTABLE_OPTION_SCORE = -0.15f;
     static constexpr float PRESSURE_RELEASE_THRESHOLD = 0.55f;
+    // Progression is a share of the length gained towards goal (on purpose:
+    // the same on any pitch); so are the bands across the width below.
     static constexpr float PRESSURE_RELEASE_MAX_PROGRESSION = 0.03f;
     static constexpr float PROGRESSIVE_PASS_MINIMUM = 0.035f;
     /** Space behind the opposing line (metres to their goal line) that makes
@@ -1494,9 +1527,9 @@ struct MatchTuning final
     static constexpr float WIDE_ATTACK_MAXIMUM_Y = 0.70f;
     static constexpr float CENTRAL_TARGET_MINIMUM_Y = 0.30f;
     static constexpr float CENTRAL_TARGET_MAXIMUM_Y = 0.70f;
-    static constexpr float CROSS_MINIMUM_PASSER_DEPTH = 0.62f;
-    static constexpr float CROSS_MINIMUM_RECEIVER_DEPTH = 0.70f;
-    static constexpr float CUTBACK_MINIMUM_PASSER_DEPTH = 0.86f;
+    static constexpr float CROSS_PASSER_WITHIN_METRES = 39.9f;
+    static constexpr float CROSS_RECEIVER_WITHIN_METRES = 31.5f;
+    static constexpr float CUTBACK_PASSER_WITHIN_METRES = 14.7f;
     static constexpr float CUTBACK_MAXIMUM_PROGRESSION = 0.035f;
     static constexpr float CUTBACK_MINIMUM_PROGRESSION = -0.24f;
     static constexpr float CROSS_UTILITY_BONUS = 0.7f;
@@ -1521,7 +1554,7 @@ struct MatchTuning final
     static constexpr float ACTIVE_RUNNER_UTILITY_BONUS = 0.16f;
     /** Utility per unit of the receiver's shooting chance (final third). */
     static constexpr float SHOT_CREATION_WEIGHT = 1.0f;
-    static constexpr float THROUGH_BALL_FORWARD_LEAD = 0.055f;
+    static constexpr float THROUGH_BALL_FORWARD_LEAD_METRES = 5.775f;
     static constexpr float THROUGH_BALL_TARGET_BLEND = 0.60f;
     static constexpr float LOFTED_DISTANCE_METRES = 30.0f;
     static constexpr float PASS_PRESSURE_RADIUS_METRES = 7.5f;
@@ -1609,11 +1642,11 @@ struct MatchTuning final
     static constexpr float FIRST_TIME_MAX_BALL_HEIGHT_METRES = 0.1f;
     static constexpr float LOFTED_ARRIVAL_HEIGHT_METRES = 1.1f;
     static constexpr float DELIVERY_HEIGHT_SPREAD = 0.6f;
-    static constexpr float OFFSIDE_PERCEPTION_ERROR = 0.06f;
+    static constexpr float OFFSIDE_PERCEPTION_ERROR_METRES = 6.3f;
     // Runners time their runs imperfectly: they sometimes drift beyond the
     // line, and a passer who misreads it releases an offside pass.
-    static constexpr float RUN_TIMING_GAMBLE = 0.02f;
-    static constexpr float OFFSIDE_TIMING_WINDOW = 0.03f;
+    static constexpr float RUN_TIMING_GAMBLE_METRES = 2.1f;
+    static constexpr float OFFSIDE_TIMING_WINDOW_METRES = 3.15f;
     static constexpr float OFFSIDE_TIMING_CHANCE = 0.7f;
     static constexpr float RUN_TIMING_EPOCH_SECONDS = 5.0f;
     /** Heading rotation (rad/s) of a curled ground pass. */
@@ -1650,7 +1683,7 @@ struct MatchTuning final
     static constexpr float NEAR_LANE_REACH_METRES = 1.1f;
     static constexpr float NEAR_LANE_RISK = 0.9f;
     static constexpr float LANE_REACH_RAMP_METRES = 8.0f;
-    static constexpr float OFFSIDE_MARGIN = 0.004f;
+    static constexpr float OFFSIDE_MARGIN_METRES = 0.42f;
   };
 
   struct Shooting final
@@ -2172,10 +2205,10 @@ struct MatchTuning final
      * Defending: his judgement. */
     static constexpr float READ_ERROR_POOR = 0.25f;
     static constexpr float READ_ERROR_BEST = 0.05f;
-    /** His intent: knock it away in his own third (this deep), at this
+    /** His intent: knock it away within this many metres of his own goal line, at this
      * stretch or more, or as the last man; otherwise win it. A free ball
      * this far (m) from the carrier he simply controls. */
-    static constexpr float KNOCK_AWAY_DEPTH = 0.33f;
+    static constexpr float KNOCK_AWAY_WITHIN_METRES = 34.65f;
     static constexpr float KNOCK_AWAY_STRETCH = 0.6f;
     static constexpr float CONTROL_FREE_BALL_METRES = 2.0f;
     // A won challenge often only pokes the ball loose.
@@ -2183,7 +2216,7 @@ struct MatchTuning final
     static constexpr float MIN_POKE_SPEED = 3.5f;
     static constexpr float MAX_POKE_SPEED = 8.0f;
     // Defenders pressed in their own third with no safe pass clear it.
-    static constexpr float CLEARANCE_MAX_DEPTH = 0.33f;
+    static constexpr float CLEARANCE_WITHIN_METRES = 34.65f;
     static constexpr float CLEARANCE_MIN_DISTANCE_METRES = 30.0f;
     static constexpr float CLEARANCE_MAX_DISTANCE_METRES = 50.0f;
     static constexpr float CLEARANCE_SPEED = 22.0f;
@@ -2336,8 +2369,9 @@ struct MatchTuning final
     /** One more change (and window) once a tie goes to extra time. */
     static constexpr int EXTRA_TIME_SUBSTITUTIONS = 1;
     static constexpr long MINIMUM_PLAYERS = 7;
-    static constexpr float PARKED_PLAYER_OFFSET = 0.06f;
-    static constexpr float PARKED_PLAYER_SPACING = 0.025f;
+    static constexpr float PARKED_PLAYER_OFFSET_METRES = 6.3f;
+    static constexpr float PARKED_PLAYER_SPACING_METRES = 2.625f;
+    /** A share of the length (formation frame, on purpose). */
     static constexpr float DEFENSIVE_SLOT_DEPTH = 0.30f;
     static constexpr float SHORT_HANDED_DROP = 0.02f;
     // Crowd-driven home advantage on execution; referee bias is modelled in
@@ -2352,6 +2386,7 @@ struct MatchTuning final
     static constexpr int MAX_NUMERICAL_EDGE_PLAYERS = 3;
     /** Weight of the team edge on the attributes used in duels. */
     static constexpr float DUEL_EDGE_WEIGHT = 0.8f;
+    /** The final third: shares of the length, on purpose. */
     static constexpr float HOME_FINAL_THIRD_START = 0.67f;
     static constexpr float AWAY_FINAL_THIRD_START = 0.33f;
   };
@@ -2372,7 +2407,7 @@ struct MatchTuning final
     static constexpr float SCREENED_REACTION_SECONDS = 0.12f;
     static constexpr float SCREEN_WIDTH_METRES = 0.9f;
     static constexpr float READ_ERROR_METRES = 0.8f;
-    static constexpr float DIVE_POST_MARGIN = 0.02f;
+    static constexpr float DIVE_POST_MARGIN_METRES = 1.36f;
     static constexpr float DIVE_ACCELERATION_METRES = 14.0f;
     static constexpr float DIVE_BASE_SPEED_METRES = 4.2f;
     static constexpr float DIVE_SKILL_SPEED_METRES = 1.6f;
@@ -2448,14 +2483,17 @@ struct MatchTuning final
     /** Weight of a box attacker's heading reach when choosing the target. */
     static constexpr float TARGET_THREAT_WEIGHT = 0.0f;
     static constexpr std::size_t REST_DEFENDERS = 3;
-    static constexpr float MARKING_GOAL_SIDE_OFFSET = 0.008f;
-    static constexpr float PENALTY_WAIT_OFFSET = 0.01f;
+    static constexpr float MARKING_GOAL_SIDE_OFFSET_METRES = 0.84f;
+    static constexpr float PENALTY_WAIT_OFFSET_METRES = 1.05f;
     static constexpr float SET_PIECE_PHASE_SECONDS = 20.0f;
     // Defensive clearances and blocks near the own goal line often go out
     // for a corner.
     static constexpr float CLEARANCE_BEHIND_CHANCE = 0.6f;
     /** A defender heading a delivery away near his goal line. */
     static constexpr float HEADER_BEHIND_CHANCE = 0.33f;
+    /** Nearer his own goal line than this (m), a defender's header clears
+     * the danger rather than finding a team-mate. */
+    static constexpr float DEFENSIVE_HEADER_WITHIN_METRES = 47.25f;
     /** Chance that a defender's header or touch of a delivery in front of
      * his goal skews toward it (own goals), and its speed and lift. */
     static constexpr float OWN_GOAL_TOUCH_CHANCE = 0.04f;
@@ -2465,8 +2503,8 @@ struct MatchTuning final
     static constexpr float OWN_GOAL_MAX_SPEED = 13.0f;
     static constexpr float OWN_GOAL_MAX_LIFT = 2.0f;
     static constexpr float BLOCK_BEHIND_CHANCE = 0.6f;
-    static constexpr float BLOCK_BEHIND_DEPTH = 0.20f;
-    static constexpr float CROSS_CLEARANCE_DEPTH = 0.25f;
+    static constexpr float BLOCK_BEHIND_WITHIN_METRES = 21.0f;
+    static constexpr float CROSS_CLEARANCE_WITHIN_METRES = 26.25f;
   };
 
   /**
@@ -2538,7 +2576,7 @@ struct MatchTuning final
     static constexpr float ADVANTAGE_MIN_OPENNESS = 0.45f;
     static constexpr float ADVANTAGE_PLAY_CHANCE = 0.45f;
     static constexpr float DOGSO_MAX_DISTANCE_METRES = 28.0f;
-    static constexpr float DOGSO_MAX_WIDTH_DEVIATION = 0.22f;
+    static constexpr float DOGSO_MAX_WIDTH_METRES = 14.96f;
   };
 
   struct Injury final
@@ -2651,11 +2689,11 @@ struct MatchTuning final
     static constexpr float DUEL_FOUL_CHANCE = 0.08f;
     /** Defenders facing a delivery win first contact more often. */
     static constexpr float DEFENDER_DUEL_ADVANTAGE = 1.3f;
-    static constexpr float HEADER_SHOT_MIN_DEPTH = 0.84f;
-    /** Team-mates' lofted balls are cushioned down below this depth. */
-    static constexpr float HEADER_KNOCK_DOWN_MIN_DEPTH = 0.72f;
+    static constexpr float HEADER_SHOT_WITHIN_METRES = 16.8f;
+    /** Team-mates' lofted balls are cushioned down further than this from goal (m). */
+    static constexpr float HEADER_KNOCK_DOWN_WITHIN_METRES = 29.4f;
     static constexpr float KNOCK_DOWN_MAX_BACKWARD_METRES = 4.0f;
-    static constexpr float HEADER_SHOT_WIDTH = 0.18f;
+    static constexpr float HEADER_SHOT_WIDTH_METRES = 12.24f;
     static constexpr float HEADER_SHOT_MIN_XG = 0.06f;
     static constexpr float HEADER_CLEARANCE_SPEED = 17.0f;
     /** Weakest defensive header as a share of the clearance speed. */

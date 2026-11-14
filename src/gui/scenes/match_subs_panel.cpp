@@ -263,7 +263,7 @@ void MatchSubsPanel::collectMarkers(const TouchlineContext& context)
     marker.goalkeeper = player.isGoalkeeper;
     if (player.isGoalkeeper)
     {
-      marker.spot = {MatchTuning::Pitch::LINEUP_GOALKEEPER_X,
+      marker.spot = {MatchTuning::Pitch::LINEUP_GOALKEEPER_X_SHARE,
                      MatchTuning::Pitch::CENTRE};
     }
     else if (player.formationSlot >= 0 &&

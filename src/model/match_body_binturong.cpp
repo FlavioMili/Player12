@@ -2395,8 +2395,8 @@ bool MatchEngine::updateDribbleBinturong(MatchPlayer& carrier, float dt)
             : ball.dribbleDirection;
     const Vector2F offset =
         {ahead.x * R::FEET_METRES, ahead.y * R::FEET_METRES};
-    ball.position = PitchPoint{std::clamp(carrier.position.x + offset.x, pitch.atX(0.001f), pitch.atX(0.999f)),
-                     std::clamp(carrier.position.y + offset.y, pitch.atY(0.001f), pitch.atY(0.999f))};
+    ball.position = PitchPoint{std::clamp(carrier.position.x + offset.x, MatchTuning::Pitch::BALL_INSIDE_END_METRES, pitch.length - MatchTuning::Pitch::BALL_INSIDE_END_METRES),
+                     std::clamp(carrier.position.y + offset.y, MatchTuning::Pitch::BALL_INSIDE_SIDE_METRES, pitch.width - MatchTuning::Pitch::BALL_INSIDE_SIDE_METRES)};
     ball.z = 0.0f;
     ball.velocity = carrier.velocity;
     beginCollectedDribble(carrier);
@@ -2419,8 +2419,8 @@ bool MatchEngine::updateDribbleBinturong(MatchPlayer& carrier, float dt)
                                  MatchTuning::Units::BALL_RADIUS_METRES)});
     }
     const Point3F held = heldBallBinturong(carrier);
-    ball.position = PitchPoint{std::clamp(asPoint({held.x, held.y}).x, pitch.atX(0.001f), pitch.atX(0.999f)),
-                     std::clamp(asPoint({held.x, held.y}).y, pitch.atY(0.001f), pitch.atY(0.999f))};
+    ball.position = PitchPoint{std::clamp(asPoint({held.x, held.y}).x, MatchTuning::Pitch::BALL_INSIDE_END_METRES, pitch.length - MatchTuning::Pitch::BALL_INSIDE_END_METRES),
+                     std::clamp(asPoint({held.x, held.y}).y, MatchTuning::Pitch::BALL_INSIDE_SIDE_METRES, pitch.width - MatchTuning::Pitch::BALL_INSIDE_SIDE_METRES)};
     ball.z = held.z;
     ball.velocity = carrier.velocity;
     ball.velocityZ = 0.0f;
@@ -2498,8 +2498,8 @@ bool MatchEngine::updateDribbleBinturong(MatchPlayer& carrier, float dt)
   const Vector2F ahead =
       {ball.dribbleDirection.x * ball.dribbleExposure,
                ball.dribbleDirection.y * ball.dribbleExposure};
-  ball.position = PitchPoint{std::clamp(carrier.position.x + ahead.x, pitch.atX(0.001f), pitch.atX(0.999f)),
-                   std::clamp(carrier.position.y + ahead.y, pitch.atY(0.001f), pitch.atY(0.999f))};
+  ball.position = PitchPoint{std::clamp(carrier.position.x + ahead.x, MatchTuning::Pitch::BALL_INSIDE_END_METRES, pitch.length - MatchTuning::Pitch::BALL_INSIDE_END_METRES),
+                   std::clamp(carrier.position.y + ahead.y, MatchTuning::Pitch::BALL_INSIDE_SIDE_METRES, pitch.width - MatchTuning::Pitch::BALL_INSIDE_SIDE_METRES)};
   ball.z = 0.0f;
   ball.velocity = carrier.velocity;
   return true;
@@ -4335,9 +4335,9 @@ void MatchEngine::readShotBinturong(const MatchPlayer& keeper,
                         (1.0f - keeper.goalkeeping * 0.6f);
   control.diveTargetY = std::clamp(
       predictedY + readError,
-      pitch.atY(MatchTuning::Pitch::GOAL_TOP - MatchTuning::Goalkeeper::DIVE_POST_MARGIN),
-      pitch.atY(MatchTuning::Pitch::GOAL_BOTTOM +
-                MatchTuning::Goalkeeper::DIVE_POST_MARGIN));
+      pitch.atY(MatchTuning::Pitch::GOAL_TOP) - MatchTuning::Goalkeeper::DIVE_POST_MARGIN_METRES,
+      pitch.atY(MatchTuning::Pitch::GOAL_BOTTOM) +
+                MatchTuning::Goalkeeper::DIVE_POST_MARGIN_METRES);
 
   bool screened = false;
   for (const auto& other : players)
@@ -6657,7 +6657,7 @@ Vector2F MatchEngine::heavyTouchVelocityBinturong(const MatchPlayer& player,
   const float ownDepth =
       player.isHomeTeam ? player.position.x : 1.0f - player.position.x;
   const float outward = player.isHomeTeam ? 1.0f : -1.0f;
-  if (ownDepth < MatchTuning::SetPiece::CROSS_CLEARANCE_DEPTH &&
+  if (ownDepth < pitch.fractionX(MatchTuning::SetPiece::CROSS_CLEARANCE_WITHIN_METRES) &&
       popped.x * outward < 0.0f)
     popped.x = -popped.x;
   return popped;
@@ -8324,6 +8324,6 @@ PitchPoint MatchEngine::tackleNudgeSpotBinturong(const MatchPlayer& tackler,
   const float metres =
       D::NUDGE_METRES_POOR + (D::NUDGE_METRES_BEST - D::NUDGE_METRES_POOR) * tackling;
   const Vector2F reach = {aim.x * metres, aim.y * metres};
-  return PitchPoint{std::clamp(contact.x + reach.x, pitch.atX(0.001f), pitch.atX(0.999f)),
-          std::clamp(contact.y + reach.y, pitch.atY(0.001f), pitch.atY(0.999f))};
+  return PitchPoint{std::clamp(contact.x + reach.x, MatchTuning::Pitch::BALL_INSIDE_END_METRES, pitch.length - MatchTuning::Pitch::BALL_INSIDE_END_METRES),
+          std::clamp(contact.y + reach.y, MatchTuning::Pitch::BALL_INSIDE_SIDE_METRES, pitch.width - MatchTuning::Pitch::BALL_INSIDE_SIDE_METRES)};
 }

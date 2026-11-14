@@ -427,10 +427,10 @@ float reshapeCost(std::span<const Vector2F> from, std::span<const Vector2F> to)
   for (std::size_t slot = 0; slot < from.size(); ++slot)
   {
     const Vector2F clamped{
-        std::clamp(to[slot].x, MatchTuning::Pitch::PLAYER_MIN_X,
-                   MatchTuning::Pitch::PLAYER_MAX_X),
-        std::clamp(to[slot].y, MatchTuning::Pitch::PLAYER_MIN_Y,
-                   MatchTuning::Pitch::PLAYER_MAX_Y)};
+        std::clamp(to[slot].x, MatchTuning::Pitch::PLAYER_MIN_X_SHARE,
+                   MatchTuning::Pitch::PLAYER_MAX_X_SHARE),
+        std::clamp(to[slot].y, MatchTuning::Pitch::PLAYER_MIN_Y_SHARE,
+                   MatchTuning::Pitch::PLAYER_MAX_Y_SHARE)};
     moved += metresBetween(clamped, from[slot]);
   }
   using T = MatchTuning::Touchline;

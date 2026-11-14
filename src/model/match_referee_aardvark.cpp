@@ -36,8 +36,8 @@ bool MatchEngine::deniesGoalChanceAardvark(const MatchPlayer& victim,
   const PitchPoint goal = pitch.at(goalX, MatchTuning::Pitch::CENTRE);
   if (distance(victim.position, goal) >
           MatchTuning::Discipline::DOGSO_MAX_DISTANCE_METRES ||
-      std::abs(pitch.fractionY(victim.position) - MatchTuning::Pitch::CENTRE) >
-          MatchTuning::Discipline::DOGSO_MAX_WIDTH_DEVIATION)
+      std::abs(victim.position.y - pitch.atY(MatchTuning::Pitch::CENTRE)) >
+          MatchTuning::Discipline::DOGSO_MAX_WIDTH_METRES)
   {
     return false;
   }
@@ -167,18 +167,18 @@ bool MatchEngine::judgeOffsideAardvark(const MatchPlayer& passer,
   {
     // A runner level with the line at the moment of the pass has often
     // timed his run a fraction early: the tighter, the likelier.
-    const float gap = pitch.fractionX(defenderLine - receiver.position.x) *
+    const float gap = (defenderLine - receiver.position.x) *
                       (passer.isHomeTeam ? 1.0f : -1.0f);
     const bool opponentHalf =
         passer.isHomeTeam
             ? receiver.position.x > pitch.atX(MatchTuning::Pitch::CENTRE)
             : receiver.position.x < pitch.atX(MatchTuning::Pitch::CENTRE);
     if (opponentHalf && gap >= 0.0f &&
-        gap < MatchTuning::Passing::OFFSIDE_TIMING_WINDOW)
+        gap < MatchTuning::Passing::OFFSIDE_TIMING_WINDOW_METRES)
     {
       const float chance =
           MatchTuning::Passing::OFFSIDE_TIMING_CHANCE *
-          (1.0f - gap / MatchTuning::Passing::OFFSIDE_TIMING_WINDOW);
+          (1.0f - gap / MatchTuning::Passing::OFFSIDE_TIMING_WINDOW_METRES);
       offside =
           (hashNoise(receiver.player->getId(), 0x5eedU) + 1.0f) * 0.5f < chance;
     }

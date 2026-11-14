@@ -77,13 +77,13 @@ inline float directionValue(const Table& table, DirectionMix mix)
  * the ball. */
 inline float clampToPitchX(const MatchPitch& pitch, float x)
 {
-  return std::clamp(x, pitch.atX(MatchTuning::Pitch::PLAYER_MIN_X),
-                    pitch.atX(MatchTuning::Pitch::PLAYER_MAX_X));
+  return std::clamp(x, MatchTuning::Pitch::PLAYER_EDGE_END_METRES,
+                    pitch.length - MatchTuning::Pitch::PLAYER_EDGE_END_METRES);
 }
 inline float clampToPitchY(const MatchPitch& pitch, float y)
 {
-  return std::clamp(y, pitch.atY(MatchTuning::Pitch::PLAYER_MIN_Y),
-                    pitch.atY(MatchTuning::Pitch::PLAYER_MAX_Y));
+  return std::clamp(y, MatchTuning::Pitch::PLAYER_EDGE_SIDE_METRES,
+                    pitch.width - MatchTuning::Pitch::PLAYER_EDGE_SIDE_METRES);
 }
 inline PitchPoint clampToPitch(const MatchPitch& pitch, PitchPoint at)
 {

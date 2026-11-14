@@ -112,10 +112,10 @@ FM_KERNEL_CLONES void MatchEngine::integrateMovementsAardvark(
   // The pitch limits (metres), read once, so the loops below (several
   // players at a time) do not read them again after each store. Positions
   // are metres and facing angles true angles.
-  const float minX = pitch.atX(Pitch::PLAYER_MIN_X);
-  const float maxX = pitch.atX(Pitch::PLAYER_MAX_X);
-  const float minY = pitch.atY(Pitch::PLAYER_MIN_Y);
-  const float maxY = pitch.atY(Pitch::PLAYER_MAX_Y);
+  const float minX = Pitch::PLAYER_EDGE_END_METRES;
+  const float maxX = pitch.length - Pitch::PLAYER_EDGE_END_METRES;
+  const float minY = Pitch::PLAYER_EDGE_SIDE_METRES;
+  const float maxY = pitch.width - Pitch::PLAYER_EDGE_SIDE_METRES;
   // The movers are gathered into arrays and advanced with straight-line code
   // (every branch of stepKinematicsAardvark() evaluated and selected per
   // player), so the compiler can process several players at once. The
@@ -537,8 +537,8 @@ bool MatchEngine::updateDribbleAardvark(MatchPlayer& carrier, float dt)
   const Vector2F ahead =
       {ball.dribbleDirection.x * ball.dribbleExposure,
                ball.dribbleDirection.y * ball.dribbleExposure};
-  ball.position = PitchPoint{std::clamp(carrier.position.x + ahead.x, pitch.atX(0.001f), pitch.atX(0.999f)),
-                   std::clamp(carrier.position.y + ahead.y, pitch.atY(0.001f), pitch.atY(0.999f))};
+  ball.position = PitchPoint{std::clamp(carrier.position.x + ahead.x, MatchTuning::Pitch::BALL_INSIDE_END_METRES, pitch.length - MatchTuning::Pitch::BALL_INSIDE_END_METRES),
+                   std::clamp(carrier.position.y + ahead.y, MatchTuning::Pitch::BALL_INSIDE_SIDE_METRES, pitch.width - MatchTuning::Pitch::BALL_INSIDE_SIDE_METRES)};
   ball.z = 0.0f;
   ball.velocity = carrier.velocity;
   return true;
@@ -698,9 +698,9 @@ void MatchEngine::readShotAardvark(const MatchPlayer& keeper,
                         (1.0f - keeper.goalkeeping * 0.6f);
   control.diveTargetY = std::clamp(
       predictedY + readError,
-      pitch.atY(MatchTuning::Pitch::GOAL_TOP - MatchTuning::Goalkeeper::DIVE_POST_MARGIN),
-      pitch.atY(MatchTuning::Pitch::GOAL_BOTTOM +
-                MatchTuning::Goalkeeper::DIVE_POST_MARGIN));
+      pitch.atY(MatchTuning::Pitch::GOAL_TOP) - MatchTuning::Goalkeeper::DIVE_POST_MARGIN_METRES,
+      pitch.atY(MatchTuning::Pitch::GOAL_BOTTOM) +
+                MatchTuning::Goalkeeper::DIVE_POST_MARGIN_METRES);
 
   bool screened = false;
   for (const auto& other : players)
@@ -902,11 +902,10 @@ Vector2F MatchEngine::heavyTouchVelocityAardvark(const MatchPlayer& player,
       velocity.x * B::HEAVY_TOUCH_RETAINED + std::cos(angle) * popSpeed,
       velocity.y * B::HEAVY_TOUCH_RETAINED + std::sin(angle) * popSpeed};
   // Near his own goal a player's heavy touch still goes away from it.
-  const float ownDepth = player.isHomeTeam
-                             ? pitch.fractionX(player.position)
-                             : 1.0f - pitch.fractionX(player.position);
+  const float fromOwnGoal =
+                             pitch.fromOwnGoalLine(player.position, player.isHomeTeam);
   const float outward = player.isHomeTeam ? 1.0f : -1.0f;
-  if (ownDepth < MatchTuning::SetPiece::CROSS_CLEARANCE_DEPTH &&
+  if (fromOwnGoal < MatchTuning::SetPiece::CROSS_CLEARANCE_WITHIN_METRES &&
       popped.x * outward < 0.0f)
     popped.x = -popped.x;
   return popped;

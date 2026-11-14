@@ -122,7 +122,7 @@ void MatchEngine::initializePlayersAardvark(const Lineup& lineup,
 
   addPlayer(
       lineup.getGoalkeeper(),
-      {MatchTuning::Pitch::LINEUP_GOALKEEPER_X, MatchTuning::Pitch::CENTRE},
+      {MatchTuning::Pitch::LINEUP_GOALKEEPER_X_SHARE, MatchTuning::Pitch::CENTRE},
       players);
   if (lineup.getGoalkeeper() && !players.empty())
     players.back().isGoalkeeper = true;
@@ -196,8 +196,8 @@ void MatchEngine::placeFormationAardvark(bool homeTeam)
       continue;
     const Vector2F spot =
         formation[static_cast<std::size_t>(player.formationSlot)];
-    const float x = std::clamp(spot.x - drop, MatchTuning::Pitch::PLAYER_MIN_X,
-                               MatchTuning::Pitch::PLAYER_MAX_X);
+    const float x = std::clamp(spot.x - drop, MatchTuning::Pitch::PLAYER_MIN_X_SHARE,
+                               MatchTuning::Pitch::PLAYER_MAX_X_SHARE);
     player.basePosition = pitch.at(homeTeam ? x : 1.0f - x, spot.y);
   }
 }

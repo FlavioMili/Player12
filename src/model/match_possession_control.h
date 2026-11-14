@@ -19,8 +19,8 @@ constexpr PitchPoint retainingTouchPosition(const MatchPitch& pitch,
 {
   if (version == PossessionId::BINTURONG) return contact;
   return PitchPoint{
-      std::clamp(contact.x, pitch.atX(0.001f), pitch.atX(0.999f)),
-      std::clamp(contact.y, pitch.atY(0.001f), pitch.atY(0.999f))};
+      std::clamp(contact.x, MatchTuning::Pitch::BALL_INSIDE_END_METRES, pitch.length - MatchTuning::Pitch::BALL_INSIDE_END_METRES),
+      std::clamp(contact.y, MatchTuning::Pitch::BALL_INSIDE_SIDE_METRES, pitch.width - MatchTuning::Pitch::BALL_INSIDE_SIDE_METRES)};
 }
 // Initial Binturong policy values, in metres and simulated seconds. These
 // describe current control, not claim expiry or permission to contest a ball.
