@@ -7008,6 +7008,9 @@ float MatchEngine::estimateShotXG(const MatchPlayer& shooter) const
   // Logistic expected-goals model on distance, visible goal angle, distance
   // to the goal line and lateral offset, scaled by technique and pressure.
   using S = MatchTuning::Shooting;
+  // No goal on the pitch (a training pitch without goals): no chance at all,
+  // so nobody shoots at a bare wall (training ground plan section 20).
+  if (!pitch.goal.present()) return 0.0f;
   const float goalX = pitch.atX(shooter.isHomeTeam ? 1.0f : 0.0f);
   const float lineMetres = std::abs(goalX - shooter.position.x);
   const float lateralMetres = std::abs(pitch.atY(MatchTuning::Pitch::CENTRE) - shooter.position.y);
