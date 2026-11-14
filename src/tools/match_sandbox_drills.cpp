@@ -9291,6 +9291,8 @@ class WalledBoxDrill final : public Drill
     engine.setKit(std::move(kit));
     stoppedBy.clear();
     eventsSeen = engine.getEvents().size();
+    foulsAtStart = engine.getFoulsNotGiven();
+    foulsNotGiven = 0;
     shots = 0;
     shotXG = 0.0;
     shotDistance = 0.0;
@@ -9329,6 +9331,7 @@ class WalledBoxDrill final : public Drill
       ++ballOut;
     homeGoals = engine.getHomeScore();
     awayGoals = engine.getAwayScore();
+    foulsNotGiven = engine.getFoulsNotGiven() - foulsAtStart;
     // Shots: their xG and how far out, to the middle of the goal attacked.
     const auto& log = engine.getEvents();
     for (; eventsSeen < log.size(); ++eventsSeen)
@@ -9372,11 +9375,10 @@ class WalledBoxDrill final : public Drill
         std::format("Ball's centre nearest a wall: {:.2f} m", nearestWall),
         std::format("Ticks with the ball outside: {}; players outside: {}",
                     ballOut, playersOut),
-        stoppedBy.empty()
-            ? std::string("Play never stopped")
-            : std::format("Play stopped by a {} (the Laws on a training pitch "
-                          "come with training ground T4)",
-                          stoppedBy)};
+        std::format("Fouls not given (no Laws on a training pitch): {}",
+                    foulsNotGiven),
+        stoppedBy.empty() ? std::string("Play never stopped")
+                          : std::format("Play stopped by a {}", stoppedBy)};
     // The headline once the run is over.
     if (!stoppedBy.empty() || elapsed >= secondsSetting - 0.05)
       lines.push_back(std::format(
@@ -9392,6 +9394,7 @@ class WalledBoxDrill final : public Drill
     return {{"Wall bounces", static_cast<double>(bounces)},
             {"Goals", static_cast<double>(homeGoals + awayGoals)},
             {"Shots", static_cast<double>(shots)},
+            {"Fouls not given", static_cast<double>(foulsNotGiven)},
             {"Shot xG", shotXG},
             {"Shot distance (m)", shots == 0 ? 0.0 : shotDistance / shots},
             {"Nearest wall (m)", nearestWall},
@@ -9410,6 +9413,8 @@ class WalledBoxDrill final : public Drill
   int awayGoals = 0;
   std::vector<PlayerID> ids_;
   std::size_t eventsSeen = 0;
+  int foulsAtStart = 0;
+  int foulsNotGiven = 0;
   int shots = 0;
   double shotXG = 0.0;
   double shotDistance = 0.0;

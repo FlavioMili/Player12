@@ -3018,6 +3018,9 @@ class MatchEngine
    * and how many there have been. For drills. */
   [[nodiscard]] PitchPoint getLastNudgeSpot() const { return lastNudgeSpot; }
   [[nodiscard]] int getNudges() const { return nudges; }
+  /** Fouls not given because the pitch's Laws have fouls off (training
+   * ground plan section 20). For drills. */
+  [[nodiscard]] int getFoulsNotGiven() const { return foulsNotGiven; }
   void forceHeader(PlayerID playerId, ForcedHeaderAim aim,
                    std::optional<PitchPoint> spot = std::nullopt,
                    std::optional<Vector2F> goalAim = std::nullopt,
@@ -3149,6 +3152,9 @@ class MatchEngine
   std::vector<std::pair<PlayerID, TackleIntent>> forcedTackleIntents;
   PitchPoint lastNudgeSpot{};
   int nudges = 0;
+  /** Fouls the challenge made but the pitch's Laws didn't give (fouls
+   * off). */
+  int foulsNotGiven = 0;
   std::vector<std::pair<PlayerID, float>> ballKeeperUrgency;
   /** Places the scenario's players and ball; the carrier (null when the
    * ball is loose), or nothing when a player is unknown. */
@@ -5067,6 +5073,22 @@ class MatchEngine
    * first; `reckless`: a sliding tackle from behind). */
   void commitFoul(MatchPlayer& offender, MatchPlayer& victim, bool ballWon,
                   bool reckless);
+  /** Whether a challenge whose roll made it a foul (`foulRolled`) is given:
+   * always on a pitch with fouls in its Laws; otherwise never, and it is
+   * counted as a foul not given (training ground plan section 20). */
+  bool whistles(bool foulRolled)
+  {
+    if (!foulRolled) return false;
+    if (pitch.laws.fouls) return true;
+    ++foulsNotGiven;
+    return false;
+  }
+  /** Whether offside is called: the pitch's Laws and the drill rules both
+   * allow it. */
+  [[nodiscard]] bool offsideCalled() const
+  {
+    return pitch.laws.offside && drillRules.offside;
+  }
   /** An advantage being played: ends it, or calls back the free kick. */
   void updatePendingAdvantage(float dt);
   /** Whether `passer`'s pass to `option`'s receiver is given offside, the

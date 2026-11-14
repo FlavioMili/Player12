@@ -121,6 +121,30 @@ enum class PitchEdge : std::uint8_t
 };
 
 /**
+ * The Laws a pitch plays by (training ground plan section 20). A match has
+ * them all; a training pitch none by default, and a drill switches on what
+ * it needs.
+ */
+struct PitchLaws
+{
+  /** Off: nobody is ever offside (also off when the drill rules say so). */
+  bool offside = true;
+  /** Off: a foul's challenge still happens, but nothing is given (no
+   * whistle, free kick, penalty, card or advantage). */
+  bool fouls = true;
+  /** Off: a foul in a penalty area is a foul like any other. */
+  bool penalties = true;
+  /** Off: no cards. */
+  bool cards = true;
+
+  /** None of them: a training pitch's default. */
+  [[nodiscard]] static constexpr PitchLaws none()
+  {
+    return PitchLaws{false, false, false, false};
+  }
+};
+
+/**
  * The size of the pitch one engine plays on, and the values built from it.
  * Each MatchEngine holds its own; a match's is 105 x 68 m
  * (MatchTuning::Pitch::MATCH_LENGTH_METRES / MATCH_WIDTH_METRES).
@@ -166,6 +190,7 @@ struct MatchPitch final
     MatchPitch pitch(lengthMetres, widthMetres, PitchSurface::TRAINING,
                      PitchEdge::WALLS);
     pitch.goal = PitchGoal::ofKind(goals);
+    pitch.laws = PitchLaws::none();
     return pitch;
   }
 
@@ -191,6 +216,9 @@ struct MatchPitch final
   PitchEdge edge;
   /** The goal at each end (a match's by default). */
   PitchGoal goal{};
+  /** The Laws played by (all of them by default; none on a training
+   * pitch). */
+  PitchLaws laws{};
 
   // ---------------------------------------------------------------------
   // Point units (training ground T1 stage 2). A PitchPoint's coordinates

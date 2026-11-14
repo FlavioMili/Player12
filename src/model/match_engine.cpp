@@ -3055,8 +3055,8 @@ void MatchEngine::attemptTackle(MatchPlayer& carrier, MatchPlayer& defender,
     reportDetail(winRoll, foulRoll,
                  foulPropensity *
                      MatchTuning::Defending::WINNING_TACKLE_FOUL_SHARE);
-    if (foulRoll <
-        foulPropensity * MatchTuning::Defending::WINNING_TACKLE_FOUL_SHARE)
+    if (whistles(foulRoll < foulPropensity *
+                                MatchTuning::Defending::WINNING_TACKLE_FOUL_SHARE))
     {
       report(MatchDuelResult::FOUL);
       commitFoul(defender, carrier, true, sliding && fromBehind);
@@ -3091,7 +3091,7 @@ void MatchEngine::attemptTackle(MatchPlayer& carrier, MatchPlayer& defender,
 
   const float foulRoll = incidentRoll();
   reportDetail(winRoll, foulRoll, foulPropensity);
-  if (foulRoll >= foulPropensity)
+  if (!whistles(foulRoll < foulPropensity))
   {
     report(MatchDuelResult::LOST);
     return;
@@ -4770,7 +4770,7 @@ bool MatchEngine::resolveAerialContest()
 
     // Pushing or holding in the air: the defender's foul in his own box is a
     // penalty; an attacker's push gives the defence a free kick.
-    if (incidentRoll() < MatchTuning::Aerial::DUEL_FOUL_CHANCE)
+    if (whistles(incidentRoll() < MatchTuning::Aerial::DUEL_FOUL_CHANCE))
     {
       MatchPlayer* opponent = nullptr;
       for (std::size_t index = 0; index < count; ++index)
@@ -5242,7 +5242,7 @@ bool MatchEngine::headInSweep()
     ++(player.isHomeTeam ? stats.homeAerialDuelsWon : stats.awayAerialDuelsWon);
     // Pushing or holding in the air: the defender's foul in his own box is a
     // penalty; an attacker's push gives the defence a free kick.
-    if (incidentRoll() < A::DUEL_FOUL_CHANCE)
+    if (whistles(incidentRoll() < A::DUEL_FOUL_CHANCE))
     {
       const bool attackerFouls = incidentRoll() < 0.6f;
       const bool winnerAttacking = getPossessionState().passByHome == player.isHomeTeam;
@@ -7094,7 +7094,7 @@ float MatchEngine::offsideLine(bool attackingHome) const
 bool MatchEngine::isOffside(const MatchPlayer& receiver, bool attackingHome,
                             float defenderLine, float lineTolerance) const
 {
-  if (!drillRules.offside) return false;
+  if (!offsideCalled()) return false;
   // The margins and the tolerance are metres.
   const float margin =
       MatchTuning::Passing::OFFSIDE_MARGIN_METRES + lineTolerance;

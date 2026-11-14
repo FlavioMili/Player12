@@ -73,7 +73,8 @@ void MatchEngine::commitFoulBinturong(MatchPlayer& offender,
   ++statsOf(victim).foulsSuffered;
 
   const PitchPoint foulPosition = victim.position;
-  const bool inBox = inPenaltyArea(foulPosition, offender.isHomeTeam);
+  // No penalties in the pitch's Laws: a foul in the box is like any other.
+  const bool inBox = pitch.laws.penalties && inPenaltyArea(foulPosition, offender.isHomeTeam);
   const float carrierDepth =
       victim.isHomeTeam ? pitch.fractionX(victim.position)
                         : 1.0f - pitch.fractionX(victim.position);
@@ -99,7 +100,8 @@ void MatchEngine::commitFoulBinturong(MatchPlayer& offender,
   context.offenderIsAway = !offender.isHomeTeam;
   context.venueBiasScale = matchContext.homeAdvantageScale;
   const MatchRules::FoulSanction sanction =
-      MatchRules::decideFoulSanction(context);
+      pitch.laws.cards ? MatchRules::decideFoulSanction(context)
+                       : MatchRules::FoulSanction::NONE;
 
   MatchEvent& foulEvent = logEvent(MatchEventType::FOUL, offender);
   foulEvent.secondaryPlayerId = victim.player ? victim.player->getId() : 0;
@@ -168,7 +170,7 @@ bool MatchEngine::judgeOffsideBinturong(const MatchPlayer& passer,
       state != MatchState::KICK_OFF && state != MatchState::THROW_IN &&
       state != MatchState::GOAL_KICK && state != MatchState::CORNER_KICK &&
       isOffside(receiver, passer.isHomeTeam, defenderLine);
-  if (drillRules.offside && !offside && state == MatchState::PLAYING &&
+  if (offsideCalled() && !offside && state == MatchState::PLAYING &&
       option.progression > 0.0f &&
       (receiver.isMakingRun || isAttackingRole(receiver.player->getRole())))
   {
