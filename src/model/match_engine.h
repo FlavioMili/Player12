@@ -5233,6 +5233,14 @@ class MatchEngine
   MatchPlayer* serveReceiverOn(bool home, PitchPoint from);
   /** Where a served ball starts: inside the wall in front of the coach. */
   [[nodiscard]] PitchPoint serveStart() const;
+  /** The side the next serve goes to, for the side that conceded or was
+   * fouled (`home`), as the pitch's serve side says. */
+  [[nodiscard]] bool serveSideFor(bool home) const;
+  /** The unit step from the coach's station towards the pitch. */
+  [[nodiscard]] Vector2F serveInward() const;
+  /** The serving coach (TouchlineRole::SERVER): at his station, facing the
+   * ball (the receiver while he waits to serve), a step in as he serves. */
+  void updateServer(MatchPlayer& body, const TouchlinePerson& person, float dt);
   /** During a restart: the ball on its way back to the spot. */
   void updateDeadBall(float dt);
   /** During a restart: his restart position kept where the laws allow

@@ -338,24 +338,35 @@ void MatchEngine::holdAfterGoal()
     if (active(player)) player.movementTarget = clampToPitch(player.position);
 }
 
-void MatchEngine::beginServe(bool home, float waitSeconds)
+bool MatchEngine::serveSideFor(bool home) const
 {
-  beginStoppage();
   switch (pitch.laws.serveSide)
   {
     case ServeSide::CONCEDED_OR_FOULED:
-      serveHome = home;
-      break;
+      return home;
     case ServeSide::ALTERNATE:
-      serveHome = !lastServeHome;
-      break;
+      return !lastServeHome;
     case ServeSide::HOME:
-      serveHome = true;
-      break;
+      return true;
     case ServeSide::AWAY:
-      serveHome = false;
-      break;
+      return false;
   }
+  return home;
+}
+
+Vector2F MatchEngine::serveInward() const
+{
+  const PitchPoint in = serveStart();
+  const Vector2F way{in.x - pitch.serveStation.x, in.y - pitch.serveStation.y};
+  const float metres = std::hypot(way.x, way.y);
+  return metres > EPSILON ? Vector2F{way.x / metres, way.y / metres}
+                          : Vector2F{0.0f, -1.0f};
+}
+
+void MatchEngine::beginServe(bool home, float waitSeconds)
+{
+  beginStoppage();
+  serveHome = serveSideFor(home);
   lastServeHome = serveHome;
   serveRemaining = waitSeconds;
   restartIsSetPiece = false;
@@ -364,8 +375,11 @@ void MatchEngine::beginServe(bool home, float waitSeconds)
   deadBall = DeadBallReturn{};
   clearPossession();
   clearFlightState();
-  // The ball goes back to the coach.
-  ball.position = pitch.serveStation;
+  // The ball goes back to the coach: at his feet, on the pitch's side.
+  const Vector2F inward = serveInward();
+  ball.position = PitchPoint{
+      pitch.serveStation.x + inward.x * MatchTuning::Serve::BALL_AHEAD_METRES,
+      pitch.serveStation.y + inward.y * MatchTuning::Serve::BALL_AHEAD_METRES};
   ball.z = 0.0f;
   ball.velocity = {0.0f, 0.0f};
   ball.velocityZ = 0.0f;

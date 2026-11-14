@@ -225,6 +225,8 @@ struct MatchRender3DTuning final
     static constexpr std::uint32_t STAFF_LOOK_SEED = 900000U;
     static constexpr ImU32 TRACKSUIT_COLOR = IM_COL32(36, 40, 52, 255);
     static constexpr ImU32 SUIT_COLOR = IM_COL32(26, 26, 30, 255);
+    /** A training pitch's serving coach: a bright training top. */
+    static constexpr ImU32 COACH_TOP_COLOR = IM_COL32(236, 128, 32, 255);
     static constexpr ImU32 SHOE_COLOR = IM_COL32(20, 20, 22, 255);
   };
 

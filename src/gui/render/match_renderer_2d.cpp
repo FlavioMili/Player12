@@ -1448,6 +1448,40 @@ void MatchRenderer2D::State::drawTouchline(const MatchRenderSnapshot& snapshot,
       drawList->AddCircleFilled(centre, radius, officials);
       continue;
     }
+    if (person.role == TouchlineRole::SERVER)
+    {
+      // A training pitch's coach, in a bright training top, with the
+      // players' facing wedge so his turn shows (none while he is down).
+      if (!person.fallen)
+      {
+        using K = Tuning::Token;
+        const float facing = RenderMath::lerpAngle(person.previousFacingAngle,
+                                                   person.currentFacingAngle, alpha);
+        const ImVec2 dir{std::cos(facing), std::sin(facing)};
+        const auto rotate = [&](float angle, float reach)
+        {
+          const float c = std::cos(angle);
+          const float s = std::sin(angle);
+          return ImVec2{centre.x + (dir.x * c - dir.y * s) * reach,
+                        centre.y + (dir.x * s + dir.y * c) * reach};
+        };
+        const float outlineWidth = std::max(1.0f, px(1.0f));
+        const ImVec2 tip{centre.x + dir.x * radius * K::WEDGE_REACH,
+                         centre.y + dir.y * radius * K::WEDGE_REACH};
+        const ImVec2 tipOutline{
+            centre.x + dir.x * (radius * K::WEDGE_REACH + outlineWidth),
+            centre.y + dir.y * (radius * K::WEDGE_REACH + outlineWidth)};
+        drawList->AddTriangleFilled(tipOutline, rotate(K::WEDGE_HALF_ANGLE + 0.08f, radius),
+                                    rotate(-K::WEDGE_HALF_ANGLE - 0.08f, radius),
+                                    T::OUTLINE_COLOR);
+        drawList->AddTriangleFilled(tip, rotate(K::WEDGE_HALF_ANGLE, radius * 0.9f),
+                                    rotate(-K::WEDGE_HALF_ANGLE, radius * 0.9f),
+                                    K::WEDGE_COLOR);
+      }
+      drawList->AddCircleFilled(centre, radius + std::max(1.0f, px(1.0f)), T::OUTLINE_COLOR);
+      drawList->AddCircleFilled(centre, radius, T::COACH_COLOR);
+      continue;
+    }
     const bool manager = person.role == TouchlineRole::MANAGER;
     const KitColors& kit = person.isHomeTeam ? kits.home : kits.away;
     // Subs in training tops of their colours, a player sent off in his kit.
@@ -2296,9 +2330,10 @@ void MatchRenderer2D::render(const MatchRenderSnapshot& snapshot,
   }
 #endif
 
+  // The people round the pitch (a training pitch: only its serving coach).
+  s.drawTouchline(snapshot, alpha);
   if (!s.training)
   {
-    s.drawTouchline(snapshot, alpha);
     s.drawOffside();
     s.drawFreeKickMarker();
   }

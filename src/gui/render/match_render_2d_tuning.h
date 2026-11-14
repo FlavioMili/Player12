@@ -109,6 +109,8 @@ struct MatchRender2DTuning final
     static constexpr float SUB_SHADE = 0.8f;
     static constexpr ImU32 STAFF_COLOR = IM_COL32(34, 38, 48, 255);
     static constexpr ImU32 SUIT_COLOR = IM_COL32(22, 22, 26, 255);
+    /** A training pitch's serving coach: a bright training top. */
+    static constexpr ImU32 COACH_COLOR = IM_COL32(236, 128, 32, 255);
     static constexpr ImU32 OUTLINE_COLOR = IM_COL32(10, 12, 16, 220);
   };
 

@@ -576,6 +576,13 @@ struct MatchTuning final
     static constexpr float WAIT_SECONDS = 2.0f;
     /** His passing, for the pace of the serve: the stand-in staff value. */
     static constexpr float COACH_PASSING = 0.5f;
+    /** While he waits to serve, the ball lies this far in front of him
+     * (towards the wall). */
+    static constexpr float BALL_AHEAD_METRES = 0.6f;
+    /** His serve: a step this long towards the ball over the last moments
+     * before it, and back after. */
+    static constexpr float STEP_METRES = 0.25f;
+    static constexpr float STEP_SECONDS = 0.5f;
   };
 
   struct Timing final

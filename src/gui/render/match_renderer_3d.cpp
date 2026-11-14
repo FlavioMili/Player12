@@ -3688,6 +3688,8 @@ void MatchRenderer3D::State::addTouchlinePerson(const MatchRenderTouchlinePerson
   }
   else if (person.role == TouchlineRole::MANAGER)
     top = legs = T::SUIT_COLOR;
+  else if (person.role == TouchlineRole::SERVER)
+    top = T::COACH_TOP_COLOR;
   else if (isOfficial(person.role))
   {
     top = officialsShirtColor(kits);
@@ -4465,9 +4467,10 @@ void MatchRenderer3D::render(const MatchRenderSnapshot& snapshot,
     s.addCornerFlags();
     s.addBoards();
     s.addFixtures();
-    for (std::size_t index = 0; index < snapshot.touchline.size(); ++index)
-      s.addTouchlinePerson(snapshot.touchline[index], index, alpha);
   }
+  // The people round the pitch (a training pitch: only its serving coach).
+  for (std::size_t index = 0; index < snapshot.touchline.size(); ++index)
+    s.addTouchlinePerson(snapshot.touchline[index], index, alpha);
   if (!snapshot.ball.outOfSight) s.addBall(snapshot, alpha);
   s.flushSorted();
 

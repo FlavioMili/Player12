@@ -132,11 +132,27 @@ void MatchEngine::setUpTouchline()
   touchlineSetUp = true;
   touchlineBodies.clear();
   touchlinePeople.clear();
-  // A training pitch has no touchline, dugouts or officials round it.
-  if (pitch.surface == PitchSurface::TRAINING) return;
+  // A training pitch has no touchline, dugouts or officials round it; only
+  // a coach who serves balls in, when its Laws restart play that way.
+  const bool training = pitch.surface == PitchSurface::TRAINING;
+  if (training && restartsByServe())
+  {
+    MatchPlayer& body = touchlineBodies.emplace_back();
+    body.onPitch = false;
+    loadAttributes(body, nullptr);
+    body.position = pitch.serveStation;
+    body.movementTarget = body.position;
+    body.tacticalTarget = body.position;
+    const Vector2F inward = serveInward();
+    body.facingAngle = std::atan2(inward.y, inward.x);
+    body.targetAngle = body.facingAngle;
+    TouchlinePerson& person = touchlinePeople.emplace_back();
+    person.role = TouchlineRole::SERVER;
+    person.seat = body.position;
+  }
   for (const bool home : {true, false})
   {
-    if (bodyOf(home) != BodyId::BINTURONG) continue;
+    if (training || bodyOf(home) != BodyId::BINTURONG) continue;
     const MatchGround::Rect& dugout = G.dugouts[home ? 0 : 1];
     // Along the bench from the dugout's halfway end, backs to the stand.
     const float end = home ? dugout.x1 : dugout.x0;
@@ -183,7 +199,7 @@ void MatchEngine::setUpTouchline()
   }
   // The officials (stage 3), with either side on the Binturong body: the
   // stand-ins, the referee and his assistants reaching their top speed.
-  if (bodyOf(true) == BodyId::BINTURONG || bodyOf(false) == BodyId::BINTURONG)
+  if (!training && (bodyOf(true) == BodyId::BINTURONG || bodyOf(false) == BodyId::BINTURONG))
   {
     const auto addOfficial = [this](TouchlineRole role, bool topLine)
     {
@@ -302,6 +318,12 @@ void MatchEngine::updateTouchline(float dt)
       body.movementTarget = asPoint(next);
       moveControlledBinturong(body, {way.x / gap * T::WALK_SPEED, way.y / gap * T::WALK_SPEED},
                               T::WALK_SPEED, T::WALK_SPEED, 0.0f, dt, nullptr);
+      continue;
+    }
+
+    if (person.role == TouchlineRole::SERVER)
+    {
+      updateServer(body, person, dt);
       continue;
     }
 
@@ -761,4 +783,44 @@ float MatchEngine::touchlineGetUpSeconds(const MatchPlayer& body) const
   return alongStatScale(body.derivedStat(DerivedStat::AGILITY),
                         C::GINGERLY_SECONDS_AT_AGILITY_1,
                         C::GINGERLY_SECONDS_AT_AGILITY_99);
+}
+
+void MatchEngine::updateServer(MatchPlayer& body, const TouchlinePerson& person, float dt)
+{
+  using S = MatchTuning::Serve;
+  using T = MatchTuning::TouchlinePeople;
+  // His serve: a step in to the ball over its last moments, after a whistle
+  // or at the end of a goal's stop; back to his station after it.
+  const bool afterGoal = state == MatchState::GOAL && restartsByServe();
+  const bool serving =
+      (state == MatchState::SERVE && serveRemaining <= S::STEP_SECONDS) ||
+      (afterGoal && goalCelebrationRemaining <= S::STEP_SECONDS);
+  const Vector2F inward = serveInward();
+  const float step = serving ? S::STEP_METRES : 0.0f;
+  const Vector2F spot{person.seat.x + inward.x * step, person.seat.y + inward.y * step};
+  const Vector2F at = asVector(body.position);
+  const Vector2F way{spot.x - at.x, spot.y - at.y};
+  const float gap = std::hypot(way.x, way.y);
+  if (gap > T::ARRIVED_METRES)
+  {
+    // Easing in to stop on it.
+    const float speed = std::min(T::WALK_SPEED, gap * 2.0f);
+    body.movementTarget = asPoint(spot);
+    moveControlledBinturong(body, {way.x / gap * speed, way.y / gap * speed}, speed,
+                            T::WALK_SPEED, 0.0f, dt, nullptr);
+  }
+  else
+  {
+    body.velocity = {0.0f, 0.0f};
+  }
+  // He watches the ball; waiting to serve, the player he serves to.
+  PitchPoint look = ball.position;
+  if (state == MatchState::SERVE || (afterGoal && serving))
+  {
+    const bool side = state == MatchState::SERVE ? serveHome
+                                                 : serveSideFor(!goalScoredByHome);
+    if (const MatchPlayer* receiver = serveReceiverOn(side, serveStart()))
+      look = receiver->position;
+  }
+  turnToward(body, std::atan2(look.y - body.position.y, look.x - body.position.x), dt);
 }

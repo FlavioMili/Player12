@@ -240,10 +240,26 @@ inline PitchPoint keepOffGround(const MatchPitch& pitch, PitchPoint from,
   using P = MatchTuning::Pitch;
   const MatchGround::Layout& G = pitch.ground;
   constexpr float R = MatchTuning::Body::RADIUS_METRES;
-  // A walled pitch: the walls, and nothing beyond them (no furniture).
+  // A walled pitch: the walls, and nothing beyond them (no furniture). A
+  // body stays on the side of the walls it is on: the players inside, a
+  // coach at his station outside (a radius off them).
   if (pitch.edge == PitchEdge::WALLS)
-    return PitchPoint{std::clamp(to.x, pitch.bodyMinX, pitch.bodyMaxX),
-                      std::clamp(to.y, pitch.bodyMinY, pitch.bodyMaxY)};
+  {
+    if (from.x >= pitch.bodyMinX && from.x <= pitch.bodyMaxX &&
+        from.y >= pitch.bodyMinY && from.y <= pitch.bodyMaxY)
+      return PitchPoint{std::clamp(to.x, pitch.bodyMinX, pitch.bodyMaxX),
+                        std::clamp(to.y, pitch.bodyMinY, pitch.bodyMaxY)};
+    PitchPoint out = to;
+    if (from.y > pitch.bodyMaxY)
+      out.y = std::max(out.y, pitch.width + R);
+    else if (from.y < pitch.bodyMinY)
+      out.y = std::min(out.y, -R);
+    else if (from.x > pitch.bodyMaxX)
+      out.x = std::max(out.x, pitch.length + R);
+    else
+      out.x = std::min(out.x, -R);
+    return out;
+  }
   // Inside the boards, before and after: nothing to meet.
   const auto insideBoards = [&pitch](PitchPoint at)
   {
