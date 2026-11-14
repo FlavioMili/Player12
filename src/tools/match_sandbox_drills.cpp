@@ -638,6 +638,26 @@ class SprintDrill final : public MovementDrill
     reaction.reset();
     topSpeed = 0.0f;
     topSpeedAt = 0.0f;
+    // The track's lines, laid on the pitch: a mark every 10 m, the start
+    // and the finish.
+    PitchKit::Layout kit;
+    const float middle = PITCH.atY(0.5f);
+    constexpr float HALF = 4.0f;
+    for (std::size_t mark = 1; mark < crossings.size(); ++mark)
+    {
+      const float x = startX + static_cast<float>(mark * 10);
+      if (x >= finishX - 0.01f) break;
+      kit.lines.push_back({std::format("{} m", mark * 10),
+                           PitchPoint{x, middle - HALF}, PitchPoint{x, middle + HALF},
+                           IM_COL32(255, 255, 255, 120)});
+    }
+    kit.lines.push_back({"Start", PitchPoint{startX, middle - HALF * 1.5f},
+                         PitchPoint{startX, middle + HALF * 1.5f},
+                         IM_COL32(90, 220, 120, 255)});
+    kit.lines.push_back({"Finish", PitchPoint{finishX, middle - HALF * 1.5f},
+                         PitchPoint{finishX, middle + HALF * 1.5f},
+                         IM_COL32(240, 80, 80, 255)});
+    engine.setKit(std::move(kit));
   }
 
   bool afterStep(MatchEngine& engine) override
@@ -671,21 +691,9 @@ class SprintDrill final : public MovementDrill
 
   void drawOverlay(const IMatchRenderer& renderer, ImDrawList& draw) const override
   {
-    const float scale = Theme::scale();
+    // The lines are kit on the pitch (begin); the labels stay here.
     const float half = 4.0f;
     const float middle = PITCH.atY(0.5f);
-    for (std::size_t mark = 0; mark < crossings.size(); ++mark)
-    {
-      const float x = startX + (static_cast<float>(mark * 10));
-      DrillDraw::line(renderer, draw, PitchPoint{x, middle - half}, PitchPoint{x, middle + half},
-                      IM_COL32(255, 255, 255, 120), 1.5f * scale);
-    }
-    DrillDraw::line(renderer, draw, PitchPoint{startX, middle - half * 1.5f},
-                    PitchPoint{startX, middle + half * 1.5f}, IM_COL32(90, 220, 120, 255),
-                    3.0f * scale);
-    DrillDraw::line(renderer, draw, PitchPoint{finishX, middle - half * 1.5f},
-                    PitchPoint{finishX, middle + half * 1.5f}, IM_COL32(240, 80, 80, 255),
-                    3.0f * scale);
     DrillDraw::label(renderer, draw, PitchPoint{startX, middle - half * 2.4f}, "start",
                      IM_COL32(90, 220, 120, 255));
     DrillDraw::label(renderer, draw, PitchPoint{finishX, middle - half * 2.4f},
@@ -767,7 +775,7 @@ class CourseDrill : public MovementDrill
  protected:
   /** Sets the course up: the runner at `start`, then `points` in order. */
   void beginCourse(MatchEngine& engine, const std::vector<PlayerID>& ids,
-                   PitchPoint start, std::vector<PitchPoint> course)
+                   PitchPoint start, std::vector<PitchPoint> course, bool finishLine = true)
   {
     startRunner(engine, ids, start);
     startPoint = start;
@@ -779,6 +787,25 @@ class CourseDrill : public MovementDrill
     advancesSeen = player ? player->routeAdvances : 0;
     movedOn = 0;
     planRun(engine);
+    // The finish line, laid on the pitch (the drill adds its cones).
+    PitchKit::Layout kit;
+    if (finishLine && !points.empty())
+    {
+      const Vector2F across = rotated(finishDirection(), PI * 0.5f);
+      kit.lines.push_back({"Finish", along(points.back(), across, -4.0f),
+                           along(points.back(), across, 4.0f),
+                           IM_COL32(240, 80, 80, 255)});
+    }
+    engine.setKit(std::move(kit));
+  }
+
+  /** Adds a cone to the kit laid out for the course. */
+  static void addCone(MatchEngine& engine, const char* name, PitchPoint at,
+                      PitchKit::ConeKind kind = PitchKit::ConeKind::TALL)
+  {
+    PitchKit::Layout kit = engine.getKit();
+    kit.cones.push_back({name, at, kind, IM_COL32(255, 140, 30, 255)});
+    engine.setKit(std::move(kit));
   }
 
   /**
@@ -868,15 +895,6 @@ class CourseDrill : public MovementDrill
   }
 
   /** The finish line of a run-through course, 8 m wide. */
-  void drawFinish(const IMatchRenderer& renderer, ImDrawList& draw) const
-  {
-    if (points.empty()) return;
-    const Vector2F across = rotated(finishDirection(), PI * 0.5f);
-    DrillDraw::line(renderer, draw, along(points.back(), across, -4.0f),
-                    along(points.back(), across, 4.0f),
-                    IM_COL32(240, 80, 80, 255), 3.0f * Theme::scale());
-  }
-
   /** Straight-line length of leg `index` (from the start or the point before). */
   [[nodiscard]] float legMetres(std::size_t index) const
   {
@@ -965,6 +983,7 @@ class TurnDrill final : public CourseDrill
     exitDirection = rotated({1.0f, 0.0f}, degrees * PI / 180.0f);
     finishPoint = along(cone, exitDirection, exitMetres);
     beginCourse(engine, ids, start, {cone, finishPoint});
+    addCone(engine, "Turn", cone);
     minSpeed.reset();
     entrySpeed = 0.0f;
     overshoot = 0.0f;
@@ -1016,9 +1035,9 @@ class TurnDrill final : public CourseDrill
     drawTrail(renderer, draw);
     DrillDraw::marker(renderer, draw, startPoint, 4.0f * scale,
                       IM_COL32(90, 220, 120, 255), "start");
-    DrillDraw::cone(renderer, draw, cone, IM_COL32(255, 140, 30, 255),
-                    std::format("{:.0f}°", degrees).c_str());
-    drawFinish(renderer, draw);
+    // The cone is kit on the pitch (begin); its angle is labelled here.
+    DrillDraw::label(renderer, draw, cone, std::format("{:.0f}°", degrees).c_str(),
+                     IM_COL32(255, 140, 30, 255));
     DrillDraw::label(renderer, draw, finishPoint, "finish",
                      IM_COL32(240, 80, 80, 255));
   }
@@ -1224,6 +1243,8 @@ class SlalomDrill final : public CourseDrill
     for (const PitchPoint& cone : conePoints)
       obstacles.push_back({cone, DrillDraw::CONE_RADIUS_METRES});
     engine.setObstacles(std::move(obstacles));
+    for (std::size_t cone = 0; cone < conePoints.size(); ++cone)
+      addCone(engine, std::format("Cone {}", cone + 1).c_str(), conePoints[cone]);
     previousBall = engine.getBall().position;
   }
 
@@ -1263,10 +1284,8 @@ class SlalomDrill final : public CourseDrill
       if (due && goingBack && backPending)
         DrillDraw::marker(renderer, draw, backPoint(cone), 2.5f * scale, colour,
                           "back");
-      DrillDraw::cone(renderer, draw, conePoints[cone],
-                        IM_COL32(255, 140, 30, 255));
+      // The cone itself is kit on the pitch (begin).
     }
-    drawFinish(renderer, draw);
     DrillDraw::label(renderer, draw, points.back(), "finish",
                      IM_COL32(240, 80, 80, 255));
   }
@@ -1788,7 +1807,13 @@ class FlagChaseDrill final : public CourseDrill
     std::vector<PitchPoint> course;
     for (int flag = 0; flag < std::min(2, flagCount); ++flag)
       course.push_back(nextFlag());
-    beginCourse(engine, ids, start, std::move(course));
+    beginCourse(engine, ids, start, std::move(course), false);
+    PitchKit::Layout kit = engine.getKit();
+    const PitchPoint centre = PITCH.at(0.5f, 0.5f);
+    kit.areas.push_back({"Area", PitchPoint{centre.x - halfLength, centre.y - halfWidth},
+                         PitchPoint{centre.x + halfLength, centre.y + halfWidth},
+                         IM_COL32(255, 170, 40, 200)});
+    engine.setKit(std::move(kit));
     previous = start;
     resultSaved = false;
   }
@@ -1819,10 +1844,7 @@ class FlagChaseDrill final : public CourseDrill
   void drawOverlay(const IMatchRenderer& renderer, ImDrawList& draw) const override
   {
     const float scale = Theme::scale();
-    DrillDraw::area(renderer, draw, asPoint({LENGTH * 0.5f - halfLength,
-                                             WIDTH * 0.5f - halfWidth}),
-                    asPoint({LENGTH * 0.5f + halfLength, WIDTH * 0.5f + halfWidth}),
-                    IM_COL32(255, 170, 40, 200), 2.0f * scale);
+    // The area is kit on the pitch (begin).
     drawTrail(renderer, draw);
     for (std::size_t index = 0; index < reached.size(); ++index)
       DrillDraw::marker(renderer, draw, points[index], 2.5f * scale,
@@ -2088,6 +2110,19 @@ class TurnAndRunDrill final : public MovementDrill
     settledAt.reset();
     settleMetres = 0.0f;
     finishTime.reset();
+    // The start line and the line where he switches, laid on the pitch.
+    PitchKit::Layout kit;
+    const Vector2F side{0.0f, 1.0f};
+    const PitchPoint startLine = at(START_LINE, 0.5f);
+    kit.lines.push_back({"Start", along(startLine, side, -4.0f), along(startLine, side, 4.0f),
+                         IM_COL32(90, 220, 120, 255)});
+    kit.lines.push_back({"Switch", along(linePoint, side, -4.0f),
+                         along(linePoint, side, 4.0f), IM_COL32(255, 200, 60, 255)});
+    const Vector2F finishSide = rotated(secondDirection, 0.5f * PI);
+    kit.lines.push_back({"Finish", along(finishPoint, finishSide, -4.0f),
+                         along(finishPoint, finishSide, 4.0f),
+                         IM_COL32(240, 80, 80, 255)});
+    engine.setKit(std::move(kit));
   }
 
   bool afterStep(MatchEngine& engine) override
@@ -2140,19 +2175,10 @@ class TurnAndRunDrill final : public MovementDrill
 
   void drawOverlay(const IMatchRenderer& renderer, ImDrawList& draw) const override
   {
-    const float scale = Theme::scale();
-    const auto across = [&](PitchPoint at, Vector2F direction, ImU32 colour, float width)
-    {
-      const Vector2F side = rotated(direction, 0.5f * PI);
-      DrillDraw::line(renderer, draw, along(at, side, -4.0f), along(at, side, 4.0f),
-                      colour, width * scale);
-    };
-    across(at(START_LINE, 0.5f), {1.0f, 0.0f}, IM_COL32(90, 220, 120, 255), 3.0f);
-    across(linePoint, {1.0f, 0.0f}, IM_COL32(255, 200, 60, 255), 2.0f);
+    // The lines are kit on the pitch (begin); the label stays here.
     DrillDraw::label(renderer, draw, along(linePoint, {0.0f, 1.0f}, -6.0f),
                      std::format("then: {}", NAMES[static_cast<std::size_t>(then)]).c_str(),
                      IM_COL32(255, 200, 60, 255));
-    across(finishPoint, secondDirection, IM_COL32(240, 80, 80, 255), 3.0f);
     drawTrail(renderer, draw);
   }
 
@@ -2345,6 +2371,11 @@ class OvertakeDrill final : public Drill
     previousChaser = start;
     previousLeader = leaderAt;
     trail.clear();
+    PitchKit::Layout kit;
+    kit.lines.push_back({"Finish", along(finishLine, {0.0f, 1.0f}, -6.0f),
+                         along(finishLine, {0.0f, 1.0f}, 6.0f),
+                         IM_COL32(240, 80, 80, 255)});
+    engine.setKit(std::move(kit));
   }
 
   bool afterStep(MatchEngine& engine) override
@@ -2383,9 +2414,7 @@ class OvertakeDrill final : public Drill
     const float scale = Theme::scale();
     DrillDraw::path(renderer, draw, trail, IM_COL32(120, 200, 255, 200),
                     2.0f * scale);
-    DrillDraw::line(renderer, draw, along(finishLine, {0.0f, 1.0f}, -6.0f),
-                    along(finishLine, {0.0f, 1.0f}, 6.0f),
-                    IM_COL32(240, 80, 80, 255), 3.0f * scale);
+    // The finish line is kit on the pitch (begin).
     DrillDraw::label(renderer, draw, finishLine, "finish",
                      IM_COL32(240, 80, 80, 255));
   }
@@ -2818,6 +2847,11 @@ class TackleDrill final : public Drill
     freeBehind = 0;
     after = before;
     trail.clear();
+    PitchKit::Layout kit;
+    kit.lines.push_back({"End", along(endPoint, {0.0f, 1.0f}, -6.0f),
+                         along(endPoint, {0.0f, 1.0f}, 6.0f),
+                         IM_COL32(120, 220, 120, 255)});
+    engine.setKit(std::move(kit));
   }
 
   bool afterStep(MatchEngine& engine) override
@@ -2890,9 +2924,7 @@ class TackleDrill final : public Drill
                     2.0f * Theme::scale());
     DrillDraw::marker(renderer, draw, defenderStart, 0.3f,
                       IM_COL32(240, 80, 80, 255), "defender's start");
-    DrillDraw::line(renderer, draw, along(endPoint, {0.0f, 1.0f}, -6.0f),
-                    along(endPoint, {0.0f, 1.0f}, 6.0f), IM_COL32(120, 220, 120, 255),
-                    3.0f * Theme::scale());
+    // The end line is kit on the pitch (begin).
   }
 
   std::vector<std::string> report() const override
@@ -6069,7 +6101,11 @@ class PassTargetDrill : public Drill
     engine.startDrill(scenario);
     engine.forcePassTo(passerId, target(), style(), spin(), arrivalSpeed());
     beginRun(engine);
+    layKit(engine);
   }
+
+  /** The drill's kit laid on the pitch (none by default). */
+  virtual void layKit(MatchEngine& /*engine*/) const {}
 
   bool afterStep(MatchEngine& engine) override
   {
@@ -6435,26 +6471,32 @@ class CorridorPassDrill : public PassTargetDrill
     };
   }
 
-  void drawOverlay(const IMatchRenderer& renderer, ImDrawList& draw) const override
+  void layKit(MatchEngine& engine) const override
   {
-    const float scale = Theme::scale();
+    // The corridor's edges and end line, and its cones every spacing from
+    // the spot and at the target's line (flat markers).
+    PitchKit::Layout kit;
     const float half = width * 0.5f;
     const ImU32 edge = IM_COL32(255, 140, 30, 90);
-    DrillDraw::line(renderer, draw, onLine(0.0f, -half), onLine(rangeMetres, -half),
-                    edge, 1.0f * scale);
-    DrillDraw::line(renderer, draw, onLine(0.0f, half), onLine(rangeMetres, half),
-                    edge, 1.0f * scale);
-    DrillDraw::line(renderer, draw, onLine(rangeMetres, -half),
-                    onLine(rangeMetres, half), IM_COL32(90, 220, 120, 160),
-                    1.5f * scale);
-    // Cones every spacing from the spot, and at the target's line.
+    kit.lines.push_back({"Left edge", onLine(0.0f, -half), onLine(rangeMetres, -half), edge});
+    kit.lines.push_back({"Right edge", onLine(0.0f, half), onLine(rangeMetres, half), edge});
+    kit.lines.push_back({"End", onLine(rangeMetres, -half), onLine(rangeMetres, half),
+                         IM_COL32(90, 220, 120, 160)});
     const int count = static_cast<int>(rangeMetres / coneSpacing);
     for (int index = 0; index <= count + 1; ++index)
     {
       const float at = std::min(static_cast<float>(index) * coneSpacing, rangeMetres);
       for (const float side : {-half, half})
-        DrillDraw::cone(renderer, draw, onLine(at, side), IM_COL32(255, 140, 30, 255));
+        kit.cones.push_back({std::format("Cone {:.0f} m", at), onLine(at, side),
+                             PitchKit::ConeKind::FLAT, IM_COL32(255, 140, 30, 255)});
     }
+    engine.setKit(std::move(kit));
+  }
+
+  void drawOverlay(const IMatchRenderer& renderer, ImDrawList& draw) const override
+  {
+    // The corridor and its cones are kit on the pitch (layKit).
+    const float scale = Theme::scale();
     DrillDraw::marker(renderer, draw, target(), 3.0f * scale,
                       IM_COL32(90, 220, 120, 220),
                       outcome.empty() ? "target" : outcome.c_str());
