@@ -3021,6 +3021,8 @@ class MatchEngine
   /** Fouls not given because the pitch's Laws have fouls off (training
    * ground plan section 20). For drills. */
   [[nodiscard]] int getFoulsNotGiven() const { return foulsNotGiven; }
+  /** Coach's serves so far (a training pitch). For drills. */
+  [[nodiscard]] int getServesTaken() const { return servesTaken; }
   void forceHeader(PlayerID playerId, ForcedHeaderAim aim,
                    std::optional<PitchPoint> spot = std::nullopt,
                    std::optional<Vector2F> goalAim = std::nullopt,
@@ -3155,6 +3157,12 @@ class MatchEngine
   /** Fouls the challenge made but the pitch's Laws didn't give (fouls
    * off). */
   int foulsNotGiven = 0;
+  /** A coach's serve: the side it goes to, the seconds still to wait, the
+   * side of the last one (for alternating), and how many there have been. */
+  bool serveHome = true;
+  float serveRemaining = 0.0f;
+  bool lastServeHome = false;
+  int servesTaken = 0;
   std::vector<std::pair<PlayerID, float>> ballKeeperUrgency;
   /** Places the scenario's players and ball; the carrier (null when the
    * ball is loose), or nothing when a player is unknown. */
@@ -5199,6 +5207,32 @@ class MatchEngine
   void scoreGoal(bool homeTeam);
   /** The kick-off once the goal celebration is over. */
   void kickOffAfterGoal(bool homeKickingOff);
+
+  // --- A coach's serve (training ground plan section 20) ------------------
+  /** Whether play restarts by a coach's serve (the pitch's Laws). */
+  [[nodiscard]] bool restartsByServe() const
+  {
+    return pitch.laws.restart == PitchRestart::SERVE;
+  }
+  /** Play stops for a serve to the side that conceded or was fouled
+   * (`home`), as the pitch's serve side says, after `waitSeconds`: the ball
+   * goes to the coach and the players hold where they are. */
+  void beginServe(bool home, float waitSeconds);
+  /** Just after a goal on a serving pitch: no kick-off to walk back to and
+   * no ball to fetch; everyone holds where he is. */
+  void holdAfterGoal();
+  /** The serve's wait, each step; the serve at its end. */
+  void updateServe(float dt);
+  /** Players hold where they are while play waits for a serve. */
+  void holdForServe(float dt);
+  /** The ball settles in the net after a goal on a serving pitch. */
+  void settleBallInNet(float dt);
+  /** The coach plays the ball in to his receiver; play goes on. */
+  void deliverServe();
+  /** Who receives the serve on that side (null: nobody there). */
+  MatchPlayer* serveReceiverOn(bool home, PitchPoint from);
+  /** Where a served ball starts: inside the wall in front of the coach. */
+  [[nodiscard]] PitchPoint serveStart() const;
   /** During a restart: the ball on its way back to the spot. */
   void updateDeadBall(float dt);
   /** During a restart: his restart position kept where the laws allow

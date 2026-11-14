@@ -9212,13 +9212,20 @@ class WalledBoxDrill final : public Drill
     return "A few players a side on a walled training pitch, a ball fed "
            "towards a wall. The walls send it back at any height; nobody and "
            "nothing gets out. Goals of any size at the ends (training ground "
-           "T3); the report counts the shots on them.";
+           "T3); after a goal a coach by the pitch serves a new ball in "
+           "(T4).";
   }
 
   MatchPitch pitch() const override
   {
-    return MatchPitch::training(lengthSetting, widthSetting,
-                                static_cast<GoalKind>(static_cast<int>(goalsChoice + 0.5f)));
+    MatchPitch box = MatchPitch::training(
+        lengthSetting, widthSetting,
+        static_cast<GoalKind>(static_cast<int>(goalsChoice + 0.5f)));
+    box.laws.serveSide = static_cast<ServeSide>(static_cast<int>(serveSideChoice + 0.5f));
+    box.laws.serveReceiver =
+        static_cast<ServeReceiver>(static_cast<int>(serveReceiverChoice + 0.5f));
+    box.laws.fouls = foulsChoice > 0.5f;
+    return box;
   }
 
   std::vector<DrillParameter> parameters() override
@@ -9231,10 +9238,25 @@ class WalledBoxDrill final : public Drill
     list.push_back(setting("Feed speed (m/s)", &feedSetting, 2.0f, 25.0f, false));
     DrillParameter goals = setting("Goals", &goalsChoice, 0.0f, 7.0f, true,
                                    "A goal at each end (training ground T3); "
-                                   "a goal is followed by a kick-off.");
+                                   "after a goal the coach serves a new ball.");
     goals.choices = {"None", "Full size", "9v9", "7v7", "Futsal", "5-a-side",
                      "Small framed", "Pop-up"};
     list.push_back(goals);
+    DrillParameter side = setting("Serve to", &serveSideChoice, 0.0f, 3.0f, true,
+                                  "Which side the coach serves a new ball to "
+                                  "(training ground T4).");
+    side.choices = {"Side that conceded", "Alternate", "Home", "Away"};
+    list.push_back(side);
+    DrillParameter receiver = setting("Serve receiver", &serveReceiverChoice, 0.0f, 1.0f,
+                                      true, "Which player of that side.");
+    receiver.choices = {"Most open", "Nearest the coach"};
+    list.push_back(receiver);
+    DrillParameter fouls = setting("Fouls", &foulsChoice, 0.0f, 1.0f, true,
+                                   "Off: nothing is given. Whistled: the coach "
+                                   "serves to the fouled side (no penalties or "
+                                   "cards).");
+    fouls.choices = {"Off", "Whistled"};
+    list.push_back(fouls);
     return list;
   }
 
@@ -9293,6 +9315,9 @@ class WalledBoxDrill final : public Drill
     eventsSeen = engine.getEvents().size();
     foulsAtStart = engine.getFoulsNotGiven();
     foulsNotGiven = 0;
+    servesAtStart = engine.getServesTaken();
+    serves = 0;
+    foulsGiven = 0;
     shots = 0;
     shotXG = 0.0;
     shotDistance = 0.0;
@@ -9319,7 +9344,9 @@ class WalledBoxDrill final : public Drill
          ball.velocity.y < 0.0f))
       ++bounces;
     lastVelocity = ball.velocity;
-    if (at.x >= 0.0f && at.x <= box.length)
+    // Waiting for a serve, the ball is with the coach outside the wall.
+    const bool withCoach = engine.getState() == MatchState::SERVE;
+    if (!withCoach && at.x >= 0.0f && at.x <= box.length)
       nearestWall = std::min({nearestWall, at.x, at.y, box.length - at.x,
                               box.width - at.y});
     // Outside: beyond the walls and not in a goal's net.
@@ -9327,16 +9354,19 @@ class WalledBoxDrill final : public Drill
         box.goal.present() &&
         std::abs(at.y - 0.5f * box.width) < box.goal.halfWidth + box.goal.post &&
         at.x > -box.goal.netDepth - RADIUS && at.x < box.length + box.goal.netDepth + RADIUS;
-    if ((at.x < 0.0f || at.y < 0.0f || at.x > box.length || at.y > box.width) && !inGoal)
+    if (!withCoach && (at.x < 0.0f || at.y < 0.0f || at.x > box.length || at.y > box.width) &&
+        !inGoal)
       ++ballOut;
     homeGoals = engine.getHomeScore();
     awayGoals = engine.getAwayScore();
     foulsNotGiven = engine.getFoulsNotGiven() - foulsAtStart;
+    serves = engine.getServesTaken() - servesAtStart;
     // Shots: their xG and how far out, to the middle of the goal attacked.
     const auto& log = engine.getEvents();
     for (; eventsSeen < log.size(); ++eventsSeen)
     {
       const MatchEvent& event = log[eventsSeen];
+      if (event.type == MatchEventType::FOUL) ++foulsGiven;
       if (event.type != MatchEventType::SHOT) continue;
       ++shots;
       shotXG += event.xg;
@@ -9350,10 +9380,11 @@ class WalledBoxDrill final : public Drill
             player->position.x > box.length || player->position.y > box.width)
           ++playersOut;
     elapsed = secondsOf(engine);
-    // Play goes on through a goal and its kick-off; anything else stops it.
+    // Play goes on through a goal and the coach's serve; anything else
+    // stops it.
     const MatchState state = engine.getState();
     const bool going = state == MatchState::PLAYING || state == MatchState::GOAL ||
-                       state == MatchState::KICK_OFF;
+                       state == MatchState::SERVE;
     if (!going && stoppedBy.empty())
     {
       const auto& events = engine.getEvents();
@@ -9377,13 +9408,14 @@ class WalledBoxDrill final : public Drill
                     ballOut, playersOut),
         std::format("Fouls not given (no Laws on a training pitch): {}",
                     foulsNotGiven),
+        std::format("Fouls given: {}; coach's serves: {}", foulsGiven, serves),
         stoppedBy.empty() ? std::string("Play never stopped")
                           : std::format("Play stopped by a {}", stoppedBy)};
     // The headline once the run is over.
     if (!stoppedBy.empty() || elapsed >= secondsSetting - 0.05)
       lines.push_back(std::format(
-          "OUTCOME  {} wall bounces, {} shots, {} goals, {}", bounces, shots,
-          homeGoals + awayGoals,
+          "OUTCOME  {} wall bounces, {} shots, {} goals, {} serves, {}", bounces,
+          shots, homeGoals + awayGoals, serves,
           ballOut == 0 && playersOut == 0 ? "nothing got out" : "SOMETHING GOT OUT"));
     return lines;
   }
@@ -9395,6 +9427,8 @@ class WalledBoxDrill final : public Drill
             {"Goals", static_cast<double>(homeGoals + awayGoals)},
             {"Shots", static_cast<double>(shots)},
             {"Fouls not given", static_cast<double>(foulsNotGiven)},
+            {"Serves", static_cast<double>(serves)},
+            {"Fouls given", static_cast<double>(foulsGiven)},
             {"Shot xG", shotXG},
             {"Shot distance (m)", shots == 0 ? 0.0 : shotDistance / shots},
             {"Nearest wall (m)", nearestWall},
@@ -9415,6 +9449,12 @@ class WalledBoxDrill final : public Drill
   std::size_t eventsSeen = 0;
   int foulsAtStart = 0;
   int foulsNotGiven = 0;
+  int servesAtStart = 0;
+  int serves = 0;
+  int foulsGiven = 0;
+  float serveSideChoice = 0.0f;
+  float serveReceiverChoice = 0.0f;
+  float foulsChoice = 0.0f;
   int shots = 0;
   double shotXG = 0.0;
   double shotDistance = 0.0;

@@ -1238,10 +1238,26 @@ void MatchEngine::simulateStepBody(float dt)
       goalCelebrationRemaining = std::min(
           goalCelebrationRemaining, MatchTuning::Timing::PLAY_STOPPAGE_SECONDS);
     goalCelebrationRemaining = std::max(0.0F, goalCelebrationRemaining - dt);
+    if (restartsByServe())
+    {
+      // A training pitch: everyone holds, the ball stays in the net, and
+      // the coach serves to the side that conceded.
+      holdForServe(dt);
+      advanceClock(dt);
+      settleBallInNet(dt);
+      if (goalCelebrationRemaining <= 0.0f) beginServe(!goalScoredByHome, 0.0f);
+      return;
+    }
     updateRestartMovement(dt);
     advanceClock(dt);
     if (!getPossessionAttachment()) updateBallInNet(dt);
     if (goalCelebrationRemaining <= 0.0f) kickOffAfterGoal(!goalScoredByHome);
+    return;
+  }
+
+  if (state == MatchState::SERVE)
+  {
+    updateServe(dt);
     return;
   }
 

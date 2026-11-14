@@ -539,6 +539,8 @@ inline std::string_view stateName(MatchState state)
       return "half_time";
     case MatchState::FULL_TIME:
       return "full_time";
+    case MatchState::SERVE:
+      return "serve";
   }
   return "unknown";
 }

@@ -32,7 +32,10 @@ enum class MatchState
   PENALTY_SHOOTOUT,
   /** Half-time, and the breaks before and during extra time. */
   HALF_TIME,
-  FULL_TIME
+  FULL_TIME,
+  /** A training pitch: play stopped, waiting for the coach's serve
+   * (training ground plan section 20). A match never enters it. */
+  SERVE
 };
 
 /** Team-level context shared by individual player decisions. */

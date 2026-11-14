@@ -125,6 +125,32 @@ enum class PitchEdge : std::uint8_t
  * them all; a training pitch none by default, and a drill switches on what
  * it needs.
  */
+/** How play restarts after a goal or a whistle: the Laws' kick-off and set
+ * pieces, or a coach's serve (a training pitch). */
+enum class PitchRestart : std::uint8_t
+{
+  KICK_OFF,
+  SERVE
+};
+
+/** Which side a coach serves to. */
+enum class ServeSide : std::uint8_t
+{
+  /** The side that conceded, or was fouled. */
+  CONCEDED_OR_FOULED,
+  ALTERNATE,
+  HOME,
+  AWAY
+};
+
+/** Which player of that side. */
+enum class ServeReceiver : std::uint8_t
+{
+  /** Farthest from his nearest opponent. */
+  MOST_OPEN,
+  NEAREST_COACH
+};
+
 struct PitchLaws
 {
   /** Off: nobody is ever offside (also off when the drill rules say so). */
@@ -136,11 +162,22 @@ struct PitchLaws
   bool penalties = true;
   /** Off: no cards. */
   bool cards = true;
+  /** Kick-offs and set pieces, or a coach's serve. */
+  PitchRestart restart = PitchRestart::KICK_OFF;
+  /** With serves: who gets one (a drill's choice). */
+  ServeSide serveSide = ServeSide::CONCEDED_OR_FOULED;
+  ServeReceiver serveReceiver = ServeReceiver::MOST_OPEN;
 
-  /** None of them: a training pitch's default. */
+  /** None of them, and a coach's serve: a training pitch's default. */
   [[nodiscard]] static constexpr PitchLaws none()
   {
-    return PitchLaws{false, false, false, false};
+    PitchLaws laws;
+    laws.offside = false;
+    laws.fouls = false;
+    laws.penalties = false;
+    laws.cards = false;
+    laws.restart = PitchRestart::SERVE;
+    return laws;
   }
 };
 
@@ -191,6 +228,9 @@ struct MatchPitch final
                      PitchEdge::WALLS);
     pitch.goal = PitchGoal::ofKind(goals);
     pitch.laws = PitchLaws::none();
+    pitch.serveStation = PitchPoint{
+        0.5f * lengthMetres,
+        widthMetres + MatchTuning::Serve::STATION_OUT_METRES};
     return pitch;
   }
 
@@ -219,6 +259,10 @@ struct MatchPitch final
   /** The Laws played by (all of them by default; none on a training
    * pitch). */
   PitchLaws laws{};
+  /** With serves: where the coach stands (metres; outside the wall, the
+   * middle of the long side at y = width by default). A drill can move
+   * it. */
+  PitchPoint serveStation{};
 
   // ---------------------------------------------------------------------
   // Point units (training ground T1 stage 2). A PitchPoint's coordinates

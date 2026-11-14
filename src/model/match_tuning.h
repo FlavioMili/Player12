@@ -562,6 +562,22 @@ struct MatchTuning final
     static constexpr float GIVE_UP_SECONDS = 90.0f;
   };
 
+  /** A training pitch's coach's serve (training ground plan section 20).
+   * Our own estimates, agreed with the user; not researched. */
+  struct Serve final
+  {
+    /** The coach's station: this far outside the wall, at the middle of a
+     * long side. */
+    static constexpr float STATION_OUT_METRES = 1.0f;
+    /** The served ball starts this far inside the wall in front of him. */
+    static constexpr float START_INSIDE_METRES = 0.5f;
+    /** After a whistle, the wait before he serves (after a goal he serves
+     * when the goal's stop is over). */
+    static constexpr float WAIT_SECONDS = 2.0f;
+    /** His passing, for the pace of the serve: the stand-in staff value. */
+    static constexpr float COACH_PASSING = 0.5f;
+  };
+
   struct Timing final
   {
     /** Decision and body-physics step (10 Hz). */
