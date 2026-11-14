@@ -160,17 +160,30 @@ body is one size everywhere, `MatchTuning::Body`.
 
 A `MatchPitch` also says what the pitch looks like (`PitchSurface::MATCH` or
 `TRAINING`) and what it ends at (`PitchEdge::LINES` or `WALLS`).
-`MatchPitch::training(length, width)` is a walled training pitch of any size;
-an engine takes its pitch at construction (the match pitch by default), and a
-drill declares its own (`Drill::pitch()`).
+`MatchPitch::training(length, width, goal)` is a walled training pitch of any
+size, with a goal of a given `GoalKind` at each end or none; an engine takes
+its pitch at construction (the match pitch by default), and a drill declares
+its own (`Drill::pitch()`).
 
+* **Goals.** `MatchPitch::goal` (`PitchGoal`) holds the goal's half width,
+  crossbar height, post and net depth; `PitchGoal::ofKind` gives the sizes,
+  from a full-size goal (7.32 x 2.44 m) through 9v9, 7v7, futsal, 5-a-side
+  and small framed goals down to a pop-up (1.2 x 0.8 m), with the post and
+  net scaled to the height. Everything that reads the goal (the frames, the
+  goal-line test, the keepers' angles, the brains' aim, the xG angle) reads
+  the pitch's, so a match pitch is unchanged and a training goal needs no
+  code of its own. The xG fit itself is the match one: its angle term shrinks
+  with the goal but its distance terms do not, and it assumes a keeper.
 * **Walls.** On a walled pitch the ball bounces off the edge every sub-step
-  at any height, keeping the boards' restitution (`bounceOffWalls`), and is
-  never out of play: neither out-of-play version calls it out, so there are
-  no goals, throw-ins or corners. Bodies stay a radius inside the walls.
-* **Nothing round it.** A training pitch has no furniture, no goal frames (no
-  goals yet) and no touchline people. The referee
-  still gives fouls; a training pitch's own rules come later.
+  at any height, keeping the boards' restitution (`bounceOffWalls`). The
+  walls are open across a goal's mouth, and behind the goal line the net is
+  a closed box. The ball is never out of play: the only thing either
+  out-of-play version checks is a goal, so there are no throw-ins or corners.
+  A goal has a short stop (3 s, as in Play mode) and a kick-off. Bodies stay
+  a radius inside the walls.
+* **Nothing round it.** A training pitch has no furniture, no frames when it
+  has no goals, and no touchline people. The referee still gives fouls; a
+  training pitch's own rules come later.
 * **Kit.** `MatchEngine::setKit` lays named cones, lines and areas
   (`PitchKit::Layout`, [match_layout.h](../../src/model/match_layout.h)) on the
   pitch; the views draw them under the players. Nothing collides with them
@@ -179,10 +192,13 @@ drill declares its own (`Drill::pitch()`).
   2D view fits a training pitch, with a 5 m grass margin, inside its area; the
   3D view centres it where the match pitch sits (`worldOf`), so the cameras
   frame it unchanged. Both draw plain grass, the walls (a line in 2D, a net
-  fence in 3D) and the kit, and none of the stadium, markings or goals.
+  fence in 3D, open at the goal mouths), the goals at their size and the kit,
+  and none of the stadium or markings.
 
-The Walled box drill plays a few a side on one; `fm_lab drill --pitch LxW`
-plays any drill on one.
+The Walled box drill plays a few a side on one, with any goal, and reports
+the wall bounces, goals and shots; `fm_lab drill --pitch LxW [--goal KIND]`
+plays any drill on one (KIND is none, full, 9v9, 7v7, futsal, 5-a-side, small
+or pop-up).
 
 Order is part of behavior. Moving actions before players changes tackle reach;
 moving commands across the tick increment changes replay timing; continuing

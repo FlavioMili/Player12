@@ -62,7 +62,8 @@ from two builds tick by tick. `fm_lab trace` takes the `matches` options plus
 step for the first `--seconds` (default 10) of each match. `fm_lab drill
 "NAME" --trace FILE` does the same for one run of a drill. `fm_lab drill
 --pitch 40x30 "NAME" ...` plays a drill on a walled training pitch of that
-size instead of its own (see the Walled box drill and
+size instead of its own, and `--goal KIND` puts a goal of that kind at each
+end (see the Walled box drill and
 [match-engine.md](match-engine.md#training-pitches)).
 
 ## Screenshots

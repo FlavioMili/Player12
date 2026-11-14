@@ -9211,7 +9211,8 @@ class WalledBoxDrill final : public Drill
   {
     return "A few players a side on a walled training pitch, a ball fed "
            "towards a wall. The walls send it back at any height; nobody and "
-           "nothing gets out. No goals yet (training ground T3).";
+           "nothing gets out. Goals of any size at the ends (training ground "
+           "T3); the report counts the shots on them.";
   }
 
   MatchPitch pitch() const override
@@ -9289,6 +9290,10 @@ class WalledBoxDrill final : public Drill
                            PitchKit::ConeKind::TALL});
     engine.setKit(std::move(kit));
     stoppedBy.clear();
+    eventsSeen = engine.getEvents().size();
+    shots = 0;
+    shotXG = 0.0;
+    shotDistance = 0.0;
     bounces = 0;
     ballOut = 0;
     playersOut = 0;
@@ -9324,6 +9329,18 @@ class WalledBoxDrill final : public Drill
       ++ballOut;
     homeGoals = engine.getHomeScore();
     awayGoals = engine.getAwayScore();
+    // Shots: their xG and how far out, to the middle of the goal attacked.
+    const auto& log = engine.getEvents();
+    for (; eventsSeen < log.size(); ++eventsSeen)
+    {
+      const MatchEvent& event = log[eventsSeen];
+      if (event.type != MatchEventType::SHOT) continue;
+      ++shots;
+      shotXG += event.xg;
+      const float goalX = event.isHomeTeam ? box.length : 0.0f;
+      shotDistance += std::hypot(event.position.x - goalX,
+                                 event.position.y - 0.5f * box.width);
+    }
     for (const PlayerID id : ids_)
       if (const MatchPlayer* player = slotOf(engine, id))
         if (player->position.x < 0.0f || player->position.y < 0.0f ||
@@ -9349,6 +9366,9 @@ class WalledBoxDrill final : public Drill
         std::format("{:.1f} s of {:.0f}", elapsed, secondsSetting),
         std::format("Wall bounces: {}", bounces),
         std::format("Goals: home {}, away {}", homeGoals, awayGoals),
+        shots == 0 ? std::string("Shots: none")
+                   : std::format("Shots: {}, xG {:.2f} (mean {:.2f}), mean {:.1f} m out",
+                                 shots, shotXG, shotXG / shots, shotDistance / shots),
         std::format("Ball's centre nearest a wall: {:.2f} m", nearestWall),
         std::format("Ticks with the ball outside: {}; players outside: {}",
                     ballOut, playersOut),
@@ -9360,7 +9380,8 @@ class WalledBoxDrill final : public Drill
     // The headline once the run is over.
     if (!stoppedBy.empty() || elapsed >= secondsSetting - 0.05)
       lines.push_back(std::format(
-          "OUTCOME  {} wall bounces, {}", bounces,
+          "OUTCOME  {} wall bounces, {} shots, {} goals, {}", bounces, shots,
+          homeGoals + awayGoals,
           ballOut == 0 && playersOut == 0 ? "nothing got out" : "SOMETHING GOT OUT"));
     return lines;
   }
@@ -9370,6 +9391,9 @@ class WalledBoxDrill final : public Drill
     if (elapsed < secondsSetting - 0.05) return {};
     return {{"Wall bounces", static_cast<double>(bounces)},
             {"Goals", static_cast<double>(homeGoals + awayGoals)},
+            {"Shots", static_cast<double>(shots)},
+            {"Shot xG", shotXG},
+            {"Shot distance (m)", shots == 0 ? 0.0 : shotDistance / shots},
             {"Nearest wall (m)", nearestWall},
             {"Ball outside (ticks)", static_cast<double>(ballOut)},
             {"Players outside (ticks)", static_cast<double>(playersOut)}};
@@ -9385,6 +9409,10 @@ class WalledBoxDrill final : public Drill
   int homeGoals = 0;
   int awayGoals = 0;
   std::vector<PlayerID> ids_;
+  std::size_t eventsSeen = 0;
+  int shots = 0;
+  double shotXG = 0.0;
+  double shotDistance = 0.0;
   int bounces = 0;
   int ballOut = 0;
   int playersOut = 0;
