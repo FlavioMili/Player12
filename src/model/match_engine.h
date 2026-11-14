@@ -5159,6 +5159,8 @@ class MatchEngine
   /** The ball over a line this sub-step: a goal, the woodwork, a corner,
    * goal kick or throw-in. */
   void checkOutOfBounds();
+  /** A walled pitch (PitchEdge::WALLS): the ball back off the walls. */
+  void bounceOffWalls();
   /** Whether a ball at `at` is still in play (not over a line), by the
    * match's out-of-play version. */
   bool ballInPlayAt(PitchPoint at) const;

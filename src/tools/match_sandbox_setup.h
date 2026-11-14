@@ -13,6 +13,7 @@
 #include <array>
 #include <cstdint>
 #include <memory>
+#include <optional>
 #include <string>
 #include <utility>
 #include <vector>
@@ -25,6 +26,7 @@
 #include "model/match_handshake.h"
 #include "model/match_manager.h"
 #include "model/match_out_of_play.h"
+#include "model/match_pitch.h"
 #include "model/match_possession.h"
 #include "model/match_referee.h"
 #include "model/strategy.h"
@@ -50,6 +52,9 @@ RefereeId& sandboxReferee();
 std::array<ManagerId, 2>& sandboxManagers();
 BallPhysicsId& sandboxBallPhysics();
 OutOfPlayId& sandboxOutOfPlay();
+/** A pitch every drill is played on instead of its own (fm_lab drill
+ * --pitch LxW: a walled training pitch); none: each drill's own. */
+std::optional<MatchPitch>& sandboxDrillPitch();
 /** Independent per-match possession; new sandbox matches default Binturong,
  * --check defaults Aardvark unless explicitly selected. */
 PossessionId& sandboxPossession();

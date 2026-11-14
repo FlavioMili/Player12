@@ -132,6 +132,8 @@ void MatchEngine::setUpTouchline()
   touchlineSetUp = true;
   touchlineBodies.clear();
   touchlinePeople.clear();
+  // A training pitch has no touchline, dugouts or officials round it.
+  if (pitch.surface == PitchSurface::TRAINING) return;
   for (const bool home : {true, false})
   {
     if (bodyOf(home) != BodyId::BINTURONG) continue;

@@ -240,6 +240,10 @@ inline PitchPoint keepOffGround(const MatchPitch& pitch, PitchPoint from,
   using P = MatchTuning::Pitch;
   const MatchGround::Layout& G = pitch.ground;
   constexpr float R = MatchTuning::Body::RADIUS_METRES;
+  // A walled pitch: the walls, and nothing beyond them (no furniture).
+  if (pitch.edge == PitchEdge::WALLS)
+    return PitchPoint{std::clamp(to.x, pitch.bodyMinX, pitch.bodyMaxX),
+                      std::clamp(to.y, pitch.bodyMinY, pitch.bodyMaxY)};
   // Inside the boards, before and after: nothing to meet.
   const auto insideBoards = [&pitch](PitchPoint at)
   {
@@ -359,6 +363,9 @@ inline Vector2F nearestExit(const MatchPitch& pitch, Vector2F at)
  * the pitch (keepOffGround) and out of the goal frames. */
 inline PitchPoint moveBody(const MatchPitch& pitch, PitchPoint from, PitchPoint to)
 {
+  // A training pitch has no goals yet (T3): no frames to meet.
+  if (pitch.surface == PitchSurface::TRAINING)
+    return keepOffGround(pitch, from, to);
   return keepOutOfGoalFrames(pitch, from, keepOffGround(pitch, from, to));
 }
 

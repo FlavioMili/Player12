@@ -78,6 +78,7 @@ Usage:
   fm_lab drill   [--brains HOME,AWAY] [--bodies HOME,AWAY] [--handshake H]
                  [--referee R] [--managers HOME,AWAY] [--ball B]
                  [--out-of-play O] [--possession aardvark|binturong]
+                 [--pitch LENGTHxWIDTH]
                  "DRILL" --sweep "Setting=FROM:TO:COUNT" [--by ...]
                  [--preset NAME] [--set "Setting=value"]... [--repeats N]
                  [--seed S] [--csv [FILE]]
@@ -110,7 +111,8 @@ drill    a match sandbox drill measured headless: the same options as
          console, the runs to CSV with --csv. The drill plays with the match
          options given before its name (brains, bodies, handshake, referee,
          managers, ball, out of play), as the sandbox's drills play with
-         its settings
+         its settings; --pitch plays it on a walled training pitch of that
+         size instead of its own (no goals yet)
 touch-sensitivity
          which variables move the first touch most: every First touch
          situation at several First Touch ratings, as tuned, then with each
@@ -880,12 +882,32 @@ int runDrillMode(int argc, char** argv)
         throw UsageError("--out-of-play must be aardvark or binturong");
       sandboxOutOfPlay() = *version;
     }
+    else if (option == "--pitch")
+    {
+      // A walled training pitch, LENGTHxWIDTH in metres (plan section 18).
+      float length = 0.0f;
+      float width = 0.0f;
+      const std::size_t cross = value.find_first_of("xX");
+      try
+      {
+        if (cross == std::string::npos) throw std::invalid_argument("no x");
+        length = std::stof(value.substr(0, cross));
+        width = std::stof(value.substr(cross + 1));
+      }
+      catch (const std::exception&)
+      {
+        throw UsageError("--pitch must be LENGTHxWIDTH in metres, e.g. 40x30");
+      }
+      if (length < 5.0f || width < 5.0f || length > 120.0f || width > 90.0f)
+        throw UsageError("--pitch: 5 to 120 m long and 5 to 90 m wide");
+      sandboxDrillPitch() = MatchPitch::training(length, width);
+    }
     else
     {
       throw UsageError(std::format(
           "drill: '{}' before the drill's name (only --brains, --bodies, "
-          "--handshake, --referee, --managers, --ball, --out-of-play and --possession go "
-          "there)",
+          "--handshake, --referee, --managers, --ball, --out-of-play, --possession "
+          "and --pitch go there)",
           option));
     }
   }

@@ -34,7 +34,9 @@ using namespace MatchEngineInternal;
 
 bool MatchEngine::ballInPlayAtBinturong(PitchPoint at) const
 {
-  // In play until the whole ball is over a line (Law 9).
+  // In play until the whole ball is over a line (Law 9); a walled pitch
+  // has no lines to cross.
+  if (pitch.edge == PitchEdge::WALLS) return true;
   const float OVER_X = MatchTuning::Units::BALL_RADIUS_METRES;
   const float OVER_Y = MatchTuning::Units::BALL_RADIUS_METRES;
   return at.x > -OVER_X && at.x < pitch.atX(1.0f) + OVER_X && at.y > -OVER_Y &&
@@ -751,7 +753,8 @@ bool bounceOffFrameAt(const MatchPitch& pitch, Point3 at, Vector2F& velocity,
 std::optional<float> MatchEngine::frameInPathBinturong(float seconds) const
 {
   // A free ball in play, on its way over the next `seconds` (straight: the
-  // stretch is short).
+  // stretch is short). A training pitch has no goal frames yet (T3).
+  if (pitch.surface == PitchSurface::TRAINING) return std::nullopt;
   if (state != MatchState::PLAYING || (getPossessionAttachment() && !hasTouchClaim()))
     return std::nullopt;
   const Vector2F at = asVector(ball.position);

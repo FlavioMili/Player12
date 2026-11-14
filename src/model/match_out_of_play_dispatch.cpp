@@ -15,8 +15,35 @@
 #include "model/match_engine.h"
 #include "model/match_engine_internal.h"
 
+void MatchEngine::bounceOffWalls()
+{
+  // Hard walls at the pitch's edge, unlimited height: the ball comes back
+  // off a wall keeping the boards' share of its speed into it, its centre a
+  // radius clear of the wall (training ground plan section 18).
+  constexpr float RADIUS = MatchTuning::Units::BALL_RADIUS_METRES;
+  constexpr float RESTITUTION = MatchTuning::DeadBall::BOARD_RESTITUTION;
+  const auto bounce = [](float& at, float& speed, float low, float high)
+  {
+    if (at < low)
+    {
+      at = low + (low - at) * RESTITUTION;
+      speed = std::abs(speed) * RESTITUTION;
+    }
+    else if (at > high)
+    {
+      at = high - (at - high) * RESTITUTION;
+      speed = -std::abs(speed) * RESTITUTION;
+    }
+  };
+  bounce(ball.position.x, ball.velocity.x, RADIUS, pitch.length - RADIUS);
+  bounce(ball.position.y, ball.velocity.y, RADIUS, pitch.width - RADIUS);
+}
+
 void MatchEngine::checkOutOfBounds()
 {
+  // A walled pitch: the walls send it back (bounceOffWalls), so it never
+  // goes out.
+  if (pitch.edge == PitchEdge::WALLS) return;
   // A shootout kick (goalkeeper plan step 9): off the pitch it ends the
   // kick, in or out, and nothing restarts.
   if (shootout.live)
@@ -37,6 +64,7 @@ void MatchEngine::checkOutOfBounds()
 
 bool MatchEngine::ballInPlayAt(PitchPoint at) const
 {
+  if (pitch.edge == PitchEdge::WALLS) return true;
   switch (outOfPlayId)
   {
     case OutOfPlayId::AARDVARK:

@@ -65,6 +65,12 @@ OutOfPlayId& sandboxOutOfPlay()
   return version;
 }
 
+std::optional<MatchPitch>& sandboxDrillPitch()
+{
+  static std::optional<MatchPitch> pitch;
+  return pitch;
+}
+
 float& sandboxHomeAdvantage()
 {
   static float homeAdvantage = 0.0f;

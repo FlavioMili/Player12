@@ -9155,6 +9155,179 @@ class LooseHighBallDrill final : public Drill
 };
 }  // namespace
 
+/**
+ * Walled box (training ground plan section 18, T2): a few players a side
+ * play on a walled training pitch with a ball, no goals yet. The ball is
+ * fed towards a wall at the start; the run counts the wall bounces and
+ * checks the ball and the players never get out.
+ */
+class WalledBoxDrill final : public Drill
+{
+ public:
+  const char* name() const override { return "Walled box"; }
+  const char* summary() const override
+  {
+    return "A few players a side on a walled training pitch, a ball fed "
+           "towards a wall. The walls send it back at any height; nobody and "
+           "nothing gets out. No goals yet (training ground T3).";
+  }
+
+  MatchPitch pitch() const override
+  {
+    return MatchPitch::training(lengthSetting, widthSetting);
+  }
+
+  std::vector<DrillParameter> parameters() override
+  {
+    std::vector<DrillParameter> list;
+    list.push_back(setting("Length (m)", &lengthSetting, 10.0f, 60.0f, true));
+    list.push_back(setting("Width (m)", &widthSetting, 8.0f, 45.0f, true));
+    list.push_back(setting("Players a side", &sideSetting, 1.0f, 4.0f, true));
+    list.push_back(setting("Seconds", &secondsSetting, 10.0f, 120.0f, true));
+    list.push_back(setting("Feed speed (m/s)", &feedSetting, 2.0f, 25.0f, false));
+    return list;
+  }
+
+  std::vector<DrillPlayerSpec> players() const override
+  {
+    std::vector<DrillPlayerSpec> list;
+    const int side = static_cast<int>(sideSetting + 0.5f);
+    for (int index = 0; index < side; ++index)
+    {
+      list.push_back({std::format("Home {}", index + 1), PlayerRole::CM, true});
+      list.push_back({std::format("Away {}", index + 1), PlayerRole::CM, false});
+    }
+    return list;
+  }
+
+  void begin(MatchEngine& engine, const std::vector<PlayerID>& ids) override
+  {
+    const MatchPitch& box = engine.getPitch();
+    ids_ = ids;
+    // Home in the left half, away in the right, spread across.
+    MatchScenario scenario;
+    const std::size_t perSide = ids.size() / 2;
+    for (std::size_t index = 0; index < ids.size(); ++index)
+    {
+      const bool home = index % 2 == 0;
+      const std::size_t rank = index / 2;
+      const float across = (static_cast<float>(rank) + 1.0f) /
+                           (static_cast<float>(perSide) + 1.0f);
+      scenario.players.push_back(
+          {ids[index],
+           PitchPoint{box.length * (home ? 0.3f : 0.7f), box.width * across},
+           false});
+    }
+    const PitchPoint centre{0.5f * box.length, 0.5f * box.width};
+    scenario.ballPosition = centre;
+    engine.startDrill(scenario);
+    // Fed towards the far corner, so it meets the walls early.
+    const Vector2F towards{box.length - centre.x, box.width - centre.y};
+    const float far = std::hypot(towards.x, towards.y);
+    engine.feedBall(centre,
+                    {towards.x / far * feedSetting, towards.y / far * feedSetting},
+                    0.0f, 0);
+    // The kit: a halfway line and a cone in each corner (drawn, not solid).
+    PitchKit::Layout kit;
+    kit.lines.push_back({"Halfway", PitchPoint{centre.x, 0.0f},
+                         PitchPoint{centre.x, box.width}});
+    constexpr float IN = 1.0f;
+    const std::array<PitchPoint, 4> corners{
+        PitchPoint{IN, IN}, PitchPoint{box.length - IN, IN},
+        PitchPoint{IN, box.width - IN}, PitchPoint{box.length - IN, box.width - IN}};
+    for (std::size_t index = 0; index < corners.size(); ++index)
+      kit.cones.push_back({std::format("Corner {}", index + 1), corners[index],
+                           PitchKit::ConeKind::TALL});
+    engine.setKit(std::move(kit));
+    stoppedBy.clear();
+    bounces = 0;
+    ballOut = 0;
+    playersOut = 0;
+    lastVelocity = engine.getBall().velocity;
+    nearestWall = std::numeric_limits<float>::max();
+  }
+
+  bool afterStep(MatchEngine& engine) override
+  {
+    const MatchPitch& box = engine.getPitch();
+    const MatchBall& ball = engine.getBall();
+    constexpr float RADIUS = MatchTuning::Units::BALL_RADIUS_METRES;
+    constexpr float NEAR = 0.6f;
+    const PitchPoint at = ball.position;
+    // A bounce: the speed into a wall turned round next to it.
+    if ((at.x < RADIUS + NEAR && lastVelocity.x < 0.0f && ball.velocity.x > 0.0f) ||
+        (at.x > box.length - RADIUS - NEAR && lastVelocity.x > 0.0f &&
+         ball.velocity.x < 0.0f) ||
+        (at.y < RADIUS + NEAR && lastVelocity.y < 0.0f && ball.velocity.y > 0.0f) ||
+        (at.y > box.width - RADIUS - NEAR && lastVelocity.y > 0.0f &&
+         ball.velocity.y < 0.0f))
+      ++bounces;
+    lastVelocity = ball.velocity;
+    nearestWall = std::min({nearestWall, at.x, at.y, box.length - at.x,
+                            box.width - at.y});
+    if (at.x < 0.0f || at.y < 0.0f || at.x > box.length || at.y > box.width)
+      ++ballOut;
+    for (const PlayerID id : ids_)
+      if (const MatchPlayer* player = slotOf(engine, id))
+        if (player->position.x < 0.0f || player->position.y < 0.0f ||
+            player->position.x > box.length || player->position.y > box.width)
+          ++playersOut;
+    elapsed = secondsOf(engine);
+    if (engine.getState() != MatchState::PLAYING && stoppedBy.empty())
+    {
+      const auto& events = engine.getEvents();
+      stoppedBy = events.empty() ? std::string("?")
+                                 : std::string(matchEventTypeName(events.back().type));
+    }
+    return elapsed < secondsSetting && engine.getState() == MatchState::PLAYING;
+  }
+
+  std::vector<std::string> report() const override
+  {
+    std::vector<std::string> lines{
+        std::format("{:.1f} s of {:.0f}", elapsed, secondsSetting),
+        std::format("Wall bounces: {}", bounces),
+        std::format("Ball's centre nearest a wall: {:.2f} m", nearestWall),
+        std::format("Ticks with the ball outside: {}; players outside: {}",
+                    ballOut, playersOut),
+        stoppedBy.empty()
+            ? std::string("Play never stopped")
+            : std::format("Play stopped by a {} (the Laws on a training pitch "
+                          "come with training ground T4)",
+                          stoppedBy)};
+    // The headline once the run is over.
+    if (!stoppedBy.empty() || elapsed >= secondsSetting - 0.05)
+      lines.push_back(std::format(
+          "OUTCOME  {} wall bounces, {}", bounces,
+          ballOut == 0 && playersOut == 0 ? "nothing got out" : "SOMETHING GOT OUT"));
+    return lines;
+  }
+
+  std::vector<DrillMetric> metrics() const override
+  {
+    if (elapsed < secondsSetting - 0.05) return {};
+    return {{"Wall bounces", static_cast<double>(bounces)},
+            {"Nearest wall (m)", nearestWall},
+            {"Ball outside (ticks)", static_cast<double>(ballOut)},
+            {"Players outside (ticks)", static_cast<double>(playersOut)}};
+  }
+
+ private:
+  float lengthSetting = 30.0f;
+  float widthSetting = 20.0f;
+  float sideSetting = 2.0f;
+  float secondsSetting = 60.0f;
+  float feedSetting = 12.0f;
+  std::vector<PlayerID> ids_;
+  int bounces = 0;
+  int ballOut = 0;
+  int playersOut = 0;
+  Vector2F lastVelocity{};
+  float nearestWall = 0.0f;
+  double elapsed = 0.0;
+  std::string stoppedBy;
+};
+
 std::vector<std::unique_ptr<Drill>> makeDrills()
 {
   std::vector<std::unique_ptr<Drill>> drills;
@@ -9183,5 +9356,6 @@ std::vector<std::unique_ptr<Drill>> makeDrills()
   drills.push_back(std::make_unique<BodyControlDrill>(false));
   drills.push_back(std::make_unique<BodyControlDrill>(true));
   drills.push_back(std::make_unique<LooseHighBallDrill>());
+  drills.push_back(std::make_unique<WalledBoxDrill>());
   return drills;
 }

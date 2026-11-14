@@ -30,7 +30,8 @@ using namespace MatchEngineInternal;
 
 bool MatchEngine::ballInPlayAtAardvark(PitchPoint at) const
 {
-  // Out once its centre is over a line.
+  // Out once its centre is over a line; a walled pitch has none to cross.
+  if (pitch.edge == PitchEdge::WALLS) return true;
   return at.x > 0.0f && at.x < pitch.atX(1.0f) && at.y > 0.0f &&
          at.y < pitch.atY(1.0f);
 }

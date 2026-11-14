@@ -52,11 +52,15 @@ struct MatchPitch final
         width(widthMetres),
         inverseLength(1.0f / lengthMetres),
         inverseWidth(1.0f / widthMetres),
-        bodyMinX(-(MatchTuning::Pitch::BOARDS_END_METRES -
-                   MatchTuning::Body::RADIUS_METRES)),
+        bodyMinX(edgeKind == PitchEdge::WALLS
+                     ? MatchTuning::Body::RADIUS_METRES
+                     : -(MatchTuning::Pitch::BOARDS_END_METRES -
+                         MatchTuning::Body::RADIUS_METRES)),
         bodyMaxX(lengthMetres - bodyMinX),
-        bodyMinY(-(MatchTuning::Pitch::BOARDS_SIDE_METRES -
-                   MatchTuning::Body::RADIUS_METRES)),
+        bodyMinY(edgeKind == PitchEdge::WALLS
+                     ? MatchTuning::Body::RADIUS_METRES
+                     : -(MatchTuning::Pitch::BOARDS_SIDE_METRES -
+                         MatchTuning::Body::RADIUS_METRES)),
         bodyMaxY(widthMetres - bodyMinY),
         ground(lengthMetres, widthMetres),
         surface(surfaceKind),
@@ -81,7 +85,8 @@ struct MatchPitch final
   float inverseWidth;
   /** Inside the boards, his body touching them (metres): where a player
    * may mean to go to fetch a ball (MatchEngine::clampToBoards). His body
-   * can go further, through the gaps in the boards (moveBody). */
+   * can go further, through the gaps in the boards (moveBody). On a walled
+   * pitch: inside the walls, and no further. */
   float bodyMinX;
   float bodyMaxX;
   float bodyMinY;

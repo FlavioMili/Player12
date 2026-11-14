@@ -3657,7 +3657,9 @@ std::optional<float> MatchEngine::moveBallPart(float seconds)
   }
   // Heading out of play: a Binturong body that meets it before the line
   // plays it there (the pitch is convex, so a contact point still on it
-  // comes before the line); otherwise it is out.
+  // comes before the line); otherwise it is out. A walled pitch sends it
+  // back off the walls instead.
+  if (pitch.edge == PitchEdge::WALLS) bounceOffWalls();
   const bool headingOut = !ballInPlayAt(ball.position);
   if (headingOut)
   {
