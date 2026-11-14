@@ -12,6 +12,8 @@
 
 #include "global/types.h"
 #include "model/match_events.h"
+#include "model/match_layout.h"
+#include "model/match_pitch.h"
 #include "model/match_state.h"
 #include "model/match_tuning.h"
 
@@ -136,11 +138,15 @@ struct MatchRenderBall
 
 struct MatchRenderSnapshot
 {
-  /** The size of the pitch the positions are fractions of (the engine's
-   * MatchPitch). The match views still draw the match pitch whatever this
-   * says; they read it once training pitches are drawn. */
+  /** The size of the engine's pitch (metres), what it looks like and what
+   * it ends at (MatchPitch), and the kit laid out on it. The match views
+   * still draw the match pitch whatever these say; they read them once
+   * training pitches are drawn (training ground plan section 18, T2c). */
   float pitchLengthMetres = MatchTuning::Pitch::MATCH_LENGTH_METRES;
   float pitchWidthMetres = MatchTuning::Pitch::MATCH_WIDTH_METRES;
+  PitchSurface pitchSurface = PitchSurface::MATCH;
+  PitchEdge pitchEdge = PitchEdge::LINES;
+  PitchKit::Layout kit;
   std::vector<MatchRenderPlayer> players;
   std::vector<MatchRenderTouchlinePerson> touchline;
   /** Sides whose strips the views draw (the match screen's own ids, so its

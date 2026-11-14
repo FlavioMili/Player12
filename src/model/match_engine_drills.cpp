@@ -30,6 +30,7 @@ std::optional<MatchPlayer*> MatchEngine::placeScenario(
 {
   resetLifecycleBall();
   obstacles.clear();
+  kit.clear();
   state = scenarioState;
   transitionSecondsRemaining = 0.0f;
   matchTimeMinutes = scenarioMatchTime;

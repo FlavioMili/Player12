@@ -88,7 +88,8 @@ DrillRun::DrillRun(Drill& drill_ref, const StatsConfig& config, bool record,
 
   match = std::make_unique<MatchEngine>(lineups[0], lineups[1], Strategy{},
                                         Strategy{}, config, drill.seed,
-                                        sandboxHandshake(), sandboxPossession());
+                                        sandboxHandshake(), sandboxPossession(),
+                                        drill.pitch());
   applyHomeAdvantage(*match, sandboxHomeAdvantage());
   match->setTeamNames("Drill home", "Drill away");
   match->setBrain(true, sandboxBrains()[0]);

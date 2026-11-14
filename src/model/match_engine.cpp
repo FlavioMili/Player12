@@ -97,10 +97,12 @@ MatchEngine::MatchEngine(const Lineup& home_lineup, const Lineup& away_lineup,
 MatchEngine::MatchEngine(const Lineup& home_lineup, const Lineup& away_lineup,
                          const Strategy& home_strat, const Strategy& away_strat,
                          const StatsConfig& config, uint32_t seed,
-                         HandshakeId handshake, PossessionId possession)
+                         HandshakeId handshake, PossessionId possession,
+                         const MatchPitch& pitchToPlay)
     : statsConfig(config),
       homeStrategy(home_strat),
       awayStrategy(away_strat),
+      pitch(pitchToPlay),
       handshakeId(handshake),
       possessionId(possession),
       rng(seed),

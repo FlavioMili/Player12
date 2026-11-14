@@ -121,6 +121,9 @@ void fillMatchRenderSnapshot(const MatchEngine& engine,
 
   snapshot.pitchLengthMetres = engine.getPitch().length;
   snapshot.pitchWidthMetres = engine.getPitch().width;
+  snapshot.pitchSurface = engine.getPitch().surface;
+  snapshot.pitchEdge = engine.getPitch().edge;
+  snapshot.kit = engine.getKit();
   snapshot.state = engine.getState();
   snapshot.homePhase = engine.getHomePhase();
   snapshot.awayPhase = engine.getAwayPhase();

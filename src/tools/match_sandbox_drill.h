@@ -128,6 +128,9 @@ class Drill
   [[nodiscard]] virtual bool offersShotMap() const { return false; }
   /** Whether you play the drill's controlled player (keyboard, gamepad). */
   [[nodiscard]] virtual bool humanControl() const { return false; }
+  /** The pitch the drill is played on: the match pitch, or a training pitch
+   * (MatchPitch::training) for a drill on its own patch of grass. */
+  [[nodiscard]] virtual MatchPitch pitch() const { return MatchPitch{}; }
   /** Markers on the pitch (cordon, lines, flags) in the view's projection. */
   virtual void drawOverlay(const IMatchRenderer& /*renderer*/,
                            ImDrawList& /*draw*/) const

@@ -30,6 +30,7 @@
 #include "model/match_handshake.h"
 #include "model/match_manager.h"
 #include "model/match_out_of_play.h"
+#include "model/match_layout.h"
 #include "model/match_pitch.h"
 #include "model/match_point.h"
 #include "model/match_possession.h"
@@ -2192,12 +2193,15 @@ class MatchEngine
   /**
    * @param handshake How the inputs become match state (match_handshake.h);
    * chosen here because the conversion starts here.
+   * @param pitchToPlay The pitch it plays on: the match pitch, or a training
+   * pitch (MatchPitch::training) for drills.
    */
   MatchEngine(const Lineup& home_lineup, const Lineup& away_lineup,
               const Strategy& home_strat, const Strategy& away_strat,
               const StatsConfig& config, uint32_t seed,
               HandshakeId handshake = HandshakeId::AARDVARK,
-              PossessionId possession = PossessionId::AARDVARK);
+              PossessionId possession = PossessionId::AARDVARK,
+              const MatchPitch& pitchToPlay = MatchPitch{});
   /** The handshake this match was built with. */
   HandshakeId getHandshake() const { return handshakeId; }
   /** The pitch this engine plays on: its size in metres (a match's is
@@ -2899,7 +2903,7 @@ class MatchEngine
    * cone now; an opponent's reach, later. */
   struct Obstacle
   {
-    /** Normalised pitch. */
+    /** Metres on the pitch. */
     PitchPoint position{0.0f, 0.0f};
     /** How far round it (m) the ball must not touch. */
     float radiusMetres = 0.0f;
@@ -2908,6 +2912,10 @@ class MatchEngine
    * scenario or drill is placed). */
   void setObstacles(std::vector<Obstacle> list) { obstacles = std::move(list); }
   const std::vector<Obstacle>& getObstacles() const { return obstacles; }
+  /** The kit laid out on the pitch: cones, lines and marked areas (none in a
+   * match). Drawn by the views; nothing collides with it yet. */
+  void setKit(PitchKit::Layout layout) { kit = std::move(layout); }
+  const PitchKit::Layout& getKit() const { return kit; }
 
   // --- Drills (the match sandbox's minigames) ------------------------------
   // All opt-in: an engine none of these are called on plays by the Laws.
@@ -3078,6 +3086,7 @@ class MatchEngine
   RecorderLink recorderLink;
 
   std::vector<Obstacle> obstacles;
+  PitchKit::Layout kit;
 
   // Drills (see the public drill section).
   DrillRules drillRules;
@@ -3179,8 +3188,8 @@ class MatchEngine
   std::array<BrainId, 2> brains{BrainId::AARDVARK, BrainId::AARDVARK};
   /** Each side's body (home, away); see setBody. */
   std::array<BodyId, 2> bodies{BodyId::AARDVARK, BodyId::AARDVARK};
-  /** The pitch this engine plays on (the match pitch; a training zone's
-   * own size comes with the training ground). */
+  /** The pitch this engine plays on: the match pitch, or a training pitch
+   * given at construction. */
   MatchPitch pitch;
   // This pitch's geometry, under the names the engine's code has always
   // used (defined in match_engine_internal.h, on the helpers there that

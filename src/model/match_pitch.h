@@ -8,9 +8,27 @@
 
 #pragma once
 
+#include <cstdint>
+
 #include "model/match_ground.h"
 #include "model/match_point.h"
 #include "model/match_tuning.h"
+
+/** What a pitch looks like and has round it: a match pitch (lines, goals,
+ * furniture, stadium) or a training pitch (plain grass, nothing round it). */
+enum class PitchSurface : std::uint8_t
+{
+  MATCH,
+  TRAINING
+};
+
+/** What the pitch ends at: lines (the ball goes out of play) or hard walls
+ * (unlimited height; the ball bounces back and players can't cross). */
+enum class PitchEdge : std::uint8_t
+{
+  LINES,
+  WALLS
+};
 
 /**
  * The size of the pitch one engine plays on, and the values built from it.
@@ -27,7 +45,9 @@ struct MatchPitch final
                                       MatchTuning::Pitch::MATCH_WIDTH_METRES)
   {
   }
-  constexpr MatchPitch(float lengthMetres, float widthMetres)
+  constexpr MatchPitch(float lengthMetres, float widthMetres,
+                       PitchSurface surfaceKind = PitchSurface::MATCH,
+                       PitchEdge edgeKind = PitchEdge::LINES)
       : length(lengthMetres),
         width(widthMetres),
         inverseLength(1.0f / lengthMetres),
@@ -38,8 +58,19 @@ struct MatchPitch final
         bodyMinY(-(MatchTuning::Pitch::BOARDS_SIDE_METRES -
                    MatchTuning::Body::RADIUS_METRES)),
         bodyMaxY(widthMetres - bodyMinY),
-        ground(lengthMetres, widthMetres)
+        ground(lengthMetres, widthMetres),
+        surface(surfaceKind),
+        edge(edgeKind)
   {
+  }
+
+  /** A training pitch of this size: plain grass, walled all round
+   * (training ground plan section 18). */
+  [[nodiscard]] static constexpr MatchPitch training(float lengthMetres,
+                                                     float widthMetres)
+  {
+    return MatchPitch(lengthMetres, widthMetres, PitchSurface::TRAINING,
+                      PitchEdge::WALLS);
   }
 
   /** Metres, goal line to goal line and touchline to touchline. */
@@ -58,12 +89,15 @@ struct MatchPitch final
   /** The furniture round this pitch (metres): tunnel, dugouts, technical
    * areas, boards and the stand's front wall. */
   MatchGround::Layout ground;
+  /** What it looks like, and what it ends at. */
+  PitchSurface surface;
+  PitchEdge edge;
 
   // ---------------------------------------------------------------------
   // Point units (training ground T1 stage 2). A PitchPoint's coordinates
   // and the ball's height are metres. Tuning given as a fraction of the
   // pitch goes through `at`/`atX`/`atY` (and back through `fraction`);
-  // stage 4 decides each of those.
+  // stage 4 decided each of those (plan section 17).
   // ---------------------------------------------------------------------
 
   /** A match pitch (MATCH_LENGTH_METRES x MATCH_WIDTH_METRES), for code with
