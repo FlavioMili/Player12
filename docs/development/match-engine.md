@@ -156,6 +156,34 @@ does, and walks round the pitch's edge into the tunnel; the restart waits
 only until he is off the pitch). A
 body is one size everywhere, `MatchTuning::Body`.
 
+### Training pitches
+
+A `MatchPitch` also says what the pitch looks like (`PitchSurface::MATCH` or
+`TRAINING`) and what it ends at (`PitchEdge::LINES` or `WALLS`).
+`MatchPitch::training(length, width)` is a walled training pitch of any size;
+an engine takes its pitch at construction (the match pitch by default), and a
+drill declares its own (`Drill::pitch()`).
+
+* **Walls.** On a walled pitch the ball bounces off the edge every sub-step
+  at any height, keeping the boards' restitution (`bounceOffWalls`), and is
+  never out of play: neither out-of-play version calls it out, so there are
+  no goals, throw-ins or corners. Bodies stay a radius inside the walls.
+* **Nothing round it.** A training pitch has no furniture, no goal frames (no
+  goals yet) and no touchline people. The referee
+  still gives fouls; a training pitch's own rules come later.
+* **Kit.** `MatchEngine::setKit` lays named cones, lines and areas
+  (`PitchKit::Layout`, [match_layout.h](../../src/model/match_layout.h)) on the
+  pitch; the views draw them under the players. Nothing collides with them
+  yet. `placeScenario` clears them.
+* **Views.** The render snapshot carries the size, surface, edge and kit. The
+  2D view fits a training pitch, with a 5 m grass margin, inside its area; the
+  3D view centres it where the match pitch sits (`worldOf`), so the cameras
+  frame it unchanged. Both draw plain grass, the walls (a line in 2D, a net
+  fence in 3D) and the kit, and none of the stadium, markings or goals.
+
+The Walled box drill plays a few a side on one; `fm_lab drill --pitch LxW`
+plays any drill on one.
+
 Order is part of behavior. Moving actions before players changes tackle reach;
 moving commands across the tick increment changes replay timing; continuing
 ball integration after a goal can resolve a second contact against dead play.
