@@ -173,6 +173,11 @@ struct MatchRenderer2D::State
   ImVec2 whitePixel;
   MatchViewport viewport;
   float ppm = 1.0f;
+  /** The pitch drawn (metres) and whether it is a training pitch (the
+   * snapshot's; a match's is 105 x 68). */
+  float pitchLength = LENGTH;
+  float pitchWidth = WIDTH;
+  bool training = false;
   float uiScale = 1.0f;
   float elapsedSeconds = 0.0f;
   float frameSeconds = 0.0f;
@@ -293,6 +298,11 @@ struct MatchRenderer2D::State
 
   void drawStadium();
   void drawGrass();
+  /** A training pitch (training ground plan section 18): plain grass over
+   * `ground` (the pitch and its margin), the walls, and the kit. */
+  void drawTrainingGround(const MatchViewport& ground);
+  void drawWalls();
+  void drawKit(const MatchRenderSnapshot& snapshot);
   void drawWear();
   void drawPressure();
   void drawMarkings();
@@ -649,21 +659,21 @@ float MatchRenderer2D::State::defendingLine(const MatchRenderSnapshot& snapshot,
 {
   // The second-last defender (or the ball, or halfway, whichever is nearer
   // the goal line) of the side defending against the attackers.
-  float keeperX = attackersHome ? LENGTH : 0.0f;
+  float keeperX = attackersHome ? pitchLength : 0.0f;
   for (const MatchRenderPlayer& player : snapshot.players)
   {
     if (player.isHomeTeam == attackersHome || !player.onPitch) continue;
     if (player.isGoalkeeper) keeperX = player.currentPosition.x;
   }
   // The defenders' own goal is the one their keeper guards.
-  const bool towardsHigh = keeperX > LENGTH * 0.5f;
+  const bool towardsHigh = keeperX > pitchLength * 0.5f;
   float first = FLT_MAX;
   float second = FLT_MAX;
   for (const MatchRenderPlayer& player : snapshot.players)
   {
     if (player.isHomeTeam == attackersHome || !player.onPitch) continue;
     const float x = player.currentPosition.x;
-    const float fromGoal = towardsHigh ? LENGTH - x : x;
+    const float fromGoal = towardsHigh ? pitchLength - x : x;
     if (fromGoal < first)
     {
       second = first;
@@ -675,9 +685,9 @@ float MatchRenderer2D::State::defendingLine(const MatchRenderSnapshot& snapshot,
     }
   }
   if (second == FLT_MAX) return -1.0f;
-  const float ballFromGoal = towardsHigh ? LENGTH - ballX : ballX;
-  const float line = std::min({second, ballFromGoal, LENGTH * 0.5f});
-  return towardsHigh ? LENGTH - line : line;
+  const float ballFromGoal = towardsHigh ? pitchLength - ballX : ballX;
+  const float line = std::min({second, ballFromGoal, pitchLength * 0.5f});
+  return towardsHigh ? pitchLength - line : line;
 }
 
 void MatchRenderer2D::State::updateEvents(const MatchRenderSnapshot& snapshot)
@@ -1015,11 +1025,11 @@ void MatchRenderer2D::State::updatePressure(const MatchRenderSnapshot& snapshot,
   for (int row = 0; row <= P::ROWS; ++row)
   {
     const float y =
-        WIDTH * static_cast<float>(row) / static_cast<float>(P::ROWS);
+        pitchWidth * static_cast<float>(row) / static_cast<float>(P::ROWS);
     for (int column = 0; column <= P::COLUMNS; ++column)
     {
       const float x =
-          LENGTH * static_cast<float>(column) / static_cast<float>(P::COLUMNS);
+          pitchLength * static_cast<float>(column) / static_cast<float>(P::COLUMNS);
       float home = 0.0f;
       float away = 0.0f;
       for (std::size_t source = 0; source < count; ++source)
@@ -1195,21 +1205,70 @@ void MatchRenderer2D::State::drawGrass()
   releaseBatch();
 }
 
+void MatchRenderer2D::State::drawTrainingGround(const MatchViewport& ground)
+{
+  using G = Tuning::Grass;
+  // Plain grass: no stripes or lines; a shade darker outside the walls.
+  drawList->AddRectFilled({ground.x, ground.y},
+                          {ground.x + ground.width, ground.y + ground.height},
+                          shadeColor(G::PITCH_COLOR, 0.86f));
+  drawList->AddRectFilled({viewport.x, viewport.y},
+                          {viewport.x + viewport.width, viewport.y + viewport.height},
+                          G::PITCH_COLOR);
+}
+
+void MatchRenderer2D::State::drawWalls()
+{
+  // The walls (netting, unlimited height in the engine), drawn as a line
+  // round the pitch.
+  constexpr ImU32 WALL_COLOR = IM_COL32(30, 36, 40, 230);
+  drawList->AddRect({viewport.x, viewport.y},
+                    {viewport.x + viewport.width, viewport.y + viewport.height},
+                    WALL_COLOR, 0.0f, 0, std::max(px(2.0f), 0.08f * ppm));
+}
+
+void MatchRenderer2D::State::drawKit(const MatchRenderSnapshot& snapshot)
+{
+  const PitchKit::Layout& kit = snapshot.kit;
+  if (kit.empty()) return;
+  const float lineThickness = std::max(px(1.5f), 0.08f * ppm);
+  for (const PitchKit::Area& area : kit.areas)
+    drawList->AddRect(atMetres(area.min.x, area.min.y),
+                      atMetres(area.max.x, area.max.y), area.colour, 0.0f, 0,
+                      lineThickness);
+  for (const PitchKit::Line& line : kit.lines)
+    drawList->AddLine(atMetres(line.from.x, line.from.y),
+                      atMetres(line.to.x, line.to.y), line.colour,
+                      lineThickness);
+  // Cones to scale, never smaller than a few pixels; a tall cone gets a
+  // dark rim so it reads apart from a flat disc.
+  const float radius =
+      std::max(px(3.0f), PitchKit::CONE_RADIUS_METRES * ppm);
+  for (const PitchKit::Cone& cone : kit.cones)
+  {
+    const ImVec2 at = atMetres(cone.at.x, cone.at.y);
+    drawList->AddCircleFilled(at, radius, cone.colour);
+    if (cone.kind == PitchKit::ConeKind::TALL)
+      drawList->AddCircle(at, radius, IM_COL32(20, 20, 20, 200), 0,
+                          std::max(px(1.0f), radius * 0.25f));
+  }
+}
+
 void MatchRenderer2D::State::drawWear()
 {
   using G = Tuning::Grass;
   const ImU32 inner = withAlpha(G::WEAR_COLOR, G::WEAR_ALPHA);
   const ImU32 outer = withAlpha(G::WEAR_COLOR, 0);
-  batchFan(atMetres(LENGTH * 0.5f, WIDTH * 0.5f), 1.6f * ppm, 1.3f * ppm,
+  batchFan(atMetres(pitchLength * 0.5f, pitchWidth * 0.5f), 1.6f * ppm, 1.3f * ppm,
            G::WEAR_SEGMENTS, inner, outer, 1U);
   for (const bool left : {true, false})
   {
-    const float line = left ? 0.0f : LENGTH;
+    const float line = left ? 0.0f : pitchLength;
     const float inward = left ? 1.0f : -1.0f;
     // The keeper's patch in the goalmouth is the most worn ground there is.
-    batchFan(atMetres(line + inward * 2.2f, WIDTH * 0.5f), 2.2f * ppm,
+    batchFan(atMetres(line + inward * 2.2f, pitchWidth * 0.5f), 2.2f * ppm,
              3.4f * ppm, G::WEAR_SEGMENTS, inner, outer, left ? 2U : 3U);
-    batchFan(atMetres(line + inward * PitchMetres::PENALTY_SPOT, WIDTH * 0.5f),
+    batchFan(atMetres(line + inward * PitchMetres::PENALTY_SPOT, pitchWidth * 0.5f),
              1.2f * ppm, 1.0f * ppm, G::WEAR_SEGMENTS, inner, outer,
              left ? 4U : 5U);
   }
@@ -1264,7 +1323,7 @@ void MatchRenderer2D::State::drawMarkings()
   drawList->AddRect({topLeft.x + half, topLeft.y + half},
                     {bottomRight.x - half, bottomRight.y - half}, color, 0.0f,
                     ImDrawFlags_None, line);
-  const ImVec2 centre = atMetres(LENGTH * 0.5f, WIDTH * 0.5f);
+  const ImVec2 centre = atMetres(pitchLength * 0.5f, pitchWidth * 0.5f);
   drawList->AddLine({centre.x, topLeft.y}, {centre.x, bottomRight.y}, color,
                     line);
   drawList->AddCircle(centre, M::CENTRE_CIRCLE * ppm, color, 0, line);
@@ -1275,34 +1334,41 @@ void MatchRenderer2D::State::drawMarkings()
       std::acos((M::PENALTY_AREA_DEPTH - M::PENALTY_SPOT) / M::CENTRE_CIRCLE);
   for (const bool left : {true, false})
   {
-    const float goalLine = left ? 0.0f : LENGTH;
+    const float goalLine = left ? 0.0f : pitchLength;
     const float inward = left ? 1.0f : -1.0f;
     const auto box = [&](float depth, float width)
     {
-      const ImVec2 a = atMetres(goalLine, (WIDTH - width) * 0.5f);
+      // Painted inside the area it bounds, as the touchlines are: its side
+      // on the goal line lies on the goal line as drawn.
+      const ImVec2 a = atMetres(goalLine, (pitchWidth - width) * 0.5f);
       const ImVec2 b =
-          atMetres(goalLine + inward * depth, (WIDTH + width) * 0.5f);
-      drawList->AddRect({std::min(a.x, b.x), a.y}, {std::max(a.x, b.x), b.y},
-                        color, 0.0f, ImDrawFlags_None, line);
+          atMetres(goalLine + inward * depth, (pitchWidth + width) * 0.5f);
+      drawList->AddRect({std::min(a.x, b.x) + half, a.y + half},
+                        {std::max(a.x, b.x) - half, b.y - half}, color, 0.0f,
+                        ImDrawFlags_None, line);
     };
     box(M::PENALTY_AREA_DEPTH, M::PENALTY_AREA_WIDTH);
     box(M::GOAL_AREA_DEPTH, M::GOAL_AREA_WIDTH);
     const ImVec2 penaltySpot =
-        atMetres(goalLine + inward * M::PENALTY_SPOT, WIDTH * 0.5f);
+        atMetres(goalLine + inward * M::PENALTY_SPOT, pitchWidth * 0.5f);
     drawList->AddCircleFilled(penaltySpot, spot, color);
     const float facing = left ? 0.0f : PI;
     drawList->PathArcTo(penaltySpot, M::CENTRE_CIRCLE * ppm, facing - arcHalf,
                         facing + arcHalf);
     drawList->PathStroke(color, ImDrawFlags_None, line);
   }
-  const float corner = M::CORNER_ARC * ppm;
-  drawList->PathArcTo(topLeft, corner, 0.0f, PI * 0.5f);
+  // Corner arcs round the corner of the lines as drawn (inset by half a
+  // line), meeting the goal line and touchline there.
+  const float corner = std::max(M::CORNER_ARC * ppm - half, half);
+  const ImVec2 innerTopLeft{topLeft.x + half, topLeft.y + half};
+  const ImVec2 innerBottomRight{bottomRight.x - half, bottomRight.y - half};
+  drawList->PathArcTo(innerTopLeft, corner, 0.0f, PI * 0.5f);
   drawList->PathStroke(color, ImDrawFlags_None, line);
-  drawList->PathArcTo({bottomRight.x, topLeft.y}, corner, PI * 0.5f, PI);
+  drawList->PathArcTo({innerBottomRight.x, innerTopLeft.y}, corner, PI * 0.5f, PI);
   drawList->PathStroke(color, ImDrawFlags_None, line);
-  drawList->PathArcTo({topLeft.x, bottomRight.y}, corner, -PI * 0.5f, 0.0f);
+  drawList->PathArcTo({innerTopLeft.x, innerBottomRight.y}, corner, -PI * 0.5f, 0.0f);
   drawList->PathStroke(color, ImDrawFlags_None, line);
-  drawList->PathArcTo(bottomRight, corner, PI, PI * 1.5f);
+  drawList->PathArcTo(innerBottomRight, corner, PI, PI * 1.5f);
   drawList->PathStroke(color, ImDrawFlags_None, line);
 }
 
@@ -1310,10 +1376,10 @@ void MatchRenderer2D::State::drawGoal(bool left)
 {
   namespace M = PitchMetres;
   using G = Tuning::Goal;
-  const float line = left ? 0.0f : LENGTH;
+  const float line = left ? 0.0f : pitchLength;
   const float outward = left ? -1.0f : 1.0f;
-  const ImVec2 postA = atMetres(line, (WIDTH - M::GOAL_WIDTH) * 0.5f);
-  const ImVec2 postB = atMetres(line, (WIDTH + M::GOAL_WIDTH) * 0.5f);
+  const ImVec2 postA = atMetres(line, (pitchWidth - M::GOAL_WIDTH) * 0.5f);
+  const ImVec2 postB = atMetres(line, (pitchWidth + M::GOAL_WIDTH) * 0.5f);
   const float backX = postA.x + outward * M::GOAL_DEPTH * ppm;
   const float minX = std::min(postA.x, backX);
   const float maxX = std::max(postA.x, backX);
@@ -1395,7 +1461,7 @@ void MatchRenderer2D::State::drawOffside()
   const auto alpha = static_cast<std::uint8_t>(
       static_cast<float>((O::COLOR >> IM_COL32_A_SHIFT) & 0xFFU) * opacity);
   const ImU32 color = withAlpha(O::COLOR, alpha);
-  const float x = viewport.x + std::clamp(offsideX, 0.0f, LENGTH) * ppm;
+  const float x = viewport.x + std::clamp(offsideX, 0.0f, pitchLength) * ppm;
   const float thickness = std::max(px(2.0f), 0.2f * ppm);
   // A dashed line across the pitch with a soft glow either side.
   drawList->AddRectFilled(
@@ -1806,6 +1872,9 @@ void MatchRenderer2D::State::drawTokens(const MatchRenderSnapshot& snapshot,
   for (const MatchRenderPlayer& player : snapshot.players)
   {
     if (player.hidden) continue;
+    // A training pitch draws only the players in it (a drill's parked
+    // players stand off it).
+    if (training && !player.onPitch) continue;
     const PitchPoint interpolated = lerpRenderPosition(
         player.previousPosition, player.currentPosition, alpha);
     // Facing is a true angle on the ground.
@@ -2123,6 +2192,28 @@ void MatchRenderer2D::render(const MatchRenderSnapshot& snapshot,
   s.whitePixel = ImGui::GetFontTexUvWhitePixel();
   s.viewport = viewport;
   s.ppm = viewport.width / LENGTH;
+  s.pitchLength = snapshot.pitchLengthMetres;
+  s.pitchWidth = snapshot.pitchWidthMetres;
+  s.training = snapshot.pitchSurface == PitchSurface::TRAINING;
+  // A training pitch fills the area laid out for the match pitch (some
+  // callers show nothing round it), with a margin of grass round its walls,
+  // at its own scale.
+  MatchViewport ground = viewport;
+  if (s.training)
+  {
+    constexpr float MARGIN_METRES = 5.0f;
+    const float areaX = viewport.x;
+    const float areaY = viewport.y;
+    const float areaWidth = viewport.width;
+    const float areaHeight = viewport.height;
+    s.ppm = std::min(areaWidth / (s.pitchLength + 2.0f * MARGIN_METRES),
+                     areaHeight / (s.pitchWidth + 2.0f * MARGIN_METRES));
+    s.viewport.width = s.pitchLength * s.ppm;
+    s.viewport.height = s.pitchWidth * s.ppm;
+    s.viewport.x = areaX + (areaWidth - s.viewport.width) * 0.5f;
+    s.viewport.y = areaY + (areaHeight - s.viewport.height) * 0.5f;
+    ground = {areaX, areaY, areaWidth, areaHeight};
+  }
   s.uiScale = std::max(Theme::scale(), 0.5f);
   s.frameSeconds = std::clamp(options.frameSeconds, 0.0f, 0.1f);
   s.elapsedSeconds += s.frameSeconds;
@@ -2140,13 +2231,23 @@ void MatchRenderer2D::render(const MatchRenderSnapshot& snapshot,
   else
     s.pressureValid = false;
 
-  s.drawStadium();
-  s.drawGrass();
-  s.drawWear();
-  if (options.pressureOverlay) s.drawPressure();
-  s.drawMarkings();
-  s.drawGoal(true);
-  s.drawGoal(false);
+  if (s.training)
+  {
+    s.drawTrainingGround(ground);
+    if (options.pressureOverlay) s.drawPressure();
+    s.drawWalls();
+  }
+  else
+  {
+    s.drawStadium();
+    s.drawGrass();
+    s.drawWear();
+    if (options.pressureOverlay) s.drawPressure();
+    s.drawMarkings();
+    s.drawGoal(true);
+    s.drawGoal(false);
+  }
+  s.drawKit(snapshot);
 
 #ifdef DEBUG
   if (options.showAiDebug)
@@ -2168,9 +2269,12 @@ void MatchRenderer2D::render(const MatchRenderSnapshot& snapshot,
   }
 #endif
 
-  s.drawTouchline(snapshot, alpha);
-  s.drawOffside();
-  s.drawFreeKickMarker();
+  if (!s.training)
+  {
+    s.drawTouchline(snapshot, alpha);
+    s.drawOffside();
+    s.drawFreeKickMarker();
+  }
   s.drawFlights();
   s.drawTokens(snapshot, options, alpha);
   s.drawTrail();

@@ -648,6 +648,22 @@ struct MatchRenderer3D::State
   void drawSoftEllipse(Vec3 centre, Vec3 axisA, Vec3 axisB, ImU32 color);
   /** The mown playing surface (vertex grid, per-frame stripe tint). */
   void drawPitch();
+  /** A training pitch (training ground plan section 18): plain grass with a
+   * margin round it, a netting fence for its walls, and the kit. */
+  void drawTrainingGround();
+  void addKit(const MatchRenderSnapshot& snapshot);
+  /** The world point of an engine pitch point: a training pitch sits
+   * centred where the match pitch is, so the cameras frame it unchanged. */
+  Vec3 worldOf(PitchPoint pitch, float heightMetres = 0.0f) const
+  {
+    return RenderMath::worldFromPitch(
+        PitchPoint{pitch.x + zoneOffsetX, pitch.y + zoneOffsetY}, heightMetres);
+  }
+  bool training = false;
+  float pitchLength = LENGTH;
+  float pitchWidth = WIDTH;
+  float zoneOffsetX = 0.0f;
+  float zoneOffsetY = 0.0f;
   void drawShadows(const MatchRenderSnapshot& snapshot, float alpha);
   void drawStadium();
   /** Crowd and pitch geometry go through chunked reservations (16-bit
@@ -759,11 +775,11 @@ MatchCameraFocus MatchRenderer3D::State::computeFocus(
 {
   const float alpha = snapshot.interpolationAlpha;
   MatchCameraFocus focus;
-  focus.ball = RenderMath::worldFromPitch(lerpRenderPosition(
+  focus.ball = worldOf(lerpRenderPosition(
       snapshot.ball.previousPosition, snapshot.ball.currentPosition, alpha));
   focus.ballVelocity =
-      (RenderMath::worldFromPitch(snapshot.ball.currentPosition) -
-       RenderMath::worldFromPitch(snapshot.ball.previousPosition)) *
+      (worldOf(snapshot.ball.currentPosition) -
+       worldOf(snapshot.ball.previousPosition)) *
       (1.0f / MatchTuning::Timing::FIXED_STEP_SECONDS);
 
   const MatchRenderPlayer* carrier = nullptr;
@@ -772,7 +788,7 @@ MatchCameraFocus MatchRenderer3D::State::computeFocus(
   if (carrier)
   {
     focus.hasCarrier = true;
-    focus.carrier = RenderMath::worldFromPitch(lerpRenderPosition(
+    focus.carrier = worldOf(lerpRenderPosition(
         carrier->previousPosition, carrier->currentPosition, alpha));
     focus.carrierYaw = RenderMath::worldYawFromFacing(RenderMath::lerpAngle(
         carrier->previousFacingAngle, carrier->currentFacingAngle, alpha));
@@ -811,7 +827,7 @@ MatchCameraFocus MatchRenderer3D::State::computeFocus(
     for (const MatchRenderPlayer& player : snapshot.players)
     {
       if (!player.player || player.player->getId() != goal.scorer) continue;
-      focus.celebration = RenderMath::worldFromPitch(lerpRenderPosition(
+      focus.celebration = worldOf(lerpRenderPosition(
           player.previousPosition, player.currentPosition, alpha));
       focus.hasCelebration = true;
     }
@@ -1192,7 +1208,7 @@ void MatchRenderer3D::State::drawShadows(const MatchRenderSnapshot& snapshot,
   {
     if (hideFigures) break;
     if (player.hidden) continue;
-    const Vec3 root = RenderMath::worldFromPitch(lerpRenderPosition(
+    const Vec3 root = worldOf(lerpRenderPosition(
         player.previousPosition, player.currentPosition, alpha));
     ScreenPoint screen;
     if (!projection.project(root, screen)) continue;
@@ -1324,7 +1340,7 @@ void MatchRenderer3D::State::drawShadows(const MatchRenderSnapshot& snapshot,
       110.0f / (1.0f + height * Tuning::Ball::SHADOW_FADE));
   // By day the lifted ball's shadow slides away from the sun.
   const Vec3 slide = day ? sunAway * (height * sunLength) : Vec3{};
-  drawSoftEllipse(RenderMath::worldFromPitch(ball) + slide,
+  drawSoftEllipse(worldOf(ball) + slide,
                   {radius, 0.0f, 0.0f}, {0.0f, radius, 0.0f},
                   IM_COL32(0, 0, 0, shadowAlpha));
   releaseBatch();
@@ -1899,7 +1915,7 @@ void MatchRenderer3D::State::findBallHolder(const MatchRenderSnapshot& snapshot,
     else if (snapshot.state == MatchState::THROW_IN)
     {
       // The taker picks the ball up once he reaches the spot.
-      const Vec3 root = RenderMath::worldFromPitch(lerpRenderPosition(
+      const Vec3 root = worldOf(lerpRenderPosition(
           player.previousPosition, player.currentPosition, alpha));
       if (PlayerRig::flatDistance(root, ballWorld) <
           Tuning::Rig::THROW_PICKUP_METRES)
@@ -1916,7 +1932,7 @@ void MatchRenderer3D::State::updateMotion(const MatchRenderPlayer& player,
   using P = Tuning::Player;
   using Q = Tuning::Pose;
   using R = Tuning::Rig;
-  const Vec3 root = RenderMath::worldFromPitch(lerpRenderPosition(
+  const Vec3 root = worldOf(lerpRenderPosition(
       player.previousPosition, player.currentPosition, alpha));
   const float yaw = rigYaw(player, alpha);
   if (slot.player != player.player)
@@ -2189,7 +2205,7 @@ void MatchRenderer3D::State::addPlayer(const MatchRenderPlayer& player,
   using R = Tuning::Rig;
   using PlayerRig::Event;
   // In a jump, his whole body is lifted (his shadow stays on the ground).
-  const Vec3 root = RenderMath::worldFromPitch(
+  const Vec3 root = worldOf(
       lerpRenderPosition(player.previousPosition, player.currentPosition, alpha),
       player.previousFeetHeightMetres +
           (player.currentFeetHeightMetres - player.previousFeetHeightMetres) * alpha);
@@ -3113,7 +3129,7 @@ void MatchRenderer3D::State::detectTouches(const MatchRenderSnapshot& snapshot)
     if (slot.event != PlayerRig::Event::NONE &&
         slot.event != PlayerRig::Event::TACKLE)
       continue;
-    const Vec3 root = RenderMath::worldFromPitch(lerpRenderPosition(
+    const Vec3 root = worldOf(lerpRenderPosition(
         player.previousPosition, player.currentPosition, alpha));
     const Vec3 toBall = ballWorld - root;
     // Going to ground from further out or at pace; otherwise a block.
@@ -3144,9 +3160,9 @@ void MatchRenderer3D::State::detectTouches(const MatchRenderSnapshot& snapshot)
     const MatchRenderPlayer& player = snapshot.players[index];
     if (player.player != ball.kicker) continue;
     AnimationSlot& slot = slots[index];
-    const Vec3 from = RenderMath::worldFromPitch(ball.previousPosition,
+    const Vec3 from = worldOf(ball.previousPosition,
                                                  ball.previousHeightMetres);
-    const Vec3 to = RenderMath::worldFromPitch(ball.currentPosition,
+    const Vec3 to = worldOf(ball.currentPosition,
                                                ball.currentHeightMetres);
     const Vec3 flight{to.x - from.x, to.y - from.y, 0.0f};
     const float flightLength = RenderMath::length(flight);
@@ -3168,7 +3184,7 @@ void MatchRenderer3D::State::detectTouches(const MatchRenderSnapshot& snapshot)
     slot.eventDirection = flightLength > 1e-3f ? flight * (1.0f / flightLength)
                                                : slot.moveDirection;
     // The preferred foot, unless the ball sits well over on the other side.
-    const Vec3 root = RenderMath::worldFromPitch(lerpRenderPosition(
+    const Vec3 root = worldOf(lerpRenderPosition(
         player.previousPosition, player.currentPosition, alpha));
     const float yaw = RenderMath::worldYawFromFacing(RenderMath::lerpAngle(
         player.previousFacingAngle, player.currentFacingAngle, alpha));
@@ -3424,6 +3440,112 @@ void MatchRenderer3D::State::addGoals()
   }
 }
 
+void MatchRenderer3D::State::drawTrainingGround()
+{
+  using G = Tuning::Grass;
+  constexpr float MARGIN = 5.0f;
+  constexpr float FENCE_HEIGHT = 1.0f;
+  // Plain grass, a shade darker outside the walls, then the pitch.
+  const auto quad = [this](PitchPoint a, PitchPoint b, float height, ImU32 color)
+  {
+    const std::array<Vec3, 4> corners{worldOf(a, height),
+                                      worldOf(PitchPoint{b.x, a.y}, height),
+                                      worldOf(b, height),
+                                      worldOf(PitchPoint{a.x, b.y}, height)};
+    const std::array<ImU32, 4> colors{color, color, color, color};
+    drawWorldPolygon(corners, colors, false);
+  };
+  // Lit as the match pitch is (day or floodlit night).
+  const float sunlit = day ? Tuning::Day::GRASS_LIGHT : 1.0f;
+  const ImU32 outside = shadeColor(G::PITCH_COLOR, sunlit * 0.86f);
+  const ImU32 inside = shadeColor(G::PITCH_COLOR, sunlit);
+  quad(PitchPoint{-MARGIN, -MARGIN},
+       PitchPoint{pitchLength + MARGIN, pitchWidth + MARGIN}, 0.0f, outside);
+  quad(PitchPoint{0.0f, 0.0f}, PitchPoint{pitchLength, pitchWidth}, 0.0f, inside);
+  // The walls: see-through netting (unlimited height in the engine; drawn
+  // as a fence).
+  constexpr ImU32 NET = IM_COL32(24, 28, 32, 90);
+  constexpr ImU32 RAIL = IM_COL32(24, 28, 32, 220);
+  const std::array<PitchPoint, 5> corner{
+      PitchPoint{0.0f, 0.0f}, PitchPoint{pitchLength, 0.0f},
+      PitchPoint{pitchLength, pitchWidth}, PitchPoint{0.0f, pitchWidth},
+      PitchPoint{0.0f, 0.0f}};
+  for (std::size_t side = 0; side + 1 < corner.size(); ++side)
+  {
+    const std::array<Vec3, 4> panel{
+        worldOf(corner[side]), worldOf(corner[side + 1]),
+        worldOf(corner[side + 1], FENCE_HEIGHT),
+        worldOf(corner[side], FENCE_HEIGHT)};
+    const std::array<ImU32, 4> colors{NET, NET, NET, NET};
+    drawWorldPolygon(panel, colors, true);
+    const std::array<Vec3, 4> rail{
+        worldOf(corner[side], FENCE_HEIGHT - 0.04f),
+        worldOf(corner[side + 1], FENCE_HEIGHT - 0.04f),
+        worldOf(corner[side + 1], FENCE_HEIGHT),
+        worldOf(corner[side], FENCE_HEIGHT)};
+    const std::array<ImU32, 4> railColors{RAIL, RAIL, RAIL, RAIL};
+    drawWorldPolygon(rail, railColors, true);
+  }
+}
+
+void MatchRenderer3D::State::addKit(const MatchRenderSnapshot& snapshot)
+{
+  const PitchKit::Layout& kit = snapshot.kit;
+  // Lines and areas on the grass: thin painted strips.
+  constexpr float HALF_LINE = 0.05f;
+  const auto strip = [this](PitchPoint from, PitchPoint to, ImU32 color)
+  {
+    const float dx = to.x - from.x;
+    const float dy = to.y - from.y;
+    const float run = std::max(std::hypot(dx, dy), 1e-4f);
+    const float nx = -dy / run * HALF_LINE;
+    const float ny = dx / run * HALF_LINE;
+    constexpr float LIFT = 0.005f;
+    const std::array<Vec3, 4> corners{
+        worldOf(PitchPoint{from.x + nx, from.y + ny}, LIFT),
+        worldOf(PitchPoint{to.x + nx, to.y + ny}, LIFT),
+        worldOf(PitchPoint{to.x - nx, to.y - ny}, LIFT),
+        worldOf(PitchPoint{from.x - nx, from.y - ny}, LIFT)};
+    const std::array<ImU32, 4> colors{color, color, color, color};
+    drawWorldPolygon(corners, colors, true);
+  };
+  for (const PitchKit::Line& line : kit.lines) strip(line.from, line.to, line.colour);
+  for (const PitchKit::Area& area : kit.areas)
+  {
+    const PitchPoint a = area.min;
+    const PitchPoint b{area.max.x, area.min.y};
+    const PitchPoint c = area.max;
+    const PitchPoint d{area.min.x, area.max.y};
+    strip(a, b, area.colour);
+    strip(b, c, area.colour);
+    strip(c, d, area.colour);
+    strip(d, a, area.colour);
+  }
+  // Cones as shaded eight-sided solids: a tall cone narrowing to a small
+  // tip, or a flat marker disc a little narrower on top.
+  constexpr float R = PitchKit::CONE_RADIUS_METRES;
+  constexpr std::size_t SIDES = 8;
+  for (const PitchKit::Cone& cone : kit.cones)
+  {
+    const Vec3 base = worldOf(cone.at);
+    const bool tall = cone.kind == PitchKit::ConeKind::TALL;
+    const float height = tall ? PitchKit::TALL_CONE_HEIGHT_METRES
+                              : PitchKit::FLAT_CONE_HEIGHT_METRES;
+    const float topRadius = tall ? 0.15f * R : 0.65f * R;
+    std::array<Vec3, SIDES> bottom{};
+    std::array<Vec3, SIDES> top{};
+    for (std::size_t side = 0; side < SIDES; ++side)
+    {
+      const float angle = TWO_PI * static_cast<float>(side) / SIDES;
+      const Vec3 out{std::cos(angle), std::sin(angle), 0.0f};
+      bottom[side] = base + out * R;
+      top[side] = base + out * topRadius + UP * height;
+    }
+    addPrism(bottom, top, cone.colour, projection.depth(base + UP * height),
+             false, true);
+  }
+}
+
 void MatchRenderer3D::State::addCornerFlags()
 {
   using C = Tuning::CornerFlag;
@@ -3466,7 +3588,7 @@ void MatchRenderer3D::State::addTouchlinePerson(const MatchRenderTouchlinePerson
   using P = Tuning::Player;
   using T = Tuning::TouchlineFigure;
   if (person.hidden) return;
-  const Vec3 root = RenderMath::worldFromPitch(
+  const Vec3 root = worldOf(
       lerpRenderPosition(person.previousPosition, person.currentPosition, alpha));
   ScreenPoint anchor;
   if (!projection.project(root + UP * P::HIP_HEIGHT, anchor)) return;
@@ -3670,7 +3792,7 @@ void MatchRenderer3D::State::addBall(const MatchRenderSnapshot& snapshot,
   // Held in the hands (keeper, throw-in) it is drawn where the hands are.
   const Vec3 world = heldBallPlaced
                          ? heldBallWorld
-                         : RenderMath::worldFromPitch(ball, height + B::RADIUS);
+                         : worldOf(ball, height + B::RADIUS);
   ScreenPoint screen;
   if (!projection.project(world, screen)) return;
   // True size up close; a gentle boost with distance keeps it readable on
@@ -4094,7 +4216,7 @@ bool MatchRenderer3D::projectPitch(PitchPoint pitch, float heightMetres,
   const State& s = *state;
   if (!s.hasProjection) return false;
   ScreenPoint point;
-  if (!s.projection.project(RenderMath::worldFromPitch(pitch, heightMetres),
+  if (!s.projection.project(s.worldOf(pitch, heightMetres),
                             point))
     return false;
   screenX = point.x;
@@ -4123,6 +4245,11 @@ void MatchRenderer3D::render(const MatchRenderSnapshot& snapshot,
            options.kickoffMinutes < Tuning::Day::DAY_UNTIL_MINUTES);
   s.light = s.day ? dayLight() : nightLight();
   s.hideFigures = options.hidePlayerFigures;
+  s.training = snapshot.pitchSurface == PitchSurface::TRAINING;
+  s.pitchLength = snapshot.pitchLengthMetres;
+  s.pitchWidth = snapshot.pitchWidthMetres;
+  s.zoneOffsetX = s.training ? 0.5f * (LENGTH - s.pitchLength) : 0.0f;
+  s.zoneOffsetY = s.training ? 0.5f * (WIDTH - s.pitchWidth) : 0.0f;
 
   s.prepareMatch(snapshot);
   if (s.slots.size() != snapshot.players.size())
@@ -4138,7 +4265,7 @@ void MatchRenderer3D::render(const MatchRenderSnapshot& snapshot,
   s.lastMatchMinutes = snapshot.matchTimeMinutes;
   s.livePlay = snapshot.state == MatchState::PLAYING;
   const Vec3 previousBall = s.ballWorld;
-  s.ballWorld = RenderMath::worldFromPitch(
+  s.ballWorld = s.worldOf(
       lerpRenderPosition(snapshot.ball.previousPosition,
                          snapshot.ball.currentPosition, alpha),
       ballHeightMetres(snapshot.ball, alpha));
@@ -4175,7 +4302,7 @@ void MatchRenderer3D::render(const MatchRenderSnapshot& snapshot,
           player.player->getId() == options.activePlayer)
       {
         focus.hasActive = true;
-        focus.active = RenderMath::worldFromPitch(lerpRenderPosition(
+        focus.active = s.worldOf(lerpRenderPosition(
             player.previousPosition, player.currentPosition, alpha));
       }
   // Mouse input maps through the frame the user was looking at.
@@ -4194,21 +4321,25 @@ void MatchRenderer3D::render(const MatchRenderSnapshot& snapshot,
       {viewport.x, viewport.y},
       {viewport.x + viewport.width, viewport.y + viewport.height}, true);
   s.drawSky();
+  if (s.training) s.drawTrainingGround();
   for (const Stadium3D::GroundPolygon& polygon : s.geometry.ground)
   {
+    if (s.training) break;
     s.drawWorldPolygon(
         std::span<const Vec3>(polygon.points.data(), polygon.count),
         std::span<const ImU32>(polygon.colors.data(), polygon.count), false);
   }
-  s.drawPitch();
+  if (!s.training) s.drawPitch();
   for (const Stadium3D::GroundPolygon& polygon : s.geometry.wear)
   {
+    if (s.training) break;
     s.drawWorldPolygon(
         std::span<const Vec3>(polygon.points.data(), polygon.count),
         std::span<const ImU32>(polygon.colors.data(), polygon.count), false);
   }
   for (const Stadium3D::GroundPolygon& polygon : s.geometry.markings)
   {
+    if (s.training) break;
     s.drawWorldPolygon(
         std::span<const Vec3>(polygon.points.data(), polygon.count),
         std::span<const ImU32>(polygon.colors.data(), polygon.count), true);
@@ -4216,6 +4347,7 @@ void MatchRenderer3D::render(const MatchRenderSnapshot& snapshot,
   // By day the roofs shade part of the pitch, markings included.
   for (const Stadium3D::GroundPolygon& polygon : s.geometry.standShadows)
   {
+    if (s.training) break;
     s.drawWorldPolygon(
         std::span<const Vec3>(polygon.points.data(), polygon.count),
         std::span<const ImU32>(polygon.colors.data(), polygon.count), false);
@@ -4229,11 +4361,11 @@ void MatchRenderer3D::render(const MatchRenderSnapshot& snapshot,
       ScreenPoint from;
       ScreenPoint to;
       if (s.projection.project(
-              RenderMath::worldFromPitch(lerpRenderPosition(
+              s.worldOf(lerpRenderPosition(
                   player.previousPosition, player.currentPosition, alpha)),
               from) &&
           s.projection.project(
-              RenderMath::worldFromPitch(player.movementTarget), to))
+              s.worldOf(player.movementTarget), to))
       {
         drawList->AddLine(toImVec(from), toImVec(to),
                           Tuning::Hud::DEBUG_TARGET_COLOR, 1.5f);
@@ -4241,7 +4373,7 @@ void MatchRenderer3D::render(const MatchRenderSnapshot& snapshot,
     }
   }
 #endif
-  s.drawStadium();
+  if (!s.training) s.drawStadium();
 
   s.points.clear();
   s.primitives.clear();
@@ -4250,14 +4382,22 @@ void MatchRenderer3D::render(const MatchRenderSnapshot& snapshot,
   s.playersOnScreen.clear();
   if (!s.hideFigures)
     for (std::size_t index = 0; index < snapshot.players.size(); ++index)
-      if (!snapshot.players[index].hidden)
+      if (!snapshot.players[index].hidden &&
+          !(s.training && !snapshot.players[index].onPitch))
         s.addPlayer(snapshot.players[index], s.slots[index], alpha);
-  s.addGoals();
-  s.addCornerFlags();
-  s.addBoards();
-  s.addFixtures();
-  for (std::size_t index = 0; index < snapshot.touchline.size(); ++index)
-    s.addTouchlinePerson(snapshot.touchline[index], index, alpha);
+  if (s.training)
+  {
+    s.addKit(snapshot);
+  }
+  else
+  {
+    s.addGoals();
+    s.addCornerFlags();
+    s.addBoards();
+    s.addFixtures();
+    for (std::size_t index = 0; index < snapshot.touchline.size(); ++index)
+      s.addTouchlinePerson(snapshot.touchline[index], index, alpha);
+  }
   if (!snapshot.ball.outOfSight) s.addBall(snapshot, alpha);
   s.flushSorted();
 

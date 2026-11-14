@@ -13,6 +13,7 @@
 
 #include "gui/gui_scene.h"
 #include "gui/scenes/match_play_controller.h"
+#include "gui/render/imatch_renderer.h"
 #include "gui/render/match_render_snapshot.h"
 #include "tools/match_sandbox_debugger.h"
 #include "tools/match_sandbox_drill.h"
@@ -64,6 +65,9 @@ class DrillScene : public GUIScene
   float accumulator = 0.0f;
   bool newSeedEachRun = false;
   bool showDebugger = false;
+  /** The pitch drawn in 3D (broadcast camera) instead of 2D. */
+  bool view3d = false;
+  MatchCameraMode cameraMode = MatchCameraMode::BROADCAST;
 
   std::unique_ptr<IMatchRenderer> renderer;
   MatchRenderSnapshot snapshot;

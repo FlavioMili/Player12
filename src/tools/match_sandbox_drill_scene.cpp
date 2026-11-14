@@ -20,6 +20,7 @@
 #include "controller/game_controller.h"
 #include "gui/gui_view.h"
 #include "gui/render/match_renderer_2d.h"
+#include "gui/render/match_renderer_3d.h"
 #include "gui/widgets/theme.h"
 #include "gui/widgets/widgets.h"
 #include "tools/match_sandbox_setup.h"
@@ -189,6 +190,29 @@ void DrillScene::renderPanel(float width)
     ImGui::EndCombo();
   }
   ImGui::Checkbox("Debugger windows", &showDebugger);
+  if (ImGui::Checkbox("3D view", &view3d))
+  {
+    if (view3d)
+      renderer = std::make_unique<MatchRenderer3D>();
+    else
+      renderer = std::make_unique<MatchRenderer2D>();
+  }
+  if (view3d)
+  {
+    constexpr std::array<std::pair<MatchCameraMode, const char*>, 3> CAMERAS{
+        {{MatchCameraMode::BROADCAST, "Broadcast"},
+         {MatchCameraMode::TACTICAL, "Tactical"},
+         {MatchCameraMode::END, "End"}}};
+    const char* current = "Broadcast";
+    for (const auto& [mode, label] : CAMERAS)
+      if (mode == cameraMode) current = label;
+    if (ImGui::BeginCombo("Camera", current))
+    {
+      for (const auto& [mode, label] : CAMERAS)
+        if (ImGui::Selectable(label, mode == cameraMode)) cameraMode = mode;
+      ImGui::EndCombo();
+    }
+  }
   if (play.isActive())
   {
     ImGui::PushTextWrapPos(0.0f);
@@ -238,6 +262,8 @@ void DrillScene::renderPitch()
   MatchViewport view = computeMatchViewport(origin.x, origin.y, size.x, size.y);
   view.x = origin.x + std::max(0.0f, (size.x - view.width) * 0.5f);
   view.y = origin.y + std::max(0.0f, (size.y - view.height) * 0.5f);
+  // The 3D view fills the whole area (its camera frames the pitch).
+  if (view3d) view = {origin.x, origin.y, size.x, size.y};
   fillMatchRenderSnapshot(run->engine(), snapshot);
   // Players not in the drill would wait by the bench like players sent off.
   std::erase_if(snapshot.players,
@@ -247,6 +273,7 @@ void DrillScene::renderPitch()
   MatchRenderOptions options;
   options.showPlayerNames = true;
   options.frameSeconds = ImGui::GetIO().DeltaTime;
+  options.cameraMode = cameraMode;
   ImDrawList* draw = ImGui::GetWindowDrawList();
   draw->PushClipRect(origin, ImVec2(origin.x + size.x, origin.y + size.y), true);
   renderer->render(snapshot, options, view);
