@@ -178,6 +178,11 @@ struct MatchRenderer2D::State
   float pitchLength = LENGTH;
   float pitchWidth = WIDTH;
   bool training = false;
+  /** The goal drawn: the view's own match goal, or a training pitch's. */
+  float goalWidth = PitchMetres::GOAL_WIDTH;
+  float goalDepth = PitchMetres::GOAL_DEPTH;
+  float goalPost = Tuning::Goal::POST_METRES;
+  bool goalPresent = true;
   float uiScale = 1.0f;
   float elapsedSeconds = 0.0f;
   float frameSeconds = 0.0f;
@@ -1220,11 +1225,22 @@ void MatchRenderer2D::State::drawTrainingGround(const MatchViewport& ground)
 void MatchRenderer2D::State::drawWalls()
 {
   // The walls (netting, unlimited height in the engine), drawn as a line
-  // round the pitch.
+  // round the pitch, open at the goal mouths.
   constexpr ImU32 WALL_COLOR = IM_COL32(30, 36, 40, 230);
-  drawList->AddRect({viewport.x, viewport.y},
-                    {viewport.x + viewport.width, viewport.y + viewport.height},
-                    WALL_COLOR, 0.0f, 0, std::max(px(2.0f), 0.08f * ppm));
+  const float thickness = std::max(px(2.0f), 0.08f * ppm);
+  const float left = viewport.x;
+  const float right = viewport.x + viewport.width;
+  const float top = viewport.y;
+  const float bottom = viewport.y + viewport.height;
+  drawList->AddLine({left, top}, {right, top}, WALL_COLOR, thickness);
+  drawList->AddLine({left, bottom}, {right, bottom}, WALL_COLOR, thickness);
+  const float middle = viewport.y + 0.5f * viewport.height;
+  const float gap = goalPresent ? (0.5f * goalWidth + goalPost) * ppm : 0.0f;
+  for (const float x : {left, right})
+  {
+    drawList->AddLine({x, top}, {x, middle - gap}, WALL_COLOR, thickness);
+    drawList->AddLine({x, middle + gap}, {x, bottom}, WALL_COLOR, thickness);
+  }
 }
 
 void MatchRenderer2D::State::drawKit(const MatchRenderSnapshot& snapshot)
@@ -1378,9 +1394,9 @@ void MatchRenderer2D::State::drawGoal(bool left)
   using G = Tuning::Goal;
   const float line = left ? 0.0f : pitchLength;
   const float outward = left ? -1.0f : 1.0f;
-  const ImVec2 postA = atMetres(line, (pitchWidth - M::GOAL_WIDTH) * 0.5f);
-  const ImVec2 postB = atMetres(line, (pitchWidth + M::GOAL_WIDTH) * 0.5f);
-  const float backX = postA.x + outward * M::GOAL_DEPTH * ppm;
+  const ImVec2 postA = atMetres(line, (pitchWidth - goalWidth) * 0.5f);
+  const ImVec2 postB = atMetres(line, (pitchWidth + goalWidth) * 0.5f);
+  const float backX = postA.x + outward * goalDepth * ppm;
   const float minX = std::min(postA.x, backX);
   const float maxX = std::max(postA.x, backX);
   // Shadow of the frame and net cast towards the bottom right.
@@ -1391,7 +1407,7 @@ void MatchRenderer2D::State::drawGoal(bool left)
   const float strand = std::max(1.0f, px(0.75f));
   for (int column = 1; column <= G::NET_COLUMNS; ++column)
   {
-    const float x = postA.x + outward * M::GOAL_DEPTH * ppm *
+    const float x = postA.x + outward * goalDepth * ppm *
                                   static_cast<float>(column) /
                                   static_cast<float>(G::NET_COLUMNS);
     drawList->AddLine({x, postA.y}, {x, postB.y}, G::NET_LINE_COLOR,
@@ -1406,7 +1422,7 @@ void MatchRenderer2D::State::drawGoal(bool left)
   // Side netting edges, then the crossbar over the goal line and the posts.
   drawList->AddLine(postA, {backX, postA.y}, G::NET_LINE_COLOR, strand * 1.6f);
   drawList->AddLine(postB, {backX, postB.y}, G::NET_LINE_COLOR, strand * 1.6f);
-  const float post = std::max(px(G::MIN_POST_PIXELS), G::POST_METRES * ppm);
+  const float post = std::max(px(G::MIN_POST_PIXELS), goalPost * ppm);
   drawList->AddLine(postA, postB, G::POST_COLOR, post);
   drawList->AddCircleFilled(postA, post * 0.9f, G::POST_COLOR);
   drawList->AddCircleFilled(postB, post * 0.9f, G::POST_COLOR);
@@ -2195,6 +2211,12 @@ void MatchRenderer2D::render(const MatchRenderSnapshot& snapshot,
   s.pitchLength = snapshot.pitchLengthMetres;
   s.pitchWidth = snapshot.pitchWidthMetres;
   s.training = snapshot.pitchSurface == PitchSurface::TRAINING;
+  // A match keeps the view's own goal; a training pitch draws its own.
+  s.goalWidth = s.training ? 2.0f * snapshot.pitchGoal.halfWidth
+                           : PitchMetres::GOAL_WIDTH;
+  s.goalDepth = s.training ? snapshot.pitchGoal.netDepth : PitchMetres::GOAL_DEPTH;
+  s.goalPost = s.training ? snapshot.pitchGoal.post : Tuning::Goal::POST_METRES;
+  s.goalPresent = !s.training || snapshot.pitchGoal.present();
   // A training pitch fills the area laid out for the match pitch (some
   // callers show nothing round it), with a margin of grass round its walls,
   // at its own scale.
@@ -2236,6 +2258,11 @@ void MatchRenderer2D::render(const MatchRenderSnapshot& snapshot,
     s.drawTrainingGround(ground);
     if (options.pressureOverlay) s.drawPressure();
     s.drawWalls();
+    if (s.goalPresent)
+    {
+      s.drawGoal(true);
+      s.drawGoal(false);
+    }
   }
   else
   {

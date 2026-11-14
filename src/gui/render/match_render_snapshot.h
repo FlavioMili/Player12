@@ -146,6 +146,7 @@ struct MatchRenderSnapshot
   float pitchWidthMetres = MatchTuning::Pitch::MATCH_WIDTH_METRES;
   PitchSurface pitchSurface = PitchSurface::MATCH;
   PitchEdge pitchEdge = PitchEdge::LINES;
+  PitchGoal pitchGoal{};
   PitchKit::Layout kit;
   std::vector<MatchRenderPlayer> players;
   std::vector<MatchRenderTouchlinePerson> touchline;

@@ -123,6 +123,7 @@ void fillMatchRenderSnapshot(const MatchEngine& engine,
   snapshot.pitchWidthMetres = engine.getPitch().width;
   snapshot.pitchSurface = engine.getPitch().surface;
   snapshot.pitchEdge = engine.getPitch().edge;
+  snapshot.pitchGoal = engine.getPitch().goal;
   snapshot.kit = engine.getKit();
   snapshot.state = engine.getState();
   snapshot.homePhase = engine.getHomePhase();

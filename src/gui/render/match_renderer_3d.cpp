@@ -652,6 +652,7 @@ struct MatchRenderer3D::State
    * margin round it, a netting fence for its walls, and the kit. */
   void drawTrainingGround();
   void addKit(const MatchRenderSnapshot& snapshot);
+  void addTrainingGoals(const MatchRenderSnapshot& snapshot);
   /** The world point of an engine pitch point: a training pitch sits
    * centred where the match pitch is, so the cameras frame it unchanged. */
   Vec3 worldOf(PitchPoint pitch, float heightMetres = 0.0f) const
@@ -664,6 +665,9 @@ struct MatchRenderer3D::State
   float pitchWidth = WIDTH;
   float zoneOffsetX = 0.0f;
   float zoneOffsetY = 0.0f;
+  /** Half the goal mouth's width on a training pitch with goals (the fence
+   * is open there); 0 without goals. */
+  float mouthHalf = 0.0f;
   void drawShadows(const MatchRenderSnapshot& snapshot, float alpha);
   void drawStadium();
   /** Crowd and pitch geometry go through chunked reservations (16-bit
@@ -3440,6 +3444,65 @@ void MatchRenderer3D::State::addGoals()
   }
 }
 
+void MatchRenderer3D::State::addTrainingGoals(const MatchRenderSnapshot& snapshot)
+{
+  // A training pitch's goals at its own size: posts and bar, and a net
+  // (sides, roof and back) behind the line, depth-sorted with the players.
+  const PitchGoal& g = snapshot.pitchGoal;
+  if (!g.present()) return;
+  using G = Tuning::Goal;
+  const float centreY = 0.5f * pitchWidth;
+  const float half = g.halfWidth + 0.5f * g.post;
+  const float barZ = g.crossbar + 0.5f * g.post;
+  const float postHalf = 0.5f * g.post;
+  for (const bool right : {false, true})
+  {
+    const float line = right ? pitchLength : 0.0f;
+    const float behind = right ? 1.0f : -1.0f;
+    const auto at = [&](float u, float v, float z)
+    { return worldOf(PitchPoint{line + behind * u, centreY + v}, z); };
+    // The net: panels from the frame back to the net's depth, its roof
+    // dropping a little towards the back.
+    const float back = g.netDepth;
+    const float backTop = std::max(0.3f * g.crossbar, g.crossbar - 0.25f * back);
+    const std::array<std::array<Vec3, 4>, 4> panels{{
+        {at(0, -half, 0), at(back, -half, 0), at(back, -half, backTop), at(0, -half, barZ)},
+        {at(0, half, 0), at(back, half, 0), at(back, half, backTop), at(0, half, barZ)},
+        {at(0, -half, barZ), at(back, -half, backTop), at(back, half, backTop), at(0, half, barZ)},
+        {at(back, -half, 0), at(back, half, 0), at(back, half, backTop), at(back, -half, backTop)}}};
+    for (const auto& panel : panels)
+    {
+      std::array<ScreenPoint, 4> screen{};
+      bool visible = true;
+      for (std::size_t corner = 0; corner < 4 && visible; ++corner)
+        visible = projection.project(panel[corner], screen[corner]);
+      if (!visible) continue;
+      const float depth = (screen[0].depth + screen[1].depth + screen[2].depth +
+                           screen[3].depth) * 0.25f;
+      addPolygon(screen, G::NET_FILL_COLOR, depth, depth);
+      // A few strands along the panel, so it reads as netting.
+      for (int strand = 1; strand < 4; ++strand)
+      {
+        const float t = static_cast<float>(strand) / 4.0f;
+        addLine(RenderMath::lerp(panel[0], panel[1], t),
+                RenderMath::lerp(panel[3], panel[2], t), G::NET_LINE_COLOR,
+                0.01f, depth);
+      }
+    }
+    // The frame: two posts and the bar, white boxes.
+    for (const float side : {-half, half})
+    {
+      const Vec3 centre = at(0, side, 0.5f * barZ);
+      orientedBox(centre, Vec3{postHalf, 0, 0}, Vec3{0, postHalf, 0},
+                  Vec3{0, 0, 0.5f * barZ + postHalf}, G::POST_COLOR,
+                  projection.depth(centre));
+    }
+    const Vec3 bar = at(0, 0, barZ);
+    orientedBox(bar, Vec3{postHalf, 0, 0}, Vec3{0, half + postHalf, 0},
+                Vec3{0, 0, postHalf}, G::POST_COLOR, projection.depth(bar));
+  }
+}
+
 void MatchRenderer3D::State::drawTrainingGround()
 {
   using G = Tuning::Grass;
@@ -3466,23 +3529,26 @@ void MatchRenderer3D::State::drawTrainingGround()
   // as a fence).
   constexpr ImU32 NET = IM_COL32(24, 28, 32, 90);
   constexpr ImU32 RAIL = IM_COL32(24, 28, 32, 220);
-  const std::array<PitchPoint, 5> corner{
-      PitchPoint{0.0f, 0.0f}, PitchPoint{pitchLength, 0.0f},
-      PitchPoint{pitchLength, pitchWidth}, PitchPoint{0.0f, pitchWidth},
-      PitchPoint{0.0f, 0.0f}};
-  for (std::size_t side = 0; side + 1 < corner.size(); ++side)
+  // Along both sides, and along each end either side of its goal mouth.
+  const float middle = 0.5f * pitchWidth;
+  const std::array<std::array<PitchPoint, 2>, 6> stretches{{
+      {PitchPoint{0.0f, 0.0f}, PitchPoint{pitchLength, 0.0f}},
+      {PitchPoint{0.0f, pitchWidth}, PitchPoint{pitchLength, pitchWidth}},
+      {PitchPoint{0.0f, 0.0f}, PitchPoint{0.0f, middle - mouthHalf}},
+      {PitchPoint{0.0f, middle + mouthHalf}, PitchPoint{0.0f, pitchWidth}},
+      {PitchPoint{pitchLength, 0.0f}, PitchPoint{pitchLength, middle - mouthHalf}},
+      {PitchPoint{pitchLength, middle + mouthHalf}, PitchPoint{pitchLength, pitchWidth}}}};
+  for (const auto& [a, b] : stretches)
   {
-    const std::array<Vec3, 4> panel{
-        worldOf(corner[side]), worldOf(corner[side + 1]),
-        worldOf(corner[side + 1], FENCE_HEIGHT),
-        worldOf(corner[side], FENCE_HEIGHT)};
+    const std::array<Vec3, 4> panel{worldOf(a), worldOf(b),
+                                    worldOf(b, FENCE_HEIGHT),
+                                    worldOf(a, FENCE_HEIGHT)};
     const std::array<ImU32, 4> colors{NET, NET, NET, NET};
     drawWorldPolygon(panel, colors, true);
-    const std::array<Vec3, 4> rail{
-        worldOf(corner[side], FENCE_HEIGHT - 0.04f),
-        worldOf(corner[side + 1], FENCE_HEIGHT - 0.04f),
-        worldOf(corner[side + 1], FENCE_HEIGHT),
-        worldOf(corner[side], FENCE_HEIGHT)};
+    const std::array<Vec3, 4> rail{worldOf(a, FENCE_HEIGHT - 0.04f),
+                                   worldOf(b, FENCE_HEIGHT - 0.04f),
+                                   worldOf(b, FENCE_HEIGHT),
+                                   worldOf(a, FENCE_HEIGHT)};
     const std::array<ImU32, 4> railColors{RAIL, RAIL, RAIL, RAIL};
     drawWorldPolygon(rail, railColors, true);
   }
@@ -4250,6 +4316,9 @@ void MatchRenderer3D::render(const MatchRenderSnapshot& snapshot,
   s.pitchWidth = snapshot.pitchWidthMetres;
   s.zoneOffsetX = s.training ? 0.5f * (LENGTH - s.pitchLength) : 0.0f;
   s.zoneOffsetY = s.training ? 0.5f * (WIDTH - s.pitchWidth) : 0.0f;
+  s.mouthHalf = s.training && snapshot.pitchGoal.present()
+                    ? snapshot.pitchGoal.halfWidth + snapshot.pitchGoal.post
+                    : 0.0f;
 
   s.prepareMatch(snapshot);
   if (s.slots.size() != snapshot.players.size())
@@ -4388,6 +4457,7 @@ void MatchRenderer3D::render(const MatchRenderSnapshot& snapshot,
   if (s.training)
   {
     s.addKit(snapshot);
+    s.addTrainingGoals(snapshot);
   }
   else
   {
