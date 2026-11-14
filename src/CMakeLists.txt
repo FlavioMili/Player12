@@ -712,6 +712,9 @@ add_executable(match_sandbox
     tools/match_sandbox_splash.cpp
     tools/match_sandbox_scene.h
     tools/match_sandbox_scene.cpp
+    tools/match_sandbox_setup_ui.cpp
+    tools/match_sandbox_setup_ui.h
+    tools/match_sandbox_typography.h
     tools/match_sandbox_debugger.h
     tools/match_sandbox_debugger.cpp
     tools/match_sandbox_checks.h

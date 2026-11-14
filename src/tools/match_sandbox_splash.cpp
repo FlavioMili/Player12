@@ -9,8 +9,10 @@
 #include <cmath>
 #include <utility>
 
+#include "global/paths.h"
 #include "gui/widgets/theme.h"
 #include "tools/match_sandbox_scene.h"
+#include "tools/match_sandbox_typography.h"
 
 namespace
 {
@@ -51,6 +53,12 @@ SandboxSplashScene::~SandboxSplashScene() = default;
 
 void SandboxSplashScene::onEnter()
 {
+  if (!splash_font)
+  {
+    const auto path = AssetPaths::file("assets/fonts/Manrope-Bold.ttf");
+    const auto fontConfig = SandboxTypography::manropeConfig();
+    splash_font = ImGui::GetIO().Fonts->AddFontFromFileTTF(path.c_str(), 42.0f, &fontConfig);
+  }
   SDL_SetWindowTitle(getWindow(), "Player12 match sandbox");
   SDL_MaximizeWindow(getWindow());
 }
@@ -153,7 +161,7 @@ void SandboxSplashScene::render()
     const auto text =
         [&](float x, float y, float fontSize, const char* value, ImU32 ink)
     {
-      ImGui::PushFont(nullptr, fontSize * scale);
+      ImGui::PushFont(splash_font, fontSize * scale);
       draw->AddText(ImGui::GetFont(), fontSize * scale, point(x, y), color(ink),
                     value);
       ImGui::PopFont();
@@ -179,7 +187,7 @@ void SandboxSplashScene::render()
     text(72, 222, 170, "Go", CREAM);
     text(72, 364, 170, "Again", CREAM);
     // Measure the actual title font so the rule always spans Again exactly.
-    ImGui::PushFont(nullptr, 170.0f * scale);
+    ImGui::PushFont(splash_font, 170.0f * scale);
     const float titleWidth = ImGui::CalcTextSize("Again").x;
     ImGui::PopFont();
     draw->AddRectFilled(point(76, 571),

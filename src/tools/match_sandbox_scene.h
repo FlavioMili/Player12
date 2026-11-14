@@ -99,6 +99,8 @@ class MatchSandboxScene : public GUIScene
    * 4: developer set-up. */
   int mode = 0;
   ImFont* sidebar_font = nullptr;
+  ImFont* setup_regular_font = nullptr;
+  ImFont* setup_medium_font = nullptr;
   std::vector<std::unique_ptr<Drill>> drills = makeDrills();
   int drill_index = 0;
 

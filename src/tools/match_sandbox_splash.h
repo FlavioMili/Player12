@@ -8,6 +8,7 @@
 #include "gui/gui_scene.h"
 
 class MatchSandboxScene;
+struct ImFont;
 
 /** Sandbox-only startup screen. The loader owns the controller until its
  * future completes; rendering never reads game data. Destruction joins it. */
@@ -23,6 +24,7 @@ class SandboxSplashScene final : public GUIScene
   SceneID getID() const override { return SceneID::MATCH_SANDBOX; }
 
  private:
+  ImFont* splash_font = nullptr;
   std::function<void()> loader;
   float elapsed = 0.0f;
   float exit_elapsed = 0.0f;

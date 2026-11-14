@@ -43,6 +43,8 @@
 #include "tools/match_sandbox_bench_scene.h"
 #include "tools/match_sandbox_measure_scene.h"
 #include "tools/match_sandbox_pickers.h"
+#include "tools/match_sandbox_setup_ui.h"
+#include "tools/match_sandbox_typography.h"
 #include "tools/match_sandbox_test_teams.h"
 #include "tools/match_sandbox_training_scene.h"
 #include "tools/match_sandbox_shot_map.h"
@@ -201,7 +203,12 @@ void MatchSandboxScene::onEnter()
   if (sidebar_font == nullptr)
   {
     const std::string fontPath = AssetPaths::file("assets/fonts/Manrope-Bold.ttf");
-    sidebar_font = ImGui::GetIO().Fonts->AddFontFromFileTTF(fontPath.c_str(), 28.0f);
+    const auto fontConfig = SandboxTypography::manropeConfig();
+    sidebar_font = ImGui::GetIO().Fonts->AddFontFromFileTTF(fontPath.c_str(), 14.0f, &fontConfig);
+    setup_regular_font = ImGui::GetIO().Fonts->AddFontFromFileTTF(
+        AssetPaths::file("assets/fonts/Manrope-Regular.ttf").c_str(), 16.0f, &fontConfig);
+    setup_medium_font = ImGui::GetIO().Fonts->AddFontFromFileTTF(
+        AssetPaths::file("assets/fonts/Manrope-Medium.ttf").c_str(), 14.0f, &fontConfig);
   }
   // Told apart from the game in the taskbar, and opened maximised (once:
   // a size the user picks afterwards is kept).
@@ -328,8 +335,8 @@ void MatchSandboxScene::render()
   const float scale = Theme::scale();
   const ImVec4 contentBackground = ImGui::GetStyleColorVec4(ImGuiCol_WindowBg);
   ImGui::PushStyleColor(ImGuiCol_WindowBg,
-                        ImVec4(0.094f, 0.078f, 0.059f, 1.0f));
-  ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(0.0f, 0.0f));
+                        ImVec4(22/255.0f, 19/255.0f, 16/255.0f, 1.0f));
+  ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(24.0f * scale, 24.0f * scale));
   ImGui::PushStyleVar(ImGuiStyleVar_WindowBorderSize, 0.0f);
   ImGui::PushStyleVar(ImGuiStyleVar_WindowRounding, 0.0f);
   ImGui::Begin("##match_sandbox", nullptr,
@@ -343,21 +350,26 @@ void MatchSandboxScene::render()
 
   renderSidebar();
   ImGui::SameLine(0.0f, 6.0f * scale);
-  // Only the page content keeps the original padding; navigation touches the
-  // window edges and its own child owns any navigation scrolling.
+  // The inset shell follows the reference; the content retains its existing
+  // internal padding and the navigation owns any overflow scrolling.
   ImGui::PushStyleVar(
       ImGuiStyleVar_WindowPadding,
+      mode == 4 ? ImVec2(0, 0) :
       ImVec2(Theme::Space::XL * scale, Theme::Space::L * scale));
-  ImGui::PushStyleColor(ImGuiCol_ChildBg, contentBackground);
+  ImGui::PushStyleColor(ImGuiCol_ChildBg, mode == 4 ?
+      ImVec4(22/255.0f, 19/255.0f, 16/255.0f, 1) : contentBackground);
+  if (mode == 4)
+  {
+    ImGui::PushStyleColor(ImGuiCol_ScrollbarBg, IM_COL32(15,13,11,255));
+    ImGui::PushStyleColor(ImGuiCol_ScrollbarGrab, IM_COL32(155,208,107,255));
+    ImGui::PushStyleColor(ImGuiCol_ScrollbarGrabHovered, IM_COL32(170,215,130,255));
+    ImGui::PushStyleColor(ImGuiCol_ScrollbarGrabActive, IM_COL32(170,215,130,255));
+  }
   ImGui::BeginChild("##sandbox_content", ImVec2(0.0f, 0.0f),
                     ImGuiChildFlags_AlwaysUseWindowPadding);
-  ImGui::PopStyleColor();
+  ImGui::PopStyleColor(mode == 4 ? 5 : 1);
   ImGui::PopStyleVar();
-  if (mode == 4)
-    UI::pageHeader("Set-up",
-                   "Choose the engine versions used by new matches, drills and "
-                   "training runs.");
-  else
+  if (mode != 4)
     UI::pageHeader("Match sandbox",
                    "Pick two clubs and both sides' tactics, then play the "
                    "match as the home side, or run a drill that isolates one "
@@ -401,100 +413,139 @@ void MatchSandboxScene::render()
 
 void MatchSandboxScene::renderDeveloperSetup()
 {
-  UI::beginAutoHeightCard("##engine_setup", "Engine versions");
-  ImGui::TextWrapped(
-      "Click Aardvark or Binturong for each setting. Changes apply to new "
-      "runs; existing runs keep their settings.");
-  ImGui::Spacing();
-  SandboxPickers::engineVersionsTable();
-  UI::endCard();
-
-  UI::beginAutoHeightCard("##simulation_setup", "Simulation settings");
-  ImGui::SetNextItemWidth(180.0f * Theme::scale());
-  ImGui::SliderFloat("Home advantage", &sandboxHomeAdvantage(), 0.0f,
-                     MatchTuning::Context::MAX_HOME_ADVANTAGE_SCALE, "%.2f");
-  if (ImGui::IsItemHovered())
-    ImGui::SetTooltip(
-        "Applies to new matches, drills and training runs. 0 is neutral, 1 the "
-        "game's full home edge, 2 double.");
-  ImGui::Checkbox("Full tactical familiarity", &full_familiarity);
-  if (ImGui::IsItemHovered())
-    ImGui::SetTooltip(
-        "New matches start with both sides knowing their tactics perfectly. "
-        "Otherwise use each club's familiarity.");
-  ImGui::Checkbox("Debug at kick-off", &debug_at_kick_off);
-  if (ImGui::IsItemHovered())
-    ImGui::SetTooltip(
-        "Open the review and debugger in the match's side panel at kick-off.");
-  UI::endCard();
+  SandboxSetupUI::render(Theme::scale(), setup_regular_font, setup_medium_font,
+                         sidebar_font, full_familiarity, debug_at_kick_off);
 }
 
 void MatchSandboxScene::renderSidebar()
 {
   const float scale = Theme::scale();
-  constexpr ImVec4 NAV_BG(0.094f, 0.078f, 0.059f, 1.0f);
-  constexpr ImVec4 TEXT(0.941f, 0.918f, 0.886f, 1.0f);
-  constexpr ImVec4 MUTED(0.627f, 0.584f, 0.541f, 1.0f);
-  constexpr ImVec4 SELECTED(0.180f, 0.153f, 0.125f, 1.0f);
-  constexpr ImVec4 HOVER(0.227f, 0.196f, 0.161f, 1.0f);
-  constexpr ImVec4 LIME(0.608f, 0.816f, 0.420f, 1.0f);
-  ImGui::PushStyleColor(ImGuiCol_ChildBg, NAV_BG);
-  ImGui::PushStyleColor(ImGuiCol_Text, TEXT);
-  ImGui::PushStyleColor(ImGuiCol_Header, SELECTED);
-  ImGui::PushStyleColor(ImGuiCol_HeaderHovered, HOVER);
-  ImGui::PushStyleColor(ImGuiCol_HeaderActive, HOVER);
+  const ImU32 bg = IM_COL32(15, 13, 11, 255);
+  const ImU32 cream = IM_COL32(240, 234, 226, 255);
+  const ImU32 white = IM_COL32(255, 255, 255, 255);
+  ImGui::PushStyleColor(ImGuiCol_ChildBg, bg);
   ImGui::PushStyleVar(ImGuiStyleVar_ChildRounding, 0.0f);
   ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding,
-                      ImVec2(16.0f * scale, 24.0f * scale));
-  ImGui::BeginChild("##sandbox_sidebar", ImVec2(220.0f * scale, 0.0f),
+                      ImVec2(12 * scale, 16 * scale));
+  ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, ImVec2(0, 2 * scale));
+  ImGui::BeginChild("##sandbox_sidebar", ImVec2(220 * scale, 0),
                     ImGuiChildFlags_AlwaysUseWindowPadding);
+  ImDrawList* draw = ImGui::GetWindowDrawList();
+  const ImVec2 panel = ImGui::GetWindowPos();
+  const ImVec2 size = ImGui::GetWindowSize();
+  const ImVec2 brand = ImGui::GetCursorScreenPos();
+  ImGui::PushFont(sidebar_font, 24);
+  const ImVec2 extent = ImGui::CalcTextSize("Player 12");
+  draw->AddText(ImVec2(brand.x + (196 * scale - extent.x) / 2,
+                       brand.y + (80 * scale - extent.y) / 2),
+                cream, "Player 12");
+  ImGui::PopFont();
+  ImGui::Dummy(ImVec2(196 * scale, 80 * scale));
+  ImGui::Dummy(ImVec2(0, 22 * scale));
+  ImGui::PushFont(sidebar_font, 14);
+  const auto item = [&](const char* label, int destination, int icon)
   {
-    ImGui::PushFont(sidebar_font, 28.0f * scale);
-    ImGui::TextColored(LIME, "Player 12");
-    ImGui::PopFont();
-  }
-  ImGui::TextColored(MUTED, "MATCH ENGINE SANDBOX");
-  ImGui::Dummy(ImVec2(0.0f, 32.0f * scale));
-
-  constexpr std::array<const char*, 5> LABELS{"Set-up", "Drills", "Training",
-                                              "Matches", "Tools"};
-  constexpr std::array<int, 5> MODES{4, 1, 2, 0, 3};
-  for (std::size_t index = 0; index < LABELS.size(); ++index)
-  {
-    const bool selected = mode == MODES[index];
+    const bool selected = mode == destination;
     const ImVec2 row = ImGui::GetCursorScreenPos();
-    ImGui::PushFont(sidebar_font, 28.0f * scale);
-    const float tracking = 0.5f * scale;
-    const float textHeight = ImGui::GetFontSize();
-    // Hidden selectable text lets the label use the reference's letter spacing.
-    ImGui::PushID(static_cast<int>(index));
-    // A full-width hit target retains keyboard navigation and hover feedback.
-    if (ImGui::Selectable("##section", selected, 0,
-                          ImVec2(0.0f, 44.0f * scale)))
+    if (ImGui::InvisibleButton(label, ImVec2(196 * scale, 44 * scale),
+                               ImGuiButtonFlags_EnableNav))
     {
-      mode = MODES[index];
+      mode = destination;
       show_recordings = false;
     }
-    ImGui::PopID();
-    ImVec2 labelPos(row.x, row.y + (44.0f * scale - textHeight) * 0.5f);
-    for (const char* letter = LABELS[index]; *letter != '\0'; ++letter)
-    {
-      ImGui::GetWindowDrawList()->AddText(
-          labelPos, ImGui::ColorConvertFloat4ToU32(selected ? LIME : TEXT),
-          letter, letter + 1);
-      labelPos.x += ImGui::CalcTextSize(letter, letter + 1).x + tracking;
-    }
-    ImGui::PopFont();
+    if (selected || ImGui::IsItemHovered())
+      draw->AddRectFilled(
+          row, ImVec2(row.x + 196 * scale, row.y + 44 * scale),
+          selected ? IM_COL32(46, 39, 32, 255) : IM_COL32(31, 26, 21, 255));
     if (selected)
-      ImGui::GetWindowDrawList()->AddRectFilled(
-          ImVec2(row.x - 8.0f * scale, row.y),
-          ImVec2(row.x - 5.0f * scale, row.y + 44.0f * scale),
-          ImGui::ColorConvertFloat4ToU32(LIME));
-    ImGui::Dummy(ImVec2(0.0f, 6.0f * scale));
-  }
+      draw->AddRectFilled(row, ImVec2(row.x + 3 * scale, row.y + 44 * scale),
+                          white);
+    if (ImGui::IsItemFocused())
+      draw->AddRect(row, ImVec2(row.x + 196 * scale, row.y + 44 * scale),
+                    IM_COL32(133, 122, 110, 255), 0, 0, scale);
+    const ImU32 ink = selected ? white : IM_COL32(196, 186, 174, 255);
+    const auto pt = [&](float x, float y)
+    {
+      return ImVec2(row.x + (14 + x * 20 / 24) * scale,
+                    row.y + (12 + y * 20 / 24) * scale);
+    };
+    const auto line = [&](float x, float y, float xx, float yy)
+    { draw->AddLine(pt(x, y), pt(xx, yy), ink, 1.5f * scale); };
+    if (icon == 0)
+    {
+      draw->AddRect(pt(3, 5), pt(21, 21), ink, 0, 0, 1.5f * scale);
+      line(3, 10, 21, 10);
+      line(8, 3, 8, 7);
+      line(16, 3, 16, 7);
+    }
+    else if (icon == 1)
+    {
+      draw->AddRect(pt(3, 4), pt(21, 20), ink, 0, 0, 1.5f * scale);
+      line(7, 15, 16, 8);
+      line(12, 8, 16, 8);
+      line(16, 8, 16, 12);
+      draw->AddCircle(pt(7, 8), 1.5f * scale, ink, 12, 1.5f * scale);
+    }
+    else if (icon == 2)
+    {
+      line(7, 19, 10, 5);
+      line(10, 5, 14, 5);
+      line(14, 5, 17, 19);
+      line(5, 20, 19, 20);
+      line(8, 14, 16, 14);
+    }
+    else if (icon == 3)
+    {
+      line(3, 20, 21, 20);
+      line(6, 17, 6, 11);
+      line(12, 17, 12, 5);
+      line(18, 17, 18, 8);
+    }
+    else
+    {
+      line(4, 6, 20, 6);
+      line(4, 12, 20, 12);
+      line(4, 18, 20, 18);
+      for (const ImVec2 knob : {ImVec2(9, 6), ImVec2(15, 12), ImVec2(8, 18)})
+      {
+        draw->AddCircleFilled(pt(knob.x, knob.y), 2.5f * scale, bg);
+        draw->AddCircle(pt(knob.x, knob.y), 2.5f * scale, ink, 12,
+                        1.5f * scale);
+      }
+    }
+    ImVec2 pos(row.x + 46 * scale, row.y + 15 * scale);
+    for (const char* c = label; *c; ++c)
+    {
+      draw->AddText(pos, selected ? white : cream, c, c + 1);
+      pos.x += ImGui::CalcTextSize(c, c + 1).x + 1.5f * scale;
+    }
+  };
+  item("MATCHES", 0, 0);
+  item("DRILLS", 1, 1);
+  item("TRAINING", 2, 2);
+  item("TOOLS", 3, 3);
+  // The sandbox's settings destination follows the reference footer placement.
+  ImGui::SetCursorPosY(std::max(ImGui::GetCursorPosY(), size.y - 69 * scale));
+  const ImVec2 divider = ImGui::GetCursorScreenPos();
+  draw->AddLine(divider, ImVec2(divider.x + 196 * scale, divider.y),
+                IM_COL32(51, 44, 36, 255), scale);
+  ImGui::Dummy(ImVec2(0, 7 * scale));
+  item("SET-UP", 4, 4);
+  ImGui::PopFont();
+  const ImU32 edge = IM_COL32(22, 19, 16, 255), clear = IM_COL32(22, 19, 16, 0);
+  const float f = 6 * scale;
+  const ImVec2 br(panel.x + size.x, panel.y + size.y);
+  draw->AddRectFilledMultiColor(panel, ImVec2(br.x, panel.y + f), edge, edge,
+                                clear, clear);
+  draw->AddRectFilledMultiColor(ImVec2(panel.x, br.y - f), br, clear, clear,
+                                edge, edge);
+  draw->AddRectFilledMultiColor(panel, ImVec2(panel.x + f, br.y), edge, clear,
+                                clear, edge);
+  draw->AddRectFilledMultiColor(ImVec2(br.x - f, panel.y), br, clear, edge,
+                                edge, clear);
   ImGui::EndChild();
-  ImGui::PopStyleVar(2);
-  ImGui::PopStyleColor(5);
+  ImGui::PopStyleVar(3);
+  ImGui::PopStyleColor();
 }
 
 void MatchSandboxScene::renderDrills()

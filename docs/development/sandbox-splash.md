@@ -33,3 +33,5 @@ in build-possession. The original visual verification attempt was stopped by
 the user; no completed visual inspection is claimed. The executable is copied
 to build/src/Release/match_sandbox.exe after a successful rebuild, with matching
 SHA-256 hashes checked.
+
+Typography uses the bundled Manrope Bold font explicitly for all splash copy, including title-width measurement for the lime rule.
