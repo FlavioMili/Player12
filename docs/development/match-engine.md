@@ -63,9 +63,24 @@ Points and the steps between them are metres: `point - point` is a metric
 `Vector2F`, and `point + vector` is a point. `distance` and `metricDirection`
 measure between points. Geometry worked in `Vector2F` reads points through
 `asVector(point)` and writes them back with `asPoint(vector)` (both only change
-the type). Tuning given as a fraction of the pitch (`_X`, `_Y`, shape offsets)
-becomes metres through `pitch.at`, `atX` and `atY`, and goes back through
-`fractionX`/`fractionY`.
+the type).
+
+Tuning distances come in two kinds (training ground plan §17):
+
+- **Metres** (`_METRES` names): margins, buffers and distances from the
+  ball, a player, a line or a goal, the same on any pitch. The markings
+  come from the Laws: the goal (`Shooting::GOAL_HALF_WIDTH_METRES`), the
+  penalty mark and area (`Pitch::PENALTY_SPOT_METRES`,
+  `PENALTY_AREA_DEPTH_METRES`), the goal area. "Near a goal" tests measure
+  from the goal line with `pitch.fromOwnGoalLine(point, home)` and
+  `pitch.toGoalLine(point, home)`.
+- **Shares of the pitch, on purpose**: the team's shape and its moves from
+  the formation (the final third, attack channels, the defensive block,
+  support and run advances, pass progression). These scale with the
+  pitch. They become metres through `pitch.at`, `atX` and `atY`, and go
+  back through `fractionX`/`fractionY`. The formation frame (tactics,
+  handshake line-up, substitutions) keeps its own `_SHARE` copies of the
+  player limits and the keeper's line-up spot.
 
 Each engine holds its own pitch size ([MatchPitch](../../src/model/match_pitch.h),
 `MatchEngine::pitch`): length, width and the values built from them (body
@@ -75,10 +90,8 @@ members that use it; a free function takes the pitch as its first argument
 ([match_engine_internal.h](../../src/model/match_engine_internal.h)). Engine
 code never reads `MatchTuning::Pitch::MATCH_LENGTH_METRES` /
 `MATCH_WIDTH_METRES`: those are the match pitch's size, the default, for
-code outside the engine (views, tactics screens, tools). Pitch fractions in
-the tuning (goal mouth, penalty area edges, player limits) are scaled by the
-engine's pitch. Training ground stage 4 decides which of them stay fractions
-and which become metres.
+code outside the engine (views, tactics screens, tools). The tuning's shares
+of the pitch are scaled by the engine's pitch; its metres are not.
 
 There are three different notions of time:
 
