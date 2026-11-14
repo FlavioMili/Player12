@@ -173,17 +173,35 @@ its own (`Drill::pitch()`).
   goal-line test, the keepers' angles, the brains' aim, the xG angle) reads
   the pitch's, so a match pitch is unchanged and a training goal needs no
   code of its own. The xG fit itself is the match one: its angle term shrinks
-  with the goal but its distance terms do not, and it assumes a keeper.
+  with the goal but its distance terms do not, and it assumes a keeper. A
+  pitch without a goal gives no chance at all (xG 0), so nobody shoots.
 * **Walls.** On a walled pitch the ball bounces off the edge every sub-step
   at any height, keeping the boards' restitution (`bounceOffWalls`). The
   walls are open across a goal's mouth, and behind the goal line the net is
   a closed box. The ball is never out of play: the only thing either
   out-of-play version checks is a goal, so there are no throw-ins or corners.
-  A goal has a short stop (3 s, as in Play mode) and a kick-off. Bodies stay
-  a radius inside the walls.
-* **Nothing round it.** A training pitch has no furniture, no frames when it
-  has no goals, and no touchline people. The referee still gives fouls; a
-  training pitch's own rules come later.
+  A goal has a short stop (3 s, as in Play mode). Bodies stay a radius off
+  the walls, on the side they are on: the players inside, a coach outside.
+* **Laws.** `MatchPitch::laws` (`PitchLaws`) says which Laws are played:
+  offside, fouls, penalties and cards, and how play restarts. A match has
+  them all and the Laws' restarts; `PitchLaws::none()`, a training pitch's
+  default, has none and restarts by a coach's serve. A drill switches on
+  what it needs. With fouls off a challenge that rolls a foul ends as if it
+  had not (`whistles`), counted as a foul not given; offside needs both the
+  pitch's Law and the drill rule (`offsideCalled`).
+* **The coach's serve.** A serving pitch restarts with `MatchState::SERVE`
+  instead of a kick-off or a free kick or penalty: after a goal's stop
+  everyone holds where he was, after a whistle (2 s) likewise, and the ball
+  waits at the feet of the coach (`TouchlineRole::SERVER`), a touchline
+  body at `MatchPitch::serveStation` outside the wall. He then plays it
+  along the ground from just inside the wall, weighted as a pass, to a
+  player of the side the Laws name (`ServeSide`: the side that conceded or
+  was fouled, alternate, home or away; `ServeReceiver`: the most open
+  player or the one nearest him), as a fed ball meant for that player.
+  `beginServe`, `updateServe` and `deliverServe` in
+  `match_out_of_play_dispatch.cpp` are shared by both out-of-play versions.
+* **Nothing else round it.** A training pitch has no furniture, no frames
+  when it has no goals, and no touchline people but its coach.
 * **Kit.** `MatchEngine::setKit` lays named cones, lines and areas
   (`PitchKit::Layout`, [match_layout.h](../../src/model/match_layout.h)) on the
   pitch; the views draw them under the players. Nothing collides with them
@@ -192,11 +210,13 @@ its own (`Drill::pitch()`).
   2D view fits a training pitch, with a 5 m grass margin, inside its area; the
   3D view centres it where the match pitch sits (`worldOf`), so the cameras
   frame it unchanged. Both draw plain grass, the walls (a line in 2D, a net
-  fence in 3D, open at the goal mouths), the goals at their size and the kit,
-  and none of the stadium or markings.
+  fence in 3D, open at the goal mouths), the goals at their size, the kit
+  and the coach (a bright training top), and none of the stadium or
+  markings.
 
-The Walled box drill plays a few a side on one, with any goal, and reports
-the wall bounces, goals and shots; `fm_lab drill --pitch LxW [--goal KIND]`
+The Walled box drill plays a few a side on one, with any goal, the serve's
+side and receiver, and fouls off or whistled, and reports the wall bounces,
+goals, shots, serves and fouls; `fm_lab drill --pitch LxW [--goal KIND]`
 plays any drill on one (KIND is none, full, 9v9, 7v7, futsal, 5-a-side, small
 or pop-up).
 
