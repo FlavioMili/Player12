@@ -188,5 +188,5 @@ void drawLegGhost(const Painter& paint, const Body& body, const ShotLegs& legs, 
 void drawLabels(const Painter& paint, const std::vector<Label>& labels);
 
 /** The entries as a table (Shape, Value, From, with WIP notes). */
-void renderTable(const std::vector<Entry>& entries);
+void renderTable(const std::vector<Entry>& entries, ImFont* headingFont = nullptr);
 }  // namespace TrueView

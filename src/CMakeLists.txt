@@ -715,6 +715,7 @@ add_executable(match_sandbox
     tools/match_sandbox_setup_ui.cpp
     tools/match_sandbox_setup_ui.h
     tools/match_sandbox_typography.h
+    tools/match_sandbox_page_ui.h
     tools/match_sandbox_debugger.h
     tools/match_sandbox_debugger.cpp
     tools/match_sandbox_checks.h

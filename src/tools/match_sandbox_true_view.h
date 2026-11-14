@@ -29,6 +29,7 @@ class TrueViewScene : public GUIScene
  public:
   explicit TrueViewScene(GUIView* guiView_ptr);
 
+  void onEnter() override;
   void update(float deltaTime) override;
   void render() override;
   SceneID getID() const override;
@@ -95,4 +96,15 @@ class TrueViewScene : public GUIScene
   float playbackSpeed = 0.5f;
   /** This frame's shapes, for the table. */
   std::vector<TrueView::Entry> entries;
+  enum class ControlTab
+  {
+    PLAYER,
+    POSE,
+    TECHNIQUE,
+    LAYERS
+  };
+  ControlTab controlTab = ControlTab::PLAYER;
+  bool showValues = false;
+  ImFont* regularFont = nullptr;
+  ImFont* boldFont = nullptr;
 };

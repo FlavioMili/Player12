@@ -32,6 +32,7 @@ class TechniqueBenchScene : public GUIScene
   explicit TechniqueBenchScene(GUIView* guiView_ptr, bool runNow = false);
   ~TechniqueBenchScene() override;
 
+  void onEnter() override;
   void update(float deltaTime) override;
   void render() override;
   SceneID getID() const override;
@@ -56,9 +57,9 @@ class TechniqueBenchScene : public GUIScene
   void renderTuning();
   void renderFilters();
   void renderTestList();
-  void renderResults();
+  void renderResults(float width, float height);
   void renderChart(ImVec2 size);
-  void renderGrid();
+  void renderGrid(ImVec2 size);
   void renderTest();
   void watch(const BenchTest& test, float skill, int seed);
   void openContactView();
@@ -103,4 +104,7 @@ class TechniqueBenchScene : public GUIScene
   /** Drills for Watch (they outlive the drill scene). */
   std::vector<std::unique_ptr<Drill>> watchDrills;
   bool runPending = false;
+  int panelTab = 0;
+  ImFont* regularFont = nullptr;
+  ImFont* boldFont = nullptr;
 };

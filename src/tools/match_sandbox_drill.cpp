@@ -152,22 +152,68 @@ bool Drill::applyPreset(const std::string& name)
   return false;
 }
 
-void Drill::renderSettings()
+void Drill::renderSettings(int columns, bool includeSeed, bool stackedLabels)
 {
   if (const std::vector<DrillPreset> list = presets(); !list.empty())
   {
     // A picker that fills the settings in; it keeps no state of its own.
-    if (ImGui::BeginCombo("Situation", "choose to fill in the settings..."))
+    if (stackedLabels)
+    {
+      ImGui::TextUnformatted("Situation");
+      ImGui::SetNextItemWidth(-FLT_MIN);
+    }
+    if (ImGui::BeginCombo(stackedLabels ? "##situation" : "Situation",
+                          "choose to fill in the settings..."))
     {
       for (const DrillPreset& preset : list)
       {
-        if (ImGui::Selectable(preset.name.c_str())) (void)applyPreset(preset.name);
+        if (ImGui::Selectable(preset.name.c_str()))
+          (void)applyPreset(preset.name);
         if (!preset.summary.empty() && ImGui::IsItemHovered())
           ImGui::SetTooltip("%s", preset.summary.c_str());
       }
       ImGui::EndCombo();
     }
   }
+  const bool split = columns == 2;
+  const bool stacked = split || stackedLabels;
+  bool formOpen = false;
+  int formId = 0;
+  const auto closeForm = [&]
+  {
+    if (!formOpen) return;
+    ImGui::EndTable();
+    ImGui::PopStyleVar(3);
+    ImGui::PopID();
+    formOpen = false;
+  };
+  const auto nextField = [&]() -> bool
+  {
+    if (!split) return true;
+    if (!formOpen)
+    {
+      ImGui::PushID(formId++);
+      const float scale = Theme::scale();
+      ImGui::PushStyleVar(ImGuiStyleVar_FramePadding,
+                          ImVec2(8 * scale, 4 * scale));
+      ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing,
+                          ImVec2(6 * scale, 2 * scale));
+      ImGui::PushStyleVar(ImGuiStyleVar_CellPadding,
+                          ImVec2(3 * scale, 3 * scale));
+      formOpen = ImGui::BeginTable(
+          "##parameter_columns", 2,
+          ImGuiTableFlags_SizingStretchSame | ImGuiTableFlags_BordersInnerV |
+              ImGuiTableFlags_BordersInnerH | ImGuiTableFlags_RowBg);
+      if (!formOpen)
+      {
+        ImGui::PopStyleVar(3);
+        ImGui::PopID();
+        return false;
+      }
+    }
+    ImGui::TableNextColumn();
+    return true;
+  };
   // A section starts where its title changes (by text: settings may each
   // hold their own copy of it); a closed collapsible one hides its settings.
   const char* section = nullptr;
@@ -178,6 +224,7 @@ void Drill::renderSettings()
     if (parameter.section &&
         (!section || std::strcmp(parameter.section, section) != 0))
     {
+      closeForm();
       section = parameter.section;
       if (parameter.collapsible)
         open = ImGui::CollapsingHeader(section);
@@ -188,9 +235,22 @@ void Drill::renderSettings()
       }
     }
     if (!open) continue;
+    if (!nextField()) continue;
+    if (stacked)
+    {
+      // Clear a baseline inherited from the neighbouring cell's framed input.
+      ImGui::Dummy(ImVec2(0, 0));
+      ImGui::TextWrapped("%s",
+                         parameter.label ? parameter.label : parameter.name);
+      if (parameter.tooltip && ImGui::IsItemHovered())
+        ImGui::SetTooltip("%s", parameter.tooltip);
+      ImGui::SetNextItemWidth(-FLT_MIN);
+    }
     const std::string id =
-        parameter.label ? std::format("{}##{}", parameter.label, parameter.name)
-                        : std::string(parameter.name);
+        stacked ? std::string("##") + parameter.name
+        : parameter.label
+            ? std::format("{}##{}", parameter.label, parameter.name)
+            : std::string(parameter.name);
     float& value = *parameter.value;
     if (!parameter.choices.empty())
     {
@@ -202,8 +262,7 @@ void Drill::renderSettings()
     else if (parameter.integer)
     {
       int whole = static_cast<int>(std::lround(value));
-      if (ImGui::SliderInt(id.c_str(), &whole,
-                           static_cast<int>(parameter.min),
+      if (ImGui::SliderInt(id.c_str(), &whole, static_cast<int>(parameter.min),
                            static_cast<int>(parameter.max)))
         value = static_cast<float>(whole);
     }
@@ -221,14 +280,26 @@ void Drill::renderSettings()
         ImGui::PushStyleColor(ImGuiCol_SliderGrabActive, warning);
         ImGui::PushStyleColor(ImGuiCol_Text, warning);
       }
-      if (ImGui::SliderFloat(id.c_str(), &shown, parameter.min, parameter.max,
-                             parameter.max - parameter.min < 2.5f ? "%.3f" : "%.1f"))
+      if (ImGui::SliderFloat(
+              id.c_str(), &shown, parameter.min, parameter.max,
+              parameter.max - parameter.min < 2.5f ? "%.3f" : "%.1f"))
         value = shown;
       if (automatic) ImGui::PopStyleColor(3);
     }
     if (parameter.tooltip && ImGui::IsItemHovered())
       ImGui::SetTooltip("%s", parameter.tooltip);
   }
+  if (includeSeed && nextField())
+  {
+    if (stacked)
+    {
+      ImGui::Dummy(ImVec2(0, 0));
+      ImGui::TextUnformatted("Seed");
+      ImGui::SetNextItemWidth(-FLT_MIN);
+    }
+    ImGui::InputScalar(stacked ? "##seed" : "Seed", ImGuiDataType_U32, &seed);
+  }
+  closeForm();
 }
 
 // --- Drawing ---------------------------------------------------------------
@@ -240,7 +311,8 @@ bool DrillDraw::project(const IMatchRenderer& renderer, PitchPoint pitch,
 }
 
 void DrillDraw::line(const IMatchRenderer& renderer, ImDrawList& draw,
-                     PitchPoint from, PitchPoint to, ImU32 color, float thickness)
+                     PitchPoint from, PitchPoint to, ImU32 color,
+                     float thickness)
 {
   ImVec2 a;
   ImVec2 b;

@@ -12,9 +12,9 @@
 #include <memory>
 
 #include "gui/gui_scene.h"
-#include "gui/scenes/match_play_controller.h"
 #include "gui/render/imatch_renderer.h"
 #include "gui/render/match_render_snapshot.h"
+#include "gui/scenes/match_play_controller.h"
 #include "tools/match_sandbox_debugger.h"
 #include "tools/match_sandbox_drill.h"
 #include "tools/match_sandbox_inspector.h"
@@ -50,7 +50,8 @@ class DrillScene : public GUIScene
   void restart();
   void stepRun(int steps);
   void renderPanel(float width);
-  void renderPitch();
+  void renderControls(float width);
+  void renderPitch(float width, float height);
   void renderDebugTools();
   /** Keyboard navigation off while you steer (arrows, Space would move it). */
   void suspendKeyboardNavigation(bool suspend);
@@ -78,4 +79,6 @@ class DrillScene : public GUIScene
   MatchPlayController play;
   PlayScreenBasis basis;
   bool navSuspended = false;
+  ImFont* regularFont = nullptr;
+  ImFont* boldFont = nullptr;
 };

@@ -23,6 +23,27 @@
 #include "model/player.h"
 #include "tools/match_sandbox_recorder.h"
 
+enum class DrillCategory
+{
+  Movement, Passing, Shooting, Control, Duels, Aerial, Goalkeeping, Count
+};
+
+inline const char* drillCategoryName(DrillCategory category)
+{
+  switch (category)
+  {
+    case DrillCategory::Movement: return "MOVEMENT";
+    case DrillCategory::Passing: return "PASSING";
+    case DrillCategory::Shooting: return "SHOOTING";
+    case DrillCategory::Control: return "CONTROL";
+    case DrillCategory::Duels: return "DUELS";
+    case DrillCategory::Aerial: return "AERIAL";
+    case DrillCategory::Goalkeeping: return "GOALKEEPING";
+    case DrillCategory::Count: break;
+  }
+  return "DRILLS";
+}
+
 class IMatchRenderer;
 class Player;
 
@@ -100,6 +121,8 @@ class Drill
 {
  public:
   virtual ~Drill() = default;
+  // Catalogue metadata assigned explicitly by makeDrills, independent of names.
+  DrillCategory category = DrillCategory::Movement;
 
   [[nodiscard]] virtual const char* name() const = 0;
   [[nodiscard]] virtual const char* summary() const = 0;
@@ -109,9 +132,13 @@ class Drill
   [[nodiscard]] virtual std::vector<DrillPreset> presets() const { return {}; }
   /** Sets the preset's settings; false for an unknown preset name. */
   bool applyPreset(const std::string& name);
-  /** Settings widgets: the presets, then every parameter as a slider or a
-   * choice (ctrl+click a slider to type a value beyond its range). */
-  void renderSettings();
+  /** Settings widgets: presets, then parameters as sliders or choices.
+   * Two columns place labels above controls and retain section headers.
+   * includeSeed adds seed entry; stackedLabels also puts the situation picker
+   * and single-column labels above controls. Other views retain their default
+   * layout (ctrl+click a slider to type a value beyond its range). */
+  void renderSettings(int columns = 1, bool includeSeed = false,
+                      bool stackedLabels = false);
   /** Shown below the settings (after the knobs): e.g. how hard the last
    * run's strike was. */
   virtual void renderAfterSettings() const {}

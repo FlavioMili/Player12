@@ -825,16 +825,19 @@ void drawLabels(const Painter& paint, const std::vector<Label>& labels)
   }
 }
 
-void renderTable(const std::vector<Entry>& entries)
+void renderTable(const std::vector<Entry>& entries, ImFont* headingFont)
 {
   if (!ImGui::BeginTable("##entries", 3,
                          ImGuiTableFlags_RowBg | ImGuiTableFlags_BordersInnerH |
+                             (headingFont ? ImGuiTableFlags_BordersInnerV : 0) |
                              ImGuiTableFlags_SizingStretchProp))
     return;
   ImGui::TableSetupColumn("Shape", ImGuiTableColumnFlags_WidthStretch, 1.3f);
   ImGui::TableSetupColumn("Value", ImGuiTableColumnFlags_WidthStretch, 0.8f);
   ImGui::TableSetupColumn("From", ImGuiTableColumnFlags_WidthStretch, 1.4f);
+  if (headingFont) ImGui::PushFont(headingFont, 14);
   ImGui::TableHeadersRow();
+  if (headingFont) ImGui::PopFont();
   for (const Entry& entry : entries)
   {
     ImGui::TableNextRow();

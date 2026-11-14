@@ -103,6 +103,7 @@ class MatchSandboxScene : public GUIScene
   ImFont* setup_medium_font = nullptr;
   std::vector<std::unique_ptr<Drill>> drills = makeDrills();
   int drill_index = 0;
+  std::array<int, static_cast<std::size_t>(DrillCategory::Count)> category_drill_indices{};
 
   // Training: a session for the home club's squad.
   void renderTraining();

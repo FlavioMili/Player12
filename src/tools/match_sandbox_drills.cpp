@@ -9542,31 +9542,36 @@ class WalledBoxDrill final : public Drill
 std::vector<std::unique_ptr<Drill>> makeDrills()
 {
   std::vector<std::unique_ptr<Drill>> drills;
-  drills.push_back(std::make_unique<SprintDrill>());
-  drills.push_back(std::make_unique<TurnAndRunDrill>());
-  drills.push_back(std::make_unique<TurnDrill>());
-  drills.push_back(std::make_unique<SlalomDrill>());
-  drills.push_back(std::make_unique<RepeatedSprintsDrill>());
-  drills.push_back(std::make_unique<FlagChaseDrill>());
-  drills.push_back(std::make_unique<OvertakeDrill>());
-  drills.push_back(std::make_unique<LooseBallDrill>());
-  drills.push_back(std::make_unique<TackleDrill>());
-  drills.push_back(std::make_unique<CollisionDrill>());
-  drills.push_back(std::make_unique<ShotDrill>());
-  drills.push_back(std::make_unique<ShotBlockDrill>());
-  drills.push_back(std::make_unique<ShotTargetDrill>());
-  drills.push_back(std::make_unique<FirstTouchDrill>());
-  drills.push_back(std::make_unique<PassDrill>());
-  drills.push_back(std::make_unique<FirstTimePassDrill>());
-  drills.push_back(std::make_unique<CorridorPassDrill>());
-  drills.push_back(std::make_unique<BullseyePassDrill>());
-  drills.push_back(std::make_unique<DrivenCorridorDrill>());
-  drills.push_back(std::make_unique<ChipTargetDrill>());
-  drills.push_back(std::make_unique<KeeperThrowDrill>());
-  drills.push_back(std::make_unique<HeaderTargetDrill>());
-  drills.push_back(std::make_unique<BodyControlDrill>(false));
-  drills.push_back(std::make_unique<BodyControlDrill>(true));
-  drills.push_back(std::make_unique<LooseHighBallDrill>());
-  drills.push_back(std::make_unique<WalledBoxDrill>());
+  const auto add = [&](DrillCategory category, std::unique_ptr<Drill> drill)
+  {
+    drill->category = category;
+    drills.push_back(std::move(drill));
+  };
+  add(DrillCategory::Movement, std::make_unique<SprintDrill>());
+  add(DrillCategory::Movement, std::make_unique<TurnAndRunDrill>());
+  add(DrillCategory::Movement, std::make_unique<TurnDrill>());
+  add(DrillCategory::Movement, std::make_unique<SlalomDrill>());
+  add(DrillCategory::Movement, std::make_unique<RepeatedSprintsDrill>());
+  add(DrillCategory::Movement, std::make_unique<FlagChaseDrill>());
+  add(DrillCategory::Movement, std::make_unique<OvertakeDrill>());
+  add(DrillCategory::Duels, std::make_unique<LooseBallDrill>());
+  add(DrillCategory::Duels, std::make_unique<TackleDrill>());
+  add(DrillCategory::Duels, std::make_unique<CollisionDrill>());
+  add(DrillCategory::Shooting, std::make_unique<ShotDrill>());
+  add(DrillCategory::Duels, std::make_unique<ShotBlockDrill>());
+  add(DrillCategory::Shooting, std::make_unique<ShotTargetDrill>());
+  add(DrillCategory::Control, std::make_unique<FirstTouchDrill>());
+  add(DrillCategory::Passing, std::make_unique<PassDrill>());
+  add(DrillCategory::Passing, std::make_unique<FirstTimePassDrill>());
+  add(DrillCategory::Passing, std::make_unique<CorridorPassDrill>());
+  add(DrillCategory::Passing, std::make_unique<BullseyePassDrill>());
+  add(DrillCategory::Passing, std::make_unique<DrivenCorridorDrill>());
+  add(DrillCategory::Passing, std::make_unique<ChipTargetDrill>());
+  add(DrillCategory::Goalkeeping, std::make_unique<KeeperThrowDrill>());
+  add(DrillCategory::Aerial, std::make_unique<HeaderTargetDrill>());
+  add(DrillCategory::Control, std::make_unique<BodyControlDrill>(false));
+  add(DrillCategory::Control, std::make_unique<BodyControlDrill>(true));
+  add(DrillCategory::Aerial, std::make_unique<LooseHighBallDrill>());
+  add(DrillCategory::Duels, std::make_unique<WalledBoxDrill>());
   return drills;
 }

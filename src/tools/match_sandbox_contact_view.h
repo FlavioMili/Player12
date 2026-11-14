@@ -28,6 +28,7 @@ class ContactViewScene : public GUIScene
  public:
   explicit ContactViewScene(GUIView* guiView_ptr);
 
+  void onEnter() override;
   void update(float deltaTime) override;
   void render() override;
   SceneID getID() const override;
@@ -101,4 +102,9 @@ class ContactViewScene : public GUIScene
   /** What a drag on the circle moves: 0 none, 1 where he meets it, 2 where
    * it comes from, 3 where he sends it, 4 his facing. */
   int dragging = 0;
+  int panelTab = 0;
+  int inputTab = 0;
+  int tuningTab = 0;
+  ImFont* regularFont = nullptr;
+  ImFont* boldFont = nullptr;
 };

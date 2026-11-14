@@ -4,10 +4,10 @@
 #include <imgui.h>
 
 #include <algorithm>
-#include <cstring>
 
 #include "model/match_tuning.h"
 #include "tools/match_sandbox_setup.h"
+#include "tools/match_sandbox_typography.h"
 
 namespace
 {
@@ -112,12 +112,9 @@ struct SetupPainter
     if (ImGui::IsItemFocused())
       draw->AddRect(point(x - 2, y - 2), point(x + w + 2, y + 30), CREAM, 0, 0,
                     scale);
-    ImGui::PushFont(bold, 14);
-    const float width = ImGui::CalcTextSize(label).x / scale +
-                        static_cast<float>(std::strlen(label) - 1);
-    ImGui::PopFont();
-    text(x + (w - width) / 2, y + 5, label, 14, selected ? INK : CREAM, bold,
-         1);
+    SandboxTypography::label(draw, bold, 14, label, point(x, y),
+                             point(x + w, y + 28), selected ? INK : CREAM,
+                             scale);
     return pressed;
   }
 

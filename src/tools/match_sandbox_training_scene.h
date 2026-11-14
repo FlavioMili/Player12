@@ -8,6 +8,7 @@
 
 #pragma once
 
+#include <array>
 #include <cstddef>
 #include <memory>
 #include <string>
@@ -28,8 +29,9 @@ class IMatchRenderer;
 class TrainingSessionScene : public GUIScene
 {
  public:
-  TrainingSessionScene(GUIView* guiView_ptr, std::unique_ptr<TrainingSession> session,
-                std::string club);
+  TrainingSessionScene(GUIView* guiView_ptr,
+                       std::unique_ptr<TrainingSession> session,
+                       std::string club);
   ~TrainingSessionScene() override;
 
   void onEnter() override;
@@ -42,7 +44,7 @@ class TrainingSessionScene : public GUIScene
   void stepRun(int steps);
   void renderPanel(float width);
   void renderResults(TrainingDrill& drill);
-  void renderPitch();
+  void renderPitch(float width, float height);
 
   std::unique_ptr<TrainingSession> session;
   std::string club;
@@ -53,6 +55,10 @@ class TrainingSessionScene : public GUIScene
   float accumulator = 0.0f;
   /** Run the rest of the drill as fast as it goes. */
   bool skipping = false;
+  bool showResults = false;
+  std::array<int, 2> resultMetrics{0, 1};
+  ImFont* regularFont = nullptr;
+  ImFont* boldFont = nullptr;
 
   std::unique_ptr<IMatchRenderer> renderer;
   MatchRenderSnapshot snapshot;

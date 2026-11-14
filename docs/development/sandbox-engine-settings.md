@@ -28,6 +28,10 @@ All sandbox Manrope faces compensate for stb_truetype's ascent/descent sizing
 using ExtraSizeScale = 2732 / 2000, matching the reference's CSS em sizes. The
 bundled Bold face's OS/2 weight is 700; headings and buttons use that face rather
 than simulated bold or the Regular font.
+Version buttons share the action-button alignment helper: visible glyph bounds,
+tracking and side bearings determine the horizontal and vertical center. The
+implementation accounts for per-character pixel snapping instead of using a
+hard-coded baseline offset.
 
 Home advantage, Full tactical familiarity and Debug at kick-off are moved from
 the match footer into Simulation settings on this page. Home advantage applies
