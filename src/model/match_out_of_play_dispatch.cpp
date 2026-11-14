@@ -502,3 +502,157 @@ void MatchEngine::deliverServe()
   ++servesTaken;
   updateTeamPhases();
 }
+
+// --- Training dummies (training ground plan section 21) ---------------------
+// Shared by every version: solid kit, not a part of the Laws' pitch. A
+// dummy's solid shape is an upright cylinder with a domed top: every point
+// within its radius of its axis, the vertical line from the ground up to its
+// shoulder (its height less the radius).
+
+namespace
+{
+struct DummyPoint
+{
+  float x = 0.0f;
+  float y = 0.0f;
+  float z = 0.0f;
+};
+
+DummyPoint between(DummyPoint a, DummyPoint b, float t)
+{
+  return {a.x + (b.x - a.x) * t, a.y + (b.y - a.y) * t, a.z + (b.z - a.z) * t};
+}
+
+// The nearest point of the dummy's axis to `at`.
+DummyPoint nearestOnAxis(const PitchKit::Dummy& dummy, DummyPoint at)
+{
+  const PitchKit::DummyShape shape = PitchKit::dummyShape(dummy.kind);
+  return {dummy.at.x, dummy.at.y,
+          std::clamp(at.z, 0.0f, std::max(0.0f, shape.height - shape.radius))};
+}
+
+float gapToAxis(const PitchKit::Dummy& dummy, DummyPoint at)
+{
+  const DummyPoint near = nearestOnAxis(dummy, at);
+  return std::sqrt((at.x - near.x) * (at.x - near.x) + (at.y - near.y) * (at.y - near.y) +
+                   (at.z - near.z) * (at.z - near.z));
+}
+
+// The ball touches the dummy with its centre this close to the axis.
+float dummyReach(const PitchKit::Dummy& dummy)
+{
+  return PitchKit::dummyShape(dummy.kind).radius + MatchTuning::Units::BALL_RADIUS_METRES;
+}
+
+// How far along the straight path from `from` to `to` the ball first meets
+// the dummy (coming into it), if it does: as the woodwork's, the path
+// stepped through 1 cm at a time, the touch then found by halving.
+std::optional<float> dummyContactShare(const PitchKit::Dummy& dummy, DummyPoint from,
+                                       DummyPoint to)
+{
+  constexpr float STEP_METRES = 0.01f;
+  constexpr int HALVINGS = 14;
+  const float reach = dummyReach(dummy);
+  const float path = std::sqrt((to.x - from.x) * (to.x - from.x) +
+                               (to.y - from.y) * (to.y - from.y) +
+                               (to.z - from.z) * (to.z - from.z));
+  const float start = gapToAxis(dummy, from);
+  // Nowhere near it.
+  if (start - path > reach) return std::nullopt;
+  // Already touching: met now, if going further in.
+  if (start <= reach)
+  {
+    if (path <= EPSILON) return std::nullopt;
+    const float probe = std::min(1.0f, 0.001f / path);
+    return gapToAxis(dummy, between(from, to, probe)) < start ? std::optional<float>{0.0f}
+                                                             : std::nullopt;
+  }
+  const int steps = std::max(1, static_cast<int>(std::ceil(path / STEP_METRES)));
+  float before = 0.0f;
+  for (int step = 1; step <= steps; ++step)
+  {
+    const float after = static_cast<float>(step) / static_cast<float>(steps);
+    if (gapToAxis(dummy, between(from, to, after)) > reach)
+    {
+      before = after;
+      continue;
+    }
+    float low = before;
+    float high = after;
+    for (int halving = 0; halving < HALVINGS; ++halving)
+    {
+      const float middle = 0.5f * (low + high);
+      if (gapToAxis(dummy, between(from, to, middle)) > reach)
+        low = middle;
+      else
+        high = middle;
+    }
+    return low;
+  }
+  return std::nullopt;
+}
+}  // namespace
+
+std::optional<std::pair<std::size_t, float>> MatchEngine::dummyInPath(float seconds) const
+{
+  const auto& dummies = kit.dummies;
+  if (dummies.empty()) return std::nullopt;
+  if (state != MatchState::PLAYING || (getPossessionAttachment() && !hasTouchClaim()))
+    return std::nullopt;
+  return dummyAlong(ball.position, ball.z,
+                    PitchPoint{ball.position.x + ball.velocity.x * seconds,
+                               ball.position.y + ball.velocity.y * seconds},
+                    ball.z + ball.velocityZ * seconds);
+}
+
+std::optional<std::pair<std::size_t, float>> MatchEngine::dummyAlong(PitchPoint from,
+                                                                     float fromZ,
+                                                                     PitchPoint to,
+                                                                     float toZ) const
+{
+  const auto& dummies = kit.dummies;
+  const DummyPoint start{from.x, from.y, fromZ};
+  const DummyPoint end{to.x, to.y, toZ};
+  std::optional<std::pair<std::size_t, float>> first;
+  for (std::size_t index = 0; index < dummies.size(); ++index)
+  {
+    const std::optional<float> share = dummyContactShare(dummies[index], start, end);
+    if (share && (!first || *share < first->second)) first = std::pair{index, *share};
+  }
+  return first;
+}
+
+bool MatchEngine::bounceOffDummy(std::size_t index)
+{
+  if (!reflectOffDummy(index)) return false;
+  ++dummyHits;
+  // As the woodwork off a ball that is not a shot: a new path, nobody's
+  // touch; a shot that hits it is a shot no longer (a loose ball).
+  noteWoodworkContact(false);
+  if (getPossessionState().isShot) endDeflectedShotFlight();
+  return true;
+}
+
+bool MatchEngine::reflectOffDummy(std::size_t index)
+{
+  if (index >= kit.dummies.size()) return false;
+  const PitchKit::Dummy& dummy = kit.dummies[index];
+  const DummyPoint at{ball.position.x, ball.position.y, ball.z};
+  const DummyPoint near = nearestOnAxis(dummy, at);
+  const float apart = gapToAxis(dummy, at);
+  // Touching: within its reach, to half a millimetre (the touch is found
+  // just short of it).
+  if (apart > dummyReach(dummy) + 0.0005f || apart <= EPSILON) return false;
+  const DummyPoint normal{(at.x - near.x) / apart, (at.y - near.y) / apart,
+                          (at.z - near.z) / apart};
+  const float into = ball.velocity.x * normal.x + ball.velocity.y * normal.y +
+                     ball.velocityZ * normal.z;
+  if (into >= 0.0f) return false;
+  const float restitution = dummy.kind == PitchKit::DummyKind::POLE
+                                ? MatchTuning::Dummy::POLE_RESTITUTION
+                                : MatchTuning::Dummy::MANNEQUIN_RESTITUTION;
+  const float change = (1.0f + restitution) * into;
+  ball.velocity = {ball.velocity.x - change * normal.x, ball.velocity.y - change * normal.y};
+  ball.velocityZ -= change * normal.z;
+  return true;
+}

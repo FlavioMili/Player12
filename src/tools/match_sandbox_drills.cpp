@@ -9367,6 +9367,9 @@ class WalledBoxDrill final : public Drill
     foulsAtStart = engine.getFoulsNotGiven();
     foulsNotGiven = 0;
     servesAtStart = engine.getServesTaken();
+    dummyHitsAtStart = engine.getDummyHits();
+    dummyHits = 0;
+    ballInDummy = 0;
     serves = 0;
     foulsGiven = 0;
     shots = 0;
@@ -9412,6 +9415,16 @@ class WalledBoxDrill final : public Drill
     awayGoals = engine.getAwayScore();
     foulsNotGiven = engine.getFoulsNotGiven() - foulsAtStart;
     serves = engine.getServesTaken() - servesAtStart;
+    dummyHits = engine.getDummyHits() - dummyHitsAtStart;
+    // Nothing passes through a dummy: the ball's centre never within its
+    // radius of the axis (ground to shoulder).
+    for (const PitchKit::Dummy& dummy : engine.getKit().dummies)
+    {
+      const PitchKit::DummyShape shape = PitchKit::dummyShape(dummy.kind);
+      const float axisZ = std::clamp(ball.z, 0.0f, shape.height - shape.radius);
+      if (std::hypot(at.x - dummy.at.x, at.y - dummy.at.y, ball.z - axisZ) < shape.radius)
+        ++ballInDummy;
+    }
     // Shots: their xG and how far out, to the middle of the goal attacked.
     const auto& log = engine.getEvents();
     for (; eventsSeen < log.size(); ++eventsSeen)
@@ -9460,6 +9473,8 @@ class WalledBoxDrill final : public Drill
         std::format("Fouls not given (no Laws on a training pitch): {}",
                     foulsNotGiven),
         std::format("Fouls given: {}; coach's serves: {}", foulsGiven, serves),
+        std::format("Dummy hits: {}; ticks with the ball inside one: {}", dummyHits,
+                    ballInDummy),
         stoppedBy.empty() ? std::string("Play never stopped")
                           : std::format("Play stopped by a {}", stoppedBy)};
     // The headline once the run is over.
@@ -9480,6 +9495,8 @@ class WalledBoxDrill final : public Drill
             {"Fouls not given", static_cast<double>(foulsNotGiven)},
             {"Serves", static_cast<double>(serves)},
             {"Fouls given", static_cast<double>(foulsGiven)},
+            {"Dummy hits", static_cast<double>(dummyHits)},
+            {"Ball inside a dummy (ticks)", static_cast<double>(ballInDummy)},
             {"Shot xG", shotXG},
             {"Shot distance (m)", shots == 0 ? 0.0 : shotDistance / shots},
             {"Nearest wall (m)", nearestWall},
@@ -9503,6 +9520,9 @@ class WalledBoxDrill final : public Drill
   int servesAtStart = 0;
   int serves = 0;
   int foulsGiven = 0;
+  int dummyHitsAtStart = 0;
+  int dummyHits = 0;
+  int ballInDummy = 0;
   float serveSideChoice = 0.0f;
   float serveReceiverChoice = 0.0f;
   float foulsChoice = 0.0f;

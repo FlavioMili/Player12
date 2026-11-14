@@ -837,6 +837,33 @@ void MatchEngine::moveDeadBallBinturong(float dt)
         }
       }
     }
+    // A training dummy on its way (training ground plan section 21): off
+    // it the same way.
+    if (!kit.dummies.empty())
+    {
+      const PitchPoint start{from.x, from.y};
+      if (const auto hit = dummyAlong(start, fromHeight, ball.position, ball.z))
+      {
+        const PitchPoint end = ball.position;
+        const float endZ = ball.z;
+        const float share = hit->second;
+        ball.position = PitchPoint{start.x + (end.x - start.x) * share,
+                                   start.y + (end.y - start.y) * share};
+        ball.z = fromHeight + (endZ - fromHeight) * share;
+        if (reflectOffDummy(hit->first))
+        {
+          const float rest = (1.0f - share) * seconds;
+          ball.position = PitchPoint{ball.position.x + ball.velocity.x * rest,
+                                     ball.position.y + ball.velocity.y * rest};
+          ball.z = std::max(0.0f, ball.z + ball.velocityZ * rest);
+        }
+        else
+        {
+          ball.position = end;
+          ball.z = endZ;
+        }
+      }
+    }
     Vector2F to{ball.position.x, ball.position.y};
     const float height = ball.z;
     Vector2F velocity = ball.velocity;

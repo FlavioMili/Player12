@@ -585,6 +585,16 @@ struct MatchTuning final
     static constexpr float STEP_SECONDS = 0.5f;
   };
 
+  /** Training dummies (training ground plan section 21; their sizes are in
+   * PitchKit::dummyShape). How much of the ball's speed into one it keeps
+   * coming back off it: our own estimates, agreed with the user; not
+   * researched (the posts' restitution is the only measured one). */
+  struct Dummy final
+  {
+    static constexpr float MANNEQUIN_RESTITUTION = 0.4f;
+    static constexpr float POLE_RESTITUTION = 0.3f;
+  };
+
   struct Timing final
   {
     /** Decision and body-physics step (10 Hz). */

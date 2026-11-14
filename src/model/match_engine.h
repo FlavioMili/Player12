@@ -3023,6 +3023,8 @@ class MatchEngine
   [[nodiscard]] int getFoulsNotGiven() const { return foulsNotGiven; }
   /** Coach's serves so far (a training pitch). For drills. */
   [[nodiscard]] int getServesTaken() const { return servesTaken; }
+  /** Times the ball has come off a training dummy. For drills. */
+  [[nodiscard]] int getDummyHits() const { return dummyHits; }
   void forceHeader(PlayerID playerId, ForcedHeaderAim aim,
                    std::optional<PitchPoint> spot = std::nullopt,
                    std::optional<Vector2F> goalAim = std::nullopt,
@@ -3163,6 +3165,8 @@ class MatchEngine
   float serveRemaining = 0.0f;
   bool lastServeHome = false;
   int servesTaken = 0;
+  /** Times the ball has come off a training dummy. */
+  int dummyHits = 0;
   std::vector<std::pair<PlayerID, float>> ballKeeperUrgency;
   /** Places the scenario's players and ball; the carrier (null when the
    * ball is loose), or nothing when a player is unknown. */
@@ -3455,6 +3459,20 @@ class MatchEngine
    * keeper's plane, out of play, the sweep); the share of it travelled
    * when a contact was played part way, if one was. */
   std::optional<float> moveBallStretch(float seconds);
+  /** A training dummy in the free ball's way over the next `seconds`
+   * (straight; the stretch is short): its index in the kit and how far
+   * along the stretch the ball meets it. None without dummies. */
+  std::optional<std::pair<std::size_t, float>> dummyInPath(float seconds) const;
+  /** Off dummy `index` where the ball is: a mirror bounce off its round
+   * surface (the cylinder or the dome), its restitution kept; counted, and
+   * a shot that hits it is a shot no longer. False if not coming into it. */
+  bool bounceOffDummy(std::size_t index);
+  /** The first dummy the ball meets on the straight path from `from`
+   * (height `fromZ`) to `to` (`toZ`), and how far along. */
+  std::optional<std::pair<std::size_t, float>> dummyAlong(PitchPoint from, float fromZ,
+                                                          PitchPoint to, float toZ) const;
+  /** The bounce alone (no bookkeeping): for the dead ball too. */
+  bool reflectOffDummy(std::size_t index);
   /** The stretch up to a fallen body in the way, or all of it (the old
    * stretch: keeper's plane, out of play, the sweep). */
   std::optional<float> moveBallPart(float seconds);

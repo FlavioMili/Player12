@@ -3603,14 +3603,21 @@ std::optional<float> MatchEngine::moveBallStretch(float seconds)
   // rest of the stretch. The woodwork in its way does the same.
   const auto body = fallenBodyInPath(seconds);
   const std::optional<float> frame = frameInPath(seconds);
+  // A training dummy too (training ground plan section 21), if it is met
+  // first.
+  const auto dummy = dummyInPath(seconds);
   const bool frameFirst = frame && (!body || *frame <= body->second);
-  const float share = frameFirst ? *frame : body ? body->second : 1.0f;
+  float share = frameFirst ? *frame : body ? body->second : 1.0f;
+  const bool dummyFirst = dummy && ((!body && !frame) || dummy->second < share);
+  if (dummyFirst) share = dummy->second;
   if (const std::optional<float> along = moveBallPart(seconds * share))
     return *along * share;
-  if ((!body && !frame) || state != MatchState::PLAYING ||
+  if ((!body && !frame && !dummy) || state != MatchState::PLAYING ||
       (getPossessionAttachment() && !hasTouchClaim()))
     return std::nullopt;
-  if (frameFirst)
+  if (dummyFirst)
+    bounceOffDummy(dummy->first);
+  else if (frameFirst)
     bounceOffFrame();
   else
     bounceOffFallen(players[body->first]);
