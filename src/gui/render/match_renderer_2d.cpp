@@ -1268,6 +1268,17 @@ void MatchRenderer2D::State::drawKit(const MatchRenderSnapshot& snapshot)
       drawList->AddCircle(at, radius, IM_COL32(20, 20, 20, 200), 0,
                           std::max(px(1.0f), radius * 0.25f));
   }
+  // Dummies (plan section 21) from above: a disc of their solid radius
+  // (a pole never under a few pixels), with a dark rim.
+  for (const PitchKit::Dummy& dummy : kit.dummies)
+  {
+    const ImVec2 at = atMetres(dummy.at.x, dummy.at.y);
+    const float size =
+        std::max(px(2.5f), PitchKit::dummyShape(dummy.kind).radius * ppm);
+    drawList->AddCircleFilled(at, size, dummy.colour);
+    drawList->AddCircle(at, size, IM_COL32(20, 20, 20, 220), 0,
+                        std::max(px(1.0f), size * 0.2f));
+  }
 }
 
 void MatchRenderer2D::State::drawWear()

@@ -3610,6 +3610,45 @@ void MatchRenderer3D::State::addKit(const MatchRenderSnapshot& snapshot)
     addPrism(bottom, top, cone.colour, projection.depth(base + UP * height),
              false, true);
   }
+  // Dummies (plan section 21): a pole as a thin post; a mannequin as an
+  // eight-sided upright cylinder with a domed top (its solid shape).
+  for (const PitchKit::Dummy& dummy : kit.dummies)
+  {
+    const PitchKit::DummyShape shape = PitchKit::dummyShape(dummy.kind);
+    const Vec3 base = worldOf(dummy.at);
+    const Vec3 tip = base + UP * shape.height;
+    const float depth = projection.depth(base + UP * (0.5f * shape.height));
+    if (dummy.kind == PitchKit::DummyKind::POLE)
+    {
+      addLine(base, tip, dummy.colour, 2.0f * shape.radius, depth);
+      continue;
+    }
+    const auto ring = [&](float radius, float height)
+    {
+      std::array<Vec3, SIDES> points{};
+      for (std::size_t side = 0; side < SIDES; ++side)
+      {
+        const float angle = TWO_PI * static_cast<float>(side) / SIDES;
+        points[side] = base + Vec3{std::cos(angle), std::sin(angle), 0.0f} * radius +
+                       UP * height;
+      }
+      return points;
+    };
+    const float shoulder = shape.height - shape.radius;
+    addPrism(ring(shape.radius, 0.0f), ring(shape.radius, shoulder), dummy.colour, depth,
+             false, false);
+    // The dome: rings at 30 and 60 degrees up the half-sphere, then its top.
+    constexpr std::array<float, 4> ANGLES{0.0f, 0.5236f, 1.0472f, 1.5708f};
+    for (std::size_t step = 0; step + 1 < ANGLES.size(); ++step)
+    {
+      const float low = ANGLES[step];
+      const float high = ANGLES[step + 1];
+      addPrism(ring(shape.radius * std::cos(low), shoulder + shape.radius * std::sin(low)),
+               ring(std::max(shape.radius * std::cos(high), 0.002f),
+                    shoulder + shape.radius * std::sin(high)),
+               dummy.colour, depth, false, step + 2 == ANGLES.size());
+    }
+  }
 }
 
 void MatchRenderer3D::State::addCornerFlags()
@@ -4456,11 +4495,10 @@ void MatchRenderer3D::render(const MatchRenderSnapshot& snapshot,
       if (!snapshot.players[index].hidden &&
           !(s.training && !snapshot.players[index].onPitch))
         s.addPlayer(snapshot.players[index], s.slots[index], alpha);
-  if (s.training)
-  {
-    s.addKit(snapshot);
-    s.addTrainingGoals(snapshot);
-  }
+  // The kit on any pitch (a match has none; a drill on the match pitch may
+  // lay cones or poles).
+  s.addKit(snapshot);
+  if (s.training) s.addTrainingGoals(snapshot);
   else
   {
     s.addGoals();

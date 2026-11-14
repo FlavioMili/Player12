@@ -807,6 +807,19 @@ class CourseDrill : public MovementDrill
     kit.cones.push_back({name, at, kind, IM_COL32(255, 140, 30, 255)});
     engine.setKit(std::move(kit));
   }
+  /** A dummy into the engine's kit (plan section 21). */
+  static void addDummy(MatchEngine& engine, const std::string& name, PitchPoint at,
+                       PitchKit::DummyKind kind, float facing = 0.0f)
+  {
+    PitchKit::Layout kit = engine.getKit();
+    PitchKit::Dummy dummy;
+    dummy.name = name;
+    dummy.at = at;
+    dummy.kind = kind;
+    dummy.facing = facing;
+    kit.dummies.push_back(std::move(dummy));
+    engine.setKit(std::move(kit));
+  }
 
   /**
    * The AI runner's plan, as his side's brain would make it: he is going to
@@ -1201,6 +1214,11 @@ class SlalomDrill final : public CourseDrill
                     "Each cone pushed this far off the line, to the side it "
                     "is passed on (alternate cones opposite ways): 0 is a "
                     "straight line of cones, more is a wider weave."));
+    DrillParameter markers = setting("Markers", &markersChoice, 0.0f, 1.0f, true,
+                                     "Cones, or agility poles (training ground "
+                                     "T5: solid dummies, 30 mm across).");
+    markers.choices = {"Cones", "Poles"};
+    list.push_back(markers);
     addRunnerParameters(list);
     return list;
   }
@@ -1238,13 +1256,21 @@ class SlalomDrill final : public CourseDrill
     bodyThrough.reset();
     ballThrough.reset();
     beginCourse(engine, ids, start, std::move(course));
-    // The cones are obstacles: he keeps the ball off them.
+    // The cones are obstacles: he keeps the ball off them. Poles instead
+    // (plan section 21) are dummies in the kit.
+    const bool poles = markersChoice > 0.5f;
     std::vector<MatchEngine::Obstacle> obstacles;
     for (const PitchPoint& cone : conePoints)
-      obstacles.push_back({cone, DrillDraw::CONE_RADIUS_METRES});
+      obstacles.push_back(
+          {cone, poles ? PitchKit::dummyShape(PitchKit::DummyKind::POLE).radius
+                       : DrillDraw::CONE_RADIUS_METRES});
     engine.setObstacles(std::move(obstacles));
     for (std::size_t cone = 0; cone < conePoints.size(); ++cone)
-      addCone(engine, std::format("Cone {}", cone + 1).c_str(), conePoints[cone]);
+      if (poles)
+        addDummy(engine, std::format("Pole {}", cone + 1), conePoints[cone],
+                 PitchKit::DummyKind::POLE);
+      else
+        addCone(engine, std::format("Cone {}", cone + 1).c_str(), conePoints[cone]);
     previousBall = engine.getBall().position;
   }
 
@@ -1533,6 +1559,7 @@ class SlalomDrill final : public CourseDrill
   float spacing = 5.0f;
   float lineOffset = 0.0f;
   float coneStagger = 0.0f;
+  float markersChoice = 0.0f;
 
   float gap = 5.0f;
   float line = 0.5f;
@@ -9257,6 +9284,12 @@ class WalledBoxDrill final : public Drill
                                    "cards).");
     fouls.choices = {"Off", "Whistled"};
     list.push_back(fouls);
+    DrillParameter dummies = setting("Dummies", &dummiesChoice, 0.0f, 2.0f, true,
+                                     "Four in a diamond: one in front of each "
+                                     "goal, one either side of the middle "
+                                     "(training ground T5).");
+    dummies.choices = {"None", "Mannequins", "Poles"};
+    list.push_back(dummies);
     return list;
   }
 
@@ -9310,6 +9343,24 @@ class WalledBoxDrill final : public Drill
     for (std::size_t index = 0; index < corners.size(); ++index)
       kit.cones.push_back({std::format("Corner {}", index + 1), corners[index],
                            PitchKit::ConeKind::TALL});
+    // Dummies (training ground T5): four in a diamond, one in front of
+    // each goal and one either side of the middle, clear of the start.
+    if (dummiesChoice > 0.5f)
+    {
+      const PitchKit::DummyKind kind = dummiesChoice > 1.5f ? PitchKit::DummyKind::POLE
+                                                            : PitchKit::DummyKind::MANNEQUIN;
+      const std::array<PitchPoint, 4> spots{
+          PitchPoint{0.25f * box.length, centre.y}, PitchPoint{0.75f * box.length, centre.y},
+          PitchPoint{centre.x, 0.25f * box.width}, PitchPoint{centre.x, 0.75f * box.width}};
+      for (std::size_t index = 0; index < spots.size(); ++index)
+      {
+        PitchKit::Dummy dummy;
+        dummy.name = std::format("Dummy {}", index + 1);
+        dummy.at = spots[index];
+        dummy.kind = kind;
+        kit.dummies.push_back(std::move(dummy));
+      }
+    }
     engine.setKit(std::move(kit));
     stoppedBy.clear();
     eventsSeen = engine.getEvents().size();
@@ -9455,6 +9506,7 @@ class WalledBoxDrill final : public Drill
   float serveSideChoice = 0.0f;
   float serveReceiverChoice = 0.0f;
   float foulsChoice = 0.0f;
+  float dummiesChoice = 0.0f;
   int shots = 0;
   double shotXG = 0.0;
   double shotDistance = 0.0;
