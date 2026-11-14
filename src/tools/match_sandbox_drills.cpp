@@ -6045,7 +6045,8 @@ class PassTargetDrill : public Drill
   /** The penalty spot (the home side's own), and the way to the centre
    * circle from it (up the pitch, metres). */
   static inline const PitchPoint SPOT =
-      at(MatchTuning::Pitch::LEFT_PENALTY_SPOT_X, MatchTuning::Pitch::CENTRE);
+      PitchPoint{MatchTuning::Pitch::PENALTY_SPOT_METRES,
+                 MatchPitch::matchSize().atY(MatchTuning::Pitch::CENTRE)};
   static constexpr Vector2F UP{1.0f, 0.0f};
 
   std::vector<DrillPlayerSpec> players() const override

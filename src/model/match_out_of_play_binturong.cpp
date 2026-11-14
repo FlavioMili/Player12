@@ -356,10 +356,10 @@ void MatchEngine::setupThrowInBinturong(bool homeTeam)
       taker && getBody(taker->isHomeTeam) == BodyId::BINTURONG
           ? PitchPoint{outX, top ? -BEHIND : pitch.atY(1.0f) + BEHIND}
           : PitchPoint{std::clamp(ball.position.x,
-                                  MatchTuning::Pitch::RESTART_END_MARGIN_METRES,
-                                  pitch.length - MatchTuning::Pitch::RESTART_END_MARGIN_METRES),
-                       top ? MatchTuning::Pitch::RESTART_INSET_SIDE_METRES
-                           : pitch.width - MatchTuning::Pitch::RESTART_INSET_SIDE_METRES};
+                                  MatchTuning::Pitch::PLAYER_EDGE_END_METRES,
+                                  pitch.length - MatchTuning::Pitch::PLAYER_EDGE_END_METRES),
+                       top ? MatchTuning::Pitch::PLAYER_EDGE_SIDE_METRES
+                           : pitch.width - MatchTuning::Pitch::PLAYER_EDGE_SIDE_METRES};
   startDeadBallBinturong(spot);
   state = MatchState::THROW_IN;
   // Taken once everyone is ready (restartReadyBinturong), not on a
@@ -378,9 +378,9 @@ void MatchEngine::setupGoalKickBinturong(bool homeTeam)
   beginStoppage();
   restartIsSetPiece = false;
   const PitchPoint spot =
-      pitch.at(homeTeam ? MatchTuning::Pitch::LEFT_GOAL_KICK_X
-                        : MatchTuning::Pitch::RIGHT_GOAL_KICK_X,
-               MatchTuning::Pitch::CENTRE);
+      PitchPoint{homeTeam ? MatchTuning::DeadBall::GOAL_AREA_DEPTH_METRES
+                        : pitch.length - MatchTuning::DeadBall::GOAL_AREA_DEPTH_METRES,
+               pitch.atY(MatchTuning::Pitch::CENTRE)};
   MatchPlayer* taker = chooseRestartTaker(MatchState::GOAL_KICK, homeTeam, spot);
   setRestartTaker(taker);
   startDeadBallBinturong(spot);
@@ -400,10 +400,10 @@ void MatchEngine::setupCornerBinturong(bool homeTeam, bool topCorner)
   beginStoppage();
   restartIsSetPiece = true;
   const PitchPoint spot =
-      PitchPoint{homeTeam ? pitch.length - MatchTuning::Pitch::RESTART_INSET_END_METRES
-                        : MatchTuning::Pitch::RESTART_INSET_END_METRES,
-               topCorner ? MatchTuning::Pitch::RESTART_INSET_SIDE_METRES
-                         : pitch.width - MatchTuning::Pitch::RESTART_INSET_SIDE_METRES};
+      PitchPoint{homeTeam ? pitch.length - MatchTuning::Pitch::CORNER_SPOT_METRES
+                        : MatchTuning::Pitch::CORNER_SPOT_METRES,
+               topCorner ? MatchTuning::Pitch::CORNER_SPOT_METRES
+                         : pitch.width - MatchTuning::Pitch::CORNER_SPOT_METRES};
   // Left and right follow the formation: the corner on the side of the
   // team's left-sided positions (low y) is its left corner.
   MatchPlayer* taker =
@@ -1366,7 +1366,7 @@ bool MatchEngine::keptOutBinturong(const MatchPlayer& player,
   const PitchPoint spot = restartSpot();
   const bool right = spot.x > pitch.atX(P::CENTRE);
   const float edge =
-      pitch.atX(right ? P::RIGHT_PENALTY_AREA_EDGE : P::LEFT_PENALTY_AREA_EDGE);
+      (right ? pitch.length - P::PENALTY_AREA_DEPTH_METRES : P::PENALTY_AREA_DEPTH_METRES);
   const float slackX = slack;
   const bool inArea =
       (right ? at.x > edge + slackX : at.x < edge - slackX) &&
@@ -1409,13 +1409,13 @@ void MatchEngine::keepRestartDistanceBinturong(MatchPlayer& player)
   {
     const bool right = spot.x > pitch.atX(P::CENTRE);
     const bool inside =
-        (right ? target.x > pitch.atX(P::RIGHT_PENALTY_AREA_EDGE)
-               : target.x < pitch.atX(P::LEFT_PENALTY_AREA_EDGE)) &&
+        (right ? target.x > (pitch.length - P::PENALTY_AREA_DEPTH_METRES)
+               : target.x < P::PENALTY_AREA_DEPTH_METRES) &&
         std::abs(target.y - pitch.atY(P::CENTRE)) <
             P::PENALTY_AREA_HALF_WIDTH_METRES;
     if (inside)
-      target.x = right ? pitch.atX(P::RIGHT_PENALTY_AREA_EDGE) - MARGIN
-                       : pitch.atX(P::LEFT_PENALTY_AREA_EDGE) + MARGIN;
+      target.x = right ? (pitch.length - P::PENALTY_AREA_DEPTH_METRES) - MARGIN
+                       : P::PENALTY_AREA_DEPTH_METRES + MARGIN;
   }
   const float minimum =
       (state == MatchState::THROW_IN
@@ -1537,18 +1537,18 @@ void MatchEngine::setupPenaltyBinturong(bool homeTeam)
   restartIsSetPiece = true;
   pendingAdvantage.active = false;
   const PitchPoint spot =
-      pitch.at(homeTeam ? MatchTuning::Pitch::RIGHT_PENALTY_SPOT_X
-                        : MatchTuning::Pitch::LEFT_PENALTY_SPOT_X,
-               MatchTuning::Pitch::CENTRE);
+      PitchPoint{homeTeam ? pitch.length - MatchTuning::Pitch::PENALTY_SPOT_METRES
+                        : MatchTuning::Pitch::PENALTY_SPOT_METRES,
+               pitch.atY(MatchTuning::Pitch::CENTRE)};
   MatchPlayer* taker =
       chooseRestartTaker(MatchState::PENALTY, homeTeam, ball.position);
   setRestartTaker(taker);
   startDeadBallBinturong(spot);
   // Everyone else waits outside the area; the keeper walks to his line.
   const float edge =
-      homeTeam ? pitch.atX(MatchTuning::Pitch::RIGHT_PENALTY_AREA_EDGE) -
+      homeTeam ? (pitch.length - MatchTuning::Pitch::PENALTY_AREA_DEPTH_METRES) -
                      MatchTuning::SetPiece::PENALTY_WAIT_OFFSET_METRES
-               : pitch.atX(MatchTuning::Pitch::LEFT_PENALTY_AREA_EDGE) +
+               : MatchTuning::Pitch::PENALTY_AREA_DEPTH_METRES +
                      MatchTuning::SetPiece::PENALTY_WAIT_OFFSET_METRES;
   for (auto& player : players)
   {

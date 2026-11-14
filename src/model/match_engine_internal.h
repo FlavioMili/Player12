@@ -454,8 +454,8 @@ inline bool inPenaltyArea(const MatchPitch& pitch, PitchPoint position,
   if (std::abs(position.y - pitch.atY(MatchTuning::Pitch::CENTRE)) > HALF_WIDTH)
     return false;
   return defendingHome
-             ? position.x <= pitch.atX(MatchTuning::Pitch::LEFT_PENALTY_AREA_EDGE)
-             : position.x >= pitch.atX(MatchTuning::Pitch::RIGHT_PENALTY_AREA_EDGE);
+             ? position.x <= MatchTuning::Pitch::PENALTY_AREA_DEPTH_METRES
+             : position.x >= pitch.length - MatchTuning::Pitch::PENALTY_AREA_DEPTH_METRES;
 }
 
 inline bool isDefensiveRole(PlayerRole role)

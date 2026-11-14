@@ -1628,9 +1628,9 @@ void MatchEngine::beginShootoutKick()
     shootout.playerStatsBefore = playerStats;
     shootout.trackerBefore = tracker;
   }
-  const PitchPoint spot = pitch.at(home ? MatchTuning::Pitch::RIGHT_PENALTY_SPOT_X
-                                       : MatchTuning::Pitch::LEFT_PENALTY_SPOT_X,
-                                  MatchTuning::Pitch::CENTRE);
+  const PitchPoint spot{home ? pitch.length - MatchTuning::Pitch::PENALTY_SPOT_METRES
+                                       : MatchTuning::Pitch::PENALTY_SPOT_METRES,
+                                  pitch.atY(MatchTuning::Pitch::CENTRE)};
   taker->position = spot;
   taker->velocity = {0.0f, 0.0f};
   taker->movementTarget = spot;
@@ -7014,10 +7014,12 @@ float MatchEngine::estimateShotXG(const MatchPlayer& shooter) const
 
   const Vector2F toTop =
       Vector2F{goalX - shooter.position.x,
-                pitch.atY(MatchTuning::Pitch::GOAL_TOP) - shooter.position.y};
+                pitch.atY(MatchTuning::Pitch::CENTRE) - MatchTuning::Shooting::GOAL_HALF_WIDTH_METRES -
+                    shooter.position.y};
   const Vector2F toBottom =
       Vector2F{goalX - shooter.position.x,
-                pitch.atY(MatchTuning::Pitch::GOAL_BOTTOM) - shooter.position.y};
+                pitch.atY(MatchTuning::Pitch::CENTRE) + MatchTuning::Shooting::GOAL_HALF_WIDTH_METRES -
+                    shooter.position.y};
   const float denominator = length(toTop) * length(toBottom);
   const float cosine =
       denominator > EPSILON

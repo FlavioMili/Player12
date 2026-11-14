@@ -540,8 +540,8 @@ Vector2F MatchEngine::officialSpot(const MatchPlayer& body, const TouchlinePerso
         // kicker, the defenders and the attackers. The end he is nearer.
         const float goalX = restartAt.x < G.halfway ? 0.0f : pitch.length;
         const float outward = goalX == 0.0f ? 1.0f : -1.0f;
-        const float areaDepth = P::LEFT_PENALTY_AREA_EDGE * pitch.length;
-        const float spotDepth = P::LEFT_PENALTY_SPOT_X * pitch.length;
+        const float areaDepth = P::PENALTY_AREA_DEPTH_METRES;
+        const float spotDepth = P::PENALTY_SPOT_METRES;
         const float arc = MatchTuning::Timing::KICK_OPPONENT_DISTANCE_METRES;
         const float arcEnd = std::sqrt(
             std::max(arc * arc - (areaDepth - spotDepth) * (areaDepth - spotDepth), 0.0f));

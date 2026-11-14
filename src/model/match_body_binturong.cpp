@@ -4335,8 +4335,9 @@ void MatchEngine::readShotBinturong(const MatchPlayer& keeper,
                         (1.0f - keeper.goalkeeping * 0.6f);
   control.diveTargetY = std::clamp(
       predictedY + readError,
-      pitch.atY(MatchTuning::Pitch::GOAL_TOP) - MatchTuning::Goalkeeper::DIVE_POST_MARGIN_METRES,
-      pitch.atY(MatchTuning::Pitch::GOAL_BOTTOM) +
+      pitch.atY(MatchTuning::Pitch::CENTRE) - MatchTuning::Shooting::GOAL_HALF_WIDTH_METRES -
+                     MatchTuning::Goalkeeper::DIVE_POST_MARGIN_METRES,
+      pitch.atY(MatchTuning::Pitch::CENTRE) + MatchTuning::Shooting::GOAL_HALF_WIDTH_METRES +
                 MatchTuning::Goalkeeper::DIVE_POST_MARGIN_METRES);
 
   bool screened = false;
@@ -6654,10 +6655,10 @@ Vector2F MatchEngine::heavyTouchVelocityBinturong(const MatchPlayer& player,
       velocity.x * B::HEAVY_TOUCH_RETAINED + std::cos(angle) * popSpeed,
       velocity.y * B::HEAVY_TOUCH_RETAINED + std::sin(angle) * popSpeed};
   // Near his own goal a player's heavy touch still goes away from it.
-  const float ownDepth =
-      player.isHomeTeam ? player.position.x : 1.0f - player.position.x;
+  const float fromOwnGoal =
+      pitch.fromOwnGoalLine(player.position, player.isHomeTeam);
   const float outward = player.isHomeTeam ? 1.0f : -1.0f;
-  if (ownDepth < pitch.fractionX(MatchTuning::SetPiece::CROSS_CLEARANCE_WITHIN_METRES) &&
+  if (fromOwnGoal < MatchTuning::SetPiece::CROSS_CLEARANCE_WITHIN_METRES &&
       popped.x * outward < 0.0f)
     popped.x = -popped.x;
   return popped;

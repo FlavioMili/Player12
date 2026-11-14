@@ -698,8 +698,9 @@ void MatchEngine::readShotAardvark(const MatchPlayer& keeper,
                         (1.0f - keeper.goalkeeping * 0.6f);
   control.diveTargetY = std::clamp(
       predictedY + readError,
-      pitch.atY(MatchTuning::Pitch::GOAL_TOP) - MatchTuning::Goalkeeper::DIVE_POST_MARGIN_METRES,
-      pitch.atY(MatchTuning::Pitch::GOAL_BOTTOM) +
+      pitch.atY(MatchTuning::Pitch::CENTRE) - MatchTuning::Shooting::GOAL_HALF_WIDTH_METRES -
+                     MatchTuning::Goalkeeper::DIVE_POST_MARGIN_METRES,
+      pitch.atY(MatchTuning::Pitch::CENTRE) + MatchTuning::Shooting::GOAL_HALF_WIDTH_METRES +
                 MatchTuning::Goalkeeper::DIVE_POST_MARGIN_METRES);
 
   bool screened = false;

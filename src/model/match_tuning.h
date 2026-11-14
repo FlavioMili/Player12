@@ -368,8 +368,8 @@ struct MatchTuning final
      * ball start before the engine places them. */
     static constexpr float MATCH_CENTRE_X_METRES = MATCH_LENGTH_METRES * CENTRE;
     static constexpr float MATCH_CENTRE_Y_METRES = MATCH_WIDTH_METRES * CENTRE;
-    static constexpr float GOAL_TOP = 0.446f;
-    static constexpr float GOAL_BOTTOM = 0.554f;
+    // The goal's posts are Shooting::GOAL_HALF_WIDTH_METRES either side of
+    // the centre (Law 1: 7.32 m between the posts).
     /** The keeper's line-up spot, out from his goal line (m). */
     static constexpr float LINEUP_GOALKEEPER_METRES = 4.2f;
     /** The same spot as a share of the length, for the formation frame
@@ -380,20 +380,19 @@ struct MatchTuning final
     /** He sweeps a loose ball within this of his goal line (m), further for
      * a sweeper keeper. */
     static constexpr float GOALKEEPER_SWEEP_METRES = 18.9f;
-    static constexpr float LEFT_GOAL_KICK_X = 0.065f;
-    static constexpr float RIGHT_GOAL_KICK_X = 0.935f;
-    static constexpr float LEFT_PENALTY_SPOT_X = 0.105f;
-    static constexpr float RIGHT_PENALTY_SPOT_X = 0.895f;
-    static constexpr float LEFT_PENALTY_AREA_EDGE = 0.157f;
-    static constexpr float RIGHT_PENALTY_AREA_EDGE = 0.843f;
+    /** Law 1: the penalty mark 11 m from the goal line, and the penalty area
+     * 16.5 m deep (m). A goal kick is placed on the goal area's line
+     * (DeadBall::GOAL_AREA_DEPTH_METRES, Law 16: anywhere in the goal area). */
+    static constexpr float PENALTY_SPOT_METRES = 11.0f;
+    static constexpr float PENALTY_AREA_DEPTH_METRES = 16.5f;
     static constexpr float PENALTY_AREA_HALF_WIDTH_METRES = 20.16f;
     static constexpr float GOAL_AREA_HALF_WIDTH_METRES = 9.16f;
-    /** A corner's spot in from the goal line, and a throw-in's and a
-     * corner's in from the touchline (m). */
-    static constexpr float RESTART_INSET_END_METRES = 1.05f;
-    static constexpr float RESTART_INSET_SIDE_METRES = 0.68f;
-    /** Throw-ins and free kicks are kept this far from the goal lines, and
-     * free kicks this far from the touchlines (m). */
+    /** A corner is placed this far in from both the goal line and the
+     * touchline, inside the corner arc (Law 17: the 1 m quarter circle; the
+     * exact spot is our own choice) (m). */
+    static constexpr float CORNER_SPOT_METRES = 0.5f;
+    /** Free kicks are kept this far from the goal lines and the touchlines
+     * (m). A throw-in is taken from where the ball crossed (Law 15). */
     static constexpr float RESTART_END_MARGIN_METRES = 4.2f;
     static constexpr float RESTART_SIDE_MARGIN_METRES = 2.72f;
     /** The kick-off taker stands this far behind the centre spot (m). */
@@ -2360,7 +2359,6 @@ struct MatchTuning final
     /** A keeper holding the ball waits for his team to push up. */
     static constexpr float MIN_KEEPER_HOLD_SECONDS = 2.5f;
     static constexpr float MAX_KEEPER_HOLD_SECONDS = 5.0f;
-    static constexpr float GOAL_NET_BALL_DEPTH = 0.02f;
   };
 
   struct Rules final

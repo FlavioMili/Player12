@@ -4303,14 +4303,18 @@ PitchPoint MatchEngine::chooseClearBehindTargetBinturong(
     const MatchPlayer& defender)
 {
   // Over the own goal line, wide of the posts on his side.
-  const float goalX = defender.isHomeTeam ? 0.0f : 1.0f;
+  // 2.1 m behind the line, 4.08 m wide of the post to 30.6 m off centre.
+  constexpr float BEHIND_METRES = 2.1f;
+  constexpr float WIDE_OF_POST_METRES = 4.08f;
+  constexpr float WIDEST_METRES = 30.6f;
   const float side =
       defender.position.y < pitch.atY(MatchTuning::Pitch::CENTRE) ? -1.0f : 1.0f;
-  return pitch.at(goalX + (defender.isHomeTeam ? -0.02f : 0.02f),
-                  MatchTuning::Pitch::CENTRE +
-                      side * randomFloat(MatchTuning::Pitch::GOAL_BOTTOM -
-                                             MatchTuning::Pitch::CENTRE + 0.06f,
-                                         0.45f));
+  return PitchPoint{
+      defender.isHomeTeam ? -BEHIND_METRES : pitch.length + BEHIND_METRES,
+      pitch.atY(MatchTuning::Pitch::CENTRE) +
+          side * randomFloat(MatchTuning::Shooting::GOAL_HALF_WIDTH_METRES +
+                                 WIDE_OF_POST_METRES,
+                             WIDEST_METRES)};
 }
 
 MatchEngine::HeaderPlay MatchEngine::chooseHeaderOutBinturong(
@@ -4419,7 +4423,7 @@ MatchEngine::HeaderPlay MatchEngine::chooseHeaderPlayBinturong(
   // Behind his own penalty spot a defender often plays safe and heads it
   // out of play.
   if (!fromTeammate &&
-      fromOwnGoal < pitch.atX(MatchTuning::Pitch::LEFT_PENALTY_SPOT_X) &&
+      fromOwnGoal < MatchTuning::Pitch::PENALTY_SPOT_METRES &&
       randomFloat(0.0f, 1.0f) < MatchTuning::SetPiece::HEADER_BEHIND_CHANCE)
     return chooseHeaderOutBinturong(header);
   if (!fromTeammate && fromOwnGoal < MatchTuning::SetPiece::DEFENSIVE_HEADER_WITHIN_METRES)
