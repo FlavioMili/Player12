@@ -4335,9 +4335,9 @@ void MatchEngine::readShotBinturong(const MatchPlayer& keeper,
                         (1.0f - keeper.goalkeeping * 0.6f);
   control.diveTargetY = std::clamp(
       predictedY + readError,
-      pitch.atY(MatchTuning::Pitch::CENTRE) - MatchTuning::Shooting::GOAL_HALF_WIDTH_METRES -
+      pitch.atY(MatchTuning::Pitch::CENTRE) - pitch.goal.halfWidth -
                      MatchTuning::Goalkeeper::DIVE_POST_MARGIN_METRES,
-      pitch.atY(MatchTuning::Pitch::CENTRE) + MatchTuning::Shooting::GOAL_HALF_WIDTH_METRES +
+      pitch.atY(MatchTuning::Pitch::CENTRE) + pitch.goal.halfWidth +
                 MatchTuning::Goalkeeper::DIVE_POST_MARGIN_METRES);
 
   bool screened = false;
@@ -5607,11 +5607,11 @@ bool MatchEngine::shotStaysOnGoalBinturong()
   const GoalLineCrossing crossing = predictGoalLineCrossing(
       *this, ball.position, heading, speed, ball.velocityZ,
       ball.z, goalX, ball.spin);
-  const float halfGoal = MatchTuning::Shooting::GOAL_HALF_WIDTH_METRES;
+  const float halfGoal = pitch.goal.halfWidth;
   if (!crossing.reaches ||
       std::abs(crossing.sideways) >= halfGoal - MatchTuning::Units::BALL_RADIUS_METRES ||
       crossing.height >=
-          MatchTuning::Units::CROSSBAR_HEIGHT_METRES - MatchTuning::Units::BALL_RADIUS_METRES)
+          pitch.goal.crossbar - MatchTuning::Units::BALL_RADIUS_METRES)
     return false;
   rearmShotAfterBounce(pitch.atY(P::CENTRE) + crossing.sideways,
                        crossing.height);
@@ -5730,7 +5730,7 @@ void MatchEngine::bounceShotOffBodyBinturong(const MatchPlayer& player, const Sh
     const Vector2F goal = asVector(pitch.at(player.isHomeTeam ? 0.0f : 1.0f, 0.5f));
     const Point3F fromGoal{at.x - goal.x, at.y - goal.y,
                            ball.z -
-                               0.5f * MatchTuning::Units::CROSSBAR_HEIGHT_METRES};
+                               0.5f * pitch.goal.crossbar};
     const float fromGoalSize = std::sqrt(dot3(fromGoal, fromGoal));
     const Point3F away = fromGoalSize > EPSILON ? times(fromGoal, 1.0f / fromGoalSize)
                                                 : Point3F{player.isHomeTeam ? 1.0f : -1.0f, 0.0f, 0.0f};
@@ -6450,8 +6450,8 @@ std::optional<PitchPoint> MatchEngine::ownGoalThreatBinturong(const MatchPlayer&
       const float share = beforeDepth / std::max(beforeDepth - depth, EPSILON);
       const float y = before.y + (ball.position.y - before.y) * share;
       if (std::abs(y - pitch.atY(MatchTuning::Pitch::CENTRE)) <=
-              MatchTuning::Shooting::GOAL_HALF_WIDTH_METRES + U::BALL_RADIUS_METRES &&
-          z < U::CROSSBAR_HEIGHT_METRES + U::BALL_RADIUS_METRES)
+              pitch.goal.halfWidth + U::BALL_RADIUS_METRES &&
+          z < pitch.goal.crossbar + U::BALL_RADIUS_METRES)
         crossing = PitchPoint{pitch.atX(keeper.isHomeTeam ? 0.0f : 1.0f), y};
       break;
     }

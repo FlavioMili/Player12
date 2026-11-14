@@ -1751,9 +1751,9 @@ void MatchEngine::updateShootout(float dt)
           substepBallZ + (ball.z - substepBallZ) * t;
       const bool inside =
           std::abs(lateralMetres) <
-              MatchTuning::Shooting::GOAL_HALF_WIDTH_METRES -
+              pitch.goal.halfWidth -
                   MatchTuning::Units::BALL_RADIUS_METRES &&
-          heightMetres < MatchTuning::Units::CROSSBAR_HEIGHT_METRES -
+          heightMetres < pitch.goal.crossbar -
                              MatchTuning::Units::BALL_RADIUS_METRES;
       finishShootoutKick(inside ? MatchEventDetail::SCORED
                                 : MatchEventDetail::MISSED);
@@ -1788,9 +1788,9 @@ void MatchEngine::shootoutBallOut()
         pitch.atY(MatchTuning::Pitch::CENTRE);
     const float heightMetres =
         substepBallZ + (ball.z - substepBallZ) * t;
-    inside = std::abs(lateralMetres) < MatchTuning::Shooting::GOAL_HALF_WIDTH_METRES -
+    inside = std::abs(lateralMetres) < pitch.goal.halfWidth -
                                            MatchTuning::Units::BALL_RADIUS_METRES &&
-             heightMetres < MatchTuning::Units::CROSSBAR_HEIGHT_METRES -
+             heightMetres < pitch.goal.crossbar -
                                 MatchTuning::Units::BALL_RADIUS_METRES;
   }
   shootout.outcome = inside ? MatchEventDetail::SCORED : MatchEventDetail::MISSED;
@@ -3298,7 +3298,7 @@ float MatchEngine::strikeShot(MatchPlayer& shooter, float forcedXG, bool header,
 
   // The brain picks the spot; the shooter's body then misses it by an error
   // that grows with distance, pressure, weak technique, fatigue and headers.
-  constexpr float HALF_GOAL = MatchTuning::Shooting::GOAL_HALF_WIDTH_METRES;
+  const float HALF_GOAL = pitch.goal.halfWidth;
   const ShotAim shotAim =
       heldAim ? *heldAim : pickShotAim(shooter, header, penalty, freeKick);
   float aimY = shotAim.aimY;
@@ -3332,7 +3332,7 @@ float MatchEngine::strikeShot(MatchPlayer& shooter, float forcedXG, bool header,
   const bool onTarget =
       std::abs(crossingY) <
           HALF_GOAL - MatchTuning::Units::BALL_RADIUS_METRES &&
-      crossingZ < MatchTuning::Units::CROSSBAR_HEIGHT_METRES -
+      crossingZ < pitch.goal.crossbar -
                       MatchTuning::Units::BALL_RADIUS_METRES;
   const float targetY =
       pitch.atY(MatchTuning::Pitch::CENTRE) + crossingY;
@@ -7018,11 +7018,11 @@ float MatchEngine::estimateShotXG(const MatchPlayer& shooter) const
 
   const Vector2F toTop =
       Vector2F{goalX - shooter.position.x,
-                pitch.atY(MatchTuning::Pitch::CENTRE) - MatchTuning::Shooting::GOAL_HALF_WIDTH_METRES -
+                pitch.atY(MatchTuning::Pitch::CENTRE) - pitch.goal.halfWidth -
                     shooter.position.y};
   const Vector2F toBottom =
       Vector2F{goalX - shooter.position.x,
-                pitch.atY(MatchTuning::Pitch::CENTRE) + MatchTuning::Shooting::GOAL_HALF_WIDTH_METRES -
+                pitch.atY(MatchTuning::Pitch::CENTRE) + pitch.goal.halfWidth -
                     shooter.position.y};
   const float denominator = length(toTop) * length(toBottom);
   const float cosine =

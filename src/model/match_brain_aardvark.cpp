@@ -2539,7 +2539,7 @@ MatchEngine::ShotAim MatchEngine::chooseShotAimAardvark(
 {
   // Aim for the side away from the keeper, a little inside the post; better
   // finishers pick tighter spots.
-  constexpr float HALF_GOAL = MatchTuning::Shooting::GOAL_HALF_WIDTH_METRES;
+  const float HALF_GOAL = pitch.goal.halfWidth;
   const MatchPlayer* keeper = findGoalkeeper(!shooter.isHomeTeam);
   const float keeperOffset =
       keeper ? keeper->position.y -
@@ -2792,7 +2792,7 @@ PitchPoint MatchEngine::chooseClearBehindTargetAardvark(
   return PitchPoint{
       defender.isHomeTeam ? -BEHIND_METRES : pitch.length + BEHIND_METRES,
       pitch.atY(MatchTuning::Pitch::CENTRE) +
-          side * randomFloat(MatchTuning::Shooting::GOAL_HALF_WIDTH_METRES +
+          side * randomFloat(pitch.goal.halfWidth +
                                  WIDE_OF_POST_METRES,
                              WIDEST_METRES)};
 }

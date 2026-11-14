@@ -115,9 +115,9 @@ inline PitchPoint keepOutOfGoalFrames(const MatchPitch& pitch, PitchPoint from,
 {
   using P = MatchTuning::Pitch;
   constexpr float R = MatchTuning::Body::RADIUS_METRES;
-  constexpr float W =
-      MatchTuning::Shooting::GOAL_HALF_WIDTH_METRES + 0.5f * P::GOAL_POST_METRES;
-  constexpr float D = P::GOAL_NET_DEPTH_METRES;
+  const float W =
+      pitch.goal.halfWidth + 0.5f * pitch.goal.post;
+  const float D = pitch.goal.netDepth;
   // Local metres at the nearer goal: u behind its line, v across from its
   // centre.
   const bool right = to.x > pitch.atX(P::CENTRE);
@@ -353,7 +353,7 @@ inline Vector2F nearestExit(const MatchPitch& pitch, Vector2F at)
       {pitch.length - at.x, {pitch.length + out, at.y}},
   }};
   Vector2F exit = std::ranges::min(exits, {}, &std::pair<float, Vector2F>::first).second;
-  constexpr float CLEAR_OF_POST = MatchTuning::Shooting::GOAL_HALF_WIDTH_METRES + 1.5f;
+  const float CLEAR_OF_POST = pitch.goal.halfWidth + 1.5f;
   if ((exit.x < 0.0f || exit.x > pitch.length) && std::abs(exit.y - 0.5f * pitch.width) < CLEAR_OF_POST)
     exit.y = 0.5f * pitch.width + (exit.y < 0.5f * pitch.width ? -CLEAR_OF_POST : CLEAR_OF_POST);
   return exit;

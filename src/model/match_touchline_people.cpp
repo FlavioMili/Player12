@@ -519,7 +519,7 @@ Vector2F MatchEngine::officialSpot(const MatchPlayer& body, const TouchlinePerso
         const float inward = goalX == 0.0f ? 1.0f : -1.0f;
         const float across = restartAt.y < CENTRE_Y ? 1.0f : -1.0f;
         return inside({goalX + inward * O::CORNER_OUT_METRES,
-                       CENTRE_Y + across * (MatchTuning::Shooting::GOAL_HALF_WIDTH_METRES +
+                       CENTRE_Y + across * (pitch.goal.halfWidth +
                                             O::CORNER_PAST_FAR_POST_METRES)});
       }
       case MatchState::FREE_KICK:

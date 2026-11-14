@@ -54,8 +54,8 @@ void MatchEngine::checkOutOfBoundsAardvark()
     const float lateralMetres =
         std::abs(crossingY - pitch.atY(MatchTuning::Pitch::CENTRE));
     constexpr float RADIUS = MatchTuning::Units::BALL_RADIUS_METRES;
-    constexpr float HALF_GOAL = MatchTuning::Shooting::GOAL_HALF_WIDTH_METRES;
-    constexpr float BAR = MatchTuning::Units::CROSSBAR_HEIGHT_METRES;
+    const float HALF_GOAL = pitch.goal.halfWidth;
+    const float BAR = pitch.goal.crossbar;
     if (lateralMetres < HALF_GOAL - RADIUS && crossingHeight < BAR - RADIUS &&
         !getPossessionState().fromThrowIn)
     {
@@ -217,7 +217,7 @@ void MatchEngine::scoreGoalAardvark(bool homeTeam)
 void MatchEngine::updateBallInNetAardvark(float dt)
 {
   integrateBall(dt);
-  const float netDepth = MatchTuning::Pitch::GOAL_NET_DEPTH_METRES;
+  const float netDepth = pitch.goal.netDepth;
   if (getPossessionState().shotByHome)
   {
     ball.position.x =
@@ -227,8 +227,8 @@ void MatchEngine::updateBallInNetAardvark(float dt)
   {
     ball.position.x = std::clamp(ball.position.x, -netDepth, 0.0f);
   }
-  ball.position.y = std::clamp(ball.position.y, pitch.atY(MatchTuning::Pitch::CENTRE) - MatchTuning::Shooting::GOAL_HALF_WIDTH_METRES,
-                               pitch.atY(MatchTuning::Pitch::CENTRE) + MatchTuning::Shooting::GOAL_HALF_WIDTH_METRES);
+  ball.position.y = std::clamp(ball.position.y, pitch.atY(MatchTuning::Pitch::CENTRE) - pitch.goal.halfWidth,
+                               pitch.atY(MatchTuning::Pitch::CENTRE) + pitch.goal.halfWidth);
   // The ball settles into the net instead of bouncing out of the goal mouth.
   ball.velocityZ = 0.0f;
   ball.z = 0.0f;

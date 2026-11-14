@@ -46,8 +46,8 @@ bool MatchEngine::ballInPlayAtBinturong(PitchPoint at) const
 void MatchEngine::checkOutOfBoundsBinturong()
 {
   constexpr float RADIUS = MatchTuning::Units::BALL_RADIUS_METRES;
-  constexpr float HALF_GOAL = MatchTuning::Shooting::GOAL_HALF_WIDTH_METRES;
-  constexpr float BAR = MatchTuning::Units::CROSSBAR_HEIGHT_METRES;
+  const float HALF_GOAL = pitch.goal.halfWidth;
+  const float BAR = pitch.goal.crossbar;
   const bool rightGoalLine = ball.position.x > pitch.atX(MatchTuning::Pitch::CENTRE);
   const float lineX = rightGoalLine ? pitch.atX(1.0f) : 0.0f;
   const float behind = rightGoalLine ? 1.0f : -1.0f;
@@ -517,9 +517,9 @@ PitchPoint routeRoundGoalFrames(const MatchPitch& pitch, PitchPoint from,
                                 PitchPoint to)
 {
   using P = MatchTuning::Pitch;
-  constexpr float W =
-      MatchTuning::Shooting::GOAL_HALF_WIDTH_METRES + 0.5f * P::GOAL_POST_METRES;
-  constexpr float DEPTH = P::GOAL_NET_DEPTH_METRES;
+  const float W =
+      pitch.goal.halfWidth + 0.5f * pitch.goal.post;
+  const float DEPTH = pitch.goal.netDepth;
   // Clear of the frame by his footprint and a little more.
   constexpr float CLEAR = MatchTuning::Body::RADIUS_METRES + 0.4f;
   const bool right = 0.5f * (from.x + to.x) > pitch.atX(P::CENTRE);
@@ -538,11 +538,11 @@ PitchPoint routeRoundGoalFrames(const MatchPitch& pitch, PitchPoint from,
   };
   const Vector2F a = local(from);
   const Vector2F b = local(to);
-  const auto inside = [](Vector2F at)
+  const auto inside = [=](Vector2F at)
   { return at.x > 0.0f && at.x < DEPTH && std::abs(at.y) < W; };
   // Whether the line from p to q crosses a side net or the back net (each
   // grown by his footprint at its ends).
-  const auto crossesNet = [](Vector2F p, Vector2F q)
+  const auto crossesNet = [=](Vector2F p, Vector2F q)
   {
     constexpr float R = MatchTuning::Body::RADIUS_METRES;
     const auto crossesAt = [&](bool alongU, float wall, float low, float high)
@@ -622,8 +622,10 @@ Point3 lerp(Point3 a, Point3 b, float t)
 
 // The ball touches the frame with its centre this close to a post's or the
 // bar's centre line.
-constexpr float FRAME_REACH = 0.5f * MatchTuning::Pitch::GOAL_POST_METRES +
-                              MatchTuning::Units::BALL_RADIUS_METRES;
+float frameReach(const MatchPitch& pitch)
+{
+  return 0.5f * pitch.goal.post + MatchTuning::Units::BALL_RADIUS_METRES;
+}
 
 float apartMetres(Point3 a, Point3 b)
 {
@@ -639,10 +641,10 @@ float apartMetres(Point3 a, Point3 b)
 std::array<Point3, 3> nearestOnFrameParts(const MatchPitch& pitch, Point3 at)
 {
   using P = MatchTuning::Pitch;
-  constexpr float HALF = MatchTuning::Shooting::GOAL_HALF_WIDTH_METRES +
-                         0.5f * P::GOAL_POST_METRES;
-  constexpr float BAR = MatchTuning::Units::CROSSBAR_HEIGHT_METRES +
-                        0.5f * P::GOAL_POST_METRES;
+  const float HALF = pitch.goal.halfWidth +
+                         0.5f * pitch.goal.post;
+  const float BAR = pitch.goal.crossbar +
+                        0.5f * pitch.goal.post;
   const float MIDDLE = 0.5f * pitch.width;
   const float line = at.x > 0.5f * pitch.length ? pitch.length : 0.0f;
   const Point3 segments[3][2] = {
@@ -687,9 +689,9 @@ std::optional<float> frameContactShare(const MatchPitch& pitch, Point3 from,
                                (to.z - from.z) * (to.z - from.z));
   const float start = frameGap(pitch, from);
   // Nowhere near it.
-  if (start - path > FRAME_REACH) return std::nullopt;
+  if (start - path > frameReach(pitch)) return std::nullopt;
   // Already touching (a little into it): met now, if going further in.
-  if (start <= FRAME_REACH)
+  if (start <= frameReach(pitch))
   {
     if (path <= EPSILON) return std::nullopt;
     const float probe = std::min(1.0f, 0.001f / path);
@@ -701,7 +703,7 @@ std::optional<float> frameContactShare(const MatchPitch& pitch, Point3 from,
   for (int step = 1; step <= steps; ++step)
   {
     const float after = static_cast<float>(step) / static_cast<float>(steps);
-    if (frameGap(pitch, lerp(from, to, after)) > FRAME_REACH)
+    if (frameGap(pitch, lerp(from, to, after)) > frameReach(pitch))
     {
       before = after;
       continue;
@@ -711,7 +713,7 @@ std::optional<float> frameContactShare(const MatchPitch& pitch, Point3 from,
     for (int halving = 0; halving < HALVINGS; ++halving)
     {
       const float middle = 0.5f * (low + high);
-      if (frameGap(pitch, lerp(from, to, middle)) > FRAME_REACH)
+      if (frameGap(pitch, lerp(from, to, middle)) > frameReach(pitch))
         low = middle;
       else
         high = middle;
@@ -730,7 +732,7 @@ bool bounceOffFrameAt(const MatchPitch& pitch, Point3 at, Vector2F& velocity,
 {
   // Touching: within its reach, to half a millimetre (the touch is found
   // just short of it).
-  constexpr float TOUCHING = FRAME_REACH + 0.0005f;
+  const float TOUCHING = frameReach(pitch) + 0.0005f;
   bool bounced = false;
   for (const Point3& near : nearestOnFrameParts(pitch, at))
   {
@@ -935,10 +937,10 @@ void MatchEngine::moveDeadBallBinturong(float dt)
     // The goal frames from outside: a side net (its post at the front), and
     // the back net sloping from the roof down to the ground.
     {
-      constexpr float W = MatchTuning::Shooting::GOAL_HALF_WIDTH_METRES +
-                          0.5f * P::GOAL_POST_METRES;
-      constexpr float DEPTH = P::GOAL_NET_DEPTH_METRES;
-      constexpr float ROOF = MatchTuning::Units::CROSSBAR_HEIGHT_METRES - 0.25f;
+      const float W = pitch.goal.halfWidth +
+                          0.5f * pitch.goal.post;
+      const float DEPTH = pitch.goal.netDepth;
+      const float ROOF = pitch.goal.crossbar - 0.25f;
       const bool right = to.x > 0.5f * pitch.length;
       const float line = right ? pitch.length : 0.0f;
       const float behind = right ? 1.0f : -1.0f;
@@ -947,9 +949,9 @@ void MatchEngine::moveDeadBallBinturong(float dt)
       const float v0 = from.y - 0.5f * pitch.width;
       const float v1 = to.y - 0.5f * pitch.width;
       // The net's top this far behind the line (the 3D view's shape).
-      const auto netTop = [](float u)
+      const auto netTop = [&](float u)
       {
-        return u <= 1.0f ? MatchTuning::Units::CROSSBAR_HEIGHT_METRES - 0.25f * u
+        return u <= 1.0f ? pitch.goal.crossbar - 0.25f * u
                          : ROOF * std::max(0.0f, DEPTH - u);
       };
       const bool outside = u0 < 0.0f || u0 > DEPTH || std::abs(v0) > W;

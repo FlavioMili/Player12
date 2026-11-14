@@ -698,9 +698,9 @@ void MatchEngine::readShotAardvark(const MatchPlayer& keeper,
                         (1.0f - keeper.goalkeeping * 0.6f);
   control.diveTargetY = std::clamp(
       predictedY + readError,
-      pitch.atY(MatchTuning::Pitch::CENTRE) - MatchTuning::Shooting::GOAL_HALF_WIDTH_METRES -
+      pitch.atY(MatchTuning::Pitch::CENTRE) - pitch.goal.halfWidth -
                      MatchTuning::Goalkeeper::DIVE_POST_MARGIN_METRES,
-      pitch.atY(MatchTuning::Pitch::CENTRE) + MatchTuning::Shooting::GOAL_HALF_WIDTH_METRES +
+      pitch.atY(MatchTuning::Pitch::CENTRE) + pitch.goal.halfWidth +
                 MatchTuning::Goalkeeper::DIVE_POST_MARGIN_METRES);
 
   bool screened = false;
@@ -927,8 +927,8 @@ bool MatchEngine::tryOwnGoalTouchAardvark(MatchPlayer& defender)
   // The ball skews off him toward the goal he defends.
   const float goalX = pitch.atX(defender.isHomeTeam ? -0.01f : 1.01f);
   const float aimMetres =
-      randomFloat(-MatchTuning::Shooting::GOAL_HALF_WIDTH_METRES,
-                  MatchTuning::Shooting::GOAL_HALF_WIDTH_METRES);
+      randomFloat(-pitch.goal.halfWidth,
+                  pitch.goal.halfWidth);
   const PitchPoint target{goalX, pitch.atY(MatchTuning::Pitch::CENTRE) +
                                    aimMetres};
   const float height = ball.z;

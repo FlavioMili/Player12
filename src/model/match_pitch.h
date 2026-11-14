@@ -22,6 +22,20 @@ enum class PitchSurface : std::uint8_t
   TRAINING
 };
 
+/** A goal's size (metres): the same at both ends of a pitch. A match's is
+ * the Laws' (Law 1: 7.32 x 2.44 m), with its posts and net. */
+struct PitchGoal
+{
+  /** From the centre to the inside of a post. */
+  float halfWidth = MatchTuning::Shooting::GOAL_HALF_WIDTH_METRES;
+  /** Up to the underside of the crossbar. */
+  float crossbar = MatchTuning::Units::CROSSBAR_HEIGHT_METRES;
+  /** A post's (and the bar's) thickness. */
+  float post = MatchTuning::Pitch::GOAL_POST_METRES;
+  /** How far the net goes back behind the goal line. */
+  float netDepth = MatchTuning::Pitch::GOAL_NET_DEPTH_METRES;
+};
+
 /** What the pitch ends at: lines (the ball goes out of play) or hard walls
  * (unlimited height; the ball bounces back and players can't cross). */
 enum class PitchEdge : std::uint8_t
@@ -97,6 +111,8 @@ struct MatchPitch final
   /** What it looks like, and what it ends at. */
   PitchSurface surface;
   PitchEdge edge;
+  /** The goal at each end (a match's by default). */
+  PitchGoal goal{};
 
   // ---------------------------------------------------------------------
   // Point units (training ground T1 stage 2). A PitchPoint's coordinates
