@@ -34,10 +34,11 @@ using namespace MatchEngineInternal;
 
 bool MatchEngine::ballInPlayAtBinturong(PitchPoint at) const
 {
-  // In play until the whole ball is over a line (Law 9); a walled pitch
-  // has no lines to cross.
-  if (pitch.edge == PitchEdge::WALLS) return true;
+  // In play until the whole ball is over a line (Law 9); on a walled pitch
+  // only a goal line (through a goal mouth) can be crossed.
   const float OVER_X = MatchTuning::Units::BALL_RADIUS_METRES;
+  if (pitch.edge == PitchEdge::WALLS)
+    return at.x > -OVER_X && at.x < pitch.length + OVER_X;
   const float OVER_Y = MatchTuning::Units::BALL_RADIUS_METRES;
   return at.x > -OVER_X && at.x < pitch.atX(1.0f) + OVER_X && at.y > -OVER_Y &&
          at.y < pitch.atY(1.0f) + OVER_Y;
@@ -217,7 +218,7 @@ void MatchEngine::scoreGoalBinturong(bool homeTeam)
   if (fromShot && getPossessionState().shotFromDirectFreeKick) ++stats.directFreeKickGoals;
 
   goalScoredByHome = homeTeam;
-  goalCelebrationRemaining = playHalfMinutes > 0
+  goalCelebrationRemaining = shortStoppages()
                                  ? getGoalCelebrationDuration()
                                  : MatchTuning::DeadBall::CELEBRATION_SECONDS;
   state = MatchState::GOAL;
@@ -755,8 +756,8 @@ bool bounceOffFrameAt(const MatchPitch& pitch, Point3 at, Vector2F& velocity,
 std::optional<float> MatchEngine::frameInPathBinturong(float seconds) const
 {
   // A free ball in play, on its way over the next `seconds` (straight: the
-  // stretch is short). A training pitch has no goal frames yet (T3).
-  if (pitch.surface == PitchSurface::TRAINING) return std::nullopt;
+  // stretch is short). A pitch without goals has no frames.
+  if (!pitch.goal.present()) return std::nullopt;
   if (state != MatchState::PLAYING || (getPossessionAttachment() && !hasTouchClaim()))
     return std::nullopt;
   const Vector2F at = asVector(ball.position);
@@ -1004,6 +1005,9 @@ void MatchEngine::moveDeadBallBinturong(float dt)
 
     ball.position = PitchPoint{to.x, to.y};
     ball.velocity = velocity;
+    // A walled pitch: its walls hold the dead ball too (the boards and the
+    // stand are further out, so it never reaches them).
+    if (pitch.edge == PitchEdge::WALLS) bounceOffWalls();
 
     // Into the stand: a fan in the rows shown catches it within his reach;
     // beyond those rows it has gone out of sight. Not down the tunnel,

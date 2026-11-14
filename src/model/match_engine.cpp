@@ -1234,7 +1234,7 @@ void MatchEngine::simulateStepBody(float dt)
   {
     // The scored ball settles in the net while the teams celebrate and walk
     // back; the clock keeps running until the kick-off.
-    if (playHalfMinutes > 0)
+    if (shortStoppages())
       goalCelebrationRemaining = std::min(
           goalCelebrationRemaining, MatchTuning::Timing::PLAY_STOPPAGE_SECONDS);
     goalCelebrationRemaining = std::max(0.0F, goalCelebrationRemaining - dt);

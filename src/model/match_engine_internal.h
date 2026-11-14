@@ -363,8 +363,8 @@ inline Vector2F nearestExit(const MatchPitch& pitch, Vector2F at)
  * the pitch (keepOffGround) and out of the goal frames. */
 inline PitchPoint moveBody(const MatchPitch& pitch, PitchPoint from, PitchPoint to)
 {
-  // A training pitch has no goals yet (T3): no frames to meet.
-  if (pitch.surface == PitchSurface::TRAINING)
+  // A pitch without goals has no frames to meet.
+  if (!pitch.goal.present())
     return keepOffGround(pitch, from, to);
   return keepOutOfGoalFrames(pitch, from, keepOffGround(pitch, from, to));
 }

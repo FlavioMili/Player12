@@ -35,15 +35,56 @@ void MatchEngine::bounceOffWalls()
       speed = -std::abs(speed) * RESTITUTION;
     }
   };
-  bounce(ball.position.x, ball.velocity.x, RADIUS, pitch.length - RADIUS);
+  // The end walls are open at the goal mouths (between the posts' outer
+  // edges, under the bar's top): the frame and the net take it from there.
+  const bool throughMouth =
+      pitch.goal.present() &&
+      std::abs(ball.position.y - 0.5f * pitch.width) <
+          pitch.goal.halfWidth + pitch.goal.post &&
+      ball.z < pitch.goal.crossbar + pitch.goal.post;
+  if (!throughMouth)
+    bounce(ball.position.x, ball.velocity.x, RADIUS, pitch.length - RADIUS);
   bounce(ball.position.y, ball.velocity.y, RADIUS, pitch.width - RADIUS);
+  // Past a goal line it is in a goal: the net holds it, a closed box behind
+  // the line (back, sides and roof), stopping it where it meets the net.
+  if (pastGoalLine())
+  {
+    const bool right = ball.position.x > pitch.length;
+    const float line = right ? pitch.length : 0.0f;
+    const float behind = right ? 1.0f : -1.0f;
+    const float back = std::max(0.0f, pitch.goal.netDepth - RADIUS);
+    if ((ball.position.x - line) * behind > back)
+    {
+      ball.position.x = line + behind * back;
+      ball.velocity.x = 0.0f;
+    }
+    const float centre = 0.5f * pitch.width;
+    const float side = std::max(0.0f, pitch.goal.halfWidth - RADIUS);
+    if (std::abs(ball.position.y - centre) > side)
+    {
+      ball.position.y = centre + (ball.position.y > centre ? side : -side);
+      ball.velocity.y = 0.0f;
+    }
+    const float roof = std::max(RADIUS, pitch.goal.crossbar - RADIUS);
+    if (ball.z > roof)
+    {
+      ball.z = roof;
+      ball.velocityZ = std::min(ball.velocityZ, 0.0f);
+    }
+  }
+}
+
+bool MatchEngine::pastGoalLine() const
+{
+  return pitch.goal.present() &&
+         (ball.position.x < 0.0f || ball.position.x > pitch.length);
 }
 
 void MatchEngine::checkOutOfBounds()
 {
-  // A walled pitch: the walls send it back (bounceOffWalls), so it never
-  // goes out.
-  if (pitch.edge == PitchEdge::WALLS) return;
+  // A walled pitch: the walls send it back (bounceOffWalls), so it only
+  // leaves through a goal mouth, where the out-of-play version decides.
+  if (pitch.edge == PitchEdge::WALLS && !pastGoalLine()) return;
   // A shootout kick (goalkeeper plan step 9): off the pitch it ends the
   // kick, in or out, and nothing restarts.
   if (shootout.live)
@@ -64,7 +105,6 @@ void MatchEngine::checkOutOfBounds()
 
 bool MatchEngine::ballInPlayAt(PitchPoint at) const
 {
-  if (pitch.edge == PitchEdge::WALLS) return true;
   switch (outOfPlayId)
   {
     case OutOfPlayId::AARDVARK:

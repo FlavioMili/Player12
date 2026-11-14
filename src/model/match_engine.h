@@ -2834,8 +2834,8 @@ class MatchEngine
   float getGoalCelebrationRemaining() const { return goalCelebrationRemaining; }
   [[nodiscard]] float getGoalCelebrationDuration() const
   {
-    return playHalfMinutes > 0 ? MatchTuning::Timing::PLAY_STOPPAGE_SECONDS
-                               : MatchTuning::Timing::GOAL_CELEBRATION_SECONDS;
+    return shortStoppages() ? MatchTuning::Timing::PLAY_STOPPAGE_SECONDS
+                            : MatchTuning::Timing::GOAL_CELEBRATION_SECONDS;
   }
 
   /**
@@ -5161,6 +5161,15 @@ class MatchEngine
   void checkOutOfBounds();
   /** A walled pitch (PitchEdge::WALLS): the ball back off the walls. */
   void bounceOffWalls();
+  /** A walled pitch: whether the ball has gone over a goal line (only
+   * possible through a goal mouth). */
+  bool pastGoalLine() const;
+  /** Short stoppages after a goal: Play mode, and a training pitch (no
+   * celebration or long walk back). */
+  bool shortStoppages() const
+  {
+    return playHalfMinutes > 0 || pitch.surface == PitchSurface::TRAINING;
+  }
   /** Whether a ball at `at` is still in play (not over a line), by the
    * match's out-of-play version. */
   bool ballInPlayAt(PitchPoint at) const;

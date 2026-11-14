@@ -78,7 +78,7 @@ Usage:
   fm_lab drill   [--brains HOME,AWAY] [--bodies HOME,AWAY] [--handshake H]
                  [--referee R] [--managers HOME,AWAY] [--ball B]
                  [--out-of-play O] [--possession aardvark|binturong]
-                 [--pitch LENGTHxWIDTH]
+                 [--pitch LENGTHxWIDTH [--goal KIND]]
                  "DRILL" --sweep "Setting=FROM:TO:COUNT" [--by ...]
                  [--preset NAME] [--set "Setting=value"]... [--repeats N]
                  [--seed S] [--csv [FILE]]
@@ -112,7 +112,9 @@ drill    a match sandbox drill measured headless: the same options as
          options given before its name (brains, bodies, handshake, referee,
          managers, ball, out of play), as the sandbox's drills play with
          its settings; --pitch plays it on a walled training pitch of that
-         size instead of its own (no goals yet)
+         size instead of its own, with --goal a goal of
+         that kind at each end (full, 9v9, 7v7, futsal, 5-a-side, small,
+         pop-up)
 touch-sensitivity
          which variables move the first touch most: every First touch
          situation at several First Touch ratings, as tuned, then with each
@@ -827,6 +829,7 @@ int runDrillMode(int argc, char** argv)
 {
   const std::vector<std::string> rest(argv + 2, argv + argc);
   std::size_t index = 0;
+  std::optional<GoalKind> drillGoal;
   for (; index + 1 < rest.size() && rest[index].starts_with("--"); index += 2)
   {
     const std::string& option = rest[index];
@@ -902,14 +905,32 @@ int runDrillMode(int argc, char** argv)
         throw UsageError("--pitch: 5 to 120 m long and 5 to 90 m wide");
       sandboxDrillPitch() = MatchPitch::training(length, width);
     }
+    else if (option == "--goal")
+    {
+      // A goal at each end of the --pitch training pitch (plan section 19).
+      std::optional<GoalKind> kind;
+      for (int index = 0; index <= static_cast<int>(GoalKind::POP_UP); ++index)
+        if (value == goalKindName(static_cast<GoalKind>(index)))
+          kind = static_cast<GoalKind>(index);
+      if (!kind)
+        throw UsageError(
+            "--goal must be none, full, 9v9, 7v7, futsal, 5-a-side, small or pop-up");
+      drillGoal = *kind;
+    }
     else
     {
       throw UsageError(std::format(
           "drill: '{}' before the drill's name (only --brains, --bodies, "
-          "--handshake, --referee, --managers, --ball, --out-of-play, --possession "
-          "and --pitch go there)",
+          "--handshake, --referee, --managers, --ball, --out-of-play, --possession, "
+          "--pitch and --goal go there)",
           option));
     }
+  }
+  if (drillGoal)
+  {
+    if (!sandboxDrillPitch())
+      throw UsageError("--goal needs --pitch (a training pitch to put the goals on)");
+    sandboxDrillPitch()->goal = PitchGoal::ofKind(*drillGoal);
   }
   if (index >= rest.size()) throw UsageError("drill: missing the drill's name");
   const std::string drill = rest[index];

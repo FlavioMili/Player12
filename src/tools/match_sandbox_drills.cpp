@@ -9216,7 +9216,8 @@ class WalledBoxDrill final : public Drill
 
   MatchPitch pitch() const override
   {
-    return MatchPitch::training(lengthSetting, widthSetting);
+    return MatchPitch::training(lengthSetting, widthSetting,
+                                static_cast<GoalKind>(static_cast<int>(goalsChoice + 0.5f)));
   }
 
   std::vector<DrillParameter> parameters() override
@@ -9227,6 +9228,12 @@ class WalledBoxDrill final : public Drill
     list.push_back(setting("Players a side", &sideSetting, 1.0f, 4.0f, true));
     list.push_back(setting("Seconds", &secondsSetting, 10.0f, 120.0f, true));
     list.push_back(setting("Feed speed (m/s)", &feedSetting, 2.0f, 25.0f, false));
+    DrillParameter goals = setting("Goals", &goalsChoice, 0.0f, 7.0f, true,
+                                   "A goal at each end (training ground T3); "
+                                   "a goal is followed by a kick-off.");
+    goals.choices = {"None", "Full size", "9v9", "7v7", "Futsal", "5-a-side",
+                     "Small framed", "Pop-up"};
+    list.push_back(goals);
     return list;
   }
 
@@ -9305,23 +9312,35 @@ class WalledBoxDrill final : public Drill
          ball.velocity.y < 0.0f))
       ++bounces;
     lastVelocity = ball.velocity;
-    nearestWall = std::min({nearestWall, at.x, at.y, box.length - at.x,
-                            box.width - at.y});
-    if (at.x < 0.0f || at.y < 0.0f || at.x > box.length || at.y > box.width)
+    if (at.x >= 0.0f && at.x <= box.length)
+      nearestWall = std::min({nearestWall, at.x, at.y, box.length - at.x,
+                              box.width - at.y});
+    // Outside: beyond the walls and not in a goal's net.
+    const bool inGoal =
+        box.goal.present() &&
+        std::abs(at.y - 0.5f * box.width) < box.goal.halfWidth + box.goal.post &&
+        at.x > -box.goal.netDepth - RADIUS && at.x < box.length + box.goal.netDepth + RADIUS;
+    if ((at.x < 0.0f || at.y < 0.0f || at.x > box.length || at.y > box.width) && !inGoal)
       ++ballOut;
+    homeGoals = engine.getHomeScore();
+    awayGoals = engine.getAwayScore();
     for (const PlayerID id : ids_)
       if (const MatchPlayer* player = slotOf(engine, id))
         if (player->position.x < 0.0f || player->position.y < 0.0f ||
             player->position.x > box.length || player->position.y > box.width)
           ++playersOut;
     elapsed = secondsOf(engine);
-    if (engine.getState() != MatchState::PLAYING && stoppedBy.empty())
+    // Play goes on through a goal and its kick-off; anything else stops it.
+    const MatchState state = engine.getState();
+    const bool going = state == MatchState::PLAYING || state == MatchState::GOAL ||
+                       state == MatchState::KICK_OFF;
+    if (!going && stoppedBy.empty())
     {
       const auto& events = engine.getEvents();
       stoppedBy = events.empty() ? std::string("?")
                                  : std::string(matchEventTypeName(events.back().type));
     }
-    return elapsed < secondsSetting && engine.getState() == MatchState::PLAYING;
+    return elapsed < secondsSetting && going;
   }
 
   std::vector<std::string> report() const override
@@ -9329,6 +9348,7 @@ class WalledBoxDrill final : public Drill
     std::vector<std::string> lines{
         std::format("{:.1f} s of {:.0f}", elapsed, secondsSetting),
         std::format("Wall bounces: {}", bounces),
+        std::format("Goals: home {}, away {}", homeGoals, awayGoals),
         std::format("Ball's centre nearest a wall: {:.2f} m", nearestWall),
         std::format("Ticks with the ball outside: {}; players outside: {}",
                     ballOut, playersOut),
@@ -9349,6 +9369,7 @@ class WalledBoxDrill final : public Drill
   {
     if (elapsed < secondsSetting - 0.05) return {};
     return {{"Wall bounces", static_cast<double>(bounces)},
+            {"Goals", static_cast<double>(homeGoals + awayGoals)},
             {"Nearest wall (m)", nearestWall},
             {"Ball outside (ticks)", static_cast<double>(ballOut)},
             {"Players outside (ticks)", static_cast<double>(playersOut)}};
@@ -9360,6 +9381,9 @@ class WalledBoxDrill final : public Drill
   float sideSetting = 2.0f;
   float secondsSetting = 60.0f;
   float feedSetting = 12.0f;
+  float goalsChoice = 0.0f;
+  int homeGoals = 0;
+  int awayGoals = 0;
   std::vector<PlayerID> ids_;
   int bounces = 0;
   int ballOut = 0;

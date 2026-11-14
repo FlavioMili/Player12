@@ -22,10 +22,26 @@ enum class PitchSurface : std::uint8_t
   TRAINING
 };
 
+/** The goals a pitch can have at its ends (training ground plan section
+ * 19): none, or one of these kinds, the same at both ends. */
+enum class GoalKind : std::uint8_t
+{
+  NONE,
+  FULL,
+  YOUTH_9V9,
+  YOUTH_7V7,
+  FUTSAL,
+  FIVE_A_SIDE,
+  SMALL_FRAMED,
+  POP_UP
+};
+
 /** A goal's size (metres): the same at both ends of a pitch. A match's is
  * the Laws' (Law 1: 7.32 x 2.44 m), with its posts and net. */
 struct PitchGoal
 {
+  GoalKind kind = GoalKind::FULL;
+  [[nodiscard]] constexpr bool present() const { return kind != GoalKind::NONE; }
   /** From the centre to the inside of a post. */
   float halfWidth = MatchTuning::Shooting::GOAL_HALF_WIDTH_METRES;
   /** Up to the underside of the crossbar. */
@@ -34,7 +50,67 @@ struct PitchGoal
   float post = MatchTuning::Pitch::GOAL_POST_METRES;
   /** How far the net goes back behind the goal line. */
   float netDepth = MatchTuning::Pitch::GOAL_NET_DEPTH_METRES;
+
+  /** A goal of this kind (width x height agreed with the user, plan section
+   * 19: full size, Law 1; futsal; FA youth formats; 5-a-side common; small
+   * framed and pop-up our own estimates). Posts and net scale with the
+   * height from the full-size goal's; a pop-up goal has thin poles and a
+   * shallow net that is its frame (not researched). */
+  [[nodiscard]] static constexpr PitchGoal ofKind(GoalKind kind)
+  {
+    const auto sized = [kind](float width, float height)
+    {
+      constexpr float FULL_HEIGHT = MatchTuning::Units::CROSSBAR_HEIGHT_METRES;
+      PitchGoal goal;
+      goal.kind = kind;
+      goal.halfWidth = 0.5f * width;
+      goal.crossbar = height;
+      goal.post = MatchTuning::Pitch::GOAL_POST_METRES * height / FULL_HEIGHT;
+      goal.netDepth = MatchTuning::Pitch::GOAL_NET_DEPTH_METRES * height / FULL_HEIGHT;
+      return goal;
+    };
+    switch (kind)
+    {
+      case GoalKind::NONE:
+      {
+        PitchGoal none;
+        none.kind = GoalKind::NONE;
+        return none;
+      }
+      case GoalKind::FULL: return PitchGoal{};
+      case GoalKind::YOUTH_9V9: return sized(4.88f, 2.13f);
+      case GoalKind::YOUTH_7V7: return sized(3.66f, 1.83f);
+      case GoalKind::FUTSAL: return sized(3.0f, 2.0f);
+      case GoalKind::FIVE_A_SIDE: return sized(3.66f, 1.22f);
+      case GoalKind::SMALL_FRAMED: return sized(1.8f, 1.2f);
+      case GoalKind::POP_UP:
+      {
+        PitchGoal goal = sized(1.2f, 0.8f);
+        goal.post = 0.03f;
+        goal.netDepth = 0.6f;
+        return goal;
+      }
+    }
+    return PitchGoal{};
+  }
 };
+
+/** A goal kind's name for menus and the lab ("pop-up"...). */
+[[nodiscard]] constexpr const char* goalKindName(GoalKind kind)
+{
+  switch (kind)
+  {
+    case GoalKind::NONE: return "none";
+    case GoalKind::FULL: return "full";
+    case GoalKind::YOUTH_9V9: return "9v9";
+    case GoalKind::YOUTH_7V7: return "7v7";
+    case GoalKind::FUTSAL: return "futsal";
+    case GoalKind::FIVE_A_SIDE: return "5-a-side";
+    case GoalKind::SMALL_FRAMED: return "small";
+    case GoalKind::POP_UP: return "pop-up";
+  }
+  return "none";
+}
 
 /** What the pitch ends at: lines (the ball goes out of play) or hard walls
  * (unlimited height; the ball bounces back and players can't cross). */
@@ -84,11 +160,13 @@ struct MatchPitch final
 
   /** A training pitch of this size: plain grass, walled all round
    * (training ground plan section 18). */
-  [[nodiscard]] static constexpr MatchPitch training(float lengthMetres,
-                                                     float widthMetres)
+  [[nodiscard]] static constexpr MatchPitch training(
+      float lengthMetres, float widthMetres, GoalKind goals = GoalKind::NONE)
   {
-    return MatchPitch(lengthMetres, widthMetres, PitchSurface::TRAINING,
-                      PitchEdge::WALLS);
+    MatchPitch pitch(lengthMetres, widthMetres, PitchSurface::TRAINING,
+                     PitchEdge::WALLS);
+    pitch.goal = PitchGoal::ofKind(goals);
+    return pitch;
   }
 
   /** Metres, goal line to goal line and touchline to touchline. */
