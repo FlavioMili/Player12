@@ -202,10 +202,24 @@ its own (`Drill::pitch()`).
   `match_out_of_play_dispatch.cpp` are shared by both out-of-play versions.
 * **Nothing else round it.** A training pitch has no furniture, no frames
   when it has no goals, and no touchline people but its coach.
-* **Kit.** `MatchEngine::setKit` lays named cones, lines and areas
+* **Kit.** `MatchEngine::setKit` lays named cones, lines, areas and dummies
   (`PitchKit::Layout`, [match_layout.h](../../src/model/match_layout.h)) on the
-  pitch; the views draw them under the players. Nothing collides with them
-  yet. `placeScenario` clears them.
+  pitch, any pitch; the views draw them. Cones, lines and areas are drawn
+  only. `placeScenario` clears them.
+* **Dummies.** A mannequin, a junior mannequin or an agility pole
+  (`PitchKit::Dummy`; sizes in `dummyShape`, from makers' listings) is solid:
+  an upright cylinder with a domed top, every point within its radius of
+  its axis from the ground to its shoulder. The ball bounces off one live
+  (the shared stretch, `dummyInPath` and `bounceOffDummy`, booked as a
+  non-shot woodwork touch; a shot that hits one is a shot no longer) and
+  dead. A player is kept out of one and bounces off it
+  (`bounceOffDummies`, then on the Binturong body the jolt judged as a
+  collision's); a player whose straight line to his target runs into one
+  heads for its nearest edge for the step (`steerRoundDummies`; not one on
+  a drill's route), and the Binturong dribble steers round them. Both
+  brains leave out a pass a dummy blocks (`passBlockedByDummy`: a ground
+  pass into one, a lofted one too low where it passes). Shots don't look
+  for them yet.
 * **Views.** The render snapshot carries the size, surface, edge and kit. The
   2D view fits a training pitch, with a 5 m grass margin, inside its area; the
   3D view centres it where the match pitch sits (`worldOf`), so the cameras
@@ -215,8 +229,9 @@ its own (`Drill::pitch()`).
   markings.
 
 The Walled box drill plays a few a side on one, with any goal, the serve's
-side and receiver, and fouls off or whistled, and reports the wall bounces,
-goals, shots, serves and fouls; `fm_lab drill --pitch LxW [--goal KIND]`
+side and receiver, fouls off or whistled, and four dummies or none, and
+reports the wall bounces, goals, shots, serves, fouls and dummy hits (the
+Slalom can use poles for its cones); `fm_lab drill --pitch LxW [--goal KIND]`
 plays any drill on one (KIND is none, full, 9v9, 7v7, futsal, 5-a-side, small
 or pop-up).
 
