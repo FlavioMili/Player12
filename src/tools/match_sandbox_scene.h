@@ -90,20 +90,18 @@ class MatchSandboxScene : public GUIScene
   bool full_familiarity = true;
   std::string last_result;
 
-  /** Draws the debugger and review windows and links them. */
-  void renderDebugTools(MatchEngine* live, bool* livePaused);
-
   // Drills.
   void renderDrills();
   /** 0: matches (initial page), 1: drills, 2: training, 3: tools,
-   * 4: developer set-up. */
+   * 4: developer set-up, 5: recordings, 6: review. */
   int mode = 0;
   ImFont* sidebar_font = nullptr;
   ImFont* setup_regular_font = nullptr;
   ImFont* setup_medium_font = nullptr;
   std::vector<std::unique_ptr<Drill>> drills = makeDrills();
   int drill_index = 0;
-  std::array<int, static_cast<std::size_t>(DrillCategory::Count)> category_drill_indices{};
+  std::array<int, static_cast<std::size_t>(DrillCategory::Count)>
+      category_drill_indices{};
 
   // Training: a session for the home club's squad.
   void renderTraining();
@@ -117,6 +115,11 @@ class MatchSandboxScene : public GUIScene
   // Recordings (debugger phase 5).
   void saveRecording();
   void renderRecordings();
+  void renderReviewPage();
+  int reviewTab = 0;
+  int recording_index = -1;
+  std::optional<MatchRecording> recording_preview;
+  std::string recording_preview_error;
   /** @param brains, bodies Replay with these (home, away) instead of the
    * recorded ones: side by side, the comparison shows where they differ. */
   void loadRecording(const std::filesystem::path& path,
@@ -132,7 +135,6 @@ class MatchSandboxScene : public GUIScene
   std::optional<Recordings::Replay> replay_info;
   RecordingComparison comparison;
   bool save_with_detail = true;
-  bool show_recordings = false;
   std::vector<std::filesystem::path> recording_files;
   /** Last save, load or build message, shown in the footer. */
   std::string status;
@@ -154,10 +156,6 @@ class MatchSandboxScene : public GUIScene
   bool match_true_view = false;
   bool debug_at_kick_off = false;
   MatchTrueView true_view;
-  /** After a match, on the setup screen: the review and debugger windows
-   * (renderDebugTools), each closed by its own close button. */
-  bool show_review = false;
-  bool show_debugger = false;
   /** The sandbox's sections in the match's side panel. */
   void renderMatchPanel(MatchEngine& engine, bool& paused);
 };

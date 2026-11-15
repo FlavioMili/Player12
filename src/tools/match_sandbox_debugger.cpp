@@ -20,6 +20,7 @@
 
 #include "gui/widgets/theme.h"
 #include "model/match_engine.h"
+#include "tools/match_sandbox_analysis_ui.h"
 #include "tools/match_sandbox_inspector.h"
 #include "tools/match_sandbox_names.h"
 #include "tools/match_sandbox_recorder.h"
@@ -30,8 +31,8 @@ using Recorder = SandboxRecorder;
 using Kind = EngineDebugger::Kind;
 
 constexpr std::array<const char*, static_cast<std::size_t>(Kind::COUNT)>
-    KIND_NAMES{"Phase", "Job", "Intent", "Decision", "Action", "Possession",
-               "Keeper", "Event"};
+    KIND_NAMES{"Phase",  "Job",        "Intent", "Decision",
+               "Action", "Possession", "Keeper", "Event"};
 
 std::string score(float value)
 {
@@ -46,7 +47,8 @@ float metres(PitchPoint from, PitchPoint to)
 /** Match clock "mm:ss". */
 std::string clock(float minute)
 {
-  const int seconds = static_cast<int>(std::floor(std::max(0.0f, minute) * 60.0f));
+  const int seconds =
+      static_cast<int>(std::floor(std::max(0.0f, minute) * 60.0f));
   return std::format("{:02}:{:02}", seconds / 60, seconds % 60);
 }
 
@@ -60,7 +62,8 @@ struct Row
 
 Row describeRow(const Recorder& recorder, const Recorder::Entry& entry)
 {
-  const auto name = [&recorder](PlayerID id) { return recorder.playerName(id); };
+  const auto name = [&recorder](PlayerID id)
+  { return recorder.playerName(id); };
   return std::visit(
       [&](const auto& item) -> Row
       {
@@ -71,10 +74,11 @@ Row describeRow(const Recorder& recorder, const Recorder::Entry& entry)
                               SandboxNames::phase(item.to))};
         else if constexpr (std::is_same_v<T, Recorder::JobChange>)
         {
-          std::string text = std::format("{}: {}", SandboxNames::job(item.job),
-                                         item.player ? name(item.player)
-                                                     : std::string("nobody"));
-          if (item.previous) text += std::format(" (was {})", name(item.previous));
+          std::string text = std::format(
+              "{}: {}", SandboxNames::job(item.job),
+              item.player ? name(item.player) : std::string("nobody"));
+          if (item.previous)
+            text += std::format(" (was {})", name(item.previous));
           if (item.player && (item.job == Recorder::Job::PRESSER_1 ||
                               item.job == Recorder::Job::PRESSER_2))
             text += std::format(" · arrives in {:.2f} s", item.score);
@@ -86,8 +90,9 @@ Row describeRow(const Recorder& recorder, const Recorder::Entry& entry)
         }
         else if constexpr (std::is_same_v<T, Recorder::IntentChange>)
         {
-          std::string text = std::format("{} -> {}", SandboxNames::intent(item.from),
-                                         SandboxNames::intent(item.to));
+          std::string text =
+              std::format("{} -> {}", SandboxNames::intent(item.from),
+                          SandboxNames::intent(item.to));
           if (item.job != Recorder::Job::NONE)
             text += std::format("  [{}]", SandboxNames::job(item.job));
           return {item.homeTeam, item.player, text};
@@ -95,9 +100,9 @@ Row describeRow(const Recorder& recorder, const Recorder::Entry& entry)
         else if constexpr (std::is_same_v<T, MatchDecisionRecord>)
         {
           std::string text = std::format(
-              "{}  ·  pass {}  shot {}  carry {}  shield {}", SandboxNames::choice(item.chosen),
-              score(item.pass), score(item.shot), score(item.carry),
-              score(item.shield));
+              "{}  ·  pass {}  shot {}  carry {}  shield {}",
+              SandboxNames::choice(item.chosen), score(item.pass),
+              score(item.shot), score(item.carry), score(item.shield));
           if (item.chosen == ScenarioAction::PASS && item.bestReceiver)
             text += std::format("  ·  to {} ({})", name(item.bestReceiver),
                                 SandboxNames::passIntent(item.bestPassIntent));
@@ -113,10 +118,11 @@ Row describeRow(const Recorder& recorder, const Recorder::Entry& entry)
           switch (item.kind)
           {
             case MatchActionKind::PASS:
-              text += std::format(" {}{} to {} · {:.1f} m · est. completion {:.2f}",
-                                  SandboxNames::passIntent(item.passIntent),
-                                  item.lofted ? ", lofted" : "", name(item.target),
-                                  metres(item.from, item.to), item.estimate);
+              text +=
+                  std::format(" {}{} to {} · {:.1f} m · est. completion {:.2f}",
+                              SandboxNames::passIntent(item.passIntent),
+                              item.lofted ? ", lofted" : "", name(item.target),
+                              metres(item.from, item.to), item.estimate);
               break;
             case MatchActionKind::SHOT:
               text += std::format(" · xG {:.2f} · {:.1f} m/s", item.estimate,
@@ -125,17 +131,20 @@ Row describeRow(const Recorder& recorder, const Recorder::Entry& entry)
             case MatchActionKind::CLEARANCE:
             case MatchActionKind::KNOCK_DOWN:
               text += std::format(" · {:.1f} m", metres(item.from, item.to));
-              if (item.target) text += std::format(" toward {}", name(item.target));
+              if (item.target)
+                text += std::format(" toward {}", name(item.target));
               break;
             case MatchActionKind::TAKE_ON:
-              text += std::format(" vs {} · chance {:.2f} · {}", name(item.target),
-                                  item.estimate, SandboxNames::duel(item.result));
+              text +=
+                  std::format(" vs {} · chance {:.2f} · {}", name(item.target),
+                              item.estimate, SandboxNames::duel(item.result));
               break;
             case MatchActionKind::TACKLE:
-              text += std::format("{} on {} · win {:.2f} · foul risk {:.2f} · {}",
-                                  item.lofted ? " (sliding)" : "",
-                                  name(item.target), item.estimate,
-                                  item.foulPropensity, SandboxNames::duel(item.result));
+              text += std::format(
+                  "{} on {} · win {:.2f} · foul risk {:.2f} · {}",
+                  item.lofted ? " (sliding)" : "", name(item.target),
+                  item.estimate, item.foulPropensity,
+                  SandboxNames::duel(item.result));
               break;
           }
           return {item.homeTeam, item.player, text};
@@ -151,7 +160,8 @@ Row describeRow(const Recorder& recorder, const Recorder::Entry& entry)
           {
             const auto& cause = recorder.entries()[*item.afterAction].payload;
             if (const auto* action = std::get_if<MatchActionRecord>(&cause))
-              text += std::format("  (after {} by {})", SandboxNames::action(action->kind),
+              text += std::format("  (after {} by {})",
+                                  SandboxNames::action(action->kind),
                                   name(action->player));
           }
           return {item.toHome, item.to, text};
@@ -194,83 +204,53 @@ std::optional<std::uint64_t> EngineDebugger::takeSeekRequest()
   return std::exchange(seek_request, std::nullopt);
 }
 
-void EngineDebugger::render(SandboxRecorder& recorder, MatchEngine* engine,
-                            bool* paused, std::optional<std::uint64_t> cursor,
-                            const MatchEngine* inspected,
-                            DebugInspector& inspector, bool* open)
-{
-  const float scale = Theme::scale();
-  const ImGuiViewport* viewport = ImGui::GetMainViewport();
-  // Right half of the window; the review takes the left half.
-  const float margin = 8.0f * scale;
-  ImGui::SetNextWindowPos(
-      ImVec2(viewport->WorkPos.x + viewport->WorkSize.x * 0.5f + 0.5f * margin,
-             viewport->WorkPos.y + margin),
-      ImGuiCond_FirstUseEver);
-  ImGui::SetNextWindowSize(
-      ImVec2(viewport->WorkSize.x * 0.5f - 1.5f * margin,
-             viewport->WorkSize.y - 2.0f * margin),
-      ImGuiCond_FirstUseEver);
-  if (!ImGui::Begin("Engine debugger", open))
-  {
-    ImGui::End();
-    return;
-  }
-  renderContents(recorder, engine, paused, cursor, inspected, inspector);
-  ImGui::End();
-}
-
-void EngineDebugger::renderContents(SandboxRecorder& recorder, MatchEngine* engine,
-                                    bool* paused, std::optional<std::uint64_t> cursor,
+void EngineDebugger::renderContents(SandboxRecorder& recorder,
+                                    MatchEngine* engine, bool* paused,
+                                    std::optional<std::uint64_t> cursor,
                                     const MatchEngine* inspected,
                                     DebugInspector& inspector)
 {
   renderControls(recorder, engine, paused);
   if (const MatchEngine* shown = inspected ? inspected : engine)
-    ImGui::TextDisabled(
+    ImGui::TextWrapped(
         "Brains: %s · Bodies: %s · Handshake: %s · Home advantage: %.2f",
         brainPairName({shown->getBrain(true), shown->getBrain(false)}).c_str(),
         bodyPairName({shown->getBody(true), shown->getBody(false)}).c_str(),
         handshakeName(shown->getHandshake()).data(),
         shown->getMatchContext().homeAdvantageScale);
-  if (ImGui::BeginTabBar("##debugger_tabs"))
+  const char* tabs[] = {"Log",      "Team",    "Player",
+                        "Decision", "Referee", "Summary"};
+  if (!inspected) contentTab = 0;
+  for (int i = 0; i < (inspected ? 6 : 1); ++i)
   {
-    if (ImGui::BeginTabItem("Log"))
-    {
+    if (i)
+      SandboxAnalysisUI::next(
+          SandboxPageUI::buttonWidth(tabs[i], Theme::scale(),
+                                     SandboxAnalysisUI::bold()) /
+          Theme::scale());
+    if (SandboxAnalysisUI::button(tabs[i], contentTab == i)) contentTab = i;
+  }
+  switch (contentTab)
+  {
+    case 0:
       renderFilters(recorder, inspector.selected);
       renderLog(recorder, cursor, inspector);
-      ImGui::EndTabItem();
-    }
-    // The inspector reads the moment under review (or the live match).
-    if (inspected)
-    {
-      if (ImGui::BeginTabItem("Team"))
-      {
-        inspector.renderTeam(recorder, *inspected);
-        ImGui::EndTabItem();
-      }
-      if (ImGui::BeginTabItem("Player"))
-      {
-        inspector.renderPlayer(recorder, *inspected);
-        ImGui::EndTabItem();
-      }
-      if (ImGui::BeginTabItem("Decision"))
-      {
-        inspector.renderDecision(recorder, *inspected);
-        ImGui::EndTabItem();
-      }
-      if (ImGui::BeginTabItem("Referee"))
-      {
-        inspector.renderReferee(recorder, *inspected);
-        ImGui::EndTabItem();
-      }
-      if (ImGui::BeginTabItem("Summary"))
-      {
-        inspector.renderSummary(recorder, *inspected);
-        ImGui::EndTabItem();
-      }
-    }
-    ImGui::EndTabBar();
+      break;
+    case 1:
+      inspector.renderTeam(recorder, *inspected);
+      break;
+    case 2:
+      inspector.renderPlayer(recorder, *inspected);
+      break;
+    case 3:
+      inspector.renderDecision(recorder, *inspected);
+      break;
+    case 4:
+      inspector.renderReferee(recorder, *inspected);
+      break;
+    case 5:
+      inspector.renderSummary(recorder, *inspected);
+      break;
   }
 }
 
@@ -279,8 +259,9 @@ void EngineDebugger::renderControls(SandboxRecorder& recorder,
 {
   if (engine && paused)
   {
-    if (ImGui::Button(*paused ? "Resume" : "Pause")) *paused = !*paused;
-    ImGui::SameLine();
+    if (SandboxAnalysisUI::button(*paused ? "Resume" : "Pause"))
+      *paused = !*paused;
+    SandboxAnalysisUI::next();
     ImGui::BeginDisabled(!*paused);
     // Stepping runs the same fixed steps as play, with the recorder attached.
     const auto stepBy = [&](int steps)
@@ -291,22 +272,22 @@ void EngineDebugger::renderControls(SandboxRecorder& recorder,
         engine->advance(static_cast<float>(steps) *
                         MatchTuning::Timing::FIXED_STEP_SECONDS);
     };
-    if (ImGui::Button("Step 0.1 s")) stepBy(1);
-    ImGui::SameLine();
-    if (ImGui::Button("Step 1 s")) stepBy(10);
+    if (SandboxAnalysisUI::button("Step 0.1 s")) stepBy(1);
+    SandboxAnalysisUI::next();
+    if (SandboxAnalysisUI::button("Step 1 s")) stepBy(10);
     ImGui::EndDisabled();
-    ImGui::SameLine();
-    ImGui::TextDisabled("%s  ·  tick %llu", clock(engine->getMatchTimeMinutes()).c_str(),
-                        static_cast<unsigned long long>(engine->getSimulatedSteps()));
+    SandboxAnalysisUI::next();
+    ImGui::TextDisabled(
+        "%s  ·  tick %llu", clock(engine->getMatchTimeMinutes()).c_str(),
+        static_cast<unsigned long long>(engine->getSimulatedSteps()));
   }
   else
   {
     ImGui::TextDisabled("Match over: the log of the last match.");
   }
   const auto guard = recorder.lock();
-  ImGui::SameLine();
-  ImGui::TextDisabled("  ·  %zu entries  ·  ~%zu KB", recorder.entries().size(),
-                      recorder.approximateBytes() / 1024);
+  ImGui::TextWrapped("  ·  %zu entries  ·  ~%zu KB", recorder.entries().size(),
+                     recorder.approximateBytes() / 1024);
 }
 
 void EngineDebugger::renderFilters(const SandboxRecorder& recorder,
@@ -323,7 +304,7 @@ void EngineDebugger::renderFilters(const SandboxRecorder& recorder,
   if (ImGui::Combo("##team", &team_filter, TEAMS.data(),
                    static_cast<int>(TEAMS.size())))
     filters_changed = true;
-  ImGui::SameLine();
+  SandboxAnalysisUI::next(190);
 
   // Every player seen in the match, by name.
   std::map<std::string, PlayerID> players;
@@ -335,7 +316,8 @@ void EngineDebugger::renderFilters(const SandboxRecorder& recorder,
   ImGui::SetNextItemWidth(190.0f * Theme::scale());
   const std::string current =
       player_filter ? recorder.playerName(player_filter) : "All players";
-  if (ImGui::BeginCombo("##player", current.c_str(), ImGuiComboFlags_HeightLarge))
+  if (ImGui::BeginCombo("##player", current.c_str(),
+                        ImGuiComboFlags_HeightLarge))
   {
     if (ImGui::Selectable("All players", player_filter == 0))
     {
@@ -350,21 +332,22 @@ void EngineDebugger::renderFilters(const SandboxRecorder& recorder,
       }
     ImGui::EndCombo();
   }
-  ImGui::SameLine();
+  SandboxAnalysisUI::next();
   if (ImGui::Checkbox("Only selected", &only_selected))
   {
     player_filter = only_selected ? selection : 0;
     filters_changed = true;
   }
   if (ImGui::IsItemHovered())
-    ImGui::SetTooltip("Show only the player selected on the review pitch, "
-                      "in the Team or Player tab, or by clicking a row.");
-  ImGui::SameLine();
+    ImGui::SetTooltip(
+        "Show only the player selected on the review pitch, "
+        "in the Team or Player tab, or by clicking a row.");
+  SandboxAnalysisUI::next();
   ImGui::Checkbox("Follow", &follow);
 
   for (std::size_t kind = 0; kind < shown.size(); ++kind)
   {
-    if (kind > 0) ImGui::SameLine();
+    if (kind > 0) SandboxAnalysisUI::next();
     ImGui::PushID(static_cast<int>(kind));
     if (ImGui::Checkbox(KIND_NAMES[kind], &shown[kind])) filters_changed = true;
     ImGui::PopID();
@@ -421,8 +404,8 @@ void EngineDebugger::renderLog(const SandboxRecorder& recorder,
 
   constexpr ImGuiTableFlags flags =
       ImGuiTableFlags_RowBg | ImGuiTableFlags_ScrollY |
-      ImGuiTableFlags_BordersInnerV | ImGuiTableFlags_Resizable |
-      ImGuiTableFlags_SizingFixedFit;
+      ImGuiTableFlags_ScrollX | ImGuiTableFlags_BordersInnerV |
+      ImGuiTableFlags_Resizable | ImGuiTableFlags_SizingFixedFit;
   if (!ImGui::BeginTable("##log", 6, flags, ImVec2(0.0f, 0.0f))) return;
   ImGui::TableSetupScrollFreeze(0, 1);
   ImGui::TableSetupColumn("Time");
@@ -431,7 +414,9 @@ void EngineDebugger::renderLog(const SandboxRecorder& recorder,
   ImGui::TableSetupColumn("Player");
   ImGui::TableSetupColumn("Kind");
   ImGui::TableSetupColumn("Detail", ImGuiTableColumnFlags_WidthStretch);
+  ImGui::PushFont(SandboxAnalysisUI::bold(), 14);
   ImGui::TableHeadersRow();
+  ImGui::PopFont();
 
   ImGuiListClipper clipper;
   clipper.Begin(static_cast<int>(visible.size()));
@@ -446,7 +431,10 @@ void EngineDebugger::renderLog(const SandboxRecorder& recorder,
       ImGui::TableNextColumn();
       // The whole row selects: clicking it rewinds the review to its tick.
       ImGui::PushID(row);
-      const bool atCursor = cursorRow && entries[visible[static_cast<std::size_t>(*cursorRow)]].tick == entry.tick;
+      const bool atCursor =
+          cursorRow &&
+          entries[visible[static_cast<std::size_t>(*cursorRow)]].tick ==
+              entry.tick;
       if (ImGui::Selectable(clock(entry.minute).c_str(), atCursor,
                             ImGuiSelectableFlags_SpanAllColumns))
       {
@@ -465,8 +453,9 @@ void EngineDebugger::renderLog(const SandboxRecorder& recorder,
                              : described.home > 0 ? "Home"
                                                   : "Away");
       ImGui::TableNextColumn();
-      ImGui::TextUnformatted(
-          described.player ? recorder.playerName(described.player).c_str() : "");
+      ImGui::TextUnformatted(described.player
+                                 ? recorder.playerName(described.player).c_str()
+                                 : "");
       ImGui::TableNextColumn();
       ImGui::TextUnformatted(KIND_NAMES[entry.payload.index()]);
       ImGui::TableNextColumn();

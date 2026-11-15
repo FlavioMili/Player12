@@ -44,19 +44,7 @@ class EngineDebugger
     COUNT
   };
 
-  /**
-   * Draws the window. During a match pass the engine and its pause flag;
-   * after the match pass nullptr for both (the log stays readable).
-   * `cursor` is the tick the review shows (its rows are highlighted);
-   * `inspected` the engine at that moment (the live one while following),
-   * read by the inspector's tabs. `open`, when given, gets the window's
-   * close button.
-   */
-  void render(SandboxRecorder& recorder, MatchEngine* engine, bool* paused,
-              std::optional<std::uint64_t> cursor,
-              const MatchEngine* inspected, DebugInspector& inspector,
-              bool* open = nullptr);
-  /** The window's contents, to embed (the sandbox match's side panel). */
+  /** Analysis contents, to embed (the sandbox match's side panel). */
   void renderContents(SandboxRecorder& recorder, MatchEngine* engine,
                       bool* paused, std::optional<std::uint64_t> cursor,
                       const MatchEngine* inspected, DebugInspector& inspector);
@@ -84,6 +72,7 @@ class EngineDebugger
   std::function<void(int)> stepper;
 
  private:
+  int contentTab = 0;
   void renderControls(SandboxRecorder& recorder, MatchEngine* engine,
                       bool* paused);
   void renderFilters(const SandboxRecorder& recorder, PlayerID selection);

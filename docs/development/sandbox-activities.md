@@ -284,3 +284,80 @@ Clicking name/selected-metric headers changed rendered row order. A separate
 real Across and back run completed with both players' results. Font sources
 were reused and the Release target builds. No training or engine formulas
 were changed.
+
+## Drill Measure
+
+Measure uses corrected Manrope Regular/Bold, 24px insets, square warm cards,
+6px gaps and edge fades, centered action labels and cream/lime scrollbars.
+A 440px controls column (400px on smaller desktops) sits beside the results;
+narrow windows stack the sections. Run/Stop and CSV export stay above Sweep,
+Compare, Runs and Settings tabs. Numeric ranges and held settings use ruled,
+alternating tables. Controls are disabled during a measurement.
+
+Results offer Chart, Table and Both views. The chart retains means, standard
+deviation bars and point tooltips, with comparison legends below the plot.
+The table retains all metrics, frozen axis columns, run counts, standard
+deviations and horizontal scrolling; its height follows the remaining space.
+Measurement calculations, seeds, shared settings restoration and CSV format
+are unchanged.
+
+Validation rendered the actual scene at nine window/scale combinations,
+including 150% scaling and narrow stacked layouts, across all four control
+tabs and three result views. Real Sprint sweeps completed with and without
+the ball and produced result tables and CSV payloads. Page layouts had no
+horizontal overflow; the data table intentionally scrolls horizontally.
+The match screen remains reserved for a separate mock-up and design review.
+
+## Shot Map
+
+Shot Map uses the shared warm palette, corrected Manrope Regular/Bold sizes,
+24px insets, 6px gaps and shaded edges, centered action labels and two-colour
+scrollbars. The fixed 440px controls column (400px on smaller desktops) has
+Grid, Runs and Settings tabs. Run/Stop, progress and CSV export sit above the
+tabs. Grid/runs fields use two columns with rules and alternating rows.
+The full remaining width is available to Map or Calibration result views;
+narrow windows stack controls and results. Map colour choices, cell tooltips,
+choice-mode scatter, calibration chart/bin table and CSV payload are retained.
+Coarse cells clip at the pitch boundary and captions wrap below the map.
+
+Validation rendered real Shot grid results at nine window/scale combinations,
+including 150% scaling and narrow stacked layouts, across all three controls
+tabs, both result views and all five colour modes without horizontal overflow.
+Small repeated shot grids completed and produced CSV payloads. The Release
+target builds; measurement and calibration calculations remain unchanged.
+
+## Embedded recordings and analysis
+
+Recordings and Review are sidebar destinations. Matches' existing Recordings,
+Review and Debugger actions route to those pages. The library uses a compact
+saved-match list and a selected-recording details card; Open and Replay with
+retain their recorded-versus-Set-up engine semantics and route to Review.
+Read/replay failures stay visible in the library. Empty library/review states
+are explained inline.
+
+Review has a 400px independently scrolling control column with context,
+Pitch/Analysis/Comparison buttons and timeline/playback. The selected view
+uses the remaining desktop width and height. Smaller windows stack the cards.
+Analysis retains Log, Team, Player, Decision, Referee and Summary, using warm
+square Manrope buttons and bold table headings. Wide data scrolls inside the
+analysis area. Comparison retains result/build differences, first differing
+decision, term breakdowns and jump-to-tick actions. Log/comparison seeks select
+the Pitch view. Inspector selection and review moment are shared.
+
+The running drill has Run/Review/Debugger tabs. Review reuses the existing
+pitch for the live or rebuilt moment, with the timeline in the controls column;
+Back to live resumes the run. Debugger uses the large stage for its log and
+inspector rather than squeezing tables into the settings column. A log seek
+pauses the run and switches back to Review. Technique Bench's Watch route uses
+this same screen. No recordings, review, comparison or debugger floating
+windows remain; changing sandbox pages does not leave analysis over them.
+The live-match page structure is reserved for the later mock-up/design review;
+its existing embedded analysis uses the shared controls.
+
+Validation builds the Release target and renders actual pages and drill scenes
+at nine sizes/scales, including 150% scaling and narrow layouts. Workspace-only
+recording fixtures exercise read, replay, all three review views and all six
+inspector sections. Native navigation returns to Recordings, and native drill
+tab selection plus a real rewind show the selected tick on the embedded pitch.
+The harness checks page overflow and absence of extra top-level windows; wide
+analysis tables retain intentional horizontal scrolling.

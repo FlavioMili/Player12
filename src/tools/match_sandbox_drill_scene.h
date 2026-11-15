@@ -65,7 +65,7 @@ class DrillScene : public GUIScene
   float speed = 1.0f;
   float accumulator = 0.0f;
   bool newSeedEachRun = false;
-  bool showDebugger = false;
+  int analysisTab = 0;
   /** The pitch drawn in 3D (broadcast camera) instead of 2D. */
   bool view3d = false;
   MatchCameraMode cameraMode = MatchCameraMode::BROADCAST;

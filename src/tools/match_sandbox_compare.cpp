@@ -18,6 +18,7 @@
 
 #include "global/build_info.h"
 #include "gui/widgets/theme.h"
+#include "tools/match_sandbox_analysis_ui.h"
 #include "tools/match_sandbox_inspector.h"
 #include "tools/match_sandbox_names.h"
 #include "tools/match_sandbox_recorder.h"
@@ -99,43 +100,30 @@ void renderTermDiff(const ScoreBreakdown& before, const ScoreBreakdown& after)
 }
 }  // namespace
 
-void RecordingComparison::render(const MatchRecording& recording,
+bool RecordingComparison::render(const MatchRecording& recording,
                                  const Recordings::Replay& replay,
                                  const SandboxRecorder* replayed,
                                  MatchReview& review, DebugInspector& inspector)
 {
-  const float scale = Theme::scale();
-  // Over the lower middle, clear of the review's timeline and transport.
-  const ImGuiViewport* viewport = ImGui::GetMainViewport();
-  ImGui::SetNextWindowPos(
-      ImVec2(viewport->WorkPos.x + viewport->WorkSize.x * 0.5f,
-             viewport->WorkPos.y + viewport->WorkSize.y - 10.0f * scale),
-      ImGuiCond_FirstUseEver, ImVec2(0.5f, 1.0f));
-  ImGui::SetNextWindowSize(ImVec2(640.0f * scale, 420.0f * scale),
-                           ImGuiCond_FirstUseEver);
-  if (!ImGui::Begin("Recording"))
-  {
-    ImGui::End();
-    return;
-  }
+  bool jumped = false;
   const auto& setup = recording.setup;
-  ImGui::Text("%s v %s  ·  seed %u  ·  recorded %s", setup.sides[0].name.c_str(),
-              setup.sides[1].name.c_str(), setup.matchSeed,
-              recording.created.c_str());
-  ImGui::TextDisabled("Recorded with: %s", recording.build.c_str());
-  ImGui::TextDisabled("Replayed with: %s", BuildInfo::summary().c_str());
+  ImGui::TextWrapped("%s v %s  ·  seed %u  ·  recorded %s",
+                     setup.sides[0].name.c_str(), setup.sides[1].name.c_str(),
+                     setup.matchSeed, recording.created.c_str());
+  ImGui::TextWrapped("Recorded with: %s", recording.build.c_str());
+  ImGui::TextWrapped("Replayed with: %s", BuildInfo::summary().c_str());
   if (!replay.error.empty())
   {
     ImGui::TextColored(Theme::palette().negative, "Cannot replay: %s",
                        replay.error.c_str());
-    ImGui::End();
-    return;
+    return false;
   }
-  ImGui::Text("Score: recorded %d - %d, replayed %d - %d", recording.homeScore,
-              recording.awayScore, replay.homeScore, replay.awayScore);
-  ImGui::Text("%zu decisions recorded%s", recording.decisions.size(),
-              recording.details.empty() ? " (without full detail)"
-                                        : " with full detail");
+  ImGui::TextWrapped("Score: recorded %d - %d, replayed %d - %d",
+                     recording.homeScore, recording.awayScore, replay.homeScore,
+                     replay.awayScore);
+  ImGui::TextWrapped("%zu decisions recorded%s", recording.decisions.size(),
+                     recording.details.empty() ? " (without full detail)"
+                                               : " with full detail");
   ImGui::Separator();
 
   if (!replay.divergedAt && !replay.firstDifferentDecision)
@@ -143,8 +131,7 @@ void RecordingComparison::render(const MatchRecording& recording,
     ImGui::TextColored(Theme::palette().positive,
                        "Replays exactly: every tick and every decision "
                        "matches the recording.");
-    ImGui::End();
-    return;
+    return false;
   }
 
   if (replay.divergedAt)
@@ -152,11 +139,14 @@ void RecordingComparison::render(const MatchRecording& recording,
     ImGui::TextColored(Theme::palette().warning,
                        "The match plays differently from tick %llu.",
                        static_cast<unsigned long long>(*replay.divergedAt));
-    ImGui::SameLine();
-    if (ImGui::SmallButton("Jump there") && replayed)
+    SandboxAnalysisUI::next();
+    if (SandboxAnalysisUI::button("Jump there") && replayed)
+    {
       review.seek(*replayed, *replay.divergedAt);
+      jumped = true;
+    }
   }
-  ImGui::TextDisabled(
+  ImGui::TextWrapped(
       "Everything after the first difference is a different match: compare "
       "the first decision that changed, not later ones.");
 
@@ -166,33 +156,35 @@ void RecordingComparison::render(const MatchRecording& recording,
     const std::size_t index = *replay.firstDifferentDecision;
     const SandboxRecorder* names = replayed;
     if (index < recording.decisions.size())
-      ImGui::Text("Recorded: %s",
-                  decisionLine(names, recording.decisions[index]).c_str());
+      ImGui::TextWrapped(
+          "Recorded: %s",
+          decisionLine(names, recording.decisions[index]).c_str());
     else
-      ImGui::TextDisabled("Recorded: no further decision");
+      ImGui::TextWrapped("Recorded: no further decision");
     if (replay.replayedDecision)
     {
-      ImGui::Text("Now:      %s",
-                  decisionLine(names, *replay.replayedDecision).c_str());
-      ImGui::SameLine();
-      if (ImGui::SmallButton("Jump to it") && replayed)
+      ImGui::TextWrapped("Now:      %s",
+                         decisionLine(names, *replay.replayedDecision).c_str());
+      SandboxAnalysisUI::next();
+      if (SandboxAnalysisUI::button("Jump to it") && replayed)
       {
         review.seek(*replayed, replay.replayedDecision->tick);
+        jumped = true;
         inspector.selected = replay.replayedDecision->record.player;
       }
     }
     else
     {
-      ImGui::TextDisabled("Now: no further decision");
+      ImGui::TextWrapped("Now: no further decision");
     }
     renderDecisionDiff(recording, replay, replayed);
   }
-  ImGui::End();
+  return jumped;
 }
 
-void RecordingComparison::renderDecisionDiff(
-    const MatchRecording& recording, const Recordings::Replay& replay,
-    const SandboxRecorder* replayed)
+void RecordingComparison::renderDecisionDiff(const MatchRecording& recording,
+                                             const Recordings::Replay& replay,
+                                             const SandboxRecorder* replayed)
 {
   const std::size_t index = *replay.firstDifferentDecision;
   if (index >= recording.decisions.size() || !replay.replayedDecision ||
@@ -200,8 +192,9 @@ void RecordingComparison::renderDecisionDiff(
     return;
   if (recording.details.empty())
   {
-    ImGui::TextDisabled("Saved without full detail: no term-by-term "
-                        "comparison.");
+    ImGui::TextDisabled(
+        "Saved without full detail: no term-by-term "
+        "comparison.");
     return;
   }
   const MatchRecording::Decision& recorded = recording.decisions[index];
@@ -209,8 +202,8 @@ void RecordingComparison::renderDecisionDiff(
   const MatchDecisionDetail* before =
       findDetail(recording.details, recorded.tick, recorded.record.player);
   replayDetail.ensure(*replayed, now.tick);
-  const MatchDecisionDetail* after = findDetail(
-      replayDetail.detail().decisions, now.tick, now.record.player);
+  const MatchDecisionDetail* after =
+      findDetail(replayDetail.detail().decisions, now.tick, now.record.player);
   if (!before || !after)
   {
     ImGui::TextDisabled("No breakdown of this decision on one side.");

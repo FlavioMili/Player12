@@ -7,6 +7,7 @@
 // -----------------------------------------------------------------------------
 
 #include "tools/match_sandbox_inspector.h"
+#include "tools/match_sandbox_analysis_ui.h"
 
 #include <algorithm>
 #include <cmath>
@@ -222,7 +223,9 @@ void DebugInspector::renderTeam(const SandboxRecorder& recorder,
     ImGui::TableSetupColumn("Job");
     ImGui::TableSetupColumn("Player");
     ImGui::TableSetupColumn("Ranking score");
+    ImGui::PushFont(SandboxAnalysisUI::bold(),14);
     ImGui::TableHeadersRow();
+    ImGui::PopFont();
     for (std::size_t job = 1; job < JOBS; ++job)
     {
       const PlayerID player = asOf.jobs[team][job];
@@ -265,7 +268,9 @@ void DebugInspector::renderTeam(const SandboxRecorder& recorder,
     ImGui::TableSetupColumn("To target");
     ImGui::TableSetupColumn("Speed");
     ImGui::TableSetupColumn("Stamina");
+    ImGui::PushFont(SandboxAnalysisUI::bold(),14);
     ImGui::TableHeadersRow();
+    ImGui::PopFont();
     const PossessionSnapshot possession = engine.getPossessionSnapshot();
     for (const MatchPlayer& slot : engine.getPlayers())
     {
@@ -655,7 +660,9 @@ void DebugInspector::renderReferee(const SandboxRecorder& recorder,
   ImGui::TableSetupColumn("Call", ImGuiTableColumnFlags_WidthFixed,
                           110.0f * Theme::scale());
   ImGui::TableSetupColumn("Detail");
-  ImGui::TableHeadersRow();
+  ImGui::PushFont(SandboxAnalysisUI::bold(),14);
+    ImGui::TableHeadersRow();
+    ImGui::PopFont();
   for (std::size_t index = 0; index < asOf.prefix; ++index)
   {
     const auto& entry = recorder.entries()[index];
@@ -804,7 +811,9 @@ void DebugInspector::renderSummary(const SandboxRecorder& recorder,
   ImGui::TableSetupColumn("Actions");
   ImGui::TableSetupColumn("Intent changes/min");
   ImGui::TableSetupColumn("Main intents", ImGuiTableColumnFlags_WidthStretch, 2.4f);
-  ImGui::TableHeadersRow();
+  ImGui::PushFont(SandboxAnalysisUI::bold(),14);
+    ImGui::TableHeadersRow();
+    ImGui::PopFont();
   const float minutes =
       std::max(1.0f / 60.0f, seconds(asOf.tick) / 60.0f);
   for (const PlayerTotals& player : totals)
@@ -870,18 +879,18 @@ void DebugInspector::renderOverlayToggles()
     ImGui::SetTooltip("Line from each player to where he is heading, coloured "
                       "by intent: runs orange, pressing red, support green, "
                       "marking blue, recovering yellow, holding grey.");
-  ImGui::SameLine();
+  SandboxAnalysisUI::next();
   ImGui::Checkbox("Jobs", &show_jobs);
   if (ImGui::IsItemHovered())
     ImGui::SetTooltip("Planner jobs: B1/B2 to the ball, R1-R3 runners, LA late "
                       "arrival, FP far post, OV overlap, S1-S3 supporters, CO "
                       "cover outlet.");
-  ImGui::SameLine();
+  SandboxAnalysisUI::next();
   ImGui::Checkbox("Pass options", &show_pass_options);
   if (ImGui::IsItemHovered())
     ImGui::SetTooltip("The latest on-ball decision (within 3 s): best pass "
                       "green, runner-up amber, and the option scores.");
-  ImGui::SameLine();
+  SandboxAnalysisUI::next();
   ImGui::Checkbox("Selected only", &selected_only);
 }
 

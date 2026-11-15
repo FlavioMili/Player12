@@ -19,6 +19,7 @@
 
 #include "gui/render/match_renderer_2d.h"
 #include "gui/widgets/theme.h"
+#include "tools/match_sandbox_analysis_ui.h"
 #include "tools/match_sandbox_inspector.h"
 #include "tools/match_sandbox_names.h"
 #include "tools/match_sandbox_recorder.h"
@@ -42,13 +43,20 @@ ImU32 phaseColor(TeamPhase phase)
 {
   switch (phase)
   {
-    case TeamPhase::POSSESSION: return IM_COL32(60, 160, 90, 255);
-    case TeamPhase::FINAL_THIRD: return IM_COL32(110, 220, 120, 255);
-    case TeamPhase::ATTACKING_TRANSITION: return IM_COL32(170, 210, 90, 255);
-    case TeamPhase::DEFENSIVE_BLOCK: return IM_COL32(70, 110, 170, 255);
-    case TeamPhase::DEFENSIVE_TRANSITION: return IM_COL32(220, 140, 60, 255);
-    case TeamPhase::SET_PIECE: return IM_COL32(140, 100, 180, 255);
-    case TeamPhase::STOPPAGE: return IM_COL32(70, 70, 75, 255);
+    case TeamPhase::POSSESSION:
+      return IM_COL32(60, 160, 90, 255);
+    case TeamPhase::FINAL_THIRD:
+      return IM_COL32(110, 220, 120, 255);
+    case TeamPhase::ATTACKING_TRANSITION:
+      return IM_COL32(170, 210, 90, 255);
+    case TeamPhase::DEFENSIVE_BLOCK:
+      return IM_COL32(70, 110, 170, 255);
+    case TeamPhase::DEFENSIVE_TRANSITION:
+      return IM_COL32(220, 140, 60, 255);
+    case TeamPhase::SET_PIECE:
+      return IM_COL32(140, 100, 180, 255);
+    case TeamPhase::STOPPAGE:
+      return IM_COL32(70, 70, 75, 255);
   }
   return IM_COL32(70, 70, 75, 255);
 }
@@ -108,8 +116,7 @@ void MatchReview::seek(const SandboxRecorder& recorder, std::uint64_t tick)
 void MatchReview::step(const SandboxRecorder& recorder, std::int64_t ticks,
                        std::uint64_t end)
 {
-  const std::uint64_t now =
-      shown ? shown->getSimulatedSteps() : end;
+  const std::uint64_t now = shown ? shown->getSimulatedSteps() : end;
   if (ticks < 0)
   {
     const auto back = static_cast<std::uint64_t>(-ticks);
@@ -121,9 +128,8 @@ void MatchReview::step(const SandboxRecorder& recorder, std::int64_t ticks,
     seek(recorder, end);
     return;
   }
-  const std::uint64_t forward =
-      std::min<std::uint64_t>(static_cast<std::uint64_t>(ticks),
-                              end > now ? end - now : 0);
+  const std::uint64_t forward = std::min<std::uint64_t>(
+      static_cast<std::uint64_t>(ticks), end > now ? end - now : 0);
   if (const auto diverged = MatchRewind::stepForward(recorder, *shown, forward);
       diverged && !divergedAt)
     divergedAt = diverged;
@@ -155,42 +161,17 @@ void MatchReview::refreshTimeline(const SandboxRecorder& recorder)
     {
       const MatchEvent& matchEvent = recorder.events()[event->index];
       if (shownOnTimeline(matchEvent.type))
-        markers.push_back({entry.tick, matchEvent.type, matchEvent.isHomeTeam,
-                           event->index});
+        markers.push_back(
+            {entry.tick, matchEvent.type, matchEvent.isHomeTeam, event->index});
     }
   }
-}
-
-void MatchReview::render(const SandboxRecorder& recorder,
-                         const MatchEngine* live, bool* livePaused,
-                         TeamID home, TeamID away, DebugInspector* inspector,
-                         bool* open)
-{
-  const float scale = Theme::scale();
-  const ImGuiViewport* viewport = ImGui::GetMainViewport();
-  // Left half of the window; the debugger takes the right half.
-  const float margin = 8.0f * scale;
-  ImGui::SetNextWindowPos(
-      ImVec2(viewport->WorkPos.x + margin, viewport->WorkPos.y + margin),
-      ImGuiCond_FirstUseEver);
-  ImGui::SetNextWindowSize(
-      ImVec2(viewport->WorkSize.x * 0.5f - 1.5f * margin,
-             viewport->WorkSize.y - 2.0f * margin),
-      ImGuiCond_FirstUseEver);
-  if (!ImGui::Begin("Match review", open))
-  {
-    ImGui::End();
-    return;
-  }
-  renderPanel(recorder, live, livePaused, nullptr);
-  renderPitch(recorder, live, home, away, inspector);
-  ImGui::End();
 }
 
 void MatchReview::renderPanel(const SandboxRecorder& recorder,
                               const MatchEngine* live, bool* livePaused,
                               DebugInspector* inspector)
 {
+  ImGui::PushTextWrapPos(0);
   std::uint64_t end = 0;
   {
     const auto guard = recorder.lock();
@@ -202,10 +183,9 @@ void MatchReview::renderPanel(const SandboxRecorder& recorder,
 
   if (shown)
   {
-    ImGui::Text("%s  ·  tick %llu",
-                clock(shown->getMatchTimeMinutes()).c_str(),
+    ImGui::Text("%s  ·  tick %llu", clock(shown->getMatchTimeMinutes()).c_str(),
                 static_cast<unsigned long long>(shown->getSimulatedSteps()));
-    ImGui::SameLine();
+
     if (divergedAt)
       ImGui::TextColored(Theme::palette().negative,
                          "Rebuild differs from the match from tick %llu: "
@@ -216,7 +196,7 @@ void MatchReview::renderPanel(const SandboxRecorder& recorder,
   }
   else
   {
-    ImGui::TextDisabled(
+    ImGui::TextWrapped(
         "Following the live match. Click or drag the timeline to rewind "
         "(the live match pauses).");
   }
@@ -227,6 +207,7 @@ void MatchReview::renderPanel(const SandboxRecorder& recorder,
   // Embedded (the moment on the match's own pitch): the overlay switches
   // here; in the window they sit above its pitch.
   if (inspector) inspector->renderOverlayToggles();
+  ImGui::PopTextWrapPos();
 }
 
 void MatchReview::renderTimeline(const SandboxRecorder& recorder,
@@ -254,10 +235,11 @@ void MatchReview::renderTimeline(const SandboxRecorder& recorder,
     {
       const std::uint64_t until =
           index + 1 < spans.size() ? spans[index + 1].tick : end;
-      drawList->AddRectFilled(ImVec2(xOf(spans[index].tick), top),
-                              ImVec2(std::max(xOf(until), xOf(spans[index].tick) + 1.0f),
-                                     top + band),
-                              phaseColor(spans[index].phase));
+      drawList->AddRectFilled(
+          ImVec2(xOf(spans[index].tick), top),
+          ImVec2(std::max(xOf(until), xOf(spans[index].tick) + 1.0f),
+                 top + band),
+          phaseColor(spans[index].phase));
     }
   };
   const float homeTop = min.y + 3.0f * scale;
@@ -286,23 +268,31 @@ void MatchReview::renderTimeline(const SandboxRecorder& recorder,
         top = markerTop;
         bottom = markerBottom;
         break;
-      case MatchEventType::SHOT: color = IM_COL32(150, 150, 160, 255); break;
+      case MatchEventType::SHOT:
+        color = IM_COL32(150, 150, 160, 255);
+        break;
       case MatchEventType::YELLOW_CARD:
       case MatchEventType::SECOND_YELLOW:
         color = IM_COL32(245, 200, 40, 255);
         break;
-      case MatchEventType::RED_CARD: color = IM_COL32(220, 50, 50, 255); break;
-      case MatchEventType::SUBSTITUTION: color = IM_COL32(80, 200, 220, 255); break;
-      case MatchEventType::PENALTY: color = IM_COL32(255, 130, 200, 255); break;
+      case MatchEventType::RED_CARD:
+        color = IM_COL32(220, 50, 50, 255);
+        break;
+      case MatchEventType::SUBSTITUTION:
+        color = IM_COL32(80, 200, 220, 255);
+        break;
+      case MatchEventType::PENALTY:
+        color = IM_COL32(255, 130, 200, 255);
+        break;
       default:
         color = IM_COL32(120, 120, 130, 255);
         top = markerTop;
         bottom = markerBottom;
         break;
     }
-    drawList->AddLine(ImVec2(x, top), ImVec2(x, bottom), color,
-                      marker.type == MatchEventType::GOAL ? 2.5f * scale
-                                                          : 1.5f * scale);
+    drawList->AddLine(
+        ImVec2(x, top), ImVec2(x, bottom), color,
+        marker.type == MatchEventType::GOAL ? 2.5f * scale : 1.5f * scale);
     if (hovered && std::abs(mouse.x - x) < nearestDistance)
     {
       nearestDistance = std::abs(mouse.x - x);
@@ -347,12 +337,10 @@ void MatchReview::renderTimeline(const SandboxRecorder& recorder,
   if (active)
   {
     // Snap to a marker under the mouse so events are easy to land on.
-    std::uint64_t tick = nearest
-                             ? nearest->tick
-                             : static_cast<std::uint64_t>(
-                                   std::clamp((mouse.x - min.x) / width, 0.0f,
-                                              1.0f) *
-                                   span);
+    std::uint64_t tick =
+        nearest ? nearest->tick
+                : static_cast<std::uint64_t>(
+                      std::clamp((mouse.x - min.x) / width, 0.0f, 1.0f) * span);
     tick = std::clamp<std::uint64_t>(tick, 1, end);
     if (!shown || shown->getSimulatedSteps() != tick)
     {
@@ -370,7 +358,7 @@ void MatchReview::renderTransport(const SandboxRecorder& recorder,
   {
     if (livePaused) *livePaused = true;
   };
-  if (ImGui::Button("|< Start"))
+  if (SandboxAnalysisUI::button("|< Start"))
   {
     pauseLive();
     playing = false;
@@ -385,16 +373,16 @@ void MatchReview::renderTransport(const SandboxRecorder& recorder,
       {{"-10 s", -100}, {"-1 s", -10}, {"-0.1 s", -1}}};
   for (const Jump& jump : BACK)
   {
-    ImGui::SameLine();
-    if (ImGui::Button(jump.label))
+    SandboxAnalysisUI::next(110);
+    if (SandboxAnalysisUI::button(jump.label))
     {
       pauseLive();
       playing = false;
       step(recorder, jump.ticks, end);
     }
   }
-  ImGui::SameLine();
-  if (ImGui::Button(playing ? "Pause##review" : "Play##review"))
+  SandboxAnalysisUI::next(110);
+  if (SandboxAnalysisUI::button(playing ? "Pause##review" : "Play##review"))
   {
     pauseLive();
     if (!shown) seek(recorder, end);
@@ -405,19 +393,19 @@ void MatchReview::renderTransport(const SandboxRecorder& recorder,
       {{"+0.1 s", 1}, {"+1 s", 10}, {"+10 s", 100}}};
   for (const Jump& jump : FORWARD)
   {
-    ImGui::SameLine();
-    if (ImGui::Button(jump.label))
+    SandboxAnalysisUI::next(110);
+    if (SandboxAnalysisUI::button(jump.label))
     {
       pauseLive();
       playing = false;
       step(recorder, jump.ticks, end);
     }
   }
-  ImGui::SameLine();
+  SandboxAnalysisUI::next(110);
   if (livePaused)
   {
     ImGui::BeginDisabled(!shown);
-    if (ImGui::Button("Back to live >|"))
+    if (SandboxAnalysisUI::button("Back to live >|"))
     {
       shown.reset();
       divergedAt.reset();
@@ -426,12 +414,12 @@ void MatchReview::renderTransport(const SandboxRecorder& recorder,
     }
     ImGui::EndDisabled();
   }
-  else if (ImGui::Button("End >|"))
+  else if (SandboxAnalysisUI::button("End >|"))
   {
     playing = false;
     seek(recorder, end);
   }
-  ImGui::SameLine();
+  SandboxAnalysisUI::next(110);
   ImGui::SetNextItemWidth(80.0f * Theme::scale());
   const std::string speedLabel = std::format("{:g}x", playSpeed);
   if (ImGui::BeginCombo("##speed", speedLabel.c_str()))
@@ -439,7 +427,8 @@ void MatchReview::renderTransport(const SandboxRecorder& recorder,
     for (const float speed : SPEEDS)
     {
       const std::string label = std::format("{:g}x", speed);
-      if (ImGui::Selectable(label.c_str(), speed == playSpeed)) playSpeed = speed;
+      if (ImGui::Selectable(label.c_str(), speed == playSpeed))
+        playSpeed = speed;
     }
     ImGui::EndCombo();
   }
@@ -461,12 +450,12 @@ void MatchReview::play(const SandboxRecorder& recorder, std::uint64_t end)
 }
 
 void MatchReview::renderPitch(const SandboxRecorder& recorder,
-                              const MatchEngine* live, TeamID home,
-                              TeamID away, DebugInspector* inspector)
+                              const MatchEngine* live, TeamID home, TeamID away,
+                              DebugInspector* inspector, bool overlayControls)
 {
   // The moment under review, or the live match while following it.
   const MatchEngine* engine = shown ? shown.get() : live;
-  if (inspector) inspector->renderOverlayToggles();
+  if (inspector && overlayControls) inspector->renderOverlayToggles();
   const ImVec2 available = ImGui::GetContentRegionAvail();
   if (!engine)
   {

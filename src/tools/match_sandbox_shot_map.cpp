@@ -22,19 +22,20 @@
 #include <string_view>
 
 #include "controller/game_controller.h"
+#include "global/paths.h"
 #include "gui/gui_view.h"
 #include "gui/widgets/theme.h"
-#include "gui/widgets/widgets.h"
+#include "tools/match_sandbox_page_ui.h"
 
 namespace
 {
 constexpr const char* LINE = "Out from goal line (m)";
 constexpr const char* SIDE = "Off centre (m)";
-constexpr float PANEL_WIDTH = 340.0f;
+
 constexpr double WORK_PER_FRAME_SECONDS = 0.012;
 /** Edges of the calibration bins (engine xG). */
-constexpr std::array<double, 10> BIN_EDGES{0.0,  0.02, 0.05, 0.1, 0.15,
-                                           0.2,  0.3,  0.4,  0.6, 1.0};
+constexpr std::array<double, 10> BIN_EDGES{0.0, 0.02, 0.05, 0.1, 0.15,
+                                           0.2, 0.3,  0.4,  0.6, 1.0};
 /** Most shots drawn in the choice-mode scatter. */
 constexpr std::size_t MAX_SCATTER = 3000;
 
@@ -62,19 +63,24 @@ double metricOf(const MeasureRun& run, std::string_view name, double fallback)
 std::optional<double> cellValue(const ShotMapCell& cell, int view)
 {
   if (view == SHOT_TAKEN)
-    return cell.runs > 0 ? std::optional(static_cast<double>(cell.shots) /
-                                         cell.runs)
-                         : std::nullopt;
+    return cell.runs > 0
+               ? std::optional(static_cast<double>(cell.shots) / cell.runs)
+               : std::nullopt;
   if (cell.shots == 0) return std::nullopt;
   const double conversion = static_cast<double>(cell.goals) / cell.shots;
   const double xg = cell.xg / cell.shots;
   switch (view)
   {
-    case CONVERSION: return conversion;
-    case ENGINE_XG: return xg;
-    case DIFFERENCE: return conversion - xg;
-    case ON_TARGET: return static_cast<double>(cell.onTarget) / cell.shots;
-    default: return std::nullopt;
+    case CONVERSION:
+      return conversion;
+    case ENGINE_XG:
+      return xg;
+    case DIFFERENCE:
+      return conversion - xg;
+    case ON_TARGET:
+      return static_cast<double>(cell.onTarget) / cell.shots;
+    default:
+      return std::nullopt;
   }
 }
 
@@ -86,8 +92,8 @@ ImU32 heatColour(double value, bool diverging)
   {
     const float t = static_cast<float>(std::clamp(value / 0.3, -1.0, 1.0));
     if (t < 0.0f)
-      return IM_COL32(static_cast<int>(235 + 185 * t), static_cast<int>(235 + 105 * t),
-                      235, 220);
+      return IM_COL32(static_cast<int>(235 + 185 * t),
+                      static_cast<int>(235 + 105 * t), 235, 220);
     return IM_COL32(235, static_cast<int>(235 - 175 * t),
                     static_cast<int>(235 - 175 * t), 220);
   }
@@ -116,7 +122,8 @@ ImU32 heatColour(double value, bool diverging)
 /** Dark text on light cells, light text on dark ones. */
 ImU32 textColour(double value, bool diverging)
 {
-  const bool light = diverging ? true : std::sqrt(std::clamp(value, 0.0, 1.0)) > 0.55;
+  const bool light =
+      diverging ? true : std::sqrt(std::clamp(value, 0.0, 1.0)) > 0.55;
   return light ? IM_COL32(0, 0, 0, 220) : IM_COL32(255, 255, 255, 230);
 }
 
@@ -150,10 +157,10 @@ bool parseRange(const std::string& text, float& from, float& to, int& count)
 MeasureSpec measureSpecOf(const ShotMapSpec& spec)
 {
   MeasureSpec out;
-  out.sweep = {LINE, spreadValues(spec.lineFrom, spec.lineTo, spec.lineCount,
-                                  false)};
-  out.by = MeasureAxis{SIDE, spreadValues(spec.sideFrom, spec.sideTo,
-                                          spec.sideCount, false)};
+  out.sweep = {LINE,
+               spreadValues(spec.lineFrom, spec.lineTo, spec.lineCount, false)};
+  out.by = MeasureAxis{
+      SIDE, spreadValues(spec.sideFrom, spec.sideTo, spec.sideCount, false)};
   out.repeats = spec.repeats;
   out.firstSeed = spec.firstSeed;
   out.fixed = spec.fixed;
@@ -173,18 +180,16 @@ ShotMap::ShotMap(Drill& shotDrill, const StatsConfig& config,
 
 float ShotMap::lineStep() const
 {
-  return setup.lineCount > 1
-             ? std::abs(setup.lineTo - setup.lineFrom) /
-                   static_cast<float>(setup.lineCount - 1)
-             : 3.0f;
+  return setup.lineCount > 1 ? std::abs(setup.lineTo - setup.lineFrom) /
+                                   static_cast<float>(setup.lineCount - 1)
+                             : 3.0f;
 }
 
 float ShotMap::sideStep() const
 {
-  return setup.sideCount > 1
-             ? std::abs(setup.sideTo - setup.sideFrom) /
-                   static_cast<float>(setup.sideCount - 1)
-             : 3.0f;
+  return setup.sideCount > 1 ? std::abs(setup.sideTo - setup.sideFrom) /
+                                   static_cast<float>(setup.sideCount - 1)
+                             : 3.0f;
 }
 
 void ShotMap::refresh()
@@ -219,8 +224,10 @@ void ShotMap::refresh()
     cell.goals += goal ? 1 : 0;
     cell.onTarget += metricOf(run, "On target", 0.0) > 0.5 ? 1 : 0;
     cell.xg += xg;
-    const auto line = static_cast<float>(metricOf(run, "Shot from goal line (m)", run.x));
-    const auto side = static_cast<float>(metricOf(run, "Shot off centre (m)", run.by));
+    const auto line =
+        static_cast<float>(metricOf(run, "Shot from goal line (m)", run.x));
+    const auto side =
+        static_cast<float>(metricOf(run, "Shot off centre (m)", run.by));
     cell.shotLine += line;
     cell.shotSide += side;
     if (taken.size() < MAX_SCATTER) taken.push_back({line, side, goal});
@@ -265,6 +272,29 @@ ShotMapScene::~ShotMapScene() = default;
 
 SceneID ShotMapScene::getID() const { return SceneID::MATCH_SANDBOX; }
 
+void ShotMapScene::onEnter()
+{
+  // Reuse the launch page's fonts. Direct tool entry loads them once into
+  // the current atlas, so reopening Shot Map does not add font
+  // sources.
+  auto* atlas = ImGui::GetIO().Fonts;
+  const auto font = [&](const char* file, float size)
+  {
+    const auto config = SandboxTypography::manropeConfig();
+    for (auto* existing : atlas->Fonts)
+      if (std::string_view(existing->GetDebugName()).find(file) !=
+              std::string_view::npos &&
+          !existing->Sources.empty() &&
+          existing->Sources[0]->ExtraSizeScale == config.ExtraSizeScale)
+        return existing;
+    return atlas->AddFontFromFileTTF(
+        AssetPaths::file((std::string("assets/fonts/") + file).c_str()).c_str(),
+        size, &config);
+  };
+  regularFont = font("Manrope-Regular.ttf", 16);
+  boldFont = font("Manrope-Bold.ttf", 14);
+}
+
 void ShotMapScene::start()
 {
   map.reset();
@@ -291,117 +321,200 @@ void ShotMapScene::exportCsv()
   std::filesystem::create_directories(path.parent_path(), ignored);
   std::ofstream file(path, std::ios::binary);
   file << map->runs().csv();
-  exported = file ? "Saved " + path.string() : "Could not write " + path.string();
+  exported =
+      file ? "Saved " + path.string() : "Could not write " + path.string();
 }
 
 void ShotMapScene::render()
 {
-  const ImGuiViewport* viewport = ImGui::GetMainViewport();
+  namespace Page = SandboxPageUI;
+  const auto* viewport = ImGui::GetMainViewport();
+  const float scale = Theme::scale();
+  const Page::Style style(regularFont, scale);
   ImGui::SetNextWindowPos(viewport->WorkPos);
   ImGui::SetNextWindowSize(viewport->WorkSize);
-  const float scale = Theme::scale();
+  ImGui::PushStyleColor(ImGuiCol_WindowBg, Page::PAGE);
   ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding,
-                      ImVec2(Theme::Space::L * scale, Theme::Space::M * scale));
+                      ImVec2(24 * scale, 24 * scale));
+  ImGui::PushStyleVar(ImGuiStyleVar_WindowBorderSize, 0);
+  ImGui::PushStyleVar(ImGuiStyleVar_WindowRounding, 0);
   ImGui::Begin("##shot_map", nullptr,
                ImGuiWindowFlags_NoDecoration | ImGuiWindowFlags_NoMove |
                    ImGuiWindowFlags_NoSavedSettings |
-                   ImGuiWindowFlags_NoBringToFrontOnFocus);
-  ImGui::PopStyleVar();
-  renderPanel(PANEL_WIDTH * scale);
-  ImGui::SameLine();
-  if (ImGui::BeginChild("##map_area", ImVec2(0.0f, 0.0f)))
+                   ImGuiWindowFlags_NoBringToFrontOnFocus |
+                   ImGuiWindowFlags_NoScrollbar |
+                   ImGuiWindowFlags_NoScrollWithMouse);
+  ImGui::PopStyleVar(3);
+  ImGui::PopStyleColor();
+  const ImVec2 available = ImGui::GetContentRegionAvail();
+  const float gutter = 6 * scale + ImGui::GetStyle().ScrollbarSize;
+  const bool columns = available.x >= 1000 * scale;
+  const float panel = columns
+                          ? (available.x >= 1400 * scale ? 440 : 400) * scale
+                          : available.x - gutter;
+  ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(0, 0));
+  if (columns)
   {
-    if (!map)
-    {
-      ImGui::TextDisabled("Set the grid and press Run.");
-    }
-    else
-    {
-      ImGui::SetNextItemWidth(300.0f * scale);
-      ImGui::Combo("Colour by", &view, VIEW_NAMES.data(), VIEW_COUNT);
-      const ImVec2 available = ImGui::GetContentRegionAvail();
-      const float mapWidth = available.x * 0.58f;
-      renderMap(ImVec2(mapWidth, available.y));
-      ImGui::SameLine();
-      renderCalibration(ImVec2(0.0f, available.y));
-    }
+    ImGui::BeginChild("##shot_map_controls",
+                      ImVec2(panel + gutter, available.y),
+                      ImGuiChildFlags_AlwaysUseWindowPadding);
+    renderPanel(panel);
+    ImGui::EndChild();
+    ImGui::SameLine(0, 6 * scale);
+    const float width = ImGui::GetContentRegionAvail().x;
+    ImGui::BeginChild("##shot_map_results", ImVec2(width, available.y),
+                      ImGuiChildFlags_AlwaysUseWindowPadding);
+    renderResults(std::max(scale, width - gutter), available.y);
+    ImGui::EndChild();
   }
-  ImGui::EndChild();
+  else
+  {
+    ImGui::BeginChild("##shot_map_page", available,
+                      ImGuiChildFlags_AlwaysUseWindowPadding);
+    renderPanel(panel);
+    renderResults(panel, available.y);
+    ImGui::EndChild();
+  }
+  ImGui::PopStyleVar();
   ImGui::End();
 }
 
 void ShotMapScene::renderPanel(float width)
 {
-  if (!ImGui::BeginChild("##panel", ImVec2(width, 0.0f)))
-  {
-    ImGui::EndChild();
-    return;
-  }
+  namespace Page = SandboxPageUI;
+  const float scale = Theme::scale();
   const bool running = map && !map->done();
-  UI::pageHeader("Shot map");
-  ImGui::PushTextWrapPos(0.0f);
-  ImGui::TextDisabled("The Shot drill over a grid of spots, many runs each: "
-                      "conversion against the engine's own xG, and in choice "
-                      "mode where he chooses to shoot from.");
-  ImGui::PopTextWrapPos();
-  ImGui::BeginDisabled(running);
-  ImGui::PushItemWidth(-130.0f * Theme::scale());
-  ImGui::SeparatorText("Grid");
-  ImGui::SliderFloat("Nearest (m)", &spec.lineFrom, 1.0f, 40.0f, "%.0f");
-  ImGui::SliderFloat("Furthest (m)", &spec.lineTo, 1.0f, 45.0f, "%.0f");
-  ImGui::SliderInt("Rows", &spec.lineCount, 2, 25);
-  ImGui::SliderFloat("Left (m)", &spec.sideFrom, -30.0f, 0.0f, "%.0f");
-  ImGui::SliderFloat("Right (m)", &spec.sideTo, 0.0f, 30.0f, "%.0f");
-  ImGui::SliderInt("Columns", &spec.sideCount, 1, 25);
-  ImGui::SliderInt("Runs per spot", &spec.repeats, 1, 500);
-  int seed = static_cast<int>(spec.firstSeed);
-  if (ImGui::InputInt("First seed", &seed)) spec.firstSeed = static_cast<std::uint32_t>(std::max(0, seed));
-  ImGui::TextDisabled("%d spots, %d runs", spec.lineCount * spec.sideCount,
-                      spec.lineCount * spec.sideCount * spec.repeats);
-  if (ImGui::CollapsingHeader("Shot settings", ImGuiTreeNodeFlags_DefaultOpen))
-  {
-    ImGui::TextDisabled("The spot comes from the grid.");
-    drill.renderSettings();
-  }
-  ImGui::PopItemWidth();
-  ImGui::EndDisabled();
-
-  ImGui::Spacing();
-  if (!running)
-  {
-    if (UI::primaryButton("Run")) start();
-  }
-  else if (ImGui::Button("Stop"))
-  {
-    map->stop();
-  }
-  if (map)
-  {
-    ImGui::SameLine();
-    const DrillMeasure& runs = map->runs();
-    const float share =
-        runs.runsTotal() == 0 ? 1.0f
-                              : static_cast<float>(runs.runsDone()) /
-                                    static_cast<float>(runs.runsTotal());
-    ImGui::ProgressBar(share, ImVec2(-1.0f, 0.0f),
-                       std::format("{} / {} runs · {:.1f} s", runs.runsDone(),
-                                   runs.runsTotal(), runs.seconds())
-                           .c_str());
-    if (map->done() && ImGui::Button("Export CSV")) exportCsv();
-    if (!exported.empty())
-    {
-      ImGui::PushTextWrapPos(0.0f);
-      ImGui::TextDisabled("%s", exported.c_str());
-      ImGui::PopTextWrapPos();
-    }
-  }
-  ImGui::Dummy(ImVec2(0.0f, Theme::Space::L * Theme::scale()));
-  if (ImGui::Button("Back to the sandbox"))
+  Page::header(
+      "Shot map", drill.name(), width, scale, boldFont, regularFont,
+      "Conversion, engine xG and shooting choices over a grid of spots.", true);
+  Page::beginCard("##shot_actions", "RUN SHOT MAP", width, Page::DARK, scale,
+                  boldFont);
+  if (Page::button("Back to sandbox", false, scale, boldFont))
   {
     if (map) map->stop();
     guiView->popScene();
   }
-  ImGui::EndChild();
+  if (!running)
+  {
+    if (Page::button("Run", true, scale, boldFont)) start();
+  }
+  else if (Page::button("Stop", false, scale, boldFont))
+    map->stop();
+  ImGui::SameLine(0, 6 * scale);
+  ImGui::BeginDisabled(!map || !map->done() || map->runs().runs().empty());
+  if (Page::button("Export CSV", false, scale, boldFont)) exportCsv();
+  ImGui::EndDisabled();
+  if (map)
+  {
+    const auto& runs = map->runs();
+    ImGui::Text("%zu / %zu runs / %.1f s", runs.runsDone(), runs.runsTotal(),
+                runs.seconds());
+    ImGui::PushStyleColor(ImGuiCol_PlotHistogram, Page::LIME);
+    ImGui::ProgressBar(
+        runs.runsTotal() ? float(runs.runsDone()) / float(runs.runsTotal()) : 1,
+        ImVec2(-1, 8 * scale), "");
+    ImGui::PopStyleColor();
+  }
+  if (!exported.empty()) ImGui::TextWrapped("%s", exported.c_str());
+  Page::endCard(scale);
+  Page::beginCard("##shot_tabs", "CONTROLS", width, Page::MID, scale, boldFont);
+  const char* tabs[] = {"Grid", "Runs", "Settings"};
+  for (int i = 0; i < 3; ++i)
+  {
+    if (i) ImGui::SameLine(0, 6 * scale);
+    if (Page::button(tabs[i], panelTab == i, scale, boldFont)) panelTab = i;
+  }
+  Page::endCard(scale);
+  Page::beginCard("##shot_settings",
+                  panelTab == 0   ? "SPOT GRID"
+                  : panelTab == 1 ? "RUN SETTINGS"
+                                  : "SHOT SETTINGS",
+                  width, Page::LIGHT, scale, boldFont);
+  ImGui::BeginDisabled(running);
+  auto field = [](const char* label)
+  {
+    ImGui::TableNextColumn();
+    ImGui::Dummy(ImVec2(0, 0));
+    ImGui::TextWrapped("%s", label);
+    ImGui::SetNextItemWidth(-1);
+  };
+  if (panelTab < 2 && ImGui::BeginTable("##fields", 2,
+                                        ImGuiTableFlags_SizingStretchSame |
+                                            ImGuiTableFlags_RowBg |
+                                            ImGuiTableFlags_BordersInnerH |
+                                            ImGuiTableFlags_BordersInnerV))
+  {
+    if (panelTab == 0)
+    {
+      field("Nearest (m)");
+      ImGui::SliderFloat("##near", &spec.lineFrom, 1, 40, "%.0f");
+      field("Furthest (m)");
+      ImGui::SliderFloat("##far", &spec.lineTo, 1, 45, "%.0f");
+      field("Left (m)");
+      ImGui::SliderFloat("##left", &spec.sideFrom, -30, 0, "%.0f");
+      field("Right (m)");
+      ImGui::SliderFloat("##right", &spec.sideTo, 0, 30, "%.0f");
+      field("Rows");
+      ImGui::SliderInt("##rows", &spec.lineCount, 2, 25);
+      field("Columns");
+      ImGui::SliderInt("##cols", &spec.sideCount, 1, 25);
+    }
+    else
+    {
+      field("Runs per spot");
+      ImGui::SliderInt("##repeats", &spec.repeats, 1, 500);
+      field("First seed");
+      int seed = int(spec.firstSeed);
+      if (ImGui::InputInt("##seed", &seed))
+        spec.firstSeed = std::uint32_t(std::max(0, seed));
+    }
+    ImGui::EndTable();
+  }
+  if (panelTab == 2)
+  {
+    ImGui::TextWrapped(
+        "The spot comes from the grid. Other settings are shared with Watch.");
+    drill.renderSettings(width >= 360 * scale ? 2 : 1, false, true);
+  }
+  else
+    ImGui::TextWrapped("%d spots / %d runs", spec.lineCount * spec.sideCount,
+                       spec.lineCount * spec.sideCount * spec.repeats);
+  ImGui::EndDisabled();
+  Page::endCard(scale);
+}
+void ShotMapScene::renderResults(float width, float height)
+{
+  namespace Page = SandboxPageUI;
+  const float scale = Theme::scale();
+  Page::beginCard("##shot_results", "RESULTS", width, Page::MID, scale,
+                  boldFont);
+  if (!map)
+  {
+    ImGui::TextWrapped("Set the grid and press Run to build the shot map.");
+    Page::endCard(scale);
+    return;
+  }
+  ImGui::TextUnformatted("Colour by");
+  ImGui::SetNextItemWidth(
+      std::min(440 * scale, ImGui::GetContentRegionAvail().x));
+  ImGui::Combo("##colour", &view, VIEW_NAMES.data(), VIEW_COUNT);
+  const char* tabs[] = {"Map", "Calibration"};
+  for (int i = 0; i < 2; ++i)
+  {
+    if (i) ImGui::SameLine(0, 6 * scale);
+    if (Page::button(tabs[i], resultTab == i, scale, boldFont)) resultTab = i;
+  }
+  Page::endCard(scale);
+  const float canvasHeight =
+      std::max(320 * scale, height - ImGui::GetCursorPosY() - 60 * scale);
+  Page::beginCard("##shot_canvas", resultTab == 0 ? "SHOT MAP" : "CALIBRATION",
+                  width, Page::DARK, scale, boldFont);
+  if (resultTab == 0)
+    renderMap(ImVec2(ImGui::GetContentRegionAvail().x,
+                     std::max(220 * scale, canvasHeight - 54 * scale)));
+  else
+    renderCalibration(ImVec2(ImGui::GetContentRegionAvail().x, canvasHeight));
+  Page::endCard(scale);
 }
 
 void ShotMapScene::renderMap(ImVec2 size)
@@ -412,7 +525,8 @@ void ShotMapScene::renderMap(ImVec2 size)
   const ImVec2 origin = ImGui::GetCursorScreenPos();
   ImGui::InvisibleButton("##map", size);
   ImDrawList& draw = *ImGui::GetWindowDrawList();
-  const float depth = std::max(spec.lineFrom, spec.lineTo) + map->lineStep() + 2.0f;
+  const float depth =
+      std::max(spec.lineFrom, spec.lineTo) + map->lineStep() + 2.0f;
   const float width = MatchTuning::Pitch::MATCH_WIDTH_METRES;
   const float margin = 24.0f * scale;
   const float ppm = std::min((size.x - margin * 2.0f) / width,
@@ -424,6 +538,8 @@ void ShotMapScene::renderMap(ImVec2 size)
   draw.AddRectFilled(at(-width * 0.5f, 0.0f), at(width * 0.5f, depth),
                      IM_COL32(34, 92, 46, 255));
 
+  // Keep coarse edge cells inside the pitch.
+  draw.PushClipRect(at(-width * 0.5f, 0.0f), at(width * 0.5f, depth), true);
   // Cells.
   const bool diverging = view == DIFFERENCE;
   const float halfLine = map->lineStep() * 0.5f;
@@ -438,8 +554,9 @@ void ShotMapScene::renderMap(ImVec2 size)
     if (value)
     {
       draw.AddRectFilled(a, b, heatColour(*value, diverging));
-      const std::string text = diverging ? std::format("{:+.0f}", *value * 100.0)
-                                         : std::format("{:.0f}", *value * 100.0);
+      const std::string text = diverging
+                                   ? std::format("{:+.0f}", *value * 100.0)
+                                   : std::format("{:.0f}", *value * 100.0);
       const ImVec2 textSize = ImGui::CalcTextSize(text.c_str());
       if (textSize.x < b.x - a.x - 2.0f)
         draw.AddText(ImVec2((a.x + b.x - textSize.x) * 0.5f,
@@ -454,6 +571,8 @@ void ShotMapScene::renderMap(ImVec2 size)
       hovered = &cell;
   }
 
+  draw.PopClipRect();
+
   // Markings: goal line, box, six-yard box, spot, arc, goal.
   const ImU32 white = IM_COL32(255, 255, 255, 200);
   const float thick = 1.5f * scale;
@@ -467,7 +586,8 @@ void ShotMapScene::renderMap(ImVec2 size)
                  std::numbers::pi_v<float> * 0.5f - reach,
                  std::numbers::pi_v<float> * 0.5f + reach, 24);
   draw.PathStroke(white, 0, thick);
-  draw.AddRectFilled(at(-3.66f, -1.2f), at(3.66f, 0.0f), IM_COL32(255, 255, 255, 120));
+  draw.AddRectFilled(at(-3.66f, -1.2f), at(3.66f, 0.0f),
+                     IM_COL32(255, 255, 255, 120));
 
   // Choice mode: where the shots were actually taken.
   bool moved = false;
@@ -482,21 +602,13 @@ void ShotMapScene::renderMap(ImVec2 size)
                            shot.goal ? IM_COL32(120, 255, 140, 220)
                                      : IM_COL32(255, 255, 255, 110));
 
-  draw.AddText(ImVec2(left, top + depth * ppm + 4.0f * scale),
-               IM_COL32(170, 170, 170, 255),
-               std::format("{} (%; cells every {:.1f} × {:.1f} m{})",
-                           VIEW_NAMES[static_cast<std::size_t>(view)],
-                           map->lineStep(), map->sideStep(),
-                           moved ? "; dots: where shots were taken, green = goal"
-                                 : "")
-                   .c_str());
-
   if (hovered && ImGui::IsItemHovered())
   {
-    std::string tip = std::format("{:.1f} m out, {:+.1f} m off centre\n{} runs, "
-                                  "{} shots, {} goals",
-                                  hovered->line, hovered->side, hovered->runs,
-                                  hovered->shots, hovered->goals);
+    std::string tip = std::format(
+        "{:.1f} m out, {:+.1f} m off centre\n{} runs, "
+        "{} shots, {} goals",
+        hovered->line, hovered->side, hovered->runs, hovered->shots,
+        hovered->goals);
     if (hovered->shots > 0)
       tip += std::format(
           "\nconversion {:.1f}% · engine xG {:.1f}% · on target {:.0f}%"
@@ -504,9 +616,16 @@ void ShotMapScene::renderMap(ImVec2 size)
           100.0 * hovered->goals / hovered->shots,
           100.0 * hovered->xg / hovered->shots,
           100.0 * hovered->onTarget / hovered->shots,
-          hovered->shotLine / hovered->shots, hovered->shotSide / hovered->shots);
+          hovered->shotLine / hovered->shots,
+          hovered->shotSide / hovered->shots);
     ImGui::SetTooltip("%s", tip.c_str());
   }
+  ImGui::TextWrapped(
+      "%s", std::format("{} (%; cells every {:.1f} x {:.1f} m{})",
+                        VIEW_NAMES[static_cast<std::size_t>(view)],
+                        map->lineStep(), map->sideStep(),
+                        moved ? "; dots show shots taken, green = goal" : "")
+                .c_str());
 }
 
 void ShotMapScene::renderCalibration(ImVec2 size)
@@ -526,7 +645,7 @@ void ShotMapScene::renderCalibration(ImVec2 size)
     goals += bin.goals;
     xg += bin.xg;
   }
-  ImGui::SeparatorText("Calibration");
+
   ImGui::Text("%d shots: %d goals against %.1f expected (%.2f×)", shots, goals,
               xg, xg > 0.0 ? goals / xg : 0.0);
 
@@ -554,9 +673,9 @@ void ShotMapScene::renderCalibration(ImVec2 size)
   const auto sy = [&](double v)
   { return bottom - static_cast<float>(v / maxValue) * (bottom - top); };
   draw.AddRectFilled(ImVec2(left, top), ImVec2(right, bottom),
-                     IM_COL32(20, 24, 30, 255));
-  const ImU32 grid = IM_COL32(255, 255, 255, 30);
-  const ImU32 text = IM_COL32(200, 200, 200, 255);
+                     ImGui::GetColorU32(SandboxPageUI::DARK));
+  const ImU32 grid = ImGui::GetColorU32(SandboxPageUI::RULE);
+  const ImU32 text = ImGui::GetColorU32(SandboxPageUI::MUTED);
   for (double v = 0.0; v <= maxValue + 1e-9; v += maxValue / 5.0)
   {
     draw.AddLine(ImVec2(sx(v), top), ImVec2(sx(v), bottom), grid);
@@ -586,8 +705,8 @@ void ShotMapScene::renderCalibration(ImVec2 size)
         (2.5f + 5.0f * std::sqrt(static_cast<float>(bin.shots) / most)) * scale;
     draw.AddCircleFilled(point, radius, IM_COL32(255, 200, 60, 230));
   }
-  draw.AddText(ImVec2(left, bottom + 16.0f * scale), IM_COL32(150, 150, 150, 255),
-               "across: engine xG (%); up: scored (%); dot size = shots");
+  ImGui::TextWrapped(
+      "Across: engine xG (%%). Up: scored (%%). Dot size represents shots.");
 
   if (ImGui::BeginTable("##bins", 5,
                         ImGuiTableFlags_Borders | ImGuiTableFlags_RowBg |
@@ -659,9 +778,10 @@ int runShotMapCommand(const StatsConfig& config,
     else if (argument == "--set" && hasValue)
     {
       const std::size_t equals = value.find('=');
-      const auto parsed = equals == std::string::npos
-                              ? std::nullopt
-                              : number(std::string_view(value).substr(equals + 1));
+      const auto parsed =
+          equals == std::string::npos
+              ? std::nullopt
+              : number(std::string_view(value).substr(equals + 1));
       std::string name = value.substr(0, equals);
       bool known = false;
       for (const DrillParameter& parameter : shotDrill->parameters())
@@ -700,7 +820,8 @@ int runShotMapCommand(const StatsConfig& config,
   ShotMap map(*shotDrill, config, spec);
   std::cout << std::format("Shot map: {} × {} spots, {} runs each\n",
                            spec.lineCount, spec.sideCount, spec.repeats);
-  for (const std::string& note : map.runs().warnings()) std::cout << note << '\n';
+  for (const std::string& note : map.runs().warnings())
+    std::cout << note << '\n';
   while (map.work(1.0))
     std::cerr << std::format("  {} / {}\r", map.runs().runsDone(),
                              map.runs().runsTotal());
@@ -709,17 +830,21 @@ int runShotMapCommand(const StatsConfig& config,
   // Grids: rows by distance, columns by side.
   std::vector<float> sides;
   for (const ShotMapCell& cell : map.cells())
-    if (std::ranges::find(sides, cell.side) == sides.end()) sides.push_back(cell.side);
+    if (std::ranges::find(sides, cell.side) == sides.end())
+      sides.push_back(cell.side);
   std::ranges::sort(sides);
   const auto grid = [&](const char* title, int view)
   {
-    std::cout << '\n' << title << " (%), rows: metres out; columns: metres off centre\n";
+    std::cout << '\n'
+              << title
+              << " (%), rows: metres out; columns: metres off centre\n";
     std::string header = "        ";
     for (const float side : sides) header += std::format("{:>6g}", side);
     std::cout << header << '\n';
     std::vector<float> lines;
     for (const ShotMapCell& cell : map.cells())
-      if (std::ranges::find(lines, cell.line) == lines.end()) lines.push_back(cell.line);
+      if (std::ranges::find(lines, cell.line) == lines.end())
+        lines.push_back(cell.line);
     std::ranges::sort(lines);
     for (const float line : lines)
     {
@@ -730,8 +855,9 @@ int runShotMapCommand(const StatsConfig& config,
         for (const ShotMapCell& cell : map.cells())
           if (cell.line == line && cell.side == side)
             if (const auto value = cellValue(cell, view))
-              cellText = view == DIFFERENCE ? std::format("{:>+6.0f}", *value * 100.0)
-                                            : std::format("{:>6.0f}", *value * 100.0);
+              cellText = view == DIFFERENCE
+                             ? std::format("{:>+6.0f}", *value * 100.0)
+                             : std::format("{:>6.0f}", *value * 100.0);
         row += cellText;
       }
       std::cout << row << '\n';
@@ -756,16 +882,15 @@ int runShotMapCommand(const StatsConfig& config,
     goals += bin.goals;
     xg += bin.xg;
     if (bin.shots == 0) continue;
-    std::cout << std::format("  {:>4.0f}-{:<4.0f}%  {:>7}  {:>7.1f}%  {:>7.1f}%  {:>9.2f}\n",
-                             bin.from * 100.0, bin.to * 100.0, bin.shots,
-                             100.0 * bin.xg / bin.shots,
-                             100.0 * bin.goals / bin.shots,
-                             bin.xg > 0.0 ? bin.goals / bin.xg : 0.0);
+    std::cout << std::format(
+        "  {:>4.0f}-{:<4.0f}%  {:>7}  {:>7.1f}%  {:>7.1f}%  {:>9.2f}\n",
+        bin.from * 100.0, bin.to * 100.0, bin.shots, 100.0 * bin.xg / bin.shots,
+        100.0 * bin.goals / bin.shots, bin.xg > 0.0 ? bin.goals / bin.xg : 0.0);
   }
-  std::cout << std::format("  all       {:>7}  {:>7.1f}%  {:>7.1f}%  {:>9.2f}\n", shots,
-                           shots ? 100.0 * xg / shots : 0.0,
-                           shots ? 100.0 * goals / shots : 0.0,
-                           xg > 0.0 ? goals / xg : 0.0);
+  std::cout << std::format(
+      "  all       {:>7}  {:>7.1f}%  {:>7.1f}%  {:>9.2f}\n", shots,
+      shots ? 100.0 * xg / shots : 0.0, shots ? 100.0 * goals / shots : 0.0,
+      xg > 0.0 ? goals / xg : 0.0);
 
   if (csvAuto) csvPath = measurePath(shotDrill->name(), "spot grid");
   if (csvPath)

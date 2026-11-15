@@ -22,6 +22,7 @@
 #include "model/match_engine.h"
 #include "tools/match_sandbox_debugger.h"
 #include "tools/match_sandbox_inspector.h"
+#include "tools/match_sandbox_analysis_ui.h"
 #include "tools/match_sandbox_names.h"
 #include "tools/match_sandbox_rewind.h"
 #include "tools/match_sandbox_scenario.h"
@@ -391,7 +392,7 @@ void DebugInspector::renderDecision(const SandboxRecorder& recorder,
               SandboxNames::choice(opened->detail.chosen),
               winningMargin(opened->detail));
   // The moment as a test case: positions at the end of the tick before.
-  if (ImGui::SmallButton("Export as test scenario") && opened->tick > 0)
+  if (SandboxAnalysisUI::button("Export as test scenario") && opened->tick > 0)
   {
     const MatchRewind::Result before =
         MatchRewind::rebuild(recorder, opened->tick - 1);

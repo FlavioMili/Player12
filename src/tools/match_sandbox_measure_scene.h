@@ -28,6 +28,7 @@ class DrillMeasureScene : public GUIScene
   DrillMeasureScene(GUIView* guiView_ptr, Drill& drill, bool runNow = false);
   ~DrillMeasureScene() override;
 
+  void onEnter() override;
   void update(float deltaTime) override;
   void render() override;
   SceneID getID() const override;
@@ -45,9 +46,9 @@ class DrillMeasureScene : public GUIScene
 
   void start();
   void renderPanel(float width);
-  void renderResults();
+  void renderResults(float width, float height);
   void renderChart(ImVec2 size);
-  void renderTable();
+  void renderTable(ImVec2 size);
   /** Combo and range widgets of one axis. */
   void renderAxis(const char* label, AxisSetup& axis, bool optional,
                   int exclude);
@@ -65,4 +66,8 @@ class DrillMeasureScene : public GUIScene
   int metric = 0;
   std::string exported;
   bool runPending = false;
+  int panelTab = 0;
+  int resultView = 2;
+  ImFont* regularFont = nullptr;
+  ImFont* boldFont = nullptr;
 };

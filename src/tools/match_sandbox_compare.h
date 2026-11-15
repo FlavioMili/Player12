@@ -16,16 +16,17 @@ class MatchReview;
 class SandboxRecorder;
 
 /**
- * The match sandbox's recording window (debugger phase 5): how a recording
- * replays on the current engine. When it plays differently, the first tick
- * and the first decision that differ, and that decision's scores side by
+ * The match sandbox's embedded recording comparison (debugger phase 5): how a
+ * recording replays on the current engine. When it plays differently, the first
+ * tick and the first decision that differ, and that decision's scores side by
  * side, term by term (when the recording was saved with full detail).
  */
 class RecordingComparison
 {
  public:
   /** `replayed` is the replayed match (the review's recorder). */
-  void render(const MatchRecording& recording, const Recordings::Replay& replay,
+  /** Returns true when a comparison action seeks the review pitch. */
+  bool render(const MatchRecording& recording, const Recordings::Replay& replay,
               const SandboxRecorder* replayed, MatchReview& review,
               DebugInspector& inspector);
   void reset() { replayDetail.reset(); }

@@ -110,6 +110,7 @@ class ShotMapScene : public GUIScene
   ShotMapScene(GUIView* guiView_ptr, Drill& shotDrill, bool runNow = false);
   ~ShotMapScene() override;
 
+  void onEnter() override;
   void update(float deltaTime) override;
   void render() override;
   SceneID getID() const override;
@@ -117,6 +118,7 @@ class ShotMapScene : public GUIScene
  private:
   void start();
   void renderPanel(float width);
+  void renderResults(float width, float height);
   void renderMap(ImVec2 size);
   void renderCalibration(ImVec2 size);
   void exportCsv();
@@ -125,6 +127,10 @@ class ShotMapScene : public GUIScene
   ShotMapSpec spec;
   std::unique_ptr<ShotMap> map;
   int view = 0;
+  int panelTab = 0;
+  int resultTab = 0;
+  ImFont* regularFont = nullptr;
+  ImFont* boldFont = nullptr;
   bool runPending = false;
   std::string exported;
 };

@@ -185,7 +185,34 @@ void DrillScene::render()
     Page::header(drill.name(), drill.summary(), panel, scale, boldFont,
                  regularFont, context.c_str(), true);
     renderControls(panel);
-    renderPanel(panel);
+    Page::beginCard("##drill_analysis_tabs", "VIEW", panel, Page::MID, scale,
+                    boldFont);
+    const char* tabs[] = {"Run", "Review", "Debugger"};
+    for (int i = 0; i < 3; ++i)
+    {
+      if (i) ImGui::SameLine(0, 6 * scale);
+      if (Page::button(tabs[i], analysisTab == i, scale, boldFont))
+      {
+        analysisTab = i;
+      }
+    }
+    Page::endCard(scale);
+    if (analysisTab == 0)
+      renderPanel(panel);
+    else
+    {
+      Page::beginCard("##drill_review_controls",
+                      analysisTab == 1 ? "REVIEW" : "ENGINE ANALYSIS", panel,
+                      Page::LIGHT, scale, boldFont);
+      if (run)
+        review.renderPanel(run->recorder(), &run->engine(), &paused, nullptr);
+      ImGui::TextWrapped(
+          analysisTab == 1 ? "The pitch shows the selected moment. Back to "
+                             "live resumes the drill."
+                           : "Select a log entry to review it on the pitch. "
+                             "Inspector tabs share the same selected moment.");
+      Page::endCard(scale);
+    }
   };
   ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(0, 0));
   if (columns)
@@ -210,7 +237,6 @@ void DrillScene::render()
   }
   ImGui::PopStyleVar();
   ImGui::End();
-  if (showDebugger) renderDebugTools();
 }
 
 void DrillScene::renderControls(float width)
@@ -255,8 +281,7 @@ void DrillScene::renderControls(float width)
     ImGui::EndCombo();
   }
   ImGui::Checkbox("New seed each run", &newSeedEachRun);
-  next(ImGui::CalcTextSize("Debugger windows").x + 40 * scale);
-  ImGui::Checkbox("Debugger windows", &showDebugger);
+
   next(ImGui::CalcTextSize("3D view").x + 40 * scale);
   if (ImGui::Checkbox("3D view", &view3d))
   {
@@ -347,6 +372,26 @@ void DrillScene::renderPitch(float width, float height)
   namespace Page = SandboxPageUI;
   const float scale = Theme::scale();
   Page::beginCard("##pitch_card", "PITCH", width, Page::DARK, scale, boldFont);
+  if (analysisTab == 2 && run)
+  {
+    ImGui::BeginChild("##drill_debug_content",
+                      ImVec2(0, std::max(300 * scale, height - 56 * scale)),
+                      ImGuiChildFlags_None,
+                      ImGuiWindowFlags_HorizontalScrollbar);
+    renderDebugTools();
+    ImGui::EndChild();
+    Page::endCard(scale);
+    return;
+  }
+  if (analysisTab == 1 && run)
+  {
+    ImGui::BeginChild("##drill_review_pitch",
+                      ImVec2(0, std::max(300 * scale, height - 56 * scale)));
+    review.renderPitch(run->recorder(), &run->engine(), 0, 0, &inspector);
+    ImGui::EndChild();
+    Page::endCard(scale);
+    return;
+  }
   const ImVec2 origin = ImGui::GetCursorScreenPos();
   const ImVec2 size(std::max(scale, ImGui::GetContentRegionAvail().x),
                     std::max(200 * scale, height - 56 * scale));
@@ -412,14 +457,15 @@ void DrillScene::renderDebugTools()
 {
   if (!run) return;
   MatchEngine& engine = run->engine();
-  review.render(run->recorder(), &engine, &paused, 0, 0, &inspector);
+
   const MatchEngine* inspected =
       review.shownEngine() ? review.shownEngine() : &engine;
-  debugger.render(run->recorder(), &engine, &paused, review.cursor(), inspected,
-                  inspector);
+  debugger.renderContents(run->recorder(), &engine, &paused, review.cursor(),
+                          inspected, inspector);
   if (const auto tick = debugger.takeSeekRequest())
   {
     paused = true;
     review.seek(run->recorder(), *tick);
+    analysisTab = 1;
   }
 }

@@ -23,7 +23,7 @@ class IMatchRenderer;
 class SandboxRecorder;
 
 /**
- * The match sandbox's review window (debugger phase 2): a timeline of the
+ * The match sandbox's embedded review (debugger phase 2): a timeline of the
  * whole recorded match (both sides' phases, goals, shots, cards and
  * substitutions) that can be scrubbed, stepped and played back, with the
  * rebuilt moment on a pitch of its own. Live, it leaves the live match
@@ -39,21 +39,17 @@ class MatchReview
   MatchReview& operator=(const MatchReview&) = delete;
 
   /**
-   * Draws the window. `live` and `livePaused` are the live match during it
-   * and null after it. The team ids pick the kits. `open`, when given,
-   * gets the window's close button.
-   */
-  void render(const SandboxRecorder& recorder, const MatchEngine* live,
-              bool* livePaused, TeamID home, TeamID away,
-              DebugInspector* inspector = nullptr, bool* open = nullptr);
-
-  /**
-   * The window's contents but its pitch, to embed (the sandbox match's side
+   * Timeline and playback controls to embed (the sandbox match's side
    * panel, where the match's own pitch shows the moment): where it is, the
    * timeline, the transport and the inspector's overlay switches.
    */
   void renderPanel(const SandboxRecorder& recorder, const MatchEngine* live,
                    bool* livePaused, DebugInspector* inspector);
+
+  /** Embedded pitch; overlay controls can be placed in a separate card. */
+  void renderPitch(const SandboxRecorder& recorder, const MatchEngine* live,
+                   TeamID home, TeamID away, DebugInspector* inspector,
+                   bool overlayControls = true);
 
   /** Hide players off the pitch (a drill's players not in it). */
   bool hideOffPitch = false;
@@ -89,8 +85,7 @@ class MatchReview
                       bool* livePaused);
   void renderTransport(const SandboxRecorder& recorder, std::uint64_t end,
                        bool* livePaused);
-  void renderPitch(const SandboxRecorder& recorder, const MatchEngine* live,
-                   TeamID home, TeamID away, DebugInspector* inspector);
+
   void play(const SandboxRecorder& recorder, std::uint64_t end);
   void step(const SandboxRecorder& recorder, std::int64_t ticks,
             std::uint64_t end);
