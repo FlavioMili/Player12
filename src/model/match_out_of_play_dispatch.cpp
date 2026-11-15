@@ -328,6 +328,12 @@ void MatchEngine::completeRestart()
 
 using namespace MatchEngineInternal;
 
+void MatchEngine::serveToStart(bool home)
+{
+  if (!restartsByServe() || state != MatchState::PLAYING) return;
+  beginServe(home, MatchTuning::Serve::WAIT_SECONDS);
+}
+
 void MatchEngine::holdAfterGoal()
 {
   // Nobody fetches the ball for a kick-off, and nobody walks back for one.

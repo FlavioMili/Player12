@@ -9564,6 +9564,250 @@ class WalledBoxDrill final : public Drill
   std::string stoppedBy;
 };
 
+/**
+ * Small-sided game (training ground plan section 22, T6): the brain
+ * redesign's ladder (1 player, 1 v 1, 2 v 2, 3 v 3, N v N) on a walled
+ * training pitch sized by area per player, goals at the ends, the coach
+ * serving to the home side to start and after every goal. Reports what
+ * each rung is there to show; measures, not targets.
+ */
+class SmallSidedGameDrill final : public Drill
+{
+ public:
+  const char* name() const override { return "Small-sided game"; }
+  const char* summary() const override
+  {
+    return "The brain redesign's ladder: one player alone, then 1 v 1, 2 v 2, "
+           "3 v 3 and N v N, on a walled pitch sized by area per player, with "
+           "goals at the ends. The coach serves to the home side to start and "
+           "to the side that conceded after a goal. Reports goals, shots, "
+           "possession and passes (training ground T6).";
+  }
+
+  std::vector<DrillPreset> presets() const override
+  {
+    std::vector<DrillPreset> list;
+    const std::array<const char*, 5> names{"1 player", "1 v 1", "2 v 2", "3 v 3", "N v N"};
+    for (std::size_t rung = 0; rung < names.size(); ++rung)
+      list.push_back({names[rung], std::format("The ladder's rung: {}.", names[rung]),
+                      {{"Rung", static_cast<float>(rung)}}});
+    return list;
+  }
+
+  MatchPitch pitch() const override
+  {
+    // Area per player over the outfield players (the 1-player rung on the
+    // 1 v 1 pitch), length 1.5 times the width.
+    const float players = static_cast<float>(std::max(2, 2 * perSide()));
+    const float area = areaSetting * players;
+    const float width = std::sqrt(area / 1.5f);
+    return MatchPitch::training(1.5f * width, width,
+                                static_cast<GoalKind>(static_cast<int>(goalsChoice + 0.5f)));
+  }
+
+  std::vector<DrillParameter> parameters() override
+  {
+    std::vector<DrillParameter> list;
+    DrillParameter rung = setting("Rung", &rungChoice, 0.0f, 4.0f, true,
+                                  "The ladder's rung (brain redesign plan, "
+                                  "section 3).");
+    rung.choices = {"1 player", "1 v 1", "2 v 2", "3 v 3", "N v N"};
+    list.push_back(rung);
+    list.push_back(setting("N a side (N v N)", &nSetting, 4.0f, 6.0f, true));
+    list.push_back(setting("Area per player (m2)", &areaSetting, 75.0f, 200.0f, true,
+                           "Pitch area over the outfield players. Studies of "
+                           "small-sided games use about 75-150; a full match is "
+                           "about 357."));
+    list.push_back(setting("Seconds", &secondsSetting, 30.0f, 600.0f, true));
+    DrillParameter goals = setting("Goals", &goalsChoice, 1.0f, 7.0f, true);
+    goals.choices = {"None", "Full size", "9v9", "7v7", "Futsal", "5-a-side",
+                     "Small framed", "Pop-up"};
+    list.push_back(goals);
+    return list;
+  }
+
+  std::vector<DrillPlayerSpec> players() const override
+  {
+    std::vector<DrillPlayerSpec> list;
+    const int side = perSide();
+    const bool alone = rung() == 0;
+    for (int index = 0; index < std::max(1, side); ++index)
+    {
+      list.push_back({std::format("Home {}", index + 1), PlayerRole::CM, true});
+      if (!alone) list.push_back({std::format("Away {}", index + 1), PlayerRole::CM, false});
+    }
+    return list;
+  }
+
+  void begin(MatchEngine& engine, const std::vector<PlayerID>& ids) override
+  {
+    const MatchPitch& box = engine.getPitch();
+    ids_ = ids;
+    homeIds_.clear();
+    // Each side spread across its own end, a quarter of the way in.
+    MatchScenario scenario;
+    const bool alone = rung() == 0;
+    const std::size_t perSideCount = alone ? ids.size() : ids.size() / 2;
+    for (std::size_t index = 0; index < ids.size(); ++index)
+    {
+      const bool home = alone || index % 2 == 0;
+      const std::size_t rank = alone ? index : index / 2;
+      const float across = (static_cast<float>(rank) + 1.0f) /
+                           (static_cast<float>(perSideCount) + 1.0f);
+      if (home) homeIds_.push_back(ids[index]);
+      scenario.players.push_back(
+          {ids[index], PitchPoint{box.length * (home ? 0.25f : 0.75f), box.width * across},
+           false});
+    }
+    scenario.ballPosition = PitchPoint{0.5f * box.length, 0.5f * box.width};
+    engine.startDrill(scenario);
+    // The coach serves to the home side to start.
+    engine.serveToStart(true);
+    PitchKit::Layout kit;
+    kit.lines.push_back({"Halfway", PitchPoint{0.5f * box.length, 0.0f},
+                         PitchPoint{0.5f * box.length, box.width}});
+    engine.setKit(std::move(kit));
+    const MatchStats& stats = engine.getStats();
+    statsAtStart = stats;
+    eventsSeen = engine.getEvents().size();
+    elapsed = 0.0;
+    homeGoals = awayGoals = 0;
+    homeShots = awayShots = 0;
+    homePasses = awayPasses = homeCompleted = awayCompleted = 0;
+    homeTicks = awayTicks = looseTicks = inPlayTicks = 0;
+    ownGoals = 0;
+    changes = 0;
+    lastSide = 0;
+    stoppedBy.clear();
+  }
+
+  bool afterStep(MatchEngine& engine) override
+  {
+    elapsed = secondsOf(engine);
+    homeGoals = engine.getHomeScore();
+    awayGoals = engine.getAwayScore();
+    const MatchStats& stats = engine.getStats();
+    homeShots = stats.homeShots - statsAtStart.homeShots;
+    awayShots = stats.awayShots - statsAtStart.awayShots;
+    homePasses = stats.homePassesAttempted - statsAtStart.homePassesAttempted;
+    awayPasses = stats.awayPassesAttempted - statsAtStart.awayPassesAttempted;
+    homeCompleted = stats.homePassesCompleted - statsAtStart.homePassesCompleted;
+    awayCompleted = stats.awayPassesCompleted - statsAtStart.awayPassesCompleted;
+    // Possession, in play only. The team in possession is the side that
+    // last had the ball under control (as the match statistics count it);
+    // a change is it passing to the other side. The ball is loose when
+    // nobody holds it, claims a touch on it or is dribbling it (his next
+    // meet with it planned).
+    const MatchState state = engine.getState();
+    if (state == MatchState::PLAYING)
+    {
+      const std::optional<bool> team = engine.getPossessionHistory().lastControlledTeamHome;
+      if (team && *team)
+        ++homeTicks;
+      else if (team)
+        ++awayTicks;
+      const int side = !team ? 0 : *team ? 1 : -1;
+      if (side != 0)
+      {
+        if (lastSide != 0 && side != lastSide) ++changes;
+        lastSide = side;
+      }
+      if (!engine.getPossessionAttachment() && !engine.getBall().meetFor) ++looseTicks;
+      ++inPlayTicks;
+    }
+    // Own goals (the 1-player rung has nobody else to score).
+    const auto& log = engine.getEvents();
+    for (; eventsSeen < log.size(); ++eventsSeen)
+      if (log[eventsSeen].type == MatchEventType::OWN_GOAL) ++ownGoals;
+    // Play goes on through goals and the coach's serves; anything else
+    // stops it.
+    const bool going = state == MatchState::PLAYING || state == MatchState::GOAL ||
+                       state == MatchState::SERVE;
+    if (!going && stoppedBy.empty())
+    {
+      const auto& events = engine.getEvents();
+      stoppedBy = events.empty() ? std::string("?")
+                                 : std::string(matchEventTypeName(events.back().type));
+    }
+    return elapsed < secondsSetting && going;
+  }
+
+  std::vector<std::string> report() const override
+  {
+    const int inPlay = inPlayTicks;
+    const auto share = [inPlay](int ticks)
+    { return inPlay == 0 ? 0.0 : 100.0 * ticks / inPlay; };
+    std::vector<std::string> lines{
+        std::format("{:.1f} s of {:.0f}", elapsed, secondsSetting),
+        std::format("Goals: home {}, away {} (own goals {})", homeGoals, awayGoals, ownGoals),
+        std::format("Shots: home {}, away {}", homeShots, awayShots),
+        std::format("In possession (in play): home {:.0f}%, away {:.0f}%; the ball loose "
+                    "(nobody on it) {:.0f}%",
+                    share(homeTicks), share(awayTicks), share(looseTicks)),
+        std::format("The ball changed sides {} times", changes),
+        std::format("Passes completed: home {} of {}, away {} of {}", homeCompleted,
+                    homePasses, awayCompleted, awayPasses),
+        stoppedBy.empty() ? std::string("Play never stopped")
+                          : std::format("Play stopped by a {}", stoppedBy)};
+    if (!stoppedBy.empty() || elapsed >= secondsSetting - 0.05)
+      lines.push_back(std::format("OUTCOME  {}-{}, {} shots, {} changes of side, {} passes",
+                                  homeGoals, awayGoals, homeShots + awayShots, changes,
+                                  homePasses + awayPasses));
+    return lines;
+  }
+
+  std::vector<DrillMetric> metrics() const override
+  {
+    if (elapsed < secondsSetting - 0.05) return {};
+    const int inPlay = std::max(1, inPlayTicks);
+    return {{"Home goals", static_cast<double>(homeGoals)},
+            {"Away goals", static_cast<double>(awayGoals)},
+            {"Own goals", static_cast<double>(ownGoals)},
+            {"Shots", static_cast<double>(homeShots + awayShots)},
+            {"Home possession (%)", 100.0 * homeTicks / inPlay},
+            {"Ball loose (%)", 100.0 * looseTicks / inPlay},
+            {"Changes of side", static_cast<double>(changes)},
+            {"Passes", static_cast<double>(homePasses + awayPasses)},
+            {"Passes completed", static_cast<double>(homeCompleted + awayCompleted)}};
+  }
+
+ private:
+  [[nodiscard]] int rung() const { return static_cast<int>(rungChoice + 0.5f); }
+  /** Players a side: 1 for the first two rungs, then 2, 3 or N. */
+  [[nodiscard]] int perSide() const
+  {
+    const int r = rung();
+    return r <= 1 ? 1 : r == 4 ? static_cast<int>(nSetting + 0.5f) : r;
+  }
+
+  float rungChoice = 1.0f;
+  float nSetting = 4.0f;
+  float areaSetting = 100.0f;
+  float secondsSetting = 120.0f;
+  float goalsChoice = 5.0f;
+  std::vector<PlayerID> ids_;
+  std::vector<PlayerID> homeIds_;
+  MatchStats statsAtStart{};
+  std::size_t eventsSeen = 0;
+  double elapsed = 0.0;
+  int homeGoals = 0;
+  int awayGoals = 0;
+  int homeShots = 0;
+  int awayShots = 0;
+  int homePasses = 0;
+  int awayPasses = 0;
+  int homeCompleted = 0;
+  int awayCompleted = 0;
+  int homeTicks = 0;
+  int awayTicks = 0;
+  int looseTicks = 0;
+  int inPlayTicks = 0;
+  int ownGoals = 0;
+  int changes = 0;
+  int lastSide = 0;
+  std::string stoppedBy;
+};
+
 std::vector<std::unique_ptr<Drill>> makeDrills()
 {
   std::vector<std::unique_ptr<Drill>> drills;
@@ -9598,5 +9842,6 @@ std::vector<std::unique_ptr<Drill>> makeDrills()
   add(DrillCategory::Control, std::make_unique<BodyControlDrill>(true));
   add(DrillCategory::Aerial, std::make_unique<LooseHighBallDrill>());
   add(DrillCategory::Duels, std::make_unique<WalledBoxDrill>());
+  add(DrillCategory::Duels, std::make_unique<SmallSidedGameDrill>());
   return drills;
 }

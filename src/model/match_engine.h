@@ -3064,6 +3064,12 @@ class MatchEngine
    * replayed. */
   void feedBall(PitchPoint from, Vector2F velocity, float lift,
                 PlayerID receiverId);
+  /** Drills on a serving pitch (training ground plan section 22): right
+   * after startDrill, play waits for the coach's serve to `home`'s side
+   * (the pitch's serve settings pick the side and player), after the
+   * usual wait. Nothing on a pitch that doesn't serve, or once play has
+   * moved on. */
+  void serveToStart(bool home);
 
   /** Drills and the lab: the first-touch knobs (match_first_touch_knobs.h),
    * defaulting to the tuned constants. Set before kick-off. A saved
