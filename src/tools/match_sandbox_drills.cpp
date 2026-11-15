@@ -9678,6 +9678,14 @@ class SmallSidedGameDrill final : public Drill
     ownGoals = 0;
     changes = 0;
     lastSide = 0;
+    reachedAt.reset();
+    firstShotAt.reset();
+    spellSide = spells = tackles = 0;
+    spellStart = longestSpell = 0.0;
+    homeSwarmTicks = awaySwarmTicks = spreadSamples = 0;
+    spreadSum = 0.0;
+    defendingTicks = pressCoverTicks = carrierTicks = 0;
+    openSum = 0.0;
     stoppedBy.clear();
   }
 
@@ -9693,6 +9701,8 @@ class SmallSidedGameDrill final : public Drill
     awayPasses = stats.awayPassesAttempted - statsAtStart.awayPassesAttempted;
     homeCompleted = stats.homePassesCompleted - statsAtStart.homePassesCompleted;
     awayCompleted = stats.awayPassesCompleted - statsAtStart.awayPassesCompleted;
+    tackles = stats.homeTackles + stats.awayTackles - statsAtStart.homeTackles -
+              statsAtStart.awayTackles;
     // Possession, in play only. The team in possession is the side that
     // last had the ball under control (as the match statistics count it);
     // a change is it passing to the other side. The ball is loose when
@@ -9715,6 +9725,9 @@ class SmallSidedGameDrill final : public Drill
       if (!engine.getPossessionAttachment() && !engine.getBall().meetFor) ++looseTicks;
       ++inPlayTicks;
     }
+    // What each rung is there to show (training ground T6b): measures, not
+    // targets.
+    if (state == MatchState::PLAYING) measureRung(engine);
     // Own goals (the 1-player rung has nobody else to score).
     const auto& log = engine.getEvents();
     for (; eventsSeen < log.size(); ++eventsSeen)
@@ -9749,6 +9762,35 @@ class SmallSidedGameDrill final : public Drill
                     homePasses, awayCompleted, awayPasses),
         stoppedBy.empty() ? std::string("Play never stopped")
                           : std::format("Play stopped by a {}", stoppedBy)};
+    // What this rung is there to show (T6b): measures, not targets.
+    const int r = rung();
+    const auto seconds = [](const std::optional<double>& at)
+    { return at ? std::format("{:.1f} s", *at) : std::string("never"); };
+    const auto shareOf = [inPlay](int ticks)
+    { return inPlay == 0 ? 0.0 : 100.0 * ticks / inPlay; };
+    if (r == 0)
+      lines.push_back(std::format("WATCH  first on the ball at {}, first shot at {}",
+                                  seconds(reachedAt), seconds(firstShotAt)));
+    if (r >= 1)
+      lines.push_back(std::format("WATCH  {} spells on the ball, the longest {:.1f} s; "
+                                  "{} clean tackles",
+                                  spells, longestSpell, tackles));
+    if (r >= 2)
+      lines.push_back(std::format(
+          "WATCH  passes a spell {:.2f}; two or more within 3 m of the ball: home "
+          "{:.0f}%, away {:.0f}%; one on the carrier with another goal-side of the next "
+          "attacker: {:.0f}% of defending",
+          spells == 0 ? 0.0 : static_cast<double>(homePasses + awayPasses) / spells,
+          shareOf(homeSwarmTicks), shareOf(awaySwarmTicks),
+          defendingTicks == 0 ? 0.0 : 100.0 * pressCoverTicks / defendingTicks));
+    if (r >= 3)
+      lines.push_back(std::format("WATCH  the carrier's team-mates in passing range: "
+                                  "{:.2f} on average",
+                                  carrierTicks == 0 ? 0.0 : openSum / carrierTicks));
+    if (r >= 2)
+      lines.push_back(std::format("WATCH  each side's spread (average from its centre): "
+                                  "{:.1f} m",
+                                  spreadSamples == 0 ? 0.0 : spreadSum / spreadSamples));
     if (!stoppedBy.empty() || elapsed >= secondsSetting - 0.05)
       lines.push_back(std::format("OUTCOME  {}-{}, {} shots, {} changes of side, {} passes",
                                   homeGoals, awayGoals, homeShots + awayShots, changes,
@@ -9768,7 +9810,19 @@ class SmallSidedGameDrill final : public Drill
             {"Ball loose (%)", 100.0 * looseTicks / inPlay},
             {"Changes of side", static_cast<double>(changes)},
             {"Passes", static_cast<double>(homePasses + awayPasses)},
-            {"Passes completed", static_cast<double>(homeCompleted + awayCompleted)}};
+            {"Passes completed", static_cast<double>(homeCompleted + awayCompleted)},
+            // The rung measures (T6b).
+            {"First on the ball (s)", reachedAt.value_or(-1.0)},
+            {"First shot (s)", firstShotAt.value_or(-1.0)},
+            {"Spells", static_cast<double>(spells)},
+            {"Longest spell (s)", longestSpell},
+            {"Clean tackles", static_cast<double>(tackles)},
+            {"Swarming home (%)", 100.0 * homeSwarmTicks / inPlay},
+            {"Swarming away (%)", 100.0 * awaySwarmTicks / inPlay},
+            {"Press and cover (%)",
+             defendingTicks == 0 ? 0.0 : 100.0 * pressCoverTicks / defendingTicks},
+            {"Team-mates in range", carrierTicks == 0 ? 0.0 : openSum / carrierTicks},
+            {"Spread (m)", spreadSamples == 0 ? 0.0 : spreadSum / spreadSamples}};
   }
 
  private:
@@ -9778,6 +9832,121 @@ class SmallSidedGameDrill final : public Drill
   {
     const int r = rung();
     return r <= 1 ? 1 : r == 4 ? static_cast<int>(nSetting + 0.5f) : r;
+  }
+
+  /** One in-play step of the rung's measures (plan section 22, point 7). */
+  void measureRung(const MatchEngine& engine)
+  {
+    constexpr float SWARM_METRES = 3.0f;
+    constexpr float ENGAGE_METRES = 3.0f;
+    const MatchPitch& box = engine.getPitch();
+    const PitchPoint ball = engine.getBall().position;
+    std::vector<const MatchPlayer*> home;
+    std::vector<const MatchPlayer*> away;
+    for (const PlayerID id : ids_)
+      if (const MatchPlayer* slot = slotOf(engine, id))
+        (std::ranges::find(homeIds_, id) != homeIds_.end() ? home : away).push_back(slot);
+    const auto apart = [](PitchPoint a, PitchPoint b) { return std::hypot(a.x - b.x, a.y - b.y); };
+    // The carrier: holding the ball, or dribbling it.
+    const Player* holder = engine.getPossessionAttachment();
+    if (!holder) holder = engine.getBall().meetFor;
+    const MatchPlayer* carrier = nullptr;
+    for (const MatchPlayer* player : home)
+      if (player->player == holder) carrier = player;
+    for (const MatchPlayer* player : away)
+      if (player->player == holder) carrier = player;
+    const double now = elapsed;
+
+    // 1 player: when he first had the ball, and first shot.
+    if (carrier && !reachedAt) reachedAt = now;
+    if (!firstShotAt && homeShots + awayShots > 0) firstShotAt = now;
+
+    // Spells: a side's unbroken time in possession; the longest.
+    const std::optional<bool> team = engine.getPossessionHistory().lastControlledTeamHome;
+    const int side = !team ? 0 : *team ? 1 : -1;
+    if (side != 0 && side != spellSide)
+    {
+      spellSide = side;
+      spellStart = now;
+      ++spells;
+    }
+    if (side != 0) longestSpell = std::max(longestSpell, now - spellStart);
+
+    // Swarming: two or more of a side within 3 m of the ball.
+    for (const bool isHome : {true, false})
+    {
+      const auto& mine = isHome ? home : away;
+      int near = 0;
+      for (const MatchPlayer* player : mine)
+        if (apart(player->position, ball) <= SWARM_METRES) ++near;
+      if (mine.size() >= 2 && near >= 2) ++(isHome ? homeSwarmTicks : awaySwarmTicks);
+      // Spread: the side's average distance from its own centre.
+      if (mine.size() >= 2)
+      {
+        float cx = 0.0f;
+        float cy = 0.0f;
+        for (const MatchPlayer* player : mine)
+        {
+          cx += player->position.x;
+          cy += player->position.y;
+        }
+        cx /= static_cast<float>(mine.size());
+        cy /= static_cast<float>(mine.size());
+        float sum = 0.0f;
+        for (const MatchPlayer* player : mine) sum += apart(player->position, PitchPoint{cx, cy});
+        spreadSum += sum / static_cast<float>(mine.size());
+        ++spreadSamples;
+      }
+    }
+
+    // Defending in twos: with the other side on the ball, one defender on
+    // the carrier (the nearest, within 3 m) while another stays goal-side
+    // of the next attacker (nearer their own goal than he is).
+    if (carrier && home.size() >= 2 && away.size() >= 2)
+    {
+      const bool attackersHome = carrier->isHomeTeam;
+      const auto& attackers = attackersHome ? home : away;
+      const auto& defenders = attackersHome ? away : home;
+      const PitchPoint ownGoal{attackersHome ? box.length : 0.0f, 0.5f * box.width};
+      const MatchPlayer* presser = nullptr;
+      for (const MatchPlayer* defender : defenders)
+        if (!presser || apart(defender->position, carrier->position) <
+                            apart(presser->position, carrier->position))
+          presser = defender;
+      const MatchPlayer* next = nullptr;
+      for (const MatchPlayer* attacker : attackers)
+        if (attacker != carrier &&
+            (!next || apart(attacker->position, ball) < apart(next->position, ball)))
+          next = attacker;
+      const MatchPlayer* cover = nullptr;
+      for (const MatchPlayer* defender : defenders)
+        if (defender != presser &&
+            (!cover || apart(defender->position, next->position) <
+                           apart(cover->position, next->position)))
+          cover = defender;
+      ++defendingTicks;
+      if (apart(presser->position, carrier->position) <= ENGAGE_METRES && cover &&
+          apart(cover->position, ownGoal) < apart(next->position, ownGoal))
+        ++pressCoverTicks;
+    }
+
+    // Open options: the carrier's team-mates within passing range (not too
+    // close or far for the brain to look at them).
+    if (carrier)
+    {
+      const auto& mates = carrier->isHomeTeam ? home : away;
+      int open = 0;
+      for (const MatchPlayer* mate : mates)
+      {
+        if (mate == carrier) continue;
+        const float metres = apart(mate->position, carrier->position);
+        if (metres >= MatchTuning::Passing::MIN_DISTANCE_METRES &&
+            metres <= MatchTuning::Passing::MAX_DISTANCE_METRES)
+          ++open;
+      }
+      openSum += open;
+      ++carrierTicks;
+    }
   }
 
   float rungChoice = 1.0f;
@@ -9805,6 +9974,22 @@ class SmallSidedGameDrill final : public Drill
   int ownGoals = 0;
   int changes = 0;
   int lastSide = 0;
+  // The rung measures (T6b).
+  std::optional<double> reachedAt;
+  std::optional<double> firstShotAt;
+  int spellSide = 0;
+  double spellStart = 0.0;
+  int spells = 0;
+  double longestSpell = 0.0;
+  int tackles = 0;
+  int homeSwarmTicks = 0;
+  int awaySwarmTicks = 0;
+  double spreadSum = 0.0;
+  int spreadSamples = 0;
+  int defendingTicks = 0;
+  int pressCoverTicks = 0;
+  double openSum = 0.0;
+  int carrierTicks = 0;
   std::string stoppedBy;
 };
 
