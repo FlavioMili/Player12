@@ -712,3 +712,47 @@ std::optional<PitchPoint> MatchEngine::steerRoundDummies(PitchPoint from,
   }
   return steer;
 }
+
+bool MatchEngine::passBlockedByDummy(const MatchPlayer& passer, const PassOption& option) const
+{
+  if (kit.dummies.empty()) return false;
+  constexpr float BALL = MatchTuning::Units::BALL_RADIUS_METRES;
+  const PitchPoint from = passer.position;
+  const PitchPoint to = option.targetPoint;
+  const float wayX = to.x - from.x;
+  const float wayY = to.y - from.y;
+  const float lengthSquared = wayX * wayX + wayY * wayY;
+  if (lengthSquared <= EPSILON) return false;
+  const float metres = std::sqrt(lengthSquared);
+  for (const PitchKit::Dummy& dummy : kit.dummies)
+  {
+    const PitchKit::DummyShape shape = PitchKit::dummyShape(dummy.kind);
+    // Between them, and his line within its reach.
+    const float along = ((dummy.at.x - from.x) * wayX + (dummy.at.y - from.y) * wayY) /
+                        lengthSquared;
+    if (along <= 0.0f || along >= 1.0f) continue;
+    const float sideways = std::hypot(from.x + wayX * along - dummy.at.x,
+                                      from.y + wayY * along - dummy.at.y);
+    if (sideways >= shape.radius + BALL) continue;
+    if (!option.lofted) return true;
+    // Lofted: launched as the lofted pass is (a set pace along, lift to
+    // drop at the receiver's chest, a cross at head height), its height
+    // where it passes the dummy against the dummy's top there.
+    using P = MatchTuning::Passing;
+    constexpr float G = MatchTuning::Ball::GRAVITY;
+    const float arrival = option.intent == PassIntent::CROSS
+                              ? MatchTuning::Aerial::ARRIVAL_HEIGHT_METRES
+                              : P::LOFTED_ARRIVAL_HEIGHT_METRES;
+    const float speed = P::LOFTED_BASE_SPEED + metres * P::LOFTED_SPEED_PER_METRE;
+    const float flight = metres / speed;
+    const float lift = (arrival - BALL) / flight + 0.5f * G * flight;
+    const float seconds = along * flight;
+    const float height = BALL + lift * seconds - 0.5f * G * seconds * seconds;
+    // The dummy's top where the ball passes: its dome falls away to the side.
+    const float shoulder = shape.height - shape.radius;
+    const float offset = std::min(sideways, shape.radius);
+    const float top = shoulder + std::sqrt(shape.radius * shape.radius - offset * offset);
+    if (height - BALL < top) return true;
+  }
+  return false;
+}

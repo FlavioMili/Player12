@@ -9369,6 +9369,8 @@ class WalledBoxDrill final : public Drill
     servesAtStart = engine.getServesTaken();
     dummyHitsAtStart = engine.getDummyHits();
     bodyHitsAtStart = engine.getDummyBodyHits();
+    blockedAtStart = engine.getPassesBlockedByDummies();
+    blockedPasses = 0;
     bodyHits = 0;
     dummyHits = 0;
     ballInDummy = 0;
@@ -9420,6 +9422,7 @@ class WalledBoxDrill final : public Drill
     serves = engine.getServesTaken() - servesAtStart;
     dummyHits = engine.getDummyHits() - dummyHitsAtStart;
     bodyHits = engine.getDummyBodyHits() - bodyHitsAtStart;
+    blockedPasses = engine.getPassesBlockedByDummies() - blockedAtStart;
     // Nothing passes through a dummy: the ball's centre never within its
     // radius of the axis (ground to shoulder).
     for (const PitchKit::Dummy& dummy : engine.getKit().dummies)
@@ -9488,6 +9491,7 @@ class WalledBoxDrill final : public Drill
                     ballInDummy),
         std::format("Player bounces off dummies: {}; ticks with a player inside one: {}",
                     bodyHits, playersInDummy),
+        std::format("Pass options left out for a dummy in the way: {}", blockedPasses),
         stoppedBy.empty() ? std::string("Play never stopped")
                           : std::format("Play stopped by a {}", stoppedBy)};
     // The headline once the run is over.
@@ -9512,6 +9516,7 @@ class WalledBoxDrill final : public Drill
             {"Ball inside a dummy (ticks)", static_cast<double>(ballInDummy)},
             {"Players inside a dummy (ticks)", static_cast<double>(playersInDummy)},
             {"Player bounces off dummies", static_cast<double>(bodyHits)},
+            {"Pass options left out for dummies", static_cast<double>(blockedPasses)},
             {"Shot xG", shotXG},
             {"Shot distance (m)", shots == 0 ? 0.0 : shotDistance / shots},
             {"Nearest wall (m)", nearestWall},
@@ -9541,6 +9546,8 @@ class WalledBoxDrill final : public Drill
   int playersInDummy = 0;
   int bodyHitsAtStart = 0;
   int bodyHits = 0;
+  int blockedAtStart = 0;
+  int blockedPasses = 0;
   float serveSideChoice = 0.0f;
   float serveReceiverChoice = 0.0f;
   float foulsChoice = 0.0f;

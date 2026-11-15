@@ -210,7 +210,10 @@ enum class PassExclusion : std::uint8_t
   /** A long ball back to his own keeper. */
   KEEPER_TOO_FAR,
   /** He looks offside to the passer (who may misread the line). */
-  LOOKS_OFFSIDE
+  LOOKS_OFFSIDE,
+  /** A training dummy in the way: a ground pass into it, or a lofted one
+   * not high enough to clear it (training ground plan section 21). */
+  BLOCKED_BY_DUMMY
 };
 
 /** One team-mate the passer looked at. */

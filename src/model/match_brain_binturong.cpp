@@ -4004,6 +4004,14 @@ std::optional<MatchEngine::PassOption> MatchEngine::choosePassTargetBinturong(
       detail = &details->back();
     }
     PassOption option = evaluatePassOptionBinturong(passer, candidate, detail);
+    // A training dummy in the way (training ground plan section 21): left
+    // out.
+    if (passBlockedByDummy(passer, option))
+    {
+      if (detail) detail->excluded = PassExclusion::BLOCKED_BY_DUMMY;
+      ++passesBlockedByDummies;
+      continue;
+    }
     if (option.utility > bestScore)
     {
       runnerUp = std::move(best);

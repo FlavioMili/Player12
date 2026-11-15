@@ -3027,6 +3027,9 @@ class MatchEngine
   [[nodiscard]] int getDummyHits() const { return dummyHits; }
   /** Times a player has bounced off a training dummy. For drills. */
   [[nodiscard]] int getDummyBodyHits() const { return dummyBodyHits; }
+  /** Pass candidates the brains left out because a dummy was in the way.
+   * For drills. */
+  [[nodiscard]] int getPassesBlockedByDummies() const { return passesBlockedByDummies; }
   void forceHeader(PlayerID playerId, ForcedHeaderAim aim,
                    std::optional<PitchPoint> spot = std::nullopt,
                    std::optional<Vector2F> goalAim = std::nullopt,
@@ -3170,6 +3173,8 @@ class MatchEngine
   /** Times the ball has come off a training dummy, and players have. */
   int dummyHits = 0;
   int dummyBodyHits = 0;
+  /** Pass candidates left out because a dummy was in the way. */
+  int passesBlockedByDummies = 0;
   std::vector<std::pair<PlayerID, float>> ballKeeperUrgency;
   /** Places the scenario's players and ball; the carrier (null when the
    * ball is loose), or nothing when a player is unknown. */
@@ -3687,6 +3692,13 @@ class MatchEngine
      * chip is lofted, a driven pass not. */
     std::optional<PassTechnique> technique;
   };
+  /** Whether a dummy blocks `option` from `passer` (training ground plan
+   * section 21): a ground pass whose line runs into one; a lofted one that
+   * would not be high enough where it passes one (its height there from
+   * the lofted pass's launch rule, as a plain arc without drag: our own
+   * estimate). The brains leave a blocked pass out. */
+  [[nodiscard]] bool passBlockedByDummy(const MatchPlayer& passer,
+                                        const PassOption& option) const;
 
   /** A strike decided at the step's start on a loose ball at his feet,
    * played where he next meets it in the ball's sweep (unified kick plan

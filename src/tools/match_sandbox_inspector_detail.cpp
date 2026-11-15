@@ -73,6 +73,7 @@ const char* exclusionName(PassExclusion reason)
     case PassExclusion::TOO_FAR: return "too far";
     case PassExclusion::KEEPER_TOO_FAR: return "long ball back to the keeper";
     case PassExclusion::LOOKS_OFFSIDE: return "looks offside to him";
+    case PassExclusion::BLOCKED_BY_DUMMY: return "a dummy in the way";
   }
   return "?";
 }
