@@ -31,7 +31,8 @@ constexpr std::size_t SQUAD = 11;
 }  // namespace
 
 DrillRun::DrillRun(Drill& drill_ref, const StatsConfig& config, bool record,
-                   const std::function<void(MatchEngine&)>& prepare)
+                   const std::function<void(MatchEngine&)>& prepare,
+                   const std::vector<Player*>& squad)
     : drill(drill_ref), log(std::make_unique<SandboxRecorder>())
 {
   // Two full squads of reference players, the drill's own players in the
@@ -69,6 +70,21 @@ DrillRun::DrillRun(Drill& drill_ref, const StatsConfig& config, bool record,
                                          : shape.slots[slot - 1].role;
       const std::string name =
           spec ? spec->name : std::format("Reference {}", slot + 1);
+      // A session's own player in a drill player's place (section 23).
+      if (spec && !squad.empty())
+      {
+        const std::size_t specIndex = static_cast<std::size_t>(spec - specs.data());
+        Player* own = specIndex < squad.size() ? squad[specIndex] : nullptr;
+        if (own)
+        {
+          drillIds[specIndex] = own->getId();
+          if (keeperSlot)
+            lineups[side].setGoalkeeper(own);
+          else
+            lineups[side].addOutfieldPlayer(own, shape.slots[slot - 1].position);
+          continue;
+        }
+      }
       auto player = std::make_unique<Player>(
           nextId++, static_cast<TeamID>(side + 1), "", name, role, Language::EN,
           0, 0, 25, 1,
@@ -89,7 +105,9 @@ DrillRun::DrillRun(Drill& drill_ref, const StatsConfig& config, bool record,
   match = std::make_unique<MatchEngine>(lineups[0], lineups[1], Strategy{},
                                         Strategy{}, config, drill.seed,
                                         sandboxHandshake(), sandboxPossession(),
-                                        sandboxDrillPitch().value_or(drill.pitch()));
+                                        squad.empty()
+                                            ? sandboxDrillPitch().value_or(drill.pitch())
+                                            : drill.pitch());
   applyHomeAdvantage(*match, sandboxHomeAdvantage());
   match->setTeamNames("Drill home", "Drill away");
   match->setBrain(true, sandboxBrains()[0]);

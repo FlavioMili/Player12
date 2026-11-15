@@ -186,9 +186,14 @@ class DrillRun
 
   /** `record`: attach the recorder (the debugger needs it; Measure runs
    * do without). `prepare`: called on the engine once the drill has set the
-   * run up (the technique bench sets its tuning there, over the drill's). */
+   * run up (the technique bench sets its tuning there, over the drill's).
+   * `squad`: a training session's own players for the drill's players (one
+   * per DrillPlayerSpec, in order), instead of fresh reference players; the
+   * run then plays on the drill's own pitch (training ground plan section
+   * 23). */
   DrillRun(Drill& drill, const StatsConfig& config, bool record = true,
-           const std::function<void(MatchEngine&)>& prepare = {});
+           const std::function<void(MatchEngine&)>& prepare = {},
+           const std::vector<Player*>& squad = {});
   ~DrillRun();
   DrillRun(const DrillRun&) = delete;
   DrillRun& operator=(const DrillRun&) = delete;

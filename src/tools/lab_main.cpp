@@ -37,6 +37,7 @@
 #include "tools/lab_touch_sensitivity.h"
 #include "tools/lab_trace.h"
 #include "tools/match_sandbox_measure.h"
+#include "tools/match_sandbox_session.h"
 #include "tools/match_sandbox_setup.h"
 
 #if !defined(_WIN32)
@@ -84,6 +85,8 @@ Usage:
                  [--seed S] [--csv [FILE]]
                  (or, for one run, [--preset NAME] [--set ...] [--seed S]
                  --trace FILE [--seconds S])
+  fm_lab session [--brains HOME,AWAY] [--bodies HOME,AWAY] [--seed S] [--full]
+                 "SESSION"
   fm_lab touch-sensitivity [--repeats N] [--ratings A,B,...]
                  [--situations all|NAME;NAME] [--only NAME;NAME] [--step S]
                  [--range "Name=LOW:HIGH"]... [--seed S] [--out-dir DIR]
@@ -943,6 +946,68 @@ int runDrillMode(int argc, char** argv)
              : Lab::ExitCode::INVALID_ARGUMENTS;
 }
 
+/** fm_lab session: runs a training session headless (training ground plan
+ * section 23) and prints each exercise's zones' outcomes (with --full,
+ * their whole reports), then the session's time. */
+int runSessionMode(int argc, char** argv)
+{
+  const std::vector<std::string> rest(argv + 2, argv + argc);
+  std::uint32_t seed = 1;
+  bool full = false;
+  std::string name;
+  for (std::size_t index = 0; index < rest.size(); ++index)
+  {
+    const std::string& option = rest[index];
+    const bool hasValue = index + 1 < rest.size();
+    if (option == "--full")
+      full = true;
+    else if (option == "--brains" && hasValue)
+    {
+      const auto brains = parseBrainPair(rest[++index]);
+      if (!brains) throw UsageError("--brains must be HOME,AWAY or one brain");
+      sandboxBrains() = *brains;
+    }
+    else if (option == "--bodies" && hasValue)
+    {
+      const auto bodies = parseBodyPair(rest[++index]);
+      if (!bodies) throw UsageError("--bodies must be HOME,AWAY or one body");
+      sandboxBodies() = *bodies;
+    }
+    else if (option == "--seed" && hasValue)
+      seed = static_cast<std::uint32_t>(std::stoul(rest[++index]));
+    else if (!option.starts_with("--") && name.empty())
+      name = option;
+    else
+      throw UsageError(std::format("session: unknown option '{}'", option));
+  }
+  const auto& plans = sessionPlans();
+  const auto found = std::ranges::find_if(plans, [&](const SessionPlan& plan)
+                                          { return plan.name == name; });
+  if (found == plans.end())
+  {
+    std::string list;
+    for (const SessionPlan& plan : plans) list += std::format(" \"{}\"", plan.name);
+    throw UsageError(std::format("session: no session \"{}\". Sessions:{}", name, list));
+  }
+  if (const std::optional<std::string> problem = checkSessionPlan(*found))
+    throw UsageError(std::format("session \"{}\": {}", name, *problem));
+  const ScratchRuntime runtime;
+  quietLogging();
+  const StatsConfig config = Lab::loadStatsConfig();
+  SessionRun run(*found, config, seed);
+  while (run.step())
+  {
+  }
+  for (std::size_t exercise = 0; exercise < run.history().size(); ++exercise)
+  {
+    std::cout << found->exercises[exercise].name << "\n";
+    for (const std::string& line : run.history()[exercise])
+      if (full || line.find("OUTCOME") != std::string::npos) std::cout << "  " << line << "\n";
+  }
+  std::cout << std::format("Session over at {:.1f} s\n", run.seconds());
+  return Lab::ExitCode::OK;
+}
+
 int main(int argc, char** argv)
 {
   // Lab commands preserve the legacy default, independently of sandbox UI defaults.
@@ -958,6 +1023,23 @@ int main(int argc, char** argv)
                      0
                  ? Lab::ExitCode::OK
                  : Lab::ExitCode::INVALID_ARGUMENTS;
+    }
+    catch (const std::exception& error)
+    {
+      std::cerr << "fm_lab: " << error.what() << "\n";
+      return Lab::ExitCode::SIMULATION_ERROR;
+    }
+  }
+  if (argc >= 2 && std::string_view(argv[1]) == "session")
+  {
+    try
+    {
+      return runSessionMode(argc, argv);
+    }
+    catch (const UsageError& error)
+    {
+      std::cerr << "fm_lab: " << error.what() << "\n\n" << USAGE;
+      return Lab::ExitCode::INVALID_ARGUMENTS;
     }
     catch (const std::exception& error)
     {

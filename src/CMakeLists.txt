@@ -682,6 +682,8 @@ add_library(fm_drills STATIC
     tools/match_sandbox_drills.cpp
     tools/match_sandbox_training.h
     tools/match_sandbox_training.cpp
+    tools/match_sandbox_session.h
+    tools/match_sandbox_session.cpp
     tools/match_sandbox_measure.h
     tools/match_sandbox_measure.cpp
     tools/match_sandbox_tuning.h
