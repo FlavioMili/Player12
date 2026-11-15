@@ -657,9 +657,23 @@ struct MatchRenderer3D::State
    * centred where the match pitch is, so the cameras frame it unchanged. */
   Vec3 worldOf(PitchPoint pitch, float heightMetres = 0.0f) const
   {
+    // A session's zone being drawn: its point placed on the ground first.
+    if (zone) pitch = zone->toGround(pitch);
     return RenderMath::worldFromPitch(
         PitchPoint{pitch.x + zoneOffsetX, pitch.y + zoneOffsetY}, heightMetres);
   }
+  /** A training session's zone being drawn (its walls and goals), whose
+   * points worldOf places on the ground; none otherwise. */
+  const MatchRenderZone* zone = nullptr;
+  /** A session's zone: its grass, walls and goals, placed on the ground. */
+  void drawZone(const MatchRenderZone& placed);
+  /** The walls of the pitch being drawn: see-through netting, open at the
+   * goal mouths. */
+  void drawFence();
+  void addTrainingGoals(const PitchGoal& goal);
+  /** Another zone's ball (a session): drawn plainly, without the main
+   * ball's roll. */
+  void addExtraBall(const MatchRenderBall& ball, float alpha);
   bool training = false;
   float pitchLength = LENGTH;
   float pitchWidth = WIDTH;
@@ -3446,9 +3460,13 @@ void MatchRenderer3D::State::addGoals()
 
 void MatchRenderer3D::State::addTrainingGoals(const MatchRenderSnapshot& snapshot)
 {
+  addTrainingGoals(snapshot.pitchGoal);
+}
+
+void MatchRenderer3D::State::addTrainingGoals(const PitchGoal& g)
+{
   // A training pitch's goals at its own size: posts and bar, and a net
   // (sides, roof and back) behind the line, depth-sorted with the players.
-  const PitchGoal& g = snapshot.pitchGoal;
   if (!g.present()) return;
   using G = Tuning::Goal;
   const float centreY = 0.5f * pitchWidth;
@@ -3507,7 +3525,6 @@ void MatchRenderer3D::State::drawTrainingGround()
 {
   using G = Tuning::Grass;
   constexpr float MARGIN = 5.0f;
-  constexpr float FENCE_HEIGHT = 1.0f;
   // Plain grass, a shade darker outside the walls, then the pitch.
   const auto quad = [this](PitchPoint a, PitchPoint b, float height, ImU32 color)
   {
@@ -3525,6 +3542,39 @@ void MatchRenderer3D::State::drawTrainingGround()
   quad(PitchPoint{-MARGIN, -MARGIN},
        PitchPoint{pitchLength + MARGIN, pitchWidth + MARGIN}, 0.0f, outside);
   quad(PitchPoint{0.0f, 0.0f}, PitchPoint{pitchLength, pitchWidth}, 0.0f, inside);
+  drawFence();
+}
+
+void MatchRenderer3D::State::drawZone(const MatchRenderZone& placed)
+{
+  // Drawn as a training pitch of its own, its points placed on the ground:
+  // a lighter patch of grass, its fence open at its goal mouths, its goals.
+  const float groundLength = pitchLength;
+  const float groundWidth = pitchWidth;
+  const float groundMouth = mouthHalf;
+  zone = &placed;
+  pitchLength = placed.lengthMetres;
+  pitchWidth = placed.widthMetres;
+  mouthHalf = placed.goal.present() ? placed.goal.halfWidth + placed.goal.post : 0.0f;
+  const float sunlit = day ? Tuning::Day::GRASS_LIGHT : 1.0f;
+  const ImU32 patch = shadeColor(Tuning::Grass::PITCH_COLOR, sunlit * 1.06f);
+  const std::array<Vec3, 4> corners{worldOf(PitchPoint{0.0f, 0.0f}),
+                                    worldOf(PitchPoint{pitchLength, 0.0f}),
+                                    worldOf(PitchPoint{pitchLength, pitchWidth}),
+                                    worldOf(PitchPoint{0.0f, pitchWidth})};
+  const std::array<ImU32, 4> colors{patch, patch, patch, patch};
+  drawWorldPolygon(corners, colors, false);
+  drawFence();
+  addTrainingGoals(placed.goal);
+  zone = nullptr;
+  pitchLength = groundLength;
+  pitchWidth = groundWidth;
+  mouthHalf = groundMouth;
+}
+
+void MatchRenderer3D::State::drawFence()
+{
+  constexpr float FENCE_HEIGHT = 1.0f;
   // The walls: see-through netting (unlimited height in the engine; drawn
   // as a fence).
   constexpr ImU32 NET = IM_COL32(24, 28, 32, 90);
@@ -3935,6 +3985,25 @@ void MatchRenderer3D::State::addBall(const MatchRenderSnapshot& snapshot,
   points.push_back(toImVec(screen));
   keys.push_back({screen.depth, screen.depth,
                   static_cast<std::uint32_t>(primitives.size())});
+  primitives.push_back(primitive);
+}
+
+void MatchRenderer3D::State::addExtraBall(const MatchRenderBall& extra, float alpha)
+{
+  using B = Tuning::Ball;
+  const PitchPoint at =
+      lerpRenderPosition(extra.previousPosition, extra.currentPosition, alpha);
+  const Vec3 world = worldOf(at, ballHeightMetres(extra, alpha) + B::RADIUS);
+  ScreenPoint screen;
+  if (!projection.project(world, screen)) return;
+  Primitive primitive;
+  primitive.firstPoint = static_cast<std::uint32_t>(points.size());
+  primitive.pointCount = 1;
+  primitive.kind = PrimitiveKind::BALL;
+  primitive.size =
+      std::max(B::MIN_PIXELS, B::RADIUS * B::MAX_BOOST * projection.focalPixels / screen.depth);
+  points.push_back(toImVec(screen));
+  keys.push_back({screen.depth, screen.depth, static_cast<std::uint32_t>(primitives.size())});
   primitives.push_back(primitive);
 }
 
@@ -4432,6 +4501,8 @@ void MatchRenderer3D::render(const MatchRenderSnapshot& snapshot,
       {viewport.x + viewport.width, viewport.y + viewport.height}, true);
   s.drawSky();
   if (s.training) s.drawTrainingGround();
+  // A training session: each zone's grass, walls and goals on the ground.
+  for (const MatchRenderZone& placed : snapshot.zones) s.drawZone(placed);
   for (const Stadium3D::GroundPolygon& polygon : s.geometry.ground)
   {
     if (s.training) break;
@@ -4510,6 +4581,9 @@ void MatchRenderer3D::render(const MatchRenderSnapshot& snapshot,
   for (std::size_t index = 0; index < snapshot.touchline.size(); ++index)
     s.addTouchlinePerson(snapshot.touchline[index], index, alpha);
   if (!snapshot.ball.outOfSight) s.addBall(snapshot, alpha);
+  // A training session: the other zones' balls.
+  for (const MatchRenderBall& extra : snapshot.extraBalls)
+    if (!extra.outOfSight) s.addExtraBall(extra, alpha);
   s.flushSorted();
 
   s.drawVignette();

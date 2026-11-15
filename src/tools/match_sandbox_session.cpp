@@ -12,6 +12,7 @@
 #include <format>
 #include <set>
 
+#include "gui/render/match_render_snapshot.h"
 #include "model/match_engine.h"
 #include "model/player.h"
 
@@ -221,4 +222,103 @@ bool SessionRun::step()
   }
   over = true;
   return false;
+}
+
+void fillSessionRenderSnapshot(const SessionRun& run, MatchRenderSnapshot& snapshot)
+{
+  // The ground is the pitch: plain training grass, its fence the walls, no
+  // goals of its own (each zone has its own).
+  snapshot.pitchLengthMetres = TrainingGround::LENGTH_METRES;
+  snapshot.pitchWidthMetres = TrainingGround::WIDTH_METRES;
+  snapshot.pitchSurface = PitchSurface::TRAINING;
+  snapshot.pitchEdge = PitchEdge::WALLS;
+  snapshot.pitchGoal = PitchGoal::ofKind(GoalKind::NONE);
+  snapshot.kit.clear();
+  snapshot.players.clear();
+  snapshot.touchline.clear();
+  snapshot.zones.clear();
+  snapshot.extraBalls.clear();
+  snapshot.state = MatchState::PLAYING;
+  // Bibs: each zone's home side in the first colours, away in the second.
+  snapshot.homeTeam = 1;
+  snapshot.awayTeam = 2;
+  snapshot.events = nullptr;
+  snapshot.stats = nullptr;
+  snapshot.playerStats = nullptr;
+  bool firstBall = true;
+  MatchRenderSnapshot zoneView;
+  for (const SessionRun::Zone& zone : run.zones())
+  {
+    if (!zone.run) continue;
+    const MatchEngine& engine = zone.run->engine();
+    fillMatchRenderSnapshot(engine, zoneView);
+    MatchRenderZone placed;
+    placed.centre = zone.plan->centre;
+    placed.turned = zone.plan->turned;
+    placed.lengthMetres = engine.getPitch().length;
+    placed.widthMetres = engine.getPitch().width;
+    placed.goal = engine.getPitch().goal;
+    snapshot.zones.push_back(placed);
+    const auto point = [&](PitchPoint local) { return placed.toGround(local); };
+    const auto angle = [&](float local) { return placed.toGroundAngle(local); };
+    for (MatchRenderPlayer player : zoneView.players)
+    {
+      if (!player.onPitch) continue;
+      player.previousPosition = point(player.previousPosition);
+      player.currentPosition = point(player.currentPosition);
+      player.movementTarget = point(player.movementTarget);
+      player.previousFacingAngle = angle(player.previousFacingAngle);
+      player.currentFacingAngle = angle(player.currentFacingAngle);
+      player.lyingAngle = angle(player.lyingAngle);
+      player.upFacingAngle = angle(player.upFacingAngle);
+      snapshot.players.push_back(player);
+    }
+    for (MatchRenderTouchlinePerson person : zoneView.touchline)
+    {
+      person.previousPosition = point(person.previousPosition);
+      person.currentPosition = point(person.currentPosition);
+      person.previousFacingAngle = angle(person.previousFacingAngle);
+      person.currentFacingAngle = angle(person.currentFacingAngle);
+      person.lyingAngle = angle(person.lyingAngle);
+      snapshot.touchline.push_back(person);
+    }
+    for (PitchKit::Cone cone : zoneView.kit.cones)
+    {
+      cone.at = point(cone.at);
+      snapshot.kit.cones.push_back(std::move(cone));
+    }
+    for (PitchKit::Line line : zoneView.kit.lines)
+    {
+      line.from = point(line.from);
+      line.to = point(line.to);
+      snapshot.kit.lines.push_back(std::move(line));
+    }
+    for (PitchKit::Area area : zoneView.kit.areas)
+    {
+      const PitchPoint a = point(area.min);
+      const PitchPoint b = point(area.max);
+      area.min = PitchPoint{std::min(a.x, b.x), std::min(a.y, b.y)};
+      area.max = PitchPoint{std::max(a.x, b.x), std::max(a.y, b.y)};
+      snapshot.kit.areas.push_back(std::move(area));
+    }
+    for (PitchKit::Dummy dummy : zoneView.kit.dummies)
+    {
+      dummy.at = point(dummy.at);
+      dummy.facing = angle(dummy.facing);
+      snapshot.kit.dummies.push_back(std::move(dummy));
+    }
+    MatchRenderBall ball = zoneView.ball;
+    ball.previousPosition = point(ball.previousPosition);
+    ball.currentPosition = point(ball.currentPosition);
+    if (firstBall)
+    {
+      snapshot.ball = ball;
+      firstBall = false;
+    }
+    else
+    {
+      snapshot.extraBalls.push_back(ball);
+    }
+  }
+  if (firstBall) snapshot.ball.outOfSight = true;
 }

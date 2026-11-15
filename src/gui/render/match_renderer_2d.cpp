@@ -307,6 +307,10 @@ struct MatchRenderer2D::State
    * `ground` (the pitch and its margin), the walls, and the kit. */
   void drawTrainingGround(const MatchViewport& ground);
   void drawWalls();
+  /** A training session's zone on the ground (plan section 23): a lighter
+   * patch of grass, its walls open at its goal mouths, and its goals, all
+   * placed and turned as the zone is. */
+  void drawZone(const MatchRenderZone& zone);
   void drawKit(const MatchRenderSnapshot& snapshot);
   void drawWear();
   void drawPressure();
@@ -1240,6 +1244,61 @@ void MatchRenderer2D::State::drawWalls()
   {
     drawList->AddLine({x, top}, {x, middle - gap}, WALL_COLOR, thickness);
     drawList->AddLine({x, middle + gap}, {x, bottom}, WALL_COLOR, thickness);
+  }
+}
+
+void MatchRenderer2D::State::drawZone(const MatchRenderZone& zone)
+{
+  using G = Tuning::Goal;
+  constexpr ImU32 WALL_COLOR = IM_COL32(30, 36, 40, 230);
+  const float length = zone.lengthMetres;
+  const float width = zone.widthMetres;
+  const auto at = [&](float x, float y) {
+    const PitchPoint ground = zone.toGround(PitchPoint{x, y});
+    return atMetres(ground.x, ground.y);
+  };
+  // The zone's grass, a shade lighter than the ground round it.
+  drawList->AddQuadFilled(at(0.0f, 0.0f), at(length, 0.0f), at(length, width),
+                          at(0.0f, width), IM_COL32(255, 255, 255, 18));
+  // Its walls: the sides whole, each end open at its goal mouth.
+  const float thickness = std::max(px(2.0f), 0.08f * ppm);
+  const float middle = 0.5f * width;
+  const bool goals = zone.goal.present();
+  const float gap = goals ? zone.goal.halfWidth + zone.goal.post : 0.0f;
+  drawList->AddLine(at(0.0f, 0.0f), at(length, 0.0f), WALL_COLOR, thickness);
+  drawList->AddLine(at(0.0f, width), at(length, width), WALL_COLOR, thickness);
+  for (const float x : {0.0f, length})
+  {
+    drawList->AddLine(at(x, 0.0f), at(x, middle - gap), WALL_COLOR, thickness);
+    drawList->AddLine(at(x, middle + gap), at(x, width), WALL_COLOR, thickness);
+  }
+  if (!goals) return;
+  // Its goals: the net behind the line, a few strands, the frame.
+  const float half = zone.goal.halfWidth;
+  const float depth = zone.goal.netDepth;
+  const float strand = std::max(1.0f, px(0.75f));
+  const float post = std::max(px(G::MIN_POST_PIXELS), zone.goal.post * ppm);
+  for (const bool right : {false, true})
+  {
+    const float line = right ? length : 0.0f;
+    const float back = right ? length + depth : -depth;
+    drawList->AddQuadFilled(at(line, middle - half), at(back, middle - half),
+                            at(back, middle + half), at(line, middle + half),
+                            G::NET_FILL_COLOR);
+    for (int column = 1; column <= G::NET_COLUMNS; ++column)
+    {
+      const float x = line + (back - line) * static_cast<float>(column) /
+                                 static_cast<float>(G::NET_COLUMNS);
+      drawList->AddLine(at(x, middle - half), at(x, middle + half), G::NET_LINE_COLOR,
+                        strand);
+    }
+    drawList->AddLine(at(line, middle - half), at(back, middle - half), G::NET_LINE_COLOR,
+                      strand * 1.6f);
+    drawList->AddLine(at(line, middle + half), at(back, middle + half), G::NET_LINE_COLOR,
+                      strand * 1.6f);
+    drawList->AddLine(at(line, middle - half), at(line, middle + half), G::POST_COLOR, post);
+    drawList->AddCircleFilled(at(line, middle - half), post * 0.9f, G::POST_COLOR);
+    drawList->AddCircleFilled(at(line, middle + half), post * 0.9f, G::POST_COLOR);
   }
 }
 
@@ -2308,6 +2367,8 @@ void MatchRenderer2D::render(const MatchRenderSnapshot& snapshot,
       s.drawGoal(true);
       s.drawGoal(false);
     }
+    // A training session: each zone on the ground.
+    for (const MatchRenderZone& zone : snapshot.zones) s.drawZone(zone);
   }
   else
   {
@@ -2352,6 +2413,24 @@ void MatchRenderer2D::render(const MatchRenderSnapshot& snapshot,
   s.drawTokens(snapshot, options, alpha);
   s.drawTrail();
   if (!snapshot.ball.outOfSight) s.drawBall();
+  // A training session: the other zones' balls, each drawn as the ball is.
+  if (!snapshot.extraBalls.empty())
+  {
+    const PathSample main = s.ball;
+    for (const MatchRenderBall& extra : snapshot.extraBalls)
+    {
+      if (extra.outOfSight) continue;
+      const PitchPoint at =
+          lerpRenderPosition(extra.previousPosition, extra.currentPosition, alpha);
+      s.ball.x = at.x;
+      s.ball.y = at.y;
+      s.ball.height = std::max(0.0f, extra.previousHeightMetres +
+                                         (extra.currentHeightMetres -
+                                          extra.previousHeightMetres) * alpha);
+      s.drawBall();
+    }
+    s.ball = main;
+  }
   s.drawRefereeSignal(snapshot, alpha);
 
   if (snapshot.state == MatchState::GOAL)

@@ -136,8 +136,40 @@ struct MatchRenderBall
   float kickerLockout = 0.0f;
 };
 
+/** One zone of a training session drawn on the ground (training ground plan
+ * section 23): its walled pitch's size and goals, placed by its centre on
+ * the ground and turned 90 degrees or not. */
+struct MatchRenderZone
+{
+  PitchPoint centre{};
+  bool turned = false;
+  float lengthMetres = 0.0f;
+  float widthMetres = 0.0f;
+  PitchGoal goal{};
+
+  /** A point of the zone's pitch (metres on it) on the ground. */
+  [[nodiscard]] PitchPoint toGround(PitchPoint local) const
+  {
+    const float dx = local.x - 0.5f * lengthMetres;
+    const float dy = local.y - 0.5f * widthMetres;
+    return turned ? PitchPoint{centre.x - dy, centre.y + dx}
+                  : PitchPoint{centre.x + dx, centre.y + dy};
+  }
+  /** A facing angle on the zone's pitch, on the ground. */
+  [[nodiscard]] float toGroundAngle(float angle) const
+  {
+    return turned ? angle + 1.5707963f : angle;
+  }
+};
+
 struct MatchRenderSnapshot
 {
+  /** A training session's view of its ground (training ground plan section
+   * 23): the pitch above is the ground, everything else is already placed
+   * on it, and these are its zones (walls and goals drawn at each) and the
+   * other zones' balls. Empty otherwise. */
+  std::vector<MatchRenderZone> zones;
+  std::vector<MatchRenderBall> extraBalls;
   /** The size of the engine's pitch (metres), what it looks like and what
    * it ends at (MatchPitch), and the kit laid out on it. The match views
    * still draw the match pitch whatever these say; they read them once

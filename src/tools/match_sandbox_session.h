@@ -148,3 +148,11 @@ std::optional<ZoneFootprint> zoneFootprint(const SessionZone& zone);
 
 /** A new drill by its name, its settings applied (none if unknown). */
 std::unique_ptr<Drill> makeSessionDrill(const SessionZone& zone);
+
+struct MatchRenderSnapshot;
+
+/** The view of a session's ground (plan section 23, T7b): the ground as the
+ * pitch, each running zone's players, coach, kit and ball placed on it, the
+ * zones' walls and goals, and the other zones' balls. The caller sets the
+ * interpolation. */
+void fillSessionRenderSnapshot(const SessionRun& run, MatchRenderSnapshot& snapshot);

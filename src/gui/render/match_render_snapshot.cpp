@@ -125,6 +125,9 @@ void fillMatchRenderSnapshot(const MatchEngine& engine,
   snapshot.pitchEdge = engine.getPitch().edge;
   snapshot.pitchGoal = engine.getPitch().goal;
   snapshot.kit = engine.getKit();
+  // One engine's view: no session zones (the session view adds them).
+  snapshot.zones.clear();
+  snapshot.extraBalls.clear();
   snapshot.state = engine.getState();
   snapshot.homePhase = engine.getHomePhase();
   snapshot.awayPhase = engine.getAwayPhase();

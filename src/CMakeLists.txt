@@ -744,6 +744,8 @@ add_executable(match_sandbox
     tools/match_sandbox_drill_scene.cpp
     tools/match_sandbox_training_scene.h
     tools/match_sandbox_training_scene.cpp
+    tools/match_sandbox_session_scene.h
+    tools/match_sandbox_session_scene.cpp
     tools/match_sandbox_measure_scene.h
     tools/match_sandbox_measure_scene.cpp
     tools/match_sandbox_shot_map.h

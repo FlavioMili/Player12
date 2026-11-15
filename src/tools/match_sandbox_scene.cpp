@@ -48,6 +48,7 @@
 #include "tools/match_sandbox_shot_map.h"
 #include "tools/match_sandbox_test_teams.h"
 #include "tools/match_sandbox_training_scene.h"
+#include "tools/match_sandbox_session_scene.h"
 #include "tools/match_sandbox_true_view.h"
 #include "tools/match_sandbox_typography.h"
 
@@ -829,6 +830,21 @@ void MatchSandboxScene::renderTraining()
   ImGui::EndDisabled();
   ImGui::SameLine();
   ImGui::TextDisabled("%zu players selected", training_picks.size());
+  Page::endCard(scale);
+  // Sessions on the training ground (training ground plan section 23): its
+  // zones side by side, each its own game; a squad of reference players.
+  Page::beginCard("##zone_sessions", "SESSIONS ON THE TRAINING GROUND", detailWidth,
+                  Page::DARK, scale, sidebar_font);
+  for (const SessionPlan& plan : sessionPlans())
+  {
+    ImGui::PushID(plan.name.c_str());
+    if (Page::button(std::format("START {}", plan.name).c_str(), false, scale, sidebar_font))
+      guiView->overlayScene(std::make_unique<ZoneSessionScene>(guiView, plan));
+    ImGui::PushTextWrapPos(0.0f);
+    ImGui::TextDisabled("%s", plan.summary.c_str());
+    ImGui::PopTextWrapPos();
+    ImGui::PopID();
+  }
   Page::endCard(scale);
   Page::beginCard("##training_squad_card", "SQUAD", detailWidth, Page::MID,
                   scale, sidebar_font);
