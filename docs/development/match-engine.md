@@ -235,6 +235,16 @@ Slalom can use poles for its cones); `fm_lab drill --pitch LxW [--goal KIND]`
 plays any drill on one (KIND is none, full, 9v9, 7v7, futsal, 5-a-side, small
 or pop-up).
 
+The Small-sided game drill plays the brain redesign's ladder (1 player,
+1 v 1, 2 v 2, 3 v 3, N v N; presets of those names) on a walled pitch sized
+by area per player (100 m² by default, length 1.5 x width), the coach
+serving to the home side to start (`MatchEngine::serveToStart`) and after
+goals. It reports goals, shots, possession, the ball loose, changes of side
+and passes, and each rung's measures (time to the ball and first shot;
+spells and tackles; swarming, press and cover, spread; team-mates in
+range). The baseline for both families is in the training ground plan,
+section 22.
+
 Order is part of behavior. Moving actions before players changes tackle reach;
 moving commands across the tick increment changes replay timing; continuing
 ball integration after a goal can resolve a second contact against dead play.
