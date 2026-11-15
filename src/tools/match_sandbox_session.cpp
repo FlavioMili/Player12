@@ -187,13 +187,83 @@ void SessionRun::startExercise(std::size_t index)
       squadPlayers.push_back(players[player].get());
     zone.run = std::make_unique<DrillRun>(*zone.drill, config, record,
                                           std::function<void(MatchEngine&)>{}, squadPlayers);
+    // Each player brings his condition from when he last played (T7c);
+    // where he starts is still the drill's (the change itself is T7d).
+    MatchEngine& engine = zone.run->engine();
+    for (const Player* player : squadPlayers)
+    {
+      const auto saved = carried.find(player->getId());
+      if (saved == carried.end()) continue;
+      if (std::optional<MatchEngine::CarriedPlayer> now = engine.carriedPlayer(player->getId()))
+      {
+        now->stamina = saved->second.stamina;
+        now->sprintReserve = saved->second.sprintReserve;
+        now->fastBurstDebt = saved->second.fastBurstDebt;
+        now->loadSpeed = saved->second.loadSpeed;
+        engine.carryPlayerIn(*now);
+      }
+    }
     current.push_back(std::move(zone));
   }
+  resting.clear();
+}
+
+bool SessionRun::sendToChangingRoom(std::size_t squadIndex)
+{
+  if (over || squadIndex >= players.size()) return false;
+  const PlayerID id = players[squadIndex]->getId();
+  for (Zone& zone : current)
+  {
+    if (!zone.run || zone.run->finished()) continue;
+    MatchEngine& engine = zone.run->engine();
+    const std::optional<MatchEngine::CarriedPlayer> now = engine.carriedPlayer(id);
+    if (!now || !engine.takeOffForDrill(id)) continue;
+    carried[id] = *now;
+    resting.push_back(squadIndex);
+    return true;
+  }
+  return false;
+}
+
+std::vector<std::size_t> SessionRun::changingRoom() const
+{
+  std::vector<std::size_t> room = resting;
+  if (over) return room;
+  for (std::size_t index = 0; index < players.size(); ++index)
+  {
+    bool inZone = false;
+    for (const Zone& zone : current)
+      if (std::ranges::find(zone.plan->players, index) != zone.plan->players.end())
+        inZone = true;
+    if (!inZone) room.push_back(index);
+  }
+  return room;
 }
 
 void SessionRun::finishExercise()
 {
+  // Everyone still playing leaves with his running state (T7c).
+  float conditionSum = 0.0f;
+  int counted = 0;
+  for (const Zone& zone : current)
+  {
+    if (!zone.run) continue;
+    for (const std::size_t index : zone.plan->players)
+    {
+      const PlayerID id = players[index]->getId();
+      if (std::ranges::find(resting, index) == resting.end())
+        if (const auto now = zone.run->engine().carriedPlayer(id)) carried[id] = *now;
+      if (const auto saved = carried.find(id); saved != carried.end())
+      {
+        conditionSum += saved->second.stamina;
+        ++counted;
+      }
+    }
+  }
   std::vector<std::string> reports;
+  if (counted > 0)
+    reports.push_back(std::format("Squad: average condition {:.0f}% at the end",
+                                  100.0f * conditionSum / static_cast<float>(counted)));
   for (const Zone& zone : current)
     for (const std::string& line : zone.report)
       reports.push_back(std::format("{}: {}", zone.plan->name, line));
@@ -321,4 +391,88 @@ void fillSessionRenderSnapshot(const SessionRun& run, MatchRenderSnapshot& snaps
     }
   }
   if (firstBall) snapshot.ball.outOfSight = true;
+}
+
+std::vector<std::string> runCarryCheck(const StatsConfig& config)
+{
+  // A 3 v 3 small-sided game on reference players, run 30 s.
+  SessionZone zone;
+  zone.drill = "Small-sided game";
+  zone.settings = {{"Rung", 3.0f}, {"Seconds", 60.0f}};
+  std::vector<std::unique_ptr<Player>> squad;
+  std::vector<Player*> picks;
+  for (std::size_t index = 0; index < 6; ++index)
+  {
+    std::map<std::string, float> stats;
+    for (const std::string& stat : config.possible_stats) stats[stat] = DrillRun::REFERENCE_RATING;
+    squad.push_back(std::make_unique<Player>(
+        FIRST_SQUAD_ID + static_cast<PlayerID>(index), static_cast<TeamID>(1), "",
+        std::format("Player {}", index + 1), PlayerRole::CM, Language::EN, 0, 0, 25, 1,
+        static_cast<std::uint8_t>(180), Foot::Right, stats));
+    picks.push_back(squad.back().get());
+  }
+  const std::unique_ptr<Drill> first = makeSessionDrill(zone);
+  const std::unique_ptr<Drill> second = makeSessionDrill(zone);
+  first->seed = 7;
+  second->seed = 8;
+  DrillRun original(*first, config, false, {}, picks);
+  constexpr double STEP = MatchTuning::Timing::FIXED_STEP_SECONDS;
+  for (double seconds = 0.0; seconds < 30.0; seconds += STEP) original.step();
+  // The second engine takes up every player's running state.
+  DrillRun carried(*second, config, false, {}, picks);
+  std::vector<MatchEngine::CarriedPlayer> states;
+  for (const Player* player : picks)
+    if (const auto state = original.engine().carriedPlayer(player->getId()))
+    {
+      states.push_back(*state);
+      carried.engine().carryPlayerIn(*state);
+    }
+  // How exactly it carried.
+  float worstPlace = 0.0f;
+  float worstSpeed = 0.0f;
+  float worstCondition = 0.0f;
+  for (const MatchEngine::CarriedPlayer& state : states)
+    if (const auto now = carried.engine().carriedPlayer(state.id))
+    {
+      worstPlace = std::max(worstPlace, std::hypot(now->position.x - state.position.x,
+                                                   now->position.y - state.position.y));
+      worstSpeed = std::max(worstSpeed, std::hypot(now->velocity.x - state.velocity.x,
+                                                   now->velocity.y - state.velocity.y));
+      worstCondition = std::max(worstCondition, std::abs(now->stamina - state.stamina));
+    }
+  // One step on in each: the change of speed, carried against the original.
+  const auto speedChange = [&](DrillRun& run)
+  {
+    std::vector<float> before;
+    for (const MatchEngine::CarriedPlayer& state : states)
+      before.push_back(std::hypot(state.velocity.x, state.velocity.y));
+    run.step();
+    float worst = 0.0f;
+    for (std::size_t index = 0; index < states.size(); ++index)
+      if (const auto now = run.engine().carriedPlayer(states[index].id))
+        worst = std::max(worst, std::abs(std::hypot(now->velocity.x, now->velocity.y) -
+                                         before[index]));
+    return worst;
+  };
+  const float originalChange = speedChange(original);
+  const float carriedChange = speedChange(carried);
+  // The changing room: one player off at once; the game plays on without
+  // him.
+  const PlayerID resting = picks.front()->getId();
+  const bool takenOff = carried.engine().takeOffForDrill(resting);
+  int stepsAfter = 0;
+  for (; stepsAfter < 100 && carried.step(); ++stepsAfter)
+  {
+  }
+  const bool stillOff = !carried.engine().carriedPlayer(resting).has_value();
+  return {
+      std::format("Changing room: taken off {}, still off {}, the game played on {:.1f} s",
+                  takenOff ? "yes" : "no", stillOff ? "yes" : "no", stepsAfter * STEP),
+      std::format("Carried {} players after 30 s of a 3 v 3", states.size()),
+      std::format("Carried exactly: place within {:.4f} m, velocity within {:.4f} m/s, "
+                  "condition within {:.4f}",
+                  worstPlace, worstSpeed, worstCondition),
+      std::format("Largest change of speed in the first step after: original {:.2f} m/s, "
+                  "carried {:.2f} m/s",
+                  originalChange, carriedChange)};
 }

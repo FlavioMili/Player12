@@ -18,6 +18,7 @@
 
 #include "model/match_point.h"
 #include "tools/match_sandbox_drill.h"
+#include "model/match_engine.h"
 
 class Player;
 struct StatsConfig;
@@ -122,6 +123,13 @@ class SessionRun
   /** Simulated seconds since the session began. */
   [[nodiscard]] double seconds() const { return elapsed; }
   /** Each finished exercise's zones' reports, in order. */
+  /** A squad player leaves his zone for the changing room now (taken off
+   * at once; the zone plays on a man short). He plays again in the next
+   * exercise that names him. False if he isn't playing now. */
+  bool sendToChangingRoom(std::size_t squadIndex);
+  /** Squad players in the changing room this exercise: sent there, or in
+   * no zone. */
+  [[nodiscard]] std::vector<std::size_t> changingRoom() const;
   [[nodiscard]] const std::vector<std::vector<std::string>>& history() const
   {
     return finishedReports;
@@ -141,6 +149,12 @@ class SessionRun
   double elapsed = 0.0;
   bool over = false;
   std::vector<std::vector<std::string>> finishedReports;
+  /** Each squad player's running state when he last left a zone (an
+   * exercise's end, or the changing room): his condition carries into the
+   * next (T7c). */
+  std::map<PlayerID, MatchEngine::CarriedPlayer> carried;
+  /** Squad players sent to the changing room this exercise. */
+  std::vector<std::size_t> resting;
 };
 
 /** A zone's footprint (its pitch from its drill and settings), turned. */
@@ -156,3 +170,9 @@ struct MatchRenderSnapshot;
  * zones' walls and goals, and the other zones' balls. The caller sets the
  * interpolation. */
 void fillSessionRenderSnapshot(const SessionRun& run, MatchRenderSnapshot& snapshot);
+
+/** The carry-over check (plan section 23, T7c): a small-sided game runs 30
+ * s; a second engine starts from its players' running states; the lines
+ * say how exactly the states carried and how the first step after compares
+ * with the original's. */
+std::vector<std::string> runCarryCheck(const StatsConfig& config);

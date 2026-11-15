@@ -3071,6 +3071,29 @@ class MatchEngine
    * moved on. */
   void serveToStart(bool home);
 
+  /** A player's running state, carried from one engine to another
+   * (training ground plan section 23): where he is, how he is moving and
+   * facing, and his condition. His brain's plans are not carried. */
+  struct CarriedPlayer
+  {
+    PlayerID id = 0;
+    PitchPoint position{};
+    Vector2F velocity{};
+    float facing = 0.0f;
+    float stamina = 1.0f;
+    float sprintReserve = 1.0f;
+    float fastBurstDebt = 0.0f;
+    float loadSpeed = 0.0f;
+  };
+  /** Drills: a player's running state now (none if he isn't on the pitch). */
+  [[nodiscard]] std::optional<CarriedPlayer> carriedPlayer(PlayerID playerId) const;
+  /** Drills, after startDrill: a player takes up a carried state (his
+   * brain plans afresh from it). False if he isn't on the pitch. */
+  bool carryPlayerIn(const CarriedPlayer& carried);
+  /** Drills: the player leaves the pitch mid-run (a session's changing
+   * room), taken off at once. False if he isn't on it. */
+  bool takeOffForDrill(PlayerID playerId);
+
   /** Drills and the lab: the first-touch knobs (match_first_touch_knobs.h),
    * defaulting to the tuned constants. Set before kick-off. A saved
    * recording does not keep them: it replays with the defaults. */

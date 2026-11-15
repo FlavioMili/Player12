@@ -46,6 +46,8 @@ class ZoneSessionScene : public GUIScene
   float speed = 1.0f;
   float accumulator = 0.0f;
   bool view3d = false;
+  /** The squad player picked for the changing room. */
+  std::size_t restPick = 0;
   MatchCameraMode cameraMode = MatchCameraMode::BROADCAST;
   ImFont* regularFont = nullptr;
   ImFont* boldFont = nullptr;

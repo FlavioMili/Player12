@@ -349,3 +349,51 @@ void MatchEngine::applyDrillTargets()
       player->steersRound = false;
     }
 }
+
+std::optional<MatchEngine::CarriedPlayer> MatchEngine::carriedPlayer(PlayerID playerId) const
+{
+  for (const MatchPlayer& player : players)
+  {
+    if (!player.player || player.player->getId() != playerId || !player.onPitch) continue;
+    CarriedPlayer carried;
+    carried.id = playerId;
+    carried.position = player.position;
+    carried.velocity = player.velocity;
+    carried.facing = player.facingAngle;
+    carried.stamina = player.stamina;
+    carried.sprintReserve = player.sprintReserve;
+    carried.fastBurstDebt = player.fastBurstDebt;
+    carried.loadSpeed = player.loadSpeed;
+    return carried;
+  }
+  return std::nullopt;
+}
+
+bool MatchEngine::carryPlayerIn(const CarriedPlayer& carried)
+{
+  MatchPlayer* player = drillPlayer(carried.id);
+  if (!player || !player->onPitch) return false;
+  // Where he is and how he moves (kept inside this pitch), and his
+  // condition; his targets start where he is, for his brain to replan.
+  player->position = moveBody(player->position, carried.position);
+  player->velocity = carried.velocity;
+  player->facingAngle = carried.facing;
+  player->targetAngle = carried.facing;
+  player->movementTarget = player->position;
+  player->tacticalTarget = player->position;
+  player->stamina = carried.stamina;
+  player->sprintReserve = carried.sprintReserve;
+  player->fastBurstDebt = carried.fastBurstDebt;
+  player->loadSpeed = carried.loadSpeed;
+  statsOf(*player).condition = player->stamina;
+  captureInterpolationFrame();
+  return true;
+}
+
+bool MatchEngine::takeOffForDrill(PlayerID playerId)
+{
+  MatchPlayer* player = drillPlayer(playerId);
+  if (!player || !active(*player)) return false;
+  removeFromPitch(*player, false);
+  return true;
+}

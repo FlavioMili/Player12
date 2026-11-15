@@ -22,6 +22,7 @@
 #include "gui/render/match_renderer_2d.h"
 #include "gui/render/match_renderer_3d.h"
 #include "gui/widgets/theme.h"
+#include "model/player.h"
 #include "tools/match_sandbox_page_ui.h"
 #include "tools/match_sandbox_typography.h"
 
@@ -194,6 +195,36 @@ void ZoneSessionScene::renderPanel(float width)
   const int seconds = static_cast<int>(run->seconds());
   ImGui::Text("%s / %d:%02d", over ? "Finished" : paused ? "Paused" : "Running",
               seconds / 60, seconds % 60);
+  Page::endCard(scale);
+
+  // The changing room (T7c): send a player there; he plays again in the
+  // next exercise that names him.
+  Page::beginCard("##zone_session_room", "CHANGING ROOM", width, Page::MID, scale, boldFont);
+  const std::vector<std::size_t> room = run->changingRoom();
+  std::vector<std::size_t> playing;
+  for (std::size_t index = 0; index < run->squad().size(); ++index)
+    if (std::ranges::find(room, index) == room.end()) playing.push_back(index);
+  if (!over && !playing.empty())
+  {
+    if (std::ranges::find(playing, restPick) == playing.end()) restPick = playing.front();
+    ImGui::SetNextItemWidth(160 * scale);
+    if (ImGui::BeginCombo("##rest_pick", run->squad()[restPick]->getName().c_str()))
+    {
+      for (const std::size_t index : playing)
+        if (ImGui::Selectable(run->squad()[index]->getName().c_str(), index == restPick))
+          restPick = index;
+      ImGui::EndCombo();
+    }
+    ImGui::SameLine(0, 6 * scale);
+    if (Page::button("Send to the changing room", false, scale, boldFont))
+      (void)run->sendToChangingRoom(restPick);
+  }
+  std::string resting;
+  for (const std::size_t index : room)
+    resting += (resting.empty() ? "" : ", ") + run->squad()[index]->getName();
+  ImGui::PushTextWrapPos(0);
+  ImGui::TextDisabled("In the changing room: %s", resting.empty() ? "nobody" : resting.c_str());
+  ImGui::PopTextWrapPos();
   Page::endCard(scale);
 
   // Each zone of the exercise, live.

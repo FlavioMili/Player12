@@ -86,6 +86,7 @@ Usage:
                  (or, for one run, [--preset NAME] [--set ...] [--seed S]
                  --trace FILE [--seconds S])
   fm_lab session [--brains HOME,AWAY] [--bodies HOME,AWAY] [--seed S] [--full]
+                 [--carry-check]
                  "SESSION"
   fm_lab touch-sensitivity [--repeats N] [--ratings A,B,...]
                  [--situations all|NAME;NAME] [--only NAME;NAME] [--step S]
@@ -959,7 +960,15 @@ int runSessionMode(int argc, char** argv)
   {
     const std::string& option = rest[index];
     const bool hasValue = index + 1 < rest.size();
-    if (option == "--full")
+    if (option == "--carry-check")
+    {
+      const ScratchRuntime runtime;
+      quietLogging();
+      for (const std::string& line : runCarryCheck(Lab::loadStatsConfig()))
+        std::cout << line << "\n";
+      return Lab::ExitCode::OK;
+    }
+    else if (option == "--full")
       full = true;
     else if (option == "--brains" && hasValue)
     {
@@ -1002,7 +1011,8 @@ int runSessionMode(int argc, char** argv)
   {
     std::cout << found->exercises[exercise].name << "\n";
     for (const std::string& line : run.history()[exercise])
-      if (full || line.find("OUTCOME") != std::string::npos) std::cout << "  " << line << "\n";
+      if (full || line.find("OUTCOME") != std::string::npos || line.starts_with("Squad:"))
+        std::cout << "  " << line << "\n";
   }
   std::cout << std::format("Session over at {:.1f} s\n", run.seconds());
   return Lab::ExitCode::OK;
