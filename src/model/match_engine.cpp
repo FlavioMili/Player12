@@ -2227,9 +2227,42 @@ void MatchEngine::movePlayers(const std::uint8_t* slots, std::size_t count,
     if (counts[side] < sides[side].size())
       sides[side][counts[side]++] = slots[index];
   }
+  // Training dummies (plan section 21): a player whose straight line runs
+  // into one heads for its nearest edge for this step instead, and his own
+  // target is put back after (unless his body changed it). A player on a
+  // route (a drill's) follows his route; the keep-out still holds him.
+  std::array<std::optional<PitchPoint>, 32> heldTargets{};
+  std::array<PitchPoint, 32> steeredTargets{};
+  // And one who runs into a dummy bounces off it: his velocity before the
+  // move is what went into it.
+  std::array<Vector2F, 32> velocitiesBefore{};
+  if (!kit.dummies.empty())
+    for (std::size_t index = 0; index < count && index < heldTargets.size(); ++index)
+    {
+      MatchPlayer& player = players[slots[index]];
+      velocitiesBefore[index] = player.velocity;
+      if (player.routeWaypoints > 0) continue;
+      if (const std::optional<PitchPoint> steer =
+              steerRoundDummies(player.position, player.movementTarget))
+      {
+        heldTargets[index] = player.movementTarget;
+        steeredTargets[index] = *steer;
+        player.movementTarget = *steer;
+      }
+    }
   for (std::size_t side = 0; side < 2; ++side)
     if (counts[side] > 0)
       integrateMovements(sides[side].data(), counts[side], dt, walking);
+  if (kit.dummies.empty()) return;
+  for (std::size_t index = 0; index < count && index < heldTargets.size(); ++index)
+  {
+    MatchPlayer& player = players[slots[index]];
+    bounceOffDummies(player, velocitiesBefore[index]);
+    if (!heldTargets[index]) continue;
+    if (player.movementTarget.x == steeredTargets[index].x &&
+        player.movementTarget.y == steeredTargets[index].y)
+      player.movementTarget = *heldTargets[index];
+  }
 }
 
 void MatchEngine::updateRestartMovement(float dt)

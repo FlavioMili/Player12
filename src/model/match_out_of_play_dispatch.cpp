@@ -656,3 +656,59 @@ bool MatchEngine::reflectOffDummy(std::size_t index)
   ball.velocityZ -= change * normal.z;
   return true;
 }
+
+PitchPoint MatchEngine::keepOutOfDummies(PitchPoint to) const
+{
+  constexpr float R = MatchTuning::Body::RADIUS_METRES;
+  for (const PitchKit::Dummy& dummy : kit.dummies)
+  {
+    const float reach = PitchKit::dummyShape(dummy.kind).radius + R;
+    const float dx = to.x - dummy.at.x;
+    const float dy = to.y - dummy.at.y;
+    const float apart = std::hypot(dx, dy);
+    if (apart >= reach) continue;
+    // Straight out from its axis (on it: along the length).
+    to = apart > EPSILON ? PitchPoint{dummy.at.x + dx / apart * reach,
+                                      dummy.at.y + dy / apart * reach}
+                         : PitchPoint{dummy.at.x + reach, dummy.at.y};
+  }
+  return to;
+}
+
+std::optional<PitchPoint> MatchEngine::steerRoundDummies(PitchPoint from,
+                                                         PitchPoint target) const
+{
+  constexpr float R = MatchTuning::Body::RADIUS_METRES;
+  const float wayX = target.x - from.x;
+  const float wayY = target.y - from.y;
+  const float lengthSquared = wayX * wayX + wayY * wayY;
+  if (lengthSquared <= EPSILON) return std::nullopt;
+  std::optional<PitchPoint> steer;
+  float firstAlong = 2.0f;
+  for (const PitchKit::Dummy& dummy : kit.dummies)
+  {
+    const float reach = PitchKit::dummyShape(dummy.kind).radius + R;
+    const float clear = reach + MatchTuning::Dummy::STEER_CLEARANCE_METRES;
+    const float toX = dummy.at.x - from.x;
+    const float toY = dummy.at.y - from.y;
+    // Ahead of him and short of his target, and his line within its reach.
+    const float along = (toX * wayX + toY * wayY) / lengthSquared;
+    if (along <= 0.0f || along >= 1.0f || along >= firstAlong) continue;
+    // A target inside it can't be reached anyway: the keep-out holds him.
+    if (std::hypot(target.x - dummy.at.x, target.y - dummy.at.y) < reach) continue;
+    const float nearX = from.x + wayX * along;
+    const float nearY = from.y + wayY * along;
+    const float sideX = nearX - dummy.at.x;
+    const float sideY = nearY - dummy.at.y;
+    const float apart = std::hypot(sideX, sideY);
+    if (apart >= reach) continue;
+    // The nearest edge: out from its axis towards his line (dead on it: to
+    // his left).
+    const float length = std::sqrt(lengthSquared);
+    const float outX = apart > EPSILON ? sideX / apart : -wayY / length;
+    const float outY = apart > EPSILON ? sideY / apart : wayX / length;
+    steer = PitchPoint{dummy.at.x + outX * clear, dummy.at.y + outY * clear};
+    firstAlong = along;
+  }
+  return steer;
+}

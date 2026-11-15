@@ -7681,7 +7681,11 @@ Vector2F MatchEngine::clearOfObstaclesBinturong(const MatchPlayer& player,
                           : LineLeg{asVector(player.routeLegStart),
                                     asVector(player.movementTarget), {}, false};
   const std::array<Vector2F, 2> route{now.from, now.waypoint};
-  for (const Obstacle& obstacle : obstacles)
+  // Training dummies (plan section 21) are obstacles to his touches too.
+  std::vector<Obstacle> around = obstacles;
+  for (const PitchKit::Dummy& dummy : kit.dummies)
+    around.push_back({dummy.at, PitchKit::dummyShape(dummy.kind).radius});
+  for (const Obstacle& obstacle : around)
   {
     const Vector2F at = asVector(obstacle.position);
     // The ball's centre clears it by its radius as well.

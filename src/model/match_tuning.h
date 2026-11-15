@@ -593,6 +593,13 @@ struct MatchTuning final
   {
     static constexpr float MANNEQUIN_RESTITUTION = 0.4f;
     static constexpr float POLE_RESTITUTION = 0.3f;
+    /** A player steering round one aims this far clear of touching it
+     * (his edge to its edge). Our own estimate. */
+    static constexpr float STEER_CLEARANCE_METRES = 0.1f;
+    /** A player who runs into one bounces off it keeping this share of his
+     * speed into it (the user: players bounce off, as the ball does). Our
+     * own estimate. */
+    static constexpr float BODY_RESTITUTION = 0.3f;
   };
 
   struct Timing final

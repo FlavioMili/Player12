@@ -724,3 +724,43 @@ std::size_t MatchEngine::knockSituation(std::size_t slot, std::size_t otherSlot,
   if (!sameWay) return 6;
   return 7;
 }
+
+bool MatchEngine::bounceOffDummies(MatchPlayer& player, Vector2F before)
+{
+  using C = MatchTuning::Collision;
+  constexpr float R = MatchTuning::Body::RADIUS_METRES;
+  for (const PitchKit::Dummy& dummy : kit.dummies)
+  {
+    // Touching it (the keep-out holds him at its radius plus his), to a
+    // millimetre.
+    const float reach = PitchKit::dummyShape(dummy.kind).radius + R;
+    Vector2F normal{player.position.x - dummy.at.x, player.position.y - dummy.at.y};
+    const float apart = length(normal);
+    if (apart > reach + 0.001f || apart <= EPSILON) continue;
+    normal = scaled(normal, 1.0f / apart);
+    const float into = dot(before, normal);
+    if (into >= 0.0f) continue;
+    // Off it as the ball is: into it reversed, a share kept; along it kept.
+    const Vector2F after =
+        add(before, scaled(normal, -(1.0f + MatchTuning::Dummy::BODY_RESTITUTION) * into));
+    const Vector2F jolt{after.x - before.x, after.y - before.y};
+    player.velocity = after;
+    ++dummyBodyHits;
+    // The Binturong body judges the jolt as a collision's: kept his feet
+    // (a pause), a stumble or a fall, by his Balance.
+    if (bodyOf(player.isHomeTeam) == BodyId::BINTURONG && player.player)
+    {
+      CollisionSide side;
+      side.player = player.player->getId();
+      side.jolt = jolt;
+      side.after = after;
+      side.endsUp = length(after) / std::max(directionTopSpeedBinturong(player, after), EPSILON);
+      side.sudden = length(jolt) / std::max(hardestBrakingBinturong(player) *
+                                                C::SUDDEN_WINDOW_SECONDS,
+                                            EPSILON);
+      judgeKnock(player, side, 0.0f);
+    }
+    return true;
+  }
+  return false;
+}

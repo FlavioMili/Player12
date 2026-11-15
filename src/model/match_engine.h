@@ -3025,6 +3025,8 @@ class MatchEngine
   [[nodiscard]] int getServesTaken() const { return servesTaken; }
   /** Times the ball has come off a training dummy. For drills. */
   [[nodiscard]] int getDummyHits() const { return dummyHits; }
+  /** Times a player has bounced off a training dummy. For drills. */
+  [[nodiscard]] int getDummyBodyHits() const { return dummyBodyHits; }
   void forceHeader(PlayerID playerId, ForcedHeaderAim aim,
                    std::optional<PitchPoint> spot = std::nullopt,
                    std::optional<Vector2F> goalAim = std::nullopt,
@@ -3165,8 +3167,9 @@ class MatchEngine
   float serveRemaining = 0.0f;
   bool lastServeHome = false;
   int servesTaken = 0;
-  /** Times the ball has come off a training dummy. */
+  /** Times the ball has come off a training dummy, and players have. */
   int dummyHits = 0;
+  int dummyBodyHits = 0;
   std::vector<std::pair<PlayerID, float>> ballKeeperUrgency;
   /** Places the scenario's players and ball; the carrier (null when the
    * ball is loose), or nothing when a player is unknown. */
@@ -3473,6 +3476,21 @@ class MatchEngine
                                                           PitchPoint to, float toZ) const;
   /** The bounce alone (no bookkeeping): for the dead ball too. */
   bool reflectOffDummy(std::size_t index);
+  /** A body moving to `to` kept out of every dummy (its radius plus his):
+   * pushed straight out from its axis, so he slides round it. */
+  [[nodiscard]] PitchPoint keepOutOfDummies(PitchPoint to) const;
+  /** A player who has just run into a dummy (touching it now, and his
+   * velocity before the move, `before`, going into it) bounces off it: his
+   * speed into it reversed, BODY_RESTITUTION of it kept; on the Binturong
+   * body the jolt is then judged as a collision's (a pause, a stumble or a
+   * fall). True if he bounced. */
+  bool bounceOffDummies(MatchPlayer& player, Vector2F before);
+  /** Where a player heading from `from` to `target` aims instead, when his
+   * straight line runs into a dummy: the nearest edge point beside the
+   * first one in his way (on the side his line passes it). None when his
+   * way is clear. */
+  [[nodiscard]] std::optional<PitchPoint> steerRoundDummies(PitchPoint from,
+                                                            PitchPoint target) const;
   /** The stretch up to a fallen body in the way, or all of it (the old
    * stretch: keeper's plane, out of play, the sweep). */
   std::optional<float> moveBallPart(float seconds);

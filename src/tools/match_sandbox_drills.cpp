@@ -9368,8 +9368,11 @@ class WalledBoxDrill final : public Drill
     foulsNotGiven = 0;
     servesAtStart = engine.getServesTaken();
     dummyHitsAtStart = engine.getDummyHits();
+    bodyHitsAtStart = engine.getDummyBodyHits();
+    bodyHits = 0;
     dummyHits = 0;
     ballInDummy = 0;
+    playersInDummy = 0;
     serves = 0;
     foulsGiven = 0;
     shots = 0;
@@ -9416,6 +9419,7 @@ class WalledBoxDrill final : public Drill
     foulsNotGiven = engine.getFoulsNotGiven() - foulsAtStart;
     serves = engine.getServesTaken() - servesAtStart;
     dummyHits = engine.getDummyHits() - dummyHitsAtStart;
+    bodyHits = engine.getDummyBodyHits() - bodyHitsAtStart;
     // Nothing passes through a dummy: the ball's centre never within its
     // radius of the axis (ground to shoulder).
     for (const PitchKit::Dummy& dummy : engine.getKit().dummies)
@@ -9424,6 +9428,13 @@ class WalledBoxDrill final : public Drill
       const float axisZ = std::clamp(ball.z, 0.0f, shape.height - shape.radius);
       if (std::hypot(at.x - dummy.at.x, at.y - dummy.at.y, ball.z - axisZ) < shape.radius)
         ++ballInDummy;
+      // Nor does anyone: his centre never within its radius plus his (to
+      // a millimetre).
+      for (const PlayerID id : ids_)
+        if (const MatchPlayer* player = slotOf(engine, id))
+          if (std::hypot(player->position.x - dummy.at.x, player->position.y - dummy.at.y) <
+              shape.radius + MatchTuning::Body::RADIUS_METRES - 0.001f)
+            ++playersInDummy;
     }
     // Shots: their xG and how far out, to the middle of the goal attacked.
     const auto& log = engine.getEvents();
@@ -9475,6 +9486,8 @@ class WalledBoxDrill final : public Drill
         std::format("Fouls given: {}; coach's serves: {}", foulsGiven, serves),
         std::format("Dummy hits: {}; ticks with the ball inside one: {}", dummyHits,
                     ballInDummy),
+        std::format("Player bounces off dummies: {}; ticks with a player inside one: {}",
+                    bodyHits, playersInDummy),
         stoppedBy.empty() ? std::string("Play never stopped")
                           : std::format("Play stopped by a {}", stoppedBy)};
     // The headline once the run is over.
@@ -9497,6 +9510,8 @@ class WalledBoxDrill final : public Drill
             {"Fouls given", static_cast<double>(foulsGiven)},
             {"Dummy hits", static_cast<double>(dummyHits)},
             {"Ball inside a dummy (ticks)", static_cast<double>(ballInDummy)},
+            {"Players inside a dummy (ticks)", static_cast<double>(playersInDummy)},
+            {"Player bounces off dummies", static_cast<double>(bodyHits)},
             {"Shot xG", shotXG},
             {"Shot distance (m)", shots == 0 ? 0.0 : shotDistance / shots},
             {"Nearest wall (m)", nearestWall},
@@ -9523,6 +9538,9 @@ class WalledBoxDrill final : public Drill
   int dummyHitsAtStart = 0;
   int dummyHits = 0;
   int ballInDummy = 0;
+  int playersInDummy = 0;
+  int bodyHitsAtStart = 0;
+  int bodyHits = 0;
   float serveSideChoice = 0.0f;
   float serveReceiverChoice = 0.0f;
   float foulsChoice = 0.0f;

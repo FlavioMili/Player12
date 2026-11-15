@@ -723,7 +723,9 @@ inline PitchPoint MatchEngine::keepOffGround(PitchPoint from, PitchPoint to) con
 }
 inline PitchPoint MatchEngine::moveBody(PitchPoint from, PitchPoint to) const
 {
-  return MatchEngineInternal::moveBody(pitch, from, to);
+  const PitchPoint moved = MatchEngineInternal::moveBody(pitch, from, to);
+  // Training dummies (plan section 21): nobody goes through one.
+  return kit.dummies.empty() ? moved : keepOutOfDummies(moved);
 }
 inline bool MatchEngine::deepInTunnel(PitchPoint at) const
 {
