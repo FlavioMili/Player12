@@ -334,6 +334,13 @@ void MatchEngine::serveToStart(bool home)
   beginServe(home, MatchTuning::Serve::WAIT_SECONDS);
 }
 
+void MatchEngine::holdPlayForRegroup()
+{
+  if (!restartsByServe() || state != MatchState::PLAYING) return;
+  // The ball with the coach until the session moves on; nobody serves it.
+  beginServe(true, std::numeric_limits<float>::max());
+}
+
 void MatchEngine::holdAfterGoal()
 {
   // Nobody fetches the ball for a kick-off, and nobody walks back for one.
@@ -407,6 +414,11 @@ void MatchEngine::holdForServe(float dt)
   {
     MatchPlayer& player = players[slot];
     if (!active(player)) continue;
+    // A drill's "make your way here" (a session's regroup, plan section 23)
+    // walks him there while play waits.
+    if (player.player)
+      if (const std::optional<PitchPoint> held = getDrillTarget(player.player->getId()))
+        player.movementTarget = clampToPitch(*held);
     // Where he holds is what the brain reads when play goes on.
     player.tacticalTarget = player.movementTarget;
     player.targetVelocity = {0.0f, 0.0f};

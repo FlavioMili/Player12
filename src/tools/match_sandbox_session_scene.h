@@ -14,6 +14,7 @@
 #include "gui/render/match_render_snapshot.h"
 #include "gui/render/imatch_renderer.h"
 #include "tools/match_sandbox_session.h"
+#include "tools/match_sandbox_training.h"
 
 class IMatchRenderer;
 struct ImFont;
@@ -27,7 +28,8 @@ struct ImFont;
 class ZoneSessionScene : public GUIScene
 {
  public:
-  ZoneSessionScene(GUIView* guiView_ptr, const SessionPlan& plan);
+  ZoneSessionScene(GUIView* guiView_ptr, const SessionPlan& plan,
+                   std::vector<TrainingPlayer> picks);
   ~ZoneSessionScene() override;
 
   void onEnter() override;
@@ -41,6 +43,10 @@ class ZoneSessionScene : public GUIScene
   void renderGround(float width, float height);
 
   SessionPlan plan;
+  /** The players picked to train (the first make up the squad). */
+  std::vector<TrainingPlayer> picks;
+  /** The zone the 3D cameras follow (its ball is the one they track). */
+  std::size_t watchedZone = 0;
   std::unique_ptr<SessionRun> run;
   bool paused = false;
   float speed = 1.0f;

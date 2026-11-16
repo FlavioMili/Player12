@@ -11,10 +11,12 @@
 #include <algorithm>
 #include <format>
 #include <set>
+#include <utility>
 
 #include "gui/render/match_render_snapshot.h"
 #include "model/match_engine.h"
 #include "model/player.h"
+#include "tools/match_sandbox_training.h"
 
 namespace
 {
@@ -142,36 +144,47 @@ std::optional<std::string> checkSessionPlan(const SessionPlan& plan)
 }
 
 SessionRun::SessionRun(const SessionPlan& plan, const StatsConfig& config_ref,
-                       std::uint32_t seed_value, bool record_value)
+                       std::uint32_t seed_value, bool record_value,
+                       const std::vector<TrainingPlayer>& picks)
     : sessionPlan(plan), config(config_ref), seed(seed_value), record(record_value)
 {
-  // The squad: reference players, as the drill runs' own.
+  // The squad: the first picks, then reference players, as the drill runs'
+  // own, for any gap.
   for (std::size_t index = 0; index < plan.squadSize; ++index)
   {
+    const PlayerID id = FIRST_SQUAD_ID + static_cast<PlayerID>(index);
+    if (index < picks.size())
+    {
+      const TrainingPlayer& pick = picks[index];
+      players.push_back(std::make_unique<Player>(
+          id, static_cast<TeamID>(1), "", pick.name, pick.role, Language::EN, 0, 0, 25, 1,
+          static_cast<std::uint8_t>(pick.height), pick.foot, pick.stats));
+      continue;
+    }
     std::map<std::string, float> stats;
     for (const std::string& stat : config.possible_stats)
       stats[stat] = DrillRun::REFERENCE_RATING;
     players.push_back(std::make_unique<Player>(
-        FIRST_SQUAD_ID + static_cast<PlayerID>(index), static_cast<TeamID>(1), "",
-        std::format("Player {}", index + 1), PlayerRole::CM, Language::EN, 0, 0, 25, 1,
-        static_cast<std::uint8_t>(180), Foot::Right, stats));
+        id, static_cast<TeamID>(1), "", std::format("Player {}", index + 1), PlayerRole::CM,
+        Language::EN, 0, 0, 25, 1, static_cast<std::uint8_t>(180), Foot::Right, stats));
   }
   if (plan.exercises.empty())
     over = true;
   else
-    startExercise(0);
+    current = buildExercise(0);
 }
 
 SessionRun::~SessionRun()
 {
-  // The zones' engines borrow the squad's players: they go first.
+  // The engines borrow the squad's players: they go first.
+  regroup.reset();
+  upcoming.clear();
   current.clear();
 }
 
-void SessionRun::startExercise(std::size_t index)
+std::vector<SessionRun::Zone> SessionRun::buildExercise(std::size_t index)
 {
-  exerciseIndex = index;
-  current.clear();
+  std::vector<Zone> built;
   const SessionExercise& exercise = sessionPlan.exercises[index];
   for (std::size_t zoneIndex = 0; zoneIndex < exercise.zones.size(); ++zoneIndex)
   {
@@ -203,9 +216,9 @@ void SessionRun::startExercise(std::size_t index)
         engine.carryPlayerIn(*now);
       }
     }
-    current.push_back(std::move(zone));
+    built.push_back(std::move(zone));
   }
-  resting.clear();
+  return built;
 }
 
 bool SessionRun::sendToChangingRoom(std::size_t squadIndex)
@@ -229,6 +242,16 @@ std::vector<std::size_t> SessionRun::changingRoom() const
 {
   std::vector<std::size_t> room = resting;
   if (over) return room;
+  if (regroup)
+  {
+    // In a change: everyone not walking to a place.
+    room.clear();
+    for (std::size_t index = 0; index < players.size(); ++index)
+      if (std::ranges::none_of(movers, [index](const Mover& mover)
+                               { return mover.squadIndex == index; }))
+        room.push_back(index);
+    return room;
+  }
   for (std::size_t index = 0; index < players.size(); ++index)
   {
     bool inZone = false;
@@ -261,6 +284,7 @@ void SessionRun::finishExercise()
     }
   }
   std::vector<std::string> reports;
+  if (!changeReport.empty()) reports.push_back(std::exchange(changeReport, {}));
   if (counted > 0)
     reports.push_back(std::format("Squad: average condition {:.0f}% at the end",
                                   100.0f * conditionSum / static_cast<float>(counted)));
@@ -270,9 +294,234 @@ void SessionRun::finishExercise()
   finishedReports.push_back(std::move(reports));
 }
 
+namespace
+{
+/** A zone's point, velocity and facing on the ground, and back (T7d). */
+PitchPoint groundPoint(const SessionZone& zone, const MatchPitch& pitch, PitchPoint local)
+{
+  const float dx = local.x - 0.5f * pitch.length;
+  const float dy = local.y - 0.5f * pitch.width;
+  return zone.turned ? PitchPoint{zone.centre.x - dy, zone.centre.y + dx}
+                     : PitchPoint{zone.centre.x + dx, zone.centre.y + dy};
+}
+PitchPoint localPoint(const SessionZone& zone, const MatchPitch& pitch, PitchPoint ground)
+{
+  const float gx = ground.x - zone.centre.x;
+  const float gy = ground.y - zone.centre.y;
+  return zone.turned ? PitchPoint{0.5f * pitch.length + gy, 0.5f * pitch.width - gx}
+                     : PitchPoint{0.5f * pitch.length + gx, 0.5f * pitch.width + gy};
+}
+Vector2F groundVector(const SessionZone& zone, Vector2F local)
+{
+  return zone.turned ? Vector2F{-local.y, local.x} : local;
+}
+Vector2F localVector(const SessionZone& zone, Vector2F ground)
+{
+  return zone.turned ? Vector2F{ground.y, -ground.x} : ground;
+}
+constexpr float QUARTER_TURN = 1.5707963f;
+
+/** The change of exercise's engine (T7d): the whole ground, walled at its
+ * fence, no goals; everyone who was playing, carried over where he was;
+ * the ball with a coach; each walking to his next place. Next zones are
+ * marked out as areas. */
+class RegroupDrill final : public Drill
+{
+ public:
+  struct Walker
+  {
+    MatchEngine::CarriedPlayer state;
+    PitchPoint target{};
+  };
+  RegroupDrill(std::vector<Walker> walkers, std::vector<ZoneFootprint> next)
+      : walkers_(std::move(walkers)), next_(std::move(next))
+  {
+  }
+  const char* name() const override { return "Regroup"; }
+  const char* summary() const override { return "Between exercises."; }
+  std::vector<DrillParameter> parameters() override { return {}; }
+  MatchPitch pitch() const override
+  {
+    return MatchPitch::training(TrainingGround::LENGTH_METRES, TrainingGround::WIDTH_METRES);
+  }
+  std::vector<DrillPlayerSpec> players() const override
+  {
+    std::vector<DrillPlayerSpec> list;
+    for (std::size_t index = 0; index < walkers_.size(); ++index)
+      list.push_back({std::format("Walker {}", index + 1), PlayerRole::CM, index % 2 == 0});
+    return list;
+  }
+  void begin(MatchEngine& engine, const std::vector<PlayerID>& ids) override
+  {
+    MatchScenario scenario;
+    for (std::size_t index = 0; index < ids.size() && index < walkers_.size(); ++index)
+      scenario.players.push_back({ids[index], walkers_[index].state.position, false});
+    scenario.ballPosition = PitchPoint{0.5f * TrainingGround::LENGTH_METRES,
+                                       0.5f * TrainingGround::WIDTH_METRES};
+    engine.startDrill(scenario);
+    engine.holdPlayForRegroup();
+    PitchKit::Layout kit;
+    for (std::size_t zone = 0; zone < next_.size(); ++zone)
+      kit.areas.push_back({std::format("Next {}", zone + 1),
+                           PitchPoint{next_[zone].minX, next_[zone].minY},
+                           PitchPoint{next_[zone].maxX, next_[zone].maxY},
+                           0xC0FFFFFFu});
+    engine.setKit(std::move(kit));
+    for (std::size_t index = 0; index < ids.size() && index < walkers_.size(); ++index)
+    {
+      MatchEngine::CarriedPlayer state = walkers_[index].state;
+      state.id = ids[index];
+      engine.carryPlayerIn(state);
+      engine.setDrillTarget(ids[index], walkers_[index].target, false);
+    }
+  }
+  bool afterStep(MatchEngine& /*engine*/) override { return true; }
+  std::vector<std::string> report() const override { return {}; }
+  std::vector<DrillMetric> metrics() const override { return {}; }
+
+ private:
+  std::vector<Walker> walkers_;
+  std::vector<ZoneFootprint> next_;
+};
+}  // namespace
+
+void SessionRun::beginChange(std::size_t next)
+{
+  // The next exercise's zones made ready (players at the drill's places,
+  // with their condition), not yet stepped.
+  upcomingIndex = next;
+  upcoming = buildExercise(next);
+  // Who walks: everyone who was playing at the end, from where he was, to
+  // his place in the next exercise (or the changing room's spots by the
+  // bottom fence).
+  movers.clear();
+  std::vector<RegroupDrill::Walker> walkers;
+  std::vector<Player*> walkerPlayers;
+  int benchSpot = 0;
+  for (const Zone& zone : current)
+  {
+    if (!zone.run) continue;
+    const MatchPitch& from = zone.run->engine().getPitch();
+    for (const std::size_t index : zone.plan->players)
+    {
+      if (std::ranges::find(resting, index) != resting.end()) continue;
+      const PlayerID id = players[index]->getId();
+      const auto saved = carried.find(id);
+      if (saved == carried.end()) continue;
+      Mover mover;
+      mover.squadIndex = index;
+      mover.target = PitchPoint{8.0f + 3.0f * static_cast<float>(benchSpot),
+                                TrainingGround::WIDTH_METRES - 2.0f};
+      for (std::size_t to = 0; to < upcoming.size(); ++to)
+      {
+        const Zone& nextZone = upcoming[to];
+        if (std::ranges::find(nextZone.plan->players, index) == nextZone.plan->players.end())
+          continue;
+        if (const auto start = nextZone.run->engine().carriedPlayer(id))
+          mover.target =
+              groundPoint(*nextZone.plan, nextZone.run->engine().getPitch(), start->position);
+        mover.toZone = to;
+      }
+      if (!mover.toZone) ++benchSpot;
+      MatchEngine::CarriedPlayer state = saved->second;
+      state.position = groundPoint(*zone.plan, from, state.position);
+      state.velocity = groundVector(*zone.plan, state.velocity);
+      if (zone.plan->turned) state.facing += QUARTER_TURN;
+      walkers.push_back({state, mover.target});
+      walkerPlayers.push_back(players[index].get());
+      movers.push_back(mover);
+    }
+  }
+  std::vector<ZoneFootprint> footprints;
+  for (const Zone& zone : upcoming)
+    if (const auto box = zoneFootprint(*zone.plan)) footprints.push_back(*box);
+  // Merge: the zones go; one engine over the whole ground takes everyone.
+  current.clear();
+  resting.clear();
+  const std::vector<RegroupDrill::Walker> leaving = walkers;
+  regroupDrill = std::make_unique<RegroupDrill>(std::move(walkers), std::move(footprints));
+  regroupDrill->seed = seed + static_cast<std::uint32_t>(next * 100 + 99);
+  regroup = std::make_unique<DrillRun>(*regroupDrill, config, record,
+                                       std::function<void(MatchEngine&)>{}, walkerPlayers);
+  changeStart = elapsed;
+  // How far anyone jumped, or his condition, at the merge (should be none).
+  mergeJump = 0.0f;
+  mergeConditionJump = 0.0f;
+  for (std::size_t index = 0; index < leaving.size() && index < walkerPlayers.size(); ++index)
+    if (const auto now = regroup->engine().carriedPlayer(walkerPlayers[index]->getId()))
+    {
+      mergeJump = std::max(mergeJump, std::hypot(now->position.x - leaving[index].state.position.x,
+                                                 now->position.y - leaving[index].state.position.y));
+      mergeConditionJump =
+          std::max(mergeConditionJump, std::abs(now->stamina - leaving[index].state.stamina));
+    }
+}
+
+void SessionRun::finishChange()
+{
+  // Split: each mover goes into his next zone as he arrived (where he is,
+  // how he moves, his condition); the rest keep their state for later.
+  const MatchEngine& merged = regroup->engine();
+  int arrived = 0;
+  float splitJump = 0.0f;
+  float splitConditionJump = 0.0f;
+  for (const Mover& mover : movers)
+  {
+    const PlayerID id = players[mover.squadIndex]->getId();
+    const std::optional<MatchEngine::CarriedPlayer> state = merged.carriedPlayer(id);
+    if (!state) continue;
+    carried[id] = *state;
+    if (std::hypot(state->position.x - mover.target.x, state->position.y - mover.target.y) <=
+        ARRIVED_METRES)
+      ++arrived;
+    if (!mover.toZone) continue;
+    Zone& zone = upcoming[*mover.toZone];
+    MatchEngine& engine = zone.run->engine();
+    MatchEngine::CarriedPlayer local = *state;
+    local.position = localPoint(*zone.plan, engine.getPitch(), state->position);
+    local.velocity = localVector(*zone.plan, state->velocity);
+    if (zone.plan->turned) local.facing -= QUARTER_TURN;
+    engine.carryPlayerIn(local);
+    // How far he jumped, or his condition, at the split (should be none).
+    if (const auto now = engine.carriedPlayer(id))
+    {
+      const PitchPoint placed = groundPoint(*zone.plan, engine.getPitch(), now->position);
+      splitJump = std::max(splitJump, std::hypot(placed.x - state->position.x,
+                                                 placed.y - state->position.y));
+      splitConditionJump = std::max(splitConditionJump, std::abs(now->stamina - state->stamina));
+    }
+  }
+  // Reported with the exercise it led into.
+  changeReport = std::format(
+      "Change: {} of {} at their places after {:.1f} s; largest jump at the merge {:.3f} m "
+      "(condition {:.4f}), at the split {:.3f} m (condition {:.4f})",
+      arrived, movers.size(), elapsed - changeStart, mergeJump, mergeConditionJump, splitJump,
+      splitConditionJump);
+  regroup.reset();
+  regroupDrill.reset();
+  current = std::move(upcoming);
+  upcoming.clear();
+  exerciseIndex = upcomingIndex;
+}
+
 bool SessionRun::step()
 {
   if (over) return false;
+  if (regroup)
+  {
+    // The change: everyone walks; it ends when all are at their places or
+    // at the time limit.
+    regroup->step();
+    elapsed += MatchTuning::Timing::FIXED_STEP_SECONDS;
+    bool allThere = true;
+    for (const Mover& mover : movers)
+      if (const auto state = regroup->engine().carriedPlayer(players[mover.squadIndex]->getId()))
+        if (std::hypot(state->position.x - mover.target.x, state->position.y - mover.target.y) >
+            ARRIVED_METRES)
+          allThere = false;
+    if (allThere || elapsed - changeStart >= CHANGE_LIMIT_SECONDS) finishChange();
+    return true;
+  }
   bool running = false;
   for (Zone& zone : current)
   {
@@ -287,14 +536,15 @@ bool SessionRun::step()
   finishExercise();
   if (exerciseIndex + 1 < sessionPlan.exercises.size())
   {
-    startExercise(exerciseIndex + 1);
+    beginChange(exerciseIndex + 1);
     return true;
   }
   over = true;
   return false;
 }
 
-void fillSessionRenderSnapshot(const SessionRun& run, MatchRenderSnapshot& snapshot)
+void fillSessionRenderSnapshot(const SessionRun& run, MatchRenderSnapshot& snapshot,
+                               std::size_t watchedZone)
 {
   // The ground is the pitch: plain training grass, its fence the walls, no
   // goals of its own (each zone has its own).
@@ -315,7 +565,22 @@ void fillSessionRenderSnapshot(const SessionRun& run, MatchRenderSnapshot& snaps
   snapshot.events = nullptr;
   snapshot.stats = nullptr;
   snapshot.playerStats = nullptr;
-  bool firstBall = true;
+  // A change of exercise (T7d): the one engine over the whole ground, its
+  // walkers and the next zones marked out.
+  if (const DrillRun* change = run.regroupRun())
+  {
+    fillMatchRenderSnapshot(change->engine(), snapshot);
+    std::erase_if(snapshot.players, [](const MatchRenderPlayer& player)
+                  { return !player.onPitch; });
+    snapshot.homeTeam = 1;
+    snapshot.awayTeam = 2;
+    snapshot.events = nullptr;
+    snapshot.stats = nullptr;
+    snapshot.playerStats = nullptr;
+    snapshot.state = MatchState::PLAYING;
+    return;
+  }
+  std::vector<MatchRenderBall> balls;
   MatchRenderSnapshot zoneView;
   for (const SessionRun::Zone& zone : run.zones())
   {
@@ -380,17 +645,19 @@ void fillSessionRenderSnapshot(const SessionRun& run, MatchRenderSnapshot& snaps
     MatchRenderBall ball = zoneView.ball;
     ball.previousPosition = point(ball.previousPosition);
     ball.currentPosition = point(ball.currentPosition);
-    if (firstBall)
-    {
-      snapshot.ball = ball;
-      firstBall = false;
-    }
-    else
-    {
-      snapshot.extraBalls.push_back(ball);
-    }
+    balls.push_back(ball);
   }
-  if (firstBall) snapshot.ball.outOfSight = true;
+  // The watched zone's ball is the main one (the 3D cameras follow it);
+  // the rest are extra balls.
+  if (balls.empty())
+  {
+    snapshot.ball.outOfSight = true;
+    return;
+  }
+  const std::size_t watched = std::min(watchedZone, balls.size() - 1);
+  snapshot.ball = balls[watched];
+  for (std::size_t index = 0; index < balls.size(); ++index)
+    if (index != watched) snapshot.extraBalls.push_back(balls[index]);
 }
 
 std::vector<std::string> runCarryCheck(const StatsConfig& config)

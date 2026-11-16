@@ -790,25 +790,42 @@ void MatchSandboxScene::renderTraining()
   ImGui::BeginGroup();
   Page::beginCard("##session_list", "SESSIONS", listWidth, Page::LIGHT, scale,
                   sidebar_font);
-  for (std::size_t index = 0; index < sessions.size(); ++index)
-    if (Page::choice(sessions[index].name,
-                     static_cast<std::size_t>(session_index) == index, scale,
+  // Sessions of drills one after another on the pitch, then sessions on the
+  // training ground (its zones side by side, each its own game; training
+  // ground plan section 23).
+  const std::vector<SessionPlan>& zonePlans = sessionPlans();
+  const std::size_t total = sessions.size() + zonePlans.size();
+  for (std::size_t index = 0; index < total; ++index)
+  {
+    const char* name = index < sessions.size()
+                           ? sessions[index].name
+                           : zonePlans[index - sessions.size()].name.c_str();
+    if (Page::choice(name, static_cast<std::size_t>(session_index) == index, scale,
                      sidebar_font))
       session_index = static_cast<int>(index);
+  }
   Page::endCard(scale);
   ImGui::EndGroup();
   if (columns) ImGui::SameLine(0, 6 * scale);
-  if (sessions.empty()) return;
-  const TrainingSessionInfo& info =
-      sessions[static_cast<std::size_t>(session_index)];
+  if (total == 0) return;
+  session_index = std::min(session_index, static_cast<int>(total) - 1);
+  const std::size_t chosen = static_cast<std::size_t>(session_index);
+  const SessionPlan* zonePlan =
+      chosen >= sessions.size() ? &zonePlans[chosen - sessions.size()] : nullptr;
   ImGui::BeginGroup();
   Page::beginCard("##session_overview", "SELECTED SESSION", detailWidth,
                   Page::MID, scale, sidebar_font);
   ImGui::PushFont(sidebar_font, 24);
-  ImGui::TextWrapped("%s", info.name);
+  ImGui::TextWrapped("%s", zonePlan ? zonePlan->name.c_str() : sessions[chosen].name);
   ImGui::PopFont();
   ImGui::PushTextWrapPos(0.0f);
-  ImGui::TextUnformatted(info.summary);
+  ImGui::TextUnformatted(zonePlan ? zonePlan->summary.c_str() : sessions[chosen].summary);
+  if (zonePlan)
+    ImGui::TextDisabled("%s", std::format("On the training ground: {} players; the first "
+                                          "{} picks take part (reference players fill "
+                                          "any gap).",
+                                          zonePlan->squadSize, zonePlan->squadSize)
+                                  .c_str());
   ImGui::PopTextWrapPos();
   Page::endCard(scale);
   Page::beginCard("##training_start", "RUN SESSION", detailWidth, Page::DARK,
@@ -824,27 +841,16 @@ void MatchSandboxScene::renderTraining()
         trainees.push_back({player->getName(), player->getRole(),
                             player->getStats(), player->getHeight(),
                             player->getFoot()});
-    guiView->overlayScene(std::make_unique<TrainingSessionScene>(
-        guiView, info.make(std::move(trainees)), clubName));
+    if (zonePlan)
+      guiView->overlayScene(
+          std::make_unique<ZoneSessionScene>(guiView, *zonePlan, std::move(trainees)));
+    else
+      guiView->overlayScene(std::make_unique<TrainingSessionScene>(
+          guiView, sessions[chosen].make(std::move(trainees)), clubName));
   }
   ImGui::EndDisabled();
   ImGui::SameLine();
   ImGui::TextDisabled("%zu players selected", training_picks.size());
-  Page::endCard(scale);
-  // Sessions on the training ground (training ground plan section 23): its
-  // zones side by side, each its own game; a squad of reference players.
-  Page::beginCard("##zone_sessions", "SESSIONS ON THE TRAINING GROUND", detailWidth,
-                  Page::DARK, scale, sidebar_font);
-  for (const SessionPlan& plan : sessionPlans())
-  {
-    ImGui::PushID(plan.name.c_str());
-    if (Page::button(std::format("START {}", plan.name).c_str(), false, scale, sidebar_font))
-      guiView->overlayScene(std::make_unique<ZoneSessionScene>(guiView, plan));
-    ImGui::PushTextWrapPos(0.0f);
-    ImGui::TextDisabled("%s", plan.summary.c_str());
-    ImGui::PopTextWrapPos();
-    ImGui::PopID();
-  }
   Page::endCard(scale);
   Page::beginCard("##training_squad_card", "SQUAD", detailWidth, Page::MID,
                   scale, sidebar_font);

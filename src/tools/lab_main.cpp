@@ -1011,7 +1011,7 @@ int runSessionMode(int argc, char** argv)
   {
     std::cout << found->exercises[exercise].name << "\n";
     for (const std::string& line : run.history()[exercise])
-      if (full || line.find("OUTCOME") != std::string::npos || line.starts_with("Squad:"))
+      if (full || line.find("OUTCOME") != std::string::npos || line.starts_with("Squad:") || line.starts_with("Change:"))
         std::cout << "  " << line << "\n";
   }
   std::cout << std::format("Session over at {:.1f} s\n", run.seconds());

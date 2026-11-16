@@ -3070,6 +3070,10 @@ class MatchEngine
    * usual wait. Nothing on a pitch that doesn't serve, or once play has
    * moved on. */
   void serveToStart(bool home);
+  /** Drills on a serving pitch, right after startDrill: play waits with
+   * the ball at the coach until the drill ends (a session's regroup, plan
+   * section 23); players with a drill target walk to it meanwhile. */
+  void holdPlayForRegroup();
 
   /** A player's running state, carried from one engine to another
    * (training ground plan section 23): where he is, how he is moving and

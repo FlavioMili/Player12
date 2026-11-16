@@ -34,8 +34,12 @@ constexpr int MAX_STEPS_PER_FRAME = 400;
 constexpr std::array<float, 8> SPEEDS{0.5f, 1.0f, 2.0f, 4.0f, 8.0f, 16.0f, 32.0f, 64.0f};
 }  // namespace
 
-ZoneSessionScene::ZoneSessionScene(GUIView* guiView_ptr, const SessionPlan& plan_ref)
-    : GUIScene(guiView_ptr), plan(plan_ref), renderer(std::make_unique<MatchRenderer2D>())
+ZoneSessionScene::ZoneSessionScene(GUIView* guiView_ptr, const SessionPlan& plan_ref,
+                                   std::vector<TrainingPlayer> picks_list)
+    : GUIScene(guiView_ptr),
+      plan(plan_ref),
+      picks(std::move(picks_list)),
+      renderer(std::make_unique<MatchRenderer2D>())
 {
 }
 
@@ -67,7 +71,9 @@ void ZoneSessionScene::onEnter()
 void ZoneSessionScene::restart()
 {
   run.reset();
-  run = std::make_unique<SessionRun>(plan, guiView->getController().getStatsConfig(), 1);
+  run = std::make_unique<SessionRun>(plan, guiView->getController().getStatsConfig(), 1, false,
+                                     picks);
+  watchedZone = 0;
   accumulator = 0.0f;
   paused = false;
 }
@@ -140,8 +146,11 @@ void ZoneSessionScene::renderPanel(float width)
   const std::size_t exerciseCount = plan.exercises.size();
   const std::size_t index = std::min(run->exercise(), exerciseCount - 1);
   const std::string context =
-      std::format("Exercise {} of {}: {}. Engine conditions come from Set-up.", index + 1,
-                  exerciseCount, plan.exercises[index].name);
+      run->changing() && index + 1 < exerciseCount
+          ? std::format("Changing to exercise {} of {}: {}. Everyone walks to his place.",
+                        index + 2, exerciseCount, plan.exercises[index + 1].name)
+          : std::format("Exercise {} of {}: {}. Engine conditions come from Set-up.", index + 1,
+                        exerciseCount, plan.exercises[index].name);
   Page::header("Training", plan.name.c_str(), width, scale, boldFont, regularFont,
                context.c_str(), true);
   Page::beginCard("##zone_session_playback", "RUN SESSION", width, Page::DARK, scale,
@@ -191,6 +200,20 @@ void ZoneSessionScene::renderPanel(float width)
         if (ImGui::Selectable(label, mode == cameraMode)) cameraMode = mode;
       ImGui::EndCombo();
     }
+    // The zone the cameras follow (its ball); one engine in a change.
+    const auto& zones = run->zones();
+    if (!run->changing() && !zones.empty())
+    {
+      watchedZone = std::min(watchedZone, zones.size() - 1);
+      ImGui::SetNextItemWidth(180 * scale);
+      if (ImGui::BeginCombo("Watch", zones[watchedZone].plan->name.c_str()))
+      {
+        for (std::size_t index = 0; index < zones.size(); ++index)
+          if (ImGui::Selectable(zones[index].plan->name.c_str(), index == watchedZone))
+            watchedZone = index;
+        ImGui::EndCombo();
+      }
+    }
   }
   const int seconds = static_cast<int>(run->seconds());
   ImGui::Text("%s / %d:%02d", over ? "Finished" : paused ? "Paused" : "Running",
@@ -232,6 +255,10 @@ void ZoneSessionScene::renderPanel(float width)
   ImGui::PushTextWrapPos(0);
   if (over)
     ImGui::TextUnformatted("The session is over.");
+  else if (run->changing())
+    ImGui::TextUnformatted("Changing exercise: the balls are with the coaches, and "
+                           "everyone walks to his place in the next exercise (marked "
+                           "out). It starts when they are all there.");
   else
     for (const SessionRun::Zone& zone : run->zones())
     {
@@ -284,7 +311,7 @@ void ZoneSessionScene::renderGround(float width, float height)
     return;
   }
   MatchViewport view{origin.x, origin.y, size.x, size.y};
-  fillSessionRenderSnapshot(*run, snapshot);
+  fillSessionRenderSnapshot(*run, snapshot, watchedZone);
   snapshot.interpolationAlpha =
       paused || run->finished() ? 1.0f : std::clamp(accumulator / STEP, 0.0f, 1.0f);
   MatchRenderOptions options;

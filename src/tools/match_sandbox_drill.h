@@ -203,6 +203,7 @@ class DrillRun
   [[nodiscard]] bool finished() const { return over; }
 
   [[nodiscard]] MatchEngine& engine() { return *match; }
+  [[nodiscard]] const MatchEngine& engine() const { return *match; }
   [[nodiscard]] SandboxRecorder& recorder() { return *log; }
   [[nodiscard]] const std::vector<PlayerID>& ids() const { return drillIds; }
 
