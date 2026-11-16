@@ -20,6 +20,8 @@
 #include "tools/match_sandbox_drill.h"
 #include "tools/match_sandbox_training.h"
 #include "model/match_engine.h"
+#include "model/match_body.h"
+#include "model/match_brain.h"
 
 class Player;
 struct StatsConfig;
@@ -56,6 +58,10 @@ struct SessionZone
   /** Its players: squad indices, one per player the drill names, in the
    * drill's order. */
   std::vector<std::size_t> players;
+  /** The brain and body both its sides use (T7e); none: the sandbox's
+   * Set-up. */
+  std::optional<BrainId> brain;
+  std::optional<BodyId> body;
 };
 
 struct SessionExercise
@@ -100,6 +106,9 @@ class SessionRun
     const SessionZone* plan = nullptr;
     std::unique_ptr<Drill> drill;
     std::unique_ptr<DrillRun> run;
+    /** Each player's last carried-in state (none: he started where the
+     * drill put him): a saved zone starts from these (T7f). */
+    std::map<PlayerID, MatchEngine::CarriedPlayer> startStates;
     /** Its last report, once its run is over. */
     std::vector<std::string> report;
   };

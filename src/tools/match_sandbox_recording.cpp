@@ -585,3 +585,13 @@ Recordings::Replay Recordings::replay(
   }
   return result;
 }
+
+nlohmann::json Recordings::commandToJson(const MatchCommandRecord& command)
+{
+  return toJson(command);
+}
+
+MatchCommandRecord Recordings::commandFromJsonValue(const nlohmann::json& value)
+{
+  return commandFromJson(value);
+}

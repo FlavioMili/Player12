@@ -109,4 +109,8 @@ Replay replay(const MatchRecording& recording,
               std::optional<std::array<BodyId, 2>> bodies = {},
               std::optional<HandshakeId> handshake = {},
               std::optional<PossessionId> possession = {});
+/** A command as a match recording saves it, and back (a session zone's
+ * recording saves its commands the same way; training ground T7f). */
+nlohmann::json commandToJson(const MatchCommandRecord& command);
+MatchCommandRecord commandFromJsonValue(const nlohmann::json& value);
 }  // namespace Recordings

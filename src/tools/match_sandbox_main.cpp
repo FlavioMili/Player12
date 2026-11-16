@@ -67,6 +67,7 @@
 #include "tools/match_sandbox_setup.h"
 #include "tools/match_sandbox_test_teams.h"
 #include "tools/match_sandbox_training.h"
+#include "tools/match_sandbox_zone_recording.h"
 
 namespace
 {
@@ -100,6 +101,7 @@ int main(int argc, char* argv[])
   int traceMatchCases = 12;
   std::string traceMatchKind = "neither";
   std::string traceLapsFollow;
+  bool zoneRoundTrip = false;
   std::string drill;
   int drillView = 0;
   std::optional<std::vector<std::string>> shotMapArguments;
@@ -283,6 +285,11 @@ int main(int argc, char* argv[])
       if (index + 1 < argc && argv[index + 1][0] != '-') traceLapsFollow = argv[++index];
       continue;
     }
+    else if (argument == "--zone-round-trip")
+    {
+      zoneRoundTrip = true;
+      continue;
+    }
     else if (argument == "--kick-off")
     {
       kickOff = true;
@@ -324,7 +331,7 @@ int main(int argc, char* argv[])
            " [--out-of-play O]"
            " [--possession aardvark|binturong]"
            " [--home-advantage X] [--kick-off] [--drill NAME]"
-           " [--check [MATCHES]] [--check-first-touch] [--check-restarts] [--trace-laps SECONDS [PLAYER]]"
+           " [--check [MATCHES]] [--check-first-touch] [--check-restarts] [--trace-laps SECONDS [PLAYER]] [--zone-round-trip]"
            " [--trace-possession SECONDS OUTPUT.jsonl]"
            " [--trace-match SECONDS [CASES [neither|giveway|spot|all]]]\n"
            "  (--brains, --bodies, --managers: aardvark or binturong per side, "
@@ -377,7 +384,7 @@ int main(int argc, char* argv[])
     // Normal startup opens the window before generating the world. Diagnostic
     // commands and explicit match/drill entry points retain their direct path.
     const bool splash = !checkMatches && !tracePossessionSeconds &&
-                        !traceMatchSeconds && !traceLapsSeconds &&
+                        !traceMatchSeconds && !traceLapsSeconds && !zoneRoundTrip &&
                         !shotMapArguments && !benchArguments && !measureDrill &&
                         !kickOff && drill.empty() && drillView == 0;
     if (splash)
@@ -418,6 +425,7 @@ int main(int argc, char* argv[])
     // version defaults to Binturong). The headless commands above keep the
     // plain world.
     addSandboxTestTeams(*controller.getGameData());
+    if (zoneRoundTrip) return runZoneRoundTrip(controller.getStatsConfig());
     if (traceLapsSeconds)
     {
       // Diagnostic: Team Tiered's laps, headless.

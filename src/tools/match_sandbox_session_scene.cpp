@@ -25,6 +25,8 @@
 #include "model/player.h"
 #include "tools/match_sandbox_page_ui.h"
 #include "tools/match_sandbox_typography.h"
+#include "tools/match_sandbox_recording.h"
+#include "tools/match_sandbox_zone_recording.h"
 
 namespace
 {
@@ -71,9 +73,18 @@ void ZoneSessionScene::onEnter()
 void ZoneSessionScene::restart()
 {
   run.reset();
-  run = std::make_unique<SessionRun>(plan, guiView->getController().getStatsConfig(), 1, false,
+  // Recorded, so the debugger can read each zone (T7e).
+  run = std::make_unique<SessionRun>(plan, guiView->getController().getStatsConfig(), 1, true,
                                      picks);
   watchedZone = 0;
+  debuggedRun = nullptr;
+  debugger.reset();
+  inspector.reset();
+  // The debugger's Step buttons step the whole session (every zone together).
+  debugger.stepper = [this](int steps)
+  {
+    for (int step = 0; step < steps && run && !run->finished(); ++step) run->step();
+  };
   accumulator = 0.0f;
   paused = false;
 }
@@ -200,20 +211,6 @@ void ZoneSessionScene::renderPanel(float width)
         if (ImGui::Selectable(label, mode == cameraMode)) cameraMode = mode;
       ImGui::EndCombo();
     }
-    // The zone the cameras follow (its ball); one engine in a change.
-    const auto& zones = run->zones();
-    if (!run->changing() && !zones.empty())
-    {
-      watchedZone = std::min(watchedZone, zones.size() - 1);
-      ImGui::SetNextItemWidth(180 * scale);
-      if (ImGui::BeginCombo("Watch", zones[watchedZone].plan->name.c_str()))
-      {
-        for (std::size_t index = 0; index < zones.size(); ++index)
-          if (ImGui::Selectable(zones[index].plan->name.c_str(), index == watchedZone))
-            watchedZone = index;
-        ImGui::EndCombo();
-      }
-    }
   }
   const int seconds = static_cast<int>(run->seconds());
   ImGui::Text("%s / %d:%02d", over ? "Finished" : paused ? "Paused" : "Running",
@@ -249,6 +246,8 @@ void ZoneSessionScene::renderPanel(float width)
   ImGui::TextDisabled("In the changing room: %s", resting.empty() ? "nobody" : resting.c_str());
   ImGui::PopTextWrapPos();
   Page::endCard(scale);
+
+  renderZoneTools(width);
 
   // Each zone of the exercise, live.
   Page::beginCard("##zone_session_zones", "ZONES", width, Page::LIGHT, scale, boldFont);
@@ -322,5 +321,99 @@ void ZoneSessionScene::renderGround(float width, float height)
   draw->PushClipRect(origin, ImVec2(origin.x + size.x, origin.y + size.y), true);
   renderer->render(snapshot, options, view);
   draw->PopClipRect();
+  Page::endCard(scale);
+}
+
+void ZoneSessionScene::renderZoneTools(float width)
+{
+  // One zone picked (T7e): the 3D cameras follow its ball, its set-up can
+  // be changed, and the debugger reads it.
+  namespace Page = SandboxPageUI;
+  const float scale = Theme::scale();
+  if (!run || run->finished()) return;
+  Page::beginCard("##zone_session_tools", "ZONE", width, Page::MID, scale, boldFont);
+  const auto& zones = run->zones();
+  if (run->changing() || zones.empty())
+  {
+    ImGui::TextDisabled("Changing exercise: one engine for everyone.");
+    Page::endCard(scale);
+    return;
+  }
+  watchedZone = std::min(watchedZone, zones.size() - 1);
+  ImGui::SetNextItemWidth(220 * scale);
+  if (ImGui::BeginCombo("Zone", zones[watchedZone].plan->name.c_str()))
+  {
+    for (std::size_t index = 0; index < zones.size(); ++index)
+      if (ImGui::Selectable(zones[index].plan->name.c_str(), index == watchedZone))
+        watchedZone = index;
+    ImGui::EndCombo();
+  }
+  ImGui::TextDisabled("The 3D cameras follow this zone's ball.");
+  // Save the picked zone as far as it has played (T7f); it opens from the
+  // Training page as a replay of that zone alone.
+  if (Page::button("Save this zone", false, scale, boldFont))
+  {
+    std::string error;
+    if (const auto recording = ZoneRecordings::capture(*run, watchedZone, error))
+    {
+      const std::filesystem::path path =
+          Recordings::folder() / ZoneRecordings::fileName(*recording);
+      saveMessage = ZoneRecordings::save(*recording, path, error)
+                        ? std::format("Saved: {}", path.filename().string())
+                        : std::format("Not saved: {}", error);
+    }
+    else
+    {
+      saveMessage = std::format("Not saved: {}", error);
+    }
+  }
+  if (!saveMessage.empty())
+  {
+    ImGui::PushTextWrapPos(0);
+    ImGui::TextDisabled("%s", saveMessage.c_str());
+    ImGui::PopTextWrapPos();
+  }
+
+  // Its brain and body (both sides), in the session's plan: brains are set
+  // before a zone starts, so a change takes effect on Restart.
+  const std::size_t exercise = run->exercise();
+  if (exercise < plan.exercises.size() && watchedZone < plan.exercises[exercise].zones.size())
+  {
+    SessionZone& zone = plan.exercises[exercise].zones[watchedZone];
+    const auto picker = [&]<typename Id>(const char* label, std::optional<Id>& choice,
+                                         const auto& all, auto name)
+    {
+      const std::string current =
+          choice ? std::string(name(*choice)) : std::string("Set-up's");
+      ImGui::SetNextItemWidth(160 * scale);
+      if (ImGui::BeginCombo(label, current.c_str()))
+      {
+        if (ImGui::Selectable("Set-up's", !choice)) choice.reset();
+        for (const Id id : all)
+          if (ImGui::Selectable(std::string(name(id)).c_str(), choice && *choice == id))
+            choice = id;
+        ImGui::EndCombo();
+      }
+    };
+    picker("Brain", zone.brain, ALL_BRAINS, brainName);
+    ImGui::SameLine(0, 12 * scale);
+    picker("Body", zone.body, ALL_BODIES, bodyName);
+    ImGui::TextDisabled("Takes effect on Restart (R).");
+  }
+  Page::endCard(scale);
+
+  // The debugger on the picked zone (its log, the inspector).
+  const SessionRun::Zone& picked = zones[watchedZone];
+  if (!picked.run) return;
+  if (picked.run.get() != debuggedRun)
+  {
+    debuggedRun = picked.run.get();
+    debugger.reset();
+    inspector.reset();
+  }
+  Page::beginCard("##zone_session_debugger", "DEBUGGER", width, Page::LIGHT, scale, boldFont);
+  MatchEngine& engine = picked.run->engine();
+  debugger.renderContents(picked.run->recorder(), &engine, &paused, std::nullopt, &engine,
+                          inspector);
   Page::endCard(scale);
 }

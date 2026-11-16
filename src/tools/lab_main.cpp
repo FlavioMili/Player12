@@ -86,7 +86,7 @@ Usage:
                  (or, for one run, [--preset NAME] [--set ...] [--seed S]
                  --trace FILE [--seconds S])
   fm_lab session [--brains HOME,AWAY] [--bodies HOME,AWAY] [--seed S] [--full]
-                 [--carry-check]
+                 [--carry-check] [--zone-brain "ZONE=B"]... [--zone-body "ZONE=B"]...
                  "SESSION"
   fm_lab touch-sensitivity [--repeats N] [--ratings A,B,...]
                  [--situations all|NAME;NAME] [--only NAME;NAME] [--step S]
@@ -956,6 +956,13 @@ int runSessionMode(int argc, char** argv)
   std::uint32_t seed = 1;
   bool full = false;
   std::string name;
+  struct ZoneComponent
+  {
+    bool brain = true;
+    std::string zone;
+    std::string key;
+  };
+  std::vector<ZoneComponent> zoneComponents;
   for (std::size_t index = 0; index < rest.size(); ++index)
   {
     const std::string& option = rest[index];
@@ -984,6 +991,16 @@ int runSessionMode(int argc, char** argv)
     }
     else if (option == "--seed" && hasValue)
       seed = static_cast<std::uint32_t>(std::stoul(rest[++index]));
+    else if ((option == "--zone-brain" || option == "--zone-body") && hasValue)
+    {
+      // "ZONE=key": every zone of that name runs that brain or body (T7e).
+      const std::string& value = rest[++index];
+      const std::size_t equals = value.rfind('=');
+      if (equals == std::string::npos)
+        throw UsageError(std::format("{} must be \"ZONE=key\"", option));
+      zoneComponents.push_back({option == "--zone-brain", value.substr(0, equals),
+                                value.substr(equals + 1)});
+    }
     else if (!option.starts_with("--") && name.empty())
       name = option;
     else
@@ -1000,10 +1017,34 @@ int runSessionMode(int argc, char** argv)
   }
   if (const std::optional<std::string> problem = checkSessionPlan(*found))
     throw UsageError(std::format("session \"{}\": {}", name, *problem));
+  SessionPlan plan = *found;
+  for (const ZoneComponent& choice : zoneComponents)
+  {
+    bool named = false;
+    for (SessionExercise& exercise : plan.exercises)
+      for (SessionZone& zone : exercise.zones)
+      {
+        if (zone.name != choice.zone) continue;
+        named = true;
+        if (choice.brain)
+        {
+          const auto brain = brainFromKey(choice.key);
+          if (!brain) throw UsageError("--zone-brain: aardvark or binturong");
+          zone.brain = *brain;
+        }
+        else
+        {
+          const auto body = bodyFromKey(choice.key);
+          if (!body) throw UsageError("--zone-body: aardvark or binturong");
+          zone.body = *body;
+        }
+      }
+    if (!named) throw UsageError(std::format("session: no zone called \"{}\"", choice.zone));
+  }
   const ScratchRuntime runtime;
   quietLogging();
   const StatsConfig config = Lab::loadStatsConfig();
-  SessionRun run(*found, config, seed);
+  SessionRun run(plan, config, seed);
   while (run.step())
   {
   }

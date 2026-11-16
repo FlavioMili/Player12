@@ -49,6 +49,8 @@
 #include "tools/match_sandbox_test_teams.h"
 #include "tools/match_sandbox_training_scene.h"
 #include "tools/match_sandbox_session_scene.h"
+#include "tools/match_sandbox_zone_recording.h"
+#include "tools/match_sandbox_zone_replay_scene.h"
 #include "tools/match_sandbox_true_view.h"
 #include "tools/match_sandbox_typography.h"
 
@@ -803,6 +805,45 @@ void MatchSandboxScene::renderTraining()
     if (Page::choice(name, static_cast<std::size_t>(session_index) == index, scale,
                      sidebar_font))
       session_index = static_cast<int>(index);
+  }
+  Page::endCard(scale);
+  // Saved zones of training sessions (training ground plan section 23,
+  // T7f): each opens as a replay of that zone alone.
+  Page::beginCard("##zone_recordings", "ZONE RECORDINGS", listWidth, Page::LIGHT, scale,
+                  sidebar_font);
+  static std::vector<std::filesystem::path> zoneFiles;
+  static bool zoneFilesListed = false;
+  if (!zoneFilesListed || Page::button("Refresh", false, scale, sidebar_font))
+  {
+    zoneFiles = ZoneRecordings::list();
+    zoneFilesListed = true;
+  }
+  static std::string zoneOpenError;
+  if (zoneFiles.empty())
+    ImGui::TextDisabled("None saved yet (Save this zone, in a session).");
+  for (const std::filesystem::path& file : zoneFiles)
+  {
+    const std::string label = file.filename().string();
+    if (Page::choice(label.substr(0, label.size() - std::string_view(" zone.json").size()).c_str(),
+                     false, scale, sidebar_font))
+    {
+      std::string error;
+      if (std::optional<ZoneRecording> recording = ZoneRecordings::load(file, error))
+      {
+        zoneOpenError.clear();
+        guiView->overlayScene(std::make_unique<ZoneReplayScene>(guiView, std::move(*recording)));
+      }
+      else
+      {
+        zoneOpenError = std::format("Can't open it: {}", error);
+      }
+    }
+  }
+  if (!zoneOpenError.empty())
+  {
+    ImGui::PushTextWrapPos(0);
+    ImGui::TextDisabled("%s", zoneOpenError.c_str());
+    ImGui::PopTextWrapPos();
   }
   Page::endCard(scale);
   ImGui::EndGroup();

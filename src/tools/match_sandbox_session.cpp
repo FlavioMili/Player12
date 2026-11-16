@@ -17,6 +17,7 @@
 #include "model/match_engine.h"
 #include "model/player.h"
 #include "tools/match_sandbox_training.h"
+#include "tools/match_sandbox_setup.h"
 
 namespace
 {
@@ -198,8 +199,16 @@ std::vector<SessionRun::Zone> SessionRun::buildExercise(std::size_t index)
     std::vector<Player*> squadPlayers;
     for (const std::size_t player : plan.players)
       squadPlayers.push_back(players[player].get());
+    // A zone's own brain and body (T7e), for its engine only: the run takes
+    // the sandbox's when it is made, so they stand in for that.
+    const std::array<BrainId, 2> setUpBrains = sandboxBrains();
+    const std::array<BodyId, 2> setUpBodies = sandboxBodies();
+    if (plan.brain) sandboxBrains() = {*plan.brain, *plan.brain};
+    if (plan.body) sandboxBodies() = {*plan.body, *plan.body};
     zone.run = std::make_unique<DrillRun>(*zone.drill, config, record,
                                           std::function<void(MatchEngine&)>{}, squadPlayers);
+    sandboxBrains() = setUpBrains;
+    sandboxBodies() = setUpBodies;
     // Each player brings his condition from when he last played (T7c);
     // where he starts is still the drill's (the change itself is T7d).
     MatchEngine& engine = zone.run->engine();
@@ -214,6 +223,7 @@ std::vector<SessionRun::Zone> SessionRun::buildExercise(std::size_t index)
         now->fastBurstDebt = saved->second.fastBurstDebt;
         now->loadSpeed = saved->second.loadSpeed;
         engine.carryPlayerIn(*now);
+        zone.startStates[player->getId()] = *now;
       }
     }
     built.push_back(std::move(zone));
@@ -482,6 +492,7 @@ void SessionRun::finishChange()
     local.velocity = localVector(*zone.plan, state->velocity);
     if (zone.plan->turned) local.facing -= QUARTER_TURN;
     engine.carryPlayerIn(local);
+    zone.startStates[id] = local;
     // How far he jumped, or his condition, at the split (should be none).
     if (const auto now = engine.carriedPlayer(id))
     {

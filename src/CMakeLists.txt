@@ -736,6 +736,10 @@ add_executable(match_sandbox
     tools/match_sandbox_detail.cpp
     tools/match_sandbox_recording.h
     tools/match_sandbox_recording.cpp
+    tools/match_sandbox_zone_recording.h
+    tools/match_sandbox_zone_recording.cpp
+    tools/match_sandbox_zone_replay_scene.h
+    tools/match_sandbox_zone_replay_scene.cpp
     tools/match_sandbox_compare.h
     tools/match_sandbox_compare.cpp
     tools/match_sandbox_scenario.h
