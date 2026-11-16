@@ -245,6 +245,50 @@ spells and tackles; swarming, press and cover, spread; team-mates in
 range). The baseline for both families is in the training ground plan,
 section 22.
 
+### Training sessions
+
+A training session (`tools/match_sandbox_session.h`) runs several zones at
+once on one 105 x 68 training ground: a squad and a list of exercises, each
+exercise a set of zones, each zone a drill with its settings, placed (its
+centre, turned 0 or 90 degrees) with its players and, if wanted, its own
+brain and body. Each zone is its own engine with its own ball (a
+`DrillRun` on the session's own players, its own seed), and the zones of an
+exercise step together. `checkSessionPlan` refuses zones that don't fit
+or overlap, wrong player counts and players in two zones.
+
+* **Carrying players over.** `MatchEngine::CarriedPlayer` is a player's
+  running state (position, velocity, facing, stamina, sprint reserve, burst
+  debt, load speed); `carriedPlayer` reads it and `carryPlayerIn` makes a
+  player take it up after a drill starts (his brain replans). A session
+  keeps each player's state when he leaves a zone, so condition carries
+  through the session. `takeOffForDrill` takes a player off mid-run (the
+  changing room).
+* **Changing exercise.** When every zone is over: the next exercise's zones
+  are made ready; one engine over the whole ground (walled at its fence, no
+  goals, the ball held with a coach by `holdPlayForRegroup`) takes everyone
+  who was playing, where he was; each walks to his next place with a drill
+  target (the serve's wait lets a player with one walk to it); and when all
+  are there (within 1 m, or after 60 s) the zones take their players as
+  they arrived. Nobody jumps place or condition at the merge or the split.
+* **The view.** `fillSessionRenderSnapshot` makes one snapshot of the
+  ground: every zone's players, coach, kit and ball placed on it, the
+  zones' walls and goals (`MatchRenderSnapshot::zones`) and the other
+  zones' balls (`extraBalls`); the picked zone's ball is the main one, which
+  the 3D cameras follow. During a change it draws the merged engine.
+* **One zone saved.** A zone can be saved as far as it has played
+  (`ZoneRecording`, `tools/match_sandbox_zone_recording.h`: its drill,
+  versions, players, their carried-in starts, commands and fingerprints)
+  and replayed alone on its own pitch on the current engine, showing where
+  the engine first plays it differently. The parallel session itself isn't
+  saved.
+
+In the sandbox, sessions are on the Training page with the others (the
+first picks make up the squad); the session scene shows the ground in 2D or
+3D, each zone's report, the changing room, and a ZONE card (the zone the
+cameras follow, its brain and body, its debugger, Save this zone). Saved
+zones open from the page's ZONE RECORDINGS card. `fm_lab session "NAME"`
+runs a session headless.
+
 Order is part of behavior. Moving actions before players changes tackle reach;
 moving commands across the tick increment changes replay timing; continuing
 ball integration after a goal can resolve a second contact against dead play.

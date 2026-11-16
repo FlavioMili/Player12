@@ -66,6 +66,16 @@ size instead of its own, and `--goal KIND` puts a goal of that kind at each
 end (see the Walled box drill and
 [match-engine.md](match-engine.md#training-pitches)).
 
+`fm_lab session "NAME"` runs a training session headless (see
+[match-engine.md](match-engine.md#training-sessions)) and prints each
+exercise's zones' outcomes, each change (arrivals, time, the largest jump of
+place and condition at the merge and the split) and the squad's condition;
+`--zone-brain "ZONE=B"` and `--zone-body "ZONE=B"` set a zone's versions,
+and `--carry-check` checks that a player's running state carries from one
+engine to another exactly. `match_sandbox --zone-round-trip` saves zones of
+the example session, loads and replays them, and says whether each replays
+identically.
+
 ## Screenshots
 
 The screenshots in `docs/images` come from a real career, captured by the
