@@ -111,6 +111,8 @@ void ZoneSessionScene::render()
   namespace Page = SandboxPageUI;
   const auto* viewport = ImGui::GetMainViewport();
   const float scale = Theme::scale();
+  // The sandbox pages' theme for every control on the page.
+  const Page::Style style(regularFont, scale);
   ImGui::SetNextWindowPos(viewport->WorkPos);
   ImGui::SetNextWindowSize(viewport->WorkSize);
   ImGui::PushStyleColor(ImGuiCol_WindowBg, Page::PAGE);
@@ -180,7 +182,7 @@ void ZoneSessionScene::renderPanel(float width)
   ImGui::SameLine();
   ImGui::SetNextItemWidth(90 * scale);
   const std::string speedLabel = std::format("{:g}x", speed);
-  if (ImGui::BeginCombo("##zone_speed", speedLabel.c_str()))
+  if (SandboxPageUI::beginCombo("##zone_speed", speedLabel.c_str()))
   {
     for (const float option : SPEEDS)
       if (ImGui::Selectable(std::format("{:g}x", option).c_str(), option == speed))
@@ -205,7 +207,7 @@ void ZoneSessionScene::renderPanel(float width)
     for (const auto& [mode, label] : CAMERAS)
       if (mode == cameraMode) current = label;
     ImGui::SetNextItemWidth(180 * scale);
-    if (ImGui::BeginCombo("Camera", current))
+    if (SandboxPageUI::beginCombo("Camera", current))
     {
       for (const auto& [mode, label] : CAMERAS)
         if (ImGui::Selectable(label, mode == cameraMode)) cameraMode = mode;
@@ -228,7 +230,7 @@ void ZoneSessionScene::renderPanel(float width)
   {
     if (std::ranges::find(playing, restPick) == playing.end()) restPick = playing.front();
     ImGui::SetNextItemWidth(160 * scale);
-    if (ImGui::BeginCombo("##rest_pick", run->squad()[restPick]->getName().c_str()))
+    if (SandboxPageUI::beginCombo("##rest_pick", run->squad()[restPick]->getName().c_str()))
     {
       for (const std::size_t index : playing)
         if (ImGui::Selectable(run->squad()[index]->getName().c_str(), index == restPick))
@@ -341,7 +343,7 @@ void ZoneSessionScene::renderZoneTools(float width)
   }
   watchedZone = std::min(watchedZone, zones.size() - 1);
   ImGui::SetNextItemWidth(220 * scale);
-  if (ImGui::BeginCombo("Zone", zones[watchedZone].plan->name.c_str()))
+  if (SandboxPageUI::beginCombo("Zone", zones[watchedZone].plan->name.c_str()))
   {
     for (std::size_t index = 0; index < zones.size(); ++index)
       if (ImGui::Selectable(zones[index].plan->name.c_str(), index == watchedZone))
@@ -386,7 +388,7 @@ void ZoneSessionScene::renderZoneTools(float width)
       const std::string current =
           choice ? std::string(name(*choice)) : std::string("Set-up's");
       ImGui::SetNextItemWidth(160 * scale);
-      if (ImGui::BeginCombo(label, current.c_str()))
+      if (SandboxPageUI::beginCombo(label, current.c_str()))
       {
         if (ImGui::Selectable("Set-up's", !choice)) choice.reset();
         for (const Id id : all)

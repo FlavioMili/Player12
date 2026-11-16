@@ -7,6 +7,7 @@
 // -----------------------------------------------------------------------------
 
 #include "tools/match_sandbox_drill.h"
+#include "tools/match_sandbox_page_ui.h"
 
 #include <algorithm>
 #include <array>
@@ -180,7 +181,7 @@ void Drill::renderSettings(int columns, bool includeSeed, bool stackedLabels)
       ImGui::TextUnformatted("Situation");
       ImGui::SetNextItemWidth(-FLT_MIN);
     }
-    if (ImGui::BeginCombo(stackedLabels ? "##situation" : "Situation",
+    if (SandboxPageUI::beginCombo(stackedLabels ? "##situation" : "Situation",
                           "choose to fill in the settings..."))
     {
       for (const DrillPreset& preset : list)
@@ -273,7 +274,7 @@ void Drill::renderSettings(int columns, bool includeSeed, bool stackedLabels)
     if (!parameter.choices.empty())
     {
       int index = static_cast<int>(value);
-      if (ImGui::Combo(id.c_str(), &index, parameter.choices.data(),
+      if (SandboxPageUI::combo(id.c_str(), &index, parameter.choices.data(),
                        static_cast<int>(parameter.choices.size())))
         value = static_cast<float>(index);
     }

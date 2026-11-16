@@ -119,37 +119,43 @@ void TeamTalkDialog::open(GameController& controller, TeamTalkMoment when,
   open_requested = true;
 }
 
-bool TeamTalkDialog::render(GameController& controller)
+bool TeamTalkDialog::render(GameController& controller, bool embedded)
 {
   if (open_requested)
   {
     open_requested = false;
-    ImGui::OpenPopup(POPUP_ID);
+    if (embedded)
+      visible = true;
+    else
+      ImGui::OpenPopup(POPUP_ID);
   }
-  visible = ImGui::IsPopupOpen(POPUP_ID);
+  if (!embedded) visible = ImGui::IsPopupOpen(POPUP_ID);
   if (!visible) return false;
 
-  const ImGuiViewport* viewport = ImGui::GetMainViewport();
-  const float width = std::min(scaled(DIALOG_WIDTH),
-                               viewport->WorkSize.x * VIEWPORT_WIDTH_SHARE);
-  ImGui::SetNextWindowPos(viewport->GetCenter(), ImGuiCond_Always,
-                          ImVec2(0.5f, 0.5f));
-  ImGui::SetNextWindowSizeConstraints(
-      ImVec2(width, 0.0f),
-      ImVec2(width, viewport->WorkSize.y * VIEWPORT_HEIGHT_SHARE));
-  if (!ImGui::BeginPopupModal(POPUP_ID, nullptr,
-                              ImGuiWindowFlags_AlwaysAutoResize |
-                                  ImGuiWindowFlags_NoTitleBar |
-                                  ImGuiWindowFlags_NoSavedSettings))
+  if (!embedded)
   {
-    visible = false;
-    return false;
+    const ImGuiViewport* viewport = ImGui::GetMainViewport();
+    const float width = std::min(scaled(DIALOG_WIDTH),
+                                 viewport->WorkSize.x * VIEWPORT_WIDTH_SHARE);
+    ImGui::SetNextWindowPos(viewport->GetCenter(), ImGuiCond_Always,
+                            ImVec2(0.5f, 0.5f));
+    ImGui::SetNextWindowSizeConstraints(
+        ImVec2(width, 0.0f),
+        ImVec2(width, viewport->WorkSize.y * VIEWPORT_HEIGHT_SHARE));
+    if (!ImGui::BeginPopupModal(POPUP_ID, nullptr,
+                                ImGuiWindowFlags_AlwaysAutoResize |
+                                    ImGuiWindowFlags_NoTitleBar |
+                                    ImGuiWindowFlags_NoSavedSettings))
+    {
+      visible = false;
+      return false;
+    }
   }
   if (dismiss_requested)
   {
     dismiss_requested = false;
-    ImGui::CloseCurrentPopup();
-    ImGui::EndPopup();
+    if (!embedded) ImGui::CloseCurrentPopup();
+    if (!embedded) ImGui::EndPopup();
     visible = false;
     return false;
   }
@@ -187,10 +193,10 @@ bool TeamTalkDialog::render(GameController& controller)
     ImGui::SetTooltip("%s", LOC("TEAMTALK_SKIP_HINT"));
   if (close || ImGui::IsKeyPressed(ImGuiKey_Escape, false))
   {
-    ImGui::CloseCurrentPopup();
+    if (!embedded) ImGui::CloseCurrentPopup();
     visible = false;
   }
-  ImGui::EndPopup();
+  if (!embedded) ImGui::EndPopup();
   return has_result && !had_result;
 }
 
@@ -248,7 +254,14 @@ void TeamTalkDialog::renderOptions(GameController& controller)
   }
   if (!chosen) return;
   const auto result =
-      controller.giveTeamTalk(moment, *chosen, own_goals, other_goals);
+      isolated
+          ? std::optional<TeamTalkResult>(Interactions::evaluateTeamTalk(
+                controller.getTeamTalkContext(moment, own_goals, other_goals),
+                *chosen, controller.getWorldSeed()))
+          : controller.giveTeamTalk(moment, *chosen, own_goals, other_goals);
+  if (isolated && result)
+    local_modifiers[moment == TeamTalkMoment::PreMatch ? 0 : 1] =
+        result->modifier;
   if (!result) return;
   result_summary = LOC(result->summary_key.c_str());
   result_counts = fmt::sprintf(LOC("TEAMTALK_RESULT_COUNTS"), result->positive,
@@ -271,9 +284,9 @@ void TeamTalkDialog::renderResult()
   ImGui::PopTextWrapPos();
 }
 
-void TeamTalkDialog::renderForMatch(GameController& controller,
-                                    MatchEngine& engine, TeamID home_id,
-                                    TeamID away_id)
+void TeamTalkDialog::prepareForMatch(GameController& controller,
+                                     MatchEngine& engine, TeamID home_id,
+                                     TeamID away_id)
 {
   const auto team = controller.getManagedTeam();
   const TeamID managed = team ? team->get().getId() : 0;
@@ -289,14 +302,14 @@ void TeamTalkDialog::renderForMatch(GameController& controller,
     if (!pre_offered && period == 1 && minute < PRE_MATCH_OFFER_MINUTES)
     {
       pre_offered = true;
-      if (controller.canGiveTeamTalk(TeamTalkMoment::PreMatch))
+      if (isolated || controller.canGiveTeamTalk(TeamTalkMoment::PreMatch))
         open(controller, TeamTalkMoment::PreMatch);
     }
     else if (!half_offered && (state == MatchState::HALF_TIME || period >= 2))
     {
       pre_offered = true;
       half_offered = true;
-      if (controller.canGiveTeamTalk(TeamTalkMoment::HalfTime))
+      if (isolated || controller.canGiveTeamTalk(TeamTalkMoment::HalfTime))
         open(controller, TeamTalkMoment::HalfTime, own, other);
     }
   }
@@ -311,18 +324,32 @@ void TeamTalkDialog::renderForMatch(GameController& controller,
     open_requested = false;
     dismiss_requested = visible;
   }
-  render(controller);
   // The talks' outcome plays its part in the match: only changes reach the
   // engine (each one resets its look-ahead).
   if (team && (managed == home_id || managed == away_id))
   {
     for (int half = 1; half <= 2; ++half)
     {
-      const float modifier = controller.getTeamTalkModifier(managed, half);
+      const float modifier =
+          isolated
+              ? std::clamp(half == 1
+                               ? local_modifiers[0]
+                               : .5f * local_modifiers[0] + local_modifiers[1],
+                           -Interactions::TALK_CAP, Interactions::TALK_CAP)
+              : controller.getTeamTalkModifier(managed, half);
       float& applied = applied_talk[static_cast<std::size_t>(half - 1)];
       if (modifier == applied) continue;
       applied = modifier;
       engine.setTeamTalkModifier(managed == home_id, half, modifier);
     }
   }
+}
+
+void TeamTalkDialog::renderForMatch(GameController& controller,
+                                    MatchEngine& engine, TeamID home_id,
+                                    TeamID away_id, bool embedded)
+{
+  prepareForMatch(controller, engine, home_id, away_id);
+  render(controller, embedded);
+  prepareForMatch(controller, engine, home_id, away_id);
 }

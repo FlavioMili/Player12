@@ -4,11 +4,33 @@
 #include <imgui.h>
 
 #include <algorithm>
+#include <utility>
 
 #include "tools/match_sandbox_typography.h"
 
 namespace SandboxPageUI
 {
+// Combo popups inherit WindowPadding.y from their page, often zero for columns.
+// Reserve list padding independently of the compact page containers.
+template <typename... Args>
+inline bool beginCombo(Args&&... args)
+{
+  ImGui::PushStyleVarY(ImGuiStyleVar_WindowPadding,
+                       8.0f * ImGui::GetStyle().FontScaleDpi);
+  const bool open = ImGui::BeginCombo(std::forward<Args>(args)...);
+  ImGui::PopStyleVar();
+  return open;
+}
+template <typename... Args>
+inline bool combo(Args&&... args)
+{
+  ImGui::PushStyleVarY(ImGuiStyleVar_WindowPadding,
+                       8.0f * ImGui::GetStyle().FontScaleDpi);
+  const bool changed = ImGui::Combo(std::forward<Args>(args)...);
+  ImGui::PopStyleVar();
+  return changed;
+}
+
 inline constexpr ImU32 PAGE = IM_COL32(22, 19, 16, 255);
 inline constexpr ImU32 LIGHT = IM_COL32(42, 35, 28, 255);
 inline constexpr ImU32 MID = IM_COL32(31, 26, 21, 255);

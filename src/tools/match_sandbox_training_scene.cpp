@@ -218,7 +218,7 @@ void TrainingSessionScene::renderPanel(float width)
   ImGui::SameLine();
   ImGui::SetNextItemWidth(90 * scale);
   const std::string speedLabel = std::format("{:g}x", speed);
-  if (ImGui::BeginCombo("##speed", speedLabel.c_str()))
+  if (SandboxPageUI::beginCombo("##speed", speedLabel.c_str()))
   {
     for (const float option : SPEEDS)
       if (ImGui::Selectable(std::format("{:g}x", option).c_str(),
@@ -326,7 +326,7 @@ void TrainingSessionScene::renderResults(TrainingDrill& drill)
       ImGui::Dummy(ImVec2(0, 0));
       ImGui::TextUnformatted(slot == 0 ? "First metric" : "Second metric");
       ImGui::SetNextItemWidth(-1);
-      if (ImGui::BeginCombo("##metric", columns[resultMetrics[slot]].name))
+      if (SandboxPageUI::beginCombo("##metric", columns[resultMetrics[slot]].name))
       {
         for (int metric = 0; metric < int(columns.size()); ++metric)
         {

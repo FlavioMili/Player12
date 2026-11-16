@@ -178,6 +178,7 @@ Theme::Appearance activeAppearance;
 std::optional<TeamID> activeClub;
 float activeScale = 1.0f;
 Theme::Palette activePalette{};
+thread_local const Theme::Palette* scopedPalette = nullptr;
 
 ImVec4 mix(const ImVec4& a, const ImVec4& b, float t)
 {
@@ -365,7 +366,17 @@ float contrastRatio(const ImVec4& first, const ImVec4& second)
   return (std::max(a, b) + 0.05f) / (std::min(a, b) + 0.05f);
 }
 
-const Palette& palette() { return activePalette; }
+const Palette& palette()
+{
+  return scopedPalette ? *scopedPalette : activePalette;
+}
+
+ScopedPalette::ScopedPalette(Palette colours)
+    : value(colours), previous(scopedPalette)
+{
+  scopedPalette = &value;
+}
+ScopedPalette::~ScopedPalette() { scopedPalette = previous; }
 
 const Appearance& appearance() { return activeAppearance; }
 

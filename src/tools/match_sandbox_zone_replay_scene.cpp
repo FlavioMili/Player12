@@ -64,6 +64,8 @@ void ZoneReplayScene::render()
   namespace Page = SandboxPageUI;
   const auto* viewport = ImGui::GetMainViewport();
   const float scale = Theme::scale();
+  // The sandbox pages' theme for every control on the page.
+  const Page::Style style(regularFont, scale);
   ImGui::SetNextWindowPos(viewport->WorkPos);
   ImGui::SetNextWindowSize(viewport->WorkSize);
   ImGui::PushStyleColor(ImGuiCol_WindowBg, Page::PAGE);

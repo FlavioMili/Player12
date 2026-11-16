@@ -45,7 +45,7 @@ class TeamTalkDialog
    * Draws the dialog while open.
    * @return True on the frame the talk was given.
    */
-  bool render(GameController& controller);
+  bool render(GameController& controller, bool embedded = false);
 
   /**
    * One call per frame from a live match screen: opens the pre-match talk
@@ -55,9 +55,13 @@ class TeamTalkDialog
    * before kick-off) are passed on to the engine of the managed side.
    */
   void renderForMatch(GameController& controller, MatchEngine& engine,
-                      TeamID home_id, TeamID away_id);
+                      TeamID home_id, TeamID away_id, bool embedded = false);
 
-  [[nodiscard]] bool isOpen() const { return visible; }
+  void setIsolated(bool value) { isolated = value; }
+
+  void prepareForMatch(GameController&, MatchEngine&, TeamID, TeamID);
+
+  [[nodiscard]] bool isOpen() const { return visible || open_requested; }
 
  private:
   struct ToneRow
@@ -81,6 +85,8 @@ class TeamTalkDialog
   bool dismiss_requested = false;
   bool visible = false;
   bool has_result = false;
+  bool isolated = false;
+  std::array<float, 2> local_modifiers{};
 
   // Match driving (renderForMatch).
   bool pre_offered = false;

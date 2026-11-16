@@ -418,6 +418,7 @@ set(FM_UI_SOURCES
     gui/scenes/lineup_scene.cpp
     gui/scenes/match_scene.h
     gui/scenes/match_scene.cpp
+    gui/scenes/match_scene_sandbox.cpp
     gui/scenes/match_scene_play.cpp
     gui/scenes/match_play_controller.h
     gui/scenes/match_play_controller.cpp
@@ -756,6 +757,8 @@ add_executable(match_sandbox
     tools/match_sandbox_shot_map.cpp
     tools/match_sandbox_contact_view.h
     tools/match_sandbox_contact_view.cpp
+    tools/match_sandbox_xg_map.h
+    tools/match_sandbox_xg_map.cpp
     tools/match_sandbox_bench_scene.h
     tools/match_sandbox_bench_scene.cpp
     tools/match_sandbox_true_view.h

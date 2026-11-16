@@ -541,7 +541,7 @@ void TechniqueBenchScene::renderPanel(float width)
     ImGui::TableNextColumn();
     ImGui::Dummy(ImVec2(0, 0));
     field("Skill swept");
-    ImGui::Combo("##skill_override", &skillOverride, SKILL_OVERRIDES.data(),
+    SandboxPageUI::combo("##skill_override", &skillOverride, SKILL_OVERRIDES.data(),
                  static_cast<int>(SKILL_OVERRIDES.size()));
     if (ImGui::IsItemHovered())
       ImGui::SetTooltip(
@@ -567,7 +567,7 @@ void TechniqueBenchScene::renderPanel(float width)
   {
     field(label);
     const std::string id = std::string("##") + label;
-    if (ImGui::BeginCombo(id.c_str(), runName(index).c_str()))
+    if (SandboxPageUI::beginCombo(id.c_str(), runName(index).c_str()))
     {
       if (optional && ImGui::Selectable("(none)", index < 0)) index = -1;
       for (int candidate = static_cast<int>(runs.size()) - 1; candidate >= 0;
@@ -589,7 +589,7 @@ void TechniqueBenchScene::renderPanel(float width)
   runCombo("Show", showIndex, false);
   runCombo("Compare with", compareIndex, true);
   field("Load saved");
-  if (ImGui::BeginCombo("##load_saved", "Choose a file…"))
+  if (SandboxPageUI::beginCombo("##load_saved", "Choose a file…"))
   {
     std::vector<std::filesystem::path> files;
     std::error_code ignored;
@@ -803,7 +803,7 @@ void TechniqueBenchScene::renderResults(float width, float height)
     ImGui::TableNextColumn();
     ImGui::Dummy(ImVec2(0, 0));
     field("Result");
-    if (ImGui::BeginCombo(
+    if (SandboxPageUI::beginCombo(
             "##result",
             result == 0 ? "Success rate (%)"
                         : names[static_cast<std::size_t>(result - 1)].c_str()))
@@ -822,7 +822,7 @@ void TechniqueBenchScene::renderResults(float width, float height)
     ImGui::TableNextColumn();
     ImGui::Dummy(ImVec2(0, 0));
     field("Colour by");
-    if (ImGui::BeginCombo(
+    if (SandboxPageUI::beginCombo(
             "##colour_by",
             colourBy < 0
                 ? "test"

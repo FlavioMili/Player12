@@ -6,6 +6,14 @@
 #include "tools/match_sandbox_page_ui.h"
 namespace SandboxAnalysisUI
 {
+inline ImFont* regular()
+{
+  for (auto* font : ImGui::GetIO().Fonts->Fonts)
+    if (std::string_view(font->GetDebugName()).find("Manrope-Regular.ttf") !=
+        std::string_view::npos)
+      return font;
+  return ImGui::GetFont();
+}
 inline ImFont* bold()
 {
   for (auto* font : ImGui::GetIO().Fonts->Fonts)

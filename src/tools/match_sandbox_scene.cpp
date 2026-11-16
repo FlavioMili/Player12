@@ -40,6 +40,7 @@
 #include "tools/lab_fixtures.h"
 #include "tools/match_sandbox_bench_scene.h"
 #include "tools/match_sandbox_contact_view.h"
+#include "tools/match_sandbox_xg_map.h"
 #include "tools/match_sandbox_drill_scene.h"
 #include "tools/match_sandbox_measure_scene.h"
 #include "tools/match_sandbox_page_ui.h"
@@ -731,8 +732,12 @@ void MatchSandboxScene::renderVisualisers()
        "Run repeatable passing and shooting tests across techniques and "
        "conditions. "
        "Compare success rates over many seeds and against the previous run.",
-       "match_sandbox --bench-view\n--bench for headless tests", Page::DARK}};
-  for (int tool = 0; tool < 3; ++tool)
+       "match_sandbox --bench-view\n--bench for headless tests", Page::DARK},
+      {"##xg_map_page", "XG MAP",
+       "See the engine's xG over a match or training pitch of any size and goal, "
+       "and where the brain thinks a shot is worth it. Hover for every part.",
+       "Training ground plan, section 24", Page::LIGHT}};
+  for (int tool = 0; tool < 4; ++tool)
   {
     if (tool % columns != 0) ImGui::SameLine(0, 6 * scale);
     Page::beginCard(tools[tool].id, tools[tool].title, cardWidth,
@@ -744,8 +749,10 @@ void MatchSandboxScene::renderVisualisers()
         guiView->overlayScene(std::make_unique<ContactViewScene>(guiView));
       else if (tool == 1)
         guiView->overlayScene(std::make_unique<TrueViewScene>(guiView));
-      else
+      else if (tool == 2)
         guiView->overlayScene(std::make_unique<TechniqueBenchScene>(guiView));
+      else
+        guiView->overlayScene(std::make_unique<XgMapScene>(guiView));
     }
     ImGui::PushFont(setup_regular_font, 14);
     ImGui::PushTextWrapPos(0);
@@ -1002,30 +1009,14 @@ void MatchSandboxScene::renderMatchPanel(MatchEngine& engine, bool& paused)
                                                   : engine);
     ImGui::PopID();
   }
-  if (!match_debug || !recorder) return;
+  if (!recorder) return;
+  if (SandboxPageUI::button(match_debug ? "Show Touchline" : "Debugger", 0, Theme::scale(), sidebar_font))
+    match_debug = !match_debug;
   if (ImGui::CollapsingHeader("Review", ImGuiTreeNodeFlags_DefaultOpen))
   {
     ImGui::PushID("review");
     review.renderPanel(*recorder, &engine, &paused, &inspector);
     ImGui::PopID();
-  }
-  if (ImGui::CollapsingHeader("Debugger", ImGuiTreeNodeFlags_DefaultOpen))
-  {
-    // The log and the inspector's tabs scroll inside a box whose height
-    // the bottom edge drags.
-    const MatchEngine* inspected =
-        review.shownEngine() ? review.shownEngine() : &engine;
-    if (ImGui::BeginChild("##debug_feed", ImVec2(0.0f, 560.0f * Theme::scale()),
-                          ImGuiChildFlags_Borders | ImGuiChildFlags_ResizeY))
-      debugger.renderContents(*recorder, &engine, &paused, review.cursor(),
-                              inspected, inspector);
-    ImGui::EndChild();
-  }
-  // A clicked log row rewinds the review (and pauses the live match).
-  if (const auto tick = debugger.takeSeekRequest())
-  {
-    paused = true;
-    review.seek(*recorder, *tick);
   }
 }
 
@@ -1068,7 +1059,7 @@ void MatchSandboxScene::renderClubPicker(Side& side, bool home)
           : std::string("Choose a club");
   (void)home;
   ImGui::SetNextItemWidth(-1.0f);
-  if (!ImGui::BeginCombo("##club", preview.c_str(),
+  if (!SandboxPageUI::beginCombo("##club", preview.c_str(),
                          ImGuiComboFlags_HeightLarge))
     return;
   for (const auto& league : controller.getLeagues())
@@ -1137,7 +1128,7 @@ void MatchSandboxScene::renderFormation(Team& team)
   if (ImGui::IsItemHovered())
     ImGui::SetTooltip("Give every starter the role and duty that suit him.");
   ImGui::SetNextItemWidth(-1);
-  if (ImGui::BeginCombo("##shape", LOC("TACTIC_SHAPE_PRESETS")))
+  if (SandboxPageUI::beginCombo("##shape", LOC("TACTIC_SHAPE_PRESETS")))
   {
     for (std::size_t index = 0;
          index < static_cast<std::size_t>(PossessionShape::COUNT); ++index)
@@ -1243,7 +1234,7 @@ void MatchSandboxScene::renderSelection(Team& team)
   const auto playerPicker = [&](const Player& current, bool goalkeeper)
   {
     ImGui::SetNextItemWidth(-1.0f);
-    if (!ImGui::BeginCombo("##player", current.getName().c_str(),
+    if (!SandboxPageUI::beginCombo("##player", current.getName().c_str(),
                            ImGuiComboFlags_HeightLarge))
     {
       if (ImGui::IsItemHovered())
@@ -1281,7 +1272,7 @@ void MatchSandboxScene::renderSelection(Team& team)
     ImGui::TableNextColumn();
     ImGui::SetNextItemWidth(-1.0f);
     const TacticalRole keeperRole = strategy.getKeeperRole();
-    if (ImGui::BeginCombo("##role", LOC(Tactics::roleKey(keeperRole))))
+    if (SandboxPageUI::beginCombo("##role", LOC(Tactics::roleKey(keeperRole))))
     {
       for (const TacticalRole role : Tactics::rolesFor(RoleFamily::Goalkeeper))
         if (ImGui::Selectable(LOC(Tactics::roleKey(role)), role == keeperRole))
@@ -1323,7 +1314,7 @@ void MatchSandboxScene::renderSelection(Team& team)
 
     ImGui::TableNextColumn();
     ImGui::SetNextItemWidth(-1.0f);
-    if (ImGui::BeginCombo("##role", LOC(Tactics::roleKey(instruction.role))))
+    if (SandboxPageUI::beginCombo("##role", LOC(Tactics::roleKey(instruction.role))))
     {
       for (const TacticalRole role : Tactics::rolesFor(family))
       {
@@ -1345,7 +1336,7 @@ void MatchSandboxScene::renderSelection(Team& team)
     if (Tactics::hasDuty(family))
     {
       ImGui::SetNextItemWidth(-1.0f);
-      if (ImGui::BeginCombo("##duty", LOC(Tactics::dutyKey(instruction.duty))))
+      if (SandboxPageUI::beginCombo("##duty", LOC(Tactics::dutyKey(instruction.duty))))
       {
         for (std::size_t index = 0;
              index < static_cast<std::size_t>(RoleDuty::COUNT); ++index)
@@ -1749,33 +1740,27 @@ void MatchSandboxScene::kickOff()
   review.reset();
   inspector.reset();
   match_debug = debug_at_kick_off;
+  match_engine_tools = false;
   match_home = sides[HOME].team;
   match_away = sides[AWAY].team;
   sandbox.recorder = recorder.get();
   // In the match: Debug and True view buttons in its controls, their
   // sections in its side panel, and the moment and shapes on its pitch.
-  sandbox.on_controls = [this]
-  {
-    UI::sameLineIfFits(UI::buttonWidth("Debug") + UI::buttonWidth("True view") +
-                       ImGui::GetStyle().ItemSpacing.x);
-    if (UI::toggleButton("Debug", match_debug)) match_debug = !match_debug;
-    if (ImGui::IsItemHovered())
-      ImGui::SetTooltip(
-          "The review and the debugger in the side panel; the "
-          "pitch shows the moment under review, with the "
-          "inspector's overlays.");
-    ImGui::SameLine();
-    if (UI::toggleButton("True view", match_true_view))
-      match_true_view = !match_true_view;
-    if (ImGui::IsItemHovered())
-      ImGui::SetTooltip(
-          "The pitch in 3D with every player as the engine "
-          "models him; its settings in the side panel.");
-  };
   sandbox.on_side_panel = [this](MatchEngine& engine, bool& paused)
   { renderMatchPanel(engine, paused); };
-  sandbox.shown_engine = [this]() -> const MatchEngine*
-  { return match_debug ? review.shownEngine() : nullptr; };
+  sandbox.on_debug_panel = [this](MatchEngine& engine, bool& paused)
+  {
+    if (!recorder) return;
+    debugger.renderContents(*recorder, &engine, &paused, review.cursor(),
+                            review.shownEngine() ? review.shownEngine() : &engine, inspector);
+    if (const auto tick = debugger.takeSeekRequest())
+    { paused = true; review.seek(*recorder, *tick); }
+  };
+  sandbox.debugger_visible = [this] { return match_debug; };
+  sandbox.set_debugger = [this](bool value) { match_debug = value; };
+  sandbox.engine_tools_visible = [this](bool value) { match_engine_tools = value; };
+  sandbox.set_true_view = [this](bool value) { match_true_view = value; };
+  sandbox.shown_engine = [this]() -> const MatchEngine* { return review.shownEngine(); };
   sandbox.true_view = [this] { return match_true_view; };
   sandbox.on_view_overlay = [this](const IMatchRenderer& renderer,
                                    const MatchEngine& engine,
@@ -1791,7 +1776,7 @@ void MatchSandboxScene::kickOff()
                                 click.ctrl, ImVec2(click.x, click.y));
       if (picked != 0 && !click.ctrl) inspector.selected = picked;
     }
-    if (match_debug && recorder)
+    if ((match_debug || match_engine_tools) && recorder)
       inspector.drawOverlays(*recorder, engine, renderer,
                              click.clicked && !match_true_view);
   };

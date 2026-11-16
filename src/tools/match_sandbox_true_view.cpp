@@ -260,7 +260,7 @@ void TrueViewScene::renderPanel(float width)
                     scale, boldFont);
     field("Pose");
     int poseIndex = static_cast<int>(pose);
-    if (ImGui::Combo("##pose", &poseIndex, POSE_NAMES.data(),
+    if (SandboxPageUI::combo("##pose", &poseIndex, POSE_NAMES.data(),
                      static_cast<int>(POSE_NAMES.size())))
     {
       pose = static_cast<Pose>(poseIndex);
@@ -295,7 +295,7 @@ void TrueViewScene::renderPanel(float width)
                     scale, boldFont);
     field("Pick out");
     int techniqueIndex = static_cast<int>(technique);
-    if (ImGui::Combo("##technique", &techniqueIndex,
+    if (SandboxPageUI::combo("##technique", &techniqueIndex,
                      TrueView::TECHNIQUE_NAMES.data(),
                      static_cast<int>(TrueView::TECHNIQUE_NAMES.size())))
       technique = static_cast<TrueView::Technique>(techniqueIndex);
@@ -305,7 +305,7 @@ void TrueViewScene::renderPanel(float width)
       for (std::size_t kind = 0; kind < STRIKE_KIND_COUNT; ++kind)
         kinds[kind] = STRIKE_KIND_NAMES[kind].data();
       field("Strike");
-      ImGui::Combo("##strike", &strikeKind, kinds.data(),
+      SandboxPageUI::combo("##strike", &strikeKind, kinds.data(),
                    static_cast<int>(kinds.size()));
     }
     Page::endCard(scale);

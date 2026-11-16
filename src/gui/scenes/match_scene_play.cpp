@@ -207,8 +207,8 @@ MatchViewport MatchScene::playViewport2D(const MatchViewport& fitted,
     play_follow.y += (focus.y - play_follow.y) * blend;
   }
   MatchViewport zoomed = fitted;
-  zoomed.width = fitted.width * PLAY_ZOOM_2D;
-  zoomed.height = fitted.height * PLAY_ZOOM_2D;
+  zoomed.width = fitted.width * PLAY_ZOOM_2D * play_zoom_2d;
+  zoomed.height = fitted.height * PLAY_ZOOM_2D * play_zoom_2d;
   const float centreX = (viewMin.x + viewMax.x) * 0.5f;
   const float centreY = (viewMin.y + viewMax.y) * 0.5f;
   // Never further than the pitch's own stadium past an edge.
@@ -222,10 +222,12 @@ MatchViewport MatchScene::playViewport2D(const MatchViewport& fitted,
     return lowest > highest ? (low + high - span) * 0.5f
                             : std::clamp(origin, lowest, highest);
   };
-  zoomed.x =
-      place(centreX, zoomed.width, MatchPitch::matchSize().fractionX(play_follow.x), viewMin.x, viewMax.x, apron.x);
-  zoomed.y =
-      place(centreY, zoomed.height, MatchPitch::matchSize().fractionY(play_follow.y), viewMin.y, viewMax.y, apron.y);
+  zoomed.x = place(centreX, zoomed.width,
+                   MatchPitch::matchSize().fractionX(play_follow.x), viewMin.x,
+                   viewMax.x, apron.x);
+  zoomed.y = place(centreY, zoomed.height,
+                   MatchPitch::matchSize().fractionY(play_follow.y), viewMin.y,
+                   viewMax.y, apron.y);
   return zoomed;
 }
 
@@ -248,10 +250,12 @@ void MatchScene::renderPlayOverlay(const IMatchRenderer& renderer,
     constexpr float METRE_X = 1.0f / MatchTuning::Pitch::MATCH_LENGTH_METRES;
     constexpr float METRE_Y = 1.0f / MatchTuning::Pitch::MATCH_WIDTH_METRES;
     if (renderer.projectPitch(player.position, 0.0f, originX, originY) &&
-        renderer.projectPitch(PitchPoint{player.position.x + METRE_X, player.position.y},
-                              0.0f, lengthX, lengthY) &&
-        renderer.projectPitch(PitchPoint{player.position.x, player.position.y + METRE_Y},
-                              0.0f, widthX, widthY))
+        renderer.projectPitch(
+            PitchPoint{player.position.x + METRE_X, player.position.y}, 0.0f,
+            lengthX, lengthY) &&
+        renderer.projectPitch(
+            PitchPoint{player.position.x, player.position.y + METRE_Y}, 0.0f,
+            widthX, widthY))
     {
       play_basis = {lengthX - originX, lengthY - originY, widthX - originX,
                     widthY - originY};
@@ -336,18 +340,22 @@ void MatchScene::renderPlayControlsHelp()
 void MatchScene::renderPlayConfirm()
 {
   if (!play_confirm) return;
+  const bool embedded = sandbox.has_value();
   constexpr const char* ID = "###play_confirm";
-  if (!ImGui::IsPopupOpen(ID)) ImGui::OpenPopup(ID);
-  const ImGuiViewport* viewport = ImGui::GetMainViewport();
-  ImGui::SetNextWindowPos(viewport->GetCenter(), ImGuiCond_Always,
-                          ImVec2(0.5f, 0.5f));
-  ImGui::SetNextWindowSize(
-      ImVec2(std::min(scaled(560.0f), viewport->WorkSize.x * 0.92f), 0.0f));
-  const std::string title = std::string(LOC("PLAY_CONFIRM_TITLE")) + ID;
-  if (!ImGui::BeginPopupModal(
-          title.c_str(), nullptr,
-          ImGuiWindowFlags_NoSavedSettings | ImGuiWindowFlags_NoResize))
-    return;
+  if (!embedded)
+  {
+    if (!ImGui::IsPopupOpen(ID)) ImGui::OpenPopup(ID);
+    const ImGuiViewport* viewport = ImGui::GetMainViewport();
+    ImGui::SetNextWindowPos(viewport->GetCenter(), ImGuiCond_Always,
+                            ImVec2(0.5f, 0.5f));
+    ImGui::SetNextWindowSize(
+        ImVec2(std::min(scaled(560.0f), viewport->WorkSize.x * 0.92f), 0.0f));
+    const std::string title = std::string(LOC("PLAY_CONFIRM_TITLE")) + ID;
+    if (!ImGui::BeginPopupModal(
+            title.c_str(), nullptr,
+            ImGuiWindowFlags_NoSavedSettings | ImGuiWindowFlags_NoResize))
+      return;
+  }
   const std::string& club = *managed_is_home ? home_name : away_name;
   ImGui::TextWrapped(
       "%s", fmt::sprintf(LOC("PLAY_CONFIRM_TEXT"), club.c_str()).c_str());
@@ -356,21 +364,22 @@ void MatchScene::renderPlayConfirm()
   ImGui::Spacing();
   if (UI::primaryButton(LOC("PLAY_START")))
   {
-    ImGui::CloseCurrentPopup();
+    if (!embedded) ImGui::CloseCurrentPopup();
     startPlaying();
   }
   ImGui::SameLine();
   if (UI::secondaryButton(LOC("PLAY_CANCEL")) ||
       ImGui::IsKeyPressed(ImGuiKey_Escape, false))
   {
-    ImGui::CloseCurrentPopup();
+    if (!embedded) ImGui::CloseCurrentPopup();
     play_confirm = false;
   }
-  ImGui::EndPopup();
+  if (!embedded) ImGui::EndPopup();
 }
 
 void MatchScene::renderPlayMenu()
 {
+  const bool embedded = sandbox.has_value();
   // A dialog chosen from the menu opens once the menu has gone.
   if (!play_menu && play_menu_next != PlayMenuNext::NONE &&
       !ImGui::IsPopupOpen("", ImGuiPopupFlags_AnyPopupId))
@@ -386,28 +395,31 @@ void MatchScene::renderPlayMenu()
   {
     // Closed from outside the popup (full time, hand-back): close it in
     // ImGui too, so it does not block the other dialogs.
-    if (ImGui::IsPopupOpen(ID) &&
+    if (!embedded && ImGui::IsPopupOpen(ID) &&
         ImGui::BeginPopupModal(ID, nullptr, ImGuiWindowFlags_NoSavedSettings))
     {
-      ImGui::CloseCurrentPopup();
-      ImGui::EndPopup();
+      if (!embedded) ImGui::CloseCurrentPopup();
+      if (!embedded) ImGui::EndPopup();
     }
     return;
   }
-  if (!ImGui::IsPopupOpen(ID)) ImGui::OpenPopup(ID);
-  const ImGuiViewport* viewport = ImGui::GetMainViewport();
-  ImGui::SetNextWindowPos(viewport->GetCenter(), ImGuiCond_Always,
-                          ImVec2(0.5f, 0.5f));
-  ImGui::SetNextWindowSize(
-      ImVec2(std::min(scaled(560.0f), viewport->WorkSize.x * 0.92f), 0.0f));
-  const std::string title = std::string(LOC("PLAY_MENU_TITLE")) + ID;
-  if (!ImGui::BeginPopupModal(
-          title.c_str(), nullptr,
-          ImGuiWindowFlags_NoSavedSettings | ImGuiWindowFlags_NoResize))
-    return;
-  const auto close = [this]
+  if (!embedded)
   {
-    ImGui::CloseCurrentPopup();
+    if (!ImGui::IsPopupOpen(ID)) ImGui::OpenPopup(ID);
+    const ImGuiViewport* viewport = ImGui::GetMainViewport();
+    ImGui::SetNextWindowPos(viewport->GetCenter(), ImGuiCond_Always,
+                            ImVec2(0.5f, 0.5f));
+    ImGui::SetNextWindowSize(
+        ImVec2(std::min(scaled(560.0f), viewport->WorkSize.x * 0.92f), 0.0f));
+    const std::string title = std::string(LOC("PLAY_MENU_TITLE")) + ID;
+    if (!ImGui::BeginPopupModal(
+            title.c_str(), nullptr,
+            ImGuiWindowFlags_NoSavedSettings | ImGuiWindowFlags_NoResize))
+      return;
+  }
+  const auto close = [this, embedded]
+  {
+    if (!embedded) ImGui::CloseCurrentPopup();
     closePlayMenu();
   };
   if (UI::primaryButton(LOC("MATCH_RESUME")) || play_menu_resume)
@@ -415,19 +427,28 @@ void MatchScene::renderPlayMenu()
     close();
     is_paused = false;
   }
-  ImGui::SameLine();
+  if (embedded)
+    UI::sameLineIfFits(scaled(130.0f));
+  else
+    ImGui::SameLine();
   if (UI::secondaryButton(LOC("MATCH_TACTICS_TITLE")))
   {
     close();
     play_menu_next = PlayMenuNext::TACTICS;
   }
-  ImGui::SameLine();
+  if (embedded)
+    UI::sameLineIfFits(scaled(130.0f));
+  else
+    ImGui::SameLine();
   if (UI::secondaryButton(LOC("SUBSTITUTION_TITLE")))
   {
     close();
     play_menu_next = PlayMenuNext::SUBSTITUTIONS;
   }
-  ImGui::SameLine();
+  if (embedded)
+    UI::sameLineIfFits(scaled(130.0f));
+  else
+    ImGui::SameLine();
   if (UI::secondaryButton(LOC("MATCH_HAND_BACK")))
   {
     close();
@@ -445,7 +466,12 @@ void MatchScene::renderPlayMenu()
     ImGui::TextUnformatted(label);
     for (int index = 0; index < 3; ++index)
     {
-      ImGui::SameLine();
+      if (!embedded)
+        ImGui::SameLine();
+      else if (index > 0)
+        UI::sameLineIfFits(
+            ImGui::CalcTextSize(options[static_cast<std::size_t>(index)]).x +
+            scaled(32));
       ImGui::PushID(label);
       ImGui::PushID(index);
       if (ImGui::RadioButton(options[static_cast<std::size_t>(index)],
@@ -483,5 +509,5 @@ void MatchScene::renderPlayMenu()
 
   ImGui::SeparatorText(LOC("PLAY_CONTROLS"));
   renderPlayControlsHelp();
-  ImGui::EndPopup();
+  if (!embedded) ImGui::EndPopup();
 }

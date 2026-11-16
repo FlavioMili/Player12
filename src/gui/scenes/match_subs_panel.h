@@ -42,13 +42,17 @@ class MatchSubsPanel
    * @brief Draws the dialog while it is shown.
    * @return False once it closed (Close, Escape or another dialog).
    */
-  bool render(const TouchlineContext& context);
+  bool render(const TouchlineContext& context, bool embedded = false);
 
   /** @brief Makes the confirmed plan once play stops (every frame). */
   void update(const TouchlineContext& context);
 
   /** @brief Next render() opens the popup again (after it was hidden). */
-  void resetPopup() { popup_opened = false; }
+  void resetPopup()
+  {
+    popup_opened = false;
+    close_requested = false;
+  }
 
   /** @brief Closes the dialog on its next frame. */
   void requestClose() { close_requested = true; }

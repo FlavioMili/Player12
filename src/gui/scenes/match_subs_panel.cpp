@@ -290,33 +290,38 @@ void MatchSubsPanel::collectMarkers(const TouchlineContext& context)
   }
 }
 
-bool MatchSubsPanel::render(const TouchlineContext& context)
+bool MatchSubsPanel::render(const TouchlineContext& context, bool embedded)
 {
   std::array<char, 128> title{};
   std::snprintf(title.data(), title.size(), "%s%s", LOC("SUBSTITUTION_TITLE"),
                 WINDOW_ID);
-  if (!Touchline::beginDialog(title.data(), popup_opened, DIALOG_WIDTH,
-                              DIALOG_HEIGHT))
+  if (!embedded && !Touchline::beginDialog(title.data(), popup_opened,
+                                           DIALOG_WIDTH, DIALOG_HEIGHT))
   {
     close_requested = false;
     return false;
   }
 
+  if (embedded) popup_opened = true;
   const auto team = context.controller.getTeamById(context.team_id);
   if (!team || close_requested || ImGui::IsKeyPressed(ImGuiKey_Escape, false))
   {
     close_requested = false;
     popup_opened = false;
     resetSelection();
-    ImGui::CloseCurrentPopup();
-    ImGui::EndPopup();
+    if (!embedded) ImGui::CloseCurrentPopup();
+    if (!embedded) ImGui::EndPopup();
     return false;
   }
   const Lineup& lineup = team->get().getLineup();
   collectMarkers(context);
 
   ImGui::BeginChild("##substitution_body",
-                    ImVec2(0.0f, -Touchline::footerHeight()));
+                    ImVec2(0.0f, -Touchline::footerHeight() -
+                                     (embedded ? scaled(24.0f) : 0.0f)),
+                    ImGuiChildFlags_None,
+                    embedded ? ImGuiWindowFlags_AlwaysVerticalScrollbar
+                             : ImGuiWindowFlags_None);
   renderUsage(context);
   const float width = ImGui::GetContentRegionAvail().x;
   if (width >= scaled(TWO_COLUMN_WIDTH))
@@ -355,9 +360,9 @@ bool MatchSubsPanel::render(const TouchlineContext& context)
   if (!open)
   {
     resetSelection();
-    ImGui::CloseCurrentPopup();
+    if (!embedded) ImGui::CloseCurrentPopup();
   }
-  ImGui::EndPopup();
+  if (!embedded) ImGui::EndPopup();
   return open;
 }
 

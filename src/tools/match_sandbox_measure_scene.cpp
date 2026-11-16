@@ -250,7 +250,7 @@ void DrillMeasureScene::renderAxis(const char* label, AxisSetup& axis,
           ? parameters[static_cast<std::size_t>(axis.parameter)].name
           : "(none)";
   field("Setting");
-  if (ImGui::BeginCombo("##setting", current))
+  if (SandboxPageUI::beginCombo("##setting", current))
   {
     if (optional && ImGui::Selectable("(none)", axis.parameter < 0))
       axis.parameter = -1;
@@ -435,7 +435,7 @@ void DrillMeasureScene::renderResults(float width, float height)
   ImGui::TextUnformatted("Result");
   ImGui::SetNextItemWidth(
       std::min(440 * scale, ImGui::GetContentRegionAvail().x));
-  if (ImGui::BeginCombo("##metric", names[metric].c_str()))
+  if (SandboxPageUI::beginCombo("##metric", names[metric].c_str()))
   {
     for (std::size_t index = 0; index < names.size(); ++index)
       if (ImGui::Selectable(names[index].c_str(), int(index) == metric))

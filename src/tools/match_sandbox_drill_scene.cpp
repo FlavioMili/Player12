@@ -272,7 +272,7 @@ void DrillScene::renderControls(float width)
   ImGui::SameLine();
   ImGui::SetNextItemWidth(90 * scale);
   const std::string label = std::format("{:g}x", speed);
-  if (ImGui::BeginCombo("##speed", label.c_str()))
+  if (SandboxPageUI::beginCombo("##speed", label.c_str()))
   {
     for (const float option : SPEEDS)
       if (ImGui::Selectable(std::format("{:g}x", option).c_str(),
@@ -301,7 +301,7 @@ void DrillScene::renderControls(float width)
       if (mode == cameraMode) current = label;
     next(240 * scale);
     ImGui::SetNextItemWidth(180 * scale);
-    if (ImGui::BeginCombo("Camera", current))
+    if (SandboxPageUI::beginCombo("Camera", current))
     {
       for (const auto& [mode, label] : CAMERAS)
         if (ImGui::Selectable(label, mode == cameraMode)) cameraMode = mode;

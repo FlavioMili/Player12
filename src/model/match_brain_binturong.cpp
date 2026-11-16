@@ -3303,46 +3303,22 @@ MatchEngine::BallAction MatchEngine::chooseBallActionBinturong(
     // The "have-a-go" inclination only matters from a credible shooting
     // range: it fades out completely for absurd-distance attempts, so the
     // scored decision can never invent a nonsensical long shot.
-    const float rangeEligibility =
-        std::clamp((shotXG - MatchTuning::Decision::SHOT_ELIGIBILITY_FLOOR) /
-                       MatchTuning::Decision::SHOT_ELIGIBILITY_RANGE,
-                   0.0f, 1.0f);
-    const float carrierDepth =
-        carrier.isHomeTeam ? pitch.fractionX(carrier.position) : 1.0f - pitch.fractionX(carrier.position);
-    const float finalThirdBonus =
-        carrierDepth >= MatchTuning::Rules::HOME_FINAL_THIRD_START
-            ? MatchTuning::Decision::FINAL_THIRD_SHOT_BONUS
-            : 0.0f;
-    shotScore = (shotXG - MatchTuning::Decision::BASE_SHOT_THRESHOLD) *
-                    MatchTuning::Decision::SHOT_SCORE_SCALE +
-                MatchTuning::Decision::SHOT_BASE_INCLINATION *
-                    (0.6f + opennessAhead) * rangeEligibility +
-                finalThirdBonus +
-                carrier.shooting * MatchTuning::Decision::SHOT_SKILL_BONUS -
-                pressure * MatchTuning::Decision::SHOT_PRESSURE_PENALTY +
-                shoutShotBiasBinturong(carrier.isHomeTeam) * rangeEligibility;
-    note(shotTerms, "expected goals above the threshold", TermSource::SITUATION,
-         (shotXG - MatchTuning::Decision::BASE_SHOT_THRESHOLD) *
-             MatchTuning::Decision::SHOT_SCORE_SCALE);
-    note(shotTerms, "have-a-go inclination (space ahead, range)",
-         TermSource::SITUATION,
-         MatchTuning::Decision::SHOT_BASE_INCLINATION * (0.6f + opennessAhead) *
-             rangeEligibility);
-    note(shotTerms, "final-third bonus", TermSource::LOCATION, finalThirdBonus);
-    note(shotTerms, "Shooting", TermSource::ATTRIBUTE,
-         carrier.shooting * MatchTuning::Decision::SHOT_SKILL_BONUS);
-    note(shotTerms, "pressure", TermSource::SITUATION,
-         -pressure * MatchTuning::Decision::SHOT_PRESSURE_PENALTY);
-    note(shotTerms, "touchline shout", TermSource::MORALE,
-         shoutShotBiasBinturong(carrier.isHomeTeam) * rangeEligibility);
-    if (carrierDepth >= MatchTuning::Rules::HOME_FINAL_THIRD_START &&
-        std::abs(pitch.atY(MatchTuning::Pitch::CENTRE) - carrier.position.y) >=
-            MatchTuning::Decision::WIDE_SHOT_WIDTH_METRES)
-    {
+    // The core of the score (shared with the xG map: shotScoreParts).
+    const ShotScoreParts core =
+        shotScoreParts(pitch, carrier.position, carrier.isHomeTeam, shotXG, opennessAhead,
+                       carrier.shooting, pressure, shoutShotBiasBinturong(carrier.isHomeTeam));
+    const float rangeEligibility = core.rangeEligibility;
+    shotScore = core.total;
+    note(shotTerms, "expected goals above the threshold", TermSource::SITUATION, core.xgTerm);
+    note(shotTerms, "have-a-go inclination (space ahead, range)", TermSource::SITUATION,
+         core.haveAGo);
+    note(shotTerms, "final-third bonus", TermSource::LOCATION, core.finalThird);
+    note(shotTerms, "Shooting", TermSource::ATTRIBUTE, core.skill);
+    note(shotTerms, "pressure", TermSource::SITUATION, -core.pressure);
+    note(shotTerms, "touchline shout", TermSource::MORALE, core.shout);
+    if (core.wideFactor != 1.0f)
       note(shotTerms, "wide-angle discount", TermSource::LOCATION,
-           shotScore * (MatchTuning::Decision::WIDE_SHOT_DISCOUNT - 1.0f));
-      shotScore *= MatchTuning::Decision::WIDE_SHOT_DISCOUNT;
-    }
+           core.beforeWide * (core.wideFactor - 1.0f));
     // A wide forward who has cut inside is looking for his shot.
     if (cutsInsideBinturong(carrier))
     {
@@ -5053,4 +5029,39 @@ float MatchEngine::chooseGetUpBinturong(const MatchPlayer& player)
     return gingerly;
   }
   return 0.0f;
+}
+
+MatchEngine::ShotScoreParts MatchEngine::shotScoreParts(const MatchPitch& pitch, PitchPoint at,
+                                                        bool attackingRight, float shotXG,
+                                                        float opennessAhead, float shooting,
+                                                        float pressure, float shoutBias)
+{
+  using D = MatchTuning::Decision;
+  ShotScoreParts parts;
+  // The "have-a-go" inclination only matters from a credible shooting
+  // range: it fades out completely for absurd-distance attempts, so the
+  // scored decision can never invent a nonsensical long shot.
+  parts.rangeEligibility =
+      std::clamp((shotXG - D::SHOT_ELIGIBILITY_FLOOR) / D::SHOT_ELIGIBILITY_RANGE, 0.0f, 1.0f);
+  const float carrierDepth =
+      attackingRight ? pitch.fractionX(at) : 1.0f - pitch.fractionX(at);
+  parts.finalThird = carrierDepth >= MatchTuning::Rules::HOME_FINAL_THIRD_START
+                         ? D::FINAL_THIRD_SHOT_BONUS
+                         : 0.0f;
+  parts.xgTerm = (shotXG - D::BASE_SHOT_THRESHOLD) * D::SHOT_SCORE_SCALE;
+  parts.haveAGo = D::SHOT_BASE_INCLINATION * (0.6f + opennessAhead) * parts.rangeEligibility;
+  parts.skill = shooting * D::SHOT_SKILL_BONUS;
+  parts.pressure = pressure * D::SHOT_PRESSURE_PENALTY;
+  parts.shout = shoutBias * parts.rangeEligibility;
+  // Summed in the brain's order.
+  parts.total = parts.xgTerm + parts.haveAGo + parts.finalThird + parts.skill - parts.pressure +
+                parts.shout;
+  parts.beforeWide = parts.total;
+  if (carrierDepth >= MatchTuning::Rules::HOME_FINAL_THIRD_START &&
+      std::abs(pitch.atY(MatchTuning::Pitch::CENTRE) - at.y) >= D::WIDE_SHOT_WIDTH_METRES)
+  {
+    parts.wideFactor = D::WIDE_SHOT_DISCOUNT;
+    parts.total *= D::WIDE_SHOT_DISCOUNT;
+  }
+  return parts;
 }

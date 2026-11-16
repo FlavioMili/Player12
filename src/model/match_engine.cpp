@@ -7059,54 +7059,79 @@ float MatchEngine::passingLaneRisk(const MatchPlayer& passer,
   return std::clamp(1.0f - combinedSafety, 0.0f, 1.0f);
 }
 
-float MatchEngine::estimateShotXG(const MatchPlayer& shooter) const
+MatchEngine::XgBreakdown MatchEngine::xgBreakdown(const MatchPitch& pitch, PitchPoint at,
+                                                  bool attackingRight, float shooting,
+                                                  float nearestOpponentMetres)
 {
   // Logistic expected-goals model on distance, visible goal angle, distance
   // to the goal line and lateral offset, scaled by technique and pressure.
   using S = MatchTuning::Shooting;
+  XgBreakdown parts;
   // No goal on the pitch (a training pitch without goals): no chance at all,
   // so nobody shoots at a bare wall (training ground plan section 20).
+  if (!pitch.goal.present())
+  {
+    parts.goal = false;
+    parts.xg = 0.0f;
+    return parts;
+  }
+  const float goalX = pitch.atX(attackingRight ? 1.0f : 0.0f);
+  parts.lineMetres = std::abs(goalX - at.x);
+  parts.lateralMetres = std::abs(pitch.atY(MatchTuning::Pitch::CENTRE) - at.y);
+  parts.metres = std::sqrt(parts.lineMetres * parts.lineMetres +
+                           parts.lateralMetres * parts.lateralMetres);
+  // The fitted surface is only valid within shooting range.
+  if (parts.metres > S::XG_MAX_DISTANCE_METRES)
+  {
+    parts.inRange = false;
+    parts.xg = S::MIN_OPEN_PLAY_XG;
+    return parts;
+  }
+
+  const Vector2F toTop =
+      Vector2F{goalX - at.x, pitch.atY(MatchTuning::Pitch::CENTRE) - pitch.goal.halfWidth - at.y};
+  const Vector2F toBottom =
+      Vector2F{goalX - at.x, pitch.atY(MatchTuning::Pitch::CENTRE) + pitch.goal.halfWidth - at.y};
+  const float denominator = length(toTop) * length(toBottom);
+  const float cosine =
+      denominator > EPSILON
+          ? std::clamp((toTop.x * toBottom.x + toTop.y * toBottom.y) / denominator, -1.0f,
+                       1.0f)
+          : 1.0f;
+  parts.angle = std::acos(cosine);
+  const float lineMetres = parts.lineMetres;
+  const float lateralMetres = parts.lateralMetres;
+  const float angle = parts.angle;
+  parts.logit = S::XG_INTERCEPT + S::XG_ANGLE * angle + S::XG_DISTANCE * parts.metres +
+                S::XG_LINE * lineMetres + S::XG_LATERAL * lateralMetres +
+                S::XG_LINE_SQUARED * lineMetres * lineMetres +
+                S::XG_LATERAL_SQUARED * lateralMetres * lateralMetres +
+                S::XG_ANGLE_LINE * angle * lineMetres;
+  parts.location = 1.0f / (1.0f + std::exp(-parts.logit));
+  parts.pressure = std::clamp(
+      (S::PRESSURE_RADIUS_METRES - nearestOpponentMetres) / S::PRESSURE_RADIUS_METRES, 0.0f,
+      1.0f);
+  parts.skillFactor = S::BASE_SKILL_FACTOR + shooting * S::SHOOTING_SKILL_FACTOR;
+  parts.pressureFactor = 1.0f - parts.pressure * S::PRESSURE_PENALTY;
+  parts.unclamped = parts.location * parts.skillFactor * parts.pressureFactor;
+  parts.xg = std::clamp(parts.unclamped, S::MIN_OPEN_PLAY_XG, S::MAX_OPEN_PLAY_XG);
+  return parts;
+}
+
+float MatchEngine::estimateShotXG(const MatchPlayer& shooter) const
+{
+  // Out of range or without a goal, the opponents don't matter: they are
+  // only looked at within it (as before the breakdown was split out).
   if (!pitch.goal.present()) return 0.0f;
   const float goalX = pitch.atX(shooter.isHomeTeam ? 1.0f : 0.0f);
   const float lineMetres = std::abs(goalX - shooter.position.x);
   const float lateralMetres = std::abs(pitch.atY(MatchTuning::Pitch::CENTRE) - shooter.position.y);
-  const float metres =
-      std::sqrt(lineMetres * lineMetres + lateralMetres * lateralMetres);
-  // The fitted surface is only valid within shooting range.
-  if (metres > S::XG_MAX_DISTANCE_METRES) return S::MIN_OPEN_PLAY_XG;
-
-  const Vector2F toTop =
-      Vector2F{goalX - shooter.position.x,
-                pitch.atY(MatchTuning::Pitch::CENTRE) - pitch.goal.halfWidth -
-                    shooter.position.y};
-  const Vector2F toBottom =
-      Vector2F{goalX - shooter.position.x,
-                pitch.atY(MatchTuning::Pitch::CENTRE) + pitch.goal.halfWidth -
-                    shooter.position.y};
-  const float denominator = length(toTop) * length(toBottom);
-  const float cosine =
-      denominator > EPSILON
-          ? std::clamp(
-                (toTop.x * toBottom.x + toTop.y * toBottom.y) / denominator,
-                -1.0f, 1.0f)
-          : 1.0f;
-  const float angle = std::acos(cosine);
-  const float logit = S::XG_INTERCEPT + S::XG_ANGLE * angle +
-                      S::XG_DISTANCE * metres + S::XG_LINE * lineMetres +
-                      S::XG_LATERAL * lateralMetres +
-                      S::XG_LINE_SQUARED * lineMetres * lineMetres +
-                      S::XG_LATERAL_SQUARED * lateralMetres * lateralMetres +
-                      S::XG_ANGLE_LINE * angle * lineMetres;
-  const float location = 1.0f / (1.0f + std::exp(-logit));
-  const float pressure = std::clamp(
-      (S::PRESSURE_RADIUS_METRES - nearestOpponentDistance(shooter)) /
-          S::PRESSURE_RADIUS_METRES,
-      0.0f, 1.0f);
-  return std::clamp(
-      location *
-          (S::BASE_SKILL_FACTOR + shooter.shooting * S::SHOOTING_SKILL_FACTOR) *
-          (1.0f - pressure * S::PRESSURE_PENALTY),
-      S::MIN_OPEN_PLAY_XG, S::MAX_OPEN_PLAY_XG);
+  if (std::sqrt(lineMetres * lineMetres + lateralMetres * lateralMetres) >
+      MatchTuning::Shooting::XG_MAX_DISTANCE_METRES)
+    return MatchTuning::Shooting::MIN_OPEN_PLAY_XG;
+  return xgBreakdown(pitch, shooter.position, shooter.isHomeTeam, shooter.shooting,
+                     nearestOpponentDistance(shooter))
+      .xg;
 }
 
 float MatchEngine::offsideLine(bool attackingHome) const

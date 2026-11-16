@@ -371,7 +371,7 @@ void ContactViewScene::renderPanel(float width)
   for (std::size_t kind = 0; kind < STRIKE_KIND_COUNT; ++kind)
     contacts[kind + 1] = STRIKE_KIND_NAMES[kind].data();
   field("Contact");
-  if (ImGui::Combo("##contact", &inputs.contact, contacts.data(),
+  if (SandboxPageUI::combo("##contact", &inputs.contact, contacts.data(),
                    static_cast<int>(contacts.size())))
   {
     inputs.intendedSpeed =
@@ -385,7 +385,7 @@ void ContactViewScene::renderPanel(float width)
     viewNames[index + 4] =
         "Condition: " + std::string(CONTACT_FACTOR_LABELS[index]);
   field("Colour by");
-  if (ImGui::BeginCombo("##colour_by",
+  if (SandboxPageUI::beginCombo("##colour_by",
                         viewNames[static_cast<std::size_t>(view)].c_str()))
   {
     for (std::size_t index = 0; index < viewNames.size(); ++index)
@@ -478,7 +478,7 @@ void ContactViewScene::renderPanel(float width)
       int foot = inputs.rightFooted ? 0 : 1;
       constexpr std::array<const char*, 2> FEET{"Right", "Left"};
       nextField("Stronger foot");
-      if (ImGui::Combo("##foot", &foot, FEET.data(), 2))
+      if (SandboxPageUI::combo("##foot", &foot, FEET.data(), 2))
         inputs.rightFooted = foot == 0;
       slider("His speed (m/s)", &inputs.ownSpeed, 0.0f, 10.0f, "%.1f");
       slider("Running to (°)", &inputs.ownDirection, 0.0f, 360.0f, "%.0f");
@@ -509,7 +509,7 @@ void ContactViewScene::renderPanel(float width)
         inputs.probe = ImVec2(unit.x * gap, unit.y * gap);
       }
       nextField("Expected?");
-      if (ImGui::BeginCombo(
+      if (SandboxPageUI::beginCombo(
               "##expected",
               isTouch()
                   ? EXPECTATIONS[static_cast<std::size_t>(inputs.expectation)]

@@ -3064,6 +3064,61 @@ class MatchEngine
    * replayed. */
   void feedBall(PitchPoint from, Vector2F velocity, float lift,
                 PlayerID receiverId);
+  /** The parts of a shot's xG (training ground plan section 24, the xG
+   * map): the location model's inputs (metres from the goal line and from
+   * the middle, straight distance, the visible angle in radians), its fitted
+   * value, the skill and pressure factors, and the result before and after
+   * its open-play caps. `goal` false: the pitch has none (xG 0); `inRange`
+   * false: beyond the fitted range (the floor). */
+  struct XgBreakdown
+  {
+    bool goal = true;
+    bool inRange = true;
+    float lineMetres = 0.0f;
+    float lateralMetres = 0.0f;
+    float metres = 0.0f;
+    float angle = 0.0f;
+    float logit = 0.0f;
+    float location = 0.0f;
+    float skillFactor = 1.0f;
+    float pressure = 0.0f;
+    float pressureFactor = 1.0f;
+    float unclamped = 0.0f;
+    float xg = 0.0f;
+  };
+  /** A shot's xG from `at` on `pitch`, attacking the goal at its far end
+   * (`attackingRight`) or near end, for a shooter with this Shooting (0-1)
+   * and his nearest opponent this far away: the estimate the brains use
+   * (estimateShotXG), in its parts. */
+  [[nodiscard]] static XgBreakdown xgBreakdown(const MatchPitch& pitch, PitchPoint at,
+                                               bool attackingRight, float shooting,
+                                               float nearestOpponentMetres);
+
+  /** The core of the Binturong brain's shot score (section 24, the xG
+   * map): xG above its threshold, the have-a-go inclination (space ahead,
+   * faded in with range), the final-third bonus, Shooting, pressure, a
+   * shout, and the wide-angle discount, as the brain sums them. The brain
+   * then adds its role, cutting-inside and other terms. */
+  struct ShotScoreParts
+  {
+    float xgTerm = 0.0f;
+    float haveAGo = 0.0f;
+    float finalThird = 0.0f;
+    float skill = 0.0f;
+    float pressure = 0.0f;
+    float shout = 0.0f;
+    float rangeEligibility = 0.0f;
+    /** The score before the wide-angle discount, and that discount (1 when
+     * not wide). */
+    float beforeWide = 0.0f;
+    float wideFactor = 1.0f;
+    float total = 0.0f;
+  };
+  [[nodiscard]] static ShotScoreParts shotScoreParts(const MatchPitch& pitch, PitchPoint at,
+                                                     bool attackingRight, float shotXG,
+                                                     float opennessAhead, float shooting,
+                                                     float pressure, float shoutBias);
+
   /** Drills on a serving pitch (training ground plan section 22): right
    * after startDrill, play waits for the coach's serve to `home`'s side
    * (the pitch's serve settings pick the side and player), after the

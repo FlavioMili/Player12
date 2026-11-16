@@ -59,6 +59,9 @@ MatchViewport computeMatchViewport(float topLeftX, float topLeftY,
  * and the touchlines (y), in pixels. */
 ImVec2 stadiumApron2D(const MatchViewport& viewport);
 
+/** Width / height of the complete pitch and visible stadium surround. */
+float stadiumAspectRatio2D();
+
 /** The 2D pitch fitted, with its stadium round it, into the available area
  * and centred in it. */
 MatchViewport computeMatchViewportWithStadium(float topLeftX, float topLeftY,

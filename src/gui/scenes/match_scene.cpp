@@ -400,6 +400,7 @@ SceneID MatchScene::getID() const { return SceneID::MATCH; }
 
 void MatchScene::onEnter()
 {
+  if (sandbox) { loadSandboxFonts(); team_talk.setIsolated(true); }
   const auto startedAt = std::chrono::steady_clock::now();
   GameController& controller = guiView->getController();
   auto home_opt = controller.getTeamById(home_team_id);
@@ -613,6 +614,7 @@ void MatchScene::startMatch()
   setHighlightsOnly(lastHighlightsOnly);
   if (!audio) audio = std::make_unique<MatchAudio>();
   match_finished = false;
+  if (sandbox) team_talk.prepareForMatch(controller, *engine, home_team_id, away_team_id);
 }
 
 void MatchScene::setPlaybackSpeed(float speed)
@@ -678,6 +680,7 @@ void MatchScene::showSubstitutions(bool show)
   if (show == show_substitutions) return;
   if (show)
   {
+    if (sandbox && (team_talk.isOpen() || play_confirm || play_menu)) return;
     // Never over another dialog (the team talk); it can replace tactics.
     const bool otherDialog =
         !show_tactics && ImGui::IsPopupOpen("", ImGuiPopupFlags_AnyPopupId);
@@ -695,7 +698,8 @@ void MatchScene::showSubstitutions(bool show)
     show_substitutions = true;
     return;
   }
-  subs_panel.requestClose();
+  if (sandbox) { show_substitutions = false; subs_panel.resetPopup(); dialogClosed(); }
+  else subs_panel.requestClose();
 }
 
 void MatchScene::showTactics(bool show)
@@ -703,6 +707,7 @@ void MatchScene::showTactics(bool show)
   if (show == show_tactics) return;
   if (show)
   {
+    if (sandbox && (team_talk.isOpen() || play_confirm || play_menu)) return;
     const bool otherDialog = !show_substitutions &&
                              ImGui::IsPopupOpen("", ImGuiPopupFlags_AnyPopupId);
     if (!touchline() || match_finished || otherDialog) return;
@@ -718,7 +723,8 @@ void MatchScene::showTactics(bool show)
     show_tactics = true;
     return;
   }
-  tactics_panel.requestClose();
+  if (sandbox) { show_tactics = false; tactics_panel.resetPopup(); dialogClosed(); }
+  else tactics_panel.requestClose();
 }
 
 void MatchScene::dialogClosed()
@@ -815,6 +821,7 @@ void MatchScene::update(float deltaTime)
     }
     return;
   }
+  if (sandbox && engine) team_talk.prepareForMatch(guiView->getController(), *engine, home_team_id, away_team_id);
   bool skipped = false;
   // A break reached outside this update (e.g. the engine moved on by
   // itself) is caught before any playback can skip across it.
@@ -1083,6 +1090,7 @@ void MatchScene::exportDebugSnapshot()
 
 void MatchScene::render()
 {
+  if (sandbox) { renderSandboxMatch(); return; }
   const ImGuiViewport* mainViewport = ImGui::GetMainViewport();
   ImGui::SetNextWindowPos(mainViewport->WorkPos);
   ImGui::SetNextWindowSize(mainViewport->WorkSize);
@@ -1910,11 +1918,17 @@ void MatchScene::renderPitch(ImVec2 size)
     viewport = computeMatchViewportWithStadium(viewOrigin.x, viewOrigin.y,
                                                std::max(1.0f, size.x),
                                                std::max(1.0f, size.y));
+    if (sandbox && play.isActive())
+      play_zoom_2d = std::clamp(
+          play_zoom_2d * std::pow(1.15f, pending_zoom_steps), .5f, 2.f);
     // Playing: a zoomed view that follows the active footballer.
     if (play.isActive())
       viewport =
           playViewport2D(viewport, viewOrigin,
                          ImVec2(viewOrigin.x + size.x, viewOrigin.y + size.y));
+    else if (sandbox)
+      viewport = watchViewport2D(viewport, pending_zoom_steps);
+    pending_zoom_steps = 0.0f;
     renderer = renderer_2d.get();
   }
 
@@ -1955,12 +1969,27 @@ bool MatchScene::sandboxTrueView() const
   return sandbox && sandbox->true_view && sandbox->true_view();
 }
 
+MatchViewport MatchScene::watchViewport2D(const MatchViewport& fitted,
+                                          float wheelSteps)
+{
+  watch_zoom_2d =
+      std::clamp(watch_zoom_2d * std::pow(1.15f, wheelSteps), 1.f, 4.f);
+  MatchViewport view = fitted;
+  view.width *= watch_zoom_2d;
+  view.height *= watch_zoom_2d;
+  view.x = fitted.x + (fitted.width - view.width) * 0.5f;
+  view.y = fitted.y + (fitted.height - view.height) * 0.5f;
+  return view;
+}
+
 void MatchScene::handleViewInput()
 {
   const ImGuiIO& io = ImGui::GetIO();
-  const bool view3D = view_mode == MatchViewMode::BROADCAST_3D || sandboxTrueView();
+  const bool view3D =
+      view_mode == MatchViewMode::BROADCAST_3D || sandboxTrueView();
   // The wheel zooms the camera instead of scrolling the scene.
-  if (view3D && ImGui::SetItemKeyOwner(ImGuiKey_MouseWheelY))
+  if ((view3D || sandbox.has_value()) &&
+      ImGui::SetItemKeyOwner(ImGuiKey_MouseWheelY))
     pending_zoom_steps += io.MouseWheel;
   if (ImGui::IsItemHovered() &&
       ImGui::IsMouseDoubleClicked(ImGuiMouseButton_Left))
@@ -2378,7 +2407,7 @@ void MatchScene::renderEvents(ImVec2 size)
 void MatchScene::renderSubstitutionsModal()
 {
   const auto context = touchline();
-  if (!context || !subs_panel.render(*context))
+  if (!context || !subs_panel.render(*context, sandbox.has_value()))
   {
     show_substitutions = false;
     dialogClosed();
@@ -2388,7 +2417,7 @@ void MatchScene::renderSubstitutionsModal()
 void MatchScene::renderTacticsModal()
 {
   const auto context = touchline();
-  if (!context || !tactics_panel.render(*context))
+  if (!context || !tactics_panel.render(*context, sandbox.has_value()))
   {
     show_tactics = false;
     dialogClosed();

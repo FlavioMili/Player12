@@ -7,6 +7,7 @@
 // -----------------------------------------------------------------------------
 
 #include "tools/match_sandbox_true_view_match.h"
+#include "tools/match_sandbox_page_ui.h"
 
 #include <algorithm>
 #include <cmath>
@@ -84,7 +85,7 @@ void MatchTrueView::renderSettings(const MatchEngine& engine)
     ImGui::AlignTextToFramePadding();
     ImGui::TextUnformatted(slot == 0 ? "A" : "B");
     ImGui::SameLine();
-    if (ImGui::BeginCombo("##pick", current.c_str()))
+    if (SandboxPageUI::beginCombo("##pick", current.c_str()))
     {
       if (ImGui::Selectable("None", picked[slot] == 0)) picked[slot] = 0;
       for (const MatchPlayer& player : engine.getPlayers())
@@ -97,11 +98,13 @@ void MatchTrueView::renderSettings(const MatchEngine& engine)
     }
     ImGui::PopID();
   }
+  ImGui::PushTextWrapPos(0);
   ImGui::TextDisabled("Click a player: A. Ctrl+click: B. Double-click: look there.");
+  ImGui::PopTextWrapPos();
 
   ImGui::SeparatorText("Technique");
   int techniqueIndex = static_cast<int>(technique);
-  if (ImGui::Combo("##technique", &techniqueIndex, TrueView::TECHNIQUE_NAMES.data(),
+  if (SandboxPageUI::combo("##technique", &techniqueIndex, TrueView::TECHNIQUE_NAMES.data(),
                    static_cast<int>(TrueView::TECHNIQUE_NAMES.size())))
     technique = static_cast<TrueView::Technique>(techniqueIndex);
   if (technique == TrueView::Technique::FOOT_STRIKE)
@@ -109,23 +112,23 @@ void MatchTrueView::renderSettings(const MatchEngine& engine)
     std::array<const char*, STRIKE_KIND_COUNT> kinds{};
     for (std::size_t kind = 0; kind < STRIKE_KIND_COUNT; ++kind)
       kinds[kind] = STRIKE_KIND_NAMES[kind].data();
-    ImGui::Combo("##strike", &strikeKind, kinds.data(), static_cast<int>(kinds.size()));
+    SandboxPageUI::combo("##strike", &strikeKind, kinds.data(), static_cast<int>(kinds.size()));
   }
   ImGui::PopItemWidth();
 
   ImGui::SeparatorText("Layers (A and B)");
   const float half = width * 0.5f;
   ImGui::Checkbox("Body lines", &layers.lines);
-  ImGui::SameLine(half);
+  if (width >= 360 * Theme::scale()) ImGui::SameLine(half);
   ImGui::Checkbox("Feet", &layers.feet);
   ImGui::Checkbox("Thigh, chest", &layers.thighChest);
-  ImGui::SameLine(half);
+  if (width >= 360 * Theme::scale()) ImGui::SameLine(half);
   ImGui::Checkbox("Send cones", &layers.sendCones);
   ImGui::Checkbox("Head", &layers.head);
-  ImGui::SameLine(half);
+  if (width >= 360 * Theme::scale()) ImGui::SameLine(half);
   ImGui::Checkbox("Technique", &layers.technique);
   ImGui::Checkbox("Personal space", &layers.personalSpace);
-  ImGui::SameLine(half);
+  if (width >= 360 * Theme::scale()) ImGui::SameLine(half);
   ImGui::Checkbox("Facing, foot", &layers.facing);
   ImGui::Checkbox("Labels", &layers.labels);
 

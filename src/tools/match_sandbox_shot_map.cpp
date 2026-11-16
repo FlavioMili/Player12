@@ -497,7 +497,7 @@ void ShotMapScene::renderResults(float width, float height)
   ImGui::TextUnformatted("Colour by");
   ImGui::SetNextItemWidth(
       std::min(440 * scale, ImGui::GetContentRegionAvail().x));
-  ImGui::Combo("##colour", &view, VIEW_NAMES.data(), VIEW_COUNT);
+  SandboxPageUI::combo("##colour", &view, VIEW_NAMES.data(), VIEW_COUNT);
   const char* tabs[] = {"Map", "Calibration"};
   for (int i = 0; i < 2; ++i)
   {

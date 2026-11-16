@@ -7,6 +7,7 @@
 // -----------------------------------------------------------------------------
 
 #include "tools/match_sandbox_review.h"
+#include "tools/match_sandbox_page_ui.h"
 
 #include <imgui.h>
 
@@ -422,7 +423,7 @@ void MatchReview::renderTransport(const SandboxRecorder& recorder,
   SandboxAnalysisUI::next(110);
   ImGui::SetNextItemWidth(80.0f * Theme::scale());
   const std::string speedLabel = std::format("{:g}x", playSpeed);
-  if (ImGui::BeginCombo("##speed", speedLabel.c_str()))
+  if (SandboxPageUI::beginCombo("##speed", speedLabel.c_str()))
   {
     for (const float speed : SPEEDS)
     {

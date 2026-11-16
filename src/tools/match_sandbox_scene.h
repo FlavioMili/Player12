@@ -153,6 +153,7 @@ class MatchSandboxScene : public GUIScene
    * makes the pitch the engine's shapes, its settings in the side panel.
    * The setup screen's checkbox turns debug on at kick-off. */
   bool match_debug = false;
+  bool match_engine_tools = false;
   bool match_true_view = false;
   bool debug_at_kick_off = false;
   MatchTrueView true_view;

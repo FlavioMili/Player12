@@ -7,6 +7,7 @@
 // -----------------------------------------------------------------------------
 
 #include "tools/match_sandbox_inspector.h"
+#include "tools/match_sandbox_page_ui.h"
 #include "tools/match_sandbox_analysis_ui.h"
 
 #include <algorithm>
@@ -402,7 +403,7 @@ void DebugInspector::renderPlayer(const SandboxRecorder& recorder,
   const std::string current =
       selected ? recorder.playerName(selected) : std::string("Choose a player");
   ImGui::SetNextItemWidth(240.0f * Theme::scale());
-  if (ImGui::BeginCombo("##inspect", current.c_str(),
+  if (SandboxPageUI::beginCombo("##inspect", current.c_str(),
                         ImGuiComboFlags_HeightLarge))
   {
     for (const MatchPlayer& slot : engine.getPlayers())

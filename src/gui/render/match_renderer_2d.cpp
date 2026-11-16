@@ -2210,6 +2210,12 @@ constexpr float STADIUM_SIDE_METRES =
     MatchTuning::Pitch::STAND_SIDE_METRES + MatchTuning::Pitch::VISIBLE_CROWD_METRES;
 }  // namespace
 
+float stadiumAspectRatio2D()
+{
+  return (LENGTH + 2.0f * STADIUM_END_METRES) /
+         (WIDTH + 2.0f * STADIUM_SIDE_METRES);
+}
+
 ImVec2 stadiumApron2D(const MatchViewport& viewport)
 {
   const float ppm = viewport.width / LENGTH;

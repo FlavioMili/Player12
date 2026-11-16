@@ -33,6 +33,10 @@ class MatchAnalysisPanel
   void renderForMatch(GameController& controller, const MatchEngine& engine,
                       TeamID home_id, TeamID away_id, bool other_dialog_open);
 
+  void prepareForMatch(GameController& controller, const MatchEngine& engine,
+                       TeamID home_id, TeamID away_id, bool other_dialog_open);
+  void renderEmbedded(bool embedded = true);
+
   /** Opens the analysis of the match so far (the managed side only). */
   void openNow(GameController& controller, const MatchEngine& engine,
                TeamID home_id, TeamID away_id);

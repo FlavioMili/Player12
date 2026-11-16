@@ -83,6 +83,12 @@ class MatchScene : public GUIScene
      * the match and step the engine while paused).
      */
     std::function<void(MatchEngine&, bool& paused)> on_side_panel;
+    /** Embedded analysis area beside the pitch. */
+    std::function<void(MatchEngine&, bool&)> on_debug_panel;
+    std::function<bool()> debugger_visible;
+    std::function<void(bool)> set_debugger;
+    std::function<void(bool)> set_true_view;
+    std::function<void(bool)> engine_tools_visible;
     /** The moment the pitch shows in place of the live match (a rewound
      * review), or null for the live match. */
     std::function<const MatchEngine*()> shown_engine;
@@ -178,6 +184,8 @@ class MatchScene : public GUIScene
   /** Pitch-control overlay on the 2D view. */
   bool pressure_overlay = false;
   float pending_zoom_steps = 0.0f;
+  float watch_zoom_2d = 1.0f;
+  float play_zoom_2d = 1.0f;
   /** Mouse input over the 3D view waiting for the next rendered frame. */
   MatchCameraInput pending_camera_input;
   /** The free camera orbits the moving ball (B). */
@@ -343,10 +351,22 @@ class MatchScene : public GUIScene
   void toggleWindowFullscreen();
   /** Orbit, pan, zoom and double-click over the view (last item). */
   void handleViewInput();
+  /** Zoom about the pitch centre; 1x restores the full stadium view. */
+  MatchViewport watchViewport2D(const MatchViewport& fitted, float wheelSteps);
   void renderPitchFocus();
   void renderFocusHud(ImVec2 origin, ImVec2 size);
   void renderLineupGate();
   void renderQuickResultProgress();
+  void renderSandboxMatch();
+  void renderSandboxOverview(float width);
+  void renderSandboxTouchline(float width, float height);
+  void renderSandboxRoster();
+  void loadSandboxFonts();
+  ImFont* sandbox_regular = nullptr;
+  ImFont* sandbox_bold = nullptr;
+  int sandbox_tab = 0;
+  bool sandbox_ui_ready = false;
+  float sandbox_normal_toolbar = 32;
   void renderScoreboard();
   void renderTimeline();
   /** Appends new engine events to the (optionally filtered) feed. */

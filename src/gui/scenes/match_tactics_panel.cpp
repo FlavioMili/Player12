@@ -135,29 +135,35 @@ bool MatchTacticsPanel::undo(const TouchlineContext& context)
   return true;
 }
 
-bool MatchTacticsPanel::render(const TouchlineContext& context)
+bool MatchTacticsPanel::render(const TouchlineContext& context, bool embedded)
 {
   const bool opening = !popup_opened;
   std::array<char, 128> title{};
   std::snprintf(title.data(), title.size(), "%s%s", LOC("MATCH_TACTICS_TITLE"),
                 WINDOW_ID);
   if (opening) syncDraft(context);
-  if (!Touchline::beginDialog(title.data(), popup_opened, DIALOG_WIDTH,
-                              DIALOG_HEIGHT))
+  if (!embedded && !Touchline::beginDialog(title.data(), popup_opened,
+                                           DIALOG_WIDTH, DIALOG_HEIGHT))
   {
     close_requested = false;
     return false;
   }
+  if (embedded) popup_opened = true;
   if (close_requested || ImGui::IsKeyPressed(ImGuiKey_Escape, false))
   {
     close_requested = false;
     popup_opened = false;
-    ImGui::CloseCurrentPopup();
-    ImGui::EndPopup();
+    if (!embedded) ImGui::CloseCurrentPopup();
+    if (!embedded) ImGui::EndPopup();
     return false;
   }
 
-  ImGui::BeginChild("##tactics_body", ImVec2(0.0f, -Touchline::footerHeight()));
+  ImGui::BeginChild("##tactics_body",
+                    ImVec2(0.0f, -Touchline::footerHeight() -
+                                     (embedded ? scaled(24.0f) : 0.0f)),
+                    ImGuiChildFlags_None,
+                    embedded ? ImGuiWindowFlags_AlwaysVerticalScrollbar
+                             : ImGuiWindowFlags_None);
   renderStyle();
   renderInstructions();
   renderFormation(context);
@@ -166,8 +172,9 @@ bool MatchTacticsPanel::render(const TouchlineContext& context)
   renderFooter(context);
 
   const bool open = popup_opened;
-  if (!open) ImGui::CloseCurrentPopup();
-  ImGui::EndPopup();
+  if (!open)
+    if (!embedded) ImGui::CloseCurrentPopup();
+  if (!embedded) ImGui::EndPopup();
   return open;
 }
 

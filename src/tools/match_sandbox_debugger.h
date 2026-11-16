@@ -89,6 +89,8 @@ class EngineDebugger
   std::array<bool, static_cast<std::size_t>(Kind::COUNT)> shown{
       true, true, true, true, true, true, true, true};
   bool follow = true;
+  /** Fractional wheel input accumulates until a whole row can move. */
+  float wheel_rows = 0.0f;
 
   /** Entries passing the filters, and what they were computed for. */
   std::vector<std::size_t> visible;

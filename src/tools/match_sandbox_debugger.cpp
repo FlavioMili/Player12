@@ -9,6 +9,7 @@
 #include "tools/match_sandbox_debugger.h"
 
 #include <imgui.h>
+#include <imgui_internal.h>
 
 #include <algorithm>
 #include <cmath>
@@ -23,6 +24,7 @@
 #include "tools/match_sandbox_analysis_ui.h"
 #include "tools/match_sandbox_inspector.h"
 #include "tools/match_sandbox_names.h"
+#include "tools/match_sandbox_page_ui.h"
 #include "tools/match_sandbox_recorder.h"
 
 namespace
@@ -194,6 +196,7 @@ EngineDebugger::Described EngineDebugger::describe(
 
 void EngineDebugger::reset()
 {
+  wheel_rows = 0.0f;
   visible.clear();
   visible_for_size = 0;
   filters_changed = true;
@@ -233,7 +236,14 @@ void EngineDebugger::renderContents(SandboxRecorder& recorder,
   switch (contentTab)
   {
     case 0:
+      ImGui::PushFont(SandboxAnalysisUI::regular(), 12);
+      ImGui::PushStyleVar(ImGuiStyleVar_FramePadding,
+                          ImVec2(6 * Theme::scale(), 3 * Theme::scale()));
+      ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing,
+                          ImVec2(6 * Theme::scale(), 3 * Theme::scale()));
       renderFilters(recorder, inspector.selected);
+      ImGui::PopStyleVar(2);
+      ImGui::PopFont();
       renderLog(recorder, cursor, inspector);
       break;
     case 1:
@@ -301,8 +311,8 @@ void EngineDebugger::renderFilters(const SandboxRecorder& recorder,
   }
   ImGui::SetNextItemWidth(110.0f * Theme::scale());
   constexpr std::array<const char*, 3> TEAMS{"Both teams", "Home", "Away"};
-  if (ImGui::Combo("##team", &team_filter, TEAMS.data(),
-                   static_cast<int>(TEAMS.size())))
+  if (SandboxPageUI::combo("##team", &team_filter, TEAMS.data(),
+                           static_cast<int>(TEAMS.size())))
     filters_changed = true;
   SandboxAnalysisUI::next(190);
 
@@ -316,8 +326,8 @@ void EngineDebugger::renderFilters(const SandboxRecorder& recorder,
   ImGui::SetNextItemWidth(190.0f * Theme::scale());
   const std::string current =
       player_filter ? recorder.playerName(player_filter) : "All players";
-  if (ImGui::BeginCombo("##player", current.c_str(),
-                        ImGuiComboFlags_HeightLarge))
+  if (SandboxPageUI::beginCombo("##player", current.c_str(),
+                                ImGuiComboFlags_HeightLarge))
   {
     if (ImGui::Selectable("All players", player_filter == 0))
     {
@@ -406,6 +416,36 @@ void EngineDebugger::renderLog(const SandboxRecorder& recorder,
       ImGuiTableFlags_RowBg | ImGuiTableFlags_ScrollY |
       ImGuiTableFlags_ScrollX | ImGuiTableFlags_BordersInnerV |
       ImGuiTableFlags_Resizable | ImGuiTableFlags_SizingFixedFit;
+  const float rowHeight = std::ceil(ImGui::GetTextLineHeight() +
+                                    2 * ImGui::GetStyle().CellPadding.y);
+  // Quantise the pending wheel/seek/follow request before BeginChild applies
+  // it. The frozen header stays fixed; every data row has exactly this height.
+  if (const auto* table = ImGui::TableFindByID(ImGui::GetID("##log"));
+      table && table->InnerWindow)
+  {
+    const auto* window = table->InnerWindow;
+    const float decorations = window->DecoOuterSizeY1 +
+                              window->DecoInnerSizeY1 + window->DecoOuterSizeY2;
+    float requested =
+        window->ScrollTarget.y < FLT_MAX
+            ? window->ScrollTarget.y - window->ScrollTargetCenterRatio.y *
+                                           (window->SizeFull.y - decorations)
+            : window->Scroll.y;
+    const auto& io = ImGui::GetIO();
+    if (io.MouseWheel != 0 && !io.KeyCtrl && !io.KeyShift &&
+        ImGui::GetCurrentContext()->HoveredWindow == window)
+    {
+      wheel_rows -= io.MouseWheel * 3.f;
+      const float steps = std::trunc(wheel_rows);
+      wheel_rows -= steps;
+      requested = window->Scroll.y + steps * rowHeight;
+      follow = false;
+    }
+    const float limit = std::floor(window->ScrollMax.y / rowHeight) * rowHeight;
+    ImGui::SetNextWindowScroll(
+        ImVec2(-1, std::clamp(std::round(requested / rowHeight) * rowHeight,
+                              0.f, std::max(0.f, limit))));
+  }
   if (!ImGui::BeginTable("##log", 6, flags, ImVec2(0.0f, 0.0f))) return;
   ImGui::TableSetupScrollFreeze(0, 1);
   ImGui::TableSetupColumn("Time");
@@ -419,7 +459,7 @@ void EngineDebugger::renderLog(const SandboxRecorder& recorder,
   ImGui::PopFont();
 
   ImGuiListClipper clipper;
-  clipper.Begin(static_cast<int>(visible.size()));
+  clipper.Begin(static_cast<int>(visible.size()), rowHeight);
   if (scrollToCursor && cursorRow) clipper.IncludeItemByIndex(*cursorRow);
   while (clipper.Step())
   {
@@ -427,7 +467,7 @@ void EngineDebugger::renderLog(const SandboxRecorder& recorder,
     {
       const auto& entry = entries[visible[static_cast<std::size_t>(row)]];
       const Row described = describeRow(recorder, entry);
-      ImGui::TableNextRow();
+      ImGui::TableNextRow(ImGuiTableRowFlags_None, rowHeight);
       ImGui::TableNextColumn();
       // The whole row selects: clicking it rewinds the review to its tick.
       ImGui::PushID(row);
@@ -462,6 +502,11 @@ void EngineDebugger::renderLog(const SandboxRecorder& recorder,
       ImGui::TextUnformatted(described.detail.c_str());
     }
   }
+  // One blank row lets the final real row remain fully visible when the
+  // viewport height isn't an exact multiple of the data-row height.
+  ImGui::TableNextRow(ImGuiTableRowFlags_None, rowHeight);
+  ImGui::TableNextColumn();
+  ImGui::Dummy(ImVec2(0, rowHeight - 2 * ImGui::GetStyle().CellPadding.y));
   if (scroll_to_end)
   {
     ImGui::SetScrollHereY(1.0f);

@@ -64,6 +64,15 @@ void MatchAnalysisPanel::renderForMatch(GameController& controller,
                                         TeamID home_id, TeamID away_id,
                                         bool other_dialog_open)
 {
+  prepareForMatch(controller, engine, home_id, away_id, other_dialog_open);
+  render();
+}
+
+void MatchAnalysisPanel::prepareForMatch(GameController& controller,
+                                         const MatchEngine& engine,
+                                         TeamID home_id, TeamID away_id,
+                                         bool other_dialog_open)
+{
   const auto team = controller.getManagedTeam();
   const TeamID managed = team ? team->get().getId() : 0;
   if (team && (managed == home_id || managed == away_id) && !other_dialog_open)
@@ -86,7 +95,6 @@ void MatchAnalysisPanel::renderForMatch(GameController& controller,
       openNow(controller, engine, home_id, away_id);
     }
   }
-  render();
 }
 
 void MatchAnalysisPanel::openNow(GameController& controller,
@@ -215,12 +223,20 @@ void MatchAnalysisPanel::render()
     ImGui::End();
     return;
   }
+  renderEmbedded(false);
+  ImGui::End();
+}
+
+void MatchAnalysisPanel::renderEmbedded(bool embedded)
+{
+  if (!visible) return;
   const Theme::Palette& palette = Theme::palette();
   // Explicit wrap edge: an auto-resizing window would otherwise grow instead.
   const float wrap = ImGui::GetCursorPosX() + ImGui::GetContentRegionAvail().x;
   // Title with the close button beside it, so closing never needs scrolling.
   const char* close = LOC("ANALYSIS_CLOSE");
-  const float closeWidth = UI::buttonWidth(close, UI::ButtonSize::COMPACT);
+  const float closeWidth =
+      embedded ? 0.0f : UI::buttonWidth(close, UI::ButtonSize::COMPACT);
   const float titleWidth =
       std::max(0.0f, ImGui::GetContentRegionAvail().x - closeWidth -
                          ImGui::GetStyle().ItemSpacing.x);
@@ -230,14 +246,18 @@ void MatchAnalysisPanel::render()
     UI::textFitted(title, titleWidth, palette.text);
   }
   ImGui::EndGroup();
-  ImGui::SameLine(wrap - closeWidth);
-  if (UI::secondaryButton(close, ImVec2(0.0f, 0.0f), UI::ButtonSize::COMPACT))
-    visible = false;
+  if (!embedded)
+  {
+    ImGui::SameLine(wrap - closeWidth);
+    if (UI::secondaryButton(close, ImVec2(0.0f, 0.0f), UI::ButtonSize::COMPACT))
+      visible = false;
+  }
   ImGui::Separator();
 
   // Side-by-side numbers: label, managed club, opponent.
   const float full = ImGui::GetContentRegionAvail().x;
-  const float valueWidth = std::max(scaled(90.0f), full * 0.22f);
+  const float valueWidth = embedded ? std::min(full * 0.28f, scaled(90.0f))
+                                    : std::max(scaled(90.0f), full * 0.22f);
   const float cellGap = ImGui::GetStyle().ItemSpacing.x;
   const auto columns = [&](const char* label, const std::string& own,
                            const std::string& other, const ImVec4& color)
@@ -292,5 +312,4 @@ void MatchAnalysisPanel::render()
     }
     ImGui::PopTextWrapPos();
   }
-  ImGui::End();
 }

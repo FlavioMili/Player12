@@ -119,6 +119,22 @@ float contrastRatio(const ImVec4& first, const ImVec4& second);
 /** @brief Returns the active palette (accent included). */
 const Palette& palette();
 
+/** Temporarily supplies semantic colours to shared widgets without changing
+ *
+ * the user's appearance or ImGui style. Nested page scopes restore in order. */
+class ScopedPalette
+{
+ public:
+  explicit ScopedPalette(Palette value);
+  ~ScopedPalette();
+  ScopedPalette(const ScopedPalette&) = delete;
+  ScopedPalette& operator=(const ScopedPalette&) = delete;
+
+ private:
+  Palette value;
+  const Palette* previous;
+};
+
 /** @brief Returns the active appearance options. */
 const Appearance& appearance();
 
