@@ -12,7 +12,7 @@
 // months of Continue), with invariants, screenshots and timings.
 //
 // Artifacts (for human/agent review) go to $FM_PLAYTEST_OUT when set:
-//   shots/*.bmp       screenshots of every visited screen and dialog
+//   shots/ (BMP files) screenshots of every visited screen and dialog
 //   journey_log.md    what happened (results, tables, transfer talks, ...)
 //   metrics.md        per-screen frame times and Continue latency
 //   buttons.md        interactive items of each screen and their effect
@@ -94,7 +94,10 @@ class GameFlowTest_GUIFlowLifecycle_Test
     return view.getActiveScene();
   }
 
-  static MatchEngine* engine(MatchScene& scene) { return scene.engine.get(); }
+  static MatchEngine* engine(const MatchScene& scene)
+  {
+    return scene.engine.get();
+  }
   static std::pair<TeamID, TeamID> teams(const MatchScene& scene)
   {
     return {scene.home_team_id, scene.away_team_id};
@@ -340,7 +343,7 @@ class Tester
     if (errors > 0) ++imgui_error_frames;
   }
 
-  fs::path shot(const std::string& name)
+  fs::path shot(const std::string& name) const
   {
     const fs::path path = shotDir() / (name + ".bmp");
     fs::remove(path);
@@ -403,10 +406,16 @@ class Tester
     if (regionMax.x <= 0.0f) regionMax = display;
     std::vector<Item> items;
     std::unordered_map<ImGuiID, size_t> index;
-    for (float y = regionMin.y + stepY * 0.5f; y < regionMax.y; y += stepY)
+    for (int row = 0;; ++row)
     {
-      for (float x = regionMin.x + stepX * 0.5f; x < regionMax.x; x += stepX)
+      const float y =
+          regionMin.y + stepY * 0.5f + static_cast<float>(row) * stepY;
+      if (!(y < regionMax.y)) break;
+      for (int column = 0;; ++column)
       {
+        const float x =
+            regionMin.x + stepX * 0.5f + static_cast<float>(column) * stepX;
+        if (!(x < regionMax.x)) break;
         mouseTo({x, y});
         uiFrame();
         const ImGuiID id = GImGui->HoveredId;
@@ -475,7 +484,7 @@ class Tester
                           std::string_view needle)
   {
     for (const Item& item : items)
-      if (item.label.find(needle) != std::string::npos) return &item;
+      if (item.label.contains(needle)) return &item;
     return nullptr;
   }
 
@@ -636,17 +645,18 @@ WorldCheck checkWorld(const GameController& controller,
                  row.team_id, problem);
       }
     }
-    if ((won != lost || goalsFor != goalsAgainst ||
-         (maxPlayed - minPlayed) > 2) &&
-        result.table_errors++ < MAX_REPORTED)
+    if (won != lost || goalsFor != goalsAgainst || (maxPlayed - minPlayed) > 2)
     {
-      ADD_FAILURE() << stage << ": " << league.getName()
-                    << " table totals inconsistent (W " << won << " L " << lost
-                    << " GF " << goalsFor << " GA " << goalsAgainst
-                    << " played " << minPlayed << ".." << maxPlayed << ")";
-      log.line("- **table** ({}): {} totals W{} L{} GF{} GA{} played {}..{}",
-               stage, league.getName(), won, lost, goalsFor, goalsAgainst,
-               minPlayed, maxPlayed);
+      if (result.table_errors++ < MAX_REPORTED)
+      {
+        ADD_FAILURE() << stage << ": " << league.getName()
+                      << " table totals inconsistent (W " << won << " L "
+                      << lost << " GF " << goalsFor << " GA " << goalsAgainst
+                      << " played " << minPlayed << ".." << maxPlayed << ")";
+        log.line("- **table** ({}): {} totals W{} L{} GF{} GA{} played {}..{}",
+                 stage, league.getName(), won, lost, goalsFor, goalsAgainst,
+                 minPlayed, maxPlayed);
+      }
     }
   }
   EXPECT_GE(result.min_squad, 16u) << stage;
@@ -691,10 +701,10 @@ void logResultRealism(const GameController& controller,
       const int away = match.getAwayScore();
       ++totals.matches;
       totals.goals += home + away;
-      totals.home += home > away;
-      totals.draws += home == away;
-      totals.away += home < away;
-      totals.goalless += home + away == 0;
+      if (home > away) ++totals.home;
+      if (home == away) ++totals.draws;
+      if (home < away) ++totals.away;
+      if (home + away == 0) ++totals.goalless;
       totals.max_goals = std::max(totals.max_goals, home + away);
       ++totals.scores[std::format("{}-{}", home, away)];
     }
@@ -758,65 +768,70 @@ double averageTopOverall(const GameController& controller, TeamID team,
 
 const char* sectionName(NavSection section)
 {
+  using enum NavSection;
   switch (section)
   {
-    case NavSection::HOME:
+    case HOME:
       return "home";
-    case NavSection::INBOX:
+    case INBOX:
       return "inbox";
-    case NavSection::CLUB:
+    case CLUB:
       return "club";
-    case NavSection::SQUAD:
+    case SQUAD:
       return "squad";
-    case NavSection::LINEUP:
+    case LINEUP:
       return "lineup";
-    case NavSection::TACTICS:
+    case TACTICS:
       return "tactics";
-    case NavSection::FIXTURES:
+    case FIXTURES:
       return "fixtures";
-    case NavSection::STANDINGS:
+    case STANDINGS:
       return "standings";
-    case NavSection::TRANSFERS:
+    case TRANSFERS:
       return "transfers";
-    case NavSection::FINANCES:
+    case FINANCES:
       return "finances";
-    case NavSection::SCOUTING:
+    case SCOUTING:
       return "scouting";
-    case NavSection::TRAINING:
+    case TRAINING:
       return "training";
-    case NavSection::STAFF:
+    case STAFF:
       return "staff";
-    case NavSection::YOUTH:
+    case YOUTH:
       return "youth";
-    case NavSection::MANAGER:
+    case MANAGER:
       return "manager";
-    case NavSection::MEDICAL:
+    case MEDICAL:
       return "medical";
-    case NavSection::CALENDAR:
+    case CALENDAR:
       return "calendar";
-    case NavSection::SQUAD_PLANNER:
+    case SQUAD_PLANNER:
       return "squad_planner";
-    case NavSection::COMPARE:
+    case COMPARE:
       return "compare";
-    case NavSection::DELEGATION:
+    case DELEGATION:
       return "delegation";
-    case NavSection::DATA_HUB:
+    case DATA_HUB:
       return "data_hub";
-    case NavSection::OPPOSITION:
+    case OPPOSITION:
       return "opposition";
-    case NavSection::INTERNATIONAL:
+    case INTERNATIONAL:
       return "international";
-    case NavSection::AWARDS:
+    case AWARDS:
       return "awards";
-    case NavSection::RECORDS:
+    case RECORDS:
       return "records";
-    case NavSection::PLANNING:
+    case PLANNING:
       return "planning";
-    case NavSection::RESERVES:
+    case RESERVES:
       return "reserves";
-    case NavSection::CALL_UPS:
+    case CALL_UPS:
       return "call_ups";
-    case NavSection::NONE:
+    case NEWS:
+      return "news";
+    case TIMELINE:
+      return "timeline";
+    case NONE:
       return "none";
   }
   return "?";
@@ -881,6 +896,10 @@ SceneID sectionScene(NavSection section)
       return SceneID::RESERVES;
     case NavSection::CALL_UPS:
       return SceneID::CALL_UPS;
+    case NavSection::NEWS:
+      return SceneID::NEWS;
+    case NavSection::TIMELINE:
+      return SceneID::TIMELINE;
     case NavSection::NONE:
       break;
   }
@@ -1025,19 +1044,19 @@ LiveMatchResult playLiveMatch(Tester& player, MatchPlay mode,
   const auto next = controller.getNextManagedFixture();
   EXPECT_NE(match, nullptr)
       << "PLAY MATCH did not open the match: label '" << label
-      << "', scene before " << static_cast<int>(before) << " after "
-      << static_cast<int>(player.activeId()) << ", advancing " << advancing
-      << ", overlays " << player.view.getOverlayDepth() << ", next fixture "
+      << "', scene before " << static_cast<int>(std::to_underlying(before))
+      << " after " << static_cast<int>(std::to_underlying(player.activeId()))
+      << ", advancing " << advancing << ", overlays "
+      << player.view.getOverlayDepth() << ", next fixture "
       << (next ? dateText(next->date) : std::string("none")) << " type "
-      << (next ? static_cast<int>(next->type) : -1) << ", today "
-      << dateText(controller.getCurrentDate());
+      << (next ? static_cast<int>(std::to_underlying(next->type)) : -1)
+      << ", today " << dateText(controller.getCurrentDate());
   if (match == nullptr) return result;
   if (Bridge::engine(*match) == nullptr)
   {
     // Lineup gate: an injured or suspended player blocks kick-off.
     ++result.gates;
-    static bool gateShot = false;
-    if (!gateShot)
+    if (static bool gateShot = false; !gateShot)
     {
       player.shot("j30_match_lineup_gate");
       gateShot = true;
@@ -1104,7 +1123,7 @@ LiveMatchResult playLiveMatch(Tester& player, MatchPlay mode,
       player.frames(1);
       EXPECT_FALSE(Bridge::paused(*match))
           << "Resume did not restart play (state "
-          << static_cast<int>(engine->getState()) << ", minute "
+          << std::to_underlying(engine->getState()) << ", minute "
           << engine->getMatchTimeMinutes() << ", popup open " << anyPopupOpen()
           << ")";
       return !Bridge::paused(*match);
@@ -1152,8 +1171,11 @@ LiveMatchResult playLiveMatch(Tester& player, MatchPlay mode,
       Bridge::setCamera(*match, MatchCameraMode::BROADCAST);
       int guard = 0;
       while (!Bridge::finished(*match) &&
-             engine->getState() != MatchState::HALF_TIME && guard++ < 20000)
+             engine->getState() != MatchState::HALF_TIME)
+      {
+        if (guard++ >= 20000) break;
         Bridge::update(player.view, 0.1f);
+      }
       player.frames(2);
       player.shot("j37_match_half_time");
       runUntil(70.0f);
@@ -1457,7 +1479,8 @@ TEST_F(PlaytestJourney, NewCareerThroughTheGui)
         scouts.front().id, ScoutTargetKind::League, scoutedLeague, 28);
     EXPECT_EQ(error, ScoutAssignError::None);
     log.line("- sent scout {} to league {} for 28 days, cost {}, error {}",
-             scouts.front().name, scoutedLeague, cost, static_cast<int>(error));
+             scouts.front().name, scoutedLeague, cost,
+             static_cast<int>(std::to_underlying(error)));
   }
   for (const auto tab :
        {ScoutingScene::Tab::OVERVIEW, ScoutingScene::Tab::SEARCH,
@@ -1465,7 +1488,8 @@ TEST_F(PlaytestJourney, NewCareerThroughTheGui)
   {
     view.navigateTo(std::make_unique<ScoutingScene>(&view, tab));
     player.frames(3);
-    player.shot(std::format("j28_scouting_tab{}", static_cast<int>(tab)));
+    player.shot(std::format("j28_scouting_tab{}",
+                            static_cast<int>(std::to_underlying(tab))));
   }
 
   // ---- 7. Transfer: offer, negotiation, contract --------------------------
@@ -1510,7 +1534,8 @@ TEST_F(PlaytestJourney, NewCareerThroughTheGui)
     log.line(
         "- target {} ({} , age {}, est. overall {:.1f}, true {:.1f}, "
         "est. value {}, wage {}, club {})",
-        targetPlayer.getName(), static_cast<int>(targetPlayer.getRole()),
+        targetPlayer.getName(),
+        static_cast<int>(std::to_underlying(targetPlayer.getRole())),
         targetPlayer.getAge(), target->overall,
         targetPlayer.getOverall(controller.getStatsConfig()),
         target->estimated_value, targetPlayer.getWage(),
@@ -1547,7 +1572,8 @@ TEST_F(PlaytestJourney, NewCareerThroughTheGui)
       log.line(
           "  - offer round {}: fee {} -> decision {} (counter {}), {} "
           "reasons",
-          round + 1, terms.fee, static_cast<int>(response.decision),
+          round + 1, terms.fee,
+          static_cast<int>(std::to_underlying(response.decision)),
           response.counter_fee, response.reasons.size());
       if (response.decision ==
           TransferNegotiation::ClubResponse::Decision::Accept)
@@ -1689,9 +1715,13 @@ TEST_F(PlaytestJourney, NewCareerThroughTheGui)
   };
 
   const auto isMatchDay = [&]()
-  { return hub->continueLabel().find("PLAY MATCH") != std::string::npos; };
+  { return hub->continueLabel().contains("PLAY MATCH"); };
   int guard = 0;
-  while (!isMatchDay() && guard++ < 10) guiContinue();
+  while (!isMatchDay())
+  {
+    if (guard++ >= 10) break;
+    guiContinue();
+  }
   ASSERT_TRUE(isMatchDay()) << "Continue never reached a managed match";
   player.shot("j29_home_matchday");
 
@@ -1713,7 +1743,8 @@ TEST_F(PlaytestJourney, NewCareerThroughTheGui)
       log.line(
           "- {} [{}] {} {}-{} {} | live: {} | report: {} players, {} "
           "events, attendance {}, home shots {}",
-          dateText(date), static_cast<int>(match.getMatchType()),
+          dateText(date),
+          static_cast<int>(std::to_underlying(match.getMatchType())),
           home ? home->get().getName() : "?", match.getHomeScore(),
           match.getAwayScore(), away ? away->get().getName() : "?",
           result.summary, report ? report->players.size() : 0,
@@ -2104,11 +2135,12 @@ TEST_F(PlaytestJourney, EveryWidgetDoesSomething)
       for (const char character : item.label)
         if (!std::isdigit(static_cast<unsigned char>(character)))
           kind.push_back(character);
-      const bool shell = item.label.find("##sidebar") != std::string::npos ||
-                         item.label.find("##topbar") != std::string::npos;
-      if (shell && section != NavSection::HOME) continue;
-      if (item.label.find("shell_continue") != std::string::npos) continue;
-      if (item.label.find("#SCROLL") != std::string::npos) continue;
+      if (const bool shell = item.label.contains("##sidebar") ||
+                             item.label.contains("##topbar");
+          shell && section != NavSection::HOME)
+        continue;
+      if (item.label.contains("shell_continue")) continue;
+      if (item.label.contains("#SCROLL")) continue;
       if (!tested.insert(kind).second) continue;
       ++clickedTotal;
       std::string effect = clickEffect(item.point);

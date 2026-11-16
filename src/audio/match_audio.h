@@ -150,7 +150,8 @@ class MatchAudio
   void play(Priority priority, Audio::SoundCommand command);
   void whistle(Priority priority, Audio::WhistlePattern pattern, float x);
 
-  std::unique_ptr<Audio::Mixer> mixerInstance;
+  std::unique_ptr<Audio::Mixer> mixerInstance =
+      std::make_unique<Audio::Mixer>();
   /** Declared after the mixer so it stops pulling audio first. */
   std::unique_ptr<Audio::AudioDevice> device;
   MatchEventCursor cursor;

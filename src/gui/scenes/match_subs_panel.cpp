@@ -13,9 +13,11 @@
 #include <algorithm>
 #include <array>
 #include <cmath>
+#include <cstddef>
 #include <cstdint>
 #include <cstdio>
 #include <optional>
+#include <string_view>
 
 #include "controller/game_controller.h"
 #include "global/language_manager.h"
@@ -149,9 +151,9 @@ bool MatchSubsPanel::substituteNow(const TouchlineContext& context,
   if (!team) return false;
   const Lineup& lineup = team->get().getLineup();
   MatchChanges::SubstitutionPlan once;
-  const MatchChanges::Refusal refusal =
-      once.add(context.engine, context.home, lineup.getReserves(), out, in);
-  if (refusal != MatchChanges::Refusal::NONE)
+  if (const MatchChanges::Refusal refusal =
+          once.add(context.engine, context.home, lineup.getReserves(), out, in);
+      refusal != MatchChanges::Refusal::NONE)
   {
     context.status = Touchline::refusalText(refusal, context.engine,
                                             Touchline::playerName(lineup, out),
@@ -195,7 +197,7 @@ void MatchSubsPanel::update(const TouchlineContext& context)
 
 void MatchSubsPanel::report(
     const TouchlineContext& context, const Lineup& lineup,
-    const std::vector<MatchChanges::SubstitutionOutcome>& outcomes)
+    const std::vector<MatchChanges::SubstitutionOutcome>& outcomes) const
 {
   std::string done;
   std::string refused;
@@ -212,9 +214,12 @@ void MatchSubsPanel::report(
             : Touchline::refusalText(outcome.refusal, context.engine, out, in);
   }
   context.status_refused = !refused.empty();
-  context.status = done.empty()      ? refused
-                   : refused.empty() ? done
-                                     : done + ' ' + refused;
+  if (done.empty())
+    context.status = refused;
+  else if (refused.empty())
+    context.status = done;
+  else
+    context.status = done + ' ' + refused;
 }
 
 bool MatchSubsPanel::swapPositions(const TouchlineContext& context,
@@ -227,8 +232,9 @@ bool MatchSubsPanel::swapPositions(const TouchlineContext& context,
   const Lineup& lineup = team->get().getLineup();
   const std::string firstName = Touchline::playerName(lineup, first);
   const std::string secondName = Touchline::playerName(lineup, second);
-  const auto slot = context.engine.getFormationSlot(second);
-  if (first == second || !slot || !context.engine.getFormationSlot(first) ||
+  if (const auto slot = context.engine.getFormationSlot(second);
+      first == second || !slot.has_value() ||
+      !context.engine.getFormationSlot(first).has_value() ||
       !context.engine.movePlayerToSlot(first, *slot))
   {
     context.status = fmt::sprintf(LOC("SUBSTITUTION_SWAP_REFUSED"),
@@ -323,8 +329,8 @@ bool MatchSubsPanel::render(const TouchlineContext& context, bool embedded)
                     embedded ? ImGuiWindowFlags_AlwaysVerticalScrollbar
                              : ImGuiWindowFlags_None);
   renderUsage(context);
-  const float width = ImGui::GetContentRegionAvail().x;
-  if (width >= scaled(TWO_COLUMN_WIDTH))
+  if (const float width = ImGui::GetContentRegionAvail().x;
+      width >= scaled(TWO_COLUMN_WIDTH))
   {
     const float spacing = ImGui::GetStyle().ItemSpacing.x * 2.0f;
     const float pitchWidth = std::floor((width - spacing) * PITCH_SHARE);
@@ -366,7 +372,7 @@ bool MatchSubsPanel::render(const TouchlineContext& context, bool embedded)
   return open;
 }
 
-void MatchSubsPanel::renderUsage(const TouchlineContext& context)
+void MatchSubsPanel::renderUsage(const TouchlineContext& context) const
 {
   const Theme::Palette& palette = Theme::palette();
   const MatchEngine& engine = context.engine;
@@ -398,7 +404,8 @@ void MatchSubsPanel::renderPitch(const TouchlineContext& context, float width)
   const Theme::Palette& palette = Theme::palette();
   UI::sectionLabel(LOC("SUBSTITUTION_ON_PITCH"));
   // Swapping works on the selected player; it needs two outfield players.
-  if (selected_out != 0 && context.engine.getFormationSlot(selected_out))
+  if (selected_out != 0 &&
+      context.engine.getFormationSlot(selected_out).has_value())
   {
     ImGui::SameLine();
     if (UI::toggleButton(LOC("SUBSTITUTION_SWAP"), swap_mode, ImVec2(0, 0),
@@ -521,8 +528,11 @@ void MatchSubsPanel::renderPitch(const TouchlineContext& context, float width)
           kitText, code);
       // Rating beside the shirt.
       std::array<char, 8> rating{};
-      std::snprintf(rating.data(), rating.size(), "%.1f",
-                    static_cast<double>(marker.rating));
+      const auto formatted = std::format_to_n(
+          rating.data(), static_cast<std::ptrdiff_t>(rating.size() - 1),
+          "{:.1f}", static_cast<double>(marker.rating));
+      rating[std::min(static_cast<std::size_t>(formatted.size),
+                      rating.size() - 1)] = '\0';
       const ImVec2 ratingAt(centre.x + radius + scaled(3.0f),
                             centre.y - radius);
       const ImVec2 ratingSize = ImGui::CalcTextSize(rating.data());
@@ -606,10 +616,10 @@ void MatchSubsPanel::renderBench(const TouchlineContext& context,
     if (marker.id == selected_out) position = marker.player->getRole();
   const bool showFit = position != PlayerRole::UNKNOWN;
 
-  const ImGuiTableFlags flags = ImGuiTableFlags_RowBg |
-                                ImGuiTableFlags_BordersInnerH |
-                                ImGuiTableFlags_SizingFixedFit;
-  if (!ImGui::BeginTable("##substitution_bench", showFit ? 5 : 4, flags,
+  if (const ImGuiTableFlags flags = ImGuiTableFlags_RowBg |
+                                    ImGuiTableFlags_BordersInnerH |
+                                    ImGuiTableFlags_SizingFixedFit;
+      !ImGui::BeginTable("##substitution_bench", showFit ? 5 : 4, flags,
                          ImVec2(width, 0.0f)))
     return;
   ImGui::TableSetupColumn(LOC("MAIN_GAME_POS"));
@@ -671,10 +681,11 @@ void MatchSubsPanel::renderBench(const TouchlineContext& context,
     if (showFit)
     {
       ImGui::TableNextColumn();
-      const float fit =
-          reserve->getRole() == PlayerRole::GK || position == PlayerRole::GK
-              ? (reserve->getRole() == position ? 1.0f : 0.0f)
-              : MatchChanges::positionFit(reserve->getRole(), position);
+      float fit = 0.0f;
+      if (reserve->getRole() == PlayerRole::GK || position == PlayerRole::GK)
+        fit = reserve->getRole() == position ? 1.0f : 0.0f;
+      else
+        fit = MatchChanges::positionFit(reserve->getRole(), position);
       ImGui::TextColored(fit >= 0.7f ? palette.text : palette.muted, "%s",
                          fitLabel(fit));
     }
@@ -715,7 +726,7 @@ void MatchSubsPanel::renderPlan(const TouchlineContext& context,
       removed = index;
     ImGui::PopID();
   }
-  if (removed) substitution_plan.remove(*removed);
+  if (removed.has_value()) substitution_plan.remove(*removed);
   if (substitution_plan.isConfirmed())
     ImGui::TextColored(palette.info, "%s", LOC("SUBSTITUTION_PLAN_WAITING"));
   (void)context;
@@ -736,11 +747,11 @@ void MatchSubsPanel::renderSuggestions(const TouchlineContext& context,
   // not every frame.
   const std::uint64_t key =
       context.engine.getSimulatedSteps() / SUGGESTION_REFRESH_STEPS;
-  const std::size_t changes =
-      substitution_plan.entries().size() * 16 +
-      static_cast<std::size_t>(
-          context.engine.getSubstitutionsUsed(context.home));
-  if (key != suggestions_key || changes != suggestions_changes)
+  if (const std::size_t changes =
+          substitution_plan.entries().size() * 16 +
+          static_cast<std::size_t>(
+              context.engine.getSubstitutionsUsed(context.home));
+      key != suggestions_key || changes != suggestions_changes)
   {
     suggestions = MatchChanges::suggestSubstitutions(
         context.engine, context.home, lineup.getReserves(), substitution_plan,
@@ -759,18 +770,22 @@ void MatchSubsPanel::renderSuggestions(const TouchlineContext& context,
   for (const MatchChanges::Suggestion& suggestion : suggestions)
   {
     std::string reasons;
-    const auto addReason = [&reasons](const std::string& text)
+    const auto addReason = [&reasons](std::string_view text)
     {
       if (!reasons.empty()) reasons += ", ";
-      reasons += text;
+      reasons.append(text);
     };
-    if ((suggestion.reasons & MatchChanges::SUGGEST_INJURED) != 0)
+    const std::byte reasonFlags = static_cast<std::byte>(suggestion.reasons);
+    if ((reasonFlags & static_cast<std::byte>(MatchChanges::SUGGEST_INJURED)) !=
+        std::byte{})
       addReason(LOC("SUBSTITUTION_REASON_INJURED"));
-    if ((suggestion.reasons & MatchChanges::SUGGEST_TIRED) != 0)
+    if ((reasonFlags & static_cast<std::byte>(MatchChanges::SUGGEST_TIRED)) !=
+        std::byte{})
       addReason(fmt::sprintf(
           LOC("SUBSTITUTION_REASON_TIRED"),
           static_cast<int>(std::lround(suggestion.condition * 100.0f))));
-    if ((suggestion.reasons & MatchChanges::SUGGEST_BOOKED) != 0)
+    if ((reasonFlags & static_cast<std::byte>(MatchChanges::SUGGEST_BOOKED)) !=
+        std::byte{})
       addReason(LOC("SUBSTITUTION_REASON_BOOKED"));
     const std::string line = fmt::sprintf(
         LOC("SUBSTITUTION_SUGGESTION"),
@@ -809,12 +824,13 @@ void MatchSubsPanel::renderFooter(const TouchlineContext& context)
   ImGui::SameLine(rowStart + std::max(0.0f, available - settingWidth));
   Touchline::pauseSetting();
 
-  const int planned = static_cast<int>(substitution_plan.entries().size());
+  const auto planned = static_cast<int>(substitution_plan.entries().size());
   const bool waiting = substitution_plan.isConfirmed();
-  const char* confirmKey = waiting ? "SUBSTITUTION_WAITING_BUTTON"
-                           : MatchChanges::atStoppage(context.engine)
-                               ? "SUBSTITUTION_MAKE_NOW"
-                               : "SUBSTITUTION_MAKE_AT_STOPPAGE";
+  const char* confirmKey = "SUBSTITUTION_MAKE_AT_STOPPAGE";
+  if (waiting)
+    confirmKey = "SUBSTITUTION_WAITING_BUTTON";
+  else if (MatchChanges::atStoppage(context.engine))
+    confirmKey = "SUBSTITUTION_MAKE_NOW";
   // Stable id while the count in the label changes.
   const std::string confirmLabel =
       fmt::sprintf(LOC(confirmKey), planned) + "###substitution_confirm";

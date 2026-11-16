@@ -27,11 +27,15 @@ constexpr std::uint64_t WORLD_SEED = 20250702;
 
 int uniqueSlot(int offset)
 {
-  return 3'000'000 + static_cast<int>(getpid() % 100'000) * 10 + offset;
+  return 3'000'000 + getpid() % 100'000 * 10 + offset;
 }
 
 struct SlotCleanup
 {
+  explicit SlotCleanup(int saveSlot) : slot(saveSlot) {}
+  SlotCleanup(const SlotCleanup&) = delete;
+  SlotCleanup& operator=(const SlotCleanup&) = delete;
+
   int slot;
   ~SlotCleanup() { RuntimePaths::removeSave(slot); }
 };
@@ -66,7 +70,7 @@ const RecordEntry* find(const std::vector<RecordEntry>& records,
                         RecordKind kind)
 {
   const auto it = std::ranges::find(records, kind, &RecordEntry::kind);
-  return it == records.end() ? nullptr : &*it;
+  return it == records.end() ? nullptr : std::to_address(it);
 }
 }  // namespace
 
@@ -137,8 +141,8 @@ TEST(Records, BookUpdatesFromReportsAndSettlesSeasons)
   EXPECT_EQ(win->date, GameDateValue(2025, 8, 16));
   EXPECT_EQ(find(records_a, RecordKind::HighestScoringMatch)->value, 4);
   EXPECT_EQ(find(records_a, RecordKind::HighestAttendance)->value, 25'000);
-  const RecordEntry* defeat =
-      find(book.clubRecords(b), RecordKind::BiggestDefeat);
+  const auto records_b = book.clubRecords(b);
+  const RecordEntry* defeat = find(records_b, RecordKind::BiggestDefeat);
   ASSERT_NE(defeat, nullptr);
   EXPECT_EQ(defeat->value, 3);
   EXPECT_EQ(find(book.leagueRecords(league), RecordKind::BiggestWin)->team_id,
@@ -171,8 +175,8 @@ TEST(Records, BookUpdatesFromReportsAndSettlesSeasons)
   book.closeSeason(*gamedata, 2025);
   EXPECT_EQ(find(book.clubRecords(a), RecordKind::MostGoalsSeason)->value, 8);
   EXPECT_EQ(find(book.clubRecords(a), RecordKind::MostPointsSeason)->value, 7);
-  const RecordEntry* top =
-      find(book.clubRecords(a), RecordKind::TopScorerSeason);
+  const auto season_records = book.clubRecords(a);
+  const RecordEntry* top = find(season_records, RecordKind::TopScorerSeason);
   ASSERT_NE(top, nullptr);
   EXPECT_EQ(top->player_id, scorer);
   EXPECT_EQ(top->value, 2);

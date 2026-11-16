@@ -148,7 +148,7 @@ double PortableMath::log(double x)
 
 double PortableMath::exp(double x)
 {
-  if (x != x) return x;
+  if (std::isnan(x)) return x;
   if (x > 709.78) return std::numeric_limits<double>::infinity();
   if (x < -745.2) return 0.0;
   // x = k ln 2 + r with |r| <= ln 2 / 2; k * LN2_HI is exact.

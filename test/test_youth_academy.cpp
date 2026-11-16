@@ -16,6 +16,7 @@
 
 #include <algorithm>
 #include <chrono>
+#include <functional>
 #include <iostream>
 #include <map>
 #include <memory>
@@ -41,11 +42,15 @@ constexpr std::uint64_t WORLD_SEED = 20250702;
 
 int uniqueSlot(int offset)
 {
-  return 600'000 + static_cast<int>(getpid() % 100'000) * 10 + offset;
+  return 600'000 + getpid() % 100'000 * 10 + offset;
 }
 
 struct SlotCleanup
 {
+  explicit SlotCleanup(int saveSlot) : slot(saveSlot) {}
+  SlotCleanup(const SlotCleanup&) = delete;
+  SlotCleanup& operator=(const SlotCleanup&) = delete;
+
   int slot;
   ~SlotCleanup() { RuntimePaths::removeSave(slot); }
 };
@@ -494,7 +499,7 @@ TEST(YouthAcademyTest, IntakeCycleForManagedAndOtherClubs)
   Lineup& lineup = gamedata->getTeam(managed)->get().getLineup();
   const Player* released_player = &gamedata->getPlayer(released_id)->get();
   const Player* ignored_player = &gamedata->getPlayer(ignored_id)->get();
-  std::vector<const Player*> bench = {released_player, ignored_player};
+  std::vector bench = {released_player, ignored_player};
   for (const Player* reserve : lineup.getReserves())
     if (bench.size() < Lineup::MAX_SUBSTITUTES) bench.push_back(reserve);
   lineup.setReserves(bench);
@@ -528,7 +533,7 @@ TEST(YouthAcademyTest, IntakeCycleForManagedAndOtherClubs)
   EXPECT_EQ(academy.record(signed_id)->status, YouthStatus::Squad);
 
   // Graduates carry names nobody else has.
-  std::map<std::string, PlayerID> names;
+  std::map<std::string, PlayerID, std::less<>> names;
   for (const auto& [id, player] : gamedata->getPlayers())
   {
     const auto [clash, fresh] = names.try_emplace(player.getName(), id);

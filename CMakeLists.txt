@@ -144,7 +144,7 @@ FetchContent_Declare(
 FetchContent_MakeAvailable(json)
 
 # --- SQLite3 ---
-find_package(SQLite3 QUIET)
+find_package(SQLite3 3.37 QUIET)
 if(NOT SQLite3_FOUND)
   message(STATUS "SQLite3 not found, fetching from GitHub...")
   FetchContent_Declare(
@@ -181,12 +181,6 @@ else()
   FetchContent_MakeAvailable(SDL3)
 
   set(SDL3TTF_SAMPLES OFF CACHE BOOL "" FORCE)
-  if(APPLE)
-    # SDL_ttf uses the shipped font files through FreeType. HarfBuzz's optional
-    # CoreText backend includes obsolete Carbon headers rejected by LLVM 20;
-    # it is unnecessary for this rendering path and prevents macOS packaging.
-    set(HB_HAVE_CORETEXT OFF CACHE BOOL "Unused HarfBuzz CoreText backend" FORCE)
-  endif()
   FetchContent_Declare(
     SDL3_ttf
     GIT_REPOSITORY https://github.com/libsdl-org/SDL_ttf.git
@@ -194,6 +188,19 @@ else()
     GIT_SHALLOW    TRUE
   )
   FetchContent_MakeAvailable(SDL3_ttf)
+  if(APPLE AND TARGET harfbuzz)
+    # SDL_ttf 3.2.2 forces the optional CoreText backend on, overriding a cached
+    # HB_HAVE_CORETEXT=OFF. Disable its actual compiler definition after setup:
+    # LLVM rejects the old SDK headers it includes. FreeType and HarfBuzz's
+    # OpenType shaping remain enabled for the game's shipped fonts.
+    get_target_property(FM_HARFBUZZ_SOURCE_DIR harfbuzz SOURCE_DIR)
+    get_directory_property(FM_HARFBUZZ_DEFINITIONS
+      DIRECTORY "${FM_HARFBUZZ_SOURCE_DIR}" COMPILE_DEFINITIONS)
+    list(REMOVE_ITEM FM_HARFBUZZ_DEFINITIONS HAVE_CORETEXT)
+    set_property(DIRECTORY "${FM_HARFBUZZ_SOURCE_DIR}"
+      PROPERTY COMPILE_DEFINITIONS "${FM_HARFBUZZ_DEFINITIONS}")
+    set(HB_HAVE_CORETEXT OFF CACHE BOOL "Unused HarfBuzz CoreText backend" FORCE)
+  endif()
 endif()
 
 # --- ImGui ---

@@ -36,7 +36,7 @@ enum class SetPieceDuty : uint8_t
 };
 
 inline constexpr size_t SET_PIECE_DUTY_COUNT =
-    static_cast<size_t>(SetPieceDuty::COUNT);
+    static_cast<size_t>(std::to_underlying(SetPieceDuty::COUNT));
 
 /** @brief Player designated for each duty; 0 = chosen automatically. */
 using SetPieceDesignations = std::array<PlayerID, SET_PIECE_DUTY_COUNT>;

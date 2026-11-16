@@ -8,6 +8,7 @@
 
 #pragma once
 
+#include <array>
 #include <cstddef>
 #include <cstdint>
 #include <limits>
@@ -112,7 +113,7 @@ class WorldRng
   }
 
  private:
-  std::uint64_t state[4];
+  std::array<std::uint64_t, 4> state{};
 };
 
 /**
@@ -242,8 +243,11 @@ int poisson(Engine& engine, double mean)
   // means, so large means are split into parts inversion handles well.
   constexpr double PART = 64.0;
   int count = 0;
-  for (; mean > PART; mean -= PART)
+  while (mean > PART)
+  {
     count += poissonFromUnit(unitDouble(bits64(engine)), PART);
+    mean -= PART;
+  }
   return count + poissonFromUnit(unitDouble(bits64(engine)), mean);
 }
 }  // namespace PortableRandom

@@ -18,8 +18,10 @@
 #include "controller/game_controller.h"
 #include "gui/nav_history.h"
 #include "gui/swipe_gesture.h"
+#include "gui/view_models/editor_context.h"
 
 class GUIScene;
+class RuntimeEditorDialog;
 
 /**
  * @brief Main view manager for the GUI. Handles scenes and overlays.
@@ -196,6 +198,9 @@ class GUIView
 
   /** Captures the current renderer contents as a BMP image. */
   bool captureScreenshot(std::string_view path) const;
+  /** Opens a schema-driven editor with optional page/entity context. */
+  void openEditor(const std::optional<NavEntry>& context);
+  void openEditor(const EditorContext& context);
 
  private:
   friend class GameFlowTest_GUIFlowLifecycle_Test;
@@ -213,11 +218,13 @@ class GUIView
   GUIScene* getActiveScene() const;
 
   GameController& controller;
-  SDL_Window* window;
-  SDL_Renderer* renderer;
+  SDL_Window* window = nullptr;
+  SDL_Renderer* renderer = nullptr;
   bool running;
   bool screenshotPending = false;
   bool backdropPending = false;
+  std::unique_ptr<RuntimeEditorDialog> editor_dialog;
+  void applyEditorRequest();
   SDL_Texture* backdropTexture = nullptr;
 
   // Live-match render diagnostics (Priority 0)

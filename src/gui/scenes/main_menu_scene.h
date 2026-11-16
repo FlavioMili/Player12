@@ -12,8 +12,10 @@
 #include <future>
 #include <optional>
 #include <string>
+#include <thread>
 #include <vector>
 
+#include "global/background_task.h"
 #include "global/crash_report.h"
 #include "gui/gui_scene.h"
 #include "gui/gui_view.h"
@@ -64,6 +66,7 @@ class MainMenuScene : public GUIScene
   int loading_slot = 0;
   bool is_loading_rendered = false;
   bool loading_operation_started = false;
+  std::jthread loading_worker;
   std::future<bool> loading_operation;
   std::vector<GameController::SaveSlotMetadata> cached_metadata;
   int latest_career_slot = 0; /**< Most recently saved career, 0 = none. */
@@ -93,15 +96,15 @@ class MainMenuScene : public GUIScene
   std::string language_notice;
 
   void loadCachedMetadata();
-  void renderBackdrop();
+  void renderBackdrop() const;
   void renderSlotPicker();
   void renderSlotActions(int slot,
                          const GameController::SaveSlotMetadata& metadata);
   void renderBackups();
   void renderLoadError();
   void renderCrashNotice();
-  void renderVersion();
-  void renderLanguageNotice();
+  void renderVersion() const;
+  void renderLanguageNotice() const;
   void openBackups(int slot);
   /** Opens the load error dialog for @p slot with its recovery offer. */
   void showLoadError(int slot, std::string text);

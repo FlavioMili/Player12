@@ -99,11 +99,15 @@ constexpr LeagueID OWN_LEAGUE = 1;
 
 int uniqueSlot(int offset)
 {
-  return 700'000 + static_cast<int>(getpid() % 100'000) * 10 + offset;
+  return 700'000 + (getpid() % 100'000) * 10 + offset;
 }
 
 struct SlotCleanup
 {
+  explicit SlotCleanup(int saveSlot) : slot(saveSlot) {}
+  SlotCleanup(const SlotCleanup&) = delete;
+  SlotCleanup& operator=(const SlotCleanup&) = delete;
+
   int slot;
   ~SlotCleanup() { RuntimePaths::removeSave(slot); }
 };
@@ -119,8 +123,8 @@ void capture(GUIView& view, const char* name)
 void resize(GUIView& view, int width, int height)
 {
   SDL_SetWindowSize(view.getWindow(), width, height);
-  SDL_Event event{};
-  event.type = SDL_EVENT_WINDOW_RESIZED;
+  SDL_Event event{.window = {}};
+  event.window.type = SDL_EVENT_WINDOW_RESIZED;
   event.window.windowID = SDL_GetWindowID(view.getWindow());
   event.window.data1 = width;
   event.window.data2 = height;
@@ -166,7 +170,7 @@ TEST(YouthUiTest, AcademyScreenThroughTheIntakeCycle)
   // senior calendar is not needed for these screens.
   auto* game = const_cast<Game*>(controller.getGame());
   WorldSimulation& world = game->getWorld();
-  YouthAcademy& academy = world.getYouth();
+  const YouthAcademy& academy = world.getYouth();
   for (GameDateValue date(2025, 7, 20); date < GameDateValue(2026, 3, 15);)
   {
     date = SeasonCalendar::addDays(date, 1);

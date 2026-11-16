@@ -73,7 +73,11 @@ std::string joinTeams(const GameController& controller,
 
 ClubScene::ClubScene(GUIView* parent) : ManagementScene(parent) {}
 
-void ClubScene::update(float /*deltaTime*/) {}
+void ClubScene::update(float /*deltaTime*/)
+{
+  // Club data changes through controller actions; refresh() rebuilds the
+  // historical and confidence caches when the scene is entered or resumed.
+}
 
 void ClubScene::refresh()
 {
@@ -166,7 +170,7 @@ void ClubScene::refresh()
     else if (entry->competition_type == MatchType::LEAGUE)
       if (const auto league = controller.getLeagueById(entry->competition_id))
         line.competition = Competitions::leagueName(league->get());
-    if (finish)
+    if (finish.has_value())
       line.competition =
           fmt::sprintf(LOC("CLUB_HISTORY_FINISH"), line.competition, *finish);
     line.champion = teamName(controller, entry->champion_id);
@@ -187,7 +191,7 @@ void ClubScene::refresh()
       line.movements += fmt::sprintf(LOC("CLUB_RELEGATED"),
                                      joinTeams(controller, entry->relegated));
     }
-    history.push_back(std::move(line));
+    history.emplace_back(std::move(line));
   }
 }
 
@@ -216,9 +220,11 @@ void ClubScene::renderContent()
   const float tile = tiles.width();
   const std::string confidence =
       std::format("{:.0f}%", static_cast<double>(board.confidence));
-  const ImVec4 confidenceColor = board.confidence >= 60.0f   ? palette.positive
-                                 : board.confidence >= 35.0f ? palette.warning
-                                                             : palette.negative;
+  ImVec4 confidenceColor = palette.negative;
+  if (board.confidence >= 60.0f)
+    confidenceColor = palette.positive;
+  else if (board.confidence >= 35.0f)
+    confidenceColor = palette.warning;
   tiles.next();
   UI::statTile("confidence", LOC("CLUB_TILE_CONFIDENCE"), confidence.c_str(),
                LOC(board.dismissed ? "CLUB_DISMISSED" : "CLUB_CONFIDENCE_NOTE"),
@@ -279,20 +285,25 @@ void ClubScene::renderBoard(float width)
           : std::string("–");
   const bool onTarget =
       league_position > 0 && league_position <= board.target_position;
-  ImGui::PushStyleColor(ImGuiCol_Text, league_position == 0 ? palette.text
-                                       : onTarget           ? palette.positive
-                                                            : palette.negative);
+  ImVec4 positionColor = palette.negative;
+  if (league_position == 0)
+    positionColor = palette.text;
+  else if (onTarget)
+    positionColor = palette.positive;
+  ImGui::PushStyleColor(ImGuiCol_Text, positionColor);
   UI::keyValue(LOC("CLUB_CURRENT_POSITION"), current.c_str(), keyWidth);
   ImGui::PopStyleColor();
 
   ImGui::Dummy(ImVec2(0.0f, Theme::Space::S * Theme::scale()));
   const std::string confidence =
       std::format("{:.0f}%", static_cast<double>(board.confidence));
+  ImVec4 confidenceColor = palette.negative;
+  if (board.confidence >= 60.0f)
+    confidenceColor = palette.positive;
+  else if (board.confidence >= 35.0f)
+    confidenceColor = palette.warning;
   UI::meter(LOC("CLUB_CONFIDENCE"), board.confidence / 100.0f, keyWidth,
-            board.confidence >= 60.0f   ? palette.positive
-            : board.confidence >= 35.0f ? palette.warning
-                                        : palette.negative,
-            confidence.c_str());
+            confidenceColor, confidence.c_str());
   ImGui::Dummy(ImVec2(0.0f, Theme::Space::S * Theme::scale()));
   UI::sectionLabel(LOC("CLUB_RESULTS_VS_EXPECTATION"));
   if (confidence_trend.empty())
@@ -312,7 +323,7 @@ void ClubScene::renderBoard(float width)
 }
 
 void ClubScene::renderTargets(const GameController::BoardTargets& targets,
-                              float keyWidth)
+                              float keyWidth) const
 {
   const Theme::Palette& palette = Theme::palette();
   ImGui::Dummy(ImVec2(0.0f, Theme::Space::S * Theme::scale()));
@@ -321,9 +332,11 @@ void ClubScene::renderTargets(const GameController::BoardTargets& targets,
       [&](const char* label, const std::string& value, ObjectiveGrade grade)
   {
     const char* status = LOC(BoardModel::targetStatusKey(grade));
-    const ImVec4 color = grade == ObjectiveGrade::Failed   ? palette.negative
-                         : grade == ObjectiveGrade::Missed ? palette.warning
-                                                           : palette.positive;
+    ImVec4 color = palette.positive;
+    if (grade == ObjectiveGrade::Failed)
+      color = palette.negative;
+    else if (grade == ObjectiveGrade::Missed)
+      color = palette.warning;
     UI::keyValue(label, value.c_str(), keyWidth);
     ImGui::SameLine();
     ImGui::TextColored(color, "%s", status);
@@ -345,7 +358,7 @@ void ClubScene::renderSupporters(float width)
 {
   const Theme::Palette& palette = Theme::palette();
   UI::beginAutoHeightCard("club_supporters", LOC("CLUB_SUPPORTERS"), width);
-  if (!supporters_index)
+  if (!supporters_index.has_value())
   {
     ImGui::PushTextWrapPos(0.0f);
     ImGui::TextColored(palette.faint, "%s", LOC("SUPPORTERS_PENDING"));
@@ -436,7 +449,7 @@ void ClubScene::renderStadium(float width)
   UI::endCard();
 }
 
-void ClubScene::renderHistory()
+void ClubScene::renderHistory() const
 {
   const Theme::Palette& palette = Theme::palette();
   // Grows with the seasons played; the page scrolls, never the card.
@@ -450,9 +463,9 @@ void ClubScene::renderHistory()
   }
   std::array<UI::Column, 6> columns = historyColumns();
   for (UI::Column& column : columns) column.label = LOC(column.label);
-  const UI::ColumnMask mask =
-      UI::fitColumns(columns, ImGui::GetContentRegionAvail().x, 150.0f);
-  if (UI::beginResponsiveTable(
+  if (const UI::ColumnMask mask =
+          UI::fitColumns(columns, ImGui::GetContentRegionAvail().x, 150.0f);
+      UI::beginResponsiveTable(
           "history", columns, mask,
           ImGuiTableFlags_RowBg | ImGuiTableFlags_BordersInnerH))
   {

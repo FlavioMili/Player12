@@ -10,7 +10,10 @@ imply that every planned requirement was implemented.
 
 The mission archive is
 `.local-tools/spec-workspace/kitty-specs/open-football-manager-01M3HB8T/`.
-These records informed the developer guides:
+These original paths identify historical private records, now archived outside
+the checkout in `FootballManagement-private-archive/private-tools-2026-10-13.tar.gz`.
+They are not required to build or run the public project. These records informed
+the developer guides:
 
 | Original record | Material reused |
 |-----------------|-----------------|

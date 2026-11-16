@@ -94,6 +94,7 @@ float formDelta(const TalkContext& context)
 /** Mean score of an option before the player's mood of the day. [P] */
 float talkScore(const TalkContext& context, TalkOption option)
 {
+  using enum TalkOption;
   const float professionalism = unit(context.traits.professionalism) - 0.5f;
   const float ambition = unit(context.traits.ambition) - 0.5f;
   const float temperament = unit(context.traits.temperament) - 0.5f;
@@ -104,40 +105,40 @@ float talkScore(const TalkContext& context, TalkOption option)
   const float credibility = context.promise_credible ? 0.0f : 0.8f;
   switch (option)
   {
-    case TalkOption::PraiseForm:
+    case PraiseForm:
       // Professionals see through praise that was not earned.
       return 0.1f + 0.6f * form + 0.15f * trust -
              (form < -0.2f ? 0.35f * (professionalism + 0.5f) : 0.0f);
-    case TalkOption::CriticiseForm:
+    case CriticiseForm:
       // Volatile players take criticism badly even when it is deserved.
       return -0.15f - 0.4f * form + 0.6f * professionalism +
              0.7f * temperament + 0.15f * standing + 0.15f * trust;
-    case TalkOption::DiscussPlayingTime:
+    case DiscussPlayingTime:
       return 0.05f + 1.2f * (context.playing_share - context.expected_share) +
              0.25f * trust + 0.4f * loyalty - 0.4f * ambition;
-    case TalkOption::PromisePlayingTime:
+    case PromisePlayingTime:
       return 0.35f + 0.3f * trust + 0.15f * standing - 0.2f * ambition -
              credibility;
-    case TalkOption::PromiseContract:
+    case PromiseContract:
       return 0.4f + 0.3f * trust + 0.3f * loyalty - credibility;
-    case TalkOption::PromiseSigning:
+    case PromiseSigning:
       return 0.2f + 0.6f * ambition + 0.25f * trust + 0.2f * standing -
              credibility;
-    case TalkOption::AskPatience:
+    case AskPatience:
       return 0.7f * loyalty + 0.4f * professionalism - 0.5f * ambition +
              0.4f * trust + 0.2f * standing -
              (context.request == TalkRequest::Transfer ? 0.25f : 0.0f);
-    case TalkOption::ReassureStay:
+    case ReassureStay:
       return 0.9f * loyalty - 0.7f * ambition + 0.35f * trust +
              0.2f * standing + (isFirstChoice(context.role) ? 0.15f : -0.15f);
-    case TalkOption::OpenToOffers:
+    case OpenToOffers:
       return 0.05f + 0.9f * ambition - 0.8f * loyalty;
-    case TalkOption::AcceptTransferRequest:
+    case AcceptTransferRequest:
       return 1.0f;
-    case TalkOption::RefuseTransferRequest:
+    case RefuseTransferRequest:
       return -0.15f + 0.7f * loyalty + 0.4f * professionalism -
              0.6f * ambition + 0.35f * trust + 0.15f * standing;
-    case TalkOption::COUNT:
+    case COUNT:
       break;
   }
   return 0.0f;
@@ -153,7 +154,7 @@ struct Deltas
 Deltas deltasFor(TalkOption option, TalkReaction reaction)
 {
   static constexpr std::array<std::array<Deltas, 3>,
-                              static_cast<std::size_t>(TalkOption::COUNT)>
+                              std::to_underlying(TalkOption::COUNT)>
       TABLE = {{
           {{{4.0f, 3.0f}, {1.0f, 0.0f}, {-2.0f, -3.0f}}},      // Praise
           {{{2.0f, 2.0f}, {-1.0f, -1.0f}, {-6.0f, -6.0f}}},    // Criticise
@@ -167,37 +168,37 @@ Deltas deltasFor(TalkOption option, TalkReaction reaction)
           {{{5.0f, 2.0f}, {5.0f, 2.0f}, {5.0f, 2.0f}}},        // Accept
           {{{-1.0f, 0.0f}, {-4.0f, -3.0f}, {-8.0f, -10.0f}}},  // Refuse
       }};
-  return TABLE[static_cast<std::size_t>(option)]
-              [static_cast<std::size_t>(reaction)];
+  return TABLE[std::to_underlying(option)][std::to_underlying(reaction)];
 }
 
 const char* optionToken(TalkOption option)
 {
+  using enum TalkOption;
   switch (option)
   {
-    case TalkOption::PraiseForm:
+    case PraiseForm:
       return "PRAISE";
-    case TalkOption::CriticiseForm:
+    case CriticiseForm:
       return "CRITICISE";
-    case TalkOption::DiscussPlayingTime:
+    case DiscussPlayingTime:
       return "PLAYING_TIME";
-    case TalkOption::PromisePlayingTime:
+    case PromisePlayingTime:
       return "PROMISE_PLAYING_TIME";
-    case TalkOption::PromiseContract:
+    case PromiseContract:
       return "PROMISE_CONTRACT";
-    case TalkOption::PromiseSigning:
+    case PromiseSigning:
       return "PROMISE_SIGNING";
-    case TalkOption::AskPatience:
+    case AskPatience:
       return "PATIENCE";
-    case TalkOption::ReassureStay:
+    case ReassureStay:
       return "REASSURE";
-    case TalkOption::OpenToOffers:
+    case OpenToOffers:
       return "OPEN_TO_OFFERS";
-    case TalkOption::AcceptTransferRequest:
+    case AcceptTransferRequest:
       return "ACCEPT_TRANSFER";
-    case TalkOption::RefuseTransferRequest:
+    case RefuseTransferRequest:
       return "REFUSE_TRANSFER";
-    case TalkOption::COUNT:
+    case COUNT:
       break;
   }
   return "PRAISE";
@@ -206,11 +207,12 @@ const char* optionToken(TalkOption option)
 /** Reply wordings per reaction (the common topics have more). */
 int replyVariants(TalkOption option)
 {
+  using enum TalkOption;
   switch (option)
   {
-    case TalkOption::PraiseForm:
-    case TalkOption::CriticiseForm:
-    case TalkOption::DiscussPlayingTime:
+    case PraiseForm:
+    case CriticiseForm:
+    case DiscussPlayingTime:
       return 3;
     default:
       return 2;
@@ -220,7 +222,7 @@ int replyVariants(TalkOption option)
 std::uint64_t optionKeyOf(PlayerID player_id, TalkOption option)
 {
   return (static_cast<std::uint64_t>(player_id) << 8U) |
-         static_cast<std::uint64_t>(option);
+         std::to_underlying(option);
 }
 
 // ---------------------------------------------------------------- Team talks
@@ -237,20 +239,21 @@ enum class Situation : std::uint8_t
 
 Situation situationOf(const TeamTalkContext& context)
 {
+  using enum Situation;
   if (context.moment == TeamTalkMoment::HalfTime)
   {
-    if (context.goal_difference > 0) return Situation::Winning;
-    return context.goal_difference == 0 ? Situation::Drawing
-                                        : Situation::Losing;
+    if (context.goal_difference > 0) return Winning;
+    return context.goal_difference == 0 ? Drawing : Losing;
   }
-  if (context.expected_points >= 1.9f) return Situation::Favourite;
-  return context.expected_points <= 1.0f ? Situation::Underdog
-                                         : Situation::Balanced;
+  if (context.expected_points >= 1.9f) return Favourite;
+  return context.expected_points <= 1.0f ? Underdog : Balanced;
 }
 
 /** How well a tone fits the situation, before personalities. [P] */
 float toneFit(const TeamTalkContext& context, TeamTalkTone tone)
 {
+  using enum Situation;
+  using enum TeamTalkTone;
   // Calm, Motivate, DemandMore, Praise, NoPressure.
   static constexpr std::array<std::array<float, 5>, 6> BASE = {{
       {{0.15f, 0.15f, 0.30f, -0.05f, -0.30f}},  // Favourite
@@ -261,26 +264,25 @@ float toneFit(const TeamTalkContext& context, TeamTalkTone tone)
       {{0.10f, 0.25f, 0.25f, -0.40f, 0.05f}},   // Losing
   }};
   const Situation situation = situationOf(context);
-  float fit =
-      BASE[static_cast<std::size_t>(situation)][static_cast<std::size_t>(tone)];
+  float fit = BASE[std::to_underlying(situation)][std::to_underlying(tone)];
   const bool favourite = context.expected_points >= 1.9f;
-  if (situation == Situation::Losing && context.goal_difference <= -2)
+  if (situation == Losing && context.goal_difference <= -2)
   {
     // Heavy deficit: favourites answer to demands, underdogs to relief.
-    if (tone == TeamTalkTone::DemandMore) fit += favourite ? 0.05f : -0.15f;
-    if (tone == TeamTalkTone::NoPressure && !favourite) fit += 0.2f;
+    if (tone == DemandMore) fit += favourite ? 0.05f : -0.15f;
+    if (tone == NoPressure && !favourite) fit += 0.2f;
   }
-  if (situation == Situation::Winning && context.goal_difference >= 2)
+  if (situation == Winning && context.goal_difference >= 2)
   {
-    if (tone == TeamTalkTone::Calm) fit += 0.1f;
-    if (tone == TeamTalkTone::Praise) fit += 0.05f;
+    if (tone == Calm) fit += 0.1f;
+    if (tone == Praise) fit += 0.05f;
   }
-  if (context.derby || context.final)
+  if (context.derby || context.final_match)
   {
     // Big occasions: settle nerves; "no pressure" rings hollow.
-    if (tone == TeamTalkTone::Calm) fit += 0.15f;
-    if (tone == TeamTalkTone::NoPressure) fit -= 0.05f;
-    if (tone == TeamTalkTone::Motivate && context.derby) fit += 0.05f;
+    if (tone == Calm) fit += 0.15f;
+    if (tone == NoPressure) fit -= 0.05f;
+    if (tone == Motivate && context.derby) fit += 0.05f;
   }
   return fit;
 }
@@ -288,6 +290,7 @@ float toneFit(const TeamTalkContext& context, TeamTalkTone tone)
 float listenerScore(const TeamTalkContext& context, const TalkListener& who,
                     TeamTalkTone tone)
 {
+  using enum TeamTalkTone;
   const float professionalism = unit(who.traits.professionalism) - 0.5f;
   const float ambition = unit(who.traits.ambition) - 0.5f;
   const float temperament = unit(who.traits.temperament) - 0.5f;
@@ -296,22 +299,22 @@ float listenerScore(const TeamTalkContext& context, const TalkListener& who,
   float score = toneFit(context, tone);
   switch (tone)
   {
-    case TeamTalkTone::Calm:
+    case Calm:
       score -= 0.4f * temperament;  // Volatile players need calming.
       break;
-    case TeamTalkTone::Motivate:
+    case Motivate:
       score += 0.4f * ambition + 0.2f * low_morale;
       break;
-    case TeamTalkTone::DemandMore:
+    case DemandMore:
       score += 0.6f * professionalism + 0.5f * temperament - 0.3f * low_morale;
       break;
-    case TeamTalkTone::Praise:
+    case Praise:
       score -= 0.2f * professionalism;
       break;
-    case TeamTalkTone::NoPressure:
+    case NoPressure:
       score += -0.4f * ambition - 0.3f * temperament;
       break;
-    case TeamTalkTone::COUNT:
+    case COUNT:
       break;
   }
   return score;
@@ -319,9 +322,10 @@ float listenerScore(const TeamTalkContext& context, const TalkListener& who,
 
 TalkReaction reactionFor(float score, double roll)
 {
+  using enum TalkReaction;
   const float noisy = score + (static_cast<float>(roll) * 2.0f - 1.0f) * NOISE;
-  if (noisy > THRESHOLD) return TalkReaction::Positive;
-  return noisy < -THRESHOLD ? TalkReaction::Negative : TalkReaction::Neutral;
+  if (noisy > THRESHOLD) return Positive;
+  return noisy < -THRESHOLD ? Negative : Neutral;
 }
 
 float chanceAbove(float score)
@@ -340,6 +344,53 @@ template <typename T>
 T columnAs(sqlite3_stmt* stmt, int column)
 {
   return static_cast<T>(sqlite3_column_int64(stmt, column));
+}
+
+PlayerRelation readPlayerRelation(sqlite3_stmt* stmt)
+{
+  PlayerRelation rel;
+  rel.trust = clampTrust(static_cast<float>(sqlite3_column_double(stmt, 1)));
+  for (std::size_t group = 0; group < rel.last_talk.size(); ++group)
+    rel.last_talk[group] =
+        columnAs<std::int32_t>(stmt, 2 + static_cast<int>(group));
+  const auto request = columnAs<std::uint8_t>(stmt, 7);
+  rel.request = request <= std::to_underlying(TalkRequest::Transfer)
+                    ? static_cast<TalkRequest>(request)
+                    : TalkRequest::None;
+  rel.request_day = columnAs<std::int32_t>(stmt, 8);
+  rel.quiet_until = columnAs<std::int32_t>(stmt, 9);
+  rel.escalations = columnAs<std::uint8_t>(stmt, 10);
+  rel.low_morale_weeks = columnAs<std::uint8_t>(stmt, 11);
+  rel.joined_day = columnAs<std::int32_t>(stmt, 12);
+  rel.broken_promise_day = columnAs<std::int32_t>(stmt, 13);
+  return rel;
+}
+
+std::optional<Promise> readPromise(sqlite3_stmt* stmt)
+{
+  Promise promise;
+  promise.id = columnAs<std::uint32_t>(stmt, 0);
+  promise.player_id = columnAs<PlayerID>(stmt, 1);
+  const auto type = columnAs<std::uint8_t>(stmt, 2);
+  const auto promise_state = columnAs<std::uint8_t>(stmt, 3);
+  const auto reason = columnAs<std::uint8_t>(stmt, 4);
+  if (type > std::to_underlying(PromiseType::Signing) ||
+      promise_state > std::to_underlying(PromiseState::Voided) ||
+      reason > std::to_underlying(PromiseVoidReason::TooFewMatches))
+    return std::nullopt;
+  promise.type = static_cast<PromiseType>(type);
+  promise.state = static_cast<PromiseState>(promise_state);
+  promise.void_reason = static_cast<PromiseVoidReason>(reason);
+  promise.made_day = columnAs<std::int32_t>(stmt, 5);
+  promise.deadline_day = columnAs<std::int32_t>(stmt, 6);
+  promise.resolved_day = columnAs<std::int32_t>(stmt, 7);
+  promise.target = static_cast<float>(sqlite3_column_double(stmt, 8));
+  promise.baseline = static_cast<float>(sqlite3_column_double(stmt, 9));
+  promise.team_minutes = columnAs<std::uint32_t>(stmt, 10);
+  promise.player_minutes = columnAs<std::uint32_t>(stmt, 11);
+  promise.matches = columnAs<std::uint16_t>(stmt, 12);
+  promise.fulfilled = sqlite3_column_int(stmt, 13) != 0;
+  return promise;
 }
 
 template <typename Read>
@@ -365,18 +416,26 @@ void insertAll(const DatabaseConnection& db, const char* sql,
   sqlite3_finalize(stmt);
 }
 
-void post(Inbox& inbox, const GameDateValue& date, InboxCategory category,
-          const char* title_key, const char* body_key,
-          std::vector<std::string> args, PlayerID player_id, bool read = false)
+struct InboxNotice
+{
+  InboxCategory category;
+  const char* title_key;
+  const char* body_key;
+  std::vector<std::string> args;
+  PlayerID player_id;
+  bool read = false;
+};
+
+void post(Inbox& inbox, const GameDateValue& date, InboxNotice notice)
 {
   InboxMessage message;
-  message.read = read;
+  message.read = notice.read;
   message.date = date;
-  message.category = category;
-  message.title_key = title_key;
-  message.body_key = body_key;
-  message.args = std::move(args);
-  message.player_id = player_id;
+  message.category = notice.category;
+  message.title_key = notice.title_key;
+  message.body_key = notice.body_key;
+  message.args = std::move(notice.args);
+  message.player_id = notice.player_id;
   inbox.add(std::move(message));
 }
 /** League of @p team_id (its country's transfer windows apply). */
@@ -393,18 +452,20 @@ LeagueID leagueOf(const GameData& gamedata, TeamID team_id)
 
 float Promise::progress() const
 {
+  using enum PromiseType;
+  using enum PromiseState;
   switch (type)
   {
-    case PromiseType::PlayingTime:
+    case PlayingTime:
     {
       if (team_minutes == 0 || target <= 0.0f) return 0.0f;
       const float share =
           static_cast<float>(player_minutes) / static_cast<float>(team_minutes);
       return std::clamp(share / target, 0.0f, 1.0f);
     }
-    case PromiseType::NewContract:
-    case PromiseType::Signing:
-      return fulfilled || state == PromiseState::Kept ? 1.0f : 0.0f;
+    case NewContract:
+    case Signing:
+      return fulfilled || state == Kept ? 1.0f : 0.0f;
   }
   return 0.0f;
 }
@@ -413,31 +474,32 @@ namespace Interactions
 {
 const char* optionKey(TalkOption option)
 {
+  using enum TalkOption;
   switch (option)
   {
-    case TalkOption::PraiseForm:
+    case PraiseForm:
       return "TALK_OPTION_PRAISE";
-    case TalkOption::CriticiseForm:
+    case CriticiseForm:
       return "TALK_OPTION_CRITICISE";
-    case TalkOption::DiscussPlayingTime:
+    case DiscussPlayingTime:
       return "TALK_OPTION_PLAYING_TIME";
-    case TalkOption::PromisePlayingTime:
+    case PromisePlayingTime:
       return "TALK_OPTION_PROMISE_PLAYING_TIME";
-    case TalkOption::PromiseContract:
+    case PromiseContract:
       return "TALK_OPTION_PROMISE_CONTRACT";
-    case TalkOption::PromiseSigning:
+    case PromiseSigning:
       return "TALK_OPTION_PROMISE_SIGNING";
-    case TalkOption::AskPatience:
+    case AskPatience:
       return "TALK_OPTION_PATIENCE";
-    case TalkOption::ReassureStay:
+    case ReassureStay:
       return "TALK_OPTION_REASSURE";
-    case TalkOption::OpenToOffers:
+    case OpenToOffers:
       return "TALK_OPTION_OPEN_TO_OFFERS";
-    case TalkOption::AcceptTransferRequest:
+    case AcceptTransferRequest:
       return "TALK_OPTION_ACCEPT_TRANSFER";
-    case TalkOption::RefuseTransferRequest:
+    case RefuseTransferRequest:
       return "TALK_OPTION_REFUSE_TRANSFER";
-    case TalkOption::COUNT:
+    case COUNT:
       break;
   }
   return "TALK_OPTION_PRAISE";
@@ -445,31 +507,32 @@ const char* optionKey(TalkOption option)
 
 const char* optionDescriptionKey(TalkOption option)
 {
+  using enum TalkOption;
   switch (option)
   {
-    case TalkOption::PraiseForm:
+    case PraiseForm:
       return "TALK_DESC_PRAISE";
-    case TalkOption::CriticiseForm:
+    case CriticiseForm:
       return "TALK_DESC_CRITICISE";
-    case TalkOption::DiscussPlayingTime:
+    case DiscussPlayingTime:
       return "TALK_DESC_PLAYING_TIME";
-    case TalkOption::PromisePlayingTime:
+    case PromisePlayingTime:
       return "TALK_DESC_PROMISE_PLAYING_TIME";
-    case TalkOption::PromiseContract:
+    case PromiseContract:
       return "TALK_DESC_PROMISE_CONTRACT";
-    case TalkOption::PromiseSigning:
+    case PromiseSigning:
       return "TALK_DESC_PROMISE_SIGNING";
-    case TalkOption::AskPatience:
+    case AskPatience:
       return "TALK_DESC_PATIENCE";
-    case TalkOption::ReassureStay:
+    case ReassureStay:
       return "TALK_DESC_REASSURE";
-    case TalkOption::OpenToOffers:
+    case OpenToOffers:
       return "TALK_DESC_OPEN_TO_OFFERS";
-    case TalkOption::AcceptTransferRequest:
+    case AcceptTransferRequest:
       return "TALK_DESC_ACCEPT_TRANSFER";
-    case TalkOption::RefuseTransferRequest:
+    case RefuseTransferRequest:
       return "TALK_DESC_REFUSE_TRANSFER";
-    case TalkOption::COUNT:
+    case COUNT:
       break;
   }
   return "TALK_DESC_PRAISE";
@@ -477,13 +540,14 @@ const char* optionDescriptionKey(TalkOption option)
 
 const char* reactionKey(TalkReaction reaction)
 {
+  using enum TalkReaction;
   switch (reaction)
   {
-    case TalkReaction::Positive:
+    case Positive:
       return "TALK_REACTION_POSITIVE";
-    case TalkReaction::Neutral:
+    case Neutral:
       return "TALK_REACTION_NEUTRAL";
-    case TalkReaction::Negative:
+    case Negative:
       break;
   }
   return "TALK_REACTION_NEGATIVE";
@@ -491,13 +555,14 @@ const char* reactionKey(TalkReaction reaction)
 
 const char* hintKey(TalkHint hint)
 {
+  using enum TalkHint;
   switch (hint)
   {
-    case TalkHint::LikelyPositive:
+    case LikelyPositive:
       return "TALK_HINT_POSITIVE";
-    case TalkHint::Uncertain:
+    case Uncertain:
       return "TALK_HINT_UNCERTAIN";
-    case TalkHint::Risky:
+    case Risky:
       break;
   }
   return "TALK_HINT_RISKY";
@@ -505,31 +570,32 @@ const char* hintKey(TalkHint hint)
 
 const char* blockKey(TalkBlock block)
 {
+  using enum TalkBlock;
   switch (block)
   {
-    case TalkBlock::None:
+    case None:
       return "";
-    case TalkBlock::Cooldown:
+    case Cooldown:
       return "TALK_BLOCK_COOLDOWN";
-    case TalkBlock::NotAtClub:
+    case NotAtClub:
       return "TALK_BLOCK_NOT_AT_CLUB";
-    case TalkBlock::NoRecentMatches:
+    case NoRecentMatches:
       return "TALK_BLOCK_NO_MATCHES";
-    case TalkBlock::Injured:
+    case Injured:
       return "TALK_BLOCK_INJURED";
-    case TalkBlock::PromiseActive:
+    case PromiseActive:
       return "TALK_BLOCK_PROMISE_ACTIVE";
-    case TalkBlock::PromiseNotCredible:
+    case PromiseNotCredible:
       return "TALK_BLOCK_NOT_CREDIBLE";
-    case TalkBlock::ContractLong:
+    case ContractLong:
       return "TALK_BLOCK_CONTRACT_LONG";
-    case TalkBlock::NoWindowAhead:
+    case NoWindowAhead:
       return "TALK_BLOCK_NO_WINDOW";
-    case TalkBlock::NoTransferInterest:
+    case NoTransferInterest:
       return "TALK_BLOCK_NO_INTEREST";
-    case TalkBlock::NoTransferRequest:
+    case NoTransferRequest:
       return "TALK_BLOCK_NO_REQUEST";
-    case TalkBlock::NotUnhappy:
+    case NotUnhappy:
       break;
   }
   return "TALK_BLOCK_NOT_UNHAPPY";
@@ -537,15 +603,16 @@ const char* blockKey(TalkBlock block)
 
 const char* requestKey(TalkRequest request)
 {
+  using enum TalkRequest;
   switch (request)
   {
-    case TalkRequest::None:
+    case None:
       return "";
-    case TalkRequest::PlayingTime:
+    case PlayingTime:
       return "TALK_REQUEST_PLAYING_TIME";
-    case TalkRequest::NewContract:
+    case NewContract:
       return "TALK_REQUEST_CONTRACT";
-    case TalkRequest::Transfer:
+    case Transfer:
       break;
   }
   return "TALK_REQUEST_TRANSFER";
@@ -553,13 +620,14 @@ const char* requestKey(TalkRequest request)
 
 const char* promiseTypeKey(PromiseType type)
 {
+  using enum PromiseType;
   switch (type)
   {
-    case PromiseType::PlayingTime:
+    case PlayingTime:
       return "PROMISE_TYPE_PLAYING_TIME";
-    case PromiseType::NewContract:
+    case NewContract:
       return "PROMISE_TYPE_CONTRACT";
-    case PromiseType::Signing:
+    case Signing:
       break;
   }
   return "PROMISE_TYPE_SIGNING";
@@ -567,15 +635,16 @@ const char* promiseTypeKey(PromiseType type)
 
 const char* promiseStateKey(PromiseState state)
 {
+  using enum PromiseState;
   switch (state)
   {
-    case PromiseState::Active:
+    case Active:
       return "PROMISE_STATE_ACTIVE";
-    case PromiseState::Kept:
+    case Kept:
       return "PROMISE_STATE_KEPT";
-    case PromiseState::Broken:
+    case Broken:
       return "PROMISE_STATE_BROKEN";
-    case PromiseState::Voided:
+    case Voided:
       break;
   }
   return "PROMISE_STATE_VOIDED";
@@ -583,15 +652,16 @@ const char* promiseStateKey(PromiseState state)
 
 const char* voidReasonKey(PromiseVoidReason reason)
 {
+  using enum PromiseVoidReason;
   switch (reason)
   {
-    case PromiseVoidReason::None:
+    case None:
       return "";
-    case PromiseVoidReason::PlayerLeft:
+    case PlayerLeft:
       return "PROMISE_VOID_LEFT";
-    case PromiseVoidReason::LongInjury:
+    case LongInjury:
       return "PROMISE_VOID_INJURY";
-    case PromiseVoidReason::TooFewMatches:
+    case TooFewMatches:
       break;
   }
   return "PROMISE_VOID_MATCHES";
@@ -599,18 +669,19 @@ const char* voidReasonKey(PromiseVoidReason reason)
 
 const char* toneKey(TeamTalkTone tone)
 {
+  using enum TeamTalkTone;
   switch (tone)
   {
-    case TeamTalkTone::Calm:
+    case Calm:
       return "TEAMTALK_TONE_CALM";
-    case TeamTalkTone::Motivate:
+    case Motivate:
       return "TEAMTALK_TONE_MOTIVATE";
-    case TeamTalkTone::DemandMore:
+    case DemandMore:
       return "TEAMTALK_TONE_DEMAND";
-    case TeamTalkTone::Praise:
+    case Praise:
       return "TEAMTALK_TONE_PRAISE";
-    case TeamTalkTone::NoPressure:
-    case TeamTalkTone::COUNT:
+    case NoPressure:
+    case COUNT:
       break;
   }
   return "TEAMTALK_TONE_NO_PRESSURE";
@@ -618,18 +689,19 @@ const char* toneKey(TeamTalkTone tone)
 
 const char* toneDescriptionKey(TeamTalkTone tone)
 {
+  using enum TeamTalkTone;
   switch (tone)
   {
-    case TeamTalkTone::Calm:
+    case Calm:
       return "TEAMTALK_DESC_CALM";
-    case TeamTalkTone::Motivate:
+    case Motivate:
       return "TEAMTALK_DESC_MOTIVATE";
-    case TeamTalkTone::DemandMore:
+    case DemandMore:
       return "TEAMTALK_DESC_DEMAND";
-    case TeamTalkTone::Praise:
+    case Praise:
       return "TEAMTALK_DESC_PRAISE";
-    case TeamTalkTone::NoPressure:
-    case TeamTalkTone::COUNT:
+    case NoPressure:
+    case COUNT:
       break;
   }
   return "TEAMTALK_DESC_NO_PRESSURE";
@@ -637,15 +709,16 @@ const char* toneDescriptionKey(TeamTalkTone tone)
 
 const char* moodKey(DressingMood mood)
 {
+  using enum DressingMood;
   switch (mood)
   {
-    case DressingMood::Buoyant:
+    case Buoyant:
       return "DRESSING_MOOD_BUOYANT";
-    case DressingMood::Settled:
+    case Settled:
       return "DRESSING_MOOD_SETTLED";
-    case DressingMood::Uneasy:
+    case Uneasy:
       return "DRESSING_MOOD_UNEASY";
-    case DressingMood::Tense:
+    case Tense:
       break;
   }
   return "DRESSING_MOOD_TENSE";
@@ -653,18 +726,19 @@ const char* moodKey(DressingMood mood)
 
 TalkGroup groupOf(TalkOption option)
 {
+  using enum TalkOption;
   switch (option)
   {
-    case TalkOption::PraiseForm:
-    case TalkOption::CriticiseForm:
+    case PraiseForm:
+    case CriticiseForm:
       return TalkGroup::Form;
-    case TalkOption::DiscussPlayingTime:
+    case DiscussPlayingTime:
       return TalkGroup::PlayingTime;
-    case TalkOption::PromisePlayingTime:
-    case TalkOption::PromiseContract:
-    case TalkOption::PromiseSigning:
+    case PromisePlayingTime:
+    case PromiseContract:
+    case PromiseSigning:
       return TalkGroup::Promise;
-    case TalkOption::AskPatience:
+    case AskPatience:
       return TalkGroup::Patience;
     default:
       return TalkGroup::Transfer;
@@ -673,18 +747,19 @@ TalkGroup groupOf(TalkOption option)
 
 std::int32_t cooldownDays(TalkGroup group)
 {
+  using enum TalkGroup;
   switch (group)
   {
-    case TalkGroup::Form:
+    case Form:
       return 14;
-    case TalkGroup::PlayingTime:
+    case PlayingTime:
       return 28;
-    case TalkGroup::Promise:
+    case Promise:
       return 21;
-    case TalkGroup::Patience:
+    case Patience:
       return 28;
-    case TalkGroup::Transfer:
-    case TalkGroup::COUNT:
+    case Transfer:
+    case COUNT:
       break;
   }
   return 21;
@@ -692,16 +767,17 @@ std::int32_t cooldownDays(TalkGroup group)
 
 float expectedRating(SquadRole role)
 {
+  using enum SquadRole;
   switch (role)
   {
-    case SquadRole::KeyPlayer:
+    case KeyPlayer:
       return 7.0f;
-    case SquadRole::FirstTeam:
+    case FirstTeam:
       return 6.8f;
-    case SquadRole::Rotation:
+    case Rotation:
       return 6.6f;
-    case SquadRole::Backup:
-    case SquadRole::Fringe:
+    case Backup:
+    case Fringe:
       break;
   }
   return 6.4f;
@@ -709,23 +785,24 @@ float expectedRating(SquadRole role)
 
 float expectedShare(SquadRole role, int age)
 {
+  using enum SquadRole;
   // Mirrors the weekly morale model's playing-time expectation.
   float share = 0.03f;
   switch (role)
   {
-    case SquadRole::KeyPlayer:
+    case KeyPlayer:
       share = 0.85f;
       break;
-    case SquadRole::FirstTeam:
+    case FirstTeam:
       share = 0.70f;
       break;
-    case SquadRole::Rotation:
+    case Rotation:
       share = 0.40f;
       break;
-    case SquadRole::Backup:
+    case Backup:
       share = 0.15f;
       break;
-    case SquadRole::Fringe:
+    case Fringe:
       break;
   }
   return age <= 19 ? std::min(share, 0.10f) : share;
@@ -743,13 +820,15 @@ float negativeChance(const TalkContext& context, TalkOption option)
 
 TalkHint hintFor(float positive, float negative)
 {
-  if (positive >= 0.6f) return TalkHint::LikelyPositive;
-  return negative >= 0.4f ? TalkHint::Risky : TalkHint::Uncertain;
+  using enum TalkHint;
+  if (positive >= 0.6f) return LikelyPositive;
+  return negative >= 0.4f ? Risky : Uncertain;
 }
 
 TalkOutcome evaluateTalk(const TalkContext& context, TalkOption option,
                          double roll, double variant_roll)
 {
+  using enum TalkOption;
   TalkOutcome outcome;
   outcome.option = option;
   outcome.reaction = reactionFor(talkScore(context, option), roll);
@@ -762,53 +841,57 @@ TalkOutcome evaluateTalk(const TalkContext& context, TalkOption option,
   const float ambition = unit(context.traits.ambition);
   switch (option)
   {
-    case TalkOption::PromisePlayingTime:
+    case PromisePlayingTime:
       if (!negative) outcome.promise = PromiseType::PlayingTime;
       outcome.request_resolved =
           !negative && context.request == TalkRequest::PlayingTime;
       break;
-    case TalkOption::PromiseContract:
+    case PromiseContract:
       if (!negative) outcome.promise = PromiseType::NewContract;
       outcome.request_resolved =
           !negative && context.request == TalkRequest::NewContract;
       break;
-    case TalkOption::PromiseSigning:
+    case PromiseSigning:
       if (!negative) outcome.promise = PromiseType::Signing;
       break;
-    case TalkOption::AskPatience:
+    case AskPatience:
       outcome.request_resolved = !negative;
       outcome.quiet_days = positive ? 42 : 21;
       outcome.transfer_request = negative && ambition >= 0.6f &&
                                  context.request != TalkRequest::Transfer &&
                                  context.request != TalkRequest::None;
       break;
-    case TalkOption::ReassureStay:
+    case ReassureStay:
       outcome.settled = positive;
       outcome.transfer_request =
           negative && ambition >= 0.7f && context.request == TalkRequest::None;
       break;
-    case TalkOption::AcceptTransferRequest:
+    case AcceptTransferRequest:
       outcome.list_player = true;
       outcome.request_resolved = true;
       outcome.quiet_days = 90;
       break;
-    case TalkOption::RefuseTransferRequest:
+    case RefuseTransferRequest:
       outcome.request_resolved = true;
-      outcome.quiet_days = positive ? 90 : (negative ? 45 : 60);
+      if (positive)
+        outcome.quiet_days = 90;
+      else if (negative)
+        outcome.quiet_days = 45;
+      else
+        outcome.quiet_days = 60;
       break;
     default:
       break;
   }
 
-  static constexpr std::array<const char*, 3> REACTION_TOKENS = {"POS", "NEU",
-                                                                 "NEG"};
+  static constexpr std::array REACTION_TOKENS = {"POS", "NEU", "NEG"};
   const int variants = replyVariants(option);
   const int variant =
       std::min(variants - 1,
                static_cast<int>(variant_roll * static_cast<double>(variants)));
   outcome.reply_key = std::format(
       "TALK_REPLY_{}_{}_{}", optionToken(option),
-      REACTION_TOKENS[static_cast<std::size_t>(outcome.reaction)], variant);
+      REACTION_TOKENS[std::to_underlying(outcome.reaction)], variant);
   return outcome;
 }
 
@@ -818,9 +901,9 @@ std::vector<TeamTalkPrediction> predictTeamTalk(const TeamTalkContext& context)
   const std::vector<TalkListener>& listeners =
       context.listeners.empty() ? NEUTRAL_SQUAD : context.listeners;
   std::vector<TeamTalkPrediction> predictions;
-  predictions.reserve(static_cast<std::size_t>(TeamTalkTone::COUNT));
-  for (std::size_t index = 0;
-       index < static_cast<std::size_t>(TeamTalkTone::COUNT); ++index)
+  predictions.reserve(std::to_underlying(TeamTalkTone::COUNT));
+  for (std::size_t index = 0; index < std::to_underlying(TeamTalkTone::COUNT);
+       ++index)
   {
     const auto tone = static_cast<TeamTalkTone>(index);
     TeamTalkPrediction prediction;
@@ -844,11 +927,12 @@ std::vector<TeamTalkPrediction> predictTeamTalk(const TeamTalkContext& context)
 TeamTalkResult evaluateTeamTalk(const TeamTalkContext& context,
                                 TeamTalkTone tone, std::uint64_t seed)
 {
+  using enum TalkReaction;
   TeamTalkResult result;
   result.tone = tone;
   const std::uint64_t moment_key =
       mixHash(static_cast<std::uint64_t>(context.day),
-              static_cast<std::uint64_t>(context.moment) + 1);
+              std::to_underlying(context.moment) + 1);
   float morale_total = 0.0f;
   for (const TalkListener& listener : context.listeners)
   {
@@ -859,14 +943,14 @@ TeamTalkResult evaluateTeamTalk(const TeamTalkContext& context,
     float delta = 0.0f;
     switch (reaction)
     {
-      case TalkReaction::Positive:
+      case Positive:
         ++result.positive;
         delta = 2.5f;
         break;
-      case TalkReaction::Neutral:
+      case Neutral:
         ++result.neutral;
         break;
-      case TalkReaction::Negative:
+      case Negative:
         ++result.negative;
         delta = -3.0f;
         break;
@@ -1014,74 +1098,88 @@ TalkBlock InteractionSystem::blockFor(const Player& player, TalkOption option,
   if (managed_team_id == FREE_AGENTS_TEAM_ID ||
       player.getTeamId() != managed_team_id)
     return TalkBlock::NotAtClub;
-
+  const TalkBlock situation =
+      optionBlockFor(player, option, context, date, managed_team_id);
+  if (situation != TalkBlock::None) return situation;
   const PlayerRelation* rel = relation(player.getId());
-  const auto has_active = [&](PromiseType type)
+  if (rel == nullptr) return TalkBlock::None;
+  const TalkGroup group = Interactions::groupOf(option);
+  const std::int32_t last = rel->last_talk[std::to_underlying(group)];
+  const bool answers_request =
+      context.request != TalkRequest::None &&
+      (group == TalkGroup::Patience || group == TalkGroup::Transfer ||
+       group == TalkGroup::Promise);
+  if (last > 0 && !answers_request &&
+      today - last < Interactions::cooldownDays(group))
   {
-    return std::ranges::any_of(state.promises,
-                               [&](const Promise& promise)
-                               {
-                                 return promise.player_id == player.getId() &&
-                                        promise.type == type &&
-                                        promise.state == PromiseState::Active;
-                               });
-  };
+    cooldown = Interactions::cooldownDays(group) - (today - last);
+    return TalkBlock::Cooldown;
+  }
+  return TalkBlock::None;
+}
+
+bool InteractionSystem::hasActivePromise(PlayerID player_id,
+                                         PromiseType type) const
+{
+  return std::ranges::any_of(state.promises,
+                             [player_id, type](const Promise& promise)
+                             {
+                               return promise.player_id == player_id &&
+                                      promise.type == type &&
+                                      promise.state == PromiseState::Active;
+                             });
+}
+
+TalkBlock InteractionSystem::optionBlockFor(const Player& player,
+                                            TalkOption option,
+                                            const TalkContext& context,
+                                            const GameDateValue& date,
+                                            TeamID managed_team_id) const
+{
+  using enum TalkOption;
   // Situation first: an option that does not apply is hidden, not cooling.
   switch (option)
   {
-    case TalkOption::PraiseForm:
-    case TalkOption::CriticiseForm:
+    case PraiseForm:
+    case CriticiseForm:
       if (context.rated_matches == 0) return TalkBlock::NoRecentMatches;
       break;
-    case TalkOption::PromisePlayingTime:
+    case PromisePlayingTime:
       if (context.injured) return TalkBlock::Injured;
-      if (has_active(PromiseType::PlayingTime)) return TalkBlock::PromiseActive;
+      if (hasActivePromise(player.getId(), PromiseType::PlayingTime))
+        return TalkBlock::PromiseActive;
       if (!context.promise_credible) return TalkBlock::PromiseNotCredible;
       break;
-    case TalkOption::PromiseContract:
+    case PromiseContract:
       if (context.contract_years > 2) return TalkBlock::ContractLong;
-      if (has_active(PromiseType::NewContract)) return TalkBlock::PromiseActive;
+      if (hasActivePromise(player.getId(), PromiseType::NewContract))
+        return TalkBlock::PromiseActive;
       if (!context.promise_credible) return TalkBlock::PromiseNotCredible;
       break;
-    case TalkOption::PromiseSigning:
-      if (has_active(PromiseType::Signing)) return TalkBlock::PromiseActive;
+    case PromiseSigning:
+      if (hasActivePromise(player.getId(), PromiseType::Signing))
+        return TalkBlock::PromiseActive;
       if (!context.promise_credible) return TalkBlock::PromiseNotCredible;
       if (!signingDeadline(date, leagueOf(*gamedata, managed_team_id)))
         return TalkBlock::NoWindowAhead;
       break;
-    case TalkOption::AskPatience:
+    case AskPatience:
       if (context.request == TalkRequest::None && context.morale >= 45.0f)
         return TalkBlock::NotUnhappy;
       break;
-    case TalkOption::ReassureStay:
-    case TalkOption::OpenToOffers:
+    case ReassureStay:
+    case OpenToOffers:
       if (!context.transfer_interest &&
           context.request != TalkRequest::Transfer)
         return TalkBlock::NoTransferInterest;
       break;
-    case TalkOption::AcceptTransferRequest:
-    case TalkOption::RefuseTransferRequest:
+    case AcceptTransferRequest:
+    case RefuseTransferRequest:
       if (context.request != TalkRequest::Transfer)
         return TalkBlock::NoTransferRequest;
       break;
     default:
       break;
-  }
-  if (rel != nullptr)
-  {
-    const TalkGroup group = Interactions::groupOf(option);
-    const std::int32_t last = rel->last_talk[static_cast<std::size_t>(group)];
-    // An open request can always be answered.
-    const bool answers_request =
-        context.request != TalkRequest::None &&
-        (group == TalkGroup::Patience || group == TalkGroup::Transfer ||
-         group == TalkGroup::Promise);
-    if (last > 0 && !answers_request &&
-        today - last < Interactions::cooldownDays(group))
-    {
-      cooldown = Interactions::cooldownDays(group) - (today - last);
-      return TalkBlock::Cooldown;
-    }
   }
   return TalkBlock::None;
 }
@@ -1090,14 +1188,14 @@ std::vector<TalkOptionView> InteractionSystem::options(
     PlayerID player_id, const GameDateValue& date, TeamID managed_team_id,
     float manager_standing) const
 {
+  using enum TalkOption;
   std::vector<TalkOptionView> views;
   const auto player = gamedata->getPlayer(player_id);
   if (!player) return views;
   const TalkContext context = contextFor(player->get(), date, manager_standing);
   const float form = formDelta(context);
-  views.reserve(static_cast<std::size_t>(TalkOption::COUNT));
-  for (std::size_t index = 0;
-       index < static_cast<std::size_t>(TalkOption::COUNT); ++index)
+  views.reserve(std::to_underlying(COUNT));
+  for (std::size_t index = 0; index < std::to_underlying(COUNT); ++index)
   {
     TalkOptionView view;
     view.option = static_cast<TalkOption>(index);
@@ -1109,28 +1207,28 @@ std::vector<TalkOptionView> InteractionSystem::options(
         Interactions::negativeChance(context, view.option));
     switch (view.option)
     {
-      case TalkOption::PraiseForm:
+      case PraiseForm:
         view.suggested = context.rated_matches > 0 && form > 0.4f;
         break;
-      case TalkOption::CriticiseForm:
+      case CriticiseForm:
         view.suggested = context.rated_matches > 0 && form < -0.6f;
         break;
-      case TalkOption::DiscussPlayingTime:
-      case TalkOption::PromisePlayingTime:
+      case DiscussPlayingTime:
+      case PromisePlayingTime:
         view.suggested = context.request == TalkRequest::PlayingTime;
         break;
-      case TalkOption::PromiseContract:
+      case PromiseContract:
         view.suggested = context.request == TalkRequest::NewContract;
         break;
-      case TalkOption::AskPatience:
+      case AskPatience:
         view.suggested = context.request != TalkRequest::None;
         break;
-      case TalkOption::ReassureStay:
-      case TalkOption::OpenToOffers:
+      case ReassureStay:
+      case OpenToOffers:
         view.suggested = context.transfer_interest;
         break;
-      case TalkOption::AcceptTransferRequest:
-      case TalkOption::RefuseTransferRequest:
+      case AcceptTransferRequest:
+      case RefuseTransferRequest:
         view.suggested = context.request == TalkRequest::Transfer;
         break;
       default:
@@ -1159,14 +1257,15 @@ std::optional<TalkOutcome> InteractionSystem::talk(PlayerID player_id,
                                                    TeamID managed_team_id,
                                                    float manager_standing)
 {
+  using enum PromiseType;
   auto& players = gamedata->getPlayers();
   const auto found = players.find(player_id);
   if (found == players.end() || option >= TalkOption::COUNT)
     return std::nullopt;
   Player& player = found->second;
   const TalkContext context = contextFor(player, date, manager_standing);
-  std::int32_t cooldown = 0;
-  if (blockFor(player, option, context, date, managed_team_id, cooldown) !=
+  if (std::int32_t cooldown = 0;
+      blockFor(player, option, context, date, managed_team_id, cooldown) !=
       TalkBlock::None)
     return std::nullopt;
 
@@ -1185,8 +1284,7 @@ std::optional<TalkOutcome> InteractionSystem::talk(PlayerID player_id,
   dynamics.morale = clampMorale(dynamics.morale + outcome.morale_delta);
   PlayerRelation& rel = relationFor(player_id);
   rel.trust = clampTrust(rel.trust + outcome.trust_delta);
-  rel.last_talk[static_cast<std::size_t>(Interactions::groupOf(option))] =
-      today;
+  rel.last_talk[std::to_underlying(Interactions::groupOf(option))] = today;
   if (outcome.settled) dynamics.transfer_interest_weeks = 0;
 
   if (outcome.promise)
@@ -1198,15 +1296,15 @@ std::optional<TalkOutcome> InteractionSystem::talk(PlayerID player_id,
     promise.made_day = today;
     switch (promise.type)
     {
-      case PromiseType::PlayingTime:
+      case PlayingTime:
         promise.target = isFirstChoice(context.role) ? 0.7f : 0.5f;
         promise.deadline_day = today + PLAYING_TIME_PROMISE_DAYS;
         break;
-      case PromiseType::NewContract:
+      case NewContract:
         promise.baseline = static_cast<float>(player.getContractYears());
         promise.deadline_day = today + CONTRACT_PROMISE_DAYS;
         break;
-      case PromiseType::Signing:
+      case Signing:
         promise.target = firstTeamThreshold(managed_team_id);
         promise.deadline_day = dayOrdinal(
             signingDeadline(date, leagueOf(*gamedata, managed_team_id))
@@ -1249,13 +1347,15 @@ void InteractionSystem::resolvePromise(Promise& promise, PromiseState outcome,
                                        PromiseVoidReason reason,
                                        const GameDateValue& date, Inbox& inbox)
 {
+  using enum PromiseVoidReason;
+  using enum PromiseState;
   const std::int32_t today = dayOrdinal(date);
   promise.state = outcome;
   promise.void_reason = reason;
   promise.resolved_day = today;
   auto& players = gamedata->getPlayers();
   const auto found = players.find(promise.player_id);
-  if (found == players.end() || reason == PromiseVoidReason::PlayerLeft) return;
+  if (found == players.end() || reason == PlayerLeft) return;
   Player& player = found->second;
   PlayerDynamics& dynamics = player.mutableDynamics();
   PlayerRelation& rel = relationFor(promise.player_id);
@@ -1264,13 +1364,17 @@ void InteractionSystem::resolvePromise(Promise& promise, PromiseState outcome,
       std::string("@") + Interactions::promiseTypeKey(promise.type);
   switch (outcome)
   {
-    case PromiseState::Kept:
+    case Kept:
       dynamics.morale = clampMorale(dynamics.morale + KEPT_MORALE * scale);
       rel.trust = clampTrust(rel.trust + KEPT_TRUST);
-      post(inbox, date, InboxCategory::General, "PROMISE_KEPT_TITLE",
-           "PROMISE_KEPT_BODY", {player.getName(), what}, promise.player_id);
+      post(inbox, date,
+           {InboxCategory::General,
+            "PROMISE_KEPT_TITLE",
+            "PROMISE_KEPT_BODY",
+            {player.getName(), what},
+            promise.player_id});
       break;
-    case PromiseState::Broken:
+    case Broken:
     {
       dynamics.morale = clampMorale(dynamics.morale - BROKEN_MORALE * scale);
       rel.trust = clampTrust(rel.trust - BROKEN_TRUST);
@@ -1284,19 +1388,24 @@ void InteractionSystem::resolvePromise(Promise& promise, PromiseState outcome,
         rel.request_day = today;
         rel.escalations = 1;
       }
-      post(inbox, date, InboxCategory::Contract, "PROMISE_BROKEN_TITLE",
-           wants_out ? "PROMISE_BROKEN_BODY_TRANSFER" : "PROMISE_BROKEN_BODY",
-           {player.getName(), what}, promise.player_id);
+      post(inbox, date,
+           {InboxCategory::Contract,
+            "PROMISE_BROKEN_TITLE",
+            wants_out ? "PROMISE_BROKEN_BODY_TRANSFER" : "PROMISE_BROKEN_BODY",
+            {player.getName(), what},
+            promise.player_id});
       break;
     }
-    case PromiseState::Voided:
-      post(inbox, date, InboxCategory::General, "PROMISE_VOIDED_TITLE",
-           "PROMISE_VOIDED_BODY",
-           {player.getName(), what,
-            std::string("@") + Interactions::voidReasonKey(reason)},
-           promise.player_id);
+    case Voided:
+      post(inbox, date,
+           {InboxCategory::General,
+            "PROMISE_VOIDED_TITLE",
+            "PROMISE_VOIDED_BODY",
+            {player.getName(), what,
+             std::string("@") + Interactions::voidReasonKey(reason)},
+            promise.player_id});
       break;
-    case PromiseState::Active:
+    case Active:
       break;
   }
 }
@@ -1316,65 +1425,86 @@ void InteractionSystem::evaluatePromises(const GameDateValue& date,
       continue;
     }
     const bool due = today >= promise.deadline_day;
-    switch (promise.type)
-    {
-      case PromiseType::PlayingTime:
-      {
-        const PlayerDynamics& dynamics = player->get().getDynamics();
-        // Out for longer than what is left of the window: impossible.
-        constexpr std::uint16_t LONG_LAYOFF_DAYS = 21;
-        if (!due && dynamics.injury_days >= LONG_LAYOFF_DAYS &&
-            today + dynamics.injury_days >= promise.deadline_day)
-        {
-          resolvePromise(promise, PromiseState::Voided,
-                         PromiseVoidReason::LongInjury, date, inbox);
-          break;
-        }
-        const float share = promise.team_minutes == 0
-                                ? 0.0f
-                                : static_cast<float>(promise.player_minutes) /
-                                      static_cast<float>(promise.team_minutes);
-        const bool met = share + 1e-6f >= promise.target;
-        if (!due && met && promise.matches >= PLAYING_TIME_EARLY_MATCHES)
-          resolvePromise(promise, PromiseState::Kept, PromiseVoidReason::None,
-                         date, inbox);
-        else if (due && promise.matches < PLAYING_TIME_MIN_MATCHES)
-          resolvePromise(promise, PromiseState::Voided,
-                         PromiseVoidReason::TooFewMatches, date, inbox);
-        else if (due)
-          resolvePromise(promise,
-                         met ? PromiseState::Kept : PromiseState::Broken,
-                         PromiseVoidReason::None, date, inbox);
-        break;
-      }
-      case PromiseType::NewContract:
-      {
-        const auto years = static_cast<float>(player->get().getContractYears());
-        // Season rollover shortens the contract without a renewal.
-        if (years < promise.baseline) promise.baseline = years;
-        if (years > promise.baseline) promise.fulfilled = true;
-        if (promise.fulfilled || due)
-          resolvePromise(
-              promise,
-              promise.fulfilled ? PromiseState::Kept : PromiseState::Broken,
-              PromiseVoidReason::None, date, inbox);
-        break;
-      }
-      case PromiseType::Signing:
-        if (promise.fulfilled || due)
-          resolvePromise(
-              promise,
-              promise.fulfilled ? PromiseState::Kept : PromiseState::Broken,
-              PromiseVoidReason::None, date, inbox);
-        break;
-    }
+    evaluatePromise(promise, player->get(), due, date, today, inbox);
   }
   std::erase_if(state.promises,
-                [&](const Promise& promise)
+                [today](const Promise& promise)
                 {
                   return promise.state != PromiseState::Active &&
                          today - promise.resolved_day > PROMISE_HISTORY_DAYS;
                 });
+}
+
+void InteractionSystem::evaluatePromise(Promise& promise, const Player& player,
+                                        bool due, const GameDateValue& date,
+                                        std::int32_t today, Inbox& inbox)
+{
+  using enum PromiseType;
+  switch (promise.type)
+  {
+    case PlayingTime:
+      evaluatePlayingTimePromise(promise, player, due, date, today, inbox);
+      break;
+    case NewContract:
+      evaluateContractPromise(promise, player, due, date, inbox);
+      break;
+    case Signing:
+      evaluateSigningPromise(promise, due, date, inbox);
+      break;
+  }
+}
+
+void InteractionSystem::evaluatePlayingTimePromise(
+    Promise& promise, const Player& player, bool due, const GameDateValue& date,
+    std::int32_t today, Inbox& inbox)
+{
+  constexpr std::uint16_t LONG_LAYOFF_DAYS = 21;
+  const PlayerDynamics& dynamics = player.getDynamics();
+  if (!due && dynamics.injury_days >= LONG_LAYOFF_DAYS &&
+      today + dynamics.injury_days >= promise.deadline_day)
+  {
+    resolvePromise(promise, PromiseState::Voided, PromiseVoidReason::LongInjury,
+                   date, inbox);
+    return;
+  }
+  const float share = promise.team_minutes == 0
+                          ? 0.0f
+                          : static_cast<float>(promise.player_minutes) /
+                                static_cast<float>(promise.team_minutes);
+  const bool met = share + 1e-6f >= promise.target;
+  if (!due && met && promise.matches >= PLAYING_TIME_EARLY_MATCHES)
+    resolvePromise(promise, PromiseState::Kept, PromiseVoidReason::None, date,
+                   inbox);
+  else if (due && promise.matches < PLAYING_TIME_MIN_MATCHES)
+    resolvePromise(promise, PromiseState::Voided,
+                   PromiseVoidReason::TooFewMatches, date, inbox);
+  else if (due)
+    resolvePromise(promise, met ? PromiseState::Kept : PromiseState::Broken,
+                   PromiseVoidReason::None, date, inbox);
+}
+
+void InteractionSystem::evaluateContractPromise(Promise& promise,
+                                                const Player& player, bool due,
+                                                const GameDateValue& date,
+                                                Inbox& inbox)
+{
+  const auto years = static_cast<float>(player.getContractYears());
+  if (years < promise.baseline) promise.baseline = years;
+  if (years > promise.baseline) promise.fulfilled = true;
+  if (promise.fulfilled || due)
+    resolvePromise(
+        promise, promise.fulfilled ? PromiseState::Kept : PromiseState::Broken,
+        PromiseVoidReason::None, date, inbox);
+}
+
+void InteractionSystem::evaluateSigningPromise(Promise& promise, bool due,
+                                               const GameDateValue& date,
+                                               Inbox& inbox)
+{
+  if (promise.fulfilled || due)
+    resolvePromise(
+        promise, promise.fulfilled ? PromiseState::Kept : PromiseState::Broken,
+        PromiseVoidReason::None, date, inbox);
 }
 
 void InteractionSystem::onWeek(const GameDateValue& date,
@@ -1390,7 +1520,7 @@ void InteractionSystem::onWeek(const GameDateValue& date,
   }
   // Relations of other clubs' players only keep a recent arrival date.
   std::erase_if(state.relations,
-                [&](const auto& entry)
+                [this, managed_team_id, today](const auto& entry)
                 {
                   const auto player = gamedata->getPlayer(entry.first);
                   if (!player) return true;
@@ -1422,48 +1552,10 @@ void InteractionSystem::raiseRequests(const GameDateValue& date,
         dynamics.morale < UNHAPPY_MORALE
             ? static_cast<std::uint8_t>(std::min(rel.low_morale_weeks + 1, 52))
             : 0;
-
-    if (rel.request != TalkRequest::None)
-    {
-      if (today - rel.request_day < REQUEST_ANSWER_DAYS) continue;
-      // Ignored: the request escalates once, then lapses with a cost.
-      if (rel.escalations == 0 && rel.request != TalkRequest::Transfer &&
-          player.getTraits().ambition >= 50)
-      {
-        rel.request = TalkRequest::Transfer;
-        rel.request_day = today;
-        rel.escalations = 1;
-        rel.trust = clampTrust(rel.trust - 8.0f);
-        post(inbox, date, InboxCategory::Contract, "TALK_ESCALATED_TITLE",
-             "TALK_ESCALATED_BODY", {player.getName()}, player_id);
-      }
-      else
-      {
-        rel.request = TalkRequest::None;
-        rel.escalations = 0;
-        rel.quiet_until = today + REQUEST_QUIET_DAYS;
-        rel.trust = clampTrust(rel.trust - 10.0f);
-        dynamics.morale = clampMorale(dynamics.morale - 3.0f);
-        // Filed as read: the manager already had two messages about it.
-        post(inbox, date, InboxCategory::General, "TALK_IGNORED_TITLE",
-             "TALK_IGNORED_BODY", {player.getName()}, player_id, true);
-      }
+    if (resolveIgnoredRequest(player, dynamics, rel, date, today, inbox))
       continue;
-    }
-    // Off-season and pre-season minutes say nothing about a player's role.
-    if (rel.low_morale_weeks < UNHAPPY_WEEKS || today < rel.quiet_until ||
-        dynamics.injury_days > 0 || date.month == 6 || date.month == 7)
-      continue;
-    const SquadRole role = role_of ? role_of(player_id) : SquadRole::Rotation;
-    TalkRequest request = TalkRequest::None;
-    if (dynamics.playing_share <
-        Interactions::expectedShare(role, player.getAge()) - 0.15f)
-      request = TalkRequest::PlayingTime;
-    else if (player.getContractYears() <= 1)
-      request = TalkRequest::NewContract;
-    else if ((dynamics.transfer_interest_weeks > 0 || rel.trust < -30.0f) &&
-             player.getTraits().ambition >= 55)
-      request = TalkRequest::Transfer;
+    const TalkRequest request =
+        requestForPlayer(player, dynamics, rel, date, today);
     if (request != TalkRequest::None && dynamics.morale < candidate_morale)
     {
       candidate = player_id;
@@ -1481,12 +1573,76 @@ void InteractionSystem::raiseRequests(const GameDateValue& date,
   state.last_request_day = today;
   const Player& player = players.at(candidate);
   post(inbox, date,
-       candidate_request == TalkRequest::PlayingTime ? InboxCategory::General
-                                                     : InboxCategory::Contract,
-       "TALK_REQUEST_TITLE",
-       std::format("{}_BODY", Interactions::requestKey(candidate_request))
-           .c_str(),
-       {player.getName()}, candidate);
+       {candidate_request == TalkRequest::PlayingTime ? InboxCategory::General
+                                                      : InboxCategory::Contract,
+        "TALK_REQUEST_TITLE",
+        std::format("{}_BODY", Interactions::requestKey(candidate_request))
+            .c_str(),
+        {player.getName()},
+        candidate});
+}
+
+bool InteractionSystem::resolveIgnoredRequest(Player& player,
+                                              PlayerDynamics& dynamics,
+                                              PlayerRelation& relation,
+                                              const GameDateValue& date,
+                                              std::int32_t today, Inbox& inbox)
+{
+  if (relation.request == TalkRequest::None) return false;
+  if (today - relation.request_day < REQUEST_ANSWER_DAYS) return true;
+  if (relation.escalations == 0 && relation.request != TalkRequest::Transfer &&
+      player.getTraits().ambition >= 50)
+  {
+    relation.request = TalkRequest::Transfer;
+    relation.request_day = today;
+    relation.escalations = 1;
+    relation.trust = clampTrust(relation.trust - 8.0f);
+    post(inbox, date,
+         {InboxCategory::Contract,
+          "TALK_ESCALATED_TITLE",
+          "TALK_ESCALATED_BODY",
+          {player.getName()},
+          player.getId()});
+  }
+  else
+  {
+    relation.request = TalkRequest::None;
+    relation.escalations = 0;
+    relation.quiet_until = today + REQUEST_QUIET_DAYS;
+    relation.trust = clampTrust(relation.trust - 10.0f);
+    dynamics.morale = clampMorale(dynamics.morale - 3.0f);
+    post(inbox, date,
+         {InboxCategory::General,
+          "TALK_IGNORED_TITLE",
+          "TALK_IGNORED_BODY",
+          {player.getName()},
+          player.getId(),
+          true});
+  }
+  return true;
+}
+
+TalkRequest InteractionSystem::requestForPlayer(const Player& player,
+                                                const PlayerDynamics& dynamics,
+                                                const PlayerRelation& relation,
+                                                const GameDateValue& date,
+                                                std::int32_t today) const
+{
+  using enum TalkRequest;
+  if (relation.low_morale_weeks < UNHAPPY_WEEKS ||
+      today < relation.quiet_until || dynamics.injury_days > 0 ||
+      date.month == 6 || date.month == 7)
+    return None;
+  const SquadRole role =
+      role_of ? role_of(player.getId()) : SquadRole::Rotation;
+  if (dynamics.playing_share <
+      Interactions::expectedShare(role, player.getAge()) - 0.15f)
+    return PlayingTime;
+  if (player.getContractYears() <= 1) return NewContract;
+  if ((dynamics.transfer_interest_weeks > 0 || relation.trust < -30.0f) &&
+      player.getTraits().ambition >= 55)
+    return Transfer;
+  return None;
 }
 
 void InteractionSystem::spreadLeaderMood(TeamID managed_team_id,
@@ -1506,7 +1662,7 @@ void InteractionSystem::spreadLeaderMood(TeamID managed_team_id,
   if (!team) return;
   for (const PlayerID player_id : team->get().getPlayerIDs())
   {
-    if (std::ranges::any_of(room.leaders, [&](const LeaderInfo& leader)
+    if (std::ranges::any_of(room.leaders, [player_id](const LeaderInfo& leader)
                             { return leader.player_id == player_id; }))
       continue;
     const auto found = players.find(player_id);
@@ -1538,14 +1694,15 @@ void InteractionSystem::onMatchPlayed(const MatchReport& report,
     if (promise.state != PromiseState::Active ||
         promise.type != PromiseType::PlayingTime)
       continue;
-    const auto line =
-        std::ranges::find_if(report.players, [&](const PlayerMatchLine& entry)
-                             { return entry.player_id == promise.player_id; });
+    const auto line = std::ranges::find_if(
+        report.players,
+        [promise_player_id = promise.player_id](const PlayerMatchLine& entry)
+        { return entry.player_id == promise_player_id; });
     const std::uint32_t minutes =
         line == report.players.end() ? 0U : line->minutes;
-    const auto player = gamedata->getPlayer(promise.player_id);
     // Matches missed through injury do not count against the promise.
-    if (minutes == 0 && player && player->get().getDynamics().injury_days > 0)
+    if (const auto player = gamedata->getPlayer(promise.player_id);
+        minutes == 0 && player && player->get().getDynamics().injury_days > 0)
       continue;
     promise.team_minutes += match_minutes;
     promise.player_minutes += std::min(minutes, match_minutes);
@@ -1619,13 +1776,19 @@ float InteractionSystem::onBidRejected(const GameDateValue& date,
     rel.escalations = 0;
   }
   if (asks)
-    post(inbox, date, InboxCategory::Contract, "OFFER_REJECTED_REQUEST_TITLE",
-         "OFFER_REJECTED_REQUEST_BODY", {player.getName(), buyer_name},
-         player_id);
+    post(inbox, date,
+         {InboxCategory::Contract,
+          "OFFER_REJECTED_REQUEST_TITLE",
+          "OFFER_REJECTED_REQUEST_BODY",
+          {player.getName(), buyer_name},
+          player_id});
   else
-    post(inbox, date, InboxCategory::General, "OFFER_REJECTED_UPSET_TITLE",
-         "OFFER_REJECTED_UPSET_BODY", {player.getName(), buyer_name},
-         player_id);
+    post(inbox, date,
+         {InboxCategory::General,
+          "OFFER_REJECTED_UPSET_TITLE",
+          "OFFER_REJECTED_UPSET_BODY",
+          {player.getName(), buyer_name},
+          player_id});
   return dynamics.morale - before;
 }
 
@@ -1661,7 +1824,7 @@ TeamTalkContext InteractionSystem::teamTalkContext(
   const auto team = gamedata->getTeam(team_id);
   if (!team) return context;
   const Lineup& lineup = team->get().getLineup();
-  const auto add = [&](const Player* player)
+  const auto add = [&context](const Player* player)
   {
     if (player == nullptr) return;
     context.listeners.push_back(TalkListener{
@@ -1833,7 +1996,7 @@ DressingRoom InteractionSystem::dressingRoom(TeamID team_id,
   {
     if (group.size() < GROUP_MIN_SIZE) continue;
     std::ranges::sort(group);
-    room.groups.push_back(SocialGroup{nation, std::move(group)});
+    room.groups.emplace_back(nation, std::move(group));
   }
   std::ranges::sort(room.groups,
                     [](const SocialGroup& a, const SocialGroup& b)
@@ -1883,7 +2046,7 @@ void InteractionSystem::load(const std::shared_ptr<DatabaseConnection>& db_conn)
   forEachRow(*db_conn,
              "SELECT next_promise_id, last_evaluated_day, last_request_day "
              "FROM InteractionState WHERE id = 1;",
-             [&](sqlite3_stmt* stmt)
+             [&loaded](sqlite3_stmt* stmt)
              {
                loaded.next_promise_id = columnAs<std::uint32_t>(stmt, 0);
                loaded.last_evaluated_day = columnAs<std::int32_t>(stmt, 1);
@@ -1895,61 +2058,24 @@ void InteractionSystem::load(const std::shared_ptr<DatabaseConnection>& db_conn)
       "talk_patience, talk_transfer, request, request_day, quiet_until, "
       "escalations, low_morale_weeks, joined_day, broken_promise_day "
       "FROM PlayerRelations;",
-      [&](sqlite3_stmt* stmt)
+      [&loaded](sqlite3_stmt* stmt)
       {
-        PlayerRelation rel;
-        rel.trust =
-            clampTrust(static_cast<float>(sqlite3_column_double(stmt, 1)));
-        for (std::size_t group = 0; group < rel.last_talk.size(); ++group)
-          rel.last_talk[group] =
-              columnAs<std::int32_t>(stmt, 2 + static_cast<int>(group));
-        const auto request = columnAs<std::uint8_t>(stmt, 7);
-        rel.request =
-            request <= static_cast<std::uint8_t>(TalkRequest::Transfer)
-                ? static_cast<TalkRequest>(request)
-                : TalkRequest::None;
-        rel.request_day = columnAs<std::int32_t>(stmt, 8);
-        rel.quiet_until = columnAs<std::int32_t>(stmt, 9);
-        rel.escalations = columnAs<std::uint8_t>(stmt, 10);
-        rel.low_morale_weeks = columnAs<std::uint8_t>(stmt, 11);
-        rel.joined_day = columnAs<std::int32_t>(stmt, 12);
-        rel.broken_promise_day = columnAs<std::int32_t>(stmt, 13);
-        loaded.relations.emplace(columnAs<PlayerID>(stmt, 0), rel);
+        const PlayerID player_id = columnAs<PlayerID>(stmt, 0);
+        loaded.relations.try_emplace(player_id, readPlayerRelation(stmt));
       });
-  forEachRow(
-      *db_conn,
-      "SELECT id, player_id, type, state, void_reason, made_day, "
-      "deadline_day, resolved_day, target, baseline, team_minutes, "
-      "player_minutes, matches, fulfilled FROM Promises ORDER BY id;",
-      [&](sqlite3_stmt* stmt)
-      {
-        Promise promise;
-        promise.id = columnAs<std::uint32_t>(stmt, 0);
-        promise.player_id = columnAs<PlayerID>(stmt, 1);
-        const auto type = columnAs<std::uint8_t>(stmt, 2);
-        const auto promise_state = columnAs<std::uint8_t>(stmt, 3);
-        const auto reason = columnAs<std::uint8_t>(stmt, 4);
-        if (type > static_cast<std::uint8_t>(PromiseType::Signing) ||
-            promise_state > static_cast<std::uint8_t>(PromiseState::Voided) ||
-            reason >
-                static_cast<std::uint8_t>(PromiseVoidReason::TooFewMatches))
-          return;  // Written by a newer version: skip rather than guess.
-        promise.type = static_cast<PromiseType>(type);
-        promise.state = static_cast<PromiseState>(promise_state);
-        promise.void_reason = static_cast<PromiseVoidReason>(reason);
-        promise.made_day = columnAs<std::int32_t>(stmt, 5);
-        promise.deadline_day = columnAs<std::int32_t>(stmt, 6);
-        promise.resolved_day = columnAs<std::int32_t>(stmt, 7);
-        promise.target = static_cast<float>(sqlite3_column_double(stmt, 8));
-        promise.baseline = static_cast<float>(sqlite3_column_double(stmt, 9));
-        promise.team_minutes = columnAs<std::uint32_t>(stmt, 10);
-        promise.player_minutes = columnAs<std::uint32_t>(stmt, 11);
-        promise.matches = columnAs<std::uint16_t>(stmt, 12);
-        promise.fulfilled = sqlite3_column_int(stmt, 13) != 0;
-        loaded.next_promise_id =
-            std::max(loaded.next_promise_id, promise.id + 1);
-        loaded.promises.push_back(promise);
-      });
+  forEachRow(*db_conn,
+             "SELECT id, player_id, type, state, void_reason, made_day, "
+             "deadline_day, resolved_day, target, baseline, team_minutes, "
+             "player_minutes, matches, fulfilled FROM Promises ORDER BY id;",
+             [&loaded](sqlite3_stmt* stmt)
+             {
+               auto promise = readPromise(stmt);
+               if (!promise)
+                 return;  // Written by a newer version: skip rather than guess.
+               loaded.next_promise_id =
+                   std::max(loaded.next_promise_id, promise->id + 1);
+               loaded.promises.push_back(std::move(*promise));
+             });
   restore(std::move(loaded));
 }
 
@@ -2004,9 +2130,9 @@ void InteractionSystem::save(
             {
               sqlite3_bind_int64(row, 1, promise.id);
               sqlite3_bind_int(row, 2, static_cast<int>(promise.player_id));
-              sqlite3_bind_int(row, 3, static_cast<int>(promise.type));
-              sqlite3_bind_int(row, 4, static_cast<int>(promise.state));
-              sqlite3_bind_int(row, 5, static_cast<int>(promise.void_reason));
+              sqlite3_bind_int(row, 3, std::to_underlying(promise.type));
+              sqlite3_bind_int(row, 4, std::to_underlying(promise.state));
+              sqlite3_bind_int(row, 5, std::to_underlying(promise.void_reason));
               sqlite3_bind_int(row, 6, promise.made_day);
               sqlite3_bind_int(row, 7, promise.deadline_day);
               sqlite3_bind_int(row, 8, promise.resolved_day);

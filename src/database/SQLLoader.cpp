@@ -8,6 +8,7 @@
 
 #include "SQLLoader.h"
 
+#include <format>
 #include <fstream>
 #include <iostream>
 #include <sstream>
@@ -74,14 +75,14 @@ void SQLLoader::parseQueries(const std::string& content)
     line = trim(line);
 
     // skip empty lines or comments (except query ID)
-    if (line.empty() || (line.substr(0, 2) == "--" &&
-                         line.find("@QUERY_ID:") == std::string::npos))
+    if (line.empty() ||
+        (line.substr(0, 2) == "--" && !line.contains("@QUERY_ID:")))
     {
       continue;
     }
 
     // check for query ID
-    if (line.find("-- @QUERY_ID:") != std::string::npos)
+    if (line.contains("-- @QUERY_ID:"))
     {
       // save previous query
       if (has_query_id && !current_query_str.empty())
@@ -121,8 +122,7 @@ void SQLLoader::parseQueries(const std::string& content)
     queries_[current_query_enum] = trim(current_query_str);
   }
 
-  Logger::debug("Loaded " + std::to_string(queries_.size()) +
-                " queries from file.\n");
+  Logger::debug(std::format("Loaded {} queries from file.\n", queries_.size()));
 }
 
 std::string SQLLoader::trim(const std::string& str)

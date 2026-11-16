@@ -11,6 +11,7 @@
 #include <algorithm>
 #include <cmath>
 #include <format>
+#include <utility>
 
 #include "model/data_hub.h"
 #include "model/world_rng.h"
@@ -20,7 +21,7 @@ namespace
 namespace R = OppositionRules;
 
 constexpr std::array<const char*,
-                     static_cast<std::size_t>(OppositionInstruction::COUNT)>
+                     std::to_underlying(OppositionInstruction::COUNT)>
     INSTRUCTION_KEYS = {
         "OPPOSITION_INSTRUCTION_NONE", "OPPOSITION_INSTRUCTION_TIGHT",
         "OPPOSITION_INSTRUCTION_PRESS", "OPPOSITION_INSTRUCTION_WEAK_FOOT",
@@ -76,14 +77,14 @@ float ratio(float value, float reference)
 
 bool isDefender(PlayerRole role)
 {
-  return role == PlayerRole::CB || role == PlayerRole::LB ||
-         role == PlayerRole::RB;
+  using enum PlayerRole;
+  return role == CB || role == LB || role == RB;
 }
 
 bool isForward(PlayerRole role)
 {
-  return role == PlayerRole::LW || role == PlayerRole::RW ||
-         role == PlayerRole::ST;
+  using enum PlayerRole;
+  return role == LW || role == RW || role == ST;
 }
 
 float threatScore(const OppositionPlayer& player)
@@ -99,7 +100,7 @@ float threatScore(const OppositionPlayer& player)
 
 const char* oppositionInstructionKey(OppositionInstruction instruction)
 {
-  const auto index = static_cast<std::size_t>(instruction);
+  const auto index = std::to_underlying(instruction);
   return index < INSTRUCTION_KEYS.size() ? INSTRUCTION_KEYS[index] : "";
 }
 
@@ -107,7 +108,7 @@ void OppositionPlan::set(TeamID opponent, PlayerID player,
                          OppositionInstruction instruction)
 {
   std::erase_if(
-      orders, [&](const OppositionOrder& order)
+      orders, [opponent, player](const OppositionOrder& order)
       { return order.opponent == opponent && order.player == player; });
   if (instruction == OppositionInstruction::None ||
       instruction >= OppositionInstruction::COUNT)
@@ -119,7 +120,7 @@ OppositionInstruction OppositionPlan::get(TeamID opponent,
                                           PlayerID player) const
 {
   const auto found = std::ranges::find_if(
-      orders, [&](const OppositionOrder& order)
+      orders, [opponent, player](const OppositionOrder& order)
       { return order.opponent == opponent && order.player == player; });
   return found != orders.end() ? found->instruction
                                : OppositionInstruction::None;
@@ -139,7 +140,7 @@ void OppositionPlan::clear(TeamID opponent)
                 { return order.opponent == opponent; });
 }
 
-void OppositionPlan::restore(std::vector<OppositionOrder> restored)
+void OppositionPlan::restore(const std::vector<OppositionOrder>& restored)
 {
   orders.clear();
   for (const OppositionOrder& order : restored)
@@ -148,12 +149,13 @@ void OppositionPlan::restore(std::vector<OppositionOrder> restored)
 
 std::string formationLabel(std::span<const PlayerRole> starters)
 {
+  using enum PlayerRole;
   int defenders = 0;
   int midfielders = 0;
   int forwards = 0;
   for (const PlayerRole role : starters)
   {
-    if (role == PlayerRole::GK || role == PlayerRole::UNKNOWN) continue;
+    if (role == GK || role == UNKNOWN) continue;
     if (isDefender(role))
       ++defenders;
     else if (isForward(role))
@@ -192,9 +194,16 @@ OppositionReport buildOppositionReport(const OppositionInput& input)
     accumulate(recent, *match, home);
     const int scored = home ? match->home_goals : match->away_goals;
     const int conceded = home ? match->away_goals : match->home_goals;
-    const int outcome = scored > conceded ? 1 : scored == conceded ? 0 : -1;
+    int outcome = 0;
+    if (scored > conceded)
+      outcome = 1;
+    else if (scored < conceded)
+      outcome = -1;
     report.form.push_back(outcome);
-    points += outcome > 0 ? 3 : outcome == 0 ? 1 : 0;
+    if (outcome > 0)
+      points += 3;
+    else if (outcome == 0)
+      ++points;
   }
   report.recent = averaged(recent);
 
@@ -282,8 +291,8 @@ OppositionReport buildOppositionReport(const OppositionInput& input)
     report.weaknesses.push_back(
         {"OPPOSITION_WEAKNESS_PASSING",
          {whole(r.pass_completion), whole(l.pass_completion)}});
-  const int max_points = 3 * r.matches;
-  if (r.matches >= 3 && points * 3 >= max_points * 2)
+  if (const int max_points = 3 * r.matches;
+      r.matches >= 3 && points * 3 >= max_points * 2)
     report.strengths.push_back(
         {"OPPOSITION_STRENGTH_FORM",
          {std::to_string(points), std::to_string(max_points)}});
@@ -297,8 +306,8 @@ OppositionReport buildOppositionReport(const OppositionInput& input)
                                  StrategySliders shift, PlayerID mark = 0)
   {
     if (report.counters.size() < R::MAX_COUNTERS)
-      report.counters.push_back(
-          {std::move(action), std::move(reason), shift, mark});
+      report.counters.emplace_back(std::move(action), std::move(reason), shift,
+                                   mark);
   };
   if (!report.key_players.empty() && team_goals >= R::MAIN_THREAT_MIN_GOALS)
   {

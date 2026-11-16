@@ -41,15 +41,16 @@ std::string leagueName(const GameController& controller, LeagueID league_id)
 
 ImVec4 gradeColor(ObjectiveGrade grade)
 {
+  using enum ObjectiveGrade;
   const Theme::Palette& palette = Theme::palette();
   switch (grade)
   {
-    case ObjectiveGrade::Exceeded:
-    case ObjectiveGrade::Met:
+    case Exceeded:
+    case Met:
       return palette.positive;
-    case ObjectiveGrade::Missed:
+    case Missed:
       return palette.warning;
-    case ObjectiveGrade::Failed:
+    case Failed:
       break;
   }
   return palette.negative;
@@ -131,11 +132,11 @@ void SeasonReviewDialog::open(const GameController& controller,
         fmt::sprintf(LOC("SEASON_REVIEW_CONTINENTAL"), LOC(rules->name_key)));
 
   verdict = LOC(SeasonReviewModel::verdictKey(outcome));
-  verdict_color =
-      outcome == SeasonVerdict::Sacked || outcome == SeasonVerdict::Warned
-          ? palette.negative
-      : outcome == SeasonVerdict::Satisfied ? palette.text
-                                            : palette.positive;
+  verdict_color = palette.positive;
+  if (outcome == SeasonVerdict::Sacked || outcome == SeasonVerdict::Warned)
+    verdict_color = palette.negative;
+  else if (outcome == SeasonVerdict::Satisfied)
+    verdict_color = palette.text;
   confidence =
       fmt::sprintf(LOC("SEASON_REVIEW_CONFIDENCE"),
                    static_cast<int>(std::lround(review.result.confidence)),
@@ -147,26 +148,26 @@ void SeasonReviewDialog::open(const GameController& controller,
                         LOC(SeasonReviewModel::gradeKey(grade)));
   };
   grades.clear();
-  grades.push_back({LOC("SEASON_REVIEW_OBJ_LEAGUE"),
-                    graded(LOC(BoardModel::objectiveKey(review.objective)),
-                           review.result.league),
-                    gradeColor(review.result.league)});
-  grades.push_back(
-      {LOC("SEASON_REVIEW_OBJ_CUP"),
-       graded(LOC(BoardModel::cupObjectiveKey(review.cup_objective)),
-              review.result.cup),
-       gradeColor(review.result.cup)});
-  grades.push_back(
-      {LOC("SEASON_REVIEW_OBJ_FINANCES"),
-       graded(LOC(BoardModel::financeObjectiveKey(review.finance_objective)),
-              review.result.finances),
-       gradeColor(review.result.finances)});
-  grades.push_back({LOC("SEASON_REVIEW_OBJ_YOUTH"),
-                    graded(fmt::sprintf(LOC("SEASON_REVIEW_YOUTH_VALUE"),
-                                        youthTarget(review.youth_target),
-                                        review.young_regulars),
-                           review.result.youth),
-                    gradeColor(review.result.youth)});
+  grades.emplace_back(LOC("SEASON_REVIEW_OBJ_LEAGUE"),
+                      graded(LOC(BoardModel::objectiveKey(review.objective)),
+                             review.result.league),
+                      gradeColor(review.result.league));
+  grades.emplace_back(
+      LOC("SEASON_REVIEW_OBJ_CUP"),
+      graded(LOC(BoardModel::cupObjectiveKey(review.cup_objective)),
+             review.result.cup),
+      gradeColor(review.result.cup));
+  grades.emplace_back(
+      LOC("SEASON_REVIEW_OBJ_FINANCES"),
+      graded(LOC(BoardModel::financeObjectiveKey(review.finance_objective)),
+             review.result.finances),
+      gradeColor(review.result.finances));
+  grades.emplace_back(LOC("SEASON_REVIEW_OBJ_YOUTH"),
+                      graded(fmt::sprintf(LOC("SEASON_REVIEW_YOUTH_VALUE"),
+                                          youthTarget(review.youth_target),
+                                          review.young_regulars),
+                             review.result.youth),
+                      gradeColor(review.result.youth));
 
   money.clear();
   money.emplace_back(LOC("SEASON_REVIEW_PRIZE"),

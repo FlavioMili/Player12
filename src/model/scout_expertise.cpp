@@ -101,7 +101,8 @@ bool isHome(Language nationality, LeagueID country)
 const char* spokenLanguageKey(SpokenLanguage language)
 {
   static constexpr std::array<const char*,
-                              static_cast<std::size_t>(SpokenLanguage::COUNT)>
+                              static_cast<std::size_t>(
+                                  std::to_underlying(SpokenLanguage::COUNT))>
       KEYS = {
           "SCOUT_LANG_ENGLISH",  "SCOUT_LANG_ITALIAN",  "SCOUT_LANG_SPANISH",
           "SCOUT_LANG_FRENCH",   "SCOUT_LANG_GERMAN",   "SCOUT_LANG_PORTUGUESE",
@@ -112,22 +113,23 @@ const char* spokenLanguageKey(SpokenLanguage language)
           "SCOUT_LANG_DANISH",   "SCOUT_LANG_FINNISH",  "SCOUT_LANG_NORWEGIAN",
           "SCOUT_LANG_SLOVAK",   "SCOUT_LANG_CZECH",    "SCOUT_LANG_HUNGARIAN",
           "SCOUT_LANG_UKRAINIAN"};
-  const auto index = static_cast<std::size_t>(language);
+  const auto index = static_cast<std::size_t>(std::to_underlying(language));
   return index < KEYS.size() ? KEYS[index] : KEYS[0];
 }
 
 const char* continentKey(Continent continent)
 {
+  using enum Continent;
   switch (continent)
   {
-    case Continent::Europe:
+    case Europe:
       return "SCOUT_CONTINENT_EUROPE";
-    case Continent::NorthAmerica:
+    case NorthAmerica:
       return "SCOUT_CONTINENT_NORTH_AMERICA";
-    case Continent::SouthAmerica:
+    case SouthAmerica:
       return "SCOUT_CONTINENT_SOUTH_AMERICA";
-    case Continent::Asia:
-    case Continent::COUNT:
+    case Asia:
+    case COUNT:
       break;
   }
   return "SCOUT_CONTINENT_ASIA";
@@ -135,64 +137,65 @@ const char* continentKey(Continent continent)
 
 SpokenLanguage nativeLanguage(Language nationality)
 {
+  using enum Language;
   using enum SpokenLanguage;
   switch (nationality)
   {
-    case Language::EN:
-    case Language::IE:
-    case Language::US:
+    case EN:
+    case IE:
+    case US:
       return English;
-    case Language::IT:
+    case IT:
       return Italian;
-    case Language::ES:
-    case Language::MX:
+    case ES:
+    case MX:
       return Spanish;
-    case Language::FR:
-    case Language::BE:
+    case FR:
+    case BE:
       return French;
-    case Language::DE:
-    case Language::CH:
+    case DE:
+    case CH:
       return German;
-    case Language::PT:
-    case Language::BR:
+    case PT:
+    case BR:
       return Portuguese;
-    case Language::NL:
+    case NL:
       return Dutch;
-    case Language::RU:
+    case RU:
       return Russian;
-    case Language::SE:
+    case SE:
       return Swedish;
-    case Language::PL:
+    case PL:
       return Polish;
-    case Language::GR:
+    case GR:
       return Greek;
-    case Language::TR:
+    case TR:
       return Turkish;
-    case Language::AR:
+    case AR:
       return Arabic;
-    case Language::JP:
+    case JP:
       return Japanese;
-    case Language::CN:
+    case CN:
       return Chinese;
-    case Language::KR:
+    case KR:
       return Korean;
-    case Language::RO:
+    case RO:
       return Romanian;
-    case Language::HR:
+    case HR:
       return Croatian;
-    case Language::DK:
+    case DK:
       return Danish;
-    case Language::FI:
+    case FI:
       return Finnish;
-    case Language::NO:
+    case NO:
       return Norwegian;
-    case Language::SK:
+    case SK:
       return Slovak;
-    case Language::CZ:
+    case CZ:
       return Czech;
-    case Language::HU:
+    case HU:
       return Hungarian;
-    case Language::UA:
+    case UA:
       return Ukrainian;
   }
   return English;
@@ -200,20 +203,22 @@ SpokenLanguage nativeLanguage(Language nationality)
 
 Continent homeContinent(Language nationality)
 {
+  using enum Continent;
+  using enum Language;
   switch (nationality)
   {
-    case Language::US:
-    case Language::MX:
-      return Continent::NorthAmerica;
-    case Language::BR:
-      return Continent::SouthAmerica;
-    case Language::CN:
-    case Language::JP:
-    case Language::KR:
-    case Language::AR:
-      return Continent::Asia;
+    case US:
+    case MX:
+      return NorthAmerica;
+    case BR:
+      return SouthAmerica;
+    case CN:
+    case JP:
+    case KR:
+    case AR:
+      return Asia;
     default:
-      return Continent::Europe;
+      return Europe;
   }
 }
 
@@ -231,8 +236,8 @@ Continent countryContinent(LeagueID country)
 {
   // leagues.json has no country field and the South American league of id
   // 10 shares the Spanish nationality code, so its continent is explicit.
-  constexpr LeagueID PAMPAS_LEAGUE = 10;
-  if (country == PAMPAS_LEAGUE) return Continent::SouthAmerica;
+  if (constexpr LeagueID PAMPAS_LEAGUE = 10; country == PAMPAS_LEAGUE)
+    return Continent::SouthAmerica;
   return homeContinent(countryNationality(country));
 }
 
@@ -293,39 +298,41 @@ ScoutEffectiveness ScoutExpertiseModel::compute(
     std::span<const TargetCountry> countries, LeagueID league,
     std::uint32_t league_days)
 {
+  using enum EffectFactorKind;
   ScoutEffectiveness result;
   auto& factors = result.factors;
-  accumulate(factors, EffectFactorKind::Judging, judging_ability,
+  accumulate(factors, Judging, judging_ability,
              JUDGING_PER_POINT * (static_cast<float>(judging_ability) - 50.0f));
   if (league != 0)
-    accumulate(factors, EffectFactorKind::KnowsLeague, league,
+    accumulate(factors, KnowsLeague, league,
                KNOWS_LEAGUE * experienceShare(league_days));
   const Continent continent = homeContinent(expertise.nationality);
   for (const TargetCountry& target : countries)
   {
     if (isHome(expertise.nationality, target.country))
     {
-      accumulate(factors, EffectFactorKind::HomeCountry, target.country,
+      accumulate(factors, HomeCountry, target.country,
                  HOME_COUNTRY * target.weight);
       continue;
     }
     accumulate(
-        factors, EffectFactorKind::KnowsCountry, target.country,
+        factors, KnowsCountry, target.country,
         KNOWS_COUNTRY * target.weight * experienceShare(target.country_days));
-    const SpokenLanguage language = countryLanguage(target.country);
-    if (speaks(expertise.languages, language))
-      accumulate(factors, EffectFactorKind::SpeaksLanguage,
-                 static_cast<std::uint32_t>(language),
+    if (const SpokenLanguage language = countryLanguage(target.country);
+        speaks(expertise.languages, language))
+      accumulate(factors, SpeaksLanguage,
+                 static_cast<std::uint32_t>(std::to_underlying(language)),
                  SPEAKS_LANGUAGE * target.weight);
     else
-      accumulate(factors, EffectFactorKind::LanguageBarrier,
-                 static_cast<std::uint32_t>(language),
+      accumulate(factors, LanguageBarrier,
+                 static_cast<std::uint32_t>(std::to_underlying(language)),
                  LANGUAGE_BARRIER * target.weight);
     const Continent target_continent = countryContinent(target.country);
     if (target_continent != continent)
-      accumulate(factors, EffectFactorKind::FarFromHome,
-                 static_cast<std::uint32_t>(target_continent),
-                 FAR_FROM_HOME * target.weight);
+      accumulate(
+          factors, FarFromHome,
+          static_cast<std::uint32_t>(std::to_underlying(target_continent)),
+          FAR_FROM_HOME * target.weight);
   }
   std::erase_if(factors, [](const EffectFactor& factor)
                 { return std::abs(factor.delta) < 0.005f; });

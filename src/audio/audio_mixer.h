@@ -11,6 +11,7 @@
 #include <array>
 #include <atomic>
 #include <cstdint>
+#include <utility>
 
 #include "audio/synth.h"
 
@@ -57,7 +58,7 @@ class Mixer
   /** Sounds accepted by trigger() so far, per kind (producer thread). */
   std::uint64_t triggeredCount(Sound sound) const
   {
-    return triggered[static_cast<std::size_t>(sound)];
+    return triggered[static_cast<std::size_t>(std::to_underlying(sound))];
   }
 
  private:

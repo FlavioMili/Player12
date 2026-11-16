@@ -52,27 +52,28 @@ std::string teamName(const GameController& controller, TeamID id)
 std::string figureFor(const GameController& controller,
                       const AwardRecord& record)
 {
+  using enum AwardType;
   switch (record.type)
   {
-    case AwardType::GoldenBoot:
+    case GoldenBoot:
       return fmt::sprintf(LOC("AWARDS_FIGURE_GOALS"),
                           static_cast<int>(record.value));
-    case AwardType::GoldenGlove:
+    case GoldenGlove:
       return fmt::sprintf(LOC("AWARDS_FIGURE_CLEAN_SHEETS"),
                           static_cast<int>(record.value));
-    case AwardType::ManagerOfMonth:
-    case AwardType::ManagerOfSeason:
+    case ManagerOfMonth:
+    case ManagerOfSeason:
       return fmt::sprintf(LOC("AWARDS_FIGURE_MANAGER"),
                           static_cast<double>(record.value), record.count);
-    case AwardType::GoalOfMonth:
+    case GoalOfMonth:
       return fmt::sprintf(LOC("AWARDS_FIGURE_GOAL"), record.count,
                           teamName(controller, record.opponent_id).c_str());
-    case AwardType::PlayerOfMonth:
-    case AwardType::YoungPlayerOfMonth:
-    case AwardType::PlayerOfSeason:
-    case AwardType::YoungPlayerOfSeason:
-    case AwardType::TeamOfSeason:
-    case AwardType::COUNT:
+    case PlayerOfMonth:
+    case YoungPlayerOfMonth:
+    case PlayerOfSeason:
+    case YoungPlayerOfSeason:
+    case TeamOfSeason:
+    case COUNT:
       break;
   }
   return fmt::sprintf(LOC("AWARDS_FIGURE_RATING"),
@@ -101,11 +102,12 @@ AwardsScene::AwardsScene(GUIView* parent) : ManagementScene(parent) {}
 void AwardsScene::refresh()
 {
   GameController& controller = guiView->getController();
-  const auto managed = controller.getManagedTeam();
-  if (league_id == 0 && managed) league_id = managed->get().getLeagueId();
+  if (const auto managed = controller.getManagedTeam();
+      league_id == 0 && managed)
+    league_id = managed->get().getLeagueId();
   const uint16_t now =
       SeasonCalendar::seasonStartYear(controller.getCurrentDate());
-  std::set<uint16_t> years{now};
+  std::set years{now};
   for (const AwardRecord& record : controller.getAwardHistory())
     if (record.league_id == league_id) years.insert(record.season_year);
   seasons.assign(years.rbegin(), years.rend());
@@ -142,8 +144,8 @@ void AwardsScene::refresh()
           .push_back(winnerOf(record));
       continue;
     }
-    const std::string label = std::string(LOC(MONTH_KEYS[record.month - 1U]));
-    if (months.empty() || months.back().month != label)
+    if (const auto label = std::string(LOC(MONTH_KEYS[record.month - 1U]));
+        months.empty() || months.back().month != label)
     {
       months.emplace_back();
       months.back().month = label;
@@ -228,7 +230,7 @@ void AwardsScene::renderContent()
 
 void AwardsScene::renderSelectors()
 {
-  GameController& controller = guiView->getController();
+  const GameController& controller = guiView->getController();
   const auto league = controller.getLeagueById(league_id);
   ImGui::SetNextItemWidth(
       std::min(280.0f * Theme::scale(), ImGui::GetContentRegionAvail().x));
@@ -261,7 +263,7 @@ void AwardsScene::renderSelectors()
       if (ImGui::Selectable(seasonLabel(year).c_str(), year == season_year))
         picked = year;
     ImGui::EndCombo();
-    if (picked)
+    if (picked.has_value())
     {
       season_year = *picked;
       refresh();

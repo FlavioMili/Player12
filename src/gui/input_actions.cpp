@@ -10,6 +10,7 @@
 
 #include <algorithm>
 #include <format>
+#include <memory>
 
 #include "gui/view_models/match_changes.h"
 #include "model/settings_manager.h"
@@ -117,7 +118,7 @@ constexpr ImGuiKeyChord MOD_MASK =
 const KeyInfo* keyInfo(ImGuiKey key)
 {
   const auto found = std::ranges::find(KEYS, key, &KeyInfo::key);
-  return found != KEYS.end() ? &*found : nullptr;
+  return found != KEYS.end() ? std::to_address(found) : nullptr;
 }
 
 ImGuiKey keyOf(ImGuiKeyChord chord)
@@ -315,21 +316,22 @@ std::string Ids::shout(std::size_t index)
 
 const char* categoryKey(Category category)
 {
+  using enum Category;
   switch (category)
   {
-    case Category::NAVIGATION:
+    case NAVIGATION:
       return "CONTROLS_CATEGORY_NAVIGATION";
-    case Category::CAREER:
+    case CAREER:
       return "CONTROLS_CATEGORY_CAREER";
-    case Category::MATCH:
+    case MATCH:
       return "CONTROLS_CATEGORY_MATCH";
-    case Category::CAMERA:
+    case CAMERA:
       return "CONTROLS_CATEGORY_CAMERA";
-    case Category::SHOUTS:
+    case SHOUTS:
       return "CONTROLS_CATEGORY_SHOUTS";
-    case Category::PLAY:
+    case PLAY:
       return "CONTROLS_CATEGORY_PLAY";
-    case Category::COUNT:
+    case COUNT:
       break;
   }
   return "CONTROLS_CATEGORY_NAVIGATION";
@@ -408,10 +410,11 @@ ActionRegistry::ActionRegistry() = default;
 
 ActionId ActionRegistry::registerAction(const ActionDef& def)
 {
-  if (const auto existing = find(def.id)) return *existing;
+  if (const auto existing = find(def.id); existing.has_value())
+    return *existing;
   const ActionId id = actions.size();
   actions.push_back({def, {def.primary, def.alternate}});
-  by_id.emplace(def.id, id);
+  by_id.try_emplace(def.id, id);
   applyStored(id);
   ++revision_;
   return id;
@@ -554,8 +557,8 @@ void ActionRegistry::resetToDefault(ActionId id)
 
 void ActionRegistry::resetAll()
 {
-  for (ActionId id = 0; id < actions.size(); ++id)
-    actions[id].chords = {actions[id].def.primary, actions[id].def.alternate};
+  for (Action& action : actions)
+    action.chords = {action.def.primary, action.def.alternate};
   // Bindings of actions not registered in this run are dropped as well.
   SettingsManager::instance()->get().key_bindings.clear();
   ++revision_;
@@ -599,7 +602,7 @@ void ActionRegistry::applyStored(ActionId id)
   {
     const auto parsed = chordFromString(found->second[slot]);
     // A broken name keeps the default rather than unbinding the action.
-    if (parsed) entry.chords[slot] = *parsed;
+    if (parsed.has_value()) entry.chords[slot] = *parsed;
   }
 }
 

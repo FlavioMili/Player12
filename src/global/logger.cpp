@@ -36,8 +36,8 @@ void Logger::init()
   {
     // The log of the session before (maybe one that crashed) is kept once.
     const std::filesystem::path log = RuntimePaths::logPath();
-    std::error_code error;
-    if (std::filesystem::file_size(log, error) > 0 && !error)
+    if (std::error_code error;
+        std::filesystem::file_size(log, error) > 0 && !error)
       std::filesystem::rename(log, RuntimePaths::previousLogPath(), error);
 
     std::shared_ptr<spdlog::sinks::sink> file_sink =

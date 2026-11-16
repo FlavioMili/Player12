@@ -4,7 +4,7 @@ Configure with tests (`release-tests` preset or `-DBUILD_TESTING=ON`):
 
 Install the [platform prerequisites](../user/installation.md) first. If you
 are already using a build directory such as `build`, use `ctest --test-dir build`
-instead of the preset; a preset always targets its own `out/build/` directory.
+instead of the preset; a preset always targets its own `build/` directory.
 
 ```sh
 cmake --preset release-tests
@@ -46,12 +46,12 @@ batches of matches or whole seasons and compares the results with real-world
 ranges:
 
 ```sh
-./out/build/release-tests/src/fm_lab matches --n 1000 --spread --threads 4
-./out/build/release-tests/src/fm_lab season --seasons 1 --threads 2
-./out/build/release-tests/src/fm_lab tactics
+./build/release-tests/src/fm_lab matches --n 1000 --spread --threads 4
+./build/release-tests/src/fm_lab season --seasons 1 --threads 2
+./build/release-tests/src/fm_lab tactics
 ```
 
-`./out/build/release-tests/src/fm_lab --help` lists every option. The lab writes
+`./build/release-tests/src/fm_lab --help` lists every option. The lab writes
 `report.md` and `metrics.json` to its output directory. Compare before/after
 results using the same seeds, ratings, count and fidelity; see
 [Extending and modding](extending-and-modding.md#validate-a-behavior-change).
@@ -97,15 +97,21 @@ before and after the edit. Benchmarks are opt-in and are not part of normal CI.
 ```sh
 cmake --preset profile
 cmake --build --preset profile --target db_benchmarks match_benchmarks --parallel 4
-./out/build/profile/benchmarks/db_benchmarks
-./out/build/profile/benchmarks/match_benchmarks
+./build/profile/benchmarks/db_benchmarks
+./build/profile/benchmarks/match_benchmarks
 ```
 
 The `profile` preset enables machine-local native optimizations; use comparable
 builds and hardware when reporting results. Benchmark target definitions are
 in [benchmarks/CMakeLists.txt](../../benchmarks/CMakeLists.txt).
 
-## Known baseline failures
+The ten-seed headless match unit test compares each completed match with the
+same seed advanced one fixed step at a time. It checks identical simulation-step
+counts, final debug snapshots and event types/player IDs, without an elapsed-time
+threshold or estimated match-duration range. Use the opt-in match benchmarks on
+comparable builds and hardware to measure performance changes.
+
+## Historical calibration failures
 
 Verification on 2026-10-07 reproduced these failures with the original engine
 from revision `8b0aafb`, before the documentation/context-override changes:
@@ -116,7 +122,22 @@ from revision `8b0aafb`, before the documentation/context-override changes:
 | `MatchEngineTest.ConditionCanBeCarriedBetweenMatches` | Both compared players finished at the 0.35 condition floor |
 | `TacticsTest.InPossessionShapeMovesTheSlotWithTheBallOnly` | The observed in-possession width shift missed the expected threshold |
 
-These are baseline observations, not permission to ignore new failures. If
-you encounter one, compare your change with its base revision and include the
-evidence in the PR. Timing tests may skip unless their opt-in environment is
-enabled; a skipped case is not a test pass.
+The condition and shape fixtures now compare controlled, equivalent scenarios.
+Goalkeeper timing, handling calibration and defensive-touch calibration address
+the stronger-team and season regressions without widening their expected ranges.
+Set-piece own goals retain their restart origin and contribute to set-piece
+totals; `SetPieceOwnGoalsKeepTheirRestartOrigin` covers that accounting path.
+That regression pins a replay containing an actual own goal, rather than
+requiring the rare incident to occur in an arbitrary batch of matches.
+The tight-marking comparison uses 64 paired matches with identical seeds for
+marked and unmarked opponents; its original 10% reduction requirement remains.
+
+Run renderer checks through CTest so SDL's dummy driver and the fixed world
+seed match CI. A direct invocation can inherit a desktop video driver and open
+a visible window. Camera input fixtures dismiss the pre-match modal explicitly;
+highlight skipping must not determine whether input is blocked.
+
+These historical observations are not permission to ignore new failures. Compare
+a behavior change with its base revision and include the evidence in the PR.
+Timing tests may skip unless their opt-in environment is enabled; a skipped case
+is not a test pass. Local success does not replace checks on the platform runners.

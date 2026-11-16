@@ -94,11 +94,14 @@ constexpr bool validPeriod(const Period& period)
 
 constexpr bool validTable()
 {
-  for (const CountryRules& rules : COUNTRIES)
-    if (!validPeriod(rules.mid_year) || !validPeriod(rules.start_of_year) ||
-        key(rules.start_of_year.closes) >= key(rules.mid_year.opens))
-      return false;
-  return true;
+  return std::ranges::all_of(COUNTRIES,
+                             [](const CountryRules& rules)
+                             {
+                               return validPeriod(rules.mid_year) &&
+                                      validPeriod(rules.start_of_year) &&
+                                      key(rules.start_of_year.closes) <
+                                          key(rules.mid_year.opens);
+                             });
 }
 static_assert(validTable(),
               "windows must lie within one calendar year, the start-of-year "

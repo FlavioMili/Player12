@@ -11,6 +11,7 @@
 #include <unistd.h>
 
 #include <algorithm>
+#include <format>
 #include <memory>
 
 #include "controller/game_controller.h"
@@ -26,11 +27,15 @@ constexpr std::uint64_t WORLD_SEED = 20250702;
 
 int uniqueSlot(int offset)
 {
-  return 6'000'000 + static_cast<int>(getpid() % 100'000) * 10 + offset;
+  return 6'000'000 + getpid() % 100'000 * 10 + offset;
 }
 
 struct SlotCleanup
 {
+  explicit SlotCleanup(int saveSlot) : slot(saveSlot) {}
+  SlotCleanup(const SlotCleanup&) = delete;
+  SlotCleanup& operator=(const SlotCleanup&) = delete;
+
   int slot;
   ~SlotCleanup() { RuntimePaths::removeSave(slot); }
 };
@@ -106,7 +111,7 @@ TEST(Holiday, StopRulesInOrderOfSeriousness)
   EXPECT_FALSE(Holiday::checkStop(until, bid).has_value());
 
   HolidayDay injury;
-  injury.new_injuries.push_back({2, "A", "INJURY", 10, true});
+  injury.new_injuries.emplace_back(2, "A", "INJURY", 10, true);
   EXPECT_FALSE(Holiday::checkStop(until, injury).has_value());
   injury.new_injuries[0].days = Holiday::KEY_INJURY_DAYS;
   EXPECT_EQ(Holiday::checkStop(until, injury), HolidayStop::KeyPlayerInjured);
@@ -244,10 +249,10 @@ TEST(Holiday, SackingEndsTheHoliday)
   ASSERT_EQ(
       sqlite3_open(RuntimePaths::savePath(slot.slot).string().c_str(), &db),
       SQLITE_OK);
-  const std::string update =
-      "UPDATE BoardState SET confidence = 0, low_reviews = " +
-      std::to_string(Tuning::DISMISSAL_REVIEWS - 1) + ", league_matches = " +
-      std::to_string(Tuning::MIN_MATCHES_FOR_DISMISSAL) + ";";
+  const std::string update = std::format(
+      "UPDATE BoardState SET confidence = 0, low_reviews = {}, league_matches "
+      "= {};",
+      Tuning::DISMISSAL_REVIEWS - 1, Tuning::MIN_MATCHES_FOR_DISMISSAL);
   ASSERT_EQ(sqlite3_exec(db, update.c_str(), nullptr, nullptr, nullptr),
             SQLITE_OK);
   sqlite3_close(db);

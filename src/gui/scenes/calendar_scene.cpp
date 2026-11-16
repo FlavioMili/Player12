@@ -13,6 +13,7 @@
 #include <algorithm>
 #include <cmath>
 #include <format>
+#include <utility>
 
 #include "controller/game_controller.h"
 #include "global/language_manager.h"
@@ -48,24 +49,26 @@ int monthIndex(int year, int month) { return year * 12 + (month - 1); }
 
 std::uint16_t bit(AgendaKind kind)
 {
-  return static_cast<std::uint16_t>(1U << static_cast<unsigned>(kind));
+  return static_cast<std::uint16_t>(
+      1U << static_cast<unsigned>(std::to_underlying(kind)));
 }
 
 /** Colour of a club event (never the accent: decoration only). */
 ImVec4 kindColor(AgendaKind kind)
 {
   const Theme::Palette& palette = Theme::palette();
+  using enum AgendaKind;
   switch (kind)
   {
-    case AgendaKind::TransferWindowOpens:
-    case AgendaKind::TransferDeadline:
+    case TransferWindowOpens:
+    case TransferDeadline:
       return palette.info;
-    case AgendaKind::BoardReview:
-    case AgendaKind::ContractReminder:
+    case BoardReview:
+    case ContractReminder:
       return palette.warning;
-    case AgendaKind::YouthPreview:
-    case AgendaKind::YouthIntake:
-    case AgendaKind::YouthDecisionDeadline:
+    case YouthPreview:
+    case YouthIntake:
+    case YouthDecisionDeadline:
       return palette.positive;
     default:
       return palette.muted;
@@ -89,14 +92,18 @@ ImVec4 competitionColor(MatchType type)
 ImVec4 outcomeColor(int outcome)
 {
   const Theme::Palette& palette = Theme::palette();
-  return outcome > 0 ? palette.positive
-                     : (outcome < 0 ? palette.negative : palette.muted);
+  if (outcome > 0) return palette.positive;
+  if (outcome < 0) return palette.negative;
+  return palette.muted;
 }
 }  // namespace
 
 CalendarScene::CalendarScene(GUIView* parent) : ManagementScene(parent) {}
 
-void CalendarScene::update(float /*deltaTime*/) {}
+void CalendarScene::update(float /*deltaTime*/)
+{
+  // Calendar entries are date-driven and rebuilt when the scene is refreshed.
+}
 
 void CalendarScene::refresh()
 {
@@ -169,7 +176,12 @@ void CalendarScene::refresh()
       const int own = home ? event.home_score : event.away_score;
       const int other = home ? event.away_score : event.home_score;
       entry.score = std::format("{}-{}", own, other);
-      entry.outcome = own > other ? 1 : (own < other ? -1 : 0);
+      if (own > other)
+        entry.outcome = 1;
+      else if (own < other)
+        entry.outcome = -1;
+      else
+        entry.outcome = 0;
     }
     entry.line =
         entry.score.empty() ? entry.title : entry.title + "  " + entry.score;
@@ -386,7 +398,8 @@ void CalendarScene::renderGrid(float width)
 
     // Club events as dots in the top-right corner.
     float dotX = max.x - 7.0f * scale;
-    for (int kind = static_cast<int>(AgendaKind::YouthDecisionDeadline);
+    for (auto kind = static_cast<int>(
+             std::to_underlying(AgendaKind::YouthDecisionDeadline));
          kind >= 0; --kind)
     {
       if ((info.kinds & bit(static_cast<AgendaKind>(kind))) == 0) continue;
@@ -564,9 +577,9 @@ void CalendarScene::renderAgenda(float width)
   }};
   std::array<UI::Column, 3> columns = COLUMN_KEYS;
   for (UI::Column& column : columns) column.label = LOC(column.label);
-  const UI::ColumnMask mask =
-      UI::fitColumns(columns, ImGui::GetContentRegionAvail().x, 120.0f);
-  if (UI::beginResponsiveTable(
+  if (const UI::ColumnMask mask =
+          UI::fitColumns(columns, ImGui::GetContentRegionAvail().x, 120.0f);
+      UI::beginResponsiveTable(
           "agenda", columns, mask,
           ImGuiTableFlags_RowBg | ImGuiTableFlags_BordersInnerH))
   {
@@ -576,8 +589,8 @@ void CalendarScene::renderAgenda(float width)
       ImGui::PushID(static_cast<int>(index));
       ImGui::TableNextRow();
       ImGui::TableNextColumn();
-      const bool isSelected = entry.event.date.day == selected_day;
-      if (ImGui::Selectable(entry.date.c_str(), isSelected,
+      if (const bool isSelected = entry.event.date.day == selected_day;
+          ImGui::Selectable(entry.date.c_str(), isSelected,
                             ImGuiSelectableFlags_SpanAllColumns))
         selected_day = entry.event.date.day;
       if (UI::cell(mask, 1))

@@ -97,11 +97,15 @@ constexpr std::uint64_t WORLD_SEED = 20250702;
 
 int uniqueSlot(int offset)
 {
-  return 410'000 + static_cast<int>(getpid() % 100'000) * 10 + offset;
+  return 410'000 + (getpid() % 100'000) * 10 + offset;
 }
 
 struct SlotCleanup
 {
+  explicit SlotCleanup(int saveSlot) : slot(saveSlot) {}
+  SlotCleanup(const SlotCleanup&) = delete;
+  SlotCleanup& operator=(const SlotCleanup&) = delete;
+
   int slot;
   ~SlotCleanup() { RuntimePaths::removeSave(slot); }
 };
@@ -117,8 +121,8 @@ void capture(GUIView& view, const char* name)
 void resize(GUIView& view, int width, int height)
 {
   SDL_SetWindowSize(view.getWindow(), width, height);
-  SDL_Event event{};
-  event.type = SDL_EVENT_WINDOW_RESIZED;
+  SDL_Event event{.window = {}};
+  event.window.type = SDL_EVENT_WINDOW_RESIZED;
   event.window.windowID = SDL_GetWindowID(view.getWindow());
   event.window.data1 = width;
   event.window.data2 = height;
@@ -136,9 +140,13 @@ void hoverEverywhere(GUIView& view, float step = 40.0f)
 {
   ImGuiIO& io = ImGui::GetIO();
   const ImVec2 size = io.DisplaySize;
-  for (float y = step * 0.5f; y < size.y; y += step)
-    for (float x = step * 0.5f; x < size.x; x += step)
+  for (int y_index = 0; step * (static_cast<float>(y_index) + 0.5f) < size.y;
+       ++y_index)
+    for (int x_index = 0; step * (static_cast<float>(x_index) + 0.5f) < size.x;
+         ++x_index)
     {
+      const float y = step * (static_cast<float>(y_index) + 0.5f);
+      const float x = step * (static_cast<float>(x_index) + 0.5f);
       io.AddMousePosEvent(x, y);
       Bridge::frame(view);
     }
@@ -166,9 +174,16 @@ bool matchControlHoverable(GUIView& view, const char* label)
   const float top = scoreboard->Rect().Max.y;
   const float bottom = top + 3.0f * ImGui::GetFrameHeightWithSpacing();
   bool found = false;
-  for (float y = top + 3.0f; y < bottom && !found; y += 6.0f)
-    for (float x = 4.0f; x < io.DisplaySize.x && !found; x += 24.0f)
+  for (int y_index = 0;
+       top + 3.0f + 6.0f * static_cast<float>(y_index) < bottom && !found;
+       ++y_index)
+    for (int x_index = 0;
+         4.0f + 24.0f * static_cast<float>(x_index) < io.DisplaySize.x &&
+         !found;
+         ++x_index)
     {
+      const float y = top + 3.0f + 6.0f * static_cast<float>(y_index);
+      const float x = 4.0f + 24.0f * static_cast<float>(x_index);
       io.AddMousePosEvent(x, y);
       Bridge::frame(view);
       found = GImGui->HoveredId == button;
@@ -310,9 +325,13 @@ TEST(GuidanceUiTest, GuidanceScreensAtEverySize)
     ImGuiIO& io = ImGui::GetIO();
     const ImVec2 centre = card->Rect().GetCenter();
     bool found = false;
-    for (float y = card->Rect().Min.y; y < card->Rect().Max.y && !found;
-         y += 6.0f)
+    for (int y_index = 0;
+         card->Rect().Min.y + 6.0f * static_cast<float>(y_index) <
+             card->Rect().Max.y &&
+         !found;
+         ++y_index)
     {
+      const float y = card->Rect().Min.y + 6.0f * static_cast<float>(y_index);
       io.AddMousePosEvent(centre.x, y);
       Bridge::frame(view);
       found = GImGui->HoveredId == plot;

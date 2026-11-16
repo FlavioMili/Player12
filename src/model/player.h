@@ -9,6 +9,7 @@
 #pragma once
 
 #include <array>
+#include <atomic>
 #include <cstddef>
 #include <cstdint>
 #include <map>
@@ -96,6 +97,8 @@ struct PlayerDynamics
  * match_engine.h. The engine borrows this Player as read-only input and the
  * career later applies its match consequences. PlayerAgent models contract
  * negotiations, not on-pitch AI. See docs/development/player-behavior.md.
+ * Concurrent const queries may refresh the price cache. Attribute mutations
+ * require exclusive career ownership, as with other persistent model state.
  */
 class Player
 {
@@ -290,7 +293,36 @@ class Player
   TeamID _team_id;
   uint32_t _wage;
   uint32_t _status;
-  mutable uint32_t _cached_market_value = 0;
+  /** Independently copied cache; concurrent const price queries may refresh it.
+   */
+  struct MarketValueCache
+  {
+    MarketValueCache() = default;
+    ~MarketValueCache() = default;
+    MarketValueCache(const MarketValueCache& other) noexcept
+        : value(other.load())
+    {
+    }
+    MarketValueCache& operator=(const MarketValueCache& other) noexcept
+    {
+      store(other.load());
+      return *this;
+    }
+    MarketValueCache(MarketValueCache&& other) noexcept
+        : MarketValueCache(other)
+    {
+    }
+    MarketValueCache& operator=(MarketValueCache&& other) noexcept
+    {
+      return *this = other;
+    }
+    uint32_t load() const noexcept { return value.load(); }
+    void store(uint32_t next) const noexcept { value.store(next); }
+
+   private:
+    mutable std::atomic<uint32_t> value{0};
+  };
+  MarketValueCache _cached_market_value;
 
   // strings (non-POD, heap allocated, alignment not a problem)
   std::string _first_name;

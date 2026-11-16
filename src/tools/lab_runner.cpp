@@ -322,6 +322,7 @@ void extractEngine(MatchSample& sample, const MatchEngine& engine)
     const auto minute = static_cast<double>(event.timeMinute);
     const double elapsed =
         event.period <= 1 ? minute : firstHalf + (minute - HALF_MINUTES);
+    using enum MatchEventType;
     const bool goal = event.type == MatchEventType::GOAL;
     const bool ownGoal = event.type == MatchEventType::OWN_GOAL;
     if (event.type == MatchEventType::SHOT_BLOCKED &&
@@ -337,8 +338,7 @@ void extractEngine(MatchSample& sample, const MatchEngine& engine)
       const bool home = ownGoal ? !event.isHomeTeam : event.isHomeTeam;
       timeline.push_back({elapsed, true, home});
     }
-    else if ((event.type == MatchEventType::RED_CARD ||
-              event.type == MatchEventType::SECOND_YELLOW) &&
+    else if ((event.type == RED_CARD || event.type == SECOND_YELLOW) &&
              event.hasTeam)
     {
       timeline.push_back({elapsed, false, event.isHomeTeam});
@@ -619,7 +619,7 @@ std::vector<MatchSample> simulateMatches(
   for (std::size_t begin = 0; begin < jobs.size(); begin += PROGRESS_CHUNK)
   {
     const std::size_t size = std::min(PROGRESS_CHUNK, jobs.size() - begin);
-    const auto task = [&](std::size_t offset)
+    const auto task = [&samples, &jobs, &config, begin](std::size_t offset)
     {
       const std::size_t index = begin + offset;
       samples[index] = simulateMatch(jobs[index], config);
@@ -638,7 +638,7 @@ MatchSample sampleFromReport(const MatchReport& report)
   MatchSample sample;
   sample.detailed = false;
   sample.goals = {report.home_goals, report.away_goals};
-  const auto side = [&](std::size_t index, const TeamMatchStats& stats)
+  const auto side = [&sample](std::size_t index, const TeamMatchStats& stats)
   {
     sample.shots[index] = stats.shots;
     sample.on_target[index] = stats.shots_on_target;
@@ -736,7 +736,7 @@ std::map<std::string, Estimate> matchMetrics(
   // Dispersion of total goals: sample variance / mean (Poisson = 1).
   metrics["goals_variance_mean"] = bootstrapEstimate(
       n,
-      [&](std::span<const std::size_t> indices)
+      [&goals](std::span<const std::size_t> indices)
       {
         if (indices.size() < 2) return std::nan("");
         double sum = 0.0;
@@ -750,10 +750,10 @@ std::map<std::string, Estimate> matchMetrics(
       },
       0xB0075747ULL);
   // Per-team counts are per-match totals halved.
-  const auto perTeam = [&](auto extract)
+  const auto perTeam = [&column](auto extract)
   {
     return meanEstimate(
-        column([&](const MatchSample& s) { return extract(s) / 2.0; }));
+        column([extract](const MatchSample& s) { return extract(s) / 2.0; }));
   };
   metrics["shots_per_team"] =
       perTeam([](const MatchSample& s) { return s.shots[0] + s.shots[1]; });
@@ -1278,9 +1278,12 @@ std::map<std::string, Estimate> matchMetrics(
   // over matches (distance / (half length x players)); bootstrap.
   metrics["second_half_distance_change"] = bootstrapEstimate(
       n,
-      [&](std::span<const std::size_t> indices)
+      [&valid](std::span<const std::size_t> indices)
       {
-        double first = 0.0, second = 0.0, firstTime = 0.0, secondTime = 0.0;
+        double first = 0.0;
+        double second = 0.0;
+        double firstTime = 0.0;
+        double secondTime = 0.0;
         for (const std::size_t i : indices)
         {
           const MatchSample& s = *valid[i];
@@ -1368,7 +1371,8 @@ std::map<std::string, Estimate> matchMetrics(
   {
     return bootstrapEstimate(
         n,
-        [&, state, reference](std::span<const std::size_t> indices)
+        [&valid, minutes, goalsOf, state,
+         reference](std::span<const std::size_t> indices)
         {
           double stateMinutes = 0.0;
           double referenceMinutes = 0.0;
@@ -1419,9 +1423,10 @@ std::map<std::string, Estimate> matchMetrics(
     std::size_t wins = 0;
     for (const MatchSample* sample : valid)
     {
-      const double gap = std::abs(static_cast<double>(sample->rating[0]) -
-                                  static_cast<double>(sample->rating[1]));
-      if (gap < RATING_TIE || gap < band[0] || gap >= band[1]) continue;
+      if (const double gap = std::abs(static_cast<double>(sample->rating[0]) -
+                                      static_cast<double>(sample->rating[1]));
+          gap < RATING_TIE || gap < band[0] || gap >= band[1])
+        continue;
       ++matches;
       const std::size_t strong = sample->rating[0] > sample->rating[1] ? 0 : 1;
       if (sample->goals[strong] > sample->goals[1 - strong]) ++wins;
@@ -1831,9 +1836,10 @@ TextTable ratingGapTable(std::span<const MatchSample> samples)
     for (const MatchSample& sample : samples)
     {
       if (sample.abandoned) continue;
-      const double gap = std::abs(static_cast<double>(sample.rating[0]) -
-                                  static_cast<double>(sample.rating[1]));
-      if (gap < RATING_TIE || gap < band[0] || gap >= band[1]) continue;
+      if (const double gap = std::abs(static_cast<double>(sample.rating[0]) -
+                                      static_cast<double>(sample.rating[1]));
+          gap < RATING_TIE || gap < band[0] || gap >= band[1])
+        continue;
       ++matches;
       const std::size_t strong = sample.rating[0] > sample.rating[1] ? 0 : 1;
       if (sample.goals[strong] > sample.goals[1 - strong])
@@ -1986,7 +1992,11 @@ void tacticMetrics(std::span<const MatchSample> samples, int seeds_per_pair,
       PresetTotals& preset = totals[presets[side]];
       const int own = sample.goals[side];
       const int other = sample.goals[1 - side];
-      const double points = own > other ? 3.0 : own == other ? 1.0 : 0.0;
+      double points = 0.0;
+      if (own > other)
+        points = 3.0;
+      else if (own == other)
+        points = 1.0;
       preset.points.push_back(points);
       (own > other    ? preset.wins
        : own == other ? preset.draws
@@ -1994,9 +2004,11 @@ void tacticMetrics(std::span<const MatchSample> samples, int seeds_per_pair,
       preset.goals_for += own;
       preset.goals_against += other;
       preset.shots += sample.shots[side];
-      preset.possession +=
-          side == 0 ? static_cast<double>(sample.home_possession)
-                    : 100.0 - static_cast<double>(sample.home_possession);
+      if (side == 0)
+        preset.possession += static_cast<double>(sample.home_possession);
+      else
+        preset.possession +=
+            100.0 - static_cast<double>(sample.home_possession);
       preset.fouls += sample.fouls[side];
       preset.passes_attempted += sample.passes_attempted[side];
       preset.passes_completed += sample.passes_completed[side];
@@ -2014,7 +2026,7 @@ void tacticMetrics(std::span<const MatchSample> samples, int seeds_per_pair,
   for (std::size_t p = 0; p < PRESETS; ++p)
   {
     const PresetTotals& preset = totals[p];
-    const std::vector<double> maxPoints(preset.points.size(), 3.0);
+    const std::vector maxPoints(preset.points.size(), 3.0);
     const Estimate pointsShare = ratioEstimate(preset.points, maxPoints);
     if (pointsShare.valid() &&
         (!best.valid() || pointsShare.value > best.value))
@@ -2044,7 +2056,7 @@ void tacticMetrics(std::span<const MatchSample> samples, int seeds_per_pair,
     matrix.header.emplace_back(preset.name);
   for (std::size_t row = 0; row < PRESETS; ++row)
   {
-    std::vector<std::string> cells{std::string(TACTIC_PRESETS[row].name)};
+    std::vector cells{std::string(TACTIC_PRESETS[row].name)};
     for (std::size_t col = 0; col < PRESETS; ++col)
       cells.push_back(headMatches[row][col] == 0
                           ? "-"

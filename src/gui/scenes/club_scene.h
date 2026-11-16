@@ -52,10 +52,10 @@ class ClubScene : public ManagementScene
 
   void renderBoard(float width);
   void renderTargets(const GameController::BoardTargets& targets,
-                     float keyWidth);
+                     float keyWidth) const;
   void renderStadium(float width);
   void renderSupporters(float width);
-  void renderHistory();
+  void renderHistory() const;
 
   /** @brief One reason behind the supporters' mood, localised. */
   struct SupporterLine

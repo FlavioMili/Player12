@@ -10,8 +10,7 @@
 
 #include <algorithm>
 #include <cctype>
-#include <iomanip>
-#include <sstream>
+#include <format>
 #include <stdexcept>
 
 #include "global/global.h"
@@ -116,21 +115,18 @@ bool GameDateValue::operator==(const GameDateValue& other) const
 
 std::string GameDateValue::toString() const
 {
-  std::ostringstream oss;
-  oss << std::setw(4) << std::setfill('0') << year << "-" << std::setw(2)
-      << std::setfill('0') << unsigned(month) << "-" << std::setw(2)
-      << std::setfill('0') << unsigned(day);
-  return oss.str();
+  return std::format("{:04}-{:02}-{:02}", year, unsigned(month), unsigned(day));
 }
 
 GameDateValue GameDateValue::fromString(const std::string& str)
 {
-  const bool valid_shape =
-      str.size() == 10 && str[4] == '-' && str[7] == '-' &&
-      std::ranges::all_of(
-          str, [](unsigned char character)
-          { return std::isdigit(character) || character == '-'; });
-  if (!valid_shape) throw std::runtime_error("Invalid date string: " + str);
+  if (const bool valid_shape =
+          str.size() == 10 && str[4] == '-' && str[7] == '-' &&
+          std::ranges::all_of(
+              str, [](unsigned char character)
+              { return std::isdigit(character) || character == '-'; });
+      !valid_shape)
+    throw std::runtime_error("Invalid date string: " + str);
 
   const auto y = static_cast<uint16_t>(std::stoi(str.substr(0, 4)));
   const auto m = static_cast<uint8_t>(std::stoi(str.substr(5, 2)));

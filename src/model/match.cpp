@@ -31,7 +31,6 @@ Match::Match(TeamID home_id, TeamID away_id, GameDateValue date, MatchType type,
       match_date(date),
       match_type(type),
       home_score(0),
-      away_score(0),
       competition_id(competition),
       stage(round_stage)
 {
@@ -203,15 +202,16 @@ bool isSelected(const Lineup& lineup, const Player* player)
 /** Defence 0, midfield 1 (holding, central and wide), attack 2. */
 int lineOf(PlayerRole role)
 {
+  using enum PlayerRole;
   switch (role)
   {
-    case PlayerRole::LB:
-    case PlayerRole::CB:
-    case PlayerRole::RB:
+    case LB:
+    case CB:
+    case RB:
       return 0;
-    case PlayerRole::LW:
-    case PlayerRole::RW:
-    case PlayerRole::ST:
+    case LW:
+    case RW:
+    case ST:
       return 2;
     default:
       return 1;
@@ -221,15 +221,16 @@ int lineOf(PlayerRole role)
 /** Left flank -1, centre 0, right flank 1. */
 int flankOf(PlayerRole role)
 {
+  using enum PlayerRole;
   switch (role)
   {
-    case PlayerRole::LB:
-    case PlayerRole::LM:
-    case PlayerRole::LW:
+    case LB:
+    case LM:
+    case LW:
       return -1;
-    case PlayerRole::RB:
-    case PlayerRole::RM:
-    case PlayerRole::RW:
+    case RB:
+    case RM:
+    case RW:
       return 1;
     default:
       return 0;
@@ -255,9 +256,9 @@ float slotFit(PlayerRole actual, PlayerRole slot)
   if (actualLine == slotLine)
     return actualLine == 2 || (flank == 0 && flankOf(slot) == 0) ? 0.85f
                                                                  : 0.75f;
-  const auto pair = [&](PlayerRole a, PlayerRole b)
-  { return (actual == a && slot == b) || (actual == b && slot == a); };
-  if (pair(PlayerRole::CAM, PlayerRole::ST) ||
+  if (const auto pair = [&](PlayerRole a, PlayerRole b)
+      { return (actual == a && slot == b) || (actual == b && slot == a); };
+      pair(PlayerRole::CAM, PlayerRole::ST) ||
       pair(PlayerRole::CDM, PlayerRole::CB))
     return 0.75f;
   return 0.55f;
@@ -306,7 +307,11 @@ std::size_t MatchdaySquad::replaceIneligible(
                     });
   std::vector<const Player*> pool;
   pool.reserve(ranked.size());
-  for (const auto& entry : ranked) pool.push_back(entry.second);
+  for (const auto& [score, player] : ranked)
+  {
+    static_cast<void>(score);
+    pool.push_back(player);
+  }
 
   const std::size_t before = ineligible(lineup, eligible).size();
   const std::size_t reserveCount = lineup.getReserves().size();
@@ -370,9 +375,11 @@ std::size_t MatchdaySquad::replaceIneligible(
   }
   if (bench.size() != lineup.getReserves().size())
   {
-    for (auto candidate = pool.begin();
-         candidate != pool.end() && bench.size() < reserveCount; ++candidate)
-      bench.push_back(*candidate);
+    for (const Player* candidate : pool)
+    {
+      if (bench.size() >= reserveCount) break;
+      bench.push_back(candidate);
+    }
     lineup.setReserves(bench);
   }
   return before - ineligible(lineup, eligible).size();
@@ -480,8 +487,8 @@ void MatchdaySquad::recordStandIns(const Lineup& before, Lineup& after)
   record(before.getGoalkeeper(), after.getGoalkeeper());
   // Slots line up only while nobody has left the XI without a replacement.
   const auto& oldSlots = before.getOutfieldPlayers();
-  const auto& newSlots = after.getOutfieldPlayers();
-  if (oldSlots.size() == newSlots.size())
+  if (const auto& newSlots = after.getOutfieldPlayers();
+      oldSlots.size() == newSlots.size())
     for (std::size_t slot = 0; slot < oldSlots.size(); ++slot)
       record(oldSlots[slot].player, newSlots[slot].player);
   after.setStandIns(std::move(entries));

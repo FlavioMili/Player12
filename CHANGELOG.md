@@ -314,6 +314,23 @@ development snapshots, so most of it is listed under *Added*.
 
 ### Fixed
 
+- macOS packaging disables the unused vendored CoreText backend after SDL_ttf
+  configuration, avoiding incompatible SDK headers while retaining font shaping.
+- Linux Clang builds use the portable movement kernel instead of GCC-only
+  function multiversioning.
+- Goalkeepers account for reaction time across simulation ticks and use the
+  remaining part of a tick to dive. Reachable-shot handling and accidental
+  defensive touches are calibrated against the existing season ranges.
+- Shot placement scatter and league-level finishing precision reduce excessive
+  conversion while preserving shot volume and the existing calibration bands.
+- Own goals caused by set pieces retain the restart origin in goal statistics.
+- Matchday test careers choose the same club when reputation values are tied.
+  Selection checks distinguish the assistant's preservation of healthy regulars
+  from Auto Pick's selection of the best available XI.
+- Camera tests dismiss the pre-match dialog before dragging the pitch, making
+  input checks independent of highlight timing and graphics backend.
+- Tight-marking checks use 64 paired matches to reduce sampling noise while
+  retaining the existing minimum reduction in touches.
 - Blurry or wrongly scaled rendering on HiDPI displays.
 - A memory leak in the transfer market.
 - Exploits found in testing: a very high ticket price was always the most

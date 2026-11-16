@@ -790,14 +790,16 @@ struct MatchRender3DTuning final
   /** Lower-third goal sting; sizes in font heights (HiDPI safe). */
   struct Sting final
   {
-    static constexpr float SECONDS = 6.0f;
+    static constexpr float SECONDS = 10.0f;
     static constexpr float FADE_IN_SECONDS = 0.35f;
     static constexpr float FADE_OUT_SECONDS = 0.6f;
     static constexpr float SLIDE_EM = 2.5f;
-    static constexpr float TITLE_SCALE = 1.9f;
-    static constexpr float PADDING_EM = 0.6f;
-    static constexpr float BAR_EM = 0.55f;
+    static constexpr float TITLE_SCALE = 2.6f;
+    static constexpr float PADDING_EM = 0.9f;
+    static constexpr float BAR_EM = 0.75f;
     static constexpr float ROUNDING_EM = 0.3f;
+    /** Flashes per second of the goal call. */
+    static constexpr float FLASH_HZ = 4.0f;
     /** Gap below the sting as a share of the view height. */
     static constexpr float BOTTOM_SHARE = 0.08f;
     static constexpr ImU32 PANEL_COLOR = IM_COL32(8, 13, 23, 214);

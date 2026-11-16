@@ -10,6 +10,7 @@
 
 #include <algorithm>
 #include <numeric>
+#include <utility>
 #include <vector>
 
 #include "model/data_hub.h"
@@ -80,10 +81,10 @@ ManagedMatchSnapshot snapshot(int day, TeamID home, TeamID away)
 
 TEST(DataHubTest, TrendAndRollingAverageReconcileWithReports)
 {
-  std::vector<MatchReport> reports = {report(9, CLUB, 20, 2, 0, 2.0f, 0.5f),
-                                      report(2, 21, CLUB, 1, 1, 1.0f, 1.0f),
-                                      report(16, CLUB, 22, 0, 1, 0.6f, 1.4f),
-                                      report(23, 23, CLUB, 0, 3, 0.4f, 3.0f)};
+  std::vector reports = {report(9, CLUB, 20, 2, 0, 2.0f, 0.5f),
+                         report(2, 21, CLUB, 1, 1, 1.0f, 1.0f),
+                         report(16, CLUB, 22, 0, 1, 0.6f, 1.4f),
+                         report(23, 23, CLUB, 0, 3, 0.4f, 3.0f)};
   DataHubInput input;
   input.team_id = CLUB;
   input.team_reports = reports;
@@ -99,8 +100,11 @@ TEST(DataHubTest, TrendAndRollingAverageReconcileWithReports)
   const float sum_for = 1.0f + 2.0f + 0.6f + 3.0f;
   EXPECT_NEAR(analytics.rolling_xg_for.back(), sum_for / 4.0f, 1e-4f);
   EXPECT_NEAR(analytics.rolling_xg_for.front(), 1.0f, 1e-4f);
-  EXPECT_NEAR(analytics.metrics[static_cast<size_t>(HubMetric::XgFor)].team,
-              sum_for / 4.0f, 1e-4f);
+  EXPECT_NEAR(
+      analytics
+          .metrics[static_cast<size_t>(std::to_underlying(HubMetric::XgFor))]
+          .team,
+      sum_for / 4.0f, 1e-4f);
 }
 
 TEST(DataHubTest, FewMatchesAndScoreOnlyReportsGiveAnEmptyState)
@@ -122,10 +126,10 @@ TEST(DataHubTest, FewMatchesAndScoreOnlyReportsGiveAnEmptyState)
 TEST(DataHubTest, LeagueAveragesAndRanks)
 {
   // Club creates 2.0 xG a match, the others 1.0: best in the league.
-  std::vector<MatchReport> league = {report(1, CLUB, 20, 2, 0, 2.0f, 1.0f),
-                                     report(2, 21, CLUB, 0, 1, 1.0f, 2.0f),
-                                     report(3, 20, 21, 1, 1, 1.0f, 1.0f),
-                                     report(4, 22, 20, 1, 1, 1.0f, 1.0f)};
+  std::vector league = {report(1, CLUB, 20, 2, 0, 2.0f, 1.0f),
+                        report(2, 21, CLUB, 0, 1, 1.0f, 2.0f),
+                        report(3, 20, 21, 1, 1, 1.0f, 1.0f),
+                        report(4, 22, 20, 1, 1, 1.0f, 1.0f)};
   DataHubInput input;
   input.team_id = CLUB;
   input.team_reports = std::span(league).first(2);
@@ -133,13 +137,14 @@ TEST(DataHubTest, LeagueAveragesAndRanks)
   const TeamAnalytics analytics = DataHub::buildTeamAnalytics(input);
   EXPECT_EQ(analytics.league_matches, 4);
   const MetricComparison& xg_for =
-      analytics.metrics[static_cast<size_t>(HubMetric::XgFor)];
+      analytics
+          .metrics[static_cast<size_t>(std::to_underlying(HubMetric::XgFor))];
   EXPECT_NEAR(xg_for.team, 2.0f, 1e-4f);
   EXPECT_NEAR(xg_for.league, 10.0f / 8.0f, 1e-4f);
   EXPECT_EQ(xg_for.rank, 1);
   EXPECT_EQ(xg_for.ranked_teams, 4);
-  const MetricComparison& conceded =
-      analytics.metrics[static_cast<size_t>(HubMetric::XgAgainst)];
+  const MetricComparison& conceded = analytics.metrics[static_cast<size_t>(
+      std::to_underlying(HubMetric::XgAgainst))];
   EXPECT_TRUE(conceded.lower_is_better);
   EXPECT_NEAR(conceded.team, 1.0f, 1e-4f);
   // Pass completion: 80% at home, 75% away.
@@ -150,10 +155,9 @@ TEST(DataHubTest, LeagueAveragesAndRanks)
 
 TEST(DataHubTest, SetPiecesAndShotMapComeFromSnapshots)
 {
-  std::vector<MatchReport> reports = {report(1, CLUB, 20, 2, 0, 2.0f, 0.5f),
-                                      report(8, 21, CLUB, 0, 1, 0.5f, 1.0f)};
-  const std::vector<ManagedMatchSnapshot> snapshots = {snapshot(1, CLUB, 20),
-                                                       snapshot(8, 21, CLUB)};
+  std::vector reports = {report(1, CLUB, 20, 2, 0, 2.0f, 0.5f),
+                         report(8, 21, CLUB, 0, 1, 0.5f, 1.0f)};
+  const std::vector snapshots = {snapshot(1, CLUB, 20), snapshot(8, 21, CLUB)};
   DataHubInput input;
   input.team_id = CLUB;
   input.team_reports = reports;
@@ -183,7 +187,7 @@ TEST(DataHubTest, PlayerRowsPer90RatingTrendAndPassShare)
     addLine(match, 99, 20 + day, 90, 7.0f);  // Opponent.
     reports.push_back(match);
   }
-  const std::vector<ManagedMatchSnapshot> snapshots = {snapshot(1, CLUB, 21)};
+  const std::vector snapshots = {snapshot(1, CLUB, 21)};
   DataHubInput input;
   input.team_id = CLUB;
   input.team_reports = reports;

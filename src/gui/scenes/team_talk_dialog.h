@@ -38,7 +38,7 @@ class TeamTalkDialog
 {
  public:
   /** Opens the talk for @p moment (the score matters at half-time). */
-  void open(GameController& controller, TeamTalkMoment moment,
+  void open(const GameController& controller, TeamTalkMoment moment,
             int own_goals = 0, int other_goals = 0);
 
   /**
@@ -76,7 +76,7 @@ class TeamTalkDialog
   };
 
   void renderOptions(GameController& controller);
-  void renderResult();
+  void renderResult() const;
 
   TeamTalkMoment moment = TeamTalkMoment::PreMatch;
   int own_goals = 0;

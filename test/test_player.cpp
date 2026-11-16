@@ -8,8 +8,49 @@
 
 #include <gtest/gtest.h>
 
+#include <atomic>
+#include <latch>
+#include <thread>
+#include <vector>
+
 #include "global/stats_config.h"
 #include "model/player.h"
+
+TEST(PlayerTest, ConcurrentPriceRefreshAndCopiesKeepIndependentCaches)
+{
+  StatsConfig config;
+  config.role_focus["Striker"] = {{"Speed", "Shooting"}, {0.5, 0.5}};
+  Player player(1, 10, "Price", "Test", PlayerRole::ST, Language::EN, 1000, 0,
+                25, 3, 180, Foot::Right,
+                {{"Speed", 80.0f}, {"Shooting", 90.0f}});
+  player.updateMarketValue(config);
+  const auto expected = player.getMarketValue();
+  ASSERT_GT(expected, 0U);
+  const Player& shared = player;
+  std::atomic<bool> consistent{true};
+  std::latch start(8);
+  std::vector<std::jthread> readers;
+  for (int thread = 0; thread < 8; ++thread)
+    readers.emplace_back(
+        [&]
+        {
+          start.arrive_and_wait();
+          for (int attempt = 0; attempt < 500; ++attempt)
+          {
+            shared.updateMarketValue(config);
+            const Player copy = shared;
+            if (shared.getMarketValue() != expected ||
+                copy.getMarketValue() != expected)
+              consistent.store(false);
+          }
+        });
+  readers.clear();
+  EXPECT_TRUE(consistent.load());
+  Player copy = player;
+  copy.setAge(30);
+  EXPECT_EQ(copy.getMarketValue(), 0U);
+  EXPECT_EQ(player.getMarketValue(), expected);
+}
 
 TEST(PlayerTest, ConstructorAndGetters)
 {

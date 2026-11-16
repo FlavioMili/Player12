@@ -132,7 +132,10 @@ MatchReportScene::MatchReportScene(GUIView* parent, GameDateValue matchDate,
 {
 }
 
-void MatchReportScene::update(float /*deltaTime*/) {}
+void MatchReportScene::update(float /*deltaTime*/)
+{
+  // A report is a static snapshot and has no per-frame state to advance.
+}
 
 void MatchReportScene::refresh()
 {
@@ -154,7 +157,7 @@ void MatchReportScene::refresh()
   else if (report->extra_time)
     result_note = LOC("RESULT_AFTER_EXTRA_TIME");
   // A match the manager played himself says so, with his share of the play.
-  if (report->played_home)
+  if (report->played_home.has_value())
   {
     if (!result_note.empty()) result_note += "  ·  ";
     result_note += fmt::sprintf(
@@ -236,12 +239,16 @@ void MatchReportScene::renderContent()
       events.empty() && report->home_stats.shots + report->away_stats.shots +
                                 report->home_stats.passes_attempted ==
                             0;
-  const float topHeight =
-      !fill    ? 0.0f
-      : sparse ? ImGui::GetTextLineHeightWithSpacing() * 2.0f +
-                     2.0f * Theme::Space::M * Theme::scale() +
-                     Theme::textSize(Theme::Text::CAPTION) * Theme::scale()
-               : std::floor(height * 0.46f);
+  float topHeight = 0.0f;
+  if (fill)
+  {
+    if (sparse)
+      topHeight = ImGui::GetTextLineHeightWithSpacing() * 2.0f +
+                  2.0f * Theme::Space::M * Theme::scale() +
+                  Theme::textSize(Theme::Text::CAPTION) * Theme::scale();
+    else
+      topHeight = std::floor(height * 0.46f);
+  }
   const float bottomHeight =
       fill ? height - topHeight - ImGui::GetStyle().ItemSpacing.y : 0.0f;
   renderEvents(half, topHeight);
@@ -368,8 +375,8 @@ void MatchReportScene::eventText(const EventRow& event, bool alignRight)
   const auto line = [alignRight](const std::string& text, const ImVec4& color)
   {
     const float cell = ImGui::GetContentRegionAvail().x;
-    const float textWidth = ImGui::CalcTextSize(text.c_str()).x;
-    if (alignRight && textWidth < cell)
+    if (const float textWidth = ImGui::CalcTextSize(text.c_str()).x;
+        alignRight && textWidth < cell)
       ImGui::SetCursorPosX(ImGui::GetCursorPosX() + cell - textWidth);
     UI::textFitted(text, cell, color);
   };
@@ -379,7 +386,7 @@ void MatchReportScene::eventText(const EventRow& event, bool alignRight)
   line(event.assist, palette.muted);
 }
 
-void MatchReportScene::renderEvents(float width, float height)
+void MatchReportScene::renderEvents(float width, float height) const
 {
   const Theme::Palette& palette = Theme::palette();
   beginReportCard("report_events", LOC("REPORT_EVENTS"), width, height);

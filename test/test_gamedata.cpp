@@ -9,10 +9,41 @@
 #include <gtest/gtest.h>
 
 #include <algorithm>
+#include <array>
+#include <latch>
+#include <thread>
 
+#include "controller/game_controller.h"
+#include "database/datagenerator.h"
 #include "database/gamedata.h"
 #include "global/global.h"
 #include "model/player.h"
+
+TEST(GameControllerIdentity, ConcurrentFirstReadsShareOneStableCache)
+{
+  const auto identities = DataGenerator::loadClubIdentities();
+  ASSERT_FALSE(identities.empty());
+  const TeamID team = identities.begin()->first;
+  GameController controller;
+  std::array<const ClubIdentity*, 8> results{};
+  std::latch start(static_cast<std::ptrdiff_t>(results.size()));
+  std::vector<std::jthread> readers;
+  for (std::size_t index = 0; index < results.size(); ++index)
+  {
+    readers.emplace_back(
+        [&, index]
+        {
+          start.arrive_and_wait();
+          results[index] = controller.getClubIdentity(team);
+        });
+  }
+  readers.clear();  // Join all readers before examining their results.
+  ASSERT_NE(results.front(), nullptr);
+  for (const ClubIdentity* identity : results)
+    EXPECT_EQ(identity, results.front());
+  EXPECT_EQ(results.front()->short_name, identities.at(team).short_name);
+  EXPECT_EQ(controller.getClubIdentity(team), results.front());
+}
 
 class GameDataTest : public ::testing::Test
 {

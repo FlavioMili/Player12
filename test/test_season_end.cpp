@@ -17,10 +17,12 @@
 #include <chrono>
 #include <future>
 #include <memory>
+#include <string_view>
 #include <thread>
 
 #include "controller/game_controller.h"
 #include "database/gamedata.h"
+#include "global/background_task.h"
 #include "global/language_manager.h"
 #include "global/logger.h"
 #include "global/runtime_paths.h"
@@ -38,11 +40,15 @@ constexpr std::uint64_t WORLD_SEED = 20250702;
 
 int uniqueSlot(int offset)
 {
-  return 7'000'000 + static_cast<int>(getpid() % 100'000) * 10 + offset;
+  return 7'000'000 + (getpid() % 100'000) * 10 + offset;
 }
 
 struct SlotCleanup
 {
+  explicit SlotCleanup(int saveSlot) : slot(saveSlot) {}
+  SlotCleanup(const SlotCleanup&) = delete;
+  SlotCleanup& operator=(const SlotCleanup&) = delete;
+
   int slot;
   ~SlotCleanup() { RuntimePaths::removeSave(slot); }
 };
@@ -55,10 +61,11 @@ TeamID favouriteOfATopDivision(const GameController& controller)
   {
     const LeagueID id = league.get().getId();
     if (controller.getLeagueTier(id) != 1) continue;
-    const bool has_lower =
-        std::ranges::any_of(controller.getLeagues(), [id](const auto& other)
-                            { return other.get().getParentLeagueID() == id; });
-    if (!has_lower) continue;
+    if (const bool has_lower = std::ranges::any_of(
+            controller.getLeagues(), [id](const auto& other)
+            { return other.get().getParentLeagueID() == id; });
+        !has_lower)
+      continue;
     TeamID best = 0;
     std::int64_t best_wages = -1;
     for (const TeamID team_id : league.get().getTeamIDs())
@@ -132,7 +139,7 @@ void playUntil(GameController& controller, TeamID managed, bool wins,
   }
 }
 
-int countTitle(const Inbox& inbox, const std::string& key)
+int countTitle(const Inbox& inbox, std::string_view key)
 {
   return static_cast<int>(
       std::ranges::count(inbox.getMessages(), key, &InboxMessage::title_key));
@@ -671,8 +678,9 @@ TEST(ContinueStop, StopEndsAHolidayAfterTheCurrentDay)
   plan.preferences.stop_injury_crisis = false;
   plan.preferences.stop_key_injury = false;
   const GameDateValue start = controller->getCurrentDate();
-  auto run = std::async(std::launch::async,
-                        [&] { return controller->goOnHoliday(plan); });
+  std::jthread worker;
+  auto run = launchBackgroundTask(
+      worker, [&] { return controller->goOnHoliday(plan); });
   const auto deadline =
       std::chrono::steady_clock::now() + std::chrono::seconds(60);
   while (controller->getContinueProgress().days_done < 1 &&
@@ -724,8 +732,9 @@ TEST(ContinueStop, StopEndsAContinueToTheNextFixture)
     }
   if (dayOrdinal(next) - dayOrdinal(controller->getCurrentDate()) < 3)
     GTEST_SKIP() << "the first fixture is too close to stop on the way";
-  auto run = std::async(std::launch::async, [&]
-                        { return controller->advanceToNextManagedFixture(); });
+  std::jthread worker;
+  auto run = launchBackgroundTask(
+      worker, [&] { return controller->advanceToNextManagedFixture(); });
   const auto deadline =
       std::chrono::steady_clock::now() + std::chrono::seconds(60);
   while (controller->getContinueProgress().days_done < 1 &&

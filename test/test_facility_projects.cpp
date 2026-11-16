@@ -27,11 +27,15 @@ constexpr std::uint64_t WORLD_SEED = 20250702;
 
 int uniqueSlot(int offset)
 {
-  return 7'000'000 + static_cast<int>(getpid() % 100'000) * 10 + offset;
+  return 7'000'000 + getpid() % 100'000 * 10 + offset;
 }
 
 struct SlotCleanup
 {
+  explicit SlotCleanup(int saveSlot) : slot(saveSlot) {}
+  SlotCleanup(const SlotCleanup&) = delete;
+  SlotCleanup& operator=(const SlotCleanup&) = delete;
+
   int slot;
   ~SlotCleanup() { RuntimePaths::removeSave(slot); }
 };
@@ -181,7 +185,7 @@ TEST(FacilityProjects, ProjectsRunPayAndComplete)
   }
 
   // Run the works to their end, day by day, on the projects alone.
-  Game* game = const_cast<Game*>(controller->getGame());
+  auto* game = controller->getGame();
   FacilityProjects& projects = game->getWorld().getFacilityProjects();
   auto gamedata = controller->getGameData();
   GameDateValue day = controller->getCurrentDate();

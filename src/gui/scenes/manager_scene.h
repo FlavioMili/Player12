@@ -12,6 +12,7 @@
 #include <cstdint>
 #include <optional>
 #include <string>
+#include <utility>
 #include <vector>
 
 #include "gui/scenes/management_scene.h"
@@ -49,7 +50,8 @@ class ManagerSetupPanel
   std::string default_first;
   std::string default_last;
   int nationality = 0;
-  int background = static_cast<int>(ManagerBackground::ProfessionalPlayer);
+  int background = static_cast<int>(
+      std::to_underlying(ManagerBackground::ProfessionalPlayer));
   int style = 0;
   int age = 42;
 };
@@ -170,9 +172,9 @@ class ManagerScene : public ManagementScene
 
   void renderProfile();
   void renderProfileCard(float width);
-  void renderHonours(float width);
-  void renderHistory();
-  void renderSeasons();
+  void renderHonours(float width) const;
+  void renderHistory() const;
+  void renderSeasons() const;
   void renderJobCentre();
   void renderOffers();
   void renderInterviews();

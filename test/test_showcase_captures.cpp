@@ -31,10 +31,9 @@
 #include <cstdint>
 #include <cstdlib>
 #include <filesystem>
-#include <iomanip>
+#include <format>
 #include <memory>
 #include <optional>
-#include <sstream>
 #include <string>
 #include <vector>
 
@@ -113,11 +112,15 @@ constexpr float SCALE = 2.0f;
 
 int uniqueSlot(int offset)
 {
-  return 640'000 + static_cast<int>(getpid() % 100'000) * 10 + offset;
+  return 640'000 + (getpid() % 100'000) * 10 + offset;
 }
 
 struct SlotCleanup
 {
+  explicit SlotCleanup(int saveSlot) : slot(saveSlot) {}
+  SlotCleanup(const SlotCleanup&) = delete;
+  SlotCleanup& operator=(const SlotCleanup&) = delete;
+
   int slot;
   ~SlotCleanup() { RuntimePaths::removeSave(slot); }
 };
@@ -125,8 +128,8 @@ struct SlotCleanup
 void resize(GUIView& view, int width, int height)
 {
   SDL_SetWindowSize(view.getWindow(), width, height);
-  SDL_Event event{};
-  event.type = SDL_EVENT_WINDOW_RESIZED;
+  SDL_Event event{.window = {}};
+  event.window.type = SDL_EVENT_WINDOW_RESIZED;
   event.window.windowID = SDL_GetWindowID(view.getWindow());
   event.window.data1 = width;
   event.window.data2 = height;
@@ -196,12 +199,11 @@ void recordMotion(GUIView& view, MatchScene& match, const char* name,
   for (int index = 0; index < VIDEO_FPS * VIDEO_SECONDS; ++index)
   {
     Bridge::frame(view, VIDEO_STEP);
-    std::ostringstream filename;
-    filename << "frame-" << std::setw(FRAME_DIGITS) << std::setfill('0')
-             << index << ".png";
+    const std::string filename =
+        std::format("frame-{:0{}d}.png", index, FRAME_DIGITS);
     SDL_Surface* surface = SDL_RenderReadPixels(view.getRenderer(), nullptr);
     ASSERT_NE(surface, nullptr) << SDL_GetError();
-    const auto path = folder / filename.str();
+    const auto path = folder / filename;
     ASSERT_TRUE(SDL_SavePNG(surface, path.string().c_str())) << SDL_GetError();
     SDL_DestroySurface(surface);
   }
@@ -379,8 +381,8 @@ TEST(ShowcaseCaptures, ReadmeScreens)
   frames(view, 30);
   if (MatchBridge::viewMode(*match) != MatchViewMode::PITCH_2D)
   {
-    SDL_Event key{};
-    key.type = SDL_EVENT_KEY_DOWN;
+    SDL_Event key{.key = {}};
+    key.key.type = SDL_EVENT_KEY_DOWN;
     key.key.key = SDLK_V;
     match->handleEvent(key);
     frames(view, 10);
@@ -390,8 +392,8 @@ TEST(ShowcaseCaptures, ReadmeScreens)
 
   playTo(38.0f);
   {
-    SDL_Event key{};
-    key.type = SDL_EVENT_KEY_DOWN;
+    SDL_Event key{.key = {}};
+    key.key.type = SDL_EVENT_KEY_DOWN;
     key.key.key = SDLK_V;
     match->handleEvent(key);
     key.key.key = SDLK_1;

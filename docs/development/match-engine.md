@@ -332,17 +332,42 @@ the engine does not simply award a goal from `random < xG`. Saves still include
 attribute-based probabilistic handling after reach checks. The xG formula is
 an in-code heuristic, not the fitted model proposed in the early specification.
 
+Goalkeeper reaction time starts when the shot is struck. Before the first dive
+update, the reaction clock ages by actual ball-flight substeps. This covers
+open-play launches, headers launched partway through flight, and restart shots
+that do not fly until the following tick. When the delay ends partway through
+a later tick, the keeper moves for its remaining time. Reach checks determine
+whether contact is physically possible; the stretch penalty then models handling
+difficulty within that reach.
+
 `setupThrowIn`, `setupCorner`, `setupFreeKick` and the other setup functions
 own taker selection, placement and waiting. `completeRestart` owns release.
 Keep the restart state until the ball is kicked: it determines offside
 exemptions and set-piece classification. Pass offside is recorded at release
 and enforced on involvement; it must not be recomputed from receipt positions.
+An accidental defensive deflection preserves the attacking restart's origin.
+An own goal from that flight counts in the scoring team's set-piece total,
+but does not become an attacking shot, headed goal or converted penalty.
 
 [MatchRules](../../src/model/match_rules.h) holds calculations that can be
 tested without an engine: added time, period limits, fatigue, ratings, aerial
 reach, sanctions and shootout completion. Random rolls are passed into rules
 that need them. The stateful engine applies their results, logs incidents and
 decides which restart or period comes next.
+
+### Calibrating finishing without changing keeper reach
+
+Shot placement uses a distance-scaled Gaussian error, with extra scatter from
+pressure and imperfect finishing. `Shooting::ERROR_BASE_METRES` controls the
+baseline scatter; `Player::LEVEL_FINISHING_GAIN` reduces precision below the
+reference league level. This lets league quality affect conversion without
+artificially changing how often teams shoot. Keeper handling is a separate roll
+after the ball enters the keeper's physical reach.
+
+Check equal teams, mismatched teams, weaker versus stronger leagues, and a full
+league table together when changing these values. Repeat the same comparisons
+on independent seeds: a better result for one fixed sample can hide a regression
+in another. Keep the existing calibration bands and document the sampled inputs.
 
 ## Determinism, replay and observation
 

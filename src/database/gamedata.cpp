@@ -74,7 +74,7 @@ bool restoreLineup(Team& team, const StoredLineup& stored,
     return &found->second;
   };
 
-  if (stored.goalkeeperId)
+  if (stored.goalkeeperId.has_value())
   {
     const Player* goalkeeper = resolvePlayer(*stored.goalkeeperId);
     if (!goalkeeper) return false;
@@ -233,11 +233,10 @@ void GameData::generateAndSaveInitialData()
     for (const auto& league_data : leagues_data)
     {
       leagueRepo.insertLeagueWithId(league_data);
-      _leagues.try_emplace(league_data.getId(),
-                           League(league_data.getId(), league_data.getName(),
-                                  league_teams_map[league_data.getId()],
-                                  league_data.getParentLeagueID(),
-                                  league_data.getTieBreakRule()));
+      _leagues.try_emplace(
+          league_data.getId(), league_data.getId(), league_data.getName(),
+          league_teams_map[league_data.getId()],
+          league_data.getParentLeagueID(), league_data.getTieBreakRule());
     }
 
     // DataGenerator::generatePlayers depends on GameData::getTeamsVector()
@@ -335,14 +334,14 @@ void GameData::restoreWorldState()
 
   // Saves from before the world simulation: derive club profiles, budgets
   // and hidden player attributes deterministically.
-  const bool legacy_clubs =
-      std::ranges::any_of(_teams,
-                          [](const auto& entry)
-                          {
-                            return entry.first != FREE_AGENTS_TEAM_ID &&
-                                   entry.second.getReputation() == 0;
-                          });
-  if (legacy_clubs)
+  if (const bool legacy_clubs =
+          std::ranges::any_of(_teams,
+                              [](const auto& entry)
+                              {
+                                return entry.first != FREE_AGENTS_TEAM_ID &&
+                                       entry.second.getReputation() == 0;
+                              });
+      legacy_clubs)
   {
     WorldGeneration::generateClubProfiles(_teams, world_seed, false);
     const auto economies = buildLeagueEconomies(*this);
@@ -618,8 +617,7 @@ const std::vector<std::reference_wrapper<const Player>>&
 GameData::getPlayersForTeam(TeamID team_id) const
 {
   static const std::vector<std::reference_wrapper<const Player>> empty_vec;
-  auto it = _teamPlayers.find(team_id);
-  if (it != _teamPlayers.end())
+  if (const auto it = _teamPlayers.find(team_id); it != _teamPlayers.end())
   {
     return it->second;
   }
@@ -630,8 +628,9 @@ const std::vector<std::reference_wrapper<const Player>>&
 GameData::getAcademyForTeam(TeamID team_id) const
 {
   static const std::vector<std::reference_wrapper<const Player>> empty_vec;
-  const auto it = _teamAcademies.find(team_id);
-  return it != _teamAcademies.end() ? it->second : empty_vec;
+  if (const auto it = _teamAcademies.find(team_id); it != _teamAcademies.end())
+    return it->second;
+  return empty_vec;
 }
 
 void GameData::setAcademyMember(PlayerID id, bool academy)
@@ -641,8 +640,8 @@ void GameData::setAcademyMember(PlayerID id, bool academy)
   Player& player = it->second;
   player.setAcademyPlayer(academy);
   const TeamID team_id = player.getTeamId();
-  auto& from = (academy ? _teamPlayers : _teamAcademies)[team_id];
-  if (std::erase_if(
+  if (auto& from = (academy ? _teamPlayers : _teamAcademies)[team_id];
+      std::erase_if(
           from, [id](const auto& ref) { return ref.get().getId() == id; }) > 0)
     (academy ? _teamAcademies : _teamPlayers)[team_id].push_back(player);
   if (const auto team = _teams.find(team_id); team != _teams.end())
@@ -717,9 +716,10 @@ void GameData::assignSquadNumbers(TeamID team_id, PlayerID newcomer)
   const auto& squad = found->second;
   std::bitset<SquadNumbers::MAX_NUMBER + 1> worn;
   bool complete = newcomer == 0;
-  for (auto ref = squad.begin(); complete && ref != squad.end(); ++ref)
+  for (const auto& ref : squad)
   {
-    const std::uint8_t number = ref->get().getSquadNumber();
+    if (!complete) break;
+    const std::uint8_t number = ref.get().getSquadNumber();
     complete = SquadNumbers::isValid(number) && !worn.test(number);
     if (complete) worn.set(number);
   }
@@ -751,29 +751,28 @@ void GameData::assignSquadNumbers(TeamID team_id, PlayerID newcomer)
 
 SquadNumbers::Change GameData::setSquadNumber(PlayerID id, int number)
 {
+  using enum SquadNumbers::Change;
   const auto it = _players.find(id);
-  if (it == _players.end() || !SquadNumbers::isValid(number))
-    return SquadNumbers::Change::Invalid;
+  if (it == _players.end() || !SquadNumbers::isValid(number)) return Invalid;
   Player& player = it->second;
   const TeamID team_id = player.getTeamId();
   if (team_id == FREE_AGENTS_TEAM_ID || player.isAcademyPlayer())
-    return SquadNumbers::Change::Invalid;
+    return Invalid;
   const auto wanted = static_cast<std::uint8_t>(number);
   const std::uint8_t previous = player.getSquadNumber();
-  if (previous == wanted) return SquadNumbers::Change::Changed;
-  SquadNumbers::Change change = SquadNumbers::Change::Changed;
+  if (previous == wanted) return Changed;
+  SquadNumbers::Change change = Changed;
   for (const auto& ref : _teamPlayers[team_id])
   {
     const Player& other = ref.get();
     if (other.getId() == id || other.getSquadNumber() != wanted) continue;
     _players.at(other.getId()).setSquadNumber(previous);
-    change = SquadNumbers::Change::Swapped;
+    change = Swapped;
     break;
   }
   player.setSquadNumber(wanted);
   // A swap with a player who had no number leaves the teammate without one.
-  if (change == SquadNumbers::Change::Swapped && previous == 0)
-    assignSquadNumbers(team_id);
+  if (change == Swapped && previous == 0) assignSquadNumbers(team_id);
   return change;
 }
 
@@ -807,7 +806,7 @@ void GameData::saveTransferListing(const TransferListing& listing) const
   sqlite3_bind_int(stmt, 2, static_cast<int>(listing.asking_price));
   std::string date_str = listing.listing_date.toString();
   sqlite3_bind_text(stmt, 3, date_str.c_str(), -1, SQLITE_TRANSIENT);
-  if (listing.highest_bidder_id)
+  if (listing.highest_bidder_id.has_value())
   {
     sqlite3_bind_int(stmt, 4, static_cast<int>(*listing.highest_bidder_id));
   }

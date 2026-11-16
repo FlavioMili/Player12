@@ -729,7 +729,7 @@ struct MatchTuning final
      */
     static constexpr float REFERENCE_LEVEL = 0.65f;
     static constexpr float LEVEL_NORMALISATION = 0.7f;
-    static constexpr float LEVEL_FINISHING_GAIN = 2.0f;
+    static constexpr float LEVEL_FINISHING_GAIN = 2.5F;
     /** Above the reference finishing improves more slowly. */
     static constexpr float ELITE_FINISHING_GAIN = 1.0f;
     static constexpr float MIN_LEVEL_PRECISION = 0.6f;
@@ -1760,7 +1760,10 @@ struct MatchTuning final
     static constexpr float AIM_MIN_HEIGHT_METRES = 0.2f;
     static constexpr float AIM_MAX_HEIGHT_METRES = 1.9f;
     static constexpr float HEADER_AIM_MAX_HEIGHT_METRES = 1.4f;
-    static constexpr float ERROR_BASE_METRES = 3.45f;
+    // Baseline placement scatter at the reference distance; keeper reach
+    // remains geometric. League-level precision scales this scatter rather
+    // than changing shot volume or awarding goals from an xG roll.
+    static constexpr float ERROR_BASE_METRES = 3.75F;
     static constexpr float ERROR_SKILL_METRES = 2.4f;
     static constexpr float ERROR_PRESSURE_METRES = 1.8f;
     static constexpr float ERROR_REFERENCE_METRES = 16.0f;
@@ -2459,7 +2462,9 @@ struct MatchTuning final
     static constexpr float HIGH_BALL_REACH_SCALE = 0.85f;
     static constexpr float COMFORT_SPEED_METRES = 24.0f;
     static constexpr float SAVE_BASE = 0.97f;
-    static constexpr float SAVE_STRETCH_PENALTY = 0.35f;
+    // Handling difficulty conditional on a geometrically reachable shot.
+    // Calibrated with season batches; this does not extend physical reach.
+    static constexpr float SAVE_STRETCH_PENALTY = 0.15F;
     static constexpr float SAVE_SPEED_PENALTY = 0.015f;
     static constexpr float SAVE_SKILL_BONUS = 0.22f;
     static constexpr float MIN_SAVE_CHANCE = 0.05f;
@@ -2534,7 +2539,9 @@ struct MatchTuning final
     static constexpr float DEFENSIVE_HEADER_WITHIN_METRES = 47.25f;
     /** Chance that a defender's header or touch of a delivery in front of
      * his goal skews toward it (own goals), and its speed and lift. */
-    static constexpr float OWN_GOAL_TOUCH_CHANCE = 0.04f;
+    // Per eligible defensive contact, rather than per attacking possession.
+    // Multiple contacts in the same goalmouth attack compound this hazard.
+    static constexpr float OWN_GOAL_TOUCH_CHANCE = 0.025F;
     static constexpr float OWN_GOAL_TOUCH_DEPTH_METRES = 9.0f;
     static constexpr float OWN_GOAL_TOUCH_WIDTH_METRES = 9.0f;
     static constexpr float OWN_GOAL_MIN_SPEED = 7.0f;

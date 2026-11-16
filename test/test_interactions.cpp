@@ -15,6 +15,7 @@
 #include <nlohmann/json.hpp>
 #include <set>
 #include <string>
+#include <utility>
 #include <vector>
 
 #include "controller/game_controller.h"
@@ -36,13 +37,16 @@ constexpr std::uint64_t WORLD_SEED = 20250702;
 
 int uniqueSlot(int offset)
 {
-  return 300'000 + static_cast<int>(getpid() % 100'000) * 10 + offset;
+  return 300'000 + (getpid() % 100'000) * 10 + offset;
 }
 
 struct SlotCleanup
 {
   int slot;
+  explicit SlotCleanup(int slotValue) : slot(slotValue) {}
   ~SlotCleanup() { RuntimePaths::removeSave(slot); }
+  SlotCleanup(const SlotCleanup&) = delete;
+  SlotCleanup& operator=(const SlotCleanup&) = delete;
 };
 
 std::unique_ptr<GameController> makeCareer(int slot)
@@ -209,7 +213,8 @@ TEST(InteractionsTest, OutcomesAreDeterministicBoundedAndLocalized)
   TalkContext context = neutralContext();
   context.request = TalkRequest::Transfer;
   for (std::size_t index = 0;
-       index < static_cast<std::size_t>(TalkOption::COUNT); ++index)
+       index < static_cast<std::size_t>(std::to_underlying(TalkOption::COUNT));
+       ++index)
   {
     const auto option = static_cast<TalkOption>(index);
     for (const std::uint8_t trait : {5, 50, 95})
@@ -252,7 +257,9 @@ TEST(InteractionsTest, EveryLabelKeyExistsInBothLanguages)
   for (const auto hint :
        {TalkHint::LikelyPositive, TalkHint::Uncertain, TalkHint::Risky})
     keys.emplace_back(Interactions::hintKey(hint));
-  for (int block = 1; block <= static_cast<int>(TalkBlock::NotUnhappy); ++block)
+  for (int block = 1;
+       block <= static_cast<int>(std::to_underlying(TalkBlock::NotUnhappy));
+       ++block)
     keys.emplace_back(Interactions::blockKey(static_cast<TalkBlock>(block)));
   for (const auto request : {TalkRequest::PlayingTime, TalkRequest::NewContract,
                              TalkRequest::Transfer})
@@ -270,7 +277,8 @@ TEST(InteractionsTest, EveryLabelKeyExistsInBothLanguages)
        {PromiseVoidReason::PlayerLeft, PromiseVoidReason::LongInjury,
         PromiseVoidReason::TooFewMatches})
     keys.emplace_back(Interactions::voidReasonKey(reason));
-  for (int tone = 0; tone < static_cast<int>(TeamTalkTone::COUNT); ++tone)
+  for (int tone = 0;
+       tone < static_cast<int>(std::to_underlying(TeamTalkTone::COUNT)); ++tone)
   {
     keys.emplace_back(Interactions::toneKey(static_cast<TeamTalkTone>(tone)));
     keys.emplace_back(
@@ -279,7 +287,8 @@ TEST(InteractionsTest, EveryLabelKeyExistsInBothLanguages)
   for (const auto mood : {DressingMood::Buoyant, DressingMood::Settled,
                           DressingMood::Uneasy, DressingMood::Tense})
     keys.emplace_back(Interactions::moodKey(mood));
-  for (int kind = 0; kind <= static_cast<int>(StoryKind::Rivalry); ++kind)
+  for (int kind = 0;
+       kind <= static_cast<int>(std::to_underlying(StoryKind::Rivalry)); ++kind)
     keys.emplace_back(Stories::kindKey(static_cast<StoryKind>(kind)));
   for (const char* key : {"TEAMTALK_SUMMARY_GOOD",
                           "TEAMTALK_SUMMARY_MIXED",
@@ -339,8 +348,10 @@ TEST(InteractionsTest, TeamTalkToneFitsTheSituation)
   const auto share = [&](TeamTalkTone tone)
   {
     const auto predictions = Interactions::predictTeamTalk(context);
-    return predictions[static_cast<std::size_t>(tone)].positive_share -
-           predictions[static_cast<std::size_t>(tone)].negative_share;
+    return predictions[static_cast<std::size_t>(std::to_underlying(tone))]
+               .positive_share -
+           predictions[static_cast<std::size_t>(std::to_underlying(tone))]
+               .negative_share;
   };
   context.expected_points = 0.7f;  // Underdog.
   EXPECT_GT(share(TeamTalkTone::NoPressure), share(TeamTalkTone::DemandMore));
@@ -367,7 +378,8 @@ TEST(InteractionsTest, TeamTalkEffectIsBoundedAndDeterministic)
     traits.temperament = static_cast<std::uint8_t>(id * 8);
     context.listeners.push_back(TalkListener{id, traits, 50.0f});
   }
-  for (int tone = 0; tone < static_cast<int>(TeamTalkTone::COUNT); ++tone)
+  for (int tone = 0;
+       tone < static_cast<int>(std::to_underlying(TeamTalkTone::COUNT)); ++tone)
   {
     const auto a = Interactions::evaluateTeamTalk(
         context, static_cast<TeamTalkTone>(tone), WORLD_SEED);
@@ -447,7 +459,8 @@ TEST(InteractionsCareerTest, CooldownPreventsRepeatedTalks)
   const auto praise = [&]
   {
     const auto options = controller->getTalkOptions(player_id);
-    return options[static_cast<std::size_t>(TalkOption::PraiseForm)];
+    return options[static_cast<std::size_t>(
+        std::to_underlying(TalkOption::PraiseForm))];
   };
   EXPECT_EQ(praise().block, TalkBlock::None);
   const float morale_before = player.getDynamics().morale;
@@ -494,8 +507,8 @@ TEST(InteractionsCareerTest, PlayingTimePromiseIsKeptOrBroken)
   const auto gamedata = controller->getGameData();
   const TeamID managed = managedId(*controller);
   const auto squad = squadByOverall(*controller);
-  InteractionSystem system(
-      gamedata, [&](PlayerID id) { return controller->getSquadRole(id); });
+  InteractionSystem system(gamedata, [&controller](PlayerID id)
+                           { return controller->getSquadRole(id); });
   Inbox inbox;
   const GameDateValue start(2025, 9, 1);
   const std::int32_t today = dayOrdinal(start);
@@ -570,14 +583,14 @@ TEST(InteractionsCareerTest, EveryPromiseResolvesByItsDeadline)
   const auto gamedata = controller->getGameData();
   const TeamID managed = managedId(*controller);
   const auto squad = squadByOverall(*controller);
-  InteractionSystem system(
-      gamedata, [&](PlayerID id) { return controller->getSquadRole(id); });
+  InteractionSystem system(gamedata, [&controller](PlayerID id)
+                           { return controller->getSquadRole(id); });
   Inbox inbox;
   const GameDateValue start(2025, 8, 20);  // Summer window still open.
 
-  for (std::size_t index = 0; index < squad.size(); ++index)
+  for (const PlayerID playerId : squad)
   {
-    Player& player = mutablePlayer(*controller, squad[index]);
+    Player& player = mutablePlayer(*controller, playerId);
     PlayerTraits traits = player.getTraits();
     traits.ambition = 0;
     traits.loyalty = 100;
@@ -589,9 +602,9 @@ TEST(InteractionsCareerTest, EveryPromiseResolvesByItsDeadline)
     {
       InteractionState state = system.getState();
       // Promises share a cooldown group: reset it to make all three.
-      state.relations[squad[index]].last_talk.fill(0);
+      state.relations[playerId].last_talk.fill(0);
       system.restore(state);
-      system.talk(squad[index], option, start, managed, 50.0f);
+      system.talk(playerId, option, start, managed, 50.0f);
     }
   }
   ASSERT_GT(system.promises().size(), squad.size());
@@ -624,7 +637,7 @@ TEST(InteractionsCareerTest, EveryPromiseResolvesByItsDeadline)
   {
     EXPECT_NE(promise.state, PromiseState::Active)
         << "promise " << promise.id << " type "
-        << static_cast<int>(promise.type);
+        << static_cast<int>(std::to_underlying(promise.type));
     EXPECT_LE(promise.resolved_day, promise.deadline_day);
   }
   const auto injured = system.promisesFor(squad[2]);
@@ -640,8 +653,8 @@ TEST(InteractionsCareerTest, ContractAndSigningPromisesFollowRealEvents)
   const auto gamedata = controller->getGameData();
   const TeamID managed = managedId(*controller);
   const auto squad = squadByOverall(*controller);
-  InteractionSystem system(
-      gamedata, [&](PlayerID id) { return controller->getSquadRole(id); });
+  InteractionSystem system(gamedata, [&controller](PlayerID id)
+                           { return controller->getSquadRole(id); });
   Inbox inbox;
   const GameDateValue start(2025, 8, 10);
 
@@ -701,8 +714,8 @@ TEST(InteractionsCareerTest, SellingAPromisedPlayerVoidsSilently)
   const auto gamedata = controller->getGameData();
   const TeamID managed = managedId(*controller);
   const PlayerID player_id = squadByOverall(*controller)[16];
-  InteractionSystem system(
-      gamedata, [&](PlayerID id) { return controller->getSquadRole(id); });
+  InteractionSystem system(gamedata, [&controller](PlayerID id)
+                           { return controller->getSquadRole(id); });
   Inbox inbox;
   const GameDateValue start(2025, 8, 10);
   Player& player = mutablePlayer(*controller, player_id);
@@ -729,8 +742,8 @@ TEST(InteractionsCareerTest, UnhappyPlayerRequestIsAnsweredOrLapses)
   const auto gamedata = controller->getGameData();
   const TeamID managed = managedId(*controller);
   const auto squad = squadByOverall(*controller);
-  InteractionSystem system(
-      gamedata, [&](PlayerID id) { return controller->getSquadRole(id); });
+  InteractionSystem system(gamedata, [&controller](PlayerID id)
+                           { return controller->getSquadRole(id); });
   Inbox inbox;
   for (const PlayerID id : squad)
     mutablePlayer(*controller, id).mutableDynamics().morale = 70.0f;
@@ -802,7 +815,7 @@ TEST(InteractionsCareerTest, AcceptingATransferRequestListsThePlayer)
   auto controller = makeCareer(slot.slot);
   const PlayerID player_id = squadByOverall(*controller)[2];
   InteractionSystem& system =
-      const_cast<Game*>(controller->getGame())->getWorld().getInteractions();
+      controller->getGame()->getWorld().getInteractions();
   InteractionState state = system.getState();
   state.relations[player_id].request = TalkRequest::Transfer;
   state.relations[player_id].request_day =
@@ -880,7 +893,7 @@ TEST(InteractionsCareerTest, DressingRoomSummarisesTheSquad)
   const auto gamedata = controller->getGameData();
   const TeamID managed = managedId(*controller);
   InteractionSystem& system =
-      const_cast<Game*>(controller->getGame())->getWorld().getInteractions();
+      controller->getGame()->getWorld().getInteractions();
   Inbox inbox;
   const Lineup& lineup = controller->getManagedTeam()->get().getLineup();
   std::vector<PlayerID> starters;
@@ -905,11 +918,11 @@ TEST(StoriesTest, EventsTellEachStoryOnceWithinTheWeeklyCap)
   const auto gamedata = controller->getGameData();
   const TeamID managed = managedId(*controller);
   const auto squad = squadByOverall(*controller);
-  InteractionSystem interactions(
-      gamedata, [&](PlayerID id) { return controller->getSquadRole(id); });
+  InteractionSystem interactions(gamedata, [&controller](PlayerID id)
+                                 { return controller->getSquadRole(id); });
   StoryEngine stories(gamedata);
   std::unordered_map<PlayerID, CareerTotals> careers;
-  stories.setCareerProvider([&](PlayerID id) { return careers[id]; });
+  stories.setCareerProvider([&careers](PlayerID id) { return careers[id]; });
   Inbox inbox;
 
   const PlayerID youngster = squad[20];
@@ -963,8 +976,8 @@ TEST(StoriesTest, TransferSagaOffersAChoiceAndComebacksAreTold)
   const auto gamedata = controller->getGameData();
   const TeamID managed = managedId(*controller);
   const auto squad = squadByOverall(*controller);
-  InteractionSystem interactions(
-      gamedata, [&](PlayerID id) { return controller->getSquadRole(id); });
+  InteractionSystem interactions(gamedata, [&controller](PlayerID id)
+                                 { return controller->getSquadRole(id); });
   StoryEngine stories(gamedata);
   Inbox inbox;
   const PlayerID star = squad[0];
@@ -1010,7 +1023,8 @@ TEST(StoriesTest, RivalIsAStableSameLeagueClub)
   const TeamID managed = managedId(*controller);
   StoryEngine stories(gamedata);
   const auto rival = stories.rivalOf(managed);
-  if (!rival) GTEST_SKIP() << "no club of similar stature in the league";
+  if (!rival.has_value())
+    GTEST_SKIP() << "no club of similar stature in the league";
   EXPECT_NE(*rival, managed);
   EXPECT_EQ(gamedata->getTeam(*rival)->get().getLeagueId(),
             gamedata->getTeam(managed)->get().getLeagueId());
@@ -1037,7 +1051,7 @@ TEST(InteractionsCareerTest, RelationsPromisesAndStoriesSurviveSaveAndLoad)
   ASSERT_TRUE(
       (controller->talkToPlayer(player_id, TalkOption::DiscussPlayingTime))
           .has_value());
-  Game* game = const_cast<Game*>(controller->getGame());
+  auto* game = controller->getGame();
   StoryEngine& stories = game->getWorld().getStories();
   StoryState story_state = stories.getState();
   story_state.records.push_back(

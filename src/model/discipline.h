@@ -80,7 +80,7 @@ class Discipline
  private:
   using Key = std::pair<PlayerID, MatchType>;
 
-  void book(DisciplinaryRecord& record, unsigned yellows, unsigned reds);
+  void book(DisciplinaryRecord& record, unsigned yellows, unsigned reds) const;
 
   DisciplineRules rules;
   std::map<Key, DisciplinaryRecord> by_player;

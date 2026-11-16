@@ -38,7 +38,10 @@ constexpr std::array<float, STAFF_ROLE_COUNT> ROLE_WAGE_WEIGHT = {
 /** Weekly market wage of a rating-50 member with role weight 1. [P] */
 constexpr double MARKET_WAGE_BASE = 3000.0;
 
-std::size_t index(StaffRole role) { return static_cast<std::size_t>(role); }
+std::size_t index(StaffRole role)
+{
+  return static_cast<std::size_t>(std::to_underlying(role));
+}
 
 float unit(std::uint8_t value) { return static_cast<float>(value) / 100.0f; }
 
@@ -81,13 +84,14 @@ StaffMember generateMember(StaffRole role, float level, TeamID team_id,
     attribute = clampAttribute(level - 18.0f + rng.normal(0.0f, 9.0f));
   for (const Attr key : StaffModel::keyAttributes(role))
   {
-    member.attributes[static_cast<std::size_t>(key)] =
+    member.attributes[static_cast<std::size_t>(std::to_underlying(key))] =
         clampAttribute(level + 4.0f + rng.normal(0.0f, 7.0f));
   }
   // Coaches also know the game tactically.
   if (role == StaffRole::AttackingCoach || role == StaffRole::DefendingCoach)
   {
-    member.attributes[static_cast<std::size_t>(Attr::Tactical)] =
+    member.attributes[static_cast<std::size_t>(
+        std::to_underlying(Attr::Tactical))] =
         clampAttribute(level - 4.0f + rng.normal(0.0f, 7.0f));
   }
   return member;
@@ -97,14 +101,15 @@ Language drawNationality(WorldRng& rng, LeagueID league_id)
 {
   if (rng.chance(0.75)) return leagueProfile(league_id).domestic_nationality;
   return static_cast<Language>(
-      rng.uniformInt(0, static_cast<int>(Language::US)));
+      rng.uniformInt(0, static_cast<int>(std::to_underlying(Language::US))));
 }
 
 StaffMember generateCandidate(WorldRng& rng, StaffID id, StaffRole role)
 {
   StaffMember member = generateMember(
       role, rng.uniform(28.0f, 82.0f), FREE_AGENTS_TEAM_ID,
-      static_cast<Language>(rng.uniformInt(0, static_cast<int>(Language::US))),
+      static_cast<Language>(rng.uniformInt(
+          0, static_cast<int>(std::to_underlying(Language::US)))),
       rng, id);
   member.wage = StaffModel::marketWage(member);
   return member;
@@ -191,6 +196,7 @@ float area(std::span<const StaffMember* const> staff, StaffRole specialist,
 
 void StaffRoster::clear()
 {
+  const std::scoped_lock lock(cache_mutex);
   members.clear();
   effects_cache.clear();
   cache_valid = false;
@@ -199,6 +205,7 @@ void StaffRoster::clear()
 
 void StaffRoster::add(StaffMember member)
 {
+  const std::scoped_lock lock(cache_mutex);
   next_id = std::max(next_id, member.id + 1);
   const StaffID id = member.id;
   members.insert_or_assign(id, std::move(member));
@@ -207,6 +214,7 @@ void StaffRoster::add(StaffMember member)
 
 bool StaffRoster::remove(StaffID id)
 {
+  const std::scoped_lock lock(cache_mutex);
   cache_valid = false;
   return members.erase(id) > 0;
 }
@@ -271,6 +279,7 @@ std::size_t StaffRoster::roleCount(TeamID team_id, StaffRole role) const
 
 void StaffRoster::rebuildCache() const
 {
+  // effects() holds cache_mutex through rebuilding and copying the result.
   std::unordered_map<TeamID, std::vector<const StaffMember*>> by_team;
   for (const auto& [id, member] : members)
   {
@@ -279,15 +288,17 @@ void StaffRoster::rebuildCache() const
   }
   effects_cache.clear();
   for (const auto& [team_id, staff] : by_team)
-    effects_cache.emplace(team_id, StaffModel::computeEffects(staff));
+    effects_cache.try_emplace(team_id, StaffModel::computeEffects(staff));
   cache_valid = true;
 }
 
-const StaffEffects& StaffRoster::effects(TeamID team_id) const
+StaffEffects StaffRoster::effects(TeamID team_id) const
 {
+  const std::scoped_lock lock(cache_mutex);
   if (!cache_valid) rebuildCache();
-  const auto found = effects_cache.find(team_id);
-  if (found != effects_cache.end()) return found->second;
+  if (const auto found = effects_cache.find(team_id);
+      found != effects_cache.end())
+    return found->second;
   static const StaffEffects NO_STAFF = StaffModel::computeEffects({});
   return NO_STAFF;
 }
@@ -306,28 +317,29 @@ namespace StaffModel
 {
 std::array<StaffAttribute, 2> keyAttributes(StaffRole role)
 {
+  using enum StaffRole;
   switch (role)
   {
-    case StaffRole::AssistantManager:
+    case AssistantManager:
       return {Attr::Tactical, Attr::JudgingAbility};
-    case StaffRole::AttackingCoach:
+    case AttackingCoach:
       return {Attr::Attacking, Attr::Tactical};
-    case StaffRole::DefendingCoach:
+    case DefendingCoach:
       return {Attr::Defending, Attr::Tactical};
-    case StaffRole::FitnessCoach:
+    case FitnessCoach:
       return {Attr::Fitness, Attr::SportsScience};
-    case StaffRole::GoalkeepingCoach:
+    case GoalkeepingCoach:
       return {Attr::Goalkeeping, Attr::Tactical};
-    case StaffRole::YouthCoach:
+    case YouthCoach:
       return {Attr::YouthDevelopment, Attr::Attacking};
-    case StaffRole::Physio:
+    case Physio:
       return {Attr::Physiotherapy, Attr::SportsScience};
-    case StaffRole::SportsScientist:
+    case SportsScientist:
       return {Attr::SportsScience, Attr::Physiotherapy};
-    case StaffRole::Scout:
+    case Scout:
       return {Attr::JudgingAbility, Attr::JudgingPotential};
-    case StaffRole::HeadOfYouth:
-    case StaffRole::COUNT:
+    case HeadOfYouth:
+    case COUNT:
       break;
   }
   return {Attr::YouthDevelopment, Attr::JudgingPotential};
@@ -343,48 +355,45 @@ std::uint8_t rating(const StaffMember& member)
 
 StaffEffects computeEffects(std::span<const StaffMember* const> staff)
 {
+  using enum StaffRole;
   StaffEffects effects;
-  effects.coaching_fitness =
-      area(staff, StaffRole::FitnessCoach, Attr::Fitness);
-  effects.coaching_attacking =
-      area(staff, StaffRole::AttackingCoach, Attr::Attacking);
-  effects.coaching_defending =
-      area(staff, StaffRole::DefendingCoach, Attr::Defending);
+  effects.coaching_fitness = area(staff, FitnessCoach, Attr::Fitness);
+  effects.coaching_attacking = area(staff, AttackingCoach, Attr::Attacking);
+  effects.coaching_defending = area(staff, DefendingCoach, Attr::Defending);
   effects.coaching_goalkeeping =
-      area(staff, StaffRole::GoalkeepingCoach, Attr::Goalkeeping);
-  effects.coaching_youth = std::max(
-      area(staff, StaffRole::YouthCoach, Attr::YouthDevelopment),
-      0.9f * scan(staff, StaffRole::HeadOfYouth, Attr::YouthDevelopment).best);
+      area(staff, GoalkeepingCoach, Attr::Goalkeeping);
+  effects.coaching_youth =
+      std::max(area(staff, YouthCoach, Attr::YouthDevelopment),
+               0.9f * scan(staff, HeadOfYouth, Attr::YouthDevelopment).best);
   // Tactics are the assistant's job; specialist coaches help at 90%.
-  effects.coaching_tactical = std::max(
-      {scan(staff, StaffRole::AssistantManager, Attr::Tactical).best,
-       0.9f * scan(staff, StaffRole::AttackingCoach, Attr::Tactical).best,
-       0.9f * scan(staff, StaffRole::DefendingCoach, Attr::Tactical).best,
-       NO_STAFF_QUALITY});
+  effects.coaching_tactical =
+      std::max({scan(staff, AssistantManager, Attr::Tactical).best,
+                0.9f * scan(staff, AttackingCoach, Attr::Tactical).best,
+                0.9f * scan(staff, DefendingCoach, Attr::Tactical).best,
+                NO_STAFF_QUALITY});
   effects.training_quality =
       (effects.coaching_fitness + effects.coaching_attacking +
        effects.coaching_defending + effects.coaching_tactical) /
       4.0f;
 
   // Medical: physios treat, sports scientists (and fitness coaches) prevent.
-  const AreaScan physios = scan(staff, StaffRole::Physio, Attr::Physiotherapy);
+  const AreaScan physios = scan(staff, Physio, Attr::Physiotherapy);
   const float treatment = std::min(
       1.0f, std::max(physios.best, NO_STAFF_QUALITY * 0.8f) +
                 0.04f * static_cast<float>(std::max(0, physios.count - 1)));
-  const float science = std::max(
-      {scan(staff, StaffRole::SportsScientist, Attr::SportsScience).best,
-       0.7f * scan(staff, StaffRole::FitnessCoach, Attr::SportsScience).best,
-       NO_STAFF_QUALITY * 0.8f});
+  const float science =
+      std::max({scan(staff, SportsScientist, Attr::SportsScience).best,
+                0.7f * scan(staff, FitnessCoach, Attr::SportsScience).best,
+                NO_STAFF_QUALITY * 0.8f});
   effects.injury_prevention =
       1.08f - 0.20f * (0.6f * science + 0.4f * effects.coaching_fitness);
   effects.layoff_multiplier =
       1.12f - 0.27f * (0.75f * treatment + 0.25f * science);
 
   // Academy: the head of youth recruits, youth coaches develop.
-  const AreaScan head_youth =
-      scan(staff, StaffRole::HeadOfYouth, Attr::YouthDevelopment);
+  const AreaScan head_youth = scan(staff, HeadOfYouth, Attr::YouthDevelopment);
   const AreaScan head_judging =
-      scan(staff, StaffRole::HeadOfYouth, Attr::JudgingPotential);
+      scan(staff, HeadOfYouth, Attr::JudgingPotential);
   const float academy = 0.3f * (head_youth.best + head_judging.best) +
                         0.4f * effects.coaching_youth;
   effects.youth_potential_bonus =
@@ -395,7 +404,7 @@ StaffEffects computeEffects(std::span<const StaffMember* const> staff)
   int scouts = 0;
   for (const StaffMember* member : staff)
   {
-    if (member->role != StaffRole::Scout) continue;
+    if (member->role != Scout) continue;
     best_scout = std::max(
         best_scout, 0.5f * (unit(member->attribute(Attr::JudgingAbility)) +
                             unit(member->attribute(Attr::JudgingPotential))));
@@ -608,28 +617,29 @@ float potentialErrorSd(float scouting_accuracy)
 
 const char* roleKey(StaffRole role)
 {
+  using enum StaffRole;
   switch (role)
   {
-    case StaffRole::AssistantManager:
+    case AssistantManager:
       return "STAFF_ROLE_ASSISTANT";
-    case StaffRole::AttackingCoach:
+    case AttackingCoach:
       return "STAFF_ROLE_ATTACKING_COACH";
-    case StaffRole::DefendingCoach:
+    case DefendingCoach:
       return "STAFF_ROLE_DEFENDING_COACH";
-    case StaffRole::FitnessCoach:
+    case FitnessCoach:
       return "STAFF_ROLE_FITNESS_COACH";
-    case StaffRole::GoalkeepingCoach:
+    case GoalkeepingCoach:
       return "STAFF_ROLE_GK_COACH";
-    case StaffRole::YouthCoach:
+    case YouthCoach:
       return "STAFF_ROLE_YOUTH_COACH";
-    case StaffRole::Physio:
+    case Physio:
       return "STAFF_ROLE_PHYSIO";
-    case StaffRole::SportsScientist:
+    case SportsScientist:
       return "STAFF_ROLE_SPORTS_SCIENTIST";
-    case StaffRole::Scout:
+    case Scout:
       return "STAFF_ROLE_SCOUT";
-    case StaffRole::HeadOfYouth:
-    case StaffRole::COUNT:
+    case HeadOfYouth:
+    case COUNT:
       break;
   }
   return "STAFF_ROLE_HEAD_OF_YOUTH";
@@ -637,28 +647,29 @@ const char* roleKey(StaffRole role)
 
 const char* roleDescriptionKey(StaffRole role)
 {
+  using enum StaffRole;
   switch (role)
   {
-    case StaffRole::AssistantManager:
+    case AssistantManager:
       return "STAFF_DUTY_ASSISTANT";
-    case StaffRole::AttackingCoach:
+    case AttackingCoach:
       return "STAFF_DUTY_ATTACKING_COACH";
-    case StaffRole::DefendingCoach:
+    case DefendingCoach:
       return "STAFF_DUTY_DEFENDING_COACH";
-    case StaffRole::FitnessCoach:
+    case FitnessCoach:
       return "STAFF_DUTY_FITNESS_COACH";
-    case StaffRole::GoalkeepingCoach:
+    case GoalkeepingCoach:
       return "STAFF_DUTY_GK_COACH";
-    case StaffRole::YouthCoach:
+    case YouthCoach:
       return "STAFF_DUTY_YOUTH_COACH";
-    case StaffRole::Physio:
+    case Physio:
       return "STAFF_DUTY_PHYSIO";
-    case StaffRole::SportsScientist:
+    case SportsScientist:
       return "STAFF_DUTY_SPORTS_SCIENTIST";
-    case StaffRole::Scout:
+    case Scout:
       return "STAFF_DUTY_SCOUT";
-    case StaffRole::HeadOfYouth:
-    case StaffRole::COUNT:
+    case HeadOfYouth:
+    case COUNT:
       break;
   }
   return "STAFF_DUTY_HEAD_OF_YOUTH";
@@ -666,28 +677,29 @@ const char* roleDescriptionKey(StaffRole role)
 
 const char* attributeKey(StaffAttribute attribute)
 {
+  using enum StaffAttribute;
   switch (attribute)
   {
-    case Attr::Attacking:
+    case Attacking:
       return "STAFF_ATTR_ATTACKING";
-    case Attr::Defending:
+    case Defending:
       return "STAFF_ATTR_DEFENDING";
-    case Attr::Fitness:
+    case Fitness:
       return "STAFF_ATTR_FITNESS";
-    case Attr::Goalkeeping:
+    case Goalkeeping:
       return "STAFF_ATTR_GOALKEEPING";
-    case Attr::Tactical:
+    case Tactical:
       return "STAFF_ATTR_TACTICAL";
-    case Attr::YouthDevelopment:
+    case YouthDevelopment:
       return "STAFF_ATTR_YOUTH";
-    case Attr::Physiotherapy:
+    case Physiotherapy:
       return "STAFF_ATTR_PHYSIO";
-    case Attr::SportsScience:
+    case SportsScience:
       return "STAFF_ATTR_SPORTS_SCIENCE";
-    case Attr::JudgingAbility:
+    case JudgingAbility:
       return "STAFF_ATTR_JUDGING_ABILITY";
-    case Attr::JudgingPotential:
-    case Attr::COUNT:
+    case JudgingPotential:
+    case COUNT:
       break;
   }
   return "STAFF_ATTR_JUDGING_POTENTIAL";

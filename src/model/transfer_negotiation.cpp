@@ -12,8 +12,10 @@
 #include <array>
 #include <cmath>
 #include <limits>
+#include <memory>
 #include <numeric>
 #include <ranges>
+#include <utility>
 
 #include "model/transfer_tuning.h"
 #include "model/transfer_windows.h"
@@ -24,7 +26,8 @@ namespace TransferNegotiation
 {
 namespace
 {
-constexpr std::array<const char*, static_cast<std::size_t>(Reason::COUNT)>
+constexpr std::array<const char*, static_cast<std::size_t>(
+                                      std::to_underlying(Reason::COUNT))>
     REASON_KEYS = {
         "NEG_REASON_KEY_PLAYER",
         "NEG_REASON_FIRST_TEAM",
@@ -73,7 +76,7 @@ constexpr std::uint32_t FEE_ROUNDING = 10'000;
 constexpr int MONTH_JUNE = 6;
 constexpr int SEASON_END_DAY = 30;
 
-int level(SquadRole role) { return static_cast<int>(role); }
+int level(SquadRole role) { return static_cast<int>(std::to_underlying(role)); }
 
 std::uint32_t roundFeeUp(double fee)
 {
@@ -85,18 +88,19 @@ std::uint32_t roundFeeUp(double fee)
 
 float rolePremium(SquadRole role)
 {
+  using enum SquadRole;
   using Valuation = TransferTuning::Valuation;
   switch (role)
   {
-    case SquadRole::KeyPlayer:
+    case KeyPlayer:
       return Valuation::KEY_PLAYER_PREMIUM;
-    case SquadRole::FirstTeam:
+    case FirstTeam:
       return Valuation::FIRST_TEAM_PREMIUM;
-    case SquadRole::Rotation:
+    case Rotation:
       return Valuation::ROTATION_PREMIUM;
-    case SquadRole::Backup:
+    case Backup:
       return Valuation::BACKUP_PREMIUM;
-    case SquadRole::Fringe:
+    case Fringe:
       return Valuation::FRINGE_PREMIUM;
   }
   return 1.0f;
@@ -104,17 +108,18 @@ float rolePremium(SquadRole role)
 
 bool isRefusal(Reason reason)
 {
+  using enum Reason;
   switch (reason)
   {
-    case Reason::WageTooLow:
-    case Reason::ContractTooShort:
-    case Reason::ContractTooLong:
-    case Reason::ClubTooSmall:
-    case Reason::PlayingTime:
-    case Reason::WantsReleaseClause:
-    case Reason::TalksEnded:
-    case Reason::AgentPushback:
-    case Reason::AgentFeeTooLow:
+    case WageTooLow:
+    case ContractTooShort:
+    case ContractTooLong:
+    case ClubTooSmall:
+    case PlayingTime:
+    case WantsReleaseClause:
+    case TalksEnded:
+    case AgentPushback:
+    case AgentFeeTooLow:
       return true;
     default:
       return false;
@@ -143,7 +148,7 @@ std::uint32_t feeForValue(const OfferTerms& terms, double target, int age)
 
 const char* reasonKey(Reason reason)
 {
-  const auto index = static_cast<std::size_t>(reason);
+  const auto index = static_cast<std::size_t>(std::to_underlying(reason));
   return index < REASON_KEYS.size() ? REASON_KEYS[index] : "";
 }
 
@@ -233,9 +238,9 @@ Valuation valueForSale(const SaleContext& context)
 
     const int raw_gap = static_cast<int>(context.buyer_reputation) -
                         static_cast<int>(context.seller_reputation);
-    const int gap = std::clamp(raw_gap, V::BUYER_REPUTATION_GAP_MIN,
-                               V::BUYER_REPUTATION_GAP_MAX);
-    if (gap > 0)
+    if (const int gap = std::clamp(raw_gap, V::BUYER_REPUTATION_GAP_MIN,
+                                   V::BUYER_REPUTATION_GAP_MAX);
+        gap > 0)
     {
       fee *= 1.0 + static_cast<double>(V::BUYER_REPUTATION_SLOPE) * gap;
       if (gap >= 5) valuation.reasons.push_back(Reason::RicherBuyer);
@@ -303,7 +308,7 @@ double sellerValue(const OfferTerms& terms, int age)
   const double sell_on = std::min(
       fee * terms.sell_on_percent / 100.0 * static_cast<double>(sell_on_weight),
       fee * static_cast<double>(Offer::SELL_ON_CREDIT_CAP));
-  return upfront + (fee - upfront) * deferred_factor + add_ons + sell_on;
+  return std::lerp(upfront, fee, deferred_factor) + add_ons + sell_on;
 }
 
 ClubResponse evaluateOffer(const SaleContext& context, const OfferTerms& terms,
@@ -333,9 +338,9 @@ ClubResponse evaluateOffer(const SaleContext& context, const OfferTerms& terms,
 
   const auto asking = static_cast<double>(valuation.asking_fee);
   const double value = sellerValue(terms, context.age);
-  const float accept_share =
-      round == 0 ? Offer::OPENING_ACCEPT_SHARE : Offer::ACCEPT_SHARE;
-  if (value >= asking * static_cast<double>(accept_share))
+  if (const float accept_share =
+          round == 0 ? Offer::OPENING_ACCEPT_SHARE : Offer::ACCEPT_SHARE;
+      value >= asking * static_cast<double>(accept_share))
   {
     response.decision = ClubResponse::Decision::Accept;
     response.reasons.push_back(Reason::OfferAccepted);
@@ -376,7 +381,7 @@ ContractDemand contractDemand(const PlayerContext& context)
   ContractDemand demand;
   const double ambition = context.ambition / 100.0;
 
-  double raise = static_cast<double>(Contract::FREE_AGENT_WAGE_RAISE);
+  auto raise = static_cast<double>(Contract::FREE_AGENT_WAGE_RAISE);
   if (context.kind == ContractKind::Transfer ||
       context.kind == ContractKind::PreContract)
     raise = static_cast<double>(N::BASE_TRANSFER_RAISE) +
@@ -396,9 +401,9 @@ ContractDemand contractDemand(const PlayerContext& context)
     else
       wage *= 1.0 - 0.005 * std::min(20, -gap);
   }
-  const bool leaving = context.kind == ContractKind::Transfer ||
-                       context.kind == ContractKind::PreContract;
-  if (leaving && context.loyalty >= N::LOYALTY_THRESHOLD)
+  if (const bool leaving = context.kind == ContractKind::Transfer ||
+                           context.kind == ContractKind::PreContract;
+      leaving && context.loyalty >= N::LOYALTY_THRESHOLD)
     wage *= static_cast<double>(N::LOYALTY_PREMIUM);
   if (context.unsettled && context.kind != ContractKind::Renewal)
     wage *= static_cast<double>(N::UNSETTLED_DISCOUNT);
@@ -545,18 +550,19 @@ ContractResponse evaluateContract(const PlayerContext& context,
 
 float appearanceRate(SquadRole role)
 {
+  using enum SquadRole;
   using N = TransferTuning::Negotiation;
   switch (role)
   {
-    case SquadRole::KeyPlayer:
+    case KeyPlayer:
       return N::KEY_APPS_PER_WEEK;
-    case SquadRole::FirstTeam:
+    case FirstTeam:
       return N::FIRST_TEAM_APPS_PER_WEEK;
-    case SquadRole::Rotation:
+    case Rotation:
       return N::ROTATION_APPS_PER_WEEK;
-    case SquadRole::Backup:
+    case Backup:
       return N::BACKUP_APPS_PER_WEEK;
-    case SquadRole::Fringe:
+    case Fringe:
       break;
   }
   return N::FRINGE_APPS_PER_WEEK;
@@ -763,11 +769,12 @@ std::int64_t severancePay(std::uint32_t weekly_wage,
 
 SquadRole roleForRank(std::size_t rank)
 {
-  if (rank < 5) return SquadRole::KeyPlayer;
-  if (rank < 11) return SquadRole::FirstTeam;
-  if (rank < 16) return SquadRole::Rotation;
-  if (rank < 22) return SquadRole::Backup;
-  return SquadRole::Fringe;
+  using enum SquadRole;
+  if (rank < 5) return KeyPlayer;
+  if (rank < 11) return FirstTeam;
+  if (rank < 16) return Rotation;
+  if (rank < 22) return Backup;
+  return Fringe;
 }
 
 // ---------------------------------------------------------------------------
@@ -797,7 +804,7 @@ const PositionNeed* SquadNeeds::find(PlayerRole role) const
 {
   const PlayerRole group = positionGroup(role);
   const auto found = std::ranges::find(positions, group, &PositionNeed::group);
-  return found == positions.end() ? nullptr : &*found;
+  return found == positions.end() ? nullptr : std::to_address(found);
 }
 
 SquadNeeds squadNeeds(std::span<const std::pair<PlayerRole, float>> squad)
@@ -824,8 +831,8 @@ SquadNeeds squadNeeds(std::span<const std::pair<PlayerRole, float>> squad)
   for (const auto& [role, overall] : squad) overalls.push_back(overall);
   std::ranges::sort(overalls, std::greater<>{});
   SquadNeeds needs;
-  const std::size_t top = std::min(overalls.size(), FIRST_TEAM_SIZE);
-  if (top > 0)
+  if (const std::size_t top = std::min(overalls.size(), FIRST_TEAM_SIZE);
+      top > 0)
     needs.squad_level =
         std::accumulate(overalls.begin(),
                         overalls.begin() + static_cast<std::ptrdiff_t>(top),

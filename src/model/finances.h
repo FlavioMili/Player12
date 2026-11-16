@@ -12,6 +12,7 @@
 #include <cstddef>
 #include <cstdint>
 #include <span>
+#include <utility>
 #include <vector>
 
 #include "model/gamedate.h"
@@ -42,7 +43,7 @@ enum class FinanceCategory : std::uint8_t
 
 /** Number of ledger categories. */
 inline constexpr std::size_t FINANCE_CATEGORY_COUNT =
-    static_cast<std::size_t>(FinanceCategory::COUNT);
+    static_cast<std::size_t>(std::to_underlying(FinanceCategory::COUNT));
 
 /** Language key naming @p category (e.g. "FIN_CAT_WAGES"). */
 const char* financeCategoryKey(FinanceCategory category);

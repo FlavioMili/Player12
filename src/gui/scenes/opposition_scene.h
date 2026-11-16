@@ -26,7 +26,10 @@ class OppositionScene : public ManagementScene
  public:
   explicit OppositionScene(GUIView* parent);
 
-  void update(float /*deltaTime*/) override {}
+  void update(float /*deltaTime*/) override
+  {
+    // Rendering reads current state; there is no per-frame update work.
+  }
   [[nodiscard]] SceneID getID() const override { return SceneID::OPPOSITION; }
 
  protected:
@@ -40,10 +43,10 @@ class OppositionScene : public ManagementScene
  private:
   friend class GameFlowTest_GUIFlowLifecycle_Test;
 
-  void renderSummary();
+  void renderSummary() const;
   void renderLikelyXi(float width);
   void renderKeyPlayers(float width);
-  void renderProfile(float width);
+  void renderProfile(float width) const;
   void renderCounters(float width);
 
   std::optional<GameController::NextFixture> fixture;

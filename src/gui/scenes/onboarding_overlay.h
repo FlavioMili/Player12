@@ -52,7 +52,7 @@ void renderScreenTip(NavSection section);
  * Notice after the manager took a delegated duty back by changing it by
  * hand, with Undo (hand it back) and OK.
  */
-void renderReclaimNotice(GUIView* view);
+void renderReclaimNotice(const GUIView* view);
 
 /** Language key of a section's tip (nullptr when it has none). */
 const char* tipKey(NavSection section);
@@ -66,7 +66,7 @@ class NextStepsCard
 {
  public:
   /** Rebuilds the rows from the game state (call from refresh()). */
-  void refresh(GameController& controller);
+  void refresh(const GameController& controller);
   /** Draws the card across @p width (auto height, never scrolls). */
   void render(GUIView* view, float width);
 

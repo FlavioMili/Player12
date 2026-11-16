@@ -14,6 +14,7 @@
 #include <cmath>
 #include <string>
 #include <unordered_set>
+#include <utility>
 
 #include "database/database_connection.h"
 #include "database/gamedata.h"
@@ -110,10 +111,10 @@ ReturnWindow MedicalCentre::returnWindow(std::uint16_t days_left,
   const float margin =
       WIDEST_MARGIN - (WIDEST_MARGIN - NARROWEST_MARGIN) *
                           std::clamp(staff_quality, 0.0f, 1.0f);
-  const float days = static_cast<float>(days_left);
+  const auto days = static_cast<float>(days_left);
   // Setbacks are more common than early returns: twice the margin later.
-  const int early = static_cast<int>(std::lround(days * margin * 0.5f));
-  const int late = static_cast<int>(std::lround(days * margin));
+  const auto early = static_cast<int>(std::lround(days * margin * 0.5f));
+  const auto late = static_cast<int>(std::lround(days * margin));
   return {std::max(1, days_left - early), days_left + late};
 }
 
@@ -168,21 +169,25 @@ InjuryRiskAssessment MedicalCentre::assess(const InjuryRiskInputs& inputs)
   }
   multiplier *= inputs.staff_prevention;
   result.multiplier = multiplier;
-  result.band = multiplier >= HIGH_FROM       ? RiskBand::High
-                : multiplier >= MODERATE_FROM ? RiskBand::Moderate
-                                              : RiskBand::Low;
+  if (multiplier >= HIGH_FROM)
+    result.band = RiskBand::High;
+  else if (multiplier >= MODERATE_FROM)
+    result.band = RiskBand::Moderate;
+  else
+    result.band = RiskBand::Low;
   return result;
 }
 
 const char* MedicalCentre::bandKey(RiskBand band)
 {
+  using enum RiskBand;
   switch (band)
   {
-    case RiskBand::Moderate:
+    case Moderate:
       return "MEDICAL_RISK_MODERATE";
-    case RiskBand::High:
+    case High:
       return "MEDICAL_RISK_HIGH";
-    case RiskBand::Low:
+    case Low:
       break;
   }
   return "MEDICAL_RISK_LOW";
@@ -190,10 +195,10 @@ const char* MedicalCentre::bandKey(RiskBand band)
 
 RiskBand MedicalCentre::loadBand(float ratio)
 {
-  if (ratio >= LOAD_SPIKE) return RiskBand::High;
-  if (ratio > LOAD_ZONE_HIGH || ratio < LOAD_ZONE_LOW)
-    return RiskBand::Moderate;
-  return RiskBand::Low;
+  using enum RiskBand;
+  if (ratio >= LOAD_SPIKE) return High;
+  if (ratio > LOAD_ZONE_HIGH || ratio < LOAD_ZONE_LOW) return Moderate;
+  return Low;
 }
 
 bool MedicalCentre::substitutionDue(std::uint8_t flags, int minute)
@@ -208,9 +213,8 @@ bool MedicalCentre::substitutionDue(std::uint8_t flags, int minute)
 std::uint8_t MedicalDesk::flags(PlayerID player_id) const
 {
   const auto found = player_flags.find(player_id);
-  return found == player_flags.end()
-             ? static_cast<std::uint8_t>(MEDICAL_FLAG_NONE)
-             : found->second;
+  return found == player_flags.end() ? std::to_underlying(MEDICAL_FLAG_NONE)
+                                     : found->second;
 }
 
 void MedicalDesk::setFlag(PlayerID player_id, MedicalFlag flag, bool enabled)
@@ -226,7 +230,7 @@ void MedicalDesk::setFlag(PlayerID player_id, MedicalFlag flag, bool enabled)
 bool MedicalDesk::afterMatch(GameData& gamedata, const GameDateValue& date,
                              PlayerID player_id, int minutes,
                              bool engine_injured, TeamID managed_team_id,
-                             Inbox& inbox)
+                             Inbox& inbox) const
 {
   auto& players = gamedata.getPlayers();
   const auto found = players.find(player_id);
@@ -240,10 +244,10 @@ bool MedicalDesk::afterMatch(GameData& gamedata, const GameDateValue& date,
       dynamics.last_injury_day == ordinal)
     return false;
   const std::uint64_t seed = gamedata.getWorldSeed();
-  const double chance = engine_injured ? 1.0
-                                       : InjuryModel::aggravationChance(
-                                             dynamics.injury_days, minutes);
-  if (WorldRng::hashUniform(seed, RngDomain::MatchInjury,
+  if (const double chance = engine_injured ? 1.0
+                                           : InjuryModel::aggravationChance(
+                                                 dynamics.injury_days, minutes);
+      WorldRng::hashUniform(seed, RngDomain::MatchInjury,
                             static_cast<std::uint64_t>(ordinal),
                             player_id ^ AGGRAVATION_ROLL_SALT) >= chance)
     return false;
@@ -379,10 +383,11 @@ void MedicalDesk::load(const std::shared_ptr<DatabaseConnection>& db_conn)
              {
                const auto player_id =
                    static_cast<PlayerID>(sqlite3_column_int64(stmt, 0));
-               const auto value = static_cast<std::uint8_t>(
-                   sqlite3_column_int(stmt, 1) &
-                   (MEDICAL_FLAG_REST | MEDICAL_FLAG_LIMIT_MINUTES));
-               if (value != MEDICAL_FLAG_NONE) player_flags[player_id] = value;
+               if (const auto value = static_cast<std::uint8_t>(
+                       sqlite3_column_int(stmt, 1) &
+                       (MEDICAL_FLAG_REST | MEDICAL_FLAG_LIMIT_MINUTES));
+                   value != MEDICAL_FLAG_NONE)
+                 player_flags[player_id] = value;
                if (const int day = sqlite3_column_int(stmt, 2); day != 0)
                  warned[player_id] = day;
              });

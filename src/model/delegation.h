@@ -12,6 +12,7 @@
 #include <cstddef>
 #include <cstdint>
 #include <optional>
+#include <utility>
 
 /**
  * @brief Recurring jobs the manager may hand to the backroom staff.
@@ -30,7 +31,8 @@ enum class Duty : std::uint8_t
   COUNT
 };
 
-inline constexpr std::size_t DUTY_COUNT = static_cast<std::size_t>(Duty::COUNT);
+inline constexpr std::size_t DUTY_COUNT =
+    static_cast<std::size_t>(std::to_underlying(Duty::COUNT));
 
 /** @brief Who takes care of a duty (values are persisted). */
 enum class DutyOwner : std::uint8_t

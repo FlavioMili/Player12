@@ -222,7 +222,7 @@ class MedicalDesk
    */
   bool afterMatch(GameData& gamedata, const GameDateValue& date,
                   PlayerID player_id, int minutes, bool engine_injured,
-                  TeamID managed_team_id, Inbox& inbox);
+                  TeamID managed_team_id, Inbox& inbox) const;
 
   /**
    * Closes @p date (before the calendar moves on, so the day's training and

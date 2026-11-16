@@ -161,7 +161,7 @@ SquadPlan GameController::getSquadPlan(int season_offset) const
   std::array<int, PLANNER_GROUP_COUNT> starters{};
   for (const Player* starter : lineup.starters())
     ++starters[static_cast<std::size_t>(
-        SquadPlanner::groupOf(starter->getRole()))];
+        std::to_underlying(SquadPlanner::groupOf(starter->getRole())))];
 
   std::vector<PlannerPlayer> squad;
   for (const auto& reference : gamedata->getPlayersForTeam(team->get().getId()))
@@ -283,8 +283,8 @@ std::vector<AgendaEvent> GameController::getSeasonAgenda() const
 SquadNumbers::Change GameController::setSquadNumber(PlayerID player_id,
                                                     int number)
 {
-  const auto player = std::as_const(*gamedata).getPlayer(player_id);
-  if (!game || !hasSelectedTeam() || !player ||
+  if (const auto player = std::as_const(*gamedata).getPlayer(player_id);
+      !game || !hasSelectedTeam() || !player ||
       player->get().getTeamId() != game->getManagedTeamId())
     return SquadNumbers::Change::Invalid;
   return gamedata->setSquadNumber(player_id, number);

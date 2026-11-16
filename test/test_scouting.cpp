@@ -12,10 +12,14 @@
 
 #include <algorithm>
 #include <array>
+#include <atomic>
 #include <chrono>
 #include <cmath>
 #include <iostream>
+#include <latch>
 #include <memory>
+#include <thread>
+#include <utility>
 #include <vector>
 
 #include "controller/game_controller.h"
@@ -36,11 +40,15 @@ constexpr LeagueID FOREIGN_LEAGUE = 3;  // English League
 
 int uniqueSlot(int offset)
 {
-  return 300'000 + static_cast<int>(getpid() % 100'000) * 10 + offset;
+  return 300'000 + getpid() % 100'000 * 10 + offset;
 }
 
 struct SlotCleanup
 {
+  explicit SlotCleanup(int saveSlot) : slot(saveSlot) {}
+  SlotCleanup(const SlotCleanup&) = delete;
+  SlotCleanup& operator=(const SlotCleanup&) = delete;
+
   int slot;
   ~SlotCleanup() { RuntimePaths::removeSave(slot); }
 };
@@ -110,7 +118,7 @@ double trueOverall(const GameController& controller, PlayerID id)
 
 ScoutingSystem& scoutingOf(GameController& controller)
 {
-  return const_cast<Game*>(controller.getGame())->getWorld().getScouting();
+  return controller.getGame()->getWorld().getScouting();
 }
 
 bool inboxHas(const GameController& controller, const char* title_key,
@@ -124,6 +132,48 @@ bool inboxHas(const GameController& controller, const char* title_key,
                              });
 }
 }  // namespace
+
+TEST(ScoutingTest, ConcurrentConstQueriesKeepSnapshotsAndPriorsStable)
+{
+  const SlotCleanup slot{uniqueSlot(44)};
+  auto controller = makeCareer(slot.slot);
+  ScoutingSystem& scouting = scoutingOf(*controller);
+  const auto targets =
+      playersOf(*controller, firstTeamOf(*controller, FOREIGN_LEAGUE));
+  ASSERT_FALSE(targets.empty());
+  const PlayerID target = targets.front();
+  const auto expected = scouting.row(target);
+  ASSERT_TRUE(expected.has_value());
+  const auto expected_count = scouting.getScouts().size();
+  ASSERT_GT(expected_count, 0U);
+  auto state = scouting.getState();
+  scouting.restore(
+      std::move(state));  // Cold prior cache for the parallel reads.
+  std::atomic<bool> consistent{true};
+  std::latch start(8);
+  std::vector<std::jthread> readers;
+  for (int thread = 0; thread < 8; ++thread)
+    readers.emplace_back(
+        [&, thread]
+        {
+          start.arrive_and_wait();
+          for (int attempt = 0; attempt < 20; ++attempt)
+          {
+            if (thread == 0) scouting.invalidatePriors();
+            const auto row = scouting.row(target);
+            if (!row.has_value() || row->overall != expected->overall ||
+                scouting.getScouts().size() != expected_count ||
+                scouting.scoutSummaries().size() != expected_count)
+              consistent.store(false);
+          }
+        });
+  readers.clear();
+  EXPECT_TRUE(consistent.load());
+  const auto& snapshot = scouting.getScouts();
+  scouting.setScoutProvider([](TeamID) { return std::vector<ScoutProfile>{}; });
+  EXPECT_EQ(snapshot.size(), expected_count);
+  EXPECT_TRUE(scouting.getScouts().empty());
+}
 
 TEST(ScoutingTest, BaselineKnowledgeFollowsTheRelationToTheClub)
 {
@@ -464,8 +514,8 @@ TEST(ScoutingTest, ShortlistRaisesAlertsOnStatusChanges)
   auto& players = controller->getGameData()->getPlayers();
   for (const PlayerID id : foreign)
   {
-    const Player& player = players.at(id);
-    if (player.getTransferStatus() == TransferStatus::Listed ||
+    if (const Player& player = players.at(id);
+        player.getTransferStatus() == TransferStatus::Listed ||
         player.getDynamics().injury_days > 0 || player.getContractYears() <= 1)
       continue;
     if (listed_id == 0)
@@ -498,7 +548,8 @@ TEST(ScoutingTest, ShortlistRaisesAlertsOnStatusChanges)
 
   const auto comparison = controller->compareShortlistWithSquad();
   ASSERT_EQ(comparison.size(), ScoutingSystem::ROLE_COUNT);
-  const auto role = static_cast<std::size_t>(players.at(listed_id).getRole());
+  const auto role = static_cast<std::size_t>(
+      std::to_underlying(players.at(listed_id).getRole()));
   EXPECT_EQ(comparison[role].role, players.at(listed_id).getRole());
   EXPECT_NE(comparison[role].candidate_id, 0U);
   EXPECT_TRUE(controller->removeFromShortlist(listed_id));
@@ -846,7 +897,7 @@ TEST(ScoutingTest, ContinentAssignmentsCoverEveryCountryOnIt)
   auto controller = makeCareer(slot.slot);
   const std::uint32_t scout = controller->getScouts().front().id;
   const auto south_america =
-      static_cast<std::uint32_t>(Continent::SouthAmerica);
+      static_cast<std::uint32_t>(std::to_underlying(Continent::SouthAmerica));
   EXPECT_EQ(controller->getScoutAssignmentCost(ScoutTargetKind::Region,
                                                south_america, 10),
             10 * ScoutingTuning::DAILY_COST_FOREIGN);

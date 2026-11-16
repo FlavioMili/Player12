@@ -92,27 +92,29 @@ TEST(NavHistoryTest, PeekingDoesNotMove)
 
 TEST(NavHistoryTest, NewVisitAfterBackDropsTheForwardList)
 {
+  using enum NavSection;
   NavHistory history;
-  history.visit(section(NavSection::HOME));
-  history.visit(section(NavSection::SQUAD));
-  history.visit(section(NavSection::TRANSFERS));
+  history.visit(section(HOME));
+  history.visit(section(SQUAD));
+  history.visit(section(TRANSFERS));
   history.visit(NavEntry::ofPlayer(42));
   history.back(ANY);
   history.back(ANY);
-  ASSERT_EQ(history.current(), some(section(NavSection::SQUAD)));
+  ASSERT_EQ(history.current(), some(section(SQUAD)));
 
-  history.visit(section(NavSection::FIXTURES));
+  history.visit(section(FIXTURES));
   EXPECT_EQ(history.size(), 3U);
   EXPECT_FALSE(history.forward(ANY).has_value());
-  EXPECT_EQ(history.back(ANY), some(section(NavSection::SQUAD)));
-  EXPECT_EQ(history.back(ANY), some(section(NavSection::HOME)));
+  EXPECT_EQ(history.back(ANY), some(section(SQUAD)));
+  EXPECT_EQ(history.back(ANY), some(section(HOME)));
 }
 
 TEST(NavHistoryTest, RevisitingTheCurrentScreenIsNotANewEntry)
 {
+  using enum NavSection;
   NavHistory history;
-  history.visit(section(NavSection::HOME));
-  history.visit(section(NavSection::HOME));
+  history.visit(section(HOME));
+  history.visit(section(HOME));
   EXPECT_EQ(history.size(), 1U);
   history.visit(NavEntry::ofPlayer(7));
   history.visit(NavEntry::ofPlayer(7));
@@ -190,32 +192,34 @@ TEST(NavHistoryTest, StepsNeverLandOnACopyOfTheCurrentScreen)
 
 TEST(NavHistoryTest, ClearForgetsTheCareer)
 {
+  using enum NavSection;
   NavHistory history;
-  history.visit(section(NavSection::HOME));
-  history.visit(section(NavSection::SQUAD));
+  history.visit(section(HOME));
+  history.visit(section(SQUAD));
   history.back(ANY);
   history.clear();
   EXPECT_EQ(history.size(), 0U);
   EXPECT_FALSE(history.current().has_value());
   EXPECT_FALSE(history.back(ANY).has_value());
   EXPECT_FALSE(history.forward(ANY).has_value());
-  history.visit(section(NavSection::INBOX));
-  EXPECT_EQ(history.current(), some(section(NavSection::INBOX)));
+  history.visit(section(INBOX));
+  EXPECT_EQ(history.current(), some(section(INBOX)));
   EXPECT_EQ(history.position(), 0U);
 }
 
 TEST(NavHistoryTest, StepBackToAScreenTheHistoryMissed)
 {
+  using enum NavSection;
   NavHistory history;
-  history.stepBackTo(section(NavSection::HOME));
-  EXPECT_EQ(history.current(), some(section(NavSection::HOME)));
+  history.stepBackTo(section(HOME));
+  EXPECT_EQ(history.current(), some(section(HOME)));
 
   // Unknown: inserted before the current entry, which stays ahead.
   history.clear();
   history.visit(NavEntry::ofPlayer(3));
-  history.stepBackTo(section(NavSection::SQUAD));
+  history.stepBackTo(section(SQUAD));
   EXPECT_EQ(history.size(), 2U);
-  EXPECT_EQ(history.current(), some(section(NavSection::SQUAD)));
+  EXPECT_EQ(history.current(), some(section(SQUAD)));
   EXPECT_EQ(history.forward(ANY), some(NavEntry::ofPlayer(3)));
 
   // Known but skipped (invalid): the nearest earlier copy becomes current.

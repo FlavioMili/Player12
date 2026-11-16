@@ -17,8 +17,10 @@
 #include <ostream>
 #include <span>
 #include <stdexcept>
+#include <string_view>
 #include <unordered_map>
 #include <unordered_set>
+#include <utility>
 #include <vector>
 
 #include "controller/game_controller.h"
@@ -36,6 +38,12 @@ namespace Lab
 {
 namespace
 {
+class SeasonSimulationError : public std::runtime_error
+{
+ public:
+  using std::runtime_error::runtime_error;
+};
+
 constexpr int LAB_SAVE_SLOT = 1;
 constexpr int PROGRESS_EVERY_DAYS = 30;
 constexpr double POTENTIAL_HIGH = 80.0;
@@ -56,7 +64,11 @@ double meanOf(const std::vector<double>& values)
 double rSquared(std::span<const double> x, std::span<const double> y)
 {
   const auto n = static_cast<double>(x.size());
-  double sx = 0.0, sy = 0.0, sxx = 0.0, syy = 0.0, sxy = 0.0;
+  double sx = 0.0;
+  double sy = 0.0;
+  double sxx = 0.0;
+  double syy = 0.0;
+  double sxy = 0.0;
   for (std::size_t i = 0; i < x.size(); ++i)
   {
     sx += x[i];
@@ -86,7 +98,10 @@ bool isSeasonEnd(const GameDateValue& date)
 std::int64_t revenueOf(const FinanceSummary& summary)
 {
   const auto amount = [&](FinanceCategory category)
-  { return std::abs(summary.by_category[static_cast<std::size_t>(category)]); };
+  {
+    return std::abs(summary.by_category[static_cast<std::size_t>(
+        std::to_underlying(category))]);
+  };
   return amount(FinanceCategory::Matchday) +
          amount(FinanceCategory::Broadcasting) +
          amount(FinanceCategory::Sponsorship) +
@@ -114,7 +129,7 @@ double percentile(std::vector<double> values, double q)
 }
 
 std::vector<LeagueID> selectLeagues(const GameController& controller,
-                                    const std::string& filter)
+                                    std::string_view filter)
 {
   std::vector<LeagueID> leagues;
   if (filter == "all" || filter == "top")
@@ -132,7 +147,7 @@ std::vector<LeagueID> selectLeagues(const GameController& controller,
     while (begin <= filter.size())
     {
       const std::size_t end = std::min(filter.find(',', begin), filter.size());
-      const std::string token = filter.substr(begin, end - begin);
+      const std::string token(filter.substr(begin, end - begin));
       int id = 0;
       try
       {
@@ -360,7 +375,7 @@ class SeasonRunner
       if (player.getTeamId() != FREE_AGENTS_TEAM_ID)
       {
         ++startSquads[player.getTeamId()];
-        start_ability.emplace(
+        start_ability.try_emplace(
             id, std::pair{player.getAge(), player.getOverall(config)});
       }
     }
@@ -386,7 +401,7 @@ class SeasonRunner
       pollInjuries(true);
       pollManagers(true);
       if (++days > options.max_days_per_season)
-        throw std::runtime_error(
+        throw SeasonSimulationError(
             std::format("season {} did not reach 30 June within {} days",
                         seasonNumber, options.max_days_per_season));
       if (options.progress && days % PROGRESS_EVERY_DAYS == 0)
@@ -407,7 +422,7 @@ class SeasonRunner
     pollManagers(true);
     const GameDateValue rollover = controller.getCurrentDate();
     if (controller.getCurrentSeason() == seasonNumber)
-      throw std::runtime_error("season transition did not happen on 1 July");
+      throw SeasonSimulationError("season transition did not happen on 1 July");
     captureHistory(seasonNumber, tables);
     captureMovements(seasonNumber, tables);
     captureFinances(seasonStart, rollover);
@@ -459,8 +474,8 @@ class SeasonRunner
       if (club.getId() == FREE_AGENTS_TEAM_ID) continue;
       const int tier = controller.getLeagueTier(club.getLeagueId());
       tier_of.emplace(club.getId(), tier == 1 ? 0 : 1);
-      june_clubs.emplace(club.getId(),
-                         std::pair{tier, club.getFinances().getBalance()});
+      june_clubs.try_emplace(club.getId(),
+                             std::pair{tier, club.getFinances().getBalance()});
     }
     for (const auto& [id, player] : controller.getGameData()->getPlayers())
     {
@@ -472,11 +487,15 @@ class SeasonRunner
         continue;
       }
       const int age = player.getAge();
-      const std::size_t band = age <= 18   ? 0
-                               : age <= 23 ? 1
-                               : age <= 29 ? 2
-                               : age <= 33 ? 3
-                                           : 4;
+      std::size_t band = 4;
+      if (age <= 18)
+        band = 0;
+      else if (age <= 23)
+        band = 1;
+      else if (age <= 29)
+        band = 2;
+      else if (age <= 33)
+        band = 3;
       ++vitals.age_bands[band];
       if (player.isAcademyPlayer())
       {
@@ -540,6 +559,7 @@ class SeasonRunner
       int seasonNumber, const GameDateValue& from, const GameDateValue& to,
       const std::unordered_map<PlayerID, TeamID>& startPlayers)
   {
+    using enum TransferKind;
     std::array<double, 2> wages{};
     std::array<double, 2> revenue{};
     std::array<std::size_t, 2> insolvent{};
@@ -550,13 +570,13 @@ class SeasonRunner
       const FinanceSummary summary =
           controller.getFinanceSummary(team_id, from, to);
       const auto club_revenue = static_cast<double>(revenueOf(summary));
-      wages[slot] += static_cast<double>(std::abs(
-          summary
-              .by_category[static_cast<std::size_t>(FinanceCategory::Wages)]));
+      wages[slot] += static_cast<double>(
+          std::abs(summary.by_category[static_cast<std::size_t>(
+              std::to_underlying(FinanceCategory::Wages))]));
       revenue[slot] += club_revenue;
       vitals.tiers[slot].owner_investment +=
           static_cast<double>(summary.by_category[static_cast<std::size_t>(
-              FinanceCategory::Investment)]);
+              std::to_underlying(FinanceCategory::Investment))]);
       if (static_cast<double>(balance) <
           -INSOLVENT_REVENUE_SHARE * club_revenue)
         ++insolvent[slot];
@@ -593,10 +613,8 @@ class SeasonRunner
          controller.getGame()->getTransfers().history())
     {
       if (!inRange(record.date, from, to)) continue;
-      if (record.kind != TransferKind::Release &&
-          record.kind != TransferKind::LoanReturn)
-        ++vitals.moves;
-      if (record.kind == TransferKind::Permanent && record.fee > 0)
+      if (record.kind != Release && record.kind != LoanReturn) ++vitals.moves;
+      if (record.kind == Permanent && record.fee > 0)
         fees.push_back(static_cast<double>(record.fee));
     }
     vitals.fee_moves = fees.size();
@@ -649,7 +667,7 @@ class SeasonRunner
     {
       const auto started = std::chrono::steady_clock::now();
       if (!controller.loadGame(LAB_SAVE_SLOT))
-        throw std::runtime_error(
+        throw SeasonSimulationError(
             std::format("the save after season {} did not load", seasonNumber));
       vitals.load_ms = std::chrono::duration<double, std::milli>(
                            std::chrono::steady_clock::now() - started)
@@ -744,7 +762,7 @@ class SeasonRunner
         [](const SeasonVitals& v) { return std::to_string(v.academy); });
     row("Free agents",
         [](const SeasonVitals& v) { return std::to_string(v.free_agents); });
-    row("Free-agent mean age", [&](const SeasonVitals& v)
+    row("Free-agent mean age", [&number](const SeasonVitals& v)
         { return number(v.free_agent_mean_age, 1); });
     static constexpr std::array<const char*, 5> BANDS = {
         "Club players <= 18", "Club players 19-23", "Club players 24-29",
@@ -757,57 +775,61 @@ class SeasonRunner
     row("Removed players (left the world)",
         [](const SeasonVitals& v) { return std::to_string(v.removed); });
     row("Mean overall, senior club players",
-        [&](const SeasonVitals& v) { return number(v.mean_overall, 2); });
+        [&number](const SeasonVitals& v) { return number(v.mean_overall, 2); });
     row("P90 overall",
-        [&](const SeasonVitals& v) { return number(v.p90_overall, 2); });
-    row("Top-100 mean overall",
-        [&](const SeasonVitals& v) { return number(v.top100_overall, 2); });
-    row("Mean potential",
-        [&](const SeasonVitals& v) { return number(v.mean_potential, 2); });
+        [&number](const SeasonVitals& v) { return number(v.p90_overall, 2); });
+    row("Top-100 mean overall", [&number](const SeasonVitals& v)
+        { return number(v.top100_overall, 2); });
+    row("Mean potential", [&number](const SeasonVitals& v)
+        { return number(v.mean_potential, 2); });
     static constexpr std::array<const char*, 2> TIERS = {"tier 1", "tier 2"};
     for (std::size_t tier = 0; tier < TIERS.size(); ++tier)
     {
       const auto label = [&](const char* what)
       { return std::format("{}, {}", what, TIERS[tier]); };
-      row(label("Mean overall").c_str(), [&, tier](const SeasonVitals& v)
+      row(label("Mean overall").c_str(), [&number, tier](const SeasonVitals& v)
           { return number(v.tiers[tier].mean_overall, 2); });
-      row(label("Mean revenue (M)").c_str(), [&, tier](const SeasonVitals& v)
+      row(label("Mean revenue (M)").c_str(),
+          [&millions, tier](const SeasonVitals& v)
           { return millions(v.tiers[tier].mean_revenue); });
-      row(label("Wages / revenue").c_str(), [&, tier](const SeasonVitals& v)
+      row(label("Wages / revenue").c_str(),
+          [&percent, tier](const SeasonVitals& v)
           { return percent(v.tiers[tier].wage_revenue); });
-      row(label("Median cash (M)").c_str(), [&, tier](const SeasonVitals& v)
+      row(label("Median cash (M)").c_str(),
+          [&millions, tier](const SeasonVitals& v)
           { return millions(v.tiers[tier].median_cash); });
       row(label("Negative cash, 30 June").c_str(),
-          [&, tier](const SeasonVitals& v)
+          [&percent, tier](const SeasonVitals& v)
           { return percent(v.tiers[tier].negative_share); });
       row(label("Negative cash, worst month").c_str(),
-          [&, tier](const SeasonVitals& v)
+          [&percent, tier](const SeasonVitals& v)
           { return percent(v.tiers[tier].peak_negative_share); });
       row(label("Insolvent (cash < -25% revenue)").c_str(),
-          [&, tier](const SeasonVitals& v)
+          [&percent, tier](const SeasonVitals& v)
           { return percent(v.tiers[tier].insolvent_share); });
       row(label("Owner investment (M)").c_str(),
-          [&, tier](const SeasonVitals& v)
+          [&millions, tier](const SeasonVitals& v)
           { return millions(v.tiers[tier].owner_investment); });
-      row(label("Mean reputation").c_str(), [&, tier](const SeasonVitals& v)
+      row(label("Mean reputation").c_str(),
+          [&number, tier](const SeasonVitals& v)
           { return number(v.tiers[tier].mean_reputation, 1); });
-      row(label("Reputation SD").c_str(), [&, tier](const SeasonVitals& v)
+      row(label("Reputation SD").c_str(), [&number, tier](const SeasonVitals& v)
           { return number(v.tiers[tier].reputation_sd, 1); });
     }
-    row("Wage-position R2",
-        [&](const SeasonVitals& v) { return number(v.wage_position_r2, 3); });
-    row("Wage-position R2, tier 1", [&](const SeasonVitals& v)
+    row("Wage-position R2", [&number](const SeasonVitals& v)
+        { return number(v.wage_position_r2, 3); });
+    row("Wage-position R2, tier 1", [&number](const SeasonVitals& v)
         { return number(v.wage_position_r2_top, 3); });
     row("Moves (excl. releases, loan returns)",
         [](const SeasonVitals& v) { return std::to_string(v.moves); });
     row("Fee transfers",
         [](const SeasonVitals& v) { return std::to_string(v.fee_moves); });
-    row("Median fee (M)",
-        [&](const SeasonVitals& v) { return number(v.median_fee / 1e6, 2); });
-    row("Mean fee (M)",
-        [&](const SeasonVitals& v) { return number(v.mean_fee / 1e6, 2); });
-    row("Top fee (M)",
-        [&](const SeasonVitals& v) { return number(v.max_fee / 1e6, 1); });
+    row("Median fee (M)", [&number](const SeasonVitals& v)
+        { return number(v.median_fee / 1e6, 2); });
+    row("Mean fee (M)", [&number](const SeasonVitals& v)
+        { return number(v.mean_fee / 1e6, 2); });
+    row("Top fee (M)", [&number](const SeasonVitals& v)
+        { return number(v.max_fee / 1e6, 1); });
     row("Leagues completed", [](const SeasonVitals& v)
         { return std::to_string(v.leagues_completed); });
     row("Clubs promoted / relegated", [](const SeasonVitals& v)
@@ -823,19 +845,19 @@ class SeasonRunner
     row("National-team honours", [](const SeasonVitals& v)
         { return std::to_string(v.national_honours); });
     row("Save size (MB)",
-        [&](const SeasonVitals& v) { return number(v.save_mb, 1); });
+        [&number](const SeasonVitals& v) { return number(v.save_mb, 1); });
     row("Save time (ms)",
-        [&](const SeasonVitals& v) { return number(v.save_ms, 0); });
+        [&number](const SeasonVitals& v) { return number(v.save_ms, 0); });
     row("Load time (ms)",
-        [&](const SeasonVitals& v) { return number(v.load_ms, 0); });
+        [&number](const SeasonVitals& v) { return number(v.load_ms, 0); });
     row("Continue day mean (ms)",
-        [&](const SeasonVitals& v) { return number(v.day_ms_mean, 0); });
+        [&number](const SeasonVitals& v) { return number(v.day_ms_mean, 0); });
     row("Continue day P95 (ms)",
-        [&](const SeasonVitals& v) { return number(v.day_ms_p95, 0); });
+        [&number](const SeasonVitals& v) { return number(v.day_ms_p95, 0); });
     row("Continue day max (ms)",
-        [&](const SeasonVitals& v) { return number(v.day_ms_max, 0); });
-    row("Season wall time (s)",
-        [&](const SeasonVitals& v) { return number(v.season_seconds, 0); });
+        [&number](const SeasonVitals& v) { return number(v.day_ms_max, 0); });
+    row("Season wall time (s)", [&number](const SeasonVitals& v)
+        { return number(v.season_seconds, 0); });
     return table;
   }
 
@@ -880,9 +902,9 @@ class SeasonRunner
                                                       games);
       totals.by_league[league].points_sd.push_back(populationSd(ppg));
       totals.goal_diff_sd.push_back(populationSd(goalDiff));
-      const auto scorers =
-          controller.getTopScorers(MatchType::LEAGUE, league, 1);
-      if (!scorers.empty())
+      if (const auto scorers =
+              controller.getTopScorers(MatchType::LEAGUE, league, 1);
+          !scorers.empty())
       {
         totals.scorer_goals.push_back(scorers.front().goals);
         totals.scorer_per_game.push_back(scorers.front().goals / games);
@@ -904,7 +926,7 @@ class SeasonRunner
             -std::log(position / (clubs + 1.0 - position)));
         totals.wage_tier.push_back(controller.getLeagueTier(league));
       }
-      tables.emplace(league, std::move(rows));
+      tables.try_emplace(league, std::move(rows));
     }
   }
 
@@ -1034,8 +1056,9 @@ class SeasonRunner
     {
       for (const auto& [team_id, manager_id] : manager_of_club)
       {
-        const auto now = current.find(team_id);
-        if (now != current.end() && now->second == manager_id) continue;
+        if (const auto now = current.find(team_id);
+            now != current.end() && now->second == manager_id)
+          continue;
         const auto team = controller.getGameData()->getTeam(team_id);
         if (team && selected(team->get().getLeagueId()))
           ++totals.by_league[team->get().getLeagueId()].manager_changes;
@@ -1145,7 +1168,10 @@ class SeasonRunner
       const FinanceSummary summary =
           controller.getFinanceSummary(club.getId(), from, to);
       const auto category = [&](FinanceCategory c)
-      { return summary.by_category[static_cast<std::size_t>(c)]; };
+      {
+        return summary
+            .by_category[static_cast<std::size_t>(std::to_underlying(c))];
+      };
       const auto revenue = static_cast<double>(revenueOf(summary));
       const auto wages =
           static_cast<double>(std::abs(category(FinanceCategory::Wages)));
@@ -1176,6 +1202,7 @@ class SeasonRunner
 
   void captureTransfers(const GameDateValue& from, const GameDateValue& to)
   {
+    using enum TransferKind;
     std::unordered_map<TeamID, int> moves;
     std::unordered_map<TeamID, int> feeMoves;
     std::unordered_map<TeamID, int> loans;
@@ -1184,18 +1211,15 @@ class SeasonRunner
     {
       if (!inRange(record.date, from, to)) continue;
       ++totals.transfer_kinds[record.kind];
-      if (record.kind == TransferKind::Release ||
-          record.kind == TransferKind::LoanReturn)
-        continue;
+      if (record.kind == Release || record.kind == LoanReturn) continue;
       ++totals.counted_moves;
       ++moves[record.to_team];
-      const bool fee = record.kind == TransferKind::Permanent && record.fee > 0;
-      if (fee)
+      if (const bool fee = record.kind == Permanent && record.fee > 0; fee)
       {
         ++totals.fee_moves;
         ++feeMoves[record.to_team];
       }
-      if (record.kind == TransferKind::Loan) ++loans[record.to_team];
+      if (record.kind == Loan) ++loans[record.to_team];
     }
     for (const TeamID club : clubIds())
     {
@@ -1289,10 +1313,14 @@ class SeasonRunner
     const std::vector<double>& y = totals.position_y;
     metrics["wage_position_r2"] = bootstrapEstimate(
         x.size(),
-        [&](std::span<const std::size_t> indices)
+        [&x, &y](std::span<const std::size_t> indices)
         {
           const auto n = static_cast<double>(indices.size());
-          double sx = 0.0, sy = 0.0, sxx = 0.0, syy = 0.0, sxy = 0.0;
+          double sx = 0.0;
+          double sy = 0.0;
+          double sxx = 0.0;
+          double syy = 0.0;
+          double sxy = 0.0;
           for (const std::size_t i : indices)
           {
             sx += x[i];
@@ -1312,9 +1340,10 @@ class SeasonRunner
     if (totals.world_matches > 0)
     {
       Estimate speed;
-      speed.value = speed.low = speed.high =
-          1000.0 * totals.wall_seconds /
-          static_cast<double>(totals.world_matches);
+      speed.high = 1000.0 * totals.wall_seconds /
+                   static_cast<double>(totals.world_matches);
+      speed.low = speed.high;
+      speed.value = speed.low;
       speed.n = totals.world_matches;
       metrics["ms_per_world_match"] = speed;
     }
@@ -1336,7 +1365,7 @@ class SeasonRunner
     {
       std::string ids;
       for (const LeagueID league : leagues)
-        ids += (ids.empty() ? "" : ",") + std::to_string(league);
+        ids += std::format("{}{}", ids.empty() ? "" : ",", league);
       return ids;
     }();
     report.parameters["world_matches_played"] =
@@ -1355,11 +1384,11 @@ class SeasonRunner
     report.tables.push_back(youthTable());
     report.tables.push_back(transferTable());
     report.tables.push_back(injuryTable(layoffs));
-    report.notes.push_back(
+    report.notes.emplace_back(
         "Season mode measures league matches from structured match reports; "
         "engine-only metrics (penalties, substitutions, distance, game "
         "states...) come from `fm_lab matches`.");
-    report.notes.push_back(
+    report.notes.emplace_back(
         "AI-only world (no managed club); every club is run by the AI.");
     return report;
   }
@@ -1435,7 +1464,8 @@ class SeasonRunner
         {}};
     const auto amount = [&](FinanceCategory c)
     {
-      return static_cast<double>(totals.top_mix[static_cast<std::size_t>(c)]);
+      return static_cast<double>(
+          totals.top_mix[static_cast<std::size_t>(std::to_underlying(c))]);
     };
     const double revenue = amount(FinanceCategory::Matchday) +
                            amount(FinanceCategory::Broadcasting) +
@@ -1552,15 +1582,16 @@ class SeasonRunner
 
   TextTable transferTable() const
   {
+    using enum TransferKind;
     TextTable table{
         "Transfer records by kind (all clubs)", {"Kind", "Moves"}, {}};
     static constexpr std::array<std::pair<TransferKind, const char*>, 6> KINDS =
-        {{{TransferKind::Permanent, "Permanent"},
-          {TransferKind::Free, "Free"},
-          {TransferKind::Loan, "Loan"},
-          {TransferKind::LoanReturn, "Loan return"},
-          {TransferKind::PreContract, "Pre-contract"},
-          {TransferKind::Release, "Release"}}};
+        {{{Permanent, "Permanent"},
+          {Free, "Free"},
+          {Loan, "Loan"},
+          {LoanReturn, "Loan return"},
+          {PreContract, "Pre-contract"},
+          {Release, "Release"}}};
     for (const auto& [kind, name] : KINDS)
     {
       const auto found = totals.transfer_kinds.find(kind);

@@ -42,13 +42,15 @@ constexpr std::uint8_t SPREAD_FIRST_YEARS = 2;
 constexpr std::uint8_t SELL_ON_CUT = 5;
 constexpr std::uint8_t SELL_ON_CUT_FROM = 10;
 
-constexpr std::array<const char*, static_cast<std::size_t>(Move::COUNT)>
+constexpr std::array<const char*,
+                     static_cast<std::size_t>(std::to_underlying(Move::COUNT))>
     MOVE_KEYS = {"OFFER_MOVE_BID",      "OFFER_MOVE_IMPROVED",
                  "OFFER_MOVE_FINAL",    "OFFER_MOVE_RESTATED",
                  "OFFER_MOVE_COUNTER",  "OFFER_MOVE_ASKING_PRICE",
                  "OFFER_MOVE_ACCEPTED", "OFFER_MOVE_WALKED_AWAY"};
 
-constexpr std::array<const char*, static_cast<std::size_t>(Why::COUNT)>
+constexpr std::array<const char*,
+                     static_cast<std::size_t>(std::to_underlying(Why::COUNT))>
     WHY_KEYS = {"OFFER_WHY_WITHIN_BUDGET",    "OFFER_WHY_IMPROVED",
                 "OFFER_WHY_MORE_INSTALMENTS", "OFFER_WHY_ADD_ONS",
                 "OFFER_WHY_ADD_ONS_TRIMMED",  "OFFER_WHY_SELL_ON_CUT",
@@ -174,18 +176,19 @@ Shape withAddOns(Shape shape)
 
 bool byBuyer(Move move)
 {
+  using enum Move;
   switch (move)
   {
-    case Move::Bid:
-    case Move::Improved:
-    case Move::FinalOffer:
-    case Move::Restated:
-    case Move::Accepted:
-    case Move::WalkedAway:
+    case Bid:
+    case Improved:
+    case FinalOffer:
+    case Restated:
+    case Accepted:
+    case WalkedAway:
       return true;
-    case Move::Counter:
-    case Move::AskingPrice:
-    case Move::COUNT:
+    case Counter:
+    case AskingPrice:
+    case COUNT:
       break;
   }
   return false;
@@ -193,13 +196,13 @@ bool byBuyer(Move move)
 
 const char* moveKey(Move move)
 {
-  const auto index = static_cast<std::size_t>(move);
+  const auto index = static_cast<std::size_t>(std::to_underlying(move));
   return index < MOVE_KEYS.size() ? MOVE_KEYS[index] : "";
 }
 
 const char* whyKey(Why why)
 {
-  const auto index = static_cast<std::size_t>(why);
+  const auto index = static_cast<std::size_t>(std::to_underlying(why));
   return index < WHY_KEYS.size() ? WHY_KEYS[index] : "";
 }
 
@@ -248,7 +251,7 @@ double buyerCost(const OfferTerms& terms, int age)
     add_ons += terms.goal_bonus * goalOdds(terms.goal_target);
   const double sell_on =
       fee * terms.sell_on_percent * sellOnCostPerPercent(age);
-  return upfront + (fee - upfront) * deferred_factor + add_ons + sell_on;
+  return std::lerp(upfront, fee, deferred_factor) + add_ons + sell_on;
 }
 
 std::uint32_t agentFee(std::uint32_t fee)
@@ -330,11 +333,11 @@ BuyerReply respond(const BuyerContext& context, const OfferTerms& current,
     return reply;
   }
 
-  const bool final = firm || context.answered + 1 >= context.patience;
+  const bool final_offer = firm || context.answered + 1 >= context.patience;
   const double previous = buyerCost(current, context.age);
   const double wanted = std::min(cost, ceiling);
   double share = 1.0;
-  if (!final)
+  if (!final_offer)
     share = std::min(
         1.0,
         static_cast<double>(B::FIRST_CONCESSION) +
@@ -342,8 +345,7 @@ BuyerReply respond(const BuyerContext& context, const OfferTerms& current,
             static_cast<double>(B::RIVAL_CONCESSION_BONUS) * context.rivals +
             (deadline ? static_cast<double>(B::DEADLINE_CONCESSION_BONUS)
                       : 0.0));
-  const double target =
-      std::max(previous, previous + share * (wanted - previous));
+  const double target = std::max(previous, std::lerp(previous, wanted, share));
 
   // Start from the club's own structure, within what the buyer tolerates.
   Shape base = shapeOf(asked);
@@ -364,13 +366,14 @@ BuyerReply respond(const BuyerContext& context, const OfferTerms& current,
     notes.push_back(Why::SellOnCut);
   }
 
-  const auto feeFor = [&](const Shape& shape)
+  const auto feeFor = [target, age = context.age](const Shape& shape)
   {
-    return largestFee([&](std::uint32_t fee) { return shape.build(fee); },
-                      target, context.age);
+    return largestFee([&shape](std::uint32_t fee) { return shape.build(fee); },
+                      target, age);
   };
-  const auto fitsCash = [&](const Shape& shape, std::uint32_t fee)
-  { return signingCash(shape.build(fee)) <= context.cash; };
+  const auto fitsCash =
+      [cash = context.cash](const Shape& shape, std::uint32_t fee)
+  { return signingCash(shape.build(fee)) <= cash; };
 
   Shape shape = base;
   Why plan = Why::Improved;
@@ -428,9 +431,9 @@ BuyerReply respond(const BuyerContext& context, const OfferTerms& current,
     pressure();
     return reply;
   }
-  reply.move = final ? Move::FinalOffer : Move::Improved;
+  reply.move = final_offer ? Move::FinalOffer : Move::Improved;
   reply.terms = proposal;
-  reply.reasons.push_back(final ? Why::FinalOffer : Why::Improved);
+  reply.reasons.push_back(final_offer ? Why::FinalOffer : Why::Improved);
   if (plan != Why::Improved) reply.reasons.push_back(plan);
   reply.reasons.insert(reply.reasons.end(), notes.begin(), notes.end());
   pressure();
@@ -448,7 +451,7 @@ OfferTerms openingBid(std::uint32_t ceiling, int age, std::uint8_t rivals,
   share = std::min(share, MAX_OPENING_SHARE);
   const bool add_on =
       add_on_roll < static_cast<double>(B::OPENING_ADD_ON_CHANCE);
-  const auto build = [&](std::uint32_t fee)
+  const auto build = [add_on](std::uint32_t fee)
   {
     OfferTerms terms = TransferNegotiation::aiOfferTerms(fee);
     if (add_on)
@@ -494,17 +497,18 @@ int replyDelay(double roll, int days_to_deadline)
 
 const char* stanceKey(PlayerStance stance)
 {
+  using enum PlayerStance;
   switch (stance)
   {
-    case PlayerStance::AskedToLeave:
+    case AskedToLeave:
       return "OFFER_STANCE_ASKED_TO_LEAVE";
-    case PlayerStance::WantsBiggerClub:
+    case WantsBiggerClub:
       return "OFFER_STANCE_BIGGER_CLUB";
-    case PlayerStance::Open:
+    case Open:
       return "OFFER_STANCE_OPEN";
-    case PlayerStance::HappyHere:
+    case HappyHere:
       return "OFFER_STANCE_HAPPY";
-    case PlayerStance::Reluctant:
+    case Reluctant:
       return "OFFER_STANCE_RELUCTANT";
   }
   return "";
@@ -512,29 +516,31 @@ const char* stanceKey(PlayerStance stance)
 
 PlayerStance stanceFor(const StanceFacts& facts)
 {
-  if (facts.transfer_request) return PlayerStance::AskedToLeave;
-  if (!facts.would_join) return PlayerStance::Reluctant;
+  using enum PlayerStance;
+  if (facts.transfer_request) return AskedToLeave;
+  if (!facts.would_join) return Reluctant;
   if (facts.reputation_gap >= B::KEEN_REPUTATION_GAP &&
       facts.ambition >= B::KEEN_AMBITION)
-    return PlayerStance::WantsBiggerClub;
+    return WantsBiggerClub;
   if (facts.loyalty >= B::HAPPY_LOYALTY ||
       (facts.reputation_gap <= 0 && facts.morale >= B::HAPPY_MORALE))
-    return PlayerStance::HappyHere;
-  return PlayerStance::Open;
+    return HappyHere;
+  return Open;
 }
 
 double termsRefusalChance(PlayerStance stance)
 {
+  using enum PlayerStance;
   switch (stance)
   {
-    case PlayerStance::AskedToLeave:
-    case PlayerStance::WantsBiggerClub:
+    case AskedToLeave:
+    case WantsBiggerClub:
       return 0.0;
-    case PlayerStance::Open:
+    case Open:
       return B::TERMS_REFUSAL_OPEN;
-    case PlayerStance::HappyHere:
+    case HappyHere:
       return B::TERMS_REFUSAL_HAPPY;
-    case PlayerStance::Reluctant:
+    case Reluctant:
       return B::TERMS_REFUSAL_RELUCTANT;
   }
   return 0.0;
@@ -553,15 +559,16 @@ bool isBigBid(const OfferTerms& terms, int /*age*/, std::uint32_t market_value)
 RejectionEffect rejectionEffect(PlayerStance stance, bool big_bid,
                                 std::uint8_t ambition)
 {
+  using enum PlayerStance;
   RejectionEffect effect;
   switch (stance)
   {
-    case PlayerStance::AskedToLeave:
+    case AskedToLeave:
       effect.morale_delta =
           -(big_bid ? B::REJECTED_ASKED_MORALE : B::REJECTED_SMALL_BID_MORALE);
       if (big_bid) effect.trust_delta = -B::REJECTED_TRUST;
       break;
-    case PlayerStance::WantsBiggerClub:
+    case WantsBiggerClub:
       effect.morale_delta =
           -(big_bid ? B::REJECTED_KEEN_MORALE : B::REJECTED_SMALL_BID_MORALE);
       if (big_bid)
@@ -570,11 +577,11 @@ RejectionEffect rejectionEffect(PlayerStance stance, bool big_bid,
         effect.transfer_request = ambition >= B::REQUEST_AMBITION;
       }
       break;
-    case PlayerStance::Open:
+    case Open:
       if (big_bid) effect.morale_delta = -B::REJECTED_OPEN_MORALE;
       break;
-    case PlayerStance::HappyHere:
-    case PlayerStance::Reluctant:
+    case HappyHere:
+    case Reluctant:
       break;
   }
   return effect;

@@ -7,7 +7,16 @@ set(FM_TEST_ENVIRONMENT
 set(FM_TEST_LAUNCHER
   "${CMAKE_COMMAND};-E;env;${FM_TEST_ENVIRONMENT}")
 
+add_executable(runtime_editor_tests test_runtime_editor.cpp)
+target_link_libraries(runtime_editor_tests PRIVATE GTest::gtest_main fm_core)
+set_property(TARGET runtime_editor_tests PROPERTY TEST_LAUNCHER "${FM_TEST_LAUNCHER}")
+
+add_executable(runtime_editor_ui_tests test_runtime_editor_ui.cpp)
+target_link_libraries(runtime_editor_ui_tests PRIVATE GTest::gtest_main fm_ui)
+set_property(TARGET runtime_editor_ui_tests PROPERTY TEST_LAUNCHER "${FM_TEST_LAUNCHER}")
+
 add_executable(unit_tests
+  test_background_task.cpp
   test_localization.cpp
   test_next_action.cpp
   test_opposition_report.cpp
@@ -64,6 +73,7 @@ set_property(TARGET unit_tests PROPERTY TEST_LAUNCHER "${FM_TEST_LAUNCHER}")
 # This target deliberately excludes all GUI sources. It is the fast headless
 # correctness and leak-check lane for model, controller, and persistence code.
 add_executable(core_unit_tests
+  test_background_task.cpp
   test_localization.cpp
   test_next_action.cpp
   test_opposition_report.cpp
@@ -129,6 +139,12 @@ if(CMAKE_BUILD_TYPE STREQUAL "Debug")
 endif()
 
 include(GoogleTest)
+gtest_discover_tests(runtime_editor_tests
+  DISCOVERY_MODE PRE_TEST
+  PROPERTIES ENVIRONMENT "${FM_TEST_ENVIRONMENT}" LABELS "unit;core;editor")
+gtest_discover_tests(runtime_editor_ui_tests
+  DISCOVERY_MODE PRE_TEST
+  PROPERTIES ENVIRONMENT "${FM_TEST_ENVIRONMENT}" LABELS "unit;gui;editor")
 gtest_discover_tests(
   unit_tests
   DISCOVERY_MODE PRE_TEST

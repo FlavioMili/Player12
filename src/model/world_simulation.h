@@ -11,6 +11,7 @@
 #include <cstdint>
 #include <functional>
 #include <memory>
+#include <mutex>
 #include <optional>
 #include <string>
 #include <unordered_map>
@@ -322,7 +323,7 @@ class WorldSimulation
   void reviewCash(const GameDateValue& date, TeamID managed_team_id,
                   bool monthly);
   /** An AI club deep in the red may be recapitalised by its owner. */
-  void rescueByOwner(const GameDateValue& date, Team& team);
+  void rescueByOwner(const GameDateValue& date, Team& team) const;
   /**
    * Parachute money per season of the clubs that went down from a top
    * division in the last two finished seasons and are still below it.
@@ -384,6 +385,8 @@ class WorldSimulation
   HolidayPreferences holiday_preferences;
   Inbox inbox;
   BoardState board;
+  // Entries are initialized once and never changed after insertion.
+  mutable std::mutex focus_cache_mutex;
   mutable std::unordered_map<std::string, FocusStats> focus_by_category;
   std::unordered_map<TeamID, std::uint32_t> last_attendance;
   std::function<std::vector<TeamID>(LeagueID)> standings_provider;

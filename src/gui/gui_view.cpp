@@ -16,6 +16,7 @@
 #include <cstdlib>
 #include <iostream>
 #include <string_view>
+#include <utility>
 #include <vector>
 
 #include "backends/imgui_impl_sdl3.h"
@@ -27,24 +28,23 @@
 #include "gui/gui_scene.h"
 #include "gui/input_actions.h"
 #include "gui/render_scale.h"
+#include "gui/scenes/main_game_scene.h"
 #include "gui/scenes/main_menu_scene.h"
 #include "gui/scenes/match_scene.h"
+#include "gui/scenes/runtime_editor_dialog.h"
 #include "gui/scenes/team_selection_scene.h"
 #include "gui/widgets/theme.h"
 #include "imgui.h"
 #include "settings_manager.h"
 
 GUIView::GUIView(GameController& controller_ref)
-    : controller(controller_ref),
-      window(nullptr),
-      renderer(nullptr),
-      running(false),
-      currentScene(nullptr)
+    : controller(controller_ref), running(false), currentScene(nullptr)
 {
 }
 
 GUIView::~GUIView()
 {
+  editor_dialog.reset();
   // Clean up any overlaid scenes and active scenes before shutting down
   // renderer
   while (!sceneStack.empty())
@@ -118,8 +118,7 @@ bool GUIView::initialize()
   Logger::info(std::string("SDL renderer driver: ") +
                (rendererName ? rendererName : "unknown"));
   rendererIsSoftware = (rendererName != nullptr &&
-                        std::string_view(rendererName).find("software") !=
-                            std::string_view::npos);
+                        std::string_view(rendererName).contains("software"));
   if (rendererIsSoftware)
   {
     Logger::warn(
@@ -183,7 +182,7 @@ void GUIView::run(const SceneFactory& firstScene)
   while (running)
   {
     const Uint64 frameStart = SDL_GetTicksNS();
-    const float deltaTime =
+    const auto deltaTime =
         static_cast<float>(static_cast<double>(frameStart - lastTime) / 1e9);
     lastTime = frameStart;
 
@@ -342,11 +341,12 @@ void GUIView::render()
 
   // Render only the active scene
   // (topmost overlay or current scene)
-  GUIScene* activeScene = getActiveScene();
-  if (activeScene != nullptr)
+  if (GUIScene* activeScene = getActiveScene(); activeScene != nullptr)
   {
     activeScene->render();
   }
+
+  if (editor_dialog) editor_dialog->render();
 
   ImGui::Render();
   // The SDL_Renderer backend scales only clip rectangles by the framebuffer
@@ -376,11 +376,11 @@ void GUIView::render()
   if (screenshotPending)
   {
     const char* configuredPath = std::getenv("FM_SCREENSHOT_PATH");
-    const std::string path =
-        configuredPath && *configuredPath
-            ? configuredPath
-            : RuntimePaths::capturePath("screenshot.bmp").string();
-    if (!captureScreenshot(path))
+    if (const std::string path =
+            configuredPath && *configuredPath
+                ? configuredPath
+                : RuntimePaths::capturePath("screenshot.bmp").string();
+        !captureScreenshot(path))
       std::cerr << "Failed to capture screenshot: " << SDL_GetError() << '\n';
     screenshotPending = false;
     capturedScreenshot = true;
@@ -394,7 +394,7 @@ void GUIView::render()
   if (!capturedScreenshot && matchFramesTimed >= 0 &&
       matchFramesTimed < MATCH_FRAME_TIMING_COUNT)
   {
-    const float renderMs =
+    const auto renderMs =
         static_cast<float>(std::chrono::duration<double, std::milli>(
                                std::chrono::steady_clock::now() - renderStart)
                                .count());
@@ -416,15 +416,15 @@ void GUIView::beginMatchRenderTimings()
 void GUIView::reportMatchRenderTimings()
 {
   std::vector<float> samples(matchFrameTimes.begin(), matchFrameTimes.end());
-  std::sort(samples.begin(), samples.end());
+  std::ranges::sort(samples);
   const float median = samples[samples.size() / 2];
   const float p95 = samples[static_cast<size_t>(
       std::floor(0.95 * static_cast<double>(samples.size() - 1)))];
   const float worst = samples.back();
-  Logger::info(
-      "Live-match render/present timings over the first 120 frames: median " +
-      std::to_string(median) + " ms, p95 " + std::to_string(p95) +
-      " ms, worst " + std::to_string(worst) + " ms");
+  Logger::info(std::format(
+      "Live-match render/present timings over the first 120 frames: median "
+      "{} ms, p95 {} ms, worst {} ms",
+      median, p95, worst));
 }
 
 void GUIView::changeScene(std::unique_ptr<GUIScene> newScene)
@@ -478,6 +478,7 @@ void GUIView::recordHistory()
 
 void GUIView::applyPendingSceneChanges()
 {
+  applyEditorRequest();
   if (pendingAction == PendingAction::NONE) return;
   while (pendingAction != PendingAction::NONE)
   {
@@ -624,15 +625,16 @@ void GUIView::applyManagementTheme()
   const Settings& settings = SettingsManager::instance()->get();
   Theme::Appearance appearance;
   appearance.preset = static_cast<Theme::Preset>(std::clamp(
-      settings.theme_preset, 0, static_cast<int>(Theme::Preset::COUNT) - 1));
+      settings.theme_preset, 0,
+      static_cast<int>(std::to_underlying(Theme::Preset::COUNT)) - 1));
   appearance.club_accent = settings.club_accent;
   appearance.custom_accent = Theme::unpackRgb(settings.accent_rgb);
   appearance.ui_scale = settings.ui_scale;
   appearance.compact = settings.compact_density;
   appearance.reduced_motion = settings.reduced_motion;
-  appearance.color_vision = static_cast<Theme::ColorVision>(
-      std::clamp(settings.color_vision, 0,
-                 static_cast<int>(Theme::ColorVision::COUNT) - 1));
+  appearance.color_vision = static_cast<Theme::ColorVision>(std::clamp(
+      settings.color_vision, 0,
+      static_cast<int>(std::to_underlying(Theme::ColorVision::COUNT)) - 1));
   appearance.text_scale = settings.text_scale;
   Theme::apply(appearance, displayScale());
 }
@@ -650,12 +652,12 @@ void GUIView::applyWindowSettings(bool resize)
   // Wayland and macOS report the scale as pixel density (displayScale() is 1
   // there); elsewhere the logical size is scaled up, within the display.
   const float scale = std::max(1.0f, displayScale());
-  int width = static_cast<int>(std::lround(
+  auto width = static_cast<int>(std::lround(
       static_cast<float>(settings->get().resolution_width) * scale));
-  int height = static_cast<int>(std::lround(
+  auto height = static_cast<int>(std::lround(
       static_cast<float>(settings->get().resolution_height) * scale));
-  SDL_Rect usable{};
-  if (displayScale() > 1.0f &&
+  if (SDL_Rect usable{};
+      displayScale() > 1.0f &&
       SDL_GetDisplayUsableBounds(SDL_GetDisplayForWindow(window), &usable))
   {
     width = std::min(width, usable.w);
@@ -671,9 +673,9 @@ void GUIView::applySavePolicy()
 {
   const Settings& settings = SettingsManager::instance()->get();
   AutosavePolicy policy;
-  policy.frequency = static_cast<AutosaveFrequency>(
-      std::clamp(settings.autosave_frequency, 0,
-                 static_cast<int>(AutosaveFrequency::SeasonEnd)));
+  policy.frequency = static_cast<AutosaveFrequency>(std::clamp(
+      settings.autosave_frequency, 0,
+      static_cast<int>(std::to_underlying(AutosaveFrequency::SeasonEnd))));
   policy.backups = std::clamp(settings.autosave_backups, 0, 9);
   controller.setAutosavePolicy(policy);
 }
@@ -684,4 +686,68 @@ void GUIView::releaseBackdrop()
 {
   if (backdropTexture != nullptr) SDL_DestroyTexture(backdropTexture);
   backdropTexture = nullptr;
+}
+
+void GUIView::openEditor(const std::optional<NavEntry>& context)
+{
+  if (const auto* hub = dynamic_cast<MainGameScene*>(getBaseScene());
+      !controller.isGameLoaded() || !hub || hub->isContinuing() ||
+      (getTopScene() && getTopScene()->getID() == SceneID::MATCH))
+    return;
+  if (!editor_dialog)
+    editor_dialog = std::make_unique<RuntimeEditorDialog>(controller);
+  editor_dialog->open(context);
+}
+
+void GUIView::applyEditorRequest()
+{
+  if (!editor_dialog) return;
+  const auto request = editor_dialog->takeRequest();
+  if (request == RuntimeEditorDialog::Request::None) return;
+  const auto context =
+      getActiveScene() ? getActiveScene()->historyEntry() : std::nullopt;
+  std::string error;
+  const bool success =
+      request == RuntimeEditorDialog::Request::Undo
+          ? controller.undoEditor(error)
+          : controller.applyEditor(editor_dialog->session(),
+                                   editor_dialog->changes(), error);
+  editor_dialog->finish(success, std::move(error));
+  if (!success) return;
+  // Replacement happens outside render/update. Discard cached model references
+  // before reopening a screen against the new world.
+  changeScene(std::make_unique<MainGameScene>(this));
+  applyPendingSceneChanges();
+  if (!context || !Navigation::canOpen(this, *context)) return;
+  using enum NavEntry::Kind;
+  switch (context->kind)
+  {
+    case SECTION:
+      Navigation::open(this, context->section);
+      break;
+    case PLAYER:
+      Navigation::openPlayer(this, context->player);
+      break;
+    case CLUB:
+      Navigation::openClub(this, context->team);
+      break;
+    case COMPARE:
+      Navigation::openCompare(this, context->player, context->second_player);
+      break;
+    case MATCH_REPORT:
+      Navigation::openMatchReport(this, context->date, context->team,
+                                  context->away_team);
+      break;
+  }
+}
+
+void GUIView::openEditor(const EditorContext& context)
+{
+  if (const auto* hub = dynamic_cast<MainGameScene*>(getBaseScene());
+      !controller.isGameLoaded() || !hub || hub->isContinuing() ||
+      (getTopScene() && getTopScene()->getID() == SceneID::MATCH))
+    return;
+  if (!editor_dialog)
+    editor_dialog = std::make_unique<RuntimeEditorDialog>(controller);
+  editor_dialog->open(context);
 }

@@ -9,6 +9,7 @@
 #include "model/next_action.h"
 
 #include <algorithm>
+#include <array>
 #include <format>
 
 #include "controller/game_controller.h"
@@ -64,8 +65,8 @@ std::vector<NextAction> rankNextActions(const NextActionFacts& facts,
                               std::uint32_t ref, int priority,
                               AnalysisLine title, AnalysisLine reason)
   {
-    actions.push_back(
-        {kind, target, ref, priority, std::move(title), std::move(reason)});
+    actions.emplace_back(kind, target, ref, priority, std::move(title),
+                         std::move(reason));
   };
 
   if (!facts.unavailable_selected.empty() && facts.days_to_match >= 0 &&
@@ -115,15 +116,15 @@ std::vector<NextAction> rankNextActions(const NextActionFacts& facts,
          {std::to_string(facts.pending_talks.size() - 1)}});
   }
 
-  for (const NextActionFacts::Person& person : facts.expiring_contracts)
+  if (!facts.expiring_contracts.empty())
   {
+    const NextActionFacts::Person& person = facts.expiring_contracts.front();
     add(NextActionKind::ContractExpiring, ActionTarget::Player, person.player,
         facts.pre_contract_period ? 65 : 40,
         {"NEXT_CONTRACT_TITLE", {person.name}},
         {facts.pre_contract_period ? "NEXT_CONTRACT_REASON_PRECONTRACT"
                                    : "NEXT_CONTRACT_REASON",
          {person.name}});
-    break;  // The most important one; the rest follow once it is handled.
   }
 
   if (!facts.unseen_grade_a.empty())
@@ -180,6 +181,7 @@ std::vector<NextAction> rankNextActions(const NextActionFacts& facts,
 
 NextActionFacts gatherNextActionFacts(const GameController& controller)
 {
+  using enum PlayerRole;
   NextActionFacts facts;
   const auto managed = controller.getManagedTeam();
   if (!managed) return facts;
@@ -231,12 +233,12 @@ NextActionFacts gatherNextActionFacts(const GameController& controller)
     const Player& player = player_ref.get();
     const PlayerID id = player.getId();
     if (controller.hasPendingTalk(id))
-      facts.pending_talks.push_back({id, player.getName()});
+      facts.pending_talks.emplace_back(id, player.getName());
     if (player.getContractYears() <= 1)
     {
       const SquadRole role = controller.getSquadRole(id);
       if (role == SquadRole::KeyPlayer || role == SquadRole::FirstTeam)
-        facts.expiring_contracts.push_back({id, player.getName()});
+        facts.expiring_contracts.emplace_back(id, player.getName());
     }
     if (!controller.isPlayerAvailable(id)) continue;
     const float condition = player.getDynamics().condition;
@@ -252,9 +254,9 @@ NextActionFacts gatherNextActionFacts(const GameController& controller)
   for (const ScoutReport& report : controller.getScoutReports())
   {
     if (report.grade == ScoutGrade::A && !report.seen)
-      facts.unseen_grade_a.push_back({report.player_id,
-                                      playerName(controller, report.player_id),
-                                      report.scout_name});
+      facts.unseen_grade_a.emplace_back(
+          report.player_id, playerName(controller, report.player_id),
+          report.scout_name);
   }
 
   for (const auto& day : controller.getTrainingWeekPreview())
@@ -269,14 +271,14 @@ NextActionFacts gatherNextActionFacts(const GameController& controller)
   {
     const GameController::SquadNeeds needs =
         controller.evaluateSquadNeeds(club_id);
-    const std::pair<int, PlayerRole> holes[] = {
-        {needs.missing_gk, PlayerRole::GK},
-        {needs.missing_cb, PlayerRole::CB},
-        {needs.missing_lb, PlayerRole::LB},
-        {needs.missing_rb, PlayerRole::RB},
-        {needs.missing_mid, PlayerRole::CM},
-        {needs.missing_wing, PlayerRole::LW},
-        {needs.missing_st, PlayerRole::ST}};
+    const std::array<std::pair<int, PlayerRole>, 7> holes = {
+        {{needs.missing_gk, GK},
+         {needs.missing_cb, CB},
+         {needs.missing_lb, LB},
+         {needs.missing_rb, RB},
+         {needs.missing_mid, CM},
+         {needs.missing_wing, LW},
+         {needs.missing_st, ST}}};
     for (const auto& [missing, role] : holes)
       if (missing > 0)
         facts.squad_holes.emplace_back(RoleUtils::shortName(role));

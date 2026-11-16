@@ -9,6 +9,7 @@
 #include "model/records.h"
 
 #include <algorithm>
+#include <utility>
 
 #include "database/gamedata.h"
 #include "database/sqlite_rows.h"
@@ -57,26 +58,27 @@ std::string playerName(const GameData& gamedata, PlayerID player_id)
 
 const char* recordKindKey(RecordKind kind)
 {
+  using enum RecordKind;
   switch (kind)
   {
-    case RecordKind::BiggestWin:
+    case BiggestWin:
       return "RECORD_BIGGEST_WIN";
-    case RecordKind::BiggestDefeat:
+    case BiggestDefeat:
       return "RECORD_BIGGEST_DEFEAT";
-    case RecordKind::HighestScoringMatch:
+    case HighestScoringMatch:
       return "RECORD_HIGHEST_SCORING";
-    case RecordKind::HighestAttendance:
+    case HighestAttendance:
       return "RECORD_ATTENDANCE";
-    case RecordKind::MostGoalsSeason:
+    case MostGoalsSeason:
       return "RECORD_MOST_GOALS_SEASON";
-    case RecordKind::MostPointsSeason:
+    case MostPointsSeason:
       return "RECORD_MOST_POINTS_SEASON";
-    case RecordKind::TopScorerSeason:
+    case TopScorerSeason:
       return "RECORD_TOP_SCORER_SEASON";
-    case RecordKind::RecordSigning:
+    case RecordSigning:
       return "RECORD_SIGNING";
-    case RecordKind::RecordSale:
-    case RecordKind::COUNT:
+    case RecordSale:
+    case COUNT:
       break;
   }
   return "RECORD_SALE";
@@ -111,7 +113,7 @@ void RecordBook::offer(RecordEntry entry)
   const RecordKey key{entry.scope, entry.scope_id, entry.kind};
   const auto found = records.find(key);
   if (found == records.end())
-    records.emplace(key, std::move(entry));
+    records.try_emplace(key, std::move(entry));
   else if (Records::beats(entry, found->second))
     found->second = std::move(entry);
 }
@@ -131,7 +133,7 @@ void RecordBook::onMatchPlayed(const GameData& gamedata,
     if (const auto home = gamedata.getTeam(report.home_team_id))
       league_id = home->get().getLeagueId();
 
-  const auto side = [&](bool home)
+  const auto side = [&report, year](bool home)
   {
     RecordEntry entry;
     entry.team_id = home ? report.home_team_id : report.away_team_id;
@@ -143,7 +145,7 @@ void RecordBook::onMatchPlayed(const GameData& gamedata,
     entry.season_year = year;
     return entry;
   };
-  const auto offerBoth = [&](RecordEntry entry)
+  const auto offerBoth = [this, league, league_id](RecordEntry entry)
   {
     entry.scope = RecordScope::Club;
     entry.scope_id = entry.team_id;
@@ -239,7 +241,11 @@ void RecordBook::onMatchPlayed(const GameData& gamedata,
     const TeamID team_id = home ? report.home_team_id : report.away_team_id;
     const int own = home ? report.home_goals : report.away_goals;
     const int other = home ? report.away_goals : report.home_goals;
-    const std::uint32_t points = own > other ? 3 : (own == other ? 1 : 0);
+    std::uint32_t points = 0;
+    if (own > other)
+      points = 3;
+    else if (own == other)
+      points = 1;
     AllTimeRow& row = all_time[{league_id, team_id}];
     row.league_id = league_id;
     row.team_id = team_id;
@@ -296,20 +302,19 @@ void RecordBook::onTransfer(const GameData& gamedata, const GameDateValue& date,
 
 void RecordBook::closeSeason(const GameData& gamedata, std::uint16_t year)
 {
+  using enum RecordKind;
   for (const auto& [team_id, season] : season_teams)
   {
     RecordEntry entry;
     entry.team_id = team_id;
     entry.season_year = year;
-    entry.kind = RecordKind::MostGoalsSeason;
+    entry.kind = MostGoalsSeason;
     entry.value = season.goals_for;
     entry.value2 = season.played;
-    for (const RecordKind kind :
-         {RecordKind::MostGoalsSeason, RecordKind::MostPointsSeason})
+    for (const RecordKind kind : {MostGoalsSeason, MostPointsSeason})
     {
       entry.kind = kind;
-      entry.value = kind == RecordKind::MostGoalsSeason ? season.goals_for
-                                                        : season.points;
+      entry.value = kind == MostGoalsSeason ? season.goals_for : season.points;
       entry.scope = RecordScope::Club;
       entry.scope_id = team_id;
       offer(entry);
@@ -322,7 +327,7 @@ void RecordBook::closeSeason(const GameData& gamedata, std::uint16_t year)
   {
     const auto [team_id, player_id] = key;
     RecordEntry entry;
-    entry.kind = RecordKind::TopScorerSeason;
+    entry.kind = TopScorerSeason;
     entry.team_id = team_id;
     entry.player_id = player_id;
     entry.value = goals;
@@ -348,8 +353,8 @@ void RecordBook::closeSeason(const GameData& gamedata, std::uint16_t year)
 std::vector<RecordEntry> RecordBook::clubRecords(TeamID team_id) const
 {
   std::vector<RecordEntry> result;
-  for (std::uint8_t kind = 0;
-       kind < static_cast<std::uint8_t>(RecordKind::COUNT); ++kind)
+  for (std::uint8_t kind = 0; kind < std::to_underlying(RecordKind::COUNT);
+       ++kind)
   {
     const auto found = records.find(
         {RecordScope::Club, team_id, static_cast<RecordKind>(kind)});
@@ -361,8 +366,8 @@ std::vector<RecordEntry> RecordBook::clubRecords(TeamID team_id) const
 std::vector<RecordEntry> RecordBook::leagueRecords(LeagueID league_id) const
 {
   std::vector<RecordEntry> result;
-  for (std::uint8_t kind = 0;
-       kind < static_cast<std::uint8_t>(RecordKind::COUNT); ++kind)
+  for (std::uint8_t kind = 0; kind < std::to_underlying(RecordKind::COUNT);
+       ++kind)
   {
     const auto found = records.find(
         {RecordScope::League, league_id, static_cast<RecordKind>(kind)});
@@ -443,7 +448,7 @@ std::vector<LegendEntry> RecordBook::hallOfFame(
   {
     const int won = honours ? honours(it->second.player_id, team_id) : 0;
     if (!Records::isLegend(it->second, won)) continue;
-    result.push_back({it->second, won, Records::legendScore(it->second, won)});
+    result.emplace_back(it->second, won, Records::legendScore(it->second, won));
   }
   std::ranges::sort(result,
                     [](const LegendEntry& a, const LegendEntry& b)
@@ -479,7 +484,7 @@ void RecordBook::rebuild(const std::shared_ptr<DatabaseConnection>& db_conn,
           "SELECT game_date, home_team_id, away_team_id, match_type, "
           "competition_id, home_goals, away_goals, attendance, events, players "
           "FROM MatchReports ORDER BY game_date;",
-          [&](sqlite3_stmt* stmt)
+          [this, &gamedata](sqlite3_stmt* stmt)
           {
             MatchReport report;
             try
@@ -504,7 +509,7 @@ void RecordBook::rebuild(const std::shared_ptr<DatabaseConnection>& db_conn,
   forEach(*db_conn,
           "SELECT player_id, game_date, from_team_id, to_team_id, fee FROM "
           "TransferHistory WHERE kind = 0 AND fee > 0 ORDER BY seq;",
-          [&](sqlite3_stmt* stmt)
+          [this, &gamedata](sqlite3_stmt* stmt)
           {
             const auto packed = column<std::uint32_t>(stmt, 1);
             const GameDateValue date(
@@ -525,7 +530,7 @@ void RecordBook::load(const std::shared_ptr<DatabaseConnection>& db_conn,
   const DatabaseConnection& db = *db_conn;
   bool stored = false;
   forEach(db, "SELECT season_year FROM RecordMeta WHERE id = 1;",
-          [&](sqlite3_stmt* stmt)
+          [this, &stored](sqlite3_stmt* stmt)
           {
             stored = true;
             season_year = column<std::uint16_t>(stmt, 0);
@@ -539,10 +544,10 @@ void RecordBook::load(const std::shared_ptr<DatabaseConnection>& db_conn,
           "SELECT scope, scope_id, kind, value, value2, team_id, opponent_id, "
           "player_id, name, match_date, season_year, goals_for, goals_against, "
           "home FROM RecordEntries;",
-          [&](sqlite3_stmt* stmt)
+          [this](sqlite3_stmt* stmt)
           {
             const auto kind = column<std::uint8_t>(stmt, 2);
-            if (kind >= static_cast<std::uint8_t>(RecordKind::COUNT)) return;
+            if (kind >= std::to_underlying(RecordKind::COUNT)) return;
             RecordEntry entry;
             entry.scope = column<int>(stmt, 0) == 0 ? RecordScope::Club
                                                     : RecordScope::League;
@@ -566,7 +571,7 @@ void RecordBook::load(const std::shared_ptr<DatabaseConnection>& db_conn,
   forEach(db,
           "SELECT team_id, player_id, name, appearances, goals, first_year, "
           "last_year FROM ClubPlayerTotals;",
-          [&](sqlite3_stmt* stmt)
+          [this](sqlite3_stmt* stmt)
           {
             ClubPlayerTotal totals;
             totals.team_id = column<TeamID>(stmt, 0);
@@ -582,7 +587,7 @@ void RecordBook::load(const std::shared_ptr<DatabaseConnection>& db_conn,
   forEach(db,
           "SELECT league_id, team_id, played, won, drawn, lost, goals_for, "
           "goals_against, points FROM AllTimeTable;",
-          [&](sqlite3_stmt* stmt)
+          [this](sqlite3_stmt* stmt)
           {
             AllTimeRow row;
             row.league_id = column<LeagueID>(stmt, 0);
@@ -599,7 +604,7 @@ void RecordBook::load(const std::shared_ptr<DatabaseConnection>& db_conn,
   forEach(db,
           "SELECT team_id, league_id, played, goals_for, points FROM "
           "RecordSeason;",
-          [&](sqlite3_stmt* stmt)
+          [this](sqlite3_stmt* stmt)
           {
             SeasonTeam& season = season_teams[column<TeamID>(stmt, 0)];
             season.league_id = column<LeagueID>(stmt, 1);
@@ -609,7 +614,7 @@ void RecordBook::load(const std::shared_ptr<DatabaseConnection>& db_conn,
           });
   forEach(
       db, "SELECT team_id, player_id, goals FROM RecordSeasonScorers;",
-      [&](sqlite3_stmt* stmt)
+      [this](sqlite3_stmt* stmt)
       {
         season_scorers[{column<TeamID>(stmt, 0), column<PlayerID>(stmt, 1)}] =
             column<std::uint16_t>(stmt, 2);
@@ -639,9 +644,11 @@ void RecordBook::save(const std::shared_ptr<DatabaseConnection>& db_conn) const
             [](sqlite3_stmt* row, const auto& item)
             {
               const RecordEntry& entry = item.second;
-              sqlite3_bind_int(row, 1, static_cast<int>(entry.scope));
+              sqlite3_bind_int(
+                  row, 1, static_cast<int>(std::to_underlying(entry.scope)));
               sqlite3_bind_int64(row, 2, entry.scope_id);
-              sqlite3_bind_int(row, 3, static_cast<int>(entry.kind));
+              sqlite3_bind_int(
+                  row, 3, static_cast<int>(std::to_underlying(entry.kind)));
               sqlite3_bind_int64(row, 4, entry.value);
               sqlite3_bind_int(row, 5, entry.value2);
               sqlite3_bind_int(row, 6, entry.team_id);

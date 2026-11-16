@@ -4,12 +4,33 @@ Three workflows in `.github/workflows/` build the game:
 
 | Workflow      | Trigger                          | What it does                                                        |
 |---------------|----------------------------------|---------------------------------------------------------------------|
-| `ci.yml`      | push to any branch, pull request | Runs `build.yml` (packages kept 3 days) plus a Linux ASan/UBSan job on the core tests |
-| `release.yml` | tag `v*`, manual run             | Runs `build.yml`, then publishes a GitHub Release with checksums    |
+| `ci.yml`      | push to any branch, pull request | Runs `build.yml` (artifacts kept 3 days) plus Linux ASan/UBSan; successful main pushes publish development pre-releases |
+| `release.yml` | tag `v*`, manual run             | Builds and smoke-tests packages, then publishes a GitHub Release with checksums    |
 | `build.yml`   | called by the two above          | Release build, headless tests, packaging, package smoke test        |
 
 `deploy_docs.yml` (Doxygen site) is unrelated; it publishes the API docs
 and the public project, player and contributor guides.
+
+## Development builds for main commits
+
+Every successful push to `main` publishes a development pre-release using the
+packages already produced by CI. Publication waits for all platform package
+jobs and the sanitizer job. Pushes to other branches and pull requests keep
+workflow artifacts only.
+
+For source commit `0123456789abcdef...` with project version `1.0.0`, packages
+report `1.0.0-dev.sha0123456789ab`. The GitHub release tag is `dev-<full commit
+SHA>`, so each pushed main revision has a separate download page. A rerun
+updates the same release's assets. When one push contains multiple commits,
+the release belongs to that push's head commit.
+
+Each pre-release includes the Linux tarball and AppImage, macOS ARM64 ZIP,
+Windows ZIP, and `SHA256SUMS.txt`. It is explicitly excluded from GitHub's
+Latest designation; official `v*` releases continue through `release.yml`.
+Main runs use separate concurrency groups for each source commit, so a newer
+push does not cancel the previous commit's build or publication. These
+releases use the workflow's scoped `GITHUB_TOKEN`; no extra secret or duplicate
+platform build is needed.
 
 ## Cutting a release
 
@@ -82,7 +103,8 @@ commit they were built from.
 ## What each job does
 
 All jobs build `Release` with pinned FetchContent dependencies and cache the
-fetched sources (`build/_deps/*-src`, `*-subbuild`). Linux and macOS also
+fetched sources (`build/_deps/*-src`). CMake subbuilds contain absolute paths and are never
+cached; source-cache keys also include the repository name. Linux and macOS also
 cache compiler output with ccache. Packages use two extra CMake options so
 they carry no library dependencies beyond the OS:
 `-DSDLTTF_VENDORED=ON` (FreeType, HarfBuzz and PlutoSVG built in) and
@@ -90,12 +112,15 @@ they carry no library dependencies beyond the OS:
 `sjinks/sqlite3-cmake`). SDL3 is already built from source as a static
 library.
 
-Tests run headless (`SDL_VIDEO_DRIVER=dummy`, `SDL_AUDIO_DRIVER=dummy`) with
+CI tests run headless (`SDL_VIDEO_DRIVER=dummy`, `SDL_AUDIO_DRIVER=dummy`) with
 `ctest -LE "playtest|monkey|slow"`. That also skips the `adversarial`, `qa`,
 `perf` and `soak` suites, which are labelled `slow`. The sanitizer job in
 `ci.yml` (Debug, ASan and UBSan) runs only the headless core tests and the
 sanitizer probe (`-L "core|sanitizer"`), because the GUI suites are too slow
-under the sanitizers. Run the full suite locally before a release.
+under the sanitizers. Release jobs build the game and balance lab without test executables and run
+the package smoke checks on every platform. The full test suites remain in
+`ci.yml`; require green CI on the source commit before tagging.
+Run the full suite locally before a release.
 
 **Linux** (`ubuntu-24.04`, GCC 14): links libstdc++ and libgcc statically,
 builds and runs the tests, smoke-tests a normal install (without selecting a
@@ -111,7 +136,9 @@ game. The code uses floating-point `std::from_chars` (player and training
 repositories) and `std::jthread`/`std::stop_token` (thread pool), and libc++
 only provides both without `-fexperimental-library` from LLVM 20. So the job
 uses Homebrew `llvm@20` and links its `libc++.a`/`libc++abi.a` statically
-(`-nostdlib++`). A check step fails the build if the game links anything
+(`-nostdlib++`). The executable exports no symbols (`-no_exported_symbols`),
+so its C++ runtime cannot replace symbols in the system runtime used by Cocoa.
+A check step fails the build if the game links anything
 outside `/usr/lib` or `/System/Library`. CMake builds
 `Player12.app`, installs the assets into `Contents/Resources`,
 ad-hoc signs the bundle as the last install step and zips it (`cpack` ZIP).

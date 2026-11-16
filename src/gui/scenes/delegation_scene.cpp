@@ -13,6 +13,7 @@
 
 #include <algorithm>
 #include <array>
+#include <utility>
 
 #include "controller/game_controller.h"
 #include "global/language_manager.h"
@@ -36,7 +37,7 @@ DelegationScene::DelegationScene(GUIView* parent) : ManagementScene(parent) {}
 
 void DelegationScene::refresh()
 {
-  GameController& controller = guiView->getController();
+  const GameController& controller = guiView->getController();
   policy = controller.getDelegation();
   if (const StaffMember* delegate = controller.getDelegate())
     delegate_line =
@@ -62,8 +63,9 @@ void DelegationScene::renderContent()
       LOC(delegationPresetKey(DelegationPreset::Balanced)),
       LOC(delegationPresetKey(DelegationPreset::AssistantRuns))};
   const auto matching = policy.matchingPreset();
-  int selected = matching ? static_cast<int>(*matching) : -1;
-  if (UI::segmented("##preset", selected, labels,
+  if (int selected =
+          matching ? static_cast<int>(std::to_underlying(*matching)) : -1;
+      UI::segmented("##preset", selected, labels,
                     ImGui::GetContentRegionAvail().x))
   {
     controller.applyDelegationPreset(static_cast<DelegationPreset>(selected));
@@ -95,7 +97,7 @@ void DelegationScene::renderDuty(Duty duty, float width)
   const float controlWidth = stacked ? width : OWNER_CONTROL_WIDTH * scale;
   const float textWidth =
       stacked ? width : width - controlWidth - Theme::Space::L * scale;
-  ImGui::PushID(static_cast<int>(duty));
+  ImGui::PushID(static_cast<int>(std::to_underlying(duty)));
   const float startX = ImGui::GetCursorPosX();
   const float startY = ImGui::GetCursorPosY();
   ImGui::BeginGroup();
@@ -117,8 +119,8 @@ void DelegationScene::renderDuty(Duty duty, float width)
   }
   const std::array<const char*, 2> owners = {LOC("DELEGATION_OWNER_MANAGER"),
                                              LOC("DELEGATION_OWNER_ASSISTANT")};
-  int owner = policy.delegated(duty) ? 1 : 0;
-  if (UI::segmented("##owner", owner, owners, controlWidth))
+  if (int owner = policy.delegated(duty) ? 1 : 0;
+      UI::segmented("##owner", owner, owners, controlWidth))
   {
     guiView->getController().setDutyOwner(
         duty, owner == 1 ? DutyOwner::Assistant : DutyOwner::Manager);

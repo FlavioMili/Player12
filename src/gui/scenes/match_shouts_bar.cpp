@@ -26,14 +26,17 @@ namespace MatchShoutsBar
 namespace
 {
 constexpr float BUTTON_GAP = 4.0f;
-/** Label padding: tighter than regular buttons so the bar stays short. */
-constexpr float BUTTON_PADDING = 10.0f;
+/** Extra space below the last row so the panel pads the bottom like the top. */
+constexpr float BOTTOM_PAD = 6.0f;
 
 float gap() { return BUTTON_GAP * Theme::scale(); }
 
 float buttonWidth(const char* label)
 {
-  return ImGui::CalcTextSize(label).x + 2.0f * BUTTON_PADDING * Theme::scale();
+  // Must match the width the button widget actually renders at (its label
+  // padding); otherwise the label is wider than the padded area and ImGui
+  // misaligns it inside the button.
+  return UI::buttonWidth(label, UI::ButtonSize::COMPACT);
 }
 
 /** Width of the leading label and of each button, laid out in rows. */
@@ -84,9 +87,11 @@ bool available(const MatchEngine& engine)
 float height(float width)
 {
   const auto rows = static_cast<float>(rowsFor(width));
-  // Rows wrap like any ImGui line: the style's vertical item spacing.
+  // Rows wrap like any ImGui line: the style's vertical item spacing. The
+  // trailing pad gives the bottom the same breathing room as the top.
   return rows * UI::buttonHeight(UI::ButtonSize::COMPACT) +
-         (rows - 1.0f) * ImGui::GetStyle().ItemSpacing.y;
+         (rows - 1.0f) * ImGui::GetStyle().ItemSpacing.y +
+         BOTTOM_PAD * Theme::scale();
 }
 
 bool shout(const TouchlineContext& context, std::size_t index)
@@ -107,8 +112,6 @@ void render(const TouchlineContext& context, float width)
   const auto active = context.engine.getActiveShout(context.home);
   const float strength = context.engine.getShoutStrength(context.home);
   const float spacing = gap();
-  const float left = ImGui::GetCursorPosX();
-  const float right = left + width;
 
   ImGui::PushID("match_shouts");
   ImGui::AlignTextToFramePadding();
@@ -120,13 +123,12 @@ void render(const TouchlineContext& context, float width)
     const MatchChanges::ShoutInfo& info = MatchChanges::SHOUTS[index];
     const char* label = LOC(info.labelKey);
     const float button = buttonWidth(label);
-    // Same wrapping as height(): a new row when the button does not fit.
-    const float next = ImGui::GetItemRectMax().x - ImGui::GetWindowPos().x +
-                       ImGui::GetScrollX() + spacing;
-    if (next + button <= right)
-      ImGui::SameLine(0.0f, spacing);
-    else
-      ImGui::SetCursorPosX(left);
+    ImGui::SameLine(0.0f, spacing);
+    // Wrap onto a new line when the button does not fit the space left on the
+    // current one. This measures the real remaining width, so the bar can
+    // never be laid out past the panel (which clipped the last buttons).
+    if (std::min(ImGui::GetContentRegionAvail().x, width) < button)
+      ImGui::NewLine();
     ImGui::PushID(static_cast<int>(index));
     const bool inForce = active && *active == info.shout;
     if (UI::toggleButton(label, inForce, ImVec2(button, 0.0f),
@@ -162,6 +164,7 @@ void render(const TouchlineContext& context, float width)
     ImGui::PopID();
   }
   ImGui::EndDisabled();
+  ImGui::Dummy(ImVec2(0.0f, BOTTOM_PAD * Theme::scale()));
   ImGui::PopID();
 }
 }  // namespace MatchShoutsBar

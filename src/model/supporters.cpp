@@ -16,6 +16,7 @@
 #include <functional>
 #include <sstream>
 #include <string>
+#include <utility>
 
 #include "database/database_connection.h"
 #include "database/gamedata.h"
@@ -82,9 +83,11 @@ SupporterMood SupporterModel::evaluate(const SupporterFacts& facts)
   for (std::size_t index = 0; index < facts.derby_points.size(); ++index)
   {
     const int points = facts.derby_points[index];
-    const float swing = points >= 3   ? DERBY_WIN
-                        : points == 0 ? -DERBY_WIN
-                                      : 0.0f;
+    float swing = 0.0f;
+    if (points >= 3)
+      swing = DERBY_WIN;
+    else if (points == 0)
+      swing = -DERBY_WIN;
     derby += index == 0 ? swing : swing * DERBY_OLDER_WEIGHT;
   }
   add(SupporterFactor::Derby, std::clamp(derby, -DERBY_CAP, DERBY_CAP));
@@ -111,8 +114,7 @@ SupporterMood SupporterModel::evaluate(const SupporterFacts& facts)
 
 float SupporterModel::settle(float previous, float target)
 {
-  return std::clamp(previous + WEEKLY_SETTLE * (target - previous), 0.0f,
-                    100.0f);
+  return std::clamp(std::lerp(previous, target, WEEKLY_SETTLE), 0.0f, 100.0f);
 }
 
 float SupporterModel::boardNudge(float index)
@@ -135,21 +137,22 @@ const char* SupporterModel::moodKey(float index)
 
 const char* SupporterModel::reasonKey(const SupporterReason& reason)
 {
+  using enum SupporterFactor;
   const bool good = reason.points > 0.0f;
   switch (reason.factor)
   {
-    case SupporterFactor::Derby:
+    case Derby:
       return good ? "SUPPORTERS_REASON_DERBY_WON"
                   : "SUPPORTERS_REASON_DERBY_LOST";
-    case SupporterFactor::TicketPrice:
+    case TicketPrice:
       return good ? "SUPPORTERS_REASON_TICKETS_CHEAP"
                   : "SUPPORTERS_REASON_TICKETS_DEAR";
-    case SupporterFactor::StarSale:
+    case StarSale:
       return "SUPPORTERS_REASON_STAR_SOLD";
-    case SupporterFactor::StarSigning:
+    case StarSigning:
       return "SUPPORTERS_REASON_STAR_SIGNED";
-    case SupporterFactor::Results:
-    case SupporterFactor::COUNT:
+    case Results:
+    case COUNT:
       break;
   }
   return good ? "SUPPORTERS_REASON_RESULTS_GOOD"
@@ -180,6 +183,7 @@ SupporterFacts Supporters::gather(const GameData& gamedata,
                                   const TransferMarket& transfers,
                                   std::optional<TeamID> rival)
 {
+  using enum TransferKind;
   SupporterFacts facts;
   const auto team = gamedata.getTeam(team_id);
   if (!team) return facts;
@@ -191,7 +195,7 @@ SupporterFacts Supporters::gather(const GameData& gamedata,
             std::min<std::size_t>(board.result_count,
                                   board.recent_deltas.size()));
 
-  if (rival)
+  if (rival.has_value())
   {
     const GameDateValue season_start(SeasonCalendar::seasonStartYear(date),
                                      SEASON_START_MONTH, 1);
@@ -205,11 +209,16 @@ SupporterFacts Supporters::gather(const GameData& gamedata,
           continue;
         const bool home =
             match.getHomeTeamId() == team_id && match.getAwayTeamId() == *rival;
-        const bool away =
-            match.getAwayTeamId() == team_id && match.getHomeTeamId() == *rival;
-        if (!home && !away) continue;
+        if (const bool away = match.getAwayTeamId() == team_id &&
+                              match.getHomeTeamId() == *rival;
+            !home && !away)
+          continue;
         const std::optional<TeamID> winner = match.getWinnerId();
-        const int points = !winner ? 1 : *winner == team_id ? 3 : 0;
+        int points = 1;
+        if (winner && *winner == team_id)
+          points = 3;
+        else if (winner)
+          points = 0;
         facts.derby_points.insert(facts.derby_points.begin(), points);
       }
     }
@@ -243,14 +252,12 @@ SupporterFacts Supporters::gather(const GameData& gamedata,
       continue;
     const auto player = gamedata.getPlayer(record.player_id);
     if (!player || player->get().getOverall(config) < star_level) continue;
-    const bool fee_move = record.kind == TransferKind::Permanent ||
-                          record.kind == TransferKind::Free ||
-                          record.kind == TransferKind::PreContract;
+    const bool fee_move = record.kind == Permanent || record.kind == Free ||
+                          record.kind == PreContract;
     if (record.from_team == team_id && fee_move &&
         player->get().getTeamId() != team_id)
       ++facts.star_sales;
-    else if (record.to_team == team_id &&
-             (fee_move || record.kind == TransferKind::Loan) &&
+    else if (record.to_team == team_id && (fee_move || record.kind == Loan) &&
              player->get().getTeamId() == team_id)
       ++facts.star_signings;
   }
@@ -297,7 +304,8 @@ void Supporters::load(const std::shared_ptr<DatabaseConnection>& db_conn)
         char separator = 0;
         while (reasons >> factor >> separator >> points)
         {
-          if (factor < 0 || factor >= static_cast<int>(SupporterFactor::COUNT))
+          if (factor < 0 || factor >= static_cast<int>(std::to_underlying(
+                                          SupporterFactor::COUNT)))
             continue;  // Written by a newer version.
           current.reasons.push_back(
               {static_cast<SupporterFactor>(factor), points});
@@ -315,7 +323,8 @@ void Supporters::save(const std::shared_ptr<DatabaseConnection>& db_conn) const
   for (const SupporterReason& reason : current.reasons)
   {
     if (!reasons.empty()) reasons += ' ';
-    reasons += std::format("{}:{:.2f}", static_cast<int>(reason.factor),
+    reasons += std::format("{}:{:.2f}",
+                           static_cast<int>(std::to_underlying(reason.factor)),
                            reason.points);
   }
   sqlite3_stmt* stmt = db.prepareStatement(

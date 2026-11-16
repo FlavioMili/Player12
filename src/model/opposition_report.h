@@ -47,7 +47,7 @@ class OppositionPlan
   /** Drops every instruction against @p opponent (after the match). */
   void clear(TeamID opponent);
   const std::vector<OppositionOrder>& all() const { return orders; }
-  void restore(std::vector<OppositionOrder> restored);
+  void restore(const std::vector<OppositionOrder>& restored);
 
  private:
   std::vector<OppositionOrder> orders;

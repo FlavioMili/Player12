@@ -10,6 +10,7 @@
 
 #include <cstddef>
 #include <cstdint>
+#include <utility>
 
 /**
  * @brief Steps of the first-week checklist of a new career.
@@ -29,7 +30,7 @@ enum class OnboardingTask : std::uint8_t
 };
 
 inline constexpr std::size_t ONBOARDING_TASK_COUNT =
-    static_cast<std::size_t>(OnboardingTask::COUNT);
+    static_cast<std::size_t>(std::to_underlying(OnboardingTask::COUNT));
 
 /**
  * @brief Progress of the first-week checklist.

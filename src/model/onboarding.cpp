@@ -10,6 +10,7 @@
 
 #include <array>
 #include <bit>
+#include <utility>
 
 namespace
 {
@@ -27,7 +28,7 @@ constexpr std::array<const char*, ONBOARDING_TASK_COUNT> TASK_HELP_KEYS = {
 
 std::uint32_t bitOf(OnboardingTask task)
 {
-  const auto index = static_cast<std::size_t>(task);
+  const auto index = static_cast<std::size_t>(std::to_underlying(task));
   return index < ONBOARDING_TASK_COUNT ? 1U << index : 0U;
 }
 }  // namespace
@@ -59,12 +60,12 @@ void OnboardingState::restore(std::uint32_t mask, bool was_dismissed)
 
 const char* onboardingTaskKey(OnboardingTask task)
 {
-  const auto index = static_cast<std::size_t>(task);
+  const auto index = static_cast<std::size_t>(std::to_underlying(task));
   return index < ONBOARDING_TASK_COUNT ? TASK_KEYS[index] : "";
 }
 
 const char* onboardingTaskHelpKey(OnboardingTask task)
 {
-  const auto index = static_cast<std::size_t>(task);
+  const auto index = static_cast<std::size_t>(std::to_underlying(task));
   return index < ONBOARDING_TASK_COUNT ? TASK_HELP_KEYS[index] : "";
 }

@@ -61,7 +61,7 @@ int Player::getAge() const { return _age; }
 void Player::setAge(uint8_t new_age)
 {
   _age = new_age;
-  _cached_market_value = 0;
+  _cached_market_value.store(0);
 }
 
 PlayerRole Player::getRole() const { return _role; }
@@ -77,14 +77,14 @@ uint8_t Player::getContractYears() const { return _contract_years; }
 void Player::setContractYears(uint8_t years)
 {
   _contract_years = years;
-  _cached_market_value = 0;
+  _cached_market_value.store(0);
 }
 
 bool Player::advanceContractYear()
 {
   if (_contract_years == 0) return false;
   --_contract_years;
-  _cached_market_value = 0;
+  _cached_market_value.store(0);
   return _contract_years == 0;
 }
 
@@ -99,7 +99,7 @@ const std::map<std::string, float>& Player::getStats() const { return _stats; }
 void Player::setStats(const std::map<std::string, float>& new_stats)
 {
   _stats = new_stats;
-  _cached_market_value = 0;
+  _cached_market_value.store(0);
 }
 
 double Player::getOverall(const StatsConfig& stats_config) const
@@ -140,11 +140,12 @@ enum class StatGroup
 
 StatGroup statGroup(std::string_view stat)
 {
-  if (stat == "Pace" || stat == "Physicality") return StatGroup::Physical;
-  if (stat == "Stamina") return StatGroup::Endurance;
-  if (stat == "Passing" || stat == "Vision") return StatGroup::Craft;
-  if (stat == "Goalkeeping") return StatGroup::Goalkeeping;
-  return StatGroup::Technical;
+  using enum StatGroup;
+  if (stat == "Pace" || stat == "Physicality") return Physical;
+  if (stat == "Stamina") return Endurance;
+  if (stat == "Passing" || stat == "Vision") return Craft;
+  if (stat == "Goalkeeping") return Goalkeeping;
+  return Technical;
 }
 
 /** Fractional change of an attribute over the year to @p age (negative =
@@ -152,21 +153,22 @@ StatGroup statGroup(std::string_view stat)
 float yearlyChange(StatGroup group, int age, PlayerRole role)
 {
   using Tuning = WorldTuning::Development;
+  using enum StatGroup;
   const bool late_peak = (role == PlayerRole::GK || role == PlayerRole::CB) &&
                          age < Tuning::LATE_PEAK_ROLE_UNTIL;
   const float role_factor = late_peak ? Tuning::LATE_PEAK_ROLE_FACTOR : 1.0f;
   switch (group)
   {
-    case StatGroup::Physical:
+    case Physical:
       return -Tuning::physicalDecline(age) * role_factor;
-    case StatGroup::Endurance:
+    case Endurance:
       return -Tuning::physicalDecline(age) * Tuning::ENDURANCE_FACTOR *
              role_factor;
-    case StatGroup::Technical:
+    case Technical:
       return -Tuning::technicalDecline(age) * role_factor;
-    case StatGroup::Craft:
+    case Craft:
       return Tuning::craftChange(age);
-    case StatGroup::Goalkeeping:
+    case Goalkeeping:
       return -Tuning::goalkeepingDecline(age);
   }
   return 0.0f;
@@ -176,7 +178,7 @@ float yearlyChange(StatGroup group, int age, PlayerRole role)
 void Player::agePlayer()
 {
   ++_age;
-  _cached_market_value = 0;
+  _cached_market_value.store(0);
 
   // Professional players look after themselves: 0.8x-1.2x decline. [P]
   const float care =
@@ -201,7 +203,7 @@ void Player::train(const std::vector<std::string>& focus_stats, float amount)
         std::clamp(it->second + amount, static_cast<float>(MIN_STAT_VAL),
                    static_cast<float>(MAX_STAT_VAL));
   }
-  _cached_market_value = 0;
+  _cached_market_value.store(0);
 }
 
 float Player::getPotential() const { return _potential; }
@@ -210,7 +212,7 @@ void Player::setPotential(float potential)
 {
   _potential = std::clamp(potential, static_cast<float>(MIN_STAT_VAL),
                           static_cast<float>(MAX_STAT_VAL));
-  _cached_market_value = 0;
+  _cached_market_value.store(0);
 }
 
 const PlayerTraits& Player::getTraits() const { return _traits; }
@@ -242,7 +244,7 @@ void Player::pushMatchRating(float rating)
 
 // ---------------- Market Logic ----------------
 
-uint32_t Player::getMarketValue() const { return _cached_market_value; }
+uint32_t Player::getMarketValue() const { return _cached_market_value.load(); }
 
 double Player::valueFor(double overall, double potential, int age,
                         double contract_years)
@@ -272,9 +274,9 @@ double Player::valueFor(double overall, double potential, int age,
 
 void Player::updateMarketValue(const StatsConfig& stats_config) const
 {
-  _cached_market_value = static_cast<uint32_t>(
+  _cached_market_value.store(static_cast<uint32_t>(
       valueFor(getOverall(stats_config), static_cast<double>(_potential), _age,
-               static_cast<double>(_contract_years)));
+               static_cast<double>(_contract_years))));
 }
 
 void Player::setTransferStatus(TransferStatus status)

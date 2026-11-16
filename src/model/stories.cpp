@@ -14,6 +14,7 @@
 #include <array>
 #include <cstdlib>
 #include <format>
+#include <memory>
 #include <span>
 #include <string>
 #include <utility>
@@ -110,7 +111,7 @@ constexpr std::array<DilemmaKeys, 8> DILEMMA_KEYS = {{
 const DilemmaKeys* keysOf(StoryKind kind)
 {
   const auto found = std::ranges::find(DILEMMA_KEYS, kind, &DilemmaKeys::kind);
-  return found != DILEMMA_KEYS.end() ? &*found : nullptr;
+  return found != DILEMMA_KEYS.end() ? std::to_address(found) : nullptr;
 }
 
 /** A cost or fee that grows with the club's stature, capped. */
@@ -167,7 +168,7 @@ void insertAll(const DatabaseConnection& db, const char* sql,
 
 bool validKind(std::uint8_t kind)
 {
-  return kind <= static_cast<std::uint8_t>(Stories::LAST_DILEMMA);
+  return kind <= std::to_underlying(Stories::LAST_DILEMMA);
 }
 }  // namespace
 
@@ -189,38 +190,38 @@ bool isPoorRun(std::string_view recent_form)
 {
   if (recent_form.size() < static_cast<std::size_t>(POOR_RUN_MATCHES))
     return false;
-  return recent_form.substr(0, POOR_RUN_MATCHES).find('W') ==
-         std::string_view::npos;
+  return !recent_form.substr(0, POOR_RUN_MATCHES).contains('W');
 }
 
 const char* kindKey(StoryKind kind)
 {
+  using enum StoryKind;
   switch (kind)
   {
-    case StoryKind::Debut:
+    case Debut:
       return "STORY_KIND_DEBUT";
-    case StoryKind::Breakout:
+    case Breakout:
       return "STORY_KIND_BREAKOUT";
-    case StoryKind::CaptainDispute:
+    case CaptainDispute:
       return "STORY_KIND_CAPTAIN";
-    case StoryKind::PoorRun:
+    case PoorRun:
       return "STORY_KIND_POOR_RUN";
-    case StoryKind::TransferSaga:
+    case TransferSaga:
       return "STORY_KIND_SAGA";
-    case StoryKind::Comeback:
+    case Comeback:
       return "STORY_KIND_COMEBACK";
-    case StoryKind::Milestone:
+    case Milestone:
       return "STORY_KIND_MILESTONE";
-    case StoryKind::Rivalry:
+    case Rivalry:
       return "STORY_KIND_RIVALRY";
-    case StoryKind::CompassionateLeave:
-    case StoryKind::HomesickYouth:
-    case StoryKind::FineDispute:
-    case StoryKind::RivalComments:
-    case StoryKind::SponsorAppearance:
-    case StoryKind::TrainingClash:
-    case StoryKind::CoachingCourse:
-    case StoryKind::TicketProtest:
+    case CompassionateLeave:
+    case HomesickYouth:
+    case FineDispute:
+    case RivalComments:
+    case SponsorAppearance:
+    case TrainingClash:
+    case CoachingCourse:
+    case TicketProtest:
       break;
   }
   return "STORY_KIND_DILEMMA";
@@ -412,8 +413,9 @@ void StoryEngine::setCareerProvider(
 
 CareerTotals StoryEngine::careerBefore(PlayerID player_id)
 {
-  const auto cached = career_cache.find(player_id);
-  if (cached != career_cache.end()) return cached->second;
+  if (const auto cached = career_cache.find(player_id);
+      cached != career_cache.end())
+    return cached->second;
   const CareerTotals totals =
       career_provider ? career_provider(player_id) : CareerTotals{};
   career_cache.emplace(player_id, totals);
@@ -423,25 +425,25 @@ CareerTotals StoryEngine::careerBefore(PlayerID player_id)
 bool StoryEngine::fired(StoryKind kind, std::uint32_t entity,
                         std::uint32_t key) const
 {
-  return std::ranges::any_of(state.records,
-                             [&](const StoryRecord& record)
-                             {
-                               return record.kind == kind &&
-                                      record.entity == entity &&
-                                      record.key == key;
-                             });
+  return std::ranges::any_of(
+      state.records,
+      [this, kind, entity, key](const StoryRecord& record)
+      {
+        return record.kind == kind && record.entity == entity &&
+               record.key == key;
+      });
 }
 
 bool StoryEngine::firedSince(StoryKind kind, std::uint32_t entity,
                              std::int32_t since_day) const
 {
-  return std::ranges::any_of(state.records,
-                             [&](const StoryRecord& record)
-                             {
-                               return record.kind == kind &&
-                                      record.entity == entity &&
-                                      record.day > since_day;
-                             });
+  return std::ranges::any_of(
+      state.records,
+      [this, kind, entity, since_day](const StoryRecord& record)
+      {
+        return record.kind == kind && record.entity == entity &&
+               record.day > since_day;
+      });
 }
 
 bool StoryEngine::post(const GameDateValue& date, StoryKind kind,
@@ -455,7 +457,7 @@ bool StoryEngine::post(const GameDateValue& date, StoryKind kind,
   const std::int32_t today = dayOrdinal(date);
   // Decisions always get through; the rest shares a weekly allowance.
   const auto recent = std::ranges::count_if(
-      state.records, [&](const StoryRecord& record)
+      state.records, [today](const StoryRecord& record)
       { return record.posted && record.day > today - 7; });
   const bool posted = with_choice || recent < Stories::WEEKLY_CAP;
   state.records.push_back(StoryRecord{kind, entity, key, today, posted});
@@ -472,10 +474,11 @@ bool StoryEngine::post(const GameDateValue& date, StoryKind kind,
   // The manager watched these happen: filed as read, like match results.
   message.read = kind == StoryKind::Debut || kind == StoryKind::Rivalry;
   inbox.add(std::move(message));
-  if (with_choice && player_id)
+  if (with_choice && player_id.has_value())
   {
-    std::erase_if(state.choices, [&](const StoryChoice& choice)
-                  { return choice.player_id == *player_id; });
+    std::erase_if(state.choices,
+                  [player_id = *player_id](const StoryChoice& choice)
+                  { return choice.player_id == player_id; });
     state.choices.push_back(
         StoryChoice{kind, *player_id, today, today + Stories::CHOICE_DAYS});
   }
@@ -488,7 +491,7 @@ void StoryEngine::onDayAdvanced(const GameDateValue& date,
                                 Inbox& inbox, const StoryDayContext& context)
 {
   const std::int32_t today = dayOrdinal(date);
-  std::erase_if(state.choices, [&](const StoryChoice& choice)
+  std::erase_if(state.choices, [today](const StoryChoice& choice)
                 { return choice.expires_day < today; });
   for (Dilemma& dilemma : state.dilemmas)
   {
@@ -514,13 +517,13 @@ void StoryEngine::onDayAdvanced(const GameDateValue& date,
       state.injury_start.emplace(player_id, today);
     else if (!injured && start != state.injury_start.end())
     {
-      const std::int32_t days_out = today - start->second;
-      if (days_out >= Stories::LONG_INJURY_DAYS)
+      if (const std::int32_t days_out = today - start->second;
+          days_out >= Stories::LONG_INJURY_DAYS)
         state.comeback_due[player_id] = days_out;
       state.injury_start.erase(start);
     }
   }
-  const auto left_club = [&](const auto& entry)
+  const auto left_club = [this, managed_team_id](const auto& entry)
   {
     const auto player = gamedata->getPlayer(entry.first);
     return !player || player->get().getTeamId() != managed_team_id;
@@ -531,12 +534,12 @@ void StoryEngine::onDayAdvanced(const GameDateValue& date,
   raiseDilemma(date, managed_team_id, interactions, context, inbox);
 
   if (today % 7 != 0) return;
-  std::erase_if(state.bids, [&](const auto& bid)
+  std::erase_if(state.bids, [today](const auto& bid)
                 { return today - bid.second > Stories::SAGA_WINDOW_DAYS; });
-  std::erase_if(state.records, [&](const StoryRecord& record)
+  std::erase_if(state.records, [today](const StoryRecord& record)
                 { return today - record.day > RECORD_RETENTION_DAYS; });
   std::erase_if(state.dilemmas,
-                [&](const Dilemma& dilemma)
+                [today](const Dilemma& dilemma)
                 {
                   return !dilemma.open() &&
                          today - dilemma.day > RECORD_RETENTION_DAYS;
@@ -566,6 +569,7 @@ void StoryEngine::onMatchPlayed(const MatchReport& report,
                                 TeamID managed_team_id,
                                 const std::string& recent_form, Inbox& inbox)
 {
+  using enum StoryKind;
   if (!state.follows.empty()) followMatch(report, managed_team_id, inbox);
   const bool home = report.home_team_id == managed_team_id;
   if (managed_team_id == FREE_AGENTS_TEAM_ID ||
@@ -590,9 +594,8 @@ void StoryEngine::onMatchPlayed(const MatchReport& report,
     if (const auto due = state.comeback_due.find(line.player_id);
         due != state.comeback_due.end())
     {
-      post(date, StoryKind::Comeback, line.player_id,
-           static_cast<std::uint32_t>(today), "STORY_COMEBACK_TITLE",
-           "STORY_COMEBACK_BODY",
+      post(date, Comeback, line.player_id, static_cast<std::uint32_t>(today),
+           "STORY_COMEBACK_TITLE", "STORY_COMEBACK_BODY",
            {name, std::to_string(due->second / 7), opponent_name},
            line.player_id, std::nullopt, inbox);
       state.comeback_due.erase(due);
@@ -606,30 +609,28 @@ void StoryEngine::onMatchPlayed(const MatchReport& report,
       career_cache[line.player_id] = after;
       // Only youngsters: a new world has no history for its veterans.
       if (before.appearances == 0 && who.getAge() <= Stories::DEBUT_MAX_AGE &&
-          !fired(StoryKind::Debut, line.player_id, 0))
+          !fired(Debut, line.player_id, 0))
       {
-        post(date, StoryKind::Debut, line.player_id, 0, "STORY_DEBUT_TITLE",
+        post(date, Debut, line.player_id, 0, "STORY_DEBUT_TITLE",
              line.goals > 0 ? "STORY_DEBUT_BODY_GOAL" : "STORY_DEBUT_BODY",
              {name, std::to_string(who.getAge()), opponent_name},
              line.player_id, std::nullopt, inbox);
       }
       if (const auto mark = Stories::appearanceMilestone(before.appearances,
                                                          after.appearances);
-          mark && !fired(StoryKind::Milestone, line.player_id, *mark))
+          mark && !fired(Milestone, line.player_id, *mark))
       {
-        post(date, StoryKind::Milestone, line.player_id, *mark,
-             "STORY_MILESTONE_TITLE", "STORY_MILESTONE_APPS_BODY",
-             {name, std::to_string(*mark)}, line.player_id, std::nullopt,
-             inbox);
+        post(date, Milestone, line.player_id, *mark, "STORY_MILESTONE_TITLE",
+             "STORY_MILESTONE_APPS_BODY", {name, std::to_string(*mark)},
+             line.player_id, std::nullopt, inbox);
       }
       if (const auto mark = Stories::goalMilestone(before.goals, after.goals);
-          mark &&
-          !fired(StoryKind::Milestone, line.player_id, GOAL_KEY_OFFSET + *mark))
+          mark && !fired(Milestone, line.player_id, GOAL_KEY_OFFSET + *mark))
       {
-        post(date, StoryKind::Milestone, line.player_id,
-             GOAL_KEY_OFFSET + *mark, "STORY_MILESTONE_TITLE",
-             "STORY_MILESTONE_GOALS_BODY", {name, std::to_string(*mark)},
-             line.player_id, std::nullopt, inbox);
+        post(date, Milestone, line.player_id, GOAL_KEY_OFFSET + *mark,
+             "STORY_MILESTONE_TITLE", "STORY_MILESTONE_GOALS_BODY",
+             {name, std::to_string(*mark)}, line.player_id, std::nullopt,
+             inbox);
       }
     }
 
@@ -638,41 +639,40 @@ void StoryEngine::onMatchPlayed(const MatchReport& report,
     if (who.getAge() <= Stories::BREAKOUT_MAX_AGE &&
         who.getDynamics().rating_count >= 3 &&
         who.getForm() >= Stories::BREAKOUT_RATING &&
-        !fired(StoryKind::Breakout, line.player_id, season))
+        !fired(Breakout, line.player_id, season))
     {
-      post(date, StoryKind::Breakout, line.player_id, season,
-           "STORY_BREAKOUT_TITLE", "STORY_BREAKOUT_BODY",
-           {name, std::to_string(who.getAge())}, line.player_id, std::nullopt,
-           inbox);
+      post(date, Breakout, line.player_id, season, "STORY_BREAKOUT_TITLE",
+           "STORY_BREAKOUT_BODY", {name, std::to_string(who.getAge())},
+           line.player_id, std::nullopt, inbox);
     }
   }
 
   if (!competitive) return;
   const auto team = gamedata->getTeam(managed_team_id);
   if (Stories::isPoorRun(recent_form) &&
-      !firedSince(StoryKind::PoorRun, managed_team_id,
-                  today - POOR_RUN_COOLDOWN_DAYS))
+      !firedSince(PoorRun, managed_team_id, today - POOR_RUN_COOLDOWN_DAYS))
   {
-    post(date, StoryKind::PoorRun, managed_team_id,
-         static_cast<std::uint32_t>(today), "STORY_POOR_RUN_TITLE",
-         "STORY_POOR_RUN_BODY",
+    post(date, PoorRun, managed_team_id, static_cast<std::uint32_t>(today),
+         "STORY_POOR_RUN_TITLE", "STORY_POOR_RUN_BODY",
          {team ? team->get().getName() : std::string(),
           std::to_string(Stories::POOR_RUN_MATCHES)},
          std::nullopt, managed_team_id, inbox);
   }
 
-  if (report.match_type == MatchType::LEAGUE && rivalOf(managed_team_id) &&
+  if (report.match_type == MatchType::LEAGUE &&
+      rivalOf(managed_team_id).has_value() &&
       *rivalOf(managed_team_id) == opponent_id &&
-      !fired(StoryKind::Rivalry, opponent_id,
-             static_cast<std::uint32_t>(today)))
+      !fired(Rivalry, opponent_id, static_cast<std::uint32_t>(today)))
   {
     const int own = home ? report.home_goals : report.away_goals;
     const int other = home ? report.away_goals : report.home_goals;
-    const char* body = own > other   ? "STORY_RIVALRY_BODY_WIN"
-                       : own < other ? "STORY_RIVALRY_BODY_LOSS"
-                                     : "STORY_RIVALRY_BODY_DRAW";
-    post(date, StoryKind::Rivalry, opponent_id,
-         static_cast<std::uint32_t>(today), "STORY_RIVALRY_TITLE", body,
+    const char* body = "STORY_RIVALRY_BODY_DRAW";
+    if (own > other)
+      body = "STORY_RIVALRY_BODY_WIN";
+    else if (own < other)
+      body = "STORY_RIVALRY_BODY_LOSS";
+    post(date, Rivalry, opponent_id, static_cast<std::uint32_t>(today),
+         "STORY_RIVALRY_TITLE", body,
          {opponent_name, std::to_string(own), std::to_string(other)},
          std::nullopt, opponent_id, inbox);
   }
@@ -690,7 +690,7 @@ void StoryEngine::onTransferBid(const GameDateValue& date, PlayerID player_id,
   state.bids.emplace_back(player_id, today);
   const auto bids = std::ranges::count_if(
       state.bids,
-      [&](const auto& bid)
+      [player_id, today](const auto& bid)
       {
         return bid.first == player_id &&
                today - bid.second <= Stories::SAGA_WINDOW_DAYS;
@@ -709,7 +709,7 @@ void StoryEngine::onTransferBid(const GameDateValue& date, PlayerID player_id,
 
 void StoryEngine::onPlayerLeft(PlayerID player_id)
 {
-  std::erase_if(state.choices, [&](const StoryChoice& choice)
+  std::erase_if(state.choices, [player_id](const StoryChoice& choice)
                 { return choice.player_id == player_id; });
   for (Dilemma& dilemma : state.dilemmas)
   {
@@ -720,8 +720,8 @@ void StoryEngine::onPlayerLeft(PlayerID player_id)
   }
   state.injury_start.erase(player_id);
   state.comeback_due.erase(player_id);
-  std::erase_if(state.bids,
-                [&](const auto& bid) { return bid.first == player_id; });
+  std::erase_if(state.bids, [player_id](const auto& bid)
+                { return bid.first == player_id; });
 }
 
 void StoryEngine::onSeasonStart() { rivals.clear(); }
@@ -731,8 +731,7 @@ std::optional<TeamID> StoryEngine::rivalOf(TeamID team_id) const
   if (const auto cached = rivals.find(team_id); cached != rivals.end())
     return cached->second;
   std::optional<TeamID> rival;
-  const auto team = gamedata->getTeam(team_id);
-  if (team)
+  if (const auto team = gamedata->getTeam(team_id); team)
   {
     int best_gap = RIVAL_REPUTATION_GAP + 1;
     const int reputation = team->get().getReputation();
@@ -764,7 +763,7 @@ std::optional<StoryChoice> StoryEngine::choiceFor(PlayerID player_id,
 
 void StoryEngine::resolveChoice(PlayerID player_id)
 {
-  std::erase_if(state.choices, [&](const StoryChoice& choice)
+  std::erase_if(state.choices, [player_id](const StoryChoice& choice)
                 { return choice.player_id == player_id; });
 }
 
@@ -775,13 +774,13 @@ void StoryEngine::resolveChoice(PlayerID player_id)
 const Dilemma* StoryEngine::openDilemma() const
 {
   const auto found = std::ranges::find_if(state.dilemmas, &Dilemma::open);
-  return found != state.dilemmas.end() ? &*found : nullptr;
+  return found != state.dilemmas.end() ? std::to_address(found) : nullptr;
 }
 
 const Dilemma* StoryEngine::dilemmaOn(std::int32_t day) const
 {
   const auto found = std::ranges::find(state.dilemmas, day, &Dilemma::day);
-  return found != state.dilemmas.end() ? &*found : nullptr;
+  return found != state.dilemmas.end() ? std::to_address(found) : nullptr;
 }
 
 std::optional<DilemmaEffects> StoryEngine::previewDilemma(
@@ -819,12 +818,13 @@ void StoryEngine::raiseDilemma(const GameDateValue& date,
   for (const auto& player : gamedata->getPlayersForTeam(managed_team_id))
     squad.push_back(&player.get());
   std::ranges::sort(squad, {}, &Player::getId);
-  const auto pending = [&](const Player* player)
+  const auto pending = [this](const Player* player)
   {
-    return std::ranges::any_of(state.choices, [&](const StoryChoice& choice)
-                               { return choice.player_id == player->getId(); });
+    return std::ranges::any_of(
+        state.choices, [player_id = player->getId()](const StoryChoice& choice)
+        { return choice.player_id == player_id; });
   };
-  const auto pool = [&](auto&& keep)
+  const auto pool = [&squad, &pending](auto&& keep)
   {
     std::vector<const Player*> chosen;
     for (const Player* player : squad)
@@ -841,24 +841,25 @@ void StoryEngine::raiseDilemma(const GameDateValue& date,
     std::uint32_t other = 0;
   };
   std::vector<Candidate> candidates;
-  const auto cooling = [&](StoryKind kind)
+  const auto cooling = [this, today](StoryKind kind)
   {
     return std::ranges::any_of(state.dilemmas,
-                               [&](const Dilemma& dilemma)
+                               [kind, today](const Dilemma& dilemma)
                                {
                                  return dilemma.kind == kind &&
                                         today - dilemma.day <
                                             Stories::DILEMMA_KIND_COOLDOWN_DAYS;
                                });
   };
-  const auto offer = [&](StoryKind kind, std::vector<const Player*> players,
+  const auto offer = [&candidates, &cooling](
+                         StoryKind kind, std::vector<const Player*> players,
                          std::size_t needed, std::uint32_t other = 0)
   {
     if (!cooling(kind) && players.size() >= needed)
-      candidates.push_back({kind, std::move(players), other});
+      candidates.emplace_back(kind, std::move(players), other);
   };
   offer(StoryKind::CompassionateLeave,
-        pool([&](const Player& player)
+        pool([&fit](const Player& player)
              { return fit(player) && player.getAge() >= SENIOR_MIN_AGE; }),
         1);
   offer(StoryKind::HomesickYouth,
@@ -872,17 +873,17 @@ void StoryEngine::raiseDilemma(const GameDateValue& date,
     {
       const PlayerID captain_id = room.leaders.front().player_id;
       offer(StoryKind::FineDispute,
-            pool([&](const Player& player)
+            pool([captain_id](const Player& player)
                  { return player.getId() == captain_id; }),
             1);
     }
   }
-  if (const auto rival = rivalOf(managed_team_id))
+  if (const auto rival = rivalOf(managed_team_id); rival.has_value())
     offer(StoryKind::RivalComments, {}, 0, *rival);
   if (context.days_to_match >= 1 && context.days_to_match <= 3)
     offer(StoryKind::SponsorAppearance, {}, 0);
   offer(StoryKind::TrainingClash,
-        pool([&](const Player& player)
+        pool([&fit](const Player& player)
              { return fit(player) && player.getAge() >= 18; }),
         2);
   offer(StoryKind::CoachingCourse,
@@ -967,7 +968,8 @@ bool StoryEngine::resolveDilemma(int option, const GameDateValue& date,
   auto& players = gamedata->getPlayers();
   std::string subject_name;
   std::string other_name;
-  const auto apply = [&](PlayerID player_id, float morale, float trust,
+  const auto apply = [&players, managed_team_id, &interactions](
+                         PlayerID player_id, float morale, float trust,
                          float sharpness, std::string& name)
   {
     const auto found = players.find(player_id);
@@ -1035,16 +1037,17 @@ bool StoryEngine::follow(PlayerID player_id, const GameDateValue& date)
       state.follows.size() >= Stories::MAX_FOLLOWS)
     return false;
   const Player& who = player->get();
-  state.follows.push_back(
-      FollowedPlayer{player_id, dayOrdinal(date), who.getTeamId(),
-                     who.getDynamics().injury_days > 0, who.getContractYears(),
-                     who.getWage(), HONOURS_UNKNOWN, 0});
+  state.follows.emplace_back(player_id, dayOrdinal(date), who.getTeamId(),
+                             who.getDynamics().injury_days > 0,
+                             who.getContractYears(), who.getWage(),
+                             HONOURS_UNKNOWN, 0);
   return true;
 }
 
 bool StoryEngine::unfollow(PlayerID player_id)
 {
-  return std::erase_if(state.follows, [&](const FollowedPlayer& followed)
+  return std::erase_if(state.follows,
+                       [player_id](const FollowedPlayer& followed)
                        { return followed.player_id == player_id; }) > 0;
 }
 
@@ -1059,14 +1062,15 @@ void StoryEngine::trackFollows(const GameDateValue& date,
                                const AwardSystem* awards, Inbox& inbox)
 {
   if (state.follows.empty()) return;
-  const auto team_name = [&](TeamID team_id)
+  const auto team_name = [this](TeamID team_id)
   {
     const auto team = gamedata->getTeam(team_id);
     return team ? team->get().getName() : std::string();
   };
-  const auto note = [&](InboxCategory category, const char* title,
-                        const char* body, std::vector<std::string> args,
-                        PlayerID player_id, TeamID team_id)
+  const auto note = [&date, &inbox](InboxCategory category, const char* title,
+                                    const char* body,
+                                    std::vector<std::string> args,
+                                    PlayerID player_id, TeamID team_id)
   {
     InboxMessage message;
     message.date = date;
@@ -1079,7 +1083,7 @@ void StoryEngine::trackFollows(const GameDateValue& date,
     inbox.add(std::move(message));
   };
   // Retired players leave the database: nothing more to follow.
-  std::erase_if(state.follows, [&](const FollowedPlayer& followed)
+  std::erase_if(state.follows, [this](const FollowedPlayer& followed)
                 { return !gamedata->getPlayer(followed.player_id); });
   for (FollowedPlayer& followed : state.follows)
   {
@@ -1139,8 +1143,7 @@ void StoryEngine::trackFollows(const GameDateValue& date,
           !own)
       {
         // Newest first: the honours won since the last look.
-        const std::size_t fresh =
-            static_cast<std::size_t>(count - followed.honours);
+        auto fresh = static_cast<std::size_t>(count - followed.honours);
         for (std::size_t index = 0; index < fresh; ++index)
         {
           note(InboxCategory::General, "INBOX_FOLLOW_AWARD_TITLE",
@@ -1219,7 +1222,7 @@ void StoryEngine::load(const std::shared_ptr<DatabaseConnection>& db_conn)
       *db_conn,
       "SELECT kind, entity, story_key, day, posted FROM StoryRecords "
       "ORDER BY rowid;",
-      [&](sqlite3_stmt* stmt)
+      [&loaded](sqlite3_stmt* stmt)
       {
         const auto kind = columnAs<std::uint8_t>(stmt, 0);
         if (!validKind(kind)) return;
@@ -1232,7 +1235,7 @@ void StoryEngine::load(const std::shared_ptr<DatabaseConnection>& db_conn)
       *db_conn,
       "SELECT player_id, kind, day, expires_day FROM StoryChoices "
       "ORDER BY rowid;",
-      [&](sqlite3_stmt* stmt)
+      [&loaded](sqlite3_stmt* stmt)
       {
         const auto kind = columnAs<std::uint8_t>(stmt, 1);
         if (!validKind(kind)) return;
@@ -1242,7 +1245,7 @@ void StoryEngine::load(const std::shared_ptr<DatabaseConnection>& db_conn)
       });
   forEachRow(*db_conn,
              "SELECT player_id, start_day, comeback_days FROM StoryInjuries;",
-             [&](sqlite3_stmt* stmt)
+             [&loaded](sqlite3_stmt* stmt)
              {
                const auto player_id = columnAs<PlayerID>(stmt, 0);
                const auto start = columnAs<std::int32_t>(stmt, 1);
@@ -1252,7 +1255,7 @@ void StoryEngine::load(const std::shared_ptr<DatabaseConnection>& db_conn)
                  loaded.comeback_due.emplace(player_id, comeback);
              });
   forEachRow(*db_conn, "SELECT player_id, day FROM StoryBids ORDER BY rowid;",
-             [&](sqlite3_stmt* stmt)
+             [&loaded](sqlite3_stmt* stmt)
              {
                loaded.bids.emplace_back(columnAs<PlayerID>(stmt, 0),
                                         columnAs<std::int32_t>(stmt, 1));
@@ -1261,7 +1264,7 @@ void StoryEngine::load(const std::shared_ptr<DatabaseConnection>& db_conn)
       *db_conn,
       "SELECT day, kind, subject, other, expires_day, chosen, resolved_day, "
       "money FROM StoryDilemmas ORDER BY day;",
-      [&](sqlite3_stmt* stmt)
+      [&loaded](sqlite3_stmt* stmt)
       {
         const auto kind = columnAs<std::uint8_t>(stmt, 1);
         if (!validKind(kind) ||
@@ -1282,13 +1285,13 @@ void StoryEngine::load(const std::shared_ptr<DatabaseConnection>& db_conn)
       *db_conn,
       "SELECT player_id, since_day, team_id, injured, contract_years, "
       "wage, honours, last_match_day FROM StoryFollows ORDER BY rowid;",
-      [&](sqlite3_stmt* stmt)
+      [&loaded](sqlite3_stmt* stmt)
       {
-        loaded.follows.push_back(FollowedPlayer{
+        loaded.follows.emplace_back(
             columnAs<PlayerID>(stmt, 0), columnAs<std::int32_t>(stmt, 1),
             columnAs<TeamID>(stmt, 2), sqlite3_column_int(stmt, 3) != 0,
             columnAs<std::uint8_t>(stmt, 4), columnAs<std::uint32_t>(stmt, 5),
-            columnAs<std::uint16_t>(stmt, 6), columnAs<std::int32_t>(stmt, 7)});
+            columnAs<std::uint16_t>(stmt, 6), columnAs<std::int32_t>(stmt, 7));
       });
   restore(std::move(loaded));
 }
@@ -1308,7 +1311,7 @@ void StoryEngine::save(const std::shared_ptr<DatabaseConnection>& db_conn) const
             state.records,
             [](sqlite3_stmt* row, const StoryRecord& record)
             {
-              sqlite3_bind_int(row, 1, static_cast<int>(record.kind));
+              sqlite3_bind_int(row, 1, std::to_underlying(record.kind));
               sqlite3_bind_int64(row, 2, record.entity);
               sqlite3_bind_int64(row, 3, record.key);
               sqlite3_bind_int(row, 4, record.day);
@@ -1321,7 +1324,7 @@ void StoryEngine::save(const std::shared_ptr<DatabaseConnection>& db_conn) const
             [](sqlite3_stmt* row, const StoryChoice& choice)
             {
               sqlite3_bind_int(row, 1, static_cast<int>(choice.player_id));
-              sqlite3_bind_int(row, 2, static_cast<int>(choice.kind));
+              sqlite3_bind_int(row, 2, std::to_underlying(choice.kind));
               sqlite3_bind_int(row, 3, choice.day);
               sqlite3_bind_int(row, 4, choice.expires_day);
             });
@@ -1356,7 +1359,7 @@ void StoryEngine::save(const std::shared_ptr<DatabaseConnection>& db_conn) const
             [](sqlite3_stmt* row, const Dilemma& dilemma)
             {
               sqlite3_bind_int(row, 1, dilemma.day);
-              sqlite3_bind_int(row, 2, static_cast<int>(dilemma.kind));
+              sqlite3_bind_int(row, 2, std::to_underlying(dilemma.kind));
               sqlite3_bind_int64(row, 3, dilemma.subject);
               sqlite3_bind_int64(row, 4, dilemma.other);
               sqlite3_bind_int(row, 5, dilemma.expires_day);

@@ -156,9 +156,8 @@ TEST(MatchRender3DMath, PitchMappingAndAngles)
 
 TEST(MatchCamera3DTest, DampingIsFrameRateIndependent)
 {
-  for (const MatchCameraMode mode :
-       {MatchCameraMode::BROADCAST, MatchCameraMode::TACTICAL,
-        MatchCameraMode::END})
+  using enum MatchCameraMode;
+  for (const MatchCameraMode mode : {BROADCAST, TACTICAL, END})
   {
     MatchCamera3D coarse;
     MatchCamera3D fine;
@@ -184,7 +183,7 @@ TEST(MatchCamera3DTest, DirectorCutsForGoalsShotsAndAttacks)
   camera.snap(focus, MatchCameraMode::DIRECTOR);
   const auto run = [&](const MatchCameraFocus& at, float seconds)
   {
-    for (float t = 0.0f; t < seconds; t += STEP)
+    for (int step = 0; static_cast<float>(step) * STEP < seconds; ++step)
       camera.update(at, MatchCameraMode::DIRECTOR, {}, STEP);
   };
   run(focus, 5.0f);
@@ -327,14 +326,15 @@ TEST(MatchRender3DMath, GroundPickingInvertsProjection)
 
 TEST(MatchCamera3DTest, FreeCameraTakesOverFromThePoseOnScreen)
 {
+  using enum MatchCameraMode;
   const MatchCameraFocus focus = focusAt(40.0f, 30.0f);
   MatchCamera3D camera;
-  camera.snap(focus, MatchCameraMode::BROADCAST);
+  camera.snap(focus, BROADCAST);
   for (int frame = 0; frame < 120; ++frame)
-    camera.update(focus, MatchCameraMode::BROADCAST, {}, 1.0f / 60.0f);
+    camera.update(focus, BROADCAST, {}, 1.0f / 60.0f);
   const Vec3 before = camera.eye();
   const float fovBefore = camera.verticalFov();
-  camera.update(focus, MatchCameraMode::FREE, {}, 1.0f / 60.0f);
+  camera.update(focus, FREE, {}, 1.0f / 60.0f);
   EXPECT_NEAR(camera.eye().x, before.x, 1e-3f);
   EXPECT_NEAR(camera.eye().y, before.y, 1e-3f);
   EXPECT_NEAR(camera.eye().z, before.z, 1e-3f);
@@ -343,9 +343,9 @@ TEST(MatchCamera3DTest, FreeCameraTakesOverFromThePoseOnScreen)
   // Orbiting turns around the same target.
   MatchCameraControl orbit;
   orbit.orbitYaw = 0.6f;
-  camera.update(focus, MatchCameraMode::FREE, orbit, 1.0f / 60.0f);
+  camera.update(focus, FREE, orbit, 1.0f / 60.0f);
   for (int frame = 0; frame < 120; ++frame)
-    camera.update(focus, MatchCameraMode::FREE, {}, 1.0f / 60.0f);
+    camera.update(focus, FREE, {}, 1.0f / 60.0f);
   const Vec3 target = camera.target();
   EXPECT_NEAR(RenderMath::length(camera.eye() - target),
               RenderMath::length(before - target), 0.05f);
@@ -354,37 +354,38 @@ TEST(MatchCamera3DTest, FreeCameraTakesOverFromThePoseOnScreen)
 
 TEST(MatchCamera3DTest, FreeCameraClampsPitchZoomAndTarget)
 {
+  using enum MatchCameraMode;
   using Free = MatchRender3DTuning::Free;
   const MatchCameraFocus focus = focusAt(52.5f, 34.0f);
   MatchCamera3D camera;
-  camera.snap(focus, MatchCameraMode::FREE);
+  camera.snap(focus, FREE);
 
   MatchCameraControl under;
   under.orbitPitch = -10.0f;
-  camera.update(focus, MatchCameraMode::FREE, under, 1.0f / 60.0f);
+  camera.update(focus, FREE, under, 1.0f / 60.0f);
   EXPECT_GE(camera.freePitch(), Free::MIN_PITCH - 1e-5f);
   for (int frame = 0; frame < 240; ++frame)
-    camera.update(focus, MatchCameraMode::FREE, {}, 1.0f / 60.0f);
+    camera.update(focus, FREE, {}, 1.0f / 60.0f);
   EXPECT_GE(camera.eye().z, MatchRender3DTuning::Camera::MIN_EYE_HEIGHT);
 
   MatchCameraControl over;
   over.orbitPitch = 10.0f;
-  camera.update(focus, MatchCameraMode::FREE, over, 1.0f / 60.0f);
+  camera.update(focus, FREE, over, 1.0f / 60.0f);
   EXPECT_LE(camera.freePitch(), Free::MAX_PITCH + 1e-5f);
 
   MatchCameraControl zoomIn;
   zoomIn.zoomSteps = 200.0f;
-  camera.update(focus, MatchCameraMode::FREE, zoomIn, 1.0f / 60.0f);
+  camera.update(focus, FREE, zoomIn, 1.0f / 60.0f);
   EXPECT_FLOAT_EQ(camera.freeDistance(), Free::MIN_DISTANCE);
   MatchCameraControl zoomOut;
   zoomOut.zoomSteps = -200.0f;
-  camera.update(focus, MatchCameraMode::FREE, zoomOut, 1.0f / 60.0f);
+  camera.update(focus, FREE, zoomOut, 1.0f / 60.0f);
   EXPECT_FLOAT_EQ(camera.freeDistance(), Free::MAX_DISTANCE);
 
   // Panning far away stops at the pitch surrounds.
   MatchCameraControl pan;
   pan.pan = {-500.0f, 900.0f, 0.0f};
-  camera.update(focus, MatchCameraMode::FREE, pan, 1.0f / 60.0f);
+  camera.update(focus, FREE, pan, 1.0f / 60.0f);
   EXPECT_FLOAT_EQ(camera.freeTarget().x, -Free::TARGET_MARGIN);
   EXPECT_FLOAT_EQ(camera.freeTarget().y,
                   MatchTuning::Pitch::MATCH_WIDTH_METRES + Free::TARGET_MARGIN);
@@ -393,11 +394,11 @@ TEST(MatchCamera3DTest, FreeCameraClampsPitchZoomAndTarget)
   MatchCameraControl low;
   low.orbitPitch = -10.0f;
   low.reset = true;
-  camera.update(focus, MatchCameraMode::FREE, low, 1.0f / 60.0f);
+  camera.update(focus, FREE, low, 1.0f / 60.0f);
   for (int frame = 0; frame < 600; ++frame)
-    camera.update(focus, MatchCameraMode::FREE, zoomOut, 1.0f / 60.0f);
-  const Vec3 eye = camera.eye();
-  if (eye.z < MatchRender3DTuning::Camera::STAND_CLEAR_HEIGHT)
+    camera.update(focus, FREE, zoomOut, 1.0f / 60.0f);
+  if (const Vec3 eye = camera.eye();
+      eye.z < MatchRender3DTuning::Camera::STAND_CLEAR_HEIGHT)
   {
     EXPECT_GE(eye.x, Free::EYE_MIN_X - 0.1f);
     EXPECT_LE(eye.x, Free::EYE_MAX_X + 0.1f);
@@ -409,32 +410,32 @@ TEST(MatchCamera3DTest, FreeCameraClampsPitchZoomAndTarget)
   MatchCameraControl retarget;
   retarget.retarget = true;
   retarget.retargetPoint = {80.0f, 20.0f, 0.0f};
-  camera.update(focus, MatchCameraMode::FREE, retarget, 1.0f / 60.0f);
+  camera.update(focus, FREE, retarget, 1.0f / 60.0f);
   EXPECT_FLOAT_EQ(camera.freeTarget().x, 80.0f);
   MatchCameraControl follow;
   follow.followBall = true;
-  camera.update(focusAt(12.0f, 50.0f), MatchCameraMode::FREE, follow,
-                1.0f / 60.0f);
+  camera.update(focusAt(12.0f, 50.0f), FREE, follow, 1.0f / 60.0f);
   EXPECT_FLOAT_EQ(camera.freeTarget().x, 12.0f);
   EXPECT_FLOAT_EQ(camera.freeTarget().y, 50.0f);
 }
 
 TEST(MatchCamera3DTest, FreeCameraIsFrameRateIndependent)
 {
+  using enum MatchCameraMode;
   const MatchCameraFocus focus = focusAt(30.0f, 20.0f);
   MatchCamera3D coarse;
   MatchCamera3D fine;
-  coarse.snap(focus, MatchCameraMode::FREE);
-  fine.snap(focus, MatchCameraMode::FREE);
+  coarse.snap(focus, FREE);
+  fine.snap(focus, FREE);
   MatchCameraControl input;
   input.orbitYaw = 0.8f;
   input.orbitPitch = 0.3f;
   input.zoomSteps = 2.0f;
   input.pan = {6.0f, -4.0f, 0.0f};
   // The same drag lands in one 30 fps frame or the first of two 60 fps ones.
-  coarse.update(focus, MatchCameraMode::FREE, input, 1.0f / 30.0f);
-  fine.update(focus, MatchCameraMode::FREE, input, 1.0f / 60.0f);
-  fine.update(focus, MatchCameraMode::FREE, {}, 1.0f / 60.0f);
+  coarse.update(focus, FREE, input, 1.0f / 30.0f);
+  fine.update(focus, FREE, input, 1.0f / 60.0f);
+  fine.update(focus, FREE, {}, 1.0f / 60.0f);
   EXPECT_NEAR(coarse.eye().x, fine.eye().x, 1e-3f);
   EXPECT_NEAR(coarse.eye().y, fine.eye().y, 1e-3f);
   EXPECT_NEAR(coarse.eye().z, fine.eye().z, 1e-3f);
@@ -580,12 +581,11 @@ TEST(MatchKitColorsTest, ClubsWearTheirOwnColoursWithoutClashes)
 
 TEST(MatchRender3DMath, ShirtNumbersAreClassicAndUnique)
 {
+  using enum PlayerRole;
   // A 4-4-2 with two centre backs and two central midfielders.
   RenderMath::ShirtNumbers numbers;
-  const std::array<PlayerRole, 11> starters{
-      PlayerRole::GK, PlayerRole::RB, PlayerRole::CB, PlayerRole::CB,
-      PlayerRole::LB, PlayerRole::RM, PlayerRole::CM, PlayerRole::CM,
-      PlayerRole::LM, PlayerRole::ST, PlayerRole::ST};
+  const std::array<PlayerRole, 11> starters{GK, RB, CB, CB, LB, RM,
+                                            CM, CM, LM, ST, ST};
   std::vector<int> taken;
   for (const PlayerRole role : starters)
     taken.push_back(numbers.take(role, true));
@@ -598,12 +598,12 @@ TEST(MatchRender3DMath, ShirtNumbersAreClassicAndUnique)
   EXPECT_EQ(taken[6], 8);
   EXPECT_EQ(taken[9], 9);
   // Substitutes get squad numbers above the starting eleven.
-  taken.push_back(numbers.take(PlayerRole::ST, false));
-  taken.push_back(numbers.take(PlayerRole::GK, false));
+  taken.push_back(numbers.take(ST, false));
+  taken.push_back(numbers.take(GK, false));
   EXPECT_EQ(taken[11], 12);
   EXPECT_EQ(taken[12], 13);
   std::vector<int> sorted = taken;
-  std::sort(sorted.begin(), sorted.end());
+  std::ranges::sort(sorted);
   EXPECT_EQ(std::adjacent_find(sorted.begin(), sorted.end()), sorted.end());
   for (std::size_t index = 0; index < 11; ++index)
   {
@@ -615,8 +615,8 @@ TEST(MatchRender3DMath, ShirtNumbersAreClassicAndUnique)
   RenderMath::ShirtNumbers crowded;
   std::vector<int> same;
   for (int index = 0; index < 11; ++index)
-    same.push_back(crowded.take(PlayerRole::CB, true));
-  std::sort(same.begin(), same.end());
+    same.push_back(crowded.take(CB, true));
+  std::ranges::sort(same);
   for (int index = 0; index < 11; ++index) EXPECT_EQ(same[index], index + 1);
 }
 
@@ -627,13 +627,14 @@ TEST(MatchKitColorsTest, IntegerBlendsMatchTheFloatOnes)
       IM_COL32(255, 255, 255, 255), IM_COL32(0, 0, 0, 0)};
   const auto near = [](ImU32 a, ImU32 b)
   {
-    for (const int shift : {0, 8, 16, 24})
-    {
-      const int difference = static_cast<int>((a >> shift) & 0xFFU) -
-                             static_cast<int>((b >> shift) & 0xFFU);
-      if (std::abs(difference) > 1) return false;
-    }
-    return true;
+    return std::ranges::all_of(std::array{0, 8, 16, 24},
+                               [a, b](int shift)
+                               {
+                                 const int difference =
+                                     static_cast<int>((a >> shift) & 0xFFU) -
+                                     static_cast<int>((b >> shift) & 0xFFU);
+                                 return std::abs(difference) <= 1;
+                               });
   };
   for (const ImU32 first : colors)
   {
@@ -1056,6 +1057,10 @@ TEST_F(MatchRenderer3DSceneTest, SwitchesViewsAndCapturesFrames)
     MatchScene scene(&view, teams[0].get().getId(), teams[1].get().getId());
     scene.onEnter();
     ASSERT_NE(scene.engine, nullptr);
+    // Camera controls are exercised during normal playback. Highlight
+    // skipping can move past the pre-match modal's expiry on some seeds,
+    // hiding the input blocker instead of preparing the view explicitly.
+    scene.setHighlightsOnly(false);
 
     const auto frame = [&](float seconds)
     {
@@ -1075,8 +1080,8 @@ TEST_F(MatchRenderer3DSceneTest, SwitchesViewsAndCapturesFrames)
     };
     const auto press = [&](SDL_Keycode key)
     {
-      SDL_Event event{};
-      event.type = SDL_EVENT_KEY_DOWN;
+      SDL_Event event{.key = {}};
+      event.key.type = SDL_EVENT_KEY_DOWN;
       event.key.key = key;
       scene.handleEvent(event);
     };
@@ -1106,6 +1111,17 @@ TEST_F(MatchRenderer3DSceneTest, SwitchesViewsAndCapturesFrames)
     ASSERT_EQ(scene.view_mode, MatchViewMode::BROADCAST_3D);
     for (int index = 0; index < 30; ++index) frame(FRAME_SECONDS);
 
+    // The managed club's pre-match talk is modal and correctly prevents
+    // pitch drags. Dismiss it through its real keyboard action before
+    // capturing the view and asserting that camera gestures work.
+    ASSERT_TRUE(scene.team_talk.isOpen());
+    ImGui::GetIO().AddKeyEvent(ImGuiKey_Escape, true);
+    frame(FRAME_SECONDS);
+    ImGui::GetIO().AddKeyEvent(ImGuiKey_Escape, false);
+    frame(FRAME_SECONDS);
+    ASSERT_FALSE(scene.team_talk.isOpen());
+    ASSERT_FALSE(ImGui::IsPopupOpen("", ImGuiPopupFlags_AnyPopupId));
+
     // Broadcast-camera CPU cost of building the 3D draw lists.
     press(SDLK_1);
     std::vector<float> samples;
@@ -1115,7 +1131,7 @@ TEST_F(MatchRenderer3DSceneTest, SwitchesViewsAndCapturesFrames)
       frame(FRAME_SECONDS);
       samples.push_back(scene.last_render_milliseconds);
     }
-    std::sort(samples.begin(), samples.end());
+    std::ranges::sort(samples);
     const float median = samples[samples.size() / 2];
     const float p95 = samples[samples.size() * 95 / 100];
     std::cout << "[match-3d] broadcast render CPU median " << median
@@ -1167,7 +1183,7 @@ TEST_F(MatchRenderer3DSceneTest, SwitchesViewsAndCapturesFrames)
         frame(FRAME_SECONDS);
         timings.push_back(scene.last_render_milliseconds);
       }
-      std::sort(timings.begin(), timings.end());
+      std::ranges::sort(timings);
       return timings[timings.size() / 2];
     };
     press(SDLK_1);
@@ -1399,7 +1415,7 @@ TEST_F(MatchRenderer3DSceneTest, SwitchesViewsAndCapturesFrames)
         SDL_RenderClear(renderer);
         ImGui_ImplSDLRenderer3_RenderDrawData(ImGui::GetDrawData(), renderer);
       }
-      std::sort(timings.begin(), timings.end());
+      std::ranges::sort(timings);
       return timings[timings.size() / 2];
     };
     MatchRenderer3D dayRenderer;

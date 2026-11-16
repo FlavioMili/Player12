@@ -49,7 +49,7 @@ double relativeChange(double from, double to)
 class SoakRuntime
 {
  public:
-  SoakRuntime() : path(std::filesystem::current_path() / "soak-runtime")
+  SoakRuntime()
   {
     std::filesystem::create_directories(path);
     setRoot(path.string());
@@ -76,7 +76,7 @@ class SoakRuntime
 #endif
   }
 
-  std::filesystem::path path;
+  std::filesystem::path path = std::filesystem::current_path() / "soak-runtime";
 };
 }  // namespace
 

@@ -15,6 +15,7 @@
 #include <chrono>
 #include <format>
 #include <string>
+#include <utility>
 
 #include "database/gamedata.h"
 #include "global/language_manager.h"
@@ -243,8 +244,9 @@ void MainGameScene::requestContinue()
 
 void MainGameScene::requestHoliday(const HolidayPlan& plan)
 {
-  const GameController& controller = guiView->getController();
-  if (continuation_running || !controller.hasSelectedTeam()) return;
+  if (const GameController& controller = guiView->getController();
+      continuation_running || !controller.hasSelectedTeam())
+    return;
   pending_holiday = plan;
   continuation_requested = true;
   guiView->requestBackdropCapture();
@@ -284,35 +286,33 @@ void MainGameScene::startContinuation()
   // The rest of a managed match day: exactly one day, whatever comes next.
   if (match_report)
   {
-    continue_operation = std::async(std::launch::async,
-                                    [controllerPtr]()
-                                    {
-                                      controllerPtr->advanceDay();
-                                      return 1;
-                                    });
+    continue_operation = launchBackgroundTask(continue_worker,
+                                              [controllerPtr]()
+                                              {
+                                                controllerPtr->advanceDay();
+                                                return 1;
+                                              });
     return;
   }
   if (pending_holiday)
   {
-    continue_operation = std::async(
-        std::launch::async, [controllerPtr, plan = *pending_holiday]()
+    continue_operation = launchBackgroundTask(
+        continue_worker, [controllerPtr, plan = *pending_holiday]()
         { return controllerPtr->goOnHoliday(plan); });
     pending_holiday.reset();
     return;
   }
-  continue_operation =
-      std::async(std::launch::async,
-                 [controllerPtr, hasFixture = cached_next.has_value(),
-                  unemployed = controllerPtr->isUnemployed()]()
-                 {
-                   // Out of work a week passes, or less when news arrives.
-                   if (unemployed)
-                     return controllerPtr->advanceWhileUnemployed(7);
-                   if (hasFixture)
-                     return controllerPtr->advanceToNextManagedFixture();
-                   // Off-season: on to whatever needs the manager next.
-                   return controllerPtr->advanceToNextEvent();
-                 });
+  continue_operation = launchBackgroundTask(
+      continue_worker,
+      [controllerPtr, hasFixture = cached_next.has_value(),
+       unemployed = controllerPtr->isUnemployed()]()
+      {
+        // Out of work a week passes, or less when news arrives.
+        if (unemployed) return controllerPtr->advanceWhileUnemployed(7);
+        if (hasFixture) return controllerPtr->advanceToNextManagedFixture();
+        // Off-season: on to whatever needs the manager next.
+        return controllerPtr->advanceToNextEvent();
+      });
 }
 
 void MainGameScene::trackContinueProgress()
@@ -485,7 +485,7 @@ void MainGameScene::renderContent()
 
 void MainGameScene::renderSeasonReview()
 {
-  if (const auto season = season_review_dialog.render())
+  if (const auto season = season_review_dialog.render(); season.has_value())
     guiView->getController().markSeasonReviewSeen(*season);
 }
 
@@ -506,10 +506,10 @@ void MainGameScene::renderOverview()
   UI::TileRow tiles(4);
   const float width = tiles.width();
   tiles.next();
-  const auto rank = std::ranges::find_if(
-      cached_table, [&club](const CompetitionView::StandingRow& row)
-      { return row.team_id == club.getId(); });
-  if (rank != cached_table.end() && rank->played > 0)
+  if (const auto rank = std::ranges::find_if(
+          cached_table, [&club](const CompetitionView::StandingRow& row)
+          { return row.team_id == club.getId(); });
+      rank != cached_table.end() && rank->played > 0)
   {
     const std::string value = ordinalPosition(
         static_cast<size_t>(std::distance(cached_table.begin(), rank)) + 1);
@@ -644,10 +644,10 @@ void MainGameScene::renderNextMatchCard(float width, float height)
   }
 
   // Opponent context from the cached table.
-  const auto opponentRow = std::ranges::find_if(
-      cached_table, [opponentId](const CompetitionView::StandingRow& row)
-      { return row.team_id == opponentId; });
-  if (opponentRow != cached_table.end() && opponentRow->played > 0)
+  if (const auto opponentRow = std::ranges::find_if(
+          cached_table, [opponentId](const CompetitionView::StandingRow& row)
+          { return row.team_id == opponentId; });
+      opponentRow != cached_table.end() && opponentRow->played > 0)
   {
     const auto position = static_cast<size_t>(
         std::distance(cached_table.begin(), opponentRow) + 1);
@@ -677,13 +677,15 @@ void MainGameScene::renderNextMatchCard(float width, float height)
   const size_t ready = cached_starters - cached_unavailable_starters;
   const bool blocked = lineupBlocked();
   const bool playingInjured = !blocked && !cached_unavailable.empty();
-  const std::string readiness =
-      blocked ? fmt::sprintf(LOC("DASHBOARD_XI_UNAVAILABLE"), ready,
-                             cached_unavailable.size())
-      : playingInjured
-          ? fmt::sprintf(LOC("DASHBOARD_XI_PLAYING_INJURED"), ready,
-                         cached_unavailable.size())
-          : fmt::sprintf(LOC("DASHBOARD_STARTING_XI"), cached_starters);
+  std::string readiness;
+  if (blocked)
+    readiness = fmt::sprintf(LOC("DASHBOARD_XI_UNAVAILABLE"), ready,
+                             cached_unavailable.size());
+  else if (playingInjured)
+    readiness = fmt::sprintf(LOC("DASHBOARD_XI_PLAYING_INJURED"), ready,
+                             cached_unavailable.size());
+  else
+    readiness = fmt::sprintf(LOC("DASHBOARD_STARTING_XI"), cached_starters);
   const char* fixLabel = LOC("DASHBOARD_AUTO_FIX");
   const float fixWidth =
       blocked ? UI::buttonWidth(fixLabel) + ImGui::GetStyle().ItemSpacing.x
@@ -695,11 +697,12 @@ void MainGameScene::renderNextMatchCard(float width, float height)
       std::max(ImGui::GetCursorPosX(),
                ImGui::GetWindowContentRegionMax().x - readinessWidth));
   ImGui::AlignTextToFramePadding();
-  ImGui::TextColored(blocked ? palette.negative
-                     : cached_starters == 11 && !playingInjured
-                         ? palette.positive
-                         : palette.warning,
-                     "%s", readiness.c_str());
+  ImVec4 readinessColor = palette.warning;
+  if (blocked)
+    readinessColor = palette.negative;
+  else if (cached_starters == 11 && !playingInjured)
+    readinessColor = palette.positive;
+  ImGui::TextColored(readinessColor, "%s", readiness.c_str());
   if (blocked)
   {
     ImGui::SameLine();
@@ -745,10 +748,12 @@ void MainGameScene::renderStandingsCard(float width, float height)
         ImGui::TableSetBgColor(ImGuiTableBgTarget_RowBg1,
                                Theme::toU32(palette.accent, 0.16f));
       ImGui::TableNextColumn();
-      ImGui::TextColored(promoted    ? palette.positive
-                         : relegated ? palette.negative
-                                     : palette.muted,
-                         "%zu", index + 1);
+      ImVec4 positionColor = palette.muted;
+      if (promoted)
+        positionColor = palette.positive;
+      else if (relegated)
+        positionColor = palette.negative;
+      ImGui::TextColored(positionColor, "%zu", index + 1);
       ImGui::TableNextColumn();
       ImGui::PushID(static_cast<int>(row.team_id));
       if (ImGui::Selectable(row.name.c_str(), false,
@@ -897,8 +902,8 @@ void MainGameScene::renderFinances()
   // The opening balance is a carried-over figure, not this season's result.
   const int64_t seasonNet =
       cached_season_summary.net() -
-      cached_season_summary
-          .by_category[static_cast<size_t>(FinanceCategory::OpeningBalance)];
+      cached_season_summary.by_category[static_cast<size_t>(
+          std::to_underlying(FinanceCategory::OpeningBalance))];
   const std::string net = Format::money(seasonNet);
   UI::statTile("fin_net", LOC("FINANCE_SEASON_NET"), net.c_str(),
                LOC("FINANCE_SEASON_NET_NOTE"),
@@ -931,9 +936,9 @@ void MainGameScene::renderFinances()
   if (UI::secondaryButton(periodToggle, ImVec2(0.0f, 0.0f),
                           UI::ButtonSize::COMPACT))
     finance_show_month = !finance_show_month;
-  const std::vector<FinanceBar>& periodBars =
-      finance_show_month ? cached_month_bars : cached_finance_bars;
-  if (periodBars.empty())
+  if (const std::vector<FinanceBar>& periodBars =
+          finance_show_month ? cached_month_bars : cached_finance_bars;
+      periodBars.empty())
   {
     ImGui::TextColored(palette.faint, "%s", LOC("FINANCE_NO_TRANSACTIONS"));
   }
@@ -942,10 +947,10 @@ void MainGameScene::renderFinances()
     std::vector<UI::BarDatum> bars;
     bars.reserve(periodBars.size());
     for (const FinanceBar& bar : periodBars)
-      bars.push_back({LOC(bar.label_key),
-                      static_cast<float>(std::llabs(bar.amount)),
-                      bar.amount >= 0 ? palette.positive : palette.negative,
-                      bar.amount_text});
+      bars.emplace_back(LOC(bar.label_key),
+                        static_cast<float>(std::llabs(bar.amount)),
+                        bar.amount >= 0 ? palette.positive : palette.negative,
+                        bar.amount_text);
     UI::barChart("fin_bars", bars, ImGui::GetContentRegionAvail().x,
                  130.0f * Theme::scale());
   }
@@ -1121,8 +1126,8 @@ void MainGameScene::refreshData()
       const auto category = static_cast<FinanceCategory>(index);
       const int64_t amount = summary.by_category[index];
       if (amount == 0 || category == FinanceCategory::OpeningBalance) continue;
-      bars.push_back(
-          {financeCategoryKey(category), amount, Format::money(amount)});
+      bars.emplace_back(financeCategoryKey(category), amount,
+                        Format::money(amount));
     }
     std::ranges::sort(bars, [](const auto& left, const auto& right)
                       { return left.amount > right.amount; });
@@ -1135,9 +1140,9 @@ void MainGameScene::refreshData()
   cached_ledger.clear();
   cached_ledger.reserve(ledger.size());
   for (auto entry = ledger.rbegin(); entry != ledger.rend(); ++entry)
-    cached_ledger.push_back({Format::date(entry->date),
-                             financeCategoryKey(entry->category), entry->amount,
-                             Format::money(entry->amount)});
+    cached_ledger.emplace_back(Format::date(entry->date),
+                               financeCategoryKey(entry->category),
+                               entry->amount, Format::money(entry->amount));
   cached_balance_trend.clear();
   int64_t running = 0;
   const size_t trendStart =

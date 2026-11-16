@@ -11,6 +11,7 @@
 #include <cstddef>
 #include <cstdint>
 #include <memory>
+#include <mutex>
 #include <optional>
 #include <string>
 #include <unordered_map>
@@ -308,7 +309,7 @@ class TransferMarket
   std::int64_t spendableBudget(TeamID team_id, const GameDateValue& date) const;
   /** Takes a departed player out of the managed club's line-up, filling
    * his place without rebuilding the rest of the manager's selection. */
-  void removeFromLineup(Team& team, const Player& departed);
+  void removeFromLineup(Team& team, const Player& departed) const;
   /** Agent fee paid by the buyer: the one agreed in the contract, else
    * 10% of a fee, or weeks of wage. */
   static std::uint32_t agentFee(const Deal& deal);
@@ -588,6 +589,8 @@ class TransferMarket
   std::uint32_t next_id = 1;
 
   // Instalments due before season end, per payer (rebuilt when dirty).
+  // Guards the lazy cache; the remaining market state is game-thread owned.
+  mutable std::mutex payables_cache_mutex;
   mutable std::unordered_map<TeamID, std::int64_t> payables_cache;
   mutable std::int32_t payables_day = -1;
   mutable bool payables_dirty = true;

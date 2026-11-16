@@ -207,6 +207,18 @@ void drawIcon(ImDrawList* drawList, Icon icon, ImVec2 c, float s, ImU32 color)
                         color, t * 0.8f);
       break;
     }
+    case Icon::EDIT:
+    {
+      const std::array<ImVec2, 5> pencil = {
+          ImVec2(c.x - .4f * s, c.y + .4f * s),
+          ImVec2(c.x - .32f * s, c.y + .12f * s),
+          ImVec2(c.x + .25f * s, c.y - .45f * s),
+          ImVec2(c.x + .45f * s, c.y - .25f * s),
+          ImVec2(c.x - .12f * s, c.y + .32f * s)};
+      drawList->AddPolyline(pencil.data(), static_cast<int>(pencil.size()),
+                            color, ImDrawFlags_Closed, t);
+      break;
+    }
     case Icon::SEARCH:
     {
       drawList->AddCircle(ImVec2(c.x - 0.08f * s, c.y - 0.08f * s), 0.28f * s,

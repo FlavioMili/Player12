@@ -82,7 +82,7 @@ int addMissingColumns(sqlite3* db, const Migrations::Migration& migration)
     if (!Migrations::tableExists(db, spec.table) ||
         Migrations::columnExists(db, spec.table, spec.column))
       continue;
-    exec(db, std::format("ALTER TABLE \"{}\" ADD COLUMN \"{}\" {};", spec.table,
+    exec(db, std::format(R"(ALTER TABLE "{}" ADD COLUMN "{}" {};)", spec.table,
                          spec.column, spec.definition));
     ++added;
   }
@@ -247,7 +247,7 @@ int Migrations::foreignKeyIssues(sqlite3* db)
 }
 
 Migrations::MigrationReport Migrations::migrate(
-    DatabaseConnection& connection, std::span<const Migration> migrations)
+    const DatabaseConnection& connection, std::span<const Migration> migrations)
 {
   sqlite3* db = connection.getRaw();
   MigrationReport report;
@@ -263,7 +263,7 @@ Migrations::MigrationReport Migrations::migrate(
   connection.initialize();
   inTransaction(
       db,
-      [&]
+      [db, &report]
       {
         exec(db, VERSION_TABLES_SQL);
         exec(db, std::format("INSERT OR IGNORE INTO save_meta (id, format_id, "
@@ -281,7 +281,7 @@ Migrations::MigrationReport Migrations::migrate(
       // Recorded as applied but columns are missing (hand-edited saves):
       // columns are re-added, data steps are not repeated.
       if (!columnsMissing(db, migration)) continue;
-      inTransaction(db, [&] { addMissingColumns(db, migration); });
+      inTransaction(db, [db, &migration] { addMissingColumns(db, migration); });
       report.repaired.push_back(migration.number);
       Logger::warn(
           std::format("Save schema repaired: migration {} re-added "
@@ -292,7 +292,7 @@ Migrations::MigrationReport Migrations::migrate(
     try
     {
       inTransaction(db,
-                    [&]
+                    [db, &migration, &context]
                     {
                       addMissingColumns(db, migration);
                       if (migration.apply) migration.apply(context);

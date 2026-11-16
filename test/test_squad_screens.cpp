@@ -25,6 +25,7 @@
 #include <string>
 #include <string_view>
 #include <tuple>
+#include <utility>
 #include <vector>
 
 #include "controller/game_controller.h"
@@ -111,11 +112,15 @@ constexpr std::uint64_t WORLD_SEED = 20250702;
 
 int uniqueSlot(int offset)
 {
-  return 800'000 + static_cast<int>(getpid() % 100'000) * 10 + offset;
+  return 800'000 + (getpid() % 100'000) * 10 + offset;
 }
 
 struct SlotCleanup
 {
+  explicit SlotCleanup(int saveSlot) : slot(saveSlot) {}
+  SlotCleanup(const SlotCleanup&) = delete;
+  SlotCleanup& operator=(const SlotCleanup&) = delete;
+
   int slot;
   ~SlotCleanup() { RuntimePaths::removeSave(slot); }
 };
@@ -131,8 +136,8 @@ void capture(GUIView& view, const std::string& name)
 void resize(GUIView& view, int width, int height)
 {
   SDL_SetWindowSize(view.getWindow(), width, height);
-  SDL_Event event{};
-  event.type = SDL_EVENT_WINDOW_RESIZED;
+  SDL_Event event{.window = {}};
+  event.window.type = SDL_EVENT_WINDOW_RESIZED;
   event.window.windowID = SDL_GetWindowID(view.getWindow());
   event.window.data1 = width;
   event.window.data2 = height;
@@ -341,9 +346,13 @@ std::vector<ImVec2> hubTabPoints(GUIView& view)
   std::vector<ImVec2> points;
   std::vector<ImGuiID> seen;
   // Inner rect only: a page that scrolls has its scrollbar on this line.
-  for (float x = content->InnerRect.Min.x; x < content->InnerRect.Max.x;
-       x += 6.0f)
+  for (int x_index = 0;
+       content->InnerRect.Min.x + 6.0f * static_cast<float>(x_index) <
+       content->InnerRect.Max.x;
+       ++x_index)
   {
+    const float x =
+        content->InnerRect.Min.x + 6.0f * static_cast<float>(x_index);
     ImGui::GetIO().AddMousePosEvent(x, y);
     Bridge::frame(view);
     const ImGuiID hovered = GImGui->HoveredId;
@@ -369,8 +378,11 @@ std::vector<ImVec2> sidebarEntryPoints(GUIView& view)
   std::vector<ImVec2> points;
   ImGuiID last = 0;
   float first = 0.0f;
-  for (float y = nav->Pos.y + 1.0f; y < nav->Pos.y + nav->Size.y; y += 2.0f)
+  for (int y_index = 0; nav->Pos.y + 1.0f + 2.0f * static_cast<float>(y_index) <
+                        nav->Pos.y + nav->Size.y;
+       ++y_index)
   {
+    const float y = nav->Pos.y + 1.0f + 2.0f * static_cast<float>(y_index);
     ImGui::GetIO().AddMousePosEvent(x, y);
     Bridge::frame(view);
     const ImGuiID hovered = GImGui->HoveredId;
@@ -448,7 +460,8 @@ TEST(SquadScreensTest, SidebarHubsListTheirScreens)
       Navigation::open(&view, section);
       frames(view, 3);
       EXPECT_FALSE(Bridge::sidebarOverflows(view))
-          << size << " hub of section " << static_cast<int>(section);
+          << size << " hub of section "
+          << static_cast<int>(std::to_underlying(section));
     }
   };
   everyHubFits("1280x720");
@@ -539,8 +552,11 @@ TEST(SquadScreensTest, SidebarHubsListTheirScreens)
     ImGuiID last = 0;
     const ImVec2 origin = flyout->Pos;
     const ImVec2 extent = flyout->Size;
-    for (float y = origin.y + 1.0f; y < origin.y + extent.y; y += 2.0f)
+    for (int y_index = 0; origin.y + 1.0f + 2.0f * static_cast<float>(y_index) <
+                          origin.y + extent.y;
+         ++y_index)
     {
+      const float y = origin.y + 1.0f + 2.0f * static_cast<float>(y_index);
       ImGui::GetIO().AddMousePosEvent(origin.x + extent.x * 0.5f, y);
       Bridge::frame(view);
       const ImGuiID hovered = GImGui->HoveredId;

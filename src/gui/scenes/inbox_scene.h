@@ -12,6 +12,7 @@
 #include <cstdint>
 #include <optional>
 #include <string>
+#include <utility>
 #include <vector>
 
 #include "gui/scenes/draw_ceremony_dialog.h"
@@ -108,7 +109,7 @@ class InboxScene : public ManagementScene
   void storeView();
 
   static constexpr size_t CATEGORY_COUNT =
-      static_cast<size_t>(InboxCategory::COUNT);
+      static_cast<size_t>(std::to_underlying(InboxCategory::COUNT));
 
   std::vector<Thread> threads;
   std::array<size_t, CATEGORY_COUNT> unread_by_category{};

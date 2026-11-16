@@ -118,7 +118,7 @@ void LineupScene::loadLineup()
   current_lineup = &team.getLineup();
   captain_summary = SetPiecesDialog::captainSummary(guiView->getController());
   formation_index = Formation::detectPreset(*current_lineup);
-  GameController& controller = guiView->getController();
+  const GameController& controller = guiView->getController();
   unavailable.clear();
   // Bans count for the competition of the next match (league by default).
   const auto nextFixture = controller.getNextManagedFixture();
@@ -185,11 +185,11 @@ void LineupScene::renderToolbar()
   ImGui::TextColored(palette.muted, "%s", LOC("LINEUP_FORMATION"));
   ImGui::SameLine();
   ImGui::SetNextItemWidth(130.0f * Theme::scale());
-  const char* preview =
-      formation_index >= 0
-          ? Formation::PRESETS[static_cast<size_t>(formation_index)].name
-          : LOC("LINEUP_FORMATION_CUSTOM");
-  if (ImGui::BeginCombo("##formation", preview))
+  if (const char* preview =
+          formation_index >= 0
+              ? Formation::PRESETS[static_cast<size_t>(formation_index)].name
+              : LOC("LINEUP_FORMATION_CUSTOM");
+      ImGui::BeginCombo("##formation", preview))
   {
     for (size_t index = 0; index < Formation::PRESETS.size(); ++index)
     {
@@ -461,8 +461,8 @@ void LineupScene::renderBench(float height)
                          RoleUtils::shortName(player->getRole()));
       ImGui::TableNextColumn();
       ImGui::PushID(static_cast<int>(player->getId()));
-      const bool selected = selected_bench_player_id == player->getId();
-      if (ImGui::Selectable(player->getName().c_str(), selected,
+      if (const bool selected = selected_bench_player_id == player->getId();
+          ImGui::Selectable(player->getName().c_str(), selected,
                             ImGuiSelectableFlags_SpanAllColumns |
                                 ImGuiSelectableFlags_AllowDoubleClick))
       {
@@ -502,16 +502,22 @@ void LineupScene::renderBench(float height)
   // A player from outside the matchday squad replaces a starter or a
   // substitute, who drops out of the squad.
   const bool canSwap =
-      outsider ? pitchPlayer || benchPlayer : pitchPlayer && benchPlayer;
+      outsider ? (pitchPlayer || benchPlayer) : (pitchPlayer && benchPlayer);
   ImGui::BeginDisabled(!canSwap);
   if (UI::primaryButton(LOC("LINEUP_SWAP_SELECTED"), ImVec2(-FLT_MIN, 0.0f)))
   {
-    const bool swapped =
-        outsider ? current_lineup->bringIn(
-                       outsider, pitchPlayer ? selected_pitch_player_id
-                                             : selected_bench_player_id)
-                 : current_lineup->swapPlayers(selected_bench_player_id,
-                                               selected_pitch_player_id);
+    bool swapped = false;
+    if (outsider)
+    {
+      const PlayerID replacedPlayer =
+          pitchPlayer ? selected_pitch_player_id : selected_bench_player_id;
+      swapped = current_lineup->bringIn(outsider, replacedPlayer);
+    }
+    else
+    {
+      swapped = current_lineup->swapPlayers(selected_bench_player_id,
+                                            selected_pitch_player_id);
+    }
     if (swapped)
     {
       selected_pitch_player_id = PlayerID{};
@@ -520,9 +526,9 @@ void LineupScene::renderBench(float height)
     }
   }
   ImGui::EndDisabled();
-  const bool benchRoom =
-      current_lineup->getReserves().size() < Lineup::MAX_SUBSTITUTES;
-  if (outsider && benchRoom)
+  if (const bool benchRoom =
+          current_lineup->getReserves().size() < Lineup::MAX_SUBSTITUTES;
+      outsider && benchRoom)
   {
     if (UI::secondaryButton(LOC("LINEUP_ADD_TO_BENCH"), ImVec2(-FLT_MIN, 0.0f)))
     {
@@ -532,16 +538,14 @@ void LineupScene::renderBench(float height)
       selected_outsider_id = PlayerID{};
     }
   }
-  else if (benchPlayer && !pitchPlayer && !outsider)
+  else if (benchPlayer && !pitchPlayer && !outsider &&
+           UI::secondaryButton(LOC("LINEUP_REMOVE_FROM_BENCH"),
+                               ImVec2(-FLT_MIN, 0.0f)))
   {
-    if (UI::secondaryButton(LOC("LINEUP_REMOVE_FROM_BENCH"),
-                            ImVec2(-FLT_MIN, 0.0f)))
-    {
-      std::vector<const Player*> bench = current_lineup->getReserves();
-      std::erase(bench, benchPlayer);
-      current_lineup->setReserves(bench);
-      selected_bench_player_id = PlayerID{};
-    }
+    std::vector<const Player*> bench = current_lineup->getReserves();
+    std::erase(bench, benchPlayer);
+    current_lineup->setReserves(bench);
+    selected_bench_player_id = PlayerID{};
   }
   UI::sectionLabel(LOC("LINEUP_COMPARISON"));
   PlayerUI::detailPanel("LineupComparison", benchPlayer, statsConfig,
@@ -602,8 +606,8 @@ void LineupScene::renderOutsiders(float height)
                          RoleUtils::shortName(player->getRole()));
       ImGui::TableNextColumn();
       ImGui::PushID(static_cast<int>(player->getId()));
-      const bool selected = selected_outsider_id == player->getId();
-      if (ImGui::Selectable(player->getName().c_str(), selected,
+      if (const bool selected = selected_outsider_id == player->getId();
+          ImGui::Selectable(player->getName().c_str(), selected,
                             ImGuiSelectableFlags_SpanAllColumns |
                                 ImGuiSelectableFlags_AllowDoubleClick))
       {

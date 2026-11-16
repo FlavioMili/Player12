@@ -175,7 +175,7 @@ class InternationalScene : public ManagementScene
   void renderCompetitionPicker();
   void renderLeagueTable(float width);
   void renderEntrants(float width);
-  void renderBracket(float width);
+  void renderBracket(float width) const;
   void renderMatchday(float width);
   void renderAssociations(float width);
   void renderCalledUp(float width);

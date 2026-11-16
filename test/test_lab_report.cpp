@@ -28,7 +28,9 @@ constexpr std::array MATCH_SCOPES = {Lab::Scope::Match, Lab::Scope::Engine};
 Lab::Estimate exact(double value, std::size_t n = 1000)
 {
   Lab::Estimate estimate;
-  estimate.value = estimate.low = estimate.high = value;
+  estimate.value = value;
+  estimate.low = value;
+  estimate.high = value;
   estimate.n = n;
   return estimate;
 }
@@ -59,7 +61,7 @@ TEST(LabStats, WilsonIntervalMatchesReferenceValues)
 
 TEST(LabStats, MeanUsesStudentTInterval)
 {
-  const std::vector<double> values = {1.0, 2.0, 3.0, 4.0, 5.0};
+  const std::vector values = {1.0, 2.0, 3.0, 4.0, 5.0};
   const Lab::Estimate mean = Lab::meanEstimate(values);
   EXPECT_DOUBLE_EQ(mean.value, 3.0);
   // sd = 1.5811, t(4) = 2.776 -> half width 1.963.
@@ -72,25 +74,25 @@ TEST(LabStats, MeanUsesStudentTInterval)
 
 TEST(LabStats, RatioAndMedianIntervals)
 {
-  const std::vector<double> num = {1.0, 1.0, 1.0, 1.0};
-  const std::vector<double> den = {2.0, 2.0, 2.0, 2.0};
+  const std::vector num = {1.0, 1.0, 1.0, 1.0};
+  const std::vector den = {2.0, 2.0, 2.0, 2.0};
   const Lab::Estimate constant = Lab::ratioEstimate(num, den);
   EXPECT_DOUBLE_EQ(constant.value, 0.5);
   EXPECT_DOUBLE_EQ(constant.low, 0.5);
   EXPECT_DOUBLE_EQ(constant.high, 0.5);
 
-  const std::vector<double> goals = {0.0, 2.0, 1.0, 3.0};
-  const std::vector<double> shots = {10.0, 10.0, 10.0, 10.0};
+  const std::vector goals = {0.0, 2.0, 1.0, 3.0};
+  const std::vector shots = {10.0, 10.0, 10.0, 10.0};
   const Lab::Estimate conversion = Lab::ratioEstimate(goals, shots);
   EXPECT_DOUBLE_EQ(conversion.value, 0.15);
   EXPECT_LT(conversion.low, 0.15);
   EXPECT_GT(conversion.high, 0.15);
 
-  const std::vector<double> zeros = {0.0, 0.0};
+  const std::vector zeros = {0.0, 0.0};
   EXPECT_FALSE(Lab::ratioEstimate(zeros, zeros).valid())
       << "a zero denominator has no ratio";
 
-  const std::vector<double> sample = {5.0, 1.0, 4.0, 2.0, 3.0};
+  const std::vector sample = {5.0, 1.0, 4.0, 2.0, 3.0};
   const Lab::Estimate median = Lab::medianEstimate(sample);
   EXPECT_DOUBLE_EQ(median.value, 3.0);
   EXPECT_LE(median.low, 3.0);
@@ -100,7 +102,7 @@ TEST(LabStats, RatioAndMedianIntervals)
 TEST(LabStats, BootstrapIsDeterministic)
 {
   const std::vector<double> values = {0, 1, 1, 2, 2, 2, 3, 3, 4, 6};
-  const auto mean = [&](std::span<const std::size_t> indices)
+  const auto mean = [&values](std::span<const std::size_t> indices)
   {
     double sum = 0.0;
     for (const std::size_t i : indices) sum += values[i];
@@ -189,7 +191,7 @@ TEST(LabReport, MonitorPassRateDrivesExitCode)
 TEST(LabReport, JsonRoundTripPreservesTheReport)
 {
   std::map<std::string, Lab::Estimate> metrics;
-  metrics["goals_per_match"] = Lab::meanEstimate(std::vector<double>{1, 3, 2});
+  metrics["goals_per_match"] = Lab::meanEstimate(std::vector{1.0, 3.0, 2.0});
   metrics["draw_share"] = Lab::proportionEstimate(26, 100);
   Lab::LabReport report;
   report.mode = "matches";
@@ -200,9 +202,10 @@ TEST(LabReport, JsonRoundTripPreservesTheReport)
   report.ms_per_match = 15.0;
   report.parameters["pairing"] = "fixed | 65 v 65";
   report.rows = Lab::evaluateTargets(metrics, MATCH_SCOPES);
-  report.tables.push_back({"Top scorelines",
-                           {"Score", "Share"},
-                           {{"1|1", "12.0%"}, {"1-0", "10.0%"}}});
+  report.tables.emplace_back("Top scorelines",
+                             std::vector<std::string>{"Score", "Share"},
+                             std::vector<std::vector<std::string>>{
+                                 {"1|1", "12.0%"}, {"1-0", "10.0%"}});
   report.notes.push_back("note");
 
   const std::string text = Lab::toJson(report).dump();

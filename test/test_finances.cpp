@@ -15,6 +15,7 @@
 #include <map>
 #include <memory>
 #include <numeric>
+#include <utility>
 #include <vector>
 
 #include "controller/game_controller.h"
@@ -38,10 +39,7 @@ namespace
 constexpr std::uint64_t WORLD_SEED = 424242;
 
 /** Save slot unique to this process (tests run in parallel processes). */
-int financeSlot()
-{
-  return 100'000 + static_cast<int>(getpid() % 100'000) * 10 + 5;
-}
+int financeSlot() { return 100'000 + getpid() % 100'000 * 10 + 5; }
 
 const GameDateValue DAY_ONE(2025, 7, 2);
 const GameDateValue DAY_TWO(2025, 7, 9);
@@ -60,16 +58,16 @@ std::int64_t categoryTotal(const Finances& finances, FinanceCategory category)
 
 TEST(FinancesTest, BalanceAlwaysEqualsTheLedger)
 {
+  using enum FinanceCategory;
   Finances finances(1'000'000, DAY_ONE);
-  finances.record(DAY_TWO, FinanceCategory::Wages, -250'000);
-  finances.record(DAY_TWO, FinanceCategory::Matchday, 400'000);
-  finances.record(DAY_THREE, FinanceCategory::Broadcasting, 90'000);
+  finances.record(DAY_TWO, Wages, -250'000);
+  finances.record(DAY_TWO, Matchday, 400'000);
+  finances.record(DAY_THREE, Broadcasting, 90'000);
 
   EXPECT_EQ(finances.getBalance(), 1'240'000);
   EXPECT_EQ(finances.ledgerTotal(), finances.getBalance());
   ASSERT_EQ(finances.getLedger().size(), 4u);
-  EXPECT_EQ(finances.getLedger().front().category,
-            FinanceCategory::OpeningBalance);
+  EXPECT_EQ(finances.getLedger().front().category, OpeningBalance);
 
   EXPECT_TRUE(finances.revertLastTransaction());
   EXPECT_EQ(finances.getBalance(), 1'150'000);
@@ -78,20 +76,19 @@ TEST(FinancesTest, BalanceAlwaysEqualsTheLedger)
 
 TEST(FinancesTest, SummaryTotalsOnlyTheRequestedDates)
 {
+  using enum FinanceCategory;
   Finances finances(0, DAY_ONE);
-  finances.record(DAY_TWO, FinanceCategory::Wages, -100);
-  finances.record(DAY_TWO, FinanceCategory::Sponsorship, 300);
-  finances.record(DAY_THREE, FinanceCategory::Staff, -50);
+  finances.record(DAY_TWO, Wages, -100);
+  finances.record(DAY_TWO, Sponsorship, 300);
+  finances.record(DAY_THREE, Staff, -50);
 
   const FinanceSummary july =
       finances.summarize(GameDateValue(2025, 7, 3), GameDateValue(2025, 7, 31));
   EXPECT_EQ(july.income, 300);
   EXPECT_EQ(july.expenses, 100);
   EXPECT_EQ(july.net(), 200);
-  EXPECT_EQ(july.by_category[static_cast<std::size_t>(FinanceCategory::Wages)],
-            -100);
-  EXPECT_EQ(july.by_category[static_cast<std::size_t>(FinanceCategory::Staff)],
-            0);
+  EXPECT_EQ(july.by_category[static_cast<std::size_t>(Wages)], -100);
+  EXPECT_EQ(july.by_category[static_cast<std::size_t>(Staff)], 0);
 }
 
 TEST(FinancesTest, TransferAndWageBudgetsAreSeparate)
@@ -165,7 +162,7 @@ TEST(ClubEconomyTest, PrizeMoneyRewardsHigherPlaces)
   EXPECT_TRUE(std::ranges::is_sorted(prizes, std::greater<>{}));
   EXPECT_GT(prizes.back(), 0);
 
-  const double revenue =
+  const auto revenue =
       static_cast<double>(economy.profile->average_revenue_eur);
   // Only the league's merit pool: continental money is paid by the
   // competitions as it is earned.
@@ -264,8 +261,9 @@ TEST(ClubEconomyTest, AttendanceFollowsSuccessPriceAndCapacity)
   };
   double best_ratio = 0.0;
   double best_gate = 0.0;
-  for (double ratio = 0.5; ratio <= 4.0; ratio += 0.05)
+  for (int sampleIndex = 0; sampleIndex <= 70; ++sampleIndex)
   {
+    const double ratio = 0.5 + static_cast<double>(sampleIndex) * 0.05;
     if (gate(ratio) > best_gate)
     {
       best_gate = gate(ratio);
@@ -473,7 +471,7 @@ int poissonGoals(WorldRng& rng, double lambda)
 
 /** Plays one synthetic double round robin per league (weekly from August)
  * through the world simulation, with strength-driven scores. */
-void playWorldSeason(GameController& controller, WorldSimulation& world)
+void playWorldSeason(const GameController& controller, WorldSimulation& world)
 {
   auto gamedata = controller.getGameData();
   std::map<LeagueID, std::vector<TeamID>> leagues;
@@ -482,7 +480,7 @@ void playWorldSeason(GameController& controller, WorldSimulation& world)
     std::vector<TeamID> teams = league.getTeamIDs();
     std::ranges::sort(teams);
     if (teams.size() % 2 == 1) teams.push_back(FREE_AGENTS_TEAM_ID);
-    leagues.emplace(league_id, std::move(teams));
+    leagues.try_emplace(league_id, std::move(teams));
   }
   WorldRng scores(7);
   GameDateValue date = controller.getCurrentDate();
@@ -496,8 +494,8 @@ void playWorldSeason(GameController& controller, WorldSimulation& world)
       world.onSeasonEnd(date, FREE_AGENTS_TEAM_ID);
       world.onSeasonStart(date, FREE_AGENTS_TEAM_ID);
     }
-    const bool in_season = date.month >= 8 || date.month <= 5;
-    if (!in_season || dayOrdinal(date) % 7 != 5 ||
+    if (const bool in_season = date.month >= 8 || date.month <= 5;
+        !in_season || dayOrdinal(date) % 7 != 5 ||
         (date.month == 8 && date.day < 8))
       continue;
     ++round;
@@ -579,8 +577,8 @@ TEST(EconomyCalibrationTest, MedianClubsBreakEvenInEveryLeague)
                                                      GameDateValue(2026, 7, 2));
     const auto category = [&](FinanceCategory value)
     {
-      return static_cast<double>(
-          season.by_category[static_cast<std::size_t>(value)]);
+      return static_cast<double>(season.by_category[static_cast<std::size_t>(
+          std::to_underlying(value))]);
     };
     const double revenue = static_cast<double>(season.income) -
                            category(FinanceCategory::TransferFeeIn) -
@@ -598,7 +596,7 @@ TEST(EconomyCalibrationTest, MedianClubsBreakEvenInEveryLeague)
   }
   for (const auto& [league_id, result] : leagues)
   {
-    const double clubs = static_cast<double>(result.revenue.size());
+    const auto clubs = static_cast<double>(result.revenue.size());
     const double median_net = median(result.net_ratio);
     std::cout << "[economy] league " << static_cast<int>(league_id)
               << " median revenue " << median(result.revenue) / 1e6

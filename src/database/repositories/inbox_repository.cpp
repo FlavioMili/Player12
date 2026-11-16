@@ -44,9 +44,9 @@ std::vector<InboxMessage> InboxRepository::loadAll() const
     message.category = static_cast<InboxCategory>(sqlite3_column_int(stmt, 2));
     message.title_key = columnText(stmt, 3);
     message.body_key = columnText(stmt, 4);
-    const auto args =
-        nlohmann::json::parse(columnText(stmt, 5), nullptr, false);
-    if (args.is_array())
+    if (const auto args =
+            nlohmann::json::parse(columnText(stmt, 5), nullptr, false);
+        args.is_array())
     {
       for (const auto& arg : args)
       {
@@ -78,16 +78,17 @@ void InboxRepository::replaceAll(
     const std::string args = nlohmann::json(message.args).dump();
     sqlite3_bind_int64(stmt, 1, message.id);
     sqlite3_bind_int(stmt, 2, dateToInt(message.date));
-    sqlite3_bind_int(stmt, 3, static_cast<int>(message.category));
+    sqlite3_bind_int(stmt, 3,
+                     static_cast<int>(std::to_underlying(message.category)));
     sqlite3_bind_text(stmt, 4, message.title_key.c_str(), -1, SQLITE_TRANSIENT);
     sqlite3_bind_text(stmt, 5, message.body_key.c_str(), -1, SQLITE_TRANSIENT);
     sqlite3_bind_text(stmt, 6, args.c_str(), -1, SQLITE_TRANSIENT);
     sqlite3_bind_int(stmt, 7, message.read ? 1 : 0);
-    if (message.player_id)
+    if (message.player_id.has_value())
       sqlite3_bind_int64(stmt, 8, *message.player_id);
     else
       sqlite3_bind_null(stmt, 8);
-    if (message.team_id)
+    if (message.team_id.has_value())
       sqlite3_bind_int(stmt, 9, *message.team_id);
     else
       sqlite3_bind_null(stmt, 9);
@@ -110,7 +111,8 @@ InboxView InboxRepository::loadView() const
     const int category = sqlite3_column_int(stmt, 1);
     view.tab = static_cast<std::int8_t>(tab >= -1 && tab <= 1 ? tab : -1);
     view.category = static_cast<std::int8_t>(
-        category >= 0 && category < static_cast<int>(InboxCategory::COUNT)
+        category >= 0 && category < static_cast<int>(std::to_underlying(
+                                        InboxCategory::COUNT))
             ? category
             : -1);
     view.unread_only = sqlite3_column_int(stmt, 2) != 0;
@@ -133,11 +135,11 @@ void InboxRepository::saveView(const InboxView& view) const
   sqlite3_bind_int(stmt, 2, view.category);
   sqlite3_bind_int(stmt, 3, view.unread_only ? 1 : 0);
   sqlite3_bind_int(stmt, 4, view.followed_only ? 1 : 0);
-  if (view.player_id)
+  if (view.player_id.has_value())
     sqlite3_bind_int64(stmt, 5, *view.player_id);
   else
     sqlite3_bind_null(stmt, 5);
-  if (view.team_id)
+  if (view.team_id.has_value())
     sqlite3_bind_int(stmt, 6, *view.team_id);
   else
     sqlite3_bind_null(stmt, 6);

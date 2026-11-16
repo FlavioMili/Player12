@@ -78,10 +78,10 @@ class PlayerTalkDialog
     ImVec4 color;
   };
 
-  void rebuild(GameController& controller);
-  void renderHeader();
+  void rebuild(const GameController& controller);
+  void renderHeader() const;
   void renderOptions(GameController& controller);
-  void renderResult();
+  void renderResult() const;
   void choose(GameController& controller, TalkOption option);
 
   PlayerID player_id = 0;

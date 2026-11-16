@@ -59,7 +59,7 @@ enum class TargetColumn : ImGuiID
 
 constexpr ImGuiID columnId(TargetColumn column)
 {
-  return static_cast<ImGuiID>(column);
+  return std::to_underlying(column);
 }
 
 /**
@@ -69,35 +69,31 @@ constexpr ImGuiID columnId(TargetColumn column)
  */
 const std::array<UI::Column, 12>& targetColumns()
 {
+  using enum TargetColumn;
   constexpr ImGuiTableColumnFlags DESCENDING =
       ImGuiTableColumnFlags_PreferSortDescending;
   static const std::array<UI::Column, 12> columns = {{
       {"TRANSFER_COL_SHORTLIST", 28.0f, 0, ImGuiTableColumnFlags_NoHide,
-       columnId(TargetColumn::SHORTLIST)},
+       columnId(SHORTLIST)},
       {"TRANSFER_COL_NAME", 0.0f, 0, ImGuiTableColumnFlags_NoHide,
-       columnId(TargetColumn::NAME)},
+       columnId(NAME)},
       {"TRANSFER_COL_TEAM", 130.0f, 4, ImGuiTableColumnFlags_None,
-       columnId(TargetColumn::CLUB)},
+       columnId(CLUB)},
       {"TRANSFER_COL_ROLE", 44.0f, 3, ImGuiTableColumnFlags_None,
-       columnId(TargetColumn::ROLE)},
-      {"TRANSFER_COL_AGE", 36.0f, 5, ImGuiTableColumnFlags_None,
-       columnId(TargetColumn::AGE)},
-      {"TRANSFER_COL_EST_OVR", 64.0f, 0, DESCENDING,
-       columnId(TargetColumn::OVERALL)},
-      {"TRANSFER_COL_POTENTIAL", 64.0f, 3, DESCENDING,
-       columnId(TargetColumn::POTENTIAL)},
+       columnId(ROLE)},
+      {"TRANSFER_COL_AGE", 36.0f, 5, ImGuiTableColumnFlags_None, columnId(AGE)},
+      {"TRANSFER_COL_EST_OVR", 64.0f, 0, DESCENDING, columnId(OVERALL)},
+      {"TRANSFER_COL_POTENTIAL", 64.0f, 3, DESCENDING, columnId(POTENTIAL)},
       {"TRANSFER_COL_FIT", 100.0f, 0,
-       DESCENDING | ImGuiTableColumnFlags_DefaultSort,
-       columnId(TargetColumn::FIT)},
-      {"TRANSFER_COL_EST_VALUE", 80.0f, 1, DESCENDING,
-       columnId(TargetColumn::VALUE)},
+       DESCENDING | ImGuiTableColumnFlags_DefaultSort, columnId(FIT)},
+      {"TRANSFER_COL_EST_VALUE", 80.0f, 1, DESCENDING, columnId(VALUE)},
       {"TRANSFER_COL_WAGE", 80.0f, 6, ImGuiTableColumnFlags_None,
-       columnId(TargetColumn::WAGE)},
+       columnId(WAGE)},
       {"TRANSFER_COL_CONTRACT", 44.0f, 7, ImGuiTableColumnFlags_None,
-       columnId(TargetColumn::CONTRACT)},
+       columnId(CONTRACT)},
       {"TRANSFER_COL_ACTION", 64.0f, 0,
        ImGuiTableColumnFlags_NoSort | ImGuiTableColumnFlags_NoHide,
-       columnId(TargetColumn::ACTION)},
+       columnId(ACTION)},
   }};
   return columns;
 }
@@ -105,7 +101,8 @@ const std::array<UI::Column, 12>& targetColumns()
 /** Index of a column in targetColumns(). */
 constexpr int targetIndex(TargetColumn column)
 {
-  return static_cast<int>(column) - static_cast<int>(TargetColumn::SHORTLIST);
+  return static_cast<int>(std::to_underlying(column)) -
+         static_cast<int>(std::to_underlying(TargetColumn::SHORTLIST));
 }
 
 constexpr std::array<PlayerRole, 12> FILTER_ROLES = {
@@ -161,17 +158,17 @@ void placeDialog(float width)
 
 std::string fitText(const TransferNegotiation::SquadFit& fit)
 {
-  using TransferNegotiation::FitKind;
+  using enum TransferNegotiation::FitKind;
   switch (fit.kind)
   {
-    case FitKind::Starter:
+    case Starter:
       return LOC("TRANSFER_FIT_STARTER");
-    case FitKind::Upgrade:
+    case Upgrade:
       return fmt::sprintf(LOC("TRANSFER_FIT_UPGRADE"),
                           static_cast<int>(std::lround(fit.gain)));
-    case FitKind::Depth:
+    case Depth:
       return LOC("TRANSFER_FIT_DEPTH");
-    case FitKind::None:
+    case None:
       break;
   }
   return "-";
@@ -179,15 +176,16 @@ std::string fitText(const TransferNegotiation::SquadFit& fit)
 
 ImVec4 fitColor(TransferNegotiation::FitKind kind)
 {
+  using enum TransferNegotiation::FitKind;
   const Theme::Palette& palette = Theme::palette();
   switch (kind)
   {
-    case TransferNegotiation::FitKind::Starter:
-    case TransferNegotiation::FitKind::Upgrade:
+    case Starter:
+    case Upgrade:
       return palette.positive;
-    case TransferNegotiation::FitKind::Depth:
+    case Depth:
       return palette.info;
-    case TransferNegotiation::FitKind::None:
+    case None:
       break;
   }
   return palette.faint;
@@ -261,13 +259,14 @@ Suggestion budgetFix(const TransferNegotiation::OfferTerms& terms,
 
 const char* decisionKey(ClubResponse::Decision decision)
 {
+  using enum ClubResponse::Decision;
   switch (decision)
   {
-    case ClubResponse::Decision::Accept:
+    case Accept:
       return "TRANSFER_RESPONSE_ACCEPTED";
-    case ClubResponse::Decision::Counter:
+    case Counter:
       return "TRANSFER_RESPONSE_COUNTER";
-    case ClubResponse::Decision::Reject:
+    case Reject:
       return "TRANSFER_RESPONSE_REJECTED";
   }
   return "";
@@ -275,14 +274,15 @@ const char* decisionKey(ClubResponse::Decision decision)
 
 ImVec4 decisionColor(ClubResponse::Decision decision)
 {
+  using enum ClubResponse::Decision;
   const Theme::Palette& palette = Theme::palette();
   switch (decision)
   {
-    case ClubResponse::Decision::Accept:
+    case Accept:
       return palette.positive;
-    case ClubResponse::Decision::Counter:
+    case Counter:
       return palette.warning;
-    case ClubResponse::Decision::Reject:
+    case Reject:
       return palette.negative;
   }
   return palette.text;
@@ -327,7 +327,10 @@ void TransferMarketScene::openPendingDeal()
     openOfferDialog(row);
 }
 
-void TransferMarketScene::update(float /*deltaTime*/) {}
+void TransferMarketScene::update(float /*deltaTime*/)
+{
+  // This scene updates its view models on entry and after transfer actions.
+}
 
 SceneID TransferMarketScene::getID() const { return SceneID::TRANSFER_MARKET; }
 
@@ -468,9 +471,9 @@ std::vector<TransferMarketScene::TargetRow> TransferMarketScene::searchRows(
   std::vector<TargetRow> rows;
   if (affordable)
   {
-    const int64_t cap = affordableValueCap();
     // Free agents cost no fee: they come from their own search below.
-    if (cap > 0 && !search.free_agents_only)
+    if (const int64_t cap = affordableValueCap();
+        cap > 0 && !search.free_agents_only)
     {
       ScoutSearchFilter capped = search;
       capped.max_value =
@@ -508,8 +511,7 @@ void TransferMarketScene::refreshNeeds()
   for (const SquadRow& row : squad)
   {
     if (!row.committed)
-      shape.emplace_back(row.player.role_id,
-                         static_cast<float>(row.player.overall));
+      shape.emplace_back(row.player.role_id, row.player.overall);
   }
   needs = TransferNegotiation::squadNeeds(shape);
   needs_text.clear();
@@ -558,9 +560,8 @@ void TransferMarketScene::refreshRecommended()
     return a.value != b.value ? a.value < b.value : a.id < b.id;
   };
   const size_t keep = std::min(pool.size(), Tuning::Filters::RECOMMENDED_LIMIT);
-  std::partial_sort(pool.begin(),
-                    pool.begin() + static_cast<std::ptrdiff_t>(keep),
-                    pool.end(), better);
+  std::ranges::partial_sort(
+      pool, pool.begin() + static_cast<std::ptrdiff_t>(keep), better);
   pool.resize(keep);
   recommended = std::move(pool);
   visible_recommended.resize(recommended.size());
@@ -599,6 +600,7 @@ void TransferMarketScene::rederiveRows(std::vector<TargetRow>& rows) const
 
 void TransferMarketScene::applyTargetFilter()
 {
+  using enum TransferMarketScene::Availability;
   const std::string query = PlayerView::toLower(filters.name.data());
   applied_filters.name = filters.name;
   visible_targets.clear();
@@ -609,13 +611,13 @@ void TransferMarketScene::applyTargetFilter()
     if (filters.affordable_only && !row.affordable) continue;
     switch (filters.availability)
     {
-      case Availability::LISTED:
+      case LISTED:
         if (row.asking_price == 0) continue;
         break;
-      case Availability::LOAN_LISTED:
+      case LOAN_LISTED:
         if (!row.loan_listed) continue;
         break;
-      case Availability::PRE_CONTRACT:
+      case PRE_CONTRACT:
         if (!row.pre_contract) continue;
         break;
       default:
@@ -636,6 +638,7 @@ void TransferMarketScene::sortTargets(const std::vector<TargetRow>& rows,
 {
   const auto column = sort.column == 0 ? TargetColumn::FIT
                                        : static_cast<TargetColumn>(sort.column);
+  using enum TargetColumn;
   std::ranges::sort(visible,
                     [&](size_t left, size_t right)
                     {
@@ -644,31 +647,31 @@ void TransferMarketScene::sortTargets(const std::vector<TargetRow>& rows,
                       int cmp = 0;
                       switch (column)
                       {
-                        case TargetColumn::SHORTLIST:
+                        case SHORTLIST:
                           cmp = UI::compare(a.shortlisted, b.shortlisted);
                           break;
-                        case TargetColumn::NAME:
+                        case NAME:
                           cmp = a.name.compare(b.name);
                           break;
-                        case TargetColumn::CLUB:
+                        case CLUB:
                           cmp = a.club.compare(b.club);
                           break;
-                        case TargetColumn::ROLE:
+                        case ROLE:
                           cmp = UI::compare(a.role_id, b.role_id);
                           break;
-                        case TargetColumn::AGE:
+                        case AGE:
                           cmp = UI::compare(a.age, b.age);
                           break;
-                        case TargetColumn::OVERALL:
-                        case TargetColumn::ACTION:
+                        case OVERALL:
+                        case ACTION:
                           // Ranges sort by their midpoint.
                           cmp = UI::compare(a.overall_low + a.overall_high,
                                             b.overall_low + b.overall_high);
                           break;
-                        case TargetColumn::POTENTIAL:
+                        case POTENTIAL:
                           cmp = UI::compare(a.potential, b.potential);
                           break;
-                        case TargetColumn::FIT:
+                        case FIT:
                           // Equal fit: the cheaper player first.
                           cmp = UI::compare(a.fit.score, b.fit.score);
                           if (cmp == 0)
@@ -676,13 +679,13 @@ void TransferMarketScene::sortTargets(const std::vector<TargetRow>& rows,
                                       ? UI::compare(a.value, b.value)
                                       : UI::compare(b.value, a.value);
                           break;
-                        case TargetColumn::VALUE:
+                        case VALUE:
                           cmp = UI::compare(a.value, b.value);
                           break;
-                        case TargetColumn::WAGE:
+                        case WAGE:
                           cmp = UI::compare(a.wage, b.wage);
                           break;
-                        case TargetColumn::CONTRACT:
+                        case CONTRACT:
                           cmp = UI::compare(a.contract_years, b.contract_years);
                           break;
                       }
@@ -868,11 +871,13 @@ void TransferMarketScene::refreshHistory()
     row.to = teamName(controller, record.to_team);
     row.kind_key = transferKindKey(record.kind);
     row.severance = record.kind == TransferKind::Release;
-    row.fee_text = record.fee == 0 ? std::string("-")
-                   : row.severance
-                       ? fmt::sprintf(LOC("TRANSFER_HISTORY_SEVERANCE"),
-                                      Format::money(record.fee))
-                       : Format::money(record.fee);
+    if (record.fee == 0)
+      row.fee_text = "-";
+    else if (row.severance)
+      row.fee_text = fmt::sprintf(LOC("TRANSFER_HISTORY_SEVERANCE"),
+                                  Format::money(record.fee));
+    else
+      row.fee_text = Format::money(record.fee);
     row.managed = record.from_team == managed || record.to_team == managed;
     history.push_back(std::move(row));
   }
@@ -888,6 +893,7 @@ void TransferMarketScene::refreshHistory()
 
 void TransferMarketScene::renderContent()
 {
+  using enum ContractTalksDialog::Event;
   UI::pageHeader(LOC("TRANSFER_TITLE"), LOC("TRANSFER_SUBTITLE"));
   renderSummary();
 
@@ -903,9 +909,10 @@ void TransferMarketScene::renderContent()
       renderSearchTab();
       ImGui::EndTabItem();
     }
-    const std::string shortlistLabel = fmt::format(
-        "{} ({})###shortlist", LOC("TRANSFER_TAB_SHORTLIST"), shortlist.size());
-    if (ImGui::BeginTabItem(shortlistLabel.c_str()))
+    if (const std::string shortlistLabel =
+            fmt::format("{} ({})###shortlist", LOC("TRANSFER_TAB_SHORTLIST"),
+                        shortlist.size());
+        ImGui::BeginTabItem(shortlistLabel.c_str()))
     {
       if (shortlist.empty())
         UI::emptyState(LOC("TRANSFER_SHORTLIST_EMPTY_TITLE"),
@@ -915,11 +922,12 @@ void TransferMarketScene::renderContent()
                           shortlist_sort);
       ImGui::EndTabItem();
     }
-    const std::string offersLabel =
-        offers.empty() ? fmt::format("{}###offers", LOC("TRANSFER_TAB_OFFERS"))
-                       : fmt::format("{} ({})###offers",
-                                     LOC("TRANSFER_TAB_OFFERS"), offers.size());
-    if (ImGui::BeginTabItem(offersLabel.c_str()))
+    if (const std::string offersLabel =
+            offers.empty()
+                ? fmt::format("{}###offers", LOC("TRANSFER_TAB_OFFERS"))
+                : fmt::format("{} ({})###offers", LOC("TRANSFER_TAB_OFFERS"),
+                              offers.size());
+        ImGui::BeginTabItem(offersLabel.c_str()))
     {
       renderOffersTab();
       ImGui::EndTabItem();
@@ -945,14 +953,14 @@ void TransferMarketScene::renderContent()
   renderOfferDialog();
   switch (contract_talks.render(guiView->getController()))
   {
-    case ContractTalksDialog::Event::Signed:
+    case Signed:
       showToast(contract_talks.signedMessage());
       refreshData();
       break;
-    case ContractTalksDialog::Event::Proposed:
+    case Proposed:
       refreshOffers();
       break;
-    case ContractTalksDialog::Event::None:
+    case None:
       break;
   }
   renderLoanDialog();
@@ -980,36 +988,42 @@ void TransferMarketScene::renderSummary()
   };
 
   const std::string budget = Format::money(available_budget);
+  ImVec4 budgetColor = palette.warning;
+  if (embargo)
+    budgetColor = palette.negative;
+  else if (available_budget > 0)
+    budgetColor = palette.text;
   UI::statTile(
       "budget", LOC("TRANSFER_TILE_BUDGET"), budget.c_str(),
       LOC(embargo ? "TRANSFER_TILE_EMBARGO_NOTE" : "TRANSFER_TILE_BUDGET_NOTE"),
-      embargo                ? palette.negative
-      : available_budget > 0 ? palette.text
-                             : palette.warning,
-      width);
+      budgetColor, width);
   next();
   const std::string wages = Format::money(wage_room);
   UI::statTile("wages", LOC("TRANSFER_TILE_WAGE_ROOM"), wages.c_str(),
                LOC("TRANSFER_TILE_WAGE_ROOM_NOTE"),
                wage_room >= 0 ? palette.text : palette.negative, width);
   next();
-  const std::string windowText =
-      !window.open ? std::string(LOC("TRANSFER_WINDOW_CLOSED_SHORT"))
-      : window.days_to_deadline == 0
-          ? std::string(LOC("TRANSFER_DEADLINE_DAY"))
-          : fmt::sprintf(
-                Format::plural("TRANSFER_DAYS_LEFT", window.days_to_deadline),
-                window.days_to_deadline);
+  std::string windowText;
+  if (!window.open)
+    windowText = LOC("TRANSFER_WINDOW_CLOSED_SHORT");
+  else if (window.days_to_deadline == 0)
+    windowText = LOC("TRANSFER_DEADLINE_DAY");
+  else
+    windowText = fmt::sprintf(
+        Format::plural("TRANSFER_DAYS_LEFT", window.days_to_deadline),
+        window.days_to_deadline);
+  const char* windowSeasonKey =
+      window.winter ? "TRANSFER_WINDOW_WINTER" : "TRANSFER_WINDOW_SUMMER";
+  const char* windowNoteKey =
+      window.open ? windowSeasonKey : "TRANSFER_WINDOW_NOTE";
+  ImVec4 windowColor = palette.negative;
+  if (window.open)
+    windowColor =
+        window.days_to_deadline <= TransferTuning::Market::LATE_WINDOW_DAYS
+            ? palette.warning
+            : palette.positive;
   UI::statTile("window", LOC("TRANSFER_WINDOW"), windowText.c_str(),
-               LOC(window.open ? (window.winter ? "TRANSFER_WINDOW_WINTER"
-                                                : "TRANSFER_WINDOW_SUMMER")
-                               : "TRANSFER_WINDOW_NOTE"),
-               window.open ? (window.days_to_deadline <=
-                                      TransferTuning::Market::LATE_WINDOW_DAYS
-                                  ? palette.warning
-                                  : palette.positive)
-                           : palette.negative,
-               width);
+               LOC(windowNoteKey), windowColor, width);
   next();
   const std::string offerCount = std::to_string(offers.size());
   UI::statTile("offers", LOC("TRANSFER_TILE_OFFERS"), offerCount.c_str(),
@@ -1073,12 +1087,12 @@ void TransferMarketScene::renderFilters()
 
   UI::sameLineIfFits(L::COMBO_WIDTH * scale());
   ImGui::SetNextItemWidth(L::COMBO_WIDTH * scale());
-  const std::string rolePreview =
-      filters.role_index == 0
-          ? std::string(LOC("TRANSFER_FILTER_ANY_POSITION"))
-          : RoleUtils::shortName(
-                FILTER_ROLES[static_cast<size_t>(filters.role_index - 1)]);
-  if (ImGui::BeginCombo("##market_role", rolePreview.c_str()))
+  if (const std::string rolePreview =
+          filters.role_index == 0
+              ? std::string(LOC("TRANSFER_FILTER_ANY_POSITION"))
+              : RoleUtils::shortName(
+                    FILTER_ROLES[static_cast<size_t>(filters.role_index - 1)]);
+      ImGui::BeginCombo("##market_role", rolePreview.c_str()))
   {
     if (ImGui::Selectable(LOC("TRANSFER_FILTER_ANY_POSITION"),
                           filters.role_index == 0))
@@ -1101,11 +1115,12 @@ void TransferMarketScene::renderFilters()
 
   UI::sameLineIfFits(L::COMBO_WIDTH * scale());
   ImGui::SetNextItemWidth(L::COMBO_WIDTH * scale());
-  const char* leaguePreview =
-      filters.league_index == 0
-          ? LOC("TRANSFER_FILTER_ANY_LEAGUE")
-          : league_names[static_cast<size_t>(filters.league_index - 1)].c_str();
-  if (ImGui::BeginCombo("##market_league", leaguePreview))
+  if (const char* leaguePreview =
+          filters.league_index == 0
+              ? LOC("TRANSFER_FILTER_ANY_LEAGUE")
+              : league_names[static_cast<size_t>(filters.league_index - 1)]
+                    .c_str();
+      ImGui::BeginCombo("##market_league", leaguePreview))
   {
     if (ImGui::Selectable(LOC("TRANSFER_FILTER_ANY_LEAGUE"),
                           filters.league_index == 0))
@@ -1194,17 +1209,17 @@ void TransferMarketScene::renderFilters()
   changed |= ImGui::IsItemDeactivatedAfterEdit();
   UI::sameLineIfFits(L::COMBO_WIDTH * scale());
   ImGui::SetNextItemWidth(L::COMBO_WIDTH * scale());
-  const auto valueLabel = [](int index)
-  {
-    return index == 0
-               ? std::string(LOC("TRANSFER_FILTER_MAX_VALUE"))
-               : fmt::sprintf(
-                     LOC("TRANSFER_FILTER_MAX_VALUE_AT"),
-                     Format::money(
-                         Tuning::Filters::MAX_VALUE_STEPS[static_cast<size_t>(
-                             index - 1)]));
-  };
-  if (ImGui::BeginCombo("##market_max_value",
+  if (const auto valueLabel =
+          [](int index)
+      {
+        return index == 0
+                   ? std::string(LOC("TRANSFER_FILTER_MAX_VALUE"))
+                   : fmt::sprintf(
+                         LOC("TRANSFER_FILTER_MAX_VALUE_AT"),
+                         Format::money(Tuning::Filters::MAX_VALUE_STEPS
+                                           [static_cast<size_t>(index - 1)]));
+      };
+      ImGui::BeginCombo("##market_max_value",
                         valueLabel(filters.max_value_index).c_str()))
   {
     for (int index = 0;
@@ -1276,11 +1291,11 @@ void TransferMarketScene::renderTargetTable(const char* id,
   // page is the only scroll surface (the clipper keeps long lists cheap).
   const float room = ImGui::GetContentRegionAvail().y;
   const bool fill = room >= Tuning::Layout::TARGET_TABLE_MIN_HEIGHT * scale;
-  const ImGuiTableFlags flags =
-      ImGuiTableFlags_RowBg | ImGuiTableFlags_BordersInnerH |
-      ImGuiTableFlags_Sortable | ImGuiTableFlags_Hideable |
-      (fill ? ImGuiTableFlags_ScrollY : ImGuiTableFlags_None);
-  if (!UI::beginResponsiveTable(id, columns, mask, flags, UI::TableHeader::NONE,
+  if (const ImGuiTableFlags flags =
+          ImGuiTableFlags_RowBg | ImGuiTableFlags_BordersInnerH |
+          ImGuiTableFlags_Sortable | ImGuiTableFlags_Hideable |
+          (fill ? ImGuiTableFlags_ScrollY : ImGuiTableFlags_None);
+      !UI::beginResponsiveTable(id, columns, mask, flags, UI::TableHeader::NONE,
                                 ImVec2(0.0f, fill ? room : 0.0f)))
     return;
   // Sortable columns get clickable headers; the action column's is a label.
@@ -1300,8 +1315,9 @@ void TransferMarketScene::renderTargetTable(const char* id,
       specs && specs->SpecsCount > 0)
   {
     const ImGuiTableColumnSortSpecs& spec = specs->Specs[0];
-    const bool ascending = spec.SortDirection == ImGuiSortDirection_Ascending;
-    if (specs->SpecsDirty || spec.ColumnUserID != sort.column ||
+    if (const bool ascending =
+            spec.SortDirection == ImGuiSortDirection_Ascending;
+        specs->SpecsDirty || spec.ColumnUserID != sort.column ||
         ascending != sort.ascending)
     {
       sort.column = spec.ColumnUserID;
@@ -1450,8 +1466,8 @@ void TransferMarketScene::renderTargetActions(const TargetRow& row)
         }
       }
     }
-    const bool agreed = talk == ContractKind::Transfer;
-    if (agreed && ImGui::Selectable(LOC("TRANSFER_ACTION_TERMS")))
+    if (const bool agreed = talk == ContractKind::Transfer;
+        agreed && ImGui::Selectable(LOC("TRANSFER_ACTION_TERMS")))
       openContractDialog(row.id);
     if (talk == ContractKind::PreContract &&
         ImGui::Selectable(LOC("TRANSFER_ACTION_PRE_CONTRACT")))
@@ -2021,10 +2037,10 @@ void TransferMarketScene::renderOfferDialog()
     offer_dialog.requested = false;
   }
   placeDialog(dialogWidth());
-  const std::string title =
-      fmt::sprintf(LOC("TRANSFER_OFFER_TITLE"), offer_dialog.player) +
-      "###transfer_offer";
-  if (!ImGui::BeginPopupModal(
+  if (const std::string title =
+          fmt::sprintf(LOC("TRANSFER_OFFER_TITLE"), offer_dialog.player) +
+          "###transfer_offer";
+      !ImGui::BeginPopupModal(
           title.c_str(), nullptr,
           ImGuiWindowFlags_NoSavedSettings | ImGuiWindowFlags_AlwaysAutoResize))
     return;
@@ -2044,12 +2060,12 @@ void TransferMarketScene::renderOfferDialog()
   const auto instalments = TransferNegotiation::instalmentAmounts(terms);
   const int64_t add_ons = static_cast<int64_t>(terms.appearance_bonus) +
                           static_cast<int64_t>(terms.goal_bonus);
-  const int64_t expected_wage = static_cast<int64_t>(
+  const auto expected_wage = static_cast<int64_t>(
       std::llround(static_cast<double>(offer_dialog.wage) *
                    static_cast<double>(ScoutingTuning::EXPECTED_WAGE_RAISE)));
   const bool over_budget = signing > available_budget;
 
-  const auto termsColumn = [&]
+  const auto termsColumn = [this, &palette, &terms, &response, accepted]
   {
     ImGui::PushTextWrapPos(0.0f);
     ImGui::TextColored(
@@ -2089,7 +2105,9 @@ void TransferMarketScene::renderOfferDialog()
     edit(terms, chips);
   };
 
-  const auto summaryColumn = [&]
+  const auto summaryColumn = [this, &palette, &terms, upfront, instalments,
+                              agent, add_ons, signing, expected_wage,
+                              over_budget, &response, accepted]
   {
     const bool panel =
         beginPanel("##offer_summary", LOC("TRANSFER_SUMMARY_TITLE"));
@@ -2229,10 +2247,10 @@ void TransferMarketScene::renderLoanDialog()
     loan_dialog.requested = false;
   }
   placeDialog(dialogWidth());
-  const std::string title =
-      fmt::sprintf(LOC("TRANSFER_LOAN_TITLE"), loan_dialog.player) +
-      "###transfer_loan";
-  if (!ImGui::BeginPopupModal(
+  if (const std::string title =
+          fmt::sprintf(LOC("TRANSFER_LOAN_TITLE"), loan_dialog.player) +
+          "###transfer_loan";
+      !ImGui::BeginPopupModal(
           title.c_str(), nullptr,
           ImGuiWindowFlags_NoSavedSettings | ImGuiWindowFlags_AlwaysAutoResize))
     return;
@@ -2245,7 +2263,7 @@ void TransferMarketScene::renderLoanDialog()
   const int64_t weekly =
       static_cast<int64_t>(loan_dialog.wage) * terms.wage_share / 100;
 
-  const auto termsColumn = [&]
+  const auto termsColumn = [this, &palette, &terms]
   {
     ImGui::TextColored(
         palette.muted, "%s",
@@ -2253,29 +2271,29 @@ void TransferMarketScene::renderLoanDialog()
     formLabel(LOC("TRANSFER_FIELD_DURATION"));
     int duration =
         terms.duration == TransferNegotiation::LoanDuration::SeasonEnd ? 0 : 1;
-    const std::array<const char*, 2> durations = {
-        LOC("TRANSFER_LOAN_SEASON"), LOC("TRANSFER_LOAN_SIX_MONTHS")};
-    if (UI::segmented("##duration", duration, durations))
+    if (const std::array<const char*, 2> durations =
+            {LOC("TRANSFER_LOAN_SEASON"), LOC("TRANSFER_LOAN_SIX_MONTHS")};
+        UI::segmented("##duration", duration, durations))
       terms.duration = duration == 0
                            ? TransferNegotiation::LoanDuration::SeasonEnd
                            : TransferNegotiation::LoanDuration::SixMonths;
     formLabel(LOC("TRANSFER_FIELD_WAGE_SHARE"));
-    int shareIndex = optionIndex(WAGE_SHARE_OPTIONS, terms.wage_share);
-    if (UI::segmented("##share", shareIndex, WAGE_SHARE_LABELS))
+    if (int shareIndex = optionIndex(WAGE_SHARE_OPTIONS, terms.wage_share);
+        UI::segmented("##share", shareIndex, WAGE_SHARE_LABELS))
       terms.wage_share = WAGE_SHARE_OPTIONS[static_cast<size_t>(shareIndex)];
     formLabel(LOC("TRANSFER_FIELD_LOAN_FEE"));
-    int64_t fee = terms.loan_fee;
-    if (UI::moneyInput("##loan_fee", fee,
+    if (int64_t fee = terms.loan_fee;
+        UI::moneyInput("##loan_fee", fee,
                        {.maximum = std::numeric_limits<uint32_t>::max()}))
       terms.loan_fee = static_cast<uint32_t>(fee);
     formLabel(LOC("TRANSFER_FIELD_OPTION_FEE"));
     int64_t option = terms.option_fee;
-    const std::array<UI::MoneyChip, 2> optionChips = {
-        {{LOC("TRANSFER_CHIP_NONE"), 0},
-         {LOC("TRANSFER_CHIP_OPTION_VALUE"),
-          scaledAmount(loan_dialog.value,
-                       TransferTuning::Loan::OPTION_VALUE_MULTIPLE)}}};
-    if (UI::moneyInput("##option_fee", option,
+    if (const std::array<UI::MoneyChip, 2> optionChips =
+            {{{LOC("TRANSFER_CHIP_NONE"), 0},
+              {LOC("TRANSFER_CHIP_OPTION_VALUE"),
+               scaledAmount(loan_dialog.value,
+                            TransferTuning::Loan::OPTION_VALUE_MULTIPLE)}}};
+        UI::moneyInput("##option_fee", option,
                        {.maximum = std::numeric_limits<uint32_t>::max(),
                         .chips = optionChips}))
       terms.option_fee = static_cast<uint32_t>(option);
@@ -2285,7 +2303,7 @@ void TransferMarketScene::renderLoanDialog()
     ImGui::Checkbox(LOC("TRANSFER_FIELD_RECALL"), &terms.recall_clause);
   };
 
-  const auto summaryColumn = [&]
+  const auto summaryColumn = [this, &palette, weekly, weeks, &terms]
   {
     const bool panel =
         beginPanel("##loan_summary", LOC("TRANSFER_SUMMARY_TITLE"));
@@ -2308,16 +2326,18 @@ void TransferMarketScene::renderLoanDialog()
     if (loan_dialog.response)
     {
       const ClubResponse& response = *loan_dialog.response;
-      renderClubResponse(
-          response,
-          response.decision == ClubResponse::Decision::Counter
-              ? fmt::sprintf(
-                    LOC("TRANSFER_LOAN_COUNTER"),
-                    static_cast<int>(response.counter_wage_share),
-                    response.counter_option_fee > 0
-                        ? Format::moneyFull(response.counter_option_fee)
-                        : std::string("-"))
-              : std::string());
+      std::string detail;
+      if (response.decision == ClubResponse::Decision::Counter)
+      {
+        const std::string optionFee =
+            response.counter_option_fee > 0
+                ? Format::moneyFull(response.counter_option_fee)
+                : std::string("-");
+        detail = fmt::sprintf(LOC("TRANSFER_LOAN_COUNTER"),
+                              static_cast<int>(response.counter_wage_share),
+                              optionFee);
+      }
+      renderClubResponse(response, detail);
     }
   };
   renderDialogColumns(termsColumn, summaryColumn);
@@ -2366,21 +2386,22 @@ void TransferMarketScene::renderListingDialog()
   placeDialog(std::min(Tuning::Layout::DIALOG_WIDTH * scale(),
                        ImGui::GetMainViewport()->Size.x *
                            Tuning::Layout::DIALOG_VIEWPORT_SHARE));
-  const std::string title =
-      fmt::sprintf(LOC("TRANSFER_LIST_TITLE"), listing_dialog.player) +
-      "###transfer_listing";
-  if (!ImGui::BeginPopupModal(
+  if (const std::string title =
+          fmt::sprintf(LOC("TRANSFER_LIST_TITLE"), listing_dialog.player) +
+          "###transfer_listing";
+      !ImGui::BeginPopupModal(
           title.c_str(), nullptr,
           ImGuiWindowFlags_NoSavedSettings | ImGuiWindowFlags_AlwaysAutoResize))
     return;
   formLabel(LOC("TRANSFER_ASKING_PRICE"));
   int64_t price = listing_dialog.price;
-  const std::array<UI::MoneyChip, 3> chips = {
-      {{LOC("TRANSFER_CHIP_MARKET_VALUE"), listing_dialog.value},
-       {LOC("TRANSFER_CHIP_PLUS_25"), scaledAmount(listing_dialog.value, 1.25)},
-       {LOC("TRANSFER_CHIP_PLUS_50"),
-        scaledAmount(listing_dialog.value, 1.5)}}};
-  if (UI::moneyInput(
+  if (const std::array<UI::MoneyChip, 3> chips =
+          {{{LOC("TRANSFER_CHIP_MARKET_VALUE"), listing_dialog.value},
+            {LOC("TRANSFER_CHIP_PLUS_25"),
+             scaledAmount(listing_dialog.value, 1.25)},
+            {LOC("TRANSFER_CHIP_PLUS_50"),
+             scaledAmount(listing_dialog.value, 1.5)}}};
+      UI::moneyInput(
           "##asking", price,
           {.maximum = std::numeric_limits<uint32_t>::max(), .chips = chips}))
     listing_dialog.price = static_cast<uint32_t>(price);
@@ -2413,11 +2434,12 @@ void TransferMarketScene::renderReleaseDialog()
     ImGui::OpenPopup("###transfer_release");
     release_dialog.requested = false;
   }
-  const UI::DialogResult result =
-      UI::confirmDialog("###transfer_release", LOC("TRANSFER_RELEASE_TITLE"),
-                        release_dialog.body.c_str(), LOC("TRANSFER_RELEASE"),
-                        LOC("TRANSFER_CANCEL"));
-  if (result != UI::DialogResult::CONFIRM) return;
+  if (const UI::DialogResult result = UI::confirmDialog(
+          "###transfer_release", LOC("TRANSFER_RELEASE_TITLE"),
+          release_dialog.body.c_str(), LOC("TRANSFER_RELEASE"),
+          LOC("TRANSFER_CANCEL"));
+      result != UI::DialogResult::CONFIRM)
+    return;
   GameController& controller = guiView->getController();
   const GameController::PlayerActionBlock block =
       controller.getReleaseBlock(release_dialog.player_id);

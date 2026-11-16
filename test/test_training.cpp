@@ -13,6 +13,7 @@
 #include <algorithm>
 #include <memory>
 #include <numeric>
+#include <utility>
 
 #include "controller/game_controller.h"
 #include "database/gamedata.h"
@@ -28,11 +29,15 @@ constexpr std::uint64_t WORLD_SEED = 20250702;
 
 int uniqueSlot(int offset)
 {
-  return 200'000 + static_cast<int>(getpid() % 100'000) * 10 + offset;
+  return 200'000 + getpid() % 100'000 * 10 + offset;
 }
 
 struct SlotCleanup
 {
+  explicit SlotCleanup(int saveSlot) : slot(saveSlot) {}
+  SlotCleanup(const SlotCleanup&) = delete;
+  SlotCleanup& operator=(const SlotCleanup&) = delete;
+
   int slot;
   ~SlotCleanup() { RuntimePaths::removeSave(slot); }
 };
@@ -48,16 +53,16 @@ std::unique_ptr<GameController> makeWorld(int slot)
 StatsConfig testConfig()
 {
   StatsConfig config;
-  config.role_focus.emplace(
+  config.role_focus.try_emplace(
       "Striker", RoleFocus{{"Shooting", "Pace", "Dribbling", "Physicality"},
                            {0.4, 0.2, 0.2, 0.2}});
-  config.role_focus.emplace(
+  config.role_focus.try_emplace(
       "Midfielder", RoleFocus{{"Passing", "Vision", "Stamina", "Dribbling"},
                               {0.3, 0.3, 0.2, 0.2}});
-  config.role_focus.emplace(
+  config.role_focus.try_emplace(
       "Defender", RoleFocus{{"Defending", "Physicality", "Pace", "Vision"},
                             {0.4, 0.3, 0.15, 0.15}});
-  config.role_focus.emplace(
+  config.role_focus.try_emplace(
       "Goalkeeper",
       RoleFocus{{"Goalkeeping", "Vision", "Physicality"}, {0.7, 0.2, 0.1}});
   return config;
@@ -154,8 +159,9 @@ TEST(TrainingModelTest, LoadsAndExposureAreCalibrated)
       TrainingModel::presetMicrocycle(TrainingPreset::Balanced);
   const auto load = [&](MicrocycleDay day)
   {
-    return TrainingModel::sessionLoad(balanced[static_cast<std::size_t>(day)],
-                                      TrainingIntensity::Normal);
+    return TrainingModel::sessionLoad(
+        balanced[static_cast<std::size_t>(std::to_underlying(day))],
+        TrainingIntensity::Normal);
   };
   EXPECT_GT(load(MicrocycleDay::MdMinus4), load(MicrocycleDay::MdMinus3));
   EXPECT_GT(load(MicrocycleDay::MdMinus2), load(MicrocycleDay::MdMinus1));
@@ -173,7 +179,8 @@ TEST(TrainingModelTest, LoadsAndExposureAreCalibrated)
 TEST(TrainingModelTest, WorkloadSpikesRaiseRiskAndChronicLoadProtects)
 {
   PlayerTrainingState steady;
-  steady.acute = steady.chronic = TrainingModel::typicalDailyLoad();
+  steady.acute = TrainingModel::typicalDailyLoad();
+  steady.chronic = TrainingModel::typicalDailyLoad();
   EXPECT_FLOAT_EQ(TrainingModel::workloadRiskMultiplier(steady), 1.0f);
   EXPECT_EQ(TrainingModel::workloadRisk(steady, 95.0f), WorkloadRisk::Low);
 
@@ -193,32 +200,33 @@ TEST(TrainingModelTest, WorkloadSpikesRaiseRiskAndChronicLoadProtects)
 
   // A high, stable chronic load is mildly protective.
   PlayerTrainingState conditioned;
-  conditioned.acute = conditioned.chronic =
-      1.3f * TrainingModel::typicalDailyLoad();
+  conditioned.acute = 1.3f * TrainingModel::typicalDailyLoad();
+  conditioned.chronic = 1.3f * TrainingModel::typicalDailyLoad();
   EXPECT_FLOAT_EQ(TrainingModel::workloadRiskMultiplier(conditioned), 0.9f);
   EXPECT_EQ(TrainingModel::workloadRisk(steady, 50.0f), WorkloadRisk::High);
 }
 
 TEST(TrainingModelTest, DevelopmentMultiplierIsBoundedAndOrdered)
 {
-  const float balanced = TrainingModel::developmentMultiplier(
-      planFor(TrainingPreset::Balanced), 20, 0.5f);
+  using enum TrainingPreset;
+  const float balanced =
+      TrainingModel::developmentMultiplier(planFor(Balanced), 20, 0.5f);
   EXPECT_NEAR(balanced, 1.0f, 1e-4f);
-  const float light = TrainingModel::developmentMultiplier(
-      planFor(TrainingPreset::Light), 20, 0.5f);
-  const float fitness = TrainingModel::developmentMultiplier(
-      planFor(TrainingPreset::Fitness), 20, 0.5f);
+  const float light =
+      TrainingModel::developmentMultiplier(planFor(Light), 20, 0.5f);
+  const float fitness =
+      TrainingModel::developmentMultiplier(planFor(Fitness), 20, 0.5f);
   EXPECT_LT(light, balanced);
   EXPECT_GT(fitness, balanced);
-  EXPECT_GT(TrainingModel::developmentMultiplier(
-                planFor(TrainingPreset::YouthDevelopment), 19, 0.5f),
-            TrainingModel::developmentMultiplier(
-                planFor(TrainingPreset::YouthDevelopment), 27, 0.5f));
+  EXPECT_GT(
+      TrainingModel::developmentMultiplier(planFor(YouthDevelopment), 19, 0.5f),
+      TrainingModel::developmentMultiplier(planFor(YouthDevelopment), 27,
+                                           0.5f));
   // Better coaches help, within a narrow band.
-  const float poor = TrainingModel::developmentMultiplier(
-      planFor(TrainingPreset::Balanced), 20, 0.0f);
-  const float elite = TrainingModel::developmentMultiplier(
-      planFor(TrainingPreset::Balanced), 20, 1.0f);
+  const float poor =
+      TrainingModel::developmentMultiplier(planFor(Balanced), 20, 0.0f);
+  const float elite =
+      TrainingModel::developmentMultiplier(planFor(Balanced), 20, 1.0f);
   EXPECT_NEAR(poor, 0.9f, 1e-4f);
   EXPECT_NEAR(elite, 1.1f, 1e-4f);
 }
@@ -255,7 +263,8 @@ TEST(TrainingModelTest, DirectedGrowthFollowsScheduleAndFocus)
   // Attributes outside the role stop at potential + 5.
   Player capped = makeStriker(20);
   auto stats = capped.getStats();
-  stats["Passing"] = stats["Vision"] = 85.0f;
+  stats["Passing"] = 85.0f;
+  stats["Vision"] = 85.0f;
   capped.setStats(stats);
   EXPECT_NEAR(TrainingModel::applyDirectedGrowth(
                   capped, 1.0f, balanced, TrainingFocus::Playmaking, config),

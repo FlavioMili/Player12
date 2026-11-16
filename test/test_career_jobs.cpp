@@ -42,11 +42,15 @@ constexpr std::uint64_t WORLD_SEED = 20250702;
 
 int uniqueSlot(int offset)
 {
-  return 820'000 + static_cast<int>(getpid() % 10'000) * 10 + offset;
+  return 820'000 + (getpid() % 10'000) * 10 + offset;
 }
 
 struct SlotCleanup
 {
+  explicit SlotCleanup(int saveSlot) : slot(saveSlot) {}
+  SlotCleanup(const SlotCleanup&) = delete;
+  SlotCleanup& operator=(const SlotCleanup&) = delete;
+
   int slot;
   ~SlotCleanup() { RuntimePaths::removeSave(slot); }
 };
@@ -232,9 +236,9 @@ TEST(ReserveSquadTest, PlayersMoveBetweenFirstTeamU21AndU18)
   EXPECT_EQ(
       controller->moveToReserves(outfield[YouthModel::U21_OVERAGE_OUTFIELD]),
       YouthActionResult::OverageFull);
-  const std::vector<PlayerID> keepers =
-      seniorsAged(*gamedata, managed, YouthModel::U21_MAX_AGE + 1, 40, true);
-  if (keepers.size() >= 2)
+  if (const std::vector<PlayerID> keepers = seniorsAged(
+          *gamedata, managed, YouthModel::U21_MAX_AGE + 1, 40, true);
+      keepers.size() >= 2)
   {
     EXPECT_EQ(controller->moveToReserves(keepers[0]), YouthActionResult::Ok);
     EXPECT_EQ(controller->moveToReserves(keepers[1]),

@@ -8,6 +8,8 @@
 
 #include "model/delegation.h"
 
+#include <utility>
+
 namespace
 {
 constexpr DutyOwner M = DutyOwner::Manager;
@@ -15,7 +17,8 @@ constexpr DutyOwner A = DutyOwner::Assistant;
 
 // Owners per preset, in Duty order.
 constexpr std::array<std::array<DutyOwner, DUTY_COUNT>,
-                     static_cast<std::size_t>(DelegationPreset::COUNT)>
+                     static_cast<std::size_t>(
+                         std::to_underlying(DelegationPreset::COUNT))>
     PRESETS = {{
         // Lineup, subs, training, renewals, scouting, friendlies, youth
         {M, M, M, M, M, M, M},  // Hands-on
@@ -35,14 +38,15 @@ constexpr std::array<const char*, DUTY_COUNT> DUTY_HELP_KEYS = {
     "DELEGATION_HELP_SCOUTING", "DELEGATION_HELP_FRIENDLIES",
     "DELEGATION_HELP_YOUTH"};
 
-constexpr std::array<const char*,
-                     static_cast<std::size_t>(DelegationPreset::COUNT)>
+constexpr std::array<const char*, static_cast<std::size_t>(std::to_underlying(
+                                      DelegationPreset::COUNT))>
     PRESET_KEYS = {"DELEGATION_PRESET_HANDS_ON", "DELEGATION_PRESET_BALANCED",
                    "DELEGATION_PRESET_ASSISTANT"};
 }  // namespace
 
 DelegationPolicy::DelegationPolicy()
-    : duties(PRESETS[static_cast<std::size_t>(DelegationPreset::Balanced)])
+    : duties(PRESETS[static_cast<std::size_t>(
+          std::to_underlying(DelegationPreset::Balanced))])
 {
 }
 
@@ -55,13 +59,13 @@ DelegationPolicy DelegationPolicy::preset(DelegationPreset preset)
 
 DutyOwner DelegationPolicy::owner(Duty duty) const
 {
-  const auto index = static_cast<std::size_t>(duty);
+  const auto index = static_cast<std::size_t>(std::to_underlying(duty));
   return index < DUTY_COUNT ? duties[index] : DutyOwner::Manager;
 }
 
 bool DelegationPolicy::set(Duty duty, DutyOwner owner)
 {
-  const auto index = static_cast<std::size_t>(duty);
+  const auto index = static_cast<std::size_t>(std::to_underlying(duty));
   if (index >= DUTY_COUNT) return false;
   duties[index] = owner;
   return true;
@@ -69,7 +73,7 @@ bool DelegationPolicy::set(Duty duty, DutyOwner owner)
 
 void DelegationPolicy::apply(DelegationPreset preset)
 {
-  const auto index = static_cast<std::size_t>(preset);
+  const auto index = static_cast<std::size_t>(std::to_underlying(preset));
   if (index >= PRESETS.size()) return;
   duties = PRESETS[index];
 }
@@ -85,18 +89,18 @@ std::optional<DelegationPreset> DelegationPolicy::matchingPreset() const
 
 const char* dutyKey(Duty duty)
 {
-  const auto index = static_cast<std::size_t>(duty);
+  const auto index = static_cast<std::size_t>(std::to_underlying(duty));
   return index < DUTY_COUNT ? DUTY_KEYS[index] : "";
 }
 
 const char* dutyHelpKey(Duty duty)
 {
-  const auto index = static_cast<std::size_t>(duty);
+  const auto index = static_cast<std::size_t>(std::to_underlying(duty));
   return index < DUTY_COUNT ? DUTY_HELP_KEYS[index] : "";
 }
 
 const char* delegationPresetKey(DelegationPreset preset)
 {
-  const auto index = static_cast<std::size_t>(preset);
+  const auto index = static_cast<std::size_t>(std::to_underlying(preset));
   return index < PRESET_KEYS.size() ? PRESET_KEYS[index] : "";
 }

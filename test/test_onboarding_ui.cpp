@@ -20,6 +20,7 @@
 #include <algorithm>
 #include <cmath>
 #include <filesystem>
+#include <format>
 #include <fstream>
 #include <memory>
 #include <regex>
@@ -27,6 +28,7 @@
 #include <sstream>
 #include <string>
 #include <string_view>
+#include <utility>
 #include <vector>
 
 #include "controller/game_controller.h"
@@ -87,11 +89,15 @@ constexpr std::uint64_t WORLD_SEED = 20250702;
 
 int uniqueSlot(int offset)
 {
-  return 470'000 + static_cast<int>(getpid() % 100'000) * 10 + offset;
+  return 470'000 + getpid() % 100'000 * 10 + offset;
 }
 
 struct SlotCleanup
 {
+  explicit SlotCleanup(int saveSlot) : slot(saveSlot) {}
+  SlotCleanup(const SlotCleanup&) = delete;
+  SlotCleanup& operator=(const SlotCleanup&) = delete;
+
   int slot;
   ~SlotCleanup() { RuntimePaths::removeSave(slot); }
 };
@@ -99,6 +105,10 @@ struct SlotCleanup
 /** Restores the default bindings whatever a test did. */
 struct BindingsCleanup
 {
+  BindingsCleanup() = default;
+  BindingsCleanup(const BindingsCleanup&) = delete;
+  BindingsCleanup& operator=(const BindingsCleanup&) = delete;
+
   ~BindingsCleanup()
   {
     Input::registry().resetAll();
@@ -121,8 +131,8 @@ void capture(GUIView& view, const char* name)
 void resize(GUIView& view, int width, int height)
 {
   SDL_SetWindowSize(view.getWindow(), width, height);
-  SDL_Event event{};
-  event.type = SDL_EVENT_WINDOW_RESIZED;
+  SDL_Event event{.window = {}};
+  event.window.type = SDL_EVENT_WINDOW_RESIZED;
   event.window.windowID = SDL_GetWindowID(view.getWindow());
   event.window.data1 = width;
   event.window.data2 = height;
@@ -132,13 +142,17 @@ void resize(GUIView& view, int width, int height)
 void pressKey(GUIView& view, ImGuiKey key, ImGuiKeyChord mods = 0)
 {
   ImGuiIO& io = ImGui::GetIO();
-  if ((mods & ImGuiMod_Ctrl) != 0) io.AddKeyEvent(ImGuiMod_Ctrl, true);
+  // Inject logical test chords consistently: ImGui swaps physical Ctrl and
+  // Super events when macOS behavior is enabled.
+  const ImGuiKey control =
+      io.ConfigMacOSXBehaviors ? ImGuiMod_Super : ImGuiMod_Ctrl;
+  if ((mods & ImGuiMod_Ctrl) != 0) io.AddKeyEvent(control, true);
   if ((mods & ImGuiMod_Shift) != 0) io.AddKeyEvent(ImGuiMod_Shift, true);
   if ((mods & ImGuiMod_Alt) != 0) io.AddKeyEvent(ImGuiMod_Alt, true);
   io.AddKeyEvent(key, true);
   Bridge::frame(view);
   io.AddKeyEvent(key, false);
-  if ((mods & ImGuiMod_Ctrl) != 0) io.AddKeyEvent(ImGuiMod_Ctrl, false);
+  if ((mods & ImGuiMod_Ctrl) != 0) io.AddKeyEvent(control, false);
   if ((mods & ImGuiMod_Shift) != 0) io.AddKeyEvent(ImGuiMod_Shift, false);
   if ((mods & ImGuiMod_Alt) != 0) io.AddKeyEvent(ImGuiMod_Alt, false);
   Bridge::frame(view);
@@ -149,8 +163,7 @@ const ImGuiWindow* findWindow(std::string_view part)
 {
   const ImGuiWindow* found = nullptr;
   for (const ImGuiWindow* window : GImGui->Windows)
-    if (window->Active &&
-        std::string_view(window->Name).find(part) != std::string_view::npos)
+    if (window->Active && std::string_view(window->Name).contains(part))
       found = window;
   return found;
 }
@@ -180,15 +193,15 @@ bool clickButton(GUIView& view, std::string_view windowPart, const char* label)
   return clickItem(view, window, ImHashStr(label, 0, window->ID));
 }
 
-bool welcomeOpen(GUIView& view)
+bool welcomeOpen(const GUIView& view)
 {
-  auto* hub = dynamic_cast<MainGameScene*>(view.getBaseScene());
+  const auto* hub = dynamic_cast<const MainGameScene*>(view.getBaseScene());
   return hub != nullptr && hub->welcomeTour().isOpen();
 }
 
-std::size_t welcomePage(GUIView& view)
+std::size_t welcomePage(const GUIView& view)
 {
-  auto* hub = dynamic_cast<MainGameScene*>(view.getBaseScene());
+  const auto* hub = dynamic_cast<const MainGameScene*>(view.getBaseScene());
   return hub != nullptr ? hub->welcomeTour().page() : 0;
 }
 }  // namespace
@@ -462,90 +475,95 @@ TEST(InputActionsTest, KeyEventsMatchByCharacterOrPhysicalKey)
 
 TEST(OnboardingUiTest, SettingsControlsRebindWithConflictPersistAndReset)
 {
-  SDL_SetHint(SDL_HINT_VIDEO_DRIVER, "dummy");
-  Logger::init();
-  const BindingsCleanup cleanup;
-  Input::registry().resetAll();
-  GameController controller;
-  GUIView view(controller);
-  ASSERT_TRUE(Bridge::initialize(view));
-  resize(view, 1280, 720);
-  view.changeScene(std::make_unique<SettingsScene>(&view));
-  frames(view, 3);
-  auto* settings = dynamic_cast<SettingsScene*>(Bridge::activeScene(view));
-  ASSERT_NE(settings, nullptr);
-  capture(view, "settings_controls.bmp");
+  for (const bool macBehavior : {false, true})
+  {
+    SCOPED_TRACE(macBehavior ? "macOS modifiers" : "standard modifiers");
+    SDL_SetHint(SDL_HINT_VIDEO_DRIVER, "dummy");
+    Logger::init();
+    const BindingsCleanup cleanup;
+    Input::registry().resetAll();
+    GameController controller;
+    GUIView view(controller);
+    ASSERT_TRUE(Bridge::initialize(view));
+    ImGui::GetIO().ConfigMacOSXBehaviors = macBehavior;
+    resize(view, 1280, 720);
+    view.changeScene(std::make_unique<SettingsScene>(&view));
+    frames(view, 3);
+    auto* settings = dynamic_cast<SettingsScene*>(Bridge::activeScene(view));
+    ASSERT_NE(settings, nullptr);
+    capture(view, "settings_controls.bmp");
 
-  Input::ActionRegistry& registry = Input::registry();
-  const Input::ActionId home = *registry.find(Input::Ids::NAV_HOME);
-  const Input::ActionId inbox = *registry.find(Input::Ids::NAV_INBOX);
+    Input::ActionRegistry& registry = Input::registry();
+    const Input::ActionId home = *registry.find(Input::Ids::NAV_HOME);
+    const Input::ActionId inbox = *registry.find(Input::Ids::NAV_INBOX);
 
-  // Waiting for a key: F1 is taken by Home, so the screen asks first.
-  Bridge::captureSlot(*settings, inbox, 0);
-  frames(view, 1);
-  pressKey(view, ImGuiKey_F1);
-  EXPECT_TRUE(Bridge::hasConflict(*settings));
-  EXPECT_EQ(Bridge::conflictWith(*settings), home);
-  EXPECT_EQ(registry.chord(inbox), ImGuiKey_F2);
-  // Escape while a key is awaited cancels the capture, not the screen.
-  Bridge::captureSlot(*settings, inbox, 1);
-  frames(view, 1);
-  pressKey(view, ImGuiKey_Escape);
-  EXPECT_EQ(Bridge::activeScene(view)->getID(), SceneID::SETTINGS);
-  EXPECT_EQ(registry.chord(inbox, 1), ImGuiKey_None);
+    // Waiting for a key: F1 is taken by Home, so the screen asks first.
+    Bridge::captureSlot(*settings, inbox, 0);
+    frames(view, 1);
+    pressKey(view, ImGuiKey_F1);
+    EXPECT_TRUE(Bridge::hasConflict(*settings));
+    EXPECT_EQ(Bridge::conflictWith(*settings), home);
+    EXPECT_EQ(registry.chord(inbox), ImGuiKey_F2);
+    // Escape while a key is awaited cancels the capture, not the screen.
+    Bridge::captureSlot(*settings, inbox, 1);
+    frames(view, 1);
+    pressKey(view, ImGuiKey_Escape);
+    EXPECT_EQ(Bridge::activeScene(view)->getID(), SceneID::SETTINGS);
+    EXPECT_EQ(registry.chord(inbox, 1), ImGuiKey_None);
 
-  // A free combination binds at once.
-  Bridge::captureSlot(*settings, inbox, 1);
-  frames(view, 1);
-  pressKey(view, ImGuiKey_I, ImGuiMod_Ctrl);
-  EXPECT_EQ(registry.chord(inbox, 1), ImGuiMod_Ctrl | ImGuiKey_I);
-  frames(view, 2);
-  capture(view, "settings_controls_rebound.bmp");
+    // A free combination binds at once.
+    Bridge::captureSlot(*settings, inbox, 1);
+    frames(view, 1);
+    pressKey(view, ImGuiKey_I, ImGuiMod_Ctrl);
+    EXPECT_EQ(registry.chord(inbox, 1), ImGuiMod_Ctrl | ImGuiKey_I);
+    frames(view, 2);
+    capture(view, "settings_controls_rebound.bmp");
 
-  // Apply & Back writes the file; a fresh load keeps the binding.
-  ASSERT_TRUE(clickButton(view, "##settings", LOC("SETTINGS_APPLY")));
-  frames(view, 2);
-  EXPECT_EQ(Bridge::activeScene(view)->getID(), SceneID::MAIN_MENU);
-  SettingsManager::instance()->get() = Settings{};
-  SettingsManager::instance()->load();
-  registry.reloadFromSettings();
-  EXPECT_EQ(registry.chord(inbox, 1), ImGuiMod_Ctrl | ImGuiKey_I);
+    // Apply & Back writes the file; a fresh load keeps the binding.
+    ASSERT_TRUE(clickButton(view, "##settings", LOC("SETTINGS_APPLY")));
+    frames(view, 2);
+    EXPECT_EQ(Bridge::activeScene(view)->getID(), SceneID::MAIN_MENU);
+    SettingsManager::instance()->get() = Settings{};
+    SettingsManager::instance()->load();
+    registry.reloadFromSettings();
+    EXPECT_EQ(registry.chord(inbox, 1), ImGuiMod_Ctrl | ImGuiKey_I);
 
-  // Reset to defaults puts every key back; Apply saves it.
-  view.changeScene(std::make_unique<SettingsScene>(&view));
-  frames(view, 3);
-  ASSERT_TRUE(clickButton(view, "##settings", LOC("SETTINGS_RESET")));
-  EXPECT_TRUE(registry.isDefault(inbox));
-  ASSERT_TRUE(clickButton(view, "##settings", LOC("SETTINGS_APPLY")));
-  frames(view, 2);
-  SettingsManager::instance()->get() = Settings{};
-  SettingsManager::instance()->load();
-  EXPECT_TRUE(SettingsManager::instance()->get().key_bindings.empty());
+    // Reset to defaults puts every key back; Apply saves it.
+    view.changeScene(std::make_unique<SettingsScene>(&view));
+    frames(view, 3);
+    ASSERT_TRUE(clickButton(view, "##settings", LOC("SETTINGS_RESET")));
+    EXPECT_TRUE(registry.isDefault(inbox));
+    ASSERT_TRUE(clickButton(view, "##settings", LOC("SETTINGS_APPLY")));
+    frames(view, 2);
+    SettingsManager::instance()->get() = Settings{};
+    SettingsManager::instance()->load();
+    EXPECT_TRUE(SettingsManager::instance()->get().key_bindings.empty());
 
-  // Cancel drops bindings changed on the screen.
-  view.changeScene(std::make_unique<SettingsScene>(&view));
-  frames(view, 3);
-  settings = dynamic_cast<SettingsScene*>(Bridge::activeScene(view));
-  ASSERT_NE(settings, nullptr);
-  Bridge::captureSlot(*settings, home, 1);
-  frames(view, 1);
-  pressKey(view, ImGuiKey_H, ImGuiMod_Ctrl);
-  EXPECT_EQ(registry.chord(home, 1), ImGuiMod_Ctrl | ImGuiKey_H);
-  ASSERT_TRUE(clickButton(view, "##settings", LOC("SETTINGS_CANCEL")));
-  frames(view, 2);
-  EXPECT_EQ(registry.chord(home, 1), ImGuiKey_None);
+    // Cancel drops bindings changed on the screen.
+    view.changeScene(std::make_unique<SettingsScene>(&view));
+    frames(view, 3);
+    settings = dynamic_cast<SettingsScene*>(Bridge::activeScene(view));
+    ASSERT_NE(settings, nullptr);
+    Bridge::captureSlot(*settings, home, 1);
+    frames(view, 1);
+    pressKey(view, ImGuiKey_H, ImGuiMod_Ctrl);
+    EXPECT_EQ(registry.chord(home, 1), ImGuiMod_Ctrl | ImGuiKey_H);
+    ASSERT_TRUE(clickButton(view, "##settings", LOC("SETTINGS_CANCEL")));
+    frames(view, 2);
+    EXPECT_EQ(registry.chord(home, 1), ImGuiKey_None);
 
-  // The whole screen at UI scale 2 and with the larger text.
-  resize(view, 2560, 1440);
-  SettingsManager::instance()->get().ui_scale = 2.0f;
-  SettingsManager::instance()->get().text_scale = 1.3f;
-  SettingsManager::instance()->get().color_vision = 1;
-  view.refreshTheme();
-  view.changeScene(std::make_unique<SettingsScene>(&view));
-  frames(view, 3);
-  capture(view, "settings_hidpi_large_text.bmp");
-  SettingsManager::instance()->get() = Settings{};
-  view.refreshTheme();
+    // The whole screen at UI scale 2 and with the larger text.
+    resize(view, 2560, 1440);
+    SettingsManager::instance()->get().ui_scale = 2.0f;
+    SettingsManager::instance()->get().text_scale = 1.3f;
+    SettingsManager::instance()->get().color_vision = 1;
+    view.refreshTheme();
+    view.changeScene(std::make_unique<SettingsScene>(&view));
+    frames(view, 3);
+    capture(view, "settings_hidpi_large_text.bmp");
+    SettingsManager::instance()->get() = Settings{};
+    view.refreshTheme();
+  }
 }
 
 // ---- Contrast
@@ -556,17 +574,20 @@ TEST(AccessibilityTest, EveryThemeMeetsWcagContrast)
   const ImVec4 accent(0.130f, 0.650f, 0.390f, 1.0f);
   constexpr float BODY_TEXT = 4.5f;  // WCAG AA, normal text
   constexpr float NON_TEXT = 3.0f;   // WCAG AA, large text and UI parts
-  for (int preset = 0; preset < static_cast<int>(Theme::Preset::COUNT);
+  for (int preset = 0;
+       preset < static_cast<int>(std::to_underlying(Theme::Preset::COUNT));
        ++preset)
-    for (int vision = 0; vision < static_cast<int>(Theme::ColorVision::COUNT);
+    for (int vision = 0;
+         vision <
+         static_cast<int>(std::to_underlying(Theme::ColorVision::COUNT));
          ++vision)
     {
       const Theme::Palette p =
           Theme::presetPalette(static_cast<Theme::Preset>(preset),
                                static_cast<Theme::ColorVision>(vision), accent);
-      const std::string where =
-          std::string(Theme::presetKey(static_cast<Theme::Preset>(preset))) +
-          " / vision " + std::to_string(vision);
+      const std::string where = std::format(
+          "{} / vision {}",
+          Theme::presetKey(static_cast<Theme::Preset>(preset)), vision);
       for (const ImVec4* ground : {&p.background, &p.surface, &p.raised})
       {
         EXPECT_GE(Theme::contrastRatio(p.text, *ground), BODY_TEXT) << where;
@@ -675,8 +696,9 @@ std::vector<std::string> callArguments(const std::string& text,
 /** Text a player would read: words, not ids, keys or format strings. */
 bool looksLikeEnglish(std::string literal)
 {
-  static const std::regex KEY(R"(^[A-Z0-9_]+$)");
-  if (std::regex_match(literal, KEY)) return false;
+  if (static const std::regex KEY(R"(^[A-Z0-9_]+$)");
+      std::regex_match(literal, KEY))
+    return false;
   literal = literal.substr(0, literal.find("##"));
   static const std::regex FORMAT(
       R"(%[-+ #0]*[0-9*]*(?:\.[0-9*]+)?(?:hh|h|ll|l|z|j|t)?[a-zA-Z%]|\{[^}]*\})");
@@ -694,7 +716,7 @@ TEST(LocalizationScanTest, GuiCodeHasNoHardCodedEnglish)
   // an id first, that argument is skipped (see SKIP_FIRST / link()).
   static const std::regex CALL(
       R"(\b(ImGui::(?:Text|TextUnformatted|TextColored|TextWrapped|TextDisabled|BulletText|LabelText|Button|SmallButton|Checkbox|RadioButton|Selectable|MenuItem|BeginMenu|BeginTabItem|TabItemButton|SeparatorText|SetTooltip|CollapsingHeader|TreeNode|TableSetupColumn|TextLink|InputTextWithHint)|UI::(?:primaryButton|secondaryButton|dangerButton|toggleButton|pageHeader|sectionLabel|emptyState|badge|textFitted|keyValue|summaryRow|textRight|textRightColored|link|beginCard|beginAutoHeightCard|statTile|confirmDialog))\s*\()");
-  static const std::set<std::string> SKIP_FIRST = {
+  static const std::set<std::string, std::less<>> SKIP_FIRST = {
       "UI::beginCard", "UI::beginAutoHeightCard", "UI::statTile",
       "UI::confirmDialog", "ImGui::InputTextWithHint"};
   const std::filesystem::path root =

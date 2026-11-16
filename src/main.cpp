@@ -7,6 +7,7 @@
 // -----------------------------------------------------------------------------
 
 #include <filesystem>
+#include <format>
 #include <iostream>
 #include <memory>
 #include <string>
@@ -40,8 +41,8 @@ bool loadFirstExistingSave(GameController& controller)
     if (controller.getSaveSlotMetadata(slot).exists &&
         controller.loadGame(slot))
     {
-      Logger::info("Profiling match rendering with save slot " +
-                   std::to_string(slot));
+      Logger::info(
+          std::format("Profiling match rendering with save slot {}", slot));
       return true;
     }
   }
@@ -51,9 +52,18 @@ bool loadFirstExistingSave(GameController& controller)
 
 int main(int argc, char* argv[])
 {
-  Logger::init();
-  Logger::info(BuildInfo::summary());
-  CrashReport::install();
+  try
+  {
+    Logger::init();
+    Logger::info(BuildInfo::summary());
+    CrashReport::install();
+  }
+  catch (const std::exception& error)
+  {
+    // Storage itself may be unavailable, so a crash report cannot be saved.
+    std::cerr << "Startup error: " << error.what() << '\n';
+    return 1;
+  }
   try
   {
     auto controller = std::make_unique<GameController>();

@@ -12,6 +12,8 @@
 #include <array>
 #include <cmath>
 #include <cstddef>
+#include <memory>
+#include <utility>
 
 #include "model/world_rng.h"
 #include "model/world_tuning.h"
@@ -34,8 +36,9 @@ struct InjuryProfile
 // The remaining "other" share is spread over contusions, back spasms,
 // fractures and dislocations, and a few diagnoses were scaled up so the mix
 // sums to 100 (minor injuries ~45%, ECIS reports 42%).
-constexpr std::array<InjuryProfile,
-                     static_cast<std::size_t>(InjuryType::COUNT) - 1>
+constexpr std::array<InjuryProfile, static_cast<std::size_t>(
+                                        std::to_underlying(InjuryType::COUNT)) -
+                                        1>
     PROFILES = {{
         {InjuryType::HamstringStrain, "INJURY_HAMSTRING_STRAIN", 20.0f, 13.0f,
          4.0f, 36.0f, true},
@@ -76,7 +79,7 @@ constexpr std::array<InjuryProfile,
 const InjuryProfile* findProfile(InjuryType type)
 {
   const auto found = std::ranges::find(PROFILES, type, &InjuryProfile::type);
-  return found == PROFILES.end() ? nullptr : &*found;
+  return found == PROFILES.end() ? nullptr : std::to_address(found);
 }
 
 // ACL match/training rate ratio is ~20. [S]
@@ -103,9 +106,10 @@ bool isMuscle(InjuryType type)
 
 InjurySeverity severity(std::uint16_t days)
 {
-  if (days <= 7) return InjurySeverity::Minor;
-  if (days <= 28) return InjurySeverity::Moderate;
-  return InjurySeverity::Major;
+  using enum InjurySeverity;
+  if (days <= 7) return Minor;
+  if (days <= 28) return Moderate;
+  return Major;
 }
 
 Injury draw(WorldRng& rng, InjuryContext context, InjuryType previous,
@@ -140,13 +144,14 @@ Injury draw(WorldRng& rng, InjuryContext context, InjuryType previous,
 
 float aggravationMultiplier(InjurySeverity severity)
 {
+  using enum InjurySeverity;
   switch (severity)
   {
-    case InjurySeverity::Moderate:
+    case Moderate:
       return 3.0f;
-    case InjurySeverity::Major:
+    case Major:
       return 4.0f;
-    case InjurySeverity::Minor:
+    case Minor:
       break;
   }
   return 2.0f;

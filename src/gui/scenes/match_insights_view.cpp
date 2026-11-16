@@ -12,6 +12,7 @@
 #include <imgui.h>
 
 #include <algorithm>
+#include <array>
 #include <cmath>
 #include <format>
 #include <utility>
@@ -77,17 +78,18 @@ std::string lastName(const std::string& name)
 
 const char* outcomeKey(ShotOutcome outcome)
 {
+  using enum ShotOutcome;
   switch (outcome)
   {
-    case ShotOutcome::Goal:
+    case Goal:
       return "HUB_SHOT_GOAL";
-    case ShotOutcome::Saved:
+    case Saved:
       return "HUB_SHOT_SAVED";
-    case ShotOutcome::Blocked:
+    case Blocked:
       return "HUB_SHOT_BLOCKED";
-    case ShotOutcome::Woodwork:
+    case Woodwork:
       return "HUB_SHOT_WOODWORK";
-    case ShotOutcome::OffTarget:
+    case OffTarget:
       break;
   }
   return "HUB_SHOT_OFF_TARGET";
@@ -95,23 +97,24 @@ const char* outcomeKey(ShotOutcome outcome)
 
 const char* momentKey(KeyMoment::Kind kind)
 {
+  using enum KeyMoment::Kind;
   switch (kind)
   {
-    case KeyMoment::Kind::Goal:
+    case Goal:
       return "INSIGHT_MOMENT_GOAL";
-    case KeyMoment::Kind::OwnGoal:
+    case OwnGoal:
       return "INSIGHT_MOMENT_OWN_GOAL";
-    case KeyMoment::Kind::BigChance:
+    case BigChance:
       return "INSIGHT_MOMENT_BIG_CHANCE";
-    case KeyMoment::Kind::Woodwork:
+    case Woodwork:
       return "INSIGHT_MOMENT_WOODWORK";
-    case KeyMoment::Kind::Yellow:
+    case Yellow:
       return "INSIGHT_MOMENT_YELLOW";
-    case KeyMoment::Kind::SecondYellow:
+    case SecondYellow:
       return "INSIGHT_MOMENT_SECOND_YELLOW";
-    case KeyMoment::Kind::Red:
+    case Red:
       return "INSIGHT_MOMENT_RED";
-    case KeyMoment::Kind::Substitution:
+    case Substitution:
       break;
   }
   return "INSIGHT_MOMENT_SUBSTITUTION";
@@ -204,7 +207,7 @@ float segmentDistance(ImVec2 point, ImVec2 a, ImVec2 b)
 // --------------------------------------------------------------
 
 void MatchInsightsView::build(
-    GameController& controller, const MatchReport& report,
+    const GameController& controller, const MatchReport& report,
     const std::optional<ManagedMatchSnapshot>& snapshot,
     const std::string& home_name, const std::string& away_name)
 {
@@ -358,7 +361,7 @@ void MatchInsightsView::build(
   {
     Network& network = networks[side];
     const bool home = side == 0;
-    std::vector<int> node_of(detail.players.size(), -1);
+    std::vector node_of(detail.players.size(), -1);
     int most_touches = 1;
     for (const DetailPlayer& line : detail.players)
       if (line.home == home)
@@ -368,10 +371,11 @@ void MatchInsightsView::build(
       const DetailPlayer& line = detail.players[index];
       // Starters only: a substitute takes over his man's spot and would sit
       // on top of him.
-      const bool substitute = std::ranges::any_of(
-          detail.substitutions, [&line](const DetailSubstitution& change)
-          { return change.on == line.player; });
-      if (line.home != home || line.touches == 0 || substitute) continue;
+      if (const bool substitute = std::ranges::any_of(
+              detail.substitutions, [&line](const DetailSubstitution& change)
+              { return change.on == line.player; });
+          line.home != home || line.touches == 0 || substitute)
+        continue;
       node_of[index] = static_cast<int>(network.nodes.size());
       NetworkNode node;
       node.x = line.avg_x;
@@ -518,7 +522,7 @@ void MatchInsightsView::buildCellTooltips()
 // ---- Layout
 // ------------------------------------------------------------------
 
-void MatchInsightsView::render(GUIView* view)
+void MatchInsightsView::render(const GUIView* view)
 {
   (void)view;
   if (!has_data) return;
@@ -589,7 +593,7 @@ void MatchInsightsView::render(GUIView* view)
   }
 }
 
-void MatchInsightsView::renderSummary(float width)
+void MatchInsightsView::renderSummary(float width) const
 {
   UI::beginAutoHeightCard("insight_summary", LOC("INSIGHT_SUMMARY_TITLE"),
                           width);
@@ -643,7 +647,7 @@ void MatchInsightsView::renderTimeline(float width)
   const float right = origin.x + plotWidth - scaled(Theme::Space::S);
   const float top = origin.y + scaled(Theme::Space::XS);
   const float bottom = origin.y + plotHeight - lineHeight - scaled(2.0f);
-  const float xgBottom = top + (bottom - top) * XG_SHARE;
+  const float xgBottom = std::lerp(top, bottom, XG_SHARE);
   const float pressTop = xgBottom + scaled(Theme::Space::M);
   const float pressMid = (pressTop + bottom) * 0.5f;
   const float pressHalf = (bottom - pressTop) * 0.5f;
@@ -660,9 +664,10 @@ void MatchInsightsView::renderTimeline(float width)
     const float value = xg_top * static_cast<float>(step) / 2.0f;
     const float y = yOf(value);
     drawList->AddLine(ImVec2(left, y), ImVec2(right, y), grid, 1.0f);
-    char label[16];
-    std::snprintf(label, sizeof(label), "%.1f", static_cast<double>(value));
-    drawList->AddText(ImVec2(origin.x, y - lineHeight * 0.5f), muted, label);
+    std::array<char, 16> label{};
+    std::format_to_n(label.data(), label.size() - 1, "{:.1f}", value);
+    drawList->AddText(ImVec2(origin.x, y - lineHeight * 0.5f), muted,
+                      label.data());
   }
   drawList->AddLine(ImVec2(xOf(45.0f), top), ImVec2(xOf(45.0f), bottom), grid,
                     1.0f);
@@ -863,30 +868,31 @@ void MatchInsightsView::renderMoments(float width)
     const ImVec2 centre(start.x + minuteWidth + marker,
                         top + lineHeight * 0.5f);
     const ImU32 side = Theme::toU32(sideColor(row.home ? 0 : 1));
+    using enum KeyMoment::Kind;
     switch (row.kind)
     {
-      case KeyMoment::Kind::Goal:
-      case KeyMoment::Kind::OwnGoal:
+      case Goal:
+      case OwnGoal:
         drawList->AddCircleFilled(centre, marker * 0.5f, side);
         break;
-      case KeyMoment::Kind::BigChance:
-      case KeyMoment::Kind::Woodwork:
+      case BigChance:
+      case Woodwork:
         drawList->AddCircle(centre, marker * 0.5f, side, 0, scaled(1.5f));
         break;
-      case KeyMoment::Kind::Yellow:
+      case Yellow:
         drawList->AddRectFilled(
             ImVec2(centre.x - marker * 0.3f, centre.y - marker * 0.45f),
             ImVec2(centre.x + marker * 0.3f, centre.y + marker * 0.45f),
             IM_COL32(245, 200, 40, 255), scaled(1.5f));
         break;
-      case KeyMoment::Kind::SecondYellow:
-      case KeyMoment::Kind::Red:
+      case SecondYellow:
+      case Red:
         drawList->AddRectFilled(
             ImVec2(centre.x - marker * 0.3f, centre.y - marker * 0.45f),
             ImVec2(centre.x + marker * 0.3f, centre.y + marker * 0.45f),
             IM_COL32(220, 50, 50, 255), scaled(1.5f));
         break;
-      case KeyMoment::Kind::Substitution:
+      case Substitution:
         drawList->AddTriangleFilled(
             ImVec2(centre.x - marker * 0.4f, centre.y + marker * 0.1f),
             ImVec2(centre.x + marker * 0.4f, centre.y + marker * 0.1f),
@@ -1014,8 +1020,8 @@ void MatchInsightsView::renderHeatmap(float width)
   const std::array<const char*, 2> sides = {names[0].c_str(), names[1].c_str()};
   const float controlWidth =
       std::min(ImGui::GetContentRegionAvail().x, scaled(360.0f));
-  int side = heat_side;
-  if (UI::segmented("##heat_side", side, sides, controlWidth))
+  if (int side = heat_side;
+      UI::segmented("##heat_side", side, sides, controlWidth))
     selectHeat(static_cast<std::size_t>(side), 0);
   if (cell_tooltip_side != heat_side || cell_tooltip_choice != heat_choice)
     buildCellTooltips();
@@ -1062,8 +1068,7 @@ void MatchInsightsView::renderHeatmap(float width)
       const ImVec2 a(origin.x + cellWidth * static_cast<float>(column),
                      origin.y + cellHeight * static_cast<float>(row));
       const ImVec2 b(a.x + cellWidth, a.y + cellHeight);
-      const int value = choice.cells[cell];
-      if (value > 0 && choice.most > 0)
+      if (const int value = choice.cells[cell]; value > 0 && choice.most > 0)
       {
         const float share =
             static_cast<float>(value) / static_cast<float>(choice.most);

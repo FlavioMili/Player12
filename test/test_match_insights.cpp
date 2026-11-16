@@ -18,10 +18,13 @@
 #include <array>
 #include <chrono>
 #include <cstdio>
+#include <format>
 #include <map>
 #include <memory>
 #include <numeric>
+#include <print>
 #include <string>
+#include <utility>
 #include <vector>
 
 #include "database/database_connection.h"
@@ -58,16 +61,22 @@ StatsConfig statsConfig()
 Team makeTeam(TeamID id, int rating,
               std::vector<std::unique_ptr<Player>>& players)
 {
-  Team team(id, 1, "Club " + std::to_string(id), 50'000'000, {}, Strategy{},
+  using enum PlayerRole;
+  Team team(id, 1, std::format("Club {}", id), 50'000'000, {}, Strategy{},
             Lineup{});
-  static constexpr PlayerRole ROLES[11] = {
-      PlayerRole::GK, PlayerRole::LB, PlayerRole::CB, PlayerRole::CB,
-      PlayerRole::RB, PlayerRole::CM, PlayerRole::CM, PlayerRole::LW,
-      PlayerRole::RW, PlayerRole::ST, PlayerRole::ST};
-  static constexpr Vector2F POSITIONS[11] = {
-      {0.04f, 0.50f}, {0.18f, 0.12f}, {0.18f, 0.38f}, {0.18f, 0.62f},
-      {0.18f, 0.88f}, {0.43f, 0.35f}, {0.43f, 0.65f}, {0.68f, 0.16f},
-      {0.68f, 0.84f}, {0.78f, 0.38f}, {0.78f, 0.62f}};
+  static constexpr std::array ROLES = {GK, LB, CB, CB, RB, CM,
+                                       CM, LW, RW, ST, ST};
+  static constexpr std::array<Vector2F, 11> POSITIONS = {{{0.04f, 0.50f},
+                                                          {0.18f, 0.12f},
+                                                          {0.18f, 0.38f},
+                                                          {0.18f, 0.62f},
+                                                          {0.18f, 0.88f},
+                                                          {0.43f, 0.35f},
+                                                          {0.43f, 0.65f},
+                                                          {0.68f, 0.16f},
+                                                          {0.68f, 0.84f},
+                                                          {0.78f, 0.38f},
+                                                          {0.78f, 0.62f}}};
   for (uint32_t index = 0; index < 11; ++index)
   {
     const auto value = static_cast<float>(rating);
@@ -79,7 +88,7 @@ Team makeTeam(TeamID id, int rating,
         static_cast<PlayerID>(id) * 100U + index, id, "First",
         std::to_string(index), ROLES[index], Language::EN, 100'000, 0, 25, 3,
         180, Foot::Right, stats);
-    if (ROLES[index] == PlayerRole::GK)
+    if (ROLES[index] == GK)
       team.getLineup().setGoalkeeper(player.get());
     else
       team.getLineup().addOutfieldPlayer(player.get(), POSITIONS[index]);
@@ -152,7 +161,7 @@ TEST(MatchInsightsTest, TrackerReconcilesWithTheEngineOnASeededMatch)
   // One tracked shot per SHOT event; set pieces match the team counters.
   const std::vector<ShotRecord> shots = extractShots(engine->getEvents());
   ASSERT_EQ(tracker.shots().size(), shots.size());
-  const int setPieceShots = static_cast<int>(std::ranges::count_if(
+  const auto setPieceShots = static_cast<int>(std::ranges::count_if(
       tracker.shots(), [](const TrackedShot& shot) { return shot.set_piece; }));
   EXPECT_EQ(setPieceShots, engine->getStats().homeSetPieceShots +
                                engine->getStats().awaySetPieceShots);
@@ -171,7 +180,7 @@ TEST(MatchInsightsTest, TrackerReconcilesWithTheEngineOnASeededMatch)
   for (std::size_t index = 0; index < tracker.playerCount(); ++index)
     if (const TrackedPlayer* tracked = tracker.player(index))
       pressures[stats[index].isHomeTeam ? 0 : 1] += tracked->pressures;
-  std::printf("[pressures] home %d, away %d\n", pressures[0], pressures[1]);
+  std::print("[pressures] home {}, away {}\n", pressures[0], pressures[1]);
   EXPECT_GT(pressures[0], 20);
   EXPECT_GT(pressures[1], 20);
 }
@@ -230,9 +239,9 @@ TEST(MatchInsightsTest, TrackingCostIsSmall)
   }
   const double perMatchOff = off / (2.0 * MATCHES);
   const double perMatchOn = on / (2.0 * MATCHES);
-  std::printf("[tracking] %.2f ms/match off, %.2f ms/match on (%+.1f%%)\n",
-              perMatchOff, perMatchOn,
-              100.0 * (perMatchOn - perMatchOff) / perMatchOff);
+  std::print("[tracking] {:.2f} ms/match off, {:.2f} ms/match on ({:+.1f}%)\n",
+             perMatchOff, perMatchOn,
+             100.0 * (perMatchOn - perMatchOff) / perMatchOff);
   RecordProperty("ms_per_match_off", std::to_string(perMatchOff));
   RecordProperty("ms_per_match_on", std::to_string(perMatchOn));
   // Only a gross regression fails: timings on a shared machine are noisy and
@@ -250,8 +259,8 @@ TEST(MatchInsightsTest, DetailRoundTripsCompactly)
   EXPECT_GE(detail.players.size(), 22U);
   EXPECT_FALSE(detail.links.empty());
   const std::vector<std::uint8_t> bytes = detail.encode();
-  std::printf("[detail] %zu bytes for %zu players and %zu pass links\n",
-              bytes.size(), detail.players.size(), detail.links.size());
+  std::print("[detail] {} bytes for {} players and {} pass links\n",
+             bytes.size(), detail.players.size(), detail.links.size());
   RecordProperty("detail_bytes", std::to_string(bytes.size()));
   EXPECT_LT(bytes.size(), 4096U);
 
@@ -323,8 +332,8 @@ TEST(MatchInsightsTest, SnapshotWithDetailSurvivesASaveAndOldShotsStillLoad)
   const int json = sqlite3_column_int(stmt, 0);
   const int blob = sqlite3_column_int(stmt, 1);
   sqlite3_finalize(stmt);
-  std::printf("[persisted] %d bytes snapshot JSON + %d bytes detail\n", json,
-              blob);
+  std::print("[persisted] {} bytes snapshot JSON + {} bytes detail\n", json,
+             blob);
   RecordProperty("snapshot_json_bytes", std::to_string(json));
   RecordProperty("detail_blob_bytes", std::to_string(blob));
   EXPECT_GT(blob, 0);
@@ -379,7 +388,12 @@ TEST(MatchInsightsTest, OlderSavesGainTheDetailColumn)
   EXPECT_TRUE(Migrations::migrate(connection).applied.empty());
 
   auto shared = std::shared_ptr<DatabaseConnection>(&connection,
-                                                    [](DatabaseConnection*) {});
+                                                    [](DatabaseConnection*)
+                                                    {
+                                                      // This wrapper does not
+                                                      // own the stack
+                                                      // connection.
+                                                    });
   CareerGuidance guidance;
   guidance.load(shared);
   ASSERT_EQ(guidance.getSnapshots().size(), 1U);
@@ -458,7 +472,7 @@ MatchDetail overloadedDetail()
 TEST(MatchInsightsTest, SummaryExplainsWastefulFinishingAndAnOverload)
 {
   const MatchReport report = reportOf(0, 1, 2.4f, 0.4f);
-  const std::vector<ShotRecord> shots = {
+  const std::vector shots = {
       shotOf(true, 109, 12.0f, 0.45f, ShotOutcome::Saved),
       shotOf(true, 110, 30.0f, 0.38f, ShotOutcome::OffTarget),
       shotOf(true, 109, 70.0f, 0.6f, ShotOutcome::Woodwork),
@@ -469,8 +483,8 @@ TEST(MatchInsightsTest, SummaryExplainsWastefulFinishingAndAnOverload)
   input.shots = shots;
   input.detail = &detail;
   input.managed_home = true;
-  input.name_of = [](PlayerID id) { return "P" + std::to_string(id); };
-  const std::vector<AnalysisLine> lines = summariseMatch(input);
+  input.name_of = [](PlayerID id) { return std::format("P{}", id); };
+  const auto lines = summariseMatch(input);
   ASSERT_FALSE(lines.empty());
   EXPECT_EQ(lines.front().key, "SUM_LOSS_UNLUCKY");
   EXPECT_EQ(lines.front().args[0], "2.4");
@@ -506,7 +520,7 @@ TEST(MatchInsightsTest, KeyMomentsLinkGoalsToTheirShots)
   report.events = {{61, 0, MatchEventKind::GOAL, false, 207, 0},
                    {20, 0, MatchEventKind::GOAL, true, 109, 105},
                    {33, 0, MatchEventKind::YELLOW_CARD, false, 203, 0}};
-  const std::vector<ShotRecord> shots = {
+  const std::vector shots = {
       shotOf(true, 109, 20.4f, 0.31f, ShotOutcome::Goal),
       shotOf(true, 110, 40.0f, 0.52f, ShotOutcome::Saved),
       shotOf(false, 207, 61.2f, 0.12f, ShotOutcome::Goal),
@@ -576,7 +590,7 @@ TEST(MatchInsightsTest, HubMeasuresFinishingKeepingAndLeaders)
   input.snapshots = snapshots;
   const TeamAnalytics team = DataHub::buildTeamAnalytics(input);
   const auto metric = [&team](HubMetric which)
-  { return team.metrics[static_cast<std::size_t>(which)]; };
+  { return team.metrics[static_cast<std::size_t>(std::to_underlying(which))]; };
   // Two goals a match from 1.0 xG.
   EXPECT_NEAR(metric(HubMetric::Finishing).team, 1.0f, 1e-4f);
   // League conversion: 3 goals per 11 shots on target; the club faced 6

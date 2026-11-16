@@ -156,8 +156,8 @@ std::vector<Match> FixtureRepository::loadAllMatches() const
 
   while (sqlite3_step(stmt) == SQLITE_ROW)
   {
-    uint16_t home_id = static_cast<uint16_t>(sqlite3_column_int(stmt, 0));
-    uint16_t away_id = static_cast<uint16_t>(sqlite3_column_int(stmt, 1));
+    auto home_id = static_cast<uint16_t>(sqlite3_column_int(stmt, 0));
+    auto away_id = static_cast<uint16_t>(sqlite3_column_int(stmt, 1));
     std::string date_str = columnText(stmt, 2);
     auto match_type = static_cast<MatchType>(sqlite3_column_int(stmt, 3));
 
@@ -214,10 +214,11 @@ void FixtureRepository::saveCalendar(const Calendar& calendar) const
       state.home_penalties = sqlite3_column_int(select, 11);
       state.away_penalties = sqlite3_column_int(select, 12);
     }
-    stored.emplace(fixtureKey(GameDateValue::fromString(columnText(select, 1)),
-                              sqlite3_column_int(select, 2),
-                              sqlite3_column_int(select, 3)),
-                   row);
+    stored.try_emplace(
+        fixtureKey(GameDateValue::fromString(columnText(select, 1)),
+                   sqlite3_column_int(select, 2),
+                   sqlite3_column_int(select, 3)),
+        row);
   }
   sqlite3_finalize(select);
 

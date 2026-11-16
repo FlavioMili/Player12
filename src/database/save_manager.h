@@ -193,7 +193,7 @@ class SaveManager
    * Writes the provenance of this save into save_meta of @p working,
    * including the game, engine, RNG and simulation versions of this build.
    */
-  static void stampMetadata(DatabaseConnection& working,
+  static void stampMetadata(const DatabaseConnection& working,
                             std::uint64_t world_seed,
                             const GameDateValue& game_date,
                             std::int64_t playtime_seconds);
@@ -204,7 +204,7 @@ class SaveManager
    * backups are unchanged.
    * @throws SaveFailure (DiskFull, PermissionDenied, Io).
    */
-  static SaveTimings persist(DatabaseConnection& working,
+  static SaveTimings persist(const DatabaseConnection& working,
                              const std::filesystem::path& file, int backups);
 
   /** Keeps a copy of a save before its schema is upgraded (once). */

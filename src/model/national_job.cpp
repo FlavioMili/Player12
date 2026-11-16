@@ -12,6 +12,7 @@
 
 #include <algorithm>
 #include <cmath>
+#include <memory>
 #include <string>
 #include <utility>
 
@@ -139,7 +140,7 @@ void insertAll(const DatabaseConnection& db, const char* sql,
 
 Language nationFrom(std::int64_t value)
 {
-  return value >= 0 && value <= static_cast<std::int64_t>(Language::US)
+  return value >= 0 && value <= std::to_underlying(Language::US)
              ? static_cast<Language>(value)
              : Language::EN;
 }
@@ -167,8 +168,8 @@ float applicationChance(float reputation, CoachingLicence licence,
                         float stature, bool compatriot)
 {
   if (reputation < MIN_REPUTATION) return 0.0f;
-  const int missing = std::max(0, static_cast<int>(requiredLicence(stature)) -
-                                      static_cast<int>(licence));
+  const int missing = std::max(0, std::to_underlying(requiredLicence(stature)) -
+                                      std::to_underlying(licence));
   // Federations prefer their own coaches; a foreigner needs a bigger name.
   const float x = (reputation - stature + 6.0f) / 6.0f -
                   0.6f * static_cast<float>(missing) +
@@ -204,22 +205,23 @@ GameDateValue contractEnd(const GameDateValue& start)
 
 float resultReputation(Competition competition, double expected, double actual)
 {
+  using enum International::Competition;
   float weight = 0.5f;
   switch (competition)
   {
-    case Competition::Friendly:
+    case Friendly:
       weight = 0.5f;
       break;
-    case Competition::NationsLeague:
-    case Competition::NationsLeagueFinals:
+    case NationsLeague:
+    case NationsLeagueFinals:
       weight = 1.0f;
       break;
-    case Competition::WorldQualifier:
-    case Competition::ContinentalQualifier:
+    case WorldQualifier:
+    case ContinentalQualifier:
       weight = 1.5f;
       break;
-    case Competition::WorldFinals:
-    case Competition::ContinentalFinals:
+    case WorldFinals:
+    case ContinentalFinals:
       weight = 2.5f;
       break;
   }
@@ -228,25 +230,26 @@ float resultReputation(Competition competition, double expected, double actual)
 
 const char* applyResultKey(NationalApplyResult result)
 {
+  using enum NationalApplyResult;
   switch (result)
   {
-    case NationalApplyResult::Ok:
+    case Ok:
       return "NT_APPLY_OK";
-    case NationalApplyResult::NoVacancy:
+    case NoVacancy:
       return "NT_APPLY_NO_VACANCY";
-    case NationalApplyResult::AlreadyApplied:
+    case AlreadyApplied:
       return "NT_APPLY_ALREADY";
-    case NationalApplyResult::AlreadyInCharge:
+    case AlreadyInCharge:
       return "NT_APPLY_IN_CHARGE";
-    case NationalApplyResult::NeedsReputation:
+    case NeedsReputation:
       return "NT_APPLY_REPUTATION";
-    case NationalApplyResult::ClubConflict:
+    case ClubConflict:
       return "NT_APPLY_CLUB_CONFLICT";
-    case NationalApplyResult::NoOffer:
+    case NoOffer:
       return "NT_APPLY_NO_OFFER";
-    case NationalApplyResult::RecentlyLeft:
+    case RecentlyLeft:
       return "NT_APPLY_RECENTLY_LEFT";
-    case NationalApplyResult::NoProfile:
+    case NoProfile:
       break;
   }
   return "NT_APPLY_NO_PROFILE";
@@ -267,14 +270,14 @@ const NationalApplication* NationalManagement::findApplication(
 {
   const auto it =
       std::ranges::find(applications, nation, &NationalApplication::nation);
-  return it == applications.end() ? nullptr : &*it;
+  return it == applications.end() ? nullptr : std::to_address(it);
 }
 
 const NationalJobOffer* NationalManagement::findOffer(
     std::uint32_t offer_id) const
 {
   const auto it = std::ranges::find(offers, offer_id, &NationalJobOffer::id);
-  return it == offers.end() ? nullptr : &*it;
+  return it == offers.end() ? nullptr : std::to_address(it);
 }
 
 float NationalManagement::stature(const NationalTeams& teams,
@@ -302,26 +305,27 @@ NationalApplyResult NationalManagement::apply(Language nation,
                                               const ManagerProfile& profile,
                                               bool club_job)
 {
-  if (!profile.exists) return NationalApplyResult::NoProfile;
-  if (job.active) return NationalApplyResult::AlreadyInCharge;
+  using enum NationalApplyResult;
+  if (!profile.exists) return NoProfile;
+  if (job.active) return AlreadyInCharge;
   if (std::ranges::find(vacancies, nation, &NationalVacancy::nation) ==
       vacancies.end())
-    return NationalApplyResult::NoVacancy;
-  if (findApplication(nation)) return NationalApplyResult::AlreadyApplied;
-  if (recentlyLeft(nation, date)) return NationalApplyResult::RecentlyLeft;
+    return NoVacancy;
+  if (findApplication(nation)) return AlreadyApplied;
+  if (recentlyLeft(nation, date)) return RecentlyLeft;
   if (profile.reputation < NationalJobModel::MIN_REPUTATION)
-    return NationalApplyResult::NeedsReputation;
+    return NeedsReputation;
   if (club_job && !NationalJobModel::canCombineWithClub(profile.reputation))
-    return NationalApplyResult::ClubConflict;
+    return ClubConflict;
   const int days =
       MIN_RESPONSE_DAYS +
       static_cast<int>(
           uniform(*gamedata, static_cast<std::uint64_t>(dayOrdinal(date)),
-                  mixHash(static_cast<std::uint64_t>(nation), RESPONSE_SALT)) *
+                  mixHash(std::to_underlying(nation), RESPONSE_SALT)) *
           (MAX_RESPONSE_DAYS - MIN_RESPONSE_DAYS + 1));
   applications.push_back({nation, date, SeasonCalendar::addDays(date, days),
                           NationalApplicationStage::Pending});
-  return NationalApplyResult::Ok;
+  return Ok;
 }
 
 bool NationalManagement::decline(std::uint32_t offer_id)
@@ -401,7 +405,7 @@ void NationalManagement::queueResult(const International::Fixture& fixture,
                                      double home_expected)
 {
   if (job.active && concerns(fixture, job.nation))
-    queued_results.push_back({fixture, home_expected});
+    queued_results.emplace_back(fixture, home_expected);
 }
 
 void NationalManagement::queueFinals(const NationalTeams::Finals& finals,
@@ -464,7 +468,7 @@ void NationalManagement::handleFinals(const QueuedFinals& queued,
           (job.active && job.nation == nation))
         continue;
       if (uniform(*gamedata, static_cast<std::uint64_t>(dayOrdinal(date)),
-                  mixHash(static_cast<std::uint64_t>(nation), VACANCY_SALT)) <
+                  mixHash(std::to_underlying(nation), VACANCY_SALT)) <
           MISSED_FINALS_VACANCY_CHANCE)
         openVacancy(nation, date);
     }
@@ -504,7 +508,7 @@ void NationalManagement::handleFinals(const QueuedFinals& queued,
     if (nation == queued.winner || (job.active && job.nation == nation))
       continue;
     if (uniform(*gamedata, static_cast<std::uint64_t>(dayOrdinal(date)),
-                mixHash(static_cast<std::uint64_t>(nation), VACANCY_SALT + 1)) <
+                mixHash(std::to_underlying(nation), VACANCY_SALT + 1)) <
         ELIMINATED_VACANCY_CHANCE)
       openVacancy(nation, date);
   }
@@ -533,9 +537,8 @@ void NationalManagement::openVacancy(Language nation, const GameDateValue& date)
   const int days =
       MIN_VACANCY_DAYS +
       static_cast<int>(
-          uniform(
-              *gamedata, static_cast<std::uint64_t>(dayOrdinal(date)),
-              mixHash(static_cast<std::uint64_t>(nation), VACANCY_SALT + 2)) *
+          uniform(*gamedata, static_cast<std::uint64_t>(dayOrdinal(date)),
+                  mixHash(std::to_underlying(nation), VACANCY_SALT + 2)) *
           (MAX_VACANCY_DAYS - MIN_VACANCY_DAYS + 1));
   vacancies.push_back({nation, date, SeasonCalendar::addDays(date, days)});
 }
@@ -544,7 +547,7 @@ bool NationalManagement::recentlyLeft(Language nation,
                                       const GameDateValue& date) const
 {
   return std::ranges::any_of(
-      history, [&](const NationalStint& stint)
+      history, [this, nation, date](const NationalStint& stint)
       { return stint.nation == nation && daysBetween(stint.end, date) < 365; });
 }
 
@@ -557,7 +560,7 @@ std::string NationalManagement::aiCoachName(Language nation,
   if (first.empty() || last.empty()) return {};
   WorldRng rng =
       WorldRng::stream(gamedata->getWorldSeed(), RngDomain::Managers,
-                       mixHash(static_cast<std::uint64_t>(nation), COACH_SALT),
+                       mixHash(std::to_underlying(nation), COACH_SALT),
                        static_cast<std::uint64_t>(dayOrdinal(date)));
   return first[static_cast<std::size_t>(
              rng.uniformInt(0, static_cast<int>(first.size()) - 1))] +
@@ -571,16 +574,17 @@ void NationalManagement::fillVacancies(const GameDateValue& date,
 {
   std::erase_if(
       vacancies,
-      [&](const NationalVacancy& vacancy)
+      [this, date, &teams](const NationalVacancy& vacancy)
       {
         if (date < vacancy.fill_date) return false;
         // The federation waits for its answer to him.
-        const NationalApplication* application =
-            findApplication(vacancy.nation);
-        if ((application &&
+        if (const NationalApplication* application =
+                findApplication(vacancy.nation);
+            (application &&
              application->stage == NationalApplicationStage::Pending) ||
-            std::ranges::any_of(offers, [&](const NationalJobOffer& offer)
-                                { return offer.nation == vacancy.nation; }))
+            std::ranges::any_of(
+                offers, [nation = vacancy.nation](const NationalJobOffer& offer)
+                { return offer.nation == nation; }))
           return false;
         teams.setCoach(vacancy.nation, aiCoachName(vacancy.nation, date));
         return true;
@@ -634,7 +638,7 @@ void NationalManagement::processApplications(const GameDateValue& date,
       continue;
     const float chance = applicationChance(teams, profile, application.nation);
     if (uniform(*gamedata, static_cast<std::uint64_t>(dayOrdinal(date)),
-                mixHash(static_cast<std::uint64_t>(application.nation),
+                mixHash(std::to_underlying(application.nation),
                         RESPONSE_SALT + 1)) < static_cast<double>(chance))
     {
       makeOffer(application.nation, date, teams, false, inbox);
@@ -664,14 +668,14 @@ void NationalManagement::approach(const GameDateValue& date,
   for (const NationalVacancy& vacancy : vacancies)
   {
     if (findApplication(vacancy.nation) || recentlyLeft(vacancy.nation, date) ||
-        std::ranges::any_of(offers, [&](const NationalJobOffer& offer)
-                            { return offer.nation == vacancy.nation; }))
+        std::ranges::any_of(
+            offers, [nation = vacancy.nation](const NationalJobOffer& offer)
+            { return offer.nation == nation; }))
       continue;
-    const float chance = applicationChance(teams, profile, vacancy.nation);
-    if (chance < APPROACH_MIN_CHANCE ||
+    if (const float chance = applicationChance(teams, profile, vacancy.nation);
+        chance < APPROACH_MIN_CHANCE ||
         uniform(*gamedata, static_cast<std::uint64_t>(dayOrdinal(date)),
-                mixHash(static_cast<std::uint64_t>(vacancy.nation),
-                        APPROACH_SALT)) >=
+                mixHash(std::to_underlying(vacancy.nation), APPROACH_SALT)) >=
             APPROACH_CHANCE * static_cast<double>(chance))
       continue;
     const float size = stature(teams, vacancy.nation);
@@ -735,10 +739,10 @@ NationalDayEvents NationalManagement::onDay(const GameDateValue& date,
     reviewContract(date, teams, career, inbox, events);
   }
 
-  std::erase_if(offers, [&](const NationalJobOffer& offer)
+  std::erase_if(offers, [date](const NationalJobOffer& offer)
                 { return offer.expires < date; });
   std::erase_if(applications,
-                [&](const NationalApplication& application)
+                [date](const NationalApplication& application)
                 {
                   return application.stage ==
                              NationalApplicationStage::Rejected &&
@@ -750,8 +754,8 @@ NationalDayEvents NationalManagement::onDay(const GameDateValue& date,
     {
       if (job.active && job.nation == nation) continue;
       if (uniform(*gamedata, static_cast<std::uint64_t>(dayOrdinal(date)),
-                  mixHash(static_cast<std::uint64_t>(nation),
-                          VACANCY_SALT + 3)) < MONTHLY_VACANCY_CHANCE)
+                  mixHash(std::to_underlying(nation), VACANCY_SALT + 3)) <
+          MONTHLY_VACANCY_CHANCE)
         openVacancy(nation, date);
     }
   }
@@ -783,7 +787,7 @@ void NationalManagement::load(
              "SELECT active, nation, start_date, expires, weekly_wage, played, "
              "won, drawn, lost, trophies, qualified, next_offer_id FROM "
              "NationalJobState WHERE id = 1;",
-             [&](sqlite3_stmt* stmt)
+             [this](sqlite3_stmt* stmt)
              {
                job.active = columnAs<int>(stmt, 0) != 0;
                job.nation = nationFrom(columnAs<std::int64_t>(stmt, 1));
@@ -799,33 +803,33 @@ void NationalManagement::load(
                next_offer_id = std::max<std::uint32_t>(
                    1, columnAs<std::uint32_t>(stmt, 11));
              });
-  forEachRow(
-      db,
-      "SELECT nation, start_date, end_date, reason, played, won, drawn, "
-      "lost, trophies FROM NationalJobHistory ORDER BY seq;",
-      [&](sqlite3_stmt* stmt)
-      {
-        NationalStint stint;
-        stint.nation = nationFrom(columnAs<std::int64_t>(stmt, 0));
-        stint.start = columnDate(stmt, 1);
-        stint.end = columnDate(stmt, 2);
-        const auto reason = columnAs<int>(stmt, 3);
-        stint.reason =
-            reason >= 0 &&
-                    reason <= static_cast<int>(DepartureReason::ContractExpired)
-                ? static_cast<DepartureReason>(reason)
-                : DepartureReason::Resigned;
-        stint.played = columnAs<std::uint16_t>(stmt, 4);
-        stint.won = columnAs<std::uint16_t>(stmt, 5);
-        stint.drawn = columnAs<std::uint16_t>(stmt, 6);
-        stint.lost = columnAs<std::uint16_t>(stmt, 7);
-        stint.trophies = columnAs<std::uint8_t>(stmt, 8);
-        history.push_back(stint);
-      });
+  forEachRow(db,
+             "SELECT nation, start_date, end_date, reason, played, won, drawn, "
+             "lost, trophies FROM NationalJobHistory ORDER BY seq;",
+             [this](sqlite3_stmt* stmt)
+             {
+               NationalStint stint;
+               stint.nation = nationFrom(columnAs<std::int64_t>(stmt, 0));
+               stint.start = columnDate(stmt, 1);
+               stint.end = columnDate(stmt, 2);
+               const auto reason = columnAs<int>(stmt, 3);
+               stint.reason =
+                   reason >= 0 &&
+                           reason <= std::to_underlying(
+                                         DepartureReason::ContractExpired)
+                       ? static_cast<DepartureReason>(reason)
+                       : DepartureReason::Resigned;
+               stint.played = columnAs<std::uint16_t>(stmt, 4);
+               stint.won = columnAs<std::uint16_t>(stmt, 5);
+               stint.drawn = columnAs<std::uint16_t>(stmt, 6);
+               stint.lost = columnAs<std::uint16_t>(stmt, 7);
+               stint.trophies = columnAs<std::uint8_t>(stmt, 8);
+               history.push_back(stint);
+             });
   forEachRow(db,
              "SELECT nation, opened, fill_date FROM NationalVacancies ORDER BY "
              "nation;",
-             [&](sqlite3_stmt* stmt)
+             [this](sqlite3_stmt* stmt)
              {
                vacancies.push_back({nationFrom(columnAs<std::int64_t>(stmt, 0)),
                                     columnDate(stmt, 1), columnDate(stmt, 2)});
@@ -834,13 +838,13 @@ void NationalManagement::load(
       db,
       "SELECT nation, applied, respond_date, stage FROM "
       "NationalApplications ORDER BY nation;",
-      [&](sqlite3_stmt* stmt)
+      [this](sqlite3_stmt* stmt)
       {
         const auto stage = columnAs<int>(stmt, 3);
         applications.push_back(
             {nationFrom(columnAs<std::int64_t>(stmt, 0)), columnDate(stmt, 1),
              columnDate(stmt, 2),
-             stage >= 0 && stage <= static_cast<int>(
+             stage >= 0 && stage <= std::to_underlying(
                                         NationalApplicationStage::Offered)
                  ? static_cast<NationalApplicationStage>(stage)
                  : NationalApplicationStage::Rejected});
@@ -849,7 +853,7 @@ void NationalManagement::load(
       db,
       "SELECT id, nation, made, expires, weekly_wage, years, unsolicited "
       "FROM NationalJobOffers ORDER BY id;",
-      [&](sqlite3_stmt* stmt)
+      [this](sqlite3_stmt* stmt)
       {
         NationalJobOffer offer;
         offer.id = columnAs<std::uint32_t>(stmt, 0);
@@ -879,7 +883,7 @@ void NationalManagement::save(
       "weekly_wage, played, won, drawn, lost, trophies, qualified, "
       "next_offer_id) VALUES (1, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);");
   sqlite3_bind_int(stmt, 1, job.active ? 1 : 0);
-  sqlite3_bind_int(stmt, 2, static_cast<int>(job.nation));
+  sqlite3_bind_int(stmt, 2, std::to_underlying(job.nation));
   sqlite3_bind_int(stmt, 3, dateToInt(job.start));
   sqlite3_bind_int(stmt, 4, dateToInt(job.expires));
   sqlite3_bind_int64(stmt, 5, job.weekly_wage);
@@ -901,10 +905,10 @@ void NationalManagement::save(
             [&seq](sqlite3_stmt* row, const NationalStint& stint)
             {
               sqlite3_bind_int(row, 1, seq++);
-              sqlite3_bind_int(row, 2, static_cast<int>(stint.nation));
+              sqlite3_bind_int(row, 2, std::to_underlying(stint.nation));
               sqlite3_bind_int(row, 3, dateToInt(stint.start));
               sqlite3_bind_int(row, 4, dateToInt(stint.end));
-              sqlite3_bind_int(row, 5, static_cast<int>(stint.reason));
+              sqlite3_bind_int(row, 5, std::to_underlying(stint.reason));
               sqlite3_bind_int(row, 6, stint.played);
               sqlite3_bind_int(row, 7, stint.won);
               sqlite3_bind_int(row, 8, stint.drawn);
@@ -917,7 +921,7 @@ void NationalManagement::save(
             vacancies,
             [](sqlite3_stmt* row, const NationalVacancy& vacancy)
             {
-              sqlite3_bind_int(row, 1, static_cast<int>(vacancy.nation));
+              sqlite3_bind_int(row, 1, std::to_underlying(vacancy.nation));
               sqlite3_bind_int(row, 2, dateToInt(vacancy.opened));
               sqlite3_bind_int(row, 3, dateToInt(vacancy.fill_date));
             });
@@ -927,10 +931,10 @@ void NationalManagement::save(
             applications,
             [](sqlite3_stmt* row, const NationalApplication& application)
             {
-              sqlite3_bind_int(row, 1, static_cast<int>(application.nation));
+              sqlite3_bind_int(row, 1, std::to_underlying(application.nation));
               sqlite3_bind_int(row, 2, dateToInt(application.applied));
               sqlite3_bind_int(row, 3, dateToInt(application.respond_date));
-              sqlite3_bind_int(row, 4, static_cast<int>(application.stage));
+              sqlite3_bind_int(row, 4, std::to_underlying(application.stage));
             });
   insertAll(db,
             "INSERT INTO NationalJobOffers (id, nation, made, expires, "
@@ -939,7 +943,7 @@ void NationalManagement::save(
             [](sqlite3_stmt* row, const NationalJobOffer& offer)
             {
               sqlite3_bind_int64(row, 1, offer.id);
-              sqlite3_bind_int(row, 2, static_cast<int>(offer.nation));
+              sqlite3_bind_int(row, 2, std::to_underlying(offer.nation));
               sqlite3_bind_int(row, 3, dateToInt(offer.made));
               sqlite3_bind_int(row, 4, dateToInt(offer.expires));
               sqlite3_bind_int64(row, 5, offer.weekly_wage);

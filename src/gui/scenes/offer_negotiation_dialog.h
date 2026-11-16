@@ -14,6 +14,7 @@
 #include <cstdint>
 #include <optional>
 #include <string>
+#include <string_view>
 #include <vector>
 
 #include "controller/game_controller.h"
@@ -75,7 +76,7 @@ class OfferNegotiationDialog
     bool buyer = false;
   };
 
-  void rebuild(GameController& controller);
+  void rebuild(const GameController& controller);
   /** Upfront and present-value texts of the counter being prepared. */
   void refreshCounterTexts();
   /** The offer on the table, line by line. */
@@ -86,15 +87,15 @@ class OfferNegotiationDialog
   void renderHistory() const;
   void renderAnswer();
   void renderActions(GameController& controller);
-  void renderResult();
+  void renderResult() const;
 
   void accept(GameController& controller);
   void reject(GameController& controller);
   void notForSale(GameController& controller);
   void submit(GameController& controller);
   /** Shows the end of the talks. */
-  void finish(const std::string& headline, const ImVec4& color,
-              const std::string& detail);
+  void finish(std::string_view headline, const ImVec4& color,
+              std::string_view detail);
 
   std::uint32_t offer_id = 0;
   bool open_requested = false;

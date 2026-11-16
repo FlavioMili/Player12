@@ -601,7 +601,7 @@ struct MatchRenderer3D::State
   float crowdTension = 0.0f;
   std::array<float, Stadium3D::CROWD_PHASES> crowdRise{};
   /** CHEERS_* bit of the celebrating supporters (0: nobody). */
-  std::uint8_t cheeringMask = 0;
+  std::byte cheeringMask = std::byte{0};
   int batchVertices = 0;
   int batchIndices = 0;
 
@@ -1439,7 +1439,7 @@ void MatchRenderer3D::State::updateCrowdMotion()
                                                   (0.85f + 0.3f * rate) +
                                               offset * 3.0f));
   }
-  cheeringMask = 0;
+  cheeringMask = std::byte{0};
   if (goal.active && crowdCelebration > 0.0f)
   {
     cheeringMask = goal.byHome ? Stadium3D::CrowdFlags::CHEERS_HOME
@@ -1489,7 +1489,7 @@ void MatchRenderer3D::State::drawCrowd(const Stadium3D::Face& face)
   const float bottom = projection.rect.y + projection.rect.height;
   const float seatFocal = C::SEAT_SPACING * projection.focalPixels;
   const float halfDotFocal = C::DOT_WIDTH * 0.5f * projection.focalPixels;
-  const bool cheering = cheeringMask != 0U;
+  const bool cheering = cheeringMask != std::byte{0};
   const auto point =
       [&](float x, float y, float across, float up, float dx, float dy)
   {
@@ -1522,7 +1522,7 @@ void MatchRenderer3D::State::drawCrowd(const Stadium3D::Face& face)
           std::min(base.y, upper.y) > bottom || std::max(base.y, upper.y) < top)
         continue;
       {
-        const bool hopping = cheering && (clump.flags & cheeringMask) != 0U;
+        const bool hopping = cheering && (clump.flags & cheeringMask) != std::byte{0};
         const float hop = (crowdRise[clump.phase] +
                            (hopping ? crowdHop[clump.phase] : 0.0f)) *
                           C::DOT_HEIGHT * clumpInverse;
@@ -1565,7 +1565,7 @@ void MatchRenderer3D::State::drawCrowd(const Stadium3D::Face& face)
       if (base.x + halfWidth < left || base.x - halfWidth > right ||
           base.y + dy > bottom || base.y < top)
         continue;
-      const bool celebrating = cheering && (dot.flags & cheeringMask) != 0U;
+      const bool celebrating = cheering && (dot.flags & cheeringMask) != std::byte{0};
       const float lift = crowdSway[dot.phase] + crowdRise[dot.phase] +
                          (celebrating ? crowdHop[dot.phase] : 0.0f);
       base.x += dx * lift;
@@ -1624,10 +1624,10 @@ void MatchRenderer3D::State::drawCrowd(const Stadium3D::Face& face)
                     point(base.x, base.y, to - armHalf, reach, dx, dy), body,
                     head);
         }
-        if ((dot.flags & Flags::SCARF) != 0U)
+        if ((dot.flags & Flags::SCARF) != std::byte{0})
         {
           const KitColors& kit =
-              (dot.flags & Flags::AWAY_FAN) != 0U ? kits.away : kits.home;
+              (dot.flags & Flags::AWAY_FAN) != std::byte{0} ? kits.away : kits.home;
           const float scarfHalf = halfWidth * C::SCARF_WIDTH_SHARE * 0.5f;
           const float scarfBottom = reach - C::SCARF_HEIGHT_SHARE;
           for (const float sideSign : {-1.0f, 1.0f})
@@ -1667,7 +1667,7 @@ void MatchRenderer3D::State::drawCrowdFlags(const Stadium3D::Face& face,
                                             float upX, float upY)
 {
   using C = Tuning::Crowd;
-  const bool cheering = cheeringMask != 0U;
+  const bool cheering = cheeringMask != std::byte{0};
   for (std::uint32_t index = face.flagBegin; index < face.flagEnd; ++index)
   {
     const Stadium3D::CrowdFlag& flag = geometry.flags[index];
@@ -1677,7 +1677,7 @@ void MatchRenderer3D::State::drawCrowdFlags(const Stadium3D::Face& face,
     if (C::FLAG_HEIGHT * projection.focalPixels * inverseDepth <
         C::FLAG_MIN_PIXELS)
       continue;
-    const bool celebrating = cheering && (flag.flags & cheeringMask) != 0U;
+    const bool celebrating = cheering && (flag.flags & cheeringMask) != std::byte{0};
     const float energy = celebrating ? 1.0f + crowdCelebration : 1.0f;
     const float lift =
         celebrating ? crowdHop[flag.phase] * C::DOT_HEIGHT : 0.0f;

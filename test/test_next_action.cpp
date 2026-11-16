@@ -10,6 +10,7 @@
 #include <unistd.h>
 
 #include <algorithm>
+#include <format>
 #include <memory>
 
 #include "controller/game_controller.h"
@@ -25,11 +26,15 @@ constexpr std::uint64_t WORLD_SEED = 20250702;
 
 int uniqueSlot(int offset)
 {
-  return 310'000 + static_cast<int>(getpid() % 100'000) * 10 + offset;
+  return 310'000 + getpid() % 100'000 * 10 + offset;
 }
 
 struct SlotCleanup
 {
+  explicit SlotCleanup(int saveSlot) : slot(saveSlot) {}
+  SlotCleanup(const SlotCleanup&) = delete;
+  SlotCleanup& operator=(const SlotCleanup&) = delete;
+
   int slot;
   ~SlotCleanup() { RuntimePaths::removeSave(slot); }
 };
@@ -44,7 +49,7 @@ const NextAction* find(const std::vector<NextAction>& actions,
                        NextActionKind kind)
 {
   const auto found = std::ranges::find(actions, kind, &NextAction::kind);
-  return found != actions.end() ? &*found : nullptr;
+  return found != actions.end() ? std::to_address(found) : nullptr;
 }
 
 NextActionFacts::Offer offer(std::uint32_t id, int days_left)
@@ -52,7 +57,7 @@ NextActionFacts::Offer offer(std::uint32_t id, int days_left)
   NextActionFacts::Offer entry;
   entry.id = id;
   entry.player = id * 10;
-  entry.player_name = "Player " + std::to_string(id);
+  entry.player_name = std::format("Player {}", id);
   entry.buyer = "Club";
   entry.fee = "€1.00M";
   entry.days_left = days_left;
@@ -94,6 +99,22 @@ TEST(NextActionTest, UrgencyGrowsAsTheMatchNears)
   const int today = rankNextActions(facts).front().priority;
   EXPECT_LT(later, soon);
   EXPECT_LT(soon, today);
+}
+
+TEST(NextActionTest, OnlyTheFirstExpiringContractIsSurfaced)
+{
+  NextActionFacts facts;
+  facts.expiring_contracts = {{11, "First Player"}, {22, "Second Player"}};
+
+  const auto actions = rankNextActions(facts);
+  const NextAction* contract = find(actions, NextActionKind::ContractExpiring);
+
+  ASSERT_NE(contract, nullptr);
+  EXPECT_EQ(contract->ref, 11U);
+  EXPECT_EQ(contract->title.args.front(), "First Player");
+  EXPECT_EQ(std::ranges::count(actions, NextActionKind::ContractExpiring,
+                               &NextAction::kind),
+            1);
 }
 
 TEST(NextActionTest, DelegatedLineupFixIsLowPriority)

@@ -59,6 +59,10 @@ constexpr std::uint64_t WORLD_SEED = 20250702;
 /** Deletes a slot with its backups when the test ends. */
 struct SlotCleanup
 {
+  explicit SlotCleanup(int saveSlot) : slot(saveSlot) {}
+  SlotCleanup(const SlotCleanup&) = delete;
+  SlotCleanup& operator=(const SlotCleanup&) = delete;
+
   int slot;
   ~SlotCleanup() { SaveManager::deleteSave(RuntimePaths::savePath(slot)); }
 };
@@ -70,6 +74,9 @@ struct FaultHookGuard
   {
     SaveManager::setFaultHook(std::move(hook));
   }
+  FaultHookGuard(const FaultHookGuard&) = delete;
+  FaultHookGuard& operator=(const FaultHookGuard&) = delete;
+
   ~FaultHookGuard() { SaveManager::setFaultHook(nullptr); }
 };
 
@@ -590,13 +597,13 @@ TEST(SaveMigrations, FailingMigrationLeavesThePreviousVersion)
   Migrations::migrate(connection);
   const int version = Migrations::currentSchemaVersion();
 
-  static constexpr Migrations::ColumnSpec NEW_COLUMN[] = {
-      {"Players", "doomed_column", "INTEGER NOT NULL DEFAULT 7"}};
+  static constexpr std::array<Migrations::ColumnSpec, 1> NEW_COLUMN = {
+      {{"Players", "doomed_column", "INTEGER NOT NULL DEFAULT 7"}}};
   std::vector<Migrations::Migration> migrations(Migrations::registry().begin(),
                                                 Migrations::registry().end());
-  migrations.push_back({version + 1, "9999_throws", NEW_COLUMN,
-                        [](const Migrations::MigrationContext&)
-                        { throw std::runtime_error("injected failure"); }});
+  migrations.emplace_back(version + 1, "9999_throws", NEW_COLUMN,
+                          [](const Migrations::MigrationContext&)
+                          { throw std::runtime_error("injected failure"); });
 
   EXPECT_THROW(Migrations::migrate(connection, migrations), DatabaseException);
   sqlite3* db = connection.getRaw();
@@ -1076,8 +1083,9 @@ TEST(SaveSafety, CorruptSaveIsDetectedAndABackupRestores)
   }
   int kept_aside = 0;
   for (const auto& entry : fs::directory_iterator(path.parent_path()))
-    kept_aside += entry.path().filename().string().starts_with(
-        path.filename().string() + ".corrupt-");
+    if (entry.path().filename().string().starts_with(path.filename().string() +
+                                                     ".corrupt-"))
+      ++kept_aside;
   EXPECT_GE(kept_aside, 1) << "a damaged save is never deleted";
 }
 
@@ -1134,7 +1142,7 @@ TEST(SaveSafety, RecoveryOffersTheNewestBackupThatLoads)
   {
     const fs::path newest = SaveManager::backupPath(path, 1);
     std::string bytes = fileBytes(newest);
-    std::fill_n(bytes.begin(), 100, '\x5A');
+    std::fill_n(bytes.begin(), 100, 'Z');
     std::ofstream(newest, std::ios::binary | std::ios::trunc) << bytes;
   }
 
@@ -1204,9 +1212,11 @@ TEST(SaveSafety, FailedNewGameKeepsTheOldCareer)
   const FaultHookGuard guard(
       [&flushes_to_survive](SaveManager::FaultPoint point, sqlite3*)
       {
-        if (point == SaveManager::FaultPoint::MidFlush &&
-            flushes_to_survive-- == 0)
-          throw std::runtime_error("disk unplugged");
+        if (point == SaveManager::FaultPoint::MidFlush)
+        {
+          if (flushes_to_survive-- == 0)
+            throw std::runtime_error("disk unplugged");
+        }
       });
   {
     GameController fresh;

@@ -13,6 +13,7 @@
 
 #include <algorithm>
 #include <array>
+#include <utility>
 
 #include "controller/game_controller.h"
 #include "database/gamedata.h"
@@ -58,9 +59,9 @@ void PreseasonScene::refresh()
     line.slot = slot;
     line.date = Format::dayMonth(slot.date);
     line.opponent = teamName(controller, slot.opponent_id);
-    const auto pick =
-        std::ranges::find(suggestion, slot.date, &FriendlySuggestion::date);
-    if (slot.editable && pick != suggestion.end() &&
+    if (const auto pick =
+            std::ranges::find(suggestion, slot.date, &FriendlySuggestion::date);
+        slot.editable && pick != suggestion.end() &&
         pick->opponent_id != slot.opponent_id)
       line.suggestion =
           fmt::sprintf(LOC("PLANNING_ASSISTANT_PICK"),
@@ -73,7 +74,7 @@ void PreseasonScene::refresh()
     selected_friendly = -1;
 
   const PreseasonState& state = controller.getPreseasonState();
-  camp_choice = static_cast<int>(state.camp);
+  camp_choice = static_cast<int>(std::to_underlying(state.camp));
   for (size_t index = 0; index < camp_quotes.size(); ++index)
     camp_quotes[index] =
         controller.getCampQuote(static_cast<TrainingCamp>(index));
@@ -83,7 +84,8 @@ void PreseasonScene::refresh()
   camp_status.clear();
   if (state.camp != TrainingCamp::None)
   {
-    const CampQuote& quote = camp_quotes[static_cast<size_t>(state.camp)];
+    const CampQuote& quote =
+        camp_quotes[static_cast<size_t>(std::to_underlying(state.camp))];
     camp_status =
         state.camp_applied
             ? std::string(LOC("PLANNING_CAMP_DONE"))
@@ -100,28 +102,28 @@ void PreseasonScene::refresh()
     seat_labels[index] = Format::thousands(SEAT_OPTIONS[index]);
   const std::vector<FacilityProject> all = controller.getFacilityProjects();
   const ClubProfile& profile = club.getProfile();
+  using enum FacilityProjectType;
   for (const FacilityProjectType type :
-       {FacilityProjectType::TrainingGround, FacilityProjectType::MedicalCentre,
-        FacilityProjectType::StadiumExpansion})
+       {TrainingGround, MedicalCentre, StadiumExpansion})
   {
     ProjectLine line;
     line.type = type;
     line.name = LOC(BoardModel::projectTypeKey(type));
-    const bool stadium = type == FacilityProjectType::StadiumExpansion;
+    const bool stadium = type == StadiumExpansion;
     const ProjectQuote quote = controller.getProjectQuote(
         type, stadium ? SEAT_OPTIONS[static_cast<size_t>(seats_choice)] : 0);
     switch (type)
     {
-      case FacilityProjectType::TrainingGround:
+      case TrainingGround:
         line.level =
             fmt::sprintf(LOC("PLANNING_LEVEL"), profile.training_facilities);
         break;
-      case FacilityProjectType::MedicalCentre:
+      case MedicalCentre:
         line.level = fmt::sprintf(LOC("PLANNING_LEVEL"),
                                   controller.getMedicalLevel(club.getId()));
         break;
-      case FacilityProjectType::StadiumExpansion:
-      case FacilityProjectType::COUNT:
+      case StadiumExpansion:
+      case COUNT:
         line.level =
             fmt::sprintf(LOC("PLANNING_SEATS"),
                          Format::thousands(profile.stadium_capacity).c_str());
@@ -332,14 +334,15 @@ void PreseasonScene::renderFriendlyEditor(const FriendlyLine& line)
   UI::sectionLabel(
       fmt::sprintf(LOC("PLANNING_EDIT_FRIENDLY"), line.date.c_str()).c_str());
   const float full = ImGui::GetContentRegionAvail().x;
-  const char* levels[] = {LOC("PLANNING_LEVEL_WEAKER"),
-                          LOC("PLANNING_LEVEL_SIMILAR"),
-                          LOC("PLANNING_LEVEL_STRONGER")};
-  if (UI::segmented("##level", level, levels,
+  if (const std::array<const char*, 3> levels =
+          {LOC("PLANNING_LEVEL_WEAKER"), LOC("PLANNING_LEVEL_SIMILAR"),
+           LOC("PLANNING_LEVEL_STRONGER")};
+      UI::segmented("##level", level, levels,
                     std::min(full, 420.0f * Theme::scale())))
     loadOpponents();
-  const char* regions[] = {LOC("PLANNING_DOMESTIC"), LOC("PLANNING_ABROAD")};
-  if (UI::segmented("##region", region, regions,
+  if (const std::array<const char*, 2> regions = {LOC("PLANNING_DOMESTIC"),
+                                                  LOC("PLANNING_ABROAD")};
+      UI::segmented("##region", region, regions,
                     std::min(full, 280.0f * Theme::scale())))
     loadOpponents();
   if (opponents.empty())
@@ -348,11 +351,11 @@ void PreseasonScene::renderFriendlyEditor(const FriendlyLine& line)
     return;
   }
   ImGui::SetNextItemWidth(std::min(full, 360.0f * Theme::scale()));
-  const char* preview =
-      opponent_index >= 0
-          ? opponent_labels[static_cast<size_t>(opponent_index)].c_str()
-          : "";
-  if (ImGui::BeginCombo("##opponent", preview, ImGuiComboFlags_HeightLarge))
+  if (const char* preview =
+          opponent_index >= 0
+              ? opponent_labels[static_cast<size_t>(opponent_index)].c_str()
+              : "";
+      ImGui::BeginCombo("##opponent", preview, ImGuiComboFlags_HeightLarge))
   {
     for (size_t index = 0; index < opponent_labels.size(); ++index)
       if (ImGui::Selectable(opponent_labels[index].c_str(),
@@ -360,7 +363,8 @@ void PreseasonScene::renderFriendlyEditor(const FriendlyLine& line)
         opponent_index = static_cast<int>(index);
     ImGui::EndCombo();
   }
-  const char* venues[] = {LOC("PLANNING_HOME"), LOC("PLANNING_AWAY")};
+  const std::array<const char*, 2> venues = {LOC("PLANNING_HOME"),
+                                             LOC("PLANNING_AWAY")};
   UI::segmented("##venue", venue, venues,
                 std::min(full, 240.0f * Theme::scale()));
   const OpponentOption& option = opponents[static_cast<size_t>(opponent_index)];
@@ -405,8 +409,8 @@ void PreseasonScene::renderCamp()
   const bool open = camp_open;
   if (open)
   {
-    const char* camps[] = {LOC(CAMP_KEYS[0]), LOC(CAMP_KEYS[1]),
-                           LOC(CAMP_KEYS[2])};
+    const std::array<const char*, 3> camps = {
+        LOC(CAMP_KEYS[0]), LOC(CAMP_KEYS[1]), LOC(CAMP_KEYS[2])};
     UI::segmented(
         "##camp", camp_choice, camps,
         std::min(ImGui::GetContentRegionAvail().x, 420.0f * Theme::scale()));
@@ -433,9 +437,9 @@ void PreseasonScene::renderCamp()
     return;
   }
   ImGui::BeginDisabled(choice == state.camp);
-  const bool cancelling =
-      choice == TrainingCamp::None && state.camp != TrainingCamp::None;
-  if (UI::primaryButton(
+  if (const bool cancelling =
+          choice == TrainingCamp::None && state.camp != TrainingCamp::None;
+      UI::primaryButton(
           LOC(cancelling ? "PLANNING_CAMP_CANCEL" : "PLANNING_CAMP_BOOK")))
   {
     const bool booked = controller.bookTrainingCamp(choice);
@@ -458,7 +462,7 @@ void PreseasonScene::renderProjects(float width)
   bool dirty = false;
   for (const ProjectLine& line : projects)
   {
-    ImGui::PushID(static_cast<int>(line.type));
+    ImGui::PushID(static_cast<int>(std::to_underlying(line.type)));
     ImGui::Dummy(ImVec2(0.0f, Theme::Space::XS * Theme::scale()));
     const float full = ImGui::GetContentRegionAvail().x;
     {
@@ -478,8 +482,9 @@ void PreseasonScene::renderProjects(float width)
     {
       if (line.type == FacilityProjectType::StadiumExpansion)
       {
-        const char* seats[] = {seat_labels[0].c_str(), seat_labels[1].c_str(),
-                               seat_labels[2].c_str()};
+        const std::array<const char*, 3> seats = {seat_labels[0].c_str(),
+                                                  seat_labels[1].c_str(),
+                                                  seat_labels[2].c_str()};
         if (UI::segmented("##seats", seats_choice, seats,
                           std::min(full, 300.0f * Theme::scale())))
           dirty = true;

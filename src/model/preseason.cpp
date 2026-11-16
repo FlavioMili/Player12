@@ -14,6 +14,7 @@
 #include <optional>
 #include <string>
 #include <unordered_map>
+#include <utility>
 
 #include "database/gamedata.h"
 #include "database/sqlite_rows.h"
@@ -77,14 +78,15 @@ TeamID otherSide(const Match& match, TeamID team_id)
 
 int levelTarget(OpponentLevel level, int own)
 {
+  using enum OpponentLevel;
   switch (level)
   {
-    case OpponentLevel::Weaker:
+    case Weaker:
       return own - 12;
-    case OpponentLevel::Stronger:
+    case Stronger:
       return own + 12;
-    case OpponentLevel::Similar:
-    case OpponentLevel::COUNT:
+    case Similar:
+    case COUNT:
       break;
   }
   return own;
@@ -96,29 +98,30 @@ namespace Preseason
 CampQuote campQuote(TrainingCamp camp, double season_income,
                     const GameDateValue& first_friendly)
 {
+  using enum TrainingCamp;
   CampQuote quote;
   quote.camp = camp;
   quote.start = SeasonCalendar::addDays(first_friendly, 1);
   quote.end = SeasonCalendar::addDays(first_friendly, CAMP_DAYS);
-  quote.available = camp != TrainingCamp::None;
+  quote.available = camp != None;
   switch (camp)
   {
-    case TrainingCamp::Domestic:
+    case Domestic:
       quote.cost =
           static_cast<std::int64_t>(std::llround(season_income * 0.004));
       quote.sharpness = 6.0f;
       quote.familiarity = 4.0f;
       quote.morale = 1.0f;
       break;
-    case TrainingCamp::Abroad:
+    case Abroad:
       quote.cost =
           static_cast<std::int64_t>(std::llround(season_income * 0.012));
       quote.sharpness = 9.0f;
       quote.familiarity = 6.0f;
       quote.morale = 3.0f;
       break;
-    case TrainingCamp::None:
-    case TrainingCamp::COUNT:
+    case None:
+    case COUNT:
       break;
   }
   return quote;
@@ -135,15 +138,16 @@ std::int64_t tourFee(double season_income, std::uint8_t opponent_reputation)
 
 bool levelMatches(OpponentLevel level, std::uint8_t own, std::uint8_t other)
 {
+  using enum OpponentLevel;
   const int gap = static_cast<int>(other) - static_cast<int>(own);
   switch (level)
   {
-    case OpponentLevel::Weaker:
+    case Weaker:
       return gap <= -LEVEL_GAP;
-    case OpponentLevel::Stronger:
+    case Stronger:
       return gap >= LEVEL_GAP;
-    case OpponentLevel::Similar:
-    case OpponentLevel::COUNT:
+    case Similar:
+    case COUNT:
       break;
   }
   return std::abs(gap) < LEVEL_GAP;
@@ -244,8 +248,9 @@ bool PreseasonPlanner::setFriendly(Calendar& calendar, const GameData& gamedata,
   if (!(today < date) || opponent_id == managed_team_id ||
       opponent_id == FREE_AGENTS_TEAM_ID || !gamedata.getTeam(opponent_id))
     return false;
-  const auto day_it = calendar.getFullCalendar().find(date);
-  if (day_it == calendar.getFullCalendar().end()) return false;
+  if (const auto day_it = calendar.getFullCalendar().find(date);
+      day_it == calendar.getFullCalendar().end())
+    return false;
   std::vector<Match>& day = calendar.getMatchesForDateMutable(date);
   const auto managed_it =
       std::ranges::find_if(day, [&](const Match& match)
@@ -274,8 +279,9 @@ bool PreseasonPlanner::setFriendly(Calendar& calendar, const GameData& gamedata,
                                     opponent_slot->first)[opponent_slot->second]
                               : nullptr;
   // Only competitive-free weeks: the date must still be pre-season.
-  const auto slots = friendlies(calendar, managed_team_id, today);
-  if (!std::ranges::contains(slots, date, &FriendlySlot::date)) return false;
+  if (const auto slots = friendlies(calendar, managed_team_id, today);
+      !std::ranges::contains(slots, date, &FriendlySlot::date))
+    return false;
 
   const auto managed = gamedata.getTeam(managed_team_id);
   const auto opponent = gamedata.getTeam(opponent_id);
@@ -339,9 +345,9 @@ std::vector<FriendlySuggestion> PreseasonPlanner::suggest(
           pick = option.team_id;
           break;
         }
-      if (pick) break;
+      if (pick.has_value()) break;
     }
-    if (!pick) pick = slot.opponent_id;
+    if (!pick.has_value()) pick = slot.opponent_id;
     used.push_back(*pick);
     plan.push_back({slot.date, *pick, HOME[pattern]});
   }
@@ -414,8 +420,7 @@ void PreseasonPlanner::onDay(GameData& gamedata, const GameDateValue& date,
   if (state.camp == TrainingCamp::None || state.camp_applied ||
       managed_team_id == FREE_AGENTS_TEAM_ID || !(state.camp_end == date))
     return;
-  const auto managed = gamedata.getTeam(managed_team_id);
-  if (!managed) return;
+  if (const auto managed = gamedata.getTeam(managed_team_id); !managed) return;
   // Only the effect sizes are needed; the dates come from the booking.
   const CampQuote quote = Preseason::campQuote(state.camp, 0.0, date);
   state.camp_applied = true;
@@ -453,9 +458,9 @@ void PreseasonPlanner::onMatchPlayed(GameData& gamedata,
   const auto opponent = gamedata.getTeam(report.home_team_id);
   if (!managed || !opponent) return;
   Team& club = managed->get();
-  const std::int64_t fee = Preseason::tourFee(seasonIncome(gamedata, club),
-                                              opponent->get().getReputation());
-  if (fee > 0)
+  if (const std::int64_t fee = Preseason::tourFee(
+          seasonIncome(gamedata, club), opponent->get().getReputation());
+      fee > 0)
     club.getFinances().record(report.date, FinanceCategory::Matchday, fee);
   ++state.tour_matches;
   if (state.tour_matches >= Preseason::TOUR_MATCHES_FOR_REPUTATION &&
@@ -484,11 +489,11 @@ void PreseasonPlanner::load(const std::shared_ptr<DatabaseConnection>& db_conn)
   forEach(*db_conn,
           "SELECT season_year, camp, camp_cost, camp_applied, tour_matches, "
           "tour_reputation, camp_end FROM PreseasonPlan WHERE id = 1;",
-          [&](sqlite3_stmt* stmt)
+          [this](sqlite3_stmt* stmt)
           {
             state.season_year = column<std::uint16_t>(stmt, 0);
             const auto camp = column<std::uint8_t>(stmt, 1);
-            state.camp = camp < static_cast<std::uint8_t>(TrainingCamp::COUNT)
+            state.camp = camp < std::to_underlying(TrainingCamp::COUNT)
                              ? static_cast<TrainingCamp>(camp)
                              : TrainingCamp::None;
             state.camp_cost = column<std::int64_t>(stmt, 2);
@@ -499,7 +504,7 @@ void PreseasonPlanner::load(const std::shared_ptr<DatabaseConnection>& db_conn)
               state.camp_end = GameDateValue::fromString(end);
           });
   forEach(*db_conn, "SELECT match_date FROM PreseasonTours ORDER BY rowid;",
-          [&](sqlite3_stmt* stmt)
+          [this](sqlite3_stmt* stmt)
           {
             state.tour_dates.push_back(
                 GameDateValue::fromString(columnText(stmt, 0)));
@@ -518,7 +523,7 @@ void PreseasonPlanner::save(
       "camp_applied, tour_matches, tour_reputation, camp_end) VALUES (1, ?, "
       "?, ?, ?, ?, ?, ?);");
   sqlite3_bind_int(stmt, 1, state.season_year);
-  sqlite3_bind_int(stmt, 2, static_cast<int>(state.camp));
+  sqlite3_bind_int(stmt, 2, static_cast<int>(std::to_underlying(state.camp)));
   sqlite3_bind_int64(stmt, 3, state.camp_cost);
   sqlite3_bind_int(stmt, 4, state.camp_applied ? 1 : 0);
   sqlite3_bind_int(stmt, 5, state.tour_matches);

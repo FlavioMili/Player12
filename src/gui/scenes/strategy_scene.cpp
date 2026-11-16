@@ -15,6 +15,7 @@
 #include <cmath>
 #include <format>
 #include <string>
+#include <utility>
 
 #include "global/language_manager.h"
 #include "gui/gui_view.h"
@@ -217,9 +218,8 @@ Vector2F roleShift(const SlotInstruction& slot)
 {
   const RoleProfile profile = Tactics::profile(slot.role, slot.duty);
   const float lateral = slot.anchor.y - 0.5f;
-  const float flank = std::abs(lateral) < 0.05f ? 0.0f
-                      : lateral > 0.0f          ? 1.0f
-                                                : -1.0f;
+  float flank = 0.0f;
+  if (!(std::abs(lateral) < 0.05f)) flank = lateral > 0.0f ? 1.0f : -1.0f;
   return {profile.possessionAdvanceMetres / PITCH_LENGTH_METRES,
           flank * profile.possessionWidthMetres / PITCH_WIDTH_METRES};
 }
@@ -299,8 +299,8 @@ void StrategyScene::renderInstructions(float width)
   {
     if (index > 0) ImGui::SameLine();
     ImGui::PushID(static_cast<int>(index));
-    const bool active = selected_preset == static_cast<int>(index);
-    if (UI::toggleButton(
+    if (const bool active = selected_preset == static_cast<int>(index);
+        UI::toggleButton(
             LOC(PRESETS[index].nameKey), active,
             ImVec2(buttonWidth, PRESET_BUTTON_HEIGHT * Theme::scale())))
     {
@@ -343,7 +343,7 @@ void StrategyScene::renderInstructions(float width)
   UI::endCard();
 }
 
-void StrategyScene::renderSummary(float width)
+void StrategyScene::renderSummary(float width) const
 {
   const Theme::Palette& palette = Theme::palette();
   UI::beginAutoHeightCard("tactic_summary", LOC("TACTIC_SUMMARY"), width);
@@ -374,7 +374,7 @@ void StrategyScene::renderRoles(float width)
 {
   const Lineup* lineup = clubLineup();
   if (!lineup) return;
-  const int slots = static_cast<int>(lineup->getOutfieldPlayers().size());
+  const auto slots = static_cast<int>(lineup->getOutfieldPlayers().size());
   selected_slot = std::clamp(selected_slot, KEEPER_SLOT, slots - 1);
   UI::beginAutoHeightCard("tactic_roles", LOC("TACTIC_ROLES"), width);
   ImGui::PushTextWrapPos(0.0f);
@@ -436,7 +436,7 @@ SlotInstruction StrategyScene::slotAt(const Lineup& lineup, int slot) const
   return instruction;
 }
 
-void StrategyScene::storeSlot(const SlotInstruction& instruction)
+void StrategyScene::storeSlot(const SlotInstruction& instruction) const
 {
   if (Strategy* strategy = clubStrategy()) strategy->setSlot(instruction);
 }
@@ -545,19 +545,24 @@ void StrategyScene::renderShapePresets(const Lineup& lineup, float width)
   const float right = ImGui::GetCursorScreenPos().x + width;
   const auto& outfield = lineup.getOutfieldPlayers();
   bool first = true;
-  for (int index = 0; index < static_cast<int>(PossessionShape::COUNT); ++index)
+  for (int index = 0;
+       index < static_cast<int>(std::to_underlying(PossessionShape::COUNT));
+       ++index)
   {
     const auto shape = static_cast<PossessionShape>(index);
     // Active while every slot sits where the shape puts it.
     bool active = !outfield.empty();
-    for (int slot = 0; slot < static_cast<int>(outfield.size()) && active;
-         ++slot)
+    for (int slot = 0; slot < static_cast<int>(outfield.size()); ++slot)
     {
       const SlotInstruction instruction = slotAt(lineup, slot);
       const Vector2F wanted =
           Tactics::possessionOffset(shape, instruction.anchor);
-      active = std::abs(instruction.possessionOffset.x - wanted.x) < EPSILON &&
-               std::abs(instruction.possessionOffset.y - wanted.y) < EPSILON;
+      if (!(std::abs(instruction.possessionOffset.x - wanted.x) < EPSILON &&
+            std::abs(instruction.possessionOffset.y - wanted.y) < EPSILON))
+      {
+        active = false;
+        break;
+      }
     }
     const char* label = LOC(Tactics::possessionShapeKey(shape));
     flowItem(UI::buttonWidth(label, UI::ButtonSize::COMPACT), right, first);
@@ -580,14 +585,14 @@ void StrategyScene::renderSlotDetails(const Lineup& lineup)
 {
   const Theme::Palette& palette = Theme::palette();
   const bool keeper = selected_slot == KEEPER_SLOT;
-  const Player* player =
-      keeper ? lineup.getGoalkeeper()
-      : selected_slot >= 0 &&
-              selected_slot <
-                  static_cast<int>(lineup.getOutfieldPlayers().size())
-          ? lineup.getOutfieldPlayers()[static_cast<std::size_t>(selected_slot)]
-                .player
-          : nullptr;
+  const Player* player = nullptr;
+  if (keeper)
+    player = lineup.getGoalkeeper();
+  else if (selected_slot >= 0 &&
+           selected_slot < static_cast<int>(lineup.getOutfieldPlayers().size()))
+    player =
+        lineup.getOutfieldPlayers()[static_cast<std::size_t>(selected_slot)]
+            .player;
   const Strategy* strategy = clubStrategy();
   if (!player || !strategy)
   {
@@ -615,7 +620,7 @@ void StrategyScene::renderSlotDetails(const Lineup& lineup)
     const char* label = LOC(Tactics::roleKey(option));
     flowItem(UI::buttonWidth(label, UI::ButtonSize::COMPACT), right, first);
     first = false;
-    ImGui::PushID(static_cast<int>(option));
+    ImGui::PushID(static_cast<int>(std::to_underlying(option)));
     if (UI::toggleButton(label, option == role, ImVec2(0.0f, 0.0f),
                          UI::ButtonSize::COMPACT))
       setRole(lineup, option);
@@ -624,10 +629,12 @@ void StrategyScene::renderSlotDetails(const Lineup& lineup)
   if (Tactics::hasDuty(family))
   {
     ImGui::Spacing();
-    std::array<const char*, static_cast<std::size_t>(RoleDuty::COUNT)> duties{};
+    std::array<const char*,
+               static_cast<std::size_t>(std::to_underlying(RoleDuty::COUNT))>
+        duties{};
     for (std::size_t index = 0; index < duties.size(); ++index)
       duties[index] = LOC(Tactics::dutyKey(static_cast<RoleDuty>(index)));
-    int duty = static_cast<int>(instruction.duty);
+    auto duty = static_cast<int>(std::to_underlying(instruction.duty));
     if (UI::segmented("##duty", duty, duties, ImGui::CalcItemWidth()))
       setDuty(lineup, static_cast<RoleDuty>(duty));
   }
@@ -767,7 +774,7 @@ void StrategyScene::suggestRoles(const Lineup& lineup)
           Tactics::suggestedRole(*goalkeeper, RoleFamily::Goalkeeper));
 }
 
-void StrategyScene::applySliders()
+void StrategyScene::applySliders() const
 {
   if (Strategy* strategy = clubStrategy())
     strategy->setAllSliders(current_sliders);

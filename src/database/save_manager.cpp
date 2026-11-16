@@ -15,6 +15,7 @@
 #include <chrono>
 #include <cstdio>
 #include <format>
+#include <memory>
 #include <string>
 #include <string_view>
 #include <system_error>
@@ -59,40 +60,40 @@ std::string utcNow(std::string_view format)
 
 SaveErrorKind kindFromErrno(int error)
 {
+  using enum SaveErrorKind;
   switch (error)
   {
     case ENOSPC:
 #if defined(EDQUOT)
     case EDQUOT:
 #endif
-      return SaveErrorKind::DiskFull;
+      return DiskFull;
     case EACCES:
     case EPERM:
     case EROFS:
-      return SaveErrorKind::PermissionDenied;
+      return PermissionDenied;
     default:
-      return SaveErrorKind::Io;
+      return Io;
   }
 }
 
 /** Classifies a failed SQLite call on @p db. */
 SaveFailure sqliteFailure(sqlite3* db, int rc, std::string_view what)
 {
+  using enum SaveErrorKind;
   SaveError error;
   const int system_error = db ? sqlite3_system_errno(db) : 0;
-  const int primary = rc & 0xFF;
-  if (primary == SQLITE_FULL)
-    error.kind = SaveErrorKind::DiskFull;
-  else if (system_error != 0 &&
-           kindFromErrno(system_error) != SaveErrorKind::Io)
+  if (const int primary = rc & 0xFF; primary == SQLITE_FULL)
+    error.kind = DiskFull;
+  else if (system_error != 0 && kindFromErrno(system_error) != Io)
     error.kind = kindFromErrno(system_error);
   else if (primary == SQLITE_READONLY || primary == SQLITE_PERM ||
            primary == SQLITE_AUTH)
-    error.kind = SaveErrorKind::PermissionDenied;
+    error.kind = PermissionDenied;
   else if (primary == SQLITE_CORRUPT || primary == SQLITE_NOTADB)
-    error.kind = SaveErrorKind::Corrupt;
+    error.kind = Corrupt;
   else
-    error.kind = SaveErrorKind::Io;
+    error.kind = Io;
   error.detail =
       std::format("{}: {}", what, db ? sqlite3_errmsg(db) : sqlite3_errstr(rc));
   return SaveFailure(std::move(error));
@@ -147,8 +148,8 @@ void removeDatabaseFiles(const fs::path& path)
 bool checkIntegrity(sqlite3* db, const char* pragma, std::string& detail)
 {
   sqlite3_stmt* stmt = nullptr;
-  const int rc = sqlite3_prepare_v2(db, pragma, -1, &stmt, nullptr);
-  if (rc != SQLITE_OK)
+  if (const int rc = sqlite3_prepare_v2(db, pragma, -1, &stmt, nullptr);
+      rc != SQLITE_OK)
   {
     detail = sqlite3_errmsg(db);
     sqlite3_finalize(stmt);
@@ -230,8 +231,8 @@ void writeSnapshot(sqlite3* source, const fs::path& target,
 
   const auto verifying = Clock::now();
   Handle check;
-  std::string detail;
-  if (check.open(target, SQLITE_OPEN_READONLY) != SQLITE_OK ||
+  if (std::string detail;
+      check.open(target, SQLITE_OPEN_READONLY) != SQLITE_OK ||
       !checkIntegrity(check.get(), "PRAGMA quick_check;", detail))
   {
     SaveError error;
@@ -393,23 +394,24 @@ bool readGameState(sqlite3* db, SaveInspection& inspection)
 
 const char* SaveError::langKey() const
 {
+  using enum SaveErrorKind;
   switch (kind)
   {
-    case SaveErrorKind::None:
+    case None:
       return "SAVE_STATUS_OK";
-    case SaveErrorKind::Missing:
+    case Missing:
       return "SAVE_ERROR_MISSING";
-    case SaveErrorKind::Incomplete:
+    case Incomplete:
       return "SAVE_ERROR_INCOMPLETE";
-    case SaveErrorKind::Corrupt:
+    case Corrupt:
       return "SAVE_ERROR_CORRUPT";
-    case SaveErrorKind::FutureVersion:
+    case FutureVersion:
       return "SAVE_ERROR_FUTURE_VERSION";
-    case SaveErrorKind::DiskFull:
+    case DiskFull:
       return "SAVE_ERROR_DISK_FULL";
-    case SaveErrorKind::PermissionDenied:
+    case PermissionDenied:
       return "SAVE_ERROR_PERMISSION";
-    case SaveErrorKind::Io:
+    case Io:
       break;
   }
   return "SAVE_ERROR_IO";
@@ -432,7 +434,7 @@ void SaveManager::fault(FaultPoint point, sqlite3* temp_db)
 
 fs::path SaveManager::backupPath(const fs::path& file, int index)
 {
-  return fs::path(file.string() + ".bak." + std::to_string(index));
+  return fs::path(std::format("{}.bak.{}", file.string(), index));
 }
 
 fs::path SaveManager::tempPath(const fs::path& file)
@@ -509,7 +511,7 @@ std::shared_ptr<DatabaseConnection> SaveManager::openWorkingCopy(
   return working;
 }
 
-void SaveManager::stampMetadata(DatabaseConnection& working,
+void SaveManager::stampMetadata(const DatabaseConnection& working,
                                 std::uint64_t world_seed,
                                 const GameDateValue& game_date,
                                 std::int64_t playtime_seconds)
@@ -538,7 +540,7 @@ void SaveManager::stampMetadata(DatabaseConnection& working,
   sqlite3_finalize(stmt);
 }
 
-SaveTimings SaveManager::persist(DatabaseConnection& working,
+SaveTimings SaveManager::persist(const DatabaseConnection& working,
                                  const fs::path& file, int backups)
 {
   SaveTimings timings;
@@ -588,8 +590,8 @@ std::vector<SaveBackup> SaveManager::listBackups(const fs::path& file)
   {
     const fs::path path = backupPath(file, index);
     if (!fs::exists(path)) continue;
-    backups.push_back({SaveBackup::Kind::Rotation, index, path,
-                       inspect(path, SaveCheck::Quick)});
+    backups.emplace_back(SaveBackup::Kind::Rotation, index, path,
+                         inspect(path, SaveCheck::Quick));
   }
   std::error_code code;
   const std::string prefix = file.filename().string() + ".pre-v";
@@ -604,12 +606,16 @@ std::vector<SaveBackup> SaveManager::listBackups(const fs::path& file)
     {
       schema_version = std::stoi(version);
     }
-    catch (const std::exception&)
+    catch (const std::invalid_argument&)
     {
       continue;
     }
-    backups.push_back({SaveBackup::Kind::PreMigration, schema_version,
-                       entry.path(), inspect(entry.path(), SaveCheck::Quick)});
+    catch (const std::out_of_range&)
+    {
+      continue;
+    }
+    backups.emplace_back(SaveBackup::Kind::PreMigration, schema_version,
+                         entry.path(), inspect(entry.path(), SaveCheck::Quick));
   }
   return backups;
 }
@@ -620,13 +626,13 @@ const SaveBackup* SaveManager::newestUsable(
   const auto usable = std::ranges::find_if(
       backups, [](const SaveBackup& backup)
       { return backup.inspection.status == SaveStatus::Ok; });
-  return usable == backups.end() ? nullptr : &*usable;
+  return usable == backups.end() ? nullptr : std::to_address(usable);
 }
 
 void SaveManager::restoreBackup(const fs::path& file, const fs::path& backup)
 {
-  const SaveInspection source = inspect(backup, SaveCheck::Full);
-  if (source.status != SaveStatus::Ok)
+  if (const SaveInspection source = inspect(backup, SaveCheck::Full);
+      source.status != SaveStatus::Ok)
   {
     SaveError error;
     error.kind = source.status == SaveStatus::FutureVersion
@@ -692,20 +698,21 @@ bool SaveManager::isAutosaveDue(AutosaveFrequency frequency,
                                 const GameDateValue& today, int season,
                                 bool managed_match_yesterday)
 {
+  using enum AutosaveFrequency;
   switch (frequency)
   {
-    case AutosaveFrequency::Off:
+    case Off:
       return false;
-    case AutosaveFrequency::Daily:
+    case Daily:
       return !(today == last_autosave);
-    case AutosaveFrequency::Weekly:
+    case Weekly:
       return dayOrdinal(today) - dayOrdinal(last_autosave) >= 7;
-    case AutosaveFrequency::Monthly:
+    case Monthly:
       return today.year != last_autosave.year ||
              today.month != last_autosave.month;
-    case AutosaveFrequency::Matchday:
+    case Matchday:
       return managed_match_yesterday;
-    case AutosaveFrequency::SeasonEnd:
+    case SeasonEnd:
       return season != last_autosave_season;
   }
   return false;

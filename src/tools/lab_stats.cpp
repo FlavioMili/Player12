@@ -57,12 +57,13 @@ Estimate meanEstimate(std::span<const double> values)
   Estimate estimate;
   estimate.n = values.size();
   if (values.empty()) return estimate;
-  const double n = static_cast<double>(values.size());
+  const auto n = static_cast<double>(values.size());
   const double mean = std::accumulate(values.begin(), values.end(), 0.0) / n;
   estimate.value = mean;
   if (values.size() < 2)
   {
-    estimate.low = estimate.high = mean;
+    estimate.low = mean;
+    estimate.high = mean;
     return estimate;
   }
   double squares = 0.0;
@@ -82,7 +83,7 @@ Estimate proportionEstimate(std::size_t successes, std::size_t trials)
   Estimate estimate;
   estimate.n = trials;
   if (trials == 0) return estimate;
-  const double n = static_cast<double>(trials);
+  const auto n = static_cast<double>(trials);
   const double p = static_cast<double>(std::min(successes, trials)) / n;
   const double z2 = Z_95 * Z_95;
   const double centre = (p + z2 / (2.0 * n)) / (1.0 + z2 / n);
@@ -98,7 +99,7 @@ Estimate ratioEstimate(std::span<const double> numerators,
                        std::span<const double> denominators)
 {
   Estimate estimate;
-  const std::size_t units = std::min(numerators.size(), denominators.size());
+  const auto units = std::min(numerators.size(), denominators.size());
   estimate.n = units;
   if (units == 0) return estimate;
   const double num = std::accumulate(
@@ -116,10 +117,11 @@ Estimate ratioEstimate(std::span<const double> numerators,
   estimate.value = ratio;
   if (units < 2)
   {
-    estimate.low = estimate.high = ratio;
+    estimate.low = ratio;
+    estimate.high = ratio;
     return estimate;
   }
-  const double n = static_cast<double>(units);
+  const auto n = static_cast<double>(units);
   const double meanDen = den / n;
   double residuals = 0.0;
   for (std::size_t i = 0; i < units; ++i)
@@ -131,8 +133,8 @@ Estimate ratioEstimate(std::span<const double> numerators,
   const double half = tQuantile975(units - 1) * se;
   estimate.low = ratio - half;
   estimate.high = ratio + half;
-  const auto nonNegative = [](double value) { return value >= 0.0; };
-  if (std::all_of(numerators.begin(),
+  if (const auto nonNegative = [](double value) { return value >= 0.0; };
+      std::all_of(numerators.begin(),
                   numerators.begin() + static_cast<std::ptrdiff_t>(units),
                   nonNegative) &&
       std::all_of(denominators.begin(),
@@ -149,7 +151,7 @@ Estimate medianEstimate(std::span<const double> values)
   if (values.empty()) return estimate;
   std::vector<double> sorted(values.begin(), values.end());
   std::ranges::sort(sorted);
-  const std::size_t n = sorted.size();
+  const auto n = sorted.size();
   estimate.value =
       n % 2 == 1 ? sorted[n / 2] : 0.5 * (sorted[n / 2 - 1] + sorted[n / 2]);
   // Ranks n/2 -+ z sqrt(n)/2 bound the median with ~95% coverage.
@@ -193,7 +195,8 @@ Estimate bootstrapEstimate(
   }
   if (draws.size() < 20)
   {
-    estimate.low = estimate.high = estimate.value;
+    estimate.low = estimate.value;
+    estimate.high = estimate.value;
     return estimate;
   }
   std::ranges::sort(draws);
@@ -210,15 +213,16 @@ Estimate bootstrapEstimate(
 
 Verdict classify(const Estimate& estimate, const std::optional<Band>& band)
 {
-  if (!estimate.valid()) return Verdict::NotMeasured;
-  if (!band) return Verdict::Info;
-  if (estimate.value >= band->low && estimate.value <= band->high)
-    return Verdict::Pass;
+  using enum Verdict;
+  if (!estimate.valid()) return NotMeasured;
+  if (!band) return Info;
+  if (estimate.value >= band->low && estimate.value <= band->high) return Pass;
   const double low =
       std::isfinite(estimate.low) ? estimate.low : estimate.value;
-  const double high =
-      std::isfinite(estimate.high) ? estimate.high : estimate.value;
-  if (high >= band->low && low <= band->high) return Verdict::Warn;
-  return Verdict::Fail;
+  if (const double high =
+          std::isfinite(estimate.high) ? estimate.high : estimate.value;
+      high >= band->low && low <= band->high)
+    return Warn;
+  return Fail;
 }
 }  // namespace Lab

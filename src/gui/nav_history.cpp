@@ -54,15 +54,16 @@ NavEntry NavEntry::ofCompare(PlayerID first, PlayerID second)
 
 bool NavEntry::isDetail() const
 {
+  using enum Kind;
   switch (kind)
   {
-    case Kind::PLAYER:
-    case Kind::MATCH_REPORT:
+    case PLAYER:
+    case MATCH_REPORT:
       return true;
-    case Kind::COMPARE:
+    case COMPARE:
       return player != 0 || second_player != 0;
-    case Kind::SECTION:
-    case Kind::CLUB:
+    case SECTION:
+    case CLUB:
       return false;
   }
   return false;

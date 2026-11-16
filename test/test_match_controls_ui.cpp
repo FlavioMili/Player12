@@ -25,6 +25,7 @@
 #include <filesystem>
 #include <memory>
 #include <optional>
+#include <print>
 #include <vector>
 
 #include "controller/game_controller.h"
@@ -118,13 +119,16 @@ constexpr std::uint32_t MATCH_SEED = 424242;
 
 int uniqueSlot(int offset)
 {
-  return 470'000 + static_cast<int>(getpid() % 100'000) * 10 + offset;
+  return 470'000 + (getpid() % 100'000) * 10 + offset;
 }
 
 struct SlotCleanup
 {
   int slot;
+  explicit SlotCleanup(int slotValue) : slot(slotValue) {}
   ~SlotCleanup() { RuntimePaths::removeSave(slot); }
+  SlotCleanup(const SlotCleanup&) = delete;
+  SlotCleanup& operator=(const SlotCleanup&) = delete;
 };
 
 void capture(GUIView& view, const char* name)
@@ -138,8 +142,8 @@ void capture(GUIView& view, const char* name)
 void resize(GUIView& view, int width, int height)
 {
   SDL_SetWindowSize(view.getWindow(), width, height);
-  SDL_Event event{};
-  event.type = SDL_EVENT_WINDOW_RESIZED;
+  SDL_Event event{.window = {}};
+  event.window.type = SDL_EVENT_WINDOW_RESIZED;
   event.window.windowID = SDL_GetWindowID(view.getWindow());
   event.window.data1 = width;
   event.window.data2 = height;
@@ -159,8 +163,8 @@ void setUiScale(GUIView& view, float scale)
 
 SDL_Event keyDown(SDL_Keycode key, SDL_Scancode scancode, SDL_Keymod mod)
 {
-  SDL_Event event{};
-  event.type = SDL_EVENT_KEY_DOWN;
+  SDL_Event event{.key = {}};
+  event.key.type = SDL_EVENT_KEY_DOWN;
   event.key.key = key;
   event.key.scancode = scancode;
   event.key.mod = mod;
@@ -266,20 +270,21 @@ struct BreaksSeen
 /** Watches a whole match as highlights at 30x in 60 Hz frames. */
 BreaksSeen playHighlights(MatchEngine& engine)
 {
+  using enum MatchState;
   engine.setPlaybackMode(MatchPlaybackMode::HIGHLIGHTS);
   engine.setPlaybackSpeed(30.0f);
   engine.setHighlightPlaybackSpeed(30.0f);
   BreaksSeen seen;
-  for (int frame = 0;
-       frame < 400'000 && engine.getState() != MatchState::FULL_TIME; ++frame)
+  for (int frame = 0; frame < 400'000 && engine.getState() != FULL_TIME;
+       ++frame)
   {
     engine.advancePlayback(1.0f / 60.0f);
     const MatchState state = engine.getState();
-    if (state == MatchState::HALF_TIME && engine.getPeriod() == 1)
+    if (state == HALF_TIME && engine.getPeriod() == 1)
       seen.halfTimeBeforeSecondHalf = true;
-    if (state == MatchState::HALF_TIME && engine.getPeriod() >= 2)
+    if (state == HALF_TIME && engine.getPeriod() >= 2)
       seen.extraTimeBreak = true;
-    if (state == MatchState::PENALTY_SHOOTOUT) seen.shootout = true;
+    if (state == PENALTY_SHOOTOUT) seen.shootout = true;
   }
   EXPECT_EQ(engine.getState(), MatchState::FULL_TIME);
   return seen;
@@ -373,6 +378,9 @@ TEST_F(HeadlessMatch, RefusedSubstitutionsSayWhy)
   playUntilBallInPlay();
   engine->advance(300.0f);
   playToNextStoppage();
+  // Half-time substitutions are free. Start the window-limit fixture at a
+  // stoppage that actually consumes a window on every platform.
+  if (engine->getState() == MatchState::HALF_TIME) playToNextStoppage();
   const std::vector<PlayerID> players = onPitch();
   const std::vector<PlayerID> substitutes = freeSubstitutes();
   ASSERT_GE(players.size(), 6u);
@@ -393,6 +401,7 @@ TEST_F(HeadlessMatch, RefusedSubstitutionsSayWhy)
   EXPECT_EQ(plan.check(*engine, true, bench(), opponent, substitutes[1]),
             Refusal::NOT_ON_PITCH);
   plan.apply(*engine, true, bench());
+  ASSERT_EQ(engine->getSubstitutionWindowsUsed(true), 1);
 
   // The substitute who came on cannot come on again, and the player who
   // went off is no longer on the pitch.
@@ -412,10 +421,16 @@ TEST_F(HeadlessMatch, RefusedSubstitutionsSayWhy)
 
   // Every window used: refused in play (outside half-time).
   playToNextStoppage();
-  plan.add(*engine, true, bench(), players[1], substitutes[1]);
+  if (engine->getState() == MatchState::HALF_TIME) playToNextStoppage();
+  ASSERT_EQ(plan.add(*engine, true, bench(), players[1], substitutes[1]),
+            Refusal::NONE);
   plan.apply(*engine, true, bench());
+  ASSERT_EQ(engine->getSubstitutionWindowsUsed(true), 2);
   playToNextStoppage();
-  plan.add(*engine, true, bench(), players[2], substitutes[2]);
+  // Half-time is free, so it cannot establish an exhausted-window fixture.
+  if (engine->getState() == MatchState::HALF_TIME) playToNextStoppage();
+  ASSERT_EQ(plan.add(*engine, true, bench(), players[2], substitutes[2]),
+            Refusal::NONE);
   plan.apply(*engine, true, bench());
   ASSERT_EQ(engine->getSubstitutionWindowsUsed(true), 3);
   playUntilBallInPlay();
@@ -514,7 +529,8 @@ TEST_F(HeadlessMatch, HighlightsStopAtTheExtraTimeBreaks)
   MatchRules::Knockout rules;
   rules.required = true;
   std::optional<std::uint32_t> seed;
-  for (std::uint32_t candidate = 1; candidate <= 60 && !seed; ++candidate)
+  for (std::uint32_t candidate = 1; candidate <= 60 && !seed.has_value();
+       ++candidate)
   {
     MatchEngine trial(home->getLineup(), away->getLineup(), home->getStrategy(),
                       away->getStrategy(), controller.getStatsConfig(),
@@ -536,14 +552,14 @@ TEST_F(HeadlessMatch, HighlightsStopAtTheExtraTimeBreaks)
 
 TEST_F(HeadlessMatch, HighlightsOpenOnLivePlay)
 {
+  using enum MatchState;
   // Watched as highlights at 1x: every highlight begins with the ball in
   // play or within a moment of the restart, never in a long dead-ball wait.
   engine->setPlaybackMode(MatchPlaybackMode::HIGHLIGHTS);
   int highlights = 0;
   int deadStarts = 0;
   double slowest = 0.0;
-  for (int frame = 0;
-       frame < 2'000'000 && engine->getState() != MatchState::FULL_TIME;
+  for (int frame = 0; frame < 2'000'000 && engine->getState() != FULL_TIME;
        ++frame)
   {
     const auto begun = std::chrono::steady_clock::now();
@@ -557,15 +573,14 @@ TEST_F(HeadlessMatch, HighlightsOpenOnLivePlay)
     MatchEngine probe(*engine);
     probe.advance(
         static_cast<float>(MatchTuning::Playback::RESTART_LEAD_SECONDS + 0.1));
-    bool live = engine->getState() == MatchState::PLAYING ||
-                probe.getState() == MatchState::PLAYING;
+    bool live = engine->getState() == PLAYING || probe.getState() == PLAYING;
     // A break or a card shown at once is fine (nothing to build up to).
-    live = live || engine->getState() == MatchState::HALF_TIME;
+    live = live || engine->getState() == HALF_TIME;
     if (!live) ++deadStarts;
   }
   RecordProperty("slowest_playback_call_ms", static_cast<int>(slowest));
-  std::printf("highlights %d, dead starts %d, slowest call %.1f ms\n",
-              highlights, deadStarts, slowest);
+  std::print("highlights {}, dead starts {}, slowest call {:.1f} ms\n",
+             highlights, deadStarts, slowest);
   EXPECT_GT(highlights, 10);
   EXPECT_EQ(deadStarts, 0);
   // Predicting and skipping to the next highlight fits in a frame or two
@@ -577,7 +592,7 @@ TEST(MatchControlsUiTest, TacticsAndShoutsReachTheEngine)
 {
   LiveMatch match(1);
   ASSERT_NE(match.scene, nullptr);
-  MatchEngine& engine = match.engine();
+  const MatchEngine& engine = match.engine();
   const TouchlineContext context = match.context();
   const bool home = MatchBridge::managedHome(*match.scene);
   MatchTacticsPanel& tactics = MatchBridge::tactics(*match.scene);
@@ -773,7 +788,7 @@ TEST(MatchControlsUiTest, ManagedMatchPausesAtHalfTimeAtAnySpeed)
   ASSERT_NE(match.scene, nullptr);
   SettingsManager::instance()->get().pause_at_breaks = true;
   MatchScene& scene = *match.scene;
-  MatchEngine& engine = match.engine();
+  const MatchEngine& engine = match.engine();
   MatchBridge::watchHighlightsAt(scene, 30.0f);
   MatchBridge::setPaused(scene, false);
   for (int frame = 0; frame < 200'000 && !MatchBridge::paused(scene) &&

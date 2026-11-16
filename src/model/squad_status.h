@@ -13,6 +13,7 @@
 #include <memory>
 #include <optional>
 #include <unordered_map>
+#include <utility>
 
 #include "global/types.h"
 
@@ -38,7 +39,7 @@ enum class SquadStatus : std::uint8_t
 };
 
 inline constexpr std::size_t SQUAD_STATUS_COUNT =
-    static_cast<std::size_t>(SquadStatus::COUNT);
+    static_cast<std::size_t>(std::to_underlying(SquadStatus::COUNT));
 
 namespace SquadStatusModel
 {
@@ -106,7 +107,7 @@ class SquadStatusBook
   template <typename TeamOf>
   void prune(TeamOf&& team_of)
   {
-    std::erase_if(entries, [&](const auto& entry)
+    std::erase_if(entries, [this, &team_of](const auto& entry)
                   { return team_of(entry.first) != entry.second.team_id; });
   }
 

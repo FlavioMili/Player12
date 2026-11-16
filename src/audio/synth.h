@@ -10,6 +10,7 @@
 
 #include <array>
 #include <cstdint>
+#include <utility>
 
 /**
  * Procedural sound synthesis for the match audio. Every sound is built from
@@ -67,7 +68,11 @@ class Svf
     ic2 = 2.0f * v2 - ic2;
     return {v2, v1, input - k * v1 - v2};
   }
-  void reset() { ic1 = ic2 = 0.0f; }
+  void reset()
+  {
+    ic2 = 0.0f;
+    ic1 = 0.0f;
+  }
 
  private:
   float ic1 = 0.0f;
@@ -151,7 +156,7 @@ enum class Sound : std::uint8_t
   COUNT
 };
 inline constexpr std::size_t SOUND_COUNT =
-    static_cast<std::size_t>(Sound::COUNT);
+    static_cast<std::size_t>(std::to_underlying(Sound::COUNT));
 
 /** Referee whistle patterns (Voice variant for Sound::WHISTLE). */
 enum class WhistlePattern : std::uint8_t
@@ -270,12 +275,12 @@ class CrowdBed
     Svf air;
     Drift swell;
     Drift babble;
-    Channel(std::uint32_t seed);
+    explicit Channel(std::uint32_t seed);
   };
   void updateControl();
 
-  Channel left;
-  Channel right;
+  Channel left{0xC0FFEEU};
+  Channel right{0xBADA55U};
   float intensity = 0.3f;
   float intensityTarget = 0.3f;
   float level = 0.0f;

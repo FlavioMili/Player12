@@ -10,6 +10,7 @@
 
 #include <algorithm>
 #include <tuple>
+#include <utility>
 
 #include "model/world_tuning.h"
 
@@ -60,33 +61,34 @@ std::size_t ageBand(int age)
 
 std::size_t index(PlannerGroup group)
 {
-  return static_cast<std::size_t>(group);
+  return static_cast<std::size_t>(std::to_underlying(group));
 }
 }  // namespace
 
 PlannerGroup SquadPlanner::groupOf(PlayerRole role)
 {
+  using enum PlayerRole;
   switch (role)
   {
-    case PlayerRole::GK:
+    case GK:
       return PlannerGroup::Goalkeeper;
-    case PlayerRole::CB:
+    case CB:
       return PlannerGroup::CentreBack;
-    case PlayerRole::LB:
+    case LB:
       return PlannerGroup::LeftBack;
-    case PlayerRole::RB:
+    case RB:
       return PlannerGroup::RightBack;
-    case PlayerRole::LM:
-    case PlayerRole::RM:
-    case PlayerRole::LW:
-    case PlayerRole::RW:
+    case LM:
+    case RM:
+    case LW:
+    case RW:
       return PlannerGroup::Wide;
-    case PlayerRole::ST:
+    case ST:
       return PlannerGroup::Striker;
-    case PlayerRole::CDM:
-    case PlayerRole::CM:
-    case PlayerRole::CAM:
-    case PlayerRole::UNKNOWN:
+    case CDM:
+    case CM:
+    case CAM:
+    case UNKNOWN:
       break;
   }
   return PlannerGroup::Midfield;
@@ -94,22 +96,23 @@ PlannerGroup SquadPlanner::groupOf(PlayerRole role)
 
 const char* SquadPlanner::groupKey(PlannerGroup group)
 {
+  using enum PlannerGroup;
   switch (group)
   {
-    case PlannerGroup::Goalkeeper:
+    case Goalkeeper:
       return "PLANNER_GROUP_GOALKEEPERS";
-    case PlannerGroup::CentreBack:
+    case CentreBack:
       return "PLANNER_GROUP_CENTRE_BACKS";
-    case PlannerGroup::LeftBack:
+    case LeftBack:
       return "PLANNER_GROUP_LEFT_BACKS";
-    case PlannerGroup::RightBack:
+    case RightBack:
       return "PLANNER_GROUP_RIGHT_BACKS";
-    case PlannerGroup::Midfield:
+    case Midfield:
       return "PLANNER_GROUP_MIDFIELD";
-    case PlannerGroup::Wide:
+    case Wide:
       return "PLANNER_GROUP_WIDE";
-    case PlannerGroup::Striker:
-    case PlannerGroup::COUNT:
+    case Striker:
+    case COUNT:
       break;
   }
   return "PLANNER_GROUP_STRIKERS";

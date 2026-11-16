@@ -12,9 +12,9 @@
 #include <atomic>
 #include <charconv>
 #include <cstdlib>
-#include <cstring>
 #include <exception>
 #include <memory>
+#include <string_view>
 #include <system_error>
 
 #if defined(__linux__)
@@ -127,8 +127,9 @@ void ThreadPool::parallelFor(std::size_t count,
 {
   if (count == 0) return;
   const auto batch = std::make_shared<Batch>(count, task);
-  const std::size_t helpers = std::min<std::size_t>(workers.size(), count - 1);
-  if (helpers > 0)
+  if (const std::size_t helpers =
+          std::min<std::size_t>(workers.size(), count - 1);
+      helpers > 0)
   {
     {
       const std::scoped_lock lock(mutex);
@@ -146,10 +147,20 @@ void ThreadPool::parallelFor(std::size_t count,
 
 unsigned ThreadPool::defaultThreadCount()
 {
-  if (const char* configured = std::getenv("FM_SIM_THREADS"))
+#if defined(_WIN32)
+  char* value = nullptr;
+  std::size_t size = 0;
+  if (_dupenv_s(&value, &size, "FM_SIM_THREADS") != 0) value = nullptr;
+  const std::unique_ptr<char, decltype(&std::free)> owned(value, &std::free);
+  const char* configured = owned.get();
+#else
+  const char* configured = std::getenv("FM_SIM_THREADS");
+#endif
+  if (configured != nullptr)
   {
     unsigned value = 0;
-    const char* end = configured + std::strlen(configured);
+    const std::string_view text(configured);
+    const char* end = text.data() + text.size();
     if (const auto [ptr, error] = std::from_chars(configured, end, value);
         error == std::errc{} && ptr == end && value > 0)
       return std::min(value, MAX_THREADS);

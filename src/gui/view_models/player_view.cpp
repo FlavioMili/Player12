@@ -68,34 +68,37 @@ PlayerRow makeRow(const GameController& controller, const Player& player)
 
 PositionGroup groupOf(PlayerRole role)
 {
+  using enum PlayerRole;
+  using enum PositionGroup;
   switch (role)
   {
-    case PlayerRole::GK:
-      return PositionGroup::GOALKEEPER;
-    case PlayerRole::CB:
-    case PlayerRole::LB:
-    case PlayerRole::RB:
-      return PositionGroup::DEFENDER;
-    case PlayerRole::LW:
-    case PlayerRole::RW:
-    case PlayerRole::ST:
-      return PositionGroup::FORWARD;
+    case GK:
+      return GOALKEEPER;
+    case CB:
+    case LB:
+    case RB:
+      return DEFENDER;
+    case LW:
+    case RW:
+    case ST:
+      return FORWARD;
     default:
-      return PositionGroup::MIDFIELDER;
+      return MIDFIELDER;
   }
 }
 
 const char* groupKey(PositionGroup group)
 {
+  using enum PositionGroup;
   switch (group)
   {
-    case PositionGroup::GOALKEEPER:
+    case GOALKEEPER:
       return "POSITION_GROUP_GK";
-    case PositionGroup::DEFENDER:
+    case DEFENDER:
       return "POSITION_GROUP_DEF";
-    case PositionGroup::MIDFIELDER:
+    case MIDFIELDER:
       return "POSITION_GROUP_MID";
-    case PositionGroup::FORWARD:
+    case FORWARD:
       return "POSITION_GROUP_ATT";
   }
   return "POSITION_GROUP_MID";

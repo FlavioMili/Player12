@@ -34,7 +34,8 @@ class HolidayDialog
   void open(GameController& controller);
 
   /** Opens the report of a finished holiday. */
-  void showSummary(GameController& controller, const HolidaySummary& summary);
+  void showSummary(const GameController& controller,
+                   const HolidaySummary& summary);
 
   /** Draws the dialog; returns the plan on the frame the manager leaves. */
   std::optional<HolidayPlan> render(GameController& controller);
@@ -50,7 +51,7 @@ class HolidayDialog
 
   std::optional<HolidayPlan> renderPlan(GameController& controller);
   void renderSummary();
-  void refreshTarget(GameController& controller);
+  void refreshTarget(const GameController& controller);
 
   bool open_requested = false;
   bool visible = false;

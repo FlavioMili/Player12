@@ -85,13 +85,16 @@ constexpr std::uint64_t WORLD_SEED = 20250702;
 
 int uniqueSlot(int offset)
 {
-  return 470'000 + static_cast<int>(getpid() % 100'000) * 10 + offset;
+  return 470'000 + (getpid() % 100'000) * 10 + offset;
 }
 
 struct SlotCleanup
 {
   int slot;
+  explicit SlotCleanup(int slotValue) : slot(slotValue) {}
   ~SlotCleanup() { RuntimePaths::removeSave(slot); }
+  SlotCleanup(const SlotCleanup&) = delete;
+  SlotCleanup& operator=(const SlotCleanup&) = delete;
 };
 
 void capture(GUIView& view, const char* name)
@@ -105,8 +108,8 @@ void capture(GUIView& view, const char* name)
 void resize(GUIView& view, int width, int height)
 {
   SDL_SetWindowSize(view.getWindow(), width, height);
-  SDL_Event event{};
-  event.type = SDL_EVENT_WINDOW_RESIZED;
+  SDL_Event event{.window = {}};
+  event.window.type = SDL_EVENT_WINDOW_RESIZED;
   event.window.windowID = SDL_GetWindowID(view.getWindow());
   event.window.data1 = width;
   event.window.data2 = height;
@@ -129,9 +132,13 @@ void hoverEverywhere(GUIView& view, float step)
 {
   ImGuiIO& io = ImGui::GetIO();
   const ImVec2 size = io.DisplaySize;
-  for (float y = step * 0.5f; y < size.y; y += step)
-    for (float x = step * 0.5f; x < size.x; x += step)
+  for (int y_index = 0; step * (static_cast<float>(y_index) + 0.5f) < size.y;
+       ++y_index)
+    for (int x_index = 0; step * (static_cast<float>(x_index) + 0.5f) < size.x;
+         ++x_index)
     {
+      const float y = step * (static_cast<float>(y_index) + 0.5f);
+      const float x = step * (static_cast<float>(x_index) + 0.5f);
       io.AddMousePosEvent(x, y);
       Bridge::frame(view);
     }
@@ -145,8 +152,7 @@ void scrollPage(GUIView& view, float share)
   for (ImGuiWindow* window : GImGui->Windows)
     if (window->Active && window->ParentWindow != nullptr &&
         std::string_view(window->ParentWindow->Name) == "##management_shell" &&
-        std::string_view(window->Name).find("##content") !=
-            std::string_view::npos)
+        std::string_view(window->Name).contains("##content"))
       ImGui::SetScrollY(window, window->ScrollMax.y * share);
   frames(view, 2);
 }
@@ -160,8 +166,7 @@ void hoverWholePage(GUIView& view, float step)
     ImGuiWindow* content = nullptr;
     for (ImGuiWindow* window : GImGui->Windows)
       if (window->Active &&
-          std::string_view(window->Name).find("##content") !=
-              std::string_view::npos &&
+          std::string_view(window->Name).contains("##content") &&
           window->ParentWindow != nullptr &&
           std::string_view(window->ParentWindow->Name) == "##management_shell")
         content = window;
@@ -182,17 +187,18 @@ void expectSingleScrollSurface(std::string_view prefix)
   for (const ImGuiWindow* window : GImGui->Windows)
   {
     if (!window->Active || window->RootWindow == nullptr) continue;
-    const std::string_view root(window->RootWindow->Name);
-    if (root != "##management_shell") continue;
+    if (const std::string_view root(window->RootWindow->Name);
+        root != "##management_shell")
+      continue;
     const std::string_view name(window->Name);
     EXPECT_FALSE(window->ScrollbarX) << "horizontal scrollbar in " << name;
-    const bool page = name.find("##content") != std::string_view::npos &&
+    const bool page = name.contains("##content") &&
                       window->ParentWindow == window->RootWindow;
-    const bool sidebar = name.find("##sidebar") != std::string_view::npos;
-    if (page || sidebar) continue;
+    if (const bool sidebar = name.contains("##sidebar"); page || sidebar)
+      continue;
     EXPECT_FALSE(window->ScrollbarY) << "nested scrollbar in " << name;
     // The new analytics cards must not clip their content either.
-    if (name.find(prefix) != std::string_view::npos)
+    if (name.contains(prefix))
       EXPECT_LE(window->ScrollMax.x, std::max(tolerance, 16.0f))
           << "content wider than its card: " << name;
   }

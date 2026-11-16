@@ -64,7 +64,7 @@ class MatchReportScene : public ManagementScene
   };
 
   void renderScore();
-  void renderEvents(float width, float height);
+  void renderEvents(float width, float height) const;
   void renderStats(float width, float height);
   void renderRatings(const char* id, const std::string& club,
                      const std::vector<PlayerRow>& rows, float width,

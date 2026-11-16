@@ -67,8 +67,8 @@ std::vector<StandingRow> Standings::compute(const League& league,
       const auto home = index_of.find(match.getHomeTeamId());
       const auto away = index_of.find(match.getAwayTeamId());
       if (home == index_of.end() || away == index_of.end()) continue;
-      results.push_back({home->second, away->second, match.getHomeScore(),
-                         match.getAwayScore()});
+      results.emplace_back(home->second, away->second, match.getHomeScore(),
+                           match.getAwayScore());
     }
   }
 
@@ -115,7 +115,7 @@ std::vector<StandingRow> Standings::compute(const League& league,
                           static_cast<int32_t>(row.goals_against);
   }
 
-  const auto nameOf = [&gamedata](TeamID id) -> std::string_view
+  const auto nameOf = [&gamedata](TeamID id)
   {
     const auto team = gamedata.getTeam(id);
     return team ? std::string_view(team->get().getName()) : std::string_view();
@@ -181,8 +181,9 @@ std::vector<StandingRow> Standings::compute(const League& league,
                       return left.goals_for > right.goals_for;
                   }
                   const auto left_name = nameOf(left.team_id);
-                  const auto right_name = nameOf(right.team_id);
-                  if (left_name != right_name) return left_name < right_name;
+                  if (const auto right_name = nameOf(right.team_id);
+                      left_name != right_name)
+                    return left_name < right_name;
                   return left.team_id < right.team_id;
                 });
     }

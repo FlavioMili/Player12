@@ -13,6 +13,7 @@
 #include <algorithm>
 #include <cmath>
 #include <format>
+#include <utility>
 
 #include "controller/game_controller.h"
 #include "database/gamedata.h"
@@ -33,13 +34,14 @@ constexpr std::array<const char*, AGE_BAND_COUNT> AGE_BAND_LABELS = {
 
 const char* tierKey(DepthTier tier)
 {
+  using enum DepthTier;
   switch (tier)
   {
-    case DepthTier::FirstChoice:
+    case FirstChoice:
       return "PLANNER_TIER_FIRST";
-    case DepthTier::Prospect:
+    case Prospect:
       return "PLANNER_TIER_PROSPECT";
-    case DepthTier::Backup:
+    case Backup:
       break;
   }
   return "PLANNER_TIER_BACKUP";
@@ -48,25 +50,27 @@ const char* tierKey(DepthTier tier)
 /** Position a recruitment focus for a group searches for. */
 PlayerRole focusRole(PlannerGroup group)
 {
+  using enum PlannerGroup;
+  using enum PlayerRole;
   switch (group)
   {
-    case PlannerGroup::Goalkeeper:
-      return PlayerRole::GK;
-    case PlannerGroup::CentreBack:
-      return PlayerRole::CB;
-    case PlannerGroup::LeftBack:
-      return PlayerRole::LB;
-    case PlannerGroup::RightBack:
-      return PlayerRole::RB;
-    case PlannerGroup::Wide:
-      return PlayerRole::LW;
-    case PlannerGroup::Striker:
-      return PlayerRole::ST;
-    case PlannerGroup::Midfield:
-    case PlannerGroup::COUNT:
+    case Goalkeeper:
+      return GK;
+    case CentreBack:
+      return CB;
+    case LeftBack:
+      return LB;
+    case RightBack:
+      return RB;
+    case Wide:
+      return LW;
+    case Striker:
+      return ST;
+    case Midfield:
+    case COUNT:
       break;
   }
-  return PlayerRole::CM;
+  return CM;
 }
 
 const std::array<UI::Column, 6>& depthColumns()
@@ -87,11 +91,15 @@ SquadPlannerScene::SquadPlannerScene(GUIView* parent) : ManagementScene(parent)
 {
 }
 
-void SquadPlannerScene::update(float /*deltaTime*/) {}
+void SquadPlannerScene::update(float /*deltaTime*/)
+{
+  // This screen has no time-driven state; refresh() rebuilds its projections
+  // when the career data changes.
+}
 
 void SquadPlannerScene::refresh()
 {
-  GameController& controller = guiView->getController();
+  const GameController& controller = guiView->getController();
   if (!controller.getManagedTeam()) return;
   season_year = static_cast<std::uint16_t>(
       SeasonAgenda::seasonStart(controller.getCurrentDate()).year + 1);
@@ -99,9 +107,9 @@ void SquadPlannerScene::refresh()
   build(views[1], 1);
 }
 
-void SquadPlannerScene::build(View& view, int season_offset)
+void SquadPlannerScene::build(View& view, int season_offset) const
 {
-  GameController& controller = guiView->getController();
+  const GameController& controller = guiView->getController();
   const auto data = controller.getGameData();
   const SquadPlan plan = controller.getSquadPlan(season_offset);
   const auto nameOf = [&](PlayerID id)
@@ -132,7 +140,7 @@ void SquadPlannerScene::build(View& view, int season_offset)
     Group& group = view.groups[index];
     group.group = depth.group;
     group.missing = depth.missing;
-    group.header = std::format("{}  \xC2\xB7  {} / {}",
+    group.header = std::format("{}  \u00B7  {} / {}",
                                LOC(SquadPlanner::groupKey(depth.group)),
                                depth.players.size(), depth.target);
     for (const DepthEntry& entry : depth.players)
@@ -170,7 +178,8 @@ void SquadPlannerScene::build(View& view, int season_offset)
     line.kind = need.kind;
     line.group = need.group;
     const std::string group = LOC(SquadPlanner::groupKey(need.group));
-    const GroupDepth& depth = plan.groups[static_cast<std::size_t>(need.group)];
+    const GroupDepth& depth =
+        plan.groups[static_cast<std::size_t>(std::to_underlying(need.group))];
     line.min_ability = depth.first_choice_average;
     switch (need.kind)
     {
@@ -190,15 +199,14 @@ void SquadPlannerScene::build(View& view, int season_offset)
             std::ranges::find_if(depth.players, [&](const DepthEntry& entry)
                                  { return entry.player.id == need.player_id; });
         const bool contract = found != depth.players.end() && found->expiring;
-        line.text =
-            contract ? formatLocalized("PLANNER_NEED_SUCCESSION_CONTRACT",
-                                       {nameOf(need.player_id), group})
-                     : formatLocalized("PLANNER_NEED_SUCCESSION_AGE",
-                                       {nameOf(need.player_id),
-                                        found != depth.players.end()
-                                            ? std::to_string(found->player.age)
-                                            : std::string(),
-                                        group});
+        const std::string age = found != depth.players.end()
+                                    ? std::to_string(found->player.age)
+                                    : std::string();
+        line.text = contract
+                        ? formatLocalized("PLANNER_NEED_SUCCESSION_CONTRACT",
+                                          {nameOf(need.player_id), group})
+                        : formatLocalized("PLANNER_NEED_SUCCESSION_AGE",
+                                          {nameOf(need.player_id), age, group});
         break;
       }
       case NeedKind::Surplus:
@@ -301,7 +309,7 @@ void SquadPlannerScene::renderDepth(float width)
 void SquadPlannerScene::renderGroup(const Group& group)
 {
   const Theme::Palette& palette = Theme::palette();
-  ImGui::PushID(static_cast<int>(group.group));
+  ImGui::PushID(static_cast<int>(std::to_underlying(group.group)));
   ImGui::Dummy(ImVec2(0.0f, Theme::Space::XS * Theme::scale()));
   UI::sectionLabel(group.header.c_str());
   if (group.missing > 0)
@@ -423,7 +431,8 @@ void SquadPlannerScene::renderDetail(const Row& row)
     ImGui::TextColored(palette.faint, "%s",
                        LOC(SquadStatusModel::expectationKey(shown)));
     if (row.given &&
-        static_cast<int>(*row.given) > static_cast<int>(row.deserved) + 1 &&
+        static_cast<int>(std::to_underlying(*row.given)) >
+            static_cast<int>(std::to_underlying(row.deserved)) + 1 &&
         *row.given != SquadStatus::Prospect)
       ImGui::TextColored(palette.warning, "%s", LOC("PLANNER_STATUS_DEMOTION"));
     ImGui::PopTextWrapPos();
@@ -450,9 +459,11 @@ void SquadPlannerScene::renderNeeds(float width)
   {
     const Need& need = view.needs[index];
     ImGui::PushID(static_cast<int>(index));
-    const ImVec4 color = need.kind == NeedKind::Surplus   ? palette.muted
-                         : need.kind == NeedKind::Missing ? palette.warning
-                                                          : palette.text;
+    ImVec4 color = palette.text;
+    if (need.kind == NeedKind::Surplus)
+      color = palette.muted;
+    else if (need.kind == NeedKind::Missing)
+      color = palette.warning;
     const bool recruit = need.kind != NeedKind::Surplus;
     const char* action = LOC("PLANNER_ADD_FOCUS");
     const float buttonWidth =

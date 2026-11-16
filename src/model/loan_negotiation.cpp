@@ -13,6 +13,7 @@
 #include <cmath>
 #include <limits>
 #include <optional>
+#include <utility>
 
 #include "model/transfer_tuning.h"
 
@@ -37,7 +38,8 @@ constexpr double MIN_IMPROVEMENT = 1.0;
 /** Share of a full wage over the loan that sets the smallest ceiling. */
 constexpr double MIN_CEILING_WAGE_SHARE = 0.10;
 
-constexpr std::array<const char*, static_cast<std::size_t>(Why::COUNT)>
+constexpr std::array<const char*,
+                     static_cast<std::size_t>(std::to_underlying(Why::COUNT))>
     WHY_KEYS = {"LOAN_WHY_WITHIN_BUDGET", "LOAN_WHY_IMPROVED",
                 "LOAN_WHY_WAGE_ROOM",     "LOAN_WHY_FEE_INSTEAD",
                 "LOAN_WHY_NO_OBLIGATION", "LOAN_WHY_APPEARANCES_CUT",
@@ -61,7 +63,7 @@ std::uint8_t stepDown(double value, std::uint8_t step)
 
 double blend(double from, double to, double t)
 {
-  return from + t * (to - from);
+  return std::lerp(from, to, t);
 }
 
 bool sameTerms(const LoanTerms& a, const LoanTerms& b)
@@ -76,7 +78,7 @@ bool sameTerms(const LoanTerms& a, const LoanTerms& b)
 
 const char* whyKey(Why why)
 {
-  const auto index = static_cast<std::size_t>(why);
+  const auto index = static_cast<std::size_t>(std::to_underlying(why));
   return index < WHY_KEYS.size() ? WHY_KEYS[index] : "";
 }
 
@@ -206,10 +208,10 @@ BorrowerReply respond(const BorrowerContext& context, const LoanTerms& current,
     return reply;
   }
 
-  const bool final = context.answered + 1 >= context.patience;
+  const bool final_offer = context.answered + 1 >= context.patience;
   const double previous = borrowerCost(context, current);
   double share = 1.0;
-  if (!final)
+  if (!final_offer)
     share = std::min(
         1.0, static_cast<double>(B::FIRST_CONCESSION) +
                  static_cast<double>(B::CONCESSION_STEP) * context.answered +
@@ -325,12 +327,12 @@ BorrowerReply respond(const BorrowerContext& context, const LoanTerms& current,
   reply.decision = Decision::Counter;
   // Better for the club: it pays more, or it takes on part of the club's
   // terms that cost it nothing (an option to buy).
-  const bool improves =
-      proposal && isValid(*proposal) &&
-      (borrowerCost(context, *proposal) > previous + MIN_IMPROVEMENT ||
-       (!sameTerms(*proposal, current) &&
-        borrowerCost(context, *proposal) >= previous - MIN_IMPROVEMENT));
-  if (!improves)
+  if (const bool improves =
+          proposal && isValid(*proposal) &&
+          (borrowerCost(context, *proposal) > previous + MIN_IMPROVEMENT ||
+           (!sameTerms(*proposal, current) &&
+            borrowerCost(context, *proposal) >= previous - MIN_IMPROVEMENT));
+      !improves)
   {
     reply.move = Move::FinalOffer;
     reply.terms = current;
@@ -338,9 +340,9 @@ BorrowerReply respond(const BorrowerContext& context, const LoanTerms& current,
     pressure();
     return reply;
   }
-  reply.move = final ? Move::FinalOffer : Move::Improved;
+  reply.move = final_offer ? Move::FinalOffer : Move::Improved;
   reply.terms = *proposal;
-  reply.reasons.push_back(final ? Why::FinalOffer : Why::Improved);
+  reply.reasons.push_back(final_offer ? Why::FinalOffer : Why::Improved);
   for (const Why note : notes)
     if (!std::ranges::contains(reply.reasons, note))
       reply.reasons.push_back(note);

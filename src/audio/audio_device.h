@@ -51,7 +51,7 @@ class AudioDevice
   Mixer& mixer;
   std::atomic<SDL_AudioStream*> stream{nullptr};
   bool subsystemStarted = false;
-  std::thread opener;
+  std::jthread opener;
   /** Callback scratch (audio thread only). */
   std::array<float, 2 * CHUNK_FRAMES> chunk{};
 };

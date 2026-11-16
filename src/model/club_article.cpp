@@ -16,6 +16,7 @@
 #include <optional>
 #include <string>
 #include <unordered_map>
+#include <utility>
 
 #include "database/datagenerator.h"
 #include "global/logger.h"
@@ -42,10 +43,11 @@ constexpr std::array<std::array<std::string_view, 6>, 4> FUSED = {{
 
 std::optional<Article> parse(std::string_view text)
 {
-  if (text == "il") return Article::Il;
-  if (text == "lo") return Article::Lo;
-  if (text == "l'") return Article::Elided;
-  if (text == "la") return Article::La;
+  using enum Article;
+  if (text == "il") return Il;
+  if (text == "lo") return Lo;
+  if (text == "l'") return Elided;
+  if (text == "la") return La;
   return std::nullopt;
 }
 
@@ -83,23 +85,24 @@ bool isVowel(char c)
 
 Article defaultArticle(std::string_view name)
 {
-  if (name.empty()) return Article::Il;
+  using enum Article;
+  if (name.empty()) return Il;
   // Accented capitals and other multi-byte initials start with a vowel in
   // every club name of the pack (e.g. "Évora").
   const auto first = static_cast<unsigned char>(name.front());
-  if (first >= 0x80 || isVowel(name.front())) return Article::Elided;
-  const char lower = static_cast<char>(std::tolower(first));
+  if (first >= 0x80 || isVowel(name.front())) return Elided;
+  const auto lower = static_cast<char>(std::tolower(first));
   const char next =
       name.size() > 1
           ? static_cast<char>(std::tolower(static_cast<unsigned char>(name[1])))
           : '\0';
-  if (lower == 'h' && isVowel(next)) return Article::Elided;
-  if (lower == 'z' || lower == 'x' || lower == 'y') return Article::Lo;
-  if (lower == 's' && next != '\0' && !isVowel(next)) return Article::Lo;
+  if (lower == 'h' && isVowel(next)) return Elided;
+  if (lower == 'z' || lower == 'x' || lower == 'y') return Lo;
+  if (lower == 's' && next != '\0' && !isVowel(next)) return Lo;
   if ((lower == 'g' && next == 'n') || (lower == 'p' && next == 's') ||
       (lower == 'p' && next == 'n'))
-    return Article::Lo;
-  return Article::Il;
+    return Lo;
+  return Il;
 }
 
 Article articleOf(std::string_view club_name)
@@ -121,7 +124,8 @@ std::string_view italian(std::string_view club_name)
 {
   static constexpr std::array<std::string_view, 4> BARE = {"il", "lo", "l'",
                                                            "la"};
-  return BARE[static_cast<std::size_t>(articleOf(club_name))];
+  return BARE[static_cast<std::size_t>(
+      std::to_underlying(articleOf(club_name)))];
 }
 
 std::string withPreposition(std::string_view club_name,
@@ -138,8 +142,8 @@ std::string withPreposition(std::string_view club_name,
   const auto found = std::ranges::find(PREPOSITIONS, lower);
   if (found == PREPOSITIONS.end()) return std::string(club_name);
   const auto index = static_cast<std::size_t>(found - PREPOSITIONS.begin());
-  std::string result(
-      FUSED[static_cast<std::size_t>(articleOf(club_name))][index]);
+  std::string result(FUSED[static_cast<std::size_t>(
+      std::to_underlying(articleOf(club_name)))][index]);
   if (capital)
     result.front() = static_cast<char>(
         std::toupper(static_cast<unsigned char>(result.front())));

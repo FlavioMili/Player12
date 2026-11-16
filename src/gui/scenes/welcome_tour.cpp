@@ -104,8 +104,7 @@ void WelcomeTour::open(const GameController& controller)
   }
   next_action_title.clear();
   next_action_reason.clear();
-  const auto actions = controller.getNextActions(1);
-  if (!actions.empty())
+  if (const auto actions = controller.getNextActions(1); !actions.empty())
   {
     next_action_title =
         formatLocalized(actions.front().title.key, actions.front().title.args);

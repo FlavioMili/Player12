@@ -10,6 +10,7 @@
 
 #include <algorithm>
 #include <cmath>
+#include <cstddef>
 #include <format>
 
 #include "model/match_engine.h"
@@ -58,10 +59,13 @@ class Reader
     out = 0;
     for (int shift = 0; shift < 64; shift += 7)
     {
-      std::uint8_t next = 0;
-      if (!byte(next)) return false;
-      out |= static_cast<std::uint64_t>(next & 0x7F) << shift;
-      if ((next & 0x80) == 0) return true;
+      std::uint8_t raw = 0;
+      if (!byte(raw)) return false;
+      const std::byte next{raw};
+      out |= static_cast<std::uint64_t>(
+                 std::to_integer<std::uint8_t>(next & std::byte{0x7F}))
+             << shift;
+      if ((next & std::byte{0x80}) == std::byte{0}) return true;
     }
     return fail();
   }
@@ -190,8 +194,8 @@ std::optional<MatchDetail> MatchDetail::decode(
   std::uint8_t version = 0;
   std::uint8_t columns = 0;
   std::uint8_t rows = 0;
-  std::uint8_t buckets = 0;
-  if (!in.byte(version) || version != DETAIL_VERSION || !in.byte(columns) ||
+  if (std::uint8_t buckets = 0;
+      !in.byte(version) || version != DETAIL_VERSION || !in.byte(columns) ||
       !in.byte(rows) || !in.byte(buckets) || columns != T::GRID_COLUMNS ||
       rows != T::GRID_ROWS || buckets != T::BUCKETS)
     return std::nullopt;
@@ -267,8 +271,9 @@ MatchDetail captureDetail(const MatchEngine& engine)
   {
     const PlayerMatchStats& entry = stats[index];
     const TrackedPlayer* numbers = tracker.player(index);
-    const bool touched = numbers != nullptr && numbers->touch_count > 0;
-    if (entry.minutesPlayed <= 0.0f && !touched) continue;
+    if (const bool touched = numbers != nullptr && numbers->touch_count > 0;
+        entry.minutesPlayed <= 0.0f && !touched)
+      continue;
     index_of[index] = static_cast<std::uint8_t>(detail.players.size());
     DetailPlayer& line = detail.players.emplace_back();
     line.player = entry.playerId;
@@ -340,24 +345,26 @@ std::vector<KeyMoment> keyMoments(const InsightInput& input)
     moment.added = event.added_minute;
     moment.player = event.player;
     moment.home = event.home;
+    using enum MatchEventKind;
+    using enum KeyMoment::Kind;
     switch (event.kind)
     {
-      case MatchEventKind::GOAL:
-        moment.kind = KeyMoment::Kind::Goal;
+      case GOAL:
+        moment.kind = Goal;
         moment.other = event.assist;
         break;
-      case MatchEventKind::OWN_GOAL:
-        moment.kind = KeyMoment::Kind::OwnGoal;
+      case OWN_GOAL:
+        moment.kind = OwnGoal;
         moment.home = !event.home;
         break;
-      case MatchEventKind::YELLOW_CARD:
-        moment.kind = KeyMoment::Kind::Yellow;
+      case YELLOW_CARD:
+        moment.kind = Yellow;
         break;
-      case MatchEventKind::SECOND_YELLOW:
-        moment.kind = KeyMoment::Kind::SecondYellow;
+      case SECOND_YELLOW:
+        moment.kind = SecondYellow;
         break;
-      case MatchEventKind::RED_CARD:
-        moment.kind = KeyMoment::Kind::Red;
+      case RED_CARD:
+        moment.kind = Red;
         break;
     }
     moments.push_back(moment);
@@ -367,7 +374,7 @@ std::vector<KeyMoment> keyMoments(const InsightInput& input)
   for (std::size_t index = 0; index < input.shots.size(); ++index)
   {
     const ShotRecord& shot = input.shots[index];
-    const int whole = static_cast<int>(std::max(shot.minute, 0.0f));
+    const auto whole = static_cast<int>(std::max(shot.minute, 0.0f));
     const int end = regulationEnd(shot.period);
     if (isGoal(shot))
     {
@@ -533,22 +540,34 @@ std::vector<AnalysisLine> summariseMatch(const InsightInput& input)
   const float gap = own.xg - opp.xg;
   const char* verdict = nullptr;
   if (own.goals > opp.goals)
-    verdict = gap >= I::CLEAR_XG_GAP    ? "SUM_WIN_DESERVED"
-              : gap <= -I::CLEAR_XG_GAP ? "SUM_WIN_AGAINST_RUN"
-                                        : "SUM_WIN_EVEN";
+  {
+    if (gap >= I::CLEAR_XG_GAP)
+      verdict = "SUM_WIN_DESERVED";
+    else if (gap <= -I::CLEAR_XG_GAP)
+      verdict = "SUM_WIN_AGAINST_RUN";
+    else
+      verdict = "SUM_WIN_EVEN";
+  }
   else if (own.goals < opp.goals)
-    verdict = gap >= I::CLEAR_XG_GAP    ? "SUM_LOSS_UNLUCKY"
-              : gap <= -I::CLEAR_XG_GAP ? "SUM_LOSS_DESERVED"
-                                        : "SUM_LOSS_EVEN";
+  {
+    if (gap >= I::CLEAR_XG_GAP)
+      verdict = "SUM_LOSS_UNLUCKY";
+    else if (gap <= -I::CLEAR_XG_GAP)
+      verdict = "SUM_LOSS_DESERVED";
+    else
+      verdict = "SUM_LOSS_EVEN";
+  }
+  else if (gap >= I::CLEAR_XG_GAP)
+    verdict = "SUM_DRAW_SHOULD_WIN";
+  else if (gap <= -I::CLEAR_XG_GAP)
+    verdict = "SUM_DRAW_HELD";
   else
-    verdict = gap >= I::CLEAR_XG_GAP    ? "SUM_DRAW_SHOULD_WIN"
-              : gap <= -I::CLEAR_XG_GAP ? "SUM_DRAW_HELD"
-                                        : "SUM_DRAW_EVEN";
+    verdict = "SUM_DRAW_EVEN";
   lines.push_back({verdict, {own_xg, opp_xg}});
 
   std::vector<Candidate> candidates;
-  const float own_finish = static_cast<float>(own.goals) - own.xg;
-  if (own_finish <= -I::FINISHING_GAP)
+  if (const float own_finish = static_cast<float>(own.goals) - own.xg;
+      own_finish <= -I::FINISHING_GAP)
     candidates.push_back({90,
                           {"SUM_OWN_WASTEFUL",
                            {own_xg, std::to_string(own.goals),
@@ -556,8 +575,8 @@ std::vector<AnalysisLine> summariseMatch(const InsightInput& input)
   else if (own_finish >= I::FINISHING_GAP)
     candidates.push_back(
         {70, {"SUM_OWN_CLINICAL", {own_xg, std::to_string(own.goals)}}});
-  const float opp_finish = static_cast<float>(opp.goals) - opp.xg;
-  if (opp_finish >= I::FINISHING_GAP)
+  if (const float opp_finish = static_cast<float>(opp.goals) - opp.xg;
+      opp_finish >= I::FINISHING_GAP)
     candidates.push_back(
         {85, {"SUM_OPP_CLINICAL", {opp_xg, std::to_string(opp.goals)}}});
   else if (opp_finish <= -I::FINISHING_GAP)
@@ -586,8 +605,8 @@ std::vector<AnalysisLine> summariseMatch(const InsightInput& input)
     const MatchDetail& detail = *input.detail;
     // Where the opponent's attacks came from: their left is our right.
     const std::array<int, 3> theirs = finalThirdByFlank(detail, !home);
-    const int their_total = theirs[0] + theirs[1] + theirs[2];
-    if (their_total >= I::MIN_FLANK_TOUCHES)
+    if (const int their_total = theirs[0] + theirs[1] + theirs[2];
+        their_total >= I::MIN_FLANK_TOUCHES)
     {
       const std::size_t flank = theirs[0] >= theirs[2] ? 0 : 2;
       const float share =
@@ -609,8 +628,8 @@ std::vector<AnalysisLine> summariseMatch(const InsightInput& input)
       }
     }
     const std::array<int, 3> mine = finalThirdByFlank(detail, home);
-    const int my_total = mine[0] + mine[1] + mine[2];
-    if (my_total >= I::MIN_FLANK_TOUCHES)
+    if (const int my_total = mine[0] + mine[1] + mine[2];
+        my_total >= I::MIN_FLANK_TOUCHES)
     {
       const std::size_t flank = mine[0] >= mine[2] ? 0 : 2;
       const float share =
@@ -635,9 +654,9 @@ std::vector<AnalysisLine> summariseMatch(const InsightInput& input)
     };
     if (opp_spell && (!own_spell || opp_spell->own - opp_spell->other >=
                                         own_spell->own - own_spell->other))
-      candidates.push_back({60, spellLine("SUM_SPELL_OPP", *opp_spell)});
+      candidates.emplace_back(60, spellLine("SUM_SPELL_OPP", *opp_spell));
     else if (own_spell)
-      candidates.push_back({58, spellLine("SUM_SPELL_OWN", *own_spell)});
+      candidates.emplace_back(58, spellLine("SUM_SPELL_OWN", *own_spell));
 
     const PassLink* busiest = nullptr;
     for (const PassLink& link : detail.links)

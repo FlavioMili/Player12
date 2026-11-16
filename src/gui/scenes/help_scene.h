@@ -46,7 +46,10 @@ class HelpScene : public GUIScene
             std::optional<std::size_t> focusTerm = std::nullopt);
 
   void onEnter() override;
-  void update(float /*deltaTime*/) override {}
+  void update(float /*deltaTime*/) override
+  {
+    // Rendering reads current state; there is no per-frame update work.
+  }
   void render() override;
   [[nodiscard]] SceneID getID() const override { return SceneID::HELP; }
 

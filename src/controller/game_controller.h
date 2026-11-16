@@ -148,7 +148,7 @@ class GameController
   bool restoreBackup(int slot, const std::filesystem::path& backup);
 
   /** Deletes a slot with its backups (not the loaded one). */
-  bool deleteSave(int slot);
+  bool deleteSave(int slot) const;
 
   /** When the game saves on its own and how many backups a slot keeps. */
   void setAutosavePolicy(const AutosavePolicy& policy);
@@ -918,7 +918,7 @@ class GameController
   /** Managed club's knowledge of a player, 0-100. */
   float getScoutingKnowledge(PlayerID player_id) const;
 
-  const std::vector<ScoutProfile>& getScouts() const;
+  std::vector<ScoutProfile> getScouts() const;
   const std::vector<ScoutAssignment>& getScoutAssignments() const;
   /** Price of an assignment; 0 if the target is invalid. */
   int64_t getScoutAssignmentCost(ScoutTargetKind kind, uint32_t target_id,
@@ -1416,7 +1416,38 @@ class GameController
   /** @brief Gets the game data cache. */
   std::shared_ptr<GameData> getGameData() const { return gamedata; }
 
+  /** Editing pauses career advancement. UI callers must also exclude live
+   * matches and discard scene caches at a frame boundary after apply/undo.
+   * The session database is private; cancelling only releases the pause. */
+  struct EditorSession
+  {
+    std::shared_ptr<DatabaseConnection> database;
+    std::shared_ptr<DatabaseConnection> source;
+    int source_changes = 0;
+    std::string source_schema;
+  };
+  std::shared_ptr<EditorSession> beginEditor();
+  void cancelEditor();
+  /** Contains loader, codec and feature-validator exceptions at the runtime
+   * replacement boundary; failures preserve the live career and draft. */
+  bool applyEditor(const std::shared_ptr<EditorSession>& session,
+                   const std::vector<RuntimeEditor::Change>& changes,
+                   std::string& error);
+  bool undoEditor(std::string& error);
+  bool canUndoEditor() const { return editor_backup != nullptr; }
+  void registerEditorValidator(RuntimeEditor::Validator validator);
+
+  /** Number of successful runtime replacements; used to invalidate UI caches.
+   */
+  std::uint64_t getEditorRevision() const { return editor_revision; }
+
  private:
+  mutable std::mutex runtime_mutex;
+  std::weak_ptr<EditorSession> editor_session;
+  std::shared_ptr<DatabaseConnection> editor_backup;
+  std::vector<RuntimeEditor::Validator> editor_validators;
+  std::uint64_t editor_revision = 0;
+  void replaceEditorDatabase(std::shared_ptr<DatabaseConnection> connection);
   std::shared_ptr<class DatabaseConnection> db_conn;
   std::unique_ptr<Game> game;
   std::shared_ptr<class GameData> gamedata;
@@ -1440,13 +1471,15 @@ class GameController
   std::int64_t playtime_before_session = 0;
   std::chrono::steady_clock::time_point session_started;
   std::optional<SaveError> last_load_error;
+  mutable std::mutex club_identity_mutex;
   /** Data-pack club identities, read on the first getClubIdentity(). */
   mutable std::optional<std::unordered_map<TeamID, ClubIdentity>>
       club_identities;
   mutable std::mutex save_status_mutex;
   SaveStatusInfo save_status;
   /** Flushes the game and atomically replaces the slot file. */
-  bool persist(bool autosave);
+  /** Caller must hold runtime_mutex, including autosaves during advancement. */
+  bool persistLocked(bool autosave);
   void maybeAutosave();
   void startSession(int slot, std::int64_t playtime_seconds);
   /** One day of simulation plus the AI transfer activity that follows. */

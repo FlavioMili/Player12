@@ -151,7 +151,7 @@ class NavHistory
   std::optional<NavEntry> back(const Valid& valid)
   {
     const std::optional<std::size_t> index = findBack(valid);
-    if (!index) return std::nullopt;
+    if (!index.has_value()) return std::nullopt;
     cursor = *index;
     return entries[cursor];
   }
@@ -161,7 +161,7 @@ class NavHistory
   std::optional<NavEntry> forward(const Valid& valid)
   {
     const std::optional<std::size_t> index = findForward(valid);
-    if (!index) return std::nullopt;
+    if (!index.has_value()) return std::nullopt;
     cursor = *index;
     return entries[cursor];
   }

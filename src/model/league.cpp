@@ -81,7 +81,7 @@ const std::map<TeamID, uint16_t>& League::getLeaderboard() const
   return leaderboard;
 }
 
-const std::optional<LeagueID> League::getParentLeagueID() const
+std::optional<LeagueID> League::getParentLeagueID() const
 {
   return parent_league_id;
 }

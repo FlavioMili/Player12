@@ -58,8 +58,9 @@ MatchPlayController::Options MatchScene::playOptions() const
 bool MatchScene::canTakeControl() const
 {
   return SettingsManager::instance()->get().play_mode && engine &&
-         managed_is_home && !match_finished && !quick_result.valid() &&
-         !play.isActive() && engine->getState() != MatchState::FULL_TIME;
+         managed_is_home.has_value() && !match_finished &&
+         !quick_result.valid() && !play.isActive() &&
+         engine->getState() != MatchState::FULL_TIME;
 }
 
 void MatchScene::requestTakeControl()
@@ -276,7 +277,8 @@ void MatchScene::renderPlayOverlay(const IMatchRenderer& renderer,
 
 void MatchScene::renderPlayButtons()
 {
-  if (!engine || !managed_is_home || match_finished || quick_result.valid())
+  if (!engine || !managed_is_home.has_value() || match_finished ||
+      quick_result.valid())
     return;
   if (!play.isActive())
   {
@@ -302,7 +304,7 @@ void MatchScene::renderPlayButtons()
     ImGui::SetTooltip("%s", LOC("MATCH_HAND_BACK_HINT"));
 }
 
-void MatchScene::renderPlayControlsHelp()
+void MatchScene::renderPlayControlsHelp() const
 {
   const ImVec4 muted = Theme::palette().muted;
   ImGui::TextColored(muted, "%s", LOC("PLAY_CONTROLS_KEYBOARD"));

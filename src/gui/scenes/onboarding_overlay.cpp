@@ -12,6 +12,7 @@
 #include <imgui.h>
 
 #include <algorithm>
+#include <utility>
 
 #include "controller/game_controller.h"
 #include "global/language_manager.h"
@@ -29,28 +30,29 @@ NavSection shown_tip = NavSection::NONE;
 
 std::uint64_t tipBit(NavSection section)
 {
-  return std::uint64_t{1} << static_cast<unsigned>(section);
+  return std::uint64_t{1} << static_cast<unsigned>(std::to_underlying(section));
 }
 
 const char* actionButtonKey(ActionTarget target)
 {
+  using enum ActionTarget;
   switch (target)
   {
-    case ActionTarget::Lineup:
+    case Lineup:
       return "NEXT_BUTTON_LINEUP";
-    case ActionTarget::Inbox:
+    case Inbox:
       return "NEXT_BUTTON_INBOX";
-    case ActionTarget::Transfers:
+    case Transfers:
       return "NEXT_BUTTON_TRANSFERS";
-    case ActionTarget::Scouting:
+    case Scouting:
       return "NEXT_BUTTON_SCOUTING";
-    case ActionTarget::Training:
+    case Training:
       return "NEXT_BUTTON_TRAINING";
-    case ActionTarget::Club:
+    case Club:
       return "NEXT_BUTTON_CLUB";
-    case ActionTarget::Player:
+    case Player:
       return "NEXT_BUTTON_PLAYER";
-    case ActionTarget::Opposition:
+    case Opposition:
       return "NEXT_BUTTON_OPPOSITION";
   }
   return "NEXT_BUTTON_INBOX";
@@ -109,19 +111,21 @@ namespace GuidanceUI
 {
 std::optional<OnboardingTask> taskForSection(NavSection section)
 {
+  using enum NavSection;
+  using enum OnboardingTask;
   switch (section)
   {
-    case NavSection::TACTICS:
-      return OnboardingTask::ReviewTactics;
-    case NavSection::SQUAD:
-      return OnboardingTask::CheckSquad;
-    case NavSection::CLUB:
-      return OnboardingTask::BoardObjective;
-    case NavSection::TRAINING:
-      return OnboardingTask::SetTraining;
-    case NavSection::TRANSFERS:
-    case NavSection::SCOUTING:
-      return OnboardingTask::ExploreMarket;
+    case TACTICS:
+      return ReviewTactics;
+    case SQUAD:
+      return CheckSquad;
+    case CLUB:
+      return BoardObjective;
+    case TRAINING:
+      return SetTraining;
+    case TRANSFERS:
+    case SCOUTING:
+      return ExploreMarket;
     default:
       break;
   }
@@ -130,23 +134,25 @@ std::optional<OnboardingTask> taskForSection(NavSection section)
 
 NavSection sectionForTask(OnboardingTask task)
 {
+  using enum NavSection;
+  using enum OnboardingTask;
   switch (task)
   {
-    case OnboardingTask::ReviewTactics:
-      return NavSection::TACTICS;
-    case OnboardingTask::CheckSquad:
-      return NavSection::SQUAD;
-    case OnboardingTask::BoardObjective:
-      return NavSection::CLUB;
-    case OnboardingTask::SetTraining:
-      return NavSection::TRAINING;
-    case OnboardingTask::ExploreMarket:
-      return NavSection::SCOUTING;
-    case OnboardingTask::PlayFirstMatch:
-    case OnboardingTask::COUNT:
+    case ReviewTactics:
+      return TACTICS;
+    case CheckSquad:
+      return SQUAD;
+    case BoardObjective:
+      return CLUB;
+    case SetTraining:
+      return TRAINING;
+    case ExploreMarket:
+      return SCOUTING;
+    case PlayFirstMatch:
+    case COUNT:
       break;
   }
-  return NavSection::FIXTURES;
+  return FIXTURES;
 }
 
 void noteVisit(GameController& controller, NavSection section)
@@ -157,30 +163,31 @@ void noteVisit(GameController& controller, NavSection section)
 
 void openAction(GUIView* view, const NextAction& action)
 {
+  using enum ActionTarget;
   switch (action.target)
   {
-    case ActionTarget::Lineup:
+    case Lineup:
       Navigation::open(view, NavSection::LINEUP);
       return;
-    case ActionTarget::Inbox:
+    case Inbox:
       Navigation::open(view, NavSection::INBOX);
       return;
-    case ActionTarget::Transfers:
+    case Transfers:
       Navigation::open(view, NavSection::TRANSFERS);
       return;
-    case ActionTarget::Scouting:
+    case Scouting:
       Navigation::open(view, NavSection::SCOUTING);
       return;
-    case ActionTarget::Training:
+    case Training:
       Navigation::open(view, NavSection::TRAINING);
       return;
-    case ActionTarget::Club:
+    case Club:
       Navigation::open(view, NavSection::CLUB);
       return;
-    case ActionTarget::Player:
+    case Player:
       if (action.ref != 0) Navigation::openPlayer(view, action.ref);
       return;
-    case ActionTarget::Opposition:
+    case Opposition:
       Navigation::open(view, NavSection::OPPOSITION);
       return;
   }
@@ -193,59 +200,60 @@ std::string text(const AnalysisLine& line)
 
 const char* tipKey(NavSection section)
 {
+  using enum NavSection;
   switch (section)
   {
-    case NavSection::HOME:
+    case HOME:
       return "TIP_HOME";
-    case NavSection::INBOX:
+    case INBOX:
       return "TIP_INBOX";
-    case NavSection::CLUB:
+    case CLUB:
       return "TIP_CLUB";
-    case NavSection::SQUAD:
+    case SQUAD:
       return "TIP_SQUAD";
-    case NavSection::LINEUP:
+    case LINEUP:
       return "TIP_LINEUP";
-    case NavSection::TACTICS:
+    case TACTICS:
       return "TIP_TACTICS";
-    case NavSection::FIXTURES:
+    case FIXTURES:
       return "TIP_FIXTURES";
-    case NavSection::STANDINGS:
+    case STANDINGS:
       return "TIP_STANDINGS";
-    case NavSection::TRANSFERS:
+    case TRANSFERS:
       return "TIP_TRANSFERS";
-    case NavSection::FINANCES:
+    case FINANCES:
       return "TIP_FINANCES";
-    case NavSection::SCOUTING:
+    case SCOUTING:
       return "TIP_SCOUTING";
-    case NavSection::TRAINING:
+    case TRAINING:
       return "TIP_TRAINING";
-    case NavSection::STAFF:
+    case STAFF:
       return "TIP_STAFF";
-    case NavSection::YOUTH:
+    case YOUTH:
       return "TIP_YOUTH";
-    case NavSection::DELEGATION:
+    case DELEGATION:
       return "TIP_DELEGATION";
-    case NavSection::DATA_HUB:
+    case DATA_HUB:
       return "TIP_DATA_HUB";
-    case NavSection::OPPOSITION:
+    case OPPOSITION:
       return "TIP_OPPOSITION";
-    case NavSection::MANAGER:
+    case MANAGER:
       return "TIP_MANAGER";
-    case NavSection::MEDICAL:
+    case MEDICAL:
       return "TIP_MEDICAL";
-    case NavSection::CALENDAR:
+    case CALENDAR:
       return "TIP_CALENDAR";
-    case NavSection::SQUAD_PLANNER:
+    case SQUAD_PLANNER:
       return "TIP_SQUAD_PLANNER";
-    case NavSection::COMPARE:
+    case COMPARE:
       return "TIP_COMPARE";
-    case NavSection::INTERNATIONAL:
+    case INTERNATIONAL:
       return "TIP_INTERNATIONAL";
-    case NavSection::AWARDS:
+    case AWARDS:
       return "TIP_AWARDS";
-    case NavSection::RECORDS:
+    case RECORDS:
       return "TIP_RECORDS";
-    case NavSection::PLANNING:
+    case PLANNING:
       return "TIP_PLANNING";
     default:
       break;
@@ -328,7 +336,7 @@ void renderScreenTip(NavSection section)
 
 namespace GuidanceUI
 {
-void renderReclaimNotice(GUIView* view)
+void renderReclaimNotice(const GUIView* view)
 {
   GameController& controller = view->getController();
   const auto duty = controller.getReclaimedDuty();
@@ -371,7 +379,7 @@ void renderReclaimNotice(GUIView* view)
 }
 }  // namespace GuidanceUI
 
-void NextStepsCard::refresh(GameController& controller)
+void NextStepsCard::refresh(const GameController& controller)
 {
   rows.clear();
   checklist = controller.getOnboarding();

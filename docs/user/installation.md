@@ -58,7 +58,7 @@ git clone https://github.com/FlavioMili/FootballManagement
 cd FootballManagement
 CC=gcc-14 CXX=g++-14 cmake --preset release
 cmake --build --preset release --parallel 4
-./out/build/release/src/Player12
+./build/release/src/Player12
 ```
 
 If CMake cannot find FreeType or HarfBuzz, add `-DSDLTTF_VENDORED=ON` to the
@@ -105,7 +105,7 @@ The test suites use POSIX APIs, so tests are not built on Windows.
 
 The presets in [`CMakePresets.json`](../../CMakePresets.json) are `release`,
 `release-tests`, `debug-sanitized` (AddressSanitizer and UBSan), `profile`
-and `clang-tidy`; their build trees go to `out/build/<preset>`. A plain
+and `clang-tidy`; their build trees go to `build/<preset>`. A plain
 build directory works as well (`cmake -S . -B build -G Ninja`). See
 [docs/development/builds.md](../development/builds.md) for the details and
 [docs/development/release.md](../development/release.md) for packaging.
@@ -122,7 +122,7 @@ To install a Linux build for your user (including all game assets):
 ```sh
 cmake --preset release
 cmake --build --preset release --parallel 2
-cmake --install out/build/release --component game --prefix "$HOME/.local"
+cmake --install build/release --component game --prefix "$HOME/.local"
 "$HOME/.local/bin/Player12"
 ```
 

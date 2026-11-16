@@ -13,10 +13,11 @@
 
 #include <algorithm>
 #include <array>
-#include <cstdio>
+#include <cstddef>
 #include <format>
 #include <limits>
 #include <map>
+#include <utility>
 
 #include "database/gamedata.h"
 #include "global/global.h"
@@ -102,9 +103,12 @@ void rangeBar(const char* label, float estimate, float low, float high,
   const Theme::Palette& palette = Theme::palette();
   const float scale = Theme::scale();
   std::array<char, 24> text{};
-  std::snprintf(text.data(), text.size(), "%.0f  (%.0f-%.0f)",
-                static_cast<double>(estimate), static_cast<double>(low),
-                static_cast<double>(high));
+  const auto formatted = std::format_to_n(
+      text.data(), static_cast<std::ptrdiff_t>(text.size() - 1),
+      "{:.0f}  ({:.0f}-{:.0f})", static_cast<double>(estimate),
+      static_cast<double>(low), static_cast<double>(high));
+  text[std::min(static_cast<std::size_t>(formatted.size), text.size() - 1)] =
+      '\0';
   const float lineHeight = ImGui::GetTextLineHeight();
   const ImVec2 start = ImGui::GetCursorScreenPos();
   const float available = ImGui::GetContentRegionAvail().x;
@@ -148,7 +152,11 @@ PlayerProfileScene::PlayerProfileScene(GUIView* parent, PlayerID playerId)
 {
 }
 
-void PlayerProfileScene::update(float /*deltaTime*/) {}
+void PlayerProfileScene::update(float /*deltaTime*/)
+{
+  /* Player data is refreshed on scene entry; there is no frame-driven state
+   * to update while the profile is open. */
+}
 
 NavSection PlayerProfileScene::navSection() const
 {
@@ -223,7 +231,7 @@ void PlayerProfileScene::refresh()
             {attribute.name,
              {PlayerView::statLabel(attribute.name), attribute.estimate,
               attribute.low, attribute.high}});
-      if (view->latest_report_id)
+      if (view->latest_report_id.has_value())
       {
         for (const ScoutReport& report : controller.getScoutReports())
         {
@@ -231,8 +239,8 @@ void PlayerProfileScene::refresh()
           ReportSummary summary;
           summary.heading = std::format("{}  ·  {}", Format::date(report.date),
                                         report.scout_name);
-          summary.grade =
-              static_cast<char>('A' + static_cast<int>(report.grade));
+          summary.grade = static_cast<char>(
+              'A' + static_cast<int>(std::to_underlying(report.grade)));
           summary.grade_key = scoutGradeKey(report.grade);
           summary.ability =
               std::format("{:.0f}", static_cast<double>(report.overall));
@@ -290,8 +298,8 @@ void PlayerProfileScene::refresh()
 
   for (const PlayerSeasonStats& season :
        controller.getPlayerSeasonStats(player_id))
-    season_rows.push_back(
-        {LOC(CompetitionView::matchTypeKey(season.competition_type)), season});
+    season_rows.emplace_back(
+        LOC(CompetitionView::matchTypeKey(season.competition_type)), season);
 
   // Career: one line per season and club, all competitions combined.
   std::map<std::pair<uint16_t, TeamID>, PlayerSeasonStats> bySeason;
@@ -313,10 +321,10 @@ void PlayerProfileScene::refresh()
   for (auto entry = bySeason.rbegin(); entry != bySeason.rend(); ++entry)
   {
     const auto team = controller.getTeamById(entry->first.second);
-    career_rows.push_back(
-        {fmt::sprintf(LOC("PROFILE_CAREER_SEASON"), entry->first.first,
-                      team ? team->get().getName() : std::string()),
-         entry->second});
+    career_rows.emplace_back(
+        fmt::sprintf(LOC("PROFILE_CAREER_SEASON"), entry->first.first,
+                     team ? team->get().getName() : std::string()),
+        entry->second);
   }
 
   // Transfer history, latest move first.
@@ -332,10 +340,10 @@ void PlayerProfileScene::refresh()
     std::vector<TransferRecord> history =
         game->getTransfers().historyFor(player_id);
     for (auto record = history.rbegin(); record != history.rend(); ++record)
-      transfers.push_back(
-          {Format::date(record->date), teamName(record->from_team),
-           teamName(record->to_team), transferKindKey(record->kind),
-           record->fee > 0 ? Format::money(record->fee) : std::string("–")});
+      transfers.emplace_back(
+          Format::date(record->date), teamName(record->from_team),
+          teamName(record->to_team), transferKindKey(record->kind),
+          record->fee > 0 ? Format::money(record->fee) : std::string("–"));
   }
 }
 
@@ -565,9 +573,10 @@ void PlayerProfileScene::renderActions()
   UI::sameLineIfFits(UI::buttonWidth(shortlistLabel));
   if (ImGui::SmallButton(shortlistLabel))
   {
-    const bool changed = shortlisted ? controller.removeFromShortlist(player_id)
-                                     : controller.addToShortlist(player_id);
-    if (changed)
+    if (const bool changed = shortlisted
+                                 ? controller.removeFromShortlist(player_id)
+                                 : controller.addToShortlist(player_id);
+        changed)
       showToast(LOC(shortlisted ? "SCOUTING_SHORTLIST_REMOVED"
                                 : "SCOUTING_SHORTLIST_ADDED"));
     refresh();
@@ -630,7 +639,7 @@ void PlayerProfileScene::sendScout()
 }
 
 void PlayerProfileScene::renderBio(const Player& current, float width,
-                                   float height)
+                                   float height) const
 {
   const Theme::Palette& palette = Theme::palette();
   UI::beginCard("profile_bio", LOC("PROFILE_BIO"), ImVec2(width, height), true);
@@ -670,7 +679,7 @@ void PlayerProfileScene::renderBio(const Player& current, float width,
   UI::endCard();
 }
 
-void PlayerProfileScene::renderStatus(float width, float height)
+void PlayerProfileScene::renderStatus(float width, float height) const
 {
   const Theme::Palette& palette = Theme::palette();
   UI::beginCard("profile_status", LOC("PROFILE_STATUS"), ImVec2(width, height),
@@ -748,7 +757,7 @@ void PlayerProfileScene::renderStatus(float width, float height)
   UI::endCard();
 }
 
-void PlayerProfileScene::renderAttributes(float width, float height)
+void PlayerProfileScene::renderAttributes(float width, float height) const
 {
   UI::beginCard(
       "profile_attributes",
@@ -787,7 +796,7 @@ void PlayerProfileScene::renderAttributes(float width, float height)
   UI::endCard();
 }
 
-void PlayerProfileScene::renderSuitability(float width, float height)
+void PlayerProfileScene::renderSuitability(float width, float height) const
 {
   const Theme::Palette& palette = Theme::palette();
   UI::beginCard("profile_fit", LOC("PROFILE_ROLE_FIT"), ImVec2(width, height),
@@ -826,9 +835,12 @@ void PlayerProfileScene::renderScouting(float width, float height)
       ImGui::PopTextWrapPos();
     }
     const std::array<char, 2> grade = {latest_report->grade, '\0'};
-    UI::badge(grade.data(), latest_report->grade == 'A'   ? palette.positive
-                            : latest_report->grade == 'B' ? palette.warning
-                                                          : palette.muted);
+    ImVec4 gradeColor = palette.muted;
+    if (latest_report->grade == 'A')
+      gradeColor = palette.positive;
+    else if (latest_report->grade == 'B')
+      gradeColor = palette.warning;
+    UI::badge(grade.data(), gradeColor);
     if (ImGui::IsItemHovered())
       ImGui::SetTooltip("%s", LOC(latest_report->grade_key));
     keyValueWrapped(LOC("PROFILE_REPORT_ABILITY"),
@@ -865,10 +877,10 @@ void PlayerProfileScene::renderStatistics(float width, float height)
       renderStatsTable(career_rows, true);
       ImGui::EndTabItem();
     }
-    const std::string transfersLabel =
-        std::format("{} ({})###profile_transfers", LOC("PROFILE_TAB_TRANSFERS"),
-                    transfers.size());
-    if (ImGui::BeginTabItem(transfersLabel.c_str()))
+    if (const std::string transfersLabel =
+            std::format("{} ({})###profile_transfers",
+                        LOC("PROFILE_TAB_TRANSFERS"), transfers.size());
+        ImGui::BeginTabItem(transfersLabel.c_str()))
     {
       renderTransfers();
       ImGui::EndTabItem();
@@ -879,7 +891,7 @@ void PlayerProfileScene::renderStatistics(float width, float height)
 }
 
 void PlayerProfileScene::renderStatsTable(const std::vector<StatsRow>& rows,
-                                          bool career)
+                                          bool career) const
 {
   const Theme::Palette& palette = Theme::palette();
   if (rows.empty())
@@ -933,7 +945,7 @@ void PlayerProfileScene::renderStatsTable(const std::vector<StatsRow>& rows,
   ImGui::EndTable();
 }
 
-void PlayerProfileScene::renderTransfers()
+void PlayerProfileScene::renderTransfers() const
 {
   const Theme::Palette& palette = Theme::palette();
   if (transfers.empty())

@@ -6,14 +6,6 @@
 //  See the LICENSE file in the project root.
 // -----------------------------------------------------------------------------
 
-// -----------------------------------------------------------------------------
-//  Football Management Project
-//  Copyright (c) 2026 FlavioMili. All Rights Reserved.
-//
-//  This file is part of the Football Management Project.
-//  See the LICENSE file in the project root.
-// -----------------------------------------------------------------------------
-
 #include "language_manager.h"
 
 #include <format>
@@ -54,7 +46,7 @@ bool readTable(const std::string& path, Table& table, std::string& reason)
     }
     table.swap(loaded);
   }
-  catch (const std::exception& exception)
+  catch (const json::exception& exception)
   {
     reason = path + ": " + exception.what();
     return false;
@@ -122,8 +114,7 @@ bool LanguageManager::loadFromFile(const std::string& path, Language lang)
 {
   ensureEnglish();
   status_ = Status{lang, false, 0};
-  std::string reason;
-  if (!readTable(path, translations, reason))
+  if (std::string reason; !readTable(path, translations, reason))
   {
     translations.clear();
     status_.file_failed = true;
@@ -131,8 +122,8 @@ bool LanguageManager::loadFromFile(const std::string& path, Language lang)
   }
   else
   {
-    for (const auto& entry : english)
-      if (!translations.contains(entry.first)) ++status_.missing_keys;
+    for (const auto& [key, value] : english)
+      if (!translations.contains(key)) ++status_.missing_keys;
     if (status_.missing_keys > 0)
       Logger::warn(std::format("{} lacks {} texts, shown in English", path,
                                status_.missing_keys));

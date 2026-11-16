@@ -29,12 +29,12 @@ ButtonManager::~ButtonManager()
   }
 }
 
-int ButtonManager::addButton(const SDL_FRect& rect, const std::string& label,
+int ButtonManager::addButton(const SDL_FRect& rect, std::string_view label,
                              std::function<void()> callback)
 {
   Button button;
   button.rect = rect;
-  button.label = label;
+  button.label.assign(label);
   button.onClick = std::move(callback);
   button.style = defaultStyle;
   button.id = nextButtonId++;
@@ -45,12 +45,13 @@ int ButtonManager::addButton(const SDL_FRect& rect, const std::string& label,
   return button.id;
 }
 
-int ButtonManager::addButton(const SDL_FRect& rect, const std::string& label,
-                             ButtonStyle style, std::function<void()> callback)
+int ButtonManager::addButton(const SDL_FRect& rect, std::string_view label,
+                             const ButtonStyle& style,
+                             std::function<void()> callback)
 {
   Button button;
   button.rect = rect;
-  button.label = label;
+  button.label.assign(label);
   button.onClick = std::move(callback);
   button.style = defaultStyle;
   button.id = nextButtonId++;
@@ -63,14 +64,14 @@ int ButtonManager::addButton(const SDL_FRect& rect, const std::string& label,
 }
 
 int ButtonManager::addButton(float x, float y, float w, float h,
-                             const std::string& label,
+                             std::string_view label,
                              std::function<void()> callback)
 {
   return addButton({x, y, w, h}, label, std::move(callback));
 }
 
 int ButtonManager::addButton(float x, float y, float w, float h,
-                             const std::string& label, ButtonStyle style,
+                             std::string_view label, const ButtonStyle& style,
                              std::function<void()> callback)
 {
   return addButton({x, y, w, h}, label, style, std::move(callback));
@@ -102,7 +103,7 @@ void ButtonManager::clearButtons()
 void ButtonManager::setButtonStyle(int buttonId, const ButtonStyle& style)
 {
   auto it = std::ranges::find_if(
-      buttons, [buttonId](Button& btn) { return btn.id == buttonId; });
+      buttons, [buttonId](const Button& btn) { return btn.id == buttonId; });
   if (it != buttons.end())
   {
     it->style = style;
@@ -112,20 +113,20 @@ void ButtonManager::setButtonStyle(int buttonId, const ButtonStyle& style)
 void ButtonManager::setButtonVisible(int buttonId, bool visible)
 {
   auto it = std::ranges::find_if(
-      buttons, [buttonId](Button& btn) { return btn.id == buttonId; });
+      buttons, [buttonId](const Button& btn) { return btn.id == buttonId; });
   if (it != buttons.end())
   {
     it->isVisible = visible;
   }
 }
 
-void ButtonManager::setButtonText(int buttonId, const std::string& text)
+void ButtonManager::setButtonText(int buttonId, std::string_view text)
 {
   auto it = std::ranges::find_if(
-      buttons, [buttonId](Button& btn) { return btn.id == buttonId; });
+      buttons, [buttonId](const Button& btn) { return btn.id == buttonId; });
   if (it != buttons.end())
   {
-    it->label = text;
+    it->label.assign(text);
     createButtonTexture(*it);
   }
 }
@@ -139,22 +140,16 @@ void ButtonManager::handleMouseMove(float x, float y)
   }
 }
 
-bool ButtonManager::handleMouseClick(float x, float y)
+bool ButtonManager::handleMouseClick(float x, float y) const
 {
-  for (const auto& button : buttons)
-  {
-    if (!button.isVisible) continue;
-
-    if (isPointInButton(x, y, button))
-    {
-      if (button.onClick)
+  return std::ranges::any_of(
+      buttons,
+      [this, x, y](const Button& button)
       {
-        button.onClick();
-      }
-      return true;  // Button was clicked
-    }
-  }
-  return false;  // No button was clicked
+        if (!button.isVisible || !isPointInButton(x, y, button)) return false;
+        if (button.onClick) button.onClick();
+        return true;
+      });
 }
 
 void ButtonManager::render()
@@ -171,7 +166,7 @@ void ButtonManager::render()
 void ButtonManager::setButtonSelected(int buttonId, bool selected)
 {
   auto it = std::ranges::find_if(
-      buttons, [buttonId](Button& btn) { return btn.id == buttonId; });
+      buttons, [buttonId](const Button& btn) { return btn.id == buttonId; });
   if (it != buttons.end())
   {
     it->isSelected = selected;
@@ -218,8 +213,7 @@ void ButtonManager::renderButton(const Button& btn)
 
     SDL_FRect dynamicTextRect = {btn.rect.x + (btn.rect.w - textW) / 2.0f,
                                  btn.rect.y + (btn.rect.h - textH) / 2.0f,
-                                 static_cast<float>(textW),
-                                 static_cast<float>(textH)};
+                                 textW, textH};
 
     SDL_RenderTexture(renderer, btn.textTexture, nullptr, &dynamicTextRect);
   }
@@ -272,7 +266,7 @@ void ButtonManager::updateButtonPosition(size_t buttonIndex, SDL_FRect newRect)
 void ButtonManager::updateButtonPositionById(int buttonId, SDL_FRect newRect)
 {
   auto it = std::ranges::find_if(
-      buttons, [buttonId](Button& btn) { return btn.id == buttonId; });
+      buttons, [buttonId](const Button& btn) { return btn.id == buttonId; });
   if (it != buttons.end())
   {
     it->rect = newRect;

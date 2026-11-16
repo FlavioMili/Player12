@@ -35,11 +35,15 @@ constexpr std::uint64_t WORLD_SEED = 20250702;
 
 int uniqueSlot(int offset)
 {
-  return 760'000 + static_cast<int>(getpid() % 100'000) * 10 + offset;
+  return 760'000 + getpid() % 100'000 * 10 + offset;
 }
 
 struct SlotCleanup
 {
+  explicit SlotCleanup(int saveSlot) : slot(saveSlot) {}
+  SlotCleanup(const SlotCleanup&) = delete;
+  SlotCleanup& operator=(const SlotCleanup&) = delete;
+
   int slot;
   ~SlotCleanup() { RuntimePaths::removeSave(slot); }
 };
@@ -112,17 +116,18 @@ TEST(PlayingThroughPainTest, AggravationRiskRisesWithSeverity)
 
 TEST(PlayingThroughPainTest, AnAggravationIsAlwaysASetback)
 {
+  using enum RngDomain;
   for (std::uint64_t key = 0; key < 200; ++key)
   {
-    WorldRng rng = WorldRng::stream(WORLD_SEED, RngDomain::MatchInjury, key);
-    const std::uint16_t left = static_cast<std::uint16_t>(1 + key % 40);
+    WorldRng rng = WorldRng::stream(WORLD_SEED, MatchInjury, key);
+    const auto left = static_cast<std::uint16_t>(1 + key % 40);
     const Injury injury =
         InjuryModel::aggravate(rng, InjuryType::HamstringStrain, left);
     EXPECT_EQ(injury.type, InjuryType::HamstringStrain);
     EXPECT_GE(injury.days, left + 3);
   }
-  WorldRng first = WorldRng::stream(WORLD_SEED, RngDomain::MatchInjury, 7);
-  WorldRng second = WorldRng::stream(WORLD_SEED, RngDomain::MatchInjury, 7);
+  WorldRng first = WorldRng::stream(WORLD_SEED, MatchInjury, 7);
+  WorldRng second = WorldRng::stream(WORLD_SEED, MatchInjury, 7);
   EXPECT_EQ(InjuryModel::aggravate(first, InjuryType::CalfStrain, 9).days,
             InjuryModel::aggravate(second, InjuryType::CalfStrain, 9).days)
       << "same seed, same layoff";
@@ -313,8 +318,7 @@ TEST(MedicalDeskTest, StaffWarnAboutAnInjuredStarterOnceAWeek)
         [&name](const InboxMessage& message)
         {
           return message.title_key == "MEDICAL_WARN_CARRYING_TITLE" &&
-                 !message.args.empty() &&
-                 message.args.front().find(name) != std::string::npos;
+                 !message.args.empty() && message.args.front().contains(name);
         });
   };
 

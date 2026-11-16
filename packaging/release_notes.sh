@@ -16,7 +16,8 @@ version=${version#v}
 changelog=${2:-$(cd "$(dirname "$0")/.." && pwd)/CHANGELOG.md}
 
 section() {
-  awk -v version="$1" '
+  local section_version=$1
+  awk -v version="$section_version" '
     BEGIN { heading = "^## v?" version "( |\t|$)"; gsub(/\./, "\\.", heading) }
     /^## / { if (found) exit; if ($0 ~ heading) { found = 1; next } }
     found { print }

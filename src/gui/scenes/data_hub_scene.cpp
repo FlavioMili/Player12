@@ -14,9 +14,10 @@
 #include <algorithm>
 #include <array>
 #include <cmath>
-#include <cstdio>
+#include <cstddef>
 #include <format>
 #include <optional>
+#include <utility>
 
 #include "database/gamedata.h"
 #include "global/language_manager.h"
@@ -75,17 +76,18 @@ std::string metricValue(HubMetric metric, float value)
 
 const char* outcomeKey(ShotOutcome outcome)
 {
+  using enum ShotOutcome;
   switch (outcome)
   {
-    case ShotOutcome::Goal:
+    case Goal:
       return "HUB_SHOT_GOAL";
-    case ShotOutcome::Saved:
+    case Saved:
       return "HUB_SHOT_SAVED";
-    case ShotOutcome::Blocked:
+    case Blocked:
       return "HUB_SHOT_BLOCKED";
-    case ShotOutcome::Woodwork:
+    case Woodwork:
       return "HUB_SHOT_WOODWORK";
-    case ShotOutcome::OffTarget:
+    case OffTarget:
       break;
   }
   return "HUB_SHOT_OFF_TARGET";
@@ -119,7 +121,7 @@ DataHubScene::DataHubScene(GUIView* parent) : ManagementScene(parent) {}
 
 void DataHubScene::refresh()
 {
-  GameController& controller = guiView->getController();
+  const GameController& controller = guiView->getController();
   hub = controller.getDataHub();
   opponent_names.clear();
   for (const TeamTrendPoint& point : hub.team.trend)
@@ -182,8 +184,8 @@ void DataHubScene::refresh()
                            which == LeaderMetric::Pressures;
       LeaderRow row;
       row.id = stats.player;
-      row.name = players[index].name.empty() ? std::string("\u2013")
-                                             : players[index].name;
+      row.name =
+          players[index].name.empty() ? std::string("–") : players[index].name;
       row.short_name = lastName(row.name);
       row.value = counted ? std::format("{:.0f}", value) : decimal(value);
       row.tooltip = fmt::sprintf(
@@ -221,26 +223,29 @@ void DataHubScene::renderTeam()
     return;
   }
   const Theme::Palette& palette = Theme::palette();
-  const HubMetric tiles[] = {HubMetric::XgFor, HubMetric::XgAgainst,
-                             HubMetric::ShotsFor, HubMetric::PassCompletion};
+  const std::array<HubMetric, 4> tiles = {
+      HubMetric::XgFor, HubMetric::XgAgainst, HubMetric::ShotsFor,
+      HubMetric::PassCompletion};
   UI::TileRow row(4);
   for (const HubMetric metric : tiles)
   {
     row.next();
     const MetricComparison& value =
-        team.metrics[static_cast<std::size_t>(metric)];
+        team.metrics[static_cast<std::size_t>(std::to_underlying(metric))];
     const bool league = team.team_league_matches > 0;
     const std::string text =
         league ? metricValue(metric, value.team) : std::string("–");
-    const std::string note =
-        !league ? std::string(LOC("HUB_TILE_NO_LEAGUE"))
-        : value.rank > 0
-            ? fmt::sprintf(LOC("HUB_TILE_NOTE"),
-                           metricValue(metric, value.league).c_str(),
-                           value.rank, value.ranked_teams)
-            : fmt::sprintf(LOC("HUB_TILE_NOTE_UNRANKED"),
-                           metricValue(metric, value.league).c_str());
-    ImGui::PushID(static_cast<int>(metric));
+    std::string note;
+    if (!league)
+      note = LOC("HUB_TILE_NO_LEAGUE");
+    else if (value.rank > 0)
+      note = fmt::sprintf(LOC("HUB_TILE_NOTE"),
+                          metricValue(metric, value.league).c_str(), value.rank,
+                          value.ranked_teams);
+    else
+      note = fmt::sprintf(LOC("HUB_TILE_NOTE_UNRANKED"),
+                          metricValue(metric, value.league).c_str());
+    ImGui::PushID(static_cast<int>(std::to_underlying(metric)));
     UI::statTile("hub_tile", LOC(hubMetricKey(metric)), text.c_str(),
                  note.c_str(), palette.text, row.width());
     if (ImGui::IsItemHovered(ImGuiHoveredFlags_DelayShort))
@@ -319,10 +324,15 @@ void DataHubScene::renderPerformance(float width)
       drawList->AddLine(
           ImVec2(left, y), ImVec2(right, y),
           Theme::toU32(step == 0 ? palette.muted : palette.border), 1.0f);
-      char label[16];
-      std::snprintf(label, sizeof(label), "%+.1f", static_cast<double>(value));
+      std::array<char, 16> label{};
+      const auto formatted = std::format_to_n(
+          label.data(), static_cast<std::ptrdiff_t>(label.size() - 1),
+          "{:+.1f}", value);
+      label[std::min(static_cast<std::size_t>(formatted.size),
+                     label.size() - 1)] = '\0';
       drawList->AddText(ImVec2(origin.x, y - ImGui::GetTextLineHeight() * 0.5f),
-                        Theme::toU32(palette.muted), step == 0 ? "0" : label);
+                        Theme::toU32(palette.muted),
+                        step == 0 ? "0" : label.data());
     }
   }
   const auto series = [&](const std::vector<float>& values, const ImVec4& color)
@@ -370,10 +380,10 @@ void DataHubScene::renderLeaders(float width)
   const Theme::Palette& palette = Theme::palette();
   const float scale = Theme::scale();
   UI::beginAutoHeightCard("hub_leaders", LOC("HUB_LEADERS_TITLE"), width);
-  const bool any =
-      std::ranges::any_of(leaders, [](const std::vector<LeaderRow>& rows)
-                          { return !rows.empty(); });
-  if (!any)
+  if (const bool any =
+          std::ranges::any_of(leaders, [](const std::vector<LeaderRow>& rows)
+                              { return !rows.empty(); });
+      !any)
   {
     footnote(LOC("HUB_LEADERS_NONE"));
     UI::endCard();
@@ -382,9 +392,11 @@ void DataHubScene::renderLeaders(float width)
   const float inner = ImGui::GetContentRegionAvail().x;
   const float gap = ImGui::GetStyle().ItemSpacing.x * 2.0f;
   const float minimum = LEADER_COLUMN_MIN_WIDTH * scale;
-  const std::size_t columns = inner >= 4.0f * minimum + 3.0f * gap ? 4
-                              : inner >= 2.0f * minimum + gap      ? 2
-                                                                   : 1;
+  std::size_t columns = 1;
+  if (inner >= 4.0f * minimum + 3.0f * gap)
+    columns = 4;
+  else if (inner >= 2.0f * minimum + gap)
+    columns = 2;
   const float columnWidth =
       std::floor((inner - gap * static_cast<float>(columns - 1)) /
                  static_cast<float>(columns));
@@ -403,8 +415,7 @@ void DataHubScene::renderLeaders(float width)
           palette.muted, "%s",
           LOC(leaderMetricKey(static_cast<LeaderMetric>(metric))));
     }
-    if (leaders[metric].empty())
-      ImGui::TextColored(palette.faint, "%s", "\u2013");
+    if (leaders[metric].empty()) ImGui::TextColored(palette.faint, "%s", "–");
     for (std::size_t rank = 0; rank < leaders[metric].size(); ++rank)
     {
       const LeaderRow& row = leaders[metric][rank];
@@ -416,10 +427,11 @@ void DataHubScene::renderLeaders(float width)
       const float valueWidth = ImGui::CalcTextSize(row.value.c_str()).x;
       const float nameRoom = columnWidth - ImGui::CalcTextSize("00").x -
                              valueWidth - ImGui::GetStyle().ItemSpacing.x;
-      const std::string& label =
-          ImGui::CalcTextSize(row.name.c_str()).x <= nameRoom ? row.name
-                                                              : row.short_name;
-      if (UI::link(label.c_str(), "leader"))
+      if (const std::string& label =
+              ImGui::CalcTextSize(row.name.c_str()).x <= nameRoom
+                  ? row.name
+                  : row.short_name;
+          UI::link(label.c_str(), "leader"))
         Navigation::openPlayer(guiView, row.id);
       if (ImGui::IsItemHovered(ImGuiHoveredFlags_DelayShort))
         ImGui::SetTooltip("%s\n%s", row.name.c_str(), row.tooltip.c_str());
@@ -454,9 +466,8 @@ void DataHubScene::renderTrendChart(float width)
   ImDrawList* drawList = ImGui::GetWindowDrawList();
 
   float top = 0.5f;
-  for (std::size_t index = 0; index < team.trend.size(); ++index)
-    top =
-        std::max({top, team.trend[index].xg_for, team.trend[index].xg_against});
+  for (const TeamTrendPoint& point : team.trend)
+    top = std::max({top, point.xg_for, point.xg_against});
   top = std::ceil(top * 2.0f) / 2.0f;
   const float left = origin.x + CHART_LEFT_AXIS * scale;
   const float right = origin.x + plotWidth - Theme::Space::S * scale;
@@ -652,7 +663,7 @@ void DataHubScene::renderSetPieces(float width)
     UI::endCard();
     return;
   }
-  const float matches = static_cast<float>(set.matches);
+  const auto matches = static_cast<float>(set.matches);
   const std::string shots =
       std::format("{:.1f}", static_cast<float>(set.shots_for) / matches);
   const std::string share =
@@ -686,19 +697,20 @@ void DataHubScene::renderComparison(float width)
     UI::endCard();
     return;
   }
-  static const UI::Column COLUMNS[] = {{"HUB_COL_METRIC", 0.0f, 0},
-                                       {"HUB_COL_CLUB", 64.0f, 0},
-                                       {"HUB_COL_LEAGUE", 64.0f, 1},
-                                       {"HUB_COL_RANK", 64.0f, 0}};
+  static constexpr std::array<UI::Column, 4> COLUMNS = {
+      {{"HUB_COL_METRIC", 0.0f, 0},
+       {"HUB_COL_CLUB", 64.0f, 0},
+       {"HUB_COL_LEAGUE", 64.0f, 1},
+       {"HUB_COL_RANK", 64.0f, 0}}};
   std::array<UI::Column, 4> columns{};
   for (std::size_t index = 0; index < columns.size(); ++index)
   {
     columns[index] = COLUMNS[index];
     columns[index].label = LOC(COLUMNS[index].label);
   }
-  const UI::ColumnMask mask =
-      UI::fitColumns(columns, ImGui::GetContentRegionAvail().x, 120.0f);
-  if (UI::beginResponsiveTable("hub_league_table", columns, mask,
+  if (const UI::ColumnMask mask =
+          UI::fitColumns(columns, ImGui::GetContentRegionAvail().x, 120.0f);
+      UI::beginResponsiveTable("hub_league_table", columns, mask,
                                ImGuiTableFlags_RowBg))
   {
     for (std::size_t index = 0; index < HUB_METRIC_COUNT; ++index)
@@ -740,15 +752,22 @@ void DataHubScene::renderPlayers()
     return;
   }
   UI::beginAutoHeightCard("hub_players", nullptr, 0.0f);
-  static const UI::Column COLUMNS[] = {
-      {"HUB_COL_PLAYER", 0.0f, 0},     {"HUB_COL_APPS", 44.0f, 3},
-      {"HUB_COL_MINUTES", 56.0f, 2},   {"HUB_COL_GOALS90", 56.0f, 1},
-      {"HUB_COL_ASSISTS90", 56.0f, 2}, {"HUB_COL_XG90", 56.0f, 3},
-      {"HUB_COL_KEY90", 60.0f, 4},     {"HUB_COL_XA90", 56.0f, 4},
-      {"HUB_COL_PROG90", 60.0f, 5},    {"HUB_COL_PRESS90", 60.0f, 5},
-      {"HUB_COL_PASS", 56.0f, 4},      {"HUB_COL_SHARE", 60.0f, 5},
-      {"HUB_COL_RATING", 56.0f, 1},    {"HUB_COL_TREND", 96.0f, 3}};
-  constexpr std::size_t COLUMN_COUNT = std::size(COLUMNS);
+  static constexpr std::array<UI::Column, 14> COLUMNS = {
+      {{"HUB_COL_PLAYER", 0.0f, 0},
+       {"HUB_COL_APPS", 44.0f, 3},
+       {"HUB_COL_MINUTES", 56.0f, 2},
+       {"HUB_COL_GOALS90", 56.0f, 1},
+       {"HUB_COL_ASSISTS90", 56.0f, 2},
+       {"HUB_COL_XG90", 56.0f, 3},
+       {"HUB_COL_KEY90", 60.0f, 4},
+       {"HUB_COL_XA90", 56.0f, 4},
+       {"HUB_COL_PROG90", 60.0f, 5},
+       {"HUB_COL_PRESS90", 60.0f, 5},
+       {"HUB_COL_PASS", 56.0f, 4},
+       {"HUB_COL_SHARE", 60.0f, 5},
+       {"HUB_COL_RATING", 56.0f, 1},
+       {"HUB_COL_TREND", 96.0f, 3}}};
+  constexpr std::size_t COLUMN_COUNT = COLUMNS.size();
   std::array<UI::Column, COLUMN_COUNT> columns{};
   for (std::size_t index = 0; index < COLUMN_COUNT; ++index)
   {
@@ -774,7 +793,7 @@ void DataHubScene::renderPlayers()
       ImGui::PushID(static_cast<int>(row.id));
       // Players no longer in the world (released youth) have no profile.
       if (row.name.empty())
-        ImGui::TextColored(palette.muted, "%s", "\u2013");
+        ImGui::TextColored(palette.muted, "%s", "–");
       else if (UI::link(row.name.c_str(), "player"))
         Navigation::openPlayer(guiView, row.id);
       ImGui::SameLine();

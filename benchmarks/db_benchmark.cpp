@@ -11,6 +11,7 @@
 #include <algorithm>
 #include <cstdint>
 #include <filesystem>
+#include <format>
 #include <memory>
 #include <string>
 
@@ -53,7 +54,7 @@ PlayerID nextPlayerId(const GameData& gameData)
 
 Player makeBenchmarkPlayer(PlayerID id, TeamID teamId, int sequence)
 {
-  return Player(id, teamId, "Test", "Player " + std::to_string(sequence),
+  return Player(id, teamId, "Test", std::format("Player {}", sequence),
                 PlayerRole::ST, Language::EN, 1'000, 0, 20, 2, 180, Foot::Right,
                 {});
 }
@@ -71,8 +72,7 @@ class DatabaseFixture : public benchmark::Fixture
     std::filesystem::remove(databasePath);
     std::filesystem::remove(databasePath.string() + "-wal");
     std::filesystem::remove(databasePath.string() + "-shm");
-    db_conn =
-        std::make_shared<DatabaseConnection>(databasePath.string());
+    db_conn = std::make_shared<DatabaseConnection>(databasePath.string());
     db_conn->initialize();
   }
 
@@ -96,8 +96,8 @@ BENCHMARK_DEFINE_F(DatabaseFixture, BM_LoadFromDB)(benchmark::State& state)
   gamedata.loadFromDB(db_conn);
   markDatabaseInitialized(db_conn);
 
-  int target_players = state.range(0);
-  int current_players = static_cast<int>(gamedata.getPlayers().size());
+  auto target_players = state.range(0);
+  auto current_players = static_cast<int>(gamedata.getPlayers().size());
   PlayerID next_id = nextPlayerId(gamedata);
 
   // Inject extra players directly into the DB
@@ -121,8 +121,8 @@ BENCHMARK_DEFINE_F(DatabaseFixture, BM_SaveToDB)(benchmark::State& state)
   gamedata.loadFromDB(db_conn);
   markDatabaseInitialized(db_conn);
 
-  int target_players = state.range(0);
-  int current_players = static_cast<int>(gamedata.getPlayers().size());
+  auto target_players = state.range(0);
+  auto current_players = static_cast<int>(gamedata.getPlayers().size());
   PlayerID next_id = nextPlayerId(gamedata);
 
   db_conn->beginTransaction();
@@ -158,8 +158,8 @@ BENCHMARK_DEFINE_F(DatabaseFixture,
   gamedata.loadFromDB(db_conn);
   markDatabaseInitialized(db_conn);
 
-  int target_players = state.range(0);
-  int current_players = static_cast<int>(gamedata.getPlayers().size());
+  auto target_players = state.range(0);
+  auto current_players = static_cast<int>(gamedata.getPlayers().size());
   PlayerID next_id = nextPlayerId(gamedata);
 
   constexpr TeamID TEAM_ID_TO_QUERY = 1;

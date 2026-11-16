@@ -96,11 +96,15 @@ constexpr std::uint64_t WORLD_SEED = 20250702;
 
 int uniqueSlot(int offset)
 {
-  return 480'000 + static_cast<int>(getpid() % 100'000) * 10 + offset;
+  return 480'000 + getpid() % 100'000 * 10 + offset;
 }
 
 struct SlotCleanup
 {
+  explicit SlotCleanup(int saveSlot) : slot(saveSlot) {}
+  SlotCleanup(const SlotCleanup&) = delete;
+  SlotCleanup& operator=(const SlotCleanup&) = delete;
+
   int slot;
   ~SlotCleanup() { RuntimePaths::removeSave(slot); }
 };
@@ -112,8 +116,8 @@ void frames(GUIView& view, int count)
 
 void pushKey(SDL_Scancode scancode, SDL_Keycode key, bool down)
 {
-  SDL_Event event{};
-  event.type = down ? SDL_EVENT_KEY_DOWN : SDL_EVENT_KEY_UP;
+  SDL_Event event{.key = {}};
+  event.key.type = down ? SDL_EVENT_KEY_DOWN : SDL_EVENT_KEY_UP;
   event.key.scancode = scancode;
   event.key.key = key;
   event.key.down = down;
@@ -176,7 +180,7 @@ TEST(PlayModeUiTest, PlayMovePassSwitchAndHandBack)
   auto* scene = dynamic_cast<MatchScene*>(Bridge::activeScene(view));
   ASSERT_NE(scene, nullptr);
   MatchEngine& engine = MatchBridge::engine(*scene);
-  MatchPlayController& play = MatchBridge::play(*scene);
+  const MatchPlayController& play = MatchBridge::play(*scene);
   const bool managedHome = MatchBridge::managedHome(*scene);
 
   // Play (Take control) pauses first and asks; then the human has the team.
@@ -241,8 +245,8 @@ TEST(PlayModeUiTest, PlayMovePassSwitchAndHandBack)
   // Q switches to the next candidate while we do not have the ball.
   for (int step = 0; step < 30'000; ++step)
   {
-    const MatchPlayer* holder = managedCarrier(engine, managedHome);
-    if (engine.getState() == MatchState::PLAYING &&
+    if (const MatchPlayer* holder = managedCarrier(engine, managedHome);
+        engine.getState() == MatchState::PLAYING &&
         (!holder || holder->player->getId() != engine.getControlledPlayer()) &&
         play.nextSwitch() != 0)
       break;

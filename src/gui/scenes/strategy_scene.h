@@ -62,7 +62,7 @@ class StrategyScene : public ManagementScene
   static constexpr int KEEPER_SLOT = -1;
 
   void renderInstructions(float width);
-  void renderSummary(float width);
+  void renderSummary(float width) const;
   void renderRoles(float width);
   void renderShapeEditor(const Lineup& lineup, float width);
   void renderSlotList(const Lineup& lineup);
@@ -74,12 +74,12 @@ class StrategyScene : public ManagementScene
   [[nodiscard]] const Lineup* clubLineup() const;
   /** Instruction of an outfield slot (a Standard one when none is stored). */
   [[nodiscard]] SlotInstruction slotAt(const Lineup& lineup, int slot) const;
-  void storeSlot(const SlotInstruction& instruction);
+  void storeSlot(const SlotInstruction& instruction) const;
   void setRole(const Lineup& lineup, TacticalRole role);
   void setDuty(const Lineup& lineup, RoleDuty duty);
   void applyShape(const Lineup& lineup, PossessionShape shape);
   void suggestRoles(const Lineup& lineup);
-  void applySliders();
+  void applySliders() const;
 
   /** Whether the tactic differs from the one on arrival. */
   [[nodiscard]] bool changedSinceEntry() const;

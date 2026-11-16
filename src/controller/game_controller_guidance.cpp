@@ -12,6 +12,7 @@
 
 #include <algorithm>
 #include <format>
+#include <utility>
 
 #include "controller/game_controller.h"
 #include "database/gamedata.h"
@@ -114,9 +115,9 @@ namespace
 class AssistantActing
 {
  public:
-  explicit AssistantActing(bool& acting) : flag(acting), previous(acting)
+  explicit AssistantActing(bool& acting)
+      : flag(acting), previous(std::exchange(acting, true))
   {
-    flag = true;
   }
   ~AssistantActing() { flag = previous; }
   AssistantActing(const AssistantActing&) = delete;
@@ -172,10 +173,11 @@ const StaffMember* GameController::getDelegate() const
   const auto club = getManagedTeam();
   if (!club) return nullptr;
   const std::vector<const StaffMember*> staff = getStaff(club->get().getId());
-  const auto assistant = std::ranges::find_if(
-      staff, [](const StaffMember* member)
-      { return member->role == StaffRole::AssistantManager; });
-  if (assistant != staff.end()) return *assistant;
+  if (const auto assistant = std::ranges::find_if(
+          staff, [](const StaffMember* member)
+          { return member->role == StaffRole::AssistantManager; });
+      assistant != staff.end())
+    return *assistant;
   return staff.empty() ? nullptr : staff.front();
 }
 
@@ -404,8 +406,9 @@ std::vector<MatchReport> leagueReports(const GameController& controller,
     {
       if (!match.isPlayed() || match.getMatchType() != MatchType::LEAGUE)
         continue;
-      const auto home = controller.getTeamById(match.getHomeTeamId());
-      if (!home || home->get().getLeagueId() != league_id) continue;
+      if (const auto home = controller.getTeamById(match.getHomeTeamId());
+          !home || home->get().getLeagueId() != league_id)
+        continue;
       if (auto report = controller.getMatchReport(date, match.getHomeTeamId(),
                                                   match.getAwayTeamId()))
         reports.push_back(std::move(*report));
@@ -484,8 +487,9 @@ bool GameController::setOppositionInstruction(TeamID opponent, PlayerID player,
                                               OppositionInstruction instruction)
 {
   if (!game || !gamedata) return false;
-  const auto found = std::as_const(*gamedata).getPlayer(player);
-  if (!found || found->get().getTeamId() != opponent) return false;
+  if (const auto found = std::as_const(*gamedata).getPlayer(player);
+      !found || found->get().getTeamId() != opponent)
+    return false;
   game->getGuidance().opposition.set(opponent, player, instruction);
   syncOppositionOrders();
   return true;
@@ -608,7 +612,7 @@ bool GameController::isInboxDecisionPending(const InboxMessage& message) const
   {
     case InboxAction::RespondOffer:
       // While a buyer considers the club's counter there is nothing to do.
-      return message.player_id &&
+      return message.player_id.has_value() &&
              std::ranges::any_of(
                  getIncomingOffers(),
                  [&message](const IncomingOffer& offer)
@@ -617,7 +621,8 @@ bool GameController::isInboxDecisionPending(const InboxMessage& message) const
                           offer.status == OfferStatus::AwaitingClub;
                  });
     case InboxAction::ReplyToPlayer:
-      return message.player_id && hasPendingTalk(*message.player_id);
+      return message.player_id.has_value() &&
+             hasPendingTalk(*message.player_id);
     case InboxAction::YouthTrialists:
       return hasSelectedTeam() && getAcademyOverview().candidates > 0;
     case InboxAction::Dilemma:

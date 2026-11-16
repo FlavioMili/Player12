@@ -30,16 +30,17 @@ std::optional<GameDateValue> targetDate(
 {
   switch (plan.mode)
   {
-    case HolidayMode::UntilDate:
+    using enum HolidayMode;
+    case UntilDate:
       if (!(today < plan.until)) return std::nullopt;
       return plan.until;
-    case HolidayMode::NextMatch:
+    case NextMatch:
       if (!next_match || !(today < *next_match)) return std::nullopt;
       return next_match;
-    case HolidayMode::WindowEnd:
+    case WindowEnd:
       return windowEndDate(league, today);
-    case HolidayMode::NextDecision:
-    case HolidayMode::COUNT:
+    case NextDecision:
+    case COUNT:
       break;
   }
   return std::nullopt;
@@ -69,32 +70,34 @@ std::optional<HolidayStop> checkStop(const HolidayPlan& plan,
   if (rules.stop_injury_crisis && day.injured > day.injured_at_start &&
       day.injured >= static_cast<int>(rules.injury_crisis_count))
     return HolidayStop::InjuryCrisis;
-  if (plan.mode == HolidayMode::NextDecision && day.new_decision)
+  using enum HolidayMode;
+  if (plan.mode == NextDecision && day.new_decision)
     return HolidayStop::Decision;
   return std::nullopt;
 }
 
 const char* stopKey(HolidayStop stop)
 {
+  using enum HolidayStop;
   switch (stop)
   {
-    case HolidayStop::Completed:
+    case Completed:
       return "HOLIDAY_STOP_COMPLETED";
-    case HolidayStop::Dismissed:
+    case Dismissed:
       return "HOLIDAY_STOP_DISMISSED";
-    case HolidayStop::SackingWarning:
+    case SackingWarning:
       return "HOLIDAY_STOP_WARNING";
-    case HolidayStop::BigBid:
+    case BigBid:
       return "HOLIDAY_STOP_BIG_BID";
-    case HolidayStop::KeyPlayerInjured:
+    case KeyPlayerInjured:
       return "HOLIDAY_STOP_KEY_INJURY";
-    case HolidayStop::InjuryCrisis:
+    case InjuryCrisis:
       return "HOLIDAY_STOP_INJURY_CRISIS";
-    case HolidayStop::Decision:
+    case Decision:
       return "HOLIDAY_STOP_DECISION";
-    case HolidayStop::Interrupted:
+    case Interrupted:
       return "HOLIDAY_STOP_INTERRUPTED";
-    case HolidayStop::DayLimit:
+    case DayLimit:
       break;
   }
   return "HOLIDAY_STOP_DAY_LIMIT";
@@ -110,7 +113,7 @@ HolidayPreferences loadPreferences(
           "stop_injury_crisis, injury_crisis_count, stop_key_injury, "
           "assistant_lineup, assistant_training, assistant_inbox FROM "
           "HolidayPreferences WHERE id = 1;",
-          [&](sqlite3_stmt* stmt)
+          [&preferences](sqlite3_stmt* stmt)
           {
             preferences.stop_big_bid = column<int>(stmt, 0) != 0;
             preferences.big_bid_threshold = column<std::int64_t>(stmt, 1);

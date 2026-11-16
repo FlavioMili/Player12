@@ -10,6 +10,7 @@
 
 #include <array>
 #include <cstdint>
+#include <format>
 #include <map>
 #include <memory>
 #include <string>
@@ -52,15 +53,14 @@ StatsConfig createStatsConfig()
   return config;
 }
 
-Team createBenchmarkTeam(TeamID id, std::string name,
+Team createBenchmarkTeam(TeamID id, const std::string& name,
                          std::vector<std::unique_ptr<Player>>& players)
 {
   Team team(id, BENCHMARK_LEAGUE_ID, std::move(name), BENCHMARK_TEAM_BUDGET, {},
             Strategy{}, Lineup{});
-  static constexpr std::array<PlayerRole, 11> ROLES = {
-      PlayerRole::GK, PlayerRole::LB, PlayerRole::CB, PlayerRole::CB,
-      PlayerRole::RB, PlayerRole::CM, PlayerRole::CM, PlayerRole::LW,
-      PlayerRole::RW, PlayerRole::ST, PlayerRole::ST};
+  using enum PlayerRole;
+  static constexpr std::array<PlayerRole, 11> ROLES = {GK, LB, CB, CB, RB, CM,
+                                                       CM, LW, RW, ST, ST};
   static constexpr std::array<Vector2F, 11> POSITIONS = {
       Vector2F{0.04f, 0.50f}, Vector2F{0.18f, 0.12f}, Vector2F{0.18f, 0.38f},
       Vector2F{0.18f, 0.62f}, Vector2F{0.18f, 0.88f}, Vector2F{0.43f, 0.35f},
@@ -69,18 +69,18 @@ Team createBenchmarkTeam(TeamID id, std::string name,
 
   for (std::size_t index = 0; index < ROLES.size(); ++index)
   {
-    const float rating = static_cast<float>(BENCHMARK_PLAYER_RATING);
+    const auto rating = static_cast<float>(BENCHMARK_PLAYER_RATING);
     std::map<std::string, float> stats = {
         {"Pace", rating},      {"Shooting", rating},  {"Passing", rating},
         {"Dribbling", rating}, {"Defending", rating}, {"Physicality", rating},
         {"Stamina", rating},   {"Vision", rating},    {"Goalkeeping", rating}};
-    const PlayerID playerId = static_cast<PlayerID>(players.size() + 1);
+    const auto playerId = static_cast<PlayerID>(players.size() + 1);
     players.push_back(std::make_unique<Player>(
-        playerId, id, "Benchmark", "Player " + std::to_string(index),
+        playerId, id, "Benchmark", std::format("Player {}", index),
         ROLES[index], Language::EN, BENCHMARK_PLAYER_WAGE, 0,
         BENCHMARK_PLAYER_AGE, BENCHMARK_CONTRACT_YEARS, BENCHMARK_PLAYER_HEIGHT,
         Foot::Right, std::move(stats)));
-    if (ROLES[index] == PlayerRole::GK)
+    if (ROLES[index] == GK)
       team.getLineup().setGoalkeeper(players.back().get());
     else
       team.getLineup().addOutfieldPlayer(players.back().get(),

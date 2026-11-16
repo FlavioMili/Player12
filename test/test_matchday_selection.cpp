@@ -33,11 +33,14 @@ constexpr double WIDE_MARGIN = 8.0;
 
 int uniqueSlot(int offset)
 {
-  return 6'500'000 + static_cast<int>(getpid() % 100'000) * 10 + offset;
+  return 6'500'000 + (getpid() % 100'000) * 10 + offset;
 }
 
 struct SlotCleanup
 {
+  explicit SlotCleanup(int value) : slot(value) {}
+  SlotCleanup(const SlotCleanup&) = delete;
+  SlotCleanup& operator=(const SlotCleanup&) = delete;
   int slot;
   ~SlotCleanup() { RuntimePaths::removeSave(slot); }
 };
@@ -47,9 +50,19 @@ TeamID middleOfTheLeague(const GameController& controller)
 {
   std::vector<TeamID> clubs =
       controller.getLeagueById(OWN_LEAGUE)->get().getTeamIDs();
-  std::ranges::sort(
-      clubs, {}, [&](TeamID id)
-      { return controller.getTeamById(id)->get().getReputation(); });
+  // Equal reputations need an explicit order: otherwise different standard
+  // libraries can pick a different club and simulate a different career.
+  std::ranges::sort(clubs,
+                    [&](TeamID left, TeamID right)
+                    {
+                      const auto leftReputation =
+                          controller.getTeamById(left)->get().getReputation();
+                      const auto rightReputation =
+                          controller.getTeamById(right)->get().getReputation();
+                      return leftReputation != rightReputation
+                                 ? leftReputation < rightReputation
+                                 : left < right;
+                    });
   return clubs[clubs.size() / 2];
 }
 
@@ -68,22 +81,51 @@ std::vector<const Player*> clubPlayers(const GameController& controller,
   for (const auto* ids : {&team.getPlayerIDs(), &team.getAcademyIDs()})
     for (const PlayerID player_id : *ids)
     {
-      const YouthRecord* youth = game.getWorld().getYouth().record(player_id);
-      if (youth && youth->status == YouthStatus::Candidate) continue;
+      if (const YouthRecord* youth =
+              game.getWorld().getYouth().record(player_id);
+          youth && youth->status == YouthStatus::Candidate)
+        continue;
       if (const auto player = controller.getGameData()->getPlayer(player_id))
         players.push_back(&player->get());
     }
   return players;
 }
 
+bool compareQuality(const Lineup& lineup, PlayerID player, bool standInsOnly)
+{
+  return !standInsOnly ||
+         std::ranges::any_of(lineup.getStandIns(),
+                             [player](const Lineup::StandIn& entry)
+                             { return entry.stand_in == player; });
+}
+
+void expectOutfieldQuality(const Lineup& lineup, const Player& player,
+                           const StatsConfig& config, const std::string& what,
+                           bool standInsOnly)
+{
+  for (const Lineup::PositionedPlayer& slot : lineup.getOutfieldPlayers())
+  {
+    ASSERT_NE(slot.player, nullptr) << what;
+    if (!compareQuality(lineup, slot.player->getId(), standInsOnly) ||
+        Lineup::roleAt(slot.position) != player.getRole())
+      continue;
+    EXPECT_LT(player.getOverall(config) - slot.player->getOverall(config),
+              WIDE_MARGIN)
+        << what << ": " << nameOf(&player) << " sits out behind "
+        << nameOf(slot.player);
+  }
+}
+
 /**
  * The XI has the best goalkeeper among @p available, and nobody of
  * @p available outside the XI is better than the starter of his position
- * by WIDE_MARGIN or more.
+ * by WIDE_MARGIN or more. With @p standInsOnly, quality comparisons apply
+ * only to temporary replacements; a fit regular is the manager's choice.
  */
 void expectBestAvailable(const Lineup& lineup,
                          const std::vector<const Player*>& available,
-                         const StatsConfig& config, const std::string& what)
+                         const StatsConfig& config, const std::string& what,
+                         bool standInsOnly = false)
 {
   const Player* goalkeeper = lineup.getGoalkeeper();
   ASSERT_NE(goalkeeper, nullptr) << what;
@@ -93,21 +135,17 @@ void expectBestAvailable(const Lineup& lineup,
   {
     if (player->getRole() == PlayerRole::GK)
     {
+      if (!compareQuality(lineup, goalkeeper->getId(), standInsOnly))
+      {
+        continue;
+      }
       EXPECT_LE(player->getOverall(config), goalkeeper->getOverall(config))
           << what << ": " << nameOf(player) << " is a better keeper than "
           << nameOf(goalkeeper);
       continue;
     }
     if (lineup.isStarter(player->getId())) continue;
-    for (const Lineup::PositionedPlayer& slot : lineup.getOutfieldPlayers())
-    {
-      ASSERT_NE(slot.player, nullptr) << what;
-      if (Lineup::roleAt(slot.position) != player->getRole()) continue;
-      EXPECT_LT(player->getOverall(config) - slot.player->getOverall(config),
-                WIDE_MARGIN)
-          << what << ": " << nameOf(player) << " sits out behind "
-          << nameOf(slot.player);
-    }
+    expectOutfieldQuality(lineup, *player, config, what, standInsOnly);
   }
   for (const Lineup::PositionedPlayer& slot : lineup.getOutfieldPlayers())
     EXPECT_TRUE(std::ranges::contains(available, slot.player))
@@ -126,8 +164,9 @@ TEST(MatchdaySelectionTest, SlotRolesFollowTheFormationPresets)
 // players replaced while injured, rested or away with their country take
 // their places back once they can play, so neither the assistant's XI for a
 // cup or league match nor the auto-picked one fields a reserve keeper ahead
-// of a fit first choice or leaves the best players on the bench.
-TEST(MatchdaySelectionTest, AssistantAndAutoPickFieldTheBestAvailable)
+// of a fit first choice when filling temporary vacancies. Healthy regulars
+// remain the manager's choices; auto-pick explicitly selects the best XI.
+TEST(MatchdaySelectionTest, AssistantPreservesRegularsAndAutoPickSelectsBestXI)
 {
   Logger::init();
   const SlotCleanup slot{uniqueSlot(0)};
@@ -145,6 +184,19 @@ TEST(MatchdaySelectionTest, AssistantAndAutoPickFieldTheBestAvailable)
   bool checkedReload = false;
   for (int day = 0; day < 140 && !(checkedLeague && checkedCup); ++day)
   {
+    // The assistant may replace unavailable players, but cannot override a
+    // healthy manager-selected regular simply to improve the overall rating.
+    const Lineup& previous = controller.getManagedTeam()->get().getLineup();
+    std::vector<PlayerID> regulars;
+    for (const Player* starter : previous.starters())
+    {
+      if (!std::ranges::any_of(previous.getStandIns(),
+                               [&](const Lineup::StandIn& entry)
+                               { return entry.stand_in == starter->getId(); }))
+      {
+        regulars.push_back(starter->getId());
+      }
+    }
     controller.advanceDay();
     const Lineup& lineup = controller.getManagedTeam()->get().getLineup();
 
@@ -172,13 +224,24 @@ TEST(MatchdaySelectionTest, AssistantAndAutoPickFieldTheBestAvailable)
     const std::string what = controller.getCurrentDate().toString() +
                              (type == MatchType::LEAGUE ? " league" : " cup");
 
-    // The assistant's XI: anyone fit to play this match.
+    // The assistant fills vacancies and recalls the manager's regulars
+    // (MatchdaySquad::recallRegulars). It does not auto-pick a new best XI
+    // whenever a healthy squad player's rating improves.
     std::vector<const Player*> fit;
     for (const Player* player : clubPlayers(controller, club))
       if (game.isEligible(*player, type, fixture->date) &&
           !game.getMedical().isRested(player->getId()))
         fit.push_back(player);
-    expectBestAvailable(lineup, fit, config, what + " (assistant)");
+    for (const Player* player : fit)
+    {
+      if (std::ranges::contains(regulars, player->getId()))
+      {
+        EXPECT_TRUE(lineup.isStarter(player->getId()))
+            << what << ": the assistant replaced fit regular "
+            << nameOf(player);
+      }
+    }
+    expectBestAvailable(lineup, fit, config, what + " (assistant)", true);
 
     // Auto-pick best XI on the Lineup screen: the senior squad without the
     // injured and the suspended.

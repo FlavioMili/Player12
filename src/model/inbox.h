@@ -113,7 +113,7 @@ class Inbox
 {
  public:
   static constexpr std::size_t MAX_MESSAGES = 400;
-  /** Window of the weekly digest of repeated offers. */
+  /** Window of the weekly digest of repeated offers and workload advice. */
   static constexpr std::int32_t DIGEST_DAYS = 7;
 
   /** Appends a message, assigns its id and returns it. */

@@ -11,8 +11,10 @@
 #include <sqlite3.h>
 
 #include <algorithm>
+#include <array>
 #include <nlohmann/json.hpp>
 #include <stdexcept>
+#include <utility>
 
 #include "database/SQLLoader.h"
 #include "database/repositories/finance_repository.h"
@@ -28,12 +30,12 @@ std::string serializeStrategy(const Strategy& strategy)
   const StrategySliders sliders = strategy.getSliders();
   std::string text;
   text.reserve(128);
-  const std::pair<const char*, float> fields[] = {
-      {"compactness", sliders.compactness},
-      {"offensive_bias", sliders.offensiveBias},
-      {"pressing", sliders.pressing},
-      {"risk_taking", sliders.riskTaking},
-      {"width_usage", sliders.widthUsage}};
+  const std::array<std::pair<const char*, float>, 5> fields = {
+      {{"compactness", sliders.compactness},
+       {"offensive_bias", sliders.offensiveBias},
+       {"pressing", sliders.pressing},
+       {"risk_taking", sliders.riskTaking},
+       {"width_usage", sliders.widthUsage}}};
   text.push_back('{');
   for (const auto& [name, value] : fields)
   {
@@ -46,7 +48,8 @@ std::string serializeStrategy(const Strategy& strategy)
   // Roles, duties and the in-possession shape; older saves lack the keys
   // and get Standard roles and one shape for both phases.
   text += ",\"keeper_role\":";
-  TextEncoding::appendInt(text, static_cast<int>(strategy.getKeeperRole()));
+  TextEncoding::appendInt(
+      text, static_cast<int>(std::to_underlying(strategy.getKeeperRole())));
   text += ",\"slots\":[";
   bool first = true;
   for (const SlotInstruction& slot : strategy.getSlotInstructions())
@@ -58,9 +61,11 @@ std::string serializeStrategy(const Strategy& strategy)
     text += ",\"y\":";
     TextEncoding::appendShortest(text, slot.anchor.y);
     text += ",\"role\":";
-    TextEncoding::appendInt(text, static_cast<int>(slot.role));
+    TextEncoding::appendInt(text,
+                            static_cast<int>(std::to_underlying(slot.role)));
     text += ",\"duty\":";
-    TextEncoding::appendInt(text, static_cast<int>(slot.duty));
+    TextEncoding::appendInt(text,
+                            static_cast<int>(std::to_underlying(slot.duty)));
     text += ",\"ox\":";
     TextEncoding::appendShortest(text, slot.possessionOffset.x);
     text += ",\"oy\":";
@@ -74,7 +79,8 @@ std::string serializeStrategy(const Strategy& strategy)
 TacticalRole roleFromJson(const nlohmann::json& value, const char* key)
 {
   const int raw = value.value(key, 0);
-  return raw >= 0 && raw < static_cast<int>(TacticalRole::COUNT)
+  return raw >= 0 &&
+                 raw < static_cast<int>(std::to_underlying(TacticalRole::COUNT))
              ? static_cast<TacticalRole>(raw)
              : TacticalRole::Standard;
 }
@@ -108,7 +114,8 @@ Strategy deserializeStrategy(const unsigned char* strategyText)
         slot.anchor = {entry.value("x", 0.5f), entry.value("y", 0.5f)};
         slot.role = roleFromJson(entry, "role");
         const int duty = entry.value("duty", 1);
-        slot.duty = duty >= 0 && duty < static_cast<int>(RoleDuty::COUNT)
+        slot.duty = duty >= 0 && duty < static_cast<int>(
+                                            std::to_underlying(RoleDuty::COUNT))
                         ? static_cast<RoleDuty>(duty)
                         : RoleDuty::Support;
         slot.possessionOffset = {entry.value("ox", 0.0f),
@@ -298,7 +305,8 @@ std::unordered_map<TeamID, StoredLineup> TeamRepository::loadAllLineups() const
   while (sqlite3_step(stmt) == SQLITE_ROW)
   {
     const auto teamId = static_cast<TeamID>(sqlite3_column_int(stmt, 0));
-    lineups.emplace(teamId, deserializeLineup(sqlite3_column_text(stmt, 1)));
+    lineups.try_emplace(teamId,
+                        deserializeLineup(sqlite3_column_text(stmt, 1)));
   }
   sqlite3_finalize(stmt);
   return lineups;

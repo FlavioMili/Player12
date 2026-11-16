@@ -13,6 +13,7 @@
 #include <cstddef>
 #include <functional>
 #include <string>
+#include <string_view>
 #include <vector>
 
 /**
@@ -65,12 +66,14 @@ class ButtonManager
    * @brief Destroys the ButtonManager.
    */
   ~ButtonManager();
+  ButtonManager(const ButtonManager&) = delete;
+  ButtonManager& operator=(const ButtonManager&) = delete;
 
   /**
    * @brief Gets the total number of buttons managed.
    * @return The number of buttons.
    */
-  int getButtonCount() { return static_cast<int>(buttons.size()); }
+  int getButtonCount() const { return static_cast<int>(buttons.size()); }
   // Button creation and management
 
   /**
@@ -80,7 +83,7 @@ class ButtonManager
    * @param callback The function to call when the button is clicked.
    * @return The ID of the newly created button.
    */
-  int addButton(const SDL_FRect& rect, const std::string& label,
+  int addButton(const SDL_FRect& rect, std::string_view label,
                 std::function<void()> callback);
 
   /**
@@ -91,8 +94,8 @@ class ButtonManager
    * @param callback The function to call when the button is clicked.
    * @return The ID of the newly created button.
    */
-  int addButton(const SDL_FRect& rect, const std::string& label,
-                ButtonStyle style, std::function<void()> callback);
+  int addButton(const SDL_FRect& rect, std::string_view label,
+                const ButtonStyle& style, std::function<void()> callback);
 
   /**
    * @brief Adds a new button using individual coordinates.
@@ -104,7 +107,7 @@ class ButtonManager
    * @param callback The function to call when the button is clicked.
    * @return The ID of the newly created button.
    */
-  int addButton(float x, float y, float w, float h, const std::string& label,
+  int addButton(float x, float y, float w, float h, std::string_view label,
                 std::function<void()> callback);
 
   /**
@@ -119,8 +122,8 @@ class ButtonManager
    * @param callback The function to call when the button is clicked.
    * @return The ID of the newly created button.
    */
-  int addButton(float x, float y, float w, float h, const std::string& label,
-                ButtonStyle style, std::function<void()> callback);
+  int addButton(float x, float y, float w, float h, std::string_view label,
+                const ButtonStyle& style, std::function<void()> callback);
 
   /**
    * @brief Removes a button by ID.
@@ -160,7 +163,7 @@ class ButtonManager
    * @param buttonId The ID of the button.
    * @param text The new text for the button.
    */
-  void setButtonText(int buttonId, const std::string& text);
+  void setButtonText(int buttonId, std::string_view text);
 
   /**
    * @brief Sets whether a specific button is selected.
@@ -183,7 +186,7 @@ class ButtonManager
    * @param y The mouse y-coordinate.
    * @return True if a button was clicked, false otherwise.
    */
-  bool handleMouseClick(float x, float y);
+  bool handleMouseClick(float x, float y) const;
 
   // Rendering
   /**
@@ -202,7 +205,7 @@ class ButtonManager
    * @brief Gets the font currently used for buttons.
    * @return The font.
    */
-  TTF_Font* getFont() { return this->font; }
+  TTF_Font* getFont() const { return font; }
 
   /**
    * @brief Sets the default style applied to new buttons.

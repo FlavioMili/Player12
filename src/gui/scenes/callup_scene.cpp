@@ -62,19 +62,20 @@ constexpr std::array<ColumnSpec, 8> COLUMNS = {{
 
 int roleGroup(PlayerRole role)
 {
+  using enum PlayerRole;
   switch (role)
   {
-    case PlayerRole::GK:
+    case GK:
       return 0;
-    case PlayerRole::CB:
-    case PlayerRole::LB:
-    case PlayerRole::RB:
+    case CB:
+    case LB:
+    case RB:
       return 1;
-    case PlayerRole::CDM:
-    case PlayerRole::CM:
-    case PlayerRole::CAM:
-    case PlayerRole::LM:
-    case PlayerRole::RM:
+    case CDM:
+    case CM:
+    case CAM:
+    case LM:
+    case RM:
       return 2;
     default:
       return 3;
@@ -89,11 +90,15 @@ std::string nationName(Language nation)
 
 CallUpScene::CallUpScene(GUIView* parent) : ManagementScene(parent) {}
 
-void CallUpScene::update(float /*deltaTime*/) {}
+void CallUpScene::update(float /*deltaTime*/)
+{
+  // Call-up lists change on scene actions and fixture dates, not per frame;
+  // refresh() rebuilds the cached rows when those changes occur.
+}
 
 void CallUpScene::refresh()
 {
-  GameController& controller = guiView->getController();
+  const GameController& controller = guiView->getController();
   cached_date = controller.getCurrentDate();
   view = controller.getCallUpView();
   rows.clear();
@@ -181,7 +186,7 @@ void CallUpScene::rebuildLists()
 
 void CallUpScene::renderContent()
 {
-  GameController& controller = guiView->getController();
+  const GameController& controller = guiView->getController();
   if (!(cached_date == controller.getCurrentDate())) refresh();
   if (!controller.hasNationalJob())
   {
@@ -198,8 +203,9 @@ void CallUpScene::renderContent()
   // One scroll surface: cards grow with their content and the page scrolls.
   const float available = ImGui::GetContentRegionAvail().x;
   const float gap = ImGui::GetStyle().ItemSpacing.x;
-  const bool twoColumns = available >= TWO_COLUMN_MIN_WIDTH * Theme::scale();
-  if (twoColumns)
+  if (const bool twoColumns =
+          available >= TWO_COLUMN_MIN_WIDTH * Theme::scale();
+      twoColumns)
   {
     const float right = std::floor((available - gap) * 0.3f);
     const float left = available - gap - right;
@@ -230,7 +236,7 @@ void CallUpScene::renderContent()
   }
 }
 
-void CallUpScene::renderTiles()
+void CallUpScene::renderTiles() const
 {
   const Theme::Palette& palette = Theme::palette();
   UI::TileRow tiles(4);
@@ -303,11 +309,13 @@ void CallUpScene::renderCandidates(float width)
   ImGui::PushTextWrapPos(0.0f);
   ImGui::TextColored(palette.faint, "%s", LOC("CALLUP_POOL_HINT"));
   ImGui::PopTextWrapPos();
-  const std::array<const char*, 5> labels = {
-      LOC("CALLUP_FILTER_ALL"), LOC("CALLUP_FILTER_GK"),
-      LOC("CALLUP_FILTER_DEF"), LOC("CALLUP_FILTER_MID"),
-      LOC("CALLUP_FILTER_FWD")};
-  if (UI::segmented("callup_filter", filter, labels)) lists_stale = true;
+  if (const std::array<const char*, 5> labels = {LOC("CALLUP_FILTER_ALL"),
+                                                 LOC("CALLUP_FILTER_GK"),
+                                                 LOC("CALLUP_FILTER_DEF"),
+                                                 LOC("CALLUP_FILTER_MID"),
+                                                 LOC("CALLUP_FILTER_FWD")};
+      UI::segmented("callup_filter", filter, labels))
+    lists_stale = true;
   if (candidate_rows.empty())
     UI::emptyState(LOC("CALLUP_POOL_EMPTY_TITLE"),
                    LOC("CALLUP_POOL_EMPTY_BODY"));
@@ -316,7 +324,7 @@ void CallUpScene::renderCandidates(float width)
   UI::endCard();
 }
 
-void CallUpScene::renderFixtures(float width)
+void CallUpScene::renderFixtures(float width) const
 {
   const Theme::Palette& palette = Theme::palette();
   UI::beginAutoHeightCard("callup_fixtures_card", LOC("CALLUP_CARD_FIXTURES"),
@@ -373,9 +381,10 @@ void CallUpScene::renderTable(const char* id,
       for (std::size_t column = 0; column < COLUMNS.size(); ++column)
       {
         if (!UI::cell(mask, static_cast<int>(column))) continue;
+        using enum Cell;
         switch (COLUMNS[column].cell)
         {
-          case Cell::NAME:
+          case NAME:
           {
             const float x = ImGui::GetCursorPosX();
             if (ImGui::Selectable("##row", isSelected,
@@ -393,29 +402,29 @@ void CallUpScene::renderTable(const char* id,
             }
             break;
           }
-          case Cell::POS:
+          case POS:
             ImGui::TextColored(palette.muted, "%s", row.role.c_str());
             break;
-          case Cell::AGE:
+          case AGE:
             ImGui::TextColored(text, "%d", candidate.age);
             break;
-          case Cell::CLUB:
+          case CLUB:
             UI::textFitted(row.club, ImGui::GetContentRegionAvail().x,
                            palette.muted);
             break;
-          case Cell::ABILITY:
+          case ABILITY:
             ImGui::TextColored(Theme::ratingColor(candidate.overall), "%d",
                                candidate.overall);
             break;
-          case Cell::FORM:
+          case FORM:
             ImGui::TextColored(text, "%s", row.form.c_str());
             break;
-          case Cell::CONDITION:
+          case CONDITION:
             ImGui::TextColored(
                 candidate.condition < 75 ? palette.warning : text, "%d%%",
                 candidate.condition);
             break;
-          case Cell::CAPS:
+          case CAPS:
             ImGui::TextColored(text, "%s", row.caps.c_str());
             break;
         }
@@ -446,8 +455,7 @@ void CallUpScene::renderDetail(const Row& row, bool squad)
   ImGui::PushID(static_cast<int>(candidate.id));
   if (UI::secondaryButton(LOC("YOUTH_VIEW_PROFILE")))
     Navigation::openPlayer(guiView, candidate.id);
-  const bool editable = view.announced && !view.locked;
-  if (editable && squad)
+  if (const bool editable = view.announced && !view.locked; editable && squad)
   {
     UI::sameLineIfFits(UI::buttonWidth(LOC("CALLUP_DROP")));
     if (UI::secondaryButton(LOC("CALLUP_DROP")))

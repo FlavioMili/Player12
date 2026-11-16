@@ -13,6 +13,10 @@ on:
           numbers must equal the project version.
         type: string
         default: ""
+      run-tests:
+        description: Run the full test suite; release packaging uses package smoke checks.
+        type: boolean
+        default: true
       retention-days:
         description: Days to keep the uploaded package artifacts
         type: number
@@ -72,8 +76,7 @@ jobs:
         with:
           path: |
             build/_deps/*-src
-            build/_deps/*-subbuild
-          key: fetchcontent-linux-${{ hashFiles('CMakeLists.txt') }}
+          key: fetchcontent-sources-v2-${{ github.repository }}-linux-${{ hashFiles('CMakeLists.txt') }}
 
       - name: Cache ccache
         uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
@@ -87,7 +90,7 @@ jobs:
           # shellcheck disable=SC2086 # FM_PACKAGE_OPTIONS is a flag list
           cmake -S . -B build -G Ninja \
             -DCMAKE_BUILD_TYPE="$CMAKE_BUILD_TYPE" \
-            -DBUILD_TESTING=ON \
+            -DBUILD_TESTING=${{ inputs.run-tests && 'ON' || 'OFF' }} \
             -DFM_VERSION="$FM_VERSION" \
             -DCMAKE_C_COMPILER_LAUNCHER=ccache \
             -DCMAKE_CXX_COMPILER_LAUNCHER=ccache \
@@ -95,9 +98,10 @@ jobs:
             $FM_PACKAGE_OPTIONS
 
       - name: Build
-        run: cmake --build build --parallel 4
+        run: cmake --build build --parallel 4 ${{ !inputs.run-tests && '--target FootballManagement fm_lab' || '' }}
 
       - name: Test (headless, excluding playtest/monkey/slow)
+        if: inputs.run-tests
         run: >
           ctest --test-dir build --output-on-failure --parallel 2
           --timeout 900 -LE "$CTEST_LABEL_EXCLUDE"
@@ -120,7 +124,7 @@ jobs:
           LINUXDEPLOY_URL: https://github.com/linuxdeploy/linuxdeploy/releases/download/1-alpha-20251107-1/linuxdeploy-x86_64.AppImage
           LINUXDEPLOY_SHA256: c20cd71e3a4e3b80c3483cef793cda3f4e990aca14014d23c544ca3ce1270b4d
         run: |
-          curl -fsSL -o "$RUNNER_TEMP/linuxdeploy" "$LINUXDEPLOY_URL"
+          curl --proto "=https" --proto-redir "=https" -fsSL -o "$RUNNER_TEMP/linuxdeploy" "$LINUXDEPLOY_URL"
           echo "$LINUXDEPLOY_SHA256  $RUNNER_TEMP/linuxdeploy" | sha256sum -c -
           chmod +x "$RUNNER_TEMP/linuxdeploy"
           cmake --install build --component game --strip --prefix "$RUNNER_TEMP/AppDir/usr"
@@ -188,6 +192,8 @@ jobs:
       # AppleClang's libc++ lacks floating-point std::from_chars and
       # non-experimental std::jthread (both need libc++ 20), so the game is
       # built with Homebrew LLVM 20 and its libc++ is linked statically.
+      # Hide executable exports so its static libc++ cannot interpose on
+      # the system libc++ used by Cocoa (which otherwise aborts at startup).
       # Keep the major fixed for reproducible builds. CMake applies the
       # Apple SDK enum compatibility flag to HarfBuzz's CoreText backend.
       - name: Install Homebrew LLVM 20, Ninja and ccache
@@ -203,8 +209,7 @@ jobs:
         with:
           path: |
             build/_deps/*-src
-            build/_deps/*-subbuild
-          key: fetchcontent-macos-${{ hashFiles('CMakeLists.txt') }}
+          key: fetchcontent-sources-v2-${{ github.repository }}-macos-${{ hashFiles('CMakeLists.txt') }}
 
       - name: Cache ccache
         uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
@@ -218,7 +223,7 @@ jobs:
           # shellcheck disable=SC2086 # FM_PACKAGE_OPTIONS is a flag list
           cmake -S . -B build -G Ninja \
             -DCMAKE_BUILD_TYPE="$CMAKE_BUILD_TYPE" \
-            -DBUILD_TESTING=ON \
+            -DBUILD_TESTING=${{ inputs.run-tests && 'ON' || 'OFF' }} \
             -DFM_VERSION="$FM_VERSION" \
             -DCMAKE_C_COMPILER="$LLVM_PREFIX/bin/clang" \
             -DCMAKE_CXX_COMPILER="$LLVM_PREFIX/bin/clang++" \
@@ -226,11 +231,11 @@ jobs:
             -DCMAKE_OSX_DEPLOYMENT_TARGET="$MACOSX_DEPLOYMENT_TARGET" \
             -DCMAKE_C_COMPILER_LAUNCHER=ccache \
             -DCMAKE_CXX_COMPILER_LAUNCHER=ccache \
-            "-DCMAKE_EXE_LINKER_FLAGS=-nostdlib++ $LLVM_PREFIX/lib/c++/libc++.a $LLVM_PREFIX/lib/c++/libc++abi.a" \
+            "-DCMAKE_EXE_LINKER_FLAGS=-nostdlib++ -Wl,-no_exported_symbols $LLVM_PREFIX/lib/c++/libc++.a $LLVM_PREFIX/lib/c++/libc++abi.a" \
             $FM_PACKAGE_OPTIONS
 
       - name: Build
-        run: cmake --build build --parallel 3
+        run: cmake --build build --parallel 3 ${{ !inputs.run-tests && '--target FootballManagement fm_lab' || '' }}
 
       - name: Check the game links no Homebrew libraries
         run: |
@@ -246,7 +251,14 @@ jobs:
             exit 1
           fi
 
+      - name: Verify test executable starts
+        if: inputs.run-tests
+        run: |
+          otool -L build/test/core_unit_tests
+          build/test/core_unit_tests --gtest_list_tests
+
       - name: Test (headless, excluding playtest/monkey/slow)
+        if: inputs.run-tests
         run: >
           ctest --test-dir build --output-on-failure --parallel 2
           --timeout 900 -LE "$CTEST_LABEL_EXCLUDE"
@@ -294,8 +306,7 @@ jobs:
         with:
           path: |
             build/_deps/*-src
-            build/_deps/*-subbuild
-          key: fetchcontent-windows-${{ hashFiles('CMakeLists.txt') }}
+          key: fetchcontent-sources-v2-${{ github.repository }}-windows-${{ hashFiles('CMakeLists.txt') }}
 
       # The unit tests use POSIX headers (unistd.h, setenv), so Windows builds
       # the game and the balance lab only.
