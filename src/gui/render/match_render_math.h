@@ -31,45 +31,47 @@ namespace RenderMath
 {
 struct Vec3
 {
-  float x = 0.0f;
-  float y = 0.0f;
-  float z = 0.0f;
+  float x = 0.0F;
+  float y = 0.0F;
+  float z = 0.0F;
 
   friend constexpr Vec3 operator+(Vec3 a, Vec3 b)
   {
-    return {a.x + b.x, a.y + b.y, a.z + b.z};
+    return {.x = a.x + b.x, .y = a.y + b.y, .z = a.z + b.z};
   }
   friend constexpr Vec3 operator-(Vec3 a, Vec3 b)
   {
-    return {a.x - b.x, a.y - b.y, a.z - b.z};
+    return {.x = a.x - b.x, .y = a.y - b.y, .z = a.z - b.z};
   }
   friend constexpr Vec3 operator*(Vec3 a, float s)
   {
-    return {a.x * s, a.y * s, a.z * s};
+    return {.x = a.x * s, .y = a.y * s, .z = a.z * s};
   }
 };
 
 struct Vec4
 {
-  float x = 0.0f;
-  float y = 0.0f;
-  float z = 0.0f;
-  float w = 0.0f;
+  float x = 0.0F;
+  float y = 0.0F;
+  float z = 0.0F;
+  float w = 0.0F;
 };
 
 constexpr float dot(Vec3 a, Vec3 b)
 {
-  return a.x * b.x + a.y * b.y + a.z * b.z;
+  return (a.x * b.x) + (a.y * b.y) + (a.z * b.z);
 }
 constexpr Vec3 cross(Vec3 a, Vec3 b)
 {
-  return {a.y * b.z - a.z * b.y, a.z * b.x - a.x * b.z, a.x * b.y - a.y * b.x};
+  return {.x = (a.y * b.z) - (a.z * b.y),
+          .y = (a.z * b.x) - (a.x * b.z),
+          .z = (a.x * b.y) - (a.y * b.x)};
 }
 inline float length(Vec3 a) { return std::sqrt(dot(a, a)); }
 inline Vec3 normalize(Vec3 a)
 {
   const float magnitude = length(a);
-  return magnitude > 1e-6f ? a * (1.0f / magnitude) : Vec3{};
+  return magnitude > 1e-6F ? a * (1.0F / magnitude) : Vec3{};
 }
 constexpr Vec3 lerp(Vec3 a, Vec3 b, float t) { return a + (b - a) * t; }
 
@@ -81,32 +83,36 @@ struct Mat4
   static constexpr Mat4 identity()
   {
     Mat4 result;
-    result.m[0] = 1.0f;
-    result.m[5] = 1.0f;
-    result.m[10] = 1.0f;
-    result.m[15] = 1.0f;
+    result.m[0] = 1.0F;
+    result.m[5] = 1.0F;
+    result.m[10] = 1.0F;
+    result.m[15] = 1.0F;
     return result;
   }
 
   constexpr Vec4 transform(Vec3 p) const
   {
-    return {m[0] * p.x + m[1] * p.y + m[2] * p.z + m[3],
-            m[4] * p.x + m[5] * p.y + m[6] * p.z + m[7],
-            m[8] * p.x + m[9] * p.y + m[10] * p.z + m[11],
-            m[12] * p.x + m[13] * p.y + m[14] * p.z + m[15]};
+    return {.x = (m[0] * p.x) + (m[1] * p.y) + (m[2] * p.z) + m[3],
+            .y = (m[4] * p.x) + (m[5] * p.y) + (m[6] * p.z) + m[7],
+            .z = (m[8] * p.x) + (m[9] * p.y) + (m[10] * p.z) + m[11],
+            .w = (m[12] * p.x) + (m[13] * p.y) + (m[14] * p.z) + m[15]};
   }
 
   friend constexpr Mat4 operator*(const Mat4& a, const Mat4& b)
   {
     Mat4 result;
     for (std::size_t row = 0; row < 4; ++row)
+    {
       for (std::size_t column = 0; column < 4; ++column)
       {
-        float sum = 0.0f;
+        float sum = 0.0F;
         for (std::size_t k = 0; k < 4; ++k)
-          sum += a.m[row * 4 + k] * b.m[k * 4 + column];
-        result.m[row * 4 + column] = sum;
+        {
+          sum += a.m[(row * 4) + k] * b.m[(k * 4) + column];
+        }
+        result.m[(row * 4) + column] = sum;
       }
+    }
     return result;
   }
 };
@@ -121,7 +127,7 @@ inline Mat4 lookAt(Vec3 eye, Vec3 target, Vec3 up)
   view.m = {side.x,     side.y,     side.z,     -dot(side, eye),
             cameraUp.x, cameraUp.y, cameraUp.z, -dot(cameraUp, eye),
             -forward.x, -forward.y, -forward.z, dot(forward, eye),
-            0.0f,       0.0f,       0.0f,       1.0f};
+            0.0F,       0.0F,       0.0F,       1.0F};
   return view;
 }
 
@@ -129,31 +135,31 @@ inline Mat4 lookAt(Vec3 eye, Vec3 target, Vec3 up)
 inline Mat4 perspective(float verticalFovRadians, float aspect, float nearPlane,
                         float farPlane)
 {
-  const float focal = 1.0f / std::tan(verticalFovRadians * 0.5f);
+  const float focal = 1.0F / std::tan(verticalFovRadians * 0.5F);
   Mat4 projection;
   projection.m[0] = focal / aspect;
   projection.m[5] = focal;
   projection.m[10] = (farPlane + nearPlane) / (nearPlane - farPlane);
-  projection.m[11] = 2.0f * farPlane * nearPlane / (nearPlane - farPlane);
-  projection.m[14] = -1.0f;
+  projection.m[11] = 2.0F * farPlane * nearPlane / (nearPlane - farPlane);
+  projection.m[14] = -1.0F;
   return projection;
 }
 
 /** Screen rectangle in pixels (top-left origin, y down). */
 struct ScreenRect
 {
-  float x = 0.0f;
-  float y = 0.0f;
-  float width = 1.0f;
-  float height = 1.0f;
+  float x = 0.0F;
+  float y = 0.0F;
+  float width = 1.0F;
+  float height = 1.0F;
 };
 
 /** Projected point: pixel position plus view-space depth in metres. */
 struct ScreenPoint
 {
-  float x = 0.0f;
-  float y = 0.0f;
-  float depth = 0.0f;
+  float x = 0.0F;
+  float y = 0.0F;
+  float depth = 0.0F;
 };
 
 /** Everything needed to project world points for one frame. */
@@ -161,14 +167,14 @@ struct Projection
 {
   Mat4 viewProjection = Mat4::identity();
   Vec3 eye;
-  Vec3 forward{0.0f, 1.0f, 0.0f};
+  Vec3 forward{.x = 0.0F, .y = 1.0F, .z = 0.0F};
   /** Camera right and up axes in world space (for un-projecting). */
-  Vec3 side{1.0f, 0.0f, 0.0f};
-  Vec3 up{0.0f, 0.0f, 1.0f};
+  Vec3 side{.x = 1.0F, .y = 0.0F, .z = 0.0F};
+  Vec3 up{.x = 0.0F, .y = 0.0F, .z = 1.0F};
   ScreenRect rect;
-  float nearPlane = 0.5f;
+  float nearPlane = 0.5F;
   /** Pixels per metre at one metre depth (for sizing billboards). */
-  float focalPixels = 1.0f;
+  float focalPixels = 1.0F;
 
   static Projection make(Vec3 eye, Vec3 target, float verticalFovRadians,
                          float nearPlane, float farPlane, ScreenRect rect)
@@ -176,16 +182,17 @@ struct Projection
     Projection projection;
     projection.eye = eye;
     projection.forward = normalize(target - eye);
-    projection.side = normalize(cross(projection.forward, {0.0f, 0.0f, 1.0f}));
+    projection.side =
+        normalize(cross(projection.forward, {.x = 0.0F, .y = 0.0F, .z = 1.0F}));
     projection.up = cross(projection.side, projection.forward);
     projection.rect = rect;
     projection.nearPlane = nearPlane;
-    const float aspect = rect.width / (rect.height > 0.0f ? rect.height : 1.0f);
+    const float aspect = rect.width / (rect.height > 0.0F ? rect.height : 1.0F);
     projection.viewProjection =
         perspective(verticalFovRadians, aspect, nearPlane, farPlane) *
-        lookAt(eye, target, {0.0f, 0.0f, 1.0f});
+        lookAt(eye, target, {.x = 0.0F, .y = 0.0F, .z = 1.0F});
     projection.focalPixels =
-        rect.height * 0.5f / std::tan(verticalFovRadians * 0.5f);
+        rect.height * 0.5F / std::tan(verticalFovRadians * 0.5F);
     return projection;
   }
 
@@ -194,16 +201,20 @@ struct Projection
   /** Converts a clip-space point with w >= nearPlane to pixels. */
   ScreenPoint clipToScreen(Vec4 clip) const
   {
-    const float inverseW = 1.0f / clip.w;
-    return {rect.x + (clip.x * inverseW * 0.5f + 0.5f) * rect.width,
-            rect.y + (0.5f - clip.y * inverseW * 0.5f) * rect.height, clip.w};
+    const float inverseW = 1.0F / clip.w;
+    return {.x = rect.x + ((clip.x * inverseW * 0.5F + 0.5F) * rect.width),
+            .y = rect.y + ((0.5F - clip.y * inverseW * 0.5F) * rect.height),
+            .depth = clip.w};
   }
 
   /** Projects a point; returns false when it lies behind the near plane. */
   bool project(Vec3 point, ScreenPoint& out) const
   {
     const Vec4 clip = toClip(point);
-    if (clip.w < nearPlane) return false;
+    if (clip.w < nearPlane)
+    {
+      return false;
+    }
     out = clipToScreen(clip);
     return true;
   }
@@ -213,8 +224,8 @@ struct Projection
   /** World-space direction (not normalised) of the ray through a pixel. */
   Vec3 rayThrough(float pixelX, float pixelY) const
   {
-    const float right = (pixelX - (rect.x + rect.width * 0.5f)) / focalPixels;
-    const float upward = ((rect.y + rect.height * 0.5f) - pixelY) / focalPixels;
+    const float right = (pixelX - (rect.x + rect.width * 0.5F)) / focalPixels;
+    const float upward = ((rect.y + rect.height * 0.5F) - pixelY) / focalPixels;
     return forward + side * right + up * upward;
   }
 
@@ -223,12 +234,18 @@ struct Projection
    * `planeHeight`; false when the ray points away from it (sky pixels).
    */
   bool groundPointAt(float pixelX, float pixelY, Vec3& out,
-                     float planeHeight = 0.0f) const
+                     float planeHeight = 0.0F) const
   {
     const Vec3 direction = rayThrough(pixelX, pixelY);
-    if (direction.z > -1e-4f) return false;
+    if (direction.z > -1e-4F)
+    {
+      return false;
+    }
     const float distance = (planeHeight - eye.z) / direction.z;
-    if (distance <= 0.0f) return false;
+    if (distance <= 0.0F)
+    {
+      return false;
+    }
     out = eye + direction * distance;
     return true;
   }
@@ -254,9 +271,11 @@ std::size_t clipConvexToNearPlane(std::span<const Vertex> input,
     const Vertex& next = input[(index + 1) % count];
     const float currentDistance = wOf(current) - nearPlane;
     const float nextDistance = wOf(next) - nearPlane;
-    if (currentDistance >= 0.0f && written < output.size())
+    if (currentDistance >= 0.0F && written < output.size())
+    {
       output[written++] = current;
-    if ((currentDistance >= 0.0f) != (nextDistance >= 0.0f) &&
+    }
+    if ((currentDistance >= 0.0F) != (nextDistance >= 0.0F) &&
         written < output.size())
     {
       output[written++] = interpolate(
@@ -269,8 +288,10 @@ std::size_t clipConvexToNearPlane(std::span<const Vertex> input,
 /** Linear blend of two clip-space points. */
 constexpr Vec4 lerp(Vec4 a, Vec4 b, float t)
 {
-  return {a.x + (b.x - a.x) * t, a.y + (b.y - a.y) * t, a.z + (b.z - a.z) * t,
-          a.w + (b.w - a.w) * t};
+  return {.x = a.x + ((b.x - a.x) * t),
+          .y = a.y + ((b.y - a.y) * t),
+          .z = a.z + ((b.z - a.z) * t),
+          .w = a.w + ((b.w - a.w) * t)};
 }
 
 /** Near-plane clip of plain clip-space points (see clipConvexToNearPlane). */
@@ -286,22 +307,25 @@ inline std::size_t clipPolygonToNearPlane(std::span<const Vec4> input,
 /** Wraps an angle to [-pi, pi]. */
 inline float wrapAngle(float angle)
 {
-  constexpr float TWO_PI = 2.0f * std::numbers::pi_v<float>;
+  constexpr float TWO_PI = 2.0F * std::numbers::pi_v<float>;
   angle = std::fmod(angle + std::numbers::pi_v<float>, TWO_PI);
-  if (angle < 0.0f) angle += TWO_PI;
+  if (angle < 0.0F)
+  {
+    angle += TWO_PI;
+  }
   return angle - std::numbers::pi_v<float>;
 }
 
 /** Interpolates two angles along the shortest arc. */
 inline float lerpAngle(float from, float to, float t)
 {
-  return from + wrapAngle(to - from) * t;
+  return from + (wrapAngle(to - from) * t);
 }
 
 /** Frame-rate independent exponential smoothing factor. */
 inline float dampingFactor(float ratePerSecond, float deltaSeconds)
 {
-  return 1.0f - std::exp(-ratePerSecond * deltaSeconds);
+  return 1.0F - std::exp(-ratePerSecond * deltaSeconds);
 }
 
 /**
@@ -319,12 +343,27 @@ class ShirtNumbers
     if (starter)
     {
       for (const int number : preferred(role))
-        if (number > 0 && claim(number)) return number;
+      {
+        if (number > 0 && claim(number))
+        {
+          return number;
+        }
+      }
       for (int number = 1; number <= 11; ++number)
-        if (claim(number)) return number;
+      {
+        if (claim(number))
+        {
+          return number;
+        }
+      }
     }
     for (int number = 12; number < MAX_NUMBER; ++number)
-      if (claim(number)) return number;
+    {
+      if (claim(number))
+      {
+        return number;
+      }
+    }
     return 0;
   }
 
@@ -335,7 +374,10 @@ class ShirtNumbers
   bool claim(int number)
   {
     const std::uint64_t bit = std::uint64_t{1} << number;
-    if ((used & bit) != 0U) return false;
+    if ((used & bit) != 0U)
+    {
+      return false;
+    }
     used |= bit;
     return true;
   }
@@ -375,12 +417,11 @@ class ShirtNumbers
 };
 
 /** Maps normalised engine coordinates to metric world space (z = 0). */
-inline Vec3 worldFromPitch(PitchPoint normalized, float heightMetres = 0.0f)
+inline Vec3 worldFromPitch(PitchPoint normalized, float heightMetres = 0.0F)
 {
   const MatchPitch& pitch = MatchPitch::matchSize();
-  return {normalized.x,
-          pitch.mirrorY(normalized.y),
-          heightMetres};
+  return {
+      .x = normalized.x, .y = pitch.mirrorY(normalized.y), .z = heightMetres};
 }
 
 /**
@@ -389,7 +430,6 @@ inline Vec3 worldFromPitch(PitchPoint normalized, float heightMetres = 0.0f)
  */
 inline float worldYawFromFacing(float facingAngle)
 {
-  return std::atan2(-std::sin(facingAngle),
-                    std::cos(facingAngle));
+  return std::atan2(-std::sin(facingAngle), std::cos(facingAngle));
 }
 }  // namespace RenderMath

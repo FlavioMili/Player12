@@ -51,8 +51,8 @@ class TrainingSessionScene : public GUIScene
   std::size_t current = 0;
   std::unique_ptr<DrillRun> run;
   bool paused = false;
-  float speed = 1.0f;
-  float accumulator = 0.0f;
+  float speed = 1.0F;
+  float accumulator = 0.0F;
   /** Run the rest of the drill as fast as it goes. */
   bool skipping = false;
   bool showResults = false;

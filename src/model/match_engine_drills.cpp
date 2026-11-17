@@ -32,7 +32,7 @@ std::optional<MatchPlayer*> MatchEngine::placeScenario(
   obstacles.clear();
   kit.clear();
   state = scenarioState;
-  transitionSecondsRemaining = 0.0f;
+  transitionSecondsRemaining = 0.0F;
   matchTimeMinutes = scenarioMatchTime;
   period = scenarioMatchTime > MatchTuning::Timing::HALF_TIME_MINUTE ? 2 : 1;
   keepers = {};
@@ -40,7 +40,7 @@ std::optional<MatchPlayer*> MatchEngine::placeScenario(
   homeScore = scenarioHomeScore;
   awayScore = scenarioAwayScore;
   slidersStale = true;
-  accumulator = 0.0f;
+  accumulator = 0.0F;
   lastPassDecision = PassDecision{};
   lastScenarioDecision.best.reset();
   lastScenarioDecision.runnerUp.reset();
@@ -61,36 +61,48 @@ std::optional<MatchPlayer*> MatchEngine::placeScenario(
           return matchPlayer.player &&
                  matchPlayer.player->getId() == placement.playerId;
         });
-    if (found == players.end()) continue;
+    if (found == players.end())
+    {
+      continue;
+    }
     MatchPlayer& matchPlayer = *found;
     matchPlayer.position = placement.position;
-    matchPlayer.velocity = {0.0f, 0.0f};
+    matchPlayer.velocity = {.x = 0.0F, .y = 0.0F};
     matchPlayer.basePosition = placement.position;
     matchPlayer.movementTarget = placement.position;
     matchPlayer.isTrapping = false;
-    matchPlayer.trapTimer = 0.0f;
-    matchPlayer.plantedSeconds = 0.0f;
-    matchPlayer.collisionPause = 0.0f;
-    matchPlayer.stumbleSeconds = 0.0f;
+    matchPlayer.trapTimer = 0.0F;
+    matchPlayer.plantedSeconds = 0.0F;
+    matchPlayer.collisionPause = 0.0F;
+    matchPlayer.stumbleSeconds = 0.0F;
     matchPlayer.fallen = false;
     matchPlayer.gettingUp = false;
-    matchPlayer.downSeconds = 0.0f;
-    matchPlayer.bigHitSeconds = 0.0f;
-    matchPlayer.rollSeconds = 0.0f;
+    matchPlayer.downSeconds = 0.0F;
+    matchPlayer.bigHitSeconds = 0.0F;
+    matchPlayer.rollSeconds = 0.0F;
     matchPlayer.isPressing = false;
     matchPlayer.isMakingRun = false;
-    if (resetCondition) matchPlayer.stamina = 1.0f;
-    matchPlayer.actionCooldown = 0.0f;
-    matchPlayer.tackleCooldown = 0.0f;
+    if (resetCondition)
+    {
+      matchPlayer.stamina = 1.0F;
+    }
+    matchPlayer.actionCooldown = 0.0F;
+    matchPlayer.tackleCooldown = 0.0F;
     matchPlayer.isMakingRun = placement.makingRun;
     matchPlayer.isInjured = false;
-    matchPlayer.diveTimer = 0.0f;
+    matchPlayer.diveTimer = 0.0F;
     matchPlayer.isDiving = false;
     carrierFound = carrierFound || placement.playerId == scenario.carrierId;
   }
   // A drill may start with the ball loose (no carrier).
-  if (scenario.carrierId == 0) return nullptr;
-  if (!carrierFound) return std::nullopt;
+  if (scenario.carrierId == 0)
+  {
+    return nullptr;
+  }
+  if (!carrierFound)
+  {
+    return std::nullopt;
+  }
 
   const auto carrier = std::ranges::find_if(
       players,
@@ -99,7 +111,10 @@ std::optional<MatchPlayer*> MatchEngine::placeScenario(
         return matchPlayer.player &&
                matchPlayer.player->getId() == scenario.carrierId;
       });
-  if (carrier == players.end()) return std::nullopt;
+  if (carrier == players.end())
+  {
+    return std::nullopt;
+  }
 
   assignScenarioOwner(*carrier);
   return &*carrier;
@@ -110,11 +125,17 @@ bool MatchEngine::applyScenario(const MatchScenario& scenario,
                                 float scenarioMatchTime, int scenarioHomeScore,
                                 int scenarioAwayScore)
 {
-  if (scenario.players.empty() || state == MatchState::FULL_TIME) return false;
+  if (scenario.players.empty() || state == MatchState::FULL_TIME)
+  {
+    return false;
+  }
   const std::optional<MatchPlayer*> placed =
       placeScenario(scenario, scenarioState, scenarioMatchTime,
                     scenarioHomeScore, scenarioAwayScore, true);
-  if (!placed || !*placed) return false;
+  if (!placed || (*placed == nullptr))
+  {
+    return false;
+  }
   MatchPlayer& carrier = **placed;
 
   // Make the interpolation baseline equal to the scenario so the snapshot is
@@ -122,48 +143,72 @@ bool MatchEngine::applyScenario(const MatchScenario& scenario,
   // carrier under external control (play mode) makes no AI decision: he
   // acts on his controller's input like in a live match.
   captureInterpolationFrame();
-  if (!isControlled(carrier)) decideAction(carrier);
+  if (!isControlled(carrier))
+  {
+    decideAction(carrier);
+  }
   return true;
 }
 
 bool MatchEngine::startDrill(const MatchScenario& scenario)
 {
-  if (scenario.players.empty() || state == MatchState::FULL_TIME) return false;
-  // The ball is live at once; nobody decides until the engine steps.
-  if (!placeScenario(scenario, MatchState::PLAYING, 0.0f, homeScore, awayScore,
-                     false))
+  if (scenario.players.empty() || state == MatchState::FULL_TIME)
+  {
     return false;
+  }
+  // The ball is live at once; nobody decides until the engine steps.
+  if (!placeScenario(scenario, MatchState::PLAYING, 0.0F, homeScore, awayScore,
+                     false))
+  {
+    return false;
+  }
   if (scenario.carrierInHands)
+  {
     if (MatchPlayer* carrier = drillPlayer(scenario.carrierId);
-        carrier && getPossessionAttachment() == carrier->player)
+        (carrier != nullptr) && getPossessionAttachment() == carrier->player)
+    {
       takeInHandsBinturong(*carrier, ball.position, ball.z);
+    }
+  }
   captureInterpolationFrame();
   return true;
 }
 
 bool MatchEngine::removeBeforeKickOff(PlayerID playerId)
 {
-  if (stepCounter != 0) return false;
+  if (stepCounter != 0)
+  {
+    return false;
+  }
   MatchPlayer* player = drillPlayer(playerId);
-  if (!player || !player->onPitch) return false;
+  if ((player == nullptr) || !player->onPitch)
+  {
+    return false;
+  }
   // Off the pitch, parked by the dugouts like a player sent off, but with
   // no keeper promoted and no shape changed: he was never in the drill.
   int parked = 0;
   for (const auto& other : players)
-    if (other.player && !other.onPitch) ++parked;
+  {
+    if ((other.player != nullptr) && !other.onPitch)
+    {
+      ++parked;
+    }
+  }
   player->onPitch = false;
   player->isGoalkeeper = false;
   player->intent = PlayerIntent::HOLD_SHAPE;
-  player->velocity = {0.0f, 0.0f};
-  player->position = PitchPoint{pitch.atX(MatchTuning::Pitch::CENTRE) +
-                          (player->isHomeTeam ? -1.0f : 1.0f) *
-                              (MatchTuning::Rules::PARKED_PLAYER_OFFSET_METRES +
-                               static_cast<float>(parked) *
-                                   MatchTuning::Rules::PARKED_PLAYER_SPACING_METRES),
-                              MatchTuning::Pitch::PLAYER_EDGE_SIDE_METRES};
+  player->velocity = {.x = 0.0F, .y = 0.0F};
+  player->position =
+      PitchPoint{pitch.atX(MatchTuning::Pitch::CENTRE) +
+                     ((player->isHomeTeam ? -1.0F : 1.0F) *
+                      (MatchTuning::Rules::PARKED_PLAYER_OFFSET_METRES +
+                       static_cast<float>(parked) *
+                           MatchTuning::Rules::PARKED_PLAYER_SPACING_METRES)),
+                 MatchTuning::Pitch::PLAYER_EDGE_SIDE_METRES};
   player->movementTarget = player->position;
   player->tacticalTarget = player->position;
-  player->targetVelocity = {0.0f, 0.0f};
+  player->targetVelocity = {.x = 0.0F, .y = 0.0F};
   player->arriveAtSpeed = false;
   player->routeWaypoints = 0;
   (void)releaseRemovedPlayer(player->player);
@@ -182,9 +227,9 @@ void MatchEngine::setDrillTarget(PlayerID playerId,
   command.player = playerId;
   command.target = target;
   command.urgent = urgent;
-  command.route.assign(route.begin(),
-                       route.begin() + std::min<std::ptrdiff_t>(
-                                           std::ssize(route), 2));
+  command.route.assign(
+      route.begin(),
+      route.begin() + std::min<std::ptrdiff_t>(std::ssize(route), 2));
   command.apexOffset = apexOffsetMetres;
   command.outwardRoom = outwardRoomMetres;
   command.facing = facing;
@@ -195,7 +240,12 @@ void MatchEngine::setDrillTarget(PlayerID playerId,
 std::optional<PitchPoint> MatchEngine::getDrillTarget(PlayerID playerId) const
 {
   for (const DrillTarget& held : drillTargets)
-    if (held.player == playerId) return held.target;
+  {
+    if (held.player == playerId)
+    {
+      return held.target;
+    }
+  }
   return std::nullopt;
 }
 
@@ -227,8 +277,7 @@ void MatchEngine::forcePass(PlayerID playerId, PlayerID receiverId,
 void MatchEngine::forcePassTo(PlayerID playerId, PitchPoint spot,
                               ForcedPassStyle style,
                               std::optional<BallSpin> spin,
-                              std::optional<float> arrivalSpeed,
-                              bool firstTime)
+                              std::optional<float> arrivalSpeed, bool firstTime)
 {
   MatchCommandRecord command;
   command.type = MatchCommandType::FORCE_PASS;
@@ -267,7 +316,8 @@ void MatchEngine::forceHeader(PlayerID playerId, ForcedHeaderAim aim,
 bool MatchEngine::passHeldFor(PlayerID playerId) const
 {
   return pendingStrike && pendingStrike->kind == PendingStrike::Kind::PASS &&
-         pendingStrike->striker && pendingStrike->striker->player &&
+         (pendingStrike->striker != nullptr) &&
+         (pendingStrike->striker->player != nullptr) &&
          pendingStrike->striker->player->getId() == playerId;
 }
 
@@ -296,7 +346,12 @@ void MatchEngine::feedBall(PitchPoint from, Vector2F velocity, float lift,
 MatchPlayer* MatchEngine::drillPlayer(PlayerID playerId)
 {
   for (MatchPlayer& player : players)
-    if (player.player && player.player->getId() == playerId) return &player;
+  {
+    if ((player.player != nullptr) && player.player->getId() == playerId)
+    {
+      return &player;
+    }
+  }
   return nullptr;
 }
 
@@ -306,7 +361,7 @@ void MatchEngine::setDerivedStat(PlayerID playerId, DerivedStat stat,
   if (MatchPlayer* player = drillPlayer(playerId))
   {
     const auto index = static_cast<std::size_t>(stat);
-    player->derived[index] = std::clamp(rating, 0.0f, 1.0f);
+    player->derived[index] = std::clamp(rating, 0.0F, 1.0F);
     player->derivedOverrides |= std::uint64_t{1} << index;
     // What is derived from it follows (a set future stat moves the
     // match-engine-only stats built on it).
@@ -317,7 +372,7 @@ void MatchEngine::setDerivedStat(PlayerID playerId, DerivedStat stat,
 void MatchEngine::holdDrillTarget(MatchPlayer& player, const DrillTarget& held)
 {
   player.tacticalTarget = held.target;
-  player.targetVelocity = {0.0f, 0.0f};
+  player.targetVelocity = {.x = 0.0F, .y = 0.0F};
   player.urgentMovement = held.urgent;
   player.arriveAtSpeed = held.atSpeed;
   // His route: the waypoints in order, then the target.
@@ -325,7 +380,7 @@ void MatchEngine::holdDrillTarget(MatchPlayer& player, const DrillTarget& held)
   player.routeApexOffset = held.apexOffset;
   player.routeOutwardRoom = held.outwardRoom;
   player.facingRequested = held.facing.has_value();
-  player.facingRequest = held.facing.value_or(0.0f);
+  player.facingRequest = held.facing.value_or(0.0F);
   if (!held.route.empty())
   {
     player.movementTarget = held.route[0];
@@ -336,25 +391,34 @@ void MatchEngine::holdDrillTarget(MatchPlayer& player, const DrillTarget& held)
 void MatchEngine::applyDrillTargets()
 {
   for (const DrillTarget& held : drillTargets)
+  {
     if (MatchPlayer* player = drillPlayer(held.player);
-        player && active(*player))
+        (player != nullptr) && active(*player))
     {
       holdDrillTarget(*player, held);
       if (held.urgent && drillRules.chaseEffort)
+      {
         player->intent = PlayerIntent::CLAIM_LOOSE_BALL;
+      }
       player->isPressing = false;
       player->isMakingRun = false;
       // His target is the drill's: not the brain's loose-ball chaser.
       player->chasingLooseBall = false;
       player->steersRound = false;
     }
+  }
 }
 
-std::optional<MatchEngine::CarriedPlayer> MatchEngine::carriedPlayer(PlayerID playerId) const
+std::optional<MatchEngine::CarriedPlayer> MatchEngine::carriedPlayer(
+    PlayerID playerId) const
 {
   for (const MatchPlayer& player : players)
   {
-    if (!player.player || player.player->getId() != playerId || !player.onPitch) continue;
+    if ((player.player == nullptr) || player.player->getId() != playerId ||
+        !player.onPitch)
+    {
+      continue;
+    }
     CarriedPlayer carried;
     carried.id = playerId;
     carried.position = player.position;
@@ -372,7 +436,10 @@ std::optional<MatchEngine::CarriedPlayer> MatchEngine::carriedPlayer(PlayerID pl
 bool MatchEngine::carryPlayerIn(const CarriedPlayer& carried)
 {
   MatchPlayer* player = drillPlayer(carried.id);
-  if (!player || !player->onPitch) return false;
+  if ((player == nullptr) || !player->onPitch)
+  {
+    return false;
+  }
   // Where he is and how he moves (kept inside this pitch), and his
   // condition; his targets start where he is, for his brain to replan.
   player->position = moveBody(player->position, carried.position);
@@ -393,7 +460,10 @@ bool MatchEngine::carryPlayerIn(const CarriedPlayer& carried)
 bool MatchEngine::takeOffForDrill(PlayerID playerId)
 {
   MatchPlayer* player = drillPlayer(playerId);
-  if (!player || !active(*player)) return false;
+  if ((player == nullptr) || !active(*player))
+  {
+    return false;
+  }
   removeFromPitch(*player, false);
   return true;
 }

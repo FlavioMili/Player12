@@ -9,15 +9,18 @@
 #include "tools/match_sandbox_recording.h"
 
 #include <SDL3/SDL.h>
-#include <nlohmann/json.hpp>
 
 #include <algorithm>
+#include <charconv>
 #include <cmath>
 #include <ctime>
 #include <exception>
 #include <format>
 #include <fstream>
 #include <limits>
+#include <nlohmann/json.hpp>
+#include <span>
+#include <stdexcept>
 #include <variant>
 
 #include "controller/game_controller.h"
@@ -30,6 +33,10 @@ using nlohmann::json;
 namespace
 {
 constexpr float NOT_AVAILABLE = -std::numeric_limits<float>::infinity();
+constexpr int HEX_BITS_PER_DIGIT = 4;
+constexpr int HEX_RADIX = 1 << HEX_BITS_PER_DIGIT;
+constexpr std::size_t CHECKSUM_HEX_DIGITS =
+    std::numeric_limits<std::uint64_t>::digits / HEX_BITS_PER_DIGIT;
 
 /** A score for JSON: null when the option was not available. */
 json number(float value)
@@ -51,9 +58,10 @@ std::string localTime(const char* format)
 #else
   localtime_r(&now, &local);
 #endif
-  char text[64] = {};
-  std::strftime(text, sizeof(text), format, &local);
-  return text;
+  constexpr std::size_t TIMESTAMP_CAPACITY = 64;
+  std::array<char, TIMESTAMP_CAPACITY> text{};
+  const auto length = std::strftime(text.data(), text.size(), format, &local);
+  return {text.data(), length};
 }
 
 // --- Records ---------------------------------------------------------------
@@ -62,51 +70,56 @@ json toJson(const MatchCommandRecord& command)
 {
   json formation = json::array();
   for (const Vector2F& slot : command.formation)
+  {
     formation.push_back({slot.x, slot.y});
+  }
   json route = json::array();
   for (const PitchPoint& waypoint : command.route)
+  {
     route.push_back({waypoint.x, waypoint.y});
-  return {{"step", command.step},
-          {"type", static_cast<int>(command.type)},
-          {"home", command.homeTeam},
-          {"strategy", SandboxJson::toJson(command.strategy)},
-          {"shout", static_cast<int>(command.shout)},
-          {"formation", formation},
-          {"player", command.player},
-          {"incoming", command.incoming},
-          {"slot", command.slot ? json(*command.slot) : json(nullptr)},
-          {"talk_half", command.talkHalf},
-          {"talk_modifier", command.talkModifier},
-          {"target", command.target ? json{command.target->x, command.target->y}
-                                    : json(nullptr)},
-          {"urgent", command.urgent},
-          {"route", route},
-          {"apex_offset", command.apexOffset},
-          {"outward_room", command.outwardRoom},
-          {"facing", command.facing ? json(*command.facing) : json(nullptr)},
-          {"at_speed", command.atSpeed},
-          {"feed_velocity", json{command.feedVelocity.x, command.feedVelocity.y}},
-          {"feed_lift", command.feedLift},
-          {"pass_style", static_cast<int>(command.passStyle)},
-          {"pass_spin", command.passSpin
-                            ? json{command.passSpin->side, command.passSpin->top}
-                            : json(nullptr)},
-          {"pass_arrival",
-           command.passArrival ? json(*command.passArrival) : json(nullptr)},
-          {"pass_first_time", command.passFirstTime},
-          {"shot_aim", command.shotAim
-                           ? json{command.shotAim->x, command.shotAim->y}
-                           : json(nullptr)},
-          {"shot_power",
-           command.shotPower ? json(*command.shotPower) : json(nullptr)},
-          {"shot_first_time", command.shotFirstTime},
-          {"shot_technique", command.shotTechnique
-                                 ? json(static_cast<int>(*command.shotTechnique))
-                                 : json(nullptr)},
-          {"header_aim", static_cast<int>(command.headerAim)},
-          {"header_known_early", command.headerKnownEarly},
-          {"keep_urgency", command.keepUrgency},
-          {"tackle_intent", static_cast<int>(command.tackleIntent)}};
+  }
+  return {
+      {"step", command.step},
+      {"type", static_cast<int>(command.type)},
+      {"home", command.homeTeam},
+      {"strategy", SandboxJson::toJson(command.strategy)},
+      {"shout", static_cast<int>(command.shout)},
+      {"formation", formation},
+      {"player", command.player},
+      {"incoming", command.incoming},
+      {"slot", command.slot ? json(*command.slot) : json(nullptr)},
+      {"talk_half", command.talkHalf},
+      {"talk_modifier", command.talkModifier},
+      {"target", command.target ? json{command.target->x, command.target->y}
+                                : json(nullptr)},
+      {"urgent", command.urgent},
+      {"route", route},
+      {"apex_offset", command.apexOffset},
+      {"outward_room", command.outwardRoom},
+      {"facing", command.facing ? json(*command.facing) : json(nullptr)},
+      {"at_speed", command.atSpeed},
+      {"feed_velocity", json{command.feedVelocity.x, command.feedVelocity.y}},
+      {"feed_lift", command.feedLift},
+      {"pass_style", static_cast<int>(command.passStyle)},
+      {"pass_spin", command.passSpin
+                        ? json{command.passSpin->side, command.passSpin->top}
+                        : json(nullptr)},
+      {"pass_arrival",
+       command.passArrival ? json(*command.passArrival) : json(nullptr)},
+      {"pass_first_time", command.passFirstTime},
+      {"shot_aim", command.shotAim
+                       ? json{command.shotAim->x, command.shotAim->y}
+                       : json(nullptr)},
+      {"shot_power",
+       command.shotPower ? json(*command.shotPower) : json(nullptr)},
+      {"shot_first_time", command.shotFirstTime},
+      {"shot_technique", command.shotTechnique
+                             ? json(static_cast<int>(*command.shotTechnique))
+                             : json(nullptr)},
+      {"header_aim", static_cast<int>(command.headerAim)},
+      {"header_known_early", command.headerKnownEarly},
+      {"keep_urgency", command.keepUrgency},
+      {"tackle_intent", static_cast<int>(command.tackleIntent)}};
 }
 
 MatchCommandRecord commandFromJson(const json& value)
@@ -118,56 +131,89 @@ MatchCommandRecord commandFromJson(const json& value)
   command.strategy = SandboxJson::strategyFromJson(value.at("strategy"));
   command.shout = static_cast<MatchShout>(value.at("shout").get<int>());
   for (const auto& slot : value.at("formation"))
-    command.formation.push_back({slot.at(0).get<float>(), slot.at(1).get<float>()});
+  {
+    command.formation.push_back(
+        {.x = slot.at(0).get<float>(), .y = slot.at(1).get<float>()});
+  }
   command.player = value.at("player").get<PlayerID>();
   command.incoming = value.at("incoming").get<PlayerID>();
   if (!value.at("slot").is_null())
+  {
     command.slot = value.at("slot").get<std::size_t>();
+  }
   command.talkHalf = value.at("talk_half").get<int>();
   command.talkModifier = value.at("talk_modifier").get<float>();
   // Drill commands (older recordings have none).
   if (const auto target = value.find("target");
       target != value.end() && !target->is_null())
-    command.target = PitchPoint{target->at(0).get<float>(), target->at(1).get<float>()};
+  {
+    command.target =
+        PitchPoint{target->at(0).get<float>(), target->at(1).get<float>()};
+  }
   command.urgent = value.value("urgent", false);
   if (const auto route = value.find("route"); route != value.end())
+  {
     for (const auto& waypoint : *route)
-      command.route.push_back(
-          PitchPoint{waypoint.at(0).get<float>(), waypoint.at(1).get<float>()});
-  command.apexOffset = value.value("apex_offset", 0.0f);
-  command.outwardRoom = value.value("outward_room", 0.0f);
+    {
+      command.route.emplace_back(waypoint.at(0).get<float>(),
+                                 waypoint.at(1).get<float>());
+    }
+  }
+  command.apexOffset = value.value("apex_offset", 0.0F);
+  command.outwardRoom = value.value("outward_room", 0.0F);
   if (const auto facing = value.find("facing");
       facing != value.end() && !facing->is_null())
+  {
     command.facing = facing->get<float>();
+  }
   command.atSpeed = value.value("at_speed", false);
   if (const auto feed = value.find("feed_velocity"); feed != value.end())
-    command.feedVelocity = {feed->at(0).get<float>(), feed->at(1).get<float>()};
-  command.feedLift = value.value("feed_lift", 0.0f);
+  {
+    command.feedVelocity = {.x = feed->at(0).get<float>(),
+                            .y = feed->at(1).get<float>()};
+  }
+  command.feedLift = value.value("feed_lift", 0.0F);
   command.passStyle =
       static_cast<ForcedPassStyle>(value.value("pass_style", 0));
   if (const auto spin = value.find("pass_spin");
       spin != value.end() && spin->is_array())
-    command.passSpin = BallSpin{spin->at(0).get<float>(), spin->at(1).get<float>()};
-  else if (const float curve = value.value("pass_curve", 0.0f); curve != 0.0f)
+  {
+    command.passSpin = BallSpin{.side = spin->at(0).get<float>(),
+                                .top = spin->at(1).get<float>()};
+  }
+  else if (const float curve = value.value("pass_curve", 0.0F); curve != 0.0F)
+  {
     // Older recordings: the curve as a heading turn, now sidespin.
-    command.passSpin = BallSpin{curve / MatchTuning::Ball::TURN_PER_SIDESPIN, 0.0f};
+    command.passSpin = BallSpin{
+        .side = curve / MatchTuning::Ball::TURN_PER_SIDESPIN, .top = 0.0F};
+  }
   if (const auto arrival = value.find("pass_arrival");
       arrival != value.end() && arrival->is_number())
+  {
     command.passArrival = arrival->get<float>();
+  }
   command.passFirstTime = value.value("pass_first_time", false);
-  if (const auto aim = value.find("shot_aim"); aim != value.end() && aim->is_array())
-    command.shotAim = Vector2F{aim->at(0).get<float>(), aim->at(1).get<float>()};
+  if (const auto aim = value.find("shot_aim");
+      aim != value.end() && aim->is_array())
+  {
+    command.shotAim =
+        Vector2F{.x = aim->at(0).get<float>(), .y = aim->at(1).get<float>()};
+  }
   if (const auto power = value.find("shot_power");
       power != value.end() && power->is_number())
+  {
     command.shotPower = power->get<float>();
+  }
   command.shotFirstTime = value.value("shot_first_time", false);
   if (const auto how = value.find("shot_technique");
       how != value.end() && how->is_number())
+  {
     command.shotTechnique = static_cast<ShotTechnique>(how->get<int>());
+  }
   command.headerAim =
       static_cast<ForcedHeaderAim>(value.value("header_aim", 0));
   command.headerKnownEarly = value.value("header_known_early", true);
-  command.keepUrgency = value.value("keep_urgency", 1.0f);
+  command.keepUrgency = value.value("keep_urgency", 1.0F);
   command.tackleIntent =
       static_cast<TackleIntent>(value.value("tackle_intent", 0));
   return command;
@@ -176,36 +222,44 @@ MatchCommandRecord commandFromJson(const json& value)
 json toJson(const MatchInputRecord& record)
 {
   const MatchPlayerInput& input = record.input;
-  return {record.step,
-          record.player,
-          input.moveX,
-          input.moveY,
-          input.sprint,
-          static_cast<int>(input.action),
-          input.aimX,
-          input.aimY,
-          input.power,
-          input.jockey,
-          input.passAssist,
-          record.playHalfMinutes};
+  return {record.step,  record.player,    input.moveX,
+          input.moveY,  input.sprint,     static_cast<int>(input.action),
+          input.aimX,   input.aimY,       input.power,
+          input.jockey, input.passAssist, record.playHalfMinutes};
 }
 
 MatchInputRecord inputFromJson(const json& value)
 {
+  // Field order in the packed recording format (version 4).
+  enum Field : std::uint8_t
+  {
+    STEP,
+    PLAYER,
+    MOVE_X,
+    MOVE_Y,
+    SPRINT,
+    ACTION,
+    AIM_X,
+    AIM_Y,
+    POWER,
+    JOCKEY,
+    PASS_ASSIST,
+    PLAY_HALF_MINUTES
+  };
   MatchInputRecord record;
-  record.step = value.at(0).get<std::uint64_t>();
-  record.player = value.at(1).get<PlayerID>();
+  record.step = value.at(STEP).get<std::uint64_t>();
+  record.player = value.at(PLAYER).get<PlayerID>();
   MatchPlayerInput& input = record.input;
-  input.moveX = value.at(2).get<float>();
-  input.moveY = value.at(3).get<float>();
-  input.sprint = value.at(4).get<bool>();
-  input.action = static_cast<MatchInputAction>(value.at(5).get<int>());
-  input.aimX = value.at(6).get<float>();
-  input.aimY = value.at(7).get<float>();
-  input.power = value.at(8).get<float>();
-  input.jockey = value.at(9).get<bool>();
-  input.passAssist = value.at(10).get<std::uint8_t>();
-  record.playHalfMinutes = value.at(11).get<int>();
+  input.moveX = value.at(MOVE_X).get<float>();
+  input.moveY = value.at(MOVE_Y).get<float>();
+  input.sprint = value.at(SPRINT).get<bool>();
+  input.action = static_cast<MatchInputAction>(value.at(ACTION).get<int>());
+  input.aimX = value.at(AIM_X).get<float>();
+  input.aimY = value.at(AIM_Y).get<float>();
+  input.power = value.at(POWER).get<float>();
+  input.jockey = value.at(JOCKEY).get<bool>();
+  input.passAssist = value.at(PASS_ASSIST).get<std::uint8_t>();
+  record.playHalfMinutes = value.at(PLAY_HALF_MINUTES).get<int>();
   return record;
 }
 
@@ -226,18 +280,32 @@ json toJson(const MatchRecording::Decision& decision)
 
 MatchRecording::Decision decisionFromJson(const json& value)
 {
+  enum Field : std::uint8_t
+  {
+    TICK,
+    PLAYER,
+    HOME_TEAM,
+    CHOSEN,
+    CHOSEN_WITHOUT_NOISE,
+    PASS,
+    SHOT,
+    CARRY,
+    SHIELD,
+    BEST_RECEIVER
+  };
   MatchRecording::Decision decision;
-  decision.tick = value.at(0).get<std::uint64_t>();
+  decision.tick = value.at(TICK).get<std::uint64_t>();
   MatchDecisionRecord& record = decision.record;
-  record.player = value.at(1).get<PlayerID>();
-  record.homeTeam = value.at(2).get<bool>();
-  record.chosen = static_cast<ScenarioAction>(value.at(3).get<int>());
-  record.chosenWithoutNoise = static_cast<ScenarioAction>(value.at(4).get<int>());
-  record.pass = number(value.at(5));
-  record.shot = number(value.at(6));
-  record.carry = number(value.at(7));
-  record.shield = number(value.at(8));
-  record.bestReceiver = value.at(9).get<PlayerID>();
+  record.player = value.at(PLAYER).get<PlayerID>();
+  record.homeTeam = value.at(HOME_TEAM).get<bool>();
+  record.chosen = static_cast<ScenarioAction>(value.at(CHOSEN).get<int>());
+  record.chosenWithoutNoise =
+      static_cast<ScenarioAction>(value.at(CHOSEN_WITHOUT_NOISE).get<int>());
+  record.pass = number(value.at(PASS));
+  record.shot = number(value.at(SHOT));
+  record.carry = number(value.at(CARRY));
+  record.shield = number(value.at(SHIELD));
+  record.bestReceiver = value.at(BEST_RECEIVER).get<PlayerID>();
   return decision;
 }
 
@@ -247,7 +315,9 @@ json toJson(const ScoreBreakdown& score)
 {
   json terms = json::array();
   for (const ScoreTerm& term : score.terms)
+  {
     terms.push_back({term.name, static_cast<int>(term.source), term.value});
+  }
   return {number(score.total), terms};
 }
 
@@ -260,9 +330,10 @@ ScoreBreakdown breakdownFromJson(const json& value,
   {
     // ScoreTerm keeps a pointer: the recording owns the text.
     const auto& name = *names.insert(term.at(0).get<std::string>()).first;
-    score.terms.push_back({name.c_str(),
-                           static_cast<TermSource>(term.at(1).get<int>()),
-                           term.at(2).get<float>()});
+    score.terms.push_back(
+        {.name = name.c_str(),
+         .source = static_cast<TermSource>(term.at(1).get<int>()),
+         .value = term.at(2).get<float>()});
   }
   return score;
 }
@@ -271,14 +342,19 @@ json toJson(const DetailRecorder::At<MatchDecisionDetail>& at)
 {
   const MatchDecisionDetail& detail = at.detail;
   json options = json::array();
-  for (const ScoreBreakdown& option : detail.options) options.push_back(toJson(option));
+  for (const ScoreBreakdown& option : detail.options)
+  {
+    options.push_back(toJson(option));
+  }
   json candidates = json::array();
   for (const PassCandidateDetail& candidate : detail.candidates)
-    candidates.push_back({candidate.receiver,
-                          static_cast<int>(candidate.excluded),
-                          static_cast<int>(candidate.intent),
-                          candidate.distanceMetres, candidate.lofted,
-                          toJson(candidate.utility), toJson(candidate.completion)});
+  {
+    candidates.push_back(
+        {candidate.receiver, static_cast<int>(candidate.excluded),
+         static_cast<int>(candidate.intent), candidate.distanceMetres,
+         candidate.lofted, toJson(candidate.utility),
+         toJson(candidate.completion)});
+  }
   return {{"tick", at.tick},
           {"minute", at.minute},
           {"player", detail.player},
@@ -301,19 +377,33 @@ DetailRecorder::At<MatchDecisionDetail> detailFromJson(
   detail.homeTeam = value.at("home").get<bool>();
   detail.chosen = static_cast<ScenarioAction>(value.at("chosen").get<int>());
   for (std::size_t index = 0; index < detail.options.size(); ++index)
-    detail.options[index] = breakdownFromJson(value.at("options").at(index), names);
-  detail.noise = value.at("noise").get<std::array<float, 4>>();
+  {
+    detail.options.at(index) =
+        breakdownFromJson(value.at("options").at(index), names);
+  }
+  detail.noise = value.at("noise").get<decltype(detail.noise)>();
   detail.noiseScale = breakdownFromJson(value.at("noise_scale"), names);
   for (const auto& item : value.at("candidates"))
   {
+    enum Field : std::uint8_t
+    {
+      RECEIVER,
+      EXCLUDED,
+      INTENT,
+      DISTANCE_METRES,
+      LOFTED,
+      UTILITY,
+      COMPLETION
+    };
     PassCandidateDetail candidate;
-    candidate.receiver = item.at(0).get<PlayerID>();
-    candidate.excluded = static_cast<PassExclusion>(item.at(1).get<int>());
-    candidate.intent = static_cast<PassIntent>(item.at(2).get<int>());
-    candidate.distanceMetres = item.at(3).get<float>();
-    candidate.lofted = item.at(4).get<bool>();
-    candidate.utility = breakdownFromJson(item.at(5), names);
-    candidate.completion = breakdownFromJson(item.at(6), names);
+    candidate.receiver = item.at(RECEIVER).get<PlayerID>();
+    candidate.excluded =
+        static_cast<PassExclusion>(item.at(EXCLUDED).get<int>());
+    candidate.intent = static_cast<PassIntent>(item.at(INTENT).get<int>());
+    candidate.distanceMetres = item.at(DISTANCE_METRES).get<float>();
+    candidate.lofted = item.at(LOFTED).get<bool>();
+    candidate.utility = breakdownFromJson(item.at(UTILITY), names);
+    candidate.completion = breakdownFromJson(item.at(COMPLETION), names);
     detail.candidates.push_back(std::move(candidate));
   }
   return at;
@@ -322,17 +412,35 @@ DetailRecorder::At<MatchDecisionDetail> detailFromJson(
 std::string checksumText(const std::vector<std::uint64_t>& checksums)
 {
   std::string text;
-  text.reserve(checksums.size() * 16);
-  for (const std::uint64_t value : checksums) text += std::format("{:016x}", value);
+  text.reserve(checksums.size() * CHECKSUM_HEX_DIGITS);
+  for (const std::uint64_t value : checksums)
+  {
+    text += std::format("{:0{}x}", value, CHECKSUM_HEX_DIGITS);
+  }
   return text;
 }
 
 std::vector<std::uint64_t> checksumsFromText(const std::string& text)
 {
+  if (text.size() % CHECKSUM_HEX_DIGITS != 0)
+  {
+    throw std::invalid_argument("incomplete recording checksum");
+  }
   std::vector<std::uint64_t> checksums;
-  checksums.reserve(text.size() / 16);
-  for (std::size_t at = 0; at + 16 <= text.size(); at += 16)
-    checksums.push_back(std::stoull(text.substr(at, 16), nullptr, 16));
+  checksums.reserve(text.size() / CHECKSUM_HEX_DIGITS);
+  const std::span<const char> input(text);
+  for (std::size_t at = 0; at < input.size(); at += CHECKSUM_HEX_DIGITS)
+  {
+    const auto word = input.subspan(at, CHECKSUM_HEX_DIGITS);
+    const auto* end = word.subspan(word.size()).data();
+    std::uint64_t value = 0;
+    const auto parsed = std::from_chars(word.data(), end, value, HEX_RADIX);
+    if (parsed.ec != std::errc{} || parsed.ptr != end)
+    {
+      throw std::invalid_argument("invalid recording checksum");
+    }
+    checksums.push_back(value);
+  }
   return checksums;
 }
 
@@ -354,8 +462,12 @@ std::vector<MatchRecording::Decision> decisionsOf(const SandboxRecorder& match)
   std::vector<MatchRecording::Decision> decisions;
   const auto guard = match.lock();
   for (const auto& entry : match.entries())
+  {
     if (const auto* decision = std::get_if<MatchDecisionRecord>(&entry.payload))
-      decisions.push_back({entry.tick, *decision});
+    {
+      decisions.push_back({.tick = entry.tick, .record = *decision});
+    }
+  }
   return decisions;
 }
 }  // namespace
@@ -364,7 +476,9 @@ std::filesystem::path Recordings::folder()
 {
   std::filesystem::path base = std::filesystem::current_path();
   if (const char* documents = SDL_GetUserFolder(SDL_FOLDER_DOCUMENTS))
+  {
     base = std::filesystem::path(documents);
+  }
   return base / "Player12 match recordings";
 }
 
@@ -383,8 +497,12 @@ MatchRecording Recordings::capture(const MatchSetup& setup,
     recording.lastTick = match.lastTick();
     recording.checksums.resize(recording.lastTick + 1, 0);
     for (std::uint64_t tick = 0; tick <= recording.lastTick; ++tick)
+    {
       if (const auto checksum = match.checksum(tick))
+      {
         recording.checksums[tick] = *checksum;
+      }
+    }
     // The final score is the last event's.
     if (!match.events().empty())
     {
@@ -411,14 +529,18 @@ std::string Recordings::fileName(const MatchRecording& recording)
 {
   std::string date = recording.created;
   std::ranges::replace(date, ':', '-');
-  std::string name = std::format("{} {} v {} (seed {}).json", date,
-                                 recording.setup.sides[0].name,
-                                 recording.setup.sides[1].name,
-                                 recording.setup.matchSeed);
+  std::string name = std::format(
+      "{} {} v {} (seed {}).json", date, recording.setup.sides[0].name,
+      recording.setup.sides[1].name, recording.setup.matchSeed);
   // Characters Windows does not allow in file names.
   for (char& character : name)
-    if (std::string_view("<>:\"/\\|?*").find(character) != std::string_view::npos)
+  {
+    if (std::string_view("<>:\"/\\|?*").find(character) !=
+        std::string_view::npos)
+    {
       character = '_';
+    }
+  }
   return name;
 }
 
@@ -428,26 +550,38 @@ bool Recordings::save(const MatchRecording& recording,
   try
   {
     json commands = json::array();
-    for (const auto& command : recording.commands) commands.push_back(toJson(command));
+    for (const auto& command : recording.commands)
+    {
+      commands.push_back(toJson(command));
+    }
     json inputs = json::array();
-    for (const auto& input : recording.inputs) inputs.push_back(toJson(input));
+    for (const auto& input : recording.inputs)
+    {
+      inputs.push_back(toJson(input));
+    }
     json decisions = json::array();
     for (const auto& decision : recording.decisions)
+    {
       decisions.push_back(toJson(decision));
+    }
     json details = json::array();
-    for (const auto& detail : recording.details) details.push_back(toJson(detail));
-    const json document = {{"format", "player12-match-recording"},
-                           {"version", MatchRecording::VERSION},
-                           {"created", recording.created},
-                           {"build", recording.build},
-                           {"setup", SandboxJson::toJson(recording.setup)},
-                           {"commands", commands},
-                           {"inputs", inputs},
-                           {"last_tick", recording.lastTick},
-                           {"score", {recording.homeScore, recording.awayScore}},
-                           {"checksums", checksumText(recording.checksums)},
-                           {"decisions", decisions},
-                           {"details", details}};
+    for (const auto& detail : recording.details)
+    {
+      details.push_back(toJson(detail));
+    }
+    const json document = {
+        {"format", "player12-match-recording"},
+        {"version", MatchRecording::VERSION},
+        {"created", recording.created},
+        {"build", recording.build},
+        {"setup", SandboxJson::toJson(recording.setup)},
+        {"commands", commands},
+        {"inputs", inputs},
+        {"last_tick", recording.lastTick},
+        {"score", {recording.homeScore, recording.awayScore}},
+        {"checksums", checksumText(recording.checksums)},
+        {"decisions", decisions},
+        {"details", details}};
     std::filesystem::create_directories(path.parent_path());
     std::ofstream file(path, std::ios::binary);
     if (!file)
@@ -468,6 +602,7 @@ bool Recordings::save(const MatchRecording& recording,
 std::optional<MatchRecording> Recordings::load(
     const std::filesystem::path& path, std::string& error)
 {
+  error.clear();
   try
   {
     std::ifstream file(path, std::ios::binary);
@@ -486,29 +621,41 @@ std::optional<MatchRecording> Recordings::load(
     if (version != MatchRecording::VERSION ||
         !document.at("setup").contains("possession"))
     {
-      error = version < MatchRecording::VERSION
-                  ? "recording from an older engine (squashed facings or pitch fractions); record it again"
-                  : "unsupported recording version or missing possession selection";
+      error =
+          version < MatchRecording::VERSION
+              ? "recording from an older engine (squashed facings or pitch "
+                "fractions); record it again"
+              : "unsupported recording version or missing possession selection";
       return std::nullopt;
     }
     MatchRecording recording;
     recording.created = document.value("created", "");
     recording.build = document.value("build", "");
     if (!SandboxJson::fromJson(document.at("setup"), recording.setup, error))
+    {
       return std::nullopt;
+    }
     for (const auto& command : document.at("commands"))
+    {
       recording.commands.push_back(commandFromJson(command));
+    }
     for (const auto& input : document.at("inputs"))
+    {
       recording.inputs.push_back(inputFromJson(input));
+    }
     recording.lastTick = document.at("last_tick").get<std::uint64_t>();
     recording.homeScore = document.at("score").at(0).get<int>();
     recording.awayScore = document.at("score").at(1).get<int>();
     recording.checksums =
         checksumsFromText(document.at("checksums").get<std::string>());
     for (const auto& decision : document.at("decisions"))
+    {
       recording.decisions.push_back(decisionFromJson(decision));
+    }
     for (const auto& detail : document.at("details"))
+    {
       recording.details.push_back(detailFromJson(detail, *recording.names));
+    }
     return recording;
   }
   catch (const std::exception& problem)
@@ -536,12 +683,27 @@ Recordings::Replay Recordings::replay(
     return result;
   }
   MatchSetup setup = recording.setup;
-  if (brains) setup.brains = *brains;
-  if (bodies) setup.bodies = *bodies;
-  if (handshake) setup.handshake = *handshake;
-  if (possession) setup.possession = *possession;
+  if (brains)
+  {
+    setup.brains = *brains;
+  }
+  if (bodies)
+  {
+    setup.bodies = *bodies;
+  }
+  if (handshake)
+  {
+    setup.handshake = *handshake;
+  }
+  if (possession)
+  {
+    setup.possession = *possession;
+  }
   auto engine = setup.build(controller, result.error);
-  if (!engine) return result;
+  if (!engine)
+  {
+    return result;
+  }
   engine->loadCommandReplay(recording.commands);
   engine->loadInputReplay(recording.inputs);
   result.match = std::make_unique<SandboxRecorder>();
@@ -561,27 +723,39 @@ Recordings::Replay Recordings::replay(
       const std::uint64_t expected =
           tick < recording.checksums.size() ? recording.checksums[tick] : 0;
       const auto actual = result.match->checksum(tick);
-      if (expected != 0 && actual && *actual != expected) result.divergedAt = tick;
+      if (expected != 0 && actual && *actual != expected)
+      {
+        result.divergedAt = tick;
+      }
     }
     if (!result.divergedAt && replayed != recording.lastTick)
+    {
       result.divergedAt = common + 1;
+    }
   }
 
   // The first decision not made identically.
-  const std::vector<MatchRecording::Decision> replayed = decisionsOf(*result.match);
-  const std::size_t common = std::min(replayed.size(), recording.decisions.size());
+  const std::vector<MatchRecording::Decision> replayed =
+      decisionsOf(*result.match);
+  const std::size_t common =
+      std::min(replayed.size(), recording.decisions.size());
   for (std::size_t index = 0; index < common; ++index)
+  {
     if (!sameDecision(replayed[index], recording.decisions[index]))
     {
       result.firstDifferentDecision = index;
       result.replayedDecision = replayed[index];
       break;
     }
+  }
   if (!result.firstDifferentDecision &&
       replayed.size() != recording.decisions.size())
   {
     result.firstDifferentDecision = common;
-    if (common < replayed.size()) result.replayedDecision = replayed[common];
+    if (common < replayed.size())
+    {
+      result.replayedDecision = replayed[common];
+    }
   }
   return result;
 }

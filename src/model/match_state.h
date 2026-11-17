@@ -108,6 +108,7 @@ enum class TouchlineRole : std::uint8_t
 /** Whether a touchline role is one of the match officials. */
 constexpr bool isOfficial(TouchlineRole role)
 {
-  return role == TouchlineRole::REFEREE || role == TouchlineRole::ASSISTANT_REFEREE ||
+  return role == TouchlineRole::REFEREE ||
+         role == TouchlineRole::ASSISTANT_REFEREE ||
          role == TouchlineRole::FOURTH_OFFICIAL;
 }

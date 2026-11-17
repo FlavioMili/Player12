@@ -66,9 +66,20 @@ constexpr std::string_view handshakeKey(HandshakeId handshake)
  * versions were renamed: "original" and "new-v1"). */
 constexpr std::optional<HandshakeId> handshakeFromKey(std::string_view key)
 {
-  if (key == "original") return HandshakeId::AARDVARK;
-  if (key == "new-v1") return HandshakeId::BINTURONG;
+  if (key == "original")
+  {
+    return HandshakeId::AARDVARK;
+  }
+  if (key == "new-v1")
+  {
+    return HandshakeId::BINTURONG;
+  }
   for (const HandshakeId handshake : ALL_HANDSHAKES)
-    if (handshakeKey(handshake) == key) return handshake;
+  {
+    if (handshakeKey(handshake) == key)
+    {
+      return handshake;
+    }
+  }
   return std::nullopt;
 }

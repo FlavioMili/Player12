@@ -70,7 +70,7 @@ class SandboxRecorder : public MatchRecorder
     PlayerID player = 0;
     PlayerID previous = 0;
     /** Press arrival seconds or run priority; 0 for the other jobs. */
-    float score = 0.0f;
+    float score = 0.0F;
   };
   struct IntentChange
   {
@@ -104,16 +104,15 @@ class SandboxRecorder : public MatchRecorder
     std::size_t index = 0;
   };
 
-  using Payload =
-      std::variant<PhaseChange, JobChange, IntentChange, MatchDecisionRecord,
-                   MatchActionRecord, PossessionChange, KeeperChange,
-                   EventEntry>;
+  using Payload = std::variant<PhaseChange, JobChange, IntentChange,
+                               MatchDecisionRecord, MatchActionRecord,
+                               PossessionChange, KeeperChange, EventEntry>;
 
   struct Entry
   {
     std::uint64_t tick = 0;
     /** Match clock in minutes when it was recorded. */
-    float minute = 0.0f;
+    float minute = 0.0F;
     Payload payload;
   };
 
@@ -179,7 +178,6 @@ class SandboxRecorder : public MatchRecorder
   [[nodiscard]] bool finished() const { return fullTime; }
 
  private:
-
   void append(const MatchEngine& engine, Payload payload);
   void learnPlayers(const MatchEngine& engine);
   [[nodiscard]] Job jobOf(PlayerID player, bool homeTeam) const;

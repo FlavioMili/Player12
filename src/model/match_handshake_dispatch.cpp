@@ -79,7 +79,12 @@ void MatchEngine::initializePlayers(const Lineup& lineup, bool isHomeTeam)
   }
   // The handshakes load their players directly; derive the side's stats.
   for (MatchPlayer& player : players)
-    if (player.isHomeTeam == isHomeTeam) deriveStats(player);
+  {
+    if (player.isHomeTeam == isHomeTeam)
+    {
+      deriveStats(player);
+    }
+  }
 }
 
 const DerivedRecipes& MatchEngine::derivedRecipes() const
@@ -101,31 +106,43 @@ void MatchEngine::deriveStats(MatchPlayer& matchPlayer) const
   // deviations are hashed from his id), so it cannot change a match that
   // does not read the results.
   const std::array<float, BASE_ATTRIBUTE_COUNT> base{
-      matchPlayer.pace,        matchPlayer.shooting,  matchPlayer.passing,
-      matchPlayer.dribbling,   matchPlayer.defending, matchPlayer.physicality,
-      matchPlayer.endurance,   matchPlayer.vision,    matchPlayer.goalkeeping};
+      matchPlayer.pace,      matchPlayer.shooting,  matchPlayer.passing,
+      matchPlayer.dribbling, matchPlayer.defending, matchPlayer.physicality,
+      matchPlayer.endurance, matchPlayer.vision,    matchPlayer.goalkeeping};
   // In order: the future game stats come first, so each is ready before a
   // match-engine-only recipe reads it. A stat a drill has set keeps its
   // value (and what is derived from it follows).
   const DerivedRecipes& recipes = derivedRecipes();
   for (std::size_t stat = 0; stat < DERIVED_STAT_COUNT; ++stat)
   {
-    if (matchPlayer.derivedOverrides & (std::uint64_t{1} << stat)) continue;
-    float rating = 0.0f;
+    if ((matchPlayer.derivedOverrides & (std::uint64_t{1} << stat)) != 0u)
+    {
+      continue;
+    }
+    float rating = 0.0F;
     for (std::size_t index = 0; index < BASE_ATTRIBUTE_COUNT; ++index)
+    {
       rating += recipes[stat].weights[index] * base[index];
+    }
     for (std::size_t future = 0; future < DERIVED_STAT_COUNT; ++future)
-      rating += recipes[stat].futureWeights[future] * matchPlayer.derived[future];
+    {
+      rating +=
+          recipes[stat].futureWeights[future] * matchPlayer.derived[future];
+    }
     // His own deviation (a drill's playerless slot has none).
-    if (recipes[stat].spread > 0.0f && matchPlayer.player)
+    if (recipes[stat].spread > 0.0F && (matchPlayer.player != nullptr))
+    {
       rating += recipes[stat].spread *
                 playerStatDeviation(matchPlayer.player->getId(),
                                     DERIVED_STATS[stat].name);
+    }
     if (recipes[stat].onHeight())
-      rating = derivedRatingOnHeight(static_cast<DerivedStat>(stat),
-                                     recipes[stat], rating,
-                                     matchPlayer.heightMetres);
-    matchPlayer.derived[stat] = std::clamp(rating, 0.0f, 1.0f);
+    {
+      rating =
+          derivedRatingOnHeight(static_cast<DerivedStat>(stat), recipes[stat],
+                                rating, matchPlayer.heightMetres);
+    }
+    matchPlayer.derived[stat] = std::clamp(rating, 0.0F, 1.0F);
   }
 }
 

@@ -26,37 +26,37 @@
 struct ContactSituation
 {
   /** The way his body faces. */
-  Vector2F facing{1.0f, 0.0f};
+  Vector2F facing{.x = 1.0F, .y = 0.0F};
   /** Where he means to send it seen from above, how fast over the ground
    * (m/s), and how fast upward (m/s, + up). */
-  Vector2F aim{1.0f, 0.0f};
-  float intendedSpeed = 0.0f;
-  float intendedLift = 0.0f;
+  Vector2F aim{.x = 1.0F, .y = 0.0F};
+  float intendedSpeed = 0.0F;
+  float intendedLift = 0.0F;
   /** The ball's velocity over the ground and upward (m/s, + up). */
-  Vector2F ballVelocity{0.0f, 0.0f};
-  float ballVerticalSpeed = 0.0f;
-  Vector2F playerVelocity{0.0f, 0.0f};
-  float playerMaxSpeed = 1.0f;
+  Vector2F ballVelocity{.x = 0.0F, .y = 0.0F};
+  float ballVerticalSpeed = 0.0F;
+  Vector2F playerVelocity{.x = 0.0F, .y = 0.0F};
+  float playerMaxSpeed = 1.0F;
   /** From his centre to where he meets it, how far (m) against his reach
    * (m), and the ball's height there (m). */
-  Vector2F toBall{1.0f, 0.0f};
-  float gap = 0.0f;
-  float reach = 1.0f;
-  float height = 0.0f;
+  Vector2F toBall{.x = 1.0F, .y = 0.0F};
+  float gap = 0.0F;
+  float reach = 1.0F;
+  float height = 0.0F;
   /** The top of his feet's band (m): the ball is fully "off the ground"
    * there. */
   float feetLine = MatchTuning::Ball::LOW_BALL_METRES;
   bool rightFooted = true;
   /** How little he expected it (0-1): the brain's read. */
-  float surprise = 0.0f;
+  float surprise = 0.0F;
   /** How pressed he is (0-1, contactPressure). */
-  float pressure = 0.0f;
+  float pressure = 0.0F;
   /** The spin he means (rad/s), and the most he can put on (rad/s; 0, no
    * spin to ask of him). */
   BallSpin intendedSpin{};
-  float spinCapacity = 0.0f;
+  float spinCapacity = 0.0F;
   /** His power for the strike (m/s; 0, none to ask of him: a touch). */
-  float powerCapacity = 0.0f;
+  float powerCapacity = 0.0F;
 };
 
 /** The share of his power he can put into a strike `degrees` off the way
@@ -65,13 +65,13 @@ struct ContactSituation
  * a straight line to `behind` at 180. */
 inline float powerByAngleShare(float degrees, float square, float behind)
 {
-  const float off = std::clamp(degrees, 0.0f, 180.0f);
-  if (off <= 90.0f)
+  const float off = std::clamp(degrees, 0.0F, 180.0F);
+  if (off <= 90.0F)
   {
-    const float into = off / 90.0f;
-    return 1.0f - (1.0f - square) * into * into;
+    const float into = off / 90.0F;
+    return 1.0F - ((1.0F - square) * into * into);
   }
-  return square + (behind - square) * (off - 90.0f) / 90.0f;
+  return square + ((behind - square) * (off - 90.0F) / 90.0F);
 }
 
 /** How much of his power `speed` asks (0-1 as a condition): nothing up to
@@ -79,12 +79,17 @@ inline float powerByAngleShare(float degrees, float square, float behind)
  * (1 at all of it, and beyond). 0 without a capacity. */
 inline float powerAskedValue(float speed, float capacity, float comfortShare)
 {
-  if (capacity <= 0.0f) return 0.0f;
+  if (capacity <= 0.0F)
+  {
+    return 0.0F;
+  }
   const float share = speed / capacity;
-  if (share <= comfortShare) return 0.0f;
-  const float into =
-      std::min((share - comfortShare) / std::max(1.0f - comfortShare, 1.0e-3f),
-               1.0f);
+  if (share <= comfortShare)
+  {
+    return 0.0F;
+  }
+  const float into = std::min(
+      (share - comfortShare) / std::max(1.0F - comfortShare, 1.0e-3F), 1.0F);
   return into * into;
 }
 
@@ -94,9 +99,12 @@ inline float powerAskedValue(float speed, float capacity, float comfortShare)
 inline bool inTouchDeadZone(Vector2F facing, Vector2F toBall, float gap,
                             float comfortGap, float angleDegrees)
 {
-  if (gap <= comfortGap) return false;
-  const float cosine = facing.x * toBall.x + facing.y * toBall.y;
-  return cosine < std::cos(angleDegrees * std::numbers::pi_v<float> / 180.0f);
+  if (gap <= comfortGap)
+  {
+    return false;
+  }
+  const float cosine = (facing.x * toBall.x) + (facing.y * toBall.y);
+  return cosine < std::cos(angleDegrees * std::numbers::pi_v<float> / 180.0F);
 }
 
 /** The approach angle (0-1): how far the ball comes from behind him, by
@@ -118,7 +126,7 @@ bool turnsOutward(const ContactSituation& situation);
  * at `radiusMetres` and beyond. */
 inline float contactPressure(float nearestOpponentMetres, float radiusMetres)
 {
-  return std::clamp(1.0f - nearestOpponentMetres / radiusMetres, 0.0f, 1.0f);
+  return std::clamp(1.0F - (nearestOpponentMetres / radiusMetres), 0.0F, 1.0F);
 }
 
 /** How hard a contact is. No random draws. */

@@ -98,10 +98,10 @@ enum class FoulSanction : std::uint8_t
 struct FoulContext
 {
   /** Uniform rolls in [0, 1). */
-  float severityRoll = 0.0f;
-  float cardRoll = 0.0f;
+  float severityRoll = 0.0F;
+  float cardRoll = 0.0F;
   /** Per-match referee strictness, ~N(1, 0.13). */
-  float strictness = 1.0f;
+  float strictness = 1.0F;
   /** The foul stopped a promising attack (tactical foul). */
   bool tactical = false;
   /** Denied an obvious goal-scoring opportunity. */
@@ -111,7 +111,7 @@ struct FoulContext
   bool offenderAlreadyBooked = false;
   bool offenderIsAway = false;
   /** Scales the referee's lean toward the home side (0 = neutral venue). */
-  float venueBiasScale = 1.0f;
+  float venueBiasScale = 1.0F;
 };
 
 FoulSanction decideFoulSanction(const FoulContext& context);
@@ -137,20 +137,20 @@ float tackleTechnique(float defending);
 struct TackleContext
 {
   /** The two bodies' halves (see tackleMake, tackleResist). */
-  float make = tackleMake(0.5f, 0.5f);
-  float resist = tackleResist(0.5f, 0.5f, false);
+  float make = tackleMake(0.5F, 0.5F);
+  float resist = tackleResist(0.5F, 0.5F, false);
   /** The tackler's foul points (see tackleTechnique). */
-  float technique = tackleTechnique(0.5f);
+  float technique = tackleTechnique(0.5F);
   /** Team edge of each side (home, numbers, talk) in attribute units:
    * MatchEngine::teamEdge x DUEL_EDGE_WEIGHT. */
-  float defenderEdge = 0.0f;
-  float carrierEdge = 0.0f;
+  float defenderEdge = 0.0F;
+  float carrierEdge = 0.0F;
   /** Team pressing instruction in [0, 1]. */
-  float pressing = 0.5f;
+  float pressing = 0.5F;
   /** Team risk-taking instruction in [0, 1]. */
-  float riskTaking = 0.5f;
+  float riskTaking = 0.5F;
   /** Share of the touch the ball is still away from the carrier's foot. */
-  float exposure = 0.0f;
+  float exposure = 0.0F;
   bool sliding = false;
   bool fromBehind = false;
   bool inPenaltyArea = false;
@@ -174,15 +174,15 @@ inline float staminaDrainPerSecond(float speedRatio, float endurance,
                                    float pressingIntensity)
 {
   using P = MatchTuning::Fatigue;
-  const float ratio = std::clamp(speedRatio, 0.0f, 1.5f);
-  const float sprint = std::max(0.0f, ratio - P::SPRINT_THRESHOLD) /
-                       (1.0f - P::SPRINT_THRESHOLD);
+  const float ratio = std::clamp(speedRatio, 0.0F, 1.5F);
+  const float sprint = std::max(0.0F, ratio - P::SPRINT_THRESHOLD) /
+                       (1.0F - P::SPRINT_THRESHOLD);
   const float work =
-      P::IDLE_DRAIN + ratio * ratio * P::RUNNING_DRAIN +
-      sprint * P::SPRINT_DRAIN +
-      std::clamp(pressingIntensity, 0.0f, 1.0f) * P::PRESSING_DRAIN;
+      P::IDLE_DRAIN + (ratio * ratio * P::RUNNING_DRAIN) +
+      (sprint * P::SPRINT_DRAIN) +
+      (std::clamp(pressingIntensity, 0.0F, 1.0F) * P::PRESSING_DRAIN);
   return work * (P::ENDURANCE_BASE -
-                 std::clamp(endurance, 0.0f, 1.0f) * P::ENDURANCE_RELIEF);
+                 std::clamp(endurance, 0.0F, 1.0F) * P::ENDURANCE_RELIEF);
 }
 
 /**
@@ -193,10 +193,10 @@ inline float staminaDrainPerSecond(float speedRatio, float endurance,
  */
 inline float walkRunTransitionSpeed(float heightMetres)
 {
-  constexpr float GRAVITY = 9.81f;
-  constexpr float TRANSITION_FROUDE = 0.5f;
-  constexpr float LEG_LENGTH_SHARE = 0.53f;
+  constexpr float GRAVITY = 9.81F;
+  constexpr float TRANSITION_FROUDE = 0.5F;
+  constexpr float LEG_LENGTH_SHARE = 0.53F;
   return std::sqrt(TRANSITION_FROUDE * GRAVITY * LEG_LENGTH_SHARE *
-                   std::max(heightMetres, 1.0f));
+                   std::max(heightMetres, 1.0F));
 }
 }  // namespace MatchRules

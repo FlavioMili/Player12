@@ -45,7 +45,8 @@ struct MatchTeamPlan
 
   bool homeTeam = true;
   TeamPhase phase = TeamPhase::STOPPAGE;
-  /** Closest to the ball by estimated arrival, first presser first (0: none). */
+  /** Closest to the ball by estimated arrival, first presser first (0: none).
+   */
   std::array<PlayerID, PRESSERS> pressers{};
   /** Estimated arrival time in seconds (the ranking key, lower is sooner). */
   std::array<float, PRESSERS> pressArrivalSeconds{};
@@ -67,7 +68,8 @@ struct MatchTeamPlan
  * reported through onAction. */
 struct MatchDecisionRecord
 {
-  static constexpr float NOT_AVAILABLE = -std::numeric_limits<float>::infinity();
+  static constexpr float NOT_AVAILABLE =
+      -std::numeric_limits<float>::infinity();
 
   PlayerID player = 0;
   bool homeTeam = true;
@@ -80,10 +82,10 @@ struct MatchDecisionRecord
   /** The option that would have won without the decision noise. */
   ScenarioAction chosenWithoutNoise = ScenarioAction::NONE;
   /** Shared inputs of the scores. */
-  float pressure = 0.0f;
-  float shotXG = 0.0f;
-  float opennessAhead = 0.0f;
-  float noiseScale = 0.0f;
+  float pressure = 0.0F;
+  float shotXG = 0.0F;
+  float opennessAhead = 0.0F;
+  float noiseScale = 0.0F;
   /** Best and runner-up pass candidates (0: none). */
   PlayerID bestReceiver = 0;
   float bestPassUtility = NOT_AVAILABLE;
@@ -127,21 +129,21 @@ struct MatchActionRecord
   /** Intended receiver (pass), beaten or tackling opponent (duels). */
   PlayerID target = 0;
   /** Where it was played from and aimed at (metres). */
-  PitchPoint from{0.0f, 0.0f};
-  PitchPoint to{0.0f, 0.0f};
+  PitchPoint from{0.0F, 0.0F};
+  PitchPoint to{0.0F, 0.0F};
   /** Launch speeds (m/s) and curve (rad/s) of a kick. */
-  float speed = 0.0f;
-  float verticalSpeed = 0.0f;
-  float curve = 0.0f;
+  float speed = 0.0F;
+  float verticalSpeed = 0.0F;
+  float curve = 0.0F;
   /** Pass: lofted; tackle: sliding. */
   bool lofted = false;
   /** Played with the head (shot, clearance, knock-down). */
   bool header = false;
   PassIntent passIntent = PassIntent::RECYCLE;
   /** Shot: estimated xG; pass: estimated completion; duels: win chance. */
-  float estimate = 0.0f;
+  float estimate = 0.0F;
   /** Tackle: foul propensity of the challenge. */
-  float foulPropensity = 0.0f;
+  float foulPropensity = 0.0F;
   MatchDuelResult result = MatchDuelResult::NONE;
 };
 
@@ -176,7 +178,7 @@ struct ScoreTerm
 {
   const char* name = "";
   TermSource source = TermSource::SITUATION;
-  float value = 0.0f;
+  float value = 0.0F;
 };
 
 /**
@@ -186,17 +188,20 @@ struct ScoreTerm
  */
 struct ScoreBreakdown
 {
-  float total = 0.0f;
+  float total = 0.0F;
   std::vector<ScoreTerm> terms;
 
   void add(const char* name, TermSource source, float value)
   {
-    terms.push_back({name, source, value});
+    terms.push_back({.name = name, .source = source, .value = value});
   }
   [[nodiscard]] float residual() const
   {
-    float sum = 0.0f;
-    for (const ScoreTerm& term : terms) sum += term.value;
+    float sum = 0.0F;
+    for (const ScoreTerm& term : terms)
+    {
+      sum += term.value;
+    }
     return total - sum;
   }
 };
@@ -225,7 +230,7 @@ struct PassCandidateDetail
   ScoreBreakdown utility;
   ScoreBreakdown completion;
   PassIntent intent = PassIntent::RECYCLE;
-  float distanceMetres = 0.0f;
+  float distanceMetres = 0.0F;
   bool lofted = false;
 };
 
@@ -290,31 +295,31 @@ struct MatchDuelDetail
    * tackle, the engagement rate per second for ENGAGE. */
   ScoreBreakdown chance;
   /** Probability of success (ENGAGE: of going in during this step). */
-  float probability = 0.0f;
+  float probability = 0.0F;
   /** The uniform roll; success when roll < probability. */
-  float roll = 0.0f;
+  float roll = 0.0F;
   /** TACKLE: the foul propensity, its threshold (scaled down for a tackle
    * that won the ball) and the referee's roll (a foul when roll <
    * threshold); no roll when the referee had nothing to decide. */
   ScoreBreakdown foul;
-  float foulThreshold = 0.0f;
+  float foulThreshold = 0.0F;
   std::optional<float> foulRoll;
   /** FIRST_TOUCH: his touch skill; the speed he meant to give the ball and
    * the speed it got (m/s); the two jobs (the turn in radians, outward or
    * not, and the pace change in m/s); each job's chance of going wrong,
    * whether it did, and its error (angle in radians along the turn, weight
    * in m/s). The angle difficulty is `chance`, the weight's `foul`. */
-  float touchSkill = 0.0f;
-  float intendedSpeed = 0.0f;
-  float actualSpeed = 0.0f;
-  float turn = 0.0f;
+  float touchSkill = 0.0F;
+  float intendedSpeed = 0.0F;
+  float actualSpeed = 0.0F;
+  float turn = 0.0F;
   bool outward = false;
-  float paceChange = 0.0f;
-  float angleError = 0.0f;
-  float angleFailChance = 0.0f;
+  float paceChange = 0.0F;
+  float angleError = 0.0F;
+  float angleFailChance = 0.0F;
   bool angleFailed = false;
-  float weightError = 0.0f;
-  float weightFailChance = 0.0f;
+  float weightError = 0.0F;
+  float weightFailChance = 0.0F;
   bool weightFailed = false;
   /** STRIKE: which kind (the speed he meant is `intendedSpeed`, the jobs
    * `turn`, `outward` and `paceChange`). */
@@ -374,12 +379,16 @@ class MatchRecorder
    * snapshots may be intermediate; validate invariants only at step end. */
   [[nodiscard]] virtual bool wantsPossession() const { return false; }
   virtual void onPossessionObservation(const MatchEngine& /*engine*/,
-                                      PossessionObservation /*observation*/,
-                                      const PossessionSnapshot& /*snapshot*/,
-                                      PossessionId /*executedVersion*/) {}
+                                       PossessionObservation /*observation*/,
+                                       const PossessionSnapshot& /*snapshot*/,
+                                       PossessionId /*executedVersion*/)
+  {
+  }
   /** An actual gate taken in the contact sweep. Some gates precede reach
    * testing: a gate observation does not prove the ball was playable. */
   virtual void onPossessionContactGate(const MatchEngine& /*engine*/,
-                                      const MatchPlayer& /*player*/,
-                                      PossessionContactGate /*gate*/) {}
+                                       const MatchPlayer& /*player*/,
+                                       PossessionContactGate /*gate*/)
+  {
+  }
 };

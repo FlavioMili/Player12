@@ -16,7 +16,7 @@ template <typename... Args>
 inline bool beginCombo(Args&&... args)
 {
   ImGui::PushStyleVarY(ImGuiStyleVar_WindowPadding,
-                       8.0f * ImGui::GetStyle().FontScaleDpi);
+                       8.0F * ImGui::GetStyle().FontScaleDpi);
   const bool open = ImGui::BeginCombo(std::forward<Args>(args)...);
   ImGui::PopStyleVar();
   return open;
@@ -25,7 +25,7 @@ template <typename... Args>
 inline bool combo(Args&&... args)
 {
   ImGui::PushStyleVarY(ImGuiStyleVar_WindowPadding,
-                       8.0f * ImGui::GetStyle().FontScaleDpi);
+                       8.0F * ImGui::GetStyle().FontScaleDpi);
   const bool changed = ImGui::Combo(std::forward<Args>(args)...);
   ImGui::PopStyleVar();
   return changed;
@@ -51,22 +51,37 @@ inline constexpr ImU32 SCROLL_HOVER = IM_COL32(170, 215, 129, 255);
 
 inline float activityPageWidth(float available, float scale, float gutter)
 {
-  for (float width : {1152.0f, 1072.0f, 886.0f, 806.0f, 660.0f})
-    if (available >= width * scale + gutter) return width * scale + gutter;
+  for (float width : {1152.0F, 1072.0F, 886.0F, 806.0F, 660.0F})
+  {
+    if (available >= width * scale + gutter)
+    {
+      return (width * scale) + gutter;
+    }
+  }
   return available;
 }
 
 inline float toolsPageWidth(float available, float scale, float gutter)
 {
-  for (float width : {1332.0f, 886.0f, 806.0f, 440.0f})
-    if (available >= width * scale + gutter) return width * scale + gutter;
+  for (float width : {1332.0F, 886.0F, 806.0F, 440.0F})
+  {
+    if (available >= width * scale + gutter)
+    {
+      return (width * scale) + gutter;
+    }
+  }
   return available;
 }
 
 inline float matchPageWidth(float available, float scale, float gutter)
 {
-  for (float width : {1326.0f, 1206.0f, 1062.0f, 660.0f})
-    if (available >= width * scale + gutter) return width * scale + gutter;
+  for (float width : {1326.0F, 1206.0F, 1062.0F, 660.0F})
+  {
+    if (available >= width * scale + gutter)
+    {
+      return (width * scale) + gutter;
+    }
+  }
   return available;
 }
 
@@ -76,18 +91,22 @@ struct ActivityLayout
   float details, catalogue, page;
   ActivityLayout(float available, float scale)
   {
-    const float usable = std::max(scale, available - 6 * scale);
+    const float usable = std::max(scale, available - (6 * scale));
     columns = usable >= 1072 * scale;
     details = columns ? (usable >= 1152 * scale ? 886 : 806) * scale : usable;
     if (!columns)
-      for (float width : {886.0f, 806.0f, 660.0f})
+    {
+      for (float width : {886.0F, 806.0F, 660.0F})
+      {
         if (usable >= width * scale)
         {
           details = width * scale;
           break;
         }
+      }
+    }
     catalogue = columns ? 260 * scale : details;
-    page = columns ? catalogue + 6 * scale + details : details;
+    page = columns ? catalogue + (6 * scale) + details : details;
   }
 };
 
@@ -102,34 +121,36 @@ struct Style
     {
       ImGuiCol id;
       ImU32 value;
-    } colors[] = {{ImGuiCol_Text, CREAM},
-                  {ImGuiCol_TextDisabled, MUTED},
-                  {ImGuiCol_ChildBg, PAGE},
-                  {ImGuiCol_PopupBg, MID},
-                  {ImGuiCol_Border, IM_COL32(92, 81, 68, 255)},
-                  {ImGuiCol_FrameBg, DARK},
-                  {ImGuiCol_FrameBgHovered, MID},
-                  {ImGuiCol_FrameBgActive, IM_COL32(46, 39, 32, 255)},
-                  {ImGuiCol_CheckMark, INK},
-                  {ImGuiCol_CheckboxSelectedBg, LIME},
-                  {ImGuiCol_SliderGrab, LIME},
-                  {ImGuiCol_SliderGrabActive, IM_COL32(170, 215, 130, 255)},
-                  {ImGuiCol_Button, DARK},
-                  {ImGuiCol_ButtonHovered, MID},
-                  {ImGuiCol_ButtonActive, IM_COL32(46, 39, 32, 255)},
-                  {ImGuiCol_Header, IM_COL32(46, 39, 32, 255)},
-                  {ImGuiCol_HeaderHovered, MID},
-                  {ImGuiCol_HeaderActive, MID},
-                  {ImGuiCol_Separator, RULE},
-                  {ImGuiCol_TableHeaderBg, MID},
-                  {ImGuiCol_TableBorderStrong, RULE},
-                  {ImGuiCol_TableBorderLight, RULE},
-                  {ImGuiCol_TableRowBg, IM_COL32(0, 0, 0, 0)},
-                  {ImGuiCol_TableRowBgAlt, IM_COL32(255, 255, 255, 5)},
-                  {ImGuiCol_ScrollbarBg, SCROLL_TRACK},
-                  {ImGuiCol_ScrollbarGrab, SCROLL_GRAB},
-                  {ImGuiCol_ScrollbarGrabHovered, SCROLL_HOVER},
-                  {ImGuiCol_ScrollbarGrabActive, SCROLL_HOVER}};
+    } colors[] = {
+        {.id = ImGuiCol_Text, .value = CREAM},
+        {.id = ImGuiCol_TextDisabled, .value = MUTED},
+        {.id = ImGuiCol_ChildBg, .value = PAGE},
+        {.id = ImGuiCol_PopupBg, .value = MID},
+        {.id = ImGuiCol_Border, .value = IM_COL32(92, 81, 68, 255)},
+        {.id = ImGuiCol_FrameBg, .value = DARK},
+        {.id = ImGuiCol_FrameBgHovered, .value = MID},
+        {.id = ImGuiCol_FrameBgActive, .value = IM_COL32(46, 39, 32, 255)},
+        {.id = ImGuiCol_CheckMark, .value = INK},
+        {.id = ImGuiCol_CheckboxSelectedBg, .value = LIME},
+        {.id = ImGuiCol_SliderGrab, .value = LIME},
+        {.id = ImGuiCol_SliderGrabActive,
+         .value = IM_COL32(170, 215, 130, 255)},
+        {.id = ImGuiCol_Button, .value = DARK},
+        {.id = ImGuiCol_ButtonHovered, .value = MID},
+        {.id = ImGuiCol_ButtonActive, .value = IM_COL32(46, 39, 32, 255)},
+        {.id = ImGuiCol_Header, .value = IM_COL32(46, 39, 32, 255)},
+        {.id = ImGuiCol_HeaderHovered, .value = MID},
+        {.id = ImGuiCol_HeaderActive, .value = MID},
+        {.id = ImGuiCol_Separator, .value = RULE},
+        {.id = ImGuiCol_TableHeaderBg, .value = MID},
+        {.id = ImGuiCol_TableBorderStrong, .value = RULE},
+        {.id = ImGuiCol_TableBorderLight, .value = RULE},
+        {.id = ImGuiCol_TableRowBg, .value = IM_COL32(0, 0, 0, 0)},
+        {.id = ImGuiCol_TableRowBgAlt, .value = IM_COL32(255, 255, 255, 5)},
+        {.id = ImGuiCol_ScrollbarBg, .value = SCROLL_TRACK},
+        {.id = ImGuiCol_ScrollbarGrab, .value = SCROLL_GRAB},
+        {.id = ImGuiCol_ScrollbarGrabHovered, .value = SCROLL_HOVER},
+        {.id = ImGuiCol_ScrollbarGrabActive, .value = SCROLL_HOVER}};
     for (const auto& color : colors)
     {
       ImGui::PushStyleColor(color.id, color.value);
@@ -164,10 +185,10 @@ struct Style
 
 inline void tracked(ImDrawList* draw, ImVec2 pos, ImFont* bold,
                     const char* label, float size, float scale,
-                    ImU32 color = CREAM, float spacing = 1.5f)
+                    ImU32 color = CREAM, float spacing = 1.5F)
 {
   ImGui::PushFont(bold, size);
-  for (const char* c = label; *c; ++c)
+  for (const char* c = label; *c != 0; ++c)
   {
     draw->AddText(pos, color, c, c + 1);
     pos.x += ImGui::CalcTextSize(c, c + 1).x + spacing * scale;
@@ -199,24 +220,24 @@ inline void header(const char* title, const char* subtitle, float width,
     ImGui::PushFont(bold, 42);
     subtitleY = std::max(
         subtitleY,
-        18 * scale +
-            ImGui::CalcTextSize(title, nullptr, false, width - 32 * scale).y +
-            12 * scale);
+        (18 * scale) +
+            ImGui::CalcTextSize(title, nullptr, false, width - (32 * scale)).y +
+            (12 * scale));
     ImGui::PopFont();
     ImGui::PushFont(regular, 17);
     const float subtitleHeight =
-        ImGui::CalcTextSize(subtitle, nullptr, false, width - 32 * scale).y;
+        ImGui::CalcTextSize(subtitle, nullptr, false, width - (32 * scale)).y;
     ImGui::PopFont();
-    height = std::max(height, subtitleY + subtitleHeight + 16 * scale);
-    if (context && *context)
+    height = std::max(height, subtitleY + subtitleHeight + (16 * scale));
+    if ((context != nullptr) && (*context != 0))
     {
-      contextY = std::max(contextY, subtitleY + subtitleHeight + 8 * scale);
+      contextY = std::max(contextY, subtitleY + subtitleHeight + (8 * scale));
       ImGui::PushFont(regular, 16);
       height = std::max(height, contextY +
                                     ImGui::CalcTextSize(context, nullptr, false,
-                                                        width - 32 * scale)
+                                                        width - (32 * scale))
                                         .y +
-                                    16 * scale);
+                                    (16 * scale));
       ImGui::PopFont();
     }
   }
@@ -226,24 +247,24 @@ inline void header(const char* title, const char* subtitle, float width,
   draw->PushClipRect(a, b, true);
   ImGui::PushFont(bold, 42);
   draw->AddText(bold, ImGui::GetFontSize(),
-                ImVec2(a.x + 16 * scale, a.y + 18 * scale), CREAM, title,
-                nullptr, fitText ? width - 32 * scale : 0);
+                ImVec2(a.x + (16 * scale), a.y + (18 * scale)), CREAM, title,
+                nullptr, fitText ? width - (32 * scale) : 0);
   ImGui::PopFont();
   ImGui::PushFont(regular, 17);
   draw->AddText(regular, ImGui::GetFontSize(),
-                ImVec2(a.x + 16 * scale, a.y + subtitleY), CREAM, subtitle,
-                nullptr, width - 32 * scale);
+                ImVec2(a.x + (16 * scale), a.y + subtitleY), CREAM, subtitle,
+                nullptr, width - (32 * scale));
   ImGui::PopFont();
-  if (context && *context)
+  if ((context != nullptr) && (*context != 0))
   {
     ImGui::PushFont(regular, 16);
     draw->AddText(regular, ImGui::GetFontSize(),
-                  ImVec2(a.x + 16 * scale, a.y + contextY), MUTED, context,
-                  nullptr, width - 32 * scale);
+                  ImVec2(a.x + (16 * scale), a.y + contextY), MUTED, context,
+                  nullptr, width - (32 * scale));
     ImGui::PopFont();
   }
   fade(draw, a, b, scale);
-  draw->AddRectFilled(a, ImVec2(b.x, a.y + 6 * scale), LIME);
+  draw->AddRectFilled(a, ImVec2(b.x, a.y + (6 * scale)), LIME);
   draw->PopClipRect();
   ImGui::Dummy(ImVec2(width, height));
 }
@@ -282,15 +303,22 @@ inline bool choice(const char* label, bool selected, float scale, ImFont* bold)
                                               ImGuiButtonFlags_EnableNav);
   auto* draw = ImGui::GetWindowDrawList();
   if (selected || ImGui::IsItemHovered())
-    draw->AddRectFilled(a, ImVec2(a.x + width, a.y + 36 * scale),
+  {
+    draw->AddRectFilled(a, ImVec2(a.x + width, a.y + (36 * scale)),
                         selected ? IM_COL32(46, 39, 32, 255) : MID);
+  }
   if (selected)
-    draw->AddRectFilled(a, ImVec2(a.x + 3 * scale, a.y + 36 * scale), CREAM);
+  {
+    draw->AddRectFilled(a, ImVec2(a.x + (3 * scale), a.y + (36 * scale)),
+                        CREAM);
+  }
   if (ImGui::IsItemFocused())
-    draw->AddRect(a, ImVec2(a.x + width, a.y + 36 * scale), LIME);
-  draw->PushClipRect(a, ImVec2(a.x + width, a.y + 36 * scale), true);
+  {
+    draw->AddRect(a, ImVec2(a.x + width, a.y + (36 * scale)), LIME);
+  }
+  draw->PushClipRect(a, ImVec2(a.x + width, a.y + (36 * scale)), true);
   SandboxTypography::label(draw, selected ? bold : ImGui::GetFont(), 16, label,
-                           a, ImVec2(a.x + width, a.y + 36 * scale), CREAM, 0,
+                           a, ImVec2(a.x + width, a.y + (36 * scale)), CREAM, 0,
                            false, 12 * scale);
   draw->PopClipRect();
   return clicked;
@@ -302,7 +330,7 @@ inline float buttonWidth(const char* label, float scale, ImFont* bold)
   const auto bounds =
       SandboxTypography::labelBounds(bold, ImGui::GetFontSize(), label, scale);
   ImGui::PopFont();
-  return bounds.max.x - bounds.min.x + 20 * scale;
+  return bounds.max.x - bounds.min.x + (20 * scale);
 }
 
 inline bool button(const char* label, bool primary, float scale, ImFont* bold)

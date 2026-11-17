@@ -93,7 +93,7 @@ class TrainingDrill : public Drill
 /** A training run using all current Set-up settings, including each side's
  * independent brain and body. No recorder. */
 std::unique_ptr<DrillRun> startTrainingRun(TrainingDrill& drill,
-                                        const StatsConfig& config);
+                                           const StatsConfig& config);
 
 /** A diagnostic run with the whole squad on one brain and body
  * (a drill run takes each side's from the sandbox, and the squad is split
@@ -125,5 +125,6 @@ const std::vector<TrainingSessionInfo>& trainingSessions();
  * session's laps for `squad` headless (the Binturong brain and body) and
  * prints overtakes, slow-downs and run-ins; with `follow`, the route of
  * each player whose name contains it, every half second. */
-int runLapsTrace(const std::vector<TrainingPlayer>& squad, const StatsConfig& config,
-                 double seconds, const std::string& follow = {});
+int runLapsTrace(const std::vector<TrainingPlayer>& squad,
+                 const StatsConfig& config, double seconds,
+                 const std::string& follow = {});

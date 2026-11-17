@@ -7,8 +7,8 @@
 // -----------------------------------------------------------------------------
 
 // The Binturong ball physics's MatchEngine members (defined in
-// match_ball_physics_binturong.cpp). Included inside the MatchEngine class body,
-// so no include guard and no includes of its own.
+// match_ball_physics_binturong.cpp). Included inside the MatchEngine class
+// body, so no include guard and no includes of its own.
 
 // clang-format off
   // --- Binturong ball physics ------------------------------------------------

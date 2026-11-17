@@ -12,6 +12,7 @@
 #include <cstdint>
 #include <format>
 #include <map>
+#include <stdexcept>
 #include <string>
 #include <vector>
 
@@ -58,7 +59,9 @@ std::vector<int> levels()
 {
   std::vector<int> result;
   for (int level = LOWEST_LEVEL; level <= HIGHEST_LEVEL; level += LEVEL_STEP)
+  {
     result.push_back(level);
+  }
   return result;
 }
 
@@ -67,7 +70,9 @@ std::map<std::string, float> statsAt(const StatsConfig& config, int level)
 {
   std::map<std::string, float> stats;
   for (const std::string& stat : config.possible_stats)
+  {
     stats[stat] = static_cast<float>(level);
+  }
   return stats;
 }
 
@@ -80,14 +85,21 @@ std::vector<Member> uniformSquad(int level)
   {
     const int count = ++seen[role];
     const std::string suffix = count > 1 ? std::format(" {}", count) : "";
-    squad.push_back({std::format("{} {}{}", level, RoleUtils::toString(role),
-                                 suffix),
-                     role, level, slot});
+    squad.push_back({.name = std::format("{} {}{}", level,
+                                         RoleUtils::toString(role), suffix),
+                     .role = role,
+                     .level = level,
+                     .slot = slot});
   };
   add(PlayerRole::GK, STARTING_KEEPER);
   for (std::size_t slot = 0; slot < SHAPE.slots.size(); ++slot)
+  {
     add(SHAPE.slots[slot].role, static_cast<int>(slot));
-  for (const PlayerRole role : BENCH) add(role, BENCHED);
+  }
+  for (const PlayerRole role : BENCH)
+  {
+    add(role, BENCHED);
+  }
   return squad;
 }
 
@@ -96,13 +108,20 @@ std::vector<Member> tieredSquad()
   std::vector<Member> squad;
   const std::vector<int> all = levels();
   for (std::size_t index = 0; index < all.size(); ++index)
-    squad.push_back({std::format("Outfield {}", all[index]),
-                     SHAPE.slots[index].role, all[index],
-                     static_cast<int>(index)});
+  {
+    squad.push_back({.name = std::format("Outfield {}", all[index]),
+                     .role = SHAPE.slots[index].role,
+                     .level = all[index],
+                     .slot = static_cast<int>(index)});
+  }
   for (const int level : all)
-    squad.push_back({std::format("Keeper {}", level), PlayerRole::GK, level,
-                     level == TIERED_STARTING_KEEPER ? STARTING_KEEPER
-                                                     : BENCHED});
+  {
+    squad.push_back(
+        {.name = std::format("Keeper {}", level),
+         .role = PlayerRole::GK,
+         .level = level,
+         .slot = level == TIERED_STARTING_KEEPER ? STARTING_KEEPER : BENCHED});
+  }
   return squad;
 }
 
@@ -113,7 +132,9 @@ TeamID addClub(GameData& data, TeamID id, LeagueID league,
   const StatsConfig& config = data.getStatsConfig();
   std::vector<PlayerID> ids;
   for (std::size_t index = 0; index < squad.size(); ++index)
+  {
     ids.push_back(data.allocatePlayerId());
+  }
   data.addTeam(id, Team(id, league, name, 0, ids));
   Lineup lineup;
   std::vector<const Player*> reserves;
@@ -124,17 +145,33 @@ TeamID addClub(GameData& data, TeamID id, LeagueID league,
                    Player(ids[index], id, "", member.name, member.role,
                           Language::EN, 0, 0, AGE, CONTRACT_YEARS, HEIGHT_CM,
                           Foot::Right, statsAt(config, member.level)));
-    const Player* player = &data.getPlayer(ids[index])->get();
+    const auto added = data.getPlayer(ids[index]);
+    if (!added.has_value())
+    {
+      throw std::runtime_error("Could not create the sandbox player");
+    }
+    const Player* player = &added->get();
     if (member.slot == STARTING_KEEPER)
+    {
       lineup.setGoalkeeper(player);
+    }
     else if (member.slot == BENCHED)
+    {
       reserves.push_back(player);
+    }
     else
+    {
       lineup.addOutfieldPlayer(
           player, SHAPE.slots[static_cast<std::size_t>(member.slot)].position);
+    }
   }
   lineup.setReserves(reserves);
-  data.getTeam(id)->get().getLineup() = lineup;
+  const auto team = data.getTeam(id);
+  if (!team.has_value())
+  {
+    throw std::runtime_error("Could not create the sandbox club");
+  }
+  team->get().getLineup() = lineup;
   return id;
 }
 }  // namespace
@@ -149,16 +186,20 @@ void addSandboxTestTeams(GameData& data)
 {
   LeagueID league = 0;
   for (const auto& [id, existing] : data.getLeagues())
+  {
     league = std::max<LeagueID>(league, id);
+  }
   ++league;
   TeamID next = 0;
   for (const auto& [id, existing] : data.getTeams())
+  {
     next = std::max<TeamID>(next, id);
+  }
   ++next;
 
   std::vector<TeamID> clubs;
-  const auto addPair = [&](const std::string& name,
-                           const std::vector<Member>& squad)
+  const auto addPair =
+      [&](const std::string& name, const std::vector<Member>& squad)
   {
     std::array<TeamID, 2> pair{};
     pair[0] = addClub(data, next++, league, name, squad);
@@ -168,8 +209,12 @@ void addSandboxTestTeams(GameData& data)
   };
   for (const int level : levels())
   {
-    const auto pair = addPair(std::format("Team {}", level), uniformSquad(level));
-    if (level == DEFAULT_LEVEL) sandboxDefaultClubs() = pair;
+    const auto pair =
+        addPair(std::format("Team {}", level), uniformSquad(level));
+    if (level == DEFAULT_LEVEL)
+    {
+      sandboxDefaultClubs() = pair;
+    }
   }
   addPair("Team Tiered", tieredSquad());
   data.addLeague(league, League(league, "Test teams", clubs));

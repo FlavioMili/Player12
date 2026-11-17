@@ -65,6 +65,11 @@ constexpr std::string_view refereeKey(RefereeId referee)
 constexpr std::optional<RefereeId> refereeFromKey(std::string_view key)
 {
   for (const RefereeId referee : ALL_REFEREES)
-    if (refereeKey(referee) == key) return referee;
+  {
+    if (refereeKey(referee) == key)
+    {
+      return referee;
+    }
+  }
   return std::nullopt;
 }

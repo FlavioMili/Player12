@@ -64,7 +64,7 @@ struct ZoneRecording
   BallPhysicsId ball = BallPhysicsId::AARDVARK;
   OutOfPlayId outOfPlay = OutOfPlayId::AARDVARK;
   PossessionId possession = PossessionId::AARDVARK;
-  float homeAdvantage = 0.0f;
+  float homeAdvantage = 0.0F;
   std::vector<PlayerSpec> players;
   std::vector<MatchEngine::CarriedPlayer> startStates;
   std::vector<MatchCommandRecord> commands;
@@ -79,13 +79,14 @@ namespace ZoneRecordings
 {
 /** The zone `zoneIndex` of the session's current exercise, as far as it
  * has played (none, with `error` set, if it can't be saved). */
-std::optional<ZoneRecording> capture(const SessionRun& run, std::size_t zoneIndex,
-                                     std::string& error);
+std::optional<ZoneRecording> capture(const SessionRun& session,
+                                     std::size_t zoneIndex, std::string& error);
 /** "2026-11-16 10-32 Small-sided rotation, Left 4 v 4 zone.json" */
 std::string fileName(const ZoneRecording& recording);
 bool save(const ZoneRecording& recording, const std::filesystem::path& path,
           std::string& error);
-std::optional<ZoneRecording> load(const std::filesystem::path& path, std::string& error);
+std::optional<ZoneRecording> load(const std::filesystem::path& path,
+                                  std::string& error);
 /** The zone recordings in the recordings folder, newest first. */
 std::vector<std::filesystem::path> list();
 
@@ -102,7 +103,8 @@ struct Replay
   ~Replay();
 };
 /** Builds the zone and plays it to the recording's last tick. */
-std::unique_ptr<Replay> replay(const ZoneRecording& recording, const StatsConfig& config);
+std::unique_ptr<Replay> replay(const ZoneRecording& recording,
+                               const StatsConfig& config);
 }  // namespace ZoneRecordings
 
 /** match_sandbox --zone-round-trip (T7f's check): runs the example session

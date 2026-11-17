@@ -25,21 +25,36 @@
 
 enum class DrillCategory
 {
-  Movement, Passing, Shooting, Control, Duels, Aerial, Goalkeeping, Count
+  Movement,
+  Passing,
+  Shooting,
+  Control,
+  Duels,
+  Aerial,
+  Goalkeeping,
+  Count
 };
 
 inline const char* drillCategoryName(DrillCategory category)
 {
   switch (category)
   {
-    case DrillCategory::Movement: return "MOVEMENT";
-    case DrillCategory::Passing: return "PASSING";
-    case DrillCategory::Shooting: return "SHOOTING";
-    case DrillCategory::Control: return "CONTROL";
-    case DrillCategory::Duels: return "DUELS";
-    case DrillCategory::Aerial: return "AERIAL";
-    case DrillCategory::Goalkeeping: return "GOALKEEPING";
-    case DrillCategory::Count: break;
+    case DrillCategory::Movement:
+      return "MOVEMENT";
+    case DrillCategory::Passing:
+      return "PASSING";
+    case DrillCategory::Shooting:
+      return "SHOOTING";
+    case DrillCategory::Control:
+      return "CONTROL";
+    case DrillCategory::Duels:
+      return "DUELS";
+    case DrillCategory::Aerial:
+      return "AERIAL";
+    case DrillCategory::Goalkeeping:
+      return "GOALKEEPING";
+    case DrillCategory::Count:
+      break;
   }
   return "DRILLS";
 }
@@ -71,7 +86,7 @@ struct DrillPlayerSpec
   std::map<DerivedStat, float> derived;
   Foot foot = Foot::Right;
   /** Condition at the start, 0-100 (100: fresh). */
-  float condition = 100.0f;
+  float condition = 100.0F;
 };
 
 /** One setting of a drill (also what a measure sweep can vary). */
@@ -79,8 +94,8 @@ struct DrillParameter
 {
   const char* name = "";
   float* value = nullptr;
-  float min = 0.0f;
-  float max = 1.0f;
+  float min = 0.0F;
+  float max = 1.0F;
   /** Shown and stored as whole numbers. */
   bool integer = false;
   const char* tooltip = nullptr;
@@ -145,8 +160,7 @@ class Drill
   /** The players this drill needs (their ids follow, in this order). */
   [[nodiscard]] virtual std::vector<DrillPlayerSpec> players() const = 0;
   /** Sets a run up on a fresh engine: positions, ball, first commands. */
-  virtual void begin(MatchEngine& engine,
-                     const std::vector<PlayerID>& ids) = 0;
+  virtual void begin(MatchEngine& engine, const std::vector<PlayerID>& ids) = 0;
   /** Before every step: input for a scripted controlled player. */
   virtual void beforeStep(MatchEngine& /*engine*/) {}
   /** After every step: steers the run; false once it is over. */
@@ -182,7 +196,7 @@ class DrillRun
 {
  public:
   /** Reference attribute value of the players that fill the squads. */
-  static constexpr float REFERENCE_RATING = 70.0f;
+  static constexpr float REFERENCE_RATING = 70.0F;
 
   /** `record`: attach the recorder (the debugger needs it; Measure runs
    * do without). `prepare`: called on the engine once the drill has set the
@@ -234,7 +248,7 @@ void area(const IMatchRenderer& renderer, ImDrawList& draw, PitchPoint min,
 void marker(const IMatchRenderer& renderer, ImDrawList& draw, PitchPoint at,
             float radius, ImU32 color, const char* text = nullptr);
 /** A training cone's radius (m): 20 cm across. */
-inline constexpr float CONE_RADIUS_METRES = 0.1f;
+inline constexpr float CONE_RADIUS_METRES = 0.1F;
 /** A training cone, drawn to scale (CONE_RADIUS_METRES), with an optional
  * label beside it. */
 void cone(const IMatchRenderer& renderer, ImDrawList& draw, PitchPoint at,

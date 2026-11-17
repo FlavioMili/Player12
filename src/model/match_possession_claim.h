@@ -7,10 +7,10 @@
 
 namespace PossessionClaim
 {
-inline constexpr float RECOVERY_HORIZON_SECONDS = 2.5f;
-inline constexpr float SAMPLE_SECONDS = 0.1f;
-inline constexpr float UNRECOVERABLE_GRACE_SECONDS = 0.3f;
-inline constexpr float MAX_UNCONTROLLED_SECONDS = 6.0f;
+inline constexpr float RECOVERY_HORIZON_SECONDS = 2.5F;
+inline constexpr float SAMPLE_SECONDS = 0.1F;
+inline constexpr float UNRECOVERABLE_GRACE_SECONDS = 0.3F;
+inline constexpr float MAX_UNCONTROLLED_SECONDS = 6.0F;
 
 enum class Expiry
 {
@@ -21,8 +21,8 @@ enum class Expiry
 };
 struct Decision
 {
-  float uncontrolledSeconds = 0.0f;
-  float unrecoverableSeconds = 0.0f;
+  float uncontrolledSeconds = 0.0F;
+  float unrecoverableSeconds = 0.0F;
   Expiry expiry = Expiry::NONE;
 };
 
@@ -32,15 +32,18 @@ struct Decision
 inline float travelBudget(float towardSpeed, float topSpeed, float acceleration,
                           float seconds)
 {
-  const float top = std::max(0.0f, topSpeed);
+  const float top = std::max(0.0F, topSpeed);
   const float initial = std::clamp(towardSpeed, -top, top);
-  const float time = std::max(0.0f, seconds);
-  const float a = std::max(0.0f, acceleration);
-  if (a <= 1e-6f) return std::max(0.0f, initial * time);
+  const float time = std::max(0.0F, seconds);
+  const float a = std::max(0.0F, acceleration);
+  if (a <= 1e-6F)
+  {
+    return std::max(0.0F, initial * time);
+  }
   const float accelerating = std::min(time, (top - initial) / a);
-  return std::max(0.0f, initial * accelerating +
-                            0.5f * a * accelerating * accelerating +
-                            top * (time - accelerating));
+  return std::max(0.0F, (initial * accelerating) +
+                            (0.5F * a * accelerating * accelerating) +
+                            (top * (time - accelerating)));
 }
 
 inline bool canRecoverAt(float distanceMetres, float towardSpeed,
@@ -48,27 +51,37 @@ inline bool canRecoverAt(float distanceMetres, float towardSpeed,
                          float contactReadyIn, float reachMetres,
                          float heightMetres, float feetHeight, bool onPitch)
 {
-  return onPitch && seconds + 1e-6f >= std::max(0.0f, contactReadyIn) &&
+  return onPitch && seconds + 1e-6F >= std::max(0.0F, contactReadyIn) &&
          heightMetres <= feetHeight &&
          distanceMetres <=
-             std::max(0.0f, reachMetres) +
+             std::max(0.0F, reachMetres) +
                  travelBudget(towardSpeed, topSpeed, acceleration, seconds);
 }
 
 constexpr Decision evaluate(bool available, bool controlled, bool recoverable,
                             float age, float unrecoverable, float dt)
 {
-  if (!available) return {0.0f, 0.0f, Expiry::UNAVAILABLE};
-  if (controlled) return {};
-  const float elapsed = std::max(0.0f, dt);
-  const float nextAge = std::max(0.0f, age) + elapsed;
+  if (!available)
+  {
+    return {.uncontrolledSeconds = 0.0F,
+            .unrecoverableSeconds = 0.0F,
+            .expiry = Expiry::UNAVAILABLE};
+  }
+  if (controlled)
+  {
+    return {};
+  }
+  const float elapsed = std::max(0.0F, dt);
+  const float nextAge = std::max(0.0F, age) + elapsed;
   const float nextUnrecoverable =
-      recoverable ? 0.0f : std::max(0.0f, unrecoverable) + elapsed;
-  const auto reason = nextAge + 1e-6f >= MAX_UNCONTROLLED_SECONDS
+      recoverable ? 0.0F : std::max(0.0F, unrecoverable) + elapsed;
+  const auto reason = nextAge + 1e-6F >= MAX_UNCONTROLLED_SECONDS
                           ? Expiry::AGE_LIMIT
-                      : nextUnrecoverable + 1e-6f >= UNRECOVERABLE_GRACE_SECONDS
+                      : nextUnrecoverable + 1e-6F >= UNRECOVERABLE_GRACE_SECONDS
                           ? Expiry::UNRECOVERABLE
                           : Expiry::NONE;
-  return {nextAge, nextUnrecoverable, reason};
+  return {.uncontrolledSeconds = nextAge,
+          .unrecoverableSeconds = nextUnrecoverable,
+          .expiry = reason};
 }
 }  // namespace PossessionClaim

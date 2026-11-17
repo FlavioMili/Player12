@@ -23,18 +23,19 @@
 struct PitchPoint final
 {
   constexpr PitchPoint() = default;
-  constexpr explicit PitchPoint(float pitchX, float pitchY) : x(pitchX), y(pitchY)
+  constexpr explicit PitchPoint(float pitchX, float pitchY)
+      : x(pitchX), y(pitchY)
   {
   }
 
-  float x = 0.0f;
-  float y = 0.0f;
+  float x = 0.0F;
+  float y = 0.0F;
 };
 
 /** The step from `from` to `to`, in metres. */
 constexpr Vector2F operator-(PitchPoint to, PitchPoint from)
 {
-  return Vector2F{to.x - from.x, to.y - from.y};
+  return Vector2F{.x = to.x - from.x, .y = to.y - from.y};
 }
 
 /** `from` moved by `step` (metres). */
@@ -45,7 +46,10 @@ constexpr PitchPoint operator+(PitchPoint from, Vector2F step)
 
 /** The point as a metric vector from the top left corner, for geometry
  * worked in Vector2F (the same numbers: both are metres). */
-constexpr Vector2F asVector(PitchPoint point) { return {point.x, point.y}; }
+constexpr Vector2F asVector(PitchPoint point)
+{
+  return {.x = point.x, .y = point.y};
+}
 
 /** A metric vector from the top left corner as a point. */
 constexpr PitchPoint asPoint(Vector2F metres)

@@ -76,8 +76,8 @@
                                            const TouchMoment& moment,
                                            float surprise,
                                            float pressure, BallSpin spin = {},
-                                           float spinCapacity = 0.0f,
-                                           float powerCapacity = 0.0f) const;
+                                           float spinCapacity = 0.0F,
+                                           float powerCapacity = 0.0F) const;
   /** His power for a kind of strike (m/s): shot power for shots and
    * headers, the throw's limit, kick power for the rest. */
   float strikePowerBinturong(const MatchPlayer& striker, StrikeKind kind) const;
@@ -91,7 +91,7 @@
   ContactAssessment assessStrikeBinturong(const MatchPlayer& striker,
                                           const ContactProfile& profile,
                                           Vector2F aim, float speed,
-                                          float lift = 0.0f) const;
+                                          float lift = 0.0F) const;
   /** Every contact, touch or strike (unified kick plan): the request's
    * profile, assessed at `moment`, carried out with his skill for it, and
    * reported. */
@@ -111,8 +111,8 @@
    * The kick's target gives only its direction. */
   Kick strikeContactBinturong(const MatchPlayer& striker, StrikeKind kind,
                               PitchPoint target, float speed, float lift,
-                              float precision = 1.0f, BallSpin spin = {},
-                              float spinCapacity = 0.0f);
+                              float precision = 1.0F, BallSpin spin = {},
+                              float spinCapacity = 0.0F);
   /** Carries an assessed contact out with `skill` (0-1): each job's chance
    * of going wrong, how badly, and the ball off it. */
   ContactOutcome carryOutContactBinturong(const MatchPlayer& player,
@@ -172,8 +172,8 @@
    * it passes `probeMetres` out (-1 if it is down before then). */
   struct LoftFlight
   {
-    float reach = 0.0f;
-    float probeHeight = -1.0f;
+    float reach = 0.0F;
+    float probeHeight = -1.0F;
   };
   LoftFlight flyLoftBinturong(float along, float up, float startHeight,
                               float arrivalHeight, BallSpin spin,
@@ -189,8 +189,8 @@
                                               float startHeight,
                                               float arrivalHeight,
                                               BallSpin spin,
-                                              float clearMetres = -1.0f,
-                                              float clearHeight = -1.0f) const;
+                                              float clearMetres = -1.0F,
+                                              float clearHeight = -1.0F) const;
   float recoverySecondsBinturong(const MatchPlayer& player, Recovery after);
   /** A shot's execution error (metres, one standard deviation). */
   float shotSpreadBinturong(const MatchPlayer& shooter, bool header, bool penalty,

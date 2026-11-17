@@ -103,8 +103,7 @@ struct Replay
  * recorded ones; the comparison then shows where the brains differ.
  * @param bodies Likewise for the players' bodies.
  * @param handshake Likewise for the match's handshake. */
-Replay replay(const MatchRecording& recording,
-              const GameController& controller,
+Replay replay(const MatchRecording& recording, const GameController& controller,
               std::optional<std::array<BrainId, 2>> brains = {},
               std::optional<std::array<BodyId, 2>> bodies = {},
               std::optional<HandshakeId> handshake = {},

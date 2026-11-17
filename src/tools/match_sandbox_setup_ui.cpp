@@ -4,6 +4,8 @@
 #include <imgui.h>
 
 #include <algorithm>
+#include <array>
+#include <string_view>
 
 #include "model/match_tuning.h"
 #include "tools/match_sandbox_setup.h"
@@ -35,31 +37,38 @@ struct Card
 struct SetupPainter
 {
   ImVec2 origin;
-  float scale;
-  ImFont *regular, *medium, *bold;
+  float scale = 1.0F;
+  ImFont* regular = nullptr;
+  ImFont* medium = nullptr;
+  ImFont* bold = nullptr;
   ImDrawList* draw = ImGui::GetWindowDrawList();
 
-  ImVec2 point(float x, float y) const
+  [[nodiscard]] ImVec2 point(float x, float y) const
   {
-    return ImVec2(origin.x + x * scale, origin.y + y * scale);
+    return ImVec2(origin.x + (x * scale), origin.y + (y * scale));
   }
 
   void text(float x, float y, const char* value, float size = 14,
             ImU32 ink = CREAM, ImFont* font = nullptr, float tracking = 0,
             float wrap = 0) const
   {
-    font = font ? font : regular;
+    font = (font != nullptr) ? font : regular;
     ImGui::PushFont(font, size);
     ImVec2 pos = point(x, y);
     if (tracking == 0)
+    {
       draw->AddText(font, ImGui::GetFontSize(), pos, ink, value, nullptr,
                     wrap * scale);
+    }
     else
-      for (const char* c = value; *c; ++c)
+    {
+      for (const char character : std::string_view(value))
       {
-        draw->AddText(pos, ink, c, c + 1);
-        pos.x += ImGui::CalcTextSize(c, c + 1).x + tracking * scale;
+        const std::array glyph{character, '\0'};
+        draw->AddText(pos, ink, glyph.data());
+        pos.x += ImGui::CalcTextSize(glyph.data()).x + (tracking * scale);
       }
+    }
     ImGui::PopFont();
   }
 
@@ -72,7 +81,10 @@ struct SetupPainter
   {
     draw->AddRectFilled(point(c.x, c.y), point(c.x + c.w, c.y + c.h), fill);
     draw->PushClipRect(point(c.x, c.y), point(c.x + c.w, c.y + c.h), true);
-    if (title) text(c.x + 16, c.y + 12, title, 16, CREAM, bold, 1.5f);
+    if (title != nullptr)
+    {
+      text(c.x + 16, c.y + 12, title, 16, CREAM, bold, 1.5F);
+    }
   }
 
   void end(const Card& c, bool band = false) const
@@ -89,7 +101,10 @@ struct SetupPainter
                                   PAGE);
     draw->AddRectFilledMultiColor(ImVec2(b.x - f, a.y), b, clear, PAGE, PAGE,
                                   clear);
-    if (band) draw->AddRectFilled(a, ImVec2(b.x, a.y + f), LIME);
+    if (band)
+    {
+      draw->AddRectFilled(a, ImVec2(b.x, a.y + f), LIME);
+    }
     draw->PopClipRect();
   }
 
@@ -110,8 +125,10 @@ struct SetupPainter
     draw->AddRect(point(x, y), point(x + w, y + 28), selected ? LIME : BORDER,
                   0, 0, scale);
     if (ImGui::IsItemFocused())
+    {
       draw->AddRect(point(x - 2, y - 2), point(x + w + 2, y + 30), CREAM, 0, 0,
                     scale);
+    }
     SandboxTypography::label(draw, bold, 14, label, point(x, y),
                              point(x + w, y + 28), selected ? INK : CREAM,
                              scale);
@@ -123,16 +140,23 @@ struct SetupPainter
                Version& value, Version aardvark, Version binturong,
                float rowHeight = 68) const
   {
-    const float y = c.y + 48 + row * rowHeight;
+    const float y = c.y + 48 + (static_cast<float>(row) * rowHeight);
     const float controlsX = c.x + c.w - 16 - 230;
     ImGui::PushID(label);
     text(c.x + 16, y + 1, label, 16, CREAM, medium);
     text(c.x + 16, y + 36, helper, 16, MUTED, regular);
     if (button(controlsX, y + 6, 112, "AARDVARK", value == aardvark))
+    {
       value = aardvark;
+    }
     if (button(controlsX + 118, y + 6, 112, "BINTURONG", value == binturong))
+    {
       value = binturong;
-    if (row > 0) line(c.x + 16, y - 10, c.w - 32);
+    }
+    if (row > 0)
+    {
+      line(c.x + 16, y - 10, c.w - 32);
+    }
     ImGui::PopID();
   }
 
@@ -145,9 +169,14 @@ struct SetupPainter
     if (ImGui::InvisibleButton("##option",
                                ImVec2((c.w - 32) * scale, 54 * scale),
                                ImGuiButtonFlags_EnableNav))
+    {
       value = !value;
+    }
     const bool hover = ImGui::IsItemHovered();
-    if (hover) ImGui::SetTooltip("%s", helper);
+    if (hover)
+    {
+      ImGui::SetTooltip("%s", helper);
+    }
     draw->AddRectFilled(point(x, y + 1), point(x + 22, y + 23),
                         value ? LIME : DARK);
     draw->AddRect(point(x, y + 1), point(x + 22, y + 23),
@@ -175,40 +204,47 @@ void SandboxSetupUI::render(float scale, ImFont* setup_regular_font,
   const bool wide = available >= HOME_W + AWAY_W + SIDE_W + 2 * GAP;
   const bool twoColumns = available >= HOME_W + SIDE_W + GAP;
   const float width =
-      wide ? HOME_W + AWAY_W + SIDE_W + 2 * GAP
+      wide ? HOME_W + AWAY_W + SIDE_W + (2 * GAP)
            : (twoColumns ? HOME_W + SIDE_W + GAP : std::min(available, HOME_W));
-  SetupPainter ui{ImGui::GetCursorScreenPos(), scale, setup_regular_font,
-                  setup_medium_font, sidebar_font};
-  const Card header{0, 0, width, HEADER_H};
+  SetupPainter ui{.origin = ImGui::GetCursorScreenPos(),
+                  .scale = scale,
+                  .regular = setup_regular_font,
+                  .medium = setup_medium_font,
+                  .bold = sidebar_font};
+  const Card header{.x = 0, .y = 0, .w = width, .h = HEADER_H};
   ui.begin(header, LIGHT);
-  ui.text(16, 18, "Set-up", 42, CREAM, sidebar_font, 0.5f);
+  ui.text(16, 18, "Set-up", 42, CREAM, sidebar_font, 0.5F);
   ui.text(16, 82, "Choose the engines and conditions for your next run", 17,
           CREAM, setup_regular_font, 0, width - 32);
   ui.end(header, true);
 
   const float leftW =
       wide ? HOME_W + GAP + AWAY_W : (twoColumns ? HOME_W : width);
-  const Card home{0, HEADER_H + GAP, wide ? HOME_W : leftW, ENGINE_H};
-  const Card away{wide ? HOME_W + GAP : 0,
-                  wide ? home.y : home.y + ENGINE_H + GAP,
-                  wide ? AWAY_W : leftW, ENGINE_H};
+  const Card home{
+      .x = 0, .y = HEADER_H + GAP, .w = wide ? HOME_W : leftW, .h = ENGINE_H};
+  const Card away{.x = wide ? HOME_W + GAP : 0,
+                  .y = wide ? home.y : home.y + ENGINE_H + GAP,
+                  .w = wide ? AWAY_W : leftW,
+                  .h = ENGINE_H};
   for (int side = 0; side < 2; ++side)
   {
     const Card& c = side == 0 ? home : away;
     ImGui::PushID(side);
     ui.begin(c, side == 0 ? LIGHT : MID,
              side == 0 ? "HOME ENGINES" : "AWAY ENGINES");
-    ui.version(c, 0, "Brain", "Player decisions", sandboxBrains()[side],
+    ui.version(c, 0, "Brain", "Player decisions", sandboxBrains().at(side),
                BrainId::AARDVARK, BrainId::BINTURONG);
-    ui.version(c, 1, "Body", "Movement and ball contact", sandboxBodies()[side],
-               BodyId::AARDVARK, BodyId::BINTURONG);
-    ui.version(c, 2, "Manager", "Touchline decisions", sandboxManagers()[side],
-               ManagerId::AARDVARK, ManagerId::BINTURONG);
+    ui.version(c, 1, "Body", "Movement and ball contact",
+               sandboxBodies().at(side), BodyId::AARDVARK, BodyId::BINTURONG);
+    ui.version(c, 2, "Manager", "Touchline decisions",
+               sandboxManagers().at(side), ManagerId::AARDVARK,
+               ManagerId::BINTURONG);
     ui.end(c);
     ImGui::PopID();
   }
   // Use the same row rhythm and body-text size for all engine settings.
-  const Card shared{0, away.y + ENGINE_H + GAP, leftW, SHARED_H};
+  const Card shared{
+      .x = 0, .y = away.y + ENGINE_H + GAP, .w = leftW, .h = SHARED_H};
   ui.begin(shared, LIGHT, "SHARED SYSTEMS");
   const auto sharedRow = [&]<typename V>(int row, const char* label,
                                          const char* helper, V& current, V a,
@@ -228,9 +264,10 @@ void SandboxSetupUI::render(float scale, ImFont* setup_regular_font,
   ui.end(shared);
 
   const Card simulation{
-      (wide || twoColumns) ? leftW + GAP : 0,
-      (wide || twoColumns) ? home.y : shared.y + shared.h + GAP,
-      (wide || twoColumns) ? width - leftW - GAP : width, 400};
+      .x = (wide || twoColumns) ? leftW + GAP : 0,
+      .y = (wide || twoColumns) ? home.y : shared.y + shared.h + GAP,
+      .w = (wide || twoColumns) ? width - leftW - GAP : width,
+      .h = 400};
   ui.begin(simulation, DARK, "SIMULATION");
   const float sx = simulation.x, sy = simulation.y;
   ui.subhead(sx + 16, sy + 48, "NEW RUNS");
@@ -252,17 +289,21 @@ void SandboxSetupUI::render(float scale, ImFont* setup_regular_font,
   ImGui::InputFloat("##home_advantage_value", &sandboxHomeAdvantage(), 0, 0,
                     "%.2f");
   const float maximum = MatchTuning::Context::MAX_HOME_ADVANTAGE_SCALE;
-  sandboxHomeAdvantage() = std::clamp(sandboxHomeAdvantage(), 0.0f, maximum);
+  sandboxHomeAdvantage() = std::clamp(sandboxHomeAdvantage(), 0.0F, maximum);
   ImGui::SetCursorScreenPos(ui.point(sx + 16, sy + 112));
   ImGui::SetNextItemWidth((simulation.w - 32) * scale);
   for (const auto color :
        {ImGuiCol_FrameBg, ImGuiCol_FrameBgHovered, ImGuiCol_FrameBgActive,
         ImGuiCol_SliderGrab, ImGuiCol_SliderGrabActive, ImGuiCol_Border})
+  {
     ImGui::PushStyleColor(color, IM_COL32(0, 0, 0, 0));
+  }
   ImGui::SliderFloat("##home_advantage_slider", &sandboxHomeAdvantage(), 0,
                      maximum, "", ImGuiSliderFlags_AlwaysClamp);
   if (ImGui::IsItemHovered())
+  {
     ImGui::SetTooltip("0: neutral. 1: standard home edge. 2: maximum.");
+  }
   ImGui::PopStyleColor(6);
   const float trackWidth = simulation.w - 44;
   const float thumb = trackWidth * sandboxHomeAdvantage() / maximum;
@@ -273,13 +314,15 @@ void SandboxSetupUI::render(float scale, ImFont* setup_regular_font,
   ui.draw->AddRectFilled(ui.point(sx + 17 + thumb, sy + 118),
                          ui.point(sx + 27 + thumb, sy + 132), LIME);
   if (ImGui::IsItemFocused())
+  {
     ui.draw->AddRect(ui.point(sx + 15 + thumb, sy + 116),
                      ui.point(sx + 29 + thumb, sy + 134), CREAM, 0, 0, scale);
+  }
   ImGui::PopStyleColor(7);
   ImGui::PopStyleVar(3);
   ImGui::PopFont();
   ui.text(sx + 16, sy + 146, "0 Neutral", 14, MUTED);
-  ui.text(sx + simulation.w / 2 - 36, sy + 146, "1 Standard", 14, MUTED);
+  ui.text(sx + (simulation.w / 2) - 36, sy + 146, "1 Standard", 14, MUTED);
   ui.text(sx + simulation.w - 96, sy + 146, "2 Maximum", 14, MUTED);
   ui.text(sx + 16, sy + 176, "Applies to new matches, drills and training", 16,
           MUTED);
@@ -292,8 +335,10 @@ void SandboxSetupUI::render(float scale, ImFont* setup_regular_font,
                  "Open review and debugger when play begins",
                  debug_at_kick_off);
   ui.end(simulation);
-  const Card note{simulation.x, simulation.y + simulation.h + GAP, simulation.w,
-                  112};
+  const Card note{.x = simulation.x,
+                  .y = simulation.y + simulation.h + GAP,
+                  .w = simulation.w,
+                  .h = 112};
   ui.begin(note, MID);
   ui.text(note.x + 16, note.y + 12, "NEXT RUN", 14, LIME, sidebar_font, 1);
   ui.text(note.x + 16, note.y + 38,

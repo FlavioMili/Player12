@@ -17,36 +17,41 @@ constexpr PitchPoint retainingTouchPosition(const MatchPitch& pitch,
                                             PossessionId version,
                                             PitchPoint contact)
 {
-  if (version == PossessionId::BINTURONG) return contact;
+  if (version == PossessionId::BINTURONG)
+  {
+    return contact;
+  }
   return PitchPoint{
-      std::clamp(contact.x, MatchTuning::Pitch::BALL_INSIDE_END_METRES, pitch.length - MatchTuning::Pitch::BALL_INSIDE_END_METRES),
-      std::clamp(contact.y, MatchTuning::Pitch::BALL_INSIDE_SIDE_METRES, pitch.width - MatchTuning::Pitch::BALL_INSIDE_SIDE_METRES)};
+      std::clamp(contact.x, MatchTuning::Pitch::BALL_INSIDE_END_METRES,
+                 pitch.length - MatchTuning::Pitch::BALL_INSIDE_END_METRES),
+      std::clamp(contact.y, MatchTuning::Pitch::BALL_INSIDE_SIDE_METRES,
+                 pitch.width - MatchTuning::Pitch::BALL_INSIDE_SIDE_METRES)};
 }
 // Initial Binturong policy values, in metres and simulated seconds. These
 // describe current control, not claim expiry or permission to contest a ball.
-inline constexpr float RETAIN_GAP_METRES = 3.0f;
-inline constexpr float CLEAR_LOSS_GAP_METRES = 4.5f;
-inline constexpr float PREDICT_SECONDS = 0.35f;
-inline constexpr float HEIGHT_TOLERANCE_METRES = 0.15f;
-inline constexpr float CLEAR_LOSS_HEIGHT_METRES = 0.75f;
-inline constexpr float SEPARATION_GRACE_SECONDS = 0.20f;
+inline constexpr float RETAIN_GAP_METRES = 3.0F;
+inline constexpr float CLEAR_LOSS_GAP_METRES = 4.5F;
+inline constexpr float PREDICT_SECONDS = 0.35F;
+inline constexpr float HEIGHT_TOLERANCE_METRES = 0.15F;
+inline constexpr float CLEAR_LOSS_HEIGHT_METRES = 0.75F;
+inline constexpr float SEPARATION_GRACE_SECONDS = 0.20F;
 
 struct Evidence
 {
   bool playerAvailable = false;
-  float gapMetres = 0.0f;
-  float predictedGapMetres = 0.0f;
-  float relativeSpeed = 0.0f;
-  float heightMetres = 0.0f;
-  float feetHeightMetres = 0.0f;
-  float collectionReachMetres = 0.0f;
-  float collectionRelativeSpeed = 0.0f;
+  float gapMetres = 0.0F;
+  float predictedGapMetres = 0.0F;
+  float relativeSpeed = 0.0F;
+  float heightMetres = 0.0F;
+  float feetHeightMetres = 0.0F;
+  float collectionReachMetres = 0.0F;
+  float collectionRelativeSpeed = 0.0F;
 };
 
 struct Decision
 {
   bool collected = false;
-  float separationSeconds = 0.0f;
+  float separationSeconds = 0.0F;
   bool newlyCollected = false;
 };
 
@@ -61,25 +66,39 @@ constexpr Decision evaluate(bool collected, float separationSeconds,
       evidence.gapMetres <= evidence.collectionReachMetres &&
       evidence.relativeSpeed <= evidence.collectionRelativeSpeed &&
       evidence.heightMetres <= evidence.feetHeightMetres;
-  if (!collected) return {collectable, 0.0f, collectable};
+  if (!collected)
+  {
+    return {.collected = collectable,
+            .separationSeconds = 0.0F,
+            .newlyCollected = collectable};
+  }
 
   const bool clearlyLost =
       !evidence.playerAvailable || evidence.gapMetres > CLEAR_LOSS_GAP_METRES ||
       evidence.predictedGapMetres > CLEAR_LOSS_GAP_METRES ||
       evidence.heightMetres >
           evidence.feetHeightMetres + CLEAR_LOSS_HEIGHT_METRES;
-  if (clearlyLost) return {};
+  if (clearlyLost)
+  {
+    return {};
+  }
 
   const bool retained = evidence.gapMetres <= RETAIN_GAP_METRES &&
                         evidence.predictedGapMetres <= RETAIN_GAP_METRES &&
                         evidence.heightMetres <=
                             evidence.feetHeightMetres + HEIGHT_TOLERANCE_METRES;
-  if (retained) return {true, 0.0f, false};
+  if (retained)
+  {
+    return {
+        .collected = true, .separationSeconds = 0.0F, .newlyCollected = false};
+  }
 
   const float separated =
-      std::max(0.0f, separationSeconds) + std::max(0.0f, dt);
-  return separated + 1e-6f < SEPARATION_GRACE_SECONDS
-             ? Decision{true, separated, false}
+      std::max(0.0F, separationSeconds) + std::max(0.0F, dt);
+  return separated + 1e-6F < SEPARATION_GRACE_SECONDS
+             ? Decision{.collected = true,
+                        .separationSeconds = separated,
+                        .newlyCollected = false}
              : Decision{};
 }
 }  // namespace PossessionControl

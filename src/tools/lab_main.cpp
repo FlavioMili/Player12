@@ -30,8 +30,8 @@
 
 #include "global/logger.h"
 #include "global/thread_pool.h"
-#include "model/match_tuning.h"
 #include "gui/view_models/formation.h"
+#include "model/match_tuning.h"
 #include "tools/lab_fixtures.h"
 #include "tools/lab_report.h"
 #include "tools/lab_runner.h"
@@ -57,9 +57,9 @@ class ScratchDirectoryError : public std::runtime_error
 constexpr unsigned DEFAULT_THREADS = 4;
 constexpr int DEFAULT_MATCHES = 2000;
 constexpr int DEFAULT_TACTIC_SEEDS = 200;
-constexpr float DEFAULT_RATING = 65.0f;
-constexpr float SPREAD_MIN_RATING = 55.0f;
-constexpr float SPREAD_MAX_RATING = 80.0f;
+constexpr float DEFAULT_RATING = 65.0F;
+constexpr float SPREAD_MIN_RATING = 55.0F;
+constexpr float SPREAD_MAX_RATING = 80.0F;
 constexpr int PRIORITY_INCREMENT = 10;
 constexpr double TWO_POW_32 = 4294967296.0;
 constexpr std::uint64_t SPREAD_SALT = 0x5EED5EEDULL;
@@ -190,14 +190,17 @@ struct Arguments
   std::map<std::string, std::string, std::less<>> values;
   std::vector<std::string> flags;
 
-  bool has(std::string_view flag) const
+  [[nodiscard]] bool has(std::string_view flag) const
   {
     return std::ranges::find(flags, flag) != flags.end();
   }
-  std::optional<std::string> value(const std::string& key) const
+  [[nodiscard]] std::optional<std::string> value(const std::string& key) const
   {
     const auto found = values.find(key);
-    if (found == values.end()) return std::nullopt;
+    if (found == values.end())
+    {
+      return std::nullopt;
+    }
     return found->second;
   }
 };
@@ -213,17 +216,29 @@ Arguments parseArguments(int argc, char** argv)
   static constexpr std::array<std::string_view, 6> FLAGS = {
       "--spread", "--uniform", "--knockout", "--reload", "--help", "-h"};
   static constexpr std::array<std::string_view, 26> OPTIONS = {
-      "--formation",
-      "--n",       "--seed",       "--home-rating", "--away-rating",
-      "--rating",  "--rating-min", "--rating-max",  "--threads",
-      "--out-dir", "--leagues",    "--seasons",     "--max-days",
-      "--fidelity", "--brains",    "--bodies",      "--handshake",
-      "--referee", "--managers",   "--ball",        "--out-of-play",
-      "--home-advantage", "--knobs", "--possession", "--out", "--seconds"};
+      "--formation",   "--n",
+      "--seed",        "--home-rating",
+      "--away-rating", "--rating",
+      "--rating-min",  "--rating-max",
+      "--threads",     "--out-dir",
+      "--leagues",     "--seasons",
+      "--max-days",    "--fidelity",
+      "--brains",      "--bodies",
+      "--handshake",   "--referee",
+      "--managers",    "--ball",
+      "--out-of-play", "--home-advantage",
+      "--knobs",       "--possession",
+      "--out",         "--seconds"};
   Arguments arguments;
-  if (argc < 2) throw UsageError("missing mode");
+  if (argc < 2)
+  {
+    throw UsageError("missing mode");
+  }
   arguments.mode = argv[1];
-  if (arguments.mode == "seasons") arguments.mode = "season";
+  if (arguments.mode == "seasons")
+  {
+    arguments.mode = "season";
+  }
   for (int i = 2; i < argc; ++i)
   {
     const std::string_view arg = argv[i];
@@ -233,9 +248,13 @@ Arguments parseArguments(int argc, char** argv)
       continue;
     }
     if (std::ranges::find(OPTIONS, arg) == OPTIONS.end())
+    {
       throw UsageError(std::format("unknown option '{}'", arg));
+    }
     if (i + 1 >= argc)
+    {
       throw UsageError(std::format("option '{}' needs a value", arg));
+    }
     arguments.values[std::string(arg)] = argv[++i];
   }
   return arguments;
@@ -246,17 +265,26 @@ Number parseNumber(const Arguments& arguments, const std::string& key,
                    Number fallback, Number minimum, Number maximum)
 {
   const std::optional<std::string> text = arguments.value(key);
-  if (!text) return fallback;
+  if (!text)
+  {
+    return fallback;
+  }
   try
   {
     std::size_t used = 0;
     Number value{};
     if constexpr (std::is_floating_point_v<Number>)
+    {
       value = static_cast<Number>(std::stod(*text, &used));
+    }
     else
+    {
       value = static_cast<Number>(std::stoll(*text, &used));
+    }
     if (used != text->size() || value < minimum || value > maximum)
+    {
       throw UsageError("");
+    }
     return value;
   }
   catch (const std::invalid_argument&)
@@ -272,7 +300,8 @@ Number parseNumber(const Arguments& arguments, const std::string& key,
 unsigned threadCount(const Arguments& arguments)
 {
   unsigned fallback = DEFAULT_THREADS;
-  if (const char* env = std::getenv("FM_SIM_THREADS"); env && *env)
+  if (const char* env = std::getenv("FM_SIM_THREADS");
+      (env != nullptr) && (*env != 0))
   {
     try
     {
@@ -306,14 +335,19 @@ std::filesystem::path makeTempDirectory(const std::string& prefix)
   const std::unique_ptr<char, decltype(&SDL_free)> pref_path(
       SDL_GetPrefPath("FlavioMili", "FootballManagementLab"), &SDL_free);
   if (pref_path == nullptr)
+  {
     throw ScratchDirectoryError("cannot locate private lab storage");
+  }
   const std::filesystem::path base(pref_path.get());
   const auto stamp =
       std::chrono::steady_clock::now().time_since_epoch().count();
   for (unsigned attempt = 0; attempt < 100; ++attempt)
   {
     const auto path = base / std::format("{}{}-{}", prefix, stamp, attempt);
-    if (std::filesystem::create_directory(path)) return path;
+    if (std::filesystem::create_directory(path))
+    {
+      return path;
+    }
   }
   throw ScratchDirectoryError("cannot create a scratch directory");
 #endif
@@ -347,7 +381,9 @@ void quietLogging()
 {
   Logger::init();
   if (const auto logger = spdlog::get("main_logger"))
+  {
     logger->set_level(spdlog::level::warn);
+  }
 }
 
 /** --fidelity: true for background (unwatched fixture) fidelity. */
@@ -355,7 +391,9 @@ bool backgroundFidelity(const Arguments& arguments)
 {
   const std::string fidelity = arguments.value("--fidelity").value_or("full");
   if (fidelity != "full" && fidelity != "background")
+  {
     throw UsageError("--fidelity must be full or background");
+  }
   return fidelity == "background";
 }
 
@@ -365,27 +403,37 @@ std::array<BrainId, 2> brainPair(const Arguments& arguments)
   const std::string text = arguments.value("--brains").value_or("aardvark");
   const auto brains = parseBrainPair(text);
   if (!brains)
+  {
     throw UsageError(
         "--brains must be HOME,AWAY or one brain, each aardvark or binturong");
+  }
   return *brains;
 }
 
 /** --formation F (both sides) or HOME,AWAY: the game's formation presets
  * (4-4-2, 4-3-3, 4-2-3-1, 3-5-2, 5-3-2); none given, the lab's 4-4-2. */
-std::array<std::optional<Lab::FormationSlots>, 2>
-formationPair(const Arguments& arguments)
+std::array<std::optional<Lab::FormationSlots>, 2> formationPair(
+    const Arguments& arguments)
 {
   const auto text = arguments.value("--formation");
-  if (!text) return {};
+  if (!text)
+  {
+    return {};
+  }
   const auto lookup = [](std::string_view name)
   {
     for (const Formation::Preset& preset : Formation::PRESETS)
     {
-      if (name != preset.name) continue;
+      if (name != preset.name)
+      {
+        continue;
+      }
       Lab::FormationSlots slots;
       for (std::size_t index = 0; index < slots.size(); ++index)
-        slots[index] = {preset.slots[index].role,
-                        preset.slots[index].position};
+      {
+        slots[index] = {.role = preset.slots[index].role,
+                        .position = preset.slots[index].position};
+      }
       return slots;
     }
     throw UsageError(std::format(
@@ -393,7 +441,10 @@ formationPair(const Arguments& arguments)
         name));
   };
   const std::size_t comma = text->find(',');
-  if (comma == std::string::npos) return {lookup(*text), lookup(*text)};
+  if (comma == std::string::npos)
+  {
+    return {lookup(*text), lookup(*text)};
+  }
   return {lookup(std::string_view(*text).substr(0, comma)),
           lookup(std::string_view(*text).substr(comma + 1))};
 }
@@ -404,8 +455,10 @@ std::array<BodyId, 2> bodyPair(const Arguments& arguments)
   const std::string text = arguments.value("--bodies").value_or("aardvark");
   const auto bodies = parseBodyPair(text);
   if (!bodies)
+  {
     throw UsageError(
         "--bodies must be HOME,AWAY or one body, each aardvark or binturong");
+  }
   return *bodies;
 }
 
@@ -434,7 +487,10 @@ KnobSettings knobsOption(const Arguments& arguments)
 {
   KnobSettings settings;
   const std::optional<std::string> text = arguments.value("--knobs");
-  if (!text) return settings;
+  if (!text)
+  {
+    return settings;
+  }
   settings.text = *text;
   std::string_view rest = *text;
   while (!rest.empty())
@@ -443,29 +499,43 @@ KnobSettings knobsOption(const Arguments& arguments)
     const std::string_view item = rest.substr(0, end);
     rest = end == std::string_view::npos ? std::string_view{}
                                          : rest.substr(end + 1);
-    if (item.empty()) continue;
+    if (item.empty())
+    {
+      continue;
+    }
     const std::size_t equals = item.rfind('=');
     if (equals == std::string_view::npos)
+    {
       throw UsageError(std::format("--knobs: '{}' is not Name=value", item));
+    }
     const std::string name(item.substr(0, equals));
     const std::string number(item.substr(equals + 1));
-    float value = 0.0f;
+    float value = 0.0F;
     try
     {
       std::size_t used = 0;
       value = std::stof(number, &used);
-      if (used != number.size()) throw std::invalid_argument(number);
+      if (used != number.size())
+      {
+        throw std::invalid_argument(number);
+      }
     }
     catch (const std::exception&)
     {
       throw UsageError(std::format("--knobs: '{}' is not a number", number));
     }
     if (const auto knob = touchKnobByName(name))
+    {
       settings.touch[*knob] = value;
+    }
     else if (float* strike = settings.strike.find(name))
+    {
       *strike = value;
+    }
     else
+    {
       throw UsageError(std::format("--knobs: no knob named '{}'", name));
+    }
   }
   return settings;
 }
@@ -487,7 +557,10 @@ HandshakeId handshakeOption(const Arguments& arguments)
 {
   const std::string text = arguments.value("--handshake").value_or("binturong");
   const auto handshake = handshakeFromKey(text);
-  if (!handshake) throw UsageError("--handshake must be aardvark or binturong");
+  if (!handshake)
+  {
+    throw UsageError("--handshake must be aardvark or binturong");
+  }
   return *handshake;
 }
 
@@ -507,32 +580,45 @@ SeamChoices seamChoices(const Arguments& arguments)
   SeamChoices choice;
   const auto referee =
       refereeFromKey(arguments.value("--referee").value_or("aardvark"));
-  if (!referee) throw UsageError("--referee must be aardvark or binturong");
+  if (!referee)
+  {
+    throw UsageError("--referee must be aardvark or binturong");
+  }
   choice.referee = *referee;
   const auto managers =
       parseManagerPair(arguments.value("--managers").value_or("aardvark"));
   if (!managers)
+  {
     throw UsageError(
         "--managers must be HOME,AWAY or one manager, each aardvark or "
         "binturong");
+  }
   choice.managers = *managers;
   const auto ball =
       ballPhysicsFromKey(arguments.value("--ball").value_or("aardvark"));
-  if (!ball) throw UsageError("--ball must be aardvark or binturong");
+  if (!ball)
+  {
+    throw UsageError("--ball must be aardvark or binturong");
+  }
   choice.ball = *ball;
   const auto outOfPlay =
       outOfPlayFromKey(arguments.value("--out-of-play").value_or("aardvark"));
   if (!outOfPlay)
+  {
     throw UsageError("--out-of-play must be aardvark or binturong");
+  }
   choice.outOfPlay = *outOfPlay;
-  const auto possession = possessionFromKey(arguments.value("--possession").value_or("aardvark"));
-  if (!possession) throw UsageError("--possession must be aardvark or binturong");
+  const auto possession =
+      possessionFromKey(arguments.value("--possession").value_or("aardvark"));
+  if (!possession)
+  {
+    throw UsageError("--possession must be aardvark or binturong");
+  }
   choice.possession = *possession;
   return choice;
 }
 
-void setSeamChoices(std::vector<Lab::MatchJob>& jobs,
-                    const SeamChoices& choice)
+void setSeamChoices(std::vector<Lab::MatchJob>& jobs, const SeamChoices& choice)
 {
   for (Lab::MatchJob& job : jobs)
   {
@@ -554,13 +640,14 @@ void reportSeamChoices(Lab::LabReport& report, const SeamChoices& choice)
   report.parameters["ball_physics"] = std::string(ballPhysicsName(choice.ball));
   report.parameters["out_of_play"] =
       std::string(outOfPlayName(choice.outOfPlay));
-  report.parameters["possession"] = std::string(possessionName(choice.possession));
+  report.parameters["possession"] =
+      std::string(possessionName(choice.possession));
 }
 
 /** --home-advantage X, 0 (a neutral venue, the default) to 2. */
 float homeAdvantageOption(const Arguments& arguments)
 {
-  return parseNumber<float>(arguments, "--home-advantage", 0.0f, 0.0f,
+  return parseNumber<float>(arguments, "--home-advantage", 0.0F, 0.0F,
                             MatchTuning::Context::MAX_HOME_ADVANTAGE_SCALE);
 }
 
@@ -578,7 +665,7 @@ struct MatchesOptions
   std::array<BrainId, 2> brains{};
   std::array<BodyId, 2> bodies{};
   HandshakeId handshake = HandshakeId::BINTURONG;
-  float homeAdvantage = 0.0f;
+  float homeAdvantage = 0.0F;
   SeamChoices seams;
   bool uniform = false;
   bool knockout = false;
@@ -594,17 +681,22 @@ MatchesOptions matchesOptions(const Arguments& arguments)
       parseNumber<std::uint64_t>(arguments, "--seed", 1, 0, UINT64_MAX / 2);
   o.spread = arguments.has("--spread");
   o.homeRating = parseNumber<float>(arguments, "--home-rating", DEFAULT_RATING,
-                                    1.0f, 99.0f);
+                                    1.0F, 99.0F);
   o.awayRating = parseNumber<float>(arguments, "--away-rating", DEFAULT_RATING,
-                                    1.0f, 99.0f);
+                                    1.0F, 99.0F);
   o.minRating = parseNumber<float>(arguments, "--rating-min", SPREAD_MIN_RATING,
-                                   1.0f, 99.0f);
+                                   1.0F, 99.0F);
   o.maxRating = parseNumber<float>(arguments, "--rating-max", SPREAD_MAX_RATING,
-                                   1.0f, 99.0f);
+                                   1.0F, 99.0F);
   if (o.spread &&
       (arguments.value("--home-rating") || arguments.value("--away-rating")))
+  {
     throw UsageError("--spread cannot be combined with fixed ratings");
-  if (o.minRating > o.maxRating) throw UsageError("--rating-min > --rating-max");
+  }
+  if (o.minRating > o.maxRating)
+  {
+    throw UsageError("--rating-min > --rating-max");
+  }
   o.background = backgroundFidelity(arguments);
   o.brains = brainPair(arguments);
   o.bodies = bodyPair(arguments);
@@ -630,9 +722,9 @@ std::vector<Lab::MatchJob> matchJobs(const MatchesOptions& o)
       const auto uniform = [&o, i](std::uint64_t salt)
       {
         return o.minRating +
-               static_cast<float>(Lab::matchSeed(o.seed ^ salt, i) /
-                                  TWO_POW_32) *
-                   (o.maxRating - o.minRating);
+               (static_cast<float>(Lab::matchSeed(o.seed ^ salt, i) /
+                                   TWO_POW_32) *
+                (o.maxRating - o.minRating));
       };
       jobs[i].home.rating = uniform(SPREAD_SALT);
       jobs[i].away.rating = uniform(SPREAD_SALT + 1);
@@ -667,19 +759,26 @@ int runTraceMode(const Arguments& arguments)
 {
   const MatchesOptions options = matchesOptions(arguments);
   const float seconds =
-      parseNumber<float>(arguments, "--seconds", 10.0f, 0.1f, 600.0f);
+      parseNumber<float>(arguments, "--seconds", 10.0F, 0.1F, 600.0F);
   const std::optional<std::string> path = arguments.value("--out");
-  if (!path) throw UsageError("trace: --out FILE is required");
+  if (!path)
+  {
+    throw UsageError("trace: --out FILE is required");
+  }
   const int ticks = static_cast<int>(
       std::lround(seconds / MatchTuning::Timing::FIXED_STEP_SECONDS));
   const std::vector<Lab::MatchJob> jobs = matchJobs(options);
   const StatsConfig config = Lab::loadStatsConfig();
   std::ofstream out(*path, std::ios::binary);
-  if (!out) throw std::runtime_error("trace: cannot write " + *path);
+  if (!out)
+  {
+    throw std::runtime_error("trace: cannot write " + *path);
+  }
   Lab::writeTraceHeader(out);
   for (std::size_t index = 0; index < jobs.size(); ++index)
-    Lab::traceMatch(jobs[index], config, ticks, std::format("m{}", index),
-                    out);
+  {
+    Lab::traceMatch(jobs[index], config, ticks, std::format("m{}", index), out);
+  }
   std::cerr << std::format("[fm_lab] trace: {} matches, {} ticks each, {}\n",
                            jobs.size(), ticks, *path);
   return out ? Lab::ExitCode::OK : Lab::ExitCode::SIMULATION_ERROR;
@@ -709,7 +808,9 @@ Lab::LabReport runMatchesMode(const Arguments& arguments, unsigned threads)
   const auto progress = [&jobs](std::size_t done)
   {
     if (done % 512 < 64 || done == jobs.size())
+    {
       std::cerr << std::format("[fm_lab] {}/{} matches\n", done, jobs.size());
+    }
   };
   const std::vector<Lab::MatchSample> samples =
       Lab::simulateMatches(jobs, config, threads, progress);
@@ -739,7 +840,10 @@ Lab::LabReport runMatchesMode(const Arguments& arguments, unsigned threads)
   report.parameters["home_advantage"] = std::format("{:.2f}", homeAdvantage);
   report.parameters["squads"] =
       uniform ? "uniform (every stat at the rating)" : "role-shaped";
-  if (!knobs.text.empty()) report.parameters["knobs"] = knobs.text;
+  if (!knobs.text.empty())
+  {
+    report.parameters["knobs"] = knobs.text;
+  }
   report.parameters["formation"] =
       arguments.value("--formation").value_or("4-4-2 (lab)");
   static constexpr std::array SCOPES = {Lab::Scope::Match, Lab::Scope::Engine};
@@ -751,9 +855,11 @@ Lab::LabReport runMatchesMode(const Arguments& arguments, unsigned threads)
       "Synthetic 4-4-2 squads (lab_fixtures.cpp), default strategies, full "
       "condition; per-match seeds are splitmix64(seed, index).");
   if (!spread)
+  {
     report.notes.emplace_back(
         "Fixed ratings: results between equal teams overstate draws compared "
         "with a real league; use --spread for league-like rating gaps.");
+  }
   return report;
 }
 
@@ -764,10 +870,13 @@ Lab::LabReport runTacticsMode(const Arguments& arguments, unsigned threads)
   const auto seed =
       parseNumber<std::uint64_t>(arguments, "--seed", 1, 0, UINT64_MAX / 2);
   const float rating =
-      parseNumber<float>(arguments, "--rating", DEFAULT_RATING, 1.0f, 99.0f);
+      parseNumber<float>(arguments, "--rating", DEFAULT_RATING, 1.0F, 99.0F);
   std::vector<Lab::MatchJob> jobs = Lab::tacticJobs(seed, seeds, rating);
   const bool background = backgroundFidelity(arguments);
-  for (Lab::MatchJob& job : jobs) job.background = background;
+  for (Lab::MatchJob& job : jobs)
+  {
+    job.background = background;
+  }
   const std::array<BrainId, 2> brains = brainPair(arguments);
   const std::array<BodyId, 2> bodies = bodyPair(arguments);
   const HandshakeId handshake = handshakeOption(arguments);
@@ -787,8 +896,10 @@ Lab::LabReport runTacticsMode(const Arguments& arguments, unsigned threads)
       [&jobs](std::size_t done)
       {
         if (done % 512 < 64 || done == jobs.size())
+        {
           std::cerr << std::format("[fm_lab] {}/{} matches\n", done,
                                    jobs.size());
+        }
       });
   const double wall =
       std::chrono::duration<double>(std::chrono::steady_clock::now() - started)
@@ -866,63 +977,87 @@ int runDrillMode(int argc, char** argv)
     if (option == "--brains")
     {
       const auto brains = parseBrainPair(value);
-      if (!brains) throw UsageError("--brains must be HOME,AWAY or one brain");
+      if (!brains)
+      {
+        throw UsageError("--brains must be HOME,AWAY or one brain");
+      }
       sandboxBrains() = *brains;
     }
     else if (option == "--bodies")
     {
       const auto bodies = parseBodyPair(value);
-      if (!bodies) throw UsageError("--bodies must be HOME,AWAY or one body");
+      if (!bodies)
+      {
+        throw UsageError("--bodies must be HOME,AWAY or one body");
+      }
       sandboxBodies() = *bodies;
     }
     else if (option == "--handshake")
     {
       const auto handshake = handshakeFromKey(value);
       if (!handshake)
+      {
         throw UsageError("--handshake must be aardvark or binturong");
+      }
       sandboxHandshake() = *handshake;
     }
     else if (option == "--referee")
     {
       const auto referee = refereeFromKey(value);
-      if (!referee) throw UsageError("--referee must be aardvark or binturong");
+      if (!referee)
+      {
+        throw UsageError("--referee must be aardvark or binturong");
+      }
       sandboxReferee() = *referee;
     }
     else if (option == "--managers")
     {
       const auto managers = parseManagerPair(value);
       if (!managers)
+      {
         throw UsageError("--managers must be HOME,AWAY or one manager");
+      }
       sandboxManagers() = *managers;
     }
     else if (option == "--ball")
     {
       const auto ball = ballPhysicsFromKey(value);
-      if (!ball) throw UsageError("--ball must be aardvark or binturong");
+      if (!ball)
+      {
+        throw UsageError("--ball must be aardvark or binturong");
+      }
       sandboxBallPhysics() = *ball;
     }
     else if (option == "--possession")
     {
       const auto version = possessionFromKey(value);
-      if (!version) throw UsageError("--possession must be aardvark or binturong");
+      if (!version)
+      {
+        throw UsageError("--possession must be aardvark or binturong");
+      }
       sandboxPossession() = *version;
     }
     else if (option == "--out-of-play")
     {
       const auto version = outOfPlayFromKey(value);
       if (!version)
+      {
         throw UsageError("--out-of-play must be aardvark or binturong");
+      }
       sandboxOutOfPlay() = *version;
     }
     else if (option == "--pitch")
     {
       // A walled training pitch, LENGTHxWIDTH in metres (plan section 18).
-      float length = 0.0f;
-      float width = 0.0f;
+      float length = 0.0F;
+      float width = 0.0F;
       const std::size_t cross = value.find_first_of("xX");
       try
       {
-        if (cross == std::string::npos) throw std::invalid_argument("no x");
+        if (cross == std::string::npos)
+        {
+          throw std::invalid_argument("no x");
+        }
         length = std::stof(value.substr(0, cross));
         width = std::stof(value.substr(cross + 1));
       }
@@ -930,8 +1065,10 @@ int runDrillMode(int argc, char** argv)
       {
         throw UsageError("--pitch must be LENGTHxWIDTH in metres, e.g. 40x30");
       }
-      if (length < 5.0f || width < 5.0f || length > 120.0f || width > 90.0f)
+      if (length < 5.0F || width < 5.0F || length > 120.0F || width > 90.0F)
+      {
         throw UsageError("--pitch: 5 to 120 m long and 5 to 90 m wide");
+      }
       sandboxDrillPitch() = MatchPitch::training(length, width);
     }
     else if (option == "--goal")
@@ -939,32 +1076,47 @@ int runDrillMode(int argc, char** argv)
       // A goal at each end of the --pitch training pitch (plan section 19).
       std::optional<GoalKind> kind;
       for (int index = 0; index <= static_cast<int>(GoalKind::POP_UP); ++index)
+      {
         if (value == goalKindName(static_cast<GoalKind>(index)))
+        {
           kind = static_cast<GoalKind>(index);
+        }
+      }
       if (!kind)
+      {
         throw UsageError(
-            "--goal must be none, full, 9v9, 7v7, futsal, 5-a-side, small or pop-up");
+            "--goal must be none, full, 9v9, 7v7, futsal, 5-a-side, small or "
+            "pop-up");
+      }
       drillGoal = *kind;
     }
     else
     {
       throw UsageError(std::format(
           "drill: '{}' before the drill's name (only --brains, --bodies, "
-          "--handshake, --referee, --managers, --ball, --out-of-play, --possession, "
+          "--handshake, --referee, --managers, --ball, --out-of-play, "
+          "--possession, "
           "--pitch and --goal go there)",
           option));
     }
   }
   if (drillGoal)
   {
-    if (!sandboxDrillPitch())
-      throw UsageError("--goal needs --pitch (a training pitch to put the goals on)");
-    sandboxDrillPitch()->goal = PitchGoal::ofKind(*drillGoal);
+    auto& pitch = sandboxDrillPitch();
+    if (!pitch.has_value())
+    {
+      throw UsageError(
+          "--goal needs --pitch (a training pitch to put the goals on)");
+    }
+    pitch->goal = PitchGoal::ofKind(*drillGoal);
   }
-  if (index >= rest.size()) throw UsageError("drill: missing the drill's name");
+  if (index >= rest.size())
+  {
+    throw UsageError("drill: missing the drill's name");
+  }
   const std::string drill = rest[index];
-  const std::vector<std::string> options(rest.begin() + static_cast<std::ptrdiff_t>(index) + 1,
-                                         rest.end());
+  const std::vector<std::string> options(
+      rest.begin() + static_cast<std::ptrdiff_t>(index) + 1, rest.end());
   const ScratchRuntime runtime;
   quietLogging();
   return runMeasureCommand(Lab::loadStatsConfig(), drill, options) == 0
@@ -997,74 +1149,114 @@ int runSessionMode(int argc, char** argv)
       const ScratchRuntime runtime;
       quietLogging();
       for (const std::string& line : runCarryCheck(Lab::loadStatsConfig()))
+      {
         std::cout << line << "\n";
+      }
       return Lab::ExitCode::OK;
     }
     else if (option == "--full")
+    {
       full = true;
+    }
     else if (option == "--brains" && hasValue)
     {
       const auto brains = parseBrainPair(rest[++index]);
-      if (!brains) throw UsageError("--brains must be HOME,AWAY or one brain");
+      if (!brains)
+      {
+        throw UsageError("--brains must be HOME,AWAY or one brain");
+      }
       sandboxBrains() = *brains;
     }
     else if (option == "--bodies" && hasValue)
     {
       const auto bodies = parseBodyPair(rest[++index]);
-      if (!bodies) throw UsageError("--bodies must be HOME,AWAY or one body");
+      if (!bodies)
+      {
+        throw UsageError("--bodies must be HOME,AWAY or one body");
+      }
       sandboxBodies() = *bodies;
     }
     else if (option == "--seed" && hasValue)
+    {
       seed = static_cast<std::uint32_t>(std::stoul(rest[++index]));
+    }
     else if ((option == "--zone-brain" || option == "--zone-body") && hasValue)
     {
       // "ZONE=key": every zone of that name runs that brain or body (T7e).
       const std::string& value = rest[++index];
       const std::size_t equals = value.rfind('=');
       if (equals == std::string::npos)
+      {
         throw UsageError(std::format("{} must be \"ZONE=key\"", option));
-      zoneComponents.push_back({option == "--zone-brain", value.substr(0, equals),
-                                value.substr(equals + 1)});
+      }
+      zoneComponents.push_back({.brain = option == "--zone-brain",
+                                .zone = value.substr(0, equals),
+                                .key = value.substr(equals + 1)});
     }
     else if (!option.starts_with("--") && name.empty())
+    {
       name = option;
+    }
     else
+    {
       throw UsageError(std::format("session: unknown option '{}'", option));
+    }
   }
   const auto& plans = sessionPlans();
-  const auto found = std::ranges::find_if(plans, [&](const SessionPlan& plan)
-                                          { return plan.name == name; });
+  const auto found = std::ranges::find_if(
+      plans, [&](const SessionPlan& plan) { return plan.name == name; });
   if (found == plans.end())
   {
     std::string list;
-    for (const SessionPlan& plan : plans) list += std::format(" \"{}\"", plan.name);
-    throw UsageError(std::format("session: no session \"{}\". Sessions:{}", name, list));
+    for (const SessionPlan& plan : plans)
+    {
+      list += std::format(" \"{}\"", plan.name);
+    }
+    throw UsageError(
+        std::format("session: no session \"{}\". Sessions:{}", name, list));
   }
   if (const std::optional<std::string> problem = checkSessionPlan(*found))
+  {
     throw UsageError(std::format("session \"{}\": {}", name, *problem));
+  }
   SessionPlan plan = *found;
   for (const ZoneComponent& choice : zoneComponents)
   {
     bool named = false;
     for (SessionExercise& exercise : plan.exercises)
+    {
       for (SessionZone& zone : exercise.zones)
       {
-        if (zone.name != choice.zone) continue;
+        if (zone.name != choice.zone)
+        {
+          continue;
+        }
         named = true;
         if (choice.brain)
         {
           const auto brain = brainFromKey(choice.key);
-          if (!brain) throw UsageError("--zone-brain: aardvark or binturong");
+          if (!brain)
+          {
+            throw UsageError("--zone-brain: aardvark or binturong");
+          }
           zone.brain = *brain;
         }
         else
         {
           const auto body = bodyFromKey(choice.key);
-          if (!body) throw UsageError("--zone-body: aardvark or binturong");
+          if (!body)
+          {
+            throw UsageError("--zone-body: aardvark or binturong");
+          }
           zone.body = *body;
         }
       }
-    if (!named) throw UsageError(std::format("session: no zone called \"{}\"", choice.zone));
+    }
+    if (!named)
+    {
+      throw UsageError(
+          std::format("session: no zone called \"{}\"", choice.zone));
+    }
   }
   const ScratchRuntime runtime;
   quietLogging();
@@ -1077,8 +1269,13 @@ int runSessionMode(int argc, char** argv)
   {
     std::cout << found->exercises[exercise].name << "\n";
     for (const std::string& line : run.history()[exercise])
-      if (full || line.find("OUTCOME") != std::string::npos || line.starts_with("Squad:") || line.starts_with("Change:"))
+    {
+      if (full || line.find("OUTCOME") != std::string::npos ||
+          line.starts_with("Squad:") || line.starts_with("Change:"))
+      {
         std::cout << "  " << line << "\n";
+      }
+    }
   }
   std::cout << std::format("Session over at {:.1f} s\n", run.seconds());
   return Lab::ExitCode::OK;
@@ -1086,7 +1283,8 @@ int runSessionMode(int argc, char** argv)
 
 int main(int argc, char** argv)
 {
-  // Lab commands preserve the legacy default, independently of sandbox UI defaults.
+  // Lab commands preserve the legacy default, independently of sandbox UI
+  // defaults.
   sandboxPossession() = PossessionId::AARDVARK;
   if (argc >= 2 && std::string_view(argv[1]) == "touch-sensitivity")
   {
@@ -1094,9 +1292,9 @@ int main(int argc, char** argv)
     {
       const ScratchRuntime runtime;
       quietLogging();
-      return runTouchSensitivity(Lab::loadStatsConfig(),
-                                 std::vector<std::string>(argv + 2, argv + argc)) ==
-                     0
+      return runTouchSensitivity(
+                 Lab::loadStatsConfig(),
+                 std::vector<std::string>(argv + 2, argv + argc)) == 0
                  ? Lab::ExitCode::OK
                  : Lab::ExitCode::INVALID_ARGUMENTS;
     }
@@ -1153,9 +1351,15 @@ int main(int argc, char** argv)
     }
     if (arguments.mode != "matches" && arguments.mode != "season" &&
         arguments.mode != "tactics" && arguments.mode != "trace")
+    {
       throw UsageError(std::format("unknown mode '{}'", arguments.mode));
+    }
     if (arguments.mode == "season" && arguments.value("--possession"))
-      throw UsageError("--possession is supported by matches, tactics and drill, not season");
+    {
+      throw UsageError(
+          "--possession is supported by matches, tactics and drill, not "
+          "season");
+    }
   }
   catch (const UsageError& error)
   {
@@ -1174,14 +1378,23 @@ int main(int argc, char** argv)
     const std::optional<std::string> outDir = arguments.value("--out-dir");
     const ScratchRuntime runtime;
     quietLogging();
-    if (arguments.mode == "trace") return runTraceMode(arguments);
+    if (arguments.mode == "trace")
+    {
+      return runTraceMode(arguments);
+    }
     Lab::LabReport report;
     if (arguments.mode == "matches")
+    {
       report = runMatchesMode(arguments, threads);
+    }
     else if (arguments.mode == "tactics")
+    {
       report = runTacticsMode(arguments, threads);
+    }
     else
+    {
       report = runSeasonMode(arguments, threads);
+    }
     writeReport(report, outDir
                             ? std::filesystem::path(*outDir)
                             : makeTempDirectory("fm-lab-" + report.mode + "-"));

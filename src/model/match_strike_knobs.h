@@ -57,11 +57,10 @@ enum class StrikeKind : std::uint8_t
 };
 inline constexpr std::size_t STRIKE_KIND_COUNT = 13;
 inline constexpr std::array<std::string_view, STRIKE_KIND_COUNT>
-    STRIKE_KIND_NAMES = {"Ground pass", "Lofted pass", "Cross",
-                         "Shot",        "Header",      "Clearance",
-                         "Throw",       "Driven pass", "Chip",
-                         "Placed shot", "Curled shot", "Chip shot",
-                         "Toe-poke"};
+    STRIKE_KIND_NAMES = {
+        "Ground pass", "Lofted pass", "Cross",       "Shot", "Header",
+        "Clearance",   "Throw",       "Driven pass", "Chip", "Placed shot",
+        "Curled shot", "Chip shot",   "Toe-poke"};
 
 enum class StrikeKnob : std::uint8_t
 {
@@ -136,66 +135,282 @@ struct StrikeKnobInfo
 {
   std::string_view name;
   std::string_view group;
-  float min = 0.0f;
-  float max = 1.0f;
+  float min = 0.0F;
+  float max = 1.0F;
   std::string_view unit;
 };
 
 inline constexpr std::array<StrikeKnobInfo, STRIKE_KNOB_COUNT> STRIKE_KNOBS{{
-    {"Pace change: weight", "Factors", 0.0f, 1.5f, ""},
-    {"Turn: angle", "Factors", 0.0f, 1.5f, ""},
-    {"Turn: pace reference", "Factors", 0.0f, 25.0f, "m/s"},
-    {"Vertical turn: angle", "Factors", 0.0f, 1.5f, ""},
-    {"Incoming pace: angle", "Factors", 0.0f, 1.0f, ""},
-    {"Incoming pace: weight", "Factors", 0.0f, 1.0f, ""},
-    {"Own speed: angle", "Factors", 0.0f, 1.0f, ""},
-    {"Own speed: weight", "Factors", 0.0f, 1.0f, ""},
-    {"Stretch: angle", "Factors", 0.0f, 1.0f, ""},
-    {"Stretch: weight", "Factors", 0.0f, 1.0f, ""},
-    {"Weaker foot: angle", "Factors", 0.0f, 1.0f, ""},
-    {"Weaker foot: weight", "Factors", 0.0f, 1.0f, ""},
-    {"Off the ground: angle", "Factors", 0.0f, 1.0f, ""},
-    {"Off the ground: weight", "Factors", 0.0f, 1.0f, ""},
-    {"Pressure: angle", "Factors", 0.0f, 1.0f, ""},
-    {"Pressure: weight", "Factors", 0.0f, 1.0f, ""},
-    {"Approach angle: angle", "Factors", 0.0f, 1.0f, ""},
-    {"Approach angle: weight", "Factors", 0.0f, 1.0f, ""},
-    {"Spin asked: angle", "Factors", 0.0f, 1.0f, ""},
-    {"Spin asked: weight", "Factors", 0.0f, 1.0f, ""},
-    {"Spin asked: spin", "Factors", 0.0f, 1.0f, ""},
-    {"Reference speed", "Measures", 10.0f, 40.0f, "m/s"},
-    {"Pressure radius", "Measures", 0.5f, 12.0f, "m"},
-    {"Skill reduction", "Technique", 0.0f, 1.0f, "share"},
-    {"Angle fail base", "Technique", 0.0f, 0.3f, "chance"},
-    {"Angle fail range", "Technique", 0.0f, 1.0f, "chance"},
-    {"Weight fail base", "Technique", 0.0f, 0.3f, "chance"},
-    {"Weight fail range", "Technique", 0.0f, 1.0f, "chance"},
-    {"Angle miss base", "Technique", 0.0f, 1.0f, "share"},
-    {"Angle miss range", "Technique", 0.0f, 1.0f, "share"},
-    {"Angle miss absolute base", "Technique", 0.0f, 0.3f, "rad"},
-    {"Angle miss absolute range", "Technique", 0.0f, 0.6f, "rad"},
-    {"Weight miss base", "Technique", 0.0f, 1.0f, "share"},
-    {"Weight miss range", "Technique", 0.0f, 1.0f, "share"},
-    {"Under-turn share", "Technique", 0.0f, 1.0f, "share"},
-    {"Heavy share", "Technique", 0.0f, 1.0f, "share"},
-    {"Angle jitter", "Technique", 0.0f, 1.0f, "rad"},
-    {"Weight jitter", "Technique", 0.0f, 0.2f, "share"},
-    {"Vertical share", "Technique", 0.0f, 1.0f, "share"},
-    {"Up share", "Technique", 0.0f, 1.0f, "share"},
-    {"Elevation jitter", "Technique", 0.0f, 0.3f, "rad"},
-    {"Spin fail base", "Technique", 0.0f, 0.3f, "chance"},
-    {"Spin fail range", "Technique", 0.0f, 1.0f, "chance"},
-    {"Spin miss base", "Technique", 0.0f, 1.0f, "share"},
-    {"Spin miss range", "Technique", 0.0f, 1.0f, "share"},
-    {"Under-spin share", "Technique", 0.0f, 1.0f, "share"},
-    {"Spin jitter", "Technique", 0.0f, 20.0f, "rad/s"},
-    {"Power asked: angle", "Factors", 0.0f, 1.5f, ""},
-    {"Power asked: weight", "Factors", 0.0f, 1.5f, ""},
-    {"Power comfort share", "Measures", 0.0f, 0.99f, "share"},
-    {"Jitter difficulty share", "Technique", 0.0f, 1.0f, "share"},
-    {"Power square, inward", "Measures", 0.0f, 1.0f, "share"},
-    {"Power square, outward", "Measures", 0.0f, 1.0f, "share"},
-    {"Power behind", "Measures", 0.0f, 1.0f, "share"},
+    {.name = "Pace change: weight",
+     .group = "Factors",
+     .min = 0.0F,
+     .max = 1.5F,
+     .unit = ""},
+    {.name = "Turn: angle",
+     .group = "Factors",
+     .min = 0.0F,
+     .max = 1.5F,
+     .unit = ""},
+    {.name = "Turn: pace reference",
+     .group = "Factors",
+     .min = 0.0F,
+     .max = 25.0F,
+     .unit = "m/s"},
+    {.name = "Vertical turn: angle",
+     .group = "Factors",
+     .min = 0.0F,
+     .max = 1.5F,
+     .unit = ""},
+    {.name = "Incoming pace: angle",
+     .group = "Factors",
+     .min = 0.0F,
+     .max = 1.0F,
+     .unit = ""},
+    {.name = "Incoming pace: weight",
+     .group = "Factors",
+     .min = 0.0F,
+     .max = 1.0F,
+     .unit = ""},
+    {.name = "Own speed: angle",
+     .group = "Factors",
+     .min = 0.0F,
+     .max = 1.0F,
+     .unit = ""},
+    {.name = "Own speed: weight",
+     .group = "Factors",
+     .min = 0.0F,
+     .max = 1.0F,
+     .unit = ""},
+    {.name = "Stretch: angle",
+     .group = "Factors",
+     .min = 0.0F,
+     .max = 1.0F,
+     .unit = ""},
+    {.name = "Stretch: weight",
+     .group = "Factors",
+     .min = 0.0F,
+     .max = 1.0F,
+     .unit = ""},
+    {.name = "Weaker foot: angle",
+     .group = "Factors",
+     .min = 0.0F,
+     .max = 1.0F,
+     .unit = ""},
+    {.name = "Weaker foot: weight",
+     .group = "Factors",
+     .min = 0.0F,
+     .max = 1.0F,
+     .unit = ""},
+    {.name = "Off the ground: angle",
+     .group = "Factors",
+     .min = 0.0F,
+     .max = 1.0F,
+     .unit = ""},
+    {.name = "Off the ground: weight",
+     .group = "Factors",
+     .min = 0.0F,
+     .max = 1.0F,
+     .unit = ""},
+    {.name = "Pressure: angle",
+     .group = "Factors",
+     .min = 0.0F,
+     .max = 1.0F,
+     .unit = ""},
+    {.name = "Pressure: weight",
+     .group = "Factors",
+     .min = 0.0F,
+     .max = 1.0F,
+     .unit = ""},
+    {.name = "Approach angle: angle",
+     .group = "Factors",
+     .min = 0.0F,
+     .max = 1.0F,
+     .unit = ""},
+    {.name = "Approach angle: weight",
+     .group = "Factors",
+     .min = 0.0F,
+     .max = 1.0F,
+     .unit = ""},
+    {.name = "Spin asked: angle",
+     .group = "Factors",
+     .min = 0.0F,
+     .max = 1.0F,
+     .unit = ""},
+    {.name = "Spin asked: weight",
+     .group = "Factors",
+     .min = 0.0F,
+     .max = 1.0F,
+     .unit = ""},
+    {.name = "Spin asked: spin",
+     .group = "Factors",
+     .min = 0.0F,
+     .max = 1.0F,
+     .unit = ""},
+    {.name = "Reference speed",
+     .group = "Measures",
+     .min = 10.0F,
+     .max = 40.0F,
+     .unit = "m/s"},
+    {.name = "Pressure radius",
+     .group = "Measures",
+     .min = 0.5F,
+     .max = 12.0F,
+     .unit = "m"},
+    {.name = "Skill reduction",
+     .group = "Technique",
+     .min = 0.0F,
+     .max = 1.0F,
+     .unit = "share"},
+    {.name = "Angle fail base",
+     .group = "Technique",
+     .min = 0.0F,
+     .max = 0.3F,
+     .unit = "chance"},
+    {.name = "Angle fail range",
+     .group = "Technique",
+     .min = 0.0F,
+     .max = 1.0F,
+     .unit = "chance"},
+    {.name = "Weight fail base",
+     .group = "Technique",
+     .min = 0.0F,
+     .max = 0.3F,
+     .unit = "chance"},
+    {.name = "Weight fail range",
+     .group = "Technique",
+     .min = 0.0F,
+     .max = 1.0F,
+     .unit = "chance"},
+    {.name = "Angle miss base",
+     .group = "Technique",
+     .min = 0.0F,
+     .max = 1.0F,
+     .unit = "share"},
+    {.name = "Angle miss range",
+     .group = "Technique",
+     .min = 0.0F,
+     .max = 1.0F,
+     .unit = "share"},
+    {.name = "Angle miss absolute base",
+     .group = "Technique",
+     .min = 0.0F,
+     .max = 0.3F,
+     .unit = "rad"},
+    {.name = "Angle miss absolute range",
+     .group = "Technique",
+     .min = 0.0F,
+     .max = 0.6F,
+     .unit = "rad"},
+    {.name = "Weight miss base",
+     .group = "Technique",
+     .min = 0.0F,
+     .max = 1.0F,
+     .unit = "share"},
+    {.name = "Weight miss range",
+     .group = "Technique",
+     .min = 0.0F,
+     .max = 1.0F,
+     .unit = "share"},
+    {.name = "Under-turn share",
+     .group = "Technique",
+     .min = 0.0F,
+     .max = 1.0F,
+     .unit = "share"},
+    {.name = "Heavy share",
+     .group = "Technique",
+     .min = 0.0F,
+     .max = 1.0F,
+     .unit = "share"},
+    {.name = "Angle jitter",
+     .group = "Technique",
+     .min = 0.0F,
+     .max = 1.0F,
+     .unit = "rad"},
+    {.name = "Weight jitter",
+     .group = "Technique",
+     .min = 0.0F,
+     .max = 0.2F,
+     .unit = "share"},
+    {.name = "Vertical share",
+     .group = "Technique",
+     .min = 0.0F,
+     .max = 1.0F,
+     .unit = "share"},
+    {.name = "Up share",
+     .group = "Technique",
+     .min = 0.0F,
+     .max = 1.0F,
+     .unit = "share"},
+    {.name = "Elevation jitter",
+     .group = "Technique",
+     .min = 0.0F,
+     .max = 0.3F,
+     .unit = "rad"},
+    {.name = "Spin fail base",
+     .group = "Technique",
+     .min = 0.0F,
+     .max = 0.3F,
+     .unit = "chance"},
+    {.name = "Spin fail range",
+     .group = "Technique",
+     .min = 0.0F,
+     .max = 1.0F,
+     .unit = "chance"},
+    {.name = "Spin miss base",
+     .group = "Technique",
+     .min = 0.0F,
+     .max = 1.0F,
+     .unit = "share"},
+    {.name = "Spin miss range",
+     .group = "Technique",
+     .min = 0.0F,
+     .max = 1.0F,
+     .unit = "share"},
+    {.name = "Under-spin share",
+     .group = "Technique",
+     .min = 0.0F,
+     .max = 1.0F,
+     .unit = "share"},
+    {.name = "Spin jitter",
+     .group = "Technique",
+     .min = 0.0F,
+     .max = 20.0F,
+     .unit = "rad/s"},
+    {.name = "Power asked: angle",
+     .group = "Factors",
+     .min = 0.0F,
+     .max = 1.5F,
+     .unit = ""},
+    {.name = "Power asked: weight",
+     .group = "Factors",
+     .min = 0.0F,
+     .max = 1.5F,
+     .unit = ""},
+    {.name = "Power comfort share",
+     .group = "Measures",
+     .min = 0.0F,
+     .max = 0.99F,
+     .unit = "share"},
+    {.name = "Jitter difficulty share",
+     .group = "Technique",
+     .min = 0.0F,
+     .max = 1.0F,
+     .unit = "share"},
+    {.name = "Power square, inward",
+     .group = "Measures",
+     .min = 0.0F,
+     .max = 1.0F,
+     .unit = "share"},
+    {.name = "Power square, outward",
+     .group = "Measures",
+     .min = 0.0F,
+     .max = 1.0F,
+     .unit = "share"},
+    {.name = "Power behind",
+     .group = "Measures",
+     .min = 0.0F,
+     .max = 1.0F,
+     .unit = "share"},
 }};
 
 inline const StrikeKnobInfo& strikeKnobInfo(StrikeKnob knob)
@@ -209,27 +424,39 @@ constexpr float strikeProfileDefault(StrikeKnob knob)
 {
   switch (knob)
   {
-    case StrikeKnob::PACE_CHANGE_WEIGHT: return P::PACE_CHANGE;
-    case StrikeKnob::TURN_ANGLE: return P::TURN_ANGLE;
-    case StrikeKnob::TURN_PACE_REFERENCE: return P::TURN_PACE_REFERENCE;
+    case StrikeKnob::PACE_CHANGE_WEIGHT:
+      return P::PACE_CHANGE;
+    case StrikeKnob::TURN_ANGLE:
+      return P::TURN_ANGLE;
+    case StrikeKnob::TURN_PACE_REFERENCE:
+      return P::TURN_PACE_REFERENCE;
     // The turn in steepness weighs as the turn seen from above, to start.
-    case StrikeKnob::VERTICAL_TURN_ANGLE: return P::TURN_ANGLE;
+    case StrikeKnob::VERTICAL_TURN_ANGLE:
+      return P::TURN_ANGLE;
     case StrikeKnob::INCOMING_PACE_ANGLE:
-    case StrikeKnob::INCOMING_PACE_WEIGHT: return P::INCOMING_PACE;
+    case StrikeKnob::INCOMING_PACE_WEIGHT:
+      return P::INCOMING_PACE;
     case StrikeKnob::OWN_SPEED_ANGLE:
-    case StrikeKnob::OWN_SPEED_WEIGHT: return P::OWN_SPEED;
+    case StrikeKnob::OWN_SPEED_WEIGHT:
+      return P::OWN_SPEED;
     case StrikeKnob::STRETCH_ANGLE:
-    case StrikeKnob::STRETCH_WEIGHT: return P::STRETCH;
+    case StrikeKnob::STRETCH_WEIGHT:
+      return P::STRETCH;
     case StrikeKnob::WEAK_FOOT_ANGLE:
-    case StrikeKnob::WEAK_FOOT_WEIGHT: return P::WEAKER_FOOT;
+    case StrikeKnob::WEAK_FOOT_WEIGHT:
+      return P::WEAKER_FOOT;
     case StrikeKnob::OFF_GROUND_ANGLE:
-    case StrikeKnob::OFF_GROUND_WEIGHT: return P::OFF_GROUND;
+    case StrikeKnob::OFF_GROUND_WEIGHT:
+      return P::OFF_GROUND;
     case StrikeKnob::PRESSURE_ANGLE:
-    case StrikeKnob::PRESSURE_WEIGHT: return P::PRESSURE;
+    case StrikeKnob::PRESSURE_WEIGHT:
+      return P::PRESSURE;
     // The approach angle (where it comes from against his facing), as the
     // first touch weighs it, for passes and shots.
-    case StrikeKnob::APPROACH_ANGLE: return P::APPROACH_ANGLE;
-    case StrikeKnob::APPROACH_WEIGHT: return P::APPROACH_WEIGHT;
+    case StrikeKnob::APPROACH_ANGLE:
+      return P::APPROACH_ANGLE;
+    case StrikeKnob::APPROACH_WEIGHT:
+      return P::APPROACH_WEIGHT;
     // Spin: in the model, nothing set yet (it comes off as asked).
     case StrikeKnob::SPIN_ASKED_ANGLE:
     case StrikeKnob::SPIN_ASKED_WEIGHT:
@@ -238,41 +465,68 @@ constexpr float strikeProfileDefault(StrikeKnob knob)
     case StrikeKnob::SPIN_FAIL_RANGE:
     case StrikeKnob::SPIN_MISS_BASE:
     case StrikeKnob::SPIN_MISS_RANGE:
-    case StrikeKnob::SPIN_JITTER: return 0.0f;
-    case StrikeKnob::UNDER_SPIN_SHARE: return 1.0f;
-    case StrikeKnob::REFERENCE_SPEED: return P::REFERENCE_SPEED;
-    case StrikeKnob::PRESSURE_RADIUS: return P::PRESSURE_RADIUS_METRES;
-    case StrikeKnob::SKILL_REDUCTION: return P::SKILL_REDUCTION;
-    case StrikeKnob::ANGLE_FAIL_BASE: return P::ANGLE_FAIL_BASE;
-    case StrikeKnob::ANGLE_FAIL_RANGE: return P::ANGLE_FAIL_RANGE;
-    case StrikeKnob::WEIGHT_FAIL_BASE: return P::WEIGHT_FAIL_BASE;
-    case StrikeKnob::WEIGHT_FAIL_RANGE: return P::WEIGHT_FAIL_RANGE;
-    case StrikeKnob::ANGLE_MISS_BASE: return P::ANGLE_MISS_BASE;
-    case StrikeKnob::ANGLE_MISS_RANGE: return P::ANGLE_MISS_RANGE;
+    case StrikeKnob::SPIN_JITTER:
+      return 0.0F;
+    case StrikeKnob::UNDER_SPIN_SHARE:
+      return 1.0F;
+    case StrikeKnob::REFERENCE_SPEED:
+      return P::REFERENCE_SPEED;
+    case StrikeKnob::PRESSURE_RADIUS:
+      return P::PRESSURE_RADIUS_METRES;
+    case StrikeKnob::SKILL_REDUCTION:
+      return P::SKILL_REDUCTION;
+    case StrikeKnob::ANGLE_FAIL_BASE:
+      return P::ANGLE_FAIL_BASE;
+    case StrikeKnob::ANGLE_FAIL_RANGE:
+      return P::ANGLE_FAIL_RANGE;
+    case StrikeKnob::WEIGHT_FAIL_BASE:
+      return P::WEIGHT_FAIL_BASE;
+    case StrikeKnob::WEIGHT_FAIL_RANGE:
+      return P::WEIGHT_FAIL_RANGE;
+    case StrikeKnob::ANGLE_MISS_BASE:
+      return P::ANGLE_MISS_BASE;
+    case StrikeKnob::ANGLE_MISS_RANGE:
+      return P::ANGLE_MISS_RANGE;
     case StrikeKnob::ANGLE_MISS_ABSOLUTE_BASE:
       return P::ANGLE_MISS_ABSOLUTE_BASE;
     case StrikeKnob::ANGLE_MISS_ABSOLUTE_RANGE:
       return P::ANGLE_MISS_ABSOLUTE_RANGE;
-    case StrikeKnob::WEIGHT_MISS_BASE: return P::WEIGHT_MISS_BASE;
-    case StrikeKnob::WEIGHT_MISS_RANGE: return P::WEIGHT_MISS_RANGE;
-    case StrikeKnob::UNDER_TURN_SHARE: return P::UNDER_TURN_SHARE;
-    case StrikeKnob::HEAVY_SHARE: return P::HEAVY_SHARE;
-    case StrikeKnob::ANGLE_JITTER: return P::ANGLE_JITTER;
-    case StrikeKnob::WEIGHT_JITTER: return P::WEIGHT_JITTER;
-    case StrikeKnob::VERTICAL_SHARE: return P::VERTICAL_SHARE;
-    case StrikeKnob::UP_SHARE: return P::UP_SHARE;
-    case StrikeKnob::ELEVATION_JITTER: return P::ELEVATION_JITTER;
-    case StrikeKnob::POWER_ASKED_ANGLE: return P::POWER_ASKED_ANGLE;
-    case StrikeKnob::POWER_ASKED_WEIGHT: return P::POWER_ASKED_WEIGHT;
-    case StrikeKnob::POWER_COMFORT_SHARE: return P::POWER_COMFORT_SHARE;
+    case StrikeKnob::WEIGHT_MISS_BASE:
+      return P::WEIGHT_MISS_BASE;
+    case StrikeKnob::WEIGHT_MISS_RANGE:
+      return P::WEIGHT_MISS_RANGE;
+    case StrikeKnob::UNDER_TURN_SHARE:
+      return P::UNDER_TURN_SHARE;
+    case StrikeKnob::HEAVY_SHARE:
+      return P::HEAVY_SHARE;
+    case StrikeKnob::ANGLE_JITTER:
+      return P::ANGLE_JITTER;
+    case StrikeKnob::WEIGHT_JITTER:
+      return P::WEIGHT_JITTER;
+    case StrikeKnob::VERTICAL_SHARE:
+      return P::VERTICAL_SHARE;
+    case StrikeKnob::UP_SHARE:
+      return P::UP_SHARE;
+    case StrikeKnob::ELEVATION_JITTER:
+      return P::ELEVATION_JITTER;
+    case StrikeKnob::POWER_ASKED_ANGLE:
+      return P::POWER_ASKED_ANGLE;
+    case StrikeKnob::POWER_ASKED_WEIGHT:
+      return P::POWER_ASKED_WEIGHT;
+    case StrikeKnob::POWER_COMFORT_SHARE:
+      return P::POWER_COMFORT_SHARE;
     case StrikeKnob::JITTER_DIFFICULTY_SHARE:
       return P::JITTER_DIFFICULTY_SHARE;
-    case StrikeKnob::POWER_INWARD_SQUARE: return P::POWER_INWARD_SQUARE;
-    case StrikeKnob::POWER_OUTWARD_SQUARE: return P::POWER_OUTWARD_SQUARE;
-    case StrikeKnob::POWER_BEHIND: return P::POWER_BEHIND;
-    case StrikeKnob::COUNT: break;
+    case StrikeKnob::POWER_INWARD_SQUARE:
+      return P::POWER_INWARD_SQUARE;
+    case StrikeKnob::POWER_OUTWARD_SQUARE:
+      return P::POWER_OUTWARD_SQUARE;
+    case StrikeKnob::POWER_BEHIND:
+      return P::POWER_BEHIND;
+    case StrikeKnob::COUNT:
+      break;
   }
-  return 0.0f;
+  return 0.0F;
 }
 
 /** A knob's default for a kind of strike (none of them tuned yet). */
@@ -283,30 +537,39 @@ constexpr float strikeKnobDefault(StrikeKind kind, StrikeKnob knob)
   {
     case StrikeKind::GROUND_PASS:
       return strikeProfileDefault<S::GroundPass>(knob);
-    case StrikeKind::LOFTED_PASS: return strikeProfileDefault<S::Lofted>(knob);
-    case StrikeKind::CROSS: return strikeProfileDefault<S::Cross>(knob);
-    case StrikeKind::SHOT: return strikeProfileDefault<S::Shot>(knob);
-    case StrikeKind::HEADER: return strikeProfileDefault<S::Header>(knob);
-    case StrikeKind::CLEARANCE: return strikeProfileDefault<S::Clearance>(knob);
-    case StrikeKind::THROW: return strikeProfileDefault<S::Throw>(knob);
+    case StrikeKind::LOFTED_PASS:
+      return strikeProfileDefault<S::Lofted>(knob);
+    case StrikeKind::CROSS:
+      return strikeProfileDefault<S::Cross>(knob);
+    case StrikeKind::SHOT:
+      return strikeProfileDefault<S::Shot>(knob);
+    case StrikeKind::HEADER:
+      return strikeProfileDefault<S::Header>(knob);
+    case StrikeKind::CLEARANCE:
+      return strikeProfileDefault<S::Clearance>(knob);
+    case StrikeKind::THROW:
+      return strikeProfileDefault<S::Throw>(knob);
     case StrikeKind::DRIVEN_PASS:
       return strikeProfileDefault<S::DrivenPass>(knob);
-    case StrikeKind::CHIP: return strikeProfileDefault<S::Chip>(knob);
+    case StrikeKind::CHIP:
+      return strikeProfileDefault<S::Chip>(knob);
     case StrikeKind::PLACED_SHOT:
       return strikeProfileDefault<S::PlacedShot>(knob);
     case StrikeKind::CURLED_SHOT:
       return strikeProfileDefault<S::CurledShot>(knob);
-    case StrikeKind::CHIP_SHOT: return strikeProfileDefault<S::ChipShot>(knob);
-    case StrikeKind::TOE_POKE: return strikeProfileDefault<S::ToePoke>(knob);
+    case StrikeKind::CHIP_SHOT:
+      return strikeProfileDefault<S::ChipShot>(knob);
+    case StrikeKind::TOE_POKE:
+      return strikeProfileDefault<S::ToePoke>(knob);
   }
-  return 0.0f;
+  return 0.0F;
 }
 
 /** A knob's full name: "<kind>: <name>". */
 inline std::string strikeKnobName(StrikeKind kind, StrikeKnob knob)
 {
-  return std::string(STRIKE_KIND_NAMES[static_cast<std::size_t>(kind)]) +
-         ": " + std::string(strikeKnobInfo(knob).name);
+  return std::string(STRIKE_KIND_NAMES[static_cast<std::size_t>(kind)]) + ": " +
+         std::string(strikeKnobInfo(knob).name);
 }
 
 /** The knob values one engine plays with, by kind of strike. */
@@ -318,29 +581,41 @@ struct StrikeKnobs
     std::array<std::array<float, STRIKE_KNOB_COUNT>, STRIKE_KIND_COUNT>
         defaults{};
     for (std::size_t kind = 0; kind < STRIKE_KIND_COUNT; ++kind)
+    {
       for (std::size_t knob = 0; knob < STRIKE_KNOB_COUNT; ++knob)
+      {
         defaults[kind][knob] = strikeKnobDefault(static_cast<StrikeKind>(kind),
                                                  static_cast<StrikeKnob>(knob));
+      }
+    }
     return defaults;
   }();
 
   float at(StrikeKind kind, StrikeKnob knob) const
   {
-    return values[static_cast<std::size_t>(kind)][static_cast<std::size_t>(knob)];
+    return values[static_cast<std::size_t>(kind)]
+                 [static_cast<std::size_t>(knob)];
   }
   float& at(StrikeKind kind, StrikeKnob knob)
   {
-    return values[static_cast<std::size_t>(kind)][static_cast<std::size_t>(knob)];
+    return values[static_cast<std::size_t>(kind)]
+                 [static_cast<std::size_t>(knob)];
   }
   /** The value behind a full name ("Ground pass: Angle fail base"), if it
    * names a knob. */
   float* find(std::string_view fullName)
   {
     for (std::size_t kind = 0; kind < STRIKE_KIND_COUNT; ++kind)
+    {
       for (std::size_t knob = 0; knob < STRIKE_KNOB_COUNT; ++knob)
+      {
         if (strikeKnobName(static_cast<StrikeKind>(kind),
                            static_cast<StrikeKnob>(knob)) == fullName)
+        {
           return &values[kind][knob];
+        }
+      }
+    }
     return nullptr;
   }
 };

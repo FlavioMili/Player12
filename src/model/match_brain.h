@@ -63,10 +63,21 @@ constexpr std::string_view brainKey(BrainId brain)
  * were renamed: "original" and "new-v1"). */
 constexpr std::optional<BrainId> brainFromKey(std::string_view key)
 {
-  if (key == "original") return BrainId::AARDVARK;
-  if (key == "new-v1") return BrainId::BINTURONG;
+  if (key == "original")
+  {
+    return BrainId::AARDVARK;
+  }
+  if (key == "new-v1")
+  {
+    return BrainId::BINTURONG;
+  }
   for (const BrainId brain : ALL_BRAINS)
-    if (brainKey(brain) == key) return brain;
+  {
+    if (brainKey(brain) == key)
+    {
+      return brain;
+    }
+  }
   return std::nullopt;
 }
 
@@ -86,9 +97,18 @@ constexpr std::optional<std::array<BrainId, 2>> parseBrainPair(
 {
   const std::size_t comma = text.find(',');
   const auto home = brainFromKey(text.substr(0, comma));
-  if (!home) return std::nullopt;
-  if (comma == std::string_view::npos) return std::array{*home, *home};
+  if (!home)
+  {
+    return std::nullopt;
+  }
+  if (comma == std::string_view::npos)
+  {
+    return std::array{*home, *home};
+  }
   const auto away = brainFromKey(text.substr(comma + 1));
-  if (!away) return std::nullopt;
+  if (!away)
+  {
+    return std::nullopt;
+  }
   return std::array{*home, *away};
 }

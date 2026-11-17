@@ -26,16 +26,16 @@
 
 namespace
 {
-constexpr float DIALOG_WIDTH = 900.0f;
-constexpr float DIALOG_HEIGHT = 760.0f;
-constexpr float SLIDER_LABEL_WIDTH = 170.0f;
-constexpr float PREVIEW_MAX_HEIGHT = 180.0f;
-constexpr float PREVIEW_ASPECT = 68.0f / 105.0f;
-constexpr float PREVIEW_DOT_RADIUS = 6.0f;
-constexpr float PREVIEW_LABEL_WIDTH = 84.0f;
-constexpr float SHAPE_TOLERANCE = 0.0005f;
+constexpr float DIALOG_WIDTH = 900.0F;
+constexpr float DIALOG_HEIGHT = 760.0F;
+constexpr float SLIDER_LABEL_WIDTH = 170.0F;
+constexpr float PREVIEW_MAX_HEIGHT = 180.0F;
+constexpr float PREVIEW_ASPECT = 68.0F / 105.0F;
+constexpr float PREVIEW_DOT_RADIUS = 6.0F;
+constexpr float PREVIEW_LABEL_WIDTH = 84.0F;
+constexpr float SHAPE_TOLERANCE = 0.0005F;
 /** Below this the familiarity cost of a new shape is not worth a line. */
-constexpr float MINIMUM_SHOWN_COST = 0.005f;
+constexpr float MINIMUM_SHOWN_COST = 0.005F;
 
 float scaled(float value) { return value * Theme::scale(); }
 
@@ -46,7 +46,7 @@ constexpr std::array<const char*, 5> LEVEL_KEYS = {
 const char* levelKey(float value)
 {
   const auto level = static_cast<std::size_t>(
-      std::clamp(value, 0.0f, 0.999f) * static_cast<float>(LEVEL_KEYS.size()));
+      std::clamp(value, 0.0F, 0.999F) * static_cast<float>(LEVEL_KEYS.size()));
   return LEVEL_KEYS[level];
 }
 
@@ -66,7 +66,12 @@ bool sameShape(const std::vector<Vector2F>& left,
 const char* shoutLabel(MatchShout shout)
 {
   for (const MatchChanges::ShoutInfo& info : MatchChanges::SHOUTS)
-    if (info.shout == shout) return LOC(info.labelKey);
+  {
+    if (info.shout == shout)
+    {
+      return LOC(info.labelKey);
+    }
+  }
   return "";
 }
 }  // namespace
@@ -100,7 +105,10 @@ bool MatchTacticsPanel::apply(const TouchlineContext& context)
       !MatchChanges::sameSliders(draft_sliders, applied.getSliders());
   const bool newShape =
       draft_shape.size() == current.size() && !sameShape(draft_shape, current);
-  if (!newSliders && !newShape) return false;
+  if (!newSliders && !newShape)
+  {
+    return false;
+  }
   history.emplace_back(applied, current);
   if (newSliders)
   {
@@ -110,7 +118,9 @@ bool MatchTacticsPanel::apply(const TouchlineContext& context)
     applied = next;
   }
   if (newShape && !context.engine.setFormation(context.home, draft_shape))
+  {
     draft_shape = current;
+  }
   context.status = LOC("MATCH_TACTICS_APPLIED");
   context.status_refused = false;
   return true;
@@ -118,18 +128,25 @@ bool MatchTacticsPanel::apply(const TouchlineContext& context)
 
 bool MatchTacticsPanel::undo(const TouchlineContext& context)
 {
-  if (history.empty()) return false;
+  if (history.empty())
+  {
+    return false;
+  }
   const Snapshot previous = history.back();
   history.pop_back();
   if (!MatchChanges::sameSliders(previous.strategy.getSliders(),
                                  applied.getSliders()))
+  {
     context.engine.setStrategy(context.home, previous.strategy);
+  }
   applied = previous.strategy;
   if (const std::vector<Vector2F> current =
           context.engine.getFormation(context.home);
       previous.shape.size() == current.size() &&
       !sameShape(previous.shape, current))
+  {
     context.engine.setFormation(context.home, previous.shape);
+  }
   syncDraft(context);
   context.status = LOC("MATCH_TACTICS_UNDONE");
   context.status_refused = false;
@@ -141,26 +158,38 @@ bool MatchTacticsPanel::render(const TouchlineContext& context, bool embedded)
   const bool opening = !popup_opened;
   const std::string title =
       std::format("{}{}", LOC("MATCH_TACTICS_TITLE"), WINDOW_ID);
-  if (opening) syncDraft(context);
+  if (opening)
+  {
+    syncDraft(context);
+  }
   if (!embedded && !Touchline::beginDialog(title.data(), popup_opened,
                                            DIALOG_WIDTH, DIALOG_HEIGHT))
   {
     close_requested = false;
     return false;
   }
-  if (embedded) popup_opened = true;
+  if (embedded)
+  {
+    popup_opened = true;
+  }
   if (close_requested || ImGui::IsKeyPressed(ImGuiKey_Escape, false))
   {
     close_requested = false;
     popup_opened = false;
-    if (!embedded) ImGui::CloseCurrentPopup();
-    if (!embedded) ImGui::EndPopup();
+    if (!embedded)
+    {
+      ImGui::CloseCurrentPopup();
+    }
+    if (!embedded)
+    {
+      ImGui::EndPopup();
+    }
     return false;
   }
 
   ImGui::BeginChild("##tactics_body",
-                    ImVec2(0.0f, -Touchline::footerHeight() -
-                                     (embedded ? scaled(24.0f) : 0.0f)),
+                    ImVec2(0.0F, -Touchline::footerHeight() -
+                                     (embedded ? scaled(24.0F) : 0.0F)),
                     ImGuiChildFlags_None,
                     embedded ? ImGuiWindowFlags_AlwaysVerticalScrollbar
                              : ImGuiWindowFlags_None);
@@ -173,8 +202,16 @@ bool MatchTacticsPanel::render(const TouchlineContext& context, bool embedded)
 
   const bool open = popup_opened;
   if (!open)
-    if (!embedded) ImGui::CloseCurrentPopup();
-  if (!embedded) ImGui::EndPopup();
+  {
+    if (!embedded)
+    {
+      ImGui::CloseCurrentPopup();
+    }
+  }
+  if (!embedded)
+  {
+    ImGui::EndPopup();
+  }
   return open;
 }
 
@@ -187,14 +224,21 @@ void MatchTacticsPanel::renderStyle()
   {
     const MatchChanges::TacticPreset& preset =
         MatchChanges::TACTIC_PRESETS[index];
-    if (index > 0) UI::sameLineIfFits(UI::buttonWidth(LOC(preset.nameKey)));
+    if (index > 0)
+    {
+      UI::sameLineIfFits(UI::buttonWidth(LOC(preset.nameKey)));
+    }
     if (UI::toggleButton(LOC(preset.nameKey),
                          active == static_cast<int>(index)))
+    {
       draft_sliders = preset.sliders;
+    }
     if (ImGui::IsItemHovered())
+    {
       ImGui::SetTooltip("%s", LOC(preset.descriptionKey));
+    }
   }
-  ImGui::PushTextWrapPos(0.0f);
+  ImGui::PushTextWrapPos(0.0F);
   ImGui::TextColored(
       Theme::palette().faint, "%s",
       active >= 0
@@ -206,29 +250,36 @@ void MatchTacticsPanel::renderStyle()
 
 void MatchTacticsPanel::renderInstructions()
 {
-  ImGui::Dummy(ImVec2(0.0f, scaled(Theme::Space::XS)));
+  ImGui::Dummy(ImVec2(0.0F, scaled(Theme::Space::XS)));
   UI::sectionLabel(LOC("TACTIC_DETAILS"));
-  float levelWidth = 0.0f;
+  float levelWidth = 0.0F;
   for (const char* key : LEVEL_KEYS)
+  {
     levelWidth = std::max(levelWidth, ImGui::CalcTextSize(LOC(key)).x);
+  }
   const float labelWidth = std::min(scaled(SLIDER_LABEL_WIDTH),
-                                    ImGui::GetContentRegionAvail().x * 0.35f);
+                                    ImGui::GetContentRegionAvail().x * 0.35F);
   for (const MatchChanges::SliderInfo& slider : MatchChanges::TACTIC_SLIDERS)
   {
     ImGui::PushID(slider.id);
     const float rowStart = ImGui::GetCursorPosX();
     ImGui::AlignTextToFramePadding();
     UI::textFitted(LOC(slider.key), labelWidth, Theme::palette().text);
-    if (ImGui::IsItemHovered()) ImGui::SetTooltip("%s", LOC(slider.helpKey));
+    if (ImGui::IsItemHovered())
+    {
+      ImGui::SetTooltip("%s", LOC(slider.helpKey));
+    }
     ImGui::SameLine(rowStart + labelWidth);
     ImGui::SetNextItemWidth(
-        std::max(scaled(60.0f), ImGui::GetContentRegionAvail().x - levelWidth -
+        std::max(scaled(60.0F), ImGui::GetContentRegionAvail().x - levelWidth -
                                     ImGui::GetStyle().ItemSpacing.x));
     float& value = draft_sliders.*slider.value;
-    ImGui::SliderFloat("##value", &value, 0.0f, 1.0f, "");
+    ImGui::SliderFloat("##value", &value, 0.0F, 1.0F, "");
     if (ImGui::IsItemHovered())
+    {
       ImGui::SetTooltip("%s (%.0f%%)", LOC(slider.helpKey),
-                        static_cast<double>(value * 100.0f));
+                        static_cast<double>(value * 100.0F));
+    }
     ImGui::SameLine();
     ImGui::TextColored(Theme::palette().muted, "%s", LOC(levelKey(value)));
     ImGui::PopID();
@@ -239,19 +290,29 @@ void MatchTacticsPanel::renderFormation(const TouchlineContext& context)
 {
   // Presets map onto the ten outfield slots; a side with another number of
   // slots keeps its shape.
-  if (draft_shape.size() != 10) return;
-  ImGui::Dummy(ImVec2(0.0f, scaled(Theme::Space::XS)));
+  if (draft_shape.size() != 10)
+  {
+    return;
+  }
+  ImGui::Dummy(ImVec2(0.0F, scaled(Theme::Space::XS)));
   UI::sectionLabel(LOC("LINEUP_FORMATION"));
   const int active = MatchChanges::detectFormation(draft_shape);
   for (std::size_t index = 0; index < Formation::PRESETS.size(); ++index)
   {
     const Formation::Preset& preset = Formation::PRESETS[index];
-    if (index > 0) UI::sameLineIfFits(UI::buttonWidth(preset.name));
+    if (index > 0)
+    {
+      UI::sameLineIfFits(UI::buttonWidth(preset.name));
+    }
     if (UI::toggleButton(preset.name, active == static_cast<int>(index)))
+    {
       draft_shape =
           MatchChanges::formationFor(context.engine, context.home, preset);
+    }
     if (ImGui::IsItemHovered())
+    {
       ImGui::SetTooltip("%s", LOC("MATCH_TACTICS_FORMATION_HINT"));
+    }
   }
   if (active < 0)
   {
@@ -269,48 +330,55 @@ void MatchTacticsPanel::renderFormation(const TouchlineContext& context)
       std::min(width * PREVIEW_ASPECT, scaled(PREVIEW_MAX_HEIGHT));
   const float pitchWidth = height / PREVIEW_ASPECT;
   const ImVec2 cursor = ImGui::GetCursorScreenPos();
-  const ImVec2 min(cursor.x + (width - pitchWidth) * 0.5f, cursor.y);
+  const ImVec2 min(cursor.x + ((width - pitchWidth) * 0.5F), cursor.y);
   const ImVec2 max(min.x + pitchWidth, min.y + height);
   ImDrawList* drawList = ImGui::GetWindowDrawList();
   drawList->AddRectFilled(min, max, MatchSceneTuning::Pitch::GRASS_COLOR,
-                          scaled(4.0f));
+                          scaled(4.0F));
   const ImU32 line = IM_COL32(255, 255, 255, 110);
-  drawList->AddRect(min, max, line, scaled(4.0f), 0, scaled(1.2f));
-  drawList->AddLine(ImVec2(min.x + pitchWidth * 0.5f, min.y),
-                    ImVec2(min.x + pitchWidth * 0.5f, max.y), line,
-                    scaled(1.2f));
+  drawList->AddRect(min, max, line, scaled(4.0F), 0, scaled(1.2F));
+  drawList->AddLine(ImVec2(min.x + (pitchWidth * 0.5F), min.y),
+                    ImVec2(min.x + (pitchWidth * 0.5F), max.y), line,
+                    scaled(1.2F));
   const float radius = scaled(PREVIEW_DOT_RADIUS);
-  const float margin = radius * 2.0f;
+  const float margin = radius * 2.0F;
   const float lineHeight = ImGui::GetTextLineHeight();
   const auto toScreen = [&](Vector2F spot)
   {
     return ImVec2(
-        min.x + margin + spot.x * (pitchWidth - 2.0f * margin),
-        min.y + margin + spot.y * (height - 2.0f * margin - lineHeight));
+        min.x + margin + (spot.x * (pitchWidth - 2.0F * margin)),
+        min.y + margin + (spot.y * (height - 2.0F * margin - lineHeight)));
   };
   Theme::ScopedText caption(Theme::Text::CAPTION);
   for (const MatchPlayer& player : context.engine.getPlayers())
   {
-    if (!player.player || !player.onPitch ||
+    if ((player.player == nullptr) || !player.onPitch ||
         player.isHomeTeam != context.home || player.isGoalkeeper ||
         player.formationSlot < 0 ||
-        static_cast<std::size_t>(player.formationSlot) >= draft_shape.size())
+        static_cast<std::size_t>(static_cast<int>(player.formationSlot)) >=
+            draft_shape.size())
+    {
       continue;
-    const auto slot = static_cast<std::size_t>(player.formationSlot);
+    }
+    const auto slot =
+        static_cast<std::size_t>(static_cast<int>(player.formationSlot));
     const ImVec2 target = toScreen(draft_shape[slot]);
     if (slot < current.size() && !samePoint(current[slot], draft_shape[slot]))
+    {
       drawList->AddLine(toScreen(current[slot]), target,
-                        IM_COL32(255, 255, 255, 90), scaled(1.5f));
+                        IM_COL32(255, 255, 255, 90), scaled(1.5F));
+    }
     drawList->AddCircleFilled(target, radius, context.kit);
     drawList->AddCircle(target, radius, IM_COL32(255, 255, 255, 220), 0,
-                        scaled(1.2f));
+                        scaled(1.2F));
     const std::string& name = player.player->getLastName();
     const float labelWidth = std::min(ImGui::CalcTextSize(name.c_str()).x,
                                       scaled(PREVIEW_LABEL_WIDTH));
-    UI::drawTextFitted(
-        drawList,
-        ImVec2(target.x - labelWidth * 0.5f, target.y + radius + scaled(1.0f)),
-        IM_COL32(255, 255, 255, 235), name, scaled(PREVIEW_LABEL_WIDTH));
+    UI::drawTextFitted(drawList,
+                       ImVec2(target.x - (labelWidth * 0.5F),
+                              target.y + radius + scaled(1.0F)),
+                       IM_COL32(255, 255, 255, 235), name,
+                       scaled(PREVIEW_LABEL_WIDTH));
   }
   ImGui::Dummy(ImVec2(width, height));
 }
@@ -318,11 +386,11 @@ void MatchTacticsPanel::renderFormation(const TouchlineContext& context)
 void MatchTacticsPanel::renderFamiliarity(const TouchlineContext& context)
 {
   const Theme::Palette& palette = Theme::palette();
-  ImGui::Dummy(ImVec2(0.0f, scaled(Theme::Space::XS)));
+  ImGui::Dummy(ImVec2(0.0F, scaled(Theme::Space::XS)));
   const float familiarity = context.engine.getTacticalFamiliarity(context.home);
   const std::string known =
       fmt::sprintf(LOC("MATCH_TACTICS_FAMILIARITY"),
-                   static_cast<int>(std::lround(familiarity * 100.0f)));
+                   static_cast<int>(std::lround(familiarity * 100.0F)));
   ImGui::TextColored(palette.muted, "%s", known.c_str());
   if (const float cost = MatchChanges::reshapeCost(
           context.engine.getFormation(context.home), draft_shape);
@@ -330,10 +398,10 @@ void MatchTacticsPanel::renderFamiliarity(const TouchlineContext& context)
   {
     const std::string note = fmt::sprintf(
         LOC("MATCH_TACTICS_RESHAPE_COST"),
-        static_cast<int>(std::lround(cost * 100.0f)),
+        static_cast<int>(std::lround(cost * 100.0F)),
         static_cast<int>(std::lround(
-            MatchTuning::Touchline::RESHAPE_RECOVERY_SECONDS / 60.0f)));
-    ImGui::PushTextWrapPos(0.0f);
+            MatchTuning::Touchline::RESHAPE_RECOVERY_SECONDS / 60.0F)));
+    ImGui::PushTextWrapPos(0.0F);
     ImGui::TextColored(palette.warning, "%s", note.c_str());
     ImGui::PopTextWrapPos();
   }
@@ -342,7 +410,7 @@ void MatchTacticsPanel::renderFamiliarity(const TouchlineContext& context)
     const std::string note = fmt::sprintf(
         LOC("MATCH_TACTICS_SHOUT_IN_FORCE"), shoutLabel(*shout),
         static_cast<int>(std::lround(
-            context.engine.getShoutStrength(context.home) * 100.0f)));
+            context.engine.getShoutStrength(context.home) * 100.0F)));
     ImGui::TextColored(palette.info, "%s", note.c_str());
   }
 }
@@ -358,22 +426,34 @@ void MatchTacticsPanel::renderFooter(const TouchlineContext& context)
   const float available = ImGui::GetContentRegionAvail().x;
   ImGui::AlignTextToFramePadding();
   UI::textFitted(context.status,
-                 std::max(0.0f, available - settingWidth -
+                 std::max(0.0F, available - settingWidth -
                                     ImGui::GetStyle().ItemSpacing.x),
                  context.status_refused ? palette.negative : palette.positive);
-  ImGui::SameLine(rowStart + std::max(0.0f, available - settingWidth));
+  ImGui::SameLine(rowStart + std::max(0.0F, available - settingWidth));
   Touchline::pauseSetting();
 
   const bool changed = hasChanges(context);
   ImGui::BeginDisabled(!changed);
-  if (UI::primaryButton(LOC("MATCH_TACTICS_APPLY"))) apply(context);
+  if (UI::primaryButton(LOC("MATCH_TACTICS_APPLY")))
+  {
+    apply(context);
+  }
   ImGui::SameLine();
-  if (UI::secondaryButton(LOC("TACTIC_REVERT"))) syncDraft(context);
+  if (UI::secondaryButton(LOC("TACTIC_REVERT")))
+  {
+    syncDraft(context);
+  }
   ImGui::EndDisabled();
   ImGui::SameLine();
   ImGui::BeginDisabled(!canUndo());
-  if (UI::secondaryButton(LOC("MATCH_TACTICS_UNDO"))) undo(context);
+  if (UI::secondaryButton(LOC("MATCH_TACTICS_UNDO")))
+  {
+    undo(context);
+  }
   ImGui::EndDisabled();
   ImGui::SameLine();
-  if (UI::secondaryButton(LOC("SUBSTITUTION_CLOSE"))) popup_opened = false;
+  if (UI::secondaryButton(LOC("SUBSTITUTION_CLOSE")))
+  {
+    popup_opened = false;
+  }
 }

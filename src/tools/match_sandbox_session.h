@@ -16,16 +16,15 @@
 #include <string>
 #include <vector>
 
+#include "model/match_body.h"
+#include "model/match_brain.h"
+#include "model/match_engine.h"
 #include "model/match_point.h"
 #include "tools/match_sandbox_drill.h"
 #include "tools/match_sandbox_training.h"
-#include "model/match_engine.h"
-#include "model/match_body.h"
-#include "model/match_brain.h"
 
 class Player;
 struct StatsConfig;
-
 
 /**
  * Training sessions (training ground plan section 23, T7): a squad and a
@@ -38,10 +37,10 @@ struct StatsConfig;
 namespace TrainingGround
 {
 /** The ground the zones are laid out on (metres). */
-inline constexpr float LENGTH_METRES = 105.0f;
-inline constexpr float WIDTH_METRES = 68.0f;
+inline constexpr float LENGTH_METRES = 105.0F;
+inline constexpr float WIDTH_METRES = 68.0F;
 /** Kept clear round each zone's walls: its coach stands 1 m out. */
-inline constexpr float ZONE_MARGIN_METRES = 2.0f;
+inline constexpr float ZONE_MARGIN_METRES = 2.0F;
 }  // namespace TrainingGround
 
 /** One zone of an exercise. */
@@ -90,10 +89,10 @@ std::optional<std::string> checkSessionPlan(const SessionPlan& plan);
 /** A zone's footprint on the ground: its pitch, turned as placed. */
 struct ZoneFootprint
 {
-  float minX = 0.0f;
-  float minY = 0.0f;
-  float maxX = 0.0f;
-  float maxY = 0.0f;
+  float minX = 0.0F;
+  float minY = 0.0F;
+  float maxX = 0.0F;
+  float maxY = 0.0F;
 };
 
 /** A session being run: the squad's players, and the current exercise's
@@ -114,10 +113,13 @@ class SessionRun
   };
 
   /** `picks`: the players to train (the first of them make up the squad;
-   * reference players fill any gap). `seed`: the session's; each zone's drill runs on its own seed from it,
-   * so the session repeats. `record`: attach each zone's recorder. */
-  SessionRun(const SessionPlan& plan, const StatsConfig& config, std::uint32_t seed,
-             bool record = false, const std::vector<TrainingPlayer>& picks = {});
+   * reference players fill any gap). `seed`: the session's; each zone's drill
+   * runs on its own seed from it, so the session repeats. `record`: attach each
+   * zone's recorder. Throws std::invalid_argument if a squad index is out
+   * of range or assigned more than once in an exercise. */
+  SessionRun(const SessionPlan& plan, const StatsConfig& config,
+             std::uint32_t seed, bool record = false,
+             const std::vector<TrainingPlayer>& picks = {});
   ~SessionRun();
   SessionRun(const SessionRun&) = delete;
   SessionRun& operator=(const SessionRun&) = delete;
@@ -131,7 +133,10 @@ class SessionRun
   [[nodiscard]] const std::vector<Zone>& zones() const { return current; }
   [[nodiscard]] std::vector<Zone>& zones() { return current; }
   /** The squad's players (owned by the session). */
-  [[nodiscard]] const std::vector<std::unique_ptr<Player>>& squad() const { return players; }
+  [[nodiscard]] const std::vector<std::unique_ptr<Player>>& squad() const
+  {
+    return players;
+  }
   /** Simulated seconds since the session began. */
   [[nodiscard]] double seconds() const { return elapsed; }
   /** Each finished exercise's zones' reports, in order. */
@@ -155,7 +160,7 @@ class SessionRun
   /** Change of exercise (plan section 23, T7d): the change ends when
    * everyone is this close to his place, or after the time limit. Our own
    * estimates. */
-  static constexpr float ARRIVED_METRES = 1.0f;
+  static constexpr float ARRIVED_METRES = 1.0F;
   static constexpr double CHANGE_LIMIT_SECONDS = 60.0;
 
  private:
@@ -177,6 +182,9 @@ class SessionRun
   /** Tidy up and merge: the next exercise's zones are made ready, and the
    * players who were playing walk to their places in one engine. */
   void beginChange(std::size_t next);
+  /** The next zone's starting place, or the next changing-room spot. */
+  [[nodiscard]] Mover nextPlace(std::size_t squadIndex,
+                                const PitchPoint& benchPlace) const;
   /** Split: the next exercise's zones take their players as they arrived. */
   void finishChange();
 
@@ -189,8 +197,8 @@ class SessionRun
   /** How the last change went, reported with the exercise it led into. */
   std::string changeReport;
   /** The largest jump of place and condition at the last merge. */
-  float mergeJump = 0.0f;
-  float mergeConditionJump = 0.0f;
+  float mergeJump = 0.0F;
+  float mergeConditionJump = 0.0F;
 
   SessionPlan sessionPlan;
   const StatsConfig& config;
@@ -223,7 +231,8 @@ struct MatchRenderSnapshot;
  * zones' walls and goals, and the other zones' balls; `watchedZone`'s ball is
  * the main one (the 3D cameras follow it). The caller sets the
  * interpolation. */
-void fillSessionRenderSnapshot(const SessionRun& run, MatchRenderSnapshot& snapshot,
+void fillSessionRenderSnapshot(const SessionRun& run,
+                               MatchRenderSnapshot& snapshot,
                                std::size_t watchedZone = 0);
 
 /** The carry-over check (plan section 23, T7c): a small-sided game runs 30

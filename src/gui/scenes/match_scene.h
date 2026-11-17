@@ -102,8 +102,8 @@ class MatchScene : public GUIScene
     {
       bool clicked = false;
       bool ctrl = false;
-      float x = 0.0f;
-      float y = 0.0f;
+      float x = 0.0F;
+      float y = 0.0F;
     };
     /** Draws over the pitch just rendered, inside its clip (the true view's
      * shapes, the inspector's overlays), from the engine and snapshot it
@@ -174,7 +174,7 @@ class MatchScene : public GUIScene
   /** Crowd, whistle and ball sounds of the live match. */
   std::unique_ptr<MatchAudio> audio;
   /** Seconds the "skipping to the next highlight" note stays visible. */
-  float skip_indicator_seconds = 0.0f;
+  float skip_indicator_seconds = 0.0F;
   std::unique_ptr<IMatchRenderer> renderer_2d;
   std::unique_ptr<IMatchRenderer> renderer_3d;
   MatchViewMode view_mode = MatchViewMode::PITCH_2D;
@@ -186,9 +186,9 @@ class MatchScene : public GUIScene
   bool day_look = false;
   /** Pitch-control overlay on the 2D view. */
   bool pressure_overlay = false;
-  float pending_zoom_steps = 0.0f;
-  float watch_zoom_2d = 1.0f;
-  float play_zoom_2d = 1.0f;
+  float pending_zoom_steps = 0.0F;
+  float watch_zoom_2d = 1.0F;
+  float play_zoom_2d = 1.0F;
   /** Mouse input over the 3D view waiting for the next rendered frame. */
   MatchCameraInput pending_camera_input;
   /** The free camera orbits the moving ball (B). */
@@ -198,8 +198,8 @@ class MatchScene : public GUIScene
   /** Statistics and events hidden so the view gets the whole width. */
   bool side_panels_hidden = false;
   /** Width of the focus HUD's control strip last frame (right-aligned). */
-  float focus_controls_width = 0.0f;
-  float frame_seconds = 0.0f;
+  float focus_controls_width = 0.0F;
+  float frame_seconds = 0.0F;
 
   bool match_finished = false;
   /** "a.e.t." / "4-3 on penalties" under the full-time score (built once). */
@@ -207,7 +207,7 @@ class MatchScene : public GUIScene
   bool decided_by_ready = false;
 
   /** Multiplier of the engine's real-time pace (1x = real time). */
-  float match_speed = 1.0f;
+  float match_speed = 1.0F;
   bool highlights_only = false;
   bool is_paused = false;
   TeamTalkDialog team_talk;
@@ -250,7 +250,7 @@ class MatchScene : public GUIScene
   };
   PlayMenuNext play_menu_next = PlayMenuNext::NONE;
   /** How the match was being watched, restored on hand-back. */
-  float watch_speed = 1.0f;
+  float watch_speed = 1.0F;
   bool watch_highlights = false;
   MatchCameraMode watch_camera = MatchCameraMode::BROADCAST;
   bool watch_focus = false;
@@ -273,12 +273,12 @@ class MatchScene : public GUIScene
   bool indexed_show_all = false;
   bool substitution_refused = false;
   std::string debug_status;
-  float scene_entry_milliseconds = 0.0f;
-  float last_update_milliseconds = 0.0f;
-  float maximum_update_milliseconds = 0.0f;
+  float scene_entry_milliseconds = 0.0F;
+  float last_update_milliseconds = 0.0F;
+  float maximum_update_milliseconds = 0.0F;
   std::uint64_t slow_update_count = 0;
-  float last_render_milliseconds = 0.0f;
-  float average_render_milliseconds = 0.0f;
+  float last_render_milliseconds = 0.0F;
+  float average_render_milliseconds = 0.0F;
 
   /** Re-checks the managed selection against today's fixture. */
   void refreshLineupProblems();

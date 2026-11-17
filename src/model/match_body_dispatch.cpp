@@ -86,7 +86,7 @@ float MatchEngine::fuelFloor(bool homeTeam) const
     case BodyId::AARDVARK:
       break;
     case BodyId::BINTURONG:
-      return 0.0f;
+      return 0.0F;
   }
   return MatchTuning::Player::MINIMUM_STAMINA;
 }
@@ -95,7 +95,7 @@ float MatchEngine::fuelFatigue(const MatchPlayer& player) const
 {
   // Aardvark: fully tired at its fuel floor. Binturong: at an empty tank.
   const float floor = fuelFloor(player.isHomeTeam);
-  return std::clamp((1.0f - player.stamina) / (1.0f - floor), 0.0f, 1.0f);
+  return std::clamp((1.0F - player.stamina) / (1.0F - floor), 0.0F, 1.0F);
 }
 
 SpeedBand MatchEngine::speedBand(const MatchPlayer& player,
@@ -116,7 +116,12 @@ MovementMode MatchEngine::movementModeAt(const MatchPlayer& player,
 {
   for (const MovementMode mode :
        {MovementMode::SPRINT, MovementMode::RUN, MovementMode::JOG})
-    if (speed > speedBand(player, mode).low) return mode;
+  {
+    if (speed > speedBand(player, mode).low)
+    {
+      return mode;
+    }
+  }
   return MovementMode::WALK;
 }
 
@@ -201,11 +206,9 @@ float MatchEngine::shotSpread(const MatchPlayer& shooter, bool header,
   return shotSpreadAardvark(shooter, header, penalty, freeKick, metres);
 }
 
-MatchEngine::ShotStrike MatchEngine::strikeShotBody(const MatchPlayer& shooter,
-                                                    float aimY, float aimZ,
-                                                    float spread, bool header,
-                                                    float powerScale,
-                                                    std::optional<ShotTechnique> technique)
+MatchEngine::ShotStrike MatchEngine::strikeShotBody(
+    const MatchPlayer& shooter, float aimY, float aimZ, float spread,
+    bool header, float powerScale, std::optional<ShotTechnique> technique)
 {
   switch (bodyOf(shooter.isHomeTeam))
   {
@@ -258,7 +261,8 @@ std::pair<float, float> MatchEngine::headerPace(const MatchPlayer& header,
   return headerPaceAardvark(header, purpose, target, speed, lift);
 }
 
-PitchPoint MatchEngine::knockDownPoint(const MatchPlayer& header, PitchPoint aim)
+PitchPoint MatchEngine::knockDownPoint(const MatchPlayer& header,
+                                       PitchPoint aim)
 {
   switch (bodyOf(header.isHomeTeam))
   {
@@ -584,24 +588,26 @@ BodyLines MatchEngine::bodyLines(const MatchPlayer& player) const
 std::pair<float, float> MatchEngine::headLineRange() const
 {
   float lowest = std::numeric_limits<float>::max();
-  float highest = 0.0f;
+  float highest = 0.0F;
   for (const MatchPlayer& player : players)
   {
-    if (!MatchEngineInternal::active(player) || player.isGoalkeeper) continue;
+    if (!MatchEngineInternal::active(player) || player.isGoalkeeper)
+    {
+      continue;
+    }
     const float head = bodyLines(player).head;
     lowest = std::min(lowest, head);
     highest = std::max(highest, head);
   }
-  if (highest <= 0.0f)
+  if (highest <= 0.0F)
+  {
     return {MatchTuning::Aerial::CONTROL_CEILING_METRES,
             MatchTuning::Aerial::CONTROL_CEILING_METRES};
+  }
   return {lowest, highest};
 }
 
-float MatchEngine::lowestHeadLine() const
-{
-  return headLineRange().first;
-}
+float MatchEngine::lowestHeadLine() const { return headLineRange().first; }
 
 bool MatchEngine::ballBehindReach(const MatchPlayer& player, float gapX,
                                   float gapY, float gap,

@@ -99,7 +99,7 @@ class TechniqueBenchScene : public GUIScene
   int view = 0;
   bool gridChange = false;
   std::string focus;
-  float watchSkill = 50.0f;
+  float watchSkill = 50.0F;
   int watchSeed = 1;
   /** Drills for Watch (they outlive the drill scene). */
   std::vector<std::unique_ptr<Drill>> watchDrills;

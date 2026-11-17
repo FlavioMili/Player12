@@ -34,8 +34,8 @@ constexpr int MAX_STEPS_PER_FRAME = 400;
 /** Skipping to the end: this many steps per frame (the window stays
  * responsive). */
 constexpr int SKIP_STEPS_PER_FRAME = 3000;
-constexpr std::array<float, 8> SPEEDS{0.5f, 1.0f,  2.0f,  4.0f,
-                                      8.0f, 16.0f, 32.0f, 64.0f};
+constexpr std::array<float, 8> SPEEDS{0.5F, 1.0F,  2.0F,  4.0F,
+                                      8.0F, 16.0F, 32.0F, 64.0F};
 }  // namespace
 
 TrainingSessionScene::TrainingSessionScene(
@@ -66,11 +66,15 @@ void TrainingSessionScene::onEnter()
   {
     const auto config = SandboxTypography::manropeConfig();
     for (auto* existing : atlas->Fonts)
+    {
       if (std::string_view(existing->GetDebugName()).find(file) !=
               std::string_view::npos &&
           !existing->Sources.empty() &&
           existing->Sources[0]->ExtraSizeScale == config.ExtraSizeScale)
+      {
         return existing;
+      }
+    }
     return atlas->AddFontFromFileTTF(
         AssetPaths::file((std::string("assets/fonts/") + file).c_str()).c_str(),
         size, &config);
@@ -82,13 +86,19 @@ void TrainingSessionScene::onEnter()
 
 void TrainingSessionScene::startDrill(std::size_t index)
 {
-  if (!session || index >= session->drills.size()) return;
-  if (current != index) resultMetrics = {0, 1};
+  if (!session || index >= session->drills.size())
+  {
+    return;
+  }
+  if (current != index)
+  {
+    resultMetrics = {0, 1};
+  }
   current = index;
   run.reset();
   run = startTrainingRun(*session->drills[current],
                          guiView->getController().getStatsConfig());
-  accumulator = 0.0f;
+  accumulator = 0.0F;
   skipping = false;
   paused = false;
 }
@@ -96,23 +106,35 @@ void TrainingSessionScene::startDrill(std::size_t index)
 void TrainingSessionScene::stepRun(int steps)
 {
   for (int step = 0; step < steps && run && !run->finished(); ++step)
+  {
     run->step();
+  }
 }
 
 void TrainingSessionScene::update(float deltaTime)
 {
   if (ImGui::IsKeyPressed(ImGuiKey_Space, false) &&
       !ImGui::GetIO().WantTextInput)
+  {
     paused = !paused;
+  }
   if (ImGui::IsKeyPressed(ImGuiKey_R, false) && !ImGui::GetIO().WantTextInput)
+  {
     startDrill(current);
-  if (!run || run->finished()) return;
+  }
+  if (!run || run->finished())
+  {
+    return;
+  }
   if (skipping)
   {
     stepRun(SKIP_STEPS_PER_FRAME);
     return;
   }
-  if (paused) return;
+  if (paused)
+  {
+    return;
+  }
   accumulator += deltaTime * speed;
   int steps = 0;
   while (accumulator >= STEP && steps < MAX_STEPS_PER_FRAME)
@@ -121,7 +143,10 @@ void TrainingSessionScene::update(float deltaTime)
     stepRun(1);
     ++steps;
   }
-  if (steps == MAX_STEPS_PER_FRAME) accumulator = 0.0f;
+  if (steps == MAX_STEPS_PER_FRAME)
+  {
+    accumulator = 0.0F;
+  }
 }
 
 void TrainingSessionScene::render()
@@ -146,11 +171,11 @@ void TrainingSessionScene::render()
   ImGui::PopStyleVar(3);
   ImGui::PopStyleColor();
   const ImVec2 available = ImGui::GetContentRegionAvail();
-  const float gutter = 6 * scale + ImGui::GetStyle().ScrollbarSize;
+  const float gutter = (6 * scale) + ImGui::GetStyle().ScrollbarSize;
   const bool columns = available.x >= 1000 * scale;
-  const float panel = columns
-                          ? (available.x >= 1400 * scale ? 440 : 400) * scale
-                          : available.x - gutter;
+  const float panel =
+      columns ? (available.x >= 1400 * scale ? 440.0F : 400.0F) * scale
+              : available.x - gutter;
   ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(0, 0));
   if (columns)
   {
@@ -166,7 +191,7 @@ void TrainingSessionScene::render()
   {
     ImGui::BeginChild("##training_controls", available,
                       ImGuiChildFlags_AlwaysUseWindowPadding);
-    renderPitch(panel, std::max(300 * scale, available.y * 0.65f));
+    renderPitch(panel, std::max(300 * scale, available.y * 0.65F));
     renderPanel(panel);
     ImGui::EndChild();
   }
@@ -178,7 +203,10 @@ void TrainingSessionScene::renderPanel(float width)
 {
   namespace Page = SandboxPageUI;
   const float scale = Theme::scale();
-  if (!session || session->drills.empty()) return;
+  if (!session || session->drills.empty())
+  {
+    return;
+  }
   const std::string subtitle = std::format("{} / {}", session->name, club);
   const std::string context = std::format(
       "Drill {} of {}: {}. Engine conditions come from Set-up.", current + 1,
@@ -191,12 +219,16 @@ void TrainingSessionScene::renderPanel(float width)
   {
     if (ImGui::GetItemRectMax().x + 6 * scale + itemWidth <=
         ImGui::GetWindowPos().x + ImGui::GetWindowContentRegionMax().x)
+    {
       ImGui::SameLine(0, 6 * scale);
+    }
   };
   const auto nextButton = [&](const char* label)
   { next(Page::buttonWidth(label, scale, boldFont)); };
   if (Page::button("Back to sandbox", false, scale, boldFont))
+  {
     guiView->popScene();
+  }
   const bool over = run && run->finished();
   const bool last = current + 1 >= session->drills.size();
   const char* advance = last ? "End session" : "Next drill";
@@ -205,13 +237,20 @@ void TrainingSessionScene::renderPanel(float width)
   const bool advanceClicked = Page::button(advance, true, scale, boldFont);
   ImGui::EndDisabled();
   if (!over && ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenDisabled))
+  {
     ImGui::SetTooltip("Once everyone has finished, or skip to the end.");
+  }
   if (Page::button("Restart drill (R)", false, scale, boldFont))
+  {
     startDrill(current);
+  }
   const char* playback = paused ? "Play (Space)" : "Pause (Space)";
   nextButton(playback);
   ImGui::BeginDisabled(over || skipping);
-  if (Page::button(playback, false, scale, boldFont)) paused = !paused;
+  if (Page::button(playback, false, scale, boldFont))
+  {
+    paused = !paused;
+  }
   ImGui::EndDisabled();
   ImGui::AlignTextToFramePadding();
   ImGui::TextUnformatted("Speed");
@@ -221,26 +260,36 @@ void TrainingSessionScene::renderPanel(float width)
   if (SandboxPageUI::beginCombo("##speed", speedLabel.c_str()))
   {
     for (const float option : SPEEDS)
+    {
       if (ImGui::Selectable(std::format("{:g}x", option).c_str(),
                             option == speed))
+      {
         speed = option;
+      }
+    }
     ImGui::EndCombo();
   }
   nextButton("Skip to the end");
   ImGui::BeginDisabled(over || skipping);
-  if (Page::button("Skip to the end", false, scale, boldFont)) skipping = true;
+  if (Page::button("Skip to the end", false, scale, boldFont))
+  {
+    skipping = true;
+  }
   ImGui::EndDisabled();
   if (ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenDisabled))
+  {
     ImGui::SetTooltip("Run the rest of the drill as fast as it goes.");
+  }
   if (run)
   {
-    const int seconds = int(run->engine().getSimulatedSteps() * STEP);
-    ImGui::Text("%s / %d:%02d",
+    const double seconds = run->engine().getSimulatedSeconds();
+    ImGui::Text("%s / %.0f:%02.0f",
                 over       ? "Finished"
                 : skipping ? "Skipping"
                 : paused   ? "Paused"
                            : "Running",
-                seconds / 60, seconds % 60);
+                std::floor(seconds / 60.0),
+                std::floor(std::fmod(seconds, 60.0)));
     ImGui::Text("%zu of %zu players finished",
                 session->drills[current]->results().size(),
                 session->squad.size());
@@ -249,17 +298,26 @@ void TrainingSessionScene::renderPanel(float width)
   if (advanceClicked)
   {
     if (last)
+    {
       guiView->popScene();
+    }
     else
+    {
       startDrill(current + 1);
+    }
     return;
   }
   Page::beginCard("##training_tabs", "DETAILS", width, Page::MID, scale,
                   boldFont);
   if (Page::button("Progress", !showResults, scale, boldFont))
+  {
     showResults = false;
+  }
   ImGui::SameLine(0, 6 * scale);
-  if (Page::button("Results", showResults, scale, boldFont)) showResults = true;
+  if (Page::button("Results", showResults, scale, boldFont))
+  {
+    showResults = true;
+  }
   Page::endCard(scale);
   TrainingDrill& drill = *session->drills[current];
   if (showResults)
@@ -275,7 +333,10 @@ void TrainingSessionScene::renderPanel(float width)
   ImGui::PushTextWrapPos(0);
   ImGui::TextUnformatted(drill.summary());
   ImGui::Separator();
-  for (const auto& line : drill.report()) ImGui::TextUnformatted(line.c_str());
+  for (const auto& line : drill.report())
+  {
+    ImGui::TextUnformatted(line.c_str());
+  }
   ImGui::PopTextWrapPos();
   Page::endCard(scale);
   Page::beginCard("##training_session", "SESSION", width, Page::MID, scale,
@@ -292,9 +353,15 @@ void TrainingSessionScene::renderPanel(float width)
     {
       ImGui::TableNextRow();
       ImGui::TableNextColumn();
-      if (index == current) ImGui::PushFont(boldFont, 16);
+      if (index == current)
+      {
+        ImGui::PushFont(boldFont, 16);
+      }
       ImGui::TextWrapped("%zu / %s", index + 1, session->drills[index]->name());
-      if (index == current) ImGui::PopFont();
+      if (index == current)
+      {
+        ImGui::PopFont();
+      }
       ImGui::TableNextColumn();
       ImGui::TextUnformatted(
           index < current    ? "Done"
@@ -313,8 +380,10 @@ void TrainingSessionScene::renderResults(TrainingDrill& drill)
   const float scale = Theme::scale();
   const int metricCount = std::min(2, int(columns.size()));
   for (int slot = 0; slot < metricCount; ++slot)
+  {
     resultMetrics[slot] =
         std::clamp(resultMetrics[slot], 0, int(columns.size()) - 1);
+  }
   if (columns.size() > 2 &&
       ImGui::BeginTable("##metric_choices", 2,
                         ImGuiTableFlags_SizingStretchSame))
@@ -326,16 +395,24 @@ void TrainingSessionScene::renderResults(TrainingDrill& drill)
       ImGui::Dummy(ImVec2(0, 0));
       ImGui::TextUnformatted(slot == 0 ? "First metric" : "Second metric");
       ImGui::SetNextItemWidth(-1);
-      if (SandboxPageUI::beginCombo("##metric", columns[resultMetrics[slot]].name))
+      if (SandboxPageUI::beginCombo("##metric",
+                                    columns[resultMetrics[slot]].name))
       {
         for (int metric = 0; metric < int(columns.size()); ++metric)
         {
-          if (metric == resultMetrics[1 - slot]) continue;
+          if (metric == resultMetrics[1 - slot])
+          {
+            continue;
+          }
           if (ImGui::Selectable(columns[metric].name,
                                 metric == resultMetrics[slot]))
+          {
             resultMetrics[slot] = metric;
-          if (columns[metric].tooltip && ImGui::IsItemHovered())
+          }
+          if ((columns[metric].tooltip != nullptr) && ImGui::IsItemHovered())
+          {
             ImGui::SetTooltip("%s", columns[metric].tooltip);
+          }
         }
         ImGui::EndCombo();
       }
@@ -344,9 +421,11 @@ void TrainingSessionScene::renderResults(TrainingDrill& drill)
     ImGui::EndTable();
   }
   if (rows.empty())
+  {
     ImGui::TextWrapped(
         "Results appear as each player finishes. Choose the metrics above and "
         "click a table heading to sort.");
+  }
   ImGui::PushID(static_cast<int>(current));
   ImGui::PushStyleVar(ImGuiStyleVar_CellPadding, ImVec2(3 * scale, 3 * scale));
   if (!ImGui::BeginTable("##results", 2 + metricCount,
@@ -364,37 +443,50 @@ void TrainingSessionScene::renderResults(TrainingDrill& drill)
       36 * scale);
   ImGui::TableSetupColumn("Player", ImGuiTableColumnFlags_WidthStretch);
   for (int slot = 0; slot < metricCount; ++slot)
+  {
     ImGui::TableSetupColumn(columns[resultMetrics[slot]].name,
                             ImGuiTableColumnFlags_PreferSortDescending |
                                 ImGuiTableColumnFlags_WidthFixed,
                             88 * scale);
+  }
   ImGui::PushFont(boldFont, 14);
   ImGui::TableNextRow(ImGuiTableRowFlags_Headers);
   for (int column = 0; column < 2 + metricCount; ++column)
   {
-    if (!ImGui::TableSetColumnIndex(column)) continue;
+    if (!ImGui::TableSetColumnIndex(column))
+    {
+      continue;
+    }
     ImGui::TableHeader(ImGui::TableGetColumnName(column));
     if (column >= 2 && ImGui::IsItemHovered())
+    {
       if (const char* tip = columns[resultMetrics[column - 2]].tooltip)
+      {
         ImGui::SetTooltip("%s", tip);
+      }
+    }
   }
   ImGui::PopFont();
   // Finishing order by default; any column by clicking its header.
   std::vector<std::size_t> order(rows.size());
   std::iota(order.begin(), order.end(), std::size_t{0});
   if (const ImGuiTableSortSpecs* specs = ImGui::TableGetSortSpecs();
-      specs && specs->SpecsCount > 0)
+      (specs != nullptr) && specs->SpecsCount > 0)
   {
     const int column = specs->Specs[0].ColumnIndex;
     const bool ascending =
         specs->Specs[0].SortDirection != ImGuiSortDirection_Descending;
     const auto key = [&](std::size_t row) -> double
     {
-      if (column < 2) return static_cast<double>(row);
+      if (column < 2)
+      {
+        return static_cast<double>(row);
+      }
       return rows[row]
           .values[static_cast<std::size_t>(resultMetrics[column - 2])];
     };
     if (column == 1)
+    {
       std::ranges::stable_sort(
           order,
           [&](std::size_t a, std::size_t b)
@@ -403,10 +495,13 @@ void TrainingSessionScene::renderResults(TrainingDrill& drill)
             const std::string& right = session->squad[rows[b].player].name;
             return ascending ? left < right : right < left;
           });
+    }
     else
+    {
       std::ranges::stable_sort(
           order, [&](std::size_t a, std::size_t b)
           { return ascending ? key(a) < key(b) : key(b) < key(a); });
+    }
   }
 
   for (const std::size_t index : order)
@@ -426,7 +521,10 @@ void TrainingSessionScene::renderResults(TrainingDrill& drill)
     draw->AddText(start, SandboxPageUI::CREAM, name);
     draw->PopClipRect();
     ImGui::Dummy(ImVec2(width, ImGui::GetTextLineHeight()));
-    if (ImGui::IsItemHovered()) ImGui::SetTooltip("%s", name);
+    if (ImGui::IsItemHovered())
+    {
+      ImGui::SetTooltip("%s", name);
+    }
     for (int slot = 0; slot < metricCount; ++slot)
     {
       ImGui::TableNextColumn();
@@ -446,7 +544,7 @@ void TrainingSessionScene::renderPitch(float width, float height)
                   boldFont);
   const ImVec2 origin = ImGui::GetCursorScreenPos();
   const ImVec2 size(std::max(scale, ImGui::GetContentRegionAvail().x),
-                    std::max(200 * scale, height - 56 * scale));
+                    std::max(200 * scale, height - (56 * scale)));
   ImGui::InvisibleButton("##training_pitch", size);
   if (!run)
   {
@@ -454,16 +552,16 @@ void TrainingSessionScene::renderPitch(float width, float height)
     return;
   }
   MatchViewport view = computeMatchViewport(origin.x, origin.y, size.x, size.y);
-  view.x = origin.x + std::max(0.0f, (size.x - view.width) * 0.5f);
-  view.y = origin.y + std::max(0.0f, (size.y - view.height) * 0.5f);
+  view.x = origin.x + std::max(0.0F, (size.x - view.width) * 0.5F);
+  view.y = origin.y + std::max(0.0F, (size.y - view.height) * 0.5F);
   fillMatchRenderSnapshot(run->engine(), snapshot);
   // Players not in the session would wait by the bench like players sent off.
   std::erase_if(snapshot.players, [](const MatchRenderPlayer& player)
                 { return !player.onPitch; });
   snapshot.interpolationAlpha =
       paused || skipping || run->finished()
-          ? 1.0f
-          : std::clamp(accumulator / STEP, 0.0f, 1.0f);
+          ? 1.0F
+          : std::clamp(accumulator / STEP, 0.0F, 1.0F);
   MatchRenderOptions options;
   options.showPlayerNames = true;
   options.frameSeconds = ImGui::GetIO().DeltaTime;

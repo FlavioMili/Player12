@@ -117,6 +117,8 @@ int main()
         "inactive owner is observable");
 
   if (failures == 0)
+  {
     std::cout << "PASS: possession projection and invariant contracts\n";
+  }
   return failures == 0 ? 0 : 1;
 }

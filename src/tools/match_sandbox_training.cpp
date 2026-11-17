@@ -25,7 +25,7 @@ namespace
 constexpr float LENGTH = MatchTuning::Pitch::MATCH_LENGTH_METRES;
 constexpr float WIDTH = MatchTuning::Pitch::MATCH_WIDTH_METRES;
 constexpr float STEP = MatchTuning::Timing::FIXED_STEP_SECONDS;
-constexpr float MPH_PER_METRE_PER_SECOND = 2.236936f;
+constexpr float MPH_PER_METRE_PER_SECOND = 2.236936F;
 
 // Training plays on a match pitch, placed by fractions of it (PITCH.at)
 // and thought about in metres; engine points go through the pitch.
@@ -34,7 +34,12 @@ const MatchPitch& PITCH = MatchPitch::matchSize();
 const MatchPlayer* slotOf(const MatchEngine& engine, PlayerID id)
 {
   for (const MatchPlayer& slot : engine.getPlayers())
-    if (slot.player && slot.player->getId() == id) return &slot;
+  {
+    if ((slot.player != nullptr) && slot.player->getId() == id)
+    {
+      return &slot;
+    }
+  }
   return nullptr;
 }
 
@@ -66,8 +71,11 @@ Vector2F directionBetween(PitchPoint from, PitchPoint to)
   const float x = to.x - from.x;
   const float y = to.y - from.y;
   const float size = std::hypot(x, y);
-  if (size < 1e-6f) return {1.0f, 0.0f};
-  return {x / size, y / size};
+  if (size < 1e-6F)
+  {
+    return {.x = 1.0F, .y = 0.0F};
+  }
+  return {.x = x / size, .y = y / size};
 }
 
 /** "4:07" from seconds. */
@@ -106,8 +114,8 @@ class AcrossAndBackDrill final : public TrainingDrill
  public:
   using TrainingDrill::TrainingDrill;
 
-  const char* name() const override { return "Across and back"; }
-  const char* summary() const override
+  [[nodiscard]] const char* name() const override { return "Across and back"; }
+  [[nodiscard]] const char* summary() const override
   {
     return "The squad lines up along the near touchline, a lane each marked "
            "out by cones, and sprints to the far touchline and back. As each "
@@ -121,22 +129,26 @@ class AcrossAndBackDrill final : public TrainingDrill
     finishedCount = 0;
     lastFinish.reset();
     const std::size_t count = std::min(ids.size(), squad.size());
-    laneWidth = (LAST_X - FIRST_X) / static_cast<float>(std::max<std::size_t>(count, 1));
+    laneWidth = (LAST_X - FIRST_X) /
+                static_cast<float>(std::max<std::size_t>(count, 1));
     MatchScenario scenario;
     for (std::size_t index = 0; index < count; ++index)
     {
       Lane lane;
       lane.id = ids[index];
-      lane.x = FIRST_X + laneWidth * (static_cast<float>(index) + 0.5f);
+      lane.x = FIRST_X + laneWidth * (static_cast<float>(index) + 0.5F);
       lane.previous = PITCH.at(lane.x, NEAR_Y);
       lanes.push_back(lane);
-      scenario.players.push_back({lane.id, lane.previous, false});
+      scenario.players.push_back(
+          {.playerId = lane.id, .position = lane.previous, .makingRun = false});
     }
     // In front of a goal, clear of every lane.
-    scenario.ballPosition = PITCH.at(0.03f, 0.5f);
+    scenario.ballPosition = PITCH.at(0.03F, 0.5F);
     engine.startDrill(scenario);
     for (const Lane& lane : lanes)
+    {
       engine.setDrillTarget(lane.id, PITCH.at(lane.x, FAR_Y), true);
+    }
   }
 
   bool afterStep(MatchEngine& engine) override
@@ -144,9 +156,15 @@ class AcrossAndBackDrill final : public TrainingDrill
     const double now = secondsOf(engine);
     for (Lane& lane : lanes)
     {
-      if (lane.place) continue;
+      if (lane.place != 0u)
+      {
+        continue;
+      }
       const MatchPlayer* player = slotOf(engine, lane.id);
-      if (!player) continue;
+      if (player == nullptr)
+      {
+        continue;
+      }
       // Hurt: he pulls up, and walks back to the start.
       if (player->isInjured)
       {
@@ -169,15 +187,15 @@ class AcrossAndBackDrill final : public TrainingDrill
         {
           lane.turned = true;
           // Back to the near touchline (the engine stops him on it).
-          engine.setDrillTarget(lane.id, PITCH.at(lane.x, 0.0f), true);
+          engine.setDrillTarget(lane.id, PITCH.at(lane.x, 0.0F), true);
         }
       }
       else if (lane.previous.y > PITCH.atY(NEAR_Y) && at.y <= PITCH.atY(NEAR_Y))
       {
         // Crossed between two steps: interpolate the moment.
-        const double share =
-            static_cast<double>((lane.previous.y - PITCH.atY(NEAR_Y)) / (lane.previous.y - at.y));
-        lane.finish = now - STEP + STEP * share;
+        const double share = static_cast<double>(
+            (lane.previous.y - PITCH.atY(NEAR_Y)) / (lane.previous.y - at.y));
+        lane.finish = now - STEP + (STEP * share);
         lane.place = ++finishedCount;
         lastFinish = now;
         engine.setDrillTarget(lane.id, PITCH.at(lane.x, NEAR_Y), false);
@@ -189,60 +207,86 @@ class AcrossAndBackDrill final : public TrainingDrill
            now < MAX_SECONDS;
   }
 
-  void drawOverlay(const IMatchRenderer& renderer, ImDrawList& draw) const override
+  void drawOverlay(const IMatchRenderer& renderer,
+                   ImDrawList& draw) const override
   {
     const float scale = Theme::scale();
     // Cones between the lanes, on both lines; the start and turn lines.
-    DrillDraw::line(renderer, draw, PITCH.at(FIRST_X, NEAR_Y), PITCH.at(LAST_X, NEAR_Y), LINE,
-                    1.5f * scale);
-    DrillDraw::line(renderer, draw, PITCH.at(FIRST_X, FAR_Y), PITCH.at(LAST_X, FAR_Y), LINE,
-                    1.5f * scale);
+    DrillDraw::line(renderer, draw, PITCH.at(FIRST_X, NEAR_Y),
+                    PITCH.at(LAST_X, NEAR_Y), LINE, 1.5F * scale);
+    DrillDraw::line(renderer, draw, PITCH.at(FIRST_X, FAR_Y),
+                    PITCH.at(LAST_X, FAR_Y), LINE, 1.5F * scale);
     for (std::size_t edge = 0; edge <= lanes.size(); ++edge)
     {
-      const float x = FIRST_X + laneWidth * static_cast<float>(edge);
-      for (const float y : {NEAR_Y, 0.5f, FAR_Y})
+      const float x = FIRST_X + (laneWidth * static_cast<float>(edge));
+      for (const float y : {NEAR_Y, 0.5F, FAR_Y})
+      {
         DrillDraw::cone(renderer, draw, PITCH.at(x, y), CONE);
+      }
     }
     for (const Lane& lane : lanes)
+    {
       if (lane.finish)
-        DrillDraw::label(renderer, draw, PITCH.at(lane.x - 0.006f, NEAR_Y + 0.04f),
+      {
+        DrillDraw::label(renderer, draw,
+                         PITCH.at(lane.x - 0.006F, NEAR_Y + 0.04F),
                          std::format("{}", lane.place).c_str(), DONE);
+      }
+    }
   }
 
-  std::vector<std::string> report() const override
+  [[nodiscard]] std::vector<std::string> report() const override
   {
     std::vector<std::string> lines;
     std::size_t turned = 0;
     std::size_t injured = 0;
     for (const Lane& lane : lanes)
     {
-      if (lane.turned) ++turned;
-      if (lane.injured) ++injured;
+      if (lane.turned)
+      {
+        ++turned;
+      }
+      if (lane.injured)
+      {
+        ++injured;
+      }
     }
-    lines.push_back(std::format("{} of {} back · {} turned", finishedCount - injured,
-                                lanes.size(), turned));
-    if (injured > 0) lines.push_back(std::format("Injured: {}", injured));
+    lines.push_back(std::format("{} of {} back · {} turned",
+                                finishedCount - injured, lanes.size(), turned));
+    if (injured > 0)
+    {
+      lines.push_back(std::format("Injured: {}", injured));
+    }
     return lines;
   }
 
-  std::vector<TrainingColumn> columns() const override
+  [[nodiscard]] std::vector<TrainingColumn> columns() const override
   {
-    return {{"Time", "From the start signal to crossing the finish line."},
-            {"Top speed", "Fastest he ran, in miles an hour."},
-            {"Pace", "The Pace attribute: his top speed."},
-            {"Accel.", "Peak acceleration over the run (m/s²): the biggest "
-                       "gain in speed in a tenth of a second, from standing "
-                       "or out of the turn."},
-            {"Accel. stat", "What his acceleration is built from: Pace and "
-                            "Physicality, weighted as the engine weighs them "
-                            "(1.6 : 0.6)."}};
+    return {
+        {.name = "Time",
+         .tooltip = "From the start signal to crossing the finish line."},
+        {.name = "Top speed", .tooltip = "Fastest he ran, in miles an hour."},
+        {.name = "Pace", .tooltip = "The Pace attribute: his top speed."},
+        {.name = "Accel.",
+         .tooltip = "Peak acceleration over the run (m/s²): the biggest "
+                    "gain in speed in a tenth of a second, from standing "
+                    "or out of the turn."},
+        {.name = "Accel. stat",
+         .tooltip = "What his acceleration is built from: Pace and "
+                    "Physicality, weighted as the engine weighs them "
+                    "(1.6 : 0.6)."}};
   }
 
-  std::vector<TrainingRow> results() const override
+  [[nodiscard]] std::vector<TrainingRow> results() const override
   {
     std::vector<const Lane*> done;
     for (const Lane& lane : lanes)
-      if (lane.place) done.push_back(&lane);
+    {
+      if (lane.place != 0u)
+      {
+        done.push_back(&lane);
+      }
+    }
     std::ranges::sort(done, {}, &Lane::place);
     std::vector<TrainingRow> rows;
     for (const Lane* lane : done)
@@ -253,52 +297,56 @@ class AcrossAndBackDrill final : public TrainingDrill
       const float accelerationRating = accelerationStat(player);
       // The injured sort after every time.
       const double seconds = lane->finish.value_or(MAX_SECONDS);
-      rows.push_back({index,
-                      {lane->finish ? std::format("{:.2f} s", seconds)
-                                    : std::string("injured"),
-                       std::format("{:.1f} mph", mph),
-                       std::format("{:.0f}", player.stat("Pace")),
-                       std::format("{:.1f} m/s²", lane->peakAcceleration),
-                       std::format("{:.0f}", accelerationRating)},
-                      {seconds, mph, player.stat("Pace"),
-                       lane->peakAcceleration, accelerationRating}});
+      rows.push_back(
+          {.player = index,
+           .cells = {lane->finish ? std::format("{:.2f} s", seconds)
+                                  : std::string("injured"),
+                     std::format("{:.1f} mph", mph),
+                     std::format("{:.0f}", player.stat("Pace")),
+                     std::format("{:.1f} m/s²", lane->peakAcceleration),
+                     std::format("{:.0f}", accelerationRating)},
+           .values = {seconds, mph, player.stat("Pace"), lane->peakAcceleration,
+                      accelerationRating}});
     }
     return rows;
   }
 
-  std::optional<float> topSpeed(std::size_t player) const override
+  [[nodiscard]] std::optional<float> topSpeed(std::size_t player) const override
   {
-    if (player >= lanes.size() || !lanes[player].finish) return std::nullopt;
+    if (player >= lanes.size() || !lanes[player].finish)
+    {
+      return std::nullopt;
+    }
     return lanes[player].topSpeed;
   }
 
  private:
   /** The lines, 1.5 m in from each touchline: a runner sent to the touchline
    * pulls up about a metre in, so he crosses the finish on his way there. */
-  static constexpr float NEAR_Y = 1.5f / WIDTH;
-  static constexpr float FAR_Y = 1.0f - 1.5f / WIDTH;
+  static constexpr float NEAR_Y = 1.5F / WIDTH;
+  static constexpr float FAR_Y = 1.0F - (1.5F / WIDTH);
   /** The lanes span this much of the touchline. */
-  static constexpr float FIRST_X = 0.1f;
-  static constexpr float LAST_X = 0.9f;
-  static constexpr float TURN_RADIUS_METRES = 1.0f;
+  static constexpr float FIRST_X = 0.1F;
+  static constexpr float LAST_X = 0.9F;
+  static constexpr float TURN_RADIUS_METRES = 1.0F;
   static constexpr double MAX_SECONDS = 120.0;
 
   struct Lane
   {
     PlayerID id = 0;
-    float x = 0.0f;
-    PitchPoint previous{};
+    float x = 0.0F;
+    PitchPoint previous;
     bool turned = false;
     bool injured = false;
     std::optional<double> finish;
     std::size_t place = 0;
-    float topSpeed = 0.0f;
-    float lastSpeed = 0.0f;
-    float peakAcceleration = 0.0f;
+    float topSpeed = 0.0F;
+    float lastSpeed = 0.0F;
+    float peakAcceleration = 0.0F;
   };
 
   std::vector<Lane> lanes;
-  float laneWidth = 0.1f;
+  float laneWidth = 0.1F;
   std::size_t finishedCount = 0;
   std::optional<double> lastFinish;
 };
@@ -309,14 +357,17 @@ class AcrossAndBackDrill final : public TrainingDrill
  * Share [0, 1] of the move at which a runner crosses the line through
  * `point` square to `direction` (going that way), if he does.
  */
-std::optional<float> crossingShare(PitchPoint from, PitchPoint to, PitchPoint point,
-                                   Vector2F direction)
+std::optional<float> crossingShare(PitchPoint from, PitchPoint to,
+                                   PitchPoint point, Vector2F direction)
 {
-  const float before = (from.x - point.x) * direction.x +
-                       (from.y - point.y) * direction.y;
-  const float after = (to.x - point.x) * direction.x +
-                      (to.y - point.y) * direction.y;
-  if (before >= 0.0f || after < 0.0f) return std::nullopt;
+  const float before =
+      ((from.x - point.x) * direction.x) + ((from.y - point.y) * direction.y);
+  const float after =
+      ((to.x - point.x) * direction.x) + ((to.y - point.y) * direction.y);
+  if (before >= 0.0F || after < 0.0F)
+  {
+    return std::nullopt;
+  }
   return -before / (after - before);
 }
 
@@ -341,8 +392,8 @@ class SlalomDrill final : public TrainingDrill
   {
   }
 
-  const char* name() const override { return "Slalom"; }
-  const char* summary() const override
+  [[nodiscard]] const char* name() const override { return "Slalom"; }
+  [[nodiscard]] const char* summary() const override
   {
     return "8 cones 5 m apart, staggered 1 m, each passed on alternate sides. "
            "The squad queues at the start, fastest in Across "
@@ -360,32 +411,47 @@ class SlalomDrill final : public TrainingDrill
     gates.clear();
     for (std::size_t cone = 0; cone < CONES; ++cone)
     {
-      const PitchPoint at = along(along(START, {1.0f, 0.0f},
-                                      SPACING_METRES * static_cast<float>(cone + 1)),
-                                {0.0f, 1.0f}, sideOf(cone) * STAGGER_METRES);
+      const PitchPoint at =
+          along(along(START, {.x = 1.0F, .y = 0.0F},
+                      SPACING_METRES * static_cast<float>(cone + 1)),
+                {.x = 0.0F, .y = 1.0F}, sideOf(cone) * STAGGER_METRES);
       cones.push_back(at);
       // Runners head for their line round the cone.
-      gates.push_back(along(at, {0.0f, 1.0f},
+      gates.push_back(along(at, {.x = 0.0F, .y = 1.0F},
                             sideOf(cone) * (GATE_BUFFER_METRES + LINE_METRES)));
     }
-    finish = along(START, {1.0f, 0.0f},
+    finish = along(START, {.x = 1.0F, .y = 0.0F},
                    SPACING_METRES * static_cast<float>(CONES + 1));
 
     // The queue: fastest in Across and back first, then anyone without a
     // time there in squad order.
     const std::size_t count = std::min(ids.size(), squad.size());
     std::vector<std::optional<double>> sprintTimes(count);
-    if (sprint)
-      for (const TrainingRow& row : sprint->results())
-        if (row.player < count && !row.values.empty())
-          sprintTimes[row.player] = row.values.front();
-    queue.clear();
-    for (std::size_t index = 0; index < count; ++index) queue.push_back(index);
-    std::ranges::stable_sort(queue, [&](std::size_t a, std::size_t b)
+    if (sprint != nullptr)
     {
-      if (sprintTimes[a] && sprintTimes[b]) return *sprintTimes[a] < *sprintTimes[b];
-      return sprintTimes[a].has_value() && !sprintTimes[b].has_value();
-    });
+      for (const TrainingRow& row : sprint->results())
+      {
+        if (row.player < count && !row.values.empty())
+        {
+          sprintTimes[row.player] = row.values.front();
+        }
+      }
+    }
+    queue.clear();
+    for (std::size_t index = 0; index < count; ++index)
+    {
+      queue.push_back(index);
+    }
+    std::ranges::stable_sort(queue,
+                             [&](std::size_t a, std::size_t b)
+                             {
+                               if (sprintTimes[a] && sprintTimes[b])
+                               {
+                                 return *sprintTimes[a] < *sprintTimes[b];
+                               }
+                               return sprintTimes[a].has_value() &&
+                                      !sprintTimes[b].has_value();
+                             });
 
     runners.assign(count, Runner{});
     released = 0;
@@ -397,20 +463,29 @@ class SlalomDrill final : public TrainingDrill
       Runner& runner = runners[queue[place]];
       runner.id = ids[queue[place]];
       runner.previous = queueSpot(place);
-      scenario.players.push_back({runner.id, runner.previous, false});
+      scenario.players.push_back({.playerId = runner.id,
+                                  .position = runner.previous,
+                                  .makingRun = false});
     }
     // In front of a goal, clear of the course and the queue.
-    scenario.ballPosition = PITCH.at(0.97f, 0.5f);
+    scenario.ballPosition = PITCH.at(0.97F, 0.5F);
     engine.startDrill(scenario);
     for (std::size_t index = 0; index < count; ++index)
     {
       const MatchPlayer* player = slotOf(engine, runners[index].id);
-      if (!player) continue;
-      runners[index].agility = player->derivedStat(DerivedStat::AGILITY) * 100.0f;
+      if (player == nullptr)
+      {
+        continue;
+      }
+      runners[index].agility =
+          player->derivedStat(DerivedStat::AGILITY) * 100.0F;
       runners[index].acceleration =
-          player->derivedStat(DerivedStat::ACCELERATION) * 100.0f;
+          player->derivedStat(DerivedStat::ACCELERATION) * 100.0F;
     }
-    if (!queue.empty()) release(engine, 0.0);
+    if (!queue.empty())
+    {
+      release(engine, 0.0);
+    }
   }
 
   bool afterStep(MatchEngine& engine) override
@@ -418,9 +493,15 @@ class SlalomDrill final : public TrainingDrill
     const double now = secondsOf(engine);
     for (Runner& runner : runners)
     {
-      if (!runner.started || runner.doneAt) continue;
+      if (!runner.started || runner.doneAt)
+      {
+        continue;
+      }
       const MatchPlayer* player = slotOf(engine, runner.id);
-      if (!player) continue;
+      if (player == nullptr)
+      {
+        continue;
+      }
       if (player->isInjured)
       {
         runner.injured = true;
@@ -439,129 +520,157 @@ class SlalomDrill final : public TrainingDrill
     {
       const Runner& before = runners[queue[released - 1]];
       const MatchPlayer* next = slotOf(engine, runners[queue[released]].id);
-      if ((before.gatesPassed >= 2 || before.doneAt) && next &&
+      if ((before.gatesPassed >= 2 || before.doneAt) && (next != nullptr) &&
           metresBetween(next->position, START) <= ON_THE_START_METRES)
+      {
         release(engine, now);
+      }
     }
     const bool allDone = doneCount >= runners.size();
     return !(allDone && lastDone && now > *lastDone + 1.0) && now < MAX_SECONDS;
   }
 
-  void drawOverlay(const IMatchRenderer& renderer, ImDrawList& draw) const override
+  void drawOverlay(const IMatchRenderer& renderer,
+                   ImDrawList& draw) const override
   {
     const float scale = Theme::scale();
-    const float half = 4.0f;
+    const float half = 4.0F;
     DrillDraw::line(renderer, draw, PitchPoint{START.x, START.y - half},
-                    PitchPoint{START.x, START.y + half}, IM_COL32(90, 220, 120, 255),
-                    3.0f * scale);
+                    PitchPoint{START.x, START.y + half},
+                    IM_COL32(90, 220, 120, 255), 3.0F * scale);
     for (std::size_t cone = 0; cone < cones.size(); ++cone)
     {
       // The gate, open beyond what is drawn.
-      DrillDraw::line(renderer, draw, gateEdge(cone, 0.0f),
-                      gateEdge(cone, GATE_DRAWN_METRES), LINE, 2.0f * scale);
+      DrillDraw::line(renderer, draw, gateEdge(cone, 0.0F),
+                      gateEdge(cone, GATE_DRAWN_METRES), LINE, 2.0F * scale);
       DrillDraw::cone(renderer, draw, cones[cone], CONE);
     }
     DrillDraw::line(renderer, draw, PitchPoint{finish.x, finish.y - half},
-                    PitchPoint{finish.x, finish.y + half}, IM_COL32(240, 80, 80, 255),
-                    3.0f * scale);
+                    PitchPoint{finish.x, finish.y + half},
+                    IM_COL32(240, 80, 80, 255), 3.0F * scale);
   }
 
-  std::vector<std::string> report() const override
+  [[nodiscard]] std::vector<std::string> report() const override
   {
     std::size_t running = 0;
     int missed = 0;
     std::size_t injured = 0;
     for (const Runner& runner : runners)
     {
-      if (runner.started && !runner.doneAt) ++running;
+      if (runner.started && !runner.doneAt)
+      {
+        ++running;
+      }
       missed += runner.missed;
-      if (runner.injured) ++injured;
+      if (runner.injured)
+      {
+        ++injured;
+      }
     }
     std::vector<std::string> lines;
     lines.push_back(std::format("{} of {} through · {} running · {} queuing",
                                 doneCount - injured, runners.size(), running,
                                 queue.size() - released));
     if (missed > 0)
+    {
       lines.push_back(std::format("Gates missed (gone back for): {}", missed));
-    if (injured > 0) lines.push_back(std::format("Injured: {}", injured));
+    }
+    if (injured > 0)
+    {
+      lines.push_back(std::format("Injured: {}", injured));
+    }
     return lines;
   }
 
-  std::vector<TrainingColumn> columns() const override
+  [[nodiscard]] std::vector<TrainingColumn> columns() const override
   {
-    return {{"Time", "From his start signal to crossing the finish line, gates "
-                     "missed and gone back for included."},
-            {"Cornering", "Time spent round the outside of the cones: beyond "
-                          "the cone he is turning round, on its gate's side. "
-                          "A tighter, quicker turn spends less."},
-            {"Agility", "The Agility stat: his grip in a turn, how fast his "
-                        "body turns, his braking, and a small boost to his "
-                        "acceleration."},
-            {"Accel.", "The Acceleration stat: his push from a standstill, "
-                       "and a small boost to his braking."},
-            {"Pace", "The Pace attribute: his top speed."}};
+    return {
+        {.name = "Time",
+         .tooltip = "From his start signal to crossing the finish line, gates "
+                    "missed and gone back for included."},
+        {.name = "Cornering",
+         .tooltip = "Time spent round the outside of the cones: beyond "
+                    "the cone he is turning round, on its gate's side. "
+                    "A tighter, quicker turn spends less."},
+        {.name = "Agility",
+         .tooltip = "The Agility stat: his grip in a turn, how fast his "
+                    "body turns, his braking, and a small boost to his "
+                    "acceleration."},
+        {.name = "Accel.",
+         .tooltip = "The Acceleration stat: his push from a standstill, "
+                    "and a small boost to his braking."},
+        {.name = "Pace", .tooltip = "The Pace attribute: his top speed."}};
   }
 
-  std::vector<TrainingRow> results() const override
+  [[nodiscard]] std::vector<TrainingRow> results() const override
   {
     std::vector<const Runner*> done;
     for (const Runner& runner : runners)
-      if (runner.doneAt) done.push_back(&runner);
+    {
+      if (runner.doneAt)
+      {
+        done.push_back(&runner);
+      }
+    }
     std::ranges::sort(done, {}, &Runner::place);
     std::vector<TrainingRow> rows;
     for (const Runner* runner : done)
     {
-      const std::size_t index = static_cast<std::size_t>(runner - runners.data());
+      const std::size_t index =
+          static_cast<std::size_t>(runner - runners.data());
       const TrainingPlayer& player = squad[index];
       // The injured sort after every time.
       const double seconds =
           runner->injured ? MAX_SECONDS : *runner->doneAt - runner->startedAt;
-      rows.push_back({index,
-                      {runner->injured ? std::string("injured")
-                                       : std::format("{:.2f} s{}", seconds,
-                                                     runner->missed > 0
-                                                         ? std::format(" ({} missed)",
-                                                                       runner->missed)
-                                                         : std::string()),
-                       std::format("{:.2f} s", runner->cornering),
-                       std::format("{:.0f}", runner->agility),
-                       std::format("{:.0f}", runner->acceleration),
-                       std::format("{:.0f}", player.stat("Pace"))},
-                      {seconds, runner->cornering, runner->agility, runner->acceleration,
-                       player.stat("Pace")}});
+      rows.push_back(
+          {.player = index,
+           .cells = {runner->injured
+                         ? std::string("injured")
+                         : std::format(
+                               "{:.2f} s{}", seconds,
+                               runner->missed > 0
+                                   ? std::format(" ({} missed)", runner->missed)
+                                   : std::string()),
+                     std::format("{:.2f} s", runner->cornering),
+                     std::format("{:.0f}", runner->agility),
+                     std::format("{:.0f}", runner->acceleration),
+                     std::format("{:.0f}", player.stat("Pace"))},
+           .values = {seconds, runner->cornering, runner->agility,
+                      runner->acceleration, player.stat("Pace")}});
     }
     return rows;
   }
 
  private:
   static constexpr std::size_t CONES = 8;
-  static constexpr float SPACING_METRES = 5.0f;
-  static constexpr float STAGGER_METRES = 1.0f;
+  static constexpr float SPACING_METRES = 5.0F;
+  static constexpr float STAGGER_METRES = 1.0F;
   /** A gate starts at its cone's edge (a cone is 20 cm across). */
   static constexpr float GATE_BUFFER_METRES = DrillDraw::CONE_RADIUS_METRES;
   /** Where he aims to pass a cone: this far outside the gate's start. */
-  static constexpr float LINE_METRES = 0.5f;
+  static constexpr float LINE_METRES = 0.5F;
   /** How much of a gate is drawn (it is open beyond). */
-  static constexpr float GATE_DRAWN_METRES = 2.0f;
+  static constexpr float GATE_DRAWN_METRES = 2.0F;
   /** How far beyond his point round a cone his line may be pushed out to
    * widen the turn (the old 2 m gate's half-width). */
-  static constexpr float SWING_ROOM_METRES = 1.0f;
+  static constexpr float SWING_ROOM_METRES = 1.0F;
   /** The start, with room behind it for the queue. */
-  static inline const PitchPoint START = MatchPitch::matchSize().at(0.32f, 0.5f);
-  static constexpr float QUEUE_GAP_METRES = 1.5f;
+  static inline const PitchPoint START =
+      MatchPitch::matchSize().at(0.32F, 0.5F);
+  static constexpr float QUEUE_GAP_METRES = 1.5F;
   /** Close enough to the start to set off. */
-  static constexpr float ON_THE_START_METRES = 0.5f;
+  static constexpr float ON_THE_START_METRES = 0.5F;
   /** Past the finish he runs on through it (as the Slalom drill's runner). */
-  static constexpr float RUN_THROUGH_METRES = 8.0f;
+  static constexpr float RUN_THROUGH_METRES = 8.0F;
   /** How far either side of the finish line's middle he may aim. */
-  static constexpr float FINISH_AIM_METRES = 3.5f;
+  static constexpr float FINISH_AIM_METRES = 3.5F;
   /** Where the finished stand: beside the course past the finish, out of
    * the way of those still running through it. */
-  static constexpr float DONE_BEYOND_METRES = 3.0f;
-  static constexpr float DONE_SIDE_METRES = 6.0f;
-  static constexpr float DONE_GAP_METRES = 1.5f;
+  static constexpr float DONE_BEYOND_METRES = 3.0F;
+  static constexpr float DONE_SIDE_METRES = 6.0F;
+  static constexpr float DONE_GAP_METRES = 1.5F;
   /** Close enough to a waypoint to move on (no route of his own). */
-  static constexpr float WAYPOINT_RADIUS_METRES = 1.0f;
+  static constexpr float WAYPOINT_RADIUS_METRES = 1.0F;
   static constexpr double MAX_SECONDS = 600.0;
 
   struct Runner
@@ -569,7 +678,7 @@ class SlalomDrill final : public TrainingDrill
     PlayerID id = 0;
     bool started = false;
     double startedAt = 0.0;
-    PitchPoint previous{};
+    PitchPoint previous;
     std::size_t gatesPassed = 0;
     /** Time spent round the outside of the cones (s). */
     double cornering = 0.0;
@@ -585,20 +694,20 @@ class SlalomDrill final : public TrainingDrill
     bool injured = false;
     std::optional<double> doneAt;
     std::size_t place = 0;
-    float agility = 0.0f;
-    float acceleration = 0.0f;
+    float agility = 0.0F;
+    float acceleration = 0.0F;
   };
 
   /** Side of the course cone `index` is passed on (-1 or 1). */
   [[nodiscard]] static float sideOf(std::size_t index)
   {
-    return index % 2 == 0 ? -1.0f : 1.0f;
+    return index % 2 == 0 ? -1.0F : 1.0F;
   }
 
   /** A point across gate `cone`, `metres` from its inner edge. */
   [[nodiscard]] PitchPoint gateEdge(std::size_t cone, float metres) const
   {
-    return along(cones[cone], {0.0f, 1.0f},
+    return along(cones[cone], {.x = 0.0F, .y = 1.0F},
                  sideOf(cone) * (GATE_BUFFER_METRES + metres));
   }
 
@@ -611,24 +720,28 @@ class SlalomDrill final : public TrainingDrill
                                    PitchPoint to) const
   {
     const std::size_t due = runner.gatesPassed;
-    float share = 0.0f;
+    float share = 0.0F;
     for (std::size_t cone = due > 0 ? due - 1 : 0;
          cone <= due && cone < cones.size(); ++cone)
     {
       const float before = (from.y - cones[cone].y) * sideOf(cone);
       const float after = (to.y - cones[cone].y) * sideOf(cone);
-      if (before > 0.0f && after > 0.0f)
-        share += 1.0f;
-      else if (before > 0.0f || after > 0.0f)
+      if (before > 0.0F && after > 0.0F)
+      {
+        share += 1.0F;
+      }
+      else if (before > 0.0F || after > 0.0F)
+      {
         share += std::max(before, after) / (std::abs(before) + std::abs(after));
+      }
     }
-    return std::min(share, 1.0f);
+    return std::min(share, 1.0F);
   }
 
   /** Place `place` in the queue (0 is the start), back down the course. */
   [[nodiscard]] static PitchPoint queueSpot(std::size_t place)
   {
-    return along(START, {-1.0f, 0.0f},
+    return along(START, {.x = -1.0F, .y = 0.0F},
                  QUEUE_GAP_METRES * static_cast<float>(place));
   }
 
@@ -654,60 +767,80 @@ class SlalomDrill final : public TrainingDrill
     ++released;
     plan(engine, runner, true);
     for (std::size_t place = released; place < queue.size(); ++place)
-      engine.setDrillTarget(runners[queue[place]].id, queueSpot(place - released),
-                            false);
+    {
+      engine.setDrillTarget(runners[queue[place]].id,
+                            queueSpot(place - released), false);
+    }
   }
 
   /** His line round each cone still to pass, from the one due (after a
    * point back behind it, when he is going back for it), less those his
    * body has moved on from (the Slalom drill's plan). */
-  [[nodiscard]] std::vector<PitchPoint> waypointsAhead(const Runner& runner) const
+  [[nodiscard]] std::vector<PitchPoint> waypointsAhead(
+      const Runner& runner) const
   {
     std::vector<PitchPoint> list;
     const std::size_t due = runner.gatesPassed;
     if (runner.goingBack && due < gates.size())
-      list.push_back(along(gates[due], {1.0f, 0.0f}, -SPACING_METRES * 0.5f));
+    {
+      list.push_back(
+          along(gates[due], {.x = 1.0F, .y = 0.0F}, -SPACING_METRES * 0.5F));
+    }
     for (std::size_t gate = due; gate < gates.size(); ++gate)
+    {
       list.push_back(gates[gate]);
+    }
     const std::size_t skip = std::min(runner.movedOn, list.size());
     return {list.begin() + static_cast<std::ptrdiff_t>(skip), list.end()};
   }
 
   /** His plan, as a brain would make it: flat out through the finish, by
    * the next two waypoints, his line through his point round each cone and
-   * pushed out no more than SWING_ROOM_METRES beyond it. Without a route of his own,
-   * he heads for the next waypoint. Sent only when it changes. */
+   * pushed out no more than SWING_ROOM_METRES beyond it. Without a route of his
+   * own, he heads for the next waypoint. Sent only when it changes. */
   void plan(MatchEngine& engine, Runner& runner, bool force = false)
   {
     std::vector<PitchPoint> ahead = waypointsAhead(runner);
     // Straight across the finish from his line round the last cone (the
     // line counts anywhere along it), within the line as drawn.
-    const float across = gates.empty()
-                             ? 0.0f
-                             : std::clamp(gates.back().y - finish.y,
-                                          -FINISH_AIM_METRES, FINISH_AIM_METRES);
-    const PitchPoint end = along(along(finish, {0.0f, 1.0f}, across), {1.0f, 0.0f},
-                               RUN_THROUGH_METRES);
+    const float across =
+        gates.empty() ? 0.0F
+                      : std::clamp(gates.back().y - finish.y,
+                                   -FINISH_AIM_METRES, FINISH_AIM_METRES);
+    const PitchPoint end = along(along(finish, {.x = 0.0F, .y = 1.0F}, across),
+                                 {.x = 1.0F, .y = 0.0F}, RUN_THROUGH_METRES);
     const MatchPlayer* player = slotOf(engine, runner.id);
-    if (!player) return;
-    const auto same = [](PitchPoint a, PitchPoint b) { return a.x == b.x && a.y == b.y; };
+    if (player == nullptr)
+    {
+      return;
+    }
+    const auto same = [](PitchPoint a, PitchPoint b)
+    { return a.x == b.x && a.y == b.y; };
     if (routes(engine, *player))
     {
-      if (ahead.size() > 2) ahead.resize(2);
+      if (ahead.size() > 2)
+      {
+        ahead.resize(2);
+      }
       if (!force && runner.sentTarget && same(*runner.sentTarget, end) &&
           std::ranges::equal(runner.sentRoute, ahead, same))
+      {
         return;
+      }
       runner.sentTarget = end;
       runner.sentRoute = ahead;
-      engine.setDrillTarget(runner.id, end, true, ahead, 0.0f,
+      engine.setDrillTarget(runner.id, end, true, ahead, 0.0F,
                             SWING_ROOM_METRES, std::nullopt, true);
       return;
     }
     const PitchPoint target = ahead.empty() ? end : ahead.front();
-    if (!force && runner.sentTarget && same(*runner.sentTarget, target)) return;
+    if (!force && runner.sentTarget && same(*runner.sentTarget, target))
+    {
+      return;
+    }
     runner.sentTarget = target;
     runner.sentRoute.clear();
-    engine.setDrillTarget(runner.id, target, true, {}, 0.0f, 0.0f, std::nullopt,
+    engine.setDrillTarget(runner.id, target, true, {}, 0.0F, 0.0F, std::nullopt,
                           ahead.empty());
   }
 
@@ -725,9 +858,11 @@ class SlalomDrill final : public TrainingDrill
     else
     {
       const std::vector<PitchPoint> ahead = waypointsAhead(runner);
-      if (!ahead.empty() &&
-          metresBetween(player.position, ahead.front()) <= WAYPOINT_RADIUS_METRES)
+      if (!ahead.empty() && metresBetween(player.position, ahead.front()) <=
+                                WAYPOINT_RADIUS_METRES)
+      {
         ++runner.movedOn;
+      }
     }
     plan(engine, runner);
   }
@@ -741,11 +876,14 @@ class SlalomDrill final : public TrainingDrill
     if (due < cones.size())
     {
       const PitchPoint cone = cones[due];
-      const auto share =
-          crossingShare(runner.previous, player.position, cone, {1.0f, 0.0f});
-      if (!share) return;
-      const float y =
-          runner.previous.y + (player.position.y - runner.previous.y) * *share;
+      const auto share = crossingShare(runner.previous, player.position, cone,
+                                       {.x = 1.0F, .y = 0.0F});
+      if (!share)
+      {
+        return;
+      }
+      const float y = runner.previous.y +
+                      ((player.position.y - runner.previous.y) * *share);
       const float out = (y - cone.y) * sideOf(due);
       // What his body had moved on from includes this gate (and the point
       // behind it, going back), now behind him either way.
@@ -765,10 +903,12 @@ class SlalomDrill final : public TrainingDrill
       plan(engine, runner);
       return;
     }
-    if (const auto share =
-            crossingShare(runner.previous, player.position, finish, {1.0f, 0.0f}))
+    if (const auto share = crossingShare(runner.previous, player.position,
+                                         finish, {.x = 1.0F, .y = 0.0F}))
+    {
       finishRunner(engine, runner,
-                   now - STEP + STEP * static_cast<double>(*share));
+                   now - STEP + (STEP * static_cast<double>(*share)));
+    }
   }
 
   /** Done (through the finish, or hurt): he walks to his place beside the
@@ -779,9 +919,10 @@ class SlalomDrill final : public TrainingDrill
     runner.place = ++doneCount;
     lastDone = at;
     const std::size_t place = runner.place - 1;
-    const float side = place % 2 == 0 ? 1.0f : -1.0f;
+    const float side = place % 2 == 0 ? 1.0F : -1.0F;
     const PitchPoint spot =
-        along(along(finish, {1.0f, 0.0f}, DONE_BEYOND_METRES), {0.0f, 1.0f},
+        along(along(finish, {.x = 1.0F, .y = 0.0F}, DONE_BEYOND_METRES),
+              {.x = 0.0F, .y = 1.0F},
               side * (DONE_SIDE_METRES +
                       DONE_GAP_METRES * static_cast<float>(place / 2)));
     engine.setDrillTarget(runner.id, spot, false);
@@ -790,7 +931,7 @@ class SlalomDrill final : public TrainingDrill
   const TrainingDrill* sprint = nullptr;
   std::vector<PitchPoint> cones;
   std::vector<PitchPoint> gates;
-  PitchPoint finish{};
+  PitchPoint finish;
   /** Squad indices in running order. */
   std::vector<std::size_t> queue;
   /** Runners by squad index. */
@@ -818,8 +959,11 @@ class LapsDrill final : public TrainingDrill
   {
   }
 
-  const char* name() const override { return "Laps to exhaustion"; }
-  const char* summary() const override
+  [[nodiscard]] const char* name() const override
+  {
+    return "Laps to exhaustion";
+  }
+  [[nodiscard]] const char* summary() const override
   {
     return "Four cones a few metres in from the corner flags. The squad runs "
            "laps round them, flat out, until each player's condition hits its "
@@ -833,17 +977,22 @@ class LapsDrill final : public TrainingDrill
     // take round each, a metre outside it.
     const float x = CONE_INSET_METRES / LENGTH;
     const float y = CONE_INSET_METRES / WIDTH;
-    cones = {PITCH.at(x, y), PITCH.at(x, 1.0f - y), PITCH.at(1.0f - x, 1.0f - y),
-             PITCH.at(1.0f - x, y)};
-    const std::array<PitchPoint, 4> FLAGS{PITCH.at(0.0f, 0.0f), PITCH.at(0.0f, 1.0f),
-                                            PITCH.at(1.0f, 1.0f), PITCH.at(1.0f, 0.0f)};
-    lapMetres = 0.0f;
+    cones = {PITCH.at(x, y), PITCH.at(x, 1.0F - y),
+             PITCH.at(1.0F - x, 1.0F - y), PITCH.at(1.0F - x, y)};
+    const std::array<PitchPoint, 4> FLAGS{
+        PITCH.at(0.0F, 0.0F), PITCH.at(0.0F, 1.0F), PITCH.at(1.0F, 1.0F),
+        PITCH.at(1.0F, 0.0F)};
+    lapMetres = 0.0F;
     for (std::size_t corner = 0; corner < 4; ++corner)
-      corners[corner] = along(cones[corner],
-                              directionBetween(cones[corner], FLAGS[corner]),
-                              OUTSIDE_METRES);
+    {
+      corners[corner] =
+          along(cones[corner], directionBetween(cones[corner], FLAGS[corner]),
+                OUTSIDE_METRES);
+    }
     for (std::size_t corner = 0; corner < 4; ++corner)
+    {
       lapMetres += metresBetween(corners[corner], corners[(corner + 1) % 4]);
+    }
 
     runners.clear();
     doneCount = 0;
@@ -853,11 +1002,10 @@ class LapsDrill final : public TrainingDrill
     for (std::size_t index = 0; index < count; ++index)
     {
       // Spread evenly round the track.
-      float metres = lapMetres * static_cast<float>(index) /
-                     static_cast<float>(count);
+      float metres =
+          lapMetres * static_cast<float>(index) / static_cast<float>(count);
       std::size_t leg = 0;
-      while (leg < 3 &&
-             metres > metresBetween(corners[leg], corners[leg + 1]))
+      while (leg < 3 && metres > metresBetween(corners[leg], corners[leg + 1]))
       {
         metres -= metresBetween(corners[leg], corners[leg + 1]);
         ++leg;
@@ -866,26 +1014,35 @@ class LapsDrill final : public TrainingDrill
       Runner runner;
       runner.id = ids[index];
       runner.next = next;
-      runner.previous = along(corners[leg],
-                              directionBetween(corners[leg], corners[next]),
-                              metres);
+      runner.previous = along(
+          corners[leg], directionBetween(corners[leg], corners[next]), metres);
       // The fallback for anyone without a time in the sprint: his engine top
       // speed when fresh.
-      runner.topSpeed = sprint ? sprint->topSpeed(index) : std::nullopt;
+      runner.topSpeed =
+          (sprint != nullptr) ? sprint->topSpeed(index) : std::nullopt;
       runners.push_back(runner);
-      scenario.players.push_back({runner.id, runner.previous, false});
+      scenario.players.push_back({.playerId = runner.id,
+                                  .position = runner.previous,
+                                  .makingRun = false});
     }
     // On the centre spot, well inside the track.
-    scenario.ballPosition = PITCH.at(0.5f, 0.5f);
+    scenario.ballPosition = PITCH.at(0.5F, 0.5F);
     engine.startDrill(scenario);
     for (Runner& runner : runners)
     {
       const MatchPlayer* player = slotOf(engine, runner.id);
-      if (!runner.topSpeed && player) runner.topSpeed = player->maxSpeed;
-      if (player && routes(engine, *player))
+      if (!runner.topSpeed && (player != nullptr))
+      {
+        runner.topSpeed = player->maxSpeed;
+      }
+      if ((player != nullptr) && routes(engine, *player))
+      {
         planLap(engine, runner);
+      }
       else
+      {
         engine.setDrillTarget(runner.id, corners[runner.next], true);
+      }
     }
   }
 
@@ -894,9 +1051,15 @@ class LapsDrill final : public TrainingDrill
     const double now = secondsOf(engine);
     for (Runner& runner : runners)
     {
-      if (runner.doneAt) continue;
+      if (runner.doneAt)
+      {
+        continue;
+      }
       const MatchPlayer* player = slotOf(engine, runner.id);
-      if (!player) continue;
+      if (player == nullptr)
+      {
+        continue;
+      }
       const PitchPoint at = player->position;
       runner.metres += metresBetween(runner.previous, at);
       const PitchPoint from = runner.previous;
@@ -917,8 +1080,8 @@ class LapsDrill final : public TrainingDrill
         // push the second out of his route for a moment). A way round is
         // not a corner.
         const PitchPoint heading = player->routeWaypoints > 0
-                                     ? player->movementTarget
-                                     : player->tacticalTarget;
+                                       ? player->movementTarget
+                                       : player->tacticalTarget;
         for (std::size_t ahead = 1; ahead <= 2; ++ahead)
         {
           const PitchPoint corner = corners[(runner.next + ahead) % 4];
@@ -946,14 +1109,15 @@ class LapsDrill final : public TrainingDrill
       // Spent, or hurt (he stops there, short of his best).
       runner.injured = player->isInjured;
       if (runner.injured ||
-          player->stamina <= engine.fuelFloor(player->isHomeTeam) + 1e-4f)
+          player->stamina <= engine.fuelFloor(player->isHomeTeam) + 1e-4F)
       {
         runner.doneAt = now;
         runner.place = ++doneCount;
         lastDone = now;
         // Off the track, at a walk.
         engine.setDrillTarget(
-            runner.id, along(at, directionBetween(at, PITCH.at(0.5f, 0.5f)), 10.0f),
+            runner.id,
+            along(at, directionBetween(at, PITCH.at(0.5F, 0.5F)), 10.0F),
             false);
       }
     }
@@ -961,95 +1125,122 @@ class LapsDrill final : public TrainingDrill
     return !(allDone && lastDone && now > *lastDone + 1.0) && now < MAX_SECONDS;
   }
 
-  void drawOverlay(const IMatchRenderer& renderer, ImDrawList& draw) const override
+  void drawOverlay(const IMatchRenderer& renderer,
+                   ImDrawList& draw) const override
   {
     const float scale = Theme::scale();
     for (std::size_t corner = 0; corner < 4; ++corner)
-      DrillDraw::line(renderer, draw, corners[corner], corners[(corner + 1) % 4],
-                      LINE, 1.5f * scale);
+    {
+      DrillDraw::line(renderer, draw, corners[corner],
+                      corners[(corner + 1) % 4], LINE, 1.5F * scale);
+    }
     for (const PitchPoint cone : cones)
+    {
       DrillDraw::cone(renderer, draw, cone, CONE);
+    }
   }
 
-  std::vector<std::string> report() const override
+  [[nodiscard]] std::vector<std::string> report() const override
   {
     double furthest = 0.0;
     for (const Runner& runner : runners)
-      if (!runner.doneAt) furthest = std::max(furthest, static_cast<double>(runner.metres));
+    {
+      if (!runner.doneAt)
+      {
+        furthest = std::max(furthest, static_cast<double>(runner.metres));
+      }
+    }
     std::vector<std::string> lines;
     lines.push_back(std::format("Lap {:.0f} m · {} of {} still running",
                                 lapMetres, runners.size() - doneCount,
                                 runners.size()));
     if (doneCount < runners.size())
-      lines.push_back(std::format("Leader still running: {:.0f} m ({:.1f} laps)",
-                                  furthest, furthest / lapMetres));
+    {
+      lines.push_back(
+          std::format("Leader still running: {:.0f} m ({:.1f} laps)", furthest,
+                      furthest / lapMetres));
+    }
     const auto injured = std::ranges::count_if(
         runners, [](const Runner& runner) { return runner.injured; });
     if (injured > 0)
-      lines.push_back(std::format("Injured: {} (stopped where they got hurt)", injured));
+    {
+      lines.push_back(
+          std::format("Injured: {} (stopped where they got hurt)", injured));
+    }
     return lines;
   }
 
-  std::vector<TrainingColumn> columns() const override
+  [[nodiscard]] std::vector<TrainingColumn> columns() const override
   {
-    return {{"Distance", "How far he ran before his condition hit its floor."},
-            {"Time", "How long he kept going."},
-            {"Stamina", "The Stamina attribute: endurance and fuel."},
-            {"Avg speed", "Distance over time, in miles an hour."},
-            {"% of top", "His average speed as a share of his top speed in "
-                         "Across and back (his engine top speed if he has no "
-                         "time there)."},
-            {"Pace", "The Pace attribute: his top speed."}};
+    return {{.name = "Distance",
+             .tooltip = "How far he ran before his condition hit its floor."},
+            {.name = "Time", .tooltip = "How long he kept going."},
+            {.name = "Stamina",
+             .tooltip = "The Stamina attribute: endurance and fuel."},
+            {.name = "Avg speed",
+             .tooltip = "Distance over time, in miles an hour."},
+            {.name = "% of top",
+             .tooltip = "His average speed as a share of his top speed in "
+                        "Across and back (his engine top speed if he has no "
+                        "time there)."},
+            {.name = "Pace", .tooltip = "The Pace attribute: his top speed."}};
   }
 
-  std::vector<TrainingRow> results() const override
+  [[nodiscard]] std::vector<TrainingRow> results() const override
   {
     std::vector<const Runner*> done;
     for (const Runner& runner : runners)
-      if (runner.doneAt) done.push_back(&runner);
+    {
+      if (runner.doneAt)
+      {
+        done.push_back(&runner);
+      }
+    }
     std::ranges::sort(done, {}, &Runner::place);
     std::vector<TrainingRow> rows;
     for (const Runner* runner : done)
     {
-      const std::size_t index = static_cast<std::size_t>(runner - runners.data());
+      const std::size_t index =
+          static_cast<std::size_t>(runner - runners.data());
       const TrainingPlayer& player = squad[index];
       const double seconds = std::max(*runner->doneAt, 1e-6);
       const double average = static_cast<double>(runner->metres) / seconds;
       const double share =
-          runner->topSpeed && *runner->topSpeed > 0.0f
+          runner->topSpeed && *runner->topSpeed > 0.0F
               ? average / static_cast<double>(*runner->topSpeed) * 100.0
               : 0.0;
       const double mph = average * MPH_PER_METRE_PER_SECOND;
-      rows.push_back({index,
-                      {std::format("{:.0f} m{}", runner->metres,
-                                   runner->injured ? " (injured)" : ""),
-                       clock(seconds),
-                       std::format("{:.0f}", player.stat("Stamina")),
-                       std::format("{:.1f} mph", mph),
-                       std::format("{:.0f}%", share),
-                       std::format("{:.0f}", player.stat("Pace"))},
-                      {runner->metres, seconds, player.stat("Stamina"), mph,
-                       share, player.stat("Pace")}});
+      rows.push_back(
+          {.player = index,
+           .cells = {std::format("{:.0f} m{}", runner->metres,
+                                 runner->injured ? " (injured)" : ""),
+                     clock(seconds),
+                     std::format("{:.0f}", player.stat("Stamina")),
+                     std::format("{:.1f} mph", mph),
+                     std::format("{:.0f}%", share),
+                     std::format("{:.0f}", player.stat("Pace"))},
+           .values = {runner->metres, seconds, player.stat("Stamina"), mph,
+                      share, player.stat("Pace")}});
     }
     return rows;
   }
 
  private:
   /** The cones' distance in from the touchline and the goal line. */
-  static constexpr float CONE_INSET_METRES = 9.0f;
+  static constexpr float CONE_INSET_METRES = 9.0F;
   /** The runners' line round a cone, this far outside it. */
-  static constexpr float OUTSIDE_METRES = 1.0f;
+  static constexpr float OUTSIDE_METRES = 1.0F;
   /** Close enough to a corner to head for the next. */
-  static constexpr float CORNER_RADIUS_METRES = 3.0f;
+  static constexpr float CORNER_RADIUS_METRES = 3.0F;
   /** How far out a routed runner's line may be pushed round a corner (a
    * design choice: room on the track outside the cones). */
-  static constexpr float LAP_OUTWARD_ROOM_METRES = 2.0f;
+  static constexpr float LAP_OUTWARD_ROOM_METRES = 2.0F;
   /** Someone this close ahead, this near his line, blocks a runner. */
-  static constexpr float BLOCKED_AHEAD_METRES = 3.0f;
-  static constexpr float BLOCKED_SIDE_METRES = 1.0f;
+  static constexpr float BLOCKED_AHEAD_METRES = 3.0F;
+  static constexpr float BLOCKED_SIDE_METRES = 1.0F;
   /** Going past: the point he aims at, ahead and out wide. */
-  static constexpr float PASS_LEAD_METRES = 6.0f;
-  static constexpr float PASS_WIDE_METRES = 1.5f;
+  static constexpr float PASS_LEAD_METRES = 6.0F;
+  static constexpr float PASS_WIDE_METRES = 1.5F;
   static constexpr int PASS_REFRESH_STEPS = 5;
   /** Three hours: anyone not spent by then never will be. */
   static constexpr double MAX_SECONDS = 3.0 * 3600.0;
@@ -1062,8 +1253,8 @@ class LapsDrill final : public TrainingDrill
     bool passing = false;
     int passSteps = 0;
     bool injured = false;
-    PitchPoint previous{};
-    float metres = 0.0f;
+    PitchPoint previous;
+    float metres = 0.0F;
     std::optional<float> topSpeed;
     std::optional<double> doneAt;
     std::size_t place = 0;
@@ -1084,22 +1275,29 @@ class LapsDrill final : public TrainingDrill
   /** Whether his move from `from` to `to` took him round corner
    * `runner.next`: across the line from its cone out to its flag, going
    * on (the way through the corner, between its legs). */
-  [[nodiscard]] bool passedCorner(const Runner& runner, PitchPoint from, PitchPoint to) const
+  [[nodiscard]] bool passedCorner(const Runner& runner, PitchPoint from,
+                                  PitchPoint to) const
   {
     const std::size_t corner = runner.next;
-    const Vector2F in = directionBetween(corners[(corner + 3) % 4], corners[corner]);
-    const Vector2F out = directionBetween(corners[corner], corners[(corner + 1) % 4]);
+    const Vector2F in =
+        directionBetween(corners[(corner + 3) % 4], corners[corner]);
+    const Vector2F out =
+        directionBetween(corners[corner], corners[(corner + 1) % 4]);
     const float size = std::hypot(in.x + out.x, in.y + out.y);
-    if (size < 1e-6f) return false;
-    const Vector2F way{(in.x + out.x) / size, (in.y + out.y) / size};
+    if (size < 1e-6F)
+    {
+      return false;
+    }
+    const Vector2F way{.x = (in.x + out.x) / size, .y = (in.y + out.y) / size};
     return crossingShare(from, to, cones[corner], way).has_value();
   }
 
   void planLap(MatchEngine& engine, const Runner& runner) const
   {
-    engine.setDrillTarget(runner.id, corners[(runner.next + 2) % 4], true,
-                          {corners[runner.next], corners[(runner.next + 1) % 4]},
-                          0.0f, LAP_OUTWARD_ROOM_METRES, std::nullopt, true);
+    engine.setDrillTarget(
+        runner.id, corners[(runner.next + 2) % 4], true,
+        {corners[runner.next], corners[(runner.next + 1) % 4]}, 0.0F,
+        LAP_OUTWARD_ROOM_METRES, std::nullopt, true);
   }
 
   /**
@@ -1114,30 +1312,40 @@ class LapsDrill final : public TrainingDrill
     const PitchPoint to = corners[runner.next];
     const Vector2F ahead = directionBetween(from, to);
     // Out wide: square to the leg, away from the middle of the pitch.
-    Vector2F wide{-ahead.y, ahead.x};
-    const Vector2F middle{(from.x + to.x) * 0.5f - PITCH.atX(0.5f),
-                          (from.y + to.y) * 0.5f - PITCH.atY(0.5f)};
-    if (wide.x * middle.x + wide.y * middle.y < 0.0f)
-      wide = {-wide.x, -wide.y};
+    Vector2F wide{.x = -ahead.y, .y = ahead.x};
+    const Vector2F middle{.x = ((from.x + to.x) * 0.5F) - PITCH.atX(0.5F),
+                          .y = ((from.y + to.y) * 0.5F) - PITCH.atY(0.5F)};
+    if (wide.x * middle.x + wide.y * middle.y < 0.0F)
+    {
+      wide = {.x = -wide.x, .y = -wide.y};
+    }
     bool blocked = false;
     for (const Runner& other : runners)
     {
-      if (&other == &runner || other.doneAt) continue;
+      if (&other == &runner || other.doneAt)
+      {
+        continue;
+      }
       const float x = other.previous.x - at.x;
       const float y = other.previous.y - at.y;
-      const float front = x * ahead.x + y * ahead.y;
-      const float side = x * wide.x + y * wide.y;
-      if (front > 0.0f && front < BLOCKED_AHEAD_METRES &&
+      const float front = (x * ahead.x) + (y * ahead.y);
+      const float side = (x * wide.x) + (y * wide.y);
+      if (front > 0.0F && front < BLOCKED_AHEAD_METRES &&
           std::abs(side) < BLOCKED_SIDE_METRES)
+      {
         blocked = true;
+      }
     }
     const float left = metresBetween(at, to);
     if (blocked && left > PASS_LEAD_METRES + CORNER_RADIUS_METRES)
     {
       // Refresh the point ahead now and then, not every step.
-      if (runner.passing && ++runner.passSteps < PASS_REFRESH_STEPS) return;
-      const float alongLeg = (at.x - from.x) * ahead.x +
-                              (at.y - from.y) * ahead.y;
+      if (runner.passing && ++runner.passSteps < PASS_REFRESH_STEPS)
+      {
+        return;
+      }
+      const float alongLeg =
+          ((at.x - from.x) * ahead.x) + ((at.y - from.y) * ahead.y);
       engine.setDrillTarget(
           runner.id,
           along(along(from, ahead, alongLeg + PASS_LEAD_METRES), wide,
@@ -1156,7 +1364,7 @@ class LapsDrill final : public TrainingDrill
   const TrainingDrill* sprint = nullptr;
   std::array<PitchPoint, 4> cones{};
   std::array<PitchPoint, 4> corners{};
-  float lapMetres = 1.0f;
+  float lapMetres = 1.0F;
   std::vector<Runner> runners;
   std::size_t doneCount = 0;
   std::optional<double> lastDone;
@@ -1172,7 +1380,9 @@ std::unique_ptr<TrainingSession> makeRunningSession(
       "until the tank is empty.";
   session->squad = std::move(squad);
   if (session->squad.size() > TrainingDrill::MAX_PLAYERS)
+  {
     session->squad.resize(TrainingDrill::MAX_PLAYERS);
+  }
   auto sprint = std::make_unique<AcrossAndBackDrill>(session->squad);
   auto slalom = std::make_unique<SlalomDrill>(session->squad, sprint.get());
   auto laps = std::make_unique<LapsDrill>(session->squad, sprint.get());
@@ -1186,13 +1396,14 @@ std::unique_ptr<TrainingSession> makeRunningSession(
 float TrainingPlayer::stat(const std::string& stat) const
 {
   const auto found = stats.find(stat);
-  return found == stats.end() ? 0.0f : found->second;
+  return found == stats.end() ? 0.0F : found->second;
 }
 
 std::vector<DrillPlayerSpec> TrainingDrill::players() const
 {
   std::vector<DrillPlayerSpec> specs;
-  for (std::size_t index = 0; index < squad.size() && index < MAX_PLAYERS; ++index)
+  for (std::size_t index = 0; index < squad.size() && index < MAX_PLAYERS;
+       ++index)
   {
     const TrainingPlayer& player = squad[index];
     DrillPlayerSpec spec;
@@ -1245,21 +1456,24 @@ std::unique_ptr<DrillRun> startTrainingRun(TrainingDrill& drill,
 const std::vector<TrainingSessionInfo>& trainingSessions()
 {
   static const std::vector<TrainingSessionInfo> sessions{
-      {"Running",
-       "Three drills for the whole squad. Across and back: a lane each, "
-       "touchline to touchline and back, timed, with top speed and "
-       "acceleration. Slalom: one at a time through 8 cones, fastest first, "
-       "timed, with time spent cornering. Laps to exhaustion: round four "
-       "cones near the corner flags until each player's condition hits its "
-       "floor.",
-       &makeRunningSession}};
+      {.name = "Running",
+       .summary =
+           "Three drills for the whole squad. Across and back: a lane each, "
+           "touchline to touchline and back, timed, with top speed and "
+           "acceleration. Slalom: one at a time through 8 cones, fastest "
+           "first, "
+           "timed, with time spent cornering. Laps to exhaustion: round four "
+           "cones near the corner flags until each player's condition hits its "
+           "floor.",
+       .make = &makeRunningSession}};
   return sessions;
 }
 
 // --- Laps trace (diagnostic) -----------------------------------------------
 
-int runLapsTrace(const std::vector<TrainingPlayer>& squad, const StatsConfig& config,
-                 double seconds, const std::string& follow)
+int runLapsTrace(const std::vector<TrainingPlayer>& squad,
+                 const StatsConfig& config, double seconds,
+                 const std::string& follow)
 {
   using MatchEngineInternal::length;
   std::unique_ptr<TrainingSession> session = trainingSessions()[0].make(squad);
@@ -1270,14 +1484,14 @@ int runLapsTrace(const std::vector<TrainingPlayer>& squad, const StatsConfig& co
   const auto nameOf = [](const MatchPlayer& player)
   { return player.player ? player.player->getName() : std::string("?"); };
   const auto& players = engine.getPlayers();
-  std::vector<int> overtaking(players.size(), -1);
+  std::vector<std::int8_t> overtaking(players.size(), -1);
   std::vector<bool> slow(players.size(), false);
   const double step = MatchTuning::Timing::FIXED_STEP_SECONDS;
   double now = 0.0;
   // How far bodies face off their line of travel, running (over 3 m/s).
   std::array<int, 4> offCounts{};
   int movingCount = 0;
-  float worstOff = 0.0f;
+  float worstOff = 0.0F;
   while (now < seconds && run->step())
   {
     now += step;
@@ -1286,104 +1500,135 @@ int runLapsTrace(const std::vector<TrainingPlayer>& squad, const StatsConfig& co
       std::string who[2];
       std::string detail[2];
       for (std::size_t side = 0; side < 2; ++side)
+      {
         for (const MatchPlayer& player : players)
-          if (player.player && player.player->getId() == hit.sides[side].player)
+        {
+          if ((player.player != nullptr) &&
+              player.player->getId() == hit.sides[side].player)
           {
             who[side] = nameOf(player);
             // His speed before and after, how far his body faced off his
             // line of travel before it, and how the knock was judged.
             const MatchEngine::CollisionSide& entry = hit.sides[side];
-            const Vector2F before{entry.after.x - entry.jolt.x, entry.after.y - entry.jolt.y};
-            const Vector2F facing{
-                std::cos(player.facingAngle),
-                std::sin(player.facingAngle)};
+            const Vector2F before{.x = entry.after.x - entry.jolt.x,
+                                  .y = entry.after.y - entry.jolt.y};
+            const Vector2F facing{.x = std::cos(player.facingAngle),
+                                  .y = std::sin(player.facingAngle)};
             const float off =
-                std::acos(std::clamp((before.x * facing.x + before.y * facing.y) /
-                                         std::max(length(before) * length(facing), 1e-6f),
-                                     -1.0f, 1.0f)) *
-                180.0f / std::numbers::pi_v<float>;
+                std::acos(std::clamp(
+                    (before.x * facing.x + before.y * facing.y) /
+                        std::max(length(before) * length(facing), 1e-6F),
+                    -1.0F, 1.0F)) *
+                180.0F / std::numbers::pi_v<float>;
             detail[side] = std::format(
-                "{} {:.1f}->{:.1f} m/s, facing {:.0f} deg off, ends up {:.0f}% sudden {:.0f}% "
+                "{} {:.1f}->{:.1f} m/s, facing {:.0f} deg off, ends up {:.0f}% "
+                "sudden {:.0f}% "
                 "score {:.0f}% (lines {:.0f}/{:.0f})",
-                who[side], length(before), length(entry.after), off, entry.endsUp * 100.0f,
-                entry.sudden * 100.0f, entry.score * 100.0f, entry.stumbleLine * 100.0f,
-                entry.fallLine * 100.0f);
+                who[side], length(before), length(entry.after), off,
+                entry.endsUp * 100.0F, entry.sudden * 100.0F,
+                entry.score * 100.0F, entry.stumbleLine * 100.0F,
+                entry.fallLine * 100.0F);
           }
-      std::printf("%6.1f  RUN-IN %s / %s  jolt %.2f / %.2f  outcome %d / %d\n", now,
-                  who[0].c_str(), who[1].c_str(), length(hit.sides[0].jolt),
-                  length(hit.sides[1].jolt), hit.sides[0].outcome, hit.sides[1].outcome);
+        }
+      }
+      std::printf("%6.1f  RUN-IN %s / %s  jolt %.2f / %.2f  outcome %d / %d\n",
+                  now, who[0].c_str(), who[1].c_str(),
+                  length(hit.sides[0].jolt), length(hit.sides[1].jolt),
+                  hit.sides[0].outcome, hit.sides[1].outcome);
       for (std::size_t side = 0; side < 2; ++side)
+      {
         if (hit.sides[side].outcome > 0)
+        {
           std::printf("          knocked: %s\n", detail[side].c_str());
+        }
+      }
     }
     for (std::size_t index = 0; index < players.size(); ++index)
     {
       const MatchPlayer& player = players[index];
-      if (!MatchEngineInternal::active(player)) continue;
-      const float speed = length(player.velocity);
-      if (speed > 3.0f)
+      if (!MatchEngineInternal::active(player))
       {
-        const Vector2F facing{
-            std::cos(player.facingAngle),
-            std::sin(player.facingAngle)};
+        continue;
+      }
+      const float speed = length(player.velocity);
+      if (speed > 3.0F)
+      {
+        const Vector2F facing{.x = std::cos(player.facingAngle),
+                              .y = std::sin(player.facingAngle)};
         const float off =
-            std::acos(std::clamp((player.velocity.x * facing.x + player.velocity.y * facing.y) /
-                                     std::max(speed * length(facing), 1e-6f),
-                                 -1.0f, 1.0f)) *
-            180.0f / std::numbers::pi_v<float>;
+            std::acos(std::clamp(
+                (player.velocity.x * facing.x + player.velocity.y * facing.y) /
+                    std::max(speed * length(facing), 1e-6F),
+                -1.0F, 1.0F)) *
+            180.0F / std::numbers::pi_v<float>;
         ++movingCount;
         worstOff = std::max(worstOff, off);
-        if (off > 10.0f) ++offCounts[0];
-        if (off > 20.0f) ++offCounts[1];
-        if (off > 45.0f) ++offCounts[2];
-        if (off > 90.0f) ++offCounts[3];
+        if (off > 10.0F)
+        {
+          ++offCounts[0];
+        }
+        if (off > 20.0F)
+        {
+          ++offCounts[1];
+        }
+        if (off > 45.0F)
+        {
+          ++offCounts[2];
+        }
+        if (off > 90.0F)
+        {
+          ++offCounts[3];
+        }
       }
       const auto describe = [&]()
       {
         const PitchPoint at = player.position;
         const auto metres = [&](PitchPoint to)
-        {
-          return std::hypot(to.x - at.x,
-                            to.y - at.y);
-        };
+        { return std::hypot(to.x - at.x, to.y - at.y); };
         return std::format(
-            "at ({:.1f},{:.1f}) m speed {:.2f} · route {} next {:.1f} m then {:.1f} m · "
-            "target {:.1f} m · pause {:.2f} stumble {:.2f} fallen {} · stamina {:.2f}",
-            at.x, at.y,
-            speed, player.routeWaypoints, metres(player.movementTarget),
-            metres(player.nextTarget), metres(player.tacticalTarget),
-            player.collisionPause, player.stumbleSeconds, player.fallen, player.stamina);
+            "at ({:.1f},{:.1f}) m speed {:.2f} · route {} next {:.1f} m then "
+            "{:.1f} m · "
+            "target {:.1f} m · pause {:.2f} stumble {:.2f} fallen {} · stamina "
+            "{:.2f}",
+            at.x, at.y, speed, player.routeWaypoints,
+            metres(player.movementTarget), metres(player.nextTarget),
+            metres(player.tacticalTarget), player.collisionPause,
+            player.stumbleSeconds, player.fallen, player.stamina);
       };
       // The player followed: his route every half second.
       if (!follow.empty() && nameOf(player).find(follow) != std::string::npos &&
           std::fmod(now + 1e-6, 0.5) < step)
-        std::printf("%6.1f  [%s] vel (%.2f,%.2f) movT (%.1f,%.1f) nextT (%.1f,%.1f) tacT (%.1f,%.1f) wp %d apex %.2f room %.2f intent %d ovt %d %s\n",
-                    now, follow.c_str(), player.velocity.x, player.velocity.y,
-                    player.movementTarget.x,
-                    player.movementTarget.y,
-                    player.nextTarget.x,
-                    player.nextTarget.y,
-                    player.tacticalTarget.x,
-                    player.tacticalTarget.y,
-                    player.routeWaypoints, player.routeApexOffset, player.routeOutwardRoom,
-                    static_cast<int>(player.intent), player.overtaking, describe().c_str());
+      {
+        std::printf(
+            "%6.1f  [%s] vel (%.2f,%.2f) movT (%.1f,%.1f) nextT (%.1f,%.1f) "
+            "tacT (%.1f,%.1f) wp %d apex %.2f room %.2f intent %d ovt %d %s\n",
+            now, follow.c_str(), player.velocity.x, player.velocity.y,
+            player.movementTarget.x, player.movementTarget.y,
+            player.nextTarget.x, player.nextTarget.y, player.tacticalTarget.x,
+            player.tacticalTarget.y, player.routeWaypoints,
+            player.routeApexOffset, player.routeOutwardRoom,
+            static_cast<int>(player.intent), player.overtaking,
+            describe().c_str());
+      }
       if (player.overtaking != overtaking[index])
       {
         if (player.overtaking >= 0)
         {
-          const MatchPlayer& leader = players[static_cast<std::size_t>(player.overtaking)];
-          std::printf("%6.1f  %s OVERTAKES %s (side %+d, leader %.2f m/s) %s\n", now,
-                      nameOf(player).c_str(), nameOf(leader).c_str(), player.overtakeSide,
-                      length(leader.velocity), describe().c_str());
+          const MatchPlayer& leader =
+              players[static_cast<std::size_t>(player.overtaking)];
+          std::printf("%6.1f  %s OVERTAKES %s (side %+d, leader %.2f m/s) %s\n",
+                      now, nameOf(player).c_str(), nameOf(leader).c_str(),
+                      player.overtakeSide, length(leader.velocity),
+                      describe().c_str());
         }
         else
         {
-          std::printf("%6.1f  %s overtake off  %s\n", now, nameOf(player).c_str(),
-                      describe().c_str());
+          std::printf("%6.1f  %s overtake off  %s\n", now,
+                      nameOf(player).c_str(), describe().c_str());
         }
         overtaking[index] = player.overtaking;
       }
-      const bool nowSlow = now > 4.0 && speed < 2.0f && player.stamina > 0.05f;
+      const bool nowSlow = now > 4.0 && speed < 2.0F && player.stamina > 0.05F;
       if (nowSlow != slow[index])
       {
         std::printf("%6.1f  %s %s  %s\n", now, nameOf(player).c_str(),
@@ -1393,10 +1638,14 @@ int runLapsTrace(const std::vector<TrainingPlayer>& squad, const StatsConfig& co
     }
   }
   if (movingCount > 0)
-    std::printf("Running over 3 m/s: facing off his line >10 deg %.1f%%, >20 %.1f%%, >45 %.1f%%, "
-                ">90 %.1f%%; worst %.0f deg\n",
-                100.0 * offCounts[0] / movingCount, 100.0 * offCounts[1] / movingCount,
-                100.0 * offCounts[2] / movingCount, 100.0 * offCounts[3] / movingCount,
-                worstOff);
+  {
+    std::printf(
+        "Running over 3 m/s: facing off his line >10 deg %.1f%%, >20 %.1f%%, "
+        ">45 %.1f%%, "
+        ">90 %.1f%%; worst %.0f deg\n",
+        100.0 * offCounts[0] / movingCount, 100.0 * offCounts[1] / movingCount,
+        100.0 * offCounts[2] / movingCount, 100.0 * offCounts[3] / movingCount,
+        worstOff);
+  }
   return 0;
 }

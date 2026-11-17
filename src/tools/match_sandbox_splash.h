@@ -26,8 +26,8 @@ class SandboxSplashScene final : public GUIScene
  private:
   ImFont* splash_font = nullptr;
   std::function<void()> loader;
-  float elapsed = 0.0f;
-  float exit_elapsed = 0.0f;
+  float elapsed = 0.0F;
+  float exit_elapsed = 0.0F;
   bool rendered = false;
   bool ready = false;
   bool skip = false;

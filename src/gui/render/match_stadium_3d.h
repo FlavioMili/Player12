@@ -62,7 +62,7 @@ struct PitchGrid
   std::size_t index(int stripe, int column, int row) const
   {
     return static_cast<std::size_t>(
-        (stripe * columnVertices() + column) * (rows + 1) + row);
+        ((stripe * columnVertices() + column) * (rows + 1)) + row);
   }
 };
 
@@ -130,7 +130,7 @@ struct CrowdClump
 {
   Vec3 base; /**< Bottom centre on the front row. */
   Vec3 top;  /**< Top centre, over the row behind the clump. */
-  float halfWidth = 0.0f;
+  float halfWidth = 0.0F;
   /** Average colour of the members (the far-away look). */
   ImU32 color = 0;
   std::uint32_t dotBegin = 0;
@@ -166,7 +166,7 @@ struct AdBoard
   Vec3 right;  /**< Unit vector along the board, left to right. */
   Vec3 normal; /**< Unit vector facing the pitch. */
   /** Along `right`, metres (shorter between the gaps by the dugouts). */
-  float length = 0.0f;
+  float length = 0.0F;
   std::uint8_t sponsor = 0;
 };
 
@@ -201,15 +201,30 @@ struct SponsorStyle
 
 /** Original, fictional advertisers shown on the boards. */
 inline constexpr std::array<SponsorStyle, 8> SPONSORS{{
-    {"KESTRELINE", IM_COL32(18, 70, 150, 255), IM_COL32(255, 255, 255, 255)},
-    {"VOLTRIX", IM_COL32(236, 196, 30, 255), IM_COL32(20, 20, 24, 255)},
-    {"ORBANO TELECOM", IM_COL32(200, 30, 48, 255),
-     IM_COL32(255, 255, 255, 255)},
-    {"PINEFORGE", IM_COL32(16, 110, 70, 255), IM_COL32(240, 250, 240, 255)},
-    {"AQUALYNE", IM_COL32(20, 170, 200, 255), IM_COL32(10, 30, 60, 255)},
-    {"SOLENTA", IM_COL32(245, 245, 245, 255), IM_COL32(220, 70, 20, 255)},
-    {"BRIGHTWELL", IM_COL32(30, 30, 36, 255), IM_COL32(250, 210, 60, 255)},
-    {"TORVANA", IM_COL32(120, 40, 150, 255), IM_COL32(255, 255, 255, 255)},
+    {.text = "KESTRELINE",
+     .background = IM_COL32(18, 70, 150, 255),
+     .foreground = IM_COL32(255, 255, 255, 255)},
+    {.text = "VOLTRIX",
+     .background = IM_COL32(236, 196, 30, 255),
+     .foreground = IM_COL32(20, 20, 24, 255)},
+    {.text = "ORBANO TELECOM",
+     .background = IM_COL32(200, 30, 48, 255),
+     .foreground = IM_COL32(255, 255, 255, 255)},
+    {.text = "PINEFORGE",
+     .background = IM_COL32(16, 110, 70, 255),
+     .foreground = IM_COL32(240, 250, 240, 255)},
+    {.text = "AQUALYNE",
+     .background = IM_COL32(20, 170, 200, 255),
+     .foreground = IM_COL32(10, 30, 60, 255)},
+    {.text = "SOLENTA",
+     .background = IM_COL32(245, 245, 245, 255),
+     .foreground = IM_COL32(220, 70, 20, 255)},
+    {.text = "BRIGHTWELL",
+     .background = IM_COL32(30, 30, 36, 255),
+     .foreground = IM_COL32(250, 210, 60, 255)},
+    {.text = "TORVANA",
+     .background = IM_COL32(120, 40, 150, 255),
+     .foreground = IM_COL32(255, 255, 255, 255)},
 }};
 
 /** Face index table for `Box` corners; each face winds CCW from outside. */

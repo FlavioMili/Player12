@@ -65,7 +65,12 @@ constexpr std::string_view managerKey(ManagerId manager)
 constexpr std::optional<ManagerId> managerFromKey(std::string_view key)
 {
   for (const ManagerId manager : ALL_MANAGERS)
-    if (managerKey(manager) == key) return manager;
+  {
+    if (managerKey(manager) == key)
+    {
+      return manager;
+    }
+  }
   return std::nullopt;
 }
 
@@ -85,9 +90,18 @@ constexpr std::optional<std::array<ManagerId, 2>> parseManagerPair(
 {
   const std::size_t comma = text.find(',');
   const auto home = managerFromKey(text.substr(0, comma));
-  if (!home) return std::nullopt;
-  if (comma == std::string_view::npos) return std::array{*home, *home};
+  if (!home)
+  {
+    return std::nullopt;
+  }
+  if (comma == std::string_view::npos)
+  {
+    return std::array{*home, *home};
+  }
   const auto away = managerFromKey(text.substr(comma + 1));
-  if (!away) return std::nullopt;
+  if (!away)
+  {
+    return std::nullopt;
+  }
   return std::array{*home, *away};
 }

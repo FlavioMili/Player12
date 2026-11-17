@@ -61,15 +61,15 @@ class TrueViewScene : public GUIScene
     int physicality = 50;
     bool rightFooted = true;
     /** Compass degrees, 0 up the screen's far side. */
-    float facing = 0.0f;
+    float facing = 0.0F;
   };
 
   struct Camera
   {
-    float yaw = -2.3f;
-    float pitch = 0.45f;
-    float distance = 5.5f;
-    float targetHeight = 0.8f;
+    float yaw = -2.3F;
+    float pitch = 0.45F;
+    float distance = 5.5F;
+    float targetHeight = 0.8F;
   };
 
   void renderPanel(float width);
@@ -87,13 +87,13 @@ class TrueViewScene : public GUIScene
   bool moving = false;
   /** Fallen: how he lies against his facing (degrees), and whether he is
    * rolling about. */
-  float lyingOffset = 0.0f;
+  float lyingOffset = 0.0F;
   bool fellOnFront = true;
   bool rolling = false;
   /** The animation's clock (s) and whether it runs. */
-  float clock = 0.0f;
+  float clock = 0.0F;
   bool playing = true;
-  float playbackSpeed = 0.5f;
+  float playbackSpeed = 0.5F;
   /** This frame's shapes, for the table. */
   std::vector<TrueView::Entry> entries;
   enum class ControlTab

@@ -66,6 +66,11 @@ constexpr std::string_view outOfPlayKey(OutOfPlayId outOfPlay)
 constexpr std::optional<OutOfPlayId> outOfPlayFromKey(std::string_view key)
 {
   for (const OutOfPlayId version : ALL_OUT_OF_PLAY)
-    if (outOfPlayKey(version) == key) return version;
+  {
+    if (outOfPlayKey(version) == key)
+    {
+      return version;
+    }
+  }
   return std::nullopt;
 }

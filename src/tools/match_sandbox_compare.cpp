@@ -37,9 +37,11 @@ std::string value(float number)
 std::string difference(float before, float after)
 {
   if (!std::isfinite(before) || !std::isfinite(after))
+  {
     return std::isfinite(before) == std::isfinite(after) ? "" : "changed";
+  }
   const float delta = after - before;
-  return delta == 0.0f ? "" : std::format("{:+.3f}", delta);
+  return delta == 0.0F ? "" : std::format("{:+.3f}", delta);
 }
 
 std::string decisionLine(const SandboxRecorder* names,
@@ -48,7 +50,8 @@ std::string decisionLine(const SandboxRecorder* names,
   const MatchDecisionRecord& record = decision.record;
   return std::format(
       "tick {}  {}  {}  ·  pass {}  shot {}  carry {}  shield {}",
-      decision.tick, names ? names->playerName(record.player) : "?",
+      decision.tick,
+      (names != nullptr) ? names->playerName(record.player) : "?",
       SandboxNames::choice(record.chosen), value(record.pass),
       value(record.shot), value(record.carry), value(record.shield));
 }
@@ -59,7 +62,12 @@ const MatchDecisionDetail* findDetail(
     std::uint64_t tick, PlayerID player)
 {
   for (const auto& at : details)
-    if (at.tick == tick && at.detail.player == player) return &at.detail;
+  {
+    if (at.tick == tick && at.detail.player == player)
+    {
+      return &at.detail;
+    }
+  }
   return nullptr;
 }
 
@@ -68,14 +76,21 @@ void renderTermDiff(const ScoreBreakdown& before, const ScoreBreakdown& after)
 {
   std::map<std::pair<int, std::string>, std::pair<float, float>> terms;
   for (const ScoreTerm& term : before.terms)
+  {
     terms[{static_cast<int>(term.source), term.name}].first += term.value;
+  }
   for (const ScoreTerm& term : after.terms)
+  {
     terms[{static_cast<int>(term.source), term.name}].second += term.value;
+  }
   constexpr ImGuiTableFlags flags = ImGuiTableFlags_RowBg |
                                     ImGuiTableFlags_BordersInnerV |
                                     ImGuiTableFlags_SizingStretchProp;
-  if (!ImGui::BeginTable("##terms", 4, flags)) return;
-  ImGui::TableSetupColumn("Term", ImGuiTableColumnFlags_WidthStretch, 3.0f);
+  if (!ImGui::BeginTable("##terms", 4, flags))
+  {
+    return;
+  }
+  ImGui::TableSetupColumn("Term", ImGuiTableColumnFlags_WidthStretch, 3.0F);
   ImGui::TableSetupColumn("Recorded");
   ImGui::TableSetupColumn("Now");
   ImGui::TableSetupColumn("Change");
@@ -86,9 +101,13 @@ void renderTermDiff(const ScoreBreakdown& before, const ScoreBreakdown& after)
     ImGui::TableNextRow();
     ImGui::TableNextColumn();
     if (changed)
+    {
       ImGui::TextColored(Theme::palette().warning, "%s", key.second.c_str());
+    }
     else
+    {
       ImGui::TextUnformatted(key.second.c_str());
+    }
     ImGui::TableNextColumn();
     ImGui::TextUnformatted(value(values.first).c_str());
     ImGui::TableNextColumn();
@@ -140,7 +159,7 @@ bool RecordingComparison::render(const MatchRecording& recording,
                        "The match plays differently from tick %llu.",
                        static_cast<unsigned long long>(*replay.divergedAt));
     SandboxAnalysisUI::next();
-    if (SandboxAnalysisUI::button("Jump there") && replayed)
+    if (SandboxAnalysisUI::button("Jump there") && (replayed != nullptr))
     {
       review.seek(*replayed, *replay.divergedAt);
       jumped = true;
@@ -156,17 +175,21 @@ bool RecordingComparison::render(const MatchRecording& recording,
     const std::size_t index = *replay.firstDifferentDecision;
     const SandboxRecorder* names = replayed;
     if (index < recording.decisions.size())
+    {
       ImGui::TextWrapped(
           "Recorded: %s",
           decisionLine(names, recording.decisions[index]).c_str());
+    }
     else
+    {
       ImGui::TextWrapped("Recorded: no further decision");
+    }
     if (replay.replayedDecision)
     {
       ImGui::TextWrapped("Now:      %s",
                          decisionLine(names, *replay.replayedDecision).c_str());
       SandboxAnalysisUI::next();
-      if (SandboxAnalysisUI::button("Jump to it") && replayed)
+      if (SandboxAnalysisUI::button("Jump to it") && (replayed != nullptr))
       {
         review.seek(*replayed, replay.replayedDecision->tick);
         jumped = true;
@@ -188,8 +211,10 @@ void RecordingComparison::renderDecisionDiff(const MatchRecording& recording,
 {
   const std::size_t index = *replay.firstDifferentDecision;
   if (index >= recording.decisions.size() || !replay.replayedDecision ||
-      !replayed)
+      (replayed == nullptr))
+  {
     return;
+  }
   if (recording.details.empty())
   {
     ImGui::TextDisabled(
@@ -204,7 +229,7 @@ void RecordingComparison::renderDecisionDiff(const MatchRecording& recording,
   replayDetail.ensure(*replayed, now.tick);
   const MatchDecisionDetail* after =
       findDetail(replayDetail.detail().decisions, now.tick, now.record.player);
-  if (!before || !after)
+  if ((before == nullptr) || (after == nullptr))
   {
     ImGui::TextDisabled("No breakdown of this decision on one side.");
     return;
@@ -212,14 +237,17 @@ void RecordingComparison::renderDecisionDiff(const MatchRecording& recording,
   ImGui::SeparatorText("Scores before noise, term by term");
   for (std::size_t option = 0; option < OPTION_NAMES.size(); ++option)
   {
-    const ScoreBreakdown& old = before->options[option];
-    const ScoreBreakdown& current = after->options[option];
+    const ScoreBreakdown& old = before->options.at(option);
+    const ScoreBreakdown& current = after->options.at(option);
     ImGui::PushID(static_cast<int>(option));
     const std::string change = difference(old.total, current.total);
     const std::string label =
-        std::format("{}  {} -> {}  {}", OPTION_NAMES[option], value(old.total),
-                    value(current.total), change);
-    if (!change.empty()) ImGui::SetNextItemOpen(true, ImGuiCond_Appearing);
+        std::format("{}  {} -> {}  {}", OPTION_NAMES.at(option),
+                    value(old.total), value(current.total), change);
+    if (!change.empty())
+    {
+      ImGui::SetNextItemOpen(true, ImGuiCond_Appearing);
+    }
     if (ImGui::TreeNode("option", "%s", label.c_str()))
     {
       renderTermDiff(old, current);
@@ -231,9 +259,11 @@ void RecordingComparison::renderDecisionDiff(const MatchRecording& recording,
                       before->noise == after->noise ? "unchanged" : "changed"))
   {
     for (std::size_t option = 0; option < OPTION_NAMES.size(); ++option)
-      ImGui::BulletText("%s  %s -> %s", OPTION_NAMES[option],
-                        value(before->noise[option]).c_str(),
-                        value(after->noise[option]).c_str());
+    {
+      ImGui::BulletText("%s  %s -> %s", OPTION_NAMES.at(option),
+                        value(before->noise.at(option)).c_str(),
+                        value(after->noise.at(option)).c_str());
+    }
     ImGui::TreePop();
   }
 }

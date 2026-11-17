@@ -32,21 +32,21 @@ namespace
 {
 /** A relative speed along the line between them below this (m/s) is not
  * closing: a pair just hit leaves with none. */
-constexpr float CLOSING_TOLERANCE = 1e-3f;
+constexpr float CLOSING_TOLERANCE = 1e-3F;
 
 float dot(Vector2F first, Vector2F second)
 {
-  return first.x * second.x + first.y * second.y;
+  return (first.x * second.x) + (first.y * second.y);
 }
 
 Vector2F add(Vector2F first, Vector2F second)
 {
-  return {first.x + second.x, first.y + second.y};
+  return {.x = first.x + second.x, .y = first.y + second.y};
 }
 
 Vector2F scaled(Vector2F vector, float factor)
 {
-  return {vector.x * factor, vector.y * factor};
+  return {.x = vector.x * factor, .y = vector.y * factor};
 }
 
 /** When in [from, until] two bodies moving in straight lines first touch
@@ -60,18 +60,33 @@ std::optional<float> contactTime(Vector2F gap, Vector2F closing, float from,
   const float apart = length(atFrom);
   if (apart <= reach)
   {
-    if (apart <= EPSILON) return from;
-    if (dot(atFrom, closing) / apart < -CLOSING_TOLERANCE) return from;
+    if (apart <= EPSILON)
+    {
+      return from;
+    }
+    if (dot(atFrom, closing) / apart < -CLOSING_TOLERANCE)
+    {
+      return from;
+    }
     return std::nullopt;
   }
   const float a = dot(closing, closing);
-  if (a <= EPSILON) return std::nullopt;
-  const float b = 2.0f * dot(gap, closing);
-  const float c = dot(gap, gap) - reach * reach;
-  const float discriminant = b * b - 4.0f * a * c;
-  if (discriminant < 0.0f) return std::nullopt;
-  const float time = (-b - std::sqrt(discriminant)) / (2.0f * a);
-  if (time < from || time > until) return std::nullopt;
+  if (a <= EPSILON)
+  {
+    return std::nullopt;
+  }
+  const float b = 2.0F * dot(gap, closing);
+  const float c = dot(gap, gap) - (reach * reach);
+  const float discriminant = (b * b) - (4.0F * a * c);
+  if (discriminant < 0.0F)
+  {
+    return std::nullopt;
+  }
+  const float time = (-b - std::sqrt(discriminant)) / (2.0F * a);
+  if (time < from || time > until)
+  {
+    return std::nullopt;
+  }
   return time;
 }
 }  // namespace
@@ -81,23 +96,25 @@ void MatchEngine::judgeKnock(MatchPlayer& player, CollisionSide& side,
 {
   using C = MatchTuning::Collision;
   // Where his Balance sits from 1 (0) to 99 (1).
-  const float balance = std::clamp(
-      (player.derivedStat(DerivedStat::BALANCE) - STAT_1_RATING) /
-          (STAT_99_RATING - STAT_1_RATING),
-      0.0f, 1.0f);
+  const float balance =
+      std::clamp((player.derivedStat(DerivedStat::BALANCE) - STAT_1_RATING) /
+                     (STAT_99_RATING - STAT_1_RATING),
+                 0.0F, 1.0F);
   const auto line = [balance](float at1, float at99)
-  { return at1 + (at99 - at1) * balance; };
+  { return at1 + ((at99 - at1) * balance); };
   // Already off balance, he goes over more easily.
-  const float drop = player.stumbleSeconds > 0.0f ? C::STUMBLING_LINE_DROP : 0.0f;
+  const float drop =
+      player.stumbleSeconds > 0.0F ? C::STUMBLING_LINE_DROP : 0.0F;
   side.stumbleLine =
       line(C::STUMBLE_LINE_AT_BALANCE_1, C::STUMBLE_LINE_AT_BALANCE_99) - drop;
-  side.fallLine = line(C::FALL_LINE_AT_BALANCE_1, C::FALL_LINE_AT_BALANCE_99) - drop;
+  side.fallLine =
+      line(C::FALL_LINE_AT_BALANCE_1, C::FALL_LINE_AT_BALANCE_99) - drop;
   // The worse measure, wobbled on a bell curve (Box-Muller): unpredictable
   // for a poor Balance, nearly always as expected for a good one.
-  const float uniform = std::max(randomFloat(0.0f, 1.0f), 1e-7f);
-  const float angle = randomFloat(0.0f, 1.0f);
-  const float bell = std::sqrt(-2.0f * std::log(uniform)) *
-                     std::cos(2.0f * std::numbers::pi_v<float> * angle);
+  const float uniform = std::max(randomFloat(0.0F, 1.0F), 1e-7F);
+  const float angle = randomFloat(0.0F, 1.0F);
+  const float bell = std::sqrt(-2.0F * std::log(uniform)) *
+                     std::cos(2.0F * std::numbers::pi_v<float> * angle);
   side.score = std::max(side.endsUp, side.sudden) +
                bell * line(C::WOBBLE_AT_BALANCE_1, C::WOBBLE_AT_BALANCE_99);
   if (side.score < side.stumbleLine)
@@ -111,18 +128,25 @@ void MatchEngine::judgeKnock(MatchPlayer& player, CollisionSide& side,
     return;
   }
   side.outcome = side.score >= side.fallLine ? 2 : 1;
-  if (side.endsUp >= side.sudden) ++stats.collisionKnocksByEndsUp;
-  if (length(side.jolt) < 1.0f) ++stats.collisionKnocksSmallJolt;
+  if (side.endsUp >= side.sudden)
+  {
+    ++stats.collisionKnocksByEndsUp;
+  }
+  if (length(side.jolt) < 1.0F)
+  {
+    ++stats.collisionKnocksSmallJolt;
+  }
   if (side.outcome == 1)
   {
     // A stumble can slip into a fall: his footing went.
     const float slip =
-        balance < 0.5f
-            ? C::SLIP_AT_BALANCE_1 +
-                  (C::SLIP_AT_BALANCE_50 - C::SLIP_AT_BALANCE_1) * balance / 0.5f
-            : C::SLIP_AT_BALANCE_50 + (C::SLIP_AT_BALANCE_99 - C::SLIP_AT_BALANCE_50) *
-                                          (balance - 0.5f) / 0.5f;
-    if (randomFloat(0.0f, 1.0f) < slip)
+        balance < 0.5F ? C::SLIP_AT_BALANCE_1 +
+                             ((C::SLIP_AT_BALANCE_50 - C::SLIP_AT_BALANCE_1) *
+                              balance / 0.5F)
+                       : C::SLIP_AT_BALANCE_50 +
+                             ((C::SLIP_AT_BALANCE_99 - C::SLIP_AT_BALANCE_50) *
+                              (balance - 0.5F) / 0.5F);
+    if (randomFloat(0.0F, 1.0F) < slip)
     {
       side.outcome = 2;
       side.slipped = true;
@@ -135,12 +159,15 @@ void MatchEngine::judgeKnock(MatchPlayer& player, CollisionSide& side,
     return;
   }
   // A stumble: longer the nearer he came to falling.
-  const float share = std::clamp((side.score - side.stumbleLine) /
-                                     std::max(side.fallLine - side.stumbleLine, EPSILON),
-                                 0.0f, 1.0f);
-  side.stumble = C::STUMBLE_SHORTEST_SECONDS +
-                 (C::STUMBLE_LONGEST_SECONDS - C::STUMBLE_SHORTEST_SECONDS) * share;
-  player.stumbleSeconds = std::max(player.stumbleSeconds, side.stumble - remaining);
+  const float share =
+      std::clamp((side.score - side.stumbleLine) /
+                     std::max(side.fallLine - side.stumbleLine, EPSILON),
+                 0.0F, 1.0F);
+  side.stumble =
+      C::STUMBLE_SHORTEST_SECONDS +
+      (C::STUMBLE_LONGEST_SECONDS - C::STUMBLE_SHORTEST_SECONDS) * share;
+  player.stumbleSeconds =
+      std::max(player.stumbleSeconds, side.stumble - remaining);
   ++stats.collisionStumbles;
 }
 
@@ -154,60 +181,57 @@ void MatchEngine::knockOver(MatchPlayer& player, CollisionSide& side)
   const float bigShare =
       std::clamp((jolt - C::BIG_HIT_JOLT_FROM) /
                      (C::BIG_HIT_JOLT_CERTAIN - C::BIG_HIT_JOLT_FROM),
-                 0.0f, 1.0f);
-  side.bigHit = bigShare > 0.0f && randomFloat(0.0f, 1.0f) < bigShare;
+                 0.0F, 1.0F);
+  side.bigHit = bigShare > 0.0F && randomFloat(0.0F, 1.0F) < bigShare;
   if (side.bigHit)
   {
     side.downAtLeast =
-        C::BIG_HIT_DOWN_AT_FROM + (C::BIG_HIT_DOWN_AT_CERTAIN - C::BIG_HIT_DOWN_AT_FROM) *
-                                      bigShare;
+        C::BIG_HIT_DOWN_AT_FROM +
+        (C::BIG_HIT_DOWN_AT_CERTAIN - C::BIG_HIT_DOWN_AT_FROM) * bigShare;
     ++stats.collisionBigHits;
   }
   // Which way he lies: knocked (the jolt) mostly forward or back against
   // his facing, along his slide; mostly sideways, across it (and he rolls
   // along it). Stopped dead, the knock stands for his slide.
-  constexpr float STILL = 0.1f;
+  constexpr float STILL = 0.1F;
   const float speed = length(side.after);
   const Vector2F slide = speed > STILL ? side.after : side.jolt;
   const float slideLength = length(slide);
   const float slideAngle =
-      slideLength > EPSILON ? std::atan2(slide.y,
-                                         slide.x)
-                            : player.facingAngle;
-  const Vector2F facing{std::cos(player.facingAngle),
-                        std::sin(player.facingAngle)};
+      slideLength > EPSILON ? std::atan2(slide.y, slide.x) : player.facingAngle;
+  const Vector2F facing{.x = std::cos(player.facingAngle),
+                        .y = std::sin(player.facingAngle)};
   const float facingLength = std::max(length(facing), EPSILON);
   const float alignment =
-      jolt > EPSILON ? std::abs(dot(side.jolt, facing)) / (jolt * facingLength) : 1.0f;
+      jolt > EPSILON ? std::abs(dot(side.jolt, facing)) / (jolt * facingLength)
+                     : 1.0F;
   side.lyingAcross =
-      alignment < std::cos(C::LIE_ALONG_WITHIN_DEGREES * PI / 180.0f);
+      alignment < std::cos(C::LIE_ALONG_WITHIN_DEGREES * PI / 180.0F);
   // Across his slide: a quarter turn from it, in metres.
   float lying = slideAngle;
   if (side.lyingAcross)
   {
-    const Vector2F along{std::cos(slideAngle),
-                         std::sin(slideAngle)};
-    lying = std::atan2(along.x,
-                       -along.y);
+    const Vector2F along{.x = std::cos(slideAngle), .y = std::sin(slideAngle)};
+    lying = std::atan2(along.x, -along.y);
   }
 
   player.fallen = true;
   player.lyingAngle = lying;
   player.lyingAcross = side.lyingAcross;
-  player.fellOnFront = dot(side.jolt, facing) >= 0.0f;
-  player.rolledMetres = 0.0f;
-  player.downSeconds = 0.0f;
+  player.fellOnFront = dot(side.jolt, facing) >= 0.0F;
+  player.rolledMetres = 0.0F;
+  player.downSeconds = 0.0F;
   player.bigHitSeconds = side.downAtLeast;
   player.fallJolt = jolt;
-  player.rollSeconds = 0.0f;
-  player.rollDirection = 0.0f;
-  player.rollPauseSeconds =
-      randomFloat(C::ROLL_PAUSE_SHORTEST_SECONDS, C::ROLL_PAUSE_LONGEST_SECONDS);
+  player.rollSeconds = 0.0F;
+  player.rollDirection = 0.0F;
+  player.rollPauseSeconds = randomFloat(C::ROLL_PAUSE_SHORTEST_SECONDS,
+                                        C::ROLL_PAUSE_LONGEST_SECONDS);
   player.gettingUp = false;
-  player.getUpSeconds = 0.0f;
+  player.getUpSeconds = 0.0F;
   player.slideAngle = slideAngle;
-  player.stumbleSeconds = 0.0f;
-  player.collisionPause = 0.0f;
+  player.stumbleSeconds = 0.0F;
+  player.collisionPause = 0.0F;
   player.isPressing = false;
   player.isMakingRun = false;
 
@@ -218,11 +242,11 @@ void MatchEngine::standUp(MatchPlayer& player)
 {
   player.fallen = false;
   player.gettingUp = false;
-  player.getUpSeconds = 0.0f;
-  player.rollSeconds = 0.0f;
-  player.bigHitSeconds = 0.0f;
-  player.downSeconds = 0.0f;
-  player.velocity = {0.0f, 0.0f};
+  player.getUpSeconds = 0.0F;
+  player.rollSeconds = 0.0F;
+  player.bigHitSeconds = 0.0F;
+  player.downSeconds = 0.0F;
+  player.velocity = {.x = 0.0F, .y = 0.0F};
   player.facingAngle = player.slideAngle;
   player.targetAngle = player.slideAngle;
 }
@@ -238,19 +262,23 @@ void MatchEngine::rememberStepStart()
 {
   const std::size_t count = std::min(players.size(), stepStartPositions.size());
   for (std::size_t index = 0; index < count; ++index)
+  {
     stepStartPositions[index] = players[index].position;
+  }
   touchlineStepStart.resize(touchlineBodies.size());
   for (std::size_t index = 0; index < touchlineBodies.size(); ++index)
+  {
     touchlineStepStart[index] = touchlineBodies[index].position;
+  }
 }
 
 void MatchEngine::collidePlayers(float dt)
 {
   using C = MatchTuning::Collision;
   lastCollisions.clear();
-  const bool anyMomentum = bodyOf(true) == BodyId::BINTURONG ||
-                           bodyOf(false) == BodyId::BINTURONG;
-  if (anyMomentum && dt > 0.0f)
+  const bool anyMomentum =
+      bodyOf(true) == BodyId::BINTURONG || bodyOf(false) == BodyId::BINTURONG;
+  if (anyMomentum && dt > 0.0F)
   {
     // Each body's straight line through the step, in metres: where it would
     // be at time 0 (its anchor) and its velocity. A hit replaces both, so
@@ -261,40 +289,53 @@ void MatchEngine::collidePlayers(float dt)
       Vector2F velocity{};
       /** 1 / his weight (kg); 0 for an immovable obstacle (a player parked
        * off the pitch). */
-      float inverseMass = 0.0f;
+      float inverseMass = 0.0F;
       bool takesPart = false;
       bool hit = false;
     };
-    const std::size_t playerCount = std::min(players.size(), stepStartPositions.size());
+    const std::size_t playerCount =
+        std::min(players.size(), stepStartPositions.size());
     // Then the touchline's bodies (touchline plan stage 2) a player could
     // reach this step: their slots follow the players'.
     constexpr std::size_t MOST = 64;
     std::array<MatchPlayer*, MOST> bodies{};
     std::array<std::size_t, MOST> touchlineIndex{};
-    for (std::size_t index = 0; index < playerCount; ++index) bodies[index] = &players[index];
+    for (std::size_t index = 0; index < playerCount; ++index)
+    {
+      bodies[index] = &players[index];
+    }
     std::size_t count = playerCount;
-    for (std::size_t index = 0; index < touchlineBodies.size() && count < MOST; ++index)
+    for (std::size_t index = 0; index < touchlineBodies.size() && count < MOST;
+         ++index)
     {
       const MatchPlayer& body = touchlineBodies[index];
       // The officials collide with no one (user): they keep out of the way.
-      if (body.fallen || index >= touchlineStepStart.size() || deepInTunnel(body.position) ||
+      if (body.fallen || index >= touchlineStepStart.size() ||
+          deepInTunnel(body.position) ||
           isOfficial(touchlinePeople[index].role))
+      {
         continue;
+      }
       bool near = false;
       for (std::size_t slot = 0; slot < playerCount && !near; ++slot)
       {
         const MatchPlayer& player = players[slot];
-        near = active(player) && bodyOf(player.isHomeTeam) == BodyId::BINTURONG &&
+        near = active(player) &&
+               bodyOf(player.isHomeTeam) == BodyId::BINTURONG &&
                !deepInTunnel(player.position) &&
                length(player.position - body.position) <=
                    MatchTuning::TouchlinePeople::COLLISION_RANGE_METRES;
       }
-      if (!near) continue;
+      if (!near)
+      {
+        continue;
+      }
       bodies[count] = &touchlineBodies[index];
       touchlineIndex[count] = index;
       ++count;
     }
-    const auto onLine = [playerCount](std::size_t index) { return index >= playerCount; };
+    const auto onLine = [playerCount](std::size_t index)
+    { return index >= playerCount; };
     std::array<Path, MOST> paths{};
     for (std::size_t index = 0; index < count; ++index)
     {
@@ -303,27 +344,34 @@ void MatchEngine::collidePlayers(float dt)
       if (onLine(index))
       {
         // Someone round the touchline: a stand-in's weight, a sub's own.
-        const Vector2F start = asVector(touchlineStepStart[touchlineIndex[index]]);
+        const Vector2F start =
+            asVector(touchlineStepStart[touchlineIndex[index]]);
         const Vector2F end = asVector(player.position);
         path.takesPart = true;
         path.anchor = start;
-        path.velocity = scaled({end.x - start.x, end.y - start.y}, 1.0f / dt);
+        path.velocity =
+            scaled({.x = end.x - start.x, .y = end.y - start.y}, 1.0F / dt);
         path.inverseMass =
-            1.0f / (player.player
-                        ? std::max(bodyMassKilograms(player.heightMetres,
-                                                     player.derivedStat(DerivedStat::STRENGTH)),
-                                   1.0f)
-                        : MatchTuning::TouchlinePeople::STAND_IN_MASS_KILOGRAMS);
+            1.0F /
+            ((player.player != nullptr)
+                 ? std::max(bodyMassKilograms(
+                                player.heightMetres,
+                                player.derivedStat(DerivedStat::STRENGTH)),
+                            1.0F)
+                 : MatchTuning::TouchlinePeople::STAND_IN_MASS_KILOGRAMS);
         continue;
       }
       // A diving keeper is out of it (keepers in traffic: a later plan),
       // and a fallen player: others hurdle him.
       path.takesPart =
-          player.player && bodyOf(player.isHomeTeam) == BodyId::BINTURONG &&
-          !player.fallen && !deepInTunnel(player.position) &&
-          !(player.onPitch && player.isGoalkeeper &&
-            keeperInDive(player));
-      if (!path.takesPart) continue;
+          (player.player != nullptr) &&
+          bodyOf(player.isHomeTeam) == BodyId::BINTURONG && !player.fallen &&
+          !deepInTunnel(player.position) &&
+          !(player.onPitch && player.isGoalkeeper && keeperInDive(player));
+      if (!path.takesPart)
+      {
+        continue;
+      }
       const Vector2F end = asVector(player.position);
       if (!player.onPitch)
       {
@@ -331,19 +379,21 @@ void MatchEngine::collidePlayers(float dt)
         continue;
       }
       const Vector2F start = asVector(stepStartPositions[index]);
-      path.velocity = scaled({end.x - start.x, end.y - start.y}, 1.0f / dt);
+      path.velocity =
+          scaled({.x = end.x - start.x, .y = end.y - start.y}, 1.0F / dt);
       path.anchor = start;
       path.inverseMass =
-          1.0f / std::max(bodyMassKilograms(player.heightMetres,
-                                            player.derivedStat(DerivedStat::STRENGTH)),
-                          1.0f);
+          1.0F /
+          std::max(bodyMassKilograms(player.heightMetres,
+                                     player.derivedStat(DerivedStat::STRENGTH)),
+                   1.0F);
     }
     const auto at = [&paths](std::size_t index, float time)
     { return add(paths[index].anchor, scaled(paths[index].velocity, time)); };
 
     // The first contact in what is left of the step, again and again (a
     // player knocked on may meet a third), until the step is clear.
-    float now = 0.0f;
+    float now = 0.0F;
     for (int contact = 0; contact < C::MAX_CONTACTS_PER_STEP; ++contact)
     {
       std::optional<float> earliest;
@@ -351,20 +401,34 @@ void MatchEngine::collidePlayers(float dt)
       std::size_t secondIndex = 0;
       for (std::size_t first = 0; first < count; ++first)
       {
-        if (!paths[first].takesPart) continue;
+        if (!paths[first].takesPart)
+        {
+          continue;
+        }
         for (std::size_t second = first + 1; second < count; ++second)
         {
-          if (!paths[second].takesPart) continue;
-          if (paths[first].inverseMass == 0.0f && paths[second].inverseMass == 0.0f)
+          if (!paths[second].takesPart)
+          {
             continue;
+          }
+          if (paths[first].inverseMass == 0.0F &&
+              paths[second].inverseMass == 0.0F)
+          {
+            continue;
+          }
           // Round the touchline, only players run into them.
-          if (onLine(first) && onLine(second)) continue;
-          const Vector2F gap{paths[second].anchor.x - paths[first].anchor.x,
-                             paths[second].anchor.y - paths[first].anchor.y};
-          const Vector2F closing{paths[second].velocity.x - paths[first].velocity.x,
-                                 paths[second].velocity.y - paths[first].velocity.y};
-          const std::optional<float> time =
-              contactTime(gap, closing, now, dt, MatchTuning::Body::DIAMETER_METRES);
+          if (onLine(first) && onLine(second))
+          {
+            continue;
+          }
+          const Vector2F gap{
+              .x = paths[second].anchor.x - paths[first].anchor.x,
+              .y = paths[second].anchor.y - paths[first].anchor.y};
+          const Vector2F closing{
+              .x = paths[second].velocity.x - paths[first].velocity.x,
+              .y = paths[second].velocity.y - paths[first].velocity.y};
+          const std::optional<float> time = contactTime(
+              gap, closing, now, dt, MatchTuning::Body::DIAMETER_METRES);
           if (time && (!earliest || *time < *earliest))
           {
             earliest = time;
@@ -373,7 +437,10 @@ void MatchEngine::collidePlayers(float dt)
           }
         }
       }
-      if (!earliest) break;
+      if (!earliest)
+      {
+        break;
+      }
       now = *earliest;
 
       // The hit: along the line between their centres both leave at the
@@ -383,10 +450,11 @@ void MatchEngine::collidePlayers(float dt)
       Path& two = paths[secondIndex];
       const Vector2F oneAt = at(firstIndex, now);
       const Vector2F twoAt = at(secondIndex, now);
-      Vector2F line{twoAt.x - oneAt.x, twoAt.y - oneAt.y};
+      Vector2F line{.x = twoAt.x - oneAt.x, .y = twoAt.y - oneAt.y};
       const float apart = length(line);
-      line = apart > EPSILON ? scaled(line, 1.0f / apart)
-                             : Vector2F{0.0f, firstIndex % 2 == 0 ? 1.0f : -1.0f};
+      line = apart > EPSILON
+                 ? scaled(line, 1.0F / apart)
+                 : Vector2F{.x = 0.0F, .y = firstIndex % 2 == 0 ? 1.0F : -1.0F};
       const float oneAlong = dot(one.velocity, line);
       const float twoAlong = dot(two.velocity, line);
       const float common =
@@ -398,27 +466,30 @@ void MatchEngine::collidePlayers(float dt)
       two.velocity = add(two.velocity, jolts[1]);
       one.anchor = add(oneAt, scaled(one.velocity, -now));
       two.anchor = add(twoAt, scaled(two.velocity, -now));
-      one.hit = one.inverseMass > 0.0f;
-      two.hit = two.inverseMass > 0.0f;
+      one.hit = one.inverseMass > 0.0F;
+      two.hit = two.inverseMass > 0.0F;
 
       CollisionHit record;
       record.step = stepCounter;
       record.atSeconds = now;
-      record.where = asPoint(scaled(add(oneAt, twoAt), 0.5f));
+      record.where = asPoint(scaled(add(oneAt, twoAt), 0.5F));
       const std::array<std::size_t, 2> indices{firstIndex, secondIndex};
       const bool bothPlayers = !onLine(firstIndex) && !onLine(secondIndex);
       for (std::size_t side = 0; side < 2; ++side)
       {
         MatchPlayer& player = *bodies[indices[side]];
         CollisionSide& entry = record.sides[side];
-        entry.player = player.player ? player.player->getId() : 0;
+        entry.player = (player.player != nullptr) ? player.player->getId() : 0;
         entry.jolt = jolts[side];
         entry.after = paths[indices[side]].velocity;
-        if (paths[indices[side]].inverseMass == 0.0f) continue;
+        if (paths[indices[side]].inverseMass == 0.0F)
+        {
+          continue;
+        }
         const float jolt = length(jolts[side]);
-        entry.endsUp = length(entry.after) /
-                       std::max(directionTopSpeedBinturong(player, entry.after),
-                                EPSILON);
+        entry.endsUp =
+            length(entry.after) /
+            std::max(directionTopSpeedBinturong(player, entry.after), EPSILON);
         entry.sudden = jolt / std::max(hardestBrakingBinturong(player) *
                                            C::SUDDEN_WINDOW_SECONDS,
                                        EPSILON);
@@ -427,19 +498,22 @@ void MatchEngine::collidePlayers(float dt)
         if (entry.outcome > 0 && bothPlayers)
         {
           const std::size_t otherSide = 1 - side;
-          const Vector2F before{entry.after.x - entry.jolt.x, entry.after.y - entry.jolt.y};
+          const Vector2F before{.x = entry.after.x - entry.jolt.x,
+                                .y = entry.after.y - entry.jolt.y};
           const Vector2F otherAfter = paths[indices[otherSide]].velocity;
-          const Vector2F otherBefore{otherAfter.x - jolts[otherSide].x,
-                                     otherAfter.y - jolts[otherSide].y};
+          const Vector2F otherBefore{.x = otherAfter.x - jolts[otherSide].x,
+                                     .y = otherAfter.y - jolts[otherSide].y};
           ++stats.collisionKnocksBySituation[knockSituation(
               indices[side], indices[otherSide], before, otherBefore,
-              scaled(add(oneAt, twoAt), 0.5f), getSimulatedSeconds() + now)];
-          ++stats.collisionKnocksByIntent[static_cast<std::size_t>(player.intent)];
+              scaled(add(oneAt, twoAt), 0.5F), getSimulatedSeconds() + now)];
+          ++stats.collisionKnocksByIntent[static_cast<std::size_t>(
+              player.intent)];
           // A chase for a loose ball in it: what the other was doing.
           const MatchPlayer& other = players[indices[otherSide]];
-          ++stats.collisionKnocksByIntentPair[static_cast<std::size_t>(player.intent)]
-                                             [static_cast<std::size_t>(other.intent)];
-          // Two players getting into position: why the way round did not stop it.
+          ++stats.collisionKnocksByIntentPair[static_cast<std::size_t>(
+              player.intent)][static_cast<std::size_t>(other.intent)];
+          // Two players getting into position: why the way round did not stop
+          // it.
           const auto positioning = [](const MatchPlayer& man)
           {
             return man.intent == PlayerIntent::HOLD_SHAPE ||
@@ -450,9 +524,12 @@ void MatchEngine::collidePlayers(float dt)
           {
             const std::size_t mine = indices[side];
             const std::size_t theirs = indices[otherSide];
-            constexpr float AT_SPOT_METRES = 2.0f;
+            constexpr float AT_SPOT_METRES = 2.0F;
             const auto atSpot = [this](const MatchPlayer& man)
-            { return distance(man.position, man.tacticalTarget) <= AT_SPOT_METRES; };
+            {
+              return distance(man.position, man.tacticalTarget) <=
+                     AT_SPOT_METRES;
+            };
             const bool givingWay =
                 player.givingWayTo == static_cast<std::int8_t>(theirs) ||
                 other.givingWayTo == static_cast<std::int8_t>(mine) ||
@@ -464,59 +541,84 @@ void MatchEngine::collidePlayers(float dt)
                 : player.wayRoundOf == static_cast<std::int8_t>(theirs) ||
                         other.wayRoundOf == static_cast<std::int8_t>(mine)
                     ? 1
-                : player.wayRoundBlockedBy == static_cast<std::int8_t>(theirs) ||
-                        other.wayRoundBlockedBy == static_cast<std::int8_t>(mine)
+                : player.wayRoundBlockedBy ==
+                            static_cast<std::int8_t>(theirs) ||
+                        other.wayRoundBlockedBy ==
+                            static_cast<std::int8_t>(mine)
                     ? 2
                 : player.wayRoundOf >= 0 || other.wayRoundOf >= 0 ? 3
-                                                                   : 4;
-            ++stats.positioningKnocksByReason[reason]
-                                             [player.isHomeTeam == other.isHomeTeam ? 0 : 1];
+                                                                  : 4;
+            ++stats.positioningKnocksByReason
+                  [reason][player.isHomeTeam == other.isHomeTeam ? 0 : 1];
             const auto band = [](float speed)
-            { return speed < 1.0f ? 0U : speed < 3.0f ? 1U : speed < 5.0f ? 2U : 3U; };
-            ++stats.positioningKnocksBySpeed[band(length(before))][band(length(otherBefore))];
+            {
+              return speed < 1.0F   ? 0U
+                     : speed < 3.0F ? 1U
+                     : speed < 5.0F ? 2U
+                                    : 3U;
+            };
+            ++stats.positioningKnocksBySpeed[band(length(before))]
+                                            [band(length(otherBefore))];
             const float speedA = length(before);
             const float speedB = length(otherBefore);
-            const float cosine = speedA > EPSILON && speedB > EPSILON
-                                     ? dot(before, otherBefore) / (speedA * speedB)
-                                     : 1.0f;
-            ++stats.positioningKnocksByMotion[speedA < 0.5f || speedB < 0.5f ? 0
-                                              : cosine >= 0.7071f            ? 1
-                                              : cosine > -0.7071f            ? 2
-                                                                             : 3];
+            const float cosine =
+                speedA > EPSILON && speedB > EPSILON
+                    ? dot(before, otherBefore) / (speedA * speedB)
+                    : 1.0F;
+            ++stats.positioningKnocksByMotion[speedA < 0.5F || speedB < 0.5F ? 0
+                                              : cosine >= 0.7071F            ? 1
+                                              : cosine > -0.7071F            ? 2
+                                                                  : 3];
           }
           const bool chasing = player.intent == PlayerIntent::CLAIM_LOOSE_BALL;
-          const bool otherChasing = other.intent == PlayerIntent::CLAIM_LOOSE_BALL;
+          const bool otherChasing =
+              other.intent == PlayerIntent::CLAIM_LOOSE_BALL;
           if (chasing || otherChasing)
           {
             const std::size_t with =
                 chasing && otherChasing
-                    ? (player.isHomeTeam == other.isHomeTeam ? PLAYER_INTENT_COUNT
-                                                             : static_cast<std::size_t>(
-                                                                   PlayerIntent::CLAIM_LOOSE_BALL))
-                    : static_cast<std::size_t>(chasing ? other.intent : player.intent);
+                    ? (player.isHomeTeam == other.isHomeTeam
+                           ? PLAYER_INTENT_COUNT
+                           : static_cast<std::size_t>(
+                                 PlayerIntent::CLAIM_LOOSE_BALL))
+                    : static_cast<std::size_t>(chasing ? other.intent
+                                                       : player.intent);
             ++stats.collisionChaseKnocksWith[with];
-            if (chasing) ++stats.collisionChaseKnocksOnChaser;
+            if (chasing)
+            {
+              ++stats.collisionChaseKnocksOnChaser;
+            }
           }
         }
       }
       // Who ran into whom, and when: a re-hit is read against it.
       for (std::size_t side = 0; side < 2 && bothPlayers; ++side)
       {
-        players[indices[side]].lastContactSlot = static_cast<std::int8_t>(indices[1 - side]);
+        players[indices[side]].lastContactSlot =
+            static_cast<std::int8_t>(indices[1 - side]);
         players[indices[side]].lastContactAt = getSimulatedSeconds() + now;
       }
       lastCollisions.push_back(record);
       ++stats.collisions;
       const float hardest = std::max(length(jolts[0]), length(jolts[1]));
-      if (hardest >= 2.0f) ++stats.collisionsJoltTwo;
-      if (hardest >= 4.0f) ++stats.collisionsJoltFour;
+      if (hardest >= 2.0F)
+      {
+        ++stats.collisionsJoltTwo;
+      }
+      if (hardest >= 4.0F)
+      {
+        ++stats.collisionsJoltFour;
+      }
     }
 
     // Wound forward to the end of the step: the hit players only (everyone
     // else's line ends where his body left him).
     for (std::size_t index = 0; index < count; ++index)
     {
-      if (!paths[index].hit) continue;
+      if (!paths[index].hit)
+      {
+        continue;
+      }
       MatchPlayer& player = *bodies[index];
       const PitchPoint end = asPoint(at(index, dt));
       player.position = moveBody(player.position, end);
@@ -527,32 +629,50 @@ void MatchEngine::collidePlayers(float dt)
     // eased apart by a separating speed, shared by weight; never moved.
     for (std::size_t first = 0; first < count; ++first)
     {
-      if (!paths[first].takesPart) continue;
+      if (!paths[first].takesPart)
+      {
+        continue;
+      }
       for (std::size_t second = first + 1; second < count; ++second)
       {
-        if (!paths[second].takesPart || (onLine(first) && onLine(second))) continue;
+        if (!paths[second].takesPart || (onLine(first) && onLine(second)))
+        {
+          continue;
+        }
         const float inverseTotal =
             paths[first].inverseMass + paths[second].inverseMass;
-        if (inverseTotal <= 0.0f) continue;
+        if (inverseTotal <= 0.0F)
+        {
+          continue;
+        }
         MatchPlayer& one = *bodies[first];
         MatchPlayer& two = *bodies[second];
         const Vector2F gap = two.position - one.position;
         const float apart = length(gap);
         const float overlap = MatchTuning::Body::DIAMETER_METRES - apart;
-        if (overlap <= 0.0f) continue;
+        if (overlap <= 0.0F)
+        {
+          continue;
+        }
         const Vector2F line =
-            apart > EPSILON ? scaled(gap, 1.0f / apart)
-                            : Vector2F{0.0f, first % 2 == 0 ? 1.0f : -1.0f};
+            apart > EPSILON
+                ? scaled(gap, 1.0F / apart)
+                : Vector2F{.x = 0.0F, .y = first % 2 == 0 ? 1.0F : -1.0F};
         const float easing = C::OVERLAP_EASING_PER_SECOND * overlap;
         // Only what they lack of it: a pair already parting fast enough is
         // left alone.
         const float parting = dot(two.velocity, line) - dot(one.velocity, line);
         const float needed = easing - parting;
-        if (needed <= 0.0f) continue;
-        one.velocity =
-            add(one.velocity, scaled(line, -needed * paths[first].inverseMass / inverseTotal));
-        two.velocity =
-            add(two.velocity, scaled(line, needed * paths[second].inverseMass / inverseTotal));
+        if (needed <= 0.0F)
+        {
+          continue;
+        }
+        one.velocity = add(
+            one.velocity,
+            scaled(line, -needed * paths[first].inverseMass / inverseTotal));
+        two.velocity = add(
+            two.velocity,
+            scaled(line, needed * paths[second].inverseMass / inverseTotal));
       }
     }
   }
@@ -567,41 +687,49 @@ struct LyingBody
 {
   Vector2F centre{};
   Vector2F along{};
-  float half = 0.0f;
+  float half = 0.0F;
 };
 
 LyingBody lyingBody(const MatchPitch& pitch, const MatchPlayer& player)
 {
-  const Vector2F along{std::cos(player.lyingAngle),
-                       std::sin(player.lyingAngle)};
+  const Vector2F along{.x = std::cos(player.lyingAngle),
+                       .y = std::sin(player.lyingAngle)};
   const float alongLength = std::max(length(along), EPSILON);
-  return {asVector(player.position),
-          scaled(along, 1.0f / alongLength),
-          std::max(0.0f, 0.5f * player.heightMetres - 0.5f * MatchTuning::Body::DIAMETER_METRES)};
+  return {
+      .centre = asVector(player.position),
+      .along = scaled(along, 1.0F / alongLength),
+      .half = std::max(0.0F, 0.5F * player.heightMetres -
+                                 0.5F * MatchTuning::Body::DIAMETER_METRES)};
 }
 
 /** The nearest point of the body's middle line to `point` (metres). */
 Vector2F nearestOnBody(const LyingBody& body, Vector2F point)
 {
-  const Vector2F offset{point.x - body.centre.x, point.y - body.centre.y};
-  const float along = std::clamp(dot(offset, body.along), -body.half, body.half);
+  const Vector2F offset{.x = point.x - body.centre.x,
+                        .y = point.y - body.centre.y};
+  const float along =
+      std::clamp(dot(offset, body.along), -body.half, body.half);
   return add(body.centre, scaled(body.along, along));
 }
 
 /** When (0-1) a point moving `start` + `move` * t first comes `reach` from
  * the body's middle line, closing; touching and closing at the start: 0. */
-std::optional<float> bodyContactTime(const LyingBody& body, Vector2F start, Vector2F move,
-                                     float reach)
+std::optional<float> bodyContactTime(const LyingBody& body, Vector2F start,
+                                     Vector2F move, float reach)
 {
   const Vector2F nearest = nearestOnBody(body, start);
-  const Vector2F gap{start.x - nearest.x, start.y - nearest.y};
+  const Vector2F gap{.x = start.x - nearest.x, .y = start.y - nearest.y};
   if (length(gap) <= reach)
   {
-    if (dot(gap, move) < 0.0f) return 0.0f;
+    if (dot(gap, move) < 0.0F)
+    {
+      return 0.0F;
+    }
     return std::nullopt;
   }
-  const Vector2F across{-body.along.y, body.along.x};
-  const Vector2F offset{start.x - body.centre.x, start.y - body.centre.y};
+  const Vector2F across{.x = -body.along.y, .y = body.along.x};
+  const Vector2F offset{.x = start.x - body.centre.x,
+                        .y = start.y - body.centre.y};
   const float a0 = dot(offset, body.along);
   const float b0 = dot(offset, across);
   const float da = dot(move, body.along);
@@ -609,27 +737,42 @@ std::optional<float> bodyContactTime(const LyingBody& body, Vector2F start, Vect
   std::optional<float> first;
   const auto take = [&first](float time)
   {
-    if (time >= 0.0f && time <= 1.0f && (!first || time < *first)) first = time;
+    if (time >= 0.0F && time <= 1.0F && (!first || time < *first))
+    {
+      first = time;
+    }
   };
   // Its flat sides.
   for (const float side : {reach, -reach})
   {
-    if (std::abs(db) <= EPSILON || (b0 - side) * db >= 0.0f) continue;
+    if (std::abs(db) <= EPSILON || (b0 - side) * db >= 0.0F)
+    {
+      continue;
+    }
     const float time = (side - b0) / db;
-    if (std::abs(a0 + da * time) <= body.half) take(time);
+    if (std::abs(a0 + (da * time)) <= body.half)
+    {
+      take(time);
+    }
   }
   // Its rounded ends.
   for (const float end : {body.half, -body.half})
   {
-    const Vector2F rel{a0 - end, b0};
-    const Vector2F moving{da, db};
+    const Vector2F rel{.x = a0 - end, .y = b0};
+    const Vector2F moving{.x = da, .y = db};
     const float a = dot(moving, moving);
-    if (a <= EPSILON) continue;
-    const float b = 2.0f * dot(rel, moving);
-    const float c = dot(rel, rel) - reach * reach;
-    const float discriminant = b * b - 4.0f * a * c;
-    if (discriminant < 0.0f) continue;
-    take((-b - std::sqrt(discriminant)) / (2.0f * a));
+    if (a <= EPSILON)
+    {
+      continue;
+    }
+    const float b = 2.0F * dot(rel, moving);
+    const float c = dot(rel, rel) - (reach * reach);
+    const float discriminant = (b * b) - (4.0F * a * c);
+    if (discriminant < 0.0F)
+    {
+      continue;
+    }
+    take((-b - std::sqrt(discriminant)) / (2.0F * a));
   }
   return first;
 }
@@ -639,24 +782,40 @@ std::optional<std::pair<std::size_t, float>> MatchEngine::fallenBodyInPath(
     float seconds) const
 {
   using C = MatchTuning::Collision;
-  if (state != MatchState::PLAYING || (getPossessionAttachment() && !hasTouchClaim())) return std::nullopt;
+  if (state != MatchState::PLAYING ||
+      ((getPossessionAttachment() != nullptr) && !hasTouchClaim()))
+  {
+    return std::nullopt;
+  }
   const Vector2F start = asVector(ball.position);
   const Vector2F move = scaled(ball.velocity, seconds);
   const float startHeight = ball.z;
-  const float reach =
-      0.5f * MatchTuning::Body::DIAMETER_METRES + MatchTuning::Units::BALL_RADIUS_METRES;
+  const float reach = (0.5F * MatchTuning::Body::DIAMETER_METRES) +
+                      MatchTuning::Units::BALL_RADIUS_METRES;
   std::optional<std::pair<std::size_t, float>> first;
   for (std::size_t slot = 0; slot < players.size(); ++slot)
   {
     const MatchPlayer& player = players[slot];
-    if (!active(player) || !player.fallen) continue;
+    if (!active(player) || !player.fallen)
+    {
+      continue;
+    }
     const std::optional<float> time =
         bodyContactTime(lyingBody(pitch, player), start, move, reach);
-    if (!time) continue;
-    // Over him, it goes on.
-    if (startHeight + ball.velocityZ * seconds * *time > C::FALLEN_BALL_BELOW_METRES)
+    if (!time)
+    {
       continue;
-    if (!first || *time < first->second) first = std::pair{slot, *time};
+    }
+    // Over him, it goes on.
+    if (startHeight + ball.velocityZ * seconds * *time >
+        C::FALLEN_BALL_BELOW_METRES)
+    {
+      continue;
+    }
+    if (!first || *time < first->second)
+    {
+      first = std::pair{slot, *time};
+    }
   }
   return first;
 }
@@ -669,17 +828,26 @@ void MatchEngine::bounceOffFallen(MatchPlayer& player)
   const LyingBody body = lyingBody(pitch, player);
   const Vector2F at = asVector(ball.position);
   const Vector2F nearest = nearestOnBody(body, at);
-  Vector2F normal{at.x - nearest.x, at.y - nearest.y};
+  Vector2F normal{.x = at.x - nearest.x, .y = at.y - nearest.y};
   const float apart = length(normal);
   const float speed = length(ball.velocity);
   if (apart > EPSILON)
-    normal = scaled(normal, 1.0f / apart);
+  {
+    normal = scaled(normal, 1.0F / apart);
+  }
   else if (speed > EPSILON)
-    normal = scaled(ball.velocity, -1.0f / speed);
+  {
+    normal = scaled(ball.velocity, -1.0F / speed);
+  }
   else
+  {
     return;
+  }
   const float into = dot(ball.velocity, normal);
-  if (into >= 0.0f) return;
+  if (into >= 0.0F)
+  {
+    return;
+  }
   const Vector2F alongSurface = add(ball.velocity, scaled(normal, -into));
   ball.velocity = add(scaled(alongSurface, C::FALLEN_ALONG_KEPT_SHARE),
                       scaled(normal, -into * C::FALLEN_BOUNCE_BACK_SHARE));
@@ -688,9 +856,13 @@ void MatchEngine::bounceOffFallen(MatchPlayer& player)
 
 const Player* MatchEngine::lastTouchForRestart() const
 {
-  if (getPossessionState().deflectedBy && getPossessionState().pathSince == getPossessionState().deflectedPathSince &&
+  if ((getPossessionState().deflectedBy != nullptr) &&
+      getPossessionState().pathSince ==
+          getPossessionState().deflectedPathSince &&
       getLastPossessionAttachment() == getPossessionState().deflectedAfter)
+  {
     return getPossessionState().deflectedBy;
+  }
   return getLastPossessionAttachment();
 }
 
@@ -700,28 +872,49 @@ std::size_t MatchEngine::knockSituation(std::size_t slot, std::size_t otherSlot,
 {
   // Constants of the breakdown only (a measure, not a rule).
   constexpr double REHIT_SECONDS = 1.0;
-  constexpr float BALL_METRES = 2.0f;
-  constexpr float AIMED_METRES = 1.5f;
-  constexpr float SAME_TARGET_METRES = 2.0f;
-  constexpr float SAME_WAY_COSINE = 0.7071f;
-  constexpr float SLOW_SPEED = 1.0f;
+  constexpr float BALL_METRES = 2.0F;
+  constexpr float AIMED_METRES = 1.5F;
+  constexpr float SAME_TARGET_METRES = 2.0F;
+  constexpr float SAME_WAY_COSINE = 0.7071F;
+  constexpr float SLOW_SPEED = 1.0F;
   const MatchPlayer& player = players[slot];
   const MatchPlayer& other = players[otherSlot];
   if (player.lastContactSlot == static_cast<std::int8_t>(otherSlot) &&
       at - player.lastContactAt <= REHIT_SECONDS)
+  {
     return 0;
+  }
   const Vector2F ballAt = asVector(ball.position);
-  if (length({ballAt.x - where.x, ballAt.y - where.y}) <= BALL_METRES) return 1;
-  if (distance(player.tacticalTarget, other.position) <= AIMED_METRES) return 2;
-  if (player.overtaking == static_cast<std::int8_t>(otherSlot)) return 3;
+  if (length({.x = ballAt.x - where.x, .y = ballAt.y - where.y}) <= BALL_METRES)
+  {
+    return 1;
+  }
+  if (distance(player.tacticalTarget, other.position) <= AIMED_METRES)
+  {
+    return 2;
+  }
+  if (player.overtaking == static_cast<std::int8_t>(otherSlot))
+  {
+    return 3;
+  }
   const float speed = length(before);
   const float otherSpeed = length(otherBefore);
-  const bool sameWay = speed > EPSILON && otherSpeed > EPSILON &&
-                       dot(before, otherBefore) / (speed * otherSpeed) >= SAME_WAY_COSINE;
-  if (sameWay && distance(player.tacticalTarget, other.tacticalTarget) <= SAME_TARGET_METRES)
+  const bool sameWay =
+      speed > EPSILON && otherSpeed > EPSILON &&
+      dot(before, otherBefore) / (speed * otherSpeed) >= SAME_WAY_COSINE;
+  if (sameWay && distance(player.tacticalTarget, other.tacticalTarget) <=
+                     SAME_TARGET_METRES)
+  {
     return 4;
-  if (speed < SLOW_SPEED || otherSpeed < SLOW_SPEED) return 5;
-  if (!sameWay) return 6;
+  }
+  if (speed < SLOW_SPEED || otherSpeed < SLOW_SPEED)
+  {
+    return 5;
+  }
+  if (!sameWay)
+  {
+    return 6;
+  }
   return 7;
 }
 
@@ -734,31 +927,42 @@ bool MatchEngine::bounceOffDummies(MatchPlayer& player, Vector2F before)
     // Touching it (the keep-out holds him at its radius plus his), to a
     // millimetre.
     const float reach = PitchKit::dummyShape(dummy.kind).radius + R;
-    Vector2F normal{player.position.x - dummy.at.x, player.position.y - dummy.at.y};
+    Vector2F normal{.x = player.position.x - dummy.at.x,
+                    .y = player.position.y - dummy.at.y};
     const float apart = length(normal);
-    if (apart > reach + 0.001f || apart <= EPSILON) continue;
-    normal = scaled(normal, 1.0f / apart);
+    if (apart > reach + 0.001F || apart <= EPSILON)
+    {
+      continue;
+    }
+    normal = scaled(normal, 1.0F / apart);
     const float into = dot(before, normal);
-    if (into >= 0.0f) continue;
+    if (into >= 0.0F)
+    {
+      continue;
+    }
     // Off it as the ball is: into it reversed, a share kept; along it kept.
-    const Vector2F after =
-        add(before, scaled(normal, -(1.0f + MatchTuning::Dummy::BODY_RESTITUTION) * into));
-    const Vector2F jolt{after.x - before.x, after.y - before.y};
+    const Vector2F after = add(
+        before,
+        scaled(normal, -(1.0F + MatchTuning::Dummy::BODY_RESTITUTION) * into));
+    const Vector2F jolt{.x = after.x - before.x, .y = after.y - before.y};
     player.velocity = after;
     ++dummyBodyHits;
     // The Binturong body judges the jolt as a collision's: kept his feet
     // (a pause), a stumble or a fall, by his Balance.
-    if (bodyOf(player.isHomeTeam) == BodyId::BINTURONG && player.player)
+    if (bodyOf(player.isHomeTeam) == BodyId::BINTURONG &&
+        (player.player != nullptr))
     {
       CollisionSide side;
       side.player = player.player->getId();
       side.jolt = jolt;
       side.after = after;
-      side.endsUp = length(after) / std::max(directionTopSpeedBinturong(player, after), EPSILON);
+      side.endsUp =
+          length(after) /
+          std::max(directionTopSpeedBinturong(player, after), EPSILON);
       side.sudden = length(jolt) / std::max(hardestBrakingBinturong(player) *
                                                 C::SUDDEN_WINDOW_SECONDS,
                                             EPSILON);
-      judgeKnock(player, side, 0.0f);
+      judgeKnock(player, side, 0.0F);
     }
     return true;
   }

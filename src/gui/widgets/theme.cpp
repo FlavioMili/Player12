@@ -16,9 +16,9 @@
 
 namespace
 {
-constexpr float BASE_FONT_SIZE = 16.0f;
-constexpr float MIN_UI_SCALE = 0.75f;
-constexpr float MAX_UI_SCALE = 2.0f;
+constexpr float BASE_FONT_SIZE = 16.0F;
+constexpr float MIN_UI_SCALE = 0.75F;
+constexpr float MAX_UI_SCALE = 2.0F;
 
 struct PresetColors
 {
@@ -30,67 +30,79 @@ struct PresetColors
   ImVec4 text;
   ImVec4 muted;
   ImVec4 faint;
-  float row_stripe_alpha;
-  bool light;
+  float row_stripe_alpha = 0.0F;
+  bool light = false;
 };
 
 constexpr std::array<PresetColors, static_cast<size_t>(std::to_underlying(
                                        Theme::Preset::COUNT))>
     PRESETS = {{
         // Slate (default): a soft graphite with clear elevation steps.
-        {ImVec4(0.118f, 0.133f, 0.153f, 1.0f),  // #1E2227
-         ImVec4(0.137f, 0.153f, 0.176f, 1.0f),  // #23272D
-         ImVec4(0.165f, 0.184f, 0.212f, 1.0f),  // #2A2F36
-         ImVec4(0.208f, 0.231f, 0.267f, 1.0f),  // #353B44
-         ImVec4(0.275f, 0.302f, 0.345f, 1.0f),  // #464D58
-         ImVec4(0.940f, 0.950f, 0.965f, 1.0f),
-         ImVec4(0.680f, 0.715f, 0.760f, 1.0f),
-         ImVec4(0.505f, 0.545f, 0.595f, 1.0f), 0.030f, false},
+        {.background = ImVec4(0.118F, 0.133F, 0.153F, 1.0F),  // #1E2227
+         .sidebar = ImVec4(0.137F, 0.153F, 0.176F, 1.0F),     // #23272D
+         .surface = ImVec4(0.165F, 0.184F, 0.212F, 1.0F),     // #2A2F36
+         .raised = ImVec4(0.208F, 0.231F, 0.267F, 1.0F),      // #353B44
+         .border = ImVec4(0.275F, 0.302F, 0.345F, 1.0F),      // #464D58
+         .text = ImVec4(0.940F, 0.950F, 0.965F, 1.0F),
+         .muted = ImVec4(0.680F, 0.715F, 0.760F, 1.0F),
+         .faint = ImVec4(0.505F, 0.545F, 0.595F, 1.0F),
+         .row_stripe_alpha = 0.030F,
+         .light = false},
         // Midnight blue.
-        {ImVec4(0.086f, 0.106f, 0.165f, 1.0f),
-         ImVec4(0.102f, 0.125f, 0.192f, 1.0f),
-         ImVec4(0.125f, 0.153f, 0.231f, 1.0f),
-         ImVec4(0.165f, 0.200f, 0.290f, 1.0f),
-         ImVec4(0.235f, 0.275f, 0.380f, 1.0f),
-         ImVec4(0.930f, 0.945f, 0.980f, 1.0f),
-         ImVec4(0.655f, 0.700f, 0.800f, 1.0f),
-         ImVec4(0.475f, 0.520f, 0.625f, 1.0f), 0.030f, false},
+        {.background = ImVec4(0.086F, 0.106F, 0.165F, 1.0F),
+         .sidebar = ImVec4(0.102F, 0.125F, 0.192F, 1.0F),
+         .surface = ImVec4(0.125F, 0.153F, 0.231F, 1.0F),
+         .raised = ImVec4(0.165F, 0.200F, 0.290F, 1.0F),
+         .border = ImVec4(0.235F, 0.275F, 0.380F, 1.0F),
+         .text = ImVec4(0.930F, 0.945F, 0.980F, 1.0F),
+         .muted = ImVec4(0.655F, 0.700F, 0.800F, 1.0F),
+         .faint = ImVec4(0.475F, 0.520F, 0.625F, 1.0F),
+         .row_stripe_alpha = 0.030F,
+         .light = false},
         // Pitch green.
-        {ImVec4(0.078f, 0.122f, 0.102f, 1.0f),
-         ImVec4(0.094f, 0.145f, 0.122f, 1.0f),
-         ImVec4(0.114f, 0.173f, 0.145f, 1.0f),
-         ImVec4(0.153f, 0.224f, 0.192f, 1.0f),
-         ImVec4(0.216f, 0.298f, 0.259f, 1.0f),
-         ImVec4(0.930f, 0.965f, 0.945f, 1.0f),
-         ImVec4(0.655f, 0.745f, 0.700f, 1.0f),
-         ImVec4(0.470f, 0.560f, 0.515f, 1.0f), 0.030f, false},
+        {.background = ImVec4(0.078F, 0.122F, 0.102F, 1.0F),
+         .sidebar = ImVec4(0.094F, 0.145F, 0.122F, 1.0F),
+         .surface = ImVec4(0.114F, 0.173F, 0.145F, 1.0F),
+         .raised = ImVec4(0.153F, 0.224F, 0.192F, 1.0F),
+         .border = ImVec4(0.216F, 0.298F, 0.259F, 1.0F),
+         .text = ImVec4(0.930F, 0.965F, 0.945F, 1.0F),
+         .muted = ImVec4(0.655F, 0.745F, 0.700F, 1.0F),
+         .faint = ImVec4(0.470F, 0.560F, 0.515F, 1.0F),
+         .row_stripe_alpha = 0.030F,
+         .light = false},
         // Light.
-        {ImVec4(0.925f, 0.933f, 0.945f, 1.0f),
-         ImVec4(0.965f, 0.969f, 0.976f, 1.0f),
-         ImVec4(1.000f, 1.000f, 1.000f, 1.0f),
-         ImVec4(0.906f, 0.914f, 0.929f, 1.0f),
-         ImVec4(0.800f, 0.812f, 0.835f, 1.0f),
-         ImVec4(0.078f, 0.090f, 0.110f, 1.0f),
-         ImVec4(0.330f, 0.360f, 0.405f, 1.0f),
-         ImVec4(0.480f, 0.510f, 0.555f, 1.0f), 0.030f, true},
+        {.background = ImVec4(0.925F, 0.933F, 0.945F, 1.0F),
+         .sidebar = ImVec4(0.965F, 0.969F, 0.976F, 1.0F),
+         .surface = ImVec4(1.000F, 1.000F, 1.000F, 1.0F),
+         .raised = ImVec4(0.906F, 0.914F, 0.929F, 1.0F),
+         .border = ImVec4(0.800F, 0.812F, 0.835F, 1.0F),
+         .text = ImVec4(0.078F, 0.090F, 0.110F, 1.0F),
+         .muted = ImVec4(0.330F, 0.360F, 0.405F, 1.0F),
+         .faint = ImVec4(0.480F, 0.510F, 0.555F, 1.0F),
+         .row_stripe_alpha = 0.030F,
+         .light = true},
         // High contrast.
-        {ImVec4(0.000f, 0.000f, 0.000f, 1.0f),
-         ImVec4(0.030f, 0.030f, 0.030f, 1.0f),
-         ImVec4(0.050f, 0.050f, 0.050f, 1.0f),
-         ImVec4(0.140f, 0.140f, 0.140f, 1.0f),
-         ImVec4(0.720f, 0.720f, 0.720f, 1.0f),
-         ImVec4(1.000f, 1.000f, 1.000f, 1.0f),
-         ImVec4(0.850f, 0.850f, 0.850f, 1.0f),
-         ImVec4(0.700f, 0.700f, 0.700f, 1.0f), 0.060f, false},
+        {.background = ImVec4(0.000F, 0.000F, 0.000F, 1.0F),
+         .sidebar = ImVec4(0.030F, 0.030F, 0.030F, 1.0F),
+         .surface = ImVec4(0.050F, 0.050F, 0.050F, 1.0F),
+         .raised = ImVec4(0.140F, 0.140F, 0.140F, 1.0F),
+         .border = ImVec4(0.720F, 0.720F, 0.720F, 1.0F),
+         .text = ImVec4(1.000F, 1.000F, 1.000F, 1.0F),
+         .muted = ImVec4(0.850F, 0.850F, 0.850F, 1.0F),
+         .faint = ImVec4(0.700F, 0.700F, 0.700F, 1.0F),
+         .row_stripe_alpha = 0.060F,
+         .light = false},
         // True dark: near-black charcoal for dim rooms and OLED panels.
-        {ImVec4(0.045f, 0.055f, 0.066f, 1.0f),
-         ImVec4(0.058f, 0.069f, 0.082f, 1.0f),
-         ImVec4(0.075f, 0.088f, 0.103f, 1.0f),
-         ImVec4(0.112f, 0.128f, 0.147f, 1.0f),
-         ImVec4(0.160f, 0.182f, 0.205f, 1.0f),
-         ImVec4(0.905f, 0.925f, 0.940f, 1.0f),
-         ImVec4(0.600f, 0.650f, 0.690f, 1.0f),
-         ImVec4(0.420f, 0.460f, 0.500f, 1.0f), 0.022f, false},
+        {.background = ImVec4(0.045F, 0.055F, 0.066F, 1.0F),
+         .sidebar = ImVec4(0.058F, 0.069F, 0.082F, 1.0F),
+         .surface = ImVec4(0.075F, 0.088F, 0.103F, 1.0F),
+         .raised = ImVec4(0.112F, 0.128F, 0.147F, 1.0F),
+         .border = ImVec4(0.160F, 0.182F, 0.205F, 1.0F),
+         .text = ImVec4(0.905F, 0.925F, 0.940F, 1.0F),
+         .muted = ImVec4(0.600F, 0.650F, 0.690F, 1.0F),
+         .faint = ImVec4(0.420F, 0.460F, 0.500F, 1.0F),
+         .row_stripe_alpha = 0.022F,
+         .light = false},
     }};
 
 struct StatusColors
@@ -107,49 +119,49 @@ struct StatusColors
 constexpr std::array<StatusColors, static_cast<size_t>(std::to_underlying(
                                        Theme::ColorVision::COUNT))>
     STATUS_DARK = {{
-        {ImVec4(0.235f, 0.770f, 0.486f, 1.0f),
-         ImVec4(0.945f, 0.706f, 0.255f, 1.0f),
-         ImVec4(0.937f, 0.416f, 0.396f, 1.0f),
-         ImVec4(0.400f, 0.660f, 0.965f, 1.0f)},
-        {ImVec4(0.380f, 0.650f, 1.000f, 1.0f),
-         ImVec4(0.950f, 0.830f, 0.300f, 1.0f),
-         ImVec4(0.960f, 0.520f, 0.180f, 1.0f),
-         ImVec4(0.760f, 0.640f, 0.980f, 1.0f)},
-        {ImVec4(0.200f, 0.780f, 0.740f, 1.0f),
-         ImVec4(0.980f, 0.640f, 0.400f, 1.0f),
-         ImVec4(0.960f, 0.420f, 0.520f, 1.0f),
-         ImVec4(0.640f, 0.660f, 0.980f, 1.0f)},
+        {.positive = ImVec4(0.235F, 0.770F, 0.486F, 1.0F),
+         .warning = ImVec4(0.945F, 0.706F, 0.255F, 1.0F),
+         .negative = ImVec4(0.937F, 0.416F, 0.396F, 1.0F),
+         .info = ImVec4(0.400F, 0.660F, 0.965F, 1.0F)},
+        {.positive = ImVec4(0.380F, 0.650F, 1.000F, 1.0F),
+         .warning = ImVec4(0.950F, 0.830F, 0.300F, 1.0F),
+         .negative = ImVec4(0.960F, 0.520F, 0.180F, 1.0F),
+         .info = ImVec4(0.760F, 0.640F, 0.980F, 1.0F)},
+        {.positive = ImVec4(0.200F, 0.780F, 0.740F, 1.0F),
+         .warning = ImVec4(0.980F, 0.640F, 0.400F, 1.0F),
+         .negative = ImVec4(0.960F, 0.420F, 0.520F, 1.0F),
+         .info = ImVec4(0.640F, 0.660F, 0.980F, 1.0F)},
     }};
 constexpr std::array<StatusColors, static_cast<size_t>(std::to_underlying(
                                        Theme::ColorVision::COUNT))>
     STATUS_LIGHT = {{
-        {ImVec4(0.090f, 0.470f, 0.250f, 1.0f),
-         ImVec4(0.560f, 0.360f, 0.000f, 1.0f),
-         ImVec4(0.700f, 0.150f, 0.140f, 1.0f),
-         ImVec4(0.120f, 0.360f, 0.720f, 1.0f)},
-        {ImVec4(0.100f, 0.350f, 0.750f, 1.0f),
-         ImVec4(0.500f, 0.400f, 0.000f, 1.0f),
-         ImVec4(0.650f, 0.270f, 0.000f, 1.0f),
-         ImVec4(0.420f, 0.250f, 0.650f, 1.0f)},
-        {ImVec4(0.000f, 0.430f, 0.400f, 1.0f),
-         ImVec4(0.620f, 0.300f, 0.050f, 1.0f),
-         ImVec4(0.700f, 0.120f, 0.300f, 1.0f),
-         ImVec4(0.330f, 0.300f, 0.700f, 1.0f)},
+        {.positive = ImVec4(0.090F, 0.470F, 0.250F, 1.0F),
+         .warning = ImVec4(0.560F, 0.360F, 0.000F, 1.0F),
+         .negative = ImVec4(0.700F, 0.150F, 0.140F, 1.0F),
+         .info = ImVec4(0.120F, 0.360F, 0.720F, 1.0F)},
+        {.positive = ImVec4(0.100F, 0.350F, 0.750F, 1.0F),
+         .warning = ImVec4(0.500F, 0.400F, 0.000F, 1.0F),
+         .negative = ImVec4(0.650F, 0.270F, 0.000F, 1.0F),
+         .info = ImVec4(0.420F, 0.250F, 0.650F, 1.0F)},
+        {.positive = ImVec4(0.000F, 0.430F, 0.400F, 1.0F),
+         .warning = ImVec4(0.620F, 0.300F, 0.050F, 1.0F),
+         .negative = ImVec4(0.700F, 0.120F, 0.300F, 1.0F),
+         .info = ImVec4(0.330F, 0.300F, 0.700F, 1.0F)},
     }};
 
 // Club accents are chosen for contrast on the dark surfaces, not to imitate
 // any real club identity.
 constexpr std::array<ImVec4, 10> CLUB_ACCENTS = {
-    ImVec4(0.130f, 0.650f, 0.390f, 1.0f), ImVec4(0.235f, 0.560f, 0.925f, 1.0f),
-    ImVec4(0.855f, 0.290f, 0.310f, 1.0f), ImVec4(0.925f, 0.620f, 0.180f, 1.0f),
-    ImVec4(0.560f, 0.420f, 0.910f, 1.0f), ImVec4(0.110f, 0.660f, 0.690f, 1.0f),
-    ImVec4(0.930f, 0.450f, 0.210f, 1.0f), ImVec4(0.330f, 0.420f, 0.900f, 1.0f),
-    ImVec4(0.830f, 0.330f, 0.620f, 1.0f), ImVec4(0.520f, 0.700f, 0.200f, 1.0f),
+    ImVec4(0.130F, 0.650F, 0.390F, 1.0F), ImVec4(0.235F, 0.560F, 0.925F, 1.0F),
+    ImVec4(0.855F, 0.290F, 0.310F, 1.0F), ImVec4(0.925F, 0.620F, 0.180F, 1.0F),
+    ImVec4(0.560F, 0.420F, 0.910F, 1.0F), ImVec4(0.110F, 0.660F, 0.690F, 1.0F),
+    ImVec4(0.930F, 0.450F, 0.210F, 1.0F), ImVec4(0.330F, 0.420F, 0.900F, 1.0F),
+    ImVec4(0.830F, 0.330F, 0.620F, 1.0F), ImVec4(0.520F, 0.700F, 0.200F, 1.0F),
 };
 
 struct RatingStop
 {
-  float value;
+  float value = 0.0F;
   ImVec4 color;
 };
 
@@ -160,33 +172,35 @@ using RatingScale = std::array<RatingStop, 5>;
 constexpr std::array<RatingScale, static_cast<size_t>(std::to_underlying(
                                       Theme::ColorVision::COUNT))>
     RATING_SCALES = {{
-        {{{35.0f, ImVec4(0.898f, 0.337f, std::numbers::inv_pi_v<float>, 1.0f)},
-          {50.0f, ImVec4(0.945f, 0.560f, 0.255f, 1.0f)},
-          {60.0f, ImVec4(0.905f, 0.740f, 0.250f, 1.0f)},
-          {70.0f, ImVec4(0.520f, 0.780f, 0.330f, 1.0f)},
-          {80.0f, ImVec4(0.180f, 0.760f, 0.500f, 1.0f)}}},
-        {{{35.0f, ImVec4(0.900f, 0.420f, 0.100f, 1.0f)},
-          {50.0f, ImVec4(0.940f, 0.620f, 0.250f, 1.0f)},
-          {60.0f, ImVec4(0.800f, 0.780f, 0.600f, 1.0f)},
-          {70.0f, ImVec4(0.500f, 0.680f, 0.950f, 1.0f)},
-          {80.0f, ImVec4(0.300f, 0.550f, 1.000f, 1.0f)}}},
-        {{{35.0f, ImVec4(0.900f, 0.300f, 0.420f, 1.0f)},
-          {50.0f, ImVec4(0.900f, 0.520f, 0.620f, 1.0f)},
-          {60.0f, ImVec4(0.780f, 0.720f, 0.780f, 1.0f)},
-          {70.0f, ImVec4(0.420f, 0.780f, 0.760f, 1.0f)},
-          {80.0f, ImVec4(0.150f, 0.740f, 0.700f, 1.0f)}}},
+        {{{.value = 35.0F,
+           .color =
+               ImVec4(0.898F, 0.337F, std::numbers::inv_pi_v<float>, 1.0F)},
+          {.value = 50.0F, .color = ImVec4(0.945F, 0.560F, 0.255F, 1.0F)},
+          {.value = 60.0F, .color = ImVec4(0.905F, 0.740F, 0.250F, 1.0F)},
+          {.value = 70.0F, .color = ImVec4(0.520F, 0.780F, 0.330F, 1.0F)},
+          {.value = 80.0F, .color = ImVec4(0.180F, 0.760F, 0.500F, 1.0F)}}},
+        {{{.value = 35.0F, .color = ImVec4(0.900F, 0.420F, 0.100F, 1.0F)},
+          {.value = 50.0F, .color = ImVec4(0.940F, 0.620F, 0.250F, 1.0F)},
+          {.value = 60.0F, .color = ImVec4(0.800F, 0.780F, 0.600F, 1.0F)},
+          {.value = 70.0F, .color = ImVec4(0.500F, 0.680F, 0.950F, 1.0F)},
+          {.value = 80.0F, .color = ImVec4(0.300F, 0.550F, 1.000F, 1.0F)}}},
+        {{{.value = 35.0F, .color = ImVec4(0.900F, 0.300F, 0.420F, 1.0F)},
+          {.value = 50.0F, .color = ImVec4(0.900F, 0.520F, 0.620F, 1.0F)},
+          {.value = 60.0F, .color = ImVec4(0.780F, 0.720F, 0.780F, 1.0F)},
+          {.value = 70.0F, .color = ImVec4(0.420F, 0.780F, 0.760F, 1.0F)},
+          {.value = 80.0F, .color = ImVec4(0.150F, 0.740F, 0.700F, 1.0F)}}},
     }};
 
 Theme::Appearance activeAppearance;
 std::optional<TeamID> activeClub;
-float activeScale = 1.0f;
+float activeScale = 1.0F;
 Theme::Palette activePalette{};
 thread_local const Theme::Palette* scopedPalette = nullptr;
 
 ImVec4 mix(const ImVec4& a, const ImVec4& b, float t)
 {
-  return ImVec4(a.x + (b.x - a.x) * t, a.y + (b.y - a.y) * t,
-                a.z + (b.z - a.z) * t, a.w + (b.w - a.w) * t);
+  return ImVec4(a.x + ((b.x - a.x) * t), a.y + ((b.y - a.y) * t),
+                a.z + ((b.z - a.z) * t), a.w + ((b.w - a.w) * t));
 }
 
 const PresetColors& presetColors()
@@ -194,7 +208,7 @@ const PresetColors& presetColors()
   const auto index =
       std::min(static_cast<size_t>(std::to_underlying(activeAppearance.preset)),
                PRESETS.size() - 1);
-  return PRESETS[index];
+  return PRESETS.at(index);
 }
 
 size_t visionIndex(Theme::ColorVision vision)
@@ -214,27 +228,27 @@ void buildPalette()
 
 float channelLuminance(float channel)
 {
-  return channel <= 0.04045f ? channel / 12.92f
-                             : std::pow((channel + 0.055f) / 1.055f, 2.4f);
+  return channel <= 0.04045F ? channel / 12.92F
+                             : std::pow((channel + 0.055F) / 1.055F, 2.4F);
 }
 
 float relativeLuminance(const ImVec4& color)
 {
-  return 0.2126f * channelLuminance(color.x) +
-         0.7152f * channelLuminance(color.y) +
-         0.0722f * channelLuminance(color.z);
+  return (0.2126F * channelLuminance(color.x)) +
+         (0.7152F * channelLuminance(color.y)) +
+         (0.0722F * channelLuminance(color.z));
 }
 
 // Lower saturation and brightness of the accent for control fills.
 ImVec4 mutedAccent(const ImVec4& accent, bool light)
 {
-  float hue = 0.0f;
-  float saturation = 0.0f;
-  float value = 0.0f;
+  float hue = 0.0F;
+  float saturation = 0.0F;
+  float value = 0.0F;
   ImGui::ColorConvertRGBtoHSV(accent.x, accent.y, accent.z, hue, saturation,
                               value);
-  saturation *= 0.62f;
-  value = light ? std::min(value, 0.62f) : std::clamp(value, 0.45f, 0.72f);
+  saturation *= 0.62F;
+  value = light ? std::min(value, 0.62F) : std::clamp(value, 0.45F, 0.72F);
   ImVec4 result(0, 0, 0, 1);
   ImGui::ColorConvertHSVtoRGB(hue, saturation, value, result.x, result.y,
                               result.z);
@@ -246,14 +260,14 @@ void applyColors()
   buildPalette();
   const Theme::Palette& p = activePalette;
   const PresetColors& preset = presetColors();
-  ImVec4* colors = ImGui::GetStyle().Colors;
+  auto& colors = ImGui::GetStyle().Colors;
   // Controls stay neutral; only handles, checks and fills carry a muted
   // version of the accent, so bright custom accents never flood the screen.
   const ImVec4 control = mutedAccent(p.accent, preset.light);
-  const ImVec4 controlHover = mix(control, p.text, 0.18f);
-  const ImVec4 neutralHover = mix(p.raised, p.border, 0.65f);
-  const ImVec4 neutralActive = mix(p.raised, p.border, 0.95f);
-  const ImVec4 selection = mix(p.raised, control, 0.22f);
+  const ImVec4 controlHover = mix(control, p.text, 0.18F);
+  const ImVec4 neutralHover = mix(p.raised, p.border, 0.65F);
+  const ImVec4 neutralActive = mix(p.raised, p.border, 0.95F);
+  const ImVec4 selection = mix(p.raised, control, 0.22F);
   const ImVec4 stripe = preset.light ? ImVec4(0, 0, 0, preset.row_stripe_alpha)
                                      : ImVec4(1, 1, 1, preset.row_stripe_alpha);
 
@@ -265,7 +279,7 @@ void applyColors()
   colors[ImGuiCol_Border] = p.border;
   colors[ImGuiCol_BorderShadow] = ImVec4(0, 0, 0, 0);
   colors[ImGuiCol_FrameBg] = p.raised;
-  colors[ImGuiCol_FrameBgHovered] = mix(p.raised, p.border, 0.7f);
+  colors[ImGuiCol_FrameBgHovered] = mix(p.raised, p.border, 0.7F);
   colors[ImGuiCol_FrameBgActive] = neutralActive;
   colors[ImGuiCol_TitleBg] = p.surface;
   colors[ImGuiCol_TitleBgActive] = p.raised;
@@ -283,7 +297,7 @@ void applyColors()
   colors[ImGuiCol_ButtonActive] = neutralActive;
   colors[ImGuiCol_Header] = selection;
   colors[ImGuiCol_HeaderHovered] = neutralHover;
-  colors[ImGuiCol_HeaderActive] = mix(p.raised, control, 0.32f);
+  colors[ImGuiCol_HeaderActive] = mix(p.raised, control, 0.32F);
   colors[ImGuiCol_Separator] = p.border;
   colors[ImGuiCol_SeparatorHovered] = p.accent;
   colors[ImGuiCol_SeparatorActive] = controlHover;
@@ -304,18 +318,18 @@ void applyColors()
   colors[ImGuiCol_PlotHistogramHovered] = controlHover;
   colors[ImGuiCol_TableHeaderBg] = p.surface;
   colors[ImGuiCol_TableBorderStrong] = p.border;
-  colors[ImGuiCol_TableBorderLight] = mix(p.surface, p.border, 0.6f);
+  colors[ImGuiCol_TableBorderLight] = mix(p.surface, p.border, 0.6F);
   colors[ImGuiCol_TableRowBg] = ImVec4(0, 0, 0, 0);
   colors[ImGuiCol_TableRowBgAlt] = stripe;
   colors[ImGuiCol_TextLink] =
-      mix(p.accent, p.text, preset.light ? 0.1f : 0.35f);
-  colors[ImGuiCol_TextSelectedBg] = mix(p.surface, p.accent, 0.45f);
+      mix(p.accent, p.text, preset.light ? 0.1F : 0.35F);
+  colors[ImGuiCol_TextSelectedBg] = mix(p.surface, p.accent, 0.45F);
   colors[ImGuiCol_DragDropTarget] = controlHover;
   colors[ImGuiCol_NavCursor] = controlHover;
   colors[ImGuiCol_NavWindowingHighlight] = p.text;
-  colors[ImGuiCol_NavWindowingDimBg] = ImVec4(0, 0, 0, 0.45f);
+  colors[ImGuiCol_NavWindowingDimBg] = ImVec4(0, 0, 0, 0.45F);
   colors[ImGuiCol_ModalWindowDimBg] =
-      ImVec4(0.0f, 0.0f, 0.0f, preset.light ? 0.35f : 0.62f);
+      ImVec4(0.0F, 0.0F, 0.0F, preset.light ? 0.35F : 0.62F);
 }
 }  // namespace
 
@@ -324,8 +338,8 @@ namespace Theme
 
 Palette presetPalette(Preset preset, ColorVision vision, const ImVec4& accent)
 {
-  const PresetColors& colors = PRESETS[std::min(
-      static_cast<size_t>(std::to_underlying(preset)), PRESETS.size() - 1)];
+  const PresetColors& colors = PRESETS.at(std::min(
+      static_cast<size_t>(std::to_underlying(preset)), PRESETS.size() - 1));
   Palette p{};
   p.background = colors.background;
   p.sidebar = colors.sidebar;
@@ -336,16 +350,16 @@ Palette presetPalette(Preset preset, ColorVision vision, const ImVec4& accent)
   p.muted = colors.muted;
   p.faint = colors.faint;
   const StatusColors& status =
-      (colors.light ? STATUS_LIGHT : STATUS_DARK)[visionIndex(vision)];
+      (colors.light ? STATUS_LIGHT : STATUS_DARK).at(visionIndex(vision));
   p.positive = status.positive;
   p.warning = status.warning;
   p.negative = status.negative;
   p.info = status.info;
   p.accent = accent;
   const float luminance =
-      0.2126f * p.accent.x + 0.7152f * p.accent.y + 0.0722f * p.accent.z;
-  p.on_accent = luminance > 0.45f ? ImVec4(0.03f, 0.04f, 0.05f, 1.0f)
-                                  : ImVec4(1.0f, 1.0f, 1.0f, 1.0f);
+      (0.2126F * p.accent.x) + (0.7152F * p.accent.y) + (0.0722F * p.accent.z);
+  p.on_accent = luminance > 0.45F ? ImVec4(0.03F, 0.04F, 0.05F, 1.0F)
+                                  : ImVec4(1.0F, 1.0F, 1.0F, 1.0F);
   return p;
 }
 
@@ -369,12 +383,12 @@ float contrastRatio(const ImVec4& first, const ImVec4& second)
 {
   const float a = relativeLuminance(first);
   const float b = relativeLuminance(second);
-  return (std::max(a, b) + 0.05f) / (std::min(a, b) + 0.05f);
+  return (std::max(a, b) + 0.05F) / (std::min(a, b) + 0.05F);
 }
 
 const Palette& palette()
 {
-  return scopedPalette ? *scopedPalette : activePalette;
+  return (scopedPalette != nullptr) ? *scopedPalette : activePalette;
 }
 
 ScopedPalette::ScopedPalette(Palette colours)
@@ -390,7 +404,7 @@ void apply(const Appearance& options, float displayScale)
 {
   activeAppearance = options;
   activeScale = std::clamp(
-      options.ui_scale > 0.0f ? options.ui_scale : std::max(1.0f, displayScale),
+      options.ui_scale > 0.0F ? options.ui_scale : std::max(1.0F, displayScale),
       MIN_UI_SCALE, MAX_UI_SCALE);
 
   ImGuiStyle& style = ImGui::GetStyle();
@@ -400,29 +414,29 @@ void apply(const Appearance& options, float displayScale)
   const bool compact = options.compact;
   style.FontSizeBase = BASE_FONT_SIZE;
   style.WindowPadding = ImVec2(Space::L, Space::M);
-  style.FramePadding = compact ? ImVec2(8.0f, 5.0f) : ImVec2(10.0f, 8.0f);
-  style.CellPadding = compact ? ImVec2(6.0f, 2.0f) : ImVec2(Space::S, 5.0f);
-  style.ItemSpacing = compact ? ImVec2(6.0f, 5.0f) : ImVec2(Space::S, Space::S);
-  style.ItemInnerSpacing = ImVec2(6.0f, Space::XS);
+  style.FramePadding = compact ? ImVec2(8.0F, 5.0F) : ImVec2(10.0F, 8.0F);
+  style.CellPadding = compact ? ImVec2(6.0F, 2.0F) : ImVec2(Space::S, 5.0F);
+  style.ItemSpacing = compact ? ImVec2(6.0F, 5.0F) : ImVec2(Space::S, Space::S);
+  style.ItemInnerSpacing = ImVec2(6.0F, Space::XS);
   style.IndentSpacing = Space::L;
-  style.ScrollbarSize = 12.0f;
-  style.GrabMinSize = 10.0f;
-  style.WindowRounding = 6.0f;
-  style.ChildRounding = 6.0f;
-  style.FrameRounding = 4.0f;
-  style.PopupRounding = 6.0f;
-  style.ScrollbarRounding = 6.0f;
-  style.GrabRounding = 4.0f;
-  style.TabRounding = 4.0f;
-  style.WindowBorderSize = 1.0f;
-  style.ChildBorderSize = 1.0f;
-  style.PopupBorderSize = 1.0f;
-  style.FrameBorderSize = options.preset == Preset::HIGH_CONTRAST ? 1.0f : 0.0f;
-  style.TabBarOverlineSize = 2.0f;
-  style.SelectableTextAlign = ImVec2(0.0f, 0.5f);
-  style.WindowTitleAlign = ImVec2(0.0f, 0.5f);
-  style.SeparatorTextBorderSize = 1.0f;
-  style.SeparatorTextPadding = ImVec2(0.0f, Space::XS);
+  style.ScrollbarSize = 12.0F;
+  style.GrabMinSize = 10.0F;
+  style.WindowRounding = 6.0F;
+  style.ChildRounding = 6.0F;
+  style.FrameRounding = 4.0F;
+  style.PopupRounding = 6.0F;
+  style.ScrollbarRounding = 6.0F;
+  style.GrabRounding = 4.0F;
+  style.TabRounding = 4.0F;
+  style.WindowBorderSize = 1.0F;
+  style.ChildBorderSize = 1.0F;
+  style.PopupBorderSize = 1.0F;
+  style.FrameBorderSize = options.preset == Preset::HIGH_CONTRAST ? 1.0F : 0.0F;
+  style.TabBarOverlineSize = 2.0F;
+  style.SelectableTextAlign = ImVec2(0.0F, 0.5F);
+  style.WindowTitleAlign = ImVec2(0.0F, 0.5F);
+  style.SeparatorTextBorderSize = 1.0F;
+  style.SeparatorTextPadding = ImVec2(0.0F, Space::XS);
 
   // Thin lines are tessellated instead of sampled from the font atlas: the
   // SDL_Renderer backend samples the baked line texels inconsistently, which
@@ -433,12 +447,15 @@ void apply(const Appearance& options, float displayScale)
   style.FontScaleDpi = activeScale;
   // Text size on top of the UI scale: every font size (PushFont included)
   // is multiplied by it, while paddings and fixed sizes follow the UI scale.
-  style.FontScaleMain = std::clamp(options.text_scale, 0.85f, 1.5f);
+  style.FontScaleMain = std::clamp(options.text_scale, 0.85F, 1.5F);
 }
 
 void setClub(std::optional<TeamID> teamId)
 {
-  if (activeClub == teamId) return;
+  if (activeClub == teamId)
+  {
+    return;
+  }
   activeClub = teamId;
   applyColors();
 }
@@ -449,9 +466,12 @@ bool reducedMotion() { return activeAppearance.reduced_motion; }
 
 Swatch presetSwatch(Preset preset)
 {
-  const PresetColors& colors = PRESETS[std::min(
-      static_cast<size_t>(std::to_underlying(preset)), PRESETS.size() - 1)];
-  return {colors.background, colors.surface, colors.text, colors.muted};
+  const PresetColors& colors = PRESETS.at(std::min(
+      static_cast<size_t>(std::to_underlying(preset)), PRESETS.size() - 1));
+  return {.background = colors.background,
+          .surface = colors.surface,
+          .text = colors.text,
+          .muted = colors.muted};
 }
 
 const char* presetKey(Preset preset)
@@ -479,14 +499,14 @@ const char* presetKey(Preset preset)
 
 ImVec4 clubAccent(TeamID teamId)
 {
-  return CLUB_ACCENTS[static_cast<size_t>(teamId) % CLUB_ACCENTS.size()];
+  return CLUB_ACCENTS.at(static_cast<size_t>(teamId) % CLUB_ACCENTS.size());
 }
 
 ImVec4 ratingColor(double value)
 {
   const auto rating = static_cast<float>(value);
   const RatingScale& stops =
-      RATING_SCALES[visionIndex(activeAppearance.color_vision)];
+      RATING_SCALES.at(visionIndex(activeAppearance.color_vision));
   ImVec4 color = stops.back().color;
   if (rating <= stops.front().value)
   {
@@ -496,10 +516,10 @@ ImVec4 ratingColor(double value)
   {
     for (size_t index = 1; index < stops.size(); ++index)
     {
-      const RatingStop& upper = stops[index];
+      const RatingStop& upper = stops.at(index);
       if (rating <= upper.value)
       {
-        const RatingStop& lower = stops[index - 1];
+        const RatingStop& lower = stops.at(index - 1);
         color = mix(lower.color, upper.color,
                     (rating - lower.value) / (upper.value - lower.value));
         break;
@@ -507,7 +527,10 @@ ImVec4 ratingColor(double value)
     }
   }
   // Saturated mid tones (yellow, light green) wash out on white surfaces.
-  if (presetColors().light) color = mix(color, ImVec4(0, 0, 0, 1), 0.28f);
+  if (presetColors().light)
+  {
+    color = mix(color, ImVec4(0, 0, 0, 1), 0.28F);
+  }
   return color;
 }
 
@@ -517,17 +540,17 @@ float textSize(Text level)
   switch (level)
   {
     case CAPTION:
-      return 12.5f;
+      return 12.5F;
     case SMALL:
-      return 14.0f;
+      return 14.0F;
     case BODY:
       return BASE_FONT_SIZE;
     case TITLE:
-      return 18.0f;
+      return 18.0F;
     case HEADING:
-      return 25.0f;
+      return 25.0F;
     case DISPLAY:
-      return 28.0f;
+      return 28.0F;
   }
   return BASE_FONT_SIZE;
 }
@@ -541,7 +564,9 @@ uint32_t packRgb(const ImVec4& color)
 {
   const auto channel = [](float value)
   {
-    return static_cast<uint32_t>(std::clamp(value, 0.0f, 1.0f) * 255.0f + 0.5f);
+    constexpr float CHANNEL_MAX = 255.0F;
+    return static_cast<uint32_t>(
+        std::lround(std::clamp(value, 0.0F, 1.0F) * CHANNEL_MAX));
   };
   return (channel(color.x) << 16U) | (channel(color.y) << 8U) |
          channel(color.z);
@@ -549,9 +574,9 @@ uint32_t packRgb(const ImVec4& color)
 
 ImVec4 unpackRgb(uint32_t rgb)
 {
-  return ImVec4(static_cast<float>((rgb >> 16U) & 0xFFU) / 255.0f,
-                static_cast<float>((rgb >> 8U) & 0xFFU) / 255.0f,
-                static_cast<float>(rgb & 0xFFU) / 255.0f, 1.0f);
+  return ImVec4(static_cast<float>((rgb >> 16U) & 0xFFU) / 255.0F,
+                static_cast<float>((rgb >> 8U) & 0xFFU) / 255.0F,
+                static_cast<float>(rgb & 0xFFU) / 255.0F, 1.0F);
 }
 
 ScopedText::ScopedText(Text level)

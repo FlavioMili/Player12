@@ -25,23 +25,23 @@
 namespace
 {
 constexpr const char* WINDOW_ID = "##match_analysis";
-constexpr float PANEL_WIDTH = 460.0f;
-constexpr float PANEL_MIN_WIDTH = 300.0f;
+constexpr float PANEL_WIDTH = 460.0F;
+constexpr float PANEL_MIN_WIDTH = 300.0F;
 /** Share of the window width the panel may take at most. */
-constexpr float VIEWPORT_WIDTH_SHARE = 0.45f;
+constexpr float VIEWPORT_WIDTH_SHARE = 0.45F;
 /**
  * Share of the window height the panel may take at most: it hangs from the
  * bottom-right corner and never reaches the match controls at the top.
  */
-constexpr float VIEWPORT_HEIGHT_SHARE = 0.6f;
+constexpr float VIEWPORT_HEIGHT_SHARE = 0.6F;
 /** The break is over for the auto-opening after this second-half minute. */
-constexpr float HALF_TIME_OFFER_UNTIL = 50.0f;
+constexpr float HALF_TIME_OFFER_UNTIL = 50.0F;
 
 float scaled(float value) { return value * Theme::scale(); }
 
 std::string percentText(float share)
 {
-  return std::format("{:.0f}%", share * 100.0f);
+  return std::format("{:.0f}%", share * 100.0F);
 }
 
 const char* noteKey(PlayerNote::Kind kind)
@@ -103,9 +103,15 @@ void MatchAnalysisPanel::openNow(const GameController& controller,
                                  TeamID away_id)
 {
   const auto team = controller.getManagedTeam();
-  if (!team) return;
+  if (!team)
+  {
+    return;
+  }
   const TeamID managed = team->get().getId();
-  if (managed != home_id && managed != away_id) return;
+  if (managed != home_id && managed != away_id)
+  {
+    return;
+  }
   const bool home = managed == home_id;
   const auto name = [&controller](TeamID id)
   {
@@ -125,7 +131,10 @@ void MatchAnalysisPanel::build(const GameController& controller,
   const auto data = controller.getGameData();
   const auto name_of = [data](PlayerID id)
   {
-    if (!data) return std::string();
+    if (!data)
+    {
+      return std::string();
+    }
     const auto player = std::as_const(*data).getPlayer(id);
     return player ? player->get().getName() : std::string();
   };
@@ -133,12 +142,18 @@ void MatchAnalysisPanel::build(const GameController& controller,
       analyseLiveMatch(engine, managed_home, name_of);
   const MatchState state = engine.getState();
   if (analysis.full_time)
+  {
     title = LOC("ANALYSIS_TITLE_FULL");
+  }
   else if (state == MatchState::HALF_TIME)
+  {
     title = LOC("ANALYSIS_TITLE_HALF");
+  }
   else
+  {
     title = fmt::sprintf(LOC("ANALYSIS_TITLE_LIVE"),
                          static_cast<int>(engine.getMatchTimeMinutes()) + 1);
+  }
 
   const SideSummary& own = analysis.own;
   const SideSummary& other = analysis.opponent;
@@ -165,15 +180,19 @@ void MatchAnalysisPanel::build(const GameController& controller,
   if (own.aerials_won + own.aerials_lost + other.aerials_won +
           other.aerials_lost >
       0)
+  {
     rows.emplace_back(LOC("ANALYSIS_ROW_AERIALS"),
                       std::format("{}/{}", own.aerials_won,
                                   own.aerials_won + own.aerials_lost),
                       std::format("{}/{}", other.aerials_won,
                                   other.aerials_won + other.aerials_lost));
+  }
 
   observations.clear();
   for (const AnalysisLine& line : analysis.observations)
+  {
     observations.push_back(GuidanceUI::text(line));
+  }
   notes.clear();
   for (const PlayerNote& note : analysis.notes)
   {
@@ -186,13 +205,18 @@ void MatchAnalysisPanel::build(const GameController& controller,
   sample = GuidanceUI::text(analysis.sample);
   suggestions.clear();
   for (const AnalysisSuggestion& suggestion : analysis.suggestions)
+  {
     suggestions.emplace_back(GuidanceUI::text(suggestion.action),
                              GuidanceUI::text(suggestion.reason));
+  }
 }
 
 void MatchAnalysisPanel::render()
 {
-  if (!visible) return;
+  if (!visible)
+  {
+    return;
+  }
 
   // A panel in the bottom-right corner, not a modal: the match controls
   // (Pause, Finish, speed) stay visible and clickable while it is open.
@@ -205,9 +229,9 @@ void MatchAnalysisPanel::render()
   ImGui::SetNextWindowPos(
       ImVec2(viewport->WorkPos.x + viewport->WorkSize.x - margin,
              viewport->WorkPos.y + viewport->WorkSize.y - margin),
-      ImGuiCond_Always, ImVec2(1.0f, 1.0f));
+      ImGuiCond_Always, ImVec2(1.0F, 1.0F));
   ImGui::SetNextWindowSizeConstraints(
-      ImVec2(width, 0.0f),
+      ImVec2(width, 0.0F),
       ImVec2(width, viewport->WorkSize.y * VIEWPORT_HEIGHT_SHARE));
   if (focus_requested)
   {
@@ -230,16 +254,19 @@ void MatchAnalysisPanel::render()
 
 void MatchAnalysisPanel::renderEmbedded(bool embedded)
 {
-  if (!visible) return;
+  if (!visible)
+  {
+    return;
+  }
   const Theme::Palette& palette = Theme::palette();
   // Explicit wrap edge: an auto-resizing window would otherwise grow instead.
   const float wrap = ImGui::GetCursorPosX() + ImGui::GetContentRegionAvail().x;
   // Title with the close button beside it, so closing never needs scrolling.
   const char* close = LOC("ANALYSIS_CLOSE");
   const float closeWidth =
-      embedded ? 0.0f : UI::buttonWidth(close, UI::ButtonSize::COMPACT);
+      embedded ? 0.0F : UI::buttonWidth(close, UI::ButtonSize::COMPACT);
   const float titleWidth =
-      std::max(0.0f, ImGui::GetContentRegionAvail().x - closeWidth -
+      std::max(0.0F, ImGui::GetContentRegionAvail().x - closeWidth -
                          ImGui::GetStyle().ItemSpacing.x);
   ImGui::BeginGroup();
   {
@@ -250,29 +277,33 @@ void MatchAnalysisPanel::renderEmbedded(bool embedded)
   if (!embedded)
   {
     ImGui::SameLine(wrap - closeWidth);
-    if (UI::secondaryButton(close, ImVec2(0.0f, 0.0f), UI::ButtonSize::COMPACT))
+    if (UI::secondaryButton(close, ImVec2(0.0F, 0.0F), UI::ButtonSize::COMPACT))
+    {
       visible = false;
+    }
   }
   ImGui::Separator();
 
   // Side-by-side numbers: label, managed club, opponent.
   const float full = ImGui::GetContentRegionAvail().x;
-  const float valueWidth = embedded ? std::min(full * 0.28f, scaled(90.0f))
-                                    : std::max(scaled(90.0f), full * 0.22f);
+  const float valueWidth = embedded ? std::min(full * 0.28F, scaled(90.0F))
+                                    : std::max(scaled(90.0F), full * 0.22F);
   const float cellGap = ImGui::GetStyle().ItemSpacing.x;
   const auto columns = [&](const char* label, const std::string& own,
                            const std::string& other, const ImVec4& color)
   {
     const float x = ImGui::GetCursorPosX();
-    UI::textFitted(label, full - 2.0f * valueWidth - cellGap, color);
-    ImGui::SameLine(x + full - 2.0f * valueWidth);
+    UI::textFitted(label, full - (2.0F * valueWidth) - cellGap, color);
+    ImGui::SameLine(x + full - (2.0F * valueWidth));
     UI::textFitted(own, valueWidth - cellGap, color);
     ImGui::SameLine(x + full - valueWidth);
     UI::textFitted(other, valueWidth, color);
   };
   columns("", own_name, other_name, palette.muted);
   for (const CompareRow& row : rows)
+  {
     columns(row.label.c_str(), row.own, row.other, palette.text);
+  }
   {
     Theme::ScopedText small(Theme::Text::SMALL);
     ImGui::PushTextWrapPos(wrap);
@@ -280,19 +311,21 @@ void MatchAnalysisPanel::renderEmbedded(bool embedded)
     ImGui::PopTextWrapPos();
   }
 
-  ImGui::Dummy(ImVec2(0.0f, scaled(Theme::Space::XS)));
+  ImGui::Dummy(ImVec2(0.0F, scaled(Theme::Space::XS)));
   UI::sectionLabel(LOC("ANALYSIS_OBSERVATIONS"));
   // Bullet + wrapped text (BulletText itself never wraps).
   ImGui::PushTextWrapPos(wrap);
   for (const auto* lines : {&observations, &notes})
+  {
     for (const std::string& line : *lines)
     {
       ImGui::Bullet();
       ImGui::TextUnformatted(line.c_str());
     }
+  }
   ImGui::PopTextWrapPos();
 
-  ImGui::Dummy(ImVec2(0.0f, scaled(Theme::Space::XS)));
+  ImGui::Dummy(ImVec2(0.0F, scaled(Theme::Space::XS)));
   UI::sectionLabel(LOC("ANALYSIS_SUGGESTIONS"));
   {
     Theme::ScopedText small(Theme::Text::SMALL);

@@ -35,10 +35,10 @@ struct StatsConfig;
 /** A pass on the strike alone counts as on target within this many metres
  * of the target: 1 m at 10 m and closer, 3 m at 60 m and beyond, in a
  * straight line between. */
-inline constexpr float BENCH_NEAR_METRES = 10.0f;
-inline constexpr float BENCH_NEAR_TOLERANCE = 1.0f;
-inline constexpr float BENCH_FAR_METRES = 60.0f;
-inline constexpr float BENCH_FAR_TOLERANCE = 3.0f;
+inline constexpr float BENCH_NEAR_METRES = 10.0F;
+inline constexpr float BENCH_NEAR_TOLERANCE = 1.0F;
+inline constexpr float BENCH_FAR_METRES = 60.0F;
+inline constexpr float BENCH_FAR_TOLERANCE = 3.0F;
 /** The tolerance (m) for a pass struck from `distance` metres. */
 float passTolerance(float distance);
 
@@ -58,7 +58,7 @@ struct BenchSuccess
   };
   Kind kind = Kind::FLAG;
   std::string metric;
-  float threshold = 0.0f;
+  float threshold = 0.0F;
 
   /** Whether a finished run's metrics pass; `tolerance` gets the strike
    * tolerance used (STRIKE only). */
@@ -139,11 +139,11 @@ struct BenchCell
 struct BenchRow
 {
   std::size_t test = 0;
-  float skill = 0.0f;
+  float skill = 0.0F;
   std::uint32_t seed = 0;
   bool completed = false;
   bool success = false;
-  float tolerance = 0.0f;
+  float tolerance = 0.0F;
   std::vector<DrillMetric> metrics;
 };
 
@@ -216,7 +216,10 @@ class BenchRunner
   [[nodiscard]] std::size_t runsDone() const { return finished.load(); }
   [[nodiscard]] std::size_t runsTotal() const { return jobs.size(); }
   [[nodiscard]] double seconds() const;
-  [[nodiscard]] const std::vector<std::string>& warnings() const { return notes; }
+  [[nodiscard]] const std::vector<std::string>& warnings() const
+  {
+    return notes;
+  }
   /** Moves the runs finished since the last call into `results` (set up
    * here on the first call: tests, skills, tuning). */
   void collect(BenchResults& results);
@@ -225,7 +228,7 @@ class BenchRunner
   struct Job
   {
     std::size_t test = 0;
-    float skill = 0.0f;
+    float skill = 0.0F;
     std::uint32_t seed = 0;
   };
   void work();

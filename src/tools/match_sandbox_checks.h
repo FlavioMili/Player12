@@ -20,14 +20,19 @@ class GameController;
  *    recorder, the size of the log, and the cost of copying an engine.
  * Prints a report to stdout. Returns 0 when every match was identical.
  */
-enum class SandboxCheckGroup { ALL, FIRST_TOUCH, RESTARTS };
+enum class SandboxCheckGroup
+{
+  ALL,
+  FIRST_TOUCH,
+  RESTARTS
+};
 int runSandboxChecks(GameController& controller, int matches,
                      SandboxCheckGroup group = SandboxCheckGroup::ALL);
 
 /** Stage 1: JSONL ownership/contact-gate trace, paired with an unobserved
  * engine at the same seed. Seconds must be finite and in (0, 3600]. */
 int runPossessionTrace(GameController& controller, double seconds,
-                        const std::string& outputPath);
+                       const std::string& outputPath);
 
 /** Diagnostic (match_sandbox --trace-match SECONDS [CASES]): a match between
  * the first two clubs of the first league; each stumble or fall between two

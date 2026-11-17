@@ -37,8 +37,11 @@ bool MatchEngine::deniesGoalChanceBinturong(const MatchPlayer& victim,
                                             const MatchPlayer& offender) const
 {
   // Only the player in control of the ball can be denied an obvious chance.
-  if (getPossessionAttachment() != victim.player) return false;
-  const float goalX = victim.isHomeTeam ? 1.0f : 0.0f;
+  if (getPossessionAttachment() != victim.player)
+  {
+    return false;
+  }
+  const float goalX = victim.isHomeTeam ? 1.0F : 0.0F;
   const PitchPoint goal = pitch.at(goalX, MatchTuning::Pitch::CENTRE);
   if (distance(victim.position, goal) >
           MatchTuning::Discipline::DOGSO_MAX_DISTANCE_METRES ||
@@ -48,7 +51,7 @@ bool MatchEngine::deniesGoalChanceBinturong(const MatchPlayer& victim,
     return false;
   }
   // Obvious chance: no covering outfield defender between victim and goal.
-  const float direction = victim.isHomeTeam ? 1.0f : -1.0f;
+  const float direction = victim.isHomeTeam ? 1.0F : -1.0F;
   for (const auto& other : players)
   {
     if (!active(other) || other.isHomeTeam == victim.isHomeTeam ||
@@ -56,7 +59,10 @@ bool MatchEngine::deniesGoalChanceBinturong(const MatchPlayer& victim,
     {
       continue;
     }
-    if ((other.position.x - victim.position.x) * direction > 0.0f) return false;
+    if ((other.position.x - victim.position.x) * direction > 0.0F)
+    {
+      return false;
+    }
   }
   return true;
 }
@@ -66,18 +72,23 @@ void MatchEngine::commitFoulBinturong(MatchPlayer& offender,
                                       bool reckless)
 {
   if (offender.isHomeTeam)
+  {
     ++stats.homeFouls;
+  }
   else
+  {
     ++stats.awayFouls;
+  }
   ++statsOf(offender).foulsCommitted;
   ++statsOf(victim).foulsSuffered;
 
   const PitchPoint foulPosition = victim.position;
   // No penalties in the pitch's Laws: a foul in the box is like any other.
-  const bool inBox = pitch.laws.penalties && inPenaltyArea(foulPosition, offender.isHomeTeam);
-  const float carrierDepth =
-      victim.isHomeTeam ? pitch.fractionX(victim.position)
-                        : 1.0f - pitch.fractionX(victim.position);
+  const bool inBox =
+      pitch.laws.penalties && inPenaltyArea(foulPosition, offender.isHomeTeam);
+  const float carrierDepth = victim.isHomeTeam
+                                 ? pitch.fractionX(victim.position)
+                                 : 1.0F - pitch.fractionX(victim.position);
   const TeamPhase victimPhase = victim.isHomeTeam ? homePhase : awayPhase;
   const bool promisingAttack =
       carrierDepth > MatchTuning::Pitch::CENTRE &&
@@ -88,7 +99,7 @@ void MatchEngine::commitFoulBinturong(MatchPlayer& offender,
 
   MatchRules::FoulContext context;
   context.severityRoll =
-      reckless ? std::max(incidentRoll(), 0.9f) : incidentRoll();
+      reckless ? std::max(incidentRoll(), 0.9F) : incidentRoll();
   context.cardRoll = incidentRoll();
   context.strictness = refereeStrictness;
   context.tactical =
@@ -104,7 +115,8 @@ void MatchEngine::commitFoulBinturong(MatchPlayer& offender,
                        : MatchRules::FoulSanction::NONE;
 
   MatchEvent& foulEvent = logEvent(MatchEventType::FOUL, offender);
-  foulEvent.secondaryPlayerId = victim.player ? victim.player->getId() : 0;
+  foulEvent.secondaryPlayerId =
+      (victim.player != nullptr) ? victim.player->getId() : 0;
   foulEvent.position = foulPosition;
 
   // Advantage: the fouled side kept the ball in a promising attack outside
@@ -116,40 +128,63 @@ void MatchEngine::commitFoulBinturong(MatchPlayer& offender,
       incidentRoll() < MatchTuning::Discipline::ADVANTAGE_PLAY_CHANCE;
   const bool contactInjury =
       incidentRoll() <
-      (context.severityRoll >= 1.0f - MatchTuning::Discipline::RECKLESS_SHARE
+      (context.severityRoll >= 1.0F - MatchTuning::Discipline::RECKLESS_SHARE
            ? MatchTuning::Injury::RECKLESS_CONTACT_INJURY_CHANCE
            : MatchTuning::Injury::CONTACT_INJURY_CHANCE);
 
   applySanction(offender, sanction);
-  if (state == MatchState::FULL_TIME) return;
+  if (state == MatchState::FULL_TIME)
+  {
+    return;
+  }
 
   if (playAdvantage && !contactInjury)
   {
     if (victim.isHomeTeam)
+    {
       ++stats.homeAdvantagesPlayed;
+    }
     else
+    {
       ++stats.awayAdvantagesPlayed;
+    }
     MatchEvent& advantage = logEvent(MatchEventType::ADVANTAGE, victim);
     advantage.position = foulPosition;
-    pendingAdvantage = {true, victim.isHomeTeam, foulPosition,
-                        MatchTuning::Discipline::ADVANTAGE_WINDOW_SECONDS};
+    pendingAdvantage = {
+        .active = true,
+        .fouledTeamHome = victim.isHomeTeam,
+        .position = foulPosition,
+        .secondsRemaining = MatchTuning::Discipline::ADVANTAGE_WINDOW_SECONDS};
     return;
   }
 
-  if (contactInjury && victim.onPitch) injurePlayer(victim, true);
+  if (contactInjury && victim.onPitch)
+  {
+    injurePlayer(victim, true);
+  }
   if (inBox)
+  {
     setupPenalty(victim.isHomeTeam);
+  }
   else
+  {
     setupFreeKick(victim.isHomeTeam, foulPosition);
+  }
   if (sanction != MatchRules::FoulSanction::NONE)
+  {
     extendRestart(MatchTuning::Timing::CARD_DELAY_SECONDS);
+  }
 }
 
 void MatchEngine::updatePendingAdvantageBinturong(float dt)
 {
-  if (!pendingAdvantage.active) return;
+  if (!pendingAdvantage.active)
+  {
+    return;
+  }
   const MatchPlayer* carrier = findMatchPlayer(getPossessionAttachment());
-  if (carrier && carrier->isHomeTeam != pendingAdvantage.fouledTeamHome)
+  if ((carrier != nullptr) &&
+      carrier->isHomeTeam != pendingAdvantage.fouledTeamHome)
   {
     // The advantage did not materialise: back for the original free kick.
     pendingAdvantage.active = false;
@@ -157,8 +192,10 @@ void MatchEngine::updatePendingAdvantageBinturong(float dt)
     return;
   }
   pendingAdvantage.secondsRemaining -= dt;
-  if (pendingAdvantage.secondsRemaining <= 0.0f)
+  if (pendingAdvantage.secondsRemaining <= 0.0F)
+  {
     pendingAdvantage.active = false;
+  }
 }
 
 bool MatchEngine::judgeOffsideBinturong(const MatchPlayer& passer,
@@ -171,25 +208,25 @@ bool MatchEngine::judgeOffsideBinturong(const MatchPlayer& passer,
       state != MatchState::GOAL_KICK && state != MatchState::CORNER_KICK &&
       isOffside(receiver, passer.isHomeTeam, defenderLine);
   if (offsideCalled() && !offside && state == MatchState::PLAYING &&
-      option.progression > 0.0f &&
+      option.progression > 0.0F &&
       (receiver.isMakingRun || isAttackingRole(receiver.player->getRole())))
   {
     // A runner level with the line at the moment of the pass has often
     // timed his run a fraction early: the tighter, the likelier.
     const float gap = (defenderLine - receiver.position.x) *
-                      (passer.isHomeTeam ? 1.0f : -1.0f);
+                      (passer.isHomeTeam ? 1.0F : -1.0F);
     const bool opponentHalf =
         passer.isHomeTeam
             ? receiver.position.x > pitch.atX(MatchTuning::Pitch::CENTRE)
             : receiver.position.x < pitch.atX(MatchTuning::Pitch::CENTRE);
-    if (opponentHalf && gap >= 0.0f &&
+    if (opponentHalf && gap >= 0.0F &&
         gap < MatchTuning::Passing::OFFSIDE_TIMING_WINDOW_METRES)
     {
       const float chance =
           MatchTuning::Passing::OFFSIDE_TIMING_CHANCE *
-          (1.0f - gap / MatchTuning::Passing::OFFSIDE_TIMING_WINDOW_METRES);
+          (1.0F - gap / MatchTuning::Passing::OFFSIDE_TIMING_WINDOW_METRES);
       offside =
-          (hashNoise(receiver.player->getId(), 0x5eedU) + 1.0f) * 0.5f < chance;
+          (hashNoise(receiver.player->getId(), 0x5eedU) + 1.0F) * 0.5F < chance;
     }
   }
   return offside;

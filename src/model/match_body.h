@@ -65,10 +65,21 @@ constexpr std::string_view bodyKey(BodyId body)
  * were renamed: "original" and "new-v1"). */
 constexpr std::optional<BodyId> bodyFromKey(std::string_view key)
 {
-  if (key == "original") return BodyId::AARDVARK;
-  if (key == "new-v1") return BodyId::BINTURONG;
+  if (key == "original")
+  {
+    return BodyId::AARDVARK;
+  }
+  if (key == "new-v1")
+  {
+    return BodyId::BINTURONG;
+  }
   for (const BodyId body : ALL_BODIES)
-    if (bodyKey(body) == key) return body;
+  {
+    if (bodyKey(body) == key)
+    {
+      return body;
+    }
+  }
   return std::nullopt;
 }
 
@@ -88,9 +99,18 @@ constexpr std::optional<std::array<BodyId, 2>> parseBodyPair(
 {
   const std::size_t comma = text.find(',');
   const auto home = bodyFromKey(text.substr(0, comma));
-  if (!home) return std::nullopt;
-  if (comma == std::string_view::npos) return std::array{*home, *home};
+  if (!home)
+  {
+    return std::nullopt;
+  }
+  if (comma == std::string_view::npos)
+  {
+    return std::array{*home, *home};
+  }
   const auto away = bodyFromKey(text.substr(comma + 1));
-  if (!away) return std::nullopt;
+  if (!away)
+  {
+    return std::nullopt;
+  }
   return std::array{*home, *away};
 }

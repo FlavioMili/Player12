@@ -11,11 +11,11 @@
 #include <array>
 #include <cstdint>
 #include <functional>
+#include <iosfwd>
 #include <map>
 #include <optional>
 #include <span>
 #include <stdexcept>
-#include <iosfwd>
 #include <string>
 #include <string_view>
 #include <vector>
@@ -76,7 +76,7 @@ struct MatchSample
   std::array<int, 2> passes_completed{};
   std::array<int, 2> fouls{};
   std::array<double, 2> xg{};
-  float home_possession = 50.0f;
+  float home_possession = 50.0F;
   int corners = 0;
   /** Restarts counted from the event log (engine only); the log keeps the
    * last MatchTuning::Timing::MAX_EVENTS events, so `event_log_full` marks
@@ -208,7 +208,8 @@ struct MatchSample
    * opponent's pass blocked, a deflection off a team-mate or nobody's). */
   int ball_body_hits = 0;
   int ball_leg_hits = 0;
-  int ball_head_hits = 0;  int ball_reaction_blocks = 0;
+  int ball_head_hits = 0;
+  int ball_reaction_blocks = 0;
   int passes_blocked = 0;
   int ball_deflections = 0;
   /** Direct free kicks: taken, on target as struck, blocked, scored. */
@@ -222,7 +223,8 @@ struct MatchSample
    * full reach (per defender), and what came of it once he reacted
    * (ShotLegOutcome order); the rest, the ball got to him first. */
   int shot_leg_chances = 0;
-  std::array<int, static_cast<std::size_t>(ShotLegOutcome::COUNT)> shot_leg_outcomes{};
+  std::array<int, static_cast<std::size_t>(ShotLegOutcome::COUNT)>
+      shot_leg_outcomes{};
   /** Tackling plan step 5: steps defenders went into a contest, those on
    * the carrier's free foot, steps held, and the intents chosen. */
   int go_ins = 0;
@@ -307,7 +309,8 @@ struct MatchSample
   std::array<double, MOVEMENT_MODE_COUNT> mode_metres{};
   int emptied_players = 0;
   double empty_minute_sum = 0.0;
-  /** Movement jitter of both sides together (MatchEngine::getMovementJitter). */
+  /** Movement jitter of both sides together (MatchEngine::getMovementJitter).
+   */
   MovementJitterStats jitter;
   /** Open-play strikes as the contact model reads them (Binturong bodies;
    * MatchEngine::getStrikeContacts). */
@@ -325,7 +328,7 @@ struct MatchSample
   int finishers = 0;
   double end_fuel_sum = 0.0;
   double end_fuel_square_sum = 0.0;
-  float end_fuel_min = 1.0f;
+  float end_fuel_min = 1.0F;
   int finishers_at_floor = 0;
   /** Finishers by fuel left: 60% or more, 30-60%, 10-30%, below 10%, empty
    * (the fatigue plan's tier points). */
@@ -338,7 +341,7 @@ struct MatchSample
 /** One side of an isolated match. */
 struct TeamSetup
 {
-  float rating = 65.0f;
+  float rating = 65.0F;
   StrategySliders sliders{};
   BrainId brain = BrainId::AARDVARK;
   BodyId body = BodyId::AARDVARK;
@@ -367,7 +370,7 @@ struct MatchJob
   OutOfPlayId outOfPlay = OutOfPlayId::AARDVARK;
   /** MatchContext::homeAdvantageScale: 0 a neutral venue, 1 the engine's
    * default (the game's full home edge), up to 2. */
-  float homeAdvantage = 1.0f;
+  float homeAdvantage = 1.0F;
   /** A knockout tie: level at full time, straight to a shootout. */
   bool knockout = false;
   /** Tuning knobs for the match (defaults: the tuned constants). */

@@ -38,12 +38,11 @@ namespace
 float stretchAttribute(float raw)
 {
   using P = MatchTuning::Player;
-  return std::clamp(
-      P::ATTRIBUTE_PIVOT +
-          P::ATTRIBUTE_SATURATION *
-              std::tanh((raw - P::ATTRIBUTE_PIVOT) * P::ATTRIBUTE_CONTRAST /
-                        P::ATTRIBUTE_SATURATION),
-      P::MIN_ATTRIBUTE, 1.0f);
+  return std::clamp(P::ATTRIBUTE_PIVOT + (P::ATTRIBUTE_SATURATION *
+                                          std::tanh((raw - P::ATTRIBUTE_PIVOT) *
+                                                    P::ATTRIBUTE_CONTRAST /
+                                                    P::ATTRIBUTE_SATURATION)),
+                    P::MIN_ATTRIBUTE, 1.0F);
 }
 }  // namespace
 
@@ -51,7 +50,7 @@ float MatchEngine::drawRefereeStrictnessAardvark() const
 {
   using D = MatchTuning::Discipline;
   const float mean = matchContext.refereeStrictnessMean;
-  return std::clamp(mean + refereeDraw * matchContext.refereeStrictnessSd,
+  return std::clamp(mean + (refereeDraw * matchContext.refereeStrictnessSd),
                     D::MIN_STRICTNESS * mean, D::MAX_STRICTNESS * mean);
 }
 
@@ -62,18 +61,18 @@ void MatchEngine::convertMatchContextAardvark(const MatchContext& context)
   { return std::isfinite(value) ? value : fallback; };
   const MatchContext defaults;
   matchContext.goalRateScale =
-      std::clamp(finite(context.goalRateScale, 1.0f),
+      std::clamp(finite(context.goalRateScale, 1.0F),
                  MatchTuning::Context::MIN_GOAL_RATE_SCALE,
                  MatchTuning::Context::MAX_GOAL_RATE_SCALE);
   matchContext.refereeStrictnessMean =
-      std::clamp(finite(context.refereeStrictnessMean, 1.0f),
+      std::clamp(finite(context.refereeStrictnessMean, 1.0F),
                  MatchTuning::Context::MIN_REFEREE_STRICTNESS,
                  MatchTuning::Context::MAX_REFEREE_STRICTNESS);
   matchContext.refereeStrictnessSd = std::clamp(
-      finite(context.refereeStrictnessSd, defaults.refereeStrictnessSd), 0.0f,
+      finite(context.refereeStrictnessSd, defaults.refereeStrictnessSd), 0.0F,
       MatchTuning::Context::MAX_REFEREE_SD);
   matchContext.homeAdvantageScale =
-      std::clamp(finite(context.homeAdvantageScale, 1.0f), 0.0f,
+      std::clamp(finite(context.homeAdvantageScale, 1.0F), 0.0F,
                  MatchTuning::Context::MAX_HOME_ADVANTAGE_SCALE);
   finishingPrecision = std::pow(matchContext.goalRateScale,
                                 MatchTuning::Context::FINISHING_EXPONENT);
@@ -81,12 +80,12 @@ void MatchEngine::convertMatchContextAardvark(const MatchContext& context)
 
 float MatchEngine::convertConditionAardvark(float condition) const
 {
-  return std::clamp(condition, MatchTuning::Player::MINIMUM_STAMINA, 1.0f);
+  return std::clamp(condition, MatchTuning::Player::MINIMUM_STAMINA, 1.0F);
 }
 
 float MatchEngine::convertFamiliarityAardvark(float familiarity) const
 {
-  return std::clamp(familiarity, 0.0f, 1.0f);
+  return std::clamp(familiarity, 0.0F, 1.0F);
 }
 
 float MatchEngine::convertTeamTalkAardvark(float modifier) const
@@ -101,11 +100,14 @@ void MatchEngine::initializePlayersAardvark(const Lineup& lineup,
   const auto addPlayer = [&](const Player* player, Vector2F slot,
                              std::vector<MatchPlayer>& destination)
   {
-    if (!player) return;
+    if (!player)
+    {
+      return;
+    }
     // Lineup coordinates (own goal at x = 0) onto this pitch: the away
     // side is mirrored.
     const PitchPoint position =
-        pitch.at(isHomeTeam ? slot.x : 1.0f - slot.x, slot.y);
+        pitch.at(isHomeTeam ? slot.x : 1.0F - slot.x, slot.y);
 
     MatchPlayer matchPlayer;
     matchPlayer.player = player;
@@ -113,26 +115,30 @@ void MatchEngine::initializePlayersAardvark(const Lineup& lineup,
     matchPlayer.position = position;
     matchPlayer.basePosition = position;
     matchPlayer.movementTarget = position;
-    matchPlayer.facingAngle = isHomeTeam ? 0.0f : std::numbers::pi_v<float>;
+    matchPlayer.facingAngle = isHomeTeam ? 0.0F : std::numbers::pi_v<float>;
     matchPlayer.targetAngle = matchPlayer.facingAngle;
     loadAttributesAardvark(matchPlayer, player);
     matchPlayer.statsIndex = addPlayerStats(matchPlayer, true);
     destination.push_back(matchPlayer);
   };
 
-  addPlayer(
-      lineup.getGoalkeeper(),
-      {MatchTuning::Pitch::LINEUP_GOALKEEPER_X_SHARE, MatchTuning::Pitch::CENTRE},
-      players);
-  if (lineup.getGoalkeeper() && !players.empty())
+  addPlayer(lineup.getGoalkeeper(),
+            {.x = MatchTuning::Pitch::LINEUP_GOALKEEPER_X_SHARE,
+             .y = MatchTuning::Pitch::CENTRE},
+            players);
+  if ((lineup.getGoalkeeper() != nullptr) && !players.empty())
+  {
     players.back().isGoalkeeper = true;
+  }
   auto& formation = formations[isHomeTeam ? 0 : 1];
   for (const auto& positioned : lineup.getOutfieldPlayers())
   {
     const std::size_t before = players.size();
     addPlayer(positioned.player, positioned.position, players);
     if (players.size() > before)
+    {
       players.back().formationSlot = static_cast<std::int8_t>(formation.size());
+    }
     formation.push_back(positioned.position);
   }
 }
@@ -160,11 +166,13 @@ void MatchEngine::loadAttributesAardvark(MatchPlayer& matchPlayer,
     for (float* value : {&matchPlayer.shooting, &matchPlayer.passing,
                          &matchPlayer.dribbling, &matchPlayer.defending,
                          &matchPlayer.goalkeeping, &matchPlayer.vision})
-      *value = std::min(1.0f, *value + BONUS);
+    {
+      *value = std::min(1.0F, *value + BONUS);
+    }
   }
   matchPlayer.heightMetres =
-      player ? MatchRules::playerHeightMetres(player->getHeight())
-             : MatchTuning::Units::DEFAULT_PLAYER_HEIGHT_METRES;
+      (player != nullptr) ? MatchRules::playerHeightMetres(player->getHeight())
+                          : MatchTuning::Units::DEFAULT_PLAYER_HEIGHT_METRES;
   using P = MatchTuning::Player;
   matchPlayer.maxSpeed =
       P::TOP_SPEED_BASE + matchPlayer.pace * P::TOP_SPEED_PACE;
@@ -182,9 +190,15 @@ void MatchEngine::placeFormationAardvark(bool homeTeam)
   int onPitch = 0;
   for (const MatchPlayer& player : players)
   {
-    if (!player.player || player.isHomeTeam != homeTeam) continue;
+    if ((player.player == nullptr) || player.isHomeTeam != homeTeam)
+    {
+      continue;
+    }
     ++sideSize;
-    if (active(player)) ++onPitch;
+    if (active(player))
+    {
+      ++onPitch;
+    }
   }
   const float drop = static_cast<float>(sideSize - onPitch) *
                      MatchTuning::Rules::SHORT_HANDED_DROP;
@@ -193,12 +207,15 @@ void MatchEngine::placeFormationAardvark(bool homeTeam)
     if (!active(player) || player.isHomeTeam != homeTeam ||
         player.isGoalkeeper || player.formationSlot < 0 ||
         static_cast<std::size_t>(player.formationSlot) >= formation.size())
+    {
       continue;
+    }
     const Vector2F spot =
         formation[static_cast<std::size_t>(player.formationSlot)];
-    const float x = std::clamp(spot.x - drop, MatchTuning::Pitch::PLAYER_MIN_X_SHARE,
-                               MatchTuning::Pitch::PLAYER_MAX_X_SHARE);
-    player.basePosition = pitch.at(homeTeam ? x : 1.0f - x, spot.y);
+    const float x =
+        std::clamp(spot.x - drop, MatchTuning::Pitch::PLAYER_MIN_X_SHARE,
+                   MatchTuning::Pitch::PLAYER_MAX_X_SHARE);
+    player.basePosition = pitch.at(homeTeam ? x : 1.0F - x, spot.y);
   }
 }
 
@@ -209,24 +226,32 @@ void MatchEngine::computeUnderdogSharesAardvark()
   std::array<int, 2> counted{};
   for (const MatchPlayer& player : players)
   {
-    if (!player.player || player.isGoalkeeper) continue;
+    if ((player.player == nullptr) || player.isGoalkeeper)
+    {
+      continue;
+    }
     const std::size_t side = player.isHomeTeam ? 0 : 1;
-    float sum = 0.0f;
+    float sum = 0.0F;
     for (const std::string_view name :
          {"Pace", "Shooting", "Passing", "Dribbling", "Defending",
           "Physicality", "Vision"})
+    {
       sum += attributeAardvark(player.player, name);
-    quality[side] += sum / 7.0f;
+    }
+    quality[side] += sum / 7.0F;
     ++counted[side];
   }
-  if (counted[0] == 0 || counted[1] == 0) return;
-  const float gap = quality[1] / static_cast<float>(counted[1]) -
-                    quality[0] / static_cast<float>(counted[0]);
+  if (counted[0] == 0 || counted[1] == 0)
+  {
+    return;
+  }
+  const float gap = (quality[1] / static_cast<float>(counted[1])) -
+                    (quality[0] / static_cast<float>(counted[0]));
   using T = MatchTuning::Touchline;
   const auto share = [](float deficit)
   {
     return std::clamp((deficit - T::UNDERDOG_GAP_START) / T::UNDERDOG_GAP_RANGE,
-                      0.0f, 1.0f);
+                      0.0F, 1.0F);
   };
   underdogShares = {share(gap), share(-gap)};
 }
@@ -245,7 +270,7 @@ void MatchEngine::resolveTacticsAardvark(bool homeTeam)
     SlotTactic tactic;
     const SlotInstruction* instruction =
         slot < anchors.size() ? strategy.findSlot(anchors[slot]) : nullptr;
-    if (instruction)
+    if (instruction != nullptr)
     {
       const RoleFamily family = Tactics::familyForSlot(anchors[slot]);
       tactic.role = Tactics::allows(family, instruction->role)
@@ -253,8 +278,8 @@ void MatchEngine::resolveTacticsAardvark(bool homeTeam)
                         : TacticalRole::Standard;
       tactic.profile = Tactics::profile(tactic.role, instruction->duty);
       tactic.possessionOffset =
-          Vector2F{pitch.atX(instruction->possessionOffset.x),
-                      pitch.atY(instruction->possessionOffset.y)};
+          Vector2F{.x = pitch.atX(instruction->possessionOffset.x),
+                   .y = pitch.atY(instruction->possessionOffset.y)};
     }
     slotTactics[side][slot] = tactic;
   }
@@ -268,7 +293,9 @@ float MatchEngine::rawAttributeAardvark(const Player* player,
 {
   const auto stat = player->getStats().find(std::string(name));
   if (stat != player->getStats().end())
+  {
     return stat->second / MatchTuning::Player::RATING_SCALE;
+  }
   return static_cast<float>(player->getOverall(statsConfig)) /
          MatchTuning::Player::RATING_SCALE;
 }
@@ -276,34 +303,46 @@ float MatchEngine::rawAttributeAardvark(const Player* player,
 float MatchEngine::attributeAardvark(const Player* player,
                                      std::string_view name) const
 {
-  if (!player) return MatchTuning::Player::DEFAULT_ATTRIBUTE;
+  if (player == nullptr)
+  {
+    return MatchTuning::Player::DEFAULT_ATTRIBUTE;
+  }
   return stretchAttribute(rawAttributeAardvark(player, name) + levelShift);
 }
 
 void MatchEngine::computeLevelAardvark(const Lineup& home, const Lineup& away)
 {
   // Mean raw outfield quality of both elevens.
-  float sum = 0.0f;
+  float sum = 0.0F;
   int counted = 0;
   for (const Lineup* lineup : {&home, &away})
   {
     for (const auto& positioned : lineup->getOutfieldPlayers())
     {
-      if (!positioned.player) continue;
+      if (positioned.player == nullptr)
+      {
+        continue;
+      }
       for (const std::string_view name :
            {"Pace", "Shooting", "Passing", "Dribbling", "Defending",
             "Physicality", "Vision"})
+      {
         sum += rawAttributeAardvark(positioned.player, name);
+      }
       counted += 7;
     }
   }
-  if (counted == 0) return;
+  if (counted == 0)
+  {
+    return;
+  }
   using P = MatchTuning::Player;
   const float level = sum / static_cast<float>(counted);
   levelShift = P::LEVEL_NORMALISATION * (P::REFERENCE_LEVEL - level);
   const float fromReference = level - P::REFERENCE_LEVEL;
-  levelPrecision = std::max(
-      P::MIN_LEVEL_PRECISION,
-      1.0f + fromReference * (fromReference < 0.0f ? P::LEVEL_FINISHING_GAIN
-                                                   : P::ELITE_FINISHING_GAIN));
+  levelPrecision =
+      std::max(P::MIN_LEVEL_PRECISION,
+               1.0F + (fromReference * (fromReference < 0.0F
+                                            ? P::LEVEL_FINISHING_GAIN
+                                            : P::ELITE_FINISHING_GAIN)));
 }

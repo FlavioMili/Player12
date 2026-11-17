@@ -38,14 +38,18 @@ StatsConfig builtInStatsConfig()
   config.possible_stats = {"Pace",      "Shooting",  "Passing",
                            "Dribbling", "Defending", "Physicality",
                            "Stamina",   "Vision",    "Goalkeeping"};
-  config.role_focus["Goalkeeper"] = {{"Goalkeeping", "Vision", "Physicality"},
-                                     {0.7, 0.2, 0.1}};
+  config.role_focus["Goalkeeper"] = {
+      .stats = {"Goalkeeping", "Vision", "Physicality"},
+      .weights = {0.7, 0.2, 0.1}};
   config.role_focus["Defender"] = {
-      {"Defending", "Physicality", "Pace", "Vision"}, {0.4, 0.3, 0.15, 0.15}};
+      .stats = {"Defending", "Physicality", "Pace", "Vision"},
+      .weights = {0.4, 0.3, 0.15, 0.15}};
   config.role_focus["Midfielder"] = {
-      {"Passing", "Vision", "Stamina", "Dribbling"}, {0.3, 0.3, 0.2, 0.2}};
+      .stats = {"Passing", "Vision", "Stamina", "Dribbling"},
+      .weights = {0.3, 0.3, 0.2, 0.2}};
   config.role_focus["Striker"] = {
-      {"Shooting", "Pace", "Dribbling", "Physicality"}, {0.4, 0.2, 0.2, 0.2}};
+      .stats = {"Shooting", "Pace", "Dribbling", "Physicality"},
+      .weights = {0.4, 0.2, 0.2, 0.2}};
   return config;
 }
 
@@ -54,57 +58,57 @@ std::map<std::string, float> roleStats(PlayerRole role, float base,
                                        std::uint32_t salt)
 {
   // Small deterministic per-player spread keeps squads from being clones.
-  const float jitter = static_cast<float>((salt * 2654435761U) % 11U) - 5.0f;
+  const float jitter = static_cast<float>((salt * 2654435761U) % 11U) - 5.0F;
   const auto value = [&](float offset)
-  { return std::clamp(base + offset + jitter, 1.0f, 99.0f); };
+  { return std::clamp(base + offset + jitter, 1.0F, 99.0F); };
   std::map<std::string, float> stats = {
-      {"Pace", value(0.0f)},      {"Shooting", value(-8.0f)},
-      {"Passing", value(0.0f)},   {"Dribbling", value(-4.0f)},
-      {"Defending", value(0.0f)}, {"Physicality", value(0.0f)},
-      {"Stamina", value(0.0f)},   {"Vision", value(0.0f)},
-      {"Goalkeeping", 15.0f}};
+      {"Pace", value(0.0F)},      {"Shooting", value(-8.0F)},
+      {"Passing", value(0.0F)},   {"Dribbling", value(-4.0F)},
+      {"Defending", value(0.0F)}, {"Physicality", value(0.0F)},
+      {"Stamina", value(0.0F)},   {"Vision", value(0.0F)},
+      {"Goalkeeping", 15.0F}};
   using enum PlayerRole;
   switch (role)
   {
     case GK:
-      stats["Goalkeeping"] = value(4.0f);
-      stats["Shooting"] = value(-40.0f);
-      stats["Dribbling"] = value(-30.0f);
-      stats["Pace"] = value(-20.0f);
+      stats["Goalkeeping"] = value(4.0F);
+      stats["Shooting"] = value(-40.0F);
+      stats["Dribbling"] = value(-30.0F);
+      stats["Pace"] = value(-20.0F);
       break;
     case CB:
-      stats["Defending"] = value(8.0f);
-      stats["Physicality"] = value(8.0f);
-      stats["Shooting"] = value(-25.0f);
-      stats["Dribbling"] = value(-15.0f);
+      stats["Defending"] = value(8.0F);
+      stats["Physicality"] = value(8.0F);
+      stats["Shooting"] = value(-25.0F);
+      stats["Dribbling"] = value(-15.0F);
       break;
     case LB:
     case RB:
-      stats["Defending"] = value(4.0f);
-      stats["Pace"] = value(4.0f);
-      stats["Shooting"] = value(-20.0f);
+      stats["Defending"] = value(4.0F);
+      stats["Pace"] = value(4.0F);
+      stats["Shooting"] = value(-20.0F);
       break;
     case LM:
     case RM:
     case LW:
     case RW:
-      stats["Pace"] = value(6.0f);
-      stats["Dribbling"] = value(4.0f);
-      stats["Defending"] = value(-15.0f);
-      stats["Shooting"] = value(-4.0f);
+      stats["Pace"] = value(6.0F);
+      stats["Dribbling"] = value(4.0F);
+      stats["Defending"] = value(-15.0F);
+      stats["Shooting"] = value(-4.0F);
       break;
     case CM:
     case CDM:
     case CAM:
-      stats["Passing"] = value(6.0f);
-      stats["Vision"] = value(6.0f);
-      stats["Stamina"] = value(6.0f);
-      stats["Defending"] = value(-6.0f);
+      stats["Passing"] = value(6.0F);
+      stats["Vision"] = value(6.0F);
+      stats["Stamina"] = value(6.0F);
+      stats["Defending"] = value(-6.0F);
       break;
     case ST:
-      stats["Shooting"] = value(8.0f);
-      stats["Defending"] = value(-30.0f);
-      stats["Dribbling"] = value(2.0f);
+      stats["Shooting"] = value(8.0F);
+      stats["Defending"] = value(-30.0F);
+      stats["Dribbling"] = value(2.0F);
       break;
     case UNKNOWN:
       break;
@@ -116,7 +120,10 @@ std::map<std::string, float> roleStats(PlayerRole role, float base,
 StatsConfig loadStatsConfig()
 {
   std::ifstream file(AssetPaths::statsConfig());
-  if (!file.is_open()) return builtInStatsConfig();
+  if (!file.is_open())
+  {
+    return builtInStatsConfig();
+  }
   try
   {
     // Same fields as GameData::loadStatsConfig().
@@ -144,10 +151,12 @@ constexpr std::array<PlayerRole, STARTERS> ROLES = {
     PlayerRole::RB, PlayerRole::LM, PlayerRole::CM, PlayerRole::CM,
     PlayerRole::RM, PlayerRole::ST, PlayerRole::ST};
 constexpr std::array<Vector2F, STARTERS> POSITIONS = {
-    Vector2F{0.04f, 0.50f}, Vector2F{0.20f, 0.12f}, Vector2F{0.20f, 0.38f},
-    Vector2F{0.20f, 0.62f}, Vector2F{0.20f, 0.88f}, Vector2F{0.43f, 0.12f},
-    Vector2F{0.43f, 0.38f}, Vector2F{0.43f, 0.62f}, Vector2F{0.43f, 0.88f},
-    Vector2F{0.78f, 0.38f}, Vector2F{0.78f, 0.62f}};
+    Vector2F{.x = 0.04F, .y = 0.50F}, Vector2F{.x = 0.20F, .y = 0.12F},
+    Vector2F{.x = 0.20F, .y = 0.38F}, Vector2F{.x = 0.20F, .y = 0.62F},
+    Vector2F{.x = 0.20F, .y = 0.88F}, Vector2F{.x = 0.43F, .y = 0.12F},
+    Vector2F{.x = 0.43F, .y = 0.38F}, Vector2F{.x = 0.43F, .y = 0.62F},
+    Vector2F{.x = 0.43F, .y = 0.88F}, Vector2F{.x = 0.78F, .y = 0.38F},
+    Vector2F{.x = 0.78F, .y = 0.62F}};
 constexpr std::array<PlayerRole, RESERVES> BENCH = {
     PlayerRole::GK, PlayerRole::CB, PlayerRole::RB, PlayerRole::CM,
     PlayerRole::LM, PlayerRole::ST, PlayerRole::ST};
@@ -171,11 +180,15 @@ Lineup assembleLineup(MakePlayer make, const FormationSlots* formation)
       lineup.addOutfieldPlayer(make(index, slot.role), slot.position);
     }
     else
+    {
       lineup.addOutfieldPlayer(make(index, ROLES[index]), POSITIONS[index]);
+    }
   }
   std::vector<const Player*> reserves;
   for (std::uint32_t index = 0; index < RESERVES; ++index)
+  {
     reserves.push_back(make(STARTERS + index, BENCH[index]));
+  }
   lineup.setReserves(reserves);
   return lineup;
 }
@@ -188,7 +201,7 @@ Lineup buildLabLineup(TeamID team_id, float rating,
   return assembleLineup(
       [&](std::uint32_t index, PlayerRole role)
       {
-        const auto playerId = static_cast<PlayerID>(team_id) * 100U + index;
+        const auto playerId = (static_cast<PlayerID>(team_id) * 100U) + index;
         const std::uint8_t height =
             role == PlayerRole::GK || role == PlayerRole::CB ? TALL_HEIGHT_CM
                                                              : HEIGHT_CM;
@@ -207,11 +220,14 @@ Lineup buildUniformLineup(TeamID team_id, float rating,
                           const FormationSlots* formation)
 {
   std::map<std::string, float> stats;
-  for (const std::string& stat : config.possible_stats) stats[stat] = rating;
+  for (const std::string& stat : config.possible_stats)
+  {
+    stats[stat] = rating;
+  }
   return assembleLineup(
       [&](std::uint32_t index, PlayerRole role)
       {
-        const auto playerId = static_cast<PlayerID>(team_id) * 100U + index;
+        const auto playerId = (static_cast<PlayerID>(team_id) * 100U) + index;
         pool.push_back(std::make_unique<Player>(
             playerId, team_id, "Lab", std::to_string(playerId), role,
             Language::EN, PLAYER_WAGE, 0, PLAYER_AGE, CONTRACT_YEARS,
@@ -232,10 +248,13 @@ float lineupRating(const Lineup& lineup, const StatsConfig& config)
   }
   for (const auto& slot : lineup.getOutfieldPlayers())
   {
-    if (slot.player == nullptr) continue;
+    if (slot.player == nullptr)
+    {
+      continue;
+    }
     total += slot.player->getOverall(config);
     ++count;
   }
-  return count == 0 ? 0.0f : static_cast<float>(total / count);
+  return count == 0 ? 0.0F : static_cast<float>(total / count);
 }
 }  // namespace Lab

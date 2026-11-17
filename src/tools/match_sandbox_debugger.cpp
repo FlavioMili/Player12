@@ -12,6 +12,7 @@
 #include <imgui_internal.h>
 
 #include <algorithm>
+#include <array>
 #include <cmath>
 #include <format>
 #include <map>
@@ -50,7 +51,7 @@ float metres(PitchPoint from, PitchPoint to)
 std::string clock(float minute)
 {
   const int seconds =
-      static_cast<int>(std::floor(std::max(0.0f, minute) * 60.0f));
+      static_cast<int>(std::floor(std::max(0.0F, minute) * 60.0F));
   return std::format("{:02}:{:02}", seconds / 60, seconds % 60);
 }
 
@@ -71,23 +72,31 @@ Row describeRow(const Recorder& recorder, const Recorder::Entry& entry)
       {
         using T = std::decay_t<decltype(item)>;
         if constexpr (std::is_same_v<T, Recorder::PhaseChange>)
+        {
           return {item.homeTeam, 0,
                   std::format("{} -> {}", SandboxNames::phase(item.from),
                               SandboxNames::phase(item.to))};
+        }
         else if constexpr (std::is_same_v<T, Recorder::JobChange>)
         {
           std::string text = std::format(
               "{}: {}", SandboxNames::job(item.job),
               item.player ? name(item.player) : std::string("nobody"));
           if (item.previous)
+          {
             text += std::format(" (was {})", name(item.previous));
+          }
           if (item.player && (item.job == Recorder::Job::PRESSER_1 ||
                               item.job == Recorder::Job::PRESSER_2))
+          {
             text += std::format(" · arrives in {:.2f} s", item.score);
+          }
           else if (item.player && (item.job == Recorder::Job::RUNNER_1 ||
                                    item.job == Recorder::Job::RUNNER_2 ||
                                    item.job == Recorder::Job::RUNNER_3))
+          {
             text += std::format(" · run priority {:.2f}", item.score);
+          }
           return {item.homeTeam, item.player, text};
         }
         else if constexpr (std::is_same_v<T, Recorder::IntentChange>)
@@ -96,7 +105,9 @@ Row describeRow(const Recorder& recorder, const Recorder::Entry& entry)
               std::format("{} -> {}", SandboxNames::intent(item.from),
                           SandboxNames::intent(item.to));
           if (item.job != Recorder::Job::NONE)
+          {
             text += std::format("  [{}]", SandboxNames::job(item.job));
+          }
           return {item.homeTeam, item.player, text};
         }
         else if constexpr (std::is_same_v<T, MatchDecisionRecord>)
@@ -106,17 +117,24 @@ Row describeRow(const Recorder& recorder, const Recorder::Entry& entry)
               SandboxNames::choice(item.chosen), score(item.pass),
               score(item.shot), score(item.carry), score(item.shield));
           if (item.chosen == ScenarioAction::PASS && item.bestReceiver)
+          {
             text += std::format("  ·  to {} ({})", name(item.bestReceiver),
                                 SandboxNames::passIntent(item.bestPassIntent));
+          }
           if (item.chosenWithoutNoise != item.chosen)
+          {
             text += std::format("  ·  NOISE FLIPPED (scores alone: {})",
                                 SandboxNames::choice(item.chosenWithoutNoise));
+          }
           return {item.homeTeam, item.player, text};
         }
         else if constexpr (std::is_same_v<T, MatchActionRecord>)
         {
           std::string text = SandboxNames::action(item.kind);
-          if (item.header) text += " (header)";
+          if (item.header)
+          {
+            text += " (header)";
+          }
           switch (item.kind)
           {
             case MatchActionKind::PASS:
@@ -134,7 +152,9 @@ Row describeRow(const Recorder& recorder, const Recorder::Entry& entry)
             case MatchActionKind::KNOCK_DOWN:
               text += std::format(" · {:.1f} m", metres(item.from, item.to));
               if (item.target)
+              {
                 text += std::format(" toward {}", name(item.target));
+              }
               break;
             case MatchActionKind::TAKE_ON:
               text +=
@@ -162,9 +182,11 @@ Row describeRow(const Recorder& recorder, const Recorder::Entry& entry)
           {
             const auto& cause = recorder.entries()[*item.afterAction].payload;
             if (const auto* action = std::get_if<MatchActionRecord>(&cause))
+            {
               text += std::format("  (after {} by {})",
                                   SandboxNames::action(action->kind),
                                   name(action->player));
+            }
           }
           return {item.toHome, item.to, text};
         }
@@ -177,10 +199,11 @@ Row describeRow(const Recorder& recorder, const Recorder::Entry& entry)
         else
         {
           const MatchEvent& event = recorder.events()[item.index];
-          return {event.hasTeam ? static_cast<int>(event.isHomeTeam) : -1,
-                  event.primaryPlayerId,
-                  std::format("{}  {}", matchEventTypeName(event.type),
-                              event.description)};
+          return {
+              .home = event.hasTeam ? static_cast<int>(event.isHomeTeam) : -1,
+              .player = event.primaryPlayerId,
+              .detail = std::format("{}  {}", matchEventTypeName(event.type),
+                                    event.description)};
         }
       },
       entry.payload);
@@ -191,12 +214,13 @@ EngineDebugger::Described EngineDebugger::describe(
     const SandboxRecorder& recorder, const SandboxRecorder::Entry& entry)
 {
   Row row = describeRow(recorder, entry);
-  return {row.home, row.player, std::move(row.detail)};
+  return {
+      .home = row.home, .player = row.player, .detail = std::move(row.detail)};
 }
 
 void EngineDebugger::reset()
 {
-  wheel_rows = 0.0f;
+  wheel_rows = 0.0F;
   visible.clear();
   visible_for_size = 0;
   filters_changed = true;
@@ -214,24 +238,35 @@ void EngineDebugger::renderContents(SandboxRecorder& recorder,
                                     DebugInspector& inspector)
 {
   renderControls(recorder, engine, paused);
-  if (const MatchEngine* shown = inspected ? inspected : engine)
+  if (const MatchEngine* shown = (inspected != nullptr) ? inspected : engine)
+  {
+    const std::string handshake(handshakeName(shown->getHandshake()));
     ImGui::TextWrapped(
         "Brains: %s · Bodies: %s · Handshake: %s · Home advantage: %.2f",
         brainPairName({shown->getBrain(true), shown->getBrain(false)}).c_str(),
         bodyPairName({shown->getBody(true), shown->getBody(false)}).c_str(),
-        handshakeName(shown->getHandshake()).data(),
-        shown->getMatchContext().homeAdvantageScale);
-  const char* tabs[] = {"Log",      "Team",    "Player",
-                        "Decision", "Referee", "Summary"};
-  if (!inspected) contentTab = 0;
-  for (int i = 0; i < (inspected ? 6 : 1); ++i)
+        handshake.c_str(), shown->getMatchContext().homeAdvantageScale);
+  }
+  constexpr std::array tabs{"Log",      "Team",    "Player",
+                            "Decision", "Referee", "Summary"};
+  if (inspected == nullptr)
   {
-    if (i)
+    contentTab = 0;
+  }
+  for (int i = 0;
+       i < ((inspected != nullptr) ? static_cast<int>(tabs.size()) : 1); ++i)
+  {
+    if (i != 0)
+    {
       SandboxAnalysisUI::next(
-          SandboxPageUI::buttonWidth(tabs[i], Theme::scale(),
+          SandboxPageUI::buttonWidth(tabs.at(i), Theme::scale(),
                                      SandboxAnalysisUI::bold()) /
           Theme::scale());
-    if (SandboxAnalysisUI::button(tabs[i], contentTab == i)) contentTab = i;
+    }
+    if (SandboxAnalysisUI::button(tabs.at(i), contentTab == i))
+    {
+      contentTab = i;
+    }
   }
   switch (contentTab)
   {
@@ -261,30 +296,44 @@ void EngineDebugger::renderContents(SandboxRecorder& recorder,
     case 5:
       inspector.renderSummary(recorder, *inspected);
       break;
+    default:
+      break;
   }
 }
 
 void EngineDebugger::renderControls(SandboxRecorder& recorder,
                                     MatchEngine* engine, bool* paused)
 {
-  if (engine && paused)
+  if ((engine != nullptr) && (paused != nullptr))
   {
     if (SandboxAnalysisUI::button(*paused ? "Resume" : "Pause"))
+    {
       *paused = !*paused;
+    }
     SandboxAnalysisUI::next();
     ImGui::BeginDisabled(!*paused);
     // Stepping runs the same fixed steps as play, with the recorder attached.
     const auto stepBy = [&](int steps)
     {
       if (stepper)
+      {
         stepper(steps);
+      }
       else
+      {
         engine->advance(static_cast<float>(steps) *
                         MatchTuning::Timing::FIXED_STEP_SECONDS);
+      }
     };
-    if (SandboxAnalysisUI::button("Step 0.1 s")) stepBy(1);
+    if (SandboxAnalysisUI::button("Step 0.1 s"))
+    {
+      stepBy(1);
+    }
     SandboxAnalysisUI::next();
-    if (SandboxAnalysisUI::button("Step 1 s")) stepBy(10);
+    if (SandboxAnalysisUI::button("Step 1 s"))
+    {
+      stepBy(10);
+    }
     ImGui::EndDisabled();
     SandboxAnalysisUI::next();
     ImGui::TextDisabled(
@@ -309,11 +358,13 @@ void EngineDebugger::renderFilters(const SandboxRecorder& recorder,
     player_filter = selection;
     filters_changed = true;
   }
-  ImGui::SetNextItemWidth(110.0f * Theme::scale());
+  ImGui::SetNextItemWidth(110.0F * Theme::scale());
   constexpr std::array<const char*, 3> TEAMS{"Both teams", "Home", "Away"};
   if (SandboxPageUI::combo("##team", &team_filter, TEAMS.data(),
                            static_cast<int>(TEAMS.size())))
+  {
     filters_changed = true;
+  }
   SandboxAnalysisUI::next(190);
 
   // Every player seen in the match, by name.
@@ -321,11 +372,14 @@ void EngineDebugger::renderFilters(const SandboxRecorder& recorder,
   {
     const auto guard = recorder.lock();
     for (const auto& [id, name] : recorder.knownPlayers())
+    {
       players.emplace(name, id);
+    }
   }
-  ImGui::SetNextItemWidth(190.0f * Theme::scale());
-  const std::string current =
-      player_filter ? recorder.playerName(player_filter) : "All players";
+  ImGui::SetNextItemWidth(190.0F * Theme::scale());
+  const std::string current = (player_filter != 0U)
+                                  ? recorder.playerName(player_filter)
+                                  : "All players";
   if (SandboxPageUI::beginCombo("##player", current.c_str(),
                                 ImGuiComboFlags_HeightLarge))
   {
@@ -335,11 +389,13 @@ void EngineDebugger::renderFilters(const SandboxRecorder& recorder,
       filters_changed = true;
     }
     for (const auto& [label, id] : players)
+    {
       if (ImGui::Selectable(label.c_str(), player_filter == id))
       {
         player_filter = id;
         filters_changed = true;
       }
+    }
     ImGui::EndCombo();
   }
   SandboxAnalysisUI::next();
@@ -349,17 +405,25 @@ void EngineDebugger::renderFilters(const SandboxRecorder& recorder,
     filters_changed = true;
   }
   if (ImGui::IsItemHovered())
+  {
     ImGui::SetTooltip(
         "Show only the player selected on the review pitch, "
         "in the Team or Player tab, or by clicking a row.");
+  }
   SandboxAnalysisUI::next();
   ImGui::Checkbox("Follow", &follow);
 
   for (std::size_t kind = 0; kind < shown.size(); ++kind)
   {
-    if (kind > 0) SandboxAnalysisUI::next();
+    if (kind > 0)
+    {
+      SandboxAnalysisUI::next();
+    }
     ImGui::PushID(static_cast<int>(kind));
-    if (ImGui::Checkbox(KIND_NAMES[kind], &shown[kind])) filters_changed = true;
+    if (ImGui::Checkbox(KIND_NAMES.at(kind), &shown.at(kind)))
+    {
+      filters_changed = true;
+    }
     ImGui::PopID();
   }
 }
@@ -377,17 +441,29 @@ void EngineDebugger::refreshVisible(const SandboxRecorder& recorder)
   for (std::size_t index = visible_for_size; index < entries.size(); ++index)
   {
     const auto& entry = entries[index];
-    if (!shown[entry.payload.index()]) continue;
+    if (!shown.at(entry.payload.index()))
+    {
+      continue;
+    }
     if (team_filter != 0 || player_filter != 0)
     {
       const Row row = describeRow(recorder, entry);
-      if (team_filter != 0 && row.home != (team_filter == 1 ? 1 : 0)) continue;
-      if (player_filter != 0 && row.player != player_filter) continue;
+      if (team_filter != 0 && row.home != (team_filter == 1 ? 1 : 0))
+      {
+        continue;
+      }
+      if (player_filter != 0 && row.player != player_filter)
+      {
+        continue;
+      }
     }
     visible.push_back(index);
   }
   visible_for_size = entries.size();
-  if (visible.size() != before && follow) scroll_to_end = true;
+  if (visible.size() != before && follow)
+  {
+    scroll_to_end = true;
+  }
 }
 
 void EngineDebugger::renderLog(const SandboxRecorder& recorder,
@@ -406,36 +482,41 @@ void EngineDebugger::renderLog(const SandboxRecorder& recorder,
         visible, *cursor, {},
         [&entries](std::size_t index) { return entries[index].tick; });
     if (after != visible.begin())
+    {
       cursorRow = static_cast<int>(after - visible.begin()) - 1;
+    }
   }
   const bool scrollToCursor = cursor && cursor != scrolled_cursor;
   scrolled_cursor = cursor;
-  if (scrollToCursor) follow = false;
+  if (scrollToCursor)
+  {
+    follow = false;
+  }
 
   constexpr ImGuiTableFlags flags =
       ImGuiTableFlags_RowBg | ImGuiTableFlags_ScrollY |
       ImGuiTableFlags_ScrollX | ImGuiTableFlags_BordersInnerV |
       ImGuiTableFlags_Resizable | ImGuiTableFlags_SizingFixedFit;
   const float rowHeight = std::ceil(ImGui::GetTextLineHeight() +
-                                    2 * ImGui::GetStyle().CellPadding.y);
+                                    (2 * ImGui::GetStyle().CellPadding.y));
   // Quantise the pending wheel/seek/follow request before BeginChild applies
   // it. The frozen header stays fixed; every data row has exactly this height.
   if (const auto* table = ImGui::TableFindByID(ImGui::GetID("##log"));
-      table && table->InnerWindow)
+      (table != nullptr) && (table->InnerWindow != nullptr))
   {
     const auto* window = table->InnerWindow;
     const float decorations = window->DecoOuterSizeY1 +
                               window->DecoInnerSizeY1 + window->DecoOuterSizeY2;
     float requested =
         window->ScrollTarget.y < FLT_MAX
-            ? window->ScrollTarget.y - window->ScrollTargetCenterRatio.y *
-                                           (window->SizeFull.y - decorations)
+            ? window->ScrollTarget.y - (window->ScrollTargetCenterRatio.y *
+                                        (window->SizeFull.y - decorations))
             : window->Scroll.y;
     const auto& io = ImGui::GetIO();
     if (io.MouseWheel != 0 && !io.KeyCtrl && !io.KeyShift &&
         ImGui::GetCurrentContext()->HoveredWindow == window)
     {
-      wheel_rows -= io.MouseWheel * 3.f;
+      wheel_rows -= io.MouseWheel * 3.F;
       const float steps = std::trunc(wheel_rows);
       wheel_rows -= steps;
       requested = window->Scroll.y + steps * rowHeight;
@@ -444,9 +525,12 @@ void EngineDebugger::renderLog(const SandboxRecorder& recorder,
     const float limit = std::floor(window->ScrollMax.y / rowHeight) * rowHeight;
     ImGui::SetNextWindowScroll(
         ImVec2(-1, std::clamp(std::round(requested / rowHeight) * rowHeight,
-                              0.f, std::max(0.f, limit))));
+                              0.F, std::max(0.F, limit))));
   }
-  if (!ImGui::BeginTable("##log", 6, flags, ImVec2(0.0f, 0.0f))) return;
+  if (!ImGui::BeginTable("##log", 6, flags, ImVec2(0.0F, 0.0F)))
+  {
+    return;
+  }
   ImGui::TableSetupScrollFreeze(0, 1);
   ImGui::TableSetupColumn("Time");
   ImGui::TableSetupColumn("Tick");
@@ -460,7 +544,10 @@ void EngineDebugger::renderLog(const SandboxRecorder& recorder,
 
   ImGuiListClipper clipper;
   clipper.Begin(static_cast<int>(visible.size()), rowHeight);
-  if (scrollToCursor && cursorRow) clipper.IncludeItemByIndex(*cursorRow);
+  if (scrollToCursor && cursorRow)
+  {
+    clipper.IncludeItemByIndex(*cursorRow);
+  }
   while (clipper.Step())
   {
     for (int row = clipper.DisplayStart; row < clipper.DisplayEnd; ++row)
@@ -480,12 +567,20 @@ void EngineDebugger::renderLog(const SandboxRecorder& recorder,
       {
         seek_request = entry.tick;
         follow = false;
-        if (described.player != 0) inspector.selected = described.player;
+        if (described.player != 0)
+        {
+          inspector.selected = described.player;
+        }
       }
       if (ImGui::IsItemHovered(ImGuiHoveredFlags_DelayNormal))
+      {
         ImGui::SetTooltip("Click to rewind the review to this moment.");
+      }
       ImGui::PopID();
-      if (scrollToCursor && cursorRow == row) ImGui::SetScrollHereY(0.5f);
+      if (scrollToCursor && cursorRow == row)
+      {
+        ImGui::SetScrollHereY(0.5F);
+      }
       ImGui::TableNextColumn();
       ImGui::Text("%llu", static_cast<unsigned long long>(entry.tick));
       ImGui::TableNextColumn();
@@ -493,11 +588,11 @@ void EngineDebugger::renderLog(const SandboxRecorder& recorder,
                              : described.home > 0 ? "Home"
                                                   : "Away");
       ImGui::TableNextColumn();
-      ImGui::TextUnformatted(described.player
+      ImGui::TextUnformatted((described.player != 0U)
                                  ? recorder.playerName(described.player).c_str()
                                  : "");
       ImGui::TableNextColumn();
-      ImGui::TextUnformatted(KIND_NAMES[entry.payload.index()]);
+      ImGui::TextUnformatted(KIND_NAMES.at(entry.payload.index()));
       ImGui::TableNextColumn();
       ImGui::TextUnformatted(described.detail.c_str());
     }
@@ -506,10 +601,10 @@ void EngineDebugger::renderLog(const SandboxRecorder& recorder,
   // viewport height isn't an exact multiple of the data-row height.
   ImGui::TableNextRow(ImGuiTableRowFlags_None, rowHeight);
   ImGui::TableNextColumn();
-  ImGui::Dummy(ImVec2(0, rowHeight - 2 * ImGui::GetStyle().CellPadding.y));
+  ImGui::Dummy(ImVec2(0, rowHeight - (2 * ImGui::GetStyle().CellPadding.y)));
   if (scroll_to_end)
   {
-    ImGui::SetScrollHereY(1.0f);
+    ImGui::SetScrollHereY(1.0F);
     scroll_to_end = false;
   }
   ImGui::EndTable();

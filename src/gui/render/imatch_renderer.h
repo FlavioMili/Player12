@@ -15,10 +15,10 @@
 /** Screen-space rectangle the renderer draws the pitch into. */
 struct MatchViewport
 {
-  float x = 0.0f;
-  float y = 0.0f;
-  float width = 800.0f;
-  float height = 500.0f;
+  float x = 0.0F;
+  float y = 0.0F;
+  float width = 800.0F;
+  float height = 500.0F;
 };
 
 /** Camera presets offered by the 3D broadcast renderer. */
@@ -41,20 +41,20 @@ enum class MatchCameraMode : std::uint8_t
 struct MatchCameraInput
 {
   /** Mouse-wheel steps (positive zooms in). */
-  float zoomSteps = 0.0f;
+  float zoomSteps = 0.0F;
   /** Orbit drag in pixels (x turns around the target, y tilts). */
-  float orbitX = 0.0f;
-  float orbitY = 0.0f;
+  float orbitX = 0.0F;
+  float orbitY = 0.0F;
   /** Pan drag: the ground under `panFrom` moves to `panTo` (pixels). */
   bool pan = false;
-  float panFromX = 0.0f;
-  float panFromY = 0.0f;
-  float panToX = 0.0f;
-  float panToY = 0.0f;
+  float panFromX = 0.0F;
+  float panFromY = 0.0F;
+  float panToX = 0.0F;
+  float panToY = 0.0F;
   /** Re-target the free camera on the ground point under this pixel. */
   bool retarget = false;
-  float retargetX = 0.0f;
-  float retargetY = 0.0f;
+  float retargetX = 0.0F;
+  float retargetY = 0.0F;
   /** Free camera orbits the moving ball, keeping the user's angle. */
   bool followBall = false;
   /** Returns the free camera to its default overview. */
@@ -68,7 +68,7 @@ struct MatchRenderOptions
   /** Always label every player instead of only the ball carrier. */
   bool showPlayerNames = false;
   /** Real (unscaled) seconds since the previous rendered frame. */
-  float frameSeconds = 0.0f;
+  float frameSeconds = 0.0F;
   /** Camera mouse input over the viewport since the previous frame. */
   MatchCameraInput cameraInput;
   MatchCameraMode cameraMode = MatchCameraMode::BROADCAST;
@@ -111,6 +111,6 @@ class IMatchRenderer
    * the view's projection. False before the first frame or when the point
    * is behind the camera.
    */
-  virtual bool projectPitch(PitchPoint pitch, float heightMetres, float& screenX,
-                            float& screenY) const = 0;
+  virtual bool projectPitch(PitchPoint pitch, float heightMetres,
+                            float& screenX, float& screenY) const = 0;
 };

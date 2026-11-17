@@ -8,16 +8,15 @@
 
 #include "tools/match_sandbox_checks.h"
 
+#include <algorithm>
 #include <array>
 #include <chrono>
-#include <cstdint>
 #include <cmath>
+#include <cstdint>
 #include <cstdio>
 #include <cstring>
 #include <deque>
-#include <fstream>
 #include <filesystem>
-#include <algorithm>
 #include <format>
 #include <fstream>
 #include <iostream>
@@ -40,19 +39,22 @@
 #include "tools/match_sandbox_detail.h"
 #include "tools/match_sandbox_drill.h"
 #include "tools/match_sandbox_measure.h"
-#include "tools/match_sandbox_shot_map.h"
+#include "tools/match_sandbox_possession_trace.h"
 #include "tools/match_sandbox_recorder.h"
 #include "tools/match_sandbox_recording.h"
-#include "tools/match_sandbox_setup.h"
 #include "tools/match_sandbox_rewind.h"
-#include "tools/match_sandbox_possession_trace.h"
 #include "tools/match_sandbox_scenario.h"
+#include "tools/match_sandbox_setup.h"
+#include "tools/match_sandbox_shot_map.h"
 
 #if defined(_WIN32)
 #define WIN32_LEAN_AND_MEAN
 #define NOMINMAX
+// psapi.h requires the Windows types to be declared first.
+// clang-format off
 #include <windows.h>
 #include <psapi.h>
+// clang-format on
 #endif
 
 namespace
@@ -66,10 +68,13 @@ std::optional<std::size_t> privateBytes()
 {
 #if defined(_WIN32)
   PROCESS_MEMORY_COUNTERS_EX counters{};
-  if (K32GetProcessMemoryInfo(GetCurrentProcess(),
-                              reinterpret_cast<PROCESS_MEMORY_COUNTERS*>(&counters),
-                              sizeof(counters)))
+  if (K32GetProcessMemoryInfo(
+          GetCurrentProcess(),
+          reinterpret_cast<PROCESS_MEMORY_COUNTERS*>(&counters),
+          sizeof(counters)) != 0)
+  {
     return counters.PrivateUsage;
+  }
 #endif
   return std::nullopt;
 }
@@ -84,7 +89,9 @@ class Fingerprint
     unsigned char bytes[sizeof(T)];
     std::memcpy(bytes, &value, sizeof(T));
     for (const unsigned char byte : bytes)
+    {
       hash = (hash ^ byte) * 1099511628211ULL;
+    }
   }
   [[nodiscard]] std::uint64_t value() const { return hash; }
 
@@ -133,7 +140,8 @@ std::unique_ptr<MatchEngine> makeEngine(const Team& home, const Team& away,
 {
   auto engine = std::make_unique<MatchEngine>(
       home.getLineup(), away.getLineup(), home.getStrategy(),
-      away.getStrategy(), config, seed, sandboxHandshake(), sandboxPossession());
+      away.getStrategy(), config, seed, sandboxHandshake(),
+      sandboxPossession());
   applyHomeAdvantage(*engine, sandboxHomeAdvantage());
   engine->setTeamNames(home.getName(), away.getName());
   engine->setBrain(true, sandboxBrains()[0]);
@@ -160,11 +168,15 @@ std::unique_ptr<MatchEngine> drillEngine(const Team& home, const Team& away,
                                          const std::vector<PlayerID>& keep)
 {
   auto engine = makeEngine(home, away, config, seed);
-  engine->setDrillRules({false, false});
+  engine->setDrillRules({.offside = false, .minimumPlayers = false});
   for (const MatchPlayer& slot : engine->getPlayers())
-    if (slot.player &&
+  {
+    if ((slot.player != nullptr) &&
         std::ranges::find(keep, slot.player->getId()) == keep.end())
+    {
       (void)engine->removeBeforeKickOff(slot.player->getId());
+    }
+  }
   return engine;
 }
 
@@ -179,20 +191,26 @@ bool runDrillChecks(const Team& home, const Team& away,
     auto engine = drillEngine(home, away, config, 7, {runner->getId()});
     engine->setRecorder(recorder);
     MatchScenario scenario;
-    scenario.players.push_back({runner->getId(), PITCH.at(0.30f, 0.50f), false});
-    scenario.ballPosition = PITCH.at(0.95f, 0.95f);
+    scenario.players.push_back({.playerId = runner->getId(),
+                                .position = PITCH.at(0.30F, 0.50F),
+                                .makingRun = false});
+    scenario.ballPosition = PITCH.at(0.95F, 0.95F);
     const bool started = engine->startDrill(scenario);
-    const PitchPoint target = PITCH.at(0.60f, 0.50f);
+    const PitchPoint target = PITCH.at(0.60F, 0.50F);
     engine->setDrillTarget(runner->getId(), target, true);
     std::uint64_t arrived = 0;
     for (int tick = 0; started && tick < 300 && arrived == 0; ++tick)
     {
       engine->advance(MatchTuning::Timing::FIXED_STEP_SECONDS);
       for (const MatchPlayer& slot : engine->getPlayers())
+      {
         if (slot.player == runner &&
-            std::hypot(slot.position.x - target.x,
-                       slot.position.y - target.y) < 1.0f)
+            std::hypot(slot.position.x - target.x, slot.position.y - target.y) <
+                1.0F)
+        {
           arrived = engine->getSimulatedSteps();
+        }
+      }
     }
     return std::pair{arrived, SandboxRecorder::stateChecksum(*engine)};
   };
@@ -209,7 +227,8 @@ bool runDrillChecks(const Team& home, const Team& away,
   std::cout << std::format(
       "\nDrill sprint: 31.5 m in {:.1f} s ({}), same twice: {}, rewinds "
       "exactly: {}\n",
-      static_cast<double>(first.first) * MatchTuning::Timing::FIXED_STEP_SECONDS,
+      static_cast<double>(first.first) *
+          MatchTuning::Timing::FIXED_STEP_SECONDS,
       runner->getName(), first == second ? "yes" : "NO",
       rewound ? "yes" : "NO");
 
@@ -221,11 +240,18 @@ bool runDrillChecks(const Team& home, const Team& away,
     auto engine = drillEngine(home, away, config, seed,
                               {shooter->getId(), keeper->getId()});
     MatchScenario scenario;
-    scenario.players.push_back({shooter->getId(), PITCH.at(0.84f, 0.55f), false});
-    scenario.players.push_back({keeper->getId(), PITCH.at(0.985f, 0.50f), false});
+    scenario.players.push_back({.playerId = shooter->getId(),
+                                .position = PITCH.at(0.84F, 0.55F),
+                                .makingRun = false});
+    scenario.players.push_back({.playerId = keeper->getId(),
+                                .position = PITCH.at(0.985F, 0.50F),
+                                .makingRun = false});
     scenario.carrierId = shooter->getId();
-    scenario.ballPosition = PITCH.at(0.84f, 0.55f);
-    if (!engine->startDrill(scenario)) return std::string("not started");
+    scenario.ballPosition = PITCH.at(0.84F, 0.55F);
+    if (!engine->startDrill(scenario))
+    {
+      return std::string("not started");
+    }
     engine->forceShot(shooter->getId());
     // The run ends at the first stoppage or once the shot is dealt with.
     for (int tick = 0; tick < 80; ++tick)
@@ -237,25 +263,37 @@ bool runDrillChecks(const Team& home, const Team& away,
             event.type == MatchEventType::SAVE ||
             event.type == MatchEventType::WOODWORK ||
             event.type == MatchEventType::SHOT_BLOCKED)
+        {
           return std::string(matchEventTypeName(event.type));
+        }
         // The engine logs no "off target" event: a miss goes out of play.
         if (event.type == MatchEventType::GOAL_KICK ||
             event.type == MatchEventType::CORNER ||
             event.type == MatchEventType::THROW_IN)
+        {
           return std::string("off target");
+        }
       }
       // A weak miss the keeper simply picks up is logged as nothing either.
-      if (engine->getPossessionAttachment() == keeper && !engine->getBall().possessionState().isShot)
+      if (engine->getPossessionAttachment() == keeper &&
+          !engine->getBall().possessionState().isShot)
+      {
         return std::string("off target (gathered)");
+      }
     }
     return std::string("no outcome");
   };
   std::map<std::string, int> outcomes;
-  for (std::uint32_t seed = 1; seed <= 100; ++seed) ++outcomes[shot(seed)];
+  for (std::uint32_t seed = 1; seed <= 100; ++seed)
+  {
+    ++outcomes[shot(seed)];
+  }
   const bool repeatable = shot(42) == shot(42);
   std::string summary;
   for (const auto& [outcome, count] : outcomes)
+  {
     summary += std::format("{} {}  ", outcome, count);
+  }
   const bool shotOk = repeatable && !outcomes.contains("not started") &&
                       !outcomes.contains("no outcome");
   std::cout << std::format(
@@ -267,68 +305,84 @@ bool runDrillChecks(const Team& home, const Team& away,
   // headless movement path), and the movement drills again with the ball.
   bool framework = true;
   for (const auto& drill : makeDrills())
-  for (const float withBall : {0.0f, 1.0f})
-  for (const float path : {0.0f})
   {
-    bool hasPath = false;
-    bool hasBall = false;
-    for (const DrillParameter& parameter : drill->parameters())
+    for (const float withBall : {0.0F, 1.0F})
     {
-      if (std::string_view(parameter.name) == "Who runs")
+      for (const float path : {0.0F})
       {
-        *parameter.value = path;
-        hasPath = true;
-      }
-      if (std::string_view(parameter.name) == "With the ball")
-      {
-        *parameter.value = withBall;
-        hasBall = true;
+        bool hasPath = false;
+        bool hasBall = false;
+        for (const DrillParameter& parameter : drill->parameters())
+        {
+          if (std::string_view(parameter.name) == "Who runs")
+          {
+            *parameter.value = path;
+            hasPath = true;
+          }
+          if (std::string_view(parameter.name) == "With the ball")
+          {
+            *parameter.value = withBall;
+            hasBall = true;
+          }
+        }
+        if ((!hasPath && path > 0.0F) || (!hasBall && withBall > 0.0F))
+        {
+          continue;
+        }
+        const auto runToEnd = [&](bool rewind)
+        {
+          DrillRun run(*drill, config);
+          while (run.step())
+          {
+          }
+          bool exact = true;
+          if (rewind)
+          {
+            const std::uint64_t middle = run.engine().getSimulatedSteps() / 2;
+            const auto rebuilt = MatchRewind::rebuild(run.recorder(), middle);
+            exact = rebuilt.engine && !rebuilt.divergedAt;
+          }
+          // Running tallies over several runs differ by design: left out.
+          std::vector<std::string> report = drill->report();
+          std::erase_if(report, [](const std::string& line)
+                        { return line.starts_with("These settings so far"); });
+          return std::pair{report, exact};
+        };
+        const auto first = runToEnd(true);
+        const auto second = runToEnd(false);
+        const bool same = first.first == second.first && first.second;
+        framework = framework && same;
+        // The headline result: the total or finish line (the run completed),
+        // else the last line.
+        std::string result = first.first.empty() ? "" : first.first.back();
+        bool completed = false;
+        for (const std::string& line : first.first)
+        {
+          if (line.starts_with("TOTAL") || line.starts_with("FINISH") ||
+              line.starts_with("Decrement") || line.starts_with("OUTCOME"))
+          {
+            result = line;
+            completed = true;
+          }
+        }
+        framework = framework && completed;
+        std::cout << std::format(
+            "Drill {}{}{}: {}  ·  same twice and rewinds: {}{}\n",
+            drill->name(), hasPath ? " (AI)" : "",
+            withBall > 0.0F ? " with the ball" : "", result,
+            same ? "yes" : "NO", completed ? "" : "  ·  DID NOT FINISH");
+        if (hasBall)
+        {
+          for (const DrillParameter& parameter : drill->parameters())
+          {
+            if (std::string_view(parameter.name) == "With the ball")
+            {
+              *parameter.value = 0.0F;
+            }
+          }
+        }
       }
     }
-    if ((!hasPath && path > 0.0f) || (!hasBall && withBall > 0.0f)) continue;
-    const auto runToEnd = [&](bool rewind)
-    {
-      DrillRun run(*drill, config);
-      while (run.step())
-      {
-      }
-      bool exact = true;
-      if (rewind)
-      {
-        const std::uint64_t middle = run.engine().getSimulatedSteps() / 2;
-        const auto rebuilt = MatchRewind::rebuild(run.recorder(), middle);
-        exact = rebuilt.engine && !rebuilt.divergedAt;
-      }
-      // Running tallies over several runs differ by design: left out.
-      std::vector<std::string> report = drill->report();
-      std::erase_if(report, [](const std::string& line)
-                    { return line.starts_with("These settings so far"); });
-      return std::pair{report, exact};
-    };
-    const auto first = runToEnd(true);
-    const auto second = runToEnd(false);
-    const bool same = first.first == second.first && first.second;
-    framework = framework && same;
-    // The headline result: the total or finish line (the run completed),
-    // else the last line.
-    std::string result = first.first.empty() ? "" : first.first.back();
-    bool completed = false;
-    for (const std::string& line : first.first)
-      if (line.starts_with("TOTAL") || line.starts_with("FINISH") ||
-          line.starts_with("Decrement") || line.starts_with("OUTCOME"))
-      {
-        result = line;
-        completed = true;
-      }
-    framework = framework && completed;
-    std::cout << std::format(
-        "Drill {}{}{}: {}  ·  same twice and rewinds: {}{}\n", drill->name(),
-        hasPath ? " (AI)" : "",
-        withBall > 0.0f ? " with the ball" : "", result, same ? "yes" : "NO",
-        completed ? "" : "  ·  DID NOT FINISH");
-    if (hasBall)
-      for (const DrillParameter& parameter : drill->parameters())
-        if (std::string_view(parameter.name) == "With the ball") *parameter.value = 0.0f;
   }
 
   // Measure mode: a sweep gives the same results as running the drill
@@ -339,10 +393,12 @@ bool runDrillChecks(const Team& home, const Team& away,
     Drill& sprint = *drills.front();
     std::vector<float> before;
     for (const DrillParameter& parameter : sprint.parameters())
+    {
       before.push_back(*parameter.value);
+    }
     MeasureSpec spec;
-    spec.sweep = {"Pace", {50.0f, 70.0f}};
-    spec.by = MeasureAxis{"With the ball", {0.0f, 1.0f}};
+    spec.sweep = {.parameter = "Pace", .values = {50.0F, 70.0F}};
+    spec.by = MeasureAxis{.parameter = "With the ball", .values = {0.0F, 1.0F}};
     spec.repeats = 2;
     DrillMeasure measure(sprint, config, spec);
     while (measure.work(1.0))
@@ -350,13 +406,21 @@ bool runDrillChecks(const Team& home, const Team& away,
     }
     std::vector<float> after;
     for (const DrillParameter& parameter : sprint.parameters())
+    {
       after.push_back(*parameter.value);
+    }
     // The same point run directly: Pace 70 with the ball, seed 2.
     double direct = -1.0;
     for (const DrillParameter& parameter : sprint.parameters())
     {
-      if (std::string_view(parameter.name) == "Pace") *parameter.value = 70.0f;
-      if (std::string_view(parameter.name) == "With the ball") *parameter.value = 1.0f;
+      if (std::string_view(parameter.name) == "Pace")
+      {
+        *parameter.value = 70.0F;
+      }
+      if (std::string_view(parameter.name) == "With the ball")
+      {
+        *parameter.value = 1.0F;
+      }
     }
     sprint.seed = 2;
     {
@@ -365,15 +429,29 @@ bool runDrillChecks(const Team& home, const Team& away,
       {
       }
       for (const DrillMetric& metric : sprint.metrics())
-        if (metric.name == "Finish (s)") direct = metric.value;
+      {
+        if (metric.name == "Finish (s)")
+        {
+          direct = metric.value;
+        }
+      }
     }
     double measured = -2.0;
     for (const MeasureRun& run : measure.runs())
-      if (run.x == 70.0f && run.by == 1.0f && run.seed == 2)
+    {
+      if (run.x == 70.0F && run.by == 1.0F && run.seed == 2)
+      {
         for (const DrillMetric& metric : run.metrics)
-          if (metric.name == "Finish (s)") measured = metric.value;
-    measureOk = measure.runs().size() == 8 && before == after &&
-                direct == measured;
+        {
+          if (metric.name == "Finish (s)")
+          {
+            measured = metric.value;
+          }
+        }
+      }
+    }
+    measureOk =
+        measure.runs().size() == 8 && before == after && direct == measured;
     std::cout << std::format(
         "Drill measure (sprint, Pace × with the ball × 2 seeds): {} runs, "
         "matches a direct run: {}, settings restored: {}\n",
@@ -387,15 +465,20 @@ bool runDrillChecks(const Team& home, const Team& away,
     auto drills = makeDrills();
     Drill* shotDrill = nullptr;
     for (const auto& drill : drills)
-      if (drill->offersShotMap()) shotDrill = drill.get();
-    if (shotDrill)
+    {
+      if (drill->offersShotMap())
+      {
+        shotDrill = drill.get();
+      }
+    }
+    if (shotDrill != nullptr)
     {
       ShotMapSpec spec;
-      spec.lineFrom = 6.0f;
-      spec.lineTo = 18.0f;
+      spec.lineFrom = 6.0F;
+      spec.lineTo = 18.0F;
       spec.lineCount = 3;
-      spec.sideFrom = -8.0f;
-      spec.sideTo = 8.0f;
+      spec.sideFrom = -8.0F;
+      spec.sideTo = 8.0F;
       spec.sideCount = 3;
       spec.repeats = 10;
       const auto summary = [&]
@@ -406,7 +489,9 @@ bool runDrillChecks(const Team& home, const Team& away,
         }
         std::vector<std::tuple<int, int, double>> cells;
         for (const ShotMapCell& cell : map.cells())
+        {
           cells.emplace_back(cell.shots, cell.goals, cell.xg);
+        }
         return cells;
       };
       const auto first = summary();
@@ -428,8 +513,8 @@ bool runDrillChecks(const Team& home, const Team& away,
 }
 
 /** Derived stats: every registry row complete (a physical range holding
- * ratings 0 to 1), every recipe summing to 1, and every player of the checked clubs finite and in range under each
- * handshake. */
+ * ratings 0 to 1), every recipe summing to 1, and every player of the checked
+ * clubs finite and in range under each handshake. */
 bool runDerivedStatChecks(const std::vector<const Team*>& clubs,
                           const StatsConfig& config)
 {
@@ -444,20 +529,25 @@ bool runDerivedStatChecks(const std::vector<const Team*>& clubs,
     // never flattens a real rating.
     if (!info.unit.empty())
     {
-      const float slope = (info.highValue - info.lowValue) /
-                          (info.highRating - info.lowRating);
-      const float atZero = info.lowValue - slope * info.lowRating;
+      const float slope =
+          (info.highValue - info.lowValue) / (info.highRating - info.lowRating);
+      const float atZero = info.lowValue - (slope * info.lowRating);
       const float atOne = atZero + slope;
-      registryOk = registryOk &&
-                   std::min(atZero, atOne) >= info.minValue &&
+      registryOk = registryOk && std::min(atZero, atOne) >= info.minValue &&
                    std::max(atZero, atOne) <= info.maxValue;
     }
     const DerivedRecipe& recipe = DEFAULT_DERIVED_RECIPES[index];
-    float total = 0.0f;
-    for (const float weight : recipe.weights) total += weight;
-    for (const float weight : recipe.futureWeights) total += weight;
-    registryOk = registryOk && std::abs(total - 1.0f) < 1e-4f &&
-                 recipe.spread >= 0.0f && recipe.spread <= 0.25f;
+    float total = 0.0F;
+    for (const float weight : recipe.weights)
+    {
+      total += weight;
+    }
+    for (const float weight : recipe.futureWeights)
+    {
+      total += weight;
+    }
+    registryOk = registryOk && std::abs(total - 1.0F) < 1e-4F &&
+                 recipe.spread >= 0.0F && recipe.spread <= 0.25F;
   }
 
   // The layers: every future game stat before any match-engine-only stat
@@ -472,10 +562,15 @@ bool runDerivedStatChecks(const std::vector<const Team*>& clubs,
     ++layerCounts[static_cast<std::size_t>(layer)];
     if (index > 0 && layer == DerivedLayer::FUTURE_GAME_STAT &&
         DERIVED_STATS[index - 1].layer != DerivedLayer::FUTURE_GAME_STAT)
+    {
       layersOk = false;
+    }
     for (std::size_t read = 0; read < DERIVED_STAT_COUNT; ++read)
     {
-      if (DEFAULT_DERIVED_RECIPES[index].futureWeights[read] == 0.0f) continue;
+      if (DEFAULT_DERIVED_RECIPES[index].futureWeights[read] == 0.0F)
+      {
+        continue;
+      }
       layersOk = layersOk && layer == DerivedLayer::MATCH_ENGINE_ONLY &&
                  DERIVED_STATS[read].layer == DerivedLayer::FUTURE_GAME_STAT;
     }
@@ -492,15 +587,14 @@ bool runDerivedStatChecks(const std::vector<const Team*>& clubs,
     // Jumping reach's spread in metres, and how many are held at the ends
     // of its scale.
     float reachLow = std::numeric_limits<float>::max();
-    float reachHigh = 0.0f;
+    float reachHigh = 0.0F;
     std::size_t reachHeld = 0;
     for (std::size_t pair = 0; pair + 1 < clubs.size(); pair += 2)
     {
-      const MatchEngine engine(clubs[pair]->getLineup(),
-                               clubs[pair + 1]->getLineup(),
-                               clubs[pair]->getStrategy(),
-                               clubs[pair + 1]->getStrategy(), config, 1U,
-                               handshake);
+      const MatchEngine engine(
+          clubs[pair]->getLineup(), clubs[pair + 1]->getLineup(),
+          clubs[pair]->getStrategy(), clubs[pair + 1]->getStrategy(), config,
+          1U, handshake);
       for (const MatchPlayer& player : engine.getPlayers())
       {
         ++players;
@@ -509,13 +603,13 @@ bool runDerivedStatChecks(const std::vector<const Team*>& clubs,
           const auto stat = static_cast<DerivedStat>(index);
           const float rating = player.derivedStat(stat);
           const DerivedStatInfo& info = DERIVED_STATS[index];
-          valuesOk = valuesOk && std::isfinite(rating) && rating >= 0.0f &&
-                     rating <= 1.0f;
+          valuesOk = valuesOk && std::isfinite(rating) && rating >= 0.0F &&
+                     rating <= 1.0F;
           if (!info.unit.empty())
           {
             const float value = derivedPhysicalValue(stat, rating);
-            valuesOk = valuesOk && value >= info.minValue &&
-                       value <= info.maxValue;
+            valuesOk =
+                valuesOk && value >= info.minValue && value <= info.maxValue;
           }
           sums[index] += rating;
         }
@@ -524,18 +618,26 @@ bool runDerivedStatChecks(const std::vector<const Team*>& clubs,
             derivedPhysicalValue(DerivedStat::JUMPING_REACH, reach);
         reachLow = std::min(reachLow, metres);
         reachHigh = std::max(reachHigh, metres);
-        if (reach <= 0.0f || reach >= 1.0f) ++reachHeld;
+        if (reach <= 0.0F || reach >= 1.0F)
+        {
+          ++reachHeld;
+        }
       }
     }
     checked += players;
     means += std::format("\n  {:<9}", handshakeName(handshake));
     for (std::size_t index = 0; index < DERIVED_STAT_COUNT; ++index)
+    {
       means += std::format(
           " {} {:.0f}", DERIVED_STATS[index].label,
-          players ? 100.0 * sums[index] / static_cast<double>(players) : 0.0);
-    if (players)
+          (players != 0u) ? 100.0 * sums[index] / static_cast<double>(players)
+                          : 0.0);
+    }
+    if (players != 0u)
+    {
       means += std::format(" (jumping reach {:.2f}-{:.2f} m, {} at an end)",
                            reachLow, reachHigh, reachHeld);
+    }
   }
   std::cout << std::format(
       "\nDerived stats: {} kinds ({} future game stats, {} match engine "
@@ -557,6 +659,7 @@ bool runPossessionChecks(const std::vector<const Team*>& clubs,
   std::size_t steps = 0;
   std::size_t pairing = 0;
   for (const BodyId homeBody : ALL_BODIES)
+  {
     for (const BodyId awayBody : ALL_BODIES)
     {
       const std::size_t pair = (pairing++ * 2) % clubs.size();
@@ -571,6 +674,7 @@ bool runPossessionChecks(const std::vector<const Team*>& clubs,
         consistent = consistent && engine->possessionConsistent();
       }
     }
+  }
   std::cout << std::format(
       "\nPossession: {} body pairings, {} steps, ownership coherent every "
       "step: {}\n",
@@ -590,24 +694,24 @@ bool runFirstTouchChecks(const std::vector<const Team*>& clubs,
   constexpr int MATCHES = 3;
   constexpr float DT = MatchTuning::Timing::FIXED_STEP_SECONDS;
   // Rounding slack for one step's travel, in metres.
-  constexpr float SLACK_METRES = 0.02f;
+  constexpr float SLACK_METRES = 0.02F;
   // A touch that let the ball this far from him counts as heavy.
-  constexpr float HEAVY_GAP_METRES = 2.0f;
+  constexpr float HEAVY_GAP_METRES = 2.0F;
   const auto metres = [](PitchPoint from, PitchPoint to)
   {
     const float x = to.x - from.x;
     const float y = to.y - from.y;
-    return std::sqrt(x * x + y * y);
+    return std::sqrt((x * x) + (y * y));
   };
   /** The same for the change between two steps (ball from holder). */
   const auto offsetMetres = [](Vector2F from, Vector2F to)
   {
     const float x = to.x - from.x;
     const float y = to.y - from.y;
-    return std::sqrt(x * x + y * y);
+    return std::sqrt((x * x) + (y * y));
   };
   const auto speedOf = [](Vector2F velocity)
-  { return std::sqrt(velocity.x * velocity.x + velocity.y * velocity.y); };
+  { return std::sqrt((velocity.x * velocity.x) + (velocity.y * velocity.y)); };
 
   // How the touches ended: [all touches, pass receptions].
   struct Outcomes
@@ -622,9 +726,9 @@ bool runFirstTouchChecks(const std::vector<const Team*>& clubs,
   };
   struct Setup
   {
-    const char* name;
-    BrainId brain;
-    BodyId body;
+    const char* name = "";
+    BrainId brain = BrainId::AARDVARK;
+    BodyId body = BodyId::AARDVARK;
     std::array<Outcomes, 2> outcomes{};
     double collectSeconds = 0.0;
     double contactGapSum = 0.0;
@@ -641,20 +745,32 @@ bool runFirstTouchChecks(const std::vector<const Team*>& clubs,
     std::uint64_t dribbleTouches = 0;
     double dribbleContactGapSum = 0.0;
     std::uint64_t dribbleFailed = 0;
-    float worstExcess = 0.0f;
-    float worstCollectJump = 0.0f;
+    float worstExcess = 0.0F;
+    float worstCollectJump = 0.0F;
     /** Attempted, completed, intercepted. */
     std::array<int, 3> passes{};
   };
   std::array<Setup, 4> setups{{
-      {"Aardvark brain + Aardvark body", BrainId::AARDVARK, BodyId::AARDVARK},
-      {"Aardvark brain + Binturong body", BrainId::AARDVARK, BodyId::BINTURONG},
-      {"Binturong brain + Aardvark body", BrainId::BINTURONG, BodyId::AARDVARK},
-      {"Binturong brain + Binturong body", BrainId::BINTURONG,
-       BodyId::BINTURONG},
+      {.name = "Aardvark brain + Aardvark body",
+       .brain = BrainId::AARDVARK,
+       .body = BodyId::AARDVARK,
+       .losses = {}},
+      {.name = "Aardvark brain + Binturong body",
+       .brain = BrainId::AARDVARK,
+       .body = BodyId::BINTURONG,
+       .losses = {}},
+      {.name = "Binturong brain + Aardvark body",
+       .brain = BrainId::BINTURONG,
+       .body = BodyId::AARDVARK,
+       .losses = {}},
+      {.name = "Binturong brain + Binturong body",
+       .brain = BrainId::BINTURONG,
+       .body = BodyId::BINTURONG,
+       .losses = {}},
   }};
 
   for (Setup& setup : setups)
+  {
     for (int match = 0; match < MATCHES; ++match)
     {
       const std::size_t pair =
@@ -670,7 +786,12 @@ bool runFirstTouchChecks(const std::vector<const Team*>& clubs,
       const auto ownerOf = [&engine](const Player* player) -> const MatchPlayer*
       {
         for (const MatchPlayer& slot : engine->getPlayers())
-          if (player && slot.player == player) return &slot;
+        {
+          if (player && slot.player == player)
+          {
+            return &slot;
+          }
+        }
         return nullptr;
       };
       const auto touchesOf = [&engine, &ownerOf](const Player* player)
@@ -686,13 +807,13 @@ bool runFirstTouchChecks(const std::vector<const Team*>& clubs,
       int claimTouches = 0;
       bool reception = false;
       int ownerTouches = 0;
-      float lastPeakGap = 0.0f;
+      float lastPeakGap = 0.0F;
       const Player* owner = nullptr;
       double touchStart = 0.0;
       PitchPoint lastPosition = engine->getBall().position;
-      Vector2F lastOffset{0.0f, 0.0f};
-      float lastSpeed = 0.0f;
-      float lastCooldown = 0.0f;
+      Vector2F lastOffset{.x = 0.0F, .y = 0.0F};
+      float lastSpeed = 0.0F;
+      float lastCooldown = 0.0F;
       float lastLaunchSpeed = engine->getBall().touchLaunchSpeed;
       double lastPathSince = engine->getPossessionState().pathSince;
       std::uint64_t lastSteps = engine->getSimulatedSteps();
@@ -701,13 +822,17 @@ bool runFirstTouchChecks(const std::vector<const Team*>& clubs,
         (void)engine->advance(DT);
         // advance() keeps exact time, so one call can run zero or two steps.
         const std::uint64_t steps = engine->getSimulatedSteps();
-        if (steps == lastSteps) continue;
+        if (steps == lastSteps)
+        {
+          continue;
+        }
         const auto stepCount = static_cast<float>(steps - lastSteps);
         lastSteps = steps;
         const MatchBall& ball = engine->getBall();
         // A first touch runs from the touch to collection (then he dribbles
         // the same claimed ball).
-        const bool inTouch = engine->hasTouchClaim() && !engine->isTouchCollected();
+        const bool inTouch =
+            engine->hasTouchClaim() && !engine->isTouchCollected();
         const bool claimed = engine->hasTouchClaim();
         const double now = engine->getSimulatedSeconds();
         // The same touch only while its owner has not re-claimed the ball:
@@ -718,9 +843,13 @@ bool runFirstTouchChecks(const std::vector<const Team*>& clubs,
         const auto recordEnd = [&](std::size_t Outcomes::* field)
         {
           ++(setup.outcomes[0].*field);
-          if (reception) ++(setup.outcomes[1].*field);
+          if (reception)
+          {
+            ++(setup.outcomes[1].*field);
+          }
         };
-        if (wasClaimed && claimed && engine->getPossessionAttachment() == claimOwner &&
+        if (wasClaimed && claimed &&
+            engine->getPossessionAttachment() == claimOwner &&
             touchesOf(claimOwner) == claimTouches)
         {
           // Rolling on to him, or dribbled: nothing but the ball's own
@@ -736,36 +865,44 @@ bool runFirstTouchChecks(const std::vector<const Team*>& clubs,
           // is above where counting down would have left it.
           const bool touchedThisStep =
               ball.ownTouchCooldown >
-              std::max(0.0f, lastCooldown - DT * stepCount) + 1e-4f;
+              std::max(0.0F, lastCooldown - (DT * stepCount)) + 1e-4F;
           const float fastest =
               std::max({lastSpeed, speedOf(ball.velocity),
-                        touchedThisStep ? ball.touchLaunchSpeed : 0.0f});
+                        touchedThisStep ? ball.touchLaunchSpeed : 0.0F});
           const float seconds = DT * stepCount;
-          const float rollingLoss =
-              (B::ROLLING_DECELERATION +
-               B::ROLLING_VISCOUS_PER_SECOND * fastest) *
-              seconds;
+          const float rollingLoss = (B::ROLLING_DECELERATION +
+                                     B::ROLLING_VISCOUS_PER_SECOND * fastest) *
+                                    seconds;
           const float allowed =
-              (fastest + rollingLoss) * seconds + SLACK_METRES;
+              ((fastest + rollingLoss) * seconds) + SLACK_METRES;
           const float excess = metres(lastPosition, ball.position) - allowed;
-          if (excess > setup.worstExcess && excess > 0.0f)
+          if (excess > setup.worstExcess && excess > 0.0F)
+          {
             std::cerr << std::format(
-                "Motion budget diagnostic: seed {} brain {} body {} tick {} owner {} "
-                "moved {:.6f} allowed {:.6f} speeds {:.6f}/{:.6f} launch {:.6f}/{:.6f} "
+                "Motion budget diagnostic: seed {} brain {} body {} tick {} "
+                "owner {} "
+                "moved {:.6f} allowed {:.6f} speeds {:.6f}/{:.6f} launch "
+                "{:.6f}/{:.6f} "
                 "cooldown {:.6f}/{:.6f} touched {} path {:.6f}/{:.6f} "
                 "position {:.9f},{:.9f}/{:.9f},{:.9f} sent {:.9f},{:.9f}\n",
-                3000 + match, static_cast<unsigned>(setup.brain), static_cast<unsigned>(setup.body),
-                steps, claimOwner ? claimOwner->getId() : 0, metres(lastPosition, ball.position),
-                allowed, lastSpeed, speedOf(ball.velocity), lastLaunchSpeed, ball.touchLaunchSpeed,
+                3000 + match, static_cast<unsigned>(setup.brain),
+                static_cast<unsigned>(setup.body), steps,
+                (claimOwner != nullptr) ? claimOwner->getId() : 0,
+                metres(lastPosition, ball.position), allowed, lastSpeed,
+                speedOf(ball.velocity), lastLaunchSpeed, ball.touchLaunchSpeed,
                 lastCooldown, ball.ownTouchCooldown, touchedThisStep,
                 lastPathSince, engine->getPossessionState().pathSince,
-                lastPosition.x, lastPosition.y, ball.position.x, ball.position.y,
-                ball.sentFrom.x, ball.sentFrom.y);
+                lastPosition.x, lastPosition.y, ball.position.x,
+                ball.position.y, ball.sentFrom.x, ball.sentFrom.y);
+          }
           setup.worstExcess = std::max(setup.worstExcess, excess);
         }
         if (!sameTouch && wasInTouch)
         {
-          if (lastPeakGap > HEAVY_GAP_METRES) ++setup.heavy;
+          if (lastPeakGap > HEAVY_GAP_METRES)
+          {
+            ++setup.heavy;
+          }
           if (engine->getState() != MatchState::PLAYING)
           {
             recordEnd(&Outcomes::stopped);
@@ -782,16 +919,16 @@ bool runFirstTouchChecks(const std::vector<const Team*>& clubs,
             // How far the ball jumped relative to him as the dribble took
             // over, beyond what its own speed relative to him explains.
             if (const MatchPlayer* holder = ownerOf(owner);
-                holder && stepCount == 1.0f)
+                (holder != nullptr) && stepCount == 1.0F)
             {
               const Vector2F offset = ball.position - holder->position;
-              setup.worstCollectJump = std::max(
-                  setup.worstCollectJump,
-                  offsetMetres(lastOffset, offset) -
-                      (lastSpeed + speedOf(holder->velocity)) * DT);
+              setup.worstCollectJump =
+                  std::max(setup.worstCollectJump,
+                           offsetMetres(lastOffset, offset) -
+                               ((lastSpeed + speedOf(holder->velocity)) * DT));
             }
           }
-          else if (!engine->getPossessionAttachment())
+          else if (engine->getPossessionAttachment() == nullptr)
           {
             recordEnd(&Outcomes::released);
           }
@@ -807,31 +944,45 @@ bool runFirstTouchChecks(const std::vector<const Team*>& clubs,
           reception = engine->getPendingPasser() != nullptr;
           touchStart = now;
           ++setup.outcomes[0].started;
-          if (reception) ++setup.outcomes[1].started;
+          if (reception)
+          {
+            ++setup.outcomes[1].started;
+          }
           setup.contactGapSum += ball.touchContactGap;
           setup.angleErrorSum += std::abs(ball.touchAngleError);
           setup.weightErrorSum += std::abs(ball.touchWeightError);
-          if (ball.touchAngleFailed) ++setup.angleFailed;
-          if (ball.touchWeightFailed) ++setup.weightFailed;
+          if (ball.touchAngleFailed)
+          {
+            ++setup.angleFailed;
+          }
+          if (ball.touchWeightFailed)
+          {
+            ++setup.weightFailed;
+          }
           if (ball.touchKind == TouchIntent::Kind::INTO_STRIDE)
+          {
             ++setup.intoStride;
+          }
         }
         wasInTouch = inTouch;
         wasClaimed = claimed;
         claimOwner = claimed ? engine->getPossessionAttachment() : nullptr;
         claimTouches = touchesOf(claimOwner);
-        lastPeakGap = inTouch ? ball.touchPeakGap : 0.0f;
+        lastPeakGap = inTouch ? ball.touchPeakGap : 0.0F;
         lastPosition = ball.position;
         lastSpeed = speedOf(ball.velocity);
         lastCooldown = ball.ownTouchCooldown;
         lastLaunchSpeed = ball.touchLaunchSpeed;
         lastPathSince = engine->getPossessionState().pathSince;
         if (const MatchPlayer* holder = inTouch ? ownerOf(owner) : nullptr)
+        {
           lastOffset = ball.position - holder->position;
+        }
       }
       setup.waitsMissed += engine->getFirstTouchWaitsMissed();
       {
-        const MatchEngine::FirstTouchWaitLosses& split = engine->getFirstTouchWaitLosses();
+        const MatchEngine::FirstTouchWaitLosses& split =
+            engine->getFirstTouchWaitLosses();
         MatchEngine::FirstTouchWaitLosses& sum = setup.losses;
         sum.deadZone += split.deadZone;
         sum.outOfReach += split.outOfReach;
@@ -844,8 +995,8 @@ bool runFirstTouchChecks(const std::vector<const Team*>& clubs,
         sum.unchanged += split.unchanged;
         sum.unchangedBumped += split.unchangedBumped;
         sum.unchangedFacingErrorSum += split.unchangedFacingErrorSum;
-        sum.unchangedFacingErrorMax =
-            std::max(sum.unchangedFacingErrorMax, split.unchangedFacingErrorMax);
+        sum.unchangedFacingErrorMax = std::max(sum.unchangedFacingErrorMax,
+                                               split.unchangedFacingErrorMax);
         sum.unchangedFacingSamples += split.unchangedFacingSamples;
         sum.carriedOn += split.carriedOn;
         sum.carriedOnStillLost += split.carriedOnStillLost;
@@ -857,8 +1008,11 @@ bool runFirstTouchChecks(const std::vector<const Team*>& clubs,
       setup.passes[0] += stats.homePassesAttempted + stats.awayPassesAttempted;
       setup.passes[1] += stats.homePassesCompleted + stats.awayPassesCompleted;
       for (const PlayerMatchStats& line : engine->getPlayerStats())
+      {
         setup.passes[2] += line.interceptions;
+      }
     }
+  }
 
   const auto describe = [](const Outcomes& counts)
   {
@@ -879,22 +1033,27 @@ bool runFirstTouchChecks(const std::vector<const Team*>& clubs,
   std::cout << std::format("\nFirst touch ({} matches per set-up)\n", MATCHES);
   for (const Setup& setup : setups)
   {
-    const double completion =
-        setup.passes[0] ? 100.0 * setup.passes[1] / setup.passes[0] : 0.0;
-    std::cout << std::format("  {}: passes {} attempted, {:.1f}% completed, "
-                             "{} intercepted\n",
-                             setup.name, setup.passes[0], completion,
-                             setup.passes[2]);
-    if (setup.body != BodyId::BINTURONG) continue;
+    const double completion = (setup.passes[0] != 0)
+                                  ? 100.0 * setup.passes[1] / setup.passes[0]
+                                  : 0.0;
+    std::cout << std::format(
+        "  {}: passes {} attempted, {:.1f}% completed, "
+        "{} intercepted\n",
+        setup.name, setup.passes[0], completion, setup.passes[2]);
+    if (setup.body != BodyId::BINTURONG)
+    {
+      continue;
+    }
     const Outcomes& all = setup.outcomes[0];
-    const bool physical = setup.worstExcess <= 0.0f;
+    const bool physical = setup.worstExcess <= 0.0F;
     const double started = std::max(1.0, static_cast<double>(all.started));
     std::cout << std::format(
         "    all: {}\n    pass receptions: {}\n    met the ball {:.2f} m from "
         "his centre on average; into stride {:.0f}%; mean error: angle "
         "{:.1f}°, weight {:.2f} m/s; failed: angle {:.1f}%, weight {:.1f}%; "
         "heavy (ball over 2 m away) {:.1f}%; mean "
-        "time to collect {:.2f} s\n    dribble touches {} (met {:.2f} m from his "
+        "time to collect {:.2f} s\n    dribble touches {} (met {:.2f} m from "
+        "his "
         "centre on average, {:.1f}% went wrong); claimed "
         "ball (touched, then dribbled) moved only under physics: {} (worst "
         "excess {:.3f} m); largest jump relative to him at collection {:.2f} "
@@ -907,43 +1066,55 @@ bool runFirstTouchChecks(const std::vector<const Team*>& clubs,
         100.0 * static_cast<double>(setup.angleFailed) / started,
         100.0 * static_cast<double>(setup.weightFailed) / started,
         100.0 * static_cast<double>(setup.heavy) / started,
-        all.collected ? setup.collectSeconds / static_cast<double>(all.collected)
-                      : 0.0,
-        setup.dribbleTouches,
-        setup.dribbleTouches
-            ? setup.dribbleContactGapSum / static_cast<double>(setup.dribbleTouches)
+        (all.collected != 0u)
+            ? setup.collectSeconds / static_cast<double>(all.collected)
             : 0.0,
-        setup.dribbleTouches
+        setup.dribbleTouches,
+        (setup.dribbleTouches != 0u)
+            ? setup.dribbleContactGapSum /
+                  static_cast<double>(setup.dribbleTouches)
+            : 0.0,
+        (setup.dribbleTouches != 0u)
             ? 100.0 * static_cast<double>(setup.dribbleFailed) /
                   static_cast<double>(setup.dribbleTouches)
             : 0.0,
-        physical ? "yes" : "NO", std::max(setup.worstExcess, 0.0f),
-        std::max(setup.worstCollectJump, 0.0f), setup.waitsMissed);
+        physical ? "yes" : "NO", std::max(setup.worstExcess, 0.0F),
+        std::max(setup.worstCollectJump, 0.0F), setup.waitsMissed);
     std::cout << std::format(
-        "    waits carried on as read (the brain's move would have lost it): {}, of which "
+        "    waits carried on as read (the brain's move would have lost it): "
+        "{}, of which "
         "still lost {}\n",
         setup.losses.carriedOn, setup.losses.carriedOnStillLost);
     if (setup.waitsMissed > 0)
     {
       const MatchEngine::FirstTouchWaitLosses& split = setup.losses;
       std::cout << std::format(
-          "    lost waits: dead zone {}, out of reach {}; in the step he chose to wait {}; "
-          "intent changed that step {}; bumped {}; facing vs the wait read's after a move: "
+          "    lost waits: dead zone {}, out of reach {}; in the step he chose "
+          "to wait {}; "
+          "intent changed that step {}; bumped {}; facing vs the wait read's "
+          "after a move: "
           "mean {:.0f}°, worst {:.0f}° ({} lost)\n",
-          split.deadZone, split.outOfReach, split.sameStep, split.intentChanged, split.bumped,
-          split.facingSamples ? split.facingErrorSum / split.facingSamples * 180.0 / std::numbers::pi
-                              : 0.0,
-          split.facingErrorMax * 180.0f / std::numbers::pi_v<float>, split.facingSamples);
+          split.deadZone, split.outOfReach, split.sameStep, split.intentChanged,
+          split.bumped,
+          (split.facingSamples != 0u)
+              ? split.facingErrorSum / split.facingSamples * 180.0 /
+                    std::numbers::pi
+              : 0.0,
+          split.facingErrorMax * 180.0F / std::numbers::pi_v<float>,
+          split.facingSamples);
       if (split.unchanged > 0)
+      {
         std::cout << std::format(
-            "    of which intent unchanged: {} (bumped {}; facing vs the read's mean {:.0f}°, "
+            "    of which intent unchanged: {} (bumped {}; facing vs the "
+            "read's mean {:.0f}°, "
             "worst {:.0f}°)\n",
             split.unchanged, split.unchangedBumped,
-            split.unchangedFacingSamples
-                ? split.unchangedFacingErrorSum / split.unchangedFacingSamples * 180.0 /
-                      std::numbers::pi
+            (split.unchangedFacingSamples != 0u)
+                ? split.unchangedFacingErrorSum / split.unchangedFacingSamples *
+                      180.0 / std::numbers::pi
                 : 0.0,
-            split.unchangedFacingErrorMax * 180.0f / std::numbers::pi_v<float>);
+            split.unchangedFacingErrorMax * 180.0F / std::numbers::pi_v<float>);
+      }
     }
     ok = ok && physical && all.collected > 0 && setup.waitsMissed == 0;
   }
@@ -961,24 +1132,29 @@ bool runRestartChecks(const std::vector<const Team*>& clubs,
 {
   constexpr int MATCHES = 4;
   // A line-up running this long has stuck.
-  constexpr float STUCK_SECONDS = 10.0f;
+  constexpr float STUCK_SECONDS = 10.0F;
   constexpr std::array<std::string_view, 7> RESTARTS{
-      "kick-off", "", "throw-in", "goal kick", "corner", "free kick", "penalty"};
+      "kick-off", "",          "throw-in", "goal kick",
+      "corner",   "free kick", "penalty"};
   bool ok = true;
-  std::cout << std::format("\nRestart line-ups (Binturong brains and bodies, "
-                           "{} matches per version)\n",
-                           MATCHES);
-  for (const OutOfPlayId version : {OutOfPlayId::AARDVARK, OutOfPlayId::BINTURONG})
+  std::cout << std::format(
+      "\nRestart line-ups (Binturong brains and bodies, "
+      "{} matches per version)\n",
+      MATCHES);
+  for (const OutOfPlayId version :
+       {OutOfPlayId::AARDVARK, OutOfPlayId::BINTURONG})
   {
     std::array<std::uint32_t, 7> taken{};
     MatchEngine::RestartLineUpStats all;
-    float longest = 0.0f;
+    float longest = 0.0F;
     int finished = 0;
     for (int match = 0; match < MATCHES; ++match)
     {
-      const std::size_t pair = (static_cast<std::size_t>(match) * 2) % clubs.size();
-      auto engine = makeEngine(*clubs[pair], *clubs[(pair + 1) % clubs.size()],
-                               config, static_cast<std::uint32_t>(3000 + match));
+      const std::size_t pair =
+          (static_cast<std::size_t>(match) * 2) % clubs.size();
+      auto engine =
+          makeEngine(*clubs[pair], *clubs[(pair + 1) % clubs.size()], config,
+                     static_cast<std::uint32_t>(3000 + match));
       for (const bool home : {true, false})
       {
         engine->setBrain(home, BrainId::BINTURONG);
@@ -993,36 +1169,57 @@ bool runRestartChecks(const std::vector<const Team*>& clubs,
         (void)engine->advance(MatchTuning::Timing::FIXED_STEP_SECONDS);
         ++steps;
         longest = std::max(longest, engine->getRestartLineUpSeconds());
-        if (!reportedStall && engine->getRestartLineUpSeconds() >= STUCK_SECONDS)
+        if (!reportedStall &&
+            engine->getRestartLineUpSeconds() >= STUCK_SECONDS)
         {
           reportedStall = true;
           const auto& b = engine->getBall();
           for (const auto& player : engine->getPlayers())
+          {
             if (player.player == engine->getPossessionAttachment())
-              std::cerr << std::format("Restart stall diagnostic: seed {} out-of-play {} tick {} state {} "
-                  "ball {:.9f},{:.9f} taker {} at {:.9f},{:.9f} target {:.9f},{:.9f} "
-                  "speed {:.4f},{:.4f} fallen {} injured {} facing {:.5f} requested {} {:.5f} "
+            {
+              std::cerr << std::format(
+                  "Restart stall diagnostic: seed {} out-of-play {} tick {} "
+                  "state {} "
+                  "ball {:.9f},{:.9f} taker {} at {:.9f},{:.9f} target "
+                  "{:.9f},{:.9f} "
+                  "speed {:.4f},{:.4f} fallen {} injured {} facing {:.5f} "
+                  "requested {} {:.5f} "
                   "feet {:.4f} stamina {:.4f} reserve {:.4f}\n",
-                  3000 + match, static_cast<unsigned>(version), engine->getSimulatedSteps(),
-                  static_cast<unsigned>(engine->getState()), b.position.x, b.position.y,
-                  player.player->getId(), player.position.x, player.position.y,
-                  player.movementTarget.x, player.movementTarget.y, player.velocity.x,
-                  player.velocity.y, player.fallen, player.isInjured,
-                  player.facingAngle, player.facingRequested, player.facingRequest,
+                  3000 + match, static_cast<unsigned>(version),
+                  engine->getSimulatedSteps(),
+                  static_cast<unsigned>(engine->getState()), b.position.x,
+                  b.position.y, player.player->getId(), player.position.x,
+                  player.position.y, player.movementTarget.x,
+                  player.movementTarget.y, player.velocity.x, player.velocity.y,
+                  player.fallen, player.isInjured, player.facingAngle,
+                  player.facingRequested, player.facingRequest,
                   player.feetHeight, player.stamina, player.sprintReserve);
+            }
+          }
         }
         // A restart taken: play resumes from it.
         const MatchState now = engine->getState();
         if (now == MatchState::PLAYING && previous != MatchState::PLAYING)
+        {
           if (const auto index = static_cast<std::size_t>(previous);
               index < taken.size())
+          {
             ++taken[index];
+          }
+        }
         previous = now;
       }
-      if (engine->getState() == MatchState::FULL_TIME) ++finished;
-      const MatchEngine::RestartLineUpStats& stats = engine->getRestartLineUpStats();
+      if (engine->getState() == MatchState::FULL_TIME)
+      {
+        ++finished;
+      }
+      const MatchEngine::RestartLineUpStats& stats =
+          engine->getRestartLineUpStats();
       for (std::size_t index = 0; index < all.byRestart.size(); ++index)
+      {
         all.byRestart[index] += stats.byRestart[index];
+      }
       all.kicked += stats.kicked;
       all.turned += stats.turned;
       all.outOfTime += stats.outOfTime;
@@ -1036,67 +1233,92 @@ bool runRestartChecks(const std::vector<const Team*>& clubs,
     const double kicked = std::max(1.0, static_cast<double>(all.kicked));
     std::string byRestart;
     for (std::size_t index = 0; index < RESTARTS.size(); ++index)
+    {
       if (!RESTARTS[index].empty())
-        byRestart += std::format("{}{} {}/{}", byRestart.empty() ? "" : ", ",
-                                 RESTARTS[index], all.byRestart[index],
-                                 taken[index]);
+      {
+        byRestart +=
+            std::format("{}{} {}/{}", byRestart.empty() ? "" : ", ",
+                        RESTARTS[index], all.byRestart[index], taken[index]);
+      }
+    }
     const bool good = finished == MATCHES && all.outsideComfort == 0 &&
                       all.inDeadZone == 0 && longest < STUCK_SECONDS;
     std::cout << std::format(
         "  {} out of play: finished {}/{}; lined up/taken: {}\n"
         "    {} kicked: turned to his line {:.0f}%, out of time {:.0f}%; "
         "line-up {:.2f} s on average, longest {:.2f} s; ball {:.2f} m from his "
-        "centre on average, furthest {:.2f} m; outside his comfort gap {}, in his dead "
+        "centre on average, furthest {:.2f} m; outside his comfort gap {}, in "
+        "his dead "
         "zone {}{}\n",
         version == OutOfPlayId::AARDVARK ? "Aardvark" : "Binturong", finished,
-        MATCHES, byRestart, all.kicked,
-        100.0 * all.turned / kicked, 100.0 * all.outOfTime / kicked,
-        all.secondsSum / kicked, longest, all.gapSum / kicked, all.gapMax,
-        all.outsideComfort, all.inDeadZone, good ? "" : "  <- FAIL");
+        MATCHES, byRestart, all.kicked, 100.0 * all.turned / kicked,
+        100.0 * all.outOfTime / kicked, all.secondsSum / kicked, longest,
+        all.gapSum / kicked, all.gapMax, all.outsideComfort, all.inDeadZone,
+        good ? "" : "  <- FAIL");
     ok = ok && good;
   }
   return ok;
 }
 
 int runPossessionTrace(GameController& controller, double seconds,
-                        const std::string& outputPath)
+                       const std::string& outputPath)
 {
-  if (!std::isfinite(seconds) || seconds <= 0.0 || seconds > 3600.0) return 2;
+  if (!std::isfinite(seconds) || seconds <= 0.0 || seconds > 3600.0)
+  {
+    return 2;
+  }
   std::vector<const Team*> clubs;
   const auto& leagues = controller.getLeagues();
   for (const auto& team : controller.getTeams())
-    if (!leagues.empty() && team.get().getLeagueId() == leagues.front().get().getId())
+  {
+    if (!leagues.empty() &&
+        team.get().getLeagueId() == leagues.front().get().getId())
+    {
       clubs.push_back(&team.get());
-  if (clubs.size() < 2) return 2;
+    }
+  }
+  if (clubs.size() < 2)
+  {
+    return 2;
+  }
   std::ofstream output(outputPath);
   if (!output)
   {
     std::cerr << "Cannot write possession trace: " << outputPath << '\n';
     return 2;
   }
-  auto observed = makeEngine(*clubs[0], *clubs[1], controller.getStatsConfig(), 1000);
-  auto reference = makeEngine(*clubs[0], *clubs[1], controller.getStatsConfig(), 1000);
-  const int result = tracePossessionPair(*observed, *reference, seconds, output);
+  auto observed =
+      makeEngine(*clubs[0], *clubs[1], controller.getStatsConfig(), 1000);
+  auto reference =
+      makeEngine(*clubs[0], *clubs[1], controller.getStatsConfig(), 1000);
+  const int result =
+      tracePossessionPair(*observed, *reference, seconds, output);
   const auto observedFingerprint = fingerprint(*observed);
   const bool same = observedFingerprint == fingerprint(*reference);
-  output << std::format("{{\"type\":\"final-fingerprint\",\"seed\":1000,"
-                        "\"fingerprint\":\"{:016x}\",\"matches_reference\":{}}}\n",
-                        observedFingerprint, same ? "true" : "false");
+  output << std::format(
+      "{{\"type\":\"final-fingerprint\",\"seed\":1000,"
+      "\"fingerprint\":\"{:016x}\",\"matches_reference\":{}}}\n",
+      observedFingerprint, same ? "true" : "false");
   output.flush();
   std::cout << "Possession trace: " << outputPath << "; observed/reference "
             << (same && result == 0 ? "identical" : "FAILED") << '\n';
   return !output ? 2 : result != 0 ? result : same ? 0 : 1;
 }
 
-int runSandboxChecks(GameController& controller, int matches, SandboxCheckGroup group)
+int runSandboxChecks(GameController& controller, int matches,
+                     SandboxCheckGroup group)
 {
   // Pairs of clubs from the first league: 1 v 2, 3 v 4, ...
   std::vector<const Team*> clubs;
   const auto& leagues = controller.getLeagues();
   for (const auto& team : controller.getTeams())
+  {
     if (!leagues.empty() &&
         team.get().getLeagueId() == leagues.front().get().getId())
+    {
       clubs.push_back(&team.get());
+    }
+  }
   if (clubs.size() < 2)
   {
     std::cerr << "Not enough clubs for the checks.\n";
@@ -1107,14 +1329,16 @@ int runSandboxChecks(GameController& controller, int matches, SandboxCheckGroup 
   if (group == SandboxCheckGroup::FIRST_TOUCH)
   {
     const bool good = runFirstTouchChecks(clubs, config);
-    std::cout << (good ? "PASS: first touches roll under physics and are collected.\n"
-                       : "FAIL: a first-touch check failed.\n");
+    std::cout
+        << (good ? "PASS: first touches roll under physics and are collected.\n"
+                 : "FAIL: a first-touch check failed.\n");
     return good ? 0 : 1;
   }
   if (group == SandboxCheckGroup::RESTARTS)
   {
     const bool good = runRestartChecks(clubs, config);
-    std::cout << (good ? "PASS: restarts are lined up and taken, the ball inside his comfort gap.\n"
+    std::cout << (good ? "PASS: restarts are lined up and taken, the ball "
+                         "inside his comfort gap.\n"
                        : "FAIL: a restart check failed.\n");
     return good ? 0 : 1;
   }
@@ -1127,7 +1351,8 @@ int runSandboxChecks(GameController& controller, int matches, SandboxCheckGroup 
   double recordedTotal = 0.0;
   std::size_t entriesTotal = 0;
   std::size_t bytesTotal = 0;
-  std::array<std::size_t, std::variant_size_v<SandboxRecorder::Payload>> kinds{};
+  std::array<std::size_t, std::variant_size_v<SandboxRecorder::Payload>>
+      kinds{};
 
   for (int match = 0; match < matches; ++match)
   {
@@ -1155,17 +1380,19 @@ int runSandboxChecks(GameController& controller, int matches, SandboxCheckGroup 
     SandboxRecorder liveRecorder;
     auto live = makeEngine(home, away, config, seed);
     live->setRecorder(&liveRecorder);
-    for (int second = 0; live->getState() != MatchState::FULL_TIME &&
-                         second < 20000;
-         ++second)
+    for (int second = 0;
+         live->getState() != MatchState::FULL_TIME && second < 20000; ++second)
     {
-      if (second % 30 == 0) (void)live->predictNextHighlight();
-      live->advance(1.0f);
+      if (second % 30 == 0)
+      {
+        (void)live->predictNextHighlight();
+      }
+      live->advance(1.0F);
     }
 
     const std::uint64_t expected = fingerprint(*plain);
-    const bool same = fingerprint(*recorded) == expected &&
-                      fingerprint(*live) == expected;
+    const bool same =
+        fingerprint(*recorded) == expected && fingerprint(*live) == expected;
     std::size_t entries = 0;
     std::size_t liveEntries = 0;
     std::size_t bytes = 0;
@@ -1173,7 +1400,10 @@ int runSandboxChecks(GameController& controller, int matches, SandboxCheckGroup 
       const auto guard = recorder.lock();
       entries = recorder.entries().size();
       bytes = recorder.approximateBytes();
-      for (const auto& entry : recorder.entries()) ++kinds[entry.payload.index()];
+      for (const auto& entry : recorder.entries())
+      {
+        ++kinds[entry.payload.index()];
+      }
     }
     {
       const auto guard = liveRecorder.lock();
@@ -1187,12 +1417,13 @@ int runSandboxChecks(GameController& controller, int matches, SandboxCheckGroup 
     bytesTotal += bytes;
 
     std::cout << std::format(
-        "{:>3}  {:<32}  {:>2}-{:<2}  {:>7.2f}  {:>5.2f}  {:>10}  {:>7}  {:>6}  {}"
+        "{:>3}  {:<32}  {:>2}-{:<2}  {:>7.2f}  {:>5.2f}  {:>10}  {:>7}  {:>6}  "
+        "{}"
         "  {:016x}\n",
-        match + 1, home.getName() + " v " + away.getName(), plain->getHomeScore(),
-        plain->getAwayScore(), plainSeconds, recordedSeconds,
-        sameLog ? "same log" : "LOG DIFFERS", entries, bytes / 1024,
-        same ? "yes" : "NO", expected);
+        match + 1, home.getName() + " v " + away.getName(),
+        plain->getHomeScore(), plain->getAwayScore(), plainSeconds,
+        recordedSeconds, sameLog ? "same log" : "LOG DIFFERS", entries,
+        bytes / 1024, same ? "yes" : "NO", expected);
   }
 
   const double count = static_cast<double>(matches);
@@ -1204,39 +1435,47 @@ int runSandboxChecks(GameController& controller, int matches, SandboxCheckGroup 
                            static_cast<double>(entriesTotal) / count,
                            static_cast<double>(bytesTotal) / count / 1024.0);
   constexpr std::array<const char*, 8> KIND_NAMES{
-      "phase", "job", "intent", "decision", "action", "possession", "keeper",
-      "event"};
+      "phase",  "job",        "intent", "decision",
+      "action", "possession", "keeper", "event"};
   std::cout << "  by kind:";
   for (std::size_t kind = 0; kind < kinds.size() && kind < KIND_NAMES.size();
        ++kind)
+  {
     std::cout << std::format(" {} {:.0f}", KIND_NAMES[kind],
                              static_cast<double>(kinds[kind]) / count);
+  }
   std::cout << "\n";
 
   // Engine copies (saved states for rewind): time and memory per copy, at
   // half time and at full time (events and tracking grow during a match).
-  for (const float minutes : {45.0f, 95.0f})
+  for (const float minutes : {45.0F, 95.0F})
   {
     auto engine = makeEngine(*clubs[0], *clubs[1], config, 1000);
     while (engine->getState() != MatchState::FULL_TIME &&
            engine->getMatchTimeMinutes() < minutes)
-      engine->advance(10.0f);
+    {
+      engine->advance(10.0F);
+    }
     constexpr int COPIES = 100;
     std::vector<std::unique_ptr<MatchEngine>> copies;
     copies.reserve(COPIES);
     const auto before = privateBytes();
     const auto started = Clock::now();
     for (int copy = 0; copy < COPIES; ++copy)
+    {
       copies.push_back(std::make_unique<MatchEngine>(*engine));
+    }
     const double seconds = secondsSince(started);
     const auto after = privateBytes();
     std::cout << std::format("Engine copy at {:>4.1f}': {:.3f} ms",
                              engine->getMatchTimeMinutes(),
                              seconds * 1000.0 / COPIES);
     if (before && after)
-      std::cout << std::format(", ~{:.0f} KB each",
-                               static_cast<double>(*after - *before) / COPIES /
-                                   1024.0);
+    {
+      std::cout << std::format(
+          ", ~{:.0f} KB each",
+          static_cast<double>(*after - *before) / COPIES / 1024.0);
+    }
     std::cout << "\n";
   }
 
@@ -1249,8 +1488,8 @@ int runSandboxChecks(GameController& controller, int matches, SandboxCheckGroup 
     const Team& away = *clubs[1];
     SandboxRecorder recorder;
     // Built from a setup, as the sandbox builds its matches.
-    const MatchSetup setup = MatchSetup::capture(
-        controller, home.getId(), away.getId(), 4242, true);
+    const MatchSetup setup =
+        MatchSetup::capture(controller, home.getId(), away.getId(), 4242, true);
     std::string buildError;
     auto engine = setup.build(controller, buildError);
     if (!engine)
@@ -1262,33 +1501,34 @@ int runSandboxChecks(GameController& controller, int matches, SandboxCheckGroup 
     bool tactics = false;
     bool substitution = false;
     bool shout = false;
-    for (int second = 0; engine->getState() != MatchState::FULL_TIME &&
-                         second < 20000;
+    for (int second = 0;
+         engine->getState() != MatchState::FULL_TIME && second < 20000;
          ++second)
     {
       const float minute = engine->getMatchTimeMinutes();
-      if (!tactics && minute >= 30.0f)
+      if (!tactics && minute >= 30.0F)
       {
         Strategy attacking = home.getStrategy();
-        attacking.setPressing(0.9f);
-        attacking.setRiskTaking(0.8f);
+        attacking.setPressing(0.9F);
+        attacking.setRiskTaking(0.8F);
         engine->setStrategy(true, attacking);
         tactics = true;
       }
-      if (!substitution && minute >= 60.0f &&
+      if (!substitution && minute >= 60.0F &&
           !home.getLineup().getReserves().empty() &&
           !home.getLineup().getOutfieldPlayers().empty())
       {
-        const Player* outgoing = home.getLineup().getOutfieldPlayers()[0].player;
+        const Player* outgoing =
+            home.getLineup().getOutfieldPlayers()[0].player;
         substitution = engine->substitutePlayer(
             outgoing->getId(), home.getLineup().getReserves()[0]);
       }
-      if (!shout && minute >= 75.0f)
+      if (!shout && minute >= 75.0F)
       {
         engine->applyShout(true, MatchShout::ENCOURAGE);
         shout = true;
       }
-      engine->advance(1.0f);
+      engine->advance(1.0F);
     }
     std::uint64_t lastTick = 0;
     std::size_t keyframes = 0;
@@ -1305,17 +1545,19 @@ int runSandboxChecks(GameController& controller, int matches, SandboxCheckGroup 
     for (int seek = 0; seek <= SEEKS; ++seek)
     {
       const std::uint64_t tick =
-          1 + (lastTick - 1) * static_cast<std::uint64_t>(seek) / SEEKS;
+          1 + ((lastTick - 1) * static_cast<std::uint64_t>(seek) / SEEKS);
       const auto started = Clock::now();
       const MatchRewind::Result rebuilt = MatchRewind::rebuild(recorder, tick);
       seekSeconds += secondsSince(started);
       const auto guard = recorder.lock();
-      const bool exact =
-          rebuilt.engine && !rebuilt.divergedAt &&
-          rebuilt.engine->getSimulatedSteps() == tick &&
-          recorder.checksum(tick) ==
-              SandboxRecorder::stateChecksum(*rebuilt.engine);
-      if (!exact) ++diverged;
+      const bool exact = rebuilt.engine && !rebuilt.divergedAt &&
+                         rebuilt.engine->getSimulatedSteps() == tick &&
+                         recorder.checksum(tick) ==
+                             SandboxRecorder::stateChecksum(*rebuilt.engine);
+      if (!exact)
+      {
+        ++diverged;
+      }
     }
     rewindExact = diverged == 0;
 
@@ -1328,11 +1570,14 @@ int runSandboxChecks(GameController& controller, int matches, SandboxCheckGroup 
     std::size_t rankings = 0;
     std::size_t duels = 0;
     std::size_t breakdowns = 0;
-    float worst = 0.0f;
+    float worst = 0.0F;
     const char* worstName = "";
     const auto check = [&](const ScoreBreakdown& score, const char* name)
     {
-      if (!std::isfinite(score.total)) return;
+      if (!std::isfinite(score.total))
+      {
+        return;
+      }
       ++breakdowns;
       const float residual = std::abs(score.residual());
       if (residual > worst)
@@ -1350,16 +1595,25 @@ int runSandboxChecks(GameController& controller, int matches, SandboxCheckGroup 
       const MatchRewind::Result rebuilt =
           MatchRewind::rebuild(recorder, tick, &detail);
       detailSeconds += secondsSince(started);
-      if (!rebuilt.engine || rebuilt.divergedAt) ++diverged;
+      if (!rebuilt.engine || rebuilt.divergedAt)
+      {
+        ++diverged;
+      }
       for (const auto& at : detail.decisions)
       {
         ++decisions;
-        for (std::size_t option = 0; option < at.detail.options.size(); ++option)
+        for (std::size_t option = 0; option < at.detail.options.size();
+             ++option)
+        {
           check(at.detail.options[option], "decision option");
+        }
         check(at.detail.noiseScale, "noise scale");
         for (const PassCandidateDetail& candidate : at.detail.candidates)
         {
-          if (candidate.excluded != PassExclusion::NONE) continue;
+          if (candidate.excluded != PassExclusion::NONE)
+          {
+            continue;
+          }
           ++candidates;
           check(candidate.utility, "pass utility");
           check(candidate.completion, "pass completion");
@@ -1369,21 +1623,29 @@ int runSandboxChecks(GameController& controller, int matches, SandboxCheckGroup 
       {
         ++rankings;
         for (const auto& candidate : at.detail.candidates)
+        {
           check(candidate.score,
                 at.detail.kind == MatchRankingDetail::Kind::TO_BALL
                     ? "to-ball arrival"
                     : "run priority");
+        }
       }
       for (const auto& at : detail.duels)
       {
         ++duels;
         check(at.detail.chance, "duel chance");
         if (at.detail.kind == MatchDuelDetail::Kind::TACKLE)
+        {
           check(at.detail.foul, "foul propensity");
+        }
         if (at.detail.kind == MatchDuelDetail::Kind::FIRST_TOUCH)
+        {
           check(at.detail.foul, "first-touch weight difficulty");
+        }
         if (at.detail.kind == MatchDuelDetail::Kind::STRIKE)
+        {
           check(at.detail.foul, "strike weight difficulty");
+        }
       }
     }
     rewindExact = diverged == 0;
@@ -1406,7 +1668,9 @@ int runSandboxChecks(GameController& controller, int matches, SandboxCheckGroup 
         for (std::size_t found = text.find("spec.layout[");
              found != std::string::npos;
              found = text.find("spec.layout[", found + 1))
+        {
           ++placements;
+        }
         exported = placements == 22 &&
                    text.find("spec.carrierId") != std::string::npos;
         const std::filesystem::path sample =
@@ -1419,7 +1683,7 @@ int runSandboxChecks(GameController& controller, int matches, SandboxCheckGroup 
       }
     }
     rewindExact = rewindExact && exported;
-    const bool addsUp = worst < 1e-3f;
+    const bool addsUp = worst < 1e-3F;
     rewindExact = rewindExact && addsUp;
 
     // Recordings: saved with full detail, opened again and replayed, the
@@ -1439,7 +1703,8 @@ int runSandboxChecks(GameController& controller, int matches, SandboxCheckGroup 
       std::optional<MatchRecording> loaded =
           roundTrip ? Recordings::load(path, error) : std::nullopt;
       std::filesystem::remove(path);
-      roundTrip = loaded && loaded->setup.possession == recording.setup.possession;
+      roundTrip =
+          loaded && loaded->setup.possession == recording.setup.possession;
       bool exact = false;
       bool tickFound = false;
       bool decisionFound = false;
@@ -1450,25 +1715,37 @@ int runSandboxChecks(GameController& controller, int matches, SandboxCheckGroup 
       std::string possessionOverride = "not run";
       if (loaded)
       {
-        const Recordings::Replay replay = Recordings::replay(*loaded, controller);
+        const Recordings::Replay replay =
+            Recordings::replay(*loaded, controller);
         exact = replay.match && !replay.divergedAt &&
                 !replay.firstDifferentDecision;
-        const auto selected = [](const Recordings::Replay& result, PossessionId version)
+        const auto selected =
+            [](const Recordings::Replay& result, PossessionId version)
         {
-          if (!result.match) return false;
+          if (!result.match)
+          {
+            return false;
+          }
           const auto guard = result.match->lock();
           const auto& frames = result.match->keyframes();
-          return !frames.empty() && frames.front().engine->getPossessionVersion() == version;
+          return !frames.empty() &&
+                 frames.front().engine->getPossessionVersion() == version;
         };
         const auto other = loaded->setup.possession == PossessionId::AARDVARK
-                               ? PossessionId::BINTURONG : PossessionId::AARDVARK;
-        const auto overridden = Recordings::replay(*loaded, controller, std::nullopt,
-                                                   std::nullopt, std::nullopt, other);
-        possessionReplay = selected(replay, loaded->setup.possession) && selected(overridden, other);
-        possessionOverride = std::format("{} selected: {}; {}",
-            possessionName(other), selected(overridden, other) ? "yes" : "NO",
-            overridden.match && !overridden.divergedAt && !overridden.firstDifferentDecision
-                ? "same as recording" : "different/failed");
+                               ? PossessionId::BINTURONG
+                               : PossessionId::AARDVARK;
+        const auto overridden =
+            Recordings::replay(*loaded, controller, std::nullopt, std::nullopt,
+                               std::nullopt, other);
+        possessionReplay = selected(replay, loaded->setup.possession) &&
+                           selected(overridden, other);
+        possessionOverride =
+            std::format("{} selected: {}; {}", possessionName(other),
+                        selected(overridden, other) ? "yes" : "NO",
+                        overridden.match && !overridden.divergedAt &&
+                                !overridden.firstDifferentDecision
+                            ? "same as recording"
+                            : "different/failed");
         // Side by side with the brain being developed (information only:
         // identical while Binturong is still a copy of the Aardvark brain).
         const Recordings::Replay withNew = Recordings::replay(
@@ -1505,16 +1782,18 @@ int runSandboxChecks(GameController& controller, int matches, SandboxCheckGroup 
         MatchRecording tampered = *loaded;
         const std::uint64_t at = tampered.lastTick / 2;
         tampered.checksums[at] ^= 1U;
-        const Recordings::Replay tick = Recordings::replay(tampered, controller);
+        const Recordings::Replay tick =
+            Recordings::replay(tampered, controller);
         tickFound = tick.divergedAt == at;
         tampered = *loaded;
         const std::size_t which = tampered.decisions.size() / 2;
-        tampered.decisions[which].record.carry += 0.5f;
+        tampered.decisions[which].record.carry += 0.5F;
         const Recordings::Replay decision =
             Recordings::replay(tampered, controller);
         decisionFound = decision.firstDifferentDecision == which;
       }
-      const bool recordingsWork = roundTrip && exact && tickFound && decisionFound && possessionReplay;
+      const bool recordingsWork =
+          roundTrip && exact && tickFound && decisionFound && possessionReplay;
       rewindExact = rewindExact && recordingsWork;
       std::cout << std::format(
           "Recording: {} decisions with detail, {:.0f} KB, captured in {:.2f} "
@@ -1533,19 +1812,22 @@ int runSandboxChecks(GameController& controller, int matches, SandboxCheckGroup 
       std::cout << std::format(
           "Replay with handshake Binturong (recorded with {}): {}\n",
           handshakeName(recording.setup.handshake), newHandshakeReplay);
-      std::cout << std::format("Possession {} retained: {}; replay override {}\n",
-          possessionName(recording.setup.possession), possessionReplay ? "yes" : "NO", possessionOverride);
+      std::cout << std::format(
+          "Possession {} retained: {}; replay override {}\n",
+          possessionName(recording.setup.possession),
+          possessionReplay ? "yes" : "NO", possessionOverride);
     }
     std::cout << std::format(
         "\nFull detail: {} stretches, {:.1f} ms each; {} decisions, {} pass "
         "candidates, {} rankings, {} duels; {} breakdowns, largest residual "
         "{:.2e}{}{}\n",
         STRETCHES, detailSeconds * 1000.0 / STRETCHES, decisions, candidates,
-        rankings, duels, breakdowns, worst, worst > 0.0f ? " in " : "",
-        worst > 0.0f ? worstName : "");
+        rankings, duels, breakdowns, worst, worst > 0.0F ? " in " : "",
+        worst > 0.0F ? worstName : "");
     std::cout << std::format(
         "\nRewind: {} seeks across {} ticks ({} saved copies, {} manager "
-        "changes: tactics {}, sub {}, shout {}): {} exact, {:.2f} ms per seek\n",
+        "changes: tactics {}, sub {}, shout {}): {} exact, {:.2f} ms per "
+        "seek\n",
         SEEKS + 1, lastTick, keyframes, commands, tactics ? "yes" : "no",
         substitution ? "yes" : "no", shout ? "yes" : "no", SEEKS + 1 - diverged,
         seekSeconds * 1000.0 / (SEEKS + 1));
@@ -1593,7 +1875,8 @@ int runSandboxChecks(GameController& controller, int matches, SandboxCheckGroup 
              : 1;
 }
 
-int runMatchTrace(GameController& controller, double seconds, int cases, const std::string& kind)
+int runMatchTrace(GameController& controller, double seconds, int cases,
+                  const std::string& kind)
 {
   // The first two clubs of the first league, a match from kick-off: each
   // stumble or fall between two players getting into position (holding
@@ -1602,25 +1885,34 @@ int runMatchTrace(GameController& controller, double seconds, int cases, const s
   std::vector<const Team*> clubs;
   const auto& leagues = controller.getLeagues();
   for (const auto& team : controller.getTeams())
-    if (!leagues.empty() && team.get().getLeagueId() == leagues.front().get().getId())
+  {
+    if (!leagues.empty() &&
+        team.get().getLeagueId() == leagues.front().get().getId())
+    {
       clubs.push_back(&team.get());
-  if (clubs.size() < 2) return 1;
-  auto engine = makeEngine(*clubs[0], *clubs[1], controller.getStatsConfig(), 1000);
+    }
+  }
+  if (clubs.size() < 2)
+  {
+    return 1;
+  }
+  auto engine =
+      makeEngine(*clubs[0], *clubs[1], controller.getStatsConfig(), 1000);
   struct Moment
   {
-    PitchPoint position{};
+    PitchPoint position;
     Vector2F velocity{};
-    float facing = 0.0f;
+    float facing = 0.0F;
     PlayerIntent intent = PlayerIntent::HOLD_SHAPE;
-    PitchPoint target{};
-    PitchPoint heading{};
+    PitchPoint target;
+    PitchPoint heading;
     int waypoints = 0;
     int roundOf = -1;
     int roundSide = 0;
     int blockedBy = -1;
     int givingWayTo = -1;
     int rightOver = -1;
-    float giveWaySpeed = -1.0f;
+    float giveWaySpeed = -1.0F;
     bool steers = false;
     bool ballOwned = false;
     bool setPiece = false;
@@ -1629,17 +1921,16 @@ int runMatchTrace(GameController& controller, double seconds, int cases, const s
   const auto& players = engine->getPlayers();
   std::vector<std::deque<Moment>> history(players.size());
   const auto metres = [](PitchPoint pitch)
-  {
-    return Vector2F{pitch.x,
-                    pitch.y};
-  };
+  { return Vector2F{.x = pitch.x, .y = pitch.y}; };
   const auto nameOf = [&](std::size_t slot)
   {
-    return players[slot].player ? players[slot].player->getName() : std::string("?");
+    return players[slot].player ? players[slot].player->getName()
+                                : std::string("?");
   };
   const auto positioning = [](PlayerIntent intent)
   {
-    return intent == PlayerIntent::HOLD_SHAPE || intent == PlayerIntent::OFFER_SUPPORT ||
+    return intent == PlayerIntent::HOLD_SHAPE ||
+           intent == PlayerIntent::OFFER_SUPPORT ||
            intent == PlayerIntent::RECOVER_SHAPE;
   };
   const auto intentText = [](PlayerIntent intent)
@@ -1655,76 +1946,122 @@ int runMatchTrace(GameController& controller, double seconds, int cases, const s
     {
       std::array<std::size_t, 2> slots{players.size(), players.size()};
       for (std::size_t side = 0; side < 2; ++side)
+      {
         for (std::size_t slot = 0; slot < players.size(); ++slot)
-          if (players[slot].player && players[slot].player->getId() == hit.sides[side].player)
+        {
+          if ((players[slot].player != nullptr) &&
+              players[slot].player->getId() == hit.sides[side].player)
+          {
             slots[side] = slot;
-      if (slots[0] >= players.size() || slots[1] >= players.size()) continue;
-      if (hit.sides[0].outcome == 0 && hit.sides[1].outcome == 0) continue;
-      if (history[slots[0]].empty() || history[slots[1]].empty()) continue;
+          }
+        }
+      }
+      if (slots[0] >= players.size() || slots[1] >= players.size())
+      {
+        continue;
+      }
+      if (hit.sides[0].outcome == 0 && hit.sides[1].outcome == 0)
+      {
+        continue;
+      }
+      if (history[slots[0]].empty() || history[slots[1]].empty())
+      {
+        continue;
+      }
       const Moment& lastA = history[slots[0]].back();
       const Moment& lastB = history[slots[1]].back();
-      if (!positioning(lastA.intent) || !positioning(lastB.intent)) continue;
+      if (!positioning(lastA.intent) || !positioning(lastB.intent))
+      {
+        continue;
+      }
       // Only "neither saw it": nobody at his spot, giving way or going round.
       const auto atSpot = [&](const Moment& m, std::size_t slot)
       {
         const Vector2F at = metres(players[slot].position);
         const Vector2F target = metres(m.target);
-        return std::hypot(target.x - at.x, target.y - at.y) <= 2.0f;
+        return std::hypot(target.x - at.x, target.y - at.y) <= 2.0F;
       };
       const bool spot = atSpot(lastA, slots[0]) || atSpot(lastB, slots[1]);
       const auto a8 = static_cast<int>(slots[0]);
       const auto b8 = static_cast<int>(slots[1]);
-      const bool givingWay = lastA.givingWayTo == b8 || lastB.givingWayTo == a8 ||
-                             lastA.rightOver == b8 || lastB.rightOver == a8;
-      const bool sawIt = lastA.roundOf >= 0 || lastB.roundOf >= 0 || lastA.blockedBy >= 0 ||
-                         lastB.blockedBy >= 0;
-      const bool wanted = kind == "all"       ? true
-                          : kind == "spot"    ? spot
-                          : kind == "giveway" ? !spot && givingWay
-                                              : !spot && !givingWay && !sawIt &&
-                                                    lastA.givingWayTo < 0 &&
-                                                    lastB.givingWayTo < 0 &&
-                                                    lastA.rightOver < 0 && lastB.rightOver < 0;
-      if (!wanted) continue;
+      const bool givingWay = lastA.givingWayTo == b8 ||
+                             lastB.givingWayTo == a8 || lastA.rightOver == b8 ||
+                             lastB.rightOver == a8;
+      const bool sawIt = lastA.roundOf >= 0 || lastB.roundOf >= 0 ||
+                         lastA.blockedBy >= 0 || lastB.blockedBy >= 0;
+      const bool wanted = kind == "all"    ? true
+                          : kind == "spot" ? spot
+                          : kind == "giveway"
+                              ? !spot && givingWay
+                              : !spot && !givingWay && !sawIt &&
+                                    lastA.givingWayTo < 0 &&
+                                    lastB.givingWayTo < 0 &&
+                                    lastA.rightOver < 0 && lastB.rightOver < 0;
+      if (!wanted)
+      {
+        continue;
+      }
       ++shown;
       // Why the planner never had them: over the last 2 s, for each.
       for (std::size_t side = 0; side < 2; ++side)
       {
         const auto& h = history[slots[side]];
-        int owned = 0, setPiece = 0, notSteering = 0, intentChanges = 0, targetJumps = 0;
-        float biggestJump = 0.0f;
+        int owned = 0, setPiece = 0, notSteering = 0, intentChanges = 0,
+            targetJumps = 0;
+        float biggestJump = 0.0F;
         for (std::size_t i = 0; i < h.size(); ++i)
         {
           owned += h[i].ballOwned ? 1 : 0;
           setPiece += h[i].setPiece ? 1 : 0;
           notSteering += h[i].steers ? 0 : 1;
-          if (i == 0) continue;
+          if (i == 0)
+          {
+            continue;
+          }
           intentChanges += h[i].intent != h[i - 1].intent ? 1 : 0;
           const Vector2F t0 = metres(h[i - 1].target);
           const Vector2F t1 = metres(h[i].target);
           const float jump = std::hypot(t1.x - t0.x, t1.y - t0.y);
-          if (jump > 1.0f) ++targetJumps;
+          if (jump > 1.0F)
+          {
+            ++targetJumps;
+          }
           biggestJump = std::max(biggestJump, jump);
         }
-        std::printf("  WHY %c: ball owned %d/%zu steps, set piece %d, not steering %d, "
-                    "intent changes %d, target jumps >1 m %d (biggest %.1f m)\n",
-                    side == 0 ? 'A' : 'B', owned, h.size(), setPiece, notSteering,
-                    intentChanges, targetJumps, biggestJump);
+        std::printf(
+            "  WHY %c: ball owned %d/%zu steps, set piece %d, not steering %d, "
+            "intent changes %d, target jumps >1 m %d (biggest %.1f m)\n",
+            side == 0 ? 'A' : 'B', owned, h.size(), setPiece, notSteering,
+            intentChanges, targetJumps, biggestJump);
       }
-      const bool mates = players[slots[0]].isHomeTeam == players[slots[1]].isHomeTeam;
-      std::printf("\n=== %.1f s  %s (%s) / %s (%s), %s; outcome %d / %d, jolt %.2f / %.2f\n",
-                  now, nameOf(slots[0]).c_str(), intentText(lastA.intent).c_str(),
-                  nameOf(slots[1]).c_str(), intentText(lastB.intent).c_str(),
-                  mates ? "team-mates" : "opponents", hit.sides[0].outcome,
-                  hit.sides[1].outcome, std::hypot(hit.sides[0].jolt.x, hit.sides[0].jolt.y),
-                  std::hypot(hit.sides[1].jolt.x, hit.sides[1].jolt.y));
-      const std::size_t count = std::min(history[slots[0]].size(), history[slots[1]].size());
+      const bool mates =
+          players[slots[0]].isHomeTeam == players[slots[1]].isHomeTeam;
+      std::printf(
+          "\n=== %.1f s  %s (%s) / %s (%s), %s; outcome %d / %d, jolt %.2f / "
+          "%.2f\n",
+          now, nameOf(slots[0]).c_str(), intentText(lastA.intent).c_str(),
+          nameOf(slots[1]).c_str(), intentText(lastB.intent).c_str(),
+          mates ? "team-mates" : "opponents", hit.sides[0].outcome,
+          hit.sides[1].outcome,
+          std::hypot(hit.sides[0].jolt.x, hit.sides[0].jolt.y),
+          std::hypot(hit.sides[1].jolt.x, hit.sides[1].jolt.y));
+      const std::size_t count =
+          std::min(history[slots[0]].size(), history[slots[1]].size());
       for (std::size_t back = count; back-- > 0;)
       {
-        if (back % 2 != 1 && back != 0) continue;
-        if (back >= history[slots[0]].size() || back >= history[slots[1]].size()) continue;
-        const Moment& a = history[slots[0]][history[slots[0]].size() - 1 - back];
-        const Moment& b = history[slots[1]][history[slots[1]].size() - 1 - back];
+        if (back % 2 != 1 && back != 0)
+        {
+          continue;
+        }
+        if (back >= history[slots[0]].size() ||
+            back >= history[slots[1]].size())
+        {
+          continue;
+        }
+        const Moment& a =
+            history[slots[0]][history[slots[0]].size() - 1 - back];
+        const Moment& b =
+            history[slots[1]][history[slots[1]].size() - 1 - back];
         const Vector2F pa = metres(a.position);
         const Vector2F pb = metres(b.position);
         const auto describe = [&](const Moment& m, Vector2F at)
@@ -1732,29 +2069,34 @@ int runMatchTrace(GameController& controller, double seconds, int cases, const s
           const Vector2F target = metres(m.target);
           const Vector2F heading = metres(m.heading);
           const float speed = std::hypot(m.velocity.x, m.velocity.y);
-          const float course =
-              std::atan2(m.velocity.y, m.velocity.x) * 180.0f / std::numbers::pi_v<float>;
+          const float course = std::atan2(m.velocity.y, m.velocity.x) * 180.0F /
+                               std::numbers::pi_v<float>;
           return std::format(
               "{:.1f} m/s course {:.0f} · {} · target {:.1f} m{} · {}{}{}",
               speed, course, intentText(m.intent).substr(0, 7),
               std::hypot(target.x - at.x, target.y - at.y),
-              m.waypoints > 0 ? std::format(" (via waypoint {:.1f} m)",
-                                            std::hypot(heading.x - at.x, heading.y - at.y))
-                              : std::string(),
-              m.roundOf >= 0 ? std::format("going round {} on his {}", nameOf(m.roundOf),
-                                           m.roundSide > 0 ? "left" : "right")
-                             : std::string("not going round"),
-              m.blockedBy >= 0 ? std::format(" (blocked by {})", nameOf(m.blockedBy))
-                               : std::string(),
+              m.waypoints > 0
+                  ? std::format(" (via waypoint {:.1f} m)",
+                                std::hypot(heading.x - at.x, heading.y - at.y))
+                  : std::string(),
+              m.roundOf >= 0
+                  ? std::format("going round {} on his {}", nameOf(m.roundOf),
+                                m.roundSide > 0 ? "left" : "right")
+                  : std::string("not going round"),
+              m.blockedBy >= 0
+                  ? std::format(" (blocked by {})", nameOf(m.blockedBy))
+                  : std::string(),
               m.givingWayTo >= 0
-                  ? std::format(" · GIVING WAY to {} (held to {:.1f} m/s)", nameOf(m.givingWayTo),
-                                m.giveWaySpeed)
-              : m.rightOver >= 0 ? std::format(" · right of way over {}", nameOf(m.rightOver))
-                                 : std::string());
+                  ? std::format(" · GIVING WAY to {} (held to {:.1f} m/s)",
+                                nameOf(m.givingWayTo), m.giveWaySpeed)
+              : m.rightOver >= 0
+                  ? std::format(" · right of way over {}", nameOf(m.rightOver))
+                  : std::string());
         };
         std::printf("  -%.1f s  gap %.2f m%s\n     A: %s%s\n     B: %s%s\n",
                     0.1 * static_cast<double>(back),
-                    std::hypot(pb.x - pa.x, pb.y - pa.y), a.ballOwned ? "  (ball owned)" : "",
+                    std::hypot(pb.x - pa.x, pb.y - pa.y),
+                    a.ballOwned ? "  (ball owned)" : "",
                     describe(a, pa).c_str(), a.steers ? "" : " · NOT STEERING",
                     describe(b, pb).c_str(), b.steers ? "" : " · NOT STEERING");
       }
@@ -1762,16 +2104,28 @@ int runMatchTrace(GameController& controller, double seconds, int cases, const s
     for (std::size_t slot = 0; slot < players.size(); ++slot)
     {
       const MatchPlayer& player = players[slot];
-      Moment moment{player.position,       player.velocity,      player.facingAngle,
-                    player.intent,         player.tacticalTarget, player.movementTarget,
-                    player.routeWaypoints, player.wayRoundOf,    player.wayRoundSide,
-                    player.wayRoundBlockedBy, player.givingWayTo, player.rightOfWayOver,
-                    player.giveWaySpeed,   player.steersRound,
-                    engine->getPossessionAttachment() != nullptr,
-                    engine->getSetPiecePhaseRemaining() > 0.0f ||
-                        engine->getState() != MatchState::PLAYING};
+      Moment moment{.position = player.position,
+                    .velocity = player.velocity,
+                    .facing = player.facingAngle,
+                    .intent = player.intent,
+                    .target = player.tacticalTarget,
+                    .heading = player.movementTarget,
+                    .waypoints = player.routeWaypoints,
+                    .roundOf = player.wayRoundOf,
+                    .roundSide = player.wayRoundSide,
+                    .blockedBy = player.wayRoundBlockedBy,
+                    .givingWayTo = player.givingWayTo,
+                    .rightOver = player.rightOfWayOver,
+                    .giveWaySpeed = player.giveWaySpeed,
+                    .steers = player.steersRound,
+                    .ballOwned = engine->getPossessionAttachment() != nullptr,
+                    .setPiece = engine->getSetPiecePhaseRemaining() > 0.0F ||
+                                engine->getState() != MatchState::PLAYING};
       history[slot].push_back(moment);
-      if (history[slot].size() > HISTORY) history[slot].pop_front();
+      if (history[slot].size() > HISTORY)
+      {
+        history[slot].pop_front();
+      }
     }
   }
   std::printf("\n%d cases in %.0f s\n", shown, now);

@@ -7,10 +7,10 @@
 // -----------------------------------------------------------------------------
 
 #include "model/match_engine.h"
+
 #include "model/match_possession_control.h"
 #include "model/match_possession_coordination.h"
 #include "model/match_restart_approach.h"
-
 
 // Implementation map (search these function names to find each subsystem):
 // - Construction/loadAttributes: borrow career players, cache match attributes.
@@ -109,8 +109,11 @@ MatchEngine::MatchEngine(const Lineup& home_lineup, const Lineup& away_lineup,
       incidentRng(static_cast<std::uint32_t>(splitMix64(seed))),
       matchSeed(seed)
 {
-  if (possession != PossessionId::AARDVARK && possession != PossessionId::BINTURONG)
+  if (possession != PossessionId::AARDVARK &&
+      possession != PossessionId::BINTURONG)
+  {
     throw std::invalid_argument("Unknown possession implementation");
+  }
   players.reserve(22);
   playerStats.reserve(36);
   events.reserve(256);
@@ -123,7 +126,10 @@ MatchEngine::MatchEngine(const Lineup& home_lineup, const Lineup& away_lineup,
   homeBench = home_lineup.getReserves();
   awayBench = away_lineup.getReserves();
   designations = {home_lineup.getDesignations(), away_lineup.getDesignations()};
-  for (const MatchPlayer& player : players) squad.push_back(player.player);
+  for (const MatchPlayer& player : players)
+  {
+    squad.push_back(player.player);
+  }
   squad.insert(squad.end(), homeBench.begin(), homeBench.end());
   squad.insert(squad.end(), awayBench.begin(), awayBench.end());
   std::erase(homeBench, nullptr);
@@ -145,13 +151,20 @@ MatchEngine::MatchEngine(const Lineup& home_lineup, const Lineup& away_lineup,
 
 void MatchEngine::setMatchContext(const MatchContext& context)
 {
-  if (stepCounter != 0) return;
+  if (stepCounter != 0)
+  {
+    return;
+  }
   convertMatchContext(context);
   refereeStrictness = drawRefereeStrictness();
   // The home crowd's lift is part of the loaded attributes.
   for (MatchPlayer& player : players)
-    if (player.player && player.isHomeTeam)
+  {
+    if ((player.player != nullptr) && player.isHomeTeam)
+    {
       loadAttributes(player, player.player);
+    }
+  }
   ++inputRevision;
 }
 
@@ -159,10 +172,11 @@ std::size_t MatchEngine::addPlayerStats(const MatchPlayer& matchPlayer,
                                         bool started)
 {
   PlayerMatchStats entry;
-  entry.playerId = matchPlayer.player ? matchPlayer.player->getId() : 0;
+  entry.playerId =
+      (matchPlayer.player != nullptr) ? matchPlayer.player->getId() : 0;
   entry.isHomeTeam = matchPlayer.isHomeTeam;
-  entry.role =
-      matchPlayer.player ? matchPlayer.player->getRole() : PlayerRole::UNKNOWN;
+  entry.role = (matchPlayer.player != nullptr) ? matchPlayer.player->getRole()
+                                               : PlayerRole::UNKNOWN;
   entry.started = started;
   entry.substitutedOn = !started;
   entry.condition = matchPlayer.stamina;
@@ -187,21 +201,28 @@ std::optional<float> MatchEngine::getPlayerCondition(PlayerID playerId) const
 {
   for (const auto& player : players)
   {
-    if (player.player && player.player->getId() == playerId)
+    if ((player.player != nullptr) && player.player->getId() == playerId)
+    {
       return player.stamina;
+    }
   }
   if (const PlayerMatchStats* entry = findPlayerStats(playerId))
+  {
     return entry->condition;
+  }
   return std::nullopt;
 }
 
 bool MatchEngine::setPlayerCondition(PlayerID playerId, float condition)
 {
-  if (state != MatchState::KICK_OFF || elapsedMatchMinutes > 0.0f) return false;
+  if (state != MatchState::KICK_OFF || elapsedMatchMinutes > 0.0F)
+  {
+    return false;
+  }
   const float clamped = convertCondition(condition);
   for (auto& player : players)
   {
-    if (player.player && player.player->getId() == playerId)
+    if ((player.player != nullptr) && player.player->getId() == playerId)
     {
       player.stamina = clamped;
       statsOf(player).condition = player.stamina;
@@ -213,7 +234,9 @@ bool MatchEngine::setPlayerCondition(PlayerID playerId, float condition)
   {
     if (std::ranges::none_of(*bench, [playerId](const Player* candidate)
                              { return candidate->getId() == playerId; }))
+    {
       continue;
+    }
     std::erase_if(benchConditions, [playerId](const auto& entry)
                   { return entry.first == playerId; });
     benchConditions.emplace_back(playerId, clamped);
@@ -225,7 +248,10 @@ bool MatchEngine::setPlayerCondition(PlayerID playerId, float condition)
 
 void MatchEngine::setTacticalFamiliarity(bool homeTeam, float familiarity)
 {
-  if (!std::isfinite(familiarity)) return;
+  if (!std::isfinite(familiarity))
+  {
+    return;
+  }
   (homeTeam ? homeFamiliarity : awayFamiliarity) =
       convertFamiliarity(familiarity);
   refreshTargetBlends();
@@ -245,25 +271,28 @@ void MatchEngine::refreshTargetBlends()
     const MovementStyle& style = movementStyle(team == 0);
     if (!style.smoothsTargets)
     {
-      targetBlends[team * 2] = 1.0f;
-      targetBlends[team * 2 + 1] = 1.0f;
+      targetBlends[team * 2] = 1.0F;
+      targetBlends[(team * 2) + 1] = 1.0F;
       continue;
     }
     const float familiarity = effectiveFamiliarity(team);
     const float response =
-        1.0f - style.familiarityResponseLoss * (1.0f - familiarity);
-    targetBlends[team * 2] =
-        1.0f - std::exp(-style.tacticalResponsePerSecond * response *
-                        stepSeconds());
-    targetBlends[team * 2 + 1] = 1.0f - std::exp(-style.urgentResponsePerSecond *
-                                                 response * stepSeconds());
+        1.0F - (style.familiarityResponseLoss * (1.0F - familiarity));
+    targetBlends[team * 2] = 1.0F - std::exp(-style.tacticalResponsePerSecond *
+                                             response * stepSeconds());
+    targetBlends[(team * 2) + 1] =
+        1.0F -
+        std::exp(-style.urgentResponsePerSecond * response * stepSeconds());
   }
 }
 
 void MatchEngine::setStepTicks(std::uint32_t ticks)
 {
   ticks = std::max(ticks, 1U);
-  if (ticks == stepTicks) return;
+  if (ticks == stepTicks)
+  {
+    return;
+  }
   stepTicks = ticks;
   refreshTargetBlends();
 }
@@ -276,7 +305,10 @@ float MatchEngine::stepSeconds() const
 
 bool MatchEngine::periodElapsed(std::uint64_t ticks) const
 {
-  if (stepCounter < stepTicks) return true;
+  if (stepCounter < stepTicks)
+  {
+    return true;
+  }
   return stepCounter / ticks != (stepCounter - stepTicks) / ticks;
 }
 
@@ -288,11 +320,14 @@ float MatchEngine::familiarityOf(const MatchPlayer& player) const
 float MatchEngine::effectiveFamiliarity(std::size_t team) const
 {
   const float drilled = team == 0 ? homeFamiliarity : awayFamiliarity;
-  if (reshapeSecondsRemaining[team] <= 0.0f) return drilled;
+  if (reshapeSecondsRemaining[team] <= 0.0F)
+  {
+    return drilled;
+  }
   return std::max(
-      0.0f, drilled - reshapeFamiliarityCost[team] *
-                          reshapeSecondsRemaining[team] /
-                          MatchTuning::Touchline::RESHAPE_RECOVERY_SECONDS);
+      0.0F,
+      drilled - (reshapeFamiliarityCost[team] * reshapeSecondsRemaining[team] /
+                 MatchTuning::Touchline::RESHAPE_RECOVERY_SECONDS));
 }
 
 void MatchEngine::setStrategy(bool homeTeam, const Strategy& strategy)
@@ -318,8 +353,8 @@ void MatchEngine::startShout(bool homeTeam, MatchShout shout)
   ShoutState& current = shouts[homeTeam ? 0 : 1];
   current.shout = shout;
   current.remainingSeconds = MatchTuning::Touchline::SHOUT_DURATION_SECONDS;
-  current.impact = 1.0f / (1.0f + current.repeats);
-  current.repeats += 1.0f;
+  current.impact = 1.0F / (1.0F + current.repeats);
+  current.repeats += 1.0F;
   refreshEffectiveSliders();
   ++inputRevision;
 }
@@ -329,14 +364,17 @@ float MatchEngine::getShoutStrength(bool homeTeam) const
   const ShoutState& shout = shouts[homeTeam ? 0 : 1];
   return std::clamp(shout.remainingSeconds /
                         MatchTuning::Touchline::SHOUT_DURATION_SECONDS,
-                    0.0f, 1.0f) *
+                    0.0F, 1.0F) *
          shout.impact;
 }
 
 std::optional<MatchShout> MatchEngine::getActiveShout(bool homeTeam) const
 {
   const ShoutState& shout = shouts[homeTeam ? 0 : 1];
-  if (shout.remainingSeconds <= 0.0f) return std::nullopt;
+  if (shout.remainingSeconds <= 0.0F)
+  {
+    return std::nullopt;
+  }
   return shout.shout;
 }
 
@@ -361,7 +399,9 @@ std::optional<std::size_t> MatchEngine::getFormationSlot(
   {
     if (active(player) && !player.isGoalkeeper && player.formationSlot >= 0 &&
         player.player->getId() == playerId)
+    {
       return static_cast<std::size_t>(player.formationSlot);
+    }
   }
   return std::nullopt;
 }
@@ -373,8 +413,12 @@ bool MatchEngine::movePlayerToSlot(PlayerID playerId, std::size_t slot)
   command.player = playerId;
   command.slot = slot;
   for (const MatchPlayer& player : players)
-    if (player.player && player.player->getId() == playerId)
+  {
+    if ((player.player != nullptr) && player.player->getId() == playerId)
+    {
       command.homeTeam = player.isHomeTeam;
+    }
+  }
   return recordCommand(command);
 }
 
@@ -394,7 +438,10 @@ void MatchEngine::continueReplay(std::vector<MatchCommandRecord> commands,
 {
   // The cursors keep marking what this copy has applied: the logs it holds
   // are a prefix of the complete ones.
-  if (commands.size() < commandCursor || inputs.size() < inputCursor) return;
+  if (commands.size() < commandCursor || inputs.size() < inputCursor)
+  {
+    return;
+  }
   commandLog = std::move(commands);
   inputLog = std::move(inputs);
   ++inputRevision;
@@ -402,7 +449,10 @@ void MatchEngine::continueReplay(std::vector<MatchCommandRecord> commands,
 
 bool MatchEngine::recordCommand(const MatchCommandRecord& command)
 {
-  if (!executeCommand(command)) return false;
+  if (!executeCommand(command))
+  {
+    return false;
+  }
   // A live change ends any replay still pending.
   commandLog.resize(commandCursor);
   commandLog.push_back(command);
@@ -416,7 +466,9 @@ void MatchEngine::applyDueCommands()
 {
   while (commandCursor < commandLog.size() &&
          commandLog[commandCursor].step <= stepCounter)
+  {
     executeCommand(commandLog[commandCursor++]);
+  }
 }
 
 bool MatchEngine::executeCommand(const MatchCommandRecord& command)
@@ -427,26 +479,38 @@ bool MatchEngine::executeCommand(const MatchCommandRecord& command)
     case MatchCommandType::DRILL_TARGET:
     {
       MatchPlayer* player = drillPlayer(command.player);
-      if (!player) return false;
+      if (player == nullptr)
+      {
+        return false;
+      }
       std::erase_if(drillTargets, [&command](const DrillTarget& held)
                     { return held.player == command.player; });
       if (command.target)
       {
-        drillTargets.push_back({command.player, *command.target,
-                                command.urgent, command.route,
-                                command.apexOffset, command.outwardRoom,
-                                command.facing, command.atSpeed});
+        drillTargets.push_back({.player = command.player,
+                                .target = *command.target,
+                                .urgent = command.urgent,
+                                .route = command.route,
+                                .apexOffset = command.apexOffset,
+                                .outwardRoom = command.outwardRoom,
+                                .facing = command.facing,
+                                .atSpeed = command.atSpeed});
         // Taken at once, not at the next planner refresh (by his touches
         // too, when he is dribbling).
         holdDrillTarget(*player, drillTargets.back());
         if (hasTouchClaim() && getPossessionAttachment() == player->player)
+        {
           ball.dribbleGoal = *command.target;
+        }
       }
       ++inputRevision;
       return true;
     }
     case MatchCommandType::FORCE_SHOT:
-      if (!drillPlayer(command.player)) return false;
+      if (drillPlayer(command.player) == nullptr)
+      {
+        return false;
+      }
       forcedShooter = command.player;
       forcedShotAim = command.shotAim;
       forcedShotPower = command.shotPower;
@@ -456,38 +520,56 @@ bool MatchEngine::executeCommand(const MatchCommandRecord& command)
       return true;
     case MatchCommandType::FORCE_PASS:
       // To a team-mate, or (no team-mate) to a spot.
-      if (!drillPlayer(command.player) ||
-          (command.incoming != 0 ? !drillPlayer(command.incoming)
+      if ((drillPlayer(command.player) == nullptr) ||
+          (command.incoming != 0 ? (drillPlayer(command.incoming) == nullptr)
                                  : !command.target))
+      {
         return false;
-      forcedPass = {command.player, command.incoming, command.passStyle,
-                    command.incoming != 0 ? std::nullopt : command.target,
-                    command.passSpin, command.passArrival,
-                    command.passFirstTime};
+      }
+      forcedPass = {
+          .passer = command.player,
+          .receiver = command.incoming,
+          .style = command.passStyle,
+          .spot = command.incoming != 0 ? std::nullopt : command.target,
+          .spin = command.passSpin,
+          .arrivalSpeed = command.passArrival,
+          .firstTime = command.passFirstTime};
       ++inputRevision;
       return true;
     case MatchCommandType::FORCE_HEADER:
-      if (!drillPlayer(command.player) ||
+      if ((drillPlayer(command.player) == nullptr) ||
           (command.headerAim == ForcedHeaderAim::SPOT && !command.target) ||
           (command.headerAim == ForcedHeaderAim::GOAL && !command.shotAim))
+      {
         return false;
-      forcedHeader = ForcedHeader{command.player, command.headerAim,
-                                  command.target.value_or(PitchPoint{}),
-                                  command.shotAim.value_or(Vector2F{}),
-                                  command.headerKnownEarly};
+      }
+      forcedHeader =
+          ForcedHeader{.player = command.player,
+                       .aim = command.headerAim,
+                       .spot = command.target.value_or(PitchPoint{}),
+                       .goalAim = command.shotAim.value_or(Vector2F{}),
+                       .knownEarly = command.headerKnownEarly};
       lastHeadPart.reset();
       ++inputRevision;
       return true;
     case MatchCommandType::FORCE_TACKLE_INTENT:
-      if (!drillPlayer(command.player)) return false;
+      if (drillPlayer(command.player) == nullptr)
+      {
+        return false;
+      }
       std::erase_if(forcedTackleIntents, [&](const auto& forced)
                     { return forced.first == command.player; });
       if (command.tackleIntent != TackleIntent::BRAIN)
+      {
         forcedTackleIntents.emplace_back(command.player, command.tackleIntent);
+      }
       ++inputRevision;
       return true;
     case MatchCommandType::KEEP_BALL:
-      if (!drillPlayer(command.player)) return false;
+      if (drillPlayer(command.player) == nullptr)
+      {
+        return false;
+      }
       std::erase(ballKeepers, command.player);
       std::erase_if(ballKeeperUrgency, [&](const auto& keeper)
                     { return keeper.first == command.player; });
@@ -503,14 +585,20 @@ bool MatchEngine::executeCommand(const MatchCommandRecord& command)
       MatchPlayer* receiver =
           command.player != 0 ? drillPlayer(command.player) : nullptr;
       if (state != MatchState::PLAYING || !command.target ||
-          (command.player != 0 && !receiver))
+          (command.player != 0 && (receiver == nullptr)))
+      {
         return false;
+      }
       // A fresh ball in flight: nobody owns it or last played it.
       beginFedBall();
       ball.position = PitchPoint{
-          std::clamp(command.target->x, MatchTuning::Pitch::BALL_INSIDE_END_METRES, pitch.length - MatchTuning::Pitch::BALL_INSIDE_END_METRES),
-          std::clamp(command.target->y, MatchTuning::Pitch::BALL_INSIDE_SIDE_METRES, pitch.width - MatchTuning::Pitch::BALL_INSIDE_SIDE_METRES)};
-      ball.z = 0.0f;
+          std::clamp(command.target->x,
+                     MatchTuning::Pitch::BALL_INSIDE_END_METRES,
+                     pitch.length - MatchTuning::Pitch::BALL_INSIDE_END_METRES),
+          std::clamp(
+              command.target->y, MatchTuning::Pitch::BALL_INSIDE_SIDE_METRES,
+              pitch.width - MatchTuning::Pitch::BALL_INSIDE_SIDE_METRES)};
+      ball.z = 0.0F;
       notePathChange();
       ball.velocity = command.feedVelocity;
       ball.velocityZ = command.feedLift;
@@ -522,7 +610,9 @@ bool MatchEngine::executeCommand(const MatchCommandRecord& command)
     case MatchCommandType::TEAM_TALK:
       if (command.talkHalf < 1 || command.talkHalf > 2 ||
           !std::isfinite(command.talkModifier))
+      {
         return false;
+      }
       teamTalks[team][static_cast<std::size_t>(command.talkHalf - 1)] =
           convertTeamTalk(command.talkModifier);
       ++inputRevision;
@@ -541,9 +631,11 @@ bool MatchEngine::executeCommand(const MatchCommandRecord& command)
       auto& formation = formations[team];
       if (command.formation.size() != formation.size() ||
           state == MatchState::FULL_TIME)
+      {
         return false;
+      }
       using Pitch = MatchTuning::Pitch;
-      float moved = 0.0f;
+      float moved = 0.0F;
       std::vector<Vector2F> shape;
       shape.reserve(formation.size());
       for (std::size_t slot = 0; slot < formation.size(); ++slot)
@@ -551,9 +643,14 @@ bool MatchEngine::executeCommand(const MatchCommandRecord& command)
         // Formation slots are lineup coordinates (fractions, own goal at
         // x = 0): clamped as fractions, measured as points on the pitch.
         const Vector2F wanted = command.formation[slot];
-        if (!std::isfinite(wanted.x) || !std::isfinite(wanted.y)) return false;
-        const Vector2F kept{std::clamp(wanted.x, Pitch::PLAYER_MIN_X_SHARE, Pitch::PLAYER_MAX_X_SHARE),
-                            std::clamp(wanted.y, Pitch::PLAYER_MIN_Y_SHARE, Pitch::PLAYER_MAX_Y_SHARE)};
+        if (!std::isfinite(wanted.x) || !std::isfinite(wanted.y))
+        {
+          return false;
+        }
+        const Vector2F kept{.x = std::clamp(wanted.x, Pitch::PLAYER_MIN_X_SHARE,
+                                            Pitch::PLAYER_MAX_X_SHARE),
+                            .y = std::clamp(wanted.y, Pitch::PLAYER_MIN_Y_SHARE,
+                                            Pitch::PLAYER_MAX_Y_SHARE)};
         shape.push_back(kept);
         moved += distance(pitch.at(kept.x, kept.y),
                           pitch.at(formation[slot].x, formation[slot].y));
@@ -565,14 +662,14 @@ bool MatchEngine::executeCommand(const MatchCommandRecord& command)
           moved /
               static_cast<float>(std::max<std::size_t>(formation.size(), 1)) *
               T::RESHAPE_FAMILIARITY_PER_METRE);
-      if (cost > 0.0f)
+      if (cost > 0.0F)
       {
         // A second change before the first has sunk in adds to what is left.
         reshapeFamiliarityCost[team] =
             std::min(T::MAX_RESHAPE_FAMILIARITY_COST,
-                     cost + reshapeFamiliarityCost[team] *
-                                reshapeSecondsRemaining[team] /
-                                T::RESHAPE_RECOVERY_SECONDS);
+                     cost + (reshapeFamiliarityCost[team] *
+                             reshapeSecondsRemaining[team] /
+                             T::RESHAPE_RECOVERY_SECONDS));
         reshapeSecondsRemaining[team] = T::RESHAPE_RECOVERY_SECONDS;
         refreshTargetBlends();
       }
@@ -584,7 +681,9 @@ bool MatchEngine::executeCommand(const MatchCommandRecord& command)
     {
       if (!command.slot || *command.slot >= formations[team].size() ||
           state == MatchState::FULL_TIME)
+      {
         return false;
+      }
       const auto mover = std::ranges::find_if(
           players,
           [&](const MatchPlayer& player)
@@ -594,14 +693,19 @@ bool MatchEngine::executeCommand(const MatchCommandRecord& command)
                    player.isHomeTeam == command.homeTeam &&
                    player.player->getId() == command.player;
           });
-      if (mover == players.end()) return false;
+      if (mover == players.end())
+      {
+        return false;
+      }
       const auto slot = static_cast<std::int8_t>(*command.slot);
       for (MatchPlayer& occupant : players)
       {
         if (active(occupant) && !occupant.isGoalkeeper &&
             occupant.isHomeTeam == command.homeTeam &&
             occupant.formationSlot == slot)
+        {
           occupant.formationSlot = mover->formationSlot;
+        }
       }
       mover->formationSlot = slot;
       placeFormation(command.homeTeam);
@@ -616,7 +720,9 @@ bool MatchEngine::executeCommand(const MatchCommandRecord& command)
           { return player && player->getId() == command.incoming; });
       if (incoming == bench.end() ||
           (command.slot && *command.slot >= formations[team].size()))
+      {
         return false;
+      }
       const Player* inPlayer = *incoming;
       const auto outgoing = std::ranges::find_if(
           players,
@@ -627,17 +733,22 @@ bool MatchEngine::executeCommand(const MatchCommandRecord& command)
       if (outgoing == players.end() ||
           outgoing->isHomeTeam != command.homeTeam ||
           !canSubstitute(command.homeTeam))
+      {
         return false;
+      }
       // A change made while the ball is live stops play for it; several
       // changes made together share that stoppage (and window). On foot
       // (touchline plan stage 5) it waits for the next stoppage instead.
-      if (state == MatchState::PLAYING && manualSubstitutionStep != stepCounter &&
-          !walksOut())
+      if (state == MatchState::PLAYING &&
+          manualSubstitutionStep != stepCounter && !walksOut())
       {
         beginStoppage();
         manualSubstitutionStep = stepCounter;
       }
-      if (!canSubstitute(outgoing->isHomeTeam)) return false;
+      if (!canSubstitute(outgoing->isHomeTeam))
+      {
+        return false;
+      }
       ++inputRevision;
       const bool wasKeeper = outgoing->isGoalkeeper;
       const std::int8_t wasSlot = outgoing->formationSlot;
@@ -653,12 +764,17 @@ bool MatchEngine::executeCommand(const MatchCommandRecord& command)
         // On foot, once he is on.
         bool underWay = false;
         for (PendingSubstitution& pending : pendingSubstitutions)
+        {
           if (pending.incoming == inPlayer)
           {
             pending.moveToSlot = move;
             underWay = true;
           }
-        if (!underWay) executeCommand(move);
+        }
+        if (!underWay)
+        {
+          executeCommand(move);
+        }
       }
       describePendingEvents();
       return changed;
@@ -692,53 +808,56 @@ StrategySliders MatchEngine::shoutSliders(StrategySliders sliders,
                                           bool homeTeam) const
 {
   const auto clampSlider = [](float& value)
-  { value = std::clamp(value, 0.0f, 1.0f); };
+  { value = std::clamp(value, 0.0F, 1.0F); };
   const float strength = getShoutStrength(homeTeam);
-  if (strength <= 0.0f) return sliders;
+  if (strength <= 0.0F)
+  {
+    return sliders;
+  }
   const float step = MatchTuning::Touchline::SHOUT_SLIDER_STEP * strength;
   switch (shouts[homeTeam ? 0 : 1].shout)
   {
     case MatchShout::PUSH_HIGHER:
       sliders.offensiveBias += step;
-      sliders.pressing += step * 0.5f;
+      sliders.pressing += step * 0.5F;
       break;
     case MatchShout::DROP_DEEPER:
       sliders.offensiveBias -= step;
-      sliders.pressing -= step * 0.75f;
-      sliders.compactness += step * 0.75f;
+      sliders.pressing -= step * 0.75F;
+      sliders.compactness += step * 0.75F;
       break;
     case MatchShout::PRESS_MORE:
-      sliders.pressing += step * 1.25f;
+      sliders.pressing += step * 1.25F;
       break;
     case MatchShout::CALM_DOWN:
       sliders.riskTaking -= step;
-      sliders.pressing -= step * 0.25f;
+      sliders.pressing -= step * 0.25F;
       break;
     case MatchShout::WORK_BALL_INTO_BOX:
-      sliders.riskTaking -= step * 0.25f;
+      sliders.riskTaking -= step * 0.25F;
       break;
     case MatchShout::SHOOT_ON_SIGHT:
-      sliders.riskTaking += step * 0.5f;
+      sliders.riskTaking += step * 0.5F;
       break;
     case MatchShout::ENCOURAGE:
       break;
     case MatchShout::STAND_OFF:
-      sliders.pressing -= step * 1.25f;
-      sliders.compactness += step * 0.5f;
+      sliders.pressing -= step * 1.25F;
+      sliders.compactness += step * 0.5F;
       break;
     case MatchShout::DEMAND_MORE:
-      sliders.pressing += step * 0.5f;
-      sliders.offensiveBias += step * 0.5f;
+      sliders.pressing += step * 0.5F;
+      sliders.offensiveBias += step * 0.5F;
       break;
     case MatchShout::HIT_ON_COUNTER:
-      sliders.pressing -= step * 0.5f;
-      sliders.compactness += step * 0.5f;
+      sliders.pressing -= step * 0.5F;
+      sliders.compactness += step * 0.5F;
       sliders.riskTaking += step;
       break;
     case MatchShout::KEEP_POSSESSION:
       sliders.riskTaking -= step;
-      sliders.offensiveBias -= step * 0.5f;
-      sliders.widthUsage += step * 0.5f;
+      sliders.offensiveBias -= step * 0.5F;
+      sliders.widthUsage += step * 0.5F;
       break;
   }
   clampSlider(sliders.pressing);
@@ -749,14 +868,13 @@ StrategySliders MatchEngine::shoutSliders(StrategySliders sliders,
   return sliders;
 }
 
-float MatchEngine::shoutWorkRate(
-    bool homeTeam) const
+float MatchEngine::shoutWorkRate(bool homeTeam) const
 {
   const MatchShout shout = shouts[homeTeam ? 0 : 1].shout;
   return shout == MatchShout::ENCOURAGE || shout == MatchShout::DEMAND_MORE
              ? MatchTuning::Touchline::ENCOURAGE_WORK_RATE *
                    getShoutStrength(homeTeam)
-             : 0.0f;
+             : 0.0F;
 }
 
 void MatchEngine::setTeamTalkModifier(bool homeTeam, int half, float modifier)
@@ -773,7 +891,10 @@ void MatchEngine::setTeamTalkModifier(bool homeTeam, int half, float modifier)
 
 float MatchEngine::getTeamTalkModifier(bool homeTeam, int half) const
 {
-  if (half < 1 || half > 2) return 0.0f;
+  if (half < 1 || half > 2)
+  {
+    return 0.0F;
+  }
   return teamTalks[homeTeam ? 0 : 1][static_cast<std::size_t>(half - 1)];
 }
 
@@ -781,18 +902,24 @@ float MatchEngine::talkOf(bool homeTeam) const
 {
   // A talk lifts (or deflates) the side for the first minutes of its half
   // and has worn off well before the break; extra time has none.
-  if (period < 1 || period > 2) return 0.0f;
+  if (period < 1 || period > 2)
+  {
+    return 0.0F;
+  }
   const float talk =
       teamTalks[homeTeam ? 0 : 1][static_cast<std::size_t>(period - 1)];
-  if (talk == 0.0f) return 0.0f;
+  if (talk == 0.0F)
+  {
+    return 0.0F;
+  }
   namespace T = TacticsTuning;
   const float minutes =
       matchTimeMinutes -
-      (period == 2 ? MatchTuning::Timing::HALF_TIME_MINUTE : 0.0f);
+      (period == 2 ? MatchTuning::Timing::HALF_TIME_MINUTE : 0.0F);
   return talk *
          std::clamp((T::TALK_FADE_END_MINUTES - minutes) /
                         (T::TALK_FADE_END_MINUTES - T::TALK_FULL_MINUTES),
-                    0.0f, 1.0f);
+                    0.0F, 1.0F);
 }
 
 float MatchEngine::teamEdge(bool homeTeam) const
@@ -800,13 +927,18 @@ float MatchEngine::teamEdge(bool homeTeam) const
   using R = MatchTuning::Rules;
   int balance = 0;
   for (const auto& player : players)
-    if (active(player)) balance += player.isHomeTeam == homeTeam ? 1 : -1;
+  {
+    if (active(player))
+    {
+      balance += player.isHomeTeam == homeTeam ? 1 : -1;
+    }
+  }
   balance = std::clamp(balance, -R::MAX_NUMERICAL_EDGE_PLAYERS,
                        R::MAX_NUMERICAL_EDGE_PLAYERS);
   return (homeTeam ? R::HOME_EXECUTION_BONUS * matchContext.homeAdvantageScale
-                   : 0.0f) +
+                   : 0.0F) +
          talkOf(homeTeam) +
-         static_cast<float>(balance) * R::NUMERICAL_EDGE_PER_PLAYER;
+         (static_cast<float>(balance) * R::NUMERICAL_EDGE_PER_PLAYER);
 }
 
 void MatchEngine::refreshRatings()
@@ -834,8 +966,8 @@ float counterNoise(std::uint32_t seed, std::uint64_t tick, std::uint32_t salt,
       splitMix64((static_cast<std::uint64_t>(seed) << 32U) ^ tick ^
                  (static_cast<std::uint64_t>(salt) << 48U) ^
                  (static_cast<std::uint64_t>(key) << 16U));
-  return static_cast<float>(mixed >> 40U) / static_cast<float>(1U << 23U) -
-         1.0f;
+  return (static_cast<float>(mixed >> 40U) / static_cast<float>(1U << 23U)) -
+         1.0F;
 }
 }  // namespace
 
@@ -855,7 +987,7 @@ void MatchEngine::update(float deltaTime)
 {
   lastUpdateStepCount = 0;
   if (state == MatchState::FULL_TIME || !std::isfinite(deltaTime) ||
-      deltaTime <= 0.0f)
+      deltaTime <= 0.0F)
   {
     return;
   }
@@ -883,16 +1015,18 @@ float MatchEngine::advance(float seconds)
 {
   lastUpdateStepCount = 0;
   if (state == MatchState::FULL_TIME || !std::isfinite(seconds) ||
-      seconds <= 0.0f)
+      seconds <= 0.0F)
   {
-    return 0.0f;
+    return 0.0F;
   }
   constexpr float STEP = MatchTuning::Timing::FIXED_STEP_SECONDS;
   const auto steps =
-      static_cast<std::int64_t>(std::ceil(seconds / STEP - EPSILON));
+      static_cast<std::int64_t>(std::ceil((seconds / STEP) - EPSILON));
   std::int64_t done = 0;
   for (; done < steps && state != MatchState::FULL_TIME; ++done)
+  {
     simulateStep(STEP);
+  }
   lastUpdateStepCount = static_cast<int>(
       std::min<std::int64_t>(done, std::numeric_limits<int>::max()));
   return static_cast<float>(done) * STEP;
@@ -905,14 +1039,20 @@ void MatchEngine::simulateToEnd(MatchFidelity fidelity)
   const bool background =
       fidelity == MatchFidelity::BACKGROUND && !controlledIndex;
   // Nobody reads the analytics of an unwatched fixture.
-  if (background) tracker.setEnabled(false);
+  if (background)
+  {
+    tracker.setEnabled(false);
+  }
   // A match lasts at most ~7,200 simulated seconds (both halves with the
   // maximum added time and overrun); the bound only guards against bugs.
   constexpr std::int64_t MAX_STEPS = 120'000;
   for (std::int64_t step = 0;
        step < MAX_STEPS && state != MatchState::FULL_TIME; ++step)
   {
-    if (background) setStepTicks(backgroundStepTicks());
+    if (background)
+    {
+      setStepTicks(backgroundStepTicks());
+    }
     simulateStep(stepSeconds());
   }
   setStepTicks(1U);
@@ -933,8 +1073,11 @@ std::uint32_t MatchEngine::backgroundStepTicks() const
   }
   // Land on the restart instead of overshooting its delay.
   const float remaining = std::ceil(
-      setPieceTimer / MatchTuning::Timing::FIXED_STEP_SECONDS - 0.001f);
-  if (!(remaining > 1.0f)) return 1U;
+      (setPieceTimer / MatchTuning::Timing::FIXED_STEP_SECONDS) - 0.001F);
+  if (!(remaining > 1.0F))
+  {
+    return 1U;
+  }
   return std::min(static_cast<std::uint32_t>(remaining),
                   MatchTuning::Timing::BACKGROUND_STOPPAGE_TICKS);
 }
@@ -952,7 +1095,10 @@ void MatchEngine::setPlaybackMode(MatchPlaybackMode mode)
 
 void MatchEngine::setPlaybackSpeed(float simulatedSecondsPerWallSecond)
 {
-  if (!std::isfinite(simulatedSecondsPerWallSecond)) return;
+  if (!std::isfinite(simulatedSecondsPerWallSecond))
+  {
+    return;
+  }
   playbackSpeed = std::clamp(simulatedSecondsPerWallSecond,
                              MatchTuning::Playback::MIN_SPEED,
                              MatchTuning::Playback::MAX_SPEED);
@@ -960,7 +1106,10 @@ void MatchEngine::setPlaybackSpeed(float simulatedSecondsPerWallSecond)
 
 void MatchEngine::setHighlightPlaybackSpeed(float simulatedSecondsPerWallSecond)
 {
-  if (!std::isfinite(simulatedSecondsPerWallSecond)) return;
+  if (!std::isfinite(simulatedSecondsPerWallSecond))
+  {
+    return;
+  }
   highlightSpeed = std::clamp(simulatedSecondsPerWallSecond,
                               MatchTuning::Playback::MIN_SPEED,
                               MatchTuning::Playback::MAX_SPEED);
@@ -969,7 +1118,7 @@ void MatchEngine::setHighlightPlaybackSpeed(float simulatedSecondsPerWallSecond)
 bool MatchEngine::advancePlayback(float wallSeconds)
 {
   if (state == MatchState::FULL_TIME || !std::isfinite(wallSeconds) ||
-      wallSeconds <= 0.0f)
+      wallSeconds <= 0.0F)
   {
     return false;
   }
@@ -981,23 +1130,30 @@ bool MatchEngine::advancePlayback(float wallSeconds)
 
   // A manual change alters the future, so an old prediction is void.
   if (scheduledHighlight && scheduledRevision != inputRevision)
+  {
     scheduledHighlight.reset();
+  }
   const double now = getSimulatedSeconds();
   if (scheduledHighlight && now >= scheduledHighlight->endSeconds)
+  {
     scheduledHighlight.reset();
+  }
   if (!scheduledHighlight)
   {
     scheduledHighlight = predictNextHighlight();
     scheduledRevision = inputRevision;
     const double target = scheduledHighlight ? scheduledHighlight->startSeconds
                                              : now + PREDICTION_HORIZON;
-    if (target - now < STEP_SECONDS) return false;
+    if (target - now < STEP_SECONDS)
+    {
+      return false;
+    }
     // The skip never jumps across a break (half-time, the breaks around
     // extra time, the shootout): it stops where one begins so the viewer
     // sees it, and the next call looks ahead again from there. The steps
     // are the same as without the stop, so the match does not change.
     const auto steps = static_cast<std::int64_t>(std::ceil(
-        (target - now) / STEP_SECONDS - static_cast<double>(EPSILON)));
+        ((target - now) / STEP_SECONDS) - static_cast<double>(EPSILON)));
     const auto inBreak = [this]
     {
       return state == MatchState::HALF_TIME ||
@@ -1017,7 +1173,7 @@ bool MatchEngine::advancePlayback(float wallSeconds)
     }
     lastUpdateStepCount = static_cast<int>(
         std::min<std::int64_t>(done, std::numeric_limits<int>::max()));
-    accumulator = 0.0f;
+    accumulator = 0.0F;
     return true;
   }
   update(wallSeconds * highlightSpeed);
@@ -1039,8 +1195,10 @@ bool MatchEngine::isInHighlight() const
 std::optional<MatchHighlight> MatchEngine::predictNextHighlight(
     float horizonSeconds) const
 {
-  if (state == MatchState::FULL_TIME || !(horizonSeconds > 0.0f))
+  if (state == MatchState::FULL_TIME || !(horizonSeconds > 0.0F))
+  {
     return std::nullopt;
+  }
   MatchEngine lookahead(*this);
   lookahead.tracker.setEnabled(false);
   const std::uint64_t triggersBefore = lookahead.highlightTriggerCount;
@@ -1057,9 +1215,14 @@ std::optional<MatchHighlight> MatchEngine::predictNextHighlight(
     const bool wasLive = lookahead.state == MatchState::PLAYING;
     lookahead.simulateStep(MatchTuning::Timing::FIXED_STEP_SECONDS);
     if (!wasLive && lookahead.state == MatchState::PLAYING)
+    {
       lastRestart = lookahead.getSimulatedSeconds();
+    }
   }
-  if (lookahead.highlightTriggerCount == triggersBefore) return std::nullopt;
+  if (lookahead.highlightTriggerCount == triggersBefore)
+  {
+    return std::nullopt;
+  }
   MatchHighlight highlight;
   highlight.type = lookahead.lastTriggerType;
   highlight.triggerSeconds = lookahead.lastTriggerSeconds;
@@ -1069,9 +1232,11 @@ std::optional<MatchHighlight> MatchEngine::predictNextHighlight(
   // Play resumed inside the build-up (a restart, a set piece): open just
   // before the ball is played rather than during the wait for it.
   if (lastRestart)
+  {
     highlight.startSeconds =
         std::max(highlight.startSeconds,
                  *lastRestart - MatchTuning::Playback::RESTART_LEAD_SECONDS);
+  }
   highlight.endSeconds = highlight.triggerSeconds + HIGHLIGHT_TAIL;
   return highlight;
 }
@@ -1100,8 +1265,8 @@ void MatchEngine::captureInterpolationFrame()
 
 float MatchEngine::getInterpolationAlpha() const
 {
-  return std::clamp(accumulator / MatchTuning::Timing::FIXED_STEP_SECONDS, 0.0f,
-                    1.0f);
+  return std::clamp(accumulator / MatchTuning::Timing::FIXED_STEP_SECONDS, 0.0F,
+                    1.0F);
 }
 
 void MatchEngine::advanceClock(float dt)
@@ -1118,7 +1283,10 @@ void MatchEngine::simulateStep(float dt)
 {
   simulateStepBody(dt);
   describePendingEvents();
-  if (MatchRecorder* recorder = getRecorder()) recorder->onStepEnd(*this);
+  if (MatchRecorder* recorder = getRecorder())
+  {
+    recorder->onStepEnd(*this);
+  }
 }
 
 void MatchEngine::rebindPendingStrike()
@@ -1126,25 +1294,37 @@ void MatchEngine::rebindPendingStrike()
   // An engine copy (a rewind's saved state) keeps the held strike's
   // pointers into the engine it was copied from: point them at this one's
   // players again, by their slots.
-  if (!pendingStrike) return;
+  if (!pendingStrike)
+  {
+    return;
+  }
   PendingStrike& strike = *pendingStrike;
-  strike.striker =
-      strike.strikerSlot < players.size() ? &players[strike.strikerSlot] : nullptr;
+  strike.striker = strike.strikerSlot < players.size()
+                       ? &players[strike.strikerSlot]
+                       : nullptr;
   if (strike.receiverSlot)
-    strike.pass.receiver =
-        *strike.receiverSlot < players.size() ? &players[*strike.receiverSlot]
-                                              : nullptr;
+  {
+    strike.pass.receiver = *strike.receiverSlot < players.size()
+                               ? &players[*strike.receiverSlot]
+                               : nullptr;
+  }
 }
 
 void MatchEngine::notePendingStrikeSlots()
 {
-  if (!pendingStrike) return;
+  if (!pendingStrike)
+  {
+    return;
+  }
   PendingStrike& strike = *pendingStrike;
-  const auto slotOf = [this](const MatchPlayer* player) -> std::optional<std::size_t>
+  const auto slotOf =
+      [this](const MatchPlayer* player) -> std::optional<std::size_t>
   {
     if (!player || players.empty() || player < players.data() ||
         player >= players.data() + players.size())
+    {
       return std::nullopt;
+    }
     return static_cast<std::size_t>(player - players.data());
   };
   strike.strikerSlot = slotOf(strike.striker).value_or(players.size());
@@ -1160,59 +1340,80 @@ void MatchEngine::simulateStepBody(float dt)
   // ball afterwards. Reordering these stages changes contacts and seeded RNG
   // consumption, even if each individual stage still looks correct.
   // Replayed touchline changes happen between the same two steps as live.
-  if (commandCursor < commandLog.size()) applyDueCommands();
+  if (commandCursor < commandLog.size())
+  {
+    applyDueCommands();
+  }
   // The bodies are chosen before the first step: then the touchline fills,
   // and a match that starts at its kick-off starts in the tunnel.
-  if (!touchlineSetUp) setUpTouchline();
+  if (!touchlineSetUp)
+  {
+    setUpTouchline();
+  }
   if (!walk.started)
   {
     walk.started = true;
-    if (walksOut() && state == MatchState::KICK_OFF && period == 1) startInTunnel();
+    if (walksOut() && state == MatchState::KICK_OFF && period == 1)
+    {
+      startInTunnel();
+    }
   }
   // Substitutions on foot move on (touchline plan stage 5).
   updateSubstitutions(dt);
   captureInterpolationFrame();
-  if (getPossessionHistory().headerRun > 0) trackHeaderRun();
+  if (getPossessionHistory().headerRun > 0)
+  {
+    trackHeaderRun();
+  }
   stepCounter += stepTicks;
-  if (inputCursor < inputLog.size()) applyDueInputs();
+  if (inputCursor < inputLog.size())
+  {
+    applyDueInputs();
+  }
   // A substituted or dismissed player hands control back (play mode).
   if (controlledIndex)
   {
     const MatchPlayer& controlled = players[*controlledIndex];
     if (!active(controlled) || controlled.isGoalkeeper ||
         controlled.player->getId() != controlledPlayerId)
+    {
       controlledIndex.reset();
+    }
   }
-  controlActionRemaining = std::max(0.0f, controlActionRemaining - dt);
-  if (controlActionRemaining <= 0.0f)
+  controlActionRemaining = std::max(0.0F, controlActionRemaining - dt);
+  if (controlActionRemaining <= 0.0F)
+  {
     controlInput.action = MatchInputAction::NONE;
+  }
   for (auto& player : players)
   {
-    player.tackleCooldown = std::max(0.0f, player.tackleCooldown - dt);
-    player.footCooldown = std::max(0.0f, player.footCooldown - dt);
-    player.actionCooldown = std::max(0.0f, player.actionCooldown - dt);
-    player.trapTimer = std::max(0.0f, player.trapTimer - dt);
-    player.plantedSeconds = std::max(0.0f, player.plantedSeconds - dt);
-    player.diveTimer = std::max(0.0f, player.diveTimer - dt);
-    player.isTrapping = player.trapTimer > 0.0f;
-    player.isDiving = player.diveTimer > 0.0f;
+    player.tackleCooldown = std::max(0.0F, player.tackleCooldown - dt);
+    player.footCooldown = std::max(0.0F, player.footCooldown - dt);
+    player.actionCooldown = std::max(0.0F, player.actionCooldown - dt);
+    player.trapTimer = std::max(0.0F, player.trapTimer - dt);
+    player.plantedSeconds = std::max(0.0F, player.plantedSeconds - dt);
+    player.diveTimer = std::max(0.0F, player.diveTimer - dt);
+    player.isTrapping = player.trapTimer > 0.0F;
+    player.isDiving = player.diveTimer > 0.0F;
   }
-  ball.kickerLockout = std::max(0.0f, ball.kickerLockout - dt);
+  ball.kickerLockout = std::max(0.0F, ball.kickerLockout - dt);
   // The sliders only move with a fading shout or with the clock while a side
   // leads; otherwise they stay as last computed.
   const bool shouting =
-      shouts[0].remainingSeconds > 0.0f || shouts[1].remainingSeconds > 0.0f;
+      shouts[0].remainingSeconds > 0.0F || shouts[1].remainingSeconds > 0.0F;
   for (auto& shout : shouts)
   {
-    shout.remainingSeconds = std::max(0.0f, shout.remainingSeconds - dt);
+    shout.remainingSeconds = std::max(0.0F, shout.remainingSeconds - dt);
     shout.repeats = std::max(
-        0.0f,
-        shout.repeats - dt / MatchTuning::Touchline::SHOUT_REPEAT_FADE_SECONDS);
+        0.0F, shout.repeats -
+                  (dt / MatchTuning::Touchline::SHOUT_REPEAT_FADE_SECONDS));
   }
-  if (reshapeSecondsRemaining[0] > 0.0f || reshapeSecondsRemaining[1] > 0.0f)
+  if (reshapeSecondsRemaining[0] > 0.0F || reshapeSecondsRemaining[1] > 0.0F)
   {
     for (float& remaining : reshapeSecondsRemaining)
-      remaining = std::max(0.0f, remaining - dt);
+    {
+      remaining = std::max(0.0F, remaining - dt);
+    }
     refreshTargetBlends();
   }
   if (shouting || homeScore != awayScore || slidersStale)
@@ -1223,7 +1424,7 @@ void MatchEngine::simulateStepBody(float dt)
   if (state == MatchState::PLAYING)
   {
     transitionSecondsRemaining =
-        std::max(0.0f, transitionSecondsRemaining - dt);
+        std::max(0.0F, transitionSecondsRemaining - dt);
   }
   updateTeamPhases();
 
@@ -1235,8 +1436,10 @@ void MatchEngine::simulateStepBody(float dt)
     // The scored ball settles in the net while the teams celebrate and walk
     // back; the clock keeps running until the kick-off.
     if (shortStoppages())
+    {
       goalCelebrationRemaining = std::min(
           goalCelebrationRemaining, MatchTuning::Timing::PLAY_STOPPAGE_SECONDS);
+    }
     goalCelebrationRemaining = std::max(0.0F, goalCelebrationRemaining - dt);
     if (restartsByServe())
     {
@@ -1245,13 +1448,22 @@ void MatchEngine::simulateStepBody(float dt)
       holdForServe(dt);
       advanceClock(dt);
       settleBallInNet(dt);
-      if (goalCelebrationRemaining <= 0.0f) beginServe(!goalScoredByHome, 0.0f);
+      if (goalCelebrationRemaining <= 0.0F)
+      {
+        beginServe(!goalScoredByHome, 0.0F);
+      }
       return;
     }
     updateRestartMovement(dt);
     advanceClock(dt);
-    if (!getPossessionAttachment()) updateBallInNet(dt);
-    if (goalCelebrationRemaining <= 0.0f) kickOffAfterGoal(!goalScoredByHome);
+    if (getPossessionAttachment() == nullptr)
+    {
+      updateBallInNet(dt);
+    }
+    if (goalCelebrationRemaining <= 0.0F)
+    {
+      kickOffAfterGoal(!goalScoredByHome);
+    }
     return;
   }
 
@@ -1270,7 +1482,10 @@ void MatchEngine::simulateStepBody(float dt)
   if (state == MatchState::HALF_TIME)
   {
     runAiSubstitutions();
-    if (state == MatchState::FULL_TIME) return;
+    if (state == MatchState::FULL_TIME)
+    {
+      return;
+    }
     // Walking in (touchline plan stage 4): the break runs once all are in.
     if (walk.phase == WalkPhase::OFF)
     {
@@ -1278,19 +1493,25 @@ void MatchEngine::simulateStepBody(float dt)
       return;
     }
     if (playHalfMinutes > 0)
+    {
       setPieceTimer =
           std::min(setPieceTimer, MatchTuning::Timing::PLAY_STOPPAGE_SECONDS);
+    }
     setPieceTimer -= dt;
-    if (setPieceTimer <= 0.0f)
+    if (setPieceTimer <= 0.0F)
     {
       ++period;
       matchTimeMinutes = MatchRules::periodStartMinute(period);
       // The home side kicks off the first half of each game, the away side
       // the second. Out of the tunnel, or placed.
       if (walk.phase == WalkPhase::IN)
+      {
         beginWalkOut(period % 2 == 1, false);
+      }
       else
+      {
         setupKickOff(period % 2 == 1);
+      }
       logEvent(MatchEventType::SECOND_HALF);
     }
     return;
@@ -1299,7 +1520,10 @@ void MatchEngine::simulateStepBody(float dt)
   if (state != MatchState::PLAYING)
   {
     runAiSubstitutions();
-    if (state == MatchState::FULL_TIME) return;
+    if (state == MatchState::FULL_TIME)
+    {
+      return;
+    }
     // Walking out (touchline plan stage 4): the kick-off waits for it.
     if (walk.phase != WalkPhase::NONE)
     {
@@ -1311,27 +1535,35 @@ void MatchEngine::simulateStepBody(float dt)
       updateDeadBall(dt);
       updateRestartMovement(dt);
     }
-    else if (MatchPlayer* taker = restartTaker(); taker && restartLineUp)
+    else if (MatchPlayer* taker = restartTaker();
+             (taker != nullptr) && restartLineUp)
     {
       // At a kick-off only the taker moves: he lines the ball up.
       steerRestartLineUp(*taker, dt);
-      taker->targetVelocity = {0.0f, 0.0f};
+      taker->targetVelocity = {.x = 0.0F, .y = 0.0F};
       taker->routeWaypoints = 0;
       taker->arriveAtSpeed = false;
       const auto slot = static_cast<std::uint8_t>(slotOf(*taker));
       movePlayers(&slot, 1, dt, true);
     }
-    if (stateClockRuns(state)) advanceClock(dt);
+    if (stateClockRuns(state))
+    {
+      advanceClock(dt);
+    }
     const float restartRate = matchClockRate();
     if (playHalfMinutes > 0)
+    {
       setPieceTimer =
           std::min(setPieceTimer,
                    MatchTuning::Timing::PLAY_STOPPAGE_SECONDS * restartRate);
+    }
     setPieceTimer -= dt * restartRate;
     // Once his time is up (or his controller asks), and every step while
     // he lines the ball up.
     if (userRestartPassRequested() || setPieceTimer <= 0.0F || restartLineUp)
+    {
       completeRestart();
+    }
   }
   else
   {
@@ -1342,23 +1574,31 @@ void MatchEngine::simulateStepBody(float dt)
     resolvePossessionAndActions(dt);
     decideFirstTimePass();
     trackPressures();
-    if ((!getPossessionAttachment() || hasTouchClaim()) && state == MatchState::PLAYING)
+    if (((getPossessionAttachment() == nullptr) || hasTouchClaim()) &&
+        state == MatchState::PLAYING)
+    {
       updateBall(dt);
+    }
     // A strike he never got to in the sweep is dropped: he decides again.
     // One decided for his next meet waits for it while it holds, and one
     // he is turning to while he still can, and one he means to play first
     // time while the ball still comes to him.
     if (pendingStrike && (pendingStrike->atMeet || pendingStrike->turning ||
                           pendingStrike->firstTime))
+    {
       ageHeldStrike(dt);
+    }
     else
+    {
       pendingStrike.reset();
+    }
     // Possession belongs to the side in control, including its passes in
     // flight and the loose balls it last played.
     if (getPossessionHistory().lastControlledTeamHome)
     {
-      (*getPossessionHistory().lastControlledTeamHome ? homePossessionMinutes
-                               : awayPossessionMinutes) += dt;
+      (*getPossessionHistory().lastControlledTeamHome
+           ? homePossessionMinutes
+           : awayPossessionMinutes) += dt;
       stats.homePossession = homePossessionMinutes /
                              (homePossessionMinutes + awayPossessionMinutes) *
                              MatchTuning::Statistics::PERCENT_SCALE;
@@ -1366,13 +1606,17 @@ void MatchEngine::simulateStepBody(float dt)
           MatchTuning::Statistics::PERCENT_SCALE - stats.homePossession;
     }
     updatePendingAdvantage(dt);
-    setPiecePhaseRemaining = std::max(0.0f, setPiecePhaseRemaining - dt);
-    if (setPiecePhaseRemaining > 0.0f)
+    setPiecePhaseRemaining = std::max(0.0F, setPiecePhaseRemaining - dt);
+    if (setPiecePhaseRemaining > 0.0F)
     {
       if (inPenaltyArea(ball.position, !setPieceHome))
+      {
         setPieceBallInBox = true;
+      }
       else if (setPieceBallInBox)
+      {
         setPieceBoxCleared = true;
+      }
     }
     injuryCheckTimer += dt / MatchTuning::Timing::SECONDS_PER_MINUTE;
     if (injuryCheckTimer >= MatchTuning::Injury::CHECK_INTERVAL_MINUTES)
@@ -1381,7 +1625,10 @@ void MatchEngine::simulateStepBody(float dt)
       checkInjuries();
     }
   }
-  if (state == MatchState::FULL_TIME) return;
+  if (state == MatchState::FULL_TIME)
+  {
+    return;
+  }
 
   ratingRefreshTimer += dt;
   if (ratingRefreshTimer >= MatchTuning::Timing::RATING_REFRESH_SECONDS)
@@ -1401,7 +1648,10 @@ bool MatchEngine::isInAddedTime() const
 
 void MatchEngine::updateMatchClock()
 {
-  if (!drillRules.periods) return;
+  if (!drillRules.periods)
+  {
+    return;
+  }
   if (state == MatchState::HALF_TIME || state == MatchState::FULL_TIME ||
       state == MatchState::GOAL || state == MatchState::PENALTY_SHOOTOUT)
   {
@@ -1409,15 +1659,25 @@ void MatchEngine::updateMatchClock()
   }
   const auto half = static_cast<std::size_t>(period - 1);
   const float regulationEnd = MatchRules::periodEndMinute(period);
-  if (matchTimeMinutes < regulationEnd) return;
-  if (addedMinutes[half] == 0) announceAddedTime();
+  if (matchTimeMinutes < regulationEnd)
+  {
+    return;
+  }
+  if (addedMinutes[half] == 0)
+  {
+    announceAddedTime();
+  }
 
   // The announced added time is a minimum: stoppages during it extend it.
   const int required = std::max(addedMinutes[half], addedMinutesDue());
   const float end = regulationEnd + static_cast<float>(required);
-  if (matchTimeMinutes < end) return;
+  if (matchTimeMinutes < end)
+  {
+    return;
+  }
   const bool dangerousPhase = state == MatchState::PENALTY ||
-                              state == MatchState::CORNER_KICK || getPossessionState().isShot;
+                              state == MatchState::CORNER_KICK ||
+                              getPossessionState().isShot;
   if (dangerousPhase &&
       matchTimeMinutes < end + MatchTuning::Stoppage::MAX_OVERRUN_MINUTES)
   {
@@ -1432,7 +1692,7 @@ void MatchEngine::announceAddedTime()
   addedMinutes[half] = addedMinutesDue();
   MatchEvent& event = logEvent(MatchEventType::ADDED_TIME);
   event.minutes = addedMinutes[half];
-  event.addedMinute = 0.0f;
+  event.addedMinute = 0.0F;
 }
 
 void MatchEngine::endPeriod()
@@ -1440,8 +1700,8 @@ void MatchEngine::endPeriod()
   restartTakerIndex.reset();
   restartLineUp.reset();
   clearPossession();
-  ball.velocity = {0.0f, 0.0f};
-  ball.velocityZ = 0.0f;
+  ball.velocity = {.x = 0.0F, .y = 0.0F};
+  ball.velocityZ = 0.0F;
   clearFlightState();
   pendingAdvantage.active = false;
   if (abandoned)
@@ -1486,13 +1746,22 @@ void MatchEngine::beginBreak(float seconds, float recovery)
   const bool walkingOff = walksOut();
   for (auto& player : players)
   {
-    if (!active(player)) continue;
-    player.stamina = std::min(1.0f, player.stamina + recovery);
-    player.sprintReserve = 1.0f;
-    player.fastBurstDebt = 0.0f;
-    if (!walkingOff) player.velocity = {0.0f, 0.0f};
+    if (!active(player))
+    {
+      continue;
+    }
+    player.stamina = std::min(1.0F, player.stamina + recovery);
+    player.sprintReserve = 1.0F;
+    player.fastBurstDebt = 0.0F;
+    if (!walkingOff)
+    {
+      player.velocity = {.x = 0.0F, .y = 0.0F};
+    }
   }
-  if (walkingOff) beginWalkOff();
+  if (walkingOff)
+  {
+    beginWalkOff();
+  }
   updateTeamPhases();
   logEvent(MatchEventType::HALF_TIME);
 }
@@ -1505,18 +1774,29 @@ bool MatchEngine::tieLevel() const
 
 void MatchEngine::setKnockout(const MatchRules::Knockout& rules)
 {
-  if (stepCounter != 0) return;
+  if (stepCounter != 0)
+  {
+    return;
+  }
   knockout = rules;
 }
 
 std::optional<bool> MatchEngine::getTieWinnerHome() const
 {
-  if (!knockout.required || state != MatchState::FULL_TIME) return std::nullopt;
+  if (!knockout.required || state != MatchState::FULL_TIME)
+  {
+    return std::nullopt;
+  }
   const int home = homeScore + knockout.homeAggregate;
   const int away = awayScore + knockout.awayAggregate;
-  if (home != away) return home > away;
+  if (home != away)
+  {
+    return home > away;
+  }
   if (shootout.goals[0] != shootout.goals[1])
+  {
     return shootout.goals[0] > shootout.goals[1];
+  }
   return std::nullopt;
 }
 
@@ -1529,21 +1809,25 @@ int MatchEngine::maxSubstitutions() const
 void MatchEngine::startShootout()
 {
   shootout.started = true;
-  shootout.homeFirst = randomFloat(0.0f, 1.0f) < 0.5f;
+  shootout.homeFirst = randomFloat(0.0F, 1.0F) < 0.5F;
   // Kicking order: the designated taker (or the best one), then the others
   // on the pitch by penalty ability, the goalkeeper last.
   const auto ability = [](const MatchPlayer& player)
   {
-    return player.shooting * 0.75f + player.passing * 0.15f +
-           player.vision * 0.10f;
+    return (player.shooting * 0.75F) + (player.passing * 0.15F) +
+           (player.vision * 0.10F);
   };
   for (const bool home : {true, false})
   {
     const MatchPlayer* first = dutyTaker(home, SetPieceDuty::Penalties);
     std::vector<const MatchPlayer*> kickers;
     for (const MatchPlayer& player : players)
+    {
       if (active(player) && player.isHomeTeam == home)
+      {
         kickers.push_back(&player);
+      }
+    }
     std::ranges::stable_sort(
         kickers,
         [&](const MatchPlayer* left, const MatchPlayer* right)
@@ -1555,13 +1839,18 @@ void MatchEngine::startShootout()
                    : player->isInjured    ? 2
                                           : 1;
           };
-          if (rank(left) != rank(right)) return rank(left) < rank(right);
+          if (rank(left) != rank(right))
+          {
+            return rank(left) < rank(right);
+          }
           return ability(*left) > ability(*right);
         });
     std::vector<PlayerID>& order = shootout.order[home ? 0 : 1];
     order.clear();
     for (const MatchPlayer* kicker : kickers)
+    {
       order.push_back(kicker->player->getId());
+    }
   }
 
   // Everyone waits by the halfway line; each side shoots at the goal it
@@ -1576,25 +1865,31 @@ void MatchEngine::startShootout()
   std::array<int, 2> placed{};
   for (MatchPlayer& player : players)
   {
-    if (!active(player)) continue;
+    if (!active(player))
+    {
+      continue;
+    }
     const std::size_t side = player.isHomeTeam ? 0 : 1;
-    player.velocity = {0.0f, 0.0f};
+    player.velocity = {.x = 0.0F, .y = 0.0F};
     if (player.isGoalkeeper)
     {
       keepers[side].state = GoalkeeperState::SET_POSITION;
       keepers[side].dive = {};
-      player.position = PitchPoint{player.isHomeTeam ? MatchTuning::Pitch::PLAYER_EDGE_END_METRES
-                                                   : pitch.length - MatchTuning::Pitch::PLAYER_EDGE_END_METRES,
-                                pitch.atY(MatchTuning::Pitch::CENTRE)};
+      player.position = PitchPoint{
+          player.isHomeTeam
+              ? MatchTuning::Pitch::PLAYER_EDGE_END_METRES
+              : pitch.length - MatchTuning::Pitch::PLAYER_EDGE_END_METRES,
+          pitch.atY(MatchTuning::Pitch::CENTRE)};
     }
     else
     {
-      player.position = pitch.at(player.isHomeTeam ? 0.48f : 0.52f,
-                                0.32f + 0.04f * static_cast<float>(placed[side]++));
+      player.position =
+          pitch.at(player.isHomeTeam ? 0.48F : 0.52F,
+                   0.32F + (0.04F * static_cast<float>(placed[side]++)));
     }
     player.movementTarget = player.position;
     player.tacticalTarget = player.position;
-    player.targetVelocity = {0.0f, 0.0f};
+    player.targetVelocity = {.x = 0.0F, .y = 0.0F};
     player.routeWaypoints = 0;
     player.arriveAtSpeed = false;
   }
@@ -1613,27 +1908,33 @@ void MatchEngine::beginShootoutKick()
     const PlayerID id =
         order[static_cast<std::size_t>(shootout.kicks[side]) % order.size()];
     for (MatchPlayer& player : players)
-      if (active(player) && player.player->getId() == id) taker = &player;
+    {
+      if (active(player) && player.player->getId() == id)
+      {
+        taker = &player;
+      }
+    }
   }
   shootout.kickerHome = home;
-  shootout.taker = taker ? taker->player->getId() : 0;
-  if (!taker)
+  shootout.taker = (taker != nullptr) ? taker->player->getId() : 0;
+  if (taker == nullptr)
   {
     finishShootoutKick(MatchEventDetail::MISSED);
     return;
   }
   if (MatchPlayer* keeper = findGoalkeeper(!home))
   {
-    keeper->position = PitchPoint{home ? pitch.length - MatchTuning::Pitch::PLAYER_EDGE_END_METRES
-                                    : MatchTuning::Pitch::PLAYER_EDGE_END_METRES,
-                               pitch.atY(MatchTuning::Pitch::CENTRE)};
-    keeper->velocity = {0.0f, 0.0f};
+    keeper->position = PitchPoint{
+        home ? pitch.length - MatchTuning::Pitch::PLAYER_EDGE_END_METRES
+             : MatchTuning::Pitch::PLAYER_EDGE_END_METRES,
+        pitch.atY(MatchTuning::Pitch::CENTRE)};
+    keeper->velocity = {.x = 0.0F, .y = 0.0F};
     keeper->movementTarget = keeper->position;
     // On his line, on his feet, for each kick.
     keepers[home ? 1 : 0].dive = {};
     keepers[home ? 1 : 0].state = GoalkeeperState::SET_POSITION;
     keeper->isDiving = false;
-    keeper->diveTimer = 0.0f;
+    keeper->diveTimer = 0.0F;
   }
   // Against a Binturong keeper the kick is an in-match penalty (goalkeeper
   // plan step 9): the match's record kept aside until it is over.
@@ -1646,11 +1947,12 @@ void MatchEngine::beginShootoutKick()
     shootout.playerStatsBefore = playerStats;
     shootout.trackerBefore = tracker;
   }
-  const PitchPoint spot{home ? pitch.length - MatchTuning::Pitch::PENALTY_SPOT_METRES
-                                       : MatchTuning::Pitch::PENALTY_SPOT_METRES,
-                                  pitch.atY(MatchTuning::Pitch::CENTRE)};
+  const PitchPoint spot{
+      home ? pitch.length - MatchTuning::Pitch::PENALTY_SPOT_METRES
+           : MatchTuning::Pitch::PENALTY_SPOT_METRES,
+      pitch.atY(MatchTuning::Pitch::CENTRE)};
   taker->position = spot;
-  taker->velocity = {0.0f, 0.0f};
+  taker->velocity = {.x = 0.0F, .y = 0.0F};
   taker->movementTarget = spot;
   resetShootoutBall();
   ball.position = spot;
@@ -1661,9 +1963,12 @@ void MatchEngine::beginShootoutKick()
     // He sets off; the keeper guesses now and the strike comes at the end
     // of the run-up (goalkeeper plan step 9).
     shootout.struck = false;
-    shootout.strikeAt = getSimulatedSeconds() + MatchTuning::KeeperDive::PENALTY_RUN_UP_SECONDS;
+    shootout.strikeAt =
+        getSimulatedSeconds() + MatchTuning::KeeperDive::PENALTY_RUN_UP_SECONDS;
     if (MatchPlayer* keeper = findGoalkeeper(!home))
+    {
       planPenaltyDiveBinturong(*keeper, shootout.strikeAt);
+    }
     return;
   }
   strikeShot(*taker, MatchTuning::Shooting::PENALTY_XG, false, true);
@@ -1675,11 +1980,17 @@ void MatchEngine::updateShootout(float dt)
   if (!shootout.inFlight)
   {
     shootout.timer -= dt;
-    if (shootout.timer <= 0.0f) beginShootoutKick();
+    if (shootout.timer <= 0.0F)
+    {
+      beginShootoutKick();
+    }
     return;
   }
   MatchPlayer* keeper = findGoalkeeper(!shootout.kickerHome);
-  if (keeper) diveGoalkeeper(*keeper, dt);
+  if (keeper != nullptr)
+  {
+    diveGoalkeeper(*keeper, dt);
+  }
   if (shootout.live)
   {
     // As an in-match penalty (goalkeeper plan step 9): the open-play ball,
@@ -1688,12 +1999,20 @@ void MatchEngine::updateShootout(float dt)
     // missed), or spent. No rebounds. Struck at the end of the run-up.
     if (!shootout.struck)
     {
-      if (getSimulatedSeconds() < shootout.strikeAt) return;
+      if (getSimulatedSeconds() < shootout.strikeAt)
+      {
+        return;
+      }
       shootout.struck = true;
       MatchPlayer* taker = nullptr;
       for (MatchPlayer& player : players)
-        if (active(player) && player.player->getId() == shootout.taker) taker = &player;
-      if (taker)
+      {
+        if (active(player) && player.player->getId() == shootout.taker)
+        {
+          taker = &player;
+        }
+      }
+      if (taker != nullptr)
       {
         strikeShot(*taker, MatchTuning::Shooting::PENALTY_XG, false, true);
         planGoalkeeperDive(!shootout.kickerHome, true);
@@ -1704,30 +2023,47 @@ void MatchEngine::updateShootout(float dt)
     updateBall(dt);
     if (!shootout.outcome && state == MatchState::PLAYING)
     {
-      const bool offKeeper = keeper && getLastPossessionAttachment() == keeper->player;
-      if (getPossessionAttachment())
-        shootout.outcome = offKeeper ? MatchEventDetail::SAVED : MatchEventDetail::MISSED;
+      const bool offKeeper = (keeper != nullptr) &&
+                             getLastPossessionAttachment() == keeper->player;
+      if (getPossessionAttachment() != nullptr)
+      {
+        shootout.outcome =
+            offKeeper ? MatchEventDetail::SAVED : MatchEventDetail::MISSED;
+      }
       else if (!getPossessionState().isShot)
-        shootout.outcome = offKeeper ? MatchEventDetail::SAVED : MatchEventDetail::MISSED;
-      else if (getPossessionState().shotElapsedSeconds >= MatchTuning::Timing::SHOOTOUT_MAX_FLIGHT_SECONDS ||
-               (getPossessionState().shotElapsedSeconds > 0.3f &&
+      {
+        shootout.outcome =
+            offKeeper ? MatchEventDetail::SAVED : MatchEventDetail::MISSED;
+      }
+      else if (getPossessionState().shotElapsedSeconds >=
+                   MatchTuning::Timing::SHOOTOUT_MAX_FLIGHT_SECONDS ||
+               (getPossessionState().shotElapsedSeconds > 0.3F &&
                 length(ball.velocity) < MatchTuning::Ball::DEAD_SHOT_SPEED))
-        shootout.outcome = offKeeper ? MatchEventDetail::SAVED : MatchEventDetail::MISSED;
+      {
+        shootout.outcome =
+            offKeeper ? MatchEventDetail::SAVED : MatchEventDetail::MISSED;
+      }
     }
     state = MatchState::PENALTY_SHOOTOUT;
-    if (!shootout.outcome) return;
+    if (!shootout.outcome)
+    {
+      return;
+    }
     // The match's record as it was: a shootout kick is not match play.
     stats = shootout.statsBefore;
     playerStats = shootout.playerStatsBefore;
     tracker = shootout.trackerBefore;
-    if (events.size() > shootout.eventsBefore) events.resize(shootout.eventsBefore);
+    if (events.size() > shootout.eventsBefore)
+    {
+      events.resize(shootout.eventsBefore);
+    }
     undescribedEvents = std::min(undescribedEvents, events.size());
     shootout.live = false;
     finishShootoutKick(*shootout.outcome);
     updateTeamPhases();
     return;
   }
-  const float lineX = shootout.kickerHome ? pitch.atX(1.0f) : 0.0f;
+  const float lineX = shootout.kickerHome ? pitch.atX(1.0F) : 0.0F;
   const int substeps =
       MatchTuning::Timing::BALL_SUBSTEPS * static_cast<int>(stepTicks);
   const float substep = dt / static_cast<float>(substeps);
@@ -1737,11 +2073,11 @@ void MatchEngine::updateShootout(float dt)
     substepBallZ = ball.z;
     integrateBall(substep);
     advanceShotFlightClock(substep);
-    if (keeper && !getPossessionState().shotSaveResolved)
+    if ((keeper != nullptr) && !getPossessionState().shotSaveResolved)
     {
       const float before = substepBallPosition.x - keeper->position.x;
       const float after = ball.position.x - keeper->position.x;
-      if ((before > 0.0f) != (after > 0.0f) || std::abs(after) <= EPSILON)
+      if ((before > 0.0F) != (after > 0.0F) || std::abs(after) <= EPSILON)
       {
         noteKeeperShotResolved();
         if (getPossessionState().shotOnTarget && attemptSave(*keeper).saved)
@@ -1759,25 +2095,25 @@ void MatchEngine::updateShootout(float dt)
       const float span = ball.position.x - substepBallPosition.x;
       const float t =
           std::abs(span) > EPSILON
-              ? std::clamp((lineX - substepBallPosition.x) / span, 0.0f, 1.0f)
-              : 1.0f;
-      const float lateralMetres = substepBallPosition.y + (ball.position.y - substepBallPosition.y) * t -
+              ? std::clamp((lineX - substepBallPosition.x) / span, 0.0F, 1.0F)
+              : 1.0F;
+      const float lateralMetres =
+          substepBallPosition.y +
+          ((ball.position.y - substepBallPosition.y) * t) -
           pitch.atY(MatchTuning::Pitch::CENTRE);
-      const float heightMetres =
-          substepBallZ + (ball.z - substepBallZ) * t;
+      const float heightMetres = substepBallZ + ((ball.z - substepBallZ) * t);
       const bool inside =
           std::abs(lateralMetres) <
-              pitch.goal.halfWidth -
-                  MatchTuning::Units::BALL_RADIUS_METRES &&
-          heightMetres < pitch.goal.crossbar -
-                             MatchTuning::Units::BALL_RADIUS_METRES;
+              pitch.goal.halfWidth - MatchTuning::Units::BALL_RADIUS_METRES &&
+          heightMetres <
+              pitch.goal.crossbar - MatchTuning::Units::BALL_RADIUS_METRES;
       finishShootoutKick(inside ? MatchEventDetail::SCORED
                                 : MatchEventDetail::MISSED);
       return;
     }
     if (getPossessionState().shotElapsedSeconds >=
             MatchTuning::Timing::SHOOTOUT_MAX_FLIGHT_SECONDS ||
-        (getPossessionState().shotElapsedSeconds > 0.3f &&
+        (getPossessionState().shotElapsedSeconds > 0.3F &&
          length(ball.velocity) < MatchTuning::Ball::DEAD_SHOT_SPEED))
     {
       finishShootoutKick(MatchEventDetail::MISSED);
@@ -1790,26 +2126,34 @@ void MatchEngine::shootoutBallOut()
 {
   // Off the pitch: in when it crossed the goal line inside the frame (the
   // woodwork already played in the sweep), otherwise out. Play stops.
-  if (ballInPlayAt(ball.position)) return;
-  const float lineX = shootout.kickerHome ? pitch.atX(1.0f) : 0.0f;
-  const bool crossed = shootout.kickerHome ? ball.position.x >= lineX : ball.position.x <= lineX;
+  if (ballInPlayAt(ball.position))
+  {
+    return;
+  }
+  const float lineX = shootout.kickerHome ? pitch.atX(1.0F) : 0.0F;
+  const bool crossed =
+      shootout.kickerHome ? ball.position.x >= lineX : ball.position.x <= lineX;
   bool inside = false;
   if (crossed)
   {
     const float span = ball.position.x - substepBallPosition.x;
-    const float t = std::abs(span) > EPSILON
-                        ? std::clamp((lineX - substepBallPosition.x) / span, 0.0f, 1.0f)
-                        : 1.0f;
-    const float lateralMetres = substepBallPosition.y + (ball.position.y - substepBallPosition.y) * t -
+    const float t =
+        std::abs(span) > EPSILON
+            ? std::clamp((lineX - substepBallPosition.x) / span, 0.0F, 1.0F)
+            : 1.0F;
+    const float lateralMetres =
+        substepBallPosition.y +
+        ((ball.position.y - substepBallPosition.y) * t) -
         pitch.atY(MatchTuning::Pitch::CENTRE);
-    const float heightMetres =
-        substepBallZ + (ball.z - substepBallZ) * t;
-    inside = std::abs(lateralMetres) < pitch.goal.halfWidth -
-                                           MatchTuning::Units::BALL_RADIUS_METRES &&
-             heightMetres < pitch.goal.crossbar -
-                                MatchTuning::Units::BALL_RADIUS_METRES;
+    const float heightMetres = substepBallZ + ((ball.z - substepBallZ) * t);
+    inside =
+        std::abs(lateralMetres) <
+            pitch.goal.halfWidth - MatchTuning::Units::BALL_RADIUS_METRES &&
+        heightMetres <
+            pitch.goal.crossbar - MatchTuning::Units::BALL_RADIUS_METRES;
   }
-  shootout.outcome = inside ? MatchEventDetail::SCORED : MatchEventDetail::MISSED;
+  shootout.outcome =
+      inside ? MatchEventDetail::SCORED : MatchEventDetail::MISSED;
   state = MatchState::PENALTY_SHOOTOUT;
 }
 
@@ -1817,36 +2161,52 @@ void MatchEngine::finishShootoutKick(MatchEventDetail outcome)
 {
   const std::size_t side = shootout.kickerHome ? 0 : 1;
   ++shootout.kicks[side];
-  if (outcome == MatchEventDetail::SCORED) ++shootout.goals[side];
+  if (outcome == MatchEventDetail::SCORED)
+  {
+    ++shootout.goals[side];
+  }
   ++stats.shootoutKicks;
-  if (outcome == MatchEventDetail::SCORED) ++stats.shootoutGoals;
-  if (outcome == MatchEventDetail::SAVED) ++stats.shootoutSaves;
+  if (outcome == MatchEventDetail::SCORED)
+  {
+    ++stats.shootoutGoals;
+  }
+  if (outcome == MatchEventDetail::SAVED)
+  {
+    ++stats.shootoutSaves;
+  }
   shootout.inFlight = false;
   shootout.timer = MatchTuning::Timing::SHOOTOUT_KICK_INTERVAL_SECONDS;
   clearFlightState();
   clearPossession();
-  ball.velocity = {0.0f, 0.0f};
-  ball.velocityZ = 0.0f;
+  ball.velocity = {.x = 0.0F, .y = 0.0F};
+  ball.velocityZ = 0.0F;
   keepers[shootout.kickerHome ? 1 : 0].state = GoalkeeperState::SET_POSITION;
   MatchPlayer* taker = nullptr;
   for (MatchPlayer& player : players)
+  {
     if (active(player) && player.player->getId() == shootout.taker)
+    {
       taker = &player;
-  MatchEvent& event = taker ? logEvent(MatchEventType::PENALTY_SHOOTOUT, *taker)
-                            : logEvent(MatchEventType::PENALTY_SHOOTOUT);
+    }
+  }
+  MatchEvent& event = (taker != nullptr)
+                          ? logEvent(MatchEventType::PENALTY_SHOOTOUT, *taker)
+                          : logEvent(MatchEventType::PENALTY_SHOOTOUT);
   event.detail = outcome;
   event.hasTeam = true;
   event.isHomeTeam = shootout.kickerHome;
-  if (taker)
+  if (taker != nullptr)
   {
     // The taker walks back to his team-mates.
-    taker->position = pitch.at(taker->isHomeTeam ? 0.47f : 0.53f,
-                               MatchTuning::Pitch::CENTRE);
+    taker->position =
+        pitch.at(taker->isHomeTeam ? 0.47F : 0.53F, MatchTuning::Pitch::CENTRE);
     taker->movementTarget = taker->position;
   }
   if (MatchRules::shootoutDecided(shootout.goals[0], shootout.kicks[0],
                                   shootout.goals[1], shootout.kicks[1]))
+  {
     finishMatch();
+  }
 }
 
 void MatchEngine::finishMatch()
@@ -1855,7 +2215,9 @@ void MatchEngine::finishMatch()
   for (const auto& player : players)
   {
     if (active(player))
+    {
       playerStats[player.statsIndex].condition = player.stamina;
+    }
   }
   refreshRatings();
   updateTeamPhases();
@@ -1874,15 +2236,19 @@ void MatchEngine::updateTeamPhases()
   {
     homePhase = TeamPhase::SET_PIECE;
     awayPhase = TeamPhase::SET_PIECE;
-    transitionSecondsRemaining = 0.0f;
+    transitionSecondsRemaining = 0.0F;
     if (const MatchPlayer* restartOwner = findMatchPlayer(getRestartOwner()))
+    {
       rememberPhaseTeam(restartOwner->isHomeTeam);
+    }
     return;
   }
 
   const MatchPlayer* carrier = findMatchPlayer(getPossessionAttachment());
-  if (carrier && !getPossessionHistory().lastControlledTeamHome)
+  if ((carrier != nullptr) && !getPossessionHistory().lastControlledTeamHome)
+  {
     rememberPhaseTeam(carrier->isHomeTeam);
+  }
 
   const auto setTransitionPhases = [&](bool attackingHome)
   {
@@ -1891,7 +2257,8 @@ void MatchEngine::updateTeamPhases()
     awayPhase = attackingHome ? TeamPhase::DEFENSIVE_TRANSITION
                               : TeamPhase::ATTACKING_TRANSITION;
   };
-  if (transitionSecondsRemaining > 0.0f && getPossessionHistory().lastControlledTeamHome)
+  if (transitionSecondsRemaining > 0.0F &&
+      getPossessionHistory().lastControlledTeamHome)
   {
     setTransitionPhases(*getPossessionHistory().lastControlledTeamHome);
     return;
@@ -1908,7 +2275,7 @@ void MatchEngine::updateTeamPhases()
     homePhase = attackingHome ? attackingPhase : TeamPhase::DEFENSIVE_BLOCK;
     awayPhase = attackingHome ? TeamPhase::DEFENSIVE_BLOCK : attackingPhase;
   };
-  if (carrier)
+  if (carrier != nullptr)
   {
     setControlledPhases(carrier->isHomeTeam, carrier->position.x);
     return;
@@ -1917,9 +2284,11 @@ void MatchEngine::updateTeamPhases()
   // An intentional pass or shot is still part of the attacking team's
   // controlled phase. Treating every ball flight as a transition made both
   // teams repeatedly abandon their coordinated support and defensive shape.
-  if ((getPossessionState().isPass || getPossessionState().isShot) && getPossessionHistory().lastControlledTeamHome)
+  if ((getPossessionState().isPass || getPossessionState().isShot) &&
+      getPossessionHistory().lastControlledTeamHome)
   {
-    setControlledPhases(*getPossessionHistory().lastControlledTeamHome, ball.position.x);
+    setControlledPhases(*getPossessionHistory().lastControlledTeamHome,
+                        ball.position.x);
     return;
   }
 
@@ -1937,11 +2306,13 @@ void MatchEngine::updateMovement(float dt)
 {
   // Jitter is observed over unbroken open play: a stoppage starts afresh.
   if (stepCounter != lastJitterStep + stepTicks)
+  {
     for (JitterTrack& track : jitterTracks)
     {
       track.planned = false;
       track.moving = false;
     }
+  }
   lastJitterStep = stepCounter;
 
   // Wait dead zone plan step 1 (observed only): the intent each waiting
@@ -1951,25 +2322,33 @@ void MatchEngine::updateMovement(float dt)
     PitchPoint target{};
     Vector2F run{};
     bool asked = false;
-    float facing = 0.0f;
+    float facing = 0.0F;
   };
   std::array<HeldIntent, 32> held{};
   const std::uint32_t waiting = ball.touchWaiting;
   const PitchPoint heldMeetPoint = ball.meetPoint;
   const float heldMeetPace = ball.meetPace;
-  for (std::size_t slot = 0; slot < players.size() && slot < held.size(); ++slot)
+  for (std::size_t slot = 0; slot < players.size() && slot < held.size();
+       ++slot)
+  {
     if ((waiting & (1U << slot)) != 0U)
     {
       const MatchPlayer& player = players[slot];
-      held[slot] = {player.tacticalTarget, player.targetVelocity, player.facingRequested,
-                    player.facingRequest};
+      held[slot] = {.target = player.tacticalTarget,
+                    .run = player.targetVelocity,
+                    .asked = player.facingRequested,
+                    .facing = player.facingRequest};
     }
+  }
 
   // Off-ball targets refresh at the tactical rate, and immediately when the
   // ball changes hands or starts/ends a flight; bodies move every step.
   const std::uint8_t flags = static_cast<std::uint8_t>(
-      (getPossessionState().isPass ? 1U : 0U) | (getPossessionState().isShot ? 2U : 0U) |
-      (getPossessionHistory().lastControlledTeamHome ? (*getPossessionHistory().lastControlledTeamHome ? 4U : 8U) : 0U) |
+      (getPossessionState().isPass ? 1U : 0U) |
+      (getPossessionState().isShot ? 2U : 0U) |
+      (getPossessionHistory().lastControlledTeamHome
+           ? (*getPossessionHistory().lastControlledTeamHome ? 4U : 8U)
+           : 0U) |
       (hasTouchClaim() ? 16U : 0U));
   const bool scheduled =
       periodElapsed(MatchTuning::Timing::TACTICAL_REFRESH_STEPS);
@@ -1979,12 +2358,18 @@ void MatchEngine::updateMovement(float dt)
   {
     tacticalOwner = getPossessionAttachment();
     tacticalFlags = flags;
-    if (forced) ++planEpoch;
+    if (forced)
+    {
+      ++planEpoch;
+    }
     // A player the plan switches into pressing the ball starts a pressure.
     std::array<PlayerIntent, 32> previousIntents{};
-    const std::size_t planned = std::min(players.size(), previousIntents.size());
+    const std::size_t planned =
+        std::min(players.size(), previousIntents.size());
     for (std::size_t slot = 0; slot < planned; ++slot)
+    {
       previousIntents[slot] = players[slot].intent;
+    }
     // Each side's brain plans its own players: marks first, from one
     // snapshot of the play, then the targets.
     if (periodElapsed(MatchTuning::Shape::MARK_REFRESH_STEPS))
@@ -1995,25 +2380,38 @@ void MatchEngine::updateMovement(float dt)
     refreshTacticalTargets(dt, true);
     refreshTacticalTargets(dt, false);
     // Drills hold some players' targets over the plan.
-    if (!drillTargets.empty()) applyDrillTargets();
+    if (!drillTargets.empty())
+    {
+      applyDrillTargets();
+    }
     // Then each runner's overtake, on the targets as they now stand, in
     // slot order (a plan reads the routes of those planned before it).
     for (std::size_t slot = 0; slot < players.size(); ++slot)
+    {
       planOvertake(slot);
+    }
     // Then a loose-ball chaser's way round anyone in his way.
     for (std::size_t slot = 0; slot < players.size(); ++slot)
+    {
       planWayRound(slot);
+    }
     // Where the owner of a claimed ball means to take it: the chase below
     // overrides his movement, his touches aim here.
     if (hasTouchClaim())
+    {
       if (const MatchPlayer* owner = findMatchPlayer(getPossessionAttachment()))
+      {
         ball.dribbleGoal = owner->tacticalTarget;
+      }
+    }
     for (std::size_t slot = 0; slot < planned; ++slot)
     {
       MatchPlayer& player = players[slot];
       if (player.intent == PlayerIntent::PRESS_BALL &&
           previousIntents[slot] != PlayerIntent::PRESS_BALL)
+      {
         ++statsOf(player).pressures;
+      }
     }
     observePlanJitter(scheduled && !forced);
   }
@@ -2023,10 +2421,12 @@ void MatchEngine::updateMovement(float dt)
     const MatchPlayer* holder = findMatchPlayer(getPossessionAttachment());
     for (auto& player : players)
     {
-      if (!active(player) || !player.isGoalkeeper ||
-          keeperInDive(player))
+      if (!active(player) || !player.isGoalkeeper || keeperInDive(player))
+      {
         continue;
-      if (!(getPossessionState().isPass && getExpectedReceiver() == player.player))
+      }
+      if (!(getPossessionState().isPass &&
+            getExpectedReceiver() == player.player))
       {
         player.tacticalTarget = goalkeeperTarget(player, holder);
         player.routeWaypoints = 0;
@@ -2035,14 +2435,22 @@ void MatchEngine::updateMovement(float dt)
   }
 
   if (hasTouchClaim())
+  {
     chaseTouchedBall();
+  }
   else
+  {
     ball.meetFor = nullptr;
+  }
 
   waitIntentChanged = 0;
-  for (std::size_t slot = 0; slot < players.size() && slot < held.size(); ++slot)
+  for (std::size_t slot = 0; slot < players.size() && slot < held.size();
+       ++slot)
   {
-    if ((waiting & (1U << slot)) == 0U) continue;
+    if ((waiting & (1U << slot)) == 0U)
+    {
+      continue;
+    }
     const MatchPlayer& player = players[slot];
     const HeldIntent& was = held[slot];
     bool changed = player.tacticalTarget.x != was.target.x ||
@@ -2053,9 +2461,15 @@ void MatchEngine::updateMovement(float dt)
                    (was.asked && player.facingRequest != was.facing);
     // His own ball: the meet he runs to is his intent too.
     if (player.player == getPossessionAttachment())
+    {
       changed = changed || ball.meetPoint.x != heldMeetPoint.x ||
-                ball.meetPoint.y != heldMeetPoint.y || ball.meetPace != heldMeetPace;
-    if (changed) waitIntentChanged |= 1U << slot;
+                ball.meetPoint.y != heldMeetPoint.y ||
+                ball.meetPace != heldMeetPace;
+    }
+    if (changed)
+    {
+      waitIntentChanged |= 1U << slot;
+    }
   }
 
   // Every target was read from the same snapshot of the play; now the bodies
@@ -2068,20 +2482,34 @@ void MatchEngine::updateMovement(float dt)
        ++slot)
   {
     MatchPlayer& player = players[slot];
-    if (!active(player)) continue;
-    if (player.isGoalkeeper &&
-        keeperInDive(player))
+    if (!active(player))
+    {
+      continue;
+    }
+    if (player.isGoalkeeper && keeperInDive(player))
+    {
       diveGoalkeeper(player, dt);
+    }
     else if (player.fallen)
+    {
       fallenBinturong(player, dt);
-    else if (player.stumbleSeconds > 0.0f)
+    }
+    else if (player.stumbleSeconds > 0.0F)
+    {
       stumbleBinturong(player, dt);
-    else if (player.collisionPause > 0.0f)
+    }
+    else if (player.collisionPause > 0.0F)
+    {
       coastBinturong(player, dt);
+    }
     else if (controlledIndex && slot == *controlledIndex)
+    {
       integrateControlled(player, dt);
+    }
     else
+    {
       batch[batched++] = static_cast<std::uint8_t>(slot);
+    }
   }
   // Wait dead zone plan step 3: a player waiting on the ball (Binturong
   // brain and body) whose move this step would leave it unplayable carries
@@ -2100,16 +2528,22 @@ void MatchEngine::updateMovement(float dt)
     const MatchPlayer& player = players[slot];
     if ((waiting & (1U << slot)) == 0U || player.isGoalkeeper ||
         !brainTraits(player.isHomeTeam).waitsForTouches ||
-        getBody(player.isHomeTeam) != BodyId::BINTURONG || waiterCount >= waiters.size())
+        getBody(player.isHomeTeam) != BodyId::BINTURONG ||
+        waiterCount >= waiters.size())
+    {
       continue;
-    waiters[waiterCount++] = {slot, player};
+    }
+    waiters[waiterCount++] = {.slot = slot, .before = player};
   }
   movePlayers(batch.data(), batched, dt, false);
   for (std::size_t index = 0; index < waiterCount; ++index)
   {
     const Waiter& waiter = waiters[index];
     MatchPlayer& player = players[waiter.slot];
-    if (waitPlayableNextSubstep(player, dt)) continue;
+    if (waitPlayableNextSubstep(player, dt))
+    {
+      continue;
+    }
     const MatchPlayer moved = player;
     const MatchPlayer& before = waiter.before;
     // As the read had him: the facing asked of him when he chose to wait.
@@ -2118,11 +2552,19 @@ void MatchEngine::updateMovement(float dt)
     reader.facingRequest = held[waiter.slot].facing;
     const float facing = predictedFacingBinturong(reader, dt);
     player = before;
-    const Vector2F step = {before.velocity.x * dt, before.velocity.y * dt};
-    const PitchPoint wanted{before.position.x + step.x, before.position.y + step.y};
+    const Vector2F step = {.x = before.velocity.x * dt,
+                           .y = before.velocity.y * dt};
+    const PitchPoint wanted{before.position.x + step.x,
+                            before.position.y + step.y};
     player.position = moveBody(before.position, wanted);
-    if (player.position.x != wanted.x) player.velocity.x = 0.0f;
-    if (player.position.y != wanted.y) player.velocity.y = 0.0f;
+    if (player.position.x != wanted.x)
+    {
+      player.velocity.x = 0.0F;
+    }
+    if (player.position.y != wanted.y)
+    {
+      player.velocity.y = 0.0F;
+    }
     player.facingAngle = facing;
     player.targetAngle = facing;
     ++firstTouchWaitLosses.carriedOn;
@@ -2153,14 +2595,23 @@ TacticalRole MatchEngine::getSlotRole(bool homeTeam, std::size_t slot) const
   return slot < tactics.size() ? tactics[slot].role : TacticalRole::Standard;
 }
 
-const RoleProfile& MatchEngine::roleProfileOf(
-    const MatchPlayer& player) const
+const RoleProfile& MatchEngine::roleProfileOf(const MatchPlayer& player) const
 {
   const std::size_t side = player.isHomeTeam ? 0 : 1;
-  if (player.isGoalkeeper) return keeperProfiles[side];
-  const auto slot = static_cast<std::size_t>(player.formationSlot);
-  if (player.formationSlot < 0 || slot >= slotTactics[side].size())
+  if (player.isGoalkeeper)
+  {
+    return keeperProfiles[side];
+  }
+  if (player.formationSlot < 0)
+  {
     return NO_ROLE;
+  }
+  const auto slot =
+      static_cast<std::size_t>(static_cast<int>(player.formationSlot));
+  if (slot >= slotTactics[side].size())
+  {
+    return NO_ROLE;
+  }
   return slotTactics[side][slot].profile;
 }
 
@@ -2168,45 +2619,61 @@ OppositionInstruction MatchEngine::instructionAgainst(
     const MatchPlayer& target) const
 {
   const auto& orders = oppositionOrders[target.isHomeTeam ? 1 : 0];
-  if (orders.empty() || !target.player) return OppositionInstruction::None;
+  if (orders.empty() || (target.player == nullptr))
+  {
+    return OppositionInstruction::None;
+  }
   const PlayerID id = target.player->getId();
   for (const PlayerInstruction& order : orders)
-    if (order.player == id) return order.instruction;
+  {
+    if (order.player == id)
+    {
+      return order.instruction;
+    }
+  }
   return OppositionInstruction::None;
 }
 
 float MatchEngine::weakFootPressure(const MatchPlayer& carrier) const
 {
   if (instructionAgainst(carrier) != OppositionInstruction::ShowWeakFoot)
-    return 0.0f;
+  {
+    return 0.0F;
+  }
   using D = MatchTuning::Decision;
   return std::clamp(
       (D::PRESSURE_RADIUS_METRES - nearestOpponentDistance(carrier)) /
           D::PRESSURE_RADIUS_METRES,
-      0.0f, 1.0f);
+      0.0F, 1.0F);
 }
 
 float MatchEngine::doubleUpPenalty(const MatchPlayer& carrier,
                                    const MatchPlayer& defender) const
 {
   if (instructionAgainst(carrier) != OppositionInstruction::DoubleUp)
-    return 0.0f;
+  {
+    return 0.0F;
+  }
   for (const MatchPlayer& other : players)
   {
     if (&other == &defender || !active(other) ||
         other.isHomeTeam == carrier.isHomeTeam || other.isGoalkeeper)
+    {
       continue;
+    }
     if (distance(other.position, carrier.position) <=
         TacticsTuning::DOUBLE_UP_REACH_METRES)
+    {
       return TacticsTuning::DOUBLE_UP_TAKE_ON_PENALTY;
+    }
   }
-  return 0.0f;
+  return 0.0F;
 }
 
 float MatchEngine::talkSwing(bool homeTeam) const
 {
-  return std::clamp(talkOf(homeTeam) / TacticsTuning::TALK_REFERENCE, -1.0f,
-                    1.0f);
+  return std::clamp(talkOf(homeTeam) / TacticsTuning::TALK_REFERENCE, -1.0F,
+                    1.0F);
 }
 
 float MatchEngine::getTeamTalkEffect(bool homeTeam) const
@@ -2225,7 +2692,9 @@ void MatchEngine::movePlayers(const std::uint8_t* slots, std::size_t count,
   {
     const std::size_t side = players[slots[index]].isHomeTeam ? 0 : 1;
     if (counts[side] < sides[side].size())
+    {
       sides[side][counts[side]++] = slots[index];
+    }
   }
   // Training dummies (plan section 21): a player whose straight line runs
   // into one heads for its nearest edge for this step instead, and his own
@@ -2237,11 +2706,16 @@ void MatchEngine::movePlayers(const std::uint8_t* slots, std::size_t count,
   // move is what went into it.
   std::array<Vector2F, 32> velocitiesBefore{};
   if (!kit.dummies.empty())
-    for (std::size_t index = 0; index < count && index < heldTargets.size(); ++index)
+  {
+    for (std::size_t index = 0; index < count && index < heldTargets.size();
+         ++index)
     {
       MatchPlayer& player = players[slots[index]];
       velocitiesBefore[index] = player.velocity;
-      if (player.routeWaypoints > 0) continue;
+      if (player.routeWaypoints > 0)
+      {
+        continue;
+      }
       if (const std::optional<PitchPoint> steer =
               steerRoundDummies(player.position, player.movementTarget))
       {
@@ -2250,18 +2724,32 @@ void MatchEngine::movePlayers(const std::uint8_t* slots, std::size_t count,
         player.movementTarget = *steer;
       }
     }
+  }
   for (std::size_t side = 0; side < 2; ++side)
+  {
     if (counts[side] > 0)
+    {
       integrateMovements(sides[side].data(), counts[side], dt, walking);
-  if (kit.dummies.empty()) return;
-  for (std::size_t index = 0; index < count && index < heldTargets.size(); ++index)
+    }
+  }
+  if (kit.dummies.empty())
+  {
+    return;
+  }
+  for (std::size_t index = 0; index < count && index < heldTargets.size();
+       ++index)
   {
     MatchPlayer& player = players[slots[index]];
     bounceOffDummies(player, velocitiesBefore[index]);
-    if (!heldTargets[index]) continue;
+    if (!heldTargets[index])
+    {
+      continue;
+    }
     if (player.movementTarget.x == steeredTargets[index].x &&
         player.movementTarget.y == steeredTargets[index].y)
+    {
       player.movementTarget = *heldTargets[index];
+    }
   }
 }
 
@@ -2277,7 +2765,10 @@ void MatchEngine::updateRestartMovement(float dt)
        ++slot)
   {
     MatchPlayer& player = players[slot];
-    if (!active(player)) continue;
+    if (!active(player))
+    {
+      continue;
+    }
     // A keeper set to dive for a penalty (goalkeeper plan step 9): his body
     // is the dive's.
     if (player.isGoalkeeper && keepers[player.isHomeTeam ? 0 : 1].dive.active)
@@ -2291,21 +2782,36 @@ void MatchEngine::updateRestartMovement(float dt)
     {
       keepers[player.isHomeTeam ? 0 : 1].state = GoalkeeperState::SET_POSITION;
       if (!restartIsSetPiece && state != MatchState::GOAL)
+      {
         player.movementTarget = goalkeeperTarget(player, nullptr);
+      }
     }
-    if (!fetching) updateRestartSupport(player, taker);
+    if (!fetching)
+    {
+      updateRestartSupport(player, taker);
+    }
     // Not a player going off or a sub coming on (touchline plan stage 5):
     // the laws' distances are for those in play.
     const bool changingOver = std::ranges::any_of(
-        pendingSubstitutions, [slot](const PendingSubstitution& pending)
-        { return pending.slot == slot && pending.stage != PendingSubstitution::Stage::WAITING; });
-    if (!fetching && &player != taker && !changingOver) keepRestartDistance(player);
+        pendingSubstitutions,
+        [slot](const PendingSubstitution& pending)
+        {
+          return pending.slot == slot &&
+                 pending.stage != PendingSubstitution::Stage::WAITING;
+        });
+    if (!fetching && &player != taker && !changingOver)
+    {
+      keepRestartDistance(player);
+    }
     // While the ball is on its way back, everyone else waits on the pitch.
     if (deadBall.active && &player != taker && !fetching)
+    {
       player.movementTarget = clampToPitch(player.movementTarget);
+    }
     // A taker who lines the ball up needs room to walk up to it: everyone
     // else keeps clear of it (restart lining-up).
-    if (taker && &player != taker && !fetching && linesUpRestart(*taker, state))
+    if ((taker != nullptr) && &player != taker && !fetching &&
+        linesUpRestart(*taker, state))
     {
       constexpr float ROOM = MatchTuning::Dribble::RESTART_ROOM_METRES;
       const Vector2F away = player.movementTarget - restartSpot();
@@ -2313,26 +2819,28 @@ void MatchEngine::updateRestartMovement(float dt)
       if (metres < ROOM)
       {
         // Straight out from the ball (on it: back towards his own goal).
-        const Vector2F out = metres > EPSILON
-                                 ? Vector2F{away.x / metres, away.y / metres}
-                                 : Vector2F{player.isHomeTeam ? -1.0f : 1.0f, 0.0f};
-        const Vector2F step = {out.x * ROOM, out.y * ROOM};
-        player.movementTarget = PitchPoint{
-            clampToPitchX(restartSpot().x + step.x),
-            clampToPitchY(restartSpot().y + step.y)};
+        const Vector2F out =
+            metres > EPSILON
+                ? Vector2F{.x = away.x / metres, .y = away.y / metres}
+                : Vector2F{.x = player.isHomeTeam ? -1.0F : 1.0F, .y = 0.0F};
+        const Vector2F step = {.x = out.x * ROOM, .y = out.y * ROOM};
+        player.movementTarget =
+            PitchPoint{clampToPitchX(restartSpot().x + step.x),
+                       clampToPitchY(restartSpot().y + step.y)};
       }
     }
     // Going off for a sub (touchline plan stage 5): to his exit, and only
     // that.
     if (const PendingSubstitution* leaving = leavingFrom(slot))
-      player.movementTarget = PitchPoint{leaving->exit.x,
-                                         leaving->exit.y};
+    {
+      player.movementTarget = PitchPoint{leaving->exit.x, leaving->exit.y};
+    }
     player.intent = player.isGoalkeeper ? PlayerIntent::GOALKEEP
                                         : PlayerIntent::RECOVER_SHAPE;
     // His restart spot is where he is going: his tactical target too, as
     // the brain reads it when play restarts (still, and with no route).
     player.tacticalTarget = player.movementTarget;
-    player.targetVelocity = {0.0f, 0.0f};
+    player.targetVelocity = {.x = 0.0F, .y = 0.0F};
     player.routeWaypoints = 0;
     player.arriveAtSpeed = false;
     player.facingRequested = false;
@@ -2340,19 +2848,31 @@ void MatchEngine::updateRestartMovement(float dt)
         outOfPlayId == OutOfPlayId::AARDVARK && !restartLineUp &&
         linesUpRestart(player, state))
     {
-      player.movementTarget = asPoint(RestartApproach::target(pitch, asVector(player.position),
-          asVector(ball.position), MatchTuning::Player::ARRIVAL_DEAD_ZONE_METRES));
+      player.movementTarget = asPoint(RestartApproach::target(
+          pitch, asVector(player.position), asVector(ball.position),
+          MatchTuning::Player::ARRIVAL_DEAD_ZONE_METRES));
       player.tacticalTarget = player.movementTarget;
     }
-    if (&player == taker && restartLineUp) steerRestartLineUp(player, dt);
+    if (&player == taker && restartLineUp)
+    {
+      steerRestartLineUp(player, dt);
+    }
     if (player.fallen)
+    {
       fallenBinturong(player, dt);
-    else if (player.stumbleSeconds > 0.0f)
+    }
+    else if (player.stumbleSeconds > 0.0F)
+    {
       stumbleBinturong(player, dt);
-    else if (player.collisionPause > 0.0f)
+    }
+    else if (player.collisionPause > 0.0F)
+    {
       coastBinturong(player, dt);
+    }
     else
+    {
       batch[batched++] = static_cast<std::uint8_t>(slot);
+    }
   }
   movePlayers(batch.data(), batched, dt, true);
   updateTouchline(dt);
@@ -2367,7 +2887,9 @@ void MatchEngine::separatePlayers()
   // both have the Binturong body meet by the collision plan instead
   // (collidePlayers); a pair with an Aardvark body in it is separated here.
   if (bodyOf(true) == BodyId::BINTURONG && bodyOf(false) == BodyId::BINTURONG)
+  {
     return;
+  }
   constexpr float MINIMUM = MatchTuning::Player::MINIMUM_BODY_SEPARATION_METRES;
   const float MINIMUM_X = MINIMUM;
   // The order persists between steps: players move little per step, so the
@@ -2378,23 +2900,35 @@ void MatchEngine::separatePlayers()
   // Nobody moved since a pass that found no contact: nothing to resolve.
   bool unchanged = separationClear && separationCount == count;
   for (std::size_t index = 0; index < count && unchanged; ++index)
+  {
     unchanged = separationPositions[index].x == players[index].position.x &&
                 separationPositions[index].y == players[index].position.y;
-  if (unchanged) return;
+  }
+  if (unchanged)
+  {
+    return;
+  }
   if (separationCount != count)
   {
     separationCount = count;
     for (std::size_t index = 0; index < count; ++index)
+    {
       order[index] = static_cast<std::uint8_t>(index);
+    }
   }
   std::array<float, 32> xs;
   for (std::size_t index = 0; index < count; ++index)
+  {
     xs[index] = players[index].position.x;
+  }
   separationClear = true;
   insertionSort(order, count,
                 [&xs](std::uint8_t first, std::uint8_t second)
                 {
-                  if (xs[first] != xs[second]) return xs[first] < xs[second];
+                  if (xs[first] != xs[second])
+                  {
+                    return xs[first] < xs[second];
+                  }
                   return first < second;
                 });
   const auto push = [&xs, this](MatchPlayer& player, Vector2F offset)
@@ -2411,36 +2945,57 @@ void MatchEngine::separatePlayers()
     for (std::size_t secondIndex = firstIndex + 1; secondIndex < count;
          ++secondIndex)
     {
-      if (xs[order[secondIndex]] - xs[order[firstIndex]] >= MINIMUM_X) break;
+      if (xs[order[secondIndex]] - xs[order[firstIndex]] >= MINIMUM_X)
+      {
+        break;
+      }
       MatchPlayer& second = players[order[secondIndex]];
-      if (collidesByMomentum(first, second)) continue;
+      if (collidesByMomentum(first, second))
+      {
+        continue;
+      }
       const bool firstMoves = first.onPitch;
       const bool secondMoves = second.onPitch;
-      if (!firstMoves && !secondMoves) continue;
-      Vector2F separationMetres =
-          second.position - first.position;
-      const float squared = separationMetres.x * separationMetres.x +
-                            separationMetres.y * separationMetres.y;
-      if (squared >= MINIMUM * MINIMUM) continue;
+      if (!firstMoves && !secondMoves)
+      {
+        continue;
+      }
+      Vector2F separationMetres = second.position - first.position;
+      const float squared = (separationMetres.x * separationMetres.x) +
+                            (separationMetres.y * separationMetres.y);
+      if (squared >= MINIMUM * MINIMUM)
+      {
+        continue;
+      }
       float separationLengthMetres = std::sqrt(squared);
       if (separationLengthMetres <= EPSILON)
       {
-        separationMetres = {0.0f, order[firstIndex] % 2 == 0 ? 1.0f : -1.0f};
-        separationLengthMetres = 1.0f;
+        separationMetres = {.x = 0.0F,
+                            .y = order[firstIndex] % 2 == 0 ? 1.0F : -1.0F};
+        separationLengthMetres = 1.0F;
       }
       const float share = firstMoves && secondMoves
                               ? MatchTuning::Player::BODY_SEPARATION_SHARE
-                              : 1.0f;
+                              : 1.0F;
       const float correctionMetres = (MINIMUM - separationLengthMetres) * share;
-      const Vector2F correction = {separationMetres.x / separationLengthMetres * correctionMetres,
-           separationMetres.y / separationLengthMetres * correctionMetres};
-      if (firstMoves) push(first, Vector2F{-correction.x, -correction.y});
-      if (secondMoves) push(second, correction);
+      const Vector2F correction = {
+          .x = separationMetres.x / separationLengthMetres * correctionMetres,
+          .y = separationMetres.y / separationLengthMetres * correctionMetres};
+      if (firstMoves)
+      {
+        push(first, Vector2F{.x = -correction.x, .y = -correction.y});
+      }
+      if (secondMoves)
+      {
+        push(second, correction);
+      }
       separationClear = false;
     }
   }
   for (std::size_t index = 0; index < count; ++index)
+  {
     separationPositions[index] = players[index].position;
+  }
 }
 
 void MatchEngine::accumulatePlayerLoad(float dt)
@@ -2455,30 +3010,39 @@ void MatchEngine::accumulatePlayerLoad(float dt)
   const float clockDelta =
       dt * clockScale / MatchTuning::Timing::SECONDS_PER_MINUTE;
   for (const auto& player : players)
-    if (active(player)) statsOf(player).minutesPlayed += clockDelta;
+  {
+    if (active(player))
+    {
+      statsOf(player).minutesPlayed += clockDelta;
+    }
+  }
   // Distance, intensity and energy are accounted over two steps at a time.
   loadSeconds += dt;
   if (loadAnchors.size() != players.size())
   {
     loadAnchors.resize(players.size());
     for (std::size_t index = 0; index < players.size(); ++index)
+    {
       loadAnchors[index] = index < previousPlayerPositions.size()
                                ? previousPlayerPositions[index]
                                : players[index].position;
+    }
   }
-  if (!periodElapsed(MatchTuning::Timing::TACTICAL_REFRESH_STEPS)) return;
+  if (!periodElapsed(MatchTuning::Timing::TACTICAL_REFRESH_STEPS))
+  {
+    return;
+  }
   dt = loadSeconds;
-  loadSeconds = 0.0f;
+  loadSeconds = 0.0F;
   // Gathered into arrays so the energy model (each side's body) runs as
   // straight-line (vectorisable) code; the statistics are then updated per
   // player.
   constexpr std::size_t LANES = FitnessLanes::LANES;
   FitnessLanes lanes;
-  auto& [fromX, fromY, toX, toY, topSpeed, endurance, pressingEffort,
-         sideDrain, stamina, reserve, stepMetres, nextStamina, nextReserve,
-         stepEnergy, stepAnaerobicEnergy, stepBrakingEnergy,
-         stepBrakingAnaerobicEnergy, fastDebt, nextFastDebt] =
-      lanes;
+  auto& [fromX, fromY, toX, toY, topSpeed, endurance, pressingEffort, sideDrain,
+         stamina, reserve, stepMetres, nextStamina, nextReserve, stepEnergy,
+         stepAnaerobicEnergy, stepBrakingEnergy, stepBrakingAnaerobicEnergy,
+         fastDebt, nextFastDebt] = lanes;
   std::array<std::uint8_t, LANES> slots;
   std::size_t count = 0;
   std::size_t homeLanes = 0;
@@ -2487,15 +3051,22 @@ void MatchEngine::accumulatePlayerLoad(float dt)
     MatchPlayer& player = players[index];
     const PitchPoint previous = loadAnchors[index];
     loadAnchors[index] = player.position;
-    if (!active(player)) continue;
+    if (!active(player))
+    {
+      continue;
+    }
     // A pressing side pays for it: the players hunting the ball most, and
     // the whole side while out of possession.
     const float pressing = getEffectiveSliders(player.isHomeTeam).pressing;
     const bool outOfPossession =
-        getPossessionHistory().lastControlledTeamHome && *getPossessionHistory().lastControlledTeamHome != player.isHomeTeam;
+        getPossessionHistory().lastControlledTeamHome &&
+        *getPossessionHistory().lastControlledTeamHome != player.isHomeTeam;
     const std::size_t lane = count++;
     // The home side's slots come first, so its lanes do too.
-    if (player.isHomeTeam) homeLanes = count;
+    if (player.isHomeTeam)
+    {
+      homeLanes = count;
+    }
     slots[lane] = static_cast<std::uint8_t>(index);
     fromX[lane] = previous.x;
     fromY[lane] = previous.y;
@@ -2509,24 +3080,24 @@ void MatchEngine::accumulatePlayerLoad(float dt)
     toY[lane] = player.position.y;
     topSpeed[lane] = player.maxSpeed;
     endurance[lane] = player.endurance;
-    pressingEffort[lane] = player.isPressing ? pressing : 0.0f;
+    pressingEffort[lane] = player.isPressing ? pressing : 0.0F;
     sideDrain[lane] =
-        outOfPossession ? std::max(0.0f, pressing - F::TEAM_PRESSING_NEUTRAL) *
+        outOfPossession ? std::max(0.0F, pressing - F::TEAM_PRESSING_NEUTRAL) *
                               F::TEAM_PRESSING_DRAIN
-                        : 0.0f;
+                        : 0.0F;
     stamina[lane] = player.stamina;
     reserve[lane] = player.sprintReserve;
     enduranceLanes.criticalSpeed[lane] = derivedPhysicalValue(
         DerivedStat::ENDURANCE, player.derivedStat(DerivedStat::ENDURANCE));
-    enduranceLanes.burstMetres[lane] = derivedPhysicalValue(
-        DerivedStat::BURST_CAPACITY,
-        player.derivedStat(DerivedStat::BURST_CAPACITY));
-    enduranceLanes.recoverySeconds[lane] = derivedPhysicalValue(
-        DerivedStat::RECOVERY_RATE,
-        player.derivedStat(DerivedStat::RECOVERY_RATE));
-    enduranceLanes.fastRecoverySeconds[lane] = derivedPhysicalValue(
-        DerivedStat::FAST_RECOVERY,
-        player.derivedStat(DerivedStat::FAST_RECOVERY));
+    enduranceLanes.burstMetres[lane] =
+        derivedPhysicalValue(DerivedStat::BURST_CAPACITY,
+                             player.derivedStat(DerivedStat::BURST_CAPACITY));
+    enduranceLanes.recoverySeconds[lane] =
+        derivedPhysicalValue(DerivedStat::RECOVERY_RATE,
+                             player.derivedStat(DerivedStat::RECOVERY_RATE));
+    enduranceLanes.fastRecoverySeconds[lane] =
+        derivedPhysicalValue(DerivedStat::FAST_RECOVERY,
+                             player.derivedStat(DerivedStat::FAST_RECOVERY));
     fastDebt[lane] = player.fastBurstDebt;
     enduranceLanes.fuelSeconds[lane] =
         derivedPhysicalValue(DerivedStat::FUEL_CAPACITY,
@@ -2537,16 +3108,15 @@ void MatchEngine::accumulatePlayerLoad(float dt)
     enduranceLanes.previousSpeed[lane] = player.loadSpeed;
     // Moving at an angle to a body orientation asked of him costs more per
     // metre: the eight directions' figure, blended by his angle.
-    float directionCost = 1.0f;
+    float directionCost = 1.0F;
     const Vector2F moved = player.position - previous;
     const float movedMetres = length(moved);
     if (player.facingRequested && movedMetres > EPSILON)
     {
-      const Vector2F body = normalized(
-          {std::cos(player.facingAngle),
-           std::sin(player.facingAngle)});
+      const Vector2F body = normalized({.x = std::cos(player.facingAngle),
+                                        .y = std::sin(player.facingAngle)});
       const float alignment = std::clamp(
-          (body.x * moved.x + body.y * moved.y) / movedMetres, -1.0f, 1.0f);
+          (body.x * moved.x + body.y * moved.y) / movedMetres, -1.0F, 1.0F);
       directionCost = directionValue(MatchTuning::Player::DIRECTION_ENERGY,
                                      directionMix(std::acos(alignment)));
     }
@@ -2562,14 +3132,16 @@ void MatchEngine::accumulatePlayerLoad(float dt)
     const auto spell = [this]() -> std::size_t
     {
       const auto quarter = static_cast<std::size_t>(std::max(
-          0.0f, (matchTimeMinutes - (period == 2 ? 45.0f : 0.0f)) / 15.0f));
+          0.0F, (matchTimeMinutes - (period == 2 ? 45.0F : 0.0F)) / 15.0F));
       return (period == 2 ? 3U : 0U) + std::min<std::size_t>(quarter, 2U);
     };
-    LoadProfileStats* profile =
-        period <= 2 && !player.isGoalkeeper
-            ? &loadProfile[player.isHomeTeam ? 0 : 1]
-            : nullptr;
-    if (profile) profile->playerSeconds[spell()] += dt;
+    LoadProfileStats* profile = period <= 2 && !player.isGoalkeeper
+                                    ? &loadProfile[player.isHomeTeam ? 0 : 1]
+                                    : nullptr;
+    if (profile != nullptr)
+    {
+      profile->playerSeconds[spell()] += dt;
+    }
     // Restart repositioning teleports are not running.
     if (metres > MatchTuning::Player::MAX_COUNTED_STEP_SPEED * dt)
     {
@@ -2578,11 +3150,13 @@ void MatchEngine::accumulatePlayerLoad(float dt)
     }
     const float speed = metres / dt;
     player.loadSpeed = speed;
-    if (profile)
+    if (profile != nullptr)
     {
       profile->metres[spell()] += metres;
       if (speed >= L::HIGH_INTENSITY_SPEED)
+      {
         profile->highIntensityMetres[spell()] += metres;
+      }
     }
     PlayerMatchStats& entry = statsOf(player);
     entry.distanceMetres += metres;
@@ -2595,36 +3169,56 @@ void MatchEngine::accumulatePlayerLoad(float dt)
     const auto mode = static_cast<std::size_t>(movementModeAt(player, speed));
     entry.modeSeconds[mode] += dt;
     entry.modeMetres[mode] += metres;
-    if (period == 2) entry.secondHalfDistanceMetres += metres;
+    if (period == 2)
+    {
+      entry.secondHalfDistanceMetres += metres;
+    }
     // Running speed, not the displacement from body contact.
     if (speed > entry.topSpeed)
+    {
       entry.topSpeed =
           std::max(entry.topSpeed, std::min(speed, length(player.velocity)));
+    }
     if (speed < L::JOG_SPEED)
+    {
       entry.walkMetres += metres;
+    }
     else if (speed < L::RUN_SPEED)
+    {
       entry.jogMetres += metres;
+    }
     else if (speed < L::HIGH_INTENSITY_SPEED)
+    {
       entry.runMetres += metres;
+    }
     if (speed >= L::RUN_SPEED)
     {
       // The 5-minute window of the half (added time left out).
-      const float halfMinutes =
-          matchTimeMinutes - (period == 2 ? 45.0f : 0.0f);
-      const auto window = static_cast<std::size_t>(std::max(0.0f, halfMinutes) / 5.0f);
-      constexpr std::size_t PER_HALF = PlayerMatchStats::FIVE_MINUTE_WINDOWS / 2;
+      const float halfMinutes = matchTimeMinutes - (period == 2 ? 45.0F : 0.0F);
+      const auto window =
+          static_cast<std::size_t>(std::max(0.0F, halfMinutes) / 5.0F);
+      constexpr std::size_t PER_HALF =
+          PlayerMatchStats::FIVE_MINUTE_WINDOWS / 2;
       if (period <= 2 && window < PER_HALF)
+      {
         entry.runningByFive[(period == 2 ? PER_HALF : 0) + window] += metres;
+      }
     }
     if (speed >= L::HIGH_INTENSITY_SPEED)
     {
       entry.highIntensityMetres += metres;
-      if (period == 2) entry.secondHalfHighIntensityMetres += metres;
+      if (period == 2)
+      {
+        entry.secondHalfHighIntensityMetres += metres;
+      }
     }
     if (speed >= L::SPRINT_SPEED)
     {
       entry.sprintMetres += metres;
-      if (!player.isSprinting) ++entry.sprints;
+      if (!player.isSprinting)
+      {
+        ++entry.sprints;
+      }
       player.isSprinting = true;
     }
     else if (speed < L::SPRINT_EXIT_SPEED)
@@ -2634,8 +3228,10 @@ void MatchEngine::accumulatePlayerLoad(float dt)
     player.stamina = nextStamina[lane];
     player.sprintReserve = nextReserve[lane];
     player.fastBurstDebt = nextFastDebt[lane];
-    if (player.stamina <= 0.0f && entry.emptyAtMinute < 0.0f)
+    if (player.stamina <= 0.0F && entry.emptyAtMinute < 0.0F)
+    {
       entry.emptyAtMinute = elapsedMatchMinutes;
+    }
   }
 }
 
@@ -2646,7 +3242,10 @@ void MatchEngine::resolvePossessionAndActions(float dt)
   // A tackle may transfer ownership or stop play, so return immediately when
   // that happens instead of letting the former carrier act with a stale ball.
   MatchPlayer* carrier = findMatchPlayer(getPossessionAttachment());
-  if (!carrier) return;
+  if (carrier == nullptr)
+  {
+    return;
+  }
   noteCarrierHistory(*carrier);
   if (hasTouchClaim())
   {
@@ -2655,7 +3254,10 @@ void MatchEngine::resolvePossessionAndActions(float dt)
     updateTouch(*carrier, dt);
     // Claim expiry may release the owner. Do not challenge or act using the
     // former carrier later in this step (Aardvark retains its claim policy).
-    if (getPossessionAttachment() != carrier->player) return;
+    if (getPossessionAttachment() != carrier->player)
+    {
+      return;
+    }
   }
   else if (!updateDribble(*carrier, dt))
   {
@@ -2669,13 +3271,12 @@ void MatchEngine::resolvePossessionAndActions(float dt)
     const bool sliding = controlInput.action == MatchInputAction::SLIDE_TACKLE;
     if ((sliding || controlInput.action == MatchInputAction::TACKLE) &&
         active(controlled) && controlled.isHomeTeam != carrier->isHomeTeam &&
-        controlled.tackleCooldown <= 0.0f && !controlled.isInjured &&
+        controlled.tackleCooldown <= 0.0F && !controlled.isInjured &&
         !controlled.fallen)
     {
       using D = MatchTuning::Defending;
-      const float reach =
-          sliding ? D::SLIDE_TACKLE_DISTANCE_METRES
-                  : standingTackleReachOf(controlled.defending);
+      const float reach = sliding ? D::SLIDE_TACKLE_DISTANCE_METRES
+                                  : standingTackleReachOf(controlled.defending);
       // A loose dribbled ball is played by touching it, not by a standing
       // tackle: a free ball (tackling plan step 1) or a contest (step 2,
       // a Binturong body only).
@@ -2683,13 +3284,17 @@ void MatchEngine::resolvePossessionAndActions(float dt)
           !sliding && hasTouchClaim() &&
           (!ballInReach(*carrier) ||
            getBody(controlled.isHomeTeam) == BodyId::BINTURONG);
-      if (!touchedNotRolled && distance(controlled.position, ball.position) <= reach)
+      if (!touchedNotRolled &&
+          distance(controlled.position, ball.position) <= reach)
       {
         controlInput.action = MatchInputAction::NONE;
         ++controlledActions[controlled.isHomeTeam ? 0 : 1];
         attemptTackle(*carrier, controlled, sliding);
-        if (getPossessionAttachment() != carrier->player || state != MatchState::PLAYING)
+        if (getPossessionAttachment() != carrier->player ||
+            state != MatchState::PLAYING)
+        {
           return;
+        }
       }
     }
   }
@@ -2703,14 +3308,20 @@ void MatchEngine::resolvePossessionAndActions(float dt)
         challenge.defender)
     {
       attemptTackle(*carrier, *challenge.defender, challenge.sliding);
-      if (getPossessionAttachment() != carrier->player || state != MatchState::PLAYING)
+      if (getPossessionAttachment() != carrier->player ||
+          state != MatchState::PLAYING)
+      {
         return;
+      }
     }
   }
 
   // Nobody plays a ball that is still rolling to him: he acts once he has
   // collected it, and only with it at his feet.
-  if (hasTouchClaim() && getConfirmedController() != carrier->player) return;
+  if (hasTouchClaim() && getConfirmedController() != carrier->player)
+  {
+    return;
+  }
 
   // The AI waits out its decision time after a touch; a controlled player
   // can play the ball as soon as it is under control.
@@ -2718,17 +3329,18 @@ void MatchEngine::resolvePossessionAndActions(float dt)
   // A brain that decides for its meet, dribbling on a Binturong body,
   // decides for his next meet with the ball as soon as his decision time is
   // up (dribble meet plan 2a); a strike so decided waits for that meet.
-  const bool forMeet = !controlled && hasTouchClaim() &&
-                       ball.meetFor == carrier->player &&
-                       ball.meetSeconds <=
-                           MatchTuning::Dribble::MEET_DECISION_HORIZON_SECONDS &&
-                       brainTraits(carrier->isHomeTeam).decidesForMeet &&
-                       getBody(carrier->isHomeTeam) == BodyId::BINTURONG;
+  const bool forMeet =
+      !controlled && hasTouchClaim() && ball.meetFor == carrier->player &&
+      ball.meetSeconds <= MatchTuning::Dribble::MEET_DECISION_HORIZON_SECONDS &&
+      brainTraits(carrier->isHomeTeam).decidesForMeet &&
+      getBody(carrier->isHomeTeam) == BodyId::BINTURONG;
   if (pendingStrike && (pendingStrike->atMeet || pendingStrike->turning) &&
       pendingStrike->striker == carrier)
+  {
     return;
-  if ((carrier->actionCooldown <= 0.0f ||
-       (controlled && carrier->trapTimer <= 0.0f)) &&
+  }
+  if ((carrier->actionCooldown <= 0.0F ||
+       (controlled && carrier->trapTimer <= 0.0F)) &&
       (forMeet ||
        ball.dribbleExposure <= MatchTuning::Dribble::KICK_REACH_METRES))
   {
@@ -2739,20 +3351,20 @@ void MatchEngine::resolvePossessionAndActions(float dt)
     {
       performControlledAction(*carrier);
     }
-    else if (!ballKeepers.empty() && carrier->player &&
+    else if (!ballKeepers.empty() && (carrier->player != nullptr) &&
              std::ranges::find(ballKeepers, carrier->player->getId()) !=
                  ballKeepers.end())
     {
       // A drill's dribbler: he carries it where the drill sends him.
     }
-    else if (forcedShooter != 0 && carrier->player &&
+    else if (forcedShooter != 0 && (carrier->player != nullptr) &&
              carrier->player->getId() == forcedShooter)
     {
       // A drill's forced shot: the AI's own shot, from where he stands.
       forcedShooter = 0;
       takeShot(*carrier);
     }
-    else if (forcedPass.passer != 0 && carrier->player &&
+    else if (forcedPass.passer != 0 && (carrier->player != nullptr) &&
              carrier->player->getId() == forcedPass.passer)
     {
       // A drill's forced pass: the AI's own pass to the team-mate named.
@@ -2760,7 +3372,9 @@ void MatchEngine::resolvePossessionAndActions(float dt)
       const ForcedPass pass = forcedPass;
       forcedPass = {};
       if (const auto chosen = forcedPassOption(*carrier, pass))
+      {
         passBall(*carrier, chosen->first, chosen->second);
+      }
     }
     else if (forMeet)
     {
@@ -2781,7 +3395,8 @@ MatchEngine::forcedPassOption(MatchPlayer& carrier, const ForcedPass& pass)
   const bool lofted = pass.style == ForcedPassStyle::LOFTED ||
                       pass.style == ForcedPassStyle::CHIP;
   const std::optional<PassTechnique> technique =
-      pass.style == ForcedPassStyle::DRIVEN ? std::optional(PassTechnique::DRIVEN)
+      pass.style == ForcedPassStyle::DRIVEN
+          ? std::optional(PassTechnique::DRIVEN)
       : pass.style == ForcedPassStyle::CHIP ? std::optional(PassTechnique::CHIP)
                                             : std::nullopt;
   if (pass.spot)
@@ -2801,12 +3416,14 @@ MatchEngine::forcedPassOption(MatchPlayer& carrier, const ForcedPass& pass)
     return std::pair{option, lofted};
   }
   if (MatchPlayer* receiver = drillPlayer(pass.receiver);
-      receiver && active(*receiver))
+      (receiver != nullptr) && active(*receiver))
   {
     PassOption option = evaluatePassOption(carrier, *receiver);
     if (pass.style == ForcedPassStyle::GROUND ||
         pass.style == ForcedPassStyle::DRIVEN)
+    {
       option.lofted = false;
+    }
     option.technique = technique;
     return std::pair{option, lofted};
   }
@@ -2817,9 +3434,12 @@ float MatchEngine::dribbleExposureShare() const
 {
   using R = MatchTuning::Dribble;
   const float range = ball.dribbleTouchLength - R::FEET_METRES;
-  if (range <= EPSILON) return 0.0f;
-  return std::clamp((ball.dribbleExposure - R::FEET_METRES) / range, 0.0f,
-                    1.0f);
+  if (range <= EPSILON)
+  {
+    return 0.0F;
+  }
+  return std::clamp((ball.dribbleExposure - R::FEET_METRES) / range, 0.0F,
+                    1.0F);
 }
 
 // ---------------------------------------------------------------------------
@@ -2834,7 +3454,9 @@ namespace
 void addHalf(ScoreBreakdown& into, const ScoreBreakdown& half, float sign)
 {
   for (const ScoreTerm& term : half.terms)
+  {
     into.add(term.name, term.source, sign * term.value);
+  }
 }
 }  // namespace
 
@@ -2854,47 +3476,52 @@ bool MatchEngine::attemptTakeOn(MatchPlayer& carrier, MatchPlayer& defender)
       MatchTuning::Rules::DUEL_EDGE_WEIGHT * R::TAKE_ON_SKILL;
   const float jockey = controlInput.jockey && isControlled(defender)
                            ? MatchTuning::Control::JOCKEY_TAKE_ON_PENALTY
-                           : 0.0f;
+                           : 0.0F;
   const float doubleUp = doubleUpPenalty(carrier, defender);
   const float success =
       std::clamp(R::TAKE_ON_BASE + make - resist + edge - jockey - doubleUp,
                  R::MIN_TAKE_ON, R::MAX_TAKE_ON);
-  const float takeOnRoll = randomFloat(0.0f, 1.0f);
+  const float takeOnRoll = randomFloat(0.0F, 1.0F);
   const bool beaten = takeOnRoll < success;
   ++(carrier.isHomeTeam ? stats.homeTakeOns : stats.awayTakeOns);
   if (beaten)
+  {
     ++(carrier.isHomeTeam ? stats.homeTakeOnsWon : stats.awayTakeOnsWon);
+  }
   if (detail)
   {
     MatchDuelDetail duel;
     duel.kind = MatchDuelDetail::Kind::TAKE_ON;
-    duel.player = carrier.player ? carrier.player->getId() : 0;
-    duel.opponent = defender.player ? defender.player->getId() : 0;
+    duel.player = (carrier.player != nullptr) ? carrier.player->getId() : 0;
+    duel.opponent = (defender.player != nullptr) ? defender.player->getId() : 0;
     duel.homeTeam = carrier.isHomeTeam;
     duel.chance.total = success;
     duel.probability = success;
     duel.roll = takeOnRoll;
     duel.chance.add("base", TermSource::SITUATION, R::TAKE_ON_BASE);
-    addHalf(duel.chance, makeTerms, 1.0f);
-    addHalf(duel.chance, resistTerms, -1.0f);
+    addHalf(duel.chance, makeTerms, 1.0F);
+    addHalf(duel.chance, resistTerms, -1.0F);
     duel.chance.add("team edge (home, numbers, talk)", TermSource::SITUATION,
                     edge);
-    duel.chance.add("human defender jockeying", TermSource::SITUATION,
-                    -jockey);
+    duel.chance.add("human defender jockeying", TermSource::SITUATION, -jockey);
     duel.chance.add("doubled up on (order)", TermSource::INSTRUCTION,
                     -doubleUp);
-    if (const float clamp = duel.chance.residual(); std::abs(clamp) > 1e-6f)
+    if (const float clamp = duel.chance.residual(); std::abs(clamp) > 1e-6F)
+    {
       duel.chance.add("clamped to its range", TermSource::SITUATION, clamp);
+    }
     if (MatchRecorder* recorder = getRecorder())
+    {
       recorder->onDuelDetail(*this, duel);
+    }
   }
   if (MatchRecorder* recorder = getRecorder())
   {
     MatchActionRecord action;
     action.kind = MatchActionKind::TAKE_ON;
-    action.player = carrier.player ? carrier.player->getId() : 0;
+    action.player = (carrier.player != nullptr) ? carrier.player->getId() : 0;
     action.homeTeam = carrier.isHomeTeam;
-    action.target = defender.player ? defender.player->getId() : 0;
+    action.target = (defender.player != nullptr) ? defender.player->getId() : 0;
     action.from = carrier.position;
     action.to = defender.position;
     action.estimate = success;
@@ -2910,14 +3537,14 @@ bool MatchEngine::attemptTakeOn(MatchPlayer& carrier, MatchPlayer& defender)
   // Beaten: the defender is wrong-footed (his body) and the ball is pushed
   // past him.
   recoverFromTakeOn(defender);
-  const Vector2F forward{carrier.isHomeTeam ? 1.0f : -1.0f, 0.0f};
+  const Vector2F forward{.x = carrier.isHomeTeam ? 1.0F : -1.0F, .y = 0.0F};
   const Vector2F toDefender =
       metricDirection(carrier.position, defender.position);
-  const float side = toDefender.y >= 0.0f ? -1.0f : 1.0f;
+  const float side = toDefender.y >= 0.0F ? -1.0F : 1.0F;
   const float angle = side * R::TAKE_ON_ANGLE_RADIANS;
-  ball.dribbleDirection =
-      normalized({forward.x * std::cos(angle) - forward.y * std::sin(angle),
-                  forward.x * std::sin(angle) + forward.y * std::cos(angle)});
+  ball.dribbleDirection = normalized(
+      {.x = (forward.x * std::cos(angle)) - (forward.y * std::sin(angle)),
+       .y = (forward.x * std::sin(angle)) + (forward.y * std::cos(angle))});
   ball.dribbleTouchLength = R::TAKE_ON_TOUCH_METRES;
   ball.dribbleExposure = R::TAKE_ON_TOUCH_METRES;
   ball.touchTimer = R::MAX_TOUCH_INTERVAL;
@@ -2927,14 +3554,17 @@ bool MatchEngine::attemptTakeOn(MatchPlayer& carrier, MatchPlayer& defender)
     // space he runs on to.
     const float speed = length(carrier.velocity);
     const float push = groundLaunchSpeed(
-        R::TAKE_ON_TOUCH_METRES + speed * R::LOOSE_LEAD_SECONDS,
+        R::TAKE_ON_TOUCH_METRES + (speed * R::LOOSE_LEAD_SECONDS),
         speed * R::LOOSE_ARRIVAL_SHARE);
     notePathChange();
-    ball.velocity = {ball.dribbleDirection.x * push,
-                     ball.dribbleDirection.y * push};
+    ball.velocity = {.x = ball.dribbleDirection.x * push,
+                     .y = ball.dribbleDirection.y * push};
     // A take-on is a real dribble launch too. Retain its intermediate speed
     // for motion diagnostics: drag can make both step endpoints slower.
-    if (possessionId == PossessionId::BINTURONG) ball.touchLaunchSpeed = push;
+    if (possessionId == PossessionId::BINTURONG)
+    {
+      ball.touchLaunchSpeed = push;
+    }
     ball.touchAttempts = 0;
     ball.ownTouchCooldown = R::LOOSE_TOUCH_INTERVAL;
     ++dribbleTouches;
@@ -2953,7 +3583,7 @@ void MatchEngine::attemptTackle(MatchPlayer& carrier, MatchPlayer& defender,
   const Vector2F toDefender =
       metricDirection(carrier.position, defender.position);
   const bool fromBehind =
-      motion.x * toDefender.x + motion.y * toDefender.y < -0.3f;
+      motion.x * toDefender.x + motion.y * toDefender.y < -0.3F;
   const bool shielding =
       length(carrier.velocity) < MatchTuning::Dribble::CLOSE_CONTROL_SPEED;
   const StrategySliders defenderStrategy =
@@ -2961,7 +3591,7 @@ void MatchEngine::attemptTackle(MatchPlayer& carrier, MatchPlayer& defender,
   // A booked player picks his challenges more carefully.
   const float caution = defender.yellowCards > 0
                             ? MatchTuning::Discipline::BOOKED_PLAYER_CAUTION
-                            : 1.0f;
+                            : 1.0F;
   defender.tackleCooldown =
       randomFloat(MatchTuning::Defending::MIN_TACKLE_COOLDOWN,
                   MatchTuning::Defending::MAX_TACKLE_COOLDOWN) *
@@ -2971,9 +3601,13 @@ void MatchEngine::attemptTackle(MatchPlayer& carrier, MatchPlayer& defender,
       caution;
 
   if (defender.isHomeTeam)
+  {
     ++stats.homeTackleAttempts;
+  }
   else
+  {
     ++stats.awayTackleAttempts;
+  }
   ++statsOf(defender).tacklesAttempted;
 
   // The tackler's body against the carrier's; the rules settle the rest.
@@ -3003,7 +3637,10 @@ void MatchEngine::attemptTackle(MatchPlayer& carrier, MatchPlayer& defender,
   const auto report = [&](MatchDuelResult result)
   {
     MatchRecorder* recorder = getRecorder();
-    if (!recorder) return;
+    if (!recorder)
+    {
+      return;
+    }
     MatchActionRecord action;
     action.kind = MatchActionKind::TACKLE;
     action.player = defender.player ? defender.player->getId() : 0;
@@ -3018,10 +3655,13 @@ void MatchEngine::attemptTackle(MatchPlayer& carrier, MatchPlayer& defender,
     recorder->onAction(*this, action);
   };
   // Debugger detail: both chances broken down, with the rolls against them.
-  const auto reportDetail = [&](float winRoll, float foulRoll,
-                                float foulThreshold)
+  const auto reportDetail =
+      [&](float winRoll, float foulRoll, float foulThreshold)
   {
-    if (!detail) return;
+    if (!detail)
+    {
+      return;
+    }
     using D = MatchTuning::Defending;
     MatchDuelDetail duel;
     duel.kind = MatchDuelDetail::Kind::TACKLE;
@@ -3035,21 +3675,23 @@ void MatchEngine::attemptTackle(MatchPlayer& carrier, MatchPlayer& defender,
     ScoreBreakdown& win = duel.chance;
     win.total = winChance;
     win.add("base", TermSource::SITUATION, D::BASE_WIN_CHANCE);
-    addHalf(win, makeTerms, 1.0f);
-    addHalf(win, resistTerms, -1.0f);
+    addHalf(win, makeTerms, 1.0F);
+    addHalf(win, resistTerms, -1.0F);
     win.add("team edge (home, numbers, talk)", TermSource::SITUATION,
-            context.defenderEdge * D::DEFENDING_WIN_BONUS -
-                context.carrierEdge * D::DRIBBLING_WIN_PENALTY);
+            (context.defenderEdge * D::DEFENDING_WIN_BONUS) -
+                (context.carrierEdge * D::DRIBBLING_WIN_PENALTY));
     win.add("pressing instruction", TermSource::INSTRUCTION,
             context.pressing * D::PRESSING_WIN_EFFECT);
     win.add("ball away from his feet", TermSource::SITUATION,
-            std::clamp(exposure, 0.0f, 1.0f) * D::EXPOSURE_WIN_BONUS);
+            std::clamp(exposure, 0.0F, 1.0F) * D::EXPOSURE_WIN_BONUS);
     win.add("sliding", TermSource::SITUATION,
-            sliding ? -D::SLIDE_WIN_PENALTY : 0.0f);
+            sliding ? -D::SLIDE_WIN_PENALTY : 0.0F);
     win.add("from behind", TermSource::SITUATION,
-            fromBehind ? -D::FROM_BEHIND_WIN_PENALTY : 0.0f);
-    if (const float clamp = win.residual(); std::abs(clamp) > 1e-6f)
+            fromBehind ? -D::FROM_BEHIND_WIN_PENALTY : 0.0F);
+    if (const float clamp = win.residual(); std::abs(clamp) > 1e-6F)
+    {
       win.add("clamped to its range", TermSource::SITUATION, clamp);
+    }
 
     // The propensity is a sum scaled by factors; each factor is noted as
     // what it adds.
@@ -3067,52 +3709,57 @@ void MatchEngine::attemptTackle(MatchPlayer& carrier, MatchPlayer& defender,
     part("pressing instruction", TermSource::INSTRUCTION,
          context.pressing * D::PRESSING_FOUL_BONUS);
     for (const ScoreTerm& term : techniqueTerms.terms)
+    {
       part(term.name, term.source, term.value);
+    }
     part("team edge (home, numbers, talk)", TermSource::SITUATION,
          -context.defenderEdge * D::TECHNIQUE_FOUL_BONUS);
     const auto factor = [&](const char* name, TermSource source, float by)
     {
-      foul.add(name, source, product * (by - 1.0f));
+      foul.add(name, source, product * (by - 1.0F));
       product *= by;
     };
     factor("already booked", TermSource::GAME_STATE,
            context.defenderBooked
                ? MatchTuning::Discipline::BOOKED_PLAYER_CAUTION
-               : 1.0f);
+               : 1.0F);
     factor("in his own penalty area", TermSource::LOCATION,
-           context.inPenaltyArea ? D::PENALTY_AREA_FOUL_SCALE : 1.0f);
+           context.inPenaltyArea ? D::PENALTY_AREA_FOUL_SCALE : 1.0F);
     factor("from behind", TermSource::SITUATION,
-           fromBehind ? D::FROM_BEHIND_FOUL_FACTOR : 1.0f);
+           fromBehind ? D::FROM_BEHIND_FOUL_FACTOR : 1.0F);
     factor("sliding", TermSource::SITUATION,
-           sliding ? D::SLIDE_FOUL_FACTOR : 1.0f);
+           sliding ? D::SLIDE_FOUL_FACTOR : 1.0F);
     factor("ball away from the man", TermSource::SITUATION,
-           1.0f - std::clamp(exposure, 0.0f, 1.0f) * D::EXPOSED_FOUL_RELIEF);
+           1.0F - (std::clamp(exposure, 0.0F, 1.0F) * D::EXPOSED_FOUL_RELIEF));
     std::erase_if(win.terms,
-                  [](const ScoreTerm& term) { return term.value == 0.0f; });
+                  [](const ScoreTerm& term) { return term.value == 0.0F; });
     std::erase_if(foul.terms,
-                  [](const ScoreTerm& term) { return term.value == 0.0f; });
+                  [](const ScoreTerm& term) { return term.value == 0.0F; });
     if (MatchRecorder* recorder = getRecorder())
+    {
       recorder->onDuelDetail(*this, duel);
+    }
   };
-  const float winRoll = randomFloat(0.0f, 1.0f);
+  const float winRoll = randomFloat(0.0F, 1.0F);
   if (winRoll < winChance)
   {
     ++(defender.isHomeTeam ? stats.homeTackleDuelsWon
                            : stats.awayTackleDuelsWon);
     // Even a challenge that reaches the ball can be late or through the man.
     const float foulRoll = incidentRoll();
-    reportDetail(winRoll, foulRoll,
+    reportDetail(
+        winRoll, foulRoll,
+        foulPropensity * MatchTuning::Defending::WINNING_TACKLE_FOUL_SHARE);
+    if (whistles(foulRoll <
                  foulPropensity *
-                     MatchTuning::Defending::WINNING_TACKLE_FOUL_SHARE);
-    if (whistles(foulRoll < foulPropensity *
-                                MatchTuning::Defending::WINNING_TACKLE_FOUL_SHARE))
+                     MatchTuning::Defending::WINNING_TACKLE_FOUL_SHARE))
     {
       report(MatchDuelResult::FOUL);
       commitFoul(defender, carrier, true, sliding && fromBehind);
       return;
     }
     creditImmediateTackleWin(defender);
-    if (randomFloat(0.0f, 1.0f) < MatchTuning::Defending::POKE_LOOSE_CHANCE)
+    if (randomFloat(0.0F, 1.0F) < MatchTuning::Defending::POKE_LOOSE_CHANCE)
     {
       report(MatchDuelResult::POKED_LOOSE);
       // The challenge knocks the ball away rather than winning it cleanly.
@@ -3121,11 +3768,13 @@ void MatchEngine::attemptTackle(MatchPlayer& carrier, MatchPlayer& defender,
       const float speed = randomFloat(MatchTuning::Defending::MIN_POKE_SPEED,
                                       MatchTuning::Defending::MAX_POKE_SPEED);
       beginPokedTackle(defender);
-      ball.z = 0.0f;
+      ball.z = 0.0F;
       notePathChange();
-      ball.velocity = {std::cos(angle) * speed, std::sin(angle) * speed};
-      ball.velocityZ = 0.0f;
-      noteContactActor(defender.player, MatchTuning::Passing::KICKER_LOCKOUT_SECONDS, false);
+      ball.velocity = {.x = std::cos(angle) * speed,
+                       .y = std::sin(angle) * speed};
+      ball.velocityZ = 0.0F;
+      noteContactActor(defender.player,
+                       MatchTuning::Passing::KICKER_LOCKOUT_SECONDS, false);
       carrier.trapTimer = MatchTuning::Ball::FAILED_TRAP_TIME;
       finishPokedTackle(defender);
       return;
@@ -3152,7 +3801,11 @@ void MatchEngine::attemptTackle(MatchPlayer& carrier, MatchPlayer& defender,
 void MatchEngine::applySanction(MatchPlayer& offender,
                                 MatchRules::FoulSanction sanction)
 {
-  if (sanction == MatchRules::FoulSanction::NONE || !offender.player) return;
+  if (sanction == MatchRules::FoulSanction::NONE ||
+      (offender.player == nullptr))
+  {
+    return;
+  }
   PlayerMatchStats& entry = statsOf(offender);
   ++stoppageLogs[static_cast<std::size_t>(period - 1)].cards;
   if (sanction == MatchRules::FoulSanction::YELLOW)
@@ -3160,9 +3813,13 @@ void MatchEngine::applySanction(MatchPlayer& offender,
     ++offender.yellowCards;
     ++entry.yellowCards;
     if (offender.isHomeTeam)
+    {
       ++stats.homeYellowCards;
+    }
     else
+    {
       ++stats.awayYellowCards;
+    }
     logEvent(MatchEventType::YELLOW_CARD, offender);
     return;
   }
@@ -3172,9 +3829,13 @@ void MatchEngine::applySanction(MatchPlayer& offender,
     ++offender.yellowCards;
     ++entry.yellowCards;
     if (offender.isHomeTeam)
+    {
       ++stats.homeYellowCards;
+    }
     else
+    {
       ++stats.awayYellowCards;
+    }
     logEvent(MatchEventType::SECOND_YELLOW, offender);
   }
   else
@@ -3187,9 +3848,13 @@ void MatchEngine::applySanction(MatchPlayer& offender,
   // goalkeeper change so it shares the restart's substitution window.
   beginStoppage();
   if (offender.isHomeTeam)
+  {
     ++stats.homeRedCards;
+  }
   else
+  {
     ++stats.awayRedCards;
+  }
   // With walk-outs he walks to the tunnel (touchline plan stage 6).
   removeFromPitch(offender, walksOut());
 }
@@ -3211,9 +3876,14 @@ void MatchEngine::executeBallAction(MatchPlayer& carrier,
     {
       carrier.actionCooldown = action.holdSeconds;
       // His brain decides whether to take a defender on.
-      if (state != MatchState::PLAYING) return;
+      if (state != MatchState::PLAYING)
+      {
+        return;
+      }
       if (MatchPlayer* defender = chooseTakeOn(carrier))
+      {
         attemptTakeOn(carrier, *defender);
+      }
       return;
     }
     case ScenarioAction::CLEAR:
@@ -3223,7 +3893,10 @@ void MatchEngine::executeBallAction(MatchPlayer& carrier,
       carrier.actionCooldown = action.holdSeconds;
       return;
     case ScenarioAction::PASS:
-      if (action.pass) passBall(carrier, *action.pass);
+      if (action.pass)
+      {
+        passBall(carrier, *action.pass);
+      }
       return;
     case ScenarioAction::NONE:
       return;
@@ -3235,43 +3908,55 @@ void MatchEngine::passBall(MatchPlayer& passer, const PassOption& option,
 {
   // No receiver: a drill's pass to a spot (forcePassTo), with nobody there.
   MatchPlayer* const receiver = option.receiver;
-  if (receiver && !receiver->player) return;
+  if ((receiver != nullptr) && (receiver->player == nullptr))
+  {
+    return;
+  }
   PitchPoint target = option.targetPoint;
   const float passDistance = option.passDistance;
-  if (passDistance <= EPSILON) return;
-  if (holdStrikeForSweep({PendingStrike::Kind::PASS, &passer, option,
-                          forceLofted}))
+  if (passDistance <= EPSILON)
+  {
     return;
+  }
+  if (holdStrikeForSweep({.kind = PendingStrike::Kind::PASS,
+                          .striker = &passer,
+                          .pass = option,
+                          .forceLofted = forceLofted,
+                          .shotAim = {},
+                          .receiverSlot = {}}))
+  {
+    return;
+  }
   const bool lofted = forceLofted || option.lofted;
 
   beginPassFlight(passer, option);
   lastPassDecision = {
-      passer.player ? passer.player->getId() : 0,
-      receiver ? receiver->player->getId() : 0,
-      target,
-      state == MatchState::PLAYING ? option.intent : PassIntent::SET_PIECE,
-      option.utility,
-      option.progression,
-      option.laneRisk,
-      option.completionProbability};
+      .passerId = (passer.player != nullptr) ? passer.player->getId() : 0,
+      .receiverId = (receiver != nullptr) ? receiver->player->getId() : 0,
+      .targetPoint = target,
+      .intent =
+          state == MatchState::PLAYING ? option.intent : PassIntent::SET_PIECE,
+      .utility = option.utility,
+      .progression = option.progression,
+      .laneRisk = option.laneRisk,
+      .completionProbability = option.completionProbability};
   const bool delivery = option.intent == PassIntent::CROSS ||
                         state == MatchState::CORNER_KICK ||
                         (state == MatchState::FREE_KICK && lofted);
   // The passer's body strikes it: where it really goes, how hard, how high.
-  const Kick kick = kickPass(passer, receiver, target, passDistance, lofted,
-                             delivery, option.spin, option.arrivalSpeed,
-                             option.technique);
+  const Kick kick =
+      kickPass(passer, receiver, target, passDistance, lofted, delivery,
+               option.spin, option.arrivalSpeed, option.technique);
   target = kick.target;
   setPassFlightTarget(target);
   launchBall(passer, releaseFrom(passer, ReleaseKind::PASS), target, kick.speed,
-             kick.verticalSpeed,
-             kick.spin);
+             kick.verticalSpeed, kick.spin);
   finishPassFlight(lofted && delivery);
-  if (getRecorder())
+  if (getRecorder() != nullptr)
   {
     MatchActionRecord action;
     action.kind = MatchActionKind::PASS;
-    action.target = receiver ? receiver->player->getId() : 0;
+    action.target = (receiver != nullptr) ? receiver->player->getId() : 0;
     action.lofted = lofted;
     action.passIntent = lastPassDecision.intent;
     action.estimate = option.completionProbability;
@@ -3281,15 +3966,22 @@ void MatchEngine::passBall(MatchPlayer& passer, const PassOption& option,
   {
     GoalkeeperControl& control = keepers[passer.isHomeTeam ? 0 : 1];
     control.state = GoalkeeperState::DISTRIBUTE;
-    control.timer = 0.0f;
+    control.timer = 0.0F;
   }
 
-  if (receiver) afterPassReleased(passer, *receiver);
+  if (receiver != nullptr)
+  {
+    afterPassReleased(passer, *receiver);
+  }
 
   if (passer.isHomeTeam)
+  {
     ++stats.homePassesAttempted;
+  }
   else
+  {
     ++stats.awayPassesAttempted;
+  }
   ++statsOf(passer).passesAttempted;
   trackPassRelease(passer);
   if (state == MatchState::PLAYING)
@@ -3304,15 +3996,25 @@ void MatchEngine::passBall(MatchPlayer& passer, const PassOption& option,
     int* switchesOfPlay = passer.isHomeTeam ? &stats.homeSwitchesOfPlay
                                             : &stats.awaySwitchesOfPlay;
     if (option.intent == PassIntent::PROGRESSIVE)
+    {
       ++(*progressivePasses);
+    }
     else if (option.intent == PassIntent::THROUGH_BALL)
+    {
       ++(*throughBalls);
+    }
     else if (option.intent == PassIntent::CROSS)
+    {
       ++(*crosses);
+    }
     else if (option.intent == PassIntent::CUTBACK)
+    {
       ++(*cutbacks);
+    }
     else if (option.intent == PassIntent::SWITCH_PLAY)
+    {
       ++(*switchesOfPlay);
+    }
   }
   passer.actionCooldown = recoverySeconds(passer, Recovery::PASS);
 }
@@ -3335,14 +4037,17 @@ float MatchEngine::strikeShot(MatchPlayer& shooter, float forcedXG, bool header,
                               bool penalty, bool freeKick,
                               std::optional<ShotAim> heldAim)
 {
-  const float goalX = pitch.atX(shooter.isHomeTeam ? 1.0f : 0.0f);
+  const float goalX = pitch.atX(shooter.isHomeTeam ? 1.0F : 0.0F);
   const PitchPoint origin = strikePoint(shooter);
-  const float metres =
-      distance(origin, PitchPoint{goalX, pitch.atY(MatchTuning::Pitch::CENTRE)});
-  float xg = forcedXG >= 0.0f ? forcedXG : estimateShotXG(shooter);
-  if (header && forcedXG < 0.0f) xg *= MatchTuning::Shooting::HEADER_XG_FACTOR;
+  const float metres = distance(
+      origin, PitchPoint{goalX, pitch.atY(MatchTuning::Pitch::CENTRE)});
+  float xg = forcedXG >= 0.0F ? forcedXG : estimateShotXG(shooter);
+  if (header && forcedXG < 0.0F)
+  {
+    xg *= MatchTuning::Shooting::HEADER_XG_FACTOR;
+  }
   xg = std::clamp(xg, MatchTuning::Shooting::MIN_GOAL_PROBABILITY,
-                  forcedXG >= 0.0f ? MatchTuning::Shooting::MAX_SET_PIECE_XG
+                  forcedXG >= 0.0F ? MatchTuning::Shooting::MAX_SET_PIECE_XG
                                    : MatchTuning::Shooting::MAX_OPEN_PLAY_XG);
 
   // The brain picks the spot; the shooter's body then misses it by an error
@@ -3356,14 +4061,16 @@ float MatchEngine::strikeShot(MatchPlayer& shooter, float forcedXG, bool header,
   float spread = shotSpread(shooter, header, penalty, freeKick, metres);
   // Play mode: the human's aim and power (no effect on AI shots).
   if (controlledShot.active)
+  {
     shapeControlledShot(shooter, HALF_GOAL, inset, aimY, aimZ, spread);
+  }
   // Play mode's power, or a drill's share of his power (as a scale on the
   // usual share).
   float powerScale = controlledShot.active
                          ? MatchTuning::Control::SHOT_SPEED_MIN_SCALE +
-                               MatchTuning::Control::SHOT_SPEED_POWER_GAIN *
-                                   controlledShot.power
-                         : 1.0f;
+                               (MatchTuning::Control::SHOT_SPEED_POWER_GAIN *
+                                controlledShot.power)
+                         : 1.0F;
   if (forcedShotPower)
   {
     powerScale = *forcedShotPower / MatchTuning::Shooting::DEFAULT_POWER_SHARE;
@@ -3381,10 +4088,8 @@ float MatchEngine::strikeShot(MatchPlayer& shooter, float forcedXG, bool header,
   const bool onTarget =
       std::abs(crossingY) <
           HALF_GOAL - MatchTuning::Units::BALL_RADIUS_METRES &&
-      crossingZ < pitch.goal.crossbar -
-                      MatchTuning::Units::BALL_RADIUS_METRES;
-  const float targetY =
-      pitch.atY(MatchTuning::Pitch::CENTRE) + crossingY;
+      crossingZ < pitch.goal.crossbar - MatchTuning::Units::BALL_RADIUS_METRES;
+  const float targetY = pitch.atY(MatchTuning::Pitch::CENTRE) + crossingY;
 
   const float speed = strike.speed;
   const PitchPoint goalPoint{goalX, targetY};
@@ -3395,10 +4100,9 @@ float MatchEngine::strikeShot(MatchPlayer& shooter, float forcedXG, bool header,
   const float goalDistance = distance(origin, goalPoint);
   clearFlightState();
   launchBall(shooter, from, strike.launchToward.value_or(goalPoint), speed,
-             strike.launchSet
-                 ? strike.verticalSpeed
-                 : loftVerticalSpeed(goalDistance, speed, startHeight,
-                                     crossingZ),
+             strike.launchSet ? strike.verticalSpeed
+                              : loftVerticalSpeed(goalDistance, speed,
+                                                  startHeight, crossingZ),
              strike.spin);
   noteShotFlight(shooter, onTarget, xg, targetY, crossingZ, header, penalty);
   return xg;
@@ -3412,10 +4116,21 @@ void MatchEngine::takeShot(MatchPlayer& shooter, float forcedXG, bool header,
     // Held for the sweep. The Binturong body picks his spot now, as he
     // decides (his body turns to it while it is held); the Aardvark body
     // when it is struck.
-    PendingStrike held{PendingStrike::Kind::SHOT, &shooter, {}, false, forcedXG};
+    PendingStrike held{.kind = PendingStrike::Kind::SHOT,
+                       .striker = &shooter,
+                       .pass = {},
+                       .forceLofted = false,
+                       .forcedXG = forcedXG,
+                       .shotAim = {},
+                       .receiverSlot = {}};
     if (getBody(shooter.isHomeTeam) == BodyId::BINTURONG)
+    {
       held.shotAim = pickShotAim(shooter, false, false, false);
-    if (holdStrikeForSweep(held)) return;
+    }
+    if (holdStrikeForSweep(held))
+    {
+      return;
+    }
     // Not held after all: struck now (at the spot just picked, if any).
     aim = held.shotAim;
   }
@@ -3429,46 +4144,70 @@ void MatchEngine::takeShot(MatchPlayer& shooter, float forcedXG, bool header,
   const bool insideBox = inPenaltyArea(shooter.position, !shooter.isHomeTeam);
   const bool setPiece =
       penalty || restartIsSetPiece ||
-      (setPiecePhaseRemaining > 0.0f && shooter.isHomeTeam == setPieceHome);
+      (setPiecePhaseRemaining > 0.0F && shooter.isHomeTeam == setPieceHome);
   noteShotSetPieceOrigin(setPiece);
   if (shooter.isHomeTeam)
   {
     ++stats.homeShots;
     stats.homeShotXG += xg;
-    if (insideBox) ++stats.homeShotsInsideBox;
-    if (header) ++stats.homeHeadedShots;
-    if (setPiece) ++stats.homeSetPieceShots;
+    if (insideBox)
+    {
+      ++stats.homeShotsInsideBox;
+    }
+    if (header)
+    {
+      ++stats.homeHeadedShots;
+    }
+    if (setPiece)
+    {
+      ++stats.homeSetPieceShots;
+    }
   }
   else
   {
     ++stats.awayShots;
     stats.awayShotXG += xg;
-    if (insideBox) ++stats.awayShotsInsideBox;
-    if (header) ++stats.awayHeadedShots;
-    if (setPiece) ++stats.awaySetPieceShots;
+    if (insideBox)
+    {
+      ++stats.awayShotsInsideBox;
+    }
+    if (header)
+    {
+      ++stats.awayHeadedShots;
+    }
+    if (setPiece)
+    {
+      ++stats.awaySetPieceShots;
+    }
   }
 
   // Credit the pass that created the chance.
   prepareShotAssist(shooter, header);
-  if (MatchPlayer* creator = findMatchPlayer(getPossessionHistory().shotAssistCandidate);
-      creator && creator->isHomeTeam == shooter.isHomeTeam)
+  if (MatchPlayer* creator =
+          findMatchPlayer(getPossessionHistory().shotAssistCandidate);
+      (creator != nullptr) && creator->isHomeTeam == shooter.isHomeTeam)
   {
     ++statsOf(*creator).keyPasses;
   }
   trackShot(shooter, xg, setPiece, header, penalty);
 
   MatchEvent& event = logEvent(MatchEventType::SHOT, shooter);
-  if (header) event.detail = MatchEventDetail::HEADER;
+  if (header)
+  {
+    event.detail = MatchEventDetail::HEADER;
+  }
   event.xg = xg;
   event.position = shooter.position;
-  if (getRecorder())
+  if (getRecorder() != nullptr)
   {
     // Aimed where the ball's flight crosses the goal line.
-    const float goalX = pitch.atX(shooter.isHomeTeam ? 1.0f : 0.0f);
+    const float goalX = pitch.atX(shooter.isHomeTeam ? 1.0F : 0.0F);
     const Vector2F velocity = ball.velocity;
     PitchPoint aim{goalX, ball.position.y};
     if (std::abs(velocity.x) > EPSILON)
+    {
       aim.y += velocity.y * (goalX - ball.position.x) / velocity.x;
+    }
     MatchActionRecord action;
     action.kind = MatchActionKind::SHOT;
     action.header = header;
@@ -3479,33 +4218,35 @@ void MatchEngine::takeShot(MatchPlayer& shooter, float forcedXG, bool header,
   planGoalkeeperDive(!shooter.isHomeTeam, penalty);
 }
 
-void MatchEngine::launchBall(const MatchPlayer& kicker,
-                             const BallRelease& from, PitchPoint target,
-                             float horizontalSpeed, float verticalSpeed,
-                             BallSpin spin)
+void MatchEngine::launchBall(const MatchPlayer& kicker, const BallRelease& from,
+                             PitchPoint target, float horizontalSpeed,
+                             float verticalSpeed, BallSpin spin)
 {
   // Where and how high it leaves are his body's (releaseFrom); this only
   // sets it off.
   const Vector2F direction = metricDirection(from.position, target);
-  sendBallOff(kicker, from.position, from.z,
-              {direction.x * horizontalSpeed, direction.y * horizontalSpeed},
-              verticalSpeed, spin,
-              MatchTuning::Passing::KICKER_LOCKOUT_SECONDS);
+  sendBallOff(
+      kicker, from.position, from.z,
+      {.x = direction.x * horizontalSpeed, .y = direction.y * horizontalSpeed},
+      verticalSpeed, spin, MatchTuning::Passing::KICKER_LOCKOUT_SECONDS);
   releasePossession(kicker);
 }
 
 bool MatchEngine::wantsDetail() const
 {
   const MatchRecorder* recorder = getRecorder();
-  return recorder && recorder->wantsDetail();
+  return (recorder != nullptr) && recorder->wantsDetail();
 }
 
 void MatchEngine::reportKick(MatchActionRecord& action,
                              const MatchPlayer& kicker, PitchPoint target) const
 {
   MatchRecorder* recorder = getRecorder();
-  if (!recorder) return;
-  action.player = kicker.player ? kicker.player->getId() : 0;
+  if (recorder == nullptr)
+  {
+    return;
+  }
+  action.player = (kicker.player != nullptr) ? kicker.player->getId() : 0;
   action.homeTeam = kicker.isHomeTeam;
   action.from = ball.position;
   action.to = target;
@@ -3524,28 +4265,42 @@ void MatchEngine::planPenaltyDiveBinturong(MatchPlayer& keeper, double strikeAt)
   using D = MatchTuning::KeeperDive;
   GoalkeeperControl& control = keepers[keeper.isHomeTeam ? 0 : 1];
   control.penaltyGuessed = true;
-  if (keeper.fallen || control.dive.active) return;
+  if (keeper.fallen || control.dive.active)
+  {
+    return;
+  }
   control.state = GoalkeeperState::DIVE;
-  control.timer = 0.0f;
+  control.timer = 0.0F;
   const float guess = choosePenaltyGuess(keeper);
-  if (guess == 0.0f) return;
-  const Vector2F side = normalized({0.0f, guess});
-  const float height = randomFloat(0.0f, 1.0f) < D::PENALTY_HIGH_CHANCE ? D::PENALTY_HIGH_METRES
-                                                                       : D::PENALTY_LOW_METRES;
+  if (guess == 0.0F)
+  {
+    return;
+  }
+  const Vector2F side = normalized({.x = 0.0F, .y = guess});
+  const float height = randomFloat(0.0F, 1.0F) < D::PENALTY_HIGH_CHANCE
+                           ? D::PENALTY_HIGH_METRES
+                           : D::PENALTY_LOW_METRES;
   const float spread =
-      alongStatScale(keeper.goalkeeping, D::PENALTY_LEAD_SPREAD_POOR, D::PENALTY_LEAD_SPREAD_BEST);
-  const float lead = D::PENALTY_LEAD_SECONDS + spread * randomFloat(-1.0f, 1.0f);
+      alongStatScale(keeper.goalkeeping, D::PENALTY_LEAD_SPREAD_POOR,
+                     D::PENALTY_LEAD_SPREAD_BEST);
+  const float lead =
+      D::PENALTY_LEAD_SECONDS + (spread * randomFloat(-1.0F, 1.0F));
   control.dive.decidedFor = getPossessionState().pathSince;
-  planKeeperDiveBinturong(keeper, control.dive, strikeAt - static_cast<double>(lead),
-                          Point3F{side.x * D::PENALTY_SIDE_METRES, side.y * D::PENALTY_SIDE_METRES,
-                                  height});
+  planKeeperDiveBinturong(keeper, control.dive,
+                          strikeAt - static_cast<double>(lead),
+                          Point3F{.x = side.x * D::PENALTY_SIDE_METRES,
+                                  .y = side.y * D::PENALTY_SIDE_METRES,
+                                  .z = height});
 }
 
 void MatchEngine::planGoalkeeperDive(bool defendingHome, bool penalty)
 {
   MatchPlayer* keeper = findGoalkeeper(defendingHome);
   // Down on the floor (a collision), he can't dive.
-  if (!keeper || keeper->fallen) return;
+  if ((keeper == nullptr) || keeper->fallen)
+  {
+    return;
+  }
   GoalkeeperControl& control = keepers[defendingHome ? 0 : 1];
   if (getBody(defendingHome) == BodyId::BINTURONG)
   {
@@ -3554,16 +4309,22 @@ void MatchEngine::planGoalkeeperDive(bool defendingHome, bool penalty)
     // guess was made as the taker set off (step 9); with no run-up, now.
     const bool guessed = control.penaltyGuessed;
     control.penaltyGuessed = false;
-    if (control.dive.active) return;
+    if (control.dive.active)
+    {
+      return;
+    }
     control.state = GoalkeeperState::DIVE;
-    control.timer = 0.0f;
-    if (penalty && !guessed) planPenaltyDiveBinturong(*keeper, getSimulatedSeconds());
+    control.timer = 0.0F;
+    if (penalty && !guessed)
+    {
+      planPenaltyDiveBinturong(*keeper, getSimulatedSeconds());
+    }
     control.penaltyGuessed = false;
     return;
   }
   control.state = GoalkeeperState::DIVE;
-  control.timer = 0.0f;
-  control.lateralVelocity = 0.0f;
+  control.timer = 0.0F;
+  control.lateralVelocity = 0.0F;
   if (penalty)
   {
     // From 11 m the keeper must commit at the kick.
@@ -3571,7 +4332,7 @@ void MatchEngine::planGoalkeeperDive(bool defendingHome, bool penalty)
     control.diveTargetY =
         pitch.atY(MatchTuning::Pitch::CENTRE) +
         (guess * MatchTuning::Goalkeeper::PENALTY_DIVE_METRES);
-    control.reactionRemaining = 0.0f;
+    control.reactionRemaining = 0.0F;
     return;
   }
 
@@ -3611,22 +4372,31 @@ void MatchEngine::updateBall(float dt)
     {
       // A touched ball (owned but rolling free) keeps moving like a loose
       // one.
-      if ((getPossessionAttachment() && !hasTouchClaim()) || state != MatchState::PLAYING)
+      if (((getPossessionAttachment() != nullptr) && !hasTouchClaim()) ||
+          state != MatchState::PLAYING)
+      {
         return;
-      substepStretchFromShare = 1.0f - remaining / substep;
+      }
+      substepStretchFromShare = 1.0F - remaining / substep;
       const std::optional<float> along = moveBallStretch(remaining);
-      if (!along) break;
-      remaining *= 1.0f - *along;
+      if (!along)
+      {
+        break;
+      }
+      remaining *= 1.0F - *along;
     }
   }
 }
 
 MatchEngine::BallMotion MatchEngine::ballMotion() const
 {
-  return {ball.position, ball.z,     ball.velocity,
-          ball.velocityZ, ball.spin, getPossessionState().isAerialDelivery};
+  return {.position = ball.position,
+          .z = ball.z,
+          .velocity = ball.velocity,
+          .velocityZ = ball.velocityZ,
+          .spin = ball.spin,
+          .isAerialDelivery = getPossessionState().isAerialDelivery};
 }
-
 
 std::optional<float> MatchEngine::moveBallStretch(float seconds)
 {
@@ -3640,20 +4410,33 @@ std::optional<float> MatchEngine::moveBallStretch(float seconds)
   // first.
   const auto dummy = dummyInPath(seconds);
   const bool frameFirst = frame && (!body || *frame <= body->second);
-  float share = frameFirst ? *frame : body ? body->second : 1.0f;
+  float share = frameFirst ? *frame : body ? body->second : 1.0F;
   const bool dummyFirst = dummy && ((!body && !frame) || dummy->second < share);
-  if (dummyFirst) share = dummy->second;
-  if (const std::optional<float> along = moveBallPart(seconds * share))
-    return *along * share;
-  if ((!body && !frame && !dummy) || state != MatchState::PLAYING ||
-      (getPossessionAttachment() && !hasTouchClaim()))
-    return std::nullopt;
   if (dummyFirst)
+  {
+    share = dummy->second;
+  }
+  if (const std::optional<float> along = moveBallPart(seconds * share))
+  {
+    return *along * share;
+  }
+  if ((!body && !frame && !dummy) || state != MatchState::PLAYING ||
+      ((getPossessionAttachment() != nullptr) && !hasTouchClaim()))
+  {
+    return std::nullopt;
+  }
+  if (dummyFirst)
+  {
     bounceOffDummy(dummy->first);
+  }
   else if (frameFirst)
+  {
     bounceOffFrame();
+  }
   else
+  {
     bounceOffFallen(players[body->first]);
+  }
   return share;
 }
 
@@ -3688,7 +4471,8 @@ std::optional<float> MatchEngine::moveBallPart(float seconds)
   // A shot that has died (smothered, spent or trickling) is a loose ball;
   // against a Binturong body it stays the shot until someone controls it,
   // played like any loose ball once slow (shot block plan step 4).
-  if (getPossessionState().isShot && getPossessionState().shotElapsedSeconds > 0.3f &&
+  if (getPossessionState().isShot &&
+      getPossessionState().shotElapsedSeconds > 0.3F &&
       getBody(!getPossessionState().shotByHome) != BodyId::BINTURONG &&
       length(ball.velocity) < MatchTuning::Ball::DEAD_SHOT_SPEED)
   {
@@ -3698,36 +4482,64 @@ std::optional<float> MatchEngine::moveBallPart(float seconds)
   {
     advanceShotFlightClock(seconds);
     MatchPlayer* keeper = findGoalkeeper(!getPossessionState().shotByHome);
+    if ((keeper != nullptr) && getBody(keeper->isHomeTeam) == BodyId::AARDVARK)
+    {
+      // Credit launch-tick flight before the first body movement update.
+      // Later ticks age this clock in diveGoalkeeperAardvark instead.
+      auto& control = keepers[keeper->isHomeTeam ? 0 : 1];
+      if (control.state == GoalkeeperState::DIVE && control.timer == 0.0F)
+      {
+        control.reactionRemaining =
+            std::max(0.0F, control.reactionRemaining - seconds);
+      }
+    }
     // A Binturong keeper has no save roll: his body and hands meet it in
     // the sweep (goalkeeper plan steps 1 and 2).
-    if (!getPossessionState().shotSaveResolved && keeper && !keeper->fallen &&
-        getBody(keeper->isHomeTeam) != BodyId::BINTURONG)
+    if (!getPossessionState().shotSaveResolved && (keeper != nullptr) &&
+        !keeper->fallen && getBody(keeper->isHomeTeam) != BodyId::BINTURONG)
     {
       // Resolve the save when the ball reaches the keeper's plane.
       const float before = substepBallPosition.x - keeper->position.x;
       const float after = ball.position.x - keeper->position.x;
-      if ((before > 0.0f) != (after > 0.0f) || std::abs(after) <= EPSILON)
+      if ((before > 0.0F) != (after > 0.0F) || std::abs(after) <= EPSILON)
+      {
         resolveShotAtGoalkeeper(*keeper);
-      if (getPossessionAttachment() || state != MatchState::PLAYING) return std::nullopt;
+      }
+      if ((getPossessionAttachment() != nullptr) ||
+          state != MatchState::PLAYING)
+      {
+        return std::nullopt;
+      }
     }
   }
   // Heading out of play: a Binturong body that meets it before the line
   // plays it there (the pitch is convex, so a contact point still on it
   // comes before the line); otherwise it is out. A walled pitch sends it
   // back off the walls instead.
-  if (pitch.edge == PitchEdge::WALLS) bounceOffWalls();
+  if (pitch.edge == PitchEdge::WALLS)
+  {
+    bounceOffWalls();
+  }
   const bool headingOut = !ballInPlayAt(ball.position);
   if (headingOut)
   {
     sweep(true);
     if (contactAlong || state != MatchState::PLAYING ||
-        (getPossessionAttachment() && !hasTouchClaim()))
+        ((getPossessionAttachment() != nullptr) && !hasTouchClaim()))
+    {
       return contactAlong;
+    }
   }
   checkOutOfBounds();
-  if (state != MatchState::PLAYING) return std::nullopt;
+  if (state != MatchState::PLAYING)
+  {
+    return std::nullopt;
+  }
   // A throw-in still on its way in: nobody plays it off the pitch.
-  if (getPossessionState().throwEntering) return contactAlong;
+  if (getPossessionState().throwEntering)
+  {
+    return contactAlong;
+  }
   sweep(false);
   return contactAlong;
 }
@@ -3735,9 +4547,15 @@ std::optional<float> MatchEngine::moveBallPart(float seconds)
 void MatchEngine::resolveShotAtGoalkeeper(MatchPlayer& keeper)
 {
   noteKeeperShotResolved();
-  if (!getPossessionState().shotOnTarget) return;
+  if (!getPossessionState().shotOnTarget)
+  {
+    return;
+  }
   const SaveAttempt attempt = attemptSave(keeper);
-  if (!attempt.saved) return;
+  if (!attempt.saved)
+  {
+    return;
+  }
   const float stretch = attempt.stretch;
   const float speedExcess = attempt.speedExcess;
   const float crossingHeight = attempt.crossingHeight;
@@ -3759,7 +4577,9 @@ void MatchEngine::parryShot(MatchPlayer& keeper, bool overTheBar)
   MatchEvent& event = logEvent(MatchEventType::SAVE, keeper);
   event.detail =
       overTheBar ? MatchEventDetail::TIPPED_BEHIND : MatchEventDetail::PARRIED;
-  event.secondaryPlayerId = getPossessionHistory().lastShooter ? getPossessionHistory().lastShooter->getId() : 0;
+  event.secondaryPlayerId = (getPossessionHistory().lastShooter != nullptr)
+                                ? getPossessionHistory().lastShooter->getId()
+                                : 0;
   finishKeeperParry(keeper);
   if (overTheBar)
   {
@@ -3768,36 +4588,41 @@ void MatchEngine::parryShot(MatchPlayer& keeper, bool overTheBar)
     return;
   }
   // The ball spills back into the box where a rebound can be contested.
-  const float outward = keeper.isHomeTeam ? 1.0f : -1.0f;
+  const float outward = keeper.isHomeTeam ? 1.0F : -1.0F;
   const float speed =
       length(ball.velocity) * MatchTuning::Goalkeeper::PARRY_SPEED_SHARE;
   const Spill spill = parrySpill(keeper, speed);
   notePathChange();
   ball.velocity = spill.velocity;
   ball.velocityZ = spill.verticalSpeed;
-  ball.position.x = keeper.position.x + pitch.atX(outward * 0.004f);
-  noteContactActor(keeper.player, MatchTuning::Passing::KICKER_LOCKOUT_SECONDS, true);
+  ball.position.x = keeper.position.x + pitch.atX(outward * 0.004F);
+  noteContactActor(keeper.player, MatchTuning::Passing::KICKER_LOCKOUT_SECONDS,
+                   true);
 }
-
-
 
 void MatchEngine::resolveLooseBall(bool beforeLine)
 {
   // A claimed ball rolls free: its owner plays it on once he has collected
   // it (until then updateTouch collects it), and opponents can play it.
-  if (getPossessionAttachment() && !hasTouchClaim()) return;
+  if ((getPossessionAttachment() != nullptr) && !hasTouchClaim())
+  {
+    return;
+  }
   const MatchPlayer* touchOwner =
       hasTouchClaim() ? findMatchPlayer(getPossessionAttachment()) : nullptr;
   using B = MatchTuning::Ball;
   // While his foot could be on it (within his reach, not behind him) it is
   // his: an opponent has to tackle him for it (chooseChallenge), not just
   // touch it away.
-  const float ownerGap =
-      touchOwner ? distance(touchOwner->position, ball.position) : 0.0f;
-  const bool ownerHasIt = touchOwner && ballInReach(*touchOwner);
-  if (ownerHasIt && !isTouchCollected() && possessionId == PossessionId::AARDVARK)
+  const float ownerGap = (touchOwner != nullptr)
+                             ? distance(touchOwner->position, ball.position)
+                             : 0.0F;
+  const bool ownerHasIt = (touchOwner != nullptr) && ballInReach(*touchOwner);
+  if (ownerHasIt && !isTouchCollected() &&
+      possessionId == PossessionId::AARDVARK)
   {
-    observePossessionGate(*touchOwner, PossessionContactGate::OWNER_NOT_COLLECTED);
+    observePossessionGate(*touchOwner,
+                          PossessionContactGate::OWNER_NOT_COLLECTED);
     return;
   }
 
@@ -3807,48 +4632,61 @@ void MatchEngine::resolveLooseBall(bool beforeLine)
   const auto [lowestHead, highestHead] = headLineRange();
   // Above every head line, only a head plays it; one that doesn't still
   // meets his body below (shot block plan §3i).
-  const bool bodiesOnly = !getPossessionState().isShot && endHeight > highestHead;
+  const bool bodiesOnly =
+      !getPossessionState().isShot && endHeight > highestHead;
   if (bodiesOnly)
   {
     // In the air it is claimed or contested at the line's far side, as
     // ever; a lone side's header is met where it passes his head.
-    if (!beforeLine && (resolveAerialContest() || headInSweep())) return;
-    if (state != MatchState::PLAYING || (getPossessionAttachment() && !hasTouchClaim())) return;
+    if (!beforeLine && (resolveAerialContest() || headInSweep()))
+    {
+      return;
+    }
+    if (state != MatchState::PLAYING ||
+        ((getPossessionAttachment() != nullptr) && !hasTouchClaim()))
+    {
+      return;
+    }
   }
   // Above someone's head line on this stretch: his head may meet it.
   if (!getPossessionState().isShot && !beforeLine &&
-      std::max(substepBallZ, endHeight) >
-          lowestHead &&
-      headInSweep())
+      std::max(substepBallZ, endHeight) > lowestHead && headInSweep())
+  {
     return;
+  }
 
   // Swept contact over the last sub-step: every player whose reach the ball
   // passed through is a candidate, taken in the order the ball met them.
   const Vector2F start = asVector(substepBallPosition);
   const Vector2F end = asVector(ball.position);
-  const Vector2F segment{end.x - start.x, end.y - start.y};
-  const float segmentSquared = segment.x * segment.x + segment.y * segment.y;
+  const Vector2F segment{.x = end.x - start.x, .y = end.y - start.y};
+  const float segmentSquared =
+      (segment.x * segment.x) + (segment.y * segment.y);
   const float startHeight = substepBallZ;
   const float ballSpeed = length(ball.velocity);
   // A ball that has slowed down can be collected by anyone again, including
   // players it flew past earlier.
-  if ((!getPossessionState().isShot || getBody(!getPossessionState().shotByHome) == BodyId::BINTURONG) &&
+  if ((!getPossessionState().isShot ||
+       getBody(!getPossessionState().shotByHome) == BodyId::BINTURONG) &&
       ballSpeed <= B::MAX_HEAVY_TOUCH_SPEED)
+  {
     ball.touchAttempts = 0;
+  }
   // Handling is allowed in the own area, except for a team-mate's pass.
   const auto handsAllowed = [this](const MatchPlayer& player)
   {
     return player.isGoalkeeper &&
            inPenaltyArea(player.position, player.isHomeTeam) &&
-           !(getPossessionState().isPass && getPossessionState().passByHome == player.isHomeTeam);
+           !(getPossessionState().isPass &&
+             getPossessionState().passByHome == player.isHomeTeam);
   };
   struct Contact
   {
     std::size_t slot = 0;
-    float along = 0.0f;
-    float gap = 0.0f;
-    float height = 0.0f;
-    float reach = 0.0f;
+    float along = 0.0F;
+    float gap = 0.0F;
+    float height = 0.0F;
+    float reach = 0.0F;
     ShotBodyPart part = ShotBodyPart::TORSO;
     /** A shot meeting a Binturong body: where and how (shot block plan). */
     ShotBodyHit hit{};
@@ -3869,8 +4707,8 @@ void MatchEngine::resolveLooseBall(bool beforeLine)
   // the ankle's reach, with its miss: shot block plan §3d.)
   // (Any moving ball meets a Binturong body too: pass block plan.)
   const float shotLegBound = MatchTuning::ShotBlock::REACH_METRES +
-                             MatchTuning::ShotBlock::RUSHED_ERROR_FACTOR *
-                                 MatchTuning::ShotBlock::ERROR_METRES_POOR +
+                             (MatchTuning::ShotBlock::RUSHED_ERROR_FACTOR *
+                              MatchTuning::ShotBlock::ERROR_METRES_POOR) +
                              MatchTuning::Stride::FOOT_LENGTH +
                              MatchTuning::Units::BALL_RADIUS_METRES;
   // Pass block plan: where each player's body meets a ball he doesn't play
@@ -3881,38 +4719,51 @@ void MatchEngine::resolveLooseBall(bool beforeLine)
   std::uint32_t bodyOnlyIfDeclined = 0;
   // Within reach but in his dead zone (for the lost-wait split).
   std::uint32_t behindReach = 0;
-  const MatchPlayer* lastPlayedBy = findMatchPlayer(getLastPossessionAttachment());
+  const MatchPlayer* lastPlayedBy =
+      findMatchPlayer(getLastPossessionAttachment());
   // A ball his head can meet on this stretch is his head's (headInSweep,
   // which may let it come closer first): not his body's.
   const int substepsPerStepHere =
       MatchTuning::Timing::BALL_SUBSTEPS * static_cast<int>(stepTicks);
-  const float stepShareHere =
-      1.0f - static_cast<float>(substepsLeftInStep) / static_cast<float>(substepsPerStepHere);
+  const float stepShareHere = 1.0F - (static_cast<float>(substepsLeftInStep) /
+                                      static_cast<float>(substepsPerStepHere));
   const auto headHasIt = [&](const MatchPlayer& player, std::size_t slot)
   {
-    if (player.isGoalkeeper || player.trapTimer > 0.0f ||
-        (possessionId == PossessionId::AARDVARK && hasTouchClaim() && getPossessionAttachment() == player.player))
+    if (player.isGoalkeeper || player.trapTimer > 0.0F ||
+        (possessionId == PossessionId::AARDVARK && hasTouchClaim() &&
+         getPossessionAttachment() == player.player))
+    {
       return false;
-    const PitchPoint was =
-        slot < previousPlayerPositions.size() ? previousPlayerPositions[slot] : player.position;
-    const Vector2F at = asVector(PitchPoint{was.x + (player.position.x - was.x) * stepShareHere,
-                                  was.y + (player.position.y - was.y) * stepShareHere});
+    }
+    const PitchPoint was = slot < previousPlayerPositions.size()
+                               ? previousPlayerPositions[slot]
+                               : player.position;
+    const Vector2F at = asVector(
+        PitchPoint{was.x + ((player.position.x - was.x) * stepShareHere),
+                   was.y + ((player.position.y - was.y) * stepShareHere)});
     const float along = segmentSquared > EPSILON
-                            ? std::clamp(((at.x - start.x) * segment.x + (at.y - start.y) * segment.y) /
+                            ? std::clamp(((at.x - start.x) * segment.x +
+                                          (at.y - start.y) * segment.y) /
                                              segmentSquared,
-                                         0.0f, 1.0f)
-                            : 0.0f;
-    const Vector2F toBall{start.x + segment.x * along - at.x, start.y + segment.y * along - at.y};
+                                         0.0F, 1.0F)
+                            : 0.0F;
+    const Vector2F toBall{.x = start.x + (segment.x * along) - at.x,
+                          .y = start.y + (segment.y * along) - at.y};
     const float gap = length(toBall);
-    return headMeetBinturong(player,
-                             gap > EPSILON ? Vector2F{toBall.x / gap, toBall.y / gap} : Vector2F{},
-                             gap, startHeight + (endHeight - startHeight) * along,
-                             feetAtBinturong(player, ballStepSeconds * (1.0f - stepShareHere)))
+    return headMeetBinturong(
+               player,
+               gap > EPSILON
+                   ? Vector2F{.x = toBall.x / gap, .y = toBall.y / gap}
+                   : Vector2F{},
+               gap, startHeight + ((endHeight - startHeight) * along),
+               feetAtBinturong(player,
+                               ballStepSeconds * (1.0F - stepShareHere)))
         .has_value();
   };
-  const float maxReach = std::max({B::GOALKEEPER_CONTROL_RADIUS_METRES,
-                                   touchKnobs[TouchKnob::FEET_REACH], shotLegBound});
-  const float reachBound = maxReach + 0.01f;
+  const float maxReach =
+      std::max({B::GOALKEEPER_CONTROL_RADIUS_METRES,
+                touchKnobs[TouchKnob::FEET_REACH], shotLegBound});
+  const float reachBound = maxReach + 0.01F;
   const float boundMinX = std::min(start.x, end.x) - reachBound;
   const float boundMaxX = std::max(start.x, end.x) + reachBound;
   const float boundMinY = std::min(start.y, end.y) - reachBound;
@@ -3927,7 +4778,9 @@ void MatchEngine::resolveLooseBall(bool beforeLine)
     if ((position.x < boundMinX || position.x > boundMaxX ||
          position.y < boundMinY || position.y > boundMaxY) &&
         !diving)
+    {
       continue;
+    }
     // A shot locks no Binturong player out (shot block plan step 4): once
     // it has slowed, or (a team-mate) if it is off target, he plays it like
     // any loose ball. Otherwise it meets his body (step 1; a keeper too, in
@@ -3936,69 +4789,96 @@ void MatchEngine::resolveLooseBall(bool beforeLine)
     // (Slow as it comes at him: against his own motion, so he plays a ball
     // he is running with rather than bodying it on.)
     const bool binturong = getBody(player.isHomeTeam) == BodyId::BINTURONG;
-    const float comingAt = length(Vector2F{ball.velocity.x - player.velocity.x,
-                                           ball.velocity.y - player.velocity.y});
+    const float comingAt =
+        length(Vector2F{.x = ball.velocity.x - player.velocity.x,
+                        .y = ball.velocity.y - player.velocity.y});
     const bool shotAsLoose =
         getPossessionState().isShot && binturong &&
         (comingAt <= B::MAX_HEAVY_TOUCH_SPEED ||
-         (player.isHomeTeam == getPossessionState().shotByHome && !getPossessionState().shotOnTarget));
+         (player.isHomeTeam == getPossessionState().shotByHome &&
+          !getPossessionState().shotOnTarget));
     // (A keeper in a dive meets even a slow one with his body only.)
-    const bool shotIntoBody = getPossessionState().isShot && (!shotAsLoose || diving) && binturong;
+    const bool shotIntoBody =
+        getPossessionState().isShot && (!shotAsLoose || diving) && binturong;
     // Any other moving ball (pass block plan): it meets his torso and his
     // stride (an opponent's, also a leg put out once he has reacted)
     // whatever he is doing, unless it is his own ball, it has just left his
     // foot, it is his hands' (a keeper in his area) or it comes at him slow
     // enough to play like any loose ball (as a shot does).
     // (A keeper in a dive: his body, whatever his hands may do.)
-    if (!getPossessionState().isShot && binturong && active(player) && !player.fallen &&
-        (!handsAllowed(player) || diving || !keeperCanGatherBinturong(player)) &&
+    if (!getPossessionState().isShot && binturong && active(player) &&
+        !player.fallen &&
+        (!handsAllowed(player) || diving ||
+         !keeperCanGatherBinturong(player)) &&
         comingAt > B::MAX_HEAVY_TOUCH_SPEED &&
-        !(touchOwner && (ownerHasIt || &player == touchOwner)) &&
-        !(ball.kickerLockout > 0.0f && getLegacyContactActor() == player.player) &&
+        !((touchOwner != nullptr) && (ownerHasIt || &player == touchOwner)) &&
+        !(ball.kickerLockout > 0.0F &&
+          getLegacyContactActor() == player.player) &&
         !headHasIt(player, slot))
     {
       const float bodyAlong =
           segmentSquared > EPSILON
-              ? std::clamp(((position.x - start.x) * segment.x + (position.y - start.y) * segment.y) /
+              ? std::clamp(((position.x - start.x) * segment.x +
+                            (position.y - start.y) * segment.y) /
                                segmentSquared,
-                           0.0f, 1.0f)
-              : 0.0f;
-      const float bodyGap = std::hypot(position.x - (start.x + segment.x * bodyAlong),
-                                       position.y - (start.y + segment.y * bodyAlong));
-      const bool teammate = lastPlayedBy && lastPlayedBy->isHomeTeam == player.isHomeTeam;
+                           0.0F, 1.0F)
+              : 0.0F;
+      const float bodyGap =
+          std::hypot(position.x - (start.x + segment.x * bodyAlong),
+                     position.y - (start.y + segment.y * bodyAlong));
+      const bool teammate = (lastPlayedBy != nullptr) &&
+                            lastPlayedBy->isHomeTeam == player.isHomeTeam;
       // (Met on his head where his head could head it: his head's.)
       const auto headCanHeadAt = [&](const ShotBodyHit& hit)
       {
-        if (hit.part != ShotBodyPart::HEAD || player.isGoalkeeper || player.trapTimer > 0.0f)
+        if (hit.part != ShotBodyPart::HEAD || player.isGoalkeeper ||
+            player.trapTimer > 0.0F)
+        {
           return false;
+        }
         const auto [fromShare, toShare] = stretchStepSharesBinturong();
-        const float share = fromShare + (toShare - fromShare) * hit.share;
-        const PitchPoint was = slot < previousPlayerPositions.size() ? previousPlayerPositions[slot]
-                                                                   : player.position;
-        const Vector2F him = asVector(PitchPoint{was.x + (player.position.x - was.x) * share,
-                                       was.y + (player.position.y - was.y) * share});
-        const Vector2F toBall{start.x + segment.x * hit.share - him.x,
-                              start.y + segment.y * hit.share - him.y};
+        const float share = fromShare + ((toShare - fromShare) * hit.share);
+        const PitchPoint was = slot < previousPlayerPositions.size()
+                                   ? previousPlayerPositions[slot]
+                                   : player.position;
+        const Vector2F him =
+            asVector(PitchPoint{was.x + ((player.position.x - was.x) * share),
+                                was.y + ((player.position.y - was.y) * share)});
+        const Vector2F toBall{.x = start.x + (segment.x * hit.share) - him.x,
+                              .y = start.y + (segment.y * hit.share) - him.y};
         const float gap = length(toBall);
         return headMeetBinturong(
-                   player, gap > EPSILON ? Vector2F{toBall.x / gap, toBall.y / gap} : Vector2F{},
-                   gap, startHeight + (endHeight - startHeight) * hit.share,
-                   feetAtBinturong(player, ballStepSeconds * (1.0f - share)))
+                   player,
+                   gap > EPSILON
+                       ? Vector2F{.x = toBall.x / gap, .y = toBall.y / gap}
+                       : Vector2F{},
+                   gap, startHeight + ((endHeight - startHeight) * hit.share),
+                   feetAtBinturong(player, ballStepSeconds * (1.0F - share)))
             .has_value();
       };
       if (bodyGap <= shotLegBound || diving)
-        if (const auto hit = shotMeetsBodyBinturong(player, slot, {start.x, start.y, startHeight},
-                                                    {end.x, end.y, endHeight}, !teammate);
+      {
+        if (const auto hit = shotMeetsBodyBinturong(
+                player, slot, {.x = start.x, .y = start.y, .z = startHeight},
+                {.x = end.x, .y = end.y, .z = endHeight}, !teammate);
             hit && !headCanHeadAt(*hit) &&
-            (!beforeLine || ballInPlayAt(asPoint({start.x + segment.x * hit->share,
-                                                  start.y + segment.y * hit->share}))))
+            (!beforeLine ||
+             ballInPlayAt(asPoint({.x = start.x + (segment.x * hit->share),
+                                   .y = start.y + (segment.y * hit->share)}))))
+        {
           bodyHits[slot] = *hit;
+        }
+      }
       // Meant for him, or a ball he is letting come closer to play: only if
       // his touch turns out no attempt.
-      const bool intendedHere = getPossessionState().isPass && getExpectedReceiver() == player.player &&
-                                getPossessionState().passByHome == player.isHomeTeam;
+      const bool intendedHere =
+          getPossessionState().isPass &&
+          getExpectedReceiver() == player.player &&
+          getPossessionState().passByHome == player.isHomeTeam;
       if (intendedHere || (ball.touchWaiting & (1U << slot)) != 0U)
+      {
         bodyOnlyIfDeclined |= 1U << slot;
+      }
     }
     // Above every head line: his body only (his head has had its chance),
     // the receiver's too.
@@ -4009,34 +4889,41 @@ void MatchEngine::resolveLooseBall(bool beforeLine)
     }
     // In the air (a jump), only his head plays it (headInSweep).
     // In a dive, a keeper plays nothing: only his body meets it.
-    if (!active(player) || (player.trapTimer > 0.0f && !shotIntoBody) ||
-        (player.airborne() && !shotIntoBody) || player.fallen || (diving && !shotIntoBody))
+    if (!active(player) || (player.trapTimer > 0.0F && !shotIntoBody) ||
+        (player.airborne() && !shotIntoBody) || player.fallen ||
+        (diving && !shotIntoBody))
     {
       if (active(player))
+      {
         observePossessionGate(player, PossessionContactGate::PHYSICAL_RECOVERY);
+      }
       continue;
     }
-    if (touchOwner)
+    if (touchOwner != nullptr)
     {
       // He plays his own ball once collected; in his reach nobody else
       // does, but an opponent contesting it (tackling plan step 2); a
       // team-mate takes it over only once it is well away from him.
       if (&player == touchOwner)
       {
-        if (!isTouchCollected()) continue;
+        if (!isTouchCollected())
+        {
+          continue;
+        }
       }
       else if (!(possessionId == PossessionId::BINTURONG &&
                  player.isHomeTeam == touchOwner->isHomeTeam) &&
                ((ownerHasIt && !contestsBall(player, *touchOwner)) ||
-               (player.isHomeTeam == touchOwner->isHomeTeam &&
-                ownerGap <= touchKnobs[TouchKnob::TEAMMATE_DISTANCE])))
+                (player.isHomeTeam == touchOwner->isHomeTeam &&
+                 ownerGap <= touchKnobs[TouchKnob::TEAMMATE_DISTANCE])))
       {
-        observePossessionGate(player, ownerHasIt ? PossessionContactGate::OWNER_PROTECTED
-                                                 : PossessionContactGate::FRIENDLY_CLAIM);
+        observePossessionGate(
+            player, ownerHasIt ? PossessionContactGate::OWNER_PROTECTED
+                               : PossessionContactGate::FRIENDLY_CLAIM);
         continue;
       }
     }
-    if (ball.kickerLockout > 0.0f && getLegacyContactActor() == player.player)
+    if (ball.kickerLockout > 0.0F && getLegacyContactActor() == player.player)
     {
       observePossessionGate(player, PossessionContactGate::KICKER_LOCKOUT);
       continue;
@@ -4049,52 +4936,67 @@ void MatchEngine::resolveLooseBall(bool beforeLine)
       continue;
     }
     // His foot is committed from a contest swing.
-    if (&player != touchOwner && player.footCooldown > 1e-4f && !shotIntoBody)
+    if (&player != touchOwner && player.footCooldown > 1e-4F && !shotIntoBody)
     {
       observePossessionGate(player, PossessionContactGate::FOOT_RECOVERING);
       continue;
     }
     // Team-mates let a pass run to its receiver, and (an Aardvark body)
     // never meet their own side's shot.
-    if (possessionId == PossessionId::AARDVARK && getPossessionState().isPass && player.isHomeTeam == getPossessionState().passByHome &&
+    if (possessionId == PossessionId::AARDVARK && getPossessionState().isPass &&
+        player.isHomeTeam == getPossessionState().passByHome &&
         player.player != getExpectedReceiver() &&
         ballSpeed > B::MAX_HEAVY_TOUCH_SPEED)
     {
       observePossessionGate(player, PossessionContactGate::FRIENDLY_PASS);
       continue;
     }
-    if (getPossessionState().isShot && player.isHomeTeam == getPossessionState().shotByHome && !binturong) continue;
+    if (getPossessionState().isShot &&
+        player.isHomeTeam == getPossessionState().shotByHome && !binturong)
+    {
+      continue;
+    }
 
     const float along = segmentSquared > EPSILON
                             ? std::clamp(((position.x - start.x) * segment.x +
                                           (position.y - start.y) * segment.y) /
                                              segmentSquared,
-                                         0.0f, 1.0f)
-                            : 0.0f;
+                                         0.0F, 1.0F)
+                            : 0.0F;
     // Before the line, only a Binturong body meeting it on the pitch.
     if (beforeLine)
     {
-      const PitchPoint point = asPoint({start.x + segment.x * along,
-                                      start.y + segment.y * along});
-      if (getBody(player.isHomeTeam) != BodyId::BINTURONG || !ballInPlayAt(point))
+      const PitchPoint point = asPoint({.x = start.x + (segment.x * along),
+                                        .y = start.y + (segment.y * along)});
+      if (getBody(player.isHomeTeam) != BodyId::BINTURONG ||
+          !ballInPlayAt(point))
+      {
         continue;
+      }
     }
     const float gapX = position.x - (start.x + segment.x * along);
     const float gapY = position.y - (start.y + segment.y * along);
-    const float gapSquared = gapX * gapX + gapY * gapY;
+    const float gapSquared = (gapX * gapX) + (gapY * gapY);
     // Cheap reject beyond the largest reach before any square root.
-    if (gapSquared > maxReach * maxReach) continue;
+    if (gapSquared > maxReach * maxReach)
+    {
+      continue;
+    }
     const float gap = std::sqrt(gapSquared);
-    const float height = startHeight + (endHeight - startHeight) * along;
+    const float height = startHeight + ((endHeight - startHeight) * along);
     const bool hands = handsAllowed(player);
     // Above his shoulders a Binturong keeper's hands are his arms' reach
     // (headInSweep; goalkeeper plan step 7), not this reach circle.
     if (hands && binturong && !shotIntoBody &&
-        height > MatchTuning::Goalkeeper::SHOULDER_HEIGHT_SHARE * player.heightMetres)
+        height > MatchTuning::Goalkeeper::SHOULDER_HEIGHT_SHARE *
+                     player.heightMetres)
+    {
       continue;
+    }
     // Moving faster than a walk, or not yet bent to it, his hands can't
     // gather it (goalkeeper plan step 8): his body meets it.
-    if (hands && binturong && !shotIntoBody && !keeperCanGatherBinturong(player))
+    if (hands && binturong && !shotIntoBody &&
+        !keeperCanGatherBinturong(player))
     {
       observePossessionGate(player, PossessionContactGate::KEEPER_NOT_READY);
       continue;
@@ -4105,17 +5007,30 @@ void MatchEngine::resolveLooseBall(bool beforeLine)
       // or a keeper's arm or hand (goalkeeper plan step 2): met where the
       // ball reaches it on this stretch, or not at all.
       if (const auto hit = shotMeetsBodyBinturong(
-              player, slot, {start.x, start.y, startHeight}, {end.x, end.y, endHeight}, true))
-        contacts[contactCount++] = {slot,  hit->share, 0.0f,
-                                    startHeight + (endHeight - startHeight) * hit->share,
-                                    1.0f,  hit->part,  *hit,
-                                    false, false,      true};
+              player, slot, {.x = start.x, .y = start.y, .z = startHeight},
+              {.x = end.x, .y = end.y, .z = endHeight}, true))
+      {
+        contacts[contactCount++] = {
+            .slot = slot,
+            .along = hit->share,
+            .gap = 0.0F,
+            .height = startHeight + ((endHeight - startHeight) * hit->share),
+            .reach = 1.0F,
+            .part = hit->part,
+            .hit = *hit,
+            .asLoose = false,
+            .body = false,
+            .shotBody = true};
+      }
       else if (!player.airborne() && !diving)
-        checkShotThroughTorsoBinturong(player, slot, {start.x, start.y, startHeight},
-                                       {end.x, end.y, endHeight});
+      {
+        checkShotThroughTorsoBinturong(
+            player, slot, {.x = start.x, .y = start.y, .z = startHeight},
+            {.x = end.x, .y = end.y, .z = endHeight});
+      }
       continue;
     }
-    float reach = 0.0f;
+    float reach = 0.0F;
     if (getPossessionState().isShot && !shotAsLoose)
     {
       const bool reachable =
@@ -4124,10 +5039,12 @@ void MatchEngine::resolveLooseBall(bool beforeLine)
                 : height <= MatchRules::headerReachMetres(player.heightMetres,
                                                           player.physicality);
       if (reachable)
+      {
         reach = hands ? MatchRules::goalkeeperHandlingRadiusMetres(
                             player.heightMetres, player.goalkeeping, height,
                             player.isDiving)
                       : MatchTuning::Defending::BLOCK_DISTANCE_METRES;
+      }
     }
     else if (hands)
     {
@@ -4138,7 +5055,10 @@ void MatchEngine::resolveLooseBall(bool beforeLine)
     {
       const BodyLines lines = bodyLines(player);
       // Above a Binturong body's head line it is his head's (headInSweep).
-      if (height > lines.head && binturong) continue;
+      if (height > lines.head && binturong)
+      {
+        continue;
+      }
       if (height <= lines.feet)
       {
         reach = feetReach(player);
@@ -4154,41 +5074,65 @@ void MatchEngine::resolveLooseBall(bool beforeLine)
         const bool thigh = height <= lines.chest;
         // Moving, his thigh can't play it (step 4): it goes on, perhaps to
         // his feet.
-        if (thigh && length(player.velocity) > B::THIGH_MAX_SPEED) continue;
+        if (thigh && length(player.velocity) > B::THIGH_MAX_SPEED)
+        {
+          continue;
+        }
         reach = thigh ? B::THIGH_REACH_METRES : B::CHEST_REACH_METRES;
-        const Vector2F facing = normalized(
-            {std::cos(player.facingAngle),
-             std::sin(player.facingAngle)});
-        if (gapX * facing.x + gapY * facing.y > 0.0f) continue;
+        const Vector2F facing = normalized({.x = std::cos(player.facingAngle),
+                                            .y = std::sin(player.facingAngle)});
+        if (gapX * facing.x + gapY * facing.y > 0.0F)
+        {
+          continue;
+        }
       }
       // His body may not reach a ball behind him at all.
       if (ballBehindReach(player, gapX, gapY, gap))
       {
-        if (reach > 0.0f && gap <= reach) behindReach |= 1U << slot;
+        if (reach > 0.0F && gap <= reach)
+        {
+          behindReach |= 1U << slot;
+        }
         observePossessionGate(player, PossessionContactGate::BEHIND_REACH);
         continue;
       }
     }
-    if (reach <= 0.0f || gap > reach)
+    if (reach <= 0.0F || gap > reach)
     {
       observePossessionGate(player, PossessionContactGate::OUT_OF_REACH);
       continue;
     }
-    contacts[contactCount++] = {slot, along, gap, height, reach, ShotBodyPart::TORSO, {},
-                                shotAsLoose};
+    contacts[contactCount++] = {.slot = slot,
+                                .along = along,
+                                .gap = gap,
+                                .height = height,
+                                .reach = reach,
+                                .part = ShotBodyPart::TORSO,
+                                .hit = {},
+                                .asLoose = shotAsLoose};
     touchCandidates |= 1U << slot;
   }
   // Bodies in the way that no touch of theirs plays it first.
-  for (std::size_t slot = 0; slot < bodyHits.size() && contactCount < contacts.size(); ++slot)
+  for (std::size_t slot = 0;
+       slot < bodyHits.size() && contactCount < contacts.size(); ++slot)
   {
     const std::uint32_t bit = 1U << slot;
-    if (!bodyHits[slot] || (touchCandidates & bit) != 0U || (bodyOnlyIfDeclined & bit) != 0U)
+    if (!bodyHits[slot] || (touchCandidates & bit) != 0U ||
+        (bodyOnlyIfDeclined & bit) != 0U)
+    {
       continue;
+    }
     const ShotBodyHit& hit = *bodyHits[slot];
-    contacts[contactCount++] = {slot,      hit.share, 0.0f,
-                                startHeight + (endHeight - startHeight) * hit.share,
-                                1.0f,      hit.part,  hit,
-                                false,     true};
+    contacts[contactCount++] = {
+        .slot = slot,
+        .along = hit.share,
+        .gap = 0.0F,
+        .height = startHeight + ((endHeight - startHeight) * hit.share),
+        .reach = 1.0F,
+        .part = hit.part,
+        .hit = hit,
+        .asLoose = false,
+        .body = true};
   }
   // A player who let the ball come closer and now finds it out of his reach
   // waited too long (counted for the sandbox checks; should never happen).
@@ -4197,18 +5141,28 @@ void MatchEngine::resolveLooseBall(bool beforeLine)
   {
     std::uint32_t inReach = 0;
     for (std::size_t index = 0; index < contactCount; ++index)
+    {
       inReach |= 1U << contacts[index].slot;
+    }
     const std::uint32_t lost = ball.touchWaiting & ~inReach;
     firstTouchWaitsMissed += static_cast<std::uint32_t>(std::popcount(lost));
-    for (std::size_t slot = 0; slot < players.size() && slot < waitChosenStep.size(); ++slot)
-      if ((lost & (1U << slot)) != 0U) splitLostWait(slot, (behindReach & (1U << slot)) != 0U);
+    for (std::size_t slot = 0;
+         slot < players.size() && slot < waitChosenStep.size(); ++slot)
+    {
+      if ((lost & (1U << slot)) != 0U)
+      {
+        splitLostWait(slot, (behindReach & (1U << slot)) != 0U);
+      }
+    }
     ball.touchWaiting &= inReach;
   }
   insertionSort(contacts, contactCount,
                 [](const Contact& first, const Contact& second)
                 {
                   if (first.along != second.along)
+                  {
                     return first.along < second.along;
+                  }
                   return first.slot < second.slot;
                 });
 
@@ -4222,16 +5176,23 @@ void MatchEngine::resolveLooseBall(bool beforeLine)
         [&](const Contact& c)
         {
           const MatchPlayer& p = players[c.slot];
-          float space = 8.0f;
+          float space = 8.0F;
           for (const MatchPlayer& rival : players)
+          {
             if (active(rival) && rival.isHomeTeam != p.isHomeTeam)
+            {
               space = std::min(space, distance(p.position, rival.position));
+            }
+          }
           return PossessionCoordination::Candidate{
-              c.along * substepStretchSeconds,
-              PossessionCoordination::quality(p.velocity, ball.velocity, p.isHomeTeam, space),
-              getPossessionState().isPass && p.player == getExpectedReceiver() &&
+              .arrivalSeconds = c.along * substepStretchSeconds,
+              .collectionQuality = PossessionCoordination::quality(
+                  p.velocity, ball.velocity, p.isHomeTeam, space),
+              .intendedReceiver =
+                  getPossessionState().isPass &&
+                  p.player == getExpectedReceiver() &&
                   p.isHomeTeam == getPossessionState().passByHome,
-              p.player ? p.player->getId() : 0};
+              .id = p.player ? p.player->getId() : 0};
         });
   }
 
@@ -4243,12 +5204,15 @@ void MatchEngine::resolveLooseBall(bool beforeLine)
     // A contest (tackling plan step 2): an opponent at the owner's ball
     // inside both reaches, with his feet. Inside the owner's reach that is
     // the only way an opponent plays it.
-    const bool contest = touchOwner && &player != touchOwner && ownerHasIt &&
-                         !hands && contestsBall(player, *touchOwner) &&
+    const bool contest = (touchOwner != nullptr) && &player != touchOwner &&
+                         ownerHasIt && !hands &&
+                         contestsBall(player, *touchOwner) &&
                          contact.height <= bodyLines(player).feet;
-    if (touchOwner && &player != touchOwner && ownerHasIt && !contest &&
-        player.isHomeTeam != touchOwner->isHomeTeam)
+    if ((touchOwner != nullptr) && &player != touchOwner && ownerHasIt &&
+        !contest && player.isHomeTeam != touchOwner->isHomeTeam)
+    {
       continue;
+    }
     const int substepsPerStep =
         MatchTuning::Timing::BALL_SUBSTEPS * static_cast<int>(stepTicks);
     // A Binturong body meets the ball where it reaches him: it travels
@@ -4268,26 +5232,30 @@ void MatchEngine::resolveLooseBall(bool beforeLine)
       setBallMotion(substepEndMotion);
       contactAlong.reset();
     }
-    const TouchMoment moment{atContact
-                                 ? ball.position
-                                 : asPoint({start.x + segment.x * contact.along,
-                                            start.y + segment.y * contact.along}),
-                             contact.gap,
-                             contact.reach,
-                             atContact
-                                 ? ball.z
-                                 : contact.height,
-                             substepsLeftInStep,
-                             ballStepSeconds /
-                                 static_cast<float>(substepsPerStep),
-                             ballStepSeconds};
+    const TouchMoment moment{
+        .contactPoint =
+            atContact ? ball.position
+                      : asPoint({.x = start.x + (segment.x * contact.along),
+                                 .y = start.y + (segment.y * contact.along)}),
+        .gap = contact.gap,
+        .reach = contact.reach,
+        .height = atContact ? ball.z : contact.height,
+        .substepsLeft = substepsLeftInStep,
+        .substepSeconds = ballStepSeconds / static_cast<float>(substepsPerStep),
+        .stepSeconds = ballStepSeconds};
     // Pass block plan: a ball he doesn't play meets his body where it gets
     // there, and comes off it.
     if (contact.body)
     {
-      if (!atContact) continue;
+      if (!atContact)
+      {
+        continue;
+      }
       // (Counted: after his touch was no attempt, marked by a gap of -1.)
-      if (contact.gap < 0.0f) ++stats.ballBodyAfterNoTouch;
+      if (contact.gap < 0.0F)
+      {
+        ++stats.ballBodyAfterNoTouch;
+      }
       ballMeetsBodyBinturong(player, contact.slot, contact.hit);
       return;
     }
@@ -4296,7 +5264,10 @@ void MatchEngine::resolveLooseBall(bool beforeLine)
     const auto bodyInstead = [&]
     {
       const std::size_t slot = contact.slot;
-      if (!bodyHits[slot] || contactCount >= contacts.size()) return;
+      if (!bodyHits[slot] || contactCount >= contacts.size())
+      {
+        return;
+      }
       Contact body = contact;
       body.along = std::max(contact.along, bodyHits[slot]->share);
       body.height = startHeight + (endHeight - startHeight) * body.along;
@@ -4304,18 +5275,26 @@ void MatchEngine::resolveLooseBall(bool beforeLine)
       body.part = body.hit.part;
       body.asLoose = false;
       body.body = true;
-      body.gap = -1.0f;
+      body.gap = -1.0F;
       bodyHits[slot].reset();
       std::size_t at = index + 1;
-      while (at < contactCount && contacts[at].along <= body.along) ++at;
-      for (std::size_t move = contactCount; move > at; --move) contacts[move] = contacts[move - 1];
+      while (at < contactCount && contacts[at].along <= body.along)
+      {
+        ++at;
+      }
+      for (std::size_t move = contactCount; move > at; --move)
+      {
+        contacts[move] = contacts[move - 1];
+      }
       contacts[at] = body;
       ++contactCount;
     };
     // Tackling plan step 5: in a contest he goes in only when his brain
     // says so; holding, he leaves it (no swing, no cooldown).
     if (contest && !goesIntoContest(player, *touchOwner, moment.contactPoint))
+    {
       continue;
+    }
     // His own ball: he plays it on when it is due a touch (letting it come
     // closer first if his brain reads that it will), or lets it run.
     if (&player == touchOwner)
@@ -4325,15 +5304,20 @@ void MatchEngine::resolveLooseBall(bool beforeLine)
       // reach too, swung at nothing (tackling plan step 2, rows 3 and 4).
       const auto contestersSwingAtNothing = [&]
       {
-        if (!ownerHasIt) return;
+        if (!ownerHasIt)
+        {
+          return;
+        }
         for (std::size_t other = 0; other < contactCount; ++other)
         {
           MatchPlayer& rival = players[contacts[other].slot];
           if (&rival != &player && contestsBall(rival, player) &&
-              rival.footCooldown <= 1e-4f &&
+              rival.footCooldown <= 1e-4F &&
               contacts[other].height <= bodyLines(rival).feet &&
               goesIntoContest(rival, player, ball.position))
+          {
             swingAtNothing(rival, dribbleTouchIntervalBinturong(rival), false);
+          }
         }
       };
       // A shot meets the ball at foot height or not at all (no volleys
@@ -4376,7 +5360,8 @@ void MatchEngine::resolveLooseBall(bool beforeLine)
     }
     // With the new first touch he may let the ball come closer before he
     // plays it; until he does, it is no attempt.
-    if ((!getPossessionState().isShot || contact.asLoose) && playsFirstTouch(player, hands, contact.height) &&
+    if ((!getPossessionState().isShot || contact.asLoose) &&
+        playsFirstTouch(player, hands, contact.height) &&
         !touchNow(player, moment))
     {
       observePossessionGate(player, PossessionContactGate::WAIT_FOR_CLOSER);
@@ -4389,15 +5374,18 @@ void MatchEngine::resolveLooseBall(bool beforeLine)
     // enough to have committed to; on a path that has just changed he
     // misses it cleanly. Not an interception (an opponent's pass), a
     // contest or his own dribble.
-    if (!hands && !player.isGoalkeeper && (!getPossessionState().isShot || contact.asLoose) && !contest &&
+    if (!hands && !player.isGoalkeeper &&
+        (!getPossessionState().isShot || contact.asLoose) && !contest &&
         &player != touchOwner &&
         getBody(player.isHomeTeam) == BodyId::BINTURONG &&
         contact.height <= bodyLines(player).feet &&
-        !(getPossessionState().isPass && getPossessionState().passByHome != player.isHomeTeam) &&
+        !(getPossessionState().isPass &&
+          getPossessionState().passByHome != player.isHomeTeam) &&
         ballNow() - getPossessionState().pathSince <
             MatchTuning::Dribble::FIRST_TOUCH_COMMIT_SECONDS - 1e-6)
     {
-      observePossessionGate(player, PossessionContactGate::CONTACT_NOT_COMMITTED);
+      observePossessionGate(player,
+                            PossessionContactGate::CONTACT_NOT_COMMITTED);
       const std::uint32_t bit = 1U << contact.slot;
       ball.touchWaiting &= ~bit;
       if ((ball.commitMisses & bit) == 0U)
@@ -4425,33 +5413,47 @@ void MatchEngine::resolveLooseBall(bool beforeLine)
         {
           const PitchPoint wasAt = ball.position;
           setPossession(player);
-          if (hands) takeInHandsBinturong(player, wasAt, contact.height);
+          if (hands)
+          {
+            takeInHandsBinturong(player, wasAt, contact.height);
+          }
           player.actionCooldown = keeperHoldSeconds(player);
           return;
         }
         continue;
       }
-      if (!choosesToBlock(player) || !blocksShot(player, contact.gap, contact.reach)) continue;
-      const bool offBody =
-          getBody(player.isHomeTeam) == BodyId::BINTURONG && (!hands || contact.shotBody);
+      if (!choosesToBlock(player) ||
+          !blocksShot(player, contact.gap, contact.reach))
+      {
+        continue;
+      }
+      const bool offBody = getBody(player.isHomeTeam) == BodyId::BINTURONG &&
+                           (!hands || contact.shotBody);
       // Off his own keeper's body in his area: a save if it no longer goes
       // in, never a block (goalkeeper plan step 1).
       const bool keeperBody = offBody && hands;
       const bool wasOnTarget = getPossessionState().shotOnTarget;
       // Off a team-mate, or off anyone once it has been blocked, it is a
       // deflection, not a block (one blocked shot per shot).
-      const bool deflection = player.isHomeTeam == getPossessionState().shotByHome || (offBody && getPossessionState().shotBlocked);
-      const ShotLegs* legs =
-          contact.slot < shotLegPoses.size() ? &shotLegPoses[contact.slot] : nullptr;
-      const bool legPutOut = legs && legs->blocking && isLegPart(contact.part);
+      const bool deflection =
+          player.isHomeTeam == getPossessionState().shotByHome ||
+          (offBody && getPossessionState().shotBlocked);
+      const ShotLegs* legs = contact.slot < shotLegPoses.size()
+                                 ? &shotLegPoses[contact.slot]
+                                 : nullptr;
+      const bool legPutOut =
+          (legs != nullptr) && legs->blocking && isLegPart(contact.part);
       if (offBody && !deflection && !keeperBody)
       {
         ++stats.shotBlocksByPart[static_cast<std::size_t>(contact.part)];
-        if (legPutOut) ++stats.shotReactionBlocks;
+        if (legPutOut)
+        {
+          ++stats.shotReactionBlocks;
+        }
       }
       const float lockout =
           !offBody    ? MatchTuning::Passing::KICKER_LOCKOUT_SECONDS
-          : legPutOut ? legs->outShare * legs->legSeconds +
+          : legPutOut ? (legs->outShare * legs->legSeconds) +
                             MatchTuning::ShotBlock::RECOVERY_LEG_EXTRA_SECONDS
                       : MatchTuning::ShotBlock::RECOVERY_BODY_SECONDS;
       beginShotDeflection(player, lockout);
@@ -4460,8 +5462,10 @@ void MatchEngine::resolveLooseBall(bool beforeLine)
         // Off his own keeper's hand (goalkeeper plan step 4): held in both
         // hands within his Handling limit, else a parry, the face turned.
         ShotBodyHit hit = contact.hit;
-        if (keeperBody && player.isHomeTeam != getPossessionState().shotByHome &&
-            hit.part == ShotBodyPart::HAND && keeperHandsHoldShotBinturong(player, hit))
+        if (keeperBody &&
+            player.isHomeTeam != getPossessionState().shotByHome &&
+            hit.part == ShotBodyPart::HAND &&
+            keeperHandsHoldShotBinturong(player, hit))
         {
           ++stats.keeperBodyHitsByPart[static_cast<std::size_t>(hit.part)];
           if (wasOnTarget)
@@ -4480,15 +5484,17 @@ void MatchEngine::resolveLooseBall(bool beforeLine)
           const KeeperDive& dive = keepers[player.isHomeTeam ? 0 : 1].dive;
           if (dive.active)
           {
-            const double up = dive.from + static_cast<double>(dive.stretchSeconds +
-                                                              dive.fallSeconds + dive.downSeconds);
+            const double up =
+                dive.from +
+                static_cast<double>(dive.stretchSeconds + dive.fallSeconds +
+                                    dive.downSeconds);
             player.actionCooldown +=
-                std::max(0.0f, static_cast<float>(up - getSimulatedSeconds()));
+                std::max(0.0F, static_cast<float>(up - getSimulatedSeconds()));
           }
           else
           {
             player.isDiving = false;
-            player.diveTimer = 0.0f;
+            player.diveTimer = 0.0F;
           }
           return;
         }
@@ -4507,18 +5513,27 @@ void MatchEngine::resolveLooseBall(bool beforeLine)
         ball.velocity.y +=
             randomFloat(-MatchTuning::Defending::MAX_DEFLECTION_Y_SPEED,
                         MatchTuning::Defending::MAX_DEFLECTION_Y_SPEED);
-        if (choosesToPutBlockBehind(player)) clearBehind(player);
+        if (choosesToPutBlockBehind(player))
+        {
+          clearBehind(player);
+        }
       }
       if (keeperBody && player.isHomeTeam != getPossessionState().shotByHome)
       {
         ++stats.keeperBodyHitsByPart[static_cast<std::size_t>(contact.part)];
-        if (getPossessionState().isShot) ++stats.keeperBodyStillOnGoal;
+        if (getPossessionState().isShot)
+        {
+          ++stats.keeperBodyStillOnGoal;
+        }
         if (wasOnTarget && !getPossessionState().isShot)
         {
           creditKeeperSave(player);
           MatchEvent& event = logEvent(MatchEventType::SAVE, player);
           event.detail = MatchEventDetail::PARRIED;
-          event.secondaryPlayerId = getPossessionHistory().lastShooter ? getPossessionHistory().lastShooter->getId() : 0;
+          event.secondaryPlayerId =
+              (getPossessionHistory().lastShooter != nullptr)
+                  ? getPossessionHistory().lastShooter->getId()
+                  : 0;
         }
         return;
       }
@@ -4528,12 +5543,17 @@ void MatchEngine::resolveLooseBall(bool beforeLine)
 
     // Anyone other than the intended receiver has to stretch and react to
     // get a touch: close balls are met, fast wide ones fly past.
-    const bool intended = getPossessionState().isPass && getExpectedReceiver() == player.player;
-    if ((!intended || possessionId == PossessionId::BINTURONG) && !hands && ballSpeed > B::MAX_HEAVY_TOUCH_SPEED &&
+    const bool intended =
+        getPossessionState().isPass && getExpectedReceiver() == player.player;
+    if ((!intended || possessionId == PossessionId::BINTURONG) && !hands &&
+        ballSpeed > B::MAX_HEAVY_TOUCH_SPEED &&
         !reachesBall(player, ballSpeed, stretch))
     {
       // Row 6: he went for it and missed; his foot is committed.
-      if (contest) player.footCooldown = dribbleTouchIntervalBinturong(player);
+      if (contest)
+      {
+        player.footCooldown = dribbleTouchIntervalBinturong(player);
+      }
       bodyInstead();
       continue;
     }
@@ -4544,7 +5564,8 @@ void MatchEngine::resolveLooseBall(bool beforeLine)
       const std::size_t part = contact.height <= lines.feet    ? 0
                                : contact.height <= lines.chest ? 1
                                                                : 2;
-      const bool receiver = intended && getPossessionState().passByHome == player.isHomeTeam;
+      const bool receiver =
+          intended && getPossessionState().passByHome == player.isHomeTeam;
       ++(receiver ? bodyContacts.receiver : bodyContacts.other)[part];
     }
     // An opponent getting to a touched ball ends the claim, whatever his own
@@ -4560,20 +5581,23 @@ void MatchEngine::resolveLooseBall(bool beforeLine)
     bool blockCommitted = false;
     if (hasTouchClaim())
     {
-      if (possessionId == PossessionId::BINTURONG && touchOwner &&
+      if (possessionId == PossessionId::BINTURONG && (touchOwner != nullptr) &&
           touchOwner->isHomeTeam == player.isHomeTeam)
       {
-        if (pendingStrike && pendingStrike->striker == touchOwner) pendingStrike.reset();
+        if (pendingStrike && pendingStrike->striker == touchOwner)
+        {
+          pendingStrike.reset();
+        }
         if (ball.meetFor == touchOwner->player)
         {
           ball.meetFor = nullptr;
           ball.meetRecovering = false;
           ball.knockedOn = false;
-          ball.plannedTouchIn = 0.0f;
+          ball.plannedTouchIn = 0.0F;
         }
       }
-      if (touchOwner && touchOwner->isHomeTeam != player.isHomeTeam &&
-          isTouchCollected())
+      if ((touchOwner != nullptr) &&
+          touchOwner->isHomeTeam != player.isHomeTeam && isTouchCollected())
       {
         noteFreeBallTackle(player, contest);
         if (contest)
@@ -4597,27 +5621,37 @@ void MatchEngine::resolveLooseBall(bool beforeLine)
       }
       clearPossession();
     }
-    if (blockOwner)
+    if (blockOwner != nullptr)
     {
       playBlock(player, *blockOwner, moment, blockCommitted);
       return;
     }
-    if (freeBallFrom && playTackleIntent(player, *freeBallFrom, moment)) return;
+    if ((freeBallFrom != nullptr) &&
+        playTackleIntent(player, *freeBallFrom, moment))
+    {
+      return;
+    }
 
     // A defender meeting a cross close to his own goal line often plays safe
     // and puts it behind; an Aardvark body now and then turns it into his
     // own net (tryOwnGoalTouch).
     const float fromOwnGoal =
-                               pitch.fromOwnGoalLine(player.position, player.isHomeTeam);
-    const bool delivery = getPossessionState().isPass && getPossessionState().passByHome != player.isHomeTeam &&
-                          !player.isGoalkeeper &&
-                          (lastPassDecision.intent == PassIntent::CROSS ||
-                           lastPassDecision.intent == PassIntent::CUTBACK ||
-                           lastPassDecision.intent == PassIntent::SET_PIECE);
-    if (delivery && fromOwnGoal < MatchTuning::SetPiece::CROSS_CLEARANCE_WITHIN_METRES)
+        pitch.fromOwnGoalLine(player.position, player.isHomeTeam);
+    const bool delivery =
+        getPossessionState().isPass &&
+        getPossessionState().passByHome != player.isHomeTeam &&
+        !player.isGoalkeeper &&
+        (lastPassDecision.intent == PassIntent::CROSS ||
+         lastPassDecision.intent == PassIntent::CUTBACK ||
+         lastPassDecision.intent == PassIntent::SET_PIECE);
+    if (delivery &&
+        fromOwnGoal < MatchTuning::SetPiece::CROSS_CLEARANCE_WITHIN_METRES)
     {
       ++statsOf(player).interceptions;
-      if (tryOwnGoalTouch(player)) return;
+      if (tryOwnGoalTouch(player))
+      {
+        return;
+      }
       if (choosesToClearCrossBehind(player))
       {
         clearFlightState();
@@ -4630,15 +5664,25 @@ void MatchEngine::resolveLooseBall(bool beforeLine)
     // The receiver of an offside pass is penalised when he plays it.
     const auto whistledOffside = [&]
     {
-      if (!getPossessionState().isPass || player.isHomeTeam != getPossessionState().passByHome ||
+      if (!getPossessionState().isPass ||
+          player.isHomeTeam != getPossessionState().passByHome ||
           !(possessionId == PossessionId::BINTURONG
-                ? PossessionCoordination::offsideCollector(getPossessionState().passWasOffside,
-                      intended, getPossessionState().passOffsidePlayers, player.player->getId())
-                : getPossessionState().passWasOffside && intended)) return false;
+                ? PossessionCoordination::offsideCollector(
+                      getPossessionState().passWasOffside, intended,
+                      getPossessionState().passOffsidePlayers,
+                      player.player->getId())
+                : getPossessionState().passWasOffside && intended))
+      {
+        return false;
+      }
       if (player.isHomeTeam)
+      {
         ++stats.homeOffsides;
+      }
       else
+      {
         ++stats.awayOffsides;
+      }
       MatchEvent& event = logEvent(MatchEventType::OFFSIDE, player);
       event.position = player.position;
       setupFreeKick(!player.isHomeTeam, player.position);
@@ -4648,7 +5692,10 @@ void MatchEngine::resolveLooseBall(bool beforeLine)
     // A pass he means to play first time: struck here, instead of a touch.
     if (playsFirstTime(player, hands, moment.height))
     {
-      if (whistledOffside()) return;
+      if (whistledOffside())
+      {
+        return;
+      }
       playFirstTimePass(player, moment);
       return;
     }
@@ -4657,7 +5704,10 @@ void MatchEngine::resolveLooseBall(bool beforeLine)
     {
       // The new first touch: no success roll; the ball is played on from
       // where he met it, and what happens next follows from where it goes.
-      if (whistledOffside()) return;
+      if (whistledOffside())
+      {
+        return;
+      }
       playFirstTouch(player, moment);
       return;
     }
@@ -4671,20 +5721,26 @@ void MatchEngine::resolveLooseBall(bool beforeLine)
       player.trapTimer = B::FAILED_TRAP_TIME;
       notePathChange();
       ball.velocity = heavyTouchVelocity(player, ball.velocity);
-      ball.velocityZ = 0.0f;
-      ball.z = 0.0f;
+      ball.velocityZ = 0.0F;
+      ball.z = 0.0F;
       ball.spin = {};
       noteFailedTouch(player);
       return;
     }
 
-    if (whistledOffside()) return;
+    if (whistledOffside())
+    {
+      return;
+    }
 
     recordPassCompletion(player);
     const PitchPoint wasAt = ball.position;
     setPossession(player);
     settleOnBall(player, skill, hands);
-    if (hands) takeInHandsBinturong(player, wasAt, contact.height);
+    if (hands)
+    {
+      takeInHandsBinturong(player, wasAt, contact.height);
+    }
     return;
   }
   // Nobody played it: it ran the whole stretch.
@@ -4700,9 +5756,11 @@ bool MatchEngine::resolveAerialContest()
   // step 7).
   for (auto& player : players)
   {
-    if (!active(player) || !player.isGoalkeeper || player.fallen || keeperDiving(player) ||
+    if (!active(player) || !player.isGoalkeeper || player.fallen ||
+        keeperDiving(player) ||
         getBody(player.isHomeTeam) == BodyId::BINTURONG ||
-        (ball.kickerLockout > 0.0f && getLegacyContactActor() == player.player) ||
+        (ball.kickerLockout > 0.0F &&
+         getLegacyContactActor() == player.player) ||
         !inPenaltyArea(player.position, player.isHomeTeam) ||
         distance(player.position, ball.position) >
             MatchRules::goalkeeperHandlingRadiusMetres(
@@ -4713,7 +5771,11 @@ bool MatchEngine::resolveAerialContest()
     {
       continue;
     }
-    if (getPossessionState().isPass && getPossessionState().passByHome == player.isHomeTeam) continue;
+    if (getPossessionState().isPass &&
+        getPossessionState().passByHome == player.isHomeTeam)
+    {
+      continue;
+    }
     int crowding = 0;
     for (const auto& other : players)
     {
@@ -4727,10 +5789,10 @@ bool MatchEngine::resolveAerialContest()
     const float holdChance = claimChance(player, crowding);
     GoalkeeperControl& control = keepers[player.isHomeTeam ? 0 : 1];
     control.state = GoalkeeperState::CLAIM;
-    control.timer = 0.0f;
+    control.timer = 0.0F;
     ++(player.isHomeTeam ? stats.homeKeeperClaimAttempts
                          : stats.awayKeeperClaimAttempts);
-    if (randomFloat(0.0f, 1.0f) < holdChance)
+    if (randomFloat(0.0F, 1.0F) < holdChance)
     {
       ++(player.isHomeTeam ? stats.homeKeeperClaims : stats.awayKeeperClaims);
       recordPassCompletion(player);
@@ -4744,11 +5806,12 @@ bool MatchEngine::resolveAerialContest()
     }
     // Punched clear under pressure.
     ++statsOf(player).clearances;
-    const float outward = player.isHomeTeam ? 1.0f : -1.0f;
+    const float outward = player.isHomeTeam ? 1.0F : -1.0F;
     beginLegacyKeeperPunch(player);
-    ball.velocity = {outward * MatchTuning::Aerial::HEADER_CLEARANCE_SPEED *
-                         randomFloat(0.5f, 0.9f),
-                     randomFloat(-5.0f, 5.0f)};
+    ball.velocity = {.x = outward *
+                          MatchTuning::Aerial::HEADER_CLEARANCE_SPEED *
+                          randomFloat(0.5F, 0.9F),
+                     .y = randomFloat(-5.0F, 5.0F)};
     ball.velocityZ = MatchTuning::Aerial::HEADER_LIFT;
     finishLegacyKeeperPunch(player);
     return true;
@@ -4758,28 +5821,37 @@ bool MatchEngine::resolveAerialContest()
   std::array<MatchPlayer*, 6> candidates{};
   std::array<float, 6> strengths{};
   std::size_t count = 0;
-  float totalStrength = 0.0f;
+  float totalStrength = 0.0F;
   bool homeInvolved = false;
   bool awayInvolved = false;
   for (auto& player : players)
   {
     if (!active(player) || player.isGoalkeeper || count == candidates.size() ||
-        player.trapTimer > 0.0f || player.fallen ||
-        (ball.kickerLockout > 0.0f && getLegacyContactActor() == player.player) ||
+        player.trapTimer > 0.0F || player.fallen ||
+        (ball.kickerLockout > 0.0F &&
+         getLegacyContactActor() == player.player) ||
         (hasTouchClaim() && getPossessionAttachment() == player.player))
+    {
       continue;
+    }
     if (distance(player.position, ball.position) >
         MatchTuning::Aerial::DUEL_RADIUS_METRES)
+    {
       continue;
+    }
     // Defenders are goal-side and facing the ball, so they win the first
     // contact more often than the attackers they mark.
     const bool defendingDelivery =
-        getPossessionState().isPass && getPossessionState().passByHome != player.isHomeTeam;
+        getPossessionState().isPass &&
+        getPossessionState().passByHome != player.isHomeTeam;
     const float strength =
         aerialStrength(player, heightMetres) *
         (defendingDelivery ? MatchTuning::Aerial::DEFENDER_DUEL_ADVANTAGE
-                           : 1.0f);
-    if (strength <= 0.0f) continue;
+                           : 1.0F);
+    if (strength <= 0.0F)
+    {
+      continue;
+    }
     candidates[count] = &player;
     strengths[count] = strength;
     totalStrength += strength;
@@ -4793,15 +5865,21 @@ bool MatchEngine::resolveAerialContest()
   // keep this contest.
   bool allBinturong = count > 0;
   for (std::size_t index = 0; index < count; ++index)
-    allBinturong = allBinturong && getBody(candidates[index]->isHomeTeam) == BodyId::BINTURONG;
-  if (count == 0 || allBinturong) return false;
+  {
+    allBinturong = allBinturong &&
+                   getBody(candidates[index]->isHomeTeam) == BodyId::BINTURONG;
+  }
+  if (count == 0 || allBinturong)
+  {
+    return false;
+  }
 
-  float pick = randomFloat(0.0f, totalStrength);
+  float pick = randomFloat(0.0F, totalStrength);
   std::size_t winnerIndex = count - 1;
   for (std::size_t index = 0; index < count; ++index)
   {
     pick -= strengths[index];
-    if (pick <= 0.0f)
+    if (pick <= 0.0F)
     {
       winnerIndex = index;
       break;
@@ -4814,15 +5892,23 @@ bool MatchEngine::resolveAerialContest()
     {
       MatchPlayer& candidate = *candidates[index];
       if (&candidate == &winner)
+      {
         ++statsOf(candidate).aerialDuelsWon;
+      }
       else if (candidate.isHomeTeam != winner.isHomeTeam)
+      {
         ++statsOf(candidate).aerialDuelsLost;
+      }
     }
     ++stats.aerialDuelsContested;
     if (winner.isHomeTeam)
+    {
       ++stats.homeAerialDuelsWon;
+    }
     else
+    {
       ++stats.awayAerialDuelsWon;
+    }
 
     // Pushing or holding in the air: the defender's foul in his own box is a
     // penalty; an attacker's push gives the defence a free kick.
@@ -4837,19 +5923,24 @@ bool MatchEngine::resolveAerialContest()
           break;
         }
       }
-      if (opponent)
+      if (opponent != nullptr)
       {
-        const bool attackerFouls = incidentRoll() < 0.6f;
-        const bool winnerAttacking = getPossessionState().passByHome == winner.isHomeTeam;
+        const bool attackerFouls = incidentRoll() < 0.6F;
+        const bool winnerAttacking =
+            getPossessionState().passByHome == winner.isHomeTeam;
         MatchPlayer& attacker = winnerAttacking ? winner : *opponent;
         MatchPlayer& defender = winnerAttacking ? *opponent : winner;
         clearFlightState();
-        ball.velocity = {0.0f, 0.0f};
-        ball.velocityZ = 0.0f;
+        ball.velocity = {.x = 0.0F, .y = 0.0F};
+        ball.velocityZ = 0.0F;
         if (attackerFouls)
+        {
           commitFoul(attacker, defender, true, false);
+        }
         else
+        {
           commitFoul(defender, attacker, true, false);
+        }
         return true;
       }
     }
@@ -4857,13 +5948,13 @@ bool MatchEngine::resolveAerialContest()
   // The duel's header is met where the ball is, his reach the duel's
   // (until the duel's own plan).
   lastHeadPart.reset();
-  strikeAt = TouchMoment{ball.position,
-                         distance(winner.position, ball.position),
-                         MatchTuning::Aerial::DUEL_RADIUS_METRES,
-                         heightMetres,
-                         substepsLeftInStep,
-                         0.0f,
-                         ballStepSeconds};
+  strikeAt = TouchMoment{.contactPoint = ball.position,
+                         .gap = distance(winner.position, ball.position),
+                         .reach = MatchTuning::Aerial::DUEL_RADIUS_METRES,
+                         .height = heightMetres,
+                         .substepsLeft = substepsLeftInStep,
+                         .substepSeconds = 0.0F,
+                         .stepSeconds = ballStepSeconds};
   headBall(winner);
   strikeAt.reset();
   return true;
@@ -4879,15 +5970,16 @@ bool MatchEngine::headInSweep()
   constexpr float HEAD_REACH = A::HEAD_REACH_METRES;
   const Vector2F start = asVector(substepBallPosition);
   const Vector2F end = asVector(ball.position);
-  const Vector2F segment{end.x - start.x, end.y - start.y};
-  const float segmentSquared = segment.x * segment.x + segment.y * segment.y;
+  const Vector2F segment{.x = end.x - start.x, .y = end.y - start.y};
+  const float segmentSquared =
+      (segment.x * segment.x) + (segment.y * segment.y);
   const float startHeight = substepBallZ;
   const float endHeight = ball.z;
   struct Meet
   {
     std::size_t slot = 0;
-    float along = 0.0f;
-    float gap = 0.0f;
+    float along = 0.0F;
+    float gap = 0.0F;
     HeadPart part = HeadPart::FOREHEAD;
   };
   // Players have moved to where they are at the step's end; the ball's
@@ -4895,76 +5987,98 @@ bool MatchEngine::headInSweep()
   // end: part-way along his move, and in a jump his feet back along it.
   const int substepsPerStep =
       MatchTuning::Timing::BALL_SUBSTEPS * static_cast<int>(stepTicks);
-  const float stepShare =
-      1.0f - static_cast<float>(substepsLeftInStep) / static_cast<float>(substepsPerStep);
-  const float secondsBefore = ballStepSeconds * (1.0f - stepShare);
-  const float substepSeconds = ballStepSeconds / static_cast<float>(substepsPerStep);
+  const float stepShare = 1.0F - (static_cast<float>(substepsLeftInStep) /
+                                  static_cast<float>(substepsPerStep));
+  const float secondsBefore = ballStepSeconds * (1.0F - stepShare);
+  const float substepSeconds =
+      ballStepSeconds / static_cast<float>(substepsPerStep);
   struct Header
   {
     std::size_t slot = 0;
     Vector2F position{};
-    float feet = 0.0f;
+    float feet = 0.0F;
   };
   std::array<Header, 32> headers{};
   std::size_t headerCount = 0;
-  for (std::size_t slot = 0; slot < players.size() && headerCount < headers.size(); ++slot)
+  for (std::size_t slot = 0;
+       slot < players.size() && headerCount < headers.size(); ++slot)
   {
     const MatchPlayer& player = players[slot];
     // Not his own touched ball (a cushion dropping to him).
-    if (!active(player) || player.isGoalkeeper || player.trapTimer > 0.0f || player.fallen ||
-        (ball.kickerLockout > 0.0f && getLegacyContactActor() == player.player) ||
-        (possessionId == PossessionId::AARDVARK && hasTouchClaim() && getPossessionAttachment() == player.player) ||
+    if (!active(player) || player.isGoalkeeper || player.trapTimer > 0.0F ||
+        player.fallen ||
+        (ball.kickerLockout > 0.0F &&
+         getLegacyContactActor() == player.player) ||
+        (possessionId == PossessionId::AARDVARK && hasTouchClaim() &&
+         getPossessionAttachment() == player.player) ||
         getBody(player.isHomeTeam) != BodyId::BINTURONG)
+    {
       continue;
+    }
     const PitchPoint was = slot < previousPlayerPositions.size()
-                             ? previousPlayerPositions[slot]
-                             : player.position;
+                               ? previousPlayerPositions[slot]
+                               : player.position;
     headers[headerCount++] = {
-        slot,
-        asVector(PitchPoint{was.x + (player.position.x - was.x) * stepShare,
-                  was.y + (player.position.y - was.y) * stepShare}),
-        feetAtBinturong(player, secondsBefore)};
+        .slot = slot,
+        .position = asVector(
+            PitchPoint{was.x + ((player.position.x - was.x) * stepShare),
+                       was.y + ((player.position.y - was.y) * stepShare)}),
+        .feet = feetAtBinturong(player, secondsBefore)};
   }
   // Where on this stretch it passes closest to his head, and whether he
   // can head it there.
   const auto meetNow = [&](const Header& header) -> std::optional<Meet>
   {
     const MatchPlayer& player = players[header.slot];
-    const float along = segmentSquared > EPSILON
-                            ? std::clamp(((header.position.x - start.x) * segment.x +
-                                          (header.position.y - start.y) * segment.y) /
-                                             segmentSquared,
-                                         0.0f, 1.0f)
-                            : 0.0f;
-    const Vector2F toBall{start.x + segment.x * along - header.position.x,
-                          start.y + segment.y * along - header.position.y};
+    const float along =
+        segmentSquared > EPSILON
+            ? std::clamp(((header.position.x - start.x) * segment.x +
+                          (header.position.y - start.y) * segment.y) /
+                             segmentSquared,
+                         0.0F, 1.0F)
+            : 0.0F;
+    const Vector2F toBall{
+        .x = start.x + (segment.x * along) - header.position.x,
+        .y = start.y + (segment.y * along) - header.position.y};
     const float gap = length(toBall);
-    if (gap > HEAD_REACH) return std::nullopt;
-    const float height = startHeight + (endHeight - startHeight) * along;
+    if (gap > HEAD_REACH)
+    {
+      return std::nullopt;
+    }
+    const float height = startHeight + ((endHeight - startHeight) * along);
     const std::optional<HeadPart> part = headMeetBinturong(
-        player, gap > EPSILON ? Vector2F{toBall.x / gap, toBall.y / gap} : Vector2F{},
+        player,
+        gap > EPSILON ? Vector2F{.x = toBall.x / gap, .y = toBall.y / gap}
+                      : Vector2F{},
         gap, height, header.feet);
-    if (!part) return std::nullopt;
-    return Meet{header.slot, along, gap, *part};
+    if (!part)
+    {
+      return std::nullopt;
+    }
+    return Meet{.slot = header.slot, .along = along, .gap = gap, .part = *part};
   };
   // Whether he can head it `seconds` after the stretch's end, it and he
   // carrying on as they are (its height from its flight, without drag).
   const auto meetsLater = [&](const Header& header, float seconds)
   {
     const MatchPlayer& player = players[header.slot];
-    const Vector2F velocity{substepEndMotion.velocity.x - player.velocity.x,
-                            substepEndMotion.velocity.y - player.velocity.y};
-    const Vector2F later{end.x - header.position.x + velocity.x * seconds,
-                         end.y - header.position.y + velocity.y * seconds};
+    const Vector2F velocity{
+        .x = substepEndMotion.velocity.x - player.velocity.x,
+        .y = substepEndMotion.velocity.y - player.velocity.y};
+    const Vector2F later{
+        .x = end.x - header.position.x + (velocity.x * seconds),
+        .y = end.y - header.position.y + (velocity.y * seconds)};
     const float laterGap = length(later);
-    const float laterHeight = endHeight + substepEndMotion.velocityZ * seconds -
-                              0.5f * MatchTuning::Ball::GRAVITY * seconds * seconds;
+    const float laterHeight =
+        endHeight + (substepEndMotion.velocityZ * seconds) -
+        (0.5F * MatchTuning::Ball::GRAVITY * seconds * seconds);
     return headMeetBinturong(
                player,
-               laterGap > EPSILON ? Vector2F{later.x / laterGap, later.y / laterGap}
-                                  : Vector2F{},
+               laterGap > EPSILON
+                   ? Vector2F{.x = later.x / laterGap, .y = later.y / laterGap}
+                   : Vector2F{},
                laterGap, laterHeight,
-               feetAtBinturong(player, std::max(secondsBefore - seconds, 0.0f)))
+               feetAtBinturong(player, std::max(secondsBefore - seconds, 0.0F)))
         .has_value();
   };
   // Whether an opponent's head could get to it within `seconds` after the
@@ -4976,7 +6090,9 @@ bool MatchEngine::headInSweep()
       const Header& other = headers[index];
       if (players[other.slot].isHomeTeam != player.isHomeTeam &&
           (meetNow(other) || meetsLater(other, seconds)))
+      {
         return true;
+      }
     }
     return false;
   };
@@ -4988,55 +6104,83 @@ bool MatchEngine::headInSweep()
     const Header& header = headers[index];
     const MatchPlayer& player = players[header.slot];
     const std::optional<Meet> meet = meetNow(header);
-    if (!meet || (possessionId == PossessionId::AARDVARK && first && meet->along >= first->along)) continue;
+    if (!meet || (possessionId == PossessionId::AARDVARK && first &&
+                  meet->along >= first->along))
+    {
+      continue;
+    }
     // Still closing on him at the stretch's end: he lets it come closer to
     // the middle of his head, if a sub-step on (or where it passes closest,
     // if sooner) it will still be his to head, and no opponent's head could
     // get to it by then. Otherwise he heads it now.
-    if (meet->along >= 1.0f)
+    if (meet->along >= 1.0F)
     {
-      const Vector2F velocity{substepEndMotion.velocity.x - player.velocity.x,
-                              substepEndMotion.velocity.y - player.velocity.y};
-      const float speedSquared = velocity.x * velocity.x + velocity.y * velocity.y;
-      const float closing = -((end.x - header.position.x) * velocity.x +
-                              (end.y - header.position.y) * velocity.y);
-      const float wait =
-          speedSquared > EPSILON ? std::min(closing / speedSquared, substepSeconds) : 0.0f;
-      if (closing > 0.0f && wait > 0.0f && meetsLater(header, wait) &&
+      const Vector2F velocity{
+          .x = substepEndMotion.velocity.x - player.velocity.x,
+          .y = substepEndMotion.velocity.y - player.velocity.y};
+      const float speedSquared =
+          (velocity.x * velocity.x) + (velocity.y * velocity.y);
+      const float closing = -(((end.x - header.position.x) * velocity.x) +
+                              ((end.y - header.position.y) * velocity.y));
+      const float wait = speedSquared > EPSILON
+                             ? std::min(closing / speedSquared, substepSeconds)
+                             : 0.0F;
+      if (closing > 0.0F && wait > 0.0F && meetsLater(header, wait) &&
           !opponentFirst(player, wait))
+      {
         continue;
+      }
     }
-    if (possessionId == PossessionId::BINTURONG) playableMeets[playableCount++] = *meet;
-    if (!first || meet->along < first->along) first = meet;
+    if (possessionId == PossessionId::BINTURONG)
+    {
+      playableMeets[playableCount++] = *meet;
+    }
+    if (!first || meet->along < first->along)
+    {
+      first = meet;
+    }
   }
 
   if (possessionId == PossessionId::BINTURONG && first)
   {
     const bool home = players[first->slot].isHomeTeam;
-    float opponentAlong = 2.0f;
+    float opponentAlong = 2.0F;
     for (std::size_t i = 0; i < playableCount; ++i)
+    {
       if (players[playableMeets[i].slot].isHomeTeam != home)
+      {
         opponentAlong = std::min(opponentAlong, playableMeets[i].along);
+      }
+    }
     const auto candidate = [&](const Meet& meet)
     {
       const MatchPlayer& p = players[meet.slot];
-      float space = 8.0f;
+      float space = 8.0F;
       for (const MatchPlayer& rival : players)
+      {
         if (active(rival) && rival.isHomeTeam != home)
+        {
           space = std::min(space, distance(p.position, rival.position));
+        }
+      }
       return PossessionCoordination::Candidate{
-          meet.along * substepStretchSeconds,
-          PossessionCoordination::quality(p.velocity, ball.velocity, home, space),
-          getPossessionState().isPass && getPossessionState().passByHome == home &&
-              getExpectedReceiver() == p.player,
-          p.player ? p.player->getId() : 0};
+          .arrivalSeconds = meet.along * substepStretchSeconds,
+          .collectionQuality = PossessionCoordination::quality(
+              p.velocity, ball.velocity, home, space),
+          .intendedReceiver = getPossessionState().isPass &&
+                              getPossessionState().passByHome == home &&
+                              getExpectedReceiver() == p.player,
+          .id = p.player ? p.player->getId() : 0};
     };
     for (std::size_t i = 0; i < playableCount; ++i)
     {
       const Meet& meet = playableMeets[i];
-      if (players[meet.slot].isHomeTeam == home && meet.along <= opponentAlong &&
+      if (players[meet.slot].isHomeTeam == home &&
+          meet.along <= opponentAlong &&
           PossessionCoordination::better(candidate(meet), candidate(*first)))
+      {
         first = meet;
+      }
     }
   }
 
@@ -5047,59 +6191,78 @@ bool MatchEngine::headInSweep()
   {
     std::size_t slot = 0;
     Vector2F position{};
-    float feet = 0.0f;
+    float feet = 0.0F;
     KeeperReach reach;
   };
   std::optional<KeeperMeet> keeperMeet;
   for (std::size_t slot = 0; slot < players.size(); ++slot)
   {
     const MatchPlayer& keeper = players[slot];
-    if (!keeperMayClaimBinturong(keeper)) continue;
-    const PitchPoint was =
-        slot < previousPlayerPositions.size() ? previousPlayerPositions[slot] : keeper.position;
-    const Vector2F at = asVector(PitchPoint{was.x + (keeper.position.x - was.x) * stepShare,
-                                  was.y + (keeper.position.y - was.y) * stepShare});
+    if (!keeperMayClaimBinturong(keeper))
+    {
+      continue;
+    }
+    const PitchPoint was = slot < previousPlayerPositions.size()
+                               ? previousPlayerPositions[slot]
+                               : keeper.position;
+    const Vector2F at =
+        asVector(PitchPoint{was.x + ((keeper.position.x - was.x) * stepShare),
+                            was.y + ((keeper.position.y - was.y) * stepShare)});
     const float feet = feetAtBinturong(keeper, secondsBefore);
-    const Point3F from{start.x, start.y, startHeight};
-    const Point3F to{end.x, end.y, endHeight};
-    std::optional<KeeperReach> reach = keeperReachBinturong(keeper, at, feet, from, to);
-    if (!reach) continue;
+    const Point3F from{.x = start.x, .y = start.y, .z = startHeight};
+    const Point3F to{.x = end.x, .y = end.y, .z = endHeight};
+    std::optional<KeeperReach> reach =
+        keeperReachBinturong(keeper, at, feet, from, to);
+    if (!reach)
+    {
+      continue;
+    }
     // As a header lets it come closer: he lets it come into both hands if it
     // is on its way there and no opponent's head gets to it first; else he
     // takes it where it first reaches a hand.
-    constexpr float BOTH_LOOK_SECONDS = 0.3f;  // placeholder
+    constexpr float BOTH_LOOK_SECONDS = 0.3F;  // placeholder
     if (reach->bothAlong && *reach->bothAlong > reach->along)
     {
-      const bool opponentSooner = first &&
-                                  players[first->slot].isHomeTeam != keeper.isHomeTeam &&
-                                  first->along < *reach->bothAlong;
+      const bool opponentSooner =
+          first && players[first->slot].isHomeTeam != keeper.isHomeTeam &&
+          first->along < *reach->bothAlong;
       if (!opponentSooner)
       {
         reach->along = *reach->bothAlong;
         reach->bothHands = true;
-        const Point3F ballAt{from.x + (to.x - from.x) * reach->along,
-                             from.y + (to.y - from.y) * reach->along,
-                             from.z + (to.z - from.z) * reach->along};
+        const Point3F ballAt{.x = from.x + ((to.x - from.x) * reach->along),
+                             .y = from.y + ((to.y - from.y) * reach->along),
+                             .z = from.z + ((to.z - from.z) * reach->along)};
         reach->gap = std::hypot(ballAt.x - at.x, ballAt.y - at.y);
-        reach->stretch =
-            keeperStretchBinturong(keeper, at, {ballAt.x, ballAt.y, ballAt.z - feet});
+        reach->stretch = keeperStretchBinturong(
+            keeper, at, {.x = ballAt.x, .y = ballAt.y, .z = ballAt.z - feet});
       }
     }
     else if (!reach->bothAlong)
     {
-      const Point3F later{end.x + substepEndMotion.velocity.x * BOTH_LOOK_SECONDS,
-                          end.y + substepEndMotion.velocity.y * BOTH_LOOK_SECONDS,
-                          endHeight + substepEndMotion.velocityZ * BOTH_LOOK_SECONDS -
-                              0.5f * MatchTuning::Ball::GRAVITY * BOTH_LOOK_SECONDS *
-                                  BOTH_LOOK_SECONDS};
+      const Point3F later{
+          .x = end.x + (substepEndMotion.velocity.x * BOTH_LOOK_SECONDS),
+          .y = end.y + (substepEndMotion.velocity.y * BOTH_LOOK_SECONDS),
+          .z = endHeight + (substepEndMotion.velocityZ * BOTH_LOOK_SECONDS) -
+               (0.5F * MatchTuning::Ball::GRAVITY * BOTH_LOOK_SECONDS *
+                BOTH_LOOK_SECONDS)};
       if (const auto ahead = keeperReachBinturong(keeper, at, feet, to, later);
-          ahead && ahead->bothAlong && !opponentFirst(keeper, BOTH_LOOK_SECONDS))
+          ahead && ahead->bothAlong &&
+          !opponentFirst(keeper, BOTH_LOOK_SECONDS))
+      {
         continue;
+      }
     }
     if (!keeperMeet || reach->along < keeperMeet->reach.along)
-      keeperMeet = KeeperMeet{slot, at, feet, *reach};
+    {
+      keeperMeet = KeeperMeet{
+          .slot = slot, .position = at, .feet = feet, .reach = *reach};
+    }
   }
-  if (!first && !keeperMeet) return false;
+  if (!first && !keeperMeet)
+  {
+    return false;
+  }
 
   // The duel. Opponents whose heads (or a keeper's hands) it reaches within
   // the close call of the first: by strength (with a keeper in it, his
@@ -5109,18 +6272,21 @@ bool MatchEngine::headInSweep()
   const auto keeperStrength = [&](const KeeperMeet& meet, float height)
   {
     const MatchPlayer& keeper = players[meet.slot];
-    const float handling = std::clamp((keeper.derivedStat(DerivedStat::HANDLING) - STAT_1_RATING) /
-                                          (STAT_99_RATING - STAT_1_RATING),
-                                      0.0f, 1.0f);
+    const float handling =
+        std::clamp((keeper.derivedStat(DerivedStat::HANDLING) - STAT_1_RATING) /
+                       (STAT_99_RATING - STAT_1_RATING),
+                   0.0F, 1.0F);
     const float above = meet.reach.handTop - height;
-    return (0.35f + handling) *
-           (1.0f + std::clamp(above / A::DUEL_HEIGHT_MARGIN_METRES, 0.0f, 1.0f));
+    return (0.35F + handling) *
+           (1.0F +
+            std::clamp(above / A::DUEL_HEIGHT_MARGIN_METRES, 0.0F, 1.0F));
   };
   const auto headingOf = [&](const MatchPlayer& player)
   {
-    return std::clamp((player.derivedStat(DerivedStat::HEADING) - STAT_1_RATING) /
-                          (STAT_99_RATING - STAT_1_RATING),
-                      0.0f, 1.0f);
+    return std::clamp(
+        (player.derivedStat(DerivedStat::HEADING) - STAT_1_RATING) /
+            (STAT_99_RATING - STAT_1_RATING),
+        0.0F, 1.0F);
   };
   const auto keeperWins = [&](const KeeperMeet& meet)
   {
@@ -5144,44 +6310,61 @@ bool MatchEngine::headInSweep()
     // His hands first: an opponent's head reaching it within the close call
     // contests it.
     const MatchPlayer& keeper = players[keeperMeet->slot];
-    const float height = startHeight + (endHeight - startHeight) * keeperMeet->reach.along;
+    const float height =
+        startHeight + ((endHeight - startHeight) * keeperMeet->reach.along);
     const float keeperSeconds = keeperMeet->reach.along * substepStretchSeconds;
-    const float after = keeperSeconds + A::DUEL_CLOSE_CALL_SECONDS - substepStretchSeconds;
+    const float after =
+        keeperSeconds + A::DUEL_CLOSE_CALL_SECONDS - substepStretchSeconds;
     float total = keeperStrength(*keeperMeet, height);
     const float own = total;
     std::array<std::pair<std::size_t, float>, 8> rivals{};
     std::size_t rivalCount = 0;
-    for (std::size_t index = 0; index < headerCount && rivalCount < rivals.size(); ++index)
+    for (std::size_t index = 0;
+         index < headerCount && rivalCount < rivals.size(); ++index)
     {
       const Header& header = headers[index];
       const MatchPlayer& rival = players[header.slot];
-      if (rival.isHomeTeam == keeper.isHomeTeam) continue;
+      if (rival.isHomeTeam == keeper.isHomeTeam)
+      {
+        continue;
+      }
       const std::optional<Meet> meet = meetNow(header);
-      if ((meet && (meet->along - keeperMeet->reach.along) * substepStretchSeconds <=
-                       A::DUEL_CLOSE_CALL_SECONDS) ||
-          (!meet && after > 0.0f && meetsLater(header, after)))
+      if ((meet &&
+           (meet->along - keeperMeet->reach.along) * substepStretchSeconds <=
+               A::DUEL_CLOSE_CALL_SECONDS) ||
+          (!meet && after > 0.0F && meetsLater(header, after)))
       {
         const float above = rival.heightMetres + header.feet - height;
         const float strength =
-            (0.35f + headingOf(rival)) *
-            (1.0f + std::clamp(above / A::DUEL_HEIGHT_MARGIN_METRES, 0.0f, 1.0f)) *
-            ((!rival.airborne() || !rival.runningJump) ? A::DUEL_HOLD_ADVANTAGE : 1.0f);
+            (0.35F + headingOf(rival)) *
+            (1.0F +
+             std::clamp(above / A::DUEL_HEIGHT_MARGIN_METRES, 0.0F, 1.0F)) *
+            ((!rival.airborne() || !rival.runningJump) ? A::DUEL_HOLD_ADVANTAGE
+                                                       : 1.0F);
         rivals[rivalCount++] = {index, strength};
         total += strength;
       }
     }
-    float pick = randomFloat(0.0f, total) - own;
-    if (pick <= 0.0f) return keeperWins(*keeperMeet);
+    float pick = randomFloat(0.0F, total) - own;
+    if (pick <= 0.0F)
+    {
+      return keeperWins(*keeperMeet);
+    }
     for (std::size_t index = 0; index < rivalCount; ++index)
     {
       pick -= rivals[index].second;
-      if (pick <= 0.0f || index + 1 == rivalCount)
+      if (pick <= 0.0F || index + 1 == rivalCount)
       {
         const Header& rival = headers[rivals[index].first];
-        const float gap = length({start.x + segment.x * keeperMeet->reach.along - rival.position.x,
-                                  start.y + segment.y * keeperMeet->reach.along - rival.position.y});
-        first = Meet{rival.slot, keeperMeet->reach.along, std::min(gap, HEAD_REACH),
-                     meetNow(rival).value_or(Meet{}).part};
+        const float gap =
+            length({.x = start.x + (segment.x * keeperMeet->reach.along) -
+                         rival.position.x,
+                    .y = start.y + (segment.y * keeperMeet->reach.along) -
+                         rival.position.y});
+        first = Meet{.slot = rival.slot,
+                     .along = keeperMeet->reach.along,
+                     .gap = std::min(gap, HEAD_REACH),
+                     .part = meetNow(rival).value_or(Meet{}).part};
         break;
       }
     }
@@ -5189,42 +6372,58 @@ bool MatchEngine::headInSweep()
     keeperMeet.reset();
   }
   else if (keeperMeet && first &&
-           players[keeperMeet->slot].isHomeTeam != players[first->slot].isHomeTeam &&
+           players[keeperMeet->slot].isHomeTeam !=
+               players[first->slot].isHomeTeam &&
            (keeperMeet->reach.along - first->along) * substepStretchSeconds <=
                A::DUEL_CLOSE_CALL_SECONDS)
   {
     // A head first, the opposing keeper's hands within the close call: his
     // Handling against that head's Heading.
     const MatchPlayer& header = players[first->slot];
-    const float height = startHeight + (endHeight - startHeight) * first->along;
+    const float height =
+        startHeight + ((endHeight - startHeight) * first->along);
     const float headerFeet = feetAtBinturong(header, secondsBefore);
     const float above = header.heightMetres + headerFeet - height;
     const float headerStrength =
-        (0.35f + headingOf(header)) *
-        (1.0f + std::clamp(above / A::DUEL_HEIGHT_MARGIN_METRES, 0.0f, 1.0f)) *
-        ((!header.airborne() || !header.runningJump) ? A::DUEL_HOLD_ADVANTAGE : 1.0f);
+        (0.35F + headingOf(header)) *
+        (1.0F + std::clamp(above / A::DUEL_HEIGHT_MARGIN_METRES, 0.0F, 1.0F)) *
+        ((!header.airborne() || !header.runningJump) ? A::DUEL_HOLD_ADVANTAGE
+                                                     : 1.0F);
     const float keeper = keeperStrength(*keeperMeet, height);
-    if (randomFloat(0.0f, headerStrength + keeper) >= headerStrength)
+    if (randomFloat(0.0F, headerStrength + keeper) >= headerStrength)
+    {
       return keeperWins(*keeperMeet);
+    }
     keeperMeet.reset();
   }
-  if (!first) return false;
+  if (!first)
+  {
+    return false;
+  }
 
   const MatchPlayer& leader = players[first->slot];
-  const float meetHeight = startHeight + (endHeight - startHeight) * first->along;
+  const float meetHeight =
+      startHeight + ((endHeight - startHeight) * first->along);
   const float leaderSeconds = first->along * substepStretchSeconds;
   std::array<std::size_t, 8> close{};
   std::size_t closeCount = 0;
-  for (std::size_t index = 0; index < headerCount && closeCount < close.size(); ++index)
+  for (std::size_t index = 0; index < headerCount && closeCount < close.size();
+       ++index)
   {
     const Header& header = headers[index];
-    if (players[header.slot].isHomeTeam == leader.isHomeTeam) continue;
+    if (players[header.slot].isHomeTeam == leader.isHomeTeam)
+    {
+      continue;
+    }
     const std::optional<Meet> meet = meetNow(header);
-    const float after = leaderSeconds + A::DUEL_CLOSE_CALL_SECONDS - substepStretchSeconds;
+    const float after =
+        leaderSeconds + A::DUEL_CLOSE_CALL_SECONDS - substepStretchSeconds;
     if ((meet && (meet->along - first->along) * substepStretchSeconds <=
                      A::DUEL_CLOSE_CALL_SECONDS) ||
-        (!meet && after > 0.0f && meetsLater(header, after)))
+        (!meet && after > 0.0F && meetsLater(header, after)))
+    {
       close[closeCount++] = index;
+    }
   }
   if (closeCount > 0)
   {
@@ -5233,29 +6432,38 @@ bool MatchEngine::headInSweep()
       const MatchPlayer& player = players[header.slot];
       const float above = player.heightMetres + header.feet - meetHeight;
       const bool holding = !player.airborne() || !player.runningJump;
-      return (0.35f + std::clamp(player.physicality, 0.0f, 1.0f)) *
-             (1.0f + std::clamp(above / A::DUEL_HEIGHT_MARGIN_METRES, 0.0f, 1.0f)) *
-             (holding ? A::DUEL_HOLD_ADVANTAGE : 1.0f);
+      return (0.35F + std::clamp(player.physicality, 0.0F, 1.0F)) *
+             (1.0F +
+              std::clamp(above / A::DUEL_HEIGHT_MARGIN_METRES, 0.0F, 1.0F)) *
+             (holding ? A::DUEL_HOLD_ADVANTAGE : 1.0F);
     };
-    const Header* leaderHeader = nullptr;
-    for (std::size_t index = 0; index < headerCount; ++index)
-      if (headers[index].slot == first->slot) leaderHeader = &headers[index];
+    const auto candidates = std::span(headers).first(headerCount);
+    const auto leaderHeader =
+        std::ranges::find(candidates, first->slot, &Header::slot);
+    if (leaderHeader == candidates.end())
+    {
+      return false;
+    }
     float total = strength(*leaderHeader);
     for (std::size_t index = 0; index < closeCount; ++index)
+    {
       total += strength(headers[close[index]]);
-    float pick = randomFloat(0.0f, total) - strength(*leaderHeader);
-    for (std::size_t index = 0; index < closeCount && pick > 0.0f; ++index)
+    }
+    float pick = randomFloat(0.0F, total) - strength(*leaderHeader);
+    for (std::size_t index = 0; index < closeCount && pick > 0.0F; ++index)
     {
       const Header& rival = headers[close[index]];
       pick -= strength(rival);
-      if (pick <= 0.0f)
+      if (pick <= 0.0F)
       {
         // He wins it where they meet it.
-        const float gap =
-            length({start.x + segment.x * first->along - rival.position.x,
-                    start.y + segment.y * first->along - rival.position.y});
-        first = Meet{rival.slot, first->along, std::min(gap, HEAD_REACH),
-                     meetNow(rival).value_or(*first).part};
+        const float gap = length(
+            {.x = start.x + (segment.x * first->along) - rival.position.x,
+             .y = start.y + (segment.y * first->along) - rival.position.y});
+        first = Meet{.slot = rival.slot,
+                     .along = first->along,
+                     .gap = std::min(gap, HEAD_REACH),
+                     .part = meetNow(rival).value_or(*first).part};
       }
     }
   }
@@ -5280,49 +6488,61 @@ bool MatchEngine::headInSweep()
   std::array<MatchPlayer*, 8> beaten{};
   std::size_t beatenCount = 0;
   const Vector2F meetAt = asVector(ball.position);
-  for (std::size_t index = 0; index < headerCount && beatenCount < beaten.size(); ++index)
+  for (std::size_t index = 0;
+       index < headerCount && beatenCount < beaten.size(); ++index)
   {
     MatchPlayer& other = players[headers[index].slot];
     if (other.isHomeTeam != player.isHomeTeam &&
-        length({headers[index].position.x - meetAt.x,
-                headers[index].position.y - meetAt.y}) <= A::DUEL_RADIUS_METRES &&
+        length({.x = headers[index].position.x - meetAt.x,
+                .y = headers[index].position.y - meetAt.y}) <=
+            A::DUEL_RADIUS_METRES &&
         jumpingReachBinturong(other) >= meetHeight)
+    {
       beaten[beatenCount++] = &other;
+    }
   }
   if (beatenCount > 0)
   {
     ++statsOf(player).aerialDuelsWon;
     for (std::size_t index = 0; index < beatenCount; ++index)
+    {
       ++statsOf(*beaten[index]).aerialDuelsLost;
+    }
     ++stats.aerialDuelsContested;
     ++(player.isHomeTeam ? stats.homeAerialDuelsWon : stats.awayAerialDuelsWon);
     // Pushing or holding in the air: the defender's foul in his own box is a
     // penalty; an attacker's push gives the defence a free kick.
     if (whistles(incidentRoll() < A::DUEL_FOUL_CHANCE))
     {
-      const bool attackerFouls = incidentRoll() < 0.6f;
-      const bool winnerAttacking = getPossessionState().passByHome == player.isHomeTeam;
+      const bool attackerFouls = incidentRoll() < 0.6F;
+      const bool winnerAttacking =
+          getPossessionState().passByHome == player.isHomeTeam;
       MatchPlayer& attacker = winnerAttacking ? player : *beaten[0];
       MatchPlayer& defender = winnerAttacking ? *beaten[0] : player;
       clearFlightState();
-      ball.velocity = {0.0f, 0.0f};
-      ball.velocityZ = 0.0f;
+      ball.velocity = {.x = 0.0F, .y = 0.0F};
+      ball.velocityZ = 0.0F;
       contactAlong.reset();
       if (attackerFouls)
+      {
         commitFoul(attacker, defender, true, false);
+      }
       else
+      {
         commitFoul(defender, attacker, true, false);
+      }
       return true;
     }
   }
   lastHeadPart = first->part;
-  strikeAt = TouchMoment{ball.position,
-                         first->gap,
-                         HEAD_REACH,
-                         ball.z,
-                         substepsLeftInStep,
-                         ballStepSeconds / static_cast<float>(substepsPerStep),
-                         ballStepSeconds};
+  strikeAt = TouchMoment{
+      .contactPoint = ball.position,
+      .gap = first->gap,
+      .reach = HEAD_REACH,
+      .height = ball.z,
+      .substepsLeft = substepsLeftInStep,
+      .substepSeconds = ballStepSeconds / static_cast<float>(substepsPerStep),
+      .stepSeconds = ballStepSeconds};
   headBall(player);
   strikeAt.reset();
   return true;
@@ -5337,9 +6557,9 @@ void MatchEngine::clearBehind(MatchPlayer& defender, bool headed)
   const auto [speed, lift] =
       headed ? headerPace(defender, HeaderPace::FULL, target,
                           MatchTuning::Aerial::HEADER_CLEARANCE_SPEED,
-                          MatchTuning::Aerial::HEADER_LIFT * 0.5f)
+                          MatchTuning::Aerial::HEADER_LIFT * 0.5F)
              : std::pair{MatchTuning::Aerial::HEADER_CLEARANCE_SPEED,
-                         MatchTuning::Aerial::HEADER_LIFT * 0.5f};
+                         MatchTuning::Aerial::HEADER_LIFT * 0.5F};
   const Kick kick =
       strikeAs(defender, headed ? StrikeKind::HEADER : StrikeKind::CLEARANCE,
                target, speed, lift);
@@ -5350,8 +6570,14 @@ void MatchEngine::clearBehind(MatchPlayer& defender, bool headed)
 
 void MatchEngine::clearBall(MatchPlayer& defender)
 {
-  if (holdStrikeForSweep({PendingStrike::Kind::CLEAR, &defender}))
+  if (holdStrikeForSweep({.kind = PendingStrike::Kind::CLEAR,
+                          .striker = &defender,
+                          .pass = {},
+                          .shotAim = {},
+                          .receiverSlot = {}}))
+  {
     return;
+  }
   trackTouch(defender);
   const ClearanceAim aim = chooseClearanceAim(defender);
   const PitchPoint target = aim.target;
@@ -5364,10 +6590,10 @@ void MatchEngine::clearBall(MatchPlayer& defender)
   clearFlightState();
   const Kick kick =
       strikeAs(defender, StrikeKind::CLEARANCE, target, speed,
-               loftVerticalSpeed(clearanceMetres, speed, 0.0f, 0.0f));
+               loftVerticalSpeed(clearanceMetres, speed, 0.0F, 0.0F));
   launchBall(defender, from, kick.target, kick.speed, kick.verticalSpeed,
              BallSpin{});
-  if (getRecorder())
+  if (getRecorder() != nullptr)
   {
     MatchActionRecord action;
     action.kind = MatchActionKind::CLEARANCE;
@@ -5378,18 +6604,21 @@ void MatchEngine::clearBall(MatchPlayer& defender)
   defender.actionCooldown = recoverySeconds(defender, Recovery::PASS);
 }
 
-
 void MatchEngine::headBall(MatchPlayer& header)
 {
   noteHeaderContact(header);
-  const bool fromTeammate = getPossessionState().isPass && getPossessionState().passByHome == header.isHomeTeam;
+  const bool fromTeammate =
+      getPossessionState().isPass &&
+      getPossessionState().passByHome == header.isHomeTeam;
   const MatchPlayer* deliverer = findMatchPlayer(getLastPossessionAttachment());
-  if (fromTeammate &&
-      (possessionId == PossessionId::BINTURONG
-           ? PossessionCoordination::offsideCollector(getPossessionState().passWasOffside,
-                 getExpectedReceiver() == header.player, getPossessionState().passOffsidePlayers,
-                 header.player->getId())
-           : getPossessionState().passWasOffside && getExpectedReceiver() == header.player))
+  if (fromTeammate && (possessionId == PossessionId::BINTURONG
+                           ? PossessionCoordination::offsideCollector(
+                                 getPossessionState().passWasOffside,
+                                 getExpectedReceiver() == header.player,
+                                 getPossessionState().passOffsidePlayers,
+                                 header.player->getId())
+                           : getPossessionState().passWasOffside &&
+                                 getExpectedReceiver() == header.player))
   {
     ++(header.isHomeTeam ? stats.homeOffsides : stats.awayOffsides);
     MatchEvent& event = logEvent(MatchEventType::OFFSIDE, header);
@@ -5400,24 +6629,26 @@ void MatchEngine::headBall(MatchPlayer& header)
 
   // A drill's forced header (forceHeader) stands in for the brain's choice.
   std::optional<ForcedHeader> forced;
-  if (forcedHeader && header.player &&
+  if (forcedHeader && (header.player != nullptr) &&
       forcedHeader->player == header.player->getId())
   {
     forced = forcedHeader;
     forcedHeader.reset();
   }
   const HeaderAttempt attempt =
-      !forced                                    ? chooseHeaderAttempt(header, fromTeammate)
+      !forced ? chooseHeaderAttempt(header, fromTeammate)
       : forced->aim == ForcedHeaderAim::GOAL ? HeaderAttempt::SHOOT
       : forced->aim == ForcedHeaderAim::KEEP ? HeaderAttempt::CUSHION
                                              : HeaderAttempt::PLAY;
   if (forced && forced->aim == ForcedHeaderAim::GOAL)
+  {
     forcedShotAim = forced->goalAim;
+  }
   if (attempt == HeaderAttempt::SHOOT)
   {
     creditHeaderShot(header, deliverer);
     meetWithHead(header);
-    takeShot(header, -1.0f, true);
+    takeShot(header, -1.0F, true);
     return;
   }
 
@@ -5439,41 +6670,52 @@ void MatchEngine::headBall(MatchPlayer& header)
   }
   beginHeaderPlay(header, fromTeammate);
   meetWithHead(header);
-  if (!forced && !fromTeammate && tryOwnGoalTouch(header)) return;
+  if (!forced && !fromTeammate && tryOwnGoalTouch(header))
+  {
+    return;
+  }
   HeaderPlay play;
   if (forced)
+  {
     play.aim = forced->spot;
+  }
   else
+  {
     play = chooseHeaderPlay(header, fromTeammate);
+  }
   if (play.kind == HeaderPlay::Kind::BEHIND)
   {
     ++statsOf(header).clearances;
-    if (play.speed > 0.0f)
+    if (play.speed > 0.0F)
     {
       // Headed out of play the way he chose.
       const BallRelease from = releaseFrom(header, ReleaseKind::HEADER);
       const auto [speed, lift] =
           headerPace(header, HeaderPace::FULL, play.aim, play.speed, play.lift);
-      const Kick kick = strikeAs(header, StrikeKind::HEADER, play.aim, speed, lift);
-      launchBall(header, from, kick.target, kick.speed,
-                 kick.verticalSpeed, BallSpin{});
+      const Kick kick =
+          strikeAs(header, StrikeKind::HEADER, play.aim, speed, lift);
+      launchBall(header, from, kick.target, kick.speed, kick.verticalSpeed,
+                 BallSpin{});
     }
     else
+    {
       clearBehind(header, true);
+    }
   }
   else if (play.kind == HeaderPlay::Kind::CLEAR)
   {
     ++statsOf(header).clearances;
     // Many defensive headers are half-clearances that drop around the edge
     // of the box, where the second ball is fought for.
-    const auto [speed, lift] =
-        headerPace(header, HeaderPace::CLEAR, play.aim,
-                   headerClearanceSpeed(header), MatchTuning::Aerial::HEADER_LIFT);
+    const auto [speed, lift] = headerPace(header, HeaderPace::CLEAR, play.aim,
+                                          headerClearanceSpeed(header),
+                                          MatchTuning::Aerial::HEADER_LIFT);
     const BallRelease from = releaseFrom(header, ReleaseKind::HEADER);
-    const Kick kick = strikeAs(header, StrikeKind::HEADER, play.aim, speed, lift);
-    launchBall(header, from, kick.target, kick.speed,
-               kick.verticalSpeed, BallSpin{});
-    if (getRecorder())
+    const Kick kick =
+        strikeAs(header, StrikeKind::HEADER, play.aim, speed, lift);
+    launchBall(header, from, kick.target, kick.speed, kick.verticalSpeed,
+               BallSpin{});
+    if (getRecorder() != nullptr)
     {
       MatchActionRecord action;
       action.kind = MatchActionKind::CLEARANCE;
@@ -5488,24 +6730,24 @@ void MatchEngine::headBall(MatchPlayer& header)
     const auto [speed, lift] =
         headerPace(header, HeaderPace::TO_SPOT, knockDown,
                    MatchTuning::Aerial::HEADER_PASS_SPEED,
-                   MatchTuning::Aerial::HEADER_LIFT * 0.5f);
-    const Kick kick = strikeAs(header, StrikeKind::HEADER, knockDown, speed, lift);
-    launchBall(header, from, kick.target, kick.speed,
-               kick.verticalSpeed, BallSpin{});
-    if (getRecorder())
+                   MatchTuning::Aerial::HEADER_LIFT * 0.5F);
+    const Kick kick =
+        strikeAs(header, StrikeKind::HEADER, knockDown, speed, lift);
+    launchBall(header, from, kick.target, kick.speed, kick.verticalSpeed,
+               BallSpin{});
+    if (getRecorder() != nullptr)
     {
       MatchActionRecord action;
       action.kind = MatchActionKind::KNOCK_DOWN;
       action.header = true;
       action.target =
-          play.target && play.target->player ? play.target->player->getId() : 0;
+          (play.target != nullptr) && (play.target->player != nullptr)
+              ? play.target->player->getId()
+              : 0;
       reportKick(action, header, kick.target);
     }
   }
 }
-
-
-
 
 bool MatchEngine::contestsBall(const MatchPlayer& player,
                                const MatchPlayer& owner) const
@@ -5516,13 +6758,20 @@ bool MatchEngine::contestsBall(const MatchPlayer& player,
          isTouchCollected();
 }
 
-void MatchEngine::swingAtNothing(MatchPlayer& player, float seconds, bool carrier)
+void MatchEngine::swingAtNothing(MatchPlayer& player, float seconds,
+                                 bool carrier)
 {
   player.footCooldown = std::max(player.footCooldown, seconds);
   if (carrier)
-    ++(player.isHomeTeam ? stats.homeCarrierAirSwings : stats.awayCarrierAirSwings);
+  {
+    ++(player.isHomeTeam ? stats.homeCarrierAirSwings
+                         : stats.awayCarrierAirSwings);
+  }
   else
-    ++(player.isHomeTeam ? stats.homeTacklerAirSwings : stats.awayTacklerAirSwings);
+  {
+    ++(player.isHomeTeam ? stats.homeTacklerAirSwings
+                         : stats.awayTacklerAirSwings);
+  }
 }
 
 MatchEngine::ContestMeet MatchEngine::commitContestTouch(MatchPlayer& tackler,
@@ -5535,7 +6784,7 @@ MatchEngine::ContestMeet MatchEngine::commitContestTouch(MatchPlayer& tackler,
   // block). Free and not yet due (row 5): his foot reacts, a block.
   tackler.footCooldown = dribbleTouchIntervalBinturong(tackler);
   const bool recovering =
-      ball.ownTouchCooldown > 1e-4f || owner.footCooldown > 1e-4f;
+      ball.ownTouchCooldown > 1e-4F || owner.footCooldown > 1e-4F;
   if (recovering)
   {
     owner.footCooldown = std::max(owner.footCooldown, ball.ownTouchCooldown);
@@ -5544,39 +6793,42 @@ MatchEngine::ContestMeet MatchEngine::commitContestTouch(MatchPlayer& tackler,
   using R = MatchTuning::Dribble;
   const bool planned = ball.meetFor == owner.player;
   if (planned && ball.meetSeconds <= R::BLOCK_SECONDS)
+  {
     return ContestMeet::BLOCK_COMMITTED;
+  }
   if (planned && ball.meetSeconds <= R::COMMIT_SECONDS)
   {
-    swingAtNothing(owner,
-                   std::max(0.0f, ball.meetSeconds) + dribbleTouchIntervalBinturong(owner),
-                   true);
+    swingAtNothing(
+        owner,
+        std::max(0.0F, ball.meetSeconds) + dribbleTouchIntervalBinturong(owner),
+        true);
     return ContestMeet::UNOPPOSED;
   }
   return ContestMeet::BLOCK_REACTING;
 }
 
-float MatchEngine::ballStretch(const MatchPlayer& player, PitchPoint point) const
+float MatchEngine::ballStretch(const MatchPlayer& player,
+                               PitchPoint point) const
 {
   // The stretch map: where the ball is off his facing and how far out in
   // his reach.
   const Vector2F toBall = point - player.position;
   const float gap = length(toBall);
   const Vector2F facing = normalized(
-      {std::cos(player.facingAngle),
-       std::sin(player.facingAngle)});
-  const float off =
-      gap > EPSILON
-          ? std::acos(std::clamp((toBall.x * facing.x + toBall.y * facing.y) / gap,
-                                 -1.0f, 1.0f)) *
-                180.0f / std::numbers::pi_v<float>
-          : 0.0f;
+      {.x = std::cos(player.facingAngle), .y = std::sin(player.facingAngle)});
+  const float off = gap > EPSILON
+                        ? std::acos(std::clamp(
+                              (toBall.x * facing.x + toBall.y * facing.y) / gap,
+                              -1.0F, 1.0F)) *
+                              180.0F / std::numbers::pi_v<float>
+                        : 0.0F;
   return std::clamp(
       contactStretchMap.at(off, gap / std::max(feetReach(player), EPSILON)),
-      0.0f, 1.0f);
+      0.0F, 1.0F);
 }
 
-float MatchEngine::blockPushBinturong(const MatchPlayer& player, PitchPoint contact,
-                                      bool reacting) const
+float MatchEngine::blockPushBinturong(const MatchPlayer& player,
+                                      PitchPoint contact, bool reacting) const
 {
   // By his Tackling; less at a stretch (the stretch map, where the ball is
   // off his facing and how far out in his reach), less the faster he is
@@ -5585,14 +6837,18 @@ float MatchEngine::blockPushBinturong(const MatchPlayer& player, PitchPoint cont
   const float tackling =
       std::clamp((player.derivedStat(DerivedStat::TACKLING) - STAT_1_RATING) /
                      (STAT_99_RATING - STAT_1_RATING),
-                 0.0f, 1.0f);
-  float push = D::BLOCK_PUSH_POOR + (D::BLOCK_PUSH_BEST - D::BLOCK_PUSH_POOR) * tackling;
-  push *= 1.0f - D::BLOCK_STRETCH_LOSS * ballStretch(player, contact);
-  push *= 1.0f - D::BLOCK_SPEED_LOSS *
+                 0.0F, 1.0F);
+  float push = D::BLOCK_PUSH_POOR +
+               ((D::BLOCK_PUSH_BEST - D::BLOCK_PUSH_POOR) * tackling);
+  push *= 1.0F - D::BLOCK_STRETCH_LOSS * ballStretch(player, contact);
+  push *= 1.0F - D::BLOCK_SPEED_LOSS *
                      std::clamp(length(player.velocity) /
                                     std::max(currentTopSpeed(player), EPSILON),
-                                0.0f, 1.0f);
-  if (reacting) push *= D::BLOCK_REACTING_SHARE;
+                                0.0F, 1.0F);
+  if (reacting)
+  {
+    push *= D::BLOCK_REACTING_SHARE;
+  }
   return push;
 }
 
@@ -5628,25 +6884,33 @@ void MatchEngine::playBlock(MatchPlayer& tackler, MatchPlayer& owner,
       break;
   }
   Vector2F aim = metricDirection(contact, target);
-  if (length(aim) <= EPSILON) aim = metricDirection(tackler.position, owner.position);
+  if (length(aim) <= EPSILON)
+  {
+    aim = metricDirection(tackler.position, owner.position);
+  }
   ContactRequest request;
   request.kind = ContactRequest::Kind::BLOCK;
   request.aim = aim;
   request.speed = blockPushBinturong(tackler, contact, false);
-  const Vector2F tacklerPush = contactBinturong(tackler, request, moment).outcome.velocity;
+  const Vector2F tacklerPush =
+      contactBinturong(tackler, request, moment).outcome.velocity;
   // The line between them (from the carrier to the tackler): the squeeze is
   // along it, the escape across it.
   Vector2F line = metricDirection(owner.position, tackler.position);
-  if (length(line) <= EPSILON) line = {1.0f, 0.0f};
-  const auto alongOf = [&](Vector2F v) { return v.x * line.x + v.y * line.y; };
+  if (length(line) <= EPSILON)
+  {
+    line = {.x = 1.0F, .y = 0.0F};
+  }
+  const auto alongOf = [&](Vector2F v)
+  { return (v.x * line.x) + (v.y * line.y); };
   // A foot through the ball pushes it away from his own body, never back
   // towards him (no drag-backs in a block): along the line the tackler's
   // push only goes towards the carrier, the carrier's towards the tackler.
   const float tacklerAlongRaw = alongOf(tacklerPush);
-  const float tacklerAlong = std::min(tacklerAlongRaw, 0.0f);
-  Vector2F across{tacklerPush.x - line.x * tacklerAlongRaw,
-                  tacklerPush.y - line.y * tacklerAlongRaw};
-  float ownerAlong = 0.0f;
+  const float tacklerAlong = std::min(tacklerAlongRaw, 0.0F);
+  Vector2F across{.x = tacklerPush.x - (line.x * tacklerAlongRaw),
+                  .y = tacklerPush.y - (line.y * tacklerAlongRaw)};
+  float ownerAlong = 0.0F;
   if (committed)
   {
     // His planned touch, the way it was to send it, through his contact.
@@ -5657,56 +6921,70 @@ void MatchEngine::playBlock(MatchPlayer& tackler, MatchPlayer& owner,
     planned.kind = ContactRequest::Kind::BLOCK;
     planned.aim = ball.meetOut;
     planned.speed = blockPushBinturong(owner, contact, false);
-    const Vector2F ownerPush = contactBinturong(owner, planned, his).outcome.velocity;
+    const Vector2F ownerPush =
+        contactBinturong(owner, planned, his).outcome.velocity;
     const float ownerAlongRaw = alongOf(ownerPush);
-    ownerAlong = std::max(ownerAlongRaw, 0.0f);
+    ownerAlong = std::max(ownerAlongRaw, 0.0F);
     across.x += ownerPush.x - line.x * ownerAlongRaw;
     across.y += ownerPush.y - line.y * ownerAlongRaw;
   }
-  else if (tacklerAlong < 0.0f)
+  else if (tacklerAlong < 0.0F)
   {
     // A wall: it holds the ball against a push towards him, no more.
-    ownerAlong = std::min(blockPushBinturong(owner, contact, true), -tacklerAlong);
+    ownerAlong =
+        std::min(blockPushBinturong(owner, contact, true), -tacklerAlong);
   }
   // Opposed along the line: the stronger wins by the difference, and pace
   // is lost; a strong, near-equal squeeze pops it up.
   float along = tacklerAlong + ownerAlong;
-  float lift = 0.0f;
-  if (tacklerAlong * ownerAlong < 0.0f)
+  float lift = 0.0F;
+  if (tacklerAlong * ownerAlong < 0.0F)
   {
-    const float squeezed = std::min(std::abs(tacklerAlong), std::abs(ownerAlong));
-    const float stronger = std::max(std::abs(tacklerAlong), std::abs(ownerAlong));
-    if (squeezed >= D::BLOCK_POP_MIN && std::abs(along) <= D::BLOCK_POP_EQUAL * stronger)
+    const float squeezed =
+        std::min(std::abs(tacklerAlong), std::abs(ownerAlong));
+    const float stronger =
+        std::max(std::abs(tacklerAlong), std::abs(ownerAlong));
+    if (squeezed >= D::BLOCK_POP_MIN &&
+        std::abs(along) <= D::BLOCK_POP_EQUAL * stronger)
     {
       lift = D::BLOCK_POP_SHARE * squeezed;
       ++stats.blocksPoppedUp;
     }
-    along *= 1.0f - D::BLOCK_SQUEEZE_LOSS;
+    along *= 1.0F - D::BLOCK_SQUEEZE_LOSS;
   }
-  const Vector2F velocity{line.x * along + across.x, line.y * along + across.y};
-  sendBallOff(tackler,
-              PitchPoint{std::clamp(contact.x, MatchTuning::Pitch::BALL_INSIDE_END_METRES, pitch.length - MatchTuning::Pitch::BALL_INSIDE_END_METRES), std::clamp(contact.y, MatchTuning::Pitch::BALL_INSIDE_SIDE_METRES, pitch.width - MatchTuning::Pitch::BALL_INSIDE_SIDE_METRES)},
-              moment.height, velocity, lift,
-              BallSpin{}, 0.0f);
+  const Vector2F velocity{.x = (line.x * along) + across.x,
+                          .y = (line.y * along) + across.y};
+  sendBallOff(
+      tackler,
+      PitchPoint{
+          std::clamp(contact.x, MatchTuning::Pitch::BALL_INSIDE_END_METRES,
+                     pitch.length - MatchTuning::Pitch::BALL_INSIDE_END_METRES),
+          std::clamp(
+              contact.y, MatchTuning::Pitch::BALL_INSIDE_SIDE_METRES,
+              pitch.width - MatchTuning::Pitch::BALL_INSIDE_SIDE_METRES)},
+      moment.height, velocity, lift, BallSpin{}, 0.0F);
   // Loose: nobody's. Both feet are committed.
   clearPossession();
-  owner.footCooldown = std::max(owner.footCooldown, dribbleTouchIntervalBinturong(owner));
+  owner.footCooldown =
+      std::max(owner.footCooldown, dribbleTouchIntervalBinturong(owner));
   // At full stretch or flat out, a little longer to get his balance back
   // (tackling plan step 6): no stumble state, just more recovery.
   const auto offBalance = [&](const MatchPlayer& player)
   {
     const float speedShare = std::clamp(
-        length(player.velocity) / std::max(currentTopSpeed(player), EPSILON), 0.0f, 1.0f);
-    return D::BLOCK_RECOVERY_SECONDS * std::max(ballStretch(player, contact), speedShare);
+        length(player.velocity) / std::max(currentTopSpeed(player), EPSILON),
+        0.0F, 1.0F);
+    return D::BLOCK_RECOVERY_SECONDS *
+           std::max(ballStretch(player, contact), speedShare);
   };
   tackler.footCooldown += offBalance(tackler);
   owner.footCooldown += offBalance(owner);
   ++(tackler.isHomeTeam ? stats.homeBlocks : stats.awayBlocks);
-  if (committed) ++stats.blocksCommitted;
+  if (committed)
+  {
+    ++stats.blocksCommitted;
+  }
 }
-
-
-
 
 bool MatchEngine::possessionConsistent() const
 {
@@ -5717,11 +6995,14 @@ bool MatchEngine::possessionConsistent() const
 TouchIntent MatchEngine::defaultTouchIntent(const MatchPlayer& player) const
 {
   TouchIntent intent;
-  const Vector2F ahead = {(player.isHomeTeam ? 1.0f : -1.0f) *
-           touchKnobs[TouchKnob::SET_OFFSET],
-       0.0f};
-  intent.targetSpot = PitchPoint{std::clamp(player.position.x + ahead.x, MatchTuning::Pitch::BALL_INSIDE_END_METRES, pitch.length - MatchTuning::Pitch::BALL_INSIDE_END_METRES),
-                       player.position.y};
+  const Vector2F ahead = {.x = (player.isHomeTeam ? 1.0F : -1.0F) *
+                               touchKnobs[TouchKnob::SET_OFFSET],
+                          .y = 0.0F};
+  intent.targetSpot = PitchPoint{
+      std::clamp(player.position.x + ahead.x,
+                 MatchTuning::Pitch::BALL_INSIDE_END_METRES,
+                 pitch.length - MatchTuning::Pitch::BALL_INSIDE_END_METRES),
+      player.position.y};
   return intent;
 }
 
@@ -5730,8 +7011,14 @@ TackleIntent MatchEngine::tackleIntentOf(const MatchPlayer& tackler,
                                          PitchPoint contact, bool freeBall)
 {
   for (const auto& [id, forced] : forcedTackleIntents)
-    if (tackler.player && tackler.player->getId() == id) return forced;
-  const TackleIntent intent = chooseTackleIntent(tackler, attacker, contact, freeBall);
+  {
+    if ((tackler.player != nullptr) && tackler.player->getId() == id)
+    {
+      return forced;
+    }
+  }
+  const TackleIntent intent =
+      chooseTackleIntent(tackler, attacker, contact, freeBall);
   ++(intent == TackleIntent::WIN     ? stats.intentsWin
      : intent == TackleIntent::CLEAR ? stats.intentsClear
                                      : stats.intentsControl);
@@ -5757,8 +7044,8 @@ bool MatchEngine::playTackleIntent(MatchPlayer& tackler,
       nudge.kind = TouchIntent::Kind::SET;
       nudge.targetSpot =
           tackleNudgeSpotBinturong(tackler, attacker, moment.contactPoint);
-      nudge.arrivalSpeed = 0.0f;
-      nudge.liftSpeed = 0.0f;
+      nudge.arrivalSpeed = 0.0F;
+      nudge.liftSpeed = 0.0F;
       lastNudgeSpot = nudge.targetSpot;
       ++nudges;
       playFirstTouch(tackler, moment, &nudge);
@@ -5772,7 +7059,10 @@ bool MatchEngine::playTackleIntent(MatchPlayer& tackler,
       // clears it.
       takePossession(tackler);
       std::optional<PassOption> pass;
-      if (intent == TackleIntent::PASS) pass = choosePassTarget(tackler);
+      if (intent == TackleIntent::PASS)
+      {
+        pass = choosePassTarget(tackler);
+      }
       armTackleStrike(tackler, pass);
       playPendingStrike(moment);
       return true;
@@ -5798,10 +7088,16 @@ void MatchEngine::playFirstTouch(MatchPlayer& player, const TouchMoment& moment,
   const PitchPoint contactPoint = moment.contactPoint;
   // A team-mate's pass counts as completed only once the ball is collected;
   // an opponent's pass is intercepted at the touch.
-  const bool receivingPass = getPossessionState().isPass && getPossessionState().passByHome == player.isHomeTeam;
+  const bool receivingPass =
+      getPossessionState().isPass &&
+      getPossessionState().passByHome == player.isHomeTeam;
   const Player* passer = getLastPossessionAttachment();
-  if (!receivingPass) recordPassCompletion(player);
-  const TouchIntent intent = forced ? *forced : chooseFirstTouch(player, moment);
+  if (!receivingPass)
+  {
+    recordPassCompletion(player);
+  }
+  const TouchIntent intent =
+      (forced != nullptr) ? *forced : chooseFirstTouch(player, moment);
   // Read before setPossession clears the flight (whose pass it was).
   const TouchResult touch = firstTouchBinturong(player, intent, moment);
 
@@ -5810,9 +7106,10 @@ void MatchEngine::playFirstTouch(MatchPlayer& player, const TouchMoment& moment,
   takePossession(player);
   // It keeps the height he met it at: the touch changes only its velocity.
   sendBallOff(player,
-              PossessionControl::retainingTouchPosition(pitch, possessionId, contactPoint),
-              moment.height, touch.velocity,
-              touch.verticalSpeed, BallSpin{}, 0.0f);
+              PossessionControl::retainingTouchPosition(pitch, possessionId,
+                                                        contactPoint),
+              moment.height, touch.velocity, touch.verticalSpeed, BallSpin{},
+              0.0F);
   beginTouchClaim(receivingPass ? passer : nullptr, false);
   noteTouchOnBall(player, intent, touch, moment);
   ball.dribbleTouchLength =
@@ -5834,14 +7131,20 @@ void MatchEngine::sendBallOff(const MatchPlayer& kicker, PitchPoint position,
   notePathChange();
 }
 
-
 std::optional<std::pair<ShotLegs, float>> MatchEngine::recentShotLegs(
     std::size_t slot, float maxAgeSeconds) const
 {
-  if (slot >= shotLegPoses.size() || shotLegPoses[slot].rolledAt < 0.0) return std::nullopt;
+  if (slot >= shotLegPoses.size() || shotLegPoses[slot].rolledAt < 0.0)
+  {
+    return std::nullopt;
+  }
   // (Met during this step: its ball clock runs ahead of the step's.)
-  const float age = std::max(static_cast<float>(ballNow() - shotLegPoses[slot].rolledAt), 0.0f);
-  if (age > maxAgeSeconds) return std::nullopt;
+  const float age = std::max(
+      static_cast<float>(ballNow() - shotLegPoses[slot].rolledAt), 0.0F);
+  if (age > maxAgeSeconds)
+  {
+    return std::nullopt;
+  }
   return std::pair{shotLegPoses[slot], age};
 }
 
@@ -5854,11 +7157,13 @@ bool MatchEngine::holdStrikeForSweep(const PendingStrike& strike)
 {
   // Only while he decides on a loose ball at his feet: a dead ball, a ball
   // in a keeper's hands or a header is struck at once.
-  if (!strikesWaitForSweep || !strike.striker ||
+  if (!strikesWaitForSweep || (strike.striker == nullptr) ||
       state != MatchState::PLAYING || !hasTouchClaim() ||
       getConfirmedController() != strike.striker->player ||
       getPossessionAttachment() != strike.striker->player)
+  {
     return false;
+  }
   pendingStrike = strike;
   notePendingStrikeSlots();
   if (decidingAtMeet)
@@ -5873,43 +7178,58 @@ bool MatchEngine::holdStrikeForSweep(const PendingStrike& strike)
     // Turning to pass or shoot: he turns his body to it first, for as long
     // as he has before an opponent could get to the ball.
     pendingStrike->turning = true;
-    pendingStrike->turnSeconds =
-        std::min(opponentArrivalSecondsBinturong(*strike.striker, ball.position),
-                 MatchTuning::Dribble::TURN_TO_PASS_MAX_SECONDS);
+    pendingStrike->turnSeconds = std::min(
+        opponentArrivalSecondsBinturong(*strike.striker, ball.position),
+        MatchTuning::Dribble::TURN_TO_PASS_MAX_SECONDS);
   }
   return true;
 }
 
 void MatchEngine::ageHeldStrike(float dt)
 {
-  if (!pendingStrike) return;
+  if (!pendingStrike)
+  {
+    return;
+  }
   using R = MatchTuning::Dribble;
   PendingStrike& strike = *pendingStrike;
   strike.heldSeconds += dt;
   if (strike.firstTime)
   {
     // Held while the pass still comes to him (re-read each step).
-    if (!strike.striker || state != MatchState::PLAYING || getPossessionAttachment() ||
-        !getPossessionState().isPass || getExpectedReceiver() != strike.striker->player)
+    if ((strike.striker == nullptr) || state != MatchState::PLAYING ||
+        (getPossessionAttachment() != nullptr) ||
+        !getPossessionState().isPass ||
+        getExpectedReceiver() != strike.striker->player)
+    {
       pendingStrike.reset();
+    }
     return;
   }
   if (strike.turning)
   {
     // Held while he turns: until he loses it, or well past his time.
-    if (!strike.striker || state != MatchState::PLAYING || !hasTouchClaim() ||
+    if ((strike.striker == nullptr) || state != MatchState::PLAYING ||
+        !hasTouchClaim() ||
         getPossessionAttachment() != strike.striker->player ||
         strike.heldSeconds > strike.turnSeconds + R::MEET_DECISION_LATE_SECONDS)
+    {
       pendingStrike.reset();
+    }
     return;
   }
-  const bool holds =
-      strike.atMeet && strike.striker && state == MatchState::PLAYING &&
-      hasTouchClaim() && getPossessionAttachment() == strike.striker->player &&
-      ball.meetFor == strike.striker->player &&
-      strike.heldSeconds <= R::MEET_DECISION_HORIZON_SECONDS + R::MEET_DECISION_LATE_SECONDS &&
-      distance(ball.meetPoint, strike.meetPoint) <= R::MEET_DECISION_DRIFT_METRES;
-  if (!holds) pendingStrike.reset();
+  const bool holds = strike.atMeet && (strike.striker != nullptr) &&
+                     state == MatchState::PLAYING && hasTouchClaim() &&
+                     getPossessionAttachment() == strike.striker->player &&
+                     ball.meetFor == strike.striker->player &&
+                     strike.heldSeconds <= R::MEET_DECISION_HORIZON_SECONDS +
+                                               R::MEET_DECISION_LATE_SECONDS &&
+                     distance(ball.meetPoint, strike.meetPoint) <=
+                         R::MEET_DECISION_DRIFT_METRES;
+  if (!holds)
+  {
+    pendingStrike.reset();
+  }
 }
 
 void MatchEngine::decideActionAtMeet(MatchPlayer& carrier)
@@ -5923,38 +7243,48 @@ void MatchEngine::decideActionAtMeet(MatchPlayer& carrier)
   std::array<Saved, 32> saved{};
   const std::size_t count = std::min(players.size(), saved.size());
   for (std::size_t slot = 0; slot < count; ++slot)
+  {
     saved[slot] = {players[slot].position};
+  }
   const PitchPoint ballPosition = ball.position;
   const float ballZ = ball.z;
-  const float seconds = std::max(0.0f, ball.meetSeconds);
+  const float seconds = std::max(0.0F, ball.meetSeconds);
   const float readShare = MatchTuning::Dribble::MEET_READ_TARGET_SHARE *
-                          std::clamp(carrier.vision, 0.0f, 1.0f);
+                          std::clamp(carrier.vision, 0.0F, 1.0F);
   for (std::size_t slot = 0; slot < count; ++slot)
   {
     MatchPlayer& player = players[slot];
-    if (&player == &carrier || !active(player)) continue;
+    if (&player == &carrier || !active(player))
+    {
+      continue;
+    }
     // On as he is going, and toward where he means to go (as far as he
     // could get by then), blended.
-    const Vector2F rolled = {player.velocity.x * seconds, player.velocity.y * seconds};
+    const Vector2F rolled = {.x = player.velocity.x * seconds,
+                             .y = player.velocity.y * seconds};
     const Vector2F toTarget = player.tacticalTarget - player.position;
     const float targetMetres = length(toTarget);
     const float reach =
         std::min(targetMetres, currentTopSpeed(player) * seconds);
     const Vector2F towards =
         targetMetres > EPSILON
-            ? Vector2F{toTarget.x / targetMetres * reach,
-                       toTarget.y / targetMetres * reach}
-            : Vector2F{0.0f, 0.0f};
-    player.position = PitchPoint{
-        clampToBoardsX(player.position.x + rolled.x + (towards.x - rolled.x) * readShare),
-        clampToBoardsY(player.position.y + rolled.y + (towards.y - rolled.y) * readShare)};
+            ? Vector2F{.x = toTarget.x / targetMetres * reach,
+                       .y = toTarget.y / targetMetres * reach}
+            : Vector2F{.x = 0.0F, .y = 0.0F};
+    player.position =
+        PitchPoint{clampToBoardsX(player.position.x + rolled.x +
+                                  ((towards.x - rolled.x) * readShare)),
+                   clampToBoardsY(player.position.y + rolled.y +
+                                  ((towards.y - rolled.y) * readShare))};
   }
   carrier.position = ball.meetPoint;
   ball.position = ball.meetPoint;
-  ball.z = 0.0f;
+  ball.z = 0.0F;
   const BallAction action = chooseBallAction(carrier);
   for (std::size_t slot = 0; slot < count; ++slot)
+  {
     players[slot].position = saved[slot].position;
+  }
   ball.position = ballPosition;
   ball.z = ballZ;
   decidingAtMeet = true;
@@ -5969,28 +7299,42 @@ std::optional<MatchEngine::FirstTimeMeet> MatchEngine::firstTimeMeet(
   // the first moment it is within his feet's reach.
   constexpr float DT = MatchTuning::Timing::FIXED_STEP_SECONDS /
                        static_cast<float>(MatchTuning::Timing::BALL_SUBSTEPS);
-  constexpr float HORIZON = MatchTuning::Passing::FIRST_TIME_DECISION_HORIZON_SECONDS;
+  constexpr float HORIZON =
+      MatchTuning::Passing::FIRST_TIME_DECISION_HORIZON_SECONDS;
   const float speed = length(ball.velocity);
-  if (speed <= EPSILON) return std::nullopt;
-  Vector2F heading{ball.velocity.x / speed, ball.velocity.y / speed};
-  FlightState flight{speed, ball.velocityZ,
-                     ball.z, false,
-                     ball.spin};
+  if (speed <= EPSILON)
+  {
+    return std::nullopt;
+  }
+  Vector2F heading{.x = ball.velocity.x / speed, .y = ball.velocity.y / speed};
+  FlightState flight{.horizontalSpeed = speed,
+                     .verticalSpeed = ball.velocityZ,
+                     .height = ball.z,
+                     .bounced = false,
+                     .spin = ball.spin};
   Vector2F at = asVector(ball.position);
   const Vector2F him = asVector(player.position);
   const float reach = feetReach(player);
-  for (float seconds = 0.0f; seconds <= HORIZON + 0.5f * DT; seconds += DT)
+  for (float seconds = 0.0F; seconds <= HORIZON + 0.5F * DT; seconds += DT)
   {
-    const Vector2F he{him.x + player.velocity.x * seconds,
-                      him.y + player.velocity.y * seconds};
+    const Vector2F he{.x = him.x + (player.velocity.x * seconds),
+                      .y = him.y + (player.velocity.y * seconds)};
     if (std::hypot(at.x - he.x, at.y - he.y) <= reach)
-      return FirstTimeMeet{seconds, flight.height, asPoint(at)};
-    if (flight.horizontalSpeed <= 0.0f) return std::nullopt;
+    {
+      return FirstTimeMeet{.seconds = seconds,
+                           .heightMetres = flight.height,
+                           .point = asPoint(at)};
+    }
+    if (flight.horizontalSpeed <= 0.0F)
+    {
+      return std::nullopt;
+    }
     const float moved = stepFlight(flight, DT);
-    at = {at.x + heading.x * moved, at.y + heading.y * moved};
+    at = {.x = at.x + (heading.x * moved), .y = at.y + (heading.y * moved)};
     const float turn = flight.turnRate * DT;
-    heading = {heading.x * std::cos(turn) - heading.y * std::sin(turn),
-               heading.x * std::sin(turn) + heading.y * std::cos(turn)};
+    heading = {
+        .x = (heading.x * std::cos(turn)) - (heading.y * std::sin(turn)),
+        .y = (heading.x * std::sin(turn)) + (heading.y * std::cos(turn))};
   }
   return std::nullopt;
 }
@@ -6000,18 +7344,25 @@ void MatchEngine::decideFirstTimePass()
   // Drills only until the brain judges it: a forced pass, or a forced shot,
   // marked first time.
   const bool mine = pendingStrike && pendingStrike->firstTime;
-  if (pendingStrike && !mine) return;
+  if (pendingStrike && !mine)
+  {
+    return;
+  }
   const auto drop = [&]
   {
-    if (mine) pendingStrike.reset();
+    if (mine)
+    {
+      pendingStrike.reset();
+    }
   };
-  const bool shot = !forcedPass.firstTime && forcedShooter != 0 && forcedShotFirstTime;
+  const bool shot =
+      !forcedPass.firstTime && forcedShooter != 0 && forcedShotFirstTime;
   MatchPlayer* player = forcedPass.firstTime ? drillPlayer(forcedPass.passer)
                         : shot               ? drillPlayer(forcedShooter)
                                              : nullptr;
-  if (!player || !active(*player) || state != MatchState::PLAYING ||
+  if ((player == nullptr) || !active(*player) || state != MatchState::PLAYING ||
       getBody(player->isHomeTeam) != BodyId::BINTURONG ||
-      isControlled(*player) || getPossessionAttachment() ||
+      isControlled(*player) || (getPossessionAttachment() != nullptr) ||
       !getPossessionState().isPass || getExpectedReceiver() != player->player)
   {
     drop();
@@ -6019,8 +7370,8 @@ void MatchEngine::decideFirstTimePass()
   }
   // Within the horizon, and along the ground when he gets to it.
   const std::optional<FirstTimeMeet> meet = firstTimeMeet(*player);
-  if (!meet ||
-      meet->heightMetres > MatchTuning::Passing::FIRST_TIME_MAX_BALL_HEIGHT_METRES)
+  if (!meet || meet->heightMetres >
+                   MatchTuning::Passing::FIRST_TIME_MAX_BALL_HEIGHT_METRES)
   {
     drop();
     return;
@@ -6030,13 +7381,24 @@ void MatchEngine::decideFirstTimePass()
   {
     // The spot is kept from one reading to the next (a drill's forced spot,
     // else his pick); the forced spot is used up when it is struck.
-    strike = {PendingStrike::Kind::SHOT, player};
+    strike = {.kind = PendingStrike::Kind::SHOT,
+              .striker = player,
+              .pass = {},
+              .shotAim = {},
+              .receiverSlot = {}};
     if (mine && pendingStrike->shotAim)
+    {
       strike.shotAim = pendingStrike->shotAim;
+    }
     else if (forcedShotAim)
-      strike.shotAim = ShotAim{forcedShotAim->x, forcedShotAim->y, 0.0f};
+    {
+      strike.shotAim = ShotAim{
+          .aimY = forcedShotAim->x, .aimZ = forcedShotAim->y, .inset = 0.0F};
+    }
     else
+    {
       strike.shotAim = chooseShotAim(*player, false, false, false);
+    }
   }
   else
   {
@@ -6046,10 +7408,15 @@ void MatchEngine::decideFirstTimePass()
       drop();
       return;
     }
-    strike = {PendingStrike::Kind::PASS, player, chosen->first, chosen->second};
+    strike = {.kind = PendingStrike::Kind::PASS,
+              .striker = player,
+              .pass = chosen->first,
+              .forceLofted = chosen->second,
+              .shotAim = {},
+              .receiverSlot = {}};
   }
   strike.firstTime = true;
-  strike.heldSeconds = mine ? pendingStrike->heldSeconds : 0.0f;
+  strike.heldSeconds = mine ? pendingStrike->heldSeconds : 0.0F;
   strike.meetPoint = meet->point;
   pendingStrike = strike;
   notePendingStrikeSlots();
@@ -6059,9 +7426,11 @@ bool MatchEngine::playsFirstTime(const MatchPlayer& player, bool hands,
                                  float heightMetres) const
 {
   return pendingStrike && pendingStrike->firstTime &&
-         pendingStrike->striker == &player && !hands && getPossessionState().isPass &&
+         pendingStrike->striker == &player && !hands &&
+         getPossessionState().isPass &&
          getExpectedReceiver() == player.player &&
-         heightMetres <= MatchTuning::Passing::FIRST_TIME_MAX_BALL_HEIGHT_METRES;
+         heightMetres <=
+             MatchTuning::Passing::FIRST_TIME_MAX_BALL_HEIGHT_METRES;
 }
 
 void MatchEngine::playFirstTimePass(MatchPlayer& player,
@@ -6102,9 +7471,8 @@ void MatchEngine::playPendingStrike(const TouchMoment& moment)
   strikeAt.reset();
 }
 
-
-MatchEngine::DribbleAim MatchEngine::dribbleAim(const MatchPlayer& player,
-                                                std::optional<PitchPoint> from) const
+MatchEngine::DribbleAim MatchEngine::dribbleAim(
+    const MatchPlayer& player, std::optional<PitchPoint> from) const
 {
   DribbleAim aim;
   aim.direction = ball.dribbleDirection;
@@ -6113,25 +7481,33 @@ MatchEngine::DribbleAim MatchEngine::dribbleAim(const MatchPlayer& player,
     // At the pace the stick asks for, along the aim if he has one (his
     // touches can go one way while he runs another), else along the stick.
     const float push = std::hypot(controlInput.moveX, controlInput.moveY);
-    if (push <= EPSILON) return aim;
+    if (push <= EPSILON)
+    {
+      return aim;
+    }
     const float aimed = std::hypot(controlInput.aimX, controlInput.aimY);
-    aim.direction = aimed > EPSILON
-                        ? Vector2F{controlInput.aimX / aimed, controlInput.aimY / aimed}
-                        : Vector2F{controlInput.moveX / push, controlInput.moveY / push};
-    aim.speed = currentTopSpeed(player) * std::min(push, 1.0f) *
-                (controlInput.sprint ? 1.0f : MatchTuning::Control::JOG_SPEED_SHARE);
+    aim.direction = aimed > EPSILON ? Vector2F{.x = controlInput.aimX / aimed,
+                                               .y = controlInput.aimY / aimed}
+                                    : Vector2F{.x = controlInput.moveX / push,
+                                               .y = controlInput.moveY / push};
+    aim.speed =
+        currentTopSpeed(player) * std::min(push, 1.0F) *
+        (controlInput.sprint ? 1.0F : MatchTuning::Control::JOG_SPEED_SHARE);
     return aim;
   }
   // Toward his plan's target (on a route, along his line through its
   // waypoints), at the pace his brain would run there. A Binturong body
   // aims from where he plays it (dribble meet plan).
-  float metres = 0.0f;
+  float metres = 0.0F;
   if (from && getBody(player.isHomeTeam) == BodyId::BINTURONG)
   {
     metres = length(ball.dribbleGoal - *from);
     aim.metres = metres;
     const std::optional<Vector2F> out = dribbleOutFromBinturong(player, *from);
-    if (!out) return aim;
+    if (!out)
+    {
+      return aim;
+    }
     aim.direction = *out;
   }
   else
@@ -6141,8 +7517,11 @@ MatchEngine::DribbleAim MatchEngine::dribbleAim(const MatchPlayer& player,
     const Vector2F offset = goal - player.position;
     metres = length(offset);
     aim.metres = metres;
-    if (metres <= MatchTuning::Player::ARRIVAL_DEAD_ZONE_METRES) return aim;
-    aim.direction = {offset.x / metres, offset.y / metres};
+    if (metres <= MatchTuning::Player::ARRIVAL_DEAD_ZONE_METRES)
+    {
+      return aim;
+    }
+    aim.direction = {.x = offset.x / metres, .y = offset.y / metres};
   }
   const MovementStyle& style = movementStyle(player.isHomeTeam);
   if (style.usesModes)
@@ -6156,15 +7535,20 @@ MatchEngine::DribbleAim MatchEngine::dribbleAim(const MatchPlayer& player,
     if (getBody(player.isHomeTeam) == BodyId::BINTURONG)
     {
       if (const std::optional<float> pace = chooseCarryPace(player))
+      {
         aim.speed = *pace;
+      }
       else
-        aim.speed += std::max(0.0f, currentTopSpeed(player) - aim.speed) *
-                     std::clamp(player.dribbling, 0.0f, 1.0f);
+      {
+        aim.speed += std::max(0.0F, currentTopSpeed(player) - aim.speed) *
+                     std::clamp(player.dribbling, 0.0F, 1.0F);
+      }
     }
     return aim;
   }
   const float share = std::max(
-      style.intentSpeedShares[static_cast<std::size_t>(PlayerIntent::CARRY_BALL)],
+      style.intentSpeedShares[static_cast<std::size_t>(
+          PlayerIntent::CARRY_BALL)],
       std::min(style.maxUrgencyShare, metres / style.urgencyDistanceMetres));
   aim.speed = std::min(currentTopSpeed(player), player.maxSpeed * share);
   return aim;
@@ -6178,12 +7562,16 @@ float MatchEngine::dribblePushMetres(const MatchPlayer& player, float pace,
   // (a better dribbler keeps it closer).
   float metres = touchKnobs[TouchKnob::SET_OFFSET];
   if (pace >= R::CLOSE_CONTROL_SPEED)
-    metres = pace * R::LOOSE_LEAD_SECONDS * (1.3f - player.dribbling) +
+  {
+    metres = pace * R::LOOSE_LEAD_SECONDS * (1.3F - player.dribbling) +
              R::LOOSE_LEAD_EXTRA_METRES;
+  }
   // Never past where he is going.
   if (toGoal)
-    metres = std::min(metres,
-                      std::max(*toGoal, touchKnobs[TouchKnob::SET_OFFSET]));
+  {
+    metres =
+        std::min(metres, std::max(*toGoal, touchKnobs[TouchKnob::SET_OFFSET]));
+  }
   return metres;
 }
 
@@ -6193,9 +7581,11 @@ bool MatchEngine::dribbleTouchDue(const MatchPlayer& player,
   using R = MatchTuning::Dribble;
   // (A cooldown in whole steps counts down to a hair above zero.)
   // (His foot cooldown is only ever from a contest: tackling plan step 2.)
-  if (ball.ownTouchCooldown > 1e-4f || player.footCooldown > 1e-4f ||
+  if (ball.ownTouchCooldown > 1e-4F || player.footCooldown > 1e-4F ||
       moment.height > bodyLines(player).feet)
+  {
     return false;
+  }
   const DribbleAim aim = dribbleAim(player, moment.contactPoint);
   // Just out of a stop (a sharp reversal), he plays the stopped ball on once
   // he faces near enough the way he sends it: a better dribbler before he
@@ -6206,36 +7596,48 @@ bool MatchEngine::dribbleTouchDue(const MatchPlayer& player,
       aim.speed >= R::LOOSE_START_SPEED)
   {
     const Vector2F facing = normalized(
-        {std::cos(player.facingAngle),
-         std::sin(player.facingAngle)});
+        {.x = std::cos(player.facingAngle), .y = std::sin(player.facingAngle)});
     const float allowed =
         (R::REVERSAL_TOUCH_DEGREES_POOR +
          (R::REVERSAL_TOUCH_DEGREES_BEST - R::REVERSAL_TOUCH_DEGREES_POOR) *
-             std::clamp(player.dribbling, 0.0f, 1.0f)) *
-        std::numbers::pi_v<float> / 180.0f;
-    if (facing.x * aim.direction.x + facing.y * aim.direction.y < std::cos(allowed))
+             std::clamp(player.dribbling, 0.0F, 1.0F)) *
+        std::numbers::pi_v<float> / 180.0F;
+    if (facing.x * aim.direction.x + facing.y * aim.direction.y <
+        std::cos(allowed))
+    {
       return false;
+    }
   }
   // Before he means to play it again (dribble meet plan 3d), only if it
   // needs it now.
-  if (ball.plannedTouchIn > 1e-4f &&
+  if (ball.plannedTouchIn > 1e-4F &&
       getBody(player.isHomeTeam) == BodyId::BINTURONG)
+  {
     return dribbleTouchNeededEarlyBinturong(player, moment, aim.speed);
+  }
   const Vector2F offset = ball.position - player.position;
-  const Vector2F relative{ball.velocity.x - player.velocity.x,
-                          ball.velocity.y - player.velocity.y};
+  const Vector2F relative{.x = ball.velocity.x - player.velocity.x,
+                          .y = ball.velocity.y - player.velocity.y};
   // He is catching it up, or it is coming back to him: play it on.
-  if (offset.x * relative.x + offset.y * relative.y < 0.0f &&
+  if (offset.x * relative.x + offset.y * relative.y < 0.0F &&
       length(relative) > MatchTuning::Ball::STOP_SPEED)
+  {
     return true;
+  }
   // A ball by him stays put unless he wants to go somewhere.
-  if (aim.speed < R::LOOSE_START_SPEED) return false;
+  if (aim.speed < R::LOOSE_START_SPEED)
+  {
+    return false;
+  }
   const float ballSpeed = length(ball.velocity);
-  if (ballSpeed <= MatchTuning::Ball::STOP_SPEED) return true;
+  if (ballSpeed <= MatchTuning::Ball::STOP_SPEED)
+  {
+    return true;
+  }
   // Heading off the way he wants to go: turn it.
-  const float along = (ball.velocity.x * aim.direction.x +
-                       ball.velocity.y * aim.direction.y) /
-                      ballSpeed;
+  const float along =
+      (ball.velocity.x * aim.direction.x + ball.velocity.y * aim.direction.y) /
+      ballSpeed;
   return along < std::cos(R::LOOSE_REDIRECT_RADIANS);
 }
 
@@ -6245,23 +7647,29 @@ namespace
  * a turn ahead (the cornering cap, sqrt(turn speed^2 + 2 x braking x the
  * distance still to it)): his average speed over it, and his speed at its
  * end. */
-std::pair<float, float> carriedPace(float toTurn, float turnSpeed, float braking,
-                                    float pace, float metres)
+std::pair<float, float> carriedPace(float toTurn, float turnSpeed,
+                                    float braking, float pace, float metres)
 {
   const auto speedAt = [&](float along)
   {
-    if (toTurn >= std::numeric_limits<float>::max()) return pace;
-    const float left = std::max(0.0f, toTurn - along);
-    return std::min(pace, std::sqrt(turnSpeed * turnSpeed +
-                                    2.0f * braking * left));
+    if (toTurn >= std::numeric_limits<float>::max())
+    {
+      return pace;
+    }
+    const float left = std::max(0.0F, toTurn - along);
+    return std::min(
+        pace, std::sqrt((turnSpeed * turnSpeed) + (2.0F * braking * left)));
   };
-  if (metres <= EPSILON) return {pace, speedAt(0.0f)};
+  if (metres <= EPSILON)
+  {
+    return {pace, speedAt(0.0F)};
+  }
   constexpr int STEPS = 12;
-  float seconds = 0.0f;
+  float seconds = 0.0F;
   for (int step = 0; step < STEPS; ++step)
   {
-    const float along = metres * (static_cast<float>(step) + 0.5f) / STEPS;
-    seconds += metres / STEPS / std::max(speedAt(along), 0.1f);
+    const float along = metres * (static_cast<float>(step) + 0.5F) / STEPS;
+    seconds += metres / STEPS / std::max(speedAt(along), 0.1F);
   }
   return {metres / seconds, speedAt(metres)};
 }
@@ -6275,10 +7683,10 @@ TouchIntent MatchEngine::dribbleTouchIntent(const MatchPlayer& player,
   const float running = length(player.velocity);
   const bool meetPlanned = getBody(player.isHomeTeam) == BodyId::BINTURONG;
   DribbleTurnAhead turnAhead;
-  float speedingUp = 0.0f;
+  float speedingUp = 0.0F;
   const bool intentPush =
       meetPlanned && brainTraits(player.isHomeTeam).pushesByIntent;
-  float touchSeconds = 0.0f;
+  float touchSeconds = 0.0F;
   if (meetPlanned)
   {
     // He turns it as far as he means to: his run in was planned for it
@@ -6298,23 +7706,27 @@ TouchIntent MatchEngine::dribbleTouchIntent(const MatchPlayer& player,
     // match's carry target moves on with him; it is a way, not an end).
     turnAhead = dribbleTurnAheadBinturong(player, moment.contactPoint);
     const bool drilled =
-        player.player && std::ranges::find(ballKeepers, player.player->getId()) !=
-                             ballKeepers.end();
-    const float toEnd = std::min(
-        turnAhead.toTurn, drilled && aim.metres ? *aim.metres
-                                                : std::numeric_limits<float>::max());
+        (player.player != nullptr) &&
+        std::ranges::find(ballKeepers, player.player->getId()) !=
+            ballKeepers.end();
+    const float toEnd =
+        std::min(turnAhead.toTurn, drilled && aim.metres
+                                       ? *aim.metres
+                                       : std::numeric_limits<float>::max());
     const std::optional<float> planned =
-        intentPush ? chooseTouchSeconds(player, aim.speed, toEnd) : std::nullopt;
+        intentPush ? chooseTouchSeconds(player, aim.speed, toEnd)
+                   : std::nullopt;
     touchSeconds =
         planned ? *planned
-                   : std::max(dribbleTouchIntervalBinturong(player),
-                              R::LOOSE_LEAD_SECONDS * (1.3f - player.dribbling));
+                : std::max(dribbleTouchIntervalBinturong(player),
+                           R::LOOSE_LEAD_SECONDS * (1.3F - player.dribbling));
     // No faster than he can be running on average over the push: from his
     // speed its new way now, accelerating as his legs allow, until he wants
     // it again. Speeding up, it rolls at that average: running onto it, he
     // meets it (speedingUp: the share of the push he is still speeding up).
-    const float startSpeed = std::max(0.0f, player.velocity.x * aim.direction.x +
-                                                player.velocity.y * aim.direction.y);
+    const float startSpeed =
+        std::max(0.0F, (player.velocity.x * aim.direction.x) +
+                           (player.velocity.y * aim.direction.y));
     const float reachable = dribbleReachablePaceBinturong(
         player, startSpeed, aim.speed, touchSeconds, &speedingUp);
     aim.speed = std::min(aim.speed, reachable);
@@ -6324,13 +7736,15 @@ TouchIntent MatchEngine::dribbleTouchIntent(const MatchPlayer& player,
     // At pace he turns the ball only as far as he can follow it: at most
     // LOOSE_MAX_TURN_RADIANS off his run per touch (later touches carry
     // the turn on), easing off the more he still has to turn.
-    const Vector2F run{player.velocity.x / running, player.velocity.y / running};
-    const float wanted = std::atan2(run.x * aim.direction.y - run.y * aim.direction.x,
-                                    run.x * aim.direction.x + run.y * aim.direction.y);
+    const Vector2F run{.x = player.velocity.x / running,
+                       .y = player.velocity.y / running};
+    const float wanted =
+        std::atan2((run.x * aim.direction.y) - (run.y * aim.direction.x),
+                   (run.x * aim.direction.x) + (run.y * aim.direction.y));
     const float turn = std::clamp(wanted, -R::LOOSE_MAX_TURN_RADIANS,
                                   R::LOOSE_MAX_TURN_RADIANS);
-    aim.direction = {run.x * std::cos(turn) - run.y * std::sin(turn),
-                     run.x * std::sin(turn) + run.y * std::cos(turn)};
+    aim.direction = {.x = (run.x * std::cos(turn)) - (run.y * std::sin(turn)),
+                     .y = (run.x * std::sin(turn)) + (run.y * std::cos(turn))};
     aim.speed *= std::max(R::LOOSE_TURN_MIN_PACE, std::cos(wanted));
   }
   TouchIntent intent;
@@ -6338,25 +7752,31 @@ TouchIntent MatchEngine::dribbleTouchIntent(const MatchPlayer& player,
   // held short where he wouldn't get there first (dribble meet plan 3c); a
   // long one is a knock into space, chased at his full pace.
   const std::optional<float> pushed =
-      intentPush ? choosePushMetres(player, moment.contactPoint, aim.direction,
-                                    moment.gap, aim.speed, touchSeconds,
-                                    aim.metres)
-                 : std::nullopt;
+      intentPush
+          ? choosePushMetres(player, moment.contactPoint, aim.direction,
+                             moment.gap, aim.speed, touchSeconds, aim.metres)
+          : std::nullopt;
   float metres = std::min(
       pushed ? *pushed : dribblePushMetres(player, aim.speed, aim.metres),
       std::max(turnAhead.furthest, touchKnobs[TouchKnob::SET_OFFSET]));
   // On a route, aimed where his line will be when it gets there: into a
   // bend ahead, angled into it (how true it goes is the contact's).
   if (meetPlanned)
+  {
     if (const std::optional<Vector2F> along =
             dribbleOutAlongBinturong(player, moment.contactPoint, metres))
+    {
       aim.direction = *along;
+    }
+  }
   intent.knockOn = intentPush && metres >= R::PUSH_CHASE_METRES;
-  intent.plannedSeconds = intentPush ? touchSeconds : 0.0f;
+  intent.plannedSeconds = intentPush ? touchSeconds : 0.0F;
   // Into his stride at pace, arriving a little slower than him so he gains
   // on it; else a set touch.
   if (aim.speed >= R::CLOSE_CONTROL_SPEED)
+  {
     intent.kind = TouchIntent::Kind::INTO_STRIDE;
+  }
   intent.arrivalSpeed = aim.speed * R::LOOSE_ARRIVAL_SHARE;
   if (intent.kind == TouchIntent::Kind::INTO_STRIDE)
   {
@@ -6375,55 +7795,68 @@ TouchIntent MatchEngine::dribbleTouchIntent(const MatchPlayer& player,
     // up, he gains on it anyway: none for the share of the push he is still
     // speeding up.
     const float slack =
-        meetPlanned ? std::clamp(metres / R::LOOSE_MEAN_PACE_FULL_METRES, 0.0f, 1.0f)
-                    : 1.0f;
-    float mean =
-        carried * (1.0f - (1.0f - R::LOOSE_MEAN_PACE_SHARE) * slack * (1.0f - speedingUp));
+        meetPlanned
+            ? std::clamp(metres / R::LOOSE_MEAN_PACE_FULL_METRES, 0.0F, 1.0F)
+            : 1.0F;
+    float mean = carried * (1.0F - (1.0F - R::LOOSE_MEAN_PACE_SHARE) * slack *
+                                       (1.0F - speedingUp));
     // A push by intent rolls no faster than he will run until he means to
     // play it again (his pace then, braking for a turn ahead included), less
     // what lets him close up by then to the gap he likes to play it at: a
     // ball any quicker gets away from him.
     if (intentPush && touchSeconds > EPSILON)
     {
-      const float hisPace = carriedPace(turnAhead.toTurn, turnAhead.turnSpeed,
-                                        turnAhead.braking, aim.speed,
-                                        aim.speed * touchSeconds)
-                                .first;
+      const float hisPace =
+          carriedPace(turnAhead.toTurn, turnAhead.turnSpeed, turnAhead.braking,
+                      aim.speed, aim.speed * touchSeconds)
+              .first;
       const float closing =
-          std::max(0.0f, moment.gap - dribbleMeetGapBinturong(player)) / touchSeconds;
+          std::max(0.0F, moment.gap - dribbleMeetGapBinturong(player)) /
+          touchSeconds;
       mean = std::min(mean, std::max(hisPace - closing, R::LOOSE_START_SPEED));
     }
-    float low = 0.0f;
+    float low = 0.0F;
     float high = mean;
     for (int iteration = 0; iteration < 16; ++iteration)
     {
-      const float arrival = 0.5f * (low + high);
-      if ((groundLaunchSpeed(metres, arrival) + arrival) * 0.5f > mean)
+      const float arrival = 0.5F * (low + high);
+      if ((groundLaunchSpeed(metres, arrival) + arrival) * 0.5F > mean)
+      {
         high = arrival;
+      }
       else
+      {
         low = arrival;
+      }
     }
     intent.arrivalSpeed = std::min(low, atEnd);
   }
   // Pushed as far as a turn on his route, it gets there rolling no faster
   // than he can take the turn with it: a softer touch ahead of a cone.
   if (metres >= turnAhead.toTurn)
+  {
     intent.arrivalSpeed = std::min(intent.arrivalSpeed, turnAhead.turnSpeed);
-  const Vector2F ahead =
-      {aim.direction.x * metres, aim.direction.y * metres};
+  }
+  const Vector2F ahead = {.x = aim.direction.x * metres,
+                          .y = aim.direction.y * metres};
   intent.targetSpot = PitchPoint{
-      std::clamp(moment.contactPoint.x + ahead.x, MatchTuning::Pitch::BALL_INSIDE_END_METRES, pitch.length - MatchTuning::Pitch::BALL_INSIDE_END_METRES),
-      std::clamp(moment.contactPoint.y + ahead.y, MatchTuning::Pitch::BALL_INSIDE_SIDE_METRES, pitch.width - MatchTuning::Pitch::BALL_INSIDE_SIDE_METRES)};
+      std::clamp(moment.contactPoint.x + ahead.x,
+                 MatchTuning::Pitch::BALL_INSIDE_END_METRES,
+                 pitch.length - MatchTuning::Pitch::BALL_INSIDE_END_METRES),
+      std::clamp(moment.contactPoint.y + ahead.y,
+                 MatchTuning::Pitch::BALL_INSIDE_SIDE_METRES,
+                 pitch.width - MatchTuning::Pitch::BALL_INSIDE_SIDE_METRES)};
   // At a stop on his route (a sharp reversal), his touch stops it: all its
   // pace off, where he meets it.
-  if (meetPlanned && turnAhead.stop && turnAhead.toTurn <= R::STOP_TOUCH_METRES &&
+  if (meetPlanned && turnAhead.stop &&
+      turnAhead.toTurn <= R::STOP_TOUCH_METRES &&
       length(ball.velocity) > MatchTuning::Ball::STOP_SPEED)
   {
     intent.kind = TouchIntent::Kind::SET;
     intent.targetSpot = moment.contactPoint;
-    intent.arrivalSpeed = 0.0f;
+    intent.arrivalSpeed = 0.0F;
     intent.knockOn = false;
-    intent.plannedSeconds = 0.0f;
+    intent.plannedSeconds = 0.0F;
   }
   // Pressed, as a first touch reads it.
   intent.pressure = contactPressure(nearestOpponentDistance(player),
@@ -6431,7 +7864,8 @@ TouchIntent MatchEngine::dribbleTouchIntent(const MatchPlayer& player,
   return intent;
 }
 
-void MatchEngine::playDribbleTouch(MatchPlayer& player, const TouchMoment& moment)
+void MatchEngine::playDribbleTouch(MatchPlayer& player,
+                                   const TouchMoment& moment)
 {
   // His own ball, played on from where he meets it: no possession change,
   // just a new roll.
@@ -6442,54 +7876,72 @@ void MatchEngine::playDribbleTouch(MatchPlayer& player, const TouchMoment& momen
   trackTouch(player);
   // It keeps the height he met it at: the touch changes only its velocity.
   sendBallOff(player,
-              PossessionControl::retainingTouchPosition(pitch, possessionId, moment.contactPoint),
-              moment.height, touch.velocity,
-              touch.verticalSpeed, BallSpin{}, 0.0f);
+              PossessionControl::retainingTouchPosition(pitch, possessionId,
+                                                        moment.contactPoint),
+              moment.height, touch.velocity, touch.verticalSpeed, BallSpin{},
+              0.0F);
   noteDribbleTouch(player, intent, touch, moment);
 }
 
-
-bool MatchEngine::waitPlayableNextSubstep(const MatchPlayer& player, float dt) const
+bool MatchEngine::waitPlayableNextSubstep(const MatchPlayer& player,
+                                          float dt) const
 {
   // The ball's first sub-step of this step, read with its own physics
   // (spin turns it too little in one sub-step to matter).
-  const int substeps = MatchTuning::Timing::BALL_SUBSTEPS * static_cast<int>(stepTicks);
+  const int substeps =
+      MatchTuning::Timing::BALL_SUBSTEPS * static_cast<int>(stepTicks);
   const float substep = dt / static_cast<float>(std::max(substeps, 1));
   const float speed = length(ball.velocity);
-  const Vector2F heading = speed > EPSILON
-                               ? Vector2F{ball.velocity.x / speed, ball.velocity.y / speed}
-                               : Vector2F{0.0f, 0.0f};
-  FlightState flight{speed, ball.velocityZ, ball.z, false,
-                     ball.spin};
+  const Vector2F heading =
+      speed > EPSILON
+          ? Vector2F{.x = ball.velocity.x / speed, .y = ball.velocity.y / speed}
+          : Vector2F{.x = 0.0F, .y = 0.0F};
+  FlightState flight{.horizontalSpeed = speed,
+                     .verticalSpeed = ball.velocityZ,
+                     .height = ball.z,
+                     .bounced = false,
+                     .spin = ball.spin};
   const float startHeight = flight.height;
   const float rolled = stepFlight(flight, substep);
   // Off his feet the whole way: not a wait this is about.
   const float feet = bodyLines(player).feet;
-  if (startHeight > feet && flight.height > feet) return true;
+  if (startHeight > feet && flight.height > feet)
+  {
+    return true;
+  }
   const Vector2F start = asVector(ball.position);
-  const Vector2F segment{heading.x * rolled, heading.y * rolled};
+  const Vector2F segment{.x = heading.x * rolled, .y = heading.y * rolled};
   const Vector2F him = asVector(player.position);
-  const float segmentSquared = segment.x * segment.x + segment.y * segment.y;
-  const float along =
-      segmentSquared > EPSILON
-          ? std::clamp(((him.x - start.x) * segment.x + (him.y - start.y) * segment.y) /
-                           segmentSquared,
-                       0.0f, 1.0f)
-          : 0.0f;
+  const float segmentSquared =
+      (segment.x * segment.x) + (segment.y * segment.y);
+  const float along = segmentSquared > EPSILON
+                          ? std::clamp(((him.x - start.x) * segment.x +
+                                        (him.y - start.y) * segment.y) /
+                                           segmentSquared,
+                                       0.0F, 1.0F)
+                          : 0.0F;
   const float gapX = him.x - (start.x + segment.x * along);
   const float gapY = him.y - (start.y + segment.y * along);
-  const float gap = std::sqrt(gapX * gapX + gapY * gapY);
-  if (gap > feetReach(player)) return false;
+  const float gap = std::sqrt((gapX * gapX) + (gapY * gapY));
+  if (gap > feetReach(player))
+  {
+    return false;
+  }
   return !ballBehindReach(player, gapX, gapY, gap);
 }
 
 void MatchEngine::noteWaitChosen(std::size_t slot, float stepSeconds)
 {
-  if (slot >= waitChosenStep.size()) return;
+  if (slot >= waitChosenStep.size())
+  {
+    return;
+  }
   const MatchPlayer& player = players[slot];
   waitChosenStep[slot] = stepCounter;
   if (getBody(player.isHomeTeam) == BodyId::BINTURONG)
+  {
     waitPredictedFacing[slot] = predictedFacingBinturong(player, stepSeconds);
+  }
 }
 
 void MatchEngine::splitLostWait(std::size_t slot, bool inDeadZone)
@@ -6499,41 +7951,56 @@ void MatchEngine::splitLostWait(std::size_t slot, bool inDeadZone)
   ++(inDeadZone ? split.deadZone : split.outOfReach);
   const bool changed = (waitIntentChanged & (1U << slot)) != 0U;
   if (changed)
+  {
     ++split.intentChanged;
+  }
   else
+  {
     ++split.unchanged;
+  }
   for (const CollisionHit& hit : lastCollisions)
+  {
     if (hit.sides[0].player == player.player->getId() ||
         hit.sides[1].player == player.player->getId())
     {
       ++split.bumped;
-      if (!changed) ++split.unchangedBumped;
+      if (!changed)
+      {
+        ++split.unchangedBumped;
+      }
       break;
     }
+  }
   if (waitChosenStep[slot] == stepCounter)
   {
     ++split.sameStep;
     return;
   }
-  if (getBody(player.isHomeTeam) != BodyId::BINTURONG) return;
+  if (getBody(player.isHomeTeam) != BodyId::BINTURONG)
+  {
+    return;
+  }
   // Wrapped to (-pi, pi].
   const auto onPitch = [this](float angle)
-  {
-    return std::atan2(std::sin(angle),
-                      std::cos(angle));
-  };
-  float error = onPitch(player.facingAngle) - onPitch(waitPredictedFacing[slot]);
+  { return std::atan2(std::sin(angle), std::cos(angle)); };
+  float error =
+      onPitch(player.facingAngle) - onPitch(waitPredictedFacing[slot]);
   if (error > std::numbers::pi_v<float>)
+  {
     error -= TWO_PI;
+  }
   else if (error < -std::numbers::pi_v<float>)
+  {
     error += TWO_PI;
+  }
   split.facingErrorSum += std::abs(error);
   split.facingErrorMax = std::max(split.facingErrorMax, std::abs(error));
   ++split.facingSamples;
   if (!changed)
   {
     split.unchangedFacingErrorSum += std::abs(error);
-    split.unchangedFacingErrorMax = std::max(split.unchangedFacingErrorMax, std::abs(error));
+    split.unchangedFacingErrorMax =
+        std::max(split.unchangedFacingErrorMax, std::abs(error));
     ++split.unchangedFacingSamples;
   }
 }
@@ -6542,10 +8009,14 @@ void MatchEngine::chaseTouchedBall()
 {
   // He runs to the earliest point of the ball's roll he can reach, read
   // with the same rolling physics the ball obeys. A human steers himself.
-  const bool hadPlan = ball.meetFor && ball.meetFor == getPossessionAttachment();
+  const bool hadPlan =
+      (ball.meetFor != nullptr) && ball.meetFor == getPossessionAttachment();
   ball.meetFor = nullptr;
   MatchPlayer* owner = findMatchPlayer(getPossessionAttachment());
-  if (!owner || !active(*owner) || isControlled(*owner)) return;
+  if ((owner == nullptr) || !active(*owner) || isControlled(*owner))
+  {
+    return;
+  }
   // A collected ball on a Binturong body: he plans where he meets it and
   // what he does there, and runs to it that way (dribble meet plan). His
   // run to it starts where his last touch left him, or here.
@@ -6556,7 +8027,7 @@ void MatchEngine::chaseTouchedBall()
       ball.meetLegStart = owner->position;
       ball.meetRecovering = false;
       ball.knockedOn = false;
-      ball.plannedTouchIn = 0.0f;
+      ball.plannedTouchIn = 0.0F;
     }
     planDribbleMeetBinturong(*owner);
     return;
@@ -6566,37 +8037,52 @@ void MatchEngine::chaseTouchedBall()
   const float topSpeed = std::max(currentTopSpeed(*owner), EPSILON);
   const float speed = length(ball.velocity);
   const Vector2F heading =
-      speed > EPSILON ? Vector2F{ball.velocity.x / speed, ball.velocity.y / speed}
-                      : Vector2F{0.0f, 0.0f};
-  FlightState flight{speed, 0.0f, 0.0f, false};
-  float travelled = 0.0f;
+      speed > EPSILON
+          ? Vector2F{.x = ball.velocity.x / speed, .y = ball.velocity.y / speed}
+          : Vector2F{.x = 0.0F, .y = 0.0F};
+  FlightState flight{.horizontalSpeed = speed,
+                     .verticalSpeed = 0.0F,
+                     .height = 0.0F,
+                     .bounced = false};
+  float travelled = 0.0F;
   PitchPoint meet = ball.position;
   for (float elapsed = F::CHASE_STEP_SECONDS;
        elapsed <= F::CHASE_HORIZON_SECONDS + EPSILON;
        elapsed += F::CHASE_STEP_SECONDS)
   {
-    for (int step = 0; step < SUBSTEPS && flight.horizontalSpeed > 0.0f; ++step)
-      travelled +=
-          stepFlight(flight, F::CHASE_STEP_SECONDS / static_cast<float>(SUBSTEPS));
-    const Vector2F rolled =
-        {heading.x * travelled, heading.y * travelled};
+    for (int step = 0; step < SUBSTEPS && flight.horizontalSpeed > 0.0F; ++step)
+    {
+      travelled += stepFlight(
+          flight, F::CHASE_STEP_SECONDS / static_cast<float>(SUBSTEPS));
+    }
+    const Vector2F rolled = {.x = heading.x * travelled,
+                             .y = heading.y * travelled};
     meet = PitchPoint{ball.position.x + rolled.x, ball.position.y + rolled.y};
     if (distance(owner->position, meet) -
             MatchTuning::Dribble::KICK_REACH_METRES <=
         topSpeed * elapsed)
+    {
       break;
+    }
   }
   // After a win-it nudge he steps across: he meets it from the attacker's
   // side, his body between them (tackling plan step 6).
   if (getPossessionState().nudgedBy == owner->player)
   {
-    if (const MatchPlayer* attacker = findMatchPlayer(getPossessionState().nudgedFrom))
+    if (const MatchPlayer* attacker =
+            findMatchPlayer(getPossessionState().nudgedFrom))
     {
       const Vector2F across = metricDirection(meet, attacker->position);
-      const Vector2F shift = {across.x * MatchTuning::Defending::STEP_ACROSS_METRES,
-                                      across.y * MatchTuning::Defending::STEP_ACROSS_METRES};
-      meet = PitchPoint{std::clamp(meet.x + shift.x, MatchTuning::Pitch::BALL_INSIDE_END_METRES, pitch.length - MatchTuning::Pitch::BALL_INSIDE_END_METRES),
-              std::clamp(meet.y + shift.y, MatchTuning::Pitch::BALL_INSIDE_SIDE_METRES, pitch.width - MatchTuning::Pitch::BALL_INSIDE_SIDE_METRES)};
+      const Vector2F shift = {
+          .x = across.x * MatchTuning::Defending::STEP_ACROSS_METRES,
+          .y = across.y * MatchTuning::Defending::STEP_ACROSS_METRES};
+      meet = PitchPoint{
+          std::clamp(meet.x + shift.x,
+                     MatchTuning::Pitch::BALL_INSIDE_END_METRES,
+                     pitch.length - MatchTuning::Pitch::BALL_INSIDE_END_METRES),
+          std::clamp(
+              meet.y + shift.y, MatchTuning::Pitch::BALL_INSIDE_SIDE_METRES,
+              pitch.width - MatchTuning::Pitch::BALL_INSIDE_SIDE_METRES)};
     }
   }
   // His body chases the ball; a route he has stays, for his touches (and
@@ -6609,11 +8095,12 @@ void MatchEngine::chaseTouchedBall()
   owner->urgentMovement = true;
 }
 
-
 void MatchEngine::makeSave(MatchPlayer& goalkeeper)
 {
   creditKeeperSave(goalkeeper);
-  const PlayerID shooterId = getPossessionHistory().lastShooter ? getPossessionHistory().lastShooter->getId() : 0;
+  const PlayerID shooterId = (getPossessionHistory().lastShooter != nullptr)
+                                 ? getPossessionHistory().lastShooter->getId()
+                                 : 0;
   goalkeeper.isDiving = true;
   goalkeeper.diveTimer = MatchTuning::Ball::SAVE_DIVE_TIME;
   const PitchPoint wasAt = ball.position;
@@ -6641,17 +8128,25 @@ void MatchEngine::beginStoppage()
   // the same step (a red card and its free kick) form one stoppage, so they
   // share one substitution window.
   pendingAdvantage.active = false;
-  setPiecePhaseRemaining = 0.0f;
+  setPiecePhaseRemaining = 0.0F;
   // A free-ball tackle not yet followed by control is not won.
   cancelPendingTackle();
-  if (stoppageSequence != 0 && lastStoppageStep == stepCounter) return;
+  if (stoppageSequence != 0 && lastStoppageStep == stepCounter)
+  {
+    return;
+  }
   lastStoppageStep = stepCounter;
   ++stoppageSequence;
 }
 
 void MatchEngine::setupKickOff(bool homeKickingOff)
 {
-  beginStoppage();
+  // The goal already opened this break in play. Changes during its
+  // celebration and the following kick-off share one substitution window.
+  if (state != MatchState::GOAL)
+  {
+    beginStoppage();
+  }
   restartIsSetPiece = false;
   pendingAdvantage.active = false;
   resetPositions();
@@ -6660,7 +8155,10 @@ void MatchEngine::setupKickOff(bool homeKickingOff)
   // regular movement once play starts.
   for (auto& player : players)
   {
-    if (!active(player)) continue;
+    if (!active(player))
+    {
+      continue;
+    }
     player.position = kickOffPosition(player);
     player.movementTarget = player.position;
   }
@@ -6672,11 +8170,13 @@ void MatchEngine::setupKickOff(bool homeKickingOff)
   MatchPlayer* taker =
       chooseRestartTaker(MatchState::KICK_OFF, homeKickingOff, centre);
   setRestartTaker(taker);
-  if (taker)
+  if (taker != nullptr)
   {
-    taker->position = PitchPoint{pitch.atX(MatchTuning::Pitch::CENTRE) +
-                                             (homeKickingOff ? -1.0f : 1.0f) * MatchTuning::Pitch::KICKOFF_TAKER_BEHIND_METRES,
-                              pitch.atY(MatchTuning::Pitch::CENTRE)};
+    taker->position =
+        PitchPoint{pitch.atX(MatchTuning::Pitch::CENTRE) +
+                       ((homeKickingOff ? -1.0F : 1.0F) *
+                        MatchTuning::Pitch::KICKOFF_TAKER_BEHIND_METRES),
+                   pitch.atY(MatchTuning::Pitch::CENTRE)};
     taker->movementTarget = taker->position;
     assignRestartOwner(taker->player);
   }
@@ -6690,12 +8190,12 @@ PitchPoint MatchEngine::kickOffPosition(const MatchPlayer& player) const
 {
   // Worked out in fractions of the pitch (the formation's frame).
   const float base = pitch.fractionX(player.basePosition);
-  const float x = player.isHomeTeam
-                      ? MatchTuning::Pitch::KICKOFF_FORMATION_INSET +
-                            base * MatchTuning::Pitch::KICKOFF_FORMATION_SCALE
-                      : (1.0f - MatchTuning::Pitch::KICKOFF_FORMATION_INSET) -
-                            (1.0f - base) *
-                                MatchTuning::Pitch::KICKOFF_FORMATION_SCALE;
+  const float x =
+      player.isHomeTeam
+          ? MatchTuning::Pitch::KICKOFF_FORMATION_INSET +
+                (base * MatchTuning::Pitch::KICKOFF_FORMATION_SCALE)
+          : (1.0F - MatchTuning::Pitch::KICKOFF_FORMATION_INSET) -
+                ((1.0F - base) * MatchTuning::Pitch::KICKOFF_FORMATION_SCALE);
   return pitch.at(x, pitch.fractionY(player.basePosition));
 }
 
@@ -6709,10 +8209,14 @@ MatchPlayer* MatchEngine::restartTaker()
 void MatchEngine::setRestartTaker(MatchPlayer* taker)
 {
   restartLineUp.reset();
-  if (taker)
+  if (taker != nullptr)
+  {
     restartTakerIndex = slotOf(*taker);
+  }
   else
+  {
     restartTakerIndex.reset();
+  }
 }
 
 std::size_t MatchEngine::slotOf(const MatchPlayer& player) const
@@ -6733,7 +8237,9 @@ bool MatchEngine::userRestartPassRequested() const
 {
   if (playHalfMinutes == 0 || !controlledIndex.has_value() ||
       !restartTakerIndex.has_value())
+  {
     return false;
+  }
   switch (state)
   {
     case MatchState::KICK_OFF:
@@ -6745,10 +8251,15 @@ bool MatchEngine::userRestartPassRequested() const
     default:
       return false;
   }
-  if (*restartTakerIndex >= players.size()) return false;
+  if (*restartTakerIndex >= players.size())
+  {
+    return false;
+  }
   if (players.at(*controlledIndex).isHomeTeam !=
       players.at(*restartTakerIndex).isHomeTeam)
+  {
     return false;
+  }
   return controlInput.action == MatchInputAction::PASS ||
          controlInput.action == MatchInputAction::LOFTED_PASS ||
          controlInput.action == MatchInputAction::THROUGH_BALL;
@@ -6792,7 +8303,7 @@ bool MatchEngine::lineUpRestart(MatchPlayer& taker, MatchState restart,
     // His time is up: he decides what to do with it, then lines it up.
     RestartLineUp lineUp;
     const PitchPoint goal =
-        pitch.at(taker.isHomeTeam ? 1.0f : 0.0f, MatchTuning::Pitch::CENTRE);
+        pitch.at(taker.isHomeTeam ? 1.0F : 0.0F, MatchTuning::Pitch::CENTRE);
     if (userPass)
     {
       lineUp.userAction = controlInput.action;
@@ -6808,9 +8319,14 @@ bool MatchEngine::lineUpRestart(MatchPlayer& taker, MatchState restart,
     {
       lineUp.play = chooseRestartPlay(taker, restart);
       if (lineUp.play.kind == RestartPlay::Kind::PASS && lineUp.play.pass)
-        lineUp.line = metricDirection(ball.position, lineUp.play.pass->targetPoint);
+      {
+        lineUp.line =
+            metricDirection(ball.position, lineUp.play.pass->targetPoint);
+      }
       else if (lineUp.play.kind == RestartPlay::Kind::DIRECT_SHOT)
+      {
         lineUp.line = metricDirection(ball.position, goal);
+      }
     }
     restartLineUp = lineUp;
   }
@@ -6818,21 +8334,27 @@ bool MatchEngine::lineUpRestart(MatchPlayer& taker, MatchState restart,
   // Kept, not kicked: nothing to line up.
   if (lineUp.userAction == MatchInputAction::NONE &&
       lineUp.play.kind == RestartPlay::Kind::HOLD)
+  {
     return true;
+  }
   // In his comfort gap: he walks right up to a dead ball (inside it the ball
   // is never in his dead zone, and he is not stretching for it).
   const Vector2F fromBall = taker.position - ball.position;
-  if (length(fromBall) > touchKnobs[TouchKnob::COMFORT_GAP]) return false;
+  if (length(fromBall) > touchKnobs[TouchKnob::COMFORT_GAP])
+  {
+    return false;
+  }
   // Turned to his line, or out of time to turn further.
   if (!lineUp.line ||
       lineUp.seconds >= MatchTuning::Dribble::TURN_TO_PASS_MAX_SECONDS)
+  {
     return true;
+  }
   const Vector2F facing = normalized(
-      {std::cos(taker.facingAngle),
-       std::sin(taker.facingAngle)});
+      {.x = std::cos(taker.facingAngle), .y = std::sin(taker.facingAngle)});
   return facing.x * lineUp.line->x + facing.y * lineUp.line->y >=
          std::cos(MatchTuning::Dribble::TURN_TO_PASS_READY_DEGREES *
-                  std::numbers::pi_v<float> / 180.0f);
+                  std::numbers::pi_v<float> / 180.0F);
 }
 
 void MatchEngine::steerRestartLineUp(MatchPlayer& taker, float dt)
@@ -6842,13 +8364,15 @@ void MatchEngine::steerRestartLineUp(MatchPlayer& taker, float dt)
   // comes at it.
   RestartLineUp& lineUp = *restartLineUp;
   lineUp.seconds += dt;
-  if (possessionId == PossessionId::BINTURONG && outOfPlayId == OutOfPlayId::AARDVARK &&
+  if (possessionId == PossessionId::BINTURONG &&
+      outOfPlayId == OutOfPlayId::AARDVARK &&
       taker.position.y * pitch.width >= pitch.ground.boardsY &&
       ball.position.y * pitch.width < pitch.ground.boardsY)
   {
     // A controller's queued restart is retained while he approaches too.
-    taker.movementTarget = asPoint(RestartApproach::target(pitch, asVector(taker.position),
-        asVector(ball.position), MatchTuning::Player::ARRIVAL_DEAD_ZONE_METRES));
+    taker.movementTarget = asPoint(RestartApproach::target(
+        pitch, asVector(taker.position), asVector(ball.position),
+        MatchTuning::Player::ARRIVAL_DEAD_ZONE_METRES));
     taker.tacticalTarget = taker.movementTarget;
     taker.facingRequested = false;
     return;
@@ -6857,9 +8381,9 @@ void MatchEngine::steerRestartLineUp(MatchPlayer& taker, float dt)
       lineUp.line.value_or(metricDirection(taker.position, ball.position));
   const float back = touchKnobs[TouchKnob::COMFORT_GAP] *
                      MatchTuning::Dribble::RESTART_SPOT_COMFORT_SHARE;
-  const Vector2F behind = {-line.x * back, -line.y * back};
-  const PitchPoint spot =
-      clampToPitch(PitchPoint{ball.position.x + behind.x, ball.position.y + behind.y});
+  const Vector2F behind = {.x = -line.x * back, .y = -line.y * back};
+  const PitchPoint spot = clampToPitch(
+      PitchPoint{ball.position.x + behind.x, ball.position.y + behind.y});
   // A walk counts as arrived anywhere within the arrival dead zone of its
   // target, which is wider than the comfort gap: he aims that far past
   // his spot, the way he comes at it, so he pulls up on it.
@@ -6868,17 +8392,15 @@ void MatchEngine::steerRestartLineUp(MatchPlayer& taker, float dt)
   const float through =
       MatchTuning::Player::ARRIVAL_DEAD_ZONE_METRES / std::max(metres, EPSILON);
   taker.movementTarget =
-      metres > 0.01f
-          ? clampToPitch(PitchPoint{spot.x + (spot.x - taker.position.x) * through,
-                     spot.y + (spot.y - taker.position.y) * through})
-          : spot;
+      metres > 0.01F ? clampToPitch(PitchPoint{
+                           spot.x + ((spot.x - taker.position.x) * through),
+                           spot.y + ((spot.y - taker.position.y) * through)})
+                     : spot;
   taker.tacticalTarget = taker.movementTarget;
   if (lineUp.line)
   {
     taker.facingRequested = true;
-    taker.facingRequest =
-        std::atan2(line.y,
-                   line.x);
+    taker.facingRequest = std::atan2(line.y, line.x);
   }
 }
 
@@ -6889,24 +8411,34 @@ void MatchEngine::noteRestartKick(const MatchPlayer& taker,
   // Kept, not kicked: nothing to count.
   if (lineUp.userAction == MatchInputAction::NONE &&
       lineUp.play.kind == RestartPlay::Kind::HOLD)
+  {
     return;
+  }
   RestartLineUpStats& tally = restartLineUpStats;
   const auto index = static_cast<std::size_t>(restart);
-  if (index < tally.byRestart.size()) ++tally.byRestart[index];
+  if (index < tally.byRestart.size())
+  {
+    ++tally.byRestart[index];
+  }
   ++tally.kicked;
   const Vector2F fromBall = taker.position - ball.position;
   const float gap = length(fromBall);
-  if (gap > touchKnobs[TouchKnob::COMFORT_GAP]) ++tally.outsideComfort;
-  if (ballBehindReach(taker, fromBall.x, fromBall.y, gap)) ++tally.inDeadZone;
+  if (gap > touchKnobs[TouchKnob::COMFORT_GAP])
+  {
+    ++tally.outsideComfort;
+  }
+  if (ballBehindReach(taker, fromBall.x, fromBall.y, gap))
+  {
+    ++tally.inDeadZone;
+  }
   if (lineUp.line)
   {
     const Vector2F facing = normalized(
-        {std::cos(taker.facingAngle),
-         std::sin(taker.facingAngle)});
+        {.x = std::cos(taker.facingAngle), .y = std::sin(taker.facingAngle)});
     const bool turned =
         facing.x * lineUp.line->x + facing.y * lineUp.line->y >=
         std::cos(MatchTuning::Dribble::TURN_TO_PASS_READY_DEGREES *
-                 std::numbers::pi_v<float> / 180.0f);
+                 std::numbers::pi_v<float> / 180.0F);
     ++(turned ? tally.turned : tally.outOfTime);
   }
   tally.secondsSum += lineUp.seconds;
@@ -6919,18 +8451,24 @@ void MatchEngine::resetPositions()
 {
   for (auto& player : players)
   {
-    if (!active(player)) continue;
+    if (!active(player))
+    {
+      continue;
+    }
     player.position = player.basePosition;
     player.movementTarget = player.basePosition;
-    player.velocity = {0.0f, 0.0f};
+    player.velocity = {.x = 0.0F, .y = 0.0F};
     player.intent = PlayerIntent::HOLD_SHAPE;
     player.isPressing = false;
     player.isMakingRun = false;
-    player.actionCooldown = 0.0f;
+    player.actionCooldown = 0.0F;
     // Placed for the kick-off: on his feet.
-    if (player.fallen) standUp(player);
-    player.stumbleSeconds = 0.0f;
-    player.collisionPause = 0.0f;
+    if (player.fallen)
+    {
+      standUp(player);
+    }
+    player.stumbleSeconds = 0.0F;
+    player.collisionPause = 0.0F;
   }
 }
 
@@ -6970,7 +8508,10 @@ MatchPlayer* MatchEngine::findGoalkeeper(bool homeTeam)
 
 MatchPlayer* MatchEngine::findMatchPlayer(const Player* player)
 {
-  if (!player) return nullptr;
+  if (player == nullptr)
+  {
+    return nullptr;
+  }
   const auto found =
       std::ranges::find_if(players, [player](const MatchPlayer& matchPlayer)
                            { return matchPlayer.player == player; });
@@ -6993,17 +8534,17 @@ float MatchEngine::nearestOpponentDistance(const MatchPlayer& player) const
 
 float MatchEngine::openSpaceAhead(const MatchPlayer& carrier) const
 {
-  constexpr float OPEN_SPACE_RADIUS_METRES = 13.5f;
+  constexpr float OPEN_SPACE_RADIUS_METRES = 13.5F;
   // Probed 16.8 m ahead of him, kept 2.1 m off the goal lines; across, in
   // three lanes at shares of the width (on purpose).
-  constexpr float PROBE_AHEAD_METRES = 16.8f;
-  constexpr float PROBE_END_MARGIN_METRES = 2.1f;
-  const float direction = carrier.isHomeTeam ? 1.0f : -1.0f;
-  const float probeDepth =
-      std::clamp(carrier.position.x + direction * PROBE_AHEAD_METRES, PROBE_END_MARGIN_METRES,
-                 pitch.length - PROBE_END_MARGIN_METRES);
-  constexpr float CHANNELS[3] = {0.25f, 0.50f, 0.75f};
-  float openness = 0.0f;
+  constexpr float PROBE_AHEAD_METRES = 16.8F;
+  constexpr float PROBE_END_MARGIN_METRES = 2.1F;
+  const float direction = carrier.isHomeTeam ? 1.0F : -1.0F;
+  const float probeDepth = std::clamp(
+      carrier.position.x + (direction * PROBE_AHEAD_METRES),
+      PROBE_END_MARGIN_METRES, pitch.length - PROBE_END_MARGIN_METRES);
+  constexpr float CHANNELS[3] = {0.25F, 0.50F, 0.75F};
+  float openness = 0.0F;
   for (const float channelY : CHANNELS)
   {
     const PitchPoint probe{probeDepth, pitch.atY(channelY)};
@@ -7011,12 +8552,14 @@ float MatchEngine::openSpaceAhead(const MatchPlayer& carrier) const
     for (const auto& opponent : players)
     {
       if (opponent.isHomeTeam == carrier.isHomeTeam || !active(opponent))
+      {
         continue;
+      }
       nearest = std::min(nearest, distance(probe, opponent.position));
     }
-    openness += std::clamp(nearest / OPEN_SPACE_RADIUS_METRES, 0.0f, 1.0f);
+    openness += std::clamp(nearest / OPEN_SPACE_RADIUS_METRES, 0.0F, 1.0F);
   }
-  return openness / 3.0f;
+  return openness / 3.0F;
 }
 
 float MatchEngine::passingLaneRisk(const MatchPlayer& passer,
@@ -7024,43 +8567,53 @@ float MatchEngine::passingLaneRisk(const MatchPlayer& passer,
 {
   const Vector2F segment = receiver.position - passer.position;
   const float segmentLengthSquared =
-      segment.x * segment.x + segment.y * segment.y;
-  if (segmentLengthSquared <= EPSILON) return 1.0f;
+      (segment.x * segment.x) + (segment.y * segment.y);
+  if (segmentLengthSquared <= EPSILON)
+  {
+    return 1.0F;
+  }
 
-  float combinedSafety = 1.0f;
+  float combinedSafety = 1.0F;
   for (const auto& opponent : players)
   {
-    if (!active(opponent) || opponent.isHomeTeam == passer.isHomeTeam) continue;
-    const Vector2F fromPasser =
-        opponent.position - passer.position;
+    if (!active(opponent) || opponent.isHomeTeam == passer.isHomeTeam)
+    {
+      continue;
+    }
+    const Vector2F fromPasser = opponent.position - passer.position;
     const float projection =
         std::clamp((fromPasser.x * segment.x + fromPasser.y * segment.y) /
                        segmentLengthSquared,
-                   0.0f, 1.0f);
+                   0.0F, 1.0F);
     if (projection < MatchTuning::Passing::LANE_START_MARGIN ||
         projection > MatchTuning::Passing::LANE_END_MARGIN)
+    {
       continue;
+    }
 
-    const float laneDistance = length({fromPasser.x - segment.x * projection,
-                                       fromPasser.y - segment.y * projection});
+    const float laneDistance =
+        length({.x = fromPasser.x - (segment.x * projection),
+                .y = fromPasser.y - (segment.y * projection)});
     const float interceptionRadius =
         MatchTuning::Passing::BASE_INTERCEPTION_RADIUS_METRES +
-        opponent.defending *
-            MatchTuning::Passing::DEFENDING_INTERCEPTION_METRES +
-        opponent.pace * MatchTuning::Passing::PACE_INTERCEPTION_METRES;
-    const float individualRisk =
-        std::clamp(1.0f - laneDistance / std::max(interceptionRadius, EPSILON),
-                   0.0f, 1.0f);
+        (opponent.defending *
+         MatchTuning::Passing::DEFENDING_INTERCEPTION_METRES) +
+        (opponent.pace * MatchTuning::Passing::PACE_INTERCEPTION_METRES);
+    const float individualRisk = std::clamp(
+        1.0F - (laneDistance / std::max(interceptionRadius, EPSILON)), 0.0F,
+        1.0F);
     combinedSafety *=
-        1.0f -
+        1.0F -
         individualRisk * (MatchTuning::Passing::BASE_INTERCEPTION_RISK +
                           projection * MatchTuning::Passing::LATE_LANE_RISK);
   }
-  return std::clamp(1.0f - combinedSafety, 0.0f, 1.0f);
+  return std::clamp(1.0F - combinedSafety, 0.0F, 1.0F);
 }
 
-MatchEngine::XgBreakdown MatchEngine::xgBreakdown(const MatchPitch& pitch, PitchPoint at,
-                                                  bool attackingRight, float shooting,
+MatchEngine::XgBreakdown MatchEngine::xgBreakdown(const MatchPitch& pitch,
+                                                  PitchPoint at,
+                                                  bool attackingRight,
+                                                  float shooting,
                                                   float nearestOpponentMetres)
 {
   // Logistic expected-goals model on distance, visible goal angle, distance
@@ -7072,14 +8625,14 @@ MatchEngine::XgBreakdown MatchEngine::xgBreakdown(const MatchPitch& pitch, Pitch
   if (!pitch.goal.present())
   {
     parts.goal = false;
-    parts.xg = 0.0f;
+    parts.xg = 0.0F;
     return parts;
   }
-  const float goalX = pitch.atX(attackingRight ? 1.0f : 0.0f);
+  const float goalX = pitch.atX(attackingRight ? 1.0F : 0.0F);
   parts.lineMetres = std::abs(goalX - at.x);
   parts.lateralMetres = std::abs(pitch.atY(MatchTuning::Pitch::CENTRE) - at.y);
-  parts.metres = std::sqrt(parts.lineMetres * parts.lineMetres +
-                           parts.lateralMetres * parts.lateralMetres);
+  parts.metres = std::sqrt((parts.lineMetres * parts.lineMetres) +
+                           (parts.lateralMetres * parts.lateralMetres));
   // The fitted surface is only valid within shooting range.
   if (parts.metres > S::XG_MAX_DISTANCE_METRES)
   {
@@ -7088,33 +8641,40 @@ MatchEngine::XgBreakdown MatchEngine::xgBreakdown(const MatchPitch& pitch, Pitch
     return parts;
   }
 
-  const Vector2F toTop =
-      Vector2F{goalX - at.x, pitch.atY(MatchTuning::Pitch::CENTRE) - pitch.goal.halfWidth - at.y};
-  const Vector2F toBottom =
-      Vector2F{goalX - at.x, pitch.atY(MatchTuning::Pitch::CENTRE) + pitch.goal.halfWidth - at.y};
+  const Vector2F toTop = Vector2F{
+      .x = goalX - at.x,
+      .y = pitch.atY(MatchTuning::Pitch::CENTRE) - pitch.goal.halfWidth - at.y};
+  const Vector2F toBottom = Vector2F{
+      .x = goalX - at.x,
+      .y = pitch.atY(MatchTuning::Pitch::CENTRE) + pitch.goal.halfWidth - at.y};
   const float denominator = length(toTop) * length(toBottom);
   const float cosine =
       denominator > EPSILON
-          ? std::clamp((toTop.x * toBottom.x + toTop.y * toBottom.y) / denominator, -1.0f,
-                       1.0f)
-          : 1.0f;
+          ? std::clamp(
+                (toTop.x * toBottom.x + toTop.y * toBottom.y) / denominator,
+                -1.0F, 1.0F)
+          : 1.0F;
   parts.angle = std::acos(cosine);
   const float lineMetres = parts.lineMetres;
   const float lateralMetres = parts.lateralMetres;
   const float angle = parts.angle;
-  parts.logit = S::XG_INTERCEPT + S::XG_ANGLE * angle + S::XG_DISTANCE * parts.metres +
-                S::XG_LINE * lineMetres + S::XG_LATERAL * lateralMetres +
+  parts.logit = S::XG_INTERCEPT + S::XG_ANGLE * angle +
+                S::XG_DISTANCE * parts.metres + S::XG_LINE * lineMetres +
+                S::XG_LATERAL * lateralMetres +
                 S::XG_LINE_SQUARED * lineMetres * lineMetres +
                 S::XG_LATERAL_SQUARED * lateralMetres * lateralMetres +
                 S::XG_ANGLE_LINE * angle * lineMetres;
-  parts.location = 1.0f / (1.0f + std::exp(-parts.logit));
-  parts.pressure = std::clamp(
-      (S::PRESSURE_RADIUS_METRES - nearestOpponentMetres) / S::PRESSURE_RADIUS_METRES, 0.0f,
-      1.0f);
-  parts.skillFactor = S::BASE_SKILL_FACTOR + shooting * S::SHOOTING_SKILL_FACTOR;
-  parts.pressureFactor = 1.0f - parts.pressure * S::PRESSURE_PENALTY;
+  parts.location = 1.0F / (1.0F + std::exp(-parts.logit));
+  parts.pressure =
+      std::clamp((S::PRESSURE_RADIUS_METRES - nearestOpponentMetres) /
+                     S::PRESSURE_RADIUS_METRES,
+                 0.0F, 1.0F);
+  parts.skillFactor =
+      S::BASE_SKILL_FACTOR + shooting * S::SHOOTING_SKILL_FACTOR;
+  parts.pressureFactor = 1.0F - parts.pressure * S::PRESSURE_PENALTY;
   parts.unclamped = parts.location * parts.skillFactor * parts.pressureFactor;
-  parts.xg = std::clamp(parts.unclamped, S::MIN_OPEN_PLAY_XG, S::MAX_OPEN_PLAY_XG);
+  parts.xg =
+      std::clamp(parts.unclamped, S::MIN_OPEN_PLAY_XG, S::MAX_OPEN_PLAY_XG);
   return parts;
 }
 
@@ -7122,15 +8682,21 @@ float MatchEngine::estimateShotXG(const MatchPlayer& shooter) const
 {
   // Out of range or without a goal, the opponents don't matter: they are
   // only looked at within it (as before the breakdown was split out).
-  if (!pitch.goal.present()) return 0.0f;
-  const float goalX = pitch.atX(shooter.isHomeTeam ? 1.0f : 0.0f);
+  if (!pitch.goal.present())
+  {
+    return 0.0F;
+  }
+  const float goalX = pitch.atX(shooter.isHomeTeam ? 1.0F : 0.0F);
   const float lineMetres = std::abs(goalX - shooter.position.x);
-  const float lateralMetres = std::abs(pitch.atY(MatchTuning::Pitch::CENTRE) - shooter.position.y);
-  if (std::sqrt(lineMetres * lineMetres + lateralMetres * lateralMetres) >
+  const float lateralMetres =
+      std::abs(pitch.atY(MatchTuning::Pitch::CENTRE) - shooter.position.y);
+  if (std::sqrt((lineMetres * lineMetres) + (lateralMetres * lateralMetres)) >
       MatchTuning::Shooting::XG_MAX_DISTANCE_METRES)
+  {
     return MatchTuning::Shooting::MIN_OPEN_PLAY_XG;
-  return xgBreakdown(pitch, shooter.position, shooter.isHomeTeam, shooter.shooting,
-                     nearestOpponentDistance(shooter))
+  }
+  return xgBreakdown(pitch, shooter.position, shooter.isHomeTeam,
+                     shooter.shooting, nearestOpponentDistance(shooter))
       .xg;
 }
 
@@ -7143,7 +8709,10 @@ float MatchEngine::offsideLine(bool attackingHome) const
   std::size_t defenderCount = 0;
   for (const auto& player : players)
   {
-    if (player.isHomeTeam == attackingHome || !active(player)) continue;
+    if (player.isHomeTeam == attackingHome || !active(player))
+    {
+      continue;
+    }
     ++defenderCount;
     const float position = player.position.x;
     if (attackingHome)
@@ -7171,14 +8740,20 @@ float MatchEngine::offsideLine(bool attackingHome) const
       }
     }
   }
-  if (defenderCount < 2) return pitch.atX(attackingHome ? 1.0f : 0.0f);
+  if (defenderCount < 2)
+  {
+    return pitch.atX(attackingHome ? 1.0F : 0.0F);
+  }
   return secondNearestGoalDefender;
 }
 
 bool MatchEngine::isOffside(const MatchPlayer& receiver, bool attackingHome,
                             float defenderLine, float lineTolerance) const
 {
-  if (!offsideCalled()) return false;
+  if (!offsideCalled())
+  {
+    return false;
+  }
   // The margins and the tolerance are metres.
   const float margin =
       MatchTuning::Passing::OFFSIDE_MARGIN_METRES + lineTolerance;
@@ -7199,14 +8774,17 @@ bool MatchEngine::isOffside(const MatchPlayer& receiver, bool attackingHome,
 
 float MatchEngine::randomFloat(float minimum, float maximum)
 {
-  return minimum + (maximum - minimum) * uniform01(rng);
+  return minimum + ((maximum - minimum) * uniform01(rng));
 }
 
 float MatchEngine::incidentRoll() { return uniform01(incidentRng); }
 
 bool MatchEngine::isHomePlayer(const Player* player) const
 {
-  if (!player) return false;
+  if (player == nullptr)
+  {
+    return false;
+  }
   const auto found =
       std::ranges::find_if(players, [player](const MatchPlayer& matchPlayer)
                            { return matchPlayer.player == player; });
@@ -7226,14 +8804,24 @@ int MatchEngine::getSubstitutionWindowsUsed(bool homeTeam) const
 bool MatchEngine::canSubstitute(bool homeTeam) const
 {
   if (state == MatchState::FULL_TIME || state == MatchState::PENALTY_SHOOTOUT)
+  {
     return false;
+  }
   // Changes under way count (touchline plan stage 5) until they are made.
   int underWay = 0;
   for (const PendingSubstitution& pending : pendingSubstitutions)
+  {
     if (pending.stage != PendingSubstitution::Stage::ENTERING &&
-        pending.slot < players.size() && players[pending.slot].isHomeTeam == homeTeam)
+        pending.slot < players.size() &&
+        players[pending.slot].isHomeTeam == homeTeam)
+    {
       ++underWay;
-  if (getSubstitutionsUsed(homeTeam) + underWay >= maxSubstitutions()) return false;
+    }
+  }
+  if (getSubstitutionsUsed(homeTeam) + underWay >= maxSubstitutions())
+  {
+    return false;
+  }
   // Half-time changes and further changes in an already used stoppage do
   // not consume a new window.
   const std::uint32_t lastWindow =
@@ -7251,7 +8839,9 @@ bool MatchEngine::canSubstitute(bool homeTeam) const
 void MatchEngine::setAutoSubstitutions(bool home, bool away)
 {
   if (home != homeAutoSubstitutions || away != awayAutoSubstitutions)
+  {
     ++inputRevision;
+  }
   homeAutoSubstitutions = home;
   awayAutoSubstitutions = away;
 }
@@ -7259,7 +8849,10 @@ void MatchEngine::setAutoSubstitutions(bool home, bool away)
 bool MatchEngine::substitutePlayer(uint32_t outPlayerId, const Player* inPlayer,
                                    std::optional<std::size_t> slot)
 {
-  if (!inPlayer || state == MatchState::FULL_TIME) return false;
+  if ((inPlayer == nullptr) || state == MatchState::FULL_TIME)
+  {
+    return false;
+  }
   MatchCommandRecord command;
   command.type = MatchCommandType::SUBSTITUTION;
   command.homeTeam = std::ranges::find(homeBench, inPlayer) != homeBench.end();
@@ -7270,11 +8863,14 @@ bool MatchEngine::substitutePlayer(uint32_t outPlayerId, const Player* inPlayer,
 }
 
 bool MatchEngine::applySubstitution(MatchPlayer& outgoing,
-                                      const Player* inPlayer,
-                                      SubstitutionReason reason)
+                                    const Player* inPlayer,
+                                    SubstitutionReason reason)
 {
-  if (!inPlayer || !active(outgoing) || !canSubstitute(outgoing.isHomeTeam))
+  if ((inPlayer == nullptr) || !active(outgoing) ||
+      !canSubstitute(outgoing.isHomeTeam))
+  {
     return false;
+  }
   const bool homeTeam = outgoing.isHomeTeam;
   if (state != MatchState::HALF_TIME)
   {
@@ -7300,14 +8896,19 @@ bool MatchEngine::applySubstitution(MatchPlayer& outgoing,
   const bool hadPossession = getPossessionAttachment() == outgoing.player;
   const PlayerID outgoingId = outgoing.player->getId();
   if (std::ranges::find(squad, inPlayer) == squad.end())
+  {
     squad.push_back(inPlayer);
+  }
   const bool incomingKeeper = inPlayer->getRole() == PlayerRole::GK;
   if (incomingKeeper && !outgoing.isGoalkeeper)
   {
     // A replacement keeper takes over from any emergency keeper.
     for (auto& teammate : players)
     {
-      if (teammate.isHomeTeam != homeTeam || !teammate.isGoalkeeper) continue;
+      if (teammate.isHomeTeam != homeTeam || !teammate.isGoalkeeper)
+      {
+        continue;
+      }
       teammate.isGoalkeeper = false;
       // An emergency keeper goes back out to the slot the new one frees.
       if (active(teammate) && outgoing.formationSlot >= 0)
@@ -7316,10 +8917,10 @@ bool MatchEngine::applySubstitution(MatchPlayer& outgoing,
         placeFormation(homeTeam);
       }
     }
-    outgoing.basePosition =
-        PitchPoint{homeTeam ? MatchTuning::Pitch::LINEUP_GOALKEEPER_METRES
-                          : pitch.length - MatchTuning::Pitch::LINEUP_GOALKEEPER_METRES,
-                 pitch.atY(MatchTuning::Pitch::CENTRE)};
+    outgoing.basePosition = PitchPoint{
+        homeTeam ? MatchTuning::Pitch::LINEUP_GOALKEEPER_METRES
+                 : pitch.length - MatchTuning::Pitch::LINEUP_GOALKEEPER_METRES,
+        pitch.atY(MatchTuning::Pitch::CENTRE)};
     outgoing.isGoalkeeper = true;
   }
   outgoing.player = inPlayer;
@@ -7328,17 +8929,21 @@ bool MatchEngine::applySubstitution(MatchPlayer& outgoing,
       std::ranges::find_if(benchConditions, [inPlayer](const auto& entry)
                            { return entry.first == inPlayer->getId(); });
   outgoing.stamina =
-      benchCondition != benchConditions.end() ? benchCondition->second : 1.0f;
-  outgoing.sprintReserve = 1.0f;
-  outgoing.fastBurstDebt = 0.0f;
+      benchCondition != benchConditions.end() ? benchCondition->second : 1.0F;
+  outgoing.sprintReserve = 1.0F;
+  outgoing.fastBurstDebt = 0.0F;
   outgoing.isInjured = false;
   outgoing.yellowCards = 0;
   outgoing.actionCooldown = MatchTuning::Player::SUBSTITUTION_SETTLE_SECONDS;
   outgoing.statsIndex = addPlayerStats(outgoing, false);
   substitutePossession(hadPossession, outgoingId, inPlayer);
 
-  substitutions.push_back({matchTimeMinutes, period, homeTeam, outgoingId,
-                           inPlayer->getId(), reason});
+  substitutions.push_back({.timeMinute = matchTimeMinutes,
+                           .period = period,
+                           .isHomeTeam = homeTeam,
+                           .outgoingPlayerId = outgoingId,
+                           .incomingPlayerId = inPlayer->getId(),
+                           .reason = reason});
   MatchEvent& event = logEvent(MatchEventType::SUBSTITUTION, outgoing);
   event.secondaryPlayerId = outgoingId;
   return true;
@@ -7350,13 +8955,19 @@ void MatchEngine::runAiSubstitutions()
   {
     homeLastAiReviewStoppage = stoppageSequence;
     runAiSubstitutionsFor(true);
-    if (homeAutoSubstitutions) runAiTouchline(true);
+    if (homeAutoSubstitutions)
+    {
+      runAiTouchline(true);
+    }
   }
   if (awayLastAiReviewStoppage != stoppageSequence)
   {
     awayLastAiReviewStoppage = stoppageSequence;
     runAiSubstitutionsFor(false);
-    if (awayAutoSubstitutions) runAiTouchline(false);
+    if (awayAutoSubstitutions)
+    {
+      runAiTouchline(false);
+    }
   }
 }
 
@@ -7366,37 +8977,59 @@ void MatchEngine::setMedicalFlags(PlayerID playerId, std::uint8_t flags)
       std::ranges::find_if(medicalFlags, [playerId](const auto& entry)
                            { return entry.first == playerId; });
   if (found != medicalFlags.end())
+  {
     found->second = flags;
+  }
   else if (flags != 0)
+  {
     medicalFlags.emplace_back(playerId, flags);
+  }
 }
 
 void MatchEngine::checkInjuries()
 {
   for (auto& player : players)
   {
-    if (!active(player) || player.isInjured) continue;
-    if (incidentRoll() < injuryChance(player)) injurePlayer(player, false);
+    if (!active(player) || player.isInjured)
+    {
+      continue;
+    }
+    if (incidentRoll() < injuryChance(player))
+    {
+      injurePlayer(player, false);
+    }
   }
 }
 
 void MatchEngine::injurePlayer(MatchPlayer& player, bool fromContact)
 {
-  if (!active(player) || player.isInjured) return;
+  if (!active(player) || player.isInjured)
+  {
+    return;
+  }
   player.isInjured = true;
   statsOf(player).injured = true;
   ++(player.isHomeTeam ? stats.homeInjuries : stats.awayInjuries);
   ++stoppageLogs[static_cast<std::size_t>(period - 1)].injuries;
   MatchEvent& event = logEvent(MatchEventType::INJURY, player);
-  if (fromContact) event.detail = MatchEventDetail::CONTACT;
+  if (fromContact)
+  {
+    event.detail = MatchEventDetail::CONTACT;
+  }
   event.position = player.position;
   // A player who cannot run no longer carries the ball forward.
-  if (getPossessionAttachment() == player.player) player.actionCooldown = 0.0f;
+  if (getPossessionAttachment() == player.player)
+  {
+    player.actionCooldown = 0.0F;
+  }
 }
 
 void MatchEngine::removeFromPitch(MatchPlayer& player, bool walksOff)
 {
-  if (!active(player)) return;
+  if (!active(player))
+  {
+    return;
+  }
   const bool homeTeam = player.isHomeTeam;
   const PitchPoint vacated = player.basePosition;
   const std::int8_t vacatedSlot = player.formationSlot;
@@ -7405,38 +9038,55 @@ void MatchEngine::removeFromPitch(MatchPlayer& player, bool walksOff)
   if (releaseRemovedPlayer(player.player))
   {
     // Walking off, it runs on as it was (else it stops where he was).
-    if (!walksOff) ball.velocity = {0.0f, 0.0f};
+    if (!walksOff)
+    {
+      ball.velocity = {.x = 0.0F, .y = 0.0F};
+    }
   }
   // Walking off (stage 6): his body walks on as a touchline body; the
   // slot's record waits out of sight in the tunnel.
-  if (walksOff) sendToTunnel(player);
+  if (walksOff)
+  {
+    sendToTunnel(player);
+  }
   // Park beside the dugouts, clear of play and of each other.
   int parked = 0;
   for (const auto& other : players)
-    if (other.player && !other.onPitch) ++parked;
+  {
+    if ((other.player != nullptr) && !other.onPitch)
+    {
+      ++parked;
+    }
+  }
   player.onPitch = false;
   player.isGoalkeeper = false;
   player.isPressing = false;
   player.isMakingRun = false;
   player.intent = PlayerIntent::HOLD_SHAPE;
-  player.velocity = {0.0f, 0.0f};
+  player.velocity = {.x = 0.0F, .y = 0.0F};
   player.position =
       walksOff
           ? PitchPoint{pitch.atX(MatchTuning::Pitch::CENTRE),
-                       pitch.ground.standY +
-                                         MatchTuning::WalkOut::WAIT_METRES}
-          : PitchPoint{pitch.atX(MatchTuning::Pitch::CENTRE) +
-                         (homeTeam ? -1.0f : 1.0f) *
-                             (MatchTuning::Rules::PARKED_PLAYER_OFFSET_METRES +
-                              static_cast<float>(parked) *
-                                  MatchTuning::Rules::PARKED_PLAYER_SPACING_METRES),
-                     MatchTuning::Pitch::PLAYER_EDGE_SIDE_METRES};
+                       pitch.ground.standY + MatchTuning::WalkOut::WAIT_METRES}
+          : PitchPoint{
+                pitch.atX(MatchTuning::Pitch::CENTRE) +
+                    ((homeTeam ? -1.0F : 1.0F) *
+                     (MatchTuning::Rules::PARKED_PLAYER_OFFSET_METRES +
+                      static_cast<float>(parked) *
+                          MatchTuning::Rules::PARKED_PLAYER_SPACING_METRES)),
+                MatchTuning::Pitch::PLAYER_EDGE_SIDE_METRES};
   player.movementTarget = player.position;
   if (walksOff)
   {
     const auto slot = slotOf(player);
-    if (slot < previousPlayerPositions.size()) previousPlayerPositions[slot] = player.position;
-    if (slot < stepStartPositions.size()) stepStartPositions[slot] = player.position;
+    if (slot < previousPlayerPositions.size())
+    {
+      previousPlayerPositions[slot] = player.position;
+    }
+    if (slot < stepStartPositions.size())
+    {
+      stepStartPositions[slot] = player.position;
+    }
   }
   if (restartTaker() == &player)
   {
@@ -7446,21 +9096,33 @@ void MatchEngine::removeFromPitch(MatchPlayer& player, bool walksOff)
     if (walksOff)
     {
       // The new taker goes to the ball; one in his hands drops.
-      if (deadBall.active && (deadBall.phase == DeadBallReturn::Phase::CARRIED ||
-                              deadBall.phase == DeadBallReturn::Phase::LIFTED))
+      if (deadBall.active &&
+          (deadBall.phase == DeadBallReturn::Phase::CARRIED ||
+           deadBall.phase == DeadBallReturn::Phase::LIFTED))
       {
         deadBall.phase = DeadBallReturn::Phase::LOOSE;
-        deadBall.seconds = 0.0f;
+        deadBall.seconds = 0.0F;
       }
     }
-    else if (replacement && state != MatchState::PLAYING)
+    else if ((replacement != nullptr) && state != MatchState::PLAYING)
     {
       handBallTo(replacement->player);
     }
   }
-  if (walksOff && deadBall.fetcherIndex == slotOf(player)) deadBall.fetcherIndex.reset();
-  if (wasKeeper) ensureGoalkeeper(homeTeam);
-  rebalanceShape(homeTeam, vacated, wasKeeper ? -1 : vacatedSlot);
+  if (walksOff && deadBall.fetcherIndex == slotOf(player))
+  {
+    deadBall.fetcherIndex.reset();
+  }
+  if (wasKeeper)
+  {
+    ensureGoalkeeper(homeTeam);
+  }
+  std::int8_t slotToRebalance = vacatedSlot;
+  if (wasKeeper)
+  {
+    slotToRebalance = -1;
+  }
+  rebalanceShape(homeTeam, vacated, slotToRebalance);
 
   // Law 3: a match cannot continue with fewer than seven players a side.
   const auto remaining = std::ranges::count_if(
@@ -7482,7 +9144,7 @@ void MatchEngine::rebalanceShape(bool homeTeam, PitchPoint vacatedBase,
   // A side reduced to ten fills a defensive hole with the nearest midfielder
   // and drops a little deeper overall.
   const float ownDepth = homeTeam ? pitch.fractionX(vacatedBase)
-                                  : 1.0f - pitch.fractionX(vacatedBase);
+                                  : 1.0F - pitch.fractionX(vacatedBase);
   if (ownDepth < MatchTuning::Rules::DEFENSIVE_SLOT_DEPTH)
   {
     MatchPlayer* cover = nullptr;
@@ -7491,11 +9153,16 @@ void MatchEngine::rebalanceShape(bool homeTeam, PitchPoint vacatedBase,
     {
       if (!active(player) || player.isHomeTeam != homeTeam ||
           player.isGoalkeeper)
+      {
         continue;
-      const float depth =
-          homeTeam ? pitch.fractionX(player.basePosition)
-                   : 1.0f - pitch.fractionX(player.basePosition);
-      if (depth <= ownDepth + EPSILON) continue;
+      }
+      const float depth = homeTeam
+                              ? pitch.fractionX(player.basePosition)
+                              : 1.0F - pitch.fractionX(player.basePosition);
+      if (depth <= ownDepth + EPSILON)
+      {
+        continue;
+      }
       const float d = distance(player.basePosition, vacatedBase);
       if (d < best)
       {
@@ -7503,7 +9170,7 @@ void MatchEngine::rebalanceShape(bool homeTeam, PitchPoint vacatedBase,
         cover = &player;
       }
     }
-    if (cover)
+    if (cover != nullptr)
     {
       cover->basePosition = vacatedBase;
       cover->formationSlot = vacatedSlot;
@@ -7512,21 +9179,32 @@ void MatchEngine::rebalanceShape(bool homeTeam, PitchPoint vacatedBase,
   for (auto& player : players)
   {
     if (!active(player) || player.isHomeTeam != homeTeam || player.isGoalkeeper)
+    {
       continue;
+    }
     player.basePosition.x = clampToPitchX(
         player.basePosition.x +
-        (homeTeam ? -1.0f : 1.0f) * MatchTuning::Rules::SHORT_HANDED_DROP);
+        ((homeTeam ? -1.0F : 1.0F) * MatchTuning::Rules::SHORT_HANDED_DROP));
   }
 }
 
 void MatchEngine::ensureGoalkeeper(bool homeTeam)
 {
-  if (findGoalkeeper(homeTeam)) return;
+  if (findGoalkeeper(homeTeam) != nullptr)
+  {
+    return;
+  }
   // A keeper already on his way on (touchline plan stage 5).
   for (const PendingSubstitution& pending : pendingSubstitutions)
-    if (pending.incoming && pending.incoming->getRole() == PlayerRole::GK &&
-        pending.slot < players.size() && players[pending.slot].isHomeTeam == homeTeam)
+  {
+    if ((pending.incoming != nullptr) &&
+        pending.incoming->getRole() == PlayerRole::GK &&
+        pending.slot < players.size() &&
+        players[pending.slot].isHomeTeam == homeTeam)
+    {
       return;
+    }
+  }
   const bool autoManaged =
       homeTeam ? homeAutoSubstitutions : awayAutoSubstitutions;
   if (autoManaged && canSubstitute(homeTeam))
@@ -7539,17 +9217,20 @@ void MatchEngine::ensureGoalkeeper(bool homeTeam)
       float mostAdvanced = -std::numeric_limits<float>::infinity();
       for (auto& player : players)
       {
-        if (!active(player) || player.isHomeTeam != homeTeam) continue;
-        const float depth =
-            homeTeam ? pitch.fractionX(player.basePosition)
-                   : 1.0f - pitch.fractionX(player.basePosition);
+        if (!active(player) || player.isHomeTeam != homeTeam)
+        {
+          continue;
+        }
+        const float depth = homeTeam
+                                ? pitch.fractionX(player.basePosition)
+                                : 1.0F - pitch.fractionX(player.basePosition);
         if (depth > mostAdvanced)
         {
           mostAdvanced = depth;
           sacrificed = &player;
         }
       }
-      if (sacrificed &&
+      if ((sacrificed != nullptr) &&
           performSubstitution(*sacrificed, keeper,
                               SubstitutionReason::GOALKEEPER_REPLACEMENT))
       {
@@ -7561,22 +9242,32 @@ void MatchEngine::ensureGoalkeeper(bool homeTeam)
   MatchPlayer* emergency = nullptr;
   for (auto& player : players)
   {
-    if (!active(player) || player.isHomeTeam != homeTeam) continue;
-    if (!emergency || player.goalkeeping > emergency->goalkeeping)
+    if (!active(player) || player.isHomeTeam != homeTeam)
+    {
+      continue;
+    }
+    if ((emergency == nullptr) || player.goalkeeping > emergency->goalkeeping)
+    {
       emergency = &player;
+    }
   }
-  if (!emergency) return;
+  if (emergency == nullptr)
+  {
+    return;
+  }
   emergency->isGoalkeeper = true;
-  emergency->basePosition =
-      PitchPoint{homeTeam ? MatchTuning::Pitch::LINEUP_GOALKEEPER_METRES
-                        : pitch.length - MatchTuning::Pitch::LINEUP_GOALKEEPER_METRES,
-               pitch.atY(MatchTuning::Pitch::CENTRE)};
+  emergency->basePosition = PitchPoint{
+      homeTeam ? MatchTuning::Pitch::LINEUP_GOALKEEPER_METRES
+               : pitch.length - MatchTuning::Pitch::LINEUP_GOALKEEPER_METRES,
+      pitch.atY(MatchTuning::Pitch::CENTRE)};
 }
 
 MatchEvent& MatchEngine::logEvent(MatchEventType type)
 {
   if (events.size() >= MatchTuning::Timing::MAX_EVENTS)
+  {
     events.erase(events.begin());
+  }
   MatchEvent& event = events.emplace_back();
   undescribedEvents = std::min(undescribedEvents + 1, events.size());
   event.timeMinute = matchTimeMinutes;
@@ -7587,9 +9278,12 @@ MatchEvent& MatchEngine::logEvent(MatchEventType type)
   event.awayShootout = shootout.goals[1];
   event.period = period;
   event.addedMinute =
-      std::max(0.0f, matchTimeMinutes - MatchRules::periodEndMinute(period));
+      std::max(0.0F, matchTimeMinutes - MatchRules::periodEndMinute(period));
   event.position = ball.position;
-  if (isHighlightTrigger(type)) recordHighlight(type);
+  if (isHighlightTrigger(type))
+  {
+    recordHighlight(type);
+  }
   return event;
 }
 
@@ -7601,19 +9295,30 @@ void MatchEngine::setTeamNames(std::string homeTeam, std::string awayTeam)
 std::string MatchEngine::squadPlayerName(PlayerID playerId) const
 {
   for (const Player* player : squad)
-    if (player->getId() == playerId) return player->getName();
+  {
+    if (player->getId() == playerId)
+    {
+      return player->getName();
+    }
+  }
   return {};
 }
 
 void MatchEngine::describePendingEvents()
 {
-  if (undescribedEvents == 0) return;
-  const MatchCommentaryNames names{teamNames[0], teamNames[1],
-                                   [this](PlayerID playerId)
+  if (undescribedEvents == 0)
+  {
+    return;
+  }
+  const MatchCommentaryNames names{.homeTeam = teamNames[0],
+                                   .awayTeam = teamNames[1],
+                                   .player = [this](PlayerID playerId)
                                    { return squadPlayerName(playerId); }};
   for (std::size_t index = events.size() - undescribedEvents;
        index < events.size(); ++index)
+  {
     events[index].description = MatchCommentary::describe(events[index], names);
+  }
   undescribedEvents = 0;
 }
 
@@ -7656,7 +9361,11 @@ void MatchEngine::recordHighlight(MatchEventType type)
     }
     return;
   }
-  highlights.push_back({type, start, now, end, matchTimeMinutes});
+  highlights.push_back({.type = type,
+                        .startSeconds = start,
+                        .triggerSeconds = now,
+                        .endSeconds = end,
+                        .triggerMinute = matchTimeMinutes});
 }
 
 MatchEvent& MatchEngine::logEvent(MatchEventType type, const MatchPlayer& actor)
@@ -7664,7 +9373,7 @@ MatchEvent& MatchEngine::logEvent(MatchEventType type, const MatchPlayer& actor)
   MatchEvent& event = logEvent(type);
   event.hasTeam = true;
   event.isHomeTeam = actor.isHomeTeam;
-  event.primaryPlayerId = actor.player ? actor.player->getId() : 0;
+  event.primaryPlayerId = (actor.player != nullptr) ? actor.player->getId() : 0;
   event.position = actor.position;
   return event;
 }
@@ -7739,7 +9448,8 @@ std::string MatchEngine::getDebugSnapshotJson() const
     output << "{\"passer\":" << lastPassDecision.passerId
            << ",\"receiver\":" << lastPassDecision.receiverId
            << ",\"intent\":\"" << passIntentName(lastPassDecision.intent)
-           << "\",\"target_x\":" << pitch.fractionX(lastPassDecision.targetPoint)
+           << "\",\"target_x\":"
+           << pitch.fractionX(lastPassDecision.targetPoint)
            << ",\"target_y\":" << pitch.fractionY(lastPassDecision.targetPoint)
            << ",\"utility\":" << lastPassDecision.utility
            << ",\"progression\":" << lastPassDecision.progression
@@ -7789,17 +9499,24 @@ std::string MatchEngine::getDebugSnapshotJson() const
   }
   output << "},\"ball\":{\"x\":" << pitch.fractionX(ball.position)
          << ",\"y\":" << pitch.fractionY(ball.position)
-         << ",\"z_metres\":" << ball.z
-         << ",\"possessed_by\":";
-  if (getPossessionAttachment())
+         << ",\"z_metres\":" << ball.z << ",\"possessed_by\":";
+  if (getPossessionAttachment() != nullptr)
+  {
     output << getPossessionAttachment()->getId();
+  }
   else
+  {
     output << "null";
+  }
   output << ",\"intended_receiver\":";
-  if (getExpectedReceiver())
+  if (getExpectedReceiver() != nullptr)
+  {
     output << getExpectedReceiver()->getId();
+  }
   else
+  {
     output << "null";
+  }
   output << "},\"stats\":{\"home_shots\":" << stats.homeShots
          << ",\"away_shots\":" << stats.awayShots
          << ",\"home_xg\":" << stats.homeShotXG
@@ -7846,16 +9563,22 @@ std::string MatchEngine::getDebugSnapshotJson() const
   for (size_t index = 0; index < players.size(); ++index)
   {
     const auto& player = players[index];
-    if (index > 0) output << ',';
-    output << "{\"id\":" << (player.player ? player.player->getId() : 0)
+    if (index > 0)
+    {
+      output << ',';
+    }
+    output << "{\"id\":"
+           << ((player.player != nullptr) ? player.player->getId() : 0)
            << ",\"name\":"
-           << std::quoted(player.player ? player.player->getName() : "")
+           << std::quoted((player.player != nullptr) ? player.player->getName()
+                                                     : "")
            << ",\"home\":" << (player.isHomeTeam ? "true" : "false")
            << ",\"x\":" << pitch.fractionX(player.position)
            << ",\"y\":" << pitch.fractionY(player.position)
            << ",\"target_x\":" << pitch.fractionX(player.movementTarget)
-           << ",\"target_y\":" << pitch.fractionY(player.movementTarget) << ",\"intent\":\""
-           << intentName(player.intent) << "\",\"stamina\":" << player.stamina
+           << ",\"target_y\":" << pitch.fractionY(player.movementTarget)
+           << ",\"intent\":\"" << intentName(player.intent)
+           << "\",\"stamina\":" << player.stamina
            << ",\"pressing\":" << (player.isPressing ? "true" : "false")
            << ",\"making_run\":" << (player.isMakingRun ? "true" : "false")
            << ",\"on_pitch\":" << (player.onPitch ? "true" : "false")
@@ -7870,7 +9593,10 @@ std::string MatchEngine::getDebugSnapshotJson() const
 bool MatchEngine::writeDebugSnapshot(std::string_view path) const
 {
   std::ofstream output{std::string(path)};
-  if (!output.is_open()) return false;
+  if (!output.is_open())
+  {
+    return false;
+  }
   output << getDebugSnapshotJson() << '\n';
   return output.good();
 }

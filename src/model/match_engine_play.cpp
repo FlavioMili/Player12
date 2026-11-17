@@ -38,7 +38,10 @@ void MatchEngine::setPlayHalfMinutes(int minutes)
                        MatchTuning::Timing::MAX_PLAY_HALF_MINUTES);
   const PlayerID player = getControlledPlayer();
   inputLog.resize(inputCursor);
-  inputLog.push_back({stepCounter + 1, player, {}, pendingPlayHalfMinutes});
+  inputLog.push_back({.step = stepCounter + 1,
+                      .player = player,
+                      .input = {},
+                      .playHalfMinutes = pendingPlayHalfMinutes});
   ++inputRevision;
 }
 
@@ -49,13 +52,18 @@ bool MatchEngine::setControlledPlayer(PlayerID playerId)
     const auto found = std::find_if(
         players.begin(), players.end(), [&](const MatchPlayer& candidate)
         { return active(candidate) && candidate.player->getId() == playerId; });
-    if (found == players.end() || found->isGoalkeeper) return false;
+    if (found == players.end() || found->isGoalkeeper)
+    {
+      return false;
+    }
   }
   // Scheduled for the next step, like any other input, so a replay applies it
   // at the same moment.
   inputLog.resize(inputCursor);
-  inputLog.push_back(
-      {stepCounter + 1, playerId, MatchPlayerInput{}, pendingPlayHalfMinutes});
+  inputLog.push_back({.step = stepCounter + 1,
+                      .player = playerId,
+                      .input = MatchPlayerInput{},
+                      .playHalfMinutes = pendingPlayHalfMinutes});
   ++inputRevision;
   return true;
 }
@@ -67,18 +75,28 @@ PlayerID MatchEngine::getControlledPlayer() const
   for (std::size_t index = inputCursor;
        index < inputLog.size() && inputLog[index].step <= stepCounter + 1;
        ++index)
+  {
     scheduled = inputLog[index].player;
-  if (scheduled) return *scheduled;
+  }
+  if (scheduled)
+  {
+    return *scheduled;
+  }
   return controlledIndex ? players[*controlledIndex].player->getId() : 0;
 }
 
 void MatchEngine::submitInput(const MatchPlayerInput& input)
 {
   const PlayerID controlled = getControlledPlayer();
-  if (controlled == 0) return;
+  if (controlled == 0)
+  {
+    return;
+  }
   inputLog.resize(inputCursor);
-  inputLog.push_back(
-      {stepCounter + 1, controlled, input, pendingPlayHalfMinutes});
+  inputLog.push_back({.step = stepCounter + 1,
+                      .player = controlled,
+                      .input = input,
+                      .playHalfMinutes = pendingPlayHalfMinutes});
   ++inputRevision;
 }
 
@@ -117,11 +135,14 @@ void MatchEngine::applyDueInputs()
         players[*controlledIndex].player->getId() == record.player;
     const MatchInputAction pending =
         samePlayer ? controlInput.action : MatchInputAction::NONE;
-    const float pendingRemaining = samePlayer ? controlActionRemaining : 0.0f;
+    const float pendingRemaining = samePlayer ? controlActionRemaining : 0.0F;
     controlledIndex.reset();
     controlInput = {};
-    controlActionRemaining = 0.0f;
-    if (record.player == 0) continue;
+    controlActionRemaining = 0.0F;
+    if (record.player == 0)
+    {
+      continue;
+    }
     for (std::size_t slot = 0; slot < players.size(); ++slot)
     {
       const MatchPlayer& candidate = players[slot];
@@ -134,7 +155,10 @@ void MatchEngine::applyDueInputs()
         break;
       }
     }
-    if (!controlledIndex) continue;
+    if (!controlledIndex)
+    {
+      continue;
+    }
     controlInput = record.input;
     if (pressed)
     {
@@ -158,26 +182,28 @@ void MatchEngine::integrateControlled(MatchPlayer& player, float dt)
   const float topSpeed = currentTopSpeed(player);
   const float fatigue = fuelFatigue(player);
   const MatchPlayer* carrier = findMatchPlayer(getPossessionAttachment());
-  const bool jockeying = controlInput.jockey && carrier &&
+  const bool jockeying = controlInput.jockey && (carrier != nullptr) &&
                          carrier->isHomeTeam != player.isHomeTeam;
   float runSpeed =
       controlInput.sprint
           ? topSpeed
           : std::min(topSpeed, player.maxSpeed * C::JOG_SPEED_SHARE);
   if (jockeying)
+  {
     runSpeed = std::min(runSpeed, player.maxSpeed * C::JOCKEY_SPEED_SHARE);
-  float magnitude = std::sqrt(controlInput.moveX * controlInput.moveX +
-                              controlInput.moveY * controlInput.moveY);
-  Vector2F direction{0.0f, 0.0f};
+  }
+  float magnitude = std::sqrt((controlInput.moveX * controlInput.moveX) +
+                              (controlInput.moveY * controlInput.moveY));
+  Vector2F direction{.x = 0.0F, .y = 0.0F};
   if (std::isfinite(magnitude) && magnitude > EPSILON)
   {
-    direction = {controlInput.moveX / magnitude,
-                 controlInput.moveY / magnitude};
-    magnitude = std::min(magnitude, 1.0f);
+    direction = {.x = controlInput.moveX / magnitude,
+                 .y = controlInput.moveY / magnitude};
+    magnitude = std::min(magnitude, 1.0F);
   }
   else
   {
-    magnitude = 0.0f;
+    magnitude = 0.0F;
     // With the stick idle he still meets a pass played to him and, while
     // jockeying, keeps his goal-side spot; he arrives without overshooting.
     if (const auto assist = controlledAssistTarget(player))
@@ -187,66 +213,75 @@ void MatchEngine::integrateControlled(MatchPlayer& player, float dt)
       if (metres > MatchTuning::Player::ARRIVAL_DEAD_ZONE_METRES &&
           runSpeed > EPSILON)
       {
-        direction = {offset.x / metres, offset.y / metres};
+        direction = {.x = offset.x / metres, .y = offset.y / metres};
         magnitude = std::min(
-            1.0f, std::sqrt(2.0f * MatchTuning::Player::ARRIVAL_DECELERATION *
+            1.0F, std::sqrt(2.0F * MatchTuning::Player::ARRIVAL_DECELERATION *
                             metres) /
                       runSpeed);
       }
     }
   }
   const float desiredSpeed = magnitude * runSpeed;
-  const Vector2F desired{direction.x * desiredSpeed,
-                         direction.y * desiredSpeed};
+  const Vector2F desired{.x = direction.x * desiredSpeed,
+                         .y = direction.y * desiredSpeed};
   moveControlled(player, desired, desiredSpeed, topSpeed, fatigue, dt,
                  jockeying ? carrier : nullptr);
   // When the AI takes him back it picks up the run where his momentum
   // carries him instead of braking to the spot he stands on.
-  const Vector2F carry =
-      {player.velocity.x * C::RELEASE_MOMENTUM_SECONDS,
-               player.velocity.y * C::RELEASE_MOMENTUM_SECONDS};
-  player.movementTarget = PitchPoint{
-      clampToPitchX(player.position.x + carry.x),
-      clampToPitchY(player.position.y + carry.y)};
+  const Vector2F carry = {.x = player.velocity.x * C::RELEASE_MOMENTUM_SECONDS,
+                          .y = player.velocity.y * C::RELEASE_MOMENTUM_SECONDS};
+  player.movementTarget =
+      PitchPoint{clampToPitchX(player.position.x + carry.x),
+                 clampToPitchY(player.position.y + carry.y)};
 }
 
 std::optional<PitchPoint> MatchEngine::controlledAssistTarget(
     const MatchPlayer& player) const
 {
   using C = MatchTuning::Control;
-  if (getPossessionState().isPass && !getPossessionAttachment() &&
+  if (getPossessionState().isPass && (getPossessionAttachment() == nullptr) &&
       getExpectedReceiver() == player.player)
   {
     // The point of the ball's path nearest to him, but never behind a
     // moment's travel of the ball: he steps toward it to meet it.
     const Vector2F ballMetres = asVector(ball.position);
     const Vector2F self = asVector(player.position);
-    const float speedSquared =
-        ball.velocity.x * ball.velocity.x + ball.velocity.y * ball.velocity.y;
+    const float speedSquared = (ball.velocity.x * ball.velocity.x) +
+                               (ball.velocity.y * ball.velocity.y);
     float seconds = C::MEET_PASS_LOOKAHEAD_SECONDS;
     if (speedSquared > EPSILON)
+    {
       seconds =
           std::clamp(((self.x - ballMetres.x) * ball.velocity.x +
                       (self.y - ballMetres.y) * ball.velocity.y) /
                          speedSquared,
                      C::MEET_PASS_LOOKAHEAD_SECONDS, C::SWITCH_HORIZON_SECONDS);
-    const Vector2F ahead =
-        {ball.velocity.x * seconds, ball.velocity.y * seconds};
-    return PitchPoint{
-        clampToPitchX(ball.position.x + ahead.x),
-        clampToPitchY(ball.position.y + ahead.y)};
+    }
+    const Vector2F ahead = {.x = ball.velocity.x * seconds,
+                            .y = ball.velocity.y * seconds};
+    return PitchPoint{clampToPitchX(ball.position.x + ahead.x),
+                      clampToPitchY(ball.position.y + ahead.y)};
   }
-  if (!controlInput.jockey || !getPossessionAttachment()) return std::nullopt;
+  if (!controlInput.jockey || (getPossessionAttachment() == nullptr))
+  {
+    return std::nullopt;
+  }
   for (const MatchPlayer& carrier : players)
   {
-    if (carrier.player != getPossessionAttachment()) continue;
-    if (carrier.isHomeTeam == player.isHomeTeam) return std::nullopt;
+    if (carrier.player != getPossessionAttachment())
+    {
+      continue;
+    }
+    if (carrier.isHomeTeam == player.isHomeTeam)
+    {
+      return std::nullopt;
+    }
     // Goal-side of the carrier, between him and the centre of our goal.
     const Vector2F toGoal = metricDirection(
         carrier.position,
-        pitch.at(player.isHomeTeam ? 0.0f : 1.0f, MatchTuning::Pitch::CENTRE));
-    const Vector2F gap = {toGoal.x * C::JOCKEY_CONTAIN_METRES,
-                                  toGoal.y * C::JOCKEY_CONTAIN_METRES};
+        pitch.at(player.isHomeTeam ? 0.0F : 1.0F, MatchTuning::Pitch::CENTRE));
+    const Vector2F gap = {.x = toGoal.x * C::JOCKEY_CONTAIN_METRES,
+                          .y = toGoal.y * C::JOCKEY_CONTAIN_METRES};
     return PitchPoint{carrier.position.x + gap.x, carrier.position.y + gap.y};
   }
   return std::nullopt;
@@ -255,13 +290,20 @@ std::optional<PitchPoint> MatchEngine::controlledAssistTarget(
 Vector2F MatchEngine::controlledAim(const MatchPlayer& carrier) const
 {
   // The aim stick, else the run stick, else the way he runs or faces.
-  Vector2F aim{controlInput.aimX, controlInput.aimY};
+  Vector2F aim{.x = controlInput.aimX, .y = controlInput.aimY};
   if (aim.x * aim.x + aim.y * aim.y <= EPSILON)
-    aim = {controlInput.moveX, controlInput.moveY};
-  if (aim.x * aim.x + aim.y * aim.y <= EPSILON) aim = carrier.velocity;
+  {
+    aim = {.x = controlInput.moveX, .y = controlInput.moveY};
+  }
   if (aim.x * aim.x + aim.y * aim.y <= EPSILON)
-    aim = {std::cos(carrier.facingAngle),
-           std::sin(carrier.facingAngle)};
+  {
+    aim = carrier.velocity;
+  }
+  if (aim.x * aim.x + aim.y * aim.y <= EPSILON)
+  {
+    aim = {.x = std::cos(carrier.facingAngle),
+           .y = std::sin(carrier.facingAngle)};
+  }
   return normalized(aim);
 }
 
@@ -273,7 +315,9 @@ bool MatchEngine::performControlledAction(MatchPlayer& carrier)
       action != MatchInputAction::LOFTED_PASS &&
       action != MatchInputAction::THROUGH_BALL &&
       action != MatchInputAction::SHOOT && action != MatchInputAction::CLEAR)
+  {
     return false;
+  }
   controlInput.action = MatchInputAction::NONE;
   ++controlledActions[carrier.isHomeTeam ? 0 : 1];
   if (action == MatchInputAction::SHOOT)
@@ -282,23 +326,25 @@ bool MatchEngine::performControlledAction(MatchPlayer& carrier)
     // pressure and the power still decide where the ball really goes.
     controlledShot = {};
     controlledShot.active = true;
-    controlledShot.power = controlInput.power > 0.0f
-                               ? std::clamp(controlInput.power, 0.0f, 1.0f)
+    controlledShot.power = controlInput.power > 0.0F
+                               ? std::clamp(controlInput.power, 0.0F, 1.0F)
                                : C::DEFAULT_POWER;
-    Vector2F aim{controlInput.aimX, controlInput.aimY};
+    Vector2F aim{.x = controlInput.aimX, .y = controlInput.aimY};
     if (aim.x * aim.x + aim.y * aim.y <= EPSILON)
-      aim = {controlInput.moveX, controlInput.moveY};
+    {
+      aim = {.x = controlInput.moveX, .y = controlInput.moveY};
+    }
     aim = normalized(aim);
-    const float forward = carrier.isHomeTeam ? 1.0f : -1.0f;
+    const float forward = carrier.isHomeTeam ? 1.0F : -1.0F;
     // Only a stick pointing at least roughly at the goal aims the shot.
-    constexpr float MIN_GOALWARD_AIM = 0.2f;
+    constexpr float MIN_GOALWARD_AIM = 0.2F;
     if (aim.x * forward > MIN_GOALWARD_AIM)
     {
       const Vector2F from = asVector(carrier.position);
-      const float goalLine = carrier.isHomeTeam ? pitch.length : 0.0f;
-      const float crossing = from.y + aim.y * (goalLine - from.x) / aim.x;
+      const float goalLine = carrier.isHomeTeam ? pitch.length : 0.0F;
+      const float crossing = from.y + (aim.y * (goalLine - from.x) / aim.x);
       controlledShot.aimMetres =
-          crossing - MatchTuning::Pitch::CENTRE * pitch.width;
+          crossing - (MatchTuning::Pitch::CENTRE * pitch.width);
     }
     takeShot(carrier);
     controlledShot = {};
@@ -321,29 +367,40 @@ MatchPlayer* MatchEngine::controlledPassReceiver(MatchPlayer& carrier,
       controlInput.passAssist, C::ASSIST_MIN_ALIGNMENT.size() - 1);
   const float minAlignment = C::ASSIST_MIN_ALIGNMENT[assist];
   const float completionWeight = C::ASSIST_COMPLETION_WEIGHT[assist];
-  const float forward = carrier.isHomeTeam ? 1.0f : -1.0f;
+  const float forward = carrier.isHomeTeam ? 1.0F : -1.0F;
   MatchPlayer* receiver = nullptr;
   float bestScore = -std::numeric_limits<float>::infinity();
   for (auto& candidate : players)
   {
     if (&candidate == &carrier || candidate.isHomeTeam != carrier.isHomeTeam ||
         !active(candidate) || (throughBall && candidate.isGoalkeeper))
+    {
       continue;
-    const Vector2F offset =
-        candidate.position - carrier.position;
+    }
+    const Vector2F offset = candidate.position - carrier.position;
     const float separation = length(offset);
-    if (separation <= EPSILON) continue;
+    if (separation <= EPSILON)
+    {
+      continue;
+    }
     const float alignment = (offset.x * aim.x + offset.y * aim.y) / separation;
-    if (alignment < minAlignment) continue;
+    if (alignment < minAlignment)
+    {
+      continue;
+    }
     // Mild assistance: among the team-mates near the aim, the one the ball
     // is likelier to reach. The aim still dominates.
-    float score = alignment - separation * C::PASS_DISTANCE_WEIGHT;
-    if (completionWeight > 0.0f)
+    float score = alignment - (separation * C::PASS_DISTANCE_WEIGHT);
+    if (completionWeight > 0.0F)
+    {
       score += completionWeight *
                evaluatePassOption(carrier, candidate).completionProbability;
+    }
     if (throughBall)
-      score += std::max(0.0f, offset.x * forward) * C::THROUGH_PROGRESS_WEIGHT +
-               (candidate.isMakingRun ? C::THROUGH_RUNNER_BONUS : 0.0f);
+    {
+      score += std::max(0.0F, offset.x * forward) * C::THROUGH_PROGRESS_WEIGHT +
+               (candidate.isMakingRun ? C::THROUGH_RUNNER_BONUS : 0.0F);
+    }
     if (score > bestScore)
     {
       bestScore = score;
@@ -361,10 +418,10 @@ void MatchEngine::playControlledPass(MatchPlayer& carrier,
   const Vector2F aim = controlledAim(carrier);
   const bool through = action == MatchInputAction::THROUGH_BALL;
   const bool lofted = action == MatchInputAction::LOFTED_PASS;
-  const float power = controlInput.power > 0.0f
-                          ? std::clamp(controlInput.power, 0.0f, 1.0f)
+  const float power = controlInput.power > 0.0F
+                          ? std::clamp(controlInput.power, 0.0F, 1.0F)
                           : C::DEFAULT_POWER;
-  const float forward = carrier.isHomeTeam ? 1.0f : -1.0f;
+  const float forward = carrier.isHomeTeam ? 1.0F : -1.0F;
   if (MatchPlayer* receiver = controlledPassReceiver(carrier, aim, through))
   {
     PassOption option = evaluatePassOption(carrier, *receiver);
@@ -375,14 +432,16 @@ void MatchEngine::playControlledPass(MatchPlayer& carrier,
       Vector2F run = normalized(receiver->velocity);
       if (length(receiver->velocity) <
           MatchTuning::Player::MOVEMENT_FACING_THRESHOLD)
-        run = normalized({aim.x + forward, aim.y});
+      {
+        run = normalized({.x = aim.x + forward, .y = aim.y});
+      }
       const float lead =
           C::THROUGH_LEAD_MIN_METRES +
-          (C::THROUGH_LEAD_MAX_METRES - C::THROUGH_LEAD_MIN_METRES) * power;
-      const Vector2F reach = {run.x * lead, run.y * lead};
-      option.targetPoint = PitchPoint{
-          clampToPitchX(receiver->position.x + reach.x),
-          clampToPitchY(receiver->position.y + reach.y)};
+          ((C::THROUGH_LEAD_MAX_METRES - C::THROUGH_LEAD_MIN_METRES) * power);
+      const Vector2F reach = {.x = run.x * lead, .y = run.y * lead};
+      option.targetPoint =
+          PitchPoint{clampToPitchX(receiver->position.x + reach.x),
+                     clampToPitchY(receiver->position.y + reach.y)};
       option.passDistance = distance(carrier.position, option.targetPoint);
       option.intent = PassIntent::THROUGH_BALL;
       option.lofted = false;
@@ -396,19 +455,21 @@ void MatchEngine::playControlledPass(MatchPlayer& carrier,
   const float metres =
       lofted
           ? C::SPACE_LOFT_MIN_METRES +
-                (C::SPACE_LOFT_MAX_METRES - C::SPACE_LOFT_MIN_METRES) * power
+                ((C::SPACE_LOFT_MAX_METRES - C::SPACE_LOFT_MIN_METRES) * power)
           : C::SPACE_PASS_MIN_METRES +
-                (C::SPACE_PASS_MAX_METRES - C::SPACE_PASS_MIN_METRES) * power;
-  const Vector2F reach = {aim.x * metres, aim.y * metres};
+                ((C::SPACE_PASS_MAX_METRES - C::SPACE_PASS_MIN_METRES) * power);
+  const Vector2F reach = {.x = aim.x * metres, .y = aim.y * metres};
   const PitchPoint target{clampToPitchX(carrier.position.x + reach.x),
-                        clampToPitchY(carrier.position.y + reach.y)};
+                          clampToPitchY(carrier.position.y + reach.y)};
   MatchPlayer* chaser = nullptr;
   float nearest = std::numeric_limits<float>::infinity();
   for (auto& candidate : players)
   {
     if (&candidate == &carrier || candidate.isHomeTeam != carrier.isHomeTeam ||
         !active(candidate) || candidate.isGoalkeeper)
+    {
       continue;
+    }
     const float metresAway = distance(candidate.position, target);
     if (metresAway < nearest)
     {
@@ -416,7 +477,7 @@ void MatchEngine::playControlledPass(MatchPlayer& carrier,
       chaser = &candidate;
     }
   }
-  if (!chaser)
+  if (chaser == nullptr)
   {
     clearBall(carrier);
     return;
@@ -439,19 +500,22 @@ void MatchEngine::shapeControlledShot(const MatchPlayer& shooter,
                                       float& aimZ, float& spread) const
 {
   using C = MatchTuning::Control;
-  if (!controlledShot.active || !isControlled(shooter)) return;
+  if (!controlledShot.active || !isControlled(shooter))
+  {
+    return;
+  }
   if (controlledShot.aimMetres)
   {
-    const float inside = std::max(0.0f, halfGoal - inset);
+    const float inside = std::max(0.0F, halfGoal - inset);
     aimY = std::clamp(*controlledShot.aimMetres, -inside, inside);
   }
   // A full bar is hit hard but is harder to keep down and on target.
   const float excess =
       std::clamp((controlledShot.power - C::SHOT_OVERPOWER_FROM) /
-                     (1.0f - C::SHOT_OVERPOWER_FROM),
-                 0.0f, 1.0f);
+                     (1.0F - C::SHOT_OVERPOWER_FROM),
+                 0.0F, 1.0F);
   aimZ += excess * C::SHOT_OVERPOWER_LIFT_METRES;
-  spread *= 1.0f + excess * C::SHOT_OVERPOWER_SPREAD;
+  spread *= 1.0F + excess * C::SHOT_OVERPOWER_SPREAD;
 }
 
 float MatchEngine::switchSeconds(const MatchPlayer& candidate) const
@@ -459,44 +523,61 @@ float MatchEngine::switchSeconds(const MatchPlayer& candidate) const
   using C = MatchTuning::Control;
   // Where the ball goes: with its carrier on his run, or rolling to a stop.
   const MatchPlayer* carrier = nullptr;
-  if (getPossessionAttachment())
+  if (getPossessionAttachment() != nullptr)
+  {
     for (const MatchPlayer& player : players)
-      if (player.player == getPossessionAttachment()) carrier = &player;
-  const Vector2F start = asVector(carrier ? carrier->position : ball.position);
-  const Vector2F velocity = carrier ? carrier->velocity : ball.velocity;
+    {
+      if (player.player == getPossessionAttachment())
+      {
+        carrier = &player;
+      }
+    }
+  }
+  const Vector2F start =
+      asVector((carrier != nullptr) ? carrier->position : ball.position);
+  const Vector2F velocity =
+      (carrier != nullptr) ? carrier->velocity : ball.velocity;
   const float speed = length(velocity);
-  const Vector2F heading =
-      speed > EPSILON ? Vector2F{velocity.x / speed, velocity.y / speed}
-                      : Vector2F{0.0f, 0.0f};
+  const Vector2F heading = speed > EPSILON ? Vector2F{.x = velocity.x / speed,
+                                                      .y = velocity.y / speed}
+                                           : Vector2F{.x = 0.0F, .y = 0.0F};
   const Vector2F self = asVector(candidate.position);
-  const float topSpeed = std::max(currentTopSpeed(candidate), 1.0f);
-  const float stopSeconds = carrier ? std::numeric_limits<float>::infinity()
-                                    : speed / C::SWITCH_BALL_DECELERATION;
+  const float topSpeed = std::max(currentTopSpeed(candidate), 1.0F);
+  const float stopSeconds = (carrier != nullptr)
+                                ? std::numeric_limits<float>::infinity()
+                                : speed / C::SWITCH_BALL_DECELERATION;
   constexpr int SAMPLES = static_cast<int>(
-      C::SWITCH_HORIZON_SECONDS / C::SWITCH_SAMPLE_SECONDS + 0.5f);
+      (C::SWITCH_HORIZON_SECONDS / C::SWITCH_SAMPLE_SECONDS) + 0.5F);
   float best = std::numeric_limits<float>::infinity();
   for (int sample = 0; sample <= SAMPLES; ++sample)
   {
     const float seconds = static_cast<float>(sample) * C::SWITCH_SAMPLE_SECONDS;
     const float rolling = std::min(seconds, stopSeconds);
     const float travelled =
-        carrier ? speed * seconds
-                : speed * rolling -
-                      0.5f * C::SWITCH_BALL_DECELERATION * rolling * rolling;
+        (carrier != nullptr)
+            ? speed * seconds
+            : (speed * rolling) -
+                  (0.5F * C::SWITCH_BALL_DECELERATION * rolling * rolling);
     const Vector2F point{
-        std::clamp(start.x + heading.x * travelled, 0.0f, pitch.length),
-        std::clamp(start.y + heading.y * travelled, 0.0f, pitch.width)};
-    const float reach = C::SWITCH_REACTION_SECONDS +
-                        length({point.x - self.x, point.y - self.y}) / topSpeed;
+        .x = std::clamp(start.x + heading.x * travelled, 0.0F, pitch.length),
+        .y = std::clamp(start.y + heading.y * travelled, 0.0F, pitch.width)};
+    const float reach =
+        C::SWITCH_REACTION_SECONDS +
+        (length({.x = point.x - self.x, .y = point.y - self.y}) / topSpeed);
     best = std::min(best, std::max(seconds, reach));
     // Reachable in time here: no later point can be reached sooner.
-    if (reach <= seconds) break;
+    if (reach <= seconds)
+    {
+      break;
+    }
   }
   // Against a carrier, a defender already goal-side is the one to engage.
-  if (carrier && carrier->isHomeTeam != candidate.isHomeTeam &&
+  if ((carrier != nullptr) && carrier->isHomeTeam != candidate.isHomeTeam &&
       (candidate.isHomeTeam ? candidate.position.x < carrier->position.x
                             : candidate.position.x > carrier->position.x))
+  {
     best -= C::SWITCH_GOAL_SIDE_BONUS_SECONDS;
+  }
   return best;
 }
 
@@ -510,27 +591,49 @@ PlayerID MatchEngine::suggestActivePlayer(bool homeTeam, PlayerID current) const
   const MatchPlayer* currentPlayer = nullptr;
   for (const MatchPlayer& player : players)
   {
-    if (!eligible(player)) continue;
-    if (player.player->getId() == current) currentPlayer = &player;
+    if (!eligible(player))
+    {
+      continue;
+    }
+    if (player.player->getId() == current)
+    {
+      currentPlayer = &player;
+    }
     // The side's carrier, or the receiver of its pass, is the man.
     if (player.player == getPossessionAttachment() ||
-        (!getPossessionAttachment() && getPossessionState().isPass && getPossessionState().passByHome == homeTeam &&
+        ((getPossessionAttachment() == nullptr) &&
+         getPossessionState().isPass &&
+         getPossessionState().passByHome == homeTeam &&
          player.player == getExpectedReceiver()))
+    {
       return player.player->getId();
+    }
   }
   // The side's keeper has the ball: nobody to chase it, stay with the man.
-  if (currentPlayer && getPossessionAttachment())
+  if ((currentPlayer != nullptr) && (getPossessionAttachment() != nullptr))
+  {
     for (const MatchPlayer& player : players)
-      if (player.player == getPossessionAttachment() && player.isHomeTeam == homeTeam)
+    {
+      if (player.player == getPossessionAttachment() &&
+          player.isHomeTeam == homeTeam)
+      {
         return current;
+      }
+    }
+  }
   PlayerID best = 0;
   float bestSeconds = std::numeric_limits<float>::infinity();
   for (const MatchPlayer& player : players)
   {
-    if (!eligible(player)) continue;
+    if (!eligible(player))
+    {
+      continue;
+    }
     float seconds = switchSeconds(player);
     if (&player == currentPlayer)
+    {
       seconds -= MatchTuning::Control::SWITCH_CURRENT_PREFERENCE_SECONDS;
+    }
     if (seconds < bestSeconds)
     {
       bestSeconds = seconds;
@@ -551,7 +654,9 @@ PlayerID MatchEngine::nextSwitchCandidate(bool homeTeam, PlayerID current,
   {
     if (!active(player) || player.isGoalkeeper ||
         player.isHomeTeam != homeTeam || player.player->getId() == current)
+    {
       continue;
+    }
     const float seconds = switchSeconds(player);
     if (player.player->getId() == skip)
     {
@@ -573,8 +678,10 @@ PlayerID MatchEngine::nextSwitchCandidate(bool homeTeam, PlayerID current,
 bool MatchEngine::stepsWithin(float deltaSeconds) const
 {
   if (state == MatchState::FULL_TIME || !std::isfinite(deltaSeconds) ||
-      deltaSeconds <= 0.0f)
+      deltaSeconds <= 0.0F)
+  {
     return false;
+  }
   return accumulator +
              std::min(deltaSeconds,
                       MatchTuning::Timing::MAX_FRAME_DELTA_SECONDS) +

@@ -101,8 +101,8 @@ class MatchSubsPanel
     const Player* player = nullptr;
     PlayerID id = 0;
     Vector2F spot{};
-    float condition = 1.0f;
-    float rating = 0.0f;
+    float condition = 1.0F;
+    float rating = 0.0F;
     int yellow_cards = 0;
     bool injured = false;
     bool goalkeeper = false;

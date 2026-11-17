@@ -14,16 +14,16 @@
 #include <vector>
 
 #include "model/match_engine.h"
-#include "model/match_possession_claim.h"
-#include "model/match_recorder.h"
-#include "model/match_possession_control.h"
-#include "tools/lab_fixtures.h"
-#include "model/player.h"
 #include "model/match_pitch.h"
-#include "tools/match_sandbox_setup.h"
-#include "tools/match_sandbox_recording.h"
-#include "tools/match_sandbox_recorder.h"
+#include "model/match_possession_claim.h"
+#include "model/match_possession_control.h"
+#include "model/match_recorder.h"
+#include "model/player.h"
+#include "tools/lab_fixtures.h"
 #include "tools/match_sandbox_drill.h"
+#include "tools/match_sandbox_recorder.h"
+#include "tools/match_sandbox_recording.h"
+#include "tools/match_sandbox_setup.h"
 
 namespace
 {
@@ -197,22 +197,28 @@ class Routes final : public MatchRecorder
     const float separation =
         engine.getPossessionState().footControlSeparationSeconds;
     const bool controlled = state.footControlled.value_or(state.collected);
-    check(state.claimUncontrolledSeconds >= 0.0f &&
-              state.claimUnrecoverableSeconds >= 0.0f,
+    check(state.claimUncontrolledSeconds >= 0.0F &&
+              state.claimUnrecoverableSeconds >= 0.0F,
           "claim clocks remain nonnegative");
     if (controlled || testedPossession == PossessionId::AARDVARK)
-      check(state.claimUncontrolledSeconds == 0.0f &&
-                state.claimUnrecoverableSeconds == 0.0f,
+    {
+      check(state.claimUncontrolledSeconds == 0.0F &&
+                state.claimUnrecoverableSeconds == 0.0F,
             "control and Aardvark do not age uncollected claims");
-    check(separation >= 0.0f &&
+    }
+    check(separation >= 0.0F &&
               separation < PossessionControl::SEPARATION_GRACE_SECONDS,
           "control tolerance remains bounded");
     if (testedPossession == PossessionId::AARDVARK)
-      check(separation == 0.0f,
+    {
+      check(separation == 0.0F,
             "Aardvark never uses Binturong control tolerance");
+    }
     if (!controlled)
-      check(separation == 0.0f,
+    {
+      check(separation == 0.0F,
             "uncollected claim does not inherit control tolerance");
+    }
     if (kind == PossessionObservation::NOTE_CARRIER_HISTORY)
     {
       beforeTouch = state;
@@ -220,8 +226,13 @@ class Routes final : public MatchRecorder
       beforePassCredits = counts[static_cast<std::size_t>(
           PossessionObservation::CREDIT_PASS_COMPLETION)];
       for (const auto& player : engine.getPlayers())
-        if (player.player && player.player->getId() == state.legacyOwner)
+      {
+        if ((player.player != nullptr) &&
+            player.player->getId() == state.legacyOwner)
+        {
           beforeTouchCooldown = player.actionCooldown;
+        }
+      }
     }
     if (kind == PossessionObservation::UPDATE_TOUCH)
     {
@@ -233,7 +244,10 @@ class Routes final : public MatchRecorder
       {
         const bool beforeControl =
             beforeTouch->footControlled.value_or(beforeTouch->collected);
-        if (!beforeControl && controlled) ++controlCollections;
+        if (!beforeControl && controlled)
+        {
+          ++controlCollections;
+        }
         if (!beforeControl && controlled && beforeTouch->collected)
         {
           ++controlReacquisitions;
@@ -243,10 +257,15 @@ class Routes final : public MatchRecorder
                 "regaining current control does not credit the completed "
                 "receipt again");
           for (const auto& player : engine.getPlayers())
-            if (player.player && player.player->getId() == state.legacyOwner)
+          {
+            if ((player.player != nullptr) &&
+                player.player->getId() == state.legacyOwner)
+            {
               check(player.actionCooldown == beforeTouchCooldown,
                     "regaining control does not restart first-collection "
                     "decision delay");
+            }
+          }
         }
         if (beforeControl && !controlled)
         {
@@ -258,10 +277,15 @@ class Routes final : public MatchRecorder
               "loss of foot control preserves claimant and collection history");
         }
       }
-      if (separation > 0.0f) ++controlGraceSamples;
+      if (separation > 0.0F)
+      {
+        ++controlGraceSamples;
+      }
       if (controlled &&
           state.ownerGapMetres > MatchTuning::Dribble::KICK_REACH_METRES)
+      {
         ++retainedBeyondCollectionReach;
+      }
       beforeTouch.reset();
       lastClaimUpdate = state;
       lastClaimHistory = historyKey(engine.getPossessionHistory());
@@ -295,47 +319,68 @@ class Routes final : public MatchRecorder
       haveIncoming = true;
     }
     if (kind == PossessionObservation::CONSUME_FIRST_TIME_INTENT)
+    {
       preservesIncoming =
           preservesIncoming && haveIncoming && motion == incoming &&
           incomingDelivery == ball.possessionState().isAerialDelivery;
+    }
     if (kind == PossessionObservation::NOTE_CUSHIONED_HEADER)
+    {
       contactStates = contactStates && ball.possessionState().inTouch &&
                       !ball.possessionState().touchCollected &&
                       ball.possessionState().touchDropping &&
-                      ball.possessionState().possessedBy;
+                      (ball.possessionState().possessedBy != nullptr);
+    }
     if (kind == PossessionObservation::NOTE_TACKLE_NUDGE)
+    {
       contactStates =
           contactStates && ball.possessionState().inTouch &&
-          ball.possessionState().nudgedBy &&
-          ball.possessionState().nudgedFrom &&
+          (ball.possessionState().nudgedBy != nullptr) &&
+          (ball.possessionState().nudgedFrom != nullptr) &&
           ball.possessionState().nudgedBy == ball.possessionState().possessedBy;
+    }
     if (kind == PossessionObservation::BEGIN_POKED_TACKLE)
-      contactStates = contactStates && !ball.possessionState().possessedBy &&
-                      !ball.possessionState().inTouch &&
-                      !ball.possessionState().isPass &&
-                      !ball.possessionState().isShot;
+    {
+      contactStates =
+          contactStates && (ball.possessionState().possessedBy == nullptr) &&
+          !ball.possessionState().inTouch && !ball.possessionState().isPass &&
+          !ball.possessionState().isShot;
+    }
     if (kind == PossessionObservation::NOTE_FALLEN_DEFLECTION)
-      contactStates = contactStates && ball.possessionState().deflectedBy &&
+    {
+      contactStates = contactStates &&
+                      (ball.possessionState().deflectedBy != nullptr) &&
                       ball.possessionState().deflectedPathSince ==
                           ball.possessionState().pathSince &&
                       ball.possessionState().deflectedAfter ==
                           ball.possessionState().lastPossessor;
+    }
     if (kind == PossessionObservation::BEGIN_BODY_DEFLECTION)
+    {
       contactStates = contactStates && !ball.possessionState().isPass &&
                       !ball.possessionState().isShot;
+    }
     if (kind == PossessionObservation::END_DEFLECTED_SHOT_FLIGHT)
+    {
       contactStates = contactStates && !ball.possessionState().isShot &&
                       !ball.possessionState().shotOnTarget;
+    }
     if (kind == PossessionObservation::BEGIN_KEEPER_HOLD)
+    {
       contactStates = contactStates && ball.possessionState().inKeeperHands &&
-                      ball.possessionState().possessedBy &&
+                      (ball.possessionState().possessedBy != nullptr) &&
                       !ball.possessionState().inTouch;
+    }
     if (kind == PossessionObservation::END_KEEPER_HOLD)
+    {
       contactStates = contactStates && !ball.possessionState().inKeeperHands;
+    }
     if (kind == PossessionObservation::BEGIN_KEEPER_HAND_REBOUND)
+    {
       contactStates = contactStates && !ball.possessionState().isPass &&
                       !ball.possessionState().isShot &&
-                      ball.possessionState().kicker;
+                      (ball.possessionState().kicker != nullptr);
+    }
   }
   bool correct = true;
   std::array<unsigned, OBSERVATION_COUNT> counts{};
@@ -348,7 +393,7 @@ class Routes final : public MatchRecorder
   std::optional<decltype(historyKey(std::declval<const PossessionHistory&>()))>
       lastClaimHistory;
   std::array<float, 8> beforeTouchMotion{};
-  float beforeTouchCooldown = 0.0f;
+  float beforeTouchCooldown = 0.0F;
   unsigned beforePassCredits = 0;
   bool haveIncoming = false;
   bool incomingDelivery = false;
@@ -359,7 +404,10 @@ bool sameEvents(const MatchEngine& left, const MatchEngine& right)
 {
   const auto& a = left.getEvents();
   const auto& b = right.getEvents();
-  if (a.size() != b.size()) return false;
+  if (a.size() != b.size())
+  {
+    return false;
+  }
   const auto fields = [](const MatchEvent& e)
   {
     return std::tie(e.timeMinute, e.description, e.type, e.period,
@@ -369,7 +417,12 @@ bool sameEvents(const MatchEngine& left, const MatchEngine& right)
                     e.homeShootout, e.awayShootout);
   };
   for (std::size_t i = 0; i < a.size(); ++i)
-    if (fields(a[i]) != fields(b[i])) return false;
+  {
+    if (fields(a[i]) != fields(b[i]))
+    {
+      return false;
+    }
+  }
   return true;
 }
 
@@ -406,6 +459,7 @@ void compareVersions(const Lineup& home, const Lineup& away,
   legacy.setRecorder(&a);
   developing.setRecorder(&b);
   if (shootout)
+  {
     for (auto* engine : {&legacy, &developing})
     {
       MatchRules::Knockout rules;
@@ -414,29 +468,37 @@ void compareVersions(const Lineup& home, const Lineup& away,
       engine->setKnockout(rules);
       MatchScenario empty;
       for (const auto& player : engine->getPlayers())
-        if (player.player && player.isGoalkeeper && player.isHomeTeam)
+      {
+        if ((player.player != nullptr) && player.isGoalkeeper &&
+            player.isHomeTeam)
         {
           empty.carrierId = player.player->getId();
-          empty.players.push_back({empty.carrierId, PITCH.at(0.08f, 0.5f), false});
+          empty.players.push_back({.playerId = empty.carrierId,
+                                   .position = PITCH.at(0.08F, 0.5F),
+                                   .makingRun = false});
           break;
         }
-      check(engine->applyScenario(empty, MatchState::PLAYING, 120.0f, 0, 0),
+      }
+      check(engine->applyScenario(empty, MatchState::PLAYING, 120.0F, 0, 0),
             "create a tied knockout at the final whistle");
     }
+  }
   const MatchEngine copied(developing);
   check(copied.getPossessionVersion() == testedPossession &&
-            !copied.getRecorder(),
+            (copied.getRecorder() == nullptr),
         "copy preserves implementation and detaches observer");
   bool equal = true;
   std::uint64_t ticks = 0;
   while (legacy.getState() != MatchState::FULL_TIME && equal &&
          ticks++ < 200000)
   {
-    legacy.advance(0.1f);
-    developing.advance(0.1f);
+    legacy.advance(0.1F);
+    developing.advance(0.1F);
     if (ticks == 1)
+    {
       check(!developing.setPossessionVersion(otherPossession()),
             "reject version change during play after the first step");
+    }
     auto left = legacy.getPossessionSnapshot(),
          right = developing.getPossessionSnapshot();
     if (ticks % 5000 == 0)
@@ -444,16 +506,16 @@ void compareVersions(const Lineup& home, const Lineup& away,
       const auto original = possessionStateKey(developing);
       std::optional<MatchEngine> restored;
       restored.emplace(developing);
-      check(
-          !restored->getRecorder() && possessionStateKey(*restored) == original,
-          "complete possession/history survives detached engine copy");
-      restored->advance(0.1f);
+      check((restored->getRecorder() == nullptr) &&
+                possessionStateKey(*restored) == original,
+            "complete possession/history survives detached engine copy");
+      restored->advance(0.1F);
       check(possessionStateKey(developing) == original,
             "advancing an engine copy leaves original possession unchanged");
       restored.emplace(developing);
-      check(
-          !restored->getRecorder() && possessionStateKey(*restored) == original,
-          "engine reconstruction restores complete possession/history");
+      check((restored->getRecorder() == nullptr) &&
+                possessionStateKey(*restored) == original,
+            "engine reconstruction restores complete possession/history");
     }
     right.implementation = left.implementation;
     equal = left == right &&
@@ -485,12 +547,14 @@ void compareVersions(const Lineup& home, const Lineup& away,
   {
     nlohmann::json record = nlohmann::json::array();
     for (const auto& e : legacy.getEvents())
+    {
       record.push_back(
           {e.timeMinute, e.description, static_cast<unsigned>(e.type), e.period,
            e.addedMinute, e.hasTeam, e.isHomeTeam, e.primaryPlayerId,
            e.secondaryPlayerId, e.position.x, e.position.y, e.xg,
            static_cast<unsigned>(e.detail), e.homeScore, e.awayScore, e.minutes,
            e.homeShootout, e.awayShootout});
+    }
     const auto& stats = legacy.getStats();
     record.push_back({stats.homeShots, stats.awayShots, stats.homeSaves,
                       stats.awaySaves, stats.homePassesCompleted,
@@ -498,7 +562,9 @@ void compareVersions(const Lineup& home, const Lineup& away,
                       stats.shootoutGoals, stats.shootoutSaves});
     std::uint64_t digest = 14695981039346656037ULL;
     for (unsigned char c : record.dump())
+    {
       digest = (digest ^ c) * 1099511628211ULL;
+    }
     std::cout << (shootout ? "Shootout result " : "Match result ")
               << static_cast<unsigned>(homeBody) << '/'
               << static_cast<unsigned>(awayBody) << '/'
@@ -516,7 +582,9 @@ void compareVersions(const Lineup& home, const Lineup& away,
         "tackle releases/nudges and cushioned header claims are coherent");
   contestedHeaders += legacy.getStats().aerialDuelsContested;
   for (std::size_t i = 0; i < b.counts.size(); ++i)
+  {
     totalRoutes[i] += b.counts[i];
+  }
   check(!developing.setPossessionVersion(otherPossession()),
         "reject version change after the match");
   check(developing.setPossessionVersion(testedPossession),
@@ -532,22 +600,31 @@ void compareFirstTimeDrill(const StatsConfig& config, const char* name,
   auto make = [&]()
   {
     for (auto& drill : makeDrills())
+    {
       if (std::string_view(drill->name()) == name)
       {
         for (const auto& p : drill->parameters())
         {
           if (std::string_view(p.name) == "Play it")
-            *p.value = firstTime ? 0.0f : 1.0f;
+          {
+            *p.value = firstTime ? 0.0F : 1.0F;
+          }
           if (std::string_view(p.name) == "Ball comes in")
-            *p.value = firstTime ? 1.0f : 2.0f;
+          {
+            *p.value = firstTime ? 1.0F : 2.0F;
+          }
         }
         return std::move(drill);
       }
+    }
     return std::unique_ptr<Drill>{};
   };
   auto a = make(), b = make();
   check(a && b, "first-time drill exists");
-  if (!a || !b) return;
+  if (!a || !b)
+  {
+    return;
+  }
   Routes ar, br;
   sandboxBrains() = {BrainId::BINTURONG, BrainId::BINTURONG};
   sandboxBodies() = {BodyId::BINTURONG, BodyId::BINTURONG};
@@ -597,7 +674,9 @@ void compareFirstTimeDrill(const StatsConfig& config, const char* name,
   check(count(PossessionObservation::CREDIT_PASS_COMPLETION) == expectedCredit,
         "pass credit preserves real-passer and synthetic-feed semantics");
   for (std::size_t i = 0; i < br.counts.size(); ++i)
+  {
     totalRoutes[i] += br.counts[i];
+  }
   std::cout << "Compared " << name
             << (firstTime ? " first time" : " after a touch") << " for "
             << steps << " steps\n";
@@ -619,39 +698,62 @@ class KeeperClaimFixture final : public Drill
   std::vector<DrillParameter> parameters() override { return {}; }
   std::vector<DrillPlayerSpec> players() const override
   {
-    DrillPlayerSpec keeper{
-        "Keeper", PlayerRole::GK, true, {{"Goalkeeping", rating}}, 195};
+    DrillPlayerSpec keeper{.name = "Keeper",
+                           .role = PlayerRole::GK,
+                           .homeTeam = true,
+                           .stats = {{"Goalkeeping", rating}},
+                           .height = 195,
+                           .derived = {}};
     keeper.derived[DerivedStat::HANDLING] = rating;
-    keeper.derived[DerivedStat::COMMAND_OF_AREA] = 1.0f;
-    keeper.derived[DerivedStat::AGILITY] = 99.0f;
-    keeper.derived[DerivedStat::REFLEXES] = 99.0f;
-    return {keeper, {"Opponent", PlayerRole::ST, false}};
+    keeper.derived[DerivedStat::COMMAND_OF_AREA] = 1.0F;
+    keeper.derived[DerivedStat::AGILITY] = 99.0F;
+    keeper.derived[DerivedStat::REFLEXES] = 99.0F;
+    return {keeper,
+            {.name = "Opponent",
+             .role = PlayerRole::ST,
+             .homeTeam = false,
+             .stats = {},
+             .derived = {}}};
   }
   void begin(MatchEngine& engine, const std::vector<PlayerID>& ids) override
   {
     keeper = ids[0];
     opponent = ids[1];
     MatchScenario scenario;
-    scenario.players.push_back({keeper, PITCH.at(0.08f, 0.5f), false});
+    scenario.players.push_back({.playerId = keeper,
+                                .position = PITCH.at(0.08F, 0.5F),
+                                .makingRun = false});
     scenario.players.push_back(
-        {opponent,
-         PITCH.at(0.08f, 0.5f + gap / MatchTuning::Pitch::MATCH_WIDTH_METRES),
-         false});
+        {.playerId = opponent,
+         .position = PITCH.at(
+             0.08F, 0.5F + (gap / MatchTuning::Pitch::MATCH_WIDTH_METRES)),
+         .makingRun = false});
     scenario.carrierId = 0;
-    scenario.ballPosition = PITCH.at(0.20f, 0.5f);
+    scenario.ballPosition = PITCH.at(0.20F, 0.5F);
     (void)engine.startDrill(scenario);
-    engine.setDrillTarget(keeper, PITCH.at(0.08f, 0.5f), false);
+    engine.setDrillTarget(keeper, PITCH.at(0.08F, 0.5F), false);
     engine.setDrillTarget(
         opponent,
-        PITCH.at(0.08f, 0.5f + gap / MatchTuning::Pitch::MATCH_WIDTH_METRES), false);
-    if (!legacy && rating > 90.0f)
-      engine.feedBall(PITCH.at(0.08f + 1.8f / MatchTuning::Pitch::MATCH_LENGTH_METRES, 0.5f),
-                      {0.0f, 0.0f}, 0.0f, 0);
+        PITCH.at(0.08F, 0.5F + (gap / MatchTuning::Pitch::MATCH_WIDTH_METRES)),
+        false);
+    if (!legacy && rating > 90.0F)
+    {
+      engine.feedBall(
+          PITCH.at(0.08F + (1.8F / MatchTuning::Pitch::MATCH_LENGTH_METRES),
+                   0.5F),
+          {.x = 0.0F, .y = 0.0F}, 0.0F, 0);
+    }
     else if (legacy)
-      engine.feedBall(PITCH.at(0.08f + 6.0f / MatchTuning::Pitch::MATCH_LENGTH_METRES, 0.5f),
-                      {-8.0f, 0.0f}, 6.4f, 0);
+    {
+      engine.feedBall(
+          PITCH.at(0.08F + (6.0F / MatchTuning::Pitch::MATCH_LENGTH_METRES),
+                   0.5F),
+          {.x = -8.0F, .y = 0.0F}, 6.4F, 0);
+    }
     else
-      engine.feedBall(PITCH.at(0.20f, 0.5f), {-12.0f, 0.0f}, 7.0f, 0);
+    {
+      engine.feedBall(PITCH.at(0.20F, 0.5F), {.x = -12.0F, .y = 0.0F}, 7.0F, 0);
+    }
   }
   bool afterStep(MatchEngine& engine) override
   {
@@ -679,10 +781,13 @@ void compareContactDrill(const StatsConfig& config, const char* name,
   auto make = [&]() -> std::unique_ptr<Drill>
   {
     if (std::string_view(name) == "Keeper claim fixture")
+    {
       return std::make_unique<KeeperClaimFixture>(
           seed, settings.at("Goalkeeping"), settings.at("Crowding (m)"),
           homeBody == BodyId::AARDVARK);
+    }
     for (auto& drill : makeDrills())
+    {
       if (std::string_view(drill->name()) == name)
       {
         drill->seed = seed;
@@ -690,20 +795,26 @@ void compareContactDrill(const StatsConfig& config, const char* name,
         {
           bool found = false;
           for (const auto& p : drill->parameters())
+          {
             if (key == p.name)
             {
               *p.value = value;
               found = true;
             }
+          }
           check(found, "contact fixture setting exists");
         }
         return std::move(drill);
       }
+    }
     return std::unique_ptr<Drill>{};
   };
   auto a = make(), b = make();
   check(a && b, "contact drill exists");
-  if (!a || !b) return;
+  if (!a || !b)
+  {
+    return;
+  }
   Routes ar, br;
   sandboxBrains() = {BrainId::BINTURONG, BrainId::BINTURONG};
   sandboxBodies() = {homeBody, awayBody};
@@ -711,17 +822,21 @@ void compareContactDrill(const StatsConfig& config, const char* name,
   const auto prepare = [&](MatchEngine& engine)
   {
     if (std::string_view(name) == "Shot target" &&
-        settings.contains("Goalkeeping") && settings.at("Goalkeeping") == 99.0f)
+        settings.contains("Goalkeeping") && settings.at("Goalkeeping") == 99.0F)
+    {
       for (const auto& player : engine.getPlayers())
+      {
         if (player.isGoalkeeper && player.player)
         {
           engine.setDerivedStat(player.player->getId(), DerivedStat::HANDLING,
-                                1.0f);
+                                1.0F);
           engine.setDerivedStat(player.player->getId(), DerivedStat::REFLEXES,
-                                1.0f);
+                                1.0F);
           engine.setDerivedStat(player.player->getId(), DerivedStat::AGILITY,
-                                1.0f);
+                                1.0F);
         }
+      }
+    }
   };
   sandboxPossession() = testedPossession;
   DrillRun left(*a, config, false, prepare);
@@ -799,10 +914,11 @@ void compareContactDrill(const StatsConfig& config, const char* name,
   // remaining dive and gather so the held-ball path is exercised as well.
   if (std::string_view(name) == "Shot target" &&
       left.engine().getBall().possessionState().inKeeperHands)
+  {
     for (unsigned i = 0; i < 20; ++i)
     {
-      left.engine().advance(0.1f);
-      right.engine().advance(0.1f);
+      left.engine().advance(0.1F);
+      right.engine().advance(0.1F);
       auto ls = left.engine().getPossessionSnapshot();
       auto rs = right.engine().getPossessionSnapshot();
       rs.implementation = ls.implementation;
@@ -810,10 +926,13 @@ void compareContactDrill(const StatsConfig& config, const char* name,
                             SandboxRecorder::stateChecksum(right.engine()),
             "caught ball stays deterministic during remaining dive and gather");
     }
+  }
   check(ar.correct && br.correct && ar.counts == br.counts,
         "continued held-ball steps execute the selected implementation");
   for (std::size_t i = 0; i < br.counts.size(); ++i)
+  {
     totalRoutes[i] += br.counts[i];
+  }
   std::cout << "Compared " << name << " seed " << seed << " bodies "
             << static_cast<unsigned>(homeBody) << '/'
             << static_cast<unsigned>(awayBody) << " for " << steps
@@ -841,9 +960,11 @@ void participantLifecycle(const Lineup& home, const Lineup& away,
         OutOfPlayId::AARDVARK);  // Immediate substitution path.
     const auto* outgoing = home.getOutfieldPlayers().front().player;
     MatchScenario s;
-    s.players.push_back({outgoing->getId(), PITCH.at(0.3f, 0.05f), false});
+    s.players.push_back({.playerId = outgoing->getId(),
+                         .position = PITCH.at(0.3F, 0.05F),
+                         .makingRun = false});
     s.carrierId = outgoing->getId();
-    s.ballPosition = PITCH.at(0.3f, 0.05f);
+    s.ballPosition = PITCH.at(0.3F, 0.05F);
     check(engine->startDrill(s), "set up lifecycle owner");
     check(engine->substitutePlayer(outgoing->getId(), incoming),
           "substitute a current owner");
@@ -853,22 +974,22 @@ void participantLifecycle(const Lineup& home, const Lineup& away,
         "substitution preserves legacy incoming ownership and history rewrite");
     const auto copied = *engine;
     check(
-        !copied.getRecorder() &&
+        (copied.getRecorder() == nullptr) &&
             copied.getPossessionVersion() == engine->getPossessionVersion() &&
             copied.getPossessionSnapshot() == engine->getPossessionSnapshot() &&
             possessionStateKey(copied) == possessionStateKey(*engine),
         "copy retains lifecycle state/version and detaches recorder");
     check(engine->removeBeforeKickOff(incoming->getId()),
           "remove a scenario owner");
-    check(!engine->getBall().possessionState().possessedBy,
+    check(engine->getBall().possessionState().possessedBy == nullptr,
           "removing owner releases claim");
     check(engine->removeBeforeKickOff(
               away.getOutfieldPlayers().front().player->getId()),
           "remove a non-owner without transferring control");
-    engine->feedBall(PITCH.at(0.4f, 0.1f), {3.0f, 0.0f}, 0.0f,
+    engine->feedBall(PITCH.at(0.4F, 0.1F), {.x = 3.0F, .y = 0.0F}, 0.0F,
                      away.getOutfieldPlayers()[1].player->getId());
-    check(!engine->getBall().possessionState().possessedBy &&
-              !engine->getBall().possessionState().lastPossessor &&
+    check((engine->getBall().possessionState().possessedBy == nullptr) &&
+              (engine->getBall().possessionState().lastPossessor == nullptr) &&
               engine->getBall().possessionState().isPass,
           "feed creates expectation without control or last player");
   }
@@ -878,7 +999,9 @@ void participantLifecycle(const Lineup& home, const Lineup& away,
             ar.counts == br.counts,
         "participant lifecycle and feed agree between possession versions");
   for (std::size_t i = 0; i < br.counts.size(); ++i)
+  {
     totalRoutes[i] += br.counts[i];
+  }
 }
 
 void persistence()
@@ -930,8 +1053,8 @@ void persistence()
     out << json;
   }
   loaded = Recordings::load(file, error);
-  check(loaded && loaded->setup.possession == PossessionId::AARDVARK,
-        "old recording uses legacy possession");
+  check(!loaded && error.find("older engine") != std::string::npos,
+        "old recording with incompatible pitch units is rejected");
   json["version"] = MatchRecording::VERSION;
   {
     std::ofstream out(file);
@@ -955,11 +1078,16 @@ int main(int argc, char** argv)
   if (argc == 3 && std::string_view(argv[1]) == "--possession")
   {
     const auto selected = possessionFromKey(argv[2]);
-    if (!selected) return 2;
+    if (!selected)
+    {
+      return 2;
+    }
     testedPossession = *selected;
   }
   else if (argc != 1)
+  {
     return 2;
+  }
   persistence();
   auto config = Lab::loadStatsConfig();
   std::vector<std::unique_ptr<Player>> pool;
@@ -967,8 +1095,10 @@ int main(int argc, char** argv)
   const auto away = Lab::buildLabLineup(2, 65, pool);
   const auto reserve = Lab::buildLabLineup(3, 65, pool);
   for (auto body : {BodyId::AARDVARK, BodyId::BINTURONG})
+  {
     participantLifecycle(
         home, away, reserve.getOutfieldPlayers().front().player, config, body);
+  }
   compareVersions(home, away, config, BrainId::AARDVARK, BrainId::AARDVARK,
                   BodyId::AARDVARK, BodyId::AARDVARK);
   compareVersions(home, away, config, BrainId::BINTURONG, BrainId::BINTURONG,
@@ -978,115 +1108,155 @@ int main(int argc, char** argv)
   compareVersions(home, away, config, BrainId::AARDVARK, BrainId::BINTURONG,
                   BodyId::AARDVARK, BodyId::BINTURONG);
   for (unsigned seed = 1; seed <= 8; ++seed)
+  {
     compareVersions(home, away, config, BrainId::AARDVARK, BrainId::AARDVARK,
                     BodyId::AARDVARK, BodyId::AARDVARK, false,
                     OutOfPlayId::AARDVARK, seed);
+  }
   for (auto out : {OutOfPlayId::AARDVARK, OutOfPlayId::BINTURONG})
+  {
     for (auto homeBody : {BodyId::AARDVARK, BodyId::BINTURONG})
+    {
       for (auto awayBody : {BodyId::AARDVARK, BodyId::BINTURONG})
+      {
         compareVersions(home, away, config, BrainId::BINTURONG,
                         BrainId::BINTURONG, homeBody, awayBody, true, out);
+      }
+    }
+  }
   compareFirstTimeDrill(config, "First-time pass", true);
   compareFirstTimeDrill(config, "First-time pass", false);
   compareFirstTimeDrill(config, "Shot target", true);
   compareFirstTimeDrill(config, "Shot target", false);
   compareFirstTimeDrill(config, "Pass", false);
   for (const auto homeBody : {BodyId::AARDVARK, BodyId::BINTURONG})
+  {
     for (const auto awayBody : {BodyId::AARDVARK, BodyId::BINTURONG})
+    {
       for (unsigned seed = 1; seed <= 3; ++seed)
       {
         for (unsigned intent = 0; intent < 5; ++intent)
+        {
           compareContactDrill(
               config, "Tackle",
               {{"Defender's intent", static_cast<float>(intent)},
-               {"Attacker carries at", 3.0f},
-               {"Dribbling", 20.0f}},
+               {"Attacker carries at", 3.0F},
+               {"Dribbling", 20.0F}},
               homeBody, awayBody, seed);
+        }
         compareContactDrill(config, "Tackle",
-                            {{"Defender's intent", 0.0f},
-                             {"Attacker carries at", 1.0f},
-                             {"Dribbling", 85.0f}},
+                            {{"Defender's intent", 0.0F},
+                             {"Attacker carries at", 1.0F},
+                             {"Dribbling", 85.0F}},
                             homeBody, awayBody, seed);
         for (unsigned aim = 0; aim < 3; ++aim)
+        {
           compareContactDrill(config, "Header target",
                               {{"Header", static_cast<float>(aim)}}, homeBody,
                               awayBody, seed);
+        }
         for (unsigned kind = 0; kind < 2; ++kind)
+        {
           for (unsigned moving = 0; moving < 2; ++moving)
+          {
             compareContactDrill(config, "Shot block",
                                 {{"Ball", static_cast<float>(kind)},
                                  {"Moving", static_cast<float>(moving * 2)},
-                                 {"Aim height (m)", kind == 0 ? 1.0f : 0.0f}},
+                                 {"Aim height (m)", kind == 0 ? 1.0F : 0.0F}},
                                 homeBody, awayBody, seed);
+          }
+        }
         compareContactDrill(config, "Collision",
-                            {{"Run-up (m)", 30.0f},
-                             {"B run-up (m)", 30.0f},
-                             {"B's run against A's (deg)", 180.0f},
-                             {"Ball in after (s)", 2.0f},
-                             {"Ball speed (m/s)", 12.0f},
-                             {"Ball from (deg)", 90.0f},
-                             {"Ball lift (m/s)", 0.0f}},
+                            {{"Run-up (m)", 30.0F},
+                             {"B run-up (m)", 30.0F},
+                             {"B's run against A's (deg)", 180.0F},
+                             {"Ball in after (s)", 2.0F},
+                             {"Ball speed (m/s)", 12.0F},
+                             {"Ball from (deg)", 90.0F},
+                             {"Ball lift (m/s)", 0.0F}},
                             homeBody, awayBody, seed);
         for (unsigned release = 0; release < 3; ++release)
+        {
           compareContactDrill(config, "Keeper throw",
-                              {{"Range (m)", release == 0   ? 20.0f
-                                             : release == 1 ? 40.0f
-                                                            : 55.0f},
-                               {"Release", release == 2 ? 1.0f : 0.0f}},
+                              {{"Range (m)", release == 0   ? 20.0F
+                                             : release == 1 ? 40.0F
+                                                            : 55.0F},
+                               {"Release", release == 2 ? 1.0F : 0.0F}},
                               homeBody, awayBody, seed);
+        }
         compareContactDrill(config, "Shot target",
-                            {{"Keeper", 1.0f}, {"Goalkeeping", 35.0f}},
+                            {{"Keeper", 1.0F}, {"Goalkeeping", 35.0F}},
                             homeBody, awayBody, seed);
         compareContactDrill(config, "Shot target",
-                            {{"Keeper", 1.0f}, {"Ball comes in", 1.0f}},
+                            {{"Keeper", 1.0F}, {"Ball comes in", 1.0F}},
                             homeBody, awayBody, seed);
-        compareContactDrill(config, "Shot target", {{"Power share", 0.01f}},
+        compareContactDrill(config, "Shot target", {{"Power share", 0.01F}},
                             homeBody, awayBody, seed);
       }
+    }
+  }
   check(contestedHeaders > 0,
         "full-match fixtures exercise contested aerial contacts");
   for (unsigned seed = 1; seed <= 6; ++seed)
   {
     for (auto body : {BodyId::AARDVARK, BodyId::BINTURONG})
+    {
       compareContactDrill(config, "Keeper claim fixture",
-                          {{"Goalkeeping", 1.0f}, {"Crowding (m)", 2.5f}}, body,
+                          {{"Goalkeeping", 1.0F}, {"Crowding (m)", 2.5F}}, body,
                           body, seed);
+    }
     compareContactDrill(config, "Keeper claim fixture",
-                        {{"Goalkeeping", 99.0f}, {"Crowding (m)", 1.5f}},
+                        {{"Goalkeeping", 99.0F}, {"Crowding (m)", 1.5F}},
                         BodyId::BINTURONG, BodyId::BINTURONG, seed);
-    for (float aim : {0.8f, 1.6f, 2.4f})
+    for (float aim : {0.8F, 1.6F, 2.4F})
+    {
       compareContactDrill(config, "Shot target",
-                          {{"Keeper", 1.0f},
-                           {"Goalkeeping", 99.0f},
+                          {{"Keeper", 1.0F},
+                           {"Goalkeeping", 99.0F},
                            {"Aim across (m)", aim},
-                           {"Power share", 0.4f}},
+                           {"Power share", 0.4F}},
                           BodyId::BINTURONG, BodyId::BINTURONG, seed);
+    }
   }
   // A changed live policy can stop the old match seeds exercising a rare
   // legal branch. Keep explicit deterministic coverage instead of dropping it.
-  if (testedPossession == PossessionId::BINTURONG)
   {
     const auto missingRare = [&]
     {
-      for (auto op : {PossessionObservation::NOTE_DIRECT_FREE_KICK_SHOT,
+      for (auto op : {PossessionObservation::REARM_SHOT_AFTER_BOUNCE,
+                      PossessionObservation::NOTE_DIRECT_FREE_KICK_SHOT,
                       PossessionObservation::MARK_WALL_STOPPED_SHOT,
                       PossessionObservation::CREDIT_WALL_BLOCKER})
-        if (totalRoutes[static_cast<std::size_t>(op)] == 0) return true;
+      {
+        if (totalRoutes[static_cast<std::size_t>(op)] == 0)
+        {
+          return true;
+        }
+      }
       return false;
     };
     // Bounded deterministic coverage search; all compared runs must still
     // match. Emitted result lines identify every seed used for reproduction.
-    for (unsigned seed = 9; seed <= 32 && missingRare(); ++seed)
+    for (unsigned seed = 9; seed <= 64 && missingRare(); ++seed)
     {
-      if (totalRoutes[static_cast<std::size_t>(PossessionObservation::MARK_WALL_STOPPED_SHOT)] == 0 ||
-          totalRoutes[static_cast<std::size_t>(PossessionObservation::CREDIT_WALL_BLOCKER)] == 0)
-        compareVersions(home, away, config, BrainId::AARDVARK, BrainId::AARDVARK,
-                        BodyId::AARDVARK, BodyId::AARDVARK, false,
-                        OutOfPlayId::AARDVARK, seed);
-      if (totalRoutes[static_cast<std::size_t>(PossessionObservation::NOTE_DIRECT_FREE_KICK_SHOT)] == 0)
-        compareVersions(home, away, config, BrainId::AARDVARK, BrainId::AARDVARK,
-                        BodyId::BINTURONG, BodyId::BINTURONG, false,
-                        OutOfPlayId::AARDVARK, seed);
+      if (totalRoutes[static_cast<std::size_t>(
+              PossessionObservation::REARM_SHOT_AFTER_BOUNCE)] == 0 ||
+          totalRoutes[static_cast<std::size_t>(
+              PossessionObservation::MARK_WALL_STOPPED_SHOT)] == 0 ||
+          totalRoutes[static_cast<std::size_t>(
+              PossessionObservation::CREDIT_WALL_BLOCKER)] == 0)
+      {
+        compareVersions(home, away, config, BrainId::AARDVARK,
+                        BrainId::AARDVARK, BodyId::AARDVARK, BodyId::AARDVARK,
+                        false, OutOfPlayId::AARDVARK, seed);
+      }
+      if (totalRoutes[static_cast<std::size_t>(
+              PossessionObservation::NOTE_DIRECT_FREE_KICK_SHOT)] == 0)
+      {
+        compareVersions(home, away, config, BrainId::AARDVARK,
+                        BrainId::AARDVARK, BodyId::BINTURONG, BodyId::BINTURONG,
+                        false, OutOfPlayId::AARDVARK, seed);
+      }
     }
   }
   for (std::size_t i = 0; i < totalRoutes.size(); ++i)
@@ -1100,16 +1270,20 @@ int main(int argc, char** argv)
       continue;
     }
     if (totalRoutes[i] == 0)
+    {
       std::cerr << "Unexercised observation: " << i << '\n';
+    }
     check(totalRoutes[i] > 0,
           "all observable possession operations exercised across fixtures");
   }
   if (testedPossession == PossessionId::BINTURONG)
+  {
     check(controlCollections > 0 && controlReacquisitions > 0 &&
               controlLosses > 0 && controlGraceSamples > 0 &&
               retainedBeyondCollectionReach > 0,
           "integration fixtures exercise acquisition, loss, grace and retained "
           "dribbles");
+  }
   std::cout << "Control observations: collections " << controlCollections
             << ", reacquisitions " << controlReacquisitions << ", losses "
             << controlLosses << ", grace " << controlGraceSamples
@@ -1117,7 +1291,9 @@ int main(int argc, char** argv)
             << retainedBeyondCollectionReach << '\n';
   std::cout << "Claim expiry observations: " << claimExpiries << '\n';
   if (failures == 0)
+  {
     std::cout << "PASS: possession version dispatch, compatibility and copy "
                  "contracts\n";
+  }
   return failures == 0 ? 0 : 1;
 }

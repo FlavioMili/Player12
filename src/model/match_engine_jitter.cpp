@@ -22,10 +22,10 @@ void MatchEngine::observePlanJitter(bool scheduled)
 {
   // A move under half a metre is noise-level; a flip back within a second
   // (five refreshes) counts as undoing the switch.
-  constexpr float MOVE_METRES = 0.5f;
+  constexpr float MOVE_METRES = 0.5F;
   constexpr std::uint32_t FLIP_BACK_REFRESHES = 5;
-  for (std::size_t slot = 0; slot < players.size() && slot < jitterTracks.size();
-       ++slot)
+  for (std::size_t slot = 0;
+       slot < players.size() && slot < jitterTracks.size(); ++slot)
   {
     const MatchPlayer& player = players[slot];
     JitterTrack& track = jitterTracks[slot];
@@ -39,7 +39,7 @@ void MatchEngine::observePlanJitter(bool scheduled)
       track.player = player.player;
       track.planned = true;
       track.lastTarget = player.tacticalTarget;
-      track.lastMove = {0.0f, 0.0f};
+      track.lastMove = {.x = 0.0F, .y = 0.0F};
       track.intent = player.intent;
       track.intentBefore = player.intent;
       track.refreshesSinceSwitch = FLIP_BACK_REFRESHES + 1;
@@ -60,15 +60,19 @@ void MatchEngine::observePlanJitter(bool scheduled)
       {
         ++bucket.moves;
         if (length(track.lastMove) > MOVE_METRES &&
-            move.x * track.lastMove.x + move.y * track.lastMove.y < 0.0f)
+            move.x * track.lastMove.x + move.y * track.lastMove.y < 0.0F)
+        {
           ++bucket.reversals;
+        }
       }
       if (switched)
       {
         ++bucket.switchesIn;
         if (player.intent == track.intentBefore &&
             track.refreshesSinceSwitch <= FLIP_BACK_REFRESHES)
+        {
           ++bucket.flipBacks;
+        }
       }
     }
     else
@@ -91,11 +95,12 @@ void MatchEngine::observeRunJitter(float dt)
 {
   // Runs are judged over 2 s windows; turns every 0.2 s above 1 m/s.
   constexpr std::uint64_t WINDOW_TICKS = 20;
-  constexpr float RUNNING_SPEED = 1.0f;
-  const bool sample = periodElapsed(MatchTuning::Timing::TACTICAL_REFRESH_STEPS);
+  constexpr float RUNNING_SPEED = 1.0F;
+  const bool sample =
+      periodElapsed(MatchTuning::Timing::TACTICAL_REFRESH_STEPS);
   const bool windowEnds = periodElapsed(WINDOW_TICKS);
-  for (std::size_t slot = 0; slot < players.size() && slot < jitterTracks.size();
-       ++slot)
+  for (std::size_t slot = 0;
+       slot < players.size() && slot < jitterTracks.size(); ++slot)
   {
     const MatchPlayer& player = players[slot];
     JitterTrack& track = jitterTracks[slot];
@@ -119,8 +124,8 @@ void MatchEngine::observeRunJitter(float dt)
     MovementJitterStats& side = movementJitter[player.isHomeTeam ? 0 : 1];
     side.playerSeconds += dt;
     // Speed surging: rising then falling (or back) while running.
-    constexpr float SURGE_SPEED = 2.0f;
-    constexpr float SURGE_ACCELERATION = 0.5f;
+    constexpr float SURGE_SPEED = 2.0F;
+    constexpr float SURGE_ACCELERATION = 0.5F;
     const float speedNow = length(player.velocity);
     const float speedChange = speedNow - track.lastSpeed;
     track.lastSpeed = speedNow;
@@ -131,7 +136,7 @@ void MatchEngine::observeRunJitter(float dt)
       job.runningSeconds += dt;
       if (std::abs(speedChange) > SURGE_ACCELERATION * dt)
       {
-        const std::int8_t trend = speedChange > 0.0f ? 1 : -1;
+        const std::int8_t trend = speedChange > 0.0F ? 1 : -1;
         if (track.speedTrend != 0 && trend != track.speedTrend)
         {
           ++side.speedReversals;
@@ -160,7 +165,10 @@ void MatchEngine::observeRunJitter(float dt)
       if (length(before) > RUNNING_SPEED && length(now) > RUNNING_SPEED)
       {
         ++side.turnSamples;
-        if (before.x * now.x + before.y * now.y < 0.0f) ++side.sharpTurns;
+        if (before.x * now.x + before.y * now.y < 0.0F)
+        {
+          ++side.sharpTurns;
+        }
       }
       track.lastVelocity = now;
     }

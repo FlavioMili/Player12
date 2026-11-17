@@ -16,12 +16,15 @@ namespace
 {
 void require(bool condition, const char* message)
 {
-  if (!condition) throw std::runtime_error(message);
+  if (!condition)
+  {
+    throw std::runtime_error(message);
+  }
 }
 
 void selectVersions(bool reverse)
 {
-  sandboxHomeAdvantage() = reverse ? 1.5f : 0.25f;
+  sandboxHomeAdvantage() = reverse ? 1.5F : 0.25F;
   sandboxBrains() = reverse ? std::array{BrainId::BINTURONG, BrainId::AARDVARK}
                             : std::array{BrainId::AARDVARK, BrainId::BINTURONG};
   sandboxBodies() = reverse ? std::array{BodyId::AARDVARK, BodyId::BINTURONG}
@@ -59,7 +62,7 @@ void verify(const MatchEngine& engine, const MatchSetup& expected)
   require(engine.getPossessionVersion() == expected.possession,
           "possession selection lost");
   require(std::abs(engine.getMatchContext().homeAdvantageScale -
-                   expected.homeAdvantage) < 0.00001f,
+                   expected.homeAdvantage) < 0.00001F,
           "home advantage selection lost");
 }
 }  // namespace
@@ -84,8 +87,12 @@ int main()
     const auto clubs = sandboxDefaultClubs();
     auto drills = makeDrills();
     auto session = trainingSessions().front().make(
-        {{"Runner one", PlayerRole::CM, {{"Pace", 66}, {"Stamina", 66}}},
-         {"Runner two", PlayerRole::CM, {{"Pace", 66}, {"Stamina", 66}}}});
+        {{.name = "Runner one",
+          .role = PlayerRole::CM,
+          .stats = {{"Pace", 66}, {"Stamina", 66}}},
+         {.name = "Runner two",
+          .role = PlayerRole::CM,
+          .stats = {{"Pace", 66}, {"Stamina", 66}}}});
     for (const bool reverse : {false, true})
     {
       selectVersions(reverse);

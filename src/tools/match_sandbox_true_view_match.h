@@ -41,9 +41,10 @@ class MatchTrueView
    * (of `engine`), on the current window's draw list. A click picks A
    * (Ctrl: B); returns the player a click picked (0: none).
    */
-  PlayerID drawOverlay(const IMatchRenderer& renderer, const MatchEngine& engine,
-                       const MatchRenderSnapshot& snapshot, bool clicked, bool ctrl,
-                       ImVec2 pixel);
+  PlayerID drawOverlay(const IMatchRenderer& renderer,
+                       const MatchEngine& engine,
+                       const MatchRenderSnapshot& snapshot, bool clicked,
+                       bool ctrl, ImVec2 pixel);
 
   /** The two players drawn in full (0: none). */
   std::array<PlayerID, 2> picked{};

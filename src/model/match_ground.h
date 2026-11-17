@@ -29,16 +29,16 @@ namespace MatchGround
 /** An upright face (or a stretch of one) along x, from `from` to `to`. */
 struct Span
 {
-  float from = 0.0f;
-  float to = 0.0f;
+  float from = 0.0F;
+  float to = 0.0F;
 };
 
 struct Rect
 {
-  float x0 = 0.0f;
-  float y0 = 0.0f;
-  float x1 = 0.0f;
-  float y1 = 0.0f;
+  float x0 = 0.0F;
+  float y0 = 0.0F;
+  float x1 = 0.0F;
+  float y1 = 0.0F;
 
   [[nodiscard]] constexpr bool contains(float x, float y) const
   {
@@ -52,41 +52,53 @@ struct Layout
   constexpr Layout(float lengthMetres, float widthMetres)
       : length(lengthMetres),
         width(widthMetres),
-        halfway(0.5f * lengthMetres),
+        halfway(0.5F * lengthMetres),
         boardsY(widthMetres + MatchTuning::Pitch::BOARDS_SIDE_METRES),
         standY(widthMetres + MatchTuning::Pitch::STAND_SIDE_METRES),
-        tunnel{halfway - 0.5f * MatchTuning::Pitch::TUNNEL_WIDTH_METRES, standY,
-               halfway + 0.5f * MatchTuning::Pitch::TUNNEL_WIDTH_METRES,
-               standY + MatchTuning::Pitch::TUNNEL_DEPTH_METRES},
-        dugouts{{{halfway - MatchTuning::Pitch::DUGOUT_FROM_HALFWAY_METRES -
-                      MatchTuning::Pitch::DUGOUT_LENGTH_METRES,
-                  standY - MatchTuning::Pitch::DUGOUT_DEPTH_METRES,
-                  halfway - MatchTuning::Pitch::DUGOUT_FROM_HALFWAY_METRES, standY},
-                 {halfway + MatchTuning::Pitch::DUGOUT_FROM_HALFWAY_METRES,
-                  standY - MatchTuning::Pitch::DUGOUT_DEPTH_METRES,
-                  halfway + MatchTuning::Pitch::DUGOUT_FROM_HALFWAY_METRES +
-                      MatchTuning::Pitch::DUGOUT_LENGTH_METRES,
-                  standY}}},
+        tunnel{.x0 = halfway - (0.5F * MatchTuning::Pitch::TUNNEL_WIDTH_METRES),
+               .y0 = standY,
+               .x1 = halfway + (0.5F * MatchTuning::Pitch::TUNNEL_WIDTH_METRES),
+               .y1 = standY + MatchTuning::Pitch::TUNNEL_DEPTH_METRES},
+        dugouts{
+            {{.x0 = halfway - MatchTuning::Pitch::DUGOUT_FROM_HALFWAY_METRES -
+                    MatchTuning::Pitch::DUGOUT_LENGTH_METRES,
+              .y0 = standY - MatchTuning::Pitch::DUGOUT_DEPTH_METRES,
+              .x1 = halfway - MatchTuning::Pitch::DUGOUT_FROM_HALFWAY_METRES,
+              .y1 = standY},
+             {.x0 = halfway + MatchTuning::Pitch::DUGOUT_FROM_HALFWAY_METRES,
+              .y0 = standY - MatchTuning::Pitch::DUGOUT_DEPTH_METRES,
+              .x1 = halfway + MatchTuning::Pitch::DUGOUT_FROM_HALFWAY_METRES +
+                    MatchTuning::Pitch::DUGOUT_LENGTH_METRES,
+              .y1 = standY}}},
         technicalAreas{
-            {{dugouts[0].x0 - MatchTuning::Pitch::TECHNICAL_AREA_SIDE_METRES,
-              widthMetres + MatchTuning::Pitch::TECHNICAL_AREA_FROM_TOUCHLINE_METRES,
-              dugouts[0].x1 + MatchTuning::Pitch::TECHNICAL_AREA_SIDE_METRES,
-              dugouts[0].y0},
-             {dugouts[1].x0 - MatchTuning::Pitch::TECHNICAL_AREA_SIDE_METRES,
-              widthMetres + MatchTuning::Pitch::TECHNICAL_AREA_FROM_TOUCHLINE_METRES,
-              dugouts[1].x1 + MatchTuning::Pitch::TECHNICAL_AREA_SIDE_METRES,
-              dugouts[1].y0}}},
+            {{.x0 = dugouts[0].x0 -
+                    MatchTuning::Pitch::TECHNICAL_AREA_SIDE_METRES,
+              .y0 = widthMetres +
+                    MatchTuning::Pitch::TECHNICAL_AREA_FROM_TOUCHLINE_METRES,
+              .x1 = dugouts[0].x1 +
+                    MatchTuning::Pitch::TECHNICAL_AREA_SIDE_METRES,
+              .y1 = dugouts[0].y0},
+             {.x0 = dugouts[1].x0 -
+                    MatchTuning::Pitch::TECHNICAL_AREA_SIDE_METRES,
+              .y0 = widthMetres +
+                    MatchTuning::Pitch::TECHNICAL_AREA_FROM_TOUCHLINE_METRES,
+              .x1 = dugouts[1].x1 +
+                    MatchTuning::Pitch::TECHNICAL_AREA_SIDE_METRES,
+              .y1 = dugouts[1].y0}}},
         bottomBoards{
-            {{-MatchTuning::Pitch::BOARDS_END_METRES, technicalAreas[0].x0},
-             {technicalAreas[0].x1, tunnel.x0},
-             {tunnel.x1, technicalAreas[1].x0},
-             {technicalAreas[1].x1,
-              lengthMetres + MatchTuning::Pitch::BOARDS_END_METRES}}},
+            {{.from = -MatchTuning::Pitch::BOARDS_END_METRES,
+              .to = technicalAreas[0].x0},
+             {.from = technicalAreas[0].x1, .to = tunnel.x0},
+             {.from = tunnel.x1, .to = technicalAreas[1].x0},
+             {.from = technicalAreas[1].x1,
+              .to = lengthMetres + MatchTuning::Pitch::BOARDS_END_METRES}}},
         bottomStandWall{
-            {{-MatchTuning::Pitch::STAND_END_METRES, tunnel.x0},
-             {tunnel.x1, lengthMetres + MatchTuning::Pitch::STAND_END_METRES}}},
+            {{.from = -MatchTuning::Pitch::STAND_END_METRES, .to = tunnel.x0},
+             {.from = tunnel.x1,
+              .to = lengthMetres + MatchTuning::Pitch::STAND_END_METRES}}},
         fourthOfficialX(halfway),
-        fourthOfficialY(widthMetres + MatchTuning::Pitch::FOURTH_OFFICIAL_OUT_METRES)
+        fourthOfficialY(widthMetres +
+                        MatchTuning::Pitch::FOURTH_OFFICIAL_OUT_METRES)
   {
   }
 
@@ -122,9 +134,9 @@ struct Layout
 {
   using P = MatchTuning::Pitch;
   const float share = (y - dugout.y0) / (dugout.y1 - dugout.y0);
-  const float clamped = share < 0.0f ? 0.0f : share > 1.0f ? 1.0f : share;
+  const float clamped = share < 0.0F ? 0.0F : share > 1.0F ? 1.0F : share;
   return P::DUGOUT_ROOF_FRONT_METRES +
-         (P::DUGOUT_ROOF_BACK_METRES - P::DUGOUT_ROOF_FRONT_METRES) * clamped;
+         ((P::DUGOUT_ROOF_BACK_METRES - P::DUGOUT_ROOF_FRONT_METRES) * clamped);
 }
 
 /**

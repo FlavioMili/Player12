@@ -24,7 +24,7 @@ inline Vector2F target(const MatchPitch& pitch, Vector2F from, Vector2F ball,
     for (std::size_t i = 1; i < G.bottomBoards.size(); ++i)
     {
       const float centre =
-          0.5f * (G.bottomBoards[i - 1].to + G.bottomBoards[i].from);
+          0.5F * (G.bottomBoards[i - 1].to + G.bottomBoards[i].from);
       const float gap = std::abs(centre - from.x);
       if (gap < best)
       {
@@ -32,12 +32,16 @@ inline Vector2F target(const MatchPitch& pitch, Vector2F from, Vector2F ball,
         chosen = centre;
       }
     }
-    return {chosen, G.boardsY - std::max(0.0f, arrivalDeadZone) - 1.0f};
+    return {.x = chosen,
+            .y = G.boardsY - std::max(0.0F, arrivalDeadZone) - 1.0F};
   }
   const float dx = ball.x - from.x, dy = ball.y - from.y;
   const float distance = std::hypot(dx, dy);
-  if (distance <= 1e-5f) return ball;
-  return {ball.x + dx * arrivalDeadZone / distance,
-          ball.y + dy * arrivalDeadZone / distance};
+  if (distance <= 1e-5F)
+  {
+    return ball;
+  }
+  return {.x = ball.x + (dx * arrivalDeadZone / distance),
+          .y = ball.y + (dy * arrivalDeadZone / distance)};
 }
 }  // namespace RestartApproach

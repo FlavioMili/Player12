@@ -58,13 +58,13 @@
 #include "controller/game_controller.h"
 #include "global/logger.h"
 #include "gui/gui_view.h"
-#include "tools/match_sandbox_checks.h"
 #include "tools/match_sandbox_bench.h"
+#include "tools/match_sandbox_checks.h"
 #include "tools/match_sandbox_measure.h"
-#include "tools/match_sandbox_shot_map.h"
 #include "tools/match_sandbox_scene.h"
-#include "tools/match_sandbox_splash.h"
 #include "tools/match_sandbox_setup.h"
+#include "tools/match_sandbox_shot_map.h"
+#include "tools/match_sandbox_splash.h"
 #include "tools/match_sandbox_test_teams.h"
 #include "tools/match_sandbox_training.h"
 #include "tools/match_sandbox_zone_recording.h"
@@ -121,7 +121,9 @@ int main(int argc, char* argv[])
       const std::string_view value(argv[++index]);
       if (std::from_chars(value.data(), value.data() + value.size(), worldSeed)
               .ec == std::errc())
+      {
         continue;
+      }
     }
     else if (argument == "--brains" && index + 1 < argc)
     {
@@ -194,10 +196,11 @@ int main(int argc, char* argv[])
     else if (argument == "--home-advantage" && index + 1 < argc)
     {
       const std::string_view value(argv[++index]);
-      float scale = 0.0f;
+      float scale = 0.0F;
       if (std::from_chars(value.data(), value.data() + value.size(), scale)
                   .ec == std::errc() &&
-          scale >= 0.0f && scale <= MatchTuning::Context::MAX_HOME_ADVANTAGE_SCALE)
+          scale >= 0.0F &&
+          scale <= MatchTuning::Context::MAX_HOME_ADVANTAGE_SCALE)
       {
         sandboxHomeAdvantage() = scale;
         homeAdvantageGiven = true;
@@ -235,7 +238,10 @@ int main(int argc, char* argv[])
     {
       // The rest of the line belongs to the shot map.
       shotMapArguments.emplace();
-      while (++index < argc) shotMapArguments->emplace_back(argv[index]);
+      while (++index < argc)
+      {
+        shotMapArguments->emplace_back(argv[index]);
+      }
       break;
     }
     else if (argument == "--drill" && index + 1 < argc)
@@ -247,25 +253,34 @@ int main(int argc, char* argv[])
     {
       // The rest of the line belongs to the bench.
       benchArguments.emplace();
-      while (++index < argc) benchArguments->emplace_back(argv[index]);
+      while (++index < argc)
+      {
+        benchArguments->emplace_back(argv[index]);
+      }
       break;
     }
     else if (argument == "--measure" && index + 1 < argc)
     {
       // The rest of the line belongs to the measure.
       measureDrill = argv[++index];
-      while (++index < argc) measureArguments.emplace_back(argv[index]);
+      while (++index < argc)
+      {
+        measureArguments.emplace_back(argv[index]);
+      }
       break;
     }
     else if (argument == "--trace-possession" && index + 2 < argc)
     {
       const std::string_view duration(argv[++index]);
       double seconds = 0.0;
-      const auto parsed = std::from_chars(duration.data(), duration.data() + duration.size(), seconds);
-      if (parsed.ec != std::errc() || parsed.ptr != duration.data() + duration.size() ||
+      const auto parsed = std::from_chars(
+          duration.data(), duration.data() + duration.size(), seconds);
+      if (parsed.ec != std::errc() ||
+          parsed.ptr != duration.data() + duration.size() ||
           !std::isfinite(seconds) || seconds <= 0.0 || seconds > 3600.0)
       {
-        std::cerr << "--trace-possession requires seconds in (0, 3600] and an output path.\n";
+        std::cerr << "--trace-possession requires seconds in (0, 3600] and an "
+                     "output path.\n";
         return 2;
       }
       tracePossessionSeconds = seconds;
@@ -275,14 +290,23 @@ int main(int argc, char* argv[])
     else if (argument == "--trace-match" && index + 1 < argc)
     {
       traceMatchSeconds = std::stod(argv[++index]);
-      if (index + 1 < argc && argv[index + 1][0] != '-') traceMatchCases = std::stoi(argv[++index]);
-      if (index + 1 < argc && argv[index + 1][0] != '-') traceMatchKind = argv[++index];
+      if (index + 1 < argc && argv[index + 1][0] != '-')
+      {
+        traceMatchCases = std::stoi(argv[++index]);
+      }
+      if (index + 1 < argc && argv[index + 1][0] != '-')
+      {
+        traceMatchKind = argv[++index];
+      }
       continue;
     }
     else if (argument == "--trace-laps" && index + 1 < argc)
     {
       traceLapsSeconds = std::stod(argv[++index]);
-      if (index + 1 < argc && argv[index + 1][0] != '-') traceLapsFollow = argv[++index];
+      if (index + 1 < argc && argv[index + 1][0] != '-')
+      {
+        traceLapsFollow = argv[++index];
+      }
       continue;
     }
     else if (argument == "--zone-round-trip")
@@ -331,7 +355,8 @@ int main(int argc, char* argv[])
            " [--out-of-play O]"
            " [--possession aardvark|binturong]"
            " [--home-advantage X] [--kick-off] [--drill NAME]"
-           " [--check [MATCHES]] [--check-first-touch] [--check-restarts] [--trace-laps SECONDS [PLAYER]] [--zone-round-trip]"
+           " [--check [MATCHES]] [--check-first-touch] [--check-restarts] "
+           "[--trace-laps SECONDS [PLAYER]] [--zone-round-trip]"
            " [--trace-possession SECONDS OUTPUT.jsonl]"
            " [--trace-match SECONDS [CASES [neither|giveway|spot|all]]]\n"
            "  (--brains, --bodies, --managers: aardvark or binturong per side, "
@@ -368,11 +393,18 @@ int main(int argc, char* argv[])
   // The checks compare with the inherited engine, which had the full home
   // edge and the Aardvark handshake; everything else plays at a neutral
   // venue with the Binturong handshake unless asked.
-  if (checkMatches && !homeAdvantageGiven) sandboxHomeAdvantage() = 1.0f;
+  if (checkMatches && !homeAdvantageGiven)
+  {
+    sandboxHomeAdvantage() = 1.0F;
+  }
   if (checkMatches && !handshakeGiven)
+  {
     sandboxHandshake() = HandshakeId::AARDVARK;
+  }
   if (checkMatches && !possessionGiven)
+  {
     sandboxPossession() = PossessionId::AARDVARK;
+  }
 
   // Before anything resolves a runtime path (logs, settings, saves).
   useOwnRuntimeRoot();
@@ -380,13 +412,15 @@ int main(int argc, char* argv[])
   try
   {
     GameController controller;
-    Logger::info("Match sandbox: generating world " + std::to_string(worldSeed));
+    Logger::info("Match sandbox: generating world " +
+                 std::to_string(worldSeed));
     // Normal startup opens the window before generating the world. Diagnostic
     // commands and explicit match/drill entry points retain their direct path.
     const bool splash = !checkMatches && !tracePossessionSeconds &&
-                        !traceMatchSeconds && !traceLapsSeconds && !zoneRoundTrip &&
-                        !shotMapArguments && !benchArguments && !measureDrill &&
-                        !kickOff && drill.empty() && drillView == 0;
+                        !traceMatchSeconds && !traceLapsSeconds &&
+                        !zoneRoundTrip && !shotMapArguments &&
+                        !benchArguments && !measureDrill && !kickOff &&
+                        drill.empty() && drillView == 0;
     if (splash)
     {
       GUIView view(controller);
@@ -404,44 +438,83 @@ int main(int argc, char* argv[])
       return 0;
     }
     controller.newGame(SANDBOX_SAVE_SLOT, worldSeed);
-    if (checkMatches) return runSandboxChecks(controller, *checkMatches, checkGroup);
+    if (checkMatches)
+    {
+      return runSandboxChecks(controller, *checkMatches, checkGroup);
+    }
     if (tracePossessionSeconds)
-      return runPossessionTrace(controller, *tracePossessionSeconds, tracePossessionPath);
+    {
+      return runPossessionTrace(controller, *tracePossessionSeconds,
+                                tracePossessionPath);
+    }
     if (traceMatchSeconds)
-      return runMatchTrace(controller, *traceMatchSeconds, traceMatchCases, traceMatchKind);
+    {
+      return runMatchTrace(controller, *traceMatchSeconds, traceMatchCases,
+                           traceMatchKind);
+    }
     if (shotMapArguments)
+    {
       return runShotMapCommand(controller.getStatsConfig(), *shotMapArguments);
+    }
     if (benchArguments)
     {
       // The technique bench measures the Binturong body's technique.
-      if (!brainsGiven) sandboxBrains() = {BrainId::BINTURONG, BrainId::BINTURONG};
-      if (!bodiesGiven) sandboxBodies() = {BodyId::BINTURONG, BodyId::BINTURONG};
+      if (!brainsGiven)
+      {
+        sandboxBrains() = {BrainId::BINTURONG, BrainId::BINTURONG};
+      }
+      if (!bodiesGiven)
+      {
+        sandboxBodies() = {BodyId::BINTURONG, BodyId::BINTURONG};
+      }
       return runBenchCommand(controller.getStatsConfig(), *benchArguments);
     }
     if (measureDrill)
+    {
       return runMeasureCommand(controller.getStatsConfig(), *measureDrill,
                                measureArguments);
+    }
     // The window opens on Team 66 v Team 66, Binturong for both (every engine
     // version defaults to Binturong). The headless commands above keep the
     // plain world.
     addSandboxTestTeams(*controller.getGameData());
-    if (zoneRoundTrip) return runZoneRoundTrip(controller.getStatsConfig());
+    if (zoneRoundTrip)
+    {
+      return runZoneRoundTrip(controller.getStatsConfig());
+    }
     if (traceLapsSeconds)
     {
       // Diagnostic: Team Tiered's laps, headless.
       std::vector<TrainingPlayer> trainees;
       for (const auto& team : controller.getTeams())
+      {
         if (team.get().getName() == "Team Tiered")
-          for (const auto& player : controller.getPlayersForTeam(team.get().getId()))
+        {
+          for (const auto& player :
+               controller.getPlayersForTeam(team.get().getId()))
+          {
             if (trainees.size() < TrainingDrill::MAX_PLAYERS)
-              trainees.push_back({player.get().getName(), player.get().getRole(),
-                                  player.get().getStats(), player.get().getHeight(),
-                                  player.get().getFoot()});
-      return runLapsTrace(trainees, controller.getStatsConfig(), *traceLapsSeconds,
-                          traceLapsFollow);
+            {
+              trainees.push_back({.name = player.get().getName(),
+                                  .role = player.get().getRole(),
+                                  .stats = player.get().getStats(),
+                                  .height = player.get().getHeight(),
+                                  .foot = player.get().getFoot()});
+            }
+          }
+        }
+      }
+      return runLapsTrace(trainees, controller.getStatsConfig(),
+                          *traceLapsSeconds, traceLapsFollow);
     }
-    if (!brainsGiven) sandboxBrains() = {BrainId::BINTURONG, BrainId::BINTURONG};
-    if (!bodiesGiven) sandboxBodies() = {BodyId::BINTURONG, BodyId::BINTURONG};
+    if (!brainsGiven)
+    {
+      sandboxBrains() = {BrainId::BINTURONG, BrainId::BINTURONG};
+    }
+    if (!bodiesGiven)
+    {
+      sandboxBodies() = {BodyId::BINTURONG, BodyId::BINTURONG};
+    }
     GUIView view(controller);
     view.run(
         [kickOff, drill, drillView](GUIView* gui)

@@ -26,18 +26,28 @@ void versionRow(const char* label, Version& current, Version aardvark,
   ImGui::TableNextColumn();
   ImGui::AlignTextToFramePadding();
   ImGui::TextUnformatted(label);
-  if (ImGui::IsItemHovered()) ImGui::SetTooltip("%s", description);
+  if (ImGui::IsItemHovered())
+  {
+    ImGui::SetTooltip("%s", description);
+  }
   const auto option = [&](const char* name, Version version)
   {
     ImGui::TableNextColumn();
     const bool selected = current == version;
     if (selected)
+    {
       ImGui::PushStyleColor(ImGuiCol_Text,
-                            ImVec4(0.608f, 0.816f, 0.420f, 1.0f));
+                            ImVec4(0.608F, 0.816F, 0.420F, 1.0F));
+    }
     if (ImGui::Selectable(name, selected, 0,
-                          ImVec2(0.0f, 32.0f * Theme::scale())))
+                          ImVec2(0.0F, 32.0F * Theme::scale())))
+    {
       current = version;
-    if (selected) ImGui::PopStyleColor();
+    }
+    if (selected)
+    {
+      ImGui::PopStyleColor();
+    }
   };
   option("Aardvark", aardvark);
   option("Binturong", binturong);
@@ -50,22 +60,24 @@ void engineVersionsTable()
   if (!ImGui::BeginTable(
           "##engine_versions", 3,
           ImGuiTableFlags_RowBg | ImGuiTableFlags_SizingStretchProp))
+  {
     return;
-  ImGui::TableSetupColumn("Setting", ImGuiTableColumnFlags_WidthStretch, 2.0f);
-  ImGui::TableSetupColumn("Aardvark", ImGuiTableColumnFlags_WidthStretch, 1.0f);
+  }
+  ImGui::TableSetupColumn("Setting", ImGuiTableColumnFlags_WidthStretch, 2.0F);
+  ImGui::TableSetupColumn("Aardvark", ImGuiTableColumnFlags_WidthStretch, 1.0F);
   ImGui::TableSetupColumn("Binturong", ImGuiTableColumnFlags_WidthStretch,
-                          1.0f);
+                          1.0F);
   ImGui::TableHeadersRow();
   for (std::size_t side = 0; side < 2; ++side)
   {
-    versionRow(side == 0 ? "Home brain" : "Away brain", sandboxBrains()[side],
-               BrainId::AARDVARK, BrainId::BINTURONG,
+    versionRow(side == 0 ? "Home brain" : "Away brain",
+               sandboxBrains().at(side), BrainId::AARDVARK, BrainId::BINTURONG,
                "Player decision-making.");
-    versionRow(side == 0 ? "Home body" : "Away body", sandboxBodies()[side],
+    versionRow(side == 0 ? "Home body" : "Away body", sandboxBodies().at(side),
                BodyId::AARDVARK, BodyId::BINTURONG,
                "Movement, fitness, kicking, first touch and goalkeeping.");
     versionRow(side == 0 ? "Home manager" : "Away manager",
-               sandboxManagers()[side], ManagerId::AARDVARK,
+               sandboxManagers().at(side), ManagerId::AARDVARK,
                ManagerId::BINTURONG,
                "AI touchline decisions, substitutions and shouts.");
   }

@@ -24,19 +24,19 @@ using Audio::WhistlePattern;
 namespace
 {
 /** Above this playback speed only the bigger moments are heard. */
-constexpr float FULL_DETAIL_MAX_SPEED = 4.0f;
-constexpr float REDUCED_DETAIL_MAX_SPEED = 8.0f;
+constexpr float FULL_DETAIL_MAX_SPEED = 4.0F;
+constexpr float REDUCED_DETAIL_MAX_SPEED = 8.0F;
 /** Events older than this (match minutes) when they arrive are skipped. */
-constexpr float STALE_EVENT_MINUTES = 0.5f;
+constexpr float STALE_EVENT_MINUTES = 0.5F;
 /** A shot that ends in a goal kick or corner this soon was a miss. */
-constexpr float SHOT_OUTCOME_MINUTES = 0.3f;
-constexpr float KICK_COOLDOWN_SECONDS = 0.07f;
+constexpr float SHOT_OUTCOME_MINUTES = 0.3F;
+constexpr float KICK_COOLDOWN_SECONDS = 0.07F;
 /** Minor crowd reactions wait this long after any other reaction. */
-constexpr float REACTION_GAP_SECONDS = 0.8f;
+constexpr float REACTION_GAP_SECONDS = 0.8F;
 
 float panFor(float x, float width)
 {
-  return std::clamp((x - 0.5f) * 2.0f * width, -0.85f, 0.85f);
+  return std::clamp((x - 0.5F) * 2.0F * width, -0.85F, 0.85F);
 }
 
 std::uint64_t fingerprintOf(const MatchEvent& event)
@@ -62,17 +62,26 @@ std::uint64_t fingerprintOf(const MatchEvent& event)
 
 bool MatchEventCursor::isBefore(const MatchEvent& event) const
 {
-  if (event.period != period) return event.period < period;
+  if (event.period != period)
+  {
+    return event.period < period;
+  }
   return event.timeMinute < minute;
 }
 
 bool MatchEventCursor::isNew(const MatchEvent& event,
                              std::uint64_t fingerprint) const
 {
-  if (event.period != period) return event.period > period;
-  if (event.timeMinute != minute) return event.timeMinute > minute;
-  return std::find(sameTime.begin(), sameTime.begin() + sameTimeCount,
-                   fingerprint) == sameTime.begin() + sameTimeCount;
+  if (event.period != period)
+  {
+    return event.period > period;
+  }
+  if (event.timeMinute != minute)
+  {
+    return event.timeMinute > minute;
+  }
+  const auto heard = std::span(sameTime).first(sameTimeCount);
+  return std::ranges::find(heard, fingerprint) == heard.end();
 }
 
 void MatchEventCursor::mark(const MatchEvent& event, std::uint64_t fingerprint)
@@ -84,7 +93,9 @@ void MatchEventCursor::mark(const MatchEvent& event, std::uint64_t fingerprint)
     sameTimeCount = 0;
   }
   if (sameTimeCount < SAME_TIME_CAPACITY)
+  {
     sameTime[sameTimeCount++] = fingerprint;
+  }
 }
 
 void MatchEventCursor::collect(std::span<const MatchEvent> events,
@@ -93,12 +104,18 @@ void MatchEventCursor::collect(std::span<const MatchEvent> events,
   // The log is ordered by match time: walk back only over the events at or
   // after the last one heard, so a frame costs O(new events).
   std::size_t start = events.size();
-  while (start > 0 && !isBefore(events[start - 1])) --start;
+  while (start > 0 && !isBefore(events[start - 1]))
+  {
+    --start;
+  }
   for (std::size_t index = start; index < events.size(); ++index)
   {
     const MatchEvent& event = events[index];
     const std::uint64_t fingerprint = fingerprintOf(event);
-    if (!isNew(event, fingerprint)) continue;
+    if (!isNew(event, fingerprint))
+    {
+      continue;
+    }
     mark(event, fingerprint);
     fresh.push_back(&event);
   }
@@ -107,11 +124,17 @@ void MatchEventCursor::collect(std::span<const MatchEvent> events,
 void MatchEventCursor::skipAll(std::span<const MatchEvent> events)
 {
   std::size_t start = events.size();
-  while (start > 0 && !isBefore(events[start - 1])) --start;
+  while (start > 0 && !isBefore(events[start - 1]))
+  {
+    --start;
+  }
   for (std::size_t index = start; index < events.size(); ++index)
   {
     const std::uint64_t fingerprint = fingerprintOf(events[index]);
-    if (isNew(events[index], fingerprint)) mark(events[index], fingerprint);
+    if (isNew(events[index], fingerprint))
+    {
+      mark(events[index], fingerprint);
+    }
   }
 }
 
@@ -123,12 +146,15 @@ MatchAudioFrame captureMatchAudioFrame(const MatchEngine& engine,
 {
   MatchAudioFrame frame;
   const MatchBall& ball = engine.getBall();
-  // Audio pans and builds by fractions of a match pitch (plan section 15, choice 8).
+  // Audio pans and builds by fractions of a match pitch (plan section 15,
+  // choice 8).
   frame.ballX = MatchPitch::matchSize().fractionX(ball.position);
   frame.ballSpeed = std::hypot(ball.velocity.x, ball.velocity.y);
   frame.ballIsShot = ball.possessionState().isShot;
   frame.ballLoose = engine.getPossessionAttachment() == nullptr;
-  frame.kickerId = engine.getLegacyContactActor() != nullptr ? engine.getLegacyContactActor()->getId() : 0;
+  frame.kickerId = engine.getLegacyContactActor() != nullptr
+                       ? engine.getLegacyContactActor()->getId()
+                       : 0;
   frame.homeInPossession = engine.getHomePhase() == TeamPhase::POSSESSION;
   frame.awayInPossession = engine.getAwayPhase() == TeamPhase::POSSESSION;
   frame.matchMinute = engine.getMatchTimeMinutes();
@@ -149,7 +175,10 @@ MatchAudioFrame captureMatchAudioFrame(const MatchEngine& engine,
 MatchAudio::MatchAudio(bool openDevice)
 {
   freshEvents.reserve(32);
-  if (openDevice) device = std::make_unique<Audio::AudioDevice>(*mixerInstance);
+  if (openDevice)
+  {
+    device = std::make_unique<Audio::AudioDevice>(*mixerInstance);
+  }
 }
 
 MatchAudio::~MatchAudio()
@@ -162,8 +191,10 @@ bool MatchAudio::deviceOpen() { return device && device->isOpen(); }
 
 Audio::BusLevels MatchAudio::levelsFrom(const Settings& settings)
 {
-  return {settings.master_volume, settings.crowd_volume,
-          settings.effects_volume, settings.audio_muted};
+  return {.master = settings.master_volume,
+          .crowd = settings.crowd_volume,
+          .effects = settings.effects_volume,
+          .muted = settings.audio_muted};
 }
 
 void MatchAudio::setLevels(const Audio::BusLevels& levels)
@@ -173,22 +204,32 @@ void MatchAudio::setLevels(const Audio::BusLevels& levels)
 
 bool MatchAudio::allowed(Priority priority) const
 {
-  if (playbackSpeed <= FULL_DETAIL_MAX_SPEED) return true;
+  if (playbackSpeed <= FULL_DETAIL_MAX_SPEED)
+  {
+    return true;
+  }
   if (playbackSpeed <= REDUCED_DETAIL_MAX_SPEED)
+  {
     return priority != Priority::MINOR;
+  }
   return priority == Priority::KEY;
 }
 
 void MatchAudio::play(Priority priority, SoundCommand command)
 {
-  if (!allowed(priority)) return;
+  if (!allowed(priority))
+  {
+    return;
+  }
   if (Audio::isCrowdSound(command.sound))
   {
     // Minor murmurs never pile onto a bigger reaction still in the air.
     if (priority == Priority::MINOR && sinceReaction < REACTION_GAP_SECONDS &&
         lastReaction != Priority::MINOR)
+    {
       return;
-    sinceReaction = 0.0f;
+    }
+    sinceReaction = 0.0F;
     lastReaction = priority;
   }
   mixerInstance->trigger(command);
@@ -197,9 +238,9 @@ void MatchAudio::play(Priority priority, SoundCommand command)
 void MatchAudio::whistle(Priority priority, WhistlePattern pattern, float x)
 {
   play(priority, {.sound = Sound::WHISTLE,
-                  .gain = 0.5f,
-                  .pan = panFor(x, 0.35f),
-                  .intensity = 1.0f,
+                  .gain = 0.5F,
+                  .pan = panFor(x, 0.35F),
+                  .intensity = 1.0F,
                   .variant = std::to_underlying(pattern)});
 }
 
@@ -208,7 +249,7 @@ void MatchAudio::update(float wallSeconds, const MatchAudioFrame& frame,
 {
   playbackSpeed = frame.playbackSpeed;
   sinceReaction += wallSeconds;
-  kickCooldown = std::max(0.0f, kickCooldown - wallSeconds);
+  kickCooldown = std::max(0.0F, kickCooldown - wallSeconds);
 
   const bool replaying =
       frame.period < latestPeriod ||
@@ -233,14 +274,19 @@ void MatchAudio::update(float wallSeconds, const MatchAudioFrame& frame,
       const bool stale =
           event->period == frame.period &&
           frame.matchMinute - event->timeMinute > STALE_EVENT_MINUTES;
-      if (!stale) react(*event);
+      if (!stale)
+      {
+        react(*event);
+      }
     }
     detectKicks(frame, replaying);
   }
   if (pendingShot.active &&
       (pendingShot.period != frame.period ||
        frame.matchMinute - pendingShot.minute > SHOT_OUTCOME_MINUTES))
+  {
     pendingShot.active = false;
+  }
   updateCrowd(wallSeconds, frame);
 }
 
@@ -251,25 +297,33 @@ void MatchAudio::detectKicks(const MatchAudioFrame& frame, bool replaying)
     haveBallHistory = true;
   }
   else if (!replaying && playbackSpeed <= FULL_DETAIL_MAX_SPEED &&
-           kickCooldown <= 0.0f)
+           kickCooldown <= 0.0F)
   {
-    float power = -1.0f;
+    float power = -1.0F;
     const float speed = frame.ballSpeed;
     if (frame.ballIsShot && !previousShot)
-      power = 0.75f + 0.25f * std::clamp((speed - 15.0f) / 15.0f, 0.0f, 1.0f);
-    else if (frame.ballLoose && speed > 2.5f &&
+    {
+      power = 0.75F + 0.25F * std::clamp((speed - 15.0F) / 15.0F, 0.0F, 1.0F);
+    }
+    else if (frame.ballLoose && speed > 2.5F &&
              (!previousLoose || frame.kickerId != previousKicker))
-      power = std::clamp((speed - 3.0f) / 26.0f, 0.08f, 0.7f);
-    else if (frame.ballLoose && speed - previousBallSpeed > 4.0f &&
-             speed > 6.0f)
-      power = std::clamp((speed - 4.0f) / 26.0f, 0.1f, 0.7f);
-    else if (!frame.ballLoose && previousLoose && previousBallSpeed > 9.0f)
-      power = 0.06f;  // a first touch cushioning a firm ball
-    if (power >= 0.0f)
+    {
+      power = std::clamp((speed - 3.0F) / 26.0F, 0.08F, 0.7F);
+    }
+    else if (frame.ballLoose && speed - previousBallSpeed > 4.0F &&
+             speed > 6.0F)
+    {
+      power = std::clamp((speed - 4.0F) / 26.0F, 0.1F, 0.7F);
+    }
+    else if (!frame.ballLoose && previousLoose && previousBallSpeed > 9.0F)
+    {
+      power = 0.06F;  // a first touch cushioning a firm ball
+    }
+    if (power >= 0.0F)
     {
       mixerInstance->trigger({.sound = Sound::KICK,
-                              .gain = 0.6f + 0.5f * power,
-                              .pan = panFor(frame.ballX, 0.8f),
+                              .gain = 0.6F + (0.5F * power),
+                              .pan = panFor(frame.ballX, 0.8F),
                               .intensity = power});
       kickCooldown = KICK_COOLDOWN_SECONDS;
     }
@@ -282,24 +336,30 @@ void MatchAudio::detectKicks(const MatchAudioFrame& frame, bool replaying)
 
 void MatchAudio::updateCrowd(float wallSeconds, const MatchAudioFrame& frame)
 {
-  tension *= std::exp(-wallSeconds / 3.0f);
-  float intensity = 0.32f;
+  tension *= std::exp(-wallSeconds / 3.0F);
+  float intensity = 0.32F;
   if (frame.stopped)
   {
-    intensity = 0.2f;
+    intensity = 0.2F;
   }
   else
   {
-    if (frame.homeInPossession && frame.ballX > 0.62f)
-      intensity += 0.35f * (frame.ballX - 0.62f) / 0.38f;
-    if (frame.awayInPossession && frame.ballX < 0.38f)
-      intensity += 0.15f * (0.38f - frame.ballX) / 0.38f;
-    if (frame.period == 2 && frame.matchMinute > 75.0f &&
+    if (frame.homeInPossession && frame.ballX > 0.62F)
+    {
+      intensity += 0.35F * (frame.ballX - 0.62F) / 0.38F;
+    }
+    if (frame.awayInPossession && frame.ballX < 0.38F)
+    {
+      intensity += 0.15F * (0.38F - frame.ballX) / 0.38F;
+    }
+    if (frame.period == 2 && frame.matchMinute > 75.0F &&
         std::abs(frame.homeScore - frame.awayScore) <= 1)
-      intensity += 0.08f;
+    {
+      intensity += 0.08F;
+    }
   }
   intensity += tension;
-  mixerInstance->setCrowd(intensity, frame.paused ? 0.25f : 1.0f);
+  mixerInstance->setCrowd(intensity, frame.paused ? 0.25F : 1.0F);
 }
 
 void MatchAudio::reactToGoal(const MatchEvent& event)
@@ -308,56 +368,74 @@ void MatchAudio::reactToGoal(const MatchEvent& event)
   const bool homeScored = ownGoal ? !event.isHomeTeam : event.isHomeTeam;
   const int lead = homeScored ? event.homeScore - event.awayScore
                               : event.awayScore - event.homeScore;
-  float importance = 0.45f;
-  if (lead == 0) importance += 0.25f;  // equaliser
-  if (lead == 1) importance += 0.2f;   // goes ahead
-  if (lead >= 3) importance -= 0.15f;
-  if (event.period == 2 && event.timeMinute >= 80.0f) importance += 0.15f;
-  if (event.period == 2 && event.addedMinute > 0.0f) importance += 0.15f;
-  importance = std::clamp(importance, 0.2f, 1.0f);
+  float importance = 0.45F;
+  if (lead == 0)
+  {
+    importance += 0.25F;  // equaliser
+  }
+  if (lead == 1)
+  {
+    importance += 0.2F;  // goes ahead
+  }
+  if (lead >= 3)
+  {
+    importance -= 0.15F;
+  }
+  if (event.period == 2 && event.timeMinute >= 80.0F)
+  {
+    importance += 0.15F;
+  }
+  if (event.period == 2 && event.addedMinute > 0.0F)
+  {
+    importance += 0.15F;
+  }
+  importance = std::clamp(importance, 0.2F, 1.0F);
 
   // Home attacks toward x = 1: the net is at the scoring side's end.
-  const float netX = homeScored ? 1.0f : 0.0f;
+  const float netX = homeScored ? 1.0F : 0.0F;
   play(Priority::KEY, {.sound = Sound::NET,
-                       .gain = 0.7f,
-                       .pan = panFor(netX, 0.8f),
-                       .intensity = 0.6f + 0.4f * importance});
+                       .gain = 0.7F,
+                       .pan = panFor(netX, 0.8F),
+                       .intensity = 0.6F + (0.4F * importance)});
   if (homeScored)
   {
     play(Priority::KEY, {.sound = Sound::CROWD_CHEER,
-                         .gain = 0.85f + 0.3f * importance,
-                         .pan = panFor(netX, 0.25f),
+                         .gain = 0.85F + (0.3F * importance),
+                         .pan = panFor(netX, 0.25F),
                          .intensity = importance,
-                         .delay = 0.06f});
+                         .delay = 0.06F});
     play(Priority::MAJOR, {.sound = Sound::CROWD_APPLAUSE,
-                           .gain = 0.45f,
+                           .gain = 0.45F,
                            .intensity = importance,
-                           .delay = 1.4f});
-    tension = 0.55f;
+                           .delay = 1.4F});
+    tension = 0.55F;
   }
   else
   {
     play(Priority::KEY, {.sound = Sound::CROWD_GROAN,
-                         .gain = 0.75f,
-                         .intensity = 0.6f,
-                         .delay = 0.1f});
+                         .gain = 0.75F,
+                         .intensity = 0.6F,
+                         .delay = 0.1F});
     // The away end celebrates on its own, smaller and off to one side.
     play(Priority::KEY, {.sound = Sound::CROWD_CHEER,
-                         .gain = 0.28f,
-                         .pan = -0.7f,
-                         .intensity = importance * 0.6f,
-                         .delay = 0.08f});
-    tension = -0.15f;
+                         .gain = 0.28F,
+                         .pan = -0.7F,
+                         .intensity = importance * 0.6F,
+                         .delay = 0.08F});
+    tension = -0.15F;
   }
 }
 
 void MatchAudio::reactToMiss(float x)
 {
-  if (!pendingShot.home) return;
-  const float size = std::clamp(0.3f + pendingShot.xg * 2.0f, 0.3f, 1.0f);
+  if (!pendingShot.home)
+  {
+    return;
+  }
+  const float size = std::clamp(0.3F + (pendingShot.xg * 2.0F), 0.3F, 1.0F);
   play(Priority::MAJOR, {.sound = Sound::CROWD_OOH,
-                         .gain = 0.45f + 0.5f * size,
-                         .pan = panFor(x, 0.2f),
+                         .gain = 0.45F + (0.5F * size),
+                         .pan = panFor(x, 0.2F),
                          .intensity = size});
 }
 
@@ -371,36 +449,38 @@ void MatchAudio::react(const MatchEvent& event)
   switch (event.type)
   {
     case MatchEventType::KICK_OFF:
-      whistle(KEY, WhistlePattern::KICK_OFF, 0.5f);
+      whistle(KEY, WhistlePattern::KICK_OFF, 0.5F);
       play(MAJOR, {.sound = CROWD_APPLAUSE,
-                   .gain = 0.55f,
-                   .intensity = 0.7f,
-                   .delay = 0.1f});
+                   .gain = 0.55F,
+                   .intensity = 0.7F,
+                   .delay = 0.1F});
       play(MAJOR, {.sound = CROWD_CHEER,
-                   .gain = 0.45f,
-                   .intensity = 0.25f,
-                   .delay = 0.15f});
+                   .gain = 0.45F,
+                   .intensity = 0.25F,
+                   .delay = 0.15F});
       break;
     case MatchEventType::SECOND_HALF:
-      whistle(KEY, WhistlePattern::KICK_OFF, 0.5f);
+      whistle(KEY, WhistlePattern::KICK_OFF, 0.5F);
       play(MAJOR, {.sound = CROWD_APPLAUSE,
-                   .gain = 0.45f,
-                   .intensity = 0.5f,
-                   .delay = 0.1f});
+                   .gain = 0.45F,
+                   .intensity = 0.5F,
+                   .delay = 0.1F});
       break;
     case MatchEventType::HALF_TIME:
     {
       whistle(KEY, WhistlePattern::HALF_TIME, x);
       const bool behind = event.homeScore < event.awayScore;
       play(MAJOR, {.sound = CROWD_APPLAUSE,
-                   .gain = behind ? 0.2f : 0.55f,
-                   .intensity = 0.5f,
-                   .delay = 1.4f});
+                   .gain = behind ? 0.2F : 0.55F,
+                   .intensity = 0.5F,
+                   .delay = 1.4F});
       if (behind)
+      {
         play(MAJOR, {.sound = CROWD_BOO,
-                     .gain = 0.4f,
-                     .intensity = 0.4f,
-                     .delay = 1.5f});
+                     .gain = 0.4F,
+                     .intensity = 0.4F,
+                     .delay = 1.5F});
+      }
       break;
     }
     case MatchEventType::FULL_TIME:
@@ -409,38 +489,38 @@ void MatchAudio::react(const MatchEvent& event)
       if (const int margin = event.homeScore - event.awayScore; margin > 0)
       {
         play(KEY, {.sound = CROWD_CHEER,
-                   .gain = 0.95f,
-                   .intensity = 0.8f,
-                   .delay = 1.7f});
+                   .gain = 0.95F,
+                   .intensity = 0.8F,
+                   .delay = 1.7F});
         play(KEY, {.sound = CROWD_APPLAUSE,
-                   .gain = 0.65f,
-                   .intensity = 0.9f,
-                   .delay = 2.3f});
+                   .gain = 0.65F,
+                   .intensity = 0.9F,
+                   .delay = 2.3F});
       }
       else if (margin == 0)
       {
         play(KEY, {.sound = CROWD_APPLAUSE,
-                   .gain = 0.5f,
-                   .intensity = 0.5f,
-                   .delay = 1.7f});
+                   .gain = 0.5F,
+                   .intensity = 0.5F,
+                   .delay = 1.7F});
       }
       else
       {
         play(KEY, {.sound = CROWD_BOO,
-                   .gain = 0.6f,
-                   .intensity = 0.6f,
-                   .delay = 1.7f});
+                   .gain = 0.6F,
+                   .intensity = 0.6F,
+                   .delay = 1.7F});
         play(KEY, {.sound = CROWD_WHISTLES,
-                   .gain = 0.4f,
-                   .intensity = 0.5f,
-                   .delay = 1.9f});
+                   .gain = 0.4F,
+                   .intensity = 0.5F,
+                   .delay = 1.9F});
         play(KEY, {.sound = CROWD_CHEER,
-                   .gain = 0.25f,
-                   .pan = -0.7f,
-                   .intensity = 0.5f,
-                   .delay = 1.8f});
+                   .gain = 0.25F,
+                   .pan = -0.7F,
+                   .intensity = 0.5F,
+                   .delay = 1.8F});
       }
-      tension = 0.0f;
+      tension = 0.0F;
       break;
     }
     case MatchEventType::GOAL:
@@ -449,51 +529,60 @@ void MatchAudio::react(const MatchEvent& event)
       reactToGoal(event);
       break;
     case MatchEventType::SHOT:
-      pendingShot = {true, home, event.xg, event.period, event.timeMinute};
-      if (home) tension = std::max(tension, 0.2f + std::min(0.3f, event.xg));
+      pendingShot = {.active = true,
+                     .home = home,
+                     .xg = event.xg,
+                     .period = event.period,
+                     .minute = event.timeMinute};
+      if (home)
+      {
+        tension = std::max(tension, 0.2F + std::min(0.3F, event.xg));
+      }
       break;
     case MatchEventType::SAVE:
     {
       // The team fields describe the goalkeeper.
       const float size =
-          std::clamp(0.4f + std::min(0.6f, pendingShot.xg * 2.0f), 0.4f, 1.0f);
+          std::clamp(0.4F + std::min(0.6F, pendingShot.xg * 2.0F), 0.4F, 1.0F);
       pendingShot.active = false;
       if (away)
       {
         play(MAJOR, {.sound = CROWD_OOH,
-                     .gain = 0.5f + 0.4f * size,
-                     .pan = panFor(x, 0.2f),
+                     .gain = 0.5F + (0.4F * size),
+                     .pan = panFor(x, 0.2F),
                      .intensity = size});
         play(MINOR, {.sound = CROWD_APPLAUSE,
-                     .gain = 0.3f,
-                     .intensity = 0.3f,
-                     .delay = 0.9f});
+                     .gain = 0.3F,
+                     .intensity = 0.3F,
+                     .delay = 0.9F});
       }
       else
       {
         play(MAJOR, {.sound = CROWD_APPLAUSE,
-                     .gain = 0.5f,
-                     .intensity = 0.45f,
-                     .delay = 0.15f});
+                     .gain = 0.5F,
+                     .intensity = 0.45F,
+                     .delay = 0.15F});
       }
       break;
     }
     case MatchEventType::WOODWORK:
       pendingShot.active = false;
       play(MAJOR, {.sound = WOODWORK,
-                   .gain = 0.75f,
-                   .pan = panFor(x, 0.8f),
-                   .intensity = 0.85f});
+                   .gain = 0.75F,
+                   .pan = panFor(x, 0.8F),
+                   .intensity = 0.85F});
       play(MAJOR, {.sound = CROWD_OOH,
-                   .gain = home ? 1.0f : 0.5f,
-                   .pan = panFor(x, 0.2f),
-                   .intensity = home ? 0.95f : 0.5f,
-                   .delay = 0.05f});
+                   .gain = home ? 1.0F : 0.5F,
+                   .pan = panFor(x, 0.2F),
+                   .intensity = home ? 0.95F : 0.5F,
+                   .delay = 0.05F});
       break;
     case MatchEventType::SHOT_BLOCKED:
       pendingShot.active = false;
-      if (away)  // a defender of the away side blocked a home shot
-        play(MINOR, {.sound = CROWD_GROAN, .gain = 0.35f, .intensity = 0.2f});
+      if (away)
+      {  // a defender of the away side blocked a home shot
+        play(MINOR, {.sound = CROWD_GROAN, .gain = 0.35F, .intensity = 0.2F});
+      }
       break;
     case MatchEventType::SHOT_OFF_TARGET:
     case MatchEventType::PENALTY_MISSED:
@@ -501,19 +590,25 @@ void MatchAudio::react(const MatchEvent& event)
       pendingShot.active = false;
       break;
     case MatchEventType::GOAL_KICK:
-      if (pendingShot.active) reactToMiss(x);
+      if (pendingShot.active)
+      {
+        reactToMiss(x);
+      }
       pendingShot.active = false;
       break;
     case MatchEventType::CORNER:
-      if (pendingShot.active) reactToMiss(x);
+      if (pendingShot.active)
+      {
+        reactToMiss(x);
+      }
       pendingShot.active = false;
       if (home)
       {
         play(MINOR, {.sound = CROWD_CHEER,
-                     .gain = 0.3f,
-                     .intensity = 0.1f,
-                     .delay = 0.3f});
-        tension = std::max(tension, 0.15f);
+                     .gain = 0.3F,
+                     .intensity = 0.1F,
+                     .delay = 0.3F});
+        tension = std::max(tension, 0.15F);
       }
       break;
     case MatchEventType::FOUL:
@@ -522,36 +617,42 @@ void MatchAudio::react(const MatchEvent& event)
       if (away)
       {
         play(MINOR, {.sound = CROWD_BOO,
-                     .gain = 0.35f,
-                     .intensity = 0.2f,
-                     .delay = 0.2f});
-        if (x > 0.66f)
+                     .gain = 0.35F,
+                     .intensity = 0.2F,
+                     .delay = 0.2F});
+        if (x > 0.66F)
+        {
           play(MINOR, {.sound = CROWD_WHISTLES,
-                       .gain = 0.3f,
-                       .intensity = 0.3f,
-                       .delay = 0.25f});
+                       .gain = 0.3F,
+                       .intensity = 0.3F,
+                       .delay = 0.25F});
+        }
       }
       break;
     case MatchEventType::YELLOW_CARD:
       if (away)
-        play(MINOR, {.sound = CROWD_CHEER, .gain = 0.35f, .intensity = 0.12f});
+      {
+        play(MINOR, {.sound = CROWD_CHEER, .gain = 0.35F, .intensity = 0.12F});
+      }
       else if (home)
+      {
         play(MINOR,
-             {.sound = CROWD_WHISTLES, .gain = 0.35f, .intensity = 0.4f});
+             {.sound = CROWD_WHISTLES, .gain = 0.35F, .intensity = 0.4F});
+      }
       break;
     case MatchEventType::SECOND_YELLOW:
     case MatchEventType::RED_CARD:
       if (away)
       {
-        play(MAJOR, {.sound = CROWD_CHEER, .gain = 0.6f, .intensity = 0.4f});
+        play(MAJOR, {.sound = CROWD_CHEER, .gain = 0.6F, .intensity = 0.4F});
       }
       else if (home)
       {
-        play(MAJOR, {.sound = CROWD_BOO, .gain = 0.8f, .intensity = 0.8f});
+        play(MAJOR, {.sound = CROWD_BOO, .gain = 0.8F, .intensity = 0.8F});
         play(MAJOR, {.sound = CROWD_WHISTLES,
-                     .gain = 0.5f,
-                     .intensity = 0.7f,
-                     .delay = 0.2f});
+                     .gain = 0.5F,
+                     .intensity = 0.7F,
+                     .delay = 0.2F});
       }
       break;
     case MatchEventType::PENALTY:
@@ -560,34 +661,38 @@ void MatchAudio::react(const MatchEvent& event)
       if (home)
       {
         play(MAJOR, {.sound = CROWD_CHEER,
-                     .gain = 0.8f,
-                     .intensity = 0.55f,
-                     .delay = 0.2f});
-        tension = 0.45f;
+                     .gain = 0.8F,
+                     .intensity = 0.55F,
+                     .delay = 0.2F});
+        tension = 0.45F;
       }
       else if (away)
       {
         play(MAJOR, {.sound = CROWD_BOO,
-                     .gain = 0.85f,
-                     .intensity = 0.8f,
-                     .delay = 0.2f});
+                     .gain = 0.85F,
+                     .intensity = 0.8F,
+                     .delay = 0.2F});
         play(MAJOR, {.sound = CROWD_WHISTLES,
-                     .gain = 0.55f,
-                     .intensity = 0.8f,
-                     .delay = 0.3f});
+                     .gain = 0.55F,
+                     .intensity = 0.8F,
+                     .delay = 0.3F});
       }
       break;
     case MatchEventType::OFFSIDE:
       whistle(MINOR, WhistlePattern::SHORT, x);
       if (home)
+      {
         play(MINOR, {.sound = CROWD_GROAN,
-                     .gain = 0.3f,
-                     .intensity = 0.15f,
-                     .delay = 0.2f});
+                     .gain = 0.3F,
+                     .intensity = 0.15F,
+                     .delay = 0.2F});
+      }
       break;
     case MatchEventType::SUBSTITUTION:
       if (home)
-        play(MINOR, {.sound = CROWD_APPLAUSE, .gain = 0.3f, .intensity = 0.2f});
+      {
+        play(MINOR, {.sound = CROWD_APPLAUSE, .gain = 0.3F, .intensity = 0.2F});
+      }
       break;
     default:
       break;

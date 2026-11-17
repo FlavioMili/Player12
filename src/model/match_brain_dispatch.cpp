@@ -40,7 +40,8 @@ const MatchEngine::BrainTraits& MatchEngine::brainTraits(bool homeTeam) const
   return none;
 }
 
-std::optional<float> MatchEngine::chooseCarryPace(const MatchPlayer& player) const
+std::optional<float> MatchEngine::chooseCarryPace(
+    const MatchPlayer& player) const
 {
   switch (brainOf(player.isHomeTeam))
   {
@@ -53,7 +54,8 @@ std::optional<float> MatchEngine::chooseCarryPace(const MatchPlayer& player) con
 }
 
 std::optional<float> MatchEngine::chooseTouchSeconds(const MatchPlayer& player,
-                                                     float pace, float toEnd) const
+                                                     float pace,
+                                                     float toEnd) const
 {
   switch (brainOf(player.isHomeTeam))
   {
@@ -66,8 +68,9 @@ std::optional<float> MatchEngine::chooseTouchSeconds(const MatchPlayer& player,
 }
 
 std::optional<float> MatchEngine::choosePushMetres(
-    const MatchPlayer& player, PitchPoint from, Vector2F direction, float startGap,
-    float pace, float seconds, std::optional<float> toGoal) const
+    const MatchPlayer& player, PitchPoint from, Vector2F direction,
+    float startGap, float pace, float seconds,
+    std::optional<float> toGoal) const
 {
   switch (brainOf(player.isHomeTeam))
   {
@@ -120,7 +123,7 @@ void MatchEngine::assignMarks(bool home)
 }
 
 PitchPoint MatchEngine::goalkeeperTarget(MatchPlayer& keeper,
-                                       const MatchPlayer* carrier)
+                                         const MatchPlayer* carrier)
 {
   switch (brainOf(keeper.isHomeTeam))
   {
@@ -330,8 +333,8 @@ MatchEngine::Challenge MatchEngine::chooseChallenge(const MatchPlayer& carrier,
   return chooseChallengeAardvark(carrier, dt);
 }
 
-bool MatchEngine::goesIntoContest(MatchPlayer& defender, const MatchPlayer& owner,
-                                  PitchPoint contact)
+bool MatchEngine::goesIntoContest(MatchPlayer& defender,
+                                  const MatchPlayer& owner, PitchPoint contact)
 {
   // Decided once a step: held, he holds the whole step.
   if (defender.goInStep != stepCounter)
@@ -347,9 +350,13 @@ bool MatchEngine::goesIntoContest(MatchPlayer& defender, const MatchPlayer& owne
         break;
     }
     if (defender.goingIn)
+    {
       ++(defender.isHomeTeam ? stats.homeGoIns : stats.awayGoIns);
+    }
     else
+    {
       ++(defender.isHomeTeam ? stats.homeHolds : stats.awayHolds);
+    }
   }
   return defender.goingIn;
 }
@@ -501,7 +508,10 @@ void MatchEngine::updateRestartSupport(MatchPlayer& player,
 float MatchEngine::chooseGetUp(const MatchPlayer& player)
 {
   // Nobody round the touchline has a brain or a ball to win.
-  if (onTouchline(player)) return touchlineGetUpSeconds(player);
+  if (onTouchline(player))
+  {
+    return touchlineGetUpSeconds(player);
+  }
   switch (brainOf(player.isHomeTeam))
   {
     case BrainId::AARDVARK:
@@ -519,7 +529,7 @@ void MatchEngine::planWayRound(std::size_t slot)
     case BrainId::AARDVARK:
       // No way round: he runs at it.
       players[slot].wayRoundOf = -1;
-      players[slot].giveWaySpeed = -1.0f;
+      players[slot].giveWaySpeed = -1.0F;
       return;
     case BrainId::BINTURONG:
       planWayRoundBinturong(slot);

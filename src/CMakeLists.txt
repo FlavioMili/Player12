@@ -824,3 +824,12 @@ add_executable(possession_seam_check EXCLUDE_FROM_ALL
     tools/match_sandbox_rewind.cpp)
 target_link_libraries(possession_seam_check PRIVATE fm_drills)
 target_compile_options(possession_seam_check PRIVATE ${FM_WARNING_FLAGS})
+
+add_executable(recording_boundary_check EXCLUDE_FROM_ALL
+    ../test/recording_boundary_check.cpp
+    tools/match_sandbox_recording.cpp
+    tools/match_sandbox_detail.cpp
+    tools/match_sandbox_rewind.cpp
+    tools/match_sandbox_zone_recording.cpp)
+target_link_libraries(recording_boundary_check PRIVATE fm_drills)
+target_compile_options(recording_boundary_check PRIVATE ${FM_WARNING_FLAGS})

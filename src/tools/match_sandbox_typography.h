@@ -15,7 +15,7 @@ namespace SandboxTypography
 inline ImFontConfig manropeConfig()
 {
   ImFontConfig config;
-  config.ExtraSizeScale = (2132.0f + 600.0f) / 2000.0f;
+  config.ExtraSizeScale = (2132.0F + 600.0F) / 2000.0F;
   return config;
 }
 
@@ -36,21 +36,24 @@ inline LabelBounds labelBounds(ImFont* font, float pixelSize, const char* label,
   const float factor = pixelSize / baked->Size;
   float x = 0;
   for (const unsigned char* c = reinterpret_cast<const unsigned char*>(label);
-       *c; ++c)
+       *c != 0u; ++c)
   {
     const auto* glyph = baked->FindGlyph(*c);
     const float gx = snap ? std::floor(x) : x;
     if (glyph->Visible)
     {
-      bounds.min.x = std::min(bounds.min.x, gx + glyph->X0 * factor);
+      bounds.min.x = std::min(bounds.min.x, gx + (glyph->X0 * factor));
       bounds.min.y = std::min(bounds.min.y, glyph->Y0 * factor);
-      bounds.max.x = std::max(bounds.max.x, gx + glyph->X1 * factor);
+      bounds.max.x = std::max(bounds.max.x, gx + (glyph->X1 * factor));
       bounds.max.y = std::max(bounds.max.y, glyph->Y1 * factor);
       bounds.visible = true;
     }
     x += glyph->AdvanceX * factor + tracking;
   }
-  if (!bounds.visible) bounds.min = bounds.max = ImVec2(0, 0);
+  if (!bounds.visible)
+  {
+    bounds.min = bounds.max = ImVec2(0, 0);
+  }
   return bounds;
 }
 
@@ -60,7 +63,7 @@ inline void label(ImDrawList* draw, ImFont* font, float size, const char* text,
 {
   ImGui::PushFont(font, size);
   const float pixels = ImGui::GetFontSize();
-  const bool snap = !(draw->Flags & ImDrawListFlags_TextNoPixelSnap);
+  const bool snap = (draw->Flags & ImDrawListFlags_TextNoPixelSnap) == 0;
   const auto bounds = labelBounds(font, pixels, text, tracking, snap);
   ImVec2 origin(centerHorizontal ? (a.x + b.x - bounds.min.x - bounds.max.x) / 2
                                  : a.x + leftInset - bounds.min.x,
@@ -73,7 +76,7 @@ inline void label(ImDrawList* draw, ImFont* font, float size, const char* text,
   auto* baked = font->GetFontBaked(pixels);
   const float factor = pixels / baked->Size;
   float x = 0;
-  for (const char* c = text; *c; ++c)
+  for (const char* c = text; *c != 0; ++c)
   {
     const auto* glyph = baked->FindGlyph(static_cast<unsigned char>(*c));
     const float advance = glyph->AdvanceX * factor;

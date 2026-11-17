@@ -32,17 +32,17 @@ using RenderMath::Vec3;
 
 constexpr float PI = std::numbers::pi_v<float>;
 /** Pauses either side of an animated move (s). */
-constexpr float REST_SECONDS = 0.6f;
+constexpr float REST_SECONDS = 0.6F;
 
-float radians(float degrees) { return degrees * PI / 180.0f; }
+float radians(float degrees) { return degrees * PI / 180.0F; }
 
 /** A stat (1-99) as the Binturong handshake's rating (the stat / 100). */
-float rating(int stat) { return static_cast<float>(stat) / 100.0f; }
+float rating(int stat) { return static_cast<float>(stat) / 100.0F; }
 
 ImU32 colour(int r, int g, int b, float alpha)
 {
   return IM_COL32(r, g, b,
-                  static_cast<int>(std::clamp(alpha, 0.0f, 1.0f) * 255.0f));
+                  static_cast<int>(std::clamp(alpha, 0.0F, 1.0F) * 255.0F));
 }
 
 constexpr std::array<const char*, 7> POSE_NAMES{
@@ -63,11 +63,15 @@ void TrueViewScene::onEnter()
   {
     const auto config = SandboxTypography::manropeConfig();
     for (auto* existing : atlas->Fonts)
+    {
       if (std::string_view(existing->GetDebugName()).find(file) !=
               std::string_view::npos &&
           !existing->Sources.empty() &&
           existing->Sources[0]->ExtraSizeScale == config.ExtraSizeScale)
+      {
         return existing;
+      }
+    }
     return atlas->AddFontFromFileTTF(
         AssetPaths::file((std::string("assets/fonts/") + file).c_str()).c_str(),
         size, &config);
@@ -78,7 +82,10 @@ void TrueViewScene::onEnter()
 
 void TrueViewScene::update(float deltaTime)
 {
-  if (playing) clock += deltaTime * playbackSpeed;
+  if (playing)
+  {
+    clock += deltaTime * playbackSpeed;
+  }
 }
 
 void TrueViewScene::render()
@@ -104,19 +111,20 @@ void TrueViewScene::render()
   ImGui::PopStyleColor();
   const ImVec2 available = ImGui::GetContentRegionAvail();
   const bool columns = available.x >= 1000 * scale;
-  const float gutter = 6 * scale + ImGui::GetStyle().ScrollbarSize;
-  const float panel = columns
-                          ? (available.x >= 1400 * scale ? 440 : 400) * scale
-                          : std::max(scale, available.x - gutter);
+  const float gutter = (6 * scale) + ImGui::GetStyle().ScrollbarSize;
+  const float panel =
+      columns ? (available.x >= 1400 * scale ? 440.0F : 400.0F) * scale
+              : std::max(scale, available.x - gutter);
   ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(0, 0));
   if (columns)
   {
     const ImVec2 origin = ImGui::GetCursorPos();
     ImGui::SetCursorPos(
-        ImVec2(origin.x + panel + gutter + 6 * scale, origin.y));
+        ImVec2(origin.x + panel + gutter + (6 * scale), origin.y));
     // Build this frame's measures with the model, before the values tab reads
     // them.
-    renderCanvas(ImVec2(available.x - panel - gutter - 6 * scale, available.y));
+    renderCanvas(
+        ImVec2(available.x - panel - gutter - (6 * scale), available.y));
     ImGui::SetCursorPos(origin);
     ImGui::BeginChild("##true_view_controls",
                       ImVec2(panel + gutter, available.y),
@@ -128,7 +136,7 @@ void TrueViewScene::render()
   {
     ImGui::BeginChild("##true_view_controls", available,
                       ImGuiChildFlags_AlwaysUseWindowPadding);
-    renderCanvas(ImVec2(panel, std::max(300 * scale, available.y * 0.65f)));
+    renderCanvas(ImVec2(panel, std::max(300 * scale, available.y * 0.65F)));
     renderPanel(panel);
     ImGui::EndChild();
   }
@@ -150,40 +158,57 @@ void TrueViewScene::renderPanel(float width)
   Page::beginCard("##true_view_navigation", "VIEW", width, Page::DARK, scale,
                   boldFont);
   if (Page::button("Back to sandbox", false, scale, boldFont))
+  {
     guiView->popScene();
-  if (Page::button("3/4", false, scale, boldFont)) camera = Camera{};
+  }
+  if (Page::button("3/4", false, scale, boldFont))
+  {
+    camera = Camera{};
+  }
   ImGui::SameLine(0, 6 * scale);
   if (Page::button("Side", false, scale, boldFont))
   {
     camera.yaw = 0;
-    camera.pitch = 0.05f;
+    camera.pitch = 0.05F;
   }
   ImGui::SameLine(0, 6 * scale);
   if (Page::button("Front", false, scale, boldFont))
   {
-    camera.yaw = PI * 0.5f;
-    camera.pitch = 0.05f;
+    camera.yaw = PI * 0.5F;
+    camera.pitch = 0.05F;
   }
   ImGui::SameLine(0, 6 * scale);
-  if (Page::button("Top", false, scale, boldFont)) camera.pitch = 1.5f;
+  if (Page::button("Top", false, scale, boldFont))
+  {
+    camera.pitch = 1.5F;
+  }
   Page::endCard(scale);
   Page::beginCard("##true_view_tabs", "DETAILS", width, Page::MID, scale,
                   boldFont);
   if (Page::button("Controls", !showValues, scale, boldFont))
+  {
     showValues = false;
+  }
   ImGui::SameLine(0, 6 * scale);
   if (Page::button("Engine values", showValues, scale, boldFont))
+  {
     showValues = true;
+  }
   if (!showValues)
   {
     const std::array<const char*, 4> tabs{"Player", "Pose", "Technique",
                                           "Layers"};
     for (std::size_t index = 0; index < tabs.size(); ++index)
     {
-      if (index > 0) ImGui::SameLine(0, 6 * scale);
+      if (index > 0)
+      {
+        ImGui::SameLine(0, 6 * scale);
+      }
       const auto tab = static_cast<ControlTab>(index);
       if (Page::button(tabs[index], controlTab == tab, scale, boldFont))
+      {
         controlTab = tab;
+      }
     }
   }
   Page::endCard(scale);
@@ -209,16 +234,43 @@ void TrueViewScene::renderPanel(float width)
       const char* tip;
     };
     const std::array<StatField, 7> fields{
-        {{"Height (cm)", &Stats::heightCentimetres, 150, 210, nullptr},
-         {"Jump", &Stats::jump, 1, 99,
-          "Jumping reach's blend: the jump on top of his height (Pace and "
-          "Physicality stand in until the game carries it)."},
-         {"Strength", &Stats::strength, 1, 99, nullptr},
-         {"Agility", &Stats::agility, 1, 99, nullptr},
-         {"Dribbling", &Stats::dribbling, 1, 99, nullptr},
-         {"Defending", &Stats::defending, 1, 99, nullptr},
-         {"Physicality", &Stats::physicality, 1, 99,
-          "Only the old shot-block rule reads it here."}}};
+        {{.label = "Height (cm)",
+          .value = &Stats::heightCentimetres,
+          .min = 150,
+          .max = 210,
+          .tip = nullptr},
+         {.label = "Jump",
+          .value = &Stats::jump,
+          .min = 1,
+          .max = 99,
+          .tip =
+              "Jumping reach's blend: the jump on top of his height (Pace and "
+              "Physicality stand in until the game carries it)."},
+         {.label = "Strength",
+          .value = &Stats::strength,
+          .min = 1,
+          .max = 99,
+          .tip = nullptr},
+         {.label = "Agility",
+          .value = &Stats::agility,
+          .min = 1,
+          .max = 99,
+          .tip = nullptr},
+         {.label = "Dribbling",
+          .value = &Stats::dribbling,
+          .min = 1,
+          .max = 99,
+          .tip = nullptr},
+         {.label = "Defending",
+          .value = &Stats::defending,
+          .min = 1,
+          .max = 99,
+          .tip = nullptr},
+         {.label = "Physicality",
+          .value = &Stats::physicality,
+          .min = 1,
+          .max = 99,
+          .tip = "Only the old shot-block rule reads it here."}}};
     ImGui::PushStyleVar(ImGuiStyleVar_FramePadding,
                         ImVec2(8 * scale, 4 * scale));
     ImGui::PushStyleVar(ImGuiStyleVar_CellPadding,
@@ -234,21 +286,29 @@ void TrueViewScene::renderPanel(float width)
         ImGui::PushID(stat.label);
         ImGui::Dummy(ImVec2(0, 0));
         field(stat.label);
-        if (stat.tip && ImGui::IsItemHovered())
+        if ((stat.tip != nullptr) && ImGui::IsItemHovered())
+        {
           ImGui::SetTooltip("%s", stat.tip);
+        }
         ImGui::SliderInt("##value", &(stats.*stat.value), stat.min, stat.max);
-        if (stat.tip && ImGui::IsItemHovered())
+        if ((stat.tip != nullptr) && ImGui::IsItemHovered())
+        {
           ImGui::SetTooltip("%s", stat.tip);
+        }
         ImGui::PopID();
       }
       ImGui::EndTable();
     }
     ImGui::PopStyleVar(2);
     if (Page::button("Right-footed", stats.rightFooted, scale, boldFont))
+    {
       stats.rightFooted = true;
+    }
     ImGui::SameLine(0, 6 * scale);
     if (Page::button("Left-footed", !stats.rightFooted, scale, boldFont))
+    {
       stats.rightFooted = false;
+    }
     field("Facing");
     ImGui::SliderFloat("##facing", &stats.facing, -180, 180, "%.0f deg");
     Page::endCard(scale);
@@ -261,13 +321,15 @@ void TrueViewScene::renderPanel(float width)
     field("Pose");
     int poseIndex = static_cast<int>(pose);
     if (SandboxPageUI::combo("##pose", &poseIndex, POSE_NAMES.data(),
-                     static_cast<int>(POSE_NAMES.size())))
+                             static_cast<int>(POSE_NAMES.size())))
     {
       pose = static_cast<Pose>(poseIndex);
       clock = 0;
     }
     if (pose == Pose::STANDING || pose == Pose::STUMBLING)
+    {
       ImGui::Checkbox("Moving faster than his thigh allows", &moving);
+    }
     if (pose == Pose::FALLEN || pose == Pose::GETTING_UP)
     {
       field("Lying");
@@ -275,16 +337,21 @@ void TrueViewScene::renderPanel(float width)
                          "%.0f deg off facing");
       ImGui::Checkbox("Fell on his front", &fellOnFront);
       if (pose == Pose::FALLEN)
+      {
         ImGui::Checkbox("Rolling about (big hit)", &rolling);
+      }
     }
     if (pose != Pose::STANDING && pose != Pose::PLANTED &&
         pose != Pose::STUMBLING)
     {
       ImGui::Checkbox("Play", &playing);
       ImGui::SameLine(0, 6 * scale);
-      if (Page::button("Restart", false, scale, boldFont)) clock = 0;
+      if (Page::button("Restart", false, scale, boldFont))
+      {
+        clock = 0;
+      }
       field("Speed");
-      ImGui::SliderFloat("##playback_speed", &playbackSpeed, 0.05f, 1, "%.2fx");
+      ImGui::SliderFloat("##playback_speed", &playbackSpeed, 0.05F, 1, "%.2fx");
     }
     Page::endCard(scale);
     return;
@@ -295,18 +362,22 @@ void TrueViewScene::renderPanel(float width)
                     scale, boldFont);
     field("Pick out");
     int techniqueIndex = static_cast<int>(technique);
-    if (SandboxPageUI::combo("##technique", &techniqueIndex,
-                     TrueView::TECHNIQUE_NAMES.data(),
-                     static_cast<int>(TrueView::TECHNIQUE_NAMES.size())))
+    if (SandboxPageUI::combo(
+            "##technique", &techniqueIndex, TrueView::TECHNIQUE_NAMES.data(),
+            static_cast<int>(TrueView::TECHNIQUE_NAMES.size())))
+    {
       technique = static_cast<TrueView::Technique>(techniqueIndex);
+    }
     if (technique == TrueView::Technique::FOOT_STRIKE)
     {
       std::array<const char*, STRIKE_KIND_COUNT> kinds{};
       for (std::size_t kind = 0; kind < STRIKE_KIND_COUNT; ++kind)
+      {
         kinds[kind] = STRIKE_KIND_NAMES[kind].data();
+      }
       field("Strike");
       SandboxPageUI::combo("##strike", &strikeKind, kinds.data(),
-                   static_cast<int>(kinds.size()));
+                           static_cast<int>(kinds.size()));
     }
     Page::endCard(scale);
     return;
@@ -345,23 +416,27 @@ void TrueViewScene::renderCanvas(ImVec2 size)
                   scale, boldFont);
   const ImVec2 origin = ImGui::GetCursorScreenPos();
   const ImVec2 area(std::max(scale, ImGui::GetContentRegionAvail().x),
-                    std::max(200 * scale, size.y - 56 * scale));
+                    std::max(200 * scale, size.y - (56 * scale)));
   ImGui::InvisibleButton(
       "##orbit", area,
       ImGuiButtonFlags_MouseButtonLeft | ImGuiButtonFlags_MouseButtonRight);
   const ImGuiIO& io = ImGui::GetIO();
   if (ImGui::IsItemActive() && ImGui::IsMouseDown(ImGuiMouseButton_Left))
   {
-    camera.yaw -= io.MouseDelta.x * 0.01f;
+    camera.yaw -= io.MouseDelta.x * 0.01F;
     camera.pitch =
-        std::clamp(camera.pitch + io.MouseDelta.y * 0.01f, -0.2f, 1.55f);
+        std::clamp(camera.pitch + (io.MouseDelta.y * 0.01F), -0.2F, 1.55F);
   }
   if (ImGui::IsItemActive() && ImGui::IsMouseDown(ImGuiMouseButton_Right))
-    camera.targetHeight =
-        std::clamp(camera.targetHeight + io.MouseDelta.y * 0.01f, -0.5f, 3.0f);
-  if (ImGui::IsItemHovered() && io.MouseWheel != 0.0f)
+  {
+    camera.targetHeight = std::clamp(
+        camera.targetHeight + (io.MouseDelta.y * 0.01F), -0.5F, 3.0F);
+  }
+  if (ImGui::IsItemHovered() && io.MouseWheel != 0.0F)
+  {
     camera.distance = std::clamp(
-        camera.distance * std::pow(0.9f, io.MouseWheel), 1.0f, 25.0f);
+        camera.distance * std::pow(0.9F, io.MouseWheel), 1.0F, 25.0F);
+  }
 
   // ---- His measures, from the engine -------------------------------------
   using A = MatchTuning::Aerial;
@@ -371,14 +446,14 @@ void TrueViewScene::renderCanvas(ImVec2 size)
   const TrueView::Tuning tuning =
       TrueView::Tuning::from(sandbox.touch, sandbox.strike, sandbox.stretch,
                              static_cast<StrikeKind>(strikeKind));
-  const float height = static_cast<float>(stats.heightCentimetres) / 100.0f;
+  const float height = static_cast<float>(stats.heightCentimetres) / 100.0F;
   const DerivedRecipe& jumpRecipe =
       DEFAULT_DERIVED_RECIPES[static_cast<std::size_t>(
           DerivedStat::JUMPING_REACH)];
   const float jumpRating =
       std::clamp(derivedRatingOnHeight(DerivedStat::JUMPING_REACH, jumpRecipe,
                                        rating(stats.jump), height),
-                 0.0f, 1.0f);
+                 0.0F, 1.0F);
   const float jumpingReach =
       derivedPhysicalValue(DerivedStat::JUMPING_REACH, jumpRating);
   const float runningRise = jumpRiseOf(jumpingReach, height, true);
@@ -401,9 +476,9 @@ void TrueViewScene::renderCanvas(ImVec2 size)
 
   // ---- The moment ----------------------------------------------------------
   std::string caption;
-  float getUpShare = -1.0f;
+  float getUpShare = -1.0F;
   const auto cycle = [&](float total)
-  { return std::fmod(std::max(clock, 0.0f), total); };
+  { return std::fmod(std::max(clock, 0.0F), total); };
   switch (pose)
   {
     case Pose::STANDING:
@@ -416,61 +491,76 @@ void TrueViewScene::renderCanvas(ImVec2 size)
           pose == Pose::RUNNING_JUMP ? runningRise : standingRise;
       // As stepJumpBinturong: launched to rise his full jump, landing half
       // his time in the air.
-      const float launch = std::sqrt(2.0f * B::GRAVITY * rise);
-      const float air = 2.0f * launch / B::GRAVITY;
+      const float launch = std::sqrt(2.0F * B::GRAVITY * rise);
+      const float air = 2.0F * launch / B::GRAVITY;
       const float landing = launch / B::GRAVITY;
       const float t = cycle(REST_SECONDS + air + landing + REST_SECONDS);
       if (t < REST_SECONDS)
+      {
         caption = "About to jump";
+      }
       else if (t < REST_SECONDS + air)
       {
         const float into = t - REST_SECONDS;
         body.feetHeight =
-            std::max(launch * into - 0.5f * B::GRAVITY * into * into, 0.0f);
+            std::max((launch * into) - (0.5F * B::GRAVITY * into * into), 0.0F);
         body.airborne = true;
         caption = std::format("In the air: feet {:.2f} m up (of {:.2f} m)",
                               body.feetHeight, rise);
       }
       else if (t < REST_SECONDS + air + landing)
+      {
         caption = std::format(
             "Landing ({:.2f} s): {:.0f}% of his acceleration, braking and "
             "turning",
-            landing, A::LANDING_MOVEMENT_SHARE * 100.0f);
+            landing, A::LANDING_MOVEMENT_SHARE * 100.0F);
+      }
       else
+      {
         caption = "Landed";
+      }
       break;
     }
     case Pose::FALLEN:
     {
       body.lying = true;
       caption = "Down: the cylinder on its side";
-      float rolled = 0.0f;
+      float rolled = 0.0F;
       if (rolling)
       {
         // A turn one way, a pause, a turn back (the engine's rolls are a
         // quarter to a full turn, mostly back the way the last came).
         const float roll = C::ROLL_METRES_PER_TURN / C::ROLL_SPEED;
-        const float pause = 0.5f * (C::ROLL_PAUSE_SHORTEST_SECONDS +
+        const float pause = 0.5F * (C::ROLL_PAUSE_SHORTEST_SECONDS +
                                     C::ROLL_PAUSE_LONGEST_SECONDS);
-        const float t = cycle(2.0f * (roll + pause));
+        const float t = cycle(2.0F * (roll + pause));
         if (t < roll)
+        {
           rolled = t * C::ROLL_SPEED;
+        }
         else if (t < roll + pause)
+        {
           rolled = C::ROLL_METRES_PER_TURN;
-        else if (t < 2.0f * roll + pause)
+        }
+        else if (t < 2.0F * roll + pause)
+        {
           rolled = C::ROLL_METRES_PER_TURN - (t - roll - pause) * C::ROLL_SPEED;
-        entries.push_back({"Down: a roll",
-                           std::format("{:.2f} m a turn at {:.2f} m/s",
-                                       C::ROLL_METRES_PER_TURN, C::ROLL_SPEED),
-                           "Collision::ROLL_METRES_PER_TURN, ROLL_SPEED",
-                           "roll speed to try"});
+        }
+        entries.push_back(
+            {.what = "Down: a roll",
+             .value = std::format("{:.2f} m a turn at {:.2f} m/s",
+                                  C::ROLL_METRES_PER_TURN, C::ROLL_SPEED),
+             .source = "Collision::ROLL_METRES_PER_TURN, ROLL_SPEED",
+             .wip = "roll speed to try"});
       }
       // Rolling across the way he lies.
-      const float across = radians(stats.facing + lyingOffset + 90.0f);
-      body.at = {std::sin(across) * rolled, std::cos(across) * rolled, 0.0f};
+      const float across = radians(stats.facing + lyingOffset + 90.0F);
+      body.at = {.x = std::sin(across) * rolled,
+                 .y = std::cos(across) * rolled,
+                 .z = 0.0F};
       const float turns =
-          rolled / C::ROLL_METRES_PER_TURN + (fellOnFront ? 0.0f : 0.5f);
-      caption += std::cos(turns * 2.0f * PI) > 0.0f ? ", on his front"
+          (rolled / C::ROLL_METRES_PER_TURN) + (fellOnFront ? 0.0F : 0.5F);
+      caption += std::cos(turns * 2.0F * PI) > 0.0F ? ", on his front"
                                                     : ", on his back";
       break;
     }
@@ -479,21 +569,24 @@ void TrueViewScene::renderCanvas(ImVec2 size)
       const float seconds =
           alongStatScale(rating(stats.agility), C::GET_UP_SECONDS_AT_AGILITY_1,
                          C::GET_UP_SECONDS_AT_AGILITY_99);
-      const float t = cycle(REST_SECONDS + seconds + 2.0f * REST_SECONDS);
+      const float t = cycle(REST_SECONDS + seconds + (2.0F * REST_SECONDS));
       if (t < REST_SECONDS + seconds)
       {
         body.lying = true;
-        getUpShare = std::clamp((t - REST_SECONDS) / seconds, 0.0f, 1.0f);
+        getUpShare = std::clamp((t - REST_SECONDS) / seconds, 0.0F, 1.0F);
         caption = std::format(
             "Getting up: {:.0f}% of {:.2f} s (still lying until fully up)",
-            getUpShare * 100.0f, seconds);
+            getUpShare * 100.0F, seconds);
       }
       else
+      {
         caption = "Up";
-      entries.push_back(
-          {"Getting up", std::format("{:.2f} s", seconds),
-           "Collision::GET_UP_SECONDS_AT_AGILITY_1/_99 (gingerly: 4 to 3 s)",
-           ""});
+      }
+      entries.push_back({.what = "Getting up",
+                         .value = std::format("{:.2f} s", seconds),
+                         .source = "Collision::GET_UP_SECONDS_AT_AGILITY_1/_99 "
+                                   "(gingerly: 4 to 3 s)",
+                         .wip = ""});
       break;
     }
     case Pose::STUMBLING:
@@ -501,7 +594,7 @@ void TrueViewScene::renderCanvas(ImVec2 size)
           "Stumbling ({:.1f}-{:.1f} s): no drive or steering, recovery steps "
           "brake at {:.0f}%",
           C::STUMBLE_SHORTEST_SECONDS, C::STUMBLE_LONGEST_SECONDS,
-          C::STUMBLE_BRAKING_SHARE * 100.0f);
+          C::STUMBLE_BRAKING_SHARE * 100.0F);
       break;
     case Pose::PLANTED:
       caption = std::format(
@@ -511,14 +604,17 @@ void TrueViewScene::renderCanvas(ImVec2 size)
   }
   body.lyingAngle = radians(stats.facing + lyingOffset);
   entries.push_back(
-      {"Weight (collisions)",
-       std::format("{:.0f} kg",
-                   bodyMassKilograms(height, rating(stats.strength))),
-       "bodyMassKilograms: height squared x BMI 17 (Strength 1) to 31 (99)",
-       "a proxy until the game carries weight"});
-  entries.push_back({"Jumping reach stat",
-                     std::format("{:.0f}", jumpRating * 100.0f),
-                     "derivedRatingOnHeight: height + the jump's blend", ""});
+      {.what = "Weight (collisions)",
+       .value = std::format("{:.0f} kg",
+                            bodyMassKilograms(height, rating(stats.strength))),
+       .source =
+           "bodyMassKilograms: height squared x BMI 17 (Strength 1) to 31 (99)",
+       .wip = "a proxy until the game carries weight"});
+  entries.push_back(
+      {.what = "Jumping reach stat",
+       .value = std::format("{:.0f}", jumpRating * 100.0F),
+       .source = "derivedRatingOnHeight: height + the jump's blend",
+       .wip = ""});
 
   // ---- The painter ---------------------------------------------------------
   ImDrawList* draw = ImGui::GetWindowDrawList();
@@ -526,20 +622,24 @@ void TrueViewScene::renderCanvas(ImVec2 size)
                      true);
   draw->AddRectFilled(origin, ImVec2(origin.x + area.x, origin.y + area.y),
                       Page::DARK);
-  const Vec3 target{0.0f, 0.0f, camera.targetHeight};
-  const Vec3 eye{target.x + camera.distance * std::cos(camera.pitch) *
-                                std::cos(camera.yaw),
-                 target.y + camera.distance * std::cos(camera.pitch) *
-                                std::sin(camera.yaw),
-                 target.z + camera.distance * std::sin(camera.pitch)};
+  const Vec3 target{.x = 0.0F, .y = 0.0F, .z = camera.targetHeight};
+  const Vec3 eye{.x = target.x + (camera.distance * std::cos(camera.pitch) *
+                                  std::cos(camera.yaw)),
+                 .y = target.y + (camera.distance * std::cos(camera.pitch) *
+                                  std::sin(camera.yaw)),
+                 .z = target.z + (camera.distance * std::sin(camera.pitch))};
   const RenderMath::Projection projection = RenderMath::Projection::make(
-      eye, target, 0.75f, 0.05f, 200.0f, {origin.x, origin.y, area.x, area.y});
+      eye, target, 0.75F, 0.05F, 200.0F,
+      {.x = origin.x, .y = origin.y, .width = area.x, .height = area.y});
   TrueView::Painter paint;
   paint.draw = draw;
   paint.project = [&projection](Vec3 point, ImVec2& out)
   {
     RenderMath::ScreenPoint screen;
-    if (!projection.project(point, screen)) return false;
+    if (!projection.project(point, screen))
+    {
+      return false;
+    }
     out = {screen.x, screen.y};
     return true;
   };
@@ -548,10 +648,10 @@ void TrueViewScene::renderCanvas(ImVec2 size)
   for (int metre = -3; metre <= 3; ++metre)
   {
     const float m = static_cast<float>(metre);
-    paint.line({m, -3.0f, 0.0f}, {m, 3.0f, 0.0f}, colour(125, 109, 91, 0.35f),
-               1.0f);
-    paint.line({-3.0f, m, 0.0f}, {3.0f, m, 0.0f}, colour(125, 109, 91, 0.35f),
-               1.0f);
+    paint.line({.x = m, .y = -3.0F, .z = 0.0F}, {.x = m, .y = 3.0F, .z = 0.0F},
+               colour(125, 109, 91, 0.35F), 1.0F);
+    paint.line({.x = -3.0F, .y = m, .z = 0.0F}, {.x = 3.0F, .y = m, .z = 0.0F},
+               colour(125, 109, 91, 0.35F), 1.0F);
   }
 
   std::vector<TrueView::Label> labels;
@@ -559,29 +659,32 @@ void TrueViewScene::renderCanvas(ImVec2 size)
                      TrueView::Detail::FULL, &labels, &entries);
   TrueView::drawLabels(paint, labels);
 
-  const float textWidth = std::max(scale, area.x - 20 * scale);
+  const float textWidth = std::max(scale, area.x - (20 * scale));
   const float line =
       ImGui::CalcTextSize(caption.c_str(), nullptr, false, textWidth).y +
-      6 * scale;
+      (6 * scale);
   draw->AddText(ImGui::GetFont(), ImGui::GetFontSize(),
-                ImVec2(origin.x + 10 * scale, origin.y + 8 * scale),
+                ImVec2(origin.x + (10 * scale), origin.y + (8 * scale)),
                 Page::CREAM, caption.c_str(), nullptr, textWidth);
   if (getUpShare >= 0)
   {
-    const ImVec2 bar(origin.x + 10 * scale, origin.y + 8 * scale + line);
+    const ImVec2 bar(origin.x + (10 * scale), origin.y + (8 * scale) + line);
     const float barWidth = std::min(200 * scale, textWidth);
-    draw->AddRect(bar, ImVec2(bar.x + barWidth, bar.y + 8 * scale),
+    draw->AddRect(bar, ImVec2(bar.x + barWidth, bar.y + (8 * scale)),
                   Page::CREAM);
     draw->AddRectFilled(
-        bar, ImVec2(bar.x + barWidth * getUpShare, bar.y + 8 * scale),
+        bar, ImVec2(bar.x + (barWidth * getUpShare), bar.y + (8 * scale)),
         Page::LIME);
   }
   if (body.airborne)
+  {
     draw->AddText(
         ImGui::GetFont(), ImGui::GetFontSize(),
-        ImVec2(origin.x + 10 * scale, origin.y + 8 * scale + line), Page::MUTED,
+        ImVec2(origin.x + (10 * scale), origin.y + (8 * scale) + line),
+        Page::MUTED,
         "In the air only his head plays the ball (the touch sweep skips him)",
         nullptr, textWidth);
+  }
   draw->PopClipRect();
   Page::endCard(scale);
 }

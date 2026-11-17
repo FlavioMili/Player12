@@ -90,7 +90,7 @@ class EngineDebugger
       true, true, true, true, true, true, true, true};
   bool follow = true;
   /** Fractional wheel input accumulates until a whole row can move. */
-  float wheel_rows = 0.0f;
+  float wheel_rows = 0.0F;
 
   /** Entries passing the filters, and what they were computed for. */
   std::vector<std::size_t> visible;

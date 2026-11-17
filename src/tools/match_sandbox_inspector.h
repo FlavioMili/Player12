@@ -66,7 +66,8 @@ class DebugInspector
 
  private:
   static constexpr std::size_t JOBS = SandboxRecorder::JOB_COUNT;
-  static constexpr std::uint64_t NONE = std::numeric_limits<std::uint64_t>::max();
+  static constexpr std::uint64_t NONE =
+      std::numeric_limits<std::uint64_t>::max();
 
   /** The planner's state as of a tick, rebuilt from the log. */
   struct AsOf
@@ -98,7 +99,8 @@ class DebugInspector
 
   /** Brings `asOf` to the tick; hold the recorder's lock. */
   void refresh(const SandboxRecorder& recorder, std::uint64_t tick);
-  [[nodiscard]] SandboxRecorder::Job jobOf(PlayerID player, bool homeTeam) const;
+  [[nodiscard]] SandboxRecorder::Job jobOf(PlayerID player,
+                                           bool homeTeam) const;
   void selectable(const SandboxRecorder& recorder, PlayerID player);
   void renderIntentStrip(const SandboxRecorder& recorder, PlayerID player,
                          std::uint64_t cursor, std::uint64_t end);

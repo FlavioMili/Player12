@@ -12,8 +12,8 @@
 #include <string>
 
 #include "gui/gui_scene.h"
-#include "gui/render/match_render_snapshot.h"
 #include "gui/render/imatch_renderer.h"
+#include "gui/render/match_render_snapshot.h"
 #include "tools/match_sandbox_debugger.h"
 #include "tools/match_sandbox_inspector.h"
 #include "tools/match_sandbox_session.h"
@@ -61,8 +61,8 @@ class ZoneSessionScene : public GUIScene
   std::string saveMessage;
   std::unique_ptr<SessionRun> run;
   bool paused = false;
-  float speed = 1.0f;
-  float accumulator = 0.0f;
+  float speed = 1.0F;
+  float accumulator = 0.0F;
   bool view3d = false;
   /** The squad player picked for the changing room. */
   std::size_t restPick = 0;

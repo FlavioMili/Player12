@@ -8,11 +8,10 @@
 
 #pragma once
 
-#include <nlohmann/json.hpp>
-
 #include <array>
 #include <cstdint>
 #include <memory>
+#include <nlohmann/json.hpp>
 #include <optional>
 #include <string>
 #include <utility>
@@ -93,7 +92,7 @@ struct MatchSetup
   std::uint64_t worldSeed = 0;
   std::uint32_t matchSeed = 0;
   std::array<Side, 2> sides;
-  std::array<float, 2> familiarity{1.0f, 1.0f};
+  std::array<float, 2> familiarity{1.0F, 1.0F};
   /** Starting condition (0-1) of every player in both matchday squads. */
   std::vector<std::pair<PlayerID, float>> conditions;
   /** Medical staff minute limits of the managed (home) side. */
@@ -114,10 +113,11 @@ struct MatchSetup
   BallPhysicsId ballPhysics = BallPhysicsId::AARDVARK;
   /** The match's out-of-play version (older recordings: Aardvark). */
   OutOfPlayId outOfPlay = OutOfPlayId::AARDVARK;
-  /** Missing in old setups/recordings: legacy possession, independent of bodies. */
+  /** Missing in old setups/recordings: legacy possession, independent of
+   * bodies. */
   PossessionId possession = PossessionId::AARDVARK;
   /** The match's home advantage (older recordings: 1, the full edge). */
-  float homeAdvantage = 1.0f;
+  float homeAdvantage = 1.0F;
 
   /**
    * The match about to be played between two clubs of the current world,

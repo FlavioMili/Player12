@@ -27,11 +27,11 @@
 
 struct ShotMapSpec
 {
-  float lineFrom = 4.0f;
-  float lineTo = 34.0f;
+  float lineFrom = 4.0F;
+  float lineTo = 34.0F;
   int lineCount = 11;
-  float sideFrom = -20.0f;
-  float sideTo = 20.0f;
+  float sideFrom = -20.0F;
+  float sideTo = 20.0F;
   int sideCount = 11;
   int repeats = 40;
   std::uint32_t firstSeed = 1;
@@ -42,8 +42,8 @@ struct ShotMapSpec
 /** One spot of the grid. */
 struct ShotMapCell
 {
-  float line = 0.0f;
-  float side = 0.0f;
+  float line = 0.0F;
+  float side = 0.0F;
   int runs = 0;
   int shots = 0;
   int goals = 0;
@@ -67,8 +67,8 @@ struct CalibrationBin
 /** A single shot, for the choice-mode scatter. */
 struct ShotMapShot
 {
-  float line = 0.0f;
-  float side = 0.0f;
+  float line = 0.0F;
+  float side = 0.0F;
   bool goal = false;
 };
 

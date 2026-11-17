@@ -71,8 +71,8 @@ class TeamTalkDialog
     std::string description;
     std::string hint;
     ImVec4 hint_color;
-    float positive = 0.0f;
-    float negative = 0.0f;
+    float positive = 0.0F;
+    float negative = 0.0F;
   };
 
   void renderOptions(GameController& controller);

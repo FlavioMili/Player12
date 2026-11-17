@@ -96,8 +96,8 @@ class MatchReview
   MatchRenderSnapshot snapshot;
 
   bool playing = false;
-  float playSpeed = 1.0f;
-  float playAccumulator = 0.0f;
+  float playSpeed = 1.0F;
+  float playAccumulator = 0.0F;
 
   // Timeline, built incrementally from the recorder's log.
   std::size_t timelineEntries = 0;

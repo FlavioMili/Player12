@@ -22,7 +22,10 @@ const Player* MatchEngine::getTouchClaimant() const
 
 const Player* MatchEngine::getConfirmedController() const
 {
-  if (state != MatchState::PLAYING) return nullptr;
+  if (state != MatchState::PLAYING)
+  {
+    return nullptr;
+  }
   const bool foot = possessionId == PossessionId::BINTURONG
                         ? getPossessionState().footControlled
                         : getPossessionState().touchCollected;
@@ -94,15 +97,19 @@ PossessionSnapshot MatchEngine::getPossessionSnapshot() const
   view.claimUnrecoverableSeconds =
       getPossessionState().claimUnrecoverableSeconds;
   if (possessionId == PossessionId::BINTURONG)
+  {
     view.footControlled = getPossessionState().footControlled;
+  }
   view.dropping = getPossessionState().touchDropping;
   view.inHands = getPossessionState().inKeeperHands;
   view.pass = getPossessionState().isPass;
   view.shot = getPossessionState().isShot;
   view.meetFor = id(ball.meetFor);
   view.pathSince = getPossessionState().pathSince;
-  if (getPossessionState().possessedBy)
+  if (getPossessionState().possessedBy != nullptr)
+  {
     for (const MatchPlayer& player : players)
+    {
       if (player.player == getPossessionState().possessedBy)
       {
         view.ownerKnown = true;
@@ -112,6 +119,8 @@ PossessionSnapshot MatchEngine::getPossessionSnapshot() const
         view.ownerGapMetres = distance(player.position, ball.position);
         break;
       }
+    }
+  }
   return interpretLegacyPossession(view);
 }
 
@@ -124,15 +133,19 @@ void MatchEngine::observePossession(PossessionObservation observation,
                                     PossessionId executedVersion)
 {
   if (MatchRecorder* recorder = getRecorder();
-      recorder && recorder->wantsPossession())
+      (recorder != nullptr) && recorder->wantsPossession())
+  {
     recorder->onPossessionObservation(*this, observation,
                                       getPossessionSnapshot(), executedVersion);
+  }
 }
 
 void MatchEngine::observePossessionGate(const MatchPlayer& player,
                                         PossessionContactGate gate)
 {
   if (MatchRecorder* recorder = getRecorder();
-      recorder && recorder->wantsPossession())
+      (recorder != nullptr) && recorder->wantsPossession())
+  {
     recorder->onPossessionContactGate(*this, player, gate);
+  }
 }

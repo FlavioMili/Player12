@@ -62,8 +62,8 @@ class DrillScene : public GUIScene
   std::function<void(MatchEngine&)> prepareRun;
   std::unique_ptr<DrillRun> run;
   bool paused = false;
-  float speed = 1.0f;
-  float accumulator = 0.0f;
+  float speed = 1.0F;
+  float accumulator = 0.0F;
   bool newSeedEachRun = false;
   int analysisTab = 0;
   /** The pitch drawn in 3D (broadcast camera) instead of 2D. */

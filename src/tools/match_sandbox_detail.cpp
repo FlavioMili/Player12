@@ -20,24 +20,33 @@ constexpr std::uint64_t MAX_STRETCH_TICKS = 3 * SandboxRecorder::KEYFRAME_TICKS;
 void DetailRecorder::onDecisionDetail(const MatchEngine& engine,
                                       const MatchDecisionDetail& detail)
 {
-  decisions.push_back(
-      {engine.getSimulatedSteps(), engine.getMatchTimeMinutes(), detail});
+  decisions.push_back({.tick = engine.getSimulatedSteps(),
+                       .minute = engine.getMatchTimeMinutes(),
+                       .detail = detail});
 }
 
 void DetailRecorder::onRankingDetail(const MatchEngine& engine,
                                      const MatchRankingDetail& detail)
 {
-  if (!keepRankings) return;
-  rankings.push_back(
-      {engine.getSimulatedSteps(), engine.getMatchTimeMinutes(), detail});
+  if (!keepRankings)
+  {
+    return;
+  }
+  rankings.push_back({.tick = engine.getSimulatedSteps(),
+                      .minute = engine.getMatchTimeMinutes(),
+                      .detail = detail});
 }
 
 void DetailRecorder::onDuelDetail(const MatchEngine& engine,
                                   const MatchDuelDetail& detail)
 {
-  if (!keepDuels) return;
-  duels.push_back(
-      {engine.getSimulatedSteps(), engine.getMatchTimeMinutes(), detail});
+  if (!keepDuels)
+  {
+    return;
+  }
+  duels.push_back({.tick = engine.getSimulatedSteps(),
+                   .minute = engine.getMatchTimeMinutes(),
+                   .detail = detail});
 }
 
 void DetailRecorder::clear()
@@ -55,10 +64,12 @@ void DetailSession::reset()
   diverged.reset();
 }
 
-void DetailSession::ensure(const SandboxRecorder& recording,
-                           std::uint64_t tick)
+void DetailSession::ensure(const SandboxRecorder& recording, std::uint64_t tick)
 {
-  if (engine && engine->getSimulatedSteps() == tick) return;
+  if (engine && engine->getSimulatedSteps() == tick)
+  {
+    return;
+  }
   // Moving forward within a short stretch continues it.
   if (engine && engine->getSimulatedSteps() < tick &&
       tick - start <= MAX_STRETCH_TICKS)
@@ -66,7 +77,9 @@ void DetailSession::ensure(const SandboxRecorder& recording,
     if (const auto at = MatchRewind::stepForward(
             recording, *engine, tick - engine->getSimulatedSteps());
         at && !diverged)
+    {
       diverged = at;
+    }
     return;
   }
   // Otherwise rebuild from the saved copy before the tick, recording.

@@ -25,13 +25,21 @@ MatchRewind::Result MatchRewind::rebuild(const SandboxRecorder& recording,
   {
     const auto guard = recording.lock();
     const auto& keyframes = recording.keyframes();
-    if (keyframes.empty()) return {};
+    if (keyframes.empty())
+    {
+      return {};
+    }
     // The latest saved copy at or before the tick (the first one for an
     // earlier tick: nothing before it was saved).
     start = keyframes.front().engine;
     const std::uint64_t latest = tick > history ? tick - history : 0;
     for (const auto& keyframe : keyframes)
-      if (keyframe.tick <= latest) start = keyframe.engine;
+    {
+      if (keyframe.tick <= latest)
+      {
+        start = keyframe.engine;
+      }
+    }
     commands = recording.commands();
     inputs = recording.inputs();
     lastTick = recording.lastTick();
@@ -44,9 +52,10 @@ MatchRewind::Result MatchRewind::rebuild(const SandboxRecorder& recording,
   result.engine->setRecorder(attach);
   const std::uint64_t target = std::min(tick, lastTick);
   if (result.engine->getSimulatedSteps() < target)
+  {
     result.divergedAt = stepForward(
-        recording, *result.engine,
-        target - result.engine->getSimulatedSteps());
+        recording, *result.engine, target - result.engine->getSimulatedSteps());
+  }
   return result;
 }
 
@@ -58,7 +67,10 @@ std::optional<std::uint64_t> MatchRewind::stepForward(
        step < ticks && engine.getState() != MatchState::FULL_TIME; ++step)
   {
     engine.advance(MatchTuning::Timing::FIXED_STEP_SECONDS);
-    if (diverged) continue;
+    if (diverged)
+    {
+      continue;
+    }
     const std::uint64_t at = engine.getSimulatedSteps();
     std::optional<std::uint64_t> expected;
     {
@@ -66,7 +78,9 @@ std::optional<std::uint64_t> MatchRewind::stepForward(
       expected = recording.checksum(at);
     }
     if (expected && *expected != SandboxRecorder::stateChecksum(engine))
+    {
       diverged = at;
+    }
   }
   return diverged;
 }

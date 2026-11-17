@@ -33,11 +33,11 @@
 
 namespace MatchEngineInternal
 {
-constexpr float EPSILON = 0.00001f;
+constexpr float EPSILON = 0.00001F;
 
-constexpr float TWO_PI = 2.0f * std::numbers::pi_v<float>;
+constexpr float TWO_PI = 2.0F * std::numbers::pi_v<float>;
 /** Share of the drag-free horizontal travel a lofted ball really covers. */
-constexpr float AIR_TRAVEL_SHARE = 0.88f;
+constexpr float AIR_TRAVEL_SHARE = 0.88F;
 constexpr double HIGHLIGHT_LEAD = MatchTuning::Playback::HIGHLIGHT_LEAD_SECONDS;
 constexpr double HIGHLIGHT_TAIL = MatchTuning::Playback::HIGHLIGHT_TAIL_SECONDS;
 constexpr double HIGHLIGHT_MERGE_GAP = MatchTuning::Playback::MERGE_GAP_SECONDS;
@@ -54,23 +54,24 @@ constexpr auto RUN_TIMING_EPOCH_STEPS =
 struct DirectionMix
 {
   std::size_t below = 0;
-  float onward = 0.0f;
+  float onward = 0.0F;
 };
 inline DirectionMix directionMix(float angle)
 {
-  constexpr float STEP = 0.25f * 3.14159265f;
-  const float steps = std::clamp(angle / STEP, 0.0f, 4.0f);
-  const std::size_t below = std::min<std::size_t>(static_cast<std::size_t>(steps), 3);
-  return {below, steps - static_cast<float>(below)};
+  constexpr float STEP = 0.25F * 3.14159265F;
+  const float steps = std::clamp(angle / STEP, 0.0F, 4.0F);
+  const std::size_t below =
+      std::min<std::size_t>(static_cast<std::size_t>(steps), 3);
+  return {.below = below, .onward = steps - static_cast<float>(below)};
 }
 /** A direction figure at a mix, blended between its two directions. */
 template <typename Table>
 inline float directionValue(const Table& table, DirectionMix mix)
 {
   return static_cast<float>(table[mix.below]) +
-         (static_cast<float>(table[mix.below + 1]) -
-          static_cast<float>(table[mix.below])) *
-             mix.onward;
+         ((static_cast<float>(table[mix.below + 1]) -
+           static_cast<float>(table[mix.below])) *
+          mix.onward);
 }
 
 /** A spot kept on the pitch: where a player means to be, receive or put
@@ -115,14 +116,13 @@ inline PitchPoint keepOutOfGoalFrames(const MatchPitch& pitch, PitchPoint from,
 {
   using P = MatchTuning::Pitch;
   constexpr float R = MatchTuning::Body::RADIUS_METRES;
-  const float W =
-      pitch.goal.halfWidth + 0.5f * pitch.goal.post;
+  const float W = pitch.goal.halfWidth + (0.5F * pitch.goal.post);
   const float D = pitch.goal.netDepth;
   // Local metres at the nearer goal: u behind its line, v across from its
   // centre.
   const bool right = to.x > pitch.atX(P::CENTRE);
-  const float lineX = right ? pitch.length : 0.0f;
-  const float behind = right ? 1.0f : -1.0f;
+  const float lineX = right ? pitch.length : 0.0F;
+  const float behind = right ? 1.0F : -1.0F;
   const float u0 = (from.x - lineX) * behind;
   const float v0 = from.y - pitch.atY(P::CENTRE);
   float u = (to.x - lineX) * behind;
@@ -130,14 +130,19 @@ inline PitchPoint keepOutOfGoalFrames(const MatchPitch& pitch, PitchPoint from,
   // Nowhere near this frame, before or after: nothing to meet.
   if (std::max(u0, u) < -R || std::min(u0, u) > D + R ||
       std::min(v0, v) > W + R || std::max(v0, v) < -(W + R))
+  {
     return to;
+  }
   bool movedU = false;
   bool movedV = false;
   // The side nets, post to back net.
   for (const float side : {-W, W})
   {
-    if (u < 0.0f || u > D) continue;
-    const float keep = v0 > side || (v0 == side && side > 0.0f) ? 1.0f : -1.0f;
+    if (u < 0.0F || u > D)
+    {
+      continue;
+    }
+    const float keep = v0 > side || (v0 == side && side > 0.0F) ? 1.0F : -1.0F;
     if ((v - side) * keep < R)
     {
       v = side + keep * R;
@@ -147,7 +152,7 @@ inline PitchPoint keepOutOfGoalFrames(const MatchPitch& pitch, PitchPoint from,
   // The back net.
   if (std::abs(v) <= W)
   {
-    const float keep = u0 >= D ? 1.0f : -1.0f;
+    const float keep = u0 >= D ? 1.0F : -1.0F;
     if ((u - D) * keep < R)
     {
       u = D + keep * R;
@@ -155,25 +160,34 @@ inline PitchPoint keepOutOfGoalFrames(const MatchPitch& pitch, PitchPoint from,
     }
   }
   // The posts and the back corners: round them.
-  for (const float cornerU : {0.0f, D})
+  for (const float cornerU : {0.0F, D})
+  {
     for (const float cornerV : {-W, W})
     {
       const float du = u - cornerU;
       const float dv = v - cornerV;
-      const float gap = std::sqrt(du * du + dv * dv);
-      if (gap >= R) continue;
+      const float gap = std::sqrt((du * du) + (dv * dv));
+      if (gap >= R)
+      {
+        continue;
+      }
       const float fromU = u0 - cornerU;
       const float fromV = v0 - cornerV;
-      const float fromGap = std::sqrt(fromU * fromU + fromV * fromV);
+      const float fromGap = std::sqrt((fromU * fromU) + (fromV * fromV));
       // On it: back out the way he came (or out of the goal).
-      const float awayU = gap > 1e-4f ? du / gap : fromGap > 1e-4f ? fromU / fromGap : -1.0f;
-      const float awayV = gap > 1e-4f ? dv / gap : fromGap > 1e-4f ? fromV / fromGap : 0.0f;
+      const float awayU = gap > 1e-4F       ? du / gap
+                          : fromGap > 1e-4F ? fromU / fromGap
+                                            : -1.0F;
+      const float awayV = gap > 1e-4F       ? dv / gap
+                          : fromGap > 1e-4F ? fromV / fromGap
+                                            : 0.0F;
       u = cornerU + awayU * R;
       v = cornerV + awayV * R;
       movedU = true;
       movedV = true;
     }
-  return PitchPoint{movedU ? lineX + u * behind : to.x,
+  }
+  return PitchPoint{movedU ? lineX + (u * behind) : to.x,
                     movedV ? pitch.atY(P::CENTRE) + v : to.y};
 }
 
@@ -192,17 +206,23 @@ inline bool keepOffWall(bool alongX, float plane, float low, float high,
   float& across1 = alongX ? to.y : to.x;
   const float along0 = alongX ? from.x : from.y;
   const float along1 = alongX ? to.x : to.y;
-  const float keep = across0 < plane ? -1.0f : 1.0f;
-  const float face = plane + keep * R;
-  if ((across1 - face) * keep >= 0.0f) return false;
+  const float keep = across0 < plane ? -1.0F : 1.0F;
+  const float face = plane + (keep * R);
+  if ((across1 - face) * keep >= 0.0F)
+  {
+    return false;
+  }
   // Where along the wall his path reaches its face (where he starts, if he
   // is already over it).
   const float span = across1 - across0;
-  const float t = (across0 - face) * keep > 0.0f && std::abs(span) > 1e-6f
+  const float t = (across0 - face) * keep > 0.0F && std::abs(span) > 1e-6F
                       ? (face - across0) / span
-                      : 0.0f;
-  const float along = along0 + (along1 - along0) * t;
-  if (along < low || along > high) return false;
+                      : 0.0F;
+  const float along = along0 + ((along1 - along0) * t);
+  if (along < low || along > high)
+  {
+    return false;
+  }
   across1 = face;
   return true;
 }
@@ -214,15 +234,22 @@ inline bool keepOffWallEnd(Vector2F end, Vector2F from, Vector2F& to)
   constexpr float R = MatchTuning::Body::RADIUS_METRES;
   const float dx = to.x - end.x;
   const float dy = to.y - end.y;
-  const float gap = std::sqrt(dx * dx + dy * dy);
-  if (gap >= R) return false;
+  const float gap = std::sqrt((dx * dx) + (dy * dy));
+  if (gap >= R)
+  {
+    return false;
+  }
   const float fromX = from.x - end.x;
   const float fromY = from.y - end.y;
-  const float fromGap = std::sqrt(fromX * fromX + fromY * fromY);
+  const float fromGap = std::sqrt((fromX * fromX) + (fromY * fromY));
   // On it: back out the way he came.
-  const float awayX = gap > 1e-4f ? dx / gap : fromGap > 1e-4f ? fromX / fromGap : 0.0f;
-  const float awayY = gap > 1e-4f ? dy / gap : fromGap > 1e-4f ? fromY / fromGap : -1.0f;
-  to = {end.x + awayX * R, end.y + awayY * R};
+  const float awayX = gap > 1e-4F       ? dx / gap
+                      : fromGap > 1e-4F ? fromX / fromGap
+                                        : 0.0F;
+  const float awayY = gap > 1e-4F       ? dy / gap
+                      : fromGap > 1e-4F ? fromY / fromGap
+                                        : -1.0F;
+  to = {.x = end.x + (awayX * R), .y = end.y + (awayY * R)};
   return true;
 }
 
@@ -247,17 +274,27 @@ inline PitchPoint keepOffGround(const MatchPitch& pitch, PitchPoint from,
   {
     if (from.x >= pitch.bodyMinX && from.x <= pitch.bodyMaxX &&
         from.y >= pitch.bodyMinY && from.y <= pitch.bodyMaxY)
+    {
       return PitchPoint{std::clamp(to.x, pitch.bodyMinX, pitch.bodyMaxX),
                         std::clamp(to.y, pitch.bodyMinY, pitch.bodyMaxY)};
+    }
     PitchPoint out = to;
     if (from.y > pitch.bodyMaxY)
+    {
       out.y = std::max(out.y, pitch.width + R);
+    }
     else if (from.y < pitch.bodyMinY)
+    {
       out.y = std::min(out.y, -R);
+    }
     else if (from.x > pitch.bodyMaxX)
+    {
       out.x = std::max(out.x, pitch.length + R);
+    }
     else
+    {
       out.x = std::min(out.x, -R);
+    }
     return out;
   }
   // Inside the boards, before and after: nothing to meet.
@@ -266,43 +303,55 @@ inline PitchPoint keepOffGround(const MatchPitch& pitch, PitchPoint from,
     return at.x >= pitch.bodyMinX && at.x <= pitch.bodyMaxX &&
            at.y >= pitch.bodyMinY && at.y <= pitch.bodyMaxY;
   };
-  if (insideBoards(from) && insideBoards(to)) return to;
-  const Vector2F start{from.x, from.y};
-  const Vector2F wanted{to.x, to.y};
+  if (insideBoards(from) && insideBoards(to))
+  {
+    return to;
+  }
+  const Vector2F start{.x = from.x, .y = from.y};
+  const Vector2F wanted{.x = to.x, .y = to.y};
   // The stands' front walls (and the tunnel's far end) all round.
   Vector2F end{
-      std::clamp(wanted.x, -P::STAND_END_METRES + R, pitch.length + P::STAND_END_METRES - R),
-      std::clamp(wanted.y, -P::STAND_SIDE_METRES + R, G.tunnel.y1 - R)};
+      .x = std::clamp(wanted.x, -P::STAND_END_METRES + R,
+                      pitch.length + P::STAND_END_METRES - R),
+      .y = std::clamp(wanted.y, -P::STAND_SIDE_METRES + R, G.tunnel.y1 - R)};
   bool moved = end.x != wanted.x || end.y != wanted.y;
   // The boards: whole along the top and the ends, open along the bottom.
   moved |= keepOffWall(true, -P::BOARDS_SIDE_METRES, -P::BOARDS_END_METRES,
                        pitch.length + P::BOARDS_END_METRES, start, end);
-  for (const float plane : {-P::BOARDS_END_METRES, pitch.length + P::BOARDS_END_METRES})
-    moved |= keepOffWall(false, plane, -P::BOARDS_SIDE_METRES, G.boardsY,
-                         start, end);
+  for (const float plane :
+       {-P::BOARDS_END_METRES, pitch.length + P::BOARDS_END_METRES})
+  {
+    moved |= keepOffWall(false, plane, -P::BOARDS_SIDE_METRES, G.boardsY, start,
+                         end);
+  }
   for (const MatchGround::Span& span : G.bottomBoards)
   {
     moved |= keepOffWall(true, G.boardsY, span.from, span.to, start, end);
-    moved |= keepOffWallEnd({span.from, G.boardsY}, start, end);
-    moved |= keepOffWallEnd({span.to, G.boardsY}, start, end);
+    moved |= keepOffWallEnd({.x = span.from, .y = G.boardsY}, start, end);
+    moved |= keepOffWallEnd({.x = span.to, .y = G.boardsY}, start, end);
   }
   // The dugouts' fronts (their backs are the stand wall).
   for (const MatchGround::Rect& dugout : G.dugouts)
   {
     moved |= keepOffWall(true, dugout.y0, dugout.x0, dugout.x1, start, end);
-    moved |= keepOffWallEnd({dugout.x0, dugout.y0}, start, end);
-    moved |= keepOffWallEnd({dugout.x1, dugout.y0}, start, end);
+    moved |= keepOffWallEnd({.x = dugout.x0, .y = dugout.y0}, start, end);
+    moved |= keepOffWallEnd({.x = dugout.x1, .y = dugout.y0}, start, end);
   }
   // The bottom stand's front wall, open at the tunnel mouth, and the
   // tunnel's sides.
   for (const MatchGround::Span& span : G.bottomStandWall)
+  {
     moved |= keepOffWall(true, G.standY, span.from, span.to, start, end);
+  }
   for (const float side : {G.tunnel.x0, G.tunnel.x1})
   {
     moved |= keepOffWall(false, side, G.tunnel.y0, G.tunnel.y1, start, end);
-    moved |= keepOffWallEnd({side, G.tunnel.y0}, start, end);
+    moved |= keepOffWallEnd({.x = side, .y = G.tunnel.y0}, start, end);
   }
-  if (!moved) return to;
+  if (!moved)
+  {
+    return to;
+  }
   return PitchPoint{end.x != wanted.x ? end.x : to.x,
                     end.y != wanted.y ? end.y : to.y};
 }
@@ -311,8 +360,7 @@ inline PitchPoint keepOffGround(const MatchPitch& pitch, PitchPoint from,
  * play. */
 inline bool deepInTunnel(const MatchPitch& pitch, PitchPoint at)
 {
-  return at.y >
-         pitch.ground.standY + MatchTuning::WalkOut::IN_METRES;
+  return at.y > pitch.ground.standY + MatchTuning::WalkOut::IN_METRES;
 }
 
 /** Where a walker may mean to go: inside the boards, or the tunnel and
@@ -322,8 +370,11 @@ inline PitchPoint clampToReach(const MatchPitch& pitch, PitchPoint at)
   const MatchGround::Layout& G = pitch.ground;
   const float x = at.x;
   const float y = at.y;
-  if (x >= G.tunnel.x0 && x <= G.tunnel.x1 && y >= G.boardsY - 1.0f && y <= G.tunnel.y1)
+  if (x >= G.tunnel.x0 && x <= G.tunnel.x1 && y >= G.boardsY - 1.0F &&
+      y <= G.tunnel.y1)
+  {
     return at;
+  }
   return clampToBoards(pitch, at);
 }
 
@@ -336,20 +387,31 @@ inline Vector2F routeViaTunnel(const MatchPitch& pitch, Vector2F at,
                                Vector2F target)
 {
   const MatchGround::Layout& G = pitch.ground;
-  constexpr float MARGIN = 0.6f;
+  constexpr float MARGIN = 0.6F;
   const auto inLane = [&G](Vector2F p)
-  { return p.x > G.tunnel.x0 && p.x < G.tunnel.x1 && p.y > G.boardsY - 0.5f; };
-  const auto inTunnel = [&G](Vector2F p) { return p.y > G.standY - 0.2f; };
-  const float laneX = std::clamp(at.x, G.tunnel.x0 + MARGIN, G.tunnel.x1 - MARGIN);
+  { return p.x > G.tunnel.x0 && p.x < G.tunnel.x1 && p.y > G.boardsY - 0.5F; };
+  const auto inTunnel = [&G](Vector2F p) { return p.y > G.standY - 0.2F; };
+  const float laneX =
+      std::clamp(at.x, G.tunnel.x0 + MARGIN, G.tunnel.x1 - MARGIN);
   // Coming out: up the tunnel, then through the gap.
-  if (inTunnel(at) && !inTunnel(target)) return {laneX, G.standY - 1.0f};
-  if (inLane(at) && target.y < G.boardsY - 0.5f) return {laneX, G.boardsY - 1.5f};
+  if (inTunnel(at) && !inTunnel(target))
+  {
+    return {.x = laneX, .y = G.standY - 1.0F};
+  }
+  if (inLane(at) && target.y < G.boardsY - 0.5F)
+  {
+    return {.x = laneX, .y = G.boardsY - 1.5F};
+  }
   // Going in: to the gap first, unless already lined up with it.
   if (inTunnel(target) && !inLane(at))
   {
-    const float x = std::clamp(target.x, G.tunnel.x0 + MARGIN, G.tunnel.x1 - MARGIN);
-    const bool lined = std::abs(at.x - x) < 0.5f && at.y > G.boardsY - 3.0f;
-    if (!lined) return {x, G.boardsY - 1.5f};
+    const float x =
+        std::clamp(target.x, G.tunnel.x0 + MARGIN, G.tunnel.x1 - MARGIN);
+    const bool lined = std::abs(at.x - x) < 0.5F && at.y > G.boardsY - 3.0F;
+    if (!lined)
+    {
+      return {.x = x, .y = G.boardsY - 1.5F};
+    }
   }
   return target;
 }
@@ -361,33 +423,41 @@ inline Vector2F routeViaTunnel(const MatchPitch& pitch, Vector2F at,
 inline Vector2F nearestExit(const MatchPitch& pitch, Vector2F at)
 {
   const MatchGround::Layout& G = pitch.ground;
-  const float out = MatchTuning::Body::RADIUS_METRES + 0.3f;
+  const float out = MatchTuning::Body::RADIUS_METRES + 0.3F;
   const std::array<std::pair<float, Vector2F>, 4> exits{{
-      {at.y, {at.x, -out}},
-      {pitch.width - at.y, {at.x, pitch.width + out}},
-      {at.x, {-out, at.y}},
-      {pitch.length - at.x, {pitch.length + out, at.y}},
+      {at.y, {.x = at.x, .y = -out}},
+      {pitch.width - at.y, {.x = at.x, .y = pitch.width + out}},
+      {at.x, {.x = -out, .y = at.y}},
+      {pitch.length - at.x, {.x = pitch.length + out, .y = at.y}},
   }};
-  Vector2F exit = std::ranges::min(exits, {}, &std::pair<float, Vector2F>::first).second;
-  const float CLEAR_OF_POST = pitch.goal.halfWidth + 1.5f;
-  if ((exit.x < 0.0f || exit.x > pitch.length) && std::abs(exit.y - 0.5f * pitch.width) < CLEAR_OF_POST)
-    exit.y = 0.5f * pitch.width + (exit.y < 0.5f * pitch.width ? -CLEAR_OF_POST : CLEAR_OF_POST);
+  Vector2F exit =
+      std::ranges::min(exits, {}, &std::pair<float, Vector2F>::first).second;
+  const float CLEAR_OF_POST = pitch.goal.halfWidth + 1.5F;
+  if ((exit.x < 0.0F || exit.x > pitch.length) &&
+      std::abs(exit.y - (0.5F * pitch.width)) < CLEAR_OF_POST)
+  {
+    exit.y = 0.5F * pitch.width +
+             (exit.y < 0.5F * pitch.width ? -CLEAR_OF_POST : CLEAR_OF_POST);
+  }
   return exit;
 }
 
 /** A body's step from `from` to `to`, where it can physically go: round
  * the pitch (keepOffGround) and out of the goal frames. */
-inline PitchPoint moveBody(const MatchPitch& pitch, PitchPoint from, PitchPoint to)
+inline PitchPoint moveBody(const MatchPitch& pitch, PitchPoint from,
+                           PitchPoint to)
 {
   // A pitch without goals has no frames to meet.
   if (!pitch.goal.present())
+  {
     return keepOffGround(pitch, from, to);
+  }
   return keepOutOfGoalFrames(pitch, from, keepOffGround(pitch, from, to));
 }
 
 inline float length(Vector2F vector)
 {
-  return std::sqrt(vector.x * vector.x + vector.y * vector.y);
+  return std::sqrt((vector.x * vector.x) + (vector.y * vector.y));
 }
 
 /**
@@ -398,20 +468,29 @@ inline float fastAtan2(float y, float x)
 {
   const float absX = std::abs(x);
   const float absY = std::abs(y);
-  if (absX < 1e-12f && absY < 1e-12f) return 0.0f;
+  if (absX < 1e-12F && absY < 1e-12F)
+  {
+    return 0.0F;
+  }
   const float ratio = std::min(absX, absY) / std::max(absX, absY);
   const float squared = ratio * ratio;
   float angle =
-      ((-0.0464964749f * squared + 0.15931422f) * squared - 0.327622764f) *
-          squared * ratio +
+      (((-0.0464964749F * squared + 0.15931422F) * squared - 0.327622764F) *
+       squared * ratio) +
       ratio;
-  if (absY > absX) angle = 1.57079637f - angle;
-  if (x < 0.0f) angle = 3.14159274f - angle;
-  return y < 0.0f ? -angle : angle;
+  if (absY > absX)
+  {
+    angle = 1.57079637F - angle;
+  }
+  if (x < 0.0F)
+  {
+    angle = 3.14159274F - angle;
+  }
+  return y < 0.0F ? -angle : angle;
 }
 
 constexpr float INVERSE_FATIGUE_RANGE =
-    1.0f / (1.0f - MatchTuning::Player::MINIMUM_STAMINA);
+    1.0F / (1.0F - MatchTuning::Player::MINIMUM_STAMINA);
 
 /** Distance in metres between two points. */
 inline float distance(PitchPoint first, PitchPoint second)
@@ -422,8 +501,11 @@ inline float distance(PitchPoint first, PitchPoint second)
 inline Vector2F normalized(Vector2F vector)
 {
   const float magnitude = length(vector);
-  if (magnitude <= EPSILON) return {0.0f, 0.0f};
-  return {vector.x / magnitude, vector.y / magnitude};
+  if (magnitude <= EPSILON)
+  {
+    return {.x = 0.0F, .y = 0.0F};
+  }
+  return {.x = vector.x / magnitude, .y = vector.y / magnitude};
 }
 
 /** Unit direction on the ground (metric) from one point to another. */
@@ -435,15 +517,15 @@ inline Vector2F metricDirection(PitchPoint from, PitchPoint to)
 inline float uniform01(std::mt19937& engine)
 {
   // Portable mapping of the 32-bit output to [0, 1) (24 bits of mantissa).
-  return static_cast<float>(engine() >> 8U) * 0x1p-24f;
+  return static_cast<float>(engine() >> 8U) * 0x1p-24F;
 }
 
 /** Standard normal sample (Box-Muller) from portable uniforms. */
 inline float gaussian(std::mt19937& engine)
 {
-  const float first = std::max(uniform01(engine), 1e-7f);
+  const float first = std::max(uniform01(engine), 1e-7F);
   const float second = uniform01(engine);
-  return std::sqrt(-2.0f * std::log(first)) * std::cos(TWO_PI * second);
+  return std::sqrt(-2.0F * std::log(first)) * std::cos(TWO_PI * second);
 }
 
 inline bool stateClockRuns(MatchState state)
@@ -472,13 +554,15 @@ inline bool isHighlightTrigger(MatchEventType type)
 inline bool inPenaltyArea(const MatchPitch& pitch, PitchPoint position,
                           bool defendingHome)
 {
-  const float HALF_WIDTH =
-      MatchTuning::Pitch::PENALTY_AREA_HALF_WIDTH_METRES;
+  const float HALF_WIDTH = MatchTuning::Pitch::PENALTY_AREA_HALF_WIDTH_METRES;
   if (std::abs(position.y - pitch.atY(MatchTuning::Pitch::CENTRE)) > HALF_WIDTH)
+  {
     return false;
+  }
   return defendingHome
              ? position.x <= MatchTuning::Pitch::PENALTY_AREA_DEPTH_METRES
-             : position.x >= pitch.length - MatchTuning::Pitch::PENALTY_AREA_DEPTH_METRES;
+             : position.x >=
+                   pitch.length - MatchTuning::Pitch::PENALTY_AREA_DEPTH_METRES;
 }
 
 inline bool isDefensiveRole(PlayerRole role)
@@ -496,11 +580,19 @@ inline bool isAttackingRole(PlayerRole role)
 /** Coarse role group used to pick like-for-like substitutes. */
 inline int roleGroup(PlayerRole role)
 {
-  if (role == PlayerRole::GK) return 0;
+  if (role == PlayerRole::GK)
+  {
+    return 0;
+  }
   if (role == PlayerRole::CB || role == PlayerRole::LB ||
       role == PlayerRole::RB)
+  {
     return 1;
-  if (isAttackingRole(role)) return 3;
+  }
+  if (isAttackingRole(role))
+  {
+    return 3;
+  }
   return 2;
 }
 
@@ -670,7 +762,8 @@ inline float MatchEngine::distance(PitchPoint first, PitchPoint second) const
 {
   return MatchEngineInternal::distance(first, second);
 }
-inline Vector2F MatchEngine::metricDirection(PitchPoint from, PitchPoint to) const
+inline Vector2F MatchEngine::metricDirection(PitchPoint from,
+                                             PitchPoint to) const
 {
   return MatchEngineInternal::metricDirection(from, to);
 }
@@ -713,11 +806,13 @@ inline PitchPoint MatchEngine::clampToReach(PitchPoint at) const
 {
   return MatchEngineInternal::clampToReach(pitch, at);
 }
-inline PitchPoint MatchEngine::keepOutOfGoalFrames(PitchPoint from, PitchPoint to) const
+inline PitchPoint MatchEngine::keepOutOfGoalFrames(PitchPoint from,
+                                                   PitchPoint to) const
 {
   return MatchEngineInternal::keepOutOfGoalFrames(pitch, from, to);
 }
-inline PitchPoint MatchEngine::keepOffGround(PitchPoint from, PitchPoint to) const
+inline PitchPoint MatchEngine::keepOffGround(PitchPoint from,
+                                             PitchPoint to) const
 {
   return MatchEngineInternal::keepOffGround(pitch, from, to);
 }
@@ -739,7 +834,8 @@ inline Vector2F MatchEngine::nearestExit(Vector2F at) const
 {
   return MatchEngineInternal::nearestExit(pitch, at);
 }
-inline bool MatchEngine::inPenaltyArea(PitchPoint position, bool defendingHome) const
+inline bool MatchEngine::inPenaltyArea(PitchPoint position,
+                                       bool defendingHome) const
 {
   return MatchEngineInternal::inPenaltyArea(pitch, position, defendingHome);
 }

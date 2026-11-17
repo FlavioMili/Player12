@@ -41,7 +41,10 @@ enum class GoalKind : std::uint8_t
 struct PitchGoal
 {
   GoalKind kind = GoalKind::FULL;
-  [[nodiscard]] constexpr bool present() const { return kind != GoalKind::NONE; }
+  [[nodiscard]] constexpr bool present() const
+  {
+    return kind != GoalKind::NONE;
+  }
   /** From the centre to the inside of a post. */
   float halfWidth = MatchTuning::Shooting::GOAL_HALF_WIDTH_METRES;
   /** Up to the underside of the crossbar. */
@@ -63,10 +66,11 @@ struct PitchGoal
       constexpr float FULL_HEIGHT = MatchTuning::Units::CROSSBAR_HEIGHT_METRES;
       PitchGoal goal;
       goal.kind = kind;
-      goal.halfWidth = 0.5f * width;
+      goal.halfWidth = 0.5F * width;
       goal.crossbar = height;
       goal.post = MatchTuning::Pitch::GOAL_POST_METRES * height / FULL_HEIGHT;
-      goal.netDepth = MatchTuning::Pitch::GOAL_NET_DEPTH_METRES * height / FULL_HEIGHT;
+      goal.netDepth =
+          MatchTuning::Pitch::GOAL_NET_DEPTH_METRES * height / FULL_HEIGHT;
       return goal;
     };
     switch (kind)
@@ -77,17 +81,23 @@ struct PitchGoal
         none.kind = GoalKind::NONE;
         return none;
       }
-      case GoalKind::FULL: return PitchGoal{};
-      case GoalKind::YOUTH_9V9: return sized(4.88f, 2.13f);
-      case GoalKind::YOUTH_7V7: return sized(3.66f, 1.83f);
-      case GoalKind::FUTSAL: return sized(3.0f, 2.0f);
-      case GoalKind::FIVE_A_SIDE: return sized(3.66f, 1.22f);
-      case GoalKind::SMALL_FRAMED: return sized(1.8f, 1.2f);
+      case GoalKind::FULL:
+        return PitchGoal{};
+      case GoalKind::YOUTH_9V9:
+        return sized(4.88F, 2.13F);
+      case GoalKind::YOUTH_7V7:
+        return sized(3.66F, 1.83F);
+      case GoalKind::FUTSAL:
+        return sized(3.0F, 2.0F);
+      case GoalKind::FIVE_A_SIDE:
+        return sized(3.66F, 1.22F);
+      case GoalKind::SMALL_FRAMED:
+        return sized(1.8F, 1.2F);
       case GoalKind::POP_UP:
       {
-        PitchGoal goal = sized(1.2f, 0.8f);
-        goal.post = 0.03f;
-        goal.netDepth = 0.6f;
+        PitchGoal goal = sized(1.2F, 0.8F);
+        goal.post = 0.03F;
+        goal.netDepth = 0.6F;
         return goal;
       }
     }
@@ -100,14 +110,22 @@ struct PitchGoal
 {
   switch (kind)
   {
-    case GoalKind::NONE: return "none";
-    case GoalKind::FULL: return "full";
-    case GoalKind::YOUTH_9V9: return "9v9";
-    case GoalKind::YOUTH_7V7: return "7v7";
-    case GoalKind::FUTSAL: return "futsal";
-    case GoalKind::FIVE_A_SIDE: return "5-a-side";
-    case GoalKind::SMALL_FRAMED: return "small";
-    case GoalKind::POP_UP: return "pop-up";
+    case GoalKind::NONE:
+      return "none";
+    case GoalKind::FULL:
+      return "full";
+    case GoalKind::YOUTH_9V9:
+      return "9v9";
+    case GoalKind::YOUTH_7V7:
+      return "7v7";
+    case GoalKind::FUTSAL:
+      return "futsal";
+    case GoalKind::FIVE_A_SIDE:
+      return "5-a-side";
+    case GoalKind::SMALL_FRAMED:
+      return "small";
+    case GoalKind::POP_UP:
+      return "pop-up";
   }
   return "none";
 }
@@ -192,8 +210,9 @@ struct PitchLaws
  */
 struct MatchPitch final
 {
-  constexpr MatchPitch() : MatchPitch(MatchTuning::Pitch::MATCH_LENGTH_METRES,
-                                      MatchTuning::Pitch::MATCH_WIDTH_METRES)
+  constexpr MatchPitch()
+      : MatchPitch(MatchTuning::Pitch::MATCH_LENGTH_METRES,
+                   MatchTuning::Pitch::MATCH_WIDTH_METRES)
   {
   }
   constexpr MatchPitch(float lengthMetres, float widthMetres,
@@ -201,8 +220,8 @@ struct MatchPitch final
                        PitchEdge edgeKind = PitchEdge::LINES)
       : length(lengthMetres),
         width(widthMetres),
-        inverseLength(1.0f / lengthMetres),
-        inverseWidth(1.0f / widthMetres),
+        inverseLength(1.0F / lengthMetres),
+        inverseWidth(1.0F / widthMetres),
         bodyMinX(edgeKind == PitchEdge::WALLS
                      ? MatchTuning::Body::RADIUS_METRES
                      : -(MatchTuning::Pitch::BOARDS_END_METRES -
@@ -228,9 +247,9 @@ struct MatchPitch final
                      PitchEdge::WALLS);
     pitch.goal = PitchGoal::ofKind(goals);
     pitch.laws = PitchLaws::none();
-    pitch.serveStation = PitchPoint{
-        0.5f * lengthMetres,
-        widthMetres + MatchTuning::Serve::STATION_OUT_METRES};
+    pitch.serveStation =
+        PitchPoint{0.5F * lengthMetres,
+                   widthMetres + MatchTuning::Serve::STATION_OUT_METRES};
     return pitch;
   }
 
@@ -317,7 +336,7 @@ struct MatchPitch final
   /** The point as fractions (x of the length, y of the width). */
   [[nodiscard]] constexpr Vector2F fractions(PitchPoint point) const
   {
-    return {point.x / length, point.y / width};
+    return {.x = point.x / length, .y = point.y / width};
   }
   /** The x coordinate seen from the other end (1 - x as a fraction). */
   [[nodiscard]] constexpr float mirrorX(float units) const

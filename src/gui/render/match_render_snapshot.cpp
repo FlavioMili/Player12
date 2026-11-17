@@ -42,8 +42,9 @@ void fillMatchRenderSnapshot(const MatchEngine& engine,
     renderPlayer.intent = source.intent;
     renderPlayer.currentFacingAngle = source.facingAngle;
     renderPlayer.stamina = source.stamina;
-    renderPlayer.possessesBall = source.player != nullptr &&
-                                 engine.getPossessionAttachment() == source.player;
+    renderPlayer.possessesBall =
+        source.player != nullptr &&
+        engine.getPossessionAttachment() == source.player;
     renderPlayer.onPitch = source.onPitch;
     renderPlayer.hidden = inTunnel(source.position);
     renderPlayer.isGoalkeeper = source.isGoalkeeper;
@@ -52,8 +53,8 @@ void fillMatchRenderSnapshot(const MatchEngine& engine,
     renderPlayer.yellowCards = source.yellowCards;
     renderPlayer.heightMetres = source.heightMetres;
     renderPlayer.speedMetresPerSecond =
-        std::sqrt(source.velocity.x * source.velocity.x +
-                  source.velocity.y * source.velocity.y);
+        std::sqrt((source.velocity.x * source.velocity.x) +
+                  (source.velocity.y * source.velocity.y));
     renderPlayer.tackleCooldown = source.tackleCooldown;
     renderPlayer.fallen = source.fallen;
     renderPlayer.lyingAngle = source.lyingAngle;
@@ -75,9 +76,11 @@ void fillMatchRenderSnapshot(const MatchEngine& engine,
   const auto& bodies = engine.getTouchlineBodies();
   const auto& people = engine.getTouchlinePeople();
   const auto& previousTouchline = engine.getPreviousTouchlinePositions();
-  const auto& previousTouchlineFacing = engine.getPreviousTouchlineFacingAngles();
+  const auto& previousTouchlineFacing =
+      engine.getPreviousTouchlineFacingAngles();
   snapshot.touchline.clear();
-  for (std::size_t index = 0; index < bodies.size() && index < people.size(); ++index)
+  for (std::size_t index = 0; index < bodies.size() && index < people.size();
+       ++index)
   {
     const MatchPlayer& body = bodies[index];
     MatchRenderTouchlinePerson& person = snapshot.touchline.emplace_back();
@@ -87,15 +90,17 @@ void fillMatchRenderSnapshot(const MatchEngine& engine,
     person.seated = people[index].seated;
     person.hidden = inTunnel(body.position);
     person.currentPosition = body.position;
-    person.previousPosition =
-        index < previousTouchline.size() ? previousTouchline[index] : body.position;
+    person.previousPosition = index < previousTouchline.size()
+                                  ? previousTouchline[index]
+                                  : body.position;
     person.currentFacingAngle = body.facingAngle;
     person.previousFacingAngle = index < previousTouchlineFacing.size()
                                      ? previousTouchlineFacing[index]
                                      : body.facingAngle;
     person.heightMetres = body.heightMetres;
     person.speedMetresPerSecond =
-        std::sqrt(body.velocity.x * body.velocity.x + body.velocity.y * body.velocity.y);
+        std::sqrt((body.velocity.x * body.velocity.x) +
+                  (body.velocity.y * body.velocity.y));
     person.fallen = body.fallen;
     person.lyingAngle = body.lyingAngle;
     person.onFront = body.onFront();
@@ -109,10 +114,8 @@ void fillMatchRenderSnapshot(const MatchEngine& engine,
   snapshot.ball.previousZ = engine.getPreviousBallZ();
   snapshot.ball.possessedBy = engine.getPossessionAttachment();
   snapshot.ball.outOfSight = engine.ballOutOfSight();
-  snapshot.ball.currentHeightMetres =
-      ball.z;
-  snapshot.ball.previousHeightMetres =
-      engine.getPreviousBallZ();
+  snapshot.ball.currentHeightMetres = ball.z;
+  snapshot.ball.previousHeightMetres = engine.getPreviousBallZ();
   snapshot.ball.isShot = ball.possessionState().isShot;
   snapshot.ball.isAerialDelivery = ball.possessionState().isAerialDelivery;
   snapshot.ball.fromThrowIn = ball.possessionState().fromThrowIn;

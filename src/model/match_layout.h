@@ -35,16 +35,16 @@ enum class ConeKind : std::uint8_t
 /** A cone's size (m). Not researched: common equipment ranges, not a
  * standard (plan section 18). A flat disc is about 20 cm across and 5 cm
  * high; a tall cone about 23 cm high. */
-inline constexpr float CONE_RADIUS_METRES = 0.1f;
-inline constexpr float FLAT_CONE_HEIGHT_METRES = 0.05f;
-inline constexpr float TALL_CONE_HEIGHT_METRES = 0.23f;
+inline constexpr float CONE_RADIUS_METRES = 0.1F;
+inline constexpr float FLAT_CONE_HEIGHT_METRES = 0.05F;
+inline constexpr float TALL_CONE_HEIGHT_METRES = 0.23F;
 
 struct Cone
 {
   std::string name;
   PitchPoint at{};
   ConeKind kind = ConeKind::FLAT;
-  std::uint32_t colour = 0xFF0080FFu;
+  std::uint32_t colour = 0xFF0080FFU;
 };
 
 /** A line on the grass (a painted or rope line), from one point to
@@ -54,7 +54,7 @@ struct Line
   std::string name;
   PitchPoint from{};
   PitchPoint to{};
-  std::uint32_t colour = 0xFFFFFFFFu;
+  std::uint32_t colour = 0xFFFFFFFFU;
 };
 
 /** A marked rectangle (an end zone, a channel, a box), corner to corner. */
@@ -63,7 +63,7 @@ struct Area
   std::string name;
   PitchPoint min{};
   PitchPoint max{};
-  std::uint32_t colour = 0xFFFFFFFFu;
+  std::uint32_t colour = 0xFFFFFFFFU;
 };
 
 /** A training dummy (plan section 21): a free-kick mannequin, a junior
@@ -79,8 +79,8 @@ enum class DummyKind : std::uint8_t
  * (a half-sphere of the same radius), `height` tall overall (metres). */
 struct DummyShape
 {
-  float radius = 0.0f;
-  float height = 0.0f;
+  float radius = 0.0F;
+  float height = 0.0F;
 };
 
 /** The sizes, from makers' listings (plan section 21): a senior mannequin
@@ -91,13 +91,13 @@ struct DummyShape
   switch (kind)
   {
     case DummyKind::MANNEQUIN:
-      return {0.25f, 1.8f};
+      return {.radius = 0.25F, .height = 1.8F};
     case DummyKind::JUNIOR_MANNEQUIN:
-      return {0.17f, 1.2f};
+      return {.radius = 0.17F, .height = 1.2F};
     case DummyKind::POLE:
-      return {0.015f, 1.6f};
+      return {.radius = 0.015F, .height = 1.6F};
   }
-  return {0.25f, 1.8f};
+  return {.radius = 0.25F, .height = 1.8F};
 }
 
 /** Solid kit: the ball bounces off it and players go round it (plan
@@ -108,8 +108,8 @@ struct Dummy
   std::string name;
   PitchPoint at{};
   DummyKind kind = DummyKind::MANNEQUIN;
-  float facing = 0.0f;
-  std::uint32_t colour = 0xFF1EC8FFu;
+  float facing = 0.0F;
+  std::uint32_t colour = 0xFF1EC8FFU;
 };
 
 /** Everything laid out on one pitch. */

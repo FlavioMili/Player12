@@ -62,7 +62,7 @@ float MatchEngine::curlAngle(float distanceMetres, float along, float up,
     case BallPhysicsId::BINTURONG:
       return curlAngleBinturong(distanceMetres, along, up, startHeight, spin);
   }
-  return 0.0f;
+  return 0.0F;
 }
 
 float MatchEngine::loftVerticalSpeed(float distanceMetres,

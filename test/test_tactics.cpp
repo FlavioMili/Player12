@@ -26,10 +26,10 @@
 #include "global/logger.h"
 #include "global/stats_config.h"
 #include "model/match_engine.h"
+#include "model/match_pitch.h"
 #include "model/player.h"
 #include "model/tactics.h"
 #include "model/team.h"
-#include "model/match_pitch.h"
 
 namespace
 {
@@ -45,39 +45,46 @@ StatsConfig createStatsConfig()
   config.possible_stats = {"Pace",      "Shooting",  "Passing",
                            "Dribbling", "Defending", "Physicality",
                            "Stamina",   "Vision",    "Goalkeeping"};
-  config.role_focus["Goalkeeper"] = {{"Goalkeeping", "Vision", "Physicality"},
-                                     {0.7, 0.2, 0.1}};
+  config.role_focus["Goalkeeper"] = {
+      .stats = {"Goalkeeping", "Vision", "Physicality"},
+      .weights = {0.7, 0.2, 0.1}};
   config.role_focus["Defender"] = {
-      {"Defending", "Physicality", "Pace", "Vision"}, {0.4, 0.3, 0.15, 0.15}};
+      .stats = {"Defending", "Physicality", "Pace", "Vision"},
+      .weights = {0.4, 0.3, 0.15, 0.15}};
   config.role_focus["Midfielder"] = {
-      {"Passing", "Vision", "Stamina", "Dribbling"}, {0.3, 0.3, 0.2, 0.2}};
+      .stats = {"Passing", "Vision", "Stamina", "Dribbling"},
+      .weights = {0.3, 0.3, 0.2, 0.2}};
   config.role_focus["Striker"] = {
-      {"Shooting", "Pace", "Dribbling", "Physicality"}, {0.4, 0.2, 0.2, 0.2}};
+      .stats = {"Shooting", "Pace", "Dribbling", "Physicality"},
+      .weights = {0.4, 0.2, 0.2, 0.2}};
   return config;
 }
 
 std::map<std::string, float> statsFor(PlayerRole role, std::uint32_t salt)
 {
-  const float jitter = static_cast<float>((salt * 2654435761U) % 7U) - 3.0f;
+  const float jitter = static_cast<float>((salt * 2654435761U) % 7U) - 3.0F;
   const auto value = [&](float offset)
-  { return std::clamp(62.0f + offset + jitter, 1.0f, 99.0f); };
+  { return std::clamp(62.0F + offset + jitter, 1.0F, 99.0F); };
   std::map<std::string, float> stats = {
-      {"Pace", value(0.0f)},      {"Shooting", value(-8.0f)},
-      {"Passing", value(0.0f)},   {"Dribbling", value(-4.0f)},
-      {"Defending", value(0.0f)}, {"Physicality", value(0.0f)},
-      {"Stamina", value(0.0f)},   {"Vision", value(0.0f)},
-      {"Goalkeeping", 15.0f}};
+      {"Pace", value(0.0F)},      {"Shooting", value(-8.0F)},
+      {"Passing", value(0.0F)},   {"Dribbling", value(-4.0F)},
+      {"Defending", value(0.0F)}, {"Physicality", value(0.0F)},
+      {"Stamina", value(0.0F)},   {"Vision", value(0.0F)},
+      {"Goalkeeping", 15.0F}};
   if (role == PlayerRole::GK)
   {
-    stats["Goalkeeping"] = value(4.0f);
-    stats["Shooting"] = value(-40.0f);
+    stats["Goalkeeping"] = value(4.0F);
+    stats["Shooting"] = value(-40.0F);
   }
   if (role == PlayerRole::ST)
   {
-    stats["Shooting"] = value(8.0f);
-    stats["Defending"] = value(-30.0f);
+    stats["Shooting"] = value(8.0F);
+    stats["Defending"] = value(-30.0F);
   }
-  if (role == PlayerRole::CB) stats["Defending"] = value(8.0f);
+  if (role == PlayerRole::CB)
+  {
+    stats["Defending"] = value(8.0F);
+  }
   return stats;
 }
 
@@ -87,17 +94,17 @@ constexpr std::array<PlayerRole, 11> ROLES = {
     PlayerRole::GK, PlayerRole::LB, PlayerRole::CB, PlayerRole::CB,
     PlayerRole::RB, PlayerRole::LM, PlayerRole::CM, PlayerRole::CM,
     PlayerRole::RM, PlayerRole::ST, PlayerRole::ST};
-constexpr std::array<Vector2F, 11> POSITIONS = {{{0.04f, 0.50f},
-                                                 {0.20f, 0.12f},
-                                                 {0.20f, 0.38f},
-                                                 {0.20f, 0.62f},
-                                                 {0.20f, 0.88f},
-                                                 {0.43f, 0.12f},
-                                                 {0.43f, 0.38f},
-                                                 {0.43f, 0.62f},
-                                                 {0.43f, 0.88f},
-                                                 {0.78f, 0.38f},
-                                                 {0.78f, 0.62f}}};
+constexpr std::array<Vector2F, 11> POSITIONS = {{{.x = 0.04F, .y = 0.50F},
+                                                 {.x = 0.20F, .y = 0.12F},
+                                                 {.x = 0.20F, .y = 0.38F},
+                                                 {.x = 0.20F, .y = 0.62F},
+                                                 {.x = 0.20F, .y = 0.88F},
+                                                 {.x = 0.43F, .y = 0.12F},
+                                                 {.x = 0.43F, .y = 0.38F},
+                                                 {.x = 0.43F, .y = 0.62F},
+                                                 {.x = 0.43F, .y = 0.88F},
+                                                 {.x = 0.78F, .y = 0.38F},
+                                                 {.x = 0.78F, .y = 0.62F}}};
 constexpr std::size_t LEFT_BACK = 1;
 constexpr std::size_t LEFT_CENTRAL_MIDFIELDER = 6;
 constexpr std::size_t FIRST_STRIKER = 9;
@@ -113,23 +120,27 @@ std::unique_ptr<Squad> makeSquad(TeamID team)
   auto squad = std::make_unique<Squad>();
   for (std::size_t index = 0; index < ROLES.size(); ++index)
   {
-    const auto id = static_cast<PlayerID>(team * 100U + index);
+    const auto id = static_cast<PlayerID>((team * 100U) + index);
     squad->players.push_back(std::make_unique<Player>(
         id, team, "Tactic", std::to_string(id), ROLES[index], Language::EN,
         100'000, 0, 26, 3, 180, Foot::Right,
         statsFor(ROLES[index], static_cast<std::uint32_t>(index))));
     if (index == 0)
+    {
       squad->lineup.setGoalkeeper(squad->players.back().get());
+    }
     else
+    {
       squad->lineup.addOutfieldPlayer(squad->players.back().get(),
                                       POSITIONS[index]);
+    }
   }
   return squad;
 }
 
 PlayerID playerId(TeamID team, std::size_t index)
 {
-  return static_cast<PlayerID>(team * 100U + index);
+  return static_cast<PlayerID>((team * 100U) + index);
 }
 
 Strategy withSlots(
@@ -158,7 +169,7 @@ void playMatch(const Strategy& home, const Strategy& away, std::uint32_t seed,
                      seed);
   while (engine.getState() != MatchState::FULL_TIME)
   {
-    engine.advance(1.0f);
+    engine.advance(1.0F);
     sample(engine);
   }
 }
@@ -171,20 +182,20 @@ const PlayerMatchStats* statsOf(const MatchEngine& engine, PlayerID id)
 bool homeHasBall(const MatchEngine& engine)
 {
   const Player* carrier = engine.getBall().possessionState().possessedBy;
-  return carrier && carrier->getTeamId() == 1;
+  return (carrier != nullptr) && carrier->getTeamId() == 1;
 }
 }  // namespace
 
 TEST(TacticsTest, SlotsAreClassifiedByPosition)
 {
-  EXPECT_EQ(Tactics::familyForSlot({0.20f, 0.12f}), RoleFamily::FullBack);
-  EXPECT_EQ(Tactics::familyForSlot({0.20f, 0.38f}), RoleFamily::CentreBack);
-  EXPECT_EQ(Tactics::familyForSlot({0.38f, 0.50f}), RoleFamily::Holding);
-  EXPECT_EQ(Tactics::familyForSlot({0.43f, 0.38f}), RoleFamily::Central);
-  EXPECT_EQ(Tactics::familyForSlot({0.43f, 0.88f}), RoleFamily::Wide);
-  EXPECT_EQ(Tactics::familyForSlot({0.58f, 0.50f}), RoleFamily::Attacking);
-  EXPECT_EQ(Tactics::familyForSlot({0.72f, 0.14f}), RoleFamily::Wide);
-  EXPECT_EQ(Tactics::familyForSlot({0.78f, 0.38f}), RoleFamily::Striker);
+  EXPECT_EQ(Tactics::familyForSlot({0.20F, 0.12F}), RoleFamily::FullBack);
+  EXPECT_EQ(Tactics::familyForSlot({0.20F, 0.38F}), RoleFamily::CentreBack);
+  EXPECT_EQ(Tactics::familyForSlot({0.38F, 0.50F}), RoleFamily::Holding);
+  EXPECT_EQ(Tactics::familyForSlot({0.43F, 0.38F}), RoleFamily::Central);
+  EXPECT_EQ(Tactics::familyForSlot({0.43F, 0.88F}), RoleFamily::Wide);
+  EXPECT_EQ(Tactics::familyForSlot({0.58F, 0.50F}), RoleFamily::Attacking);
+  EXPECT_EQ(Tactics::familyForSlot({0.72F, 0.14F}), RoleFamily::Wide);
+  EXPECT_EQ(Tactics::familyForSlot({0.78F, 0.38F}), RoleFamily::Striker);
   // Every family offers Standard first, and roles stay in their family.
   for (int family = 0;
        family < static_cast<int>(std::to_underlying(RoleFamily::COUNT));
@@ -202,23 +213,25 @@ TEST(TacticsTest, EveryRoleChangesTheEngineProfile)
 {
   const RoleProfile standard =
       Tactics::profile(TacticalRole::Standard, RoleDuty::Support);
-  EXPECT_FLOAT_EQ(standard.runBias, 0.0f);
-  EXPECT_FLOAT_EQ(standard.possessionAdvanceMetres, 0.0f);
+  EXPECT_FLOAT_EQ(standard.runBias, 0.0F);
+  EXPECT_FLOAT_EQ(standard.possessionAdvanceMetres, 0.0F);
   const auto differs = [&](const RoleProfile& profile)
   {
-    return profile.possessionAdvanceMetres != 0.0f ||
-           profile.possessionWidthMetres != 0.0f ||
-           profile.defensiveAdvanceMetres != 0.0f || profile.runBias != 0.0f ||
-           profile.passDaring != 0.0f || profile.targetBias != 0.0f ||
-           profile.pressBias != 0.0f || profile.shotBias != 0.0f ||
-           profile.cutInside != 0.0f || profile.keeperDepthMetres != 0.0f ||
-           profile.keeperSweep != 0.0f;
+    return profile.possessionAdvanceMetres != 0.0F ||
+           profile.possessionWidthMetres != 0.0F ||
+           profile.defensiveAdvanceMetres != 0.0F || profile.runBias != 0.0F ||
+           profile.passDaring != 0.0F || profile.targetBias != 0.0F ||
+           profile.pressBias != 0.0F || profile.shotBias != 0.0F ||
+           profile.cutInside != 0.0F || profile.keeperDepthMetres != 0.0F ||
+           profile.keeperSweep != 0.0F;
   };
   for (int role = 1;
        role < static_cast<int>(std::to_underlying(TacticalRole::COUNT)); ++role)
+  {
     EXPECT_TRUE(differs(
         Tactics::profile(static_cast<TacticalRole>(role), RoleDuty::Support)))
         << Tactics::roleKey(static_cast<TacticalRole>(role));
+  }
   EXPECT_GT(Tactics::profile(TacticalRole::Standard, RoleDuty::Attack)
                 .possessionAdvanceMetres,
             Tactics::profile(TacticalRole::Standard, RoleDuty::Defend)
@@ -232,19 +245,21 @@ TEST(TacticsTest, EveryRoleChangesTheEngineProfile)
 TEST(TacticsTest, SlotInstructionsMatchByAnchor)
 {
   Strategy strategy;
-  strategy.setSlot({{0.20f, 0.12f},
-                    TacticalRole::InsideFullBack,
-                    RoleDuty::Attack,
-                    {0.1f, 0.2f}});
-  ASSERT_NE(strategy.findSlot({0.21f, 0.13f}), nullptr);
-  EXPECT_EQ(strategy.findSlot({0.21f, 0.13f})->role,
+  strategy.setSlot({.anchor = {.x = 0.20F, .y = 0.12F},
+                    .role = TacticalRole::InsideFullBack,
+                    .duty = RoleDuty::Attack,
+                    .possessionOffset = {.x = 0.1F, .y = 0.2F}});
+  ASSERT_NE(strategy.findSlot({0.21F, 0.13F}), nullptr);
+  EXPECT_EQ(strategy.findSlot({0.21F, 0.13F})->role,
             TacticalRole::InsideFullBack);
-  EXPECT_EQ(strategy.findSlot({0.43f, 0.12f}), nullptr);
+  EXPECT_EQ(strategy.findSlot({0.43F, 0.12F}), nullptr);
   // Re-setting the same slot replaces it.
-  strategy.setSlot(
-      {{0.20f, 0.12f}, TacticalRole::Standard, RoleDuty::Defend, {0.0f, 0.0f}});
-  EXPECT_EQ(strategy.getSlotInstructions().size(), 1u);
-  EXPECT_EQ(strategy.findSlot({0.20f, 0.12f})->duty, RoleDuty::Defend);
+  strategy.setSlot({.anchor = {.x = 0.20F, .y = 0.12F},
+                    .role = TacticalRole::Standard,
+                    .duty = RoleDuty::Defend,
+                    .possessionOffset = {.x = 0.0F, .y = 0.0F}});
+  EXPECT_EQ(strategy.getSlotInstructions().size(), 1U);
+  EXPECT_EQ(strategy.findSlot({0.20F, 0.12F})->duty, RoleDuty::Defend);
   // A goalkeeper role outside the goalkeeper family is refused.
   strategy.setKeeperRole(TacticalRole::Poacher);
   EXPECT_EQ(strategy.getKeeperRole(), TacticalRole::Standard);
@@ -255,14 +270,14 @@ TEST(TacticsTest, AiPicksRolesThatFitThePlayers)
   const auto squad = makeSquad(1);
   // A sharp finisher up front, a passer in midfield, a quick keeper.
   auto stats = squad->players[FIRST_STRIKER]->getStats();
-  stats["Shooting"] = 92.0f;
-  stats["Pace"] = 88.0f;
-  stats["Physicality"] = 40.0f;
+  stats["Shooting"] = 92.0F;
+  stats["Pace"] = 88.0F;
+  stats["Physicality"] = 40.0F;
   squad->players[FIRST_STRIKER]->setStats(stats);
   stats = squad->players[LEFT_CENTRAL_MIDFIELDER]->getStats();
-  stats["Passing"] = 90.0f;
-  stats["Vision"] = 90.0f;
-  stats["Dribbling"] = 80.0f;
+  stats["Passing"] = 90.0F;
+  stats["Vision"] = 90.0F;
+  stats["Dribbling"] = 80.0F;
   squad->players[LEFT_CENTRAL_MIDFIELDER]->setStats(stats);
 
   Strategy strategy;
@@ -291,19 +306,19 @@ TEST(TacticsTest, PossessionShapesMoveTheRightSlots)
   const Vector2F striker = POSITIONS[FIRST_STRIKER];
   EXPECT_GT(
       Tactics::possessionOffset(PossessionShape::FullBacksPush, leftBack).x,
-      0.1f);
+      0.1F);
   EXPECT_FLOAT_EQ(
       Tactics::possessionOffset(PossessionShape::FullBacksPush, striker).x,
-      0.0f);
+      0.0F);
   // Back three: the left back tucks in, the right back pushes on.
   const Vector2F tuck =
       Tactics::possessionOffset(PossessionShape::BuildWithThree, leftBack);
   const Vector2F push =
       Tactics::possessionOffset(PossessionShape::BuildWithThree, rightBack);
-  EXPECT_GT(tuck.y, 0.05f);
-  EXPECT_GT(push.x, tuck.x + 0.1f);
+  EXPECT_GT(tuck.y, 0.05F);
+  EXPECT_GT(push.x, tuck.x + 0.1F);
   EXPECT_FLOAT_EQ(
-      Tactics::possessionOffset(PossessionShape::KeepShape, leftBack).x, 0.0f);
+      Tactics::possessionOffset(PossessionShape::KeepShape, leftBack).x, 0.0F);
 }
 
 TEST(TacticsTest, AttackingFullBackPlaysHigherThanDefendingOne)
@@ -313,37 +328,48 @@ TEST(TacticsTest, AttackingFullBackPlaysHigherThanDefendingOne)
   const StatsConfig config = createStatsConfig();
   MatchScenario scenario;
   scenario.carrierId = playerId(1, LEFT_CENTRAL_MIDFIELDER);
-  scenario.ballPosition = PITCH.at(POSITIONS[LEFT_CENTRAL_MIDFIELDER].x, POSITIONS[LEFT_CENTRAL_MIDFIELDER].y);
+  scenario.ballPosition = PITCH.at(POSITIONS[LEFT_CENTRAL_MIDFIELDER].x,
+                                   POSITIONS[LEFT_CENTRAL_MIDFIELDER].y);
   for (size_t index = 0; index < POSITIONS.size(); ++index)
   {
-    scenario.players.push_back({playerId(1, index),
-         PITCH.at(POSITIONS[index].x, POSITIONS[index].y), false});
     scenario.players.push_back(
-        {playerId(2, index),
-         PITCH.at(1.0f - POSITIONS[index].x, 1.0f - POSITIONS[index].y),
-         false});
+        {.playerId = playerId(1, index),
+         .position = PITCH.at(POSITIONS[index].x, POSITIONS[index].y),
+         .makingRun = false});
+    scenario.players.push_back({.playerId = playerId(2, index),
+                                .position = PITCH.at(1.0F - POSITIONS[index].x,
+                                                     1.0F - POSITIONS[index].y),
+                                .makingRun = false});
   }
   const auto targetX = [&](RoleDuty duty)
   {
-    const Strategy home = withSlots(
-        {{LEFT_BACK, {{}, TacticalRole::Standard, duty, {0.0f, 0.0f}}}});
+    const Strategy home =
+        withSlots({{LEFT_BACK,
+                    {.anchor = {},
+                     .role = TacticalRole::Standard,
+                     .duty = duty,
+                     .possessionOffset = {.x = 0.0F, .y = 0.0F}}}});
     MatchEngine engine(homeSquad->lineup, awaySquad->lineup, home, Strategy{},
                        config, 101);
     engine.setControlledPlayer(scenario.carrierId);
-    engine.advance(0.1f);
+    engine.advance(0.1F);
     EXPECT_TRUE(engine.applyScenario(scenario));
-    engine.advance(0.1f);
+    engine.advance(0.1F);
     for (const MatchPlayer& player : engine.getPlayers())
+    {
       if (player.player->getId() == playerId(1, LEFT_BACK))
+      {
         return PITCH.fractionX(player.tacticalTarget);
+      }
+    }
     ADD_FAILURE() << "Full-back missing from scenario";
-    return 0.0f;
+    return 0.0F;
   };
   // Compare duties in the same possession, rather than two whole matches
   // whose shots, turnovers and possession samples diverge with the duty.
   const float attacking = targetX(RoleDuty::Attack);
   const float defending = targetX(RoleDuty::Defend);
-  EXPECT_GT(attacking, defending + 0.04f);
+  EXPECT_GT(attacking, defending + 0.04F);
 }
 
 TEST(TacticsTest, InPossessionShapeMovesTheSlotWithTheBallOnly)
@@ -355,44 +381,56 @@ TEST(TacticsTest, InPossessionShapeMovesTheSlotWithTheBallOnly)
   const auto awaySquad = makeSquad(2);
   const auto targetY = [&](bool shifted, bool withBall)
   {
-    const Strategy home =
-        withSlots({{LEFT_BACK,
-                    {{},
-                     TacticalRole::Standard,
-                     RoleDuty::Support,
-                     shifted ? Vector2F{0.0f, 0.18f} : Vector2F{0.0f, 0.0f}}}});
+    const Strategy home = withSlots(
+        {{LEFT_BACK,
+          {.anchor = {},
+           .role = TacticalRole::Standard,
+           .duty = RoleDuty::Support,
+           .possessionOffset = shifted ? Vector2F{.x = 0.0F, .y = 0.18F}
+                                       : Vector2F{.x = 0.0F, .y = 0.0F}}}});
     MatchEngine engine(homeSquad->lineup, awaySquad->lineup, home, Strategy{},
                        config, SEEDS[0]);
     MatchScenario scenario;
     scenario.carrierId = playerId(withBall ? 1 : 2, LEFT_CENTRAL_MIDFIELDER);
-    scenario.ballPosition = PITCH.at(POSITIONS[LEFT_CENTRAL_MIDFIELDER].x, POSITIONS[LEFT_CENTRAL_MIDFIELDER].y);
+    scenario.ballPosition = PITCH.at(POSITIONS[LEFT_CENTRAL_MIDFIELDER].x,
+                                     POSITIONS[LEFT_CENTRAL_MIDFIELDER].y);
     for (size_t index = 0; index < POSITIONS.size(); ++index)
     {
-      scenario.players.push_back({playerId(1, index),
-         PITCH.at(POSITIONS[index].x, POSITIONS[index].y), false});
       scenario.players.push_back(
-          {playerId(2, index),
-           PITCH.at(1.0f - POSITIONS[index].x, 1.0f - POSITIONS[index].y),
-           false});
+          {.playerId = playerId(1, index),
+           .position = PITCH.at(POSITIONS[index].x, POSITIONS[index].y),
+           .makingRun = false});
+      scenario.players.push_back(
+          {.playerId = playerId(2, index),
+           .position =
+               PITCH.at(1.0F - POSITIONS[index].x, 1.0F - POSITIONS[index].y),
+           .makingRun = false});
     }
     engine.setControlledPlayer(scenario.carrierId);
-    engine.advance(0.1f);
+    engine.advance(0.1F);
     EXPECT_TRUE(engine.applyScenario(scenario));
-    engine.advance(0.1f);
+    engine.advance(0.1F);
     for (const MatchPlayer& player : engine.getPlayers())
+    {
       if (player.player->getId() == playerId(1, LEFT_BACK))
+      {
         return PITCH.fractionY(player.tacticalTarget);
+      }
+    }
     ADD_FAILURE() << "Full-back missing from scenario";
-    return 0.0f;
+    return 0.0F;
   };
   // Comparing whole-match positions also measures different possessions,
   // turnovers and opponent responses. Hold those fixed to test the shape.
-  EXPECT_GT(targetY(true, true), targetY(false, true) + 0.06f);
+  EXPECT_GT(targetY(true, true), targetY(false, true) + 0.06F);
   EXPECT_FLOAT_EQ(targetY(true, false), targetY(false, false));
   // Without the ball the formation is the one set on the lineup.
-  const Strategy shifted = withSlots(
-      {{LEFT_BACK,
-        {{}, TacticalRole::Standard, RoleDuty::Support, {0.0f, 0.18f}}}});
+  const Strategy shifted =
+      withSlots({{LEFT_BACK,
+                  {.anchor = {},
+                   .role = TacticalRole::Standard,
+                   .duty = RoleDuty::Support,
+                   .possessionOffset = {.x = 0.0F, .y = 0.18F}}}});
   const MatchEngine engine(homeSquad->lineup, awaySquad->lineup, shifted,
                            Strategy{}, config, SEEDS[0]);
   const std::vector<Vector2F> formation = engine.getFormation(true);
@@ -405,9 +443,16 @@ TEST(TacticsTest, PressingForwardsPressMore)
 {
   const auto strikerPressures = [](TacticalRole role)
   {
-    const Strategy home =
-        withSlots({{FIRST_STRIKER, {{}, role, RoleDuty::Support, {}}},
-                   {FIRST_STRIKER + 1, {{}, role, RoleDuty::Support, {}}}});
+    const Strategy home = withSlots({{FIRST_STRIKER,
+                                      {.anchor = {},
+                                       .role = role,
+                                       .duty = RoleDuty::Support,
+                                       .possessionOffset = {}}},
+                                     {FIRST_STRIKER + 1,
+                                      {.anchor = {},
+                                       .role = role,
+                                       .duty = RoleDuty::Support,
+                                       .possessionOffset = {}}}});
     int pressures = 0;
     for (const std::uint32_t seed : SEEDS)
     {
@@ -415,11 +460,18 @@ TEST(TacticsTest, PressingForwardsPressMore)
           home, Strategy{}, seed,
           [&pressures](const MatchEngine& engine)
           {
-            if (engine.getState() != MatchState::FULL_TIME) return;
+            if (engine.getState() != MatchState::FULL_TIME)
+            {
+              return;
+            }
             for (const std::size_t index : {FIRST_STRIKER, FIRST_STRIKER + 1})
+            {
               if (const PlayerMatchStats* stats =
                       statsOf(engine, playerId(1, index)))
+              {
                 pressures += stats->pressures;
+              }
+            }
           });
     }
     return pressures;
@@ -439,7 +491,11 @@ TEST(TacticsTest, TightlyMarkedPlayerGetsFewerTouches)
   {
     Strategy home;
     if (marked)
-      home.setOppositionOrders({{target, OppositionInstruction::TightMark}});
+    {
+      home.setOppositionOrders(
+          {{.player = target,
+            .instruction = OppositionInstruction::TightMark}});
+    }
     int total = 0;
     // Marking changes subsequent passes, shots and possession, so paired
     // full matches diverge even with the same seed. Use a representative
@@ -450,9 +506,14 @@ TEST(TacticsTest, TightlyMarkedPlayerGetsFewerTouches)
       playMatch(home, Strategy{}, sample * SEEDS.front(),
                 [&total, target](const MatchEngine& engine)
                 {
-                  if (engine.getState() != MatchState::FULL_TIME) return;
+                  if (engine.getState() != MatchState::FULL_TIME)
+                  {
+                    return;
+                  }
                   if (const PlayerMatchStats* stats = statsOf(engine, target))
+                  {
                     total += stats->touches;
+                  }
                 });
     }
     return total;
@@ -467,23 +528,28 @@ TEST(TacticsTest, OppositionOrdersOnlyFindTheirMan)
 {
   // Orders against players who are not on the pitch change nothing.
   Strategy home;
-  home.setOppositionOrders({{999'999, OppositionInstruction::Press},
-                            {0, OppositionInstruction::TightMark}});
-  EXPECT_EQ(home.getOppositionOrders().size(), 1u);
+  home.setOppositionOrders(
+      {{.player = 999'999, .instruction = OppositionInstruction::Press},
+       {.player = 0, .instruction = OppositionInstruction::TightMark}});
+  EXPECT_EQ(home.getOppositionOrders().size(), 1U);
   int withOrders = 0;
   int without = 0;
   playMatch(home, Strategy{}, SEEDS[1],
             [&withOrders](const MatchEngine& engine)
             {
               if (engine.getState() == MatchState::FULL_TIME)
+              {
                 withOrders =
                     engine.getHomeScore() * 100 + engine.getAwayScore();
+              }
             });
   playMatch(Strategy{}, Strategy{}, SEEDS[1],
             [&without](const MatchEngine& engine)
             {
               if (engine.getState() == MatchState::FULL_TIME)
+              {
                 without = engine.getHomeScore() * 100 + engine.getAwayScore();
+              }
             });
   EXPECT_EQ(withOrders, without);
 }
@@ -500,30 +566,32 @@ TEST(TacticsTest, TeamTalkEffectFadesAfterTheStartOfEachHalf)
   {
     while (engine.getState() != MatchState::FULL_TIME &&
            (engine.getMatchTimeMinutes() < minute ||
-            (minute > 45.0f && engine.getPeriod() < 2)))
-      engine.advance(5.0f);
+            (minute > 45.0F && engine.getPeriod() < 2)))
+    {
+      engine.advance(5.0F);
+    }
   };
   EXPECT_FLOAT_EQ(engine.getTeamTalkEffect(true),
                   TacticsTuning::TALK_REFERENCE);
-  EXPECT_FLOAT_EQ(engine.getTeamTalkEffect(false), 0.0f);
-  advanceTo(5.0f);
+  EXPECT_FLOAT_EQ(engine.getTeamTalkEffect(false), 0.0F);
+  advanceTo(5.0F);
   EXPECT_FLOAT_EQ(engine.getTeamTalkEffect(true),
                   TacticsTuning::TALK_REFERENCE);
-  advanceTo(15.0f);
+  advanceTo(15.0F);
   const float fading = engine.getTeamTalkEffect(true);
-  EXPECT_GT(fading, 0.0f);
+  EXPECT_GT(fading, 0.0F);
   EXPECT_LT(fading, TacticsTuning::TALK_REFERENCE);
-  advanceTo(25.0f);
-  EXPECT_FLOAT_EQ(engine.getTeamTalkEffect(true), 0.0f);
+  advanceTo(25.0F);
+  EXPECT_FLOAT_EQ(engine.getTeamTalkEffect(true), 0.0F);
   // The second half needs its own talk; a poor one deflates the side.
-  advanceTo(47.0f);
+  advanceTo(47.0F);
   ASSERT_EQ(engine.getPeriod(), 2);
-  EXPECT_FLOAT_EQ(engine.getTeamTalkEffect(true), 0.0f);
+  EXPECT_FLOAT_EQ(engine.getTeamTalkEffect(true), 0.0F);
   engine.setTeamTalkModifier(true, 2, -TacticsTuning::TALK_REFERENCE);
   EXPECT_FLOAT_EQ(engine.getTeamTalkEffect(true),
                   -TacticsTuning::TALK_REFERENCE);
-  advanceTo(70.0f);
-  EXPECT_FLOAT_EQ(engine.getTeamTalkEffect(true), 0.0f);
+  advanceTo(70.0F);
+  EXPECT_FLOAT_EQ(engine.getTeamTalkEffect(true), 0.0F);
   EXPECT_FLOAT_EQ(engine.getTeamTalkModifier(true, 2),
                   -TacticsTuning::TALK_REFERENCE);
 }
@@ -545,17 +613,17 @@ TEST_F(TacticsPersistenceTest, RolesAndShapeSurviveASave)
   TeamRepository repository(connection);
   Team team(1, 1, "Roles", 1'000'000);
   team.getStrategy().setKeeperRole(TacticalRole::SweeperKeeper);
-  team.getStrategy().setSlot({{0.20f, 0.12f},
-                              TacticalRole::InsideFullBack,
-                              RoleDuty::Attack,
-                              {0.05f, 0.15f}});
-  team.getStrategy().setSlot({{0.78f, 0.38f},
-                              TacticalRole::FalseNine,
-                              RoleDuty::Defend,
-                              {-0.1f, 0.0f}});
+  team.getStrategy().setSlot({.anchor = {.x = 0.20F, .y = 0.12F},
+                              .role = TacticalRole::InsideFullBack,
+                              .duty = RoleDuty::Attack,
+                              .possessionOffset = {.x = 0.05F, .y = 0.15F}});
+  team.getStrategy().setSlot({.anchor = {.x = 0.78F, .y = 0.38F},
+                              .role = TacticalRole::FalseNine,
+                              .duty = RoleDuty::Defend,
+                              .possessionOffset = {.x = -0.1F, .y = 0.0F}});
   // Opposition orders belong to the club's plan, not to the saved tactic.
   team.getStrategy().setOppositionOrders(
-      {{42, OppositionInstruction::DoubleUp}});
+      {{.player = 42, .instruction = OppositionInstruction::DoubleUp}});
   repository.insertTeamWithId(team);
 
   const auto teams = repository.loadAllTeams();
@@ -564,18 +632,18 @@ TEST_F(TacticsPersistenceTest, RolesAndShapeSurviveASave)
   ASSERT_NE(loaded, teams.end());
   const Strategy& strategy = loaded->getStrategy();
   EXPECT_EQ(strategy.getKeeperRole(), TacticalRole::SweeperKeeper);
-  ASSERT_EQ(strategy.getSlotInstructions().size(), 2u);
-  const SlotInstruction* back = strategy.findSlot({0.20f, 0.12f});
+  ASSERT_EQ(strategy.getSlotInstructions().size(), 2U);
+  const SlotInstruction* back = strategy.findSlot({.x = 0.20F, .y = 0.12F});
   ASSERT_NE(back, nullptr);
   EXPECT_EQ(back->role, TacticalRole::InsideFullBack);
   EXPECT_EQ(back->duty, RoleDuty::Attack);
-  EXPECT_FLOAT_EQ(back->possessionOffset.x, 0.05f);
-  EXPECT_FLOAT_EQ(back->possessionOffset.y, 0.15f);
-  const SlotInstruction* nine = strategy.findSlot({0.78f, 0.38f});
+  EXPECT_FLOAT_EQ(back->possessionOffset.x, 0.05F);
+  EXPECT_FLOAT_EQ(back->possessionOffset.y, 0.15F);
+  const SlotInstruction* nine = strategy.findSlot({.x = 0.78F, .y = 0.38F});
   ASSERT_NE(nine, nullptr);
   EXPECT_EQ(nine->role, TacticalRole::FalseNine);
   EXPECT_EQ(nine->duty, RoleDuty::Defend);
-  EXPECT_FLOAT_EQ(nine->possessionOffset.x, -0.1f);
+  EXPECT_FLOAT_EQ(nine->possessionOffset.x, -0.1F);
   EXPECT_TRUE(strategy.getOppositionOrders().empty());
 }
 
@@ -605,7 +673,7 @@ TEST_F(TacticsPersistenceTest, OlderSavesGetStandardRoles)
         teams, [](const Team& candidate) { return candidate.getId() == 1; });
     ASSERT_NE(loaded, teams.end());
     const Strategy& strategy = loaded->getStrategy();
-    EXPECT_FLOAT_EQ(strategy.getSliders().pressing, 0.7f) << json;
+    EXPECT_FLOAT_EQ(strategy.getSliders().pressing, 0.7F) << json;
     EXPECT_EQ(strategy.getKeeperRole(), TacticalRole::Standard) << json;
     for (const SlotInstruction& slot : strategy.getSlotInstructions())
     {

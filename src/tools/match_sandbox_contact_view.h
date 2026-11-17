@@ -40,27 +40,27 @@ class ContactViewScene : public GUIScene
   {
     /** 0: first touch, 1 + StrikeKind: a strike. */
     int contact = 0;
-    float facing = 0.0f;
+    float facing = 0.0F;
     bool rightFooted = true;
-    float ownSpeed = 0.0f;
-    float ownDirection = 0.0f;
-    float topSpeed = 8.5f;
+    float ownSpeed = 0.0F;
+    float ownDirection = 0.0F;
+    float topSpeed = 8.5F;
     /** Where the ball comes from, and how fast (m/s). */
-    float incomingFrom = 0.0f;
-    float incomingPace = 12.0f;
+    float incomingFrom = 0.0F;
+    float incomingPace = 12.0F;
     /** The ball's speed up (+) or down (-) as it reaches him (m/s). */
-    float verticalSpeed = 0.0f;
-    float height = 0.0f;
-    float aim = 0.0f;
-    float intendedSpeed = 3.0f;
+    float verticalSpeed = 0.0F;
+    float height = 0.0F;
+    float aim = 0.0F;
+    float intendedSpeed = 3.0F;
     /** The speed up (+) or down he means it to leave with (m/s). */
-    float lift = 0.0f;
+    float lift = 0.0F;
     /** 0 a pass to him, 1 a loose ball, 2 a pass meant for someone else
      * (a strike is always his own ball). */
     int expectation = 0;
-    float opponentMetres = 6.0f;
+    float opponentMetres = 6.0F;
     /** Where he meets it, metres from his centre (x right, y up). */
-    ImVec2 probe{0.0f, 0.30f};
+    ImVec2 probe{0.0F, 0.30F};
   };
 
   [[nodiscard]] bool isTouch() const { return inputs.contact == 0; }

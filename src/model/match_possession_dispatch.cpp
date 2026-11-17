@@ -7,8 +7,13 @@
 bool MatchEngine::setPossessionVersion(PossessionId version)
 {
   if (version != PossessionId::AARDVARK && version != PossessionId::BINTURONG)
+  {
     return false;
-  if (stepCounter != 0 && version != possessionId) return false;
+  }
+  if (stepCounter != 0 && version != possessionId)
+  {
+    return false;
+  }
   possessionId = version;
   return true;
 }
@@ -18,9 +23,15 @@ void MatchEngine::setPossession(MatchPlayer& player)
   switch (possessionId)
   {
     case PossessionId::AARDVARK:
-      return setPossessionAardvark(player);
+    {
+      setPossessionAardvark(player);
+      return;
+    }
     case PossessionId::BINTURONG:
-      return setPossessionBinturong(player);
+    {
+      setPossessionBinturong(player);
+      return;
+    }
   }
   throw std::logic_error("Unknown possession implementation");
 }
@@ -30,9 +41,15 @@ void MatchEngine::takePossession(MatchPlayer& player)
   switch (possessionId)
   {
     case PossessionId::AARDVARK:
-      return takePossessionAardvark(player);
+    {
+      takePossessionAardvark(player);
+      return;
+    }
     case PossessionId::BINTURONG:
-      return takePossessionBinturong(player);
+    {
+      takePossessionBinturong(player);
+      return;
+    }
   }
   throw std::logic_error("Unknown possession implementation");
 }
@@ -42,9 +59,15 @@ void MatchEngine::clearPossession()
   switch (possessionId)
   {
     case PossessionId::AARDVARK:
-      return clearPossessionAardvark();
+    {
+      clearPossessionAardvark();
+      return;
+    }
     case PossessionId::BINTURONG:
-      return clearPossessionBinturong();
+    {
+      clearPossessionBinturong();
+      return;
+    }
   }
   throw std::logic_error("Unknown possession implementation");
 }
@@ -54,9 +77,15 @@ void MatchEngine::handBallTo(const Player* holder)
   switch (possessionId)
   {
     case PossessionId::AARDVARK:
-      return handBallToAardvark(holder);
+    {
+      handBallToAardvark(holder);
+      return;
+    }
     case PossessionId::BINTURONG:
-      return handBallToBinturong(holder);
+    {
+      handBallToBinturong(holder);
+      return;
+    }
   }
   throw std::logic_error("Unknown possession implementation");
 }
@@ -66,9 +95,15 @@ void MatchEngine::clearFlightState()
   switch (possessionId)
   {
     case PossessionId::AARDVARK:
-      return clearFlightStateAardvark();
+    {
+      clearFlightStateAardvark();
+      return;
+    }
     case PossessionId::BINTURONG:
-      return clearFlightStateBinturong();
+    {
+      clearFlightStateBinturong();
+      return;
+    }
   }
   throw std::logic_error("Unknown possession implementation");
 }
@@ -78,9 +113,15 @@ void MatchEngine::updateTouch(MatchPlayer& carrier, float dt)
   switch (possessionId)
   {
     case PossessionId::AARDVARK:
-      return updateTouchAardvark(carrier, dt);
+    {
+      updateTouchAardvark(carrier, dt);
+      return;
+    }
     case PossessionId::BINTURONG:
-      return updateTouchBinturong(carrier, dt);
+    {
+      updateTouchBinturong(carrier, dt);
+      return;
+    }
   }
   throw std::logic_error("Unknown possession implementation");
 }
@@ -93,9 +134,15 @@ void MatchEngine::noteTouchOnBall(const MatchPlayer& player,
   switch (possessionId)
   {
     case PossessionId::AARDVARK:
-      return noteTouchOnBallAardvark(player, intent, touch, moment);
+    {
+      noteTouchOnBallAardvark(player, intent, touch, moment);
+      return;
+    }
     case PossessionId::BINTURONG:
-      return noteTouchOnBallBinturong(player, intent, touch, moment);
+    {
+      noteTouchOnBallBinturong(player, intent, touch, moment);
+      return;
+    }
   }
   throw std::logic_error("Unknown possession implementation");
 }
@@ -105,9 +152,15 @@ void MatchEngine::beginTouchClaim(const Player* passer, bool dropping)
   switch (possessionId)
   {
     case PossessionId::AARDVARK:
-      return beginTouchClaimAardvark(passer, dropping);
+    {
+      beginTouchClaimAardvark(passer, dropping);
+      return;
+    }
     case PossessionId::BINTURONG:
-      return beginTouchClaimBinturong(passer, dropping);
+    {
+      beginTouchClaimBinturong(passer, dropping);
+      return;
+    }
   }
   throw std::logic_error("Unknown possession implementation");
 }
@@ -117,9 +170,15 @@ void MatchEngine::beginCollectedDribble(const MatchPlayer& carrier)
   switch (possessionId)
   {
     case PossessionId::AARDVARK:
-      return beginCollectedDribbleAardvark(carrier);
+    {
+      beginCollectedDribbleAardvark(carrier);
+      return;
+    }
     case PossessionId::BINTURONG:
-      return beginCollectedDribbleBinturong(carrier);
+    {
+      beginCollectedDribbleBinturong(carrier);
+      return;
+    }
   }
   throw std::logic_error("Unknown possession implementation");
 }
@@ -132,9 +191,15 @@ void MatchEngine::noteDribbleTouch(const MatchPlayer& player,
   switch (possessionId)
   {
     case PossessionId::AARDVARK:
-      return noteDribbleTouchAardvark(player, intent, touch, moment);
+    {
+      noteDribbleTouchAardvark(player, intent, touch, moment);
+      return;
+    }
     case PossessionId::BINTURONG:
-      return noteDribbleTouchBinturong(player, intent, touch, moment);
+    {
+      noteDribbleTouchBinturong(player, intent, touch, moment);
+      return;
+    }
   }
   throw std::logic_error("Unknown possession implementation");
 }
@@ -144,9 +209,15 @@ void MatchEngine::recordPassCompletion(MatchPlayer& receiver)
   switch (possessionId)
   {
     case PossessionId::AARDVARK:
-      return recordPassCompletionAardvark(receiver);
+    {
+      recordPassCompletionAardvark(receiver);
+      return;
+    }
     case PossessionId::BINTURONG:
-      return recordPassCompletionBinturong(receiver);
+    {
+      recordPassCompletionBinturong(receiver);
+      return;
+    }
   }
   throw std::logic_error("Unknown possession implementation");
 }
@@ -157,9 +228,15 @@ void MatchEngine::creditPassCompletion(MatchPlayer& receiver,
   switch (possessionId)
   {
     case PossessionId::AARDVARK:
-      return creditPassCompletionAardvark(receiver, passerPlayer);
+    {
+      creditPassCompletionAardvark(receiver, passerPlayer);
+      return;
+    }
     case PossessionId::BINTURONG:
-      return creditPassCompletionBinturong(receiver, passerPlayer);
+    {
+      creditPassCompletionBinturong(receiver, passerPlayer);
+      return;
+    }
   }
   throw std::logic_error("Unknown possession implementation");
 }
@@ -169,9 +246,15 @@ void MatchEngine::releasePossession(const MatchPlayer& kicker)
   switch (possessionId)
   {
     case PossessionId::AARDVARK:
-      return releasePossessionAardvark(kicker);
+    {
+      releasePossessionAardvark(kicker);
+      return;
+    }
     case PossessionId::BINTURONG:
-      return releasePossessionBinturong(kicker);
+    {
+      releasePossessionBinturong(kicker);
+      return;
+    }
   }
   throw std::logic_error("Unknown possession implementation");
 }
@@ -182,9 +265,15 @@ void MatchEngine::beginPassFlight(const MatchPlayer& passer,
   switch (possessionId)
   {
     case PossessionId::AARDVARK:
-      return beginPassFlightAardvark(passer, option);
+    {
+      beginPassFlightAardvark(passer, option);
+      return;
+    }
     case PossessionId::BINTURONG:
-      return beginPassFlightBinturong(passer, option);
+    {
+      beginPassFlightBinturong(passer, option);
+      return;
+    }
   }
   throw std::logic_error("Unknown possession implementation");
 }
@@ -194,9 +283,15 @@ void MatchEngine::finishPassFlight(bool aerialDelivery)
   switch (possessionId)
   {
     case PossessionId::AARDVARK:
-      return finishPassFlightAardvark(aerialDelivery);
+    {
+      finishPassFlightAardvark(aerialDelivery);
+      return;
+    }
     case PossessionId::BINTURONG:
-      return finishPassFlightBinturong(aerialDelivery);
+    {
+      finishPassFlightBinturong(aerialDelivery);
+      return;
+    }
   }
   throw std::logic_error("Unknown possession implementation");
 }
@@ -208,11 +303,17 @@ void MatchEngine::noteShotFlight(const MatchPlayer& shooter, bool onTarget,
   switch (possessionId)
   {
     case PossessionId::AARDVARK:
-      return noteShotFlightAardvark(shooter, onTarget, xg, targetY, crossingZ,
-                                    header, penalty);
+    {
+      noteShotFlightAardvark(shooter, onTarget, xg, targetY, crossingZ, header,
+                             penalty);
+      return;
+    }
     case PossessionId::BINTURONG:
-      return noteShotFlightBinturong(shooter, onTarget, xg, targetY, crossingZ,
-                                     header, penalty);
+    {
+      noteShotFlightBinturong(shooter, onTarget, xg, targetY, crossingZ, header,
+                              penalty);
+      return;
+    }
   }
   throw std::logic_error("Unknown possession implementation");
 }
@@ -222,9 +323,15 @@ void MatchEngine::consumeFirstTimeIntent(const MatchPlayer& player)
   switch (possessionId)
   {
     case PossessionId::AARDVARK:
-      return consumeFirstTimeIntentAardvark(player);
+    {
+      consumeFirstTimeIntentAardvark(player);
+      return;
+    }
     case PossessionId::BINTURONG:
-      return consumeFirstTimeIntentBinturong(player);
+    {
+      consumeFirstTimeIntentBinturong(player);
+      return;
+    }
   }
   throw std::logic_error("Unknown possession implementation");
 }
@@ -246,9 +353,15 @@ void MatchEngine::noteFreeBallTackle(MatchPlayer& tackler, bool contest)
   switch (possessionId)
   {
     case PossessionId::AARDVARK:
-      return noteFreeBallTackleAardvark(tackler, contest);
+    {
+      noteFreeBallTackleAardvark(tackler, contest);
+      return;
+    }
     case PossessionId::BINTURONG:
-      return noteFreeBallTackleBinturong(tackler, contest);
+    {
+      noteFreeBallTackleBinturong(tackler, contest);
+      return;
+    }
   }
   throw std::logic_error("Unknown possession implementation");
 }
@@ -258,9 +371,15 @@ void MatchEngine::settleTackle(bool homeTeam)
   switch (possessionId)
   {
     case PossessionId::AARDVARK:
-      return settleTackleAardvark(homeTeam);
+    {
+      settleTackleAardvark(homeTeam);
+      return;
+    }
     case PossessionId::BINTURONG:
-      return settleTackleBinturong(homeTeam);
+    {
+      settleTackleBinturong(homeTeam);
+      return;
+    }
   }
   throw std::logic_error("Unknown possession implementation");
 }
@@ -270,9 +389,15 @@ void MatchEngine::trackHeaderRun()
   switch (possessionId)
   {
     case PossessionId::AARDVARK:
-      return trackHeaderRunAardvark();
+    {
+      trackHeaderRunAardvark();
+      return;
+    }
     case PossessionId::BINTURONG:
-      return trackHeaderRunBinturong();
+    {
+      trackHeaderRunBinturong();
+      return;
+    }
   }
   throw std::logic_error("Unknown possession implementation");
 }
@@ -282,9 +407,15 @@ void MatchEngine::cancelPendingTackle()
   switch (possessionId)
   {
     case PossessionId::AARDVARK:
-      return cancelPendingTackleAardvark();
+    {
+      cancelPendingTackleAardvark();
+      return;
+    }
     case PossessionId::BINTURONG:
-      return cancelPendingTackleBinturong();
+    {
+      cancelPendingTackleBinturong();
+      return;
+    }
   }
   throw std::logic_error("Unknown possession implementation");
 }
@@ -294,9 +425,15 @@ void MatchEngine::noteHeaderContact(const MatchPlayer& header)
   switch (possessionId)
   {
     case PossessionId::AARDVARK:
-      return noteHeaderContactAardvark(header);
+    {
+      noteHeaderContactAardvark(header);
+      return;
+    }
     case PossessionId::BINTURONG:
-      return noteHeaderContactBinturong(header);
+    {
+      noteHeaderContactBinturong(header);
+      return;
+    }
   }
   throw std::logic_error("Unknown possession implementation");
 }
@@ -307,9 +444,15 @@ void MatchEngine::creditHeaderShot(const MatchPlayer& header,
   switch (possessionId)
   {
     case PossessionId::AARDVARK:
-      return creditHeaderShotAardvark(header, deliverer);
+    {
+      creditHeaderShotAardvark(header, deliverer);
+      return;
+    }
     case PossessionId::BINTURONG:
-      return creditHeaderShotBinturong(header, deliverer);
+    {
+      creditHeaderShotBinturong(header, deliverer);
+      return;
+    }
   }
   throw std::logic_error("Unknown possession implementation");
 }
@@ -319,9 +462,15 @@ void MatchEngine::beginHeaderPlay(MatchPlayer& header, bool fromTeammate)
   switch (possessionId)
   {
     case PossessionId::AARDVARK:
-      return beginHeaderPlayAardvark(header, fromTeammate);
+    {
+      beginHeaderPlayAardvark(header, fromTeammate);
+      return;
+    }
     case PossessionId::BINTURONG:
-      return beginHeaderPlayBinturong(header, fromTeammate);
+    {
+      beginHeaderPlayBinturong(header, fromTeammate);
+      return;
+    }
   }
   throw std::logic_error("Unknown possession implementation");
 }
@@ -334,9 +483,15 @@ void MatchEngine::noteCushionedHeader(const MatchPlayer& header,
   switch (possessionId)
   {
     case PossessionId::AARDVARK:
-      return noteCushionedHeaderAardvark(header, passer, moment, launchSpeed);
+    {
+      noteCushionedHeaderAardvark(header, passer, moment, launchSpeed);
+      return;
+    }
     case PossessionId::BINTURONG:
-      return noteCushionedHeaderBinturong(header, passer, moment, launchSpeed);
+    {
+      noteCushionedHeaderBinturong(header, passer, moment, launchSpeed);
+      return;
+    }
   }
   throw std::logic_error("Unknown possession implementation");
 }
@@ -347,9 +502,15 @@ void MatchEngine::noteTackleNudge(const MatchPlayer& tackler,
   switch (possessionId)
   {
     case PossessionId::AARDVARK:
-      return noteTackleNudgeAardvark(tackler, attacker);
+    {
+      noteTackleNudgeAardvark(tackler, attacker);
+      return;
+    }
     case PossessionId::BINTURONG:
-      return noteTackleNudgeBinturong(tackler, attacker);
+    {
+      noteTackleNudgeBinturong(tackler, attacker);
+      return;
+    }
   }
   throw std::logic_error("Unknown possession implementation");
 }
@@ -359,9 +520,15 @@ void MatchEngine::beginPokedTackle(const MatchPlayer& defender)
   switch (possessionId)
   {
     case PossessionId::AARDVARK:
-      return beginPokedTackleAardvark(defender);
+    {
+      beginPokedTackleAardvark(defender);
+      return;
+    }
     case PossessionId::BINTURONG:
-      return beginPokedTackleBinturong(defender);
+    {
+      beginPokedTackleBinturong(defender);
+      return;
+    }
   }
   throw std::logic_error("Unknown possession implementation");
 }
@@ -371,9 +538,15 @@ void MatchEngine::finishPokedTackle(const MatchPlayer& defender)
   switch (possessionId)
   {
     case PossessionId::AARDVARK:
-      return finishPokedTackleAardvark(defender);
+    {
+      finishPokedTackleAardvark(defender);
+      return;
+    }
     case PossessionId::BINTURONG:
-      return finishPokedTackleBinturong(defender);
+    {
+      finishPokedTackleBinturong(defender);
+      return;
+    }
   }
   throw std::logic_error("Unknown possession implementation");
 }
@@ -383,9 +556,15 @@ void MatchEngine::creditImmediateTackleWin(MatchPlayer& defender)
   switch (possessionId)
   {
     case PossessionId::AARDVARK:
-      return creditImmediateTackleWinAardvark(defender);
+    {
+      creditImmediateTackleWinAardvark(defender);
+      return;
+    }
     case PossessionId::BINTURONG:
-      return creditImmediateTackleWinBinturong(defender);
+    {
+      creditImmediateTackleWinBinturong(defender);
+      return;
+    }
   }
   throw std::logic_error("Unknown possession implementation");
 }
@@ -396,9 +575,15 @@ void MatchEngine::armTackleStrike(MatchPlayer& tackler,
   switch (possessionId)
   {
     case PossessionId::AARDVARK:
-      return armTackleStrikeAardvark(tackler, pass);
+    {
+      armTackleStrikeAardvark(tackler, pass);
+      return;
+    }
     case PossessionId::BINTURONG:
-      return armTackleStrikeBinturong(tackler, pass);
+    {
+      armTackleStrikeBinturong(tackler, pass);
+      return;
+    }
   }
   throw std::logic_error("Unknown possession implementation");
 }
@@ -408,9 +593,15 @@ void MatchEngine::loseBallOnFall(MatchPlayer& player)
   switch (possessionId)
   {
     case PossessionId::AARDVARK:
-      return loseBallOnFallAardvark(player);
+    {
+      loseBallOnFallAardvark(player);
+      return;
+    }
     case PossessionId::BINTURONG:
-      return loseBallOnFallBinturong(player);
+    {
+      loseBallOnFallBinturong(player);
+      return;
+    }
   }
   throw std::logic_error("Unknown possession implementation");
 }
@@ -420,9 +611,15 @@ void MatchEngine::noteFallenDeflection(const MatchPlayer& player)
   switch (possessionId)
   {
     case PossessionId::AARDVARK:
-      return noteFallenDeflectionAardvark(player);
+    {
+      noteFallenDeflectionAardvark(player);
+      return;
+    }
     case PossessionId::BINTURONG:
-      return noteFallenDeflectionBinturong(player);
+    {
+      noteFallenDeflectionBinturong(player);
+      return;
+    }
   }
   throw std::logic_error("Unknown possession implementation");
 }
@@ -433,9 +630,15 @@ void MatchEngine::noteBodyDeflectionHit(MatchPlayer& player, ShotBodyPart part,
   switch (possessionId)
   {
     case PossessionId::AARDVARK:
-      return noteBodyDeflectionHitAardvark(player, part, legPutOut, opponents);
+    {
+      noteBodyDeflectionHitAardvark(player, part, legPutOut, opponents);
+      return;
+    }
     case PossessionId::BINTURONG:
-      return noteBodyDeflectionHitBinturong(player, part, legPutOut, opponents);
+    {
+      noteBodyDeflectionHitBinturong(player, part, legPutOut, opponents);
+      return;
+    }
   }
   throw std::logic_error("Unknown possession implementation");
 }
@@ -445,9 +648,15 @@ void MatchEngine::beginBodyDeflection(const MatchPlayer& player)
   switch (possessionId)
   {
     case PossessionId::AARDVARK:
-      return beginBodyDeflectionAardvark(player);
+    {
+      beginBodyDeflectionAardvark(player);
+      return;
+    }
     case PossessionId::BINTURONG:
-      return beginBodyDeflectionBinturong(player);
+    {
+      beginBodyDeflectionBinturong(player);
+      return;
+    }
   }
   throw std::logic_error("Unknown possession implementation");
 }
@@ -457,9 +666,15 @@ void MatchEngine::beginShotDeflection(const MatchPlayer& player, float lockout)
   switch (possessionId)
   {
     case PossessionId::AARDVARK:
-      return beginShotDeflectionAardvark(player, lockout);
+    {
+      beginShotDeflectionAardvark(player, lockout);
+      return;
+    }
     case PossessionId::BINTURONG:
-      return beginShotDeflectionBinturong(player, lockout);
+    {
+      beginShotDeflectionBinturong(player, lockout);
+      return;
+    }
   }
   throw std::logic_error("Unknown possession implementation");
 }
@@ -469,9 +684,15 @@ void MatchEngine::endDeflectedShotFlight()
   switch (possessionId)
   {
     case PossessionId::AARDVARK:
-      return endDeflectedShotFlightAardvark();
+    {
+      endDeflectedShotFlightAardvark();
+      return;
+    }
     case PossessionId::BINTURONG:
-      return endDeflectedShotFlightBinturong();
+    {
+      endDeflectedShotFlightBinturong();
+      return;
+    }
   }
   throw std::logic_error("Unknown possession implementation");
 }
@@ -482,9 +703,15 @@ void MatchEngine::finishShotDeflection(MatchPlayer& player, bool offBody,
   switch (possessionId)
   {
     case PossessionId::AARDVARK:
-      return finishShotDeflectionAardvark(player, offBody, deflection);
+    {
+      finishShotDeflectionAardvark(player, offBody, deflection);
+      return;
+    }
     case PossessionId::BINTURONG:
-      return finishShotDeflectionBinturong(player, offBody, deflection);
+    {
+      finishShotDeflectionBinturong(player, offBody, deflection);
+      return;
+    }
   }
   throw std::logic_error("Unknown possession implementation");
 }
@@ -494,9 +721,15 @@ void MatchEngine::noteFailedTouch(const MatchPlayer& player)
   switch (possessionId)
   {
     case PossessionId::AARDVARK:
-      return noteFailedTouchAardvark(player);
+    {
+      noteFailedTouchAardvark(player);
+      return;
+    }
     case PossessionId::BINTURONG:
-      return noteFailedTouchBinturong(player);
+    {
+      noteFailedTouchBinturong(player);
+      return;
+    }
   }
   throw std::logic_error("Unknown possession implementation");
 }
@@ -506,9 +739,15 @@ void MatchEngine::beginKeeperHold(Point3F from)
   switch (possessionId)
   {
     case PossessionId::AARDVARK:
-      return beginKeeperHoldAardvark(from);
+    {
+      beginKeeperHoldAardvark(from);
+      return;
+    }
     case PossessionId::BINTURONG:
-      return beginKeeperHoldBinturong(from);
+    {
+      beginKeeperHoldBinturong(from);
+      return;
+    }
   }
   throw std::logic_error("Unknown possession implementation");
 }
@@ -518,9 +757,15 @@ void MatchEngine::rebaseKeeperHold(Point3F from)
   switch (possessionId)
   {
     case PossessionId::AARDVARK:
-      return rebaseKeeperHoldAardvark(from);
+    {
+      rebaseKeeperHoldAardvark(from);
+      return;
+    }
     case PossessionId::BINTURONG:
-      return rebaseKeeperHoldBinturong(from);
+    {
+      rebaseKeeperHoldBinturong(from);
+      return;
+    }
   }
   throw std::logic_error("Unknown possession implementation");
 }
@@ -530,9 +775,15 @@ void MatchEngine::endKeeperHold()
   switch (possessionId)
   {
     case PossessionId::AARDVARK:
-      return endKeeperHoldAardvark();
+    {
+      endKeeperHoldAardvark();
+      return;
+    }
     case PossessionId::BINTURONG:
-      return endKeeperHoldBinturong();
+    {
+      endKeeperHoldBinturong();
+      return;
+    }
   }
   throw std::logic_error("Unknown possession implementation");
 }
@@ -542,9 +793,15 @@ void MatchEngine::noteKeeperDistribution(bool lofted, bool overarm)
   switch (possessionId)
   {
     case PossessionId::AARDVARK:
-      return noteKeeperDistributionAardvark(lofted, overarm);
+    {
+      noteKeeperDistributionAardvark(lofted, overarm);
+      return;
+    }
     case PossessionId::BINTURONG:
-      return noteKeeperDistributionBinturong(lofted, overarm);
+    {
+      noteKeeperDistributionBinturong(lofted, overarm);
+      return;
+    }
   }
   throw std::logic_error("Unknown possession implementation");
 }
@@ -554,9 +811,15 @@ void MatchEngine::beginKeeperHandRebound(const MatchPlayer& keeper)
   switch (possessionId)
   {
     case PossessionId::AARDVARK:
-      return beginKeeperHandReboundAardvark(keeper);
+    {
+      beginKeeperHandReboundAardvark(keeper);
+      return;
+    }
     case PossessionId::BINTURONG:
-      return beginKeeperHandReboundBinturong(keeper);
+    {
+      beginKeeperHandReboundBinturong(keeper);
+      return;
+    }
   }
   throw std::logic_error("Unknown possession implementation");
 }
@@ -566,9 +829,15 @@ void MatchEngine::noteKeeperShotResolved()
   switch (possessionId)
   {
     case PossessionId::AARDVARK:
-      return noteKeeperShotResolvedAardvark();
+    {
+      noteKeeperShotResolvedAardvark();
+      return;
+    }
     case PossessionId::BINTURONG:
-      return noteKeeperShotResolvedBinturong();
+    {
+      noteKeeperShotResolvedBinturong();
+      return;
+    }
   }
   throw std::logic_error("Unknown possession implementation");
 }
@@ -578,9 +847,15 @@ void MatchEngine::finishKeeperParry(const MatchPlayer& keeper)
   switch (possessionId)
   {
     case PossessionId::AARDVARK:
-      return finishKeeperParryAardvark(keeper);
+    {
+      finishKeeperParryAardvark(keeper);
+      return;
+    }
     case PossessionId::BINTURONG:
-      return finishKeeperParryBinturong(keeper);
+    {
+      finishKeeperParryBinturong(keeper);
+      return;
+    }
   }
   throw std::logic_error("Unknown possession implementation");
 }
@@ -590,9 +865,15 @@ void MatchEngine::creditKeeperSave(MatchPlayer& keeper)
   switch (possessionId)
   {
     case PossessionId::AARDVARK:
-      return creditKeeperSaveAardvark(keeper);
+    {
+      creditKeeperSaveAardvark(keeper);
+      return;
+    }
     case PossessionId::BINTURONG:
-      return creditKeeperSaveBinturong(keeper);
+    {
+      creditKeeperSaveBinturong(keeper);
+      return;
+    }
   }
   throw std::logic_error("Unknown possession implementation");
 }
@@ -602,9 +883,15 @@ void MatchEngine::completeKeeperSave(const MatchPlayer& goalkeeper)
   switch (possessionId)
   {
     case PossessionId::AARDVARK:
-      return completeKeeperSaveAardvark(goalkeeper);
+    {
+      completeKeeperSaveAardvark(goalkeeper);
+      return;
+    }
     case PossessionId::BINTURONG:
-      return completeKeeperSaveBinturong(goalkeeper);
+    {
+      completeKeeperSaveBinturong(goalkeeper);
+      return;
+    }
   }
   throw std::logic_error("Unknown possession implementation");
 }
@@ -614,9 +901,15 @@ void MatchEngine::beginLegacyKeeperPunch(const MatchPlayer& player)
   switch (possessionId)
   {
     case PossessionId::AARDVARK:
-      return beginLegacyKeeperPunchAardvark(player);
+    {
+      beginLegacyKeeperPunchAardvark(player);
+      return;
+    }
     case PossessionId::BINTURONG:
-      return beginLegacyKeeperPunchBinturong(player);
+    {
+      beginLegacyKeeperPunchBinturong(player);
+      return;
+    }
   }
   throw std::logic_error("Unknown possession implementation");
 }
@@ -626,9 +919,15 @@ void MatchEngine::finishLegacyKeeperPunch(const MatchPlayer& player)
   switch (possessionId)
   {
     case PossessionId::AARDVARK:
-      return finishLegacyKeeperPunchAardvark(player);
+    {
+      finishLegacyKeeperPunchAardvark(player);
+      return;
+    }
     case PossessionId::BINTURONG:
-      return finishLegacyKeeperPunchBinturong(player);
+    {
+      finishLegacyKeeperPunchBinturong(player);
+      return;
+    }
   }
   throw std::logic_error("Unknown possession implementation");
 }
@@ -638,9 +937,15 @@ void MatchEngine::rearmShotAfterBounce(float targetY, float height)
   switch (possessionId)
   {
     case PossessionId::AARDVARK:
-      return rearmShotAfterBounceAardvark(targetY, height);
+    {
+      rearmShotAfterBounceAardvark(targetY, height);
+      return;
+    }
     case PossessionId::BINTURONG:
-      return rearmShotAfterBounceBinturong(targetY, height);
+    {
+      rearmShotAfterBounceBinturong(targetY, height);
+      return;
+    }
   }
   throw std::logic_error("Unknown possession implementation");
 }
@@ -650,9 +955,15 @@ void MatchEngine::endSpentKeeperShot()
   switch (possessionId)
   {
     case PossessionId::AARDVARK:
-      return endSpentKeeperShotAardvark();
+    {
+      endSpentKeeperShotAardvark();
+      return;
+    }
     case PossessionId::BINTURONG:
-      return endSpentKeeperShotBinturong();
+    {
+      endSpentKeeperShotBinturong();
+      return;
+    }
   }
   throw std::logic_error("Unknown possession implementation");
 }
@@ -662,9 +973,15 @@ void MatchEngine::assignRestartOwner(const Player* owner)
   switch (possessionId)
   {
     case PossessionId::AARDVARK:
-      return assignRestartOwnerAardvark(owner);
+    {
+      assignRestartOwnerAardvark(owner);
+      return;
+    }
     case PossessionId::BINTURONG:
-      return assignRestartOwnerBinturong(owner);
+    {
+      assignRestartOwnerBinturong(owner);
+      return;
+    }
   }
   throw std::logic_error("Unknown possession implementation");
 }
@@ -674,9 +991,15 @@ void MatchEngine::markThrowEntry(bool entering)
   switch (possessionId)
   {
     case PossessionId::AARDVARK:
-      return markThrowEntryAardvark(entering);
+    {
+      markThrowEntryAardvark(entering);
+      return;
+    }
     case PossessionId::BINTURONG:
-      return markThrowEntryBinturong(entering);
+    {
+      markThrowEntryBinturong(entering);
+      return;
+    }
   }
   throw std::logic_error("Unknown possession implementation");
 }
@@ -686,9 +1009,15 @@ void MatchEngine::noteWoodworkContact(bool shot)
   switch (possessionId)
   {
     case PossessionId::AARDVARK:
-      return noteWoodworkContactAardvark(shot);
+    {
+      noteWoodworkContactAardvark(shot);
+      return;
+    }
     case PossessionId::BINTURONG:
-      return noteWoodworkContactBinturong(shot);
+    {
+      noteWoodworkContactBinturong(shot);
+      return;
+    }
   }
   throw std::logic_error("Unknown possession implementation");
 }
@@ -698,9 +1027,15 @@ void MatchEngine::markWallStoppedShot()
   switch (possessionId)
   {
     case PossessionId::AARDVARK:
-      return markWallStoppedShotAardvark();
+    {
+      markWallStoppedShotAardvark();
+      return;
+    }
     case PossessionId::BINTURONG:
-      return markWallStoppedShotBinturong();
+    {
+      markWallStoppedShotBinturong();
+      return;
+    }
   }
   throw std::logic_error("Unknown possession implementation");
 }
@@ -710,9 +1045,15 @@ void MatchEngine::creditWallBlocker(MatchPlayer& player)
   switch (possessionId)
   {
     case PossessionId::AARDVARK:
-      return creditWallBlockerAardvark(player);
+    {
+      creditWallBlockerAardvark(player);
+      return;
+    }
     case PossessionId::BINTURONG:
-      return creditWallBlockerBinturong(player);
+    {
+      creditWallBlockerBinturong(player);
+      return;
+    }
   }
   throw std::logic_error("Unknown possession implementation");
 }
@@ -722,9 +1063,15 @@ void MatchEngine::noteShotSetPieceOrigin(bool setPiece)
   switch (possessionId)
   {
     case PossessionId::AARDVARK:
-      return noteShotSetPieceOriginAardvark(setPiece);
+    {
+      noteShotSetPieceOriginAardvark(setPiece);
+      return;
+    }
     case PossessionId::BINTURONG:
-      return noteShotSetPieceOriginBinturong(setPiece);
+    {
+      noteShotSetPieceOriginBinturong(setPiece);
+      return;
+    }
   }
   throw std::logic_error("Unknown possession implementation");
 }
@@ -734,9 +1081,15 @@ void MatchEngine::noteDirectFreeKickShot()
   switch (possessionId)
   {
     case PossessionId::AARDVARK:
-      return noteDirectFreeKickShotAardvark();
+    {
+      noteDirectFreeKickShotAardvark();
+      return;
+    }
     case PossessionId::BINTURONG:
-      return noteDirectFreeKickShotBinturong();
+    {
+      noteDirectFreeKickShotBinturong();
+      return;
+    }
   }
   throw std::logic_error("Unknown possession implementation");
 }
@@ -746,9 +1099,15 @@ void MatchEngine::resetShootoutBall()
   switch (possessionId)
   {
     case PossessionId::AARDVARK:
-      return resetShootoutBallAardvark();
+    {
+      resetShootoutBallAardvark();
+      return;
+    }
     case PossessionId::BINTURONG:
-      return resetShootoutBallBinturong();
+    {
+      resetShootoutBallBinturong();
+      return;
+    }
   }
   throw std::logic_error("Unknown possession implementation");
 }
@@ -758,9 +1117,15 @@ void MatchEngine::resetRuleContactAttempts()
   switch (possessionId)
   {
     case PossessionId::AARDVARK:
-      return resetRuleContactAttemptsAardvark();
+    {
+      resetRuleContactAttemptsAardvark();
+      return;
+    }
     case PossessionId::BINTURONG:
-      return resetRuleContactAttemptsBinturong();
+    {
+      resetRuleContactAttemptsBinturong();
+      return;
+    }
   }
   throw std::logic_error("Unknown possession implementation");
 }
@@ -770,9 +1135,15 @@ void MatchEngine::resetLifecycleBall()
   switch (possessionId)
   {
     case PossessionId::AARDVARK:
-      return resetLifecycleBallAardvark();
+    {
+      resetLifecycleBallAardvark();
+      return;
+    }
     case PossessionId::BINTURONG:
-      return resetLifecycleBallBinturong();
+    {
+      resetLifecycleBallBinturong();
+      return;
+    }
   }
   throw std::logic_error("Unknown possession implementation");
 }
@@ -782,9 +1153,15 @@ void MatchEngine::assignScenarioOwner(const MatchPlayer& carrier)
   switch (possessionId)
   {
     case PossessionId::AARDVARK:
-      return assignScenarioOwnerAardvark(carrier);
+    {
+      assignScenarioOwnerAardvark(carrier);
+      return;
+    }
     case PossessionId::BINTURONG:
-      return assignScenarioOwnerBinturong(carrier);
+    {
+      assignScenarioOwnerBinturong(carrier);
+      return;
+    }
   }
   throw std::logic_error("Unknown possession implementation");
 }
@@ -794,9 +1171,15 @@ void MatchEngine::beginFedBall()
   switch (possessionId)
   {
     case PossessionId::AARDVARK:
-      return beginFedBallAardvark();
+    {
+      beginFedBallAardvark();
+      return;
+    }
     case PossessionId::BINTURONG:
-      return beginFedBallBinturong();
+    {
+      beginFedBallBinturong();
+      return;
+    }
   }
   throw std::logic_error("Unknown possession implementation");
 }
@@ -806,9 +1189,15 @@ void MatchEngine::finishFedBall(const MatchPlayer* receiver)
   switch (possessionId)
   {
     case PossessionId::AARDVARK:
-      return finishFedBallAardvark(receiver);
+    {
+      finishFedBallAardvark(receiver);
+      return;
+    }
     case PossessionId::BINTURONG:
-      return finishFedBallBinturong(receiver);
+    {
+      finishFedBallBinturong(receiver);
+      return;
+    }
   }
   throw std::logic_error("Unknown possession implementation");
 }
@@ -818,9 +1207,15 @@ void MatchEngine::rememberPhaseTeam(bool homeTeam)
   switch (possessionId)
   {
     case PossessionId::AARDVARK:
-      return rememberPhaseTeamAardvark(homeTeam);
+    {
+      rememberPhaseTeamAardvark(homeTeam);
+      return;
+    }
     case PossessionId::BINTURONG:
-      return rememberPhaseTeamBinturong(homeTeam);
+    {
+      rememberPhaseTeamBinturong(homeTeam);
+      return;
+    }
   }
   throw std::logic_error("Unknown possession implementation");
 }
@@ -830,9 +1225,15 @@ void MatchEngine::noteCarrierHistory(const MatchPlayer& carrier)
   switch (possessionId)
   {
     case PossessionId::AARDVARK:
-      return noteCarrierHistoryAardvark(carrier);
+    {
+      noteCarrierHistoryAardvark(carrier);
+      return;
+    }
     case PossessionId::BINTURONG:
-      return noteCarrierHistoryBinturong(carrier);
+    {
+      noteCarrierHistoryBinturong(carrier);
+      return;
+    }
   }
   throw std::logic_error("Unknown possession implementation");
 }
@@ -843,9 +1244,15 @@ void MatchEngine::substitutePossession(bool hadPossession, PlayerID outgoingId,
   switch (possessionId)
   {
     case PossessionId::AARDVARK:
-      return substitutePossessionAardvark(hadPossession, outgoingId, inPlayer);
+    {
+      substitutePossessionAardvark(hadPossession, outgoingId, inPlayer);
+      return;
+    }
     case PossessionId::BINTURONG:
-      return substitutePossessionBinturong(hadPossession, outgoingId, inPlayer);
+    {
+      substitutePossessionBinturong(hadPossession, outgoingId, inPlayer);
+      return;
+    }
   }
   throw std::logic_error("Unknown possession implementation");
 }
@@ -867,9 +1274,15 @@ void MatchEngine::clearShooterHistory()
   switch (possessionId)
   {
     case PossessionId::AARDVARK:
-      return clearShooterHistoryAardvark();
+    {
+      clearShooterHistoryAardvark();
+      return;
+    }
     case PossessionId::BINTURONG:
-      return clearShooterHistoryBinturong();
+    {
+      clearShooterHistoryBinturong();
+      return;
+    }
   }
   throw std::logic_error("Unknown possession implementation");
 }
@@ -879,9 +1292,15 @@ void MatchEngine::setPassFlightTarget(PitchPoint target)
   switch (possessionId)
   {
     case PossessionId::AARDVARK:
-      return setPassFlightTargetAardvark(target);
+    {
+      setPassFlightTargetAardvark(target);
+      return;
+    }
     case PossessionId::BINTURONG:
-      return setPassFlightTargetBinturong(target);
+    {
+      setPassFlightTargetBinturong(target);
+      return;
+    }
   }
   throw std::logic_error("Unknown possession implementation");
 }
@@ -891,9 +1310,15 @@ void MatchEngine::noteGoalSide(bool homeTeam)
   switch (possessionId)
   {
     case PossessionId::AARDVARK:
-      return noteGoalSideAardvark(homeTeam);
+    {
+      noteGoalSideAardvark(homeTeam);
+      return;
+    }
     case PossessionId::BINTURONG:
-      return noteGoalSideBinturong(homeTeam);
+    {
+      noteGoalSideBinturong(homeTeam);
+      return;
+    }
   }
   throw std::logic_error("Unknown possession implementation");
 }
@@ -903,9 +1328,15 @@ void MatchEngine::prepareShotAssist(const MatchPlayer& shooter, bool header)
   switch (possessionId)
   {
     case PossessionId::AARDVARK:
-      return prepareShotAssistAardvark(shooter, header);
+    {
+      prepareShotAssistAardvark(shooter, header);
+      return;
+    }
     case PossessionId::BINTURONG:
-      return prepareShotAssistBinturong(shooter, header);
+    {
+      prepareShotAssistBinturong(shooter, header);
+      return;
+    }
   }
   throw std::logic_error("Unknown possession implementation");
 }
@@ -916,9 +1347,15 @@ void MatchEngine::noteContactActor(const Player* player, float lockout,
   switch (possessionId)
   {
     case PossessionId::AARDVARK:
-      return noteContactActorAardvark(player, lockout, resetAttempts);
+    {
+      noteContactActorAardvark(player, lockout, resetAttempts);
+      return;
+    }
     case PossessionId::BINTURONG:
-      return noteContactActorBinturong(player, lockout, resetAttempts);
+    {
+      noteContactActorBinturong(player, lockout, resetAttempts);
+      return;
+    }
   }
   throw std::logic_error("Unknown possession implementation");
 }
@@ -928,9 +1365,15 @@ void MatchEngine::notePathChange()
   switch (possessionId)
   {
     case PossessionId::AARDVARK:
-      return notePathChangeAardvark();
+    {
+      notePathChangeAardvark();
+      return;
+    }
     case PossessionId::BINTURONG:
-      return notePathChangeBinturong();
+    {
+      notePathChangeBinturong();
+      return;
+    }
   }
   throw std::logic_error("Unknown possession implementation");
 }
@@ -940,9 +1383,15 @@ void MatchEngine::advanceShotFlightClock(float dt)
   switch (possessionId)
   {
     case PossessionId::AARDVARK:
-      return advanceShotFlightClockAardvark(dt);
+    {
+      advanceShotFlightClockAardvark(dt);
+      return;
+    }
     case PossessionId::BINTURONG:
-      return advanceShotFlightClockBinturong(dt);
+    {
+      advanceShotFlightClockBinturong(dt);
+      return;
+    }
   }
   throw std::logic_error("Unknown possession implementation");
 }
@@ -952,9 +1401,15 @@ void MatchEngine::setBallMotion(const BallMotion& motion)
   switch (possessionId)
   {
     case PossessionId::AARDVARK:
-      return setBallMotionAardvark(motion);
+    {
+      setBallMotionAardvark(motion);
+      return;
+    }
     case PossessionId::BINTURONG:
-      return setBallMotionBinturong(motion);
+    {
+      setBallMotionBinturong(motion);
+      return;
+    }
   }
   throw std::logic_error("Unknown possession implementation");
 }
@@ -964,9 +1419,15 @@ void MatchEngine::endAerialDelivery()
   switch (possessionId)
   {
     case PossessionId::AARDVARK:
-      return endAerialDeliveryAardvark();
+    {
+      endAerialDeliveryAardvark();
+      return;
+    }
     case PossessionId::BINTURONG:
-      return endAerialDeliveryBinturong();
+    {
+      endAerialDeliveryBinturong();
+      return;
+    }
   }
   throw std::logic_error("Unknown possession implementation");
 }
@@ -976,9 +1437,15 @@ void MatchEngine::noteThrowTeam(bool homeTeam)
   switch (possessionId)
   {
     case PossessionId::AARDVARK:
-      return noteThrowTeamAardvark(homeTeam);
+    {
+      noteThrowTeamAardvark(homeTeam);
+      return;
+    }
     case PossessionId::BINTURONG:
-      return noteThrowTeamBinturong(homeTeam);
+    {
+      noteThrowTeamBinturong(homeTeam);
+      return;
+    }
   }
   throw std::logic_error("Unknown possession implementation");
 }

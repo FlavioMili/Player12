@@ -49,8 +49,8 @@ struct MeasureSpec
 /** One run's results. */
 struct MeasureRun
 {
-  float x = 0.0f;
-  float by = 0.0f;
+  float x = 0.0F;
+  float by = 0.0F;
   std::uint32_t seed = 0;
   /** Empty if the run did not complete. */
   std::vector<DrillMetric> metrics;
@@ -69,8 +69,8 @@ struct MeasureStat
 /** One point of the sweep (for one value of `by`). */
 struct MeasurePoint
 {
-  float x = 0.0f;
-  float by = 0.0f;
+  float x = 0.0F;
+  float by = 0.0F;
   int runs = 0;
   int completed = 0;
   std::map<std::string, MeasureStat> stats;
@@ -142,7 +142,8 @@ class DrillMeasure
 /** Parses an axis: "Pace=40:95:12" (from:to:count), "Pace=40,60,80", or a
  * choice setting's name alone ("Who runs": every choice that can run
  * headless). Empty on error, with the reason in `error`. */
-std::optional<MeasureAxis> parseMeasureAxis(Drill& drill, const std::string& text,
+std::optional<MeasureAxis> parseMeasureAxis(Drill& drill,
+                                            const std::string& text,
                                             std::string& error);
 /** Every value of a choice setting that can run headless (not "You"). */
 std::vector<float> headlessChoices(const DrillParameter& parameter);

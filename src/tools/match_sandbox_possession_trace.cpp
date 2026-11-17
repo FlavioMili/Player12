@@ -47,7 +47,8 @@ Json snapshot(const PossessionSnapshot& state)
           {"claim_uncontrolled_seconds", state.claimUncontrolledSeconds},
           {"pass_offside_players", state.passOffsidePlayers},
           {"claim_unrecoverable_seconds", state.claimUnrecoverableSeconds},
-          {"foot_control", state.footControlled ? Json(*state.footControlled) : Json(nullptr)},
+          {"foot_control",
+           state.footControlled ? Json(*state.footControlled) : Json(nullptr)},
           {"dropping", state.dropping},
           {"hands", state.inHands},
           {"pass", state.pass},
@@ -63,28 +64,31 @@ Json playerState(const MatchEngine& engine, const MatchPlayer& player)
   const MatchPitch& pitch = engine.getPitch();
   const float dx = player.position.x - ball.position.x;
   const float dy = player.position.y - ball.position.y;
-  return {{"id", player.player ? player.player->getId() : 0},
-          {"home", player.isHomeTeam},
-          {"position", {pitch.fractionX(player.position), pitch.fractionY(player.position)}},
-          {"velocity_mps", {player.velocity.x, player.velocity.y}},
-          {"facing_rad", player.facingAngle},
-          {"gap_m", std::hypot(dx, dy)},
-          {"intent", SandboxNames::intent(player.intent)},
-          {"target",
-           {pitch.fractionX(player.tacticalTarget), pitch.fractionY(player.tacticalTarget)}},
-          {"chasing", player.chasingLooseBall},
-          {"meet_seconds", player.looseBallMeetSeconds},
-          {"foot_cooldown", player.footCooldown},
-          {"trap_timer", player.trapTimer},
-          {"fallen", player.fallen},
-          {"airborne", player.airborne()}};
+  return {
+      {"id", (player.player != nullptr) ? player.player->getId() : 0},
+      {"home", player.isHomeTeam},
+      {"position",
+       {pitch.fractionX(player.position), pitch.fractionY(player.position)}},
+      {"velocity_mps", {player.velocity.x, player.velocity.y}},
+      {"facing_rad", player.facingAngle},
+      {"gap_m", std::hypot(dx, dy)},
+      {"intent", SandboxNames::intent(player.intent)},
+      {"target",
+       {pitch.fractionX(player.tacticalTarget),
+        pitch.fractionY(player.tacticalTarget)}},
+      {"chasing", player.chasingLooseBall},
+      {"meet_seconds", player.looseBallMeetSeconds},
+      {"foot_cooldown", player.footCooldown},
+      {"trap_timer", player.trapTimer},
+      {"fallen", player.fallen},
+      {"airborne", player.airborne()}};
 }
 
 class PossessionTrace final : public MatchRecorder
 {
  public:
   explicit PossessionTrace(std::ostream& output) : out(output) {}
-  bool wantsPossession() const override { return true; }
+  [[nodiscard]] bool wantsPossession() const override { return true; }
   void onPossessionObservation(const MatchEngine& engine,
                                PossessionObservation kind,
                                const PossessionSnapshot& state,
@@ -164,7 +168,9 @@ class PossessionTrace final : public MatchRecorder
                                             "prepare-shot-assist",
                                             "note-contact-actor",
                                             "note-path-change",
-                                            "advance-shot-flight-clock", "note-throw-team", "expire-touch-claim"};
+                                            "advance-shot-flight-clock",
+                                            "note-throw-team",
+                                            "expire-touch-claim"};
     static_assert(sizeof(NAMES) / sizeof(NAMES[0]) ==
                   static_cast<unsigned>(PossessionObservation::COUNT));
     emit({{"type", "helper"},
@@ -182,7 +188,10 @@ class PossessionTrace final : public MatchRecorder
     const Json actor = playerState(engine, player);
     // Gates can precede reach testing. Keep nearby cases, not every distant
     // teammate skipped by an early friendly-pass gate on every substep.
-    if (actor.at("gap_m").get<float>() > 6.0f) return;
+    if (actor.at("gap_m").get<float>() > 6.0F)
+    {
+      return;
+    }
     const std::string reason(possessionGateName(gate));
     ++gates[reason];
     emit({{"type", "contact-gate"},
@@ -213,11 +222,18 @@ class PossessionTrace final : public MatchRecorder
   {
     const auto state = engine.getPossessionSnapshot();
     const auto issues = possessionIssues(state);
-    if (issues != 0) ++issueSteps;
+    if (issues != 0)
+    {
+      ++issueSteps;
+    }
     Json actors = Json::array();
     for (const MatchPlayer& player : engine.getPlayers())
-      if (player.player && player.onPitch)
+    {
+      if ((player.player != nullptr) && player.onPitch)
+      {
         actors.push_back(playerState(engine, player));
+      }
+    }
     const auto& ball = engine.getBall();
     emit({{"type", "step"},
           {"state", snapshot(state)},
@@ -245,8 +261,11 @@ int tracePossessionPair(MatchEngine& observed, MatchEngine& reference,
                         double seconds, std::ostream& output)
 {
   if (!std::isfinite(seconds) || seconds <= 0.0 || seconds > 3600.0 ||
-      observed.getRecorder() || reference.getRecorder())
+      (observed.getRecorder() != nullptr) ||
+      (reference.getRecorder() != nullptr))
+  {
     return 2;
+  }
   PossessionTrace trace(output);
   observed.setRecorder(&trace);
   // Detach even if a stream/allocation exception escapes: no dangling recorder.
@@ -256,29 +275,36 @@ int tracePossessionPair(MatchEngine& observed, MatchEngine& reference,
     ~Detach() { engine.setRecorder(nullptr); }
   } detach{observed};
   const MatchEngine copied(observed);
-  const bool copyDetached = copied.getRecorder() == nullptr &&
-                            copied.getPossessionSnapshot() == observed.getPossessionSnapshot();
-  trace.emit({{"type", "metadata"},
-              {"schema", 1},
-              {"seconds_requested", seconds},
-              {"possession", possessionKey(observed.getPossessionVersion())},
-              {"projection", "legacy-read-only"},
-              {"brains", {brainKey(observed.getBrain(true)), brainKey(observed.getBrain(false))}},
-              {"bodies", {bodyKey(observed.getBody(true)), bodyKey(observed.getBody(false))}},
-              {"handshake", handshakeKey(observed.getHandshake())},
-              {"referee", refereeKey(observed.getReferee())},
-              {"managers", {managerKey(observed.getManager(true)), managerKey(observed.getManager(false))}},
-              {"ball_physics", ballPhysicsKey(observed.getBallPhysics())},
-              {"out_of_play", outOfPlayKey(observed.getOutOfPlay())},
-              {"gate_radius_m", 6},
-              {"note",
-               "Possession helpers dispatch per match. Helper snapshots may be "
-               "partial; issues sampled at step end. Gate log is not an "
-               "exhaustive eligibility judgement."}});
+  const bool copyDetached =
+      copied.getRecorder() == nullptr &&
+      copied.getPossessionSnapshot() == observed.getPossessionSnapshot();
+  trace.emit(
+      {{"type", "metadata"},
+       {"schema", 1},
+       {"seconds_requested", seconds},
+       {"possession", possessionKey(observed.getPossessionVersion())},
+       {"projection", "legacy-read-only"},
+       {"brains",
+        {brainKey(observed.getBrain(true)),
+         brainKey(observed.getBrain(false))}},
+       {"bodies",
+        {bodyKey(observed.getBody(true)), bodyKey(observed.getBody(false))}},
+       {"handshake", handshakeKey(observed.getHandshake())},
+       {"referee", refereeKey(observed.getReferee())},
+       {"managers",
+        {managerKey(observed.getManager(true)),
+         managerKey(observed.getManager(false))}},
+       {"ball_physics", ballPhysicsKey(observed.getBallPhysics())},
+       {"out_of_play", outOfPlayKey(observed.getOutOfPlay())},
+       {"gate_radius_m", 6},
+       {"note",
+        "Possession helpers dispatch per match. Helper snapshots may be "
+        "partial; issues sampled at step end. Gate log is not an "
+        "exhaustive eligibility judgement."}});
   const auto ticks = static_cast<std::uint64_t>(
       std::ceil(seconds / MatchTuning::Timing::FIXED_STEP_SECONDS));
-  bool identical = copyDetached &&
-      observed.getPossessionSnapshot() == reference.getPossessionSnapshot();
+  bool identical = copyDetached && observed.getPossessionSnapshot() ==
+                                       reference.getPossessionSnapshot();
   std::uint64_t advanced = 0;
   for (; advanced < ticks && identical &&
          observed.getState() != MatchState::FULL_TIME;
@@ -291,7 +317,10 @@ int tracePossessionPair(MatchEngine& observed, MatchEngine& reference,
         observed.getPossessionSnapshot() == reference.getPossessionSnapshot() &&
         SandboxRecorder::stateChecksum(observed) ==
             SandboxRecorder::stateChecksum(reference);
-    if (!output) return 2;
+    if (!output)
+    {
+      return 2;
+    }
   }
   trace.emit({{"type", "summary"},
               {"ticks_compared", advanced},

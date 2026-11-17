@@ -39,8 +39,8 @@ class DrillMeasureScene : public GUIScene
   {
     /** Index into the drill's parameters; -1: none (the "by" axis only). */
     int parameter = -1;
-    float from = 0.0f;
-    float to = 1.0f;
+    float from = 0.0F;
+    float to = 1.0F;
     int count = 6;
   };
 

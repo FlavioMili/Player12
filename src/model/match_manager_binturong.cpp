@@ -41,10 +41,15 @@ void MatchEngine::runAiSubstitutionsForBinturong(bool homeTeam)
   for (auto& player : players)
   {
     if (!active(player) || player.isHomeTeam != homeTeam || !player.isInjured)
+    {
       continue;
+    }
     const bool autoManaged =
         homeTeam ? homeAutoSubstitutions : awayAutoSubstitutions;
-    if (!autoManaged) continue;
+    if (!autoManaged)
+    {
+      continue;
+    }
     // Treatment and the walk off hold up the restart.
     extendRestart(MatchTuning::Timing::INJURY_DELAY_SECONDS);
     const Player* replacement =
@@ -52,17 +57,23 @@ void MatchEngine::runAiSubstitutionsForBinturong(bool homeTeam)
             ? chooseReplacementBinturong(homeTeam, player.player->getRole(),
                                          player.isGoalkeeper)
             : nullptr;
-    if (!replacement && player.isGoalkeeper && canSubstitute(homeTeam))
+    if ((replacement == nullptr) && player.isGoalkeeper &&
+        canSubstitute(homeTeam))
+    {
       replacement =
           chooseReplacementBinturong(homeTeam, player.player->getRole(), false);
-    if (!replacement ||
+    }
+    if ((replacement == nullptr) ||
         !performSubstitution(player, replacement, SubstitutionReason::INJURY))
     {
       removeFromPitch(player);
     }
   }
 
-  if (!medicalFlags.empty()) runMedicalSubstitutionsBinturong(homeTeam);
+  if (!medicalFlags.empty())
+  {
+    runMedicalSubstitutionsBinturong(homeTeam);
+  }
   if (!(homeTeam ? homeAutoSubstitutions : awayAutoSubstitutions) ||
       state == MatchState::PENALTY || period < 2 ||
       matchTimeMinutes < MatchTuning::Substitution::EARLIEST_TACTICAL_MINUTE)
@@ -77,11 +88,11 @@ void MatchEngine::runAiSubstitutionsForBinturong(bool homeTeam)
       MatchTuning::Substitution::FATIGUE_THRESHOLD +
       (minute >= MatchTuning::Substitution::LATE_GAME_MINUTE
            ? MatchTuning::Substitution::FATIGUE_THRESHOLD_LATE_GAIN
-           : 0.0f);
+           : 0.0F);
   struct Need
   {
     MatchPlayer* player = nullptr;
-    float score = 0.0f;
+    float score = 0.0F;
     SubstitutionReason reason = SubstitutionReason::FATIGUE;
     int wantedGroup = 2;
   };
@@ -90,29 +101,34 @@ void MatchEngine::runAiSubstitutionsForBinturong(bool homeTeam)
       MatchTuning::Substitution::MINIMUM_NEED *
       (minute >= MatchTuning::Substitution::LATE_GAME_MINUTE
            ? MatchTuning::Substitution::LATE_NEED_SHARE
-           : 1.0f);
+           : 1.0F);
   for (auto& player : players)
   {
     if (!active(player) || player.isHomeTeam != homeTeam || player.isGoalkeeper)
+    {
       continue;
+    }
     const PlayerRole role = player.player->getRole();
-    Need need{&player, 0.0f, SubstitutionReason::FATIGUE, roleGroup(role)};
+    Need need{.player = &player,
+              .score = 0.0F,
+              .reason = SubstitutionReason::FATIGUE,
+              .wantedGroup = roleGroup(role)};
     need.score =
-        std::max(0.0f, fatigueThreshold - player.stamina) *
+        std::max(0.0F, fatigueThreshold - player.stamina) *
             MatchTuning::Substitution::FATIGUE_NEED_SCALE *
             (isAttackingRole(role)
                  ? MatchTuning::Substitution::ATTACKER_FATIGUE_NEED_FACTOR
-                 : 1.0f) +
+                 : 1.0F) +
         (minute - MatchTuning::Substitution::EARLIEST_TACTICAL_MINUTE) *
             MatchTuning::Substitution::MINUTE_NEED_GAIN *
-            (1.0f - player.stamina);
+            (1.0F - player.stamina);
     if (isAttackingRole(role) &&
         minute >= MatchTuning::Substitution::ATTACKER_ROTATION_MINUTE)
     {
       need.score +=
           (minute - MatchTuning::Substitution::ATTACKER_ROTATION_MINUTE) *
           MatchTuning::Substitution::ATTACKER_ROTATION_NEED_PER_MINUTE *
-          (1.0f - player.stamina);
+          (1.0F - player.stamina);
     }
     if (player.yellowCards > 0 && !isAttackingRole(role) &&
         minute >= MatchTuning::Substitution::CARD_RISK_MINUTE)
@@ -135,12 +151,19 @@ void MatchEngine::runAiSubstitutionsForBinturong(bool homeTeam)
       need.wantedGroup = 1;
     }
     if (need.score < minimumNeed * MatchTuning::Substitution::WINDOW_NEED_SHARE)
+    {
       continue;
+    }
     for (std::size_t slot = 0; slot < picks.size(); ++slot)
     {
-      if (need.score <= picks[slot].score) continue;
+      if (need.score <= picks[slot].score)
+      {
+        continue;
+      }
       for (std::size_t shifted = picks.size() - 1; shifted > slot; --shifted)
+      {
         picks[shifted] = picks[shifted - 1];
+      }
       picks[slot] = need;
       break;
     }
@@ -151,18 +174,30 @@ void MatchEngine::runAiSubstitutionsForBinturong(bool homeTeam)
       minute < MatchTuning::Substitution::LATE_GAME_MINUTE ? 1 : 0;
   // The clearest need opens a window; a second or third change joins it at
   // a lower need, as managers make double changes to save windows.
-  if (picks[0].score < minimumNeed) return;
+  if (picks[0].score < minimumNeed)
+  {
+    return;
+  }
   for (const Need& need : picks)
   {
-    if (!need.player || !canSubstitute(homeTeam)) break;
-    if (getSubstitutionsUsed(homeTeam) >= maxSubstitutions() - reserve) break;
+    if ((need.player == nullptr) || !canSubstitute(homeTeam))
+    {
+      break;
+    }
+    if (getSubstitutionsUsed(homeTeam) >= maxSubstitutions() - reserve)
+    {
+      break;
+    }
     const PlayerRole wantedRole = need.wantedGroup == 3 ? PlayerRole::ST
                                   : need.wantedGroup == 1
                                       ? PlayerRole::CB
                                       : need.player->player->getRole();
     const Player* replacement =
         chooseReplacementBinturong(homeTeam, wantedRole, false);
-    if (!replacement) break;
+    if (replacement == nullptr)
+    {
+      break;
+    }
     performSubstitution(*need.player, replacement, need.reason);
   }
 }
@@ -171,11 +206,15 @@ void MatchEngine::runMedicalSubstitutionsBinturong(bool homeTeam)
 {
   if (!(homeTeam ? homeAutoSubstitutions : awayAutoSubstitutions) ||
       state == MatchState::PENALTY)
+  {
     return;
+  }
   for (auto& player : players)
   {
     if (!active(player) || player.isHomeTeam != homeTeam || player.isGoalkeeper)
+    {
       continue;
+    }
     const PlayerID id = player.player->getId();
     const auto entry =
         std::ranges::find_if(medicalFlags, [id](const auto& flagged)
@@ -185,12 +224,19 @@ void MatchEngine::runMedicalSubstitutionsBinturong(bool homeTeam)
     if (entry == medicalFlags.end() ||
         !MedicalCentre::substitutionDue(
             entry->second, static_cast<int>(statsOf(player).minutesPlayed)))
+    {
       continue;
-    if (!canSubstitute(homeTeam)) return;
+    }
+    if (!canSubstitute(homeTeam))
+    {
+      return;
+    }
     // Like for like, as for a tired player.
     if (const Player* replacement = chooseReplacementBinturong(
             homeTeam, player.player->getRole(), false))
+    {
       performSubstitution(player, replacement, SubstitutionReason::FATIGUE);
+    }
   }
 }
 
@@ -203,15 +249,21 @@ const Player* MatchEngine::chooseReplacementBinturong(bool homeTeam,
   float bestScore = -std::numeric_limits<float>::infinity();
   for (const Player* candidate : bench)
   {
-    if (!candidate) continue;
+    if (candidate == nullptr)
+    {
+      continue;
+    }
     const bool keeper = candidate->getRole() == PlayerRole::GK;
-    if (keeper != wantGoalkeeper) continue;
+    if (keeper != wantGoalkeeper)
+    {
+      continue;
+    }
     const float fit = roleGroup(candidate->getRole()) == roleGroup(role)
                           ? MatchTuning::Substitution::ROLE_FIT_BONUS
-                          : 0.0f;
+                          : 0.0F;
     const float score =
-        fit + static_cast<float>(candidate->getOverall(statsConfig)) /
-                  MatchTuning::Player::RATING_SCALE;
+        fit + (static_cast<float>(candidate->getOverall(statsConfig)) /
+               MatchTuning::Player::RATING_SCALE);
     if (score > bestScore)
     {
       bestScore = score;
@@ -224,12 +276,21 @@ const Player* MatchEngine::chooseReplacementBinturong(bool homeTeam,
 void MatchEngine::runAiTouchlineBinturong(bool homeTeam)
 {
   using T = MatchTuning::Touchline;
-  if (period < 2 || getShoutStrength(homeTeam) > 0.0f) return;
+  if (period < 2 || getShoutStrength(homeTeam) > 0.0F)
+  {
+    return;
+  }
   const int lead = homeTeam ? homeScore - awayScore : awayScore - homeScore;
   if (lead < 0 && matchTimeMinutes >= T::AI_SHOOT_ON_SIGHT_MINUTE)
+  {
     startShout(homeTeam, MatchShout::SHOOT_ON_SIGHT);
+  }
   else if (lead < 0 && matchTimeMinutes >= T::AI_CHASE_MINUTE)
+  {
     startShout(homeTeam, MatchShout::PUSH_HIGHER);
+  }
   else if (lead > 0 && matchTimeMinutes >= T::AI_PROTECT_MINUTE)
+  {
     startShout(homeTeam, MatchShout::DROP_DEEPER);
+  }
 }

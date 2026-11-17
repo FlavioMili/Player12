@@ -31,17 +31,29 @@ using Clock = std::chrono::steady_clock;
 std::optional<DrillParameter> findParameter(Drill& drill, std::string_view name)
 {
   for (const DrillParameter& parameter : drill.parameters())
-    if (name == parameter.name) return parameter;
+  {
+    if (name == parameter.name)
+    {
+      return parameter;
+    }
+  }
   return std::nullopt;
 }
 
 bool sameName(std::string_view a, std::string_view b)
 {
-  if (a.size() != b.size()) return false;
+  if (a.size() != b.size())
+  {
+    return false;
+  }
   for (std::size_t index = 0; index < a.size(); ++index)
+  {
     if (std::tolower(static_cast<unsigned char>(a[index])) !=
         std::tolower(static_cast<unsigned char>(b[index])))
+    {
       return false;
+    }
+  }
   return true;
 }
 
@@ -49,29 +61,48 @@ bool sameName(std::string_view a, std::string_view b)
 std::optional<DrillParameter> lookUp(Drill& drill, std::string_view name)
 {
   for (const DrillParameter& parameter : drill.parameters())
-    if (sameName(name, parameter.name)) return parameter;
+  {
+    if (sameName(name, parameter.name))
+    {
+      return parameter;
+    }
+  }
   return std::nullopt;
 }
 
 std::optional<float> toFloat(std::string_view text)
 {
-  while (!text.empty() && text.front() == ' ') text.remove_prefix(1);
-  while (!text.empty() && text.back() == ' ') text.remove_suffix(1);
-  float value = 0.0f;
+  while (!text.empty() && text.front() == ' ')
+  {
+    text.remove_prefix(1);
+  }
+  while (!text.empty() && text.back() == ' ')
+  {
+    text.remove_suffix(1);
+  }
+  float value = 0.0F;
   const auto [end, error] =
       std::from_chars(text.data(), text.data() + text.size(), value);
   if (error != std::errc() || end != text.data() + text.size())
+  {
     return std::nullopt;
+  }
   return value;
 }
 
 std::string csvField(const std::string& text)
 {
-  if (text.find_first_of(",\"\n") == std::string::npos) return text;
+  if (text.find_first_of(",\"\n") == std::string::npos)
+  {
+    return text;
+  }
   std::string quoted = "\"";
   for (const char c : text)
   {
-    if (c == '"') quoted += '"';
+    if (c == '"')
+    {
+      quoted += '"';
+    }
     quoted += c;
   }
   return quoted + "\"";
@@ -96,8 +127,12 @@ std::vector<float> headlessChoices(const DrillParameter& parameter)
 {
   std::vector<float> values;
   for (std::size_t index = 0; index < parameter.choices.size(); ++index)
+  {
     if (std::string_view(parameter.choices[index]) != "You")
+    {
       values.push_back(static_cast<float>(index));
+    }
+  }
   return values;
 }
 
@@ -108,15 +143,22 @@ std::vector<float> spreadValues(float from, float to, int count, bool integer)
   for (int index = 0; index < count; ++index)
   {
     float value = count == 1 ? from
-                             : from + (to - from) * static_cast<float>(index) /
-                                          static_cast<float>(count - 1);
-    if (integer) value = std::round(value);
-    if (values.empty() || values.back() != value) values.push_back(value);
+                             : from + ((to - from) * static_cast<float>(index) /
+                                       static_cast<float>(count - 1));
+    if (integer)
+    {
+      value = std::round(value);
+    }
+    if (values.empty() || values.back() != value)
+    {
+      values.push_back(value);
+    }
   }
   return values;
 }
 
-std::optional<MeasureAxis> parseMeasureAxis(Drill& drill, const std::string& text,
+std::optional<MeasureAxis> parseMeasureAxis(Drill& drill,
+                                            const std::string& text,
                                             std::string& error)
 {
   const std::size_t equals = text.find('=');
@@ -127,7 +169,7 @@ std::optional<MeasureAxis> parseMeasureAxis(Drill& drill, const std::string& tex
     error = std::format("{} has no setting \"{}\"", drill.name(), name);
     return std::nullopt;
   }
-  MeasureAxis axis{parameter->name, {}};
+  MeasureAxis axis{.parameter = parameter->name, .values = {}};
   if (equals == std::string::npos)
   {
     if (parameter->choices.empty())
@@ -148,25 +190,31 @@ std::optional<MeasureAxis> parseMeasureAxis(Drill& drill, const std::string& tex
     while (start <= values.size())
     {
       const std::size_t end = std::min(values.find(':', start), values.size());
-      const auto value = toFloat(std::string_view(values).substr(start, end - start));
-      if (!value) break;
+      const auto value =
+          toFloat(std::string_view(values).substr(start, end - start));
+      if (!value)
+      {
+        break;
+      }
       parts.push_back(*value);
       start = end + 1;
     }
-    if (parts.size() != 3 || parts[2] < 1.0f)
+    if (parts.size() != 3 || parts[2] < 1.0F)
     {
       error = std::format("\"{}\": expected from:to:count", values);
       return std::nullopt;
     }
-    axis.values = spreadValues(parts[0], parts[1], static_cast<int>(parts[2]),
-                               parameter->integer || !parameter->choices.empty());
+    axis.values =
+        spreadValues(parts[0], parts[1], static_cast<int>(parts[2]),
+                     parameter->integer || !parameter->choices.empty());
     return axis;
   }
   std::size_t start = 0;
   while (start <= values.size())
   {
     const std::size_t end = std::min(values.find(',', start), values.size());
-    const auto value = toFloat(std::string_view(values).substr(start, end - start));
+    const auto value =
+        toFloat(std::string_view(values).substr(start, end - start));
     if (!value)
     {
       error = std::format("\"{}\": expected numbers", values);
@@ -182,17 +230,25 @@ std::filesystem::path measureFolder()
 {
   std::filesystem::path base = std::filesystem::current_path();
   if (const char* documents = SDL_GetUserFolder(SDL_FOLDER_DOCUMENTS))
+  {
     base = std::filesystem::path(documents);
+  }
   return base / "Player12 drill results";
 }
 
-std::filesystem::path measurePath(const std::string& drill, const std::string& sweep)
+std::filesystem::path measurePath(const std::string& drill,
+                                  const std::string& sweep)
 {
   // Names may hold characters a file name cannot ("Least turn (°)" is fine,
   // a slash is not).
   std::string name = std::format("{} by {} {}.csv", drill, sweep, timestamp());
   std::ranges::replace_if(
-      name, [](char c) { return std::string_view("/\\:*?\"<>|").find(c) != std::string_view::npos; },
+      name,
+      [](char c)
+      {
+        return std::string_view("/\\:*?\"<>|").find(c) !=
+               std::string_view::npos;
+      },
       '-');
   return measureFolder() / name;
 }
@@ -206,17 +262,29 @@ DrillMeasure::DrillMeasure(Drill& drill_ref, const StatsConfig& config_ref,
   savedSeed = drill.seed;
   for (const DrillParameter& parameter : drill.parameters())
   {
-    if (!parameter.value) continue;
+    if (parameter.value == nullptr)
+    {
+      continue;
+    }
     saved[parameter.name] = *parameter.value;
     if (!parameter.choices.empty())
+    {
       choiceNames[parameter.name].assign(parameter.choices.begin(),
                                          parameter.choices.end());
+    }
   }
-  const auto known = [&](const std::string& name) { return saved.contains(name); };
+  const auto known = [&](const std::string& name)
+  { return saved.contains(name); };
   if (!known(setup.sweep.parameter))
-    notes.push_back(std::format("Unknown setting \"{}\".", setup.sweep.parameter));
+  {
+    notes.push_back(
+        std::format("Unknown setting \"{}\".", setup.sweep.parameter));
+  }
   if (setup.by && !known(setup.by->parameter))
-    notes.push_back(std::format("Unknown setting \"{}\".", setup.by->parameter));
+  {
+    notes.push_back(
+        std::format("Unknown setting \"{}\".", setup.by->parameter));
+  }
   // Nobody plays a headless run: "You" becomes the AI.
   if (const auto who = findParameter(drill, "Who runs"))
   {
@@ -234,14 +302,19 @@ DrillMeasure::DrillMeasure(Drill& drill_ref, const StatsConfig& config_ref,
       notes.push_back("\"You\" can't run headless: measured with the AI.");
     }
     for (MeasureAxis* axis : {&setup.sweep, setup.by ? &*setup.by : nullptr})
-      if (axis && axis->parameter == "Who runs")
+    {
+      if ((axis != nullptr) && axis->parameter == "Who runs")
+      {
         std::erase_if(axis->values,
                       [&](float value) { return !headless(value); });
+      }
+    }
   }
   setup.repeats = std::max(1, setup.repeats);
   const std::size_t groups = setup.by ? setup.by->values.size() : 1;
-  const bool unknown = std::ranges::any_of(
-      notes, [](const std::string& note) { return note.starts_with("Unknown"); });
+  const bool unknown =
+      std::ranges::any_of(notes, [](const std::string& note)
+                          { return note.starts_with("Unknown"); });
   total = unknown ? 0
                   : groups * setup.sweep.values.size() *
                         static_cast<std::size_t>(setup.repeats);
@@ -251,11 +324,18 @@ DrillMeasure::~DrillMeasure() { restore(); }
 
 void DrillMeasure::restore()
 {
-  if (restored) return;
+  if (restored)
+  {
+    return;
+  }
   restored = true;
   for (const DrillParameter& parameter : drill.parameters())
-    if (parameter.value && saved.contains(parameter.name))
+  {
+    if ((parameter.value != nullptr) && saved.contains(parameter.name))
+    {
       *parameter.value = saved.at(parameter.name);
+    }
+  }
   drill.seed = savedSeed;
 }
 
@@ -267,16 +347,26 @@ void DrillMeasure::apply(std::size_t index)
   const std::size_t x = index / repeats % xs;
   const std::size_t group = index / repeats / xs;
   std::map<std::string, float> values = saved;
-  for (const auto& [name, value] : setup.fixed) values[name] = value;
+  for (const auto& [name, value] : setup.fixed)
+  {
+    values[name] = value;
+  }
   values[setup.sweep.parameter] = setup.sweep.values[x];
-  if (setup.by) values[setup.by->parameter] = setup.by->values[group];
+  if (setup.by)
+  {
+    values[setup.by->parameter] = setup.by->values[group];
+  }
   for (const DrillParameter& parameter : drill.parameters())
-    if (parameter.value && values.contains(parameter.name))
+  {
+    if ((parameter.value != nullptr) && values.contains(parameter.name))
+    {
       *parameter.value = values.at(parameter.name);
+    }
+  }
   drill.seed = setup.firstSeed + static_cast<std::uint32_t>(repeat);
   MeasureRun run;
   run.x = setup.sweep.values[x];
-  run.by = setup.by ? setup.by->values[group] : 0.0f;
+  run.by = setup.by ? setup.by->values[group] : 0.0F;
   run.seed = drill.seed;
   results.push_back(run);
 }
@@ -296,15 +386,24 @@ bool DrillMeasure::work(double budgetSeconds)
       results.back().metrics = drill.metrics();
     }
     for (const DrillMetric& metric : results.back().metrics)
+    {
       if (std::ranges::find(names, metric.name) == names.end())
+      {
         names.push_back(metric.name);
+      }
+    }
     ++next;
     if (std::chrono::duration<double>(Clock::now() - start).count() >=
         budgetSeconds)
+    {
       break;
+    }
   }
   elapsed += std::chrono::duration<double>(Clock::now() - start).count();
-  if (next >= total) restore();
+  if (next >= total)
+  {
+    restore();
+  }
   return next < total;
 }
 
@@ -326,41 +425,60 @@ std::vector<MeasurePoint> DrillMeasure::points() const
     if (found == index.end())
     {
       found = index.emplace(key, out.size()).first;
-      out.push_back({run.x, run.by, 0, 0, {}});
+      out.push_back(
+          {.x = run.x, .by = run.by, .runs = 0, .completed = 0, .stats = {}});
     }
     MeasurePoint& point = out[found->second];
     ++point.runs;
-    if (!run.metrics.empty()) ++point.completed;
+    if (!run.metrics.empty())
+    {
+      ++point.completed;
+    }
     for (const DrillMetric& metric : run.metrics)
+    {
       samples[found->second][metric.name].push_back(metric.value);
+    }
   }
   for (auto& [at, metrics] : samples)
+  {
     for (auto& [name, values] : metrics)
     {
       MeasureStat stat;
       stat.count = static_cast<int>(values.size());
       double sum = 0.0;
-      for (const double value : values) sum += value;
+      for (const double value : values)
+      {
+        sum += value;
+      }
       stat.mean = sum / static_cast<double>(values.size());
       double squares = 0.0;
       for (const double value : values)
+      {
         squares += (value - stat.mean) * (value - stat.mean);
-      stat.sd = values.size() > 1
-                    ? std::sqrt(squares / static_cast<double>(values.size() - 1))
-                    : 0.0;
+      }
+      stat.sd =
+          values.size() > 1
+              ? std::sqrt(squares / static_cast<double>(values.size() - 1))
+              : 0.0;
       stat.min = *std::ranges::min_element(values);
       stat.max = *std::ranges::max_element(values);
       out[at].stats[name] = stat;
     }
+  }
   return out;
 }
 
-std::string DrillMeasure::valueText(const std::string& parameter, float value) const
+std::string DrillMeasure::valueText(const std::string& parameter,
+                                    float value) const
 {
-  if (const auto names_ = choiceNames.find(parameter); names_ != choiceNames.end())
+  if (const auto names_ = choiceNames.find(parameter);
+      names_ != choiceNames.end())
   {
     const auto choice = static_cast<std::size_t>(value);
-    if (choice < names_->second.size()) return names_->second[choice];
+    if (choice < names_->second.size())
+    {
+      return names_->second[choice];
+    }
   }
   return std::format("{:g}", value);
 }
@@ -368,20 +486,34 @@ std::string DrillMeasure::valueText(const std::string& parameter, float value) c
 std::string DrillMeasure::csv() const
 {
   std::string text = csvField(setup.sweep.parameter);
-  if (setup.by) text += "," + csvField(setup.by->parameter);
+  if (setup.by)
+  {
+    text += "," + csvField(setup.by->parameter);
+  }
   text += ",Seed,Completed";
-  for (const std::string& name : names) text += "," + csvField(name);
+  for (const std::string& name : names)
+  {
+    text += "," + csvField(name);
+  }
   text += "\n";
   for (const MeasureRun& run : results)
   {
     text += csvField(valueText(setup.sweep.parameter, run.x));
-    if (setup.by) text += "," + csvField(valueText(setup.by->parameter, run.by));
+    if (setup.by)
+    {
+      text += "," + csvField(valueText(setup.by->parameter, run.by));
+    }
     text += std::format(",{},{}", run.seed, run.metrics.empty() ? 0 : 1);
     for (const std::string& name : names)
     {
       text += ",";
       for (const DrillMetric& metric : run.metrics)
-        if (metric.name == name) text += std::format("{:.4f}", metric.value);
+      {
+        if (metric.name == name)
+        {
+          text += std::format("{:.4f}", metric.value);
+        }
+      }
     }
     text += "\n";
   }
@@ -396,11 +528,19 @@ int runMeasureCommand(const StatsConfig& config, const std::string& drillName,
   auto drills = makeDrills();
   Drill* drill = nullptr;
   for (const auto& candidate : drills)
-    if (sameName(candidate->name(), drillName)) drill = candidate.get();
-  if (!drill)
+  {
+    if (sameName(candidate->name(), drillName))
+    {
+      drill = candidate.get();
+    }
+  }
+  if (drill == nullptr)
   {
     std::cerr << "No drill \"" << drillName << "\". Drills:";
-    for (const auto& candidate : drills) std::cerr << " \"" << candidate->name() << '"';
+    for (const auto& candidate : drills)
+    {
+      std::cerr << " \"" << candidate->name() << '"';
+    }
     std::cerr << '\n';
     return 2;
   }
@@ -410,7 +550,7 @@ int runMeasureCommand(const StatsConfig& config, const std::string& drillName,
   std::string error;
   std::optional<std::string> presetName;
   std::optional<std::filesystem::path> tracePath;
-  float traceSeconds = 10.0f;
+  float traceSeconds = 10.0F;
   for (std::size_t index = 0; index < arguments.size(); ++index)
   {
     const std::string& argument = arguments[index];
@@ -419,21 +559,28 @@ int runMeasureCommand(const StatsConfig& config, const std::string& drillName,
     if (argument == "--sweep" && hasValue)
     {
       const auto axis = parseMeasureAxis(*drill, value, error);
-      if (!axis) break;
+      if (!axis)
+      {
+        break;
+      }
       spec.sweep = *axis;
     }
     else if (argument == "--by" && hasValue)
     {
       spec.by = parseMeasureAxis(*drill, value, error);
-      if (!spec.by) break;
+      if (!spec.by)
+      {
+        break;
+      }
     }
     else if (argument == "--set" && hasValue)
     {
       const std::size_t equals = value.find('=');
       const auto parameter = lookUp(*drill, value.substr(0, equals));
-      const auto number = equals == std::string::npos
-                              ? std::nullopt
-                              : toFloat(std::string_view(value).substr(equals + 1));
+      const auto number =
+          equals == std::string::npos
+              ? std::nullopt
+              : toFloat(std::string_view(value).substr(equals + 1));
       if (!parameter || !number)
       {
         error = std::format("--set \"{}\": expected Setting=value", value);
@@ -443,7 +590,7 @@ int runMeasureCommand(const StatsConfig& config, const std::string& drillName,
     }
     else if (argument == "--repeats" && hasValue)
     {
-      spec.repeats = static_cast<int>(toFloat(value).value_or(1.0f));
+      spec.repeats = static_cast<int>(toFloat(value).value_or(1.0F));
     }
     else if (argument == "--preset" && hasValue)
     {
@@ -451,7 +598,8 @@ int runMeasureCommand(const StatsConfig& config, const std::string& drillName,
     }
     else if (argument == "--seed" && hasValue)
     {
-      spec.firstSeed = static_cast<std::uint32_t>(toFloat(value).value_or(1.0f));
+      spec.firstSeed =
+          static_cast<std::uint32_t>(toFloat(value).value_or(1.0F));
     }
     else if (argument == "--trace" && hasValue)
     {
@@ -464,7 +612,9 @@ int runMeasureCommand(const StatsConfig& config, const std::string& drillName,
     else if (argument == "--csv")
     {
       if (hasValue && !arguments[index + 1].starts_with("--"))
+      {
         csvPath = value;
+      }
       else
       {
         csvAuto = true;
@@ -486,12 +636,17 @@ int runMeasureCommand(const StatsConfig& config, const std::string& drillName,
     if (found == list.end())
     {
       error = std::format("no preset \"{}\"; presets:", *presetName);
-      for (const DrillPreset& preset : list) error += " \"" + preset.name + '"';
+      for (const DrillPreset& preset : list)
+      {
+        error += " \"" + preset.name + '"';
+      }
     }
     else
     {
       for (const auto& [name, value] : found->settings)
+      {
         spec.fixed.try_emplace(name, value);
+      }
     }
   }
   // --trace: one run (the preset, --set, --seed), every player and the ball
@@ -499,8 +654,12 @@ int runMeasureCommand(const StatsConfig& config, const std::string& drillName,
   if (error.empty() && tracePath)
   {
     for (const DrillParameter& parameter : drill->parameters())
-      if (parameter.value && spec.fixed.contains(parameter.name))
+    {
+      if ((parameter.value != nullptr) && spec.fixed.contains(parameter.name))
+      {
         *parameter.value = spec.fixed.at(parameter.name);
+      }
+    }
     drill->seed = spec.firstSeed;
     const int ticks = static_cast<int>(
         std::lround(traceSeconds / MatchTuning::Timing::FIXED_STEP_SECONDS));
@@ -517,69 +676,101 @@ int runMeasureCommand(const StatsConfig& config, const std::string& drillName,
     {
       const bool going = run.step();
       Lab::writeTraceRows(out, "d", tick, run.engine());
-      if (!going) break;
+      if (!going)
+      {
+        break;
+      }
     }
     std::cout << std::format("{}: trace written to {}\n", drill->name(),
                              tracePath->string());
     return out ? 0 : 2;
   }
   if (error.empty() && spec.sweep.values.empty())
+  {
     error = "--sweep is required, e.g. --sweep \"Pace=40:95:12\"";
+  }
   if (!error.empty())
   {
-    std::cerr << "Measure: " << error << "\nSettings of " << drill->name() << ":";
+    std::cerr << "Measure: " << error << "\nSettings of " << drill->name()
+              << ":";
     for (const DrillParameter& parameter : drill->parameters())
+    {
       std::cerr << " \"" << parameter.name << '"';
+    }
     std::cerr << '\n';
     return 2;
   }
 
   DrillMeasure measure(*drill, config, spec);
-  for (const std::string& note : measure.warnings()) std::cout << note << '\n';
-  if (measure.runsTotal() == 0) return 2;
-  std::cout << std::format("{}: {} runs ({} by {}{}, {} repeat{})\n", drill->name(),
-                           measure.runsTotal(), spec.sweep.parameter,
-                           measure.spec().sweep.values.size(),
-                           spec.by ? std::format(", for each {}", spec.by->parameter)
-                                   : std::string(),
-                           spec.repeats, spec.repeats == 1 ? "" : "s");
+  for (const std::string& note : measure.warnings())
+  {
+    std::cout << note << '\n';
+  }
+  if (measure.runsTotal() == 0)
+  {
+    return 2;
+  }
+  std::cout << std::format(
+      "{}: {} runs ({} by {}{}, {} repeat{})\n", drill->name(),
+      measure.runsTotal(), spec.sweep.parameter,
+      measure.spec().sweep.values.size(),
+      spec.by ? std::format(", for each {}", spec.by->parameter)
+              : std::string(),
+      spec.repeats, spec.repeats == 1 ? "" : "s");
   while (measure.work(1.0))
-    std::cerr << std::format("  {} / {}\r", measure.runsDone(), measure.runsTotal());
+  {
+    std::cerr << std::format("  {} / {}\r", measure.runsDone(),
+                             measure.runsTotal());
+  }
   std::cout << std::format("Done in {:.2f} s.\n\n", measure.seconds());
 
   // Table: one row per point, mean (± spread) of every metric.
   const auto& names = measure.metricNames();
-  std::string header = std::format("{:>14}", spec.sweep.parameter.substr(0, 14));
-  if (spec.by) header += std::format("  {:>12}", spec.by->parameter.substr(0, 12));
+  std::string header =
+      std::format("{:>14}", spec.sweep.parameter.substr(0, 14));
+  if (spec.by)
+  {
+    header += std::format("  {:>12}", spec.by->parameter.substr(0, 12));
+  }
   header += "   done";
-  for (const std::string& name : names) header += std::format("  {}", name);
+  for (const std::string& name : names)
+  {
+    header += std::format("  {}", name);
+  }
   std::cout << header << '\n';
   for (const MeasurePoint& point : measure.points())
   {
-    std::string row = std::format(
-        "{:>14}", measure.valueText(spec.sweep.parameter, point.x));
+    std::string row =
+        std::format("{:>14}", measure.valueText(spec.sweep.parameter, point.x));
     if (spec.by)
-      row += std::format("  {:>12}", measure.valueText(spec.by->parameter, point.by));
+    {
+      row += std::format("  {:>12}",
+                         measure.valueText(spec.by->parameter, point.by));
+    }
     row += std::format("  {:>2}/{:<2}", point.completed, point.runs);
     for (const std::string& name : names)
     {
       const auto found = point.stats.find(name);
-      std::string cell = found == point.stats.end()
-                             ? "-"
-                             : found->second.count > 1 && found->second.sd >= 0.005
-                                   ? std::format("{:.2f}±{:.2f}", found->second.mean,
-                                                 found->second.sd)
-                                   : std::format("{:.2f}", found->second.mean);
+      std::string cell = found == point.stats.end() ? "-"
+                         : found->second.count > 1 && found->second.sd >= 0.005
+                             ? std::format("{:.2f}±{:.2f}", found->second.mean,
+                                           found->second.sd)
+                             : std::format("{:.2f}", found->second.mean);
       row += std::format("  {:>{}}", cell, name.size());
     }
     std::cout << row << '\n';
   }
-  if (csvAuto) csvPath = measurePath(drill->name(), spec.sweep.parameter);
+  if (csvAuto)
+  {
+    csvPath = measurePath(drill->name(), spec.sweep.parameter);
+  }
   if (csvPath)
   {
     std::error_code ignored;
     if (csvPath->has_parent_path())
+    {
       std::filesystem::create_directories(csvPath->parent_path(), ignored);
+    }
     std::ofstream file(*csvPath, std::ios::binary);
     file << measure.csv();
     if (!file)

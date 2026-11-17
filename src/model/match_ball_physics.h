@@ -66,7 +66,12 @@ constexpr std::string_view ballPhysicsKey(BallPhysicsId physics)
 constexpr std::optional<BallPhysicsId> ballPhysicsFromKey(std::string_view key)
 {
   for (const BallPhysicsId physics : ALL_BALL_PHYSICS)
-    if (ballPhysicsKey(physics) == key) return physics;
+  {
+    if (ballPhysicsKey(physics) == key)
+    {
+      return physics;
+    }
+  }
   return std::nullopt;
 }
 
@@ -85,19 +90,19 @@ constexpr std::optional<BallPhysicsId> ballPhysicsFromKey(std::string_view key)
  */
 struct BallSpin
 {
-  float side = 0.0f;
-  float top = 0.0f;
+  float side = 0.0F;
+  float top = 0.0F;
   friend bool operator==(const BallSpin&, const BallSpin&) = default;
 };
 
 struct FlightState
 {
-  float horizontalSpeed = 0.0f;
-  float verticalSpeed = 0.0f;
-  float height = 0.0f;
+  float horizontalSpeed = 0.0F;
+  float verticalSpeed = 0.0F;
+  float height = 0.0F;
   bool bounced = false;
   /** Its spin (Binturong physics; the Aardvark flight ignores it). */
   BallSpin spin{};
   /** Out: how fast the sidespin turned its heading over the step (rad/s). */
-  float turnRate = 0.0f;
+  float turnRate = 0.0F;
 };

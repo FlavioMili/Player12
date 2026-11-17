@@ -38,11 +38,11 @@ inline constexpr std::size_t MAX_PLAYERS = 40;
 /** A completed open-play pass that gains this much ground towards the
  * opponent goal, ending outside the passer's own defensive 40%, is
  * progressive. */
-inline constexpr float PROGRESSIVE_METRES = 10.0f;
-inline constexpr float PROGRESSIVE_MIN_END_X = 0.4f;
+inline constexpr float PROGRESSIVE_METRES = 10.0F;
+inline constexpr float PROGRESSIVE_MIN_END_X = 0.4F;
 /** The closest pressing player within this distance of the carrier applies
  * a pressure (counted once per player and possession spell). */
-inline constexpr float PRESSURE_RADIUS_METRES = 4.0f;
+inline constexpr float PRESSURE_RADIUS_METRES = 4.0F;
 
 /** Cell of a position in the attacking frame. */
 std::size_t cellOf(float x, float y);
@@ -57,12 +57,12 @@ struct TrackedPlayer
   std::array<std::uint16_t, MatchTracking::CELLS> touches{};
   std::uint16_t touch_count = 0;
   /** Sums of the touch positions (attacking frame). */
-  float sum_x = 0.0f;
-  float sum_y = 0.0f;
+  float sum_x = 0.0F;
+  float sum_y = 0.0F;
   std::uint16_t progressive_passes = 0;
   std::uint16_t pressures = 0;
   /** xG of the shots his passes created. */
-  float expected_assists = 0.0f;
+  float expected_assists = 0.0F;
   /** Possession spell of his last pressure (counts once per spell). */
   double pressure_spell = -1.0;
 };
@@ -91,8 +91,7 @@ class MatchTracker
 
   /** A touch at a pitch position (engine frame: home attacks x = 1). */
   void touch(std::size_t player, bool home, PitchPoint position,
-             const MatchPitch& pitch, float minute,
-             int period);
+             const MatchPitch& pitch, float minute, int period);
   /** A pass leaves the passer's foot (origin in the engine frame). */
   void passReleased(PitchPoint origin, const MatchPitch& pitch, bool open_play);
   /** The last released pass reached a team-mate, on this pitch. */
@@ -133,6 +132,6 @@ class MatchTracker
       final_third{};
   /** Where the last pass left, as fractions of the pitch (x of the length,
    * y of the width). */
-  Vector2F pass_origin{0.5f, 0.5f};
+  Vector2F pass_origin{.x = 0.5F, .y = 0.5F};
   bool pass_open_play = false;
 };

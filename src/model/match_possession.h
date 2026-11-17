@@ -49,8 +49,14 @@ constexpr std::string_view possessionKey(PossessionId id)
 
 constexpr std::optional<PossessionId> possessionFromKey(std::string_view key)
 {
-  if (key == "aardvark") return PossessionId::AARDVARK;
-  if (key == "binturong") return PossessionId::BINTURONG;
+  if (key == "aardvark")
+  {
+    return PossessionId::AARDVARK;
+  }
+  if (key == "binturong")
+  {
+    return PossessionId::BINTURONG;
+  }
   return std::nullopt;
 }
 
@@ -120,15 +126,15 @@ struct PossessionSnapshot
   /** Current Binturong control; absent preserves the Aardvark interpretation.
    */
   std::optional<bool> footControlled;
-  float claimUncontrolledSeconds = 0.0f;
-  float claimUnrecoverableSeconds = 0.0f;
+  float claimUncontrolledSeconds = 0.0F;
+  float claimUnrecoverableSeconds = 0.0F;
   bool dropping = false;
   bool inHands = false;
   bool pass = false;
   bool shot = false;
   PlayerID meetFor = 0;
   double pathSince = 0.0;
-  float ownerGapMetres = 0.0f;
+  float ownerGapMetres = 0.0F;
   bool operator==(const PossessionSnapshot&) const = default;
 };
 
@@ -139,9 +145,14 @@ constexpr PossessionSnapshot interpretLegacyPossession(PossessionSnapshot state)
   state.controller = 0;
   state.claimant = state.inTouch ? state.legacyOwner : 0;
   state.mode = PossessionMode::UNCONTROLLED;
-  if (state.legacyOwner == 0) return state;
+  if (state.legacyOwner == 0)
+  {
+    return state;
+  }
   if (!state.openPlay)
+  {
     state.mode = PossessionMode::RESTART_OWNER;
+  }
   else if (state.inHands)
   {
     state.mode = PossessionMode::KEEPER_HANDS;
@@ -152,10 +163,15 @@ constexpr PossessionSnapshot interpretLegacyPossession(PossessionSnapshot state)
     const bool controlled = state.footControlled.value_or(state.collected);
     state.mode =
         controlled ? PossessionMode::FOOT_CONTROL : PossessionMode::TOUCH_CLAIM;
-    if (controlled) state.controller = state.legacyOwner;
+    if (controlled)
+    {
+      state.controller = state.legacyOwner;
+    }
   }
   else
+  {
     state.mode = PossessionMode::LEGACY_ATTACHED;
+  }
   return state;
 }
 
@@ -183,7 +199,10 @@ constexpr std::uint32_t possessionIssues(const PossessionSnapshot& state)
   std::uint32_t issues = 0;
   const auto add = [&](bool failed, PossessionIssue issue)
   {
-    if (failed) issues |= static_cast<std::uint32_t>(issue);
+    if (failed)
+    {
+      issues |= static_cast<std::uint32_t>(issue);
+    }
   };
   add(state.inTouch && state.legacyOwner == 0,
       PossessionIssue::TOUCH_WITHOUT_OWNER);

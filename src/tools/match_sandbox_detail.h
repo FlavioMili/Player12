@@ -30,7 +30,7 @@ class DetailRecorder : public MatchRecorder
   struct At
   {
     std::uint64_t tick = 0;
-    float minute = 0.0f;
+    float minute = 0.0F;
     T detail;
   };
 

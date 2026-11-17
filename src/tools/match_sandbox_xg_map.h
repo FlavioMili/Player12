@@ -42,33 +42,33 @@ class XgMapScene : public GUIScene
   {
     MatchEngine::XgBreakdown xg;
     /** As struck: a header's discount and the shot's limits applied. */
-    float struck = 0.0f;
+    float struck = 0.0F;
     MatchEngine::ShotScoreParts score;
     bool considered = false;
   };
   [[nodiscard]] MatchPitch pitch() const;
-  [[nodiscard]] Spot spotAt(const MatchPitch& pitch, PitchPoint at) const;
+  [[nodiscard]] Spot spotAt(const MatchPitch& on, PitchPoint at) const;
   void rebuild();
   void renderPanel(float width);
   void renderMap(float width, float height);
 
   // Settings.
   bool trainingPitch = false;
-  float lengthSetting = 35.0f;
-  float widthSetting = 23.0f;
+  float lengthSetting = 35.0F;
+  float widthSetting = 23.0F;
   int goalChoice = 5;
-  float shootingSetting = 50.0f;
+  float shootingSetting = 50.0F;
   bool header = false;
   bool defender = false;
-  float defenderMetres = 2.0f;
-  float spaceAhead = 1.0f;
+  float defenderMetres = 2.0F;
+  float spaceAhead = 1.0F;
   /** 0: xG; 1: the shot score (its core). */
   int layer = 0;
 
   // The map, worked out when a setting changes.
   bool dirty = true;
   MatchPitch built{};
-  float cell = 1.0f;
+  float cell = 1.0F;
   int columns = 0;
   int rows = 0;
   std::vector<Spot> grid;

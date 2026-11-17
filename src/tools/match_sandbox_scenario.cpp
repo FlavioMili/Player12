@@ -25,18 +25,24 @@
 namespace
 {
 /** Where an unused dummy (a side short of eleven) is parked. */
-constexpr Vector2F PARKED{0.02f, 0.02f};
+constexpr Vector2F PARKED{.x = 0.02F, .y = 0.02F};
 
 const char* actionEnum(ScenarioAction action)
 {
   switch (action)
   {
-    case ScenarioAction::NONE: return "ScenarioAction::NONE";
-    case ScenarioAction::SHOT: return "ScenarioAction::SHOT";
-    case ScenarioAction::PASS: return "ScenarioAction::PASS";
-    case ScenarioAction::CARRY: return "ScenarioAction::CARRY";
-    case ScenarioAction::SHIELD: return "ScenarioAction::SHIELD";
-    case ScenarioAction::CLEAR: return "ScenarioAction::CLEAR";
+    case ScenarioAction::NONE:
+      return "ScenarioAction::NONE";
+    case ScenarioAction::SHOT:
+      return "ScenarioAction::SHOT";
+    case ScenarioAction::PASS:
+      return "ScenarioAction::PASS";
+    case ScenarioAction::CARRY:
+      return "ScenarioAction::CARRY";
+    case ScenarioAction::SHIELD:
+      return "ScenarioAction::SHIELD";
+    case ScenarioAction::CLEAR:
+      return "ScenarioAction::CLEAR";
   }
   return "ScenarioAction::NONE";
 }
@@ -67,33 +73,52 @@ std::string ScenarioExport::testCase(const MatchEngine& before,
     std::size_t next = 1;
     for (const MatchPlayer& player : before.getPlayers())
     {
-      if (!player.player || !player.onPitch || player.isHomeTeam != home)
+      if ((player.player == nullptr) || !player.onPitch ||
+          player.isHomeTeam != home)
+      {
         continue;
+      }
       std::size_t slot = 0;
       if (player.isGoalkeeper)
+      {
         slot = base;
+      }
       else if (next <= 10)
+      {
         slot = base + next++;
+      }
       else
+      {
         continue;
-      placed.push_back({slot, &player});
-      if (player.player->getId() == decision.player) carrierSlot = slot;
+      }
+      placed.push_back({.slot = slot, .player = &player});
+      if (player.player->getId() == decision.player)
+      {
+        carrierSlot = slot;
+      }
     }
   }
   // The best pass's receiver, for the comment.
   PlayerID bestReceiver = 0;
   float bestUtility = -std::numeric_limits<float>::infinity();
   for (const PassCandidateDetail& candidate : decision.candidates)
+  {
     if (candidate.excluded == PassExclusion::NONE &&
         candidate.utility.total > bestUtility)
     {
       bestUtility = candidate.utility.total;
       bestReceiver = candidate.receiver;
     }
+  }
   for (const Placed& entry : placed)
-    if (entry.player->player->getId() == bestReceiver) receiverSlot = entry.slot;
+  {
+    if (entry.player->player->getId() == bestReceiver)
+    {
+      receiverSlot = entry.slot;
+    }
+  }
 
-  const int seconds = static_cast<int>(std::floor(minute * 60.0f));
+  const int seconds = static_cast<int>(std::floor(minute * 60.0F));
   std::string text = std::format(
       "// Exported from the match sandbox at tick {} ({:02}:{:02}).\n", tick,
       seconds / 60, seconds % 60);
@@ -103,10 +128,12 @@ std::string ScenarioExport::testCase(const MatchEngine& before,
       score(decision.options[0].total), score(decision.options[1].total),
       score(decision.options[2].total), score(decision.options[3].total));
   if (bestReceiver != 0)
+  {
     text += std::format("// Best pass: {} (slot {}), utility {}.\n",
                         names.playerName(bestReceiver),
                         receiverSlot ? std::to_string(*receiverSlot) : "?",
                         score(bestUtility));
+  }
   text +=
       "// The dummy teams are uniformly rated with fixed roles: this "
       "reproduces the\n// positions, not the real players' attributes or "
@@ -125,21 +152,28 @@ std::string ScenarioExport::testCase(const MatchEngine& before,
     used[entry.slot] = true;
     const MatchPlayer& player = *entry.player;
     text += std::format(
-        "  spec.layout[slotId(ids, {})] = {{{:.4f}f, {:.4f}f}};  // {} ({}, {})\n",
+        "  spec.layout[slotId(ids, {})] = {{{:.4f}f, {:.4f}f}};  // {} ({}, "
+        "{})\n",
         entry.slot, MatchPitch::matchSize().fractionX(player.position),
         MatchPitch::matchSize().fractionY(player.position),
         player.player->getName(), RoleUtils::toString(player.player->getRole()),
         player.isHomeTeam ? "home" : "away");
     if (player.isMakingRun)
-      text += std::format("  spec.makeRuns[slotId(ids, {})] = true;\n",
-                          entry.slot);
+    {
+      text +=
+          std::format("  spec.makeRuns[slotId(ids, {})] = true;\n", entry.slot);
+    }
   }
   for (std::size_t slot = 0; slot < used.size(); ++slot)
+  {
     if (!used[slot])
+    {
       text += std::format(
           "  spec.layout[slotId(ids, {})] = {{{:.2f}f, {:.2f}f}};  // not on "
           "the pitch\n",
           slot, PARKED.x, PARKED.y);
+    }
+  }
   text += std::format("  spec.carrierId = slotId(ids, {});\n\n",
                       carrierSlot ? *carrierSlot : 0);
   text += std::format(

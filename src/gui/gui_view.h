@@ -229,7 +229,7 @@ class GUIView
 
   // Live-match render diagnostics (Priority 0)
   static constexpr int MATCH_FRAME_TIMING_COUNT = 120;
-  static constexpr float MATCH_PROFILE_FRAME_SECONDS = 1.0f / 60.0f;
+  static constexpr float MATCH_PROFILE_FRAME_SECONDS = 1.0F / 60.0F;
   bool rendererIsSoftware = false;
   std::array<float, MATCH_FRAME_TIMING_COUNT> matchFrameTimes{};
   int matchFramesTimed = -1;

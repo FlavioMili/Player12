@@ -78,8 +78,10 @@ bool GUIView::initialize()
   // Only a default: SDL_VIDEO_DRIVER or an explicit hint still wins.
   if (std::getenv("WAYLAND_DISPLAY") != nullptr &&
       SDL_GetHint(SDL_HINT_VIDEO_DRIVER) == nullptr)
+  {
     SDL_SetHintWithPriority(SDL_HINT_VIDEO_DRIVER, "wayland,x11",
                             SDL_HINT_DEFAULT);
+  }
 
   if (!SDL_Init(SDL_INIT_VIDEO))
   {
@@ -116,7 +118,7 @@ bool GUIView::initialize()
   }
   const char* rendererName = SDL_GetRendererName(renderer);
   Logger::info(std::string("SDL renderer driver: ") +
-               (rendererName ? rendererName : "unknown"));
+               ((rendererName != nullptr) ? rendererName : "unknown"));
   rendererIsSoftware = (rendererName != nullptr &&
                         std::string_view(rendererName).contains("software"));
   if (rendererIsSoftware)
@@ -174,7 +176,10 @@ void GUIView::run(const SceneFactory& firstScene)
     return;
   }
   // Replaces the main menu queued by initialize() before it is entered.
-  if (firstScene) changeScene(firstScene(this));
+  if (firstScene)
+  {
+    changeScene(firstScene(this));
+  }
 
   running = true;
   Uint64 lastTime = SDL_GetTicksNS();
@@ -198,12 +203,18 @@ void GUIView::run(const SceneFactory& firstScene)
     const Uint64 frameBudget =
         static_cast<Uint64>(SDL_NS_PER_SECOND) / static_cast<Uint64>(fpsLimit);
     const Uint64 elapsed = SDL_GetTicksNS() - frameStart;
-    if (elapsed < frameBudget) SDL_DelayPrecise(frameBudget - elapsed);
+    if (elapsed < frameBudget)
+    {
+      SDL_DelayPrecise(frameBudget - elapsed);
+    }
   }
 
   // Release scenes before the caller saves controller state. A scene may own
   // bounded background work, and its destructor joins that work safely.
-  while (!sceneStack.empty()) sceneStack.pop_back();
+  while (!sceneStack.empty())
+  {
+    sceneStack.pop_back();
+  }
   currentScene.reset();
   pendingScene.reset();
 }
@@ -243,7 +254,10 @@ bool GUIView::runMatchRenderProfile()
     return false;
   }
 
-  if (!initialize()) return false;
+  if (!initialize())
+  {
+    return false;
+  }
 
   applyPendingSceneChanges();
   overlayScene(
@@ -333,7 +347,9 @@ void GUIView::render()
   // A frozen frame (see requestBackdropCapture) sits behind the UI; scenes
   // drawing over it use transparent windows.
   if (backdropTexture != nullptr && !backdropPending)
+  {
     SDL_RenderTexture(renderer, backdropTexture, nullptr, nullptr);
+  }
 
   ImGui_ImplSDLRenderer3_NewFrame();
   ImGui_ImplSDL3_NewFrame();
@@ -346,7 +362,10 @@ void GUIView::render()
     activeScene->render();
   }
 
-  if (editor_dialog) editor_dialog->render();
+  if (editor_dialog)
+  {
+    editor_dialog->render();
+  }
 
   ImGui::Render();
   // The SDL_Renderer backend scales only clip rectangles by the framebuffer
@@ -368,7 +387,9 @@ void GUIView::render()
       SDL_DestroySurface(frame);
       // Read-back alpha is undefined on some drivers; the frame is opaque.
       if (backdropTexture != nullptr)
+      {
         SDL_SetTextureBlendMode(backdropTexture, SDL_BLENDMODE_NONE);
+      }
     }
   }
 
@@ -377,11 +398,13 @@ void GUIView::render()
   {
     const char* configuredPath = std::getenv("FM_SCREENSHOT_PATH");
     if (const std::string path =
-            configuredPath && *configuredPath
+            (configuredPath != nullptr) && (*configuredPath != 0)
                 ? configuredPath
                 : RuntimePaths::capturePath("screenshot.bmp").string();
         !captureScreenshot(path))
+    {
       std::cerr << "Failed to capture screenshot: " << SDL_GetError() << '\n';
+    }
     screenshotPending = false;
     capturedScreenshot = true;
   }
@@ -408,7 +431,7 @@ void GUIView::render()
 
 void GUIView::beginMatchRenderTimings()
 {
-  matchFrameTimes.fill(0.0f);
+  matchFrameTimes.fill(0.0F);
   matchFramesTimed = 0;
   Logger::info("Measuring the first 120 live-match render/present frames");
 }
@@ -460,7 +483,10 @@ size_t GUIView::getOverlayDepth() const { return sceneStack.size(); }
 
 GUIScene* GUIView::getSceneBelowTop() const
 {
-  if (sceneStack.empty()) return nullptr;
+  if (sceneStack.empty())
+  {
+    return nullptr;
+  }
   return sceneStack.size() > 1 ? sceneStack[sceneStack.size() - 2].get()
                                : currentScene.get();
 }
@@ -470,16 +496,26 @@ void GUIView::recordHistory()
   const bool step = history_step;
   history_step = false;
   // A step through the history already moved to the entry being shown.
-  if (step) return;
+  if (step)
+  {
+    return;
+  }
   if (const GUIScene* shown = getActiveScene())
+  {
     if (const std::optional<NavEntry> entry = shown->historyEntry())
+    {
       nav_history.visit(*entry);
+    }
+  }
 }
 
 void GUIView::applyPendingSceneChanges()
 {
   applyEditorRequest();
-  if (pendingAction == PendingAction::NONE) return;
+  if (pendingAction == PendingAction::NONE)
+  {
+    return;
+  }
   while (pendingAction != PendingAction::NONE)
   {
     PendingAction currentAction = pendingAction;
@@ -536,7 +572,10 @@ void GUIView::applyPendingSceneChanges()
         // Exit the top overlay scene
         sceneStack.back()->onExit();
         sceneStack.pop_back();
-        if (GUIScene* revealed = getActiveScene()) revealed->onResume();
+        if (GUIScene* revealed = getActiveScene())
+        {
+          revealed->onResume();
+        }
       }
     }
     else if (currentAction == PendingAction::NAVIGATE)
@@ -575,7 +614,10 @@ GameController& GUIView::getController() const { return controller; }
 
 bool GUIView::captureScreenshot(std::string_view path) const
 {
-  if (!renderer || path.empty()) return false;
+  if ((renderer == nullptr) || path.empty())
+  {
+    return false;
+  }
   // A bare file name has no folder to create; a failure to create one is
   // reported by the save below instead of throwing out of the frame.
   if (const std::filesystem::path folder =
@@ -586,7 +628,10 @@ bool GUIView::captureScreenshot(std::string_view path) const
     std::filesystem::create_directories(folder, error);
   }
   SDL_Surface* surface = SDL_RenderReadPixels(renderer, nullptr);
-  if (!surface) return false;
+  if (surface == nullptr)
+  {
+    return false;
+  }
   const bool saved = SDL_SaveBMP(surface, std::string(path).c_str());
   SDL_DestroySurface(surface);
   return saved;
@@ -605,7 +650,10 @@ GUIScene* GUIView::getActiveScene() const
 
 float GUIView::displayScale() const
 {
-  if (window == nullptr) return 1.0f;
+  if (window == nullptr)
+  {
+    return 1.0F;
+  }
   // Display scale = pixel density x content scale. Window coordinates (and
   // therefore ImGui's) already include the pixel density wherever the
   // platform reports one (Wayland, macOS), so only the remaining content
@@ -613,8 +661,11 @@ float GUIView::displayScale() const
   // scale applies.
   const float display = SDL_GetWindowDisplayScale(window);
   const float density = SDL_GetWindowPixelDensity(window);
-  if (display <= 0.0f) return 1.0f;
-  return density > 0.0f ? display / density : display;
+  if (display <= 0.0F)
+  {
+    return 1.0F;
+  }
+  return density > 0.0F ? display / density : display;
 }
 
 void GUIView::applyManagementTheme()
@@ -646,18 +697,23 @@ void GUIView::applyWindowSettings(bool resize)
   SettingsManager* settings = SettingsManager::instance();
   settings->apply(window);
   if (renderer != nullptr)
+  {
     SDL_SetRenderVSync(renderer,
                        settings->get().vsync ? 1 : SDL_RENDERER_VSYNC_DISABLED);
-  if (window == nullptr || settings->get().fullscreen || !resize) return;
+  }
+  if (window == nullptr || settings->get().fullscreen || !resize)
+  {
+    return;
+  }
   // Wayland and macOS report the scale as pixel density (displayScale() is 1
   // there); elsewhere the logical size is scaled up, within the display.
-  const float scale = std::max(1.0f, displayScale());
+  const float scale = std::max(1.0F, displayScale());
   auto width = static_cast<int>(std::lround(
       static_cast<float>(settings->get().resolution_width) * scale));
   auto height = static_cast<int>(std::lround(
       static_cast<float>(settings->get().resolution_height) * scale));
   if (SDL_Rect usable{};
-      displayScale() > 1.0f &&
+      displayScale() > 1.0F &&
       SDL_GetDisplayUsableBounds(SDL_GetDisplayForWindow(window), &usable))
   {
     width = std::min(width, usable.w);
@@ -665,7 +721,9 @@ void GUIView::applyWindowSettings(bool resize)
   }
   // A maximised window ignores a new size until it is restored.
   if ((SDL_GetWindowFlags(window) & SDL_WINDOW_MAXIMIZED) != 0)
+  {
     SDL_RestoreWindow(window);
+  }
   SDL_SetWindowSize(window, width, height);
 }
 
@@ -684,28 +742,42 @@ void GUIView::requestBackdropCapture() { backdropPending = true; }
 
 void GUIView::releaseBackdrop()
 {
-  if (backdropTexture != nullptr) SDL_DestroyTexture(backdropTexture);
+  if (backdropTexture != nullptr)
+  {
+    SDL_DestroyTexture(backdropTexture);
+  }
   backdropTexture = nullptr;
 }
 
 void GUIView::openEditor(const std::optional<NavEntry>& context)
 {
   if (const auto* hub = dynamic_cast<MainGameScene*>(getBaseScene());
-      !controller.isGameLoaded() || !hub || hub->isContinuing() ||
-      (getTopScene() && getTopScene()->getID() == SceneID::MATCH))
+      !controller.isGameLoaded() || (hub == nullptr) || hub->isContinuing() ||
+      ((getTopScene() != nullptr) && getTopScene()->getID() == SceneID::MATCH))
+  {
     return;
+  }
   if (!editor_dialog)
+  {
     editor_dialog = std::make_unique<RuntimeEditorDialog>(controller);
+  }
   editor_dialog->open(context);
 }
 
 void GUIView::applyEditorRequest()
 {
-  if (!editor_dialog) return;
+  if (!editor_dialog)
+  {
+    return;
+  }
   const auto request = editor_dialog->takeRequest();
-  if (request == RuntimeEditorDialog::Request::None) return;
-  const auto context =
-      getActiveScene() ? getActiveScene()->historyEntry() : std::nullopt;
+  if (request == RuntimeEditorDialog::Request::None)
+  {
+    return;
+  }
+  const auto context = (getActiveScene() != nullptr)
+                           ? getActiveScene()->historyEntry()
+                           : std::nullopt;
   std::string error;
   const bool success =
       request == RuntimeEditorDialog::Request::Undo
@@ -713,12 +785,18 @@ void GUIView::applyEditorRequest()
           : controller.applyEditor(editor_dialog->session(),
                                    editor_dialog->changes(), error);
   editor_dialog->finish(success, std::move(error));
-  if (!success) return;
+  if (!success)
+  {
+    return;
+  }
   // Replacement happens outside render/update. Discard cached model references
   // before reopening a screen against the new world.
   changeScene(std::make_unique<MainGameScene>(this));
   applyPendingSceneChanges();
-  if (!context || !Navigation::canOpen(this, *context)) return;
+  if (!context || !Navigation::canOpen(this, *context))
+  {
+    return;
+  }
   using enum NavEntry::Kind;
   switch (context->kind)
   {
@@ -744,10 +822,14 @@ void GUIView::applyEditorRequest()
 void GUIView::openEditor(const EditorContext& context)
 {
   if (const auto* hub = dynamic_cast<MainGameScene*>(getBaseScene());
-      !controller.isGameLoaded() || !hub || hub->isContinuing() ||
-      (getTopScene() && getTopScene()->getID() == SceneID::MATCH))
+      !controller.isGameLoaded() || (hub == nullptr) || hub->isContinuing() ||
+      ((getTopScene() != nullptr) && getTopScene()->getID() == SceneID::MATCH))
+  {
     return;
+  }
   if (!editor_dialog)
+  {
     editor_dialog = std::make_unique<RuntimeEditorDialog>(controller);
+  }
   editor_dialog->open(context);
 }
