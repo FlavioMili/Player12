@@ -24,11 +24,41 @@
 #include "tools/match_sandbox_debugger.h"
 #include "tools/match_sandbox_names.h"
 #include "tools/match_sandbox_page_ui.h"
+#include "tools/match_sandbox_text.h"
 
 namespace
 {
 using Recorder = SandboxRecorder;
 using Job = SandboxRecorder::Job;
+
+constexpr int SECONDS_PER_MINUTE = 60;
+constexpr float HEADER_FONT_SIZE = 14.0F;
+constexpr int TEAM_TABLE_COLUMNS = 7;
+constexpr int SUMMARY_TABLE_COLUMNS = 8;
+constexpr float PLAYER_COLUMN_WEIGHT = 2.0F;
+constexpr float DETAIL_COLUMN_WEIGHT = 1.6F;
+constexpr float JOB_COLUMN_WEIGHT = 1.2F;
+constexpr float TOP_INTENTS_WEIGHT = 2.4F;
+constexpr float CURSOR_PADDING = 2.0F;
+constexpr float CURSOR_STROKE = 2.0F;
+constexpr float PLAYER_PICKER_WIDTH = 240.0F;
+constexpr float PROPERTY_COLUMN_WIDTH = 140.0F;
+constexpr float EVENT_TIME_WIDTH = 60.0F;
+constexpr float EVENT_TYPE_WIDTH = 110.0F;
+constexpr int RECENT_EVENT_LIMIT = 8;
+constexpr float DEGREES_HALF_TURN = 180.0F;
+constexpr float PICK_RADIUS = 22.0F;
+constexpr float SELECTED_STROKE = 2.5F;
+constexpr float OVERLAY_STROKE = 1.2F;
+constexpr float TARGET_RADIUS = 3.0F;
+constexpr float LABEL_PADDING_X = 2.0F;
+constexpr float LABEL_ROUNDING = 3.0F;
+constexpr float SELECTION_RADIUS = 11.0F;
+constexpr float PASS_MARKER_RADIUS = 4.0F;
+constexpr float RUNNER_UP_STROKE = 2.0F;
+constexpr float BEST_PASS_STROKE = 3.0F;
+constexpr float PASS_LABEL_PADDING_X = 3.0F;
+constexpr float PASS_LABEL_PADDING_Y = 2.0F;
 
 constexpr float SECONDS_PER_TICK = MatchTuning::Timing::FIXED_STEP_SECONDS;
 /** A decision this recent (ticks) still shows its pass options. */
@@ -128,9 +158,10 @@ const MatchPlayer* findSlot(const MatchEngine& engine, PlayerID id)
 
 std::string clock(float minute)
 {
-  const int total =
-      static_cast<int>(std::floor(std::max(0.0F, minute) * 60.0F));
-  return std::format("{:02}:{:02}", total / 60, total % 60);
+  const int total = static_cast<int>(std::floor(
+      std::max(0.0F, minute) * static_cast<float>(SECONDS_PER_MINUTE)));
+  return std::format("{:02}:{:02}", total / SECONDS_PER_MINUTE,
+                     total % SECONDS_PER_MINUTE);
 }
 
 /** Key/value row of a two-column table. */
@@ -139,10 +170,10 @@ void property(const char* key, const std::string& value,
 {
   ImGui::TableNextRow();
   ImGui::TableNextColumn();
-  ImGui::TextDisabled("%s", key);
+  SandboxText::disabledText(key);
   if ((tooltip != nullptr) && ImGui::IsItemHovered())
   {
-    ImGui::SetTooltip("%s", tooltip);
+    SandboxText::tooltipText(tooltip);
   }
   ImGui::TableNextColumn();
   ImGui::TextUnformatted(value.c_str());
@@ -176,13 +207,13 @@ void DebugInspector::refresh(const SandboxRecorder& recorder,
     if (const auto* change = std::get_if<Recorder::JobChange>(&entry.payload))
     {
       const auto job = static_cast<std::size_t>(change->job);
-      asOf.jobs[side(change->homeTeam)][job] = change->player;
-      asOf.scores[side(change->homeTeam)][job] = change->score;
+      asOf.jobs.at(side(change->homeTeam)).at(job) = change->player;
+      asOf.scores.at(side(change->homeTeam)).at(job) = change->score;
     }
     else if (const auto* phase =
                  std::get_if<Recorder::PhaseChange>(&entry.payload))
     {
-      asOf.phaseSince[side(phase->homeTeam)] = entry.tick;
+      asOf.phaseSince.at(side(phase->homeTeam)) = entry.tick;
     }
     else if (std::holds_alternative<MatchDecisionRecord>(entry.payload))
     {
@@ -194,10 +225,10 @@ void DebugInspector::refresh(const SandboxRecorder& recorder,
 
 Job DebugInspector::jobOf(PlayerID player, bool homeTeam) const
 {
-  const auto& held = asOf.jobs[side(homeTeam)];
+  const auto& held = asOf.jobs.at(side(homeTeam));
   for (std::size_t job = 1; job < held.size(); ++job)
   {
-    if (held[job] == player && player != 0)
+    if (held.at(job) == player && player != 0)
     {
       return static_cast<Job>(job);
     }
@@ -231,7 +262,7 @@ void DebugInspector::renderTeam(const SandboxRecorder& recorder,
     {
       ImGui::SameLine();
     }
-    if (ImGui::RadioButton(SIDES[static_cast<std::size_t>(index)],
+    if (ImGui::RadioButton(SIDES.at(static_cast<std::size_t>(index)),
                            team_side == index))
     {
       team_side = index;
@@ -241,13 +272,18 @@ void DebugInspector::renderTeam(const SandboxRecorder& recorder,
   const std::size_t team = side(home);
   const TeamPhase phase = home ? engine.getHomePhase() : engine.getAwayPhase();
   ImGui::SameLine();
-  ImGui::Text("   Phase: %s for %.1f s", SandboxNames::phase(phase),
-              seconds(engine.getSimulatedSteps() - asOf.phaseSince[team]));
+  ImGui::TextUnformatted(
+      std::format("   Phase: {} for {:.1f} s", SandboxNames::phase(phase),
+                  static_cast<double>(seconds(engine.getSimulatedSteps() -
+                                              asOf.phaseSince.at(team))))
+          .c_str());
   if (engine.getTransitionSecondsRemaining() > 0.0F)
   {
     ImGui::SameLine();
-    ImGui::TextDisabled("(transition %.1f s left)",
-                        engine.getTransitionSecondsRemaining());
+    SandboxText::disabledText(
+        std::format("(transition {:.1f} s left)",
+                    static_cast<double>(engine.getTransitionSecondsRemaining()))
+            .c_str());
   }
 
   // The planner's jobs, with the scores that ranked them.
@@ -260,12 +296,12 @@ void DebugInspector::renderTeam(const SandboxRecorder& recorder,
     ImGui::TableSetupColumn("Job");
     ImGui::TableSetupColumn("Player");
     ImGui::TableSetupColumn("Ranking score");
-    ImGui::PushFont(SandboxAnalysisUI::bold(), 14);
+    ImGui::PushFont(SandboxAnalysisUI::bold(), HEADER_FONT_SIZE);
     ImGui::TableHeadersRow();
     ImGui::PopFont();
     for (std::size_t job = 1; job < JOBS; ++job)
     {
-      const PlayerID player = asOf.jobs[team][job];
+      const PlayerID player = asOf.jobs.at(team).at(job);
       if (player == 0)
       {
         continue;
@@ -279,12 +315,18 @@ void DebugInspector::renderTeam(const SandboxRecorder& recorder,
       const auto kind = static_cast<Job>(job);
       if (kind == Job::PRESSER_1 || kind == Job::PRESSER_2)
       {
-        ImGui::Text("arrives in %.2f s", asOf.scores[team][job]);
+        ImGui::TextUnformatted(
+            std::format("arrives in {:.2f} s",
+                        static_cast<double>(asOf.scores.at(team).at(job)))
+                .c_str());
       }
       else if (kind == Job::RUNNER_1 || kind == Job::RUNNER_2 ||
                kind == Job::RUNNER_3)
       {
-        ImGui::Text("run priority %.2f", asOf.scores[team][job]);
+        ImGui::TextUnformatted(
+            std::format("run priority {:.2f}",
+                        static_cast<double>(asOf.scores.at(team).at(job)))
+                .c_str());
       }
     }
     ImGui::EndTable();
@@ -301,18 +343,22 @@ void DebugInspector::renderTeam(const SandboxRecorder& recorder,
   }
 
   ImGui::SeparatorText("Players");
-  if (ImGui::BeginTable("##players", 7, tableFlags | ImGuiTableFlags_ScrollY,
+  if (ImGui::BeginTable("##players", TEAM_TABLE_COLUMNS,
+                        tableFlags | ImGuiTableFlags_ScrollY,
                         ImVec2(0.0F, 0.0F)))
   {
     ImGui::TableSetupScrollFreeze(0, 1);
-    ImGui::TableSetupColumn("Player", ImGuiTableColumnFlags_WidthStretch, 2.0F);
+    ImGui::TableSetupColumn("Player", ImGuiTableColumnFlags_WidthStretch,
+                            PLAYER_COLUMN_WEIGHT);
     ImGui::TableSetupColumn("Pos");
-    ImGui::TableSetupColumn("Intent", ImGuiTableColumnFlags_WidthStretch, 1.6F);
-    ImGui::TableSetupColumn("Job", ImGuiTableColumnFlags_WidthStretch, 1.2F);
+    ImGui::TableSetupColumn("Intent", ImGuiTableColumnFlags_WidthStretch,
+                            DETAIL_COLUMN_WEIGHT);
+    ImGui::TableSetupColumn("Job", ImGuiTableColumnFlags_WidthStretch,
+                            JOB_COLUMN_WEIGHT);
     ImGui::TableSetupColumn("To target");
     ImGui::TableSetupColumn("Speed");
     ImGui::TableSetupColumn("Stamina");
-    ImGui::PushFont(SandboxAnalysisUI::bold(), 14);
+    ImGui::PushFont(SandboxAnalysisUI::bold(), HEADER_FONT_SIZE);
     ImGui::TableHeadersRow();
     ImGui::PopFont();
     const PossessionSnapshot possession = engine.getPossessionSnapshot();
@@ -335,18 +381,18 @@ void DebugInspector::renderTeam(const SandboxRecorder& recorder,
       if (ballStatus != nullptr)
       {
         ImGui::SameLine();
-        ImGui::TextColored(Theme::palette().positive, "%s", ballStatus);
+        SandboxText::coloredText(Theme::palette().positive, ballStatus);
       }
       if (id == possession.expectedReceiver)
       {
         ImGui::SameLine();
-        ImGui::TextDisabled("(expected)");
+        SandboxText::disabledText("(expected)");
       }
       ImGui::TableNextColumn();
       ImGui::TextUnformatted(RoleUtils::shortName(slot.player->getRole()));
       ImGui::TableNextColumn();
-      ImGui::TextColored(
-          ImGui::ColorConvertU32ToFloat4(intentColor(slot.intent)), "%s",
+      SandboxText::coloredText(
+          ImGui::ColorConvertU32ToFloat4(intentColor(slot.intent)),
           SandboxNames::intent(slot.intent));
       ImGui::TableNextColumn();
       const Job job = jobOf(id, home);
@@ -355,11 +401,19 @@ void DebugInspector::renderTeam(const SandboxRecorder& recorder,
         ImGui::TextUnformatted(SandboxNames::job(job));
       }
       ImGui::TableNextColumn();
-      ImGui::Text("%.1f m", metres(slot.position, slot.tacticalTarget));
+      ImGui::TextUnformatted(
+          std::format("{:.1f} m", static_cast<double>(metres(
+                                      slot.position, slot.tacticalTarget)))
+              .c_str());
       ImGui::TableNextColumn();
-      ImGui::Text("%.1f m/s", std::hypot(slot.velocity.x, slot.velocity.y));
+      ImGui::TextUnformatted(
+          std::format("{:.1f} m/s", static_cast<double>(std::hypot(
+                                        slot.velocity.x, slot.velocity.y)))
+              .c_str());
       ImGui::TableNextColumn();
-      ImGui::Text("%.0f%%", slot.stamina * 100.0F);
+      ImGui::TextUnformatted(
+          std::format("{:.0f}%", static_cast<double>(slot.stamina * 100.0F))
+              .c_str());
     }
     ImGui::EndTable();
   }
@@ -415,9 +469,9 @@ void DebugInspector::renderIntentStrip(const SandboxRecorder& recorder,
         intentColor(spans[index].intent));
   }
   const float cursorX = xOf(cursor);
-  drawList->AddLine(ImVec2(cursorX, min.y - 2.0F),
-                    ImVec2(cursorX, min.y + height + 2.0F),
-                    IM_COL32(255, 255, 255, 255), 2.0F * scale);
+  drawList->AddLine(ImVec2(cursorX, min.y - CURSOR_PADDING),
+                    ImVec2(cursorX, min.y + height + CURSOR_PADDING),
+                    IM_COL32(255, 255, 255, 255), CURSOR_STROKE * scale);
   if (ImGui::IsItemHovered())
   {
     const float share =
@@ -432,8 +486,9 @@ void DebugInspector::renderIntentStrip(const SandboxRecorder& recorder,
         intent = span.intent;
       }
     }
-    ImGui::SetTooltip("%s (tick %llu)", SandboxNames::intent(intent),
-                      static_cast<unsigned long long>(tick));
+    SandboxText::tooltipText(
+        std::format("{} (tick {})", SandboxNames::intent(intent), tick)
+            .c_str());
   }
 }
 
@@ -453,7 +508,7 @@ void DebugInspector::renderPlayer(const SandboxRecorder& recorder,
   ImGui::Checkbox("Follow the ball", &follow_ball);
   if (ImGui::IsItemHovered())
   {
-    ImGui::SetTooltip(
+    SandboxText::tooltipText(
         "Follow the controller, touch claimant or restart taker; "
         "keep following the last attachment while the ball is free. "
         "An expected receiver does not have control. Picking a "
@@ -472,7 +527,7 @@ void DebugInspector::renderPlayer(const SandboxRecorder& recorder,
   // Picker: every player seen in the match, by name.
   const std::string current = (selected != 0u) ? recorder.playerName(selected)
                                                : std::string("Choose a player");
-  ImGui::SetNextItemWidth(240.0F * Theme::scale());
+  ImGui::SetNextItemWidth(PLAYER_PICKER_WIDTH * Theme::scale());
   if (SandboxPageUI::beginCombo("##inspect", current.c_str(),
                                 ImGuiComboFlags_HeightLarge))
   {
@@ -494,19 +549,22 @@ void DebugInspector::renderPlayer(const SandboxRecorder& recorder,
     ImGui::EndCombo();
   }
   ImGui::SameLine();
-  ImGui::TextDisabled("or click him on the review pitch");
+  SandboxText::disabledText("or click him on the review pitch");
   const MatchPlayer* slot = findSlot(engine, inspected);
   if (slot == nullptr)
   {
-    ImGui::TextDisabled("No player inspected (or he is not on the pitch).");
+    SandboxText::disabledText(
+        "No player inspected (or he is not on the pitch).");
     return;
   }
 
   const Job job = jobOf(inspected, slot->isHomeTeam);
-  ImGui::Text("%s  ·  %s  ·  natural %s%s", slot->player->getName().c_str(),
-              slot->isHomeTeam ? "Home" : "Away",
-              RoleUtils::shortName(slot->player->getRole()),
-              slot->isGoalkeeper ? "  ·  in goal" : "");
+  ImGui::TextUnformatted(
+      std::format("{}  ·  {}  ·  natural {}{}", slot->player->getName(),
+                  slot->isHomeTeam ? "Home" : "Away",
+                  RoleUtils::shortName(slot->player->getRole()),
+                  slot->isGoalkeeper ? "  ·  in goal" : "")
+          .c_str());
 
   // Now: what he is doing and why.
   constexpr ImGuiTableFlags flags =
@@ -514,7 +572,7 @@ void DebugInspector::renderPlayer(const SandboxRecorder& recorder,
   if (ImGui::BeginTable("##now", 2, flags))
   {
     ImGui::TableSetupColumn("key", ImGuiTableColumnFlags_WidthFixed,
-                            140.0F * Theme::scale());
+                            PROPERTY_COLUMN_WIDTH * Theme::scale());
     ImGui::TableSetupColumn("value");
     property("Brain",
              std::string(brainName(engine.getBrain(slot->isHomeTeam))));
@@ -554,8 +612,9 @@ void DebugInspector::renderPlayer(const SandboxRecorder& recorder,
           "jog to 0.82 x critical speed, run to critical speed, sprint "
           "to his top speed. Fuel lowers the bands.");
     }
-    property("Facing", std::format("{:.0f}°", slot->facingAngle * 180.0F /
-                                                  std::numbers::pi_v<float>));
+    property("Facing",
+             std::format("{:.0f}°", slot->facingAngle * DEGREES_HALF_TURN /
+                                        std::numbers::pi_v<float>));
     property("Stamina",
              std::format("{:.0f}% · sprint reserve {:.0f}%",
                          slot->stamina * 100.0F, slot->sprintReserve * 100.0F));
@@ -695,7 +754,8 @@ void DebugInspector::renderPlayer(const SandboxRecorder& recorder,
   // His latest decisions and actions up to this moment.
   ImGui::SeparatorText("Recent decisions and actions");
   int shown = 0;
-  for (std::size_t index = asOf.prefix; index > 0 && shown < 8; --index)
+  for (std::size_t index = asOf.prefix; index > 0 && shown < RECENT_EVENT_LIMIT;
+       --index)
   {
     const auto& entry = recorder.entries()[index - 1];
     const bool decision =
@@ -714,14 +774,14 @@ void DebugInspector::renderPlayer(const SandboxRecorder& recorder,
     {
       continue;
     }
-    ImGui::TextDisabled("%s", clock(entry.minute).c_str());
+    SandboxText::disabledText(clock(entry.minute).c_str());
     ImGui::SameLine();
-    ImGui::TextWrapped("%s", described.detail.c_str());
+    SandboxText::wrappedText(described.detail.c_str());
     ++shown;
   }
   if (shown == 0)
   {
-    ImGui::TextDisabled("None yet.");
+    SandboxText::disabledText("None yet.");
   }
 }
 
@@ -732,9 +792,11 @@ void DebugInspector::renderReferee(const SandboxRecorder& recorder,
 {
   auto guard = recorder.lock();
   refresh(recorder, engine.getSimulatedSteps());
-  ImGui::Text("Strictness this match: %.2f (1 is average)",
-              engine.getRefereeStrictness());
-  ImGui::TextDisabled(
+  ImGui::TextUnformatted(
+      std::format("Strictness this match: {:.2f} (1 is average)",
+                  static_cast<double>(engine.getRefereeStrictness()))
+          .c_str());
+  SandboxText::disabledText(
       "Tackles carry a foul risk; the roll against it is drawn from the "
       "referee's own random stream (the roll itself arrives with phase 4).");
 
@@ -761,12 +823,15 @@ void DebugInspector::renderReferee(const SandboxRecorder& recorder,
       highestUnpunished = std::max(highestUnpunished, action->foulPropensity);
     }
   }
-  ImGui::Text(
-      "Tackles %d  ·  fouls given %d  ·  mean foul risk %.2f  ·  "
-      "riskiest tackle not given %.2f",
-      tackles, fouls,
-      tackles > 0 ? riskSum / static_cast<float>(tackles) : 0.0F,
-      highestUnpunished);
+  ImGui::TextUnformatted(
+      std::format(
+          "Tackles {}  ·  fouls given {}  ·  mean foul risk {:.2f}  ·  "
+          "riskiest tackle not given {:.2f}",
+          tackles, fouls,
+          static_cast<double>(
+              tackles > 0 ? riskSum / static_cast<float>(tackles) : 0.0F),
+          static_cast<double>(highestUnpunished))
+          .c_str());
 
   // Full detail: the duels of this stretch with their chances and rolls.
   if (ImGui::CollapsingHeader("Duels with their rolls (full detail)"))
@@ -787,11 +852,11 @@ void DebugInspector::renderReferee(const SandboxRecorder& recorder,
   }
   ImGui::TableSetupScrollFreeze(0, 1);
   ImGui::TableSetupColumn("Time", ImGuiTableColumnFlags_WidthFixed,
-                          60.0F * Theme::scale());
+                          EVENT_TIME_WIDTH * Theme::scale());
   ImGui::TableSetupColumn("Call", ImGuiTableColumnFlags_WidthFixed,
-                          110.0F * Theme::scale());
+                          EVENT_TYPE_WIDTH * Theme::scale());
   ImGui::TableSetupColumn("Detail");
-  ImGui::PushFont(SandboxAnalysisUI::bold(), 14);
+  ImGui::PushFont(SandboxAnalysisUI::bold(), HEADER_FONT_SIZE);
   ImGui::TableHeadersRow();
   ImGui::PopFont();
   for (std::size_t index = 0; index < asOf.prefix; ++index)
@@ -890,7 +955,7 @@ void DebugInspector::refreshSummary(const SandboxRecorder& recorder)
     {
       PlayerTotals& player = totalsOf(decision->player, decision->homeTeam);
       ++player.decisions;
-      ++player.chosen[static_cast<std::size_t>(decision->chosen)];
+      ++player.chosen.at(static_cast<std::size_t>(decision->chosen));
       if (decision->chosen != decision->chosenWithoutNoise)
       {
         ++player.noiseFlips;
@@ -907,7 +972,7 @@ void DebugInspector::refreshSummary(const SandboxRecorder& recorder)
       PlayerTotals& player = totalsOf(change->player, change->homeTeam);
       ++player.intentChanges;
       Current& current = intents[change->player];
-      player.intentTicks[static_cast<std::size_t>(current.intent)] +=
+      player.intentTicks.at(static_cast<std::size_t>(current.intent)) +=
           entry.tick - current.since;
       current = {.intent = change->to, .since = entry.tick};
     }
@@ -915,10 +980,10 @@ void DebugInspector::refreshSummary(const SandboxRecorder& recorder)
                  std::get_if<Recorder::PhaseChange>(&entry.payload))
     {
       const std::size_t team = side(phase->homeTeam);
-      phaseTicks[team][static_cast<std::size_t>(phases[team])] +=
-          entry.tick - phaseStart[team];
-      phases[team] = phase->to;
-      phaseStart[team] = entry.tick;
+      phaseTicks.at(team).at(static_cast<std::size_t>(phases.at(team))) +=
+          entry.tick - phaseStart.at(team);
+      phases.at(team) = phase->to;
+      phaseStart.at(team) = entry.tick;
     }
   }
   // The intents and phases still running at the moment shown.
@@ -926,15 +991,14 @@ void DebugInspector::refreshSummary(const SandboxRecorder& recorder)
   {
     if (const auto found = slots.find(player); found != slots.end())
     {
-      totals[found->second]
-          .intentTicks[static_cast<std::size_t>(current.intent)] +=
-          asOf.tick - current.since;
+      totals[found->second].intentTicks.at(static_cast<std::size_t>(
+          current.intent)) += asOf.tick - current.since;
     }
   }
   for (std::size_t team = 0; team < 2; ++team)
   {
-    phaseTicks[team][static_cast<std::size_t>(phases[team])] +=
-        asOf.tick - phaseStart[team];
+    phaseTicks.at(team).at(static_cast<std::size_t>(phases.at(team))) +=
+        asOf.tick - phaseStart.at(team);
   }
   std::ranges::sort(totals,
                     [](const PlayerTotals& left, const PlayerTotals& right)
@@ -951,26 +1015,28 @@ void DebugInspector::renderSummary(const SandboxRecorder& recorder,
   const auto guard = recorder.lock();
   refresh(recorder, engine.getSimulatedSteps());
   refreshSummary(recorder);
-  ImGui::TextDisabled("From kick-off to %s (the moment shown).",
-                      clock(engine.getMatchTimeMinutes()).c_str());
+  SandboxText::disabledText(
+      std::format("From kick-off to {} (the moment shown).",
+                  clock(engine.getMatchTimeMinutes()))
+          .c_str());
 
   // Time in each phase, per side.
   ImGui::SeparatorText("Team phases (share of time)");
   for (std::size_t team = 0; team < 2; ++team)
   {
     std::uint64_t total = 0;
-    for (const std::uint64_t ticks : phaseTicks[team])
+    for (const std::uint64_t ticks : phaseTicks.at(team))
     {
       total += ticks;
     }
     std::string line = team == 0 ? "Home: " : "Away: ";
-    for (std::size_t phase = 0; phase < phaseTicks[team].size(); ++phase)
+    for (std::size_t phase = 0; phase < phaseTicks.at(team).size(); ++phase)
     {
-      if (total > 0 && phaseTicks[team][phase] > 0)
+      if (total > 0 && phaseTicks.at(team).at(phase) > 0)
       {
         line += std::format(
             "{} {:.0f}%  ", SandboxNames::phase(static_cast<TeamPhase>(phase)),
-            100.0 * static_cast<double>(phaseTicks[team][phase]) /
+            100.0 * static_cast<double>(phaseTicks.at(team).at(phase)) /
                 static_cast<double>(total));
       }
     }
@@ -981,22 +1047,25 @@ void DebugInspector::renderSummary(const SandboxRecorder& recorder,
   constexpr ImGuiTableFlags flags =
       ImGuiTableFlags_RowBg | ImGuiTableFlags_ScrollY |
       ImGuiTableFlags_BordersInnerV | ImGuiTableFlags_SizingStretchProp;
-  if (!ImGui::BeginTable("##summary", 8, flags, ImVec2(0.0F, 0.0F)))
+  if (!ImGui::BeginTable("##summary", SUMMARY_TABLE_COLUMNS, flags,
+                         ImVec2(0.0F, 0.0F)))
   {
     return;
   }
   ImGui::TableSetupScrollFreeze(0, 1);
-  ImGui::TableSetupColumn("Player", ImGuiTableColumnFlags_WidthStretch, 2.0F);
+  ImGui::TableSetupColumn("Player", ImGuiTableColumnFlags_WidthStretch,
+                          PLAYER_COLUMN_WEIGHT);
   ImGui::TableSetupColumn("Side");
   ImGui::TableSetupColumn("Decisions");
   ImGui::TableSetupColumn("Pass/shot/carry/shield %",
-                          ImGuiTableColumnFlags_WidthStretch, 1.6F);
+                          ImGuiTableColumnFlags_WidthStretch,
+                          DETAIL_COLUMN_WEIGHT);
   ImGui::TableSetupColumn("Noise flips");
   ImGui::TableSetupColumn("Actions");
   ImGui::TableSetupColumn("Intent changes/min");
   ImGui::TableSetupColumn("Main intents", ImGuiTableColumnFlags_WidthStretch,
-                          2.4F);
-  ImGui::PushFont(SandboxAnalysisUI::bold(), 14);
+                          TOP_INTENTS_WEIGHT);
+  ImGui::PushFont(SandboxAnalysisUI::bold(), HEADER_FONT_SIZE);
   ImGui::TableHeadersRow();
   ImGui::PopFont();
   const float minutes = std::max(1.0F / 60.0F, seconds(asOf.tick) / 60.0F);
@@ -1008,7 +1077,7 @@ void DebugInspector::renderSummary(const SandboxRecorder& recorder,
     ImGui::TableNextColumn();
     ImGui::TextUnformatted(player.homeTeam ? "H" : "A");
     ImGui::TableNextColumn();
-    ImGui::Text("%d", player.decisions);
+    ImGui::TextUnformatted(std::format("{}", player.decisions).c_str());
     ImGui::TableNextColumn();
     if (player.decisions > 0)
     {
@@ -1016,42 +1085,51 @@ void DebugInspector::renderSummary(const SandboxRecorder& recorder,
       {
         return 100.0F *
                static_cast<float>(
-                   player.chosen[static_cast<std::size_t>(action)]) /
+                   player.chosen.at(static_cast<std::size_t>(action))) /
                static_cast<float>(player.decisions);
       };
-      ImGui::Text("%.0f / %.0f / %.0f / %.0f", share(ScenarioAction::PASS),
-                  share(ScenarioAction::SHOT), share(ScenarioAction::CARRY),
-                  share(ScenarioAction::SHIELD) + share(ScenarioAction::CLEAR));
+      ImGui::TextUnformatted(
+          std::format("{:.0f} / {:.0f} / {:.0f} / {:.0f}",
+                      static_cast<double>(share(ScenarioAction::PASS)),
+                      static_cast<double>(share(ScenarioAction::SHOT)),
+                      static_cast<double>(share(ScenarioAction::CARRY)),
+                      static_cast<double>(share(ScenarioAction::SHIELD) +
+                                          share(ScenarioAction::CLEAR)))
+              .c_str());
     }
     ImGui::TableNextColumn();
-    ImGui::Text("%d", player.noiseFlips);
+    ImGui::TextUnformatted(std::format("{}", player.noiseFlips).c_str());
     ImGui::TableNextColumn();
-    ImGui::Text("%d", player.actions);
+    ImGui::TextUnformatted(std::format("{}", player.actions).c_str());
     ImGui::TableNextColumn();
-    ImGui::Text("%.1f", static_cast<float>(player.intentChanges) / minutes);
+    ImGui::TextUnformatted(
+        std::format("{:.1f}",
+                    static_cast<double>(
+                        static_cast<float>(player.intentChanges) / minutes))
+            .c_str());
     ImGui::TableNextColumn();
     // His three most-held intents, by share of time.
     std::uint64_t total = 0;
     std::array<std::size_t, INTENTS> order{};
     for (std::size_t intent = 0; intent < INTENTS; ++intent)
     {
-      order[intent] = intent;
-      total += player.intentTicks[intent];
+      order.at(intent) = intent;
+      total += player.intentTicks.at(intent);
     }
     std::ranges::sort(
         order, [&player](std::size_t left, std::size_t right)
-        { return player.intentTicks[left] > player.intentTicks[right]; });
+        { return player.intentTicks.at(left) > player.intentTicks.at(right); });
     std::string main;
     for (std::size_t rank = 0; rank < 3 && total > 0; ++rank)
     {
-      const std::uint64_t ticks = player.intentTicks[order[rank]];
+      const std::uint64_t ticks = player.intentTicks.at(order.at(rank));
       if (ticks == 0)
       {
         break;
       }
       main += std::format(
           "{} {:.0f}%  ",
-          SandboxNames::intent(static_cast<PlayerIntent>(order[rank])),
+          SandboxNames::intent(static_cast<PlayerIntent>(order.at(rank))),
           100.0 * static_cast<double>(ticks) / static_cast<double>(total));
     }
     ImGui::TextUnformatted(main.c_str());
@@ -1066,7 +1144,7 @@ void DebugInspector::renderOverlayToggles()
   ImGui::Checkbox("Targets", &show_targets);
   if (ImGui::IsItemHovered())
   {
-    ImGui::SetTooltip(
+    SandboxText::tooltipText(
         "Line from each player to where he is heading, coloured "
         "by intent: runs orange, pressing red, support green, "
         "marking blue, recovering yellow, holding grey.");
@@ -1075,7 +1153,7 @@ void DebugInspector::renderOverlayToggles()
   ImGui::Checkbox("Jobs", &show_jobs);
   if (ImGui::IsItemHovered())
   {
-    ImGui::SetTooltip(
+    SandboxText::tooltipText(
         "Planner jobs: B1/B2 to the ball, R1-R3 runners, LA late "
         "arrival, FP far post, OV overlap, S1-S3 supporters, CO "
         "cover outlet.");
@@ -1084,7 +1162,7 @@ void DebugInspector::renderOverlayToggles()
   ImGui::Checkbox("Pass options", &show_pass_options);
   if (ImGui::IsItemHovered())
   {
-    ImGui::SetTooltip(
+    SandboxText::tooltipText(
         "The latest on-ball decision (within 3 s): best pass "
         "green, runner-up amber, and the option scores.");
   }
@@ -1106,7 +1184,7 @@ void DebugInspector::drawOverlays(const SandboxRecorder& recorder,
 
   const ImVec2 mouse = ImGui::GetIO().MousePos;
   PlayerID nearest = 0;
-  float nearestDistance = 22.0F * scale;
+  float nearestDistance = PICK_RADIUS * scale;
   for (const MatchPlayer& slot : engine.getPlayers())
   {
     if ((slot.player == nullptr) || !slot.onPitch)
@@ -1136,9 +1214,11 @@ void DebugInspector::drawOverlays(const SandboxRecorder& recorder,
       if (project(slot.tacticalTarget, target))
       {
         const ImU32 color = intentColor(slot.intent);
-        drawList->AddLine(at, target, color,
-                          (isSelected ? 2.5F : 1.2F) * scale);
-        drawList->AddCircle(target, 3.0F * scale, color, 0, 1.2F * scale);
+        drawList->AddLine(
+            at, target, color,
+            (isSelected ? SELECTED_STROKE : OVERLAY_STROKE) * scale);
+        drawList->AddCircle(target, TARGET_RADIUS * scale, color, 0,
+                            OVERLAY_STROKE * scale);
       }
     }
     if (show_jobs)
@@ -1149,16 +1229,18 @@ void DebugInspector::drawOverlays(const SandboxRecorder& recorder,
         const ImVec2 textAt(at.x + (7.0F * scale), at.y - (16.0F * scale));
         const ImVec2 size = ImGui::CalcTextSize(tag);
         drawList->AddRectFilled(
-            ImVec2(textAt.x - 2.0F, textAt.y - 1.0F),
-            ImVec2(textAt.x + size.x + 2.0F, textAt.y + size.y + 1.0F),
-            IM_COL32(0, 0, 0, 170), 3.0F);
+            ImVec2(textAt.x - LABEL_PADDING_X, textAt.y - 1.0F),
+            ImVec2(textAt.x + size.x + LABEL_PADDING_X,
+                   textAt.y + size.y + 1.0F),
+            IM_COL32(0, 0, 0, 170), LABEL_ROUNDING);
         drawList->AddText(textAt, IM_COL32(255, 230, 120, 255), tag);
       }
     }
     if (isSelected)
     {
-      drawList->AddCircle(at, 11.0F * scale, IM_COL32(255, 220, 60, 255), 0,
-                          2.5F * scale);
+      drawList->AddCircle(at, SELECTION_RADIUS * scale,
+                          IM_COL32(255, 220, 60, 255), 0,
+                          SELECTED_STROKE * scale);
     }
   }
 
@@ -1183,10 +1265,12 @@ void DebugInspector::drawOverlays(const SandboxRecorder& recorder,
             return;
           }
           drawList->AddLine(from, to, color, width * scale);
-          drawList->AddCircleFilled(to, 4.0F * scale, color);
+          drawList->AddCircleFilled(to, PASS_MARKER_RADIUS * scale, color);
         };
-        arrow(decision.runnerUpReceiver, IM_COL32(240, 180, 40, 220), 2.0F);
-        arrow(decision.bestReceiver, IM_COL32(80, 230, 110, 255), 3.0F);
+        arrow(decision.runnerUpReceiver, IM_COL32(240, 180, 40, 220),
+              RUNNER_UP_STROKE);
+        arrow(decision.bestReceiver, IM_COL32(80, 230, 110, 255),
+              BEST_PASS_STROKE);
         const auto score = [](float value)
         {
           return std::isfinite(value) ? std::format("{:.2f}", value)
@@ -1200,9 +1284,11 @@ void DebugInspector::drawOverlays(const SandboxRecorder& recorder,
         const ImVec2 textAt(from.x + (10.0F * scale), from.y + (8.0F * scale));
         const ImVec2 size = ImGui::CalcTextSize(label.c_str());
         drawList->AddRectFilled(
-            ImVec2(textAt.x - 3.0F, textAt.y - 2.0F),
-            ImVec2(textAt.x + size.x + 3.0F, textAt.y + size.y + 2.0F),
-            IM_COL32(0, 0, 0, 190), 3.0F);
+            ImVec2(textAt.x - PASS_LABEL_PADDING_X,
+                   textAt.y - PASS_LABEL_PADDING_Y),
+            ImVec2(textAt.x + size.x + PASS_LABEL_PADDING_X,
+                   textAt.y + size.y + PASS_LABEL_PADDING_Y),
+            IM_COL32(0, 0, 0, 190), LABEL_ROUNDING);
         drawList->AddText(textAt, IM_COL32(255, 255, 255, 255), label.c_str());
       }
     }

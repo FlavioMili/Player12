@@ -50,6 +50,21 @@ class MatchTrueView
   std::array<PlayerID, 2> picked{};
 
  private:
+  struct OverlayBodies
+  {
+    std::vector<TrueView::Body> bodies;
+    std::vector<bool> drawn;
+  };
+  [[nodiscard]] OverlayBodies prepareBodies(
+      const TrueView::Painter& paint, const MatchEngine& engine,
+      const MatchRenderSnapshot& snapshot);
+  [[nodiscard]] int pickedSlot(const MatchPlayer& player) const;
+  void drawLegGhosts(const TrueView::Painter& paint, const MatchEngine& engine,
+                     const OverlayBodies& prepared,
+                     std::vector<TrueView::Label>& labels) const;
+  void drawPlayerLabels(const TrueView::Painter& paint,
+                        const MatchEngine& engine,
+                        const MatchRenderSnapshot& snapshot) const;
   void renderPickedPlayers(const MatchEngine& engine);
   void renderPlayerPicker(const MatchEngine& engine, std::size_t slot);
   /** The player nearest a pixel on screen (0: none within reach). */

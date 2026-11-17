@@ -215,14 +215,107 @@ PlayerID MatchTrueView::drawOverlay(const IMatchRenderer& renderer,
     out = {x, y};
     return true;
   };
+  const OverlayBodies prepared = prepareBodies(paint, engine, snapshot);
+  const auto& bodies = prepared.bodies;
+  const auto& drawn = prepared.drawn;
+  const auto& players = engine.getPlayers();
+  // A click picks before drawing, so the pick shows at once.
+  PlayerID clickedPlayer = 0;
+  if (clicked)
+  {
+    clickedPlayer = playerAt(pixel);
+    if (clickedPlayer != 0)
+    {
+      picked.at(ctrl ? 1 : 0) = clickedPlayer;
+    }
+  }
+  // Everyone in outline, then the two picked players over them.
+  std::vector<TrueView::Label> labels;
+  for (std::size_t index = 0; index < players.size(); ++index)
+  {
+    if (drawn[index] && pickedSlot(players[index]) < 0)
+    {
+      TrueView::drawBody(paint, bodies[index], tuning, layers, technique,
+                         TrueView::Detail::OUTLINE, nullptr, nullptr);
+    }
+  }
+  for (std::size_t index = 0; index < players.size(); ++index)
+  {
+    if (drawn[index] && pickedSlot(players[index]) >= 0)
+    {
+      TrueView::drawBody(paint, bodies[index], tuning, layers, technique,
+                         TrueView::Detail::FULL, &labels,
+                         pickedSlot(players[index]) == 0 ? &entries : nullptr);
+    }
+  }
+  drawLegGhosts(paint, engine, prepared, labels);
+  TrueView::drawLabels(paint, labels);
+
+  drawPlayerLabels(paint, engine, snapshot);
+  return clickedPlayer;
+}
+
+void MatchTrueView::renderPickedPlayers(const MatchEngine& engine)
+{
+  ImGui::SeparatorText("Players in full");
+  for (std::size_t slot = 0; slot < picked.size(); ++slot)
+  {
+    renderPlayerPicker(engine, slot);
+  }
+}
+
+void MatchTrueView::renderPlayerPicker(const MatchEngine& engine,
+                                       std::size_t slot)
+{
+  ImGui::PushID(static_cast<int>(slot));
+  std::string current = "None";
+  for (const MatchPlayer& player : engine.getPlayers())
+  {
+    if ((player.player != nullptr) && player.player->getId() == picked.at(slot))
+    {
+      current = nameOf(player);
+    }
+  }
+  ImGui::AlignTextToFramePadding();
+  ImGui::TextUnformatted(slot == 0 ? "A" : "B");
+  ImGui::SameLine();
+  if (SandboxPageUI::beginCombo("##pick", current.c_str()))
+  {
+    if (ImGui::Selectable("None", picked.at(slot) == 0))
+    {
+      picked.at(slot) = 0;
+    }
+    for (const MatchPlayer& player : engine.getPlayers())
+    {
+      if ((player.player == nullptr) || !player.onPitch)
+      {
+        continue;
+      }
+      const PlayerID id = player.player->getId();
+      if (ImGui::Selectable(nameOf(player).c_str(), picked.at(slot) == id))
+      {
+        picked.at(slot) = id;
+      }
+    }
+    ImGui::EndCombo();
+  }
+  ImGui::PopID();
+}
+
+MatchTrueView::OverlayBodies MatchTrueView::prepareBodies(
+    const TrueView::Painter& paint, const MatchEngine& engine,
+    const MatchRenderSnapshot& snapshot)
+{
   const float alpha = snapshot.interpolationAlpha;
   const auto& players = engine.getPlayers();
   // The strips the views draw, so the sides read as they do in 2D and 3D.
   const MatchKits kits = chooseMatchKits(snapshot.homeTeam, snapshot.awayTeam);
   onScreen.clear();
   entries.clear();
-  std::vector<TrueView::Body> bodies(players.size());
-  std::vector<bool> drawn(players.size(), false);
+  OverlayBodies prepared{.bodies = std::vector<TrueView::Body>(players.size()),
+                         .drawn = std::vector<bool>(players.size(), false)};
+  auto& bodies = prepared.bodies;
+  auto& drawn = prepared.drawn;
   for (std::size_t index = 0;
        index < snapshot.players.size() && index < players.size(); ++index)
   {
@@ -273,54 +366,35 @@ PlayerID MatchTrueView::drawOverlay(const IMatchRenderer& renderer,
     }
   }
 
-  // A click picks before drawing, so the pick shows at once.
-  PlayerID clickedPlayer = 0;
-  if (clicked)
-  {
-    clickedPlayer = playerAt(pixel);
-    if (clickedPlayer != 0)
-    {
-      picked.at(ctrl ? 1 : 0) = clickedPlayer;
-    }
-  }
-  const auto pickedSlot = [&](std::size_t index) -> int
-  {
-    const PlayerID id =
-        players[index].player ? players[index].player->getId() : 0;
-    if (id == 0)
-    {
-      return -1;
-    }
-    if (id == picked.at(0))
-    {
-      return 0;
-    }
-    if (id == picked.at(1))
-    {
-      return 1;
-    }
-    return -1;
-  };
+  return prepared;
+}
 
-  // Everyone in outline, then the two picked players over them.
-  std::vector<TrueView::Label> labels;
-  for (std::size_t index = 0; index < players.size(); ++index)
+int MatchTrueView::pickedSlot(const MatchPlayer& player) const
+{
+  const PlayerID id = (player.player != nullptr) ? player.player->getId() : 0;
+  if (id == 0)
   {
-    if (drawn[index] && pickedSlot(index) < 0)
-    {
-      TrueView::drawBody(paint, bodies[index], tuning, layers, technique,
-                         TrueView::Detail::OUTLINE, nullptr, nullptr);
-    }
+    return -1;
   }
-  for (std::size_t index = 0; index < players.size(); ++index)
+  if (id == picked.at(0))
   {
-    if (drawn[index] && pickedSlot(index) >= 0)
-    {
-      TrueView::drawBody(paint, bodies[index], tuning, layers, technique,
-                         TrueView::Detail::FULL, &labels,
-                         pickedSlot(index) == 0 ? &entries : nullptr);
-    }
+    return 0;
   }
+  if (id == picked.at(1))
+  {
+    return 1;
+  }
+  return -1;
+}
+
+void MatchTrueView::drawLegGhosts(const TrueView::Painter& paint,
+                                  const MatchEngine& engine,
+                                  const OverlayBodies& prepared,
+                                  std::vector<TrueView::Label>& labels) const
+{
+  const auto& players = engine.getPlayers();
+  const auto& drawn = prepared.drawn;
+  const auto& bodies = prepared.bodies;
   // Anyone a shot passed lately: his legs as it met them, the stride rolled
   // for it (shot block plan §3c) or a leg put across its line (§3d),
   // fading out.
@@ -339,8 +413,13 @@ PlayerID MatchTrueView::drawOverlay(const IMatchRenderer& renderer,
                            1.0F - (recent->second / LEG_GHOST_SECONDS),
                            recent->second, layers.labels ? &labels : nullptr);
   }
-  TrueView::drawLabels(paint, labels);
+}
 
+void MatchTrueView::drawPlayerLabels(const TrueView::Painter& paint,
+                                     const MatchEngine& engine,
+                                     const MatchRenderSnapshot& snapshot) const
+{
+  const auto& players = engine.getPlayers();
   // Who they are and what they are doing, top left of the view.
   const ImVec2 clipMin = paint.draw->GetClipRectMin();
   float line = clipMin.y + LABEL_TOP;
@@ -369,52 +448,4 @@ PlayerID MatchTrueView::drawOverlay(const IMatchRenderer& renderer,
       line += extent.y + LABEL_LINE_GAP;
     }
   }
-  return clickedPlayer;
-}
-
-void MatchTrueView::renderPickedPlayers(const MatchEngine& engine)
-{
-  ImGui::SeparatorText("Players in full");
-  for (std::size_t slot = 0; slot < picked.size(); ++slot)
-  {
-    renderPlayerPicker(engine, slot);
-  }
-}
-
-void MatchTrueView::renderPlayerPicker(const MatchEngine& engine,
-                                       std::size_t slot)
-{
-  ImGui::PushID(static_cast<int>(slot));
-  std::string current = "None";
-  for (const MatchPlayer& player : engine.getPlayers())
-  {
-    if ((player.player != nullptr) && player.player->getId() == picked.at(slot))
-    {
-      current = nameOf(player);
-    }
-  }
-  ImGui::AlignTextToFramePadding();
-  ImGui::TextUnformatted(slot == 0 ? "A" : "B");
-  ImGui::SameLine();
-  if (SandboxPageUI::beginCombo("##pick", current.c_str()))
-  {
-    if (ImGui::Selectable("None", picked.at(slot) == 0))
-    {
-      picked.at(slot) = 0;
-    }
-    for (const MatchPlayer& player : engine.getPlayers())
-    {
-      if ((player.player == nullptr) || !player.onPitch)
-      {
-        continue;
-      }
-      const PlayerID id = player.player->getId();
-      if (ImGui::Selectable(nameOf(player).c_str(), picked.at(slot) == id))
-      {
-        picked.at(slot) = id;
-      }
-    }
-    ImGui::EndCombo();
-  }
-  ImGui::PopID();
 }

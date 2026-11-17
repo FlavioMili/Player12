@@ -446,6 +446,207 @@ void renderDecisionOutcome(const SandboxRecorder& recorder,
   }
 }
 
+void renderRankingCandidates(
+    const SandboxRecorder& recorder,
+    const DetailRecorder::At<MatchRankingDetail>& ranking)
+{
+  const auto* latest = &ranking;
+  const bool toBall = ranking.detail.kind == MatchRankingDetail::Kind::TO_BALL;
+  std::vector<const MatchRankingDetail::Candidate*> order;
+  order.reserve(latest->detail.candidates.size());
+  for (const auto& candidate : latest->detail.candidates)
+  {
+    order.push_back(&candidate);
+  }
+  std::ranges::sort(order,
+                    [toBall](const auto* left, const auto* right)
+                    {
+                      return toBall ? left->score.total < right->score.total
+                                    : left->score.total > right->score.total;
+                    });
+  ImGui::PushID(toBall ? "toball" : "runs");
+  if (SandboxText::treeNode(
+          "ranking",
+          std::format("{} (tick {})",
+                      toBall ? "To the ball: estimated arrival, soonest first"
+                             : "Run priority, highest first",
+                      latest->tick)
+              .c_str()))
+  {
+    for (const auto* candidate : order)
+    {
+      ImGui::PushID(static_cast<int>(candidate->player));
+      if (SandboxText::treeNode(
+              "candidate",
+              std::format("{}  {:.3f}{}",
+                          recorder.playerName(candidate->player),
+                          static_cast<double>(candidate->score.total),
+                          toBall ? " s" : "")
+                  .c_str(),
+              ImGuiTreeNodeFlags_SpanAvailWidth))
+      {
+        renderBreakdown(candidate->score, "score");
+        ImGui::TreePop();
+      }
+      ImGui::PopID();
+    }
+    if (toBall)
+    {
+      SandboxText::disabledText(
+          "A pass's intended receiver is put first whatever "
+          "his time.");
+    }
+    ImGui::TreePop();
+  }
+  ImGui::PopID();
+}
+
+void renderFirstTouchDetail(const SandboxRecorder& recorder,
+                            const DetailRecorder::At<MatchDuelDetail>* at,
+                            int shown)
+{
+  const MatchDuelDetail& duel = at->detail;
+
+  // Two jobs, each rolled: did it go wrong, and by how much.
+  constexpr float DEGREES = 180.0F / std::numbers::pi_v<float>;
+  const std::string label = std::format(
+      "{}  First touch  {}  ·  turn {:.0f}° {} {}({:.0f}%) {:+.0f}°  ·  "
+      "pace {:+.1f} m/s {}({:.0f}%) {:+.1f} m/s  ·  {:.1f} -> {:.1f} m/s",
+      clock(at->minute), recorder.playerName(duel.player), duel.turn * DEGREES,
+      duel.outward ? "out" : "in", duel.angleFailed ? "FAILED " : "",
+      duel.angleFailChance * PERCENT, duel.angleError * DEGREES,
+      duel.paceChange, duel.weightFailed ? "FAILED " : "",
+      duel.weightFailChance * PERCENT, duel.weightError, duel.intendedSpeed,
+      duel.actualSpeed);
+  ImGui::PushID(shown);
+  if (SandboxText::treeNode("touch", label.c_str(),
+                            ImGuiTreeNodeFlags_SpanAvailWidth))
+  {
+    SandboxText::disabledText(
+        std::format(
+            "Touch skill {:.0f}. Each job's chance of going wrong = (base "
+            "+ "
+            "difficulty x range) x (1 - skill x {:.1f}) x tiredness and "
+            "nerves; "
+            "a failed job misses by a share of it, sized by the "
+            "difficulty.",
+            static_cast<double>(duel.touchSkill * PERCENT),
+            static_cast<double>(MatchTuning::FirstTouch::SKILL_REDUCTION))
+            .c_str());
+    SandboxText::disabledText("Angle difficulty:");
+    renderBreakdown(duel.chance, "angle");
+    SandboxText::disabledText("Weight difficulty:");
+    renderBreakdown(duel.foul, "weight");
+    ImGui::TreePop();
+  }
+  ImGui::PopID();
+}
+
+void renderStrikeDetail(const SandboxRecorder& recorder,
+                        const DetailRecorder::At<MatchDuelDetail>* at,
+                        int shown)
+{
+  const MatchDuelDetail& duel = at->detail;
+
+  // Carried out (step 3) like a touch, or measured only (step 2).
+  constexpr float DEGREES = 180.0F / std::numbers::pi_v<float>;
+  std::string label = std::format(
+      "{}  {}  {}  ·  turn {:.0f}° {}  ·  pace {:+.1f} m/s  ·  "
+      "difficulty angle {:.2f}, weight {:.2f}",
+      clock(at->minute),
+      STRIKE_KIND_NAMES.at(static_cast<std::size_t>(duel.strike)),
+      recorder.playerName(duel.player), duel.turn * DEGREES,
+      duel.outward ? "out" : "in", duel.paceChange, duel.chance.total,
+      duel.foul.total);
+  if (duel.strikeCarriedOut)
+  {
+    label += std::format(
+        "  ·  angle {}({:.0f}%) {:+.1f}°  ·  weight {}({:.0f}%) "
+        "{:+.1f} m/s  ·  {:.1f} -> {:.1f} m/s",
+        duel.angleFailed ? "FAILED " : "", duel.angleFailChance * PERCENT,
+        duel.angleError * DEGREES, duel.weightFailed ? "FAILED " : "",
+        duel.weightFailChance * PERCENT, duel.weightError, duel.intendedSpeed,
+        duel.actualSpeed);
+  }
+  else
+  {
+    label += " (measured)";
+  }
+  ImGui::PushID(shown);
+  if (SandboxText::treeNode("strike", label.c_str(),
+                            ImGuiTreeNodeFlags_SpanAvailWidth))
+  {
+    if (duel.strikeCarriedOut)
+    {
+      SandboxText::disabledText(
+          std::format(
+              "Struck by the contact model with skill {:.0f}: each job's "
+              "chance of going wrong = (base + difficulty x range) x (1 - "
+              "skill x reduction) x tiredness and nerves.",
+              static_cast<double>(duel.touchSkill * PERCENT))
+              .c_str());
+    }
+    else
+    {
+      SandboxText::disabledText(
+          "The contact model reads this strike but does not carry it "
+          "out yet: provisional weights, no effect on the ball.");
+    }
+    SandboxText::disabledText("Angle difficulty:");
+    renderBreakdown(duel.chance, "angle");
+    SandboxText::disabledText("Weight difficulty:");
+    renderBreakdown(duel.foul, "weight");
+    ImGui::TreePop();
+  }
+  ImGui::PopID();
+}
+
+void renderContestDetail(const SandboxRecorder& recorder,
+                         const DetailRecorder::At<MatchDuelDetail>* at,
+                         int shown)
+{
+  const MatchDuelDetail& duel = at->detail;
+  const char* kind = "Tackle";
+  if (duel.kind == MatchDuelDetail::Kind::ENGAGE)
+  {
+    kind = "Goes in";
+  }
+  else if (duel.kind == MatchDuelDetail::Kind::TAKE_ON)
+  {
+    kind = "Take-on";
+  }
+  std::string label = std::format(
+      "{}  {}  {} on {}  ·  chance {:.0f}%  roll {:.0f}%  ->  {}",
+      clock(at->minute), kind, recorder.playerName(duel.player),
+      recorder.playerName(duel.opponent), duel.probability * PERCENT,
+      duel.roll * PERCENT, duel.roll < duel.probability ? "success" : "failed");
+  if (duel.foulRoll)
+  {
+    label +=
+        std::format("  ·  foul threshold {:.0f}%  roll {:.0f}%  ->  {}",
+                    duel.foulThreshold * PERCENT, *duel.foulRoll * PERCENT,
+                    *duel.foulRoll < duel.foulThreshold ? "FOUL" : "no foul");
+  }
+  ImGui::PushID(shown);
+  if (SandboxText::treeNode("duel", label.c_str(),
+                            ImGuiTreeNodeFlags_SpanAvailWidth))
+  {
+    SandboxText::disabledText(
+        duel.kind == MatchDuelDetail::Kind::ENGAGE
+            ? "Engagement rate per second (the chance this "
+              "step is 1 - exp(-rate x 0.1 s)):"
+            : "Chance of success:");
+    renderBreakdown(duel.chance, "chance");
+    if (duel.kind == MatchDuelDetail::Kind::TACKLE)
+    {
+      SandboxText::disabledText("Foul propensity:");
+      renderBreakdown(duel.foul, "foul");
+    }
+    ImGui::TreePop();
+  }
+  ImGui::PopID();
+}
+
 }  // namespace
 
 void DebugInspector::ensureDetail(const SandboxRecorder& recorder,
@@ -487,52 +688,7 @@ void DebugInspector::renderDecision(const SandboxRecorder& recorder,
   SandboxText::disabledText(
       std::format("({} decisions in this stretch)", decisions.size()).c_str());
 
-  // The list, latest first; the latest is opened until one is chosen.
-  const float scale = Theme::scale();
-  const DetailRecorder::At<MatchDecisionDetail>* opened = nullptr;
-  const DetailRecorder::At<MatchDecisionDetail>* latest = nullptr;
-  if (ImGui::BeginChild("##decisions",
-                        ImVec2(0.0F, DECISION_LIST_HEIGHT * scale),
-                        ImGuiChildFlags_Borders))
-  {
-    for (const auto& at : decisions | std::views::reverse)
-    {
-      const MatchDecisionDetail& detail = at.detail;
-      if (decisions_of_selected && selected != 0 && detail.player != selected)
-      {
-        continue;
-      }
-      if (latest == nullptr)
-      {
-        latest = &at;
-      }
-      const bool isOpen = opened_decision &&
-                          opened_decision->first == at.tick &&
-                          opened_decision->second == detail.player;
-      if (isOpen)
-      {
-        opened = &at;
-      }
-      const bool flipped =
-          winnerWithoutNoise(detail) != optionIndex(detail.chosen);
-      const std::string label = std::format(
-          "{}  {}  {}  ·  margin {:.2f}{}##{}_{}", clock(at.minute),
-          recorder.playerName(detail.player),
-          SandboxNames::choice(detail.chosen), winningMargin(detail),
-          flipped ? "  ·  NOISE FLIPPED" : "", at.tick, detail.player);
-      if (ImGui::Selectable(label.c_str(),
-                            isOpen || (!opened_decision && latest == &at)))
-      {
-        opened_decision = {{at.tick, detail.player}};
-        selected = detail.player;
-      }
-    }
-  }
-  ImGui::EndChild();
-  if (opened == nullptr)
-  {
-    opened = latest;
-  }
+  const auto* opened = renderDecisionList(recorder);
   if (opened == nullptr)
   {
     SandboxText::disabledText("No decision in this stretch yet.");
@@ -605,53 +761,7 @@ void DebugInspector::renderRankingDetail(const SandboxRecorder& recorder,
       }
       continue;
     }
-    std::vector<const MatchRankingDetail::Candidate*> order;
-    order.reserve(latest->detail.candidates.size());
-    for (const auto& candidate : latest->detail.candidates)
-    {
-      order.push_back(&candidate);
-    }
-    std::ranges::sort(order,
-                      [toBall](const auto* left, const auto* right)
-                      {
-                        return toBall ? left->score.total < right->score.total
-                                      : left->score.total > right->score.total;
-                      });
-    ImGui::PushID(toBall ? "toball" : "runs");
-    if (SandboxText::treeNode(
-            "ranking",
-            std::format("{} (tick {})",
-                        toBall ? "To the ball: estimated arrival, soonest first"
-                               : "Run priority, highest first",
-                        latest->tick)
-                .c_str()))
-    {
-      for (const auto* candidate : order)
-      {
-        ImGui::PushID(static_cast<int>(candidate->player));
-        if (SandboxText::treeNode(
-                "candidate",
-                std::format("{}  {:.3f}{}",
-                            recorder.playerName(candidate->player),
-                            static_cast<double>(candidate->score.total),
-                            toBall ? " s" : "")
-                    .c_str(),
-                ImGuiTreeNodeFlags_SpanAvailWidth))
-        {
-          renderBreakdown(candidate->score, "score");
-          ImGui::TreePop();
-        }
-        ImGui::PopID();
-      }
-      if (toBall)
-      {
-        SandboxText::disabledText(
-            "A pass's intended receiver is put first whatever "
-            "his time.");
-      }
-      ImGui::TreePop();
-    }
-    ImGui::PopID();
+    renderRankingCandidates(recorder, *latest);
   }
 }
 
@@ -677,139 +787,71 @@ void DebugInspector::renderDuelDetail(const SandboxRecorder& recorder,
     ++shown;
     if (duel.kind == MatchDuelDetail::Kind::FIRST_TOUCH)
     {
-      // Two jobs, each rolled: did it go wrong, and by how much.
-      constexpr float DEGREES = 180.0F / std::numbers::pi_v<float>;
-      const std::string label = std::format(
-          "{}  First touch  {}  ·  turn {:.0f}° {} {}({:.0f}%) {:+.0f}°  ·  "
-          "pace {:+.1f} m/s {}({:.0f}%) {:+.1f} m/s  ·  {:.1f} -> {:.1f} m/s",
-          clock(at->minute), recorder.playerName(duel.player),
-          duel.turn * DEGREES, duel.outward ? "out" : "in",
-          duel.angleFailed ? "FAILED " : "", duel.angleFailChance * PERCENT,
-          duel.angleError * DEGREES, duel.paceChange,
-          duel.weightFailed ? "FAILED " : "", duel.weightFailChance * PERCENT,
-          duel.weightError, duel.intendedSpeed, duel.actualSpeed);
-      ImGui::PushID(shown);
-      if (SandboxText::treeNode("touch", label.c_str(),
-                                ImGuiTreeNodeFlags_SpanAvailWidth))
-      {
-        SandboxText::disabledText(
-            std::format(
-                "Touch skill {:.0f}. Each job's chance of going wrong = (base "
-                "+ "
-                "difficulty x range) x (1 - skill x {:.1f}) x tiredness and "
-                "nerves; "
-                "a failed job misses by a share of it, sized by the "
-                "difficulty.",
-                static_cast<double>(duel.touchSkill * PERCENT),
-                static_cast<double>(MatchTuning::FirstTouch::SKILL_REDUCTION))
-                .c_str());
-        SandboxText::disabledText("Angle difficulty:");
-        renderBreakdown(duel.chance, "angle");
-        SandboxText::disabledText("Weight difficulty:");
-        renderBreakdown(duel.foul, "weight");
-        ImGui::TreePop();
-      }
-      ImGui::PopID();
+      renderFirstTouchDetail(recorder, &*at, shown);
       continue;
     }
     if (duel.kind == MatchDuelDetail::Kind::STRIKE)
     {
-      // Carried out (step 3) like a touch, or measured only (step 2).
-      constexpr float DEGREES = 180.0F / std::numbers::pi_v<float>;
-      std::string label = std::format(
-          "{}  {}  {}  ·  turn {:.0f}° {}  ·  pace {:+.1f} m/s  ·  "
-          "difficulty angle {:.2f}, weight {:.2f}",
-          clock(at->minute),
-          STRIKE_KIND_NAMES.at(static_cast<std::size_t>(duel.strike)),
-          recorder.playerName(duel.player), duel.turn * DEGREES,
-          duel.outward ? "out" : "in", duel.paceChange, duel.chance.total,
-          duel.foul.total);
-      if (duel.strikeCarriedOut)
-      {
-        label += std::format(
-            "  ·  angle {}({:.0f}%) {:+.1f}°  ·  weight {}({:.0f}%) "
-            "{:+.1f} m/s  ·  {:.1f} -> {:.1f} m/s",
-            duel.angleFailed ? "FAILED " : "", duel.angleFailChance * PERCENT,
-            duel.angleError * DEGREES, duel.weightFailed ? "FAILED " : "",
-            duel.weightFailChance * PERCENT, duel.weightError,
-            duel.intendedSpeed, duel.actualSpeed);
-      }
-      else
-      {
-        label += " (measured)";
-      }
-      ImGui::PushID(shown);
-      if (SandboxText::treeNode("strike", label.c_str(),
-                                ImGuiTreeNodeFlags_SpanAvailWidth))
-      {
-        if (duel.strikeCarriedOut)
-        {
-          SandboxText::disabledText(
-              std::format(
-                  "Struck by the contact model with skill {:.0f}: each job's "
-                  "chance of going wrong = (base + difficulty x range) x (1 - "
-                  "skill x reduction) x tiredness and nerves.",
-                  static_cast<double>(duel.touchSkill * PERCENT))
-                  .c_str());
-        }
-        else
-        {
-          SandboxText::disabledText(
-              "The contact model reads this strike but does not carry it "
-              "out yet: provisional weights, no effect on the ball.");
-        }
-        SandboxText::disabledText("Angle difficulty:");
-        renderBreakdown(duel.chance, "angle");
-        SandboxText::disabledText("Weight difficulty:");
-        renderBreakdown(duel.foul, "weight");
-        ImGui::TreePop();
-      }
-      ImGui::PopID();
+      renderStrikeDetail(recorder, &*at, shown);
       continue;
     }
-    const char* kind = "Tackle";
-    if (duel.kind == MatchDuelDetail::Kind::ENGAGE)
-    {
-      kind = "Goes in";
-    }
-    else if (duel.kind == MatchDuelDetail::Kind::TAKE_ON)
-    {
-      kind = "Take-on";
-    }
-    std::string label =
-        std::format("{}  {}  {} on {}  ·  chance {:.0f}%  roll {:.0f}%  ->  {}",
-                    clock(at->minute), kind, recorder.playerName(duel.player),
-                    recorder.playerName(duel.opponent),
-                    duel.probability * PERCENT, duel.roll * PERCENT,
-                    duel.roll < duel.probability ? "success" : "failed");
-    if (duel.foulRoll)
-    {
-      label +=
-          std::format("  ·  foul threshold {:.0f}%  roll {:.0f}%  ->  {}",
-                      duel.foulThreshold * PERCENT, *duel.foulRoll * PERCENT,
-                      *duel.foulRoll < duel.foulThreshold ? "FOUL" : "no foul");
-    }
-    ImGui::PushID(shown);
-    if (SandboxText::treeNode("duel", label.c_str(),
-                              ImGuiTreeNodeFlags_SpanAvailWidth))
-    {
-      SandboxText::disabledText(
-          duel.kind == MatchDuelDetail::Kind::ENGAGE
-              ? "Engagement rate per second (the chance this "
-                "step is 1 - exp(-rate x 0.1 s)):"
-              : "Chance of success:");
-      renderBreakdown(duel.chance, "chance");
-      if (duel.kind == MatchDuelDetail::Kind::TACKLE)
-      {
-        SandboxText::disabledText("Foul propensity:");
-        renderBreakdown(duel.foul, "foul");
-      }
-      ImGui::TreePop();
-    }
-    ImGui::PopID();
+    renderContestDetail(recorder, &*at, shown);
   }
   if (shown == 0)
   {
     SandboxText::disabledText("No duels in this stretch yet.");
   }
+}
+
+const DetailRecorder::At<MatchDecisionDetail>*
+DebugInspector::renderDecisionList(const SandboxRecorder& recorder)
+{
+  const auto& decisions = detail_session.detail().decisions;
+  // The list, latest first; the latest is opened until one is chosen.
+  const float scale = Theme::scale();
+  const DetailRecorder::At<MatchDecisionDetail>* opened = nullptr;
+  const DetailRecorder::At<MatchDecisionDetail>* latest = nullptr;
+  if (ImGui::BeginChild("##decisions",
+                        ImVec2(0.0F, DECISION_LIST_HEIGHT * scale),
+                        ImGuiChildFlags_Borders))
+  {
+    for (const auto& at : decisions | std::views::reverse)
+    {
+      const MatchDecisionDetail& detail = at.detail;
+      if (decisions_of_selected && selected != 0 && detail.player != selected)
+      {
+        continue;
+      }
+      if (latest == nullptr)
+      {
+        latest = &at;
+      }
+      const bool isOpen = opened_decision &&
+                          opened_decision->first == at.tick &&
+                          opened_decision->second == detail.player;
+      if (isOpen)
+      {
+        opened = &at;
+      }
+      const bool flipped =
+          winnerWithoutNoise(detail) != optionIndex(detail.chosen);
+      const std::string label = std::format(
+          "{}  {}  {}  ·  margin {:.2f}{}##{}_{}", clock(at.minute),
+          recorder.playerName(detail.player),
+          SandboxNames::choice(detail.chosen), winningMargin(detail),
+          flipped ? "  ·  NOISE FLIPPED" : "", at.tick, detail.player);
+      if (ImGui::Selectable(label.c_str(),
+                            isOpen || (!opened_decision && latest == &at)))
+      {
+        opened_decision = {{at.tick, detail.player}};
+        selected = detail.player;
+      }
+    }
+  }
+  ImGui::EndChild();
+  if (opened == nullptr)
+  {
+    opened = latest;
+  }
+  return opened;
 }

@@ -25,6 +25,7 @@
 #include "gui/widgets/theme.h"
 #include "tools/match_sandbox_bench_scene.h"
 #include "tools/match_sandbox_page_ui.h"
+#include "tools/match_sandbox_text.h"
 #include "tools/match_sandbox_tuning.h"
 
 namespace
@@ -101,8 +102,8 @@ ImU32 heat(float value)
   const float scaled = std::clamp(value, 0.0F, 1.0F) * 4.0F;
   const int index = std::min(static_cast<int>(scaled), 3);
   const float t = scaled - static_cast<float>(index);
-  const ImVec4& a = STOPS[static_cast<std::size_t>(index)];
-  const ImVec4& b = STOPS[static_cast<std::size_t>(index) + 1];
+  const ImVec4& a = STOPS.at(static_cast<std::size_t>(index));
+  const ImVec4& b = STOPS.at(static_cast<std::size_t>(index) + 1);
   return ImGui::GetColorU32(ImVec4(a.x + ((b.x - a.x) * t),
                                    a.y + ((b.y - a.y) * t),
                                    a.z + ((b.z - a.z) * t), 1.0F));
@@ -110,7 +111,7 @@ ImU32 heat(float value)
 
 void field(const char* label)
 {
-  ImGui::TextWrapped("%s", label);
+  SandboxText::wrappedText(label);
   ImGui::SetNextItemWidth(-1);
 }
 
@@ -299,7 +300,7 @@ ImU32 ContactViewScene::colourOf(const ContactAssessment& contact,
   }
   if (view >= 4)
   {
-    return heat(contact.factors[static_cast<std::size_t>(view - 4)].value);
+    return heat(contact.factors.at(static_cast<std::size_t>(view - 4)).value);
   }
   // Zones: each condition in its own colour, as strong as its value; one
   // this contact gives no weight is faint.
@@ -307,7 +308,7 @@ ImU32 ContactViewScene::colourOf(const ContactAssessment& contact,
   for (const int factor : zoneFactors)
   {
     const ContactFactor& term =
-        contact.factors[static_cast<std::size_t>(factor)];
+        contact.factors.at(static_cast<std::size_t>(factor));
     const bool weighted = term.angleWeight != 0.0F || term.weightWeight != 0.0F;
     const float strength = term.value * (weighted ? 0.9F : 0.2F);
     const ImVec4 hue = zoneHue(factor);
@@ -395,20 +396,21 @@ void ContactViewScene::renderPanel(float width)
   }
   if (ImGui::IsItemHovered())
   {
-    ImGui::SetTooltip("Pass and shot tests over skill, using the same tuning.");
+    SandboxText::tooltipText(
+        "Pass and shot tests over skill, using the same tuning.");
   }
   std::array<const char*, 1 + STRIKE_KIND_COUNT> contacts{};
-  contacts[0] = "First touch";
+  contacts.at(0) = "First touch";
   for (std::size_t kind = 0; kind < STRIKE_KIND_COUNT; ++kind)
   {
-    contacts[kind + 1] = STRIKE_KIND_NAMES[kind].data();
+    contacts.at(kind + 1) = STRIKE_KIND_NAMES.at(kind).data();
   }
   field("Contact");
   if (SandboxPageUI::combo("##contact", &inputs.contact, contacts.data(),
                            static_cast<int>(contacts.size())))
   {
     inputs.intendedSpeed =
-        TYPICAL_PACE[static_cast<std::size_t>(inputs.contact)];
+        TYPICAL_PACE.at(static_cast<std::size_t>(inputs.contact));
     profile = chosenProfile();
   }
   std::array<std::string, 4 + CONTACT_FACTOR_COUNT> viewNames{
@@ -416,16 +418,16 @@ void ContactViewScene::renderPanel(float width)
       "Vertical job difficulty"};
   for (std::size_t index = 0; index < CONTACT_FACTOR_COUNT; ++index)
   {
-    viewNames[index + 4] =
-        "Condition: " + std::string(CONTACT_FACTOR_LABELS[index]);
+    viewNames.at(index + 4) =
+        "Condition: " + std::string(CONTACT_FACTOR_LABELS.at(index));
   }
   field("Colour by");
   if (SandboxPageUI::beginCombo(
-          "##colour_by", viewNames[static_cast<std::size_t>(view)].c_str()))
+          "##colour_by", viewNames.at(static_cast<std::size_t>(view)).c_str()))
   {
     for (std::size_t index = 0; index < viewNames.size(); ++index)
     {
-      if (ImGui::Selectable(viewNames[index].c_str(),
+      if (ImGui::Selectable(viewNames.at(index).c_str(),
                             static_cast<int>(index) == view))
       {
         view = static_cast<int>(index);
@@ -444,7 +446,7 @@ void ContactViewScene::renderPanel(float width)
     {
       ImGui::SameLine(0, 6 * scale);
     }
-    if (Page::button(tabs[tab], panelTab == tab, scale, boldFont))
+    if (Page::button(tabs.at(tab), panelTab == tab, scale, boldFont))
     {
       panelTab = tab;
     }
@@ -462,7 +464,7 @@ void ContactViewScene::renderPanel(float width)
       {
         ImGui::SameLine(0, 6 * scale);
       }
-      if (Page::button(sections[tab], selected == tab, scale, boldFont))
+      if (Page::button(sections.at(tab), selected == tab, scale, boldFont))
       {
         selected = tab;
       }
@@ -549,7 +551,7 @@ void ContactViewScene::renderPanel(float width)
              "%+.1f m/s");
       if (ImGui::IsItemHovered())
       {
-        ImGui::SetTooltip(
+        SandboxText::tooltipText(
             "The ball's speed up (+) or down (-) as it reaches "
             "him.");
       }
@@ -570,16 +572,16 @@ void ContactViewScene::renderPanel(float width)
       nextField("Expected?");
       if (SandboxPageUI::beginCombo(
               "##expected",
-              isTouch()
-                  ? EXPECTATIONS[static_cast<std::size_t>(inputs.expectation)]
-                  : "He chose to strike it"))
+              isTouch() ? EXPECTATIONS.at(
+                              static_cast<std::size_t>(inputs.expectation))
+                        : "He chose to strike it"))
       {
         if (isTouch())
         {
           for (std::size_t index = 0; index < EXPECTATIONS.size(); ++index)
           {
             if (ImGui::Selectable(
-                    EXPECTATIONS[index],
+                    EXPECTATIONS.at(index),
                     static_cast<int>(index) == inputs.expectation))
             {
               inputs.expectation = static_cast<int>(index);
@@ -590,7 +592,7 @@ void ContactViewScene::renderPanel(float width)
       }
       if (ImGui::IsItemHovered())
       {
-        ImGui::SetTooltip(
+        SandboxText::tooltipText(
             "The brain's read: only a pass meant for someone else "
             "surprises him, for now.");
       }
@@ -602,12 +604,12 @@ void ContactViewScene::renderPanel(float width)
       slider("Intended pace", &inputs.intendedSpeed, 0.0F, 35.0F, "%.1f m/s");
       if (ImGui::IsItemHovered())
       {
-        ImGui::SetTooltip("Over the ground.");
+        SandboxText::tooltipText("Over the ground.");
       }
       slider("Lift", &inputs.lift, -10.0F, 15.0F, "%+.1f m/s");
       if (ImGui::IsItemHovered())
       {
-        ImGui::SetTooltip(
+        SandboxText::tooltipText(
             "The speed up (+) or down (-) he means it to leave "
             "with; 0 sends it off level, cushioning any drop.");
       }
@@ -635,12 +637,12 @@ void ContactViewScene::renderCircle(ImVec2 size)
   float used = 0;
   for (std::size_t index = 0; index < factors.size(); ++index)
   {
-    const auto& factor = legendContact.factors[factors[index]];
+    const auto& factor = legendContact.factors.at(factors.at(index));
     const bool weighted = factor.angleWeight != 0 || factor.weightWeight != 0 ||
                           factor.verticalWeight != 0;
-    legendLabels[index] =
-        std::string(names[index]) + (weighted ? "" : " (unweighted)");
-    const float width = ImGui::CalcTextSize(legendLabels[index].c_str()).x;
+    legendLabels.at(index) =
+        std::string(names.at(index)) + (weighted ? "" : " (unweighted)");
+    const float width = ImGui::CalcTextSize(legendLabels.at(index).c_str()).x;
     if (used > 0 && used + 12 * scale + width > area.x)
     {
       ++legendRows;
@@ -1011,7 +1013,7 @@ void ContactViewScene::renderCircle(ImVec2 size)
           tip += std::format("\n  {:<26} {:.2f}", factor.name, factor.value);
         }
       }
-      ImGui::SetTooltip("%s", tip.c_str());
+      SandboxText::tooltipText(tip.c_str());
     }
   }
 
@@ -1022,7 +1024,7 @@ void ContactViewScene::renderCircle(ImVec2 size)
     float rowWidth = 0;
     for (std::size_t index = 0; index < factors.size(); ++index)
     {
-      const float width = ImGui::CalcTextSize(legendLabels[index].c_str()).x;
+      const float width = ImGui::CalcTextSize(legendLabels.at(index).c_str()).x;
       if (rowWidth > 0 && rowWidth + 12 * scale + width <= area.x)
       {
         ImGui::SameLine(0, 12 * scale);
@@ -1031,25 +1033,28 @@ void ContactViewScene::renderCircle(ImVec2 size)
       {
         rowWidth = 0;
       }
-      const auto& factor = legendContact.factors[factors[index]];
+      const auto& factor = legendContact.factors.at(factors.at(index));
       const bool weighted = factor.angleWeight != 0 ||
                             factor.weightWeight != 0 ||
                             factor.verticalWeight != 0;
-      ImGui::TextColored(weighted ? zoneHue(factors[index])
-                                  : ImGui::ColorConvertU32ToFloat4(Page::MUTED),
-                         "%s", legendLabels[index].c_str());
+      SandboxText::coloredText(
+          weighted ? zoneHue(factors.at(index))
+                   : ImGui::ColorConvertU32ToFloat4(Page::MUTED),
+          legendLabels.at(index).c_str());
       if (ImGui::IsItemHovered())
       {
-        ImGui::SetTooltip(
-            "%s / weaker foot can be selected separately with Colour by.",
-            DEPENDS_ON[factors[index]]);
+        SandboxText::tooltipText(
+            std::format(
+                "{} / weaker foot can be selected separately with Colour by.",
+                DEPENDS_ON.at(factors.at(index)))
+                .c_str());
       }
       rowWidth += width + 12 * scale;
     }
   }
   else
   {
-    ImGui::TextDisabled("0");
+    SandboxText::disabledText("0");
     ImGui::SameLine();
     const ImVec2 bar = ImGui::GetCursorScreenPos();
     const float barWidth = std::min(240 * scale, area.x * 0.4F);
@@ -1064,15 +1069,15 @@ void ContactViewScene::renderCircle(ImVec2 size)
     }
     ImGui::Dummy(ImVec2(barWidth, barHeight));
     ImGui::SameLine();
-    ImGui::TextDisabled("1 / same scale throughout");
+    SandboxText::disabledText("1 / same scale throughout");
   }
-  ImGui::TextWrapped("%s", reachLabel.c_str());
+  SandboxText::wrappedText(reachLabel.c_str());
   ImGui::PushTextWrapPos(0);
-  ImGui::TextDisabled("%s", guide);
+  SandboxText::disabledText(guide);
   ImGui::PopTextWrapPos();
   if (ImGui::IsItemHovered())
   {
-    ImGui::SetTooltip(
+    SandboxText::tooltipText(
         "Outer-ring chevrons show how sending it there turns the ball off its "
         "line, clockwise or anticlockwise. > is inward; >> is outward; no mark "
         "means no turn. Bars (| inward, || outward) appear when the ball has "
@@ -1092,23 +1097,31 @@ void ContactViewScene::renderBreakdown(float width)
 
   if (inDeadZone(inputs.probe))
   {
-    ImGui::TextColored(
+    SandboxText::coloredText(
         ImVec4(1.0F, 0.55F, 0.45F, 1.0F),
         "In his dead zone: he cannot play it here (touch or strike).");
   }
-  ImGui::Text("Turn %.0f° %s%s · pace change %+.1f m/s",
-              std::abs(contact.turn) * 180.0F / std::numbers::pi_v<float>,
-              contact.outward ? "outward" : "inward",
-              contact.rebound ? " (back the way it came)" : "",
-              contact.paceChange);
-  ImGui::Text(
-      "Steepness: line %+.0f°, he means %+.0f°: turn %.0f° %s",
-      (contact.lineElevation * 180.0F / std::numbers::pi_v<float>)+0.0F,
-      (contact.intendedElevation * 180.0F / std::numbers::pi_v<float>)+0.0F,
-      std::abs(contact.verticalTurn) * 180.0F / std::numbers::pi_v<float>,
-      std::abs(contact.verticalTurn) < 0.01F ? ""
-      : contact.verticalTurn > 0.0F          ? "up"
-                                             : "down");
+  ImGui::TextUnformatted(
+      std::format("Turn {:.0f}° {}{} · pace change {:+.1f} m/s",
+                  static_cast<double>(std::abs(contact.turn) * 180.0F /
+                                      std::numbers::pi_v<float>),
+                  contact.outward ? "outward" : "inward",
+                  contact.rebound ? " (back the way it came)" : "",
+                  static_cast<double>(contact.paceChange))
+          .c_str());
+  ImGui::TextUnformatted(
+      std::format(
+          "Steepness: line {:+.0f}°, he means {:+.0f}°: turn {:.0f}° {}",
+          static_cast<double>((contact.lineElevation * 180.0F /
+                               std::numbers::pi_v<float>)+0.0F),
+          static_cast<double>((contact.intendedElevation * 180.0F /
+                               std::numbers::pi_v<float>)+0.0F),
+          static_cast<double>(std::abs(contact.verticalTurn) * 180.0F /
+                              std::numbers::pi_v<float>),
+          std::abs(contact.verticalTurn) < 0.01F ? ""
+          : contact.verticalTurn > 0.0F          ? "up"
+                                                 : "down")
+          .c_str());
   renderSideView(contact);
   ImGui::PushStyleVar(ImGuiStyleVar_CellPadding, ImVec2(0, 3 * scale));
   if (ImGui::BeginTable("##job_difficulty", 2, ImGuiTableFlags_SizingFixedFit))
@@ -1139,7 +1152,8 @@ void ContactViewScene::renderBreakdown(float width)
                           heat(value));
       ImGui::Dummy(ImVec2(width, ImGui::GetTextLineHeight()));
       ImGui::SameLine(0, 6 * scale);
-      ImGui::Text("%.2f", value);
+      ImGui::TextUnformatted(
+          std::format("{:.2f}", static_cast<double>(value)).c_str());
     }
     ImGui::EndTable();
   }
@@ -1166,7 +1180,7 @@ void ContactViewScene::renderBreakdown(float width)
     ImGui::PopFont();
     for (std::size_t index = 0; index < CONTACT_FACTOR_COUNT; ++index)
     {
-      const ContactFactor& factor = contact.factors[index];
+      const ContactFactor& factor = contact.factors.at(index);
       const bool weighted = factor.angleWeight != 0.0F ||
                             factor.weightWeight != 0.0F ||
                             factor.verticalWeight != 0.0F;
@@ -1178,18 +1192,23 @@ void ContactViewScene::renderBreakdown(float width)
       }
       else
       {
-        ImGui::TextDisabled("%s", factor.name);
+        SandboxText::disabledText(factor.name);
       }
       if (ImGui::IsItemHovered())
       {
-        ImGui::SetTooltip(
-            "Reads: %s\nWeights: angle %.2f, weight %.2f, "
-            "vertical %.2f",
-            DEPENDS_ON[index], factor.angleWeight, factor.weightWeight,
-            factor.verticalWeight);
+        SandboxText::tooltipText(
+            std::format("Reads: {}\nWeights: angle {:.2f}, weight {:.2f}, "
+                        "vertical {:.2f}",
+                        DEPENDS_ON.at(index),
+                        static_cast<double>(factor.angleWeight),
+                        static_cast<double>(factor.weightWeight),
+                        static_cast<double>(factor.verticalWeight))
+                .c_str());
       }
       ImGui::TableNextColumn();
-      ImGui::Text("%.2f", factor.value + 0.0F);
+      ImGui::TextUnformatted(
+          std::format("{:.2f}", static_cast<double>(factor.value + 0.0F))
+              .c_str());
       // The value as a small bar.
       const ImVec2 start = ImGui::GetCursorScreenPos();
       const float barWidth =
@@ -1211,20 +1230,29 @@ void ContactViewScene::renderBreakdown(float width)
       {
         if (weight == 0.0F)
         {
-          ImGui::TextDisabled("-");
+          SandboxText::disabledText("-");
         }
         else if (index == WEAK_FOOT_FACTOR)
         {
-          ImGui::Text("x%.2f", 1.0F + (factor.value * weight));
+          ImGui::TextUnformatted(
+              std::format("x{:.2f}",
+                          static_cast<double>(1.0F + (factor.value * weight)))
+                  .c_str());
         }
         else
         {
-          ImGui::Text("%.3f", contact.added(index, job) + 0.0F);
+          ImGui::TextUnformatted(
+              std::format("{:.3f}",
+                          static_cast<double>(contact.added(index, job) + 0.0F))
+                  .c_str());
         }
         if (index == WEAK_FOOT_FACTOR && weight != 0.0F &&
             ImGui::IsItemHovered())
         {
-          ImGui::SetTooltip("Adds %.3f here", contact.added(index, job) + 0.0F);
+          SandboxText::tooltipText(
+              std::format("Adds {:.3f} here",
+                          static_cast<double>(contact.added(index, job) + 0.0F))
+                  .c_str());
         }
       };
       ImGui::TableNextColumn();
@@ -1239,16 +1267,22 @@ void ContactViewScene::renderBreakdown(float width)
     ImGui::TextUnformatted("Job difficulty (0-1)");
     ImGui::TableNextColumn();
     ImGui::TableNextColumn();
-    ImGui::Text("%.3f", contact.angleDifficulty);
+    ImGui::TextUnformatted(
+        std::format("{:.3f}", static_cast<double>(contact.angleDifficulty))
+            .c_str());
     ImGui::TableNextColumn();
-    ImGui::Text("%.3f", contact.weightDifficulty);
+    ImGui::TextUnformatted(
+        std::format("{:.3f}", static_cast<double>(contact.weightDifficulty))
+            .c_str());
     ImGui::TableNextColumn();
-    ImGui::Text("%.3f", contact.verticalDifficulty);
+    ImGui::TextUnformatted(
+        std::format("{:.3f}", static_cast<double>(contact.verticalDifficulty))
+            .c_str());
     ImGui::EndTable();
   }
   ImGui::PopStyleVar();
   ImGui::PushTextWrapPos(0.0F);
-  ImGui::TextDisabled(
+  SandboxText::disabledText(
       "Each condition is 0-1; its weights say what it adds to each job. "
       "Grey: no weight for this contact. Hover a condition for what it "
       "reads. Difficulty then sets how often a job fails and how badly "
@@ -1263,7 +1297,7 @@ void ContactViewScene::renderStretchMap()
   const float scale = Theme::scale();
   namespace Page = SandboxPageUI;
   ImGui::PushTextWrapPos(0.0F);
-  ImGui::TextDisabled(
+  SandboxText::disabledText(
       "Stretch (0-1) by angle off his facing (rows, either side) and "
       "distance from his centre as a share of his reach (columns; metres "
       "for a first touch at feet height). Blended between points. Drag, or "
@@ -1281,20 +1315,20 @@ void ContactViewScene::renderStretchMap()
     // Header: the distances, editable, kept in order.
     ImGui::TableNextRow(ImGuiTableRowFlags_Headers);
     ImGui::TableNextColumn();
-    ImGui::TextDisabled("Angle");
+    SandboxText::disabledText("Angle");
     for (std::size_t column = 0; column < StretchMap::DISTANCES; ++column)
     {
       ImGui::TableNextColumn();
       ImGui::PushID(static_cast<int>(column));
       ImGui::SetNextItemWidth(-1.0F);
       const float low =
-          column == 0 ? 0.0F : sandboxTuning().stretch.distances[column - 1];
+          column == 0 ? 0.0F : sandboxTuning().stretch.distances.at(column - 1);
       const float high = column + 1 == StretchMap::DISTANCES
                              ? 1.0F
-                             : sandboxTuning().stretch.distances[column + 1];
-      if (ImGui::DragFloat("##distance",
-                           &sandboxTuning().stretch.distances[column], 0.005F,
-                           low, high, "%.2f", ImGuiSliderFlags_AlwaysClamp))
+                             : sandboxTuning().stretch.distances.at(column + 1);
+      if (ImGui::DragFloat(
+              "##distance", &sandboxTuning().stretch.distances.at(column),
+              0.005F, low, high, "%.2f", ImGuiSliderFlags_AlwaysClamp))
       {
         profile = chosenProfile();
       }
@@ -1308,11 +1342,11 @@ void ContactViewScene::renderStretchMap()
       ImGui::TableNextColumn();
       ImGui::SetNextItemWidth(-1.0F);
       const float low =
-          row == 0 ? 0.0F : sandboxTuning().stretch.angles[row - 1];
+          row == 0 ? 0.0F : sandboxTuning().stretch.angles.at(row - 1);
       const float high = row + 1 == StretchMap::ANGLES
                              ? 180.0F
-                             : sandboxTuning().stretch.angles[row + 1];
-      if (ImGui::DragFloat("##angle", &sandboxTuning().stretch.angles[row],
+                             : sandboxTuning().stretch.angles.at(row + 1);
+      if (ImGui::DragFloat("##angle", &sandboxTuning().stretch.angles.at(row),
                            0.5F, low, high, "%.0f°",
                            ImGuiSliderFlags_AlwaysClamp))
       {
@@ -1321,7 +1355,7 @@ void ContactViewScene::renderStretchMap()
       for (std::size_t column = 0; column < StretchMap::DISTANCES; ++column)
       {
         ImGui::TableNextColumn();
-        float& value = sandboxTuning().stretch.values[row][column];
+        float& value = sandboxTuning().stretch.values.at(row).at(column);
         ImVec4 shade = ImGui::ColorConvertU32ToFloat4(heat(value));
         shade.w = 0.55F;
         ImGui::TableSetBgColor(ImGuiTableBgTarget_CellBg,
@@ -1355,13 +1389,13 @@ void ContactViewScene::renderStretchMap()
     for (std::size_t row = 0; row < StretchMap::ANGLES; ++row)
     {
       text += std::format("{}{:.1f}f", row == 0 ? "" : ", ",
-                          sandboxTuning().stretch.angles[row]);
+                          sandboxTuning().stretch.angles.at(row));
     }
     text += "};\n    static constexpr std::array<float, 6> STRETCH_DISTANCES{";
     for (std::size_t column = 0; column < StretchMap::DISTANCES; ++column)
     {
       text += std::format("{}{:.3f}f", column == 0 ? "" : ", ",
-                          sandboxTuning().stretch.distances[column]);
+                          sandboxTuning().stretch.distances.at(column));
     }
     text +=
         "};\n    static constexpr std::array<std::array<float, 6>, 6> "
@@ -1372,7 +1406,7 @@ void ContactViewScene::renderStretchMap()
       for (std::size_t column = 0; column < StretchMap::DISTANCES; ++column)
       {
         text += std::format("{}{:.3f}f", column == 0 ? "" : ", ",
-                            sandboxTuning().stretch.values[row][column]);
+                            sandboxTuning().stretch.values.at(row).at(column));
       }
       text += "},\n";
     }
@@ -1381,7 +1415,7 @@ void ContactViewScene::renderStretchMap()
   }
   if (ImGui::IsItemHovered())
   {
-    ImGui::SetTooltip(
+    SandboxText::tooltipText(
         "Copies the map as the MatchTuning constants, to paste "
         "in (or to me) to make it the game's.");
   }
@@ -1438,14 +1472,14 @@ void ContactViewScene::renderKnobs()
   const float scale = Theme::scale();
   TechniqueTuning& tuning = sandboxTuning();
   const std::string title =
-      isTouch()
-          ? std::string("Knobs: touch (first and dribble touches)")
-          : std::format("Knobs: {}", STRIKE_KIND_NAMES[static_cast<std::size_t>(
-                                         inputs.contact - 1)]);
+      isTouch() ? std::string("Knobs: touch (first and dribble touches)")
+                : std::format("Knobs: {}",
+                              STRIKE_KIND_NAMES.at(static_cast<std::size_t>(
+                                  inputs.contact - 1)));
   namespace Page = SandboxPageUI;
-  ImGui::TextWrapped("%s", title.c_str());
+  SandboxText::wrappedText(title.c_str());
   ImGui::PushTextWrapPos(0.0F);
-  ImGui::TextDisabled(
+  SandboxText::disabledText(
       "The conditions' weights, how they are measured, and the technique "
       "(how often a job fails and how badly, cut by skill). Drag, or "
       "Ctrl+click to type (beyond the range if need be). Shared with the "
@@ -1458,7 +1492,7 @@ void ContactViewScene::renderKnobs()
     const bool changed = std::abs(value - fallback) > 1e-6F;
     const std::string label =
         std::format("{}{}{}", name, unit.empty() ? "" : " ", unit);
-    ImGui::TextWrapped("%s", label.c_str());
+    SandboxText::wrappedText(label.c_str());
     ImGui::SetNextItemWidth(
         changed ? -Page::buttonWidth("Reset", scale, boldFont) - (6 * scale)
                 : -1);
@@ -1474,9 +1508,11 @@ void ContactViewScene::renderKnobs()
     }
     if (ImGui::IsItemHovered())
     {
-      ImGui::SetTooltip("The game's value: %g (range %g to %g)",
-                        static_cast<double>(fallback), static_cast<double>(low),
-                        static_cast<double>(high));
+      SandboxText::tooltipText(
+          std::format("The game's value: {:.6g} (range {:.6g} to {:.6g})",
+                      static_cast<double>(fallback), static_cast<double>(low),
+                      static_cast<double>(high))
+              .c_str());
     }
     if (changed)
     {
@@ -1515,11 +1551,11 @@ void ContactViewScene::renderKnobs()
       }
       for (std::size_t index = 0; index < TOUCH_KNOB_COUNT; ++index)
       {
-        const TouchKnobInfo& info = TOUCH_KNOBS[index];
+        const TouchKnobInfo& info = TOUCH_KNOBS.at(index);
         if (info.group == group)
         {
-          row(info.name, info.unit, tuning.touch.values[index],
-              defaults.values[index], info.min, info.max);
+          row(info.name, info.unit, tuning.touch.values.at(index),
+              defaults.values.at(index), info.min, info.max);
         }
       }
     }
@@ -1536,7 +1572,7 @@ void ContactViewScene::renderKnobs()
       }
       for (std::size_t index = 0; index < STRIKE_KNOB_COUNT; ++index)
       {
-        const StrikeKnobInfo& info = STRIKE_KNOBS[index];
+        const StrikeKnobInfo& info = STRIKE_KNOBS.at(index);
         const auto knob = static_cast<StrikeKnob>(index);
         if (info.group == group)
         {
@@ -1561,8 +1597,10 @@ void ContactViewScene::renderTuning()
   }
   else
   {
-    ImGui::TextColored(ImVec4(1.0F, 0.75F, 0.3F, 1.0F),
-                       "%zu changes from the game's values.", changes.size());
+    SandboxText::coloredText(
+        ImVec4(1.0F, 0.75F, 0.3F, 1.0F),
+        std::format("{} changes from the game's values.", changes.size())
+            .c_str());
   }
   if (!changes.empty() && ImGui::IsItemHovered())
   {
@@ -1571,7 +1609,7 @@ void ContactViewScene::renderTuning()
     {
       tip += line + "\n";
     }
-    ImGui::SetTooltip("%s", tip.c_str());
+    SandboxText::tooltipText(tip.c_str());
   }
   ImGui::BeginDisabled(changes.empty());
   if (Page::button("Copy", false, scale, boldFont))
@@ -1580,7 +1618,8 @@ void ContactViewScene::renderTuning()
   }
   if (ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenDisabled))
   {
-    ImGui::SetTooltip("Every change as text, to copy into match_tuning.h.");
+    SandboxText::tooltipText(
+        "Every change as text, to copy into match_tuning.h.");
   }
   nextButton("Reset all", scale, boldFont);
   if (Page::button("Reset all", false, scale, boldFont))

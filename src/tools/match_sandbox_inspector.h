@@ -109,6 +109,8 @@ class DebugInspector
   void ensureDetail(const SandboxRecorder& recorder, const MatchEngine& engine);
   void renderRankingDetail(const SandboxRecorder& recorder, bool home,
                            std::uint64_t tick);
+  [[nodiscard]] const DetailRecorder::At<MatchDecisionDetail>*
+  renderDecisionList(const SandboxRecorder& recorder);
   void renderDuelDetail(const SandboxRecorder& recorder, std::uint64_t tick);
   static void renderDecisionTree(
       const SandboxRecorder& recorder,

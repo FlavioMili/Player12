@@ -237,104 +237,10 @@ void TrainingSessionScene::renderPanel(float width)
       session->drills.size(), session->drills[current]->name());
   Page::header("Training", subtitle.c_str(), width, scale, boldFont,
                regularFont, context.c_str(), true);
-  Page::beginCard("##training_playback", "RUN SESSION", width, Page::DARK,
-                  scale, boldFont);
-  const auto next = [&](float itemWidth)
+  const PlaybackResult playback = renderPlayback(width);
+  if (playback.advanceClicked)
   {
-    if (ImGui::GetItemRectMax().x + PANEL_GAP * scale + itemWidth <=
-        ImGui::GetWindowPos().x + ImGui::GetWindowContentRegionMax().x)
-    {
-      ImGui::SameLine(0, PANEL_GAP * scale);
-    }
-  };
-  const auto nextButton = [&](const char* label)
-  { next(Page::buttonWidth(label, scale, boldFont)); };
-  if (Page::button("Back to sandbox", false, scale, boldFont))
-  {
-    guiView->popScene();
-  }
-  const bool over = run && run->finished();
-  const bool last = current + 1 >= session->drills.size();
-  const char* advance = last ? "End session" : "Next drill";
-  nextButton(advance);
-  ImGui::BeginDisabled(!over);
-  const bool advanceClicked = Page::button(advance, true, scale, boldFont);
-  ImGui::EndDisabled();
-  if (!over && ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenDisabled))
-  {
-    SandboxText::tooltipText("Once everyone has finished, or skip to the end.");
-  }
-  if (Page::button("Restart drill (R)", false, scale, boldFont))
-  {
-    startDrill(current);
-  }
-  const char* playback = paused ? "Play (Space)" : "Pause (Space)";
-  nextButton(playback);
-  ImGui::BeginDisabled(over || skipping);
-  if (Page::button(playback, false, scale, boldFont))
-  {
-    paused = !paused;
-  }
-  ImGui::EndDisabled();
-  ImGui::AlignTextToFramePadding();
-  ImGui::TextUnformatted("Speed");
-  ImGui::SameLine();
-  ImGui::SetNextItemWidth(SPEED_COMBO_WIDTH * scale);
-  const std::string speedLabel = std::format("{:g}x", speed);
-  if (SandboxPageUI::beginCombo("##speed", speedLabel.c_str()))
-  {
-    for (const float option : SPEEDS)
-    {
-      if (ImGui::Selectable(std::format("{:g}x", option).c_str(),
-                            option == speed))
-      {
-        speed = option;
-      }
-    }
-    ImGui::EndCombo();
-  }
-  nextButton("Skip to the end");
-  ImGui::BeginDisabled(over || skipping);
-  if (Page::button("Skip to the end", false, scale, boldFont))
-  {
-    skipping = true;
-  }
-  ImGui::EndDisabled();
-  if (ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenDisabled))
-  {
-    SandboxText::tooltipText("Run the rest of the drill as fast as it goes.");
-  }
-  if (run)
-  {
-    const double seconds = run->engine().getSimulatedSeconds();
-    const char* status = "Running";
-    if (over)
-    {
-      status = "Finished";
-    }
-    else if (skipping)
-    {
-      status = "Skipping";
-    }
-    else if (paused)
-    {
-      status = "Paused";
-    }
-    ImGui::TextUnformatted(
-        std::format("{} / {:.0f}:{:02.0f}", status,
-                    std::floor(seconds / SECONDS_PER_MINUTE),
-                    std::floor(std::fmod(seconds, SECONDS_PER_MINUTE)))
-            .c_str());
-    ImGui::TextUnformatted(
-        std::format("{} of {} players finished",
-                    session->drills[current]->results().size(),
-                    session->squad.size())
-            .c_str());
-  }
-  Page::endCard(scale);
-  if (advanceClicked)
-  {
-    if (last)
+    if (playback.last)
     {
       guiView->popScene();
     }
@@ -365,57 +271,7 @@ void TrainingSessionScene::renderPanel(float width)
     Page::endCard(scale);
     return;
   }
-  Page::beginCard("##training_progress", "DRILL PROGRESS", width, Page::LIGHT,
-                  scale, boldFont);
-  ImGui::PushTextWrapPos(0);
-  ImGui::TextUnformatted(drill.summary());
-  ImGui::Separator();
-  for (const auto& line : drill.report())
-  {
-    ImGui::TextUnformatted(line.c_str());
-  }
-  ImGui::PopTextWrapPos();
-  Page::endCard(scale);
-  Page::beginCard("##training_session", "SESSION", width, Page::MID, scale,
-                  boldFont);
-  SandboxText::wrappedText(session->summary.c_str());
-  if (ImGui::BeginTable("##session_drills", 2,
-                        ImGuiTableFlags_RowBg | ImGuiTableFlags_BordersInnerH |
-                            ImGuiTableFlags_BordersInnerV))
-  {
-    ImGui::TableSetupColumn("Drill", ImGuiTableColumnFlags_WidthStretch);
-    ImGui::TableSetupColumn("Status", ImGuiTableColumnFlags_WidthFixed,
-                            STATUS_COLUMN_WIDTH * scale);
-    for (std::size_t index = 0; index < session->drills.size(); ++index)
-    {
-      ImGui::TableNextRow();
-      ImGui::TableNextColumn();
-      if (index == current)
-      {
-        ImGui::PushFont(boldFont, REGULAR_FONT_SIZE);
-      }
-      SandboxText::wrappedText(
-          std::format("{} / {}", index + 1, session->drills[index]->name())
-              .c_str());
-      if (index == current)
-      {
-        ImGui::PopFont();
-      }
-      ImGui::TableNextColumn();
-      const char* progress = "Next";
-      if (index < current)
-      {
-        progress = "Done";
-      }
-      else if (index == current)
-      {
-        progress = run && run->finished() ? "Finished" : "Current";
-      }
-      ImGui::TextUnformatted(progress);
-    }
-    ImGui::EndTable();
-  }
-  Page::endCard(scale);
+  renderProgress(drill, width);
 }
 
 void TrainingSessionScene::renderResults(TrainingDrill& drill)
@@ -657,4 +513,174 @@ std::vector<std::size_t> TrainingSessionScene::resultOrder(
   }
 
   return order;
+}
+
+TrainingSessionScene::PlaybackResult TrainingSessionScene::renderPlayback(
+    float width)
+{
+  namespace Page = SandboxPageUI;
+  const float scale = Theme::scale();
+  Page::beginCard("##training_playback", "RUN SESSION", width, Page::DARK,
+                  scale, boldFont);
+  const auto next = [&](float itemWidth)
+  {
+    if (ImGui::GetItemRectMax().x + PANEL_GAP * scale + itemWidth <=
+        ImGui::GetWindowPos().x + ImGui::GetWindowContentRegionMax().x)
+    {
+      ImGui::SameLine(0, PANEL_GAP * scale);
+    }
+  };
+  const auto nextButton = [&](const char* label)
+  { next(Page::buttonWidth(label, scale, boldFont)); };
+  if (Page::button("Back to sandbox", false, scale, boldFont))
+  {
+    guiView->popScene();
+  }
+  const bool over = run && run->finished();
+  const bool last = current + 1 >= session->drills.size();
+  const char* advance = last ? "End session" : "Next drill";
+  nextButton(advance);
+  ImGui::BeginDisabled(!over);
+  const bool advanceClicked = Page::button(advance, true, scale, boldFont);
+  ImGui::EndDisabled();
+  if (!over && ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenDisabled))
+  {
+    SandboxText::tooltipText("Once everyone has finished, or skip to the end.");
+  }
+  if (Page::button("Restart drill (R)", false, scale, boldFont))
+  {
+    startDrill(current);
+  }
+  const char* playback = paused ? "Play (Space)" : "Pause (Space)";
+  nextButton(playback);
+  ImGui::BeginDisabled(over || skipping);
+  if (Page::button(playback, false, scale, boldFont))
+  {
+    paused = !paused;
+  }
+  ImGui::EndDisabled();
+  renderSpeedControl();
+  nextButton("Skip to the end");
+  ImGui::BeginDisabled(over || skipping);
+  if (Page::button("Skip to the end", false, scale, boldFont))
+  {
+    skipping = true;
+  }
+  ImGui::EndDisabled();
+  if (ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenDisabled))
+  {
+    SandboxText::tooltipText("Run the rest of the drill as fast as it goes.");
+  }
+  if (run)
+  {
+    renderPlaybackStatus(over);
+  }
+  Page::endCard(scale);
+  return {.advanceClicked = advanceClicked, .last = last};
+}
+
+void TrainingSessionScene::renderSpeedControl()
+{
+  const float scale = Theme::scale();
+  ImGui::AlignTextToFramePadding();
+  ImGui::TextUnformatted("Speed");
+  ImGui::SameLine();
+  ImGui::SetNextItemWidth(SPEED_COMBO_WIDTH * scale);
+  const std::string speedLabel = std::format("{:g}x", speed);
+  if (SandboxPageUI::beginCombo("##speed", speedLabel.c_str()))
+  {
+    for (const float option : SPEEDS)
+    {
+      if (ImGui::Selectable(std::format("{:g}x", option).c_str(),
+                            option == speed))
+      {
+        speed = option;
+      }
+    }
+    ImGui::EndCombo();
+  }
+}
+
+void TrainingSessionScene::renderPlaybackStatus(bool over)
+{
+  const double seconds = run->engine().getSimulatedSeconds();
+  const char* status = "Running";
+  if (over)
+  {
+    status = "Finished";
+  }
+  else if (skipping)
+  {
+    status = "Skipping";
+  }
+  else if (paused)
+  {
+    status = "Paused";
+  }
+  ImGui::TextUnformatted(
+      std::format("{} / {:.0f}:{:02.0f}", status,
+                  std::floor(seconds / SECONDS_PER_MINUTE),
+                  std::floor(std::fmod(seconds, SECONDS_PER_MINUTE)))
+          .c_str());
+  ImGui::TextUnformatted(std::format("{} of {} players finished",
+                                     session->drills[current]->results().size(),
+                                     session->squad.size())
+                             .c_str());
+}
+
+void TrainingSessionScene::renderProgress(TrainingDrill& drill, float width)
+{
+  namespace Page = SandboxPageUI;
+  const float scale = Theme::scale();
+  Page::beginCard("##training_progress", "DRILL PROGRESS", width, Page::LIGHT,
+                  scale, boldFont);
+  ImGui::PushTextWrapPos(0);
+  ImGui::TextUnformatted(drill.summary());
+  ImGui::Separator();
+  for (const auto& line : drill.report())
+  {
+    ImGui::TextUnformatted(line.c_str());
+  }
+  ImGui::PopTextWrapPos();
+  Page::endCard(scale);
+  Page::beginCard("##training_session", "SESSION", width, Page::MID, scale,
+                  boldFont);
+  SandboxText::wrappedText(session->summary.c_str());
+  if (ImGui::BeginTable("##session_drills", 2,
+                        ImGuiTableFlags_RowBg | ImGuiTableFlags_BordersInnerH |
+                            ImGuiTableFlags_BordersInnerV))
+  {
+    ImGui::TableSetupColumn("Drill", ImGuiTableColumnFlags_WidthStretch);
+    ImGui::TableSetupColumn("Status", ImGuiTableColumnFlags_WidthFixed,
+                            STATUS_COLUMN_WIDTH * scale);
+    for (std::size_t index = 0; index < session->drills.size(); ++index)
+    {
+      ImGui::TableNextRow();
+      ImGui::TableNextColumn();
+      if (index == current)
+      {
+        ImGui::PushFont(boldFont, REGULAR_FONT_SIZE);
+      }
+      SandboxText::wrappedText(
+          std::format("{} / {}", index + 1, session->drills[index]->name())
+              .c_str());
+      if (index == current)
+      {
+        ImGui::PopFont();
+      }
+      ImGui::TableNextColumn();
+      const char* progress = "Next";
+      if (index < current)
+      {
+        progress = "Done";
+      }
+      else if (index == current)
+      {
+        progress = run && run->finished() ? "Finished" : "Current";
+      }
+      ImGui::TextUnformatted(progress);
+    }
+    ImGui::EndTable();
+  }
+  Page::endCard(scale);
 }

@@ -42,7 +42,16 @@ class TrainingSessionScene : public GUIScene
  private:
   void startDrill(std::size_t index);
   void stepRun(int steps);
+  struct PlaybackResult
+  {
+    bool advanceClicked = false;
+    bool last = false;
+  };
   void renderPanel(float width);
+  [[nodiscard]] PlaybackResult renderPlayback(float width);
+  void renderSpeedControl();
+  void renderPlaybackStatus(bool over);
+  void renderProgress(TrainingDrill& drill, float width);
   void renderResults(TrainingDrill& drill);
   void renderMetricChoice(const std::vector<TrainingColumn>& columns, int slot);
   void renderMetricChoices(const std::vector<TrainingColumn>& columns,

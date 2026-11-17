@@ -24,9 +24,42 @@
 #include "gui/gui_view.h"
 #include "gui/widgets/theme.h"
 #include "tools/match_sandbox_page_ui.h"
+#include "tools/match_sandbox_text.h"
 
 namespace
 {
+constexpr float BUTTON_GAP = 6.0F;
+constexpr double TICK_BASE = 10.0;
+constexpr float DEFAULT_SWEEP_FROM = 40.0F;
+constexpr float DEFAULT_SWEEP_TO = 95.0F;
+constexpr int DEFAULT_SWEEP_COUNT = 12;
+constexpr int DEFAULT_AXIS_COUNT = 6;
+constexpr int MAX_AXIS_COUNT = 25;
+constexpr int MAX_REPEATS = 50;
+constexpr float REGULAR_FONT_SIZE = 16.0F;
+constexpr float HEADER_FONT_SIZE = 14.0F;
+constexpr float PAGE_PADDING = 24.0F;
+constexpr float PROGRESS_HEIGHT = 8.0F;
+constexpr ImVec4 NOTE_COLOR{1.0F, 0.75F, 0.3F, 1.0F};
+constexpr float SETTINGS_COLUMNS_WIDTH = 360.0F;
+constexpr float MAX_PANEL_WIDTH = 440.0F;
+constexpr float MIN_CHART_HEIGHT = 200.0F;
+constexpr float SPLIT_CHART_SHARE = 0.55F;
+constexpr float CARD_CHROME_HEIGHT = 56.0F;
+constexpr double X_SPAN_EPSILON = 1e-9;
+constexpr double EMPTY_X_PADDING = 0.5;
+constexpr float LABEL_ALIGNMENT = 0.5F;
+constexpr float Y_LABEL_GAP = 6.0F;
+constexpr float X_LABEL_GAP = 4.0F;
+constexpr float PLOT_TOP_PADDING = 10.0F;
+constexpr float HOVER_RADIUS = 10.0F;
+constexpr float CURVE_STROKE = 2.0F;
+constexpr float POINT_RADIUS = 3.5F;
+constexpr float LEGEND_GAP = 12.0F;
+constexpr float LEGEND_MARKER_SIZE = 12.0F;
+constexpr float LEGEND_MARKER_ADVANCE = 14.0F;
+constexpr double DISPLAYED_SD_THRESHOLD = 0.0005;
+
 /** Real time spent measuring per frame. */
 constexpr double WORK_PER_FRAME_SECONDS = 0.012;
 
@@ -37,17 +70,17 @@ constexpr std::array<ImU32, 6> CURVE_COLOURS{
 
 void field(const char* label)
 {
-  ImGui::TextWrapped("%s", label);
+  SandboxText::wrappedText(label);
   ImGui::SetNextItemWidth(-1);
 }
 
 void nextButton(const char* label, float scale, ImFont* font)
 {
-  if (ImGui::GetItemRectMax().x + 6 * scale +
+  if (ImGui::GetItemRectMax().x + BUTTON_GAP * scale +
           SandboxPageUI::buttonWidth(label, scale, font) <=
       ImGui::GetWindowPos().x + ImGui::GetWindowContentRegionMax().x)
   {
-    ImGui::SameLine(0, 6 * scale);
+    ImGui::SameLine(0, BUTTON_GAP * scale);
   }
 }
 
@@ -68,7 +101,7 @@ int findParameter(const std::vector<DrillParameter>& parameters,
 double tickStep(double range, int ticks)
 {
   const double raw = range / std::max(1, ticks);
-  const double power = std::pow(10.0, std::floor(std::log10(raw)));
+  const double power = std::pow(TICK_BASE, std::floor(std::log10(raw)));
   for (const double step : {1.0, 2.0, 5.0, 10.0})
   {
     if (raw <= step * power)
@@ -76,7 +109,7 @@ double tickStep(double range, int ticks)
       return step * power;
     }
   }
-  return 10.0 * power;
+  return TICK_BASE * power;
 }
 }  // namespace
 
@@ -95,9 +128,9 @@ DrillMeasureScene::DrillMeasureScene(GUIView* guiView_ptr, Drill& drill_ref,
   if (parameters[static_cast<std::size_t>(sweep.parameter)].name ==
       std::string_view("Pace"))
   {
-    sweep.from = 40.0F;
-    sweep.to = 95.0F;
-    sweep.count = 12;
+    sweep.from = DEFAULT_SWEEP_FROM;
+    sweep.to = DEFAULT_SWEEP_TO;
+    sweep.count = DEFAULT_SWEEP_COUNT;
   }
   by.parameter = findParameter(parameters, "With the ball");
   if (by.parameter >= 0)
@@ -135,8 +168,8 @@ void DrillMeasureScene::onEnter()
         AssetPaths::file((std::string("assets/fonts/") + file).c_str()).c_str(),
         size, &config);
   };
-  regularFont = font("Manrope-Regular.ttf", 16);
-  boldFont = font("Manrope-Bold.ttf", 14);
+  regularFont = font("Manrope-Regular.ttf", REGULAR_FONT_SIZE);
+  boldFont = font("Manrope-Bold.ttf", HEADER_FONT_SIZE);
 }
 
 void DrillMeasureScene::update(float /*deltaTime*/)
@@ -165,7 +198,7 @@ void DrillMeasureScene::resetAxis(AxisSetup& axis)
   axis.from = parameter.min;
   axis.to = parameter.max;
   axis.count = parameter.choices.empty()
-                   ? 6
+                   ? DEFAULT_AXIS_COUNT
                    : static_cast<int>(headlessChoices(parameter).size());
 }
 
@@ -231,7 +264,7 @@ void DrillMeasureScene::render()
   ImGui::SetNextWindowSize(viewport->WorkSize);
   ImGui::PushStyleColor(ImGuiCol_WindowBg, Page::PAGE);
   ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding,
-                      ImVec2(24 * scale, 24 * scale));
+                      ImVec2(PAGE_PADDING * scale, PAGE_PADDING * scale));
   ImGui::PushStyleVar(ImGuiStyleVar_WindowBorderSize, 0);
   ImGui::PushStyleVar(ImGuiStyleVar_WindowRounding, 0);
   ImGui::Begin("##measure", nullptr,
@@ -243,7 +276,7 @@ void DrillMeasureScene::render()
   ImGui::PopStyleVar(3);
   ImGui::PopStyleColor();
   const ImVec2 available = ImGui::GetContentRegionAvail();
-  const float gutter = (6 * scale) + ImGui::GetStyle().ScrollbarSize;
+  const float gutter = (BUTTON_GAP * scale) + ImGui::GetStyle().ScrollbarSize;
   const bool columns = available.x >= 1000 * scale;
   const float panel =
       columns ? (available.x >= 1400 * scale ? 440.0F : 400.0F) * scale
@@ -255,7 +288,7 @@ void DrillMeasureScene::render()
                       ImGuiChildFlags_AlwaysUseWindowPadding);
     renderPanel(panel);
     ImGui::EndChild();
-    ImGui::SameLine(0, 6 * scale);
+    ImGui::SameLine(0, BUTTON_GAP * scale);
     const float width = ImGui::GetContentRegionAvail().x;
     ImGui::BeginChild("##measure_results", ImVec2(width, available.y),
                       ImGuiChildFlags_AlwaysUseWindowPadding);
@@ -332,7 +365,7 @@ void DrillMeasureScene::renderAxis(const char* label, AxisSetup& axis,
         ImGui::EndTable();
       }
       field("Points");
-      ImGui::SliderInt("##count", &axis.count, 2, 25);
+      ImGui::SliderInt("##count", &axis.count, 2, MAX_AXIS_COUNT);
     }
     else
     {
@@ -343,7 +376,7 @@ void DrillMeasureScene::renderAxis(const char* label, AxisSetup& axis,
                parameter.choices[static_cast<std::size_t>(value)];
       }
       ImGui::PushTextWrapPos(0);
-      ImGui::TextDisabled("All of: %s", all.c_str());
+      SandboxText::disabledText(std::format("All of: {}", all).c_str());
       ImGui::PopTextWrapPos();
     }
   }
@@ -390,32 +423,34 @@ void DrillMeasureScene::renderPanel(float width)
   ImGui::EndDisabled();
   if (ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenDisabled))
   {
-    ImGui::SetTooltip(
+    SandboxText::tooltipText(
         "Export every measured run, settings, seed and metrics to "
         "Documents/Player12 drill results. Available when the measure is "
         "finished or stopped.");
   }
   if (measure)
   {
-    ImGui::Text("%zu / %zu runs / %.2f s", measure->runsDone(),
-                measure->runsTotal(), measure->seconds());
+    ImGui::TextUnformatted(std::format("{} / {} runs / {:.2f} s",
+                                       measure->runsDone(),
+                                       measure->runsTotal(), measure->seconds())
+                               .c_str());
     const float share =
         measure->runsTotal() == 0
             ? 1
             : float(measure->runsDone()) / float(measure->runsTotal());
     ImGui::PushStyleColor(ImGuiCol_PlotHistogram, Page::LIME);
-    ImGui::ProgressBar(share, ImVec2(-1, 8 * scale), "");
+    ImGui::ProgressBar(share, ImVec2(-1, PROGRESS_HEIGHT * scale), "");
     ImGui::PopStyleColor();
     ImGui::PushTextWrapPos(0);
     for (const auto& note : measure->warnings())
     {
-      ImGui::TextColored(ImVec4(1, .75f, .3f, 1), "%s", note.c_str());
+      SandboxText::coloredText(NOTE_COLOR, note.c_str());
     }
     ImGui::PopTextWrapPos();
   }
   if (!exported.empty())
   {
-    ImGui::TextWrapped("%s", exported.c_str());
+    SandboxText::wrappedText(exported.c_str());
   }
   Page::endCard(scale);
   Page::beginCard("##measure_tabs", "CONTROLS", width, Page::MID, scale,
@@ -425,9 +460,9 @@ void DrillMeasureScene::renderPanel(float width)
   {
     if (tab > 0)
     {
-      ImGui::SameLine(0, 6 * scale);
+      ImGui::SameLine(0, BUTTON_GAP * scale);
     }
-    if (Page::button(tabs[tab], panelTab == tab, scale, boldFont))
+    if (Page::button(tabs.at(tab), panelTab == tab, scale, boldFont))
     {
       panelTab = tab;
     }
@@ -461,10 +496,10 @@ void DrillMeasureScene::renderPanel(float width)
       ImGui::TableNextColumn();
       ImGui::Dummy(ImVec2(0, 0));
       field("Repeats");
-      ImGui::SliderInt("##repeats", &repeats, 1, 50);
+      ImGui::SliderInt("##repeats", &repeats, 1, MAX_REPEATS);
       if (ImGui::IsItemHovered())
       {
-        ImGui::SetTooltip(
+        SandboxText::tooltipText(
             "Runs per point, on consecutive seeds from the first. Seeds affect "
             "the course and engine randomness.");
       }
@@ -477,11 +512,12 @@ void DrillMeasureScene::renderPanel(float width)
   }
   else
   {
-    ImGui::TextWrapped("%s", drill.summary());
-    ImGui::TextWrapped(
+    SandboxText::wrappedText(drill.summary());
+    SandboxText::wrappedText(
         "Shared with Watch. Sweep and comparison axes override these settings "
         "for each sample.");
-    drill.renderSettings(width >= 360 * scale ? 2 : 1, false, true);
+    drill.renderSettings(width >= SETTINGS_COLUMNS_WIDTH * scale ? 2 : 1, false,
+                         true);
   }
   ImGui::EndDisabled();
   Page::endCard(scale);
@@ -495,7 +531,7 @@ void DrillMeasureScene::renderResults(float width, float height)
                   scale, boldFont);
   if (!measure || measure->metricNames().empty())
   {
-    ImGui::TextWrapped("%s", measure ? "Measuring..."
+    SandboxText::wrappedText(measure ? "Measuring..."
                                      : "Choose a sweep and press Run to see "
                                        "measured curves and results.");
     Page::endCard(scale);
@@ -505,7 +541,7 @@ void DrillMeasureScene::renderResults(float width, float height)
   metric = std::clamp(metric, 0, int(names.size()) - 1);
   ImGui::TextUnformatted("Result");
   ImGui::SetNextItemWidth(
-      std::min(440 * scale, ImGui::GetContentRegionAvail().x));
+      std::min(MAX_PANEL_WIDTH * scale, ImGui::GetContentRegionAvail().x));
   if (SandboxPageUI::beginCombo("##metric", names[metric].c_str()))
   {
     for (std::size_t index = 0; index < names.size(); ++index)
@@ -519,9 +555,9 @@ void DrillMeasureScene::renderResults(float width, float height)
   }
   if (ImGui::IsItemHovered())
   {
-    ImGui::SetTooltip("%s", names[metric].c_str());
+    SandboxText::tooltipText(names[metric].c_str());
   }
-  ImGui::TextWrapped(
+  SandboxText::wrappedText(
       "Mean of the repeats; error bars span one standard deviation either "
       "side.");
   const std::array<const char*, 3> views{"Chart", "Table", "Both"};
@@ -529,9 +565,9 @@ void DrillMeasureScene::renderResults(float width, float height)
   {
     if (view > 0)
     {
-      ImGui::SameLine(0, 6 * scale);
+      ImGui::SameLine(0, BUTTON_GAP * scale);
     }
-    if (Page::button(views[view], resultView == view, scale, boldFont))
+    if (Page::button(views.at(view), resultView == view, scale, boldFont))
     {
       resultView = view;
     }
@@ -545,8 +581,9 @@ void DrillMeasureScene::renderResults(float width, float height)
                     scale, boldFont);
     renderChart(ImVec2(
         ImGui::GetContentRegionAvail().x,
-        std::max(200 * scale, (resultView == 2 ? available * .55f : available) -
-                                  (56 * scale))));
+        std::max(MIN_CHART_HEIGHT * scale,
+                 (resultView == 2 ? available * SPLIT_CHART_SHARE : available) -
+                     (CARD_CHROME_HEIGHT * scale))));
     Page::endCard(scale);
   }
   if (resultView != 0)
@@ -605,7 +642,7 @@ void DrillMeasureScene::renderChart(ImVec2 size)
   {
     return;
   }
-  if (xMax - xMin < 1e-9)
+  if (xMax - xMin < X_SPAN_EPSILON)
   {
     xMin -= 1.0;
     xMax += 1.0;
@@ -616,8 +653,8 @@ void DrillMeasureScene::renderChart(ImVec2 size)
   yMax += yPad;
   if (choiceX)
   {
-    xMin -= 0.5;
-    xMax += 0.5;
+    xMin -= EMPTY_X_PADDING;
+    xMax += EMPTY_X_PADDING;
   }
 
   // One curve per "by" value.
@@ -658,7 +695,7 @@ void DrillMeasureScene::renderChart(ImVec2 size)
   ImDrawList& draw = *ImGui::GetWindowDrawList();
   const float left = origin.x + (56.0F * scale);
   const float right = origin.x + size.x - (12.0F * scale);
-  const float top = origin.y + (10.0F * scale);
+  const float top = origin.y + (PLOT_TOP_PADDING * scale);
   const float bottom = origin.y + plotHeight - (34.0F * scale);
   const auto sx = [&](double x)
   {
@@ -682,8 +719,8 @@ void DrillMeasureScene::renderChart(ImVec2 size)
     const std::string label =
         std::format("{:g}", std::round(y / yStep) * yStep);
     const ImVec2 labelSize = ImGui::CalcTextSize(label.c_str());
-    draw.AddText(ImVec2(left - labelSize.x - (6.0F * scale),
-                        sy(y) - (labelSize.y * 0.5F)),
+    draw.AddText(ImVec2(left - labelSize.x - (Y_LABEL_GAP * scale),
+                        sy(y) - (labelSize.y * LABEL_ALIGNMENT)),
                  text, label.c_str());
   }
   // X ticks: every value (choices), or nice steps.
@@ -691,7 +728,8 @@ void DrillMeasureScene::renderChart(ImVec2 size)
   {
     draw.AddLine(ImVec2(sx(x), top), ImVec2(sx(x), bottom), grid);
     const ImVec2 labelSize = ImGui::CalcTextSize(label.c_str());
-    draw.AddText(ImVec2(sx(x) - (labelSize.x * 0.5F), bottom + (4.0F * scale)),
+    draw.AddText(ImVec2(sx(x) - (labelSize.x * LABEL_ALIGNMENT),
+                        bottom + (X_LABEL_GAP * scale)),
                  text, label.c_str());
   };
   if (choiceX)
@@ -704,24 +742,24 @@ void DrillMeasureScene::renderChart(ImVec2 size)
   else
   {
     const double xStep = tickStep(xMax - xMin, 8);
-    for (double x = std::ceil(xMin / xStep) * xStep; x <= xMax + 1e-9;
+    for (double x = std::ceil(xMin / xStep) * xStep; x <= xMax + X_SPAN_EPSILON;
          x += xStep)
     {
       xLabel(x, std::format("{:g}", std::round(x / xStep) * xStep));
     }
   }
   const ImVec2 axisSize = ImGui::CalcTextSize(spec.sweep.parameter.c_str());
-  draw.AddText(ImVec2((left + right - axisSize.x) * 0.5F,
-                      bottom + (4.0F * scale) + axisSize.y),
+  draw.AddText(ImVec2((left + right - axisSize.x) * LABEL_ALIGNMENT,
+                      bottom + (X_LABEL_GAP * scale) + axisSize.y),
                SandboxPageUI::MUTED, spec.sweep.parameter.c_str());
 
   // One curve per comparison value.
   const ImVec2 mouse = ImGui::GetIO().MousePos;
   const MeasurePoint* hovered = nullptr;
-  float hoveredDistance = 10.0F * scale;
+  float hoveredDistance = HOVER_RADIUS * scale;
   for (std::size_t group = 0; group < groups.size(); ++group)
   {
-    const ImU32 colour = CURVE_COLOURS[group % CURVE_COLOURS.size()];
+    const ImU32 colour = CURVE_COLOURS.at(group % CURVE_COLOURS.size());
     std::vector<const MeasurePoint*> curve;
     for (const MeasurePoint& point : points)
     {
@@ -740,7 +778,7 @@ void DrillMeasureScene::renderChart(ImVec2 size)
       {
         const MeasureStat& before = curve[index - 1]->stats.at(name);
         draw.AddLine(ImVec2(sx(xOf(curve[index - 1]->x)), sy(before.mean)), at,
-                     colour, 2.0F * scale);
+                     colour, CURVE_STROKE * scale);
       }
       if (stat.sd > 0.0)
       {
@@ -748,7 +786,7 @@ void DrillMeasureScene::renderChart(ImVec2 size)
                      ImVec2(at.x, sy(stat.mean + stat.sd)), colour,
                      1.0F * scale);
       }
-      draw.AddCircleFilled(at, 3.5F * scale, colour);
+      draw.AddCircleFilled(at, POINT_RADIUS * scale, colour);
       const float distance = std::hypot(mouse.x - at.x, mouse.y - at.y);
       if (distance < hoveredDistance)
       {
@@ -773,7 +811,7 @@ void DrillMeasureScene::renderChart(ImVec2 size)
         "finished",
         name, stat.mean, stat.sd, stat.min, stat.max, hovered->completed,
         hovered->runs);
-    ImGui::SetTooltip("%s", tip.c_str());
+    SandboxText::tooltipText(tip.c_str());
   }
   float used = 0;
   if (spec.by)
@@ -785,7 +823,7 @@ void DrillMeasureScene::renderChart(ImVec2 size)
       const float width = ImGui::CalcTextSize(label.c_str()).x + (30 * scale);
       if (used > 0 && used + width <= size.x)
       {
-        ImGui::SameLine(0, 12 * scale);
+        ImGui::SameLine(0, LEGEND_GAP * scale);
       }
       else
       {
@@ -793,9 +831,11 @@ void DrillMeasureScene::renderChart(ImVec2 size)
       }
       const ImVec2 pos = ImGui::GetCursorScreenPos();
       draw.AddRectFilled(ImVec2(pos.x, pos.y + (4 * scale)),
-                         ImVec2(pos.x + (12 * scale), pos.y + (12 * scale)),
-                         CURVE_COLOURS[group % CURVE_COLOURS.size()]);
-      ImGui::Dummy(ImVec2(14 * scale, ImGui::GetTextLineHeight()));
+                         ImVec2(pos.x + (LEGEND_MARKER_SIZE * scale),
+                                pos.y + (LEGEND_MARKER_SIZE * scale)),
+                         CURVE_COLOURS.at(group % CURVE_COLOURS.size()));
+      ImGui::Dummy(
+          ImVec2(LEGEND_MARKER_ADVANCE * scale, ImGui::GetTextLineHeight()));
       ImGui::SameLine(0, 4 * scale);
       ImGui::TextUnformatted(label.c_str());
       used += width;
@@ -827,7 +867,7 @@ void DrillMeasureScene::renderTable(ImVec2 size)
   {
     ImGui::TableSetupColumn(name.c_str());
   }
-  ImGui::PushFont(boldFont, 14);
+  ImGui::PushFont(boldFont, HEADER_FONT_SIZE);
   ImGui::TableHeadersRow();
   ImGui::PopFont();
   for (const MeasurePoint& point : measure->points())
@@ -843,24 +883,29 @@ void DrillMeasureScene::renderTable(ImVec2 size)
           measure->valueText(spec.by->parameter, point.by).c_str());
     }
     ImGui::TableNextColumn();
-    ImGui::Text("%d / %d", point.completed, point.runs);
+    ImGui::TextUnformatted(
+        std::format("{} / {}", point.completed, point.runs).c_str());
     for (std::size_t index = 0; index < names.size(); ++index)
     {
       ImGui::TableNextColumn();
       const auto found = point.stats.find(names[index]);
       if (found == point.stats.end())
       {
-        ImGui::TextDisabled("-");
+        SandboxText::disabledText("-");
         continue;
       }
       const MeasureStat& stat = found->second;
-      if (stat.count > 1 && stat.sd >= 0.0005)
+      if (stat.count > 1 && stat.sd >= DISPLAYED_SD_THRESHOLD)
       {
-        ImGui::Text("%.2f ± %.2f", stat.mean, stat.sd);
+        ImGui::TextUnformatted(std::format("{:.2f} ± {:.2f}",
+                                           static_cast<double>(stat.mean),
+                                           static_cast<double>(stat.sd))
+                                   .c_str());
       }
       else
       {
-        ImGui::Text("%.2f", stat.mean);
+        ImGui::TextUnformatted(
+            std::format("{:.2f}", static_cast<double>(stat.mean)).c_str());
       }
       if (static_cast<int>(index) == metric)
       {
