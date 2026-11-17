@@ -24,6 +24,10 @@ using enum Scope;
 using enum Unit;
 
 constexpr std::optional<Band> NO_BAND = std::nullopt;
+constexpr int UNKNOWN_ENUM_ERROR = 501;
+constexpr int UNSUPPORTED_SCHEMA_ERROR = 502;
+constexpr int UNKNOWN_UNIT_ERROR = 503;
+constexpr double INTEGER_DISPLAY_THRESHOLD = 1000.0;
 constexpr std::string_view NOT_EXPOSED =
     "not measurable yet: the engine exposes no kinematic/positional summary";
 
@@ -407,7 +411,8 @@ Enum enumFromName(std::string_view name,
     }
   }
   throw nlohmann::json::other_error::create(
-      501, std::format("unknown enum value '{}'", name), nullptr);
+      UNKNOWN_ENUM_ERROR, std::format("unknown enum value '{}'", name),
+      nullptr);
 }
 
 constexpr std::array<std::string_view, 5> VERDICT_NAMES = {
@@ -659,7 +664,7 @@ std::string formatValue(double value, Unit unit)
     return std::format("{:.1f}%", value * 100.0);
   }
   const double magnitude = std::abs(value);
-  if (magnitude >= 1000.0)
+  if (magnitude >= INTEGER_DISPLAY_THRESHOLD)
   {
     return std::format("{:.0f}", value);
   }
@@ -730,7 +735,8 @@ LabReport reportFromJson(const nlohmann::json& json)
   if (json.at("schema_version").get<int>() != LabReport::SCHEMA_VERSION)
   {
     throw nlohmann::json::other_error::create(
-        502, "unsupported lab report schema version", nullptr);
+        UNSUPPORTED_SCHEMA_ERROR, "unsupported lab report schema version",
+        nullptr);
   }
   LabReport report;
   report.mode = json.at("mode").get<std::string>();
@@ -756,7 +762,8 @@ LabReport reportFromJson(const nlohmann::json& json)
         unitFromName(item.at("unit").get<std::string>());
     if (!unit)
     {
-      throw nlohmann::json::other_error::create(503, "unknown unit", nullptr);
+      throw nlohmann::json::other_error::create(UNKNOWN_UNIT_ERROR,
+                                                "unknown unit", nullptr);
     }
     row.unit = *unit;
     row.note = item.at("note").get<std::string>();

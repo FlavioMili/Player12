@@ -44,7 +44,14 @@ class TrainingSessionScene : public GUIScene
   void stepRun(int steps);
   void renderPanel(float width);
   void renderResults(TrainingDrill& drill);
-  void renderPitch(float width, float height);
+  void renderMetricChoice(const std::vector<TrainingColumn>& columns, int slot);
+  void renderMetricChoices(const std::vector<TrainingColumn>& columns,
+                           int metricCount);
+  void renderResultHeaders(const std::vector<TrainingColumn>& columns,
+                           int metricCount);
+  [[nodiscard]] std::vector<std::size_t> resultOrder(
+      const std::vector<TrainingRow>& rows) const;
+  void renderPitch(ImVec2 area);
 
   std::unique_ptr<TrainingSession> session;
   std::string club;

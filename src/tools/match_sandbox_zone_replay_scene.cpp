@@ -22,6 +22,17 @@
 #include "tools/match_sandbox_page_ui.h"
 #include "tools/match_sandbox_typography.h"
 
+namespace
+{
+constexpr float REGULAR_FONT_SIZE = 16.0F;
+constexpr float HEADER_FONT_SIZE = 14.0F;
+constexpr float PAGE_PADDING = 24.0F;
+constexpr float PANEL_GAP = 6.0F;
+constexpr float MAX_PANEL_WIDTH = 440.0F;
+constexpr float PANEL_WIDTH_SHARE = 0.45F;
+constexpr int PAGE_STYLE_COUNT = 3;
+}  // namespace
+
 ZoneReplayScene::ZoneReplayScene(GUIView* guiView_ptr,
                                  ZoneRecording recording_value)
     : GUIScene(guiView_ptr), recording(std::move(recording_value))
@@ -52,8 +63,8 @@ void ZoneReplayScene::onEnter()
         AssetPaths::file((std::string("assets/fonts/") + file).c_str()).c_str(),
         size, &config);
   };
-  regularFont = font("Manrope-Regular.ttf", 16);
-  boldFont = font("Manrope-Bold.ttf", 14);
+  regularFont = font("Manrope-Regular.ttf", REGULAR_FONT_SIZE);
+  boldFont = font("Manrope-Bold.ttf", HEADER_FONT_SIZE);
   // Rebuilt and played through on the current engine; then reviewed.
   replay = ZoneRecordings::replay(recording,
                                   guiView->getController().getStatsConfig());
@@ -77,7 +88,7 @@ void ZoneReplayScene::render()
   ImGui::SetNextWindowSize(viewport->WorkSize);
   ImGui::PushStyleColor(ImGuiCol_WindowBg, Page::PAGE);
   ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding,
-                      ImVec2(24 * scale, 24 * scale));
+                      ImVec2(PAGE_PADDING * scale, PAGE_PADDING * scale));
   ImGui::PushStyleVar(ImGuiStyleVar_WindowBorderSize, 0);
   ImGui::PushStyleVar(ImGuiStyleVar_WindowRounding, 0);
   ImGui::Begin("##zone_replay", nullptr,
@@ -86,18 +97,19 @@ void ZoneReplayScene::render()
                    ImGuiWindowFlags_NoBringToFrontOnFocus |
                    ImGuiWindowFlags_NoScrollbar |
                    ImGuiWindowFlags_NoScrollWithMouse);
-  ImGui::PopStyleVar(3);
+  ImGui::PopStyleVar(PAGE_STYLE_COUNT);
   ImGui::PopStyleColor();
   const ImVec2 available = ImGui::GetContentRegionAvail();
-  const float gutter = (6 * scale) + ImGui::GetStyle().ScrollbarSize;
-  const float panel = std::min(440 * scale, available.x * 0.45F);
+  const float gutter = (PANEL_GAP * scale) + ImGui::GetStyle().ScrollbarSize;
+  const float panel =
+      std::min(MAX_PANEL_WIDTH * scale, available.x * PANEL_WIDTH_SHARE);
   ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(0, 0));
   ImGui::BeginChild("##zone_replay_controls",
                     ImVec2(panel + gutter, available.y),
                     ImGuiChildFlags_AlwaysUseWindowPadding);
   renderPanel(panel);
   ImGui::EndChild();
-  ImGui::SameLine(0, 6 * scale);
+  ImGui::SameLine(0, PANEL_GAP * scale);
   ImGui::BeginChild("##zone_replay_pitch", ImVec2(0, available.y));
   if (replay && replay->run)
   {

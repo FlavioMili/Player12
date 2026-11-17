@@ -12,14 +12,26 @@
 
 #include "gui/widgets/theme.h"
 #include "tools/match_sandbox_setup.h"
+#include "tools/match_sandbox_text.h"
 
 namespace SandboxPickers
 {
 namespace
 {
+constexpr ImVec4 SELECTED_TEXT{0.608F, 0.816F, 0.420F, 1.0F};
+constexpr float OPTION_HEIGHT = 32.0F;
+constexpr float LABEL_COLUMN_WEIGHT = 2.0F;
+
 template <typename Version>
-void versionRow(const char* label, Version& current, Version aardvark,
-                Version binturong, const char* description)
+struct VersionChoices
+{
+  Version aardvark{};
+  Version binturong{};
+};
+
+template <typename Version>
+void versionRow(const char* label, Version& current,
+                VersionChoices<Version> choices, const char* description)
 {
   ImGui::PushID(label);
   ImGui::TableNextRow();
@@ -28,7 +40,7 @@ void versionRow(const char* label, Version& current, Version aardvark,
   ImGui::TextUnformatted(label);
   if (ImGui::IsItemHovered())
   {
-    ImGui::SetTooltip("%s", description);
+    SandboxText::tooltipText(description);
   }
   const auto option = [&](const char* name, Version version)
   {
@@ -36,11 +48,10 @@ void versionRow(const char* label, Version& current, Version aardvark,
     const bool selected = current == version;
     if (selected)
     {
-      ImGui::PushStyleColor(ImGuiCol_Text,
-                            ImVec4(0.608F, 0.816F, 0.420F, 1.0F));
+      ImGui::PushStyleColor(ImGuiCol_Text, SELECTED_TEXT);
     }
     if (ImGui::Selectable(name, selected, 0,
-                          ImVec2(0.0F, 32.0F * Theme::scale())))
+                          ImVec2(0.0F, OPTION_HEIGHT * Theme::scale())))
     {
       current = version;
     }
@@ -49,8 +60,8 @@ void versionRow(const char* label, Version& current, Version aardvark,
       ImGui::PopStyleColor();
     }
   };
-  option("Aardvark", aardvark);
-  option("Binturong", binturong);
+  option("Aardvark", choices.aardvark);
+  option("Binturong", choices.binturong);
   ImGui::PopID();
 }
 }  // namespace
@@ -63,7 +74,8 @@ void engineVersionsTable()
   {
     return;
   }
-  ImGui::TableSetupColumn("Setting", ImGuiTableColumnFlags_WidthStretch, 2.0F);
+  ImGui::TableSetupColumn("Setting", ImGuiTableColumnFlags_WidthStretch,
+                          LABEL_COLUMN_WEIGHT);
   ImGui::TableSetupColumn("Aardvark", ImGuiTableColumnFlags_WidthStretch, 1.0F);
   ImGui::TableSetupColumn("Binturong", ImGuiTableColumnFlags_WidthStretch,
                           1.0F);
@@ -71,30 +83,37 @@ void engineVersionsTable()
   for (std::size_t side = 0; side < 2; ++side)
   {
     versionRow(side == 0 ? "Home brain" : "Away brain",
-               sandboxBrains().at(side), BrainId::AARDVARK, BrainId::BINTURONG,
+               sandboxBrains().at(side),
+               {.aardvark = BrainId::AARDVARK, .binturong = BrainId::BINTURONG},
                "Player decision-making.");
     versionRow(side == 0 ? "Home body" : "Away body", sandboxBodies().at(side),
-               BodyId::AARDVARK, BodyId::BINTURONG,
+               {.aardvark = BodyId::AARDVARK, .binturong = BodyId::BINTURONG},
                "Movement, fitness, kicking, first touch and goalkeeping.");
-    versionRow(side == 0 ? "Home manager" : "Away manager",
-               sandboxManagers().at(side), ManagerId::AARDVARK,
-               ManagerId::BINTURONG,
-               "AI touchline decisions, substitutions and shouts.");
+    versionRow(
+        side == 0 ? "Home manager" : "Away manager", sandboxManagers().at(side),
+        {.aardvark = ManagerId::AARDVARK, .binturong = ManagerId::BINTURONG},
+        "AI touchline decisions, substitutions and shouts.");
   }
-  versionRow("Handshake", sandboxHandshake(), HandshakeId::AARDVARK,
-             HandshakeId::BINTURONG,
-             "How game attributes become match inputs.");
-  versionRow("Referee", sandboxReferee(), RefereeId::AARDVARK,
-             RefereeId::BINTURONG,
-             "Fouls, cards, advantage, offside and added time.");
-  versionRow("Ball physics", sandboxBallPhysics(), BallPhysicsId::AARDVARK,
-             BallPhysicsId::BINTURONG,
-             "Flight, drag, bounces, rolling and swerve.");
-  versionRow("Out of play", sandboxOutOfPlay(), OutOfPlayId::AARDVARK,
-             OutOfPlayId::BINTURONG, "Goals, boundaries and restart rules.");
   versionRow(
-      "Possession", sandboxPossession(), PossessionId::AARDVARK,
-      PossessionId::BINTURONG,
+      "Handshake", sandboxHandshake(),
+      {.aardvark = HandshakeId::AARDVARK, .binturong = HandshakeId::BINTURONG},
+      "How game attributes become match inputs.");
+  versionRow(
+      "Referee", sandboxReferee(),
+      {.aardvark = RefereeId::AARDVARK, .binturong = RefereeId::BINTURONG},
+      "Fouls, cards, advantage, offside and added time.");
+  versionRow("Ball physics", sandboxBallPhysics(),
+             {.aardvark = BallPhysicsId::AARDVARK,
+              .binturong = BallPhysicsId::BINTURONG},
+             "Flight, drag, bounces, rolling and swerve.");
+  versionRow(
+      "Out of play", sandboxOutOfPlay(),
+      {.aardvark = OutOfPlayId::AARDVARK, .binturong = OutOfPlayId::BINTURONG},
+      "Goals, boundaries and restart rules.");
+  versionRow(
+      "Possession", sandboxPossession(),
+      {.aardvark = PossessionId::AARDVARK,
+       .binturong = PossessionId::BINTURONG},
       "Possession system, independent of the selected brains and bodies.");
   ImGui::EndTable();
 }

@@ -14,6 +14,7 @@
 #include <format>
 #include <limits>
 #include <numbers>
+#include <ranges>
 #include <string>
 #include <variant>
 #include <vector>
@@ -26,9 +27,25 @@
 #include "tools/match_sandbox_names.h"
 #include "tools/match_sandbox_rewind.h"
 #include "tools/match_sandbox_scenario.h"
+#include "tools/match_sandbox_text.h"
 
 namespace
 {
+constexpr ImVec4 SITUATION_COLOR{0.70F, 0.72F, 0.76F, 1.0F};
+constexpr ImVec4 LOCATION_COLOR{0.45F, 0.80F, 0.85F, 1.0F};
+constexpr ImVec4 ATTRIBUTE_COLOR{0.45F, 0.65F, 1.00F, 1.0F};
+constexpr ImVec4 SLOT_ROLE_COLOR{0.80F, 0.55F, 1.00F, 1.0F};
+constexpr ImVec4 NATURAL_POSITION_COLOR{1.00F, 0.55F, 0.80F, 1.0F};
+constexpr ImVec4 INSTRUCTION_COLOR{1.00F, 0.75F, 0.35F, 1.0F};
+constexpr ImVec4 GAME_STATE_COLOR{0.95F, 0.95F, 0.50F, 1.0F};
+constexpr ImVec4 MORALE_COLOR{0.50F, 0.90F, 0.55F, 1.0F};
+constexpr ImVec4 NOISE_COLOR{1.00F, 0.45F, 0.45F, 1.0F};
+constexpr float PERCENT = 100.0F;
+constexpr int SECONDS_PER_MINUTE = 60;
+constexpr float BREAKDOWN_RESIDUAL_TOLERANCE = 1e-3F;
+constexpr int MAX_DISPLAYED_DUELS = 40;
+constexpr float DECISION_LIST_HEIGHT = 130.0F;
+
 const char* sourceName(TermSource source)
 {
   switch (source)
@@ -62,23 +79,23 @@ ImVec4 sourceColor(TermSource source)
   switch (source)
   {
     case TermSource::SITUATION:
-      return {0.70F, 0.72F, 0.76F, 1.0F};
+      return SITUATION_COLOR;
     case TermSource::LOCATION:
-      return {0.45F, 0.80F, 0.85F, 1.0F};
+      return LOCATION_COLOR;
     case TermSource::ATTRIBUTE:
-      return {0.45F, 0.65F, 1.00F, 1.0F};
+      return ATTRIBUTE_COLOR;
     case TermSource::SLOT_ROLE:
-      return {0.80F, 0.55F, 1.00F, 1.0F};
+      return SLOT_ROLE_COLOR;
     case TermSource::NATURAL_POSITION:
-      return {1.00F, 0.55F, 0.80F, 1.0F};
+      return NATURAL_POSITION_COLOR;
     case TermSource::INSTRUCTION:
-      return {1.00F, 0.75F, 0.35F, 1.0F};
+      return INSTRUCTION_COLOR;
     case TermSource::GAME_STATE:
-      return {0.95F, 0.95F, 0.50F, 1.0F};
+      return GAME_STATE_COLOR;
     case TermSource::MORALE:
-      return {0.50F, 0.90F, 0.55F, 1.0F};
+      return MORALE_COLOR;
     case TermSource::NOISE:
-      return {1.00F, 0.45F, 0.45F, 1.0F};
+      return NOISE_COLOR;
     case TermSource::COUNT:
       break;
   }
@@ -107,9 +124,10 @@ const char* exclusionName(PassExclusion reason)
 
 std::string clock(float minute)
 {
-  const int total =
-      static_cast<int>(std::floor(std::max(0.0F, minute) * 60.0F));
-  return std::format("{:02}:{:02}", total / 60, total % 60);
+  const int total = static_cast<int>(std::floor(
+      std::max(0.0F, minute) * static_cast<float>(SECONDS_PER_MINUTE)));
+  return std::format("{:02}:{:02}", total / SECONDS_PER_MINUTE,
+                     total % SECONDS_PER_MINUTE);
 }
 
 std::string signedValue(float value) { return std::format("{:+.3f}", value); }
@@ -126,21 +144,23 @@ void renderBreakdown(const ScoreBreakdown& score, const char* id)
   std::array<int, SOURCES> counts{};
   for (const ScoreTerm& term : score.terms)
   {
-    sums[static_cast<std::size_t>(term.source)] += term.value;
-    ++counts[static_cast<std::size_t>(term.source)];
+    sums.at(static_cast<std::size_t>(term.source)) += term.value;
+    ++counts.at(static_cast<std::size_t>(term.source));
   }
   for (std::size_t source = 0; source < SOURCES; ++source)
   {
-    if (counts[source] == 0)
+    if (counts.at(source) == 0)
     {
       continue;
     }
     const auto kind = static_cast<TermSource>(source);
     ImGui::PushID(static_cast<int>(source));
     ImGui::PushStyleColor(ImGuiCol_Text, sourceColor(kind));
-    const bool open = ImGui::TreeNodeEx(
-        "source", ImGuiTreeNodeFlags_SpanAvailWidth, "%-17s %s",
-        sourceName(kind), signedValue(sums[source]).c_str());
+    const bool open = SandboxText::treeNode(
+        "source",
+        std::format("{:<17} {}", sourceName(kind), signedValue(sums.at(source)))
+            .c_str(),
+        ImGuiTreeNodeFlags_SpanAvailWidth);
     ImGui::PopStyleColor();
     if (open)
     {
@@ -148,20 +168,24 @@ void renderBreakdown(const ScoreBreakdown& score, const char* id)
       {
         if (term.source == kind)
         {
-          ImGui::BulletText("%s  %s", signedValue(term.value).c_str(),
-                            term.name);
+          SandboxText::bulletText(
+              std::format("{}  {}", signedValue(term.value), term.name)
+                  .c_str());
         }
       }
       ImGui::TreePop();
     }
     ImGui::PopID();
   }
-  if (const float residual = score.residual(); std::abs(residual) > 1e-3F)
+  if (const float residual = score.residual();
+      std::abs(residual) > BREAKDOWN_RESIDUAL_TOLERANCE)
   {
-    ImGui::TextColored(Theme::palette().warning,
-                       "Unexplained %s: the breakdown no longer matches the "
-                       "engine's formula.",
-                       signedValue(residual).c_str());
+    SandboxText::coloredText(
+        Theme::palette().warning,
+        std::format("Unexplained {}: the breakdown no longer matches the "
+                    "engine's formula.",
+                    signedValue(residual))
+            .c_str());
   }
   ImGui::PopID();
 }
@@ -172,7 +196,7 @@ constexpr std::array<const char*, 4> OPTION_NAMES{"Pass", "Shot", "Carry",
 /** The option's score in force: before noise plus its noise. */
 float withNoise(const MatchDecisionDetail& detail, std::size_t option)
 {
-  return detail.options[option].total + detail.noise[option];
+  return detail.options.at(option).total + detail.noise.at(option);
 }
 
 /** How far the winner was ahead of the next best option. */
@@ -236,34 +260,8 @@ std::size_t winnerWithoutNoise(const MatchDecisionDetail& detail)
   }
   return 0;
 }
-}  // namespace
-
-void DebugInspector::ensureDetail(const SandboxRecorder& recorder,
-                                  const MatchEngine& engine)
+void renderDecisionOptions(const MatchDecisionDetail& detail)
 {
-  detail_session.ensure(recorder, engine.getSimulatedSteps());
-  ImGui::TextDisabled(
-      "Full detail rebuilt from tick %llu to %llu (from the saved copy "
-      "before this moment).",
-      static_cast<unsigned long long>(detail_session.from()),
-      static_cast<unsigned long long>(engine.getSimulatedSteps()));
-  if (const auto diverged = detail_session.divergedAt())
-  {
-    ImGui::TextColored(Theme::palette().negative,
-                       "The rebuild differs from the match from tick %llu: "
-                       "this detail is not what was played.",
-                       static_cast<unsigned long long>(*diverged));
-  }
-}
-
-void DebugInspector::renderDecisionTree(
-    const SandboxRecorder& recorder,
-    const DetailRecorder::At<MatchDecisionDetail>& at)
-{
-  const MatchDecisionDetail& detail = at.detail;
-  const auto name = [&recorder](PlayerID id)
-  { return recorder.playerName(id); };
-
   // Options: the score before noise, the noise and the result.
   ImGui::SetNextItemOpen(true, ImGuiCond_Appearing);
   if (ImGui::TreeNode("Options"))
@@ -271,11 +269,12 @@ void DebugInspector::renderDecisionTree(
     const std::size_t plain = winnerWithoutNoise(detail);
     for (std::size_t option = 0; option < detail.options.size(); ++option)
     {
-      const ScoreBreakdown& score = detail.options[option];
+      const ScoreBreakdown& score = detail.options.at(option);
       ImGui::PushID(static_cast<int>(option));
       if (!std::isfinite(score.total))
       {
-        ImGui::BulletText("%s  not available", OPTION_NAMES[option]);
+        SandboxText::bulletText(
+            std::format("{}  not available", OPTION_NAMES.at(option)).c_str());
         ImGui::PopID();
         continue;
       }
@@ -284,17 +283,21 @@ void DebugInspector::renderDecisionTree(
       {
         ImGui::SetNextItemOpen(true, ImGuiCond_Appearing);
       }
-      const bool open = ImGui::TreeNodeEx(
-          "option", ImGuiTreeNodeFlags_SpanAvailWidth,
-          "%s  %.3f  %s noise  =  %.3f%s%s", OPTION_NAMES[option], score.total,
-          signedValue(detail.noise[option]).c_str(), withNoise(detail, option),
-          option == optionIndex(detail.chosen) ? "   CHOSEN" : "",
-          option == plain && plain != optionIndex(detail.chosen)
-              ? "   (best before noise)"
-              : "");
+      const bool open = SandboxText::treeNode(
+          "option",
+          std::format("{}  {:.3f}  {} noise  =  {:.3f}{}{}",
+                      OPTION_NAMES.at(option), static_cast<double>(score.total),
+                      signedValue(detail.noise.at(option)),
+                      static_cast<double>(withNoise(detail, option)),
+                      option == optionIndex(detail.chosen) ? "   CHOSEN" : "",
+                      option == plain && plain != optionIndex(detail.chosen)
+                          ? "   (best before noise)"
+                          : "")
+              .c_str(),
+          ImGuiTreeNodeFlags_SpanAvailWidth);
       if (open)
       {
-        renderBreakdown(score, OPTION_NAMES[option]);
+        renderBreakdown(score, OPTION_NAMES.at(option));
         ImGui::TreePop();
       }
       ImGui::PopID();
@@ -302,16 +305,25 @@ void DebugInspector::renderDecisionTree(
     ImGui::TreePop();
   }
 
-  if (ImGui::TreeNode("noise",
-                      "Noise scale  %.3f  (the largest noise either way)",
-                      detail.noiseScale.total))
+  if (SandboxText::treeNode(
+          "noise",
+          std::format("Noise scale  {:.3f}  (the largest noise either way)",
+                      static_cast<double>(detail.noiseScale.total))
+              .c_str()))
   {
     renderBreakdown(detail.noiseScale, "noise");
     ImGui::TreePop();
   }
+}
 
+void renderPassCandidates(const SandboxRecorder& recorder,
+                          const MatchDecisionDetail& detail)
+{
+  const auto name = [&recorder](PlayerID id)
+  { return recorder.playerName(id); };
   // Every team-mate he looked at, best first; those left out at the end.
   std::vector<const PassCandidateDetail*> candidates;
+  candidates.reserve(detail.candidates.size());
   for (const PassCandidateDetail& candidate : detail.candidates)
   {
     candidates.push_back(&candidate);
@@ -327,35 +339,53 @@ void DebugInspector::renderDecisionTree(
         }
         return left->utility.total > right->utility.total;
       });
-  if (ImGui::TreeNode("candidates", "Pass candidates (%zu)", candidates.size()))
+  if (SandboxText::treeNode(
+          "candidates",
+          std::format("Pass candidates ({})", candidates.size()).c_str()))
   {
     for (const PassCandidateDetail* candidate : candidates)
     {
       ImGui::PushID(static_cast<int>(candidate->receiver));
       if (candidate->excluded != PassExclusion::NONE)
       {
-        ImGui::BulletText(
-            "%s  left out: %s (%.0f m)", name(candidate->receiver).c_str(),
-            exclusionName(candidate->excluded), candidate->distanceMetres);
+        SandboxText::bulletText(
+            std::format("{}  left out: {} ({:.0f} m)",
+                        name(candidate->receiver),
+                        exclusionName(candidate->excluded),
+                        static_cast<double>(candidate->distanceMetres))
+                .c_str());
         ImGui::PopID();
         continue;
       }
-      if (ImGui::TreeNodeEx(
-              "candidate", ImGuiTreeNodeFlags_SpanAvailWidth,
-              "%s  utility %.3f  ·  completion %.0f%%  ·  %s%s  ·  %.0f m",
-              name(candidate->receiver).c_str(), candidate->utility.total,
-              candidate->completion.total * 100.0F,
-              SandboxNames::passIntent(candidate->intent),
-              candidate->lofted ? ", lofted" : "", candidate->distanceMetres))
+      if (SandboxText::treeNode(
+              "candidate",
+              std::format(
+                  "{}  utility {:.3f}  ·  completion {:.0f}%  ·  {}{}  ·  "
+                  "{:.0f} m",
+                  name(candidate->receiver),
+                  static_cast<double>(candidate->utility.total),
+                  static_cast<double>(candidate->completion.total * PERCENT),
+                  SandboxNames::passIntent(candidate->intent),
+                  candidate->lofted ? ", lofted" : "",
+                  static_cast<double>(candidate->distanceMetres))
+                  .c_str(),
+              ImGuiTreeNodeFlags_SpanAvailWidth))
       {
-        if (ImGui::TreeNode("utility", "Utility  %.3f",
-                            candidate->utility.total))
+        if (SandboxText::treeNode(
+                "utility",
+                std::format("Utility  {:.3f}",
+                            static_cast<double>(candidate->utility.total))
+                    .c_str()))
         {
           renderBreakdown(candidate->utility, "utility");
           ImGui::TreePop();
         }
-        if (ImGui::TreeNode("completion", "Completion estimate  %.0f%%",
-                            candidate->completion.total * 100.0F))
+        if (SandboxText::treeNode(
+                "completion",
+                std::format(
+                    "Completion estimate  {:.0f}%",
+                    static_cast<double>(candidate->completion.total * PERCENT))
+                    .c_str()))
         {
           renderBreakdown(candidate->completion, "completion");
           ImGui::TreePop();
@@ -366,7 +396,12 @@ void DebugInspector::renderDecisionTree(
     }
     ImGui::TreePop();
   }
+}
 
+void renderDecisionOutcome(const SandboxRecorder& recorder,
+                           const DetailRecorder::At<MatchDecisionDetail>& at)
+{
+  const MatchDecisionDetail& detail = at.detail;
   // What he did and what came of it: the log at and after this tick.
   ImGui::SetNextItemOpen(true, ImGuiCond_Appearing);
   if (ImGui::TreeNode("Action and outcome"))
@@ -394,8 +429,9 @@ void DebugInspector::renderDecisionTree(
       {
         continue;
       }
-      ImGui::BulletText("%s  %s", clock(entry->minute).c_str(),
-                        described.detail.c_str());
+      SandboxText::bulletText(
+          std::format("{}  {}", clock(entry->minute), described.detail)
+              .c_str());
       ++shown;
       if (possession)
       {
@@ -404,10 +440,41 @@ void DebugInspector::renderDecisionTree(
     }
     if (shown == 0)
     {
-      ImGui::TextDisabled("Nothing recorded yet.");
+      SandboxText::disabledText("Nothing recorded yet.");
     }
     ImGui::TreePop();
   }
+}
+
+}  // namespace
+
+void DebugInspector::ensureDetail(const SandboxRecorder& recorder,
+                                  const MatchEngine& engine)
+{
+  detail_session.ensure(recorder, engine.getSimulatedSteps());
+  SandboxText::disabledText(
+      std::format("Full detail rebuilt from tick {} to {} (from the saved copy "
+                  "before this moment).",
+                  detail_session.from(), engine.getSimulatedSteps())
+          .c_str());
+  if (const auto diverged = detail_session.divergedAt())
+  {
+    SandboxText::coloredText(
+        Theme::palette().negative,
+        std::format("The rebuild differs from the match from tick {}: "
+                    "this detail is not what was played.",
+                    *diverged)
+            .c_str());
+  }
+}
+
+void DebugInspector::renderDecisionTree(
+    const SandboxRecorder& recorder,
+    const DetailRecorder::At<MatchDecisionDetail>& at)
+{
+  renderDecisionOptions(at.detail);
+  renderPassCandidates(recorder, at.detail);
+  renderDecisionOutcome(recorder, at);
 }
 
 void DebugInspector::renderDecision(const SandboxRecorder& recorder,
@@ -417,44 +484,46 @@ void DebugInspector::renderDecision(const SandboxRecorder& recorder,
   const auto& decisions = detail_session.detail().decisions;
   ImGui::Checkbox("Only the selected player", &decisions_of_selected);
   ImGui::SameLine();
-  ImGui::TextDisabled("(%zu decisions in this stretch)", decisions.size());
+  SandboxText::disabledText(
+      std::format("({} decisions in this stretch)", decisions.size()).c_str());
 
   // The list, latest first; the latest is opened until one is chosen.
   const float scale = Theme::scale();
   const DetailRecorder::At<MatchDecisionDetail>* opened = nullptr;
   const DetailRecorder::At<MatchDecisionDetail>* latest = nullptr;
-  if (ImGui::BeginChild("##decisions", ImVec2(0.0F, 130.0F * scale),
+  if (ImGui::BeginChild("##decisions",
+                        ImVec2(0.0F, DECISION_LIST_HEIGHT * scale),
                         ImGuiChildFlags_Borders))
   {
-    for (auto at = decisions.rbegin(); at != decisions.rend(); ++at)
+    for (const auto& at : decisions | std::views::reverse)
     {
-      const MatchDecisionDetail& detail = at->detail;
+      const MatchDecisionDetail& detail = at.detail;
       if (decisions_of_selected && selected != 0 && detail.player != selected)
       {
         continue;
       }
       if (latest == nullptr)
       {
-        latest = &*at;
+        latest = &at;
       }
       const bool isOpen = opened_decision &&
-                          opened_decision->first == at->tick &&
+                          opened_decision->first == at.tick &&
                           opened_decision->second == detail.player;
       if (isOpen)
       {
-        opened = &*at;
+        opened = &at;
       }
       const bool flipped =
           winnerWithoutNoise(detail) != optionIndex(detail.chosen);
       const std::string label = std::format(
-          "{}  {}  {}  ·  margin {:.2f}{}##{}_{}", clock(at->minute),
+          "{}  {}  {}  ·  margin {:.2f}{}##{}_{}", clock(at.minute),
           recorder.playerName(detail.player),
           SandboxNames::choice(detail.chosen), winningMargin(detail),
-          flipped ? "  ·  NOISE FLIPPED" : "", at->tick, detail.player);
+          flipped ? "  ·  NOISE FLIPPED" : "", at.tick, detail.player);
       if (ImGui::Selectable(label.c_str(),
-                            isOpen || (!opened_decision && latest == &*at)))
+                            isOpen || (!opened_decision && latest == &at)))
       {
-        opened_decision = {{at->tick, detail.player}};
+        opened_decision = {{at.tick, detail.player}};
         selected = detail.player;
       }
     }
@@ -466,14 +535,16 @@ void DebugInspector::renderDecision(const SandboxRecorder& recorder,
   }
   if (opened == nullptr)
   {
-    ImGui::TextDisabled("No decision in this stretch yet.");
+    SandboxText::disabledText("No decision in this stretch yet.");
     return;
   }
-  ImGui::Text("%s  ·  %s chose %s  ·  winning margin %.3f",
-              clock(opened->minute).c_str(),
-              recorder.playerName(opened->detail.player).c_str(),
-              SandboxNames::choice(opened->detail.chosen),
-              winningMargin(opened->detail));
+  ImGui::TextUnformatted(
+      std::format("{}  ·  {} chose {}  ·  winning margin {:.3f}",
+                  clock(opened->minute),
+                  recorder.playerName(opened->detail.player),
+                  SandboxNames::choice(opened->detail.chosen),
+                  static_cast<double>(winningMargin(opened->detail)))
+          .c_str());
   // The moment as a test case: positions at the end of the tick before.
   if (SandboxAnalysisUI::button("Export as test scenario") && opened->tick > 0)
   {
@@ -495,7 +566,7 @@ void DebugInspector::renderDecision(const SandboxRecorder& recorder,
   }
   if (ImGui::IsItemHovered())
   {
-    ImGui::SetTooltip(
+    SandboxText::tooltipText(
         "A TEST for test/test_match_scenarios.cpp placing its "
         "dummy teams where these players stood just before "
         "the decision.");
@@ -503,7 +574,7 @@ void DebugInspector::renderDecision(const SandboxRecorder& recorder,
   if (!export_status.empty())
   {
     ImGui::SameLine();
-    ImGui::TextDisabled("%s", export_status.c_str());
+    SandboxText::disabledText(export_status.c_str());
   }
   renderDecisionTree(recorder, *opened);
 }
@@ -529,11 +600,13 @@ void DebugInspector::renderRankingDetail(const SandboxRecorder& recorder,
     {
       if (!toBall)
       {
-        ImGui::TextDisabled("No run ranking now (the side is not attacking).");
+        SandboxText::disabledText(
+            "No run ranking now (the side is not attacking).");
       }
       continue;
     }
     std::vector<const MatchRankingDetail::Candidate*> order;
+    order.reserve(latest->detail.candidates.size());
     for (const auto& candidate : latest->detail.candidates)
     {
       order.push_back(&candidate);
@@ -545,18 +618,25 @@ void DebugInspector::renderRankingDetail(const SandboxRecorder& recorder,
                                       : left->score.total > right->score.total;
                       });
     ImGui::PushID(toBall ? "toball" : "runs");
-    if (ImGui::TreeNode("ranking", "%s (tick %llu)",
+    if (SandboxText::treeNode(
+            "ranking",
+            std::format("{} (tick {})",
                         toBall ? "To the ball: estimated arrival, soonest first"
                                : "Run priority, highest first",
-                        static_cast<unsigned long long>(latest->tick)))
+                        latest->tick)
+                .c_str()))
     {
       for (const auto* candidate : order)
       {
         ImGui::PushID(static_cast<int>(candidate->player));
-        if (ImGui::TreeNodeEx("candidate", ImGuiTreeNodeFlags_SpanAvailWidth,
-                              "%s  %.3f%s",
-                              recorder.playerName(candidate->player).c_str(),
-                              candidate->score.total, toBall ? " s" : ""))
+        if (SandboxText::treeNode(
+                "candidate",
+                std::format("{}  {:.3f}{}",
+                            recorder.playerName(candidate->player),
+                            static_cast<double>(candidate->score.total),
+                            toBall ? " s" : "")
+                    .c_str(),
+                ImGuiTreeNodeFlags_SpanAvailWidth))
         {
           renderBreakdown(candidate->score, "score");
           ImGui::TreePop();
@@ -565,7 +645,7 @@ void DebugInspector::renderRankingDetail(const SandboxRecorder& recorder,
       }
       if (toBall)
       {
-        ImGui::TextDisabled(
+        SandboxText::disabledText(
             "A pass's intended receiver is put first whatever "
             "his time.");
       }
@@ -580,7 +660,8 @@ void DebugInspector::renderDuelDetail(const SandboxRecorder& recorder,
 {
   const auto& duels = detail_session.detail().duels;
   int shown = 0;
-  for (auto at = duels.rbegin(); at != duels.rend() && shown < 40; ++at)
+  for (auto at = duels.rbegin();
+       at != duels.rend() && shown < MAX_DISPLAYED_DUELS; ++at)
   {
     if (at->tick > tick)
     {
@@ -603,22 +684,28 @@ void DebugInspector::renderDuelDetail(const SandboxRecorder& recorder,
           "pace {:+.1f} m/s {}({:.0f}%) {:+.1f} m/s  ·  {:.1f} -> {:.1f} m/s",
           clock(at->minute), recorder.playerName(duel.player),
           duel.turn * DEGREES, duel.outward ? "out" : "in",
-          duel.angleFailed ? "FAILED " : "", duel.angleFailChance * 100.0F,
+          duel.angleFailed ? "FAILED " : "", duel.angleFailChance * PERCENT,
           duel.angleError * DEGREES, duel.paceChange,
-          duel.weightFailed ? "FAILED " : "", duel.weightFailChance * 100.0F,
+          duel.weightFailed ? "FAILED " : "", duel.weightFailChance * PERCENT,
           duel.weightError, duel.intendedSpeed, duel.actualSpeed);
       ImGui::PushID(shown);
-      if (ImGui::TreeNodeEx("touch", ImGuiTreeNodeFlags_SpanAvailWidth, "%s",
-                            label.c_str()))
+      if (SandboxText::treeNode("touch", label.c_str(),
+                                ImGuiTreeNodeFlags_SpanAvailWidth))
       {
-        ImGui::TextDisabled(
-            "Touch skill %.0f. Each job's chance of going wrong = (base + "
-            "difficulty x range) x (1 - skill x %.1f) x tiredness and nerves; "
-            "a failed job misses by a share of it, sized by the difficulty.",
-            duel.touchSkill * 100.0F, MatchTuning::FirstTouch::SKILL_REDUCTION);
-        ImGui::TextDisabled("Angle difficulty:");
+        SandboxText::disabledText(
+            std::format(
+                "Touch skill {:.0f}. Each job's chance of going wrong = (base "
+                "+ "
+                "difficulty x range) x (1 - skill x {:.1f}) x tiredness and "
+                "nerves; "
+                "a failed job misses by a share of it, sized by the "
+                "difficulty.",
+                static_cast<double>(duel.touchSkill * PERCENT),
+                static_cast<double>(MatchTuning::FirstTouch::SKILL_REDUCTION))
+                .c_str());
+        SandboxText::disabledText("Angle difficulty:");
         renderBreakdown(duel.chance, "angle");
-        ImGui::TextDisabled("Weight difficulty:");
+        SandboxText::disabledText("Weight difficulty:");
         renderBreakdown(duel.foul, "weight");
         ImGui::TreePop();
       }
@@ -633,7 +720,7 @@ void DebugInspector::renderDuelDetail(const SandboxRecorder& recorder,
           "{}  {}  {}  ·  turn {:.0f}° {}  ·  pace {:+.1f} m/s  ·  "
           "difficulty angle {:.2f}, weight {:.2f}",
           clock(at->minute),
-          STRIKE_KIND_NAMES[static_cast<std::size_t>(duel.strike)],
+          STRIKE_KIND_NAMES.at(static_cast<std::size_t>(duel.strike)),
           recorder.playerName(duel.player), duel.turn * DEGREES,
           duel.outward ? "out" : "in", duel.paceChange, duel.chance.total,
           duel.foul.total);
@@ -642,9 +729,9 @@ void DebugInspector::renderDuelDetail(const SandboxRecorder& recorder,
         label += std::format(
             "  ·  angle {}({:.0f}%) {:+.1f}°  ·  weight {}({:.0f}%) "
             "{:+.1f} m/s  ·  {:.1f} -> {:.1f} m/s",
-            duel.angleFailed ? "FAILED " : "", duel.angleFailChance * 100.0F,
+            duel.angleFailed ? "FAILED " : "", duel.angleFailChance * PERCENT,
             duel.angleError * DEGREES, duel.weightFailed ? "FAILED " : "",
-            duel.weightFailChance * 100.0F, duel.weightError,
+            duel.weightFailChance * PERCENT, duel.weightError,
             duel.intendedSpeed, duel.actualSpeed);
       }
       else
@@ -652,60 +739,69 @@ void DebugInspector::renderDuelDetail(const SandboxRecorder& recorder,
         label += " (measured)";
       }
       ImGui::PushID(shown);
-      if (ImGui::TreeNodeEx("strike", ImGuiTreeNodeFlags_SpanAvailWidth, "%s",
-                            label.c_str()))
+      if (SandboxText::treeNode("strike", label.c_str(),
+                                ImGuiTreeNodeFlags_SpanAvailWidth))
       {
         if (duel.strikeCarriedOut)
         {
-          ImGui::TextDisabled(
-              "Struck by the contact model with skill %.0f: each job's "
-              "chance of going wrong = (base + difficulty x range) x (1 - "
-              "skill x reduction) x tiredness and nerves.",
-              duel.touchSkill * 100.0F);
+          SandboxText::disabledText(
+              std::format(
+                  "Struck by the contact model with skill {:.0f}: each job's "
+                  "chance of going wrong = (base + difficulty x range) x (1 - "
+                  "skill x reduction) x tiredness and nerves.",
+                  static_cast<double>(duel.touchSkill * PERCENT))
+                  .c_str());
         }
         else
         {
-          ImGui::TextDisabled(
+          SandboxText::disabledText(
               "The contact model reads this strike but does not carry it "
               "out yet: provisional weights, no effect on the ball.");
         }
-        ImGui::TextDisabled("Angle difficulty:");
+        SandboxText::disabledText("Angle difficulty:");
         renderBreakdown(duel.chance, "angle");
-        ImGui::TextDisabled("Weight difficulty:");
+        SandboxText::disabledText("Weight difficulty:");
         renderBreakdown(duel.foul, "weight");
         ImGui::TreePop();
       }
       ImGui::PopID();
       continue;
     }
-    const char* kind = duel.kind == MatchDuelDetail::Kind::ENGAGE    ? "Goes in"
-                       : duel.kind == MatchDuelDetail::Kind::TAKE_ON ? "Take-on"
-                                                                     : "Tackle";
+    const char* kind = "Tackle";
+    if (duel.kind == MatchDuelDetail::Kind::ENGAGE)
+    {
+      kind = "Goes in";
+    }
+    else if (duel.kind == MatchDuelDetail::Kind::TAKE_ON)
+    {
+      kind = "Take-on";
+    }
     std::string label =
         std::format("{}  {}  {} on {}  ·  chance {:.0f}%  roll {:.0f}%  ->  {}",
                     clock(at->minute), kind, recorder.playerName(duel.player),
                     recorder.playerName(duel.opponent),
-                    duel.probability * 100.0F, duel.roll * 100.0F,
+                    duel.probability * PERCENT, duel.roll * PERCENT,
                     duel.roll < duel.probability ? "success" : "failed");
     if (duel.foulRoll)
     {
       label +=
           std::format("  ·  foul threshold {:.0f}%  roll {:.0f}%  ->  {}",
-                      duel.foulThreshold * 100.0F, *duel.foulRoll * 100.0F,
+                      duel.foulThreshold * PERCENT, *duel.foulRoll * PERCENT,
                       *duel.foulRoll < duel.foulThreshold ? "FOUL" : "no foul");
     }
     ImGui::PushID(shown);
-    if (ImGui::TreeNodeEx("duel", ImGuiTreeNodeFlags_SpanAvailWidth, "%s",
-                          label.c_str()))
+    if (SandboxText::treeNode("duel", label.c_str(),
+                              ImGuiTreeNodeFlags_SpanAvailWidth))
     {
-      ImGui::TextDisabled(duel.kind == MatchDuelDetail::Kind::ENGAGE
-                              ? "Engagement rate per second (the chance this "
-                                "step is 1 - exp(-rate x 0.1 s)):"
-                              : "Chance of success:");
+      SandboxText::disabledText(
+          duel.kind == MatchDuelDetail::Kind::ENGAGE
+              ? "Engagement rate per second (the chance this "
+                "step is 1 - exp(-rate x 0.1 s)):"
+              : "Chance of success:");
       renderBreakdown(duel.chance, "chance");
       if (duel.kind == MatchDuelDetail::Kind::TACKLE)
       {
-        ImGui::TextDisabled("Foul propensity:");
+        SandboxText::disabledText("Foul propensity:");
         renderBreakdown(duel.foul, "foul");
       }
       ImGui::TreePop();
@@ -714,6 +810,6 @@ void DebugInspector::renderDuelDetail(const SandboxRecorder& recorder,
   }
   if (shown == 0)
   {
-    ImGui::TextDisabled("No duels in this stretch yet.");
+    SandboxText::disabledText("No duels in this stretch yet.");
   }
 }

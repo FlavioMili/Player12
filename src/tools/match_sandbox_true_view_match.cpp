@@ -23,6 +23,7 @@
 #include "model/match_engine.h"
 #include "model/player.h"
 #include "tools/match_sandbox_page_ui.h"
+#include "tools/match_sandbox_text.h"
 
 namespace
 {
@@ -30,6 +31,15 @@ using RenderMath::Vec3;
 using P = MatchTuning::Pitch;
 
 /** A click picks the player whose centre is within this many pixels. */
+constexpr float PERCENT = 100.0F;
+constexpr float LAYER_COLUMNS_WIDTH = 360.0F;
+constexpr float LABEL_TOP = 8.0F;
+constexpr float LABEL_LEFT = 6.0F;
+constexpr float LABEL_VERTICAL_PADDING = 2.0F;
+constexpr float LABEL_RIGHT = 14.0F;
+constexpr float LABEL_ROUNDING = 3.0F;
+constexpr float LABEL_TEXT_LEFT = 10.0F;
+constexpr float LABEL_LINE_GAP = 6.0F;
 constexpr float PICK_PIXELS = 40.0F;
 /** A stride rolled for a shot shows this long (ball-clock seconds). */
 constexpr float LEG_GHOST_SECONDS = 1.5F;
@@ -58,7 +68,7 @@ std::string stateOf(const MatchPlayer& player)
   if (player.fallen)
   {
     add(player.gettingUp
-            ? std::format("getting up {:.0f}%", player.getUpShare() * 100.0F)
+            ? std::format("getting up {:.0f}%", player.getUpShare() * PERCENT)
             : std::format("down {:.1f} s", player.downSeconds));
   }
   if (player.airborne())
@@ -90,45 +100,9 @@ void MatchTrueView::renderSettings(const MatchEngine& engine)
 {
   const float width = ImGui::GetContentRegionAvail().x;
   ImGui::PushItemWidth(-1.0F);
-  ImGui::SeparatorText("Players in full");
-  for (std::size_t slot = 0; slot < picked.size(); ++slot)
-  {
-    ImGui::PushID(static_cast<int>(slot));
-    std::string current = "None";
-    for (const MatchPlayer& player : engine.getPlayers())
-    {
-      if ((player.player != nullptr) && player.player->getId() == picked[slot])
-      {
-        current = nameOf(player);
-      }
-    }
-    ImGui::AlignTextToFramePadding();
-    ImGui::TextUnformatted(slot == 0 ? "A" : "B");
-    ImGui::SameLine();
-    if (SandboxPageUI::beginCombo("##pick", current.c_str()))
-    {
-      if (ImGui::Selectable("None", picked[slot] == 0))
-      {
-        picked[slot] = 0;
-      }
-      for (const MatchPlayer& player : engine.getPlayers())
-      {
-        if ((player.player == nullptr) || !player.onPitch)
-        {
-          continue;
-        }
-        const PlayerID id = player.player->getId();
-        if (ImGui::Selectable(nameOf(player).c_str(), picked[slot] == id))
-        {
-          picked[slot] = id;
-        }
-      }
-      ImGui::EndCombo();
-    }
-    ImGui::PopID();
-  }
+  renderPickedPlayers(engine);
   ImGui::PushTextWrapPos(0);
-  ImGui::TextDisabled(
+  SandboxText::disabledText(
       "Click a player: A. Ctrl+click: B. Double-click: look there.");
   ImGui::PopTextWrapPos();
 
@@ -145,7 +119,7 @@ void MatchTrueView::renderSettings(const MatchEngine& engine)
     std::array<const char*, STRIKE_KIND_COUNT> kinds{};
     for (std::size_t kind = 0; kind < STRIKE_KIND_COUNT; ++kind)
     {
-      kinds[kind] = STRIKE_KIND_NAMES[kind].data();
+      kinds.at(kind) = STRIKE_KIND_NAMES.at(kind).data();
     }
     SandboxPageUI::combo("##strike", &strikeKind, kinds.data(),
                          static_cast<int>(kinds.size()));
@@ -155,25 +129,25 @@ void MatchTrueView::renderSettings(const MatchEngine& engine)
   ImGui::SeparatorText("Layers (A and B)");
   const float half = width * 0.5F;
   ImGui::Checkbox("Body lines", &layers.lines);
-  if (width >= 360 * Theme::scale())
+  if (width >= LAYER_COLUMNS_WIDTH * Theme::scale())
   {
     ImGui::SameLine(half);
   }
   ImGui::Checkbox("Feet", &layers.feet);
   ImGui::Checkbox("Thigh, chest", &layers.thighChest);
-  if (width >= 360 * Theme::scale())
+  if (width >= LAYER_COLUMNS_WIDTH * Theme::scale())
   {
     ImGui::SameLine(half);
   }
   ImGui::Checkbox("Send cones", &layers.sendCones);
   ImGui::Checkbox("Head", &layers.head);
-  if (width >= 360 * Theme::scale())
+  if (width >= LAYER_COLUMNS_WIDTH * Theme::scale())
   {
     ImGui::SameLine(half);
   }
   ImGui::Checkbox("Technique", &layers.technique);
   ImGui::Checkbox("Personal space", &layers.personalSpace);
-  if (width >= 360 * Theme::scale())
+  if (width >= LAYER_COLUMNS_WIDTH * Theme::scale())
   {
     ImGui::SameLine(half);
   }
@@ -183,11 +157,11 @@ void MatchTrueView::renderSettings(const MatchEngine& engine)
   if (ImGui::TreeNode("Notes"))
   {
     ImGui::PushTextWrapPos(0.0F);
-    ImGui::TextDisabled(
+    SandboxText::disabledText(
         "Every player: his body cylinder and feet reach; A and B: everything. "
         "Goalkeepers and Aardvark-body sides: cylinders only. The shapes are "
         "drawn over the stadium and each other (no depth sorting yet).");
-    ImGui::TextDisabled(
+    SandboxText::disabledText(
         "Drawn in the engine's own frame, so its handedness is the engine's. "
         "To check: the engine's \"his right\" is clockwise in its pitch "
         "frame, which the 3D view mirrors, so the weaker-foot side may show "
@@ -195,7 +169,8 @@ void MatchTrueView::renderSettings(const MatchEngine& engine)
     ImGui::PopTextWrapPos();
     ImGui::TreePop();
   }
-  if (picked[0] != 0 && ImGui::TreeNode("A's shapes, and where they come from"))
+  if (picked.at(0) != 0 &&
+      ImGui::TreeNode("A's shapes, and where they come from"))
   {
     TrueView::renderTable(entries);
     ImGui::TreePop();
@@ -284,10 +259,10 @@ PlayerID MatchTrueView::drawOverlay(const IMatchRenderer& renderer,
     body.standingRise = jumpRiseOf(body.jumpingReach, body.height, false);
     body.binturong = engine.getBody(player.isHomeTeam) == BodyId::BINTURONG;
     body.goalkeeper = player.isGoalkeeper;
-    body.kit = (player.isHomeTeam
-                    ? (player.isGoalkeeper ? kits.homeGoalkeeper : kits.home)
-                    : (player.isGoalkeeper ? kits.awayGoalkeeper : kits.away))
-                   .shirt;
+    const auto& outfieldKit = player.isHomeTeam ? kits.home : kits.away;
+    const auto& keeperKit =
+        player.isHomeTeam ? kits.homeGoalkeeper : kits.awayGoalkeeper;
+    body.kit = (player.isGoalkeeper ? keeperKit : outfieldKit).shirt;
     drawn[index] = true;
     const PlayerID id = (player.player != nullptr) ? player.player->getId() : 0;
     ImVec2 centre;
@@ -305,7 +280,7 @@ PlayerID MatchTrueView::drawOverlay(const IMatchRenderer& renderer,
     clickedPlayer = playerAt(pixel);
     if (clickedPlayer != 0)
     {
-      picked[ctrl ? 1 : 0] = clickedPlayer;
+      picked.at(ctrl ? 1 : 0) = clickedPlayer;
     }
   }
   const auto pickedSlot = [&](std::size_t index) -> int
@@ -316,11 +291,11 @@ PlayerID MatchTrueView::drawOverlay(const IMatchRenderer& renderer,
     {
       return -1;
     }
-    if (id == picked[0])
+    if (id == picked.at(0))
     {
       return 0;
     }
-    if (id == picked[1])
+    if (id == picked.at(1))
     {
       return 1;
     }
@@ -368,15 +343,15 @@ PlayerID MatchTrueView::drawOverlay(const IMatchRenderer& renderer,
 
   // Who they are and what they are doing, top left of the view.
   const ImVec2 clipMin = paint.draw->GetClipRectMin();
-  float line = clipMin.y + 8.0F;
+  float line = clipMin.y + LABEL_TOP;
   for (std::size_t slot = 0; slot < picked.size(); ++slot)
   {
     for (std::size_t index = 0;
          index < players.size() && index < snapshot.players.size(); ++index)
     {
       const MatchPlayer& player = players[index];
-      if (picked[slot] == 0 || (player.player == nullptr) ||
-          player.player->getId() != picked[slot])
+      if (picked.at(slot) == 0 || (player.player == nullptr) ||
+          player.player->getId() != picked.at(slot))
       {
         continue;
       }
@@ -385,13 +360,61 @@ PlayerID MatchTrueView::drawOverlay(const IMatchRenderer& renderer,
                       nameOf(snapshot.players[index]), stateOf(player));
       const ImVec2 extent = ImGui::CalcTextSize(text.c_str());
       paint.draw->AddRectFilled(
-          ImVec2(clipMin.x + 6.0F, line - 2.0F),
-          ImVec2(clipMin.x + extent.x + 14.0F, line + extent.y + 2.0F),
-          IM_COL32(10, 12, 16, 190), 3.0F);
-      paint.draw->AddText(ImVec2(clipMin.x + 10.0F, line),
+          ImVec2(clipMin.x + LABEL_LEFT, line - LABEL_VERTICAL_PADDING),
+          ImVec2(clipMin.x + extent.x + LABEL_RIGHT,
+                 line + extent.y + LABEL_VERTICAL_PADDING),
+          IM_COL32(10, 12, 16, 190), LABEL_ROUNDING);
+      paint.draw->AddText(ImVec2(clipMin.x + LABEL_TEXT_LEFT, line),
                           IM_COL32(240, 240, 240, 255), text.c_str());
-      line += extent.y + 6.0F;
+      line += extent.y + LABEL_LINE_GAP;
     }
   }
   return clickedPlayer;
+}
+
+void MatchTrueView::renderPickedPlayers(const MatchEngine& engine)
+{
+  ImGui::SeparatorText("Players in full");
+  for (std::size_t slot = 0; slot < picked.size(); ++slot)
+  {
+    renderPlayerPicker(engine, slot);
+  }
+}
+
+void MatchTrueView::renderPlayerPicker(const MatchEngine& engine,
+                                       std::size_t slot)
+{
+  ImGui::PushID(static_cast<int>(slot));
+  std::string current = "None";
+  for (const MatchPlayer& player : engine.getPlayers())
+  {
+    if ((player.player != nullptr) && player.player->getId() == picked.at(slot))
+    {
+      current = nameOf(player);
+    }
+  }
+  ImGui::AlignTextToFramePadding();
+  ImGui::TextUnformatted(slot == 0 ? "A" : "B");
+  ImGui::SameLine();
+  if (SandboxPageUI::beginCombo("##pick", current.c_str()))
+  {
+    if (ImGui::Selectable("None", picked.at(slot) == 0))
+    {
+      picked.at(slot) = 0;
+    }
+    for (const MatchPlayer& player : engine.getPlayers())
+    {
+      if ((player.player == nullptr) || !player.onPitch)
+      {
+        continue;
+      }
+      const PlayerID id = player.player->getId();
+      if (ImGui::Selectable(nameOf(player).c_str(), picked.at(slot) == id))
+      {
+        picked.at(slot) = id;
+      }
+    }
+    ImGui::EndCombo();
+  }
+  ImGui::PopID();
 }

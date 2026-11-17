@@ -51,7 +51,8 @@ class DrillScene : public GUIScene
   void stepRun(int steps);
   void renderPanel(float width);
   void renderControls(float width);
-  void renderPitch(float width, float height);
+  void renderViewControls(float scale);
+  void renderPitch(ImVec2 area);
   void renderDebugTools();
   /** Keyboard navigation off while you steer (arrows, Space would move it). */
   void suspendKeyboardNavigation(bool suspend);

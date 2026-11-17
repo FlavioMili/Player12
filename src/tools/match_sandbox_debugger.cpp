@@ -15,6 +15,7 @@
 #include <array>
 #include <cmath>
 #include <format>
+#include <functional>
 #include <map>
 #include <string>
 #include <utility>
@@ -27,11 +28,25 @@
 #include "tools/match_sandbox_names.h"
 #include "tools/match_sandbox_page_ui.h"
 #include "tools/match_sandbox_recorder.h"
+#include "tools/match_sandbox_text.h"
 
 namespace
 {
 using Recorder = SandboxRecorder;
 using Kind = EngineDebugger::Kind;
+constexpr int SECONDS_PER_MINUTE = 60;
+constexpr int STEPS_PER_SECOND = 10;
+constexpr std::size_t BYTES_PER_KIB = 1024;
+constexpr float LOG_FONT_SIZE = 12.0F;
+constexpr float HEADER_FONT_SIZE = 14.0F;
+constexpr float HORIZONTAL_SPACING = 6.0F;
+constexpr float VERTICAL_SPACING = 3.0F;
+constexpr float TEAM_FILTER_WIDTH = 110.0F;
+constexpr float PLAYER_FILTER_WIDTH = 190.0F;
+constexpr float ROWS_PER_WHEEL_TICK = 3.0F;
+constexpr float CURSOR_ALIGNMENT = 0.5F;
+constexpr int LOG_COLUMN_COUNT = 6;
+constexpr int SUMMARY_TAB_INDEX = 5;
 
 constexpr std::array<const char*, static_cast<std::size_t>(Kind::COUNT)>
     KIND_NAMES{"Phase",  "Job",        "Intent", "Decision",
@@ -51,8 +66,22 @@ float metres(PitchPoint from, PitchPoint to)
 std::string clock(float minute)
 {
   const int seconds =
-      static_cast<int>(std::floor(std::max(0.0F, minute) * 60.0F));
-  return std::format("{:02}:{:02}", seconds / 60, seconds % 60);
+      static_cast<int>(std::floor(std::max(0.0F, minute) * SECONDS_PER_MINUTE));
+  return std::format("{:02}:{:02}", seconds / SECONDS_PER_MINUTE,
+                     seconds % SECONDS_PER_MINUTE);
+}
+
+[[nodiscard]] const char* teamName(int home)
+{
+  if (home < 0)
+  {
+    return "";
+  }
+  if (home > 0)
+  {
+    return "Home";
+  }
+  return "Away";
 }
 
 /** One table row: team (-1 none), player and the detail text. */
@@ -63,150 +92,180 @@ struct Row
   std::string detail;
 };
 
-Row describeRow(const Recorder& recorder, const Recorder::Entry& entry)
+class RowDescriber
 {
-  const auto name = [&recorder](PlayerID id)
-  { return recorder.playerName(id); };
-  return std::visit(
-      [&](const auto& item) -> Row
-      {
-        using T = std::decay_t<decltype(item)>;
-        if constexpr (std::is_same_v<T, Recorder::PhaseChange>)
-        {
-          return {item.homeTeam, 0,
-                  std::format("{} -> {}", SandboxNames::phase(item.from),
-                              SandboxNames::phase(item.to))};
-        }
-        else if constexpr (std::is_same_v<T, Recorder::JobChange>)
-        {
-          std::string text = std::format(
-              "{}: {}", SandboxNames::job(item.job),
-              item.player ? name(item.player) : std::string("nobody"));
-          if (item.previous)
-          {
-            text += std::format(" (was {})", name(item.previous));
-          }
-          if (item.player && (item.job == Recorder::Job::PRESSER_1 ||
+ public:
+  explicit RowDescriber(const Recorder& source) : recorder(source) {}
+
+  [[nodiscard]] static Row operator()(const Recorder::PhaseChange& item)
+  {
+    return {.home = static_cast<int>(item.homeTeam),
+            .player = 0,
+            .detail = std::format("{} -> {}", SandboxNames::phase(item.from),
+                                  SandboxNames::phase(item.to))};
+  }
+
+  [[nodiscard]] Row operator()(const Recorder::JobChange& item) const
+  {
+    std::string text = std::format(
+        "{}: {}", SandboxNames::job(item.job),
+        (item.player != 0U) ? name(item.player) : std::string("nobody"));
+    if (item.previous != 0U)
+    {
+      text += std::format(" (was {})", name(item.previous));
+    }
+    if (item.player != 0U && (item.job == Recorder::Job::PRESSER_1 ||
                               item.job == Recorder::Job::PRESSER_2))
-          {
-            text += std::format(" · arrives in {:.2f} s", item.score);
-          }
-          else if (item.player && (item.job == Recorder::Job::RUNNER_1 ||
+    {
+      text += std::format(" · arrives in {:.2f} s", item.score);
+    }
+    else if (item.player != 0U && (item.job == Recorder::Job::RUNNER_1 ||
                                    item.job == Recorder::Job::RUNNER_2 ||
                                    item.job == Recorder::Job::RUNNER_3))
-          {
-            text += std::format(" · run priority {:.2f}", item.score);
-          }
-          return {item.homeTeam, item.player, text};
-        }
-        else if constexpr (std::is_same_v<T, Recorder::IntentChange>)
+    {
+      text += std::format(" · run priority {:.2f}", item.score);
+    }
+    return {.home = static_cast<int>(item.homeTeam),
+            .player = item.player,
+            .detail = text};
+  }
+
+  [[nodiscard]] static Row operator()(const Recorder::IntentChange& item)
+  {
+    std::string text = std::format("{} -> {}", SandboxNames::intent(item.from),
+                                   SandboxNames::intent(item.to));
+    if (item.job != Recorder::Job::NONE)
+    {
+      text += std::format("  [{}]", SandboxNames::job(item.job));
+    }
+    return {.home = static_cast<int>(item.homeTeam),
+            .player = item.player,
+            .detail = text};
+  }
+
+  [[nodiscard]] Row operator()(const MatchDecisionRecord& item) const
+  {
+    std::string text =
+        std::format("{}  ·  pass {}  shot {}  carry {}  shield {}",
+                    SandboxNames::choice(item.chosen), score(item.pass),
+                    score(item.shot), score(item.carry), score(item.shield));
+    if (item.chosen == ScenarioAction::PASS && item.bestReceiver != 0U)
+    {
+      text += std::format("  ·  to {} ({})", name(item.bestReceiver),
+                          SandboxNames::passIntent(item.bestPassIntent));
+    }
+    if (item.chosenWithoutNoise != item.chosen)
+    {
+      text += std::format("  ·  NOISE FLIPPED (scores alone: {})",
+                          SandboxNames::choice(item.chosenWithoutNoise));
+    }
+    return {.home = static_cast<int>(item.homeTeam),
+            .player = item.player,
+            .detail = text};
+  }
+
+  [[nodiscard]] Row operator()(const MatchActionRecord& item) const
+  {
+    std::string text = SandboxNames::action(item.kind);
+    if (item.header)
+    {
+      text += " (header)";
+    }
+    switch (item.kind)
+    {
+      case MatchActionKind::PASS:
+        text += std::format(" {}{} to {} · {:.1f} m · est. completion {:.2f}",
+                            SandboxNames::passIntent(item.passIntent),
+                            item.lofted ? ", lofted" : "", name(item.target),
+                            metres(item.from, item.to), item.estimate);
+        break;
+      case MatchActionKind::SHOT:
+        text +=
+            std::format(" · xG {:.2f} · {:.1f} m/s", item.estimate, item.speed);
+        break;
+      case MatchActionKind::CLEARANCE:
+      case MatchActionKind::KNOCK_DOWN:
+        text += std::format(" · {:.1f} m", metres(item.from, item.to));
+        if (item.target != 0U)
         {
-          std::string text =
-              std::format("{} -> {}", SandboxNames::intent(item.from),
-                          SandboxNames::intent(item.to));
-          if (item.job != Recorder::Job::NONE)
-          {
-            text += std::format("  [{}]", SandboxNames::job(item.job));
-          }
-          return {item.homeTeam, item.player, text};
+          text += std::format(" toward {}", name(item.target));
         }
-        else if constexpr (std::is_same_v<T, MatchDecisionRecord>)
-        {
-          std::string text = std::format(
-              "{}  ·  pass {}  shot {}  carry {}  shield {}",
-              SandboxNames::choice(item.chosen), score(item.pass),
-              score(item.shot), score(item.carry), score(item.shield));
-          if (item.chosen == ScenarioAction::PASS && item.bestReceiver)
-          {
-            text += std::format("  ·  to {} ({})", name(item.bestReceiver),
-                                SandboxNames::passIntent(item.bestPassIntent));
-          }
-          if (item.chosenWithoutNoise != item.chosen)
-          {
-            text += std::format("  ·  NOISE FLIPPED (scores alone: {})",
-                                SandboxNames::choice(item.chosenWithoutNoise));
-          }
-          return {item.homeTeam, item.player, text};
-        }
-        else if constexpr (std::is_same_v<T, MatchActionRecord>)
-        {
-          std::string text = SandboxNames::action(item.kind);
-          if (item.header)
-          {
-            text += " (header)";
-          }
-          switch (item.kind)
-          {
-            case MatchActionKind::PASS:
-              text +=
-                  std::format(" {}{} to {} · {:.1f} m · est. completion {:.2f}",
-                              SandboxNames::passIntent(item.passIntent),
-                              item.lofted ? ", lofted" : "", name(item.target),
-                              metres(item.from, item.to), item.estimate);
-              break;
-            case MatchActionKind::SHOT:
-              text += std::format(" · xG {:.2f} · {:.1f} m/s", item.estimate,
-                                  item.speed);
-              break;
-            case MatchActionKind::CLEARANCE:
-            case MatchActionKind::KNOCK_DOWN:
-              text += std::format(" · {:.1f} m", metres(item.from, item.to));
-              if (item.target)
-              {
-                text += std::format(" toward {}", name(item.target));
-              }
-              break;
-            case MatchActionKind::TAKE_ON:
-              text +=
-                  std::format(" vs {} · chance {:.2f} · {}", name(item.target),
-                              item.estimate, SandboxNames::duel(item.result));
-              break;
-            case MatchActionKind::TACKLE:
-              text += std::format(
-                  "{} on {} · win {:.2f} · foul risk {:.2f} · {}",
-                  item.lofted ? " (sliding)" : "", name(item.target),
-                  item.estimate, item.foulPropensity,
-                  SandboxNames::duel(item.result));
-              break;
-          }
-          return {item.homeTeam, item.player, text};
-        }
-        else if constexpr (std::is_same_v<T, Recorder::PossessionChange>)
-        {
-          std::string text =
-              item.from == 0 ? std::format("ball to {}", name(item.to))
-              : item.fromHome == item.toHome
-                  ? std::format("received from {}", name(item.from))
-                  : std::format("won from {}", name(item.from));
-          if (item.afterAction && *item.afterAction < recorder.entries().size())
-          {
-            const auto& cause = recorder.entries()[*item.afterAction].payload;
-            if (const auto* action = std::get_if<MatchActionRecord>(&cause))
-            {
-              text += std::format("  (after {} by {})",
-                                  SandboxNames::action(action->kind),
-                                  name(action->player));
-            }
-          }
-          return {item.toHome, item.to, text};
-        }
-        else if constexpr (std::is_same_v<T, Recorder::KeeperChange>)
-        {
-          return {item.homeTeam, 0,
-                  std::format("keeper {} -> {}", goalkeeperStateName(item.from),
+        break;
+      case MatchActionKind::TAKE_ON:
+        text += std::format(" vs {} · chance {:.2f} · {}", name(item.target),
+                            item.estimate, SandboxNames::duel(item.result));
+        break;
+      case MatchActionKind::TACKLE:
+        text += std::format("{} on {} · win {:.2f} · foul risk {:.2f} · {}",
+                            item.lofted ? " (sliding)" : "", name(item.target),
+                            item.estimate, item.foulPropensity,
+                            SandboxNames::duel(item.result));
+        break;
+    }
+    return {.home = static_cast<int>(item.homeTeam),
+            .player = item.player,
+            .detail = text};
+  }
+
+  [[nodiscard]] Row operator()(const Recorder::PossessionChange& item) const
+  {
+    std::string text;
+    if (item.from == 0)
+    {
+      text = std::format("ball to {}", name(item.to));
+    }
+    else if (item.fromHome == item.toHome)
+    {
+      text = std::format("received from {}", name(item.from));
+    }
+    else
+    {
+      text = std::format("won from {}", name(item.from));
+    }
+    if (item.afterAction && *item.afterAction < recorder.get().entries().size())
+    {
+      const auto& cause = recorder.get().entries()[*item.afterAction].payload;
+      if (const auto* action = std::get_if<MatchActionRecord>(&cause))
+      {
+        text += std::format("  (after {} by {})",
+                            SandboxNames::action(action->kind),
+                            name(action->player));
+      }
+    }
+    return {.home = static_cast<int>(item.toHome),
+            .player = item.to,
+            .detail = text};
+  }
+
+  [[nodiscard]] static Row operator()(const Recorder::KeeperChange& item)
+  {
+    return {
+        .home = static_cast<int>(item.homeTeam),
+        .player = 0,
+        .detail = std::format("keeper {} -> {}", goalkeeperStateName(item.from),
                               goalkeeperStateName(item.to))};
-        }
-        else
-        {
-          const MatchEvent& event = recorder.events()[item.index];
-          return {
-              .home = event.hasTeam ? static_cast<int>(event.isHomeTeam) : -1,
-              .player = event.primaryPlayerId,
-              .detail = std::format("{}  {}", matchEventTypeName(event.type),
-                                    event.description)};
-        }
-      },
-      entry.payload);
+  }
+
+  [[nodiscard]] Row operator()(const Recorder::EventEntry& item) const
+  {
+    const MatchEvent& event = recorder.get().events()[item.index];
+    return {.home = event.hasTeam ? static_cast<int>(event.isHomeTeam) : -1,
+            .player = event.primaryPlayerId,
+            .detail = std::format("{}  {}", matchEventTypeName(event.type),
+                                  event.description)};
+  }
+
+ private:
+  [[nodiscard]] std::string name(PlayerID id) const
+  {
+    return recorder.get().playerName(id);
+  }
+  std::reference_wrapper<const Recorder> recorder;
+};
+
+Row describeRow(const Recorder& recorder, const Recorder::Entry& entry)
+{
+  return std::visit(RowDescriber(recorder), entry.payload);
 }
 }  // namespace
 
@@ -241,11 +300,14 @@ void EngineDebugger::renderContents(SandboxRecorder& recorder,
   if (const MatchEngine* shown = (inspected != nullptr) ? inspected : engine)
   {
     const std::string handshake(handshakeName(shown->getHandshake()));
-    ImGui::TextWrapped(
-        "Brains: %s · Bodies: %s · Handshake: %s · Home advantage: %.2f",
-        brainPairName({shown->getBrain(true), shown->getBrain(false)}).c_str(),
-        bodyPairName({shown->getBody(true), shown->getBody(false)}).c_str(),
-        handshake.c_str(), shown->getMatchContext().homeAdvantageScale);
+    SandboxText::wrappedText(
+        std::format(
+            "Brains: {} · Bodies: {} · Handshake: {} · Home advantage: {:.2f}",
+            brainPairName({shown->getBrain(true), shown->getBrain(false)}),
+            bodyPairName({shown->getBody(true), shown->getBody(false)}),
+            handshake,
+            static_cast<double>(shown->getMatchContext().homeAdvantageScale))
+            .c_str());
   }
   constexpr std::array tabs{"Log",      "Team",    "Player",
                             "Decision", "Referee", "Summary"};
@@ -271,11 +333,13 @@ void EngineDebugger::renderContents(SandboxRecorder& recorder,
   switch (contentTab)
   {
     case 0:
-      ImGui::PushFont(SandboxAnalysisUI::regular(), 12);
+      ImGui::PushFont(SandboxAnalysisUI::regular(), LOG_FONT_SIZE);
       ImGui::PushStyleVar(ImGuiStyleVar_FramePadding,
-                          ImVec2(6 * Theme::scale(), 3 * Theme::scale()));
+                          ImVec2(HORIZONTAL_SPACING * Theme::scale(),
+                                 VERTICAL_SPACING * Theme::scale()));
       ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing,
-                          ImVec2(6 * Theme::scale(), 3 * Theme::scale()));
+                          ImVec2(HORIZONTAL_SPACING * Theme::scale(),
+                                 VERTICAL_SPACING * Theme::scale()));
       renderFilters(recorder, inspector.selected);
       ImGui::PopStyleVar(2);
       ImGui::PopFont();
@@ -293,7 +357,7 @@ void EngineDebugger::renderContents(SandboxRecorder& recorder,
     case 4:
       inspector.renderReferee(recorder, *inspected);
       break;
-    case 5:
+    case SUMMARY_TAB_INDEX:
       inspector.renderSummary(recorder, *inspected);
       break;
     default:
@@ -332,21 +396,24 @@ void EngineDebugger::renderControls(SandboxRecorder& recorder,
     SandboxAnalysisUI::next();
     if (SandboxAnalysisUI::button("Step 1 s"))
     {
-      stepBy(10);
+      stepBy(STEPS_PER_SECOND);
     }
     ImGui::EndDisabled();
     SandboxAnalysisUI::next();
-    ImGui::TextDisabled(
-        "%s  ·  tick %llu", clock(engine->getMatchTimeMinutes()).c_str(),
-        static_cast<unsigned long long>(engine->getSimulatedSteps()));
+    SandboxText::disabledText(std::format("{}  ·  tick {}",
+                                          clock(engine->getMatchTimeMinutes()),
+                                          engine->getSimulatedSteps())
+                                  .c_str());
   }
   else
   {
-    ImGui::TextDisabled("Match over: the log of the last match.");
+    SandboxText::disabledText("Match over: the log of the last match.");
   }
   const auto guard = recorder.lock();
-  ImGui::TextWrapped("  ·  %zu entries  ·  ~%zu KB", recorder.entries().size(),
-                     recorder.approximateBytes() / 1024);
+  SandboxText::wrappedText(
+      std::format("  ·  {} entries  ·  ~{} KB", recorder.entries().size(),
+                  recorder.approximateBytes() / BYTES_PER_KIB)
+          .c_str());
 }
 
 void EngineDebugger::renderFilters(const SandboxRecorder& recorder,
@@ -358,14 +425,14 @@ void EngineDebugger::renderFilters(const SandboxRecorder& recorder,
     player_filter = selection;
     filters_changed = true;
   }
-  ImGui::SetNextItemWidth(110.0F * Theme::scale());
+  ImGui::SetNextItemWidth(TEAM_FILTER_WIDTH * Theme::scale());
   constexpr std::array<const char*, 3> TEAMS{"Both teams", "Home", "Away"};
   if (SandboxPageUI::combo("##team", &team_filter, TEAMS.data(),
                            static_cast<int>(TEAMS.size())))
   {
     filters_changed = true;
   }
-  SandboxAnalysisUI::next(190);
+  SandboxAnalysisUI::next(PLAYER_FILTER_WIDTH);
 
   // Every player seen in the match, by name.
   std::map<std::string, PlayerID> players;
@@ -376,7 +443,7 @@ void EngineDebugger::renderFilters(const SandboxRecorder& recorder,
       players.emplace(name, id);
     }
   }
-  ImGui::SetNextItemWidth(190.0F * Theme::scale());
+  ImGui::SetNextItemWidth(PLAYER_FILTER_WIDTH * Theme::scale());
   const std::string current = (player_filter != 0U)
                                   ? recorder.playerName(player_filter)
                                   : "All players";
@@ -406,7 +473,7 @@ void EngineDebugger::renderFilters(const SandboxRecorder& recorder,
   }
   if (ImGui::IsItemHovered())
   {
-    ImGui::SetTooltip(
+    SandboxText::tooltipText(
         "Show only the player selected on the review pitch, "
         "in the Team or Player tab, or by clicking a row.");
   }
@@ -466,14 +533,10 @@ void EngineDebugger::refreshVisible(const SandboxRecorder& recorder)
   }
 }
 
-void EngineDebugger::renderLog(const SandboxRecorder& recorder,
-                               std::optional<std::uint64_t> cursor,
-                               DebugInspector& inspector)
+EngineDebugger::LogView EngineDebugger::prepareLogView(
+    const SandboxRecorder& recorder, std::optional<std::uint64_t> cursor)
 {
-  const auto guard = recorder.lock();
-  refreshVisible(recorder);
   const auto& entries = recorder.entries();
-
   // The last row at or before the reviewed tick; scrolled to when it moves.
   std::optional<int> cursorRow;
   if (cursor)
@@ -493,10 +556,6 @@ void EngineDebugger::renderLog(const SandboxRecorder& recorder,
     follow = false;
   }
 
-  constexpr ImGuiTableFlags flags =
-      ImGuiTableFlags_RowBg | ImGuiTableFlags_ScrollY |
-      ImGuiTableFlags_ScrollX | ImGuiTableFlags_BordersInnerV |
-      ImGuiTableFlags_Resizable | ImGuiTableFlags_SizingFixedFit;
   const float rowHeight = std::ceil(ImGui::GetTextLineHeight() +
                                     (2 * ImGui::GetStyle().CellPadding.y));
   // Quantise the pending wheel/seek/follow request before BeginChild applies
@@ -516,7 +575,7 @@ void EngineDebugger::renderLog(const SandboxRecorder& recorder,
     if (io.MouseWheel != 0 && !io.KeyCtrl && !io.KeyShift &&
         ImGui::GetCurrentContext()->HoveredWindow == window)
     {
-      wheel_rows -= io.MouseWheel * 3.F;
+      wheel_rows -= io.MouseWheel * ROWS_PER_WHEEL_TICK;
       const float steps = std::trunc(wheel_rows);
       wheel_rows -= steps;
       requested = window->Scroll.y + steps * rowHeight;
@@ -527,7 +586,28 @@ void EngineDebugger::renderLog(const SandboxRecorder& recorder,
         ImVec2(-1, std::clamp(std::round(requested / rowHeight) * rowHeight,
                               0.F, std::max(0.F, limit))));
   }
-  if (!ImGui::BeginTable("##log", 6, flags, ImVec2(0.0F, 0.0F)))
+  return {.cursorRow = cursorRow,
+          .scrollToCursor = scrollToCursor,
+          .rowHeight = rowHeight};
+}
+
+void EngineDebugger::renderLog(const SandboxRecorder& recorder,
+                               std::optional<std::uint64_t> cursor,
+                               DebugInspector& inspector)
+{
+  const auto guard = recorder.lock();
+  refreshVisible(recorder);
+  const auto& entries = recorder.entries();
+
+  const LogView view = prepareLogView(recorder, cursor);
+  const auto& cursorRow = view.cursorRow;
+  const bool scrollToCursor = view.scrollToCursor;
+  const float rowHeight = view.rowHeight;
+  constexpr ImGuiTableFlags flags =
+      ImGuiTableFlags_RowBg | ImGuiTableFlags_ScrollY |
+      ImGuiTableFlags_ScrollX | ImGuiTableFlags_BordersInnerV |
+      ImGuiTableFlags_Resizable | ImGuiTableFlags_SizingFixedFit;
+  if (!ImGui::BeginTable("##log", LOG_COLUMN_COUNT, flags, ImVec2(0.0F, 0.0F)))
   {
     return;
   }
@@ -538,7 +618,7 @@ void EngineDebugger::renderLog(const SandboxRecorder& recorder,
   ImGui::TableSetupColumn("Player");
   ImGui::TableSetupColumn("Kind");
   ImGui::TableSetupColumn("Detail", ImGuiTableColumnFlags_WidthStretch);
-  ImGui::PushFont(SandboxAnalysisUI::bold(), 14);
+  ImGui::PushFont(SandboxAnalysisUI::bold(), HEADER_FONT_SIZE);
   ImGui::TableHeadersRow();
   ImGui::PopFont();
 
@@ -574,19 +654,17 @@ void EngineDebugger::renderLog(const SandboxRecorder& recorder,
       }
       if (ImGui::IsItemHovered(ImGuiHoveredFlags_DelayNormal))
       {
-        ImGui::SetTooltip("Click to rewind the review to this moment.");
+        SandboxText::tooltipText("Click to rewind the review to this moment.");
       }
       ImGui::PopID();
       if (scrollToCursor && cursorRow == row)
       {
-        ImGui::SetScrollHereY(0.5F);
+        ImGui::SetScrollHereY(CURSOR_ALIGNMENT);
       }
       ImGui::TableNextColumn();
-      ImGui::Text("%llu", static_cast<unsigned long long>(entry.tick));
+      ImGui::TextUnformatted(std::to_string(entry.tick).c_str());
       ImGui::TableNextColumn();
-      ImGui::TextUnformatted(described.home < 0   ? ""
-                             : described.home > 0 ? "Home"
-                                                  : "Away");
+      ImGui::TextUnformatted(teamName(described.home));
       ImGui::TableNextColumn();
       ImGui::TextUnformatted((described.player != 0U)
                                  ? recorder.playerName(described.player).c_str()

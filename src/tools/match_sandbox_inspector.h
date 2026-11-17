@@ -110,8 +110,9 @@ class DebugInspector
   void renderRankingDetail(const SandboxRecorder& recorder, bool home,
                            std::uint64_t tick);
   void renderDuelDetail(const SandboxRecorder& recorder, std::uint64_t tick);
-  void renderDecisionTree(const SandboxRecorder& recorder,
-                          const DetailRecorder::At<MatchDecisionDetail>& at);
+  static void renderDecisionTree(
+      const SandboxRecorder& recorder,
+      const DetailRecorder::At<MatchDecisionDetail>& at);
 
   AsOf asOf;
   DetailSession detail_session;

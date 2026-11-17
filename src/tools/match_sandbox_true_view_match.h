@@ -50,6 +50,8 @@ class MatchTrueView
   std::array<PlayerID, 2> picked{};
 
  private:
+  void renderPickedPlayers(const MatchEngine& engine);
+  void renderPlayerPicker(const MatchEngine& engine, std::size_t slot);
   /** The player nearest a pixel on screen (0: none within reach). */
   [[nodiscard]] PlayerID playerAt(ImVec2 pixel) const;
 

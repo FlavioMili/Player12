@@ -76,6 +76,16 @@ class EngineDebugger
   void renderControls(SandboxRecorder& recorder, MatchEngine* engine,
                       bool* paused);
   void renderFilters(const SandboxRecorder& recorder, PlayerID selection);
+  struct LogView
+  {
+    std::optional<int> cursorRow;
+    bool scrollToCursor = false;
+    float rowHeight = 0.0F;
+  };
+  /** Resolve cursor and pending row-aligned scrolling while the recorder is
+   * locked. */
+  [[nodiscard]] LogView prepareLogView(const SandboxRecorder& recorder,
+                                       std::optional<std::uint64_t> cursor);
   void renderLog(const SandboxRecorder& recorder,
                  std::optional<std::uint64_t> cursor,
                  DebugInspector& inspector);

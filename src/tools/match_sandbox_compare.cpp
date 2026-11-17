@@ -23,11 +23,13 @@
 #include "tools/match_sandbox_names.h"
 #include "tools/match_sandbox_recorder.h"
 #include "tools/match_sandbox_review.h"
+#include "tools/match_sandbox_text.h"
 
 namespace
 {
 constexpr std::array<const char*, 4> OPTION_NAMES{"Pass", "Shot", "Carry",
                                                   "Shield"};
+constexpr float TERM_COLUMN_WEIGHT = 3.0F;
 
 std::string value(float number)
 {
@@ -90,7 +92,8 @@ void renderTermDiff(const ScoreBreakdown& before, const ScoreBreakdown& after)
   {
     return;
   }
-  ImGui::TableSetupColumn("Term", ImGuiTableColumnFlags_WidthStretch, 3.0F);
+  ImGui::TableSetupColumn("Term", ImGuiTableColumnFlags_WidthStretch,
+                          TERM_COLUMN_WEIGHT);
   ImGui::TableSetupColumn("Recorded");
   ImGui::TableSetupColumn("Now");
   ImGui::TableSetupColumn("Change");
@@ -102,7 +105,7 @@ void renderTermDiff(const ScoreBreakdown& before, const ScoreBreakdown& after)
     ImGui::TableNextColumn();
     if (changed)
     {
-      ImGui::TextColored(Theme::palette().warning, "%s", key.second.c_str());
+      SandboxText::coloredText(Theme::palette().warning, key.second.c_str());
     }
     else
     {
@@ -126,38 +129,48 @@ bool RecordingComparison::render(const MatchRecording& recording,
 {
   bool jumped = false;
   const auto& setup = recording.setup;
-  ImGui::TextWrapped("%s v %s  ·  seed %u  ·  recorded %s",
-                     setup.sides[0].name.c_str(), setup.sides[1].name.c_str(),
-                     setup.matchSeed, recording.created.c_str());
-  ImGui::TextWrapped("Recorded with: %s", recording.build.c_str());
-  ImGui::TextWrapped("Replayed with: %s", BuildInfo::summary().c_str());
+  SandboxText::wrappedText(std::format("{} v {}  ·  seed {}  ·  recorded {}",
+                                       setup.sides[0].name, setup.sides[1].name,
+                                       setup.matchSeed, recording.created)
+                               .c_str());
+  SandboxText::wrappedText(
+      std::format("Recorded with: {}", recording.build).c_str());
+  SandboxText::wrappedText(
+      std::format("Replayed with: {}", BuildInfo::summary()).c_str());
   if (!replay.error.empty())
   {
-    ImGui::TextColored(Theme::palette().negative, "Cannot replay: %s",
-                       replay.error.c_str());
+    SandboxText::coloredText(
+        Theme::palette().negative,
+        std::format("Cannot replay: {}", replay.error).c_str());
     return false;
   }
-  ImGui::TextWrapped("Score: recorded %d - %d, replayed %d - %d",
-                     recording.homeScore, recording.awayScore, replay.homeScore,
-                     replay.awayScore);
-  ImGui::TextWrapped("%zu decisions recorded%s", recording.decisions.size(),
-                     recording.details.empty() ? " (without full detail)"
-                                               : " with full detail");
+  SandboxText::wrappedText(
+      std::format("Score: recorded {} - {}, replayed {} - {}",
+                  recording.homeScore, recording.awayScore, replay.homeScore,
+                  replay.awayScore)
+          .c_str());
+  SandboxText::wrappedText(
+      std::format("{} decisions recorded{}", recording.decisions.size(),
+                  recording.details.empty() ? " (without full detail)"
+                                            : " with full detail")
+          .c_str());
   ImGui::Separator();
 
   if (!replay.divergedAt && !replay.firstDifferentDecision)
   {
-    ImGui::TextColored(Theme::palette().positive,
-                       "Replays exactly: every tick and every decision "
-                       "matches the recording.");
+    SandboxText::coloredText(Theme::palette().positive,
+                             "Replays exactly: every tick and every decision "
+                             "matches the recording.");
     return false;
   }
 
   if (replay.divergedAt)
   {
-    ImGui::TextColored(Theme::palette().warning,
-                       "The match plays differently from tick %llu.",
-                       static_cast<unsigned long long>(*replay.divergedAt));
+    SandboxText::coloredText(
+        Theme::palette().warning,
+        std::format("The match plays differently from tick {}.",
+                    *replay.divergedAt)
+            .c_str());
     SandboxAnalysisUI::next();
     if (SandboxAnalysisUI::button("Jump there") && (replayed != nullptr))
     {
@@ -165,7 +178,7 @@ bool RecordingComparison::render(const MatchRecording& recording,
       jumped = true;
     }
   }
-  ImGui::TextWrapped(
+  SandboxText::wrappedText(
       "Everything after the first difference is a different match: compare "
       "the first decision that changed, not later ones.");
 
@@ -176,18 +189,21 @@ bool RecordingComparison::render(const MatchRecording& recording,
     const SandboxRecorder* names = replayed;
     if (index < recording.decisions.size())
     {
-      ImGui::TextWrapped(
-          "Recorded: %s",
-          decisionLine(names, recording.decisions[index]).c_str());
+      SandboxText::wrappedText(
+          std::format("Recorded: {}",
+                      decisionLine(names, recording.decisions[index]))
+              .c_str());
     }
     else
     {
-      ImGui::TextWrapped("Recorded: no further decision");
+      SandboxText::wrappedText("Recorded: no further decision");
     }
     if (replay.replayedDecision)
     {
-      ImGui::TextWrapped("Now:      %s",
-                         decisionLine(names, *replay.replayedDecision).c_str());
+      SandboxText::wrappedText(
+          std::format("Now:      {}",
+                      decisionLine(names, *replay.replayedDecision))
+              .c_str());
       SandboxAnalysisUI::next();
       if (SandboxAnalysisUI::button("Jump to it") && (replayed != nullptr))
       {
@@ -198,7 +214,7 @@ bool RecordingComparison::render(const MatchRecording& recording,
     }
     else
     {
-      ImGui::TextWrapped("Now: no further decision");
+      SandboxText::wrappedText("Now: no further decision");
     }
     renderDecisionDiff(recording, replay, replayed);
   }
@@ -217,7 +233,7 @@ void RecordingComparison::renderDecisionDiff(const MatchRecording& recording,
   }
   if (recording.details.empty())
   {
-    ImGui::TextDisabled(
+    SandboxText::disabledText(
         "Saved without full detail: no term-by-term "
         "comparison.");
     return;
@@ -231,7 +247,7 @@ void RecordingComparison::renderDecisionDiff(const MatchRecording& recording,
       findDetail(replayDetail.detail().decisions, now.tick, now.record.player);
   if ((before == nullptr) || (after == nullptr))
   {
-    ImGui::TextDisabled("No breakdown of this decision on one side.");
+    SandboxText::disabledText("No breakdown of this decision on one side.");
     return;
   }
   ImGui::SeparatorText("Scores before noise, term by term");
@@ -248,21 +264,26 @@ void RecordingComparison::renderDecisionDiff(const MatchRecording& recording,
     {
       ImGui::SetNextItemOpen(true, ImGuiCond_Appearing);
     }
-    if (ImGui::TreeNode("option", "%s", label.c_str()))
+    if (SandboxText::treeNode("option", label.c_str()))
     {
       renderTermDiff(old, current);
       ImGui::TreePop();
     }
     ImGui::PopID();
   }
-  if (ImGui::TreeNode("noise", "Noise  %s",
-                      before->noise == after->noise ? "unchanged" : "changed"))
+  if (SandboxText::treeNode(
+          "noise",
+          std::format("Noise  {}",
+                      before->noise == after->noise ? "unchanged" : "changed")
+              .c_str()))
   {
     for (std::size_t option = 0; option < OPTION_NAMES.size(); ++option)
     {
-      ImGui::BulletText("%s  %s -> %s", OPTION_NAMES.at(option),
-                        value(before->noise.at(option)).c_str(),
-                        value(after->noise.at(option)).c_str());
+      SandboxText::bulletText(std::format("{}  {} -> {}",
+                                          OPTION_NAMES.at(option),
+                                          value(before->noise.at(option)),
+                                          value(after->noise.at(option)))
+                                  .c_str());
     }
     ImGui::TreePop();
   }
