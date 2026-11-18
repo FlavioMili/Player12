@@ -8366,8 +8366,8 @@ void MatchEngine::steerRestartLineUp(MatchPlayer& taker, float dt)
   lineUp.seconds += dt;
   if (possessionId == PossessionId::BINTURONG &&
       outOfPlayId == OutOfPlayId::AARDVARK &&
-      taker.position.y * pitch.width >= pitch.ground.boardsY &&
-      ball.position.y * pitch.width < pitch.ground.boardsY)
+      taker.position.y >= pitch.ground.boardsY &&
+      ball.position.y < pitch.ground.boardsY)
   {
     // A controller's queued restart is retained while he approaches too.
     taker.movementTarget = asPoint(RestartApproach::target(

@@ -15,6 +15,7 @@
 #include <stdexcept>
 #include <utility>
 
+#include "gui/render/match_render_math.h"
 #include "gui/render/match_render_snapshot.h"
 #include "model/match_engine.h"
 #include "model/player.h"
@@ -78,8 +79,9 @@ constexpr float CENTRE_TO_EDGE_SCALE = 0.5F;
 }
 
 /** The example session (plan section 23, point 9; our own layout): 16
- * players, two 4 v 4 small-sided games side by side, then four 2 v 2, then
- * one 6 v 6 with four resting in the changing room. */
+ * players, two 4 v 4 small-sided games side by side, then four 2 v 2 (the
+ * two on the right turned, their length across the ground), then one 6 v 6
+ * with four resting in the changing room. */
 SessionPlan smallSidedRotation()
 {
   constexpr std::size_t SQUAD_SIZE = 16;
@@ -105,11 +107,12 @@ SessionPlan smallSidedRotation()
   plan.name = "Small-sided rotation";
   plan.summary =
       "Sixteen players: two 4 v 4 small-sided games side by side, then four "
-      "2 v 2 games, then one 6 v 6 with four resting. Two minutes each "
-      "(training ground T7).";
+      "2 v 2 games (the two on the right turned), then one 6 v 6 with four "
+      "resting. Two minutes each (training ground T7).";
   plan.squadSize = SQUAD_SIZE;
   const auto game = [](std::string name, int rung, int nASide,
-                       PitchPoint centre, std::span<const std::size_t> players)
+                       PitchPoint centre, std::span<const std::size_t> players,
+                       bool turned = false)
   {
     constexpr float EXERCISE_SECONDS = 120.0F;
     SessionZone zone;
@@ -119,6 +122,7 @@ SessionPlan smallSidedRotation()
                      {"N a side (N v N)", static_cast<float>(nASide)},
                      {"Seconds", EXERCISE_SECONDS}};
     zone.centre = centre;
+    zone.turned = turned;
     zone.players.assign(players.begin(), players.end());
     return zone;
   };
@@ -129,14 +133,16 @@ SessionPlan smallSidedRotation()
       game("Left 4 v 4", 4, 4, LEFT_FOURS_CENTRE, LEFT_FOURS));
   fours.zones.push_back(
       game("Right 4 v 4", 4, 4, RIGHT_FOURS_CENTRE, RIGHT_FOURS));
+  // The right-hand two are turned, so a session plays turned and unturned
+  // zones side by side, and both changes go into or out of turned zones.
   SessionExercise twos{.name = "Four 2 v 2", .zones = {}};
   twos.zones.push_back(game("Top left 2 v 2", 2, 0, TOP_LEFT_CENTRE, TOP_LEFT));
   twos.zones.push_back(
-      game("Top right 2 v 2", 2, 0, TOP_RIGHT_CENTRE, TOP_RIGHT));
+      game("Top right 2 v 2", 2, 0, TOP_RIGHT_CENTRE, TOP_RIGHT, true));
   twos.zones.push_back(
       game("Bottom left 2 v 2", 2, 0, BOTTOM_LEFT_CENTRE, BOTTOM_LEFT));
-  twos.zones.push_back(
-      game("Bottom right 2 v 2", 2, 0, BOTTOM_RIGHT_CENTRE, BOTTOM_RIGHT));
+  twos.zones.push_back(game("Bottom right 2 v 2", 2, 0, BOTTOM_RIGHT_CENTRE,
+                            BOTTOM_RIGHT, true));
   SessionExercise sixes{.name = "6 v 6", .zones = {}};
   sixes.zones.push_back(game("6 v 6", 4, SIX_A_SIDE, SIXES_CENTRE, SIXES));
   plan.exercises = {std::move(fours), std::move(twos), std::move(sixes)};
@@ -647,7 +653,7 @@ void SessionRun::beginChange(std::size_t next)
       state.velocity = groundVector(*zone.plan, state.velocity);
       if (zone.plan->turned)
       {
-        state.facing += QUARTER_TURN;
+        state.facing = RenderMath::wrapAngle(state.facing + QUARTER_TURN);
       }
       walkers.push_back({.state = state, .target = mover.target});
       walkerPlayers.push_back(players[index].get());
@@ -754,7 +760,7 @@ void SessionRun::finishChange()
     local.velocity = localVector(*zone.plan, state->velocity);
     if (zone.plan->turned)
     {
-      local.facing -= QUARTER_TURN;
+      local.facing = RenderMath::wrapAngle(local.facing - QUARTER_TURN);
     }
     engine.carryPlayerIn(local);
     zone.startStates[id] = local;
