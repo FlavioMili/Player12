@@ -66,6 +66,40 @@ class SetUpStandIn final
   std::array<BodyId, 2> bodies;
 };
 
+/** A zone's pitch placed on the ground: what its players are carried on and
+ * off the ground by, and its view drawn with. */
+[[nodiscard]] PitchPlacement zonePlacement(const SessionZone& zone,
+                                           const MatchEngine& engine)
+{
+  return PitchPlacement::of(engine.getPitch(), zone.centre, zone.turned);
+}
+
+/** A player's running state from his zone's own metres to the ground's, and
+ * back (T7d). A turned zone's facings are wrapped, as the engine keeps
+ * them. */
+[[nodiscard]] MatchEngine::CarriedPlayer toGround(
+    const PitchPlacement& placement, MatchEngine::CarriedPlayer state)
+{
+  state.position = placement.toGround(state.position);
+  state.velocity = placement.toGround(state.velocity);
+  if (placement.turned)
+  {
+    state.facing = RenderMath::wrapAngle(placement.toGroundAngle(state.facing));
+  }
+  return state;
+}
+[[nodiscard]] MatchEngine::CarriedPlayer toLocal(
+    const PitchPlacement& placement, MatchEngine::CarriedPlayer state)
+{
+  state.position = placement.toLocal(state.position);
+  state.velocity = placement.toLocal(state.velocity);
+  if (placement.turned)
+  {
+    state.facing = RenderMath::wrapAngle(placement.toLocalAngle(state.facing));
+  }
+  return state;
+}
+
 [[nodiscard]] std::optional<std::string> checkPlayerAssignments(
     const SessionZone& zone, std::size_t squadSize,
     std::set<std::size_t>& taken)
@@ -408,7 +442,7 @@ bool SessionRun::sendToChangingRoom(std::size_t squadIndex)
     {
       continue;
     }
-    carried[id] = *now;
+    carried[id] = toGround(zonePlacement(*zone.plan, engine), *now);
     resting.push_back(squadIndex);
     return true;
   }
@@ -473,7 +507,8 @@ void SessionRun::finishExercise()
       {
         if (const auto now = zone.run->engine().carriedPlayer(id))
         {
-          carried[id] = *now;
+          carried[id] =
+              toGround(zonePlacement(*zone.plan, zone.run->engine()), *now);
         }
       }
       if (const auto saved = carried.find(id); saved != carried.end())
@@ -506,35 +541,6 @@ void SessionRun::finishExercise()
 
 namespace
 {
-/** A zone's point, velocity and facing on the ground, and back (T7d). */
-PitchPoint groundPoint(const SessionZone& zone, const MatchPitch& pitch,
-                       PitchPoint local)
-{
-  const float dx = local.x - (CENTRE_TO_EDGE_SCALE * pitch.length);
-  const float dy = local.y - (CENTRE_TO_EDGE_SCALE * pitch.width);
-  return zone.turned ? PitchPoint{zone.centre.x - dy, zone.centre.y + dx}
-                     : PitchPoint{zone.centre.x + dx, zone.centre.y + dy};
-}
-PitchPoint localPoint(const SessionZone& zone, const MatchPitch& pitch,
-                      PitchPoint ground)
-{
-  const float gx = ground.x - zone.centre.x;
-  const float gy = ground.y - zone.centre.y;
-  return zone.turned ? PitchPoint{(CENTRE_TO_EDGE_SCALE * pitch.length) + gy,
-                                  (CENTRE_TO_EDGE_SCALE * pitch.width) - gx}
-                     : PitchPoint{(CENTRE_TO_EDGE_SCALE * pitch.length) + gx,
-                                  (CENTRE_TO_EDGE_SCALE * pitch.width) + gy};
-}
-Vector2F groundVector(const SessionZone& zone, Vector2F local)
-{
-  return zone.turned ? Vector2F{.x = -local.y, .y = local.x} : local;
-}
-Vector2F localVector(const SessionZone& zone, Vector2F ground)
-{
-  return zone.turned ? Vector2F{.x = ground.y, .y = -ground.x} : ground;
-}
-constexpr float QUARTER_TURN = 1.5707963F;
-
 [[nodiscard]] PitchPoint changingRoomPlace(int benchSpot)
 {
   constexpr float FIRST_BENCH_SPOT_METRES = 8.0F;
@@ -650,7 +656,6 @@ void SessionRun::beginChange(std::size_t next)
     {
       continue;
     }
-    const MatchPitch& from = zone.run->engine().getPitch();
     for (const std::size_t index : zone.plan->players)
     {
       if (std::ranges::find(resting, index) != resting.end())
@@ -668,14 +673,8 @@ void SessionRun::beginChange(std::size_t next)
       {
         ++benchSpot;
       }
-      MatchEngine::CarriedPlayer state = saved->second;
-      state.position = groundPoint(*zone.plan, from, state.position);
-      state.velocity = groundVector(*zone.plan, state.velocity);
-      if (zone.plan->turned)
-      {
-        state.facing = RenderMath::wrapAngle(state.facing + QUARTER_TURN);
-      }
-      walkers.push_back({.state = state, .target = mover.target});
+      // Already on the ground: he left his zone at the exercise's end.
+      walkers.push_back({.state = saved->second, .target = mover.target});
       walkerPlayers.push_back(players[index].get());
       movers.push_back(mover);
     }
@@ -738,8 +737,8 @@ SessionRun::Mover SessionRun::nextPlace(std::size_t squadIndex,
     }
     if (const auto start = zone.run->engine().carriedPlayer(id))
     {
-      mover.target = groundPoint(*zone.plan, zone.run->engine().getPitch(),
-                                 start->position);
+      mover.target = zonePlacement(*zone.plan, zone.run->engine())
+                         .toGround(start->position);
     }
     mover.toZone = to;
   }
@@ -775,20 +774,14 @@ void SessionRun::finishChange()
     }
     Zone& zone = upcoming[*mover.toZone];
     MatchEngine& engine = zone.run->engine();
-    MatchEngine::CarriedPlayer local = *state;
-    local.position = localPoint(*zone.plan, engine.getPitch(), state->position);
-    local.velocity = localVector(*zone.plan, state->velocity);
-    if (zone.plan->turned)
-    {
-      local.facing = RenderMath::wrapAngle(local.facing - QUARTER_TURN);
-    }
+    const PitchPlacement placement = zonePlacement(*zone.plan, engine);
+    const MatchEngine::CarriedPlayer local = toLocal(placement, *state);
     engine.carryPlayerIn(local);
     zone.startStates[id] = local;
     // How far he jumped, or his condition, at the split (should be none).
     if (const auto now = engine.carriedPlayer(id))
     {
-      const PitchPoint placed =
-          groundPoint(*zone.plan, engine.getPitch(), now->position);
+      const PitchPoint placed = placement.toGround(now->position);
       splitJump = std::max(splitJump, std::hypot(placed.x - state->position.x,
                                                  placed.y - state->position.y));
       splitConditionJump =
@@ -919,12 +912,8 @@ void fillSessionRenderSnapshot(const SessionRun& run,
     }
     const MatchEngine& engine = zone.run->engine();
     fillMatchRenderSnapshot(engine, zoneView);
-    MatchRenderZone placed;
-    placed.centre = zone.plan->centre;
-    placed.turned = zone.plan->turned;
-    placed.lengthMetres = engine.getPitch().length;
-    placed.widthMetres = engine.getPitch().width;
-    placed.goal = engine.getPitch().goal;
+    const MatchRenderZone placed{zonePlacement(*zone.plan, engine),
+                                 engine.getPitch().goal};
     snapshot.zones.push_back(placed);
     const auto point = [&](PitchPoint local) { return placed.toGround(local); };
     const auto angle = [&](float local) { return placed.toGroundAngle(local); };

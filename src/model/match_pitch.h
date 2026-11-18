@@ -138,11 +138,6 @@ enum class PitchEdge : std::uint8_t
   WALLS
 };
 
-/**
- * The Laws a pitch plays by (training ground plan section 20). A match has
- * them all; a training pitch none by default, and a drill switches on what
- * it needs.
- */
 /** How play restarts after a goal or a whistle: the Laws' kick-off and set
  * pieces, or a coach's serve (a training pitch). */
 enum class PitchRestart : std::uint8_t
@@ -169,6 +164,11 @@ enum class ServeReceiver : std::uint8_t
   NEAREST_COACH
 };
 
+/**
+ * The Laws a pitch plays by (training ground plan section 20). A match has
+ * them all; a training pitch none by default, and a drill switches on what
+ * it needs.
+ */
 struct PitchLaws
 {
   /** Off: nobody is ever offside (also off when the drill rules say so). */
@@ -360,5 +360,71 @@ struct MatchPitch final
                                            bool homeTeam) const
   {
     return homeTeam ? length - point.x : point.x;
+  }
+};
+
+/**
+ * Where a pitch lies on a larger ground (training ground plan section 23):
+ * a session's zone, by its centre on the ground, turned 90 degrees or not
+ * (its length across the ground), and the pitch's size. Points, vectors and
+ * facings go between the pitch's own metres and the ground's. The one copy
+ * the session's engines and its views share.
+ */
+struct PitchPlacement
+{
+  PitchPoint centre{};
+  bool turned = false;
+  float lengthMetres = 0.0F;
+  float widthMetres = 0.0F;
+
+  /** A quarter turn (radians): what a turned pitch's facings gain. */
+  static constexpr float QUARTER_TURN = 1.5707963F;
+
+  [[nodiscard]] static constexpr PitchPlacement of(const MatchPitch& pitch,
+                                                   PitchPoint centre,
+                                                   bool turned)
+  {
+    return PitchPlacement{.centre = centre,
+                          .turned = turned,
+                          .lengthMetres = pitch.length,
+                          .widthMetres = pitch.width};
+  }
+  /** A point of the pitch (metres on it) on the ground, and back. */
+  [[nodiscard]] constexpr PitchPoint toGround(PitchPoint local) const
+  {
+    const float dx = local.x - (0.5F * lengthMetres);
+    const float dy = local.y - (0.5F * widthMetres);
+    return turned ? PitchPoint{centre.x - dy, centre.y + dx}
+                  : PitchPoint{centre.x + dx, centre.y + dy};
+  }
+  [[nodiscard]] constexpr PitchPoint toLocal(PitchPoint ground) const
+  {
+    const float gx = ground.x - centre.x;
+    const float gy = ground.y - centre.y;
+    return turned ? PitchPoint{(0.5F * lengthMetres) + gy,
+                               (0.5F * widthMetres) - gx}
+                  : PitchPoint{(0.5F * lengthMetres) + gx,
+                               (0.5F * widthMetres) + gy};
+  }
+  /** A vector (a velocity, a direction) on the pitch, on the ground, and
+   * back. */
+  [[nodiscard]] constexpr Vector2F toGround(Vector2F local) const
+  {
+    return turned ? Vector2F{.x = -local.y, .y = local.x} : local;
+  }
+  [[nodiscard]] constexpr Vector2F toLocal(Vector2F ground) const
+  {
+    return turned ? Vector2F{.x = ground.y, .y = -ground.x} : ground;
+  }
+  /** A facing on the pitch, on the ground, and back. Not wrapped: two
+   * facings keep their difference (the views interpolate between them);
+   * the engine's wrap theirs. */
+  [[nodiscard]] constexpr float toGroundAngle(float angle) const
+  {
+    return turned ? angle + QUARTER_TURN : angle;
+  }
+  [[nodiscard]] constexpr float toLocalAngle(float angle) const
+  {
+    return turned ? angle - QUARTER_TURN : angle;
   }
 };

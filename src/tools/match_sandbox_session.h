@@ -20,6 +20,7 @@
 #include "model/match_brain.h"
 #include "model/match_engine.h"
 #include "model/match_point.h"
+#include "model/match_tuning.h"
 #include "tools/match_sandbox_drill.h"
 #include "tools/match_sandbox_training.h"
 
@@ -36,9 +37,11 @@ struct StatsConfig;
  */
 namespace TrainingGround
 {
-/** The ground the zones are laid out on (metres). */
-inline constexpr float LENGTH_METRES = 105.0F;
-inline constexpr float WIDTH_METRES = 68.0F;
+/** The ground the zones are laid out on (metres): match-sized, and it must
+ * stay so, as the views still frame and mirror everything by the match
+ * pitch's size. */
+inline constexpr float LENGTH_METRES = MatchTuning::Pitch::MATCH_LENGTH_METRES;
+inline constexpr float WIDTH_METRES = MatchTuning::Pitch::MATCH_WIDTH_METRES;
 /** Kept clear round each zone's walls: its coach stands 1 m out. */
 inline constexpr float ZONE_MARGIN_METRES = 2.0F;
 }  // namespace TrainingGround
@@ -140,7 +143,6 @@ class SessionRun
   }
   /** Simulated seconds since the session began. */
   [[nodiscard]] double seconds() const { return elapsed; }
-  /** Each finished exercise's zones' reports, in order. */
   /** A squad player leaves his zone for the changing room now (taken off
    * at once; the zone plays on a man short). He plays again in the next
    * exercise that names him. False if he isn't playing now. */
@@ -148,6 +150,7 @@ class SessionRun
   /** Squad players in the changing room this exercise: sent there, or in
    * no zone. */
   [[nodiscard]] std::vector<std::size_t> changingRoom() const;
+  /** Each finished exercise's zones' reports, in order. */
   [[nodiscard]] const std::vector<std::vector<std::string>>& history() const
   {
     return finishedReports;
@@ -212,8 +215,9 @@ class SessionRun
   bool over = false;
   std::vector<std::vector<std::string>> finishedReports;
   /** Each squad player's running state when he last left a zone (an
-   * exercise's end, or the changing room): his condition carries into the
-   * next (T7c). */
+   * exercise's end, or the changing room) or a change: his condition
+   * carries into the next (T7c). Always on the ground (its metres, its
+   * facing), never a zone's own. */
   std::map<PlayerID, MatchEngine::CarriedPlayer> carried;
   /** Squad players sent to the changing room this exercise. */
   std::vector<std::size_t> resting;

@@ -137,29 +137,11 @@ struct MatchRenderBall
 };
 
 /** One zone of a training session drawn on the ground (training ground plan
- * section 23): its walled pitch's size and goals, placed by its centre on
- * the ground and turned 90 degrees or not. */
-struct MatchRenderZone
+ * section 23): its walled pitch placed on the ground (the same placement
+ * its engine's players are carried by), and its goals. */
+struct MatchRenderZone : PitchPlacement
 {
-  PitchPoint centre{};
-  bool turned = false;
-  float lengthMetres = 0.0F;
-  float widthMetres = 0.0F;
   PitchGoal goal{};
-
-  /** A point of the zone's pitch (metres on it) on the ground. */
-  [[nodiscard]] PitchPoint toGround(PitchPoint local) const
-  {
-    const float dx = local.x - (0.5F * lengthMetres);
-    const float dy = local.y - (0.5F * widthMetres);
-    return turned ? PitchPoint{centre.x - dy, centre.y + dx}
-                  : PitchPoint{centre.x + dx, centre.y + dy};
-  }
-  /** A facing angle on the zone's pitch, on the ground. */
-  [[nodiscard]] float toGroundAngle(float angle) const
-  {
-    return turned ? angle + 1.5707963F : angle;
-  }
 };
 
 struct MatchRenderSnapshot
