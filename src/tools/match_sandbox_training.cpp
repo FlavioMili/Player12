@@ -745,11 +745,11 @@ class SlalomDrill final : public TrainingDrill
                  QUEUE_GAP_METRES * static_cast<float>(place));
   }
 
-  /** Whether his side plans his run as a route: the Binturong brain and
-   * body (as Laps). */
+  /** Whether his side plans his run as a route: a Binturong or later brain
+   * on a Binturong body (as Laps). */
   static bool routes(const MatchEngine& engine, const MatchPlayer& player)
   {
-    return engine.getBrain(player.isHomeTeam) == BrainId::BINTURONG &&
+    return engine.getBrain(player.isHomeTeam) != BrainId::AARDVARK &&
            engine.getBody(player.isHomeTeam) == BodyId::BINTURONG;
   }
 
@@ -1260,11 +1260,11 @@ class LapsDrill final : public TrainingDrill
     std::size_t place = 0;
   };
 
-  /** Whether his side plans his laps as a route (and overtakes): the
-   * Binturong brain and body (movement targets plan 4a). */
+  /** Whether his side plans his laps as a route (and overtakes): a Binturong
+   * or later brain on a Binturong body (movement targets plan 4a). */
   static bool routes(const MatchEngine& engine, const MatchPlayer& player)
   {
-    return engine.getBrain(player.isHomeTeam) == BrainId::BINTURONG &&
+    return engine.getBrain(player.isHomeTeam) != BrainId::AARDVARK &&
            engine.getBody(player.isHomeTeam) == BodyId::BINTURONG;
   }
 

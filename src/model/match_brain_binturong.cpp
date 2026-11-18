@@ -6,17 +6,16 @@
 //  See the LICENSE file in the project root.
 // -----------------------------------------------------------------------------
 
-// The Binturong brain: the player decision-making being developed (see
+// The Binturong brain: frozen (2026-11-18) when the Capybara brain
+// (match_brain_capybara.cpp) was copied from it; brain work goes there (see
 // match_brain.h). It started as an exact copy of the Aardvark brain
 // (match_brain_aardvark.cpp). Every function here is a MatchEngine member
 // with the "Binturong" suffix, declared in match_brain_binturong_members.h; the
 // engine reaches them through the dispatchers in match_brain_dispatch.cpp.
 //
-// Change behaviour freely here. A brain-only helper this file calls has its
-// own Binturong copy; a helper shared with the body (match_engine.cpp) is
-// shared by every brain, so copy it into this brain (with the Binturong suffix)
-// before changing it. To keep this version for comparison, freeze it and copy
-// it to a new version the same way this one was made.
+// Frozen: change its behaviour only to fix a crash or a broken build. A helper
+// it shares with the body (match_engine.cpp) is shared by every brain, so a
+// brain that needs a different one copies it with its own suffix.
 
 #include <algorithm>
 #include <array>

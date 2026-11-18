@@ -22,6 +22,8 @@ const MatchEngine::MovementStyle& MatchEngine::movementStyle(
       break;
     case BrainId::BINTURONG:
       return movementStyleBinturong();
+    case BrainId::CAPYBARA:
+      return movementStyleCapybara();
   }
   return movementStyleAardvark();
 }
@@ -34,6 +36,8 @@ const MatchEngine::BrainTraits& MatchEngine::brainTraits(bool homeTeam) const
       break;
     case BrainId::BINTURONG:
       return brainTraitsBinturong();
+    case BrainId::CAPYBARA:
+      return brainTraitsCapybara();
   }
   // The Aardvark brain decides none of these: the engine's defaults.
   static constexpr BrainTraits none{};
@@ -49,6 +53,8 @@ std::optional<float> MatchEngine::chooseCarryPace(
       break;
     case BrainId::BINTURONG:
       return carryPaceBinturong(player);
+    case BrainId::CAPYBARA:
+      return carryPaceCapybara(player);
   }
   return std::nullopt;
 }
@@ -63,6 +69,8 @@ std::optional<float> MatchEngine::chooseTouchSeconds(const MatchPlayer& player,
       break;
     case BrainId::BINTURONG:
       return chooseTouchSecondsBinturong(player, pace, toEnd);
+    case BrainId::CAPYBARA:
+      return chooseTouchSecondsCapybara(player, pace, toEnd);
   }
   return std::nullopt;
 }
@@ -79,6 +87,9 @@ std::optional<float> MatchEngine::choosePushMetres(
     case BrainId::BINTURONG:
       return pushMetresBinturong(player, from, direction, startGap, pace,
                                  seconds, toGoal);
+    case BrainId::CAPYBARA:
+      return pushMetresCapybara(player, from, direction, startGap, pace,
+                                seconds, toGoal);
   }
   return std::nullopt;
 }
@@ -92,6 +103,8 @@ std::optional<MatchEngine::PassOption> MatchEngine::choosePassTarget(
       break;
     case BrainId::BINTURONG:
       return choosePassTargetBinturong(passer);
+    case BrainId::CAPYBARA:
+      return choosePassTargetCapybara(passer);
   }
   return choosePassTargetAardvark(passer);
 }
@@ -104,6 +117,9 @@ void MatchEngine::refreshTacticalTargets(float dt, bool planHome)
       break;
     case BrainId::BINTURONG:
       refreshTacticalTargetsBinturong(dt, planHome);
+      return;
+    case BrainId::CAPYBARA:
+      refreshTacticalTargetsCapybara(dt, planHome);
       return;
   }
   refreshTacticalTargetsAardvark(dt, planHome);
@@ -118,6 +134,9 @@ void MatchEngine::assignMarks(bool home)
     case BrainId::BINTURONG:
       assignMarksBinturong(home);
       return;
+    case BrainId::CAPYBARA:
+      assignMarksCapybara(home);
+      return;
   }
   assignMarksAardvark(home);
 }
@@ -131,6 +150,8 @@ PitchPoint MatchEngine::goalkeeperTarget(MatchPlayer& keeper,
       break;
     case BrainId::BINTURONG:
       return goalkeeperTargetBinturong(keeper, carrier);
+    case BrainId::CAPYBARA:
+      return goalkeeperTargetCapybara(keeper, carrier);
   }
   return goalkeeperTargetAardvark(keeper, carrier);
 }
@@ -143,6 +164,8 @@ MatchEngine::BallAction MatchEngine::chooseBallAction(MatchPlayer& carrier)
       break;
     case BrainId::BINTURONG:
       return chooseBallActionBinturong(carrier);
+    case BrainId::CAPYBARA:
+      return chooseBallActionCapybara(carrier);
   }
   return chooseBallActionAardvark(carrier);
 }
@@ -155,6 +178,8 @@ MatchPlayer* MatchEngine::chooseTakeOn(MatchPlayer& carrier)
       break;
     case BrainId::BINTURONG:
       return chooseTakeOnBinturong(carrier);
+    case BrainId::CAPYBARA:
+      return chooseTakeOnCapybara(carrier);
   }
   return chooseTakeOnAardvark(carrier);
 }
@@ -167,6 +192,9 @@ void MatchEngine::planOvertake(std::size_t slot)
       break;
     case BrainId::BINTURONG:
       planOvertakeBinturong(slot);
+      return;
+    case BrainId::CAPYBARA:
+      planOvertakeCapybara(slot);
       return;
   }
   planOvertakeAardvark(slot);
@@ -182,6 +210,9 @@ void MatchEngine::afterPassReleased(const MatchPlayer& passer,
     case BrainId::BINTURONG:
       afterPassReleasedBinturong(passer, receiver);
       return;
+    case BrainId::CAPYBARA:
+      afterPassReleasedCapybara(passer, receiver);
+      return;
   }
   afterPassReleasedAardvark(passer, receiver);
 }
@@ -196,6 +227,8 @@ MatchEngine::PassOption MatchEngine::evaluatePassOption(
       break;
     case BrainId::BINTURONG:
       return evaluatePassOptionBinturong(passer, receiver, detail);
+    case BrainId::CAPYBARA:
+      return evaluatePassOptionCapybara(passer, receiver, detail);
   }
   return evaluatePassOptionAardvark(passer, receiver, detail);
 }
@@ -210,6 +243,8 @@ MatchEngine::ShotAim MatchEngine::chooseShotAim(const MatchPlayer& shooter,
       break;
     case BrainId::BINTURONG:
       return chooseShotAimBinturong(shooter, header, penalty, freeKick);
+    case BrainId::CAPYBARA:
+      return chooseShotAimCapybara(shooter, header, penalty, freeKick);
   }
   return chooseShotAimAardvark(shooter, header, penalty, freeKick);
 }
@@ -222,6 +257,8 @@ float MatchEngine::choosePenaltyGuess(const MatchPlayer& keeper)
       break;
     case BrainId::BINTURONG:
       return choosePenaltyGuessBinturong(keeper);
+    case BrainId::CAPYBARA:
+      return choosePenaltyGuessCapybara(keeper);
   }
   return choosePenaltyGuessAardvark(keeper);
 }
@@ -235,6 +272,8 @@ MatchEngine::ClearanceAim MatchEngine::chooseClearanceAim(
       break;
     case BrainId::BINTURONG:
       return chooseClearanceAimBinturong(defender);
+    case BrainId::CAPYBARA:
+      return chooseClearanceAimCapybara(defender);
   }
   return chooseClearanceAimAardvark(defender);
 }
@@ -247,6 +286,8 @@ PitchPoint MatchEngine::chooseClearBehindTarget(const MatchPlayer& defender)
       break;
     case BrainId::BINTURONG:
       return chooseClearBehindTargetBinturong(defender);
+    case BrainId::CAPYBARA:
+      return chooseClearBehindTargetCapybara(defender);
   }
   return chooseClearBehindTargetAardvark(defender);
 }
@@ -260,6 +301,8 @@ MatchEngine::HeaderAttempt MatchEngine::chooseHeaderAttempt(
       break;
     case BrainId::BINTURONG:
       return chooseHeaderAttemptBinturong(header, fromTeammate);
+    case BrainId::CAPYBARA:
+      return chooseHeaderAttemptCapybara(header, fromTeammate);
   }
   return chooseHeaderAttemptAardvark(header, fromTeammate);
 }
@@ -273,6 +316,8 @@ MatchEngine::HeaderPlay MatchEngine::chooseHeaderPlay(const MatchPlayer& header,
       break;
     case BrainId::BINTURONG:
       return chooseHeaderPlayBinturong(header, fromTeammate);
+    case BrainId::CAPYBARA:
+      return chooseHeaderPlayCapybara(header, fromTeammate);
   }
   return chooseHeaderPlayAardvark(header, fromTeammate);
 }
@@ -287,6 +332,8 @@ bool MatchEngine::touchNow(const MatchPlayer& player, const TouchMoment& moment)
       break;
     case BrainId::BINTURONG:
       return touchNowBinturong(player, moment);
+    case BrainId::CAPYBARA:
+      return touchNowCapybara(player, moment);
   }
   return true;
 }
@@ -302,6 +349,8 @@ bool MatchEngine::dribbleTouchNow(const MatchPlayer& player,
       break;
     case BrainId::BINTURONG:
       return dribbleTouchNowBinturong(player, moment);
+    case BrainId::CAPYBARA:
+      return dribbleTouchNowCapybara(player, moment);
   }
   return true;
 }
@@ -315,6 +364,8 @@ TouchIntent MatchEngine::chooseFirstTouch(const MatchPlayer& player,
       break;
     case BrainId::BINTURONG:
       return chooseFirstTouchBinturong(player, moment);
+    case BrainId::CAPYBARA:
+      return chooseFirstTouchCapybara(player, moment);
   }
   return defaultTouchIntent(player);
 }
@@ -329,6 +380,8 @@ MatchEngine::Challenge MatchEngine::chooseChallenge(const MatchPlayer& carrier,
       break;
     case BrainId::BINTURONG:
       return chooseChallengeBinturong(carrier, dt);
+    case BrainId::CAPYBARA:
+      return chooseChallengeCapybara(carrier, dt);
   }
   return chooseChallengeAardvark(carrier, dt);
 }
@@ -347,6 +400,9 @@ bool MatchEngine::goesIntoContest(MatchPlayer& defender,
         break;
       case BrainId::BINTURONG:
         defender.goingIn = goesIntoContestBinturong(defender, owner, contact);
+        break;
+      case BrainId::CAPYBARA:
+        defender.goingIn = goesIntoContestCapybara(defender, owner, contact);
         break;
     }
     if (defender.goingIn)
@@ -371,6 +427,8 @@ TackleIntent MatchEngine::chooseTackleIntent(const MatchPlayer& tackler,
       break;
     case BrainId::BINTURONG:
       return chooseTackleIntentBinturong(tackler, attacker, contact, freeBall);
+    case BrainId::CAPYBARA:
+      return chooseTackleIntentCapybara(tackler, attacker, contact, freeBall);
   }
   return TackleIntent::CONTROL;
 }
@@ -383,6 +441,8 @@ bool MatchEngine::choosesToBlock(const MatchPlayer& player)
       break;
     case BrainId::BINTURONG:
       return choosesToBlockBinturong(player);
+    case BrainId::CAPYBARA:
+      return choosesToBlockCapybara(player);
   }
   return choosesToBlockAardvark(player);
 }
@@ -395,6 +455,8 @@ bool MatchEngine::choosesToPutBlockBehind(const MatchPlayer& player)
       break;
     case BrainId::BINTURONG:
       return choosesToPutBlockBehindBinturong(player);
+    case BrainId::CAPYBARA:
+      return choosesToPutBlockBehindCapybara(player);
   }
   return choosesToPutBlockBehindAardvark(player);
 }
@@ -407,6 +469,8 @@ bool MatchEngine::choosesToClearCrossBehind(const MatchPlayer& player)
       break;
     case BrainId::BINTURONG:
       return choosesToClearCrossBehindBinturong(player);
+    case BrainId::CAPYBARA:
+      return choosesToClearCrossBehindCapybara(player);
   }
   return choosesToClearCrossBehindAardvark(player);
 }
@@ -420,6 +484,8 @@ MatchPlayer* MatchEngine::chooseRestartTaker(MatchState restart, bool homeTeam,
       break;
     case BrainId::BINTURONG:
       return chooseRestartTakerBinturong(restart, homeTeam, spot, topCorner);
+    case BrainId::CAPYBARA:
+      return chooseRestartTakerCapybara(restart, homeTeam, spot, topCorner);
   }
   return chooseRestartTakerAardvark(restart, homeTeam, spot, topCorner);
 }
@@ -433,6 +499,8 @@ MatchEngine::RestartPlay MatchEngine::chooseRestartPlay(MatchPlayer& taker,
       break;
     case BrainId::BINTURONG:
       return chooseRestartPlayBinturong(taker, restartState);
+    case BrainId::CAPYBARA:
+      return chooseRestartPlayCapybara(taker, restartState);
   }
   return chooseRestartPlayAardvark(taker, restartState);
 }
@@ -447,6 +515,9 @@ void MatchEngine::applyTeamMentality(StrategySliders& sliders,
     case BrainId::BINTURONG:
       applyTeamMentalityBinturong(sliders, homeTeam);
       return;
+    case BrainId::CAPYBARA:
+      applyTeamMentalityCapybara(sliders, homeTeam);
+      return;
   }
   applyTeamMentalityAardvark(sliders, homeTeam);
 }
@@ -460,6 +531,8 @@ MatchEngine::SetPieceAttackers MatchEngine::arrangeSetPieceAttack(
       break;
     case BrainId::BINTURONG:
       return arrangeSetPieceAttackBinturong(attackingHome, ballPosition);
+    case BrainId::CAPYBARA:
+      return arrangeSetPieceAttackCapybara(attackingHome, ballPosition);
   }
   return arrangeSetPieceAttackAardvark(attackingHome, ballPosition);
 }
@@ -475,6 +548,9 @@ void MatchEngine::arrangeSetPieceDefence(bool defendingHome,
     case BrainId::BINTURONG:
       arrangeSetPieceDefenceBinturong(defendingHome, ballPosition, attackers);
       return;
+    case BrainId::CAPYBARA:
+      arrangeSetPieceDefenceCapybara(defendingHome, ballPosition, attackers);
+      return;
   }
   arrangeSetPieceDefenceAardvark(defendingHome, ballPosition, attackers);
 }
@@ -487,6 +563,8 @@ MatchPlayer* MatchEngine::dutyTaker(bool homeTeam, SetPieceDuty duty)
       break;
     case BrainId::BINTURONG:
       return dutyTakerBinturong(homeTeam, duty);
+    case BrainId::CAPYBARA:
+      return dutyTakerCapybara(homeTeam, duty);
   }
   return dutyTakerAardvark(homeTeam, duty);
 }
@@ -500,6 +578,9 @@ void MatchEngine::updateRestartSupport(MatchPlayer& player,
       break;
     case BrainId::BINTURONG:
       updateRestartSupportBinturong(player, taker);
+      return;
+    case BrainId::CAPYBARA:
+      updateRestartSupportCapybara(player, taker);
       return;
   }
   updateRestartSupportAardvark(player, taker);
@@ -518,6 +599,8 @@ float MatchEngine::chooseGetUp(const MatchPlayer& player)
       break;
     case BrainId::BINTURONG:
       return chooseGetUpBinturong(player);
+    case BrainId::CAPYBARA:
+      return chooseGetUpCapybara(player);
   }
   return chooseGetUpAardvark(player);
 }
@@ -533,6 +616,9 @@ void MatchEngine::planWayRound(std::size_t slot)
       return;
     case BrainId::BINTURONG:
       planWayRoundBinturong(slot);
+      return;
+    case BrainId::CAPYBARA:
+      planWayRoundCapybara(slot);
       return;
   }
 }

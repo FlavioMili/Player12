@@ -142,9 +142,9 @@ touch-sensitivity
 Fidelity: full (default, the live engine's 10 Hz step) or background (the
 cheaper step unwatched fixtures use); compare both to check equivalence.
 
-Brains: each side's decision-making, aardvark (default) or binturong; one name
-sets both sides ("--brains binturong"), two set home and away
-("--brains aardvark,binturong").
+Brains: each side's decision-making, aardvark (default), binturong or
+capybara; one name sets both sides ("--brains capybara"), two set home and
+away ("--brains binturong,capybara").
 
 Bodies: each side's players' bodies (movement, fitness, kicking, first
 touch, goalkeeping), aardvark (default) or binturong, set the same way.
@@ -405,7 +405,8 @@ std::array<BrainId, 2> brainPair(const Arguments& arguments)
   if (!brains)
   {
     throw UsageError(
-        "--brains must be HOME,AWAY or one brain, each aardvark or binturong");
+        "--brains must be HOME,AWAY or one brain, each aardvark, binturong "
+        "or capybara");
   }
   return *brains;
 }
@@ -1237,7 +1238,7 @@ int runSessionMode(int argc, char** argv)
           const auto brain = brainFromKey(choice.key);
           if (!brain)
           {
-            throw UsageError("--zone-brain: aardvark or binturong");
+            throw UsageError("--zone-brain: aardvark, binturong or capybara");
           }
           zone.brain = *brain;
         }

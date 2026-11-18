@@ -4229,6 +4229,7 @@ class MatchEngine
   // follow, one file per brain.
 #include "model/match_brain_aardvark_members.h"
 #include "model/match_brain_binturong_members.h"
+#include "model/match_brain_capybara_members.h"
 
   // --- Body: carrying out the brain's choices --------------------------------
   void executeBallAction(MatchPlayer& carrier, const BallAction& action);

@@ -5,7 +5,9 @@
 
 #include <algorithm>
 #include <array>
+#include <optional>
 #include <string_view>
+#include <type_traits>
 
 #include "model/match_tuning.h"
 #include "tools/match_sandbox_setup.h"
@@ -138,20 +140,34 @@ struct SetupPainter
   template <typename Version>
   void version(const Card& c, int row, const char* label, const char* helper,
                Version& value, Version aardvark, Version binturong,
+               std::type_identity_t<std::optional<Version>> capybara =
+                   std::nullopt,
                float rowHeight = 68) const
   {
     const float y = c.y + 48 + (static_cast<float>(row) * rowHeight);
-    const float controlsX = c.x + c.w - 16 - 230;
+    // Two versions: 112-wide buttons; three: narrower, in the same strip
+    // widened a little into the helper text's room.
+    const float buttonW = capybara ? 96 : 112;
+    const float stride = buttonW + 6;
+    const float controlsX =
+        c.x + c.w - 16 - (stride * (capybara ? 3.0F : 2.0F)) + 6;
     ImGui::PushID(label);
     text(c.x + 16, y + 1, label, 16, CREAM, medium);
     text(c.x + 16, y + 36, helper, 16, MUTED, regular);
-    if (button(controlsX, y + 6, 112, "AARDVARK", value == aardvark))
+    if (button(controlsX, y + 6, buttonW, "AARDVARK", value == aardvark))
     {
       value = aardvark;
     }
-    if (button(controlsX + 118, y + 6, 112, "BINTURONG", value == binturong))
+    if (button(controlsX + stride, y + 6, buttonW, "BINTURONG",
+               value == binturong))
     {
       value = binturong;
+    }
+    if (capybara &&
+        button(controlsX + (2 * stride), y + 6, buttonW, "CAPYBARA",
+               value == *capybara))
+    {
+      value = *capybara;
     }
     if (row > 0)
     {
@@ -233,7 +249,7 @@ void SandboxSetupUI::render(float scale, ImFont* setup_regular_font,
     ui.begin(c, side == 0 ? LIGHT : MID,
              side == 0 ? "HOME ENGINES" : "AWAY ENGINES");
     ui.version(c, 0, "Brain", "Player decisions", sandboxBrains().at(side),
-               BrainId::AARDVARK, BrainId::BINTURONG);
+               BrainId::AARDVARK, BrainId::BINTURONG, BrainId::CAPYBARA);
     ui.version(c, 1, "Body", "Movement and ball contact",
                sandboxBodies().at(side), BodyId::AARDVARK, BodyId::BINTURONG);
     ui.version(c, 2, "Manager", "Touchline decisions",

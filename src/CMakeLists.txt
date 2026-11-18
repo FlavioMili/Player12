@@ -181,6 +181,8 @@ set(FM_CORE_SOURCES
     model/match_brain_dispatch.cpp
     model/match_brain_binturong.cpp
     model/match_brain_binturong_members.h
+    model/match_brain_capybara.cpp
+    model/match_brain_capybara_members.h
     model/match_brain_aardvark.cpp
     model/match_brain_aardvark_members.h
     model/match_derived_stats.h

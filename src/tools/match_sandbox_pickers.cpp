@@ -10,6 +10,8 @@
 
 #include <imgui.h>
 
+#include <optional>
+
 #include "gui/widgets/theme.h"
 #include "tools/match_sandbox_setup.h"
 #include "tools/match_sandbox_text.h"
@@ -27,6 +29,8 @@ struct VersionChoices
 {
   Version aardvark{};
   Version binturong{};
+  /** Only the brain has a third version so far. */
+  std::optional<Version> capybara;
 };
 
 template <typename Version>
@@ -62,6 +66,14 @@ void versionRow(const char* label, Version& current,
   };
   option("Aardvark", choices.aardvark);
   option("Binturong", choices.binturong);
+  if (choices.capybara)
+  {
+    option("Capybara", *choices.capybara);
+  }
+  else
+  {
+    ImGui::TableNextColumn();
+  }
   ImGui::PopID();
 }
 }  // namespace
@@ -69,7 +81,7 @@ void versionRow(const char* label, Version& current,
 void engineVersionsTable()
 {
   if (!ImGui::BeginTable(
-          "##engine_versions", 3,
+          "##engine_versions", 4,
           ImGuiTableFlags_RowBg | ImGuiTableFlags_SizingStretchProp))
   {
     return;
@@ -79,12 +91,15 @@ void engineVersionsTable()
   ImGui::TableSetupColumn("Aardvark", ImGuiTableColumnFlags_WidthStretch, 1.0F);
   ImGui::TableSetupColumn("Binturong", ImGuiTableColumnFlags_WidthStretch,
                           1.0F);
+  ImGui::TableSetupColumn("Capybara", ImGuiTableColumnFlags_WidthStretch, 1.0F);
   ImGui::TableHeadersRow();
   for (std::size_t side = 0; side < 2; ++side)
   {
     versionRow(side == 0 ? "Home brain" : "Away brain",
                sandboxBrains().at(side),
-               {.aardvark = BrainId::AARDVARK, .binturong = BrainId::BINTURONG},
+               {.aardvark = BrainId::AARDVARK,
+                .binturong = BrainId::BINTURONG,
+                .capybara = BrainId::CAPYBARA},
                "Player decision-making.");
     versionRow(side == 0 ? "Home body" : "Away body", sandboxBodies().at(side),
                {.aardvark = BodyId::AARDVARK, .binturong = BodyId::BINTURONG},

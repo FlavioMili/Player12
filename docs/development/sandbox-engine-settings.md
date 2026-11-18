@@ -2,7 +2,8 @@
 
 Set-up has separate Home engines, Away engines, Shared systems and Simulation
 cards. Paired Aardvark / Binturong buttons edit the same session settings used
-by the command-line options. Home and Away retain independent Brain, Body and
+by the command-line options; the Brain rows add a third, Capybara (narrower
+96px buttons so three fit). Home and Away retain independent Brain, Body and
 Manager choices; Handshake, Referee, Ball physics, Out of play and Possession
 remain shared. Home advantage supports both a slider and direct numeric entry,
 clamped to the engine's supported range.

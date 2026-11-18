@@ -19,21 +19,22 @@
  * how hard to run, what to do with the ball, set pieces, keeper positioning).
  * The body (physics, execution, contests, rules) is shared by every brain.
  *
- * AARDVARK is the inherited decision-making, kept frozen for comparison; the
- * BINTURONG and later brains are the ones being developed. Each side of a match
- * picks one before kickoff (MatchEngine::setBrain), so two brains can play each
- * other.
+ * AARDVARK is the inherited decision-making and BINTURONG its first rework,
+ * both kept frozen for comparison; CAPYBARA (generation C, the brain redesign)
+ * is the one being developed. Each side of a match picks one before kickoff
+ * (MatchEngine::setBrain), so two brains can play each other.
  */
 enum class BrainId : std::uint8_t
 {
   AARDVARK,
   BINTURONG,
+  CAPYBARA,
 };
 
-inline constexpr std::array<BrainId, 2> ALL_BRAINS = {BrainId::AARDVARK,
-                                                      BrainId::BINTURONG};
+inline constexpr std::array<BrainId, 3> ALL_BRAINS = {
+    BrainId::AARDVARK, BrainId::BINTURONG, BrainId::CAPYBARA};
 
-/** Display name ("Aardvark", "Binturong"). */
+/** Display name ("Aardvark", "Binturong", "Capybara"). */
 constexpr std::string_view brainName(BrainId brain)
 {
   switch (brain)
@@ -42,11 +43,13 @@ constexpr std::string_view brainName(BrainId brain)
       return "Aardvark";
     case BrainId::BINTURONG:
       return "Binturong";
+    case BrainId::CAPYBARA:
+      return "Capybara";
   }
   return "Unknown";
 }
 
-/** Command-line and file key ("aardvark", "binturong"). */
+/** Command-line and file key ("aardvark", "binturong", "capybara"). */
 constexpr std::string_view brainKey(BrainId brain)
 {
   switch (brain)
@@ -55,6 +58,8 @@ constexpr std::string_view brainKey(BrainId brain)
       return "aardvark";
     case BrainId::BINTURONG:
       return "binturong";
+    case BrainId::CAPYBARA:
+      return "capybara";
   }
   return "unknown";
 }
