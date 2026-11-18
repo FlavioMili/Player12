@@ -132,7 +132,8 @@ DrillRun::DrillRun(Drill& drill_ref, const StatsConfig& config, bool record,
       sandboxHandshake(), sandboxPossession(),
       squad.empty() ? sandboxDrillPitch().value_or(drill.pitch())
                     : drill.pitch());
-  applyHomeAdvantage(*match, sandboxHomeAdvantage());
+  // Home advantage is a layer: none in a drill without them.
+  applyHomeAdvantage(*match, drill.layers() ? sandboxHomeAdvantage() : 0.0F);
   match->setTeamNames("Drill home", "Drill away");
   match->setBrain(true, sandboxBrains()[0]);
   match->setBrain(false, sandboxBrains()[1]);
@@ -143,7 +144,9 @@ DrillRun::DrillRun(Drill& drill_ref, const StatsConfig& config, bool record,
   match->setManager(false, sandboxManagers()[1]);
   match->setBallPhysics(sandboxBallPhysics());
   match->setOutOfPlay(sandboxOutOfPlay());
-  match->setDrillRules({.offside = false, .minimumPlayers = false});
+  match->setDrillRules({.offside = false,
+                        .minimumPlayers = false,
+                        .layers = drill.layers()});
   // Only the drill's players take part.
   for (const auto& player : pool)
   {

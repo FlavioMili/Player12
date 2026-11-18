@@ -159,6 +159,10 @@ class Drill
   virtual void renderAfterSettings() const {}
   /** The players this drill needs (their ids follow, in this order). */
   [[nodiscard]] virtual std::vector<DrillPlayerSpec> players() const = 0;
+  /** False for a run with nothing layered on the players' decisions
+   * (MatchEngine::DrillRules::layers): no home advantage, game state,
+   * shouts or tactics. */
+  [[nodiscard]] virtual bool layers() const { return true; }
   /** Sets a run up on a fresh engine: positions, ball, first commands. */
   virtual void begin(MatchEngine& engine, const std::vector<PlayerID>& ids) = 0;
   /** Before every step: input for a scripted controlled player. */

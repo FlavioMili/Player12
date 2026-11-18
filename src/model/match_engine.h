@@ -2974,6 +2974,14 @@ class MatchEngine
      * squad drill's runners all go equally hard (a lone runner gets that
      * job anyway). Off: his brain's job sets his effort. */
     bool chaseEffort = false;
+    /** Off (the brain redesign's neutral ladder, plan section 3): nothing is
+     * layered on the players' decisions. The sliders are the base tactics
+     * (no score, underdog or shout effects), the managers make no touchline
+     * calls, both sides have full tactical familiarity and no execution
+     * edge (home, team talk, numbers), the brain skips its own game-state
+     * terms, and drill players hold no formation slot. Home advantage is
+     * set when the engine is built (the sandbox's drill run makes it 0). */
+    bool layers = true;
   };
   void setDrillRules(const DrillRules& rules) { drillRules = rules; }
   /** The lowest a side's body lets fuel (condition) fall: MINIMUM_STAMINA

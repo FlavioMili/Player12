@@ -683,6 +683,11 @@ int runMeasureCommand(const StatsConfig& config, const std::string& drillName,
     }
     std::cout << std::format("{}: trace written to {}\n", drill->name(),
                              tracePath->string());
+    // The run's report, as the sandbox shows it.
+    for (const std::string& line : drill->report())
+    {
+      std::cout << "  " << line << '\n';
+    }
     return out ? 0 : 2;
   }
   if (error.empty() && spec.sweep.values.empty())

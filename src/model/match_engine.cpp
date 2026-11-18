@@ -319,6 +319,11 @@ float MatchEngine::familiarityOf(const MatchPlayer& player) const
 
 float MatchEngine::effectiveFamiliarity(std::size_t team) const
 {
+  // No tactics asked of him in a drill with no layers: nothing unfamiliar.
+  if (!drillRules.layers)
+  {
+    return 1.0F;
+  }
   const float drilled = team == 0 ? homeFamiliarity : awayFamiliarity;
   if (reshapeSecondsRemaining[team] <= 0.0F)
   {
@@ -361,6 +366,10 @@ void MatchEngine::startShout(bool homeTeam, MatchShout shout)
 
 float MatchEngine::getShoutStrength(bool homeTeam) const
 {
+  if (!drillRules.layers)
+  {
+    return 0.0F;
+  }
   const ShoutState& shout = shouts[homeTeam ? 0 : 1];
   return std::clamp(shout.remainingSeconds /
                         MatchTuning::Touchline::SHOUT_DURATION_SECONDS,
@@ -800,6 +809,11 @@ StrategySliders MatchEngine::computeEffectiveSliders(bool homeTeam) const
   // by the touchline shout.
   StrategySliders sliders =
       (homeTeam ? homeStrategy : awayStrategy).getSliders();
+  // A drill with no layers plays the base tactics as they are.
+  if (!drillRules.layers)
+  {
+    return sliders;
+  }
   applyTeamMentality(sliders, homeTeam);
   return shoutSliders(sliders, homeTeam);
 }
@@ -901,8 +915,9 @@ float MatchEngine::getTeamTalkModifier(bool homeTeam, int half) const
 float MatchEngine::talkOf(bool homeTeam) const
 {
   // A talk lifts (or deflates) the side for the first minutes of its half
-  // and has worn off well before the break; extra time has none.
-  if (period < 1 || period > 2)
+  // and has worn off well before the break; extra time has none. A drill
+  // with no layers has none either.
+  if (period < 1 || period > 2 || !drillRules.layers)
   {
     return 0.0F;
   }
@@ -924,6 +939,11 @@ float MatchEngine::talkOf(bool homeTeam) const
 
 float MatchEngine::teamEdge(bool homeTeam) const
 {
+  // Home, team talk and numbers are all layers.
+  if (!drillRules.layers)
+  {
+    return 0.0F;
+  }
   using R = MatchTuning::Rules;
   int balance = 0;
   for (const auto& player : players)
@@ -8955,7 +8975,7 @@ void MatchEngine::runAiSubstitutions()
   {
     homeLastAiReviewStoppage = stoppageSequence;
     runAiSubstitutionsFor(true);
-    if (homeAutoSubstitutions)
+    if (homeAutoSubstitutions && drillRules.layers)
     {
       runAiTouchline(true);
     }
@@ -8964,7 +8984,7 @@ void MatchEngine::runAiSubstitutions()
   {
     awayLastAiReviewStoppage = stoppageSequence;
     runAiSubstitutionsFor(false);
-    if (awayAutoSubstitutions)
+    if (awayAutoSubstitutions && drillRules.layers)
     {
       runAiTouchline(false);
     }

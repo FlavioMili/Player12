@@ -814,6 +814,8 @@ void MatchEngine::refreshTacticalTargetsCapybara(float dt, bool planHome)
       case PlayerRole::CM:
       case PlayerRole::LM:
       case PlayerRole::RM:
+      // No natural position (a drill with no layers): the neutral case.
+      case PlayerRole::UNKNOWN:
         break;
       default:
         return -std::numeric_limits<float>::infinity();
@@ -864,7 +866,8 @@ void MatchEngine::refreshTacticalTargetsCapybara(float dt, bool planHome)
         sliders.offensiveBias + sliders.riskTaking;
     const TeamPhase phase = homeTeam ? homePhase : awayPhase;
     const int lead = homeTeam ? homeScore - awayScore : awayScore - homeScore;
-    const bool managingGame = lead >= MatchTuning::Decision::COMFORTABLE_LEAD;
+    const bool managingGame =
+        drillRules.layers && lead >= MatchTuning::Decision::COMFORTABLE_LEAD;
     const std::size_t runnerCount =
         !managingGame &&
                 (phase == TeamPhase::ATTACKING_TRANSITION ||
@@ -996,7 +999,8 @@ void MatchEngine::refreshTacticalTargetsCapybara(float dt, bool planHome)
               ? role == PlayerRole::LB || role == PlayerRole::RB
           : arrival == Arrival::FAR_POST
               ? wide && farSide
-              : role == PlayerRole::CM || role == PlayerRole::CAM;
+              : role == PlayerRole::CM || role == PlayerRole::CAM ||
+                    role == PlayerRole::UNKNOWN;
       if (!eligible)
       {
         continue;
@@ -1080,7 +1084,8 @@ void MatchEngine::refreshTacticalTargetsCapybara(float dt, bool planHome)
           role == PlayerRole::CDM || role == PlayerRole::CM ||
           role == PlayerRole::CAM || role == PlayerRole::LM ||
           role == PlayerRole::RM || role == PlayerRole::LW ||
-          role == PlayerRole::RW || role == PlayerRole::ST;
+          role == PlayerRole::RW || role == PlayerRole::ST ||
+          role == PlayerRole::UNKNOWN;
       if (!eligibleSupportRole)
       {
         continue;
@@ -3956,7 +3961,9 @@ MatchEngine::BallAction MatchEngine::chooseBallActionCapybara(
   // attempts; it prefers to retain the ball. Credible chances are unaffected.
   const int carrierScore = carrier.isHomeTeam ? homeScore : awayScore;
   const int opponentScore = carrier.isHomeTeam ? awayScore : homeScore;
-  if (matchTimeMinutes >= MatchTuning::Decision::LATE_GAME_MINUTE &&
+  // Game state is a layer: a drill with no layers has none.
+  if (drillRules.layers &&
+      matchTimeMinutes >= MatchTuning::Decision::LATE_GAME_MINUTE &&
       carrierScore > opponentScore &&
       shotScore > -std::numeric_limits<float>::infinity() &&
       shotXG < MatchTuning::Decision::BASE_SHOT_THRESHOLD)
@@ -3968,7 +3975,7 @@ MatchEngine::BallAction MatchEngine::chooseBallActionCapybara(
   // Game state: a side two or more goals up manages the game, keeping the
   // ball rather than forcing half-chances.
   const int lead = carrierScore - opponentScore;
-  if (lead >= MatchTuning::Decision::COMFORTABLE_LEAD)
+  if (drillRules.layers && lead >= MatchTuning::Decision::COMFORTABLE_LEAD)
   {
     const float margin =
         static_cast<float>(lead - MatchTuning::Decision::COMFORTABLE_LEAD + 1);

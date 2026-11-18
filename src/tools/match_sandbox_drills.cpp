@@ -7683,6 +7683,74 @@ class PassDrill final : public Drill
     ballPath.clear();
   }
 
+ private:
+  void observeStrike(MatchEngine& engine, const MatchPlayer* passer, double now)
+  {
+    const MatchBall& ball = engine.getBall();
+    // The pass: a strike the contact model has read since the start.
+    const StrikeContactStats& now_ = engine.getStrikeContacts();
+    for (std::size_t kind = 0; kind < STRIKE_KIND_COUNT; ++kind)
+    {
+      const auto& a = before.byKind.at(kind);
+      const auto& b = now_.byKind.at(kind);
+      if (b.strikes == a.strikes)
+      {
+        continue;
+      }
+      Pass reading;
+      reading.at = now;
+      reading.kind = static_cast<StrikeKind>(kind);
+      reading.carriedOut = b.carriedOut > a.carriedOut;
+      reading.angleFailed = b.angleFailed > a.angleFailed;
+      reading.weightFailed = b.weightFailed > a.weightFailed;
+      reading.angleError =
+          static_cast<float>(b.angleErrorSum - a.angleErrorSum);
+      reading.weightError =
+          static_cast<float>(b.weightErrorSum - a.weightErrorSum);
+      reading.elevationError =
+          static_cast<float>(b.elevationErrorSum - a.elevationErrorSum);
+      reading.angleDifficulty =
+          static_cast<float>(b.angleDifficulty - a.angleDifficulty);
+      reading.weightDifficulty =
+          static_cast<float>(b.weightDifficulty - a.weightDifficulty);
+      for (std::size_t index = 0; index < CONTACT_FACTOR_COUNT; ++index)
+      {
+        reading.factors.at(index) =
+            static_cast<float>(b.factorSum.at(index) - a.factorSum.at(index));
+      }
+      reading.from = ball.position;
+      reading.speed = std::hypot(ball.velocity.x, ball.velocity.y);
+      reading.lift = ball.velocityZ;
+      if (passer != nullptr)
+      {
+        reading.passerSpeed = speedOf(*passer);
+        // Where it went against where his body faced.
+        reading.bodyAngle = bodyAngleTo(*passer, ball.velocity);
+      }
+      reading.held = held;
+      pass = reading;
+      closest = metresBetween(ball.position, receiverSpot);
+      closestHeight = 0.0F;
+      closestSpeed = reading.speed;
+      flight.start(ball, receiverSpot);
+      // Released: the receiver goes for it, the defender presses.
+      if (hasReceiver)
+      {
+        engine.setDrillTarget(receiverId, std::nullopt, false);
+      }
+      if (hasDefender)
+      {
+        engine.setDrillTarget(defenderId, std::nullopt, false);
+      }
+      break;
+    }
+    if (!pass && now >= STRIKE_TIMEOUT_SECONDS)
+    {
+      outcome = "no pass";
+    }
+  }
+
+ public:
   bool afterStep(MatchEngine& engine) override
   {
     const double now = secondsOf(engine);
@@ -7709,67 +7777,7 @@ class PassDrill final : public Drill
 
     if (!pass)
     {
-      // The pass: a strike the contact model has read since the start.
-      const StrikeContactStats& now_ = engine.getStrikeContacts();
-      for (std::size_t kind = 0; kind < STRIKE_KIND_COUNT; ++kind)
-      {
-        const auto& a = before.byKind.at(kind);
-        const auto& b = now_.byKind.at(kind);
-        if (b.strikes == a.strikes)
-        {
-          continue;
-        }
-        Pass reading;
-        reading.at = now;
-        reading.kind = static_cast<StrikeKind>(kind);
-        reading.carriedOut = b.carriedOut > a.carriedOut;
-        reading.angleFailed = b.angleFailed > a.angleFailed;
-        reading.weightFailed = b.weightFailed > a.weightFailed;
-        reading.angleError =
-            static_cast<float>(b.angleErrorSum - a.angleErrorSum);
-        reading.weightError =
-            static_cast<float>(b.weightErrorSum - a.weightErrorSum);
-        reading.elevationError =
-            static_cast<float>(b.elevationErrorSum - a.elevationErrorSum);
-        reading.angleDifficulty =
-            static_cast<float>(b.angleDifficulty - a.angleDifficulty);
-        reading.weightDifficulty =
-            static_cast<float>(b.weightDifficulty - a.weightDifficulty);
-        for (std::size_t index = 0; index < CONTACT_FACTOR_COUNT; ++index)
-        {
-          reading.factors.at(index) =
-              static_cast<float>(b.factorSum.at(index) - a.factorSum.at(index));
-        }
-        reading.from = ball.position;
-        reading.speed = std::hypot(ball.velocity.x, ball.velocity.y);
-        reading.lift = ball.velocityZ;
-        if (passer != nullptr)
-        {
-          reading.passerSpeed = speedOf(*passer);
-          // Where it went against where his body faced.
-          reading.bodyAngle = bodyAngleTo(*passer, ball.velocity);
-        }
-        reading.held = held;
-        pass = reading;
-        closest = metresBetween(ball.position, receiverSpot);
-        closestHeight = 0.0F;
-        closestSpeed = reading.speed;
-        flight.start(ball, receiverSpot);
-        // Released: the receiver goes for it, the defender presses.
-        if (hasReceiver)
-        {
-          engine.setDrillTarget(receiverId, std::nullopt, false);
-        }
-        if (hasDefender)
-        {
-          engine.setDrillTarget(defenderId, std::nullopt, false);
-        }
-        break;
-      }
-      if (!pass && now >= STRIKE_TIMEOUT_SECONDS)
-      {
-        outcome = "no pass";
-      }
+      observeStrike(engine, passer, now);
     }
     else if (outcome.empty())
     {
@@ -7843,6 +7851,56 @@ class PassDrill final : public Drill
                     BALL_TRAIL_WIDTH_PIXELS * scale);
   }
 
+ private:
+  void appendPassReport(std::vector<std::string>& lines) const
+  {
+    constexpr float DEGREES = HALF_TURN_DEGREES / PI;
+    lines.push_back(std::format(
+        "{} at {:.2f} s, {:.1f} m/s{}: difficulty angle {:.2f}, weight "
+        "{:.2f}",
+        STRIKE_KIND_NAMES.at(static_cast<std::size_t>(pass->kind)), pass->at,
+        pass->speed,
+        pass->lift > 0.0F ? std::format(" ({:.1f} up)", pass->lift)
+                          : std::string(),
+        pass->angleDifficulty, pass->weightDifficulty));
+    lines.push_back(std::format(
+        "Body {:.0f} deg off the pass when struck{}", pass->bodyAngle,
+        pass->held
+            ? std::format(" ({:.0f} deg when he decided, {:.2f} s "
+                          "before; {:.1f} -> {:.1f} m/s)",
+                          pass->held->bodyAngle, pass->at - pass->held->at,
+                          pass->held->speed, pass->passerSpeed)
+            : std::string(" (struck at once)")));
+    if (pass->carriedOut)
+    {
+      lines.push_back(std::format(
+          "Angle {}{:.1f} deg (elevation {:+.1f}), weight {}{:+.2f} m/s",
+          pass->angleFailed ? "FAILED " : "", pass->angleError * DEGREES,
+          pass->elevationError * DEGREES, pass->weightFailed ? "FAILED " : "",
+          pass->weightError));
+    }
+    else
+    {
+      lines.emplace_back(
+          "Measured only: this kind of pass keeps the old error.");
+    }
+    lines.push_back(
+        std::format("Closest to the target {:.2f} m ({:.1f} m up, {:.1f} m/s)",
+                    closest, closestHeight, closestSpeed));
+    if (!hasReceiver)
+    {
+      lines.push_back(std::format(
+          "Strike alone: {:.1f} m from where struck, {}",
+          flight.targetDistance(),
+          flight.miss(pass->kind)
+              ? std::format("missed by {:.2f} m ({})", *flight.miss(pass->kind),
+                            PassFlight::flies(pass->kind) ? "where it landed"
+                                                          : "as it ran past")
+              : std::string("not down yet")));
+    }
+  }
+
+ public:
   [[nodiscard]] std::vector<std::string> report() const override
   {
     static constexpr std::array<const char*, 5> STYLES = {
@@ -7870,51 +7928,7 @@ class PassDrill final : public Drill
         footChoice < CHOICE_MIDPOINT ? "right" : "left"));
     if (pass)
     {
-      constexpr float DEGREES = HALF_TURN_DEGREES / PI;
-      lines.push_back(std::format(
-          "{} at {:.2f} s, {:.1f} m/s{}: difficulty angle {:.2f}, weight "
-          "{:.2f}",
-          STRIKE_KIND_NAMES.at(static_cast<std::size_t>(pass->kind)), pass->at,
-          pass->speed,
-          pass->lift > 0.0F ? std::format(" ({:.1f} up)", pass->lift)
-                            : std::string(),
-          pass->angleDifficulty, pass->weightDifficulty));
-      lines.push_back(std::format(
-          "Body {:.0f} deg off the pass when struck{}", pass->bodyAngle,
-          pass->held
-              ? std::format(" ({:.0f} deg when he decided, {:.2f} s "
-                            "before; {:.1f} -> {:.1f} m/s)",
-                            pass->held->bodyAngle, pass->at - pass->held->at,
-                            pass->held->speed, pass->passerSpeed)
-              : std::string(" (struck at once)")));
-      if (pass->carriedOut)
-      {
-        lines.push_back(std::format(
-            "Angle {}{:.1f} deg (elevation {:+.1f}), weight {}{:+.2f} m/s",
-            pass->angleFailed ? "FAILED " : "", pass->angleError * DEGREES,
-            pass->elevationError * DEGREES, pass->weightFailed ? "FAILED " : "",
-            pass->weightError));
-      }
-      else
-      {
-        lines.emplace_back(
-            "Measured only: this kind of pass keeps the old error.");
-      }
-      lines.push_back(std::format(
-          "Closest to the target {:.2f} m ({:.1f} m up, {:.1f} m/s)", closest,
-          closestHeight, closestSpeed));
-      if (!hasReceiver)
-      {
-        lines.push_back(std::format(
-            "Strike alone: {:.1f} m from where struck, {}",
-            flight.targetDistance(),
-            flight.miss(pass->kind)
-                ? std::format("missed by {:.2f} m ({})",
-                              *flight.miss(pass->kind),
-                              PassFlight::flies(pass->kind) ? "where it landed"
-                                                            : "as it ran past")
-                : std::string("not down yet")));
-      }
+      appendPassReport(lines);
     }
     if (!outcome.empty())
     {
@@ -8391,6 +8405,89 @@ class FirstTimePassDrill final : public Drill
     ballPath = {feedFrom};
   }
 
+ private:
+  void observeStrike(const MatchEngine& engine, const MatchPlayer* player,
+                     double now)
+  {
+    const MatchBall& ball = engine.getBall();
+    // His first touch, if he takes one: the ball his before he passes.
+    if ((engine.getPossessionAttachment() != nullptr) &&
+        engine.getPossessionAttachment()->getId() == playerId)
+    {
+      touchedFirst = true;
+    }
+    const StrikeContactStats& after = engine.getStrikeContacts();
+    for (std::size_t kind = 0; kind < STRIKE_KIND_COUNT; ++kind)
+    {
+      const auto& a = before.byKind.at(kind);
+      const auto& b = after.byKind.at(kind);
+      if (b.strikes == a.strikes)
+      {
+        continue;
+      }
+      Pass reading;
+      reading.at = now;
+      reading.kind = static_cast<StrikeKind>(kind);
+      reading.firstTime = !touchedFirst;
+      reading.carriedOut = b.carriedOut > a.carriedOut;
+      reading.angleFailed = b.angleFailed > a.angleFailed;
+      reading.weightFailed = b.weightFailed > a.weightFailed;
+      reading.angleError =
+          static_cast<float>(b.angleErrorSum - a.angleErrorSum);
+      reading.weightError =
+          static_cast<float>(b.weightErrorSum - a.weightErrorSum);
+      reading.angleDifficulty =
+          static_cast<float>(b.angleDifficulty - a.angleDifficulty);
+      reading.weightDifficulty =
+          static_cast<float>(b.weightDifficulty - a.weightDifficulty);
+      for (std::size_t index = 0; index < CONTACT_FACTOR_COUNT; ++index)
+      {
+        reading.factors.at(index) =
+            static_cast<float>(b.factorSum.at(index) - a.factorSum.at(index));
+      }
+      reading.speed = std::hypot(ball.velocity.x, ball.velocity.y);
+      reading.lift = ball.velocityZ;
+      // The ball as it came in (a step before), against where it went.
+      reading.incoming = std::hypot(lastBallVelocity.x, lastBallVelocity.y);
+      if (reading.incoming > MIN_REPORTED_CONTACT_SPEED &&
+          reading.speed > MIN_REPORTED_CONTACT_SPEED)
+      {
+        reading.redirect =
+            turnDegrees({.x = lastBallVelocity.x / reading.incoming,
+                         .y = lastBallVelocity.y / reading.incoming},
+                        {.x = ball.velocity.x / reading.speed,
+                         .y = ball.velocity.y / reading.speed});
+      }
+      if (player != nullptr)
+      {
+        reading.playerSpeed = speedOf(*player);
+        const PitchPoint body{std::cos(player->facingAngle),
+                              std::sin(player->facingAngle)};
+        const Vector2F way = ball.velocity;
+        const float lengths =
+            std::hypot(body.x, body.y) * std::hypot(way.x, way.y);
+        if (lengths > 0.0F)
+        {
+          reading.bodyAngle =
+              std::acos(std::clamp((body.x * way.x + body.y * way.y) / lengths,
+                                   -1.0F, 1.0F)) *
+              HALF_TURN_DEGREES / PI;
+        }
+      }
+      reading.from = ball.position;
+      pass = reading;
+      closest = metresBetween(ball.position, target);
+      closestSpeed = reading.speed;
+      flight.start(ball, target);
+      break;
+    }
+    if (!pass && now >= fedAt + TIME_LIMIT)
+    {
+      outcome = "no pass";
+    }
+  }
+
+ public:
   bool afterStep(MatchEngine& engine) override
   {
     const double now = secondsOf(engine);
@@ -8403,81 +8500,7 @@ class FirstTimePassDrill final : public Drill
 
     if (!pass && outcome.empty())
     {
-      // His first touch, if he takes one: the ball his before he passes.
-      if ((engine.getPossessionAttachment() != nullptr) &&
-          engine.getPossessionAttachment()->getId() == playerId)
-      {
-        touchedFirst = true;
-      }
-      const StrikeContactStats& after = engine.getStrikeContacts();
-      for (std::size_t kind = 0; kind < STRIKE_KIND_COUNT; ++kind)
-      {
-        const auto& a = before.byKind.at(kind);
-        const auto& b = after.byKind.at(kind);
-        if (b.strikes == a.strikes)
-        {
-          continue;
-        }
-        Pass reading;
-        reading.at = now;
-        reading.kind = static_cast<StrikeKind>(kind);
-        reading.firstTime = !touchedFirst;
-        reading.carriedOut = b.carriedOut > a.carriedOut;
-        reading.angleFailed = b.angleFailed > a.angleFailed;
-        reading.weightFailed = b.weightFailed > a.weightFailed;
-        reading.angleError =
-            static_cast<float>(b.angleErrorSum - a.angleErrorSum);
-        reading.weightError =
-            static_cast<float>(b.weightErrorSum - a.weightErrorSum);
-        reading.angleDifficulty =
-            static_cast<float>(b.angleDifficulty - a.angleDifficulty);
-        reading.weightDifficulty =
-            static_cast<float>(b.weightDifficulty - a.weightDifficulty);
-        for (std::size_t index = 0; index < CONTACT_FACTOR_COUNT; ++index)
-        {
-          reading.factors.at(index) =
-              static_cast<float>(b.factorSum.at(index) - a.factorSum.at(index));
-        }
-        reading.speed = std::hypot(ball.velocity.x, ball.velocity.y);
-        reading.lift = ball.velocityZ;
-        // The ball as it came in (a step before), against where it went.
-        reading.incoming = std::hypot(lastBallVelocity.x, lastBallVelocity.y);
-        if (reading.incoming > MIN_REPORTED_CONTACT_SPEED &&
-            reading.speed > MIN_REPORTED_CONTACT_SPEED)
-        {
-          reading.redirect =
-              turnDegrees({.x = lastBallVelocity.x / reading.incoming,
-                           .y = lastBallVelocity.y / reading.incoming},
-                          {.x = ball.velocity.x / reading.speed,
-                           .y = ball.velocity.y / reading.speed});
-        }
-        if (player != nullptr)
-        {
-          reading.playerSpeed = speedOf(*player);
-          const PitchPoint body{std::cos(player->facingAngle),
-                                std::sin(player->facingAngle)};
-          const Vector2F way = ball.velocity;
-          const float lengths =
-              std::hypot(body.x, body.y) * std::hypot(way.x, way.y);
-          if (lengths > 0.0F)
-          {
-            reading.bodyAngle =
-                std::acos(std::clamp(
-                    (body.x * way.x + body.y * way.y) / lengths, -1.0F, 1.0F)) *
-                HALF_TURN_DEGREES / PI;
-          }
-        }
-        reading.from = ball.position;
-        pass = reading;
-        closest = metresBetween(ball.position, target);
-        closestSpeed = reading.speed;
-        flight.start(ball, target);
-        break;
-      }
-      if (!pass && now >= fedAt + TIME_LIMIT)
-      {
-        outcome = "no pass";
-      }
+      observeStrike(engine, player, now);
     }
     else if (pass && outcome.empty())
     {
@@ -13532,6 +13555,30 @@ class WalledBoxDrill final : public Drill
  */
 class SmallSidedGameDrill final : public Drill
 {
+  [[nodiscard]] std::string intentDescription() const
+  {
+    std::vector<std::size_t> order(PLAYER_INTENT_COUNT);
+    for (std::size_t index = 0; index < order.size(); ++index)
+    {
+      order[index] = index;
+    }
+    std::ranges::stable_sort(order, [this](std::size_t a, std::size_t b)
+                             { return intentTicks.at(a) > intentTicks.at(b); });
+    std::string doing;
+    for (const std::size_t index : order)
+    {
+      if (intentTicks.at(index) == 0)
+      {
+        break;
+      }
+      doing += std::format(
+          "{}{} {:.0f}%", doing.empty() ? "" : ", ",
+          MatchEngineInternal::intentName(static_cast<PlayerIntent>(index)),
+          100.0 * intentTicks.at(index) / playerTicks);
+    }
+    return doing;
+  }
+
   static constexpr double END_TIME_TOLERANCE_SECONDS = 0.05;
   static constexpr float RUNG_CHOICE_MAX = 4.0F;
   static constexpr float N_SETTING_MIN = 4.0F;
@@ -13554,7 +13601,9 @@ class SmallSidedGameDrill final : public Drill
            "3 v 3 and N v N, on a walled pitch sized by area per player, with "
            "goals at the ends. The coach serves to the home side to start and "
            "to the side that conceded after a goal. Reports goals, shots, "
-           "possession and passes (training ground T6).";
+           "possession and passes (training ground T6). Layers off (the "
+           "default): no positions, tactics, home advantage, game state or "
+           "shouts.";
   }
 
   [[nodiscard]] std::vector<DrillPreset> presets() const override
@@ -13610,6 +13659,14 @@ class SmallSidedGameDrill final : public Drill
     goals.choices = {"None",   "Full size", "9v9",          "7v7",
                      "Futsal", "5-a-side",  "Small framed", "Pop-up"};
     list.push_back(goals);
+    DrillParameter layersSetting = setting(
+        "Layers", &layersChoice, {.min = 0.0F, .max = 1.0F}, true,
+        "Off: the neutral ladder (brain redesign plan, section 3). No "
+        "natural positions or formation, base tactics untouched by score, "
+        "underdog or shouts, no home advantage, full tactical familiarity. "
+        "On: as a match sets them.");
+    layersSetting.choices = {"Off", "On"};
+    list.push_back(layersSetting);
     return list;
   }
 
@@ -13618,17 +13675,19 @@ class SmallSidedGameDrill final : public Drill
     std::vector<DrillPlayerSpec> list;
     const int side = perSide();
     const bool alone = rung() == 0;
+    // No layers: no natural position either.
+    const PlayerRole role = layers() ? PlayerRole::CM : PlayerRole::UNKNOWN;
     for (int index = 0; index < std::max(1, side); ++index)
     {
       list.push_back({.name = std::format("Home {}", index + 1),
-                      .role = PlayerRole::CM,
+                      .role = role,
                       .homeTeam = true,
                       .stats = {},
                       .derived = {}});
       if (!alone)
       {
         list.push_back({.name = std::format("Away {}", index + 1),
-                        .role = PlayerRole::CM,
+                        .role = role,
                         .homeTeam = false,
                         .stats = {},
                         .derived = {}});
@@ -13694,6 +13753,8 @@ class SmallSidedGameDrill final : public Drill
     spreadSum = 0.0;
     defendingTicks = pressCoverTicks = carrierTicks = 0;
     openSum = 0.0;
+    intentTicks.fill(0);
+    playerTicks = 0;
     stoppedBy.clear();
   }
 
@@ -13842,6 +13903,12 @@ class SmallSidedGameDrill final : public Drill
                       "{:.1f} m",
                       spreadSamples == 0 ? 0.0 : spreadSum / spreadSamples));
     }
+    // What the players' brains had them doing, as a share of player time in
+    // play (the most first): how much of it holds a shape, for one.
+    if (playerTicks > 0)
+    {
+      lines.push_back("WATCH  the players' intents: " + intentDescription());
+    }
     if (!stoppedBy.empty() ||
         elapsed >= secondsSetting - END_TIME_TOLERANCE_SECONDS)
     {
@@ -13886,7 +13953,17 @@ class SmallSidedGameDrill final : public Drill
         {.name = "Team-mates in range",
          .value = carrierTicks == 0 ? 0.0 : openSum / carrierTicks},
         {.name = "Spread (m)",
-         .value = spreadSamples == 0 ? 0.0 : spreadSum / spreadSamples}};
+         .value = spreadSamples == 0 ? 0.0 : spreadSum / spreadSamples},
+        // Holding or recovering his shape (anchored on his start spot in a
+        // drill), as a share of player time in play.
+        {.name = "Holding shape (%)",
+         .value = playerTicks == 0 ? 0.0
+                                   : 100.0 *
+                                         (intentTicks[static_cast<std::size_t>(
+                                              PlayerIntent::HOLD_SHAPE)] +
+                                          intentTicks[static_cast<std::size_t>(
+                                              PlayerIntent::RECOVER_SHAPE)]) /
+                                         playerTicks}};
   }
 
  private:
@@ -13894,6 +13971,14 @@ class SmallSidedGameDrill final : public Drill
   {
     return static_cast<int>(std::round(rungChoice));
   }
+
+ public:
+  [[nodiscard]] bool layers() const override
+  {
+    return layersChoice >= CHOICE_MIDPOINT;
+  }
+
+ private:
   /** Players a side: 1 for the first two rungs, then 2, 3 or N. */
   [[nodiscard]] int perSide() const
   {
@@ -13947,6 +14032,14 @@ class SmallSidedGameDrill final : public Drill
       if (player->player == holder)
       {
         carrier = player;
+      }
+    }
+    for (const auto* side : {&home, &away})
+    {
+      for (const MatchPlayer* player : *side)
+      {
+        ++intentTicks.at(static_cast<std::size_t>(player->intent));
+        ++playerTicks;
       }
     }
     const double now = elapsed;
@@ -14095,6 +14188,8 @@ class SmallSidedGameDrill final : public Drill
   float areaSetting = DEFAULT_AREA_SETTING;
   float secondsSetting = DEFAULT_SECONDS_SETTING;
   float goalsChoice = DEFAULT_GOALS_CHOICE;
+  /** 0 off (the default: the neutral ladder), 1 on. */
+  float layersChoice = 0.0F;
   std::vector<PlayerID> ids_;
   std::vector<PlayerID> homeIds_;
   MatchStats statsAtStart{};
@@ -14130,6 +14225,9 @@ class SmallSidedGameDrill final : public Drill
   int defendingTicks = 0;
   int pressCoverTicks = 0;
   double openSum = 0.0;
+  /** Player ticks in play by intent, and in all. */
+  std::array<int, PLAYER_INTENT_COUNT> intentTicks{};
+  int playerTicks = 0;
   int carrierTicks = 0;
   std::string stoppedBy;
 };
