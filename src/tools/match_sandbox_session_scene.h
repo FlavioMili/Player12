@@ -60,6 +60,8 @@ class ZoneSessionScene : public GUIScene
   /** What the last "Save this zone" did. */
   std::string saveMessage;
   std::unique_ptr<SessionRun> run;
+  /** Why the session couldn't start (its plan's problem), if it couldn't. */
+  std::string runError;
   bool paused = false;
   float speed = 1.0F;
   float accumulator = 0.0F;

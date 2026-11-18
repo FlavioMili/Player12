@@ -115,8 +115,9 @@ class SessionRun
   /** `picks`: the players to train (the first of them make up the squad;
    * reference players fill any gap). `seed`: the session's; each zone's drill
    * runs on its own seed from it, so the session repeats. `record`: attach each
-   * zone's recorder. Throws std::invalid_argument if a squad index is out
-   * of range or assigned more than once in an exercise. */
+   * zone's recorder. Throws std::invalid_argument, with checkSessionPlan's
+   * message, if the plan has a problem; so each exercise's zones are the
+   * plan's, one for one and in order. */
   SessionRun(const SessionPlan& plan, const StatsConfig& config,
              std::uint32_t seed, bool record = false,
              const std::vector<TrainingPlayer>& picks = {});

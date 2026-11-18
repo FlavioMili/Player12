@@ -9,6 +9,7 @@
 #include "tools/match_sandbox_session.h"
 
 #include <algorithm>
+#include <array>
 #include <format>
 #include <set>
 #include <span>
@@ -31,6 +32,39 @@ constexpr std::uint8_t REFERENCE_PLAYER_HEIGHT_CM = 180;
 constexpr std::size_t EXERCISE_SEED_STRIDE = 100;
 constexpr std::size_t REGROUP_SEED_OFFSET = EXERCISE_SEED_STRIDE - 1;
 constexpr float CENTRE_TO_EDGE_SCALE = 0.5F;
+
+/** A zone's brain and body standing in for the sandbox Set-up's while its
+ * run is made (T7e); the Set-up's come back when this goes, even if making
+ * the run throws. */
+class SetUpStandIn final
+{
+ public:
+  SetUpStandIn(std::optional<BrainId> brain, std::optional<BodyId> body)
+      : brains(sandboxBrains()), bodies(sandboxBodies())
+  {
+    if (brain)
+    {
+      sandboxBrains() = {*brain, *brain};
+    }
+    if (body)
+    {
+      sandboxBodies() = {*body, *body};
+    }
+  }
+  ~SetUpStandIn()
+  {
+    sandboxBrains() = brains;
+    sandboxBodies() = bodies;
+  }
+  SetUpStandIn(const SetUpStandIn&) = delete;
+  SetUpStandIn& operator=(const SetUpStandIn&) = delete;
+  SetUpStandIn(SetUpStandIn&&) = delete;
+  SetUpStandIn& operator=(SetUpStandIn&&) = delete;
+
+ private:
+  std::array<BrainId, 2> brains;
+  std::array<BodyId, 2> bodies;
+};
 
 [[nodiscard]] std::optional<std::string> checkPlayerAssignments(
     const SessionZone& zone, std::size_t squadSize,
@@ -247,17 +281,11 @@ SessionRun::SessionRun(const SessionPlan& plan, const StatsConfig& config_ref,
       seed(seed_value),
       record(record_value)
 {
-  for (const SessionExercise& exercise : sessionPlan.exercises)
+  // The whole plan, so every zone is built (none skipped for an unknown
+  // drill) and the run's zones match the plan's one for one.
+  if (const auto problem = checkSessionPlan(sessionPlan))
   {
-    std::set<std::size_t> taken;
-    for (const SessionZone& zone : exercise.zones)
-    {
-      if (const auto problem =
-              checkPlayerAssignments(zone, sessionPlan.squadSize, taken))
-      {
-        throw std::invalid_argument(*problem);
-      }
-    }
+    throw std::invalid_argument(*problem);
   }
   // The squad: the first picks, then reference players, as the drill runs'
   // own, for any gap.
@@ -326,22 +354,14 @@ std::vector<SessionRun::Zone> SessionRun::buildExercise(std::size_t index)
       squadPlayers.push_back(players[player].get());
     }
     // A zone's own brain and body (T7e), for its engine only: the run takes
-    // the sandbox's when it is made, so they stand in for that.
-    const std::array<BrainId, 2> setUpBrains = sandboxBrains();
-    const std::array<BodyId, 2> setUpBodies = sandboxBodies();
-    if (plan.brain)
+    // the sandbox's when it is made, so they stand in for that, and the
+    // Set-up's come back even if making the run throws.
     {
-      sandboxBrains() = {*plan.brain, *plan.brain};
+      const SetUpStandIn standIn(plan.brain, plan.body);
+      zone.run = std::make_unique<DrillRun>(*zone.drill, config, record,
+                                            std::function<void(MatchEngine&)>{},
+                                            squadPlayers);
     }
-    if (plan.body)
-    {
-      sandboxBodies() = {*plan.body, *plan.body};
-    }
-    zone.run = std::make_unique<DrillRun>(*zone.drill, config, record,
-                                          std::function<void(MatchEngine&)>{},
-                                          squadPlayers);
-    sandboxBrains() = setUpBrains;
-    sandboxBodies() = setUpBodies;
     // Each player brings his condition from when he last played (T7c);
     // where he starts is still the drill's (the change itself is T7d).
     MatchEngine& engine = zone.run->engine();

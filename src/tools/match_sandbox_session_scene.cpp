@@ -13,6 +13,8 @@
 #include <algorithm>
 #include <array>
 #include <format>
+#include <iterator>
+#include <stdexcept>
 #include <string>
 #include <string_view>
 
@@ -80,9 +82,18 @@ void ZoneSessionScene::onEnter()
 void ZoneSessionScene::restart()
 {
   run.reset();
-  // Recorded, so the debugger can read each zone (T7e).
-  run = std::make_unique<SessionRun>(
-      plan, guiView->getController().getStatsConfig(), 1, true, picks);
+  runError.clear();
+  // Recorded, so the debugger can read each zone (T7e). A plan with a
+  // problem doesn't start: the panel says why.
+  try
+  {
+    run = std::make_unique<SessionRun>(
+        plan, guiView->getController().getStatsConfig(), 1, true, picks);
+  }
+  catch (const std::invalid_argument& problem)
+  {
+    runError = problem.what();
+  }
   watchedZone = 0;
   debuggedRun = nullptr;
   debugger.reset();
@@ -184,6 +195,12 @@ void ZoneSessionScene::renderPanel(float width)
   const float scale = Theme::scale();
   if (!run)
   {
+    if (!runError.empty())
+    {
+      ImGui::PushTextWrapPos(0);
+      ImGui::TextDisabled("This session can't start: %s", runError.c_str());
+      ImGui::PopTextWrapPos();
+    }
     return;
   }
   const std::size_t exerciseCount = plan.exercises.size();
@@ -493,13 +510,20 @@ void ZoneSessionScene::renderZoneTools(float width)
     ImGui::PopTextWrapPos();
   }
 
-  // Its brain and body (both sides), in the session's plan: brains are set
-  // before a zone starts, so a change takes effect on Restart.
+  // Its brain and body (both sides), in the scene's copy of the plan:
+  // brains are set before a zone starts, so a change takes effect on
+  // Restart. The picked zone's place in the plan comes from the zone itself
+  // (the run's copy of the plan), not from its place among the running
+  // zones.
   const std::size_t exercise = run->exercise();
-  if (exercise < plan.exercises.size() &&
-      watchedZone < plan.exercises[exercise].zones.size())
+  const std::vector<SessionZone>& runPlanZones =
+      run->plan().exercises[exercise].zones;
+  const auto planIndex = static_cast<std::size_t>(
+      std::distance(runPlanZones.data(), zones[watchedZone].plan));
+  if (exercise < plan.exercises.size() && planIndex < runPlanZones.size() &&
+      planIndex < plan.exercises[exercise].zones.size())
   {
-    SessionZone& zone = plan.exercises[exercise].zones[watchedZone];
+    SessionZone& zone = plan.exercises[exercise].zones[planIndex];
     const auto picker = [&]<typename Id>(const char* label,
                                          std::optional<Id>& choice,
                                          const auto& all, auto name)
