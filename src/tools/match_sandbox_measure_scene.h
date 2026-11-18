@@ -46,12 +46,16 @@ class DrillMeasureScene : public GUIScene
 
   void start();
   void renderPanel(float width);
-  void renderResults(float width, float height);
+  [[nodiscard]] bool renderActions(float width);
+  void renderRunStatus();
+  void renderResults(ImVec2 size);
   void renderChart(ImVec2 size);
   void renderTable(ImVec2 size);
   /** Combo and range widgets of one axis. */
   void renderAxis(const char* label, AxisSetup& axis, bool optional,
                   int exclude);
+  void renderAxisSetting(const std::vector<DrillParameter>& parameters,
+                         AxisSetup& axis, bool optional, int exclude);
   /** Puts the range to the parameter's own (all choices, or min to max). */
   void resetAxis(AxisSetup& axis);
   [[nodiscard]] std::optional<MeasureAxis> axisOf(const AxisSetup& axis);

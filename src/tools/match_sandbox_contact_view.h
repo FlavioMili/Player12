@@ -66,7 +66,7 @@ class ContactViewScene : public GUIScene
   [[nodiscard]] bool isTouch() const { return inputs.contact == 0; }
   /** The chosen contact's profile with the default knobs. */
   [[nodiscard]] ContactProfile chosenProfile() const;
-  [[nodiscard]] float reach() const;
+  [[nodiscard]] static float reach();
   /** Whether a first touch cannot meet the ball at `point` (metres): his
    * dead zone behind him (strikes have none). */
   [[nodiscard]] bool inDeadZone(ImVec2 point) const;
@@ -83,9 +83,10 @@ class ContactViewScene : public GUIScene
   void renderPanel(float width);
   void renderCircle(ImVec2 size);
   void renderBreakdown(float width);
+  void renderFactors(const ContactAssessment& contact) const;
   /** The ball seen from the side: the steepness it arrives at and the one
    * he means. */
-  void renderSideView(const ContactAssessment& contact);
+  void renderSideView(const ContactAssessment& contact) const;
   /** The stretch map, editable; it goes into every contact shown here. */
   void renderStretchMap();
   /** The chosen contact's knobs (the sandbox's tuning), editable. */

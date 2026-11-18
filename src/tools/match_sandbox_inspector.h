@@ -102,8 +102,13 @@ class DebugInspector
   [[nodiscard]] SandboxRecorder::Job jobOf(PlayerID player,
                                            bool homeTeam) const;
   void selectable(const SandboxRecorder& recorder, PlayerID player);
-  void renderIntentStrip(const SandboxRecorder& recorder, PlayerID player,
-                         std::uint64_t cursor, std::uint64_t end);
+  struct IntentTimeline
+  {
+    std::uint64_t cursor = 0;
+    std::uint64_t end = 0;
+  };
+  static void renderIntentStrip(const SandboxRecorder& recorder,
+                                PlayerID player, IntentTimeline timeline);
   void refreshSummary(const SandboxRecorder& recorder);
   /** Full detail up to the engine's tick; a line about its stretch. */
   void ensureDetail(const SandboxRecorder& recorder, const MatchEngine& engine);

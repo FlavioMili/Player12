@@ -164,6 +164,29 @@ std::string clock(float minute)
                      total % SECONDS_PER_MINUTE);
 }
 
+const char* possessionTag(PlayerID id, const PossessionSnapshot& possession)
+{
+  if (id == possession.controller)
+  {
+    return "(control)";
+  }
+  if (id == possession.claimant)
+  {
+    return "(claim)";
+  }
+  if (id == possession.legacyOwner)
+  {
+    return possession.openPlay ? "(attached)" : "(restart)";
+  }
+  return nullptr;
+}
+
+struct PassArrowStyle
+{
+  ImU32 color;
+  float width;
+};
+
 /** Key/value row of a two-column table. */
 void property(const char* key, const std::string& value,
               const char* tooltip = nullptr)
@@ -372,12 +395,7 @@ void DebugInspector::renderTeam(const SandboxRecorder& recorder,
       ImGui::TableNextRow();
       ImGui::TableNextColumn();
       selectable(recorder, id);
-      const char* ballStatus =
-          id == possession.controller ? "(control)"
-          : id == possession.claimant ? "(claim)"
-          : id == possession.legacyOwner
-              ? (possession.openPlay ? "(attached)" : "(restart)")
-              : nullptr;
+      const char* ballStatus = possessionTag(id, possession);
       if (ballStatus != nullptr)
       {
         ImGui::SameLine();
@@ -422,9 +440,10 @@ void DebugInspector::renderTeam(const SandboxRecorder& recorder,
 // --- Player ----------------------------------------------------------------
 
 void DebugInspector::renderIntentStrip(const SandboxRecorder& recorder,
-                                       PlayerID player, std::uint64_t cursor,
-                                       std::uint64_t end)
+                                       PlayerID player, IntentTimeline timeline)
 {
+  const std::uint64_t cursor = timeline.cursor;
+  const std::uint64_t end = timeline.end;
   // His intents over the whole match; the cursor marks the moment shown.
   const float scale = Theme::scale();
   const float width = std::max(50.0F, ImGui::GetContentRegionAvail().x);
@@ -525,7 +544,7 @@ void DebugInspector::renderPlayer(const SandboxRecorder& recorder,
   const PlayerID inspected = follow_ball && followed != 0 ? followed : selected;
 
   // Picker: every player seen in the match, by name.
-  const std::string current = (selected != 0u) ? recorder.playerName(selected)
+  const std::string current = (selected != 0U) ? recorder.playerName(selected)
                                                : std::string("Choose a player");
   ImGui::SetNextItemWidth(PLAYER_PICKER_WIDTH * Theme::scale());
   if (SandboxPageUI::beginCombo("##inspect", current.c_str(),
@@ -749,7 +768,8 @@ void DebugInspector::renderPlayer(const SandboxRecorder& recorder,
   }
 
   ImGui::SeparatorText("Intent over the match");
-  renderIntentStrip(recorder, inspected, tick, recorder.lastTick());
+  renderIntentStrip(recorder, inspected,
+                    {.cursor = tick, .end = recorder.lastTick()});
 
   // His latest decisions and actions up to this moment.
   ImGui::SeparatorText("Recent decisions and actions");
@@ -1256,7 +1276,7 @@ void DebugInspector::drawOverlays(const SandboxRecorder& recorder,
       ImVec2 from;
       if (project(passer->position, from))
       {
-        const auto arrow = [&](PlayerID receiver, ImU32 color, float width)
+        const auto arrow = [&](PlayerID receiver, PassArrowStyle style)
         {
           const MatchPlayer* target = findSlot(engine, receiver);
           ImVec2 to;
@@ -1264,13 +1284,14 @@ void DebugInspector::drawOverlays(const SandboxRecorder& recorder,
           {
             return;
           }
-          drawList->AddLine(from, to, color, width * scale);
-          drawList->AddCircleFilled(to, PASS_MARKER_RADIUS * scale, color);
+          drawList->AddLine(from, to, style.color, style.width * scale);
+          drawList->AddCircleFilled(to, PASS_MARKER_RADIUS * scale,
+                                    style.color);
         };
-        arrow(decision.runnerUpReceiver, IM_COL32(240, 180, 40, 220),
-              RUNNER_UP_STROKE);
-        arrow(decision.bestReceiver, IM_COL32(80, 230, 110, 255),
-              BEST_PASS_STROKE);
+        arrow(decision.runnerUpReceiver, {.color = IM_COL32(240, 180, 40, 220),
+                                          .width = RUNNER_UP_STROKE});
+        arrow(decision.bestReceiver, {.color = IM_COL32(80, 230, 110, 255),
+                                      .width = BEST_PASS_STROKE});
         const auto score = [](float value)
         {
           return std::isfinite(value) ? std::format("{:.2f}", value)

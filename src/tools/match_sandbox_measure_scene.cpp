@@ -60,6 +60,26 @@ constexpr float LEGEND_MARKER_SIZE = 12.0F;
 constexpr float LEGEND_MARKER_ADVANCE = 14.0F;
 constexpr double DISPLAYED_SD_THRESHOLD = 0.0005;
 
+struct SettingsCard
+{
+  const char* id;
+  const char* title;
+};
+constexpr std::array<SettingsCard, 4> SETTINGS_CARDS{
+    {{.id = "##measure_sweep", .title = "SWEEP"},
+     {.id = "##measure_compare", .title = "COMPARE BY"},
+     {.id = "##measure_runs", .title = "RUN SETTINGS"},
+     {.id = "##measure_settings", .title = "HELD SETTINGS"}}};
+
+const SettingsCard& settingsCard(int tab)
+{
+  if (tab < 0 || tab >= static_cast<int>(SETTINGS_CARDS.size()))
+  {
+    return SETTINGS_CARDS.back();
+  }
+  return SETTINGS_CARDS.at(static_cast<std::size_t>(tab));
+}
+
 /** Real time spent measuring per frame. */
 constexpr double WORK_PER_FRAME_SECONDS = 0.012;
 
@@ -119,11 +139,7 @@ DrillMeasureScene::DrillMeasureScene(GUIView* guiView_ptr, Drill& drill_ref,
 {
   // A first measure worth running: Pace, with and without the ball.
   const auto parameters = drill.parameters();
-  sweep.parameter = findParameter(parameters, "Pace");
-  if (sweep.parameter < 0)
-  {
-    sweep.parameter = 0;
-  }
+  sweep.parameter = std::max(0, findParameter(parameters, "Pace"));
   resetAxis(sweep);
   if (parameters[static_cast<std::size_t>(sweep.parameter)].name ==
       std::string_view("Pace"))
@@ -292,7 +308,7 @@ void DrillMeasureScene::render()
     const float width = ImGui::GetContentRegionAvail().x;
     ImGui::BeginChild("##measure_results", ImVec2(width, available.y),
                       ImGuiChildFlags_AlwaysUseWindowPadding);
-    renderResults(std::max(scale, width - gutter), available.y);
+    renderResults(ImVec2(std::max(scale, width - gutter), available.y));
     ImGui::EndChild();
   }
   else
@@ -300,7 +316,7 @@ void DrillMeasureScene::render()
     ImGui::BeginChild("##measure_page", available,
                       ImGuiChildFlags_AlwaysUseWindowPadding);
     renderPanel(panel);
-    renderResults(panel, available.y);
+    renderResults(ImVec2(panel, available.y));
     ImGui::EndChild();
   }
   ImGui::PopStyleVar();
@@ -312,33 +328,7 @@ void DrillMeasureScene::renderAxis(const char* label, AxisSetup& axis,
 {
   const auto parameters = drill.parameters();
   ImGui::PushID(label);
-  const char* current =
-      axis.parameter >= 0 &&
-              axis.parameter < static_cast<int>(parameters.size())
-          ? parameters[static_cast<std::size_t>(axis.parameter)].name
-          : "(none)";
-  field("Setting");
-  if (SandboxPageUI::beginCombo("##setting", current))
-  {
-    if (optional && ImGui::Selectable("(none)", axis.parameter < 0))
-    {
-      axis.parameter = -1;
-    }
-    for (std::size_t index = 0; index < parameters.size(); ++index)
-    {
-      if (static_cast<int>(index) == exclude)
-      {
-        continue;
-      }
-      if (ImGui::Selectable(parameters[index].name,
-                            axis.parameter == static_cast<int>(index)))
-      {
-        axis.parameter = static_cast<int>(index);
-        resetAxis(axis);
-      }
-    }
-    ImGui::EndCombo();
-  }
+  renderAxisSetting(parameters, axis, optional, exclude);
   if (axis.parameter >= 0 &&
       axis.parameter < static_cast<int>(parameters.size()))
   {
@@ -387,72 +377,7 @@ void DrillMeasureScene::renderPanel(float width)
 {
   namespace Page = SandboxPageUI;
   const float scale = Theme::scale();
-  const bool running = measure && !measure->done();
-  Page::header("Measure", drill.name(), width, scale, boldFont, regularFont,
-               "Sweep one setting and compare a second. Engine conditions come "
-               "from Set-up.",
-               true);
-  Page::beginCard("##measure_actions", "RUN MEASURE", width, Page::DARK, scale,
-                  boldFont);
-  if (Page::button("Back to sandbox", false, scale, boldFont))
-  {
-    if (measure)
-    {
-      measure->stop();
-    }
-    guiView->popScene();
-  }
-  if (!running)
-  {
-    if (Page::button("Run", true, scale, boldFont))
-    {
-      start();
-    }
-  }
-  else if (Page::button("Stop", false, scale, boldFont))
-  {
-    measure->stop();
-  }
-  nextButton("Export CSV", scale, boldFont);
-  const bool canExport = measure && measure->done() && !measure->runs().empty();
-  ImGui::BeginDisabled(!canExport);
-  if (Page::button("Export CSV", false, scale, boldFont))
-  {
-    exportCsv();
-  }
-  ImGui::EndDisabled();
-  if (ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenDisabled))
-  {
-    SandboxText::tooltipText(
-        "Export every measured run, settings, seed and metrics to "
-        "Documents/Player12 drill results. Available when the measure is "
-        "finished or stopped.");
-  }
-  if (measure)
-  {
-    ImGui::TextUnformatted(std::format("{} / {} runs / {:.2f} s",
-                                       measure->runsDone(),
-                                       measure->runsTotal(), measure->seconds())
-                               .c_str());
-    const float share =
-        measure->runsTotal() == 0
-            ? 1
-            : float(measure->runsDone()) / float(measure->runsTotal());
-    ImGui::PushStyleColor(ImGuiCol_PlotHistogram, Page::LIME);
-    ImGui::ProgressBar(share, ImVec2(-1, PROGRESS_HEIGHT * scale), "");
-    ImGui::PopStyleColor();
-    ImGui::PushTextWrapPos(0);
-    for (const auto& note : measure->warnings())
-    {
-      SandboxText::coloredText(NOTE_COLOR, note.c_str());
-    }
-    ImGui::PopTextWrapPos();
-  }
-  if (!exported.empty())
-  {
-    SandboxText::wrappedText(exported.c_str());
-  }
-  Page::endCard(scale);
+  const bool running = renderActions(width);
   Page::beginCard("##measure_tabs", "CONTROLS", width, Page::MID, scale,
                   boldFont);
   const std::array<const char*, 4> tabs{"Sweep", "Compare", "Runs", "Settings"};
@@ -468,15 +393,8 @@ void DrillMeasureScene::renderPanel(float width)
     }
   }
   Page::endCard(scale);
-  Page::beginCard(panelTab == 0   ? "##measure_sweep"
-                  : panelTab == 1 ? "##measure_compare"
-                  : panelTab == 2 ? "##measure_runs"
-                                  : "##measure_settings",
-                  panelTab == 0   ? "SWEEP"
-                  : panelTab == 1 ? "COMPARE BY"
-                  : panelTab == 2 ? "RUN SETTINGS"
-                                  : "HELD SETTINGS",
-                  width, Page::LIGHT, scale, boldFont);
+  const SettingsCard& card = settingsCard(panelTab);
+  Page::beginCard(card.id, card.title, width, Page::LIGHT, scale, boldFont);
   ImGui::BeginDisabled(running);
   if (panelTab == 0)
   {
@@ -523,8 +441,10 @@ void DrillMeasureScene::renderPanel(float width)
   Page::endCard(scale);
 }
 
-void DrillMeasureScene::renderResults(float width, float height)
+void DrillMeasureScene::renderResults(ImVec2 size)
 {
+  const float width = size.x;
+  const float height = size.y;
   namespace Page = SandboxPageUI;
   const float scale = Theme::scale();
   Page::beginCard("##measure_result_controls", "RESULTS", width, Page::MID,
@@ -915,4 +835,117 @@ void DrillMeasureScene::renderTable(ImVec2 size)
     }
   }
   ImGui::EndTable();
+}
+
+bool DrillMeasureScene::renderActions(float width)
+{
+  namespace Page = SandboxPageUI;
+  const float scale = Theme::scale();
+  const bool running = measure && !measure->done();
+  Page::header("Measure", drill.name(), width, scale, boldFont, regularFont,
+               "Sweep one setting and compare a second. Engine conditions come "
+               "from Set-up.",
+               true);
+  Page::beginCard("##measure_actions", "RUN MEASURE", width, Page::DARK, scale,
+                  boldFont);
+  if (Page::button("Back to sandbox", false, scale, boldFont))
+  {
+    if (measure)
+    {
+      measure->stop();
+    }
+    guiView->popScene();
+  }
+  if (!running)
+  {
+    if (Page::button("Run", true, scale, boldFont))
+    {
+      start();
+    }
+  }
+  else if (Page::button("Stop", false, scale, boldFont))
+  {
+    measure->stop();
+  }
+  nextButton("Export CSV", scale, boldFont);
+  const bool canExport = measure && measure->done() && !measure->runs().empty();
+  ImGui::BeginDisabled(!canExport);
+  if (Page::button("Export CSV", false, scale, boldFont))
+  {
+    exportCsv();
+  }
+  ImGui::EndDisabled();
+  if (ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenDisabled))
+  {
+    SandboxText::tooltipText(
+        "Export every measured run, settings, seed and metrics to "
+        "Documents/Player12 drill results. Available when the measure is "
+        "finished or stopped.");
+  }
+  renderRunStatus();
+  Page::endCard(scale);
+  return running;
+}
+
+void DrillMeasureScene::renderRunStatus()
+{
+  namespace Page = SandboxPageUI;
+  const float scale = Theme::scale();
+  if (measure)
+  {
+    ImGui::TextUnformatted(std::format("{} / {} runs / {:.2f} s",
+                                       measure->runsDone(),
+                                       measure->runsTotal(), measure->seconds())
+                               .c_str());
+    const float share =
+        measure->runsTotal() == 0
+            ? 1
+            : float(measure->runsDone()) / float(measure->runsTotal());
+    ImGui::PushStyleColor(ImGuiCol_PlotHistogram, Page::LIME);
+    ImGui::ProgressBar(share, ImVec2(-1, PROGRESS_HEIGHT * scale), "");
+    ImGui::PopStyleColor();
+    ImGui::PushTextWrapPos(0);
+    for (const auto& note : measure->warnings())
+    {
+      SandboxText::coloredText(NOTE_COLOR, note.c_str());
+    }
+    ImGui::PopTextWrapPos();
+  }
+  if (!exported.empty())
+  {
+    SandboxText::wrappedText(exported.c_str());
+  }
+}
+
+void DrillMeasureScene::renderAxisSetting(
+    const std::vector<DrillParameter>& parameters, AxisSetup& axis,
+    bool optional, int exclude)
+{
+  const char* current =
+      axis.parameter >= 0 &&
+              axis.parameter < static_cast<int>(parameters.size())
+          ? parameters[static_cast<std::size_t>(axis.parameter)].name
+          : "(none)";
+  field("Setting");
+  if (SandboxPageUI::beginCombo("##setting", current))
+  {
+    if (optional && ImGui::Selectable("(none)", axis.parameter < 0))
+    {
+      axis.parameter = -1;
+    }
+    for (std::size_t index = 0; index < parameters.size(); ++index)
+    {
+      if (static_cast<int>(index) == exclude)
+      {
+        continue;
+      }
+      if (ImGui::Selectable(parameters[index].name,
+                            axis.parameter == static_cast<int>(index)))
+      {
+        axis.parameter = static_cast<int>(index);
+        resetAxis(axis);
+      }
+    }
+    ImGui::EndCombo();
+  }
 }
