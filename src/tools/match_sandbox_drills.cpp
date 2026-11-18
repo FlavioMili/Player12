@@ -774,6 +774,12 @@ class MovementDrill : public Drill
     float speed = 0.0F;
   };
 
+  [[nodiscard]] PlayerID runnerId() const { return id; }
+  [[nodiscard]] Path runnerPath() const { return path; }
+  [[nodiscard]] bool runUsesBall() const { return withBall; }
+  [[nodiscard]] float distanceTravelled() const { return distanceRun; }
+
+ private:
   float pathChoice = AI;
   float ballChoice = 0.0F;
   RunnerAttributes runner;
@@ -1118,7 +1124,7 @@ class CourseDrill : public MovementDrill
     reached.clear();
     finished = false;
     radius = std::max(MIN_ARRIVAL_RADIUS_METRES, arrivalRadius);
-    const MatchPlayer* player = slotOf(engine, id);
+    const MatchPlayer* player = slotOf(engine, runnerId());
     advancesSeen = (player != nullptr) ? player->routeAdvances : 0;
     movedOn = 0;
     planRun(engine);
@@ -1242,12 +1248,8 @@ class CourseDrill : public MovementDrill
     {
       return false;
     }
-    reached.push_back(secondsOf(engine) - STEP +
+    recordCoursePoint(secondsOf(engine) - STEP +
                       (STEP * static_cast<double>(*share)));
-    if (reached.size() >= points.size())
-    {
-      finished = true;
-    }
     return true;
   }
 
@@ -1291,6 +1293,40 @@ class CourseDrill : public MovementDrill
     return total;
   }
 
+  [[nodiscard]] DrillParameter courseArrivalParameter(
+      SettingRange range, const char* tooltip = nullptr)
+  {
+    return setting("Arrival radius (m)", &arrivalRadius, range, false, tooltip);
+  }
+  void stopAtFinish() { runThroughLast = false; }
+  [[nodiscard]] PitchPoint courseStart() const { return startPoint; }
+  [[nodiscard]] const std::vector<PitchPoint>& coursePoints() const
+  {
+    return points;
+  }
+  [[nodiscard]] const std::vector<double>& reachedTimes() const
+  {
+    return reached;
+  }
+  [[nodiscard]] bool courseFinished() const { return finished; }
+  [[nodiscard]] float courseRadius() const { return radius; }
+  [[nodiscard]] std::size_t movedWaypointCount() const { return movedOn; }
+  void resetMovedWaypoints() { movedOn = 0; }
+  void appendCoursePoint(PitchPoint point)
+  {
+    points.push_back(point);
+    finished = false;
+  }
+  void recordCoursePoint(double when)
+  {
+    reached.push_back(when);
+    if (reached.size() >= points.size())
+    {
+      finished = true;
+    }
+  }
+
+ private:
   float arrivalRadius = 1.0F;
   bool runThroughLast = true;
 
@@ -1356,11 +1392,10 @@ class TurnDrill final : public CourseDrill
     list.push_back(angle);
     list.push_back(
         setting("Exit (m)", &exit, {.min = EXIT_MIN, .max = EXIT_MAX}, true));
-    list.push_back(
-        setting("Arrival radius (m)", &arrivalRadius,
-                {.min = START_LENGTH_SHARE, .max = ARRIVAL_RADIUS_MAX}, false,
-                "How close to the cone counts as reaching it (so does "
-                "crossing the corner's middle line, on any line)."));
+    list.push_back(courseArrivalParameter(
+        {.min = START_LENGTH_SHARE, .max = ARRIVAL_RADIUS_MAX},
+        "How close to the cone counts as reaching it (so does "
+        "crossing the corner's middle line, on any line)."));
     list.push_back(
         setting("Apex offset (m)", &apexSetting,
                 {.min = APEX_SETTING_MIN, .max = APEX_SETTING_MAX}, false,
@@ -1408,15 +1443,15 @@ class TurnDrill final : public CourseDrill
     {
       return false;
     }
-    const bool wasAtCone = !reached.empty();
+    const bool wasAtCone = !reachedTimes().empty();
     const float speed = speedOf(*player);
     advanceCourse(engine, *player, previous);
-    if (!wasAtCone && !reached.empty())
+    if (!wasAtCone && !reachedTimes().empty())
     {
       entrySpeed = speed;
     }
     // Where he passes the cone: his closest to it, inside the turn or out.
-    if (!finished)
+    if (!courseFinished())
     {
       const Vector2F off = player->position - cone;
       const float metres = std::hypot(off.x, off.y);
@@ -1428,7 +1463,7 @@ class TurnDrill final : public CourseDrill
             off.x * inward.x + off.y * inward.y >= 0.0F ? metres : -metres;
       }
     }
-    if (!reached.empty() && !finished)
+    if (!reachedTimes().empty() && !courseFinished())
     {
       // Through the turn: the slowest moment and how wide he swings off the
       // line from the cone to the finish.
@@ -1442,12 +1477,13 @@ class TurnDrill final : public CourseDrill
     }
     previous = player->position;
     const double now = secondsOf(engine);
-    if (finished && !resultSaved)
+    if (courseFinished() && !resultSaved)
     {
-      results[settingsKey()] = reached.back();
+      results[settingsKey()] = reachedTimes().back();
       resultSaved = true;
     }
-    return (!finished || now <= reached.back() + FINISH_DELAY_SECONDS) &&
+    return (!courseFinished() ||
+            now <= reachedTimes().back() + FINISH_DELAY_SECONDS) &&
            now < MAX_DURATION_SECONDS;
   }
 
@@ -1456,8 +1492,9 @@ class TurnDrill final : public CourseDrill
   {
     const float scale = Theme::scale();
     drawTrail(renderer, draw);
-    DrillDraw::marker(renderer, draw, startPoint, START_MARKER_RADIUS * scale,
-                      COURSE_START_COLOUR, "start");
+    DrillDraw::marker(renderer, draw, courseStart(),
+                      START_MARKER_RADIUS * scale, COURSE_START_COLOUR,
+                      "start");
     // The cone is kit on the pitch (begin); its angle is labelled here.
     DrillDraw::label(renderer, draw, cone,
                      std::format("{:.0f}°", degrees).c_str(),
@@ -1472,10 +1509,10 @@ class TurnDrill final : public CourseDrill
     lines.push_back(std::format("{:.0f} m, turn {:.0f}°, {:.0f} m",
                                 approachMetres, degrees, exitMetres));
     lines.push_back(runnerLine());
-    if (!reached.empty())
+    if (!reachedTimes().empty())
     {
       lines.push_back(std::format("To the cone {:.2f} s (at {:.2f} m/s)",
-                                  reached[0], entrySpeed));
+                                  reachedTimes()[0], entrySpeed));
     }
     if (minSpeed && degrees > 0.0F)
     {
@@ -1490,11 +1527,11 @@ class TurnDrill final : public CourseDrill
                                   std::abs(*closest),
                                   *closest >= 0.0F ? "inside" : "outside"));
     }
-    if (finished)
+    if (courseFinished())
     {
       lines.push_back(std::format("Cone to finish {:.2f} s", legSeconds(1)));
       lines.push_back(std::format("TOTAL  {:.2f} s · {:.1f} m run",
-                                  reached.back(), distanceRun));
+                                  reachedTimes().back(), distanceTravelled()));
       if (degrees > 0.0F)
       {
         const auto straight = results.find(settingsKey(0.0F));
@@ -1502,7 +1539,7 @@ class TurnDrill final : public CourseDrill
         {
           lines.emplace_back(
               std::format("Time lost to the turn: {:+.2f} s (vs 0°)",
-                          reached.back() - straight->second));
+                          reachedTimes().back() - straight->second));
         }
         else
         {
@@ -1517,13 +1554,13 @@ class TurnDrill final : public CourseDrill
 
   [[nodiscard]] std::vector<DrillMetric> metrics() const override
   {
-    if (!finished || reached.size() < 2)
+    if (!courseFinished() || reachedTimes().size() < 2)
     {
       return {};
     }
     std::vector<DrillMetric> out{
-        {.name = "Total (s)", .value = reached.back()},
-        {.name = "To the cone (s)", .value = reached[0]},
+        {.name = "Total (s)", .value = reachedTimes().back()},
+        {.name = "To the cone (s)", .value = reachedTimes()[0]},
         {.name = "Cone to finish (s)", .value = legSeconds(1)},
         {.name = "Speed at the cone (m/s)", .value = entrySpeed}};
     if (minSpeed && degrees > 0.0F)
@@ -1536,7 +1573,7 @@ class TurnDrill final : public CourseDrill
             {.name = "Passed the cone, inside + (m)", .value = *closest});
       }
     }
-    out.push_back({.name = "Distance run (m)", .value = distanceRun});
+    out.push_back({.name = "Distance run (m)", .value = distanceTravelled()});
     addBallMetrics(out);
     return out;
   }
@@ -1551,8 +1588,9 @@ class TurnDrill final : public CourseDrill
                                                 PitchPoint from,
                                                 PitchPoint to) const override
   {
-    std::optional<float> share = entryShare(
-        {.from = from, .to = to}, {.centre = points[index], .radius = radius});
+    std::optional<float> share =
+        entryShare({.from = from, .to = to},
+                   {.centre = coursePoints()[index], .radius = courseRadius()});
     const Vector2F across{.x = 1.0F + exitDirection.x, .y = exitDirection.y};
     const float size = std::hypot(across.x, across.y);
     if (index == 0 && size > MIN_CORNER_DIRECTION_LENGTH)
@@ -1573,9 +1611,9 @@ class TurnDrill final : public CourseDrill
   [[nodiscard]] std::string settingsKey(std::optional<float> angle = {}) const
   {
     return std::format("{}|{:.0f}|{:.0f}|{:.0f}|{:.2f}|{:.2f}|{:.2f}|{}",
-                       static_cast<int>(path), approachMetres,
-                       angle.value_or(degrees), exitMetres, radius, apex, room,
-                       runnerKey());
+                       static_cast<int>(runnerPath()), approachMetres,
+                       angle.value_or(degrees), exitMetres, courseRadius(),
+                       apex, room, runnerKey());
   }
 
   float approach = DEFAULT_APPROACH;
@@ -1787,14 +1825,15 @@ class SlalomDrill final : public CourseDrill
     }
     followPlan(engine, *player);
     holdBackPoint(engine, *player);
-    if (!finished)
+    if (!courseFinished())
     {
       passGates(engine, *player);
     }
     previous = player->position;
     previousBall = engine.getBall().position;
     const double now = secondsOf(engine);
-    return (!finished || now <= reached.back() + FINISH_DELAY_SECONDS) &&
+    return (!courseFinished() ||
+            now <= reachedTimes().back() + FINISH_DELAY_SECONDS) &&
            now < MAX_DURATION_SECONDS;
   }
 
@@ -1803,15 +1842,16 @@ class SlalomDrill final : public CourseDrill
   {
     const float scale = Theme::scale();
     drawTrail(renderer, draw);
-    DrillDraw::marker(renderer, draw, startPoint, START_MARKER_RADIUS * scale,
-                      COURSE_START_COLOUR, "start");
+    DrillDraw::marker(renderer, draw, courseStart(),
+                      START_MARKER_RADIUS * scale, COURSE_START_COLOUR,
+                      "start");
     for (std::size_t cone = 0; cone < conePoints.size(); ++cone)
     {
       // The gate, from a body's width out from its cone (open beyond what
       // is drawn), and the point he aims for: the one due bright, red while
       // he goes back for it (missed), with the point behind it he goes to.
-      const bool passed = cone < reached.size();
-      const bool due = cone == reached.size();
+      const bool passed = cone < reachedTimes().size();
+      const bool due = cone == reachedTimes().size();
       const ImU32 colour =
           gateColour({.passed = passed, .due = due, .goingBack = goingBack});
       DrillDraw::line(renderer, draw, gateEdge(cone, 0.0F),
@@ -1826,7 +1866,7 @@ class SlalomDrill final : public CourseDrill
       }
       // The cone itself is kit on the pitch (begin).
     }
-    DrillDraw::label(renderer, draw, points.back(), "finish",
+    DrillDraw::label(renderer, draw, coursePoints().back(), "finish",
                      COURSE_FINISH_COLOUR);
   }
 
@@ -1845,25 +1885,25 @@ class SlalomDrill final : public CourseDrill
     }
     lines.push_back(runnerLine());
     std::string splits;
-    for (std::size_t index = 0; index < reached.size(); ++index)
+    for (std::size_t index = 0; index < reachedTimes().size(); ++index)
     {
-      splits +=
-          std::format("{} {:.2f}  ",
-                      index + 1 == points.size() ? std::string("F")
-                                                 : std::to_string(index + 1),
-                      reached[index]);
+      splits += std::format("{} {:.2f}  ",
+                            index + 1 == coursePoints().size()
+                                ? std::string("F")
+                                : std::to_string(index + 1),
+                            reachedTimes()[index]);
     }
     if (!splits.empty())
     {
       lines.push_back(splits);
     }
     lines.push_back(std::format("Gates missed (gone back for): {}", missed));
-    if (finished)
+    if (courseFinished())
     {
-      lines.push_back(std::format("TOTAL  {:.2f} s", reached.back()));
+      lines.push_back(std::format("TOTAL  {:.2f} s", reachedTimes().back()));
       lines.push_back(std::format(
           "Course {:.1f} m, ran {:.1f} m, average {:.2f} m/s", courseMetres(),
-          distanceRun, distanceRun / reached.back()));
+          distanceTravelled(), distanceTravelled() / reachedTimes().back()));
     }
     addBallLines(lines);
     return lines;
@@ -1871,14 +1911,15 @@ class SlalomDrill final : public CourseDrill
 
   [[nodiscard]] std::vector<DrillMetric> metrics() const override
   {
-    if (!finished || reached.empty())
+    if (!courseFinished() || reachedTimes().empty())
     {
       return {};
     }
     std::vector<DrillMetric> out{
-        {.name = "Total (s)", .value = reached.back()},
-        {.name = "Distance run (m)", .value = distanceRun},
-        {.name = "Average speed (m/s)", .value = distanceRun / reached.back()},
+        {.name = "Total (s)", .value = reachedTimes().back()},
+        {.name = "Distance run (m)", .value = distanceTravelled()},
+        {.name = "Average speed (m/s)",
+         .value = distanceTravelled() / reachedTimes().back()},
         {.name = "Gates missed", .value = static_cast<double>(missed)}};
     addBallMetrics(out);
     return out;
@@ -1891,14 +1932,14 @@ class SlalomDrill final : public CourseDrill
   [[nodiscard]] std::vector<PitchPoint> waypointsAhead() const override
   {
     std::vector<PitchPoint> list;
-    const std::size_t due = reached.size();
+    const std::size_t due = reachedTimes().size();
     if (goingBack && backPending && due < conePoints.size())
     {
       list.push_back(backPoint(due));
     }
     list.insert(list.end(), aims.begin() + static_cast<std::ptrdiff_t>(nextAim),
                 aims.end());
-    const std::size_t skip = std::min(movedOn, list.size());
+    const std::size_t skip = std::min(movedWaypointCount(), list.size());
     return {list.begin() + static_cast<std::ptrdiff_t>(skip), list.end()};
   }
 
@@ -1919,9 +1960,10 @@ class SlalomDrill final : public CourseDrill
    * it again as the course does. */
   [[nodiscard]] PitchPoint backPoint(std::size_t cone) const
   {
-    const PitchPoint before = cone == 0 ? startPoint : points[cone - 1];
-    return PitchPoint{(before.x + points[cone].x) * HALF_SHARE,
-                      (before.y + points[cone].y) * HALF_SHARE};
+    const PitchPoint before =
+        cone == 0 ? courseStart() : coursePoints()[cone - 1];
+    return PitchPoint{(before.x + coursePoints()[cone].x) * HALF_SHARE,
+                      (before.y + coursePoints()[cone].y) * HALF_SHARE};
   }
 
   /** Whether `at` is behind gate `cone`'s line (the side he comes at it
@@ -1949,14 +1991,14 @@ class SlalomDrill final : public CourseDrill
    * drawn. No curving back to its middle. */
   [[nodiscard]] PitchPoint finishAim() const override
   {
-    if (points.size() < 2)
+    if (coursePoints().size() < 2)
     {
-      return points.back();
+      return coursePoints().back();
     }
-    const float across =
-        std::clamp(points[points.size() - 2].y - points.back().y,
-                   -FINISH_AIM_METRES, FINISH_AIM_METRES);
-    return along(points.back(), {.x = 0.0F, .y = 1.0F}, across);
+    const float across = std::clamp(
+        coursePoints()[coursePoints().size() - 2].y - coursePoints().back().y,
+        -FINISH_AIM_METRES, FINISH_AIM_METRES);
+    return along(coursePoints().back(), {.x = 0.0F, .y = 1.0F}, across);
   }
   /** How far either side of the finish line's middle he may aim (its drawn
    * half-width, 4 m, less a margin). */
@@ -2023,17 +2065,18 @@ class SlalomDrill final : public CourseDrill
    * before, it is his point again (he brings the ball back to it). */
   void holdBackPoint(MatchEngine& engine, const MatchPlayer& player)
   {
-    const std::size_t due = reached.size();
-    if (!goingBack || !backPending || movedOn == 0 || due >= conePoints.size())
+    const std::size_t due = reachedTimes().size();
+    if (!goingBack || !backPending || movedWaypointCount() == 0 ||
+        due >= conePoints.size())
     {
       return;
     }
     if (behindGate(due, player.position) &&
-        (!withBall || behindGate(due, engine.getBall().position)))
+        (!runUsesBall() || behindGate(due, engine.getBall().position)))
     {
       return;
     }
-    movedOn = 0;
+    resetMovedWaypoints();
     planRun(engine);
   }
 
@@ -2041,89 +2084,94 @@ class SlalomDrill final : public CourseDrill
    * the wrong side (missed: he goes back for it). With the ball, the ball
    * has to go through it too: the gate is passed once both have, missed if
    * either goes the wrong side. Then the finish line. */
-  void passGates(MatchEngine& engine, const MatchPlayer& player)
+  void passConeGate(MatchEngine& engine, const MatchPlayer& player,
+                    std::size_t due)
   {
-    const std::size_t due = reached.size();
-    if (due < conePoints.size())
+    const PitchPoint cone = conePoints[due];
+    // Across the line, forwards: whether on the gate's side, and when.
+    const auto through =
+        [&](PitchPoint from,
+            PitchPoint to) -> std::optional<std::pair<bool, double>>
     {
-      const PitchPoint cone = conePoints[due];
-      // Across the line, forwards: whether on the gate's side, and when.
-      const auto through =
-          [&](PitchPoint from,
-              PitchPoint to) -> std::optional<std::pair<bool, double>>
+      const auto share =
+          crossingShare({.from = from, .to = to},
+                        {.point = cone, .direction = {.x = 1.0F, .y = 0.0F}});
+      if (!share)
       {
-        const auto share =
-            crossingShare({.from = from, .to = to},
-                          {.point = cone, .direction = {.x = 1.0F, .y = 0.0F}});
-        if (!share)
-        {
-          return std::nullopt;
-        }
-        const float y = from.y + ((to.y - from.y) * *share);
-        const float out = (y - cone.y) * sideOf(due);
-        return std::pair{
-            out >= GATE_BUFFER_METRES,
-            secondsOf(engine) - STEP + (STEP * static_cast<double>(*share))};
-      };
-      const auto body = through(previous, player.position);
-      const auto ball = withBall
-                            ? through(previousBall, engine.getBall().position)
-                            : std::nullopt;
-      if (!body && !ball)
-      {
-        return;
+        return std::nullopt;
       }
-      if ((body && !body->first) || (ball && !ball->first))
-      {
-        ++missed;
-        goingBack = true;
-        backPending = true;
-        nextAim = due;
-        movedOn = 0;
-        bodyThrough.reset();
-        ballThrough.reset();
-        planRun(engine);
-        return;
-      }
-      if (body)
-      {
-        bodyThrough = body->second;
-      }
-      if (ball)
-      {
-        ballThrough = ball->second;
-      }
-      if (!bodyThrough || (withBall && !ballThrough))
-      {
-        return;
-      }
-      reached.push_back(withBall ? std::max(*bodyThrough, *ballThrough)
-                                 : *bodyThrough);
-      // The points his body has moved on from are behind him, and so are
-      // the point behind the gate (going back) and his point round it (a
-      // stop past it is still ahead until he moves on from it).
-      std::size_t skip = movedOn;
-      if (skip > 0 && goingBack && backPending)
-      {
-        --skip;
-      }
-      nextAim = std::max(std::min(nextAim + skip, aims.size()),
-                         stops[due] ? due : due + 1);
-      movedOn = 0;
-      goingBack = false;
-      backPending = false;
+      const float y = from.y + ((to.y - from.y) * *share);
+      const float out = (y - cone.y) * sideOf(due);
+      return std::pair{
+          out >= GATE_BUFFER_METRES,
+          secondsOf(engine) - STEP + (STEP * static_cast<double>(*share))};
+    };
+    const auto body = through(previous, player.position);
+    const auto ball = runUsesBall()
+                          ? through(previousBall, engine.getBall().position)
+                          : std::nullopt;
+    if (!body && !ball)
+    {
+      return;
+    }
+    if ((body && !body->first) || (ball && !ball->first))
+    {
+      ++missed;
+      goingBack = true;
+      backPending = true;
+      nextAim = due;
+      resetMovedWaypoints();
       bodyThrough.reset();
       ballThrough.reset();
       planRun(engine);
       return;
     }
+    if (body)
+    {
+      bodyThrough = body->second;
+    }
+    if (ball)
+    {
+      ballThrough = ball->second;
+    }
+    if (!bodyThrough || (runUsesBall() && !ballThrough))
+    {
+      return;
+    }
+    recordCoursePoint(runUsesBall() ? std::max(*bodyThrough, *ballThrough)
+                                    : *bodyThrough);
+    // The points his body has moved on from are behind him, and so are
+    // the point behind the gate (going back) and his point round it (a
+    // stop past it is still ahead until he moves on from it).
+    std::size_t skip = movedWaypointCount();
+    if (skip > 0 && goingBack && backPending)
+    {
+      --skip;
+    }
+    nextAim = std::max(std::min(nextAim + skip, aims.size()),
+                       stops[due] ? due : due + 1);
+    resetMovedWaypoints();
+    goingBack = false;
+    backPending = false;
+    bodyThrough.reset();
+    ballThrough.reset();
+    planRun(engine);
+  }
+
+  void passGates(MatchEngine& engine, const MatchPlayer& player)
+  {
+    const std::size_t due = reachedTimes().size();
+    if (due < conePoints.size())
+    {
+      passConeGate(engine, player, due);
+      return;
+    }
     if (const auto share = crossingShare(
             {.from = previous, .to = player.position},
-            {.point = points.back(), .direction = finishDirection()}))
+            {.point = coursePoints().back(), .direction = finishDirection()}))
     {
-      reached.push_back(secondsOf(engine) - STEP +
+      recordCoursePoint(secondsOf(engine) - STEP +
                         (STEP * static_cast<double>(*share)));
-      finished = true;
     }
   }
 
@@ -2363,7 +2411,7 @@ class RepeatedSprintsDrill final : public MovementDrill
 
   void startRep(MatchEngine& engine)
   {
-    const MatchPlayer* player = slotOf(engine, id);
+    const MatchPlayer* player = slotOf(engine, runnerId());
     const PitchPoint from = lines.at(done.size() % 2);
     const PitchPoint to = lines.at((done.size() + 1) % 2);
     current = Rep{};
@@ -2441,7 +2489,7 @@ class FlagChaseDrill final : public CourseDrill
   static constexpr double MAX_DURATION_SECONDS = 600.0;
 
  public:
-  FlagChaseDrill() { runThroughLast = false; }
+  FlagChaseDrill() { stopAtFinish(); }
 
   [[nodiscard]] const char* name() const override { return "Flag chase"; }
   [[nodiscard]] const char* summary() const override
@@ -2476,9 +2524,8 @@ class FlagChaseDrill final : public CourseDrill
         "straight back."));
     list.push_back(setting("Most turn (°)", &turnMax,
                            {.min = 0.0F, .max = MOST_TURN_MAX}, true));
-    list.push_back(
-        setting("Arrival radius (m)", &arrivalRadius,
-                {.min = ARRIVAL_RADIUS_MIN, .max = ARRIVAL_RADIUS_MAX}, false));
+    list.push_back(courseArrivalParameter(
+        {.min = ARRIVAL_RADIUS_MIN, .max = ARRIVAL_RADIUS_MAX}));
     addRunnerParameters(list);
     return list;
   }
@@ -2523,25 +2570,25 @@ class FlagChaseDrill final : public CourseDrill
       return false;
     }
     if (advanceCourse(engine, *player, previous) &&
-        static_cast<int>(points.size()) < flagCount)
+        static_cast<int>(coursePoints().size()) < flagCount)
     {
       // Always two out: place the one after next.
-      points.push_back(nextFlag());
-      finished = false;
+      appendCoursePoint(nextFlag());
       planRun(engine);
     }
     previous = player->position;
     const double now = secondsOf(engine);
-    if (finished && !resultSaved)
+    if (courseFinished() && !resultSaved)
     {
-      double& best = bests[courseKey()].at(path);
-      if (best == 0.0 || reached.back() < best)
+      double& best = bests[courseKey()].at(runnerPath());
+      if (best == 0.0 || reachedTimes().back() < best)
       {
-        best = reached.back();
+        best = reachedTimes().back();
       }
       resultSaved = true;
     }
-    return (!finished || now <= reached.back() + FINISH_DELAY_SECONDS) &&
+    return (!courseFinished() ||
+            now <= reachedTimes().back() + FINISH_DELAY_SECONDS) &&
            now < MAX_DURATION_SECONDS;
   }
 
@@ -2551,23 +2598,24 @@ class FlagChaseDrill final : public CourseDrill
     const float scale = Theme::scale();
     // The area is kit on the pitch (begin).
     drawTrail(renderer, draw);
-    for (std::size_t index = 0; index < reached.size(); ++index)
+    for (std::size_t index = 0; index < reachedTimes().size(); ++index)
     {
-      DrillDraw::marker(renderer, draw, points[index],
+      DrillDraw::marker(renderer, draw, coursePoints()[index],
                         PASSED_FLAG_RADIUS * scale, PASSED_FLAG_COLOUR);
     }
-    const std::size_t next = reached.size();
-    if (next + 1 < points.size())
+    const std::size_t next = reachedTimes().size();
+    if (next + 1 < coursePoints().size())
     {
-      DrillDraw::line(renderer, draw, points[next], points[next + 1],
-                      FLAG_ROUTE_COLOUR, 1.0F * scale);
-      DrillDraw::marker(renderer, draw, points[next + 1],
+      DrillDraw::line(renderer, draw, coursePoints()[next],
+                      coursePoints()[next + 1], FLAG_ROUTE_COLOUR,
+                      1.0F * scale);
+      DrillDraw::marker(renderer, draw, coursePoints()[next + 1],
                         UPCOMING_FLAG_RADIUS * scale, UPCOMING_FLAG_COLOUR,
                         std::format("{}", next + 2).c_str());
     }
-    if (next < points.size())
+    if (next < coursePoints().size())
     {
-      DrillDraw::marker(renderer, draw, points[next],
+      DrillDraw::marker(renderer, draw, coursePoints()[next],
                         CURRENT_FLAG_RADIUS * scale, CURRENT_FLAG_COLOUR,
                         std::format("{}", next + 1).c_str());
     }
@@ -2583,10 +2631,12 @@ class FlagChaseDrill final : public CourseDrill
                     halfWidth * HALF_TO_FULL_SCALE, shortest, longest,
                     leastTurn, mostTurn));
     lines.push_back(runnerLine());
-    lines.push_back(std::format("Flags {} / {}", reached.size(), flagCount));
+    lines.push_back(
+        std::format("Flags {} / {}", reachedTimes().size(), flagCount));
     // The latest legs.
-    const std::size_t from = reached.size() > 5 ? reached.size() - 5 : 0;
-    for (std::size_t index = from; index < reached.size(); ++index)
+    const std::size_t from =
+        reachedTimes().size() > 5 ? reachedTimes().size() - 5 : 0;
+    for (std::size_t index = from; index < reachedTimes().size(); ++index)
     {
       lines.push_back(
           std::format("  leg {:>2}: {:.1f} m, turn {:>3.0f}° · {:.2f} s "
@@ -2594,18 +2644,18 @@ class FlagChaseDrill final : public CourseDrill
                       index + 1, legMetres(index), turns[index],
                       legSeconds(index), legMetres(index) / legSeconds(index)));
     }
-    if (finished)
+    if (courseFinished())
     {
-      lines.push_back(
-          std::format("TOTAL  {:.2f} s · course {:.0f} m, ran {:.0f} m",
-                      reached.back(), courseMetres(), distanceRun));
+      lines.push_back(std::format(
+          "TOTAL  {:.2f} s · course {:.0f} m, ran {:.0f} m",
+          reachedTimes().back(), courseMetres(), distanceTravelled()));
     }
     // Cornering: average speed of legs by the turn into them (the first leg,
     // from standing, left out).
     std::array<double, 4> metres{};
     std::array<double, 4> seconds{};
     std::array<int, 4> count{};
-    for (std::size_t index = 1; index < reached.size(); ++index)
+    for (std::size_t index = 1; index < reachedTimes().size(); ++index)
     {
       const auto bucket = static_cast<std::size_t>(std::clamp(
           static_cast<int>(turns[index] / TURN_BUCKET_DEGREES), 0, 3));
@@ -2649,19 +2699,19 @@ class FlagChaseDrill final : public CourseDrill
 
   [[nodiscard]] std::vector<DrillMetric> metrics() const override
   {
-    if (!finished || reached.empty())
+    if (!courseFinished() || reachedTimes().empty())
     {
       return {};
     }
-    const double total = reached.back();
+    const double total = reachedTimes().back();
     std::vector<DrillMetric> out{
         {.name = "Total (s)", .value = total},
-        {.name = "Distance run (m)", .value = distanceRun},
-        {.name = "Average speed (m/s)", .value = distanceRun / total}};
+        {.name = "Distance run (m)", .value = distanceTravelled()},
+        {.name = "Average speed (m/s)", .value = distanceTravelled() / total}};
     // Average leg speed by the turn into the leg (the first leg left out).
     std::array<double, 4> metres{};
     std::array<double, 4> seconds{};
-    for (std::size_t index = 1; index < reached.size(); ++index)
+    for (std::size_t index = 1; index < reachedTimes().size(); ++index)
     {
       const auto bucket = static_cast<std::size_t>(std::clamp(
           static_cast<int>(turns[index] / TURN_BUCKET_DEGREES), 0, 3));
@@ -2737,7 +2787,7 @@ class FlagChaseDrill final : public CourseDrill
     return std::format(
         "{}|{}|{:.0f}|{:.0f}|{:.0f}|{:.0f}|{:.0f}|{:.0f}|{:.2f}|{}", seed,
         flagCount, halfLength, halfWidth, shortest, longest, leastTurn,
-        mostTurn, radius, runnerKey());
+        mostTurn, courseRadius(), runnerKey());
   }
 
   float flags = DEFAULT_FLAGS;
@@ -3424,6 +3474,35 @@ class OvertakeDrill final : public Drill
  */
 class LooseBallDrill final : public Drill
 {
+  void observeBystander(const MatchEngine& engine)
+  {
+    // The chaser and the bystander: how close, and any way round him.
+    waypoint.reset();
+    if (bystanderId != 0 && !wonAt)
+    {
+      if (const MatchPlayer* chaser = slotOf(engine, chaserId))
+      {
+        if (const MatchPlayer* bystander = slotOf(engine, bystanderId))
+        {
+          closestBystander =
+              std::min(closestBystander,
+                       metresBetween(chaser->position, bystander->position));
+          const auto& all = engine.getPlayers();
+          if (chaser->wayRoundOf >= 0 && &all.at(static_cast<std::size_t>(
+                                             chaser->wayRoundOf)) == bystander)
+          {
+            waypoint = chaser->movementTarget;
+            wentRound = chaser->wayRoundSide;
+            if (!roundAt)
+            {
+              roundAt = secondsOf(engine);
+            }
+          }
+        }
+      }
+    }
+  }
+
   [[nodiscard]] int winnerNumber(PlayerID holder) const
   {
     if (holder == chaserId)
@@ -3650,31 +3729,7 @@ class LooseBallDrill final : public Drill
         at = player->position;
       }
     }
-    // The chaser and the bystander: how close, and any way round him.
-    waypoint.reset();
-    if (bystanderId != 0 && !wonAt)
-    {
-      if (const MatchPlayer* chaser = slotOf(engine, chaserId))
-      {
-        if (const MatchPlayer* bystander = slotOf(engine, bystanderId))
-        {
-          closestBystander =
-              std::min(closestBystander,
-                       metresBetween(chaser->position, bystander->position));
-          const auto& all = engine.getPlayers();
-          if (chaser->wayRoundOf >= 0 && &all.at(static_cast<std::size_t>(
-                                             chaser->wayRoundOf)) == bystander)
-          {
-            waypoint = chaser->movementTarget;
-            wentRound = chaser->wayRoundSide;
-            if (!roundAt)
-            {
-              roundAt = secondsOf(engine);
-            }
-          }
-        }
-      }
-    }
+    observeBystander(engine);
     const double now = secondsOf(engine);
     if (!wonAt)
     {
@@ -3807,6 +3862,50 @@ class LooseBallDrill final : public Drill
  */
 class TackleDrill final : public Drill
 {
+  struct DuelPlayers
+  {
+    const MatchPlayer* attacker{};
+    const MatchPlayer* defender{};
+  };
+  void resolveOutcome(const MatchEngine& engine, DuelPlayers players,
+                      double now)
+  {
+    const MatchPlayer* attacker = players.attacker;
+    const MatchPlayer* defender = players.defender;
+    const MatchBall& ball = engine.getBall();
+
+    const MatchPlayer* mate = (mateId != 0U) ? slotOf(engine, mateId) : nullptr;
+    const bool sideHasIt =
+        (engine.getPossessionAttachment() != nullptr) &&
+        (engine.getPossessionAttachment() == defender->player ||
+         ((mate != nullptr) &&
+          engine.getPossessionAttachment() == mate->player)) &&
+        (!engine.hasTouchClaim() || engine.isTouchCollected());
+    if (engine.getState() != MatchState::PLAYING)
+    {
+      outcome = Outcome::STOPPED;
+    }
+    else if (sideHasIt)
+    {
+      outcome = Outcome::WON;
+    }
+    else if (engine.getPossessionAttachment() == attacker->player &&
+             attacker->position.x >= endPoint.x)
+    {
+      outcome = Outcome::KEPT;
+    }
+    else if (now > TIME_LIMIT_SECONDS)
+    {
+      outcome = Outcome::TIME;
+    }
+    if (outcome != Outcome::NONE)
+    {
+      endAt = now;
+      endGap = metresBetween(attacker->position, ball.position);
+      travelled = tackleAt ? metresBetween(*tackleAt, ball.position) : 0.0F;
+    }
+  }
+
   static constexpr float INTENT_CHOICE_MAX = 4.0F;
   static constexpr ImU32 DEFENDER_START_COLOUR = IM_COL32(240, 80, 80, 255);
   static constexpr ImU32 END_LINE_COLOUR = IM_COL32(120, 220, 120, 255);
@@ -4071,37 +4170,7 @@ class TackleDrill final : public Drill
     }
     if (outcome == Outcome::NONE)
     {
-      const MatchPlayer* mate =
-          (mateId != 0U) ? slotOf(engine, mateId) : nullptr;
-      const bool sideHasIt =
-          (engine.getPossessionAttachment() != nullptr) &&
-          (engine.getPossessionAttachment() == defender->player ||
-           ((mate != nullptr) &&
-            engine.getPossessionAttachment() == mate->player)) &&
-          (!engine.hasTouchClaim() || engine.isTouchCollected());
-      if (engine.getState() != MatchState::PLAYING)
-      {
-        outcome = Outcome::STOPPED;
-      }
-      else if (sideHasIt)
-      {
-        outcome = Outcome::WON;
-      }
-      else if (engine.getPossessionAttachment() == attacker->player &&
-               attacker->position.x >= endPoint.x)
-      {
-        outcome = Outcome::KEPT;
-      }
-      else if (now > TIME_LIMIT_SECONDS)
-      {
-        outcome = Outcome::TIME;
-      }
-      if (outcome != Outcome::NONE)
-      {
-        endAt = now;
-        endGap = metresBetween(attacker->position, ball.position);
-        travelled = tackleAt ? metresBetween(*tackleAt, ball.position) : 0.0F;
-      }
+      resolveOutcome(engine, {.attacker = attacker, .defender = defender}, now);
     }
     return (!endAt || now <= *endAt + OUTCOME_DELAY_SECONDS);
   }
@@ -4670,9 +4739,9 @@ class CollisionDrill final : public Drill
     trailB.clear();
   }
 
-  bool afterStep(MatchEngine& engine) override
+ private:
+  void observeCollisions(MatchEngine& engine, double now)
   {
-    const double now = secondsOf(engine);
     const auto release = [&](std::size_t which, const std::optional<float>& at,
                              PlayerID id, PitchPoint meet, Vector2F direction)
     {
@@ -4702,32 +4771,14 @@ class CollisionDrill final : public Drill
         firstAt = now - STEP + hit.atSeconds;
       }
     }
-    const MatchPlayer* playerA = slotOf(engine, aId);
-    const MatchPlayer* playerB = slotOf(engine, bId);
-    if ((playerA == nullptr) || (playerB == nullptr))
-    {
-      return false;
-    }
-    if (engine.getSimulatedSteps() % 2 == 0)
-    {
-      trailA.push_back(playerA->position);
-      trailB.push_back(playerB->position);
-    }
-    // A ring round each while he stumbles (amber) or is down (red).
-    for (std::size_t which = 0; which < 2; ++which)
-    {
-      const MatchPlayer& player = which == 0 ? *playerA : *playerB;
-      at.at(which) = player.position;
-      ring.at(which) = balanceRing(player);
-      if (player.fallen)
-      {
-        wentDown.at(which) = true;
-      }
-      if (wentDown.at(which) && !player.fallen && !upAt.at(which))
-      {
-        upAt.at(which) = now;
-      }
-    }
+  }
+
+  void observeFallenBall(MatchEngine& engine,
+                         const std::array<const MatchPlayer*, 2>& players,
+                         double now)
+  {
+    const MatchPlayer* playerA = players.at(0);
+    const MatchPlayer* playerB = players.at(1);
     // The ball at whoever is down (A first), and what it does off him.
     const MatchBall& ballNow = engine.getBall();
     const int offCount = engine.getStats().collisionBallOffFallen;
@@ -4758,6 +4809,40 @@ class CollisionDrill final : public Drill
                         ballLift, 0);
       }
     }
+  }
+
+ public:
+  bool afterStep(MatchEngine& engine) override
+  {
+    const double now = secondsOf(engine);
+    observeCollisions(engine, now);
+    const MatchPlayer* playerA = slotOf(engine, aId);
+    const MatchPlayer* playerB = slotOf(engine, bId);
+    if ((playerA == nullptr) || (playerB == nullptr))
+    {
+      return false;
+    }
+    if (engine.getSimulatedSteps() % 2 == 0)
+    {
+      trailA.push_back(playerA->position);
+      trailB.push_back(playerB->position);
+    }
+    // A ring round each while he stumbles (amber) or is down (red).
+    for (std::size_t which = 0; which < 2; ++which)
+    {
+      const MatchPlayer& player = which == 0 ? *playerA : *playerB;
+      at.at(which) = player.position;
+      ring.at(which) = balanceRing(player);
+      if (player.fallen)
+      {
+        wentDown.at(which) = true;
+      }
+      if (wentDown.at(which) && !player.fallen && !upAt.at(which))
+      {
+        upAt.at(which) = now;
+      }
+    }
+    observeFallenBall(engine, {playerA, playerB}, now);
     // On until both are on their feet again (and the ball has had time).
     const bool bothUp =
         (!wentDown.at(0) || upAt.at(0)) && (!wentDown.at(1) || upAt.at(1));
@@ -5056,6 +5141,62 @@ class CollisionDrill final : public Drill
  */
 class ShotDrill final : public Drill
 {
+  void observeShotEvents(const MatchEngine& engine, double now)
+  {
+    const auto& events = engine.getEvents();
+    for (; seenEvents < events.size() && outcome.empty(); ++seenEvents)
+    {
+      const MatchEvent& event = events[seenEvents];
+      if (event.type == MatchEventType::SHOT && !shot &&
+          event.primaryPlayerId == shooterId)
+      {
+        const MatchBall& ball = engine.getBall();
+        shot = Shot{.from = event.position,
+                    .xg = event.xg,
+                    .onTarget = ball.possessionState().shotOnTarget,
+                    .targetY = ball.possessionState().shotTargetY,
+                    .at = now};
+        continue;
+      }
+      if (!shot)
+      {
+        // Before any shot: the ball went out or play stopped.
+        if (event.type == MatchEventType::GOAL_KICK ||
+            event.type == MatchEventType::CORNER ||
+            event.type == MatchEventType::THROW_IN ||
+            event.type == MatchEventType::FOUL)
+        {
+          outcome = "no shot (play stopped)";
+        }
+        continue;
+      }
+      switch (event.type)
+      {
+        case MatchEventType::GOAL:
+        case MatchEventType::OWN_GOAL:
+          outcome = "goal";
+          break;
+        case MatchEventType::SAVE:
+          outcome = "saved";
+          break;
+        case MatchEventType::WOODWORK:
+          outcome = "woodwork";
+          break;
+        case MatchEventType::SHOT_BLOCKED:
+          outcome = "blocked";
+          break;
+        // The engine logs no "off target": a miss goes out of play.
+        case MatchEventType::GOAL_KICK:
+        case MatchEventType::CORNER:
+        case MatchEventType::THROW_IN:
+          outcome = "off target";
+          break;
+        default:
+          break;
+      }
+    }
+  }
+
   [[nodiscard]] ImU32 shotColour() const
   {
     if (outcome == "goal")
@@ -5258,58 +5399,7 @@ class ShotDrill final : public Drill
     {
       path.push_back(shooter->position);
     }
-    const auto& events = engine.getEvents();
-    for (; seenEvents < events.size() && outcome.empty(); ++seenEvents)
-    {
-      const MatchEvent& event = events[seenEvents];
-      if (event.type == MatchEventType::SHOT && !shot &&
-          event.primaryPlayerId == shooterId)
-      {
-        const MatchBall& ball = engine.getBall();
-        shot = Shot{.from = event.position,
-                    .xg = event.xg,
-                    .onTarget = ball.possessionState().shotOnTarget,
-                    .targetY = ball.possessionState().shotTargetY,
-                    .at = now};
-        continue;
-      }
-      if (!shot)
-      {
-        // Before any shot: the ball went out or play stopped.
-        if (event.type == MatchEventType::GOAL_KICK ||
-            event.type == MatchEventType::CORNER ||
-            event.type == MatchEventType::THROW_IN ||
-            event.type == MatchEventType::FOUL)
-        {
-          outcome = "no shot (play stopped)";
-        }
-        continue;
-      }
-      switch (event.type)
-      {
-        case MatchEventType::GOAL:
-        case MatchEventType::OWN_GOAL:
-          outcome = "goal";
-          break;
-        case MatchEventType::SAVE:
-          outcome = "saved";
-          break;
-        case MatchEventType::WOODWORK:
-          outcome = "woodwork";
-          break;
-        case MatchEventType::SHOT_BLOCKED:
-          outcome = "blocked";
-          break;
-        // The engine logs no "off target": a miss goes out of play.
-        case MatchEventType::GOAL_KICK:
-        case MatchEventType::CORNER:
-        case MatchEventType::THROW_IN:
-          outcome = "off target";
-          break;
-        default:
-          break;
-      }
-    }
+    observeShotEvents(engine, now);
     const MatchBall& ball = engine.getBall();
     if (outcome.empty() && shot && !ball.possessionState().isShot &&
         (engine.getPossessionAttachment() != nullptr) &&
@@ -5797,28 +5887,21 @@ class ShotBlockDrill final : public Drill
     insideBefore = insideNow = engine.getStats().shotTorsoInsideAtStart;
   }
 
-  bool afterStep(MatchEngine& engine) override
+ private:
+  [[nodiscard]] double noLegMetric(std::string_view why) const
   {
-    const double now = secondsOf(engine);
-    const MatchPlayer* defender = slotOf(engine, defenderId);
-    // Moving: struck once he is on course to be at his mark as the ball
-    // gets there (a shot of about BALL_SPEED, struck STRIKE_DELAY after
-    // it is called for).
-    if (!shotAimed && (defender != nullptr))
-    {
-      constexpr float BALL_SPEED = 27.0F;
-      constexpr float STRIKE_DELAY = 0.1F;
-      const float lead = (defenderOut / BALL_SPEED) + STRIKE_DELAY;
-      const Vector2F at = asVector(defender->position);
-      const Vector2F mark = asVector(defenderAt);
-      const float ahead =
-          ((at.x + defender->velocity.x * lead - mark.x) * runLeft.x) +
-          ((at.y + defender->velocity.y * lead - mark.y) * runLeft.y);
-      if (ahead >= 0.0F)
-      {
-        shoot(engine);
-      }
-    }
+    const bool leg = legs && legs->blocking;
+    const bool reacted = legs && legs->reacted;
+    return reacted && !leg &&
+                   std::string_view(legs->noBlock).find(why) !=
+                       std::string_view::npos
+               ? 1.0
+               : 0.0;
+  }
+
+  void observePass(const MatchEngine& engine, const MatchPlayer* defender,
+                   double now)
+  {
     // A pass: on its way once it has left him; then off his body, his
     // ball (intercepted), or past him.
     if (ballKind > CHOICE_MIDPOINT && shotAimed && (defender != nullptr))
@@ -5860,6 +5943,11 @@ class ShotBlockDrill final : public Drill
         }
       }
     }
+  }
+
+  void observeShotEvents(const MatchEngine& engine, const MatchPlayer* defender,
+                         double now)
+  {
     const auto& events = engine.getEvents();
     for (; seenEvents < events.size() && outcome.empty(); ++seenEvents)
     {
@@ -5906,21 +5994,10 @@ class ShotBlockDrill final : public Drill
           break;
       }
     }
-    // His legs as the shot met them, up to the step it ended (the record
-    // stays as the ball last met him).
-    if ((defender != nullptr) && shotAt && !endAt)
-    {
-      const auto slot =
-          static_cast<std::size_t>(defender - engine.getPlayers().data());
-      if (const auto recent = engine.recentShotLegs(slot, 10.0F))
-      {
-        legs = recent->first;
-      }
-      closest = std::min(closest, metresBetween(engine.getBall().position,
-                                                defender->position));
-      throughNow = engine.getStats().shotTorsoPassThroughs;
-      insideNow = engine.getStats().shotTorsoInsideAtStart;
-    }
+  }
+
+  void observeDeflection(const MatchEngine& engine)
+  {
     if (outcome == "blocked" && part.empty())
     {
       // Off him, as it left him: how fast, turned how far from the shot's
@@ -5961,6 +6038,11 @@ class ShotBlockDrill final : public Drill
       // Still going in off him: still the shot (shot block plan step 4).
       stillShot = engine.getBall().possessionState().isShot;
     }
+  }
+
+  void observeAfterBlock(const MatchEngine& engine, double now)
+  {
+    const auto& events = engine.getEvents();
     // After a block: what came of it (a goal, in off him or from a rebound;
     // a save; out; or someone's).
     if (outcome == "blocked" && afterBlock.empty())
@@ -5999,6 +6081,50 @@ class ShotBlockDrill final : public Drill
         afterBlock = "loose";
       }
     }
+  }
+
+ public:
+  bool afterStep(MatchEngine& engine) override
+  {
+    const double now = secondsOf(engine);
+    const MatchPlayer* defender = slotOf(engine, defenderId);
+    // Moving: struck once he is on course to be at his mark as the ball
+    // gets there (a shot of about BALL_SPEED, struck STRIKE_DELAY after
+    // it is called for).
+    if (!shotAimed && (defender != nullptr))
+    {
+      constexpr float BALL_SPEED = 27.0F;
+      constexpr float STRIKE_DELAY = 0.1F;
+      const float lead = (defenderOut / BALL_SPEED) + STRIKE_DELAY;
+      const Vector2F at = asVector(defender->position);
+      const Vector2F mark = asVector(defenderAt);
+      const float ahead =
+          ((at.x + defender->velocity.x * lead - mark.x) * runLeft.x) +
+          ((at.y + defender->velocity.y * lead - mark.y) * runLeft.y);
+      if (ahead >= 0.0F)
+      {
+        shoot(engine);
+      }
+    }
+    observePass(engine, defender, now);
+    observeShotEvents(engine, defender, now);
+    // His legs as the shot met them, up to the step it ended (the record
+    // stays as the ball last met him).
+    if ((defender != nullptr) && shotAt && !endAt)
+    {
+      const auto slot =
+          static_cast<std::size_t>(defender - engine.getPlayers().data());
+      if (const auto recent = engine.recentShotLegs(slot, 10.0F))
+      {
+        legs = recent->first;
+      }
+      closest = std::min(closest, metresBetween(engine.getBall().position,
+                                                defender->position));
+      throughNow = engine.getStats().shotTorsoPassThroughs;
+      insideNow = engine.getStats().shotTorsoInsideAtStart;
+    }
+    observeDeflection(engine);
+    observeAfterBlock(engine, now);
     if (outcome.empty() && !shotAt && now >= STRIKE_TIMEOUT_SECONDS)
     {
       outcome = "no shot";
@@ -6113,31 +6239,25 @@ class ShotBlockDrill final : public Drill
     const bool reaction = part.find("reaction") != std::string::npos;
     const bool leg = legs && legs->blocking;
     const bool reacted = legs && legs->reacted;
-    const auto noLeg = [&](std::string_view why)
-    {
-      return reacted && !leg &&
-                     std::string_view(legs->noBlock).find(why) !=
-                         std::string_view::npos
-                 ? 1.0
-                 : 0.0;
-    };
     return {
-        {.name = "Blocked", .value = blocked ? 1.0 : 0.0},
+        {.name = "Blocked", .value = static_cast<double>(blocked)},
         {.name = "Torso block",
-         .value = blocked && part == "torso" ? 1.0 : 0.0},
+         .value = static_cast<double>(blocked && part == "torso")},
         {.name = "Stride block",
-         .value = blocked && !reaction && part != "torso" && part != "head"
-                      ? 1.0
-                      : 0.0},
-        {.name = "Head block", .value = blocked && part == "head" ? 1.0 : 0.0},
-        {.name = "Reaction block", .value = blocked && reaction ? 1.0 : 0.0},
+         .value = static_cast<double>(blocked && !reaction && part != "torso" &&
+                                      part != "head")},
+        {.name = "Head block",
+         .value = static_cast<double>(blocked && part == "head")},
+        {.name = "Reaction block",
+         .value = static_cast<double>(blocked && reaction)},
         {.name = "Line gap (m)", .value = reacted ? legs->lineGap : 0.0},
         {.name = "Ball height (m)", .value = reacted ? legs->lineHeight : 0.0},
         {.name = "Speed (m/s)", .value = speedAtShot},
         {.name = "Off the line at strike (m)", .value = offLineAtShot},
         {.name = "Closest ball (m)", .value = closest},
-        {.name = "Reacted", .value = legs && legs->reacted ? 1.0 : 0.0},
-        {.name = "Leg out", .value = leg ? 1.0 : 0.0},
+        {.name = "Reacted",
+         .value = static_cast<double>(legs && legs->reacted)},
+        {.name = "Leg out", .value = static_cast<double>(leg)},
         {.name = "Leg out share", .value = leg ? legs->outShare : 0.0},
         {.name = "Miss (m)", .value = leg ? legs->error : 0.0},
         {.name = "Spare (s)", .value = leg ? legs->spareSeconds : 0.0},
@@ -6145,16 +6265,21 @@ class ShotBlockDrill final : public Drill
          .value = reacted ? legs->legFrom - legs->pathFor : 0.0},
         {.name = "Ball to him (s)",
          .value = reacted ? legs->ballThere - legs->pathFor : 0.0},
-        {.name = "No leg: out of reach", .value = noLeg("reach")},
-        {.name = "No leg: behind him", .value = noLeg("behind")},
-        {.name = "No leg: past him", .value = noLeg("past")},
-        {.name = "Still a shot", .value = blocked && stillShot ? 1.0 : 0.0},
-        {.name = "Goal after", .value = afterBlock == "goal" ? 1.0 : 0.0},
-        {.name = "Saved after", .value = afterBlock == "saved" ? 1.0 : 0.0},
-        {.name = "Corner after", .value = afterBlock == "corner" ? 1.0 : 0.0},
-        {.name = "His ball after", .value = afterBlock == "his" ? 1.0 : 0.0},
+        {.name = "No leg: out of reach", .value = noLegMetric("reach")},
+        {.name = "No leg: behind him", .value = noLegMetric("behind")},
+        {.name = "No leg: past him", .value = noLegMetric("past")},
+        {.name = "Still a shot",
+         .value = static_cast<double>(blocked && stillShot)},
+        {.name = "Goal after",
+         .value = static_cast<double>(afterBlock == "goal")},
+        {.name = "Saved after",
+         .value = static_cast<double>(afterBlock == "saved")},
+        {.name = "Corner after",
+         .value = static_cast<double>(afterBlock == "corner")},
+        {.name = "His ball after",
+         .value = static_cast<double>(afterBlock == "his")},
         {.name = "Shooter's ball after",
-         .value = afterBlock == "shooter's" ? 1.0 : 0.0},
+         .value = static_cast<double>(afterBlock == "shooter's")},
         {.name = "Off him (m/s)", .value = blocked ? offSpeed : 0.0},
         {.name = "Turned (deg)", .value = blocked ? offTurn : 0.0},
         {.name = "Rising (m/s)", .value = blocked ? offUp : 0.0},
@@ -6163,8 +6288,9 @@ class ShotBlockDrill final : public Drill
         {.name = "Surface facing up", .value = blocked ? offNormalUp : 0.0},
         {.name = "Part hit",
          .value = blocked ? static_cast<double>(offPart) : -1.0},
-        {.name = "Goal", .value = outcome == "goal" ? 1.0 : 0.0},
-        {.name = "Intercepted", .value = outcome == "intercepted" ? 1.0 : 0.0},
+        {.name = "Goal", .value = static_cast<double>(outcome == "goal")},
+        {.name = "Intercepted",
+         .value = static_cast<double>(outcome == "intercepted")},
         {.name = "Body after no touch",
          .value = static_cast<double>(noTouchNow - noTouchBefore)},
         {.name = "Through torso unmet",
@@ -6643,6 +6769,99 @@ class FirstTouchDrill final : public Drill
     }
   }
 
+ private:
+  void observeFirstTouch(MatchEngine& engine, const MatchPlayer* receiver,
+                         double now)
+  {
+    const MatchBall& ball = engine.getBall();
+    // His touch: read what it was from the ball as it leaves him.
+    Touch reading;
+    reading.at = now;
+    reading.inTouch = engine.hasTouchClaim();
+    reading.contactGap = ball.touchContactGap;
+    reading.height = ball.touchContactHeight;
+    reading.angleError = ball.touchAngleError;
+    reading.weightError = ball.touchWeightError;
+    reading.angleDifficulty = ball.touchAngleDifficulty;
+    reading.weightDifficulty = ball.touchWeightDifficulty;
+    reading.angleFailed = ball.touchAngleFailed;
+    reading.weightFailed = ball.touchWeightFailed;
+    reading.turn = ball.touchTurn;
+    reading.outward = ball.touchOutward;
+    reading.paceChange = ball.touchPaceChange;
+    reading.intoStride = ball.touchKind == TouchIntent::Kind::INTO_STRIDE;
+    reading.point = ball.position;
+    if (receiver != nullptr)
+    {
+      reading.speed = speedOf(*receiver);
+      const Vector2F facing = directionBetween(
+          PitchPoint{}, PitchPoint{std::cos(receiver->facingAngle),
+                                   std::sin(receiver->facingAngle)});
+      const float speed = std::hypot(lastBallVelocity.x, lastBallVelocity.y);
+      reading.facingVsBall =
+          speed > MIN_REPORTED_CONTACT_SPEED
+              ? turnDegrees(facing, {.x = -lastBallVelocity.x / speed,
+                                     .y = -lastBallVelocity.y / speed})
+              : 0.0F;
+    }
+    touch = reading;
+    if (runUp > 0.0F)
+    {
+      engine.setDrillTarget(receiverId, std::nullopt, false);
+    }
+    // The old trap (a ball off his feet): the ball is his at once.
+    if (!engine.hasTouchClaim())
+    {
+      outcome = "collected (old trap)";
+    }
+  }
+
+  void observeOutcome(MatchEngine& engine, const MatchPlayer* receiver,
+                      double now)
+  {
+    const MatchBall& ball = engine.getBall();
+    const bool his = (engine.getPossessionAttachment() != nullptr) &&
+                     engine.getPossessionAttachment()->getId() == receiverId;
+    const bool theirs = (engine.getPossessionAttachment() != nullptr) &&
+                        hasDefender &&
+                        engine.getPossessionAttachment()->getId() == defenderId;
+    if (!fed || !outcome.empty())
+    {
+      return;
+    }
+    if (his && !touch)
+    {
+      observeFirstTouch(engine, receiver, now);
+    }
+    // Rolling to him until he collects it (then he dribbles it on).
+    const bool rolling = engine.hasTouchClaim() && !engine.isTouchCollected();
+    if (touch && rolling && his)
+    {
+      peakGap = std::max(peakGap, ball.touchPeakGap);
+    }
+    if (touch && his && !rolling && outcome.empty())
+    {
+      outcome = "collected";
+    }
+    if (theirs)
+    {
+      outcome = touch ? "lost to the defender" : "intercepted";
+    }
+    if (engine.getState() != MatchState::PLAYING)
+    {
+      outcome = touch ? "lost (out of play)" : "out of play";
+    }
+    if (touch && (engine.getPossessionAttachment() == nullptr))
+    {
+      released = true;
+    }
+    if (outcome.empty() && now >= fedAt + TIME_LIMIT)
+    {
+      outcome = touch ? "no result" : "never touched";
+    }
+  }
+
+ public:
   bool afterStep(MatchEngine& engine) override
   {
     const double now = secondsOf(engine);
@@ -6660,84 +6879,7 @@ class FirstTouchDrill final : public Drill
       ballPath.push_back(ball.position);
     }
 
-    const bool his = (engine.getPossessionAttachment() != nullptr) &&
-                     engine.getPossessionAttachment()->getId() == receiverId;
-    const bool theirs = (engine.getPossessionAttachment() != nullptr) &&
-                        hasDefender &&
-                        engine.getPossessionAttachment()->getId() == defenderId;
-    if (fed && outcome.empty())
-    {
-      if (his && !touch)
-      {
-        // His touch: read what it was from the ball as it leaves him.
-        Touch reading;
-        reading.at = now;
-        reading.inTouch = engine.hasTouchClaim();
-        reading.contactGap = ball.touchContactGap;
-        reading.height = ball.touchContactHeight;
-        reading.angleError = ball.touchAngleError;
-        reading.weightError = ball.touchWeightError;
-        reading.angleDifficulty = ball.touchAngleDifficulty;
-        reading.weightDifficulty = ball.touchWeightDifficulty;
-        reading.angleFailed = ball.touchAngleFailed;
-        reading.weightFailed = ball.touchWeightFailed;
-        reading.turn = ball.touchTurn;
-        reading.outward = ball.touchOutward;
-        reading.paceChange = ball.touchPaceChange;
-        reading.intoStride = ball.touchKind == TouchIntent::Kind::INTO_STRIDE;
-        reading.point = ball.position;
-        if (receiver != nullptr)
-        {
-          reading.speed = speedOf(*receiver);
-          const Vector2F facing = directionBetween(
-              PitchPoint{}, PitchPoint{std::cos(receiver->facingAngle),
-                                       std::sin(receiver->facingAngle)});
-          const float speed =
-              std::hypot(lastBallVelocity.x, lastBallVelocity.y);
-          reading.facingVsBall =
-              speed > MIN_REPORTED_CONTACT_SPEED
-                  ? turnDegrees(facing, {.x = -lastBallVelocity.x / speed,
-                                         .y = -lastBallVelocity.y / speed})
-                  : 0.0F;
-        }
-        touch = reading;
-        if (runUp > 0.0F)
-        {
-          engine.setDrillTarget(receiverId, std::nullopt, false);
-        }
-        // The old trap (a ball off his feet): the ball is his at once.
-        if (!engine.hasTouchClaim())
-        {
-          outcome = "collected (old trap)";
-        }
-      }
-      // Rolling to him until he collects it (then he dribbles it on).
-      const bool rolling = engine.hasTouchClaim() && !engine.isTouchCollected();
-      if (touch && rolling && his)
-      {
-        peakGap = std::max(peakGap, ball.touchPeakGap);
-      }
-      if (touch && his && !rolling && outcome.empty())
-      {
-        outcome = "collected";
-      }
-      if (theirs)
-      {
-        outcome = touch ? "lost to the defender" : "intercepted";
-      }
-      if (engine.getState() != MatchState::PLAYING)
-      {
-        outcome = touch ? "lost (out of play)" : "out of play";
-      }
-      if (touch && (engine.getPossessionAttachment() == nullptr))
-      {
-        released = true;
-      }
-      if (outcome.empty() && now >= fedAt + TIME_LIMIT)
-      {
-        outcome = touch ? "no result" : "never touched";
-      }
-    }
+    observeOutcome(engine, receiver, now);
     lastBallVelocity = ball.velocity;
     if (!outcome.empty() && !endAt)
     {
@@ -8596,8 +8738,7 @@ class PassTargetDrill : public Drill
 
   void begin(MatchEngine& engine, const std::vector<PlayerID>& ids) override
   {
-    passerId = ids[0];
-    engine.setStrikeKnobs(knobs);
+    preparePasser(engine, ids[0]);
     MatchScenario scenario;
     scenario.players.push_back(
         {.playerId = passerId, .position = SPOT, .makingRun = false});
@@ -8688,6 +8829,24 @@ class PassTargetDrill : public Drill
     float lift = 0.0F;
   };
 
+  [[nodiscard]] PitchPoint strikeOrigin() const { return strikeFrom; }
+  [[nodiscard]] float initialCondition() const { return condition; }
+  [[nodiscard]] PlayerID passerPlayerId() const { return passerId; }
+  [[nodiscard]] const std::optional<Strike>& lastStrike() const
+  {
+    return strike;
+  }
+  [[nodiscard]] const std::string& outcomeText() const { return outcome; }
+  [[nodiscard]] const std::vector<PitchPoint>& ballTrail() const
+  {
+    return ballPath;
+  }
+  void preparePasser(MatchEngine& engine, PlayerID player)
+  {
+    passerId = player;
+    engine.setStrikeKnobs(knobs);
+  }
+
   /** The kind of strike whose knobs this drill offers, and how it is
    * played. */
   [[nodiscard]] virtual StrikeKind kind() const = 0;
@@ -8736,8 +8895,6 @@ class PassTargetDrill : public Drill
   {
     return std::nullopt;
   }
-  /** Where the ball was struck from. */
-  PitchPoint strikeFrom;
   /** A new run: the drill's own state cleared. */
   virtual void reset() = 0;
   /** The pass is away (the ball as it is now). */
@@ -8910,6 +9067,9 @@ class PassTargetDrill : public Drill
                    .value = strike->elevationError * DEGREES});
   }
 
+ private:
+  /** Where the ball was struck from. */
+  PitchPoint strikeFrom;
   // Passer
   float passing = DEFAULT_PASSING;
   float condition = DEFAULT_CONDITION;
@@ -8923,7 +9083,6 @@ class PassTargetDrill : public Drill
   std::optional<double> endAt;
   std::vector<PitchPoint> ballPath;
 
- private:
   /** The pass: a strike the contact model has read since the start. */
   void readStrike(const MatchEngine& engine, double now)
   {
@@ -9125,14 +9284,14 @@ class CorridorPassDrill : public PassTargetDrill
     const float scale = Theme::scale();
     DrillDraw::marker(renderer, draw, target(),
                       PRIMARY_MARKER_RADIUS_PIXELS * scale, TARGET_COLOUR,
-                      outcome.empty() ? "target" : outcome.c_str());
+                      outcomeText().empty() ? "target" : outcomeText().c_str());
     if (leftAt)
     {
       DrillDraw::marker(renderer, draw, *leftAt,
                         SECONDARY_MARKER_RADIUS_PIXELS * scale,
                         CORRIDOR_MISS_COLOUR);
     }
-    DrillDraw::path(renderer, draw, ballPath, BALL_TRAIL_COLOUR,
+    DrillDraw::path(renderer, draw, ballTrail(), BALL_TRAIL_COLOUR,
                     BALL_TRAIL_WIDTH_PIXELS * scale);
   }
 
@@ -9147,7 +9306,7 @@ class CorridorPassDrill : public PassTargetDrill
             ? std::format(", to arrive at {:.1f} m/s", arrivalChoice)
             : std::string()));
     reportStrike(lines);
-    if (strike)
+    if (lastStrike())
     {
       lines.push_back(std::format(
           "Widest off the line before the target {:.2f} m", widest));
@@ -9170,25 +9329,25 @@ class CorridorPassDrill : public PassTargetDrill
       lines.push_back(std::format("Closest to the target point {:.0f} cm",
                                   closest * PERCENT_SCALE));
     }
-    reportOutcome(lines, outcome == IN_CORRIDOR);
+    reportOutcome(lines, outcomeText() == IN_CORRIDOR);
     return lines;
   }
 
   [[nodiscard]] std::vector<DrillMetric> metrics() const override
   {
-    if (outcome.empty())
+    if (outcomeText().empty())
     {
       return {};
     }
     const auto flag = [](bool value) { return value ? 1.0 : 0.0; };
     std::vector<DrillMetric> out{
-        {.name = "Passed", .value = flag(strike.has_value())}};
-    if (!strike)
+        {.name = "Passed", .value = flag(lastStrike().has_value())}};
+    if (!lastStrike())
     {
       return out;
     }
-    out.push_back(
-        {.name = "In the corridor", .value = flag(outcome == IN_CORRIDOR)});
+    out.push_back({.name = "In the corridor",
+                   .value = flag(outcomeText() == IN_CORRIDOR)});
     out.push_back(
         {.name = "Left the corridor", .value = flag(leftAfter.has_value())});
     out.push_back(
@@ -9476,7 +9635,7 @@ class BullseyePassDrill : public PassTargetDrill
                         PRIMARY_MARKER_RADIUS_PIXELS * scale, LANDING_COLOUR,
                         std::format("{:.1f} m", landing->miss).c_str());
     }
-    DrillDraw::path(renderer, draw, ballPath, BALL_TRAIL_COLOUR,
+    DrillDraw::path(renderer, draw, ballTrail(), BALL_TRAIL_COLOUR,
                     BALL_TRAIL_WIDTH_PIXELS * scale);
   }
 
@@ -9499,7 +9658,7 @@ class BullseyePassDrill : public PassTargetDrill
           landing->score > 0 ? std::format("{} points", landing->score)
                              : std::string("outside the rings")));
     }
-    if (strike)
+    if (lastStrike())
     {
       lines.push_back(
           std::format("Peak {:.1f} m; {:.0f} m out {}", peak, CLEAR_METRES,
@@ -9512,14 +9671,14 @@ class BullseyePassDrill : public PassTargetDrill
 
   [[nodiscard]] std::vector<DrillMetric> metrics() const override
   {
-    if (outcome.empty())
+    if (outcomeText().empty())
     {
       return {};
     }
     const auto flag = [](bool value) { return value ? 1.0 : 0.0; };
     std::vector<DrillMetric> out{
-        {.name = "Passed", .value = flag(strike.has_value())}};
-    if (!strike)
+        {.name = "Passed", .value = flag(lastStrike().has_value())}};
+    if (!lastStrike())
     {
       return out;
     }
@@ -9575,10 +9734,12 @@ class BullseyePassDrill : public PassTargetDrill
 
   std::string track(const MatchBall& ball, double now) override
   {
-    if (!strike.has_value())
+    const auto& contact = lastStrike();
+    if (!contact)
     {
       return {};
     }
+    const double strikeTime = contact->at;
     const BallState was = previous;
     previous = stateOf(ball);
     peak = std::max(peak, previous.height);
@@ -9586,7 +9747,7 @@ class BullseyePassDrill : public PassTargetDrill
     // was struck (still up).
     if (!clearHeight && !landing)
     {
-      const float from = lineMetres(strikeFrom).x;
+      const float from = lineMetres(strikeOrigin()).x;
       const float before = lineMetres(was.position).x - from;
       const float after = lineMetres(previous.position).x - from;
       if (before < CLEAR_METRES && after >= CLEAR_METRES)
@@ -9622,7 +9783,7 @@ class BullseyePassDrill : public PassTargetDrill
     const int ring = static_cast<int>(std::floor(down.miss / ringWidth));
     const int rings = static_cast<int>(ringCount);
     down.score = ring < rings ? rings - ring : 0;
-    down.flight = static_cast<float>(now - STEP - strike->at) + fall;
+    down.flight = static_cast<float>(now - STEP - strikeTime) + fall;
     down.speed = std::hypot(was.velocity.x, was.velocity.y);
     landing = down;
     return down.score > 0
@@ -9674,7 +9835,7 @@ class BullseyePassDrill : public PassTargetDrill
     {
       return std::nullopt;
     }
-    return lineMetres(landing->point).x - lineMetres(strikeFrom).x;
+    return lineMetres(landing->point).x - lineMetres(strikeOrigin()).x;
   }
 
  private:
@@ -9826,21 +9987,20 @@ class KeeperThrowDrill final : public BullseyePassDrill
                            .stats = {{"Goalkeeping", goalkeeping}},
                            .height = REFERENCE_KEEPER_HEIGHT_CM,
                            .derived = {}};
-    keeper.condition = condition;
+    keeper.condition = initialCondition();
     return {keeper};
   }
   void begin(MatchEngine& engine, const std::vector<PlayerID>& ids) override
   {
-    passerId = ids[0];
-    engine.setStrikeKnobs(knobs);
+    preparePasser(engine, ids[0]);
     MatchScenario scenario;
     scenario.players.push_back(
-        {.playerId = passerId, .position = SPOT, .makingRun = false});
-    scenario.carrierId = passerId;
+        {.playerId = passerPlayerId(), .position = SPOT, .makingRun = false});
+    scenario.carrierId = passerPlayerId();
     scenario.ballPosition = SPOT;
     scenario.carrierInHands = true;
     engine.startDrill(scenario);
-    engine.forcePassTo(passerId, target(), style());
+    engine.forcePassTo(passerPlayerId(), target(), style());
     BullseyePassDrill::beginRun(engine);
   }
   std::vector<DrillParameter> parameters() override
@@ -12710,10 +12870,63 @@ class LooseHighBallDrill final : public Drill
     endAt.reset();
   }
 
+ private:
+  void observeContact(const MatchEngine& engine,
+                      const std::array<const MatchPlayer*, 2>& who, double now)
+  {
+    const MatchBall& ball = engine.getBall();
+    // The first of them to play it (head, chest or foot), or it lands.
+    const PlayerID kicker = (engine.getLegacyContactActor() != nullptr)
+                                ? engine.getLegacyContactActor()->getId()
+                                : 0;
+    const PlayerID holder = (engine.getPossessionAttachment() != nullptr)
+                                ? engine.getPossessionAttachment()->getId()
+                                : 0;
+    const PlayerID by = kicker == homeId || kicker == awayId ? kicker : holder;
+    if (by == homeId || by == awayId)
+    {
+      Contact reading;
+      reading.at = now - fedAt;
+      reading.by = by == homeId ? 1 : 2;
+      reading.height = ball.sentHeightMetres;
+      reading.headed =
+          engine.getStrikeContacts()
+              .byKind.at(static_cast<std::size_t>(StrikeKind::HEADER))
+              .strikes > headersBefore;
+      reading.duel = engine.getStats().aerialDuelsContested > duelsBefore;
+      for (std::size_t index = 0; index < 2; ++index)
+      {
+        if (who.at(index) != nullptr)
+        {
+          reading.gap.at(index) =
+              metresBetween(who.at(index)->position, ball.sentFrom);
+        }
+      }
+      contact = reading;
+      endAt = now + RESULT_LINGER_SECONDS;
+    }
+    else if (ball.z <= 0.0F && now > fedAt + RESULT_LINGER_SECONDS)
+    {
+      // Down without either of them getting to it in the air.
+      Contact reading;
+      reading.at = now - fedAt;
+      for (std::size_t index = 0; index < 2; ++index)
+      {
+        if (who.at(index) != nullptr)
+        {
+          reading.gap.at(index) =
+              metresBetween(who.at(index)->position, ball.position);
+        }
+      }
+      contact = reading;
+      endAt = now + RESULT_LINGER_SECONDS;
+    }
+  }
+
+ public:
   bool afterStep(MatchEngine& engine) override
   {
     const double now = secondsOf(engine);
-    const MatchBall& ball = engine.getBall();
     std::array<const MatchPlayer*, 2> who{slotOf(engine, homeId),
                                           slotOf(engine, awayId)};
     for (std::size_t index = 0; index < 2; ++index)
@@ -12732,53 +12945,7 @@ class LooseHighBallDrill final : public Drill
     }
     if (!contact)
     {
-      // The first of them to play it (head, chest or foot), or it lands.
-      const PlayerID kicker = (engine.getLegacyContactActor() != nullptr)
-                                  ? engine.getLegacyContactActor()->getId()
-                                  : 0;
-      const PlayerID holder = (engine.getPossessionAttachment() != nullptr)
-                                  ? engine.getPossessionAttachment()->getId()
-                                  : 0;
-      const PlayerID by =
-          kicker == homeId || kicker == awayId ? kicker : holder;
-      if (by == homeId || by == awayId)
-      {
-        Contact reading;
-        reading.at = now - fedAt;
-        reading.by = by == homeId ? 1 : 2;
-        reading.height = ball.sentHeightMetres;
-        reading.headed =
-            engine.getStrikeContacts()
-                .byKind.at(static_cast<std::size_t>(StrikeKind::HEADER))
-                .strikes > headersBefore;
-        reading.duel = engine.getStats().aerialDuelsContested > duelsBefore;
-        for (std::size_t index = 0; index < 2; ++index)
-        {
-          if (who.at(index) != nullptr)
-          {
-            reading.gap.at(index) =
-                metresBetween(who.at(index)->position, ball.sentFrom);
-          }
-        }
-        contact = reading;
-        endAt = now + RESULT_LINGER_SECONDS;
-      }
-      else if (ball.z <= 0.0F && now > fedAt + RESULT_LINGER_SECONDS)
-      {
-        // Down without either of them getting to it in the air.
-        Contact reading;
-        reading.at = now - fedAt;
-        for (std::size_t index = 0; index < 2; ++index)
-        {
-          if (who.at(index) != nullptr)
-          {
-            reading.gap.at(index) =
-                metresBetween(who.at(index)->position, ball.position);
-          }
-        }
-        contact = reading;
-        endAt = now + RESULT_LINGER_SECONDS;
-      }
+      observeContact(engine, who, now);
     }
     if (engine.getState() != MatchState::PLAYING && !endAt)
     {
@@ -13104,52 +13271,11 @@ class WalledBoxDrill final : public Drill
     nearestWall = std::numeric_limits<float>::max();
   }
 
-  bool afterStep(MatchEngine& engine) override
+ private:
+  void observeDummyClearance(const MatchEngine& engine)
   {
-    const MatchPitch& box = engine.getPitch();
     const MatchBall& ball = engine.getBall();
-    constexpr float RADIUS = MatchTuning::Units::BALL_RADIUS_METRES;
-    constexpr float NEAR = 0.6F;
     const PitchPoint at = ball.position;
-    // A bounce: the speed into a wall turned round next to it.
-    if ((at.x < RADIUS + NEAR && lastVelocity.x < 0.0F &&
-         ball.velocity.x > 0.0F) ||
-        (at.x > box.length - RADIUS - NEAR && lastVelocity.x > 0.0F &&
-         ball.velocity.x < 0.0F) ||
-        (at.y < RADIUS + NEAR && lastVelocity.y < 0.0F &&
-         ball.velocity.y > 0.0F) ||
-        (at.y > box.width - RADIUS - NEAR && lastVelocity.y > 0.0F &&
-         ball.velocity.y < 0.0F))
-    {
-      ++bounces;
-    }
-    lastVelocity = ball.velocity;
-    // Waiting for a serve, the ball is with the coach outside the wall.
-    const bool withCoach = engine.getState() == MatchState::SERVE;
-    if (!withCoach && at.x >= 0.0F && at.x <= box.length)
-    {
-      nearestWall = std::min(
-          {nearestWall, at.x, at.y, box.length - at.x, box.width - at.y});
-    }
-    // Outside: beyond the walls and not in a goal's net.
-    const bool inGoal = box.goal.present() &&
-                        std::abs(at.y - (PITCH_MIDPOINT_SHARE * box.width)) <
-                            box.goal.halfWidth + box.goal.post &&
-                        at.x > -box.goal.netDepth - RADIUS &&
-                        at.x < box.length + box.goal.netDepth + RADIUS;
-    if (!withCoach &&
-        (at.x < 0.0F || at.y < 0.0F || at.x > box.length || at.y > box.width) &&
-        !inGoal)
-    {
-      ++ballOut;
-    }
-    homeGoals = engine.getHomeScore();
-    awayGoals = engine.getAwayScore();
-    foulsNotGiven = engine.getFoulsNotGiven() - foulsAtStart;
-    serves = engine.getServesTaken() - servesAtStart;
-    dummyHits = engine.getDummyHits() - dummyHitsAtStart;
-    bodyHits = engine.getDummyBodyHits() - bodyHitsAtStart;
-    blockedPasses = engine.getPassesBlockedByDummies() - blockedAtStart;
     // Nothing passes through a dummy: the ball's centre never within its
     // radius of the axis (ground to shoulder).
     for (const PitchKit::Dummy& dummy : engine.getKit().dummies)
@@ -13177,6 +13303,29 @@ class WalledBoxDrill final : public Drill
         }
       }
     }
+  }
+
+  void observeWallBounce(const MatchPitch& box, const MatchBall& ball)
+  {
+    constexpr float RADIUS = MatchTuning::Units::BALL_RADIUS_METRES;
+    constexpr float NEAR = 0.6F;
+    const PitchPoint at = ball.position;
+    // A bounce: the speed into a wall turned round next to it.
+    if ((at.x < RADIUS + NEAR && lastVelocity.x < 0.0F &&
+         ball.velocity.x > 0.0F) ||
+        (at.x > box.length - RADIUS - NEAR && lastVelocity.x > 0.0F &&
+         ball.velocity.x < 0.0F) ||
+        (at.y < RADIUS + NEAR && lastVelocity.y < 0.0F &&
+         ball.velocity.y > 0.0F) ||
+        (at.y > box.width - RADIUS - NEAR && lastVelocity.y > 0.0F &&
+         ball.velocity.y < 0.0F))
+    {
+      ++bounces;
+    }
+  }
+
+  void observeEvents(const MatchEngine& engine, const MatchPitch& box)
+  {
     // Shots: their xG and how far out, to the middle of the goal attacked.
     const auto& log = engine.getEvents();
     for (; eventsSeen < log.size(); ++eventsSeen)
@@ -13197,6 +13346,45 @@ class WalledBoxDrill final : public Drill
           std::hypot(event.position.x - goalX,
                      event.position.y - (PITCH_MIDPOINT_SHARE * box.width));
     }
+  }
+
+ public:
+  bool afterStep(MatchEngine& engine) override
+  {
+    const MatchPitch& box = engine.getPitch();
+    const MatchBall& ball = engine.getBall();
+    constexpr float RADIUS = MatchTuning::Units::BALL_RADIUS_METRES;
+    const PitchPoint at = ball.position;
+    observeWallBounce(box, ball);
+    lastVelocity = ball.velocity;
+    // Waiting for a serve, the ball is with the coach outside the wall.
+    const bool withCoach = engine.getState() == MatchState::SERVE;
+    if (!withCoach && at.x >= 0.0F && at.x <= box.length)
+    {
+      nearestWall = std::min(
+          {nearestWall, at.x, at.y, box.length - at.x, box.width - at.y});
+    }
+    // Outside: beyond the walls and not in a goal's net.
+    const bool inGoal = box.goal.present() &&
+                        std::abs(at.y - (PITCH_MIDPOINT_SHARE * box.width)) <
+                            box.goal.halfWidth + box.goal.post &&
+                        at.x > -box.goal.netDepth - RADIUS &&
+                        at.x < box.length + box.goal.netDepth + RADIUS;
+    if (!withCoach &&
+        (at.x < 0.0F || at.y < 0.0F || at.x > box.length || at.y > box.width) &&
+        !inGoal)
+    {
+      ++ballOut;
+    }
+    homeGoals = engine.getHomeScore();
+    awayGoals = engine.getAwayScore();
+    foulsNotGiven = engine.getFoulsNotGiven() - foulsAtStart;
+    serves = engine.getServesTaken() - servesAtStart;
+    dummyHits = engine.getDummyHits() - dummyHitsAtStart;
+    bodyHits = engine.getDummyBodyHits() - bodyHitsAtStart;
+    blockedPasses = engine.getPassesBlockedByDummies() - blockedAtStart;
+    observeDummyClearance(engine);
+    observeEvents(engine, box);
     for (const PlayerID id : ids_)
     {
       if (const MatchPlayer* player = slotOf(engine, id))
