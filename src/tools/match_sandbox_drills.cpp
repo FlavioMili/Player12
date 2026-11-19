@@ -7750,6 +7750,49 @@ class PassDrill final : public Drill
     }
   }
 
+  void observeFlight(const MatchEngine& engine, double now)
+  {
+    if (!pass)
+    {
+      return;
+    }
+    const MatchBall& ball = engine.getBall();
+    flight.observe(ball);
+    const float gap = metresBetween(ball.position, receiverSpot);
+    if (gap < closest)
+    {
+      closest = gap;
+      closestHeight = ball.z;
+      closestSpeed = std::hypot(ball.velocity.x, ball.velocity.y);
+    }
+    const PlayerID owner = (engine.getPossessionAttachment() != nullptr)
+                               ? engine.getPossessionAttachment()->getId()
+                               : 0;
+    if (!hasReceiver && flight.settled(pass->kind, ball))
+    {
+      outcome =
+          flight.landingPoint()
+              ? std::format("landed {:.1f} m off", flight.landingError())
+              : std::format("ran {:.1f} m past", flight.closestDistance());
+    }
+    else if (hasReceiver && owner == receiverId)
+    {
+      outcome = "received";
+    }
+    else if (hasDefender && owner == defenderId)
+    {
+      outcome = "intercepted";
+    }
+    else if (engine.getState() != MatchState::PLAYING)
+    {
+      outcome = "out of play";
+    }
+    else if (now >= pass->at + TIME_LIMIT)
+    {
+      outcome = "not reached";
+    }
+  }
+
  public:
   bool afterStep(MatchEngine& engine) override
   {
@@ -7781,40 +7824,7 @@ class PassDrill final : public Drill
     }
     else if (outcome.empty())
     {
-      flight.observe(ball);
-      const float gap = metresBetween(ball.position, receiverSpot);
-      if (gap < closest)
-      {
-        closest = gap;
-        closestHeight = ball.z;
-        closestSpeed = std::hypot(ball.velocity.x, ball.velocity.y);
-      }
-      const PlayerID owner = (engine.getPossessionAttachment() != nullptr)
-                                 ? engine.getPossessionAttachment()->getId()
-                                 : 0;
-      if (!hasReceiver && flight.settled(pass->kind, ball))
-      {
-        outcome =
-            flight.landingPoint()
-                ? std::format("landed {:.1f} m off", flight.landingError())
-                : std::format("ran {:.1f} m past", flight.closestDistance());
-      }
-      else if (hasReceiver && owner == receiverId)
-      {
-        outcome = "received";
-      }
-      else if (hasDefender && owner == defenderId)
-      {
-        outcome = "intercepted";
-      }
-      else if (engine.getState() != MatchState::PLAYING)
-      {
-        outcome = "out of play";
-      }
-      else if (now >= pass->at + TIME_LIMIT)
-      {
-        outcome = "not reached";
-      }
+      observeFlight(engine, now);
     }
     if (!outcome.empty() && !endAt)
     {
@@ -7854,6 +7864,10 @@ class PassDrill final : public Drill
  private:
   void appendPassReport(std::vector<std::string>& lines) const
   {
+    if (!pass)
+    {
+      return;
+    }
     constexpr float DEGREES = HALF_TURN_DEGREES / PI;
     lines.push_back(std::format(
         "{} at {:.2f} s, {:.1f} m/s{}: difficulty angle {:.2f}, weight "
@@ -10553,6 +10567,76 @@ class ShotTargetDrill final : public Drill
     }
   }
 
+ private:
+  void observeStrike(MatchEngine& engine, const MatchPlayer* shooter,
+                     double now)
+  {
+    const MatchBall& ball = engine.getBall();
+    // A ball played to him: his touch, if he takes one, before the shot.
+    if ((engine.getPossessionAttachment() != nullptr) &&
+        engine.getPossessionAttachment()->getId() == shooterId)
+    {
+      touchedFirst = true;
+    }
+    readStrike(engine, now);
+    if (strike && (shooter != nullptr))
+    {
+      strike->bodyAngle = bodyAngleTo(*shooter, ball.velocity);
+      strike->shooterSpeed = speedOf(*shooter);
+      // The ball as it came in (a step before), against where it went.
+      strike->firstTime = feedChoice > CHOICE_MIDPOINT && !touchedFirst;
+      strike->incoming = std::hypot(lastBallVelocity.x, lastBallVelocity.y);
+      const float out = std::hypot(ball.velocity.x, ball.velocity.y);
+      if (strike->incoming > MIN_REPORTED_CONTACT_SPEED &&
+          out > MIN_REPORTED_CONTACT_SPEED)
+      {
+        strike->redirect = turnDegrees(
+            {.x = lastBallVelocity.x / strike->incoming,
+             .y = lastBallVelocity.y / strike->incoming},
+            {.x = ball.velocity.x / out, .y = ball.velocity.y / out});
+      }
+      // He stays where he struck it; the keeper is free to save it.
+      engine.setDrillTarget(shooterId, shooter->position, false);
+      if (hasKeeper)
+      {
+        engine.setDrillTarget(keeperId, std::nullopt, false);
+      }
+      eventsAtStrike = engine.getEvents().size();
+    }
+    else
+    {
+      lastBallVelocity = ball.velocity;
+    }
+  }
+
+  void observeKeeper(const MatchEngine& engine)
+  {
+    if (!strike)
+    {
+      return;
+    }
+    const MatchBall& ball = engine.getBall();
+    // Over the keeper: its height as it passes where he stood.
+    if (strike->overKeeper < 0.0F && ball.position.x >= keeperAt.x)
+    {
+      strike->overKeeper = ball.z;
+    }
+    const auto& events = engine.getEvents();
+    for (std::size_t index = eventsAtStrike; index < events.size(); ++index)
+    {
+      if (events[index].type == MatchEventType::SAVE)
+      {
+        outcome = "saved";
+      }
+    }
+    if ((engine.getPossessionAttachment() != nullptr) &&
+        engine.getPossessionAttachment()->getId() == keeperId)
+    {
+      outcome = "saved";
+    }
+  }
+
+ public:
   bool afterStep(MatchEngine& engine) override
   {
     const double now = secondsOf(engine);
@@ -10584,41 +10668,7 @@ class ShotTargetDrill final : public Drill
     }
     else if (ordered && !strike)
     {
-      // A ball played to him: his touch, if he takes one, before the shot.
-      if ((engine.getPossessionAttachment() != nullptr) &&
-          engine.getPossessionAttachment()->getId() == shooterId)
-      {
-        touchedFirst = true;
-      }
-      readStrike(engine, now);
-      if (strike && (shooter != nullptr))
-      {
-        strike->bodyAngle = bodyAngleTo(*shooter, ball.velocity);
-        strike->shooterSpeed = speedOf(*shooter);
-        // The ball as it came in (a step before), against where it went.
-        strike->firstTime = feedChoice > CHOICE_MIDPOINT && !touchedFirst;
-        strike->incoming = std::hypot(lastBallVelocity.x, lastBallVelocity.y);
-        const float out = std::hypot(ball.velocity.x, ball.velocity.y);
-        if (strike->incoming > MIN_REPORTED_CONTACT_SPEED &&
-            out > MIN_REPORTED_CONTACT_SPEED)
-        {
-          strike->redirect = turnDegrees(
-              {.x = lastBallVelocity.x / strike->incoming,
-               .y = lastBallVelocity.y / strike->incoming},
-              {.x = ball.velocity.x / out, .y = ball.velocity.y / out});
-        }
-        // He stays where he struck it; the keeper is free to save it.
-        engine.setDrillTarget(shooterId, shooter->position, false);
-        if (hasKeeper)
-        {
-          engine.setDrillTarget(keeperId, std::nullopt, false);
-        }
-        eventsAtStrike = engine.getEvents().size();
-      }
-      else
-      {
-        lastBallVelocity = ball.velocity;
-      }
+      observeStrike(engine, shooter, now);
     }
     if (!strike && outcome.empty() && now >= STRIKE_TIMEOUT_SECONDS)
     {
@@ -10626,24 +10676,7 @@ class ShotTargetDrill final : public Drill
     }
     else if (strike && outcome.empty() && hasKeeper)
     {
-      // Over the keeper: its height as it passes where he stood.
-      if (strike->overKeeper < 0.0F && ball.position.x >= keeperAt.x)
-      {
-        strike->overKeeper = ball.z;
-      }
-      const auto& events = engine.getEvents();
-      for (std::size_t index = eventsAtStrike; index < events.size(); ++index)
-      {
-        if (events[index].type == MatchEventType::SAVE)
-        {
-          outcome = "saved";
-        }
-      }
-      if ((engine.getPossessionAttachment() != nullptr) &&
-          engine.getPossessionAttachment()->getId() == keeperId)
-      {
-        outcome = "saved";
-      }
+      observeKeeper(engine);
     }
     if (strike && outcome.empty())
     {
@@ -11498,6 +11531,96 @@ class HeaderTargetDrill final : public Drill
     ballPath = {feedFrom};
   }
 
+ private:
+  void observeContact(const MatchEngine& engine, double now, bool his)
+  {
+    const MatchBall& ball = engine.getBall();
+    readHeader(engine, now);
+    if (header)
+    {
+      if (aim() == ForcedHeaderAim::SPOT)
+      {
+        flight.start(ball, target);
+      }
+    }
+    else if (his)
+    {
+      // On his feet without a header: cushioned down (today's cushion has
+      // no contact, but it was met with his head), or a touch (the ball
+      // came to him below his head's reach).
+      if (engine.getLastHeadPart())
+      {
+        cushioned = true;
+      }
+      else
+      {
+        touched = true;
+      }
+      meet = last;
+      meetPlayer = lastPlayer;
+      outcome = cushioned ? "cushioned and kept"
+                          : "controlled (a touch, not a header)";
+    }
+    else if (now >= fedAt + TIME_LIMIT ||
+             (last.height > LANDING_HEIGHT_EPSILON_METRES && ball.z <= 0.0F &&
+              ball.velocityZ <= 0.0F &&
+              metresBetween(ball.position, stand) >
+                  MISSED_LANDING_DISTANCE_METRES))
+    {
+      outcome = "not headed (out of reach)";
+    }
+  }
+
+  void observeFlight(const MatchEngine& engine, double now, bool his)
+  {
+    if (!header)
+    {
+      return;
+    }
+    const MatchBall& ball = engine.getBall();
+    peakAfter = std::max(peakAfter, ball.z);
+    if (aim() == ForcedHeaderAim::SPOT)
+    {
+      flight.observe(ball);
+      if (flight.settled(StrikeKind::HEADER, ball))
+      {
+        outcome = "came down";
+      }
+    }
+    else if (aim() == ForcedHeaderAim::GOAL)
+    {
+      outcome = header->shot ? goalResult(*header) : "not a shot";
+    }
+    else
+    {
+      // A cushioned header: where it first comes down, then kept once he
+      // has collected it (he owns it from the header), or not.
+      if (!dropped && ball.z <= 0.0F)
+      {
+        dropped = ball.position;
+        droppedAt = now;
+      }
+      if (his && (!engine.hasTouchClaim() || engine.isTouchCollected()))
+      {
+        outcome = "cushioned and kept";
+        collectedAt = now;
+      }
+      else if (!his)
+      {
+        outcome = "cushioned, not kept";
+      }
+    }
+    if (outcome.empty() && engine.getState() != MatchState::PLAYING)
+    {
+      outcome = "out of play";
+    }
+    if (outcome.empty() && now >= header->at + FLIGHT_LIMIT)
+    {
+      outcome = "time up";
+    }
+  }
+
+ public:
   bool afterStep(MatchEngine& engine) override
   {
     const double now = secondsOf(engine);
@@ -11528,83 +11651,11 @@ class HeaderTargetDrill final : public Drill
 
     if (!header && !cushioned && !touched && outcome.empty())
     {
-      readHeader(engine, now);
-      if (header)
-      {
-        if (aim() == ForcedHeaderAim::SPOT)
-        {
-          flight.start(ball, target);
-        }
-      }
-      else if (his)
-      {
-        // On his feet without a header: cushioned down (today's cushion has
-        // no contact, but it was met with his head), or a touch (the ball
-        // came to him below his head's reach).
-        if (engine.getLastHeadPart())
-        {
-          cushioned = true;
-        }
-        else
-        {
-          touched = true;
-        }
-        meet = last;
-        meetPlayer = lastPlayer;
-        outcome = cushioned ? "cushioned and kept"
-                            : "controlled (a touch, not a header)";
-      }
-      else if (now >= fedAt + TIME_LIMIT ||
-               (last.height > LANDING_HEIGHT_EPSILON_METRES && ball.z <= 0.0F &&
-                ball.velocityZ <= 0.0F &&
-                metresBetween(ball.position, stand) >
-                    MISSED_LANDING_DISTANCE_METRES))
-      {
-        outcome = "not headed (out of reach)";
-      }
+      observeContact(engine, now, his);
     }
     else if (header && outcome.empty())
     {
-      peakAfter = std::max(peakAfter, ball.z);
-      if (aim() == ForcedHeaderAim::SPOT)
-      {
-        flight.observe(ball);
-        if (flight.settled(StrikeKind::HEADER, ball))
-        {
-          outcome = "came down";
-        }
-      }
-      else if (aim() == ForcedHeaderAim::GOAL)
-      {
-        outcome = header->shot ? goalResult(*header) : "not a shot";
-      }
-      else
-      {
-        // A cushioned header: where it first comes down, then kept once he
-        // has collected it (he owns it from the header), or not.
-        if (!dropped && ball.z <= 0.0F)
-        {
-          dropped = ball.position;
-          droppedAt = now;
-        }
-        if (his && (!engine.hasTouchClaim() || engine.isTouchCollected()))
-        {
-          outcome = "cushioned and kept";
-          collectedAt = now;
-        }
-        else if (!his)
-        {
-          outcome = "cushioned, not kept";
-        }
-      }
-      if (outcome.empty() && engine.getState() != MatchState::PLAYING)
-      {
-        outcome = "out of play";
-      }
-      if (outcome.empty() && now >= header->at + FLIGHT_LIMIT)
-      {
-        outcome = "time up";
-      }
+      observeFlight(engine, now, his);
     }
     last = stateOf(ball);
     if (player != nullptr)
@@ -11961,6 +12012,9 @@ class HeaderTargetDrill final : public Drill
     const float height = target.heightMetres;
     constexpr float DT =
         STEP / static_cast<float>(MatchTuning::Timing::BALL_SUBSTEPS);
+    // Count fixed substeps so clock rounding cannot extend the prediction.
+    constexpr int MAX_PREDICTION_SUBSTEPS =
+        static_cast<int>(MAX_FLIGHT_PREDICTION_SECONDS / DT);
     const auto heightAt = [&](float lift)
     {
       FlightState flight{.horizontalSpeed = speed,
@@ -11969,7 +12023,7 @@ class HeaderTargetDrill final : public Drill
                          .bounced = false,
                          .spin = {}};
       float gone = 0.0F;
-      for (float time = 0.0F; time < MAX_FLIGHT_PREDICTION_SECONDS; time += DT)
+      for (int substep = 0; substep < MAX_PREDICTION_SUBSTEPS; ++substep)
       {
         const float was = flight.height;
         const float step = engine.stepFlight(flight, DT);
@@ -12417,6 +12471,77 @@ class BodyControlDrill final : public Drill
     ballPath = {feedFrom};
   }
 
+ private:
+  void observeContact(const MatchEngine& engine, const MatchPlayer* player,
+                      double now, bool his)
+  {
+    const MatchBall& ball = engine.getBall();
+    // Off his head, chest or thigh, by the height he met it at.
+    const char* part = contactPart(engine, his);
+    if ((part != nullptr) && std::string_view(part) != partName())
+    {
+      outcome = std::format("not his {} (his {})", partName(), part);
+    }
+    else if (part != nullptr)
+    {
+      Touch touch;
+      touch.at = now;
+      touch.height = ball.touchContactHeight;
+      touch.gap = ball.touchContactGap;
+      touch.paceIn =
+          std::hypot(std::hypot(last.velocity.x, last.velocity.y), last.lift);
+      touch.speed = std::hypot(ball.velocity.x, ball.velocity.y);
+      touch.lift = ball.velocityZ;
+      const float incoming = std::hypot(last.velocity.x, last.velocity.y);
+      if (incoming > MIN_REPORTED_CONTACT_SPEED &&
+          touch.speed > MIN_REPORTED_CONTACT_SPEED)
+      {
+        touch.offBack = turnDegrees({.x = -last.velocity.x / incoming,
+                                     .y = -last.velocity.y / incoming},
+                                    {.x = ball.velocity.x / touch.speed,
+                                     .y = ball.velocity.y / touch.speed});
+      }
+      touch.where = (player != nullptr) ? player->position : stand;
+      // Where its flight off him first comes down, from where he met
+      // it (the match's own flight).
+      constexpr float DT =
+          STEP / static_cast<float>(MatchTuning::Timing::BALL_SUBSTEPS);
+      FlightState flight{.horizontalSpeed = touch.speed,
+                         .verticalSpeed = touch.lift,
+                         .height = touch.height,
+                         .bounced = false,
+                         .spin = ball.spin};
+      float gone = 0.0F;
+      for (float time = 0.0F; time < MAX_DROP_PREDICTION_SECONDS &&
+                              flight.height > 0.0F && !flight.bounced;
+           time += DT)
+      {
+        gone += engine.stepFlight(flight, DT);
+        touch.landsAfter = time + DT;
+      }
+      touch.landsFrom = gone;
+      met = touch;
+    }
+    else if (his)
+    {
+      outcome = std::format(
+          "not his {} ({})", partName(),
+          engine.hasTouchClaim() ? "his feet" : "trapped dead: the old trap");
+    }
+    else if (engine.getLastHeadPart())
+    {
+      outcome = std::format("not his {} (his head)", partName());
+    }
+    else if (now >= fedAt + TIME_LIMIT ||
+             (last.height > LANDING_HEIGHT_EPSILON_METRES && ball.z <= 0.0F &&
+              metresBetween(ball.position, stand) >
+                  MISSED_LANDING_DISTANCE_METRES))
+    {
+      outcome = "not touched (out of reach)";
+    }
+  }
+
+ public:
   bool afterStep(MatchEngine& engine) override
   {
     const double now = secondsOf(engine);
@@ -12430,69 +12555,7 @@ class BodyControlDrill final : public Drill
                      engine.getPossessionAttachment()->getId() == playerId;
     if (!met && outcome.empty())
     {
-      // Off his head, chest or thigh, by the height he met it at.
-      const char* part = contactPart(engine, his);
-      if ((part != nullptr) && std::string_view(part) != partName())
-      {
-        outcome = std::format("not his {} (his {})", partName(), part);
-      }
-      else if (part != nullptr)
-      {
-        Touch touch;
-        touch.at = now;
-        touch.height = ball.touchContactHeight;
-        touch.gap = ball.touchContactGap;
-        touch.paceIn =
-            std::hypot(std::hypot(last.velocity.x, last.velocity.y), last.lift);
-        touch.speed = std::hypot(ball.velocity.x, ball.velocity.y);
-        touch.lift = ball.velocityZ;
-        const float incoming = std::hypot(last.velocity.x, last.velocity.y);
-        if (incoming > MIN_REPORTED_CONTACT_SPEED &&
-            touch.speed > MIN_REPORTED_CONTACT_SPEED)
-        {
-          touch.offBack = turnDegrees({.x = -last.velocity.x / incoming,
-                                       .y = -last.velocity.y / incoming},
-                                      {.x = ball.velocity.x / touch.speed,
-                                       .y = ball.velocity.y / touch.speed});
-        }
-        touch.where = (player != nullptr) ? player->position : stand;
-        // Where its flight off him first comes down, from where he met
-        // it (the match's own flight).
-        constexpr float DT =
-            STEP / static_cast<float>(MatchTuning::Timing::BALL_SUBSTEPS);
-        FlightState flight{.horizontalSpeed = touch.speed,
-                           .verticalSpeed = touch.lift,
-                           .height = touch.height,
-                           .bounced = false,
-                           .spin = ball.spin};
-        float gone = 0.0F;
-        for (float time = 0.0F; time < MAX_DROP_PREDICTION_SECONDS &&
-                                flight.height > 0.0F && !flight.bounced;
-             time += DT)
-        {
-          gone += engine.stepFlight(flight, DT);
-          touch.landsAfter = time + DT;
-        }
-        touch.landsFrom = gone;
-        met = touch;
-      }
-      else if (his)
-      {
-        outcome = std::format(
-            "not his {} ({})", partName(),
-            engine.hasTouchClaim() ? "his feet" : "trapped dead: the old trap");
-      }
-      else if (engine.getLastHeadPart())
-      {
-        outcome = std::format("not his {} (his head)", partName());
-      }
-      else if (now >= fedAt + TIME_LIMIT ||
-               (last.height > LANDING_HEIGHT_EPSILON_METRES && ball.z <= 0.0F &&
-                metresBetween(ball.position, stand) >
-                    MISSED_LANDING_DISTANCE_METRES))
-      {
-        outcome = "not touched (out of reach)";
-      }
+      observeContact(engine, player, now, his);
     }
     else if (met && outcome.empty())
     {
@@ -13994,12 +14057,141 @@ class SmallSidedGameDrill final : public Drill
     return r;
   }
 
+  [[nodiscard]] static float rungDistance(PitchPoint a, PitchPoint b)
+  {
+    return std::hypot(a.x - b.x, a.y - b.y);
+  }
+
+  [[nodiscard]] static const MatchPlayer* nearestRungPlayer(
+      const std::vector<const MatchPlayer*>& players, PitchPoint target,
+      const MatchPlayer* excluded = nullptr)
+  {
+    const MatchPlayer* nearest = nullptr;
+    for (const MatchPlayer* player : players)
+    {
+      if (player != excluded &&
+          (nearest == nullptr || rungDistance(player->position, target) <
+                                     rungDistance(nearest->position, target)))
+      {
+        nearest = player;
+      }
+    }
+    return nearest;
+  }
+
+  void measureSpacing(const std::vector<const MatchPlayer*>& home,
+                      const std::vector<const MatchPlayer*>& away,
+                      PitchPoint ball)
+  {
+    constexpr float SWARM_METRES = 3.0F;
+    // Swarming: two or more of a side within 3 m of the ball.
+    for (const bool isHome : {true, false})
+    {
+      const auto& mine = isHome ? home : away;
+      int near = 0;
+      for (const MatchPlayer* player : mine)
+      {
+        if (rungDistance(player->position, ball) <= SWARM_METRES)
+        {
+          ++near;
+        }
+      }
+      if (mine.size() >= 2 && near >= 2)
+      {
+        ++(isHome ? homeSwarmTicks : awaySwarmTicks);
+      }
+      // Spread: the side's average distance from its own centre.
+      if (mine.size() >= 2)
+      {
+        float cx = 0.0F;
+        float cy = 0.0F;
+        for (const MatchPlayer* player : mine)
+        {
+          cx += player->position.x;
+          cy += player->position.y;
+        }
+        cx /= static_cast<float>(mine.size());
+        cy /= static_cast<float>(mine.size());
+        float sum = 0.0F;
+        for (const MatchPlayer* player : mine)
+        {
+          sum += rungDistance(player->position, PitchPoint{cx, cy});
+        }
+        spreadSum += sum / static_cast<float>(mine.size());
+        ++spreadSamples;
+      }
+    }
+  }
+
+  void measureDefending(const MatchEngine& engine,
+                        const std::vector<const MatchPlayer*>& home,
+                        const std::vector<const MatchPlayer*>& away,
+                        const MatchPlayer* carrier)
+  {
+    constexpr float ENGAGE_METRES = 3.0F;
+    const MatchPitch& box = engine.getPitch();
+    const PitchPoint ball = engine.getBall().position;
+    // Defending in twos: with the other side on the ball, one defender on
+    // the carrier (the nearest, within 3 m) while another stays goal-side
+    // of the next attacker (nearer their own goal than he is).
+    if ((carrier != nullptr) && home.size() >= 2 && away.size() >= 2)
+    {
+      const bool attackersHome = carrier->isHomeTeam;
+      const auto& attackers = attackersHome ? home : away;
+      const auto& defenders = attackersHome ? away : home;
+      const PitchPoint ownGoal{attackersHome ? box.length : 0.0F,
+                               PITCH_MIDPOINT_SHARE * box.width};
+      const MatchPlayer* presser =
+          nearestRungPlayer(defenders, carrier->position);
+      const MatchPlayer* next = nearestRungPlayer(attackers, ball, carrier);
+      if (presser != nullptr && next != nullptr)
+      {
+        const MatchPlayer* cover =
+            nearestRungPlayer(defenders, next->position, presser);
+        ++defendingTicks;
+        if (rungDistance(presser->position, carrier->position) <=
+                ENGAGE_METRES &&
+            cover != nullptr &&
+            rungDistance(cover->position, ownGoal) <
+                rungDistance(next->position, ownGoal))
+        {
+          ++pressCoverTicks;
+        }
+      }
+    }
+  }
+
+  void measureOptions(const std::vector<const MatchPlayer*>& home,
+                      const std::vector<const MatchPlayer*>& away,
+                      const MatchPlayer* carrier)
+  {
+    // Open options: the carrier's team-mates within passing range (not too
+    // close or far for the brain to look at them).
+    if (carrier != nullptr)
+    {
+      const auto& mates = carrier->isHomeTeam ? home : away;
+      int open = 0;
+      for (const MatchPlayer* mate : mates)
+      {
+        if (mate == carrier)
+        {
+          continue;
+        }
+        const float metres = rungDistance(mate->position, carrier->position);
+        if (metres >= MatchTuning::Passing::MIN_DISTANCE_METRES &&
+            metres <= MatchTuning::Passing::MAX_DISTANCE_METRES)
+        {
+          ++open;
+        }
+      }
+      openSum += open;
+      ++carrierTicks;
+    }
+  }
+
   /** One in-play step of the rung's measures (plan section 22, point 7). */
   void measureRung(const MatchEngine& engine)
   {
-    constexpr float SWARM_METRES = 3.0F;
-    constexpr float ENGAGE_METRES = 3.0F;
-    const MatchPitch& box = engine.getPitch();
     const PitchPoint ball = engine.getBall().position;
     std::vector<const MatchPlayer*> home;
     std::vector<const MatchPlayer*> away;
@@ -14011,8 +14203,6 @@ class SmallSidedGameDrill final : public Drill
             .push_back(slot);
       }
     }
-    const auto apart = [](PitchPoint a, PitchPoint b)
-    { return std::hypot(a.x - b.x, a.y - b.y); };
     // The carrier: holding the ball, or dribbling it.
     const Player* holder = engine.getPossessionAttachment();
     if (holder == nullptr)
@@ -14069,118 +14259,11 @@ class SmallSidedGameDrill final : public Drill
       longestSpell = std::max(longestSpell, now - spellStart);
     }
 
-    // Swarming: two or more of a side within 3 m of the ball.
-    for (const bool isHome : {true, false})
-    {
-      const auto& mine = isHome ? home : away;
-      int near = 0;
-      for (const MatchPlayer* player : mine)
-      {
-        if (apart(player->position, ball) <= SWARM_METRES)
-        {
-          ++near;
-        }
-      }
-      if (mine.size() >= 2 && near >= 2)
-      {
-        ++(isHome ? homeSwarmTicks : awaySwarmTicks);
-      }
-      // Spread: the side's average distance from its own centre.
-      if (mine.size() >= 2)
-      {
-        float cx = 0.0F;
-        float cy = 0.0F;
-        for (const MatchPlayer* player : mine)
-        {
-          cx += player->position.x;
-          cy += player->position.y;
-        }
-        cx /= static_cast<float>(mine.size());
-        cy /= static_cast<float>(mine.size());
-        float sum = 0.0F;
-        for (const MatchPlayer* player : mine)
-        {
-          sum += apart(player->position, PitchPoint{cx, cy});
-        }
-        spreadSum += sum / static_cast<float>(mine.size());
-        ++spreadSamples;
-      }
-    }
+    measureSpacing(home, away, ball);
 
-    // Defending in twos: with the other side on the ball, one defender on
-    // the carrier (the nearest, within 3 m) while another stays goal-side
-    // of the next attacker (nearer their own goal than he is).
-    if ((carrier != nullptr) && home.size() >= 2 && away.size() >= 2)
-    {
-      const bool attackersHome = carrier->isHomeTeam;
-      const auto& attackers = attackersHome ? home : away;
-      const auto& defenders = attackersHome ? away : home;
-      const PitchPoint ownGoal{attackersHome ? box.length : 0.0F,
-                               PITCH_MIDPOINT_SHARE * box.width};
-      const MatchPlayer* presser = nullptr;
-      for (const MatchPlayer* defender : defenders)
-      {
-        if ((presser == nullptr) ||
-            apart(defender->position, carrier->position) <
-                apart(presser->position, carrier->position))
-        {
-          presser = defender;
-        }
-      }
-      const MatchPlayer* next = nullptr;
-      for (const MatchPlayer* attacker : attackers)
-      {
-        if (attacker != carrier &&
-            ((next == nullptr) ||
-             apart(attacker->position, ball) < apart(next->position, ball)))
-        {
-          next = attacker;
-        }
-      }
-      if (presser != nullptr && next != nullptr)
-      {
-        const MatchPlayer* cover = nullptr;
-        for (const MatchPlayer* defender : defenders)
-        {
-          if (defender != presser &&
-              (cover == nullptr || apart(defender->position, next->position) <
-                                       apart(cover->position, next->position)))
-          {
-            cover = defender;
-          }
-        }
-        ++defendingTicks;
-        if (apart(presser->position, carrier->position) <= ENGAGE_METRES &&
-            cover != nullptr &&
-            apart(cover->position, ownGoal) < apart(next->position, ownGoal))
-        {
-          ++pressCoverTicks;
-        }
-      }
-    }
+    measureDefending(engine, home, away, carrier);
 
-    // Open options: the carrier's team-mates within passing range (not too
-    // close or far for the brain to look at them).
-    if (carrier != nullptr)
-    {
-      const auto& mates = carrier->isHomeTeam ? home : away;
-      int open = 0;
-      for (const MatchPlayer* mate : mates)
-      {
-        if (mate == carrier)
-        {
-          continue;
-        }
-        const float metres = apart(mate->position, carrier->position);
-        if (metres >= MatchTuning::Passing::MIN_DISTANCE_METRES &&
-            metres <= MatchTuning::Passing::MAX_DISTANCE_METRES)
-        {
-          ++open;
-        }
-      }
-      openSum += open;
-      ++carrierTicks;
-    }
+    measureOptions(home, away, carrier);
   }
 
   float rungChoice = 1.0F;
