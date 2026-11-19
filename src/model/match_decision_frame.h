@@ -82,10 +82,8 @@ class Score
     {
       return;
     }
-    terms[count++] = {.name = name,
-                      .layer = layer,
-                      .measure = sum,
-                      .weight = factor - 1.0F};
+    terms[count++] = {
+        .name = name, .layer = layer, .measure = sum, .weight = factor - 1.0F};
     sum *= factor;
   }
   /** The option is not open to him (Options): it cannot win. */

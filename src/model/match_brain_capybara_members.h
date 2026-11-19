@@ -32,7 +32,6 @@
   {
     // Pass, per candidate.
     float receiverSpace = 0.0F;
-    float laneRisk = 0.0F;
     float progress = 0.0F;
     float progressInstruction = 0.0F;
     float lengthOffIdeal = 0.0F;
@@ -49,8 +48,6 @@
     float shotXG = 0.0F;
     float haveAGo = 0.0F;
     float finalThirdShot = 0.0F;
-    float shooting = 0.0F;
-    float shotPressure = 0.0F;
     float shout = 0.0F;
     float wideShot = 1.0F;
     float cutInsideShot = 0.0F;
@@ -60,18 +57,22 @@
     float comfortableLeadShot = 0.0F;
     // Carry.
     float carrySpace = 0.0F;
-    float carryDribbling = 0.0F;
-    float carryPressure = 0.0F;
+    float carryKeep = 0.0F;
     float carryRisk = 0.0F;
     float carryHeld = 0.0F;
     float cutInsideCarry = 0.0F;
     float comfortableLeadCarry = 0.0F;
     // Shield.
-    float shieldPressure = 0.0F;
-    float shieldDribbling = 0.0F;
+    float shieldKeep = 0.0F;
   };
   [[nodiscard]] CarrierWeightsCapybara carrierWeightsCapybara(
       const MatchPlayer& carrier) const;
+  /** Chance he keeps the ball if he carries it (or shields it): 1 minus
+   * the pressure on him times the chance the nearest opponent's tackle
+   * wins it (MatchRules::tackleWinChance, a standing tackle). */
+  [[nodiscard]] float keepChanceCapybara(const MatchPlayer& carrier,
+                                         bool shielding,
+                                         float pressure) const;
   MatchPlayer* chooseTakeOnCapybara(MatchPlayer& carrier);
   void afterPassReleasedCapybara(const MatchPlayer& passer, const MatchPlayer& receiver);
   /** @param details Debugger detail: every team-mate looked at (or null). */

@@ -3758,7 +3758,6 @@ MatchEngine::CarrierWeightsCapybara MatchEngine::carrierWeightsCapybara(
   // Pass: defaults, plus the attacking instruction on progress and his
   // role's daring.
   weights.receiverSpace = P::OPENNESS_WEIGHT;
-  weights.laneRisk = -P::LANE_RISK_WEIGHT;
   weights.progress = P::BASE_PROGRESS_WEIGHT;
   weights.progressInstruction =
       strategy.offensiveBias * P::OFFENSIVE_PROGRESS_WEIGHT;
@@ -3776,8 +3775,6 @@ MatchEngine::CarrierWeightsCapybara MatchEngine::carrierWeightsCapybara(
   weights.shotXG = D::SHOT_SCORE_SCALE;
   weights.haveAGo = D::SHOT_BASE_INCLINATION;
   weights.finalThirdShot = D::FINAL_THIRD_SHOT_BONUS;
-  weights.shooting = D::SHOT_SKILL_BONUS;
-  weights.shotPressure = -D::SHOT_PRESSURE_PENALTY;
   weights.shout = shoutShotBiasCapybara(carrier.isHomeTeam);
   weights.wideShot = D::WIDE_SHOT_DISCOUNT;
   weights.cutInsideShot = D::CUT_INSIDE_SHOT_BONUS;
@@ -3788,17 +3785,52 @@ MatchEngine::CarrierWeightsCapybara MatchEngine::carrierWeightsCapybara(
       gameState ? -D::COMFORTABLE_LEAD_SHOT_PENALTY : 0.0F;
   // Carry: defaults, plus the risk-taking instruction and the game state.
   weights.carrySpace = D::CARRY_OPENNESS_WEIGHT;
-  weights.carryDribbling = D::CARRY_DRIBBLING_BONUS;
-  weights.carryPressure = -D::CARRY_PRESSURE_PENALTY;
+  // Keeping the ball counts as much as a completed pass does.
+  weights.carryKeep = P::COMPLETION_UTILITY_WEIGHT;
   weights.carryRisk = strategy.riskTaking * D::CARRY_RISK_BIAS;
   weights.carryHeld = -D::CARRY_HOLD_PENALTY_PER_SECOND;
   weights.cutInsideCarry = D::CUT_INSIDE_CARRY_BONUS;
   weights.comfortableLeadCarry =
       gameState ? -D::COMFORTABLE_LEAD_CARRY_PENALTY : 0.0F;
   // Shield: defaults.
-  weights.shieldPressure = D::SHIELD_BONUS;
-  weights.shieldDribbling = D::SHIELD_DRIBBLING;
+  weights.shieldKeep = P::COMPLETION_UTILITY_WEIGHT;
   return weights;
+}
+
+float MatchEngine::keepChanceCapybara(const MatchPlayer& carrier,
+                                      bool shielding, float pressure) const
+{
+  // The nearest opponent is the one who would challenge.
+  const MatchPlayer* tackler = nullptr;
+  float nearest = std::numeric_limits<float>::max();
+  for (const auto& opponent : players)
+  {
+    if (opponent.isHomeTeam != carrier.isHomeTeam && active(opponent))
+    {
+      const float metres = distance(carrier.position, opponent.position);
+      if (metres < nearest)
+      {
+        nearest = metres;
+        tackler = &opponent;
+      }
+    }
+  }
+  if (tackler == nullptr)
+  {
+    return 1.0F;
+  }
+  // The same challenge the rules would settle (resolveTackle): his body
+  // against the carrier's, the team edges and the tackler's pressing; a
+  // standing tackle from the front with the ball at the carrier's foot.
+  MatchRules::TackleContext context;
+  context.make = tackleMake(*tackler, nullptr);
+  context.resist = tackleResist(carrier, shielding, nullptr);
+  context.defenderEdge =
+      teamEdge(tackler->isHomeTeam) * MatchTuning::Rules::DUEL_EDGE_WEIGHT;
+  context.carrierEdge =
+      teamEdge(carrier.isHomeTeam) * MatchTuning::Rules::DUEL_EDGE_WEIGHT;
+  context.pressing = getEffectiveSliders(tackler->isHomeTeam).pressing;
+  return 1.0F - (pressure * MatchRules::tackleWinChance(context));
 }
 
 MatchEngine::BallAction MatchEngine::chooseBallActionCapybara(
@@ -3900,10 +3932,10 @@ MatchEngine::BallAction MatchEngine::chooseBallActionCapybara(
   if (option)
   {
     pass.add("the best pass", S::SITUATION, option->utility, 1.0F);
-    pass.add("recycle from the byline", S::LOCATION,
-             gate(wideInFinalThird &&
-                  option->targetPoint.x <= carrier.position.x),
-             weights.recycle);
+    pass.add(
+        "recycle from the byline", S::LOCATION,
+        gate(wideInFinalThird && option->targetPoint.x <= carrier.position.x),
+        weights.recycle);
   }
   else
   {
@@ -3925,12 +3957,13 @@ MatchEngine::BallAction MatchEngine::chooseBallActionCapybara(
     shot.add("expected goals above the threshold", S::SITUATION,
              shotXG - MatchTuning::Decision::BASE_SHOT_THRESHOLD,
              weights.shotXG);
+    // Some inclination even with no space ahead (the same value as before
+    // the frame).
+    constexpr float HAVE_A_GO_FLOOR = 0.6F;
     shot.add("have-a-go inclination (space ahead, range)", S::SITUATION,
-             (0.6F + opennessAhead) * range, weights.haveAGo);
+             (HAVE_A_GO_FLOOR + opennessAhead) * range, weights.haveAGo);
     shot.add("final-third bonus", S::LOCATION, gate(finalThird),
              weights.finalThirdShot);
-    shot.add("Shooting", S::ATTRIBUTE, carrier.shooting, weights.shooting);
-    shot.add("pressure", S::SITUATION, pressure, weights.shotPressure);
     shot.add("touchline shout", S::MORALE, range, weights.shout);
     if (wideInFinalThird)
     {
@@ -3957,11 +3990,9 @@ MatchEngine::BallAction MatchEngine::chooseBallActionCapybara(
       getSimulatedSeconds() - getPossessionHistory().possessionStartSeconds);
   DecisionFrame::Score carry;
   carry.add("space ahead", S::SITUATION, opennessAhead, weights.carrySpace);
-  carry.add("Dribbling", S::ATTRIBUTE, carrier.dribbling,
-            weights.carryDribbling);
-  carry.add("pressure", S::SITUATION, pressure, weights.carryPressure);
-  carry.add("risk-taking instruction", S::INSTRUCTION, 1.0F,
-            weights.carryRisk);
+  carry.add("keeps the ball", S::SITUATION,
+            keepChanceCapybara(carrier, false, pressure), weights.carryKeep);
+  carry.add("risk-taking instruction", S::INSTRUCTION, 1.0F, weights.carryRisk);
   carry.add("time already on the ball", S::SITUATION, heldSeconds,
             weights.carryHeld);
   // A wide forward cutting inside wants to run at the box himself.
@@ -3976,9 +4007,8 @@ MatchEngine::BallAction MatchEngine::chooseBallActionCapybara(
   if (pressure >= MatchTuning::Decision::SHIELD_PRESSURE_THRESHOLD &&
       passUnavailableOrWeak)
   {
-    shield.add("pressure", S::SITUATION, pressure, weights.shieldPressure);
-    shield.add("Dribbling", S::ATTRIBUTE, carrier.dribbling,
-               weights.shieldDribbling);
+    shield.add("keeps the ball", S::SITUATION,
+               keepChanceCapybara(carrier, true, pressure), weights.shieldKeep);
   }
   else
   {
@@ -4349,15 +4379,14 @@ MatchEngine::PassOption MatchEngine::evaluatePassOptionCapybara(
   using DecisionFrame::gate;
   using S = TermSource;
   DecisionFrame::Score score;
-  score.add("receiver in space", S::SITUATION, openness,
-            weights.receiverSpace);
-  score.add("passing-lane risk", S::SITUATION, laneRisk, weights.laneRisk);
+  score.add("receiver in space", S::SITUATION, openness, weights.receiverSpace);
   score.add("forward progress", S::SITUATION, progression, weights.progress);
   score.add("progress x attacking instruction", S::INSTRUCTION, progression,
             weights.progressInstruction);
-  score.add("distance from the ideal length", S::SITUATION,
-            std::abs(passDistance - MatchTuning::Passing::IDEAL_DISTANCE_METRES),
-            weights.lengthOffIdeal);
+  score.add(
+      "distance from the ideal length", S::SITUATION,
+      std::abs(passDistance - MatchTuning::Passing::IDEAL_DISTANCE_METRES),
+      weights.lengthOffIdeal);
   // Pressed, a ball back to a team-mate is worth more.
   score.add("safe outlet under pressure", S::SITUATION,
             pressure * std::max(0.0F, -progression), weights.safeOutlet);
@@ -4368,11 +4397,13 @@ MatchEngine::PassOption MatchEngine::evaluatePassOptionCapybara(
   // The passer's role: progress and risk (1 - completion) are worth more
   // to a daring passer.
   score.add("passer's role: daring passes", S::SLOT_ROLE,
-            progression * T::PASS_DARING_PROGRESS_WEIGHT +
-                (1.0F - completionProbability) * T::PASS_DARING_SAFETY_WEIGHT,
+            (progression * T::PASS_DARING_PROGRESS_WEIGHT) +
+                ((1.0F - completionProbability) * T::PASS_DARING_SAFETY_WEIGHT),
             weights.passDaring);
+  // A target man is worth less to a ball played back to him.
+  constexpr float TARGET_BACKWARD_SHARE = 0.4F;
   score.add("receiver's role: target", S::SLOT_ROLE,
-            progression > 0.0F ? 1.0F : 0.4F, targetWeight);
+            progression > 0.0F ? 1.0F : TARGET_BACKWARD_SHARE, targetWeight);
   score.add("receiver tightly marked (order)", S::INSTRUCTION, 1.0F,
             markedWeight);
   // In the final third a team-mate in a shooting position is worth finding.
