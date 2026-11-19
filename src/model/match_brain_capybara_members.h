@@ -23,6 +23,55 @@
   void assignMarksCapybara(bool home);
   PitchPoint goalkeeperTargetCapybara(MatchPlayer& keeper, const MatchPlayer* carrier);
   BallAction chooseBallActionCapybara(MatchPlayer& carrier);
+  /** Weighting for the carrier decision (DecisionFrame; brain redesign plan
+   * section 15, step A): how much each of its measures counts for him. The
+   * defaults are MatchTuning's; the layers (team instructions, his role, a
+   * shout, the game state) move them. Weights that depend on the receiver
+   * (his role, an order on him) are set where the pass is scored. */
+  struct CarrierWeightsCapybara
+  {
+    // Pass, per candidate.
+    float receiverSpace = 0.0F;
+    float laneRisk = 0.0F;
+    float progress = 0.0F;
+    float progressInstruction = 0.0F;
+    float lengthOffIdeal = 0.0F;
+    float safeOutlet = 0.0F;
+    float completion = 0.0F;
+    float runner = 0.0F;
+    float passDaring = 0.0F;
+    float receiverXG = 0.0F;
+    float spaceBehind = 0.0F;
+    float cross = 0.0F;
+    float cutback = 0.0F;
+    float recycle = 0.0F;
+    // Shot.
+    float shotXG = 0.0F;
+    float haveAGo = 0.0F;
+    float finalThirdShot = 0.0F;
+    float shooting = 0.0F;
+    float shotPressure = 0.0F;
+    float shout = 0.0F;
+    float wideShot = 1.0F;
+    float cutInsideShot = 0.0F;
+    float roleShotBias = 0.0F;
+    float weakFootShot = 0.0F;
+    float lateLeadShot = 0.0F;
+    float comfortableLeadShot = 0.0F;
+    // Carry.
+    float carrySpace = 0.0F;
+    float carryDribbling = 0.0F;
+    float carryPressure = 0.0F;
+    float carryRisk = 0.0F;
+    float carryHeld = 0.0F;
+    float cutInsideCarry = 0.0F;
+    float comfortableLeadCarry = 0.0F;
+    // Shield.
+    float shieldPressure = 0.0F;
+    float shieldDribbling = 0.0F;
+  };
+  [[nodiscard]] CarrierWeightsCapybara carrierWeightsCapybara(
+      const MatchPlayer& carrier) const;
   MatchPlayer* chooseTakeOnCapybara(MatchPlayer& carrier);
   void afterPassReleasedCapybara(const MatchPlayer& passer, const MatchPlayer& receiver);
   /** @param details Debugger detail: every team-mate looked at (or null). */
@@ -126,9 +175,6 @@
    * already in it close to the passer is the likeliest to block it. */
   float passingLaneRiskCapybara(const MatchPlayer& passer,
                                  const MatchPlayer& receiver) const;
-  /** Pass utility added by the passer's and the receiver's roles. */
-  float passingRoleBiasCapybara(const MatchPlayer& passer, const MatchPlayer& receiver,
-                        float progression, float completion) const;
   /** Formation spot while his side has the ball (role and shape shift). */
   PitchPoint possessionAnchorCapybara(const MatchPlayer& player) const;
   /** Seconds a role is quicker (+) or slower to close the ball down. */
@@ -155,9 +201,4 @@
    * for a ball near and still to be won, gets up in a stoppage, gingerly if
    * play runs on long; else stays down (0). */
   float chooseGetUpCapybara(const MatchPlayer& player);
-  /** The core of the shot score (Binturong's shotScoreParts, which the xG
-   * map draws). */
-  [[nodiscard]] static ShotScoreParts shotScorePartsCapybara(
-      const MatchPitch& pitch, PitchPoint at, bool attackingRight, float shotXG,
-      float opennessAhead, float shooting, float pressure, float shoutBias);
 // clang-format on
