@@ -31,6 +31,7 @@
 #include <vector>
 
 #include "model/match_body_shape_binturong.h"
+#include "model/match_brain_flow.h"
 #include "model/match_contact_binturong.h"
 #include "model/match_decision_frame.h"
 #include "model/match_engine.h"
@@ -3807,12 +3808,132 @@ MatchEngine::CarrierWeightsCapybara MatchEngine::carrierWeightsCapybara(
   // Shot threat: his role, a shout.
   weights.shotThreatSteps = roleStepsCapybara(role.shotBias) +
                             shoutShotStepsCapybara(carrier.isHomeTeam);
+  // The brain flow tool with some layers off: only the layers on count.
+  if (flowLayers != BrainFlow::ALL_LAYERS)
+  {
+    const LayerStepsCapybara parts = layerStepsCapybara(carrier);
+    const auto sumOn =
+        [mask = flowLayers](const std::array<float, FLOW_LAYER_COUNT>& steps)
+    {
+      float sum = 0.0F;
+      for (std::size_t layer = 0; layer < steps.size(); ++layer)
+      {
+        if (BrainFlow::isOn(mask, static_cast<BrainFlow::Layer>(layer)))
+        {
+          sum += steps.at(layer);
+        }
+      }
+      return sum;
+    };
+    weights.progressSteps = sumOn(parts.progress);
+    weights.keepSteps = sumOn(parts.keep);
+    weights.shotThreatSteps = sumOn(parts.shotThreat);
+  }
   weights.progress = stepped(weights.progress, weights.progressSteps);
   weights.completion = stepped(weights.completion, weights.keepSteps);
   weights.carryKeep = stepped(weights.carryKeep, weights.keepSteps);
   weights.shieldKeep = stepped(weights.shieldKeep, weights.keepSteps);
   weights.shotThreat = stepped(weights.shotThreat, weights.shotThreatSteps);
   return weights;
+}
+
+MatchEngine::LayerStepsCapybara MatchEngine::layerStepsCapybara(
+    const MatchPlayer& carrier) const
+{
+  // The same steps as carrierWeightsCapybara, split by layer. The team
+  // sliders: the manager's tactics, then the team mentality (the game
+  // state), then the shout (computeEffectiveSliders).
+  static_assert(BrainFlow::LAYER_COUNT == FLOW_LAYER_COUNT,
+                "LayerStepsCapybara holds a step per BrainFlow::Layer");
+  static_assert(BrainFlow::ALL_LAYERS == FLOW_ALL_LAYERS,
+                "flowLayers starts with every BrainFlow::Layer on");
+  namespace T = TacticsTuning;
+  using BrainFlow::Layer;
+  using DecisionFrame::sliderSteps;
+  const auto at = [](Layer layer) { return static_cast<std::size_t>(layer); };
+  const StrategySliders tactics =
+      (carrier.isHomeTeam ? homeStrategy : awayStrategy).getSliders();
+  StrategySliders mentality = tactics;
+  if (drillRules.layers)
+  {
+    applyTeamMentality(mentality, carrier.isHomeTeam);
+  }
+  const StrategySliders effective = getEffectiveSliders(carrier.isHomeTeam);
+  const RoleProfile& role = roleProfileOf(carrier);
+  const float daringSteps = roleStepsCapybara(role.passDaring);
+  LayerStepsCapybara steps;
+  steps.progress[at(Layer::INSTRUCTIONS)] = sliderSteps(tactics.offensiveBias);
+  steps.progress[at(Layer::GAME_STATE)] =
+      sliderSteps(mentality.offensiveBias) - sliderSteps(tactics.offensiveBias);
+  steps.progress[at(Layer::SHOUT)] = sliderSteps(effective.offensiveBias) -
+                                     sliderSteps(mentality.offensiveBias);
+  steps.progress[at(Layer::ROLE)] = daringSteps;
+  steps.keep[at(Layer::INSTRUCTIONS)] = -sliderSteps(tactics.riskTaking);
+  steps.keep[at(Layer::GAME_STATE)] =
+      sliderSteps(tactics.riskTaking) - sliderSteps(mentality.riskTaking);
+  steps.keep[at(Layer::SHOUT)] =
+      sliderSteps(mentality.riskTaking) - sliderSteps(effective.riskTaking);
+  steps.keep[at(Layer::ROLE)] = -(daringSteps * T::PASS_DARING_SAFETY_WEIGHT /
+                                  T::PASS_DARING_PROGRESS_WEIGHT);
+  steps.shotThreat[at(Layer::ROLE)] = roleStepsCapybara(role.shotBias);
+  steps.shotThreat[at(Layer::SHOUT)] =
+      shoutShotStepsCapybara(carrier.isHomeTeam);
+  return steps;
+}
+
+void MatchEngine::noteFlowWeightsCapybara(
+    const MatchPlayer& carrier, const CarrierWeightsCapybara& weights) const
+{
+  if (flowRecord == nullptr)
+  {
+    return;
+  }
+  const CarrierWeightsCapybara neutral = neutralCarrierWeightsCapybara();
+  const LayerStepsCapybara steps = layerStepsCapybara(carrier);
+  const BrainFlow::LayerSteps none{};
+  // Steps only from the layers the tool has on, as carrierWeightsCapybara.
+  const auto onOnly =
+      [mask = flowLayers](const std::array<float, FLOW_LAYER_COUNT>& all)
+  {
+    BrainFlow::LayerSteps kept{};
+    for (std::size_t layer = 0; layer < all.size(); ++layer)
+    {
+      if (BrainFlow::isOn(mask, static_cast<BrainFlow::Layer>(layer)))
+      {
+        kept.at(layer) = all.at(layer);
+      }
+    }
+    return kept;
+  };
+  auto& list = flowRecord->weights;
+  const auto note = [&list](const char* name, float base,
+                            const BrainFlow::LayerSteps& layerSteps, float used)
+  {
+    list.push_back(
+        {.name = name, .base = base, .steps = layerSteps, .used = used});
+  };
+  note("progress", neutral.progress, onOnly(steps.progress), weights.progress);
+  note("space", neutral.space, none, weights.space);
+  note("completion (keep)", neutral.completion, onOnly(steps.keep),
+       weights.completion);
+  note("carry keep", neutral.carryKeep, onOnly(steps.keep), weights.carryKeep);
+  note("shield keep", neutral.shieldKeep, onOnly(steps.keep),
+       weights.shieldKeep);
+  note("threat (pass, carry)", neutral.threat, none, weights.threat);
+  note("shot threat", neutral.shotThreat, onOnly(steps.shotThreat),
+       weights.shotThreat);
+  note("length off ideal", neutral.lengthOffIdeal, none,
+       weights.lengthOffIdeal);
+  note("safe outlet", neutral.safeOutlet, none, weights.safeOutlet);
+  note("runner", neutral.runner, none, weights.runner);
+  note("space in behind", neutral.spaceBehind, none, weights.spaceBehind);
+  note("time on the ball", neutral.carryHeld, none, weights.carryHeld);
+  note("cutting inside (shot)", neutral.cutInsideShot, none,
+       weights.cutInsideShot);
+  note("cutting inside (carry)", neutral.cutInsideCarry, none,
+       weights.cutInsideCarry);
+  note("weak foot (shot)", neutral.weakFootShot, none, weights.weakFootShot);
+  note("wide angle (shot)", neutral.wideShot, none, weights.wideShot);
 }
 
 float MatchEngine::addShotCoreCapybara(DecisionFrame::Score& shot,
@@ -3991,12 +4112,34 @@ MatchEngine::BallAction MatchEngine::chooseBallActionCapybara(
   const float judgement = (1.0F - decisions) * JUDGEMENT_LOG_ODDS;
   const auto misreadOffset = [this, judgement]()
   { return judgement * randomFloat(-1.0F, 1.0F); };
-  const float pickNoiseScale =
-      (1.0F - decisions) * PICK_NOISE *
-      (1.0F + (1.0F - familiarityOf(carrier)) *
-                  MatchTuning::Decision::FAMILIARITY_NOISE_GAIN) *
-      std::max(0.5F, 1.0F - teamEdge(carrier.isHomeTeam)) *
-      (1.0F - talkSwing(carrier.isHomeTeam) * TacticsTuning::TALK_COMPOSURE);
+  // A chance as he reads it, noted for the brain flow tool.
+  const auto readChance = [this](const char* name, float truth, float offset)
+  {
+    const float read = DecisionFrame::misread(truth, offset);
+    if (flowRecord != nullptr)
+    {
+      flowRecord->chances.push_back(
+          {.name = name, .truth = truth, .offset = offset, .read = read});
+    }
+    return read;
+  };
+  if (flowRecord != nullptr)
+  {
+    *flowRecord = {};
+    flowRecord->layers = flowLayers;
+  }
+  const bool mood = BrainFlow::isOn(flowLayers, BrainFlow::Layer::MOOD);
+  const float familiarityFactor =
+      mood ? 1.0F + ((1.0F - familiarityOf(carrier)) *
+                     MatchTuning::Decision::FAMILIARITY_NOISE_GAIN)
+           : 1.0F;
+  const float edgeFactor =
+      mood ? std::max(0.5F, 1.0F - teamEdge(carrier.isHomeTeam)) : 1.0F;
+  const float talkFactor = mood ? 1.0F - (talkSwing(carrier.isHomeTeam) *
+                                          TacticsTuning::TALK_COMPOSURE)
+                                : 1.0F;
+  const float pickNoiseScale = (1.0F - decisions) * PICK_NOISE *
+                               familiarityFactor * edgeFactor * talkFactor;
   if (detail)
   {
     // The scale is a product: each factor is noted as what it adds.
@@ -4026,7 +4169,9 @@ MatchEngine::BallAction MatchEngine::chooseBallActionCapybara(
   const CarrierWeightsCapybara weights = carrierWeightsCapybara(carrier);
   using DecisionFrame::gate;
   using S = TermSource;
-  const bool cutsInside = cutsInsideCapybara(carrier);
+  const bool cutsInside = BrainFlow::isOn(flowLayers, BrainFlow::Layer::ROLE) &&
+                          cutsInsideCapybara(carrier);
+  noteFlowWeightsCapybara(carrier, weights);
 
   // Options and Scoring: each option open to him, scored as measures times
   // their weights.
@@ -4046,6 +4191,20 @@ MatchEngine::BallAction MatchEngine::chooseBallActionCapybara(
     const PassOption read = evaluatePassOptionCapybara(
         carrier, *option->receiver, readPassDetail ? &*readPassDetail : nullptr,
         {.completion = completionOffset, .receiverXG = receiverXGOffset});
+    if (flowRecord != nullptr)
+    {
+      readChance("pass completion", read.completionProbability,
+                 completionOffset);
+      readChance("receiver's xG", estimateShotXG(*option->receiver),
+                 receiverXGOffset);
+      flowRecord->bestReceiver = option->receiver->player != nullptr
+                                     ? option->receiver->player->getId()
+                                     : 0;
+      flowRecord->receiverRoleSteps =
+          BrainFlow::isOn(flowLayers, BrainFlow::Layer::ROLE)
+              ? roleStepsCapybara(roleProfileOf(*option->receiver).targetBias)
+              : 0.0F;
+    }
     pass.add("the best pass (as he reads it)", S::SITUATION, read.utility,
              1.0F);
   }
@@ -4064,7 +4223,7 @@ MatchEngine::BallAction MatchEngine::chooseBallActionCapybara(
   DecisionFrame::Score shot;
   if (shotXG >= MatchTuning::Decision::MIN_SHOT_XG)
   {
-    const float readXG = DecisionFrame::misread(shotXG, misreadOffset());
+    const float readXG = readChance("shot xG", shotXG, misreadOffset());
     const float range = addShotCoreCapybara(
         shot, weights, pitch, carrier.position, carrier.isHomeTeam, readXG);
     // A wide forward who has cut inside is looking for his shot; roles
@@ -4073,7 +4232,10 @@ MatchEngine::BallAction MatchEngine::chooseBallActionCapybara(
     shot.add("cutting inside", S::SLOT_ROLE, gate(cutsInside) * range,
              weights.cutInsideShot);
     shot.add("forced onto weaker foot", S::INSTRUCTION,
-             weakFootPressure(carrier), weights.weakFootShot);
+             BrainFlow::isOn(flowLayers, BrainFlow::Layer::OPPOSITION_ORDERS)
+                 ? weakFootPressure(carrier)
+                 : 0.0F,
+             weights.weakFootShot);
   }
   else
   {
@@ -4089,10 +4251,11 @@ MatchEngine::BallAction MatchEngine::chooseBallActionCapybara(
   // (carryEndCapybara), as a pass's are taken at the receiver.
   DecisionFrame::Score carry;
   const PitchPoint carryEnd = carryEndCapybara(carrier);
-  const float carryKeep = DecisionFrame::misread(
-      keepChanceCapybara(carrier, false, pressure), misreadOffset());
-  const float carryEndXG = DecisionFrame::misread(
-      carryEndXGCapybara(carrier, carryEnd), misreadOffset());
+  const float carryKeep =
+      readChance("carry keep", keepChanceCapybara(carrier, false, pressure),
+                 misreadOffset());
+  const float carryEndXG = readChance(
+      "carry end xG", carryEndXGCapybara(carrier, carryEnd), misreadOffset());
   const float carryProgress =
       carryKeep *
       progressCapybara(carrier.isHomeTeam, carrier.position, carryEnd);
@@ -4120,8 +4283,8 @@ MatchEngine::BallAction MatchEngine::chooseBallActionCapybara(
   {
     shield.add(
         "keeps the ball", S::SITUATION,
-        DecisionFrame::misread(keepChanceCapybara(carrier, true, pressure),
-                               misreadOffset()),
+        readChance("shield keep", keepChanceCapybara(carrier, true, pressure),
+                   misreadOffset()),
         weights.shieldKeep);
   }
   else
@@ -4165,6 +4328,72 @@ MatchEngine::BallAction MatchEngine::chooseBallActionCapybara(
   if (option)
   {
     passScore += pickNoiseScale * randomFloat(-1.0F, 1.0F);
+  }
+
+  if (flowRecord != nullptr)
+  {
+    using BrainFlow::OptionIndex;
+    const auto at = [](OptionIndex index)
+    { return static_cast<std::size_t>(index); };
+    BrainFlow::CarrierRecord& record = *flowRecord;
+    record.options[at(OptionIndex::PASS)].score = pass;
+    record.options[at(OptionIndex::SHOT)].score = shot;
+    record.options[at(OptionIndex::CARRY)].score = carry;
+    record.options[at(OptionIndex::SHIELD)].score = shield;
+    record.options[at(OptionIndex::PASS)].ruledOut =
+        option ? nullptr : "no pass candidate in range";
+    record.options[at(OptionIndex::SHOT)].ruledOut =
+        shotXG >= MatchTuning::Decision::MIN_SHOT_XG
+            ? nullptr
+            : "xG below the least a shot needs";
+    if (pressure < MatchTuning::Decision::SHIELD_PRESSURE_THRESHOLD)
+    {
+      record.options[at(OptionIndex::SHIELD)].ruledOut =
+          "not pressed closely enough";
+    }
+    else if (!passUnavailableOrWeak)
+    {
+      record.options[at(OptionIndex::SHIELD)].ruledOut = "a pass worth playing";
+    }
+    const std::array<float, 4> withNoise{passScore, shotScore, carryScore,
+                                         shieldScore};
+    for (std::size_t index = 0; index < withNoise.size(); ++index)
+    {
+      record.options.at(index).noise =
+          std::isfinite(scoresBeforeNoise.at(index))
+              ? withNoise.at(index) - scoresBeforeNoise.at(index)
+              : 0.0F;
+    }
+    record.judgement = judgement;
+    record.pickNoise = pickNoiseScale;
+    record.decisions = decisions;
+    record.familiarityFactor = familiarityFactor;
+    record.edgeFactor = edgeFactor;
+    record.talkFactor = talkFactor;
+    record.carryEnd = carryEnd;
+    // The same comparisons as the branches below, in the same order.
+    const bool clearing =
+        pitch.fromOwnGoalLine(carrier.position, carrier.isHomeTeam) <
+        MatchTuning::Defending::CLEARANCE_WITHIN_METRES;
+    if (shotScore >= passScore && shotScore >= carryScore &&
+        shotScore >= shieldScore)
+    {
+      record.chosen = at(OptionIndex::SHOT);
+    }
+    else if (carryScore >= passScore && carryScore >= shieldScore)
+    {
+      record.chosen = at(OptionIndex::CARRY);
+    }
+    else if (shieldScore >= passScore)
+    {
+      record.chosen = at(OptionIndex::SHIELD);
+    }
+    else if (option)
+    {
+      record.chosen = at(OptionIndex::PASS);
+    }
+    record.clearance = record.chosen == at(OptionIndex::SHIELD) && clearing;
+    record.filled = true;
   }
 
   lastScenarioDecision.passUtility = passScore;
@@ -4454,8 +4683,13 @@ MatchEngine::PassOption MatchEngine::evaluatePassOptionCapybara(
   const float progressWeight = DecisionFrame::stepped(
       neutralCarrierWeightsCapybara().progress,
       weights.progressSteps +
-          roleStepsCapybara(roleProfileOf(receiver).targetBias));
-  const float markedWeight = -tightMarkPenaltyCapybara(receiver);
+          (BrainFlow::isOn(flowLayers, BrainFlow::Layer::ROLE)
+               ? roleStepsCapybara(roleProfileOf(receiver).targetBias)
+               : 0.0F));
+  const float markedWeight =
+      BrainFlow::isOn(flowLayers, BrainFlow::Layer::OPPOSITION_ORDERS)
+          ? -tightMarkPenaltyCapybara(receiver)
+          : 0.0F;
   // Scoring: the measures, each times its weight, summed in this order.
   using DecisionFrame::gate;
   using S = TermSource;

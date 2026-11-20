@@ -24,6 +24,16 @@
   PitchPoint goalkeeperTargetCapybara(MatchPlayer& keeper, const MatchPlayer* carrier);
   BallAction chooseBallActionCapybara(MatchPlayer& carrier);
  public:
+  /** The brain flow tool (model/match_brain_flow.h): a record for each
+   * carrier decision to fill (null: none, as in every match), and the
+   * influence layers it plays with (a BrainFlow::LayerMask; all by
+   * default). Only the carrier decision reads the mask so far. */
+  void setBrainFlowCapybara(BrainFlow::CarrierRecord* record,
+                            std::uint8_t layers)
+  {
+    flowRecord = record;
+    flowLayers = layers;
+  }
   // Public for the sandbox xG map, which draws the shot score core.
   /** Weighting for the carrier decision (DecisionFrame; brain redesign plan
    * section 15, step A): how much each of its measures counts for him. The
@@ -76,6 +86,27 @@
                                    const MatchPitch& pitch, PitchPoint at,
                                    bool attackingRight, float shotXG);
  private:
+  /** BrainFlow::LAYER_COUNT and BrainFlow::ALL_LAYERS (checked where the
+   * brain uses them; this header can't include match_brain_flow.h). */
+  static constexpr std::size_t FLOW_LAYER_COUNT = 6;
+  static constexpr std::uint8_t FLOW_ALL_LAYERS = 0x3F;
+  BrainFlow::CarrierRecord* flowRecord = nullptr;
+  std::uint8_t flowLayers = FLOW_ALL_LAYERS;
+  /** Each influence layer's steps on the stepped weights (index by
+   * BrainFlow::Layer), as carrierWeightsCapybara sums them. The team
+   * sliders are split into the manager's tactics, the game state (team
+   * mentality) and the shout. */
+  struct LayerStepsCapybara
+  {
+    std::array<float, FLOW_LAYER_COUNT> progress{};
+    std::array<float, FLOW_LAYER_COUNT> keep{};
+    std::array<float, FLOW_LAYER_COUNT> shotThreat{};
+  };
+  [[nodiscard]] LayerStepsCapybara layerStepsCapybara(
+      const MatchPlayer& carrier) const;
+  /** Fills the brain flow record's weights for this carrier. */
+  void noteFlowWeightsCapybara(const MatchPlayer& carrier,
+                               const CarrierWeightsCapybara& weights) const;
   /** Where his carry would take him by his next decision: about a second
    * towards carryTargetCapybara at carrying speed. */
   [[nodiscard]] PitchPoint carryEndCapybara(const MatchPlayer& carrier) const;

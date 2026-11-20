@@ -154,6 +154,10 @@ namespace DecisionFrame
 {
 class Score;
 }
+namespace BrainFlow
+{
+struct CarrierRecord;
+}
 
 struct PassDecision
 {
