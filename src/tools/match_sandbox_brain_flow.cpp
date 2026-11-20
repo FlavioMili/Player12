@@ -142,11 +142,15 @@ std::string change(float before, float after, const char* format = "{:.2f}")
   return from + " -> " + std::vformat(format, std::make_format_args(after));
 }
 
-/** The example: a midfielder on the ball in build-up, three team-mates and
- * five opponents, scored once by the brain (never stepped on). */
+/** The example: a carrier, three team-mates and five opponents where the
+ * settings put them, scored by the brain (never played on). */
 class BrainFlowExample final : public Drill
 {
  public:
+  explicit BrainFlowExample(const BrainFlowScene::ExampleSettings& chosen)
+      : settings(chosen)
+  {
+  }
   [[nodiscard]] const char* name() const override { return "Brain flow"; }
   [[nodiscard]] const char* summary() const override { return ""; }
   [[nodiscard]] std::vector<DrillParameter> parameters() override { return {}; }
@@ -160,7 +164,14 @@ class BrainFlowExample final : public Drill
       player.homeTeam = home;
       return player;
     };
-    return {spec("Carrier", PlayerRole::CM, true),
+    DrillPlayerSpec carrier = spec("Carrier", PlayerRole::CM, true);
+    carrier.stats = {{"Passing", settings.passing},
+                     {"Shooting", settings.shooting},
+                     {"Dribbling", settings.dribbling},
+                     {"Pace", settings.pace},
+                     {"Vision", settings.vision}};
+    carrier.derived = {{DerivedStat::DECISIONS, settings.decisions}};
+    return {carrier,
             spec("Left midfielder", PlayerRole::CM, true),
             spec("Right winger", PlayerRole::RW, true),
             spec("Striker", PlayerRole::ST, true),
@@ -172,25 +183,18 @@ class BrainFlowExample final : public Drill
   }
   void begin(MatchEngine& engine, const std::vector<PlayerID>& ids) override
   {
-    // Fractions of the match pitch, the home side attacking to the right.
-    constexpr std::array<std::array<float, 2>, 9> SPOTS = {{{0.45F, 0.50F},
-                                                            {0.50F, 0.28F},
-                                                            {0.63F, 0.84F},
-                                                            {0.72F, 0.52F},
-                                                            {0.98F, 0.50F},
-                                                            {0.48F, 0.47F},
-                                                            {0.56F, 0.62F},
-                                                            {0.80F, 0.40F},
-                                                            {0.80F, 0.60F}}};
+    // Fractions of the match pitch, the home side attacking to the right;
+    // the striker (the fourth) is making a run.
+    constexpr std::size_t STRIKER = 3;
     const MatchPitch pitch;
     scenario = {};
-    for (std::size_t index = 0; index < ids.size() && index < SPOTS.size();
-         ++index)
+    for (std::size_t index = 0;
+         index < ids.size() && index < settings.spots.size(); ++index)
     {
-      scenario.players.push_back(
-          {.playerId = ids[index],
-           .position = pitch.at(SPOTS.at(index)[0], SPOTS.at(index)[1]),
-           .makingRun = index == 3});
+      const auto& spot = settings.spots.at(index);
+      scenario.players.push_back({.playerId = ids[index],
+                                  .position = pitch.at(spot[0], spot[1]),
+                                  .makingRun = index == STRIKER});
     }
     scenario.carrierId = ids.empty() ? 0 : ids.front();
     scenario.ballPosition =
@@ -206,18 +210,114 @@ class BrainFlowExample final : public Drill
 
   MatchScenario scenario;
   std::vector<PlayerID> playerIds;
+
+ private:
+  BrainFlowScene::ExampleSettings settings;
 };
 
-/** The example's layer settings (phase 4 makes them editable). */
-constexpr float ATTACKING_SLIDER = 0.8F;
-constexpr float RISK_SLIDER = 0.75F;
-constexpr float FAMILIARITY = 0.4F;
-constexpr float MINUTE = 80.0F;
-constexpr int HOME_GOALS = 0;
-constexpr int AWAY_GOALS = 1;
+// The example's presets: where the nine players stand.
+constexpr std::array<const char*, 3> PRESET_NAMES = {
+    "Build-up in midfield", "Edge of the box", "Pressed near his own goal"};
+constexpr std::array<BrainFlowScene::Spots, 3> PRESET_SPOTS = {{
+    {{{0.45F, 0.50F},
+      {0.50F, 0.28F},
+      {0.63F, 0.84F},
+      {0.72F, 0.52F},
+      {0.98F, 0.50F},
+      {0.48F, 0.47F},
+      {0.56F, 0.62F},
+      {0.80F, 0.40F},
+      {0.80F, 0.60F}}},
+    {{{0.80F, 0.45F},
+      {0.78F, 0.22F},
+      {0.84F, 0.80F},
+      {0.90F, 0.55F},
+      {0.99F, 0.50F},
+      {0.83F, 0.47F},
+      {0.76F, 0.60F},
+      {0.92F, 0.42F},
+      {0.92F, 0.60F}}},
+    {{{0.15F, 0.30F},
+      {0.25F, 0.18F},
+      {0.30F, 0.70F},
+      {0.50F, 0.50F},
+      {0.98F, 0.50F},
+      {0.17F, 0.28F},
+      {0.22F, 0.40F},
+      {0.30F, 0.35F},
+      {0.28F, 0.55F}}},
+}};
+// Each layer's choices.
+constexpr std::array<const char*, 8> CARRIER_ROLE_NAMES = {
+    "Standard",       "Anchor",         "Playmaker",        "Box-to-box",
+    "Second striker", "Inside forward", "Touchline winger", "False nine"};
+constexpr std::array<TacticalRole, 8> CARRIER_ROLES = {
+    TacticalRole::Standard,        TacticalRole::Anchor,
+    TacticalRole::Playmaker,       TacticalRole::BoxToBox,
+    TacticalRole::SecondStriker,   TacticalRole::InsideForward,
+    TacticalRole::TouchlineWinger, TacticalRole::FalseNine};
+constexpr std::array<const char*, 5> STRIKER_ROLE_NAMES = {
+    "Standard", "Target forward", "Poacher", "Pressing forward", "False nine"};
+constexpr std::array<TacticalRole, 5> STRIKER_ROLES = {
+    TacticalRole::Standard, TacticalRole::TargetForward, TacticalRole::Poacher,
+    TacticalRole::PressingForward, TacticalRole::FalseNine};
+constexpr std::array<const char*, 3> DUTY_NAMES = {"Defend", "Support",
+                                                   "Attack"};
+/** None, then the MatchShout values in order. */
+constexpr std::array<const char*, 12> SHOUT_NAMES = {
+    "None",      "Push higher", "Drop deeper",        "Press more",
+    "Calm down", "Encourage",   "Work ball into box", "Shoot on sight",
+    "Stand off", "Demand more", "Hit on the counter", "Keep possession"};
+/** The default example: the first preset, each layer set so that switching
+ * it on shows something, the carrier's attributes at 50. */
+constexpr BrainFlowScene::ExampleSettings DEFAULT_SETTINGS{
+    .spots = PRESET_SPOTS[0],
+    .attacking = 0.8F,
+    .risk = 0.75F,
+    .carrierRole = 2,
+    .carrierDuty = 2,
+    .strikerRole = 1,
+    .shout = 7,
+    .tightMarkStriker = true,
+    .weakFootCarrier = true,
+    .minute = 80,
+    .ourGoals = 0,
+    .theirGoals = 1,
+    .familiarity = 0.4F,
+    .decisions = 50.0F,
+    .passing = 50.0F,
+    .shooting = 50.0F,
+    .dribbling = 50.0F,
+    .pace = 50.0F,
+    .vision = 50.0F};
+
+/** A combo over a list of names; true when the choice changes. */
+template <std::size_t N>
+bool pick(const char* id, int& index, const std::array<const char*, N>& list)
+{
+  bool changed = false;
+  const auto current =
+      static_cast<std::size_t>(std::clamp(index, 0, static_cast<int>(N) - 1));
+  if (ImGui::BeginCombo(id, list.at(current)))
+  {
+    for (std::size_t option = 0; option < N; ++option)
+    {
+      if (ImGui::Selectable(list.at(option), option == current))
+      {
+        index = static_cast<int>(option);
+        changed = true;
+      }
+    }
+    ImGui::EndCombo();
+  }
+  return changed;
+}
 }  // namespace
 
-BrainFlowScene::BrainFlowScene(GUIView* guiView_ptr) : GUIScene(guiView_ptr) {}
+BrainFlowScene::BrainFlowScene(GUIView* guiView_ptr)
+    : GUIScene(guiView_ptr), settings(DEFAULT_SETTINGS)
+{
+}
 
 BrainFlowScene::~BrainFlowScene() = default;
 
@@ -264,10 +364,14 @@ void BrainFlowScene::rebuild()
 {
   dirty = false;
   error.clear();
-  BrainFlowExample example;
+  BrainFlowExample example(settings);
   example.seed = rollSeed;
   const Formation::Preset& shape = Formation::PRESETS[0];
-  std::vector<PlayerID> ids;
+  const auto choice = [](int index, std::size_t count)
+  {
+    return static_cast<std::size_t>(
+        std::clamp(index, 0, static_cast<int>(count) - 1));
+  };
   const auto prepare = [&](MatchEngine& engine)
   {
     // Capybara on both sides; the layers' settings for this example. The
@@ -275,28 +379,40 @@ void BrainFlowScene::rebuild()
     // carrier is slot 0 and the striker slot 3.
     engine.setBrain(true, BrainId::CAPYBARA);
     engine.setBrain(false, BrainId::CAPYBARA);
+    constexpr std::size_t CARRIER_SLOT = 0;
+    constexpr std::size_t STRIKER_SLOT = 3;
     Strategy home;
-    home.setOffensiveBias(ATTACKING_SLIDER);
-    home.setRiskTaking(RISK_SLIDER);
-    home.setSlot({.anchor = shape.slots[0].position,
-                  .role = TacticalRole::Playmaker,
-                  .duty = RoleDuty::Attack});
-    home.setSlot({.anchor = shape.slots[3].position,
-                  .role = TacticalRole::TargetForward,
+    home.setOffensiveBias(settings.attacking);
+    home.setRiskTaking(settings.risk);
+    home.setSlot({.anchor = shape.slots.at(CARRIER_SLOT).position,
+                  .role = CARRIER_ROLES.at(
+                      choice(settings.carrierRole, CARRIER_ROLES.size())),
+                  .duty = static_cast<RoleDuty>(
+                      choice(settings.carrierDuty, DUTY_NAMES.size()))});
+    home.setSlot({.anchor = shape.slots.at(STRIKER_SLOT).position,
+                  .role = STRIKER_ROLES.at(
+                      choice(settings.strikerRole, STRIKER_ROLES.size())),
                   .duty = RoleDuty::Attack});
     engine.setStrategy(true, home);
     Strategy away;
-    if (example.playerIds.size() > 3)
+    std::vector<PlayerInstruction> orders;
+    if (settings.tightMarkStriker && example.playerIds.size() > STRIKER_SLOT)
     {
-      away.setOppositionOrders(
-          {{.player = example.playerIds[3],
-            .instruction = OppositionInstruction::TightMark},
-           {.player = example.playerIds[0],
-            .instruction = OppositionInstruction::ShowWeakFoot}});
+      orders.push_back({.player = example.playerIds.at(STRIKER_SLOT),
+                        .instruction = OppositionInstruction::TightMark});
     }
+    if (settings.weakFootCarrier && !example.playerIds.empty())
+    {
+      orders.push_back({.player = example.playerIds.front(),
+                        .instruction = OppositionInstruction::ShowWeakFoot});
+    }
+    away.setOppositionOrders(orders);
     engine.setStrategy(false, away);
-    engine.applyShout(true, MatchShout::SHOOT_ON_SIGHT);
-    engine.setTacticalFamiliarity(true, FAMILIARITY);
+    if (settings.shout > 0)
+    {
+      engine.applyShout(true, static_cast<MatchShout>(settings.shout - 1));
+    }
+    engine.setTacticalFamiliarity(true, settings.familiarity);
   };
   DrillRun run(example, guiView->getController().getStatsConfig(), false,
                prepare);
@@ -310,8 +426,10 @@ void BrainFlowScene::rebuild()
     record = {};
     record.steady = steady;
     engine.setBrainFlowCapybara(&record, mask);
-    const bool applied = engine.applyScenario(
-        example.scenario, MatchState::PLAYING, MINUTE, HOME_GOALS, AWAY_GOALS);
+    const bool applied =
+        engine.applyScenario(example.scenario, MatchState::PLAYING,
+                             static_cast<float>(settings.minute),
+                             settings.ourGoals, settings.theirGoals);
     engine.setBrainFlowCapybara(nullptr, BrainFlow::ALL_LAYERS);
     return applied && record.filled;
   };
@@ -332,6 +450,7 @@ void BrainFlowScene::rebuild()
       names[slot.player->getId()] = slot.player->getName();
     }
   }
+  exampleIds.assign(example.playerIds.begin(), example.playerIds.end());
   carrierName = example.playerIds.empty() ? std::string()
                                           : nameOf(example.playerIds.front());
   if (!example.scenario.players.empty())
@@ -410,6 +529,14 @@ void BrainFlowScene::renderPanel(float width)
           layers ^ (1U << static_cast<unsigned>(index)));
       dirty = true;
     }
+    if (layerOn(layer))
+    {
+      ImGui::Indent();
+      ImGui::PushItemWidth(-1);
+      renderLayerSettings(layer);
+      ImGui::PopItemWidth();
+      ImGui::Unindent();
+    }
   }
   if (Page::button("All off (default flow)", false, scale, boldFont))
   {
@@ -437,18 +564,227 @@ void BrainFlowScene::renderPanel(float width)
   }
   Page::endCard(scale);
 
+  renderExample(width);
+}
+
+void BrainFlowScene::renderLayerSettings(Layer layer)
+{
+  constexpr int LAST_MINUTE = 90;
+  constexpr int MOST_GOALS = 5;
+  bool changed = false;
+  switch (layer)
+  {
+    case Layer::INSTRUCTIONS:
+      changed |= ImGui::SliderFloat("##attacking", &settings.attacking, 0.0F,
+                                    1.0F, "attacking %.2f");
+      changed |= ImGui::SliderFloat("##risk", &settings.risk, 0.0F, 1.0F,
+                                    "risk-taking %.2f");
+      break;
+    case Layer::ROLE:
+      muted("Carrier, his duty, the striker:");
+      changed |=
+          pick("##carrier_role", settings.carrierRole, CARRIER_ROLE_NAMES);
+      changed |= pick("##carrier_duty", settings.carrierDuty, DUTY_NAMES);
+      changed |=
+          pick("##striker_role", settings.strikerRole, STRIKER_ROLE_NAMES);
+      break;
+    case Layer::SHOUT:
+      changed |= pick("##shout", settings.shout, SHOUT_NAMES);
+      break;
+    case Layer::OPPOSITION_ORDERS:
+      changed |=
+          ImGui::Checkbox("tight mark the striker", &settings.tightMarkStriker);
+      changed |= ImGui::Checkbox("show the carrier onto his weaker foot",
+                                 &settings.weakFootCarrier);
+      break;
+    case Layer::GAME_STATE:
+      changed |= ImGui::SliderInt("##minute", &settings.minute, 0, LAST_MINUTE,
+                                  "minute %d");
+      changed |= ImGui::SliderInt("##ours", &settings.ourGoals, 0, MOST_GOALS,
+                                  "our goals %d");
+      changed |= ImGui::SliderInt("##theirs", &settings.theirGoals, 0,
+                                  MOST_GOALS, "their goals %d");
+      break;
+    case Layer::MOOD:
+      changed |= ImGui::SliderFloat("##familiarity", &settings.familiarity,
+                                    0.0F, 1.0F, "familiarity %.2f");
+      break;
+    case Layer::COUNT:
+      break;
+  }
+  if (changed)
+  {
+    dirty = true;
+  }
+}
+
+void BrainFlowScene::renderExample(float width)
+{
+  namespace Page = SandboxPageUI;
+  const float scale = Theme::scale();
   Page::beginCard("##brain_flow_example", "EXAMPLE", width, Page::LIGHT, scale,
                   boldFont);
-  text("Build-up in midfield");
-  muted(std::format(
-      "{} on the ball near halfway; three team-mates (the striker running), "
-      "five opponents. Layer settings when on: attacking {:.0f}, risk {:.0f}; "
-      "carrier a Playmaker (attack), striker a Target forward; shout: shoot "
-      "on sight; orders: tight mark on the striker, show the carrier onto "
-      "his weaker foot; {:.0f}', 0-1 down; familiarity {:.0f}%.",
-      carrierName, ATTACKING_SLIDER * 100.0F, RISK_SLIDER * 100.0F, MINUTE,
-      FAMILIARITY * 100.0F));
+  for (std::size_t index = 0; index < PRESET_NAMES.size(); ++index)
+  {
+    if (Page::choice(PRESET_NAMES.at(index), preset == static_cast<int>(index),
+                     scale, boldFont))
+    {
+      preset = static_cast<int>(index);
+      settings.spots = PRESET_SPOTS.at(index);
+      dirty = true;
+    }
+  }
+  renderPitch(ImGui::GetContentRegionAvail().x);
+  muted(
+      "Drag a player to move him. Lime: our side (the carrier ringed); red: "
+      "the opponents. The chosen option is drawn bold.");
+  muted("The carrier's attributes:");
+  constexpr float LOWEST = 1.0F;
+  constexpr float HIGHEST = 100.0F;
+  bool changed = false;
+  ImGui::PushItemWidth(-1);
+  changed |= ImGui::SliderFloat("##decisions", &settings.decisions, LOWEST,
+                                HIGHEST, "Decisions %.0f");
+  changed |= ImGui::SliderFloat("##passing", &settings.passing, LOWEST, HIGHEST,
+                                "Passing %.0f");
+  changed |= ImGui::SliderFloat("##shooting", &settings.shooting, LOWEST,
+                                HIGHEST, "Shooting %.0f");
+  changed |= ImGui::SliderFloat("##dribbling", &settings.dribbling, LOWEST,
+                                HIGHEST, "Dribbling %.0f");
+  changed |= ImGui::SliderFloat("##pace", &settings.pace, LOWEST, HIGHEST,
+                                "Pace %.0f");
+  changed |= ImGui::SliderFloat("##vision", &settings.vision, LOWEST, HIGHEST,
+                                "Vision %.0f");
+  ImGui::PopItemWidth();
+  if (changed)
+  {
+    dirty = true;
+  }
+  if (Page::button("Reset the example", false, scale, boldFont))
+  {
+    settings = DEFAULT_SETTINGS;
+    preset = 0;
+    dirty = true;
+  }
   Page::endCard(scale);
+}
+
+void BrainFlowScene::renderPitch(float width)
+{
+  namespace Page = SandboxPageUI;
+  constexpr ImU32 GRASS = IM_COL32(34, 62, 40, 255);
+  constexpr ImU32 LINES = IM_COL32(200, 215, 200, 140);
+  constexpr ImU32 HOME = IM_COL32(155, 208, 107, 255);
+  constexpr ImU32 AWAY = IM_COL32(230, 105, 105, 255);
+  constexpr float PLAYER_RADIUS = 5.0F;
+  constexpr float CARRIER_RING = 9.0F;
+  constexpr float GRAB_RADIUS = 12.0F;
+  constexpr float THIN = 1.5F;
+  constexpr float BOLD = 3.0F;
+  constexpr float EDGE = 0.01F;
+  // Penalty areas: 16.5 m deep and 40.32 m wide on a 105 x 68 m pitch.
+  constexpr float BOX_DEPTH = 16.5F / 105.0F;
+  constexpr float BOX_WIDTH = 40.32F / 68.0F;
+  const float scale = Theme::scale();
+  const MatchPitch pitch;
+  const float height = width * pitch.width / pitch.length;
+  const ImVec2 origin = ImGui::GetCursorScreenPos();
+  ImGui::InvisibleButton("##brain_flow_pitch", ImVec2(width, height));
+  const auto screen = [&](float fx, float fy)
+  { return ImVec2(origin.x + (fx * width), origin.y + (fy * height)); };
+  const auto spotOf = [&](std::size_t index)
+  {
+    const auto& spot = settings.spots.at(index);
+    return screen(spot[0], spot[1]);
+  };
+  // Dragging a player: grab the nearest within reach.
+  const ImVec2 mouse = ImGui::GetIO().MousePos;
+  if (ImGui::IsItemActivated())
+  {
+    float best = GRAB_RADIUS * scale;
+    for (std::size_t index = 0; index < settings.spots.size(); ++index)
+    {
+      const ImVec2 at = spotOf(index);
+      const float metres = std::hypot(at.x - mouse.x, at.y - mouse.y);
+      if (metres <= best)
+      {
+        best = metres;
+        dragging = index;
+      }
+    }
+  }
+  if (dragging && ImGui::IsItemActive())
+  {
+    auto& spot = settings.spots.at(*dragging);
+    spot[0] = std::clamp((mouse.x - origin.x) / width, EDGE, 1.0F - EDGE);
+    spot[1] = std::clamp((mouse.y - origin.y) / height, EDGE, 1.0F - EDGE);
+  }
+  if (dragging && ImGui::IsItemDeactivated())
+  {
+    dragging.reset();
+    preset = -1;
+    dirty = true;
+  }
+  ImDrawList* draw = ImGui::GetWindowDrawList();
+  draw->AddRectFilled(origin, screen(1.0F, 1.0F), GRASS);
+  draw->AddRect(origin, screen(1.0F, 1.0F), LINES);
+  draw->AddLine(screen(MatchTuning::Pitch::CENTRE, 0.0F),
+                screen(MatchTuning::Pitch::CENTRE, 1.0F), LINES);
+  const float boxTop = MatchTuning::Pitch::CENTRE - (BOX_WIDTH / 2.0F);
+  const float boxBottom = MatchTuning::Pitch::CENTRE + (BOX_WIDTH / 2.0F);
+  draw->AddRect(screen(0.0F, boxTop), screen(BOX_DEPTH, boxBottom), LINES);
+  draw->AddRect(screen(1.0F - BOX_DEPTH, boxTop), screen(1.0F, boxBottom),
+                LINES);
+  // The options (not while dragging: they are from before the move).
+  if (!dragging && layered.filled && !exampleIds.empty())
+  {
+    const ImVec2 from = spotOf(0);
+    const auto chosen = [this](OptionIndex option)
+    { return layered.chosen == at(option); };
+    const auto line = [&](ImVec2 to, OptionIndex option)
+    {
+      draw->AddLine(from, to, chosen(option) ? Page::LIME : Page::MUTED,
+                    (chosen(option) ? BOLD : THIN) * scale);
+    };
+    for (std::size_t index = 0; index < exampleIds.size(); ++index)
+    {
+      if (exampleIds[index] == layered.bestReceiver &&
+          index < settings.spots.size())
+      {
+        line(spotOf(index), OptionIndex::PASS);
+      }
+    }
+    line(screen(pitch.fractionX(layered.carryEnd),
+                pitch.fractionY(layered.carryEnd)),
+         OptionIndex::CARRY);
+    if (layered.options.at(at(OptionIndex::SHOT)).ruledOut == nullptr)
+    {
+      line(screen(1.0F, MatchTuning::Pitch::CENTRE), OptionIndex::SHOT);
+    }
+  }
+  // The players; the carrier ringed; a name on hover.
+  constexpr std::size_t FIRST_OPPONENT = 4;
+  std::optional<std::size_t> hovered;
+  for (std::size_t index = 0; index < settings.spots.size(); ++index)
+  {
+    const ImVec2 at = spotOf(index);
+    draw->AddCircleFilled(at, PLAYER_RADIUS * scale,
+                          index < FIRST_OPPONENT ? HOME : AWAY);
+    if (index == 0)
+    {
+      draw->AddCircle(at, CARRIER_RING * scale, HOME, 0, THIN * scale);
+    }
+    if (std::hypot(at.x - mouse.x, at.y - mouse.y) <= GRAB_RADIUS * scale)
+    {
+      hovered = index;
+    }
+  }
+  if (hovered && ImGui::IsItemHovered() && *hovered < exampleIds.size())
+  {
+    ImGui::BeginTooltip();
+    ImGui::TextUnformatted(nameOf(exampleIds.at(*hovered)).c_str());
+    ImGui::EndTooltip();
+  }
 }
 
 namespace
@@ -800,6 +1136,29 @@ void BrainFlowScene::weightsColumn()
         ImGui::Indent();
         tagged(static_cast<Layer>(layer), std::format("{:+.2f} steps", steps));
         ImGui::Unindent();
+      }
+    }
+  }
+  // Drift (plan section 6): a layer acting on the frame that the
+  // situation table doesn't list for it.
+  BrainFlow::LayerMask mapped = 0;
+  for (const Situation& situation : SITUATIONS)
+  {
+    if (situation.onFrame)
+    {
+      mapped |= situation.layers;
+    }
+  }
+  for (const BrainFlow::Weight& weight : layered.weights)
+  {
+    for (std::size_t layer = 0; layer < BrainFlow::LAYER_COUNT; ++layer)
+    {
+      if (weight.steps.at(layer) != 0.0F &&
+          (mapped & bit(static_cast<Layer>(layer))) == 0)
+      {
+        text(std::format("{}: steps from {}, not in the map yet", weight.name,
+                         LAYER_NAMES.at(layer)),
+             WARNING);
       }
     }
   }
