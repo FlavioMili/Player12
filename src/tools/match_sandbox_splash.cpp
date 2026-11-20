@@ -7,6 +7,7 @@
 #include <array>
 #include <chrono>
 #include <cmath>
+#include <numbers>
 #include <utility>
 
 #include "global/paths.h"
@@ -28,17 +29,139 @@ constexpr ImU32 MUTED = IM_COL32(160, 149, 138, 255);
 constexpr ImU32 LIME = IM_COL32(155, 208, 107, 255);
 constexpr ImU32 YELLOW = IM_COL32(230, 203, 63, 255);
 constexpr ImU32 PITCH_LINE = IM_COL32(125, 109, 91, 255);
+constexpr ImU32 BLOCK = IM_COL32(57, 47, 37, 255);
+constexpr float MAX_ALPHA = 255.0F;
+constexpr float CENTRE = 0.5F;
+constexpr float SPLASH_FONT_SIZE = 42.0F;
+constexpr float PI = std::numbers::pi_v<float>;
+
+// The artwork, in design-canvas pixels (DESIGN_W x DESIGN_H).
+/** Left, top, right, bottom. */
+using Box = std::array<float, 4>;
+/** Centre x and y, radius, from and to (radians). */
+constexpr std::size_t ARC_FIELDS = 5;
+using Arc = std::array<float, ARC_FIELDS>;
+struct Words
+{
+  float x = 0.0F;
+  float y = 0.0F;
+  float size = 0.0F;
+  const char* value = "";
+  ImU32 ink = 0;
+};
+
+/** The left panel's right edge, where the two halves part. */
+constexpr float SEAM_X = 755.0F;
+/** Square, low-contrast blocks echo the reference's card geometry. */
+constexpr std::array<Box, 4> BLOCKS{{{623, 0, 755, 99},
+                                     {573, 99, 623, 149},
+                                     {706, 852, 755, 906},
+                                     {656, 906, 706, 941}}};
+constexpr float TITLE_SIZE = 170.0F;
+constexpr std::array<Words, 3> TITLE{
+    {{.x = 72, .y = 80, .size = TITLE_SIZE, .value = "We", .ink = CREAM},
+     {.x = 72, .y = 222, .size = TITLE_SIZE, .value = "Go", .ink = CREAM},
+     {.x = 72, .y = 364, .size = TITLE_SIZE, .value = "Again", .ink = CREAM}}};
+/** The lime rule under the title: its left, top and bottom (it spans
+ * "Again"). */
+constexpr float TITLE_RULE_LEFT = 76.0F;
+constexpr float TITLE_RULE_TOP = 571.0F;
+constexpr float TITLE_RULE_BOTTOM = 581.0F;
+constexpr std::array<Words, 3> CAPTIONS{
+    {{.x = 76,
+      .y = 608,
+      .size = 50,
+      .value = "Match Engine Sandbox",
+      .ink = CREAM},
+     {.x = 112, .y = 771, .size = 44, .value = "Player 12", .ink = LIME},
+     {.x = 112,
+      .y = 826,
+      .size = 28,
+      .value = "An open source football manager game",
+      .ink = MUTED}}};
+constexpr Box NAME_BAR{76, 777, 83, 853};
+constexpr Words PREPARING{.x = 112,
+                          .y = 888,
+                          .size = 20,
+                          .value = "Preparing sandbox...",
+                          .ink = MUTED};
+constexpr float PREPARING_AFTER_SECONDS = 3.0F;
+
+// Full pitch, with the side attacking towards the top goal.
+constexpr std::array<Box, 7> PITCH_BOXES{{{867, 57, 1587, 880},
+                                          {1048, 57, 1407, 181},
+                                          {1142, 57, 1312, 106},
+                                          {1176, 29, 1278, 57},
+                                          {1048, 761, 1407, 880},
+                                          {1142, 834, 1312, 880},
+                                          {1176, 880, 1278, 908}}};
+constexpr Box HALFWAY_LINE{867, 460, 1587, 460};
+/** The penalty arcs leave out this much of their circle (radians). */
+constexpr float ARC_CUT = 0.55F;
+constexpr std::array<Arc, 7> PITCH_ARCS{
+    {{1227, 460, 89, 0, 2 * PI},
+     {1227, 143, 73, ARC_CUT, PI - ARC_CUT},
+     {1227, 799, 73, PI + ARC_CUT, (2 * PI) - ARC_CUT},
+     {867, 57, 22, 0, PI / 2},
+     {1587, 57, 22, PI / 2, PI},
+     {867, 880, 22, -PI / 2, 0},
+     {1587, 880, 22, PI, 1.5F * PI}}};
+constexpr float SPOT_X = 1227.0F;
+constexpr std::array<float, 3> SPOT_YS{143.0F, 460.0F, 799.0F};
+constexpr float SPOT_RADIUS = 3.5F;
+constexpr float PITCH_LINE_THICKNESS = 2.0F;
+constexpr int ARC_SEGMENTS = 48;
+
+/** GK; flat back four; DM; two CMs; LW, RW and striker. Each is a
+ * triangle: its top this far above the point, its base this far below and
+ * this wide either side. */
+constexpr std::array<ImVec2, 11> PLAYERS{{{1227, 850},
+                                          {970, 670},
+                                          {1140, 670},
+                                          {1315, 670},
+                                          {1485, 670},
+                                          {1227, 550},
+                                          {1115, 425},
+                                          {1340, 425},
+                                          {975, 285},
+                                          {1480, 285},
+                                          {1227, 225}}};
+constexpr float PLAYER_TOP = 25.0F;
+constexpr float PLAYER_BASE = 19.0F;
+constexpr float PLAYER_HALF_WIDTH = 25.0F;
+
+/** A single long diagonal, LB to RW, dashed; its open head (this far back
+ * and to each side) tells it apart from the players. */
+constexpr ImVec2 PASS_START{987, 638};
+constexpr ImVec2 PASS_END{1454, 310};
+constexpr float DASH_EVERY = 21.0F;
+constexpr float DASH_LENGTH = 13.0F;
+constexpr float PASS_THICKNESS = 3.0F;
+constexpr float HEAD_BACK = 25.0F;
+constexpr float HEAD_SIDE = 12.0F;
+
+/** The reveal: the pitch, then the players, then the pass (delay and
+ * duration, s). */
+constexpr float PITCH_REVEAL_SECONDS = 0.65F;
+constexpr float PLAYERS_DELAY_SECONDS = 0.3F;
+constexpr float PLAYERS_REVEAL_SECONDS = 0.4F;
+constexpr float PASS_DELAY_SECONDS = 0.7F;
+constexpr float PASS_REVEAL_SECONDS = 0.5F;
+
+/** Smoothstep, 3t^2 - 2t^3. */
+constexpr float SMOOTHSTEP_SQUARE = 3.0F;
+constexpr float SMOOTHSTEP_CUBE = 2.0F;
 
 float reveal(float elapsed, float delay, float duration)
 {
   const float t = std::clamp((elapsed - delay) / duration, 0.0F, 1.0F);
-  return t * t * (3.0F - 2.0F * t);
+  return t * t * (SMOOTHSTEP_SQUARE - (SMOOTHSTEP_CUBE * t));
 }
 
 ImU32 opacity(ImU32 color, float alpha)
 {
   return (color & ~IM_COL32_A_MASK) |
-         (static_cast<ImU32>(255.0F * std::clamp(alpha, 0.0F, 1.0F))
+         (static_cast<ImU32>(MAX_ALPHA * std::clamp(alpha, 0.0F, 1.0F))
           << IM_COL32_A_SHIFT);
 }
 }  // namespace
@@ -57,8 +180,8 @@ void SandboxSplashScene::onEnter()
   {
     const auto path = AssetPaths::file("assets/fonts/Manrope-Bold.ttf");
     const auto fontConfig = SandboxTypography::manropeConfig();
-    splash_font = ImGui::GetIO().Fonts->AddFontFromFileTTF(path.c_str(), 42.0F,
-                                                           &fontConfig);
+    splash_font = ImGui::GetIO().Fonts->AddFontFromFileTTF(
+        path.c_str(), SPLASH_FONT_SIZE, &fontConfig);
   }
   SDL_SetWindowTitle(getWindow(), "Player12 match sandbox");
   SDL_MaximizeWindow(getWindow());
@@ -141,9 +264,9 @@ void SandboxSplashScene::render()
   const ImVec2 origin = viewport->Pos;
   const ImVec2 size = viewport->Size;
   const float scale = std::min(size.x / DESIGN_W, size.y / DESIGN_H);
-  const ImVec2 offset(origin.x + ((size.x - DESIGN_W * scale) * 0.5F),
-                      origin.y + ((size.y - DESIGN_H * scale) * 0.5F));
-  const float seam = offset.x + (755.0F * scale);
+  const ImVec2 offset(origin.x + ((size.x - DESIGN_W * scale) * CENTRE),
+                      origin.y + ((size.y - DESIGN_H * scale) * CENTRE));
+  const float seam = offset.x + (SEAM_X * scale);
   const float opening = reveal(exit_elapsed, 0.0F, EXIT_SECONDS);
   for (int half = 0; half < 2; ++half)
   {
@@ -160,28 +283,32 @@ void SandboxSplashScene::render()
     const bool still = Theme::reducedMotion() || skip;
     const auto color = [&](ImU32 value, float alpha = 1.0F)
     { return opacity(value, alpha); };
-    const float pitchAlpha = still ? 1.0F : reveal(elapsed, 0.0F, 0.65F);
-    const auto line = [&](float x1, float y1, float x2, float y2)
+    const float pitchAlpha =
+        still ? 1.0F : reveal(elapsed, 0.0F, PITCH_REVEAL_SECONDS);
+    const ImU32 pitchInk = color(PITCH_LINE, pitchAlpha);
+    const float pitchThickness = PITCH_LINE_THICKNESS * scale;
+    const auto line = [&](const Box& at)
     {
-      draw->AddLine(point(x1, y1), point(x2, y2), color(PITCH_LINE, pitchAlpha),
-                    2.0F * scale);
+      const auto [x1, y1, x2, y2] = at;
+      draw->AddLine(point(x1, y1), point(x2, y2), pitchInk, pitchThickness);
     };
-    const auto box = [&](float x1, float y1, float x2, float y2)
+    const auto box = [&](const Box& at)
     {
-      draw->AddRect(point(x1, y1), point(x2, y2), color(PITCH_LINE, pitchAlpha),
-                    0.0F, 0, 2.0F * scale);
+      const auto [x1, y1, x2, y2] = at;
+      draw->AddRect(point(x1, y1), point(x2, y2), pitchInk, 0.0F, 0,
+                    pitchThickness);
     };
-    const auto arc = [&](float x, float y, float radius, float from, float to)
+    const auto arc = [&](const Arc& at)
     {
-      draw->PathArcTo(point(x, y), radius * scale, from, to, 48);
-      draw->PathStroke(color(PITCH_LINE, pitchAlpha), 0, 2.0F * scale);
+      const auto [x, y, radius, from, to] = at;
+      draw->PathArcTo(point(x, y), radius * scale, from, to, ARC_SEGMENTS);
+      draw->PathStroke(pitchInk, 0, pitchThickness);
     };
-    const auto text =
-        [&](float x, float y, float fontSize, const char* value, ImU32 ink)
+    const auto text = [&](const Words& words)
     {
-      ImGui::PushFont(splash_font, fontSize * scale);
-      draw->AddText(ImGui::GetFont(), fontSize * scale, point(x, y), color(ink),
-                    value);
+      ImGui::PushFont(splash_font, words.size * scale);
+      draw->AddText(ImGui::GetFont(), words.size * scale,
+                    point(words.x, words.y), color(words.ink), words.value);
       ImGui::PopFont();
     };
 
@@ -189,107 +316,92 @@ void SandboxSplashScene::render()
                         ImVec2(origin.x + size.x + shift, origin.y + size.y),
                         BACKGROUND);
     draw->AddRectFilled(ImVec2(origin.x + shift, origin.y),
-                        ImVec2(point(755.0F, 0.0F).x, origin.y + size.y),
+                        ImVec2(point(SEAM_X, 0.0F).x, origin.y + size.y),
                         color(PANEL));
-    // Square, low-contrast blocks echo the reference's card geometry.
-    draw->AddRectFilled(point(623, 0), point(755, 99),
-                        color(IM_COL32(57, 47, 37, 255)));
-    draw->AddRectFilled(point(573, 99), point(623, 149),
-                        color(IM_COL32(57, 47, 37, 255)));
-    draw->AddRectFilled(point(706, 852), point(755, 906),
-                        color(IM_COL32(57, 47, 37, 255)));
-    draw->AddRectFilled(point(656, 906), point(706, 941),
-                        color(IM_COL32(57, 47, 37, 255)));
-
-    text(72, 80, 170, "We", CREAM);
-    text(72, 222, 170, "Go", CREAM);
-    text(72, 364, 170, "Again", CREAM);
-    // Measure the actual title font so the rule always spans Again exactly.
-    ImGui::PushFont(splash_font, 170.0F * scale);
-    const float titleWidth = ImGui::CalcTextSize("Again").x;
-    ImGui::PopFont();
-    draw->AddRectFilled(point(76, 571),
-                        ImVec2(point(76, 581).x + titleWidth, point(76, 581).y),
-                        color(LIME));
-    text(76, 608, 50, "Match Engine Sandbox", CREAM);
-    draw->AddRectFilled(point(76, 777), point(83, 853), color(PITCH_LINE));
-    text(112, 771, 44, "Player 12", LIME);
-    text(112, 826, 28, "An open source football manager game", MUTED);
-
-    // Full pitch, with the side attacking towards the top goal.
-    constexpr float PI = 3.14159265358979323846F;
-    box(867, 57, 1587, 880);
-    line(867, 460, 1587, 460);
-    arc(1227, 460, 89, 0, 2 * PI);
-    box(1048, 57, 1407, 181);
-    box(1142, 57, 1312, 106);
-    box(1176, 29, 1278, 57);
-    box(1048, 761, 1407, 880);
-    box(1142, 834, 1312, 880);
-    box(1176, 880, 1278, 908);
-    arc(1227, 143, 73, 0.55F, PI - 0.55F);
-    arc(1227, 799, 73, PI + 0.55F, (2 * PI) - 0.55F);
-    arc(867, 57, 22, 0, PI / 2);
-    arc(1587, 57, 22, PI / 2, PI);
-    arc(867, 880, 22, -PI / 2, 0);
-    arc(1587, 880, 22, PI, 1.5F * PI);
-    for (float y : {143.0F, 460.0F, 799.0F})
+    for (const auto& [x1, y1, x2, y2] : BLOCKS)
     {
-      draw->AddCircleFilled(point(1227, y), 3.5F * scale,
-                            color(PITCH_LINE, pitchAlpha));
+      draw->AddRectFilled(point(x1, y1), point(x2, y2), color(BLOCK));
     }
 
-    // GK; flat back four; DM; two CMs; LW, RW and striker.
-    constexpr std::array<ImVec2, 11> PLAYERS{{{1227, 850},
-                                              {970, 670},
-                                              {1140, 670},
-                                              {1315, 670},
-                                              {1485, 670},
-                                              {1227, 550},
-                                              {1115, 425},
-                                              {1340, 425},
-                                              {975, 285},
-                                              {1480, 285},
-                                              {1227, 225}}};
-    const float playersAlpha = still ? 1.0F : reveal(elapsed, 0.3F, 0.4F);
+    for (const Words& words : TITLE)
+    {
+      text(words);
+    }
+    // Measure the actual title font so the rule always spans Again exactly.
+    ImGui::PushFont(splash_font, TITLE_SIZE * scale);
+    const float titleWidth = ImGui::CalcTextSize(TITLE.back().value).x;
+    ImGui::PopFont();
+    const ImVec2 ruleEnd = point(TITLE_RULE_LEFT, TITLE_RULE_BOTTOM);
+    draw->AddRectFilled(point(TITLE_RULE_LEFT, TITLE_RULE_TOP),
+                        ImVec2(ruleEnd.x + titleWidth, ruleEnd.y), color(LIME));
+    text(CAPTIONS[0]);
+    {
+      const auto [x1, y1, x2, y2] = NAME_BAR;
+      draw->AddRectFilled(point(x1, y1), point(x2, y2), color(PITCH_LINE));
+    }
+    text(CAPTIONS[1]);
+    text(CAPTIONS[2]);
+
+    // The outline, halfway line and centre circle, then the boxes and arcs.
+    box(PITCH_BOXES.front());
+    line(HALFWAY_LINE);
+    arc(PITCH_ARCS.front());
+    for (std::size_t index = 1; index < PITCH_BOXES.size(); ++index)
+    {
+      box(PITCH_BOXES.at(index));
+    }
+    for (std::size_t index = 1; index < PITCH_ARCS.size(); ++index)
+    {
+      arc(PITCH_ARCS.at(index));
+    }
+    for (const float y : SPOT_YS)
+    {
+      draw->AddCircleFilled(point(SPOT_X, y), SPOT_RADIUS * scale, pitchInk);
+    }
+
+    const float playersAlpha =
+        still ? 1.0F
+              : reveal(elapsed, PLAYERS_DELAY_SECONDS, PLAYERS_REVEAL_SECONDS);
     for (const ImVec2 player : PLAYERS)
     {
       draw->AddTriangleFilled(
-          point(player.x, player.y - 25), point(player.x - 25, player.y + 19),
-          point(player.x + 25, player.y + 19), color(LIME, playersAlpha));
+          point(player.x, player.y - PLAYER_TOP),
+          point(player.x - PLAYER_HALF_WIDTH, player.y + PLAYER_BASE),
+          point(player.x + PLAYER_HALF_WIDTH, player.y + PLAYER_BASE),
+          color(LIME, playersAlpha));
     }
 
-    // A single long diagonal: LB to RW. Open head distinguishes it from
-    // players.
-    const ImVec2 start(987, 638);
-    const ImVec2 end(1454, 310);
+    const ImVec2 start = PASS_START;
+    const ImVec2 end = PASS_END;
     const float dx = end.x - start.x;
     const float dy = end.y - start.y;
     const float length = std::sqrt((dx * dx) + (dy * dy));
     const float ux = dx / length;
     const float uy = dy / length;
-    const float progress = still ? 1.0F : reveal(elapsed, 0.7F, 0.5F);
-    for (float distance = 0; distance < length * progress; distance += 21.0F)
+    const float progress =
+        still ? 1.0F : reveal(elapsed, PASS_DELAY_SECONDS, PASS_REVEAL_SECONDS);
+    for (float distance = 0; distance < length * progress;
+         distance += DASH_EVERY)
     {
-      const float to = std::min(distance + 13.0F, length * progress);
+      const float to = std::min(distance + DASH_LENGTH, length * progress);
       draw->AddLine(point(start.x + (ux * distance), start.y + (uy * distance)),
                     point(start.x + (ux * to), start.y + (uy * to)),
-                    color(YELLOW), 3.0F * scale);
+                    color(YELLOW), PASS_THICKNESS * scale);
     }
     if (progress >= 1.0F)
     {
       for (float side : {-1.0F, 1.0F})
       {
         draw->AddLine(point(end.x, end.y),
-                      point(end.x - (ux * 25) + (side * uy * 12),
-                            end.y - (uy * 25) - (side * ux * 12)),
-                      color(YELLOW), 3.0F * scale);
+                      point(end.x - (ux * HEAD_BACK) + (side * uy * HEAD_SIDE),
+                            end.y - (uy * HEAD_BACK) - (side * ux * HEAD_SIDE)),
+                      color(YELLOW), PASS_THICKNESS * scale);
       }
     }
 
-    if (!ready && elapsed > 3.0F)
+    if (!ready && elapsed > PREPARING_AFTER_SECONDS)
     {
-      text(112, 888, 20, "Preparing sandbox...", MUTED);
+      text(PREPARING);
     }
     draw->PopClipRect();
   }

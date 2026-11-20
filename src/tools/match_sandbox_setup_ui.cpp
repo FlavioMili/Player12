@@ -8,6 +8,7 @@
 #include <optional>
 #include <string_view>
 #include <type_traits>
+#include <utility>
 
 #include "model/match_tuning.h"
 #include "tools/match_sandbox_setup.h"
@@ -20,6 +21,7 @@ namespace
 // grid.
 constexpr float GAP = 6, HOME_W = 440, AWAY_W = 440, SIDE_W = 440;
 constexpr float HEADER_H = 160, ENGINE_H = 268, SHARED_H = 404;
+constexpr float SIMULATION_H = 400, NOTE_H = 112;
 constexpr ImU32 PAGE = IM_COL32(22, 19, 16, 255);
 constexpr ImU32 LIGHT = IM_COL32(42, 35, 28, 255);
 constexpr ImU32 MID = IM_COL32(31, 26, 21, 255);
@@ -30,6 +32,104 @@ constexpr ImU32 LIME = IM_COL32(155, 208, 107, 255);
 constexpr ImU32 INK = IM_COL32(18, 19, 21, 255);
 constexpr ImU32 BORDER = IM_COL32(92, 81, 68, 255);
 constexpr ImU32 RULE = IM_COL32(58, 50, 41, 255);
+
+// Type (points) and the card grid (design pixels).
+constexpr float BODY_SIZE = 16;
+constexpr float SMALL_SIZE = 14;
+constexpr float TITLE_TRACKING = 1.5F;
+constexpr float SUBHEAD_TRACKING = 1;
+/** Card contents sit this far in from its left and right edges. */
+constexpr float INSET = 16;
+constexpr float CARD_TITLE_TOP = 12;
+/** Fade at each card edge into the page (§9.1). */
+constexpr float EDGE_FADE = 6;
+
+// Buttons: height, and the focus ring this far outside.
+constexpr float BUTTON_H = 28;
+constexpr float FOCUS_RING = 2;
+
+// Engine version rows: the first starts this far down the card; label,
+// helper and buttons within each row; the rule between rows above it.
+constexpr float FIRST_ROW_TOP = 48;
+constexpr float ROW_H = 68;
+constexpr float ROW_LABEL_TOP = 1;
+constexpr float ROW_HELPER_TOP = 36;
+constexpr float ROW_BUTTON_TOP = 6;
+constexpr float ROW_RULE_ABOVE = 10;
+/** Two versions: 112-wide buttons; three: narrower, in the same strip
+ * widened a little into the helper text's room. */
+constexpr float TWO_BUTTON_W = 112;
+constexpr float THREE_BUTTON_W = 96;
+
+// Match options: a checkbox at the right, ticked with two strokes; the
+// whole row is the hit area.
+constexpr float CHECK_FROM_RIGHT = 38;
+constexpr float CHECK_TOP = 1;
+constexpr float CHECK_SIZE = 22;
+constexpr float TICK_THICKNESS = 2;
+constexpr std::array<ImVec2, 3> TICK{{{5, 11}, {10, 16}, {18, 7}}};
+constexpr float OPTION_H = 54;
+constexpr float OPTION_LABEL_TOP = 2;
+constexpr float OPTION_HELPER_TOP = 28;
+/** The helper wraps short of the checkbox. */
+constexpr float OPTION_HELPER_MARGIN = 60;
+
+// The header card's title and introduction.
+constexpr float PAGE_TITLE_TOP = 18;
+constexpr float PAGE_TITLE_SIZE = 42;
+constexpr float PAGE_TITLE_TRACKING = 0.5F;
+constexpr float INTRO_TOP = 82;
+constexpr float INTRO_SIZE = 17;
+
+/** The simulation card, down from its top (or in from its right): the "new
+ * runs" block with the home advantage value and its slider (track, thumb
+ * and scale labels), then "match options". */
+struct SimulationLayout
+{
+  float newRuns;
+  float homeLabel;
+  float valueTop;
+  float valueFromRight;
+  float valueW;
+  float sliderTop;
+  float trackInset;
+  float trackTop;
+  float trackBottom;
+  float thumbHalfW;
+  float thumbTop;
+  float thumbBottom;
+  float scaleLabels;
+  float standardHalfW;
+  float maximumFromRight;
+  float applies;
+  float rule;
+  float matchOptions;
+  float familiarity;
+  float debug;
+};
+constexpr SimulationLayout SIM{.newRuns = 48,
+                               .homeLabel = 78,
+                               .valueTop = 70,
+                               .valueFromRight = 100,
+                               .valueW = 84,
+                               .sliderTop = 112,
+                               .trackInset = 22,
+                               .trackTop = 123,
+                               .trackBottom = 127,
+                               .thumbHalfW = 5,
+                               .thumbTop = 118,
+                               .thumbBottom = 132,
+                               .scaleLabels = 146,
+                               .standardHalfW = 36,
+                               .maximumFromRight = 96,
+                               .applies = 176,
+                               .rule = 206,
+                               .matchOptions = 222,
+                               .familiarity = 248,
+                               .debug = 322};
+constexpr ImVec2 VALUE_PADDING{8, 6};
+constexpr float NOTE_TITLE_TOP = 12;
+constexpr float NOTE_TEXT_TOP = 38;
 
 struct Card
 {
@@ -50,7 +150,7 @@ struct SetupPainter
     return ImVec2(origin.x + (x * scale), origin.y + (y * scale));
   }
 
-  void text(float x, float y, const char* value, float size = 14,
+  void text(float x, float y, const char* value, float size = SMALL_SIZE,
             ImU32 ink = CREAM, ImFont* font = nullptr, float tracking = 0,
             float wrap = 0) const
   {
@@ -85,7 +185,8 @@ struct SetupPainter
     draw->PushClipRect(point(c.x, c.y), point(c.x + c.w, c.y + c.h), true);
     if (title != nullptr)
     {
-      text(c.x + 16, c.y + 12, title, 16, CREAM, bold, 1.5F);
+      text(c.x + INSET, c.y + CARD_TITLE_TOP, title, BODY_SIZE, CREAM, bold,
+           TITLE_TRACKING);
     }
   }
 
@@ -94,7 +195,7 @@ struct SetupPainter
     // Fade all four edges into the page, after the card contents (§9.1).
     const ImU32 clear = IM_COL32(22, 19, 16, 0);
     const auto a = point(c.x, c.y), b = point(c.x + c.w, c.y + c.h);
-    const float f = 6 * scale;
+    const float f = EDGE_FADE * scale;
     draw->AddRectFilledMultiColor(a, ImVec2(b.x, a.y + f), PAGE, PAGE, clear,
                                   clear);
     draw->AddRectFilledMultiColor(ImVec2(a.x, b.y - f), b, clear, clear, PAGE,
@@ -112,66 +213,65 @@ struct SetupPainter
 
   void subhead(float x, float y, const char* label) const
   {
-    text(x, y, label, 14, CREAM, bold, 1);
+    text(x, y, label, SMALL_SIZE, CREAM, bold, SUBHEAD_TRACKING);
   }
 
   bool button(float x, float y, float w, const char* label, bool selected) const
   {
     ImGui::SetCursorScreenPos(point(x, y));
     const bool pressed = ImGui::InvisibleButton(
-        label, ImVec2(w * scale, 28 * scale), ImGuiButtonFlags_EnableNav);
+        label, ImVec2(w * scale, BUTTON_H * scale), ImGuiButtonFlags_EnableNav);
     const bool hover = ImGui::IsItemHovered();
     const ImU32 fill = selected ? (hover ? IM_COL32(170, 215, 130, 255) : LIME)
                                 : (hover ? IM_COL32(46, 39, 32, 255) : DARK);
-    draw->AddRectFilled(point(x, y), point(x + w, y + 28), fill);
-    draw->AddRect(point(x, y), point(x + w, y + 28), selected ? LIME : BORDER,
-                  0, 0, scale);
+    draw->AddRectFilled(point(x, y), point(x + w, y + BUTTON_H), fill);
+    draw->AddRect(point(x, y), point(x + w, y + BUTTON_H),
+                  selected ? LIME : BORDER, 0, 0, scale);
     if (ImGui::IsItemFocused())
     {
-      draw->AddRect(point(x - 2, y - 2), point(x + w + 2, y + 30), CREAM, 0, 0,
-                    scale);
+      draw->AddRect(point(x - FOCUS_RING, y - FOCUS_RING),
+                    point(x + w + FOCUS_RING, y + BUTTON_H + FOCUS_RING), CREAM,
+                    0, 0, scale);
     }
-    SandboxTypography::label(draw, bold, 14, label, point(x, y),
-                             point(x + w, y + 28), selected ? INK : CREAM,
+    SandboxTypography::label(draw, bold, SMALL_SIZE, label, point(x, y),
+                             point(x + w, y + BUTTON_H), selected ? INK : CREAM,
                              scale);
     return pressed;
   }
 
   template <typename Version>
-  void version(const Card& c, int row, const char* label, const char* helper,
-               Version& value, Version aardvark, Version binturong,
-               std::type_identity_t<std::optional<Version>> capybara =
-                   std::nullopt,
-               float rowHeight = 68) const
+  void version(
+      const Card& c, int row, const char* label, const char* helper,
+      Version& value, Version aardvark, Version binturong,
+      std::type_identity_t<std::optional<Version>> capybara = std::nullopt,
+      float rowHeight = ROW_H) const
   {
-    const float y = c.y + 48 + (static_cast<float>(row) * rowHeight);
-    // Two versions: 112-wide buttons; three: narrower, in the same strip
-    // widened a little into the helper text's room.
-    const float buttonW = capybara ? 96 : 112;
-    const float stride = buttonW + 6;
+    const float y = c.y + FIRST_ROW_TOP + (static_cast<float>(row) * rowHeight);
+    const float buttonW = capybara ? THREE_BUTTON_W : TWO_BUTTON_W;
+    const float stride = buttonW + GAP;
     const float controlsX =
-        c.x + c.w - 16 - (stride * (capybara ? 3.0F : 2.0F)) + 6;
+        c.x + c.w - INSET - (stride * (capybara ? 3.0F : 2.0F)) + GAP;
     ImGui::PushID(label);
-    text(c.x + 16, y + 1, label, 16, CREAM, medium);
-    text(c.x + 16, y + 36, helper, 16, MUTED, regular);
-    if (button(controlsX, y + 6, buttonW, "AARDVARK", value == aardvark))
+    text(c.x + INSET, y + ROW_LABEL_TOP, label, BODY_SIZE, CREAM, medium);
+    text(c.x + INSET, y + ROW_HELPER_TOP, helper, BODY_SIZE, MUTED, regular);
+    const float buttonY = y + ROW_BUTTON_TOP;
+    if (button(controlsX, buttonY, buttonW, "AARDVARK", value == aardvark))
     {
       value = aardvark;
     }
-    if (button(controlsX + stride, y + 6, buttonW, "BINTURONG",
+    if (button(controlsX + stride, buttonY, buttonW, "BINTURONG",
                value == binturong))
     {
       value = binturong;
     }
-    if (capybara &&
-        button(controlsX + (2 * stride), y + 6, buttonW, "CAPYBARA",
-               value == *capybara))
+    if (capybara && button(controlsX + (2 * stride), buttonY, buttonW,
+                           "CAPYBARA", value == *capybara))
     {
       value = *capybara;
     }
     if (row > 0)
     {
-      line(c.x + 16, y - 10, c.w - 32);
+      line(c.x + INSET, y - ROW_RULE_ABOVE, c.w - (2 * INSET));
     }
     ImGui::PopID();
   }
@@ -179,12 +279,12 @@ struct SetupPainter
   void matchOption(const Card& c, float y, const char* label,
                    const char* helper, bool& value) const
   {
-    const float x = c.x + c.w - 38;
-    ImGui::SetCursorScreenPos(point(c.x + 16, y));
+    const float x = c.x + c.w - CHECK_FROM_RIGHT;
+    ImGui::SetCursorScreenPos(point(c.x + INSET, y));
     ImGui::PushID(label);
-    if (ImGui::InvisibleButton("##option",
-                               ImVec2((c.w - 32) * scale, 54 * scale),
-                               ImGuiButtonFlags_EnableNav))
+    if (ImGui::InvisibleButton(
+            "##option", ImVec2((c.w - (2 * INSET)) * scale, OPTION_H * scale),
+            ImGuiButtonFlags_EnableNav))
     {
       value = !value;
     }
@@ -193,20 +293,25 @@ struct SetupPainter
     {
       ImGui::SetTooltip("%s", helper);
     }
-    draw->AddRectFilled(point(x, y + 1), point(x + 22, y + 23),
-                        value ? LIME : DARK);
-    draw->AddRect(point(x, y + 1), point(x + 22, y + 23),
+    const ImVec2 boxMin = point(x, y + CHECK_TOP);
+    const ImVec2 boxMax = point(x + CHECK_SIZE, y + CHECK_TOP + CHECK_SIZE);
+    draw->AddRectFilled(boxMin, boxMax, value ? LIME : DARK);
+    draw->AddRect(boxMin, boxMax,
                   (hover || ImGui::IsItemFocused()) ? CREAM : BORDER, 0, 0,
                   scale);
     if (value)
     {
-      draw->AddLine(point(x + 5, y + 11), point(x + 10, y + 16), INK,
-                    2 * scale);
-      draw->AddLine(point(x + 10, y + 16), point(x + 18, y + 7), INK,
-                    2 * scale);
+      for (std::size_t stroke = 0; stroke + 1 < TICK.size(); ++stroke)
+      {
+        const ImVec2 from = TICK.at(stroke);
+        const ImVec2 to = TICK.at(stroke + 1);
+        draw->AddLine(point(x + from.x, y + from.y), point(x + to.x, y + to.y),
+                      INK, TICK_THICKNESS * scale);
+      }
     }
-    text(c.x + 16, y + 2, label, 16, CREAM, medium);
-    text(c.x + 16, y + 28, helper, 16, MUTED, regular, 0, c.w - 60);
+    text(c.x + INSET, y + OPTION_LABEL_TOP, label, BODY_SIZE, CREAM, medium);
+    text(c.x + INSET, y + OPTION_HELPER_TOP, helper, BODY_SIZE, MUTED, regular,
+         0, c.w - OPTION_HELPER_MARGIN);
     ImGui::PopID();
   }
 };
@@ -229,9 +334,11 @@ void SandboxSetupUI::render(float scale, ImFont* setup_regular_font,
                   .bold = sidebar_font};
   const Card header{.x = 0, .y = 0, .w = width, .h = HEADER_H};
   ui.begin(header, LIGHT);
-  ui.text(16, 18, "Set-up", 42, CREAM, sidebar_font, 0.5F);
-  ui.text(16, 82, "Choose the engines and conditions for your next run", 17,
-          CREAM, setup_regular_font, 0, width - 32);
+  ui.text(INSET, PAGE_TITLE_TOP, "Set-up", PAGE_TITLE_SIZE, CREAM, sidebar_font,
+          PAGE_TITLE_TRACKING);
+  ui.text(INSET, INTRO_TOP,
+          "Choose the engines and conditions for your next run", INTRO_SIZE,
+          CREAM, setup_regular_font, 0, width - (2 * INSET));
   ui.end(header, true);
 
   const float leftW =
@@ -283,36 +390,46 @@ void SandboxSetupUI::render(float scale, ImFont* setup_regular_font,
       .x = (wide || twoColumns) ? leftW + GAP : 0,
       .y = (wide || twoColumns) ? home.y : shared.y + shared.h + GAP,
       .w = (wide || twoColumns) ? width - leftW - GAP : width,
-      .h = 400};
+      .h = SIMULATION_H};
   ui.begin(simulation, DARK, "SIMULATION");
   const float sx = simulation.x, sy = simulation.y;
-  ui.subhead(sx + 16, sy + 48, "NEW RUNS");
-  ui.text(sx + 16, sy + 78, "Home advantage", 16, CREAM, setup_medium_font);
+  ui.subhead(sx + INSET, sy + SIM.newRuns, "NEW RUNS");
+  ui.text(sx + INSET, sy + SIM.homeLabel, "Home advantage", BODY_SIZE, CREAM,
+          setup_medium_font);
   // Native ImGui input preserves keyboard entry, dragging and focus semantics.
-  ImGui::PushFont(setup_medium_font, 14);
+  ImGui::PushFont(setup_medium_font, SMALL_SIZE);
   ImGui::PushStyleVar(ImGuiStyleVar_FrameRounding, 0);
   ImGui::PushStyleVar(ImGuiStyleVar_FrameBorderSize, scale);
-  ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, ImVec2(8 * scale, 6 * scale));
-  ImGui::PushStyleColor(ImGuiCol_Text, CREAM);
-  ImGui::PushStyleColor(ImGuiCol_FrameBg, DARK);
-  ImGui::PushStyleColor(ImGuiCol_FrameBgHovered, MID);
-  ImGui::PushStyleColor(ImGuiCol_FrameBgActive, MID);
-  ImGui::PushStyleColor(ImGuiCol_Border, BORDER);
-  ImGui::PushStyleColor(ImGuiCol_SliderGrab, LIME);
-  ImGui::PushStyleColor(ImGuiCol_SliderGrabActive, LIME);
-  ImGui::SetCursorScreenPos(ui.point(sx + simulation.w - 100, sy + 70));
-  ImGui::SetNextItemWidth(84 * scale);
+  ImGui::PushStyleVar(ImGuiStyleVar_FramePadding,
+                      ImVec2(VALUE_PADDING.x * scale, VALUE_PADDING.y * scale));
+  const std::array<std::pair<ImGuiCol, ImU32>, 7> valueColours{
+      {{ImGuiCol_Text, CREAM},
+       {ImGuiCol_FrameBg, DARK},
+       {ImGuiCol_FrameBgHovered, MID},
+       {ImGuiCol_FrameBgActive, MID},
+       {ImGuiCol_Border, BORDER},
+       {ImGuiCol_SliderGrab, LIME},
+       {ImGuiCol_SliderGrabActive, LIME}}};
+  for (const auto& [slot, colour] : valueColours)
+  {
+    ImGui::PushStyleColor(slot, colour);
+  }
+  ImGui::SetCursorScreenPos(
+      ui.point(sx + simulation.w - SIM.valueFromRight, sy + SIM.valueTop));
+  ImGui::SetNextItemWidth(SIM.valueW * scale);
   ImGui::InputFloat("##home_advantage_value", &sandboxHomeAdvantage(), 0, 0,
                     "%.2f");
   const float maximum = MatchTuning::Context::MAX_HOME_ADVANTAGE_SCALE;
   sandboxHomeAdvantage() = std::clamp(sandboxHomeAdvantage(), 0.0F, maximum);
-  ImGui::SetCursorScreenPos(ui.point(sx + 16, sy + 112));
-  ImGui::SetNextItemWidth((simulation.w - 32) * scale);
-  for (const auto color :
-       {ImGuiCol_FrameBg, ImGuiCol_FrameBgHovered, ImGuiCol_FrameBgActive,
-        ImGuiCol_SliderGrab, ImGuiCol_SliderGrabActive, ImGuiCol_Border})
+  ImGui::SetCursorScreenPos(ui.point(sx + INSET, sy + SIM.sliderTop));
+  ImGui::SetNextItemWidth((simulation.w - (2 * INSET)) * scale);
+  // ImGui's own slider is invisible; its track and thumb are drawn below.
+  constexpr std::array<ImGuiCol, 6> HIDDEN{
+      ImGuiCol_FrameBg,    ImGuiCol_FrameBgHovered,   ImGuiCol_FrameBgActive,
+      ImGuiCol_SliderGrab, ImGuiCol_SliderGrabActive, ImGuiCol_Border};
+  for (const auto slot : HIDDEN)
   {
-    ImGui::PushStyleColor(color, IM_COL32(0, 0, 0, 0));
+    ImGui::PushStyleColor(slot, IM_COL32(0, 0, 0, 0));
   }
   ImGui::SliderFloat("##home_advantage_slider", &sandboxHomeAdvantage(), 0,
                      maximum, "", ImGuiSliderFlags_AlwaysClamp);
@@ -320,46 +437,57 @@ void SandboxSetupUI::render(float scale, ImFont* setup_regular_font,
   {
     ImGui::SetTooltip("0: neutral. 1: standard home edge. 2: maximum.");
   }
-  ImGui::PopStyleColor(6);
-  const float trackWidth = simulation.w - 44;
+  ImGui::PopStyleColor(static_cast<int>(HIDDEN.size()));
+  const float trackLeft = sx + SIM.trackInset;
+  const float trackWidth = simulation.w - (2 * SIM.trackInset);
   const float thumb = trackWidth * sandboxHomeAdvantage() / maximum;
-  ui.draw->AddRectFilled(ui.point(sx + 22, sy + 123),
-                         ui.point(sx + 22 + trackWidth, sy + 127), RULE);
-  ui.draw->AddRectFilled(ui.point(sx + 22, sy + 123),
-                         ui.point(sx + 22 + thumb, sy + 127), LIME);
-  ui.draw->AddRectFilled(ui.point(sx + 17 + thumb, sy + 118),
-                         ui.point(sx + 27 + thumb, sy + 132), LIME);
+  ui.draw->AddRectFilled(ui.point(trackLeft, sy + SIM.trackTop),
+                         ui.point(trackLeft + trackWidth, sy + SIM.trackBottom),
+                         RULE);
+  ui.draw->AddRectFilled(ui.point(trackLeft, sy + SIM.trackTop),
+                         ui.point(trackLeft + thumb, sy + SIM.trackBottom),
+                         LIME);
+  const float thumbX = trackLeft + thumb;
+  ui.draw->AddRectFilled(
+      ui.point(thumbX - SIM.thumbHalfW, sy + SIM.thumbTop),
+      ui.point(thumbX + SIM.thumbHalfW, sy + SIM.thumbBottom), LIME);
   if (ImGui::IsItemFocused())
   {
-    ui.draw->AddRect(ui.point(sx + 15 + thumb, sy + 116),
-                     ui.point(sx + 29 + thumb, sy + 134), CREAM, 0, 0, scale);
+    ui.draw->AddRect(ui.point(thumbX - SIM.thumbHalfW - FOCUS_RING,
+                              sy + SIM.thumbTop - FOCUS_RING),
+                     ui.point(thumbX + SIM.thumbHalfW + FOCUS_RING,
+                              sy + SIM.thumbBottom + FOCUS_RING),
+                     CREAM, 0, 0, scale);
   }
-  ImGui::PopStyleColor(7);
+  ImGui::PopStyleColor(static_cast<int>(valueColours.size()));
   ImGui::PopStyleVar(3);
   ImGui::PopFont();
-  ui.text(sx + 16, sy + 146, "0 Neutral", 14, MUTED);
-  ui.text(sx + (simulation.w / 2) - 36, sy + 146, "1 Standard", 14, MUTED);
-  ui.text(sx + simulation.w - 96, sy + 146, "2 Maximum", 14, MUTED);
-  ui.text(sx + 16, sy + 176, "Applies to new matches, drills and training", 16,
-          MUTED);
-  ui.line(sx + 16, sy + 206, simulation.w - 32);
-  ui.subhead(sx + 16, sy + 222, "MATCH OPTIONS");
-  ui.matchOption(simulation, sy + 248, "Full tactical familiarity",
+  ui.text(sx + INSET, sy + SIM.scaleLabels, "0 Neutral", SMALL_SIZE, MUTED);
+  ui.text(sx + (simulation.w / 2) - SIM.standardHalfW, sy + SIM.scaleLabels,
+          "1 Standard", SMALL_SIZE, MUTED);
+  ui.text(sx + simulation.w - SIM.maximumFromRight, sy + SIM.scaleLabels,
+          "2 Maximum", SMALL_SIZE, MUTED);
+  ui.text(sx + INSET, sy + SIM.applies,
+          "Applies to new matches, drills and training", BODY_SIZE, MUTED);
+  ui.line(sx + INSET, sy + SIM.rule, simulation.w - (2 * INSET));
+  ui.subhead(sx + INSET, sy + SIM.matchOptions, "MATCH OPTIONS");
+  ui.matchOption(simulation, sy + SIM.familiarity, "Full tactical familiarity",
                  "Start both sides fully familiar with their tactics",
                  full_familiarity);
-  ui.matchOption(simulation, sy + 322, "Debug at kick-off",
+  ui.matchOption(simulation, sy + SIM.debug, "Debug at kick-off",
                  "Open review and debugger when play begins",
                  debug_at_kick_off);
   ui.end(simulation);
   const Card note{.x = simulation.x,
                   .y = simulation.y + simulation.h + GAP,
                   .w = simulation.w,
-                  .h = 112};
+                  .h = NOTE_H};
   ui.begin(note, MID);
-  ui.text(note.x + 16, note.y + 12, "NEXT RUN", 14, LIME, sidebar_font, 1);
-  ui.text(note.x + 16, note.y + 38,
-          "Changes apply to new runs. Existing runs keep their settings.", 16,
-          CREAM, setup_regular_font, 0, note.w - 32);
+  ui.text(note.x + INSET, note.y + NOTE_TITLE_TOP, "NEXT RUN", SMALL_SIZE, LIME,
+          sidebar_font, SUBHEAD_TRACKING);
+  ui.text(note.x + INSET, note.y + NOTE_TEXT_TOP,
+          "Changes apply to new runs. Existing runs keep their settings.",
+          BODY_SIZE, CREAM, setup_regular_font, 0, note.w - (2 * INSET));
   ui.end(note);
   // One page scrollbar in compact mode; no card owns a scrolling child.
   ImGui::SetCursorScreenPos(ui.origin);
