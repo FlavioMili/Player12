@@ -32,12 +32,15 @@
    * (his role, an order on him) are set where the pass is scored. */
   struct CarrierWeightsCapybara
   {
+    // Layer steps (DecisionFrame::stepped), summed per weight; the weights
+    // below already include them. Kept so a pass can add the receiver's
+    // role to progress.
+    float progressSteps = 0.0F;
+    float keepSteps = 0.0F;
+    float shotThreatSteps = 0.0F;
     // Shared by pass and carry: progress (the chance it comes off times the
-    // gain towards goal), the layers on it, and the space where the ball
-    // ends up.
+    // gain towards goal) and the space where the ball ends up.
     float progress = 0.0F;
-    float progressInstruction = 0.0F;
-    float passDaring = 0.0F;
     float space = 0.0F;
     // Pass, per candidate.
     float lengthOffIdeal = 0.0F;
@@ -47,26 +50,25 @@
     float spaceBehind = 0.0F;
     // Threat (pass, shot, carry): the chance of a goal from the option.
     float threat = 0.0F;
-    // Shot.
-    float shout = 0.0F;
+    // Shot. Its own copy of the threat weight, which his role and a shout
+    // step.
+    float shotThreat = 0.0F;
     float wideShot = 1.0F;
     float cutInsideShot = 0.0F;
-    float roleShotBias = 0.0F;
     float weakFootShot = 0.0F;
     float lateLeadShot = 0.0F;
     float comfortableLeadShot = 0.0F;
     // Carry.
     float carryKeep = 0.0F;
-    float carryRisk = 0.0F;
     float carryHeld = 0.0F;
     float cutInsideCarry = 0.0F;
     float comfortableLeadCarry = 0.0F;
     // Shield.
     float shieldKeep = 0.0F;
   };
-  /** The carrier decision's weights with no layers: every default, and 0
-   * for every weight a layer sets (instructions, his role, a shout, the
-   * game state). The xG map draws the shot score with these. */
+  /** The carrier decision's weights with no layers: every default, no
+   * steps, and 0 for the game-state weights. The xG map draws the shot
+   * score with these. */
   [[nodiscard]] static CarrierWeightsCapybara neutralCarrierWeightsCapybara();
   [[nodiscard]] CarrierWeightsCapybara carrierWeightsCapybara(
       const MatchPlayer& carrier) const;
@@ -210,8 +212,11 @@
   /** Share of the presser's normal stand-off distance. */
   float pressStandOffShareCapybara(const MatchPlayer& presser,
                            const MatchPlayer& carrier) const;
-  /** Shot appetite added by a shout (positive shoots more). */
-  float shoutShotBiasCapybara(bool homeTeam) const;
+  /** Steps a shout gives the shot's threat weight (positive shoots more). */
+  float shoutShotStepsCapybara(bool homeTeam) const;
+  /** Steps a role profile value gives a weight: the largest values (about
+   * 0.25) give DecisionFrame::LAYER_MAX_STEPS. */
+  static float roleStepsCapybara(float profile);
   /** Pass utility lost to a tight marker standing next to the receiver. */
   float tightMarkPenaltyCapybara(const MatchPlayer& receiver) const;
   /** Moves a marker's target tight and goal-side of his man. */

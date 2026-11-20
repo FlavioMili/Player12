@@ -278,14 +278,22 @@ void MatchEngine::applyTeamMentalityCapybara(StrategySliders& sliders,
   }
 }
 
-float MatchEngine::shoutShotBiasCapybara(bool homeTeam) const
+float MatchEngine::shoutShotStepsCapybara(bool homeTeam) const
 {
   const MatchShout shout = shouts[homeTeam ? 0 : 1].shout;
   const float bias = shout == MatchShout::SHOOT_ON_SIGHT       ? 1.0F
                      : shout == MatchShout::WORK_BALL_INTO_BOX ? -1.0F
                                                                : 0.0F;
-  return bias * MatchTuning::Touchline::SHOUT_SHOT_BIAS *
-         getShoutStrength(homeTeam);
+  return bias * DecisionFrame::SHOUT_MAX_STEPS * getShoutStrength(homeTeam);
+}
+
+float MatchEngine::roleStepsCapybara(float profile)
+{
+  // Role profiles (tactics.cpp) run to about +-0.25 after the duty.
+  constexpr float LARGEST_PROFILE = 0.25F;
+  return std::clamp(profile * DecisionFrame::LAYER_MAX_STEPS / LARGEST_PROFILE,
+                    -DecisionFrame::LAYER_MAX_STEPS,
+                    DecisionFrame::LAYER_MAX_STEPS);
 }
 
 void MatchEngine::refreshTacticalTargetsCapybara(float dt, bool planHome)
@@ -3761,6 +3769,7 @@ MatchEngine::CarrierWeightsCapybara MatchEngine::neutralCarrierWeightsCapybara()
   // Threat: one weight for every option, the shot's own scale.
   weights.threat = D::SHOT_SCORE_SCALE;
   // Shot.
+  weights.shotThreat = D::SHOT_SCORE_SCALE;
   weights.wideShot = D::WIDE_SHOT_DISCOUNT;
   weights.cutInsideShot = D::CUT_INSIDE_SHOT_BONUS;
   weights.weakFootShot = -T::WEAK_FOOT_SHOT_PENALTY;
@@ -3776,29 +3785,39 @@ MatchEngine::CarrierWeightsCapybara MatchEngine::neutralCarrierWeightsCapybara()
 MatchEngine::CarrierWeightsCapybara MatchEngine::carrierWeightsCapybara(
     const MatchPlayer& carrier) const
 {
-  // The defaults, then the weights each layer sets. The team sliders still
-  // move weights linearly (ratio^steps is a later step).
+  // The defaults, then each layer's steps on them (ratio^steps, step B5),
+  // then the game state (still fixed amounts until step B6).
   using D = MatchTuning::Decision;
-  using P = MatchTuning::Passing;
   namespace T = TacticsTuning;
   const StrategySliders strategy = getEffectiveSliders(carrier.isHomeTeam);
   const RoleProfile& role = roleProfileOf(carrier);
   // Game state is a layer: a drill with no layers has none.
   const bool gameState = drillRules.layers;
   CarrierWeightsCapybara weights = neutralCarrierWeightsCapybara();
+  using DecisionFrame::sliderSteps;
+  using DecisionFrame::stepped;
+  const float daringSteps = roleStepsCapybara(role.passDaring);
   // Progress (pass and carry): the attacking instruction, his role's
   // daring.
-  weights.progressInstruction =
-      strategy.offensiveBias * P::OFFENSIVE_PROGRESS_WEIGHT;
-  weights.passDaring = role.passDaring;
-  // Shot: a shout, his role, the game state.
-  weights.shout = shoutShotBiasCapybara(carrier.isHomeTeam);
-  weights.roleShotBias = role.shotBias * T::SHOT_BIAS_WEIGHT;
+  weights.progressSteps = sliderSteps(strategy.offensiveBias) + daringSteps;
+  // Keeping the ball (pass completion, carry and shield keep): less for
+  // the risk-taking instruction, and for a daring passer a third as much
+  // as on progress (the ratio of the two daring terms before step B5).
+  weights.keepSteps = -sliderSteps(strategy.riskTaking) -
+                      (daringSteps * T::PASS_DARING_SAFETY_WEIGHT /
+                       T::PASS_DARING_PROGRESS_WEIGHT);
+  // Shot threat: his role, a shout.
+  weights.shotThreatSteps = roleStepsCapybara(role.shotBias) +
+                            shoutShotStepsCapybara(carrier.isHomeTeam);
+  weights.progress = stepped(weights.progress, weights.progressSteps);
+  weights.completion = stepped(weights.completion, weights.keepSteps);
+  weights.carryKeep = stepped(weights.carryKeep, weights.keepSteps);
+  weights.shieldKeep = stepped(weights.shieldKeep, weights.keepSteps);
+  weights.shotThreat = stepped(weights.shotThreat, weights.shotThreatSteps);
+  // The game state.
   weights.lateLeadShot = gameState ? -D::LATE_LEAD_SPECULATIVE_PENALTY : 0.0F;
   weights.comfortableLeadShot =
       gameState ? -D::COMFORTABLE_LEAD_SHOT_PENALTY : 0.0F;
-  // Carry: the risk-taking instruction, the game state.
-  weights.carryRisk = strategy.riskTaking * D::CARRY_RISK_BIAS;
   weights.comfortableLeadCarry =
       gameState ? -D::COMFORTABLE_LEAD_CARRY_PENALTY : 0.0F;
   return weights;
@@ -3811,9 +3830,8 @@ float MatchEngine::addShotCoreCapybara(DecisionFrame::Score& shot,
 {
   using D = MatchTuning::Decision;
   using S = TermSource;
-  // The shout counts in full only from a good range: it fades out
-  // completely for absurd-distance attempts, so the scored decision can
-  // never invent a nonsensical long shot.
+  // Range eligibility: the role terms that are still flat (cutting
+  // inside) fade with it, so they never invent a nonsensical long shot.
   const float range = std::clamp(
       (shotXG - D::SHOT_ELIGIBILITY_FLOOR) / D::SHOT_ELIGIBILITY_RANGE, 0.0F,
       1.0F);
@@ -3823,8 +3841,7 @@ float MatchEngine::addShotCoreCapybara(DecisionFrame::Score& shot,
   const bool wideInFinalThird =
       finalThird && std::abs(pitch.atY(MatchTuning::Pitch::CENTRE) - at.y) >=
                         D::WIDE_SHOT_WIDTH_METRES;
-  shot.add("threat (expected goals)", S::SITUATION, shotXG, weights.threat);
-  shot.add("touchline shout", S::MORALE, range, weights.shout);
+  shot.add("threat (expected goals)", S::SITUATION, shotXG, weights.shotThreat);
   if (wideInFinalThird)
   {
     shot.scale("wide-angle discount", S::LOCATION, weights.wideShot);
@@ -4041,7 +4058,6 @@ MatchEngine::BallAction MatchEngine::chooseBallActionCapybara(
     // pressure is less inclined to try.
     shot.add("cutting inside", S::SLOT_ROLE, gate(cutsInside) * range,
              weights.cutInsideShot);
-    shot.add("role's shot bias", S::SLOT_ROLE, range, weights.roleShotBias);
     shot.add("forced onto weaker foot", S::INSTRUCTION,
              weakFootPressure(carrier), weights.weakFootShot);
   }
@@ -4067,16 +4083,10 @@ MatchEngine::BallAction MatchEngine::chooseBallActionCapybara(
             spaceAtCapybara(carrier.isHomeTeam, carryEnd), weights.space);
   carry.add("progress (keeps it x gain)", S::SITUATION, carryProgress,
             weights.progress);
-  carry.add("progress x attacking instruction", S::INSTRUCTION, carryProgress,
-            weights.progressInstruction);
-  carry.add("his role: daring (progress)", S::SLOT_ROLE,
-            carryProgress * TacticsTuning::PASS_DARING_PROGRESS_WEIGHT,
-            weights.passDaring);
   carry.add("keeps the ball", S::SITUATION, carryKeep, weights.carryKeep);
   // Threat: the chance he keeps it times the xG where the carry ends.
   carry.add("threat (keeps it x xG at the carry's end)", S::SITUATION,
             carryKeep * carryEndXGCapybara(carrier, carryEnd), weights.threat);
-  carry.add("risk-taking instruction", S::INSTRUCTION, 1.0F, weights.carryRisk);
   carry.add("time already on the ball", S::SITUATION, heldSeconds,
             weights.carryHeld);
   // A wide forward cutting inside wants to run at the box himself.
@@ -4448,9 +4458,12 @@ MatchEngine::PassOption MatchEngine::evaluatePassOptionCapybara(
   // A). Weighting: how much each measure counts for the passer, then the
   // weights the receiver brings (his role, an opposition order on him).
   const CarrierWeightsCapybara weights = carrierWeightsCapybara(passer);
-  namespace T = TacticsTuning;
-  const float targetWeight =
-      roleProfileOf(receiver).targetBias * T::TARGET_BIAS_WEIGHT;
+  // The receiver's role: a target man is looked for, so passes to him get
+  // his steps on progress too.
+  const float progressWeight = DecisionFrame::stepped(
+      neutralCarrierWeightsCapybara().progress,
+      weights.progressSteps +
+          roleStepsCapybara(roleProfileOf(receiver).targetBias));
   const float markedWeight = -tightMarkPenaltyCapybara(receiver);
   // Scoring: the measures, each times its weight, summed in this order.
   using DecisionFrame::gate;
@@ -4460,9 +4473,7 @@ MatchEngine::PassOption MatchEngine::evaluatePassOptionCapybara(
   const float passProgress = completionProbability * progression;
   score.add("space where the ball ends", S::SITUATION, openness, weights.space);
   score.add("progress (completion x gain)", S::SITUATION, passProgress,
-            weights.progress);
-  score.add("progress x attacking instruction", S::INSTRUCTION, passProgress,
-            weights.progressInstruction);
+            progressWeight);
   score.add(
       "distance from the ideal length", S::SITUATION,
       std::abs(passDistance - MatchTuning::Passing::IDEAL_DISTANCE_METRES),
@@ -4474,16 +4485,6 @@ MatchEngine::PassOption MatchEngine::evaluatePassOptionCapybara(
             weights.completion);
   score.add("receiver making a run", S::SITUATION,
             gate(receiver.isMakingRun && progression > 0.0F), weights.runner);
-  // The passer's role: progress and risk (1 - completion) are worth more
-  // to a daring passer.
-  score.add("passer's role: daring passes", S::SLOT_ROLE,
-            (passProgress * T::PASS_DARING_PROGRESS_WEIGHT) +
-                ((1.0F - completionProbability) * T::PASS_DARING_SAFETY_WEIGHT),
-            weights.passDaring);
-  // A target man is worth less to a ball played back to him.
-  constexpr float TARGET_BACKWARD_SHARE = 0.4F;
-  score.add("receiver's role: target", S::SLOT_ROLE,
-            progression > 0.0F ? 1.0F : TARGET_BACKWARD_SHARE, targetWeight);
   score.add("receiver tightly marked (order)", S::INSTRUCTION, 1.0F,
             markedWeight);
   // Threat: the chance the pass arrives times the receiver's xG there.
