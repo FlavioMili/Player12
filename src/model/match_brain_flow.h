@@ -100,6 +100,10 @@ inline constexpr std::size_t OPTION_COUNT =
 /** One carrier decision (pass, shot, carry, shield), as the tool shows it. */
 struct CarrierRecord
 {
+  /** Set by the tool before the decision (kept when the record is
+   * filled): no judgement offsets and no pick noise, so the scores are at
+   * the true chances. The sizes of both are still recorded. */
+  bool steady = false;
   LayerMask layers = ALL_LAYERS;
   std::array<Option, OPTION_COUNT> options;
   std::vector<Weight> weights;
@@ -112,6 +116,8 @@ struct CarrierRecord
   float familiarityFactor = 1.0F;
   float edgeFactor = 1.0F;
   float talkFactor = 1.0F;
+  /** The best pass's own terms, as he reads it. */
+  DecisionFrame::Score bestPass;
   /** The best pass's receiver (player id; 0 for none). */
   std::uint32_t bestReceiver = 0;
   /** The best pass's progress steps from the receiver's role. */

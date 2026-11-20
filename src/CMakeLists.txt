@@ -778,6 +778,8 @@ add_executable(match_sandbox
     tools/match_sandbox_contact_view.cpp
     tools/match_sandbox_xg_map.h
     tools/match_sandbox_xg_map.cpp
+    tools/match_sandbox_brain_flow.h
+    tools/match_sandbox_brain_flow.cpp
     tools/match_sandbox_bench_scene.h
     tools/match_sandbox_bench_scene.cpp
     tools/match_sandbox_true_view.h

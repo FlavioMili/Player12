@@ -143,7 +143,8 @@
   };
   PassOption evaluatePassOptionCapybara(MatchPlayer& passer, MatchPlayer& receiver,
                                 PassCandidateDetail* detail = nullptr,
-                                PassMisreadCapybara misread = {}) const;
+                                PassMisreadCapybara misread = {},
+                                DecisionFrame::Score* terms = nullptr) const;
   ShotAim chooseShotAimCapybara(const MatchPlayer& shooter, bool header, bool penalty,
                         bool freeKick);
   float choosePenaltyGuessCapybara(const MatchPlayer& keeper);

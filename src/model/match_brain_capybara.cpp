@@ -4110,8 +4110,14 @@ MatchEngine::BallAction MatchEngine::chooseBallActionCapybara(
   constexpr float PICK_NOISE = 0.4F;
   const float decisions = carrier.derivedStat(DerivedStat::DECISIONS);
   const float judgement = (1.0F - decisions) * JUDGEMENT_LOG_ODDS;
-  const auto misreadOffset = [this, judgement]()
-  { return judgement * randomFloat(-1.0F, 1.0F); };
+  // The brain flow tool may ask for steady values (no offsets, no pick
+  // noise); the draws are made either way.
+  const bool steady = flowRecord != nullptr && flowRecord->steady;
+  const auto misreadOffset = [this, judgement, steady]()
+  {
+    const float draw = randomFloat(-1.0F, 1.0F);
+    return steady ? 0.0F : judgement * draw;
+  };
   // A chance as he reads it, noted for the brain flow tool.
   const auto readChance = [this](const char* name, float truth, float offset)
   {
@@ -4126,6 +4132,7 @@ MatchEngine::BallAction MatchEngine::chooseBallActionCapybara(
   if (flowRecord != nullptr)
   {
     *flowRecord = {};
+    flowRecord->steady = steady;
     flowRecord->layers = flowLayers;
   }
   const bool mood = BrainFlow::isOn(flowLayers, BrainFlow::Layer::MOOD);
@@ -4190,7 +4197,8 @@ MatchEngine::BallAction MatchEngine::chooseBallActionCapybara(
     const float receiverXGOffset = misreadOffset();
     const PassOption read = evaluatePassOptionCapybara(
         carrier, *option->receiver, readPassDetail ? &*readPassDetail : nullptr,
-        {.completion = completionOffset, .receiverXG = receiverXGOffset});
+        {.completion = completionOffset, .receiverXG = receiverXGOffset},
+        flowRecord != nullptr ? &flowRecord->bestPass : nullptr);
     if (flowRecord != nullptr)
     {
       readChance("pass completion", read.completionProbability,
@@ -4319,15 +4327,20 @@ MatchEngine::BallAction MatchEngine::chooseBallActionCapybara(
 
   // Vision scales how much randomness perturbs close choices. The noise is
   // bounded so a truly nonsensical option can never win.
-  shotScore += pickNoiseScale * randomFloat(-1.0F, 1.0F);
-  carryScore += pickNoiseScale * randomFloat(-1.0F, 1.0F);
+  const auto pickNoise = [this, pickNoiseScale, steady]()
+  {
+    const float draw = randomFloat(-1.0F, 1.0F);
+    return steady ? 0.0F : pickNoiseScale * draw;
+  };
+  shotScore += pickNoise();
+  carryScore += pickNoise();
   if (shieldScore > -std::numeric_limits<float>::infinity())
   {
-    shieldScore += pickNoiseScale * randomFloat(-1.0F, 1.0F);
+    shieldScore += pickNoise();
   }
   if (option)
   {
-    passScore += pickNoiseScale * randomFloat(-1.0F, 1.0F);
+    passScore += pickNoise();
   }
 
   if (flowRecord != nullptr)
@@ -4600,7 +4613,7 @@ float MatchEngine::passingLaneRiskCapybara(const MatchPlayer& passer,
 
 MatchEngine::PassOption MatchEngine::evaluatePassOptionCapybara(
     MatchPlayer& passer, MatchPlayer& receiver, PassCandidateDetail* detail,
-    PassMisreadCapybara misread) const
+    PassMisreadCapybara misread, DecisionFrame::Score* terms) const
 {
   // Estimate one receiver's safety, progress and space without consuming RNG
   // or changing the match. The completion estimate ranks options; passBall
@@ -4723,6 +4736,10 @@ MatchEngine::PassOption MatchEngine::evaluatePassOptionCapybara(
   score.add("space in behind", S::SITUATION, spaceBehindShare,
             weights.spaceBehind);
   const float utility = score.total();
+  if (terms != nullptr)
+  {
+    *terms = score;
+  }
 
   PassIntent intent = PassIntent::RECYCLE;
   if (cutbackOption)

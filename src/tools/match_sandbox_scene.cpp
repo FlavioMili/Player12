@@ -53,6 +53,7 @@
 #include "tools/match_sandbox_training_scene.h"
 #include "tools/match_sandbox_true_view.h"
 #include "tools/match_sandbox_typography.h"
+#include "tools/match_sandbox_brain_flow.h"
 #include "tools/match_sandbox_xg_map.h"
 #include "tools/match_sandbox_zone_recording.h"
 #include "tools/match_sandbox_zone_replay_scene.h"
@@ -934,7 +935,7 @@ void MatchSandboxScene::renderVisualisers()
     const char* command;
     ImU32 background;
   };
-  const std::array<Tool, 4> tools{
+  const std::array<Tool, 5> tools{
       {{.id = "##visualiser_page",
         .title = "CONTACT DIFFICULTY",
         .description =
@@ -972,7 +973,15 @@ void MatchSandboxScene::renderVisualisers()
             "and where the brain thinks a shot is worth it. Hover for every "
             "part.",
         .command = "Training ground plan, section 24",
-        .background = Page::LIGHT}}};
+        .background = Page::LIGHT},
+       {.id = "##brain_flow_page",
+        .title = "BRAIN FLOW",
+        .description =
+            "See the new brain framework as a flow, from situation to body, "
+            "on a live example. Switch each influence layer on to see what it "
+            "touches.",
+        .command = "Brain flow tool plan",
+        .background = Page::MID}}};
   for (int tool = 0; tool < static_cast<int>(tools.size()); ++tool)
   {
     if (tool % columns != 0)
@@ -999,9 +1008,13 @@ void MatchSandboxScene::renderVisualisers()
       {
         guiView->overlayScene(std::make_unique<TechniqueBenchScene>(guiView));
       }
-      else
+      else if (tool == 3)
       {
         guiView->overlayScene(std::make_unique<XgMapScene>(guiView));
+      }
+      else
+      {
+        guiView->overlayScene(std::make_unique<BrainFlowScene>(guiView));
       }
     }
     ImGui::PushFont(setup_regular_font, SandboxPageUI::BOLD_FONT_SIZE);
