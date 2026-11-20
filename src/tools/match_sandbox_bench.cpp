@@ -9,6 +9,7 @@
 #include "tools/match_sandbox_bench.h"
 
 #include <algorithm>
+#include <array>
 #include <cctype>
 #include <charconv>
 #include <cmath>
@@ -27,6 +28,19 @@
 namespace
 {
 using Clock = std::chrono::steady_clock;
+
+constexpr std::size_t TIMESTAMP_BYTES = 32;
+/** A flag metric counts as set from one half up. */
+constexpr double FLAG_SET = 0.5;
+/** Default skills: 1, then 10 to 100 in steps of 10. */
+constexpr int DEFAULT_SKILL_STEP = 10;
+constexpr int DEFAULT_SKILL_MAX = 100;
+/** The skill every test runs at first. */
+constexpr float MIDDLE_SKILL = 50.0F;
+constexpr float DEFAULT_REPEATS = 50.0F;
+constexpr std::chrono::milliseconds PROGRESS_POLL{50};
+/** Width of the test name column in the results table. */
+constexpr std::size_t TEST_NAME_COLUMN = 44;
 
 bool sameName(std::string_view a, std::string_view b)
 {
@@ -172,9 +186,9 @@ std::string timestamp()
 #else
   localtime_r(&now, &local);
 #endif
-  char text[32];
-  std::strftime(text, sizeof(text), "%Y-%m-%d %H%M%S", &local);
-  return text;
+  std::array<char, TIMESTAMP_BYTES> text{};
+  std::strftime(text.data(), text.size(), "%Y-%m-%d %H%M%S", &local);
+  return text.data();
 }
 
 /** `pattern` with * (any run) and ? (any one), ignoring case. */
@@ -270,7 +284,7 @@ bool BenchSuccess::judge(const std::vector<DrillMetric>& metrics,
   switch (kind)
   {
     case Kind::FLAG:
-      return metricOf(metrics, metric).value_or(0.0) >= 0.5;
+      return metricOf(metrics, metric).value_or(0.0) >= FLAG_SET;
     case Kind::AT_MOST:
     {
       const auto value = metricOf(metrics, metric);
@@ -336,7 +350,8 @@ std::filesystem::path benchCataloguePath()
 std::vector<float> defaultBenchSkills()
 {
   std::vector<float> skills{1.0F};
-  for (int value = 10; value <= 100; value += 10)
+  for (int value = DEFAULT_SKILL_STEP; value <= DEFAULT_SKILL_MAX;
+       value += DEFAULT_SKILL_STEP)
   {
     skills.push_back(static_cast<float>(value));
   }
@@ -832,7 +847,7 @@ BenchRunner::BenchRunner(const BenchCatalogue& catalogue,
   if (!order.empty())
   {
     const auto middle = std::ranges::min_element(
-        order, {}, [](float skill) { return std::abs(skill - 50.0F); });
+        order, {}, [](float skill) { return std::abs(skill - MIDDLE_SKILL); });
     priority.push_back(*middle);
     for (const float end : {order.front(), order.back()})
     {
@@ -1094,8 +1109,8 @@ int runBenchCommand(const StatsConfig& config,
     }
     else if (argument == "--repeats" && hasValue)
     {
-      spec.repeats =
-          std::max(1, static_cast<int>(toFloat(value).value_or(50.0F)));
+      spec.repeats = std::max(
+          1, static_cast<int>(toFloat(value).value_or(DEFAULT_REPEATS)));
     }
     else if (argument == "--seed" && hasValue)
     {
@@ -1167,7 +1182,7 @@ int runBenchCommand(const StatsConfig& config,
   BenchResults results;
   while (!runner.done())
   {
-    std::this_thread::sleep_for(std::chrono::milliseconds(50));
+    std::this_thread::sleep_for(PROGRESS_POLL);
     runner.collect(results);
   }
   runner.collect(results);
@@ -1175,7 +1190,8 @@ int runBenchCommand(const StatsConfig& config,
                            runner.runsDone());
 
   // Success rate by test and skill.
-  std::cout << std::format("{:<5} {:<44}", "Test", "Success %");
+  std::cout << std::format("{:<5} {:<{}}", "Test", "Success %",
+                           TEST_NAME_COLUMN);
   for (const float skill : results.skills)
   {
     std::cout << std::format("{:>6g}", skill);
@@ -1183,7 +1199,9 @@ int runBenchCommand(const StatsConfig& config,
   std::cout << "   rule\n";
   for (const BenchTest& test : results.tests)
   {
-    std::cout << std::format("{:<5} {:<44}", test.id, test.name.substr(0, 44));
+    std::cout << std::format("{:<5} {:<{}}", test.id,
+                             test.name.substr(0, TEST_NAME_COLUMN),
+                             TEST_NAME_COLUMN);
     for (const float skill : results.skills)
     {
       const BenchCell* cell = results.cell(test.id, skill);

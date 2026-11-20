@@ -33,6 +33,18 @@ class Strategy;
 class Team;
 struct ImFont;
 
+/** How the sandbox opens: a drill in Watch, Measure or Shot map, or a view
+ * with no drill (the contact view, the technique bench, the true view). */
+enum class SandboxOpenView
+{
+  WATCH,
+  MEASURE,
+  SHOT_MAP,
+  CONTACT,
+  BENCH,
+  TRUE_VIEW
+};
+
 /**
  * @brief Setup screen of the match sandbox (match_sandbox): two clubs of a
  * throwaway world, both sides' selection and tactics, then a live match.
@@ -48,12 +60,12 @@ class MatchSandboxScene : public GUIScene
   /**
    * @param kick_off_now Start a match with the default setup straight away.
    * @param open_drill Open this drill (by name, any case) in Watch mode.
-   * @param open_view How to open it: 0 Watch, 1 Measure, 2 Shot map; 3
-   * opens the contact view, 4 the technique bench, 5 the true view (no
-   * drill).
+   * @param open_view How to open it (the drill, or a view with no drill).
    */
-  explicit MatchSandboxScene(GUIView* guiView_ptr, bool kick_off_now = false,
-                             std::string open_drill = {}, int open_view = 0);
+  explicit MatchSandboxScene(
+      GUIView* guiView_ptr, bool kick_off_now = false,
+      std::string open_drill = {},
+      SandboxOpenView open_view = SandboxOpenView::WATCH);
 
   void onEnter() override;
   void update(float deltaTime) override;
@@ -84,7 +96,7 @@ class MatchSandboxScene : public GUIScene
   std::array<Side, 2> sides{};
   bool kick_off_pending = false;
   std::string drill_pending;
-  int drill_view = 0;
+  SandboxOpenView drill_view = SandboxOpenView::WATCH;
   std::uint32_t match_seed = 1;
   bool new_seed_each_match = true;
   bool full_familiarity = true;

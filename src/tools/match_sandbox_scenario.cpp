@@ -26,6 +26,9 @@ namespace
 {
 /** Where an unused dummy (a side short of eleven) is parked. */
 constexpr Vector2F PARKED{.x = 0.02F, .y = 0.02F};
+/** Dummy slots per side: home 0-10, away 11-21. */
+constexpr std::size_t SLOTS_PER_SIDE = 11;
+constexpr int SECONDS_PER_MINUTE = 60;
 
 const char* actionEnum(ScenarioAction action)
 {
@@ -69,7 +72,7 @@ std::string ScenarioExport::testCase(const MatchEngine& before,
   std::optional<std::size_t> receiverSlot;
   for (const bool home : {true, false})
   {
-    const std::size_t base = home ? 0 : 11;
+    const std::size_t base = home ? 0 : SLOTS_PER_SIDE;
     std::size_t next = 1;
     for (const MatchPlayer& player : before.getPlayers())
     {
@@ -83,7 +86,7 @@ std::string ScenarioExport::testCase(const MatchEngine& before,
       {
         slot = base;
       }
-      else if (next <= 10)
+      else if (next < SLOTS_PER_SIDE)
       {
         slot = base + next++;
       }
@@ -121,7 +124,7 @@ std::string ScenarioExport::testCase(const MatchEngine& before,
   const int seconds = static_cast<int>(std::floor(minute * 60.0F));
   std::string text = std::format(
       "// Exported from the match sandbox at tick {} ({:02}:{:02}).\n", tick,
-      seconds / 60, seconds % 60);
+      seconds / SECONDS_PER_MINUTE, seconds % SECONDS_PER_MINUTE);
   text += std::format(
       "// {} chose {}: pass {}  shot {}  carry {}  shield {} (before noise).\n",
       names.playerName(decision.player), SandboxNames::choice(decision.chosen),
@@ -146,7 +149,7 @@ std::string ScenarioExport::testCase(const MatchEngine& before,
       "  const Ids ids = collectIds(pool);\n"
       "  const StatsConfig config = createStatsConfig();\n\n"
       "  ScenarioSpec spec;\n";
-  std::vector<bool> used(22, false);
+  std::vector<bool> used(2 * SLOTS_PER_SIDE, false);
   for (const Placed& entry : placed)
   {
     used[entry.slot] = true;

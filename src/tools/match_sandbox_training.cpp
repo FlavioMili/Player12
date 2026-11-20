@@ -26,6 +26,32 @@ constexpr float LENGTH = MatchTuning::Pitch::MATCH_LENGTH_METRES;
 constexpr float WIDTH = MatchTuning::Pitch::MATCH_WIDTH_METRES;
 constexpr float STEP = MatchTuning::Timing::FIXED_STEP_SECONDS;
 constexpr float MPH_PER_METRE_PER_SECOND = 2.236936F;
+constexpr int SECONDS_PER_MINUTE = 60;
+/** Shorter than this, a vector has no direction. */
+constexpr float NO_LENGTH = 1e-6F;
+constexpr float HALF = 0.5F;
+/** Pitch fractions: halfway (the centre spot), and in front of each goal. */
+constexpr float HALFWAY = 0.5F;
+constexpr float NEAR_GOAL_X = 0.03F;
+constexpr float FAR_GOAL_X = 0.97F;
+/** Drawn lines (scaled pixels). */
+constexpr float LINE_THICKNESS = 1.5F;
+constexpr float GATE_LINE_THICKNESS = 2.0F;
+constexpr float START_LINE_THICKNESS = 3.0F;
+/** A finished runner's place, drawn just off his lane (pitch fractions). */
+constexpr float PLACE_LABEL_LEFT = 0.006F;
+constexpr float PLACE_LABEL_UP = 0.04F;
+/** Stamina this close to his floor counts as spent. */
+constexpr float FUEL_FLOOR_TOLERANCE = 1e-4F;
+/** A spent runner walks this far off the track, towards the centre. */
+constexpr float OFF_TRACK_METRES = 10.0F;
+/** Laps trace: faster than this he counts as moving; how far his running
+ * is off his facing, by band (degrees); the followed player every half
+ * second. */
+constexpr float TRACE_MOVING_SPEED = 3.0F;
+constexpr std::array<float, 4> OFF_FACING_DEGREES{10.0F, 20.0F, 45.0F, 90.0F};
+constexpr double FOLLOW_EVERY_SECONDS = 0.5;
+constexpr double CLOCK_TOLERANCE = 1e-6;
 
 // Training plays on a match pitch, placed by fractions of it (PITCH.at)
 // and thought about in metres; engine points go through the pitch.
@@ -71,7 +97,7 @@ Vector2F directionBetween(PitchPoint from, PitchPoint to)
   const float x = to.x - from.x;
   const float y = to.y - from.y;
   const float size = std::hypot(x, y);
-  if (size < 1e-6F)
+  if (size < NO_LENGTH)
   {
     return {.x = 1.0F, .y = 0.0F};
   }
@@ -82,7 +108,8 @@ Vector2F directionBetween(PitchPoint from, PitchPoint to)
 std::string clock(double seconds)
 {
   const int whole = static_cast<int>(seconds);
-  return std::format("{}:{:02}", whole / 60, whole % 60);
+  return std::format("{}:{:02}", whole / SECONDS_PER_MINUTE,
+                     whole % SECONDS_PER_MINUTE);
 }
 
 /**
@@ -136,14 +163,14 @@ class AcrossAndBackDrill final : public TrainingDrill
     {
       Lane lane;
       lane.id = ids[index];
-      lane.x = FIRST_X + laneWidth * (static_cast<float>(index) + 0.5F);
+      lane.x = FIRST_X + laneWidth * (static_cast<float>(index) + HALF);
       lane.previous = PITCH.at(lane.x, NEAR_Y);
       lanes.push_back(lane);
       scenario.players.push_back(
           {.playerId = lane.id, .position = lane.previous, .makingRun = false});
     }
     // In front of a goal, clear of every lane.
-    scenario.ballPosition = PITCH.at(0.03F, 0.5F);
+    scenario.ballPosition = PITCH.at(NEAR_GOAL_X, HALFWAY);
     engine.startDrill(scenario);
     for (const Lane& lane : lanes)
     {
@@ -213,9 +240,9 @@ class AcrossAndBackDrill final : public TrainingDrill
     const float scale = Theme::scale();
     // Cones between the lanes, on both lines; the start and turn lines.
     DrillDraw::line(renderer, draw, PITCH.at(FIRST_X, NEAR_Y),
-                    PITCH.at(LAST_X, NEAR_Y), LINE, 1.5F * scale);
+                    PITCH.at(LAST_X, NEAR_Y), LINE, LINE_THICKNESS * scale);
     DrillDraw::line(renderer, draw, PITCH.at(FIRST_X, FAR_Y),
-                    PITCH.at(LAST_X, FAR_Y), LINE, 1.5F * scale);
+                    PITCH.at(LAST_X, FAR_Y), LINE, LINE_THICKNESS * scale);
     for (std::size_t edge = 0; edge <= lanes.size(); ++edge)
     {
       const float x = FIRST_X + (laneWidth * static_cast<float>(edge));
@@ -228,9 +255,10 @@ class AcrossAndBackDrill final : public TrainingDrill
     {
       if (lane.finish)
       {
-        DrillDraw::label(renderer, draw,
-                         PITCH.at(lane.x - 0.006F, NEAR_Y + 0.04F),
-                         std::format("{}", lane.place).c_str(), DONE);
+        DrillDraw::label(
+            renderer, draw,
+            PITCH.at(lane.x - PLACE_LABEL_LEFT, NEAR_Y + PLACE_LABEL_UP),
+            std::format("{}", lane.place).c_str(), DONE);
       }
     }
   }
@@ -468,7 +496,7 @@ class SlalomDrill final : public TrainingDrill
                                   .makingRun = false});
     }
     // In front of a goal, clear of the course and the queue.
-    scenario.ballPosition = PITCH.at(0.97F, 0.5F);
+    scenario.ballPosition = PITCH.at(FAR_GOAL_X, HALFWAY);
     engine.startDrill(scenario);
     for (std::size_t index = 0; index < count; ++index)
     {
@@ -537,17 +565,18 @@ class SlalomDrill final : public TrainingDrill
     const float half = 4.0F;
     DrillDraw::line(renderer, draw, PitchPoint{START.x, START.y - half},
                     PitchPoint{START.x, START.y + half},
-                    IM_COL32(90, 220, 120, 255), 3.0F * scale);
+                    IM_COL32(90, 220, 120, 255), START_LINE_THICKNESS * scale);
     for (std::size_t cone = 0; cone < cones.size(); ++cone)
     {
       // The gate, open beyond what is drawn.
       DrillDraw::line(renderer, draw, gateEdge(cone, 0.0F),
-                      gateEdge(cone, GATE_DRAWN_METRES), LINE, 2.0F * scale);
+                      gateEdge(cone, GATE_DRAWN_METRES), LINE,
+                      GATE_LINE_THICKNESS * scale);
       DrillDraw::cone(renderer, draw, cones[cone], CONE);
     }
     DrillDraw::line(renderer, draw, PitchPoint{finish.x, finish.y - half},
                     PitchPoint{finish.x, finish.y + half},
-                    IM_COL32(240, 80, 80, 255), 3.0F * scale);
+                    IM_COL32(240, 80, 80, 255), START_LINE_THICKNESS * scale);
   }
 
   [[nodiscard]] std::vector<std::string> report() const override
@@ -784,7 +813,7 @@ class SlalomDrill final : public TrainingDrill
     if (runner.goingBack && due < gates.size())
     {
       list.push_back(
-          along(gates[due], {.x = 1.0F, .y = 0.0F}, -SPACING_METRES * 0.5F));
+          along(gates[due], {.x = 1.0F, .y = 0.0F}, -SPACING_METRES * HALF));
     }
     for (std::size_t gate = due; gate < gates.size(); ++gate)
     {
@@ -1026,7 +1055,7 @@ class LapsDrill final : public TrainingDrill
                                   .makingRun = false});
     }
     // On the centre spot, well inside the track.
-    scenario.ballPosition = PITCH.at(0.5F, 0.5F);
+    scenario.ballPosition = PITCH.at(HALFWAY, HALFWAY);
     engine.startDrill(scenario);
     for (Runner& runner : runners)
     {
@@ -1109,7 +1138,8 @@ class LapsDrill final : public TrainingDrill
       // Spent, or hurt (he stops there, short of his best).
       runner.injured = player->isInjured;
       if (runner.injured ||
-          player->stamina <= engine.fuelFloor(player->isHomeTeam) + 1e-4F)
+          player->stamina <=
+              engine.fuelFloor(player->isHomeTeam) + FUEL_FLOOR_TOLERANCE)
       {
         runner.doneAt = now;
         runner.place = ++doneCount;
@@ -1117,7 +1147,8 @@ class LapsDrill final : public TrainingDrill
         // Off the track, at a walk.
         engine.setDrillTarget(
             runner.id,
-            along(at, directionBetween(at, PITCH.at(0.5F, 0.5F)), 10.0F),
+            along(at, directionBetween(at, PITCH.at(HALFWAY, HALFWAY)),
+                  OFF_TRACK_METRES),
             false);
       }
     }
@@ -1132,7 +1163,7 @@ class LapsDrill final : public TrainingDrill
     for (std::size_t corner = 0; corner < 4; ++corner)
     {
       DrillDraw::line(renderer, draw, corners[corner],
-                      corners[(corner + 1) % 4], LINE, 1.5F * scale);
+                      corners[(corner + 1) % 4], LINE, LINE_THICKNESS * scale);
     }
     for (const PitchPoint cone : cones)
     {
@@ -1284,7 +1315,7 @@ class LapsDrill final : public TrainingDrill
     const Vector2F out =
         directionBetween(corners[corner], corners[(corner + 1) % 4]);
     const float size = std::hypot(in.x + out.x, in.y + out.y);
-    if (size < 1e-6F)
+    if (size < NO_LENGTH)
     {
       return false;
     }
@@ -1551,7 +1582,7 @@ int runLapsTrace(const std::vector<TrainingPlayer>& squad,
         continue;
       }
       const float speed = length(player.velocity);
-      if (speed > 3.0F)
+      if (speed > TRACE_MOVING_SPEED)
       {
         const Vector2F facing{.x = std::cos(player.facingAngle),
                               .y = std::sin(player.facingAngle)};
@@ -1563,21 +1594,12 @@ int runLapsTrace(const std::vector<TrainingPlayer>& squad,
             180.0F / std::numbers::pi_v<float>;
         ++movingCount;
         worstOff = std::max(worstOff, off);
-        if (off > 10.0F)
+        for (std::size_t band = 0; band < OFF_FACING_DEGREES.size(); ++band)
         {
-          ++offCounts[0];
-        }
-        if (off > 20.0F)
-        {
-          ++offCounts[1];
-        }
-        if (off > 45.0F)
-        {
-          ++offCounts[2];
-        }
-        if (off > 90.0F)
-        {
-          ++offCounts[3];
+          if (off > OFF_FACING_DEGREES.at(band))
+          {
+            ++offCounts.at(band);
+          }
         }
       }
       const auto describe = [&]()
@@ -1597,7 +1619,7 @@ int runLapsTrace(const std::vector<TrainingPlayer>& squad,
       };
       // The player followed: his route every half second.
       if (!follow.empty() && nameOf(player).find(follow) != std::string::npos &&
-          std::fmod(now + 1e-6, 0.5) < step)
+          std::fmod(now + CLOCK_TOLERANCE, FOLLOW_EVERY_SECONDS) < step)
       {
         std::printf(
             "%6.1f  [%s] vel (%.2f,%.2f) movT (%.1f,%.1f) nextT (%.1f,%.1f) "

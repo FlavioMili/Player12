@@ -22,6 +22,10 @@
 #include "model/match_engine.h"
 #include "model/match_recorder.h"
 
+/** FNV-1a (64-bit): the state fingerprints and checksums. */
+inline constexpr std::uint64_t FNV_OFFSET_BASIS = 14695981039346656037ULL;
+inline constexpr std::uint64_t FNV_PRIME = 1099511628211ULL;
+
 /**
  * The match sandbox's record of one match (debugger phase 1, the "Tier A"
  * log): what the planner, the players and the referee decided and what came

@@ -13,7 +13,13 @@
 
 namespace
 {
-bool differs(float a, float b) { return std::abs(a - b) > 1e-6F; }
+/** Smaller differences are rounding, not a changed value. */
+constexpr float SAME_VALUE_TOLERANCE = 1e-6F;
+
+bool differs(float a, float b)
+{
+  return std::abs(a - b) > SAME_VALUE_TOLERANCE;
+}
 }  // namespace
 
 void TechniqueTuning::applyTo(MatchEngine& engine) const

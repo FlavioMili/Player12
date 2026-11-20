@@ -75,6 +75,9 @@ namespace
 constexpr std::uint64_t DEFAULT_WORLD_SEED = 1;
 constexpr int SANDBOX_SAVE_SLOT = 1;
 constexpr int DEFAULT_CHECK_MATCHES = 5;
+constexpr int DEFAULT_TRACE_MATCH_CASES = 12;
+/** The longest possession trace: a whole hour of play. */
+constexpr double MAX_TRACE_POSSESSION_SECONDS = 3600.0;
 
 void useOwnRuntimeRoot()
 {
@@ -98,12 +101,12 @@ int main(int argc, char* argv[])
   std::optional<double> traceMatchSeconds;
   std::optional<double> tracePossessionSeconds;
   std::string tracePossessionPath;
-  int traceMatchCases = 12;
+  int traceMatchCases = DEFAULT_TRACE_MATCH_CASES;
   std::string traceMatchKind = "neither";
   std::string traceLapsFollow;
   bool zoneRoundTrip = false;
   std::string drill;
-  int drillView = 0;
+  SandboxOpenView drillView = SandboxOpenView::WATCH;
   std::optional<std::vector<std::string>> shotMapArguments;
   std::optional<std::vector<std::string>> benchArguments;
   std::optional<std::string> measureDrill;
@@ -210,28 +213,28 @@ int main(int argc, char* argv[])
     else if (argument == "--measure-view" && index + 1 < argc)
     {
       drill = argv[++index];
-      drillView = 1;
+      drillView = SandboxOpenView::MEASURE;
       continue;
     }
     else if (argument == "--contact-view")
     {
-      drillView = 3;
+      drillView = SandboxOpenView::CONTACT;
       continue;
     }
     else if (argument == "--bench-view")
     {
-      drillView = 4;
+      drillView = SandboxOpenView::BENCH;
       continue;
     }
     else if (argument == "--true-view")
     {
-      drillView = 5;
+      drillView = SandboxOpenView::TRUE_VIEW;
       continue;
     }
     else if (argument == "--shot-map-view")
     {
       drill = "shot";
-      drillView = 2;
+      drillView = SandboxOpenView::SHOT_MAP;
       continue;
     }
     else if (argument == "--shot-map")
@@ -277,7 +280,8 @@ int main(int argc, char* argv[])
           duration.data(), duration.data() + duration.size(), seconds);
       if (parsed.ec != std::errc() ||
           parsed.ptr != duration.data() + duration.size() ||
-          !std::isfinite(seconds) || seconds <= 0.0 || seconds > 3600.0)
+          !std::isfinite(seconds) || seconds <= 0.0 ||
+          seconds > MAX_TRACE_POSSESSION_SECONDS)
       {
         std::cerr << "--trace-possession requires seconds in (0, 3600] and an "
                      "output path.\n";
@@ -421,7 +425,7 @@ int main(int argc, char* argv[])
                         !traceMatchSeconds && !traceLapsSeconds &&
                         !zoneRoundTrip && !shotMapArguments &&
                         !benchArguments && !measureDrill && !kickOff &&
-                        drill.empty() && drillView == 0;
+                        drill.empty() && drillView == SandboxOpenView::WATCH;
     if (splash)
     {
       GUIView view(controller);

@@ -37,6 +37,25 @@ constexpr float STEP = MatchTuning::Timing::FIXED_STEP_SECONDS;
 constexpr int MAX_STEPS_PER_FRAME = 400;
 constexpr std::array<float, 8> SPEEDS{0.5F, 1.0F,  2.0F,  4.0F,
                                       8.0F, 16.0F, 32.0F, 64.0F};
+constexpr int SECONDS_PER_MINUTE = 60;
+constexpr float REGULAR_FONT_SIZE = 16.0F;
+constexpr float BOLD_FONT_SIZE = 14.0F;
+constexpr float ZONE_TITLE_FONT_SIZE = 16.0F;
+/** Layout (scaled pixels). */
+constexpr float PAGE_PADDING = 24.0F;
+constexpr float PANEL_GAP = 6.0F;
+constexpr float GROUP_GAP = 12.0F;
+constexpr float MIN_GROUND_HEIGHT = 300.0F;
+constexpr float NARROW_GROUND_SHARE = 0.65F;
+constexpr float MIN_PITCH_HEIGHT = 200.0F;
+constexpr float GROUND_CARD_CHROME = 56.0F;
+constexpr float SPEED_COMBO_WIDTH = 90.0F;
+constexpr float CAMERA_COMBO_WIDTH = 180.0F;
+constexpr float PICK_COMBO_WIDTH = 160.0F;
+constexpr float ZONE_COMBO_WIDTH = 220.0F;
+/** From this width the panel sits beside the ground. */
+constexpr float COLUMN_LAYOUT_WIDTH = 1000.0F;
+constexpr float PANEL_WIDTH = 420.0F;
 }  // namespace
 
 ZoneSessionScene::ZoneSessionScene(GUIView* guiView_ptr,
@@ -74,8 +93,8 @@ void ZoneSessionScene::onEnter()
         AssetPaths::file((std::string("assets/fonts/") + file).c_str()).c_str(),
         size, &config);
   };
-  regularFont = font("Manrope-Regular.ttf", 16);
-  boldFont = font("Manrope-Bold.ttf", 14);
+  regularFont = font("Manrope-Regular.ttf", REGULAR_FONT_SIZE);
+  boldFont = font("Manrope-Bold.ttf", BOLD_FONT_SIZE);
   restart();
 }
 
@@ -150,7 +169,7 @@ void ZoneSessionScene::render()
   ImGui::SetNextWindowSize(viewport->WorkSize);
   ImGui::PushStyleColor(ImGuiCol_WindowBg, Page::PAGE);
   ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding,
-                      ImVec2(24 * scale, 24 * scale));
+                      ImVec2(PAGE_PADDING * scale, PAGE_PADDING * scale));
   ImGui::PushStyleVar(ImGuiStyleVar_WindowBorderSize, 0);
   ImGui::PushStyleVar(ImGuiStyleVar_WindowRounding, 0);
   ImGui::Begin("##zone_session", nullptr,
@@ -162,9 +181,9 @@ void ZoneSessionScene::render()
   ImGui::PopStyleVar(3);
   ImGui::PopStyleColor();
   const ImVec2 available = ImGui::GetContentRegionAvail();
-  const float gutter = (6 * scale) + ImGui::GetStyle().ScrollbarSize;
-  const bool columns = available.x >= 1000 * scale;
-  const float panel = columns ? 420 * scale : available.x - gutter;
+  const float gutter = (PANEL_GAP * scale) + ImGui::GetStyle().ScrollbarSize;
+  const bool columns = available.x >= COLUMN_LAYOUT_WIDTH * scale;
+  const float panel = columns ? PANEL_WIDTH * scale : available.x - gutter;
   ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(0, 0));
   if (columns)
   {
@@ -173,7 +192,7 @@ void ZoneSessionScene::render()
                       ImGuiChildFlags_AlwaysUseWindowPadding);
     renderPanel(panel);
     ImGui::EndChild();
-    ImGui::SameLine(0, 6 * scale);
+    ImGui::SameLine(0, PANEL_GAP * scale);
     renderGround(std::max(scale, ImGui::GetContentRegionAvail().x),
                  available.y);
   }
@@ -181,7 +200,8 @@ void ZoneSessionScene::render()
   {
     ImGui::BeginChild("##zone_session_controls", available,
                       ImGuiChildFlags_AlwaysUseWindowPadding);
-    renderGround(panel, std::max(300 * scale, available.y * 0.65F));
+    renderGround(panel, std::max(MIN_GROUND_HEIGHT * scale,
+                                 available.y * NARROW_GROUND_SHARE));
     renderPanel(panel);
     ImGui::EndChild();
   }
@@ -222,13 +242,13 @@ void ZoneSessionScene::renderPanel(float width)
   {
     guiView->popScene();
   }
-  ImGui::SameLine(0, 6 * scale);
+  ImGui::SameLine(0, PANEL_GAP * scale);
   if (Page::button("Restart (R)", false, scale, boldFont))
   {
     restart();
   }
   const bool over = run->finished();
-  ImGui::SameLine(0, 6 * scale);
+  ImGui::SameLine(0, PANEL_GAP * scale);
   ImGui::BeginDisabled(over);
   if (Page::button(paused ? "Play (Space)" : "Pause (Space)", false, scale,
                    boldFont))
@@ -239,7 +259,7 @@ void ZoneSessionScene::renderPanel(float width)
   ImGui::AlignTextToFramePadding();
   ImGui::TextUnformatted("Speed");
   ImGui::SameLine();
-  ImGui::SetNextItemWidth(90 * scale);
+  ImGui::SetNextItemWidth(SPEED_COMBO_WIDTH * scale);
   const std::string speedLabel = std::format("{:g}x", speed);
   if (SandboxPageUI::beginCombo("##zone_speed", speedLabel.c_str()))
   {
@@ -253,7 +273,7 @@ void ZoneSessionScene::renderPanel(float width)
     }
     ImGui::EndCombo();
   }
-  ImGui::SameLine(0, 12 * scale);
+  ImGui::SameLine(0, GROUP_GAP * scale);
   if (ImGui::Checkbox("3D view", &view3d))
   {
     if (view3d)
@@ -279,7 +299,7 @@ void ZoneSessionScene::renderPanel(float width)
         current = label;
       }
     }
-    ImGui::SetNextItemWidth(180 * scale);
+    ImGui::SetNextItemWidth(CAMERA_COMBO_WIDTH * scale);
     if (SandboxPageUI::beginCombo("Camera", current))
     {
       for (const auto& [mode, label] : CAMERAS)
@@ -297,7 +317,7 @@ void ZoneSessionScene::renderPanel(float width)
               over     ? "Finished"
               : paused ? "Paused"
                        : "Running",
-              seconds / 60, seconds % 60);
+              seconds / SECONDS_PER_MINUTE, seconds % SECONDS_PER_MINUTE);
   Page::endCard(scale);
 
   // The changing room (T7c): send a player there; he plays again in the
@@ -319,7 +339,7 @@ void ZoneSessionScene::renderPanel(float width)
     {
       restPick = playing.front();
     }
-    ImGui::SetNextItemWidth(160 * scale);
+    ImGui::SetNextItemWidth(PICK_COMBO_WIDTH * scale);
     if (SandboxPageUI::beginCombo("##rest_pick",
                                   run->squad()[restPick]->getName().c_str()))
     {
@@ -333,7 +353,7 @@ void ZoneSessionScene::renderPanel(float width)
       }
       ImGui::EndCombo();
     }
-    ImGui::SameLine(0, 6 * scale);
+    ImGui::SameLine(0, PANEL_GAP * scale);
     if (Page::button("Send to the changing room", false, scale, boldFont))
     {
       (void)run->sendToChangingRoom(restPick);
@@ -375,7 +395,7 @@ void ZoneSessionScene::renderPanel(float width)
       {
         continue;
       }
-      ImGui::PushFont(boldFont, 16);
+      ImGui::PushFont(boldFont, ZONE_TITLE_FONT_SIZE);
       ImGui::TextUnformatted(zone.plan->name.c_str());
       ImGui::PopFont();
       const std::vector<std::string> lines =
@@ -425,7 +445,8 @@ void ZoneSessionScene::renderGround(float width, float height)
                   scale, boldFont);
   const ImVec2 origin = ImGui::GetCursorScreenPos();
   const ImVec2 size(std::max(scale, ImGui::GetContentRegionAvail().x),
-                    std::max(200 * scale, height - (56 * scale)));
+                    std::max(MIN_PITCH_HEIGHT * scale,
+                             height - (GROUND_CARD_CHROME * scale)));
   ImGui::InvisibleButton("##zone_session_ground", size);
   if (!run)
   {
@@ -470,7 +491,7 @@ void ZoneSessionScene::renderZoneTools(float width)
     return;
   }
   watchedZone = std::min(watchedZone, zones.size() - 1);
-  ImGui::SetNextItemWidth(220 * scale);
+  ImGui::SetNextItemWidth(ZONE_COMBO_WIDTH * scale);
   if (SandboxPageUI::beginCombo("Zone", zones[watchedZone].plan->name.c_str()))
   {
     for (std::size_t index = 0; index < zones.size(); ++index)
@@ -530,7 +551,7 @@ void ZoneSessionScene::renderZoneTools(float width)
     {
       const std::string current =
           choice ? std::string(name(*choice)) : std::string("Set-up's");
-      ImGui::SetNextItemWidth(160 * scale);
+      ImGui::SetNextItemWidth(PICK_COMBO_WIDTH * scale);
       if (SandboxPageUI::beginCombo(label, current.c_str()))
       {
         if (ImGui::Selectable("Set-up's", !choice))
@@ -549,7 +570,7 @@ void ZoneSessionScene::renderZoneTools(float width)
       }
     };
     picker("Brain", zone.brain, ALL_BRAINS, brainName);
-    ImGui::SameLine(0, 12 * scale);
+    ImGui::SameLine(0, GROUP_GAP * scale);
     picker("Body", zone.body, ALL_BODIES, bodyName);
     ImGui::TextDisabled("Takes effect on Restart (R).");
   }

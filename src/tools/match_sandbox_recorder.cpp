@@ -280,13 +280,13 @@ std::optional<std::uint64_t> SandboxRecorder::checksum(std::uint64_t at) const
 std::uint64_t SandboxRecorder::stateChecksum(const MatchEngine& engine)
 {
   // FNV-1a over the state that any divergence shows up in within a tick.
-  std::uint64_t hash = 14695981039346656037ULL;
+  std::uint64_t hash = FNV_OFFSET_BASIS;
   const auto add = [&hash](const auto& value)
   {
     const auto* bytes = reinterpret_cast<const unsigned char*>(&value);
     for (std::size_t index = 0; index < sizeof(value); ++index)
     {
-      hash = (hash ^ bytes[index]) * 1099511628211ULL;
+      hash = (hash ^ bytes[index]) * FNV_PRIME;
     }
   };
   add(engine.getSimulatedSteps());

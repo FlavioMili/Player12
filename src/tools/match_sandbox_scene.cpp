@@ -228,7 +228,8 @@ void selectPlayer(Lineup& lineup, const Player& current, const Player& chosen)
 }  // namespace
 
 MatchSandboxScene::MatchSandboxScene(GUIView* guiView_ptr, bool kick_off_now,
-                                     std::string open_drill, int open_view)
+                                     std::string open_drill,
+                                     SandboxOpenView open_view)
     : GUIScene(guiView_ptr),
       kick_off_pending(kick_off_now),
       drill_pending(std::move(open_drill)),
@@ -308,21 +309,21 @@ void MatchSandboxScene::onEnter()
 
 void MatchSandboxScene::update(float /*deltaTime*/)
 {
-  if (drill_view == 3)
+  if (drill_view == SandboxOpenView::CONTACT)
   {
-    drill_view = 0;
+    drill_view = SandboxOpenView::WATCH;
     mode = 3;
     guiView->overlayScene(std::make_unique<ContactViewScene>(guiView));
   }
-  if (drill_view == 4)
+  if (drill_view == SandboxOpenView::BENCH)
   {
-    drill_view = 0;
+    drill_view = SandboxOpenView::WATCH;
     mode = 3;
     guiView->overlayScene(std::make_unique<TechniqueBenchScene>(guiView, true));
   }
-  if (drill_view == 5)
+  if (drill_view == SandboxOpenView::TRUE_VIEW)
   {
-    drill_view = 0;
+    drill_view = SandboxOpenView::WATCH;
     mode = 3;
     guiView->overlayScene(std::make_unique<TrueViewScene>(guiView));
   }
@@ -340,12 +341,12 @@ void MatchSandboxScene::update(float /*deltaTime*/)
       {
         mode = 1;
         drill_index = static_cast<int>(index);
-        if (drill_view == 2)
+        if (drill_view == SandboxOpenView::SHOT_MAP)
         {
           guiView->overlayScene(
               std::make_unique<ShotMapScene>(guiView, *drills[index], true));
         }
-        else if (drill_view == 1)
+        else if (drill_view == SandboxOpenView::MEASURE)
         {
           guiView->overlayScene(std::make_unique<DrillMeasureScene>(
               guiView, *drills[index], true));

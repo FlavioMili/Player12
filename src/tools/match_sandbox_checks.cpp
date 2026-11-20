@@ -90,13 +90,13 @@ class Fingerprint
     std::memcpy(bytes, &value, sizeof(T));
     for (const unsigned char byte : bytes)
     {
-      hash = (hash ^ byte) * 1099511628211ULL;
+      hash = (hash ^ byte) * FNV_PRIME;
     }
   }
   [[nodiscard]] std::uint64_t value() const { return hash; }
 
  private:
-  std::uint64_t hash = 14695981039346656037ULL;
+  std::uint64_t hash = FNV_OFFSET_BASIS;
 };
 
 std::uint64_t fingerprint(const MatchEngine& engine)

@@ -32,12 +32,24 @@ constexpr float STEP_SECONDS = MatchTuning::Timing::FIXED_STEP_SECONDS;
 constexpr float TIMELINE_HEIGHT = 46.0F;
 constexpr float BAND_HEIGHT = 9.0F;
 constexpr std::array<float, 6> SPEEDS{0.25F, 0.5F, 1.0F, 2.0F, 4.0F, 8.0F};
+constexpr int SECONDS_PER_MINUTE = 60;
+constexpr float TIMELINE_ROUNDING = 3.0F;
+/** A marker this close to the mouse (scaled pixels) is the one hovered. */
+constexpr float MARKER_PICK_PIXELS = 5.0F;
+constexpr float GOAL_MARKER_THICKNESS = 2.5F;
+constexpr float MARKER_THICKNESS = 1.5F;
+constexpr float CURSOR_THICKNESS = 2.0F;
+/** Transport controls: the width each button or the speed box takes. */
+constexpr float TRANSPORT_SLOT_WIDTH = 110.0F;
+constexpr float SPEED_COMBO_WIDTH = 80.0F;
+constexpr float VIEWPORT_CENTRE = 0.5F;
 
 std::string clock(float minute)
 {
   const int seconds =
       static_cast<int>(std::floor(std::max(0.0F, minute) * 60.0F));
-  return std::format("{:02}:{:02}", seconds / 60, seconds % 60);
+  return std::format("{:02}:{:02}", seconds / SECONDS_PER_MINUTE,
+                     seconds % SECONDS_PER_MINUTE);
 }
 
 ImU32 phaseColor(TeamPhase phase)
@@ -251,7 +263,8 @@ void MatchReview::renderTimeline(const SandboxRecorder& recorder,
   const bool hovered = ImGui::IsItemHovered();
   const bool active = ImGui::IsItemActive();
   ImDrawList* drawList = ImGui::GetWindowDrawList();
-  drawList->AddRectFilled(min, max, IM_COL32(25, 27, 32, 255), 3.0F);
+  drawList->AddRectFilled(min, max, IM_COL32(25, 27, 32, 255),
+                          TIMELINE_ROUNDING);
   if (end == 0)
   {
     return;
@@ -284,7 +297,7 @@ void MatchReview::renderTimeline(const SandboxRecorder& recorder,
   const float markerBottom = max.y - (2.0F * scale);
   const float middle = (markerTop + markerBottom) * 0.5F;
   const Marker* nearest = nullptr;
-  float nearestDistance = 5.0F * scale;
+  float nearestDistance = MARKER_PICK_PIXELS * scale;
   const ImVec2 mouse = ImGui::GetIO().MousePos;
   for (const Marker& marker : markers)
   {
@@ -322,9 +335,10 @@ void MatchReview::renderTimeline(const SandboxRecorder& recorder,
         bottom = markerBottom;
         break;
     }
-    drawList->AddLine(
-        ImVec2(x, top), ImVec2(x, bottom), color,
-        marker.type == MatchEventType::GOAL ? 2.5F * scale : 1.5F * scale);
+    drawList->AddLine(ImVec2(x, top), ImVec2(x, bottom), color,
+                      marker.type == MatchEventType::GOAL
+                          ? GOAL_MARKER_THICKNESS * scale
+                          : MARKER_THICKNESS * scale);
     if (hovered && std::abs(mouse.x - x) < nearestDistance)
     {
       nearestDistance = std::abs(mouse.x - x);
@@ -336,7 +350,7 @@ void MatchReview::renderTimeline(const SandboxRecorder& recorder,
   const std::uint64_t at = shown ? shown->getSimulatedSteps() : end;
   const float cursorX = xOf(at);
   drawList->AddLine(ImVec2(cursorX, min.y), ImVec2(cursorX, max.y),
-                    IM_COL32(255, 255, 255, 230), 2.0F * scale);
+                    IM_COL32(255, 255, 255, 230), CURSOR_THICKNESS * scale);
 
   if (hovered)
   {
@@ -418,7 +432,7 @@ void MatchReview::renderTransport(const SandboxRecorder& recorder,
                                       {.label = "-0.1 s", .ticks = -1}}};
   for (const Jump& jump : BACK)
   {
-    SandboxAnalysisUI::next(110);
+    SandboxAnalysisUI::next(TRANSPORT_SLOT_WIDTH);
     if (SandboxAnalysisUI::button(jump.label))
     {
       pauseLive();
@@ -426,7 +440,7 @@ void MatchReview::renderTransport(const SandboxRecorder& recorder,
       step(recorder, jump.ticks, end);
     }
   }
-  SandboxAnalysisUI::next(110);
+  SandboxAnalysisUI::next(TRANSPORT_SLOT_WIDTH);
   if (SandboxAnalysisUI::button(playing ? "Pause##review" : "Play##review"))
   {
     pauseLive();
@@ -442,7 +456,7 @@ void MatchReview::renderTransport(const SandboxRecorder& recorder,
                                          {.label = "+10 s", .ticks = 100}}};
   for (const Jump& jump : FORWARD)
   {
-    SandboxAnalysisUI::next(110);
+    SandboxAnalysisUI::next(TRANSPORT_SLOT_WIDTH);
     if (SandboxAnalysisUI::button(jump.label))
     {
       pauseLive();
@@ -450,7 +464,7 @@ void MatchReview::renderTransport(const SandboxRecorder& recorder,
       step(recorder, jump.ticks, end);
     }
   }
-  SandboxAnalysisUI::next(110);
+  SandboxAnalysisUI::next(TRANSPORT_SLOT_WIDTH);
   if (livePaused != nullptr)
   {
     ImGui::BeginDisabled(!shown);
@@ -468,8 +482,8 @@ void MatchReview::renderTransport(const SandboxRecorder& recorder,
     playing = false;
     seek(recorder, end);
   }
-  SandboxAnalysisUI::next(110);
-  ImGui::SetNextItemWidth(80.0F * Theme::scale());
+  SandboxAnalysisUI::next(TRANSPORT_SLOT_WIDTH);
+  ImGui::SetNextItemWidth(SPEED_COMBO_WIDTH * Theme::scale());
   const std::string speedLabel = std::format("{:g}x", playSpeed);
   if (SandboxPageUI::beginCombo("##speed", speedLabel.c_str()))
   {
@@ -527,8 +541,8 @@ void MatchReview::renderPitch(const SandboxRecorder& recorder,
   // A click on the pitch selects the nearest player (see drawOverlays).
   const bool clicked = ImGui::InvisibleButton("##review_pitch", size);
   MatchViewport view = computeMatchViewport(origin.x, origin.y, size.x, size.y);
-  view.x = origin.x + std::max(0.0F, (size.x - view.width) * 0.5F);
-  view.y = origin.y + std::max(0.0F, (size.y - view.height) * 0.5F);
+  view.x = origin.x + std::max(0.0F, (size.x - view.width) * VIEWPORT_CENTRE);
+  view.y = origin.y + std::max(0.0F, (size.y - view.height) * VIEWPORT_CENTRE);
 
   fillMatchRenderSnapshot(*engine, snapshot);
   if (hideOffPitch)

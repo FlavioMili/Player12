@@ -11,6 +11,7 @@
 #include <algorithm>
 #include <array>
 #include <cmath>
+#include <cstdint>
 #include <cstring>
 #include <format>
 #include <numbers>
@@ -29,6 +30,23 @@ namespace
 /** Ids well clear of the world's players. */
 constexpr PlayerID FIRST_ID = 900'000;
 constexpr std::size_t SQUAD = 11;
+/** Drill players: 25 years old, 180 cm unless the drill says. */
+constexpr std::uint8_t DRILL_PLAYER_AGE = 25;
+constexpr std::uint8_t DEFAULT_HEIGHT_CM = 180;
+/** Parameter sliders show three decimals across a range this narrow. */
+constexpr float FINE_SLIDER_RANGE = 2.5F;
+/** Pitch labels: a dark box this far round the text, rounded. */
+constexpr float LABEL_PAD_X = 2.0F;
+constexpr float LABEL_PAD_Y = 1.0F;
+constexpr float LABEL_ROUNDING = 3.0F;
+constexpr float MARKER_LABEL_GAP = 3.0F;
+constexpr float OUTLINE_THICKNESS = 1.5F;
+/** Form spacing (scaled). */
+constexpr float FORM_PADDING_X = 8.0F;
+constexpr float FORM_PADDING_Y = 4.0F;
+constexpr float FORM_SPACING_X = 6.0F;
+constexpr float FORM_SPACING_Y = 2.0F;
+constexpr float FORM_CELL_PADDING = 3.0F;
 }  // namespace
 
 DrillRun::DrillRun(Drill& drill_ref, const StatsConfig& config, bool record,
@@ -106,8 +124,9 @@ DrillRun::DrillRun(Drill& drill_ref, const StatsConfig& config, bool record,
       }
       auto player = std::make_unique<Player>(
           nextId++, static_cast<TeamID>(side + 1), "", name, role, Language::EN,
-          0, 0, 25, 1,
-          static_cast<std::uint8_t>((spec != nullptr) ? spec->height : 180),
+          0, 0, DRILL_PLAYER_AGE, 1,
+          static_cast<std::uint8_t>((spec != nullptr) ? spec->height
+                                                      : DEFAULT_HEIGHT_CM),
           (spec != nullptr) ? spec->foot : Foot::Right, stats);
       if (spec != nullptr)
       {
@@ -280,12 +299,15 @@ void Drill::renderSettings(int columns, bool includeSeed, bool stackedLabels)
     {
       ImGui::PushID(formId++);
       const float scale = Theme::scale();
-      ImGui::PushStyleVar(ImGuiStyleVar_FramePadding,
-                          ImVec2(8 * scale, 4 * scale));
-      ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing,
-                          ImVec2(6 * scale, 2 * scale));
-      ImGui::PushStyleVar(ImGuiStyleVar_CellPadding,
-                          ImVec2(3 * scale, 3 * scale));
+      ImGui::PushStyleVar(
+          ImGuiStyleVar_FramePadding,
+          ImVec2(FORM_PADDING_X * scale, FORM_PADDING_Y * scale));
+      ImGui::PushStyleVar(
+          ImGuiStyleVar_ItemSpacing,
+          ImVec2(FORM_SPACING_X * scale, FORM_SPACING_Y * scale));
+      ImGui::PushStyleVar(
+          ImGuiStyleVar_CellPadding,
+          ImVec2(FORM_CELL_PADDING * scale, FORM_CELL_PADDING * scale));
       formOpen = ImGui::BeginTable(
           "##parameter_columns", 2,
           ImGuiTableFlags_SizingStretchSame | ImGuiTableFlags_BordersInnerV |
@@ -383,9 +405,10 @@ void Drill::renderSettings(int columns, bool includeSeed, bool stackedLabels)
         ImGui::PushStyleColor(ImGuiCol_SliderGrabActive, warning);
         ImGui::PushStyleColor(ImGuiCol_Text, warning);
       }
-      if (ImGui::SliderFloat(
-              id.c_str(), &shown, parameter.min, parameter.max,
-              parameter.max - parameter.min < 2.5F ? "%.3f" : "%.1f"))
+      if (ImGui::SliderFloat(id.c_str(), &shown, parameter.min, parameter.max,
+                             parameter.max - parameter.min < FINE_SLIDER_RANGE
+                                 ? "%.3f"
+                                 : "%.1f"))
       {
         value = shown;
       }
@@ -441,9 +464,10 @@ void DrillDraw::label(const IMatchRenderer& renderer, ImDrawList& draw,
     return;
   }
   const ImVec2 size = ImGui::CalcTextSize(text);
-  draw.AddRectFilled(ImVec2(point.x - 2.0F, point.y - 1.0F),
-                     ImVec2(point.x + size.x + 2.0F, point.y + size.y + 1.0F),
-                     IM_COL32(0, 0, 0, 170), 3.0F);
+  draw.AddRectFilled(
+      ImVec2(point.x - LABEL_PAD_X, point.y - LABEL_PAD_Y),
+      ImVec2(point.x + size.x + LABEL_PAD_X, point.y + size.y + LABEL_PAD_Y),
+      IM_COL32(0, 0, 0, 170), LABEL_ROUNDING);
   draw.AddText(point, color, text);
 }
 
@@ -477,7 +501,7 @@ void DrillDraw::cone(const IMatchRenderer& renderer, ImDrawList& draw,
   // Outlined in its own colour: drawn this small, a dark outline would
   // swamp the fill.
   draw.AddCircleFilled(centre, radius, color);
-  draw.AddCircle(centre, radius, color, 0, 1.5F);
+  draw.AddCircle(centre, radius, color, 0, OUTLINE_THICKNESS);
   if (text != nullptr)
   {
     label(renderer, draw, at, text, color);
@@ -494,14 +518,16 @@ void DrillDraw::marker(const IMatchRenderer& renderer, ImDrawList& draw,
     return;
   }
   draw.AddCircleFilled(point, radius, color);
-  draw.AddCircle(point, radius, IM_COL32(0, 0, 0, 200), 0, 1.5F);
+  draw.AddCircle(point, radius, IM_COL32(0, 0, 0, 200), 0, OUTLINE_THICKNESS);
   if (text != nullptr)
   {
-    const ImVec2 at2(point.x + radius + 3.0F, point.y - radius - 3.0F);
+    const ImVec2 at2(point.x + radius + MARKER_LABEL_GAP,
+                     point.y - radius - MARKER_LABEL_GAP);
     const ImVec2 size = ImGui::CalcTextSize(text);
-    draw.AddRectFilled(ImVec2(at2.x - 2.0F, at2.y - 1.0F),
-                       ImVec2(at2.x + size.x + 2.0F, at2.y + size.y + 1.0F),
-                       IM_COL32(0, 0, 0, 170), 3.0F);
+    draw.AddRectFilled(
+        ImVec2(at2.x - LABEL_PAD_X, at2.y - LABEL_PAD_Y),
+        ImVec2(at2.x + size.x + LABEL_PAD_X, at2.y + size.y + LABEL_PAD_Y),
+        IM_COL32(0, 0, 0, 170), LABEL_ROUNDING);
     draw.AddText(at2, color, text);
   }
 }

@@ -11,6 +11,7 @@
 #include <SDL3/SDL.h>
 
 #include <algorithm>
+#include <array>
 #include <cctype>
 #include <charconv>
 #include <chrono>
@@ -27,6 +28,14 @@
 namespace
 {
 using Clock = std::chrono::steady_clock;
+
+constexpr std::size_t TIMESTAMP_BYTES = 32;
+constexpr float DEFAULT_TRACE_SECONDS = 10.0F;
+/** Table columns: the swept parameter and the "by" parameter. */
+constexpr std::size_t SWEEP_COLUMN = 14;
+constexpr std::size_t BY_COLUMN = 12;
+/** A spread is shown once it reaches 0.01 at two decimals. */
+constexpr double SHOWN_SPREAD = 0.005;
 
 std::optional<DrillParameter> findParameter(Drill& drill, std::string_view name)
 {
@@ -117,9 +126,9 @@ std::string timestamp()
 #else
   localtime_r(&now, &local);
 #endif
-  char text[32];
-  std::strftime(text, sizeof(text), "%Y-%m-%d %H%M%S", &local);
-  return text;
+  std::array<char, TIMESTAMP_BYTES> text{};
+  std::strftime(text.data(), text.size(), "%Y-%m-%d %H%M%S", &local);
+  return text.data();
 }
 }  // namespace
 
@@ -550,7 +559,7 @@ int runMeasureCommand(const StatsConfig& config, const std::string& drillName,
   std::string error;
   std::optional<std::string> presetName;
   std::optional<std::filesystem::path> tracePath;
-  float traceSeconds = 10.0F;
+  float traceSeconds = DEFAULT_TRACE_SECONDS;
   for (std::size_t index = 0; index < arguments.size(); ++index)
   {
     const std::string& argument = arguments[index];
@@ -731,11 +740,12 @@ int runMeasureCommand(const StatsConfig& config, const std::string& drillName,
 
   // Table: one row per point, mean (± spread) of every metric.
   const auto& names = measure.metricNames();
-  std::string header =
-      std::format("{:>14}", spec.sweep.parameter.substr(0, 14));
+  std::string header = std::format(
+      "{:>{}}", spec.sweep.parameter.substr(0, SWEEP_COLUMN), SWEEP_COLUMN);
   if (spec.by)
   {
-    header += std::format("  {:>12}", spec.by->parameter.substr(0, 12));
+    header += std::format("  {:>{}}", spec.by->parameter.substr(0, BY_COLUMN),
+                          BY_COLUMN);
   }
   header += "   done";
   for (const std::string& name : names)
@@ -746,21 +756,24 @@ int runMeasureCommand(const StatsConfig& config, const std::string& drillName,
   for (const MeasurePoint& point : measure.points())
   {
     std::string row =
-        std::format("{:>14}", measure.valueText(spec.sweep.parameter, point.x));
+        std::format("{:>{}}", measure.valueText(spec.sweep.parameter, point.x),
+                    SWEEP_COLUMN);
     if (spec.by)
     {
-      row += std::format("  {:>12}",
-                         measure.valueText(spec.by->parameter, point.by));
+      row += std::format("  {:>{}}",
+                         measure.valueText(spec.by->parameter, point.by),
+                         BY_COLUMN);
     }
     row += std::format("  {:>2}/{:<2}", point.completed, point.runs);
     for (const std::string& name : names)
     {
       const auto found = point.stats.find(name);
-      std::string cell = found == point.stats.end() ? "-"
-                         : found->second.count > 1 && found->second.sd >= 0.005
-                             ? std::format("{:.2f}±{:.2f}", found->second.mean,
-                                           found->second.sd)
-                             : std::format("{:.2f}", found->second.mean);
+      std::string cell =
+          found == point.stats.end() ? "-"
+          : found->second.count > 1 && found->second.sd >= SHOWN_SPREAD
+              ? std::format("{:.2f}±{:.2f}", found->second.mean,
+                            found->second.sd)
+              : std::format("{:.2f}", found->second.mean);
       row += std::format("  {:>{}}", cell, name.size());
     }
     std::cout << row << '\n';

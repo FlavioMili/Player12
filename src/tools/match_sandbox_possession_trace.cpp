@@ -22,6 +22,11 @@ namespace
 {
 using Json = nlohmann::json;
 
+/** Gate cases are kept only this close to the ball (m). */
+constexpr int GATE_RADIUS_METRES = 6;
+/** The longest trace: a whole hour of play. */
+constexpr double MAX_TRACE_SECONDS = 3600.0;
+
 Json snapshot(const PossessionSnapshot& state)
 {
   return {{"implementation", possessionKey(state.implementation)},
@@ -188,7 +193,7 @@ class PossessionTrace final : public MatchRecorder
     const Json actor = playerState(engine, player);
     // Gates can precede reach testing. Keep nearby cases, not every distant
     // teammate skipped by an early friendly-pass gate on every substep.
-    if (actor.at("gap_m").get<float>() > 6.0F)
+    if (actor.at("gap_m").get<float>() > static_cast<float>(GATE_RADIUS_METRES))
     {
       return;
     }
@@ -260,8 +265,8 @@ class PossessionTrace final : public MatchRecorder
 int tracePossessionPair(MatchEngine& observed, MatchEngine& reference,
                         double seconds, std::ostream& output)
 {
-  if (!std::isfinite(seconds) || seconds <= 0.0 || seconds > 3600.0 ||
-      (observed.getRecorder() != nullptr) ||
+  if (!std::isfinite(seconds) || seconds <= 0.0 ||
+      seconds > MAX_TRACE_SECONDS || (observed.getRecorder() != nullptr) ||
       (reference.getRecorder() != nullptr))
   {
     return 2;
@@ -296,7 +301,7 @@ int tracePossessionPair(MatchEngine& observed, MatchEngine& reference,
          managerKey(observed.getManager(false))}},
        {"ball_physics", ballPhysicsKey(observed.getBallPhysics())},
        {"out_of_play", outOfPlayKey(observed.getOutOfPlay())},
-       {"gate_radius_m", 6},
+       {"gate_radius_m", GATE_RADIUS_METRES},
        {"note",
         "Possession helpers dispatch per match. Helper snapshots may be "
         "partial; issues sampled at step end. Gate log is not an "
