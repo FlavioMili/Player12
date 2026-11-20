@@ -137,8 +137,8 @@ struct MatchSetup
 namespace SandboxJson
 {
 nlohmann::json toJson(const MatchSetup& setup);
-bool fromJson(const nlohmann::json& json, MatchSetup& setup,
+bool fromJson(const nlohmann::json& value, MatchSetup& setup,
               std::string& error);
 nlohmann::json toJson(const Strategy& strategy);
-Strategy strategyFromJson(const nlohmann::json& json);
+Strategy strategyFromJson(const nlohmann::json& value);
 }  // namespace SandboxJson

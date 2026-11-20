@@ -12,6 +12,7 @@
 #include <imgui.h>
 
 #include <algorithm>
+#include <array>
 #include <cmath>
 #include <format>
 #include <random>
@@ -925,59 +926,65 @@ void MatchSandboxScene::renderVisualisers()
                "Inspect movement, ball contact and technique performance.",
                width, scale, sidebar_font, setup_regular_font,
                "Visualisers and test benches for the Binturong body model.");
-  const struct Tool
+  struct Tool
   {
     const char* id;
     const char* title;
     const char* description;
     const char* command;
     ImU32 background;
-  } tools[] = {
-      {.id = "##visualiser_page",
-       .title = "CONTACT DIFFICULTY",
-       .description =
-           "Inspect how reach, approach angle and ball movement affect a touch "
-           "or "
-           "strike. "
-           "Adjust the contact model and see each factor's contribution.",
-       .command = "match_sandbox --contact-view",
-       .background = Page::LIGHT},
-      {.id = "##true_view_page",
-       .title = "TRUE VIEW",
-       .description =
-           "Explore the player's body model, movement, reach and personal "
-           "space in "
-           "3D. "
-           "Inspect the values behind each shape without the player figure.",
-       .command = "match_sandbox --true-view",
-       .background = Page::MID},
-      {.id = "##bench_page",
-       .title = "TECHNIQUE BENCH",
-       .description =
-           "Run repeatable passing and shooting tests across techniques and "
-           "conditions. "
-           "Compare success rates over many seeds and against the previous "
-           "run.",
-       .command = "match_sandbox --bench-view\n--bench for headless tests",
-       .background = Page::DARK},
-      {.id = "##xg_map_page",
-       .title = "XG MAP",
-       .description =
-           "See the engine's xG over a match or training pitch of any size and "
-           "goal, "
-           "and where the brain thinks a shot is worth it. Hover for every "
-           "part.",
-       .command = "Training ground plan, section 24",
-       .background = Page::LIGHT}};
-  for (int tool = 0; tool < 4; ++tool)
+  };
+  const std::array<Tool, 4> tools{
+      {{.id = "##visualiser_page",
+        .title = "CONTACT DIFFICULTY",
+        .description =
+            "Inspect how reach, approach angle and ball movement affect a "
+            "touch "
+            "or "
+            "strike. "
+            "Adjust the contact model and see each factor's contribution.",
+        .command = "match_sandbox --contact-view",
+        .background = Page::LIGHT},
+       {.id = "##true_view_page",
+        .title = "TRUE VIEW",
+        .description =
+            "Explore the player's body model, movement, reach and personal "
+            "space in "
+            "3D. "
+            "Inspect the values behind each shape without the player figure.",
+        .command = "match_sandbox --true-view",
+        .background = Page::MID},
+       {.id = "##bench_page",
+        .title = "TECHNIQUE BENCH",
+        .description =
+            "Run repeatable passing and shooting tests across techniques and "
+            "conditions. "
+            "Compare success rates over many seeds and against the previous "
+            "run.",
+        .command = "match_sandbox --bench-view\n--bench for headless tests",
+        .background = Page::DARK},
+       {.id = "##xg_map_page",
+        .title = "XG MAP",
+        .description =
+            "See the engine's xG over a match or training pitch of any size "
+            "and "
+            "goal, "
+            "and where the brain thinks a shot is worth it. Hover for every "
+            "part.",
+        .command = "Training ground plan, section 24",
+        .background = Page::LIGHT}}};
+  for (int tool = 0; tool < static_cast<int>(tools.size()); ++tool)
   {
     if (tool % columns != 0)
     {
       ImGui::SameLine(0, SandboxPageUI::PANEL_GAP * scale);
     }
-    Page::beginCard(tools[tool].id, tools[tool].title, cardWidth,
-                    tools[tool].background, scale, sidebar_font);
-    ImGui::TextWrapped("%s", tools[tool].description);
+    Page::beginCard(tools.at(static_cast<std::size_t>(tool)).id,
+                    tools.at(static_cast<std::size_t>(tool)).title, cardWidth,
+                    tools.at(static_cast<std::size_t>(tool)).background, scale,
+                    sidebar_font);
+    ImGui::TextWrapped("%s",
+                       tools.at(static_cast<std::size_t>(tool)).description);
     if (Page::button("OPEN", true, scale, sidebar_font))
     {
       if (tool == 0)
@@ -999,7 +1006,7 @@ void MatchSandboxScene::renderVisualisers()
     }
     ImGui::PushFont(setup_regular_font, SandboxPageUI::BOLD_FONT_SIZE);
     ImGui::PushTextWrapPos(0);
-    ImGui::TextDisabled("%s", tools[tool].command);
+    ImGui::TextDisabled("%s", tools.at(static_cast<std::size_t>(tool)).command);
     ImGui::PopTextWrapPos();
     ImGui::PopFont();
     Page::endCard(scale);
@@ -2080,14 +2087,16 @@ void MatchSandboxScene::renderReviewPage()
       {
         ImGui::TextWrapped("%s", last_result.c_str());
       }
-      const char* tabs[] = {"Pitch", "Analysis", "Comparison"};
+      constexpr std::array<const char*, 3> tabs{"Pitch", "Analysis",
+                                                "Comparison"};
       for (int i = 0; i < 3; ++i)
       {
         if (i)
         {
           ImGui::SameLine(0, SandboxPageUI::PANEL_GAP * scale);
         }
-        if (Page::button(tabs[i], reviewTab == i, scale, sidebar_font))
+        if (Page::button(tabs.at(static_cast<std::size_t>(i)), reviewTab == i,
+                         scale, sidebar_font))
         {
           reviewTab = i;
         }

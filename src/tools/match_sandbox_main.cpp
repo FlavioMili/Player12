@@ -44,6 +44,7 @@
 #include <charconv>
 #include <cmath>
 #include <cstdint>
+#include <cstdio>
 #include <cstdlib>
 #include <exception>
 #include <filesystem>
@@ -89,9 +90,8 @@ void useOwnRuntimeRoot()
   _putenv_s("FM_RUNTIME_ROOT", root.string().c_str());
 #endif
 }
-}  // namespace
-
-int main(int argc, char* argv[])
+/** The sandbox: parses the command line and runs what it asks for. */
+int runSandbox(int argc, char** argv)
 {
   std::uint64_t worldSeed = DEFAULT_WORLD_SEED;
   std::optional<int> checkMatches;
@@ -534,4 +534,27 @@ int main(int argc, char* argv[])
     return 1;
   }
   return 0;
+}
+
+}  // namespace
+
+int main(int argc, char* argv[])
+{
+  // Errors while reading the command line end the run too, not the process.
+  try
+  {
+    return runSandbox(argc, argv);
+  }
+  // C stdio here: reporting the error must not throw in turn.
+  catch (const std::exception& e)
+  {
+    std::fputs("Error: ", stderr);
+    std::fputs(e.what(), stderr);
+    std::fputc('\n', stderr);
+  }
+  catch (...)
+  {
+    std::fputs("Error: unknown exception\n", stderr);
+  }
+  return 1;
 }

@@ -35,7 +35,7 @@ constexpr std::uint8_t AGE = 26;
 constexpr std::uint8_t HEIGHT_CM = 180;
 constexpr std::uint8_t CONTRACT_YEARS = 3;
 /** The 4-4-2 of the formation screen, so the setup shows it as such. */
-const Formation::Preset& SHAPE = Formation::PRESETS[0];
+const Formation::Preset& shape() { return Formation::PRESETS[0]; }
 /** Bench of the uniform squads: a keeper and one of each line. */
 constexpr std::array<PlayerRole, 7> BENCH{
     PlayerRole::GK, PlayerRole::CB, PlayerRole::RB, PlayerRole::CM,
@@ -47,7 +47,7 @@ struct Member
   std::string name;
   PlayerRole role;
   int level;
-  /** Index into SHAPE.slots for an outfield starter, -1 the starting keeper,
+  /** Index into shape().slots for an outfield starter, -1 the starting keeper,
    * -2 the bench. */
   int slot;
 };
@@ -92,9 +92,9 @@ std::vector<Member> uniformSquad(int level)
                      .slot = slot});
   };
   add(PlayerRole::GK, STARTING_KEEPER);
-  for (std::size_t slot = 0; slot < SHAPE.slots.size(); ++slot)
+  for (std::size_t slot = 0; slot < shape().slots.size(); ++slot)
   {
-    add(SHAPE.slots[slot].role, static_cast<int>(slot));
+    add(shape().slots[slot].role, static_cast<int>(slot));
   }
   for (const PlayerRole role : BENCH)
   {
@@ -107,10 +107,11 @@ std::vector<Member> tieredSquad()
 {
   std::vector<Member> squad;
   const std::vector<int> all = levels();
+  squad.reserve(2 * all.size());
   for (std::size_t index = 0; index < all.size(); ++index)
   {
     squad.push_back({.name = std::format("Outfield {}", all[index]),
-                     .role = SHAPE.slots[index].role,
+                     .role = shape().slots[index].role,
                      .level = all[index],
                      .slot = static_cast<int>(index)});
   }
@@ -131,6 +132,7 @@ TeamID addClub(GameData& data, TeamID id, LeagueID league,
 {
   const StatsConfig& config = data.getStatsConfig();
   std::vector<PlayerID> ids;
+  ids.reserve(squad.size());
   for (std::size_t index = 0; index < squad.size(); ++index)
   {
     ids.push_back(data.allocatePlayerId());
@@ -162,7 +164,8 @@ TeamID addClub(GameData& data, TeamID id, LeagueID league,
     else
     {
       lineup.addOutfieldPlayer(
-          player, SHAPE.slots[static_cast<std::size_t>(member.slot)].position);
+          player,
+          shape().slots[static_cast<std::size_t>(member.slot)].position);
     }
   }
   lineup.setReserves(reserves);

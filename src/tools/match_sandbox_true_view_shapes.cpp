@@ -392,9 +392,12 @@ void Painter::cylinder(float radius, float bottom, float top, float from,
 {
   arc(radius, bottom, from, to, tint, thickness);
   arc(radius, top, from, to, tint, thickness);
-  for (float degrees = from; degrees <= to + RIB_TOLERANCE;
-       degrees += SECTION_DEGREES)
+  const int ribs = static_cast<int>(std::floor((to - from + RIB_TOLERANCE) /
+                                               SECTION_DEGREES)) +
+                   1;
+  for (int rib = 0; rib < ribs; ++rib)
   {
+    const float degrees = from + (static_cast<float>(rib) * SECTION_DEGREES);
     line(polar(degrees, radius, bottom), polar(degrees, radius, top), tint,
          thickness * RIB_SHARE);
   }

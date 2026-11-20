@@ -208,8 +208,11 @@ void dashedLine(ImDrawList& draw, ImVec2 a, ImVec2 b, ImU32 colour,
   {
     return;
   }
-  for (float at = 0.0F; at < length; at += dash * DASH_AND_GAP)
+  const float period = dash * DASH_AND_GAP;
+  const int dashes = static_cast<int>(std::ceil(length / period));
+  for (int index = 0; index < dashes; ++index)
   {
+    const float at = static_cast<float>(index) * period;
     const float end = std::min(at + dash, length);
     draw.AddLine(ImVec2(a.x + ((b.x - a.x) * at / length),
                         a.y + ((b.y - a.y) * at / length)),
@@ -286,7 +289,7 @@ void TechniqueBenchScene::reload()
   {
     skills += std::format("{}{:g}", skills.empty() ? "" : ", ", skill);
   }
-  std::snprintf(skillsText, sizeof(skillsText), "%s", skills.c_str());
+  std::snprintf(skillsText.data(), skillsText.size(), "%s", skills.c_str());
   tagValues.clear();
   for (const BenchTest& test : catalogue.tests)
   {
@@ -326,14 +329,13 @@ void TechniqueBenchScene::reload()
 
 bool TechniqueBenchScene::shown(const BenchTest& test) const
 {
-  for (const auto& [key, values] : filters)
-  {
-    if (!values.empty() && !values.contains(test.tag(key)))
-    {
-      return false;
-    }
-  }
-  return true;
+  return std::ranges::all_of(filters,
+                             [&](const auto& filter)
+                             {
+                               const auto& [key, values] = filter;
+                               return values.empty() ||
+                                      values.contains(test.tag(key));
+                             });
 }
 
 std::vector<const BenchTest*> TechniqueBenchScene::drawnTests() const
@@ -428,7 +430,7 @@ void TechniqueBenchScene::start(bool onlyShown)
     status = "No tests to run: tick some, or loosen the filters.";
     return;
   }
-  spec.skills = parseSkills(skillsText);
+  spec.skills = parseSkills(skillsText.data());
   if (spec.skills.empty())
   {
     spec.skills = catalogue.skills;
@@ -718,10 +720,11 @@ void TechniqueBenchScene::renderPanel(float width)
     ImGui::TableNextColumn();
     ImGui::Dummy(ImVec2(0, 0));
     field("Skills");
-    ImGui::InputText("##skills", skillsText, sizeof(skillsText));
+    ImGui::InputText("##skills", skillsText.data(), skillsText.size());
     if (ImGui::IsItemHovered())
     {
-      ImGui::SetTooltip("Comma-separated skill values (1-100): %s", skillsText);
+      ImGui::SetTooltip("Comma-separated skill values (1-100): %s",
+                        skillsText.data());
     }
     ImGui::TableNextColumn();
     ImGui::Dummy(ImVec2(0, 0));
@@ -1320,9 +1323,13 @@ void TechniqueBenchScene::renderChart(ImVec2 size)
   draw.AddRectFilled(ImVec2(left, top), ImVec2(right, bottom), SURFACE);
   const double yStep =
       rates ? RATE_TICK_STEP : tickStep(yMax - yMin, VALUE_TICKS);
-  for (double y = std::ceil(yMin / yStep) * yStep; y <= yMax + TICK_TOLERANCE;
-       y += yStep)
+  const double firstY = std::ceil(yMin / yStep) * yStep;
+  const int yTicks =
+      static_cast<int>(std::floor((yMax + TICK_TOLERANCE - firstY) / yStep)) +
+      1;
+  for (int tick = 0; tick < yTicks; ++tick)
   {
+    const double y = firstY + (static_cast<double>(tick) * yStep);
     draw.AddLine(ImVec2(left, sy(y)), ImVec2(right, sy(y)), GRID);
     const std::string label =
         std::format("{:g}", std::round(y / yStep) * yStep);

@@ -8,6 +8,9 @@
 
 #include "tools/match_sandbox_recorder.h"
 
+#include <array>
+#include <bit>
+
 #include "model/player.h"
 
 namespace
@@ -283,10 +286,11 @@ std::uint64_t SandboxRecorder::stateChecksum(const MatchEngine& engine)
   std::uint64_t hash = FNV_OFFSET_BASIS;
   const auto add = [&hash](const auto& value)
   {
-    const auto* bytes = reinterpret_cast<const unsigned char*>(&value);
-    for (std::size_t index = 0; index < sizeof(value); ++index)
+    const auto bytes =
+        std::bit_cast<std::array<unsigned char, sizeof(value)>>(value);
+    for (const unsigned char byte : bytes)
     {
-      hash = (hash ^ bytes[index]) * FNV_PRIME;
+      hash = (hash ^ byte) * FNV_PRIME;
     }
   };
   add(engine.getSimulatedSteps());

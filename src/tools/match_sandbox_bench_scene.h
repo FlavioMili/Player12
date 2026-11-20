@@ -10,6 +10,8 @@
 
 #include <imgui.h>
 
+#include <array>
+#include <cstddef>
 #include <map>
 #include <memory>
 #include <set>
@@ -18,6 +20,9 @@
 
 #include "gui/gui_scene.h"
 #include "tools/match_sandbox_bench.h"
+
+/** Room for the skills field's text. */
+inline constexpr std::size_t SKILLS_TEXT_BYTES = 128;
 
 /**
  * Technique bench (Notes and plans/match_engine_technique_bench_plan.md §6):
@@ -74,7 +79,7 @@ class TechniqueBenchScene : public GUIScene
 
   int repeats = 50;
   int firstSeed = 1;
-  char skillsText[128] = {};
+  std::array<char, SKILLS_TEXT_BYTES> skillsText{};
   /** 0: each test's own skill; else an entry of SKILL_OVERRIDES. */
   int skillOverride = 0;
 

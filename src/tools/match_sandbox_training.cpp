@@ -950,11 +950,12 @@ class SlalomDrill final : public TrainingDrill
     lastDone = at;
     const std::size_t place = runner.place - 1;
     const float side = place % 2 == 0 ? 1.0F : -1.0F;
-    const PitchPoint spot =
-        along(along(finish, {.x = 1.0F, .y = 0.0F}, DONE_BEYOND_METRES),
-              {.x = 0.0F, .y = 1.0F},
-              side * (DONE_SIDE_METRES +
-                      DONE_GAP_METRES * static_cast<float>(place / 2)));
+    // Two places to a row, one either side.
+    const std::size_t row = place / 2;
+    const PitchPoint spot = along(
+        along(finish, {.x = 1.0F, .y = 0.0F}, DONE_BEYOND_METRES),
+        {.x = 0.0F, .y = 1.0F},
+        side * (DONE_SIDE_METRES + DONE_GAP_METRES * static_cast<float>(row)));
     engine.setDrillTarget(runner.id, spot, false);
   }
 
@@ -1460,6 +1461,11 @@ std::unique_ptr<DrillRun> startTrainingRun(TrainingDrill& drill,
   {
     std::array<BrainId, 2> brains = sandboxBrains();
     std::array<BodyId, 2> bodies = sandboxBodies();
+    RestoreVersions() = default;
+    RestoreVersions(const RestoreVersions&) = delete;
+    RestoreVersions& operator=(const RestoreVersions&) = delete;
+    RestoreVersions(RestoreVersions&&) = delete;
+    RestoreVersions& operator=(RestoreVersions&&) = delete;
     ~RestoreVersions()
     {
       sandboxBrains() = brains;
@@ -1529,8 +1535,8 @@ int runLapsTrace(const std::vector<TrainingPlayer>& squad,
     now += step;
     for (const MatchEngine::CollisionHit& hit : engine.getLastCollisions())
     {
-      std::string who[2];
-      std::string detail[2];
+      std::array<std::string, 2> who;
+      std::array<std::string, 2> detail;
       for (std::size_t side = 0; side < 2; ++side)
       {
         for (const MatchPlayer& player : players)
@@ -1538,7 +1544,7 @@ int runLapsTrace(const std::vector<TrainingPlayer>& squad,
           if ((player.player != nullptr) &&
               player.player->getId() == hit.sides[side].player)
           {
-            who[side] = nameOf(player);
+            who.at(side) = nameOf(player);
             // His speed before and after, how far his body faced off his
             // line of travel before it, and how the knock was judged.
             const MatchEngine::CollisionSide& entry = hit.sides[side];
@@ -1552,11 +1558,11 @@ int runLapsTrace(const std::vector<TrainingPlayer>& squad,
                         std::max(length(before) * length(facing), 1e-6F),
                     -1.0F, 1.0F)) *
                 180.0F / std::numbers::pi_v<float>;
-            detail[side] = std::format(
+            detail.at(side) = std::format(
                 "{} {:.1f}->{:.1f} m/s, facing {:.0f} deg off, ends up {:.0f}% "
                 "sudden {:.0f}% "
                 "score {:.0f}% (lines {:.0f}/{:.0f})",
-                who[side], length(before), length(entry.after), off,
+                who.at(side), length(before), length(entry.after), off,
                 entry.endsUp * 100.0F, entry.sudden * 100.0F,
                 entry.score * 100.0F, entry.stumbleLine * 100.0F,
                 entry.fallLine * 100.0F);
@@ -1571,7 +1577,7 @@ int runLapsTrace(const std::vector<TrainingPlayer>& squad,
       {
         if (hit.sides[side].outcome > 0)
         {
-          std::println("          knocked: {}", detail[side]);
+          std::println("          knocked: {}", detail.at(side));
         }
       }
     }

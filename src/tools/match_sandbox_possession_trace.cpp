@@ -6,6 +6,7 @@
 #include "tools/match_sandbox_possession_trace.h"
 
 #include <algorithm>
+#include <array>
 #include <cmath>
 #include <cstdint>
 #include <map>
@@ -92,94 +93,95 @@ Json playerState(const MatchEngine& engine, const MatchPlayer& player)
 class PossessionTrace final : public MatchRecorder
 {
  public:
-  explicit PossessionTrace(std::ostream& output) : out(output) {}
+  explicit PossessionTrace(std::ostream& output) : out(&output) {}
   [[nodiscard]] bool wantsPossession() const override { return true; }
   void onPossessionObservation(const MatchEngine& engine,
                                PossessionObservation kind,
                                const PossessionSnapshot& state,
                                PossessionId executedVersion) override
   {
-    static constexpr const char* NAMES[] = {"assign-owner",
-                                            "acquire",
-                                            "clear-owner",
-                                            "clear-flight",
-                                            "update-touch",
-                                            "note-touch",
-                                            "begin-touch-claim",
-                                            "begin-collected-dribble",
-                                            "note-dribble-touch",
-                                            "record-pass-completion",
-                                            "credit-pass-completion",
-                                            "release",
-                                            "begin-pass-flight",
-                                            "finish-pass-flight",
-                                            "note-shot-flight",
-                                            "consume-first-time-intent",
-                                            "consume-pending-strike",
-                                            "note-free-ball-tackle",
-                                            "settle-tackle",
-                                            "track-header-run",
-                                            "cancel-pending-tackle",
-                                            "note-header-contact",
-                                            "credit-header-shot",
-                                            "begin-header-play",
-                                            "note-cushioned-header",
-                                            "note-tackle-nudge",
-                                            "begin-poked-tackle",
-                                            "finish-poked-tackle",
-                                            "credit-immediate-tackle-win",
-                                            "arm-tackle-strike",
-                                            "lose-ball-on-fall",
-                                            "note-fallen-deflection",
-                                            "note-body-deflection-hit",
-                                            "begin-body-deflection",
-                                            "begin-shot-deflection",
-                                            "end-deflected-shot-flight",
-                                            "finish-shot-deflection",
-                                            "note-failed-touch",
-                                            "begin-keeper-hold",
-                                            "rebase-keeper-hold",
-                                            "end-keeper-hold",
-                                            "note-keeper-distribution",
-                                            "begin-keeper-hand-rebound",
-                                            "note-keeper-shot-resolved",
-                                            "finish-keeper-parry",
-                                            "credit-keeper-save",
-                                            "complete-keeper-save",
-                                            "begin-legacy-keeper-punch",
-                                            "finish-legacy-keeper-punch",
-                                            "rearm-shot-after-bounce",
-                                            "end-spent-keeper-shot",
-                                            "assign-restart-owner",
-                                            "mark-throw-entry",
-                                            "note-woodwork-contact",
-                                            "mark-wall-stopped-shot",
-                                            "credit-wall-blocker",
-                                            "note-shot-set-piece-origin",
-                                            "note-direct-free-kick-shot",
-                                            "reset-shootout-ball",
-                                            "reset-rule-contact-attempts",
-                                            "reset-lifecycle-ball",
-                                            "assign-scenario-owner",
-                                            "begin-fed-ball",
-                                            "finish-fed-ball",
-                                            "remember-phase-team",
-                                            "note-carrier-history",
-                                            "substitute-possession",
-                                            "release-removed-player",
-                                            "clear-shooter-history",
-                                            "set-pass-flight-target",
-                                            "note-goal-side",
-                                            "prepare-shot-assist",
-                                            "note-contact-actor",
-                                            "note-path-change",
-                                            "advance-shot-flight-clock",
-                                            "note-throw-team",
-                                            "expire-touch-claim"};
-    static_assert(sizeof(NAMES) / sizeof(NAMES[0]) ==
+    static constexpr auto NAMES =
+        std::to_array<const char*>({"assign-owner",
+                                    "acquire",
+                                    "clear-owner",
+                                    "clear-flight",
+                                    "update-touch",
+                                    "note-touch",
+                                    "begin-touch-claim",
+                                    "begin-collected-dribble",
+                                    "note-dribble-touch",
+                                    "record-pass-completion",
+                                    "credit-pass-completion",
+                                    "release",
+                                    "begin-pass-flight",
+                                    "finish-pass-flight",
+                                    "note-shot-flight",
+                                    "consume-first-time-intent",
+                                    "consume-pending-strike",
+                                    "note-free-ball-tackle",
+                                    "settle-tackle",
+                                    "track-header-run",
+                                    "cancel-pending-tackle",
+                                    "note-header-contact",
+                                    "credit-header-shot",
+                                    "begin-header-play",
+                                    "note-cushioned-header",
+                                    "note-tackle-nudge",
+                                    "begin-poked-tackle",
+                                    "finish-poked-tackle",
+                                    "credit-immediate-tackle-win",
+                                    "arm-tackle-strike",
+                                    "lose-ball-on-fall",
+                                    "note-fallen-deflection",
+                                    "note-body-deflection-hit",
+                                    "begin-body-deflection",
+                                    "begin-shot-deflection",
+                                    "end-deflected-shot-flight",
+                                    "finish-shot-deflection",
+                                    "note-failed-touch",
+                                    "begin-keeper-hold",
+                                    "rebase-keeper-hold",
+                                    "end-keeper-hold",
+                                    "note-keeper-distribution",
+                                    "begin-keeper-hand-rebound",
+                                    "note-keeper-shot-resolved",
+                                    "finish-keeper-parry",
+                                    "credit-keeper-save",
+                                    "complete-keeper-save",
+                                    "begin-legacy-keeper-punch",
+                                    "finish-legacy-keeper-punch",
+                                    "rearm-shot-after-bounce",
+                                    "end-spent-keeper-shot",
+                                    "assign-restart-owner",
+                                    "mark-throw-entry",
+                                    "note-woodwork-contact",
+                                    "mark-wall-stopped-shot",
+                                    "credit-wall-blocker",
+                                    "note-shot-set-piece-origin",
+                                    "note-direct-free-kick-shot",
+                                    "reset-shootout-ball",
+                                    "reset-rule-contact-attempts",
+                                    "reset-lifecycle-ball",
+                                    "assign-scenario-owner",
+                                    "begin-fed-ball",
+                                    "finish-fed-ball",
+                                    "remember-phase-team",
+                                    "note-carrier-history",
+                                    "substitute-possession",
+                                    "release-removed-player",
+                                    "clear-shooter-history",
+                                    "set-pass-flight-target",
+                                    "note-goal-side",
+                                    "prepare-shot-assist",
+                                    "note-contact-actor",
+                                    "note-path-change",
+                                    "advance-shot-flight-clock",
+                                    "note-throw-team",
+                                    "expire-touch-claim"});
+    static_assert(NAMES.size() ==
                   static_cast<unsigned>(PossessionObservation::COUNT));
     emit({{"type", "helper"},
-          {"operation", NAMES[static_cast<unsigned>(kind)]},
+          {"operation", NAMES.at(static_cast<std::size_t>(kind))},
           {"executed_possession", possessionKey(executedVersion)},
           {"state", snapshot(state)},
           {"match_state", static_cast<int>(engine.getState())},
@@ -252,13 +254,19 @@ class PossessionTrace final : public MatchRecorder
            {ball.velocity.x, ball.velocity.y, ball.velocityZ}},
           {"actors", std::move(actors)}});
   }
-  void emit(const Json& record) { out << record.dump() << '\n'; }
+  void emit(const Json& record) { *out << record.dump() << '\n'; }
+  [[nodiscard]] std::uint64_t helperEventCount() const { return helperEvents; }
+  [[nodiscard]] std::uint64_t issueStepCount() const { return issueSteps; }
+  [[nodiscard]] const std::map<std::string, std::uint64_t>& nearbyGates() const
+  {
+    return gates;
+  }
+
+ private:
+  std::ostream* out;
   std::uint64_t helperEvents = 0;
   std::uint64_t issueSteps = 0;
   std::map<std::string, std::uint64_t> gates;
-
- private:
-  std::ostream& out;
 };
 }  // namespace
 
@@ -274,10 +282,18 @@ int tracePossessionPair(MatchEngine& observed, MatchEngine& reference,
   PossessionTrace trace(output);
   observed.setRecorder(&trace);
   // Detach even if a stream/allocation exception escapes: no dangling recorder.
-  struct Detach
+  class Detach
   {
-    MatchEngine& engine;
-    ~Detach() { engine.setRecorder(nullptr); }
+   public:
+    explicit Detach(MatchEngine& match) : engine(&match) {}
+    Detach(const Detach&) = delete;
+    Detach& operator=(const Detach&) = delete;
+    Detach(Detach&&) = delete;
+    Detach& operator=(Detach&&) = delete;
+    ~Detach() { engine->setRecorder(nullptr); }
+
+   private:
+    MatchEngine* engine;
   } detach{observed};
   const MatchEngine copied(observed);
   const bool copyDetached =
@@ -331,8 +347,8 @@ int tracePossessionPair(MatchEngine& observed, MatchEngine& reference,
               {"ticks_compared", advanced},
               {"observed_matches_reference", identical},
               {"copy_detaches_recorder", copyDetached},
-              {"helper_events", trace.helperEvents},
-              {"issue_steps", trace.issueSteps},
-              {"nearby_gates", trace.gates}});
+              {"helper_events", trace.helperEventCount()},
+              {"issue_steps", trace.issueStepCount()},
+              {"nearby_gates", trace.nearbyGates()}});
   return output ? (identical ? 0 : 1) : 2;
 }

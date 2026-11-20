@@ -633,8 +633,11 @@ void DrillMeasureScene::renderChart(ImVec2 size)
   const ImU32 text = SandboxPageUI::MUTED;
   // Y ticks.
   const double yStep = tickStep(yMax - yMin, 5);
-  for (double y = std::ceil(yMin / yStep) * yStep; y <= yMax; y += yStep)
+  const double firstY = std::ceil(yMin / yStep) * yStep;
+  const int yTicks = static_cast<int>(std::floor((yMax - firstY) / yStep)) + 1;
+  for (int tick = 0; tick < yTicks; ++tick)
   {
+    const double y = firstY + (static_cast<double>(tick) * yStep);
     draw.AddLine(ImVec2(left, sy(y)), ImVec2(right, sy(y)), grid);
     const std::string label =
         std::format("{:g}", std::round(y / yStep) * yStep);
@@ -662,9 +665,13 @@ void DrillMeasureScene::renderChart(ImVec2 size)
   else
   {
     const double xStep = tickStep(xMax - xMin, 8);
-    for (double x = std::ceil(xMin / xStep) * xStep; x <= xMax + X_SPAN_EPSILON;
-         x += xStep)
+    const double firstX = std::ceil(xMin / xStep) * xStep;
+    const int xTicks =
+        static_cast<int>(std::floor((xMax + X_SPAN_EPSILON - firstX) / xStep)) +
+        1;
+    for (int tick = 0; tick < xTicks; ++tick)
     {
+      const double x = firstX + (static_cast<double>(tick) * xStep);
       xLabel(x, std::format("{:g}", std::round(x / xStep) * xStep));
     }
   }

@@ -102,33 +102,42 @@ void engineVersionsTable()
                 .capybara = BrainId::CAPYBARA},
                "Player decision-making.");
     versionRow(side == 0 ? "Home body" : "Away body", sandboxBodies().at(side),
-               {.aardvark = BodyId::AARDVARK, .binturong = BodyId::BINTURONG},
+               {.aardvark = BodyId::AARDVARK,
+                .binturong = BodyId::BINTURONG,
+                .capybara = std::nullopt},
                "Movement, fitness, kicking, first touch and goalkeeping.");
-    versionRow(
-        side == 0 ? "Home manager" : "Away manager", sandboxManagers().at(side),
-        {.aardvark = ManagerId::AARDVARK, .binturong = ManagerId::BINTURONG},
-        "AI touchline decisions, substitutions and shouts.");
+    versionRow(side == 0 ? "Home manager" : "Away manager",
+               sandboxManagers().at(side),
+               {.aardvark = ManagerId::AARDVARK,
+                .binturong = ManagerId::BINTURONG,
+                .capybara = std::nullopt},
+               "AI touchline decisions, substitutions and shouts.");
   }
-  versionRow(
-      "Handshake", sandboxHandshake(),
-      {.aardvark = HandshakeId::AARDVARK, .binturong = HandshakeId::BINTURONG},
-      "How game attributes become match inputs.");
-  versionRow(
-      "Referee", sandboxReferee(),
-      {.aardvark = RefereeId::AARDVARK, .binturong = RefereeId::BINTURONG},
-      "Fouls, cards, advantage, offside and added time.");
+  versionRow("Handshake", sandboxHandshake(),
+             {.aardvark = HandshakeId::AARDVARK,
+              .binturong = HandshakeId::BINTURONG,
+              .capybara = std::nullopt},
+             "How game attributes become match inputs.");
+  versionRow("Referee", sandboxReferee(),
+             {.aardvark = RefereeId::AARDVARK,
+              .binturong = RefereeId::BINTURONG,
+              .capybara = std::nullopt},
+             "Fouls, cards, advantage, offside and added time.");
   versionRow("Ball physics", sandboxBallPhysics(),
              {.aardvark = BallPhysicsId::AARDVARK,
-              .binturong = BallPhysicsId::BINTURONG},
+              .binturong = BallPhysicsId::BINTURONG,
+              .capybara = std::nullopt},
              "Flight, drag, bounces, rolling and swerve.");
-  versionRow(
-      "Out of play", sandboxOutOfPlay(),
-      {.aardvark = OutOfPlayId::AARDVARK, .binturong = OutOfPlayId::BINTURONG},
-      "Goals, boundaries and restart rules.");
+  versionRow("Out of play", sandboxOutOfPlay(),
+             {.aardvark = OutOfPlayId::AARDVARK,
+              .binturong = OutOfPlayId::BINTURONG,
+              .capybara = std::nullopt},
+             "Goals, boundaries and restart rules.");
   versionRow(
       "Possession", sandboxPossession(),
       {.aardvark = PossessionId::AARDVARK,
-       .binturong = PossessionId::BINTURONG},
+       .binturong = PossessionId::BINTURONG,
+       .capybara = std::nullopt},
       "Possession system, independent of the selected brains and bodies.");
   ImGui::EndTable();
 }

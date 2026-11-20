@@ -3,6 +3,7 @@
 struct ImFont;
 namespace SandboxSetupUI
 {
-void render(float scale, ImFont* regular, ImFont* medium, ImFont* bold,
-            bool& fullFamiliarity, bool& debugAtKickOff);
+void render(float scale, ImFont* setup_regular_font, ImFont* setup_medium_font,
+            ImFont* sidebar_font, bool& full_familiarity,
+            bool& debug_at_kick_off);
 }

@@ -176,7 +176,7 @@ enum class Detail
 };
 
 /** Draws `body`; collects labels and table rows when given. */
-void drawBody(const Painter& paint, const Body& body, const Tuning& tuning,
+void drawBody(const Painter& base, const Body& body, const Tuning& tuning,
               const Layers& layers, Technique technique, Detail detail,
               std::vector<Label>* labels, std::vector<Entry>* entries);
 

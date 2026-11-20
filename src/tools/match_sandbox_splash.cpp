@@ -380,9 +380,11 @@ void SandboxSplashScene::render()
     const float uy = dy / length;
     const float progress =
         still ? 1.0F : reveal(elapsed, PASS_DELAY_SECONDS, PASS_REVEAL_SECONDS);
-    for (float distance = 0; distance < length * progress;
-         distance += DASH_EVERY)
+    const int dashes =
+        static_cast<int>(std::ceil(length * progress / DASH_EVERY));
+    for (int dash = 0; dash < dashes; ++dash)
     {
+      const float distance = static_cast<float>(dash) * DASH_EVERY;
       const float to = std::min(distance + DASH_LENGTH, length * progress);
       draw->AddLine(point(start.x + (ux * distance), start.y + (uy * distance)),
                     point(start.x + (ux * to), start.y + (uy * to)),

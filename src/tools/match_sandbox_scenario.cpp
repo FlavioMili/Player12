@@ -196,7 +196,7 @@ std::filesystem::path ScenarioExport::save(const std::string& text,
   const std::filesystem::path folder = Recordings::folder() / "scenarios";
   std::error_code problem;
   std::filesystem::create_directories(folder, problem);
-  const std::filesystem::path path =
+  std::filesystem::path path =
       folder / std::format("scenario tick {}.cpp.txt", tick);
   std::ofstream file(path, std::ios::binary);
   if (!file || !(file << text))

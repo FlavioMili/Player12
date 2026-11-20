@@ -10,11 +10,11 @@
 
 #include <algorithm>
 #include <array>
+#include <bit>
 #include <chrono>
 #include <cmath>
 #include <cstdint>
 #include <cstdio>
-#include <cstring>
 #include <deque>
 #include <filesystem>
 #include <format>
@@ -132,6 +132,8 @@ std::optional<std::size_t> privateBytes()
   PROCESS_MEMORY_COUNTERS_EX counters{};
   if (K32GetProcessMemoryInfo(
           GetCurrentProcess(),
+          // The API takes the base struct; the _EX one extends it.
+          // NOLINTNEXTLINE(cppcoreguidelines-pro-type-reinterpret-cast)
           reinterpret_cast<PROCESS_MEMORY_COUNTERS*>(&counters),
           sizeof(counters)) != 0)
   {
@@ -148,8 +150,8 @@ class Fingerprint
   template <typename T>
   void add(const T& value)
   {
-    unsigned char bytes[sizeof(T)];
-    std::memcpy(bytes, &value, sizeof(T));
+    const auto bytes =
+        std::bit_cast<std::array<unsigned char, sizeof(T)>>(value);
     for (const unsigned char byte : bytes)
     {
       hash = (hash ^ byte) * FNV_PRIME;
@@ -1626,7 +1628,6 @@ int runSandboxChecks(GameController& controller, int matches,
         ++diverged;
       }
     }
-    rewindExact = diverged == 0;
 
     // Full detail: stretches rebuilt with every score broken down must still
     // reproduce the match, and every breakdown must add up to its score.

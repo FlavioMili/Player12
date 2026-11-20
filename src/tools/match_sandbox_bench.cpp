@@ -816,7 +816,7 @@ BenchRunner::BenchRunner(const BenchCatalogue& catalogue,
     BenchTest test = catalogue.tests[index];
     if (!setup.skillOverride.empty())
     {
-      const Drill* drill = nullptr;
+      Drill* drill = nullptr;
       for (const auto& candidate : drills)
       {
         if (candidate->name() == test.drill)
@@ -824,11 +824,12 @@ BenchRunner::BenchRunner(const BenchCatalogue& catalogue,
           drill = candidate.get();
         }
       }
+      // Kept for the lookup: the parameter found points into it.
+      const std::vector<DrillParameter> parameters =
+          (drill != nullptr) ? drill->parameters()
+                             : std::vector<DrillParameter>{};
       const DrillParameter* parameter =
-          (drill != nullptr)
-              ? parameterOf(const_cast<Drill*>(drill)->parameters(),
-                            setup.skillOverride)
-              : nullptr;
+          parameterOf(parameters, setup.skillOverride);
       if (parameter == nullptr)
       {
         notes.push_back(std::format("{}: {} has no \"{}\", left out.", test.id,
@@ -1034,7 +1035,8 @@ int runBenchCommand(const StatsConfig& config,
   BenchSpec spec;
   std::optional<std::filesystem::path> csvPath;
   bool skillsGiven = false;
-  for (std::size_t index = 0; index < arguments.size(); ++index)
+  // Every option takes a value: options and values come in pairs.
+  for (std::size_t index = 0; index < arguments.size(); index += 2)
   {
     const std::string& argument = arguments[index];
     const bool hasValue = index + 1 < arguments.size();
@@ -1138,7 +1140,6 @@ int runBenchCommand(const StatsConfig& config,
                    "[--csv PATH]\n";
       return 2;
     }
-    ++index;
   }
 
   const BenchCatalogue catalogue = loadBenchCatalogue(cataloguePath);
