@@ -163,9 +163,8 @@ DrillRun::DrillRun(Drill& drill_ref, const StatsConfig& config, bool record,
   match->setManager(false, sandboxManagers()[1]);
   match->setBallPhysics(sandboxBallPhysics());
   match->setOutOfPlay(sandboxOutOfPlay());
-  match->setDrillRules({.offside = false,
-                        .minimumPlayers = false,
-                        .layers = drill.layers()});
+  match->setDrillRules(
+      {.offside = false, .minimumPlayers = false, .layers = drill.layers()});
   // Only the drill's players take part.
   for (const auto& player : pool)
   {

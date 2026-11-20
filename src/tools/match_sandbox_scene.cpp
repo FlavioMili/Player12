@@ -16,8 +16,8 @@
 #include <format>
 #include <random>
 #include <span>
-#include <utility>
 #include <string>
+#include <utility>
 #include <vector>
 
 #include "controller/game_controller.h"

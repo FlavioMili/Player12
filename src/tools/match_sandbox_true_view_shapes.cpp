@@ -9,7 +9,9 @@
 #include "tools/match_sandbox_true_view_shapes.h"
 
 #include <algorithm>
+#include <array>
 #include <cmath>
+#include <cstddef>
 #include <format>
 #include <initializer_list>
 #include <numbers>
@@ -29,20 +31,191 @@ constexpr int SECTIONS = 12;
 /** How far the send cones reach out (m), only to be seen. */
 constexpr float CONE_METRES = 0.55F;
 
-float radians(float degrees) { return degrees * PI / 180.0F; }
+// Turns in degrees: every ring runs -HALF_TURN to HALF_TURN round his facing.
+constexpr float HALF_TURN = 180.0F;
+constexpr float QUARTER_TURN = 90.0F;
+constexpr float SECTION_DEGREES = 2.0F * HALF_TURN / SECTIONS;
+constexpr float HALF_SECTION = SECTION_DEGREES / 2.0F;
+constexpr float HALF = 0.5F;
+constexpr float MAX_CHANNEL = 255.0F;
+
+// Line weights (pixels).
+constexpr float LINE_FINE = 1.2F;
+constexpr float LINE = 1.5F;
+constexpr float LINE_BOLD = 2.0F;
+constexpr float LINE_HEAVY = 2.5F;
+constexpr float LINE_HEAVIEST = 3.0F;
+
+// Shapes on the floor are lifted this far (m), each layer its own height,
+// so overlapping ones do not flicker.
+constexpr float TACKLE_FILL_LIFT = 0.001F;
+/** Personal space; also a ring drawn just above a band it edges. */
+constexpr float SPACE_LIFT = 0.002F;
+constexpr float TACKLE_RING_LIFT = 0.003F;
+/** His base and the dribble rings. */
+constexpr float BASE_LIFT = 0.004F;
+constexpr float FEET_LIFT = 0.006F;
+/** Facing arrows. */
+constexpr float ARROW_LIFT = 0.01F;
+
+// Painter: dashed rings, cylinder ribs and side panels.
+constexpr int DASHES = 36;
+constexpr float DASH_EVERY_DEGREES = 10.0F;
+constexpr float DASH_DEGREES = 6.0F;
+constexpr float RIB_TOLERANCE = 0.01F;
+constexpr float RIB_SHARE = 0.7F;
+/** A cylinder spanning less than this is a part one, closed to its axis. */
+constexpr float FULL_RING_SPAN = 359.0F;
+constexpr int SIDE_PANELS = 24;
+constexpr float SIDE_PANEL_DEGREES = 2.0F * HALF_TURN / SIDE_PANELS;
+
+// Power by angle: red at none, green at full.
+constexpr float POWER_RED = 0.85F;
+constexpr float POWER_GREEN = 0.25F;
+constexpr float POWER_BLUE = 0.25F;
+constexpr float POWER_SWING = 0.55F;
+
+// Alphas.
+constexpr float RING_ALPHA = 0.35F;
+constexpr float SECTION_EDGE_ALPHA = 0.25F;
+/** Shapes of the techniques not picked. */
+constexpr float UNPICKED_ALPHA = 0.25F;
+constexpr float BODY_BASE_ALPHA = 0.95F;
+constexpr float KIT_RING_ALPHA = 0.9F;
+constexpr float PLAIN_RING_ALPHA = 0.45F;
+constexpr float OUTLINE_FACING_ALPHA = 0.7F;
+constexpr float SPACE_ALPHA = 0.8F;
+constexpr float PRESSURE_ALPHA = 0.7F;
+constexpr float TACKLE_FILL_ALPHA = 0.12F;
+/** Every other tackle section is a shade stronger. */
+constexpr float TACKLE_STRIPE_ALPHA = 0.05F;
+constexpr float SHOT_BLOCK_ALPHA = 0.8F;
+constexpr float DEAD_ZONE_ALPHA = 0.75F;
+constexpr float FEET_BAND_ALPHA = 0.25F;
+constexpr float POWER_ALPHA = 0.75F;
+constexpr float MARK_ALPHA = 0.9F;
+constexpr float PART_FILL_ALPHA = 0.2F;
+constexpr float HEAD_DEAD_ALPHA = 0.55F;
+constexpr float HEAD_BAND_ALPHA = 0.7F;
+constexpr float STANDING_JUMP_ALPHA = 0.6F;
+constexpr float FACING_ALPHA = 0.95F;
+constexpr float LABEL_BACK_ALPHA = 0.7F;
+
+// Where each label sits round him (degrees from his facing).
+constexpr float TEAM_MATE_BEARING = -135.0F;
+constexpr float OPPONENT_BEARING = -150.0F;
+constexpr float PRESSURE_BEARING = -165.0F;
+constexpr float MEET_BEARING = 30.0F;
+constexpr float COLLECT_BEARING = 40.0F;
+constexpr float SLIDE_BEARING = 150.0F;
+constexpr float STANDING_BEARING = 160.0F;
+constexpr float SHOT_BLOCK_BEARING = -60.0F;
+constexpr float FEET_REACH_BEARING = -20.0F;
+constexpr float COMFORT_BEARING = -40.0F;
+constexpr float HEAD_REACH_BEARING = -30.0F;
+constexpr float FOREHEAD_BEARING = -50.0F;
+constexpr float LOWEST_BEARING = -70.0F;
+constexpr float TOP_ONLY_BEARING = 150.0F;
+constexpr float JUMP_BEARING = 30.0F;
+constexpr float STANDING_JUMP_BEARING = 60.0F;
+
+// Gaps (m): the foot-side arcs and their labels, his height marks.
+constexpr float FOOT_SIDE_GAP = 0.05F;
+constexpr float FOOT_LABEL_GAP = 0.1F;
+constexpr float MARK_GAP = 0.01F;
+constexpr float MARK_LABEL_GAP = 0.05F;
+/** The standing jump's ring, as a share of his head reach. */
+constexpr float STANDING_JUMP_RING = 0.75F;
+
+// Lying: each rounded end in steps, a rib every so many points.
+constexpr int LYING_END_STEPS = 18;
+constexpr std::size_t LYING_RIB_EVERY = 6;
+
+// Send cones: each edge in steps over the full width.
+constexpr int CONE_EDGE_STEPS = 8;
+constexpr float CONE_HALF_STEPS = CONE_EDGE_STEPS / 2.0F;
+
+// The facing arrow: its tip past his feet reach, its barbs (m, degrees).
+constexpr float ARROW_TIP = 0.45F;
+constexpr float ARROW_BARB = 0.3F;
+constexpr float ARROW_BARB_DEGREES = 8.0F;
+
+// A shot's leg ghost.
+constexpr float THIGH_THICKNESS = 6.0F;
+constexpr float SHIN_THICKNESS = 4.0F;
+constexpr std::size_t FOOT_CORNERS = 8;
+
+// Labels: a dark box from just right of the point, the text inside it
+// (pixels).
+constexpr float LABEL_BACK_LEFT = 3.0F;
+constexpr float LABEL_BACK_RIGHT = 9.0F;
+constexpr float LABEL_TEXT_LEFT = 6.0F;
+constexpr float LABEL_ROUNDING = 3.0F;
+
+// The values table.
+constexpr float SHAPE_COLUMN_WEIGHT = 1.3F;
+constexpr float VALUE_COLUMN_WEIGHT = 0.8F;
+constexpr float FROM_COLUMN_WEIGHT = 1.4F;
+constexpr float HEADING_FONT_SIZE = 14.0F;
+constexpr ImVec4 WIP_TEXT{0.95F, 0.75F, 0.25F, 1.0F};
+
+float radians(float degrees) { return degrees * PI / HALF_TURN; }
 
 ImU32 colour(int r, int g, int b, float alpha)
 {
-  return IM_COL32(r, g, b,
-                  static_cast<int>(std::clamp(alpha, 0.0F, 1.0F) * 255.0F));
+  return IM_COL32(
+      r, g, b, static_cast<int>(std::clamp(alpha, 0.0F, 1.0F) * MAX_CHANNEL));
 }
 
 /** `tint` with its alpha set. */
 ImU32 withAlpha(ImU32 tint, float alpha)
 {
   return (tint & ~IM_COL32_A_MASK) |
-         (static_cast<ImU32>(std::clamp(alpha, 0.0F, 1.0F) * 255.0F)
+         (static_cast<ImU32>(std::clamp(alpha, 0.0F, 1.0F) * MAX_CHANNEL)
           << IM_COL32_A_SHIFT);
+}
+
+struct Rgb
+{
+  int r = 0;
+  int g = 0;
+  int b = 0;
+};
+
+// The palette.
+constexpr Rgb WHITE{.r = 255, .g = 255, .b = 255};
+constexpr Rgb PALE{.r = 240, .g = 240, .b = 240};
+constexpr Rgb LINE_GREY{.r = 230, .g = 230, .b = 230};
+constexpr Rgb OFF_GREY{.r = 110, .g = 110, .b = 120};
+constexpr Rgb LABEL_BACK{.r = 10, .g = 12, .b = 16};
+constexpr Rgb BODY_EDGE_BLUE{.r = 150, .g = 175, .b = 210};
+constexpr Rgb BODY_SIDE_BLUE{.r = 110, .g = 140, .b = 190};
+constexpr Rgb BALL_HIT_YELLOW{.r = 240, .g = 200, .b = 90};
+constexpr Rgb TEAM_MATE_GREEN{.r = 120, .g = 210, .b = 140};
+constexpr Rgb OPPONENT_ORANGE{.r = 240, .g = 160, .b = 80};
+constexpr Rgb PRESSURE_RED{.r = 230, .g = 90, .b = 90};
+constexpr Rgb DRIBBLE_CYAN{.r = 80, .g = 210, .b = 230};
+constexpr Rgb TACKLE_VIOLET{.r = 200, .g = 120, .b = 220};
+constexpr Rgb SHOT_BLOCK_PINK{.r = 230, .g = 110, .b = 170};
+constexpr Rgb DEAD_ZONE_GREY{.r = 70, .g = 70, .b = 76};
+constexpr Rgb DEAD_EDGE_RED{.r = 235, .g = 70, .b = 70};
+constexpr Rgb COMFORT_GREEN{.r = 90, .g = 230, .b = 120};
+constexpr Rgb WEAK_FOOT_BLUE{.r = 90, .g = 140, .b = 255};
+/** The stronger foot's side, and a stride's shin. */
+constexpr Rgb AMBER{.r = 255, .g = 200, .b = 90};
+constexpr Rgb THIGH_ORANGE{.r = 240, .g = 150, .b = 70};
+constexpr Rgb CHEST_YELLOW{.r = 240, .g = 220, .b = 90};
+constexpr Rgb HEAD_TOP_PURPLE{.r = 150, .g = 110, .b = 220};
+constexpr Rgb JUMP_BLUE{.r = 120, .g = 200, .b = 255};
+constexpr Rgb STRIDE_THIGH_ORANGE{.r = 255, .g = 160, .b = 60};
+constexpr Rgb STRIDE_FOOT_YELLOW{.r = 255, .g = 230, .b = 140};
+constexpr Rgb BLOCK_THIGH_BLUE{.r = 60, .g = 200, .b = 255};
+constexpr Rgb BLOCK_SHIN_BLUE{.r = 110, .g = 220, .b = 255};
+constexpr Rgb BLOCK_FOOT_BLUE{.r = 170, .g = 240, .b = 255};
+
+ImU32 colour(Rgb rgb, float alpha)
+{
+  return colour(rgb.r, rgb.g, rgb.b, alpha);
 }
 
 /** 0-1 on the contact view's dark-to-hot scale. */
@@ -67,8 +240,9 @@ ImU32 heat(float value, float alpha)
 ImU32 powerColour(float share, float alpha)
 {
   const float s = std::clamp(share, 0.0F, 1.0F);
-  return ImGui::GetColorU32(
-      ImVec4(0.85F - (0.55F * s), 0.25F + (0.55F * s), 0.25F, alpha));
+  return ImGui::GetColorU32(ImVec4(POWER_RED - (POWER_SWING * s),
+                                   POWER_GREEN + (POWER_SWING * s), POWER_BLUE,
+                                   alpha));
 }
 
 /** Rings at a stretch map's distances, 12 sections each, coloured by the
@@ -86,21 +260,23 @@ void stretchRings(const Painter& paint, const StretchMap& map, float reach,
     const float middle = 0.5F * (inner + outer);
     for (int section = 0; section < SECTIONS; ++section)
     {
-      const float from = -180.0F + (30.0F * static_cast<float>(section));
-      const float centre = from + 15.0F;
+      const float from =
+          -HALF_TURN + (SECTION_DEGREES * static_cast<float>(section));
+      const float centre = from + HALF_SECTION;
       const ImU32 tint =
           blocked(centre, middle)
               ? blockedTint
               : heat(map.at(centre, middle / reach), 0.6F * alpha);
-      paint.sector(inner, outer, z, from, from + 30.0F, tint);
+      paint.sector(inner, outer, z, from, from + SECTION_DEGREES, tint);
     }
-    paint.ring(outer, z, colour(255, 255, 255, 0.35F * alpha), 1.0F);
+    paint.ring(outer, z, colour(WHITE, RING_ALPHA * alpha), 1.0F);
   }
   for (int section = 0; section < SECTIONS; ++section)
   {
-    const float edge = -180.0F + (30.0F * static_cast<float>(section));
+    const float edge =
+        -HALF_TURN + (SECTION_DEGREES * static_cast<float>(section));
     paint.line(paint.polar(edge, 0.0F, z), paint.polar(edge, reach, z),
-               colour(255, 255, 255, 0.25F * alpha), 1.0F);
+               colour(WHITE, SECTION_EDGE_ALPHA * alpha), 1.0F);
   }
 }
 }  // namespace
@@ -181,16 +357,17 @@ void Painter::arc(float radius, float z, float from, float to, ImU32 tint,
 
 void Painter::ring(float radius, float z, ImU32 tint, float thickness) const
 {
-  arc(radius, z, -180.0F, 180.0F, tint, thickness);
+  arc(radius, z, -HALF_TURN, HALF_TURN, tint, thickness);
 }
 
 void Painter::dashedRing(float radius, float z, ImU32 tint,
                          float thickness) const
 {
-  for (int dash = 0; dash < 36; ++dash)
+  for (int dash = 0; dash < DASHES; ++dash)
   {
-    const float from = -180.0F + (10.0F * static_cast<float>(dash));
-    arc(radius, z, from, from + 6.0F, tint, thickness);
+    const float from =
+        -HALF_TURN + (DASH_EVERY_DEGREES * static_cast<float>(dash));
+    arc(radius, z, from, from + DASH_DEGREES, tint, thickness);
   }
 }
 
@@ -215,12 +392,13 @@ void Painter::cylinder(float radius, float bottom, float top, float from,
 {
   arc(radius, bottom, from, to, tint, thickness);
   arc(radius, top, from, to, tint, thickness);
-  for (float degrees = from; degrees <= to + 0.01F; degrees += 30.0F)
+  for (float degrees = from; degrees <= to + RIB_TOLERANCE;
+       degrees += SECTION_DEGREES)
   {
     line(polar(degrees, radius, bottom), polar(degrees, radius, top), tint,
-         thickness * 0.7F);
+         thickness * RIB_SHARE);
   }
-  if (to - from < 359.0F)
+  if (to - from < FULL_RING_SPAN)
   {
     // A part cylinder: closed back to its axis.
     for (const float z : {bottom, top})
@@ -234,11 +412,13 @@ void Painter::cylinder(float radius, float bottom, float top, float from,
 void Painter::cylinderSides(float radius, float bottom, float top,
                             ImU32 tint) const
 {
-  for (int step = 0; step < 24; ++step)
+  for (int step = 0; step < SIDE_PANELS; ++step)
   {
-    const float a = -180.0F + (15.0F * static_cast<float>(step));
-    fill({polar(a, radius, bottom), polar(a + 15.0F, radius, bottom),
-          polar(a + 15.0F, radius, top), polar(a, radius, top)},
+    const float a =
+        -HALF_TURN + (SIDE_PANEL_DEGREES * static_cast<float>(step));
+    const float b = a + SIDE_PANEL_DEGREES;
+    fill({polar(a, radius, bottom), polar(b, radius, bottom),
+          polar(b, radius, top), polar(a, radius, top)},
          tint);
   }
 }
@@ -318,9 +498,9 @@ void drawBody(const Painter& base, const Body& body, const Tuning& tuning,
         return 1.0F;
       }
     }
-    return 0.25F;
+    return UNPICKED_ALPHA;
   };
-  const ImU32 offTint = colour(110, 110, 120, 0.35F);
+  const ImU32 offTint = colour(OFF_GREY, 0.35F);
   const float feetReach = tuning.feetReach;
   const float comfortGap = tuning.comfortGap;
   const float deadAngle = tuning.deadAngle;
@@ -328,22 +508,22 @@ void drawBody(const Painter& base, const Body& body, const Tuning& tuning,
   // ---- The body cylinder (every body) ---------------------------------------
   if (layers.body || !full)
   {
-    const ImU32 edge = colour(150, 175, 210, 0.9F);
+    const ImU32 edge = colour(BODY_EDGE_BLUE, 0.9F);
     // In a match his shirt colour tells the sides apart.
     const ImU32 side = body.kit != 0
                            ? withAlpha(body.kit, full ? 0.3F : 0.45F)
-                           : colour(110, 140, 190, full ? 0.18F : 0.3F);
+                           : colour(BODY_SIDE_BLUE, full ? 0.18F : 0.3F);
     if (!body.lying)
     {
       if (body.kit != 0)
       {
-        paint.sector(0.0F, radius, z0 + 0.004F, -180.0F, 180.0F,
-                     withAlpha(body.kit, 0.95F));
+        paint.sector(0.0F, radius, z0 + BASE_LIFT, -HALF_TURN, HALF_TURN,
+                     withAlpha(body.kit, BODY_BASE_ALPHA));
       }
       paint.cylinderSides(radius, z0 + feetHeight, z0 + feetHeight + height,
                           side);
-      paint.cylinder(radius, z0 + feetHeight, z0 + feetHeight + height, -180.0F,
-                     180.0F, edge, 1.5F);
+      paint.cylinder(radius, z0 + feetHeight, z0 + feetHeight + height,
+                     -HALF_TURN, HALF_TURN, edge, LINE);
       add("Body: an upright cylinder, across",
           std::format("{:.2f} m", MatchTuning::Body::DIAMETER_METRES),
           "Body::DIAMETER_METRES");
@@ -361,18 +541,22 @@ void drawBody(const Painter& base, const Body& body, const Tuning& tuning,
       {
         std::vector<Vec3> points;
         const Vec3 head = flat.polar(0.0F, half, z0);
-        const Vec3 feet = flat.polar(180.0F, half, z0);
-        for (int step = 0; step <= 18; ++step)
+        const Vec3 feet = flat.polar(HALF_TURN, half, z0);
+        for (int step = 0; step <= LYING_END_STEPS; ++step)
         {
           points.push_back(flat.polarFrom(
-              head, 90.0F - (180.0F * static_cast<float>(step) / 18.0F), r,
-              z0 + z));
+              head,
+              QUARTER_TURN - (HALF_TURN * static_cast<float>(step) /
+                              static_cast<float>(LYING_END_STEPS)),
+              r, z0 + z));
         }
-        for (int step = 0; step <= 18; ++step)
+        for (int step = 0; step <= LYING_END_STEPS; ++step)
         {
           points.push_back(flat.polarFrom(
-              feet, -90.0F - (180.0F * static_cast<float>(step) / 18.0F), r,
-              z0 + z));
+              feet,
+              -QUARTER_TURN - (HALF_TURN * static_cast<float>(step) /
+                               static_cast<float>(LYING_END_STEPS)),
+              r, z0 + z));
         }
         return points;
       };
@@ -380,9 +564,10 @@ void drawBody(const Painter& base, const Body& body, const Tuning& tuning,
       const std::vector<Vec3> bottom = outline(0.0F, radius);
       const std::vector<Vec3> top = outline(bodyTop, radius);
       paint.fill(top, side);
-      paint.polyline(bottom, edge, 1.5F, true);
-      paint.polyline(top, edge, 1.5F, true);
-      for (std::size_t index = 0; index < bottom.size(); index += 6)
+      paint.polyline(bottom, edge, LINE, true);
+      paint.polyline(top, edge, LINE, true);
+      for (std::size_t index = 0; index < bottom.size();
+           index += LYING_RIB_EVERY)
       {
         paint.line(bottom[index], top[index], edge, 1.0F);
       }
@@ -390,7 +575,7 @@ void drawBody(const Painter& base, const Body& body, const Tuning& tuning,
       {
         // A ball whose centre comes this close below this height hits him.
         const float ballReach = radius + MatchTuning::Units::BALL_RADIUS_METRES;
-        const ImU32 hit = colour(240, 200, 90, 0.8F);
+        const ImU32 hit = colour(BALL_HIT_YELLOW, 0.8F);
         paint.polyline(outline(C::FALLEN_BALL_BELOW_METRES, ballReach), hit,
                        1.0F, true);
         paint.polyline(outline(0.0F, ballReach), hit, 1.0F, true);
@@ -401,9 +586,9 @@ void drawBody(const Painter& base, const Body& body, const Tuning& tuning,
                   ballReach, C::FALLEN_BALL_BELOW_METRES),
               hit);
         label(
-            flat.polar(180.0F, half + radius, z0 + bodyTop),
+            flat.polar(HALF_TURN, half + radius, z0 + bodyTop),
             std::format("lying {:.2f} m long, {:.2f} m high", height, bodyTop),
-            colour(150, 175, 210, 1.0F));
+            colour(BODY_EDGE_BLUE, 1.0F));
         add("Down: his body seen from above",
             std::format("{:.2f} x {:.2f} m, ends rounded", height,
                         MatchTuning::Body::DIAMETER_METRES),
@@ -448,15 +633,17 @@ void drawBody(const Painter& base, const Body& body, const Tuning& tuning,
     {
       if (body.kit != 0)
       {
-        paint.ring(feetReach, z0 + 0.006F, withAlpha(body.kit, 0.9F), 2.5F);
+        paint.ring(feetReach, z0 + FEET_LIFT,
+                   withAlpha(body.kit, KIT_RING_ALPHA), LINE_HEAVY);
       }
       else
       {
-        paint.ring(feetReach, z0 + 0.006F, colour(240, 240, 240, 0.45F), 1.2F);
+        paint.ring(feetReach, z0 + FEET_LIFT, colour(PALE, PLAIN_RING_ALPHA),
+                   LINE_FINE);
       }
-      paint.line(paint.polar(0.0F, radius, z0 + 0.01F),
-                 paint.polar(0.0F, feetReach, z0 + 0.01F),
-                 colour(255, 255, 255, 0.7F), 1.5F);
+      paint.line(paint.polar(0.0F, radius, z0 + ARROW_LIFT),
+                 paint.polar(0.0F, feetReach, z0 + ARROW_LIFT),
+                 colour(WHITE, OUTLINE_FACING_ALPHA), LINE);
     }
     return;
   }
@@ -468,18 +655,21 @@ void drawBody(const Painter& base, const Body& body, const Tuning& tuning,
     const float teamMate = C::OVERTAKE_TEAM_MATE_CLEARANCE_METRES;
     const float opponent = C::OVERTAKE_OPPONENT_CLEARANCE_METRES;
     const float pressure = tuning.pressureRadius;
-    paint.dashedRing(teamMate, z0 + 0.002F, colour(120, 210, 140, 0.8F));
-    paint.dashedRing(opponent, z0 + 0.002F, colour(240, 160, 80, 0.8F));
-    paint.dashedRing(pressure, z0 + 0.002F, colour(230, 90, 90, 0.7F));
-    label(paint.polar(-135.0F, teamMate, z0),
+    paint.dashedRing(teamMate, z0 + SPACE_LIFT,
+                     colour(TEAM_MATE_GREEN, SPACE_ALPHA));
+    paint.dashedRing(opponent, z0 + SPACE_LIFT,
+                     colour(OPPONENT_ORANGE, SPACE_ALPHA));
+    paint.dashedRing(pressure, z0 + SPACE_LIFT,
+                     colour(PRESSURE_RED, PRESSURE_ALPHA));
+    label(paint.polar(TEAM_MATE_BEARING, teamMate, z0),
           std::format("team-mate passes {:.1f} m", teamMate),
-          colour(120, 210, 140, 1.0F));
-    label(paint.polar(-150.0F, opponent, z0),
+          colour(TEAM_MATE_GREEN, 1.0F));
+    label(paint.polar(OPPONENT_BEARING, opponent, z0),
           std::format("opponent passes {:.1f} m", opponent),
-          colour(240, 160, 80, 1.0F));
-    label(paint.polar(-165.0F, pressure, z0),
+          colour(OPPONENT_ORANGE, 1.0F));
+    label(paint.polar(PRESSURE_BEARING, pressure, z0),
           std::format("pressure on his touch {:.1f} m", pressure),
-          colour(230, 90, 90, 1.0F));
+          colour(PRESSURE_RED, 1.0F));
     add("Team-mate clearance (overtaking, way round)",
         std::format("{:.2f} m", teamMate),
         "Collision::OVERTAKE_TEAM_MATE_CLEARANCE_METRES");
@@ -499,14 +689,15 @@ void drawBody(const Painter& base, const Body& body, const Tuning& tuning,
       const float alpha = technique == Technique::DRIBBLE ? 1.0F : 0.45F;
       const float meet = dribbleMeetGapOf(comfortGap, body.dribbling);
       const float collect = MatchTuning::Dribble::KICK_REACH_METRES;
-      paint.ring(meet, z0 + 0.004F, colour(80, 210, 230, alpha), 2.0F);
-      paint.dashedRing(collect, z0 + 0.004F, colour(80, 210, 230, alpha), 1.5F);
-      label(paint.polar(30.0F, meet, z0),
+      paint.ring(meet, z0 + BASE_LIFT, colour(DRIBBLE_CYAN, alpha), LINE_BOLD);
+      paint.dashedRing(collect, z0 + BASE_LIFT, colour(DRIBBLE_CYAN, alpha),
+                       LINE);
+      label(paint.polar(MEET_BEARING, meet, z0),
             std::format("dribble meet {:.2f} m", meet),
-            colour(80, 210, 230, alpha));
-      label(paint.polar(40.0F, collect, z0),
+            colour(DRIBBLE_CYAN, alpha));
+      label(paint.polar(COLLECT_BEARING, collect, z0),
             std::format("collects within {:.2f} m", collect),
-            colour(80, 210, 230, alpha));
+            colour(DRIBBLE_CYAN, alpha));
       add("Dribble touch: where he meets it", std::format("{:.2f} m", meet),
           "dribbleMeetGapOf: comfort gap (Dribbling 99) to kick reach (1)");
       add("Dribble: collects it within", std::format("{:.2f} m", collect),
@@ -519,20 +710,25 @@ void drawBody(const Painter& base, const Body& body, const Tuning& tuning,
       const float slide = MatchTuning::Defending::SLIDE_TACKLE_DISTANCE_METRES;
       for (int section = 0; section < SECTIONS; ++section)
       {
-        const float from = -180.0F + (30.0F * static_cast<float>(section));
+        const float from =
+            -HALF_TURN + (SECTION_DEGREES * static_cast<float>(section));
         paint.sector(
-            standing, slide, z0 + 0.001F, from, from + 30.0F,
-            colour(200, 120, 220,
-                   (0.12F * alpha) + (section % 2 == 0 ? 0.05F : 0.0F)));
+            standing, slide, z0 + TACKLE_FILL_LIFT, from,
+            from + SECTION_DEGREES,
+            colour(TACKLE_VIOLET,
+                   (TACKLE_FILL_ALPHA * alpha) +
+                       (section % 2 == 0 ? TACKLE_STRIPE_ALPHA : 0.0F)));
       }
-      paint.ring(standing, z0 + 0.003F, colour(200, 120, 220, alpha), 1.5F);
-      paint.ring(slide, z0 + 0.003F, colour(200, 120, 220, alpha), 1.5F);
-      label(paint.polar(150.0F, slide, z0),
+      paint.ring(standing, z0 + TACKLE_RING_LIFT, colour(TACKLE_VIOLET, alpha),
+                 LINE);
+      paint.ring(slide, z0 + TACKLE_RING_LIFT, colour(TACKLE_VIOLET, alpha),
+                 LINE);
+      label(paint.polar(SLIDE_BEARING, slide, z0),
             std::format("slide tackle roll {:.1f} m [WIP]", slide),
-            colour(200, 120, 220, alpha));
-      label(paint.polar(160.0F, standing, z0),
+            colour(TACKLE_VIOLET, alpha));
+      label(paint.polar(STANDING_BEARING, standing, z0),
             std::format("standing range {:.2f} m [WIP]", standing),
-            colour(200, 120, 220, alpha));
+            colour(TACKLE_VIOLET, alpha));
       add("Slide tackle (a roll from here out)", std::format("{:.2f} m", slide),
           "Defending::SLIDE_TACKLE_DISTANCE_METRES",
           "old dice roll; slides are only a flag (no movement), untouched by "
@@ -551,13 +747,13 @@ void drawBody(const Painter& base, const Body& body, const Tuning& tuning,
       const float alpha = technique == Technique::SHOT_BLOCK ? 1.0F : 0.3F;
       const float torso = radius + MatchTuning::Units::BALL_RADIUS_METRES;
       paint.cylinder(torso, z0 + feetHeight + lines.chest,
-                     z0 + feetHeight + height, -180.0F, 180.0F,
-                     colour(230, 110, 170, alpha * 0.8F), 1.0F);
+                     z0 + feetHeight + height, -HALF_TURN, HALF_TURN,
+                     colour(SHOT_BLOCK_PINK, alpha * SHOT_BLOCK_ALPHA), 1.0F);
       label(
-          paint.polar(-60.0F, torso, z0 + feetHeight + lines.chest),
+          paint.polar(SHOT_BLOCK_BEARING, torso, z0 + feetHeight + lines.chest),
           std::format("shot block: torso {:.2f} m, hip {:.2f} m to head [WIP]",
                       torso, lines.chest),
-          colour(230, 110, 170, alpha));
+          colour(SHOT_BLOCK_PINK, alpha));
       add("Shot block: torso", std::format("{:.2f} m, hip to head", torso),
           "Body::RADIUS_METRES + ball radius; hip = chest line",
           "shot block plan: where the ball goes off him is still the old "
@@ -574,42 +770,43 @@ void drawBody(const Painter& base, const Body& body, const Tuning& tuning,
   {
     const float alpha = picked({Technique::FIRST_TOUCH, Technique::FOOT_STRIKE,
                                 Technique::DRIBBLE, Technique::TACKLE});
-    const float z = z0 + 0.006F;
+    const float z = z0 + FEET_LIFT;
     if (groundPartsOn)
     {
       stretchRings(
           paint, tuning.feetStretch, feetReach, z, alpha,
           [&](float centre, float middle)
           { return middle > comfortGap && std::abs(centre) > deadAngle; },
-          colour(70, 70, 76, 0.75F * alpha));
+          colour(DEAD_ZONE_GREY, DEAD_ZONE_ALPHA * alpha));
       // The dead zone's edge, exactly.
-      const ImU32 deadEdge = colour(235, 70, 70, alpha);
+      const ImU32 deadEdge = colour(DEAD_EDGE_RED, alpha);
       for (const float side : {-1.0F, 1.0F})
       {
         paint.line(paint.polar(side * deadAngle, comfortGap, z),
-                   paint.polar(side * deadAngle, feetReach, z), deadEdge, 2.0F);
-        paint.arc(comfortGap, z, side * deadAngle, side * 180.0F, deadEdge,
-                  2.0F);
+                   paint.polar(side * deadAngle, feetReach, z), deadEdge,
+                   LINE_BOLD);
+        paint.arc(comfortGap, z, side * deadAngle, side * HALF_TURN, deadEdge,
+                  LINE_BOLD);
       }
-      paint.ring(comfortGap, z + 0.002F, colour(90, 230, 120, alpha), 2.5F);
-      paint.ring(feetReach, z + 0.002F, colour(240, 240, 240, alpha), 2.5F);
+      paint.ring(comfortGap, z + SPACE_LIFT, colour(COMFORT_GREEN, alpha),
+                 LINE_HEAVY);
+      paint.ring(feetReach, z + SPACE_LIFT, colour(PALE, alpha), LINE_HEAVY);
       // The band his feet play: up to his feet line.
-      paint.cylinder(feetReach, z0, z0 + lines.feet, -180.0F, 180.0F,
-                     colour(240, 240, 240, 0.25F * alpha), 1.0F);
-      label(paint.polar(-20.0F, feetReach, z0),
-            std::format("feet reach {:.2f} m", feetReach),
-            colour(240, 240, 240, alpha));
-      label(paint.polar(-40.0F, comfortGap, z0),
+      paint.cylinder(feetReach, z0, z0 + lines.feet, -HALF_TURN, HALF_TURN,
+                     colour(PALE, FEET_BAND_ALPHA * alpha), 1.0F);
+      label(paint.polar(FEET_REACH_BEARING, feetReach, z0),
+            std::format("feet reach {:.2f} m", feetReach), colour(PALE, alpha));
+      label(paint.polar(COMFORT_BEARING, comfortGap, z0),
             std::format("comfort gap {:.2f} m (best technique)", comfortGap),
-            colour(90, 230, 120, alpha));
-      label(paint.polar(180.0F, 0.5F * (comfortGap + feetReach), z0),
+            colour(COMFORT_GREEN, alpha));
+      label(paint.polar(HALF_TURN, HALF * (comfortGap + feetReach), z0),
             std::format("dead zone: beyond {:.0f} deg", deadAngle), deadEdge);
     }
     else
     {
-      paint.ring(feetReach, z, offTint, 1.5F);
-      label(paint.polar(-20.0F, feetReach, z0), "feet: off in the air",
-            offTint);
+      paint.ring(feetReach, z, offTint, LINE);
+      label(paint.polar(FEET_REACH_BEARING, feetReach, z0),
+            "feet: off in the air", offTint);
     }
     add("Feet reach (touches and foot strikes)",
         std::format("{:.2f} m", feetReach), "touch knob Feet reach",
@@ -628,15 +825,17 @@ void drawBody(const Painter& base, const Body& body, const Tuning& tuning,
     if (layers.facing && groundPartsOn)
     {
       const float weakSide = body.rightFooted ? -1.0F : 1.0F;
-      paint.arc(feetReach + 0.05F, z, 0.0F, weakSide * 180.0F,
-                colour(90, 140, 255, alpha), 3.0F);
-      paint.arc(feetReach + 0.05F, z, 0.0F, -weakSide * 180.0F,
-                colour(255, 200, 90, alpha), 3.0F);
-      label(paint.polar(weakSide * 90.0F, feetReach + 0.1F, z0),
-            "weaker foot side", colour(90, 140, 255, 1.0F));
-      label(paint.polar(-weakSide * 90.0F, feetReach + 0.1F, z0),
-            body.rightFooted ? "right foot side" : "left foot side",
-            colour(255, 200, 90, 1.0F));
+      paint.arc(feetReach + FOOT_SIDE_GAP, z, 0.0F, weakSide * HALF_TURN,
+                colour(WEAK_FOOT_BLUE, alpha), LINE_HEAVIEST);
+      paint.arc(feetReach + FOOT_SIDE_GAP, z, 0.0F, -weakSide * HALF_TURN,
+                colour(AMBER, alpha), LINE_HEAVIEST);
+      label(
+          paint.polar(weakSide * QUARTER_TURN, feetReach + FOOT_LABEL_GAP, z0),
+          "weaker foot side", colour(WEAK_FOOT_BLUE, 1.0F));
+      label(
+          paint.polar(-weakSide * QUARTER_TURN, feetReach + FOOT_LABEL_GAP, z0),
+          body.rightFooted ? "right foot side" : "left foot side",
+          colour(AMBER, 1.0F));
       add("Weaker foot: a ball on this side of his facing line",
           body.rightFooted ? "his left" : "his right",
           "engine: the side of his facing line (+ his right, clockwise in the "
@@ -660,24 +859,25 @@ void drawBody(const Painter& base, const Body& body, const Tuning& tuning,
     const float inwardSide = body.rightFooted ? -1.0F : 1.0F;
     for (int section = 0; section < SECTIONS; ++section)
     {
-      const float from = -180.0F + (30.0F * static_cast<float>(section));
-      const float centre = from + 15.0F;
+      const float from =
+          -HALF_TURN + (SECTION_DEGREES * static_cast<float>(section));
+      const float centre = from + HALF_SECTION;
       const bool inward = centre * inwardSide > 0.0F;
       const float share = powerByAngleShare(
           std::abs(centre),
           inward ? profile.powerInwardSquare : profile.powerOutwardSquare,
           profile.powerBehind);
-      paint.sector(inner, outer, z, from, from + 30.0F,
-                   powerColour(share, 0.75F));
+      paint.sector(inner, outer, z, from, from + SECTION_DEGREES,
+                   powerColour(share, POWER_ALPHA));
     }
     label(paint.polar(0.0F, outer, z), "power 100%", powerColour(1.0F, 1.0F));
-    label(paint.polar(inwardSide * 90.0F, outer, z),
+    label(paint.polar(inwardSide * QUARTER_TURN, outer, z),
           std::format("inward {:.0f}%", profile.powerInwardSquare * 100.0F),
           powerColour(profile.powerInwardSquare, 1.0F));
-    label(paint.polar(-inwardSide * 90.0F, outer, z),
+    label(paint.polar(-inwardSide * QUARTER_TURN, outer, z),
           std::format("outward {:.0f}%", profile.powerOutwardSquare * 100.0F),
           powerColour(profile.powerOutwardSquare, 1.0F));
-    label(paint.polar(180.0F, outer, z),
+    label(paint.polar(HALF_TURN, outer, z),
           std::format("behind {:.0f}%", profile.powerBehind * 100.0F),
           powerColour(profile.powerBehind, 1.0F));
     const std::string kind =
@@ -712,12 +912,13 @@ void drawBody(const Painter& base, const Body& body, const Tuning& tuning,
     }};
     for (const Line& mark : marks)
     {
-      paint.ring(radius + 0.01F, z0 + feetHeight + mark.z,
-                 colour(255, 255, 255, 0.9F), 2.0F);
-      label(paint.polar(90.0F, radius + 0.05F, z0 + feetHeight + mark.z),
+      paint.ring(radius + MARK_GAP, z0 + feetHeight + mark.z,
+                 colour(WHITE, MARK_ALPHA), LINE_BOLD);
+      label(paint.polar(QUARTER_TURN, radius + MARK_LABEL_GAP,
+                        z0 + feetHeight + mark.z),
             std::format("{} {:.2f} m ({:.2f} x h)", mark.name, mark.z,
                         mark.z / height),
-            colour(230, 230, 230, 1.0F));
+            colour(LINE_GREY, 1.0F));
     }
     add("Thigh / chest line", std::format("{:.2f} m", lines.chest),
         "Ball::CHEST_LINE_HEIGHT_SHARE x height (top of a raised thigh)");
@@ -754,7 +955,7 @@ void drawBody(const Painter& base, const Body& body, const Tuning& tuning,
          .reach = B::THIGH_REACH_METRES,
          .on = thighOn,
          .owner = Technique::THIGH,
-         .tint = colour(240, 150, 70, 1.0F),
+         .tint = colour(THIGH_ORANGE, 1.0F),
          .sideDegrees = B::THIGH_MAX_SIDE_DEGREES,
          .upFrom = B::THIGH_MIN_UP_DEGREES,
          .upTo = B::THIGH_MAX_UP_DEGREES},
@@ -764,7 +965,7 @@ void drawBody(const Painter& base, const Body& body, const Tuning& tuning,
          .reach = B::CHEST_REACH_METRES,
          .on = groundPartsOn,
          .owner = Technique::CHEST,
-         .tint = colour(240, 220, 90, 1.0F),
+         .tint = colour(CHEST_YELLOW, 1.0F),
          .sideDegrees = B::CHEST_MAX_SIDE_DEGREES,
          .upFrom = 0.0F,
          .upTo = B::CHEST_MAX_UP_DEGREES},
@@ -776,13 +977,14 @@ void drawBody(const Painter& base, const Body& body, const Tuning& tuning,
       const float bottom = z0 + feetHeight + part.bottom;
       const float top = z0 + feetHeight + part.top;
       // In front of him only: a half cylinder from his centre.
-      paint.cylinder(part.reach, bottom, top, -90.0F, 90.0F, tint, 1.5F);
+      paint.cylinder(part.reach, bottom, top, -QUARTER_TURN, QUARTER_TURN, tint,
+                     LINE);
       if (part.on)
       {
-        paint.sector(0.0F, part.reach, bottom, -90.0F, 90.0F,
-                     withAlpha(part.tint, 0.2F * alpha));
+        paint.sector(0.0F, part.reach, bottom, -QUARTER_TURN, QUARTER_TURN,
+                     withAlpha(part.tint, PART_FILL_ALPHA * alpha));
       }
-      label(paint.polar(0.0F, part.reach, 0.5F * (bottom + top)),
+      label(paint.polar(0.0F, part.reach, HALF * (bottom + top)),
             part.on
                 ? std::format("{} {:.2f} m, in front", part.name, part.reach)
                 : std::format("{}: off", part.name),
@@ -799,21 +1001,21 @@ void drawBody(const Painter& base, const Body& body, const Tuning& tuning,
               from.z + (std::sin(radians(up)) * CONE_METRES));
         };
         std::vector<Vec3> edge;
-        for (int step = 0; step <= 8; ++step)
+        for (int step = 0; step <= CONE_EDGE_STEPS; ++step)
         {
           edge.push_back(direction(
-              -part.sideDegrees +
-                  (part.sideDegrees * static_cast<float>(step) / 4.0F),
+              -part.sideDegrees + (part.sideDegrees * static_cast<float>(step) /
+                                   CONE_HALF_STEPS),
               part.upFrom));
         }
-        for (int step = 0; step <= 8; ++step)
+        for (int step = 0; step <= CONE_EDGE_STEPS; ++step)
         {
           edge.push_back(direction(
-              part.sideDegrees -
-                  (part.sideDegrees * static_cast<float>(step) / 4.0F),
+              part.sideDegrees - (part.sideDegrees * static_cast<float>(step) /
+                                  CONE_HALF_STEPS),
               part.upTo));
         }
-        paint.polyline(edge, tint, 1.5F, true);
+        paint.polyline(edge, tint, LINE, true);
         for (const float side : {-part.sideDegrees, part.sideDegrees})
         {
           for (const float up : {part.upFrom, part.upTo})
@@ -869,29 +1071,27 @@ void drawBody(const Painter& base, const Body& body, const Tuning& tuning,
           return middle > headComfort &&
                  std::abs(centre) > A::HEAD_DEAD_ZONE_DEGREES;
         },
-        colour(150, 110, 220, 0.55F * alpha));
-    paint.ring(headComfort, forehead + 0.002F, colour(90, 230, 120, alpha),
-               2.0F);
-    paint.cylinder(headReach, z0 + band.lowest, z0 + band.top, -180.0F, 180.0F,
-                   colour(240, 240, 240, 0.7F * alpha), 1.2F);
+        colour(HEAD_TOP_PURPLE, HEAD_DEAD_ALPHA * alpha));
+    paint.ring(headComfort, forehead + SPACE_LIFT, colour(COMFORT_GREEN, alpha),
+               LINE_BOLD);
+    paint.cylinder(headReach, z0 + band.lowest, z0 + band.top, -HALF_TURN,
+                   HALF_TURN, colour(PALE, HEAD_BAND_ALPHA * alpha), LINE_FINE);
     for (const float side : {-1.0F, 1.0F})
     {
       paint.line(
           paint.polar(side * A::HEAD_DEAD_ZONE_DEGREES, headComfort, forehead),
           paint.polar(side * A::HEAD_DEAD_ZONE_DEGREES, headReach, forehead),
-          colour(150, 110, 220, alpha), 2.0F);
+          colour(HEAD_TOP_PURPLE, alpha), LINE_BOLD);
     }
-    label(paint.polar(-30.0F, headReach, z0 + band.top),
-          std::format("head reach {:.2f} m", headReach),
-          colour(240, 240, 240, alpha));
-    label(paint.polar(-50.0F, headReach, forehead),
-          std::format("forehead {:.2f} m", band.forehead),
-          colour(240, 240, 240, alpha));
-    label(paint.polar(-70.0F, headReach, z0 + band.lowest),
+    label(paint.polar(HEAD_REACH_BEARING, headReach, z0 + band.top),
+          std::format("head reach {:.2f} m", headReach), colour(PALE, alpha));
+    label(paint.polar(FOREHEAD_BEARING, headReach, forehead),
+          std::format("forehead {:.2f} m", band.forehead), colour(PALE, alpha));
+    label(paint.polar(LOWEST_BEARING, headReach, z0 + band.lowest),
           std::format("lowest (duck) {:.2f} m", band.lowest),
-          colour(240, 240, 240, alpha));
-    label(paint.polar(150.0F, headReach, forehead), "top of head only",
-          colour(150, 110, 220, 1.0F));
+          colour(PALE, alpha));
+    label(paint.polar(TOP_ONLY_BEARING, headReach, forehead),
+          "top of head only", colour(HEAD_TOP_PURPLE, 1.0F));
     add("Head: reach", std::format("{:.2f} m", headReach),
         "Aerial::HEAD_REACH_METRES", "placeholder (heading plan step 4)");
     add("Head: comfort gap (best technique)",
@@ -912,18 +1112,19 @@ void drawBody(const Painter& base, const Body& body, const Tuning& tuning,
         "Aerial::HEAD_STRETCH_* (the header's profile)", "placeholders");
 
     // His jump's top: Jumping reach (running), a share of it standing.
-    const ImU32 ceiling = colour(120, 200, 255, alpha);
-    paint.dashedRing(headReach, z0 + body.jumpingReach, ceiling, 1.5F);
-    paint.dashedRing(headReach * 0.75F, z0 + height + body.standingRise,
-                     colour(120, 200, 255, 0.6F * alpha), 1.0F);
+    const ImU32 ceiling = colour(JUMP_BLUE, alpha);
+    paint.dashedRing(headReach, z0 + body.jumpingReach, ceiling, LINE);
+    paint.dashedRing(headReach * STANDING_JUMP_RING,
+                     z0 + height + body.standingRise,
+                     colour(JUMP_BLUE, STANDING_JUMP_ALPHA * alpha), 1.0F);
     label(
-        paint.polar(30.0F, headReach, z0 + body.jumpingReach),
+        paint.polar(JUMP_BEARING, headReach, z0 + body.jumpingReach),
         std::format("Jumping reach {:.2f} m (running jump)", body.jumpingReach),
         ceiling);
-    label(
-        paint.polar(60.0F, headReach * 0.75F, z0 + height + body.standingRise),
-        std::format("standing jump {:.2f} m", height + body.standingRise),
-        ceiling);
+    label(paint.polar(STANDING_JUMP_BEARING, headReach * STANDING_JUMP_RING,
+                      z0 + height + body.standingRise),
+          std::format("standing jump {:.2f} m", height + body.standingRise),
+          ceiling);
     add("Jumping reach (top of head, running jump)",
         std::format("{:.2f} m", body.jumpingReach),
         "Jumping reach: height + jump (0.25 m at 1 to 0.70 m at 99)",
@@ -941,12 +1142,16 @@ void drawBody(const Painter& base, const Body& body, const Tuning& tuning,
   // ------------------------------------------------------------------------
   if (layers.facing && !body.lying)
   {
-    const ImU32 tint = colour(255, 255, 255, 0.95F);
+    const ImU32 tint = colour(WHITE, FACING_ALPHA);
     const float length = std::max(feetReach, 1.0F);
-    const Vec3 tip = paint.polar(0.0F, length + 0.45F, z0 + 0.01F);
-    paint.line(paint.polar(0.0F, radius, z0 + 0.01F), tip, tint, 2.5F);
-    paint.line(tip, paint.polar(-8.0F, length + 0.3F, z0 + 0.01F), tint, 2.5F);
-    paint.line(tip, paint.polar(8.0F, length + 0.3F, z0 + 0.01F), tint, 2.5F);
+    const Vec3 tip = paint.polar(0.0F, length + ARROW_TIP, z0 + ARROW_LIFT);
+    paint.line(paint.polar(0.0F, radius, z0 + ARROW_LIFT), tip, tint,
+               LINE_HEAVY);
+    for (const float barb : {-ARROW_BARB_DEGREES, ARROW_BARB_DEGREES})
+    {
+      paint.line(tip, paint.polar(barb, length + ARROW_BARB, z0 + ARROW_LIFT),
+                 tint, LINE_HEAVY);
+    }
     label(tip, "facing", tint);
   }
 }
@@ -967,24 +1172,24 @@ void drawLegGhost(const Painter& paint, const Body& body, const ShotLegs& legs,
   // A stride in orange; a leg put in the way in cyan.
   const LegPose& pose = legs.pose;
   const bool block = legs.blocking;
-  const ImU32 thigh = block ? colour(60, 200, 255, 0.9F * fade)
-                            : colour(255, 160, 60, 0.9F * fade);
-  const ImU32 shin = block ? colour(110, 220, 255, 0.9F * fade)
-                           : colour(255, 200, 90, 0.9F * fade);
-  const ImU32 foot = block ? colour(170, 240, 255, 0.9F * fade)
-                           : colour(255, 230, 140, 0.9F * fade);
+  const ImU32 thigh = block ? colour(BLOCK_THIGH_BLUE, 0.9F * fade)
+                            : colour(STRIDE_THIGH_ORANGE, 0.9F * fade);
+  const ImU32 shin =
+      block ? colour(BLOCK_SHIN_BLUE, 0.9F * fade) : colour(AMBER, 0.9F * fade);
+  const ImU32 foot = block ? colour(BLOCK_FOOT_BLUE, 0.9F * fade)
+                           : colour(STRIDE_FOOT_YELLOW, 0.9F * fade);
   for (const LegPose::Leg& leg : pose.legs)
   {
     const Vector2F forward = leg.footFacing;
     const Vector2F side{.x = -forward.y, .y = forward.x};
-    paint.line(at(leg.hip), at(leg.knee), thigh, 6.0F);
-    paint.line(at(leg.knee), at(leg.ankle), shin, 4.0F);
+    paint.line(at(leg.hip), at(leg.knee), thigh, THIGH_THICKNESS);
+    paint.line(at(leg.knee), at(leg.ankle), shin, SHIN_THICKNESS);
     // The booted foot: a box from the heel behind the ankle, sole at its rise.
     const float heel = -S::HEEL_BEHIND_ANKLE * scale;
     const float toe = (S::FOOT_LENGTH - S::HEEL_BEHIND_ANKLE) * scale;
     const float halfWidth = 0.5F * S::FOOT_WIDTH * scale;
     const float sole = leg.ankle.z - (S::FOOT_HEIGHT * scale);
-    std::array<Vec3, 8> corners{};
+    std::array<Vec3, FOOT_CORNERS> corners{};
     std::size_t corner = 0;
     for (const float z : {sole, leg.ankle.z})
     {
@@ -1006,18 +1211,18 @@ void drawLegGhost(const Painter& paint, const Body& body, const ShotLegs& legs,
       {
         if ((a & bit) == 0U)
         {
-          paint.line(corners[a], corners[a | bit], foot, 1.5F);
+          paint.line(corners[a], corners[a | bit], foot, LINE);
         }
       }
     }
   }
-  paint.line(at(pose.legs[0].hip), at(pose.legs[1].hip), thigh, 3.0F);
+  paint.line(at(pose.legs[0].hip), at(pose.legs[1].hip), thigh, LINE_HEAVIEST);
   if (labels != nullptr)
   {
     labels->push_back(
         {.at = at({.x = 0.0F,
                    .y = 0.0F,
-                   .z = 0.5F * (pose.legs[0].hip.z + pose.legs[0].ankle.z)}),
+                   .z = HALF * (pose.legs[0].hip.z + pose.legs[0].ankle.z)}),
          .text = block ? std::format(
                              "reaction block, leg {:.0f}% out, miss {:.2f} m, "
                              "{:.2f} s ago",
@@ -1041,11 +1246,13 @@ void drawLabels(const Painter& paint, const std::vector<Label>& labels)
     }
     const ImVec2 extent = ImGui::CalcTextSize(text.text.c_str());
     paint.draw->AddRectFilled(
-        ImVec2(at.x + 3.0F, at.y - (extent.y * 0.5F) - 1.0F),
-        ImVec2(at.x + extent.x + 9.0F, at.y + (extent.y * 0.5F) + 1.0F),
-        colour(10, 12, 16, 0.7F), 3.0F);
-    paint.draw->AddText(ImVec2(at.x + 6.0F, at.y - (extent.y * 0.5F)),
-                        text.tint, text.text.c_str());
+        ImVec2(at.x + LABEL_BACK_LEFT, at.y - (extent.y * HALF) - 1.0F),
+        ImVec2(at.x + extent.x + LABEL_BACK_RIGHT,
+               at.y + (extent.y * HALF) + 1.0F),
+        colour(LABEL_BACK, LABEL_BACK_ALPHA), LABEL_ROUNDING);
+    paint.draw->AddText(
+        ImVec2(at.x + LABEL_TEXT_LEFT, at.y - (extent.y * HALF)), text.tint,
+        text.text.c_str());
   }
 }
 
@@ -1059,12 +1266,15 @@ void renderTable(const std::vector<Entry>& entries, ImFont* headingFont)
   {
     return;
   }
-  ImGui::TableSetupColumn("Shape", ImGuiTableColumnFlags_WidthStretch, 1.3F);
-  ImGui::TableSetupColumn("Value", ImGuiTableColumnFlags_WidthStretch, 0.8F);
-  ImGui::TableSetupColumn("From", ImGuiTableColumnFlags_WidthStretch, 1.4F);
+  ImGui::TableSetupColumn("Shape", ImGuiTableColumnFlags_WidthStretch,
+                          SHAPE_COLUMN_WEIGHT);
+  ImGui::TableSetupColumn("Value", ImGuiTableColumnFlags_WidthStretch,
+                          VALUE_COLUMN_WEIGHT);
+  ImGui::TableSetupColumn("From", ImGuiTableColumnFlags_WidthStretch,
+                          FROM_COLUMN_WEIGHT);
   if (headingFont != nullptr)
   {
-    ImGui::PushFont(headingFont, 14);
+    ImGui::PushFont(headingFont, HEADING_FONT_SIZE);
   }
   ImGui::TableHeadersRow();
   if (headingFont != nullptr)
@@ -1087,8 +1297,7 @@ void renderTable(const std::vector<Entry>& entries, ImFont* headingFont)
     ImGui::TextDisabled("%s", entry.source.c_str());
     if (!entry.wip.empty())
     {
-      ImGui::TextColored(ImVec4(0.95F, 0.75F, 0.25F, 1.0F), "WIP: %s",
-                         entry.wip.c_str());
+      ImGui::TextColored(WIP_TEXT, "WIP: %s", entry.wip.c_str());
     }
     ImGui::PopTextWrapPos();
   }
