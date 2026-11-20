@@ -16,6 +16,7 @@
 #include <ctime>
 #include <format>
 #include <iostream>
+#include <numbers>
 #include <string_view>
 
 namespace
@@ -41,6 +42,11 @@ constexpr double Z_95 = 1.96;
 constexpr std::size_t BANDWIDTH_NEIGHBOUR = 4;
 constexpr float BANDWIDTH_SHARE = 0.75F;
 constexpr float MIN_BANDWIDTH_METRES = 0.5F;
+/** Smoothing: the width over the goal's mouth angle (radians; 10 degrees, my
+ * estimate): far less than the jump either side of a post on the goal line
+ * (0 to 180 degrees), far more than the angle's change between neighbouring
+ * spots out in the field. */
+constexpr double ANGLE_BANDWIDTH_RADIANS = 10.0 * std::numbers::pi / 180.0;
 constexpr std::size_t TIMESTAMP_BYTES = 32;
 
 std::string timestamp()
@@ -414,8 +420,8 @@ void GameXgSweep::finish()
     {
       for (int si = 0; si < table.side.count; ++si)
       {
-        table.values.push_back(
-            smoothedAt(data, table.line.at(li), table.side.at(si)));
+        table.values.push_back(smoothedAt(data, table.line.at(li),
+                                          table.side.at(si), halfWidth()));
       }
     }
   }
@@ -439,13 +445,33 @@ std::vector<SmoothingDatum> GameXgSweep::levelData(std::size_t level) const
     }
     data.push_back({.x = lineMetres(point.line),
                     .y = sideMetres(point.side),
+                    .angle = mouthAngle(lineMetres(point.line),
+                                        sideMetres(point.side), halfWidth()),
                     .shots = static_cast<double>(measured->first),
                     .goals = static_cast<double>(measured->second)});
   }
   return data;
 }
 
-float smoothedAt(const std::vector<SmoothingDatum>& data, float x, float y)
+float GameXgSweep::halfWidth() const
+{
+  return PitchGoal::ofKind(setup.goal).halfWidth;
+}
+
+float mouthAngle(float line, float side, float halfWidth)
+{
+  // Between the lines to the two posts. On the goal line itself: the whole
+  // half-turn between the posts, nothing outside them.
+  if (line <= 0.0F)
+  {
+    return std::abs(side) < halfWidth ? std::numbers::pi_v<float> : 0.0F;
+  }
+  return std::abs(std::atan2(halfWidth - side, line) -
+                  std::atan2(-halfWidth - side, line));
+}
+
+float smoothedAt(const std::vector<SmoothingDatum>& data, float x, float y,
+                 float halfWidth)
 {
   // Goals over shots, pooled under a Gaussian kernel: each spot counts by
   // its shots, whatever its rate (a spot near certainty isn't discounted).
@@ -470,15 +496,33 @@ float smoothedAt(const std::vector<SmoothingDatum>& data, float x, float y)
       std::max(MIN_BANDWIDTH_METRES, BANDWIDTH_SHARE * std::sqrt(sorted[nth]));
   const double twoSigmaSquared =
       2.0 * static_cast<double>(bandwidth) * bandwidth;
+  // And by how differently each spot sees the goal: across a post on the
+  // goal line the chance jumps, and the spots either side mustn't pool.
+  const double angle = mouthAngle(x, y, halfWidth);
+  constexpr double TWO_ANGLE_SIGMA_SQUARED =
+      2.0 * ANGLE_BANDWIDTH_RADIANS * ANGLE_BANDWIDTH_RADIANS;
   double goals = 0.0;
   double shots = 0.0;
+  double nearGoals = 0.0;
+  double nearShots = 0.0;
   for (std::size_t d = 0; d < data.size(); ++d)
   {
-    const double w = std::exp(-distances[d] / twoSigmaSquared);
+    const double near = std::exp(-distances[d] / twoSigmaSquared);
+    const double apart = static_cast<double>(data[d].angle) - angle;
+    const double w =
+        near * std::exp(-(apart * apart) / TWO_ANGLE_SIGMA_SQUARED);
     goals += w * data[d].goals;
     shots += w * data[d].shots;
+    nearGoals += near * data[d].goals;
+    nearShots += near * data[d].shots;
   }
-  return shots > 0.0 ? static_cast<float>(goals / shots) : 0.0F;
+  // No spot near enough in both (a point between rows where the angle
+  // changes fastest): by distance alone.
+  if (shots < 1.0)
+  {
+    return nearShots > 0.0 ? static_cast<float>(nearGoals / nearShots) : 0.0F;
+  }
+  return static_cast<float>(goals / shots);
 }
 
 // --- Command line ------------------------------------------------------------

@@ -20,21 +20,31 @@
 
 struct StatsConfig;
 
-/** A measured spot for smoothing: where, its shots and its goals. */
+/** A measured spot for smoothing: where (metres out from the goal line,
+ * off its middle), the goal's mouth angle seen from there, its shots and its
+ * goals. */
 struct SmoothingDatum
 {
   float x = 0.0F;
   float y = 0.0F;
+  float angle = 0.0F;
   double shots = 0.0;
   double goals = 0.0;
 };
 
+/** The angle (radians) a goal `halfWidth` either side of its middle shows
+ * from `line` metres out and `side` metres off its middle: 0 from the line
+ * outside the posts, pi from the line between them. */
+[[nodiscard]] float mouthAngle(float line, float side, float halfWidth);
+
 /** The smoothed chance at (x, y) metres from `data` (game xG plan section
- * 8): goals over shots, pooled under a Gaussian kernel whose width is 0.75
- * of the distance to the 4th-nearest spot (the local spacing), at least
- * 0.5 m. */
+ * 8): goals over shots, pooled under a Gaussian kernel over the pitch (width
+ * 0.75 of the distance to the 4th-nearest spot, the local spacing, at least
+ * 0.5 m) times one over the mouth angle (width 10 degrees), so spots that see
+ * the goal very differently (either side of a post on the goal line) don't
+ * pool. */
 [[nodiscard]] float smoothedAt(const std::vector<SmoothingDatum>& data, float x,
-                               float y);
+                               float y, float halfWidth);
 
 /** A band of spots: every `step` metres out to `lineTo` metres from the goal
  * line and `sideMax` either side of its middle. */
@@ -155,6 +165,8 @@ class GameXgSweep
   void runOne();
   /** Compares left and right, and folds them if they agree. */
   void testSymmetry();
+  /** Half the measured goal's width (m), for its mouth angle. */
+  [[nodiscard]] float halfWidth() const;
   /** One Shooting level's measured spots, ready to smooth. */
   [[nodiscard]] std::vector<SmoothingDatum> levelData(std::size_t level) const;
   /** Measured shots and goals at a lattice spot (folded if mirrored). */
