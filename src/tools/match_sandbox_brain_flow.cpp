@@ -70,7 +70,7 @@ struct ColumnSpec
   bool built;
 };
 constexpr ColumnSpec SITUATION{
-    .id = "##situation", .title = "SITUATION", .width = 195.0F, .built = true};
+    .id = "##situation", .title = "SITUATION", .width = 330.0F, .built = true};
 constexpr ColumnSpec READING{
     .id = "##reading", .title = "READING", .width = 150.0F, .built = false};
 constexpr ColumnSpec GOAL{
@@ -87,7 +87,7 @@ constexpr ColumnSpec PICK{
     .id = "##pick", .title = "PICK", .width = 280.0F, .built = true};
 constexpr ColumnSpec BODY{
     .id = "##body", .title = "BODY", .width = 210.0F, .built = true};
-void situationColumn();
+void situationColumn(BrainFlow::LayerMask on);
 void readingColumn();
 void goalColumn();
 
@@ -492,7 +492,7 @@ void BrainFlowScene::renderFlow(float width, float height)
   }
   const float full = std::max(scale, height - ImGui::GetStyle().ScrollbarSize -
                                          (FLOW_BOTTOM_MARGIN * scale));
-  column(SITUATION, full, boldFont, situationColumn);
+  column(SITUATION, full, boldFont, [this] { situationColumn(layers); });
   column(READING, full, boldFont, readingColumn);
   column(GOAL, full, boldFont, goalColumn);
   column(OPTIONS, full, boldFont, [this] { optionsColumn(); });
@@ -506,16 +506,182 @@ void BrainFlowScene::renderFlow(float width, float height)
 
 namespace
 {
-void situationColumn()
+constexpr BrainFlow::LayerMask bit(Layer layer)
 {
-  text("Open play");
-  muted("our ball");
-  text("I have it (collected)", SandboxPageUI::LIME);
-  ImGui::Spacing();
+  return static_cast<BrainFlow::LayerMask>(1U << static_cast<unsigned>(layer));
+}
+/** The team sliders carry three layers: the manager's tactics, the game
+ * state (team mentality) and the shout. */
+constexpr BrainFlow::LayerMask SLIDERS =
+    bit(Layer::INSTRUCTIONS) | bit(Layer::GAME_STATE) | bit(Layer::SHOUT);
+constexpr BrainFlow::LayerMask ROLE = bit(Layer::ROLE);
+constexpr BrainFlow::LayerMask ORDERS = bit(Layer::OPPOSITION_ORDERS);
+constexpr BrainFlow::LayerMask MOOD = bit(Layer::MOOD);
+
+/** One situation of the whole brain (hand-written; keep it up to date with
+ * the brain, plan section 6). */
+struct Situation
+{
+  int depth;
+  const char* title;
+  /** The Capybara functions that decide it today. */
+  const char* decidedBy;
+  /** The layers whose inputs those functions read. */
+  BrainFlow::LayerMask layers;
+  /** The layers are read by the team planner for all its jobs, not traced
+   * job by job yet. */
+  bool plannerWide;
+  /** On the decision frame: shown in full in the columns to the right. */
+  bool onFrame;
+};
+constexpr std::array<Situation, 15> SITUATIONS = {{
+    {.depth = 0,
+     .title = "Restart",
+     .decidedBy = "",
+     .layers = 0,
+     .plannerWide = false,
+     .onFrame = false},
+    {.depth = 1,
+     .title = "I am the taker",
+     .decidedBy = "chooseRestartTaker, chooseRestartPlay, chooseCornerPlay, "
+                  "chooseShotAim",
+     .layers = 0,
+     .plannerWide = false,
+     .onFrame = false},
+    {.depth = 1,
+     .title = "Someone else takes it",
+     .decidedBy = "arrangeSetPieceAttack, arrangeSetPieceDefence, "
+                  "updateRestartSupport",
+     .layers = 0,
+     .plannerWide = false,
+     .onFrame = false},
+    {.depth = 0,
+     .title = "Open play",
+     .decidedBy = "",
+     .layers = 0,
+     .plannerWide = false,
+     .onFrame = false},
+    {.depth = 1,
+     .title = "Ball loose",
+     .decidedBy = "refreshTacticalTargets (chaser by arrival), planWayRound, "
+                  "planOvertake; in the air chooseHeaderAttempt, "
+                  "chooseHeaderPlay",
+     .layers = SLIDERS | ROLE | ORDERS | MOOD,
+     .plannerWide = true,
+     .onFrame = false},
+    {.depth = 1,
+     .title = "Our pass travelling",
+     .decidedBy = "afterPassReleased (the collector); refreshTacticalTargets "
+                  "for everyone else",
+     .layers = SLIDERS | ROLE | ORDERS | MOOD,
+     .plannerWide = true,
+     .onFrame = false},
+    {.depth = 1,
+     .title = "Opponents' ball",
+     .decidedBy = "",
+     .layers = 0,
+     .plannerWide = false,
+     .onFrame = false},
+    {.depth = 2,
+     .title = "Press or cover",
+     .decidedBy = "refreshTacticalTargets (pressers), engageBoost, "
+                  "pressStandOffShare",
+     .layers = SLIDERS | ROLE | ORDERS | MOOD,
+     .plannerWide = true,
+     .onFrame = false},
+    {.depth = 2,
+     .title = "Mark, block a lane, recover shape",
+     .decidedBy = "assignMarks, doubleUpPoint, tightMarkPoint",
+     .layers = ROLE | ORDERS | MOOD,
+     .plannerWide = false,
+     .onFrame = false},
+    {.depth = 2,
+     .title = "Challenge the carrier",
+     .decidedBy = "chooseChallenge, goesIntoContest, chooseTackleIntent",
+     .layers = SLIDERS | ORDERS,
+     .plannerWide = false,
+     .onFrame = false},
+    {.depth = 2,
+     .title = "Keeper",
+     .decidedBy = "goalkeeperTarget, choosesToBlock, chooseClearanceAim",
+     .layers = ROLE,
+     .plannerWide = false,
+     .onFrame = false},
+    {.depth = 1,
+     .title = "Our ball, a team-mate has it",
+     .decidedBy = "refreshTacticalTargets: support, run in behind, attack "
+                  "the box, overlap, hold shape",
+     .layers = SLIDERS | ROLE | ORDERS | MOOD,
+     .plannerWide = true,
+     .onFrame = false},
+    {.depth = 1,
+     .title = "Our ball, my touch still rolling",
+     .decidedBy = "chooseFirstTouch, touchNow, dribbleTouchNow, "
+                  "waitsForCloser",
+     .layers = 0,
+     .plannerWide = false,
+     .onFrame = false},
+    {.depth = 1,
+     .title = "Our ball, I have it (collected)",
+     .decidedBy = "chooseBallAction: pass, shot, carry, shield",
+     .layers = SLIDERS | ROLE | ORDERS | MOOD,
+     .plannerWide = false,
+     .onFrame = true},
+    {.depth = 2,
+     .title = "Then: take-ons and carrying",
+     .decidedBy = "chooseTakeOn, carryTarget, carryUrgency, carryPace",
+     .layers = SLIDERS,
+     .plannerWide = false,
+     .onFrame = false},
+}};
+
+void situationColumn(BrainFlow::LayerMask on)
+{
+  constexpr float INDENT = 14.0F;
+  const float scale = Theme::scale();
+  for (const Situation& situation : SITUATIONS)
+  {
+    const float indent = static_cast<float>(situation.depth) * INDENT * scale;
+    if (indent > 0.0F)
+    {
+      ImGui::Indent(indent);
+    }
+    text(situation.title,
+         situation.onFrame ? SandboxPageUI::LIME : SandboxPageUI::CREAM);
+    if (*situation.decidedBy != '\0')
+    {
+      muted(situation.decidedBy);
+    }
+    if (situation.onFrame)
+    {
+      text("on the decision frame: the columns to the right",
+           SandboxPageUI::LIME);
+    }
+    else if (*situation.decidedBy != '\0')
+    {
+      muted("not on the frame yet");
+    }
+    for (std::size_t layer = 0; layer < BrainFlow::LAYER_COUNT; ++layer)
+    {
+      const auto which = static_cast<Layer>(layer);
+      if ((situation.layers & bit(which)) != 0 && BrainFlow::isOn(on, which))
+      {
+        tagged(which,
+               situation.plannerWide
+                   ? std::string(LAYER_NAMES.at(layer)) + " (planner-wide)"
+                   : std::string(LAYER_NAMES.at(layer)));
+      }
+    }
+    if (indent > 0.0F)
+    {
+      ImGui::Unindent(indent);
+    }
+    ImGui::Spacing();
+  }
   muted(
-      "The whole situation tree (restarts, loose balls, our pass "
-      "travelling, the opponents' ball, off the ball) comes in phase 3. "
-      "Only this situation is on the decision frame so far.");
+      "Layers: from the inputs each function reads (the team sliders carry "
+      "team instructions, game state and the shout). Planner-wide: the team "
+      "planner reads them for all its jobs; not traced job by job yet.");
 }
 
 void readingColumn()
