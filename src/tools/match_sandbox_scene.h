@@ -33,6 +33,18 @@ class Strategy;
 class Team;
 struct ImFont;
 
+/** The sandbox's pages, one per sidebar item. */
+enum class SandboxPage
+{
+  MATCHES,
+  DRILLS,
+  TRAINING,
+  TOOLS,
+  SETUP,
+  RECORDINGS,
+  REVIEW
+};
+
 /** How the sandbox opens: a drill in Watch, Measure or Shot map, or a view
  * with no drill (the contact view, the technique bench, the true view). */
 enum class SandboxOpenView
@@ -104,9 +116,7 @@ class MatchSandboxScene : public GUIScene
 
   // Drills.
   void renderDrills();
-  /** 0: matches (initial page), 1: drills, 2: training, 3: tools,
-   * 4: developer set-up, 5: recordings, 6: review. */
-  int mode = 0;
+  SandboxPage mode = SandboxPage::MATCHES;
   ImFont* sidebar_font = nullptr;
   ImFont* setup_regular_font = nullptr;
   ImFont* setup_medium_font = nullptr;

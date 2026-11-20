@@ -16,6 +16,7 @@
 #include <format>
 #include <random>
 #include <span>
+#include <utility>
 #include <string>
 #include <vector>
 
@@ -64,6 +65,28 @@ constexpr float OVERALL_COLUMN_WIDTH = 34.0F;
 constexpr float POSITION_COLUMN_WIDTH = 38.0F;
 /** Lineup coordinates closer than this are the same formation slot. */
 constexpr float SLOT_TOLERANCE = 0.02F;
+/** Slider values this close are the same setting. */
+constexpr float SAME_SLIDER = 0.001F;
+constexpr float HEADING_FONT_SIZE = 24.0F;
+constexpr float SCORE_FONT_SIZE = 17.0F;
+/** Layout (scaled pixels). */
+constexpr float RECORDINGS_PAGE_WIDTH = 1120.0F;
+constexpr float SETTINGS_ITEM_WIDTH = 280.0F;
+constexpr float SETTINGS_ITEM_SHARE = 0.5F;
+constexpr float TWO_COLUMN_SETTINGS_WIDTH = 780.0F;
+constexpr int TRAINING_SQUAD_COLUMNS = 6;
+constexpr ImVec2 XI_CELL_PADDING{6, 3};
+constexpr float XI_PLAYER_WEIGHT = 2.2F;
+constexpr float XI_ROLE_WEIGHT = 1.6F;
+constexpr float XI_DUTY_WIDTH = 96.0F;
+constexpr float KICK_OFF_SLOT_WIDTH = 240.0F;
+constexpr float SEED_INPUT_WIDTH = 130.0F;
+/** A checkbox's box and gap before its label. */
+constexpr float CHECKBOX_ROOM = 40.0F;
+constexpr float RECORDING_ROW_HEIGHT = 44.0F;
+constexpr float MIN_REVIEW_HEIGHT = 300.0F;
+constexpr float REVIEW_CARD_CHROME = 56.0F;
+constexpr float MIN_STAGE_HEIGHT = 440.0F;
 
 struct SliderInfo
 {
@@ -181,8 +204,11 @@ void applyPossessionShape(Strategy& strategy, const Lineup& lineup,
 bool sameSliders(const StrategySliders& left, const StrategySliders& right)
 {
   return std::ranges::all_of(
-      SLIDERS, [&](const SliderInfo& slider)
-      { return std::abs(left.*slider.value - right.*slider.value) < 0.001F; });
+      SLIDERS,
+      [&](const SliderInfo& slider)
+      {
+        return std::abs(left.*slider.value - right.*slider.value) < SAME_SLIDER;
+      });
 }
 
 std::string playerLabel(const Player& player, const StatsConfig& config)
@@ -225,6 +251,105 @@ void selectPlayer(Lineup& lineup, const Player& current, const Player& chosen)
   lineup.moveOutfieldPlayer(current.getId(), *to);
   lineup.moveOutfieldPlayer(chosen.getId(), *from);
 }
+
+// The sidebar (scaled pixels unless said).
+constexpr float SIDEBAR_WIDTH = 220.0F;
+constexpr ImVec2 SIDEBAR_PADDING{12, 16};
+constexpr float SIDEBAR_ITEM_WIDTH = 196.0F;
+constexpr float SIDEBAR_ITEM_HEIGHT = 44.0F;
+constexpr float BRAND_HEIGHT = 80.0F;
+constexpr float BRAND_GAP = 22.0F;
+constexpr float SELECTED_BAR_WIDTH = 3.0F;
+constexpr float ITEM_LABEL_LEFT = 46.0F;
+constexpr float ITEM_LABEL_TRACKING = 1.5F;
+/** The set-up item sits this far up from the sidebar's foot. */
+constexpr float FOOTER_FROM_BOTTOM = 69.0F;
+constexpr float FOOTER_GAP = 7.0F;
+constexpr float EDGE_FADE = 6.0F;
+
+/** Sidebar icons: drawn on a 24-unit grid, shown 20 pixels square, this far
+ * into the item. Circle radii are in pixels. */
+constexpr float ICON_LEFT = 14.0F;
+constexpr float ICON_TOP = 12.0F;
+constexpr float ICON_PIXELS = 20.0F;
+constexpr float ICON_GRID = 24.0F;
+constexpr float ICON_STROKE = 1.5F;
+constexpr float KNOB_RADIUS = 2.5F;
+constexpr int SMALL_CIRCLE_SEGMENTS = 12;
+constexpr int LENS_SEGMENTS = 20;
+
+/** x1, y1, x2, y2 on the icon grid. */
+using IconSegment = std::array<float, 4>;
+constexpr std::array<ImVec2, 0> NO_KNOBS{};
+struct SidebarIcon
+{
+  /** A square frame (left, top, right, bottom), when `framed`. */
+  bool framed = false;
+  IconSegment frame{};
+  std::span<const IconSegment> segments;
+  /** A ring (x, y on the grid; radius in pixels), when the radius is set. */
+  ImVec2 ringAt{0.0F, 0.0F};
+  float ringRadius = 0.0F;
+  int ringSegments = SMALL_CIRCLE_SEGMENTS;
+  /** Slider knobs: filled with the sidebar, ringed in the ink. */
+  std::span<const ImVec2> knobs = NO_KNOBS;
+};
+
+constexpr std::array<IconSegment, 3> CALENDAR{
+    {{3, 10, 21, 10}, {8, 3, 8, 7}, {16, 3, 16, 7}}};
+constexpr std::array<IconSegment, 3> DRILL_BOARD{
+    {{7, 15, 16, 8}, {12, 8, 16, 8}, {16, 8, 16, 12}}};
+constexpr std::array<IconSegment, 5> CONE{{{7, 19, 10, 5},
+                                           {10, 5, 14, 5},
+                                           {14, 5, 17, 19},
+                                           {5, 20, 19, 20},
+                                           {8, 14, 16, 14}}};
+constexpr std::array<IconSegment, 4> BARS{
+    {{3, 20, 21, 20}, {6, 17, 6, 11}, {12, 17, 12, 5}, {18, 17, 18, 8}}};
+constexpr std::array<IconSegment, 3> PLAY{
+    {{9, 8, 16, 12}, {16, 12, 9, 16}, {9, 16, 9, 8}}};
+constexpr std::array<IconSegment, 1> LENS_HANDLE{{{15, 15, 21, 21}}};
+constexpr std::array<IconSegment, 3> SLIDER_RAILS{
+    {{4, 6, 20, 6}, {4, 12, 20, 12}, {4, 18, 20, 18}}};
+constexpr std::array<ImVec2, 3> SLIDER_KNOBS{{{9, 6}, {15, 12}, {8, 18}}};
+
+constexpr SidebarIcon MATCHES_ICON{
+    .framed = true, .frame = {3, 5, 21, 21}, .segments = CALENDAR};
+constexpr SidebarIcon DRILLS_ICON{.framed = true,
+                                  .frame = {3, 4, 21, 20},
+                                  .segments = DRILL_BOARD,
+                                  .ringAt = {7, 8},
+                                  .ringRadius = 1.5F};
+constexpr SidebarIcon TRAINING_ICON{.segments = CONE};
+constexpr SidebarIcon TOOLS_ICON{.segments = BARS};
+constexpr SidebarIcon RECORDINGS_ICON{
+    .framed = true, .frame = {3, 4, 21, 20}, .segments = PLAY};
+constexpr SidebarIcon REVIEW_ICON{.segments = LENS_HANDLE,
+                                  .ringAt = {10, 10},
+                                  .ringRadius = 6.0F,
+                                  .ringSegments = LENS_SEGMENTS};
+constexpr SidebarIcon SETUP_ICON{.segments = SLIDER_RAILS,
+                                 .knobs = SLIDER_KNOBS};
+
+struct SidebarItem
+{
+  const char* label = "";
+  SandboxPage page = SandboxPage::MATCHES;
+  const SidebarIcon* icon = nullptr;
+};
+constexpr std::array<SidebarItem, 6> SIDEBAR_ITEMS{
+    {{.label = "MATCHES", .page = SandboxPage::MATCHES, .icon = &MATCHES_ICON},
+     {.label = "DRILLS", .page = SandboxPage::DRILLS, .icon = &DRILLS_ICON},
+     {.label = "TRAINING",
+      .page = SandboxPage::TRAINING,
+      .icon = &TRAINING_ICON},
+     {.label = "TOOLS", .page = SandboxPage::TOOLS, .icon = &TOOLS_ICON},
+     {.label = "RECORDINGS",
+      .page = SandboxPage::RECORDINGS,
+      .icon = &RECORDINGS_ICON},
+     {.label = "REVIEW", .page = SandboxPage::REVIEW, .icon = &REVIEW_ICON}}};
+constexpr SidebarItem SETUP_ITEM{
+    .label = "SET-UP", .page = SandboxPage::SETUP, .icon = &SETUP_ICON};
 }  // namespace
 
 MatchSandboxScene::MatchSandboxScene(GUIView* guiView_ptr, bool kick_off_now,
@@ -246,14 +371,14 @@ void MatchSandboxScene::onEnter()
     const std::string fontPath =
         AssetPaths::file("assets/fonts/Manrope-Bold.ttf");
     const auto fontConfig = SandboxTypography::manropeConfig();
-    sidebar_font = ImGui::GetIO().Fonts->AddFontFromFileTTF(fontPath.c_str(),
-                                                            14.0F, &fontConfig);
+    sidebar_font = ImGui::GetIO().Fonts->AddFontFromFileTTF(
+        fontPath.c_str(), SandboxPageUI::BOLD_FONT_SIZE, &fontConfig);
     setup_regular_font = ImGui::GetIO().Fonts->AddFontFromFileTTF(
-        AssetPaths::file("assets/fonts/Manrope-Regular.ttf").c_str(), 16.0F,
-        &fontConfig);
+        AssetPaths::file("assets/fonts/Manrope-Regular.ttf").c_str(),
+        SandboxPageUI::REGULAR_FONT_SIZE, &fontConfig);
     setup_medium_font = ImGui::GetIO().Fonts->AddFontFromFileTTF(
-        AssetPaths::file("assets/fonts/Manrope-Medium.ttf").c_str(), 14.0F,
-        &fontConfig);
+        AssetPaths::file("assets/fonts/Manrope-Medium.ttf").c_str(),
+        SandboxPageUI::BOLD_FONT_SIZE, &fontConfig);
   }
   // Told apart from the game in the taskbar, and opened maximised (once:
   // a size the user picks afterwards is kept).
@@ -312,19 +437,19 @@ void MatchSandboxScene::update(float /*deltaTime*/)
   if (drill_view == SandboxOpenView::CONTACT)
   {
     drill_view = SandboxOpenView::WATCH;
-    mode = 3;
+    mode = SandboxPage::TOOLS;
     guiView->overlayScene(std::make_unique<ContactViewScene>(guiView));
   }
   if (drill_view == SandboxOpenView::BENCH)
   {
     drill_view = SandboxOpenView::WATCH;
-    mode = 3;
+    mode = SandboxPage::TOOLS;
     guiView->overlayScene(std::make_unique<TechniqueBenchScene>(guiView, true));
   }
   if (drill_view == SandboxOpenView::TRUE_VIEW)
   {
     drill_view = SandboxOpenView::WATCH;
-    mode = 3;
+    mode = SandboxPage::TOOLS;
     guiView->overlayScene(std::make_unique<TrueViewScene>(guiView));
   }
   if (!drill_pending.empty())
@@ -339,7 +464,7 @@ void MatchSandboxScene::update(float /*deltaTime*/)
     {
       if (lower(drills[index]->name()) == lower(drill_pending))
       {
-        mode = 1;
+        mode = SandboxPage::DRILLS;
         drill_index = static_cast<int>(index);
         if (drill_view == SandboxOpenView::SHOT_MAP)
         {
@@ -411,9 +536,10 @@ void MatchSandboxScene::render()
   ImGui::SetNextWindowSize(viewport->WorkSize);
   const float scale = Theme::scale();
   ImGui::PushStyleColor(ImGuiCol_WindowBg,
-                        ImVec4(22 / 255.0F, 19 / 255.0F, 16 / 255.0F, 1.0F));
+                        ImGui::ColorConvertU32ToFloat4(SandboxPageUI::PAGE));
   ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding,
-                      ImVec2(24.0F * scale, 24.0F * scale));
+                      ImVec2(SandboxPageUI::PAGE_PADDING * scale,
+                             SandboxPageUI::PAGE_PADDING * scale));
   ImGui::PushStyleVar(ImGuiStyleVar_WindowBorderSize, 0.0F);
   ImGui::PushStyleVar(ImGuiStyleVar_WindowRounding, 0.0F);
   ImGui::Begin("##match_sandbox", nullptr,
@@ -426,51 +552,58 @@ void MatchSandboxScene::render()
   ImGui::PopStyleColor();
 
   renderSidebar();
-  ImGui::SameLine(0.0F, 6.0F * scale);
+  ImGui::SameLine(0.0F, SandboxPageUI::PANEL_GAP * scale);
   ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(0, 0));
-  ImGui::PushStyleColor(ImGuiCol_ChildBg, SandboxPageUI::PAGE);
-  ImGui::PushStyleColor(ImGuiCol_ScrollbarBg, SandboxPageUI::SCROLL_TRACK);
-  ImGui::PushStyleColor(ImGuiCol_ScrollbarGrab, SandboxPageUI::SCROLL_GRAB);
-  ImGui::PushStyleColor(ImGuiCol_ScrollbarGrabHovered,
-                        SandboxPageUI::SCROLL_HOVER);
-  ImGui::PushStyleColor(ImGuiCol_ScrollbarGrabActive,
-                        SandboxPageUI::SCROLL_HOVER);
-  const float gutter = (6 * scale) + ImGui::GetStyle().ScrollbarSize;
+  const std::array<std::pair<ImGuiCol, ImU32>, 5> pageColours{
+      {{ImGuiCol_ChildBg, SandboxPageUI::PAGE},
+       {ImGuiCol_ScrollbarBg, SandboxPageUI::SCROLL_TRACK},
+       {ImGuiCol_ScrollbarGrab, SandboxPageUI::SCROLL_GRAB},
+       {ImGuiCol_ScrollbarGrabHovered, SandboxPageUI::SCROLL_HOVER},
+       {ImGuiCol_ScrollbarGrabActive, SandboxPageUI::SCROLL_HOVER}}};
+  for (const auto& [slot, colour] : pageColours)
+  {
+    ImGui::PushStyleColor(slot, colour);
+  }
+  const float gutter =
+      (SandboxPageUI::PANEL_GAP * scale) + ImGui::GetStyle().ScrollbarSize;
   const float available = ImGui::GetContentRegionAvail().x;
   const float pageWidth =
-      mode == 0 ? SandboxPageUI::matchPageWidth(available, scale, gutter)
-      : mode == 1 || mode == 2
+      mode == SandboxPage::MATCHES
+          ? SandboxPageUI::matchPageWidth(available, scale, gutter)
+      : mode == SandboxPage::DRILLS || mode == SandboxPage::TRAINING
           ? SandboxPageUI::activityPageWidth(available, scale, gutter)
-      : mode == 3 ? SandboxPageUI::toolsPageWidth(available, scale, gutter)
-      : mode == 5 ? std::min(available, 1120 * scale)
-                  : 0.0F;
+      : mode == SandboxPage::TOOLS
+          ? SandboxPageUI::toolsPageWidth(available, scale, gutter)
+      : mode == SandboxPage::RECORDINGS
+          ? std::min(available, RECORDINGS_PAGE_WIDTH * scale)
+          : 0.0F;
   ImGui::PushStyleVar(ImGuiStyleVar_ScrollbarRounding, 0.0F);
   ImGui::BeginChild("##sandbox_content", ImVec2(pageWidth, 0.0F),
                     ImGuiChildFlags_AlwaysUseWindowPadding);
   ImGui::PopStyleVar();
-  ImGui::PopStyleColor(5);
+  ImGui::PopStyleColor(static_cast<int>(pageColours.size()));
   ImGui::PopStyleVar();
-  if (mode == 5)
+  if (mode == SandboxPage::RECORDINGS)
   {
     renderRecordings();
   }
-  else if (mode == 6)
+  else if (mode == SandboxPage::REVIEW)
   {
     renderReviewPage();
   }
-  else if (mode == 4)
+  else if (mode == SandboxPage::SETUP)
   {
     renderDeveloperSetup();
   }
-  else if (mode == 1)
+  else if (mode == SandboxPage::DRILLS)
   {
     renderDrills();
   }
-  else if (mode == 2)
+  else if (mode == SandboxPage::TRAINING)
   {
     renderTraining();
   }
-  else if (mode == 3)
+  else if (mode == SandboxPage::TOOLS)
   {
     renderVisualisers();
   }
@@ -480,7 +613,8 @@ void MatchSandboxScene::render()
     const Page::Style style(setup_regular_font, scale);
     const float usable = ImGui::GetWindowSize().x - gutter;
     const bool columns = usable >= 1062 * scale;
-    const float width = columns ? (usable - 6 * scale) / 2 : usable;
+    const float width =
+        columns ? (usable - (SandboxPageUI::PANEL_GAP * scale)) / 2 : usable;
     Page::header(
         "Matches",
         "Choose two clubs, prepare both teams and manage the home side.",
@@ -495,7 +629,7 @@ void MatchSandboxScene::render()
     ImGui::EndGroup();
     if (columns)
     {
-      ImGui::SameLine(0, 6 * scale);
+      ImGui::SameLine(0, SandboxPageUI::PANEL_GAP * scale);
     }
     ImGui::BeginGroup();
     renderSide(sides[AWAY], false, width, 0);
@@ -519,129 +653,97 @@ void MatchSandboxScene::renderSidebar()
   const ImU32 white = IM_COL32(255, 255, 255, 255);
   ImGui::PushStyleColor(ImGuiCol_ChildBg, bg);
   ImGui::PushStyleVar(ImGuiStyleVar_ChildRounding, 0.0F);
-  ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding,
-                      ImVec2(12 * scale, 16 * scale));
+  ImGui::PushStyleVar(
+      ImGuiStyleVar_WindowPadding,
+      ImVec2(SIDEBAR_PADDING.x * scale, SIDEBAR_PADDING.y * scale));
   ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, ImVec2(0, 2 * scale));
-  ImGui::BeginChild("##sandbox_sidebar", ImVec2(220 * scale, 0),
+  ImGui::BeginChild("##sandbox_sidebar", ImVec2(SIDEBAR_WIDTH * scale, 0),
                     ImGuiChildFlags_AlwaysUseWindowPadding);
   ImDrawList* draw = ImGui::GetWindowDrawList();
   const ImVec2 panel = ImGui::GetWindowPos();
   const ImVec2 size = ImGui::GetWindowSize();
   const ImVec2 brand = ImGui::GetCursorScreenPos();
+  const float itemWidth = SIDEBAR_ITEM_WIDTH * scale;
+  const float itemHeight = SIDEBAR_ITEM_HEIGHT * scale;
   SandboxTypography::label(
-      draw, sidebar_font, 24, "Player 12", brand,
-      ImVec2(brand.x + (196 * scale), brand.y + (80 * scale)), cream);
-  ImGui::Dummy(ImVec2(196 * scale, 80 * scale));
-  ImGui::Dummy(ImVec2(0, 22 * scale));
-  ImGui::PushFont(sidebar_font, 14);
-  const auto item = [&](const char* label, int destination, int icon)
+      draw, sidebar_font, HEADING_FONT_SIZE, "Player 12", brand,
+      ImVec2(brand.x + itemWidth, brand.y + (BRAND_HEIGHT * scale)), cream);
+  ImGui::Dummy(ImVec2(itemWidth, BRAND_HEIGHT * scale));
+  ImGui::Dummy(ImVec2(0, BRAND_GAP * scale));
+  ImGui::PushFont(sidebar_font, SandboxPageUI::BOLD_FONT_SIZE);
+  const auto item = [&](const SidebarItem& entry)
   {
-    const bool selected = mode == destination;
+    const bool selected = mode == entry.page;
     const ImVec2 row = ImGui::GetCursorScreenPos();
-    if (ImGui::InvisibleButton(label, ImVec2(196 * scale, 44 * scale),
+    const ImVec2 rowEnd(row.x + itemWidth, row.y + itemHeight);
+    if (ImGui::InvisibleButton(entry.label, ImVec2(itemWidth, itemHeight),
                                ImGuiButtonFlags_EnableNav))
     {
-      mode = destination;
+      mode = entry.page;
     }
     if (selected || ImGui::IsItemHovered())
     {
       draw->AddRectFilled(
-          row, ImVec2(row.x + (196 * scale), row.y + (44 * scale)),
+          row, rowEnd,
           selected ? IM_COL32(46, 39, 32, 255) : IM_COL32(31, 26, 21, 255));
     }
     if (selected)
     {
       draw->AddRectFilled(
-          row, ImVec2(row.x + (3 * scale), row.y + (44 * scale)), white);
+          row, ImVec2(row.x + (SELECTED_BAR_WIDTH * scale), rowEnd.y), white);
     }
     if (ImGui::IsItemFocused())
     {
-      draw->AddRect(row, ImVec2(row.x + (196 * scale), row.y + (44 * scale)),
-                    IM_COL32(133, 122, 110, 255), 0, 0, scale);
+      draw->AddRect(row, rowEnd, IM_COL32(133, 122, 110, 255), 0, 0, scale);
     }
     const ImU32 ink = selected ? white : IM_COL32(196, 186, 174, 255);
+    const float stroke = ICON_STROKE * scale;
     const auto pt = [&](float x, float y)
     {
-      return ImVec2(row.x + ((14 + x * 20 / 24) * scale),
-                    row.y + ((12 + y * 20 / 24) * scale));
+      return ImVec2(row.x + ((ICON_LEFT + x * ICON_PIXELS / ICON_GRID) * scale),
+                    row.y + ((ICON_TOP + y * ICON_PIXELS / ICON_GRID) * scale));
     };
-    const auto line = [&](float x, float y, float xx, float yy)
-    { draw->AddLine(pt(x, y), pt(xx, yy), ink, 1.5F * scale); };
-    if (icon == 0)
+    const SidebarIcon& icon = *entry.icon;
+    if (icon.framed)
     {
-      draw->AddRect(pt(3, 5), pt(21, 21), ink, 0, 0, 1.5F * scale);
-      line(3, 10, 21, 10);
-      line(8, 3, 8, 7);
-      line(16, 3, 16, 7);
+      const auto [left, top, right, bottom] = icon.frame;
+      draw->AddRect(pt(left, top), pt(right, bottom), ink, 0, 0, stroke);
     }
-    else if (icon == 1)
+    for (const auto& [x1, y1, x2, y2] : icon.segments)
     {
-      draw->AddRect(pt(3, 4), pt(21, 20), ink, 0, 0, 1.5F * scale);
-      line(7, 15, 16, 8);
-      line(12, 8, 16, 8);
-      line(16, 8, 16, 12);
-      draw->AddCircle(pt(7, 8), 1.5F * scale, ink, 12, 1.5F * scale);
+      draw->AddLine(pt(x1, y1), pt(x2, y2), ink, stroke);
     }
-    else if (icon == 2)
+    if (icon.ringRadius > 0.0F)
     {
-      line(7, 19, 10, 5);
-      line(10, 5, 14, 5);
-      line(14, 5, 17, 19);
-      line(5, 20, 19, 20);
-      line(8, 14, 16, 14);
+      draw->AddCircle(pt(icon.ringAt.x, icon.ringAt.y), icon.ringRadius * scale,
+                      ink, icon.ringSegments, stroke);
     }
-    else if (icon == 3)
+    for (const ImVec2 knob : icon.knobs)
     {
-      line(3, 20, 21, 20);
-      line(6, 17, 6, 11);
-      line(12, 17, 12, 5);
-      line(18, 17, 18, 8);
+      draw->AddCircleFilled(pt(knob.x, knob.y), KNOB_RADIUS * scale, bg);
+      draw->AddCircle(pt(knob.x, knob.y), KNOB_RADIUS * scale, ink,
+                      SMALL_CIRCLE_SEGMENTS, stroke);
     }
-    else if (icon == 5)
-    {
-      draw->AddRect(pt(3, 4), pt(21, 20), ink, 0, 0, 1.5F * scale);
-      line(9, 8, 16, 12);
-      line(16, 12, 9, 16);
-      line(9, 16, 9, 8);
-    }
-    else if (icon == 6)
-    {
-      draw->AddCircle(pt(10, 10), 6 * scale, ink, 20, 1.5F * scale);
-      line(15, 15, 21, 21);
-    }
-    else
-    {
-      line(4, 6, 20, 6);
-      line(4, 12, 20, 12);
-      line(4, 18, 20, 18);
-      for (const ImVec2 knob : {ImVec2(9, 6), ImVec2(15, 12), ImVec2(8, 18)})
-      {
-        draw->AddCircleFilled(pt(knob.x, knob.y), 2.5F * scale, bg);
-        draw->AddCircle(pt(knob.x, knob.y), 2.5F * scale, ink, 12,
-                        1.5F * scale);
-      }
-    }
-    SandboxTypography::label(
-        draw, sidebar_font, 14, label, row,
-        ImVec2(row.x + (196 * scale), row.y + (44 * scale)),
-        selected ? white : cream, 1.5F * scale, false, 46 * scale);
+    SandboxTypography::label(draw, sidebar_font, SandboxPageUI::BOLD_FONT_SIZE,
+                             entry.label, row, rowEnd, selected ? white : cream,
+                             ITEM_LABEL_TRACKING * scale, false,
+                             ITEM_LABEL_LEFT * scale);
   };
-  item("MATCHES", 0, 0);
-  item("DRILLS", 1, 1);
-  item("TRAINING", 2, 2);
-  item("TOOLS", 3, 3);
-  item("RECORDINGS", 5, 5);
-  item("REVIEW", 6, 6);
+  for (const SidebarItem& entry : SIDEBAR_ITEMS)
+  {
+    item(entry);
+  }
   // The sandbox's settings destination follows the reference footer placement.
-  ImGui::SetCursorPosY(std::max(ImGui::GetCursorPosY(), size.y - (69 * scale)));
+  ImGui::SetCursorPosY(
+      std::max(ImGui::GetCursorPosY(), size.y - (FOOTER_FROM_BOTTOM * scale)));
   const ImVec2 divider = ImGui::GetCursorScreenPos();
-  draw->AddLine(divider, ImVec2(divider.x + (196 * scale), divider.y),
+  draw->AddLine(divider, ImVec2(divider.x + itemWidth, divider.y),
                 IM_COL32(51, 44, 36, 255), scale);
-  ImGui::Dummy(ImVec2(0, 7 * scale));
-  item("SET-UP", 4, 4);
+  ImGui::Dummy(ImVec2(0, FOOTER_GAP * scale));
+  item(SETUP_ITEM);
   ImGui::PopFont();
   const ImU32 edge = IM_COL32(22, 19, 16, 255), clear = IM_COL32(22, 19, 16, 0);
-  const float f = 6 * scale;
+  const float f = EDGE_FADE * scale;
   const ImVec2 br(panel.x + size.x, panel.y + size.y);
   draw->AddRectFilledMultiColor(panel, ImVec2(br.x, panel.y + f), edge, edge,
                                 clear, clear);
@@ -686,10 +788,11 @@ void MatchSandboxScene::renderDrills()
     const auto candidate = static_cast<DrillCategory>(c);
     const auto* label = drillCategoryName(candidate);
     const float width = Page::buttonWidth(label, scale, sidebar_font);
-    if (usedWidth > 0 && usedWidth + 6 * scale + width <= rowWidth)
+    if (usedWidth > 0 &&
+        usedWidth + (SandboxPageUI::PANEL_GAP * scale) + width <= rowWidth)
     {
-      ImGui::SameLine(0, 6 * scale);
-      usedWidth += 6 * scale;
+      ImGui::SameLine(0, SandboxPageUI::PANEL_GAP * scale);
+      usedWidth += SandboxPageUI::PANEL_GAP * scale;
     }
     else
     {
@@ -739,13 +842,13 @@ void MatchSandboxScene::renderDrills()
   ImGui::EndGroup();
   if (columns)
   {
-    ImGui::SameLine(0, 6 * scale);
+    ImGui::SameLine(0, SandboxPageUI::PANEL_GAP * scale);
   }
   Drill& drill = *drills[static_cast<std::size_t>(drill_index)];
   ImGui::BeginGroup();
   Page::beginCard("##drill_overview", "SELECTED DRILL", detailWidth, Page::MID,
                   scale, sidebar_font);
-  ImGui::PushFont(sidebar_font, 24);
+  ImGui::PushFont(sidebar_font, HEADING_FONT_SIZE);
   ImGui::TextWrapped("%s", drill.name());
   ImGui::PopFont();
   ImGui::PushTextWrapPos(0.0F);
@@ -793,8 +896,10 @@ void MatchSandboxScene::renderDrills()
   Page::beginCard("##drill_settings", "SETTINGS", detailWidth, Page::MID, scale,
                   sidebar_font);
   ImGui::PushItemWidth(
-      std::min(280 * scale, ImGui::GetContentRegionAvail().x * 0.5F));
-  drill.renderSettings(detailWidth >= 780 * scale ? 2 : 1, true);
+      std::min(SETTINGS_ITEM_WIDTH * scale,
+               ImGui::GetContentRegionAvail().x * SETTINGS_ITEM_SHARE));
+  drill.renderSettings(detailWidth >= TWO_COLUMN_SETTINGS_WIDTH * scale ? 2 : 1,
+                       true);
   ImGui::PopItemWidth();
   Page::endCard(scale);
   ImGui::EndGroup();
@@ -867,7 +972,7 @@ void MatchSandboxScene::renderVisualisers()
   {
     if (tool % columns != 0)
     {
-      ImGui::SameLine(0, 6 * scale);
+      ImGui::SameLine(0, SandboxPageUI::PANEL_GAP * scale);
     }
     Page::beginCard(tools[tool].id, tools[tool].title, cardWidth,
                     tools[tool].background, scale, sidebar_font);
@@ -891,7 +996,7 @@ void MatchSandboxScene::renderVisualisers()
         guiView->overlayScene(std::make_unique<XgMapScene>(guiView));
       }
     }
-    ImGui::PushFont(setup_regular_font, 14);
+    ImGui::PushFont(setup_regular_font, SandboxPageUI::BOLD_FONT_SIZE);
     ImGui::PushTextWrapPos(0);
     ImGui::TextDisabled("%s", tools[tool].command);
     ImGui::PopTextWrapPos();
@@ -1011,7 +1116,7 @@ void MatchSandboxScene::renderTraining()
   ImGui::EndGroup();
   if (columns)
   {
-    ImGui::SameLine(0, 6 * scale);
+    ImGui::SameLine(0, SandboxPageUI::PANEL_GAP * scale);
   }
   if (total == 0)
   {
@@ -1025,7 +1130,7 @@ void MatchSandboxScene::renderTraining()
   ImGui::BeginGroup();
   Page::beginCard("##session_overview", "SELECTED SESSION", detailWidth,
                   Page::MID, scale, sidebar_font);
-  ImGui::PushFont(sidebar_font, 24);
+  ImGui::PushFont(sidebar_font, HEADING_FONT_SIZE);
   ImGui::TextWrapped("%s", (zonePlan != nullptr) ? zonePlan->name.c_str()
                                                  : sessions[chosen].name);
   ImGui::PopFont();
@@ -1090,7 +1195,7 @@ void MatchSandboxScene::renderTraining()
   const auto drawRoster = [&](std::size_t first, std::size_t last, int column)
   {
     ImGui::PushID(column);
-    if (ImGui::BeginTable("##training_squad", 6,
+    if (ImGui::BeginTable("##training_squad", TRAINING_SQUAD_COLUMNS,
                           ImGuiTableFlags_RowBg |
                               ImGuiTableFlags_BordersInnerH |
                               ImGuiTableFlags_SizingFixedFit,
@@ -1102,7 +1207,7 @@ void MatchSandboxScene::renderTraining()
       ImGui::TableSetupColumn("Pace");
       ImGui::TableSetupColumn("Phys");
       ImGui::TableSetupColumn("Stam");
-      ImGui::PushFont(sidebar_font, 14);
+      ImGui::PushFont(sidebar_font, SandboxPageUI::BOLD_FONT_SIZE);
       ImGui::TableHeadersRow();
       ImGui::PopFont();
       for (std::size_t row = first; row < last; ++row)
@@ -1161,7 +1266,7 @@ void MatchSandboxScene::renderTraining()
     ImGui::PopID();
   };
   ImGui::PushStyleVar(ImGuiStyleVar_CellPadding, ImVec2(3 * scale, 3 * scale));
-  if (detailWidth >= 780 * scale)
+  if (detailWidth >= TWO_COLUMN_SETTINGS_WIDTH * scale)
   {
     if (ImGui::BeginTable(
             "##roster_columns", 2,
@@ -1294,13 +1399,13 @@ void MatchSandboxScene::renderFormation(Team& team)
     const float w = Page::buttonWidth(preset.name, scale, sidebar_font);
     if (used > 0 && used + w <= width)
     {
-      ImGui::SameLine(0, 6 * scale);
+      ImGui::SameLine(0, SandboxPageUI::PANEL_GAP * scale);
     }
     else
     {
       used = 0;
     }
-    used += w + 6 * scale;
+    used += w + (SandboxPageUI::PANEL_GAP * scale);
     if (Page::button(preset.name, active == index, scale, sidebar_font))
     {
       // A new shape picks the best XI for it and the roles that fit them.
@@ -1370,15 +1475,15 @@ void MatchSandboxScene::renderInstructions(Strategy& strategy)
   {
     const std::string label(preset.name);
     const float w = Page::buttonWidth(label.c_str(), scale, sidebar_font);
-    if (used > 0 && used + 6 * scale + w <= rowWidth)
+    if (used > 0 && used + (SandboxPageUI::PANEL_GAP * scale) + w <= rowWidth)
     {
-      ImGui::SameLine(0, 6 * scale);
+      ImGui::SameLine(0, SandboxPageUI::PANEL_GAP * scale);
     }
     else
     {
       used = 0;
     }
-    used += w + 6 * scale;
+    used += w + (SandboxPageUI::PANEL_GAP * scale);
     if (Page::button(label.c_str(), sameSliders(sliders, preset.sliders), scale,
                      sidebar_font))
     {
@@ -1432,7 +1537,8 @@ void MatchSandboxScene::renderSelection(Team& team)
       ImGuiTableFlags_RowBg | ImGuiTableFlags_BordersInnerH |
       ImGuiTableFlags_BordersInnerV | ImGuiTableFlags_SizingStretchProp;
   ImGui::PushStyleVar(ImGuiStyleVar_CellPadding,
-                      ImVec2(6 * Theme::scale(), 3 * Theme::scale()));
+                      ImVec2(XI_CELL_PADDING.x * Theme::scale(),
+                             XI_CELL_PADDING.y * Theme::scale()));
   const bool table = ImGui::BeginTable("##xi", 5, flags);
   if (!table)
   {
@@ -1442,12 +1548,15 @@ void MatchSandboxScene::renderSelection(Team& team)
   const float scale = Theme::scale();
   ImGui::TableSetupColumn("Pos", ImGuiTableColumnFlags_WidthFixed,
                           POSITION_COLUMN_WIDTH * scale);
-  ImGui::TableSetupColumn("Player", ImGuiTableColumnFlags_WidthStretch, 2.2F);
-  ImGui::TableSetupColumn("Role", ImGuiTableColumnFlags_WidthStretch, 1.6F);
-  ImGui::TableSetupColumn("Duty", ImGuiTableColumnFlags_WidthFixed, 96 * scale);
+  ImGui::TableSetupColumn("Player", ImGuiTableColumnFlags_WidthStretch,
+                          XI_PLAYER_WEIGHT);
+  ImGui::TableSetupColumn("Role", ImGuiTableColumnFlags_WidthStretch,
+                          XI_ROLE_WEIGHT);
+  ImGui::TableSetupColumn("Duty", ImGuiTableColumnFlags_WidthFixed,
+                          XI_DUTY_WIDTH * scale);
   ImGui::TableSetupColumn("Fit", ImGuiTableColumnFlags_WidthFixed,
                           OVERALL_COLUMN_WIDTH * scale);
-  ImGui::PushFont(sidebar_font, 14);
+  ImGui::PushFont(sidebar_font, SandboxPageUI::BOLD_FONT_SIZE);
   ImGui::TableHeadersRow();
   ImGui::PopFont();
 
@@ -1629,10 +1738,11 @@ void MatchSandboxScene::renderFooter()
   const float scale = Theme::scale();
   const auto next = [&](float width)
   {
-    if (ImGui::GetItemRectMax().x + 6 * scale + width <=
+    if (ImGui::GetItemRectMax().x + (SandboxPageUI::PANEL_GAP * scale) +
+            width <=
         ImGui::GetWindowPos().x + ImGui::GetWindowContentRegionMax().x)
     {
-      ImGui::SameLine(0, 6 * scale);
+      ImGui::SameLine(0, SandboxPageUI::PANEL_GAP * scale);
     }
   };
   const auto buttonNext = [&](const char* label)
@@ -1650,31 +1760,31 @@ void MatchSandboxScene::renderFooter()
   {
     ImGui::SetTooltip("Choose two different clubs.");
   }
-  next(240 * scale);
+  next(KICK_OFF_SLOT_WIDTH * scale);
   ImGui::AlignTextToFramePadding();
   ImGui::TextUnformatted("Match seed");
   ImGui::SameLine();
-  ImGui::SetNextItemWidth(130 * scale);
+  ImGui::SetNextItemWidth(SEED_INPUT_WIDTH * scale);
   ImGui::InputScalar("##seed", ImGuiDataType_U32, &match_seed);
   if (ImGui::IsItemHovered())
   {
     ImGui::SetTooltip(
         "The same seed, clubs and tactics replay the same match.");
   }
-  next(ImGui::CalcTextSize("New seed each match").x + (40 * scale));
+  next(ImGui::CalcTextSize("New seed each match").x + (CHECKBOX_ROOM * scale));
   ImGui::Checkbox("New seed each match", &new_seed_each_match);
   if (recorder)
   {
     buttonNext("Review");
     if (Page::button("Review", false, scale, sidebar_font))
     {
-      mode = 6;
+      mode = SandboxPage::REVIEW;
       reviewTab = 0;
     }
     buttonNext("Debugger");
     if (Page::button("Debugger", false, scale, sidebar_font))
     {
-      mode = 6;
+      mode = SandboxPage::REVIEW;
       reviewTab = 1;
     }
   }
@@ -1689,7 +1799,7 @@ void MatchSandboxScene::renderFooter()
     ImGui::SetTooltip(
         "Save the last match to review it later or compare engine versions.");
   }
-  next(ImGui::CalcTextSize("with full detail").x + (40 * scale));
+  next(ImGui::CalcTextSize("with full detail").x + (CHECKBOX_ROOM * scale));
   ImGui::Checkbox("with full detail", &save_with_detail);
   if (ImGui::IsItemHovered())
   {
@@ -1700,7 +1810,7 @@ void MatchSandboxScene::renderFooter()
   buttonNext("Recordings...");
   if (Page::button("Recordings...", false, scale, sidebar_font))
   {
-    mode = 5;
+    mode = SandboxPage::RECORDINGS;
     recording_files.clear();
     recording_index = -1;
     recording_preview.reset();
@@ -1781,7 +1891,7 @@ void MatchSandboxScene::loadRecording(
   comparison.reset();
   loaded = std::move(recording);
   replay_info = std::move(replayed);
-  mode = 6;
+  mode = SandboxPage::REVIEW;
   reviewTab = 0;
   last_result = std::format(
       "{} {} - {} {} (recording, seed {}, {})", loaded->setup.sides[0].name,
@@ -1824,10 +1934,10 @@ void MatchSandboxScene::renderRecordings()
     recording_index = -1;
     recording_preview.reset();
   }
-  ImGui::SameLine(0, 6 * scale);
+  ImGui::SameLine(0, SandboxPageUI::PANEL_GAP * scale);
   if (Page::button("Current review", false, scale, sidebar_font))
   {
-    mode = 6;
+    mode = SandboxPage::REVIEW;
   }
   ImGui::TextWrapped("%s", Recordings::folder().string().c_str());
   if (!status.empty())
@@ -1867,7 +1977,8 @@ void MatchSandboxScene::renderRecordings()
         filename.size() > 38 ? filename.substr(0, 35) + "..." : filename;
     ImGui::PushTextWrapPos(0);
     if (ImGui::Selectable(label.c_str(), recording_index == int(i),
-                          ImGuiSelectableFlags_None, ImVec2(0, 44 * scale)))
+                          ImGuiSelectableFlags_None,
+                          ImVec2(0, RECORDING_ROW_HEIGHT * scale)))
     {
       recording_index = int(i);
       recording_preview =
@@ -1884,7 +1995,7 @@ void MatchSandboxScene::renderRecordings()
   ImGui::EndGroup();
   if (columns)
   {
-    ImGui::SameLine(0, 6 * scale);
+    ImGui::SameLine(0, SandboxPageUI::PANEL_GAP * scale);
   }
   const float detailWidth = columns ? width - listWidth - (6 * scale) : width;
   Page::beginCard("##recording_detail", "RECORDING DETAILS", detailWidth,
@@ -1904,7 +2015,7 @@ void MatchSandboxScene::renderRecordings()
     const auto& r = *recording_preview;
     ImGui::TextWrapped(
         "%s", recording_files[recording_index].filename().string().c_str());
-    ImGui::PushFont(sidebar_font, 17);
+    ImGui::PushFont(sidebar_font, SCORE_FONT_SIZE);
     ImGui::TextWrapped("%s %d - %d %s", r.setup.sides[0].name.c_str(),
                        r.homeScore, r.awayScore, r.setup.sides[1].name.c_str());
     ImGui::PopFont();
@@ -1918,7 +2029,7 @@ void MatchSandboxScene::renderRecordings()
     {
       loadRecording(recording_files[recording_index]);
     }
-    ImGui::SameLine(0, 6 * scale);
+    ImGui::SameLine(0, SandboxPageUI::PANEL_GAP * scale);
     if (Page::button("Replay with", false, scale, sidebar_font))
     {
       loadRecording(recording_files[recording_index], sandboxBrains(),
@@ -1938,7 +2049,8 @@ void MatchSandboxScene::renderReviewPage()
   const float scale = Theme::scale();
   const Page::Style style(setup_regular_font, scale);
   const ImVec2 available = ImGui::GetContentRegionAvail();
-  const float gutter = (6 * scale) + ImGui::GetStyle().ScrollbarSize;
+  const float gutter =
+      (SandboxPageUI::PANEL_GAP * scale) + ImGui::GetStyle().ScrollbarSize;
   const bool columns = available.x >= 1000 * scale;
   const float panel = columns ? 400 * scale : available.x - gutter;
   const auto controls = [&]
@@ -1949,12 +2061,12 @@ void MatchSandboxScene::renderReviewPage()
                     scale, sidebar_font);
     if (Page::button("Recordings", false, scale, sidebar_font))
     {
-      mode = 5;
+      mode = SandboxPage::RECORDINGS;
     }
-    ImGui::SameLine(0, 6 * scale);
+    ImGui::SameLine(0, SandboxPageUI::PANEL_GAP * scale);
     if (Page::button("Matches", false, scale, sidebar_font))
     {
-      mode = 0;
+      mode = SandboxPage::MATCHES;
     }
     if (!recorder)
     {
@@ -1972,7 +2084,7 @@ void MatchSandboxScene::renderReviewPage()
       {
         if (i)
         {
-          ImGui::SameLine(0, 6 * scale);
+          ImGui::SameLine(0, SandboxPageUI::PANEL_GAP * scale);
         }
         if (Page::button(tabs[i], reviewTab == i, scale, sidebar_font))
         {
@@ -1996,10 +2108,11 @@ void MatchSandboxScene::renderReviewPage()
                     : reviewTab == 1 ? "ENGINE ANALYSIS"
                                      : "RECORDING COMPARISON",
                     width, Page::LIGHT, scale, sidebar_font);
-    ImGui::BeginChild("##review_content",
-                      ImVec2(0, std::max(300 * scale, height - (56 * scale))),
-                      ImGuiChildFlags_None,
-                      ImGuiWindowFlags_HorizontalScrollbar);
+    ImGui::BeginChild(
+        "##review_content",
+        ImVec2(0, std::max(MIN_REVIEW_HEIGHT * scale,
+                           height - (REVIEW_CARD_CHROME * scale))),
+        ImGuiChildFlags_None, ImGuiWindowFlags_HorizontalScrollbar);
     ImGui::PushTextWrapPos(0);
     if (!recorder)
     {
@@ -2041,13 +2154,13 @@ void MatchSandboxScene::renderReviewPage()
                       ImGuiChildFlags_AlwaysUseWindowPadding);
     controls();
     ImGui::EndChild();
-    ImGui::SameLine(0, 6 * scale);
+    ImGui::SameLine(0, SandboxPageUI::PANEL_GAP * scale);
     stage(ImGui::GetContentRegionAvail().x - gutter, available.y);
   }
   else
   {
     controls();
-    stage(panel, std::max(440 * scale, available.y));
+    stage(panel, std::max(MIN_STAGE_HEIGHT * scale, available.y));
   }
   ImGui::PopStyleVar();
   if (recorder)
