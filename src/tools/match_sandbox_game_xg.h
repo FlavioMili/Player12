@@ -12,6 +12,7 @@
 #include <map>
 #include <optional>
 #include <string>
+#include <string_view>
 #include <tuple>
 #include <vector>
 
@@ -56,9 +57,13 @@ struct GameXgBand
 };
 
 /**
- * The game xG sweep, layer 1 (game xG plan, section 8): the Shot drill run
- * at an empty goal over spots and Shooting ratings, then smoothed into a
- * GameXgTable.
+ * The game xG sweep (game xG plan, section 8): the Still-ball shot drill run
+ * over spots and Shooting ratings, then smoothed into a GameXgTable.
+ *
+ * Layer 1, the empty goal: the chance of scoring with no keeper.
+ * Layer 2, the keeper: the same against a keeper at his set position, over
+ * Goalkeeping ratings too, stored as a factor on layer 1 (the keeper's
+ * chance over the empty goal's), so it needs layer 1's map for the goal.
  *
  * 1. Measure: spots in fixed bands, finest near the goal (each band's step
  *    a multiple of the finest), on both sides of the goal.
@@ -71,8 +76,12 @@ struct GameXgBand
  */
 struct GameXgSweepSpec
 {
+  /** GameXgTable::EMPTY_GOAL or GameXgTable::KEEPER. */
+  std::string layer{GameXgTable::EMPTY_GOAL};
   GoalKind goal = GoalKind::FULL;
   std::vector<float> shooting{1.0F, 25.0F, 50.0F, 75.0F, 100.0F};
+  /** The keeper layer's Goalkeeping ratings (ignored for the empty goal). */
+  std::vector<float> goalkeeping{1.0F, 50.0F, 100.0F};
   /** The first row: the goal line itself (the ball touching it), the
    * baseline for the narrowest angles. */
   float lineFrom = 0.0F;
@@ -124,6 +133,13 @@ class GameXgSweep
   [[nodiscard]] double asymmetricZ() const { return pooledZ; }
   /** The result, once done. */
   [[nodiscard]] const GameXgTable& table() const { return result; }
+  /** Why there is no result (the keeper layer without an empty-goal map);
+   * empty if none. */
+  [[nodiscard]] const std::string& problem() const { return trouble; }
+  [[nodiscard]] bool keeperLayer() const
+  {
+    return setup.layer == GameXgTable::KEEPER;
+  }
 
   /** A spot's progress: every Shooting level still to come, some measured,
    * or all measured. */
@@ -150,7 +166,9 @@ class GameXgSweep
     MEASURE,
     DONE
   };
-  /** A spot on the finest band's lattice and a Shooting level. */
+  /** A spot on the finest band's lattice and a level: a Shooting rating,
+   * or for the keeper layer a Goalkeeping and Shooting pair (Goalkeeping
+   * outer, as the table stores them). */
   struct Point
   {
     int line = 0;
@@ -163,6 +181,10 @@ class GameXgSweep
 
   [[nodiscard]] float lineMetres(int line) const;
   [[nodiscard]] float sideMetres(int side) const;
+  /** How many levels each spot is measured at, and a level's ratings. */
+  [[nodiscard]] std::size_t levels() const;
+  [[nodiscard]] float shootingOf(std::size_t level) const;
+  [[nodiscard]] float goalkeepingOf(std::size_t level) const;
   void queue(int line, int side);
   void runOne();
   /** Compares left and right, and folds them if they agree. */
@@ -196,10 +218,16 @@ class GameXgSweep
   double pooledZ = 0.0;
   bool halted = false;
   GameXgTable result;
+  std::string trouble;
+  /** The keeper layer: the empty-goal map its factor divides by. */
+  std::optional<GameXgTable> emptyGoal;
   std::map<std::string, float> saved;
   std::uint32_t savedSeed = 1;
   bool restored = false;
 };
+
+/** A layer's default sweep (GameXgTable::EMPTY_GOAL or KEEPER). */
+[[nodiscard]] GameXgSweepSpec gameXgSpec(std::string_view layer);
 
 /** The drill the sweep measures with (Still-ball shot), from a set of
  * drills; nullptr if it isn't there. */

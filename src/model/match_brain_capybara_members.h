@@ -22,6 +22,24 @@
   void planWayRoundCapybara(std::size_t slot);
   void assignMarksCapybara(bool home);
   PitchPoint goalkeeperTargetCapybara(MatchPlayer& keeper, const MatchPlayer* carrier);
+  /** The keeper's set position against a threat at `threat` (his standing
+   * place on the ball-goal line, deeper the nearer the threat): what
+   * goalkeeperTargetCapybara returns when nothing else calls him away, and
+   * the "usual" position the game xG keeper layer measures. */
+  [[nodiscard]] PitchPoint keeperSetPositionCapybara(const MatchPlayer& keeper,
+                                                     PitchPoint threat) const;
+  /** The chance a shot from `from` goes in (game xG plan): the empty-goal
+   * map times the keeper map's factor for the opponents' keeper, by the
+   * shooter's Shooting, the keeper's Goalkeeping and the shooter's foot;
+   * where this goal has no maps yet, the fitted model (xgBreakdown). */
+  [[nodiscard]] float gameShotXGCapybara(const MatchPlayer& shooter,
+                                         PitchPoint from) const;
+  /** Whether the opponents' keeper leaves the goal more open than usual for
+   * a shot from where `shooter` stands: more of the mouth uncovered than at
+   * his set position (Decision::GOAL_OPEN_SHARE_MARGIN), or rushing him. */
+  [[nodiscard]] bool goalOpenCapybara(const MatchPlayer& shooter) const;
+  /** The opponents' keeper of `homeTeam`'s side, if one is on (const). */
+  [[nodiscard]] const MatchPlayer* opponentKeeperCapybara(bool homeTeam) const;
   BallAction chooseBallActionCapybara(MatchPlayer& carrier);
  public:
   /** The brain flow tool (model/match_brain_flow.h): a record for each
@@ -64,6 +82,8 @@
     // step.
     float shotThreat = 0.0F;
     float wideShot = 1.0F;
+    // The goal more open than usual (game xG plan, step 2).
+    float goalOpen = 0.0F;
     float cutInsideShot = 0.0F;
     float weakFootShot = 0.0F;
     // Carry.

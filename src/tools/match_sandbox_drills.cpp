@@ -38,6 +38,9 @@ constexpr float COLOUR_MIDPOINT_SHARE = 0.5F;
 constexpr float HALF_TO_FULL_SCALE = 2.0F;
 constexpr float KEEPER_DISTANCE_SHARE = 0.5F;
 constexpr float KEEPER_START_LINE_SHARE = 0.985F;
+/** The Still-ball shot drill's keeper starts: set position, covering the
+ * angle, centre of goal. */
+constexpr int STILL_KEEPER_STARTS = 3;
 constexpr float MIN_SHOT_DEFENDER_GAP_METRES = 0.5F;
 constexpr float QUARTER_TURN_PI_SHARE = 0.5F;
 constexpr float TOUCH_RUN_THROUGH_SCALE = 4.0F;
@@ -5577,8 +5580,8 @@ class ShotDrill final : public Drill
       out.push_back({.name = "Shot off centre (m)",
                      .value = shot->from.y - PITCH.atY(PITCH_MIDPOINT_SHARE)});
       out.push_back({.name = "Seconds to shoot", .value = shot->at});
-      out.push_back({.name = "Facing off goal (deg)",
-                     .value = shot->facingOffDegrees});
+      out.push_back(
+          {.name = "Facing off goal (deg)", .value = shot->facingOffDegrees});
     }
     else
     {
@@ -5586,8 +5589,8 @@ class ShotDrill final : public Drill
           {.name = "Lost the ball", .value = is("no shot (lost the ball)")});
       out.push_back({.name = "In before the shot",
                      .value = is("no shot (in before the shot)")});
-      out.push_back(
-          {.name = "Out before the shot", .value = is("no shot (play stopped)")});
+      out.push_back({.name = "Out before the shot",
+                     .value = is("no shot (play stopped)")});
     }
     return out;
   }
@@ -5715,8 +5718,8 @@ class StillShotDrill final : public Drill
   [[nodiscard]] MatchPitch pitch() const override
   {
     MatchPitch on = MatchPitch::matchSize();
-    on.goal = PitchGoal::ofKind(static_cast<GoalKind>(
-        static_cast<int>(std::lround(goalChoice)) + 1));
+    on.goal = PitchGoal::ofKind(
+        static_cast<GoalKind>(static_cast<int>(std::lround(goalChoice)) + 1));
     return on;
   }
 
@@ -5737,8 +5740,8 @@ class StillShotDrill final : public Drill
         "The goal's size, on the match pitch.");
     goals.choices.assign(GOAL_CHOICES.begin(), GOAL_CHOICES.end());
     list.push_back(goals);
-    list.push_back(setting("Shooting", &shooting,
-                           {.min = 1.0F, .max = RATING_MAX}, true));
+    list.push_back(
+        setting("Shooting", &shooting, {.min = 1.0F, .max = RATING_MAX}, true));
     DrillParameter foot =
         setting("Foot", &footChoice, {.min = 0.0F, .max = 1.0F}, true,
                 "The shooter's stronger foot.");
@@ -5751,10 +5754,13 @@ class StillShotDrill final : public Drill
     list.push_back(setting("Goalkeeping", &goalkeeping,
                            {.min = 1.0F, .max = RATING_MAX}, true));
     DrillParameter start = setting(
-        "Keeper starts", &keeperStart, {.min = 0.0F, .max = 1.0F}, true,
-        "Covering the angle: 1.5 m off his line towards the ball.\nCentre of "
-        "goal: on his line in the middle.");
-    start.choices = {"Covering the angle", "Centre of goal"};
+        "Keeper starts", &keeperStart,
+        {.min = 0.0F, .max = static_cast<float>(STILL_KEEPER_STARTS - 1)}, true,
+        "Set position: where the keeper's own positioning puts him against "
+        "this shooter (the game xG keeper layer's usual place).\nCovering the "
+        "angle: 1.5 m off his line towards the ball.\nCentre of goal: on his "
+        "line in the middle.");
+    start.choices = {"Set position", "Covering the angle", "Centre of goal"};
     list.push_back(start);
     list.push_back(setting("Keeper height (cm)", &keeperHeight,
                            {.min = KEEPER_HEIGHT_MIN, .max = KEEPER_HEIGHT_MAX},
@@ -5798,22 +5804,40 @@ class StillShotDrill final : public Drill
     const PitchPoint goalMiddle = at(1.0F, PITCH_MIDPOINT_SHARE);
     const Vector2F toGoal = directionBetween(spot, goalMiddle);
     const float facing = std::atan2(toGoal.y, toGoal.x);
+    const PitchPoint shooterAt =
+        along(spot, toGoal, -MatchTuning::Dribble::FEET_METRES);
     MatchScenario scenario;
-    scenario.players.push_back(
-        {.playerId = shooterId,
-         .position = along(spot, toGoal, -MatchTuning::Dribble::FEET_METRES),
-         .makingRun = false,
-         .facing = facing});
+    scenario.players.push_back({.playerId = shooterId,
+                                .position = shooterAt,
+                                .makingRun = false,
+                                .facing = facing});
     if (hasKeeper)
     {
-      keeperAt = keeperStart < CHOICE_MIDPOINT
-                     ? along(goalMiddle, directionBetween(goalMiddle, spot),
-                             std::min(KEEPER_OFF_LINE_METRES,
-                                      metresBetween(goalMiddle, spot) *
-                                          KEEPER_DISTANCE_SHARE))
-                     : at(KEEPER_START_LINE_SHARE, PITCH_MIDPOINT_SHARE);
-      scenario.players.push_back(
-          {.playerId = keeperId, .position = keeperAt, .makingRun = false});
+      const int startAt = static_cast<int>(std::lround(keeperStart));
+      if (startAt == 0)
+      {
+        // Where his own positioning puts him against this shooter.
+        keeperAt =
+            engine.keeperSetPosition(keeperId, shooterAt)
+                .value_or(at(KEEPER_START_LINE_SHARE, PITCH_MIDPOINT_SHARE));
+      }
+      else if (startAt == 1)
+      {
+        keeperAt = along(
+            goalMiddle, directionBetween(goalMiddle, spot),
+            std::min(KEEPER_OFF_LINE_METRES,
+                     metresBetween(goalMiddle, spot) * KEEPER_DISTANCE_SHARE));
+      }
+      else
+      {
+        keeperAt = at(KEEPER_START_LINE_SHARE, PITCH_MIDPOINT_SHARE);
+      }
+      // Set and still, facing the ball.
+      const Vector2F toBall = directionBetween(keeperAt, spot);
+      scenario.players.push_back({.playerId = keeperId,
+                                  .position = keeperAt,
+                                  .makingRun = false,
+                                  .facing = std::atan2(toBall.y, toBall.x)});
     }
     scenario.carrierId = shooterId;
     scenario.ballPosition = spot;

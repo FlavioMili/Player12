@@ -29,12 +29,14 @@
  * (so the smoothing can be redone).
  */
 
-/** One measured point: shots taken from a spot at a Shooting, and goals. */
+/** One measured point: shots taken from a spot at a Shooting (and, for the
+ * keeper layer, against a Goalkeeping; 0 without a keeper), and goals. */
 struct GameXgSample
 {
   float line = 0.0F;
   float side = 0.0F;
   float shooting = 0.0F;
+  float goalkeeping = 0.0F;
   int shots = 0;
   int goals = 0;
 };
@@ -54,8 +56,12 @@ class GameXgTable
     }
   };
 
-  /** Layer 1's name, as stored and in the file name. */
+  /** The layers' names, as stored and in the file names. Layer 1: the
+   * chance into an empty goal. Layer 2: the factor a keeper in his usual
+   * (set) position puts on it, the chance with him over the chance without
+   * (game xG plan, step 2). */
   static constexpr std::string_view EMPTY_GOAL = "empty goal";
+  static constexpr std::string_view KEEPER = "keeper";
 
   std::string layer{EMPTY_GOAL};
   GoalKind goal = GoalKind::FULL;
@@ -73,18 +79,25 @@ class GameXgTable
   bool mirrored = true;
   /** Shooting ratings (1-100) the grid is held at, ascending. */
   std::vector<float> shooting;
+  /** The keeper layer's Goalkeeping ratings (1-100), ascending; empty for
+   * the empty-goal layer. */
+  std::vector<float> goalkeeping;
   Axis line;
   Axis side;
-  /** Smoothed chance per Shooting, then line, then side. */
+  /** Smoothed value per Goalkeeping (one block without), then Shooting,
+   * then line, then side: a chance (empty goal) or a factor (keeper). */
   std::vector<float> values;
   std::vector<GameXgSample> samples;
 
   [[nodiscard]] bool empty() const { return values.empty(); }
-  /** The chance at a spot for a Shooting rating (1-100), interpolated over
-   * the grid; outside it, the value at its edge. `side` signed (+ towards
-   * the bottom touchline); folded when the table is mirrored. */
+  /** The value at a spot for a Shooting rating (and Goalkeeping rating, for
+   * the keeper layer; 1-100), interpolated over the grid and the ratings;
+   * outside them, the value at their edge. `side` signed (+ towards the
+   * bottom touchline, attacking the right-hand goal); folded when the table
+   * is mirrored. */
   [[nodiscard]] float value(float lineMetres, float sideMetres,
-                            float shootingRating) const;
+                            float shootingRating,
+                            float goalkeepingRating = 0.0F) const;
   /** Total shots measured. */
   [[nodiscard]] long long shots() const;
 
@@ -99,6 +112,10 @@ class GameXgTable
   [[nodiscard]] float at(std::size_t level, int lineIndex, int sideIndex) const;
   [[nodiscard]] float plane(std::size_t level, float lineMetres,
                             float sideMetres) const;
+  /** Over the Shooting levels of one Goalkeeping block. */
+  [[nodiscard]] float overShooting(std::size_t block, float lineMetres,
+                                   float sideMetres,
+                                   float shootingRating) const;
 };
 
 namespace GameXg
@@ -108,4 +125,17 @@ namespace GameXg
 [[nodiscard]] std::filesystem::path folder();
 /** A layer's file for a goal kind: "empty_goal_full.json". */
 [[nodiscard]] std::filesystem::path file(std::string_view layer, GoalKind goal);
+/** The saved table for a layer and goal kind, loaded once and kept (null
+ * if there is none). Safe from several threads. */
+[[nodiscard]] const GameXgTable* table(std::string_view layer, GoalKind goal);
+/** Forgets the loaded tables (after a sweep saves a new one). */
+void reload();
+
+/** The share (0-1) of a goal's mouth, as seen from `from`, that a keeper at
+ * `keeper` leaves uncovered: his cover is `coverMetres` either side of him,
+ * as an angle from the shooter. `goalLine` and `goalMiddle` place the goal
+ * (x of its line, y of its middle); `halfWidth` its half-width. */
+[[nodiscard]] float openShare(PitchPoint from, PitchPoint keeper,
+                              float goalLine, float goalMiddle, float halfWidth,
+                              float coverMetres);
 }  // namespace GameXg

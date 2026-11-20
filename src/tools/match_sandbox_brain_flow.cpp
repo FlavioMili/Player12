@@ -24,6 +24,7 @@
 #include "gui/view_models/formation.h"
 #include "gui/widgets/theme.h"
 #include "model/match_engine.h"
+#include "model/match_game_xg.h"
 #include "model/match_scenario.h"
 #include "model/player.h"
 #include "model/strategy.h"
@@ -1109,6 +1110,25 @@ void BrainFlowScene::measuresColumn()
   list("Best pass", layered.bestPass, base.bestPass);
   list("Shot", layered.options.at(at(OptionIndex::SHOT)).score,
        base.options.at(at(OptionIndex::SHOT)).score);
+  if (layered.options.at(at(OptionIndex::SHOT)).score.isAvailable())
+  {
+    // Where the shot's xG comes from (game xG plan).
+    if (GameXg::table(GameXgTable::EMPTY_GOAL, GoalKind::FULL) == nullptr)
+    {
+      muted("xG: the fitted model (no game xG map for this goal).");
+    }
+    else if (GameXg::table(GameXgTable::KEEPER, GoalKind::FULL) != nullptr)
+    {
+      muted(
+          "xG: the game maps, the empty goal times the keeper's factor at his "
+          "set position; \"goal more open than usual\" when he is off it or "
+          "rushing.");
+    }
+    else
+    {
+      muted("xG: the game's empty-goal map (no keeper map yet).");
+    }
+  }
   list("Carry", layered.options.at(at(OptionIndex::CARRY)).score,
        base.options.at(at(OptionIndex::CARRY)).score);
   list("Shield", layered.options.at(at(OptionIndex::SHIELD)).score,

@@ -132,23 +132,33 @@ void XgMapScene::loadGameTable()
 {
   gameTableGoal = goalKind();
   gameTable.reset();
+  keeperTable.reset();
   if (*gameTableGoal == GoalKind::NONE)
   {
     gameTableNote = "No goal on this pitch.";
     return;
   }
-  const auto path = GameXg::file(GameXgTable::EMPTY_GOAL, *gameTableGoal);
   std::string problem;
-  gameTable = GameXgTable::load(path, problem);
+  gameTable = GameXgTable::load(
+      GameXg::file(GameXgTable::EMPTY_GOAL, *gameTableGoal), problem);
+  keeperTable = GameXgTable::load(
+      GameXg::file(GameXgTable::KEEPER, *gameTableGoal), problem);
+  const auto about = [](const GameXgTable& table)
+  {
+    return std::format(
+        "measured {} with a {}-footed shooter: {} shots a point, {} points; "
+        "left and right {}.",
+        table.measured, table.foot, table.repeats, table.samples.size(),
+        table.mirrored ? "folded together" : "kept apart");
+  };
+  const std::string goal = goalKindName(*gameTableGoal);
   gameTableNote =
-      gameTable ? std::format(
-                      "Measured {} with a {}-footed shooter: {} shots a "
-                      "point, {} points; left and right {}.",
-                      gameTable->measured, gameTable->foot, gameTable->repeats,
-                      gameTable->samples.size(),
-                      gameTable->mirrored ? "folded together" : "kept apart")
-                : std::format("No game map for the {} goal yet: run the sweep.",
-                              goalKindName(*gameTableGoal));
+      (gameTable
+           ? "Empty goal: " + about(*gameTable)
+           : std::format("No empty-goal map for the {} goal yet.", goal)) +
+      "\n" +
+      (keeperTable ? "Keeper: " + about(*keeperTable)
+                   : std::format("No keeper map for the {} goal yet.", goal));
 }
 
 SceneID XgMapScene::getID() const { return SceneID::MATCH_SANDBOX; }
@@ -196,10 +206,16 @@ void XgMapScene::update(float /*deltaTime*/)
   const GameXgTable& table = sweep->table();
   const auto path = GameXg::file(table.layer, table.goal);
   std::string problem;
+  const bool savedTable = table.save(path, problem);
+  if (savedTable)
+  {
+    // The brains read the maps from the shared cache: the new one from now.
+    GameXg::reload();
+  }
   sweepNote =
-      (table.save(path, problem) ? std::format("Saved {} ({:.0f} s).",
-                                               path.string(), sweep->seconds())
-                                 : "Not saved: " + problem) +
+      (savedTable ? std::format("Saved {} ({:.0f} s).", path.string(),
+                                sweep->seconds())
+                  : "Not saved: " + problem) +
       std::format(
           " Left and right {} ({:.0f}% of mirrored pairs differed; "
           "pooled difference {:+.1f} standard errors).",
@@ -263,11 +279,18 @@ XgMapScene::Spot XgMapScene::spotAt(const MatchPitch& on, PitchPoint at) const
                                  MatchTuning::Aerial::HEADER_SHOT_MIN_XG
                            : estimate >= D::MIN_SHOT_XG;
   // Game xG, the empty goal: metres out from the right-hand goal's line and
-  // off its middle (+ towards the bottom touchline, as the Shot drill).
+  // off its middle (+ towards the bottom touchline, as the Shot drill);
+  // with a keeper, times his factor (as Capybara reads it).
   if (gameTable && on.goal.present())
   {
-    spot.game = gameTable->value(
-        on.length - at.x, at.y - (MIDDLE_SHARE * on.width), shootingSetting);
+    const float line = on.length - at.x;
+    const float side = at.y - (MIDDLE_SHARE * on.width);
+    spot.game = gameTable->value(line, side, shootingSetting);
+    if (gameKeeper == 1 && keeperTable)
+    {
+      spot.game *=
+          keeperTable->value(line, side, shootingSetting, goalkeepingSetting);
+    }
   }
   return spot;
 }
@@ -441,12 +464,26 @@ void XgMapScene::renderPanel(float width)
   }
   else
   {
+    changed(Page::radio("Empty goal", &gameKeeper, 0));
+    ImGui::SameLine();
+    changed(Page::radio("Keeper at his set position", &gameKeeper, 1));
+    if (gameKeeper == 1)
+    {
+      ImGui::SetNextItemWidth(CONTROL_WIDTH * scale);
+      changed(ImGui::SliderFloat("Goalkeeping", &goalkeepingSetting, 1.0F,
+                                 100.0F, "%.0f"));
+    }
     ImGui::TextDisabled(
-        "Game xG, layer 1: the chance a shot goes in with no keeper and "
-        "nobody in the way, measured in the Shot drill (game xG plan). "
-        "Contours at 0.2, 0.4, 0.6 and 0.8. Shooting only: no header, "
-        "defender or pressure yet. Capybara doesn't use it until the keeper "
-        "layer exists.");
+        "Game xG, measured in the Still-ball shot drill (game xG plan): the "
+        "chance a still ball struck from the spot goes in, with no keeper, "
+        "or times the keeper map's factor for a keeper at his set position "
+        "(what Capybara reads). Contours at 0.2, 0.4, 0.6 and 0.8. Shooting "
+        "only: no header, defender or pressure yet.");
+    if (gameKeeper == 1 && gameTable && !keeperTable)
+    {
+      ImGui::TextUnformatted(
+          "No keeper map for this goal yet: showing the empty goal.");
+    }
   }
   ImGui::PopTextWrapPos();
   Page::endCard(scale);
@@ -513,10 +550,30 @@ void XgMapScene::renderSpot(float width)
           spot.considered ? "yes" : "no");
     }
     ImGui::Text("As struck: %.3f", spot.struck);
-    if (spot.game >= 0.0F)
+    if (spot.game >= 0.0F && gameTable)
     {
-      ImGui::Text("Game xG, empty goal: %.3f (Shooting %.0f, %s-footed)",
-                  spot.game, shootingSetting, gameTable->foot.c_str());
+      const float line = built.length - hovered->x;
+      const float side = hovered->y - (MIDDLE_SHARE * built.width);
+      const float open = gameTable->value(line, side, shootingSetting);
+      ImGui::TextUnformatted(
+          std::format("Game xG, empty goal: {:.3f} (Shooting {:.0f}, "
+                      "{}-footed)",
+                      open, shootingSetting, gameTable->foot)
+              .c_str());
+      if (keeperTable)
+      {
+        const float factor =
+            keeperTable->value(line, side, shootingSetting, goalkeepingSetting);
+        ImGui::TextUnformatted(
+            std::format("x keeper at his set position {:.2f} (Goalkeeping "
+                        "{:.0f}) = {:.3f}",
+                        factor, goalkeepingSetting, open * factor)
+                .c_str());
+      }
+      else
+      {
+        ImGui::TextDisabled("No keeper map for this goal yet.");
+      }
     }
     else
     {
@@ -591,23 +648,36 @@ void XgMapScene::renderSweep(float width)
   }
   else if (goalKind() != GoalKind::NONE && shotDrill != nullptr)
   {
+    Page::radio("Empty goal", &sweepLayer, 0);
+    ImGui::SameLine();
+    Page::radio("Keeper", &sweepLayer, 1);
     ImGui::SetNextItemWidth(CONTROL_WIDTH * scale);
     ImGui::SliderFloat("Shots a point", &sweepRepeats, MIN_SWEEP_REPEATS,
                        MAX_SWEEP_REPEATS, "%.0f");
     if (Page::button("Run the sweep", false, scale, boldFont))
     {
-      GameXgSweepSpec spec;
+      GameXgSweepSpec spec = gameXgSpec(
+          sweepLayer == 1 ? GameXgTable::KEEPER : GameXgTable::EMPTY_GOAL);
       spec.goal = goalKind();
       spec.repeats = static_cast<int>(sweepRepeats);
       sweep = std::make_unique<GameXgSweep>(
           *shotDrill, guiView->getController().getStatsConfig(), spec);
-      sweepNote.clear();
+      sweepNote =
+          sweep->problem().empty() ? "" : "Not run: " + sweep->problem();
     }
     ImGui::TextDisabled(
-        "The Shot drill at an empty goal, both sides: spots every 1 m to "
-        "18 m out (20 m either side), 2 m to 30 m, 4 m to halfway; Shooting 1, "
-        "25, 50, 75 and 100. About 4-5 minutes at 60 shots a point. Saves "
-        "to assets/config/game_xg/ when done.");
+        "%s",
+        sweepLayer == 1
+            ? "The Still-ball shot drill against a keeper at his set "
+              "position, both sides: spots every 1 m to 18 m out (20 m either "
+              "side), 2 m to 30 m, 4 m to halfway; Goalkeeping 1, 50 and 100 "
+              "by Shooting 1, 50 and 100. Stored as a factor on the empty "
+              "goal's map, which must exist. About 6 minutes at 60 shots a "
+              "point. Saves to assets/config/game_xg/ when done."
+            : "The Still-ball shot drill at an empty goal, both sides: spots "
+              "every 1 m to 18 m out (20 m either side), 2 m to 30 m, 4 m to "
+              "halfway; Shooting 1, 25, 50, 75 and 100. About 4-5 minutes at "
+              "60 shots a point. Saves to assets/config/game_xg/ when done.");
   }
   if (!sweepNote.empty())
   {

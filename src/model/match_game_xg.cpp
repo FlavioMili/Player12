@@ -11,7 +11,11 @@
 #include <algorithm>
 #include <cmath>
 #include <fstream>
+#include <map>
+#include <memory>
+#include <mutex>
 #include <nlohmann/json.hpp>
+#include <numbers>
 #include <sstream>
 
 #include "global/paths.h"
@@ -22,6 +26,13 @@ namespace
 constexpr double STORED_SCALE = 10000.0;
 constexpr int JSON_INDENT = 1;
 constexpr int FORMAT_VERSION = 1;
+/** A stored sample's columns, without the Goalkeeping one (it follows
+ * Shooting where present). */
+constexpr std::size_t SAMPLE_LINE = 0;
+constexpr std::size_t SAMPLE_SIDE = 1;
+constexpr std::size_t SAMPLE_SHOOTING = 2;
+constexpr std::size_t SAMPLE_SHOTS = 3;
+constexpr std::size_t SAMPLE_GOALS = 4;
 
 /** Where `value` falls on `axis`: the lower index and the share past it,
  * clamped to the axis. */
@@ -73,31 +84,61 @@ float GameXgTable::plane(std::size_t level, float lineMetres,
   return near + ((far - near) * ls);
 }
 
+namespace
+{
+/** Where `rating` falls among ascending `levels`: the lower level's index
+ * and the share past it (clamped to the ends). */
+std::pair<std::size_t, float> bracket(const std::vector<float>& levels,
+                                      float rating)
+{
+  if (levels.size() <= 1 || rating <= levels.front())
+  {
+    return {0, 0.0F};
+  }
+  if (rating >= levels.back())
+  {
+    return {levels.size() - 2, 1.0F};
+  }
+  std::size_t upper = 1;
+  while (upper + 1 < levels.size() && levels[upper] < rating)
+  {
+    ++upper;
+  }
+  return {upper - 1,
+          (rating - levels[upper - 1]) / (levels[upper] - levels[upper - 1])};
+}
+}  // namespace
+
+float GameXgTable::overShooting(std::size_t block, float lineMetres,
+                                float sideMetres, float shootingRating) const
+{
+  const std::size_t first = block * shooting.size();
+  const auto [low, share] = bracket(shooting, shootingRating);
+  const float at = plane(first + low, lineMetres, sideMetres);
+  if (shooting.size() == 1)
+  {
+    return at;
+  }
+  return at + ((plane(first + low + 1, lineMetres, sideMetres) - at) * share);
+}
+
 float GameXgTable::value(float lineMetres, float sideMetres,
-                         float shootingRating) const
+                         float shootingRating, float goalkeepingRating) const
 {
   if (empty() || shooting.empty())
   {
     return 0.0F;
   }
   const float across = mirrored ? std::abs(sideMetres) : sideMetres;
-  if (shooting.size() == 1 || shootingRating <= shooting.front())
+  if (goalkeeping.size() <= 1)
   {
-    return plane(0, lineMetres, across);
+    return overShooting(0, lineMetres, across, shootingRating);
   }
-  if (shootingRating >= shooting.back())
-  {
-    return plane(shooting.size() - 1, lineMetres, across);
-  }
-  std::size_t upper = 1;
-  while (upper + 1 < shooting.size() && shooting[upper] < shootingRating)
-  {
-    ++upper;
-  }
-  const float share = (shootingRating - shooting[upper - 1]) /
-                      (shooting[upper] - shooting[upper - 1]);
-  const float low = plane(upper - 1, lineMetres, across);
-  return low + ((plane(upper, lineMetres, across) - low) * share);
+  const auto [low, share] = bracket(goalkeeping, goalkeepingRating);
+  const float at = overShooting(low, lineMetres, across, shootingRating);
+  return at +
+         ((overShooting(low + 1, lineMetres, across, shootingRating) - at) *
+          share);
 }
 
 long long GameXgTable::shots() const
@@ -122,6 +163,10 @@ std::string GameXgTable::toJson() const
   json["foot"] = foot;
   json["mirrored"] = mirrored;
   json["shooting"] = shooting;
+  if (!goalkeeping.empty())
+  {
+    json["goalkeeping"] = goalkeeping;
+  }
   json["line"] = axisJson(line);
   json["side"] = axisJson(side);
   nlohmann::json grid = nlohmann::json::array();
@@ -133,10 +178,10 @@ std::string GameXgTable::toJson() const
   nlohmann::json raw = nlohmann::json::array();
   for (const GameXgSample& sample : samples)
   {
-    raw.push_back({sample.line, sample.side, sample.shooting, sample.shots,
-                   sample.goals});
+    raw.push_back({sample.line, sample.side, sample.shooting,
+                   sample.goalkeeping, sample.shots, sample.goals});
   }
-  json["samples_line_side_shooting_shots_goals"] = std::move(raw);
+  json["samples_line_side_shooting_goalkeeping_shots_goals"] = std::move(raw);
   return json.dump(JSON_INDENT);
 }
 
@@ -169,21 +214,34 @@ std::optional<GameXgTable> GameXgTable::fromJson(const std::string& text,
     table.foot = json.value("foot", std::string("right"));
     table.mirrored = json.value("mirrored", true);
     table.shooting = json.at("shooting").get<std::vector<float>>();
+    table.goalkeeping = json.value("goalkeeping", std::vector<float>{});
     table.line = axisOf(json.at("line"));
     table.side = axisOf(json.at("side"));
     table.values = json.at("values").get<std::vector<float>>();
-    for (const auto& raw : json.value("samples_line_side_shooting_shots_goals",
-                                      nlohmann::json::array()))
+    // Samples: with a Goalkeeping column, or (the first maps) without; the
+    // columns after Shooting shift by one.
+    const auto addSamples = [&](const char* key, bool withGoalkeeping)
     {
-      table.samples.push_back({.line = raw.at(0).get<float>(),
-                               .side = raw.at(1).get<float>(),
-                               .shooting = raw.at(2).get<float>(),
-                               .shots = raw.at(3).get<int>(),
-                               .goals = raw.at(4).get<int>()});
-    }
-    const std::size_t expected = table.shooting.size() *
-                                 static_cast<std::size_t>(table.line.count) *
-                                 static_cast<std::size_t>(table.side.count);
+      const std::size_t shift = withGoalkeeping ? 1 : 0;
+      for (const auto& raw : json.value(key, nlohmann::json::array()))
+      {
+        table.samples.push_back(
+            {.line = raw.at(SAMPLE_LINE).get<float>(),
+             .side = raw.at(SAMPLE_SIDE).get<float>(),
+             .shooting = raw.at(SAMPLE_SHOOTING).get<float>(),
+             .goalkeeping = withGoalkeeping
+                                ? raw.at(SAMPLE_SHOOTING + 1).get<float>()
+                                : 0.0F,
+             .shots = raw.at(SAMPLE_SHOTS + shift).get<int>(),
+             .goals = raw.at(SAMPLE_GOALS + shift).get<int>()});
+      }
+    };
+    addSamples("samples_line_side_shooting_goalkeeping_shots_goals", true);
+    addSamples("samples_line_side_shooting_shots_goals", false);
+    const std::size_t expected =
+        std::max<std::size_t>(1, table.goalkeeping.size()) *
+        table.shooting.size() * static_cast<std::size_t>(table.line.count) *
+        static_cast<std::size_t>(table.side.count);
     if (table.values.size() != expected || table.shooting.empty())
     {
       error = "the grid's size doesn't match its axes";
@@ -239,5 +297,87 @@ std::filesystem::path file(std::string_view layer, GoalKind goal)
   std::string name(layer);
   std::ranges::replace(name, ' ', '_');
   return folder() / (name + "_" + goalKindName(goal) + ".json");
+}
+
+namespace
+{
+struct Cache
+{
+  std::mutex lock;
+  /** Loaded (or found missing: null) per layer and goal. */
+  std::map<std::pair<std::string, GoalKind>, std::unique_ptr<GameXgTable>>
+      tables;
+};
+
+Cache& cache()
+{
+  static Cache shared;
+  return shared;
+}
+}  // namespace
+
+const GameXgTable* table(std::string_view layer, GoalKind goal)
+{
+  if (goal == GoalKind::NONE)
+  {
+    return nullptr;
+  }
+  Cache& shared = cache();
+  const std::scoped_lock guard(shared.lock);
+  const auto key = std::pair{std::string(layer), goal};
+  auto found = shared.tables.find(key);
+  if (found == shared.tables.end())
+  {
+    std::string problem;
+    auto loaded = GameXgTable::load(file(layer, goal), problem);
+    found =
+        shared.tables
+            .emplace(key,
+                     loaded ? std::make_unique<GameXgTable>(std::move(*loaded))
+                            : nullptr)
+            .first;
+  }
+  return found->second.get();
+}
+
+void reload()
+{
+  Cache& shared = cache();
+  const std::scoped_lock guard(shared.lock);
+  shared.tables.clear();
+}
+
+float openShare(PitchPoint from, PitchPoint keeper, float goalLine,
+                float goalMiddle, float halfWidth, float coverMetres)
+{
+  // Angles as the shooter sees them, measured from his line to the goal's
+  // middle (so nothing wraps round): the mouth between the posts, and the
+  // keeper's cover either side of him.
+  const float toGoalX = goalLine - from.x;
+  const float toGoalY = goalMiddle - from.y;
+  const float base = std::atan2(toGoalY, toGoalX);
+  const auto bearing = [&](float x, float y)
+  {
+    float angle = std::atan2(y - from.y, x - from.x) - base;
+    angle = std::atan2(std::sin(angle), std::cos(angle));
+    return angle;
+  };
+  const float postA = bearing(goalLine, goalMiddle - halfWidth);
+  const float postB = bearing(goalLine, goalMiddle + halfWidth);
+  const float mouthLow = std::min(postA, postB);
+  const float mouthHigh = std::max(postA, postB);
+  const float mouth = mouthHigh - mouthLow;
+  if (mouth <= 0.0F)
+  {
+    return 0.0F;
+  }
+  const float away = std::hypot(keeper.x - from.x, keeper.y - from.y);
+  const float centre = bearing(keeper.x, keeper.y);
+  const float halfCover = away > coverMetres ? std::asin(coverMetres / away)
+                                             : std::numbers::pi_v<float> / 2.0F;
+  const float covered =
+      std::max(0.0F, std::min(mouthHigh, centre + halfCover) -
+                         std::max(mouthLow, centre - halfCover));
+  return std::clamp(1.0F - (covered / mouth), 0.0F, 1.0F);
 }
 }  // namespace GameXg

@@ -281,6 +281,19 @@ bool MatchEngine::strikeStillBall(PlayerID playerId)
   return recordCommand(command);
 }
 
+std::optional<PitchPoint> MatchEngine::keeperSetPosition(
+    PlayerID keeperId, PitchPoint threat) const
+{
+  for (const MatchPlayer& player : players)
+  {
+    if ((player.player != nullptr) && player.player->getId() == keeperId)
+    {
+      return keeperSetPositionCapybara(player, threat);
+    }
+  }
+  return std::nullopt;
+}
+
 void MatchEngine::forcePass(PlayerID playerId, PlayerID receiverId,
                             ForcedPassStyle style)
 {

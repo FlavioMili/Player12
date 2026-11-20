@@ -36,6 +36,7 @@
 #include "model/match_decision_frame.h"
 #include "model/match_engine.h"
 #include "model/match_engine_internal.h"
+#include "model/match_game_xg.h"
 #include "model/match_possession_coordination.h"
 #include "model/match_recorder.h"
 #include "model/player.h"
@@ -227,7 +228,7 @@ const MatchEngine::MovementStyle& MatchEngine::movementStyleCapybara()
 }
 
 void MatchEngine::applyTeamMentalityCapybara(StrategySliders& sliders,
-                                              bool homeTeam) const
+                                             bool homeTeam) const
 {
   // Score effects: a side in front sits deeper and takes fewer risks, a side
   // behind pushes on, more so as the match runs out.
@@ -2937,8 +2938,8 @@ MatchEngine::tightMarkTargetCapybara(const MatchPlayer& marker) const
 }
 
 PitchPoint MatchEngine::tightMarkPointCapybara(const MatchPlayer& marker,
-                                                const MatchPlayer& target,
-                                                PitchPoint current) const
+                                               const MatchPlayer& target,
+                                               PitchPoint current) const
 {
   namespace T = TacticsTuning;
   const float direction = marker.isHomeTeam ? 1.0F : -1.0F;
@@ -2949,8 +2950,7 @@ PitchPoint MatchEngine::tightMarkPointCapybara(const MatchPlayer& marker,
                     current.y + ((point.y - current.y) * T::TIGHT_MARK_WEIGHT)};
 }
 
-Vector2F MatchEngine::tightMarkVelocityCapybara(
-    const MatchPlayer& target) const
+Vector2F MatchEngine::tightMarkVelocityCapybara(const MatchPlayer& target) const
 {
   // The marking point moves with his man, by the share it is pulled to him.
   return {.x = target.velocity.x * TacticsTuning::TIGHT_MARK_WEIGHT,
@@ -2996,7 +2996,7 @@ float MatchEngine::tightMarkPenaltyCapybara(const MatchPlayer& receiver) const
 }
 
 float MatchEngine::engageBoostCapybara(const MatchPlayer& defender,
-                                        const MatchPlayer& carrier) const
+                                       const MatchPlayer& carrier) const
 {
   namespace T = TacticsTuning;
   float boost = 1.0F +
@@ -3015,7 +3015,7 @@ float MatchEngine::engageBoostCapybara(const MatchPlayer& defender,
 }
 
 float MatchEngine::pressStandOffShareCapybara(const MatchPlayer& presser,
-                                               const MatchPlayer& carrier) const
+                                              const MatchPlayer& carrier) const
 {
   float share = 1.0F - (0.2F * roleProfileOf(presser).pressBias) -
                 (0.2F * talkSwing(presser.isHomeTeam));
@@ -3187,7 +3187,7 @@ void MatchEngine::assignMarksCapybara(bool home)
 }
 
 void MatchEngine::updateRestartSupportCapybara(MatchPlayer& player,
-                                                const MatchPlayer* taker)
+                                               const MatchPlayer* taker)
 {
   if (player.isGoalkeeper || &player == taker || restartIsSetPiece ||
       (state != MatchState::THROW_IN && state != MatchState::GOAL_KICK))
@@ -3229,7 +3229,7 @@ void MatchEngine::updateRestartSupportCapybara(MatchPlayer& player,
 }
 
 bool MatchEngine::touchNowCapybara(const MatchPlayer& player,
-                                    const TouchMoment& moment) const
+                                   const TouchMoment& moment) const
 {
   // Control is easier the closer the ball is: he lets it come to the
   // closest comfortable point it will pass, unless waiting would risk
@@ -3248,7 +3248,7 @@ bool MatchEngine::touchNowCapybara(const MatchPlayer& player,
 }
 
 bool MatchEngine::dribbleTouchNowCapybara(const MatchPlayer& player,
-                                           const TouchMoment& moment) const
+                                          const TouchMoment& moment) const
 {
   // His own ball, due a touch: the same timing as a first touch, played at
   // once inside the gap he means to play it at (close for a better
@@ -3263,7 +3263,7 @@ bool MatchEngine::dribbleTouchNowCapybara(const MatchPlayer& player,
 }
 
 bool MatchEngine::waitsForCloserCapybara(const MatchPlayer& player,
-                                          const TouchMoment& moment) const
+                                         const TouchMoment& moment) const
 {
   // Reads the ball's roll and his own run: whether a clearly closer point,
   // safely inside his reach, is coming before anything could take it.
@@ -3650,8 +3650,8 @@ MatchEngine::DefensiveCoverCapybara MatchEngine::defensiveCoverCapybara(
 }
 
 bool MatchEngine::goesIntoContestCapybara(const MatchPlayer& defender,
-                                           const MatchPlayer& owner,
-                                           PitchPoint contact)
+                                          const MatchPlayer& owner,
+                                          PitchPoint contact)
 {
   // Tackling plan step 5. He reads the carrier's foot: recovering from a
   // touch, or his touch about to come (he would swing at nothing or meet
@@ -3772,6 +3772,7 @@ MatchEngine::CarrierWeightsCapybara MatchEngine::neutralCarrierWeightsCapybara()
   // Shot.
   weights.shotThreat = D::SHOT_SCORE_SCALE;
   weights.wideShot = D::WIDE_SHOT_DISCOUNT;
+  weights.goalOpen = D::GOAL_OPEN_SHOT_BONUS;
   weights.cutInsideShot = D::CUT_INSIDE_SHOT_BONUS;
   weights.weakFootShot = -T::WEAK_FOOT_SHOT_PENALTY;
   // Carry. Keeping the ball counts as much as a completed pass does.
@@ -4005,11 +4006,98 @@ float nearestOpponentMetres(const std::vector<MatchPlayer>& players,
 float MatchEngine::carryEndXGCapybara(const MatchPlayer& carrier,
                                       PitchPoint end) const
 {
-  const float nearest =
-      nearestOpponentMetres(players, carrier.isHomeTeam, end,
-                            [](const MatchPlayer& p) { return active(p); });
-  return xgBreakdown(pitch, end, carrier.isHomeTeam, carrier.shooting, nearest)
-      .xg;
+  return gameShotXGCapybara(carrier, end);
+}
+
+const MatchPlayer* MatchEngine::opponentKeeperCapybara(bool homeTeam) const
+{
+  for (const MatchPlayer& player : players)
+  {
+    if (player.isHomeTeam != homeTeam && player.isGoalkeeper && active(player))
+    {
+      return &player;
+    }
+  }
+  return nullptr;
+}
+
+float MatchEngine::gameShotXGCapybara(const MatchPlayer& shooter,
+                                      PitchPoint from) const
+{
+  // The game xG maps (game xG plan), where this goal has them; else the
+  // fitted model, with the nearest opponent's pressure as before.
+  const GameXgTable* empty =
+      GameXg::table(GameXgTable::EMPTY_GOAL, pitch.goal.kind);
+  if (empty == nullptr)
+  {
+    const float nearest =
+        nearestOpponentMetres(players, shooter.isHomeTeam, from,
+                              [](const MatchPlayer& p) { return active(p); });
+    return xgBreakdown(pitch, from, shooter.isHomeTeam, shooter.shooting,
+                       nearest)
+        .xg;
+  }
+  // The maps attack the right-hand goal with a right-footed shooter: turned
+  // round for the other end, mirrored for a left-footer (the engine's feet
+  // mirror each other).
+  constexpr float RATING_SCALE = 100.0F;
+  const float goalX = pitch.atX(shooter.isHomeTeam ? 1.0F : 0.0F);
+  const float line = std::abs(goalX - from.x);
+  float side = from.y - pitch.atY(MatchTuning::Pitch::CENTRE);
+  if (!shooter.isHomeTeam)
+  {
+    side = -side;
+  }
+  if ((shooter.player != nullptr) && shooter.player->getFoot() == Foot::Left)
+  {
+    side = -side;
+  }
+  const float shooting = shooter.shooting * RATING_SCALE;
+  float chance = empty->value(line, side, shooting);
+  // A keeper in his usual place takes his share off it (the keeper map's
+  // factor); how far he is from it is the shot score's "goal open" term.
+  if (const MatchPlayer* keeper = opponentKeeperCapybara(shooter.isHomeTeam))
+  {
+    if (const GameXgTable* withKeeper =
+            GameXg::table(GameXgTable::KEEPER, pitch.goal.kind))
+    {
+      chance *= withKeeper->value(line, side, shooting,
+                                  keeper->goalkeeping * RATING_SCALE);
+    }
+  }
+  return chance;
+}
+
+bool MatchEngine::goalOpenCapybara(const MatchPlayer& shooter) const
+{
+  using D = MatchTuning::Decision;
+  const MatchPlayer* keeper = opponentKeeperCapybara(shooter.isHomeTeam);
+  if ((keeper == nullptr) || !pitch.goal.present())
+  {
+    return false;
+  }
+  // Rushing him: closing on him faster than a keeper holding his place.
+  const float towardX = shooter.position.x - keeper->position.x;
+  const float towardY = shooter.position.y - keeper->position.y;
+  const float apart = std::hypot(towardX, towardY);
+  if (apart > EPSILON &&
+      ((keeper->velocity.x * towardX) + (keeper->velocity.y * towardY)) /
+              apart >
+          D::KEEPER_RUSH_SPEED)
+  {
+    return true;
+  }
+  // Or more of the mouth left open than from his set position.
+  const float goalX = pitch.atX(shooter.isHomeTeam ? 1.0F : 0.0F);
+  const float middle = pitch.atY(MatchTuning::Pitch::CENTRE);
+  const auto open = [&](PitchPoint at)
+  {
+    return GameXg::openShare(shooter.position, at, goalX, middle,
+                             pitch.goal.halfWidth, D::KEEPER_COVER_METRES);
+  };
+  return open(keeper->position) -
+             open(keeperSetPositionCapybara(*keeper, shooter.position)) >=
+         D::GOAL_OPEN_SHARE_MARGIN;
 }
 
 float MatchEngine::progressCapybara(bool homeTeam, PitchPoint from,
@@ -4076,7 +4164,7 @@ MatchEngine::BallAction MatchEngine::chooseBallActionCapybara(
                   nearestOpponentDistance(carrier)) /
                      MatchTuning::Decision::PRESSURE_RADIUS_METRES,
                  0.0F, 1.0F);
-  const float shotXG = estimateShotXG(carrier);
+  const float shotXG = gameShotXGCapybara(carrier, carrier.position);
   const float opennessAhead = openSpaceAhead(carrier);
 
   // Debugger detail: the parts of every score are noted beside the
@@ -4096,8 +4184,8 @@ MatchEngine::BallAction MatchEngine::chooseBallActionCapybara(
   // Evaluate the passing candidates first: the task is pure (no random draws)
   // and the deterministic best plus runner-up options are visible in the
   // decision snapshot even when a shot or dribble is eventually chosen.
-  const std::optional<PassOption> option = choosePassTargetCapybara(
-      carrier, detail ? &detail->candidates : nullptr);
+  const std::optional<PassOption> option =
+      choosePassTargetCapybara(carrier, detail ? &detail->candidates : nullptr);
 
   // The noise is two things (step B7), both from his Decisions (a derived
   // stat: Vision and Passing, with its own spread). Our own estimates.
@@ -4203,8 +4291,10 @@ MatchEngine::BallAction MatchEngine::chooseBallActionCapybara(
     {
       readChance("pass completion", read.completionProbability,
                  completionOffset);
-      readChance("receiver's xG", estimateShotXG(*option->receiver),
-                 receiverXGOffset);
+      readChance(
+          "receiver's xG",
+          gameShotXGCapybara(*option->receiver, option->receiver->position),
+          receiverXGOffset);
       flowRecord->bestReceiver = option->receiver->player != nullptr
                                      ? option->receiver->player->getId()
                                      : 0;
@@ -4234,6 +4324,10 @@ MatchEngine::BallAction MatchEngine::chooseBallActionCapybara(
     const float readXG = readChance("shot xG", shotXG, misreadOffset());
     const float range = addShotCoreCapybara(
         shot, weights, pitch, carrier.position, carrier.isHomeTeam, readXG);
+    // The keeper away from his usual place, or rushing him (game xG plan:
+    // the keeper map assumes him set, so a flat bonus covers the rest).
+    shot.add("goal more open than usual", S::SITUATION,
+             gate(goalOpenCapybara(carrier)), weights.goalOpen);
     // A wide forward who has cut inside is looking for his shot; roles
     // shoot more or less readily; a man forced onto his weaker foot under
     // pressure is less inclined to try.
@@ -4550,7 +4644,7 @@ MatchEngine::BallAction MatchEngine::chooseBallActionCapybara(
 }
 
 float MatchEngine::passingLaneRiskCapybara(const MatchPlayer& passer,
-                                            const MatchPlayer& receiver) const
+                                           const MatchPlayer& receiver) const
 {
   // Each opponent ahead of the passer along the straight lane threatens it
   // by how close he stands to the line, against how far he could reach by
@@ -4710,8 +4804,8 @@ MatchEngine::PassOption MatchEngine::evaluatePassOptionCapybara(
   // The chances as he reads them (judgement; unchanged in the pass search).
   const float readCompletion =
       DecisionFrame::misread(completionProbability, misread.completion);
-  const float readReceiverXG =
-      DecisionFrame::misread(estimateShotXG(receiver), misread.receiverXG);
+  const float readReceiverXG = DecisionFrame::misread(
+      gameShotXGCapybara(receiver, receiver.position), misread.receiverXG);
   // Progress: the chance it arrives times the gain, as for the carry.
   const float passProgress = readCompletion * progression;
   score.add("space where the ball ends", S::SITUATION, openness, weights.space);
@@ -4992,7 +5086,7 @@ std::optional<MatchEngine::PassOption> MatchEngine::choosePassTargetCapybara(
 }
 
 void MatchEngine::afterPassReleasedCapybara(const MatchPlayer& passer,
-                                             const MatchPlayer& receiver)
+                                            const MatchPlayer& receiver)
 {
   // Keep externally visible AI state consistent with the newly released
   // pass. Without this, the final fixed step of a rendered frame could expose
@@ -5080,7 +5174,7 @@ float MatchEngine::choosePenaltyGuessCapybara(const MatchPlayer& keeper)
 }
 
 PitchPoint MatchEngine::goalkeeperTargetCapybara(MatchPlayer& keeper,
-                                                  const MatchPlayer* carrier)
+                                                 const MatchPlayer* carrier)
 {
   GoalkeeperControl& control = keepers[keeper.isHomeTeam ? 0 : 1];
   const auto setState = [&control](GoalkeeperState next)
@@ -5221,11 +5315,18 @@ PitchPoint MatchEngine::goalkeeperTargetCapybara(MatchPlayer& keeper,
     }
   }
 
+  setState(GoalkeeperState::SET_POSITION);
+  return keeperSetPositionCapybara(
+      keeper, (carrier != nullptr) ? carrier->position : ball.position);
+}
+
+PitchPoint MatchEngine::keeperSetPositionCapybara(const MatchPlayer& keeper,
+                                                  PitchPoint threat) const
+{
   // Set position on the ball-goal line, advancing to narrow the angle as the
   // threat approaches and acting as a sweeper when play is far away.
-  setState(GoalkeeperState::SET_POSITION);
-  const PitchPoint threat =
-      (carrier != nullptr) ? carrier->position : ball.position;
+  const float goalX = keeper.isHomeTeam ? 0.0F : 1.0F;
+  const PitchPoint goalCentre = pitch.at(goalX, MatchTuning::Pitch::CENTRE);
   const float threatMetres = distance(threat, goalCentre);
   float depthMetres = MatchTuning::Goalkeeper::NEAR_DEPTH_METRES +
                       (threatMetres * MatchTuning::Goalkeeper::DEPTH_PER_METRE);
@@ -5259,8 +5360,7 @@ bool MatchEngine::choosesToBlockCapybara(const MatchPlayer& /*player*/)
   return true;
 }
 
-bool MatchEngine::choosesToPutBlockBehindCapybara(
-    const MatchPlayer& /*player*/)
+bool MatchEngine::choosesToPutBlockBehindCapybara(const MatchPlayer& /*player*/)
 {
   // No second kick after a block (shot block plan step 4): the ball goes
   // where it comes off him.
@@ -5460,7 +5560,7 @@ MatchEngine::HeaderPlay MatchEngine::chooseHeaderPlayCapybara(
 }
 
 MatchPlayer* MatchEngine::bestSetPieceTakerCapybara(bool homeTeam,
-                                                     bool shooting)
+                                                    bool shooting)
 {
   MatchPlayer* best = nullptr;
   float bestScore = -std::numeric_limits<float>::infinity();
@@ -5664,9 +5764,9 @@ void MatchEngine::arrangeSetPieceDefenceCapybara(
 }
 
 MatchPlayer* MatchEngine::chooseRestartTakerCapybara(MatchState restart,
-                                                      bool homeTeam,
-                                                      PitchPoint spot,
-                                                      bool topCorner)
+                                                     bool homeTeam,
+                                                     PitchPoint spot,
+                                                     bool topCorner)
 {
   switch (restart)
   {
@@ -5961,7 +6061,7 @@ float MatchEngine::carryPaceCapybara(const MatchPlayer& player) const
 }
 
 float MatchEngine::chooseTouchSecondsCapybara(const MatchPlayer& player,
-                                               float pace, float toEnd) const
+                                              float pace, float toEnd) const
 {
   // How long until he wants the ball again (dribble meet plan 3c): his
   // intent, not his ability. In open space, longer the more urgently he
@@ -5995,10 +6095,9 @@ float MatchEngine::chooseTouchSecondsCapybara(const MatchPlayer& player,
 }
 
 float MatchEngine::pushMetresCapybara(const MatchPlayer& player,
-                                       PitchPoint from, Vector2F direction,
-                                       float startGap, float pace,
-                                       float seconds,
-                                       std::optional<float> toGoal) const
+                                      PitchPoint from, Vector2F direction,
+                                      float startGap, float pace, float seconds,
+                                      std::optional<float> toGoal) const
 {
   // As far as he runs at `pace` in `seconds` (from `startGap` behind it),
   // so he gets to it about then; never past where he is going, with room

@@ -3061,6 +3061,12 @@ class MatchEngine
    * is for forceShot). Call it after startDrill, before the first step.
    * False if he doesn't have the ball. Logged and replayed. */
   bool strikeStillBall(PlayerID playerId);
+  /** Drills (game xG plan): where this keeper takes his set position
+   * against a threat at `threat` (Capybara's keeper: his standing place on
+   * the ball-goal line), the "usual" position of the keeper layer. None if
+   * he isn't in the match. */
+  [[nodiscard]] std::optional<PitchPoint> keeperSetPosition(
+      PlayerID keeperId, PitchPoint threat) const;
   void forceShot(PlayerID playerId, std::optional<Vector2F> aim = std::nullopt,
                  std::optional<float> powerShare = std::nullopt,
                  bool firstTime = false,

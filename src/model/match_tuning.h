@@ -1500,6 +1500,16 @@ struct MatchTuning final
     static constexpr float PRESSURE_RADIUS_METRES = 8.5F;
     static constexpr float BASE_SHOT_THRESHOLD = 0.056F;
     static constexpr float MIN_SHOT_XG = 0.005F;
+    /** The goal more open than usual (game xG plan, step 2; agreed
+     * 2026-11-20 as placeholders, to tune by watching): a flat term on the
+     * Capybara shot score when the keeper leaves at least
+     * GOAL_OPEN_SHARE_MARGIN more of the mouth uncovered (as the shooter sees
+     * it) than at his set position, covering KEEPER_COVER_METRES either side
+     * of him, or rushes him (closing faster than KEEPER_RUSH_SPEED, m/s). */
+    static constexpr float GOAL_OPEN_SHOT_BONUS = 0.5F;
+    static constexpr float GOAL_OPEN_SHARE_MARGIN = 0.15F;
+    static constexpr float KEEPER_COVER_METRES = 1.2F;
+    static constexpr float KEEPER_RUSH_SPEED = 2.0F;
     /** Time on the ball before a carrier re-decides while dribbling. */
     static constexpr float MIN_DRIBBLE_TIME = 0.5F;
     static constexpr float MAX_DRIBBLE_TIME = 1.1F;

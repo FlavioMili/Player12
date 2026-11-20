@@ -59,7 +59,8 @@ class XgMapScene : public GUIScene
   };
   /** The goal the map is for: the match's, or the training pitch's. */
   [[nodiscard]] GoalKind goalKind() const;
-  /** Loads the saved empty-goal table for goalKind() (none if missing). */
+  /** Loads the saved empty-goal and keeper tables for goalKind() (none if
+   * missing). */
   void loadGameTable();
   void renderSweep(float width);
   /** The card for the spot last pointed at. */
@@ -88,12 +89,20 @@ class XgMapScene : public GUIScene
   // Game xG (game xG plan): the saved table for the map's goal, and a
   // sweep that measures it afresh.
   std::optional<GameXgTable> gameTable;
+  /** The keeper layer's table (a factor on the empty goal's), if saved. */
+  std::optional<GameXgTable> keeperTable;
   std::optional<GoalKind> gameTableGoal;
   std::string gameTableNote;
+  /** Game xG shown: the empty goal alone (0), or with a keeper at his set
+   * position (1), at this Goalkeeping. */
+  int gameKeeper = 1;
+  float goalkeepingSetting = 50.0F;
   std::vector<std::unique_ptr<Drill>> drills;
   Drill* shotDrill = nullptr;
   std::unique_ptr<GameXgSweep> sweep;
   float sweepRepeats = 60.0F;
+  /** The layer the sweep measures: the empty goal (0) or the keeper (1). */
+  int sweepLayer = 0;
   std::string sweepNote;
 
   // The map, worked out when a setting changes.

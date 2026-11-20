@@ -29,9 +29,16 @@ constexpr const char* SIDE = "Off centre (m)";
 constexpr const char* GOALS = "Goals";
 constexpr const char* SHOOTING = "Shooting";
 constexpr const char* KEEPER = "Keeper";
+constexpr const char* GOALKEEPING = "Goalkeeping";
+/** Where the keeper starts: 0, his set position. */
+constexpr const char* KEEPER_STARTS = "Keeper starts";
 /** The shooter's foot: right (0), as most players; the left foot's map is
  * this one mirrored. */
 constexpr const char* FOOT = "Foot";
+/** The keeper factor's floor under the empty goal's chance: where the empty
+ * goal is nearly never scored (the narrowest angles), the factor isn't
+ * noise over nothing (my choice). */
+constexpr float MIN_EMPTY_CHANCE = 0.02F;
 /** A flag metric (shot, goal) counts as set above half. */
 constexpr double FLAG_SET = 0.5;
 /** Two-sided 95%: a mirrored pair differs beyond chance past this. */
@@ -101,6 +108,34 @@ GameXgSweep::GameXgSweep(Drill& shotDrill, const StatsConfig& config_ref,
     setup.bands = GameXgSweepSpec{}.bands;
   }
   std::ranges::sort(setup.shooting);
+  if (keeperLayer())
+  {
+    if (setup.goalkeeping.empty())
+    {
+      setup.goalkeeping = GameXgSweepSpec{}.goalkeeping;
+    }
+    std::ranges::sort(setup.goalkeeping);
+    // A copy, so a re-run of the empty goal meanwhile doesn't move it.
+    if (const GameXgTable* empty =
+            GameXg::table(GameXgTable::EMPTY_GOAL, setup.goal))
+    {
+      emptyGoal = *empty;
+    }
+    else
+    {
+      trouble = std::format(
+          "the keeper layer needs the empty goal's map for the {} goal: "
+          "sweep that first",
+          goalKindName(setup.goal));
+      halted = true;
+      stage = Stage::DONE;
+      return;
+    }
+  }
+  else
+  {
+    setup.goalkeeping.clear();
+  }
   // The lattice: the finest band's step; each band takes every n-th spot of
   // it inside its own box (n = its step over the finest), both sides.
   fine = setup.bands.front().step;
@@ -158,9 +193,27 @@ float GameXgSweep::sideMetres(int side) const
   return static_cast<float>(side) * fine;
 }
 
+std::size_t GameXgSweep::levels() const
+{
+  return std::max<std::size_t>(1, setup.goalkeeping.size()) *
+         setup.shooting.size();
+}
+
+float GameXgSweep::shootingOf(std::size_t level) const
+{
+  return setup.shooting[level % setup.shooting.size()];
+}
+
+float GameXgSweep::goalkeepingOf(std::size_t level) const
+{
+  return setup.goalkeeping.empty()
+             ? 0.0F
+             : setup.goalkeeping[level / setup.shooting.size()];
+}
+
 void GameXgSweep::queue(int line, int side)
 {
-  for (std::size_t level = 0; level < setup.shooting.size(); ++level)
+  for (std::size_t level = 0; level < levels(); ++level)
   {
     const Key key{line, side, level};
     if (!index.contains(key))
@@ -176,9 +229,9 @@ std::vector<GameXgSweep::SweepSpot> GameXgSweep::spots() const
   // A spot's levels are queued together, so they sit side by side in
   // `points`: measured before nextPoint, waiting after it.
   std::vector<SweepSpot> out;
-  for (std::size_t at = 0; at < points.size(); at += setup.shooting.size())
+  for (std::size_t at = 0; at < points.size(); at += levels())
   {
-    const std::size_t last = at + setup.shooting.size() - 1;
+    const std::size_t last = at + levels() - 1;
     SpotState state = SpotState::MEASURING;
     if ((stage == Stage::DONE && !halted) || last < nextPoint)
     {
@@ -206,8 +259,12 @@ std::string GameXgSweep::phase() const
   {
     case Stage::MEASURE:
       return std::format("measuring {} spots, both sides",
-                         points.size() / setup.shooting.size());
+                         points.size() / levels());
     case Stage::DONE:
+      if (!trouble.empty())
+      {
+        return trouble;
+      }
       return halted ? "stopped" : "done";
   }
   return "";
@@ -221,8 +278,13 @@ void GameXgSweep::runOne()
   values[LINE] = lineMetres(point.line);
   values[SIDE] = sideMetres(point.side);
   values[GOALS] = static_cast<float>(static_cast<int>(setup.goal) - 1);
-  values[SHOOTING] = setup.shooting[point.level];
-  values[KEEPER] = 0.0F;
+  values[SHOOTING] = shootingOf(point.level);
+  values[KEEPER] = keeperLayer() ? 1.0F : 0.0F;
+  if (keeperLayer())
+  {
+    values[GOALKEEPING] = goalkeepingOf(point.level);
+    values[KEEPER_STARTS] = 0.0F;
+  }
   values[FOOT] = 0.0F;
   for (const DrillParameter& parameter : drill.parameters())
   {
@@ -378,12 +440,14 @@ void GameXgSweep::finish()
   const bool folding = mirror.value_or(false);
   GameXgTable& table = result;
   table = GameXgTable{};
+  table.layer = setup.layer;
   table.goal = setup.goal;
   table.measured = timestamp();
   table.repeats = setup.repeats;
   table.firstSeed = setup.firstSeed;
   table.mirrored = folding;
   table.shooting = setup.shooting;
+  table.goalkeeping = setup.goalkeeping;
   const float step = setup.gridStep;
   table.line = {.from = setup.lineFrom,
                 .step = step,
@@ -403,25 +467,35 @@ void GameXgSweep::finish()
   {
     table.samples.push_back({.line = lineMetres(point.line),
                              .side = sideMetres(point.side),
-                             .shooting = setup.shooting[point.level],
+                             .shooting = shootingOf(point.level),
+                             .goalkeeping = goalkeepingOf(point.level),
                              .shots = point.shots,
                              .goals = point.goals});
   }
 
-  // Smoothing, per Shooting level, onto the regular grid.
+  // Smoothing, per level, onto the regular grid. The keeper layer stores
+  // its smoothed chance over the empty goal's there: the keeper's factor.
   table.values.clear();
-  table.values.reserve(setup.shooting.size() *
-                       static_cast<std::size_t>(table.line.count) *
+  table.values.reserve(levels() * static_cast<std::size_t>(table.line.count) *
                        static_cast<std::size_t>(table.side.count));
-  for (std::size_t level = 0; level < setup.shooting.size(); ++level)
+  for (std::size_t level = 0; level < levels(); ++level)
   {
     const std::vector<SmoothingDatum> data = levelData(level);
     for (int li = 0; li < table.line.count; ++li)
     {
       for (int si = 0; si < table.side.count; ++si)
       {
-        table.values.push_back(smoothedAt(data, table.line.at(li),
-                                          table.side.at(si), halfWidth()));
+        const float line = table.line.at(li);
+        const float side = table.side.at(si);
+        const float chance = smoothedAt(data, line, side, halfWidth());
+        if (!emptyGoal)
+        {
+          table.values.push_back(chance);
+          continue;
+        }
+        const float open = std::max(
+            MIN_EMPTY_CHANCE, emptyGoal->value(line, side, shootingOf(level)));
+        table.values.push_back(std::clamp(chance / open, 0.0F, 1.0F));
       }
     }
   }
@@ -564,26 +638,37 @@ void printTable(const GameXgTable& table)
       table.mirrored ? std::vector<float>(HALF.begin(), HALF.end())
                      : std::vector<float>(BOTH.begin(), BOTH.end());
   constexpr double PERCENT = 100.0;
-  for (const float shooting : table.shooting)
+  const std::vector<float> keepers =
+      table.goalkeeping.empty() ? std::vector<float>{0.0F} : table.goalkeeping;
+  for (const float goalkeeping : keepers)
   {
-    std::cout << std::format(
-        "\nShooting {:g}: chance (%) by metres out (rows) and off centre\n",
-        shooting);
-    std::string header = "        ";
-    for (const float side : SIDES)
+    for (const float shooting : table.shooting)
     {
-      header += std::format("{:>6g}", side);
-    }
-    std::cout << header << '\n';
-    for (const float line : LINES)
-    {
-      std::string row = std::format("{:>6g}  ", line);
+      std::cout << std::format(
+          "\nShooting {:g}{}: {} (%) by metres out (rows) and off centre\n",
+          shooting,
+          table.goalkeeping.empty()
+              ? std::string()
+              : std::format(", Goalkeeping {:g}", goalkeeping),
+          table.goalkeeping.empty() ? "chance"
+                                    : "keeper factor on the empty goal");
+      std::string header = "        ";
       for (const float side : SIDES)
       {
-        row += std::format("{:>6.0f}",
-                           PERCENT * table.value(line, side, shooting));
+        header += std::format("{:>6g}", side);
       }
-      std::cout << row << '\n';
+      std::cout << header << '\n';
+      for (const float line : LINES)
+      {
+        std::string row = std::format("{:>6g}  ", line);
+        for (const float side : SIDES)
+        {
+          row += std::format(
+              "{:>6.0f}",
+              PERCENT * table.value(line, side, shooting, goalkeeping));
+        }
+        std::cout << row << '\n';
+      }
     }
   }
 }
@@ -688,6 +773,7 @@ std::optional<GameXgOptions> parseOptions(
     const std::vector<std::string>& arguments, std::string& error)
 {
   GameXgOptions options;
+  bool shootingGiven = false;
   for (std::size_t index = 0; index < arguments.size(); ++index)
   {
     const std::string& argument = arguments[index];
@@ -727,6 +813,37 @@ std::optional<GameXgOptions> parseOptions(
         return std::nullopt;
       }
       options.base.shooting = *levels;
+      shootingGiven = true;
+    }
+    else if (argument == "--goalkeeping")
+    {
+      const auto levels = numbers(value);
+      if (!levels)
+      {
+        error = "--goalkeeping expects numbers, e.g. 1,50,100";
+        return std::nullopt;
+      }
+      options.base.goalkeeping = *levels;
+    }
+    else if (argument == "--layer")
+    {
+      if (value == "empty")
+      {
+        options.base.layer = GameXgTable::EMPTY_GOAL;
+      }
+      else if (value == "keeper")
+      {
+        options.base.layer = GameXgTable::KEEPER;
+        if (!shootingGiven)
+        {
+          options.base.shooting = gameXgSpec(GameXgTable::KEEPER).shooting;
+        }
+      }
+      else
+      {
+        error = "--layer: empty or keeper";
+        return std::nullopt;
+      }
     }
     else if (argument == "--out")
     {
@@ -754,6 +871,19 @@ std::optional<GameXgOptions> parseOptions(
   return options;
 }
 }  // namespace
+
+GameXgSweepSpec gameXgSpec(std::string_view layer)
+{
+  GameXgSweepSpec spec;
+  spec.layer = std::string(layer);
+  if (layer == GameXgTable::KEEPER)
+  {
+    // Three Shooting ratings, as its three Goalkeeping ones, to keep the
+    // run near the empty goal's length (my choice).
+    spec.shooting = spec.goalkeeping;
+  }
+  return spec;
+}
 
 Drill* gameXgDrill(const std::vector<std::unique_ptr<Drill>>& drills)
 {
@@ -791,8 +921,13 @@ int runGameXgCommand(const StatsConfig& config,
     GameXgSweepSpec spec = options->base;
     spec.goal = goal;
     GameXgSweep sweep(*shotDrill, config, spec);
-    std::cout << std::format("Game xG, empty goal, {} goal: {} shots a point\n",
-                             goalKindName(goal), spec.repeats);
+    std::cout << std::format("Game xG, {} layer, {} goal: {} shots a point\n",
+                             spec.layer, goalKindName(goal), spec.repeats);
+    if (!sweep.problem().empty())
+    {
+      std::cerr << "game-xg: " << sweep.problem() << '\n';
+      return 1;
+    }
     while (sweep.work(1.0))
     {
       std::cerr << std::format("  {}: {} / {} runs\r", sweep.phase(),
@@ -828,6 +963,7 @@ int runGameXgCommand(const StatsConfig& config,
         return 1;
       }
       std::cout << "Saved " << path.string() << '\n';
+      GameXg::reload();
     }
   }
   return 0;
