@@ -605,7 +605,7 @@ void XgMapScene::renderSweep(float width)
     }
     ImGui::TextDisabled(
         "The Shot drill at an empty goal, both sides: spots every 1 m to "
-        "18 m out (20 m either side), 2 m to 30 m, 4 m beyond; Shooting 1, "
+        "18 m out (20 m either side), 2 m to 30 m, 4 m to halfway; Shooting 1, "
         "25, 50, 75 and 100. About 4-5 minutes at 60 shots a point. Saves "
         "to assets/config/game_xg/ when done.");
   }

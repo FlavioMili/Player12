@@ -555,10 +555,11 @@ std::optional<GoalKind> goalNamed(std::string_view name)
 
 void printTable(const GameXgTable& table)
 {
-  constexpr std::array<float, 10> LINES{0, 2, 6, 11, 16, 20, 25, 30, 35, 40};
-  constexpr std::array<float, 7> HALF{0, 4, 8, 12, 16, 20, 24};
-  constexpr std::array<float, 13> BOTH{-24, -20, -16, -12, -8, -4, 0,
-                                       4,   8,   12,  16,  20, 24};
+  constexpr std::array<float, 12> LINES{0,  2,  6,  11, 16, 20,
+                                        25, 30, 35, 40, 45, 52};
+  constexpr std::array<float, 9> HALF{0, 4, 8, 12, 16, 20, 24, 28, 32};
+  constexpr std::array<float, 17> BOTH{-32, -28, -24, -20, -16, -12, -8, -4, 0,
+                                       4,   8,   12,  16,  20,  24,  28, 32};
   const std::vector<float> SIDES =
       table.mirrored ? std::vector<float>(HALF.begin(), HALF.end())
                      : std::vector<float>(BOTH.begin(), BOTH.end());
@@ -657,7 +658,7 @@ bool numericOption(const std::string& argument, const std::string& value,
   return true;
 }
 
-/** "18:20:1,30:28:2,41:28:4": each band's line-to, side-max and step (m),
+/** "18:20:1,30:28:2,52:32:4": each band's line-to, side-max and step (m),
  * finest first. */
 std::optional<std::vector<GameXgBand>> bandsNamed(std::string value)
 {
@@ -738,7 +739,7 @@ std::optional<GameXgOptions> parseOptions(
       {
         error =
             "--bands expects LINE:SIDE:STEP,... finest first, e.g. "
-            "18:20:1,30:28:2,41:28:4";
+            "18:20:1,30:28:2,52:32:4";
         return std::nullopt;
       }
       options.base.bands = *bands;

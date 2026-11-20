@@ -77,11 +77,13 @@ struct GameXgSweepSpec
    * baseline for the narrowest angles. */
   float lineFrom = 0.0F;
   /** Finest first: 1 m in and around the box, 2 m to 30 m, 4 m beyond. The
-   * last band is the sweep's extent. */
+   * last band is the sweep's extent: the match pitch's attacking half (to
+   * halfway, 52.5 m out) and as near the touchlines as the drill places the
+   * ball, so the map has no flat strips beyond what was measured. */
   std::vector<GameXgBand> bands{
       {.lineTo = 18.0F, .sideMax = 20.0F, .step = 1.0F},
       {.lineTo = 30.0F, .sideMax = 28.0F, .step = 2.0F},
-      {.lineTo = 40.0F, .sideMax = 28.0F, .step = 4.0F}};
+      {.lineTo = 52.0F, .sideMax = 32.0F, .step = 4.0F}};
   int repeats = 60;
   std::uint32_t firstSeed = 1;
   /** Left and right count as mirror images if no more than this share of
