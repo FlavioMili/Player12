@@ -36,6 +36,28 @@ constexpr float MIN_CELL_METRES = 0.25F;
 constexpr float NO_DEFENDER_METRES = 1000.0F;
 /** The Laws' centre circle and penalty arc (9.15 m). */
 constexpr float CIRCLE_RADIUS_METRES = 9.15F;
+constexpr float DEGREES_PER_RADIAN = 180.0F / std::numbers::pi_v<float>;
+constexpr float QUARTER_TURN = std::numbers::pi_v<float> / 2.0F;
+constexpr int PENALTY_ARC_SEGMENTS = 24;
+/** Each value is taken at the middle of its cell. */
+constexpr float CELL_MIDDLE = 0.5F;
+/** Controls (scaled pixels) and the training pitch's size limits (m). */
+constexpr float CONTROL_WIDTH = 220.0F;
+constexpr float DEFENDER_CONTROL_WIDTH = 160.0F;
+constexpr float MIN_LENGTH_METRES = 10.0F;
+constexpr float MAX_LENGTH_METRES = 80.0F;
+constexpr float MIN_WIDTH_METRES = 8.0F;
+constexpr float MAX_WIDTH_METRES = 60.0F;
+constexpr float MIN_DEFENDER_METRES = 0.3F;
+constexpr float MAX_DEFENDER_METRES = 9.0F;
+/** Drawing: contour lines, the penalty spot, the walls (times a line), the
+ * ring at the mouse (pixels). */
+constexpr float CONTOUR_THICKNESS = 1.5F;
+constexpr float MIN_SPOT_RADIUS = 1.5F;
+constexpr float SPOT_RADIUS_METRES = 0.2F;
+constexpr float WALL_LINES = 2.0F;
+constexpr float MOUSE_RING_RADIUS = 5.0F;
+constexpr float MOUSE_RING_THICKNESS = 2.0F;
 constexpr std::array<const char*, 8> GOAL_NAMES{
     "None",   "Full size", "9v9",          "7v7",
     "Futsal", "5-a-side",  "Small framed", "Pop-up"};
@@ -93,8 +115,8 @@ void XgMapScene::onEnter()
         AssetPaths::file((std::string("assets/fonts/") + file).c_str()).c_str(),
         size, &config);
   };
-  regularFont = font("Manrope-Regular.ttf", 16);
-  boldFont = font("Manrope-Bold.ttf", 14);
+  regularFont = font("Manrope-Regular.ttf", SandboxPageUI::REGULAR_FONT_SIZE);
+  boldFont = font("Manrope-Bold.ttf", SandboxPageUI::BOLD_FONT_SIZE);
 }
 
 void XgMapScene::update(float /*deltaTime*/) {}
@@ -170,8 +192,9 @@ void XgMapScene::rebuild()
     {
       grid[(static_cast<std::size_t>(row) * static_cast<std::size_t>(columns)) +
            static_cast<std::size_t>(column)] =
-          spotAt(built, PitchPoint{(static_cast<float>(column) + 0.5F) * cell,
-                                   (static_cast<float>(row) + 0.5F) * cell});
+          spotAt(built,
+                 PitchPoint{(static_cast<float>(column) + CELL_MIDDLE) * cell,
+                            (static_cast<float>(row) + CELL_MIDDLE) * cell});
     }
   }
   dirty = false;
@@ -188,7 +211,8 @@ void XgMapScene::render()
   ImGui::SetNextWindowSize(viewport->WorkSize);
   ImGui::PushStyleColor(ImGuiCol_WindowBg, Page::PAGE);
   ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding,
-                      ImVec2(24 * scale, 24 * scale));
+                      ImVec2(SandboxPageUI::PAGE_PADDING * scale,
+                             SandboxPageUI::PAGE_PADDING * scale));
   ImGui::PushStyleVar(ImGuiStyleVar_WindowBorderSize, 0);
   ImGui::PushStyleVar(ImGuiStyleVar_WindowRounding, 0);
   ImGui::Begin("##xg_map", nullptr,
@@ -204,14 +228,15 @@ void XgMapScene::render()
     rebuild();
   }
   const ImVec2 available = ImGui::GetContentRegionAvail();
-  const float gutter = (6 * scale) + ImGui::GetStyle().ScrollbarSize;
+  const float gutter =
+      (SandboxPageUI::PANEL_GAP * scale) + ImGui::GetStyle().ScrollbarSize;
   const float panel = std::min(420 * scale, available.x * 0.4F);
   ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(0, 0));
   ImGui::BeginChild("##xg_map_controls", ImVec2(panel + gutter, available.y),
                     ImGuiChildFlags_AlwaysUseWindowPadding);
   renderPanel(panel);
   ImGui::EndChild();
-  ImGui::SameLine(0, 6 * scale);
+  ImGui::SameLine(0, SandboxPageUI::PANEL_GAP * scale);
   renderMap(std::max(scale, ImGui::GetContentRegionAvail().x), available.y);
   ImGui::PopStyleVar();
   ImGui::End();
@@ -249,13 +274,13 @@ void XgMapScene::renderPanel(float width)
   trainingPitch = pitchKind == 1;
   if (trainingPitch)
   {
-    ImGui::SetNextItemWidth(220 * scale);
-    changed(
-        ImGui::SliderFloat("Length (m)", &lengthSetting, 10.0F, 80.0F, "%.0f"));
-    ImGui::SetNextItemWidth(220 * scale);
-    changed(
-        ImGui::SliderFloat("Width (m)", &widthSetting, 8.0F, 60.0F, "%.0f"));
-    ImGui::SetNextItemWidth(220 * scale);
+    ImGui::SetNextItemWidth(CONTROL_WIDTH * scale);
+    changed(ImGui::SliderFloat("Length (m)", &lengthSetting, MIN_LENGTH_METRES,
+                               MAX_LENGTH_METRES, "%.0f"));
+    ImGui::SetNextItemWidth(CONTROL_WIDTH * scale);
+    changed(ImGui::SliderFloat("Width (m)", &widthSetting, MIN_WIDTH_METRES,
+                               MAX_WIDTH_METRES, "%.0f"));
+    ImGui::SetNextItemWidth(CONTROL_WIDTH * scale);
     if (SandboxPageUI::beginCombo(
             "Goals", GOAL_NAMES.at(static_cast<std::size_t>(goalChoice))))
     {
@@ -271,7 +296,7 @@ void XgMapScene::renderPanel(float width)
       ImGui::EndCombo();
     }
   }
-  ImGui::SetNextItemWidth(220 * scale);
+  ImGui::SetNextItemWidth(CONTROL_WIDTH * scale);
   changed(
       ImGui::SliderFloat("Shooting", &shootingSetting, 1.0F, 100.0F, "%.0f"));
   changed(ImGui::Checkbox("Header", &header));
@@ -279,11 +304,11 @@ void XgMapScene::renderPanel(float width)
   if (defender)
   {
     ImGui::SameLine();
-    ImGui::SetNextItemWidth(160 * scale);
-    changed(
-        ImGui::SliderFloat("away (m)", &defenderMetres, 0.3F, 9.0F, "%.1f"));
+    ImGui::SetNextItemWidth(DEFENDER_CONTROL_WIDTH * scale);
+    changed(ImGui::SliderFloat("away (m)", &defenderMetres, MIN_DEFENDER_METRES,
+                               MAX_DEFENDER_METRES, "%.1f"));
   }
-  ImGui::SetNextItemWidth(220 * scale);
+  ImGui::SetNextItemWidth(CONTROL_WIDTH * scale);
   changed(ImGui::SliderFloat("Space ahead", &spaceAhead, 0.0F, 1.0F, "%.2f"));
   ImGui::TextUnformatted("Show");
   ImGui::SameLine();
@@ -331,7 +356,8 @@ void XgMapScene::renderPanel(float width)
       ImGui::Text(
           "%.1f m from the goal (%.1f m from its line, %.1f m off the middle); "
           "the goal's mouth shows %.1f degrees.",
-          x.metres, x.lineMetres, x.lateralMetres, x.angle * 57.29578F);
+          x.metres, x.lineMetres, x.lateralMetres,
+          x.angle * DEGREES_PER_RADIAN);
       ImGui::Text("Location (the fitted model): %.3f", x.location);
       ImGui::Text("x skill %.2f (Shooting %.0f)", x.skillFactor,
                   shootingSetting);
@@ -512,7 +538,7 @@ void XgMapScene::renderMap(float width, float height)
                                 static_cast<std::size_t>(column) + 1]) < level))
           {
             draw->AddLine(screen(x1, y1 - cell), screen(x1, y1),
-                          IM_COL32(255, 255, 255, 210), 1.5F);
+                          IM_COL32(255, 255, 255, 210), CONTOUR_THICKNESS);
           }
           if (row + 1 < rows &&
               (here < level) !=
@@ -521,7 +547,7 @@ void XgMapScene::renderMap(float width, float height)
                                 static_cast<std::size_t>(column)]) < level))
           {
             draw->AddLine(screen(x1 - cell, y1), screen(x1, y1),
-                          IM_COL32(255, 255, 255, 210), 1.5F);
+                          IM_COL32(255, 255, 255, 210), CONTOUR_THICKNESS);
           }
         }
       }
@@ -546,14 +572,15 @@ void XgMapScene::renderMap(float width, float height)
     box(MatchTuning::DeadBall::GOAL_AREA_DEPTH_METRES,
         M::GOAL_AREA_HALF_WIDTH_METRES);
     const ImVec2 spot = screen(built.length - M::PENALTY_SPOT_METRES, middle);
-    draw->AddCircleFilled(spot, std::max(1.5F, 0.2F * ppm), WHITE);
+    draw->AddCircleFilled(
+        spot, std::max(MIN_SPOT_RADIUS, SPOT_RADIUS_METRES * ppm), WHITE);
     // The arc outside the penalty area and the halfway circle (9.15 m).
     const float radius = CIRCLE_RADIUS_METRES * ppm;
     const float beyond = M::PENALTY_AREA_DEPTH_METRES - M::PENALTY_SPOT_METRES;
     const float arcHalf =
         std::acos(std::clamp(beyond / CIRCLE_RADIUS_METRES, -1.0F, 1.0F));
-    draw->PathArcTo(spot, radius, 1.5707963F - arcHalf, 1.5707963F + arcHalf,
-                    24);
+    draw->PathArcTo(spot, radius, QUARTER_TURN - arcHalf,
+                    QUARTER_TURN + arcHalf, PENALTY_ARC_SEGMENTS);
     draw->PathStroke(WHITE, 0, line);
     constexpr int ARC_SEGMENTS = 32;
     draw->PathArcTo(screen(half, middle), radius, std::numbers::pi_v<float>,
@@ -567,13 +594,13 @@ void XgMapScene::renderMap(float width, float height)
     const float gap =
         built.goal.present() ? built.goal.halfWidth + built.goal.post : 0.0F;
     draw->AddLine(screen(built.length, 0.0F), screen(half, 0.0F), WALL,
-                  2.0F * line);
+                  WALL_LINES * line);
     draw->AddLine(screen(built.length, built.width), screen(half, built.width),
-                  WALL, 2.0F * line);
+                  WALL, WALL_LINES * line);
     draw->AddLine(screen(built.length, 0.0F),
-                  screen(built.length, middle - gap), WALL, 2.0F * line);
+                  screen(built.length, middle - gap), WALL, WALL_LINES * line);
     draw->AddLine(screen(built.length, middle + gap),
-                  screen(built.length, built.width), WALL, 2.0F * line);
+                  screen(built.length, built.width), WALL, WALL_LINES * line);
     draw->AddLine(screen(half, 0.0F), screen(half, built.width),
                   IM_COL32(240, 240, 235, 120), line);
   }
@@ -601,8 +628,8 @@ void XgMapScene::renderMap(float width, float height)
         at.y <= built.width)
     {
       hovered = at;
-      draw->AddCircle(mouse, 5.0F * scale, IM_COL32(255, 255, 255, 230), 0,
-                      2.0F);
+      draw->AddCircle(mouse, MOUSE_RING_RADIUS * scale,
+                      IM_COL32(255, 255, 255, 230), 0, MOUSE_RING_THICKNESS);
     }
   }
   draw->PopClipRect();

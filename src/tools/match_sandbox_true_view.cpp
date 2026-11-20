@@ -33,16 +33,65 @@ using RenderMath::Vec3;
 constexpr float PI = std::numbers::pi_v<float>;
 /** Pauses either side of an animated move (s). */
 constexpr float REST_SECONDS = 0.6F;
+constexpr float DEGREES_PER_HALF_TURN = 180.0F;
+constexpr float FULL_TURN = 2.0F * PI;
+constexpr float HALF = 0.5F;
+constexpr float MAX_CHANNEL = 255.0F;
+/** The grass grid: 3 m each way, a faint brown. */
+constexpr int GRID_METRES = 3;
+constexpr float GRID_EXTENT = static_cast<float>(GRID_METRES);
+constexpr float GRID_ALPHA = 0.35F;
+/** A roll goes out and comes back. */
+constexpr float ROLL_LEGS = 2.0F;
+/** Camera presets and the orbit (radians, m, per pixel of drag). */
+constexpr float LEVEL_PITCH = 0.05F;
+constexpr float TOP_PITCH = 1.5F;
+constexpr float DRAG_PER_PIXEL = 0.01F;
+constexpr float MIN_PITCH = -0.2F;
+constexpr float MAX_PITCH = 1.55F;
+constexpr float MIN_TARGET_HEIGHT = -0.5F;
+constexpr float MAX_TARGET_HEIGHT = 3.0F;
+constexpr float ZOOM_PER_WHEEL_TICK = 0.9F;
+constexpr float MIN_DISTANCE = 1.0F;
+constexpr float MAX_DISTANCE = 25.0F;
+/** Controls: slider limits (degrees, playback speed), layout (pixels). */
+constexpr float MAX_FACING_DEGREES = 180.0F;
+constexpr float MAX_LYING_DEGREES = 90.0F;
+constexpr float MIN_PLAYBACK_SPEED = 0.05F;
+constexpr float FIELD_PADDING_X = 8.0F;
+constexpr float FIELD_PADDING_Y = 4.0F;
+constexpr float FIELD_CELL_PADDING = 3.0F;
+constexpr float TWO_COLUMN_FIELDS_WIDTH = 360.0F;
+/** The caption and get-up bar over the canvas (pixels). */
+constexpr float CAPTION_LEFT = 10.0F;
+constexpr float CAPTION_TOP = 8.0F;
+constexpr float CAPTION_MARGINS = 20.0F;
+constexpr float CAPTION_LINE_GAP = 6.0F;
+constexpr float BAR_HEIGHT = 8.0F;
+constexpr float BAR_MAX_WIDTH = 200.0F;
 
-float radians(float degrees) { return degrees * PI / 180.0F; }
+float radians(float degrees) { return degrees * PI / DEGREES_PER_HALF_TURN; }
 
 /** A stat (1-99) as the Binturong handshake's rating (the stat / 100). */
 float rating(int stat) { return static_cast<float>(stat) / 100.0F; }
 
 ImU32 colour(int r, int g, int b, float alpha)
 {
-  return IM_COL32(r, g, b,
-                  static_cast<int>(std::clamp(alpha, 0.0F, 1.0F) * 255.0F));
+  return IM_COL32(
+      r, g, b, static_cast<int>(std::clamp(alpha, 0.0F, 1.0F) * MAX_CHANNEL));
+}
+
+struct Rgb
+{
+  int r = 0;
+  int g = 0;
+  int b = 0;
+};
+constexpr Rgb GRID_RGB{.r = 125, .g = 109, .b = 91};
+
+ImU32 colour(Rgb rgb, float alpha)
+{
+  return colour(rgb.r, rgb.g, rgb.b, alpha);
 }
 
 constexpr std::array<const char*, 7> POSE_NAMES{
@@ -76,8 +125,8 @@ void TrueViewScene::onEnter()
         AssetPaths::file((std::string("assets/fonts/") + file).c_str()).c_str(),
         size, &config);
   };
-  regularFont = font("Manrope-Regular.ttf", 16);
-  boldFont = font("Manrope-Bold.ttf", 14);
+  regularFont = font("Manrope-Regular.ttf", SandboxPageUI::REGULAR_FONT_SIZE);
+  boldFont = font("Manrope-Bold.ttf", SandboxPageUI::BOLD_FONT_SIZE);
 }
 
 void TrueViewScene::update(float deltaTime)
@@ -98,7 +147,8 @@ void TrueViewScene::render()
   ImGui::SetNextWindowSize(viewport->WorkSize);
   ImGui::PushStyleColor(ImGuiCol_WindowBg, Page::PAGE);
   ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding,
-                      ImVec2(24 * scale, 24 * scale));
+                      ImVec2(SandboxPageUI::PAGE_PADDING * scale,
+                             SandboxPageUI::PAGE_PADDING * scale));
   ImGui::PushStyleVar(ImGuiStyleVar_WindowBorderSize, 0);
   ImGui::PushStyleVar(ImGuiStyleVar_WindowRounding, 0);
   ImGui::Begin("##true_view", nullptr,
@@ -111,7 +161,8 @@ void TrueViewScene::render()
   ImGui::PopStyleColor();
   const ImVec2 available = ImGui::GetContentRegionAvail();
   const bool columns = available.x >= 1000 * scale;
-  const float gutter = (6 * scale) + ImGui::GetStyle().ScrollbarSize;
+  const float gutter =
+      (SandboxPageUI::PANEL_GAP * scale) + ImGui::GetStyle().ScrollbarSize;
   const float panel =
       columns ? (available.x >= 1400 * scale ? 440.0F : 400.0F) * scale
               : std::max(scale, available.x - gutter);
@@ -120,11 +171,13 @@ void TrueViewScene::render()
   {
     const ImVec2 origin = ImGui::GetCursorPos();
     ImGui::SetCursorPos(
-        ImVec2(origin.x + panel + gutter + (6 * scale), origin.y));
+        ImVec2(origin.x + panel + gutter + (SandboxPageUI::PANEL_GAP * scale),
+               origin.y));
     // Build this frame's measures with the model, before the values tab reads
     // them.
-    renderCanvas(
-        ImVec2(available.x - panel - gutter - (6 * scale), available.y));
+    renderCanvas(ImVec2(
+        available.x - panel - gutter - (SandboxPageUI::PANEL_GAP * scale),
+        available.y));
     ImGui::SetCursorPos(origin);
     ImGui::BeginChild("##true_view_controls",
                       ImVec2(panel + gutter, available.y),
@@ -136,7 +189,9 @@ void TrueViewScene::render()
   {
     ImGui::BeginChild("##true_view_controls", available,
                       ImGuiChildFlags_AlwaysUseWindowPadding);
-    renderCanvas(ImVec2(panel, std::max(300 * scale, available.y * 0.65F)));
+    renderCanvas(ImVec2(
+        panel, std::max(SandboxPageUI::MIN_CANVAS_HEIGHT * scale,
+                        available.y * SandboxPageUI::NARROW_CANVAS_SHARE)));
     renderPanel(panel);
     ImGui::EndChild();
   }
@@ -165,22 +220,22 @@ void TrueViewScene::renderPanel(float width)
   {
     camera = Camera{};
   }
-  ImGui::SameLine(0, 6 * scale);
+  ImGui::SameLine(0, SandboxPageUI::PANEL_GAP * scale);
   if (Page::button("Side", false, scale, boldFont))
   {
     camera.yaw = 0;
-    camera.pitch = 0.05F;
+    camera.pitch = LEVEL_PITCH;
   }
-  ImGui::SameLine(0, 6 * scale);
+  ImGui::SameLine(0, SandboxPageUI::PANEL_GAP * scale);
   if (Page::button("Front", false, scale, boldFont))
   {
-    camera.yaw = PI * 0.5F;
-    camera.pitch = 0.05F;
+    camera.yaw = PI * HALF;
+    camera.pitch = LEVEL_PITCH;
   }
-  ImGui::SameLine(0, 6 * scale);
+  ImGui::SameLine(0, SandboxPageUI::PANEL_GAP * scale);
   if (Page::button("Top", false, scale, boldFont))
   {
-    camera.pitch = 1.5F;
+    camera.pitch = TOP_PITCH;
   }
   Page::endCard(scale);
   Page::beginCard("##true_view_tabs", "DETAILS", width, Page::MID, scale,
@@ -189,7 +244,7 @@ void TrueViewScene::renderPanel(float width)
   {
     showValues = false;
   }
-  ImGui::SameLine(0, 6 * scale);
+  ImGui::SameLine(0, SandboxPageUI::PANEL_GAP * scale);
   if (Page::button("Engine values", showValues, scale, boldFont))
   {
     showValues = true;
@@ -202,7 +257,7 @@ void TrueViewScene::renderPanel(float width)
     {
       if (index > 0)
       {
-        ImGui::SameLine(0, 6 * scale);
+        ImGui::SameLine(0, SandboxPageUI::PANEL_GAP * scale);
       }
       const auto tab = static_cast<ControlTab>(index);
       if (Page::button(tabs[index], controlTab == tab, scale, boldFont))
@@ -271,12 +326,14 @@ void TrueViewScene::renderPanel(float width)
           .min = 1,
           .max = 99,
           .tip = "Only the old shot-block rule reads it here."}}};
-    ImGui::PushStyleVar(ImGuiStyleVar_FramePadding,
-                        ImVec2(8 * scale, 4 * scale));
-    ImGui::PushStyleVar(ImGuiStyleVar_CellPadding,
-                        ImVec2(3 * scale, 3 * scale));
+    ImGui::PushStyleVar(
+        ImGuiStyleVar_FramePadding,
+        ImVec2(FIELD_PADDING_X * scale, FIELD_PADDING_Y * scale));
+    ImGui::PushStyleVar(
+        ImGuiStyleVar_CellPadding,
+        ImVec2(FIELD_CELL_PADDING * scale, FIELD_CELL_PADDING * scale));
     if (ImGui::BeginTable(
-            "##player_fields", width >= 360 * scale ? 2 : 1,
+            "##player_fields", width >= TWO_COLUMN_FIELDS_WIDTH * scale ? 2 : 1,
             ImGuiTableFlags_SizingStretchSame | ImGuiTableFlags_RowBg |
                 ImGuiTableFlags_BordersInnerH | ImGuiTableFlags_BordersInnerV))
     {
@@ -304,13 +361,14 @@ void TrueViewScene::renderPanel(float width)
     {
       stats.rightFooted = true;
     }
-    ImGui::SameLine(0, 6 * scale);
+    ImGui::SameLine(0, SandboxPageUI::PANEL_GAP * scale);
     if (Page::button("Left-footed", !stats.rightFooted, scale, boldFont))
     {
       stats.rightFooted = false;
     }
     field("Facing");
-    ImGui::SliderFloat("##facing", &stats.facing, -180, 180, "%.0f deg");
+    ImGui::SliderFloat("##facing", &stats.facing, -MAX_FACING_DEGREES,
+                       MAX_FACING_DEGREES, "%.0f deg");
     Page::endCard(scale);
     return;
   }
@@ -333,8 +391,8 @@ void TrueViewScene::renderPanel(float width)
     if (pose == Pose::FALLEN || pose == Pose::GETTING_UP)
     {
       field("Lying");
-      ImGui::SliderFloat("##lying", &lyingOffset, -90, 90,
-                         "%.0f deg off facing");
+      ImGui::SliderFloat("##lying", &lyingOffset, -MAX_LYING_DEGREES,
+                         MAX_LYING_DEGREES, "%.0f deg off facing");
       ImGui::Checkbox("Fell on his front", &fellOnFront);
       if (pose == Pose::FALLEN)
       {
@@ -345,13 +403,14 @@ void TrueViewScene::renderPanel(float width)
         pose != Pose::STUMBLING)
     {
       ImGui::Checkbox("Play", &playing);
-      ImGui::SameLine(0, 6 * scale);
+      ImGui::SameLine(0, SandboxPageUI::PANEL_GAP * scale);
       if (Page::button("Restart", false, scale, boldFont))
       {
         clock = 0;
       }
       field("Speed");
-      ImGui::SliderFloat("##playback_speed", &playbackSpeed, 0.05F, 1, "%.2fx");
+      ImGui::SliderFloat("##playback_speed", &playbackSpeed, MIN_PLAYBACK_SPEED,
+                         1, "%.2fx");
     }
     Page::endCard(scale);
     return;
@@ -423,19 +482,21 @@ void TrueViewScene::renderCanvas(ImVec2 size)
   const ImGuiIO& io = ImGui::GetIO();
   if (ImGui::IsItemActive() && ImGui::IsMouseDown(ImGuiMouseButton_Left))
   {
-    camera.yaw -= io.MouseDelta.x * 0.01F;
-    camera.pitch =
-        std::clamp(camera.pitch + (io.MouseDelta.y * 0.01F), -0.2F, 1.55F);
+    camera.yaw -= io.MouseDelta.x * DRAG_PER_PIXEL;
+    camera.pitch = std::clamp(camera.pitch + (io.MouseDelta.y * DRAG_PER_PIXEL),
+                              MIN_PITCH, MAX_PITCH);
   }
   if (ImGui::IsItemActive() && ImGui::IsMouseDown(ImGuiMouseButton_Right))
   {
-    camera.targetHeight = std::clamp(
-        camera.targetHeight + (io.MouseDelta.y * 0.01F), -0.5F, 3.0F);
+    camera.targetHeight =
+        std::clamp(camera.targetHeight + (io.MouseDelta.y * DRAG_PER_PIXEL),
+                   MIN_TARGET_HEIGHT, MAX_TARGET_HEIGHT);
   }
   if (ImGui::IsItemHovered() && io.MouseWheel != 0.0F)
   {
     camera.distance = std::clamp(
-        camera.distance * std::pow(0.9F, io.MouseWheel), 1.0F, 25.0F);
+        camera.distance * std::pow(ZOOM_PER_WHEEL_TICK, io.MouseWheel),
+        MIN_DISTANCE, MAX_DISTANCE);
   }
 
   // ---- His measures, from the engine -------------------------------------
@@ -503,7 +564,7 @@ void TrueViewScene::renderCanvas(ImVec2 size)
       {
         const float into = t - REST_SECONDS;
         body.feetHeight =
-            std::max((launch * into) - (0.5F * B::GRAVITY * into * into), 0.0F);
+            std::max((launch * into) - (HALF * B::GRAVITY * into * into), 0.0F);
         body.airborne = true;
         caption = std::format("In the air: feet {:.2f} m up (of {:.2f} m)",
                               body.feetHeight, rise);
@@ -542,7 +603,7 @@ void TrueViewScene::renderCanvas(ImVec2 size)
         {
           rolled = C::ROLL_METRES_PER_TURN;
         }
-        else if (t < 2.0F * roll + pause)
+        else if (t < (ROLL_LEGS * roll) + pause)
         {
           rolled = C::ROLL_METRES_PER_TURN - (t - roll - pause) * C::ROLL_SPEED;
         }
@@ -559,8 +620,8 @@ void TrueViewScene::renderCanvas(ImVec2 size)
                  .y = std::cos(across) * rolled,
                  .z = 0.0F};
       const float turns =
-          (rolled / C::ROLL_METRES_PER_TURN) + (fellOnFront ? 0.0F : 0.5F);
-      caption += std::cos(turns * 2.0F * PI) > 0.0F ? ", on his front"
+          (rolled / C::ROLL_METRES_PER_TURN) + (fellOnFront ? 0.0F : HALF);
+      caption += std::cos(turns * FULL_TURN) > 0.0F ? ", on his front"
                                                     : ", on his back";
       break;
     }
@@ -645,13 +706,15 @@ void TrueViewScene::renderCanvas(ImVec2 size)
   };
 
   // The grass: a metre grid.
-  for (int metre = -3; metre <= 3; ++metre)
+  for (int metre = -GRID_METRES; metre <= GRID_METRES; ++metre)
   {
     const float m = static_cast<float>(metre);
-    paint.line({.x = m, .y = -3.0F, .z = 0.0F}, {.x = m, .y = 3.0F, .z = 0.0F},
-               colour(125, 109, 91, 0.35F), 1.0F);
-    paint.line({.x = -3.0F, .y = m, .z = 0.0F}, {.x = 3.0F, .y = m, .z = 0.0F},
-               colour(125, 109, 91, 0.35F), 1.0F);
+    paint.line({.x = m, .y = -GRID_EXTENT, .z = 0.0F},
+               {.x = m, .y = GRID_EXTENT, .z = 0.0F},
+               colour(GRID_RGB, GRID_ALPHA), 1.0F);
+    paint.line({.x = -GRID_EXTENT, .y = m, .z = 0.0F},
+               {.x = GRID_EXTENT, .y = m, .z = 0.0F},
+               colour(GRID_RGB, GRID_ALPHA), 1.0F);
   }
 
   std::vector<TrueView::Label> labels;
@@ -659,28 +722,32 @@ void TrueViewScene::renderCanvas(ImVec2 size)
                      TrueView::Detail::FULL, &labels, &entries);
   TrueView::drawLabels(paint, labels);
 
-  const float textWidth = std::max(scale, area.x - (20 * scale));
+  const float textWidth = std::max(scale, area.x - (CAPTION_MARGINS * scale));
   const float line =
       ImGui::CalcTextSize(caption.c_str(), nullptr, false, textWidth).y +
-      (6 * scale);
+      (CAPTION_LINE_GAP * scale);
   draw->AddText(ImGui::GetFont(), ImGui::GetFontSize(),
-                ImVec2(origin.x + (10 * scale), origin.y + (8 * scale)),
+                ImVec2(origin.x + (CAPTION_LEFT * scale),
+                       origin.y + (CAPTION_TOP * scale)),
                 Page::CREAM, caption.c_str(), nullptr, textWidth);
   if (getUpShare >= 0)
   {
-    const ImVec2 bar(origin.x + (10 * scale), origin.y + (8 * scale) + line);
-    const float barWidth = std::min(200 * scale, textWidth);
-    draw->AddRect(bar, ImVec2(bar.x + barWidth, bar.y + (8 * scale)),
+    const ImVec2 bar(origin.x + (CAPTION_LEFT * scale),
+                     origin.y + (CAPTION_TOP * scale) + line);
+    const float barWidth = std::min(BAR_MAX_WIDTH * scale, textWidth);
+    draw->AddRect(bar, ImVec2(bar.x + barWidth, bar.y + (BAR_HEIGHT * scale)),
                   Page::CREAM);
     draw->AddRectFilled(
-        bar, ImVec2(bar.x + (barWidth * getUpShare), bar.y + (8 * scale)),
+        bar,
+        ImVec2(bar.x + (barWidth * getUpShare), bar.y + (BAR_HEIGHT * scale)),
         Page::LIME);
   }
   if (body.airborne)
   {
     draw->AddText(
         ImGui::GetFont(), ImGui::GetFontSize(),
-        ImVec2(origin.x + (10 * scale), origin.y + (8 * scale) + line),
+        ImVec2(origin.x + (CAPTION_LEFT * scale),
+               origin.y + (CAPTION_TOP * scale) + line),
         Page::MUTED,
         "In the air only his head plays the ball (the touch sweep skips him)",
         nullptr, textWidth);

@@ -38,15 +38,9 @@ constexpr int MAX_STEPS_PER_FRAME = 400;
 constexpr std::array<float, 8> SPEEDS{0.5F, 1.0F,  2.0F,  4.0F,
                                       8.0F, 16.0F, 32.0F, 64.0F};
 constexpr int SECONDS_PER_MINUTE = 60;
-constexpr float REGULAR_FONT_SIZE = 16.0F;
-constexpr float BOLD_FONT_SIZE = 14.0F;
 constexpr float ZONE_TITLE_FONT_SIZE = 16.0F;
 /** Layout (scaled pixels). */
-constexpr float PAGE_PADDING = 24.0F;
-constexpr float PANEL_GAP = 6.0F;
 constexpr float GROUP_GAP = 12.0F;
-constexpr float MIN_GROUND_HEIGHT = 300.0F;
-constexpr float NARROW_GROUND_SHARE = 0.65F;
 constexpr float MIN_PITCH_HEIGHT = 200.0F;
 constexpr float GROUND_CARD_CHROME = 56.0F;
 constexpr float SPEED_COMBO_WIDTH = 90.0F;
@@ -93,8 +87,8 @@ void ZoneSessionScene::onEnter()
         AssetPaths::file((std::string("assets/fonts/") + file).c_str()).c_str(),
         size, &config);
   };
-  regularFont = font("Manrope-Regular.ttf", REGULAR_FONT_SIZE);
-  boldFont = font("Manrope-Bold.ttf", BOLD_FONT_SIZE);
+  regularFont = font("Manrope-Regular.ttf", SandboxPageUI::REGULAR_FONT_SIZE);
+  boldFont = font("Manrope-Bold.ttf", SandboxPageUI::BOLD_FONT_SIZE);
   restart();
 }
 
@@ -169,7 +163,8 @@ void ZoneSessionScene::render()
   ImGui::SetNextWindowSize(viewport->WorkSize);
   ImGui::PushStyleColor(ImGuiCol_WindowBg, Page::PAGE);
   ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding,
-                      ImVec2(PAGE_PADDING * scale, PAGE_PADDING * scale));
+                      ImVec2(SandboxPageUI::PAGE_PADDING * scale,
+                             SandboxPageUI::PAGE_PADDING * scale));
   ImGui::PushStyleVar(ImGuiStyleVar_WindowBorderSize, 0);
   ImGui::PushStyleVar(ImGuiStyleVar_WindowRounding, 0);
   ImGui::Begin("##zone_session", nullptr,
@@ -181,7 +176,8 @@ void ZoneSessionScene::render()
   ImGui::PopStyleVar(3);
   ImGui::PopStyleColor();
   const ImVec2 available = ImGui::GetContentRegionAvail();
-  const float gutter = (PANEL_GAP * scale) + ImGui::GetStyle().ScrollbarSize;
+  const float gutter =
+      (SandboxPageUI::PANEL_GAP * scale) + ImGui::GetStyle().ScrollbarSize;
   const bool columns = available.x >= COLUMN_LAYOUT_WIDTH * scale;
   const float panel = columns ? PANEL_WIDTH * scale : available.x - gutter;
   ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(0, 0));
@@ -192,7 +188,7 @@ void ZoneSessionScene::render()
                       ImGuiChildFlags_AlwaysUseWindowPadding);
     renderPanel(panel);
     ImGui::EndChild();
-    ImGui::SameLine(0, PANEL_GAP * scale);
+    ImGui::SameLine(0, SandboxPageUI::PANEL_GAP * scale);
     renderGround(std::max(scale, ImGui::GetContentRegionAvail().x),
                  available.y);
   }
@@ -200,8 +196,9 @@ void ZoneSessionScene::render()
   {
     ImGui::BeginChild("##zone_session_controls", available,
                       ImGuiChildFlags_AlwaysUseWindowPadding);
-    renderGround(panel, std::max(MIN_GROUND_HEIGHT * scale,
-                                 available.y * NARROW_GROUND_SHARE));
+    renderGround(panel,
+                 std::max(SandboxPageUI::MIN_CANVAS_HEIGHT * scale,
+                          available.y * SandboxPageUI::NARROW_CANVAS_SHARE));
     renderPanel(panel);
     ImGui::EndChild();
   }
@@ -242,13 +239,13 @@ void ZoneSessionScene::renderPanel(float width)
   {
     guiView->popScene();
   }
-  ImGui::SameLine(0, PANEL_GAP * scale);
+  ImGui::SameLine(0, SandboxPageUI::PANEL_GAP * scale);
   if (Page::button("Restart (R)", false, scale, boldFont))
   {
     restart();
   }
   const bool over = run->finished();
-  ImGui::SameLine(0, PANEL_GAP * scale);
+  ImGui::SameLine(0, SandboxPageUI::PANEL_GAP * scale);
   ImGui::BeginDisabled(over);
   if (Page::button(paused ? "Play (Space)" : "Pause (Space)", false, scale,
                    boldFont))
@@ -353,7 +350,7 @@ void ZoneSessionScene::renderPanel(float width)
       }
       ImGui::EndCombo();
     }
-    ImGui::SameLine(0, PANEL_GAP * scale);
+    ImGui::SameLine(0, SandboxPageUI::PANEL_GAP * scale);
     if (Page::button("Send to the changing room", false, scale, boldFont))
     {
       (void)run->sendToChangingRoom(restPick);

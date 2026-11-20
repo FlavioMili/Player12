@@ -45,6 +45,65 @@ constexpr ImU32 TEXT_MUTED = SandboxPageUI::MUTED;
 constexpr ImU32 GRID = IM_COL32(255, 255, 255, 28);
 constexpr ImU32 SURFACE = SandboxPageUI::DARK;
 constexpr ImVec4 WARNING{1.0F, 0.75F, 0.3F, 1.0F};
+/** Rate ramp (0 to 1) and change scale (red worse, blue better, grey none;
+ * FULL_CHANGE_POINTS is full colour; a relative change of a mean is scaled
+ * the same way, on a base of at least MIN_CHANGE_BASE). */
+constexpr ImVec4 RATE_ZERO{0.10F, 0.14F, 0.20F, 1.0F};
+constexpr ImVec4 RATE_FULL{0.53F, 0.71F, 0.94F, 1.0F};
+constexpr ImVec4 CHANGE_NONE{0.22F, 0.22F, 0.21F, 1.0F};
+constexpr ImVec4 CHANGE_WORSE{0.90F, 0.40F, 0.40F, 1.0F};
+constexpr ImVec4 CHANGE_BETTER{0.22F, 0.53F, 0.90F, 1.0F};
+constexpr double FULL_CHANGE_POINTS = 30.0;
+constexpr double MIN_CHANGE_BASE = 1e-3;
+/** Rates above this get dark text on their light cell. */
+constexpr double DARK_TEXT_RATE = 0.7;
+constexpr double PERCENT = 100.0;
+/** Axis ticks: 1, 2 or 5 times a power of ten; rates every 20 points. */
+constexpr double TICK_DECADE = 10.0;
+constexpr std::array<double, 4> TICK_STEPS{1.0, 2.0, 5.0, 10.0};
+constexpr double RATE_TICK_STEP = 20.0;
+constexpr int VALUE_TICKS = 5;
+constexpr double SAME_SKILL = 1e-6;
+constexpr double TICK_TOLERANCE = 1e-9;
+/** Controls' limits. */
+constexpr int MIN_REPEATS = 5;
+constexpr int MAX_REPEATS = 300;
+constexpr float MAX_WATCH_SKILL = 100.0F;
+/** Layout (scaled pixels). */
+constexpr float TICK_COLUMN_WIDTH = 28.0F;
+constexpr float SWATCH_TOP = 11.0F;
+constexpr float SWATCH_BOTTOM = 17.0F;
+constexpr float SWATCH_WIDTH = 6.0F;
+constexpr float SWATCH_ROOM = 8.0F;
+constexpr float FIELDS_TABLE_WIDTH = 660.0F;
+constexpr float MIN_TABLE_HEIGHT = 240.0F;
+/** The detail table: a row per skill, plus the header and the scrollbar. */
+constexpr float DETAIL_EXTRA_ROWS = 2.0F;
+/** The chart (scaled pixels unless said). */
+constexpr float CENTRE = 0.5F;
+constexpr float AXIS_LABEL_GAP = 6.0F;
+constexpr float SKILL_LABEL_GAP = 4.0F;
+constexpr float HOVER_PIXELS = 12.0F;
+constexpr float LINE_THICKNESS = 2.0F;
+constexpr float FAINT_LINE_THICKNESS = 1.5F;
+constexpr float FAINT_DASH = 4.0F;
+constexpr int FAINT_ALPHA = 120;
+constexpr float FAINT_MARKER_RADIUS = 3.0F;
+constexpr float MARKER_RING_RADIUS = 5.0F;
+constexpr float MARKER_RADIUS = 4.0F;
+/** A dash, then a gap as long. */
+constexpr float DASH_AND_GAP = 2.0F;
+/** Curves are labelled at their right end when there are at most this many. */
+constexpr std::size_t MAX_END_LABELS = 8;
+constexpr float END_LABEL_GAP = 7.0F;
+/** Legend entries: a swatch (middle half of the line, rounded) and gaps. */
+constexpr float LEGEND_ENTRY_EXTRA = 30.0F;
+constexpr float LEGEND_SWATCH_TOP = 0.25F;
+constexpr float LEGEND_SWATCH_BOTTOM = 0.75F;
+constexpr float LEGEND_SWATCH_WIDTH = 12.0F;
+constexpr float LEGEND_SWATCH_ROUNDING = 2.0F;
+constexpr float LEGEND_SWATCH_ROOM = 16.0F;
+constexpr float LEGEND_ENTRY_GAP = 14.0F;
 
 constexpr std::array<const char*, 6> SKILL_OVERRIDES{
     "Each test's own", "Passing",     "Shooting",
@@ -57,11 +116,11 @@ constexpr std::array<const char*, 6> DETAIL_METRICS{
 
 void nextButton(const char* label, float scale, ImFont* font)
 {
-  if (ImGui::GetItemRectMax().x + 6 * scale +
+  if (ImGui::GetItemRectMax().x + (SandboxPageUI::PANEL_GAP * scale) +
           SandboxPageUI::buttonWidth(label, scale, font) <=
       ImGui::GetWindowPos().x + ImGui::GetWindowContentRegionMax().x)
   {
-    ImGui::SameLine(0, 6 * scale);
+    ImGui::SameLine(0, SandboxPageUI::PANEL_GAP * scale);
   }
 }
 
@@ -88,31 +147,30 @@ ImU32 blend(ImVec4 a, ImVec4 b, float t)
 /** Success rate 0-1 on one blue ramp, receding into the dark surface at 0. */
 ImU32 rateColour(double rate)
 {
-  return blend({0.10F, 0.14F, 0.20F, 1.0F}, {0.53F, 0.71F, 0.94F, 1.0F},
-               static_cast<float>(rate));
+  return blend(RATE_ZERO, RATE_FULL, static_cast<float>(rate));
 }
 
 /** A change in points: red worse, blue better, grey none (±30 full). */
 ImU32 changeColour(double points)
 {
-  const ImVec4 grey{0.22F, 0.22F, 0.21F, 1.0F};
-  const float t = static_cast<float>(std::abs(points) / 30.0);
-  return points < 0.0 ? blend(grey, {0.90F, 0.40F, 0.40F, 1.0F}, t)
-                      : blend(grey, {0.22F, 0.53F, 0.90F, 1.0F}, t);
+  const ImVec4 grey = CHANGE_NONE;
+  const float t = static_cast<float>(std::abs(points) / FULL_CHANGE_POINTS);
+  return points < 0.0 ? blend(grey, CHANGE_WORSE, t)
+                      : blend(grey, CHANGE_BETTER, t);
 }
 
 double tickStep(double range, int ticks)
 {
   const double raw = range / std::max(1, ticks);
-  const double power = std::pow(10.0, std::floor(std::log10(raw)));
-  for (const double step : {1.0, 2.0, 5.0, 10.0})
+  const double power = std::pow(TICK_DECADE, std::floor(std::log10(raw)));
+  for (const double step : TICK_STEPS)
   {
     if (raw <= step * power)
     {
       return step * power;
     }
   }
-  return 10.0 * power;
+  return TICK_DECADE * power;
 }
 
 std::vector<float> parseSkills(const char* text)
@@ -150,7 +208,7 @@ void dashedLine(ImDrawList& draw, ImVec2 a, ImVec2 b, ImU32 colour,
   {
     return;
   }
-  for (float at = 0.0F; at < length; at += dash * 2.0F)
+  for (float at = 0.0F; at < length; at += dash * DASH_AND_GAP)
   {
     const float end = std::min(at + dash, length);
     draw.AddLine(ImVec2(a.x + ((b.x - a.x) * at / length),
@@ -215,8 +273,8 @@ void TechniqueBenchScene::onEnter()
         AssetPaths::file((std::string("assets/fonts/") + file).c_str()).c_str(),
         size, &config);
   };
-  regularFont = font("Manrope-Regular.ttf", 16);
-  boldFont = font("Manrope-Bold.ttf", 14);
+  regularFont = font("Manrope-Regular.ttf", SandboxPageUI::REGULAR_FONT_SIZE);
+  boldFont = font("Manrope-Bold.ttf", SandboxPageUI::BOLD_FONT_SIZE);
 }
 
 void TechniqueBenchScene::reload()
@@ -478,7 +536,8 @@ void TechniqueBenchScene::render()
   ImGui::SetNextWindowSize(viewport->WorkSize);
   ImGui::PushStyleColor(ImGuiCol_WindowBg, Page::PAGE);
   ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding,
-                      ImVec2(24 * scale, 24 * scale));
+                      ImVec2(SandboxPageUI::PAGE_PADDING * scale,
+                             SandboxPageUI::PAGE_PADDING * scale));
   ImGui::PushStyleVar(ImGuiStyleVar_WindowBorderSize, 0);
   ImGui::PushStyleVar(ImGuiStyleVar_WindowRounding, 0);
   ImGui::Begin("##technique_bench", nullptr,
@@ -490,7 +549,8 @@ void TechniqueBenchScene::render()
   ImGui::PopStyleVar(3);
   ImGui::PopStyleColor();
   const ImVec2 available = ImGui::GetContentRegionAvail();
-  const float gutter = (6 * scale) + ImGui::GetStyle().ScrollbarSize;
+  const float gutter =
+      (SandboxPageUI::PANEL_GAP * scale) + ImGui::GetStyle().ScrollbarSize;
   const bool columns = available.x >= 1000 * scale;
   const float panel =
       columns ? (available.x >= 1400 * scale ? 440.0F : 400.0F) * scale
@@ -502,7 +562,7 @@ void TechniqueBenchScene::render()
                       ImGuiChildFlags_AlwaysUseWindowPadding);
     renderPanel(panel);
     ImGui::EndChild();
-    ImGui::SameLine(0, 6 * scale);
+    ImGui::SameLine(0, SandboxPageUI::PANEL_GAP * scale);
     const float width = ImGui::GetContentRegionAvail().x;
     ImGui::BeginChild("##bench_results", ImVec2(width, available.y),
                       ImGuiChildFlags_AlwaysUseWindowPadding);
@@ -598,7 +658,7 @@ void TechniqueBenchScene::renderPanel(float width)
   {
     if (tab > 0)
     {
-      ImGui::SameLine(0, 6 * scale);
+      ImGui::SameLine(0, SandboxPageUI::PANEL_GAP * scale);
     }
     if (Page::button(tabs[tab], panelTab == static_cast<int>(tab), scale,
                      boldFont))
@@ -644,7 +704,7 @@ void TechniqueBenchScene::renderPanel(float width)
     ImGui::TableNextColumn();
     ImGui::Dummy(ImVec2(0, 0));
     field("Runs per point");
-    ImGui::SliderInt("##repeats", &repeats, 5, 300);
+    ImGui::SliderInt("##repeats", &repeats, MIN_REPEATS, MAX_REPEATS);
     if (ImGui::IsItemHovered())
     {
       ImGui::SetTooltip(
@@ -843,15 +903,16 @@ void TechniqueBenchScene::renderFilters()
     const auto chip = [&](const char* label, bool selected)
     {
       const float width = Page::buttonWidth(label, scale, boldFont);
-      if (used > 0 && used + 6 * scale + width <= rowWidth)
+      if (used > 0 &&
+          used + (SandboxPageUI::PANEL_GAP * scale) + width <= rowWidth)
       {
-        ImGui::SameLine(0, 6 * scale);
+        ImGui::SameLine(0, SandboxPageUI::PANEL_GAP * scale);
       }
       else
       {
         used = 0;
       }
-      used += width + 6 * scale;
+      used += width + (SandboxPageUI::PANEL_GAP * scale);
       return Page::button(label, selected, scale, boldFont);
     };
     if (chip("All", active.empty()))
@@ -961,7 +1022,7 @@ void TechniqueBenchScene::renderTestList()
         continue;
       }
       ImGui::TableSetupColumn("Tick", ImGuiTableColumnFlags_WidthFixed,
-                              28 * scale);
+                              TICK_COLUMN_WIDTH * scale);
       ImGui::TableSetupColumn("Test", ImGuiTableColumnFlags_WidthStretch);
     }
     ImGui::PushID(static_cast<int>(index));
@@ -975,10 +1036,11 @@ void TechniqueBenchScene::renderTestList()
     ImGui::TableNextColumn();
     const ImVec2 swatch = ImGui::GetCursorScreenPos();
     ImGui::GetWindowDrawList()->AddRectFilled(
-        ImVec2(swatch.x, swatch.y + (11 * scale)),
-        ImVec2(swatch.x + (6 * scale), swatch.y + (17 * scale)),
+        ImVec2(swatch.x, swatch.y + (SWATCH_TOP * scale)),
+        ImVec2(swatch.x + (SWATCH_WIDTH * scale),
+               swatch.y + (SWATCH_BOTTOM * scale)),
         colourOf(test));
-    ImGui::Dummy(ImVec2(8 * scale, ImGui::GetFrameHeight()));
+    ImGui::Dummy(ImVec2(SWATCH_ROOM * scale, ImGui::GetFrameHeight()));
     ImGui::SameLine(0, 4 * scale);
     const std::string label = std::format("{}  {}", test.id, test.name);
     if (ImGui::Selectable(
@@ -1019,9 +1081,10 @@ void TechniqueBenchScene::renderResults(float width, float height)
   }
   const auto& names = run->metricNames();
   result = std::clamp(result, 0, static_cast<int>(names.size()));
-  if (ImGui::BeginTable(
-          "##result_fields", 2, ImGuiTableFlags_SizingStretchProp,
-          ImVec2(std::min(660 * scale, ImGui::GetContentRegionAvail().x), 0)))
+  if (ImGui::BeginTable("##result_fields", 2, ImGuiTableFlags_SizingStretchProp,
+                        ImVec2(std::min(FIELDS_TABLE_WIDTH * scale,
+                                        ImGui::GetContentRegionAvail().x),
+                               0)))
   {
     ImGui::TableSetupColumn("Result", ImGuiTableColumnFlags_WidthStretch, 2);
     ImGui::TableSetupColumn("Colour", ImGuiTableColumnFlags_WidthStretch, 1);
@@ -1094,7 +1157,7 @@ void TechniqueBenchScene::renderResults(float width, float height)
   {
     if (tab > 0)
     {
-      ImGui::SameLine(0, 6 * scale);
+      ImGui::SameLine(0, SandboxPageUI::PANEL_GAP * scale);
     }
     if (Page::button(tabs[tab], view == tab, scale, boldFont))
     {
@@ -1169,7 +1232,8 @@ void TechniqueBenchScene::renderChart(ImVec2 size)
   float legendWidth = 0.0F;
   for (const Entry& entry : legend)
   {
-    legendWidth += ImGui::CalcTextSize(entry.label.c_str()).x + 30.0F * scale;
+    legendWidth += ImGui::CalcTextSize(entry.label.c_str()).x +
+                   (LEGEND_ENTRY_EXTRA * scale);
   }
   const float legendRows =
       std::ceil(legendWidth / std::max(size.x, 1.0F)) + 1.0F;
@@ -1196,7 +1260,7 @@ void TechniqueBenchScene::renderChart(ImVec2 size)
   }
   double xMin = skills.front();
   double xMax = skills.back();
-  if (xMax - xMin < 1e-6)
+  if (xMax - xMin < SAME_SKILL)
   {
     xMin -= 1.0;
     xMax += 1.0;
@@ -1253,37 +1317,39 @@ void TechniqueBenchScene::renderChart(ImVec2 size)
            (static_cast<float>((y - yMin) / (yMax - yMin)) * (bottom - top));
   };
   draw.AddRectFilled(ImVec2(left, top), ImVec2(right, bottom), SURFACE);
-  const double yStep = rates ? 20.0 : tickStep(yMax - yMin, 5);
-  for (double y = std::ceil(yMin / yStep) * yStep; y <= yMax + 1e-9; y += yStep)
+  const double yStep =
+      rates ? RATE_TICK_STEP : tickStep(yMax - yMin, VALUE_TICKS);
+  for (double y = std::ceil(yMin / yStep) * yStep; y <= yMax + TICK_TOLERANCE;
+       y += yStep)
   {
     draw.AddLine(ImVec2(left, sy(y)), ImVec2(right, sy(y)), GRID);
     const std::string label =
         std::format("{:g}", std::round(y / yStep) * yStep);
     const ImVec2 labelSize = ImGui::CalcTextSize(label.c_str());
-    draw.AddText(ImVec2(left - labelSize.x - (6.0F * scale),
-                        sy(y) - (labelSize.y * 0.5F)),
+    draw.AddText(ImVec2(left - labelSize.x - (AXIS_LABEL_GAP * scale),
+                        sy(y) - (labelSize.y * CENTRE)),
                  TEXT_MUTED, label.c_str());
   }
   for (const float skill : skills)
   {
     const std::string label = std::format("{:g}", skill);
     const ImVec2 labelSize = ImGui::CalcTextSize(label.c_str());
-    draw.AddText(
-        ImVec2(sx(skill) - (labelSize.x * 0.5F), bottom + (4.0F * scale)),
-        TEXT_MUTED, label.c_str());
+    draw.AddText(ImVec2(sx(skill) - (labelSize.x * CENTRE),
+                        bottom + (SKILL_LABEL_GAP * scale)),
+                 TEXT_MUTED, label.c_str());
   }
   const std::string axis = std::format(
       "Skill ({})", SKILL_OVERRIDES[static_cast<std::size_t>(skillOverride)]);
   const ImVec2 axisSize = ImGui::CalcTextSize(axis.c_str());
-  draw.AddText(ImVec2((left + right - axisSize.x) * 0.5F,
-                      bottom + (4.0F * scale) + axisSize.y),
+  draw.AddText(ImVec2((left + right - axisSize.x) * CENTRE,
+                      bottom + (SKILL_LABEL_GAP * scale) + axisSize.y),
                TEXT_MUTED, axis.c_str());
 
   // The comparison first (dashed, faint), then the shown run over it.
   const ImVec2 mouse = ImGui::GetIO().MousePos;
   const BenchTest* hoveredTest = nullptr;
   float hoveredSkill = 0.0F;
-  float hoveredDistance = 12.0F * scale;
+  float hoveredDistance = HOVER_PIXELS * scale;
   const auto curve = [&](const BenchResults& source, const BenchTest& test,
                          bool faint) -> std::optional<ImVec2>
   {
@@ -1302,24 +1368,24 @@ void TechniqueBenchScene::renderChart(ImVec2 size)
       {
         if (faint)
         {
-          dashedLine(draw, *before, at, withAlpha(colour, 120), 1.5F * scale,
-                     4.0F * scale);
+          dashedLine(draw, *before, at, withAlpha(colour, FAINT_ALPHA),
+                     FAINT_LINE_THICKNESS * scale, FAINT_DASH * scale);
         }
         else
         {
-          draw.AddLine(*before, at, colour, 2.0F * scale);
+          draw.AddLine(*before, at, colour, LINE_THICKNESS * scale);
         }
       }
       if (faint)
       {
-        draw.AddCircle(at, 3.0F * scale, withAlpha(colour, 120), 0,
-                       1.0F * scale);
+        draw.AddCircle(at, FAINT_MARKER_RADIUS * scale,
+                       withAlpha(colour, FAINT_ALPHA), 0, 1.0F * scale);
       }
       else
       {
         // A ring of surface round each marker keeps crossing curves apart.
-        draw.AddCircleFilled(at, 5.0F * scale, SURFACE);
-        draw.AddCircleFilled(at, 4.0F * scale, colour);
+        draw.AddCircleFilled(at, MARKER_RING_RADIUS * scale, SURFACE);
+        draw.AddCircleFilled(at, MARKER_RADIUS * scale, colour);
         const float distance = std::hypot(mouse.x - at.x, mouse.y - at.y);
         if (distance < hoveredDistance)
         {
@@ -1349,12 +1415,12 @@ void TechniqueBenchScene::renderChart(ImVec2 size)
     }
   }
   // Direct labels at the right end when few enough to read.
-  if (ends.size() <= 8)
+  if (ends.size() <= MAX_END_LABELS)
   {
     for (const auto& [at, test] : ends)
     {
-      draw.AddText(ImVec2(at.x + (7.0F * scale),
-                          at.y - (ImGui::GetTextLineHeight() * 0.5F)),
+      draw.AddText(ImVec2(at.x + (END_LABEL_GAP * scale),
+                          at.y - (ImGui::GetTextLineHeight() * CENTRE)),
                    TEXT, test->id.c_str());
     }
   }
@@ -1436,14 +1502,15 @@ void TechniqueBenchScene::renderChart(ImVec2 size)
     const ImVec2 at = ImGui::GetCursorScreenPos();
     const float line = ImGui::GetTextLineHeight();
     ImGui::GetWindowDrawList()->AddRectFilled(
-        ImVec2(at.x, at.y + (line * 0.25F)),
-        ImVec2(at.x + (12.0F * scale), at.y + (line * 0.75F)), entry.colour,
-        2.0F);
-    ImGui::Dummy(ImVec2(16.0F * scale, line));
+        ImVec2(at.x, at.y + (line * LEGEND_SWATCH_TOP)),
+        ImVec2(at.x + (LEGEND_SWATCH_WIDTH * scale),
+               at.y + (line * LEGEND_SWATCH_BOTTOM)),
+        entry.colour, LEGEND_SWATCH_ROUNDING);
+    ImGui::Dummy(ImVec2(LEGEND_SWATCH_ROOM * scale, line));
     ImGui::SameLine(0.0F, 0.0F);
     ImGui::TextUnformatted(entry.label.c_str());
     ImGui::SameLine(0.0F, 0.0F);
-    ImGui::Dummy(ImVec2(14.0F * scale, line));
+    ImGui::Dummy(ImVec2(LEGEND_ENTRY_GAP * scale, line));
     used += wide;
   }
 }
@@ -1467,7 +1534,7 @@ void TechniqueBenchScene::renderGrid(ImVec2 size)
           ImGuiTableFlags_Borders | ImGuiTableFlags_RowBg |
               ImGuiTableFlags_ScrollX | ImGuiTableFlags_ScrollY |
               ImGuiTableFlags_SizingFixedFit,
-          ImVec2(0, std::max(240 * Theme::scale(),
+          ImVec2(0, std::max(MIN_TABLE_HEIGHT * Theme::scale(),
                              size.y - (ImGui::GetCursorPosY() - controlsY) -
                                  (2 * Theme::scale())))))
   {
@@ -1481,7 +1548,7 @@ void TechniqueBenchScene::renderGrid(ImVec2 size)
     ImGui::TableSetupColumn(std::format("{:g}", skill).c_str());
   }
   ImGui::TableSetupColumn("Success counts when");
-  ImGui::PushFont(boldFont, 14);
+  ImGui::PushFont(boldFont, SandboxPageUI::BOLD_FONT_SIZE);
   ImGui::TableHeadersRow();
   ImGui::PopFont();
   std::string section;
@@ -1528,7 +1595,8 @@ void TechniqueBenchScene::renderGrid(ImVec2 size)
             ImGuiTableBgTarget_CellBg,
             changeColour(result == 0
                              ? delta
-                             : delta * 30.0 / std::max(std::abs(*then), 1e-3)));
+                             : delta * FULL_CHANGE_POINTS /
+                                   std::max(std::abs(*then), MIN_CHANGE_BASE)));
         ImGui::Text(result == 0 ? "%+.0f" : "%+.2f", delta);
       }
       else
@@ -1536,9 +1604,10 @@ void TechniqueBenchScene::renderGrid(ImVec2 size)
         if (result == 0)
         {
           ImGui::TableSetBgColor(ImGuiTableBgTarget_CellBg,
-                                 rateColour(*value / 100.0));
-          ImGui::PushStyleColor(
-              ImGuiCol_Text, *value > 70.0 ? IM_COL32(16, 20, 28, 255) : TEXT);
+                                 rateColour(*value / PERCENT));
+          ImGui::PushStyleColor(ImGuiCol_Text, *value > DARK_TEXT_RATE * PERCENT
+                                                   ? IM_COL32(16, 20, 28, 255)
+                                                   : TEXT);
           ImGui::Text("%.0f", *value);
           ImGui::PopStyleColor();
         }
@@ -1623,14 +1692,15 @@ void TechniqueBenchScene::renderTest()
         "tuning.");
   }
   if (ImGui::BeginTable("##watch_fields", 2, ImGuiTableFlags_SizingStretchSame,
-                        ImVec2(std::min(660 * Theme::scale(),
+                        ImVec2(std::min(FIELDS_TABLE_WIDTH * Theme::scale(),
                                         ImGui::GetContentRegionAvail().x),
                                0)))
   {
     ImGui::TableNextColumn();
     ImGui::Dummy(ImVec2(0, 0));
     field("Skill");
-    ImGui::SliderFloat("##watch_skill", &watchSkill, 1, 100, "%.0f");
+    ImGui::SliderFloat("##watch_skill", &watchSkill, 1, MAX_WATCH_SKILL,
+                       "%.0f");
     ImGui::TableNextColumn();
     ImGui::Dummy(ImVec2(0, 0));
     field("Seed");
@@ -1657,9 +1727,10 @@ void TechniqueBenchScene::renderTest()
           "##detail", columns,
           ImGuiTableFlags_Borders | ImGuiTableFlags_RowBg |
               ImGuiTableFlags_SizingFixedFit | ImGuiTableFlags_ScrollX,
-          ImVec2(0, (static_cast<float>(run.skills.size()) + 2.0F) *
-                        (ImGui::GetTextLineHeight() +
-                         ImGui::GetStyle().CellPadding.y * 2))))
+          ImVec2(0,
+                 (static_cast<float>(run.skills.size()) + DETAIL_EXTRA_ROWS) *
+                     (ImGui::GetTextLineHeight() +
+                      ImGui::GetStyle().CellPadding.y * 2))))
   {
     ImGui::TableSetupColumn("Skill");
     ImGui::TableSetupColumn("Runs");
@@ -1672,7 +1743,7 @@ void TechniqueBenchScene::renderTest()
     {
       ImGui::TableSetupColumn(name);
     }
-    ImGui::PushFont(boldFont, 14);
+    ImGui::PushFont(boldFont, SandboxPageUI::BOLD_FONT_SIZE);
     ImGui::TableHeadersRow();
     ImGui::PopFont();
     for (const float skill : run.skills)
@@ -1693,8 +1764,9 @@ void TechniqueBenchScene::renderTest()
       if (rate)
       {
         ImGui::TableSetBgColor(ImGuiTableBgTarget_CellBg, rateColour(*rate));
-        ImGui::PushStyleColor(ImGuiCol_Text,
-                              *rate > 0.7 ? IM_COL32(16, 20, 28, 255) : TEXT);
+        ImGui::PushStyleColor(ImGuiCol_Text, *rate > DARK_TEXT_RATE
+                                                 ? IM_COL32(16, 20, 28, 255)
+                                                 : TEXT);
         ImGui::Text("%.0f%%", *rate * 100.0);
         ImGui::PopStyleColor();
       }

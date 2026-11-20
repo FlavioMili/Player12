@@ -41,6 +41,17 @@ inline constexpr ImU32 LIME = IM_COL32(155, 208, 107, 255);
 inline constexpr ImU32 INK = IM_COL32(18, 19, 21, 255);
 inline constexpr ImU32 RULE = IM_COL32(58, 50, 41, 255);
 
+// The activity pages' type and spacing (fonts in points; the rest in
+// pixels, scaled by Theme::scale()).
+inline constexpr float REGULAR_FONT_SIZE = 16.0F;
+inline constexpr float BOLD_FONT_SIZE = 14.0F;
+inline constexpr float PAGE_PADDING = 24.0F;
+inline constexpr float PANEL_GAP = 6.0F;
+// A narrow page stacks its canvas above the panel: at least this tall, or
+// this share of the height.
+inline constexpr float MIN_CANVAS_HEIGHT = 300.0F;
+inline constexpr float NARROW_CANVAS_SHARE = 0.65F;
+
 // Two visible identity colours, following the track/trim treatment in
 // player-profile-2 SPEC section 4.2. Cream/lime are the sandbox identity pair;
 // a near-black or brown rail disappears into these neutral surfaces.
