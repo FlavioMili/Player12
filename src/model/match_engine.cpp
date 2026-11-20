@@ -527,6 +527,23 @@ bool MatchEngine::executeCommand(const MatchCommandRecord& command)
       forcedShotTechnique = command.shotTechnique;
       ++inputRevision;
       return true;
+    case MatchCommandType::STRIKE_STILL_BALL:
+    {
+      MatchPlayer* shooter = drillPlayer(command.player);
+      if ((shooter == nullptr) ||
+          getPossessionAttachment() != shooter->player)
+      {
+        return false;
+      }
+      // The ball lies still where the drill put it: struck there and now,
+      // as a dead ball (no sweep meet to wait for, no touch before), at the
+      // spot his brain picks.
+      strikesWaitForSweep = false;
+      strikeAt.reset();
+      takeShot(*shooter);
+      ++inputRevision;
+      return true;
+    }
     case MatchCommandType::FORCE_PASS:
       // To a team-mate, or (no team-mate) to a spot.
       if ((drillPlayer(command.player) == nullptr) ||

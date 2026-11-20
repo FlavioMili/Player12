@@ -1838,7 +1838,10 @@ enum class MatchCommandType : std::uint8_t
   /** Drills: what the player does with the next header he wins. */
   FORCE_HEADER,
   /** Drills: what the player means by a tackle on a free ball. */
-  FORCE_TACKLE_INTENT
+  FORCE_TACKLE_INTENT,
+  /** Drills: the player strikes the still ball where it lies, now: an
+   * open-play shot at the spot he picks, with no touch before it. */
+  STRIKE_STILL_BALL
 };
 
 /** What a tackle means to do, on a free ball (tackling plan step 3) or in
@@ -3051,6 +3054,13 @@ class MatchEngine
    * shot power (Binturong body) instead of the usual; `firstTime`: off a
    * pass to him, struck as it reaches him without a touch (a ground ball,
    * Binturong body; otherwise after his touch). Logged and replayed. */
+  /** Drills (game xG plan): the player, holding a still ball (startDrill
+   * with him as the carrier), strikes it where it lies at once: an open-play
+   * shot at the spot his brain picks, struck by his body as a dead ball, with
+   * no touch or step before it (the ball isn't put at his feet first, as it
+   * is for forceShot). Call it after startDrill, before the first step.
+   * False if he doesn't have the ball. Logged and replayed. */
+  bool strikeStillBall(PlayerID playerId);
   void forceShot(PlayerID playerId, std::optional<Vector2F> aim = std::nullopt,
                  std::optional<float> powerShare = std::nullopt,
                  bool firstTime = false,

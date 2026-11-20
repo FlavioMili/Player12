@@ -22,14 +22,12 @@ namespace
 {
 using Clock = std::chrono::steady_clock;
 
-// The Shot drill's settings the sweep holds or moves.
+// The Still-ball shot drill's settings the sweep holds or moves.
 constexpr const char* LINE = "Out from goal line (m)";
 constexpr const char* SIDE = "Off centre (m)";
 constexpr const char* GOALS = "Goals";
-constexpr const char* SHOOTER = "Shooter";
 constexpr const char* SHOOTING = "Shooting";
 constexpr const char* KEEPER = "Keeper";
-constexpr const char* DEFENDER = "Defender";
 /** The shooter's foot: right (0), as most players; the left foot's map is
  * this one mirrored. */
 constexpr const char* FOOT = "Foot";
@@ -217,10 +215,8 @@ void GameXgSweep::runOne()
   values[LINE] = lineMetres(point.line);
   values[SIDE] = sideMetres(point.side);
   values[GOALS] = static_cast<float>(static_cast<int>(setup.goal) - 1);
-  values[SHOOTER] = 0.0F;
   values[SHOOTING] = setup.shooting[point.level];
   values[KEEPER] = 0.0F;
-  values[DEFENDER] = 0.0F;
   values[FOOT] = 0.0F;
   for (const DrillParameter& parameter : drill.parameters())
   {
@@ -515,7 +511,7 @@ std::optional<GoalKind> goalNamed(std::string_view name)
 
 void printTable(const GameXgTable& table)
 {
-  constexpr std::array<float, 9> LINES{2, 6, 11, 16, 20, 25, 30, 35, 40};
+  constexpr std::array<float, 10> LINES{0, 2, 6, 11, 16, 20, 25, 30, 35, 40};
   constexpr std::array<float, 7> HALF{0, 4, 8, 12, 16, 20, 24};
   constexpr std::array<float, 13> BOTH{-24, -20, -16, -12, -8, -4, 0,
                                        4,   8,   12,  16,  20, 24};
@@ -714,18 +710,23 @@ std::optional<GameXgOptions> parseOptions(
 }
 }  // namespace
 
+Drill* gameXgDrill(const std::vector<std::unique_ptr<Drill>>& drills)
+{
+  for (const auto& drill : drills)
+  {
+    if (std::string_view(drill->name()) == "Still-ball shot")
+    {
+      return drill.get();
+    }
+  }
+  return nullptr;
+}
+
 int runGameXgCommand(const StatsConfig& config,
                      const std::vector<std::string>& arguments)
 {
   auto drills = makeDrills();
-  Drill* shotDrill = nullptr;
-  for (const auto& drill : drills)
-  {
-    if (drill->offersShotMap())
-    {
-      shotDrill = drill.get();
-    }
-  }
+  Drill* shotDrill = gameXgDrill(drills);
   if (shotDrill == nullptr)
   {
     std::cerr << "game-xg: no Shot drill\n";

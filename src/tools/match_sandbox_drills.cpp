@@ -5178,6 +5178,11 @@ class ShotDrill final : public Drill
         {
           outcome = "no shot (play stopped)";
         }
+        // From on the line, his touch can carry it over before he strikes.
+        if (event.type == MatchEventType::GOAL)
+        {
+          outcome = "no shot (in before the shot)";
+        }
         continue;
       }
       switch (event.type)
@@ -5286,8 +5291,9 @@ class ShotDrill final : public Drill
   {
     std::vector<DrillParameter> list;
     list.push_back(setting("Out from goal line (m)", &line,
-                           {.min = 1.0F, .max = LINE_MAX}, false,
-                           "Distance of the spot from the goal line."));
+                           {.min = 0.0F, .max = LINE_MAX}, false,
+                           "Distance of the spot from the goal line. 0: the "
+                           "ball on the line (touching it, still in play)."));
     list.push_back(setting("Off centre (m)", &side,
                            {.min = SIDE_MIN, .max = SIDE_MAX}, false,
                            "Sideways from the middle of the goal (+ towards "
@@ -5383,8 +5389,10 @@ class ShotDrill final : public Drill
     keeperId = hasKeeper ? ids[1] : 0;
     defenderId = hasDefender ? ids[hasKeeper ? 2 : 1] : 0;
     forced = choice < CHOICE_MIDPOINT;
-    spot = at(std::clamp(1.0F - (line / LENGTH), PITCH_MIDPOINT_SHARE,
-                         PITCH_EDGE_MAX_SHARE),
+    // Out to the goal line itself: at 0 the ball touches the line (its
+    // centre a radius out), so it is still in play.
+    const float out = std::max(line, MatchTuning::Units::BALL_RADIUS_METRES);
+    spot = at(std::max(1.0F - (out / LENGTH), PITCH_MIDPOINT_SHARE),
               std::clamp(PITCH_MIDPOINT_SHARE + (side / WIDTH),
                          PITCH_SAFE_MIN_SHARE, PITCH_SAFE_MAX_SHARE));
     MatchScenario scenario;
@@ -5576,6 +5584,10 @@ class ShotDrill final : public Drill
     {
       out.push_back(
           {.name = "Lost the ball", .value = is("no shot (lost the ball)")});
+      out.push_back({.name = "In before the shot",
+                     .value = is("no shot (in before the shot)")});
+      out.push_back(
+          {.name = "Out before the shot", .value = is("no shot (play stopped)")});
     }
     return out;
   }
@@ -5652,6 +5664,378 @@ class ShotDrill final : public Drill
   std::vector<PitchPoint> path;
   std::map<std::string, Tally> tallies;
 };
+// --- Still-ball shot ---------------------------------------------------------
+
+/**
+ * A still ball struck from a spot (game xG plan): the shooter stands behind
+ * it facing the goal's middle, the ball at his feet, and strikes it at once
+ * (MatchEngine::strikeStillBall): the AI's own shot, its spot in the goal
+ * his brain's, struck by his body as a dead ball. No touch, step or roll
+ * before it, and only that strike counts: a rebound he touches again ends
+ * the run. The game xG sweep measures with this drill.
+ */
+class StillShotDrill final : public Drill
+{
+  static constexpr double WATCH_SECONDS = 6.0;
+  static constexpr double RESULT_LINGER_SECONDS = 0.5;
+  static constexpr float LINE_MAX = 45.0F;
+  static constexpr float SIDE_MIN = -30.0F;
+  static constexpr float SIDE_MAX = 30.0F;
+  static constexpr float RATING_MAX = 100.0F;
+  static constexpr float KEEPER_HEIGHT_MIN = 165.0F;
+  static constexpr float KEEPER_HEIGHT_MAX = 205.0F;
+  static constexpr float DEFAULT_LINE = 16.0F;
+  static constexpr float DEFAULT_SHOOTING = 70.0F;
+  static constexpr float DEFAULT_GOALKEEPING = 70.0F;
+  static constexpr float DEFAULT_KEEPER_HEIGHT = 188.0F;
+  static constexpr float KEEPER_OFF_LINE_METRES = 1.5F;
+  static constexpr int SHOOTER_HEIGHT_CM = 180;
+  static constexpr float DEGREES_PER_RADIAN = 180.0F / PI;
+  /** The goal kinds after NONE, in GoalKind order. */
+  static constexpr std::array<const char*, 7> GOAL_CHOICES{
+      "Full size", "9v9",          "7v7",   "Futsal",
+      "5-a-side",  "Small framed", "Pop-up"};
+  static constexpr ImU32 SPOT_COLOUR = IM_COL32(90, 220, 120, 255);
+  static constexpr ImU32 GOAL_COLOUR = IM_COL32(90, 220, 120, 255);
+  static constexpr ImU32 SAVED_COLOUR = IM_COL32(90, 170, 255, 255);
+  static constexpr ImU32 MISSED_COLOUR = IM_COL32(240, 140, 60, 255);
+  static constexpr ImU32 PENDING_COLOUR = IM_COL32(255, 255, 255, 220);
+
+ public:
+  [[nodiscard]] const char* name() const override { return "Still-ball shot"; }
+  [[nodiscard]] const char* summary() const override
+  {
+    return "A still ball at a spot, struck at once by a shooter standing "
+           "behind it facing the goal: the AI's own shot, with no touch "
+           "before it. Only that strike counts. Against an empty goal or a "
+           "keeper. What the game xG sweep measures.";
+  }
+
+  /** The match pitch with the chosen goal at each end. */
+  [[nodiscard]] MatchPitch pitch() const override
+  {
+    MatchPitch on = MatchPitch::matchSize();
+    on.goal = PitchGoal::ofKind(static_cast<GoalKind>(
+        static_cast<int>(std::lround(goalChoice)) + 1));
+    return on;
+  }
+
+  std::vector<DrillParameter> parameters() override
+  {
+    std::vector<DrillParameter> list;
+    list.push_back(setting("Out from goal line (m)", &line,
+                           {.min = 0.0F, .max = LINE_MAX}, false,
+                           "Where the ball lies: from the goal line (0: on "
+                           "the line, touching it)."));
+    list.push_back(setting("Off centre (m)", &side,
+                           {.min = SIDE_MIN, .max = SIDE_MAX}, false,
+                           "Sideways from the middle of the goal (+ towards "
+                           "the bottom touchline)."));
+    DrillParameter goals = setting(
+        "Goals", &goalChoice,
+        {.min = 0.0F, .max = static_cast<float>(GOAL_CHOICES.size() - 1)}, true,
+        "The goal's size, on the match pitch.");
+    goals.choices.assign(GOAL_CHOICES.begin(), GOAL_CHOICES.end());
+    list.push_back(goals);
+    list.push_back(setting("Shooting", &shooting,
+                           {.min = 1.0F, .max = RATING_MAX}, true));
+    DrillParameter foot =
+        setting("Foot", &footChoice, {.min = 0.0F, .max = 1.0F}, true,
+                "The shooter's stronger foot.");
+    foot.choices = {"Right", "Left"};
+    list.push_back(foot);
+    DrillParameter keeper =
+        setting("Keeper", &keeperChoice, {.min = 0.0F, .max = 1.0F}, true);
+    keeper.choices = {"None", "In goal"};
+    list.push_back(keeper);
+    list.push_back(setting("Goalkeeping", &goalkeeping,
+                           {.min = 1.0F, .max = RATING_MAX}, true));
+    DrillParameter start = setting(
+        "Keeper starts", &keeperStart, {.min = 0.0F, .max = 1.0F}, true,
+        "Covering the angle: 1.5 m off his line towards the ball.\nCentre of "
+        "goal: on his line in the middle.");
+    start.choices = {"Covering the angle", "Centre of goal"};
+    list.push_back(start);
+    list.push_back(setting("Keeper height (cm)", &keeperHeight,
+                           {.min = KEEPER_HEIGHT_MIN, .max = KEEPER_HEIGHT_MAX},
+                           true));
+    return list;
+  }
+
+  [[nodiscard]] std::vector<DrillPlayerSpec> players() const override
+  {
+    std::vector<DrillPlayerSpec> list{
+        {.name = "Shooter",
+         .role = PlayerRole::ST,
+         .homeTeam = true,
+         .stats = {{"Shooting", shooting}},
+         .height = SHOOTER_HEIGHT_CM,
+         .derived = {},
+         .foot = footChoice > CHOICE_MIDPOINT ? Foot::Left : Foot::Right}};
+    if (keeperChoice > CHOICE_MIDPOINT)
+    {
+      list.push_back({.name = "Keeper",
+                      .role = PlayerRole::GK,
+                      .homeTeam = false,
+                      .stats = {{"Goalkeeping", goalkeeping}},
+                      .height = static_cast<int>(keeperHeight),
+                      .derived = {}});
+    }
+    return list;
+  }
+
+  void begin(MatchEngine& engine, const std::vector<PlayerID>& ids) override
+  {
+    shooterId = ids[0];
+    hasKeeper = keeperChoice > CHOICE_MIDPOINT;
+    keeperId = hasKeeper ? ids[1] : 0;
+    // The ball where it lies (on the line: touching it, still in play), the
+    // shooter behind it facing the goal's middle, the ball at his feet.
+    const float out = std::max(line, MatchTuning::Units::BALL_RADIUS_METRES);
+    spot = at(std::max(1.0F - (out / LENGTH), PITCH_MIDPOINT_SHARE),
+              std::clamp(PITCH_MIDPOINT_SHARE + (side / WIDTH),
+                         PITCH_SAFE_MIN_SHARE, PITCH_SAFE_MAX_SHARE));
+    const PitchPoint goalMiddle = at(1.0F, PITCH_MIDPOINT_SHARE);
+    const Vector2F toGoal = directionBetween(spot, goalMiddle);
+    const float facing = std::atan2(toGoal.y, toGoal.x);
+    MatchScenario scenario;
+    scenario.players.push_back(
+        {.playerId = shooterId,
+         .position = along(spot, toGoal, -MatchTuning::Dribble::FEET_METRES),
+         .makingRun = false,
+         .facing = facing});
+    if (hasKeeper)
+    {
+      keeperAt = keeperStart < CHOICE_MIDPOINT
+                     ? along(goalMiddle, directionBetween(goalMiddle, spot),
+                             std::min(KEEPER_OFF_LINE_METRES,
+                                      metresBetween(goalMiddle, spot) *
+                                          KEEPER_DISTANCE_SHARE))
+                     : at(KEEPER_START_LINE_SHARE, PITCH_MIDPOINT_SHARE);
+      scenario.players.push_back(
+          {.playerId = keeperId, .position = keeperAt, .makingRun = false});
+    }
+    scenario.carrierId = shooterId;
+    scenario.ballPosition = spot;
+    engine.startDrill(scenario);
+    shot.reset();
+    outcome.clear();
+    endAt.reset();
+    hitWoodwork = false;
+    seenEvents = engine.getEvents().size();
+    // Struck now, before any step: the ball as the drill put it.
+    const MatchBall& ball = engine.getBall();
+    speedBefore = std::hypot(ball.velocity.x, ball.velocity.y);
+    if (!engine.strikeStillBall(shooterId))
+    {
+      outcome = "no shot";
+      return;
+    }
+    strikeFrom = ball.position;
+    strikeSpeed = std::hypot(ball.velocity.x, ball.velocity.y);
+    if (const MatchPlayer* shooter = slotOf(engine, shooterId))
+    {
+      facingOff = std::abs(facingAngleOf(shooter->facingAngle - facing)) *
+                  DEGREES_PER_RADIAN;
+      // He stays where he struck it.
+      engine.setDrillTarget(shooterId, shooter->position, false);
+    }
+  }
+
+  bool afterStep(MatchEngine& engine) override
+  {
+    const double now = secondsOf(engine);
+    observe(engine);
+    if (outcome.empty() && shot)
+    {
+      const PlayerID holder = (engine.getPossessionAttachment() != nullptr)
+                                  ? engine.getPossessionAttachment()->getId()
+                                  : 0;
+      // The keeper has it, or the shooter touches it again (a rebound): the
+      // shot itself didn't go in.
+      if (hasKeeper && holder == keeperId)
+      {
+        outcome = "saved";
+      }
+      else if (holder == shooterId)
+      {
+        outcome = hitWoodwork ? "woodwork" : "off target";
+      }
+      else if (now >= WATCH_SECONDS)
+      {
+        outcome = hitWoodwork ? "woodwork" : "no outcome";
+      }
+    }
+    if (!outcome.empty() && !endAt)
+    {
+      endAt = now;
+    }
+    return !endAt || now < *endAt + RESULT_LINGER_SECONDS;
+  }
+
+  void drawOverlay(const IMatchRenderer& renderer,
+                   ImDrawList& draw) const override
+  {
+    const float scale = Theme::scale();
+    DrillDraw::marker(renderer, draw, spot, LARGE_MARKER_RADIUS_PIXELS * scale,
+                      SPOT_COLOUR, "spot");
+    if (shot)
+    {
+      ImU32 colour = PENDING_COLOUR;
+      if (outcome == "goal")
+      {
+        colour = GOAL_COLOUR;
+      }
+      else if (outcome == "saved")
+      {
+        colour = SAVED_COLOUR;
+      }
+      else if (!outcome.empty())
+      {
+        colour = MISSED_COLOUR;
+      }
+      DrillDraw::line(renderer, draw, strikeFrom,
+                      PitchPoint{PITCH.atX(1.0F), shot->targetY}, colour,
+                      HIT_OUTLINE_WIDTH_PIXELS * scale);
+      DrillDraw::label(renderer, draw, strikeFrom,
+                       std::format("xG {:.2f}{}", shot->xg,
+                                   outcome.empty() ? "" : "  " + outcome)
+                           .c_str(),
+                       colour);
+    }
+  }
+
+  [[nodiscard]] std::vector<std::string> report() const override
+  {
+    std::vector<std::string> lines;
+    lines.push_back(std::format(
+        "{:.1f} m out, {:+.1f} m off centre · Shooting {:.0f}, {}-footed · {}",
+        line, side, shooting, footChoice > CHOICE_MIDPOINT ? "left" : "right",
+        hasKeeper ? std::format("keeper (GK {:.0f})", goalkeeping)
+                  : std::string("empty goal")));
+    if (shot)
+    {
+      lines.push_back(std::format(
+          "Struck {:.2f} m from the spot (ball moving {:.2f} m/s before), at "
+          "{:.1f} m/s; body {:.0f} deg off the goal; engine xG {:.3f}, {}",
+          metresBetween(spot, strikeFrom), speedBefore, strikeSpeed, facingOff,
+          shot->xg, shot->onTarget ? "on target" : "off target"));
+    }
+    if (!outcome.empty())
+    {
+      lines.push_back("OUTCOME  " + outcome);
+    }
+    return lines;
+  }
+
+  [[nodiscard]] std::vector<DrillMetric> metrics() const override
+  {
+    if (outcome.empty() || outcome == "no outcome")
+    {
+      return {};
+    }
+    const auto is = [&](std::string_view name)
+    { return outcome == name ? 1.0 : 0.0; };
+    std::vector<DrillMetric> out{{.name = "Shot", .value = shot ? 1.0 : 0.0}};
+    if (shot)
+    {
+      out.push_back({.name = "Goal", .value = is("goal")});
+      out.push_back({.name = "xG", .value = shot->xg});
+      out.push_back({.name = "On target", .value = shot->onTarget ? 1.0 : 0.0});
+      out.push_back({.name = "Saved", .value = is("saved")});
+      out.push_back({.name = "Off target", .value = is("off target")});
+      out.push_back({.name = "Woodwork", .value = hitWoodwork ? 1.0 : 0.0});
+      // Checks that the strike was the only touch: both should be 0.
+      out.push_back({.name = "Ball moved before strike (m)",
+                     .value = metresBetween(spot, strikeFrom)});
+      out.push_back(
+          {.name = "Ball speed before strike (m/s)", .value = speedBefore});
+      out.push_back({.name = "Shot speed (m/s)", .value = strikeSpeed});
+      out.push_back({.name = "Facing off goal (deg)", .value = facingOff});
+    }
+    return out;
+  }
+
+ private:
+  struct Shot
+  {
+    float xg = 0.0F;
+    bool onTarget = false;
+    float targetY = PITCH_MIDPOINT_SHARE;
+  };
+
+  void observe(const MatchEngine& engine)
+  {
+    const auto& events = engine.getEvents();
+    for (; seenEvents < events.size() && outcome.empty(); ++seenEvents)
+    {
+      const MatchEvent& event = events[seenEvents];
+      if (event.type == MatchEventType::SHOT && !shot &&
+          event.primaryPlayerId == shooterId)
+      {
+        const MatchBall& ball = engine.getBall();
+        shot = Shot{.xg = event.xg,
+                    .onTarget = ball.possessionState().shotOnTarget,
+                    .targetY = ball.possessionState().shotTargetY};
+        continue;
+      }
+      if (!shot)
+      {
+        continue;
+      }
+      switch (event.type)
+      {
+        case MatchEventType::GOAL:
+        case MatchEventType::OWN_GOAL:
+          outcome = "goal";
+          break;
+        case MatchEventType::SAVE:
+          outcome = "saved";
+          break;
+        case MatchEventType::WOODWORK:
+          // Off the frame it may still go in: watched on.
+          hitWoodwork = true;
+          break;
+        case MatchEventType::SHOT_BLOCKED:
+          outcome = "blocked";
+          break;
+        case MatchEventType::GOAL_KICK:
+        case MatchEventType::CORNER:
+        case MatchEventType::THROW_IN:
+          outcome = hitWoodwork ? "woodwork" : "off target";
+          break;
+        default:
+          break;
+      }
+    }
+  }
+
+  float line = DEFAULT_LINE;
+  float side = 0.0F;
+  float goalChoice = 0.0F;
+  float shooting = DEFAULT_SHOOTING;
+  float footChoice = 0.0F;
+  float keeperChoice = 0.0F;
+  float goalkeeping = DEFAULT_GOALKEEPING;
+  float keeperStart = 0.0F;
+  float keeperHeight = DEFAULT_KEEPER_HEIGHT;
+
+  PlayerID shooterId = 0;
+  PlayerID keeperId = 0;
+  bool hasKeeper = false;
+  PitchPoint spot;
+  PitchPoint keeperAt;
+  PitchPoint strikeFrom;
+  float speedBefore = 0.0F;
+  float strikeSpeed = 0.0F;
+  float facingOff = 0.0F;
+  bool hitWoodwork = false;
+  std::size_t seenEvents = 0;
+  std::optional<Shot> shot;
+  std::string outcome;
+  std::optional<double> endAt;
+};
+
 // --- Shot block ------------------------------------------------------------
 
 /**
@@ -14384,6 +14768,7 @@ std::vector<std::unique_ptr<Drill>> makeDrills()
   add(DrillCategory::Duels, std::make_unique<TackleDrill>());
   add(DrillCategory::Duels, std::make_unique<CollisionDrill>());
   add(DrillCategory::Shooting, std::make_unique<ShotDrill>());
+  add(DrillCategory::Shooting, std::make_unique<StillShotDrill>());
   add(DrillCategory::Duels, std::make_unique<ShotBlockDrill>());
   add(DrillCategory::Shooting, std::make_unique<ShotTargetDrill>());
   add(DrillCategory::Control, std::make_unique<FirstTouchDrill>());

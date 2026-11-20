@@ -273,6 +273,14 @@ void MatchEngine::forceShot(PlayerID playerId, std::optional<Vector2F> aim,
   recordCommand(command);
 }
 
+bool MatchEngine::strikeStillBall(PlayerID playerId)
+{
+  MatchCommandRecord command;
+  command.type = MatchCommandType::STRIKE_STILL_BALL;
+  command.player = playerId;
+  return recordCommand(command);
+}
+
 void MatchEngine::forcePass(PlayerID playerId, PlayerID receiverId,
                             ForcedPassStyle style)
 {

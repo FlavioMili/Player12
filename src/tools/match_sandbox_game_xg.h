@@ -63,13 +63,15 @@ struct GameXgSweepSpec
 {
   GoalKind goal = GoalKind::FULL;
   std::vector<float> shooting{1.0F, 25.0F, 50.0F, 75.0F, 100.0F};
-  float lineFrom = 1.0F;
+  /** The first row: the goal line itself (the ball touching it), the
+   * baseline for the narrowest angles. */
+  float lineFrom = 0.0F;
   /** Finest first: 1 m in and around the box, 2 m to 30 m, 4 m beyond. The
    * last band is the sweep's extent. */
   std::vector<GameXgBand> bands{
       {.lineTo = 18.0F, .sideMax = 20.0F, .step = 1.0F},
       {.lineTo = 30.0F, .sideMax = 28.0F, .step = 2.0F},
-      {.lineTo = 41.0F, .sideMax = 28.0F, .step = 4.0F}};
+      {.lineTo = 40.0F, .sideMax = 28.0F, .step = 4.0F}};
   int repeats = 60;
   std::uint32_t firstSeed = 1;
   /** Left and right count as mirror images if no more than this share of
@@ -184,6 +186,11 @@ class GameXgSweep
   std::uint32_t savedSeed = 1;
   bool restored = false;
 };
+
+/** The drill the sweep measures with (Still-ball shot), from a set of
+ * drills; nullptr if it isn't there. */
+[[nodiscard]] Drill* gameXgDrill(
+    const std::vector<std::unique_ptr<Drill>>& drills);
 
 /** fm_lab game-xg: the sweep headless; saves the table (see lab_main.cpp). */
 int runGameXgCommand(const StatsConfig& config,

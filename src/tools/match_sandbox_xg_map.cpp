@@ -118,13 +118,7 @@ ImU32 xgColour(float xg, float full = FITTED_FULL_COLOUR)
 XgMapScene::XgMapScene(GUIView* guiView_ptr)
     : GUIScene(guiView_ptr), drills(makeDrills())
 {
-  for (const auto& drill : drills)
-  {
-    if (drill->offersShotMap())
-    {
-      shotDrill = drill.get();
-    }
-  }
+  shotDrill = gameXgDrill(drills);
 }
 
 XgMapScene::~XgMapScene() = default;
