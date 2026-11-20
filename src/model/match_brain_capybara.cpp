@@ -3749,9 +3749,10 @@ MatchEngine::CarrierWeightsCapybara MatchEngine::neutralCarrierWeightsCapybara()
   using P = MatchTuning::Passing;
   namespace T = TacticsTuning;
   CarrierWeightsCapybara weights;
-  // Pass.
-  weights.receiverSpace = P::OPENNESS_WEIGHT;
+  // Shared by pass and carry: progress and space (the pass's weights).
   weights.progress = P::BASE_PROGRESS_WEIGHT;
+  weights.space = P::OPENNESS_WEIGHT;
+  // Pass.
   weights.lengthOffIdeal = -P::DISTANCE_PENALTY_PER_METRE;
   weights.safeOutlet = P::SAFE_OUTLET_WEIGHT;
   weights.completion = P::COMPLETION_UTILITY_WEIGHT;
@@ -3764,7 +3765,6 @@ MatchEngine::CarrierWeightsCapybara MatchEngine::neutralCarrierWeightsCapybara()
   weights.cutInsideShot = D::CUT_INSIDE_SHOT_BONUS;
   weights.weakFootShot = -T::WEAK_FOOT_SHOT_PENALTY;
   // Carry. Keeping the ball counts as much as a completed pass does.
-  weights.carrySpace = D::CARRY_OPENNESS_WEIGHT;
   weights.carryKeep = P::COMPLETION_UTILITY_WEIGHT;
   weights.carryHeld = -D::CARRY_HOLD_PENALTY_PER_SECOND;
   weights.cutInsideCarry = D::CUT_INSIDE_CARRY_BONUS;
@@ -3786,7 +3786,8 @@ MatchEngine::CarrierWeightsCapybara MatchEngine::carrierWeightsCapybara(
   // Game state is a layer: a drill with no layers has none.
   const bool gameState = drillRules.layers;
   CarrierWeightsCapybara weights = neutralCarrierWeightsCapybara();
-  // Pass: the attacking instruction on progress, his role's daring.
+  // Progress (pass and carry): the attacking instruction, his role's
+  // daring.
   weights.progressInstruction =
       strategy.offensiveBias * P::OFFENSIVE_PROGRESS_WEIGHT;
   weights.passDaring = role.passDaring;
@@ -3831,7 +3832,7 @@ float MatchEngine::addShotCoreCapybara(DecisionFrame::Score& shot,
   return range;
 }
 
-float MatchEngine::carryEndXGCapybara(const MatchPlayer& carrier) const
+PitchPoint MatchEngine::carryEndCapybara(const MatchPlayer& carrier) const
 {
   // He decides again about a second later (individual possessions last
   // about a second), so the carry is worth the xG from where he will be
@@ -3850,16 +3851,50 @@ float MatchEngine::carryEndXGCapybara(const MatchPlayer& carrier) const
     end.x += (aim.x - carrier.position.x) * share;
     end.y += (aim.y - carrier.position.y) * share;
   }
+  return end;
+}
+
+namespace
+{
+/** The nearest active opponent of `homeTeam` to `at`, in metres. */
+float nearestOpponentMetres(const std::vector<MatchPlayer>& players,
+                            bool homeTeam, PitchPoint at, const auto& isActive)
+{
   float nearest = std::numeric_limits<float>::max();
   for (const auto& opponent : players)
   {
-    if (opponent.isHomeTeam != carrier.isHomeTeam && active(opponent))
+    if (opponent.isHomeTeam != homeTeam && isActive(opponent))
     {
-      nearest = std::min(nearest, distance(end, opponent.position));
+      nearest = std::min(nearest, distance(at, opponent.position));
     }
   }
+  return nearest;
+}
+}  // namespace
+
+float MatchEngine::carryEndXGCapybara(const MatchPlayer& carrier,
+                                      PitchPoint end) const
+{
+  const float nearest =
+      nearestOpponentMetres(players, carrier.isHomeTeam, end,
+                            [](const MatchPlayer& p) { return active(p); });
   return xgBreakdown(pitch, end, carrier.isHomeTeam, carrier.shooting, nearest)
       .xg;
+}
+
+float MatchEngine::progressCapybara(bool homeTeam, PitchPoint from,
+                                    PitchPoint to) const
+{
+  const float direction = homeTeam ? 1.0F : -1.0F;
+  return pitch.fractionX(to.x - from.x) * direction;
+}
+
+float MatchEngine::spaceAtCapybara(bool homeTeam, PitchPoint at) const
+{
+  const float nearest = nearestOpponentMetres(
+      players, homeTeam, at, [](const MatchPlayer& p) { return active(p); });
+  return std::clamp(nearest / MatchTuning::Passing::OPENNESS_RADIUS_METRES,
+                    0.0F, 1.0F);
 }
 
 float MatchEngine::keepChanceCapybara(const MatchPlayer& carrier,
@@ -4020,13 +4055,27 @@ MatchEngine::BallAction MatchEngine::chooseBallActionCapybara(
   // than three.
   const auto heldSeconds = static_cast<float>(
       getSimulatedSeconds() - getPossessionHistory().possessionStartSeconds);
+  // The measures are taken where he will be at his next decision
+  // (carryEndCapybara), as a pass's are taken at the receiver.
   DecisionFrame::Score carry;
-  carry.add("space ahead", S::SITUATION, opennessAhead, weights.carrySpace);
+  const PitchPoint carryEnd = carryEndCapybara(carrier);
   const float carryKeep = keepChanceCapybara(carrier, false, pressure);
+  const float carryProgress =
+      carryKeep *
+      progressCapybara(carrier.isHomeTeam, carrier.position, carryEnd);
+  carry.add("space where the ball ends", S::SITUATION,
+            spaceAtCapybara(carrier.isHomeTeam, carryEnd), weights.space);
+  carry.add("progress (keeps it x gain)", S::SITUATION, carryProgress,
+            weights.progress);
+  carry.add("progress x attacking instruction", S::INSTRUCTION, carryProgress,
+            weights.progressInstruction);
+  carry.add("his role: daring (progress)", S::SLOT_ROLE,
+            carryProgress * TacticsTuning::PASS_DARING_PROGRESS_WEIGHT,
+            weights.passDaring);
   carry.add("keeps the ball", S::SITUATION, carryKeep, weights.carryKeep);
   // Threat: the chance he keeps it times the xG where the carry ends.
   carry.add("threat (keeps it x xG at the carry's end)", S::SITUATION,
-            carryKeep * carryEndXGCapybara(carrier), weights.threat);
+            carryKeep * carryEndXGCapybara(carrier, carryEnd), weights.threat);
   carry.add("risk-taking instruction", S::INSTRUCTION, 1.0F, weights.carryRisk);
   carry.add("time already on the ball", S::SITUATION, heldSeconds,
             weights.carryHeld);
@@ -4207,12 +4256,11 @@ MatchEngine::BallAction MatchEngine::chooseBallActionCapybara(
   {
     lastScenarioDecision.action = ScenarioAction::CARRY;
     lastScenarioDecision.reason =
-        option ? "carry:\"space ahead (value " + std::to_string(opennessAhead) +
-                     ") beats the best pass with intent " +
-                     std::string(passIntentName(option->intent))
-               : std::string(
-                     "carry:space ahead and no acceptable pass "
-                     "candidate in range");
+        option
+            ? "carry (score " + std::to_string(carryScore) +
+                  ") beats the best pass (score " + std::to_string(passScore) +
+                  ") with intent " + std::string(passIntentName(option->intent))
+            : std::string("carry: no acceptable pass candidate in range");
     action.kind = ScenarioAction::CARRY;
     action.holdSeconds = randomFloat(MatchTuning::Decision::MIN_DRIBBLE_TIME,
                                      MatchTuning::Decision::MAX_DRIBBLE_TIME);
@@ -4328,14 +4376,11 @@ MatchEngine::PassOption MatchEngine::evaluatePassOptionCapybara(
   // or changing the match. The completion estimate ranks options; passBall
   // does not roll against it to guarantee a completed pass. Error at release,
   // ball flight and contested receptions determine whether it arrives.
-  const float direction = passer.isHomeTeam ? 1.0F : -1.0F;
   const float passDistance = distance(passer.position, receiver.position);
   const float progression =
-      pitch.fractionX(receiver.position.x - passer.position.x) * direction;
+      progressCapybara(passer.isHomeTeam, passer.position, receiver.position);
   const float openness =
-      std::clamp(nearestOpponentDistance(receiver) /
-                     MatchTuning::Passing::OPENNESS_RADIUS_METRES,
-                 0.0F, 1.0F);
+      spaceAtCapybara(receiver.isHomeTeam, receiver.position);
   const float laneRisk = passingLaneRiskCapybara(passer, receiver);
   const float pressure =
       std::clamp((MatchTuning::Decision::PRESSURE_RADIUS_METRES -
@@ -4411,9 +4456,12 @@ MatchEngine::PassOption MatchEngine::evaluatePassOptionCapybara(
   using DecisionFrame::gate;
   using S = TermSource;
   DecisionFrame::Score score;
-  score.add("receiver in space", S::SITUATION, openness, weights.receiverSpace);
-  score.add("forward progress", S::SITUATION, progression, weights.progress);
-  score.add("progress x attacking instruction", S::INSTRUCTION, progression,
+  // Progress: the chance it arrives times the gain, as for the carry.
+  const float passProgress = completionProbability * progression;
+  score.add("space where the ball ends", S::SITUATION, openness, weights.space);
+  score.add("progress (completion x gain)", S::SITUATION, passProgress,
+            weights.progress);
+  score.add("progress x attacking instruction", S::INSTRUCTION, passProgress,
             weights.progressInstruction);
   score.add(
       "distance from the ideal length", S::SITUATION,
@@ -4429,7 +4477,7 @@ MatchEngine::PassOption MatchEngine::evaluatePassOptionCapybara(
   // The passer's role: progress and risk (1 - completion) are worth more
   // to a daring passer.
   score.add("passer's role: daring passes", S::SLOT_ROLE,
-            (progression * T::PASS_DARING_PROGRESS_WEIGHT) +
+            (passProgress * T::PASS_DARING_PROGRESS_WEIGHT) +
                 ((1.0F - completionProbability) * T::PASS_DARING_SAFETY_WEIGHT),
             weights.passDaring);
   // A target man is worth less to a ball played back to him.
@@ -4491,6 +4539,7 @@ MatchEngine::PassOption MatchEngine::evaluatePassOptionCapybara(
                 MatchTuning::Passing::THROUGH_BALL_TARGET_BLEND;
     target.y += (receiver.tacticalTarget.y - target.y) *
                 MatchTuning::Passing::THROUGH_BALL_TARGET_BLEND;
+    const float direction = passer.isHomeTeam ? 1.0F : -1.0F;
     target.x +=
         direction * MatchTuning::Passing::THROUGH_BALL_FORWARD_LEAD_METRES;
     target = clampToPitch(target);

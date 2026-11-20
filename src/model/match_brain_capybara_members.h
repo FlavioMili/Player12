@@ -32,15 +32,18 @@
    * (his role, an order on him) are set where the pass is scored. */
   struct CarrierWeightsCapybara
   {
-    // Pass, per candidate.
-    float receiverSpace = 0.0F;
+    // Shared by pass and carry: progress (the chance it comes off times the
+    // gain towards goal), the layers on it, and the space where the ball
+    // ends up.
     float progress = 0.0F;
     float progressInstruction = 0.0F;
+    float passDaring = 0.0F;
+    float space = 0.0F;
+    // Pass, per candidate.
     float lengthOffIdeal = 0.0F;
     float safeOutlet = 0.0F;
     float completion = 0.0F;
     float runner = 0.0F;
-    float passDaring = 0.0F;
     float spaceBehind = 0.0F;
     // Threat (pass, shot, carry): the chance of a goal from the option.
     float threat = 0.0F;
@@ -53,7 +56,6 @@
     float lateLeadShot = 0.0F;
     float comfortableLeadShot = 0.0F;
     // Carry.
-    float carrySpace = 0.0F;
     float carryKeep = 0.0F;
     float carryRisk = 0.0F;
     float carryHeld = 0.0F;
@@ -76,13 +78,24 @@
                                    const MatchPitch& pitch, PitchPoint at,
                                    bool attackingRight, float shotXG);
  private:
+  /** Where his carry would take him by his next decision: about a second
+   * towards carryTargetCapybara at carrying speed. */
+  [[nodiscard]] PitchPoint carryEndCapybara(const MatchPlayer& carrier) const;
+  /** The xG from `end` (carryEndCapybara), with the nearest opponent
+   * measured from there. */
+  [[nodiscard]] float carryEndXGCapybara(const MatchPlayer& carrier,
+                                         PitchPoint end) const;
+  /** Progress, shared by pass and carry: the share of the pitch length the
+   * ball moves towards the opponents' goal from `from` to `to`
+   * (negative backwards). */
+  [[nodiscard]] float progressCapybara(bool homeTeam, PitchPoint from,
+                                       PitchPoint to) const;
+  /** Space, shared by pass and carry: the nearest opponent to `at` over
+   * the openness radius, 0 (on him) to 1 (10 m or more). */
+  [[nodiscard]] float spaceAtCapybara(bool homeTeam, PitchPoint at) const;
   /** Chance he keeps the ball if he carries it (or shields it): 1 minus
    * the pressure on him times the chance the nearest opponent's tackle
    * wins it (MatchRules::tackleWinChance, a standing tackle). */
-  /** The xG from where his carry would take him by his next decision:
-   * about a second towards carryTargetCapybara at carrying speed, with the
-   * nearest opponent measured from there. */
-  [[nodiscard]] float carryEndXGCapybara(const MatchPlayer& carrier) const;
   [[nodiscard]] float keepChanceCapybara(const MatchPlayer& carrier,
                                          bool shielding,
                                          float pressure) const;
