@@ -278,7 +278,7 @@ void drawBody(const Painter& base, const Body& body, const Tuning& tuning,
   paint.facing = body.facing;
   const bool full = detail == Detail::FULL;
   const float height = body.height;
-  const float lift = body.feetHeight;
+  const float feetHeight = body.feetHeight;
   const float radius = 0.5F * MatchTuning::Body::DIAMETER_METRES;
   const BodyLines lines = bodyLinesOfHeight(height);
   // In the air his feet, thigh and chest play nothing (the touch sweep
@@ -340,9 +340,10 @@ void drawBody(const Painter& base, const Body& body, const Tuning& tuning,
         paint.sector(0.0F, radius, z0 + 0.004F, -180.0F, 180.0F,
                      withAlpha(body.kit, 0.95F));
       }
-      paint.cylinderSides(radius, z0 + lift, z0 + lift + height, side);
-      paint.cylinder(radius, z0 + lift, z0 + lift + height, -180.0F, 180.0F,
-                     edge, 1.5F);
+      paint.cylinderSides(radius, z0 + feetHeight, z0 + feetHeight + height,
+                          side);
+      paint.cylinder(radius, z0 + feetHeight, z0 + feetHeight + height, -180.0F,
+                     180.0F, edge, 1.5F);
       add("Body: an upright cylinder, across",
           std::format("{:.2f} m", MatchTuning::Body::DIAMETER_METRES),
           "Body::DIAMETER_METRES");
@@ -549,11 +550,11 @@ void drawBody(const Painter& base, const Body& body, const Tuning& tuning,
       // has them (drawn as ghosts while one is recent).
       const float alpha = technique == Technique::SHOT_BLOCK ? 1.0F : 0.3F;
       const float torso = radius + MatchTuning::Units::BALL_RADIUS_METRES;
-      paint.cylinder(torso, z0 + lift + lines.chest, z0 + lift + height,
-                     -180.0F, 180.0F, colour(230, 110, 170, alpha * 0.8F),
-                     1.0F);
+      paint.cylinder(torso, z0 + feetHeight + lines.chest,
+                     z0 + feetHeight + height, -180.0F, 180.0F,
+                     colour(230, 110, 170, alpha * 0.8F), 1.0F);
       label(
-          paint.polar(-60.0F, torso, z0 + lift + lines.chest),
+          paint.polar(-60.0F, torso, z0 + feetHeight + lines.chest),
           std::format("shot block: torso {:.2f} m, hip {:.2f} m to head [WIP]",
                       torso, lines.chest),
           colour(230, 110, 170, alpha));
@@ -654,7 +655,7 @@ void drawBody(const Painter& base, const Body& body, const Tuning& tuning,
         header ? A::HEAD_REACH_METRES + 0.05F : feetReach + 0.12F;
     const float outer = inner + 0.15F;
     const float z =
-        header ? z0 + headBandOf(height, lift).forehead : z0 + 0.008F;
+        header ? z0 + headBandOf(height, feetHeight).forehead : z0 + 0.008F;
     // Across his body (inward) is his weaker foot's side for the strong foot.
     const float inwardSide = body.rightFooted ? -1.0F : 1.0F;
     for (int section = 0; section < SECTIONS; ++section)
@@ -711,9 +712,9 @@ void drawBody(const Painter& base, const Body& body, const Tuning& tuning,
     }};
     for (const Line& mark : marks)
     {
-      paint.ring(radius + 0.01F, z0 + lift + mark.z,
+      paint.ring(radius + 0.01F, z0 + feetHeight + mark.z,
                  colour(255, 255, 255, 0.9F), 2.0F);
-      label(paint.polar(90.0F, radius + 0.05F, z0 + lift + mark.z),
+      label(paint.polar(90.0F, radius + 0.05F, z0 + feetHeight + mark.z),
             std::format("{} {:.2f} m ({:.2f} x h)", mark.name, mark.z,
                         mark.z / height),
             colour(230, 230, 230, 1.0F));
@@ -722,9 +723,9 @@ void drawBody(const Painter& base, const Body& body, const Tuning& tuning,
         "Ball::CHEST_LINE_HEIGHT_SHARE x height (top of a raised thigh)");
     add("Head line", std::format("{:.2f} m", lines.head),
         "Ball::HEAD_LINE_HEIGHT_SHARE x height (top of his shoulders)");
-    if (lift > 0.0F)
+    if (feetHeight > 0.0F)
     {
-      add("Every line, in the air", std::format("+{:.2f} m", lift),
+      add("Every line, in the air", std::format("+{:.2f} m", feetHeight),
           "his feet's height");
     }
   }
@@ -772,8 +773,8 @@ void drawBody(const Painter& base, const Body& body, const Tuning& tuning,
     {
       const float alpha = picked({part.owner});
       const ImU32 tint = part.on ? withAlpha(part.tint, alpha) : offTint;
-      const float bottom = z0 + lift + part.bottom;
-      const float top = z0 + lift + part.top;
+      const float bottom = z0 + feetHeight + part.bottom;
+      const float top = z0 + feetHeight + part.top;
       // In front of him only: a half cylinder from his centre.
       paint.cylinder(part.reach, bottom, top, -90.0F, 90.0F, tint, 1.5F);
       if (part.on)
@@ -855,7 +856,7 @@ void drawBody(const Painter& base, const Body& body, const Tuning& tuning,
   if (layers.head && !body.lying)
   {
     const float alpha = picked({Technique::HEADER});
-    const HeadBand band = headBandOf(height, lift);
+    const HeadBand band = headBandOf(height, feetHeight);
     const float forehead = z0 + band.forehead;
     const float headReach = A::HEAD_REACH_METRES;
     const float headComfort = tuning.header.comfortGap;
