@@ -147,7 +147,7 @@ before a shootout) at any speed until you resume it.
 
 | Input | Action |
 |-------|--------|
-| Drag a substitute onto a player | Plan a substitution; several planned changes are made together at the next stoppage |
+| Drag a substitute onto a player | Plan a substitution; several planned changes are made together at the next stoppage (with the newer match engine, the players walk off and the subs walk on before play restarts) |
 | *Pause while open* | Keeps the match paused while the board or the panel is open (a saved setting) |
 
 The tactics panel changes the style, the instructions and the formation
@@ -200,8 +200,11 @@ afterwards has less effect.
 | Double-click (free camera) | Look at the clicked spot |
 | Double-click (other cameras, or the 2D view) | Toggle pitch focus |
 
-In the 2D view the mouse only toggles pitch focus; orbit, pan and zoom apply
-to the 3D view.
+In the sandbox's 2D view, the mouse wheel zooms from 1x to 4x about the
+centre of the pitch. Scroll down to return to the full stadium view. While
+controlling a player, zoom adjusts the existing player-following view.
+Double-click toggles pitch focus. Orbit and pan apply to the 3D view; outside
+the sandbox, the 2D mouse controls only toggle pitch focus.
 
 ### Play mode
 

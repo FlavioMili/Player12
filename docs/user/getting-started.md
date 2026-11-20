@@ -224,7 +224,10 @@ When your match is due, Continue becomes **Play match**.
    half-time* (in *Settings*) your match stops at the break at any speed.
 5. **Substitutions** (S): five changes in three windows, with half-time
    free. On the substitutions board, drag a substitute onto the player he
-   replaces; changes planned together are made at the next stoppage. Leave
+   replaces; changes planned together are made at the next stoppage. With
+   the newer match engine the player walks off at the nearest touchline or
+   goal line and the sub, waiting by the halfway line, walks on; play
+   restarts once he is on. Leave
    them to the assistant with *Assistant makes substitutions during the
    match*.
 6. **Tactics** (T): change the style, the instructions or the formation

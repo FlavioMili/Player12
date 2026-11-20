@@ -56,6 +56,26 @@ ranges:
 results using the same seeds, ratings, count and fidelity; see
 [Extending and modding](extending-and-modding.md#validate-a-behavior-change).
 
+For a change that should only alter float rounding, compare position traces
+from two builds tick by tick. `fm_lab trace` takes the `matches` options plus
+`--out FILE` and writes every player and the ball, in metres, at every fixed
+step for the first `--seconds` (default 10) of each match. `fm_lab drill
+"NAME" --trace FILE` does the same for one run of a drill. `fm_lab drill
+--pitch 40x30 "NAME" ...` plays a drill on a walled training pitch of that
+size instead of its own, and `--goal KIND` puts a goal of that kind at each
+end (see the Walled box drill and
+[match-engine.md](match-engine.md#training-pitches)).
+
+`fm_lab session "NAME"` runs a training session headless (see
+[match-engine.md](match-engine.md#training-sessions)) and prints each
+exercise's zones' outcomes, each change (arrivals, time, the largest jump of
+place and condition at the merge and the split) and the squad's condition;
+`--zone-brain "ZONE=B"` and `--zone-body "ZONE=B"` set a zone's versions,
+and `--carry-check` checks that a player's running state carries from one
+engine to another exactly. `match_sandbox --zone-round-trip` saves zones of
+the example session, loads and replays them, and says whether each replays
+identically.
+
 ## Screenshots
 
 The screenshots in `docs/images` come from a real career, captured by the

@@ -8,11 +8,14 @@
 
 #pragma once
 
+#include <array>
+#include <cstddef>
 #include <cstdint>
 #include <string>
 #include <string_view>
 
 #include "global/types.h"
+#include "model/match_point.h"
 #include "model/match_tuning.h"
 
 /** Machine-readable category of a match event. */
@@ -91,17 +94,18 @@ enum class MatchEventDetail : std::uint8_t
  */
 struct MatchEvent
 {
-  float timeMinute = 0.0f;
+  float timeMinute = 0.0F;
   std::string description;
   MatchEventType type = MatchEventType::INFO;
   int period = 1;
-  float addedMinute = 0.0f;
+  float addedMinute = 0.0F;
   bool hasTeam = false;
   bool isHomeTeam = false;
   PlayerID primaryPlayerId = 0;
   PlayerID secondaryPlayerId = 0;
-  Vector2F position{MatchTuning::Pitch::CENTRE, MatchTuning::Pitch::CENTRE};
-  float xg = 0.0f;
+  PitchPoint position{MatchTuning::Pitch::MATCH_CENTRE_X_METRES,
+                      MatchTuning::Pitch::MATCH_CENTRE_Y_METRES};
+  float xg = 0.0F;
   MatchEventDetail detail = MatchEventDetail::NONE;
   /** Score once the event happened (after the goal for a goal). */
   int homeScore = 0;
@@ -128,13 +132,13 @@ struct PlayerMatchStats
   bool substitutedOff = false;
   bool sentOff = false;
   bool injured = false;
-  float minutesPlayed = 0.0f;
+  float minutesPlayed = 0.0F;
   int goals = 0;
   int ownGoals = 0;
   int assists = 0;
   int shots = 0;
   int shotsOnTarget = 0;
-  float expectedGoals = 0.0f;
+  float expectedGoals = 0.0F;
   int passesAttempted = 0;
   int passesCompleted = 0;
   int keyPasses = 0;
@@ -142,6 +146,10 @@ struct PlayerMatchStats
   int tacklesWon = 0;
   int interceptions = 0;
   int clearances = 0;
+  /** Opponents' shots his body stopped (shot block plan step 4). */
+  int blockedShots = 0;
+  /** Opponents' passes his body stopped (pass block plan). */
+  int blockedPasses = 0;
   int aerialDuelsWon = 0;
   int aerialDuelsLost = 0;
   int saves = 0;
@@ -155,18 +163,42 @@ struct PlayerMatchStats
   /** Times he started closing down the ball carrier. */
   int pressures = 0;
   /** Distance covered in metres (the simulation runs in real time). */
-  float distanceMetres = 0.0f;
-  float secondHalfDistanceMetres = 0.0f;
+  float distanceMetres = 0.0F;
+  float secondHalfDistanceMetres = 0.0F;
   /** Distance above 5.5 m/s (19.8 km/h) and above 7 m/s (25.2 km/h). */
-  float highIntensityMetres = 0.0f;
-  float secondHalfHighIntensityMetres = 0.0f;
-  float sprintMetres = 0.0f;
+  float highIntensityMetres = 0.0F;
+  float secondHalfHighIntensityMetres = 0.0F;
+  float sprintMetres = 0.0F;
+  /** Distance below 2 m/s (walking), 2-4 m/s (jogging) and 4-5.5 m/s
+   * (running); above that is high intensity. */
+  float walkMetres = 0.0F;
+  float jogMetres = 0.0F;
+  float runMetres = 0.0F;
+  /** Distance above 4 m/s (14.4 km/h: the research's "high-intensity
+   * running", Mohr 2003, Bradley 2009) by 5-minute window of the clock: 0-5
+   * ... 40-45 of the first half, then of the second (added and extra time
+   * left out). */
+  static constexpr std::size_t FIVE_MINUTE_WINDOWS = 18;
+  std::array<float, FIVE_MINUTE_WINDOWS> runningByFive{};
+  /** Metabolic energy of his movement (J/kg; bodies with an energy model),
+   * and the part above his critical speed's power (anaerobic). */
+  float metabolicEnergy = 0.0F;
+  float anaerobicEnergy = 0.0F;
+  /** The same two while he was slowing down. */
+  float brakingEnergy = 0.0F;
+  float brakingAnaerobicEnergy = 0.0F;
+  /** Time (s) and distance (m) in each movement mode by his own bands now
+   * (walk, jog, run, sprint: MovementMode). */
+  std::array<float, 4> modeSeconds{};
+  std::array<float, 4> modeMetres{};
+  /** Elapsed match minutes when his fuel first ran out (-1: never). */
+  float emptyAtMinute = -1.0F;
   /** Efforts above 7 m/s. */
   int sprints = 0;
   /** Highest speed reached (m/s). */
-  float topSpeed = 0.0f;
+  float topSpeed = 0.0F;
   /** Physical condition in [0, 1] when the player last left or at the end. */
-  float condition = 1.0f;
+  float condition = 1.0F;
   /** Event-driven rating, 6.0 baseline, bounded to [3, 10]. */
   float rating = MatchTuning::Rating::BASELINE;
 };
@@ -183,7 +215,7 @@ enum class SubstitutionReason : std::uint8_t
 
 struct MatchSubstitution
 {
-  float timeMinute = 0.0f;
+  float timeMinute = 0.0F;
   int period = 1;
   bool isHomeTeam = false;
   PlayerID outgoingPlayerId = 0;

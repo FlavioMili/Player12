@@ -16,7 +16,11 @@
 #include <gtest/gtest.h>
 #include <imgui.h>
 #include <imgui_internal.h>
+#ifdef _WIN32
+#include <process.h>
+#else
 #include <unistd.h>
+#endif
 
 #include <algorithm>
 #include <filesystem>
@@ -39,7 +43,7 @@ class GameFlowTest_GUIFlowLifecycle_Test
   {
     view.applyPendingSceneChanges();
     view.handleEvents();
-    view.update(0.016f);
+    view.update(0.016F);
     view.render();
     EXPECT_EQ(ImGui::GetCurrentContext()->ErrorCountCurrentFrame, 0)
         << "ImGui reported a usage error";
@@ -96,7 +100,16 @@ constexpr std::uint64_t WORLD_SEED = 20250702;
 
 int uniqueSlot(int offset)
 {
-  return 480'000 + getpid() % 100'000 * 10 + offset;
+#ifdef _WIN32
+  const int processId = _getpid();
+#else
+  const int processId = getpid();
+#endif
+  constexpr int FIRST_TEST_SLOT = 480'000;
+  constexpr int PROCESS_SLOT_COUNT = 100'000;
+  constexpr int SLOTS_PER_PROCESS = 10;
+  return FIRST_TEST_SLOT +
+         ((processId % PROCESS_SLOT_COUNT) * SLOTS_PER_PROCESS) + offset;
 }
 
 struct SlotCleanup
@@ -111,7 +124,10 @@ struct SlotCleanup
 
 void frames(GUIView& view, int count)
 {
-  for (int index = 0; index < count; ++index) Bridge::frame(view);
+  for (int index = 0; index < count; ++index)
+  {
+    Bridge::frame(view);
+  }
 }
 
 void pushKey(SDL_Scancode scancode, SDL_Keycode key, bool down)
@@ -134,7 +150,8 @@ void capture(GUIView& view, const char* name)
 const MatchPlayer* findPlayer(const MatchEngine& engine, PlayerID id)
 {
   for (const MatchPlayer& player : engine.getPlayers())
-    if (player.player && player.player->getId() == id) return &player;
+    if ((player.player != nullptr) && player.player->getId() == id)
+      return &player;
   return nullptr;
 }
 
@@ -142,7 +159,8 @@ const MatchPlayer* findPlayer(const MatchEngine& engine, PlayerID id)
 const MatchPlayer* managedCarrier(const MatchEngine& engine, bool home)
 {
   for (const MatchPlayer& player : engine.getPlayers())
-    if (player.player && player.player == engine.getBall().possessedBy &&
+    if ((player.player != nullptr) &&
+        player.player == engine.getBall().possessionState().possessedBy &&
         player.isHomeTeam == home && !player.isGoalkeeper &&
         engine.getState() == MatchState::PLAYING)
       return &player;
@@ -160,8 +178,17 @@ TEST(PlayModeUiTest, PlayMovePassSwitchAndHandBack)
   controller.selectManagedTeam(controller.getTeams().front().get().getId());
   controller.advanceToNextManagedFixture(60);
   const auto fixture = controller.getNextManagedFixture();
-  ASSERT_TRUE(fixture && fixture->date == controller.getCurrentDate());
-  const TeamID club = controller.getManagedTeam()->get().getId();
+  if (!fixture)
+  {
+    FAIL() << "expected the next managed fixture";
+  }
+  ASSERT_EQ(fixture->date, controller.getCurrentDate());
+  const auto managed = controller.getManagedTeam();
+  if (!managed)
+  {
+    FAIL() << "expected a managed team";
+  }
+  const TeamID club = managed->get().getId();
   const TeamID home = fixture->home ? club : fixture->opponent;
   const TeamID away = fixture->home ? fixture->opponent : club;
   controller.giveTeamTalk(TeamTalkMoment::PreMatch, TeamTalkTone::Calm);
@@ -196,11 +223,11 @@ TEST(PlayModeUiTest, PlayMovePassSwitchAndHandBack)
   EXPECT_FALSE(MatchBridge::paused(*scene));
   EXPECT_FALSE(MatchBridge::highlights(*scene));
   EXPECT_EQ(MatchBridge::camera(*scene), MatchCameraMode::PLAY);
-  EXPECT_NE(engine.getControlledPlayer(), 0u);
+  EXPECT_NE(engine.getControlledPlayer(), 0U);
 
   // Into open play with the managed side on the ball: the carrier is taken.
   const MatchPlayer* carrier = nullptr;
-  for (int step = 0; step < 30'000 && !carrier; ++step)
+  for (int step = 0; step < 30'000 && (carrier == nullptr); ++step)
   {
     engine.advance(MatchTuning::Timing::FIXED_STEP_SECONDS);
     carrier = managedCarrier(engine, managedHome);
@@ -217,15 +244,17 @@ TEST(PlayModeUiTest, PlayMovePassSwitchAndHandBack)
   pushKey(SDL_SCANCODE_D, SDLK_D, true);
   frames(view, 8);
   ASSERT_FALSE(engine.getInputLog().empty());
-  EXPECT_GT(engine.getInputLog().back().input.moveX, 0.5f);
+  EXPECT_GT(engine.getInputLog().back().input.moveX, 0.5F);
   frames(view, 56);
   if (const MatchPlayer* runner = findPlayer(engine, carrierId);
-      runner && engine.getControlledPlayer() == carrierId)
-    EXPECT_GT(runner->velocity.x, std::max(startVelocity, 0.0f) + 0.5f);
+      (runner != nullptr) && engine.getControlledPlayer() == carrierId)
+  {
+    EXPECT_GT(runner->velocity.x, std::max(startVelocity, 0.0F) + 0.5F);
+  }
   pushKey(SDL_SCANCODE_D, SDLK_D, false);
 
   // J plays a pass (if he still has the ball, he must pass it now).
-  if (managedCarrier(engine, managedHome) &&
+  if ((managedCarrier(engine, managedHome) != nullptr) &&
       managedCarrier(engine, managedHome)->player->getId() ==
           engine.getControlledPlayer())
   {
@@ -247,15 +276,18 @@ TEST(PlayModeUiTest, PlayMovePassSwitchAndHandBack)
   {
     if (const MatchPlayer* holder = managedCarrier(engine, managedHome);
         engine.getState() == MatchState::PLAYING &&
-        (!holder || holder->player->getId() != engine.getControlledPlayer()) &&
+        ((holder == nullptr) ||
+         holder->player->getId() != engine.getControlledPlayer()) &&
         play.nextSwitch() != 0)
+    {
       break;
+    }
     engine.advance(MatchTuning::Timing::FIXED_STEP_SECONDS);
     frames(view, 1);
   }
   const PlayerID before = engine.getControlledPlayer();
   const PlayerID expected = play.nextSwitch();
-  ASSERT_NE(expected, 0u);
+  ASSERT_NE(expected, 0U);
   pushKey(SDL_SCANCODE_Q, SDLK_Q, true);
   frames(view, 1);
   pushKey(SDL_SCANCODE_Q, SDLK_Q, false);
@@ -263,7 +295,10 @@ TEST(PlayModeUiTest, PlayMovePassSwitchAndHandBack)
   const PlayerID after = engine.getControlledPlayer();
   EXPECT_NE(after, before);
   // Unless play took the ball to someone else in that frame, it is him.
-  if (!managedCarrier(engine, managedHome)) EXPECT_EQ(after, expected);
+  if (managedCarrier(engine, managedHome) == nullptr)
+  {
+    EXPECT_EQ(after, expected);
+  }
 
   // The 3D view follows with the play camera.
   MatchBridge::setView(*scene, MatchViewMode::BROADCAST_3D);
@@ -296,7 +331,7 @@ TEST(PlayModeUiTest, PlayMovePassSwitchAndHandBack)
   MatchBridge::handBack(*scene);
   frames(view, 2);
   EXPECT_FALSE(play.isActive());
-  EXPECT_EQ(engine.getControlledPlayer(), 0u);
+  EXPECT_EQ(engine.getControlledPlayer(), 0U);
   EXPECT_NE(MatchBridge::camera(*scene), MatchCameraMode::PLAY);
   // Keyboard navigation is back for the menus.
   EXPECT_NE(ImGui::GetIO().ConfigFlags & ImGuiConfigFlags_NavEnableKeyboard, 0);

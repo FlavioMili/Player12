@@ -30,11 +30,11 @@ namespace Theme
 /** @brief Spacing scale in unscaled pixels. */
 namespace Space
 {
-constexpr float XS = 4.0f;
-constexpr float S = 8.0f;
-constexpr float M = 12.0f;
-constexpr float L = 16.0f;
-constexpr float XL = 24.0f;
+constexpr float XS = 4.0F;
+constexpr float S = 8.0F;
+constexpr float M = 12.0F;
+constexpr float L = 16.0F;
+constexpr float XL = 24.0F;
 }  // namespace Space
 
 /** @brief Typography scale. */
@@ -77,12 +77,12 @@ struct Appearance
 {
   Preset preset = Preset::DARK_SLATE;
   bool club_accent = true; /**< Accent follows the managed club. */
-  ImVec4 custom_accent = ImVec4(0.130f, 0.650f, 0.390f, 1.0f);
-  float ui_scale = 0.0f; /**< 0 = follow the display content scale. */
+  ImVec4 custom_accent = ImVec4(0.130F, 0.650F, 0.390F, 1.0F);
+  float ui_scale = 0.0F; /**< 0 = follow the display content scale. */
   bool compact = false;  /**< Tighter paddings for denser tables. */
   bool reduced_motion = false;
   ColorVision color_vision = ColorVision::STANDARD;
-  float text_scale = 1.0f; /**< Text size on top of the UI scale. */
+  float text_scale = 1.0F; /**< Text size on top of the UI scale. */
 };
 
 /** @brief Semantic colours used by widgets. */
@@ -118,6 +118,22 @@ float contrastRatio(const ImVec4& first, const ImVec4& second);
 
 /** @brief Returns the active palette (accent included). */
 const Palette& palette();
+
+/** Temporarily supplies semantic colours to shared widgets without changing
+ *
+ * the user's appearance or ImGui style. Nested page scopes restore in order. */
+class ScopedPalette
+{
+ public:
+  explicit ScopedPalette(Palette value);
+  ~ScopedPalette();
+  ScopedPalette(const ScopedPalette&) = delete;
+  ScopedPalette& operator=(const ScopedPalette&) = delete;
+
+ private:
+  Palette value;
+  const Palette* previous;
+};
 
 /** @brief Returns the active appearance options. */
 const Appearance& appearance();
@@ -163,7 +179,7 @@ ImVec4 ratingColor(double value);
 float textSize(Text level);
 
 /** @brief Converts a colour with an optional alpha multiplier. */
-ImU32 toU32(const ImVec4& color, float alpha = 1.0f);
+ImU32 toU32(const ImVec4& color, float alpha = 1.0F);
 
 /** @brief Packs an opaque colour as 0xRRGGBB (for settings files). */
 uint32_t packRgb(const ImVec4& color);

@@ -99,6 +99,7 @@
   "MATCH_PANELS_SHOW": "Show panels",
   "MATCH_QUICK_RESULT": "Quick result",
   "MATCH_QUICK_RESULT_HINT": "Play the rest of the match instantly and go to the match report.",
+  "MATCH_SANDBOX_LEAVE": "Back to setup",
   "MATCH_QUICK_RESULT_RUNNING": "Playing the rest of the match…",
   "MATCH_SKIPPING_TO_HIGHLIGHT": "Skipping to the next highlight",
   "MATCH_HIGHLIGHT": "HIGHLIGHT",

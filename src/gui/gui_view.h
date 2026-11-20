@@ -10,6 +10,7 @@
 #include <SDL3/SDL.h>
 
 #include <array>
+#include <functional>
 #include <memory>
 #include <string_view>
 #include <vector>
@@ -44,6 +45,15 @@ class GUIView
    * @brief Starts the scene run loop.
    */
   void run();
+
+  /** Builds the first scene of a tool that does not open on the main menu. */
+  using SceneFactory = std::function<std::unique_ptr<GUIScene>(GUIView*)>;
+
+  /**
+   * @brief Starts the scene run loop on @p firstScene instead of the main
+   * menu (the match sandbox).
+   */
+  void run(const SceneFactory& firstScene);
 
   /**
    * @brief Profiles the first live-match frames and exits automatically.
@@ -219,7 +229,7 @@ class GUIView
 
   // Live-match render diagnostics (Priority 0)
   static constexpr int MATCH_FRAME_TIMING_COUNT = 120;
-  static constexpr float MATCH_PROFILE_FRAME_SECONDS = 1.0f / 60.0f;
+  static constexpr float MATCH_PROFILE_FRAME_SECONDS = 1.0F / 60.0F;
   bool rendererIsSoftware = false;
   std::array<float, MATCH_FRAME_TIMING_COUNT> matchFrameTimes{};
   int matchFramesTimed = -1;
