@@ -270,7 +270,7 @@ void MatchReview::renderTimeline(const SandboxRecorder& recorder,
     return;
   }
 
-  const float span = static_cast<float>(end);
+  const auto span = static_cast<float>(end);
   const auto xOf = [&](std::uint64_t tick)
   { return min.x + (width * std::min(1.0F, static_cast<float>(tick) / span)); };
   const float band = BAND_HEIGHT * scale;

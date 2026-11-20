@@ -27,7 +27,7 @@ void SandboxRecorder::append(const MatchEngine& engine, Payload payload)
 {
   log.push_back({.tick = engine.getSimulatedSteps(),
                  .minute = engine.getMatchTimeMinutes(),
-                 .payload = std::move(payload)});
+                 .payload = payload});
 }
 
 void SandboxRecorder::learnPlayers(const MatchEngine& engine)

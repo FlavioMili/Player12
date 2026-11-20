@@ -25,6 +25,7 @@
 #include <memory>
 #include <numbers>
 #include <optional>
+#include <print>
 #include <string>
 #include <string_view>
 #include <tuple>
@@ -692,10 +693,10 @@ bool runDerivedStatChecks(const std::vector<const Team*>& clubs,
     {
       means += std::format(
           " {} {:.0f}", DERIVED_STATS[index].label,
-          (players != 0u) ? 100.0 * sums[index] / static_cast<double>(players)
+          (players != 0U) ? 100.0 * sums[index] / static_cast<double>(players)
                           : 0.0);
     }
-    if (players != 0u)
+    if (players != 0U)
     {
       means += std::format(" (jumping reach {:.2f}-{:.2f} m, {} at an end)",
                            reachLow, reachHigh, reachHeld);
@@ -1130,15 +1131,15 @@ bool runFirstTouchChecks(const std::vector<const Team*>& clubs,
         100.0 * static_cast<double>(setup.angleFailed) / started,
         100.0 * static_cast<double>(setup.weightFailed) / started,
         100.0 * static_cast<double>(setup.heavy) / started,
-        (all.collected != 0u)
+        (all.collected != 0U)
             ? setup.collectSeconds / static_cast<double>(all.collected)
             : 0.0,
         setup.dribbleTouches,
-        (setup.dribbleTouches != 0u)
+        (setup.dribbleTouches != 0U)
             ? setup.dribbleContactGapSum /
                   static_cast<double>(setup.dribbleTouches)
             : 0.0,
-        (setup.dribbleTouches != 0u)
+        (setup.dribbleTouches != 0U)
             ? 100.0 * static_cast<double>(setup.dribbleFailed) /
                   static_cast<double>(setup.dribbleTouches)
             : 0.0,
@@ -1160,7 +1161,7 @@ bool runFirstTouchChecks(const std::vector<const Team*>& clubs,
           "mean {:.0f}°, worst {:.0f}° ({} lost)\n",
           split.deadZone, split.outOfReach, split.sameStep, split.intentChanged,
           split.bumped,
-          (split.facingSamples != 0u)
+          (split.facingSamples != 0U)
               ? split.facingErrorSum / split.facingSamples * DEGREES_PER_RADIAN
               : 0.0,
           split.facingErrorMax * DEGREES_PER_RADIAN_F, split.facingSamples);
@@ -1171,7 +1172,7 @@ bool runFirstTouchChecks(const std::vector<const Team*>& clubs,
             "read's mean {:.0f}°, "
             "worst {:.0f}°)\n",
             split.unchanged, split.unchangedBumped,
-            (split.unchangedFacingSamples != 0u)
+            (split.unchangedFacingSamples != 0U)
                 ? split.unchangedFacingErrorSum / split.unchangedFacingSamples *
                       DEGREES_PER_RADIAN
                 : 0.0,
@@ -1491,7 +1492,7 @@ int runSandboxChecks(GameController& controller, int matches,
         expected);
   }
 
-  const double count = static_cast<double>(matches);
+  const auto count = static_cast<double>(matches);
   std::cout << std::format(
       "\nFull-fidelity match: {:.2f} s plain, {:.2f} s recorded ({:+.1f}%)\n",
       plainTotal / count, recordedTotal / count,
@@ -1668,10 +1669,9 @@ int runSandboxChecks(GameController& controller, int matches,
       for (const auto& at : detail.decisions)
       {
         ++decisions;
-        for (std::size_t option = 0; option < at.detail.options.size();
-             ++option)
+        for (const auto& option : at.detail.options)
         {
-          check(at.detail.options[option], "decision option");
+          check(option, "decision option");
         }
         check(at.detail.noiseScale, "noise scale");
         for (const PassCandidateDetail& candidate : at.detail.candidates)
@@ -2073,8 +2073,11 @@ int runMatchTrace(GameController& controller, double seconds, int cases,
       for (std::size_t side = 0; side < 2; ++side)
       {
         const auto& h = history[slots[side]];
-        int owned = 0, setPiece = 0, notSteering = 0, intentChanges = 0,
-            targetJumps = 0;
+        int owned = 0;
+        int setPiece = 0;
+        int notSteering = 0;
+        int intentChanges = 0;
+        int targetJumps = 0;
         float biggestJump = 0.0F;
         for (std::size_t i = 0; i < h.size(); ++i)
         {
@@ -2095,21 +2098,20 @@ int runMatchTrace(GameController& controller, double seconds, int cases,
           }
           biggestJump = std::max(biggestJump, jump);
         }
-        std::printf(
-            "  WHY %c: ball owned %d/%zu steps, set piece %d, not steering %d, "
-            "intent changes %d, target jumps >1 m %d (biggest %.1f m)\n",
+        std::println(
+            "  WHY {}: ball owned {}/{} steps, set piece {}, not steering {}, "
+            "intent changes {}, target jumps >1 m {} (biggest {:.1f} m)",
             side == 0 ? 'A' : 'B', owned, h.size(), setPiece, notSteering,
             intentChanges, targetJumps, biggestJump);
       }
       const bool mates =
           players[slots[0]].isHomeTeam == players[slots[1]].isHomeTeam;
-      std::printf(
-          "\n=== %.1f s  %s (%s) / %s (%s), %s; outcome %d / %d, jolt %.2f / "
-          "%.2f\n",
-          now, nameOf(slots[0]).c_str(), intentText(lastA.intent).c_str(),
-          nameOf(slots[1]).c_str(), intentText(lastB.intent).c_str(),
-          mates ? "team-mates" : "opponents", hit.sides[0].outcome,
-          hit.sides[1].outcome,
+      std::println(
+          "\n=== {:.1f} s  {} ({}) / {} ({}), {}; outcome {} / {}, jolt {:.2f} "
+          "/ {:.2f}",
+          now, nameOf(slots[0]), intentText(lastA.intent), nameOf(slots[1]),
+          intentText(lastB.intent), mates ? "team-mates" : "opponents",
+          hit.sides[0].outcome, hit.sides[1].outcome,
           std::hypot(hit.sides[0].jolt.x, hit.sides[0].jolt.y),
           std::hypot(hit.sides[1].jolt.x, hit.sides[1].jolt.y));
       const std::size_t count =
@@ -2160,12 +2162,12 @@ int runMatchTrace(GameController& controller, double seconds, int cases,
                   ? std::format(" · right of way over {}", nameOf(m.rightOver))
                   : std::string());
         };
-        std::printf("  -%.1f s  gap %.2f m%s\n     A: %s%s\n     B: %s%s\n",
-                    HISTORY_STEP_SECONDS * static_cast<double>(back),
-                    std::hypot(pb.x - pa.x, pb.y - pa.y),
-                    a.ballOwned ? "  (ball owned)" : "",
-                    describe(a, pa).c_str(), a.steers ? "" : " · NOT STEERING",
-                    describe(b, pb).c_str(), b.steers ? "" : " · NOT STEERING");
+        std::println("  -{:.1f} s  gap {:.2f} m{}\n     A: {}{}\n     B: {}{}",
+                     HISTORY_STEP_SECONDS * static_cast<double>(back),
+                     std::hypot(pb.x - pa.x, pb.y - pa.y),
+                     a.ballOwned ? "  (ball owned)" : "", describe(a, pa),
+                     a.steers ? "" : " · NOT STEERING", describe(b, pb),
+                     b.steers ? "" : " · NOT STEERING");
       }
     }
     for (std::size_t slot = 0; slot < players.size(); ++slot)
@@ -2195,6 +2197,6 @@ int runMatchTrace(GameController& controller, double seconds, int cases,
       }
     }
   }
-  std::printf("\n%d cases in %.0f s\n", shown, now);
+  std::println("\n{} cases in {:.0f} s", shown, now);
   return 0;
 }

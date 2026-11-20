@@ -147,7 +147,7 @@ struct SetupPainter
 
   [[nodiscard]] ImVec2 point(float x, float y) const
   {
-    return ImVec2(origin.x + (x * scale), origin.y + (y * scale));
+    return {origin.x + (x * scale), origin.y + (y * scale)};
   }
 
   void text(float x, float y, const char* value, float size = SMALL_SIZE,
@@ -194,7 +194,8 @@ struct SetupPainter
   {
     // Fade all four edges into the page, after the card contents (§9.1).
     const ImU32 clear = IM_COL32(22, 19, 16, 0);
-    const auto a = point(c.x, c.y), b = point(c.x + c.w, c.y + c.h);
+    const auto a = point(c.x, c.y);
+    const auto b = point(c.x + c.w, c.y + c.h);
     const float f = EDGE_FADE * scale;
     draw->AddRectFilledMultiColor(a, ImVec2(b.x, a.y + f), PAGE, PAGE, clear,
                                   clear);
@@ -392,7 +393,8 @@ void SandboxSetupUI::render(float scale, ImFont* setup_regular_font,
       .w = (wide || twoColumns) ? width - leftW - GAP : width,
       .h = SIMULATION_H};
   ui.begin(simulation, DARK, "SIMULATION");
-  const float sx = simulation.x, sy = simulation.y;
+  const float sx = simulation.x;
+  const float sy = simulation.y;
   ui.subhead(sx + INSET, sy + SIM.newRuns, "NEW RUNS");
   ui.text(sx + INSET, sy + SIM.homeLabel, "Home advantage", BODY_SIZE, CREAM,
           setup_medium_font);

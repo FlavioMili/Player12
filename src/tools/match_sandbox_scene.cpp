@@ -742,7 +742,8 @@ void MatchSandboxScene::renderSidebar()
   ImGui::Dummy(ImVec2(0, FOOTER_GAP * scale));
   item(SETUP_ITEM);
   ImGui::PopFont();
-  const ImU32 edge = IM_COL32(22, 19, 16, 255), clear = IM_COL32(22, 19, 16, 0);
+  const ImU32 edge = IM_COL32(22, 19, 16, 255);
+  const ImU32 clear = IM_COL32(22, 19, 16, 0);
   const float f = EDGE_FADE * scale;
   const ImVec2 br(panel.x + size.x, panel.y + size.y);
   draw->AddRectFilledMultiColor(panel, ImVec2(br.x, panel.y + f), edge, edge,
@@ -1123,7 +1124,7 @@ void MatchSandboxScene::renderTraining()
     return;
   }
   session_index = std::min(session_index, static_cast<int>(total) - 1);
-  const std::size_t chosen = static_cast<std::size_t>(session_index);
+  const auto chosen = static_cast<std::size_t>(session_index);
   const SessionPlan* zonePlan = chosen >= sessions.size()
                                     ? &zonePlans[chosen - sessions.size()]
                                     : nullptr;

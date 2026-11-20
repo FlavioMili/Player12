@@ -708,7 +708,7 @@ void TrueViewScene::renderCanvas(ImVec2 size)
   // The grass: a metre grid.
   for (int metre = -GRID_METRES; metre <= GRID_METRES; ++metre)
   {
-    const float m = static_cast<float>(metre);
+    const auto m = static_cast<float>(metre);
     paint.line({.x = m, .y = -GRID_EXTENT, .z = 0.0F},
                {.x = m, .y = GRID_EXTENT, .z = 0.0F},
                colour(GRID_RGB, GRID_ALPHA), 1.0F);

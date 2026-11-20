@@ -183,7 +183,7 @@ std::optional<MeasureAxis> parseMeasureAxis(Drill& drill,
   {
     if (parameter->choices.empty())
     {
-      error = std::format("give values for \"{}\", e.g. \"{}=40:90:6\"",
+      error = std::format(R"(give values for "{}", e.g. "{}=40:90:6")",
                           parameter->name, parameter->name);
       return std::nullopt;
     }
@@ -266,9 +266,11 @@ std::filesystem::path measurePath(const std::string& drill,
 
 DrillMeasure::DrillMeasure(Drill& drill_ref, const StatsConfig& config_ref,
                            MeasureSpec spec)
-    : drill(drill_ref), config(config_ref), setup(std::move(spec))
+    : drill(drill_ref),
+      config(config_ref),
+      setup(std::move(spec)),
+      savedSeed(drill.seed)
 {
-  savedSeed = drill.seed;
   for (const DrillParameter& parameter : drill.parameters())
   {
     if (parameter.value == nullptr)
@@ -308,7 +310,7 @@ DrillMeasure::DrillMeasure(Drill& drill_ref, const StatsConfig& config_ref,
     if (!onAxis && !allowed.empty() && !headless(path))
     {
       setup.fixed["Who runs"] = allowed.front();
-      notes.push_back("\"You\" can't run headless: measured with the AI.");
+      notes.emplace_back("\"You\" can't run headless: measured with the AI.");
     }
     for (MeasureAxis* axis : {&setup.sweep, setup.by ? &*setup.by : nullptr})
     {

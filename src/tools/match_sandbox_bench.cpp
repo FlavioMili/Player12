@@ -259,7 +259,7 @@ std::optional<float> settingValue(const DrillParameter& parameter,
       }
     }
     error =
-        std::format("\"{}\" is not a choice of \"{}\"", text, parameter.name);
+        std::format(R"("{}" is not a choice of "{}")", text, parameter.name);
     return std::nullopt;
   }
   error = std::format("\"{}\": expected a number or a choice", parameter.name);

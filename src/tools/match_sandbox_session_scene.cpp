@@ -17,6 +17,7 @@
 #include <stdexcept>
 #include <string>
 #include <string_view>
+#include <utility>
 
 #include "controller/game_controller.h"
 #include "global/paths.h"
@@ -52,11 +53,10 @@ constexpr float COLUMN_LAYOUT_WIDTH = 1000.0F;
 constexpr float PANEL_WIDTH = 420.0F;
 }  // namespace
 
-ZoneSessionScene::ZoneSessionScene(GUIView* guiView_ptr,
-                                   const SessionPlan& plan_ref,
+ZoneSessionScene::ZoneSessionScene(GUIView* guiView_ptr, SessionPlan plan_ref,
                                    std::vector<TrainingPlayer> picks_list)
     : GUIScene(guiView_ptr),
-      plan(plan_ref),
+      plan(std::move(plan_ref)),
       picks(std::move(picks_list)),
       renderer(std::make_unique<MatchRenderer2D>())
 {

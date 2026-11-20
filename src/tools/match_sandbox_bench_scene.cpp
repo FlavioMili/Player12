@@ -154,7 +154,7 @@ ImU32 rateColour(double rate)
 ImU32 changeColour(double points)
 {
   const ImVec4 grey = CHANGE_NONE;
-  const float t = static_cast<float>(std::abs(points) / FULL_CHANGE_POINTS);
+  const auto t = static_cast<float>(std::abs(points) / FULL_CHANGE_POINTS);
   return points < 0.0 ? blend(grey, CHANGE_WORSE, t)
                       : blend(grey, CHANGE_BETTER, t);
 }
@@ -977,7 +977,8 @@ void TechniqueBenchScene::renderTestList()
     ImGui::SetTooltip("Reads the tests file again (edit it, then reload).");
   }
   std::string section;
-  bool open = false, table = false;
+  bool open = false;
+  bool table = false;
   const auto close = [&]
   {
     if (table)
@@ -1411,7 +1412,7 @@ void TechniqueBenchScene::renderChart(ImVec2 size)
   {
     if (const auto end = curve(run, *test, false))
     {
-      ends.push_back({*end, test});
+      ends.emplace_back(*end, test);
     }
   }
   // Direct labels at the right end when few enough to read.

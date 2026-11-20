@@ -104,8 +104,7 @@ DrillRun::DrillRun(Drill& drill_ref, const StatsConfig& config, bool record,
       // A session's own player in a drill player's place (section 23).
       if ((spec != nullptr) && !squad.empty())
       {
-        const std::size_t specIndex =
-            static_cast<std::size_t>(spec - specs.data());
+        const auto specIndex = static_cast<std::size_t>(spec - specs.data());
         Player* own = specIndex < squad.size() ? squad[specIndex] : nullptr;
         if (own != nullptr)
         {

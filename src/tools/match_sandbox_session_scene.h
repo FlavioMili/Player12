@@ -31,7 +31,7 @@ struct ImFont;
 class ZoneSessionScene : public GUIScene
 {
  public:
-  ZoneSessionScene(GUIView* guiView_ptr, const SessionPlan& plan,
+  ZoneSessionScene(GUIView* guiView_ptr, SessionPlan plan,
                    std::vector<TrainingPlayer> picks);
   ~ZoneSessionScene() override;
 
