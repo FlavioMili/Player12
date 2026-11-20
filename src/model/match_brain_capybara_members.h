@@ -103,8 +103,16 @@
   std::optional<PassOption> choosePassTargetCapybara(
       MatchPlayer& passer,
       std::vector<PassCandidateDetail>* details = nullptr);
+  /** How he misreads a pass's chances: log-odds offsets (judgement,
+   * DecisionFrame::misread). {} is none. */
+  struct PassMisreadCapybara
+  {
+    float completion;
+    float receiverXG;
+  };
   PassOption evaluatePassOptionCapybara(MatchPlayer& passer, MatchPlayer& receiver,
-                                PassCandidateDetail* detail = nullptr) const;
+                                PassCandidateDetail* detail = nullptr,
+                                PassMisreadCapybara misread = {}) const;
   ShotAim chooseShotAimCapybara(const MatchPlayer& shooter, bool header, bool penalty,
                         bool freeKick);
   float choosePenaltyGuessCapybara(const MatchPlayer& keeper);

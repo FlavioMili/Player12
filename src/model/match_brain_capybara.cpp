@@ -3978,15 +3978,21 @@ MatchEngine::BallAction MatchEngine::chooseBallActionCapybara(
   const std::optional<PassOption> option = choosePassTargetCapybara(
       carrier, detail ? &detail->candidates : nullptr);
 
-  // Every candidate is scored in a shared utility currency.
-  // Vision (scanning and reading the play) dominates decision quality, with
-  // passing technique contributing to how well options are judged.
-  const float decisionQuality =
-      (carrier.vision * MatchTuning::Decision::VISION_DECISION_WEIGHT) +
-      (carrier.passing *
-       (1.0F - MatchTuning::Decision::VISION_DECISION_WEIGHT));
-  const float visionNoiseScale =
-      (1.0F - decisionQuality) * MatchTuning::Decision::VISION_NOISE_SCALE *
+  // The noise is two things (step B7), both from his Decisions (a derived
+  // stat: Vision and Passing, with its own spread). Our own estimates.
+  // Judgement: he misreads each chance an option uses, by up to this many
+  // log-odds either way (DecisionFrame::misread). Drawn once per decision.
+  constexpr float JUDGEMENT_LOG_ODDS = 1.0F;
+  // Pick randomness: once the options are read and scored he doesn't
+  // always take the best. Bigger for a side unfamiliar with its tactics,
+  // smaller with the team's edge and a good team talk.
+  constexpr float PICK_NOISE = 0.4F;
+  const float decisions = carrier.derivedStat(DerivedStat::DECISIONS);
+  const float judgement = (1.0F - decisions) * JUDGEMENT_LOG_ODDS;
+  const auto misreadOffset = [this, judgement]()
+  { return judgement * randomFloat(-1.0F, 1.0F); };
+  const float pickNoiseScale =
+      (1.0F - decisions) * PICK_NOISE *
       (1.0F + (1.0F - familiarityOf(carrier)) *
                   MatchTuning::Decision::FAMILIARITY_NOISE_GAIN) *
       std::max(0.5F, 1.0F - teamEdge(carrier.isHomeTeam)) *
@@ -3994,8 +4000,7 @@ MatchEngine::BallAction MatchEngine::chooseBallActionCapybara(
   if (detail)
   {
     // The scale is a product: each factor is noted as what it adds.
-    const float base =
-        (1.0F - decisionQuality) * MatchTuning::Decision::VISION_NOISE_SCALE;
+    const float base = (1.0F - decisions) * PICK_NOISE;
     const float familiarity =
         1.0F + ((1.0F - familiarityOf(carrier)) *
                 MatchTuning::Decision::FAMILIARITY_NOISE_GAIN);
@@ -4003,9 +4008,8 @@ MatchEngine::BallAction MatchEngine::chooseBallActionCapybara(
     const float talk =
         1.0F - (talkSwing(carrier.isHomeTeam) * TacticsTuning::TALK_COMPOSURE);
     ScoreBreakdown& scale = detail->noiseScale;
-    scale.total = visionNoiseScale;
-    scale.add("decision quality (Vision, Passing)", TermSource::ATTRIBUTE,
-              base);
+    scale.total = pickNoiseScale;
+    scale.add("Decisions", TermSource::ATTRIBUTE, base);
     scale.add("tactical familiarity", TermSource::MORALE,
               base * (familiarity - 1.0F));
     scale.add("team edge (home, numbers, talk)", TermSource::SITUATION,
@@ -4026,9 +4030,26 @@ MatchEngine::BallAction MatchEngine::chooseBallActionCapybara(
 
   // Options and Scoring: each option open to him, scored as measures times
   // their weights.
-  // Pass: the best candidate's score (choosePassTargetCapybara).
+  // Pass: the best candidate (choosePassTargetCapybara, on the true
+  // chances), scored again on the chances as he reads them.
   DecisionFrame::Score pass;
-  if (option)
+  // The debugger shows the best pass's terms as he reads it.
+  std::optional<PassCandidateDetail> readPassDetail;
+  if (detail)
+  {
+    readPassDetail.emplace();
+  }
+  if (option && option->receiver != nullptr)
+  {
+    const float completionOffset = misreadOffset();
+    const float receiverXGOffset = misreadOffset();
+    const PassOption read = evaluatePassOptionCapybara(
+        carrier, *option->receiver, readPassDetail ? &*readPassDetail : nullptr,
+        {.completion = completionOffset, .receiverXG = receiverXGOffset});
+    pass.add("the best pass (as he reads it)", S::SITUATION, read.utility,
+             1.0F);
+  }
+  else if (option)
   {
     pass.add("the best pass", S::SITUATION, option->utility, 1.0F);
   }
@@ -4043,8 +4064,9 @@ MatchEngine::BallAction MatchEngine::chooseBallActionCapybara(
   DecisionFrame::Score shot;
   if (shotXG >= MatchTuning::Decision::MIN_SHOT_XG)
   {
+    const float readXG = DecisionFrame::misread(shotXG, misreadOffset());
     const float range = addShotCoreCapybara(
-        shot, weights, pitch, carrier.position, carrier.isHomeTeam, shotXG);
+        shot, weights, pitch, carrier.position, carrier.isHomeTeam, readXG);
     // A wide forward who has cut inside is looking for his shot; roles
     // shoot more or less readily; a man forced onto his weaker foot under
     // pressure is less inclined to try.
@@ -4067,7 +4089,10 @@ MatchEngine::BallAction MatchEngine::chooseBallActionCapybara(
   // (carryEndCapybara), as a pass's are taken at the receiver.
   DecisionFrame::Score carry;
   const PitchPoint carryEnd = carryEndCapybara(carrier);
-  const float carryKeep = keepChanceCapybara(carrier, false, pressure);
+  const float carryKeep = DecisionFrame::misread(
+      keepChanceCapybara(carrier, false, pressure), misreadOffset());
+  const float carryEndXG = DecisionFrame::misread(
+      carryEndXGCapybara(carrier, carryEnd), misreadOffset());
   const float carryProgress =
       carryKeep *
       progressCapybara(carrier.isHomeTeam, carrier.position, carryEnd);
@@ -4078,7 +4103,7 @@ MatchEngine::BallAction MatchEngine::chooseBallActionCapybara(
   carry.add("keeps the ball", S::SITUATION, carryKeep, weights.carryKeep);
   // Threat: the chance he keeps it times the xG where the carry ends.
   carry.add("threat (keeps it x xG at the carry's end)", S::SITUATION,
-            carryKeep * carryEndXGCapybara(carrier, carryEnd), weights.threat);
+            carryKeep * carryEndXG, weights.threat);
   carry.add("time already on the ball", S::SITUATION, heldSeconds,
             weights.carryHeld);
   // A wide forward cutting inside wants to run at the box himself.
@@ -4093,8 +4118,11 @@ MatchEngine::BallAction MatchEngine::chooseBallActionCapybara(
   if (pressure >= MatchTuning::Decision::SHIELD_PRESSURE_THRESHOLD &&
       passUnavailableOrWeak)
   {
-    shield.add("keeps the ball", S::SITUATION,
-               keepChanceCapybara(carrier, true, pressure), weights.shieldKeep);
+    shield.add(
+        "keeps the ball", S::SITUATION,
+        DecisionFrame::misread(keepChanceCapybara(carrier, true, pressure),
+                               misreadOffset()),
+        weights.shieldKeep);
   }
   else
   {
@@ -4107,17 +4135,11 @@ MatchEngine::BallAction MatchEngine::chooseBallActionCapybara(
   float shieldScore = shield.total();
   if (detail)
   {
-    // The pass: the best candidate's own terms, then the carrier's.
-    if (option && (option->receiver != nullptr) &&
-        (option->receiver->player != nullptr))
+    // The pass: the best candidate's own terms as he reads them, then the
+    // carrier's.
+    if (option && (option->receiver != nullptr) && readPassDetail)
     {
-      for (const PassCandidateDetail& candidate : detail->candidates)
-      {
-        if (candidate.receiver == option->receiver->player->getId())
-        {
-          passTerms->terms = candidate.utility.terms;
-        }
-      }
+      passTerms->terms = readPassDetail->utility.terms;
       for (const DecisionFrame::Term& term : pass.allTerms().subspan(1))
       {
         passTerms->add(term.name, term.layer, term.value());
@@ -4134,15 +4156,15 @@ MatchEngine::BallAction MatchEngine::chooseBallActionCapybara(
 
   // Vision scales how much randomness perturbs close choices. The noise is
   // bounded so a truly nonsensical option can never win.
-  shotScore += visionNoiseScale * randomFloat(-1.0F, 1.0F);
-  carryScore += visionNoiseScale * randomFloat(-1.0F, 1.0F);
+  shotScore += pickNoiseScale * randomFloat(-1.0F, 1.0F);
+  carryScore += pickNoiseScale * randomFloat(-1.0F, 1.0F);
   if (shieldScore > -std::numeric_limits<float>::infinity())
   {
-    shieldScore += visionNoiseScale * randomFloat(-1.0F, 1.0F);
+    shieldScore += pickNoiseScale * randomFloat(-1.0F, 1.0F);
   }
   if (option)
   {
-    passScore += visionNoiseScale * randomFloat(-1.0F, 1.0F);
+    passScore += pickNoiseScale * randomFloat(-1.0F, 1.0F);
   }
 
   lastScenarioDecision.passUtility = passScore;
@@ -4188,7 +4210,7 @@ MatchEngine::BallAction MatchEngine::chooseBallActionCapybara(
     decision.pressure = pressure;
     decision.shotXG = shotXG;
     decision.opennessAhead = opennessAhead;
-    decision.noiseScale = visionNoiseScale;
+    decision.noiseScale = pickNoiseScale;
     if (const auto& best = lastScenarioDecision.best)
     {
       decision.bestReceiver = best->receiverId;
@@ -4348,8 +4370,8 @@ float MatchEngine::passingLaneRiskCapybara(const MatchPlayer& passer,
 }
 
 MatchEngine::PassOption MatchEngine::evaluatePassOptionCapybara(
-    MatchPlayer& passer, MatchPlayer& receiver,
-    PassCandidateDetail* detail) const
+    MatchPlayer& passer, MatchPlayer& receiver, PassCandidateDetail* detail,
+    PassMisreadCapybara misread) const
 {
   // Estimate one receiver's safety, progress and space without consuming RNG
   // or changing the match. The completion estimate ranks options; passBall
@@ -4438,8 +4460,13 @@ MatchEngine::PassOption MatchEngine::evaluatePassOptionCapybara(
   using DecisionFrame::gate;
   using S = TermSource;
   DecisionFrame::Score score;
+  // The chances as he reads them (judgement; unchanged in the pass search).
+  const float readCompletion =
+      DecisionFrame::misread(completionProbability, misread.completion);
+  const float readReceiverXG =
+      DecisionFrame::misread(estimateShotXG(receiver), misread.receiverXG);
   // Progress: the chance it arrives times the gain, as for the carry.
-  const float passProgress = completionProbability * progression;
+  const float passProgress = readCompletion * progression;
   score.add("space where the ball ends", S::SITUATION, openness, weights.space);
   score.add("progress (completion x gain)", S::SITUATION, passProgress,
             progressWeight);
@@ -4450,7 +4477,7 @@ MatchEngine::PassOption MatchEngine::evaluatePassOptionCapybara(
   // Pressed, a ball back to a team-mate is worth more.
   score.add("safe outlet under pressure", S::SITUATION,
             pressure * std::max(0.0F, -progression), weights.safeOutlet);
-  score.add("completion chance", S::SITUATION, completionProbability,
+  score.add("completion chance", S::SITUATION, readCompletion,
             weights.completion);
   score.add("receiver making a run", S::SITUATION,
             gate(receiver.isMakingRun && progression > 0.0F), weights.runner);
@@ -4458,7 +4485,7 @@ MatchEngine::PassOption MatchEngine::evaluatePassOptionCapybara(
             markedWeight);
   // Threat: the chance the pass arrives times the receiver's xG there.
   score.add("threat (completion x receiver's xG)", S::SITUATION,
-            completionProbability * estimateShotXG(receiver), weights.threat);
+            readCompletion * readReceiverXG, weights.threat);
   score.add("space in behind", S::SITUATION, spaceBehindShare,
             weights.spaceBehind);
   const float utility = score.total();

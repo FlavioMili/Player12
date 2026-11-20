@@ -8,6 +8,7 @@
 
 #pragma once
 
+#include <algorithm>
 #include <array>
 #include <cmath>
 #include <cstddef>
@@ -72,6 +73,21 @@ inline constexpr float SHOUT_MAX_STEPS = 2.0F;
 [[nodiscard]] inline float sliderSteps(float slider)
 {
   return (slider - 0.5F) * 2.0F * LAYER_MAX_STEPS;
+}
+
+/** A chance as he reads it (judgement): `chance` moved by `logOdds` on
+ * the log-odds scale, so it stays between 0 and 1. An offset of 0 returns
+ * the chance unchanged. */
+[[nodiscard]] inline float misread(float chance, float logOdds)
+{
+  if (logOdds == 0.0F)
+  {
+    return chance;
+  }
+  constexpr float EDGE = 1.0e-4F;
+  const float clamped = std::clamp(chance, EDGE, 1.0F - EDGE);
+  const float odds = std::log(clamped / (1.0F - clamped)) + logOdds;
+  return 1.0F / (1.0F + std::exp(-odds));
 }
 
 /** A 0/1 measure: whether a condition holds (a cross, the final third). */
