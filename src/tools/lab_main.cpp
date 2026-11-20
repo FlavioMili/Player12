@@ -143,29 +143,32 @@ touch-sensitivity
 Fidelity: full (default, the live engine's 10 Hz step) or background (the
 cheaper step unwatched fixtures use); compare both to check equivalence.
 
-Brains: each side's decision-making, aardvark (default), binturong or
+Every choice below defaults to binturong, as the match sandbox and its
+drills do.
+
+Brains: each side's decision-making, binturong (default), aardvark or
 capybara; one name sets both sides ("--brains capybara"), two set home and
 away ("--brains binturong,capybara").
 
 Bodies: each side's players' bodies (movement, fitness, kicking, first
-touch, goalkeeping), binturong (default, as the match sandbox and its
-drills) or aardvark, set the same way.
+touch, goalkeeping), binturong (default) or aardvark, set the same way.
 
 Handshake: how the inputs become match state (attribute scale, physical
 limits, roles), one for the match: binturong (default) or aardvark.
 
 Referee: the officials' judgement (fouls, cards, advantage, offside calls,
-added time), one for the match: aardvark (default) or binturong.
+added time), one for the match: binturong (default) or aardvark.
 
 Managers: each side's AI manager (substitutions, who comes on, late shouts),
-aardvark (default) or binturong, set the same way as the brains.
+binturong (default) or aardvark, set the same way as the brains.
 
 Ball: the ball physics (flight, drag, bounces, rolling, swerve, and the
-launch solvers), one for the match: aardvark (default) or binturong;
-drills default to binturong, as in the match sandbox.
+launch solvers), one for the match: binturong (default) or aardvark.
 
 Out of play: goals, the woodwork, corners, goal kicks, throw-ins and every
-restart set up and taken, one for the match: aardvark (default) or binturong.
+restart set up and taken, one for the match: binturong (default) or aardvark.
+
+Possession: binturong (default) or aardvark.
 
 Home advantage: the home side's edge on attributes, execution and
 refereeing (MatchContext::homeAdvantageScale), 0 a neutral venue (default)
@@ -399,10 +402,10 @@ bool backgroundFidelity(const Arguments& arguments)
   return fidelity == "background";
 }
 
-/** --brains HOME,AWAY (or one brain for both sides); default aardvark. */
+/** --brains HOME,AWAY (or one brain for both sides); default binturong. */
 std::array<BrainId, 2> brainPair(const Arguments& arguments)
 {
-  const std::string text = arguments.value("--brains").value_or("aardvark");
+  const std::string text = arguments.value("--brains").value_or("binturong");
   const auto brains = parseBrainPair(text);
   if (!brains)
   {
@@ -568,29 +571,29 @@ HandshakeId handshakeOption(const Arguments& arguments)
   return *handshake;
 }
 
-/** --referee, --managers HOME,AWAY, --ball and --out-of-play; each aardvark
- * by default. */
+/** --referee, --managers HOME,AWAY, --ball, --out-of-play and --possession;
+ * each binturong by default, as the match sandbox. */
 struct SeamChoices
 {
-  RefereeId referee = RefereeId::AARDVARK;
-  std::array<ManagerId, 2> managers{ManagerId::AARDVARK, ManagerId::AARDVARK};
-  BallPhysicsId ball = BallPhysicsId::AARDVARK;
-  OutOfPlayId outOfPlay = OutOfPlayId::AARDVARK;
-  PossessionId possession = PossessionId::AARDVARK;
+  RefereeId referee = RefereeId::BINTURONG;
+  std::array<ManagerId, 2> managers{ManagerId::BINTURONG, ManagerId::BINTURONG};
+  BallPhysicsId ball = BallPhysicsId::BINTURONG;
+  OutOfPlayId outOfPlay = OutOfPlayId::BINTURONG;
+  PossessionId possession = PossessionId::BINTURONG;
 };
 
 SeamChoices seamChoices(const Arguments& arguments)
 {
   SeamChoices choice;
   const auto referee =
-      refereeFromKey(arguments.value("--referee").value_or("aardvark"));
+      refereeFromKey(arguments.value("--referee").value_or("binturong"));
   if (!referee)
   {
     throw UsageError("--referee must be aardvark or binturong");
   }
   choice.referee = *referee;
   const auto managers =
-      parseManagerPair(arguments.value("--managers").value_or("aardvark"));
+      parseManagerPair(arguments.value("--managers").value_or("binturong"));
   if (!managers)
   {
     throw UsageError(
@@ -599,21 +602,21 @@ SeamChoices seamChoices(const Arguments& arguments)
   }
   choice.managers = *managers;
   const auto ball =
-      ballPhysicsFromKey(arguments.value("--ball").value_or("aardvark"));
+      ballPhysicsFromKey(arguments.value("--ball").value_or("binturong"));
   if (!ball)
   {
     throw UsageError("--ball must be aardvark or binturong");
   }
   choice.ball = *ball;
   const auto outOfPlay =
-      outOfPlayFromKey(arguments.value("--out-of-play").value_or("aardvark"));
+      outOfPlayFromKey(arguments.value("--out-of-play").value_or("binturong"));
   if (!outOfPlay)
   {
     throw UsageError("--out-of-play must be aardvark or binturong");
   }
   choice.outOfPlay = *outOfPlay;
   const auto possession =
-      possessionFromKey(arguments.value("--possession").value_or("aardvark"));
+      possessionFromKey(arguments.value("--possession").value_or("binturong"));
   if (!possession)
   {
     throw UsageError("--possession must be aardvark or binturong");
@@ -1287,9 +1290,7 @@ int runSessionMode(int argc, char** argv)
 
 int main(int argc, char** argv)
 {
-  // Lab commands preserve the legacy default, independently of sandbox UI
-  // defaults.
-  sandboxPossession() = PossessionId::AARDVARK;
+  // Lab commands play the match sandbox's defaults (Binturong throughout).
   if (argc >= 2 && std::string_view(argv[1]) == "touch-sensitivity")
   {
     try

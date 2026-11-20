@@ -343,10 +343,10 @@ struct TeamSetup
 {
   float rating = 65.0F;
   StrategySliders sliders{};
-  BrainId brain = BrainId::AARDVARK;
-  BodyId body = BodyId::AARDVARK;
+  BrainId brain = BrainId::BINTURONG;
+  BodyId body = BodyId::BINTURONG;
   /** The AI manager running the side's touchline (when auto-managed). */
-  ManagerId manager = ManagerId::AARDVARK;
+  ManagerId manager = ManagerId::BINTURONG;
   /** Every stat of every player is `rating` (buildUniformLineup) instead
    * of the role-shaped squad. */
   bool uniform = false;
@@ -364,10 +364,10 @@ struct MatchJob
   /** How the inputs become match state (one per match). */
   HandshakeId handshake = HandshakeId::BINTURONG;
   /** The referee and the ball physics (one each per match). */
-  RefereeId referee = RefereeId::AARDVARK;
-  BallPhysicsId ballPhysics = BallPhysicsId::AARDVARK;
+  RefereeId referee = RefereeId::BINTURONG;
+  BallPhysicsId ballPhysics = BallPhysicsId::BINTURONG;
   /** What happens when the ball leaves play (one per match). */
-  OutOfPlayId outOfPlay = OutOfPlayId::AARDVARK;
+  OutOfPlayId outOfPlay = OutOfPlayId::BINTURONG;
   /** MatchContext::homeAdvantageScale: 0 a neutral venue, 1 the engine's
    * default (the game's full home edge), up to 2. */
   float homeAdvantage = 1.0F;
@@ -376,8 +376,8 @@ struct MatchJob
   /** Tuning knobs for the match (defaults: the tuned constants). */
   FirstTouchKnobs touchKnobs;
   StrikeKnobs strikeKnobs;
-  /** Independent per-match possession; legacy unless explicitly selected. */
-  PossessionId possession = PossessionId::AARDVARK;
+  /** Independent per-match possession. */
+  PossessionId possession = PossessionId::BINTURONG;
 };
 
 /** A match that did not reach full time or produced invalid numbers. */
