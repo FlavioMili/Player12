@@ -23,6 +23,8 @@
   void assignMarksCapybara(bool home);
   PitchPoint goalkeeperTargetCapybara(MatchPlayer& keeper, const MatchPlayer* carrier);
   BallAction chooseBallActionCapybara(MatchPlayer& carrier);
+ public:
+  // Public for the sandbox xG map, which draws the shot score core.
   /** Weighting for the carrier decision (DecisionFrame; brain redesign plan
    * section 15, step A): how much each of its measures counts for him. The
    * defaults are MatchTuning's; the layers (team instructions, his role, a
@@ -39,15 +41,10 @@
     float completion = 0.0F;
     float runner = 0.0F;
     float passDaring = 0.0F;
-    float receiverXG = 0.0F;
     float spaceBehind = 0.0F;
-    float cross = 0.0F;
-    float cutback = 0.0F;
-    float recycle = 0.0F;
+    // Threat (pass, shot, carry): the chance of a goal from the option.
+    float threat = 0.0F;
     // Shot.
-    float shotXG = 0.0F;
-    float haveAGo = 0.0F;
-    float finalThirdShot = 0.0F;
     float shout = 0.0F;
     float wideShot = 1.0F;
     float cutInsideShot = 0.0F;
@@ -65,11 +62,27 @@
     // Shield.
     float shieldKeep = 0.0F;
   };
+  /** The carrier decision's weights with no layers: every default, and 0
+   * for every weight a layer sets (instructions, his role, a shout, the
+   * game state). The xG map draws the shot score with these. */
+  [[nodiscard]] static CarrierWeightsCapybara neutralCarrierWeightsCapybara();
   [[nodiscard]] CarrierWeightsCapybara carrierWeightsCapybara(
       const MatchPlayer& carrier) const;
+  /** The shot score's core at a spot, added to `shot`: the threat, a
+   * shout, and the wide-angle discount. Shared by the brain and the xG map. Returns the
+   * range eligibility (0 to 1) the brain's role terms fade with. */
+  static float addShotCoreCapybara(DecisionFrame::Score& shot,
+                                   const CarrierWeightsCapybara& weights,
+                                   const MatchPitch& pitch, PitchPoint at,
+                                   bool attackingRight, float shotXG);
+ private:
   /** Chance he keeps the ball if he carries it (or shields it): 1 minus
    * the pressure on him times the chance the nearest opponent's tackle
    * wins it (MatchRules::tackleWinChance, a standing tackle). */
+  /** The xG from where his carry would take him by his next decision:
+   * about a second towards carryTargetCapybara at carrying speed, with the
+   * nearest opponent measured from there. */
+  [[nodiscard]] float carryEndXGCapybara(const MatchPlayer& carrier) const;
   [[nodiscard]] float keepChanceCapybara(const MatchPlayer& carrier,
                                          bool shielding,
                                          float pressure) const;

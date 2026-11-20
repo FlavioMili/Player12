@@ -21,7 +21,9 @@
 #include "global/paths.h"
 #include "gui/gui_view.h"
 #include "gui/widgets/theme.h"
+#include "model/match_decision_frame.h"
 #include "tools/match_sandbox_page_ui.h"
+#include "tools/match_sandbox_setup.h"
 #include "tools/match_sandbox_typography.h"
 
 namespace
@@ -107,6 +109,25 @@ MatchPitch XgMapScene::pitch() const
                               static_cast<GoalKind>(goalChoice));
 }
 
+bool XgMapScene::capybaraScore()
+{
+  return sandboxBrains()[0] == BrainId::CAPYBARA;
+}
+
+namespace
+{
+/** Capybara's shot score core at a spot, with no layers. */
+DecisionFrame::Score capybaraShotCore(const MatchPitch& on, PitchPoint at,
+                                      float estimate)
+{
+  DecisionFrame::Score shot;
+  MatchEngine::addShotCoreCapybara(shot,
+                                   MatchEngine::neutralCarrierWeightsCapybara(),
+                                   on, at, true, estimate);
+  return shot;
+}
+}  // namespace
+
 XgMapScene::Spot XgMapScene::spotAt(const MatchPitch& on, PitchPoint at) const
 {
   using S = MatchTuning::Shooting;
@@ -126,6 +147,8 @@ XgMapScene::Spot XgMapScene::spotAt(const MatchPitch& on, PitchPoint at) const
       1.0F);
   spot.score = MatchEngine::shotScoreParts(on, at, true, estimate, spaceAhead,
                                            shooting, pressure, 0.0F);
+  spot.scoreTotal = capybaraScore() ? capybaraShotCore(on, at, estimate).total()
+                                    : spot.score.total;
   spot.considered = header ? estimate * S::HEADER_XG_FACTOR >=
                                  MatchTuning::Aerial::HEADER_SHOT_MIN_XG
                            : estimate >= D::MIN_SHOT_XG;
@@ -203,7 +226,8 @@ void XgMapScene::renderPanel(float width)
   Page::header(
       "Tools", "xG map", width, scale, boldFont, regularFont,
       "The engine's own xG for a shooter attacking the right-hand goal, "
-      "and the core of the Binturong brain's shot score.",
+      "and the core of the chosen brain's shot score (the home side's "
+      "brain in the set-up: Capybara's own, else Binturong's).",
       true);
   Page::beginCard("##xg_map_settings", "SETTINGS", width, Page::DARK, scale,
                   boldFont);
@@ -337,9 +361,23 @@ void XgMapScene::renderPanel(float width)
       ImGui::Text("Shot score: not considered (xG under %.3f).",
                   D::MIN_SHOT_XG);
     }
+    else if (!header && capybaraScore())
+    {
+      // Capybara's own terms (DecisionFrame), as the brain sums them.
+      const DecisionFrame::Score shot =
+          capybaraShotCore(built, *hovered, spot.xg.xg);
+      ImGui::TextUnformatted(
+          std::format("Capybara shot score {:.2f}:", shot.total()).c_str());
+      for (const DecisionFrame::Term& term : shot.allTerms())
+      {
+        ImGui::TextUnformatted(
+            std::format("  {}: {:+.2f}", term.name, term.value()).c_str());
+      }
+    }
     else if (!header)
     {
-      ImGui::Text("Shot score %.2f:", s.total);
+      ImGui::TextUnformatted(
+          std::format("Binturong shot score {:.2f}:", s.total).c_str());
       ImGui::Text("  xG above %.3f: %+.2f", D::BASE_SHOT_THRESHOLD, s.xgTerm);
       ImGui::Text("  have a go (space %.2f, range %.2f): %+.2f", spaceAhead,
                   s.rangeEligibility, s.haveAGo);
@@ -420,7 +458,7 @@ void XgMapScene::renderMap(float width, float height)
         const float total =
             header ? (valueOf(spot) - MatchTuning::Aerial::HEADER_SHOT_MIN_XG) *
                          20.0F
-                   : spot.score.total;
+                   : spot.scoreTotal;
         const int alpha = static_cast<int>(
             40 + (120 * std::min(1.0F, std::abs(total) / 3.0F)));
         colour = total > 0.0F ? IM_COL32(40, 200, 80, alpha)

@@ -21,9 +21,10 @@ struct ImFont;
  * The xG map (training ground plan section 24, T8): a pitch, the match one
  * or a training pitch of any size and goal kind, shaded by the engine's own
  * xG for a shooter attacking the right-hand goal, with contours; or by the
- * core of the Binturong brain's shot score. Hovering shows every part of
- * both at that spot. Settings: Shooting, foot or header, a defender at a
- * set distance, the space ahead.
+ * core of the chosen brain's shot score (the home side's brain from the
+ * sandbox set-up: Capybara's own, else Binturong's). Hovering shows every
+ * part of both at that spot. Settings: Shooting, foot or header, a defender at
+ * a set distance, the space ahead.
  */
 class XgMapScene : public GUIScene
 {
@@ -43,9 +44,14 @@ class XgMapScene : public GUIScene
     MatchEngine::XgBreakdown xg;
     /** As struck: a header's discount and the shot's limits applied. */
     float struck = 0.0F;
+    /** Binturong's shot score core (Aardvark and Binturong brains). */
     MatchEngine::ShotScoreParts score;
+    /** The shot score core the map draws, for the chosen brain. */
+    float scoreTotal = 0.0F;
     bool considered = false;
   };
+  /** Whether the map draws Capybara's shot score (the chosen brain). */
+  [[nodiscard]] static bool capybaraScore();
   [[nodiscard]] MatchPitch pitch() const;
   [[nodiscard]] Spot spotAt(const MatchPitch& on, PitchPoint at) const;
   void rebuild();

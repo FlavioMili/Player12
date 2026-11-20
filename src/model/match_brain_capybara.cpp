@@ -3741,12 +3741,43 @@ TackleIntent MatchEngine::chooseTackleIntentCapybara(
   return TackleIntent::WIN;
 }
 
+MatchEngine::CarrierWeightsCapybara MatchEngine::neutralCarrierWeightsCapybara()
+{
+  // Weighting (brain redesign plan section 15): each weight's default from
+  // MatchTuning. The weights a layer sets stay 0 here.
+  using D = MatchTuning::Decision;
+  using P = MatchTuning::Passing;
+  namespace T = TacticsTuning;
+  CarrierWeightsCapybara weights;
+  // Pass.
+  weights.receiverSpace = P::OPENNESS_WEIGHT;
+  weights.progress = P::BASE_PROGRESS_WEIGHT;
+  weights.lengthOffIdeal = -P::DISTANCE_PENALTY_PER_METRE;
+  weights.safeOutlet = P::SAFE_OUTLET_WEIGHT;
+  weights.completion = P::COMPLETION_UTILITY_WEIGHT;
+  weights.runner = P::ACTIVE_RUNNER_UTILITY_BONUS;
+  weights.spaceBehind = P::SPACE_BEHIND_UTILITY;
+  // Threat: one weight for every option, the shot's own scale.
+  weights.threat = D::SHOT_SCORE_SCALE;
+  // Shot.
+  weights.wideShot = D::WIDE_SHOT_DISCOUNT;
+  weights.cutInsideShot = D::CUT_INSIDE_SHOT_BONUS;
+  weights.weakFootShot = -T::WEAK_FOOT_SHOT_PENALTY;
+  // Carry. Keeping the ball counts as much as a completed pass does.
+  weights.carrySpace = D::CARRY_OPENNESS_WEIGHT;
+  weights.carryKeep = P::COMPLETION_UTILITY_WEIGHT;
+  weights.carryHeld = -D::CARRY_HOLD_PENALTY_PER_SECOND;
+  weights.cutInsideCarry = D::CUT_INSIDE_CARRY_BONUS;
+  // Shield.
+  weights.shieldKeep = P::COMPLETION_UTILITY_WEIGHT;
+  return weights;
+}
+
 MatchEngine::CarrierWeightsCapybara MatchEngine::carrierWeightsCapybara(
     const MatchPlayer& carrier) const
 {
-  // Weighting (brain redesign plan section 15, step A): each weight is its
-  // default from MatchTuning, moved by the layer named beside it. The team
-  // sliders still move weights linearly (ratio^steps is step B).
+  // The defaults, then the weights each layer sets. The team sliders still
+  // move weights linearly (ratio^steps is a later step).
   using D = MatchTuning::Decision;
   using P = MatchTuning::Passing;
   namespace T = TacticsTuning;
@@ -3754,47 +3785,81 @@ MatchEngine::CarrierWeightsCapybara MatchEngine::carrierWeightsCapybara(
   const RoleProfile& role = roleProfileOf(carrier);
   // Game state is a layer: a drill with no layers has none.
   const bool gameState = drillRules.layers;
-  CarrierWeightsCapybara weights;
-  // Pass: defaults, plus the attacking instruction on progress and his
-  // role's daring.
-  weights.receiverSpace = P::OPENNESS_WEIGHT;
-  weights.progress = P::BASE_PROGRESS_WEIGHT;
+  CarrierWeightsCapybara weights = neutralCarrierWeightsCapybara();
+  // Pass: the attacking instruction on progress, his role's daring.
   weights.progressInstruction =
       strategy.offensiveBias * P::OFFENSIVE_PROGRESS_WEIGHT;
-  weights.lengthOffIdeal = -P::DISTANCE_PENALTY_PER_METRE;
-  weights.safeOutlet = P::SAFE_OUTLET_WEIGHT;
-  weights.completion = P::COMPLETION_UTILITY_WEIGHT;
-  weights.runner = P::ACTIVE_RUNNER_UTILITY_BONUS;
   weights.passDaring = role.passDaring;
-  weights.receiverXG = P::SHOT_CREATION_WEIGHT;
-  weights.spaceBehind = P::SPACE_BEHIND_UTILITY;
-  weights.cross = P::CROSS_UTILITY_BONUS;
-  weights.cutback = P::CUTBACK_UTILITY_BONUS;
-  weights.recycle = D::WIDE_RECYCLE_BONUS;
-  // Shot: defaults, plus a shout, his role and the game state.
-  weights.shotXG = D::SHOT_SCORE_SCALE;
-  weights.haveAGo = D::SHOT_BASE_INCLINATION;
-  weights.finalThirdShot = D::FINAL_THIRD_SHOT_BONUS;
+  // Shot: a shout, his role, the game state.
   weights.shout = shoutShotBiasCapybara(carrier.isHomeTeam);
-  weights.wideShot = D::WIDE_SHOT_DISCOUNT;
-  weights.cutInsideShot = D::CUT_INSIDE_SHOT_BONUS;
   weights.roleShotBias = role.shotBias * T::SHOT_BIAS_WEIGHT;
-  weights.weakFootShot = -T::WEAK_FOOT_SHOT_PENALTY;
   weights.lateLeadShot = gameState ? -D::LATE_LEAD_SPECULATIVE_PENALTY : 0.0F;
   weights.comfortableLeadShot =
       gameState ? -D::COMFORTABLE_LEAD_SHOT_PENALTY : 0.0F;
-  // Carry: defaults, plus the risk-taking instruction and the game state.
-  weights.carrySpace = D::CARRY_OPENNESS_WEIGHT;
-  // Keeping the ball counts as much as a completed pass does.
-  weights.carryKeep = P::COMPLETION_UTILITY_WEIGHT;
+  // Carry: the risk-taking instruction, the game state.
   weights.carryRisk = strategy.riskTaking * D::CARRY_RISK_BIAS;
-  weights.carryHeld = -D::CARRY_HOLD_PENALTY_PER_SECOND;
-  weights.cutInsideCarry = D::CUT_INSIDE_CARRY_BONUS;
   weights.comfortableLeadCarry =
       gameState ? -D::COMFORTABLE_LEAD_CARRY_PENALTY : 0.0F;
-  // Shield: defaults.
-  weights.shieldKeep = P::COMPLETION_UTILITY_WEIGHT;
   return weights;
+}
+
+float MatchEngine::addShotCoreCapybara(DecisionFrame::Score& shot,
+                                       const CarrierWeightsCapybara& weights,
+                                       const MatchPitch& pitch, PitchPoint at,
+                                       bool attackingRight, float shotXG)
+{
+  using D = MatchTuning::Decision;
+  using S = TermSource;
+  // The shout counts in full only from a good range: it fades out
+  // completely for absurd-distance attempts, so the scored decision can
+  // never invent a nonsensical long shot.
+  const float range = std::clamp(
+      (shotXG - D::SHOT_ELIGIBILITY_FLOOR) / D::SHOT_ELIGIBILITY_RANGE, 0.0F,
+      1.0F);
+  const float depth =
+      attackingRight ? pitch.fractionX(at) : 1.0F - pitch.fractionX(at);
+  const bool finalThird = depth >= MatchTuning::Rules::HOME_FINAL_THIRD_START;
+  const bool wideInFinalThird =
+      finalThird && std::abs(pitch.atY(MatchTuning::Pitch::CENTRE) - at.y) >=
+                        D::WIDE_SHOT_WIDTH_METRES;
+  shot.add("threat (expected goals)", S::SITUATION, shotXG, weights.threat);
+  shot.add("touchline shout", S::MORALE, range, weights.shout);
+  if (wideInFinalThird)
+  {
+    shot.scale("wide-angle discount", S::LOCATION, weights.wideShot);
+  }
+  return range;
+}
+
+float MatchEngine::carryEndXGCapybara(const MatchPlayer& carrier) const
+{
+  // He decides again about a second later (individual possessions last
+  // about a second), so the carry is worth the xG from where he will be
+  // then, not from the point he aims at (about 17 m ahead).
+  constexpr float NEXT_DECISION_SECONDS = 1.0F;
+  const PitchPoint aim = carryTargetCapybara(carrier);
+  const float aimMetres = distance(carrier.position, aim);
+  const float reach =
+      std::min(aimMetres, currentTopSpeed(carrier) *
+                              MatchTuning::Player::CARRY_BALL_SPEED_SCALE *
+                              NEXT_DECISION_SECONDS);
+  PitchPoint end = carrier.position;
+  if (aimMetres > EPSILON)
+  {
+    const float share = reach / aimMetres;
+    end.x += (aim.x - carrier.position.x) * share;
+    end.y += (aim.y - carrier.position.y) * share;
+  }
+  float nearest = std::numeric_limits<float>::max();
+  for (const auto& opponent : players)
+  {
+    if (opponent.isHomeTeam != carrier.isHomeTeam && active(opponent))
+    {
+      nearest = std::min(nearest, distance(end, opponent.position));
+    }
+  }
+  return xgBreakdown(pitch, end, carrier.isHomeTeam, carrier.shooting, nearest)
+      .xg;
 }
 
 float MatchEngine::keepChanceCapybara(const MatchPlayer& carrier,
@@ -3913,62 +3978,29 @@ MatchEngine::BallAction MatchEngine::chooseBallActionCapybara(
   const CarrierWeightsCapybara weights = carrierWeightsCapybara(carrier);
   using DecisionFrame::gate;
   using S = TermSource;
-  const float carrierDepth = carrier.isHomeTeam
-                                 ? pitch.fractionX(carrier.position)
-                                 : 1.0F - pitch.fractionX(carrier.position);
-  const bool finalThird =
-      carrierDepth >= MatchTuning::Rules::HOME_FINAL_THIRD_START;
-  const bool wideInFinalThird =
-      finalThird &&
-      std::abs(pitch.atY(MatchTuning::Pitch::CENTRE) - carrier.position.y) >=
-          MatchTuning::Decision::WIDE_SHOT_WIDTH_METRES;
   const bool cutsInside = cutsInsideCapybara(carrier);
 
   // Options and Scoring: each option open to him, scored as measures times
   // their weights.
-  // Pass: the best candidate's score (choosePassTargetCapybara), then where
-  // he is: pinned to the byline, a ball back is worth more.
+  // Pass: the best candidate's score (choosePassTargetCapybara).
   DecisionFrame::Score pass;
   if (option)
   {
     pass.add("the best pass", S::SITUATION, option->utility, 1.0F);
-    pass.add(
-        "recycle from the byline", S::LOCATION,
-        gate(wideInFinalThird && option->targetPoint.x <= carrier.position.x),
-        weights.recycle);
   }
   else
   {
     pass.ruleOut();
   }
 
-  // Shot: open from a credible range (xG at least MIN_SHOT_XG). The
-  // "have-a-go" inclination, the shout and the role terms count in full
-  // only from a good range: they fade out completely for absurd-distance
-  // attempts, so the scored decision can never invent a nonsensical long
-  // shot.
+  // Shot: open from a credible range (xG at least MIN_SHOT_XG). Its core
+  // (addShotCoreCapybara) is what the xG map draws; the role terms fade
+  // with the same range.
   DecisionFrame::Score shot;
   if (shotXG >= MatchTuning::Decision::MIN_SHOT_XG)
   {
-    const float range =
-        std::clamp((shotXG - MatchTuning::Decision::SHOT_ELIGIBILITY_FLOOR) /
-                       MatchTuning::Decision::SHOT_ELIGIBILITY_RANGE,
-                   0.0F, 1.0F);
-    shot.add("expected goals above the threshold", S::SITUATION,
-             shotXG - MatchTuning::Decision::BASE_SHOT_THRESHOLD,
-             weights.shotXG);
-    // Some inclination even with no space ahead (the same value as before
-    // the frame).
-    constexpr float HAVE_A_GO_FLOOR = 0.6F;
-    shot.add("have-a-go inclination (space ahead, range)", S::SITUATION,
-             (HAVE_A_GO_FLOOR + opennessAhead) * range, weights.haveAGo);
-    shot.add("final-third bonus", S::LOCATION, gate(finalThird),
-             weights.finalThirdShot);
-    shot.add("touchline shout", S::MORALE, range, weights.shout);
-    if (wideInFinalThird)
-    {
-      shot.scale("wide-angle discount", S::LOCATION, weights.wideShot);
-    }
+    const float range = addShotCoreCapybara(
+        shot, weights, pitch, carrier.position, carrier.isHomeTeam, shotXG);
     // A wide forward who has cut inside is looking for his shot; roles
     // shoot more or less readily; a man forced onto his weaker foot under
     // pressure is less inclined to try.
@@ -3990,8 +4022,11 @@ MatchEngine::BallAction MatchEngine::chooseBallActionCapybara(
       getSimulatedSeconds() - getPossessionHistory().possessionStartSeconds);
   DecisionFrame::Score carry;
   carry.add("space ahead", S::SITUATION, opennessAhead, weights.carrySpace);
-  carry.add("keeps the ball", S::SITUATION,
-            keepChanceCapybara(carrier, false, pressure), weights.carryKeep);
+  const float carryKeep = keepChanceCapybara(carrier, false, pressure);
+  carry.add("keeps the ball", S::SITUATION, carryKeep, weights.carryKeep);
+  // Threat: the chance he keeps it times the xG where the carry ends.
+  carry.add("threat (keeps it x xG at the carry's end)", S::SITUATION,
+            carryKeep * carryEndXGCapybara(carrier), weights.threat);
   carry.add("risk-taking instruction", S::INSTRUCTION, 1.0F, weights.carryRisk);
   carry.add("time already on the ball", S::SITUATION, heldSeconds,
             weights.carryHeld);
@@ -4309,9 +4344,6 @@ MatchEngine::PassOption MatchEngine::evaluatePassOptionCapybara(
                  0.0F, 1.0F);
   const float passerToGoal =
       pitch.toGoalLine(passer.position, passer.isHomeTeam);
-  const float receiverDepth = receiver.isHomeTeam
-                                  ? pitch.fractionX(receiver.position)
-                                  : 1.0F - pitch.fractionX(receiver.position);
   const float receiverToGoal =
       pitch.toGoalLine(receiver.position, receiver.isHomeTeam);
   const bool widePasser = pitch.fractionY(passer.position) <=
@@ -4406,16 +4438,11 @@ MatchEngine::PassOption MatchEngine::evaluatePassOptionCapybara(
             progression > 0.0F ? 1.0F : TARGET_BACKWARD_SHARE, targetWeight);
   score.add("receiver tightly marked (order)", S::INSTRUCTION, 1.0F,
             markedWeight);
-  // In the final third a team-mate in a shooting position is worth finding.
-  score.add("receiver's shot chance", S::LOCATION,
-            receiverDepth >= MatchTuning::Rules::HOME_FINAL_THIRD_START
-                ? estimateShotXG(receiver)
-                : 0.0F,
-            weights.receiverXG);
+  // Threat: the chance the pass arrives times the receiver's xG there.
+  score.add("threat (completion x receiver's xG)", S::SITUATION,
+            completionProbability * estimateShotXG(receiver), weights.threat);
   score.add("space in behind", S::SITUATION, spaceBehindShare,
             weights.spaceBehind);
-  score.add("cross", S::LOCATION, gate(crossOption), weights.cross);
-  score.add("cutback", S::LOCATION, gate(cutbackOption), weights.cutback);
   const float utility = score.total();
 
   PassIntent intent = PassIntent::RECYCLE;

@@ -150,6 +150,10 @@ class MatchRecorder;
 struct MatchActionRecord;
 struct PassCandidateDetail;
 struct ScoreBreakdown;
+namespace DecisionFrame
+{
+class Score;
+}
 
 struct PassDecision
 {
