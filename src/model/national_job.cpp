@@ -19,6 +19,7 @@
 #include "database/database_connection.h"
 #include "database/gamedata.h"
 #include "global/global.h"
+#include "global/nationality.h"
 #include "model/calendar.h"
 #include "model/inbox.h"
 #include "model/world_generation.h"
@@ -140,7 +141,7 @@ void insertAll(const DatabaseConnection& db, const char* sql,
 
 Language nationFrom(std::int64_t value)
 {
-  return value >= 0 && value <= std::to_underlying(Language::US)
+  return value >= 0 && value <= LAST_CUSTOM_NATIONALITY
              ? static_cast<Language>(value)
              : Language::EN;
 }

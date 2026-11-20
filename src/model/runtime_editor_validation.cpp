@@ -19,6 +19,7 @@
 
 #include "global/global.h"
 #include "global/languages.h"
+#include "global/nationality.h"
 #include "model/gamedate.h"
 #include "model/manager_career.h"
 #include "model/player.h"
@@ -188,7 +189,7 @@ void validatePlayerField(const std::string& name,
   }
   else if (name == "nationality")
   {
-    if (string == nullptr || !stringToLanguage.contains(*string))
+    if (string == nullptr || !nationalityFromName(*string))
     {
       throw RuntimeEditor::Error("nationality: unknown language code");
     }
@@ -228,11 +229,11 @@ void validateField(const RuntimeEditor::Change& change, const std::string& name,
             .table = change.table,
             .column = name,
             .minimum = 0,
-            .maximum = BYTE_MAX,
+            .maximum = LAST_CUSTOM_NATIONALITY,
         },
         value);
-    if (!languageToString.contains(
-            static_cast<Language>(std::get<std::int64_t>(value))))
+    if (nationalityName(static_cast<Language>(std::get<std::int64_t>(value)))
+            .empty())
     {
       throw RuntimeEditor::Error("nationality: unknown nationality");
     }

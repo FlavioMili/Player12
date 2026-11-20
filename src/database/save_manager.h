@@ -80,6 +80,8 @@ struct SaveMetadata
   std::string updated_at_utc;  ///< ISO-8601 of the last save.
   std::string last_saved_game_date;
   std::int64_t playtime_seconds = 0;
+  /** JSON array of imported user-database ids, e.g. ["Real World v1"]. */
+  std::string packs;
 };
 
 /** How thoroughly SaveManager::inspect checks a file. */

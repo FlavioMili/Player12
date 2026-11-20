@@ -25,6 +25,7 @@
 #include "database/gamedata.h"
 #include "global/global.h"
 #include "global/language_manager.h"
+#include "global/nationality.h"
 #include "gui/gui_view.h"
 #include "gui/scenes/scouting_scene.h"
 #include "gui/scenes/scouting_scene_internal.h"
@@ -62,15 +63,6 @@ constexpr std::array<const char*, static_cast<std::size_t>(std::to_underlying(
 uint64_t pickerKey(ScoutTargetKind kind, uint32_t id)
 {
   return (static_cast<uint64_t>(std::to_underlying(kind)) << 32U) | id;
-}
-
-std::string nationalityName(Language nationality)
-{
-  const auto name = languageToString.find(nationality);
-  if (name == languageToString.end()) return {};
-  const std::string key = "NATION_" + name->second;
-  const char* localized = LOC(key.c_str());
-  return key == localized ? name->second : std::string(localized);
 }
 
 /** Native language first, then the others in enum order. */
@@ -167,7 +159,7 @@ void ScoutingScene::rebuildScouts()
   {
     ScoutLine line;
     line.summary = summary;
-    line.nationality = nationalityName(summary.profile.nationality);
+    line.nationality = nationalityLabel(summary.profile.nationality);
     for (const SpokenLanguage language :
          languagesOf(controller.getScoutExpertise(summary.profile.id)))
     {

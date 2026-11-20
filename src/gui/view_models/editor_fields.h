@@ -18,7 +18,7 @@
 /** Presentation belongs to the feature, never inferred from SQL storage types.
  * Labels/sections/choice labels are localisation keys; stored choice values
  * remain independent of the current language. Missing schema columns are
- * omitted.
+ * omitted. Colour values are "#RRGGBB"; Toggle values are "1"/"0".
  */
 struct EditorField
 {
@@ -27,7 +27,9 @@ struct EditorField
     Text,
     Number,
     Choice,
-    Attributes
+    Attributes,
+    Colour,
+    Toggle
   };
   std::string column;
   std::string label;
@@ -36,6 +38,14 @@ struct EditorField
   std::optional<double> minimum;
   std::optional<double> maximum;
   std::vector<std::pair<std::string, std::string>> choices;
+  /** False shows choice labels literally (entity names, not LOC keys). */
+  bool translate_choices = true;
+  /** Number that may be absent: an empty value shows "Not set" with a button
+   * that sets `initial`, and a set value gets a clear button. */
+  bool optional = false;
+  std::string initial;
+  /** Optional localisation key shown muted under the control. */
+  std::string hint;
 };
 
 /** Built-in gameplay controls. Unknown tables have no implicit editing surface;

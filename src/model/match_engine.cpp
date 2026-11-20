@@ -4169,7 +4169,7 @@ float MatchEngine::weakFootShade(const MatchPlayer& carrier) const
   // Facing his attacking direction, a right-footer's strong side is +y for
   // the home side (attacking toward x = 1) and -y for the away side.
   const float strongSide =
-      (carrier.player->getFoot() == Foot::Right ? 1.0f : -1.0f) *
+      (carrier.player->getFoot() == Foot::Left ? -1.0f : 1.0f) *
       (carrier.isHomeTeam ? 1.0f : -1.0f);
   return strongSide * TacticsTuning::WEAK_FOOT_SHADE_METRES /
          MatchTuning::Pitch::WIDTH_METRES;

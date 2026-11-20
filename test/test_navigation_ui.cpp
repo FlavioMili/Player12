@@ -68,6 +68,14 @@ class GameFlowTest_GUIFlowLifecycle_Test
   {
     menu.overwrite_slot = slot;
   }
+  static void openWorldChoice(MainMenuScene& menu)
+  {
+    menu.world_choice.open(WorldChoiceDialog::Mode::Choose);
+  }
+  static bool dropPending(const MainMenuScene& menu)
+  {
+    return !menu.dropped_file.empty();
+  }
 };
 
 using Bridge = GameFlowTest_GUIFlowLifecycle_Test;
@@ -527,6 +535,39 @@ TEST(NavigationUiTest, MainMenuDialogsCloseWithEscapeOneAtATime)
   pressEscape(view);
   EXPECT_EQ(openPopups(), 0);
   EXPECT_EQ(topId(view), SceneID::MAIN_MENU);
+}
+
+TEST(NavigationUiTest, WorldChoiceClosesWithEscapeAndDropsOpenTheSlotPicker)
+{
+  SDL_SetHint(SDL_HINT_VIDEO_DRIVER, "dummy");
+  Logger::init();
+  ASSERT_TRUE(LanguageManager::instance().loadLanguage(Language::EN));
+  GameController controller;
+  GUIView view(controller);
+  ASSERT_TRUE(Bridge::initialize(view));
+  view.changeScene(std::make_unique<MainMenuScene>(&view));
+  frames(view, 2);
+  auto* menu = dynamic_cast<MainMenuScene*>(view.getTopScene());
+  ASSERT_NE(menu, nullptr);
+
+  Bridge::openWorldChoice(*menu);
+  frames(view, 2);
+  ASSERT_EQ(openPopups(), 1);
+  pressEscape(view);
+  EXPECT_EQ(openPopups(), 0);
+  EXPECT_EQ(topId(view), SceneID::MAIN_MENU);
+
+  // A world file dropped on the menu asks for the new career's slot first.
+  const std::string path = "dropped_world.fmdb";
+  SDL_Event drop{};
+  drop.type = SDL_EVENT_DROP_FILE;
+  drop.drop.data = path.c_str();
+  menu->handleEvent(drop);
+  frames(view, 2);
+  EXPECT_TRUE(Bridge::dropPending(*menu));
+  EXPECT_EQ(openPopups(), 1);
+  pressEscape(view);
+  EXPECT_EQ(openPopups(), 0);
 }
 
 TEST(NavigationUiTest, SettingsReturnsToTheScreenItWasOpenedFrom)

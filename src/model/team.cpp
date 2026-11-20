@@ -54,7 +54,7 @@ int positionGroup(PlayerRole role)
 }  // namespace
 
 // Constructor
-Team::Team(TeamID team_id, uint8_t team_league_id, std::string_view team_name,
+Team::Team(TeamID team_id, LeagueID team_league_id, std::string_view team_name,
            int64_t initial_balance,
            const std::vector<PlayerID>& initial_player_ids,
            const Strategy& strategy, const Lineup& lineup_data)
@@ -70,7 +70,7 @@ Team::Team(TeamID team_id, uint8_t team_league_id, std::string_view team_name,
 
 // Accessors
 uint16_t Team::getId() const { return id; }
-uint8_t Team::getLeagueId() const { return league_id; }
+LeagueID Team::getLeagueId() const { return league_id; }
 void Team::setLeagueId(LeagueID new_league_id) { league_id = new_league_id; }
 const std::string& Team::getName() const { return name; }
 

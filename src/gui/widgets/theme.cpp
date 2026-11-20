@@ -14,6 +14,9 @@
 #include <numbers>
 #include <utility>
 
+#include "database/datagenerator.h"
+#include "gui/render/match_kit_colors.h"
+
 namespace
 {
 constexpr float BASE_FONT_SIZE = 16.0f;
@@ -468,6 +471,19 @@ const char* presetKey(Preset preset)
 
 ImVec4 clubAccent(TeamID teamId)
 {
+  // Follow the club's home shirt when the data pack describes it; fall back
+  // to a light strip's contrast colour, then to the hashed original.
+  if (const ClubIdentity* identity = findClubIdentity(teamId))
+  {
+    std::uint32_t rgb = identity->primary_colour;
+    const auto channel = [](std::uint32_t value, int shift)
+    { return static_cast<float>((value >> shift) & 0xFFU) / 255.0f; };
+    const float luminance = 0.2126f * channel(rgb, 16) +
+                            0.7152f * channel(rgb, 8) +
+                            0.0722f * channel(rgb, 0);
+    if (luminance > 0.75f) rgb = identity->secondary_colour;
+    return ImVec4(channel(rgb, 16), channel(rgb, 8), channel(rgb, 0), 1.0f);
+  }
   return CLUB_ACCENTS[static_cast<size_t>(teamId) % CLUB_ACCENTS.size()];
 }
 

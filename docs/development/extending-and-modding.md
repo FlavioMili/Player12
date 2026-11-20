@@ -1,42 +1,43 @@
 # Extending and modding
 
-The game currently supports JSON world/attribute/language data and C++ changes
-to simulation behavior. It has no script/plugin loader, installable pack
-manifest, dependency resolver or runtime JSON loader for `MatchTuning`.
-The larger pack system in the Spec Kitty contracts is a proposal; see
-[design history](design-notes.md).
+World content (countries, competitions, clubs, players, kits, league
+economies and name pools) is data: a world database (`.fmdb`) built in the
+game's [World editor](../user/world-editor.md) and described in the
+[format reference](../../assets/world/README.md). Players share worlds as
+files; the game imports them by file picker or drag and drop and never
+downloads anything. Attribute names, rating weights and translations are JSON
+assets; simulation behaviour is C++. There is no script or plugin loader and
+no runtime JSON loader for `MatchTuning`.
 
 ## Edit data without rebuilding
 
 | Data | Entry point | Effect and limits |
 |------|-------------|-------------------|
-| Leagues, clubs, optional players, name pools | `assets/user_made_data/` | Initial world generation; league economy/match profiles also require C++ entries |
+| Countries, cities, travel, leagues and their economy/match profiles, clubs, players, name pools | World editor, or a `.fmdb` file ([reference](../../assets/world/README.md)) | New careers only; each save keeps the world it was created from. Unknown keys are preserved for mods. Travel and population have no gameplay effect yet |
+| The built-in world | `assets/world/default.fmdb` | Same format; edit it in the World editor and **Export…** over the file |
 | Attribute names and overall-rating weights | `assets/config/stats_config.json` | Generation and role-based overall ratings; new names do not automatically create AI behavior |
 | Translations | `assets/lang/` | Display text for existing keys; not a way to define a new tactical role |
 
-The [world data reference](../../assets/user_made_data/README.md) is the field
-reference for the actual loader. Keep entity IDs unique and references valid.
-Team/player folders accept multiple `.json` array files, but there is no defined
-override/merge protocol for duplicate IDs. Do not rely on filesystem iteration
-order to replace another file's records.
+Worlds combine: the editor renumbers the ids of a world loaded into another,
+merges identical entities and asks the player to resolve entities defined
+differently (see the reference). Nationalities are the game's 159 built-in
+demonyms; a fantasy country chooses the closest one.
 
-To experiment with a complete asset copy, run from the repository root:
+To test the game against a complete copy of the assets (for example a changed
+`stats_config.json`), run from the repository root:
 
 ```sh
 mkdir -p /tmp/fm-custom-data
 cp -R assets /tmp/fm-custom-data/
-# Edit /tmp/fm-custom-data/assets/user_made_data/... or assets/config/...
+# Edit /tmp/fm-custom-data/assets/...
 FM_ASSET_ROOT=/tmp/fm-custom-data FM_RUNTIME_ROOT=/tmp/fm-custom-career \
   FM_WORLD_SEED=424242 ./build/src/Player12
 ```
 
 `FM_ASSET_ROOT` is the directory **containing `assets/`**, not `assets/` itself.
-It is resolved once per process. Copy all required assets; the override is not
-an overlay that fills missing files from the default pack. `FM_RUNTIME_ROOT`
-isolates test saves/settings from your normal career. Create a new career to
-see generated world/player changes. Club identity decorations are read from
-assets rather than persisted in saves, so they can affect an existing career;
-this is not a version-pinned content system.
+It is resolved once per process and is not an overlay: copy all assets.
+`FM_RUNTIME_ROOT` isolates test saves, settings and imported worlds from your
+normal career.
 
 ## Per-match settings for C++ tools
 
@@ -95,7 +96,7 @@ start, carry them in match inputs, and define save/replay versioning explicitly.
 | New on-ball choice | `decideAction()` plus execution helper | Eligibility, comparable utility units, diagnostics and replay determinism |
 | New law calculation | `MatchRules` then engine application | Pure inputs/outputs, explicit random rolls, restart/event bookkeeping |
 | Different physical constants | Named groups in `MatchTuning` | Units, full/control path consistency and calibration |
-| New league | JSON league/team data plus `LEAGUE_PROFILES` | Unique IDs, parent links, economy/nationality and match-style profile |
+| New league | World editor or `.fmdb` data (`profile` optional: derived from the country) | Unique IDs, parent links, an even club count |
 | New report statistic | Match stats/tracker, report serialization and UI view model | Single source of accounting and save compatibility |
 
 For a role, append before `COUNT` rather than reordering persisted values.

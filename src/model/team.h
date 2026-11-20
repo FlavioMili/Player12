@@ -56,7 +56,7 @@ class Team
    * @param strategy Optional strategy for the team.
    * @param lineup_data Optional lineup data for the team.
    */
-  Team(TeamID team_id, uint8_t team_league_id, std::string_view team_name,
+  Team(TeamID team_id, LeagueID team_league_id, std::string_view team_name,
        int64_t initial_balance,
        const std::vector<PlayerID>& initial_player_ids = {},
        const Strategy& strategy = Strategy{},

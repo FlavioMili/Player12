@@ -28,7 +28,7 @@ class WorldRng;
 
 /**
  * @struct NamePool
- * @brief First and last names from assets/user_made_data/names_files.
+ * @brief First and last names of the installed world (or the built-in pools).
  *
  * Besides a generic list, every nationality has its own fictional but
  * culture-appropriate names. Full names listed (as hashes) under

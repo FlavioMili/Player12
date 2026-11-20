@@ -1465,9 +1465,12 @@ TEST_F(TransferMarketTest, TakingChargeWithdrawsTheClubsUnmanagedBids)
   // While the market is seeded no club has a manager yet: a bid placed by
   // the club the user then picks must not complete without him.
   auto gamedata = controller->getGameData();
-  const auto& teams = controller->getTeams();
-  const TeamID chosen = teams[5].get().getId();
-  const TeamID seller = teams[6].get().getId();
+  // Two clubs by id (container order differs between standard libraries),
+  // neither of them the club SetUp manages.
+  const auto& members = gamedata->getLeagues().at(2).getTeamIDs();
+  ASSERT_GE(members.size(), 2U);
+  const TeamID chosen = std::ranges::min(members);
+  const TeamID seller = std::ranges::max(members);
   gamedata->getTeams().at(chosen).getFinances().addBalance(1'000'000'000LL);
   const PlayerID target =
       controller->getPlayersForTeam(seller).back().get().getId();

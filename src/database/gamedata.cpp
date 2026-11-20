@@ -224,7 +224,7 @@ void GameData::generateAndSaveInitialData()
 
     teamRepo.insertTeamsWithId(_teamsVec);
 
-    std::map<uint8_t, std::vector<TeamID>> league_teams_map;
+    std::map<LeagueID, std::vector<TeamID>> league_teams_map;
     for (const auto& team : all_teams)
     {
       league_teams_map[team.getLeagueId()].push_back(team.getId());
@@ -373,7 +373,7 @@ void GameData::loadExistingData()
   auto all_teams = teamRepo.loadAllTeams();
   const auto storedLineups = teamRepo.loadAllLineups();
 
-  std::map<uint8_t, std::vector<TeamID>> league_teams_map;
+  std::map<LeagueID, std::vector<TeamID>> league_teams_map;
   for (const auto& team : all_teams)
   {
     league_teams_map[team.getLeagueId()].push_back(team.getId());

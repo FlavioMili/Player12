@@ -59,6 +59,7 @@ enum class SceneID : uint8_t
   ABOUT,           /**< Version, build, licence and third-party credits */
   NEWS,            /**< World news feed */
   TIMELINE,        /**< Manager's career timeline and journal */
+  WORLD_EDITOR,    /**< World database builder (main menu) */
 };
 
 /**

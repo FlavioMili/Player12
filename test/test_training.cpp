@@ -359,8 +359,12 @@ TEST(TrainingWorldTest, ScheduleShapesConditionFamiliarityAndDevelopment)
   const SlotCleanup slot{uniqueSlot(0)};
   auto controller = makeWorld(slot.slot);
   auto gamedata = controller->getGameData();
-  const TeamID managed = controller->getTeams().front().get().getId();
-  const TeamID other = controller->getTeams().back().get().getId();
+  // Two second-division clubs of the built-in world, by id: container
+  // order (formerly used to pick them) differs between standard libraries.
+  constexpr TeamID managed = 2220;
+  constexpr TeamID other = 1314;
+  ASSERT_TRUE(gamedata->getTeam(managed).has_value());
+  ASSERT_TRUE(gamedata->getTeam(other).has_value());
   controller->selectManagedTeam(managed);
   ASSERT_NE(controller->getTrainingPlan(), nullptr);
 

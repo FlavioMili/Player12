@@ -32,12 +32,8 @@ inline std::string file(const char *relative)
 
 inline std::string statsConfig() { return file("assets/config/stats_config.json"); }
 
-// User made data
-inline std::string leagues() { return file("assets/user_made_data/leagues/leagues.json"); }
-inline std::string teamsDir() { return file("assets/user_made_data/teams/"); }
-inline std::string playersDir() { return file("assets/user_made_data/players/"); }
-inline std::string firstNames() { return file("assets/user_made_data/names_files/first_names.json"); }
-inline std::string lastNames() { return file("assets/user_made_data/names_files/last_names.json"); }
+// Built-in world database
+inline std::string defaultWorld() { return file("assets/world/default.fmdb"); }
 
 // Database assets
 inline std::string schema() { return file("assets/db/schema.sql"); }

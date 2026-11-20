@@ -22,6 +22,7 @@
 #include "database/gamedata.h"
 #include "global/global.h"
 #include "global/language_manager.h"
+#include "global/nationality.h"
 #include "gui/gui_view.h"
 #include "gui/scenes/lineup_scene.h"
 #include "gui/scenes/scouting_scene.h"
@@ -43,16 +44,6 @@ constexpr float HEADER_HEIGHT = 112.0f;
 constexpr float BIO_KEY_WIDTH = 130.0f;
 constexpr float ATTRIBUTE_LABEL_WIDTH = 118.0f;
 constexpr const char* LIST_CONFIRM_ID = "##confirm_transfer_list";
-
-std::string nationalityName(Language nationality)
-{
-  const auto name = languageToString.find(nationality);
-  if (name == languageToString.end()) return {};
-  const std::string key = "NATION_" + name->second;
-  const char* localized = LOC(key.c_str());
-  // LOC returns the key itself when a translation is missing.
-  return key == localized ? name->second : std::string(localized);
-}
 
 /// Condition: fresh is good, anything clearly below needs attention.
 ImVec4 conditionColor(float value)
@@ -193,7 +184,7 @@ void PlayerProfileScene::refresh()
   club_name = row.team_id == FREE_AGENTS_TEAM_ID || !club
                   ? std::string(LOC("TRANSFER_FREE_AGENT_LABEL"))
                   : club->get().getName();
-  nationality = nationalityName(current->getNationality());
+  nationality = nationalityLabel(current->getNationality());
   const uint32_t clause = controller.getReleaseClause(player_id);
   clause_text = clause > 0 ? Format::money(clause) : std::string();
 
@@ -646,8 +637,10 @@ void PlayerProfileScene::renderBio(const Player& current, float width,
   const float keyWidth = keyWidthFor(BIO_KEY_WIDTH);
   const std::string age = std::to_string(current.getAge());
   const std::string heightText = std::format("{} cm", current.getHeight());
-  const char* foot = current.getFoot() == Foot::Right ? LOC("PLAYER_FOOT_RIGHT")
-                                                      : LOC("PLAYER_FOOT_LEFT");
+  const Foot foot_value = current.getFoot();
+  const char* foot = foot_value == Foot::Left   ? LOC("PLAYER_FOOT_LEFT")
+                     : foot_value == Foot::Both ? LOC("PLAYER_FOOT_BOTH")
+                                                : LOC("PLAYER_FOOT_RIGHT");
   UI::keyValue(LOC("PLAYER_AGE"), age.c_str(), keyWidth);
   UI::keyValue(LOC("PROFILE_NATIONALITY"), nationality.c_str(), keyWidth);
   UI::keyValue(LOC("PROFILE_HEIGHT"), heightText.c_str(), keyWidth);

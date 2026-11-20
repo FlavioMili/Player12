@@ -13,6 +13,7 @@
 #include <functional>
 #include <map>
 #include <memory>
+#include <nlohmann/json_fwd.hpp>
 #include <optional>
 #include <string>
 #include <unordered_map>
@@ -45,11 +46,9 @@ class Match;
  */
 namespace Continental
 {
-enum class Continent : uint8_t
-{
-  Europe,
-  Americas
-};
+/** A continent is a confederation of the world (its id): the regions it
+ * groups, the associations in them and the cups they play. */
+using Continent = ConfederationID;
 
 enum class Round : uint8_t
 {
@@ -80,15 +79,15 @@ struct Prizes
 struct CompetitionRules
 {
   LeagueID id = 0;
-  const char* name_key = "";
-  Continent continent = Continent::Europe;
+  const char* name_key = ""; /*!< Localisation key, or the plain name. */
+  Continent continent = 0;
   uint8_t tier = 1;
   uint8_t clubs = 36;  /*!< League-phase clubs. */
   uint8_t matches = 8; /*!< League-phase matches per club (two per pot). */
   /** League-phase places by association rank (index 0 = best); the last
    * value applies to every lower rank. Free places are then shared out one
    * at a time in rank order. */
-  std::array<uint8_t, 8> base_places{};
+  std::vector<uint8_t> base_places;
   /** Day offsets from the week's Tuesday for the two halves of a round. */
   std::array<uint8_t, 2> weekday_offsets{};
   /** Final: days after the last league Saturday (neutral venue). */
@@ -104,52 +103,20 @@ struct CompetitionRules
 inline constexpr LeagueID CHAMPIONS_CUP_ID = 250;
 inline constexpr LeagueID CONTINENTAL_SHIELD_ID = 251;
 inline constexpr LeagueID AMERICAS_CUP_ID = 252;
+/** First id given to a continental competition. */
+inline constexpr LeagueID FIRST_CUP_ID = CHAMPIONS_CUP_ID;
 
-/** Every competition of the world, tier order within each continent. */
-inline constexpr std::array<CompetitionRules, 3> COMPETITIONS = {{
-    {CHAMPIONS_CUP_ID,
-     "CONT_CHAMPIONS_CUP",
-     Continent::Europe,
-     1,
-     36,
-     8,
-     {4, 4, 4, 4, 4, 3, 2, 2},
-     {0, 1},
-     14,
-     {18'620'000, 2'100'000, 700'000, 275'000, 1'000'000, 11'000'000,
-      12'500'000, 15'000'000, 18'500'000, 6'500'000},
-     6.0,
-     12.0,
-     1.5},
-    {CONTINENTAL_SHIELD_ID,
-     "CONT_SHIELD",
-     Continent::Europe,
-     2,
-     24,
-     6,
-     {2, 2, 2, 2, 2, 2, 1, 1},
-     {2, 2},
-     4,
-     {4'310'000, 450'000, 150'000, 75'000, 300'000, 1'750'000, 2'500'000,
-      3'500'000, 6'000'000, 4'000'000},
-     4.0,
-     6.0,
-     1.0},
-    {AMERICAS_CUP_ID,
-     "CONT_AMERICAS_CUP",
-     Continent::Americas,
-     1,
-     24,
-     6,
-     {4, 4, 4, 4, 3, 3, 2, 2},
-     {1, 0},
-     14,
-     {1'000'000, 300'000, 100'000, 40'000, 250'000, 1'150'000, 1'550'000,
-      2'100'000, 6'000'000, 16'000'000},
-     4.0,
-     6.0,
-     1.0},
-}};
+/**
+ * Every continental competition of the installed world: the "cups" of its
+ * confederations, ids from 250 in confederation order (the ids
+ * above the leagues). The built-in world has the champions' cup and the
+ * shield of Europe and the Americas' cup.
+ */
+const std::vector<CompetitionRules>& competitions();
+
+/** Values a cup of @p tier takes for every field its definition leaves out
+ * (same keys as a world's cup: "clubs", "places", "prizes"...). */
+nlohmann::json presetCupJson(int tier);
 
 /** Rules of a competition ID; nullptr for anything else. */
 const CompetitionRules* rules(LeagueID competition_id);

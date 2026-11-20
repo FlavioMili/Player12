@@ -42,7 +42,10 @@ PlayerRow makeRow(const GameController& controller, const Player& player)
   PlayerRow row;
   row.id = player.getId();
   row.team_id = player.getTeamId();
-  row.name = player.getName();
+  const std::string& nickname = player.getNickname();
+  row.name = nickname.empty() ? player.getName()
+                              : player.getFirstName() + " \"" + nickname +
+                                    "\" " + player.getLastName();
   row.name_lower = toLower(row.name);
   row.role_id = player.getRole();
   row.role = RoleUtils::shortName(row.role_id);

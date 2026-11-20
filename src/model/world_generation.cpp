@@ -14,12 +14,17 @@
 #include <cmath>
 #include <fstream>
 #include <map>
+#include <memory>
 #include <nlohmann/json.hpp>
+#include <optional>
 #include <span>
 #include <stdexcept>
 #include <string_view>
 
+#include "database/world/world_runtime.h"
+#include "database/world/world_schema.h"
 #include "global/global.h"
+#include "global/nationality.h"
 #include "global/paths.h"
 #include "model/role_utils.h"
 #include "model/world_rng.h"
@@ -400,48 +405,105 @@ const std::vector<std::string>& NamePool::lastNames(Language nationality) const
   return found == last_by_nationality.end() ? last_names : found->second;
 }
 
+namespace
+{
+void fillByNationality(
+    const nlohmann::json& json,
+    std::unordered_map<Language, std::vector<std::string>>& out)
+{
+  if (!json.contains("by_nationality")) return;
+  for (const auto& [name, list] : json.at("by_nationality").items())
+  {
+    const auto language = nationalityFromName(name);
+    auto names = list.get<std::vector<std::string>>();
+    if (language && !names.empty()) out.emplace(*language, std::move(names));
+  }
+}
+
+/** Names of the languages the world's countries speak, for their peoples
+ * that have no pool of their own (a built-in language uses that people's
+ * pool; a world language its own lists). */
+void fillFromLanguages(NamePool& pool, const World::Document& world)
+{
+  using json = nlohmann::json;
+  const auto words = [](const json& entity, const char* key)
+  {
+    std::vector<std::string> names;
+    if (const auto list = entity.find(key);
+        list != entity.end() && list->is_array())
+      for (const json& name : *list)
+        if (name.is_string()) names.push_back(name.get<std::string>());
+    return names;
+  };
+  for (const json& country : world.section(World::Kind::Country))
+  {
+    const auto people = nationalityFromName(World::demonym(country));
+    const auto spoken = country.find("language");
+    if (!people || spoken == country.end() ||
+        pool.first_by_nationality.contains(*people))
+      continue;
+    if (spoken->is_string())
+    {
+      const auto builtin = nationalityFromName(spoken->get<std::string>());
+      if (!builtin) continue;
+      if (const auto first = pool.first_by_nationality.find(*builtin);
+          first != pool.first_by_nationality.end())
+        pool.first_by_nationality[*people] = first->second;
+      if (const auto last = pool.last_by_nationality.find(*builtin);
+          last != pool.last_by_nationality.end())
+        pool.last_by_nationality[*people] = last->second;
+    }
+    else if (const json* own = spoken->is_number_integer()
+                                   ? world.find(World::Kind::Language,
+                                                spoken->get<std::int64_t>())
+                                   : nullptr)
+    {
+      if (auto first = words(*own, "first_names"); !first.empty())
+        pool.first_by_nationality[*people] = std::move(first);
+      if (auto last = words(*own, "last_names"); !last.empty())
+        pool.last_by_nationality[*people] = std::move(last);
+    }
+  }
+}
+
+NamePool loadPool(const nlohmann::json& first, const nlohmann::json& last)
+{
+  NamePool loaded;
+  loaded.first_names = first.at("names").get<std::vector<std::string>>();
+  loaded.last_names = last.at("names").get<std::vector<std::string>>();
+  if (loaded.first_names.empty() || loaded.last_names.empty())
+    throw std::runtime_error("Name files must not be empty");
+  fillByNationality(first, loaded.first_by_nationality);
+  fillByNationality(last, loaded.last_by_nationality);
+  if (first.contains("excluded_name_hashes"))
+  {
+    for (const auto& hash : first.at("excluded_name_hashes"))
+      loaded.excluded_name_hashes.insert(
+          std::stoull(hash.get<std::string>(), nullptr, 16));
+  }
+  return loaded;
+}
+}  // namespace
+
 const NamePool& NamePool::instance()
 {
-  static const NamePool pool = []
-  {
-    NamePool loaded;
-    const auto read = [](const std::string& path)
-    {
-      std::ifstream file(path);
-      if (!file.is_open())
-        throw std::runtime_error(std::string("Could not open ") + path);
-      return nlohmann::json::parse(file);
-    };
-    const auto byNationality =
-        [](const nlohmann::json& json,
-           std::unordered_map<Language, std::vector<std::string>>& out)
-    {
-      if (!json.contains("by_nationality")) return;
-      for (const auto& [name, list] : json.at("by_nationality").items())
+  // Built once per installed world; a world without its own pools uses the
+  // built-in ones, so partial worlds still get names.
+  static World::PerWorld<NamePool> pools;
+  return pools.get(
+      []
       {
-        const auto language = stringToLanguage.find(name);
-        auto names = list.get<std::vector<std::string>>();
-        if (language != stringToLanguage.end() && !names.empty())
-          out.try_emplace(language->second, std::move(names));
-      }
-    };
-    const nlohmann::json first = read(AssetPaths::firstNames());
-    const nlohmann::json last = read(AssetPaths::lastNames());
-    loaded.first_names = first.at("names").get<std::vector<std::string>>();
-    loaded.last_names = last.at("names").get<std::vector<std::string>>();
-    if (loaded.first_names.empty() || loaded.last_names.empty())
-      throw std::runtime_error("Name files must not be empty");
-    byNationality(first, loaded.first_by_nationality);
-    byNationality(last, loaded.last_by_nationality);
-    if (first.contains("excluded_name_hashes"))
-    {
-      for (const auto& hash : first.at("excluded_name_hashes"))
-        loaded.excluded_name_hashes.insert(
-            std::stoull(hash.get<std::string>(), nullptr, 16));
-    }
-    return loaded;
-  }();
-  return pool;
+        const auto world = World::current();
+        const auto builtin = World::defaultWorld();
+        const auto pool = [&](bool first) -> const nlohmann::json&
+        {
+          const nlohmann::json& own = world->names(first);
+          return own.is_object() ? own : builtin->names(first);
+        };
+        NamePool loaded = loadPool(pool(true), pool(false));
+        fillFromLanguages(loaded, *world);
+        return loaded;
+      });
 }
 
 std::string NamePool::normalizeName(std::string_view name)

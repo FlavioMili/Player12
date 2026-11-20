@@ -12,7 +12,7 @@ You do not need to understand the entire game to help.
 | Suggest a feature | Describe the player problem and an example of the experience you want in a [feature request](https://github.com/FlavioMili/FootballManagement/issues/new/choose) |
 | Improve documentation | Edit the relevant guide in `docs/`; preview the Markdown and check its links |
 | Translate or improve wording | Edit matching keys in `assets/lang/English.json` and `Italian.json` or your first language; preserve placeholders |
-| Add game data or your player cameo | Read the [data reference](assets/user_made_data/README.md) and [cameo walkthrough](docs/contributing/player-cameo.md) |
+| Add game data or your player cameo | Read the [world database reference](assets/world/README.md) and [cameo walkthrough](docs/contributing/player-cameo.md) |
 | Fix code | Use the [developer guide](docs/development/README.md) to find the subsystem and its tests |
 
 Browse [open issues](https://github.com/FlavioMili/FootballManagement/issues),
