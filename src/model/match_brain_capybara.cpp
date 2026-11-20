@@ -3785,14 +3785,12 @@ MatchEngine::CarrierWeightsCapybara MatchEngine::neutralCarrierWeightsCapybara()
 MatchEngine::CarrierWeightsCapybara MatchEngine::carrierWeightsCapybara(
     const MatchPlayer& carrier) const
 {
-  // The defaults, then each layer's steps on them (ratio^steps, step B5),
-  // then the game state (still fixed amounts until step B6).
-  using D = MatchTuning::Decision;
+  // The defaults, then each layer's steps on them (ratio^steps, step B5).
+  // The game state reaches them only through the team sliders
+  // (applyTeamMentalityCapybara).
   namespace T = TacticsTuning;
   const StrategySliders strategy = getEffectiveSliders(carrier.isHomeTeam);
   const RoleProfile& role = roleProfileOf(carrier);
-  // Game state is a layer: a drill with no layers has none.
-  const bool gameState = drillRules.layers;
   CarrierWeightsCapybara weights = neutralCarrierWeightsCapybara();
   using DecisionFrame::sliderSteps;
   using DecisionFrame::stepped;
@@ -3814,12 +3812,6 @@ MatchEngine::CarrierWeightsCapybara MatchEngine::carrierWeightsCapybara(
   weights.carryKeep = stepped(weights.carryKeep, weights.keepSteps);
   weights.shieldKeep = stepped(weights.shieldKeep, weights.keepSteps);
   weights.shotThreat = stepped(weights.shotThreat, weights.shotThreatSteps);
-  // The game state.
-  weights.lateLeadShot = gameState ? -D::LATE_LEAD_SPECULATIVE_PENALTY : 0.0F;
-  weights.comfortableLeadShot =
-      gameState ? -D::COMFORTABLE_LEAD_SHOT_PENALTY : 0.0F;
-  weights.comfortableLeadCarry =
-      gameState ? -D::COMFORTABLE_LEAD_CARRY_PENALTY : 0.0F;
   return weights;
 }
 
@@ -4108,29 +4100,6 @@ MatchEngine::BallAction MatchEngine::chooseBallActionCapybara(
   {
     shield.ruleOut();
   }
-
-  // Game state (its weights are 0 in a drill with no layers). A side
-  // protecting a late lead no longer forces speculative long-range attempts;
-  // credible chances are unaffected. A side two or more goals up manages
-  // the game, keeping the ball rather than forcing half-chances.
-  const int carrierScore = carrier.isHomeTeam ? homeScore : awayScore;
-  const int opponentScore = carrier.isHomeTeam ? awayScore : homeScore;
-  shot.add("protecting a late lead", S::GAME_STATE,
-           gate(matchTimeMinutes >= MatchTuning::Decision::LATE_GAME_MINUTE &&
-                carrierScore > opponentScore &&
-                shotXG < MatchTuning::Decision::BASE_SHOT_THRESHOLD),
-           weights.lateLeadShot);
-  const int lead = carrierScore - opponentScore;
-  const float margin =
-      lead >= MatchTuning::Decision::COMFORTABLE_LEAD
-          ? static_cast<float>(lead - MatchTuning::Decision::COMFORTABLE_LEAD +
-                               1)
-          : 0.0F;
-  shot.add("managing a comfortable lead", S::GAME_STATE,
-           shotXG < MatchTuning::Decision::CLEAR_CHANCE_XG ? margin : 0.0F,
-           weights.comfortableLeadShot);
-  carry.add("managing a comfortable lead", S::GAME_STATE, margin,
-            weights.comfortableLeadCarry);
 
   float passScore = pass.total();
   float shotScore = shot.total();

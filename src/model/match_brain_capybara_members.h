@@ -28,7 +28,7 @@
   /** Weighting for the carrier decision (DecisionFrame; brain redesign plan
    * section 15, step A): how much each of its measures counts for him. The
    * defaults are MatchTuning's; the layers (team instructions, his role, a
-   * shout, the game state) move them. Weights that depend on the receiver
+   * shout) move them. Weights that depend on the receiver
    * (his role, an order on him) are set where the pass is scored. */
   struct CarrierWeightsCapybara
   {
@@ -56,19 +56,15 @@
     float wideShot = 1.0F;
     float cutInsideShot = 0.0F;
     float weakFootShot = 0.0F;
-    float lateLeadShot = 0.0F;
-    float comfortableLeadShot = 0.0F;
     // Carry.
     float carryKeep = 0.0F;
     float carryHeld = 0.0F;
     float cutInsideCarry = 0.0F;
-    float comfortableLeadCarry = 0.0F;
     // Shield.
     float shieldKeep = 0.0F;
   };
   /** The carrier decision's weights with no layers: every default, no
-   * steps, and 0 for the game-state weights. The xG map draws the shot
-   * score with these. */
+   * steps. The xG map draws the shot score with these. */
   [[nodiscard]] static CarrierWeightsCapybara neutralCarrierWeightsCapybara();
   [[nodiscard]] CarrierWeightsCapybara carrierWeightsCapybara(
       const MatchPlayer& carrier) const;
