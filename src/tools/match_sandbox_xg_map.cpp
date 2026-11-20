@@ -48,6 +48,16 @@ constexpr double SWEEP_SECONDS_PER_FRAME = 0.012;
 constexpr float MIN_SWEEP_REPEATS = 20.0F;
 constexpr float MAX_SWEEP_REPEATS = 500.0F;
 constexpr float PROGRESS_HEIGHT = 8.0F;
+/** The sweep's spots on the map: size (m, with a floor in pixels) and the
+ * waiting and measured colours (the one being measured is lime). */
+constexpr float SWEEP_DOT_METRES = 0.15F;
+constexpr float MIN_SWEEP_DOT_RADIUS = 1.5F;
+constexpr ImU32 SWEEP_DOT_WAITING = IM_COL32(255, 255, 255, 60);
+constexpr ImU32 SWEEP_DOT_DONE = IM_COL32(255, 255, 255, 220);
+/** The game map's foot flag in the pitch's corner: inset and padding
+ * (scaled pixels). */
+constexpr float FLAG_INSET = 12.0F;
+constexpr float FLAG_PADDING = 5.0F;
 /** At most this many cells along the pitch (finer on small pitches). */
 constexpr float MAX_CELLS_ALONG = 140.0F;
 constexpr float MIN_CELL_METRES = 0.25F;
@@ -138,9 +148,9 @@ void XgMapScene::loadGameTable()
   gameTable = GameXgTable::load(path, problem);
   gameTableNote =
       gameTable ? std::format(
-                      "Measured {}: {} shots a point, {} points; left and "
-                      "right {}.",
-                      gameTable->measured, gameTable->repeats,
+                      "Measured {} with a {}-footed shooter: {} shots a "
+                      "point, {} points; left and right {}.",
+                      gameTable->measured, gameTable->foot, gameTable->repeats,
                       gameTable->samples.size(),
                       gameTable->mirrored ? "folded together" : "kept apart")
                 : std::format("No game map for the {} goal yet: run the sweep.",
@@ -511,8 +521,8 @@ void XgMapScene::renderSpot(float width)
     ImGui::Text("As struck: %.3f", spot.struck);
     if (spot.game >= 0.0F)
     {
-      ImGui::Text("Game xG, empty goal: %.3f (Shooting %.0f)", spot.game,
-                  shootingSetting);
+      ImGui::Text("Game xG, empty goal: %.3f (Shooting %.0f, %s-footed)",
+                  spot.game, shootingSetting, gameTable->foot.c_str());
     }
     else
     {
@@ -817,6 +827,32 @@ void XgMapScene::renderMap(float width, float height)
                   IM_COL32(250, 250, 250, 255), post);
   }
 
+  // A sweep in progress for this goal: a dot at each spot it measures
+  // (faint: waiting; lime: being measured; white: measured).
+  if (sweep && !sweep->done() && sweep->spec().goal == goalKind())
+  {
+    const float dot = std::max(MIN_SWEEP_DOT_RADIUS, SWEEP_DOT_METRES * ppm);
+    const float middle = MIDDLE_SHARE * built.width;
+    for (const GameXgSweep::SweepSpot& spot : sweep->spots())
+    {
+      const PitchPoint at{built.length - spot.line, middle + spot.side};
+      if (at.x < half || at.y < 0.0F || at.y > built.width)
+      {
+        continue;
+      }
+      ImU32 colour = Page::LIME;
+      if (spot.state == GameXgSweep::SpotState::MEASURED)
+      {
+        colour = SWEEP_DOT_DONE;
+      }
+      else if (spot.state == GameXgSweep::SpotState::WAITING)
+      {
+        colour = SWEEP_DOT_WAITING;
+      }
+      draw->AddCircleFilled(screen(at.x, at.y), dot, colour);
+    }
+  }
+
   // The spot under the mouse; the last one stays when the mouse leaves (the
   // panel's card reads it), unless it is off a pitch made smaller since.
   if (hovered && (hovered->x < half || hovered->x > built.length ||
@@ -839,6 +875,21 @@ void XgMapScene::renderMap(float width, float height)
   {
     draw->AddCircle(screen(hovered->x, hovered->y), MOUSE_RING_RADIUS * scale,
                     IM_COL32(255, 255, 255, 230), 0, MOUSE_RING_THICKNESS);
+  }
+  // The game map's shooter, in the corner: its left-right lean is his foot.
+  if (gameShown)
+  {
+    const std::string flag = std::format(
+        "{}-FOOTED SHOOTER", gameTable->foot == "left" ? "LEFT" : "RIGHT");
+    const ImVec2 at(origin.x + (FLAG_INSET * scale),
+                    origin.y + (FLAG_INSET * scale));
+    const ImVec2 size = ImGui::CalcTextSize(flag.c_str());
+    draw->AddRectFilled(
+        ImVec2(at.x - (FLAG_PADDING * scale), at.y - (FLAG_PADDING * scale)),
+        ImVec2(at.x + size.x + (FLAG_PADDING * scale),
+               at.y + size.y + (FLAG_PADDING * scale)),
+        Page::DARK);
+    draw->AddText(at, Page::LIME, flag.c_str());
   }
   draw->PopClipRect();
   Page::endCard(scale);

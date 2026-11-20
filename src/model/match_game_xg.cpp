@@ -119,6 +119,7 @@ std::string GameXgTable::toJson() const
   json["measured"] = measured;
   json["repeats"] = repeats;
   json["first_seed"] = firstSeed;
+  json["foot"] = foot;
   json["mirrored"] = mirrored;
   json["shooting"] = shooting;
   json["line"] = axisJson(line);
@@ -165,6 +166,7 @@ std::optional<GameXgTable> GameXgTable::fromJson(const std::string& text,
     table.measured = json.value("measured", std::string());
     table.repeats = json.value("repeats", 0);
     table.firstSeed = json.value("first_seed", 1U);
+    table.foot = json.value("foot", std::string("right"));
     table.mirrored = json.value("mirrored", true);
     table.shooting = json.at("shooting").get<std::vector<float>>();
     table.line = axisOf(json.at("line"));

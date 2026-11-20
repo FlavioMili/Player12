@@ -30,6 +30,9 @@ constexpr const char* SHOOTER = "Shooter";
 constexpr const char* SHOOTING = "Shooting";
 constexpr const char* KEEPER = "Keeper";
 constexpr const char* DEFENDER = "Defender";
+/** The shooter's foot: right (0), as most players; the left foot's map is
+ * this one mirrored. */
+constexpr const char* FOOT = "Foot";
 /** A flag metric (shot, goal) counts as set above half. */
 constexpr double FLAG_SET = 0.5;
 /** Two-sided 95%: a mirrored pair differs beyond chance past this. */
@@ -164,6 +167,30 @@ void GameXgSweep::queue(int line, int side)
   }
 }
 
+std::vector<GameXgSweep::SweepSpot> GameXgSweep::spots() const
+{
+  // A spot's levels are queued together, so they sit side by side in
+  // `points`: measured before nextPoint, waiting after it.
+  std::vector<SweepSpot> out;
+  for (std::size_t at = 0; at < points.size(); at += setup.shooting.size())
+  {
+    const std::size_t last = at + setup.shooting.size() - 1;
+    SpotState state = SpotState::MEASURING;
+    if ((stage == Stage::DONE && !halted) || last < nextPoint)
+    {
+      state = SpotState::MEASURED;
+    }
+    else if (at > nextPoint || (at == nextPoint && nextRepeat == 0))
+    {
+      state = SpotState::WAITING;
+    }
+    out.push_back({.line = lineMetres(points[at].line),
+                   .side = sideMetres(points[at].side),
+                   .state = state});
+  }
+  return out;
+}
+
 long long GameXgSweep::runsQueued() const
 {
   return static_cast<long long>(points.size()) * setup.repeats;
@@ -194,6 +221,7 @@ void GameXgSweep::runOne()
   values[SHOOTING] = setup.shooting[point.level];
   values[KEEPER] = 0.0F;
   values[DEFENDER] = 0.0F;
+  values[FOOT] = 0.0F;
   for (const DrillParameter& parameter : drill.parameters())
   {
     if ((parameter.value != nullptr) && values.contains(parameter.name))
@@ -525,6 +553,9 @@ struct GameXgOptions
   std::vector<GoalKind> goals{GoalKind::FULL};
   bool save = true;
   bool print = false;
+  /** Saved here instead of the game's own file (a check's run); with more
+   * than one goal, the goal's name is added before the extension. */
+  std::string out;
 };
 
 std::optional<std::vector<GoalKind>> goalsNamed(const std::string& value)
@@ -656,6 +687,10 @@ std::optional<GameXgOptions> parseOptions(
       }
       options.base.shooting = *levels;
     }
+    else if (argument == "--out")
+    {
+      options.out = value;
+    }
     else if (argument == "--bands")
     {
       const auto bands = bandsNamed(value);
@@ -730,7 +765,16 @@ int runGameXgCommand(const StatsConfig& config,
     }
     if (save)
     {
-      const auto path = GameXg::file(table.layer, goal);
+      std::filesystem::path path = GameXg::file(table.layer, goal);
+      if (!options->out.empty())
+      {
+        path = options->out;
+        if (options->goals.size() > 1)
+        {
+          path.replace_filename(path.stem().string() + "_" +
+                                goalKindName(goal) + path.extension().string());
+        }
+      }
       std::string problem;
       if (!table.save(path, problem))
       {

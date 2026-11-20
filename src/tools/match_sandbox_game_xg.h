@@ -111,6 +111,25 @@ class GameXgSweep
   /** The result, once done. */
   [[nodiscard]] const GameXgTable& table() const { return result; }
 
+  /** A spot's progress: every Shooting level still to come, some measured,
+   * or all measured. */
+  enum class SpotState : std::uint8_t
+  {
+    WAITING,
+    MEASURING,
+    MEASURED
+  };
+  /** A spot (metres out from the goal line, off its middle) and its
+   * progress, for drawing the sweep as it runs. */
+  struct SweepSpot
+  {
+    float line = 0.0F;
+    float side = 0.0F;
+    SpotState state = SpotState::WAITING;
+  };
+  /** Every spot the sweep measures, in the order it measures them. */
+  [[nodiscard]] std::vector<SweepSpot> spots() const;
+
  private:
   enum class Stage : std::uint8_t
   {

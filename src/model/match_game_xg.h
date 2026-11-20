@@ -64,6 +64,10 @@ class GameXgTable
   /** Shots per measured point, and the first seed (seeds run on from it). */
   int repeats = 0;
   std::uint32_t firstSeed = 1;
+  /** The measured shooter's stronger foot ("right" or "left"). The engine's
+   * feet mirror each other, so the other foot's map is this one with the
+   * sides swapped. */
+  std::string foot = "right";
   /** The side axis holds the distance off the middle (left and right were
    * found to agree and were folded together); else signed. */
   bool mirrored = true;

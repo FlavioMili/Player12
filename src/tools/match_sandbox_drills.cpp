@@ -5308,6 +5308,12 @@ class ShotDrill final : public Drill
     list.push_back(mode);
     list.push_back(setting("Shooting", &shooting,
                            {.min = 1.0F, .max = SHOOTING_MAX}, true));
+    DrillParameter foot =
+        setting("Foot", &footChoice, {.min = 0.0F, .max = 1.0F}, true,
+                "The shooter's stronger foot (the engine's weak-foot penalty "
+                "falls on the other).");
+    foot.choices = {"Right", "Left"};
+    list.push_back(foot);
     DrillParameter keeper =
         setting("Keeper", &keeperChoice, {.min = 0.0F, .max = 1.0F}, true);
     keeper.choices = {"None", "In goal"};
@@ -5340,12 +5346,14 @@ class ShotDrill final : public Drill
 
   [[nodiscard]] std::vector<DrillPlayerSpec> players() const override
   {
-    std::vector<DrillPlayerSpec> list{{.name = "Shooter",
-                                       .role = PlayerRole::ST,
-                                       .homeTeam = true,
-                                       .stats = {{"Shooting", shooting}},
-                                       .height = SHOOTER_HEIGHT_CM,
-                                       .derived = {}}};
+    std::vector<DrillPlayerSpec> list{
+        {.name = "Shooter",
+         .role = PlayerRole::ST,
+         .homeTeam = true,
+         .stats = {{"Shooting", shooting}},
+         .height = SHOOTER_HEIGHT_CM,
+         .derived = {},
+         .foot = footChoice > CHOICE_MIDPOINT ? Foot::Left : Foot::Right}};
     if (keeperChoice > CHOICE_MIDPOINT)
     {
       list.push_back({.name = "Keeper",
@@ -5596,7 +5604,8 @@ class ShotDrill final : public Drill
                "{:.1f}|{:.1f}|{}|{:.0f}|{}|{:.0f}|{:.0f}|{}|{:.1f}|{:.0f}",
                line, side, forced, shooting, hasKeeper, goalkeeping,
                keeperHeight, hasDefender, defenderDistance, defending) +
-           std::format("|{:.0f}|{:.0f}", keeperStart, goalChoice);
+           std::format("|{:.0f}|{:.0f}|{:.0f}", keeperStart, goalChoice,
+                       footChoice);
   }
   void tally(const std::string& result)
   {
@@ -5618,6 +5627,7 @@ class ShotDrill final : public Drill
   float goalChoice = 0.0F;
   float choice = 0.0F;
   float shooting = DEFAULT_SHOOTING;
+  float footChoice = 0.0F;
   float keeperChoice = 1.0F;
   float goalkeeping = DEFAULT_GOALKEEPING;
   float keeperHeight = DEFAULT_KEEPER_HEIGHT;
