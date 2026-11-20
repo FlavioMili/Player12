@@ -34,13 +34,12 @@ constexpr const char* DEFENDER = "Defender";
 constexpr double FLAG_SET = 0.5;
 /** Two-sided 95%: a mirrored pair differs beyond chance past this. */
 constexpr double Z_95 = 1.96;
-/** Smoothing: the bandwidth is the distance to this nearest measured spot,
- * and never under the floor (m). */
+/** Smoothing: the bandwidth is this share of the distance to the 4th-nearest
+ * measured spot (on a square lattice, the spacing), never under the floor
+ * (m). */
 constexpr std::size_t BANDWIDTH_NEIGHBOUR = 4;
+constexpr float BANDWIDTH_SHARE = 0.75F;
 constexpr float MIN_BANDWIDTH_METRES = 0.5F;
-/** Continuity correction for a spot's logit (0 or all goals). */
-constexpr double LOGIT_PRIOR_GOALS = 0.5;
-constexpr double LOGIT_PRIOR_SHOTS = 1.0;
 constexpr std::size_t TIMESTAMP_BYTES = 32;
 
 std::string timestamp()
@@ -69,10 +68,6 @@ double metricOf(const std::vector<DrillMetric>& metrics, std::string_view name)
   return 0.0;
 }
 
-int roundUpTo(int value, int multiple)
-{
-  return ((value + multiple - 1) / multiple) * multiple;
-}
 }  // namespace
 
 GameXgSweep::GameXgSweep(Drill& shotDrill, const StatsConfig& config_ref,
@@ -89,26 +84,40 @@ GameXgSweep::GameXgSweep(Drill& shotDrill, const StatsConfig& config_ref,
       saved[parameter.name] = *parameter.value;
     }
   }
-  setup.refinePasses = std::clamp(setup.refinePasses, 0, 4);
   setup.repeats = std::max(1, setup.repeats);
   if (setup.shooting.empty())
   {
     setup.shooting = GameXgSweepSpec{}.shooting;
   }
-  std::ranges::sort(setup.shooting);
-  coarseCells = 1 << setup.refinePasses;
-  const float fine = setup.coarseStep / static_cast<float>(coarseCells);
-  lineCells = roundUpTo(
-      static_cast<int>(std::lround((setup.lineTo - setup.lineFrom) / fine)),
-      coarseCells);
-  sideCells = roundUpTo(static_cast<int>(std::lround(setup.sideMax / fine)),
-                        coarseCells);
-  // The coarse grid, both sides of the goal.
-  for (int line = 0; line <= lineCells; line += coarseCells)
+  if (setup.bands.empty())
   {
-    for (int side = -sideCells; side <= sideCells; side += coarseCells)
+    setup.bands = GameXgSweepSpec{}.bands;
+  }
+  std::ranges::sort(setup.shooting);
+  // The lattice: the finest band's step; each band takes every n-th spot of
+  // it inside its own box (n = its step over the finest), both sides.
+  fine = setup.bands.front().step;
+  for (const GameXgBand& band : setup.bands)
+  {
+    fine = std::min(fine, band.step);
+  }
+  const GameXgBand& outer = setup.bands.back();
+  lineCells =
+      static_cast<int>(std::lround((outer.lineTo - setup.lineFrom) / fine));
+  sideCells = static_cast<int>(std::lround(outer.sideMax / fine));
+  for (const GameXgBand& band : setup.bands)
+  {
+    const int every =
+        std::max(1, static_cast<int>(std::lround(band.step / fine)));
+    const int lines = static_cast<int>(
+        std::floor((band.lineTo - setup.lineFrom) / fine + 1e-3F));
+    const int sides = static_cast<int>(std::floor(band.sideMax / fine + 1e-3F));
+    for (int line = 0; line <= std::min(lines, lineCells); line += every)
     {
-      queue(line, side);
+      for (int side = -(sides / every) * every; side <= sides; side += every)
+      {
+        queue(line, side);
+      }
     }
   }
 }
@@ -134,14 +143,12 @@ void GameXgSweep::restore()
 
 float GameXgSweep::lineMetres(int line) const
 {
-  return setup.lineFrom + (static_cast<float>(line) * setup.coarseStep /
-                           static_cast<float>(coarseCells));
+  return setup.lineFrom + (static_cast<float>(line) * fine);
 }
 
 float GameXgSweep::sideMetres(int side) const
 {
-  return static_cast<float>(side) * setup.coarseStep /
-         static_cast<float>(coarseCells);
+  return static_cast<float>(side) * fine;
 }
 
 void GameXgSweep::queue(int line, int side)
@@ -166,11 +173,9 @@ std::string GameXgSweep::phase() const
 {
   switch (stage)
   {
-    case Stage::COARSE:
-      return std::format("coarse grid (every {:g} m, both sides)",
-                         setup.coarseStep);
-    case Stage::REFINE:
-      return std::format("refining (pass {} of {})", pass, setup.refinePasses);
+    case Stage::MEASURE:
+      return std::format("measuring {} spots, both sides",
+                         points.size() / setup.shooting.size());
     case Stage::DONE:
       return halted ? "stopped" : "done";
   }
@@ -236,15 +241,8 @@ bool GameXgSweep::work(double budgetSeconds)
     }
     else
     {
-      if (stage == Stage::COARSE)
-      {
-        afterCoarse();
-        stage = Stage::REFINE;
-      }
-      if (!refine())
-      {
-        finish();
-      }
+      testSymmetry();
+      finish();
     }
     if (std::chrono::duration<double>(Clock::now() - start).count() >=
         budgetSeconds)
@@ -263,10 +261,12 @@ void GameXgSweep::stop()
   restore();
 }
 
-void GameXgSweep::afterCoarse()
+void GameXgSweep::testSymmetry()
 {
   int pairs = 0;
   int differ = 0;
+  double signedSum = 0.0;
+  double varianceSum = 0.0;
   for (const Point& point : points)
   {
     if (point.side <= 0)
@@ -301,9 +301,18 @@ void GameXgSweep::afterCoarse()
     {
       ++differ;
     }
+    // The pooled test: each pair's difference weighted by its precision
+    // (1 / (1/n1 + 1/n2)), summed with its variance.
+    const double weight = 1.0 / ((1.0 / point.shots) + (1.0 / mirrored.shots));
+    signedSum += weight * z * spread;
+    varianceSum += weight * pooled * (1.0 - pooled);
   }
   asymmetry = pairs > 0 ? static_cast<double>(differ) / pairs : 0.0;
-  mirror = asymmetry <= setup.asymmetricShare;
+  pooledZ = varianceSum > 0.0 ? signedSum / std::sqrt(varianceSum) : 0.0;
+  // Folded only if neither test finds a difference: the pair-by-pair share
+  // (patchy differences) nor the pooled one (a steady one-sided lean,
+  // which single pairs miss at a few dozen shots).
+  mirror = asymmetry <= setup.asymmetricShare && std::abs(pooledZ) <= Z_95;
 }
 
 std::optional<std::pair<int, int>> GameXgSweep::folded(int line, int side,
@@ -330,76 +339,6 @@ std::optional<std::pair<int, int>> GameXgSweep::folded(int line, int side,
     add(-side);
   }
   return out;
-}
-
-bool GameXgSweep::cellChanges(int line, int side, int cell) const
-{
-  for (std::size_t level = 0; level < setup.shooting.size(); ++level)
-  {
-    double low = 1.0;
-    double high = 0.0;
-    int lowShots = 0;
-    int highShots = 0;
-    for (const auto& [l, s] :
-         {std::pair{line, side}, std::pair{line + cell, side},
-          std::pair{line, side + cell}, std::pair{line + cell, side + cell}})
-    {
-      const auto measured = folded(l, s, level);
-      if (!measured || measured->first == 0)
-      {
-        return false;
-      }
-      const double chance =
-          static_cast<double>(measured->second) / measured->first;
-      if (chance <= low)
-      {
-        low = chance;
-        lowShots = measured->first;
-      }
-      if (chance >= high)
-      {
-        high = chance;
-        highShots = measured->first;
-      }
-    }
-    // Split only on a real change: past the threshold, and more than the
-    // corners' own noise would give (two-sided 95%).
-    const double noise = Z_95 * std::sqrt((high * (1.0 - high) / highShots) +
-                                          (low * (1.0 - low) / lowShots));
-    if (high - low > setup.refineDifference && high - low > noise)
-    {
-      return true;
-    }
-  }
-  return false;
-}
-
-bool GameXgSweep::refine()
-{
-  if (pass >= setup.refinePasses)
-  {
-    return false;
-  }
-  const int cell = coarseCells >> pass;
-  const int half = cell / 2;
-  ++pass;
-  const std::size_t before = points.size();
-  const int sideFrom = mirror.value_or(false) ? 0 : -sideCells;
-  for (int line = 0; line + cell <= lineCells; line += cell)
-  {
-    for (int side = sideFrom; side + cell <= sideCells; side += cell)
-    {
-      if (cellChanges(line, side, cell))
-      {
-        queue(line + half, side);
-        queue(line, side + half);
-        queue(line + half, side + half);
-        queue(line + cell, side + half);
-        queue(line + half, side + cell);
-      }
-    }
-  }
-  return points.size() > before || pass < setup.refinePasses;
 }
 
 void GameXgSweep::finish()
@@ -460,7 +399,7 @@ void GameXgSweep::finish()
 
 std::vector<SmoothingDatum> GameXgSweep::levelData(std::size_t level) const
 {
-  // Each measured spot (folded if mirrored) as a logit and its precision.
+  // Each measured spot (folded if mirrored): where, shots and goals.
   const bool folding = mirror.value_or(false);
   std::vector<SmoothingDatum> data;
   for (const Point& point : points)
@@ -474,21 +413,20 @@ std::vector<SmoothingDatum> GameXgSweep::levelData(std::size_t level) const
     {
       continue;
     }
-    const double chance = (measured->second + LOGIT_PRIOR_GOALS) /
-                          (measured->first + LOGIT_PRIOR_SHOTS);
     data.push_back({.x = lineMetres(point.line),
                     .y = sideMetres(point.side),
-                    .logit = std::log(chance / (1.0 - chance)),
-                    .weight = measured->first * chance * (1.0 - chance)});
+                    .shots = static_cast<double>(measured->first),
+                    .goals = static_cast<double>(measured->second)});
   }
   return data;
 }
 
 float smoothedAt(const std::vector<SmoothingDatum>& data, float x, float y)
 {
-  // A kernel-weighted mean of the spots' logits, each also weighted by its
-  // precision (n p (1 - p), the inverse of a logit's variance). The
-  // bandwidth follows the sampling: the distance to the 4th-nearest spot.
+  // Goals over shots, pooled under a Gaussian kernel: each spot counts by
+  // its shots, whatever its rate (a spot near certainty isn't discounted).
+  // The bandwidth follows the sampling: a share of the distance to the
+  // 4th-nearest spot, so about 0.75 m on a 1 m band, 3 m on a 4 m one.
   if (data.empty())
   {
     return 0.0F;
@@ -505,19 +443,18 @@ float smoothedAt(const std::vector<SmoothingDatum>& data, float x, float y)
   std::ranges::nth_element(sorted,
                            sorted.begin() + static_cast<std::ptrdiff_t>(nth));
   const float bandwidth =
-      std::max(MIN_BANDWIDTH_METRES, std::sqrt(sorted[nth]));
+      std::max(MIN_BANDWIDTH_METRES, BANDWIDTH_SHARE * std::sqrt(sorted[nth]));
   const double twoSigmaSquared =
       2.0 * static_cast<double>(bandwidth) * bandwidth;
-  double sum = 0.0;
-  double total = 0.0;
+  double goals = 0.0;
+  double shots = 0.0;
   for (std::size_t d = 0; d < data.size(); ++d)
   {
-    const double w = std::exp(-distances[d] / twoSigmaSquared) * data[d].weight;
-    sum += w * data[d].logit;
-    total += w;
+    const double w = std::exp(-distances[d] / twoSigmaSquared);
+    goals += w * data[d].goals;
+    shots += w * data[d].shots;
   }
-  const double logit = total > 0.0 ? sum / total : 0.0;
-  return static_cast<float>(1.0 / (1.0 + std::exp(-logit)));
+  return shots > 0.0 ? static_cast<float>(goals / shots) : 0.0F;
 }
 
 // --- Command line ------------------------------------------------------------
@@ -642,27 +579,37 @@ bool numericOption(const std::string& argument, const std::string& value,
   {
     spec.firstSeed = static_cast<std::uint32_t>(given);
   }
-  else if (argument == "--step")
-  {
-    spec.coarseStep = given;
-  }
-  else if (argument == "--passes")
-  {
-    spec.refinePasses = static_cast<int>(given);
-  }
-  else if (argument == "--line-to")
-  {
-    spec.lineTo = given;
-  }
-  else if (argument == "--side-max")
-  {
-    spec.sideMax = given;
-  }
   else
   {
     return false;
   }
   return true;
+}
+
+/** "18:20:1,30:28:2,41:28:4": each band's line-to, side-max and step (m),
+ * finest first. */
+std::optional<std::vector<GameXgBand>> bandsNamed(std::string value)
+{
+  constexpr std::size_t PARTS = 3;
+  std::ranges::replace(value, ':', ',');
+  const auto parts = numbers(value);
+  if (!parts || parts->empty() || parts->size() % PARTS != 0)
+  {
+    return std::nullopt;
+  }
+  std::vector<GameXgBand> bands;
+  for (std::size_t at = 0; at < parts->size(); at += PARTS)
+  {
+    const GameXgBand band{.lineTo = (*parts)[at],
+                          .sideMax = (*parts)[at + 1],
+                          .step = (*parts)[at + 2]};
+    if (band.step <= 0.0F || band.lineTo <= 0.0F || band.sideMax < 0.0F)
+    {
+      return std::nullopt;
+    }
+    bands.push_back(band);
+  }
+  return bands;
 }
 
 std::optional<GameXgOptions> parseOptions(
@@ -708,6 +655,18 @@ std::optional<GameXgOptions> parseOptions(
         return std::nullopt;
       }
       options.base.shooting = *levels;
+    }
+    else if (argument == "--bands")
+    {
+      const auto bands = bandsNamed(value);
+      if (!bands)
+      {
+        error =
+            "--bands expects LINE:SIDE:STEP,... finest first, e.g. "
+            "18:20:1,30:28:2,41:28:4";
+        return std::nullopt;
+      }
+      options.base.bands = *bands;
     }
     else if (!numericOption(argument, value, options.base))
     {
@@ -761,10 +720,10 @@ int runGameXgCommand(const StatsConfig& config,
     const GameXgTable& table = sweep.table();
     std::cout << std::format(
         "Done in {:.1f} s: {} runs at {} points. Left and right {} ({:.0f}% "
-        "of mirrored pairs differed).\n",
+        "of mirrored pairs differed; pooled z {:+.1f}).\n",
         sweep.seconds(), sweep.runsDone(), table.samples.size(),
         table.mirrored ? "agree, folded together" : "differ, both kept",
-        100.0 * sweep.asymmetricShare());
+        100.0 * sweep.asymmetricShare(), sweep.asymmetricZ());
     if (print)
     {
       printTable(table);

@@ -68,6 +68,11 @@ std::optional<MatchPlayer*> MatchEngine::placeScenario(
     MatchPlayer& matchPlayer = *found;
     matchPlayer.position = placement.position;
     matchPlayer.velocity = {.x = 0.0F, .y = 0.0F};
+    if (placement.facing)
+    {
+      matchPlayer.facingAngle = *placement.facing;
+      matchPlayer.targetAngle = *placement.facing;
+    }
     matchPlayer.basePosition = placement.position;
     // A drill with no layers gives him no place in a formation either.
     if (!drillRules.layers)

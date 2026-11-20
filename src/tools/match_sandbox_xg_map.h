@@ -62,6 +62,8 @@ class XgMapScene : public GUIScene
   /** Loads the saved empty-goal table for goalKind() (none if missing). */
   void loadGameTable();
   void renderSweep(float width);
+  /** The card for the spot last pointed at. */
+  void renderSpot(float width);
   /** Whether the map draws Capybara's shot score (the chosen brain). */
   [[nodiscard]] static bool capybaraScore();
   [[nodiscard]] MatchPitch pitch() const;
@@ -91,13 +93,25 @@ class XgMapScene : public GUIScene
   std::vector<std::unique_ptr<Drill>> drills;
   Drill* shotDrill = nullptr;
   std::unique_ptr<GameXgSweep> sweep;
-  float sweepRepeats = 200.0F;
+  float sweepRepeats = 60.0F;
   std::string sweepNote;
 
   // The map, worked out when a setting changes.
   bool dirty = true;
   MatchPitch built{};
   float cell = 1.0F;
+  /** Cell edges fall at origin + k × cell (m): set so the columns end at
+   * the goal line and a row is centred on the goal's middle. */
+  float originX = 0.0F;
+  float originY = 0.0F;
+  [[nodiscard]] float edgeX(int column) const
+  {
+    return originX + (static_cast<float>(column) * cell);
+  }
+  [[nodiscard]] float edgeY(int row) const
+  {
+    return originY + (static_cast<float>(row) * cell);
+  }
   int columns = 0;
   int rows = 0;
   std::vector<Spot> grid;

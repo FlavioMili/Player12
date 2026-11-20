@@ -5156,6 +5156,16 @@ class ShotDrill final : public Drill
                     .onTarget = ball.possessionState().shotOnTarget,
                     .targetY = ball.possessionState().shotTargetY,
                     .at = now};
+        // How far his body faced off the goal's middle as he struck it.
+        if (const MatchPlayer* shooter = slotOf(engine, shooterId))
+        {
+          const PitchPoint goalMiddle = at(1.0F, PITCH_MIDPOINT_SHARE);
+          const float toGoal = std::atan2(goalMiddle.y - event.position.y,
+                                          goalMiddle.x - event.position.x);
+          shot->facingOffDegrees =
+              std::abs(facingAngleOf(shooter->facingAngle - toGoal)) * 180.0F /
+              PI;
+        }
         continue;
       }
       if (!shot)
@@ -5370,8 +5380,14 @@ class ShotDrill final : public Drill
               std::clamp(PITCH_MIDPOINT_SHARE + (side / WIDTH),
                          PITCH_SAFE_MIN_SHARE, PITCH_SAFE_MAX_SHARE));
     MatchScenario scenario;
+    // Facing the middle of the goal, as a shooter set to shoot: the shot
+    // is measured from the spot, not after a turn towards the goal.
+    const PitchPoint goalMiddle = at(1.0F, PITCH_MIDPOINT_SHARE);
     scenario.players.push_back(
-        {.playerId = shooterId, .position = spot, .makingRun = false});
+        {.playerId = shooterId,
+         .position = spot,
+         .makingRun = false,
+         .facing = std::atan2(goalMiddle.y - spot.y, goalMiddle.x - spot.x)});
     if (hasKeeper)
     {
       // Covering the angle: a step off the line towards the ball, as a
@@ -5545,6 +5561,8 @@ class ShotDrill final : public Drill
       out.push_back({.name = "Shot off centre (m)",
                      .value = shot->from.y - PITCH.atY(PITCH_MIDPOINT_SHARE)});
       out.push_back({.name = "Seconds to shoot", .value = shot->at});
+      out.push_back({.name = "Facing off goal (deg)",
+                     .value = shot->facingOffDegrees});
     }
     else
     {
@@ -5562,6 +5580,7 @@ class ShotDrill final : public Drill
     bool onTarget = false;
     float targetY = PITCH_MIDPOINT_SHARE;
     double at = 0.0;
+    float facingOffDegrees = 0.0F;
   };
   struct Tally
   {

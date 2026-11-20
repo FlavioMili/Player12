@@ -9,6 +9,7 @@
 #pragma once
 
 #include <cstdint>
+#include <optional>
 #include <vector>
 
 #include "global/types.h"
@@ -24,6 +25,9 @@ struct MatchScenarioPlayer
   PitchPoint position{MatchTuning::Pitch::MATCH_CENTRE_X_METRES,
                       MatchTuning::Pitch::MATCH_CENTRE_Y_METRES};
   bool makingRun = false;
+  /** The way his body faces at the start (an angle like
+   * MatchPlayer::facingAngle); none: he keeps the facing he has. */
+  std::optional<float> facing;
 };
 
 /**

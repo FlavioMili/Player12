@@ -335,6 +335,17 @@ inline bool choice(const char* label, bool selected, float scale, ImFont* bold)
   return clicked;
 }
 
+/** A radio button in the pages' theme: the Style's ink check mark suits a
+ * checkbox's lime fill but vanishes in a radio's dark circle, so the dot is
+ * lime. */
+inline bool radio(const char* label, int* value, int option)
+{
+  ImGui::PushStyleColor(ImGuiCol_CheckMark, LIME);
+  const bool clicked = ImGui::RadioButton(label, value, option);
+  ImGui::PopStyleColor();
+  return clicked;
+}
+
 inline float buttonWidth(const char* label, float scale, ImFont* bold)
 {
   ImGui::PushFont(bold, 14);

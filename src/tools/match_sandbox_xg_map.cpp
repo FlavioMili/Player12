@@ -193,9 +193,14 @@ void XgMapScene::update(float /*deltaTime*/)
   const auto path = GameXg::file(table.layer, table.goal);
   std::string problem;
   sweepNote =
-      table.save(path, problem)
-          ? std::format("Saved {} ({:.0f} s).", path.string(), sweep->seconds())
-          : "Not saved: " + problem;
+      (table.save(path, problem) ? std::format("Saved {} ({:.0f} s).",
+                                               path.string(), sweep->seconds())
+                                 : "Not saved: " + problem) +
+      std::format(
+          " Left and right {} ({:.0f}% of mirrored pairs differed; "
+          "pooled difference {:+.1f} standard errors).",
+          table.mirrored ? "agree: folded together" : "differ: both kept",
+          100.0 * sweep->asymmetricShare(), sweep->asymmetricZ());
   loadGameTable();
   dirty = true;
 }
@@ -271,8 +276,14 @@ void XgMapScene::rebuild()
   }
   built = pitch();
   cell = std::max(MIN_CELL_METRES, built.length / MAX_CELLS_ALONG);
+  // Cells anchored on the goal: the columns end exactly at its line, and a
+  // whole row is centred on its middle (part cells fall at the far edges).
   columns = static_cast<int>(std::ceil(built.length / cell));
-  rows = static_cast<int>(std::ceil(built.width / cell));
+  originX = built.length - (static_cast<float>(columns) * cell);
+  const float middleRowEdge =
+      (MIDDLE_SHARE * built.width) - (CELL_MIDDLE * cell);
+  originY = middleRowEdge - (std::ceil(middleRowEdge / cell) * cell);
+  rows = static_cast<int>(std::ceil((built.width - originY) / cell));
   grid.assign(
       static_cast<std::size_t>(columns) * static_cast<std::size_t>(rows),
       Spot{});
@@ -280,11 +291,14 @@ void XgMapScene::rebuild()
   {
     for (int column = 0; column < columns; ++column)
     {
+      // Each value at its cell's middle, kept on the pitch for part cells.
       grid[(static_cast<std::size_t>(row) * static_cast<std::size_t>(columns)) +
            static_cast<std::size_t>(column)] =
           spotAt(built,
-                 PitchPoint{(static_cast<float>(column) + CELL_MIDDLE) * cell,
-                            (static_cast<float>(row) + CELL_MIDDLE) * cell});
+                 PitchPoint{std::clamp(edgeX(column) + (CELL_MIDDLE * cell),
+                                       0.0F, built.length),
+                            std::clamp(edgeY(row) + (CELL_MIDDLE * cell), 0.0F,
+                                       built.width)});
     }
   }
   dirty = false;
@@ -335,8 +349,6 @@ void XgMapScene::render()
 void XgMapScene::renderPanel(float width)
 {
   namespace Page = SandboxPageUI;
-  using S = MatchTuning::Shooting;
-  using D = MatchTuning::Decision;
   const float scale = Theme::scale();
   Page::header(
       "Tools", "xG map", width, scale, boldFont, regularFont,
@@ -344,6 +356,8 @@ void XgMapScene::renderPanel(float width)
       "and the core of the chosen brain's shot score (the home side's "
       "brain in the set-up: Capybara's own, else Binturong's).",
       true);
+  // First, so it is in view while the mouse is on the pitch.
+  renderSpot(width);
   Page::beginCard("##xg_map_settings", "SETTINGS", width, Page::DARK, scale,
                   boldFont);
   if (Page::button("Back to tools", false, scale, boldFont))
@@ -358,9 +372,9 @@ void XgMapScene::renderPanel(float width)
     }
   };
   int pitchKind = trainingPitch ? 1 : 0;
-  changed(ImGui::RadioButton("Match pitch", &pitchKind, 0));
+  changed(Page::radio("Match pitch", &pitchKind, 0));
   ImGui::SameLine();
-  changed(ImGui::RadioButton("Training pitch", &pitchKind, 1));
+  changed(Page::radio("Training pitch", &pitchKind, 1));
   trainingPitch = pitchKind == 1;
   if (trainingPitch)
   {
@@ -402,11 +416,11 @@ void XgMapScene::renderPanel(float width)
   changed(ImGui::SliderFloat("Space ahead", &spaceAhead, 0.0F, 1.0F, "%.2f"));
   ImGui::TextUnformatted("Show");
   ImGui::SameLine();
-  ImGui::RadioButton("xG", &layer, XG_LAYER);
+  Page::radio("xG", &layer, XG_LAYER);
   ImGui::SameLine();
-  ImGui::RadioButton("Shot score", &layer, SCORE_LAYER);
+  Page::radio("Shot score", &layer, SCORE_LAYER);
   ImGui::SameLine();
-  ImGui::RadioButton("Game xG", &layer, GAME_LAYER);
+  Page::radio("Game xG", &layer, GAME_LAYER);
   ImGui::PushTextWrapPos(0);
   if (layer == XG_LAYER)
   {
@@ -433,14 +447,23 @@ void XgMapScene::renderPanel(float width)
   ImGui::PopTextWrapPos();
   Page::endCard(scale);
   renderSweep(width);
+}
 
-  // The spot under the mouse, in its parts.
-  Page::beginCard("##xg_map_spot", "AT THE MOUSE", width, Page::LIGHT, scale,
+void XgMapScene::renderSpot(float width)
+{
+  // The spot last pointed at (it stays when the mouse leaves), in its parts.
+  namespace Page = SandboxPageUI;
+  using S = MatchTuning::Shooting;
+  using D = MatchTuning::Decision;
+  const float scale = Theme::scale();
+  Page::beginCard("##xg_map_spot", "AT THE SPOT", width, Page::LIGHT, scale,
                   boldFont);
   ImGui::PushTextWrapPos(0);
   if (!hovered)
   {
-    ImGui::TextDisabled("Point at the pitch.");
+    ImGui::TextDisabled(
+        "Point at the pitch. The last spot stays, marked, when the mouse "
+        "leaves it.");
   }
   else
   {
@@ -556,13 +579,6 @@ void XgMapScene::renderSweep(float width)
                        ImVec2(-1.0F, PROGRESS_HEIGHT * scale), "");
     ImGui::Text("%s: %lld / %lld runs, %.0f s", sweep->phase().c_str(),
                 sweep->runsDone(), sweep->runsQueued(), sweep->seconds());
-    if (sweep->symmetric())
-    {
-      ImGui::Text(
-          "Left and right %s (%.0f%% of mirrored pairs differed).",
-          *sweep->symmetric() ? "agree: folded together" : "differ: both kept",
-          100.0 * sweep->asymmetricShare());
-    }
     if (Page::button("Stop", false, scale, boldFont))
     {
       sweep->stop();
@@ -584,10 +600,10 @@ void XgMapScene::renderSweep(float width)
       sweepNote.clear();
     }
     ImGui::TextDisabled(
-        "The Shot drill at an empty goal: spots every 4 m on both sides, "
-        "Shooting 1, 25, 50, 75 and 100, then finer where the chance "
-        "changes. About 15-20 minutes at 200 shots a point. Saves to "
-        "assets/config/game_xg/ when done.");
+        "The Shot drill at an empty goal, both sides: spots every 1 m to "
+        "18 m out (20 m either side), 2 m to 30 m, 4 m beyond; Shooting 1, "
+        "25, 50, 75 and 100. About 4-5 minutes at 60 shots a point. Saves "
+        "to assets/config/game_xg/ when done.");
   }
   if (!sweepNote.empty())
   {
@@ -647,7 +663,7 @@ void XgMapScene::renderMap(float width, float height)
                   : spot.xg.xg;
   };
   const bool gameShown = layer == GAME_LAYER && gameTable.has_value();
-  const int firstColumn = static_cast<int>(half / cell);
+  const int firstColumn = static_cast<int>((half - originX) / cell);
   for (int row = 0; row < rows; ++row)
   {
     for (int column = firstColumn; column < columns; ++column)
@@ -679,11 +695,10 @@ void XgMapScene::renderMap(float width, float height)
       {
         continue;
       }
-      const float x0 = std::max(static_cast<float>(column) * cell, half);
-      const float y0 = static_cast<float>(row) * cell;
-      const float x1 =
-          std::min(static_cast<float>(column + 1) * cell, built.length);
-      const float y1 = std::min(y0 + cell, built.width);
+      const float x0 = std::max(edgeX(column), half);
+      const float y0 = std::max(edgeY(row), 0.0F);
+      const float x1 = std::min(edgeX(column + 1), built.length);
+      const float y1 = std::min(edgeY(row + 1), built.width);
       draw->AddRectFilled(screen(x1, y0), screen(x0, y1), colour);
     }
   }
@@ -691,13 +706,12 @@ void XgMapScene::renderMap(float width, float height)
   constexpr ImU32 GRID = IM_COL32(255, 255, 255, 22);
   for (int column = firstColumn; column <= columns; ++column)
   {
-    const float x =
-        std::clamp(static_cast<float>(column) * cell, half, built.length);
+    const float x = std::clamp(edgeX(column), half, built.length);
     draw->AddLine(screen(x, 0.0F), screen(x, built.width), GRID, 1.0F);
   }
   for (int row = 0; row <= rows; ++row)
   {
-    const float y = std::min(static_cast<float>(row) * cell, built.width);
+    const float y = std::clamp(edgeY(row), 0.0F, built.width);
     draw->AddLine(screen(half, y), screen(built.length, y), GRID, 1.0F);
   }
   // Contours: an edge between two cells either side of a contour value.
@@ -711,10 +725,10 @@ void XgMapScene::renderMap(float width, float height)
         const float here = valueOf(grid[(static_cast<std::size_t>(row) *
                                          static_cast<std::size_t>(columns)) +
                                         static_cast<std::size_t>(column)]);
-        const float x1 =
-            std::min(static_cast<float>(column + 1) * cell, built.length);
-        const float y1 =
-            std::min(static_cast<float>(row + 1) * cell, built.width);
+        const float x0 = std::max(edgeX(column), half);
+        const float y0 = std::max(edgeY(row), 0.0F);
+        const float x1 = std::min(edgeX(column + 1), built.length);
+        const float y1 = std::min(edgeY(row + 1), built.width);
         for (const float level : levels)
         {
           if (column + 1 < columns &&
@@ -723,7 +737,7 @@ void XgMapScene::renderMap(float width, float height)
                                  static_cast<std::size_t>(columns)) +
                                 static_cast<std::size_t>(column) + 1]) < level))
           {
-            draw->AddLine(screen(x1, y1 - cell), screen(x1, y1),
+            draw->AddLine(screen(x1, y0), screen(x1, y1),
                           IM_COL32(255, 255, 255, 210), CONTOUR_THICKNESS);
           }
           if (row + 1 < rows &&
@@ -732,7 +746,7 @@ void XgMapScene::renderMap(float width, float height)
                                  static_cast<std::size_t>(columns)) +
                                 static_cast<std::size_t>(column)]) < level))
           {
-            draw->AddLine(screen(x1 - cell, y1), screen(x1, y1),
+            draw->AddLine(screen(x0, y1), screen(x1, y1),
                           IM_COL32(255, 255, 255, 210), CONTOUR_THICKNESS);
           }
         }
@@ -803,8 +817,13 @@ void XgMapScene::renderMap(float width, float height)
                   IM_COL32(250, 250, 250, 255), post);
   }
 
-  // The spot under the mouse.
-  hovered.reset();
+  // The spot under the mouse; the last one stays when the mouse leaves (the
+  // panel's card reads it), unless it is off a pitch made smaller since.
+  if (hovered && (hovered->x < half || hovered->x > built.length ||
+                  hovered->y > built.width))
+  {
+    hovered.reset();
+  }
   if (hovering)
   {
     const ImVec2 mouse = ImGui::GetMousePos();
@@ -814,9 +833,12 @@ void XgMapScene::renderMap(float width, float height)
         at.y <= built.width)
     {
       hovered = at;
-      draw->AddCircle(mouse, MOUSE_RING_RADIUS * scale,
-                      IM_COL32(255, 255, 255, 230), 0, MOUSE_RING_THICKNESS);
     }
+  }
+  if (hovered)
+  {
+    draw->AddCircle(screen(hovered->x, hovered->y), MOUSE_RING_RADIUS * scale,
+                    IM_COL32(255, 255, 255, 230), 0, MOUSE_RING_THICKNESS);
   }
   draw->PopClipRect();
   Page::endCard(scale);

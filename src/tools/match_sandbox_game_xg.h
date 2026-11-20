@@ -20,32 +20,42 @@
 
 struct StatsConfig;
 
-/** A measured spot for smoothing: where, its logit and its precision. */
+/** A measured spot for smoothing: where, its shots and its goals. */
 struct SmoothingDatum
 {
   float x = 0.0F;
   float y = 0.0F;
-  double logit = 0.0;
-  double weight = 0.0;
+  double shots = 0.0;
+  double goals = 0.0;
 };
 
 /** The smoothed chance at (x, y) metres from `data` (game xG plan section
- * 8: a Gaussian kernel in logit space, bandwidth from the 4th-nearest spot,
- * at least 0.5 m). */
+ * 8): goals over shots, pooled under a Gaussian kernel whose width is 0.75
+ * of the distance to the 4th-nearest spot (the local spacing), at least
+ * 0.5 m. */
 [[nodiscard]] float smoothedAt(const std::vector<SmoothingDatum>& data, float x,
                                float y);
+
+/** A band of spots: every `step` metres out to `lineTo` metres from the goal
+ * line and `sideMax` either side of its middle. */
+struct GameXgBand
+{
+  float lineTo = 0.0F;
+  float sideMax = 0.0F;
+  float step = 1.0F;
+};
 
 /**
  * The game xG sweep, layer 1 (game xG plan, section 8): the Shot drill run
  * at an empty goal over spots and Shooting ratings, then smoothed into a
  * GameXgTable.
  *
- * 1. Coarse: spots every `coarseStep` metres on both sides of the goal.
- * 2. Symmetry: left and right compared spot by spot. If they agree within
- *    noise they are folded together and the rest is measured on one side.
- * 3. Refine: a cell whose corners differ by more than `refineDifference`
- *    (at any Shooting) is split in half, for `refinePasses` passes.
- * 4. Smooth: a Gaussian kernel in logit space onto a regular grid.
+ * 1. Measure: spots in fixed bands, finest near the goal (each band's step
+ *    a multiple of the finest), on both sides of the goal.
+ * 2. Symmetry: left and right compared spot by spot; if they agree within
+ *    noise they are folded together (twice the shots per spot).
+ * 3. Smooth: goals over shots pooled under a Gaussian kernel whose width
+ *    follows the spacing, onto a regular grid.
  *
  * The numbers below are our own choices (plan section 8), not research.
  */
@@ -54,14 +64,14 @@ struct GameXgSweepSpec
   GoalKind goal = GoalKind::FULL;
   std::vector<float> shooting{1.0F, 25.0F, 50.0F, 75.0F, 100.0F};
   float lineFrom = 1.0F;
-  float lineTo = 41.0F;
-  float sideMax = 28.0F;
-  float coarseStep = 4.0F;
-  int refinePasses = 2;
-  int repeats = 200;
+  /** Finest first: 1 m in and around the box, 2 m to 30 m, 4 m beyond. The
+   * last band is the sweep's extent. */
+  std::vector<GameXgBand> bands{
+      {.lineTo = 18.0F, .sideMax = 20.0F, .step = 1.0F},
+      {.lineTo = 30.0F, .sideMax = 28.0F, .step = 2.0F},
+      {.lineTo = 41.0F, .sideMax = 28.0F, .step = 4.0F}};
+  int repeats = 60;
   std::uint32_t firstSeed = 1;
-  /** A cell is split if its corners differ by more than this. */
-  double refineDifference = 0.08;
   /** Left and right count as mirror images if no more than this share of
    * mirrored pairs differ at |z| > 1.96. */
   double asymmetricShare = 0.10;
@@ -85,27 +95,29 @@ class GameXgSweep
   [[nodiscard]] bool done() const { return stage == Stage::DONE; }
   [[nodiscard]] bool stopped() const { return halted; }
   [[nodiscard]] const GameXgSweepSpec& spec() const { return setup; }
-  /** What it is doing ("coarse grid", "refining (pass 1)"...). */
+  /** What it is doing ("measuring", "done"...). */
   [[nodiscard]] std::string phase() const;
   [[nodiscard]] long long runsDone() const { return finished; }
-  /** Runs queued so far (refinement adds more). */
   [[nodiscard]] long long runsQueued() const;
   [[nodiscard]] double seconds() const { return elapsed; }
-  /** Set after the coarse grid: whether left and right were folded. */
+  /** Set once measured: whether left and right were folded. */
   [[nodiscard]] std::optional<bool> symmetric() const { return mirror; }
   /** Share of mirrored pairs that differed, and how many pairs. */
   [[nodiscard]] double asymmetricShare() const { return asymmetry; }
+  /** The pooled left-minus-right difference over all pairs, in standard
+   * errors (+: the positive side, towards the bottom touchline, scores
+   * more). */
+  [[nodiscard]] double asymmetricZ() const { return pooledZ; }
   /** The result, once done. */
   [[nodiscard]] const GameXgTable& table() const { return result; }
 
  private:
   enum class Stage : std::uint8_t
   {
-    COARSE,
-    REFINE,
+    MEASURE,
     DONE
   };
-  /** A spot on the fine lattice (1 m at the defaults) and a Shooting level. */
+  /** A spot on the finest band's lattice and a Shooting level. */
   struct Point
   {
     int line = 0;
@@ -120,13 +132,8 @@ class GameXgSweep
   [[nodiscard]] float sideMetres(int side) const;
   void queue(int line, int side);
   void runOne();
-  void afterCoarse();
-  /** Queues the next refinement pass; false if it added nothing. */
-  bool refine();
-  /** Whether a cell (corner at `line`, `side`, `cell` lattice steps a
-   * side) changes enough to split: at any Shooting, its corners differ by
-   * more than the threshold and by more than their noise. */
-  [[nodiscard]] bool cellChanges(int line, int side, int cell) const;
+  /** Compares left and right, and folds them if they agree. */
+  void testSymmetry();
   /** One Shooting level's measured spots, ready to smooth. */
   [[nodiscard]] std::vector<SmoothingDatum> levelData(std::size_t level) const;
   /** Measured shots and goals at a lattice spot (folded if mirrored). */
@@ -138,12 +145,11 @@ class GameXgSweep
   Drill& drill;
   const StatsConfig& config;
   GameXgSweepSpec setup;
-  /** Fine lattice cells per coarse step, and the lattice's extent. */
-  int coarseCells = 1;
+  /** The lattice: its spacing (the finest band's step, m) and extent. */
+  float fine = 1.0F;
   int lineCells = 0;
   int sideCells = 0;
-  Stage stage = Stage::COARSE;
-  int pass = 0;
+  Stage stage = Stage::MEASURE;
   std::vector<Point> points;
   std::map<Key, std::size_t> index;
   std::size_t nextPoint = 0;
@@ -152,6 +158,7 @@ class GameXgSweep
   double elapsed = 0.0;
   std::optional<bool> mirror;
   double asymmetry = 0.0;
+  double pooledZ = 0.0;
   bool halted = false;
   GameXgTable result;
   std::map<std::string, float> saved;
