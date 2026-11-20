@@ -10,12 +10,16 @@
 
 #include <memory>
 #include <optional>
+#include <string>
 #include <vector>
 
 #include "gui/gui_scene.h"
 #include "model/match_engine.h"
+#include "model/match_game_xg.h"
 
 struct ImFont;
+class Drill;
+class GameXgSweep;
 
 /**
  * The xG map (training ground plan section 24, T8): a pitch, the match one
@@ -49,7 +53,15 @@ class XgMapScene : public GUIScene
     /** The shot score core the map draws, for the chosen brain. */
     float scoreTotal = 0.0F;
     bool considered = false;
+    /** Game xG, layer 1 (the empty goal), from the saved table; below 0
+     * when there is none for this goal. */
+    float game = -1.0F;
   };
+  /** The goal the map is for: the match's, or the training pitch's. */
+  [[nodiscard]] GoalKind goalKind() const;
+  /** Loads the saved empty-goal table for goalKind() (none if missing). */
+  void loadGameTable();
+  void renderSweep(float width);
   /** Whether the map draws Capybara's shot score (the chosen brain). */
   [[nodiscard]] static bool capybaraScore();
   [[nodiscard]] MatchPitch pitch() const;
@@ -68,8 +80,19 @@ class XgMapScene : public GUIScene
   bool defender = false;
   float defenderMetres = 2.0F;
   float spaceAhead = 1.0F;
-  /** 0: xG; 1: the shot score (its core). */
+  /** 0: xG; 1: the shot score (its core); 2: game xG, the empty goal. */
   int layer = 0;
+
+  // Game xG (game xG plan): the saved table for the map's goal, and a
+  // sweep that measures it afresh.
+  std::optional<GameXgTable> gameTable;
+  std::optional<GoalKind> gameTableGoal;
+  std::string gameTableNote;
+  std::vector<std::unique_ptr<Drill>> drills;
+  Drill* shotDrill = nullptr;
+  std::unique_ptr<GameXgSweep> sweep;
+  float sweepRepeats = 200.0F;
+  std::string sweepNote;
 
   // The map, worked out when a setting changes.
   bool dirty = true;

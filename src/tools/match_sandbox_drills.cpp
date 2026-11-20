@@ -5235,6 +5235,10 @@ class ShotDrill final : public Drill
   static constexpr float DEFAULT_KEEPER_HEIGHT = 188.0F;
   static constexpr float DEFAULT_DEFENDER_DISTANCE = 3.0F;
   static constexpr float DEFAULT_DEFENDING = 70.0F;
+  /** The goal kinds after NONE, in GoalKind order. */
+  static constexpr std::array<const char*, 7> GOAL_CHOICES{
+      "Full size", "9v9",          "7v7",   "Futsal",
+      "5-a-side",  "Small framed", "Pop-up"};
   static constexpr ImU32 RUNNER_PATH_COLOUR = IM_COL32(255, 255, 255, 120);
   static constexpr ImU32 SUCCESS_COLOUR = IM_COL32(90, 220, 120, 255);
   static constexpr ImU32 DEFENDER_COLOUR = IM_COL32(240, 80, 80, 200);
@@ -5259,6 +5263,15 @@ class ShotDrill final : public Drill
 
   [[nodiscard]] bool offersShotMap() const override { return true; }
 
+  /** The match pitch with the chosen goal at each end. */
+  [[nodiscard]] MatchPitch pitch() const override
+  {
+    MatchPitch on = MatchPitch::matchSize();
+    on.goal = PitchGoal::ofKind(
+        static_cast<GoalKind>(static_cast<int>(std::lround(goalChoice)) + 1));
+    return on;
+  }
+
   std::vector<DrillParameter> parameters() override
   {
     std::vector<DrillParameter> list;
@@ -5269,6 +5282,13 @@ class ShotDrill final : public Drill
                            {.min = SIDE_MIN, .max = SIDE_MAX}, false,
                            "Sideways from the middle of the goal (+ towards "
                            "the bottom touchline)."));
+    DrillParameter goals = setting(
+        "Goals", &goalChoice,
+        {.min = 0.0F, .max = static_cast<float>(GOAL_CHOICES.size() - 1)}, true,
+        "The goal's size, on the match pitch (game xG plan: the empty-goal "
+        "sweep measures each).");
+    goals.choices.assign(GOAL_CHOICES.begin(), GOAL_CHOICES.end());
+    list.push_back(goals);
     DrillParameter mode =
         setting("Shooter", &choice, {.min = 0.0F, .max = 1.0F}, true,
                 "Shoots now: through the AI's own shot, at "
@@ -5557,7 +5577,7 @@ class ShotDrill final : public Drill
                "{:.1f}|{:.1f}|{}|{:.0f}|{}|{:.0f}|{:.0f}|{}|{:.1f}|{:.0f}",
                line, side, forced, shooting, hasKeeper, goalkeeping,
                keeperHeight, hasDefender, defenderDistance, defending) +
-           std::format("|{:.0f}", keeperStart);
+           std::format("|{:.0f}|{:.0f}", keeperStart, goalChoice);
   }
   void tally(const std::string& result)
   {
@@ -5576,6 +5596,7 @@ class ShotDrill final : public Drill
 
   float line = DEFAULT_LINE;
   float side = DEFAULT_SIDE;
+  float goalChoice = 0.0F;
   float choice = 0.0F;
   float shooting = DEFAULT_SHOOTING;
   float keeperChoice = 1.0F;

@@ -18,18 +18,36 @@
 #include <string>
 #include <string_view>
 
+#include "controller/game_controller.h"
 #include "global/paths.h"
 #include "gui/gui_view.h"
 #include "gui/widgets/theme.h"
 #include "model/match_decision_frame.h"
+#include "tools/match_sandbox_drill.h"
+#include "tools/match_sandbox_game_xg.h"
 #include "tools/match_sandbox_page_ui.h"
 #include "tools/match_sandbox_setup.h"
 #include "tools/match_sandbox_typography.h"
 
 namespace
 {
-/** The xG contours drawn on the map. */
+/** The xG contours drawn on the map, and the game xG (empty goal) ones. */
 constexpr std::array<float, 4> CONTOURS{0.05F, 0.10F, 0.20F, 0.40F};
+constexpr std::array<float, 4> GAME_CONTOURS{0.20F, 0.40F, 0.60F, 0.80F};
+/** The layers: the fitted xG, the shot score, game xG (empty goal). */
+constexpr int XG_LAYER = 0;
+constexpr int SCORE_LAYER = 1;
+constexpr int GAME_LAYER = 2;
+/** The fitted xG reaches full colour at 0.4; an empty goal's chances at 1. */
+constexpr float FITTED_FULL_COLOUR = 0.4F;
+constexpr float GAME_FULL_COLOUR = 1.0F;
+/** The goal's middle, as a share of the pitch's width. */
+constexpr float MIDDLE_SHARE = 0.5F;
+/** The sweep: real time per frame (s), and its shots-a-point limits. */
+constexpr double SWEEP_SECONDS_PER_FRAME = 0.012;
+constexpr float MIN_SWEEP_REPEATS = 20.0F;
+constexpr float MAX_SWEEP_REPEATS = 500.0F;
+constexpr float PROGRESS_HEIGHT = 8.0F;
 /** At most this many cells along the pitch (finer on small pitches). */
 constexpr float MAX_CELLS_ALONG = 140.0F;
 constexpr float MIN_CELL_METRES = 0.25F;
@@ -63,13 +81,11 @@ constexpr std::array<const char*, 8> GOAL_NAMES{
     "Futsal", "5-a-side",  "Small framed", "Pop-up"};
 
 /** A colour for an xG: dark blue at none, through green and yellow, to red
- * from 0.4 (a square-root scale, so small chances read apart). */
-ImU32 xgColour(float xg)
+ * from `full` (a square-root scale, so small chances read apart). */
+ImU32 xgColour(float xg, float full = FITTED_FULL_COLOUR)
 {
-  constexpr float FULL_COLOUR_XG = 0.4F;
   constexpr int MAP_ALPHA = 150;
-  const float t =
-      std::clamp(std::sqrt(std::max(xg, 0.0F) / FULL_COLOUR_XG), 0.0F, 1.0F);
+  const float t = std::clamp(std::sqrt(std::max(xg, 0.0F) / full), 0.0F, 1.0F);
   constexpr std::array<std::array<float, 3>, 5> STOPS{{{30, 50, 160},
                                                        {20, 150, 200},
                                                        {60, 190, 80},
@@ -89,9 +105,47 @@ ImU32 xgColour(float xg)
 }
 }  // namespace
 
-XgMapScene::XgMapScene(GUIView* guiView_ptr) : GUIScene(guiView_ptr) {}
+XgMapScene::XgMapScene(GUIView* guiView_ptr)
+    : GUIScene(guiView_ptr), drills(makeDrills())
+{
+  for (const auto& drill : drills)
+  {
+    if (drill->offersShotMap())
+    {
+      shotDrill = drill.get();
+    }
+  }
+}
 
 XgMapScene::~XgMapScene() = default;
+
+GoalKind XgMapScene::goalKind() const
+{
+  return trainingPitch ? static_cast<GoalKind>(goalChoice) : GoalKind::FULL;
+}
+
+void XgMapScene::loadGameTable()
+{
+  gameTableGoal = goalKind();
+  gameTable.reset();
+  if (*gameTableGoal == GoalKind::NONE)
+  {
+    gameTableNote = "No goal on this pitch.";
+    return;
+  }
+  const auto path = GameXg::file(GameXgTable::EMPTY_GOAL, *gameTableGoal);
+  std::string problem;
+  gameTable = GameXgTable::load(path, problem);
+  gameTableNote =
+      gameTable ? std::format(
+                      "Measured {}: {} shots a point, {} points; left and "
+                      "right {}.",
+                      gameTable->measured, gameTable->repeats,
+                      gameTable->samples.size(),
+                      gameTable->mirrored ? "folded together" : "kept apart")
+                : std::format("No game map for the {} goal yet: run the sweep.",
+                              goalKindName(*gameTableGoal));
+}
 
 SceneID XgMapScene::getID() const { return SceneID::MATCH_SANDBOX; }
 
@@ -119,7 +173,32 @@ void XgMapScene::onEnter()
   boldFont = font("Manrope-Bold.ttf", SandboxPageUI::BOLD_FONT_SIZE);
 }
 
-void XgMapScene::update(float /*deltaTime*/) {}
+void XgMapScene::update(float /*deltaTime*/)
+{
+  if (!sweep || sweep->done())
+  {
+    return;
+  }
+  // Measured with Capybara's brain, as fm_lab game-xg does: the map is for
+  // Capybara (the set-up's brains are put back after each slice).
+  const auto brains = sandboxBrains();
+  sandboxBrains() = {BrainId::CAPYBARA, BrainId::CAPYBARA};
+  const bool more = sweep->work(SWEEP_SECONDS_PER_FRAME);
+  sandboxBrains() = brains;
+  if (more || sweep->stopped())
+  {
+    return;
+  }
+  const GameXgTable& table = sweep->table();
+  const auto path = GameXg::file(table.layer, table.goal);
+  std::string problem;
+  sweepNote =
+      table.save(path, problem)
+          ? std::format("Saved {} ({:.0f} s).", path.string(), sweep->seconds())
+          : "Not saved: " + problem;
+  loadGameTable();
+  dirty = true;
+}
 
 MatchPitch XgMapScene::pitch() const
 {
@@ -174,11 +253,22 @@ XgMapScene::Spot XgMapScene::spotAt(const MatchPitch& on, PitchPoint at) const
   spot.considered = header ? estimate * S::HEADER_XG_FACTOR >=
                                  MatchTuning::Aerial::HEADER_SHOT_MIN_XG
                            : estimate >= D::MIN_SHOT_XG;
+  // Game xG, the empty goal: metres out from the right-hand goal's line and
+  // off its middle (+ towards the bottom touchline, as the Shot drill).
+  if (gameTable && on.goal.present())
+  {
+    spot.game = gameTable->value(
+        on.length - at.x, at.y - (MIDDLE_SHARE * on.width), shootingSetting);
+  }
   return spot;
 }
 
 void XgMapScene::rebuild()
 {
+  if (gameTableGoal != goalKind())
+  {
+    loadGameTable();
+  }
   built = pitch();
   cell = std::max(MIN_CELL_METRES, built.length / MAX_CELLS_ALONG);
   columns = static_cast<int>(std::ceil(built.length / cell));
@@ -312,21 +402,37 @@ void XgMapScene::renderPanel(float width)
   changed(ImGui::SliderFloat("Space ahead", &spaceAhead, 0.0F, 1.0F, "%.2f"));
   ImGui::TextUnformatted("Show");
   ImGui::SameLine();
-  ImGui::RadioButton("xG", &layer, 0);
+  ImGui::RadioButton("xG", &layer, XG_LAYER);
   ImGui::SameLine();
-  ImGui::RadioButton("Shot score", &layer, 1);
+  ImGui::RadioButton("Shot score", &layer, SCORE_LAYER);
+  ImGui::SameLine();
+  ImGui::RadioButton("Game xG", &layer, GAME_LAYER);
   ImGui::PushTextWrapPos(0);
-  ImGui::TextDisabled(layer == 0
-                          ? "Contours at 0.05, 0.10, 0.20 and 0.40. A header "
-                            "shows its xG after the "
-                            "header discount."
-                          : "Green: the shot's own score is above nothing "
-                            "(worth a shot on its own; "
-                            "the brain still weighs passing and carrying). "
-                            "Red: below. Clear: never "
-                            "considered. No role, shout or cutting inside.");
+  if (layer == XG_LAYER)
+  {
+    ImGui::TextDisabled(
+        "Contours at 0.05, 0.10, 0.20 and 0.40. A header shows its xG after "
+        "the header discount.");
+  }
+  else if (layer == SCORE_LAYER)
+  {
+    ImGui::TextDisabled(
+        "Green: the shot's own score is above nothing (worth a shot on its "
+        "own; the brain still weighs passing and carrying). Red: below. "
+        "Clear: never considered. No role, shout or cutting inside.");
+  }
+  else
+  {
+    ImGui::TextDisabled(
+        "Game xG, layer 1: the chance a shot goes in with no keeper and "
+        "nobody in the way, measured in the Shot drill (game xG plan). "
+        "Contours at 0.2, 0.4, 0.6 and 0.8. Shooting only: no header, "
+        "defender or pressure yet. Capybara doesn't use it until the keeper "
+        "layer exists.");
+  }
   ImGui::PopTextWrapPos();
   Page::endCard(scale);
+  renderSweep(width);
 
   // The spot under the mouse, in its parts.
   Page::beginCard("##xg_map_spot", "AT THE MOUSE", width, Page::LIGHT, scale,
@@ -380,6 +486,15 @@ void XgMapScene::renderPanel(float width)
           spot.considered ? "yes" : "no");
     }
     ImGui::Text("As struck: %.3f", spot.struck);
+    if (spot.game >= 0.0F)
+    {
+      ImGui::Text("Game xG, empty goal: %.3f (Shooting %.0f)", spot.game,
+                  shootingSetting);
+    }
+    else
+    {
+      ImGui::TextDisabled("Game xG, empty goal: none for this goal yet.");
+    }
     ImGui::Separator();
     const MatchEngine::ShotScoreParts& s = spot.score;
     if (!header && !spot.considered)
@@ -416,6 +531,67 @@ void XgMapScene::renderPanel(float width)
                     s.wideFactor, D::WIDE_SHOT_WIDTH_METRES);
       }
     }
+  }
+  ImGui::PopTextWrapPos();
+  Page::endCard(scale);
+}
+
+void XgMapScene::renderSweep(float width)
+{
+  // The game xG sweep for the map's goal: run, watch, and it saves itself.
+  namespace Page = SandboxPageUI;
+  const float scale = Theme::scale();
+  Page::beginCard("##xg_map_sweep", "GAME XG SWEEP", width, Page::DARK, scale,
+                  boldFont);
+  ImGui::PushTextWrapPos(0);
+  ImGui::TextUnformatted(gameTableNote.c_str());
+  const bool running = sweep && !sweep->done();
+  if (running)
+  {
+    const double share = sweep->runsQueued() > 0
+                             ? static_cast<double>(sweep->runsDone()) /
+                                   static_cast<double>(sweep->runsQueued())
+                             : 0.0;
+    ImGui::ProgressBar(static_cast<float>(share),
+                       ImVec2(-1.0F, PROGRESS_HEIGHT * scale), "");
+    ImGui::Text("%s: %lld / %lld runs, %.0f s", sweep->phase().c_str(),
+                sweep->runsDone(), sweep->runsQueued(), sweep->seconds());
+    if (sweep->symmetric())
+    {
+      ImGui::Text(
+          "Left and right %s (%.0f%% of mirrored pairs differed).",
+          *sweep->symmetric() ? "agree: folded together" : "differ: both kept",
+          100.0 * sweep->asymmetricShare());
+    }
+    if (Page::button("Stop", false, scale, boldFont))
+    {
+      sweep->stop();
+      sweepNote = "Stopped: nothing saved.";
+    }
+  }
+  else if (goalKind() != GoalKind::NONE && shotDrill != nullptr)
+  {
+    ImGui::SetNextItemWidth(CONTROL_WIDTH * scale);
+    ImGui::SliderFloat("Shots a point", &sweepRepeats, MIN_SWEEP_REPEATS,
+                       MAX_SWEEP_REPEATS, "%.0f");
+    if (Page::button("Run the sweep", false, scale, boldFont))
+    {
+      GameXgSweepSpec spec;
+      spec.goal = goalKind();
+      spec.repeats = static_cast<int>(sweepRepeats);
+      sweep = std::make_unique<GameXgSweep>(
+          *shotDrill, guiView->getController().getStatsConfig(), spec);
+      sweepNote.clear();
+    }
+    ImGui::TextDisabled(
+        "The Shot drill at an empty goal: spots every 4 m on both sides, "
+        "Shooting 1, 25, 50, 75 and 100, then finer where the chance "
+        "changes. About 15-20 minutes at 200 shots a point. Saves to "
+        "assets/config/game_xg/ when done.");
+  }
+  if (!sweepNote.empty())
+  {
+    ImGui::TextUnformatted(sweepNote.c_str());
   }
   ImGui::PopTextWrapPos();
   Page::endCard(scale);
@@ -463,9 +639,14 @@ void XgMapScene::renderMap(float width, float height)
   // The map.
   const auto valueOf = [&](const Spot& spot)
   {
+    if (layer == GAME_LAYER)
+    {
+      return std::max(spot.game, 0.0F);
+    }
     return header ? spot.xg.xg * MatchTuning::Shooting::HEADER_XG_FACTOR
                   : spot.xg.xg;
   };
+  const bool gameShown = layer == GAME_LAYER && gameTable.has_value();
   const int firstColumn = static_cast<int>(half / cell);
   for (int row = 0; row < rows; ++row)
   {
@@ -475,9 +656,13 @@ void XgMapScene::renderMap(float width, float height)
                                static_cast<std::size_t>(columns)) +
                               static_cast<std::size_t>(column)];
       ImU32 colour = 0;
-      if (layer == 0)
+      if (layer == XG_LAYER)
       {
         colour = xgColour(valueOf(spot));
+      }
+      else if (layer == GAME_LAYER)
+      {
+        colour = gameShown ? xgColour(valueOf(spot), GAME_FULL_COLOUR) : 0;
       }
       else if (spot.considered)
       {
@@ -516,8 +701,9 @@ void XgMapScene::renderMap(float width, float height)
     draw->AddLine(screen(half, y), screen(built.length, y), GRID, 1.0F);
   }
   // Contours: an edge between two cells either side of a contour value.
-  if (layer == 0)
+  if (layer == XG_LAYER || gameShown)
   {
+    const auto& levels = layer == XG_LAYER ? CONTOURS : GAME_CONTOURS;
     for (int row = 0; row < rows; ++row)
     {
       for (int column = firstColumn; column < columns; ++column)
@@ -529,7 +715,7 @@ void XgMapScene::renderMap(float width, float height)
             std::min(static_cast<float>(column + 1) * cell, built.length);
         const float y1 =
             std::min(static_cast<float>(row + 1) * cell, built.width);
-        for (const float level : CONTOURS)
+        for (const float level : levels)
         {
           if (column + 1 < columns &&
               (here < level) !=

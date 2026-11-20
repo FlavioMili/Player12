@@ -187,6 +187,8 @@ set(FM_CORE_SOURCES
     model/match_brain_aardvark.cpp
     model/match_brain_aardvark_members.h
     model/match_derived_stats.h
+    model/match_game_xg.h
+    model/match_game_xg.cpp
     model/match_first_touch_knobs.h
     model/match_handshake.h
     model/match_handshake_dispatch.cpp
@@ -701,6 +703,8 @@ add_library(fm_drills STATIC
     tools/match_sandbox_session.cpp
     tools/match_sandbox_measure.h
     tools/match_sandbox_measure.cpp
+    tools/match_sandbox_game_xg.h
+    tools/match_sandbox_game_xg.cpp
     tools/match_sandbox_tuning.h
     tools/match_sandbox_tuning.cpp
     tools/match_sandbox_bench.h

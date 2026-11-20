@@ -38,6 +38,7 @@
 #include "tools/lab_season.h"
 #include "tools/lab_touch_sensitivity.h"
 #include "tools/lab_trace.h"
+#include "tools/match_sandbox_game_xg.h"
 #include "tools/match_sandbox_measure.h"
 #include "tools/match_sandbox_session.h"
 #include "tools/match_sandbox_setup.h"
@@ -1294,6 +1295,28 @@ int main(int argc, char** argv)
       const ScratchRuntime runtime;
       quietLogging();
       return runTouchSensitivity(
+                 Lab::loadStatsConfig(),
+                 std::vector<std::string>(argv + 2, argv + argc)) == 0
+                 ? Lab::ExitCode::OK
+                 : Lab::ExitCode::INVALID_ARGUMENTS;
+    }
+    catch (const std::exception& error)
+    {
+      std::cerr << "fm_lab: " << error.what() << "\n";
+      return Lab::ExitCode::SIMULATION_ERROR;
+    }
+  }
+  if (argc >= 2 && std::string_view(argv[1]) == "game-xg")
+  {
+    // The game xG sweep (game xG plan): Capybara's brain, as the map is
+    // for Capybara, with the sandbox's defaults for the rest.
+    try
+    {
+      sandboxBrains() = {BrainId::CAPYBARA, BrainId::CAPYBARA};
+      sandboxPossession() = PossessionId::BINTURONG;
+      const ScratchRuntime runtime;
+      quietLogging();
+      return runGameXgCommand(
                  Lab::loadStatsConfig(),
                  std::vector<std::string>(argv + 2, argv + argc)) == 0
                  ? Lab::ExitCode::OK
