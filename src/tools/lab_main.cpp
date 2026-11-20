@@ -148,7 +148,8 @@ capybara; one name sets both sides ("--brains capybara"), two set home and
 away ("--brains binturong,capybara").
 
 Bodies: each side's players' bodies (movement, fitness, kicking, first
-touch, goalkeeping), aardvark (default) or binturong, set the same way.
+touch, goalkeeping), binturong (default, as the match sandbox and its
+drills) or aardvark, set the same way.
 
 Handshake: how the inputs become match state (attribute scale, physical
 limits, roles), one for the match: binturong (default) or aardvark.
@@ -451,10 +452,11 @@ std::array<std::optional<Lab::FormationSlots>, 2> formationPair(
           lookup(std::string_view(*text).substr(comma + 1))};
 }
 
-/** --bodies HOME,AWAY (or one body for both sides); default aardvark. */
+/** --bodies HOME,AWAY (or one body for both sides); default binturong, as
+ * the match sandbox and its drills (the game xG maps are measured on it). */
 std::array<BodyId, 2> bodyPair(const Arguments& arguments)
 {
-  const std::string text = arguments.value("--bodies").value_or("aardvark");
+  const std::string text = arguments.value("--bodies").value_or("binturong");
   const auto bodies = parseBodyPair(text);
   if (!bodies)
   {
