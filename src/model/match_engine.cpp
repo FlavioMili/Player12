@@ -4135,6 +4135,7 @@ float MatchEngine::strikeShot(MatchPlayer& shooter, float forcedXG, bool header,
       shooter, header ? ReleaseKind::HEADED_SHOT : ReleaseKind::SHOT);
   const float startHeight = from.heightMetres;
   const float goalDistance = distance(origin, goalPoint);
+  const int blockBand = noteBlockPrediction(shooter, header, penalty, freeKick);
   clearFlightState();
   launchBall(shooter, from, strike.launchToward.value_or(goalPoint), speed,
              strike.launchSet ? strike.verticalSpeed
@@ -4142,7 +4143,30 @@ float MatchEngine::strikeShot(MatchPlayer& shooter, float forcedXG, bool header,
                                                   startHeight, crossingZ),
              strike.spin);
   noteShotFlight(shooter, onTarget, xg, targetY, crossingZ, header, penalty);
+  // Where it leaves from (for the lab: its path is from here to the
+  // crossing).
+  ball.possession.shotFrom = ball.position;
+  ball.possession.shotBlockBand = blockBand;
   return xg;
+}
+
+int MatchEngine::noteBlockPrediction(const MatchPlayer& shooter, bool header,
+                                     bool penalty, bool freeKick)
+{
+  if (header || penalty || freeKick ||
+      brainOf(shooter.isHomeTeam) != BrainId::CAPYBARA)
+  {
+    return -1;
+  }
+  const float stopped = std::clamp(
+      1.0F - bodiesPassCapybara(shooter, shooter.position), 0.0F, 1.0F);
+  const std::size_t band =
+      std::min(MatchStats::BLOCK_BANDS - 1,
+               static_cast<std::size_t>(
+                   stopped * static_cast<float>(MatchStats::BLOCK_BANDS)));
+  ++stats.blockBandShots.at(band);
+  stats.blockBandPredicted.at(band) += stopped;
+  return static_cast<int>(band);
 }
 
 void MatchEngine::takeShot(MatchPlayer& shooter, float forcedXG, bool header,
@@ -5042,10 +5066,14 @@ void MatchEngine::resolveLooseBall(bool beforeLine)
     {
       // His torso, or a leg where his stride has it (shot block plan §3c),
       // or a keeper's arm or hand (goalkeeper plan step 2): met where the
-      // ball reaches it on this stretch, or not at all.
+      // ball reaches it on this stretch, or not at all. Only the shooter's
+      // opponents put a leg out to block it; a team-mate's body is in the
+      // way by accident (game xG plan step 3, agreed 2026-11-20).
+      const bool shootersTeamMate =
+          player.isHomeTeam == getPossessionState().shotByHome;
       if (const auto hit = shotMeetsBodyBinturong(
               player, slot, {.x = start.x, .y = start.y, .z = startHeight},
-              {.x = end.x, .y = end.y, .z = endHeight}, true))
+              {.x = end.x, .y = end.y, .z = endHeight}, !shootersTeamMate))
       {
         contacts[contactCount++] = {
             .slot = slot,

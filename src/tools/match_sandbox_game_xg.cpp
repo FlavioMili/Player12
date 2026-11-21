@@ -599,6 +599,421 @@ float smoothedAt(const std::vector<SmoothingDatum>& data, float x, float y,
   return static_cast<float>(goals / shots);
 }
 
+// --- Layer 3: the leg chance -------------------------------------------------
+
+namespace
+{
+// The Shot block drill's settings the leg sweep holds or moves.
+constexpr const char* BLOCK_LINE = "Out from goal line (m)";
+constexpr const char* BLOCK_SIDE = "Off centre (m)";
+constexpr const char* BLOCK_AIM_ACROSS = "Aim across goal (m)";
+constexpr const char* BLOCK_AIM_HEIGHT = "Aim height (m)";
+constexpr const char* BLOCK_POWER = "Power (share)";
+constexpr const char* BLOCK_SHOOTING = "Shooting";
+constexpr const char* BLOCK_BALL = "Ball";
+constexpr const char* BLOCK_DISTANCE = "Defender distance (m)";
+constexpr const char* BLOCK_OFF_LINE = "Off the line (m)";
+constexpr const char* BLOCK_MOVING = "Moving";
+constexpr const char* BLOCK_WHOSE = "Whose";
+constexpr const char* BLOCK_DEFENDING = "Defending";
+constexpr const char* BLOCK_TACKLING = "Tackling";
+constexpr const char* BLOCK_KEEPER = "Keeper";
+constexpr const char* BLOCK_HEIGHT = "Height (cm)";
+constexpr const char* BLOCK_RUN_UP = "Run-up (m)";
+constexpr double CENTIMETRES_PER_METRE = 100.0;
+/** The drill's movements (standing, sidestepping, sprinting), per whose. */
+constexpr std::size_t MOVEMENTS = 3;
+/** Half an offset step: how far past the last offset a run still counts. */
+constexpr double HALF_STEP = 0.5;
+}  // namespace
+
+GameXgLegSweep::GameXgLegSweep(Drill& blockDrill, const StatsConfig& config_ref,
+                               GameXgLegSweepSpec spec)
+    : drill(blockDrill),
+      config(config_ref),
+      setup(std::move(spec)),
+      savedSeed(blockDrill.seed)
+{
+  for (const DrillParameter& parameter : drill.parameters())
+  {
+    if (parameter.value != nullptr)
+    {
+      saved[parameter.name] = *parameter.value;
+    }
+  }
+  setup.repeats = std::max(1, setup.repeats);
+  if (setup.ratings.empty())
+  {
+    setup.ratings = GameXgLegSweepSpec{}.ratings;
+  }
+  std::ranges::sort(setup.ratings);
+  std::ranges::sort(setup.distances);
+  std::ranges::sort(setup.offsets);
+  // Team-mates put no leg out, so their rating doesn't count: measured at
+  // the middle one only.
+  const std::size_t middle = setup.ratings.size() / 2;
+  for (std::size_t kind = 0; kind < GameXgLegTable::KINDS; ++kind)
+  {
+    const bool teammate = kind >= MOVEMENTS;
+    for (std::size_t r = 0; r < setup.ratings.size(); ++r)
+    {
+      if (teammate && r != middle)
+      {
+        continue;
+      }
+      for (std::size_t d = 0; d < setup.distances.size(); ++d)
+      {
+        for (std::size_t o = 0; o < setup.offsets.size(); ++o)
+        {
+          cells.push_back(
+              {.kind = kind, .rating = r, .distance = d, .offset = o});
+        }
+      }
+    }
+  }
+  const std::size_t bins = GameXgLegTable::KINDS * setup.ratings.size() *
+                           setup.distances.size() * setup.offsets.size();
+  binShots.assign(bins, 0);
+  binBlocks.assign(bins, 0);
+  // The shooter's error, a Shooting level at a time.
+  std::ranges::sort(setup.scatterShooting);
+  for (std::size_t s = 0; s < setup.scatterShooting.size(); ++s)
+  {
+    cells.push_back({.rating = s, .scatter = true});
+  }
+  acrossErrors.resize(setup.scatterShooting.size());
+  upErrors.resize(setup.scatterShooting.size());
+}
+
+int GameXgLegSweep::repeatsOf(const Cell& cell) const
+{
+  return cell.scatter ? std::max(1, setup.scatterRepeats) : setup.repeats;
+}
+
+std::size_t GameXgLegSweep::binIndex(std::size_t kind, std::size_t rating,
+                                     std::size_t distance,
+                                     std::size_t offset) const
+{
+  return (((((kind * setup.ratings.size()) + rating) * setup.distances.size()) +
+           distance) *
+          setup.offsets.size()) +
+         offset;
+}
+
+GameXgLegSweep::~GameXgLegSweep() { restore(); }
+
+void GameXgLegSweep::restore()
+{
+  if (restored)
+  {
+    return;
+  }
+  restored = true;
+  for (const DrillParameter& parameter : drill.parameters())
+  {
+    if ((parameter.value != nullptr) && saved.contains(parameter.name))
+    {
+      *parameter.value = saved.at(parameter.name);
+    }
+  }
+  drill.seed = savedSeed;
+}
+
+long long GameXgLegSweep::runsQueued() const
+{
+  long long runs = 0;
+  for (const Cell& cell : cells)
+  {
+    runs += repeatsOf(cell);
+  }
+  return runs;
+}
+
+std::map<std::string, float> GameXgLegSweep::runValues(const Cell& cell) const
+{
+  std::map<std::string, float> values = saved;
+  values[BLOCK_SIDE] = 0.0F;
+  values[BLOCK_AIM_ACROSS] = 0.0F;
+  values[BLOCK_POWER] = setup.power;
+  values[BLOCK_BALL] = 0.0F;
+  values[BLOCK_KEEPER] = 0.0F;
+  if (cell.scatter)
+  {
+    // A standing opponent well off the line, out of the way.
+    values[BLOCK_LINE] = setup.scatterDistance + setup.gap;
+    values[BLOCK_AIM_HEIGHT] = setup.scatterAimHeight;
+    values[BLOCK_SHOOTING] = setup.scatterShooting[cell.rating];
+    values[BLOCK_DISTANCE] = setup.scatterDistance;
+    values[BLOCK_OFF_LINE] = setup.scatterOffLine;
+    values[BLOCK_MOVING] = 0.0F;
+    values[BLOCK_WHOSE] = 0.0F;
+    return values;
+  }
+  const float distance = setup.distances[cell.distance];
+  const float rating = setup.ratings[cell.rating];
+  values[BLOCK_LINE] = distance + setup.gap;
+  values[BLOCK_AIM_HEIGHT] = setup.aimHeight;
+  values[BLOCK_SHOOTING] = setup.shooting;
+  values[BLOCK_DISTANCE] = distance;
+  values[BLOCK_OFF_LINE] = setup.offsets[cell.offset];
+  values[BLOCK_MOVING] = static_cast<float>(cell.kind % MOVEMENTS);
+  if (cell.kind % MOVEMENTS == MOVEMENTS - 1)
+  {
+    values[BLOCK_RUN_UP] = setup.sprintRunUp;
+  }
+  values[BLOCK_WHOSE] = cell.kind >= MOVEMENTS ? 1.0F : 0.0F;
+  values[BLOCK_DEFENDING] = rating;
+  values[BLOCK_TACKLING] = rating;
+  return values;
+}
+
+std::optional<std::size_t> GameXgLegSweep::offsetBin(double gap) const
+{
+  if (gap < 0.0 || setup.offsets.empty())
+  {
+    return std::nullopt;
+  }
+  std::size_t nearest = 0;
+  for (std::size_t o = 1; o < setup.offsets.size(); ++o)
+  {
+    if (std::abs(setup.offsets[o] - gap) <
+        std::abs(setup.offsets[nearest] - gap))
+    {
+      nearest = o;
+    }
+  }
+  // Beyond the last offset by more than half a step: off the grid.
+  const double step =
+      setup.offsets.size() > 1
+          ? setup.offsets.back() - setup.offsets[setup.offsets.size() - 2]
+          : 0.0;
+  if (gap > setup.offsets.back() + (step * HALF_STEP))
+  {
+    return std::nullopt;
+  }
+  return nearest;
+}
+
+void GameXgLegSweep::tallyRun(const Cell& cell,
+                              const std::vector<DrillMetric>& metrics,
+                              float heightCentimetres)
+{
+  if (metrics.empty())
+  {
+    return;
+  }
+  if (cell.scatter)
+  {
+    constexpr double RADIANS_PER_DEGREE = std::numbers::pi / 180.0;
+    acrossErrors[cell.rating].push_back(static_cast<float>(
+        metricOf(metrics, "Shot angle error (deg)") * RADIANS_PER_DEGREE));
+    upErrors[cell.rating].push_back(static_cast<float>(
+        metricOf(metrics, "Shot elevation error (deg; + higher)") *
+        RADIANS_PER_DEGREE));
+    return;
+  }
+  // Only runs through his leg-space count: met by a leg, or past him below
+  // his hip (not his torso or head, not over him); at the offset nearest
+  // how far his path ran from the ball's.
+  const bool leg = metricOf(metrics, "Met his leg") > FLAG_SET;
+  const double passing = metricOf(metrics, "Ball height passing him (m)");
+  const double hip = MatchTuning::Ball::CHEST_LINE_HEIGHT_SHARE *
+                     heightCentimetres / CENTIMETRES_PER_METRE;
+  const bool below = passing >= 0.0 &&
+                     passing < hip - MatchTuning::Units::BALL_RADIUS_METRES &&
+                     metricOf(metrics, "Met his torso or head") <= FLAG_SET;
+  const std::optional<std::size_t> bin =
+      offsetBin(metricOf(metrics, "Ball gap passing him (m)"));
+  if (!bin || !(leg || below))
+  {
+    return;
+  }
+  const std::size_t at = binIndex(cell.kind, cell.rating, cell.distance, *bin);
+  ++binShots[at];
+  if (leg)
+  {
+    ++binBlocks[at];
+  }
+}
+
+void GameXgLegSweep::runOne()
+{
+  const Cell& cell = cells[nextCell];
+  restored = false;
+  std::map<std::string, float> values = runValues(cell);
+  for (const DrillParameter& parameter : drill.parameters())
+  {
+    if ((parameter.value != nullptr) && values.contains(parameter.name))
+    {
+      *parameter.value = values.at(parameter.name);
+    }
+  }
+  drill.seed =
+      setup.firstSeed + static_cast<std::uint32_t>(
+                            runsBefore + static_cast<std::size_t>(nextRepeat));
+  std::vector<DrillMetric> metrics;
+  {
+    DrillRun run(drill, config, false);
+    while (run.step())
+    {
+    }
+    metrics = drill.metrics();
+  }
+  tallyRun(cell, metrics, values[BLOCK_HEIGHT]);
+  ++finished;
+  if (++nextRepeat >= repeatsOf(cell))
+  {
+    runsBefore += static_cast<std::size_t>(repeatsOf(cell));
+    nextRepeat = 0;
+    ++nextCell;
+  }
+}
+
+bool GameXgLegSweep::work(double budgetSeconds)
+{
+  const auto start = Clock::now();
+  while (!finishedAll)
+  {
+    if (nextCell < cells.size())
+    {
+      runOne();
+    }
+    else
+    {
+      finish();
+    }
+    if (std::chrono::duration<double>(Clock::now() - start).count() >=
+        budgetSeconds)
+    {
+      break;
+    }
+  }
+  elapsed += std::chrono::duration<double>(Clock::now() - start).count();
+  return !finishedAll;
+}
+
+void GameXgLegSweep::stop()
+{
+  halted = true;
+  finishedAll = true;
+  restore();
+}
+
+float GameXgLegSweep::pooledChance(std::size_t kind, std::size_t rating,
+                                   std::size_t distance,
+                                   std::size_t offset) const
+{
+  // A thin cell (few shots stay in his leg-space that far out, or that
+  // close) borrows the nearest distances' shots at the same offset, nearer
+  // first, until it has enough.
+  const std::size_t from = binIndex(kind, rating, distance, offset);
+  int shots = binShots[from];
+  int blocks = binBlocks[from];
+  const auto count = static_cast<std::ptrdiff_t>(setup.distances.size());
+  const auto here = static_cast<std::ptrdiff_t>(distance);
+  for (std::ptrdiff_t reach = 1; shots < setup.minimumShots && reach < count;
+       ++reach)
+  {
+    for (const std::ptrdiff_t other : {here - reach, here + reach})
+    {
+      if (other >= 0 && other < count)
+      {
+        const std::size_t near =
+            binIndex(kind, rating, static_cast<std::size_t>(other), offset);
+        shots += binShots[near];
+        blocks += binBlocks[near];
+      }
+    }
+  }
+  return shots > 0 ? static_cast<float>(blocks) / static_cast<float>(shots)
+                   : 0.0F;
+}
+
+void GameXgLegSweep::fillScatter(GameXgLegTable& table) const
+{
+  // The shooter's error as equal shares: over the ground, the unsigned
+  // errors mirrored (the middles of five equal shares of the signed spread:
+  // 0 and the 40th and 80th percentiles of the unsigned error either side);
+  // upward, the middles of three equal shares.
+  table.scatterShooting = setup.scatterShooting;
+  const auto percentile = [](std::vector<float> samples, double share)
+  {
+    if (samples.empty())
+    {
+      return 0.0F;
+    }
+    std::ranges::sort(samples);
+    const auto at = static_cast<std::size_t>(
+        std::lround(share * static_cast<double>(samples.size() - 1)));
+    return samples[at];
+  };
+  constexpr std::array<double, 2> ACROSS_SHARES{0.4, 0.8};
+  constexpr std::array<double, GameXgLegTable::SCATTER_UP_POINTS> UP_SHARES{
+      1.0 / 6.0, 0.5, 5.0 / 6.0};
+  for (std::size_t s = 0; s < setup.scatterShooting.size(); ++s)
+  {
+    const float inner = percentile(acrossErrors[s], ACROSS_SHARES[0]);
+    const float outer = percentile(acrossErrors[s], ACROSS_SHARES[1]);
+    for (const float point : {-outer, -inner, 0.0F, inner, outer})
+    {
+      table.scatterAcross.push_back(point);
+    }
+    for (const double share : UP_SHARES)
+    {
+      table.scatterUp.push_back(percentile(upErrors[s], share));
+    }
+  }
+}
+
+void GameXgLegSweep::finish()
+{
+  finishedAll = true;
+  restore();
+  GameXgLegTable& table = result;
+  table = GameXgLegTable{};
+  table.measured = timestamp();
+  table.repeats = setup.repeats;
+  table.firstSeed = setup.firstSeed;
+  table.ratings = setup.ratings;
+  table.distances = setup.distances;
+  table.offsets = setup.offsets;
+  const std::size_t offsets = table.offsets.size();
+  const std::size_t distances = table.distances.size();
+  const std::size_t ratings = table.ratings.size();
+  const std::size_t size =
+      GameXgLegTable::KINDS * ratings * distances * offsets;
+  table.values.assign(size, 0.0F);
+  table.shots.assign(size, 0);
+  table.blocks.assign(size, 0);
+  // Team-mates were measured at the middle rating: stored at every one.
+  const std::size_t middle = ratings / 2;
+  for (std::size_t at = 0; at < size; ++at)
+  {
+    const std::size_t o = at % offsets;
+    const std::size_t d = (at / offsets) % distances;
+    const std::size_t r = (at / (offsets * distances)) % ratings;
+    const std::size_t kind = at / (offsets * distances * ratings);
+    const std::size_t measured = kind >= MOVEMENTS ? middle : r;
+    const std::size_t from = binIndex(kind, measured, d, o);
+    table.shots[at] = binShots[from];
+    table.blocks[at] = binBlocks[from];
+    table.values[at] = pooledChance(kind, measured, d, o);
+  }
+  fillScatter(table);
+}
+
+Drill* gameXgLegDrill(const std::vector<std::unique_ptr<Drill>>& drills)
+{
+  for (const auto& drill : drills)
+  {
+    if (std::string_view(drill->name()) == "Shot block")
+    {
+      return drill.get();
+    }
+  }
+  return nullptr;
+}
+
 // --- Command line ------------------------------------------------------------
 
 namespace
@@ -679,6 +1094,8 @@ struct GameXgOptions
   std::vector<GoalKind> goals{GoalKind::FULL};
   bool save = true;
   bool print = false;
+  /** --layer legs: the leg-chance sweep (layer 3) instead of a map. */
+  bool legs = false;
   /** Saved here instead of the game's own file (a check's run); with more
    * than one goal, the goal's name is added before the extension. */
   std::string out;
@@ -839,9 +1256,13 @@ std::optional<GameXgOptions> parseOptions(
           options.base.shooting = gameXgSpec(GameXgTable::KEEPER).shooting;
         }
       }
+      else if (value == "legs")
+      {
+        options.legs = true;
+      }
       else
       {
-        error = "--layer: empty or keeper";
+        error = "--layer: empty, keeper or legs";
         return std::nullopt;
       }
     }
@@ -897,6 +1318,113 @@ Drill* gameXgDrill(const std::vector<std::unique_ptr<Drill>>& drills)
   return nullptr;
 }
 
+namespace
+{
+/** fm_lab game-xg --layer legs: the leg-chance sweep, printed and saved. */
+/** Prints a leg table: its chances by kind and rating, and the shooter's
+ * error points. */
+void printLegTable(const GameXgLegTable& table)
+{
+  constexpr double PERCENT = 100.0;
+  for (std::size_t kind = 0; kind < GameXgLegTable::KINDS; ++kind)
+  {
+    for (const float rating : table.ratings)
+    {
+      if (kind >= MOVEMENTS &&
+          rating != table.ratings[table.ratings.size() / 2])
+      {
+        continue;
+      }
+      std::cout << std::format(
+          "\n{}, rating {:g}: leg chance (%) by metres from the shooter "
+          "(rows) and metres off the line\n      ",
+          GameXgLegTable::kindName(static_cast<GameXgLegTable::Kind>(kind)),
+          rating);
+      for (const float offset : table.offsets)
+      {
+        std::cout << std::format("{:>5g}", offset);
+      }
+      std::cout << '\n';
+      for (const float distance : table.distances)
+      {
+        std::string row = std::format("{:>5g} ", distance);
+        for (const float offset : table.offsets)
+        {
+          row += std::format(
+              "{:>5.0f}",
+              PERCENT * table.value(static_cast<GameXgLegTable::Kind>(kind),
+                                    rating, distance, offset));
+        }
+        std::cout << row << '\n';
+      }
+    }
+  }
+  constexpr double DEGREES_PER_RADIAN = 180.0 / std::numbers::pi;
+  std::cout << "\nShooter's error (deg), equal shares: over the ground | "
+               "upward\n";
+  for (std::size_t s = 0; s < table.scatterShooting.size(); ++s)
+  {
+    std::string row =
+        std::format("  Shooting {:>3g}:", table.scatterShooting[s]);
+    for (const float point : table.acrossPoints(table.scatterShooting[s]))
+    {
+      row += std::format(" {:+6.2f}", point * DEGREES_PER_RADIAN);
+    }
+    row += "  |";
+    for (const float point : table.upPoints(table.scatterShooting[s]))
+    {
+      row += std::format(" {:+6.2f}", point * DEGREES_PER_RADIAN);
+    }
+    std::cout << row << '\n';
+  }
+}
+
+int runLegSweep(const StatsConfig& config,
+                const std::vector<std::unique_ptr<Drill>>& drills,
+                const GameXgOptions& options)
+{
+  Drill* blockDrill = gameXgLegDrill(drills);
+  if (blockDrill == nullptr)
+  {
+    std::cerr << "game-xg: no Shot block drill\n";
+    return 2;
+  }
+  GameXgLegSweepSpec spec;
+  spec.repeats = options.base.repeats;
+  spec.firstSeed = options.base.firstSeed;
+  GameXgLegSweep sweep(*blockDrill, config, spec);
+  std::cout << std::format("Game xG, legs layer: {} shots a cell\n",
+                           spec.repeats);
+  while (sweep.work(1.0))
+  {
+    std::cerr << std::format("  {} / {} runs\r", sweep.runsDone(),
+                             sweep.runsQueued());
+  }
+  const GameXgLegTable& table = sweep.table();
+  std::cout << std::format("Done in {:.1f} s: {} runs.\n", sweep.seconds(),
+                           sweep.runsDone());
+  if (options.print)
+  {
+    printLegTable(table);
+  }
+  if (options.save)
+  {
+    const std::filesystem::path path = options.out.empty()
+                                           ? GameXg::legFile()
+                                           : std::filesystem::path(options.out);
+    std::string problem;
+    if (!table.save(path, problem))
+    {
+      std::cerr << "game-xg: " << problem << '\n';
+      return 1;
+    }
+    std::cout << "Saved " << path.string() << '\n';
+    GameXg::reload();
+  }
+  return 0;
+}
+}  // namespace
+
 int runGameXgCommand(const StatsConfig& config,
                      const std::vector<std::string>& arguments)
 {
@@ -916,6 +1444,10 @@ int runGameXgCommand(const StatsConfig& config,
   }
   const bool save = options->save;
   const bool print = options->print;
+  if (options->legs)
+  {
+    return runLegSweep(config, drills, *options);
+  }
   for (const GoalKind goal : options->goals)
   {
     GameXgSweepSpec spec = options->base;

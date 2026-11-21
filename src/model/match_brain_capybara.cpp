@@ -4065,7 +4065,479 @@ float MatchEngine::gameShotXGCapybara(const MatchPlayer& shooter,
                                   keeper->goalkeeping * RATING_SCALE);
     }
   }
-  return chance;
+  // And the bodies in the way (layer 3).
+  return chance * bodiesPassCapybara(shooter, from);
+}
+
+namespace
+{
+/** Half (an even split, a middle). */
+constexpr float HALF_SHARE = 0.5F;
+/** As strikeShotBodyBinturong launches a driven shot: rounds settling the
+ * lift against the pace, the least of the pace kept over the ground, and
+ * how far past his launch speed counts as beyond his power. */
+constexpr int LAUNCH_ROUNDS = 4;
+constexpr float QUARTER_SHARE = 0.25F;
+constexpr float LAUNCH_SLACK = 1.01F;
+
+/** One line of the aim cone: where in the goal (m across from its middle,
+ * pitch y; m up) and its weight. */
+struct ConeLine
+{
+  float aimY = 0.0F;
+  float aimZ = 0.0F;
+  float weight = 0.0F;
+  /** Its height's flight (an index into the flights). */
+  std::size_t flight = 0;
+};
+
+/** The ball's height and time along its flight, every `step` metres. */
+struct FlightProfile
+{
+  float step = 1.0F;
+  std::vector<float> height;
+  std::vector<float> seconds;
+  [[nodiscard]] std::pair<float, float> at(float along) const
+  {
+    if (height.empty())
+    {
+      return {0.0F, 0.0F};
+    }
+    const float position =
+        std::clamp(along / step, 0.0F, static_cast<float>(height.size() - 1));
+    const auto low = std::min(static_cast<std::size_t>(position),
+                              height.size() > 1 ? height.size() - 2 : 0);
+    const std::size_t high = std::min(low + 1, height.size() - 1);
+    const float share = position - static_cast<float>(low);
+    return {height[low] + ((height[high] - height[low]) * share),
+            seconds[low] + ((seconds[high] - seconds[low]) * share)};
+  }
+};
+
+/** What the aim cone is built from: the goal (its middle's y, its
+ * half-width), the keeper's offset from its middle and the shooter's
+ * Shooting (0-1). */
+struct ConeSetup
+{
+  float middle = 0.0F;
+  float halfGoal = 0.0F;
+  float keeperOffset = 0.0F;
+  float shooting = 0.0F;
+};
+
+/** The middle of the `index`th of `samples` equal shares of 0-1. */
+float sampleSpot(int index, int samples)
+{
+  return (static_cast<float>(index) + HALF_SHARE) / static_cast<float>(samples);
+}
+
+/** The aim heights the cone samples (m), evenly over the aim's range. */
+std::vector<float> coneHeights(int samples)
+{
+  using Sh = MatchTuning::Shooting;
+  std::vector<float> heights;
+  heights.reserve(static_cast<std::size_t>(samples));
+  for (int h = 0; h < samples; ++h)
+  {
+    heights.push_back(Sh::AIM_MIN_HEIGHT_METRES +
+                      ((Sh::AIM_MAX_HEIGHT_METRES - Sh::AIM_MIN_HEIGHT_METRES) *
+                       sampleSpot(h, samples)));
+  }
+  return heights;
+}
+
+/** The aim cone, as chooseShotAimCapybara picks (open play, a foot): the
+ * side away from the keeper (a coin flip if he's central, or on the
+ * near-side chance), inset from the post; or a power shot near him; at
+ * each of `heights`. Each choice's range sampled evenly. */
+std::vector<ConeLine> aimCone(const ConeSetup& setup,
+                              const std::vector<float>& heights)
+{
+  using Sh = MatchTuning::Shooting;
+  const int samples = MatchTuning::Decision::BLOCK_CONE_SAMPLES;
+  const float farShare =
+      std::abs(setup.keeperOffset) < Sh::KEEPER_CENTRED_METRES
+          ? HALF_SHARE
+          : 1.0F - (HALF_SHARE * Sh::NEAR_SIDE_AIM_CHANCE);
+  const float farSide = setup.keeperOffset > 0.0F ? -1.0F : 1.0F;
+  const float powerShare =
+      std::clamp(Sh::POWER_SHOT_BASE_CHANCE -
+                     (setup.shooting * Sh::POWER_SHOT_SKILL_REDUCTION),
+                 0.0F, 1.0F);
+  const float insetFrom = Sh::AIM_POST_INSET_BASE +
+                          ((1.0F - setup.shooting) * Sh::AIM_POST_INSET_SKILL);
+  const float w =
+      1.0F / static_cast<float>(samples * static_cast<int>(heights.size()));
+  std::vector<ConeLine> cone;
+  constexpr std::size_t AIM_CHOICES = 3;  // far side, near side, power
+  cone.reserve(static_cast<std::size_t>(samples) * heights.size() *
+               AIM_CHOICES);
+  for (int i = 0; i < samples; ++i)
+  {
+    const float spot = sampleSpot(i, samples);
+    const float across = std::max(
+        0.0F, setup.halfGoal - (insetFrom + (Sh::AIM_INSET_SPREAD * spot)));
+    const float powerAcross =
+        setup.keeperOffset +
+        (Sh::POWER_SHOT_WIDTH_METRES * ((2.0F * spot) - 1.0F));
+    for (std::size_t h = 0; h < heights.size(); ++h)
+    {
+      cone.push_back({.aimY = setup.middle + (farSide * across),
+                      .aimZ = heights[h],
+                      .weight = (1.0F - powerShare) * farShare * w,
+                      .flight = h});
+      cone.push_back({.aimY = setup.middle - (farSide * across),
+                      .aimZ = heights[h],
+                      .weight = (1.0F - powerShare) * (1.0F - farShare) * w,
+                      .flight = h});
+      cone.push_back({.aimY = setup.middle + powerAcross,
+                      .aimZ = heights[h],
+                      .weight = powerShare * w,
+                      .flight = h});
+    }
+  }
+  return cone;
+}
+
+/** A body that may be in the way, as the estimate reads him: where he is
+ * and how he moves, his hip and head heights, which leg-table kind he is
+ * and his blocking rating (1-100). */
+struct BlockBody
+{
+  PitchPoint position;
+  Vector2F velocity{};
+  float hip = 0.0F;
+  float top = 0.0F;
+  GameXgLegTable::Kind kind = GameXgLegTable::Kind::OPPONENT_STANDING;
+  float rating = 0.0F;
+};
+
+/** One line a ball can take: along `heading` (unit) to the goal line
+ * `length` m off, its flight raised `rise` m a metre. */
+struct ShotLine
+{
+  Vector2F heading{};
+  float length = 0.0F;
+  float rise = 0.0F;
+};
+
+/** A shot's lines against the bodies in its way (game xG layer 3). */
+struct BlockScene
+{
+  PitchPoint from;
+  float goalX = 0.0F;
+  float middle = 0.0F;
+  float halfGoal = 0.0F;
+  const GameXgLegTable* legs = nullptr;
+  std::vector<BlockBody> bodies;
+
+  /** A torso met off-centre (`offLeft` m to the left of the line, at
+   * `at`): the ball glances away, turned less the nearer the edge (the
+   * torso's spring-back across its surface, its along-kept along it); true
+   * if it then still crosses between the posts. */
+  [[nodiscard]] bool glancesIn(Vector2F heading, PitchPoint at,
+                               float offLeft) const
+  {
+    const auto torso = static_cast<std::size_t>(ShotBodyPart::TORSO);
+    const float ballRadius = MatchTuning::Units::BALL_RADIUS_METRES;
+    const float torsoReach = MatchTuning::Body::RADIUS_METRES + ballRadius;
+    const float sine = std::min(std::abs(offLeft) / torsoReach, 1.0F);
+    const float cosine = std::sqrt(1.0F - (sine * sine));
+    const float into = MatchTuning::ShotBlock::SPRING_BACK[torso] * cosine;
+    const float onward = MatchTuning::ShotBlock::ALONG_KEPT[torso] * sine;
+    const float turned = std::atan2(into, onward) +
+                         (std::numbers::pi_v<float> / 2.0F) - std::asin(sine);
+    // The ball passes the side of him it is off: turned that way.
+    const float turn = (offLeft > 0.0F ? -1.0F : 1.0F) * turned;
+    const Vector2F way{
+        .x = (heading.x * std::cos(turn)) - (heading.y * std::sin(turn)),
+        .y = (heading.x * std::sin(turn)) + (heading.y * std::cos(turn))};
+    if ((goalX - at.x) * way.x <= EPSILON)
+    {
+      return false;
+    }
+    const float crossing = at.y + (way.y * (goalX - at.x) / way.x);
+    return std::abs(crossing - middle) < halfGoal - ballRadius;
+  }
+
+  /** The chance one body lets a ball along `heading` (unit; to the goal
+   * line `length` m off, its flight raised `rise` m a metre) past: where
+   * he'll be as it gets level with him (carried on at his speed); his
+   * torso (hip to the top of his head) stops it unless it glances in, his
+   * leg-space by the leg table. */
+  [[nodiscard]] float passesBody(const BlockBody& body,
+                                 const FlightProfile& flight,
+                                 const ShotLine& line) const
+  {
+    const Vector2F heading = line.heading;
+    const float length = line.length;
+    const float rise = line.rise;
+    const float ballRadius = MatchTuning::Units::BALL_RADIUS_METRES;
+    const float alongNow = ((body.position.x - from.x) * heading.x) +
+                           ((body.position.y - from.y) * heading.y);
+    if (alongNow <= 0.0F || alongNow >= length)
+    {
+      return 1.0F;
+    }
+    const float arrive = flight.at(alongNow).second;
+    const PitchPoint then{body.position.x + (body.velocity.x * arrive),
+                          body.position.y + (body.velocity.y * arrive)};
+    const float along =
+        ((then.x - from.x) * heading.x) + ((then.y - from.y) * heading.y);
+    if (along <= 0.0F || along >= length)
+    {
+      return 1.0F;
+    }
+    const float offLeft =
+        ((then.x - from.x) * -heading.y) + ((then.y - from.y) * heading.x);
+    const auto heightAt = [&](float out)
+    { return std::max(flight.at(out).first + (rise * out), ballRadius); };
+    const float height = heightAt(along);
+    if (height < body.hip - ballRadius)
+    {
+      return 1.0F - std::clamp(legs->value(body.kind, body.rating, along,
+                                           std::abs(offLeft)),
+                               0.0F, 1.0F);
+    }
+    // Through his torso's column the ball is lowest at its front (rising)
+    // or its back (falling): over his head only if it clears both.
+    const float torsoReach = MatchTuning::Body::RADIUS_METRES + ballRadius;
+    if (std::abs(offLeft) > torsoReach)
+    {
+      return 1.0F;
+    }
+    const float depth =
+        std::sqrt((torsoReach * torsoReach) - (offLeft * offLeft));
+    const float lowest = std::min(heightAt(std::max(along - depth, 0.0F)),
+                                  heightAt(std::min(along + depth, length)));
+    const bool torso = lowest <= body.top + ballRadius;
+    return torso && !glancesIn(heading,
+                               PitchPoint{from.x + (heading.x * along),
+                                          from.y + (heading.y * along)},
+                               offLeft)
+               ? 0.0F
+               : 1.0F;
+  }
+
+  /** The chance a ball along that line gets past every body. */
+  [[nodiscard]] float throughLine(const FlightProfile& flight,
+                                  const ShotLine& line) const
+  {
+    float through = 1.0F;
+    for (const BlockBody& body : bodies)
+    {
+      through *= passesBody(body, flight, line);
+      if (through <= 0.0F)
+      {
+        break;
+      }
+    }
+    return through;
+  }
+
+  /** One aim line's share of shots past the bodies: the shooter misses it
+   * by his error (equal shares over the ground, turning the line, and
+   * upward, raising its flight by the distance times the angle). */
+  template <std::size_t ACROSS, std::size_t UP>
+  [[nodiscard]] float throughAim(const ConeLine& line,
+                                 const FlightProfile& flight,
+                                 const std::array<float, ACROSS>& acrossErrors,
+                                 const std::array<float, UP>& upErrors) const
+  {
+    const PitchPoint aim{goalX, line.aimY};
+    const float aimLength = distance(from, aim);
+    if (aimLength <= EPSILON)
+    {
+      return 1.0F;
+    }
+    const Vector2F aimHeading{.x = (aim.x - from.x) / aimLength,
+                              .y = (aim.y - from.y) / aimLength};
+    float passed = 0.0F;
+    float lines = 0.0F;
+    for (const float acrossError : acrossErrors)
+    {
+      const Vector2F heading{.x = (aimHeading.x * std::cos(acrossError)) -
+                                  (aimHeading.y * std::sin(acrossError)),
+                             .y = (aimHeading.x * std::sin(acrossError)) +
+                                  (aimHeading.y * std::cos(acrossError))};
+      // To the goal line (past it, nobody's in the way).
+      if ((goalX - from.x) * heading.x <= EPSILON)
+      {
+        continue;
+      }
+      const float length = (goalX - from.x) / heading.x;
+      for (const float upError : upErrors)
+      {
+        passed += throughLine(
+            flight,
+            {.heading = heading, .length = length, .rise = std::tan(upError)});
+        lines += 1.0F;
+      }
+    }
+    return lines > 0.0F ? passed / lines : 1.0F;
+  }
+};
+}  // namespace
+
+std::pair<float, float> MatchEngine::drivenLaunchCapybara(float distanceMetres,
+                                                          float speed,
+                                                          float startHeight,
+                                                          float arrivalHeight,
+                                                          BallSpin spin) const
+{
+  // As strikeShotBodyBinturong launches a driven shot: the lift comes off
+  // the pace over the ground; too far for his power, the full-power loft.
+  constexpr float RADIANS_PER_DEGREE = std::numbers::pi_v<float> / 180.0F;
+  float ground = speed;
+  float lift = 0.0F;
+  for (int round = 0; round < LAUNCH_ROUNDS; ++round)
+  {
+    lift = loftVerticalSpeed(distanceMetres, ground, startHeight, arrivalHeight,
+                             spin);
+    ground = std::sqrt(std::max((speed * speed) - (lift * lift),
+                                QUARTER_SHARE * speed * speed));
+  }
+  lift = loftVerticalSpeed(distanceMetres, ground, startHeight, arrivalHeight,
+                           spin);
+  if (std::hypot(ground, lift) > speed * LAUNCH_SLACK ||
+      lift > speed * std::sin(MatchTuning::Shooting::MAX_LAUNCH_DEGREES *
+                              RADIANS_PER_DEGREE))
+  {
+    return fullPowerLoftBinturong(distanceMetres, speed, startHeight,
+                                  arrivalHeight, spin);
+  }
+  return {ground, lift};
+}
+
+float MatchEngine::bodiesPassCapybara(const MatchPlayer& shooter,
+                                      PitchPoint from) const
+{
+  using D = MatchTuning::Decision;
+  using Sh = MatchTuning::Shooting;
+  const GameXgLegTable* legChance = GameXg::legs();
+  if ((legChance == nullptr) || !pitch.goal.present())
+  {
+    return 1.0F;
+  }
+  constexpr float RATING_SCALE = 100.0F;
+  constexpr float REV = 2.0F * std::numbers::pi_v<float>;
+  constexpr std::size_t TEAMMATE_KINDS = 3;
+  const float ballRadius = MatchTuning::Units::BALL_RADIUS_METRES;
+  // The ball leaves from where it is, not his middle: with it at his feet,
+  // as far from any spot he might shoot from as it is from him now.
+  if (getPossessionAttachment() == shooter.player)
+  {
+    from = PitchPoint{from.x + (ball.position.x - shooter.position.x),
+                      from.y + (ball.position.y - shooter.position.y)};
+  }
+  BlockScene scene{.from = from,
+                   .goalX = pitch.atX(shooter.isHomeTeam ? 1.0F : 0.0F),
+                   .middle = pitch.atY(MatchTuning::Pitch::CENTRE),
+                   .halfGoal = pitch.goal.halfWidth,
+                   .legs = legChance,
+                   .bodies = {}};
+
+  // The bodies that may be in the way: all but the shooter and the
+  // opponents' keeper; each as the leg table reads him (whose, how he
+  // moves, his Defending and Tackling).
+  const MatchPlayer* keeper = opponentKeeperCapybara(shooter.isHomeTeam);
+  for (const MatchPlayer& body : players)
+  {
+    if (&body == &shooter || !active(body) || &body == keeper)
+    {
+      continue;
+    }
+    const float moving = std::hypot(body.velocity.x, body.velocity.y);
+    // Standing, sidestepping or sprinting (the table's first three kinds).
+    std::size_t kind = 0;
+    if (moving >= D::BLOCK_SPRINT_SPEED)
+    {
+      kind = 2;
+    }
+    else if (moving >= D::BLOCK_STANDING_SPEED)
+    {
+      kind = 1;
+    }
+    if (body.isHomeTeam == shooter.isHomeTeam)
+    {
+      kind += TEAMMATE_KINDS;
+    }
+    scene.bodies.push_back(
+        {.position = body.position,
+         .velocity = body.velocity,
+         .hip = bodyLines(body).chest,
+         .top = body.heightMetres,
+         .kind = static_cast<GameXgLegTable::Kind>(kind),
+         .rating = RATING_SCALE * HALF_SHARE *
+                   (body.defending + body.derivedStat(DerivedStat::TACKLING))});
+  }
+  if (scene.bodies.empty())
+  {
+    return 1.0F;
+  }
+
+  const std::vector<float> heights = coneHeights(D::BLOCK_CONE_SAMPLES);
+  const std::vector<ConeLine> cone = aimCone(
+      {.middle = scene.middle,
+       .halfGoal = scene.halfGoal,
+       .keeperOffset =
+           (keeper != nullptr) ? keeper->position.y - scene.middle : 0.0F,
+       .shooting = shooter.shooting},
+      heights);
+
+  // The ball's flight for each height: a driven shot at his usual share of
+  // his power (as strikeShotBodyBinturong), lofted to reach that height at
+  // the goal's middle, flown with its topspin.
+  const float speed = shotPowerBinturong(shooter) * Sh::DEFAULT_POWER_SHARE;
+  const BallSpin topspin{.side = 0.0F, .top = Sh::DRIVEN_TOPSPIN_REVS * REV};
+  const float reach = distance(from, PitchPoint{scene.goalX, scene.middle});
+  constexpr float DT = MatchTuning::Timing::FIXED_STEP_SECONDS /
+                       static_cast<float>(MatchTuning::Timing::BALL_SUBSTEPS);
+  std::vector<FlightProfile> flights;
+  flights.reserve(heights.size());
+  for (const float aimZ : heights)
+  {
+    const auto [ground, lift] =
+        drivenLaunchCapybara(reach, speed, ballRadius, aimZ, topspin);
+    FlightState flight{.horizontalSpeed = ground,
+                       .verticalSpeed = lift,
+                       .height = ballRadius,
+                       .bounced = false,
+                       .spin = topspin};
+    FlightProfile& profile = flights.emplace_back();
+    profile.step = ground * DT;
+    profile.height.push_back(flight.height);
+    profile.seconds.push_back(0.0F);
+    float time = 0.0F;
+    float along = 0.0F;
+    while (along < reach + 1.0F && flight.horizontalSpeed > 0.0F &&
+           time < MatchTuning::Ball::MAX_FLIGHT_SECONDS)
+    {
+      along += stepFlight(flight, DT);
+      time += DT;
+      // Resampled to even steps along (the ball slows with drag).
+      while (static_cast<float>(profile.height.size()) * profile.step <= along)
+      {
+        profile.height.push_back(flight.height);
+        profile.seconds.push_back(time);
+      }
+    }
+  }
+
+  // Each aim line, spread by the shooter's error (the leg table's, from the
+  // same drill: a still ball, unpressured), weighted as the cone has it.
+  const float shootingRating = RATING_SCALE * shooter.shooting;
+  const auto acrossErrors = legChance->acrossPoints(shootingRating);
+  const auto upErrors = legChance->upPoints(shootingRating);
+  float passed = 0.0F;
+  float total = 0.0F;
+  for (const ConeLine& line : cone)
+  {
+    passed += line.weight * scene.throughAim(line, flights[line.flight],
+                                             acrossErrors, upErrors);
+    total += line.weight;
+  }
+  return total > 0.0F ? passed / total : 1.0F;
 }
 
 bool MatchEngine::goalOpenCapybara(const MatchPlayer& shooter) const

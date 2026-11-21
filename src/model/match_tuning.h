@@ -1510,6 +1510,16 @@ struct MatchTuning final
     static constexpr float GOAL_OPEN_SHARE_MARGIN = 0.15F;
     static constexpr float KEEPER_COVER_METRES = 1.2F;
     static constexpr float KEEPER_RUSH_SPEED = 2.0F;
+    /** Game xG layer 3 (bodies in the way), my placeholders: a body slower
+     * than BLOCK_STANDING_SPEED (m/s) reads the leg-chance table as
+     * standing, from BLOCK_SPRINT_SPEED as sprinting, between as
+     * sidestepping (the Shot block drill's three: still, 2.3 and 7.7 m/s;
+     * these are about half-way between). The aim cone: each of Capybara's
+     * aim choices sampled at BLOCK_CONE_SAMPLES points across its range
+     * (inset, the power shot's spread, height). */
+    static constexpr float BLOCK_STANDING_SPEED = 1.2F;
+    static constexpr float BLOCK_SPRINT_SPEED = 5.0F;
+    static constexpr int BLOCK_CONE_SAMPLES = 3;
     /** Time on the ball before a carrier re-decides while dribbling. */
     static constexpr float MIN_DRIBBLE_TIME = 0.5F;
     static constexpr float MAX_DRIBBLE_TIME = 1.1F;

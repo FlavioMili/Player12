@@ -166,6 +166,13 @@ struct MatchSample
   int shot_leg_blocks = 0;
   int shot_reaction_blocks = 0;
   int shot_deflections = 0;
+  /** Game xG plan, layer 3 check (MatchStats::blockBandShots): Capybara
+   * open-play shots by predicted band, the predicted shares summed, and
+   * those first met by an opponent's block or a team-mate. */
+  std::array<int, MatchStats::BLOCK_BANDS> block_band_shots{};
+  std::array<double, MatchStats::BLOCK_BANDS> block_band_predicted{};
+  std::array<int, MatchStats::BLOCK_BANDS> block_band_blocked{};
+  std::array<int, MatchStats::BLOCK_BANDS> block_band_team_mate{};
   /** Shots meeting the defending keeper's body in his area (goalkeeper plan
    * step 1). */
   int keeper_body_hits = 0;

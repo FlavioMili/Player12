@@ -827,6 +827,20 @@ void MatchEngine::finishShotDeflectionBinturong(MatchPlayer& player,
 {
   observePossession(PossessionObservation::FINISH_SHOT_DEFLECTION,
                     PossessionId::BINTURONG);
+  // The game xG layer 3 check: what the first body this shot met did.
+  if (ball.possession.shotBlockBand >= 0)
+  {
+    const auto band = static_cast<std::size_t>(ball.possession.shotBlockBand);
+    ball.possession.shotBlockBand = -1;
+    if (player.isHomeTeam == ball.possession.shotByHome)
+    {
+      ++stats.blockBandTeamMate.at(band);
+    }
+    else if (!deflection)
+    {
+      ++stats.blockBandBlocked.at(band);
+    }
+  }
   if (offBody && deflection)
   {
     ++stats.shotDeflections;

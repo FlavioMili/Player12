@@ -8,6 +8,7 @@
 
 #pragma once
 
+#include <array>
 #include <cstdint>
 #include <filesystem>
 #include <optional>
@@ -118,6 +119,88 @@ class GameXgTable
                                    float shootingRating) const;
 };
 
+/**
+ * Layer 3's leg chance (game xG plan, step 3): the chance a body stops a shot
+ * whose line passes through its leg-space (below his hip, within his leg's
+ * reach of his centre), measured in the Shot block drill. A line through his
+ * torso is worked out (a certain block bar a narrow deflection); this is the
+ * part the drill has to measure: whether his stride, or a leg put out, gets
+ * in the way.
+ */
+class GameXgLegTable
+{
+ public:
+  /** How the body moves (the drill's three), and whose it is: an opponent
+   * puts a leg out once he has reacted, a team-mate never does (only his
+   * stride is in the way). */
+  enum class Kind : std::uint8_t
+  {
+    OPPONENT_STANDING,
+    OPPONENT_SIDESTEPPING,
+    OPPONENT_SPRINTING,
+    TEAMMATE_STANDING,
+    TEAMMATE_SIDESTEPPING,
+    TEAMMATE_SPRINTING,
+    COUNT
+  };
+  static constexpr std::size_t KINDS = static_cast<std::size_t>(Kind::COUNT);
+  [[nodiscard]] static const char* kindName(Kind kind);
+
+  std::string measured;
+  int repeats = 0;
+  std::uint32_t firstSeed = 1;
+  /** Blocking ratings (Defending and Tackling together, 1-100), ascending. */
+  std::vector<float> ratings;
+  /** Distances from the shooter along the line (m), ascending. */
+  std::vector<float> distances;
+  /** How far the line passes from his centre (m), ascending. */
+  std::vector<float> offsets;
+  /** Chance per kind, then rating, then distance, then offset. */
+  std::vector<float> values;
+  /** Measured: shots that stayed in his leg-space, and of those, blocked by
+   * a leg, in the same order as `values`. */
+  std::vector<int> shots;
+  std::vector<int> blocks;
+
+  /** The shooter's error, measured off the same drill (a still ball, no
+   * pressure: the least he misses by): for each Shooting (ascending), equal
+   * shares of his shots as angles off the line he meant (radians), over the
+   * ground (+ to his left; the engine's error there is unsigned, so the
+   * points are mirrored) and upward (+ higher). The offsets above are from
+   * the ball's actual path, so the estimate spreads each aim line by
+   * these. */
+  std::vector<float> scatterShooting;
+  /** SCATTER_ACROSS_POINTS per Shooting, then SCATTER_UP_POINTS per
+   * Shooting. */
+  std::vector<float> scatterAcross;
+  std::vector<float> scatterUp;
+  static constexpr std::size_t SCATTER_ACROSS_POINTS = 5;
+  static constexpr std::size_t SCATTER_UP_POINTS = 3;
+  /** The error points for a Shooting (interpolated between those
+   * measured); empty arrays if none were. */
+  [[nodiscard]] std::array<float, SCATTER_ACROSS_POINTS> acrossPoints(
+      float shooting) const;
+  [[nodiscard]] std::array<float, SCATTER_UP_POINTS> upPoints(
+      float shooting) const;
+
+  [[nodiscard]] bool empty() const { return values.empty(); }
+  /** The chance for a kind at a rating, distance and offset, interpolated;
+   * outside the grid, the value at its edge (0 beyond the furthest offset,
+   * out of his reach). */
+  [[nodiscard]] float value(Kind kind, float rating, float distanceMetres,
+                            float offsetMetres) const;
+  [[nodiscard]] std::size_t index(std::size_t kind, std::size_t rating,
+                                  std::size_t distance,
+                                  std::size_t offset) const;
+
+  [[nodiscard]] std::string toJson() const;
+  [[nodiscard]] static std::optional<GameXgLegTable> fromJson(
+      const std::string& text, std::string& error);
+  bool save(const std::filesystem::path& path, std::string& error) const;
+  [[nodiscard]] static std::optional<GameXgLegTable> load(
+      const std::filesystem::path& path, std::string& error);
+};
+
 namespace GameXg
 {
 /** Where the tables live: assets/config/game_xg/ (the source checkout in
@@ -130,6 +213,11 @@ namespace GameXg
 [[nodiscard]] const GameXgTable* table(std::string_view layer, GoalKind goal);
 /** Forgets the loaded tables (after a sweep saves a new one). */
 void reload();
+/** The leg-chance table's file (one for every goal: the drill's shot is the
+ * same whatever goal it's at): "legs.json". */
+[[nodiscard]] std::filesystem::path legFile();
+/** The saved leg-chance table, loaded once and kept (null if none). */
+[[nodiscard]] const GameXgLegTable* legs();
 
 /** The share (0-1) of a goal's mouth, as seen from `from`, that a keeper at
  * `keeper` leaves uncovered: his cover is `coverMetres` either side of him,

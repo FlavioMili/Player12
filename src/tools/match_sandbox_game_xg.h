@@ -226,6 +226,135 @@ class GameXgSweep
   bool restored = false;
 };
 
+/**
+ * Game xG layer 3's leg chance (game xG plan, step 3): the Shot block drill
+ * with one body near the shot's line, over his distance from the shooter,
+ * how far the line passes from him, his blocking rating (Defending and
+ * Tackling together), how he moves and whose he is. The chance a shot
+ * through his leg-space meets a leg: leg meetings over the runs whose ball
+ * didn't meet his torso or head. The offset is how far his path (where he
+ * would have been had he not reacted) ran from the ball's actual path, not
+ * from the line aimed along: aims run over the offsets and each run counts
+ * at the offset nearest its measured one. The shooter's own error is
+ * measured apart (the scatter phase: Shooting levels, the defender well off
+ * the line) for the estimate to spread its aim lines by. The shooter
+ * stands GAP metres further out than him, aiming low, so the ball is low
+ * as it reaches him. Team-mates (no leg put out, so no rating) are measured at
+ * the middle rating and stored at every one.
+ */
+struct GameXgLegSweepSpec
+{
+  std::vector<float> distances{1.0F, 2.0F,  3.0F,  4.0F,  5.0F,  6.0F,
+                               8.0F, 10.0F, 12.0F, 15.0F, 20.0F, 25.0F};
+  std::vector<float> offsets{0.0F, 0.1F, 0.2F, 0.3F, 0.4F, 0.5F, 0.6F, 0.7F,
+                             0.8F, 0.9F, 1.0F, 1.1F, 1.2F, 1.3F, 1.4F, 1.5F};
+  std::vector<float> ratings{1.0F, 50.0F, 100.0F};
+  int repeats = 60;
+  std::uint32_t firstSeed = 1;
+  /** The shooter's distance behind him (m), the aim's height (m), the
+   * shot's power share and Shooting: my choices (see above). */
+  float gap = 3.0F;
+  float aimHeight = 0.2F;
+  float power = 0.9F;
+  /** A sprinter's run-up (m): long enough to be at full speed as it is
+   * struck, so his speed then carries him on (a sidestepper is at his pace
+   * within the drill's own). */
+  float sprintRunUp = 25.0F;
+  /** Fewest shots a cell's chance rests on: a thinner one borrows its
+   * neighbouring distances' (my choice). */
+  int minimumShots = 10;
+  float shooting = 50.0F;
+  /** The scatter phase: Shooting levels, shots at each, the shooter's
+   * distance out from the defender (m), the defender's distance off the
+   * line (m, out of the way) and the aim's height (m): my choices. */
+  std::vector<float> scatterShooting{1.0F, 50.0F, 100.0F};
+  int scatterRepeats = 300;
+  float scatterDistance = 10.0F;
+  float scatterOffLine = 4.0F;
+  float scatterAimHeight = 1.0F;
+};
+
+class GameXgLegSweep
+{
+ public:
+  GameXgLegSweep(Drill& blockDrill, const StatsConfig& config,
+                 GameXgLegSweepSpec spec);
+  ~GameXgLegSweep();
+  GameXgLegSweep(const GameXgLegSweep&) = delete;
+  GameXgLegSweep& operator=(const GameXgLegSweep&) = delete;
+
+  /** Runs for about `budgetSeconds`; false once done. */
+  bool work(double budgetSeconds);
+  void stop();
+  [[nodiscard]] bool done() const { return finishedAll; }
+  [[nodiscard]] bool stopped() const { return halted; }
+  [[nodiscard]] long long runsDone() const { return finished; }
+  [[nodiscard]] long long runsQueued() const;
+  [[nodiscard]] double seconds() const { return elapsed; }
+  [[nodiscard]] const GameXgLegTable& table() const { return result; }
+
+ private:
+  /** One cell of runs: a kind, a rating index, a distance and the aimed
+   * offset's index; or (scatter) a Shooting level's index in `rating`. */
+  struct Cell
+  {
+    std::size_t kind = 0;
+    std::size_t rating = 0;
+    std::size_t distance = 0;
+    std::size_t offset = 0;
+    bool scatter = false;
+  };
+  void runOne();
+  void finish();
+  void restore();
+  [[nodiscard]] int repeatsOf(const Cell& cell) const;
+  /** The drill's settings for a run of `cell`. */
+  [[nodiscard]] std::map<std::string, float> runValues(const Cell& cell) const;
+  /** The offset index nearest a measured gap (m); none off the grid. */
+  [[nodiscard]] std::optional<std::size_t> offsetBin(double gap) const;
+  /** Counts a run's result (his height in cm, for his hip). */
+  void tallyRun(const Cell& cell, const std::vector<DrillMetric>& metrics,
+                float heightCentimetres);
+  /** A measured cell's chance, a thin one borrowing nearby distances'. */
+  [[nodiscard]] float pooledChance(std::size_t kind, std::size_t rating,
+                                   std::size_t distance,
+                                   std::size_t offset) const;
+  /** The table's shooter's-error points from the scatter runs. */
+  void fillScatter(GameXgLegTable& table) const;
+  [[nodiscard]] std::size_t binIndex(std::size_t kind, std::size_t rating,
+                                     std::size_t distance,
+                                     std::size_t offset) const;
+
+  Drill& drill;
+  const StatsConfig& config;
+  GameXgLegSweepSpec setup;
+  std::vector<Cell> cells;
+  /** Runs through his leg-space and leg meetings, by kind, rating, distance
+   * and measured offset (the table's order). */
+  std::vector<int> binShots;
+  std::vector<int> binBlocks;
+  /** The shooter's errors (rad) per Shooting level: over the ground
+   * (unsigned) and upward (+ higher). */
+  std::vector<std::vector<float>> acrossErrors;
+  std::vector<std::vector<float>> upErrors;
+  /** Runs started before the current cell (for seeds). */
+  std::size_t runsBefore = 0;
+  std::size_t nextCell = 0;
+  int nextRepeat = 0;
+  long long finished = 0;
+  double elapsed = 0.0;
+  bool finishedAll = false;
+  bool halted = false;
+  GameXgLegTable result;
+  std::map<std::string, float> saved;
+  std::uint32_t savedSeed = 1;
+  bool restored = false;
+};
+
+/** The drill the leg sweep measures with (Shot block); nullptr if absent. */
+[[nodiscard]] Drill* gameXgLegDrill(
+    const std::vector<std::unique_ptr<Drill>>& drills);
+
 /** A layer's default sweep (GameXgTable::EMPTY_GOAL or KEEPER). */
 [[nodiscard]] GameXgSweepSpec gameXgSpec(std::string_view layer);
 

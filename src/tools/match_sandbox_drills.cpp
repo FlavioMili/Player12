@@ -6168,6 +6168,12 @@ class ShotBlockDrill final : public Drill
         "the shooter.\nSprinting: across the line, facing his run.");
     movement.choices = {"Standing", "Sidestepping", "Sprinting"};
     list.push_back(movement);
+    DrillParameter body = setting(
+        "Whose", &whose, {.min = 0.0F, .max = 1.0F}, true,
+        "Opponent: puts a leg across the line once he has reacted.\nTeam-mate: "
+        "never does; only his body and his stride are in the way.");
+    body.choices = {"Opponent", "Team-mate"};
+    list.push_back(body);
     list.push_back(setting(
         "Run-up (m)", &runUp, {.min = RUN_UP_MIN, .max = RUN_UP_MAX}, false,
         "Moving: how far back along his run he starts. The shot "
@@ -6239,7 +6245,7 @@ class ShotBlockDrill final : public Drill
   {
     DrillPlayerSpec defender{.name = "Defender",
                              .role = PlayerRole::CB,
-                             .homeTeam = false,
+                             .homeTeam = whose > CHOICE_MIDPOINT,
                              .stats = {{"Defending", defending}},
                              .height = static_cast<int>(height),
                              .derived = {}};
@@ -6265,6 +6271,11 @@ class ShotBlockDrill final : public Drill
 
   void begin(MatchEngine& engine, const std::vector<PlayerID>& ids) override
   {
+    // A runner flat out whichever side he is on (his brain would have a
+    // team-mate of the shooter jog in support).
+    MatchEngine::DrillRules rules = engine.getDrillRules();
+    rules.chaseEffort = true;
+    engine.setDrillRules(rules);
     shooterId = ids[0];
     defenderId = ids[1];
     spot = at(std::clamp(1.0F - (line / LENGTH), PITCH_MIDPOINT_SHARE,
@@ -6286,8 +6297,18 @@ class ShotBlockDrill final : public Drill
     MatchScenario scenario;
     scenario.players.push_back(
         {.playerId = shooterId, .position = spot, .makingRun = false});
-    scenario.players.push_back(
-        {.playerId = defenderId, .position = start, .makingRun = false});
+    // Already facing as he will (the shooter; a sprinter his run), not his
+    // side's default: a body still turning as the shot comes stands side-on
+    // to it, his feet along its line.
+    const Vector2F toShooterAtStart = directionBetween(start, spot);
+    const float startFacing =
+        moving > RUN_CHOICE_THRESHOLD
+            ? facingAngleOf(std::atan2(left.y, left.x))
+            : facingAngleOf(std::atan2(toShooterAtStart.y, toShooterAtStart.x));
+    scenario.players.push_back({.playerId = defenderId,
+                                .position = start,
+                                .makingRun = false,
+                                .facing = startFacing});
     if (keeperChoice > CHOICE_MIDPOINT)
     {
       scenario.players.push_back(
@@ -6333,6 +6354,10 @@ class ShotBlockDrill final : public Drill
     endAt.reset();
     legs.reset();
     closest = DEFAULT_CLOSEST;
+    passingHeight = -1.0F;
+    lastAlong.reset();
+    passingGap = -1.0F;
+    lastHeight = 0.0F;
     stillShot = false;
     afterBlock.clear();
     part.clear();
@@ -6343,6 +6368,13 @@ class ShotBlockDrill final : public Drill
     noTouchBefore = noTouchNow = engine.getStats().ballBodyAfterNoTouch;
     throughBefore = throughNow = engine.getStats().shotTorsoPassThroughs;
     insideBefore = insideNow = engine.getStats().shotTorsoInsideAtStart;
+    bounceBefore = engine.lastShotBounce().at;
+    metPart = -1;
+    contactsBefore = engine.getStrikeContacts();
+    projectionMiss = 0.0F;
+    speedPassing = 0.0F;
+    shotAngleError = 0.0F;
+    shotElevationError = 0.0F;
   }
 
  private:
@@ -6421,7 +6453,26 @@ class ShotBlockDrill final : public Drill
           const Vector2F from = asVector(spot);
           offLineAtShot =
               (at.x - from.x) * runLeft.x + (at.y - from.y) * runLeft.y;
+          // The shot's actual path over the ground (a driven shot runs
+          // straight: from where it left to where it crosses the goal line),
+          // and where he was and how he was moving as it was struck.
+          const PitchPoint crossing{
+              ::at(1.0F, PITCH_MIDPOINT_SHARE).x,
+              engine.getBall().possessionState().shotTargetY};
+          pathFrom = engine.getBall().possessionState().shotFrom;
+          pathLine = directionBetween(pathFrom, crossing);
+          defenderAtShot = at;
+          defenderVelocityAtShot = defender->velocity;
         }
+        // How far off he struck it: the angle he meant over the ground
+        // (unsigned) and upward (+ higher).
+        const auto& a = contactsBefore.byKind.at(
+            static_cast<std::size_t>(StrikeKind::SHOT));
+        const auto& b = engine.getStrikeContacts().byKind.at(
+            static_cast<std::size_t>(StrikeKind::SHOT));
+        shotAngleError = static_cast<float>(b.angleErrorSum - a.angleErrorSum);
+        shotElevationError =
+            static_cast<float>(b.elevationErrorSum - a.elevationErrorSum);
         continue;
       }
       if (!shotAt)
@@ -6578,8 +6629,77 @@ class ShotBlockDrill final : public Drill
       }
       closest = std::min(closest, metresBetween(engine.getBall().position,
                                                 defender->position));
+      // The ball's height, and how far to his side its path ran, as it
+      // passes level with him: against where he would be had he not
+      // reacted (where he was at the strike, carried on at his speed then),
+      // along the shot's actual path; between two looks, in a straight
+      // line.
+      if (shotAt && passingHeight < 0.0F)
+      {
+        const MatchBall& ball = engine.getBall();
+        const auto projected = [this](double time)
+        {
+          const auto seconds = static_cast<float>(time - *shotAt);
+          return Vector2F{
+              .x = defenderAtShot.x + (defenderVelocityAtShot.x * seconds),
+              .y = defenderAtShot.y + (defenderVelocityAtShot.y * seconds)};
+        };
+        const Vector2F from = asVector(pathFrom);
+        const auto alongOf = [this](Vector2F point, Vector2F mark)
+        {
+          return ((point.x - mark.x) * pathLine.x) +
+                 ((point.y - mark.y) * pathLine.y);
+        };
+        const Vector2F markNow = projected(now);
+        const float alongNow = alongOf(asVector(ball.position), markNow);
+        if (!lastAlong)
+        {
+          // From where it was struck (from close in it is past him by the
+          // first look).
+          lastAlong = alongOf(from, projected(*shotAt));
+          lastLook = *shotAt;
+          lastHeight = MatchTuning::Units::BALL_RADIUS_METRES;
+        }
+        if (*lastAlong < 0.0F && alongNow >= 0.0F)
+        {
+          const float share = *lastAlong / (*lastAlong - alongNow);
+          passingHeight = lastHeight + ((ball.z - lastHeight) * share);
+          passingGap =
+              gapFromPath(projected(lastLook + ((now - lastLook) * share)));
+          // How far he actually is from where he was carried on to (at
+          // this look), and his pace now.
+          projectionMiss = std::hypot(defender->position.x - markNow.x,
+                                      defender->position.y - markNow.y);
+          speedPassing = speedOf(*defender);
+        }
+        heightBefore = lastHeight;
+        lastAlong = alongNow;
+        lastLook = now;
+        lastHeight = ball.z;
+        lastMark = markNow;
+      }
       throughNow = engine.getStats().shotTorsoPassThroughs;
       insideNow = engine.getStats().shotTorsoInsideAtStart;
+    }
+    // Met his body: a block, or (off a team-mate) a deflection; the first
+    // part the shot met.
+    if (shotAt && metPart < 0 && engine.lastShotBounce().at > bounceBefore)
+    {
+      metPart = static_cast<int>(engine.lastShotBounce().hit.part);
+      if (passingHeight < 0.0F)
+      {
+        // Met before passing him: about the height it met him at (its
+        // last look before the meeting), and his side gap from its path
+        // there.
+        passingHeight = heightBefore;
+        passingGap = gapFromPath(lastMark);
+      }
+      // Off a team-mate it is no block, and may go anywhere (back up the
+      // pitch, with no goal or miss to end on): the run ends here.
+      if (whose > CHOICE_MIDPOINT && outcome.empty())
+      {
+        outcome = "deflected off him";
+      }
     }
     observeDeflection(engine);
     observeAfterBlock(engine, now);
@@ -6697,8 +6817,41 @@ class ShotBlockDrill final : public Drill
     const bool reaction = part.find("reaction") != std::string::npos;
     const bool leg = legs && legs->blocking;
     const bool reacted = legs && legs->reacted;
+    const auto met = [this](std::initializer_list<ShotBodyPart> parts)
+    {
+      for (const ShotBodyPart one : parts)
+      {
+        if (metPart == static_cast<int>(one))
+        {
+          return 1.0;
+        }
+      }
+      return 0.0;
+    };
     return {
         {.name = "Blocked", .value = static_cast<double>(blocked)},
+        {.name = "Met his body", .value = metPart >= 0 ? 1.0 : 0.0},
+        {.name = "First part met (-1 none)",
+         .value = static_cast<double>(metPart)},
+        {.name = "Met his torso or head",
+         .value = met({ShotBodyPart::TORSO, ShotBodyPart::HEAD})},
+        {.name = "Ball height passing him (m)",
+         .value = static_cast<double>(passingHeight)},
+        {.name = "Ball gap passing him (m)",
+         .value = static_cast<double>(passingGap)},
+        {.name = "Off his projection passing (m)",
+         .value = static_cast<double>(projectionMiss)},
+        {.name = "Speed passing (m/s)",
+         .value = static_cast<double>(speedPassing)},
+        {.name = "Shot angle error (deg)",
+         .value =
+             static_cast<double>(shotAngleError * DEGREES_PER_HALF_TURN / PI)},
+        {.name = "Shot elevation error (deg; + higher)",
+         .value = static_cast<double>(shotElevationError *
+                                      DEGREES_PER_HALF_TURN / PI)},
+        {.name = "Met his leg",
+         .value = met(
+             {ShotBodyPart::THIGH, ShotBodyPart::SHIN, ShotBodyPart::FOOT})},
         {.name = "Torso block",
          .value = static_cast<double>(blocked && part == "torso")},
         {.name = "Stride block",
@@ -6832,6 +6985,9 @@ class ShotBlockDrill final : public Drill
   float offLine = DEFAULT_OFF_LINE;
   float moving = 0.0F;
   float runUp = DEFAULT_RUN_UP;
+  /** Whose body: an opponent (0) or the shooter's team-mate (1), who
+   * never puts a leg out. */
+  float whose = 0.0F;
   float keeperChoice = 0.0F;
   float goalkeeping = DEFAULT_GOALKEEPING;
   float ballKind = 0.0F;
@@ -6852,6 +7008,42 @@ class ShotBlockDrill final : public Drill
   /** The nearest the ball came to him at a step's end while the shot was
    * on (m). */
   float closest = DEFAULT_CLOSEST;
+  /** The ball's height (m) as it passed level with him (-1: it didn't, or
+   * not yet), and the last look at it: how far past him along the line,
+   * how high. */
+  float passingHeight = -1.0F;
+  std::optional<float> lastAlong;
+  float lastHeight = 0.0F;
+  float heightBefore = 0.0F;
+  double lastLook = 0.0;
+  /** Where he would have been at the last look, had he not reacted. */
+  Vector2F lastMark{};
+  /** How far to his side the ball's path ran (m; -1: not yet), from where
+   * he would have been had he not reacted. */
+  float passingGap = -1.0F;
+  /** The shot's path over the ground (unit), and him as it was struck. */
+  /** Where the shot left from. */
+  PitchPoint pathFrom;
+  Vector2F pathLine{.x = 1.0F, .y = 0.0F};
+  Vector2F defenderAtShot{};
+  Vector2F defenderVelocityAtShot{};
+  /** As the ball passed him: how far he was from where he would have been
+   * carried on at his speed (m), and his speed (m/s). */
+  float projectionMiss = 0.0F;
+  float speedPassing = 0.0F;
+  StrikeContactStats contactsBefore;
+  /** The shot's angle errors (rad): over the ground (unsigned), and upward
+   * (+ higher than meant). */
+  float shotAngleError = 0.0F;
+  float shotElevationError = 0.0F;
+
+  /** How far `mark` is to the side of the shot's path (m). */
+  [[nodiscard]] float gapFromPath(Vector2F mark) const
+  {
+    const Vector2F from = asVector(pathFrom);
+    return std::abs(((mark.x - from.x) * -pathLine.y) +
+                    ((mark.y - from.y) * pathLine.x));
+  }
   Vector2F runLeft{};
   float defenderOut = 0.0F;
   float defending = DEFAULT_DEFENDING;
@@ -6869,6 +7061,10 @@ class ShotBlockDrill final : public Drill
   float speedAtShot = 0.0F;
   std::string outcome;
   std::string part;
+  /** The shot meeting a body (MatchEngine::lastShotBounce): its time before
+   * the run, and the part it first met (-1: none). */
+  double bounceBefore = -1.0;
+  int metPart = -1;
   std::optional<double> endAt;
   std::optional<ShotLegs> legs;
   std::array<int, static_cast<std::size_t>(ShotBodyPart::COUNT)> blocksBefore{};

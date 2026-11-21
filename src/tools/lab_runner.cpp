@@ -250,6 +250,14 @@ void extractEngine(MatchSample& sample, const MatchEngine& engine)
   }
   sample.shot_reaction_blocks = stats.shotReactionBlocks;
   sample.shot_deflections = stats.shotDeflections;
+  for (std::size_t band = 0; band < MatchStats::BLOCK_BANDS; ++band)
+  {
+    sample.block_band_shots.at(band) = stats.blockBandShots.at(band);
+    sample.block_band_predicted.at(band) =
+        static_cast<double>(stats.blockBandPredicted.at(band));
+    sample.block_band_blocked.at(band) = stats.blockBandBlocked.at(band);
+    sample.block_band_team_mate.at(band) = stats.blockBandTeamMate.at(band);
+  }
   for (const int count : stats.keeperBodyHitsByPart)
   {
     sample.keeper_body_hits += count;
@@ -787,6 +795,49 @@ MatchSample sampleFromReport(const MatchReport& report)
   return sample;
 }
 
+/** The game xG layer 3 check (block_check_*): of Capybara's open-play
+ * shots, overall and by predicted band, the share predicted stopped against
+ * those blocked by an opponent or first meeting a team-mate. */
+template <typename Column>
+void addBlockCheck(std::map<std::string, Estimate>& metrics,
+                   const Column& column)
+{
+  const auto total = [&column](auto field)
+  {
+    return column(
+        [field](const MatchSample& s)
+        {
+          const auto& bands = s.*field;
+          return std::accumulate(bands.begin(), bands.end(), 0.0);
+        });
+  };
+  const std::vector<double> shots = total(&MatchSample::block_band_shots);
+  metrics["block_check_predicted"] =
+      ratioEstimate(total(&MatchSample::block_band_predicted), shots);
+  metrics["block_check_blocked"] =
+      ratioEstimate(total(&MatchSample::block_band_blocked), shots);
+  metrics["block_check_team_mate"] =
+      ratioEstimate(total(&MatchSample::block_band_team_mate), shots);
+  for (std::size_t band = 0; band < MatchStats::BLOCK_BANDS; ++band)
+  {
+    const auto inBand = [&column, band](auto field)
+    {
+      return column([field, band](const MatchSample& s)
+                    { return static_cast<double>((s.*field).at(band)); });
+    };
+    const std::vector<double> bandShots =
+        inBand(&MatchSample::block_band_shots);
+    const std::string name = "block_check_band_" + std::to_string(band);
+    metrics[name + "_share"] = ratioEstimate(bandShots, shots);
+    metrics[name + "_predicted"] =
+        ratioEstimate(inBand(&MatchSample::block_band_predicted), bandShots);
+    metrics[name + "_blocked"] =
+        ratioEstimate(inBand(&MatchSample::block_band_blocked), bandShots);
+    metrics[name + "_team_mate"] =
+        ratioEstimate(inBand(&MatchSample::block_band_team_mate), bandShots);
+  }
+}
+
 std::map<std::string, Estimate> matchMetrics(
     std::span<const MatchSample> samples)
 {
@@ -917,6 +968,7 @@ std::map<std::string, Estimate> matchMetrics(
       column([](const MatchSample& s) { return s.shot_body_blocks; }));
   metrics["shot_deflections_per_shot"] = ratioEstimate(
       column([](const MatchSample& s) { return s.shot_deflections; }), shots);
+  addBlockCheck(metrics, column);
   metrics["keeper_body_hits_per_shot"] = ratioEstimate(
       column([](const MatchSample& s) { return s.keeper_body_hits; }), shots);
   metrics["keeper_body_still_on_goal_per_shot"] = ratioEstimate(

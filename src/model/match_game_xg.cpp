@@ -285,6 +285,213 @@ std::optional<GameXgTable> GameXgTable::load(const std::filesystem::path& path,
   return fromJson(text.str(), error);
 }
 
+const char* GameXgLegTable::kindName(Kind kind)
+{
+  switch (kind)
+  {
+    case Kind::OPPONENT_STANDING:
+      return "opponent standing";
+    case Kind::OPPONENT_SIDESTEPPING:
+      return "opponent sidestepping";
+    case Kind::OPPONENT_SPRINTING:
+      return "opponent sprinting";
+    case Kind::TEAMMATE_STANDING:
+      return "team-mate standing";
+    case Kind::TEAMMATE_SIDESTEPPING:
+      return "team-mate sidestepping";
+    case Kind::TEAMMATE_SPRINTING:
+      return "team-mate sprinting";
+    case Kind::COUNT:
+      break;
+  }
+  return "";
+}
+
+std::size_t GameXgLegTable::index(std::size_t kind, std::size_t rating,
+                                  std::size_t distance,
+                                  std::size_t offset) const
+{
+  return (((((kind * ratings.size()) + rating) * distances.size()) + distance) *
+          offsets.size()) +
+         offset;
+}
+
+float GameXgLegTable::value(Kind kind, float rating, float distanceMetres,
+                            float offsetMetres) const
+{
+  if (empty() || ratings.empty() || distances.empty() || offsets.empty() ||
+      offsetMetres > offsets.back())
+  {
+    return 0.0F;
+  }
+  const auto k = static_cast<std::size_t>(kind);
+  const std::pair<std::size_t, float> ratingAt = bracket(ratings, rating);
+  const std::pair<std::size_t, float> distanceAt =
+      bracket(distances, distanceMetres);
+  const std::pair<std::size_t, float> offsetAt = bracket(offsets, offsetMetres);
+  const std::size_t d = distanceAt.first;
+  const std::size_t o = offsetAt.first;
+  const std::size_t d1 = std::min(d + 1, distances.size() - 1);
+  const std::size_t o1 = std::min(o + 1, offsets.size() - 1);
+  const float ds = distanceAt.second;
+  const float os = offsetAt.second;
+  const auto plane = [&](std::size_t ri)
+  {
+    const float a = values[index(k, ri, d, o)];
+    const float b = values[index(k, ri, d, o1)];
+    const float c = values[index(k, ri, d1, o)];
+    const float e = values[index(k, ri, d1, o1)];
+    const float near = a + ((b - a) * os);
+    const float far = c + ((e - c) * os);
+    return near + ((far - near) * ds);
+  };
+  const std::size_t r = ratingAt.first;
+  const float low = plane(r);
+  return low + ((plane(std::min(r + 1, ratings.size() - 1)) - low) *
+                ratingAt.second);
+}
+
+std::string GameXgLegTable::toJson() const
+{
+  nlohmann::json json;
+  json["version"] = FORMAT_VERSION;
+  json["layer"] = "legs";
+  json["measured"] = measured;
+  json["repeats"] = repeats;
+  json["first_seed"] = firstSeed;
+  nlohmann::json kinds = nlohmann::json::array();
+  for (std::size_t kind = 0; kind < KINDS; ++kind)
+  {
+    kinds.push_back(kindName(static_cast<Kind>(kind)));
+  }
+  json["kinds"] = std::move(kinds);
+  json["ratings"] = ratings;
+  json["distances"] = distances;
+  json["offsets"] = offsets;
+  nlohmann::json grid = nlohmann::json::array();
+  for (const float value : values)
+  {
+    grid.push_back(std::round(value * STORED_SCALE) / STORED_SCALE);
+  }
+  json["values"] = std::move(grid);
+  json["shots"] = shots;
+  json["blocks"] = blocks;
+  json["scatter_shooting"] = scatterShooting;
+  json["scatter_across"] = scatterAcross;
+  json["scatter_up"] = scatterUp;
+  return json.dump(JSON_INDENT);
+}
+
+namespace
+{
+/** Points for a Shooting from rows of `count` per Shooting, interpolated
+ * between the rows measured (the edge row outside them). */
+template <std::size_t COUNT>
+std::array<float, COUNT> scatterRow(const std::vector<float>& shooting,
+                                    const std::vector<float>& rows, float at)
+{
+  std::array<float, COUNT> out{};
+  if (shooting.empty() || rows.size() != shooting.size() * COUNT)
+  {
+    return out;
+  }
+  std::size_t low = 0;
+  while (low + 1 < shooting.size() && shooting[low + 1] <= at)
+  {
+    ++low;
+  }
+  const std::size_t high = std::min(low + 1, shooting.size() - 1);
+  const float span = shooting[high] - shooting[low];
+  const float share =
+      span > 0.0F ? std::clamp((at - shooting[low]) / span, 0.0F, 1.0F) : 0.0F;
+  for (std::size_t point = 0; point < COUNT; ++point)
+  {
+    const float from = rows[(low * COUNT) + point];
+    const float to = rows[(high * COUNT) + point];
+    out.at(point) = from + ((to - from) * share);
+  }
+  return out;
+}
+}  // namespace
+
+std::array<float, GameXgLegTable::SCATTER_ACROSS_POINTS>
+GameXgLegTable::acrossPoints(float shooting) const
+{
+  return scatterRow<SCATTER_ACROSS_POINTS>(scatterShooting, scatterAcross,
+                                           shooting);
+}
+
+std::array<float, GameXgLegTable::SCATTER_UP_POINTS> GameXgLegTable::upPoints(
+    float shooting) const
+{
+  return scatterRow<SCATTER_UP_POINTS>(scatterShooting, scatterUp, shooting);
+}
+
+std::optional<GameXgLegTable> GameXgLegTable::fromJson(const std::string& text,
+                                                       std::string& error)
+{
+  try
+  {
+    const nlohmann::json json = nlohmann::json::parse(text);
+    GameXgLegTable table;
+    table.measured = json.value("measured", std::string());
+    table.repeats = json.value("repeats", 0);
+    table.firstSeed = json.value("first_seed", 1U);
+    table.ratings = json.at("ratings").get<std::vector<float>>();
+    table.distances = json.at("distances").get<std::vector<float>>();
+    table.offsets = json.at("offsets").get<std::vector<float>>();
+    table.values = json.at("values").get<std::vector<float>>();
+    table.shots = json.value("shots", std::vector<int>{});
+    table.blocks = json.value("blocks", std::vector<int>{});
+    table.scatterShooting =
+        json.value("scatter_shooting", std::vector<float>{});
+    table.scatterAcross = json.value("scatter_across", std::vector<float>{});
+    table.scatterUp = json.value("scatter_up", std::vector<float>{});
+    if (table.values.size() != KINDS * table.ratings.size() *
+                                   table.distances.size() *
+                                   table.offsets.size())
+    {
+      error = "the grid's size doesn't match its axes";
+      return std::nullopt;
+    }
+    return table;
+  }
+  catch (const std::exception& exception)
+  {
+    error = exception.what();
+    return std::nullopt;
+  }
+}
+
+bool GameXgLegTable::save(const std::filesystem::path& path,
+                          std::string& error) const
+{
+  std::error_code code;
+  std::filesystem::create_directories(path.parent_path(), code);
+  std::ofstream out(path, std::ios::binary);
+  if (!out)
+  {
+    error = "can't write " + path.string();
+    return false;
+  }
+  out << toJson() << '\n';
+  return static_cast<bool>(out);
+}
+
+std::optional<GameXgLegTable> GameXgLegTable::load(
+    const std::filesystem::path& path, std::string& error)
+{
+  std::ifstream in(path, std::ios::binary);
+  if (!in)
+  {
+    error = "no file " + path.string();
+    return std::nullopt;
+  }
+  std::ostringstream text;
+  text << in.rdbuf();
+  return fromJson(text.str(), error);
+}
+
 namespace GameXg
 {
 std::filesystem::path folder()
@@ -307,6 +514,8 @@ struct Cache
   /** Loaded (or found missing: null) per layer and goal. */
   std::map<std::pair<std::string, GoalKind>, std::unique_ptr<GameXgTable>>
       tables;
+  /** The leg-chance table: looked for once (null inside if missing). */
+  std::optional<std::unique_ptr<GameXgLegTable>> legs;
 };
 
 Cache& cache()
@@ -345,6 +554,23 @@ void reload()
   Cache& shared = cache();
   const std::scoped_lock guard(shared.lock);
   shared.tables.clear();
+  shared.legs.reset();
+}
+
+std::filesystem::path legFile() { return folder() / "legs.json"; }
+
+const GameXgLegTable* legs()
+{
+  Cache& shared = cache();
+  const std::scoped_lock guard(shared.lock);
+  if (!shared.legs)
+  {
+    std::string problem;
+    auto loaded = GameXgLegTable::load(legFile(), problem);
+    shared.legs =
+        loaded ? std::make_unique<GameXgLegTable>(std::move(*loaded)) : nullptr;
+  }
+  return shared.legs->get();
 }
 
 float openShare(PitchPoint from, PitchPoint keeper, float goalLine,

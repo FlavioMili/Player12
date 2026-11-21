@@ -40,6 +40,22 @@
   [[nodiscard]] bool goalOpenCapybara(const MatchPlayer& shooter) const;
   /** The opponents' keeper of `homeTeam`'s side, if one is on (const). */
   [[nodiscard]] const MatchPlayer* opponentKeeperCapybara(bool homeTeam) const;
+  /** Game xG layer 3: the chance a shot by `shooter` from `from` gets past
+   * every body in the way (team-mates too; not the opponents' keeper, layer
+   * 2's). Averaged over the aim cone (the lines Capybara's aim can pick,
+   * weighted by their chances); along each line, each body where his
+   * movement will have him when the ball gets there: through his torso a
+   * block (unless it glances off narrowly and still goes in), through his
+   * leg-space the leg-chance table's chance; the chances of getting past
+   * each multiplied. 1 with no leg-chance table. */
+  [[nodiscard]] float bodiesPassCapybara(const MatchPlayer& shooter,
+                                         PitchPoint from) const;
+  /** A driven shot's launch, (along, up) m/s, at `speed` (his launch
+   * speed) to be `arrivalHeight` m up `distanceMetres` out: as
+   * strikeShotBodyBinturong launches one. */
+  [[nodiscard]] std::pair<float, float> drivenLaunchCapybara(
+      float distanceMetres, float speed, float startHeight,
+      float arrivalHeight, BallSpin spin) const;
   BallAction chooseBallActionCapybara(MatchPlayer& carrier);
  public:
   /** The brain flow tool (model/match_brain_flow.h): a record for each

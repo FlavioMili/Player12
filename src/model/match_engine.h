@@ -1326,6 +1326,12 @@ struct MatchPossessionState
   /** Predicted goal-line crossing of the current shot (y and metres high). */
   float shotTargetY = MatchTuning::Pitch::MATCH_CENTRE_Y_METRES;
   float shotTargetHeightMetres = 0.0F;
+  /** Where the current shot left from (the ball as it was launched). */
+  PitchPoint shotFrom{MatchTuning::Pitch::MATCH_CENTRE_X_METRES,
+                      MatchTuning::Pitch::MATCH_CENTRE_Y_METRES};
+  /** The current shot's band in the layer 3 check (MatchStats), until the
+   * first body it meets; -1 if not counted. */
+  int shotBlockBand = -1;
   float shotElapsedSeconds = 0.0F;
   bool shotIsHeader = false;
   bool shotIsPenalty = false;
@@ -1654,6 +1660,15 @@ struct MatchStats
   /** Shots off a Binturong body that were no block (shot block plan step
    * 4): off a team-mate, or off anyone once blocked already. */
   int shotDeflections = 0;
+  /** Game xG plan, layer 3 check: Capybara open-play shots in bands of the
+   * share its estimate said the bodies would stop (fifths), those shares
+   * summed, and of those shots the ones whose first body was an opponent's
+   * block or a team-mate's. */
+  static constexpr std::size_t BLOCK_BANDS = 5;
+  std::array<int, BLOCK_BANDS> blockBandShots{};
+  std::array<float, BLOCK_BANDS> blockBandPredicted{};
+  std::array<int, BLOCK_BANDS> blockBandBlocked{};
+  std::array<int, BLOCK_BANDS> blockBandTeamMate{};
   /** Check (shot block plan §3f): shots whose path, against the player's
    * own move over the sub-step, went well inside a Binturong torso without
    * meeting him (one per shot and player; should be none), and of those,
@@ -4817,6 +4832,11 @@ class MatchEngine
   float strikeShot(MatchPlayer& shooter, float forcedXG, bool header,
                    bool penalty, bool freeKick = false,
                    std::optional<ShotAim> aim = std::nullopt);
+  /** For the lab (game xG plan, layer 3 check): a Capybara open-play shot's
+   * predicted share stopped by the bodies, counted in its band
+   * (MatchStats::blockBandShots); returns the band, or -1 if not counted. */
+  int noteBlockPrediction(const MatchPlayer& shooter, bool header, bool penalty,
+                          bool freeKick);
   /** The spot in the goal for a shot he is deciding on now (a drill's
    * forced spot replaces his pick). */
   ShotAim pickShotAim(MatchPlayer& shooter, bool header, bool penalty,
