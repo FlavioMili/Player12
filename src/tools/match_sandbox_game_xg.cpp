@@ -794,6 +794,67 @@ std::optional<std::size_t> GameXgLegSweep::offsetBin(double gap) const
   return nearest;
 }
 
+void GameXgLegSweep::noteView(const Cell& cell,
+                              const std::vector<DrillMetric>& metrics,
+                              double hip, RunResult outcome,
+                              std::optional<std::size_t> bin)
+{
+  const auto value = [&metrics](std::string_view name)
+  { return static_cast<float>(metricOf(metrics, name)); };
+  RunView view;
+  view.kind = cell.kind;
+  view.rating = cell.scatter ? setup.scatterShooting[cell.rating]
+                             : setup.ratings[cell.rating];
+  view.distance =
+      cell.scatter ? setup.scatterDistance : setup.distances[cell.distance];
+  view.offset =
+      cell.scatter ? setup.scatterOffLine : setup.offsets[cell.offset];
+  view.himAlong = value("View: him along (m)");
+  view.himAcross = value("View: him across (m)");
+  view.paceAlong = value("View: his pace along (m/s)");
+  view.paceAcross = value("View: his pace across (m/s)");
+  view.goalAlong = value("View: goal line along (m)");
+  view.aimAlong = value("View: aim along (m)");
+  view.aimAcross = value("View: aim across (m)");
+  view.projectedAlong = value("View: projected along (m)");
+  view.projectedAcross = value("View: projected across (m)");
+  view.gap = value("Ball gap passing him (m)");
+  view.height = value("Ball height passing him (m)");
+  view.hip = static_cast<float>(hip);
+  view.result = outcome;
+  view.distanceIndex = cell.distance;
+  view.bin = bin;
+  recent.push_back(view);
+  while (recent.size() > RECENT_RUNS)
+  {
+    recent.pop_front();
+  }
+}
+
+std::pair<int, int> GameXgLegSweep::tally(std::size_t kind, std::size_t rating,
+                                          std::size_t distance,
+                                          std::size_t offset) const
+{
+  const std::size_t at = binIndex(kind, rating, distance, offset);
+  return at < binShots.size() ? std::pair{binShots[at], binBlocks[at]}
+                              : std::pair{0, 0};
+}
+
+std::size_t GameXgLegSweep::currentKind() const
+{
+  return cells.empty() ? 0 : cells[std::min(nextCell, cells.size() - 1)].kind;
+}
+
+std::size_t GameXgLegSweep::currentRating() const
+{
+  return cells.empty() ? 0 : cells[std::min(nextCell, cells.size() - 1)].rating;
+}
+
+bool GameXgLegSweep::scattering() const
+{
+  return !cells.empty() && cells[std::min(nextCell, cells.size() - 1)].scatter;
+}
+
 void GameXgLegSweep::tallyRun(const Cell& cell,
                               const std::vector<DrillMetric>& metrics,
                               float heightCentimetres)
@@ -802,6 +863,8 @@ void GameXgLegSweep::tallyRun(const Cell& cell,
   {
     return;
   }
+  const double hip = MatchTuning::Ball::CHEST_LINE_HEIGHT_SHARE *
+                     heightCentimetres / CENTIMETRES_PER_METRE;
   if (cell.scatter)
   {
     constexpr double RADIANS_PER_DEGREE = std::numbers::pi / 180.0;
@@ -810,20 +873,38 @@ void GameXgLegSweep::tallyRun(const Cell& cell,
     upErrors[cell.rating].push_back(static_cast<float>(
         metricOf(metrics, "Shot elevation error (deg; + higher)") *
         RADIANS_PER_DEGREE));
+    noteView(cell, metrics, hip, RunResult::SCATTER, std::nullopt);
     return;
   }
   // Only runs through his leg-space count: met by a leg, or past him below
   // his hip (not his torso or head, not over him); at the offset nearest
   // how far his path ran from the ball's.
   const bool leg = metricOf(metrics, "Met his leg") > FLAG_SET;
+  const bool torso = metricOf(metrics, "Met his torso or head") > FLAG_SET;
   const double passing = metricOf(metrics, "Ball height passing him (m)");
-  const double hip = MatchTuning::Ball::CHEST_LINE_HEIGHT_SHARE *
-                     heightCentimetres / CENTIMETRES_PER_METRE;
   const bool below = passing >= 0.0 &&
                      passing < hip - MatchTuning::Units::BALL_RADIUS_METRES &&
-                     metricOf(metrics, "Met his torso or head") <= FLAG_SET;
+                     !torso;
   const std::optional<std::size_t> bin =
       offsetBin(metricOf(metrics, "Ball gap passing him (m)"));
+  RunResult outcome = RunResult::PAST_HIGH;
+  if (!bin)
+  {
+    outcome = RunResult::OFF_GRID;
+  }
+  else if (leg)
+  {
+    outcome = RunResult::LEG;
+  }
+  else if (torso)
+  {
+    outcome = RunResult::TORSO;
+  }
+  else if (below)
+  {
+    outcome = RunResult::PAST_LOW;
+  }
+  noteView(cell, metrics, hip, outcome, bin);
   if (!bin || !(leg || below))
   {
     return;

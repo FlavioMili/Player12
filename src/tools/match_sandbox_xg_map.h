@@ -16,10 +16,12 @@
 #include "gui/gui_scene.h"
 #include "model/match_engine.h"
 #include "model/match_game_xg.h"
+#include "tools/match_sandbox_leg_scan.h"
 
 struct ImFont;
 class Drill;
 class GameXgSweep;
+class GameXgLegSweep;
 
 /**
  * The xG map (training ground plan section 24, T8): a pitch, the match one
@@ -63,6 +65,13 @@ class XgMapScene : public GUIScene
    * missing). */
   void loadGameTable();
   void renderSweep(float width);
+  /** The leg sweep (game xG plan, layer 3): a slice of it each frame, or
+   * one run every few frames when watched slowly; saves when done. */
+  void updateLegSweep();
+  /** The sweep card's leg sweep part: running, or ready to run. */
+  void renderLegSweep(bool running);
+  /** The leg sweep's scan view, where the map goes (width, height). */
+  void renderScan(ImVec2 area);
   /** The card for the spot last pointed at. */
   void renderSpot(float width);
   /** Whether the map draws Capybara's shot score (the chosen brain). */
@@ -101,9 +110,17 @@ class XgMapScene : public GUIScene
   Drill* shotDrill = nullptr;
   std::unique_ptr<GameXgSweep> sweep;
   float sweepRepeats = 60.0F;
-  /** The layer the sweep measures: the empty goal (0) or the keeper (1). */
+  /** The layer the sweep measures: the empty goal (0), the keeper (1) or
+   * the leg chances (2, shown as the scan view in the map's place). */
   int sweepLayer = 0;
   std::string sweepNote;
+  Drill* blockDrill = nullptr;
+  std::unique_ptr<GameXgLegSweep> legSweep;
+  float legRepeats = 60.0F;
+  /** One run every few frames, to follow each one. */
+  bool watchSlowly = false;
+  int watchWait = 0;
+  LegScanView scanView;
 
   // The map, worked out when a setting changes.
   bool dirty = true;

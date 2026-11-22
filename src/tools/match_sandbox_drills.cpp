@@ -6357,6 +6357,7 @@ class ShotBlockDrill final : public Drill
     passingHeight = -1.0F;
     lastAlong.reset();
     passingGap = -1.0F;
+    passingMark = {};
     lastHeight = 0.0F;
     stillShot = false;
     afterBlock.clear();
@@ -6461,6 +6462,8 @@ class ShotBlockDrill final : public Drill
               engine.getBall().possessionState().shotTargetY};
           pathFrom = engine.getBall().possessionState().shotFrom;
           pathLine = directionBetween(pathFrom, crossing);
+          crossingPoint = crossing;
+          aimPoint = ::at(1.0F, PITCH_MIDPOINT_SHARE + (aimAcross / WIDTH));
           defenderAtShot = at;
           defenderVelocityAtShot = defender->velocity;
         }
@@ -6664,8 +6667,8 @@ class ShotBlockDrill final : public Drill
         {
           const float share = *lastAlong / (*lastAlong - alongNow);
           passingHeight = lastHeight + ((ball.z - lastHeight) * share);
-          passingGap =
-              gapFromPath(projected(lastLook + ((now - lastLook) * share)));
+          passingMark = projected(lastLook + ((now - lastLook) * share));
+          passingGap = gapFromPath(passingMark);
           // How far he actually is from where he was carried on to (at
           // this look), and his pace now.
           projectionMiss = std::hypot(defender->position.x - markNow.x,
@@ -6692,6 +6695,7 @@ class ShotBlockDrill final : public Drill
         // last look before the meeting), and his side gap from its path
         // there.
         passingHeight = heightBefore;
+        passingMark = lastMark;
         passingGap = gapFromPath(lastMark);
       }
       // Off a team-mate it is no block, and may go anywhere (back up the
@@ -6865,6 +6869,24 @@ class ShotBlockDrill final : public Drill
         {.name = "Ball height (m)", .value = reacted ? legs->lineHeight : 0.0},
         {.name = "Speed (m/s)", .value = speedAtShot},
         {.name = "Off the line at strike (m)", .value = offLineAtShot},
+        {.name = "View: him along (m)",
+         .value = inShotFrame(defenderAtShot).first},
+        {.name = "View: him across (m)",
+         .value = inShotFrame(defenderAtShot).second},
+        {.name = "View: his pace along (m/s)",
+         .value = turnedToShot(defenderVelocityAtShot).first},
+        {.name = "View: his pace across (m/s)",
+         .value = turnedToShot(defenderVelocityAtShot).second},
+        {.name = "View: goal line along (m)",
+         .value = inShotFrame(asVector(crossingPoint)).first},
+        {.name = "View: aim along (m)",
+         .value = inShotFrame(asVector(aimPoint)).first},
+        {.name = "View: aim across (m)",
+         .value = inShotFrame(asVector(aimPoint)).second},
+        {.name = "View: projected along (m)",
+         .value = inShotFrame(passingMark).first},
+        {.name = "View: projected across (m)",
+         .value = inShotFrame(passingMark).second},
         {.name = "Closest ball (m)", .value = closest},
         {.name = "Reacted",
          .value = static_cast<double>(legs && legs->reacted)},
@@ -7021,10 +7043,27 @@ class ShotBlockDrill final : public Drill
   /** How far to his side the ball's path ran (m; -1: not yet), from where
    * he would have been had he not reacted. */
   float passingGap = -1.0F;
+  /** Where he would have been as it passed him (or met him first). */
+  Vector2F passingMark{};
   /** The shot's path over the ground (unit), and him as it was struck. */
   /** Where the shot left from. */
   PitchPoint pathFrom;
   Vector2F pathLine{.x = 1.0F, .y = 0.0F};
+  /** Where it crosses the goal line, and the spot it was aimed at. */
+  PitchPoint crossingPoint;
+  PitchPoint aimPoint;
+  /** A point in the shot's frame (the leg sweep's view): along its path
+   * from where it left, and across it (+ to its left). */
+  [[nodiscard]] std::pair<double, double> inShotFrame(Vector2F point) const
+  {
+    return turnedToShot({.x = point.x - pathFrom.x, .y = point.y - pathFrom.y});
+  }
+  /** A direction or velocity turned into the shot's frame. */
+  [[nodiscard]] std::pair<double, double> turnedToShot(Vector2F way) const
+  {
+    return {(way.x * pathLine.x) + (way.y * pathLine.y),
+            (way.y * pathLine.x) - (way.x * pathLine.y)};
+  }
   Vector2F defenderAtShot{};
   Vector2F defenderVelocityAtShot{};
   /** As the ball passed him: how far he was from where he would have been

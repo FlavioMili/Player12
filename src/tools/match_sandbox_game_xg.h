@@ -9,6 +9,7 @@
 #pragma once
 
 #include <cstdint>
+#include <deque>
 #include <map>
 #include <optional>
 #include <string>
@@ -292,6 +293,62 @@ class GameXgLegSweep
   [[nodiscard]] long long runsQueued() const;
   [[nodiscard]] double seconds() const { return elapsed; }
   [[nodiscard]] const GameXgLegTable& table() const { return result; }
+  [[nodiscard]] const GameXgLegSweepSpec& spec() const { return setup; }
+
+  /** What came of a run, for the view. */
+  enum class RunResult : std::uint8_t
+  {
+    LEG,       /*!< Met a leg: a block, counted. */
+    PAST_LOW,  /*!< Past him below his hip: counted, no block. */
+    TORSO,     /*!< Met his torso or head: not leg-space. */
+    PAST_HIGH, /*!< Past him at his hip or over: not leg-space. */
+    OFF_GRID,  /*!< Its path ran wider than the last offset. */
+    SCATTER,   /*!< A shooter's-error run (nobody in the way). */
+  };
+  /** One run as the sandbox's scan view draws it, in the shot's frame:
+   * along its path from where it left, across it (+ to its left). */
+  struct RunView
+  {
+    std::size_t kind = 0;
+    /** Defending and Tackling; Shooting for a scatter run. */
+    float rating = 0.0F;
+    /** The set distance out and off the line (m). */
+    float distance = 0.0F;
+    float offset = 0.0F;
+    /** Him as it was struck, and his velocity then. */
+    float himAlong = 0.0F;
+    float himAcross = 0.0F;
+    float paceAlong = 0.0F;
+    float paceAcross = 0.0F;
+    /** Where it crosses the goal line, and the spot aimed at. */
+    float goalAlong = 0.0F;
+    float aimAlong = 0.0F;
+    float aimAcross = 0.0F;
+    /** Where he'd have been as it passed him (no reaction). */
+    float projectedAlong = 0.0F;
+    float projectedAcross = 0.0F;
+    /** As it passed level with him: its gap from where he'd have been
+     * (m), and its height (m); below 0 if it never did. */
+    float gap = -1.0F;
+    float height = -1.0F;
+    /** His hip's height (m). */
+    float hip = 0.0F;
+    RunResult result = RunResult::OFF_GRID;
+    /** The distance index, and the offset index it counted at. */
+    std::size_t distanceIndex = 0;
+    std::optional<std::size_t> bin;
+  };
+  /** The latest runs, newest last (a few dozen). */
+  [[nodiscard]] const std::deque<RunView>& recentRuns() const { return recent; }
+  /** The runs through his leg-space so far and the leg meetings among
+   * them, at a kind, rating index, distance index and offset index. */
+  [[nodiscard]] std::pair<int, int> tally(std::size_t kind, std::size_t rating,
+                                          std::size_t distance,
+                                          std::size_t offset) const;
+  /** The kind and rating index being measured now (or last). */
+  [[nodiscard]] std::size_t currentKind() const;
+  [[nodiscard]] std::size_t currentRating() const;
+  [[nodiscard]] bool scattering() const;
 
  private:
   /** One cell of runs: a kind, a rating index, a distance and the aimed
@@ -312,6 +369,11 @@ class GameXgLegSweep
   [[nodiscard]] std::map<std::string, float> runValues(const Cell& cell) const;
   /** The offset index nearest a measured gap (m); none off the grid. */
   [[nodiscard]] std::optional<std::size_t> offsetBin(double gap) const;
+  /** Keeps a run for the view (his hip's height in m). */
+  void noteView(const Cell& cell, const std::vector<DrillMetric>& metrics,
+                double hip, RunResult outcome, std::optional<std::size_t> bin);
+  /** How many runs the view keeps. */
+  static constexpr std::size_t RECENT_RUNS = 40;
   /** Counts a run's result (his height in cm, for his hip). */
   void tallyRun(const Cell& cell, const std::vector<DrillMetric>& metrics,
                 float heightCentimetres);
@@ -349,6 +411,7 @@ class GameXgLegSweep
   std::map<std::string, float> saved;
   std::uint32_t savedSeed = 1;
   bool restored = false;
+  std::deque<RunView> recent;
 };
 
 /** The drill the leg sweep measures with (Shot block); nullptr if absent. */

@@ -48,6 +48,14 @@ constexpr double SWEEP_SECONDS_PER_FRAME = 0.012;
 constexpr float MIN_SWEEP_REPEATS = 20.0F;
 constexpr float MAX_SWEEP_REPEATS = 500.0F;
 constexpr float PROGRESS_HEIGHT = 8.0F;
+/** The sweep card's third layer: the leg chances (the scan view). */
+constexpr int LEGS_SWEEP = 2;
+/** Watched slowly: one leg sweep run every this many frames. */
+constexpr int WATCH_FRAMES = 20;
+/** The leg sweep's shots-a-cell limits. */
+constexpr float MIN_LEG_REPEATS = 10.0F;
+constexpr float MAX_LEG_REPEATS = 300.0F;
+constexpr double SECONDS_PER_MINUTE = 60.0;
 /** The sweep's spots on the map: size (m, with a floor in pixels) and the
  * waiting and measured colours (the one being measured is lime). */
 constexpr float SWEEP_DOT_METRES = 0.15F;
@@ -116,7 +124,9 @@ ImU32 xgColour(float xg, float full = FITTED_FULL_COLOUR)
 }  // namespace
 
 XgMapScene::XgMapScene(GUIView* guiView_ptr)
-    : GUIScene(guiView_ptr), drills(makeDrills())
+    : GUIScene(guiView_ptr),
+      drills(makeDrills()),
+      blockDrill(gameXgLegDrill(drills))
 {
   shotDrill = gameXgDrill(drills);
 }
@@ -187,8 +197,42 @@ void XgMapScene::onEnter()
   boldFont = font("Manrope-Bold.ttf", SandboxPageUI::BOLD_FONT_SIZE);
 }
 
+void XgMapScene::updateLegSweep()
+{
+  if (!legSweep || legSweep->done())
+  {
+    return;
+  }
+  if (watchSlowly && ++watchWait < WATCH_FRAMES)
+  {
+    return;
+  }
+  watchWait = 0;
+  // Measured with Capybara's brain, as the maps are.
+  const auto brains = sandboxBrains();
+  sandboxBrains() = {BrainId::CAPYBARA, BrainId::CAPYBARA};
+  const bool more = legSweep->work(watchSlowly ? 0.0 : SWEEP_SECONDS_PER_FRAME);
+  sandboxBrains() = brains;
+  if (more || legSweep->stopped())
+  {
+    return;
+  }
+  const auto path = GameXg::legFile();
+  std::string problem;
+  const bool saved = legSweep->table().save(path, problem);
+  if (saved)
+  {
+    // Capybara reads the table from the shared cache: the new one from now.
+    GameXg::reload();
+  }
+  sweepNote = saved ? std::format("Saved {} ({:.0f} s).", path.string(),
+                                  legSweep->seconds())
+                    : "Not saved: " + problem;
+}
+
 void XgMapScene::update(float /*deltaTime*/)
 {
+  updateLegSweep();
   if (!sweep || sweep->done())
   {
     return;
@@ -368,7 +412,15 @@ void XgMapScene::render()
   renderPanel(panel);
   ImGui::EndChild();
   ImGui::SameLine(0, SandboxPageUI::PANEL_GAP * scale);
-  renderMap(std::max(scale, ImGui::GetContentRegionAvail().x), available.y);
+  if (sweepLayer == LEGS_SWEEP)
+  {
+    renderScan(
+        ImVec2(std::max(scale, ImGui::GetContentRegionAvail().x), available.y));
+  }
+  else
+  {
+    renderMap(std::max(scale, ImGui::GetContentRegionAvail().x), available.y);
+  }
   ImGui::PopStyleVar();
   ImGui::End();
 }
@@ -630,7 +682,24 @@ void XgMapScene::renderSweep(float width)
   ImGui::PushTextWrapPos(0);
   ImGui::TextUnformatted(gameTableNote.c_str());
   const bool running = sweep && !sweep->done();
-  if (running)
+  const bool legsRunning = legSweep && !legSweep->done();
+  const bool maps = goalKind() != GoalKind::NONE && shotDrill != nullptr;
+  if (legsRunning || (!running && sweepLayer == LEGS_SWEEP))
+  {
+    if (!legsRunning)
+    {
+      if (maps)
+      {
+        Page::radio("Empty goal", &sweepLayer, 0);
+        ImGui::SameLine();
+        Page::radio("Keeper", &sweepLayer, 1);
+        ImGui::SameLine();
+      }
+      Page::radio("Legs", &sweepLayer, LEGS_SWEEP);
+    }
+    renderLegSweep(legsRunning);
+  }
+  else if (running)
   {
     const double share = sweep->runsQueued() > 0
                              ? static_cast<double>(sweep->runsDone()) /
@@ -646,11 +715,16 @@ void XgMapScene::renderSweep(float width)
       sweepNote = "Stopped: nothing saved.";
     }
   }
-  else if (goalKind() != GoalKind::NONE && shotDrill != nullptr)
+  else if (maps)
   {
     Page::radio("Empty goal", &sweepLayer, 0);
     ImGui::SameLine();
     Page::radio("Keeper", &sweepLayer, 1);
+    if (blockDrill != nullptr)
+    {
+      ImGui::SameLine();
+      Page::radio("Legs", &sweepLayer, LEGS_SWEEP);
+    }
     ImGui::SetNextItemWidth(CONTROL_WIDTH * scale);
     ImGui::SliderFloat("Shots a point", &sweepRepeats, MIN_SWEEP_REPEATS,
                        MAX_SWEEP_REPEATS, "%.0f");
@@ -679,11 +753,90 @@ void XgMapScene::renderSweep(float width)
               "halfway; Shooting 1, 25, 50, 75 and 100. About 4-5 minutes at "
               "60 shots a point. Saves to assets/config/game_xg/ when done.");
   }
+  else if (blockDrill != nullptr)
+  {
+    // No goal for the maps: the leg chances don't need one.
+    Page::radio("Legs", &sweepLayer, LEGS_SWEEP);
+  }
   if (!sweepNote.empty())
   {
     ImGui::TextUnformatted(sweepNote.c_str());
   }
   ImGui::PopTextWrapPos();
+  Page::endCard(scale);
+}
+
+void XgMapScene::renderLegSweep(bool running)
+{
+  namespace Page = SandboxPageUI;
+  const float scale = Theme::scale();
+  if (running)
+  {
+    const long long done = legSweep->runsDone();
+    const long long queued = legSweep->runsQueued();
+    const double share =
+        queued > 0 ? static_cast<double>(done) / static_cast<double>(queued)
+                   : 0.0;
+    ImGui::ProgressBar(static_cast<float>(share),
+                       ImVec2(-1.0F, PROGRESS_HEIGHT * scale), "");
+    // Left at the pace so far (watched slowly, the frames set the pace).
+    const double left = done > 0 ? legSweep->seconds() *
+                                       static_cast<double>(queued - done) /
+                                       static_cast<double>(done)
+                                 : 0.0;
+    const std::string status = std::format(
+        "{}: {} / {} runs, {:.0f} s{}",
+        legSweep->scattering() ? "Shooter's error" : "Leg chances", done,
+        queued, legSweep->seconds(),
+        watchSlowly || done == 0 ? std::string()
+                                 : std::format(", about {:.0f} min left",
+                                               left / SECONDS_PER_MINUTE));
+    ImGui::TextUnformatted(status.c_str());
+    ImGui::Checkbox("Watch slowly", &watchSlowly);
+    if (Page::button("Stop", false, scale, boldFont))
+    {
+      legSweep->stop();
+      sweepNote = "Stopped: nothing saved.";
+    }
+    return;
+  }
+  ImGui::SetNextItemWidth(CONTROL_WIDTH * scale);
+  ImGui::SliderFloat("Shots a cell", &legRepeats, MIN_LEG_REPEATS,
+                     MAX_LEG_REPEATS, "%.0f");
+  ImGui::Checkbox("Watch slowly", &watchSlowly);
+  if (Page::button("Run the sweep", false, scale, boldFont))
+  {
+    GameXgLegSweepSpec spec;
+    spec.repeats = static_cast<int>(legRepeats);
+    legSweep = std::make_unique<GameXgLegSweep>(
+        *blockDrill, guiView->getController().getStatsConfig(), spec);
+    sweepNote.clear();
+  }
+  ImGui::PushStyleColor(ImGuiCol_Text,
+                        ImGui::GetStyleColorVec4(ImGuiCol_TextDisabled));
+  ImGui::TextUnformatted(
+      "The Shot block drill: one defender near a shot's line, an opponent or "
+      "a team-mate, standing, sidestepping or sprinting, at Defending and "
+      "Tackling 1, 50 and 100, 1 to 25 m out. Counts how often a ball "
+      "through his leg-space (below his hip) meets a leg, by how far its "
+      "path ran from where he'd have been had he not reacted (0 to 1.5 m); "
+      "then the shooter's error at Shooting 1, 50 and 100. Not a map: "
+      "Capybara looks these chances up for each body in the way of each "
+      "shot. Saves to assets/config/game_xg/legs.json when done.");
+  ImGui::PopStyleColor();
+}
+
+void XgMapScene::renderScan(ImVec2 area)
+{
+  namespace Page = SandboxPageUI;
+  const float scale = Theme::scale();
+  Page::beginCard("##xg_map_scan", "LEG SWEEP: SCAN", area.x, Page::DARK, scale,
+                  boldFont);
+  const ImVec2 origin = ImGui::GetCursorScreenPos();
+  const ImVec2 size(std::max(scale, ImGui::GetContentRegionAvail().x),
+                    std::max(200 * scale, area.y - (56 * scale)));
+  ImGui::Dummy(size);
+  scanView.draw(legSweep.get(), origin, size, scale);
   Page::endCard(scale);
 }
 
