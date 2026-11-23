@@ -1784,6 +1784,41 @@ struct MatchStats
   int homeGoIns = 0;
   int awayGoIns = 0;
   int goInsOnFreeFoot = 0;
+  /** Brain redesign plan section 27 (step O6): the players' own loose-ball
+   * calls, in the shadow of the team's pick. Per side and step: checks,
+   * the one "mine" is the team's pick, is someone else, nobody says mine
+   * (none in doubt), nobody says mine but some chase in doubt, two or more
+   * say mine. Per player: calls, and those judged at a later point. */
+  int looseShadowChecks = 0;
+  int looseShadowAgree = 0;
+  int looseShadowWrongPlayer = 0;
+  int looseShadowNobody = 0;
+  /** Of looseShadowNobody: an opponent says mine (the ball is theirs). */
+  int looseShadowTheirs = 0;
+  int looseShadowInDoubt = 0;
+  int looseShadowTwoGo = 0;
+  int looseShadowCalls = 0;
+  int looseShadowLaterPoint = 0;
+  /** Of the wrong-player calls, by the precise meeting times: his is
+   * sooner by over 0.1 s (the team's extra rules chose another), within
+   * 0.1 s (a near tie), later by over 0.1 s; of the later, by over 0.5 s,
+   * judged at a later point, and the pick not among those he compared
+   * himself with. */
+  int looseWrongShadowFaster = 0;
+  /** Step O6, first to commit (shadow): calls made, those the caller got
+   * right, those leaving the team's pick as the chaser, and the time from
+   * the second of the pair committing to the call (ms, summed). */
+  int looseCallsMade = 0;
+  int looseCallsRight = 0;
+  int looseCallsAgree = 0;
+  int looseCallMillis = 0;
+  int looseWrongNearTie = 0;
+  /** Of the near ties: the same time exactly (both there before the ball). */
+  int looseWrongExactTie = 0;
+  int looseWrongSlower = 0;
+  int looseWrongSlowerBig = 0;
+  int looseWrongSlowerLater = 0;
+  int looseWrongSlowerMissed = 0;
   int homeHolds = 0;
   int awayHolds = 0;
   int intentsWin = 0;

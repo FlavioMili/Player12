@@ -21,6 +21,108 @@
    * way (Notes and plans/match_engine_way_round_plan.md). */
   void planWayRoundCapybara(std::size_t slot);
   void assignMarksCapybara(bool home);
+  /** A loose ball's projected path, one point per tick. */
+  struct LoosePathPointCapybara
+  {
+    float seconds = 0.0F;
+    Vector2F at{};
+    float height = 0.0F;
+  };
+  /** A player's own loose-ball call (brain redesign plan section 27, step
+   * O6), run in the shadow of the team's pick. */
+  enum class LooseCallCapybara : std::uint8_t
+  {
+    MINE,
+    IN_DOUBT,
+    NOT_MINE
+  };
+  struct LooseCallResultCapybara
+  {
+    LooseCallCapybara call = LooseCallCapybara::NOT_MINE;
+    /** Nobody could reach the earliest point: judged at his own. */
+    bool laterPoint = false;
+    std::size_t meetIndex = 0;
+    /** Diagnosis: whether the watched player (the team's pick) was one he
+     * compared himself with. */
+    bool watchConsidered = false;
+  };
+  /** The one player of a side who said mine (null if none or several). */
+  struct LooseShadowOutcomeCapybara
+  {
+    const MatchPlayer* mine = nullptr;
+    LooseCallResultCapybara result;
+  };
+  /** Diagnosis of a wrong-player call: his and the team pick's precise
+   * meeting times (the planner's path search). */
+  void tallyWrongLooseCallCapybara(const LooseCallResultCapybara& result,
+                                   float shadowSeconds, float pickSeconds);
+  /** Mine if he is first; not his if beaten by more than the margin; else
+   * he chases in doubt. */
+  [[nodiscard]] static LooseCallCapybara judgeLooseCallCapybara(
+      float mine, float bestRival);
+  /** Straight-line metres over his top speed, his reach taken off. */
+  [[nodiscard]] float roughSecondsCapybara(const MatchPlayer& player,
+                                           Vector2F at) const;
+  /** The first point from `from` on he can play and reach in time (else
+   * where it stops), and when he meets it there. */
+  [[nodiscard]] std::pair<std::size_t, float> roughMeetCapybara(
+      const MatchPlayer& player, std::span<const LoosePathPointCapybara> path,
+      std::size_t from) const;
+  [[nodiscard]] LooseCallResultCapybara looseCallCapybara(
+      const MatchPlayer& player, std::span<const LoosePathPointCapybara> path,
+      const MatchPlayer* watch = nullptr) const;
+  /** Every outfielder of a side makes his call; tallied against the team's
+   * pick (stats.looseShadow*). Draws nothing, changes nothing. */
+  LooseShadowOutcomeCapybara shadowLooseBallCapybara(bool home,
+                               std::span<const LoosePathPointCapybara> path,
+                               const MatchPlayer* teamPick);
+  /** Step O6, first to commit (brain redesign plan section 27): a player
+   * who goes for a loose ball looks up after his Concentration delay; with
+   * a team-mate also going, he works out which of them should take it (the
+   * clearly quicker by the precise times, else the one whose shape spot is
+   * nearest the collection point; right with a chance set by his
+   * Decisions), and calls it after his Leadership delay. The first call
+   * settles it for both. Shadow state: it changes nothing. */
+  struct LooseCommitCapybara
+  {
+    bool committed = false;
+    bool lookedUp = false;
+    bool settled = false;
+    bool answerMine = false;
+    bool answerRight = false;
+    double committedAt = 0.0;
+    double lookUpAt = 0.0;
+    double callAt = 0.0;
+    std::size_t partner = SIZE_MAX;
+  };
+  std::vector<LooseCommitCapybara> looseCommitsCapybara;
+  /** This step's shadow call and shape spot, per player (index into
+   * players). */
+  std::vector<LooseCallCapybara> looseCallsNowCapybara;
+  std::vector<PitchPoint> shapeSpotsCapybara;
+  std::uint64_t looseShadowStepCapybara = 0;
+  /** A player's index in players. */
+  [[nodiscard]] std::size_t playerIndexCapybara(const MatchPlayer& player) const;
+  /** Per player: his precise meeting time and point (the planner's path
+   * search), for the committed. */
+  struct PreciseMeetCapybara
+  {
+    float seconds = 0.0F;
+    PitchPoint at{};
+  };
+  void looseCommitStageCapybara(bool home,
+                                std::span<const PreciseMeetCapybara> precise,
+                                const MatchPlayer* teamPick);
+  void lookUpLooseCapybara(std::size_t index,
+                           std::span<const PreciseMeetCapybara> precise,
+                           double now);
+  void settleLooseCallCapybara(std::size_t index, const MatchPlayer* teamPick,
+                               double now);
+  /** The brain flow tool's example player: his call and, when it is his,
+   * where he could meet it. */
+  void noteLooseCallCapybara(const MatchPlayer& player,
+                             std::span<const LoosePathPointCapybara> path,
+                             const LooseCallResultCapybara& result);
   PitchPoint goalkeeperTargetCapybara(MatchPlayer& keeper, const MatchPlayer* carrier);
   /** The keeper's set position against a threat at `threat` (his standing
    * place on the ball-goal line, deeper the nearer the threat): what

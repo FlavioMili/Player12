@@ -236,6 +236,27 @@ struct MatchSample
    * the carrier's free foot, steps held, and the intents chosen. */
   int go_ins = 0;
   int go_ins_free_foot = 0;
+  /** Step O6: the shadow loose-ball calls (see MatchStats). */
+  int loose_shadow_checks = 0;
+  int loose_shadow_agree = 0;
+  int loose_shadow_wrong_player = 0;
+  int loose_shadow_nobody = 0;
+  int loose_shadow_theirs = 0;
+  int loose_shadow_in_doubt = 0;
+  int loose_shadow_two_go = 0;
+  int loose_shadow_calls = 0;
+  int loose_shadow_later_point = 0;
+  int loose_calls_made = 0;
+  int loose_calls_right = 0;
+  int loose_calls_agree = 0;
+  int loose_call_millis = 0;
+  int loose_wrong_shadow_faster = 0;
+  int loose_wrong_near_tie = 0;
+  int loose_wrong_exact_tie = 0;
+  int loose_wrong_slower = 0;
+  int loose_wrong_slower_big = 0;
+  int loose_wrong_slower_later = 0;
+  int loose_wrong_slower_missed = 0;
   int holds = 0;
   int intents_win = 0;
   int intents_clear = 0;

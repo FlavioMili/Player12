@@ -526,7 +526,9 @@ void BrainFlowScene::render()
   ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(0, 0));
   ImGui::BeginChild("##brain_flow_controls",
                     ImVec2(panel + gutter, available.y),
-                    ImGuiChildFlags_AlwaysUseWindowPadding);
+                    ImGuiChildFlags_AlwaysUseWindowPadding,
+                    ImGuiWindowFlags_NoScrollbar |
+                        ImGuiWindowFlags_NoScrollWithMouse);
   renderPanel(panel);
   ImGui::EndChild();
   ImGui::SameLine(0, SandboxPageUI::PANEL_GAP * scale);
@@ -544,12 +546,55 @@ void BrainFlowScene::renderPanel(float width)
                "scored by Capybara's own code. Start from the default flow, "
                "then switch layers on to see what each one touches.",
                true);
-  Page::beginCard("##brain_flow_layers", "LAYERS", width, Page::DARK, scale,
-                  boldFont);
   if (Page::button("Back to tools", false, scale, boldFont))
   {
     guiView->popScene();
   }
+
+  const auto toggleCard = [&](const char* label, bool& visible)
+  {
+    if (Page::button(label, visible, scale, boldFont))
+    {
+      visible = !visible;
+    }
+  };
+  const auto sameLineIfFits = [&](const char* label)
+  {
+    const float nextX = ImGui::GetItemRectMax().x - ImGui::GetWindowPos().x +
+                        ImGui::GetStyle().ItemSpacing.x;
+    if (nextX + Page::buttonWidth(label, scale, boldFont) <= width)
+    {
+      ImGui::SameLine();
+    }
+  };
+  toggleCard("Layers", showLayers);
+  sameLineIfFits("Randomness");
+  toggleCard("Randomness", showRandomness);
+  sameLineIfFits("Example");
+  toggleCard("Example", showExample);
+
+  ImGui::BeginChild("##brain_flow_cards", ImVec2(0, 0));
+  if (showLayers)
+  {
+    renderLayers(width);
+  }
+  if (showRandomness)
+  {
+    renderRandomness(width);
+  }
+  if (showExample)
+  {
+    renderExample(width);
+  }
+  ImGui::EndChild();
+}
+
+void BrainFlowScene::renderLayers(float width)
+{
+  namespace Page = SandboxPageUI;
+  const float scale = Theme::scale();
+  Page::beginCard("##brain_flow_layers", "LAYERS", width, Page::DARK, scale,
+                  boldFont);
   for (std::size_t index = 0; index < BrainFlow::LAYER_COUNT; ++index)
   {
     const auto layer = static_cast<Layer>(index);
@@ -578,7 +623,12 @@ void BrainFlowScene::renderPanel(float width)
     dirty = true;
   }
   Page::endCard(scale);
+}
 
+void BrainFlowScene::renderRandomness(float width)
+{
+  namespace Page = SandboxPageUI;
+  const float scale = Theme::scale();
   Page::beginCard("##brain_flow_randomness", "RANDOMNESS", width, Page::MID,
                   scale, boldFont);
   muted(
@@ -597,8 +647,6 @@ void BrainFlowScene::renderPanel(float width)
     dirty = true;
   }
   Page::endCard(scale);
-
-  renderExample(width);
 }
 
 void BrainFlowScene::renderLayerSettings(Layer layer)
@@ -935,7 +983,8 @@ void arrow()
 /** A stage: a full-width band with its title, then its body drawn by
  * `body`; an arrow above it unless it is the first. */
 template <typename Body>
-void stage(const StageSpec& spec, ImFont* bold, const Body& body)
+void stage(const StageSpec& spec, ImFont* bold, bool resetOpenState,
+           const Body& body)
 {
   namespace Page = SandboxPageUI;
   const float scale = Theme::scale();
@@ -947,17 +996,20 @@ void stage(const StageSpec& spec, ImFont* bold, const Body& body)
                         spec.built ? Page::LIGHT : Page::DARK);
   ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding,
                       ImVec2(STAGE_PADDING_X * scale, STAGE_PADDING_Y * scale));
-  ImGui::BeginChild(
-      spec.id, ImVec2(0, 0),
-      ImGuiChildFlags_AlwaysUseWindowPadding | ImGuiChildFlags_AutoResizeY);
-  // The title folds the stage away; built stages start open.
+  const ImGuiChildFlags childFlags =
+      ImGuiChildFlags_AlwaysUseWindowPadding | ImGuiChildFlags_AutoResizeY |
+      (resetOpenState ? ImGuiChildFlags_AlwaysAutoResize : 0);
+  ImGui::BeginChild(spec.id, ImVec2(0, 0), childFlags);
   ImGui::PushStyleColor(ImGuiCol_Text, spec.built ? Page::LIME : Page::MUTED);
   ImGui::PushStyleColor(ImGuiCol_Header, IM_COL32(0, 0, 0, 0));
   ImGui::PushStyleColor(ImGuiCol_HeaderHovered, Page::RULE);
   ImGui::PushStyleColor(ImGuiCol_HeaderActive, Page::RULE);
   ImGui::PushFont(bold, TITLE_SIZE);
-  const bool open = ImGui::CollapsingHeader(
-      spec.title, spec.built ? ImGuiTreeNodeFlags_DefaultOpen : 0);
+  if (resetOpenState)
+  {
+    ImGui::SetNextItemOpen(false);
+  }
+  const bool open = ImGui::CollapsingHeader(spec.title);
   ImGui::PopFont();
   constexpr int HEADER_COLOURS = 4;
   ImGui::PopStyleColor(HEADER_COLOURS);
@@ -974,6 +1026,10 @@ void stage(const StageSpec& spec, ImFont* bold, const Body& body)
 
 void BrainFlowScene::renderFlow(float width, float height)
 {
+  if (collapseStages)
+  {
+    ImGui::SetNextWindowScroll(ImVec2(0, 0));
+  }
   ImGui::BeginChild("##brain_flow_stages", ImVec2(width, height));
   if (!error.empty())
   {
@@ -981,16 +1037,21 @@ void BrainFlowScene::renderFlow(float width, float height)
     ImGui::EndChild();
     return;
   }
-  stage(SITUATION, boldFont, [this] { situationStage(); });
-  stage(READING, boldFont, readingStage);
-  stage(GOAL, boldFont, goalStage);
-  stage(OPTIONS, boldFont, [this] { optionsStage(); });
-  stage(MEASURES, boldFont, [this] { measuresStage(); });
-  stage(WEIGHTS, boldFont, [this] { weightsStage(); });
-  stage(JUDGEMENT, boldFont, [this] { judgementStage(); });
-  stage(PICK, boldFont, [this] { pickStage(); });
-  stage(BODY, boldFont, [this] { bodyStage(); });
-  stage(OFF_BALL, boldFont, [this] { offBallStage(); });
+  const auto renderStage = [this](const StageSpec& spec, const auto& body)
+  {
+    stage(spec, boldFont, collapseStages, body);
+  };
+  renderStage(SITUATION, [this] { situationStage(); });
+  renderStage(READING, readingStage);
+  renderStage(GOAL, goalStage);
+  renderStage(OPTIONS, [this] { optionsStage(); });
+  renderStage(MEASURES, [this] { measuresStage(); });
+  renderStage(WEIGHTS, [this] { weightsStage(); });
+  renderStage(JUDGEMENT, [this] { judgementStage(); });
+  renderStage(PICK, [this] { pickStage(); });
+  renderStage(BODY, [this] { bodyStage(); });
+  renderStage(OFF_BALL, [this] { offBallStage(); });
+  collapseStages = false;
   ImGui::EndChild();
 }
 
@@ -1079,7 +1140,9 @@ constexpr std::array<Situation, 20> SITUATIONS = {{
          "its own off-ball frame (step O3, refreshTacticalTargets): chase it "
          "(first by arrival), cover the chase, transition run or support, "
          "recover. Stopgap pick in today's order (follow-up: measures). "
-         "Routing: planWayRound, planOvertake",
+         "Shadow (step O6): each player's own call (mine, in doubt, not "
+         "mine) and where he could meet it, tallied against the team's "
+         "pick; it changes nothing yet. Routing: planWayRound, planOvertake",
      .layers = SLIDERS | ROLE | ORDERS | MOOD,
      .plannerWide = true,
      .onFrame = false,
@@ -1926,7 +1989,40 @@ void BrainFlowScene::offBallStage()
   {
     text(std::format("Overridden: {}", offBall.overriddenBy), WARNING);
   }
+  looseShadow(offBall);
   muted("The line on the pitch: from him to the target his job sets.");
+}
+
+void BrainFlowScene::looseShadow(const BrainFlow::OffBallRecord& offBall)
+{
+  if (offBall.looseCall == nullptr)
+  {
+    return;
+  }
+  // Step O6: his own call, in the shadow of the team's pick (it changes
+  // nothing yet).
+  text(std::format("His own call (shadow, step O6): {}", offBall.looseCall),
+       SandboxPageUI::CREAM);
+  muted(
+      "Can he beat the 3 closest to the earliest playable point? If nobody "
+      "gets there in time, his own earliest point against those in "
+      "contention. Beaten by over 0.5 s: not his; closer: he chases in "
+      "doubt (estimates, to tune).");
+  for (const BrainFlow::OffBallRecord::MeetPoint& point : offBall.meetPoints)
+  {
+    text(std::format("{} meet it {}: {:.1f} s, {:.1f} m up, {:+.1f} s on "
+                     "the nearest rival",
+                     point.open ? "+" : "-", point.name, point.seconds,
+                     point.height, point.margin),
+         point.open ? SandboxPageUI::CREAM : SandboxPageUI::MUTED);
+  }
+  if (!offBall.meetPoints.empty())
+  {
+    muted(
+        "Where to meet it: open when nobody beats him there within 0.5 s. "
+        "Stopgap pick: the earliest (follow-up: measures, control against "
+        "time given away).");
+  }
 }
 
 void BrainFlowScene::bodyStage()

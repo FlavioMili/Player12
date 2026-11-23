@@ -317,6 +317,26 @@ void extractEngine(MatchSample& sample, const MatchEngine& engine)
   sample.shot_leg_outcomes = stats.shotLegOutcomes;
   sample.go_ins = stats.homeGoIns + stats.awayGoIns;
   sample.go_ins_free_foot = stats.goInsOnFreeFoot;
+  sample.loose_shadow_checks = stats.looseShadowChecks;
+  sample.loose_shadow_agree = stats.looseShadowAgree;
+  sample.loose_shadow_wrong_player = stats.looseShadowWrongPlayer;
+  sample.loose_shadow_nobody = stats.looseShadowNobody;
+  sample.loose_shadow_theirs = stats.looseShadowTheirs;
+  sample.loose_shadow_in_doubt = stats.looseShadowInDoubt;
+  sample.loose_shadow_two_go = stats.looseShadowTwoGo;
+  sample.loose_shadow_calls = stats.looseShadowCalls;
+  sample.loose_shadow_later_point = stats.looseShadowLaterPoint;
+  sample.loose_calls_made = stats.looseCallsMade;
+  sample.loose_calls_right = stats.looseCallsRight;
+  sample.loose_calls_agree = stats.looseCallsAgree;
+  sample.loose_call_millis = stats.looseCallMillis;
+  sample.loose_wrong_shadow_faster = stats.looseWrongShadowFaster;
+  sample.loose_wrong_near_tie = stats.looseWrongNearTie;
+  sample.loose_wrong_exact_tie = stats.looseWrongExactTie;
+  sample.loose_wrong_slower = stats.looseWrongSlower;
+  sample.loose_wrong_slower_big = stats.looseWrongSlowerBig;
+  sample.loose_wrong_slower_later = stats.looseWrongSlowerLater;
+  sample.loose_wrong_slower_missed = stats.looseWrongSlowerMissed;
   sample.holds = stats.homeHolds + stats.awayHolds;
   sample.intents_win = stats.intentsWin;
   sample.intents_clear = stats.intentsClear;
@@ -1291,6 +1311,60 @@ std::map<std::string, Estimate> matchMetrics(
   metrics["go_ins_free_foot_share"] = ratioEstimate(
       column([](const MatchSample& s) { return s.go_ins_free_foot; }),
       column([](const MatchSample& s) { return s.go_ins; }));
+  const std::vector<double> looseChecks =
+      column([](const MatchSample& s) { return s.loose_shadow_checks; });
+  metrics["loose_shadow_checks_per_match"] = meanEstimate(looseChecks);
+  metrics["loose_shadow_agree_share"] = ratioEstimate(
+      column([](const MatchSample& s) { return s.loose_shadow_agree; }),
+      looseChecks);
+  metrics["loose_shadow_wrong_player_share"] = ratioEstimate(
+      column([](const MatchSample& s) { return s.loose_shadow_wrong_player; }),
+      looseChecks);
+  metrics["loose_shadow_nobody_share"] = ratioEstimate(
+      column([](const MatchSample& s) { return s.loose_shadow_nobody; }),
+      looseChecks);
+  metrics["loose_shadow_theirs_share"] = ratioEstimate(
+      column([](const MatchSample& s) { return s.loose_shadow_theirs; }),
+      looseChecks);
+  metrics["loose_shadow_in_doubt_share"] = ratioEstimate(
+      column([](const MatchSample& s) { return s.loose_shadow_in_doubt; }),
+      looseChecks);
+  metrics["loose_shadow_two_go_share"] = ratioEstimate(
+      column([](const MatchSample& s) { return s.loose_shadow_two_go; }),
+      looseChecks);
+  metrics["loose_shadow_later_point_share"] = ratioEstimate(
+      column([](const MatchSample& s) { return s.loose_shadow_later_point; }),
+      column([](const MatchSample& s) { return s.loose_shadow_calls; }));
+  const std::vector<double> looseWrong =
+      column([](const MatchSample& s) { return s.loose_shadow_wrong_player; });
+  metrics["loose_wrong_shadow_faster_share"] = ratioEstimate(
+      column([](const MatchSample& s) { return s.loose_wrong_shadow_faster; }), looseWrong);
+  metrics["loose_wrong_near_tie_share"] = ratioEstimate(
+      column([](const MatchSample& s) { return s.loose_wrong_near_tie; }), looseWrong);
+  metrics["loose_wrong_exact_tie_share"] = ratioEstimate(
+      column([](const MatchSample& s) { return s.loose_wrong_exact_tie; }), looseWrong);
+  metrics["loose_wrong_slower_share"] = ratioEstimate(
+      column([](const MatchSample& s) { return s.loose_wrong_slower; }), looseWrong);
+  metrics["loose_wrong_slower_big_share"] = ratioEstimate(
+      column([](const MatchSample& s) { return s.loose_wrong_slower_big; }), looseWrong);
+  metrics["loose_wrong_slower_later_share"] = ratioEstimate(
+      column([](const MatchSample& s) { return s.loose_wrong_slower_later; }), looseWrong);
+  metrics["loose_wrong_slower_missed_share"] = ratioEstimate(
+      column([](const MatchSample& s) { return s.loose_wrong_slower_missed; }), looseWrong);
+  const std::vector<double> looseCalls =
+      column([](const MatchSample& s) { return s.loose_calls_made; });
+  metrics["loose_calls_per_match"] = meanEstimate(looseCalls);
+  metrics["loose_calls_right_share"] = ratioEstimate(
+      column([](const MatchSample& s) { return s.loose_calls_right; }),
+      looseCalls);
+  metrics["loose_calls_agree_share"] = ratioEstimate(
+      column([](const MatchSample& s) { return s.loose_calls_agree; }),
+      looseCalls);
+  constexpr double MILLIS_PER_SECOND = 1000.0;
+  metrics["loose_call_seconds"] = ratioEstimate(
+      column([](const MatchSample& s)
+             { return s.loose_call_millis / MILLIS_PER_SECOND; }),
+      looseCalls);
   metrics["holds_per_team"] =
       perTeam([](const MatchSample& s) { return s.holds; });
   metrics["intents_win_per_team"] =

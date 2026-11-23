@@ -97,6 +97,8 @@ class BrainFlowScene : public GUIScene
   /** Scores the example twice: with no layers, and with the layers on. */
   void rebuild();
   void renderPanel(float width);
+  void renderLayers(float width);
+  void renderRandomness(float width);
   /** The settings of one layer, under its switch while it is on. */
   void renderLayerSettings(BrainFlow::Layer layer);
   void renderExample(float width);
@@ -120,10 +122,16 @@ class BrainFlowScene : public GUIScene
   void bodyStage();
   /** One player's off-ball frame at the example's moment (step O5). */
   void offBallStage();
+  /** Step O6: his own loose-ball call and meeting points (shadow). */
+  static void looseShadow(const BrainFlow::OffBallRecord& offBall);
   [[nodiscard]] bool layerOn(BrainFlow::Layer layer) const;
   [[nodiscard]] std::string nameOf(std::uint32_t player) const;
 
   // Settings.
+  bool showLayers = false;
+  bool showRandomness = false;
+  bool showExample = false;
+  bool collapseStages = true;
   BrainFlow::LayerMask layers = 0;
   ExampleSettings settings;
   int preset = 0;

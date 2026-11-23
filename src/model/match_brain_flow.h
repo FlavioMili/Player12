@@ -141,6 +141,19 @@ struct OffBallRecord
   const char* overriddenBy = nullptr;
   PitchPoint target{};
   bool filled = false;
+  /** Step O6 (shadow): his own loose-ball call (null when none), and when
+   * it is his, where he could meet it. */
+  const char* looseCall = nullptr;
+  struct MeetPoint
+  {
+    const char* name = "";
+    bool open = false;
+    float seconds = 0.0F;
+    float height = 0.0F;
+    /** The nearest rival's rough time there less his (s). */
+    float margin = 0.0F;
+  };
+  std::vector<MeetPoint> meetPoints;
 };
 
 /** One carrier decision (pass, shot, carry, shield, clear), as the tool
