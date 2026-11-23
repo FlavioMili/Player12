@@ -928,7 +928,7 @@ struct Situation
   /** On a decision frame of its own, not shown in the stages below yet. */
   bool ownFrame;
 };
-constexpr std::array<Situation, 16> SITUATIONS = {{
+constexpr std::array<Situation, 17> SITUATIONS = {{
     {.depth = 0,
      .title = "Restart",
      .decidedBy = "",
@@ -966,20 +966,35 @@ constexpr std::array<Situation, 16> SITUATIONS = {{
      .ownFrame = false},
     {.depth = 1,
      .title = "Ball loose",
-     .decidedBy = "refreshTacticalTargets (chaser by arrival), planWayRound, "
-                  "planOvertake",
+     .decidedBy =
+         "its own off-ball frame (step O3, refreshTacticalTargets): chase it "
+         "(first by arrival), cover the chase, transition run or support, "
+         "recover. Stopgap pick in today's order (follow-up: measures). "
+         "Routing: planWayRound, planOvertake",
      .layers = SLIDERS | ROLE | ORDERS | MOOD,
      .plannerWide = true,
      .onFrame = false,
-     .ownFrame = false},
+     .ownFrame = true},
     {.depth = 1,
      .title = "Our pass travelling",
-     .decidedBy = "afterPassReleased (the collector); refreshTacticalTargets "
-                  "for everyone else",
+     .decidedBy =
+         "its own off-ball frame (step O3): receive it (the collector, set by "
+         "afterPassReleased), or support while it travels. Stopgap pick in "
+         "today's order (follow-up: measures)",
      .layers = SLIDERS | ROLE | ORDERS | MOOD,
      .plannerWide = true,
      .onFrame = false,
-     .ownFrame = false},
+     .ownFrame = true},
+    {.depth = 1,
+     .title = "Their pass, or a shot, travelling",
+     .decidedBy =
+         "its own off-ball frame (step O3): chase it (the first presser: an "
+         "interception), cover the chase, tight mark, recover in transition, "
+         "hold shape. Stopgap pick in today's order (follow-up: measures)",
+     .layers = SLIDERS | ROLE | ORDERS | MOOD,
+     .plannerWide = true,
+     .onFrame = false,
+     .ownFrame = true},
     {.depth = 1,
      .title = "Opponents' ball",
      .decidedBy = "",

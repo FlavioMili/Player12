@@ -330,6 +330,24 @@ enum class TheirBallJob : std::uint8_t
 };
 constexpr std::size_t THEIR_BALL_JOB_COUNT =
     static_cast<std::size_t>(TheirBallJob::COUNT);
+/** Nobody has the ball (step O3): his off-ball options across its three
+ * situations, in the stopgap order (today's). */
+enum class LooseJob : std::uint8_t
+{
+  RECEIVE,
+  FLIGHT_SUPPORT,
+  CHASE,
+  COVER_CHASE,
+  TIGHT_MARK,
+  TRANSITION_RECOVER,
+  HOLD_SHAPE,
+  TRANSITION_RUN,
+  TRANSITION_SUPPORT,
+  RECOVER,
+  COUNT
+};
+constexpr std::size_t LOOSE_JOB_COUNT =
+    static_cast<std::size_t>(LooseJob::COUNT);
 }  // namespace
 
 void MatchEngine::refreshTacticalTargetsCapybara(float dt, bool planHome)
@@ -1871,11 +1889,48 @@ void MatchEngine::refreshTacticalTargetsCapybara(float dt, bool planHome)
           getPossessionState().isPass &&
           getPossessionState().passByHome == player.isHomeTeam;
       const auto& pressers = player.isHomeTeam ? homePressers : awayPressers;
+      // Nobody has the ball (brain redesign plan section 22, step O3):
+      // three situations, each his off-ball frame. Open when the team's
+      // assignments, orders or phase give it to him; the stopgap pick is
+      // today's order (the first open option). Follow-up: measures.
+      // - "Our pass travelling": receive it, or support while it travels.
+      // - "Their pass, or a shot, travelling": chase it (the first
+      //   presser), cover the chase, tight mark, recover in transition,
+      //   hold shape.
+      // - "Ball loose": chase, cover the chase, transition run or support,
+      //   recover.
+      const bool travelling =
+          getPossessionState().isPass || getPossessionState().isShot;
+      const MatchPlayer* tight =
+          getPossessionState().isPass &&
+                  getPossessionState().passByHome != player.isHomeTeam
+              ? tightMarkTargetCapybara(player)
+              : nullptr;
+      const bool attackingTransition =
+          teamPhase == TeamPhase::ATTACKING_TRANSITION;
+      const auto& runners = player.isHomeTeam ? homeRunners : awayRunners;
+      const bool transitionRunner =
+          std::ranges::find(runners, &player) != runners.end();
+      const std::array<bool, LOOSE_JOB_COUNT> looseOpen{
+          receivingPass && (possessionId == PossessionId::BINTURONG
+                                ? pressers[0] == &player
+                                : player.player == getExpectedReceiver()),
+          receivingPass,
+          pressers[0] == &player,
+          pressers[1] == &player &&
+              sliders.pressing >
+                  MatchTuning::Shape::SECOND_LOOSE_BALL_PRESS_THRESHOLD,
+          travelling && tight != nullptr,
+          travelling && teamPhase == TeamPhase::DEFENSIVE_TRANSITION,
+          travelling,
+          attackingTransition && transitionRunner,
+          attackingTransition,
+          true};
+      const auto looseJob = static_cast<LooseJob>(
+          std::distance(looseOpen.begin(), std::ranges::find(looseOpen, true)));
       if (receivingPass)
       {
-        if (possessionId == PossessionId::BINTURONG
-                ? pressers[0] == &player
-                : player.player == getExpectedReceiver())
+        if (looseJob == LooseJob::RECEIVE)
         {
           // Meet the ball on its path instead of chasing where it is: the
           // closest point of the remaining flight line ahead of the ball.
@@ -1948,10 +2003,7 @@ void MatchEngine::refreshTacticalTargetsCapybara(float dt, bool planHome)
       // Everybody else either joins a selected transition run or recovers the
       // team shape. A normal pass is handled above so it does not trigger a
       // full-team scramble on every release of the ball.
-      else if (pressers[0] == &player ||
-               (pressers[1] == &player &&
-                sliders.pressing >
-                    MatchTuning::Shape::SECOND_LOOSE_BALL_PRESS_THRESHOLD))
+      else if (looseJob == LooseJob::CHASE || looseJob == LooseJob::COVER_CHASE)
       {
         player.intent = pressers[0] == &player ? PlayerIntent::CLAIM_LOOSE_BALL
                                                : PlayerIntent::COVER_PRESS;
@@ -1969,14 +2021,9 @@ void MatchEngine::refreshTacticalTargetsCapybara(float dt, bool planHome)
                       MatchTuning::Player::COVER_LOOSE_BALL_OFFSET_METRES;
         }
       }
-      else if (getPossessionState().isPass || getPossessionState().isShot)
+      else if (travelling)
       {
-        const MatchPlayer* tight =
-            getPossessionState().isPass &&
-                    getPossessionState().passByHome != player.isHomeTeam
-                ? tightMarkTargetCapybara(player)
-                : nullptr;
-        if (tight != nullptr)
+        if (looseJob == LooseJob::TIGHT_MARK)
         {
           // A tight marker goes with his man while the pass is on its way.
           player.intent = PlayerIntent::MARK_OPPONENT;
@@ -1986,7 +2033,7 @@ void MatchEngine::refreshTacticalTargetsCapybara(float dt, bool planHome)
           job = planJob(PlanBranch::TIGHT_MARK, 0,
                         static_cast<std::uint32_t>(slotOf(*tight)));
         }
-        else if (teamPhase == TeamPhase::DEFENSIVE_TRANSITION)
+        else if (looseJob == LooseJob::TRANSITION_RECOVER)
         {
           player.intent = PlayerIntent::RECOVER_SHAPE;
           target.x -=
@@ -2003,13 +2050,9 @@ void MatchEngine::refreshTacticalTargetsCapybara(float dt, bool planHome)
       }
       else
       {
-        const bool attackingTransition =
-            teamPhase == TeamPhase::ATTACKING_TRANSITION;
-        if (attackingTransition)
+        if (looseJob == LooseJob::TRANSITION_RUN ||
+            looseJob == LooseJob::TRANSITION_SUPPORT)
         {
-          const auto& runners = player.isHomeTeam ? homeRunners : awayRunners;
-          const bool transitionRunner =
-              std::ranges::find(runners, &player) != runners.end();
           player.intent = transitionRunner ? PlayerIntent::RUN_IN_BEHIND
                                            : PlayerIntent::OFFER_SUPPORT;
           player.isMakingRun = transitionRunner;
