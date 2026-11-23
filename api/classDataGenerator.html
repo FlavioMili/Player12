@@ -114,11 +114,16 @@ Static Public Member Functions</h2></td></tr>
 <tr class="memdesc:ace95058ce7ae4945cebad4688cea7788"><td class="mdescLeft">&#160;</td><td class="mdescRight">Generate a collection of teams.  <br /></td></tr>
 <tr class="separator:ace95058ce7ae4945cebad4688cea7788"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a72ec8baf898051b4e343003e026ef9e2" id="r_a72ec8baf898051b4e343003e026ef9e2"><td class="memItemLeft" align="right" valign="top">static std::unordered_map&lt; <a class="el" href="types_8h.html#a57143f6ccbdf5a5d9724b986cbdafb31">TeamID</a>, <a class="el" href="structClubIdentity.html">ClubIdentity</a> &gt;&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classDataGenerator.html#a72ec8baf898051b4e343003e026ef9e2">loadClubIdentities</a> ()</td></tr>
-<tr class="memdesc:a72ec8baf898051b4e343003e026ef9e2"><td class="mdescLeft">&#160;</td><td class="mdescRight">Reads short name, kit colours, stadium, founding year and nickname of every club in the data pack. Missing fields keep the <a class="el" href="structClubIdentity.html" title="Descriptive club data read from the team files of the data pack.">ClubIdentity</a> defaults, so minimal packs still load.  <br /></td></tr>
+<tr class="memdesc:a72ec8baf898051b4e343003e026ef9e2"><td class="mdescLeft">&#160;</td><td class="mdescRight">Reads short name, kit colours, stadium, founding year and nickname of every club in the data pack. Missing fields keep the <a class="el" href="structClubIdentity.html" title="Descriptive club data of the installed world database.">ClubIdentity</a> defaults, so minimal packs still load.  <br /></td></tr>
 <tr class="separator:a72ec8baf898051b4e343003e026ef9e2"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:abd6cc11c777d31d1e68a79273ada61c4" id="r_abd6cc11c777d31d1e68a79273ada61c4"><td class="memItemLeft" align="right" valign="top">static std::unordered_map&lt; std::string, std::string &gt;&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classDataGenerator.html#abd6cc11c777d31d1e68a79273ada61c4">loadClubArticles</a> ()</td></tr>
-<tr class="memdesc:abd6cc11c777d31d1e68a79273ada61c4"><td class="mdescLeft">&#160;</td><td class="mdescRight">Reads the optional Italian article ("article_it": "la", "il", "lo" or "l'") of the clubs that set one, for <a class="el" href="namespaceClubArticle.html" title="Italian definite articles for club names (&quot;il Lecce&quot;, &quot;la Roma&quot;, &quot;l&#39;Acaya&quot;, &quot;lo Stoke City&quot;).">ClubArticle</a>.  <br /></td></tr>
-<tr class="separator:abd6cc11c777d31d1e68a79273ada61c4"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a702c1ca9e4da6ddf5e3f231007cc8f94" id="r_a702c1ca9e4da6ddf5e3f231007cc8f94"><td class="memItemLeft" align="right" valign="top">static const std::unordered_map&lt; <a class="el" href="types_8h.html#a57143f6ccbdf5a5d9724b986cbdafb31">TeamID</a>, <a class="el" href="structClubIdentity.html">ClubIdentity</a> &gt; &amp;&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classDataGenerator.html#a702c1ca9e4da6ddf5e3f231007cc8f94">clubIdentities</a> ()</td></tr>
+<tr class="separator:a702c1ca9e4da6ddf5e3f231007cc8f94"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:abeb7afa1133d8993971290ed9ca6a6e3" id="r_abeb7afa1133d8993971290ed9ca6a6e3"><td class="memItemLeft" align="right" valign="top">static const std::unordered_map&lt; std::string, std::string &gt; &amp;&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classDataGenerator.html#abeb7afa1133d8993971290ed9ca6a6e3">clubArticles</a> ()</td></tr>
+<tr class="memdesc:abeb7afa1133d8993971290ed9ca6a6e3"><td class="mdescLeft">&#160;</td><td class="mdescRight">Optional Italian article ("article_it": "la", "il", "lo" or "l'") of the clubs of the installed world that set one, for <a class="el" href="namespaceClubArticle.html" title="Italian definite articles for club names (&quot;il Lecce&quot;, &quot;la Roma&quot;, &quot;l&#39;Acaya&quot;, &quot;lo Stoke City&quot;).">ClubArticle</a>.  <br /></td></tr>
+<tr class="separator:abeb7afa1133d8993971290ed9ca6a6e3"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:ac00469c443ba9ac788f807cdeafc3099" id="r_ac00469c443ba9ac788f807cdeafc3099"><td class="memItemLeft" align="right" valign="top">static const std::unordered_map&lt; <a class="el" href="types_8h.html#a93dcecc4aec7387438b9cabd8a28dfdb">PlayerID</a>, std::uint8_t &gt; &amp;&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classDataGenerator.html#ac00469c443ba9ac788f807cdeafc3099">playerSkinTones</a> ()</td></tr>
+<tr class="memdesc:ac00469c443ba9ac788f807cdeafc3099"><td class="mdescLeft">&#160;</td><td class="mdescRight">Skin tone (0 lightest .. 7 darkest) of every authored player of the installed world: the "skin" field, else a plausible tone for the nationality. Generated players get a deterministic tone from their id.  <br /></td></tr>
+<tr class="separator:ac00469c443ba9ac788f807cdeafc3099"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a7c3829f9f1a76c784edee8af94b94fca" id="r_a7c3829f9f1a76c784edee8af94b94fca"><td class="memItemLeft" align="right" valign="top">static std::vector&lt; <a class="el" href="classPlayer.html">Player</a> &gt;&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classDataGenerator.html#a7c3829f9f1a76c784edee8af94b94fca">generatePlayers</a> (const class <a class="el" href="classGameData.html">GameData</a> &amp;gamedata)</td></tr>
 <tr class="memdesc:a7c3829f9f1a76c784edee8af94b94fca"><td class="mdescLeft">&#160;</td><td class="mdescRight">Loads the predefined players and completes every club's squad with generated players (see <a class="el" href="namespaceWorldGeneration.html" title="Creation of clubs and players with realistic structure.">WorldGeneration</a>). Club profiles must be assigned first; generation is deterministic for the world seed.  <br /></td></tr>
 <tr class="separator:a7c3829f9f1a76c784edee8af94b94fca"><td class="memSeparator" colspan="2">&#160;</td></tr>
@@ -126,6 +131,60 @@ Static Public Member Functions</h2></td></tr>
 <a name="details" id="details"></a><h2 class="groupheader">Detailed Description</h2>
 <div class="textblock"><p>Class responsible for generating initial data for leagues, teams, and players. </p>
 </div><h2 class="groupheader">Member Function Documentation</h2>
+<a id="abeb7afa1133d8993971290ed9ca6a6e3" name="abeb7afa1133d8993971290ed9ca6a6e3"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#abeb7afa1133d8993971290ed9ca6a6e3">&#9670;&#160;</a></span>clubArticles()</h2>
+
+<div class="memitem">
+<div class="memproto">
+<table class="mlabels">
+  <tr>
+  <td class="mlabels-left">
+      <table class="memname">
+        <tr>
+          <td class="memname">const std::unordered_map&lt; std::string, std::string &gt; &amp; DataGenerator::clubArticles </td>
+          <td>(</td>
+          <td class="paramname"></td><td>)</td>
+          <td></td>
+        </tr>
+      </table>
+  </td>
+  <td class="mlabels-right">
+<span class="mlabels"><span class="mlabel">static</span></span>  </td>
+  </tr>
+</table>
+</div><div class="memdoc">
+
+<p>Optional Italian article ("article_it": "la", "il", "lo" or "l'") of the clubs of the installed world that set one, for <a class="el" href="namespaceClubArticle.html" title="Italian definite articles for club names (&quot;il Lecce&quot;, &quot;la Roma&quot;, &quot;l&#39;Acaya&quot;, &quot;lo Stoke City&quot;).">ClubArticle</a>. </p>
+<dl class="section return"><dt>Returns</dt><dd>Articles keyed by club name, parsed once per world. </dd></dl>
+
+</div>
+</div>
+<a id="a702c1ca9e4da6ddf5e3f231007cc8f94" name="a702c1ca9e4da6ddf5e3f231007cc8f94"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a702c1ca9e4da6ddf5e3f231007cc8f94">&#9670;&#160;</a></span>clubIdentities()</h2>
+
+<div class="memitem">
+<div class="memproto">
+<table class="mlabels">
+  <tr>
+  <td class="mlabels-left">
+      <table class="memname">
+        <tr>
+          <td class="memname">const std::unordered_map&lt; <a class="el" href="types_8h.html#a57143f6ccbdf5a5d9724b986cbdafb31">TeamID</a>, <a class="el" href="structClubIdentity.html">ClubIdentity</a> &gt; &amp; DataGenerator::clubIdentities </td>
+          <td>(</td>
+          <td class="paramname"></td><td>)</td>
+          <td></td>
+        </tr>
+      </table>
+  </td>
+  <td class="mlabels-right">
+<span class="mlabels"><span class="mlabel">static</span></span>  </td>
+  </tr>
+</table>
+</div><div class="memdoc">
+<p><a class="el" href="classDataGenerator.html#a72ec8baf898051b4e343003e026ef9e2" title="Reads short name, kit colours, stadium, founding year and nickname of every club in the data pack....">loadClubIdentities()</a> of the installed world, parsed once per world. </p>
+
+</div>
+</div>
 <a id="a0d1f55c23adfd8376f6eda3e35aa9d35" name="a0d1f55c23adfd8376f6eda3e35aa9d35"></a>
 <h2 class="memtitle"><span class="permalink"><a href="#a0d1f55c23adfd8376f6eda3e35aa9d35">&#9670;&#160;</a></span>generateLeagues()</h2>
 
@@ -211,34 +270,6 @@ Static Public Member Functions</h2></td></tr>
 
 </div>
 </div>
-<a id="abd6cc11c777d31d1e68a79273ada61c4" name="abd6cc11c777d31d1e68a79273ada61c4"></a>
-<h2 class="memtitle"><span class="permalink"><a href="#abd6cc11c777d31d1e68a79273ada61c4">&#9670;&#160;</a></span>loadClubArticles()</h2>
-
-<div class="memitem">
-<div class="memproto">
-<table class="mlabels">
-  <tr>
-  <td class="mlabels-left">
-      <table class="memname">
-        <tr>
-          <td class="memname">std::unordered_map&lt; std::string, std::string &gt; DataGenerator::loadClubArticles </td>
-          <td>(</td>
-          <td class="paramname"></td><td>)</td>
-          <td></td>
-        </tr>
-      </table>
-  </td>
-  <td class="mlabels-right">
-<span class="mlabels"><span class="mlabel">static</span></span>  </td>
-  </tr>
-</table>
-</div><div class="memdoc">
-
-<p>Reads the optional Italian article ("article_it": "la", "il", "lo" or "l'") of the clubs that set one, for <a class="el" href="namespaceClubArticle.html" title="Italian definite articles for club names (&quot;il Lecce&quot;, &quot;la Roma&quot;, &quot;l&#39;Acaya&quot;, &quot;lo Stoke City&quot;).">ClubArticle</a>. </p>
-<dl class="section return"><dt>Returns</dt><dd>Articles keyed by club name. </dd></dl>
-
-</div>
-</div>
 <a id="a72ec8baf898051b4e343003e026ef9e2" name="a72ec8baf898051b4e343003e026ef9e2"></a>
 <h2 class="memtitle"><span class="permalink"><a href="#a72ec8baf898051b4e343003e026ef9e2">&#9670;&#160;</a></span>loadClubIdentities()</h2>
 
@@ -262,8 +293,36 @@ Static Public Member Functions</h2></td></tr>
 </table>
 </div><div class="memdoc">
 
-<p>Reads short name, kit colours, stadium, founding year and nickname of every club in the data pack. Missing fields keep the <a class="el" href="structClubIdentity.html" title="Descriptive club data read from the team files of the data pack.">ClubIdentity</a> defaults, so minimal packs still load. </p>
+<p>Reads short name, kit colours, stadium, founding year and nickname of every club in the data pack. Missing fields keep the <a class="el" href="structClubIdentity.html" title="Descriptive club data of the installed world database.">ClubIdentity</a> defaults, so minimal packs still load. </p>
 <dl class="section return"><dt>Returns</dt><dd>Identities keyed by team id. </dd></dl>
+
+</div>
+</div>
+<a id="ac00469c443ba9ac788f807cdeafc3099" name="ac00469c443ba9ac788f807cdeafc3099"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#ac00469c443ba9ac788f807cdeafc3099">&#9670;&#160;</a></span>playerSkinTones()</h2>
+
+<div class="memitem">
+<div class="memproto">
+<table class="mlabels">
+  <tr>
+  <td class="mlabels-left">
+      <table class="memname">
+        <tr>
+          <td class="memname">const std::unordered_map&lt; <a class="el" href="types_8h.html#a93dcecc4aec7387438b9cabd8a28dfdb">PlayerID</a>, std::uint8_t &gt; &amp; DataGenerator::playerSkinTones </td>
+          <td>(</td>
+          <td class="paramname"></td><td>)</td>
+          <td></td>
+        </tr>
+      </table>
+  </td>
+  <td class="mlabels-right">
+<span class="mlabels"><span class="mlabel">static</span></span>  </td>
+  </tr>
+</table>
+</div><div class="memdoc">
+
+<p>Skin tone (0 lightest .. 7 darkest) of every authored player of the installed world: the "skin" field, else a plausible tone for the nationality. Generated players get a deterministic tone from their id. </p>
+<dl class="section return"><dt>Returns</dt><dd>Skin tones keyed by player id, built once per world. </dd></dl>
 
 </div>
 </div>

@@ -208,9 +208,9 @@ Public Member Functions</h2></td></tr>
 <tr class="memitem:a7d72ff3f639acb68578e20fee3649b42" id="r_a7d72ff3f639acb68578e20fee3649b42"><td class="memItemLeft" align="right" valign="top">&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classGameController.html#a7d72ff3f639acb68578e20fee3649b42">GameController</a> ()</td></tr>
 <tr class="memdesc:a7d72ff3f639acb68578e20fee3649b42"><td class="mdescLeft">&#160;</td><td class="mdescRight">Constructs a new <a class="el" href="classGameController.html" title="Manages the core game logic, interacting with teams, leagues, and players.">GameController</a>.  <br /></td></tr>
 <tr class="separator:a7d72ff3f639acb68578e20fee3649b42"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a5b5aed0f2d8bbb2d245d0b332ba7f5c2" id="r_a5b5aed0f2d8bbb2d245d0b332ba7f5c2"><td class="memItemLeft" align="right" valign="top">void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classGameController.html#a5b5aed0f2d8bbb2d245d0b332ba7f5c2">newGame</a> (int slot, std::optional&lt; std::uint64_t &gt; world_seed=std::nullopt)</td></tr>
-<tr class="memdesc:a5b5aed0f2d8bbb2d245d0b332ba7f5c2"><td class="mdescLeft">&#160;</td><td class="mdescRight">Starts a new game on the given save slot.  <br /></td></tr>
-<tr class="separator:a5b5aed0f2d8bbb2d245d0b332ba7f5c2"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a45280c51d1c1ffd8b5fdde35a4cabd10" id="r_a45280c51d1c1ffd8b5fdde35a4cabd10"><td class="memItemLeft" align="right" valign="top">void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classGameController.html#a45280c51d1c1ffd8b5fdde35a4cabd10">newGame</a> (int slot, std::optional&lt; std::uint64_t &gt; world_seed=std::nullopt, std::shared_ptr&lt; const <a class="el" href="classWorld_1_1Document.html">World::Document</a> &gt; <a class="el" href="world__runtime_8cpp.html#a1c8861c05e97e9a8f48d86d94292921b">world</a>=nullptr)</td></tr>
+<tr class="memdesc:a45280c51d1c1ffd8b5fdde35a4cabd10"><td class="mdescLeft">&#160;</td><td class="mdescRight">Starts a new game on the given save slot.  <br /></td></tr>
+<tr class="separator:a45280c51d1c1ffd8b5fdde35a4cabd10"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a4ddd3105f8d7d1abd3e336aca9511da5" id="r_a4ddd3105f8d7d1abd3e336aca9511da5"><td class="memItemLeft" align="right" valign="top">bool&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classGameController.html#a4ddd3105f8d7d1abd3e336aca9511da5">loadGame</a> (int slot)</td></tr>
 <tr class="memdesc:a4ddd3105f8d7d1abd3e336aca9511da5"><td class="mdescLeft">&#160;</td><td class="mdescRight">Loads an existing game from the given save slot.  <br /></td></tr>
 <tr class="separator:a4ddd3105f8d7d1abd3e336aca9511da5"><td class="memSeparator" colspan="2">&#160;</td></tr>
@@ -262,12 +262,12 @@ Public Member Functions</h2></td></tr>
 <tr class="separator:a9ff49b7ff61961a51f7a46d07358b40f"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a72c425b6b14c6199153384bc6d33fb8b" id="r_a72c425b6b14c6199153384bc6d33fb8b"><td class="memItemLeft" align="right" valign="top"><a class="el" href="namespaceSquadNumbers.html#a2e5e5cbc92c0ee1ddc0c267f3b743ae8">SquadNumbers::Change</a>&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classGameController.html#a72c425b6b14c6199153384bc6d33fb8b">setSquadNumber</a> (<a class="el" href="types_8h.html#a93dcecc4aec7387438b9cabd8a28dfdb">PlayerID</a> player_id, int number)</td></tr>
 <tr class="separator:a72c425b6b14c6199153384bc6d33fb8b"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:ac3abee8b1f78c14578881f585b0d28d1" id="r_ac3abee8b1f78c14578881f585b0d28d1"><td class="memItemLeft" align="right" valign="top">std::vector&lt; std::reference_wrapper&lt; const <a class="el" href="classTeam.html">Team</a> &gt; &gt;&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classGameController.html#ac3abee8b1f78c14578881f585b0d28d1">getTeamsInLeague</a> (uint8_t league_id) const</td></tr>
-<tr class="memdesc:ac3abee8b1f78c14578881f585b0d28d1"><td class="mdescLeft">&#160;</td><td class="mdescRight">Gets the teams belonging to a specific league.  <br /></td></tr>
-<tr class="separator:ac3abee8b1f78c14578881f585b0d28d1"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a07ce267b00f045e0f14a0c342e830faa" id="r_a07ce267b00f045e0f14a0c342e830faa"><td class="memItemLeft" align="right" valign="top">std::optional&lt; std::reference_wrapper&lt; const <a class="el" href="classLeague.html">League</a> &gt; &gt;&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classGameController.html#a07ce267b00f045e0f14a0c342e830faa">getLeagueById</a> (uint8_t league_id) const</td></tr>
-<tr class="memdesc:a07ce267b00f045e0f14a0c342e830faa"><td class="mdescLeft">&#160;</td><td class="mdescRight">Gets a league by its ID.  <br /></td></tr>
-<tr class="separator:a07ce267b00f045e0f14a0c342e830faa"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a720489eb36abbd064c51a67802f23c17" id="r_a720489eb36abbd064c51a67802f23c17"><td class="memItemLeft" align="right" valign="top">std::vector&lt; std::reference_wrapper&lt; const <a class="el" href="classTeam.html">Team</a> &gt; &gt;&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classGameController.html#a720489eb36abbd064c51a67802f23c17">getTeamsInLeague</a> (<a class="el" href="types_8h.html#af8e30d7404af99e1b80d12e7e4dd85e6">LeagueID</a> league_id) const</td></tr>
+<tr class="memdesc:a720489eb36abbd064c51a67802f23c17"><td class="mdescLeft">&#160;</td><td class="mdescRight">Gets the teams belonging to a specific league.  <br /></td></tr>
+<tr class="separator:a720489eb36abbd064c51a67802f23c17"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a8b18dc7f0fc71c09dfc5b13cdef03d9e" id="r_a8b18dc7f0fc71c09dfc5b13cdef03d9e"><td class="memItemLeft" align="right" valign="top">std::optional&lt; std::reference_wrapper&lt; const <a class="el" href="classLeague.html">League</a> &gt; &gt;&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classGameController.html#a8b18dc7f0fc71c09dfc5b13cdef03d9e">getLeagueById</a> (<a class="el" href="types_8h.html#af8e30d7404af99e1b80d12e7e4dd85e6">LeagueID</a> league_id) const</td></tr>
+<tr class="memdesc:a8b18dc7f0fc71c09dfc5b13cdef03d9e"><td class="mdescLeft">&#160;</td><td class="mdescRight">Gets a league by its ID.  <br /></td></tr>
+<tr class="separator:a8b18dc7f0fc71c09dfc5b13cdef03d9e"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:af61601eded7549ac30ce238a4f6f7143" id="r_af61601eded7549ac30ce238a4f6f7143"><td class="memItemLeft" align="right" valign="top">std::optional&lt; std::reference_wrapper&lt; const <a class="el" href="classTeam.html">Team</a> &gt; &gt;&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classGameController.html#af61601eded7549ac30ce238a4f6f7143">getTeamById</a> (uint16_t team_id) const</td></tr>
 <tr class="memdesc:af61601eded7549ac30ce238a4f6f7143"><td class="mdescLeft">&#160;</td><td class="mdescRight">Gets a team by its ID.  <br /></td></tr>
 <tr class="separator:af61601eded7549ac30ce238a4f6f7143"><td class="memSeparator" colspan="2">&#160;</td></tr>
@@ -312,15 +312,15 @@ Public Member Functions</h2></td></tr>
 <tr class="separator:a9ad5f18f23bf6aa420dcc10f4ecddb68"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a997fcd6f38017ddeff1e8e387fcaf3da" id="r_a997fcd6f38017ddeff1e8e387fcaf3da"><td class="memItemLeft" align="right" valign="top">bool&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classGameController.html#a997fcd6f38017ddeff1e8e387fcaf3da">getAssistantFixesLineup</a> () const</td></tr>
 <tr class="separator:a997fcd6f38017ddeff1e8e387fcaf3da"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a419a6cb920507fd961c9bfe142267191" id="r_a419a6cb920507fd961c9bfe142267191"><td class="memItemLeft" align="right" valign="top">std::vector&lt; <a class="el" href="structStandingRow.html">StandingRow</a> &gt;&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classGameController.html#a419a6cb920507fd961c9bfe142267191">getStandings</a> (<a class="el" href="types_8h.html#a23de5420c0b18be78144797767703d6f">LeagueID</a> league_id) const</td></tr>
+<tr class="memitem:a419a6cb920507fd961c9bfe142267191" id="r_a419a6cb920507fd961c9bfe142267191"><td class="memItemLeft" align="right" valign="top">std::vector&lt; <a class="el" href="structStandingRow.html">StandingRow</a> &gt;&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classGameController.html#a419a6cb920507fd961c9bfe142267191">getStandings</a> (<a class="el" href="types_8h.html#af8e30d7404af99e1b80d12e7e4dd85e6">LeagueID</a> league_id) const</td></tr>
 <tr class="separator:a419a6cb920507fd961c9bfe142267191"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a4b5b6c171c66a0420998f16bddd28dcd" id="r_a4b5b6c171c66a0420998f16bddd28dcd"><td class="memItemLeft" align="right" valign="top">std::vector&lt; <a class="el" href="types_8h.html#a23de5420c0b18be78144797767703d6f">LeagueID</a> &gt;&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classGameController.html#a4b5b6c171c66a0420998f16bddd28dcd">getCupIds</a> () const</td></tr>
+<tr class="memitem:a4b5b6c171c66a0420998f16bddd28dcd" id="r_a4b5b6c171c66a0420998f16bddd28dcd"><td class="memItemLeft" align="right" valign="top">std::vector&lt; <a class="el" href="types_8h.html#af8e30d7404af99e1b80d12e7e4dd85e6">LeagueID</a> &gt;&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classGameController.html#a4b5b6c171c66a0420998f16bddd28dcd">getCupIds</a> () const</td></tr>
 <tr class="separator:a4b5b6c171c66a0420998f16bddd28dcd"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:ac5abcd53080a5024a4bba4157eb329c8" id="r_ac5abcd53080a5024a4bba4157eb329c8"><td class="memItemLeft" align="right" valign="top">std::optional&lt; <a class="el" href="structCompetitions_1_1CupStatus.html">Competitions::CupStatus</a> &gt;&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classGameController.html#ac5abcd53080a5024a4bba4157eb329c8">getCupStatus</a> (<a class="el" href="types_8h.html#a23de5420c0b18be78144797767703d6f">LeagueID</a> cup_id) const</td></tr>
+<tr class="memitem:ac5abcd53080a5024a4bba4157eb329c8" id="r_ac5abcd53080a5024a4bba4157eb329c8"><td class="memItemLeft" align="right" valign="top">std::optional&lt; <a class="el" href="structCompetitions_1_1CupStatus.html">Competitions::CupStatus</a> &gt;&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classGameController.html#ac5abcd53080a5024a4bba4157eb329c8">getCupStatus</a> (<a class="el" href="types_8h.html#af8e30d7404af99e1b80d12e7e4dd85e6">LeagueID</a> cup_id) const</td></tr>
 <tr class="separator:ac5abcd53080a5024a4bba4157eb329c8"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:acf3a5e13d7d72954361b3c16d2635341" id="r_acf3a5e13d7d72954361b3c16d2635341"><td class="memItemLeft" align="right" valign="top">std::string&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classGameController.html#acf3a5e13d7d72954361b3c16d2635341">getCupName</a> (<a class="el" href="types_8h.html#a23de5420c0b18be78144797767703d6f">LeagueID</a> cup_id) const</td></tr>
+<tr class="memitem:acf3a5e13d7d72954361b3c16d2635341" id="r_acf3a5e13d7d72954361b3c16d2635341"><td class="memItemLeft" align="right" valign="top">std::string&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classGameController.html#acf3a5e13d7d72954361b3c16d2635341">getCupName</a> (<a class="el" href="types_8h.html#af8e30d7404af99e1b80d12e7e4dd85e6">LeagueID</a> cup_id) const</td></tr>
 <tr class="separator:acf3a5e13d7d72954361b3c16d2635341"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a77f9696b5745b22390d2717d8f1e1d55" id="r_a77f9696b5745b22390d2717d8f1e1d55"><td class="memItemLeft" align="right" valign="top">uint8_t&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classGameController.html#a77f9696b5745b22390d2717d8f1e1d55">getLeagueTier</a> (<a class="el" href="types_8h.html#a23de5420c0b18be78144797767703d6f">LeagueID</a> league_id) const</td></tr>
+<tr class="memitem:a77f9696b5745b22390d2717d8f1e1d55" id="r_a77f9696b5745b22390d2717d8f1e1d55"><td class="memItemLeft" align="right" valign="top">uint8_t&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classGameController.html#a77f9696b5745b22390d2717d8f1e1d55">getLeagueTier</a> (<a class="el" href="types_8h.html#af8e30d7404af99e1b80d12e7e4dd85e6">LeagueID</a> league_id) const</td></tr>
 <tr class="separator:a77f9696b5745b22390d2717d8f1e1d55"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:afc566459210c7db39a829fe146172288" id="r_afc566459210c7db39a829fe146172288"><td class="memItemLeft" align="right" valign="top">std::vector&lt; <a class="el" href="classMatch.html">Match</a> &gt;&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classGameController.html#afc566459210c7db39a829fe146172288">getTeamFixtures</a> (<a class="el" href="types_8h.html#a57143f6ccbdf5a5d9724b986cbdafb31">TeamID</a> team_id) const</td></tr>
 <tr class="separator:afc566459210c7db39a829fe146172288"><td class="memSeparator" colspan="2">&#160;</td></tr>
@@ -328,19 +328,19 @@ Public Member Functions</h2></td></tr>
 <tr class="separator:aa7f5e9cae2f0a790d8a5968b240b9fc6"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:afe61393921ae85fbf4ecdc4cacf775b7" id="r_afe61393921ae85fbf4ecdc4cacf775b7"><td class="memItemLeft" align="right" valign="top">const std::vector&lt; <a class="el" href="structSeasonHistoryEntry.html">SeasonHistoryEntry</a> &gt; &amp;&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classGameController.html#afe61393921ae85fbf4ecdc4cacf775b7">getSeasonHistory</a> () const</td></tr>
 <tr class="separator:afe61393921ae85fbf4ecdc4cacf775b7"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:ad670dd01464a6681273ab29c050e70ff" id="r_ad670dd01464a6681273ab29c050e70ff"><td class="memItemLeft" align="right" valign="top">std::vector&lt; uint16_t &gt;&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classGameController.html#ad670dd01464a6681273ab29c050e70ff">getArchivedSeasons</a> (<a class="el" href="types_8h.html#a23de5420c0b18be78144797767703d6f">LeagueID</a> league_id) const</td></tr>
+<tr class="memitem:ad670dd01464a6681273ab29c050e70ff" id="r_ad670dd01464a6681273ab29c050e70ff"><td class="memItemLeft" align="right" valign="top">std::vector&lt; uint16_t &gt;&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classGameController.html#ad670dd01464a6681273ab29c050e70ff">getArchivedSeasons</a> (<a class="el" href="types_8h.html#af8e30d7404af99e1b80d12e7e4dd85e6">LeagueID</a> league_id) const</td></tr>
 <tr class="separator:ad670dd01464a6681273ab29c050e70ff"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a6c4767e7a9cacd6aae7d5dd4451ee78a" id="r_a6c4767e7a9cacd6aae7d5dd4451ee78a"><td class="memItemLeft" align="right" valign="top">const std::vector&lt; <a class="el" href="structStandingRow.html">StandingRow</a> &gt; *&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classGameController.html#a6c4767e7a9cacd6aae7d5dd4451ee78a">getArchivedTable</a> (uint16_t season, <a class="el" href="types_8h.html#a23de5420c0b18be78144797767703d6f">LeagueID</a> league_id) const</td></tr>
+<tr class="memitem:a6c4767e7a9cacd6aae7d5dd4451ee78a" id="r_a6c4767e7a9cacd6aae7d5dd4451ee78a"><td class="memItemLeft" align="right" valign="top">const std::vector&lt; <a class="el" href="structStandingRow.html">StandingRow</a> &gt; *&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classGameController.html#a6c4767e7a9cacd6aae7d5dd4451ee78a">getArchivedTable</a> (uint16_t season, <a class="el" href="types_8h.html#af8e30d7404af99e1b80d12e7e4dd85e6">LeagueID</a> league_id) const</td></tr>
 <tr class="separator:a6c4767e7a9cacd6aae7d5dd4451ee78a"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a0bdfb9f21e4a0946478ca82d9bb68d28" id="r_a0bdfb9f21e4a0946478ca82d9bb68d28"><td class="memItemLeft" align="right" valign="top">uint16_t&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classGameController.html#a0bdfb9f21e4a0946478ca82d9bb68d28">getSeasonStartYear</a> (uint16_t season) const</td></tr>
 <tr class="separator:a0bdfb9f21e4a0946478ca82d9bb68d28"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:af18533bca708f39919de4df0cfb0cc9f" id="r_af18533bca708f39919de4df0cfb0cc9f"><td class="memItemLeft" align="right" valign="top">std::optional&lt; std::pair&lt; <a class="el" href="types_8h.html#a23de5420c0b18be78144797767703d6f">LeagueID</a>, uint16_t &gt; &gt;&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classGameController.html#af18533bca708f39919de4df0cfb0cc9f">getArchivedPlacing</a> (uint16_t season, <a class="el" href="types_8h.html#a57143f6ccbdf5a5d9724b986cbdafb31">TeamID</a> team_id) const</td></tr>
+<tr class="memitem:af18533bca708f39919de4df0cfb0cc9f" id="r_af18533bca708f39919de4df0cfb0cc9f"><td class="memItemLeft" align="right" valign="top">std::optional&lt; std::pair&lt; <a class="el" href="types_8h.html#af8e30d7404af99e1b80d12e7e4dd85e6">LeagueID</a>, uint16_t &gt; &gt;&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classGameController.html#af18533bca708f39919de4df0cfb0cc9f">getArchivedPlacing</a> (uint16_t season, <a class="el" href="types_8h.html#a57143f6ccbdf5a5d9724b986cbdafb31">TeamID</a> team_id) const</td></tr>
 <tr class="separator:af18533bca708f39919de4df0cfb0cc9f"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:ada9201da0249bb8795f3217b3efc77cd" id="r_ada9201da0249bb8795f3217b3efc77cd"><td class="memItemLeft" align="right" valign="top">const <a class="el" href="structSeasonReview.html">SeasonReview</a> *&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classGameController.html#ada9201da0249bb8795f3217b3efc77cd">getUnseenSeasonReview</a> () const</td></tr>
 <tr class="separator:ada9201da0249bb8795f3217b3efc77cd"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a24886972e64f8a45a2dad91add59ae03" id="r_a24886972e64f8a45a2dad91add59ae03"><td class="memItemLeft" align="right" valign="top">void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classGameController.html#a24886972e64f8a45a2dad91add59ae03">markSeasonReviewSeen</a> (uint16_t season)</td></tr>
 <tr class="separator:a24886972e64f8a45a2dad91add59ae03"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a2ef52caafe02cd535d1ff6d6e5d228d7" id="r_a2ef52caafe02cd535d1ff6d6e5d228d7"><td class="memItemLeft" align="right" valign="top">std::vector&lt; <a class="el" href="structPlayerSeasonStats.html">PlayerSeasonStats</a> &gt;&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classGameController.html#a2ef52caafe02cd535d1ff6d6e5d228d7">getTopScorers</a> (<a class="el" href="types_8h.html#a06be3d3918a8700cf086896e9f03e885">MatchType</a> competition_type, <a class="el" href="types_8h.html#a23de5420c0b18be78144797767703d6f">LeagueID</a> competition_id, size_t limit=10) const</td></tr>
+<tr class="memitem:a2ef52caafe02cd535d1ff6d6e5d228d7" id="r_a2ef52caafe02cd535d1ff6d6e5d228d7"><td class="memItemLeft" align="right" valign="top">std::vector&lt; <a class="el" href="structPlayerSeasonStats.html">PlayerSeasonStats</a> &gt;&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classGameController.html#a2ef52caafe02cd535d1ff6d6e5d228d7">getTopScorers</a> (<a class="el" href="types_8h.html#a06be3d3918a8700cf086896e9f03e885">MatchType</a> competition_type, <a class="el" href="types_8h.html#af8e30d7404af99e1b80d12e7e4dd85e6">LeagueID</a> competition_id, size_t limit=10) const</td></tr>
 <tr class="separator:a2ef52caafe02cd535d1ff6d6e5d228d7"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a462e121e21ae18b502000a6e0aa8e0c6" id="r_a462e121e21ae18b502000a6e0aa8e0c6"><td class="memItemLeft" align="right" valign="top">std::vector&lt; <a class="el" href="structPlayerSeasonStats.html">PlayerSeasonStats</a> &gt;&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classGameController.html#a462e121e21ae18b502000a6e0aa8e0c6">getPlayerSeasonStats</a> (<a class="el" href="types_8h.html#a93dcecc4aec7387438b9cabd8a28dfdb">PlayerID</a> player_id) const</td></tr>
 <tr class="separator:a462e121e21ae18b502000a6e0aa8e0c6"><td class="memSeparator" colspan="2">&#160;</td></tr>
@@ -348,13 +348,13 @@ Public Member Functions</h2></td></tr>
 <tr class="separator:a568b789532c8a54b7cfab2891dc23203"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a9763208f75ab97d98a7a66bf1fea1851" id="r_a9763208f75ab97d98a7a66bf1fea1851"><td class="memItemLeft" align="right" valign="top">const <a class="el" href="classContinentalCompetitions.html">ContinentalCompetitions</a> *&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classGameController.html#a9763208f75ab97d98a7a66bf1fea1851">getContinental</a> () const</td></tr>
 <tr class="separator:a9763208f75ab97d98a7a66bf1fea1851"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a455bce1f72b29a0da798e2684381da0e" id="r_a455bce1f72b29a0da798e2684381da0e"><td class="memItemLeft" align="right" valign="top"><a class="el" href="structContinentalCompetitions_1_1TieScore.html">ContinentalCompetitions::TieScore</a>&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classGameController.html#a455bce1f72b29a0da798e2684381da0e">getContinentalTieScore</a> (<a class="el" href="types_8h.html#a23de5420c0b18be78144797767703d6f">LeagueID</a> competition_id, const <a class="el" href="structContinentalCompetitions_1_1Tie.html">ContinentalCompetitions::Tie</a> &amp;tie) const</td></tr>
+<tr class="memitem:a455bce1f72b29a0da798e2684381da0e" id="r_a455bce1f72b29a0da798e2684381da0e"><td class="memItemLeft" align="right" valign="top"><a class="el" href="structContinentalCompetitions_1_1TieScore.html">ContinentalCompetitions::TieScore</a>&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classGameController.html#a455bce1f72b29a0da798e2684381da0e">getContinentalTieScore</a> (<a class="el" href="types_8h.html#af8e30d7404af99e1b80d12e7e4dd85e6">LeagueID</a> competition_id, const <a class="el" href="structContinentalCompetitions_1_1Tie.html">ContinentalCompetitions::Tie</a> &amp;tie) const</td></tr>
 <tr class="separator:a455bce1f72b29a0da798e2684381da0e"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a7f370bf34d08b62a65366e5260f024bd" id="r_a7f370bf34d08b62a65366e5260f024bd"><td class="memItemLeft" align="right" valign="top">const <a class="el" href="classNationalTeams.html">NationalTeams</a> *&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classGameController.html#a7f370bf34d08b62a65366e5260f024bd">getNationalTeams</a> () const</td></tr>
 <tr class="separator:a7f370bf34d08b62a65366e5260f024bd"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a7e78c8dbb31e0f6dd5e516cc65d4f815" id="r_a7e78c8dbb31e0f6dd5e516cc65d4f815"><td class="memItemLeft" align="right" valign="top">const <a class="el" href="structInternational_1_1Record.html">International::Record</a> *&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classGameController.html#a7e78c8dbb31e0f6dd5e516cc65d4f815">getInternationalRecord</a> (<a class="el" href="types_8h.html#a93dcecc4aec7387438b9cabd8a28dfdb">PlayerID</a> player_id) const</td></tr>
 <tr class="separator:a7e78c8dbb31e0f6dd5e516cc65d4f815"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:adcf57ad10564b1b0ef9c235cac853759" id="r_adcf57ad10564b1b0ef9c235cac853759"><td class="memItemLeft" align="right" valign="top">std::optional&lt; <a class="el" href="languages_8h.html#ac401b05356bfe6d1335ddaf14ad31d0c">Language</a> &gt;&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classGameController.html#adcf57ad10564b1b0ef9c235cac853759">getInternationalDuty</a> (<a class="el" href="types_8h.html#a93dcecc4aec7387438b9cabd8a28dfdb">PlayerID</a> player_id) const</td></tr>
+<tr class="memitem:adcf57ad10564b1b0ef9c235cac853759" id="r_adcf57ad10564b1b0ef9c235cac853759"><td class="memItemLeft" align="right" valign="top">std::optional&lt; <a class="el" href="languages_8h.html#a15be38758ec16bd1229f53bd53c7084d">Language</a> &gt;&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classGameController.html#adcf57ad10564b1b0ef9c235cac853759">getInternationalDuty</a> (<a class="el" href="types_8h.html#a93dcecc4aec7387438b9cabd8a28dfdb">PlayerID</a> player_id) const</td></tr>
 <tr class="separator:adcf57ad10564b1b0ef9c235cac853759"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:ad43a2bc270808f0c60703d1535061665" id="r_ad43a2bc270808f0c60703d1535061665"><td class="memItemLeft" align="right" valign="top">uint8_t&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classGameController.html#ad43a2bc270808f0c60703d1535061665">getSuspensionMatches</a> (<a class="el" href="types_8h.html#a93dcecc4aec7387438b9cabd8a28dfdb">PlayerID</a> player_id, <a class="el" href="types_8h.html#a06be3d3918a8700cf086896e9f03e885">MatchType</a> scope) const</td></tr>
 <tr class="separator:ad43a2bc270808f0c60703d1535061665"><td class="memSeparator" colspan="2">&#160;</td></tr>
@@ -422,7 +422,7 @@ Public Member Functions</h2></td></tr>
 <tr class="separator:a8f98fc442605b413fad1aec7c1d92a1a"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a94836e3379a4c8434b8d3768c8b92613" id="r_a94836e3379a4c8434b8d3768c8b92613"><td class="memItemLeft" align="right" valign="top">std::optional&lt; <a class="el" href="namespaceTransferNegotiation.html#aa025c5c60896373651da65fef9455c98">TransferNegotiation::ContractKind</a> &gt;&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classGameController.html#a94836e3379a4c8434b8d3768c8b92613">getContractTalkKind</a> (<a class="el" href="types_8h.html#a93dcecc4aec7387438b9cabd8a28dfdb">PlayerID</a> player_id) const</td></tr>
 <tr class="separator:a94836e3379a4c8434b8d3768c8b92613"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a98e61b7fc2e6c5020296bec449539b56" id="r_a98e61b7fc2e6c5020296bec449539b56"><td class="memItemLeft" align="right" valign="top"><a class="el" href="structTransferNegotiation_1_1ContractDemand.html">TransferNegotiation::ContractDemand</a>&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classGameController.html#a98e61b7fc2e6c5020296bec449539b56">getPlayerDemand</a> (<a class="el" href="types_8h.html#a93dcecc4aec7387438b9cabd8a28dfdb">PlayerID</a> player_id, <a class="el" href="namespaceTransferNegotiation.html#aa025c5c60896373651da65fef9455c98">TransferNegotiation::ContractKind</a> kind) const</td></tr>
+<tr class="memitem:a98e61b7fc2e6c5020296bec449539b56" id="r_a98e61b7fc2e6c5020296bec449539b56"><td class="memItemLeft" align="right" valign="top"><a class="el" href="structTransferNegotiation_1_1ContractDemand.html">TransferNegotiation::ContractDemand</a>&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classGameController.html#a98e61b7fc2e6c5020296bec449539b56">getPlayerDemand</a> (<a class="el" href="types_8h.html#a93dcecc4aec7387438b9cabd8a28dfdb">PlayerID</a> player_id, <a class="el" href="namespaceTransferNegotiation.html#aa025c5c60896373651da65fef9455c98">TransferNegotiation::ContractKind</a> <a class="el" href="world__validate_8cpp.html#ad4f6a38e725118afcde5fbb91ccbbb12">kind</a>) const</td></tr>
 <tr class="separator:a98e61b7fc2e6c5020296bec449539b56"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:af21818cfac935bc21c19ef2147d631cd" id="r_af21818cfac935bc21c19ef2147d631cd"><td class="memItemLeft" align="right" valign="top"><a class="el" href="classGameController.html#aad616874f75ec721c95b731d1307542c">PlayerActionBlock</a>&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classGameController.html#af21818cfac935bc21c19ef2147d631cd">getReleaseBlock</a> (<a class="el" href="types_8h.html#a93dcecc4aec7387438b9cabd8a28dfdb">PlayerID</a> player_id) const</td></tr>
 <tr class="separator:af21818cfac935bc21c19ef2147d631cd"><td class="memSeparator" colspan="2">&#160;</td></tr>
@@ -436,9 +436,9 @@ Public Member Functions</h2></td></tr>
 <tr class="separator:a70b7a39c2e22e3951241fd0e3da74124"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a7e8cc40220e5cd6e2b8ca8b1beabc128" id="r_a7e8cc40220e5cd6e2b8ca8b1beabc128"><td class="memItemLeft" align="right" valign="top">std::uint8_t&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classGameController.html#a7e8cc40220e5cd6e2b8ca8b1beabc128">getContractRoundsLeft</a> (<a class="el" href="types_8h.html#a93dcecc4aec7387438b9cabd8a28dfdb">PlayerID</a> player_id) const</td></tr>
 <tr class="separator:a7e8cc40220e5cd6e2b8ca8b1beabc128"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:afcaad68cf0d6412a81bc0bb492575e28" id="r_afcaad68cf0d6412a81bc0bb492575e28"><td class="memItemLeft" align="right" valign="top"><a class="el" href="structPlayerAgent_1_1Demands.html">PlayerAgent::Demands</a>&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classGameController.html#afcaad68cf0d6412a81bc0bb492575e28">getAgentDemands</a> (<a class="el" href="types_8h.html#a93dcecc4aec7387438b9cabd8a28dfdb">PlayerID</a> player_id, <a class="el" href="namespaceTransferNegotiation.html#aa025c5c60896373651da65fef9455c98">TransferNegotiation::ContractKind</a> kind, std::uint8_t years) const</td></tr>
+<tr class="memitem:afcaad68cf0d6412a81bc0bb492575e28" id="r_afcaad68cf0d6412a81bc0bb492575e28"><td class="memItemLeft" align="right" valign="top"><a class="el" href="structPlayerAgent_1_1Demands.html">PlayerAgent::Demands</a>&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classGameController.html#afcaad68cf0d6412a81bc0bb492575e28">getAgentDemands</a> (<a class="el" href="types_8h.html#a93dcecc4aec7387438b9cabd8a28dfdb">PlayerID</a> player_id, <a class="el" href="namespaceTransferNegotiation.html#aa025c5c60896373651da65fef9455c98">TransferNegotiation::ContractKind</a> <a class="el" href="world__validate_8cpp.html#ad4f6a38e725118afcde5fbb91ccbbb12">kind</a>, std::uint8_t years) const</td></tr>
 <tr class="separator:afcaad68cf0d6412a81bc0bb492575e28"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:ae32aeb7592191f457119bf2403a7f0e2" id="r_ae32aeb7592191f457119bf2403a7f0e2"><td class="memItemLeft" align="right" valign="top">const char *&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classGameController.html#ae32aeb7592191f457119bf2403a7f0e2">getAgentOpeningLine</a> (<a class="el" href="types_8h.html#a93dcecc4aec7387438b9cabd8a28dfdb">PlayerID</a> player_id, <a class="el" href="namespaceTransferNegotiation.html#aa025c5c60896373651da65fef9455c98">TransferNegotiation::ContractKind</a> kind) const</td></tr>
+<tr class="memitem:ae32aeb7592191f457119bf2403a7f0e2" id="r_ae32aeb7592191f457119bf2403a7f0e2"><td class="memItemLeft" align="right" valign="top">const char *&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classGameController.html#ae32aeb7592191f457119bf2403a7f0e2">getAgentOpeningLine</a> (<a class="el" href="types_8h.html#a93dcecc4aec7387438b9cabd8a28dfdb">PlayerID</a> player_id, <a class="el" href="namespaceTransferNegotiation.html#aa025c5c60896373651da65fef9455c98">TransferNegotiation::ContractKind</a> <a class="el" href="world__validate_8cpp.html#ad4f6a38e725118afcde5fbb91ccbbb12">kind</a>) const</td></tr>
 <tr class="separator:ae32aeb7592191f457119bf2403a7f0e2"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:aafebdedbd208b869c639c5566936567b" id="r_aafebdedbd208b869c639c5566936567b"><td class="memItemLeft" align="right" valign="top">const char *&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classGameController.html#aafebdedbd208b869c639c5566936567b">getAgentPurchaseLine</a> (<a class="el" href="types_8h.html#a93dcecc4aec7387438b9cabd8a28dfdb">PlayerID</a> player_id, const <a class="el" href="structTransferNegotiation_1_1ClubResponse.html">TransferNegotiation::ClubResponse</a> &amp;response) const</td></tr>
 <tr class="separator:aafebdedbd208b869c639c5566936567b"><td class="memSeparator" colspan="2">&#160;</td></tr>
@@ -484,7 +484,7 @@ Public Member Functions</h2></td></tr>
 <tr class="separator:a4fcb21b4454400d115de6ad0728de70e"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a1f33b2569465d6400fd130bb73cccfdb" id="r_a1f33b2569465d6400fd130bb73cccfdb"><td class="memItemLeft" align="right" valign="top">float&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classGameController.html#a1f33b2569465d6400fd130bb73cccfdb">calculateAttentionScore</a> (<a class="el" href="types_8h.html#a93dcecc4aec7387438b9cabd8a28dfdb">PlayerID</a> player_id) const</td></tr>
 <tr class="separator:a1f33b2569465d6400fd130bb73cccfdb"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a71bb2ef7d2d9f651786a1c748a36a0b1" id="r_a71bb2ef7d2d9f651786a1c748a36a0b1"><td class="memItemLeft" align="right" valign="top">float&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classGameController.html#a71bb2ef7d2d9f651786a1c748a36a0b1">getLeagueAttentionMultiplier</a> (<a class="el" href="types_8h.html#a23de5420c0b18be78144797767703d6f">LeagueID</a> league_id) const</td></tr>
+<tr class="memitem:a71bb2ef7d2d9f651786a1c748a36a0b1" id="r_a71bb2ef7d2d9f651786a1c748a36a0b1"><td class="memItemLeft" align="right" valign="top">float&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classGameController.html#a71bb2ef7d2d9f651786a1c748a36a0b1">getLeagueAttentionMultiplier</a> (<a class="el" href="types_8h.html#af8e30d7404af99e1b80d12e7e4dd85e6">LeagueID</a> league_id) const</td></tr>
 <tr class="separator:a71bb2ef7d2d9f651786a1c748a36a0b1"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a7ad10231188871ac029a145dbde505de" id="r_a7ad10231188871ac029a145dbde505de"><td class="memItemLeft" align="right" valign="top">uint32_t&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classGameController.html#a7ad10231188871ac029a145dbde505de">calculateMaxPrice</a> (<a class="el" href="types_8h.html#a93dcecc4aec7387438b9cabd8a28dfdb">PlayerID</a> player_id, <a class="el" href="types_8h.html#a57143f6ccbdf5a5d9724b986cbdafb31">TeamID</a> buyer_id, const <a class="el" href="structGameController_1_1SquadNeeds.html">SquadNeeds</a> &amp;needs) const</td></tr>
 <tr class="separator:a7ad10231188871ac029a145dbde505de"><td class="memSeparator" colspan="2">&#160;</td></tr>
@@ -618,9 +618,9 @@ Public Member Functions</h2></td></tr>
 <tr class="separator:a35d4de915bd1a135b4d48a6ace7dc48c"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a984c0915087040b01ff879aad7a5f7ca" id="r_a984c0915087040b01ff879aad7a5f7ca"><td class="memItemLeft" align="right" valign="top">const std::vector&lt; <a class="el" href="structScoutAssignment.html">ScoutAssignment</a> &gt; &amp;&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classGameController.html#a984c0915087040b01ff879aad7a5f7ca">getScoutAssignments</a> () const</td></tr>
 <tr class="separator:a984c0915087040b01ff879aad7a5f7ca"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a293b9133996ec93bc03fe83e93e674cb" id="r_a293b9133996ec93bc03fe83e93e674cb"><td class="memItemLeft" align="right" valign="top">int64_t&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classGameController.html#a293b9133996ec93bc03fe83e93e674cb">getScoutAssignmentCost</a> (<a class="el" href="scouting_8h.html#a5d57348f6c0bf6958ec14817316aa2d8">ScoutTargetKind</a> kind, uint32_t target_id, uint16_t days) const</td></tr>
+<tr class="memitem:a293b9133996ec93bc03fe83e93e674cb" id="r_a293b9133996ec93bc03fe83e93e674cb"><td class="memItemLeft" align="right" valign="top">int64_t&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classGameController.html#a293b9133996ec93bc03fe83e93e674cb">getScoutAssignmentCost</a> (<a class="el" href="scouting_8h.html#a5d57348f6c0bf6958ec14817316aa2d8">ScoutTargetKind</a> <a class="el" href="world__validate_8cpp.html#ad4f6a38e725118afcde5fbb91ccbbb12">kind</a>, uint32_t target_id, uint16_t days) const</td></tr>
 <tr class="separator:a293b9133996ec93bc03fe83e93e674cb"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a86984427a074abdb03b3a511c07b0dbd" id="r_a86984427a074abdb03b3a511c07b0dbd"><td class="memItemLeft" align="right" valign="top"><a class="el" href="scouting_8h.html#ae93ef1d50125d740ebb1645da58d9b4c">ScoutAssignError</a>&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classGameController.html#a86984427a074abdb03b3a511c07b0dbd">startScoutAssignment</a> (uint32_t scout_id, <a class="el" href="scouting_8h.html#a5d57348f6c0bf6958ec14817316aa2d8">ScoutTargetKind</a> kind, uint32_t target_id, uint16_t days)</td></tr>
+<tr class="memitem:a86984427a074abdb03b3a511c07b0dbd" id="r_a86984427a074abdb03b3a511c07b0dbd"><td class="memItemLeft" align="right" valign="top"><a class="el" href="scouting_8h.html#ae93ef1d50125d740ebb1645da58d9b4c">ScoutAssignError</a>&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classGameController.html#a86984427a074abdb03b3a511c07b0dbd">startScoutAssignment</a> (uint32_t scout_id, <a class="el" href="scouting_8h.html#a5d57348f6c0bf6958ec14817316aa2d8">ScoutTargetKind</a> <a class="el" href="world__validate_8cpp.html#ad4f6a38e725118afcde5fbb91ccbbb12">kind</a>, uint32_t target_id, uint16_t days)</td></tr>
 <tr class="separator:a86984427a074abdb03b3a511c07b0dbd"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a3b5cad07c4afa15fa201664fae674488" id="r_a3b5cad07c4afa15fa201664fae674488"><td class="memItemLeft" align="right" valign="top">bool&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classGameController.html#a3b5cad07c4afa15fa201664fae674488">cancelScoutAssignment</a> (uint32_t assignment_id)</td></tr>
 <tr class="separator:a3b5cad07c4afa15fa201664fae674488"><td class="memSeparator" colspan="2">&#160;</td></tr>
@@ -630,7 +630,7 @@ Public Member Functions</h2></td></tr>
 <tr class="separator:a13820b17cdf4c1265712e6014803f00e"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a519f93c5b5063eaa0e1d8d44b2f1942a" id="r_a519f93c5b5063eaa0e1d8d44b2f1942a"><td class="memItemLeft" align="right" valign="top"><a class="el" href="structScoutExpertise.html">ScoutExpertise</a>&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classGameController.html#a519f93c5b5063eaa0e1d8d44b2f1942a">getScoutExpertise</a> (uint32_t scout_id) const</td></tr>
 <tr class="separator:a519f93c5b5063eaa0e1d8d44b2f1942a"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a7c956b85304bae49d58f113091e777f3" id="r_a7c956b85304bae49d58f113091e777f3"><td class="memItemLeft" align="right" valign="top"><a class="el" href="structScoutEffectiveness.html">ScoutEffectiveness</a>&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classGameController.html#a7c956b85304bae49d58f113091e777f3">getScoutEffectiveness</a> (uint32_t scout_id, <a class="el" href="scouting_8h.html#a5d57348f6c0bf6958ec14817316aa2d8">ScoutTargetKind</a> kind, uint32_t target_id) const</td></tr>
+<tr class="memitem:a7c956b85304bae49d58f113091e777f3" id="r_a7c956b85304bae49d58f113091e777f3"><td class="memItemLeft" align="right" valign="top"><a class="el" href="structScoutEffectiveness.html">ScoutEffectiveness</a>&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classGameController.html#a7c956b85304bae49d58f113091e777f3">getScoutEffectiveness</a> (uint32_t scout_id, <a class="el" href="scouting_8h.html#a5d57348f6c0bf6958ec14817316aa2d8">ScoutTargetKind</a> <a class="el" href="world__validate_8cpp.html#ad4f6a38e725118afcde5fbb91ccbbb12">kind</a>, uint32_t target_id) const</td></tr>
 <tr class="separator:a7c956b85304bae49d58f113091e777f3"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:ace37524ef5c386799a0ec6045a07b104" id="r_ace37524ef5c386799a0ec6045a07b104"><td class="memItemLeft" align="right" valign="top">size_t&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classGameController.html#ace37524ef5c386799a0ec6045a07b104">getUnreadScoutReportCount</a> () const</td></tr>
 <tr class="separator:ace37524ef5c386799a0ec6045a07b104"><td class="memSeparator" colspan="2">&#160;</td></tr>
@@ -700,9 +700,9 @@ Public Member Functions</h2></td></tr>
 <tr class="separator:a80a55a784d2c814ac42f69eb9403ae72"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:aa3c9617f1220e4eda8b9dc1f32d19dde" id="r_aa3c9617f1220e4eda8b9dc1f32d19dde"><td class="memItemLeft" align="right" valign="top">const std::vector&lt; <a class="el" href="structYouthResult.html">YouthResult</a> &gt; &amp;&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classGameController.html#aa3c9617f1220e4eda8b9dc1f32d19dde">getYouthResults</a> () const</td></tr>
 <tr class="separator:aa3c9617f1220e4eda8b9dc1f32d19dde"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a40c8c6a3c3e110947cc2a7ea0a139211" id="r_a40c8c6a3c3e110947cc2a7ea0a139211"><td class="memItemLeft" align="right" valign="top"><a class="el" href="structUpgradeQuote.html">UpgradeQuote</a>&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classGameController.html#a40c8c6a3c3e110947cc2a7ea0a139211">getAcademyUpgradeQuote</a> (<a class="el" href="youth__academy_8h.html#af7f73daeacbc451c2306d146f2a97862">AcademyUpgrade</a> kind) const</td></tr>
+<tr class="memitem:a40c8c6a3c3e110947cc2a7ea0a139211" id="r_a40c8c6a3c3e110947cc2a7ea0a139211"><td class="memItemLeft" align="right" valign="top"><a class="el" href="structUpgradeQuote.html">UpgradeQuote</a>&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classGameController.html#a40c8c6a3c3e110947cc2a7ea0a139211">getAcademyUpgradeQuote</a> (<a class="el" href="youth__academy_8h.html#af7f73daeacbc451c2306d146f2a97862">AcademyUpgrade</a> <a class="el" href="world__validate_8cpp.html#ad4f6a38e725118afcde5fbb91ccbbb12">kind</a>) const</td></tr>
 <tr class="separator:a40c8c6a3c3e110947cc2a7ea0a139211"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:aa34a133540f60db19077f2e91fac7a3c" id="r_aa34a133540f60db19077f2e91fac7a3c"><td class="memItemLeft" align="right" valign="top"><a class="el" href="youth__academy_8h.html#a9cf56b8aa1251a33c96e51201a494b33">UpgradeRequestResult</a>&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classGameController.html#aa34a133540f60db19077f2e91fac7a3c">requestAcademyUpgrade</a> (<a class="el" href="youth__academy_8h.html#af7f73daeacbc451c2306d146f2a97862">AcademyUpgrade</a> kind)</td></tr>
+<tr class="memitem:aa34a133540f60db19077f2e91fac7a3c" id="r_aa34a133540f60db19077f2e91fac7a3c"><td class="memItemLeft" align="right" valign="top"><a class="el" href="youth__academy_8h.html#a9cf56b8aa1251a33c96e51201a494b33">UpgradeRequestResult</a>&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classGameController.html#aa34a133540f60db19077f2e91fac7a3c">requestAcademyUpgrade</a> (<a class="el" href="youth__academy_8h.html#af7f73daeacbc451c2306d146f2a97862">AcademyUpgrade</a> <a class="el" href="world__validate_8cpp.html#ad4f6a38e725118afcde5fbb91ccbbb12">kind</a>)</td></tr>
 <tr class="separator:aa34a133540f60db19077f2e91fac7a3c"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a271303fb27cb80d9ff1c14010faeffe4" id="r_a271303fb27cb80d9ff1c14010faeffe4"><td class="memItemLeft" align="right" valign="top"><a class="el" href="youth__academy_8h.html#a39bfc9866bbf3cdf41c63e6c0dfcd061">YouthActionResult</a>&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classGameController.html#a271303fb27cb80d9ff1c14010faeffe4">signYouthCandidate</a> (<a class="el" href="types_8h.html#a93dcecc4aec7387438b9cabd8a28dfdb">PlayerID</a> player_id)</td></tr>
 <tr class="separator:a271303fb27cb80d9ff1c14010faeffe4"><td class="memSeparator" colspan="2">&#160;</td></tr>
@@ -772,7 +772,7 @@ Public Member Functions</h2></td></tr>
 <tr class="separator:af97ad62e516d401fc0b7d168208a28d0"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a6bee65561c9176d5f27e7775da465a00" id="r_a6bee65561c9176d5f27e7775da465a00"><td class="memItemLeft" align="right" valign="top">std::vector&lt; <a class="el" href="structGameController_1_1NationalVacancyView.html">NationalVacancyView</a> &gt;&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classGameController.html#a6bee65561c9176d5f27e7775da465a00">getNationalVacancies</a> () const</td></tr>
 <tr class="separator:a6bee65561c9176d5f27e7775da465a00"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:ade13f589430b5756407d85abc17ec5a1" id="r_ade13f589430b5756407d85abc17ec5a1"><td class="memItemLeft" align="right" valign="top"><a class="el" href="national__job_8h.html#a85e27015bc99f80cf1847ac30b01c82a">NationalApplyResult</a>&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classGameController.html#ade13f589430b5756407d85abc17ec5a1">applyForNationalJob</a> (<a class="el" href="languages_8h.html#ac401b05356bfe6d1335ddaf14ad31d0c">Language</a> nation)</td></tr>
+<tr class="memitem:ade13f589430b5756407d85abc17ec5a1" id="r_ade13f589430b5756407d85abc17ec5a1"><td class="memItemLeft" align="right" valign="top"><a class="el" href="national__job_8h.html#a85e27015bc99f80cf1847ac30b01c82a">NationalApplyResult</a>&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classGameController.html#ade13f589430b5756407d85abc17ec5a1">applyForNationalJob</a> (<a class="el" href="languages_8h.html#a15be38758ec16bd1229f53bd53c7084d">Language</a> nation)</td></tr>
 <tr class="separator:ade13f589430b5756407d85abc17ec5a1"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a7668ab1f48bf0c207778376ffe01ee5e" id="r_a7668ab1f48bf0c207778376ffe01ee5e"><td class="memItemLeft" align="right" valign="top">const std::vector&lt; <a class="el" href="structNationalJobOffer.html">NationalJobOffer</a> &gt; &amp;&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classGameController.html#a7668ab1f48bf0c207778376ffe01ee5e">getNationalJobOffers</a> () const</td></tr>
 <tr class="separator:a7668ab1f48bf0c207778376ffe01ee5e"><td class="memSeparator" colspan="2">&#160;</td></tr>
@@ -838,21 +838,21 @@ Public Member Functions</h2></td></tr>
 <tr class="separator:a378ac7b936f29ec522374a531a150b16"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:ab5d20a951b69abd2aec29dc2935dc651" id="r_ab5d20a951b69abd2aec29dc2935dc651"><td class="memItemLeft" align="right" valign="top">const std::vector&lt; <a class="el" href="structAwardRecord.html">AwardRecord</a> &gt; &amp;&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classGameController.html#ab5d20a951b69abd2aec29dc2935dc651">getAwardHistory</a> () const</td></tr>
 <tr class="separator:ab5d20a951b69abd2aec29dc2935dc651"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a6faf0112a05e29047b892977789baf69" id="r_a6faf0112a05e29047b892977789baf69"><td class="memItemLeft" align="right" valign="top">std::vector&lt; <a class="el" href="structAwardRecord.html">AwardRecord</a> &gt;&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classGameController.html#a6faf0112a05e29047b892977789baf69">getLeagueAwards</a> (<a class="el" href="types_8h.html#a23de5420c0b18be78144797767703d6f">LeagueID</a> league_id, uint16_t season_year) const</td></tr>
+<tr class="memitem:a6faf0112a05e29047b892977789baf69" id="r_a6faf0112a05e29047b892977789baf69"><td class="memItemLeft" align="right" valign="top">std::vector&lt; <a class="el" href="structAwardRecord.html">AwardRecord</a> &gt;&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classGameController.html#a6faf0112a05e29047b892977789baf69">getLeagueAwards</a> (<a class="el" href="types_8h.html#af8e30d7404af99e1b80d12e7e4dd85e6">LeagueID</a> league_id, uint16_t season_year) const</td></tr>
 <tr class="separator:a6faf0112a05e29047b892977789baf69"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:af624de44f0823210b71741347a20bfd3" id="r_af624de44f0823210b71741347a20bfd3"><td class="memItemLeft" align="right" valign="top">std::vector&lt; <a class="el" href="structAwardRecord.html">AwardRecord</a> &gt;&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classGameController.html#af624de44f0823210b71741347a20bfd3">getPlayerHonours</a> (<a class="el" href="types_8h.html#a93dcecc4aec7387438b9cabd8a28dfdb">PlayerID</a> player_id) const</td></tr>
 <tr class="separator:af624de44f0823210b71741347a20bfd3"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a80938082c5bbe87a4e8cc53539c5cde7" id="r_a80938082c5bbe87a4e8cc53539c5cde7"><td class="memItemLeft" align="right" valign="top">std::vector&lt; <a class="el" href="structAwardPlayerTally.html">AwardPlayerTally</a> &gt;&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classGameController.html#a80938082c5bbe87a4e8cc53539c5cde7">getAwardRace</a> (<a class="el" href="types_8h.html#a23de5420c0b18be78144797767703d6f">LeagueID</a> league_id, bool young, size_t limit=5) const</td></tr>
+<tr class="memitem:a80938082c5bbe87a4e8cc53539c5cde7" id="r_a80938082c5bbe87a4e8cc53539c5cde7"><td class="memItemLeft" align="right" valign="top">std::vector&lt; <a class="el" href="structAwardPlayerTally.html">AwardPlayerTally</a> &gt;&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classGameController.html#a80938082c5bbe87a4e8cc53539c5cde7">getAwardRace</a> (<a class="el" href="types_8h.html#af8e30d7404af99e1b80d12e7e4dd85e6">LeagueID</a> league_id, bool young, size_t limit=5) const</td></tr>
 <tr class="separator:a80938082c5bbe87a4e8cc53539c5cde7"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a73943f27961d88351ea3164f391e55d3" id="r_a73943f27961d88351ea3164f391e55d3"><td class="memItemLeft" align="right" valign="top">std::vector&lt; <a class="el" href="structRecordEntry.html">RecordEntry</a> &gt;&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classGameController.html#a73943f27961d88351ea3164f391e55d3">getClubRecords</a> (<a class="el" href="types_8h.html#a57143f6ccbdf5a5d9724b986cbdafb31">TeamID</a> team_id) const</td></tr>
 <tr class="separator:a73943f27961d88351ea3164f391e55d3"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:ad5b40a93c894ce06b7623ace6a0580c4" id="r_ad5b40a93c894ce06b7623ace6a0580c4"><td class="memItemLeft" align="right" valign="top">std::vector&lt; <a class="el" href="structRecordEntry.html">RecordEntry</a> &gt;&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classGameController.html#ad5b40a93c894ce06b7623ace6a0580c4">getLeagueRecords</a> (<a class="el" href="types_8h.html#a23de5420c0b18be78144797767703d6f">LeagueID</a> league_id) const</td></tr>
+<tr class="memitem:ad5b40a93c894ce06b7623ace6a0580c4" id="r_ad5b40a93c894ce06b7623ace6a0580c4"><td class="memItemLeft" align="right" valign="top">std::vector&lt; <a class="el" href="structRecordEntry.html">RecordEntry</a> &gt;&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classGameController.html#ad5b40a93c894ce06b7623ace6a0580c4">getLeagueRecords</a> (<a class="el" href="types_8h.html#af8e30d7404af99e1b80d12e7e4dd85e6">LeagueID</a> league_id) const</td></tr>
 <tr class="separator:ad5b40a93c894ce06b7623ace6a0580c4"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a0c6030014c2b4067c262b1d87584df7d" id="r_a0c6030014c2b4067c262b1d87584df7d"><td class="memItemLeft" align="right" valign="top">std::vector&lt; <a class="el" href="structClubPlayerTotal.html">ClubPlayerTotal</a> &gt;&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classGameController.html#a0c6030014c2b4067c262b1d87584df7d">getClubTopScorers</a> (<a class="el" href="types_8h.html#a57143f6ccbdf5a5d9724b986cbdafb31">TeamID</a> team_id, size_t limit=10) const</td></tr>
 <tr class="separator:a0c6030014c2b4067c262b1d87584df7d"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a5af5983c3c83827bc77abda2bf3736b8" id="r_a5af5983c3c83827bc77abda2bf3736b8"><td class="memItemLeft" align="right" valign="top">std::vector&lt; <a class="el" href="structClubPlayerTotal.html">ClubPlayerTotal</a> &gt;&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classGameController.html#a5af5983c3c83827bc77abda2bf3736b8">getClubMostAppearances</a> (<a class="el" href="types_8h.html#a57143f6ccbdf5a5d9724b986cbdafb31">TeamID</a> team_id, size_t limit=10) const</td></tr>
 <tr class="separator:a5af5983c3c83827bc77abda2bf3736b8"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:af683734f81e340a71fdf453fb4affcd7" id="r_af683734f81e340a71fdf453fb4affcd7"><td class="memItemLeft" align="right" valign="top">std::vector&lt; <a class="el" href="structAllTimeRow.html">AllTimeRow</a> &gt;&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classGameController.html#af683734f81e340a71fdf453fb4affcd7">getAllTimeTable</a> (<a class="el" href="types_8h.html#a23de5420c0b18be78144797767703d6f">LeagueID</a> league_id) const</td></tr>
+<tr class="memitem:af683734f81e340a71fdf453fb4affcd7" id="r_af683734f81e340a71fdf453fb4affcd7"><td class="memItemLeft" align="right" valign="top">std::vector&lt; <a class="el" href="structAllTimeRow.html">AllTimeRow</a> &gt;&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classGameController.html#af683734f81e340a71fdf453fb4affcd7">getAllTimeTable</a> (<a class="el" href="types_8h.html#af8e30d7404af99e1b80d12e7e4dd85e6">LeagueID</a> league_id) const</td></tr>
 <tr class="separator:af683734f81e340a71fdf453fb4affcd7"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a15a47ef0b5fc2b08182d0957ba6339ad" id="r_a15a47ef0b5fc2b08182d0957ba6339ad"><td class="memItemLeft" align="right" valign="top">std::vector&lt; <a class="el" href="structLegendEntry.html">LegendEntry</a> &gt;&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classGameController.html#a15a47ef0b5fc2b08182d0957ba6339ad">getHallOfFame</a> (<a class="el" href="types_8h.html#a57143f6ccbdf5a5d9724b986cbdafb31">TeamID</a> team_id) const</td></tr>
 <tr class="separator:a15a47ef0b5fc2b08182d0957ba6339ad"><td class="memSeparator" colspan="2">&#160;</td></tr>
@@ -1054,10 +1054,6 @@ Private Attributes</h2></td></tr>
 <tr class="separator:a58c92a770dc567b08897f26f50023e73"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:aac8f7178a97992ab7200a6a41246587e" id="r_aac8f7178a97992ab7200a6a41246587e"><td class="memItemLeft" align="right" valign="top">std::optional&lt; <a class="el" href="structSaveError.html">SaveError</a> &gt;&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classGameController.html#aac8f7178a97992ab7200a6a41246587e">last_load_error</a></td></tr>
 <tr class="separator:aac8f7178a97992ab7200a6a41246587e"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:adcce1782d35f0ef6c51469517fd9043f" id="r_adcce1782d35f0ef6c51469517fd9043f"><td class="memItemLeft" align="right" valign="top">std::mutex&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classGameController.html#adcce1782d35f0ef6c51469517fd9043f">club_identity_mutex</a></td></tr>
-<tr class="separator:adcce1782d35f0ef6c51469517fd9043f"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:ac02dc724219be72c0e3410cb8ca65568" id="r_ac02dc724219be72c0e3410cb8ca65568"><td class="memItemLeft" align="right" valign="top">std::optional&lt; std::unordered_map&lt; <a class="el" href="types_8h.html#a57143f6ccbdf5a5d9724b986cbdafb31">TeamID</a>, <a class="el" href="structClubIdentity.html">ClubIdentity</a> &gt; &gt;&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classGameController.html#ac02dc724219be72c0e3410cb8ca65568">club_identities</a></td></tr>
-<tr class="separator:ac02dc724219be72c0e3410cb8ca65568"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:ac7521d00c036ea4d37594c23595e22e9" id="r_ac7521d00c036ea4d37594c23595e22e9"><td class="memItemLeft" align="right" valign="top">std::mutex&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classGameController.html#ac7521d00c036ea4d37594c23595e22e9">save_status_mutex</a></td></tr>
 <tr class="separator:ac7521d00c036ea4d37594c23595e22e9"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a62668eef2da77964a67770c9e1b5f2e1" id="r_a62668eef2da77964a67770c9e1b5f2e1"><td class="memItemLeft" align="right" valign="top"><a class="el" href="structGameController_1_1SaveStatusInfo.html">SaveStatusInfo</a>&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classGameController.html#a62668eef2da77964a67770c9e1b5f2e1">save_status</a></td></tr>
@@ -1601,7 +1597,7 @@ Private Attributes</h2></td></tr>
         <tr>
           <td class="memname"><a class="el" href="national__job_8h.html#a85e27015bc99f80cf1847ac30b01c82a">NationalApplyResult</a> GameController::applyForNationalJob </td>
           <td>(</td>
-          <td class="paramtype"><a class="el" href="languages_8h.html#ac401b05356bfe6d1335ddaf14ad31d0c">Language</a>&#160;</td>
+          <td class="paramtype"><a class="el" href="languages_8h.html#a15be38758ec16bd1229f53bd53c7084d">Language</a>&#160;</td>
           <td class="paramname"><em>nation</em></td><td>)</td>
           <td></td>
         </tr>
@@ -2973,7 +2969,7 @@ Private Attributes</h2></td></tr>
         <tr>
           <td class="memname">std::vector&lt; <a class="el" href="structAllTimeRow.html">AllTimeRow</a> &gt; GameController::getAllTimeTable </td>
           <td>(</td>
-          <td class="paramtype"><a class="el" href="types_8h.html#a23de5420c0b18be78144797767703d6f">LeagueID</a>&#160;</td>
+          <td class="paramtype"><a class="el" href="types_8h.html#af8e30d7404af99e1b80d12e7e4dd85e6">LeagueID</a>&#160;</td>
           <td class="paramname"><em>league_id</em></td><td>)</td>
           <td> const</td>
         </tr>
@@ -2989,7 +2985,7 @@ Private Attributes</h2></td></tr>
 <div class="memproto">
       <table class="memname">
         <tr>
-          <td class="memname">std::optional&lt; std::pair&lt; <a class="el" href="types_8h.html#a23de5420c0b18be78144797767703d6f">LeagueID</a>, uint16_t &gt; &gt; GameController::getArchivedPlacing </td>
+          <td class="memname">std::optional&lt; std::pair&lt; <a class="el" href="types_8h.html#af8e30d7404af99e1b80d12e7e4dd85e6">LeagueID</a>, uint16_t &gt; &gt; GameController::getArchivedPlacing </td>
           <td>(</td>
           <td class="paramtype">uint16_t&#160;</td>
           <td class="paramname"><em>season</em>, </td>
@@ -3020,7 +3016,7 @@ Private Attributes</h2></td></tr>
         <tr>
           <td class="memname">std::vector&lt; uint16_t &gt; GameController::getArchivedSeasons </td>
           <td>(</td>
-          <td class="paramtype"><a class="el" href="types_8h.html#a23de5420c0b18be78144797767703d6f">LeagueID</a>&#160;</td>
+          <td class="paramtype"><a class="el" href="types_8h.html#af8e30d7404af99e1b80d12e7e4dd85e6">LeagueID</a>&#160;</td>
           <td class="paramname"><em>league_id</em></td><td>)</td>
           <td> const</td>
         </tr>
@@ -3045,7 +3041,7 @@ Private Attributes</h2></td></tr>
         <tr>
           <td class="paramkey"></td>
           <td></td>
-          <td class="paramtype"><a class="el" href="types_8h.html#a23de5420c0b18be78144797767703d6f">LeagueID</a>&#160;</td>
+          <td class="paramtype"><a class="el" href="types_8h.html#af8e30d7404af99e1b80d12e7e4dd85e6">LeagueID</a>&#160;</td>
           <td class="paramname"><em>league_id</em>&#160;</td>
         </tr>
         <tr>
@@ -3120,7 +3116,7 @@ Private Attributes</h2></td></tr>
         <tr>
           <td class="memname">std::vector&lt; <a class="el" href="structAwardPlayerTally.html">AwardPlayerTally</a> &gt; GameController::getAwardRace </td>
           <td>(</td>
-          <td class="paramtype"><a class="el" href="types_8h.html#a23de5420c0b18be78144797767703d6f">LeagueID</a>&#160;</td>
+          <td class="paramtype"><a class="el" href="types_8h.html#af8e30d7404af99e1b80d12e7e4dd85e6">LeagueID</a>&#160;</td>
           <td class="paramname"><em>league_id</em>, </td>
         </tr>
         <tr>
@@ -3358,7 +3354,7 @@ Private Attributes</h2></td></tr>
         <tr>
           <td class="memname"><a class="el" href="structContinentalCompetitions_1_1TieScore.html">ContinentalCompetitions::TieScore</a> GameController::getContinentalTieScore </td>
           <td>(</td>
-          <td class="paramtype"><a class="el" href="types_8h.html#a23de5420c0b18be78144797767703d6f">LeagueID</a>&#160;</td>
+          <td class="paramtype"><a class="el" href="types_8h.html#af8e30d7404af99e1b80d12e7e4dd85e6">LeagueID</a>&#160;</td>
           <td class="paramname"><em>competition_id</em>, </td>
         </tr>
         <tr>
@@ -3469,7 +3465,7 @@ Private Attributes</h2></td></tr>
 <div class="memproto">
       <table class="memname">
         <tr>
-          <td class="memname">std::vector&lt; <a class="el" href="types_8h.html#a23de5420c0b18be78144797767703d6f">LeagueID</a> &gt; GameController::getCupIds </td>
+          <td class="memname">std::vector&lt; <a class="el" href="types_8h.html#af8e30d7404af99e1b80d12e7e4dd85e6">LeagueID</a> &gt; GameController::getCupIds </td>
           <td>(</td>
           <td class="paramname"></td><td>)</td>
           <td> const</td>
@@ -3489,7 +3485,7 @@ Private Attributes</h2></td></tr>
         <tr>
           <td class="memname">std::string GameController::getCupName </td>
           <td>(</td>
-          <td class="paramtype"><a class="el" href="types_8h.html#a23de5420c0b18be78144797767703d6f">LeagueID</a>&#160;</td>
+          <td class="paramtype"><a class="el" href="types_8h.html#af8e30d7404af99e1b80d12e7e4dd85e6">LeagueID</a>&#160;</td>
           <td class="paramname"><em>cup_id</em></td><td>)</td>
           <td> const</td>
         </tr>
@@ -3507,7 +3503,7 @@ Private Attributes</h2></td></tr>
         <tr>
           <td class="memname">std::optional&lt; <a class="el" href="structCompetitions_1_1CupStatus.html">Competitions::CupStatus</a> &gt; GameController::getCupStatus </td>
           <td>(</td>
-          <td class="paramtype"><a class="el" href="types_8h.html#a23de5420c0b18be78144797767703d6f">LeagueID</a>&#160;</td>
+          <td class="paramtype"><a class="el" href="types_8h.html#af8e30d7404af99e1b80d12e7e4dd85e6">LeagueID</a>&#160;</td>
           <td class="paramname"><em>cup_id</em></td><td>)</td>
           <td> const</td>
         </tr>
@@ -4209,7 +4205,7 @@ Private Attributes</h2></td></tr>
 <div class="memproto">
       <table class="memname">
         <tr>
-          <td class="memname">std::optional&lt; <a class="el" href="languages_8h.html#ac401b05356bfe6d1335ddaf14ad31d0c">Language</a> &gt; GameController::getInternationalDuty </td>
+          <td class="memname">std::optional&lt; <a class="el" href="languages_8h.html#a15be38758ec16bd1229f53bd53c7084d">Language</a> &gt; GameController::getInternationalDuty </td>
           <td>(</td>
           <td class="paramtype"><a class="el" href="types_8h.html#a93dcecc4aec7387438b9cabd8a28dfdb">PlayerID</a>&#160;</td>
           <td class="paramname"><em>player_id</em></td><td>)</td>
@@ -4415,7 +4411,7 @@ Private Attributes</h2></td></tr>
         <tr>
           <td class="memname">float GameController::getLeagueAttentionMultiplier </td>
           <td>(</td>
-          <td class="paramtype"><a class="el" href="types_8h.html#a23de5420c0b18be78144797767703d6f">LeagueID</a>&#160;</td>
+          <td class="paramtype"><a class="el" href="types_8h.html#af8e30d7404af99e1b80d12e7e4dd85e6">LeagueID</a>&#160;</td>
           <td class="paramname"><em>league_id</em></td><td>)</td>
           <td> const</td>
         </tr>
@@ -4433,7 +4429,7 @@ Private Attributes</h2></td></tr>
         <tr>
           <td class="memname">std::vector&lt; <a class="el" href="structAwardRecord.html">AwardRecord</a> &gt; GameController::getLeagueAwards </td>
           <td>(</td>
-          <td class="paramtype"><a class="el" href="types_8h.html#a23de5420c0b18be78144797767703d6f">LeagueID</a>&#160;</td>
+          <td class="paramtype"><a class="el" href="types_8h.html#af8e30d7404af99e1b80d12e7e4dd85e6">LeagueID</a>&#160;</td>
           <td class="paramname"><em>league_id</em>, </td>
         </tr>
         <tr>
@@ -4453,8 +4449,8 @@ Private Attributes</h2></td></tr>
 
 </div>
 </div>
-<a id="a07ce267b00f045e0f14a0c342e830faa" name="a07ce267b00f045e0f14a0c342e830faa"></a>
-<h2 class="memtitle"><span class="permalink"><a href="#a07ce267b00f045e0f14a0c342e830faa">&#9670;&#160;</a></span>getLeagueById()</h2>
+<a id="a8b18dc7f0fc71c09dfc5b13cdef03d9e" name="a8b18dc7f0fc71c09dfc5b13cdef03d9e"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a8b18dc7f0fc71c09dfc5b13cdef03d9e">&#9670;&#160;</a></span>getLeagueById()</h2>
 
 <div class="memitem">
 <div class="memproto">
@@ -4462,7 +4458,7 @@ Private Attributes</h2></td></tr>
         <tr>
           <td class="memname">std::optional&lt; std::reference_wrapper&lt; const <a class="el" href="classLeague.html">League</a> &gt; &gt; GameController::getLeagueById </td>
           <td>(</td>
-          <td class="paramtype">uint8_t&#160;</td>
+          <td class="paramtype"><a class="el" href="types_8h.html#af8e30d7404af99e1b80d12e7e4dd85e6">LeagueID</a>&#160;</td>
           <td class="paramname"><em>league_id</em></td><td>)</td>
           <td> const</td>
         </tr>
@@ -4489,7 +4485,7 @@ Private Attributes</h2></td></tr>
         <tr>
           <td class="memname">std::vector&lt; <a class="el" href="structRecordEntry.html">RecordEntry</a> &gt; GameController::getLeagueRecords </td>
           <td>(</td>
-          <td class="paramtype"><a class="el" href="types_8h.html#a23de5420c0b18be78144797767703d6f">LeagueID</a>&#160;</td>
+          <td class="paramtype"><a class="el" href="types_8h.html#af8e30d7404af99e1b80d12e7e4dd85e6">LeagueID</a>&#160;</td>
           <td class="paramname"><em>league_id</em></td><td>)</td>
           <td> const</td>
         </tr>
@@ -4527,7 +4523,7 @@ Private Attributes</h2></td></tr>
         <tr>
           <td class="memname">uint8_t GameController::getLeagueTier </td>
           <td>(</td>
-          <td class="paramtype"><a class="el" href="types_8h.html#a23de5420c0b18be78144797767703d6f">LeagueID</a>&#160;</td>
+          <td class="paramtype"><a class="el" href="types_8h.html#af8e30d7404af99e1b80d12e7e4dd85e6">LeagueID</a>&#160;</td>
           <td class="paramname"><em>league_id</em></td><td>)</td>
           <td> const</td>
         </tr>
@@ -6142,7 +6138,7 @@ Private Attributes</h2></td></tr>
         <tr>
           <td class="memname">std::vector&lt; <a class="el" href="structStandingRow.html">StandingRow</a> &gt; GameController::getStandings </td>
           <td>(</td>
-          <td class="paramtype"><a class="el" href="types_8h.html#a23de5420c0b18be78144797767703d6f">LeagueID</a>&#160;</td>
+          <td class="paramtype"><a class="el" href="types_8h.html#af8e30d7404af99e1b80d12e7e4dd85e6">LeagueID</a>&#160;</td>
           <td class="paramname"><em>league_id</em></td><td>)</td>
           <td> const</td>
         </tr>
@@ -6360,8 +6356,8 @@ Private Attributes</h2></td></tr>
 
 </div>
 </div>
-<a id="ac3abee8b1f78c14578881f585b0d28d1" name="ac3abee8b1f78c14578881f585b0d28d1"></a>
-<h2 class="memtitle"><span class="permalink"><a href="#ac3abee8b1f78c14578881f585b0d28d1">&#9670;&#160;</a></span>getTeamsInLeague()</h2>
+<a id="a720489eb36abbd064c51a67802f23c17" name="a720489eb36abbd064c51a67802f23c17"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a720489eb36abbd064c51a67802f23c17">&#9670;&#160;</a></span>getTeamsInLeague()</h2>
 
 <div class="memitem">
 <div class="memproto">
@@ -6369,7 +6365,7 @@ Private Attributes</h2></td></tr>
         <tr>
           <td class="memname">std::vector&lt; std::reference_wrapper&lt; const <a class="el" href="classTeam.html">Team</a> &gt; &gt; GameController::getTeamsInLeague </td>
           <td>(</td>
-          <td class="paramtype">uint8_t&#160;</td>
+          <td class="paramtype"><a class="el" href="types_8h.html#af8e30d7404af99e1b80d12e7e4dd85e6">LeagueID</a>&#160;</td>
           <td class="paramname"><em>league_id</em></td><td>)</td>
           <td> const</td>
         </tr>
@@ -6466,7 +6462,7 @@ Private Attributes</h2></td></tr>
         <tr>
           <td class="paramkey"></td>
           <td></td>
-          <td class="paramtype"><a class="el" href="types_8h.html#a23de5420c0b18be78144797767703d6f">LeagueID</a>&#160;</td>
+          <td class="paramtype"><a class="el" href="types_8h.html#af8e30d7404af99e1b80d12e7e4dd85e6">LeagueID</a>&#160;</td>
           <td class="paramname"><em>competition_id</em>, </td>
         </tr>
         <tr>
@@ -7716,8 +7712,8 @@ Private Attributes</h2></td></tr>
 
 </div>
 </div>
-<a id="a5b5aed0f2d8bbb2d245d0b332ba7f5c2" name="a5b5aed0f2d8bbb2d245d0b332ba7f5c2"></a>
-<h2 class="memtitle"><span class="permalink"><a href="#a5b5aed0f2d8bbb2d245d0b332ba7f5c2">&#9670;&#160;</a></span>newGame()</h2>
+<a id="a45280c51d1c1ffd8b5fdde35a4cabd10" name="a45280c51d1c1ffd8b5fdde35a4cabd10"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a45280c51d1c1ffd8b5fdde35a4cabd10">&#9670;&#160;</a></span>newGame()</h2>
 
 <div class="memitem">
 <div class="memproto">
@@ -7732,7 +7728,13 @@ Private Attributes</h2></td></tr>
           <td class="paramkey"></td>
           <td></td>
           <td class="paramtype">std::optional&lt; std::uint64_t &gt;&#160;</td>
-          <td class="paramname"><em>world_seed</em> = <code>std::nullopt</code>&#160;</td>
+          <td class="paramname"><em>world_seed</em> = <code>std::nullopt</code>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">std::shared_ptr&lt; const <a class="el" href="classWorld_1_1Document.html">World::Document</a> &gt;&#160;</td>
+          <td class="paramname"><em>world</em> = <code>nullptr</code>&#160;</td>
         </tr>
         <tr>
           <td></td>
@@ -7746,6 +7748,7 @@ Private Attributes</h2></td></tr>
 <dl class="params"><dt>Parameters</dt><dd>
   <table class="params">
     <tr><td class="paramname">world_seed</td><td>Seed of the generated world and of every random stream of the world simulation. Without it FM_WORLD_SEED or the clock is used. </td></tr>
+    <tr><td class="paramname">world</td><td><a class="el" href="namespaceWorld.html">World</a> database to build the career from (null: the built-in world). It must be playable (<a class="el" href="namespaceWorld.html#acfef297f5d52d2ff29fc17f9abf4a194">World::playability</a>). </td></tr>
   </table>
   </dd>
 </dl>
@@ -9786,51 +9789,6 @@ Private Attributes</h2></td></tr>
   </td>
   <td class="mlabels-right">
 <span class="mlabels"><span class="mlabel">private</span></span>  </td>
-  </tr>
-</table>
-</div><div class="memdoc">
-
-</div>
-</div>
-<a id="ac02dc724219be72c0e3410cb8ca65568" name="ac02dc724219be72c0e3410cb8ca65568"></a>
-<h2 class="memtitle"><span class="permalink"><a href="#ac02dc724219be72c0e3410cb8ca65568">&#9670;&#160;</a></span>club_identities</h2>
-
-<div class="memitem">
-<div class="memproto">
-<table class="mlabels">
-  <tr>
-  <td class="mlabels-left">
-      <table class="memname">
-        <tr>
-          <td class="memname">std::optional&lt;std::unordered_map&lt;<a class="el" href="types_8h.html#a57143f6ccbdf5a5d9724b986cbdafb31">TeamID</a>, <a class="el" href="structClubIdentity.html">ClubIdentity</a>&gt; &gt; GameController::club_identities</td>
-        </tr>
-      </table>
-  </td>
-  <td class="mlabels-right">
-<span class="mlabels"><span class="mlabel">mutable</span><span class="mlabel">private</span></span>  </td>
-  </tr>
-</table>
-</div><div class="memdoc">
-<p>Data-pack club identities, read on the first <a class="el" href="classGameController.html#a460628d35f3197c3ec08f70608872d71" title="Descriptive identity of a club from the data pack (short code, kit colours, stadium,...">getClubIdentity()</a>. </p>
-
-</div>
-</div>
-<a id="adcce1782d35f0ef6c51469517fd9043f" name="adcce1782d35f0ef6c51469517fd9043f"></a>
-<h2 class="memtitle"><span class="permalink"><a href="#adcce1782d35f0ef6c51469517fd9043f">&#9670;&#160;</a></span>club_identity_mutex</h2>
-
-<div class="memitem">
-<div class="memproto">
-<table class="mlabels">
-  <tr>
-  <td class="mlabels-left">
-      <table class="memname">
-        <tr>
-          <td class="memname">std::mutex GameController::club_identity_mutex</td>
-        </tr>
-      </table>
-  </td>
-  <td class="mlabels-right">
-<span class="mlabels"><span class="mlabel">mutable</span><span class="mlabel">private</span></span>  </td>
   </tr>
 </table>
 </div><div class="memdoc">

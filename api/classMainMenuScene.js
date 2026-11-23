@@ -2,7 +2,12 @@ var classMainMenuScene =
 [
     [ "MainMenuScene", "classMainMenuScene.html#a8085f7f0a63f00fccf15c7e1cb7bf2cd", null ],
     [ "~MainMenuScene", "classMainMenuScene.html#a257e73d46dd5797f85d3c65e3aec8b62", null ],
+    [ "beginCareer", "classMainMenuScene.html#a24525561ec64dbfa117d23b3661d11b4", null ],
+    [ "beginNewCareer", "classMainMenuScene.html#a37651cb5a2ef39200d682f357a6258cb", null ],
+    [ "chooseSlotFor", "classMainMenuScene.html#a172ddd24580932a3efdb530f59b4fe7b", null ],
     [ "getID", "classMainMenuScene.html#ac65f4aa576ae71cb9fac4a1154edca49", null ],
+    [ "handleEvent", "classMainMenuScene.html#a2218b8d08bd319269d1df47ebb434b4d", null ],
+    [ "handleWorldChoice", "classMainMenuScene.html#ae011857067fb306ae344485dcfad3396", null ],
     [ "loadCachedMetadata", "classMainMenuScene.html#a82f65d6ccb644e67c2f31f23523de589", null ],
     [ "onEnter", "classMainMenuScene.html#a1a2c7488fb70643fe55552f87bdce1ba", null ],
     [ "openBackups", "classMainMenuScene.html#afa3b516cb9ddefbcdc7742bfe8be0613", null ],
@@ -29,6 +34,7 @@ var classMainMenuScene =
     [ "crash_notice_text", "classMainMenuScene.html#a9c1b1657252944c46873b9c4dd07f6e4", null ],
     [ "delete_slot", "classMainMenuScene.html#a91f7e1693e549031b48a2a0d76640dcc", null ],
     [ "delete_text", "classMainMenuScene.html#a63b3f5c0592a1215da10760f2ca87355", null ],
+    [ "dropped_file", "classMainMenuScene.html#af464a452bce8fb81c92abae30883ace6", null ],
     [ "is_loading_rendered", "classMainMenuScene.html#ab3910b44918a74b4241a99f3c8d6fdcf", null ],
     [ "is_new_game", "classMainMenuScene.html#a35aeb52ce00f58d80034b08cdaf3c724", null ],
     [ "language_notice", "classMainMenuScene.html#a55711e5955a166a2ed57b73d2100a238", null ],
@@ -42,8 +48,12 @@ var classMainMenuScene =
     [ "loading_worker", "classMainMenuScene.html#a2c192f118d1d7f0d5033d63ee9df9e9b", null ],
     [ "overwrite_slot", "classMainMenuScene.html#a3d6af52746c40e3b9e8c34642b720cc7", null ],
     [ "pending_restore", "classMainMenuScene.html#a8ad6a1c3f647cc647eb708b43428b96f", null ],
+    [ "pending_world", "classMainMenuScene.html#ad9438aecc41286d87dd829d100535930", null ],
     [ "recovery_backup", "classMainMenuScene.html#a1b8fa77117fd87c6d11f117214fa8534", null ],
     [ "recovery_text", "classMainMenuScene.html#a1bd48bbbedfe0b66ce1f0c6d964cc137", null ],
     [ "restore_candidate", "classMainMenuScene.html#a0c3aeba421759db6b617b5e6ff39582f", null ],
-    [ "slot_picker_requested", "classMainMenuScene.html#a90c33b7413417ef191d74da08a900b65", null ]
+    [ "slot_picker_requested", "classMainMenuScene.html#a90c33b7413417ef191d74da08a900b65", null ],
+    [ "start_world", "classMainMenuScene.html#a4e7dd789b5bdf9df8fcbef492f4ab980", null ],
+    [ "world_choice", "classMainMenuScene.html#aeecbd8cd2057bdd21aca0244143faa7f", null ],
+    [ "world_slot", "classMainMenuScene.html#a90dd756b8fd9781f820765229b65c875", null ]
 ];

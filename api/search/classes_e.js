@@ -19,6 +19,6 @@ var searchData=
   ['oppositionscene_16',['OppositionScene',['../classOppositionScene.html',1,'']]],
   ['option_17',['Option',['../structInboxScene_1_1Decision_1_1Option.html',1,'InboxScene::Decision']]],
   ['optionrow_18',['OptionRow',['../structPlayerTalkDialog_1_1OptionRow.html',1,'PlayerTalkDialog']]],
-  ['options_19',['Options',['../structMatchPlayController_1_1Options.html',1,'MatchPlayController']]],
+  ['options_19',['options',['../structMatchPlayController_1_1Options.html',1,'MatchPlayController::Options'],['../structWorldEditorScene_1_1Options.html',1,'WorldEditorScene::Options']]],
   ['output_20',['Output',['../structAudio_1_1Svf_1_1Output.html',1,'Audio::Svf']]]
 ];

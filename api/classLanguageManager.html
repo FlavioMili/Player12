@@ -120,16 +120,16 @@ Classes</h2></td></tr>
 </table><table class="memberdecls">
 <tr class="heading"><td colspan="2"><h2 class="groupheader"><a id="pub-methods" name="pub-methods"></a>
 Public Member Functions</h2></td></tr>
-<tr class="memitem:a0085a0ae7759efe1e04e76f0673851c0" id="r_a0085a0ae7759efe1e04e76f0673851c0"><td class="memItemLeft" align="right" valign="top">bool&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classLanguageManager.html#a0085a0ae7759efe1e04e76f0673851c0">loadLanguage</a> (<a class="el" href="languages_8h.html#ac401b05356bfe6d1335ddaf14ad31d0c">Language</a> lang)</td></tr>
+<tr class="memitem:a0085a0ae7759efe1e04e76f0673851c0" id="r_a0085a0ae7759efe1e04e76f0673851c0"><td class="memItemLeft" align="right" valign="top">bool&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classLanguageManager.html#a0085a0ae7759efe1e04e76f0673851c0">loadLanguage</a> (<a class="el" href="languages_8h.html#a15be38758ec16bd1229f53bd53c7084d">Language</a> lang)</td></tr>
 <tr class="memdesc:a0085a0ae7759efe1e04e76f0673851c0"><td class="mdescLeft">&#160;</td><td class="mdescRight">Loads the JSON file for the specific language into memory.  <br /></td></tr>
 <tr class="separator:a0085a0ae7759efe1e04e76f0673851c0"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:ad1159afe60448b69c944dc1fbf0d58a6" id="r_ad1159afe60448b69c944dc1fbf0d58a6"><td class="memItemLeft" align="right" valign="top">bool&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classLanguageManager.html#ad1159afe60448b69c944dc1fbf0d58a6">loadFromFile</a> (const std::string &amp;path, <a class="el" href="languages_8h.html#ac401b05356bfe6d1335ddaf14ad31d0c">Language</a> lang)</td></tr>
+<tr class="memitem:ad1159afe60448b69c944dc1fbf0d58a6" id="r_ad1159afe60448b69c944dc1fbf0d58a6"><td class="memItemLeft" align="right" valign="top">bool&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classLanguageManager.html#ad1159afe60448b69c944dc1fbf0d58a6">loadFromFile</a> (const std::string &amp;path, <a class="el" href="languages_8h.html#a15be38758ec16bd1229f53bd53c7084d">Language</a> lang)</td></tr>
 <tr class="memdesc:ad1159afe60448b69c944dc1fbf0d58a6"><td class="mdescLeft">&#160;</td><td class="mdescRight">Loads <code>path</code> as the texts of <code>lang</code>, with the same English fallback as <a class="el" href="classLanguageManager.html#a0085a0ae7759efe1e04e76f0673851c0" title="Loads the JSON file for the specific language into memory.">loadLanguage()</a> (which calls it with the packaged file).  <br /></td></tr>
 <tr class="separator:ad1159afe60448b69c944dc1fbf0d58a6"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a620e5ce6c2de6de3e08f5fc752d12f5b" id="r_a620e5ce6c2de6de3e08f5fc752d12f5b"><td class="memItemLeft" align="right" valign="top">const char *&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classLanguageManager.html#a620e5ce6c2de6de3e08f5fc752d12f5b">get</a> (const char *<a class="el" href="input__actions_8cpp.html#a59ed576a7d4010e7379ae448eb087594">key</a>) const</td></tr>
 <tr class="memdesc:a620e5ce6c2de6de3e08f5fc752d12f5b"><td class="mdescLeft">&#160;</td><td class="mdescRight">Retrieves the localized string: the current language's, else the English one, else the key itself (the same pointer).  <br /></td></tr>
 <tr class="separator:a620e5ce6c2de6de3e08f5fc752d12f5b"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a8287eae831a6b30de39ac7c435ed1fc9" id="r_a8287eae831a6b30de39ac7c435ed1fc9"><td class="memItemLeft" align="right" valign="top"><a class="el" href="languages_8h.html#ac401b05356bfe6d1335ddaf14ad31d0c">Language</a>&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classLanguageManager.html#a8287eae831a6b30de39ac7c435ed1fc9">current</a> () const</td></tr>
+<tr class="memitem:a8287eae831a6b30de39ac7c435ed1fc9" id="r_a8287eae831a6b30de39ac7c435ed1fc9"><td class="memItemLeft" align="right" valign="top"><a class="el" href="languages_8h.html#a15be38758ec16bd1229f53bd53c7084d">Language</a>&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classLanguageManager.html#a8287eae831a6b30de39ac7c435ed1fc9">current</a> () const</td></tr>
 <tr class="memdesc:a8287eae831a6b30de39ac7c435ed1fc9"><td class="mdescLeft">&#160;</td><td class="mdescRight">The language last requested (even if it fell back).  <br /></td></tr>
 <tr class="separator:a8287eae831a6b30de39ac7c435ed1fc9"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:ab041272637ff94d1785da3ee567bbab1" id="r_ab041272637ff94d1785da3ee567bbab1"><td class="memItemLeft" align="right" valign="top">const <a class="el" href="structLanguageManager_1_1Status.html">Status</a> &amp;&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classLanguageManager.html#ab041272637ff94d1785da3ee567bbab1">status</a> () const</td></tr>
@@ -235,7 +235,7 @@ Private Attributes</h2></td></tr>
   <td class="mlabels-left">
       <table class="memname">
         <tr>
-          <td class="memname"><a class="el" href="languages_8h.html#ac401b05356bfe6d1335ddaf14ad31d0c">Language</a> LanguageManager::current </td>
+          <td class="memname"><a class="el" href="languages_8h.html#a15be38758ec16bd1229f53bd53c7084d">Language</a> LanguageManager::current </td>
           <td>(</td>
           <td class="paramname"></td><td>)</td>
           <td> const</td>
@@ -347,7 +347,7 @@ Private Attributes</h2></td></tr>
         <tr>
           <td class="paramkey"></td>
           <td></td>
-          <td class="paramtype"><a class="el" href="languages_8h.html#ac401b05356bfe6d1335ddaf14ad31d0c">Language</a>&#160;</td>
+          <td class="paramtype"><a class="el" href="languages_8h.html#a15be38758ec16bd1229f53bd53c7084d">Language</a>&#160;</td>
           <td class="paramname"><em>lang</em>&#160;</td>
         </tr>
         <tr>
@@ -371,7 +371,7 @@ Private Attributes</h2></td></tr>
         <tr>
           <td class="memname">bool LanguageManager::loadLanguage </td>
           <td>(</td>
-          <td class="paramtype"><a class="el" href="languages_8h.html#ac401b05356bfe6d1335ddaf14ad31d0c">Language</a>&#160;</td>
+          <td class="paramtype"><a class="el" href="languages_8h.html#a15be38758ec16bd1229f53bd53c7084d">Language</a>&#160;</td>
           <td class="paramname"><em>lang</em></td><td>)</td>
           <td></td>
         </tr>

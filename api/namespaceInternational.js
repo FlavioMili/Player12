@@ -4,6 +4,7 @@ var namespaceInternational =
     [ "Group", "structInternational_1_1Group.html", "structInternational_1_1Group" ],
     [ "GroupRow", "structInternational_1_1GroupRow.html", "structInternational_1_1GroupRow" ],
     [ "Record", "structInternational_1_1Record.html", "structInternational_1_1Record" ],
+    [ "Confederation", "namespaceInternational.html#ad7c44215a5a7002593a0af39ac8f4c28", null ],
     [ "CallUpResult", "namespaceInternational.html#a3921d546cbf3f93bed2b6e96a7af8dc1", [
       [ "Ok", "namespaceInternational.html#a3921d546cbf3f93bed2b6e96a7af8dc1aa60852f204ed8028c1c58808b746d115", null ],
       [ "NoSquad", "namespaceInternational.html#a3921d546cbf3f93bed2b6e96a7af8dc1a3e6b2cf5d55e5d03ab8c240729e12654", null ],
@@ -23,11 +24,6 @@ var namespaceInternational =
       [ "WorldFinals", "namespaceInternational.html#a6193c753aa18195fe6c6da32fc956eaaad1a968c40988fd93bdeb33d18a5549a8", null ],
       [ "ContinentalFinals", "namespaceInternational.html#a6193c753aa18195fe6c6da32fc956eaaafb21ccecd3acc0fbf6750e2e6b679c3a", null ]
     ] ],
-    [ "Confederation", "namespaceInternational.html#a694cf508679496728929a8c1dd33ee85", [
-      [ "Europe", "namespaceInternational.html#a694cf508679496728929a8c1dd33ee85a912d59cdf1d3f551fae21f6f0062258f", null ],
-      [ "Americas", "namespaceInternational.html#a694cf508679496728929a8c1dd33ee85a9ceed07936bb73f756027dc20e7869e5", null ],
-      [ "Asia", "namespaceInternational.html#a694cf508679496728929a8c1dd33ee85a154a67340e8c14dd5253dc4ff6120197", null ]
-    ] ],
     [ "Stage", "namespaceInternational.html#a0aa1208292429b450cecf3d453b113eb", [
       [ "Group", "namespaceInternational.html#a0aa1208292429b450cecf3d453b113eba03937134cedab9078be39a77ee3a48a0", null ],
       [ "QuarterFinal", "namespaceInternational.html#a0aa1208292429b450cecf3d453b113eba1bffe83319aa33c19c944e23aae9e4ce", null ],
@@ -37,7 +33,6 @@ var namespaceInternational =
     [ "callUpResultKey", "namespaceInternational.html#a1e352cdc635718cd494825bcf5e42dfb", null ],
     [ "canSwitchNation", "namespaceInternational.html#a945a0bc734e10ad14822a6a8cade5807", null ],
     [ "competitionKey", "namespaceInternational.html#a73cc7acb24f4ac40b5e418eb533d3444", null ],
-    [ "confederationKey", "namespaceInternational.html#a70f1b2d18ae3777e4229045c77241041", null ],
     [ "confederationOf", "namespaceInternational.html#a33f25495272d717da0a7433f0423f60f", null ],
     [ "finalsSize", "namespaceInternational.html#a381ebd102f26e5dfeb19d8aa9aa8d1d3", null ],
     [ "groupTable", "namespaceInternational.html#aa23043b1a7ecf71777bf5eba3af7d7a9", null ],

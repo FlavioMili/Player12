@@ -100,7 +100,7 @@ $(document).ready(function(){initNavTree('structClubIdentity.html',''); initResi
 </div><!--header-->
 <div class="contents">
 
-<p>Descriptive club data read from the team files of the data pack.  
+<p>Descriptive club data of the installed world database.  
  <a href="structClubIdentity.html#details">More...</a></p>
 
 <p><code>#include &lt;<a class="el" href="datagenerator_8h_source.html">datagenerator.h</a>&gt;</code></p>
@@ -113,6 +113,12 @@ Public Attributes</h2></td></tr>
 <tr class="separator:a57ddd3247652188776d3a42ada866e90"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a22a1606ca3f18a801aa6734cfd970b5e" id="r_a22a1606ca3f18a801aa6734cfd970b5e"><td class="memItemLeft" align="right" valign="top">std::uint32_t&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structClubIdentity.html#a22a1606ca3f18a801aa6734cfd970b5e">secondary_colour</a> = 0x1A1A1A</td></tr>
 <tr class="separator:a22a1606ca3f18a801aa6734cfd970b5e"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:aafcdb5d8c9d63c61e9e468db880ea5d8" id="r_aafcdb5d8c9d63c61e9e468db880ea5d8"><td class="memItemLeft" align="right" valign="top"><a class="el" href="structKitPalette.html">KitPalette</a>&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structClubIdentity.html#aafcdb5d8c9d63c61e9e468db880ea5d8">home_kit</a></td></tr>
+<tr class="separator:aafcdb5d8c9d63c61e9e468db880ea5d8"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a136cc002184f5b38ad001034fb8519d9" id="r_a136cc002184f5b38ad001034fb8519d9"><td class="memItemLeft" align="right" valign="top"><a class="el" href="structKitPalette.html">KitPalette</a>&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structClubIdentity.html#a136cc002184f5b38ad001034fb8519d9">away_kit</a></td></tr>
+<tr class="separator:a136cc002184f5b38ad001034fb8519d9"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:acc9c2c78f03b523697b83f6d6ce8b085" id="r_acc9c2c78f03b523697b83f6d6ce8b085"><td class="memItemLeft" align="right" valign="top"><a class="el" href="structKitPalette.html">KitPalette</a>&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structClubIdentity.html#acc9c2c78f03b523697b83f6d6ce8b085">third_kit</a></td></tr>
+<tr class="separator:acc9c2c78f03b523697b83f6d6ce8b085"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:acdcafa94da46c4b070bff7ad2c0f9daa" id="r_acdcafa94da46c4b070bff7ad2c0f9daa"><td class="memItemLeft" align="right" valign="top">std::string&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structClubIdentity.html#acdcafa94da46c4b070bff7ad2c0f9daa">stadium_name</a></td></tr>
 <tr class="separator:acdcafa94da46c4b070bff7ad2c0f9daa"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a20d336c63569ce6071d47179e8b16525" id="r_a20d336c63569ce6071d47179e8b16525"><td class="memItemLeft" align="right" valign="top">std::uint32_t&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structClubIdentity.html#a20d336c63569ce6071d47179e8b16525">stadium_capacity</a> = 0</td></tr>
@@ -121,11 +127,27 @@ Public Attributes</h2></td></tr>
 <tr class="separator:a474ac47271543770c30e867887a221d2"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a343023fe6c2a976d3c448ccbc943e784" id="r_a343023fe6c2a976d3c448ccbc943e784"><td class="memItemLeft" align="right" valign="top">std::string&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structClubIdentity.html#a343023fe6c2a976d3c448ccbc943e784">nickname</a></td></tr>
 <tr class="separator:a343023fe6c2a976d3c448ccbc943e784"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a27fd41960ecc28d5e917e3e3604b0b41" id="r_a27fd41960ecc28d5e917e3e3604b0b41"><td class="memItemLeft" align="right" valign="top">std::uint8_t&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structClubIdentity.html#a27fd41960ecc28d5e917e3e3604b0b41">reputation</a> = 0</td></tr>
+<tr class="separator:a27fd41960ecc28d5e917e3e3604b0b41"><td class="memSeparator" colspan="2">&#160;</td></tr>
 </table>
 <a name="details" id="details"></a><h2 class="groupheader">Detailed Description</h2>
-<div class="textblock"><p>Descriptive club data read from the team files of the data pack. </p>
-<p>Not persisted: the data pack stays the source. The stadium capacity used by the simulation lives in <a class="el" href="structClubProfile.html" title="Persistent club attributes that drive revenue and development.">ClubProfile</a> and is derived from reputation when the world is generated; the capacity here is the pack's nominal figure. </p>
+<div class="textblock"><p>Descriptive club data of the installed world database. </p>
+<p>Read from the world, which saves keep a copy of. The stadium capacity used by the simulation lives in <a class="el" href="structClubProfile.html" title="Persistent club attributes that drive revenue and development.">ClubProfile</a> and is derived from reputation when the world is generated; the capacity here is the pack's nominal figure. </p>
 </div><h2 class="groupheader">Member Data Documentation</h2>
+<a id="a136cc002184f5b38ad001034fb8519d9" name="a136cc002184f5b38ad001034fb8519d9"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a136cc002184f5b38ad001034fb8519d9">&#9670;&#160;</a></span>away_kit</h2>
+
+<div class="memitem">
+<div class="memproto">
+      <table class="memname">
+        <tr>
+          <td class="memname"><a class="el" href="structKitPalette.html">KitPalette</a> ClubIdentity::away_kit</td>
+        </tr>
+      </table>
+</div><div class="memdoc">
+
+</div>
+</div>
 <a id="a474ac47271543770c30e867887a221d2" name="a474ac47271543770c30e867887a221d2"></a>
 <h2 class="memtitle"><span class="permalink"><a href="#a474ac47271543770c30e867887a221d2">&#9670;&#160;</a></span>founded</h2>
 
@@ -138,6 +160,21 @@ Public Attributes</h2></td></tr>
       </table>
 </div><div class="memdoc">
 <p>Founding year; 0 if unknown. </p>
+
+</div>
+</div>
+<a id="aafcdb5d8c9d63c61e9e468db880ea5d8" name="aafcdb5d8c9d63c61e9e468db880ea5d8"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#aafcdb5d8c9d63c61e9e468db880ea5d8">&#9670;&#160;</a></span>home_kit</h2>
+
+<div class="memitem">
+<div class="memproto">
+      <table class="memname">
+        <tr>
+          <td class="memname"><a class="el" href="structKitPalette.html">KitPalette</a> ClubIdentity::home_kit</td>
+        </tr>
+      </table>
+</div><div class="memdoc">
+<p>Optional real strips; when absent the club wears primary/secondary. </p>
 
 </div>
 </div>
@@ -167,6 +204,21 @@ Public Attributes</h2></td></tr>
       </table>
 </div><div class="memdoc">
 <p>Kit colour, 0xRRGGBB. </p>
+
+</div>
+</div>
+<a id="a27fd41960ecc28d5e917e3e3604b0b41" name="a27fd41960ecc28d5e917e3e3604b0b41"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a27fd41960ecc28d5e917e3e3604b0b41">&#9670;&#160;</a></span>reputation</h2>
+
+<div class="memitem">
+<div class="memproto">
+      <table class="memname">
+        <tr>
+          <td class="memname">std::uint8_t ClubIdentity::reputation = 0</td>
+        </tr>
+      </table>
+</div><div class="memdoc">
+<p>Stature the world gives the club (1-100); 0 when the world leaves it to generation. New careers rank and rate the club by it. </p>
 
 </div>
 </div>
@@ -223,6 +275,20 @@ Public Attributes</h2></td></tr>
       <table class="memname">
         <tr>
           <td class="memname">std::string ClubIdentity::stadium_name</td>
+        </tr>
+      </table>
+</div><div class="memdoc">
+
+</div>
+</div>
+<a id="acc9c2c78f03b523697b83f6d6ce8b085" name="acc9c2c78f03b523697b83f6d6ce8b085"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#acc9c2c78f03b523697b83f6d6ce8b085">&#9670;&#160;</a></span>third_kit</h2>
+
+<div class="memitem">
+<div class="memproto">
+      <table class="memname">
+        <tr>
+          <td class="memname"><a class="el" href="structKitPalette.html">KitPalette</a> ClubIdentity::third_kit</td>
         </tr>
       </table>
 </div><div class="memdoc">

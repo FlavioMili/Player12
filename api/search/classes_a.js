@@ -6,6 +6,7 @@ var searchData=
   ['kick_3',['Kick',['../structMatchRender3DTuning_1_1Kick.html',1,'MatchRender3DTuning']]],
   ['kicktiming_4',['KickTiming',['../structPlayerRig_1_1KickTiming.html',1,'PlayerRig']]],
   ['kitcolors_5',['KitColors',['../structKitColors.html',1,'']]],
-  ['knockout_6',['Knockout',['../structMatchRules_1_1Knockout.html',1,'MatchRules']]],
-  ['knockoutresolution_7',['KnockoutResolution',['../structCompetitions_1_1KnockoutResolution.html',1,'Competitions']]]
+  ['kitpalette_6',['KitPalette',['../structKitPalette.html',1,'']]],
+  ['knockout_7',['Knockout',['../structMatchRules_1_1Knockout.html',1,'MatchRules']]],
+  ['knockoutresolution_8',['KnockoutResolution',['../structCompetitions_1_1KnockoutResolution.html',1,'Competitions']]]
 ];

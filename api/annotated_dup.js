@@ -44,6 +44,9 @@ var annotated_dup =
     [ "Credits", "namespaceCredits.html", [
       [ "Component", "structCredits_1_1Component.html", "structCredits_1_1Component" ]
     ] ],
+    [ "EditorForm", "namespaceEditorForm.html", [
+      [ "Value", "structEditorForm_1_1Value.html", "structEditorForm_1_1Value" ]
+    ] ],
     [ "Formation", "namespaceFormation.html", [
       [ "Preset", "structFormation_1_1Preset.html", "structFormation_1_1Preset" ],
       [ "Slot", "structFormation_1_1Slot.html", "structFormation_1_1Slot" ]
@@ -220,6 +223,29 @@ var annotated_dup =
       [ "MoneyPreview", "structUI_1_1MoneyPreview.html", "structUI_1_1MoneyPreview" ],
       [ "TileRow", "classUI_1_1TileRow.html", "classUI_1_1TileRow" ]
     ] ],
+    [ "World", "namespaceWorld.html", [
+      [ "Library", "namespaceWorld_1_1Library.html", [
+        [ "Entry", "structWorld_1_1Library_1_1Entry.html", "structWorld_1_1Library_1_1Entry" ],
+        [ "ImportResult", "structWorld_1_1Library_1_1ImportResult.html", "structWorld_1_1Library_1_1ImportResult" ]
+      ] ],
+      [ "Addition", "structWorld_1_1Addition.html", "structWorld_1_1Addition" ],
+      [ "AutoMerge", "structWorld_1_1AutoMerge.html", "structWorld_1_1AutoMerge" ],
+      [ "ChildLink", "structWorld_1_1ChildLink.html", "structWorld_1_1ChildLink" ],
+      [ "CombineResult", "structWorld_1_1CombineResult.html", "structWorld_1_1CombineResult" ],
+      [ "ConfederationData", "structWorld_1_1ConfederationData.html", "structWorld_1_1ConfederationData" ],
+      [ "Conflict", "structWorld_1_1Conflict.html", "structWorld_1_1Conflict" ],
+      [ "Document", "classWorld_1_1Document.html", "classWorld_1_1Document" ],
+      [ "FieldSpec", "structWorld_1_1FieldSpec.html", "structWorld_1_1FieldSpec" ],
+      [ "Geography", "structWorld_1_1Geography.html", "structWorld_1_1Geography" ],
+      [ "Issue", "structWorld_1_1Issue.html", "structWorld_1_1Issue" ],
+      [ "LoadResult", "structWorld_1_1LoadResult.html", "structWorld_1_1LoadResult" ],
+      [ "Manifest", "structWorld_1_1Manifest.html", "structWorld_1_1Manifest" ],
+      [ "PerWorld", "classWorld_1_1PerWorld.html", "classWorld_1_1PerWorld" ],
+      [ "PossibleDuplicate", "structWorld_1_1PossibleDuplicate.html", "structWorld_1_1PossibleDuplicate" ],
+      [ "Region", "structWorld_1_1Region.html", "structWorld_1_1Region" ],
+      [ "RemoveImpact", "structWorld_1_1RemoveImpact.html", "structWorld_1_1RemoveImpact" ],
+      [ "Route", "structWorld_1_1Route.html", "structWorld_1_1Route" ]
+    ] ],
     [ "AboutScene", "classAboutScene.html", "classAboutScene" ],
     [ "AcademyClub", "structAcademyClub.html", "structAcademyClub" ],
     [ "AcademyRatings", "structAcademyRatings.html", "structAcademyRatings" ],
@@ -262,6 +288,7 @@ var annotated_dup =
     [ "ContractTalksDialog", "classContractTalksDialog.html", "classContractTalksDialog" ],
     [ "CounterTactic", "structCounterTactic.html", "structCounterTactic" ],
     [ "CrowdFaceLayout", "structCrowdFaceLayout.html", "structCrowdFaceLayout" ],
+    [ "CustomNationality", "structCustomNationality.html", "structCustomNationality" ],
     [ "DatabaseConnection", "classDatabaseConnection.html", "classDatabaseConnection" ],
     [ "DatabaseException", "classDatabaseException.html", null ],
     [ "DataGenerator", "classDataGenerator.html", "classDataGenerator" ],
@@ -288,6 +315,7 @@ var annotated_dup =
     [ "EffectFactor", "structEffectFactor.html", "structEffectFactor" ],
     [ "FacilityProject", "structFacilityProject.html", "structFacilityProject" ],
     [ "FacilityProjects", "classFacilityProjects.html", "classFacilityProjects" ],
+    [ "FileDialog", "classFileDialog.html", "classFileDialog" ],
     [ "FinanceRepository", "classFinanceRepository.html", "classFinanceRepository" ],
     [ "Finances", "classFinances.html", "classFinances" ],
     [ "FinanceSummary", "structFinanceSummary.html", "structFinanceSummary" ],
@@ -342,6 +370,7 @@ var annotated_dup =
     [ "KeyMoment", "structKeyMoment.html", "structKeyMoment" ],
     [ "KeyOpponent", "structKeyOpponent.html", "structKeyOpponent" ],
     [ "KitColors", "structKitColors.html", "structKitColors" ],
+    [ "KitPalette", "structKitPalette.html", "structKitPalette" ],
     [ "LanguageManager", "classLanguageManager.html", "classLanguageManager" ],
     [ "LeaderInfo", "structLeaderInfo.html", "structLeaderInfo" ],
     [ "League", "classLeague.html", "classLeague" ],
@@ -625,6 +654,8 @@ var annotated_dup =
     [ "Vacancy", "structVacancy.html", "structVacancy" ],
     [ "Vector2F", "structVector2F.html", "structVector2F" ],
     [ "WelcomeTour", "classWelcomeTour.html", "classWelcomeTour" ],
+    [ "WorldChoiceDialog", "classWorldChoiceDialog.html", "classWorldChoiceDialog" ],
+    [ "WorldEditorScene", "classWorldEditorScene.html", "classWorldEditorScene" ],
     [ "WorldRng", "classWorldRng.html", "classWorldRng" ],
     [ "WorldSimulation", "classWorldSimulation.html", "classWorldSimulation" ],
     [ "WorldStateRepository", "classWorldStateRepository.html", "classWorldStateRepository" ],

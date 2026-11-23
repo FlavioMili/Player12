@@ -4,6 +4,7 @@ var structSaveMetadata =
     [ "engine_version", "structSaveMetadata.html#ae9fddeb7908a14ab296e3e9ed74fa319", null ],
     [ "game_version", "structSaveMetadata.html#ad2dd6e121b59e26ffc47a04663d5024e", null ],
     [ "last_saved_game_date", "structSaveMetadata.html#a9adf4dc9b65af65d063e050cf0f9b629", null ],
+    [ "packs", "structSaveMetadata.html#a00ea1f0836e73d296af8622da18ce528", null ],
     [ "playtime_seconds", "structSaveMetadata.html#a8e7b3434c6f329a85e9882f02d55dfff", null ],
     [ "rng_version", "structSaveMetadata.html#ad6afb61ec9d0028f682f8a3d4c087982", null ],
     [ "rules_edition", "structSaveMetadata.html#a3902a719583837e6b74e2027605d911b", null ],

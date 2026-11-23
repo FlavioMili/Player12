@@ -8,7 +8,7 @@ var searchData=
   ['end_5',['End',['../structMatchRender3DTuning_1_1End.html',1,'MatchRender3DTuning']]],
   ['entrant_6',['Entrant',['../structContinentalCompetitions_1_1Entrant.html',1,'ContinentalCompetitions']]],
   ['entrantline_7',['EntrantLine',['../structInternationalScene_1_1EntrantLine.html',1,'InternationalScene']]],
-  ['entry_8',['entry',['../structSquadNumbers_1_1Entry.html',1,'SquadNumbers::Entry'],['../structSquadStatusBook_1_1Entry.html',1,'SquadStatusBook::Entry'],['../structCalendarScene_1_1Entry.html',1,'CalendarScene::Entry']]],
+  ['entry_8',['entry',['../structSquadNumbers_1_1Entry.html',1,'SquadNumbers::Entry'],['../structWorld_1_1Library_1_1Entry.html',1,'World::Library::Entry'],['../structSquadStatusBook_1_1Entry.html',1,'SquadStatusBook::Entry'],['../structCalendarScene_1_1Entry.html',1,'CalendarScene::Entry']]],
   ['error_9',['Error',['../classRuntimeEditor_1_1Error.html',1,'RuntimeEditor']]],
   ['estimate_10',['estimate',['../structLab_1_1Estimate.html',1,'Lab::Estimate'],['../structScoutingSystem_1_1Estimate.html',1,'ScoutingSystem::Estimate']]],
   ['eventnames_11',['EventNames',['../structSeasonReviewModel_1_1EventNames.html',1,'SeasonReviewModel']]],

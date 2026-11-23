@@ -6,7 +6,7 @@ var world__generation_8h =
     [ "applyOpeningBudgets", "world__generation_8h.html#af3b587f38b9fd37de7431442aa7e3ae0", null ],
     [ "clubLevel", "world__generation_8h.html#ab65348f9bfa8e94472944117ebdbaa17", null ],
     [ "drawName", "world__generation_8h.html#abbc9d8b2fecb5c0aca860e5b2f63d52e", null ],
-    [ "generateClubProfiles", "world__generation_8h.html#a5201be0181f6099ec5594187c2cb02a3", null ],
+    [ "generateClubProfiles", "world__generation_8h.html#a10fae39b656273ec0f54e67ac3091468", null ],
     [ "generateSquad", "world__generation_8h.html#adf3719d1d48d3071f8b0789c1aec9b43", null ],
     [ "initializeHiddenAttributes", "world__generation_8h.html#afda09bd221fbf265b5e5b8e10ced52d2", null ],
     [ "levelOffsets", "world__generation_8h.html#ab6dcdbd0743831d3e8eb55adf4c5cebd", null ],

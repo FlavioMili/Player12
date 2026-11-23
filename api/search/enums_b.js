@@ -20,7 +20,7 @@ var searchData=
   ['medicalflag_17',['MedicalFlag',['../medical__centre_8h.html#a39e9ab7cfbd0dae353271a4b4fd359a4',1,'medical_centre.h']]],
   ['mentoringerror_18',['MentoringError',['../mentoring_8h.html#a18a3f2780dfeb32c1c2e4421ce111265',1,'mentoring.h']]],
   ['microcycleday_19',['MicrocycleDay',['../training_8h.html#a4f7541ba864f118a40c9dabed727f5d0',1,'training.h']]],
-  ['mode_20',['Mode',['../classOfferNegotiationDialog.html#a369ca01fb23c70b1b1c0934babdc63df',1,'OfferNegotiationDialog']]],
+  ['mode_20',['mode',['../classWorldChoiceDialog.html#a63efcb6ef4b734fa07fe9836e7df7840',1,'WorldChoiceDialog::Mode'],['../classOfferNegotiationDialog.html#a369ca01fb23c70b1b1c0934babdc63df',1,'OfferNegotiationDialog::Mode']]],
   ['moneyerror_21',['MoneyError',['../namespaceNumberFormat.html#ab3352ab51966d03edf7dd6b810831818',1,'NumberFormat']]],
   ['mood_22',['Mood',['../namespacePlayerRig.html#aeb38c7b4fe89278c6096b9dbe5de4921',1,'PlayerRig']]],
   ['move_23',['Move',['../namespaceBuyerNegotiation.html#adcfa219ffeb419f93b6ca37c3b7c0d6a',1,'BuyerNegotiation']]]

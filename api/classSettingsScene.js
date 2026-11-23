@@ -7,6 +7,7 @@ var classSettingsScene =
     [ "~SettingsScene", "classSettingsScene.html#a66463d72a6eb105d6440d3bdfba165ca", null ],
     [ "applyAndSaveSettings", "classSettingsScene.html#a632d92d08b373c375693efecfb55ccb5", null ],
     [ "cancel", "classSettingsScene.html#af8e6f421afd4bbf95fc3b3d640ed8b4e", null ],
+    [ "careerWorld", "classSettingsScene.html#ad94a12b9e074cbcdd63af4eb68a25885", null ],
     [ "getID", "classSettingsScene.html#a14a3de8c2a367dea3006aa107df4d8d6", null ],
     [ "leave", "classSettingsScene.html#a8eba91554555d71cedf80a52712a5c85", null ],
     [ "onEnter", "classSettingsScene.html#aac20d40002b25ab67af88c8aa3660ea1", null ],
@@ -20,6 +21,7 @@ var classSettingsScene =
     [ "renderGeneral", "classSettingsScene.html#ad0b86429e29cbd6e5af7baf14bb50ead", null ],
     [ "renderGuidance", "classSettingsScene.html#aa86f4fa16a2c5df5552998b90f840994", null ],
     [ "renderSaving", "classSettingsScene.html#a1340e4a8d244574114580ac3d12203a4", null ],
+    [ "renderWorlds", "classSettingsScene.html#aff9f5cdbddb73d988af688ddee4c2909", null ],
     [ "resetToDefaults", "classSettingsScene.html#aecac23d091bf598f29e24b38df192ac1", null ],
     [ "syncPendingFromSettings", "classSettingsScene.html#af005d70a56e5ab021b91f8e3e2a650ea", null ],
     [ "update", "classSettingsScene.html#a1d33d296ea26d4f17127a91d5ba485ab", null ],
@@ -30,6 +32,8 @@ var classSettingsScene =
     [ "capture_end_frame", "classSettingsScene.html#a1086d5d7f43eaea0d0323db7e3b20ef5", null ],
     [ "chord_labels", "classSettingsScene.html#acdd56c8305e7ce328fef302d2cad9b18", null ],
     [ "conflict", "classSettingsScene.html#af4e2032d0545cc216398bea31535000a", null ],
+    [ "export_dialog", "classSettingsScene.html#a366a8daa382897839f74a0f6191b99b7", null ],
+    [ "export_world", "classSettingsScene.html#af4324644f11363af8c4bbb60dc9834d3", null ],
     [ "fpsOptionsStrings", "classSettingsScene.html#abf35e9700bbe1c75e8237497c9a4a622", null ],
     [ "fullscreen", "classSettingsScene.html#a8a9a06658ff29e16f365d41d1316e820", null ],
     [ "in_career", "classSettingsScene.html#a36613d0a4f34e14f3e9d1bccff99260f", null ],
@@ -45,5 +49,8 @@ var classSettingsScene =
     [ "selectedResolution", "classSettingsScene.html#a3991698d693e7ccfc487f593423d1d7c", null ],
     [ "showWipeDataOverlay", "classSettingsScene.html#a54193c24e3c79b45e72b33a6c37c176a", null ],
     [ "vsync", "classSettingsScene.html#a65d3f8f3dda1e36d7badfbf9b5c4a3f8", null ],
-    [ "wipeDataTimer", "classSettingsScene.html#ad66ad8800e74f11925b0be6b6bead540", null ]
+    [ "wipeDataTimer", "classSettingsScene.html#ad66ad8800e74f11925b0be6b6bead540", null ],
+    [ "world_manager", "classSettingsScene.html#a1fb5d9d3ec1c75fa2f2c575e34e8c769", null ],
+    [ "world_message", "classSettingsScene.html#af54e68ecc1c2455b1aa826089120d0bc", null ],
+    [ "world_message_error", "classSettingsScene.html#afffae04fb7fb13bd84877ca4290842ab", null ]
 ];

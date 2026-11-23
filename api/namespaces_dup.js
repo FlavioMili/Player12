@@ -62,6 +62,11 @@ var namespaces_dup =
       [ "version", "namespaceBuildInfo.html#a2a5838a842e4e0314f786972356b9170", null ]
     ] ],
     [ "BuyerNegotiation", "namespaceBuyerNegotiation.html", "namespaceBuyerNegotiation" ],
+    [ "CareerStart", "namespaceCareerStart.html", [
+      [ "chooseSlot", "namespaceCareerStart.html#a9a4257803d41a52cbbef28e1dba684fa", null ],
+      [ "mainMenu", "namespaceCareerStart.html#ad4c86e064e0416e5dfb588e8fbb1c350", null ],
+      [ "startCareer", "namespaceCareerStart.html#aab02b81ab151564c7d1933122492491e", null ]
+    ] ],
     [ "CareerTimeline", "namespaceCareerTimeline.html", [
       [ "build", "namespaceCareerTimeline.html#aaacc94008ff614afeb6c688409be1d49", null ],
       [ "journalFileName", "namespaceCareerTimeline.html#ae0199ec63c871eac8bf7407ad0bb6a6d", null ],
@@ -122,6 +127,7 @@ var namespaces_dup =
       [ "shownAt", "namespaceDrawCeremonies.html#a0ff2cd682c0eff2ad994cb716e9357d7", null ],
       [ "REVEAL_SECONDS", "namespaceDrawCeremonies.html#ac6788246032961a2707d45c00ab9e3bb", null ]
     ] ],
+    [ "EditorForm", "namespaceEditorForm.html", "namespaceEditorForm" ],
     [ "EditorValidation", "namespaceEditorValidation.html", [
       [ "validate", "namespaceEditorValidation.html#a93cca6fcc4188cc2fe249ebcd643a1be", null ]
     ] ],
@@ -755,11 +761,27 @@ var namespaces_dup =
     ] ],
     [ "TransferWindows", "namespaceTransferWindows.html", "namespaceTransferWindows" ],
     [ "UI", "namespaceUI.html", "namespaceUI" ],
+    [ "World", "namespaceWorld.html", "namespaceWorld" ],
+    [ "WorldEditorUi", "namespaceWorldEditorUi.html", [
+      [ "cancelPressed", "namespaceWorldEditorUi.html#acc23bf1d49cb5d502ab639f39ea3fcf6", null ],
+      [ "fieldLabel", "namespaceWorldEditorUi.html#a74cf1868a4be8c1af54e5440c9b41c19", null ],
+      [ "fieldLabel", "namespaceWorldEditorUi.html#acd39fc2d59d2f5da03f55ea8b98794cc", null ],
+      [ "flowButton", "namespaceWorldEditorUi.html#aea2d0cc6409e3bbeb8fa1f8f727b3083", null ],
+      [ "format", "namespaceWorldEditorUi.html#a89f16c984c3a8a52d285a28831755535", null ],
+      [ "integer", "namespaceWorldEditorUi.html#a0a5c152d2adcceab5659d5d62e87726b", null ],
+      [ "kindName", "namespaceWorldEditorUi.html#a7ae0f93db902b3bb9ee015b26e1bb061", null ],
+      [ "kindName", "namespaceWorldEditorUi.html#a7484e61bb932b5b93964f8e0988b6de2", null ],
+      [ "muted", "namespaceWorldEditorUi.html#ab6754c5222b749d4904d4598fefbe1e6", null ],
+      [ "scaled", "namespaceWorldEditorUi.html#affe1b35636cb10c71387b194cd617bc5", null ],
+      [ "specOf", "namespaceWorldEditorUi.html#aa77bf67c5371a50c281413d9a75a0a4e", null ],
+      [ "specOf", "namespaceWorldEditorUi.html#a1414431e0b004e848b07e0fefafa4b30", null ],
+      [ "stem", "namespaceWorldEditorUi.html#a917efacd5fc1abfafec85ebaee4096c5", null ]
+    ] ],
     [ "WorldGeneration", "namespaceWorldGeneration.html", [
       [ "applyOpeningBudgets", "namespaceWorldGeneration.html#af3b587f38b9fd37de7431442aa7e3ae0", null ],
       [ "clubLevel", "namespaceWorldGeneration.html#ab65348f9bfa8e94472944117ebdbaa17", null ],
       [ "drawName", "namespaceWorldGeneration.html#abbc9d8b2fecb5c0aca860e5b2f63d52e", null ],
-      [ "generateClubProfiles", "namespaceWorldGeneration.html#a5201be0181f6099ec5594187c2cb02a3", null ],
+      [ "generateClubProfiles", "namespaceWorldGeneration.html#a10fae39b656273ec0f54e67ac3091468", null ],
       [ "generateSquad", "namespaceWorldGeneration.html#adf3719d1d48d3071f8b0789c1aec9b43", null ],
       [ "initializeHiddenAttributes", "namespaceWorldGeneration.html#afda09bd221fbf265b5e5b8e10ced52d2", null ],
       [ "levelOffsets", "namespaceWorldGeneration.html#ab6dcdbd0743831d3e8eb55adf4c5cebd", null ],

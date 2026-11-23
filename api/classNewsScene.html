@@ -104,7 +104,7 @@ $(document).ready(function(){initNavTree('classNewsScene.html',''); initResizabl
 </div><!--header-->
 <div class="contents">
 
-<p>World news: big transfers, managerial changes, title races, upsets, records and honours from this season and the last, built from the saved world (<a class="el" href="news__feed_8h.html">model/news_feed.h</a>). Filters by country, competition and kind; every story links to its player, clubs or match report.  
+<p><a class="el" href="namespaceWorld.html">World</a> news: big transfers, managerial changes, title races, upsets, records and honours from this season and the last, built from the saved world (<a class="el" href="news__feed_8h.html">model/news_feed.h</a>). Filters by country, competition and kind; every story links to its player, clubs or match report.  
  <a href="classNewsScene.html#details">More...</a></p>
 
 <p><code>#include &lt;<a class="el" href="news__scene_8h_source.html">news_scene.h</a>&gt;</code></p>
@@ -140,9 +140,9 @@ Public Member Functions</h2></td></tr>
 <tr class="separator:a2529c6dc9247ed5dddab993041cc4dc1"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a9bc81bc80e1484e024a165091a6384ab" id="r_a9bc81bc80e1484e024a165091a6384ab"><td class="memItemLeft" align="right" valign="top">std::size_t&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classNewsScene.html#a9bc81bc80e1484e024a165091a6384ab">shownCount</a> () const</td></tr>
 <tr class="separator:a9bc81bc80e1484e024a165091a6384ab"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a5782678bce141f31cf048347280b96b1" id="r_a5782678bce141f31cf048347280b96b1"><td class="memItemLeft" align="right" valign="top">void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classNewsScene.html#a5782678bce141f31cf048347280b96b1">filterCountry</a> (std::optional&lt; <a class="el" href="types_8h.html#a23de5420c0b18be78144797767703d6f">LeagueID</a> &gt; country)</td></tr>
+<tr class="memitem:a5782678bce141f31cf048347280b96b1" id="r_a5782678bce141f31cf048347280b96b1"><td class="memItemLeft" align="right" valign="top">void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classNewsScene.html#a5782678bce141f31cf048347280b96b1">filterCountry</a> (std::optional&lt; <a class="el" href="types_8h.html#af8e30d7404af99e1b80d12e7e4dd85e6">LeagueID</a> &gt; country)</td></tr>
 <tr class="separator:a5782678bce141f31cf048347280b96b1"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a8bd3f2a142dee849cffd3aade36df8ec" id="r_a8bd3f2a142dee849cffd3aade36df8ec"><td class="memItemLeft" align="right" valign="top">void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classNewsScene.html#a8bd3f2a142dee849cffd3aade36df8ec">filterKind</a> (std::optional&lt; <a class="el" href="news__feed_8h.html#ab52efbf95396c78eebf454bd498a38eb">NewsKind</a> &gt; kind)</td></tr>
+<tr class="memitem:a8bd3f2a142dee849cffd3aade36df8ec" id="r_a8bd3f2a142dee849cffd3aade36df8ec"><td class="memItemLeft" align="right" valign="top">void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classNewsScene.html#a8bd3f2a142dee849cffd3aade36df8ec">filterKind</a> (std::optional&lt; <a class="el" href="news__feed_8h.html#ab52efbf95396c78eebf454bd498a38eb">NewsKind</a> &gt; <a class="el" href="world__validate_8cpp.html#ad4f6a38e725118afcde5fbb91ccbbb12">kind</a>)</td></tr>
 <tr class="separator:a8bd3f2a142dee849cffd3aade36df8ec"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="inherit_header pub_methods_classManagementScene"><td colspan="2" onclick="javascript:toggleInherit('pub_methods_classManagementScene')"><img src="closed.png" alt="-"/>&#160;Public Member Functions inherited from <a class="el" href="classManagementScene.html">ManagementScene</a></td></tr>
 <tr class="memitem:a002354c4cc06868e4fe31e6d06526296 inherit pub_methods_classManagementScene" id="r_a002354c4cc06868e4fe31e6d06526296"><td class="memItemLeft" align="right" valign="top">&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classManagementScene.html#a002354c4cc06868e4fe31e6d06526296">ManagementScene</a> (<a class="el" href="classGUIView.html">GUIView</a> *guiViewPtr)</td></tr>
@@ -230,7 +230,7 @@ Private Attributes</h2></td></tr>
 <tr class="separator:ae6f31cf1cbaf48d4703779268cd3583c"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:aced57fc89d3faa6dbfb04233dcbe8f09" id="r_aced57fc89d3faa6dbfb04233dcbe8f09"><td class="memItemLeft" align="right" valign="top">std::vector&lt; std::size_t &gt;&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classNewsScene.html#aced57fc89d3faa6dbfb04233dcbe8f09">kept</a></td></tr>
 <tr class="separator:aced57fc89d3faa6dbfb04233dcbe8f09"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a4c1c8d92e29c52c6e916a31fe0e06ab6" id="r_a4c1c8d92e29c52c6e916a31fe0e06ab6"><td class="memItemLeft" align="right" valign="top">std::vector&lt; std::pair&lt; <a class="el" href="types_8h.html#a23de5420c0b18be78144797767703d6f">LeagueID</a>, std::string &gt; &gt;&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classNewsScene.html#a4c1c8d92e29c52c6e916a31fe0e06ab6">countries</a></td></tr>
+<tr class="memitem:a4c1c8d92e29c52c6e916a31fe0e06ab6" id="r_a4c1c8d92e29c52c6e916a31fe0e06ab6"><td class="memItemLeft" align="right" valign="top">std::vector&lt; std::pair&lt; <a class="el" href="types_8h.html#af8e30d7404af99e1b80d12e7e4dd85e6">LeagueID</a>, std::string &gt; &gt;&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classNewsScene.html#a4c1c8d92e29c52c6e916a31fe0e06ab6">countries</a></td></tr>
 <tr class="separator:a4c1c8d92e29c52c6e916a31fe0e06ab6"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:acf14197fd538c8f44d3b51b4fa58fdb4" id="r_acf14197fd538c8f44d3b51b4fa58fdb4"><td class="memItemLeft" align="right" valign="top">std::vector&lt; <a class="el" href="structNewsScene_1_1CompetitionOption.html">CompetitionOption</a> &gt;&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classNewsScene.html#acf14197fd538c8f44d3b51b4fa58fdb4">competitions</a></td></tr>
 <tr class="separator:acf14197fd538c8f44d3b51b4fa58fdb4"><td class="memSeparator" colspan="2">&#160;</td></tr>
@@ -250,7 +250,7 @@ Additional Inherited Members</h2></td></tr>
 <tr class="separator:af5bdff54b79d3b097e7bdf4df2d5e4c9 inherit pro_attribs_classGUIScene"><td class="memSeparator" colspan="2">&#160;</td></tr>
 </table>
 <a name="details" id="details"></a><h2 class="groupheader">Detailed Description</h2>
-<div class="textblock"><p>World news: big transfers, managerial changes, title races, upsets, records and honours from this season and the last, built from the saved world (<a class="el" href="news__feed_8h.html">model/news_feed.h</a>). Filters by country, competition and kind; every story links to its player, clubs or match report. </p>
+<div class="textblock"><p><a class="el" href="namespaceWorld.html">World</a> news: big transfers, managerial changes, title races, upsets, records and honours from this season and the last, built from the saved world (<a class="el" href="news__feed_8h.html">model/news_feed.h</a>). Filters by country, competition and kind; every story links to its player, clubs or match report. </p>
 </div><h2 class="groupheader">Constructor &amp; Destructor Documentation</h2>
 <a id="a5b6478d7a4c5788f6d0e3a340efe34aa" name="a5b6478d7a4c5788f6d0e3a340efe34aa"></a>
 <h2 class="memtitle"><span class="permalink"><a href="#a5b6478d7a4c5788f6d0e3a340efe34aa">&#9670;&#160;</a></span>NewsScene()</h2>
@@ -313,7 +313,7 @@ Additional Inherited Members</h2></td></tr>
         <tr>
           <td class="memname">void NewsScene::filterCountry </td>
           <td>(</td>
-          <td class="paramtype">std::optional&lt; <a class="el" href="types_8h.html#a23de5420c0b18be78144797767703d6f">LeagueID</a> &gt;&#160;</td>
+          <td class="paramtype">std::optional&lt; <a class="el" href="types_8h.html#af8e30d7404af99e1b80d12e7e4dd85e6">LeagueID</a> &gt;&#160;</td>
           <td class="paramname"><em>country</em></td><td>)</td>
           <td></td>
         </tr>
@@ -678,7 +678,7 @@ Additional Inherited Members</h2></td></tr>
   <td class="mlabels-left">
       <table class="memname">
         <tr>
-          <td class="memname">std::vector&lt;std::pair&lt;<a class="el" href="types_8h.html#a23de5420c0b18be78144797767703d6f">LeagueID</a>, std::string&gt; &gt; NewsScene::countries</td>
+          <td class="memname">std::vector&lt;std::pair&lt;<a class="el" href="types_8h.html#af8e30d7404af99e1b80d12e7e4dd85e6">LeagueID</a>, std::string&gt; &gt; NewsScene::countries</td>
         </tr>
       </table>
   </td>

@@ -96,6 +96,7 @@ $(document).ready(function(){initNavTree('continental_8h.html',''); initResizabl
   <div class="summary">
 <a href="#nested-classes">Classes</a> &#124;
 <a href="#namespaces">Namespaces</a> &#124;
+<a href="#typedef-members">Typedefs</a> &#124;
 <a href="#enum-members">Enumerations</a> &#124;
 <a href="#func-members">Functions</a> &#124;
 <a href="#var-members">Variables</a>  </div>
@@ -107,6 +108,7 @@ $(document).ready(function(){initNavTree('continental_8h.html',''); initResizabl
 <code>#include &lt;functional&gt;</code><br />
 <code>#include &lt;map&gt;</code><br />
 <code>#include &lt;memory&gt;</code><br />
+<code>#include &lt;nlohmann/json_fwd.hpp&gt;</code><br />
 <code>#include &lt;optional&gt;</code><br />
 <code>#include &lt;string&gt;</code><br />
 <code>#include &lt;unordered_map&gt;</code><br />
@@ -151,12 +153,13 @@ Namespaces</h2></td></tr>
 <tr class="memdesc:namespaceContinental"><td class="mdescLeft">&#160;</td><td class="mdescRight"><a class="el" href="namespaceContinental.html" title="Continental club competitions: rules, draws and tables.">Continental</a> club competitions: rules, draws and tables. <br /></td></tr>
 <tr class="separator:"><td class="memSeparator" colspan="2">&#160;</td></tr>
 </table><table class="memberdecls">
+<tr class="heading"><td colspan="2"><h2 class="groupheader"><a id="typedef-members" name="typedef-members"></a>
+Typedefs</h2></td></tr>
+<tr class="memitem:a434dd1d56ce63f89b0adeff9cf0b29ed" id="r_a434dd1d56ce63f89b0adeff9cf0b29ed"><td class="memItemLeft" align="right" valign="top">using&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="namespaceContinental.html#a434dd1d56ce63f89b0adeff9cf0b29ed">Continental::Continent</a> = <a class="el" href="types_8h.html#ac4f70082da2cf98dbf6542fe487a1d85">ConfederationID</a></td></tr>
+<tr class="separator:a434dd1d56ce63f89b0adeff9cf0b29ed"><td class="memSeparator" colspan="2">&#160;</td></tr>
+</table><table class="memberdecls">
 <tr class="heading"><td colspan="2"><h2 class="groupheader"><a id="enum-members" name="enum-members"></a>
 Enumerations</h2></td></tr>
-<tr class="memitem:a965b528b82bdd2ba4eef54bdef34471e" id="r_a965b528b82bdd2ba4eef54bdef34471e"><td class="memItemLeft" align="right" valign="top">enum class &#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="namespaceContinental.html#a965b528b82bdd2ba4eef54bdef34471e">Continental::Continent</a> : uint8_t { <a class="el" href="namespaceContinental.html#a965b528b82bdd2ba4eef54bdef34471ea912d59cdf1d3f551fae21f6f0062258f">Continental::Europe</a>
-, <a class="el" href="namespaceContinental.html#a965b528b82bdd2ba4eef54bdef34471ea9ceed07936bb73f756027dc20e7869e5">Continental::Americas</a>
- }</td></tr>
-<tr class="separator:a965b528b82bdd2ba4eef54bdef34471e"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:afae0a93505fc18e53ae33cd468800da8" id="r_afae0a93505fc18e53ae33cd468800da8"><td class="memItemLeft" align="right" valign="top">enum class &#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="namespaceContinental.html#afae0a93505fc18e53ae33cd468800da8">Continental::Round</a> : uint8_t { <br />
 &#160;&#160;<a class="el" href="namespaceContinental.html#afae0a93505fc18e53ae33cd468800da8a17904a3e821cca9014251f5b2507c568">Continental::LeaguePhase</a> = 0
 , <a class="el" href="namespaceContinental.html#afae0a93505fc18e53ae33cd468800da8a7cc4b85ad731afdbfcada39e93a92b0f">Continental::Playoff</a>
@@ -171,9 +174,13 @@ Enumerations</h2></td></tr>
 </table><table class="memberdecls">
 <tr class="heading"><td colspan="2"><h2 class="groupheader"><a id="func-members" name="func-members"></a>
 Functions</h2></td></tr>
-<tr class="memitem:a2ae0359024cffb29ed7c5f35f467d899" id="r_a2ae0359024cffb29ed7c5f35f467d899"><td class="memItemLeft" align="right" valign="top">const <a class="el" href="structContinental_1_1CompetitionRules.html">CompetitionRules</a> *&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="namespaceContinental.html#a2ae0359024cffb29ed7c5f35f467d899">Continental::rules</a> (<a class="el" href="types_8h.html#a23de5420c0b18be78144797767703d6f">LeagueID</a> competition_id)</td></tr>
+<tr class="memitem:a4517fcfc7caca1f5957780f8d5b98787" id="r_a4517fcfc7caca1f5957780f8d5b98787"><td class="memItemLeft" align="right" valign="top">const std::vector&lt; <a class="el" href="structContinental_1_1CompetitionRules.html">CompetitionRules</a> &gt; &amp;&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="namespaceContinental.html#a4517fcfc7caca1f5957780f8d5b98787">Continental::competitions</a> ()</td></tr>
+<tr class="separator:a4517fcfc7caca1f5957780f8d5b98787"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:ac9aa50abd058e051699be03f2a55f1c3" id="r_ac9aa50abd058e051699be03f2a55f1c3"><td class="memItemLeft" align="right" valign="top">nlohmann::json&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="namespaceContinental.html#ac9aa50abd058e051699be03f2a55f1c3">Continental::presetCupJson</a> (int tier)</td></tr>
+<tr class="separator:ac9aa50abd058e051699be03f2a55f1c3"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a2ae0359024cffb29ed7c5f35f467d899" id="r_a2ae0359024cffb29ed7c5f35f467d899"><td class="memItemLeft" align="right" valign="top">const <a class="el" href="structContinental_1_1CompetitionRules.html">CompetitionRules</a> *&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="namespaceContinental.html#a2ae0359024cffb29ed7c5f35f467d899">Continental::rules</a> (<a class="el" href="types_8h.html#af8e30d7404af99e1b80d12e7e4dd85e6">LeagueID</a> competition_id)</td></tr>
 <tr class="separator:a2ae0359024cffb29ed7c5f35f467d899"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:af72e79aa0d39ab000f9d059b5c55507e" id="r_af72e79aa0d39ab000f9d059b5c55507e"><td class="memItemLeft" align="right" valign="top">std::optional&lt; <a class="el" href="namespaceContinental.html#a965b528b82bdd2ba4eef54bdef34471e">Continent</a> &gt;&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="namespaceContinental.html#af72e79aa0d39ab000f9d059b5c55507e">Continental::continentOf</a> (<a class="el" href="types_8h.html#a23de5420c0b18be78144797767703d6f">LeagueID</a> league_id)</td></tr>
+<tr class="memitem:af72e79aa0d39ab000f9d059b5c55507e" id="r_af72e79aa0d39ab000f9d059b5c55507e"><td class="memItemLeft" align="right" valign="top">std::optional&lt; <a class="el" href="namespaceContinental.html#a434dd1d56ce63f89b0adeff9cf0b29ed">Continent</a> &gt;&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="namespaceContinental.html#af72e79aa0d39ab000f9d059b5c55507e">Continental::continentOf</a> (<a class="el" href="types_8h.html#af8e30d7404af99e1b80d12e7e4dd85e6">LeagueID</a> league_id)</td></tr>
 <tr class="separator:af72e79aa0d39ab000f9d059b5c55507e"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a57101414d026d5a5e74c723b54db2074" id="r_a57101414d026d5a5e74c723b54db2074"><td class="memItemLeft" align="right" valign="top">uint8_t&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="namespaceContinental.html#a57101414d026d5a5e74c723b54db2074">Continental::directPlaces</a> (uint8_t clubs)</td></tr>
 <tr class="separator:a57101414d026d5a5e74c723b54db2074"><td class="memSeparator" colspan="2">&#160;</td></tr>
@@ -201,14 +208,14 @@ Functions</h2></td></tr>
 </table><table class="memberdecls">
 <tr class="heading"><td colspan="2"><h2 class="groupheader"><a id="var-members" name="var-members"></a>
 Variables</h2></td></tr>
-<tr class="memitem:aee1b8f64955de58364bf2fcd0390423f" id="r_aee1b8f64955de58364bf2fcd0390423f"><td class="memItemLeft" align="right" valign="top">constexpr <a class="el" href="types_8h.html#a23de5420c0b18be78144797767703d6f">LeagueID</a>&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="namespaceContinental.html#aee1b8f64955de58364bf2fcd0390423f">Continental::CHAMPIONS_CUP_ID</a> = 250</td></tr>
+<tr class="memitem:aee1b8f64955de58364bf2fcd0390423f" id="r_aee1b8f64955de58364bf2fcd0390423f"><td class="memItemLeft" align="right" valign="top">constexpr <a class="el" href="types_8h.html#af8e30d7404af99e1b80d12e7e4dd85e6">LeagueID</a>&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="namespaceContinental.html#aee1b8f64955de58364bf2fcd0390423f">Continental::CHAMPIONS_CUP_ID</a> = 250</td></tr>
 <tr class="separator:aee1b8f64955de58364bf2fcd0390423f"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:af0f1943f744d901517a6db2bb2c5b6b4" id="r_af0f1943f744d901517a6db2bb2c5b6b4"><td class="memItemLeft" align="right" valign="top">constexpr <a class="el" href="types_8h.html#a23de5420c0b18be78144797767703d6f">LeagueID</a>&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="namespaceContinental.html#af0f1943f744d901517a6db2bb2c5b6b4">Continental::CONTINENTAL_SHIELD_ID</a> = 251</td></tr>
+<tr class="memitem:af0f1943f744d901517a6db2bb2c5b6b4" id="r_af0f1943f744d901517a6db2bb2c5b6b4"><td class="memItemLeft" align="right" valign="top">constexpr <a class="el" href="types_8h.html#af8e30d7404af99e1b80d12e7e4dd85e6">LeagueID</a>&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="namespaceContinental.html#af0f1943f744d901517a6db2bb2c5b6b4">Continental::CONTINENTAL_SHIELD_ID</a> = 251</td></tr>
 <tr class="separator:af0f1943f744d901517a6db2bb2c5b6b4"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a5c37cb9eb5ac4ff4a1a032d666c501cd" id="r_a5c37cb9eb5ac4ff4a1a032d666c501cd"><td class="memItemLeft" align="right" valign="top">constexpr <a class="el" href="types_8h.html#a23de5420c0b18be78144797767703d6f">LeagueID</a>&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="namespaceContinental.html#a5c37cb9eb5ac4ff4a1a032d666c501cd">Continental::AMERICAS_CUP_ID</a> = 252</td></tr>
+<tr class="memitem:a5c37cb9eb5ac4ff4a1a032d666c501cd" id="r_a5c37cb9eb5ac4ff4a1a032d666c501cd"><td class="memItemLeft" align="right" valign="top">constexpr <a class="el" href="types_8h.html#af8e30d7404af99e1b80d12e7e4dd85e6">LeagueID</a>&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="namespaceContinental.html#a5c37cb9eb5ac4ff4a1a032d666c501cd">Continental::AMERICAS_CUP_ID</a> = 252</td></tr>
 <tr class="separator:a5c37cb9eb5ac4ff4a1a032d666c501cd"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a11b97a762c63947641d1010789a8a418" id="r_a11b97a762c63947641d1010789a8a418"><td class="memItemLeft" align="right" valign="top">constexpr std::array&lt; <a class="el" href="structContinental_1_1CompetitionRules.html">CompetitionRules</a>, 3 &gt;&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="namespaceContinental.html#a11b97a762c63947641d1010789a8a418">Continental::COMPETITIONS</a></td></tr>
-<tr class="separator:a11b97a762c63947641d1010789a8a418"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:abda1740787a90708595df4e27e83dab2" id="r_abda1740787a90708595df4e27e83dab2"><td class="memItemLeft" align="right" valign="top">constexpr <a class="el" href="types_8h.html#af8e30d7404af99e1b80d12e7e4dd85e6">LeagueID</a>&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="namespaceContinental.html#abda1740787a90708595df4e27e83dab2">Continental::FIRST_CUP_ID</a> = <a class="el" href="namespaceContinental.html#aee1b8f64955de58364bf2fcd0390423f">CHAMPIONS_CUP_ID</a></td></tr>
+<tr class="separator:abda1740787a90708595df4e27e83dab2"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:aff1ccce357d5d7f6c73ffe7c0c56707d" id="r_aff1ccce357d5d7f6c73ffe7c0c56707d"><td class="memItemLeft" align="right" valign="top">constexpr uint8_t&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="namespaceContinental.html#aff1ccce357d5d7f6c73ffe7c0c56707d">Continental::KNOCKOUT_STAGE_BASE</a> = 16</td></tr>
 <tr class="separator:aff1ccce357d5d7f6c73ffe7c0c56707d"><td class="memSeparator" colspan="2">&#160;</td></tr>
 </table>

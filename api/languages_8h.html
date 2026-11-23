@@ -103,67 +103,228 @@ $(document).ready(function(){initNavTree('languages_8h.html',''); initResizable(
 <code>#include &lt;string&gt;</code><br />
 <code>#include &lt;string_view&gt;</code><br />
 <code>#include &lt;unordered_map&gt;</code><br />
+<code>#include &quot;<a class="el" href="types_8h_source.html">global/types.h</a>&quot;</code><br />
 </div>
 <p><a href="languages_8h_source.html">Go to the source code of this file.</a></p>
 <table class="memberdecls">
 <tr class="heading"><td colspan="2"><h2 class="groupheader"><a id="enum-members" name="enum-members"></a>
 Enumerations</h2></td></tr>
-<tr class="memitem:ac401b05356bfe6d1335ddaf14ad31d0c" id="r_ac401b05356bfe6d1335ddaf14ad31d0c"><td class="memItemLeft" align="right" valign="top">enum class &#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="languages_8h.html#ac401b05356bfe6d1335ddaf14ad31d0c">Language</a> : uint8_t { <br />
-&#160;&#160;<a class="el" href="languages_8h.html#ac401b05356bfe6d1335ddaf14ad31d0caaa85f1840e282d8a8304dbc2c0d7c9b2">EN</a>
-, <a class="el" href="languages_8h.html#ac401b05356bfe6d1335ddaf14ad31d0cacd32106bcb6de321930cf34574ea388c">IT</a>
-, <a class="el" href="languages_8h.html#ac401b05356bfe6d1335ddaf14ad31d0ca04c19fa1e772ab66f0aad2efe61f25cd">ES</a>
-, <a class="el" href="languages_8h.html#ac401b05356bfe6d1335ddaf14ad31d0ca11aedd0e432747c2bcd97b82808d24a0">FR</a>
+<tr class="memitem:a15be38758ec16bd1229f53bd53c7084d" id="r_a15be38758ec16bd1229f53bd53c7084d"><td class="memItemLeft" align="right" valign="top">enum class &#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="languages_8h.html#a15be38758ec16bd1229f53bd53c7084d">Language</a> : NationalityID { <br />
+&#160;&#160;<a class="el" href="languages_8h.html#a15be38758ec16bd1229f53bd53c7084daaa85f1840e282d8a8304dbc2c0d7c9b2">EN</a>
+, <a class="el" href="languages_8h.html#a15be38758ec16bd1229f53bd53c7084dacd32106bcb6de321930cf34574ea388c">IT</a>
+, <a class="el" href="languages_8h.html#a15be38758ec16bd1229f53bd53c7084da04c19fa1e772ab66f0aad2efe61f25cd">ES</a>
+, <a class="el" href="languages_8h.html#a15be38758ec16bd1229f53bd53c7084da11aedd0e432747c2bcd97b82808d24a0">FR</a>
 , <br />
-&#160;&#160;<a class="el" href="languages_8h.html#ac401b05356bfe6d1335ddaf14ad31d0ca3a52f3c22ed6fcde5bf696a6c02c9e73">DE</a>
-, <a class="el" href="languages_8h.html#ac401b05356bfe6d1335ddaf14ad31d0ca0b98720dcb2cc6fd60358a45dfbc5b87">MX</a>
-, <a class="el" href="languages_8h.html#ac401b05356bfe6d1335ddaf14ad31d0ca1c2903397d8833382673bab22aa8b937">CN</a>
-, <a class="el" href="languages_8h.html#ac401b05356bfe6d1335ddaf14ad31d0caf5b15f58cabad73d1bf2de7bcb89db6c">RO</a>
+&#160;&#160;<a class="el" href="languages_8h.html#a15be38758ec16bd1229f53bd53c7084da3a52f3c22ed6fcde5bf696a6c02c9e73">DE</a>
+, <a class="el" href="languages_8h.html#a15be38758ec16bd1229f53bd53c7084da0b98720dcb2cc6fd60358a45dfbc5b87">MX</a>
+, <a class="el" href="languages_8h.html#a15be38758ec16bd1229f53bd53c7084da1c2903397d8833382673bab22aa8b937">CN</a>
+, <a class="el" href="languages_8h.html#a15be38758ec16bd1229f53bd53c7084daf5b15f58cabad73d1bf2de7bcb89db6c">RO</a>
 , <br />
-&#160;&#160;<a class="el" href="languages_8h.html#ac401b05356bfe6d1335ddaf14ad31d0ca35357b9c8fe4d3273d0237ecc8ff2e75">PT</a>
-, <a class="el" href="languages_8h.html#ac401b05356bfe6d1335ddaf14ad31d0ca796834e7a2839412d79dbc5f1327594d">NL</a>
-, <a class="el" href="languages_8h.html#ac401b05356bfe6d1335ddaf14ad31d0caf003c44deab679aa2edfaff864c77402">SE</a>
-, <a class="el" href="languages_8h.html#ac401b05356bfe6d1335ddaf14ad31d0ca9b7d173b068dc4d5517bfae92d676437">PL</a>
+&#160;&#160;<a class="el" href="languages_8h.html#a15be38758ec16bd1229f53bd53c7084da35357b9c8fe4d3273d0237ecc8ff2e75">PT</a>
+, <a class="el" href="languages_8h.html#a15be38758ec16bd1229f53bd53c7084da796834e7a2839412d79dbc5f1327594d">NL</a>
+, <a class="el" href="languages_8h.html#a15be38758ec16bd1229f53bd53c7084daf003c44deab679aa2edfaff864c77402">SE</a>
+, <a class="el" href="languages_8h.html#a15be38758ec16bd1229f53bd53c7084da9b7d173b068dc4d5517bfae92d676437">PL</a>
 , <br />
-&#160;&#160;<a class="el" href="languages_8h.html#ac401b05356bfe6d1335ddaf14ad31d0caf214a7d42e0de5875d55189e01e2e187">GR</a>
-, <a class="el" href="languages_8h.html#ac401b05356bfe6d1335ddaf14ad31d0caebe021079e5a3c4f42ca6119eab92633">TR</a>
-, <a class="el" href="languages_8h.html#ac401b05356bfe6d1335ddaf14ad31d0caf9308c5d059650ee40cab30bad1e96d0">RU</a>
-, <a class="el" href="languages_8h.html#ac401b05356bfe6d1335ddaf14ad31d0ca5b61a1b298a0d06efa6933a97e68d763">AR</a>
+&#160;&#160;<a class="el" href="languages_8h.html#a15be38758ec16bd1229f53bd53c7084daf214a7d42e0de5875d55189e01e2e187">GR</a>
+, <a class="el" href="languages_8h.html#a15be38758ec16bd1229f53bd53c7084daebe021079e5a3c4f42ca6119eab92633">TR</a>
+, <a class="el" href="languages_8h.html#a15be38758ec16bd1229f53bd53c7084daf9308c5d059650ee40cab30bad1e96d0">RU</a>
+, <a class="el" href="languages_8h.html#a15be38758ec16bd1229f53bd53c7084da5b61a1b298a0d06efa6933a97e68d763">AR</a>
 , <br />
-&#160;&#160;<a class="el" href="languages_8h.html#ac401b05356bfe6d1335ddaf14ad31d0ca24d22e03afb23edb45c6c8cfa16a280e">JP</a>
-, <a class="el" href="languages_8h.html#ac401b05356bfe6d1335ddaf14ad31d0ca19d3326f3137cbadd21ce901a9bed4a7">BR</a>
-, <a class="el" href="languages_8h.html#ac401b05356bfe6d1335ddaf14ad31d0ca38dd815e66dbd0d47a2b876ca442e987">KR</a>
-, <a class="el" href="languages_8h.html#ac401b05356bfe6d1335ddaf14ad31d0cad3dcf429c679f9af82eb9a3b31c4df44">BE</a>
+&#160;&#160;<a class="el" href="languages_8h.html#a15be38758ec16bd1229f53bd53c7084da24d22e03afb23edb45c6c8cfa16a280e">JP</a>
+, <a class="el" href="languages_8h.html#a15be38758ec16bd1229f53bd53c7084da19d3326f3137cbadd21ce901a9bed4a7">BR</a>
+, <a class="el" href="languages_8h.html#a15be38758ec16bd1229f53bd53c7084da38dd815e66dbd0d47a2b876ca442e987">KR</a>
+, <a class="el" href="languages_8h.html#a15be38758ec16bd1229f53bd53c7084dad3dcf429c679f9af82eb9a3b31c4df44">BE</a>
 , <br />
-&#160;&#160;<a class="el" href="languages_8h.html#ac401b05356bfe6d1335ddaf14ad31d0ca1ee0bf89c5d1032317d13a2e022793c8">CH</a>
-, <a class="el" href="languages_8h.html#ac401b05356bfe6d1335ddaf14ad31d0cafd4c638da5f85d025963f99fe90b1b1a">HR</a>
-, <a class="el" href="languages_8h.html#ac401b05356bfe6d1335ddaf14ad31d0cadd65ef9a5579d4e518c6d4abbd0cb1c6">DK</a>
-, <a class="el" href="languages_8h.html#ac401b05356bfe6d1335ddaf14ad31d0caf0aa03aaca953a9a63b4459663d00134">FI</a>
+&#160;&#160;<a class="el" href="languages_8h.html#a15be38758ec16bd1229f53bd53c7084da1ee0bf89c5d1032317d13a2e022793c8">CH</a>
+, <a class="el" href="languages_8h.html#a15be38758ec16bd1229f53bd53c7084dafd4c638da5f85d025963f99fe90b1b1a">HR</a>
+, <a class="el" href="languages_8h.html#a15be38758ec16bd1229f53bd53c7084dadd65ef9a5579d4e518c6d4abbd0cb1c6">DK</a>
+, <a class="el" href="languages_8h.html#a15be38758ec16bd1229f53bd53c7084daf0aa03aaca953a9a63b4459663d00134">FI</a>
 , <br />
-&#160;&#160;<a class="el" href="languages_8h.html#ac401b05356bfe6d1335ddaf14ad31d0cad2cb7bbc0d23f34c4255d924076e902f">IE</a>
-, <a class="el" href="languages_8h.html#ac401b05356bfe6d1335ddaf14ad31d0cac2f3f489a00553e7a01d369c103c7251">NO</a>
-, <a class="el" href="languages_8h.html#ac401b05356bfe6d1335ddaf14ad31d0ca13dd621f27110108a10a88e99fe9ceaf">SK</a>
-, <a class="el" href="languages_8h.html#ac401b05356bfe6d1335ddaf14ad31d0ca928568b84963ceb76aaaa2cae9afdbfa">CZ</a>
+&#160;&#160;<a class="el" href="languages_8h.html#a15be38758ec16bd1229f53bd53c7084dad2cb7bbc0d23f34c4255d924076e902f">IE</a>
+, <a class="el" href="languages_8h.html#a15be38758ec16bd1229f53bd53c7084dac2f3f489a00553e7a01d369c103c7251">NO</a>
+, <a class="el" href="languages_8h.html#a15be38758ec16bd1229f53bd53c7084da13dd621f27110108a10a88e99fe9ceaf">SK</a>
+, <a class="el" href="languages_8h.html#a15be38758ec16bd1229f53bd53c7084da928568b84963ceb76aaaa2cae9afdbfa">CZ</a>
 , <br />
-&#160;&#160;<a class="el" href="languages_8h.html#ac401b05356bfe6d1335ddaf14ad31d0ca35b5282113b88c2fe23dcbec9f0258c1">HU</a>
-, <a class="el" href="languages_8h.html#ac401b05356bfe6d1335ddaf14ad31d0ca3943d8795e03e8e3307b5b71eac1b669">UA</a>
-, <a class="el" href="languages_8h.html#ac401b05356bfe6d1335ddaf14ad31d0ca7516fd43adaa5e0b8a65a672c39845d2">US</a>
+&#160;&#160;<a class="el" href="languages_8h.html#a15be38758ec16bd1229f53bd53c7084da35b5282113b88c2fe23dcbec9f0258c1">HU</a>
+, <a class="el" href="languages_8h.html#a15be38758ec16bd1229f53bd53c7084da3943d8795e03e8e3307b5b71eac1b669">UA</a>
+, <a class="el" href="languages_8h.html#a15be38758ec16bd1229f53bd53c7084da7516fd43adaa5e0b8a65a672c39845d2">US</a>
+, <a class="el" href="languages_8h.html#a15be38758ec16bd1229f53bd53c7084dad9681d05860552e9c3113da381f916fc">AN</a>
+, <br />
+&#160;&#160;<a class="el" href="languages_8h.html#a15be38758ec16bd1229f53bd53c7084da9f72f02c2586ff913854a844f10d9a99">UY</a>
+, <a class="el" href="languages_8h.html#a15be38758ec16bd1229f53bd53c7084da42983b05e2f2cc22822e30beb7bdd668">CO</a>
+, <a class="el" href="languages_8h.html#a15be38758ec16bd1229f53bd53c7084da3fd6b696867d70225deda7868308679b">EC</a>
+, <a class="el" href="languages_8h.html#a15be38758ec16bd1229f53bd53c7084da0c145a13e49b47abccd510e5c899d80c">PY</a>
+, <br />
+&#160;&#160;<a class="el" href="languages_8h.html#a15be38758ec16bd1229f53bd53c7084da5bc574a47246f122016869b32a6aa6f0">CL</a>
+, <a class="el" href="languages_8h.html#a15be38758ec16bd1229f53bd53c7084da3acf83834396fa1c878707132ead62b8">PE</a>
+, <a class="el" href="languages_8h.html#a15be38758ec16bd1229f53bd53c7084daa99877f71bd9b0fa0159103dbedb5c0f">VE</a>
+, <a class="el" href="languages_8h.html#a15be38758ec16bd1229f53bd53c7084da3e8d115eb4b32b9e9479f387dbe14ee1">CA</a>
+, <br />
+&#160;&#160;<a class="el" href="languages_8h.html#a15be38758ec16bd1229f53bd53c7084da1d7b33fc26ca22c2011aaa97fecc43d8">CR</a>
+, <a class="el" href="languages_8h.html#a15be38758ec16bd1229f53bd53c7084da52c5706bc98f911ffbc794f5ffab068d">JM</a>
+, <a class="el" href="languages_8h.html#a15be38758ec16bd1229f53bd53c7084da2a6039655313bf5dab1e43523b62c374">MA</a>
+, <a class="el" href="languages_8h.html#a15be38758ec16bd1229f53bd53c7084da92666505ce75444ee14be2ebc2f10a60">SN</a>
+, <br />
+&#160;&#160;<a class="el" href="languages_8h.html#a15be38758ec16bd1229f53bd53c7084da3ba0f40775d6d6ace27ef929f5be3cdf">CI</a>
+, <a class="el" href="languages_8h.html#a15be38758ec16bd1229f53bd53c7084da707354872d4e8210a2a573b99721b1fb">CM</a>
+, <a class="el" href="languages_8h.html#a15be38758ec16bd1229f53bd53c7084da6848ae6f8e786062f1b23476c9ecd258">GH</a>
+, <a class="el" href="languages_8h.html#a15be38758ec16bd1229f53bd53c7084dabf7410a9ee723b715ee14837f2328888">NG</a>
+, <br />
+&#160;&#160;<a class="el" href="languages_8h.html#a15be38758ec16bd1229f53bd53c7084dafbe46383db390907541a234bec7f2424">EG</a>
+, <a class="el" href="languages_8h.html#a15be38758ec16bd1229f53bd53c7084dafa3c7f2b5daea5f9e813128f962e6ec4">DZ</a>
+, <a class="el" href="languages_8h.html#a15be38758ec16bd1229f53bd53c7084da947d7d61cd9ae4cb2ccd29438d7f9974">TN</a>
+, <a class="el" href="languages_8h.html#a15be38758ec16bd1229f53bd53c7084dad01fd9b01e9dde8bd3dc247afbfb7218">ML</a>
+, <br />
+&#160;&#160;<a class="el" href="languages_8h.html#a15be38758ec16bd1229f53bd53c7084da68caa82010645c82f5e37cbe337cae1c">ZA</a>
+, <a class="el" href="languages_8h.html#a15be38758ec16bd1229f53bd53c7084dace774d9cab3ae0bdf522cd0839bed364">SI</a>
+, <a class="el" href="languages_8h.html#a15be38758ec16bd1229f53bd53c7084da8cee5050eeb7c783e8bfaa73003ced3a">RS</a>
+, <a class="el" href="languages_8h.html#a15be38758ec16bd1229f53bd53c7084da5fc810cf62601df84b7923b9964c53e6">BA</a>
+, <br />
+&#160;&#160;<a class="el" href="languages_8h.html#a15be38758ec16bd1229f53bd53c7084dae892e780304dc3ef15e69b9f3fed3669">AL</a>
+, <a class="el" href="languages_8h.html#a15be38758ec16bd1229f53bd53c7084da4306a04670067b5b27e766335d3d40fa">WA</a>
+, <a class="el" href="languages_8h.html#a15be38758ec16bd1229f53bd53c7084da6a65edb0cc17d66c677814115b1477f5">SC</a>
+, <a class="el" href="languages_8h.html#a15be38758ec16bd1229f53bd53c7084dafff6fa4fe7ddec3a931ca45d9e626ae7">NI</a>
+, <br />
+&#160;&#160;<a class="el" href="languages_8h.html#a15be38758ec16bd1229f53bd53c7084dafa868488740aa25870ced6b9169951fb">AT</a>
+, <a class="el" href="languages_8h.html#a15be38758ec16bd1229f53bd53c7084da6cc98ba2045fe4098d24356d14447085">AU</a>
+, <a class="el" href="languages_8h.html#a15be38758ec16bd1229f53bd53c7084daf803729628adf4199f224c2a225038e9">GE</a>
+, <a class="el" href="languages_8h.html#a15be38758ec16bd1229f53bd53c7084da88588bacf0dad76870d7ede67a0ddbdf">IL</a>
+, <br />
+&#160;&#160;<a class="el" href="languages_8h.html#a15be38758ec16bd1229f53bd53c7084da359a2f88f3f5b03a0e9807b8b50a9269">BU</a>
+, <a class="el" href="languages_8h.html#a15be38758ec16bd1229f53bd53c7084da7b8d2f92148f52cad46e331936922e80">BF</a>
+, <a class="el" href="languages_8h.html#a15be38758ec16bd1229f53bd53c7084da5202c6586cac8bee468e86d1ff854231">CG</a>
+, <a class="el" href="languages_8h.html#a15be38758ec16bd1229f53bd53c7084da64f3bd1741ab8d6ba545a1ae09bb8728">GM</a>
+, <br />
+&#160;&#160;<a class="el" href="languages_8h.html#a15be38758ec16bd1229f53bd53c7084daaccb66f0ecd826aac89065990e1da97f">GN</a>
+, <a class="el" href="languages_8h.html#a15be38758ec16bd1229f53bd53c7084da90d64eeba8247d656ef6b4800ec0f52f">HT</a>
+, <a class="el" href="languages_8h.html#a15be38758ec16bd1229f53bd53c7084da0bfc16cc12effc1bae4d3766c4f2257d">IS</a>
+, <a class="el" href="languages_8h.html#a15be38758ec16bd1229f53bd53c7084dab4b6e894569917b9ca2210bae107c888">LX</a>
+, <br />
+&#160;&#160;<a class="el" href="languages_8h.html#a15be38758ec16bd1229f53bd53c7084dad5c44258d51659f96279c470ce8185dc">MR</a>
+, <a class="el" href="languages_8h.html#a15be38758ec16bd1229f53bd53c7084daac6ad5d9b99757c3a878f2d275ace198">MZ</a>
+, <a class="el" href="languages_8h.html#a15be38758ec16bd1229f53bd53c7084da8e3eb2c69a184ad1d448afe5985f50b3">NZ</a>
+, <a class="el" href="languages_8h.html#a15be38758ec16bd1229f53bd53c7084da195dc214249dab3c31906b4b9f83d503">UZ</a>
+, <br />
+&#160;&#160;<a class="el" href="languages_8h.html#a15be38758ec16bd1229f53bd53c7084dac562607189d77eb9dfb707464c1e7b0b">LT</a>
+, <a class="el" href="languages_8h.html#a15be38758ec16bd1229f53bd53c7084da4aceb7d6b4564ec96bc6605cd5af37e7">KZ</a>
+, <a class="el" href="languages_8h.html#a15be38758ec16bd1229f53bd53c7084daddd70bbaf5be05e1e9caded444c03095">BJ</a>
+, <a class="el" href="languages_8h.html#a15be38758ec16bd1229f53bd53c7084da31645929703e0ca8727296992f4dc763">ZW</a>
+, <br />
+&#160;&#160;<a class="el" href="languages_8h.html#a15be38758ec16bd1229f53bd53c7084dadd480f25b31ec27223fee2c6edcacb3c">KM</a>
+, <a class="el" href="languages_8h.html#a15be38758ec16bd1229f53bd53c7084da74b8d5453b654b3a79e7b8985a2fc71c">SL</a>
+, <a class="el" href="languages_8h.html#a15be38758ec16bd1229f53bd53c7084dab718adec73e04ce3ec720dd11a06a308">ID</a>
+, <a class="el" href="languages_8h.html#a15be38758ec16bd1229f53bd53c7084da518f4a738816e5ef78463929ef311f26">KE</a>
+, <br />
+&#160;&#160;<a class="el" href="languages_8h.html#a15be38758ec16bd1229f53bd53c7084dad4cd0dabcf4caa22ad92fab40844c786">NA</a>
+, <a class="el" href="languages_8h.html#a15be38758ec16bd1229f53bd53c7084da87a47565be4714701a8bc2354cbaea36">BD</a>
+, <a class="el" href="languages_8h.html#a15be38758ec16bd1229f53bd53c7084da5089fa881630360a9b3361469c1a0c5d">BM</a>
+, <a class="el" href="languages_8h.html#a15be38758ec16bd1229f53bd53c7084da0f177369a3b71275d25ab1b44db9f95f">SG</a>
+, <br />
+&#160;&#160;<a class="el" href="languages_8h.html#a15be38758ec16bd1229f53bd53c7084da9ee9d85a86f0118c40ba2385bb314fd7">ME</a>
+, <a class="el" href="languages_8h.html#a15be38758ec16bd1229f53bd53c7084da9025a1ae8c64158622b7428028f0d2bd">CY</a>
+, <a class="el" href="languages_8h.html#a15be38758ec16bd1229f53bd53c7084daa7bdee32cb21f0abbf9f878cb06cfe16">LV</a>
+, <a class="el" href="languages_8h.html#a15be38758ec16bd1229f53bd53c7084da51f581937765890f2a706c77ea8af3cc">MQ</a>
+, <br />
+&#160;&#160;<a class="el" href="languages_8h.html#a15be38758ec16bd1229f53bd53c7084dadf1f3edb9115acb0a1e04209b7a9937b">TT</a>
+, <a class="el" href="languages_8h.html#a15be38758ec16bd1229f53bd53c7084da9d3d9048db16a7eee539e93e3618cbe7">BB</a>
+, <a class="el" href="languages_8h.html#a15be38758ec16bd1229f53bd53c7084da06f6a489209115c5cef3f45036aad3ec">PA</a>
+, <a class="el" href="languages_8h.html#a15be38758ec16bd1229f53bd53c7084da25ec916d56b8212e569dbf2e4e4b51d4">AM</a>
+, <br />
+&#160;&#160;<a class="el" href="languages_8h.html#a15be38758ec16bd1229f53bd53c7084da5240ba2ae676b63d2bf1d706a9016990">KV</a>
+, <a class="el" href="languages_8h.html#a15be38758ec16bd1229f53bd53c7084da7dc10e66da5549d351765bd940b81be9">MD</a>
+, <a class="el" href="languages_8h.html#a15be38758ec16bd1229f53bd53c7084dac3938dd81fe1366e93d2e29a6ffe2005">NR</a>
+, <a class="el" href="languages_8h.html#a15be38758ec16bd1229f53bd53c7084dac17d19f7520be36addbeb5d2c76ab7cf">GW</a>
+, <br />
+&#160;&#160;<a class="el" href="languages_8h.html#a15be38758ec16bd1229f53bd53c7084da2c64c5cf613d8b9f4f7f3980d29aca10">AO</a>
+, <a class="el" href="languages_8h.html#a15be38758ec16bd1229f53bd53c7084daa5c8c3544bc49ebacde4ffe04bf34de0">CV</a>
+, <a class="el" href="languages_8h.html#a15be38758ec16bd1229f53bd53c7084dafc089489555aee7519548ff7f589f384">TD</a>
+, <a class="el" href="languages_8h.html#a15be38758ec16bd1229f53bd53c7084dac23fa9996925b610710d93e28c59a3e2">DO</a>
+, <br />
+&#160;&#160;<a class="el" href="languages_8h.html#a15be38758ec16bd1229f53bd53c7084da8d36b361a4794422c70681586a957350">GQ</a>
+, <a class="el" href="languages_8h.html#a15be38758ec16bd1229f53bd53c7084dac0398fb66542bbcf6e14417a0a6751f4">FO</a>
+, <a class="el" href="languages_8h.html#a15be38758ec16bd1229f53bd53c7084dacd957338498985e538753ea8d071e0f9">GA</a>
+, <a class="el" href="languages_8h.html#a15be38758ec16bd1229f53bd53c7084daad2d8ee7d788dcf41f399818f639cb64">GP</a>
+, <br />
+&#160;&#160;<a class="el" href="languages_8h.html#a15be38758ec16bd1229f53bd53c7084dac2d75724334cab079503451aab65ba04">LY</a>
+, <a class="el" href="languages_8h.html#a15be38758ec16bd1229f53bd53c7084daeb0459bfce4185888ecf61fb07987581">MO</a>
+, <a class="el" href="languages_8h.html#a15be38758ec16bd1229f53bd53c7084da8cb2010d27e13509d364436256e972c0">SR</a>
+, <a class="el" href="languages_8h.html#a15be38758ec16bd1229f53bd53c7084da2de960c6ab3cef39a9a2298fb58e503d">TG</a>
+, <br />
+&#160;&#160;<a class="el" href="languages_8h.html#a15be38758ec16bd1229f53bd53c7084da70f73ee5133fa9c2b13516067fabfd87">ZM</a>
+, <a class="el" href="languages_8h.html#a15be38758ec16bd1229f53bd53c7084dae182ebbc166d73366e7986813a7fc5f1">AD</a>
+, <a class="el" href="languages_8h.html#a15be38758ec16bd1229f53bd53c7084daea8a1a99f6c94c275a58dcd78f418c1f">AE</a>
+, <a class="el" href="languages_8h.html#a15be38758ec16bd1229f53bd53c7084daa25496ebf095e4198da4088449c83ac6">PH</a>
+, <br />
+&#160;&#160;<a class="el" href="languages_8h.html#a15be38758ec16bd1229f53bd53c7084da75dfaed2dded20f8b8d376ddc7212f23">MY</a>
+, <a class="el" href="languages_8h.html#a15be38758ec16bd1229f53bd53c7084daa57b8491d1d8fc1014dd54bcf83b130a">EE</a>
+, <a class="el" href="languages_8h.html#a15be38758ec16bd1229f53bd53c7084dac951270e425b15fc20c64da4341c1d89">LB</a>
+, <a class="el" href="languages_8h.html#a15be38758ec16bd1229f53bd53c7084daba2a034f4d913f87fe07cad29368d114">MG</a>
+, <br />
+&#160;&#160;<a class="el" href="languages_8h.html#a15be38758ec16bd1229f53bd53c7084daf9f315de90492c8259307985379c2a4e">MW</a>
+, <a class="el" href="languages_8h.html#a15be38758ec16bd1229f53bd53c7084dad3d4c5deb455ac79dd5ff47c88bd65d9">PS</a>
+, <a class="el" href="languages_8h.html#a15be38758ec16bd1229f53bd53c7084da174fe2539889bbf873e7c2de71949074">SY</a>
+, <a class="el" href="languages_8h.html#a15be38758ec16bd1229f53bd53c7084da5b79c40fa7c2bd12dd2df53c4a2b6836">TH</a>
+, <br />
+&#160;&#160;<a class="el" href="languages_8h.html#a15be38758ec16bd1229f53bd53c7084da1db208cbcff273e672b3acc7a3a37a3e">UG</a>
+, <a class="el" href="languages_8h.html#a15be38758ec16bd1229f53bd53c7084da63cf9a25c78f494840f05187a0c79eb2">YE</a>
+, <a class="el" href="languages_8h.html#a15be38758ec16bd1229f53bd53c7084daaf7f0273997b9b290bd7c57aa19f36c2">BI</a>
+, <a class="el" href="languages_8h.html#a15be38758ec16bd1229f53bd53c7084da758951cac5e62129e654698c8ca0333b">CF</a>
+, <br />
+&#160;&#160;<a class="el" href="languages_8h.html#a15be38758ec16bd1229f53bd53c7084dac07b0b4d7660314f711a68fc47c4ab38">GF</a>
+, <a class="el" href="languages_8h.html#a15be38758ec16bd1229f53bd53c7084da60aea2edd1105dd93c39e6e193080736">JO</a>
+, <a class="el" href="languages_8h.html#a15be38758ec16bd1229f53bd53c7084da08ad08f6491037714d09263a79bebfba">MT</a>
+, <a class="el" href="languages_8h.html#a15be38758ec16bd1229f53bd53c7084da3dd6b9265ff18f31dc30df59304b0ca7">SA</a>
+, <br />
+&#160;&#160;<a class="el" href="languages_8h.html#a15be38758ec16bd1229f53bd53c7084da13c4998a4a401a2431779d247f7d6143">TZ</a>
+, <a class="el" href="languages_8h.html#a15be38758ec16bd1229f53bd53c7084da06fa567b72d78b7e3ea746973fbbd1d5">AF</a>
+, <a class="el" href="languages_8h.html#a15be38758ec16bd1229f53bd53c7084dab8ea98de1a83f61d1976027741a458be">KY</a>
+, <a class="el" href="languages_8h.html#a15be38758ec16bd1229f53bd53c7084dac83f077534a373cb63a0a91969fdce54">CU</a>
+, <br />
+&#160;&#160;<a class="el" href="languages_8h.html#a15be38758ec16bd1229f53bd53c7084da9af3107a066f6b0defb1cafc0499f6ed">CW</a>
+, <a class="el" href="languages_8h.html#a15be38758ec16bd1229f53bd53c7084da56a036735e46821195a55359c5ad144f">GD</a>
+, <a class="el" href="languages_8h.html#a15be38758ec16bd1229f53bd53c7084dacd6a9bd2a175104eed40f0d33a8b4020">GT</a>
+, <a class="el" href="languages_8h.html#a15be38758ec16bd1229f53bd53c7084daac4a2766028a717ff89985bc85bf5e50">HN</a>
+, <br />
+&#160;&#160;<a class="el" href="languages_8h.html#a15be38758ec16bd1229f53bd53c7084da560e51228bc1672591fd8833265b6234">IQ</a>
+, <a class="el" href="languages_8h.html#a15be38758ec16bd1229f53bd53c7084daaa2b36dabd254260f584015a9e0c5c98">KN</a>
+, <a class="el" href="languages_8h.html#a15be38758ec16bd1229f53bd53c7084da90a7c45eaffbd575ca6fb361e6d170a4">LR</a>
+, <a class="el" href="languages_8h.html#a15be38758ec16bd1229f53bd53c7084da0fe75a5189c2ea3f123621d098ddd03e">PR</a>
+, <br />
+&#160;&#160;<a class="el" href="languages_8h.html#a15be38758ec16bd1229f53bd53c7084da5c6dc3d436504b7a65191cafe28212ee">RW</a>
+, <a class="el" href="languages_8h.html#a15be38758ec16bd1229f53bd53c7084da6907b8692fb04b36ab78f1238a876284">LC</a>
+, <a class="el" href="languages_8h.html#a15be38758ec16bd1229f53bd53c7084dad38212a0c0e98f678feaaa5a8b9167f5">SV</a>
+, <a class="el" href="languages_8h.html#a15be38758ec16bd1229f53bd53c7084da98d0360b392de5f1d53acdd6489b6e88">SO</a>
+, <br />
+&#160;&#160;<a class="el" href="languages_8h.html#a15be38758ec16bd1229f53bd53c7084dab7128ad1d9b838be26989d1037a8c987">VC</a>
+, <a class="el" href="languages_8h.html#a15be38758ec16bd1229f53bd53c7084da546a9a80eb981c7f0aabcaeb34d9514e">AZ</a>
+, <a class="el" href="languages_8h.html#a15be38758ec16bd1229f53bd53c7084da925ab312a51a924ab68d9812baa788ff">BY</a>
+, <a class="el" href="languages_8h.html#a15be38758ec16bd1229f53bd53c7084da7b60a39fc2a49bbac1b3426abb5ada4b">BO</a>
+, <br />
+&#160;&#160;<a class="el" href="languages_8h.html#a15be38758ec16bd1229f53bd53c7084da4f74d343f26bbd58a8cbbad2cab6a704">IR</a>
+, <a class="el" href="languages_8h.html#a15be38758ec16bd1229f53bd53c7084da56d721ccadb8bbfd8b47390d82a6ea4b">KG</a>
+, <a class="el" href="languages_8h.html#a15be38758ec16bd1229f53bd53c7084da6e4f62232fe7c185a8274bac42e333bb">TJ</a>
+, <a class="el" href="languages_8h.html#a15be38758ec16bd1229f53bd53c7084daac7a4fbd0d788d94f43454817e1c208c">TM</a>
+, <br />
+&#160;&#160;<a class="el" href="languages_8h.html#a15be38758ec16bd1229f53bd53c7084dae45fbcf6ca3b21f17c5f355728a2fbec">BZ</a>
+, <a class="el" href="languages_8h.html#a15be38758ec16bd1229f53bd53c7084da90581d96b500fd2d3fd701a583409cb8">NC</a>
+, <a class="el" href="languages_8h.html#a15be38758ec16bd1229f53bd53c7084dae5919ba9cf2e803bdbc98334a7f64daa">MU</a>
 <br />
  }</td></tr>
-<tr class="memdesc:ac401b05356bfe6d1335ddaf14ad31d0c"><td class="mdescLeft">&#160;</td><td class="mdescRight">Enum representing supported languages in the game.  <a href="languages_8h.html#ac401b05356bfe6d1335ddaf14ad31d0c">More...</a><br /></td></tr>
-<tr class="separator:ac401b05356bfe6d1335ddaf14ad31d0c"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memdesc:a15be38758ec16bd1229f53bd53c7084d"><td class="mdescLeft">&#160;</td><td class="mdescRight">Enum representing supported languages in the game.  <a href="languages_8h.html#a15be38758ec16bd1229f53bd53c7084d">More...</a><br /></td></tr>
+<tr class="separator:a15be38758ec16bd1229f53bd53c7084d"><td class="memSeparator" colspan="2">&#160;</td></tr>
 </table><table class="memberdecls">
 <tr class="heading"><td colspan="2"><h2 class="groupheader"><a id="var-members" name="var-members"></a>
 Variables</h2></td></tr>
-<tr class="memitem:a2f07d9425b4166af10feff3f67f349ae" id="r_a2f07d9425b4166af10feff3f67f349ae"><td class="memItemLeft" align="right" valign="top">const std::unordered_map&lt; <a class="el" href="languages_8h.html#ac401b05356bfe6d1335ddaf14ad31d0c">Language</a>, std::string &gt;&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="languages_8h.html#a2f07d9425b4166af10feff3f67f349ae">languageToString</a></td></tr>
+<tr class="memitem:a2f07d9425b4166af10feff3f67f349ae" id="r_a2f07d9425b4166af10feff3f67f349ae"><td class="memItemLeft" align="right" valign="top">const std::unordered_map&lt; <a class="el" href="languages_8h.html#a15be38758ec16bd1229f53bd53c7084d">Language</a>, std::string &gt;&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="languages_8h.html#a2f07d9425b4166af10feff3f67f349ae">languageToString</a></td></tr>
 <tr class="memdesc:a2f07d9425b4166af10feff3f67f349ae"><td class="mdescLeft">&#160;</td><td class="mdescRight">Maps a Language enum value to its corresponding string representation.  <br /></td></tr>
 <tr class="separator:a2f07d9425b4166af10feff3f67f349ae"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:abab92034cdd048c7d531b8359c39b5e9" id="r_abab92034cdd048c7d531b8359c39b5e9"><td class="memItemLeft" align="right" valign="top">const std::unordered_map&lt; std::string, <a class="el" href="languages_8h.html#ac401b05356bfe6d1335ddaf14ad31d0c">Language</a> &gt;&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="languages_8h.html#abab92034cdd048c7d531b8359c39b5e9">stringToLanguage</a></td></tr>
+<tr class="memitem:abab92034cdd048c7d531b8359c39b5e9" id="r_abab92034cdd048c7d531b8359c39b5e9"><td class="memItemLeft" align="right" valign="top">const std::unordered_map&lt; std::string, <a class="el" href="languages_8h.html#a15be38758ec16bd1229f53bd53c7084d">Language</a> &gt;&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="languages_8h.html#abab92034cdd048c7d531b8359c39b5e9">stringToLanguage</a></td></tr>
 <tr class="memdesc:abab92034cdd048c7d531b8359c39b5e9"><td class="mdescLeft">&#160;</td><td class="mdescRight">Maps a string representation of a language back to its Language enum value.  <br /></td></tr>
 <tr class="separator:abab92034cdd048c7d531b8359c39b5e9"><td class="memSeparator" colspan="2">&#160;</td></tr>
 </table>
 <h2 class="groupheader">Enumeration Type Documentation</h2>
-<a id="ac401b05356bfe6d1335ddaf14ad31d0c" name="ac401b05356bfe6d1335ddaf14ad31d0c"></a>
-<h2 class="memtitle"><span class="permalink"><a href="#ac401b05356bfe6d1335ddaf14ad31d0c">&#9670;&#160;</a></span>Language</h2>
+<a id="a15be38758ec16bd1229f53bd53c7084d" name="a15be38758ec16bd1229f53bd53c7084d"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a15be38758ec16bd1229f53bd53c7084d">&#9670;&#160;</a></span>Language</h2>
 
 <div class="memitem">
 <div class="memproto">
@@ -172,7 +333,7 @@ Variables</h2></td></tr>
   <td class="mlabels-left">
       <table class="memname">
         <tr>
-          <td class="memname">enum class <a class="el" href="languages_8h.html#ac401b05356bfe6d1335ddaf14ad31d0c">Language</a> : uint8_t</td>
+          <td class="memname">enum class <a class="el" href="languages_8h.html#a15be38758ec16bd1229f53bd53c7084d">Language</a> : <a class="el" href="types_8h.html#ab387ec6c91c92d70502872e083909142">NationalityID</a></td>
         </tr>
       </table>
   </td>
@@ -185,37 +346,165 @@ Variables</h2></td></tr>
 <p>Enum representing supported languages in the game. </p>
 <p>Used in the settings manager to set the text language and also acts as the nationality of Players. </p>
 <table class="fieldtable">
-<tr><th colspan="2">Enumerator</th></tr><tr><td class="fieldname"><a id="ac401b05356bfe6d1335ddaf14ad31d0caaa85f1840e282d8a8304dbc2c0d7c9b2" name="ac401b05356bfe6d1335ddaf14ad31d0caaa85f1840e282d8a8304dbc2c0d7c9b2"></a>EN&#160;</td><td class="fielddoc"></td></tr>
-<tr><td class="fieldname"><a id="ac401b05356bfe6d1335ddaf14ad31d0cacd32106bcb6de321930cf34574ea388c" name="ac401b05356bfe6d1335ddaf14ad31d0cacd32106bcb6de321930cf34574ea388c"></a>IT&#160;</td><td class="fielddoc"></td></tr>
-<tr><td class="fieldname"><a id="ac401b05356bfe6d1335ddaf14ad31d0ca04c19fa1e772ab66f0aad2efe61f25cd" name="ac401b05356bfe6d1335ddaf14ad31d0ca04c19fa1e772ab66f0aad2efe61f25cd"></a>ES&#160;</td><td class="fielddoc"></td></tr>
-<tr><td class="fieldname"><a id="ac401b05356bfe6d1335ddaf14ad31d0ca11aedd0e432747c2bcd97b82808d24a0" name="ac401b05356bfe6d1335ddaf14ad31d0ca11aedd0e432747c2bcd97b82808d24a0"></a>FR&#160;</td><td class="fielddoc"></td></tr>
-<tr><td class="fieldname"><a id="ac401b05356bfe6d1335ddaf14ad31d0ca3a52f3c22ed6fcde5bf696a6c02c9e73" name="ac401b05356bfe6d1335ddaf14ad31d0ca3a52f3c22ed6fcde5bf696a6c02c9e73"></a>DE&#160;</td><td class="fielddoc"></td></tr>
-<tr><td class="fieldname"><a id="ac401b05356bfe6d1335ddaf14ad31d0ca0b98720dcb2cc6fd60358a45dfbc5b87" name="ac401b05356bfe6d1335ddaf14ad31d0ca0b98720dcb2cc6fd60358a45dfbc5b87"></a>MX&#160;</td><td class="fielddoc"></td></tr>
-<tr><td class="fieldname"><a id="ac401b05356bfe6d1335ddaf14ad31d0ca1c2903397d8833382673bab22aa8b937" name="ac401b05356bfe6d1335ddaf14ad31d0ca1c2903397d8833382673bab22aa8b937"></a>CN&#160;</td><td class="fielddoc"></td></tr>
-<tr><td class="fieldname"><a id="ac401b05356bfe6d1335ddaf14ad31d0caf5b15f58cabad73d1bf2de7bcb89db6c" name="ac401b05356bfe6d1335ddaf14ad31d0caf5b15f58cabad73d1bf2de7bcb89db6c"></a>RO&#160;</td><td class="fielddoc"></td></tr>
-<tr><td class="fieldname"><a id="ac401b05356bfe6d1335ddaf14ad31d0ca35357b9c8fe4d3273d0237ecc8ff2e75" name="ac401b05356bfe6d1335ddaf14ad31d0ca35357b9c8fe4d3273d0237ecc8ff2e75"></a>PT&#160;</td><td class="fielddoc"></td></tr>
-<tr><td class="fieldname"><a id="ac401b05356bfe6d1335ddaf14ad31d0ca796834e7a2839412d79dbc5f1327594d" name="ac401b05356bfe6d1335ddaf14ad31d0ca796834e7a2839412d79dbc5f1327594d"></a>NL&#160;</td><td class="fielddoc"></td></tr>
-<tr><td class="fieldname"><a id="ac401b05356bfe6d1335ddaf14ad31d0caf003c44deab679aa2edfaff864c77402" name="ac401b05356bfe6d1335ddaf14ad31d0caf003c44deab679aa2edfaff864c77402"></a>SE&#160;</td><td class="fielddoc"></td></tr>
-<tr><td class="fieldname"><a id="ac401b05356bfe6d1335ddaf14ad31d0ca9b7d173b068dc4d5517bfae92d676437" name="ac401b05356bfe6d1335ddaf14ad31d0ca9b7d173b068dc4d5517bfae92d676437"></a>PL&#160;</td><td class="fielddoc"></td></tr>
-<tr><td class="fieldname"><a id="ac401b05356bfe6d1335ddaf14ad31d0caf214a7d42e0de5875d55189e01e2e187" name="ac401b05356bfe6d1335ddaf14ad31d0caf214a7d42e0de5875d55189e01e2e187"></a>GR&#160;</td><td class="fielddoc"></td></tr>
-<tr><td class="fieldname"><a id="ac401b05356bfe6d1335ddaf14ad31d0caebe021079e5a3c4f42ca6119eab92633" name="ac401b05356bfe6d1335ddaf14ad31d0caebe021079e5a3c4f42ca6119eab92633"></a>TR&#160;</td><td class="fielddoc"></td></tr>
-<tr><td class="fieldname"><a id="ac401b05356bfe6d1335ddaf14ad31d0caf9308c5d059650ee40cab30bad1e96d0" name="ac401b05356bfe6d1335ddaf14ad31d0caf9308c5d059650ee40cab30bad1e96d0"></a>RU&#160;</td><td class="fielddoc"></td></tr>
-<tr><td class="fieldname"><a id="ac401b05356bfe6d1335ddaf14ad31d0ca5b61a1b298a0d06efa6933a97e68d763" name="ac401b05356bfe6d1335ddaf14ad31d0ca5b61a1b298a0d06efa6933a97e68d763"></a>AR&#160;</td><td class="fielddoc"></td></tr>
-<tr><td class="fieldname"><a id="ac401b05356bfe6d1335ddaf14ad31d0ca24d22e03afb23edb45c6c8cfa16a280e" name="ac401b05356bfe6d1335ddaf14ad31d0ca24d22e03afb23edb45c6c8cfa16a280e"></a>JP&#160;</td><td class="fielddoc"></td></tr>
-<tr><td class="fieldname"><a id="ac401b05356bfe6d1335ddaf14ad31d0ca19d3326f3137cbadd21ce901a9bed4a7" name="ac401b05356bfe6d1335ddaf14ad31d0ca19d3326f3137cbadd21ce901a9bed4a7"></a>BR&#160;</td><td class="fielddoc"></td></tr>
-<tr><td class="fieldname"><a id="ac401b05356bfe6d1335ddaf14ad31d0ca38dd815e66dbd0d47a2b876ca442e987" name="ac401b05356bfe6d1335ddaf14ad31d0ca38dd815e66dbd0d47a2b876ca442e987"></a>KR&#160;</td><td class="fielddoc"></td></tr>
-<tr><td class="fieldname"><a id="ac401b05356bfe6d1335ddaf14ad31d0cad3dcf429c679f9af82eb9a3b31c4df44" name="ac401b05356bfe6d1335ddaf14ad31d0cad3dcf429c679f9af82eb9a3b31c4df44"></a>BE&#160;</td><td class="fielddoc"></td></tr>
-<tr><td class="fieldname"><a id="ac401b05356bfe6d1335ddaf14ad31d0ca1ee0bf89c5d1032317d13a2e022793c8" name="ac401b05356bfe6d1335ddaf14ad31d0ca1ee0bf89c5d1032317d13a2e022793c8"></a>CH&#160;</td><td class="fielddoc"></td></tr>
-<tr><td class="fieldname"><a id="ac401b05356bfe6d1335ddaf14ad31d0cafd4c638da5f85d025963f99fe90b1b1a" name="ac401b05356bfe6d1335ddaf14ad31d0cafd4c638da5f85d025963f99fe90b1b1a"></a>HR&#160;</td><td class="fielddoc"></td></tr>
-<tr><td class="fieldname"><a id="ac401b05356bfe6d1335ddaf14ad31d0cadd65ef9a5579d4e518c6d4abbd0cb1c6" name="ac401b05356bfe6d1335ddaf14ad31d0cadd65ef9a5579d4e518c6d4abbd0cb1c6"></a>DK&#160;</td><td class="fielddoc"></td></tr>
-<tr><td class="fieldname"><a id="ac401b05356bfe6d1335ddaf14ad31d0caf0aa03aaca953a9a63b4459663d00134" name="ac401b05356bfe6d1335ddaf14ad31d0caf0aa03aaca953a9a63b4459663d00134"></a>FI&#160;</td><td class="fielddoc"></td></tr>
-<tr><td class="fieldname"><a id="ac401b05356bfe6d1335ddaf14ad31d0cad2cb7bbc0d23f34c4255d924076e902f" name="ac401b05356bfe6d1335ddaf14ad31d0cad2cb7bbc0d23f34c4255d924076e902f"></a>IE&#160;</td><td class="fielddoc"></td></tr>
-<tr><td class="fieldname"><a id="ac401b05356bfe6d1335ddaf14ad31d0cac2f3f489a00553e7a01d369c103c7251" name="ac401b05356bfe6d1335ddaf14ad31d0cac2f3f489a00553e7a01d369c103c7251"></a>NO&#160;</td><td class="fielddoc"></td></tr>
-<tr><td class="fieldname"><a id="ac401b05356bfe6d1335ddaf14ad31d0ca13dd621f27110108a10a88e99fe9ceaf" name="ac401b05356bfe6d1335ddaf14ad31d0ca13dd621f27110108a10a88e99fe9ceaf"></a>SK&#160;</td><td class="fielddoc"></td></tr>
-<tr><td class="fieldname"><a id="ac401b05356bfe6d1335ddaf14ad31d0ca928568b84963ceb76aaaa2cae9afdbfa" name="ac401b05356bfe6d1335ddaf14ad31d0ca928568b84963ceb76aaaa2cae9afdbfa"></a>CZ&#160;</td><td class="fielddoc"></td></tr>
-<tr><td class="fieldname"><a id="ac401b05356bfe6d1335ddaf14ad31d0ca35b5282113b88c2fe23dcbec9f0258c1" name="ac401b05356bfe6d1335ddaf14ad31d0ca35b5282113b88c2fe23dcbec9f0258c1"></a>HU&#160;</td><td class="fielddoc"></td></tr>
-<tr><td class="fieldname"><a id="ac401b05356bfe6d1335ddaf14ad31d0ca3943d8795e03e8e3307b5b71eac1b669" name="ac401b05356bfe6d1335ddaf14ad31d0ca3943d8795e03e8e3307b5b71eac1b669"></a>UA&#160;</td><td class="fielddoc"></td></tr>
-<tr><td class="fieldname"><a id="ac401b05356bfe6d1335ddaf14ad31d0ca7516fd43adaa5e0b8a65a672c39845d2" name="ac401b05356bfe6d1335ddaf14ad31d0ca7516fd43adaa5e0b8a65a672c39845d2"></a>US&#160;</td><td class="fielddoc"></td></tr>
+<tr><th colspan="2">Enumerator</th></tr><tr><td class="fieldname"><a id="a15be38758ec16bd1229f53bd53c7084daaa85f1840e282d8a8304dbc2c0d7c9b2" name="a15be38758ec16bd1229f53bd53c7084daaa85f1840e282d8a8304dbc2c0d7c9b2"></a>EN&#160;</td><td class="fielddoc"></td></tr>
+<tr><td class="fieldname"><a id="a15be38758ec16bd1229f53bd53c7084dacd32106bcb6de321930cf34574ea388c" name="a15be38758ec16bd1229f53bd53c7084dacd32106bcb6de321930cf34574ea388c"></a>IT&#160;</td><td class="fielddoc"></td></tr>
+<tr><td class="fieldname"><a id="a15be38758ec16bd1229f53bd53c7084da04c19fa1e772ab66f0aad2efe61f25cd" name="a15be38758ec16bd1229f53bd53c7084da04c19fa1e772ab66f0aad2efe61f25cd"></a>ES&#160;</td><td class="fielddoc"></td></tr>
+<tr><td class="fieldname"><a id="a15be38758ec16bd1229f53bd53c7084da11aedd0e432747c2bcd97b82808d24a0" name="a15be38758ec16bd1229f53bd53c7084da11aedd0e432747c2bcd97b82808d24a0"></a>FR&#160;</td><td class="fielddoc"></td></tr>
+<tr><td class="fieldname"><a id="a15be38758ec16bd1229f53bd53c7084da3a52f3c22ed6fcde5bf696a6c02c9e73" name="a15be38758ec16bd1229f53bd53c7084da3a52f3c22ed6fcde5bf696a6c02c9e73"></a>DE&#160;</td><td class="fielddoc"></td></tr>
+<tr><td class="fieldname"><a id="a15be38758ec16bd1229f53bd53c7084da0b98720dcb2cc6fd60358a45dfbc5b87" name="a15be38758ec16bd1229f53bd53c7084da0b98720dcb2cc6fd60358a45dfbc5b87"></a>MX&#160;</td><td class="fielddoc"></td></tr>
+<tr><td class="fieldname"><a id="a15be38758ec16bd1229f53bd53c7084da1c2903397d8833382673bab22aa8b937" name="a15be38758ec16bd1229f53bd53c7084da1c2903397d8833382673bab22aa8b937"></a>CN&#160;</td><td class="fielddoc"></td></tr>
+<tr><td class="fieldname"><a id="a15be38758ec16bd1229f53bd53c7084daf5b15f58cabad73d1bf2de7bcb89db6c" name="a15be38758ec16bd1229f53bd53c7084daf5b15f58cabad73d1bf2de7bcb89db6c"></a>RO&#160;</td><td class="fielddoc"></td></tr>
+<tr><td class="fieldname"><a id="a15be38758ec16bd1229f53bd53c7084da35357b9c8fe4d3273d0237ecc8ff2e75" name="a15be38758ec16bd1229f53bd53c7084da35357b9c8fe4d3273d0237ecc8ff2e75"></a>PT&#160;</td><td class="fielddoc"></td></tr>
+<tr><td class="fieldname"><a id="a15be38758ec16bd1229f53bd53c7084da796834e7a2839412d79dbc5f1327594d" name="a15be38758ec16bd1229f53bd53c7084da796834e7a2839412d79dbc5f1327594d"></a>NL&#160;</td><td class="fielddoc"></td></tr>
+<tr><td class="fieldname"><a id="a15be38758ec16bd1229f53bd53c7084daf003c44deab679aa2edfaff864c77402" name="a15be38758ec16bd1229f53bd53c7084daf003c44deab679aa2edfaff864c77402"></a>SE&#160;</td><td class="fielddoc"></td></tr>
+<tr><td class="fieldname"><a id="a15be38758ec16bd1229f53bd53c7084da9b7d173b068dc4d5517bfae92d676437" name="a15be38758ec16bd1229f53bd53c7084da9b7d173b068dc4d5517bfae92d676437"></a>PL&#160;</td><td class="fielddoc"></td></tr>
+<tr><td class="fieldname"><a id="a15be38758ec16bd1229f53bd53c7084daf214a7d42e0de5875d55189e01e2e187" name="a15be38758ec16bd1229f53bd53c7084daf214a7d42e0de5875d55189e01e2e187"></a>GR&#160;</td><td class="fielddoc"></td></tr>
+<tr><td class="fieldname"><a id="a15be38758ec16bd1229f53bd53c7084daebe021079e5a3c4f42ca6119eab92633" name="a15be38758ec16bd1229f53bd53c7084daebe021079e5a3c4f42ca6119eab92633"></a>TR&#160;</td><td class="fielddoc"></td></tr>
+<tr><td class="fieldname"><a id="a15be38758ec16bd1229f53bd53c7084daf9308c5d059650ee40cab30bad1e96d0" name="a15be38758ec16bd1229f53bd53c7084daf9308c5d059650ee40cab30bad1e96d0"></a>RU&#160;</td><td class="fielddoc"></td></tr>
+<tr><td class="fieldname"><a id="a15be38758ec16bd1229f53bd53c7084da5b61a1b298a0d06efa6933a97e68d763" name="a15be38758ec16bd1229f53bd53c7084da5b61a1b298a0d06efa6933a97e68d763"></a>AR&#160;</td><td class="fielddoc"></td></tr>
+<tr><td class="fieldname"><a id="a15be38758ec16bd1229f53bd53c7084da24d22e03afb23edb45c6c8cfa16a280e" name="a15be38758ec16bd1229f53bd53c7084da24d22e03afb23edb45c6c8cfa16a280e"></a>JP&#160;</td><td class="fielddoc"></td></tr>
+<tr><td class="fieldname"><a id="a15be38758ec16bd1229f53bd53c7084da19d3326f3137cbadd21ce901a9bed4a7" name="a15be38758ec16bd1229f53bd53c7084da19d3326f3137cbadd21ce901a9bed4a7"></a>BR&#160;</td><td class="fielddoc"></td></tr>
+<tr><td class="fieldname"><a id="a15be38758ec16bd1229f53bd53c7084da38dd815e66dbd0d47a2b876ca442e987" name="a15be38758ec16bd1229f53bd53c7084da38dd815e66dbd0d47a2b876ca442e987"></a>KR&#160;</td><td class="fielddoc"></td></tr>
+<tr><td class="fieldname"><a id="a15be38758ec16bd1229f53bd53c7084dad3dcf429c679f9af82eb9a3b31c4df44" name="a15be38758ec16bd1229f53bd53c7084dad3dcf429c679f9af82eb9a3b31c4df44"></a>BE&#160;</td><td class="fielddoc"></td></tr>
+<tr><td class="fieldname"><a id="a15be38758ec16bd1229f53bd53c7084da1ee0bf89c5d1032317d13a2e022793c8" name="a15be38758ec16bd1229f53bd53c7084da1ee0bf89c5d1032317d13a2e022793c8"></a>CH&#160;</td><td class="fielddoc"></td></tr>
+<tr><td class="fieldname"><a id="a15be38758ec16bd1229f53bd53c7084dafd4c638da5f85d025963f99fe90b1b1a" name="a15be38758ec16bd1229f53bd53c7084dafd4c638da5f85d025963f99fe90b1b1a"></a>HR&#160;</td><td class="fielddoc"></td></tr>
+<tr><td class="fieldname"><a id="a15be38758ec16bd1229f53bd53c7084dadd65ef9a5579d4e518c6d4abbd0cb1c6" name="a15be38758ec16bd1229f53bd53c7084dadd65ef9a5579d4e518c6d4abbd0cb1c6"></a>DK&#160;</td><td class="fielddoc"></td></tr>
+<tr><td class="fieldname"><a id="a15be38758ec16bd1229f53bd53c7084daf0aa03aaca953a9a63b4459663d00134" name="a15be38758ec16bd1229f53bd53c7084daf0aa03aaca953a9a63b4459663d00134"></a>FI&#160;</td><td class="fielddoc"></td></tr>
+<tr><td class="fieldname"><a id="a15be38758ec16bd1229f53bd53c7084dad2cb7bbc0d23f34c4255d924076e902f" name="a15be38758ec16bd1229f53bd53c7084dad2cb7bbc0d23f34c4255d924076e902f"></a>IE&#160;</td><td class="fielddoc"></td></tr>
+<tr><td class="fieldname"><a id="a15be38758ec16bd1229f53bd53c7084dac2f3f489a00553e7a01d369c103c7251" name="a15be38758ec16bd1229f53bd53c7084dac2f3f489a00553e7a01d369c103c7251"></a>NO&#160;</td><td class="fielddoc"></td></tr>
+<tr><td class="fieldname"><a id="a15be38758ec16bd1229f53bd53c7084da13dd621f27110108a10a88e99fe9ceaf" name="a15be38758ec16bd1229f53bd53c7084da13dd621f27110108a10a88e99fe9ceaf"></a>SK&#160;</td><td class="fielddoc"></td></tr>
+<tr><td class="fieldname"><a id="a15be38758ec16bd1229f53bd53c7084da928568b84963ceb76aaaa2cae9afdbfa" name="a15be38758ec16bd1229f53bd53c7084da928568b84963ceb76aaaa2cae9afdbfa"></a>CZ&#160;</td><td class="fielddoc"></td></tr>
+<tr><td class="fieldname"><a id="a15be38758ec16bd1229f53bd53c7084da35b5282113b88c2fe23dcbec9f0258c1" name="a15be38758ec16bd1229f53bd53c7084da35b5282113b88c2fe23dcbec9f0258c1"></a>HU&#160;</td><td class="fielddoc"></td></tr>
+<tr><td class="fieldname"><a id="a15be38758ec16bd1229f53bd53c7084da3943d8795e03e8e3307b5b71eac1b669" name="a15be38758ec16bd1229f53bd53c7084da3943d8795e03e8e3307b5b71eac1b669"></a>UA&#160;</td><td class="fielddoc"></td></tr>
+<tr><td class="fieldname"><a id="a15be38758ec16bd1229f53bd53c7084da7516fd43adaa5e0b8a65a672c39845d2" name="a15be38758ec16bd1229f53bd53c7084da7516fd43adaa5e0b8a65a672c39845d2"></a>US&#160;</td><td class="fielddoc"></td></tr>
+<tr><td class="fieldname"><a id="a15be38758ec16bd1229f53bd53c7084dad9681d05860552e9c3113da381f916fc" name="a15be38758ec16bd1229f53bd53c7084dad9681d05860552e9c3113da381f916fc"></a>AN&#160;</td><td class="fielddoc"></td></tr>
+<tr><td class="fieldname"><a id="a15be38758ec16bd1229f53bd53c7084da9f72f02c2586ff913854a844f10d9a99" name="a15be38758ec16bd1229f53bd53c7084da9f72f02c2586ff913854a844f10d9a99"></a>UY&#160;</td><td class="fielddoc"></td></tr>
+<tr><td class="fieldname"><a id="a15be38758ec16bd1229f53bd53c7084da42983b05e2f2cc22822e30beb7bdd668" name="a15be38758ec16bd1229f53bd53c7084da42983b05e2f2cc22822e30beb7bdd668"></a>CO&#160;</td><td class="fielddoc"></td></tr>
+<tr><td class="fieldname"><a id="a15be38758ec16bd1229f53bd53c7084da3fd6b696867d70225deda7868308679b" name="a15be38758ec16bd1229f53bd53c7084da3fd6b696867d70225deda7868308679b"></a>EC&#160;</td><td class="fielddoc"></td></tr>
+<tr><td class="fieldname"><a id="a15be38758ec16bd1229f53bd53c7084da0c145a13e49b47abccd510e5c899d80c" name="a15be38758ec16bd1229f53bd53c7084da0c145a13e49b47abccd510e5c899d80c"></a>PY&#160;</td><td class="fielddoc"></td></tr>
+<tr><td class="fieldname"><a id="a15be38758ec16bd1229f53bd53c7084da5bc574a47246f122016869b32a6aa6f0" name="a15be38758ec16bd1229f53bd53c7084da5bc574a47246f122016869b32a6aa6f0"></a>CL&#160;</td><td class="fielddoc"></td></tr>
+<tr><td class="fieldname"><a id="a15be38758ec16bd1229f53bd53c7084da3acf83834396fa1c878707132ead62b8" name="a15be38758ec16bd1229f53bd53c7084da3acf83834396fa1c878707132ead62b8"></a>PE&#160;</td><td class="fielddoc"></td></tr>
+<tr><td class="fieldname"><a id="a15be38758ec16bd1229f53bd53c7084daa99877f71bd9b0fa0159103dbedb5c0f" name="a15be38758ec16bd1229f53bd53c7084daa99877f71bd9b0fa0159103dbedb5c0f"></a>VE&#160;</td><td class="fielddoc"></td></tr>
+<tr><td class="fieldname"><a id="a15be38758ec16bd1229f53bd53c7084da3e8d115eb4b32b9e9479f387dbe14ee1" name="a15be38758ec16bd1229f53bd53c7084da3e8d115eb4b32b9e9479f387dbe14ee1"></a>CA&#160;</td><td class="fielddoc"></td></tr>
+<tr><td class="fieldname"><a id="a15be38758ec16bd1229f53bd53c7084da1d7b33fc26ca22c2011aaa97fecc43d8" name="a15be38758ec16bd1229f53bd53c7084da1d7b33fc26ca22c2011aaa97fecc43d8"></a>CR&#160;</td><td class="fielddoc"></td></tr>
+<tr><td class="fieldname"><a id="a15be38758ec16bd1229f53bd53c7084da52c5706bc98f911ffbc794f5ffab068d" name="a15be38758ec16bd1229f53bd53c7084da52c5706bc98f911ffbc794f5ffab068d"></a>JM&#160;</td><td class="fielddoc"></td></tr>
+<tr><td class="fieldname"><a id="a15be38758ec16bd1229f53bd53c7084da2a6039655313bf5dab1e43523b62c374" name="a15be38758ec16bd1229f53bd53c7084da2a6039655313bf5dab1e43523b62c374"></a>MA&#160;</td><td class="fielddoc"></td></tr>
+<tr><td class="fieldname"><a id="a15be38758ec16bd1229f53bd53c7084da92666505ce75444ee14be2ebc2f10a60" name="a15be38758ec16bd1229f53bd53c7084da92666505ce75444ee14be2ebc2f10a60"></a>SN&#160;</td><td class="fielddoc"></td></tr>
+<tr><td class="fieldname"><a id="a15be38758ec16bd1229f53bd53c7084da3ba0f40775d6d6ace27ef929f5be3cdf" name="a15be38758ec16bd1229f53bd53c7084da3ba0f40775d6d6ace27ef929f5be3cdf"></a>CI&#160;</td><td class="fielddoc"></td></tr>
+<tr><td class="fieldname"><a id="a15be38758ec16bd1229f53bd53c7084da707354872d4e8210a2a573b99721b1fb" name="a15be38758ec16bd1229f53bd53c7084da707354872d4e8210a2a573b99721b1fb"></a>CM&#160;</td><td class="fielddoc"></td></tr>
+<tr><td class="fieldname"><a id="a15be38758ec16bd1229f53bd53c7084da6848ae6f8e786062f1b23476c9ecd258" name="a15be38758ec16bd1229f53bd53c7084da6848ae6f8e786062f1b23476c9ecd258"></a>GH&#160;</td><td class="fielddoc"></td></tr>
+<tr><td class="fieldname"><a id="a15be38758ec16bd1229f53bd53c7084dabf7410a9ee723b715ee14837f2328888" name="a15be38758ec16bd1229f53bd53c7084dabf7410a9ee723b715ee14837f2328888"></a>NG&#160;</td><td class="fielddoc"></td></tr>
+<tr><td class="fieldname"><a id="a15be38758ec16bd1229f53bd53c7084dafbe46383db390907541a234bec7f2424" name="a15be38758ec16bd1229f53bd53c7084dafbe46383db390907541a234bec7f2424"></a>EG&#160;</td><td class="fielddoc"></td></tr>
+<tr><td class="fieldname"><a id="a15be38758ec16bd1229f53bd53c7084dafa3c7f2b5daea5f9e813128f962e6ec4" name="a15be38758ec16bd1229f53bd53c7084dafa3c7f2b5daea5f9e813128f962e6ec4"></a>DZ&#160;</td><td class="fielddoc"></td></tr>
+<tr><td class="fieldname"><a id="a15be38758ec16bd1229f53bd53c7084da947d7d61cd9ae4cb2ccd29438d7f9974" name="a15be38758ec16bd1229f53bd53c7084da947d7d61cd9ae4cb2ccd29438d7f9974"></a>TN&#160;</td><td class="fielddoc"></td></tr>
+<tr><td class="fieldname"><a id="a15be38758ec16bd1229f53bd53c7084dad01fd9b01e9dde8bd3dc247afbfb7218" name="a15be38758ec16bd1229f53bd53c7084dad01fd9b01e9dde8bd3dc247afbfb7218"></a>ML&#160;</td><td class="fielddoc"></td></tr>
+<tr><td class="fieldname"><a id="a15be38758ec16bd1229f53bd53c7084da68caa82010645c82f5e37cbe337cae1c" name="a15be38758ec16bd1229f53bd53c7084da68caa82010645c82f5e37cbe337cae1c"></a>ZA&#160;</td><td class="fielddoc"></td></tr>
+<tr><td class="fieldname"><a id="a15be38758ec16bd1229f53bd53c7084dace774d9cab3ae0bdf522cd0839bed364" name="a15be38758ec16bd1229f53bd53c7084dace774d9cab3ae0bdf522cd0839bed364"></a>SI&#160;</td><td class="fielddoc"></td></tr>
+<tr><td class="fieldname"><a id="a15be38758ec16bd1229f53bd53c7084da8cee5050eeb7c783e8bfaa73003ced3a" name="a15be38758ec16bd1229f53bd53c7084da8cee5050eeb7c783e8bfaa73003ced3a"></a>RS&#160;</td><td class="fielddoc"></td></tr>
+<tr><td class="fieldname"><a id="a15be38758ec16bd1229f53bd53c7084da5fc810cf62601df84b7923b9964c53e6" name="a15be38758ec16bd1229f53bd53c7084da5fc810cf62601df84b7923b9964c53e6"></a>BA&#160;</td><td class="fielddoc"></td></tr>
+<tr><td class="fieldname"><a id="a15be38758ec16bd1229f53bd53c7084dae892e780304dc3ef15e69b9f3fed3669" name="a15be38758ec16bd1229f53bd53c7084dae892e780304dc3ef15e69b9f3fed3669"></a>AL&#160;</td><td class="fielddoc"></td></tr>
+<tr><td class="fieldname"><a id="a15be38758ec16bd1229f53bd53c7084da4306a04670067b5b27e766335d3d40fa" name="a15be38758ec16bd1229f53bd53c7084da4306a04670067b5b27e766335d3d40fa"></a>WA&#160;</td><td class="fielddoc"></td></tr>
+<tr><td class="fieldname"><a id="a15be38758ec16bd1229f53bd53c7084da6a65edb0cc17d66c677814115b1477f5" name="a15be38758ec16bd1229f53bd53c7084da6a65edb0cc17d66c677814115b1477f5"></a>SC&#160;</td><td class="fielddoc"></td></tr>
+<tr><td class="fieldname"><a id="a15be38758ec16bd1229f53bd53c7084dafff6fa4fe7ddec3a931ca45d9e626ae7" name="a15be38758ec16bd1229f53bd53c7084dafff6fa4fe7ddec3a931ca45d9e626ae7"></a>NI&#160;</td><td class="fielddoc"></td></tr>
+<tr><td class="fieldname"><a id="a15be38758ec16bd1229f53bd53c7084dafa868488740aa25870ced6b9169951fb" name="a15be38758ec16bd1229f53bd53c7084dafa868488740aa25870ced6b9169951fb"></a>AT&#160;</td><td class="fielddoc"></td></tr>
+<tr><td class="fieldname"><a id="a15be38758ec16bd1229f53bd53c7084da6cc98ba2045fe4098d24356d14447085" name="a15be38758ec16bd1229f53bd53c7084da6cc98ba2045fe4098d24356d14447085"></a>AU&#160;</td><td class="fielddoc"></td></tr>
+<tr><td class="fieldname"><a id="a15be38758ec16bd1229f53bd53c7084daf803729628adf4199f224c2a225038e9" name="a15be38758ec16bd1229f53bd53c7084daf803729628adf4199f224c2a225038e9"></a>GE&#160;</td><td class="fielddoc"></td></tr>
+<tr><td class="fieldname"><a id="a15be38758ec16bd1229f53bd53c7084da88588bacf0dad76870d7ede67a0ddbdf" name="a15be38758ec16bd1229f53bd53c7084da88588bacf0dad76870d7ede67a0ddbdf"></a>IL&#160;</td><td class="fielddoc"></td></tr>
+<tr><td class="fieldname"><a id="a15be38758ec16bd1229f53bd53c7084da359a2f88f3f5b03a0e9807b8b50a9269" name="a15be38758ec16bd1229f53bd53c7084da359a2f88f3f5b03a0e9807b8b50a9269"></a>BU&#160;</td><td class="fielddoc"></td></tr>
+<tr><td class="fieldname"><a id="a15be38758ec16bd1229f53bd53c7084da7b8d2f92148f52cad46e331936922e80" name="a15be38758ec16bd1229f53bd53c7084da7b8d2f92148f52cad46e331936922e80"></a>BF&#160;</td><td class="fielddoc"></td></tr>
+<tr><td class="fieldname"><a id="a15be38758ec16bd1229f53bd53c7084da5202c6586cac8bee468e86d1ff854231" name="a15be38758ec16bd1229f53bd53c7084da5202c6586cac8bee468e86d1ff854231"></a>CG&#160;</td><td class="fielddoc"></td></tr>
+<tr><td class="fieldname"><a id="a15be38758ec16bd1229f53bd53c7084da64f3bd1741ab8d6ba545a1ae09bb8728" name="a15be38758ec16bd1229f53bd53c7084da64f3bd1741ab8d6ba545a1ae09bb8728"></a>GM&#160;</td><td class="fielddoc"></td></tr>
+<tr><td class="fieldname"><a id="a15be38758ec16bd1229f53bd53c7084daaccb66f0ecd826aac89065990e1da97f" name="a15be38758ec16bd1229f53bd53c7084daaccb66f0ecd826aac89065990e1da97f"></a>GN&#160;</td><td class="fielddoc"></td></tr>
+<tr><td class="fieldname"><a id="a15be38758ec16bd1229f53bd53c7084da90d64eeba8247d656ef6b4800ec0f52f" name="a15be38758ec16bd1229f53bd53c7084da90d64eeba8247d656ef6b4800ec0f52f"></a>HT&#160;</td><td class="fielddoc"></td></tr>
+<tr><td class="fieldname"><a id="a15be38758ec16bd1229f53bd53c7084da0bfc16cc12effc1bae4d3766c4f2257d" name="a15be38758ec16bd1229f53bd53c7084da0bfc16cc12effc1bae4d3766c4f2257d"></a>IS&#160;</td><td class="fielddoc"></td></tr>
+<tr><td class="fieldname"><a id="a15be38758ec16bd1229f53bd53c7084dab4b6e894569917b9ca2210bae107c888" name="a15be38758ec16bd1229f53bd53c7084dab4b6e894569917b9ca2210bae107c888"></a>LX&#160;</td><td class="fielddoc"></td></tr>
+<tr><td class="fieldname"><a id="a15be38758ec16bd1229f53bd53c7084dad5c44258d51659f96279c470ce8185dc" name="a15be38758ec16bd1229f53bd53c7084dad5c44258d51659f96279c470ce8185dc"></a>MR&#160;</td><td class="fielddoc"></td></tr>
+<tr><td class="fieldname"><a id="a15be38758ec16bd1229f53bd53c7084daac6ad5d9b99757c3a878f2d275ace198" name="a15be38758ec16bd1229f53bd53c7084daac6ad5d9b99757c3a878f2d275ace198"></a>MZ&#160;</td><td class="fielddoc"></td></tr>
+<tr><td class="fieldname"><a id="a15be38758ec16bd1229f53bd53c7084da8e3eb2c69a184ad1d448afe5985f50b3" name="a15be38758ec16bd1229f53bd53c7084da8e3eb2c69a184ad1d448afe5985f50b3"></a>NZ&#160;</td><td class="fielddoc"></td></tr>
+<tr><td class="fieldname"><a id="a15be38758ec16bd1229f53bd53c7084da195dc214249dab3c31906b4b9f83d503" name="a15be38758ec16bd1229f53bd53c7084da195dc214249dab3c31906b4b9f83d503"></a>UZ&#160;</td><td class="fielddoc"></td></tr>
+<tr><td class="fieldname"><a id="a15be38758ec16bd1229f53bd53c7084dac562607189d77eb9dfb707464c1e7b0b" name="a15be38758ec16bd1229f53bd53c7084dac562607189d77eb9dfb707464c1e7b0b"></a>LT&#160;</td><td class="fielddoc"></td></tr>
+<tr><td class="fieldname"><a id="a15be38758ec16bd1229f53bd53c7084da4aceb7d6b4564ec96bc6605cd5af37e7" name="a15be38758ec16bd1229f53bd53c7084da4aceb7d6b4564ec96bc6605cd5af37e7"></a>KZ&#160;</td><td class="fielddoc"></td></tr>
+<tr><td class="fieldname"><a id="a15be38758ec16bd1229f53bd53c7084daddd70bbaf5be05e1e9caded444c03095" name="a15be38758ec16bd1229f53bd53c7084daddd70bbaf5be05e1e9caded444c03095"></a>BJ&#160;</td><td class="fielddoc"></td></tr>
+<tr><td class="fieldname"><a id="a15be38758ec16bd1229f53bd53c7084da31645929703e0ca8727296992f4dc763" name="a15be38758ec16bd1229f53bd53c7084da31645929703e0ca8727296992f4dc763"></a>ZW&#160;</td><td class="fielddoc"></td></tr>
+<tr><td class="fieldname"><a id="a15be38758ec16bd1229f53bd53c7084dadd480f25b31ec27223fee2c6edcacb3c" name="a15be38758ec16bd1229f53bd53c7084dadd480f25b31ec27223fee2c6edcacb3c"></a>KM&#160;</td><td class="fielddoc"></td></tr>
+<tr><td class="fieldname"><a id="a15be38758ec16bd1229f53bd53c7084da74b8d5453b654b3a79e7b8985a2fc71c" name="a15be38758ec16bd1229f53bd53c7084da74b8d5453b654b3a79e7b8985a2fc71c"></a>SL&#160;</td><td class="fielddoc"></td></tr>
+<tr><td class="fieldname"><a id="a15be38758ec16bd1229f53bd53c7084dab718adec73e04ce3ec720dd11a06a308" name="a15be38758ec16bd1229f53bd53c7084dab718adec73e04ce3ec720dd11a06a308"></a>ID&#160;</td><td class="fielddoc"></td></tr>
+<tr><td class="fieldname"><a id="a15be38758ec16bd1229f53bd53c7084da518f4a738816e5ef78463929ef311f26" name="a15be38758ec16bd1229f53bd53c7084da518f4a738816e5ef78463929ef311f26"></a>KE&#160;</td><td class="fielddoc"></td></tr>
+<tr><td class="fieldname"><a id="a15be38758ec16bd1229f53bd53c7084dad4cd0dabcf4caa22ad92fab40844c786" name="a15be38758ec16bd1229f53bd53c7084dad4cd0dabcf4caa22ad92fab40844c786"></a>NA&#160;</td><td class="fielddoc"></td></tr>
+<tr><td class="fieldname"><a id="a15be38758ec16bd1229f53bd53c7084da87a47565be4714701a8bc2354cbaea36" name="a15be38758ec16bd1229f53bd53c7084da87a47565be4714701a8bc2354cbaea36"></a>BD&#160;</td><td class="fielddoc"></td></tr>
+<tr><td class="fieldname"><a id="a15be38758ec16bd1229f53bd53c7084da5089fa881630360a9b3361469c1a0c5d" name="a15be38758ec16bd1229f53bd53c7084da5089fa881630360a9b3361469c1a0c5d"></a>BM&#160;</td><td class="fielddoc"></td></tr>
+<tr><td class="fieldname"><a id="a15be38758ec16bd1229f53bd53c7084da0f177369a3b71275d25ab1b44db9f95f" name="a15be38758ec16bd1229f53bd53c7084da0f177369a3b71275d25ab1b44db9f95f"></a>SG&#160;</td><td class="fielddoc"></td></tr>
+<tr><td class="fieldname"><a id="a15be38758ec16bd1229f53bd53c7084da9ee9d85a86f0118c40ba2385bb314fd7" name="a15be38758ec16bd1229f53bd53c7084da9ee9d85a86f0118c40ba2385bb314fd7"></a>ME&#160;</td><td class="fielddoc"></td></tr>
+<tr><td class="fieldname"><a id="a15be38758ec16bd1229f53bd53c7084da9025a1ae8c64158622b7428028f0d2bd" name="a15be38758ec16bd1229f53bd53c7084da9025a1ae8c64158622b7428028f0d2bd"></a>CY&#160;</td><td class="fielddoc"></td></tr>
+<tr><td class="fieldname"><a id="a15be38758ec16bd1229f53bd53c7084daa7bdee32cb21f0abbf9f878cb06cfe16" name="a15be38758ec16bd1229f53bd53c7084daa7bdee32cb21f0abbf9f878cb06cfe16"></a>LV&#160;</td><td class="fielddoc"></td></tr>
+<tr><td class="fieldname"><a id="a15be38758ec16bd1229f53bd53c7084da51f581937765890f2a706c77ea8af3cc" name="a15be38758ec16bd1229f53bd53c7084da51f581937765890f2a706c77ea8af3cc"></a>MQ&#160;</td><td class="fielddoc"></td></tr>
+<tr><td class="fieldname"><a id="a15be38758ec16bd1229f53bd53c7084dadf1f3edb9115acb0a1e04209b7a9937b" name="a15be38758ec16bd1229f53bd53c7084dadf1f3edb9115acb0a1e04209b7a9937b"></a>TT&#160;</td><td class="fielddoc"></td></tr>
+<tr><td class="fieldname"><a id="a15be38758ec16bd1229f53bd53c7084da9d3d9048db16a7eee539e93e3618cbe7" name="a15be38758ec16bd1229f53bd53c7084da9d3d9048db16a7eee539e93e3618cbe7"></a>BB&#160;</td><td class="fielddoc"></td></tr>
+<tr><td class="fieldname"><a id="a15be38758ec16bd1229f53bd53c7084da06f6a489209115c5cef3f45036aad3ec" name="a15be38758ec16bd1229f53bd53c7084da06f6a489209115c5cef3f45036aad3ec"></a>PA&#160;</td><td class="fielddoc"></td></tr>
+<tr><td class="fieldname"><a id="a15be38758ec16bd1229f53bd53c7084da25ec916d56b8212e569dbf2e4e4b51d4" name="a15be38758ec16bd1229f53bd53c7084da25ec916d56b8212e569dbf2e4e4b51d4"></a>AM&#160;</td><td class="fielddoc"></td></tr>
+<tr><td class="fieldname"><a id="a15be38758ec16bd1229f53bd53c7084da5240ba2ae676b63d2bf1d706a9016990" name="a15be38758ec16bd1229f53bd53c7084da5240ba2ae676b63d2bf1d706a9016990"></a>KV&#160;</td><td class="fielddoc"></td></tr>
+<tr><td class="fieldname"><a id="a15be38758ec16bd1229f53bd53c7084da7dc10e66da5549d351765bd940b81be9" name="a15be38758ec16bd1229f53bd53c7084da7dc10e66da5549d351765bd940b81be9"></a>MD&#160;</td><td class="fielddoc"></td></tr>
+<tr><td class="fieldname"><a id="a15be38758ec16bd1229f53bd53c7084dac3938dd81fe1366e93d2e29a6ffe2005" name="a15be38758ec16bd1229f53bd53c7084dac3938dd81fe1366e93d2e29a6ffe2005"></a>NR&#160;</td><td class="fielddoc"></td></tr>
+<tr><td class="fieldname"><a id="a15be38758ec16bd1229f53bd53c7084dac17d19f7520be36addbeb5d2c76ab7cf" name="a15be38758ec16bd1229f53bd53c7084dac17d19f7520be36addbeb5d2c76ab7cf"></a>GW&#160;</td><td class="fielddoc"></td></tr>
+<tr><td class="fieldname"><a id="a15be38758ec16bd1229f53bd53c7084da2c64c5cf613d8b9f4f7f3980d29aca10" name="a15be38758ec16bd1229f53bd53c7084da2c64c5cf613d8b9f4f7f3980d29aca10"></a>AO&#160;</td><td class="fielddoc"></td></tr>
+<tr><td class="fieldname"><a id="a15be38758ec16bd1229f53bd53c7084daa5c8c3544bc49ebacde4ffe04bf34de0" name="a15be38758ec16bd1229f53bd53c7084daa5c8c3544bc49ebacde4ffe04bf34de0"></a>CV&#160;</td><td class="fielddoc"></td></tr>
+<tr><td class="fieldname"><a id="a15be38758ec16bd1229f53bd53c7084dafc089489555aee7519548ff7f589f384" name="a15be38758ec16bd1229f53bd53c7084dafc089489555aee7519548ff7f589f384"></a>TD&#160;</td><td class="fielddoc"></td></tr>
+<tr><td class="fieldname"><a id="a15be38758ec16bd1229f53bd53c7084dac23fa9996925b610710d93e28c59a3e2" name="a15be38758ec16bd1229f53bd53c7084dac23fa9996925b610710d93e28c59a3e2"></a>DO&#160;</td><td class="fielddoc"></td></tr>
+<tr><td class="fieldname"><a id="a15be38758ec16bd1229f53bd53c7084da8d36b361a4794422c70681586a957350" name="a15be38758ec16bd1229f53bd53c7084da8d36b361a4794422c70681586a957350"></a>GQ&#160;</td><td class="fielddoc"></td></tr>
+<tr><td class="fieldname"><a id="a15be38758ec16bd1229f53bd53c7084dac0398fb66542bbcf6e14417a0a6751f4" name="a15be38758ec16bd1229f53bd53c7084dac0398fb66542bbcf6e14417a0a6751f4"></a>FO&#160;</td><td class="fielddoc"></td></tr>
+<tr><td class="fieldname"><a id="a15be38758ec16bd1229f53bd53c7084dacd957338498985e538753ea8d071e0f9" name="a15be38758ec16bd1229f53bd53c7084dacd957338498985e538753ea8d071e0f9"></a>GA&#160;</td><td class="fielddoc"></td></tr>
+<tr><td class="fieldname"><a id="a15be38758ec16bd1229f53bd53c7084daad2d8ee7d788dcf41f399818f639cb64" name="a15be38758ec16bd1229f53bd53c7084daad2d8ee7d788dcf41f399818f639cb64"></a>GP&#160;</td><td class="fielddoc"></td></tr>
+<tr><td class="fieldname"><a id="a15be38758ec16bd1229f53bd53c7084dac2d75724334cab079503451aab65ba04" name="a15be38758ec16bd1229f53bd53c7084dac2d75724334cab079503451aab65ba04"></a>LY&#160;</td><td class="fielddoc"></td></tr>
+<tr><td class="fieldname"><a id="a15be38758ec16bd1229f53bd53c7084daeb0459bfce4185888ecf61fb07987581" name="a15be38758ec16bd1229f53bd53c7084daeb0459bfce4185888ecf61fb07987581"></a>MO&#160;</td><td class="fielddoc"></td></tr>
+<tr><td class="fieldname"><a id="a15be38758ec16bd1229f53bd53c7084da8cb2010d27e13509d364436256e972c0" name="a15be38758ec16bd1229f53bd53c7084da8cb2010d27e13509d364436256e972c0"></a>SR&#160;</td><td class="fielddoc"></td></tr>
+<tr><td class="fieldname"><a id="a15be38758ec16bd1229f53bd53c7084da2de960c6ab3cef39a9a2298fb58e503d" name="a15be38758ec16bd1229f53bd53c7084da2de960c6ab3cef39a9a2298fb58e503d"></a>TG&#160;</td><td class="fielddoc"></td></tr>
+<tr><td class="fieldname"><a id="a15be38758ec16bd1229f53bd53c7084da70f73ee5133fa9c2b13516067fabfd87" name="a15be38758ec16bd1229f53bd53c7084da70f73ee5133fa9c2b13516067fabfd87"></a>ZM&#160;</td><td class="fielddoc"></td></tr>
+<tr><td class="fieldname"><a id="a15be38758ec16bd1229f53bd53c7084dae182ebbc166d73366e7986813a7fc5f1" name="a15be38758ec16bd1229f53bd53c7084dae182ebbc166d73366e7986813a7fc5f1"></a>AD&#160;</td><td class="fielddoc"></td></tr>
+<tr><td class="fieldname"><a id="a15be38758ec16bd1229f53bd53c7084daea8a1a99f6c94c275a58dcd78f418c1f" name="a15be38758ec16bd1229f53bd53c7084daea8a1a99f6c94c275a58dcd78f418c1f"></a>AE&#160;</td><td class="fielddoc"></td></tr>
+<tr><td class="fieldname"><a id="a15be38758ec16bd1229f53bd53c7084daa25496ebf095e4198da4088449c83ac6" name="a15be38758ec16bd1229f53bd53c7084daa25496ebf095e4198da4088449c83ac6"></a>PH&#160;</td><td class="fielddoc"></td></tr>
+<tr><td class="fieldname"><a id="a15be38758ec16bd1229f53bd53c7084da75dfaed2dded20f8b8d376ddc7212f23" name="a15be38758ec16bd1229f53bd53c7084da75dfaed2dded20f8b8d376ddc7212f23"></a>MY&#160;</td><td class="fielddoc"></td></tr>
+<tr><td class="fieldname"><a id="a15be38758ec16bd1229f53bd53c7084daa57b8491d1d8fc1014dd54bcf83b130a" name="a15be38758ec16bd1229f53bd53c7084daa57b8491d1d8fc1014dd54bcf83b130a"></a>EE&#160;</td><td class="fielddoc"></td></tr>
+<tr><td class="fieldname"><a id="a15be38758ec16bd1229f53bd53c7084dac951270e425b15fc20c64da4341c1d89" name="a15be38758ec16bd1229f53bd53c7084dac951270e425b15fc20c64da4341c1d89"></a>LB&#160;</td><td class="fielddoc"></td></tr>
+<tr><td class="fieldname"><a id="a15be38758ec16bd1229f53bd53c7084daba2a034f4d913f87fe07cad29368d114" name="a15be38758ec16bd1229f53bd53c7084daba2a034f4d913f87fe07cad29368d114"></a>MG&#160;</td><td class="fielddoc"></td></tr>
+<tr><td class="fieldname"><a id="a15be38758ec16bd1229f53bd53c7084daf9f315de90492c8259307985379c2a4e" name="a15be38758ec16bd1229f53bd53c7084daf9f315de90492c8259307985379c2a4e"></a>MW&#160;</td><td class="fielddoc"></td></tr>
+<tr><td class="fieldname"><a id="a15be38758ec16bd1229f53bd53c7084dad3d4c5deb455ac79dd5ff47c88bd65d9" name="a15be38758ec16bd1229f53bd53c7084dad3d4c5deb455ac79dd5ff47c88bd65d9"></a>PS&#160;</td><td class="fielddoc"></td></tr>
+<tr><td class="fieldname"><a id="a15be38758ec16bd1229f53bd53c7084da174fe2539889bbf873e7c2de71949074" name="a15be38758ec16bd1229f53bd53c7084da174fe2539889bbf873e7c2de71949074"></a>SY&#160;</td><td class="fielddoc"></td></tr>
+<tr><td class="fieldname"><a id="a15be38758ec16bd1229f53bd53c7084da5b79c40fa7c2bd12dd2df53c4a2b6836" name="a15be38758ec16bd1229f53bd53c7084da5b79c40fa7c2bd12dd2df53c4a2b6836"></a>TH&#160;</td><td class="fielddoc"></td></tr>
+<tr><td class="fieldname"><a id="a15be38758ec16bd1229f53bd53c7084da1db208cbcff273e672b3acc7a3a37a3e" name="a15be38758ec16bd1229f53bd53c7084da1db208cbcff273e672b3acc7a3a37a3e"></a>UG&#160;</td><td class="fielddoc"></td></tr>
+<tr><td class="fieldname"><a id="a15be38758ec16bd1229f53bd53c7084da63cf9a25c78f494840f05187a0c79eb2" name="a15be38758ec16bd1229f53bd53c7084da63cf9a25c78f494840f05187a0c79eb2"></a>YE&#160;</td><td class="fielddoc"></td></tr>
+<tr><td class="fieldname"><a id="a15be38758ec16bd1229f53bd53c7084daaf7f0273997b9b290bd7c57aa19f36c2" name="a15be38758ec16bd1229f53bd53c7084daaf7f0273997b9b290bd7c57aa19f36c2"></a>BI&#160;</td><td class="fielddoc"></td></tr>
+<tr><td class="fieldname"><a id="a15be38758ec16bd1229f53bd53c7084da758951cac5e62129e654698c8ca0333b" name="a15be38758ec16bd1229f53bd53c7084da758951cac5e62129e654698c8ca0333b"></a>CF&#160;</td><td class="fielddoc"></td></tr>
+<tr><td class="fieldname"><a id="a15be38758ec16bd1229f53bd53c7084dac07b0b4d7660314f711a68fc47c4ab38" name="a15be38758ec16bd1229f53bd53c7084dac07b0b4d7660314f711a68fc47c4ab38"></a>GF&#160;</td><td class="fielddoc"></td></tr>
+<tr><td class="fieldname"><a id="a15be38758ec16bd1229f53bd53c7084da60aea2edd1105dd93c39e6e193080736" name="a15be38758ec16bd1229f53bd53c7084da60aea2edd1105dd93c39e6e193080736"></a>JO&#160;</td><td class="fielddoc"></td></tr>
+<tr><td class="fieldname"><a id="a15be38758ec16bd1229f53bd53c7084da08ad08f6491037714d09263a79bebfba" name="a15be38758ec16bd1229f53bd53c7084da08ad08f6491037714d09263a79bebfba"></a>MT&#160;</td><td class="fielddoc"></td></tr>
+<tr><td class="fieldname"><a id="a15be38758ec16bd1229f53bd53c7084da3dd6b9265ff18f31dc30df59304b0ca7" name="a15be38758ec16bd1229f53bd53c7084da3dd6b9265ff18f31dc30df59304b0ca7"></a>SA&#160;</td><td class="fielddoc"></td></tr>
+<tr><td class="fieldname"><a id="a15be38758ec16bd1229f53bd53c7084da13c4998a4a401a2431779d247f7d6143" name="a15be38758ec16bd1229f53bd53c7084da13c4998a4a401a2431779d247f7d6143"></a>TZ&#160;</td><td class="fielddoc"></td></tr>
+<tr><td class="fieldname"><a id="a15be38758ec16bd1229f53bd53c7084da06fa567b72d78b7e3ea746973fbbd1d5" name="a15be38758ec16bd1229f53bd53c7084da06fa567b72d78b7e3ea746973fbbd1d5"></a>AF&#160;</td><td class="fielddoc"></td></tr>
+<tr><td class="fieldname"><a id="a15be38758ec16bd1229f53bd53c7084dab8ea98de1a83f61d1976027741a458be" name="a15be38758ec16bd1229f53bd53c7084dab8ea98de1a83f61d1976027741a458be"></a>KY&#160;</td><td class="fielddoc"></td></tr>
+<tr><td class="fieldname"><a id="a15be38758ec16bd1229f53bd53c7084dac83f077534a373cb63a0a91969fdce54" name="a15be38758ec16bd1229f53bd53c7084dac83f077534a373cb63a0a91969fdce54"></a>CU&#160;</td><td class="fielddoc"></td></tr>
+<tr><td class="fieldname"><a id="a15be38758ec16bd1229f53bd53c7084da9af3107a066f6b0defb1cafc0499f6ed" name="a15be38758ec16bd1229f53bd53c7084da9af3107a066f6b0defb1cafc0499f6ed"></a>CW&#160;</td><td class="fielddoc"></td></tr>
+<tr><td class="fieldname"><a id="a15be38758ec16bd1229f53bd53c7084da56a036735e46821195a55359c5ad144f" name="a15be38758ec16bd1229f53bd53c7084da56a036735e46821195a55359c5ad144f"></a>GD&#160;</td><td class="fielddoc"></td></tr>
+<tr><td class="fieldname"><a id="a15be38758ec16bd1229f53bd53c7084dacd6a9bd2a175104eed40f0d33a8b4020" name="a15be38758ec16bd1229f53bd53c7084dacd6a9bd2a175104eed40f0d33a8b4020"></a>GT&#160;</td><td class="fielddoc"></td></tr>
+<tr><td class="fieldname"><a id="a15be38758ec16bd1229f53bd53c7084daac4a2766028a717ff89985bc85bf5e50" name="a15be38758ec16bd1229f53bd53c7084daac4a2766028a717ff89985bc85bf5e50"></a>HN&#160;</td><td class="fielddoc"></td></tr>
+<tr><td class="fieldname"><a id="a15be38758ec16bd1229f53bd53c7084da560e51228bc1672591fd8833265b6234" name="a15be38758ec16bd1229f53bd53c7084da560e51228bc1672591fd8833265b6234"></a>IQ&#160;</td><td class="fielddoc"></td></tr>
+<tr><td class="fieldname"><a id="a15be38758ec16bd1229f53bd53c7084daaa2b36dabd254260f584015a9e0c5c98" name="a15be38758ec16bd1229f53bd53c7084daaa2b36dabd254260f584015a9e0c5c98"></a>KN&#160;</td><td class="fielddoc"></td></tr>
+<tr><td class="fieldname"><a id="a15be38758ec16bd1229f53bd53c7084da90a7c45eaffbd575ca6fb361e6d170a4" name="a15be38758ec16bd1229f53bd53c7084da90a7c45eaffbd575ca6fb361e6d170a4"></a>LR&#160;</td><td class="fielddoc"></td></tr>
+<tr><td class="fieldname"><a id="a15be38758ec16bd1229f53bd53c7084da0fe75a5189c2ea3f123621d098ddd03e" name="a15be38758ec16bd1229f53bd53c7084da0fe75a5189c2ea3f123621d098ddd03e"></a>PR&#160;</td><td class="fielddoc"></td></tr>
+<tr><td class="fieldname"><a id="a15be38758ec16bd1229f53bd53c7084da5c6dc3d436504b7a65191cafe28212ee" name="a15be38758ec16bd1229f53bd53c7084da5c6dc3d436504b7a65191cafe28212ee"></a>RW&#160;</td><td class="fielddoc"></td></tr>
+<tr><td class="fieldname"><a id="a15be38758ec16bd1229f53bd53c7084da6907b8692fb04b36ab78f1238a876284" name="a15be38758ec16bd1229f53bd53c7084da6907b8692fb04b36ab78f1238a876284"></a>LC&#160;</td><td class="fielddoc"></td></tr>
+<tr><td class="fieldname"><a id="a15be38758ec16bd1229f53bd53c7084dad38212a0c0e98f678feaaa5a8b9167f5" name="a15be38758ec16bd1229f53bd53c7084dad38212a0c0e98f678feaaa5a8b9167f5"></a>SV&#160;</td><td class="fielddoc"></td></tr>
+<tr><td class="fieldname"><a id="a15be38758ec16bd1229f53bd53c7084da98d0360b392de5f1d53acdd6489b6e88" name="a15be38758ec16bd1229f53bd53c7084da98d0360b392de5f1d53acdd6489b6e88"></a>SO&#160;</td><td class="fielddoc"></td></tr>
+<tr><td class="fieldname"><a id="a15be38758ec16bd1229f53bd53c7084dab7128ad1d9b838be26989d1037a8c987" name="a15be38758ec16bd1229f53bd53c7084dab7128ad1d9b838be26989d1037a8c987"></a>VC&#160;</td><td class="fielddoc"></td></tr>
+<tr><td class="fieldname"><a id="a15be38758ec16bd1229f53bd53c7084da546a9a80eb981c7f0aabcaeb34d9514e" name="a15be38758ec16bd1229f53bd53c7084da546a9a80eb981c7f0aabcaeb34d9514e"></a>AZ&#160;</td><td class="fielddoc"></td></tr>
+<tr><td class="fieldname"><a id="a15be38758ec16bd1229f53bd53c7084da925ab312a51a924ab68d9812baa788ff" name="a15be38758ec16bd1229f53bd53c7084da925ab312a51a924ab68d9812baa788ff"></a>BY&#160;</td><td class="fielddoc"></td></tr>
+<tr><td class="fieldname"><a id="a15be38758ec16bd1229f53bd53c7084da7b60a39fc2a49bbac1b3426abb5ada4b" name="a15be38758ec16bd1229f53bd53c7084da7b60a39fc2a49bbac1b3426abb5ada4b"></a>BO&#160;</td><td class="fielddoc"></td></tr>
+<tr><td class="fieldname"><a id="a15be38758ec16bd1229f53bd53c7084da4f74d343f26bbd58a8cbbad2cab6a704" name="a15be38758ec16bd1229f53bd53c7084da4f74d343f26bbd58a8cbbad2cab6a704"></a>IR&#160;</td><td class="fielddoc"></td></tr>
+<tr><td class="fieldname"><a id="a15be38758ec16bd1229f53bd53c7084da56d721ccadb8bbfd8b47390d82a6ea4b" name="a15be38758ec16bd1229f53bd53c7084da56d721ccadb8bbfd8b47390d82a6ea4b"></a>KG&#160;</td><td class="fielddoc"></td></tr>
+<tr><td class="fieldname"><a id="a15be38758ec16bd1229f53bd53c7084da6e4f62232fe7c185a8274bac42e333bb" name="a15be38758ec16bd1229f53bd53c7084da6e4f62232fe7c185a8274bac42e333bb"></a>TJ&#160;</td><td class="fielddoc"></td></tr>
+<tr><td class="fieldname"><a id="a15be38758ec16bd1229f53bd53c7084daac7a4fbd0d788d94f43454817e1c208c" name="a15be38758ec16bd1229f53bd53c7084daac7a4fbd0d788d94f43454817e1c208c"></a>TM&#160;</td><td class="fielddoc"></td></tr>
+<tr><td class="fieldname"><a id="a15be38758ec16bd1229f53bd53c7084dae45fbcf6ca3b21f17c5f355728a2fbec" name="a15be38758ec16bd1229f53bd53c7084dae45fbcf6ca3b21f17c5f355728a2fbec"></a>BZ&#160;</td><td class="fielddoc"></td></tr>
+<tr><td class="fieldname"><a id="a15be38758ec16bd1229f53bd53c7084da90581d96b500fd2d3fd701a583409cb8" name="a15be38758ec16bd1229f53bd53c7084da90581d96b500fd2d3fd701a583409cb8"></a>NC&#160;</td><td class="fielddoc"></td></tr>
+<tr><td class="fieldname"><a id="a15be38758ec16bd1229f53bd53c7084dae5919ba9cf2e803bdbc98334a7f64daa" name="a15be38758ec16bd1229f53bd53c7084dae5919ba9cf2e803bdbc98334a7f64daa"></a>MU&#160;</td><td class="fielddoc"></td></tr>
 </table>
 
 </div>
@@ -228,59 +517,11 @@ Variables</h2></td></tr>
 <div class="memproto">
       <table class="memname">
         <tr>
-          <td class="memname">const std::unordered_map&lt;<a class="el" href="languages_8h.html#ac401b05356bfe6d1335ddaf14ad31d0c">Language</a>, std::string&gt; languageToString</td>
+          <td class="memname">const std::unordered_map&lt;<a class="el" href="languages_8h.html#a15be38758ec16bd1229f53bd53c7084d">Language</a>, std::string&gt; languageToString</td>
         </tr>
       </table>
 </div><div class="memdoc">
-<b>Initial value:</b><div class="fragment"><div class="line">{</div>
-<div class="line">    {<a class="code hl_enumvalue" href="languages_8h.html#ac401b05356bfe6d1335ddaf14ad31d0caaa85f1840e282d8a8304dbc2c0d7c9b2">Language::EN</a>, <span class="stringliteral">&quot;English&quot;</span>},    {<a class="code hl_enumvalue" href="languages_8h.html#ac401b05356bfe6d1335ddaf14ad31d0cacd32106bcb6de321930cf34574ea388c">Language::IT</a>, <span class="stringliteral">&quot;Italian&quot;</span>},</div>
-<div class="line">    {<a class="code hl_enumvalue" href="languages_8h.html#ac401b05356bfe6d1335ddaf14ad31d0ca04c19fa1e772ab66f0aad2efe61f25cd">Language::ES</a>, <span class="stringliteral">&quot;Spanish&quot;</span>},    {<a class="code hl_enumvalue" href="languages_8h.html#ac401b05356bfe6d1335ddaf14ad31d0ca11aedd0e432747c2bcd97b82808d24a0">Language::FR</a>, <span class="stringliteral">&quot;French&quot;</span>},</div>
-<div class="line">    {<a class="code hl_enumvalue" href="languages_8h.html#ac401b05356bfe6d1335ddaf14ad31d0ca3a52f3c22ed6fcde5bf696a6c02c9e73">Language::DE</a>, <span class="stringliteral">&quot;German&quot;</span>},     {<a class="code hl_enumvalue" href="languages_8h.html#ac401b05356bfe6d1335ddaf14ad31d0ca0b98720dcb2cc6fd60358a45dfbc5b87">Language::MX</a>, <span class="stringliteral">&quot;Mexican&quot;</span>},</div>
-<div class="line">    {<a class="code hl_enumvalue" href="languages_8h.html#ac401b05356bfe6d1335ddaf14ad31d0ca1c2903397d8833382673bab22aa8b937">Language::CN</a>, <span class="stringliteral">&quot;Chinese&quot;</span>},    {<a class="code hl_enumvalue" href="languages_8h.html#ac401b05356bfe6d1335ddaf14ad31d0caf5b15f58cabad73d1bf2de7bcb89db6c">Language::RO</a>, <span class="stringliteral">&quot;Romanian&quot;</span>},</div>
-<div class="line">    {<a class="code hl_enumvalue" href="languages_8h.html#ac401b05356bfe6d1335ddaf14ad31d0ca35357b9c8fe4d3273d0237ecc8ff2e75">Language::PT</a>, <span class="stringliteral">&quot;Portuguese&quot;</span>}, {<a class="code hl_enumvalue" href="languages_8h.html#ac401b05356bfe6d1335ddaf14ad31d0ca796834e7a2839412d79dbc5f1327594d">Language::NL</a>, <span class="stringliteral">&quot;Dutch&quot;</span>},</div>
-<div class="line">    {<a class="code hl_enumvalue" href="languages_8h.html#ac401b05356bfe6d1335ddaf14ad31d0caf003c44deab679aa2edfaff864c77402">Language::SE</a>, <span class="stringliteral">&quot;Swedish&quot;</span>},    {<a class="code hl_enumvalue" href="languages_8h.html#ac401b05356bfe6d1335ddaf14ad31d0ca9b7d173b068dc4d5517bfae92d676437">Language::PL</a>, <span class="stringliteral">&quot;Polish&quot;</span>},</div>
-<div class="line">    {<a class="code hl_enumvalue" href="languages_8h.html#ac401b05356bfe6d1335ddaf14ad31d0caf214a7d42e0de5875d55189e01e2e187">Language::GR</a>, <span class="stringliteral">&quot;Greek&quot;</span>},      {<a class="code hl_enumvalue" href="languages_8h.html#ac401b05356bfe6d1335ddaf14ad31d0caebe021079e5a3c4f42ca6119eab92633">Language::TR</a>, <span class="stringliteral">&quot;Turkish&quot;</span>},</div>
-<div class="line">    {<a class="code hl_enumvalue" href="languages_8h.html#ac401b05356bfe6d1335ddaf14ad31d0caf9308c5d059650ee40cab30bad1e96d0">Language::RU</a>, <span class="stringliteral">&quot;Russian&quot;</span>},    {<a class="code hl_enumvalue" href="languages_8h.html#ac401b05356bfe6d1335ddaf14ad31d0ca5b61a1b298a0d06efa6933a97e68d763">Language::AR</a>, <span class="stringliteral">&quot;Arabic&quot;</span>},</div>
-<div class="line">    {<a class="code hl_enumvalue" href="languages_8h.html#ac401b05356bfe6d1335ddaf14ad31d0ca24d22e03afb23edb45c6c8cfa16a280e">Language::JP</a>, <span class="stringliteral">&quot;Japanese&quot;</span>},   {<a class="code hl_enumvalue" href="languages_8h.html#ac401b05356bfe6d1335ddaf14ad31d0ca19d3326f3137cbadd21ce901a9bed4a7">Language::BR</a>, <span class="stringliteral">&quot;Brazilian&quot;</span>},</div>
-<div class="line">    {<a class="code hl_enumvalue" href="languages_8h.html#ac401b05356bfe6d1335ddaf14ad31d0ca38dd815e66dbd0d47a2b876ca442e987">Language::KR</a>, <span class="stringliteral">&quot;Korean&quot;</span>},     {<a class="code hl_enumvalue" href="languages_8h.html#ac401b05356bfe6d1335ddaf14ad31d0cad3dcf429c679f9af82eb9a3b31c4df44">Language::BE</a>, <span class="stringliteral">&quot;Belgian&quot;</span>},</div>
-<div class="line">    {<a class="code hl_enumvalue" href="languages_8h.html#ac401b05356bfe6d1335ddaf14ad31d0ca1ee0bf89c5d1032317d13a2e022793c8">Language::CH</a>, <span class="stringliteral">&quot;Swiss&quot;</span>},      {<a class="code hl_enumvalue" href="languages_8h.html#ac401b05356bfe6d1335ddaf14ad31d0cafd4c638da5f85d025963f99fe90b1b1a">Language::HR</a>, <span class="stringliteral">&quot;Croatian&quot;</span>},</div>
-<div class="line">    {<a class="code hl_enumvalue" href="languages_8h.html#ac401b05356bfe6d1335ddaf14ad31d0cadd65ef9a5579d4e518c6d4abbd0cb1c6">Language::DK</a>, <span class="stringliteral">&quot;Danish&quot;</span>},     {<a class="code hl_enumvalue" href="languages_8h.html#ac401b05356bfe6d1335ddaf14ad31d0caf0aa03aaca953a9a63b4459663d00134">Language::FI</a>, <span class="stringliteral">&quot;Finnish&quot;</span>},</div>
-<div class="line">    {<a class="code hl_enumvalue" href="languages_8h.html#ac401b05356bfe6d1335ddaf14ad31d0cad2cb7bbc0d23f34c4255d924076e902f">Language::IE</a>, <span class="stringliteral">&quot;Irish&quot;</span>},      {<a class="code hl_enumvalue" href="languages_8h.html#ac401b05356bfe6d1335ddaf14ad31d0cac2f3f489a00553e7a01d369c103c7251">Language::NO</a>, <span class="stringliteral">&quot;Norwegian&quot;</span>},</div>
-<div class="line">    {<a class="code hl_enumvalue" href="languages_8h.html#ac401b05356bfe6d1335ddaf14ad31d0ca13dd621f27110108a10a88e99fe9ceaf">Language::SK</a>, <span class="stringliteral">&quot;Slovak&quot;</span>},     {<a class="code hl_enumvalue" href="languages_8h.html#ac401b05356bfe6d1335ddaf14ad31d0ca928568b84963ceb76aaaa2cae9afdbfa">Language::CZ</a>, <span class="stringliteral">&quot;Czech&quot;</span>},</div>
-<div class="line">    {<a class="code hl_enumvalue" href="languages_8h.html#ac401b05356bfe6d1335ddaf14ad31d0ca35b5282113b88c2fe23dcbec9f0258c1">Language::HU</a>, <span class="stringliteral">&quot;Hungarian&quot;</span>},  {<a class="code hl_enumvalue" href="languages_8h.html#ac401b05356bfe6d1335ddaf14ad31d0ca3943d8795e03e8e3307b5b71eac1b669">Language::UA</a>, <span class="stringliteral">&quot;Ukrainian&quot;</span>},</div>
-<div class="line">    {<a class="code hl_enumvalue" href="languages_8h.html#ac401b05356bfe6d1335ddaf14ad31d0ca7516fd43adaa5e0b8a65a672c39845d2">Language::US</a>, <span class="stringliteral">&quot;American&quot;</span>}}</div>
-<div class="ttc" id="alanguages_8h_html_ac401b05356bfe6d1335ddaf14ad31d0ca04c19fa1e772ab66f0aad2efe61f25cd"><div class="ttname"><a href="languages_8h.html#ac401b05356bfe6d1335ddaf14ad31d0ca04c19fa1e772ab66f0aad2efe61f25cd">Language::ES</a></div><div class="ttdeci">@ ES</div></div>
-<div class="ttc" id="alanguages_8h_html_ac401b05356bfe6d1335ddaf14ad31d0ca0b98720dcb2cc6fd60358a45dfbc5b87"><div class="ttname"><a href="languages_8h.html#ac401b05356bfe6d1335ddaf14ad31d0ca0b98720dcb2cc6fd60358a45dfbc5b87">Language::MX</a></div><div class="ttdeci">@ MX</div></div>
-<div class="ttc" id="alanguages_8h_html_ac401b05356bfe6d1335ddaf14ad31d0ca11aedd0e432747c2bcd97b82808d24a0"><div class="ttname"><a href="languages_8h.html#ac401b05356bfe6d1335ddaf14ad31d0ca11aedd0e432747c2bcd97b82808d24a0">Language::FR</a></div><div class="ttdeci">@ FR</div></div>
-<div class="ttc" id="alanguages_8h_html_ac401b05356bfe6d1335ddaf14ad31d0ca13dd621f27110108a10a88e99fe9ceaf"><div class="ttname"><a href="languages_8h.html#ac401b05356bfe6d1335ddaf14ad31d0ca13dd621f27110108a10a88e99fe9ceaf">Language::SK</a></div><div class="ttdeci">@ SK</div></div>
-<div class="ttc" id="alanguages_8h_html_ac401b05356bfe6d1335ddaf14ad31d0ca19d3326f3137cbadd21ce901a9bed4a7"><div class="ttname"><a href="languages_8h.html#ac401b05356bfe6d1335ddaf14ad31d0ca19d3326f3137cbadd21ce901a9bed4a7">Language::BR</a></div><div class="ttdeci">@ BR</div></div>
-<div class="ttc" id="alanguages_8h_html_ac401b05356bfe6d1335ddaf14ad31d0ca1c2903397d8833382673bab22aa8b937"><div class="ttname"><a href="languages_8h.html#ac401b05356bfe6d1335ddaf14ad31d0ca1c2903397d8833382673bab22aa8b937">Language::CN</a></div><div class="ttdeci">@ CN</div></div>
-<div class="ttc" id="alanguages_8h_html_ac401b05356bfe6d1335ddaf14ad31d0ca1ee0bf89c5d1032317d13a2e022793c8"><div class="ttname"><a href="languages_8h.html#ac401b05356bfe6d1335ddaf14ad31d0ca1ee0bf89c5d1032317d13a2e022793c8">Language::CH</a></div><div class="ttdeci">@ CH</div></div>
-<div class="ttc" id="alanguages_8h_html_ac401b05356bfe6d1335ddaf14ad31d0ca24d22e03afb23edb45c6c8cfa16a280e"><div class="ttname"><a href="languages_8h.html#ac401b05356bfe6d1335ddaf14ad31d0ca24d22e03afb23edb45c6c8cfa16a280e">Language::JP</a></div><div class="ttdeci">@ JP</div></div>
-<div class="ttc" id="alanguages_8h_html_ac401b05356bfe6d1335ddaf14ad31d0ca35357b9c8fe4d3273d0237ecc8ff2e75"><div class="ttname"><a href="languages_8h.html#ac401b05356bfe6d1335ddaf14ad31d0ca35357b9c8fe4d3273d0237ecc8ff2e75">Language::PT</a></div><div class="ttdeci">@ PT</div></div>
-<div class="ttc" id="alanguages_8h_html_ac401b05356bfe6d1335ddaf14ad31d0ca35b5282113b88c2fe23dcbec9f0258c1"><div class="ttname"><a href="languages_8h.html#ac401b05356bfe6d1335ddaf14ad31d0ca35b5282113b88c2fe23dcbec9f0258c1">Language::HU</a></div><div class="ttdeci">@ HU</div></div>
-<div class="ttc" id="alanguages_8h_html_ac401b05356bfe6d1335ddaf14ad31d0ca38dd815e66dbd0d47a2b876ca442e987"><div class="ttname"><a href="languages_8h.html#ac401b05356bfe6d1335ddaf14ad31d0ca38dd815e66dbd0d47a2b876ca442e987">Language::KR</a></div><div class="ttdeci">@ KR</div></div>
-<div class="ttc" id="alanguages_8h_html_ac401b05356bfe6d1335ddaf14ad31d0ca3943d8795e03e8e3307b5b71eac1b669"><div class="ttname"><a href="languages_8h.html#ac401b05356bfe6d1335ddaf14ad31d0ca3943d8795e03e8e3307b5b71eac1b669">Language::UA</a></div><div class="ttdeci">@ UA</div></div>
-<div class="ttc" id="alanguages_8h_html_ac401b05356bfe6d1335ddaf14ad31d0ca3a52f3c22ed6fcde5bf696a6c02c9e73"><div class="ttname"><a href="languages_8h.html#ac401b05356bfe6d1335ddaf14ad31d0ca3a52f3c22ed6fcde5bf696a6c02c9e73">Language::DE</a></div><div class="ttdeci">@ DE</div></div>
-<div class="ttc" id="alanguages_8h_html_ac401b05356bfe6d1335ddaf14ad31d0ca5b61a1b298a0d06efa6933a97e68d763"><div class="ttname"><a href="languages_8h.html#ac401b05356bfe6d1335ddaf14ad31d0ca5b61a1b298a0d06efa6933a97e68d763">Language::AR</a></div><div class="ttdeci">@ AR</div></div>
-<div class="ttc" id="alanguages_8h_html_ac401b05356bfe6d1335ddaf14ad31d0ca7516fd43adaa5e0b8a65a672c39845d2"><div class="ttname"><a href="languages_8h.html#ac401b05356bfe6d1335ddaf14ad31d0ca7516fd43adaa5e0b8a65a672c39845d2">Language::US</a></div><div class="ttdeci">@ US</div></div>
-<div class="ttc" id="alanguages_8h_html_ac401b05356bfe6d1335ddaf14ad31d0ca796834e7a2839412d79dbc5f1327594d"><div class="ttname"><a href="languages_8h.html#ac401b05356bfe6d1335ddaf14ad31d0ca796834e7a2839412d79dbc5f1327594d">Language::NL</a></div><div class="ttdeci">@ NL</div></div>
-<div class="ttc" id="alanguages_8h_html_ac401b05356bfe6d1335ddaf14ad31d0ca928568b84963ceb76aaaa2cae9afdbfa"><div class="ttname"><a href="languages_8h.html#ac401b05356bfe6d1335ddaf14ad31d0ca928568b84963ceb76aaaa2cae9afdbfa">Language::CZ</a></div><div class="ttdeci">@ CZ</div></div>
-<div class="ttc" id="alanguages_8h_html_ac401b05356bfe6d1335ddaf14ad31d0ca9b7d173b068dc4d5517bfae92d676437"><div class="ttname"><a href="languages_8h.html#ac401b05356bfe6d1335ddaf14ad31d0ca9b7d173b068dc4d5517bfae92d676437">Language::PL</a></div><div class="ttdeci">@ PL</div></div>
-<div class="ttc" id="alanguages_8h_html_ac401b05356bfe6d1335ddaf14ad31d0caaa85f1840e282d8a8304dbc2c0d7c9b2"><div class="ttname"><a href="languages_8h.html#ac401b05356bfe6d1335ddaf14ad31d0caaa85f1840e282d8a8304dbc2c0d7c9b2">Language::EN</a></div><div class="ttdeci">@ EN</div></div>
-<div class="ttc" id="alanguages_8h_html_ac401b05356bfe6d1335ddaf14ad31d0cac2f3f489a00553e7a01d369c103c7251"><div class="ttname"><a href="languages_8h.html#ac401b05356bfe6d1335ddaf14ad31d0cac2f3f489a00553e7a01d369c103c7251">Language::NO</a></div><div class="ttdeci">@ NO</div></div>
-<div class="ttc" id="alanguages_8h_html_ac401b05356bfe6d1335ddaf14ad31d0cacd32106bcb6de321930cf34574ea388c"><div class="ttname"><a href="languages_8h.html#ac401b05356bfe6d1335ddaf14ad31d0cacd32106bcb6de321930cf34574ea388c">Language::IT</a></div><div class="ttdeci">@ IT</div></div>
-<div class="ttc" id="alanguages_8h_html_ac401b05356bfe6d1335ddaf14ad31d0cad2cb7bbc0d23f34c4255d924076e902f"><div class="ttname"><a href="languages_8h.html#ac401b05356bfe6d1335ddaf14ad31d0cad2cb7bbc0d23f34c4255d924076e902f">Language::IE</a></div><div class="ttdeci">@ IE</div></div>
-<div class="ttc" id="alanguages_8h_html_ac401b05356bfe6d1335ddaf14ad31d0cad3dcf429c679f9af82eb9a3b31c4df44"><div class="ttname"><a href="languages_8h.html#ac401b05356bfe6d1335ddaf14ad31d0cad3dcf429c679f9af82eb9a3b31c4df44">Language::BE</a></div><div class="ttdeci">@ BE</div></div>
-<div class="ttc" id="alanguages_8h_html_ac401b05356bfe6d1335ddaf14ad31d0cadd65ef9a5579d4e518c6d4abbd0cb1c6"><div class="ttname"><a href="languages_8h.html#ac401b05356bfe6d1335ddaf14ad31d0cadd65ef9a5579d4e518c6d4abbd0cb1c6">Language::DK</a></div><div class="ttdeci">@ DK</div></div>
-<div class="ttc" id="alanguages_8h_html_ac401b05356bfe6d1335ddaf14ad31d0caebe021079e5a3c4f42ca6119eab92633"><div class="ttname"><a href="languages_8h.html#ac401b05356bfe6d1335ddaf14ad31d0caebe021079e5a3c4f42ca6119eab92633">Language::TR</a></div><div class="ttdeci">@ TR</div></div>
-<div class="ttc" id="alanguages_8h_html_ac401b05356bfe6d1335ddaf14ad31d0caf003c44deab679aa2edfaff864c77402"><div class="ttname"><a href="languages_8h.html#ac401b05356bfe6d1335ddaf14ad31d0caf003c44deab679aa2edfaff864c77402">Language::SE</a></div><div class="ttdeci">@ SE</div></div>
-<div class="ttc" id="alanguages_8h_html_ac401b05356bfe6d1335ddaf14ad31d0caf0aa03aaca953a9a63b4459663d00134"><div class="ttname"><a href="languages_8h.html#ac401b05356bfe6d1335ddaf14ad31d0caf0aa03aaca953a9a63b4459663d00134">Language::FI</a></div><div class="ttdeci">@ FI</div></div>
-<div class="ttc" id="alanguages_8h_html_ac401b05356bfe6d1335ddaf14ad31d0caf214a7d42e0de5875d55189e01e2e187"><div class="ttname"><a href="languages_8h.html#ac401b05356bfe6d1335ddaf14ad31d0caf214a7d42e0de5875d55189e01e2e187">Language::GR</a></div><div class="ttdeci">@ GR</div></div>
-<div class="ttc" id="alanguages_8h_html_ac401b05356bfe6d1335ddaf14ad31d0caf5b15f58cabad73d1bf2de7bcb89db6c"><div class="ttname"><a href="languages_8h.html#ac401b05356bfe6d1335ddaf14ad31d0caf5b15f58cabad73d1bf2de7bcb89db6c">Language::RO</a></div><div class="ttdeci">@ RO</div></div>
-<div class="ttc" id="alanguages_8h_html_ac401b05356bfe6d1335ddaf14ad31d0caf9308c5d059650ee40cab30bad1e96d0"><div class="ttname"><a href="languages_8h.html#ac401b05356bfe6d1335ddaf14ad31d0caf9308c5d059650ee40cab30bad1e96d0">Language::RU</a></div><div class="ttdeci">@ RU</div></div>
-<div class="ttc" id="alanguages_8h_html_ac401b05356bfe6d1335ddaf14ad31d0cafd4c638da5f85d025963f99fe90b1b1a"><div class="ttname"><a href="languages_8h.html#ac401b05356bfe6d1335ddaf14ad31d0cafd4c638da5f85d025963f99fe90b1b1a">Language::HR</a></div><div class="ttdeci">@ HR</div></div>
-</div><!-- fragment -->
+
 <p>Maps a Language enum value to its corresponding string representation. </p>
 
 </div>
@@ -292,28 +533,11 @@ Variables</h2></td></tr>
 <div class="memproto">
       <table class="memname">
         <tr>
-          <td class="memname">const std::unordered_map&lt;std::string, <a class="el" href="languages_8h.html#ac401b05356bfe6d1335ddaf14ad31d0c">Language</a>&gt; stringToLanguage</td>
+          <td class="memname">const std::unordered_map&lt;std::string, <a class="el" href="languages_8h.html#a15be38758ec16bd1229f53bd53c7084d">Language</a>&gt; stringToLanguage</td>
         </tr>
       </table>
 </div><div class="memdoc">
-<b>Initial value:</b><div class="fragment"><div class="line">{</div>
-<div class="line">    {<span class="stringliteral">&quot;English&quot;</span>, <a class="code hl_enumvalue" href="languages_8h.html#ac401b05356bfe6d1335ddaf14ad31d0caaa85f1840e282d8a8304dbc2c0d7c9b2">Language::EN</a>},    {<span class="stringliteral">&quot;Italian&quot;</span>, <a class="code hl_enumvalue" href="languages_8h.html#ac401b05356bfe6d1335ddaf14ad31d0cacd32106bcb6de321930cf34574ea388c">Language::IT</a>},</div>
-<div class="line">    {<span class="stringliteral">&quot;Spanish&quot;</span>, <a class="code hl_enumvalue" href="languages_8h.html#ac401b05356bfe6d1335ddaf14ad31d0ca04c19fa1e772ab66f0aad2efe61f25cd">Language::ES</a>},    {<span class="stringliteral">&quot;French&quot;</span>, <a class="code hl_enumvalue" href="languages_8h.html#ac401b05356bfe6d1335ddaf14ad31d0ca11aedd0e432747c2bcd97b82808d24a0">Language::FR</a>},</div>
-<div class="line">    {<span class="stringliteral">&quot;German&quot;</span>, <a class="code hl_enumvalue" href="languages_8h.html#ac401b05356bfe6d1335ddaf14ad31d0ca3a52f3c22ed6fcde5bf696a6c02c9e73">Language::DE</a>},     {<span class="stringliteral">&quot;Mexican&quot;</span>, <a class="code hl_enumvalue" href="languages_8h.html#ac401b05356bfe6d1335ddaf14ad31d0ca0b98720dcb2cc6fd60358a45dfbc5b87">Language::MX</a>},</div>
-<div class="line">    {<span class="stringliteral">&quot;Chinese&quot;</span>, <a class="code hl_enumvalue" href="languages_8h.html#ac401b05356bfe6d1335ddaf14ad31d0ca1c2903397d8833382673bab22aa8b937">Language::CN</a>},    {<span class="stringliteral">&quot;Romanian&quot;</span>, <a class="code hl_enumvalue" href="languages_8h.html#ac401b05356bfe6d1335ddaf14ad31d0caf5b15f58cabad73d1bf2de7bcb89db6c">Language::RO</a>},</div>
-<div class="line">    {<span class="stringliteral">&quot;Portuguese&quot;</span>, <a class="code hl_enumvalue" href="languages_8h.html#ac401b05356bfe6d1335ddaf14ad31d0ca35357b9c8fe4d3273d0237ecc8ff2e75">Language::PT</a>}, {<span class="stringliteral">&quot;Dutch&quot;</span>, <a class="code hl_enumvalue" href="languages_8h.html#ac401b05356bfe6d1335ddaf14ad31d0ca796834e7a2839412d79dbc5f1327594d">Language::NL</a>},</div>
-<div class="line">    {<span class="stringliteral">&quot;Swedish&quot;</span>, <a class="code hl_enumvalue" href="languages_8h.html#ac401b05356bfe6d1335ddaf14ad31d0caf003c44deab679aa2edfaff864c77402">Language::SE</a>},    {<span class="stringliteral">&quot;Polish&quot;</span>, <a class="code hl_enumvalue" href="languages_8h.html#ac401b05356bfe6d1335ddaf14ad31d0ca9b7d173b068dc4d5517bfae92d676437">Language::PL</a>},</div>
-<div class="line">    {<span class="stringliteral">&quot;Greek&quot;</span>, <a class="code hl_enumvalue" href="languages_8h.html#ac401b05356bfe6d1335ddaf14ad31d0caf214a7d42e0de5875d55189e01e2e187">Language::GR</a>},      {<span class="stringliteral">&quot;Turkish&quot;</span>, <a class="code hl_enumvalue" href="languages_8h.html#ac401b05356bfe6d1335ddaf14ad31d0caebe021079e5a3c4f42ca6119eab92633">Language::TR</a>},</div>
-<div class="line">    {<span class="stringliteral">&quot;Russian&quot;</span>, <a class="code hl_enumvalue" href="languages_8h.html#ac401b05356bfe6d1335ddaf14ad31d0caf9308c5d059650ee40cab30bad1e96d0">Language::RU</a>},    {<span class="stringliteral">&quot;Arabic&quot;</span>, <a class="code hl_enumvalue" href="languages_8h.html#ac401b05356bfe6d1335ddaf14ad31d0ca5b61a1b298a0d06efa6933a97e68d763">Language::AR</a>},</div>
-<div class="line">    {<span class="stringliteral">&quot;Japanese&quot;</span>, <a class="code hl_enumvalue" href="languages_8h.html#ac401b05356bfe6d1335ddaf14ad31d0ca24d22e03afb23edb45c6c8cfa16a280e">Language::JP</a>},   {<span class="stringliteral">&quot;Brazilian&quot;</span>, <a class="code hl_enumvalue" href="languages_8h.html#ac401b05356bfe6d1335ddaf14ad31d0ca19d3326f3137cbadd21ce901a9bed4a7">Language::BR</a>},</div>
-<div class="line">    {<span class="stringliteral">&quot;Korean&quot;</span>, <a class="code hl_enumvalue" href="languages_8h.html#ac401b05356bfe6d1335ddaf14ad31d0ca38dd815e66dbd0d47a2b876ca442e987">Language::KR</a>},     {<span class="stringliteral">&quot;Belgian&quot;</span>, <a class="code hl_enumvalue" href="languages_8h.html#ac401b05356bfe6d1335ddaf14ad31d0cad3dcf429c679f9af82eb9a3b31c4df44">Language::BE</a>},</div>
-<div class="line">    {<span class="stringliteral">&quot;Swiss&quot;</span>, <a class="code hl_enumvalue" href="languages_8h.html#ac401b05356bfe6d1335ddaf14ad31d0ca1ee0bf89c5d1032317d13a2e022793c8">Language::CH</a>},      {<span class="stringliteral">&quot;Croatian&quot;</span>, <a class="code hl_enumvalue" href="languages_8h.html#ac401b05356bfe6d1335ddaf14ad31d0cafd4c638da5f85d025963f99fe90b1b1a">Language::HR</a>},</div>
-<div class="line">    {<span class="stringliteral">&quot;Danish&quot;</span>, <a class="code hl_enumvalue" href="languages_8h.html#ac401b05356bfe6d1335ddaf14ad31d0cadd65ef9a5579d4e518c6d4abbd0cb1c6">Language::DK</a>},     {<span class="stringliteral">&quot;Finnish&quot;</span>, <a class="code hl_enumvalue" href="languages_8h.html#ac401b05356bfe6d1335ddaf14ad31d0caf0aa03aaca953a9a63b4459663d00134">Language::FI</a>},</div>
-<div class="line">    {<span class="stringliteral">&quot;Irish&quot;</span>, <a class="code hl_enumvalue" href="languages_8h.html#ac401b05356bfe6d1335ddaf14ad31d0cad2cb7bbc0d23f34c4255d924076e902f">Language::IE</a>},      {<span class="stringliteral">&quot;Norwegian&quot;</span>, <a class="code hl_enumvalue" href="languages_8h.html#ac401b05356bfe6d1335ddaf14ad31d0cac2f3f489a00553e7a01d369c103c7251">Language::NO</a>},</div>
-<div class="line">    {<span class="stringliteral">&quot;Slovak&quot;</span>, <a class="code hl_enumvalue" href="languages_8h.html#ac401b05356bfe6d1335ddaf14ad31d0ca13dd621f27110108a10a88e99fe9ceaf">Language::SK</a>},     {<span class="stringliteral">&quot;Czech&quot;</span>, <a class="code hl_enumvalue" href="languages_8h.html#ac401b05356bfe6d1335ddaf14ad31d0ca928568b84963ceb76aaaa2cae9afdbfa">Language::CZ</a>},</div>
-<div class="line">    {<span class="stringliteral">&quot;Hungarian&quot;</span>, <a class="code hl_enumvalue" href="languages_8h.html#ac401b05356bfe6d1335ddaf14ad31d0ca35b5282113b88c2fe23dcbec9f0258c1">Language::HU</a>},  {<span class="stringliteral">&quot;Ukrainian&quot;</span>, <a class="code hl_enumvalue" href="languages_8h.html#ac401b05356bfe6d1335ddaf14ad31d0ca3943d8795e03e8e3307b5b71eac1b669">Language::UA</a>},</div>
-<div class="line">    {<span class="stringliteral">&quot;American&quot;</span>, <a class="code hl_enumvalue" href="languages_8h.html#ac401b05356bfe6d1335ddaf14ad31d0ca7516fd43adaa5e0b8a65a672c39845d2">Language::US</a>}}</div>
-</div><!-- fragment -->
+
 <p>Maps a string representation of a language back to its Language enum value. </p>
 
 </div>

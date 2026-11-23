@@ -1,6 +1,6 @@
 var structContinental_1_1CompetitionRules =
 [
-    [ "base_places", "structContinental_1_1CompetitionRules.html#add48b9634d77be2889bfd11d7f40939e", null ],
+    [ "base_places", "structContinental_1_1CompetitionRules.html#a71895cb5c242160b2236d9f75dc91a7a", null ],
     [ "clubs", "structContinental_1_1CompetitionRules.html#a7962cdae41a96776aa25857c9d00a5fe", null ],
     [ "continent", "structContinental_1_1CompetitionRules.html#a5d5c13aded78a4ad4e8e14a23af1ba8b", null ],
     [ "final_offset", "structContinental_1_1CompetitionRules.html#a37163b23a232700d38ee6d9e18f601da", null ],

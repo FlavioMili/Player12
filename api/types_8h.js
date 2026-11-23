@@ -2,8 +2,13 @@ var types_8h =
 [
     [ "Matchup", "structMatchup.html", "structMatchup" ],
     [ "Vector2F", "structVector2F.html", "structVector2F" ],
-    [ "LeagueID", "types_8h.html#a23de5420c0b18be78144797767703d6f", null ],
+    [ "ConfederationID", "types_8h.html#ac4f70082da2cf98dbf6542fe487a1d85", null ],
+    [ "CountryID", "types_8h.html#a73d8b5bad6abbb62c604493cd543c11f", null ],
+    [ "LanguageID", "types_8h.html#a924253bc70eb9c28b4ace785b9c36668", null ],
+    [ "LeagueID", "types_8h.html#af8e30d7404af99e1b80d12e7e4dd85e6", null ],
+    [ "NationalityID", "types_8h.html#ab387ec6c91c92d70502872e083909142", null ],
     [ "PlayerID", "types_8h.html#a93dcecc4aec7387438b9cabd8a28dfdb", null ],
+    [ "RegionID", "types_8h.html#a01e74457c3802e20fbf8a4d347105fb6", null ],
     [ "TeamID", "types_8h.html#a57143f6ccbdf5a5d9724b986cbdafb31", null ],
     [ "MatchType", "types_8h.html#a06be3d3918a8700cf086896e9f03e885", [
       [ "LEAGUE", "types_8h.html#a06be3d3918a8700cf086896e9f03e885aff502410f9b7dd4769a021b91e8da59a", null ],

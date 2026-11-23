@@ -1,6 +1,6 @@
 var searchData=
 [
-  ['page_0',['Page',['../classMainGameScene.html#a28f2bab0cb4b6dfa5ae9ddb3bd1fecf2',1,'MainGameScene']]],
+  ['page_0',['page',['../structWorldEditorScene_1_1State.html#aaf35c2ebda3a9113ef3a51c585be1723',1,'WorldEditorScene::State::Page'],['../classMainGameScene.html#a28f2bab0cb4b6dfa5ae9ddb3bd1fecf2',1,'MainGameScene::Page']]],
   ['passintent_1',['PassIntent',['../match__engine_8h.html#a3f2bffb7346b7caffae490d09ed55083',1,'match_engine.h']]],
   ['pendingaction_2',['PendingAction',['../classGUIView.html#a5599174075b54d4caad80c213daedad0',1,'GUIView']]],
   ['phase_3',['Phase',['../classSwipeGesture.html#a9b27ffde6f7f20157f35d07523c04b22',1,'SwipeGesture']]],
@@ -11,12 +11,14 @@ var searchData=
   ['playerrole_8',['PlayerRole',['../types_8h.html#ae1e198be4ce1cfce8be42795524c8900',1,'types.h']]],
   ['playerstance_9',['PlayerStance',['../namespaceBuyerNegotiation.html#a61f7b578ea28b9023402df30eddde742',1,'BuyerNegotiation']]],
   ['playmenunext_10',['PlayMenuNext',['../classMatchScene.html#af33fd3094ce5b985266458c22365d18a',1,'MatchScene']]],
-  ['positiongroup_11',['PositionGroup',['../namespacePlayerView.html#a80712f230142c6609fa5cd179ce86df2',1,'PlayerView']]],
-  ['possessionshape_12',['PossessionShape',['../tactics_8h.html#ad1183ccd3091b71fb8c653631ad21023',1,'tactics.h']]],
-  ['preset_13',['Preset',['../namespaceTheme.html#a87a63b4871ae9b9f4ada18b0eb5a68e7',1,'Theme']]],
-  ['priority_14',['Priority',['../classMatchAudio.html#ace3d8e07086012607e3f27213690f6fa',1,'MatchAudio']]],
-  ['projectverdict_15',['ProjectVerdict',['../board_8h.html#a285863978db31facce102177e3882b2e',1,'board.h']]],
-  ['promisestate_16',['PromiseState',['../interactions_8h.html#a1820199837e5b2c023bfa2d89bc9135e',1,'interactions.h']]],
-  ['promisetype_17',['PromiseType',['../interactions_8h.html#a1a3c42b07c765c244383efcadd4442ab',1,'interactions.h']]],
-  ['promisevoidreason_18',['PromiseVoidReason',['../interactions_8h.html#a79a2ca2ecc5f303378fb6bec918261ad',1,'interactions.h']]]
+  ['popup_11',['Popup',['../structWorldEditorScene_1_1State.html#a35ad46c94c6d74ae274cfc3307b3ae50',1,'WorldEditorScene::State']]],
+  ['positiongroup_12',['PositionGroup',['../namespacePlayerView.html#a80712f230142c6609fa5cd179ce86df2',1,'PlayerView']]],
+  ['possessionshape_13',['PossessionShape',['../tactics_8h.html#ad1183ccd3091b71fb8c653631ad21023',1,'tactics.h']]],
+  ['preset_14',['Preset',['../namespaceTheme.html#a87a63b4871ae9b9f4ada18b0eb5a68e7',1,'Theme']]],
+  ['priority_15',['Priority',['../classMatchAudio.html#ace3d8e07086012607e3f27213690f6fa',1,'MatchAudio']]],
+  ['projectverdict_16',['ProjectVerdict',['../board_8h.html#a285863978db31facce102177e3882b2e',1,'board.h']]],
+  ['promisestate_17',['PromiseState',['../interactions_8h.html#a1820199837e5b2c023bfa2d89bc9135e',1,'interactions.h']]],
+  ['promisetype_18',['PromiseType',['../interactions_8h.html#a1a3c42b07c765c244383efcadd4442ab',1,'interactions.h']]],
+  ['promisevoidreason_19',['PromiseVoidReason',['../interactions_8h.html#a79a2ca2ecc5f303378fb6bec918261ad',1,'interactions.h']]],
+  ['purpose_20',['Purpose',['../structWorldEditorScene_1_1State.html#a28871464b69b24d4d6d735a740d44af2',1,'WorldEditorScene::State']]]
 ];

@@ -96,58 +96,39 @@ $(document).ready(function(){initNavTree('md_docs_2contributing_2player-cameo.ht
   <div class="headertitle"><div class="title">Add yourself as a player</div></div>
 </div><!--header-->
 <div class="contents">
-<div class="textblock"><p><a class="anchor" id="autotoc_md150"></a> As an optional thank-you for contributing, you can add your name or nickname to <a class="el" href="md_CONTRIBUTORS.html">CONTRIBUTORS.md</a>, or give a fictional player your name at your favorite existing club. You can choose both forms of credit.</p>
-<p>The game loads hand-made players from <code>assets/user_made_data/players/*.json</code> when it creates a new career. This is the actual folder name in the repository. The rest of each squad is filled with generated players. A cameo changes the starting world; it does not insert a player into an existing save or guarantee that the player will start every match.</p>
-<h1><a class="anchor" id="autotoc_md151"></a>
-1. Choose your club and an unused player ID</h1>
-<p>Find your favorite club in <a href="../../assets/user_made_data/teams">the team data</a>. Its <code>id</code> is your player's <code>team_id</code>. For example, Lecce is team <b>103</b> in the default pack. Use an existing club so that no league or scheduling changes are needed.</p>
-<p>Choose a positive player <code>id</code> below <b>50000</b> that is not already used in <a href="../../assets/user_made_data/players">the player data</a>. Generated players start at 50000. The example uses <b>20001</b>, unused when this guide was written; check again before submitting it. If another contribution takes the same ID, choose another before merging.</p>
-<p>For a quick local search:</p>
-<div class="fragment"><div class="line">rg -n &#39;Lecce&#39; assets/user_made_data/teams</div>
-<div class="line">rg -n &#39;&quot;id&quot;\s*:\s*20001\b&#39; assets/user_made_data/players</div>
-</div><!-- fragment --><h1><a class="anchor" id="autotoc_md152"></a>
-2. Create a player file</h1>
-<p>Create <code>assets/user_made_data/players/your-handle.json</code>. Use lowercase words and hyphens for the filename. Each file contains a JSON <b>array</b>, even if you add only one player. Replace the example names with your own chosen name or nickname, change <code>team_id</code> to your club, and check the ID is free.</p>
-<div class="fragment"><div class="line">[</div>
-<div class="line">  {</div>
-<div class="line">    &quot;id&quot;: 20001,</div>
-<div class="line">    &quot;team_id&quot;: 103,</div>
-<div class="line">    &quot;first_name&quot;: &quot;Alex&quot;,</div>
-<div class="line">    &quot;last_name&quot;: &quot;Contributor&quot;,</div>
-<div class="line">    &quot;age&quot;: 22,</div>
-<div class="line">    &quot;nationality&quot;: &quot;Italian&quot;,</div>
-<div class="line">    &quot;role&quot;: &quot;CM&quot;,</div>
-<div class="line">    &quot;height&quot;: 180,</div>
-<div class="line">    &quot;preferred_foot&quot;: &quot;Right&quot;,</div>
-<div class="line">    &quot;contract_years&quot;: 3,</div>
-<div class="line">    &quot;wage&quot;: 2500,</div>
-<div class="line">    &quot;stats&quot;: {</div>
-<div class="line">      &quot;Pace&quot;: 65,</div>
-<div class="line">      &quot;Shooting&quot;: 55,</div>
-<div class="line">      &quot;Passing&quot;: 68,</div>
-<div class="line">      &quot;Dribbling&quot;: 62,</div>
-<div class="line">      &quot;Defending&quot;: 58,</div>
-<div class="line">      &quot;Physicality&quot;: 60,</div>
-<div class="line">      &quot;Stamina&quot;: 70,</div>
-<div class="line">      &quot;Vision&quot;: 66,</div>
-<div class="line">      &quot;Goalkeeping&quot;: 10</div>
-<div class="line">    }</div>
-<div class="line">  }</div>
-<div class="line">]</div>
-</div><!-- fragment --><p><code>role</code> accepts <code>GK</code>, <code>CB</code>, <code>LB</code>, <code>RB</code>, <code>CDM</code>, <code>CM</code>, <code>CAM</code>, <code>LM</code>, <code>RM</code>, <code>LW</code>, <code>RW</code> and <code>ST</code>. Height is in centimetres and wage is weekly. Use <code>Left</code> or <code>Right</code> for the preferred foot. Nationality is a demonym, such as <code>Italian</code>, <code>English</code> or <code>French</code>; supported values are in <a href="../../src/global/languages.h">languages.h</a>.</p>
-<p>Attributes use the names in <a href="../../assets/config/stats_config.json">stats_config.json</a> and values from 1 to 100. Keep attributes and wages plausible for the club; a cameo should fit the squad's level. The example's age, height and nationality describe the fictional player, so they do not need to be your personal details.</p>
-<h1><a class="anchor" id="autotoc_md153"></a>
+<div class="textblock"><p><a class="anchor" id="autotoc_md156"></a> As an optional thank-you for contributing, you can add your name or nickname to <a class="el" href="md_CONTRIBUTORS.html">CONTRIBUTORS.md</a>, or give a fictional player your name at your favorite existing club. You can choose both forms of credit.</p>
+<p>The game's built-in world is one file, <a href="../../assets/world/default.fmdb"><code>assets/world/default.fmdb</code></a>. Its <code>players</code> section holds the hand-made players; the rest of each squad is generated when a new career starts. A cameo changes the starting world; it does not insert a player into an existing save or guarantee that the player will start every match.</p>
+<h1><a class="anchor" id="autotoc_md157"></a>
+1. Add the player in the World editor</h1>
+<ol type="1">
+<li>Run a development build from your checkout (see <a class="el" href="md_docs_2development_2builds.html">builds</a>).</li>
+<li><b>Main menu → <a class="el" href="namespaceWorld.html">World</a> editor</b>. The built-in world opens.</li>
+<li>Open <b>Clubs</b>, select your favorite club, then <b>Players → Add</b>. The new player already belongs to the selected club.</li>
+<li>Fill in the name you want to be credited with, position, age, nationality and attributes. Keep attributes and wage plausible for the club's level; age, height and nationality describe the fictional player, not you.</li>
+<li><b>Export…</b> and save over <code>assets/world/default.fmdb</code> in your checkout.</li>
+</ol>
+<p>The editor writes the file deterministically, one entity per line, so your pull request shows a single added line in the <code>players</code> section.</p>
+<h1><a class="anchor" id="autotoc_md158"></a>
+2. Or add one line by hand</h1>
+<p>Add one line to the <code>players</code> array of <code>assets/world/default.fmdb</code>, keeping the array sorted by <code>id</code>:</p>
+<div class="fragment"><div class="line">{&quot;age&quot;:22,&quot;contract_years&quot;:3,&quot;first_name&quot;:&quot;Alex&quot;,&quot;height&quot;:180,&quot;id&quot;:20001,&quot;last_name&quot;:&quot;Contributor&quot;,&quot;nationality&quot;:&quot;Italian&quot;,&quot;preferred_foot&quot;:&quot;Right&quot;,&quot;role&quot;:&quot;CM&quot;,&quot;stats&quot;:{&quot;Defending&quot;:58,&quot;Dribbling&quot;:62,&quot;Goalkeeping&quot;:10,&quot;Pace&quot;:65,&quot;Passing&quot;:68,&quot;Physicality&quot;:60,&quot;Shooting&quot;:55,&quot;Stamina&quot;:70,&quot;Vision&quot;:66},&quot;team_id&quot;:103,&quot;wage&quot;:2500},</div>
+</div><!-- fragment --><ul>
+<li><code>team_id</code> is your club's <code>id</code> in the <code>clubs</code> section (Lecce is <b>103</b>).</li>
+<li><code>id</code> must be unused in the <code>players</code> section; use a number below 50000.</li>
+<li><code>role</code> is one of <code>GK</code>, <code>CB</code>, <code>LB</code>, <code>RB</code>, <code>CDM</code>, <code>CM</code>, <code>CAM</code>, <code>LM</code>, <code>RM</code>, <code>LW</code>, <code>RW</code>, <code>ST</code>; <code>preferred_foot</code> is <code>Left</code>, <code>Right</code> or <code>Both</code>; <code>nationality</code> is a demonym such as <code>Italian</code> (see <a href="../../src/global/languages.h">languages.h</a>).</li>
+<li>Attributes are the nine names in <a href="../../assets/config/stats_config.json">stats_config.json</a>, 1 to 100.</li>
+</ul>
+<p>Opening and saving the file in the <a class="el" href="namespaceWorld.html">World</a> editor once normalises the formatting and reports any mistake with the player's name and field.</p>
+<h1><a class="anchor" id="autotoc_md159"></a>
 3. Check it in a new career</h1>
-<p>Check the JSON syntax from the repository root:</p>
-<div class="fragment"><div class="line">python3 -m json.tool assets/user_made_data/players/your-handle.json &gt; /dev/null</div>
-</div><!-- fragment --><p>Then start a development build with an isolated save/settings directory:</p>
+<p>Start a development build with an isolated save/settings directory:</p>
 <div class="fragment"><div class="line">FM_RUNTIME_ROOT=/tmp/fm-player-cameo FM_WORLD_SEED=424242 \</div>
 <div class="line">  ./build/release/src/Player12</div>
-</div><!-- fragment --><p>Create a <b>new career</b>, choose your club, open its squad and find your player. Use the executable path from your own build if you used another preset or followed the <a class="el" href="md_docs_2user_2installation.html">macOS/Windows setup</a>. On PowerShell, set environment variables with <code>$env:FM_RUNTIME_ROOT</code> and <code>$env:FM_WORLD_SEED</code> before launching the executable.</p>
-<h1><a class="anchor" id="autotoc_md154"></a>
+</div><!-- fragment --><p>Create a <b>new career</b> with the default world, choose your club, open its squad and find your player. Use the executable path from your own build if you used another preset or followed the <a class="el" href="md_docs_2user_2installation.html">macOS/Windows setup</a>. On PowerShell, set environment variables with <code>$env:FM_RUNTIME_ROOT</code> and <code>$env:FM_WORLD_SEED</code> before launching the executable.</p>
+<h1><a class="anchor" id="autotoc_md160"></a>
 4. Include it in your contribution</h1>
-<p>Add the JSON file to your pull request and state the chosen club, player ID and how you checked the new career. You can also add your name to <a class="el" href="md_CONTRIBUTORS.html">CONTRIBUTORS.md</a>. Use your own name or nickname that you want publicly credited. The default pack keeps professional players, real club badges and copied kits out of its content.</p>
-<p>If you prefer credits only, editing <a class="el" href="CONTRIBUTORS_8md.html">CONTRIBUTORS.md</a> is enough. For all fields and the wider world format, see the data reference. </p>
+<p>Include the changed <code>assets/world/default.fmdb</code> in your pull request and state the chosen club, player ID and how you checked the new career. You can also add your name to <a class="el" href="md_CONTRIBUTORS.html">CONTRIBUTORS.md</a>. Use your own name or nickname that you want publicly credited. The built-in world keeps professional players, real club badges and copied kits out of its content.</p>
+<p>If you prefer credits only, editing <a class="el" href="CONTRIBUTORS_8md.html">CONTRIBUTORS.md</a> is enough. For all fields and the wider world format, see the world database reference. </p>
 </div></div><!-- contents -->
 </div><!-- PageDoc -->
 </div><!-- doc-content -->

@@ -1,5 +1,9 @@
 var dir_cc657b4ce13702a9d007a200bde234e1 =
 [
+    [ "editor_form.cpp", "editor__form_8cpp.html", "editor__form_8cpp" ],
+    [ "editor_form.h", "editor__form_8h.html", "editor__form_8h" ],
+    [ "file_dialog.cpp", "file__dialog_8cpp.html", "file__dialog_8cpp" ],
+    [ "file_dialog.h", "file__dialog_8h.html", "file__dialog_8h" ],
     [ "format.cpp", "format_8cpp.html", "format_8cpp" ],
     [ "format.h", "format_8h.html", "format_8h" ],
     [ "icons.cpp", "icons_8cpp.html", "icons_8cpp" ],

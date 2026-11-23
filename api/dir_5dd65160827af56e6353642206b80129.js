@@ -49,6 +49,7 @@ var dir_5dd65160827af56e6353642206b80129 =
     [ "interactions.h", "interactions_8h.html", "interactions_8h" ],
     [ "league.cpp", "league_8cpp.html", null ],
     [ "league.h", "league_8h.html", "league_8h" ],
+    [ "league_profiles.cpp", "league__profiles_8cpp.html", "league__profiles_8cpp" ],
     [ "lineup.cpp", "lineup_8cpp.html", null ],
     [ "lineup.h", "lineup_8h.html", "lineup_8h" ],
     [ "loan_negotiation.cpp", "loan__negotiation_8cpp.html", "loan__negotiation_8cpp" ],

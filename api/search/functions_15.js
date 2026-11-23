@@ -1,7 +1,7 @@
 var searchData=
 [
   ['valid_0',['valid',['../structLab_1_1Estimate.html#ac823801a2651c11ef509f30663c09b80',1,'Lab::Estimate']]],
-  ['validate_1',['validate',['../namespaceEditorValidation.html#a93cca6fcc4188cc2fe249ebcd643a1be',1,'EditorValidation']]],
+  ['validate_1',['validate',['../namespaceEditorValidation.html#a93cca6fcc4188cc2fe249ebcd643a1be',1,'EditorValidation::validate()'],['../namespaceWorld.html#a3a8d7b32f5374a87c31334f9ad690e0a',1,'World::validate()']]],
   ['validatesquad_2',['validateSquad',['../classNationalTeams.html#ac5151ff4fd413e2043fadbbaa04c7d30',1,'NationalTeams']]],
   ['value_3',['value',['../classAudio_1_1Drift.html#a8c3f486d6ead0126d535ef70c2e0d1e3',1,'Audio::Drift']]],
   ['valuefor_4',['valueFor',['../classPlayer.html#a8cf9a2b5a4234117cb7b24fb19ae3d31',1,'Player']]],

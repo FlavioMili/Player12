@@ -19,7 +19,8 @@ var world__tuning_8h =
       [ "NorthAmerica", "world__tuning_8h.html#a8560013a7458ec91f3eb2cf7a33b4630aa08bc1dbff586af0853c290bce4a0f2e", null ],
       [ "SouthAmerica", "world__tuning_8h.html#a8560013a7458ec91f3eb2cf7a33b4630a4b650bba4aa00ba3c0fc1286a41d8e08", null ]
     ] ],
-    [ "leagueProfile", "world__tuning_8h.html#aa3108c5dc04297b7c187a5562d2add99", null ],
-    [ "DEFAULT_LEAGUE_PROFILE", "world__tuning_8h.html#a709e1fa4808474408d28f31c757f32d6", null ],
-    [ "LEAGUE_PROFILES", "world__tuning_8h.html#ac52dc86ca55678961577d7beccfcdd45", null ]
+    [ "installLeagueProfiles", "world__tuning_8h.html#a4956902b9ba2aae9310c1dcc8fa643b0", null ],
+    [ "leagueProfile", "world__tuning_8h.html#a22dc880313fc115f2a4d280b2c300843", null ],
+    [ "leagueProfiles", "world__tuning_8h.html#a36a3c23775642cffe531c10086a9a79b", null ],
+    [ "DEFAULT_LEAGUE_PROFILE", "world__tuning_8h.html#a709e1fa4808474408d28f31c757f32d6", null ]
 ];

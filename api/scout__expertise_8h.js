@@ -10,6 +10,7 @@ var scout__expertise_8h =
       [ "NorthAmerica", "scout__expertise_8h.html#ae899de94bea7aa21847790f7bd2e76f4aa08bc1dbff586af0853c290bce4a0f2e", null ],
       [ "SouthAmerica", "scout__expertise_8h.html#ae899de94bea7aa21847790f7bd2e76f4a4b650bba4aa00ba3c0fc1286a41d8e08", null ],
       [ "Asia", "scout__expertise_8h.html#ae899de94bea7aa21847790f7bd2e76f4a154a67340e8c14dd5253dc4ff6120197", null ],
+      [ "Africa", "scout__expertise_8h.html#ae899de94bea7aa21847790f7bd2e76f4af5cd262901883dff68d06b215fb0f28e", null ],
       [ "COUNT", "scout__expertise_8h.html#ae899de94bea7aa21847790f7bd2e76f4a4905ac9d6a22bdfc1ae096094ce6248d", null ]
     ] ],
     [ "EffectFactorKind", "scout__expertise_8h.html#a063005e1d2934925bedea0ac7fa84ec6", [

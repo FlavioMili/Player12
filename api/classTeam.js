@@ -1,6 +1,6 @@
 var classTeam =
 [
-    [ "Team", "classTeam.html#ad1ede6646cfcfbd6efdd069893918e86", null ],
+    [ "Team", "classTeam.html#a4a3fad7f3361650d11e1e8e56b374264", null ],
     [ "addAcademyID", "classTeam.html#a04bb38fd17e5c9575f4681c2183d7452", null ],
     [ "addPlayerID", "classTeam.html#a1264ed81efce4e6db89cf289d4fd604c", null ],
     [ "generateStartingXI", "classTeam.html#ae9ee205f5d01e7734e23a2815baf4b61", null ],
@@ -8,7 +8,7 @@ var classTeam =
     [ "getFinances", "classTeam.html#a2f0a03795fb969af345005e6316d1040", null ],
     [ "getFinances", "classTeam.html#a2fce34a4f9a85482dba19294903aac37", null ],
     [ "getId", "classTeam.html#ae42795518c929d8b5afaf94a90d9b5d4", null ],
-    [ "getLeagueId", "classTeam.html#af91fb8a1aaed180245ccd07fe7932a8d", null ],
+    [ "getLeagueId", "classTeam.html#a8f2d2328077fbf9bc5c7b8d13bbdb9a5", null ],
     [ "getLineup", "classTeam.html#ac8dd234be85d4335cfb5003ebfe3b8cc", null ],
     [ "getLineup", "classTeam.html#aeec06a081ef83b9684acdecd95bb0b4e", null ],
     [ "getName", "classTeam.html#a491cc48cda0cfaca9ef65059a52ef54a", null ],

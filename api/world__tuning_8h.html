@@ -106,6 +106,8 @@ $(document).ready(function(){initNavTree('world__tuning_8h.html',''); initResiza
 <a href="#details">More...</a></p>
 <div class="textblock"><code>#include &lt;array&gt;</code><br />
 <code>#include &lt;cstdint&gt;</code><br />
+<code>#include &lt;span&gt;</code><br />
+<code>#include &lt;vector&gt;</code><br />
 <code>#include &quot;<a class="el" href="languages_8h_source.html">global/languages.h</a>&quot;</code><br />
 <code>#include &quot;<a class="el" href="types_8h_source.html">global/types.h</a>&quot;</code><br />
 </div>
@@ -155,13 +157,15 @@ Enumerations</h2></td></tr>
 </table><table class="memberdecls">
 <tr class="heading"><td colspan="2"><h2 class="groupheader"><a id="func-members" name="func-members"></a>
 Functions</h2></td></tr>
-<tr class="memitem:aa3108c5dc04297b7c187a5562d2add99" id="r_aa3108c5dc04297b7c187a5562d2add99"><td class="memItemLeft" align="right" valign="top">constexpr const <a class="el" href="structLeagueProfile.html">LeagueProfile</a> &amp;&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="world__tuning_8h.html#aa3108c5dc04297b7c187a5562d2add99">leagueProfile</a> (<a class="el" href="types_8h.html#a23de5420c0b18be78144797767703d6f">LeagueID</a> league_id)</td></tr>
-<tr class="separator:aa3108c5dc04297b7c187a5562d2add99"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a22dc880313fc115f2a4d280b2c300843" id="r_a22dc880313fc115f2a4d280b2c300843"><td class="memItemLeft" align="right" valign="top">const <a class="el" href="structLeagueProfile.html">LeagueProfile</a> &amp;&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="world__tuning_8h.html#a22dc880313fc115f2a4d280b2c300843">leagueProfile</a> (<a class="el" href="types_8h.html#af8e30d7404af99e1b80d12e7e4dd85e6">LeagueID</a> league_id)</td></tr>
+<tr class="separator:a22dc880313fc115f2a4d280b2c300843"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a36a3c23775642cffe531c10086a9a79b" id="r_a36a3c23775642cffe531c10086a9a79b"><td class="memItemLeft" align="right" valign="top">std::span&lt; const <a class="el" href="structLeagueProfile.html">LeagueProfile</a> &gt;&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="world__tuning_8h.html#a36a3c23775642cffe531c10086a9a79b">leagueProfiles</a> ()</td></tr>
+<tr class="separator:a36a3c23775642cffe531c10086a9a79b"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a4956902b9ba2aae9310c1dcc8fa643b0" id="r_a4956902b9ba2aae9310c1dcc8fa643b0"><td class="memItemLeft" align="right" valign="top">void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="world__tuning_8h.html#a4956902b9ba2aae9310c1dcc8fa643b0">installLeagueProfiles</a> (std::vector&lt; <a class="el" href="structLeagueProfile.html">LeagueProfile</a> &gt; profiles)</td></tr>
+<tr class="separator:a4956902b9ba2aae9310c1dcc8fa643b0"><td class="memSeparator" colspan="2">&#160;</td></tr>
 </table><table class="memberdecls">
 <tr class="heading"><td colspan="2"><h2 class="groupheader"><a id="var-members" name="var-members"></a>
 Variables</h2></td></tr>
-<tr class="memitem:ac52dc86ca55678961577d7beccfcdd45" id="r_ac52dc86ca55678961577d7beccfcdd45"><td class="memItemLeft" align="right" valign="top">constexpr std::array&lt; <a class="el" href="structLeagueProfile.html">LeagueProfile</a>, 22 &gt;&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="world__tuning_8h.html#ac52dc86ca55678961577d7beccfcdd45">LEAGUE_PROFILES</a></td></tr>
-<tr class="separator:ac52dc86ca55678961577d7beccfcdd45"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a709e1fa4808474408d28f31c757f32d6" id="r_a709e1fa4808474408d28f31c757f32d6"><td class="memItemLeft" align="right" valign="top">constexpr <a class="el" href="structLeagueProfile.html">LeagueProfile</a>&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="world__tuning_8h.html#a709e1fa4808474408d28f31c757f32d6">DEFAULT_LEAGUE_PROFILE</a></td></tr>
 <tr class="separator:a709e1fa4808474408d28f31c757f32d6"><td class="memSeparator" colspan="2">&#160;</td></tr>
 </table>
@@ -200,30 +204,59 @@ Variables</h2></td></tr>
 </div>
 </div>
 <h2 class="groupheader">Function Documentation</h2>
-<a id="aa3108c5dc04297b7c187a5562d2add99" name="aa3108c5dc04297b7c187a5562d2add99"></a>
-<h2 class="memtitle"><span class="permalink"><a href="#aa3108c5dc04297b7c187a5562d2add99">&#9670;&#160;</a></span>leagueProfile()</h2>
+<a id="a4956902b9ba2aae9310c1dcc8fa643b0" name="a4956902b9ba2aae9310c1dcc8fa643b0"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a4956902b9ba2aae9310c1dcc8fa643b0">&#9670;&#160;</a></span>installLeagueProfiles()</h2>
 
 <div class="memitem">
 <div class="memproto">
-<table class="mlabels">
-  <tr>
-  <td class="mlabels-left">
       <table class="memname">
         <tr>
-          <td class="memname">constexpr const <a class="el" href="structLeagueProfile.html">LeagueProfile</a> &amp; leagueProfile </td>
+          <td class="memname">void installLeagueProfiles </td>
           <td>(</td>
-          <td class="paramtype"><a class="el" href="types_8h.html#a23de5420c0b18be78144797767703d6f">LeagueID</a>&#160;</td>
+          <td class="paramtype">std::vector&lt; <a class="el" href="structLeagueProfile.html">LeagueProfile</a> &gt;&#160;</td>
+          <td class="paramname"><em>profiles</em></td><td>)</td>
+          <td></td>
+        </tr>
+      </table>
+</div><div class="memdoc">
+<p>Replaces the profiles (<a class="el" href="namespaceWorld.html#aec37918a75be4bde73cf849e6bdfe6b1">World::install</a> does this for each world). </p>
+
+</div>
+</div>
+<a id="a22dc880313fc115f2a4d280b2c300843" name="a22dc880313fc115f2a4d280b2c300843"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a22dc880313fc115f2a4d280b2c300843">&#9670;&#160;</a></span>leagueProfile()</h2>
+
+<div class="memitem">
+<div class="memproto">
+      <table class="memname">
+        <tr>
+          <td class="memname">const <a class="el" href="structLeagueProfile.html">LeagueProfile</a> &amp; leagueProfile </td>
+          <td>(</td>
+          <td class="paramtype"><a class="el" href="types_8h.html#af8e30d7404af99e1b80d12e7e4dd85e6">LeagueID</a>&#160;</td>
           <td class="paramname"><em>league_id</em></td><td>)</td>
           <td></td>
         </tr>
       </table>
-  </td>
-  <td class="mlabels-right">
-<span class="mlabels"><span class="mlabel">constexpr</span></span>  </td>
-  </tr>
-</table>
 </div><div class="memdoc">
-<p>Returns the profile of <code>league_id</code> or the default profile. </p>
+<p>Profile of <code>league_id</code> in the installed world, or the default profile. References stay valid for the whole process. </p>
+
+</div>
+</div>
+<a id="a36a3c23775642cffe531c10086a9a79b" name="a36a3c23775642cffe531c10086a9a79b"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a36a3c23775642cffe531c10086a9a79b">&#9670;&#160;</a></span>leagueProfiles()</h2>
+
+<div class="memitem">
+<div class="memproto">
+      <table class="memname">
+        <tr>
+          <td class="memname">std::span&lt; const <a class="el" href="structLeagueProfile.html">LeagueProfile</a> &gt; leagueProfiles </td>
+          <td>(</td>
+          <td class="paramname"></td><td>)</td>
+          <td></td>
+        </tr>
+      </table>
+</div><div class="memdoc">
+<p>Every league profile of the installed world. </p>
 
 </div>
 </div>
@@ -252,39 +285,13 @@ Variables</h2></td></tr>
 <div class="line">    10e6f,   0.25f,</div>
 <div class="line">    0.00f,   0.20f,</div>
 <div class="line">    0.55f,   0.80f,</div>
-<div class="line">    8000.0f, <a class="code hl_enumvalue" href="languages_8h.html#ac401b05356bfe6d1335ddaf14ad31d0caaa85f1840e282d8a8304dbc2c0d7c9b2">Language::EN</a>,</div>
+<div class="line">    8000.0f, <a class="code hl_enumvalue" href="languages_8h.html#a15be38758ec16bd1229f53bd53c7084daaa85f1840e282d8a8304dbc2c0d7c9b2">Language::EN</a>,</div>
 <div class="line">    0.80f,   <a class="code hl_enumvalue" href="world__tuning_8h.html#a8560013a7458ec91f3eb2cf7a33b4630a912d59cdf1d3f551fae21f6f0062258f">WorldRegion::Europe</a>,</div>
 <div class="line">    0.80f,   {4.0f, 0, 0.0f, 0.0f},</div>
 <div class="line">    0.50f,   {2.80f, 4.30f, 0.30f, 14.0f}}</div>
-<div class="ttc" id="alanguages_8h_html_ac401b05356bfe6d1335ddaf14ad31d0caaa85f1840e282d8a8304dbc2c0d7c9b2"><div class="ttname"><a href="languages_8h.html#ac401b05356bfe6d1335ddaf14ad31d0caaa85f1840e282d8a8304dbc2c0d7c9b2">Language::EN</a></div><div class="ttdeci">@ EN</div></div>
+<div class="ttc" id="alanguages_8h_html_a15be38758ec16bd1229f53bd53c7084daaa85f1840e282d8a8304dbc2c0d7c9b2"><div class="ttname"><a href="languages_8h.html#a15be38758ec16bd1229f53bd53c7084daaa85f1840e282d8a8304dbc2c0d7c9b2">Language::EN</a></div><div class="ttdeci">@ EN</div></div>
 <div class="ttc" id="aworld__tuning_8h_html_a8560013a7458ec91f3eb2cf7a33b4630a912d59cdf1d3f551fae21f6f0062258f"><div class="ttname"><a href="world__tuning_8h.html#a8560013a7458ec91f3eb2cf7a33b4630a912d59cdf1d3f551fae21f6f0062258f">WorldRegion::Europe</a></div><div class="ttdeci">@ Europe</div></div>
-</div><!-- fragment --><p>Profile used for leagues that are not listed above. [P] </p>
-
-</div>
-</div>
-<a id="ac52dc86ca55678961577d7beccfcdd45" name="ac52dc86ca55678961577d7beccfcdd45"></a>
-<h2 class="memtitle"><span class="permalink"><a href="#ac52dc86ca55678961577d7beccfcdd45">&#9670;&#160;</a></span>LEAGUE_PROFILES</h2>
-
-<div class="memitem">
-<div class="memproto">
-<table class="mlabels">
-  <tr>
-  <td class="mlabels-left">
-      <table class="memname">
-        <tr>
-          <td class="memname">constexpr std::array&lt;<a class="el" href="structLeagueProfile.html">LeagueProfile</a>, 22&gt; LEAGUE_PROFILES</td>
-        </tr>
-      </table>
-  </td>
-  <td class="mlabels-right">
-<span class="mlabels"><span class="mlabel">inline</span><span class="mlabel">constexpr</span></span>  </td>
-  </tr>
-</table>
-</div><div class="memdoc">
-<p><a class="el" href="classLeague.html" title="Represents a football league containing teams and a leaderboard.">League</a> profiles keyed by the ids in assets/user_made_data/leagues.</p>
-<p>Revenue, mix and wage ratios of the top five use ECFIL 2025 (FY2024) [S] with France after its 2024-25 TV collapse (wages ~80%); Brazil, Russia and the USA use national reports (R$545m, EUR 61m, ~US$65-80m per club) [S/P]. Second tiers: Championship ~EUR 46m with wages above 90% of revenue, a healthy 2. Bundesliga (~EUR 50m, wages ~40%), Serie B EUR 24m at 82% [S]; the rest are [P] estimates. Crowds and stadium fill follow the 2024-25 league averages (England and Germany sell out, Russia fills 34%, Liga de Expansion under 20%) [S]. Domestic shares follow CIES expatriate shares (England, Italy and MLS ~40% domestic, Brazil and Argentina ~90%); second tiers are assumed to have about half the expatriates [S/P].</p>
-<p>Shapes are fitted to the 20-slot points curves; coach changes per club-season follow LMA/CIES counts (MLS 0.35 ... Serie B and Brazil 0.9-1.0) [S/P]; match styles are football-data 2022-26 averages (Brazil, Argentina, Mexico, the USA and Russia partly [P]). [S: realism-research-2 1, 3.4, 5, 7]</p>
-<p>Every league needs a row: second divisions share their country's nationality and region and sit about 20-30 reputation points below the top division, with no continental income. </p>
+</div><!-- fragment --><p><a class="el" href="classLeague.html" title="Represents a football league containing teams and a leaderboard.">League</a> profiles are world data: the "profile" object of every league of the installed world database (assets/world/default.fmdb for the built-in world, where the sources of the built-in values are noted). Values a world leaves out are synthesised from the league's country and division (see <a class="el" href="namespaceWorld.html#a856e5c689fc8ab7265eb660b7b9085ef">World::buildProfiles</a>). Base of synthesised profiles and the profile of unknown leagues. [P] </p>
 
 </div>
 </div>

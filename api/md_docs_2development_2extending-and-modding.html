@@ -96,27 +96,29 @@ $(document).ready(function(){initNavTree('md_docs_2development_2extending-and-mo
   <div class="headertitle"><div class="title">Extending and modding</div></div>
 </div><!--header-->
 <div class="contents">
-<div class="textblock"><p><a class="anchor" id="autotoc_md43"></a> The game currently supports JSON world/attribute/language data and C++ changes to simulation behavior. It has no script/plugin loader, installable pack manifest, dependency resolver or runtime JSON loader for <code><a class="el" href="structMatchTuning.html">MatchTuning</a></code>. The larger pack system in the Spec Kitty contracts is a proposal; see <a class="el" href="md_docs_2development_2design-notes.html">design history</a>.</p>
+<div class="textblock"><p><a class="anchor" id="autotoc_md43"></a> <a class="el" href="namespaceWorld.html">World</a> content (countries, competitions, clubs, players, kits, league economies and name pools) is data: a world database (<code>.fmdb</code>) built in the game's <a class="el" href="md_docs_2user_2world-editor.html">World editor</a> and described in the format reference. Players share worlds as files; the game imports them by file picker or drag and drop and never downloads anything. Attribute names, rating weights and translations are JSON assets; simulation behaviour is C++. There is no script or plugin loader and no runtime JSON loader for <code><a class="el" href="structMatchTuning.html">MatchTuning</a></code>.</p>
 <h1><a class="anchor" id="autotoc_md44"></a>
 Edit data without rebuilding</h1>
 <table class="markdownTable">
 <tr class="markdownTableHead">
 <th class="markdownTableHeadNone">Data   </th><th class="markdownTableHeadNone">Entry point   </th><th class="markdownTableHeadNone">Effect and limits    </th></tr>
 <tr class="markdownTableRowOdd">
-<td class="markdownTableBodyNone">Leagues, clubs, optional players, name pools   </td><td class="markdownTableBodyNone"><code>assets/user_made_data/</code>   </td><td class="markdownTableBodyNone">Initial world generation; league economy/match profiles also require C++ entries    </td></tr>
+<td class="markdownTableBodyNone">Countries, cities, travel, leagues and their economy/match profiles, clubs, players, name pools   </td><td class="markdownTableBodyNone"><a class="el" href="namespaceWorld.html">World</a> editor, or a <code>.fmdb</code> file (reference)   </td><td class="markdownTableBodyNone">New careers only; each save keeps the world it was created from. Unknown keys are preserved for mods. Travel and population have no gameplay effect yet    </td></tr>
 <tr class="markdownTableRowEven">
-<td class="markdownTableBodyNone">Attribute names and overall-rating weights   </td><td class="markdownTableBodyNone"><code>assets/config/stats_config.json</code>   </td><td class="markdownTableBodyNone">Generation and role-based overall ratings; new names do not automatically create AI behavior    </td></tr>
+<td class="markdownTableBodyNone">The built-in world   </td><td class="markdownTableBodyNone"><code>assets/world/default.fmdb</code>   </td><td class="markdownTableBodyNone">Same format; edit it in the <a class="el" href="namespaceWorld.html">World</a> editor and <b>Export…</b> over the file    </td></tr>
 <tr class="markdownTableRowOdd">
+<td class="markdownTableBodyNone">Attribute names and overall-rating weights   </td><td class="markdownTableBodyNone"><code>assets/config/stats_config.json</code>   </td><td class="markdownTableBodyNone">Generation and role-based overall ratings; new names do not automatically create AI behavior    </td></tr>
+<tr class="markdownTableRowEven">
 <td class="markdownTableBodyNone">Translations   </td><td class="markdownTableBodyNone"><code>assets/lang/</code>   </td><td class="markdownTableBodyNone">Display text for existing keys; not a way to define a new tactical role   </td></tr>
 </table>
-<p>The world data reference is the field reference for the actual loader. Keep entity IDs unique and references valid. Team/player folders accept multiple <code>.json</code> array files, but there is no defined override/merge protocol for duplicate IDs. Do not rely on filesystem iteration order to replace another file's records.</p>
-<p>To experiment with a complete asset copy, run from the repository root:</p>
+<p>Worlds combine: the editor renumbers the ids of a world loaded into another, merges identical entities and asks the player to resolve entities defined differently (see the reference). Nationalities are the game's 159 built-in demonyms; a fantasy country chooses the closest one.</p>
+<p>To test the game against a complete copy of the assets (for example a changed <code>stats_config.json</code>), run from the repository root:</p>
 <div class="fragment"><div class="line">mkdir -p /tmp/fm-custom-data</div>
 <div class="line">cp -R assets /tmp/fm-custom-data/</div>
-<div class="line"># Edit /tmp/fm-custom-data/assets/user_made_data/... or assets/config/...</div>
+<div class="line"># Edit /tmp/fm-custom-data/assets/...</div>
 <div class="line">FM_ASSET_ROOT=/tmp/fm-custom-data FM_RUNTIME_ROOT=/tmp/fm-custom-career \</div>
 <div class="line">  FM_WORLD_SEED=424242 ./build/src/Player12</div>
-</div><!-- fragment --><p><code>FM_ASSET_ROOT</code> is the directory <b>containing <code>assets/</code></b>, not <code>assets/</code> itself. It is resolved once per process. Copy all required assets; the override is not an overlay that fills missing files from the default pack. <code>FM_RUNTIME_ROOT</code> isolates test saves/settings from your normal career. Create a new career to see generated world/player changes. Club identity decorations are read from assets rather than persisted in saves, so they can affect an existing career; this is not a version-pinned content system.</p>
+</div><!-- fragment --><p><code>FM_ASSET_ROOT</code> is the directory <b>containing <code>assets/</code></b>, not <code>assets/</code> itself. It is resolved once per process and is not an overlay: copy all assets. <code>FM_RUNTIME_ROOT</code> isolates test saves, settings and imported worlds from your normal career.</p>
 <h1><a class="anchor" id="autotoc_md45"></a>
 Per-match settings for C++ tools</h1>
 <p><a href="../../src/model/match_context.h">MatchContext</a> is a value copied into each engine before play. It configures finishing precision, referee strictness/spread and home advantage. For a live or scenario engine, call <code>engine.setMatchContext(context)</code> before its first step.</p>
@@ -184,7 +186,7 @@ Choose the smallest behavior extension</h1>
 <tr class="markdownTableRowEven">
 <td class="markdownTableBodyNone">Different physical constants   </td><td class="markdownTableBodyNone">Named groups in <code><a class="el" href="structMatchTuning.html">MatchTuning</a></code>   </td><td class="markdownTableBodyNone">Units, full/control path consistency and calibration    </td></tr>
 <tr class="markdownTableRowOdd">
-<td class="markdownTableBodyNone">New league   </td><td class="markdownTableBodyNone">JSON league/team data plus <code>LEAGUE_PROFILES</code>   </td><td class="markdownTableBodyNone">Unique IDs, parent links, economy/nationality and match-style profile    </td></tr>
+<td class="markdownTableBodyNone">New league   </td><td class="markdownTableBodyNone"><a class="el" href="namespaceWorld.html">World</a> editor or <code>.fmdb</code> data (<code>profile</code> optional: derived from the country)   </td><td class="markdownTableBodyNone">Unique IDs, parent links, an even club count    </td></tr>
 <tr class="markdownTableRowEven">
 <td class="markdownTableBodyNone">New report statistic   </td><td class="markdownTableBodyNone"><a class="el" href="classMatch.html" title="Represents a football match between two teams.">Match</a> stats/tracker, report serialization and <a class="el" href="namespaceUI.html" title="Small vector icons drawn with ImDrawList (no icon font needed).">UI</a> view model   </td><td class="markdownTableBodyNone">Single source of accounting and save compatibility   </td></tr>
 </table>

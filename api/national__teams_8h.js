@@ -10,6 +10,7 @@ var national__teams_8h =
     [ "NationalTeams::Finals", "structNationalTeams_1_1Finals.html", "structNationalTeams_1_1Finals" ],
     [ "NationalTeams::Honour", "structNationalTeams_1_1Honour.html", "structNationalTeams_1_1Honour" ],
     [ "NationalTeams::Travel", "structNationalTeams_1_1Travel.html", "structNationalTeams_1_1Travel" ],
+    [ "Confederation", "national__teams_8h.html#ad7c44215a5a7002593a0af39ac8f4c28", null ],
     [ "CallUpResult", "national__teams_8h.html#a3921d546cbf3f93bed2b6e96a7af8dc1", [
       [ "Ok", "national__teams_8h.html#a3921d546cbf3f93bed2b6e96a7af8dc1aa60852f204ed8028c1c58808b746d115", null ],
       [ "NoSquad", "national__teams_8h.html#a3921d546cbf3f93bed2b6e96a7af8dc1a3e6b2cf5d55e5d03ab8c240729e12654", null ],
@@ -29,11 +30,6 @@ var national__teams_8h =
       [ "WorldFinals", "national__teams_8h.html#a6193c753aa18195fe6c6da32fc956eaaad1a968c40988fd93bdeb33d18a5549a8", null ],
       [ "ContinentalFinals", "national__teams_8h.html#a6193c753aa18195fe6c6da32fc956eaaafb21ccecd3acc0fbf6750e2e6b679c3a", null ]
     ] ],
-    [ "Confederation", "national__teams_8h.html#a694cf508679496728929a8c1dd33ee85", [
-      [ "Europe", "national__teams_8h.html#a694cf508679496728929a8c1dd33ee85a912d59cdf1d3f551fae21f6f0062258f", null ],
-      [ "Americas", "national__teams_8h.html#a694cf508679496728929a8c1dd33ee85a9ceed07936bb73f756027dc20e7869e5", null ],
-      [ "Asia", "national__teams_8h.html#a694cf508679496728929a8c1dd33ee85a154a67340e8c14dd5253dc4ff6120197", null ]
-    ] ],
     [ "Stage", "national__teams_8h.html#a0aa1208292429b450cecf3d453b113eb", [
       [ "Group", "national__teams_8h.html#a0aa1208292429b450cecf3d453b113eba03937134cedab9078be39a77ee3a48a0", null ],
       [ "QuarterFinal", "national__teams_8h.html#a0aa1208292429b450cecf3d453b113eba1bffe83319aa33c19c944e23aae9e4ce", null ],
@@ -43,7 +39,6 @@ var national__teams_8h =
     [ "callUpResultKey", "national__teams_8h.html#a1e352cdc635718cd494825bcf5e42dfb", null ],
     [ "canSwitchNation", "national__teams_8h.html#a945a0bc734e10ad14822a6a8cade5807", null ],
     [ "competitionKey", "national__teams_8h.html#a73cc7acb24f4ac40b5e418eb533d3444", null ],
-    [ "confederationKey", "national__teams_8h.html#a70f1b2d18ae3777e4229045c77241041", null ],
     [ "confederationOf", "national__teams_8h.html#a33f25495272d717da0a7433f0423f60f", null ],
     [ "finalsSize", "national__teams_8h.html#a381ebd102f26e5dfeb19d8aa9aa8d1d3", null ],
     [ "groupTable", "national__teams_8h.html#aa23043b1a7ecf71777bf5eba3af7d7a9", null ],

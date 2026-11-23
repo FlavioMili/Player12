@@ -11,10 +11,7 @@ var continental_8h =
     [ "ContinentalCompetitions::Season", "structContinentalCompetitions_1_1Season.html", "structContinentalCompetitions_1_1Season" ],
     [ "ContinentalCompetitions::AssociationCoefficient", "structContinentalCompetitions_1_1AssociationCoefficient.html", "structContinentalCompetitions_1_1AssociationCoefficient" ],
     [ "ContinentalCompetitions::TieScore", "structContinentalCompetitions_1_1TieScore.html", "structContinentalCompetitions_1_1TieScore" ],
-    [ "Continent", "continental_8h.html#a965b528b82bdd2ba4eef54bdef34471e", [
-      [ "Europe", "continental_8h.html#a965b528b82bdd2ba4eef54bdef34471ea912d59cdf1d3f551fae21f6f0062258f", null ],
-      [ "Americas", "continental_8h.html#a965b528b82bdd2ba4eef54bdef34471ea9ceed07936bb73f756027dc20e7869e5", null ]
-    ] ],
+    [ "Continent", "continental_8h.html#a434dd1d56ce63f89b0adeff9cf0b29ed", null ],
     [ "Round", "continental_8h.html#afae0a93505fc18e53ae33cd468800da8", [
       [ "LeaguePhase", "continental_8h.html#afae0a93505fc18e53ae33cd468800da8a17904a3e821cca9014251f5b2507c568", null ],
       [ "Playoff", "continental_8h.html#afae0a93505fc18e53ae33cd468800da8a7cc4b85ad731afdbfcada39e93a92b0f", null ],
@@ -24,6 +21,7 @@ var continental_8h =
       [ "Final", "continental_8h.html#afae0a93505fc18e53ae33cd468800da8abeae421a14a34f831c113f61323d1ab3", null ]
     ] ],
     [ "allocatePlaces", "continental_8h.html#aa2a5ba295ec477690bd19091470d3857", null ],
+    [ "competitions", "continental_8h.html#a4517fcfc7caca1f5957780f8d5b98787", null ],
     [ "continentOf", "continental_8h.html#af72e79aa0d39ab000f9d059b5c55507e", null ],
     [ "directPlaces", "continental_8h.html#a57101414d026d5a5e74c723b54db2074", null ],
     [ "drawLeaguePhase", "continental_8h.html#ab473ef82daf89213f6d840ccc14c01bf", null ],
@@ -31,13 +29,14 @@ var continental_8h =
     [ "leaguePhaseTable", "continental_8h.html#aabf8d886133f90c000277c0097c487e8", null ],
     [ "legOf", "continental_8h.html#ac2397ff13a3c01f9c0e64168bf816113", null ],
     [ "playoffPlaces", "continental_8h.html#a4fe7707b634faf26adfd018ebae153a2", null ],
+    [ "presetCupJson", "continental_8h.html#ac9aa50abd058e051699be03f2a55f1c3", null ],
     [ "roundKey", "continental_8h.html#ae98f562c7be381b08091f1415436c780", null ],
     [ "roundOf", "continental_8h.html#a7bb4accaa23e3f2aac7ad22253036f33", null ],
     [ "rules", "continental_8h.html#a2ae0359024cffb29ed7c5f35f467d899", null ],
     [ "stageCode", "continental_8h.html#a0119cfd16d5abeec4b3f522b4cf870f2", null ],
     [ "AMERICAS_CUP_ID", "continental_8h.html#a5c37cb9eb5ac4ff4a1a032d666c501cd", null ],
     [ "CHAMPIONS_CUP_ID", "continental_8h.html#aee1b8f64955de58364bf2fcd0390423f", null ],
-    [ "COMPETITIONS", "continental_8h.html#a11b97a762c63947641d1010789a8a418", null ],
     [ "CONTINENTAL_SHIELD_ID", "continental_8h.html#af0f1943f744d901517a6db2bb2c5b6b4", null ],
+    [ "FIRST_CUP_ID", "continental_8h.html#abda1740787a90708595df4e27e83dab2", null ],
     [ "KNOCKOUT_STAGE_BASE", "continental_8h.html#aff1ccce357d5d7f6c73ffe7c0c56707d", null ]
 ];

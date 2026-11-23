@@ -11,6 +11,8 @@ var dir_fd5b32b71e21b15bc8655c1952d69168 =
     [ "languages.h", "languages_8h.html", "languages_8h" ],
     [ "logger.cpp", "logger_8cpp.html", null ],
     [ "logger.h", "logger_8h.html", "logger_8h" ],
+    [ "nationality.cpp", "nationality_8cpp.html", "nationality_8cpp" ],
+    [ "nationality.h", "nationality_8h.html", "nationality_8h" ],
     [ "number_format.cpp", "number__format_8cpp.html", "number__format_8cpp" ],
     [ "number_format.h", "number__format_8h.html", "number__format_8h" ],
     [ "queries.h", "queries_8h.html", "queries_8h" ],

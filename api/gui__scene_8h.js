@@ -38,6 +38,7 @@ var gui__scene_8h =
       [ "CALL_UPS", "gui__scene_8h.html#aaf4bddc3ff70ab62a07943e024b9942fa9218e68ce5bf055b2cde858ffad51282", null ],
       [ "ABOUT", "gui__scene_8h.html#aaf4bddc3ff70ab62a07943e024b9942fa33080c3d870c862a9fee5a861e43be86", null ],
       [ "NEWS", "gui__scene_8h.html#aaf4bddc3ff70ab62a07943e024b9942faff4e2dc4962dc25a1512353299992c8d", null ],
-      [ "TIMELINE", "gui__scene_8h.html#aaf4bddc3ff70ab62a07943e024b9942fa7970cd1c3f3d736ce0164035d30be1e8", null ]
+      [ "TIMELINE", "gui__scene_8h.html#aaf4bddc3ff70ab62a07943e024b9942fa7970cd1c3f3d736ce0164035d30be1e8", null ],
+      [ "WORLD_EDITOR", "gui__scene_8h.html#aaf4bddc3ff70ab62a07943e024b9942fa7c306f93d9577aa470414637d3372cd9", null ]
     ] ]
 ];
