@@ -12,6 +12,7 @@
 #include <functional>
 #include <memory>
 #include <optional>
+#include <stop_token>
 #include <unordered_map>
 #include <vector>
 
@@ -56,7 +57,8 @@ class GameData
    * @param database_ptr Shared pointer to the active DatabaseConnection.
    * @return True if successful, false otherwise.
    */
-  bool loadFromDB(std::shared_ptr<DatabaseConnection> database_ptr);
+  bool loadFromDB(std::shared_ptr<DatabaseConnection> database_ptr,
+                  std::stop_token stop = {});
 
   /**
    * @brief Saves the current in-memory state back to the database.
@@ -209,7 +211,7 @@ class GameData
   TrainingRegistry training;
 
   void loadStatsConfig();
-  void generateAndSaveInitialData();
+  void generateAndSaveInitialData(std::stop_token stop);
   void loadExistingData();
   void migrateSchema() const;
   void restoreWorldState();

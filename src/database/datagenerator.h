@@ -9,6 +9,7 @@
 #pragma once
 
 #include <cstdint>
+#include <stop_token>
 #include <string>
 #include <unordered_map>
 #include <vector>
@@ -105,5 +106,6 @@ class DataGenerator
    * assigned first; generation is deterministic for the world seed.
    * @return A vector of generated Player objects.
    */
-  static std::vector<Player> generatePlayers(const class GameData& gamedata);
+  static std::vector<Player> generatePlayers(const class GameData& gamedata,
+                                             std::stop_token stop = {});
 };

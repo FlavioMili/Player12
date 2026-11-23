@@ -24,6 +24,7 @@
 #include "database/repositories/player_repository.h"
 #include "database/repositories/team_repository.h"
 #include "database/save_manager.h"
+#include "database/world_generation_stop.h"
 #include "global/global.h"
 #include "global/logger.h"
 #include "global/paths.h"
@@ -45,7 +46,7 @@ constexpr std::uint16_t PLAY_THROUGH_INJURY_DAYS = 7;
 }  // namespace
 
 Game::Game(std::shared_ptr<GameData> gd,
-           std::shared_ptr<DatabaseConnection> conn)
+           std::shared_ptr<DatabaseConnection> conn, std::stop_token stop)
     : db_conn(std::move(conn)),
       gamedata(std::move(gd)),
       competitions(gamedata, db_conn),
@@ -55,7 +56,7 @@ Game::Game(std::shared_ptr<GameData> gd,
       international(gamedata),
       national_job(gamedata)
 {
-  (*gamedata).loadFromDB(db_conn);
+  gamedata->loadFromDB(db_conn, stop);
   // Continental news reaches the inbox when it concerns the managed club;
   // results everybody talks about (winners) are filed as read.
   competitions.getContinental().setNewsSink(
@@ -134,6 +135,7 @@ Game::Game(std::shared_ptr<GameData> gd,
         }
         return totals;
       });
+  checkWorldGenerationStop(stop);
   loadGame();
   discoverExtensions();
 }

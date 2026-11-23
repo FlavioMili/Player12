@@ -622,10 +622,11 @@ int runWithOptions(const SandboxOptions& options)
         {
           return std::make_unique<SandboxSplashScene>(
               gui,
-              [&controller, worldSeed]
+              [&controller, worldSeed](std::stop_token stop)
               {
-                controller.newGame(SANDBOX_SAVE_SLOT, worldSeed);
-                addSandboxTestTeams(*controller.getGameData());
+                controller.newGame(SANDBOX_SAVE_SLOT, worldSeed, nullptr, stop);
+                if (!stop.stop_requested())
+                  addSandboxTestTeams(*controller.getGameData());
               });
         });
     return 0;

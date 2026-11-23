@@ -14,6 +14,7 @@
 #include <memory>
 #include <optional>
 #include <span>
+#include <stop_token>
 #include <string>
 #include <utility>
 #include <vector>
@@ -53,7 +54,8 @@ class Game
    * @param conn Shared pointer to the DatabaseConnection.
    */
   explicit Game(std::shared_ptr<class GameData> gd,
-                std::shared_ptr<DatabaseConnection> conn);
+                std::shared_ptr<DatabaseConnection> conn,
+                std::stop_token stop = {});
 
   /**
    * @brief Advances the game time by one day, simulating any matches or events

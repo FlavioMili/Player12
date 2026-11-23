@@ -10,6 +10,7 @@
 #include <numbers>
 #include <utility>
 
+#include "global/background_task.h"
 #include "global/paths.h"
 #include "gui/widgets/theme.h"
 #include "tools/match_sandbox_scene.h"
@@ -167,7 +168,7 @@ ImU32 opacity(ImU32 color, float alpha)
 }  // namespace
 
 SandboxSplashScene::SandboxSplashScene(GUIView* view,
-                                       std::function<void()> load)
+                                       std::function<void(std::stop_token)> load)
     : GUIScene(view), loader(std::move(load))
 {
 }
@@ -189,6 +190,12 @@ void SandboxSplashScene::onEnter()
 
 void SandboxSplashScene::handleEvent(const SDL_Event& event)
 {
+  if (event.type == SDL_EVENT_QUIT)
+  {
+    closing = true;
+    loading_worker.request_stop();
+    return;
+  }
   // F12 remains available for screenshots without dismissing the splash.
   if ((event.type == SDL_EVENT_KEY_DOWN && !event.key.repeat &&
        event.key.key != SDLK_F12) ||
@@ -203,13 +210,13 @@ void SandboxSplashScene::update(float deltaTime)
 {
   elapsed += deltaTime;
   // Present the first frame before beginning potentially expensive startup.
-  if (!rendered)
+  if (closing || !rendered)
   {
     return;
   }
   if (!loading.valid() && !ready)
   {
-    loading = std::async(std::launch::async, loader);
+    loading = launchBackgroundTask(loading_worker, loader);
   }
   if (!ready && loading.wait_for(std::chrono::seconds::zero()) ==
                     std::future_status::ready)

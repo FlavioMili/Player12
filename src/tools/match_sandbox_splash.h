@@ -4,6 +4,7 @@
 #include <functional>
 #include <future>
 #include <memory>
+#include <thread>
 
 #include "gui/gui_scene.h"
 
@@ -15,7 +16,7 @@ struct ImFont;
 class SandboxSplashScene final : public GUIScene
 {
  public:
-  SandboxSplashScene(GUIView* view, std::function<void()> load);
+  SandboxSplashScene(GUIView* view, std::function<void(std::stop_token)> load);
   ~SandboxSplashScene() override;
   void onEnter() override;
   void handleEvent(const SDL_Event& event) override;
@@ -25,13 +26,15 @@ class SandboxSplashScene final : public GUIScene
 
  private:
   ImFont* splash_font = nullptr;
-  std::function<void()> loader;
+  std::function<void(std::stop_token)> loader;
   float elapsed = 0.0F;
   float exit_elapsed = 0.0F;
   bool rendered = false;
   bool ready = false;
   bool skip = false;
+  bool closing = false;
   std::unique_ptr<MatchSandboxScene> setup;
-  // Declared last so it joins before anything the worker could use is freed.
   std::future<void> loading;
+  // Destroyed first so the worker stops and joins before scene teardown.
+  std::jthread loading_worker;
 };

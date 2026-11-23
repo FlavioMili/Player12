@@ -16,6 +16,7 @@
 #include <mutex>
 #include <optional>
 #include <random>
+#include <stop_token>
 #include <unordered_map>
 #include <vector>
 
@@ -118,9 +119,12 @@ class GameController
    * of the world simulation. Without it FM_WORLD_SEED or the clock is used.
    * @param world World database to build the career from (null: the
    * built-in world). It must be playable (World::playability).
+   * @param stop Cancels generation before publishing the new career and
+   * writing its save. Once publishing begins, initialization finishes.
    */
   void newGame(int slot, std::optional<std::uint64_t> world_seed = std::nullopt,
-               std::shared_ptr<const World::Document> world = nullptr);
+               std::shared_ptr<const World::Document> world = nullptr,
+               std::stop_token stop = {});
 
   /**
    * @brief Loads an existing game from the given save slot.

@@ -30,6 +30,7 @@
 #include "database/repositories/team_repository.h"
 #include "database/repositories/training_repository.h"
 #include "database/repositories/world_state_repository.h"
+#include "database/world_generation_stop.h"
 #include "global/logger.h"
 #include "global/paths.h"
 #include "global/queries.h"
@@ -113,8 +114,10 @@ bool restoreLineup(Team& team, const StoredLineup& stored,
 GameData::GameData() = default;
 
 // ---------------- DB ----------------
-bool GameData::loadFromDB(std::shared_ptr<DatabaseConnection> database_ptr)
+bool GameData::loadFromDB(std::shared_ptr<DatabaseConnection> database_ptr,
+                          std::stop_token stop)
 {
+  checkWorldGenerationStop(stop);
   _leagues.clear();
   _teams.clear();
   _players.clear();
@@ -137,7 +140,7 @@ bool GameData::loadFromDB(std::shared_ptr<DatabaseConnection> database_ptr)
 
   if (is_first_run)
   {
-    generateAndSaveInitialData();
+    generateAndSaveInitialData(stop);
   }
   else
   {
@@ -160,7 +163,9 @@ bool GameData::loadFromDB(std::shared_ptr<DatabaseConnection> database_ptr)
   _playersVec.reserve(_players.size());
   for (auto& [id, player] : _players) _playersVec.push_back(player);
 
+  checkWorldGenerationStop(stop);
   restoreStaffAndTraining();
+  checkWorldGenerationStop(stop);
   return true;
 }
 
@@ -181,7 +186,7 @@ void GameData::restoreStaffAndTraining()
   }
 }
 
-void GameData::generateAndSaveInitialData()
+void GameData::generateAndSaveInitialData(std::stop_token stop)
 {
   TeamRepository teamRepo(db_conn);
   LeagueRepository leagueRepo(db_conn);
@@ -251,7 +256,8 @@ void GameData::generateAndSaveInitialData()
     _teamsVec.reserve(_teams.size());
     for (auto& [id, team] : _teams) _teamsVec.push_back(team);
 
-    auto players = DataGenerator::generatePlayers(*this);
+    auto players = DataGenerator::generatePlayers(*this, stop);
+    checkWorldGenerationStop(stop);
     for (const auto& player : players)
     {
       auto it = _players.try_emplace(player.getId(), player).first;
@@ -286,12 +292,14 @@ void GameData::generateAndSaveInitialData()
 
     for (auto& [id, team] : _teams)
     {
+      checkWorldGenerationStop(stop);
       team.generateStartingXI(*this, stats_config);
     }
     teamRepo.updateTeamsState(_teamsVec);
     WorldStateRepository(db_conn).saveWorldState(world_seed, next_player_id,
                                                  staff.peekNextId());
 
+    checkWorldGenerationStop(stop);
     db_conn->commitTransaction();
   }
   catch (...)

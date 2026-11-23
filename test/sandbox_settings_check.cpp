@@ -3,8 +3,10 @@
 #include <cstdlib>
 #include <iostream>
 #include <stdexcept>
+#include <stop_token>
 
 #include "controller/game_controller.h"
+#include "database/save_manager.h"
 #include "global/logger.h"
 #include "global/runtime_paths.h"
 #include "tools/match_sandbox_drill.h"
@@ -88,6 +90,32 @@ int main()
     Logger::init();
     GameController controller;
     controller.newGame(1, 1);
+    const Game* originalGame = controller.getGame();
+    require(originalGame != nullptr && controller.getSaveStatus().ok,
+            "could not create the original sandbox world");
+    const auto save = RuntimePaths::savePath(1);
+    const auto backups = SaveManager::countBackups(save);
+    std::stop_source stop;
+    {
+      // Cancel during the first flush, while the replacement is still in
+      // memory and before it can replace the active game or its save.
+      const struct FaultHookCleanup
+      {
+        ~FaultHookCleanup() { SaveManager::setFaultHook(nullptr); }
+      } cleanup;
+      SaveManager::setFaultHook(
+          [&stop](SaveManager::FaultPoint point, sqlite3*)
+          {
+            if (point == SaveManager::FaultPoint::MidFlush) stop.request_stop();
+          });
+      controller.newGame(1, 2, nullptr, stop.get_token());
+    }
+    require(stop.stop_requested(), "world generation never reached the flush");
+    require(controller.getGame() == originalGame,
+            "cancelled generation replaced the active game");
+    require(SaveManager::countBackups(save) == backups &&
+                SaveManager::inspect(save).status == SaveStatus::Ok,
+            "cancelled generation changed the existing save");
     addSandboxTestTeams(*controller.getGameData());
     const auto clubs = sandboxDefaultClubs();
     auto drills = makeDrills();
