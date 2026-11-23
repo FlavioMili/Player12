@@ -314,6 +314,22 @@ enum class OurBallJob : std::uint8_t
 };
 constexpr std::size_t OUR_BALL_JOB_COUNT =
     static_cast<std::size_t>(OurBallJob::COUNT);
+/** "Opponents' ball" (step O2): his off-ball options, in the stopgap
+ * order (today's). */
+enum class TheirBallJob : std::uint8_t
+{
+  PRESS,
+  DOUBLE_UP,
+  BLOCK_LANE,
+  COVER,
+  TIGHT_MARK,
+  TRANSITION_RECOVER,
+  ZONAL_MARK,
+  HOLD_SHAPE,
+  COUNT
+};
+constexpr std::size_t THEIR_BALL_JOB_COUNT =
+    static_cast<std::size_t>(TheirBallJob::COUNT);
 }  // namespace
 
 void MatchEngine::refreshTacticalTargetsCapybara(float dt, bool planHome)
@@ -1701,7 +1717,45 @@ void MatchEngine::refreshTacticalTargetsCapybara(float dt, bool planHome)
     else if (carrier != nullptr)
     {
       const auto& pressers = player.isHomeTeam ? homePressers : awayPressers;
-      if (pressers[0] == &player)
+      const std::optional<PitchPoint> doubling =
+          pressers[1] == &player
+              ? doubleUpPointCapybara(player, *carrier, pressers[0])
+              : std::nullopt;
+      const bool coveringPress =
+          pressers[1] == &player &&
+          sliders.pressing > MatchTuning::Shape::COVER_PRESS_MINIMUM;
+      const MatchPlayer* coverOutlet =
+          player.isHomeTeam ? homeCoverOutlet : awayCoverOutlet;
+      const MatchPlayer* tight = tightMarkTargetCapybara(player);
+      // Zonal marking: the opponent assigned to this player (one marker
+      // per opponent).
+      const std::int8_t assigned = markAssignments.at(slotOf(player));
+      const MatchPlayer* mark =
+          assigned >= 0 && static_cast<std::size_t>(assigned) < players.size()
+              ? &players[static_cast<std::size_t>(assigned)]
+              : nullptr;
+      if ((mark != nullptr) &&
+          (!active(*mark) || mark->isHomeTeam == player.isHomeTeam))
+      {
+        mark = nullptr;
+      }
+      // The situation "Opponents' ball" (brain redesign plan section 22,
+      // step O2): his off-ball frame. Open when the team's assignments,
+      // orders or phase give it to him; hold shape is always open.
+      // Follow-up: no measures yet; the stopgap pick is today's order (the
+      // first open option).
+      const std::array<bool, THEIR_BALL_JOB_COUNT> theirBallOpen{
+          pressers[0] == &player,
+          doubling.has_value(),
+          coveringPress && coverOutlet != nullptr,
+          coveringPress && coverOutlet == nullptr,
+          tight != nullptr,
+          teamPhase == TeamPhase::DEFENSIVE_TRANSITION,
+          mark != nullptr,
+          true};
+      const auto theirBallJob = static_cast<TheirBallJob>(std::distance(
+          theirBallOpen.begin(), std::ranges::find(theirBallOpen, true)));
+      if (theirBallJob == TheirBallJob::PRESS)
       {
         player.intent = PlayerIntent::PRESS_BALL;
         player.isPressing = true;
@@ -1717,10 +1771,7 @@ void MatchEngine::refreshTacticalTargetsCapybara(float dt, bool planHome)
         pinned = true;
         job = planJob(PlanBranch::PRESS);
       }
-      else if (const auto doubling =
-                   pressers[1] == &player
-                       ? doubleUpPointCapybara(player, *carrier, pressers[0])
-                       : std::nullopt)
+      else if (theirBallJob == TheirBallJob::DOUBLE_UP)
       {
         // Ordered to double up: the second man closes the carrier too.
         player.intent = PlayerIntent::COVER_PRESS;
@@ -1728,13 +1779,11 @@ void MatchEngine::refreshTacticalTargetsCapybara(float dt, bool planHome)
         target = *doubling;
         job = planJob(PlanBranch::DOUBLE_UP);
       }
-      else if (pressers[1] == &player &&
-               sliders.pressing > MatchTuning::Shape::COVER_PRESS_MINIMUM)
+      else if (theirBallJob == TheirBallJob::BLOCK_LANE ||
+               theirBallJob == TheirBallJob::COVER)
       {
         player.isPressing = true;
-        const MatchPlayer* coverOutlet =
-            player.isHomeTeam ? homeCoverOutlet : awayCoverOutlet;
-        if (coverOutlet != nullptr)
+        if (theirBallJob == TheirBallJob::BLOCK_LANE)
         {
           player.intent = PlayerIntent::BLOCK_PASSING_LANE;
           target.x = pressurePosition.x +
@@ -1763,7 +1812,7 @@ void MatchEngine::refreshTacticalTargetsCapybara(float dt, bool planHome)
           job = planJob(PlanBranch::COVER, lateralSide > 0.0F ? 1U : 0U);
         }
       }
-      else if (const MatchPlayer* tight = tightMarkTargetCapybara(player))
+      else if (theirBallJob == TheirBallJob::TIGHT_MARK)
       {
         // Under a tight-marking order he stays with his man in every phase,
         // goal-side and close enough to contest each ball played to him.
@@ -1774,7 +1823,7 @@ void MatchEngine::refreshTacticalTargetsCapybara(float dt, bool planHome)
         job = planJob(PlanBranch::TIGHT_MARK, 0,
                       static_cast<std::uint32_t>(slotOf(*tight)));
       }
-      else if (teamPhase == TeamPhase::DEFENSIVE_TRANSITION)
+      else if (theirBallJob == TheirBallJob::TRANSITION_RECOVER)
       {
         // The nearest players counter-press above. Everyone else first gets
         // goal-side and narrows toward the danger before settling into the
@@ -1787,21 +1836,10 @@ void MatchEngine::refreshTacticalTargetsCapybara(float dt, bool planHome)
                     MatchTuning::Shape::DEFENSIVE_TRANSITION_BALL_COMPACTNESS;
         job = planJob(PlanBranch::TRANSITION_RECOVER);
       }
-      else
+      else if (theirBallJob == TheirBallJob::ZONAL_MARK)
       {
-        // Zonal marking: shade toward the opponent assigned to this player
-        // (one marker per opponent), without abandoning the formation anchor.
-        const std::int8_t assigned = markAssignments[slotOf(player)];
-        const MatchPlayer* mark =
-            assigned >= 0 && static_cast<std::size_t>(assigned) < players.size()
-                ? &players[static_cast<std::size_t>(assigned)]
-                : nullptr;
-        if ((mark != nullptr) &&
-            (!active(*mark) || mark->isHomeTeam == player.isHomeTeam))
-        {
-          mark = nullptr;
-        }
-        if (mark != nullptr)
+        // Zonal marking: shade toward his assigned opponent without
+        // abandoning the formation anchor.
         {
           player.intent = PlayerIntent::MARK_OPPONENT;
           float markWeight = MatchTuning::Shape::BASE_MARK_WEIGHT +

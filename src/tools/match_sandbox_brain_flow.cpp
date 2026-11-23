@@ -928,7 +928,7 @@ struct Situation
   /** On a decision frame of its own, not shown in the stages below yet. */
   bool ownFrame;
 };
-constexpr std::array<Situation, 17> SITUATIONS = {{
+constexpr std::array<Situation, 16> SITUATIONS = {{
     {.depth = 0,
      .title = "Restart",
      .decidedBy = "",
@@ -999,20 +999,18 @@ constexpr std::array<Situation, 17> SITUATIONS = {{
      .onFrame = false,
      .ownFrame = true},
     {.depth = 2,
-     .title = "Press or cover",
-     .decidedBy = "refreshTacticalTargets (pressers), engageBoost, "
-                  "pressStandOffShare",
+     .title = "My job: press, cover, mark or hold shape",
+     .decidedBy =
+         "its own off-ball frame (step O2, refreshTacticalTargets): press, "
+         "double up, block a lane, cover, tight mark, recover in transition, "
+         "zonal mark, hold shape. Open when the team's assignments (pressers, "
+         "assignMarks), orders or phase give it to him (hold shape always); "
+         "stopgap pick in today's order (follow-up: measures). Targets: "
+         "engageBoost, pressStandOffShare, doubleUpPoint, tightMarkPoint",
      .layers = SLIDERS | ROLE | ORDERS | MOOD,
      .plannerWide = true,
      .onFrame = false,
-     .ownFrame = false},
-    {.depth = 2,
-     .title = "Mark, block a lane, recover shape",
-     .decidedBy = "assignMarks, doubleUpPoint, tightMarkPoint",
-     .layers = ROLE | ORDERS | MOOD,
-     .plannerWide = false,
-     .onFrame = false,
-     .ownFrame = false},
+     .ownFrame = true},
     {.depth = 2,
      .title = "Challenge the carrier",
      .decidedBy = "chooseChallenge, goesIntoContest, chooseTackleIntent",
