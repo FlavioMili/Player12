@@ -444,6 +444,11 @@ void MatchEngine::setupPenaltyAardvark(bool homeTeam)
   MatchPlayer* taker =
       chooseRestartTaker(MatchState::PENALTY, homeTeam, ball.position);
   setRestartTaker(taker);
+  if (taker != nullptr)
+  {
+    // He decides his kick before he walks up and runs up.
+    decidePenalty(*taker);
+  }
   ball.position = spot;
   ball.z = 0.0F;
   ball.velocityZ = 0.0F;

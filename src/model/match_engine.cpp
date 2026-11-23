@@ -1994,6 +1994,8 @@ void MatchEngine::beginShootoutKick()
   resetShootoutBall();
   ball.position = spot;
   assignRestartOwner(taker->player);
+  // He decides his kick before his run-up.
+  decidePenalty(*taker);
   shootout.inFlight = true;
   if (shootout.live)
   {

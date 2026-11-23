@@ -5974,6 +5974,17 @@ MatchEngine::ShotAim MatchEngine::chooseShotAimCapybara(
     heldShotAimCapybara.reset();
     return aim;
   }
+  // A direct free kick or a penalty: the aim its restart option carried,
+  // once.
+  if ((freeKick || penalty) && !header && heldRestartAimCapybara &&
+      shooter.player != nullptr &&
+      heldRestartAimCapybara->player == shooter.player->getId() &&
+      heldRestartAimCapybara->penalty == penalty)
+  {
+    const ShotAim aim = heldRestartAimCapybara->aim;
+    heldRestartAimCapybara.reset();
+    return aim;
+  }
   return rollShotAimCapybara(shooter, header, penalty, freeKick);
 }
 
@@ -6026,6 +6037,21 @@ MatchEngine::ShotAim MatchEngine::rollShotAimCapybara(
                 header ? MatchTuning::Shooting::HEADER_AIM_MAX_HEIGHT_METRES
                        : MatchTuning::Shooting::AIM_MAX_HEIGHT_METRES);
   return aim;
+}
+
+void MatchEngine::decidePenaltyCapybara(const MatchPlayer& taker)
+{
+  // Decided before the run-up, so stutters, swerves and waiting for the
+  // keeper to commit can come later. For now one option, the shot, with
+  // today's penalty aim.
+  heldRestartAimCapybara.reset();
+  if (taker.player != nullptr)
+  {
+    heldRestartAimCapybara = HeldRestartAimCapybara{
+        .player = taker.player->getId(),
+        .aim = rollShotAimCapybara(taker, false, true, false),
+        .penalty = true};
+  }
 }
 
 float MatchEngine::choosePenaltyGuessCapybara(const MatchPlayer& keeper)
@@ -6770,6 +6796,13 @@ MatchPlayer* MatchEngine::chooseRestartTakerCapybara(MatchState restart,
 MatchEngine::RestartPlay MatchEngine::chooseRestartPlayCapybara(
     MatchPlayer& taker, MatchState restartState)
 {
+  // The situation "Restart: I'm the taker" (brain redesign plan section 21,
+  // step H). Options: a pass, a short corner, a delivery into the box, a
+  // direct shot, hold it. Open as before (the corner's and the free kick's
+  // rolls included); the stopgap pick is today's order (follow-up:
+  // measures). Each option carries what it chooses: the pass, the
+  // delivery's target, the direct shot's aim.
+  heldRestartAimCapybara.reset();
   if (restartState == MatchState::CORNER_KICK)
   {
     return chooseCornerPlayCapybara(taker);
@@ -6791,6 +6824,15 @@ MatchEngine::RestartPlay MatchEngine::chooseRestartPlayCapybara(
         0.0F, 0.95F);
     if (shootingRange && randomFloat(0.0F, 1.0F) < shootChance)
     {
+      // The direct shot carries its aim (today's free-kick rules, rolled
+      // now), held for the strike.
+      if (taker.player != nullptr)
+      {
+        heldRestartAimCapybara = HeldRestartAimCapybara{
+            .player = taker.player->getId(),
+            .aim = rollShotAimCapybara(taker, false, false, true),
+            .penalty = false};
+      }
       return {.kind = RestartPlay::Kind::DIRECT_SHOT,
               .pass = std::nullopt,
               .lofted = false};

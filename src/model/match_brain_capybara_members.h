@@ -256,6 +256,16 @@
     ShotAim aim;
   };
   std::optional<HeldShotAimCapybara> heldShotAimCapybara;
+  /** The aim a restart's direct shot carried, held for the strike (set
+   * and cleared each time a restart play is chosen). */
+  struct HeldRestartAimCapybara
+  {
+    PlayerID player = 0;
+    ShotAim aim;
+    /** A penalty's aim, not a direct free kick's. */
+    bool penalty = false;
+  };
+  std::optional<HeldRestartAimCapybara> heldRestartAimCapybara;
   /** Today's clearance aim (a random length, upfield and towards the
    * nearer touchline), rolled. */
   ClearanceAim rollClearanceAimCapybara(const MatchPlayer& defender);
@@ -269,6 +279,10 @@
   };
   std::optional<HeldClearAimCapybara> heldClearAimCapybara;
   float choosePenaltyGuessCapybara(const MatchPlayer& keeper);
+  /** "Restart: I'm the taker", a penalty (step H): his kick decided
+   * before the run-up; it carries its aim (today's penalty rules, rolled
+   * now), held for the strike. */
+  void decidePenaltyCapybara(const MatchPlayer& taker);
   ClearanceAim chooseClearanceAimCapybara(const MatchPlayer& defender);
   PitchPoint chooseClearBehindTargetCapybara(const MatchPlayer& defender);
   HeaderAttempt chooseHeaderAttemptCapybara(const MatchPlayer& header,

@@ -4126,6 +4126,9 @@ class MatchEngine
                         bool freeKick);
   /** A keeper's guess at a penalty: -1 or 1 (side of pitch y), 0 to stay. */
   float choosePenaltyGuess(const MatchPlayer& keeper);
+  /** Brain: the penalty taker decides his kick before his run-up (the
+   * aim, for now). A brain that decides nothing here aims at the strike. */
+  void decidePenalty(const MatchPlayer& taker);
   /** Where a clearance is aimed and how far it should go. */
   struct ClearanceAim
   {

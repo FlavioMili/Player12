@@ -263,6 +263,15 @@ float MatchEngine::choosePenaltyGuess(const MatchPlayer& keeper)
   return choosePenaltyGuessAardvark(keeper);
 }
 
+void MatchEngine::decidePenalty(const MatchPlayer& taker)
+{
+  // Only Capybara decides before the run-up; the others aim at the strike.
+  if (brainOf(taker.isHomeTeam) == BrainId::CAPYBARA)
+  {
+    decidePenaltyCapybara(taker);
+  }
+}
+
 MatchEngine::ClearanceAim MatchEngine::chooseClearanceAim(
     const MatchPlayer& defender)
 {

@@ -938,12 +938,17 @@ constexpr std::array<Situation, 17> SITUATIONS = {{
      .ownFrame = false},
     {.depth = 1,
      .title = "I am the taker",
-     .decidedBy = "chooseRestartTaker, chooseRestartPlay, chooseCornerPlay, "
-                  "chooseShotAim",
+     .decidedBy =
+         "who takes it: chooseRestartTaker (the team's rule: designated, "
+         "else the best by the stat for it). Its own frame (step H, "
+         "chooseRestartPlay, chooseCornerPlay): pass, short corner, delivery "
+         "into the box, direct shot (carries its aim), hold; open as before, "
+         "stopgap pick in today's order (follow-up: measures). Penalties: "
+         "decided before the run-up (decidePenalty), carrying its aim",
      .layers = 0,
      .plannerWide = false,
      .onFrame = false,
-     .ownFrame = false},
+     .ownFrame = true},
     {.depth = 1,
      .title = "Someone else takes it",
      .decidedBy = "arrangeSetPieceAttack, arrangeSetPieceDefence, "

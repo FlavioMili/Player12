@@ -1835,6 +1835,11 @@ void MatchEngine::setupPenaltyBinturong(bool homeTeam)
   MatchPlayer* taker =
       chooseRestartTaker(MatchState::PENALTY, homeTeam, ball.position);
   setRestartTaker(taker);
+  if (taker != nullptr)
+  {
+    // He decides his kick before he walks up and runs up.
+    decidePenalty(*taker);
+  }
   startDeadBallBinturong(spot);
   // Everyone else waits outside the area; the keeper walks to his line.
   const float edge =
