@@ -21,10 +21,12 @@
 #include <optional>
 #include <span>
 #include <string>
+#include <string_view>
 #include <utility>
 #include <vector>
 
 #include "global/language_manager.h"
+#include "global/paths.h"
 #include "gui/render/match_kit_colors.h"
 #include "gui/render/match_render_2d_tuning.h"
 #include "gui/render/match_render_math.h"
@@ -167,6 +169,7 @@ struct MatchRenderer2D::State
   MatchShirtNumbers numbers;
 
   ImDrawList* drawList = nullptr;
+  ImFont* shirtNumberFont = nullptr;
   ImVec2 whitePixel;
   MatchViewport viewport;
   float ppm = 1.0F;
@@ -2134,8 +2137,10 @@ void MatchRenderer2D::State::drawToken(const TokenOnScreen& token, float radius,
                                 faded(T::WEDGE_COLOR));
   }
 
-  drawList->AddCircleFilled(at, radius + outlineWidth, faded(outline));
-  drawList->AddCircleFilled(at, radius, faded(ring));
+  const float outlineRadius = player.onPitch ? radius : radius + outlineWidth;
+  const float shortsRadius = player.onPitch ? radius * T::SHORTS_SHARE : radius;
+  drawList->AddCircleFilled(at, outlineRadius, faded(outline));
+  drawList->AddCircleFilled(at, shortsRadius, faded(ring));
   drawList->AddCircleFilled(at, radius * T::SHIRT_SHARE, faded(kit.shirt));
   // A soft gloss from the top-left light.
   drawList->AddCircleFilled({at.x - (radius * 0.2F), at.y - (radius * 0.22F)},
@@ -2147,14 +2152,57 @@ void MatchRenderer2D::State::drawToken(const TokenOnScreen& token, float radius,
     const char* text =
         NUMBER_TEXT[static_cast<std::size_t>(std::clamp(token.number, 0, 99))]
             .data();
-    ImFont* font = ImGui::GetFont();
-    const ImVec2 size = font->CalcTextSizeA(fontSize, FLT_MAX, 0.0F, text);
-    const ImVec2 origin{at.x - (size.x * 0.5F), at.y - (size.y * 0.5F)};
+    if (shirtNumberFont == nullptr)
+    {
+      ImFontAtlas* atlas = ImGui::GetIO().Fonts;
+      ImFontConfig config;
+      constexpr char FONT_NAME[] = "2D shirt numbers";
+      std::ranges::copy(FONT_NAME, config.Name);
+      for (ImFont* existing : atlas->Fonts)
+      {
+        if (std::string_view(existing->GetDebugName()) == FONT_NAME)
+        {
+          shirtNumberFont = existing;
+          break;
+        }
+      }
+      if (shirtNumberFont == nullptr)
+      {
+        const auto path = AssetPaths::file("assets/fonts/Manrope-Bold.ttf");
+        config.Flags |= ImFontFlags_NoLoadError;
+        shirtNumberFont =
+            atlas->AddFontFromFileTTF(path.c_str(), 0.0F, &config);
+      }
+      if (shirtNumberFont == nullptr)
+      {
+        shirtNumberFont = ImGui::GetFont();
+      }
+    }
+    ImFont* font = shirtNumberFont;
+    auto* baked = font->GetFontBaked(fontSize);
+    const float scale = fontSize / baked->Size;
+    // Centre the digit shapes, excluding side bearings and line spacing.
+    ImVec2 min{FLT_MAX, FLT_MAX};
+    ImVec2 max{-FLT_MAX, -FLT_MAX};
+    float advance = 0.0F;
+    for (const char* digit = text; *digit != '\0'; ++digit)
+    {
+      const auto* glyph = baked->FindGlyph(static_cast<unsigned char>(*digit));
+      min.x = std::min(min.x, advance + glyph->X0);
+      min.y = std::min(min.y, glyph->Y0);
+      max.x = std::max(max.x, advance + glyph->X1);
+      max.y = std::max(max.y, glyph->Y1);
+      advance += glyph->AdvanceX;
+    }
+    ImVec2 origin{at.x - ((min.x + max.x) * scale * 0.5F),
+                  at.y - ((min.y + max.y) * scale * 0.5F)};
+    if ((drawList->Flags & ImDrawListFlags_TextNoPixelSnap) == 0)
+    {
+      origin = {std::round(origin.x), std::round(origin.y)};
+    }
     const ImU32 color = faded(kitNumberColor(kit));
     const int firstVertex = drawList->VtxBuffer.Size;
     drawList->AddText(font, fontSize, origin, color, text);
-    drawList->AddText(font, fontSize, {origin.x + (fontSize * 0.05F), origin.y},
-                      color, text);
     if (player.fallen)
     {
       // Down: the number turns a quarter, clockwise on his front, the

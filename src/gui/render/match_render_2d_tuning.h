@@ -120,7 +120,8 @@ struct MatchRender2DTuning final
   {
     static constexpr float RADIUS_METRES =
         MatchTuning::Ball::OUTFIELD_CONTROL_RADIUS_METRES;
-    static constexpr float SHIRT_SHARE = 0.74F;
+    static constexpr float SHIRT_SHARE = 0.75F;
+    static constexpr float SHORTS_SHARE = 0.90F;
     static constexpr float OUTLINE_SHARE = 0.12F;
     static constexpr float WEDGE_REACH = 1.62F;
     static constexpr float WEDGE_HALF_ANGLE = 0.42F;

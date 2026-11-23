@@ -134,6 +134,12 @@ keeps the clock running; half-time and the shootout do not. With walk-outs,
 half's line-up and handshake) and half-time's walk into the tunnel; the
 substitutions under way move on every step (`updateSubstitutions()`).
 
+In Binturong, crowd returns and steward throws follow an arc to the
+recorded restart spot and stop there. This includes a replacement ball
+thrown from the front row when the original goes out of sight. The taker
+heads to the spot during the return and uses the normal pickup or placement
+logic when the ball arrives.
+
 ### Round the pitch
 
 [MatchGround](../../src/model/match_ground.h) builds the tunnel, the dugouts,

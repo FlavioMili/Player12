@@ -355,7 +355,8 @@ class MatchScene : public GUIScene
   /** Orbit, pan, zoom and double-click over the view (last item). */
   void handleViewInput();
   /** Zoom about the pitch centre; 1x restores the full stadium view. */
-  MatchViewport watchViewport2D(const MatchViewport& fitted, float wheelSteps);
+  MatchViewport watchViewport2D(const MatchViewport& fitted, ImVec2 viewSize,
+                                float wheelSteps);
   void renderPitchFocus();
   void renderFocusHud(ImVec2 origin, ImVec2 size);
   void renderLineupGate();

@@ -483,12 +483,10 @@ struct MatchTuning final
     static constexpr float TUNNEL_RESTITUTION = WALL_RESTITUTION;
     /** A fan catches a ball up to this far above the seating he stands on. */
     static constexpr float FAN_REACH_METRES = 2.0F;
-    /** A throw back (a fan, a steward): this fast (an adult's two-handed
-     * throw leaves the hand at 12-18 m/s), from this high above where he
-     * stands, landing up to this far from the spot it is aimed at. */
+    /** A fan or steward throws back from this height. The speed sets the
+     * flight time to the restart spot. */
     static constexpr float THROW_SPEED = 15.0F;
     static constexpr float THROW_RELEASE_METRES = 1.8F;
-    static constexpr float THROW_ERROR_METRES = 3.0F;
     /** A fan throws it back this long after catching it. */
     static constexpr float CATCH_THROW_SECONDS = 2.0F;
     /** Out of sight: a replacement comes back from the front row after this

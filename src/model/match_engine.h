@@ -1464,6 +1464,8 @@ struct DeadBallReturn
     CAUGHT,
     /** Gone beyond the rows shown; a replacement comes back after a pause. */
     OUT_OF_SIGHT,
+    /** A crowd or steward return landing at the restart spot. */
+    RETURNING_TO_SPOT,
     /** In the taker's hands, on its way to the spot. */
     CARRIED,
     /** A throw-in: on his spot, he lifts it over his head. */
@@ -1477,8 +1479,10 @@ struct DeadBallReturn
   float seconds = 0.0F;
   float gapSeconds = 0.0F;
   float totalSeconds = 0.0F;
-  /** Out of sight: the front-row spot a replacement is thrown from. */
+  /** Where a crowd or steward return starts. */
   PitchPoint returnFrom{};
+  float returnHeight = 0.0F;
+  float returnDuration = 0.0F;
   /** A free kick or penalty: the fouled side's player nearest the ball
    * goes to it and plays it to stop on the spot (slot index), then goes
    * back to his restart position. */

@@ -2270,11 +2270,6 @@ void MatchScene::renderPitch(ImVec2 size)
     viewport = computeMatchViewportWithStadium(viewOrigin.x, viewOrigin.y,
                                                std::max(1.0F, size.x),
                                                std::max(1.0F, size.y));
-    if (sandbox && play.isActive())
-    {
-      play_zoom_2d = std::clamp(
-          play_zoom_2d * std::pow(1.15F, pending_zoom_steps), .5f, 2.F);
-    }
     // Playing: a zoomed view that follows the active footballer.
     if (play.isActive())
     {
@@ -2284,7 +2279,7 @@ void MatchScene::renderPitch(ImVec2 size)
     }
     else if (sandbox)
     {
-      viewport = watchViewport2D(viewport, pending_zoom_steps);
+      viewport = watchViewport2D(viewport, size, pending_zoom_steps);
     }
     pending_zoom_steps = 0.0F;
     renderer = renderer_2d.get();
@@ -2333,10 +2328,13 @@ bool MatchScene::sandboxTrueView() const
 }
 
 MatchViewport MatchScene::watchViewport2D(const MatchViewport& fitted,
+                                          ImVec2 viewSize,
                                           float wheelSteps)
 {
-  watch_zoom_2d =
-      std::clamp(watch_zoom_2d * std::pow(1.15F, wheelSteps), 1.F, 4.F);
+  const float maxZoom =
+      std::min(viewSize.x / fitted.width, viewSize.y / fitted.height);
+  watch_zoom_2d = std::clamp(watch_zoom_2d * std::pow(1.15F, wheelSteps),
+                             std::min(1.0F, maxZoom), maxZoom);
   MatchViewport view = fitted;
   view.width *= watch_zoom_2d;
   view.height *= watch_zoom_2d;

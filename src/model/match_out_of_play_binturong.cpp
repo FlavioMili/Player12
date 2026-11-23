@@ -1242,33 +1242,21 @@ void MatchEngine::moveDeadBallBinturong(float dt)
 
 void MatchEngine::throwDeadBallBinturong(float releaseMetres)
 {
-  // From where it is, released this high, at the spot (give or take): the
-  // lower of the two arcs that land there, or as far as a throw goes.
+  // A fan or steward returns the ball on an arc to the restart spot.
   using D = MatchTuning::DeadBall;
-  constexpr float GRAVITY = 9.81F;
-  const float errorAngle = randomFloat(0.0F, 6.2831853F);
-  const float errorMetres = randomFloat(0.0F, D::THROW_ERROR_METRES);
-  const Vector2F aim = {.x = std::cos(errorAngle) * errorMetres,
-                        .y = std::sin(errorAngle) * errorMetres};
-  const PitchPoint target{deadBall.spot.x + aim.x, deadBall.spot.y + aim.y};
-  const Vector2F way = metricDirection(ball.position, target);
-  const float metres = distance(ball.position, target);
-  const float v = D::THROW_SPEED;
-  const float root =
-      (v * v * v * v) -
-      (GRAVITY * (GRAVITY * metres * metres - 2.0F * releaseMetres * v * v));
-  const float angle =
-      root >= 0.0F && metres > 0.01F
-          ? std::atan((v * v - std::sqrt(root)) / (GRAVITY * metres))
-          : 0.7853982F;
-  ball.z = releaseMetres;
-  ball.velocity = {.x = way.x * v * std::cos(angle),
-                   .y = way.y * v * std::cos(angle)};
-  ball.velocityZ = v * std::sin(angle);
-  ball.spin = {};
-  deadBall.phase = DeadBallReturn::Phase::LOOSE;
+  constexpr float MIN_FLIGHT_SECONDS = 0.8F;
+  const float metres = distance(ball.position, deadBall.spot);
+  deadBall.returnFrom = ball.position;
+  deadBall.returnHeight = releaseMetres;
+  deadBall.returnDuration =
+      std::max(MIN_FLIGHT_SECONDS, metres / D::THROW_SPEED);
+  deadBall.phase = DeadBallReturn::Phase::RETURNING_TO_SPOT;
   deadBall.seconds = 0.0F;
   deadBall.gapSeconds = 0.0F;
+  ball.z = releaseMetres;
+  ball.velocity = {};
+  ball.velocityZ = 0.0F;
+  ball.spin = {};
 }
 
 void MatchEngine::dropKickDeadBallBinturong(MatchPlayer& keeper)
@@ -1371,6 +1359,25 @@ void MatchEngine::updateDeadBallBinturong(float dt)
         previousBallZ = ball.z;
       }
       break;
+    case Phase::RETURNING_TO_SPOT:
+    {
+      const float share =
+          std::min(deadBall.seconds / deadBall.returnDuration, 1.0F);
+      ball.position = PitchPoint{
+          std::lerp(deadBall.returnFrom.x, deadBall.spot.x, share),
+          std::lerp(deadBall.returnFrom.y, deadBall.spot.y, share)};
+      constexpr float ARC_HEIGHT_METRES = 2.0F;
+      ball.z = std::lerp(deadBall.returnHeight, 0.0F, share) +
+               (4.0F * ARC_HEIGHT_METRES * share * (1.0F - share));
+      taker->movementTarget = deadBall.spot;
+      if (share >= 1.0F)
+      {
+        // Leave it on the ground for the normal restart pickup.
+        deadBall.phase = Phase::LOOSE;
+        deadBall.seconds = 0.0F;
+      }
+      break;
+    }
     case Phase::CARRIED:
     {
       // In his hands: the keeper's on his way out to his six-yard line to

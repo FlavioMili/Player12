@@ -2793,8 +2793,11 @@ void MatchRenderer3D::State::addPlayer(const MatchRenderPlayer& player,
                            eventWeight / away);
     }
   }
-  const Vec3 pelvis =
-      root + lunge + UP * pelvisHeight + (UP - hipUp) * (P::HIP_HEIGHT * scale);
+  // A keeper's dive offsets the pelvis as the rig rolls. The collision
+  // pose already sets its height above the turf through pose.lift.
+  const Vec3 divePivot =
+      player.fallen ? Vec3{} : (UP - hipUp) * (P::HIP_HEIGHT * scale);
+  const Vec3 pelvis = root + lunge + UP * pelvisHeight + divePivot;
   const float objectDepth = anchor.depth;
 
   // Leg targets: the planted (or swinging) feet, lifted with the body when
@@ -4209,9 +4212,11 @@ void MatchRenderer3D::State::addTouchlinePerson(
   const Vec3 pelvis = root + UP * hipHeight;
   // Faster legs and a longer stride as he runs.
   const float speed = person.speedMetresPerSecond;
+  // The match clock holds the stride pose when playback is paused.
+  const float matchSeconds = lastMatchMinutes * 60.0F;
   const float stride =
       seated ? 0.0F
-             : std::sin(elapsedSeconds *
+             : std::sin(matchSeconds *
                         (T::STRIDE_RATE + T::STRIDE_RATE_PER_SPEED * speed)) *
                    (std::min(speed / T::FULL_STRIDE_SPEED, 1.0F) *
                         T::STRIDE_REACH +

@@ -247,27 +247,30 @@ MatchViewport MatchScene::playViewport2D(const MatchViewport& fitted,
     play_follow.y += (focus.y - play_follow.y) * blend;
   }
   MatchViewport zoomed = fitted;
+  const float maxZoom =
+      std::min((viewMax.x - viewMin.x) / fitted.width,
+               (viewMax.y - viewMin.y) / fitted.height) /
+      PLAY_ZOOM_2D;
+  const float wheelSteps = sandbox ? pending_zoom_steps : 0.0F;
+  play_zoom_2d = std::clamp(play_zoom_2d * std::pow(1.15F, wheelSteps),
+                            std::min(0.5F, maxZoom), maxZoom);
   zoomed.width = fitted.width * PLAY_ZOOM_2D * play_zoom_2d;
   zoomed.height = fitted.height * PLAY_ZOOM_2D * play_zoom_2d;
   const float centreX = (viewMin.x + viewMax.x) * 0.5F;
   const float centreY = (viewMin.y + viewMax.y) * 0.5F;
-  // Never further than the pitch's own stadium past an edge.
-  const ImVec2 apron = stadiumApron2D(zoomed);
+  // Follow the action within any space left around the whole pitch.
   const auto place = [](float centre, float span, float follow, float low,
-                        float high, float margin)
+                        float high)
   {
     const float origin = centre - (follow * span);
-    const float lowest = high - span - margin;
-    const float highest = low + margin;
-    return lowest > highest ? (low + high - span) * 0.5F
-                            : std::clamp(origin, lowest, highest);
+    return std::clamp(origin, low, std::max(low, high - span));
   };
   zoomed.x = place(centreX, zoomed.width,
                    MatchPitch::matchSize().fractionX(play_follow.x), viewMin.x,
-                   viewMax.x, apron.x);
+                   viewMax.x);
   zoomed.y = place(centreY, zoomed.height,
                    MatchPitch::matchSize().fractionY(play_follow.y), viewMin.y,
-                   viewMax.y, apron.y);
+                   viewMax.y);
   return zoomed;
 }
 

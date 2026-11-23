@@ -22,6 +22,7 @@
 namespace
 {
 constexpr ImU32 WHITE = IM_COL32(240, 241, 244, 255);
+constexpr ImU32 IVORY = IM_COL32(244, 232, 205, 255);
 constexpr ImU32 NAVY = IM_COL32(22, 34, 78, 255);
 constexpr ImU32 BLACK = IM_COL32(28, 28, 32, 255);
 
@@ -49,8 +50,8 @@ constexpr std::array<KitColors, 14> HOME_KITS{{
     {.shirt = BLACK, .trim = WHITE, .shorts = BLACK, .socks = BLACK},
     {.shirt = WHITE, .trim = NAVY, .shorts = NAVY, .socks = WHITE},
     {.shirt = IM_COL32(242, 118, 28, 255),
-     .trim = BLACK,
-     .shorts = BLACK,
+     .trim = IVORY,
+     .shorts = IVORY,
      .socks = IM_COL32(242, 118, 28, 255)},
     {.shirt = IM_COL32(122, 28, 52, 255),
      .trim = IM_COL32(120, 190, 235, 255),
