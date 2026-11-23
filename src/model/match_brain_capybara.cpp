@@ -3496,7 +3496,14 @@ TouchIntent MatchEngine::chooseFirstTouchCapybara(
   intent.pressure = contactPressure(nearestOpponentDistance(player),
                                     knob[K::PRESSURE_RADIUS]);
 
-  // Running into open space: push it on along his run.
+  // The situation "I'm expecting the ball" (brain redesign plan section
+  // 19, step F stage 1): its own decision frame. Options: a control touch,
+  // laying it out, and first-time pass, shot and clear (listed, not judged
+  // by the brain yet).
+  using S = TermSource;
+  // Lay it out: open when he is running into open space (today's "into
+  // his stride"), along his run.
+  std::optional<PitchPoint> layOutSpot;
   if (speed >= MatchTuning::Dribble::CLOSE_CONTROL_SPEED)
   {
     const Vector2F run{.x = player.velocity.x / speed,
@@ -3505,26 +3512,44 @@ TouchIntent MatchEngine::chooseFirstTouchCapybara(
     const Vector2F ahead = {.x = run.x * lead, .y = run.y * lead};
     const PitchPoint spot = clampToPitch(
         PitchPoint{player.position.x + ahead.x, player.position.y + ahead.y});
-    bool clear = true;
-    for (const MatchPlayer& opponent : players)
-    {
-      if (active(opponent) && opponent.isHomeTeam != player.isHomeTeam &&
-          distance(opponent.position, spot) < knob[K::STRIDE_CLEARANCE])
-      {
-        clear = false;
-      }
-    }
+    const bool clear = std::ranges::none_of(
+        players,
+        [&](const MatchPlayer& opponent)
+        {
+          return active(opponent) && opponent.isHomeTeam != player.isHomeTeam &&
+                 distance(opponent.position, spot) < knob[K::STRIDE_CLEARANCE];
+        });
     if (clear)
     {
-      intent.kind = TouchIntent::Kind::INTO_STRIDE;
-      intent.targetSpot = spot;
-      intent.arrivalSpeed = speed * knob[K::STRIDE_SPEED_SHARE];
-      return intent;
+      layOutSpot = spot;
     }
   }
+  // Follow-up: no measures yet. The stopgap keeps today's outcomes: lay
+  // it out whenever it is open, else the control touch.
+  DecisionFrame::Score control;
+  control.add("stopgap: the fallback", S::SITUATION, 0.0F, 1.0F);
+  DecisionFrame::Score layOut;
+  if (layOutSpot)
+  {
+    layOut.add("stopgap: lay it out whenever it is open", S::SITUATION, 1.0F,
+               1.0F);
+  }
+  else
+  {
+    layOut.ruleOut();
+  }
+  // First-time pass, shot and clear: the body plays the first two in
+  // drills; the brain does not judge them yet (stage 2).
+  if (layOut.isAvailable() && layOut.total() >= control.total())
+  {
+    intent.kind = TouchIntent::Kind::INTO_STRIDE;
+    intent.targetSpot = *layOutSpot;
+    intent.arrivalSpeed = speed * knob[K::STRIDE_SPEED_SHARE];
+    return intent;
+  }
 
-  // Otherwise set it just ahead of where he will be, toward where he means
-  // to carry it, turned away from the nearest opponent the closer he is,
+  // The control touch: set it just ahead of where he will be, toward where he
+  // means to carry it, turned away from the nearest opponent the closer he is,
   // and never back toward his own goal near it.
   Vector2F aim =
       metricDirection(player.position, firstTouchAimCapybara(player));

@@ -925,34 +925,40 @@ struct Situation
   bool plannerWide;
   /** On the decision frame: shown in full in the stages below. */
   bool onFrame;
+  /** On a decision frame of its own, not shown in the stages below yet. */
+  bool ownFrame;
 };
-constexpr std::array<Situation, 15> SITUATIONS = {{
+constexpr std::array<Situation, 16> SITUATIONS = {{
     {.depth = 0,
      .title = "Restart",
      .decidedBy = "",
      .layers = 0,
      .plannerWide = false,
-     .onFrame = false},
+     .onFrame = false,
+     .ownFrame = false},
     {.depth = 1,
      .title = "I am the taker",
      .decidedBy = "chooseRestartTaker, chooseRestartPlay, chooseCornerPlay, "
                   "chooseShotAim",
      .layers = 0,
      .plannerWide = false,
-     .onFrame = false},
+     .onFrame = false,
+     .ownFrame = false},
     {.depth = 1,
      .title = "Someone else takes it",
      .decidedBy = "arrangeSetPieceAttack, arrangeSetPieceDefence, "
                   "updateRestartSupport",
      .layers = 0,
      .plannerWide = false,
-     .onFrame = false},
+     .onFrame = false,
+     .ownFrame = false},
     {.depth = 0,
      .title = "Open play",
      .decidedBy = "",
      .layers = 0,
      .plannerWide = false,
-     .onFrame = false},
+     .onFrame = false,
+     .ownFrame = false},
     {.depth = 1,
      .title = "Ball loose",
      .decidedBy = "refreshTacticalTargets (chaser by arrival), planWayRound, "
@@ -960,73 +966,95 @@ constexpr std::array<Situation, 15> SITUATIONS = {{
                   "chooseHeaderPlay",
      .layers = SLIDERS | ROLE | ORDERS | MOOD,
      .plannerWide = true,
-     .onFrame = false},
+     .onFrame = false,
+     .ownFrame = false},
     {.depth = 1,
      .title = "Our pass travelling",
      .decidedBy = "afterPassReleased (the collector); refreshTacticalTargets "
                   "for everyone else",
      .layers = SLIDERS | ROLE | ORDERS | MOOD,
      .plannerWide = true,
-     .onFrame = false},
+     .onFrame = false,
+     .ownFrame = false},
     {.depth = 1,
      .title = "Opponents' ball",
      .decidedBy = "",
      .layers = 0,
      .plannerWide = false,
-     .onFrame = false},
+     .onFrame = false,
+     .ownFrame = false},
     {.depth = 2,
      .title = "Press or cover",
      .decidedBy = "refreshTacticalTargets (pressers), engageBoost, "
                   "pressStandOffShare",
      .layers = SLIDERS | ROLE | ORDERS | MOOD,
      .plannerWide = true,
-     .onFrame = false},
+     .onFrame = false,
+     .ownFrame = false},
     {.depth = 2,
      .title = "Mark, block a lane, recover shape",
      .decidedBy = "assignMarks, doubleUpPoint, tightMarkPoint",
      .layers = ROLE | ORDERS | MOOD,
      .plannerWide = false,
-     .onFrame = false},
+     .onFrame = false,
+     .ownFrame = false},
     {.depth = 2,
      .title = "Challenge the carrier",
      .decidedBy = "chooseChallenge, goesIntoContest, chooseTackleIntent",
      .layers = SLIDERS | ORDERS,
      .plannerWide = false,
-     .onFrame = false},
+     .onFrame = false,
+     .ownFrame = false},
     {.depth = 2,
      .title = "Keeper",
      .decidedBy = "goalkeeperTarget, choosesToBlock, chooseClearanceAim",
      .layers = ROLE,
      .plannerWide = false,
-     .onFrame = false},
+     .onFrame = false,
+     .ownFrame = false},
     {.depth = 1,
      .title = "Our ball, a team-mate has it",
      .decidedBy = "refreshTacticalTargets: support, run in behind, attack "
                   "the box, overlap, hold shape",
      .layers = SLIDERS | ROLE | ORDERS | MOOD,
      .plannerWide = true,
-     .onFrame = false},
+     .onFrame = false,
+     .ownFrame = false},
+    {.depth = 1,
+     .title = "Our ball, it's coming to me",
+     .decidedBy =
+         "chooseFirstTouch, its own frame (step F, stage 1): control touch, "
+         "lay it out (along his run, when running into space); first-time "
+         "pass, shot and clear listed, not judged yet. Stopgap pick: lay it "
+         "out whenever open (follow-up: measures)",
+     .layers = 0,
+     .plannerWide = false,
+     .onFrame = false,
+     .ownFrame = true},
     {.depth = 1,
      .title = "Our ball, my touch still rolling",
-     .decidedBy = "chooseFirstTouch, touchNow, dribbleTouchNow, "
+     .decidedBy = "when to play it: touchNow, dribbleTouchNow, "
                   "waitsForCloser",
      .layers = 0,
      .plannerWide = false,
-     .onFrame = false},
+     .onFrame = false,
+     .ownFrame = false},
     {.depth = 1,
      .title = "Our ball, I have it (collected)",
      .decidedBy = "chooseBallAction: pass, shot, carry (direction x pace), "
                   "shield, clear",
      .layers = SLIDERS | ROLE | ORDERS | MOOD,
      .plannerWide = false,
-     .onFrame = true},
+     .onFrame = true,
+     .ownFrame = false},
     {.depth = 2,
      .title = "Then: carrying it",
      .decidedBy = "follows the chosen carry (carryTarget, carryUrgency, "
                   "carryPace); no take-ons until the take-on rework",
      .layers = 0,
      .plannerWide = false,
-     .onFrame = false},
+     .onFrame = false,
+     .ownFrame = false},
 }};
 
 /** The situations one level under `parent`, or the top level when there is
@@ -1191,6 +1219,11 @@ void situationDetail(const Situation& situation, BrainFlow::LayerMask on)
   if (situation.onFrame)
   {
     text("on the decision frame: the stages below", SandboxPageUI::LIME);
+  }
+  else if (situation.ownFrame)
+  {
+    text("on a decision frame of its own (not in the stages below yet)",
+         SandboxPageUI::LIME);
   }
   else
   {
