@@ -928,7 +928,7 @@ struct Situation
   /** On a decision frame of its own, not shown in the stages below yet. */
   bool ownFrame;
 };
-constexpr std::array<Situation, 17> SITUATIONS = {{
+constexpr std::array<Situation, 18> SITUATIONS = {{
     {.depth = 0,
      .title = "Restart",
      .decidedBy = "",
@@ -1035,9 +1035,24 @@ constexpr std::array<Situation, 17> SITUATIONS = {{
      .ownFrame = false},
     {.depth = 2,
      .title = "Keeper",
-     .decidedBy = "goalkeeperTarget, choosesToBlock, chooseClearanceAim",
+     .decidedBy =
+         "its own frame (step O4): sweep a ball going into his own goal (once "
+         "he has reacted), take a team-mate's pass, take up his position "
+         "(goalkeeperTarget, its own state machine, left as it is). Stopgap "
+         "pick in today's order (follow-up: measures). Also choosesToBlock",
      .layers = ROLE,
      .plannerWide = false,
+     .onFrame = false,
+     .ownFrame = true},
+    {.depth = 1,
+     .title = "A high ball coming down",
+     .decidedBy =
+         "a convention, not his choice yet (step O4): one player per side "
+         "goes for it, whoever meets it first (aerialRoles); it overrides his "
+         "job. During the opponents' delivery into our box the defenders hold "
+         "their marks (an override)",
+     .layers = 0,
+     .plannerWide = true,
      .onFrame = false,
      .ownFrame = false},
     {.depth = 1,

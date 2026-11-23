@@ -348,6 +348,16 @@ enum class LooseJob : std::uint8_t
 };
 constexpr std::size_t LOOSE_JOB_COUNT =
     static_cast<std::size_t>(LooseJob::COUNT);
+/** "I'm the keeper" (step O4): his options, in the stopgap order. */
+enum class KeeperJob : std::uint8_t
+{
+  SWEEP_OWN_GOAL,
+  TAKE_PASS,
+  POSITION,
+  COUNT
+};
+constexpr std::size_t KEEPER_JOB_COUNT =
+    static_cast<std::size_t>(KeeperJob::COUNT);
 }  // namespace
 
 void MatchEngine::refreshTacticalTargetsCapybara(float dt, bool planHome)
@@ -2086,6 +2096,9 @@ void MatchEngine::refreshTacticalTargetsCapybara(float dt, bool planHome)
       }
     }
 
+    // Overrides of the situation's job (step O4). "A high ball coming
+    // down": one per side goes for it, by a convention (whoever meets it
+    // first, aerialRoles), not his own choice yet; it pre-empts his job.
     // Going for a loose high ball: to the spot, held, or arriving with the
     // ball for a running jump (he runs through it).
     bool throughTarget = false;
@@ -2107,9 +2120,9 @@ void MatchEngine::refreshTacticalTargetsCapybara(float dt, bool planHome)
                     (role.contests ? 1U : 0U) | (role.running ? 2U : 0U));
     }
 
-    // A lofted delivery into the box is attacked by the receiver while the
-    // defenders hold their marks instead of drifting back into shape; the
-    // one going for it (above) is released from his.
+    // Override (step O4): during the opponents' lofted delivery into the
+    // box, the defenders hold their marks instead of drifting back into
+    // shape; the one going for it (above) is released from his.
     if (getPossessionState().isAerialDelivery && (carrier == nullptr) &&
         !challenging && getPossessionState().passByHome != player.isHomeTeam &&
         player.intent != PlayerIntent::CLAIM_LOOSE_BALL)
@@ -2154,15 +2167,25 @@ void MatchEngine::refreshTacticalTargetsCapybara(float dt, bool planHome)
       const double reaction =
           H::REACTION_SECONDS_POOR +
           ((H::REACTION_SECONDS_BEST - H::REACTION_SECONDS_POOR) * reflexes);
-      if (ownGoal &&
-          getSimulatedSeconds() >= *control.ownGoalThreatSince + reaction)
+      // The situation "I'm the keeper" (step O4): his frame. Sweep a ball
+      // going into his own goal (open once he has reacted to it), take a
+      // team-mate's pass to him (open when it is his: the receive target
+      // above stands), or take up his position (always open; his own state
+      // machine, goalkeeperTargetCapybara). Follow-up: the stopgap pick is
+      // today's order.
+      const std::array<bool, KEEPER_JOB_COUNT> keeperOpen{
+          ownGoal &&
+              getSimulatedSeconds() >= *control.ownGoalThreatSince + reaction,
+          receivingBackPass, true};
+      const auto keeperJob = static_cast<KeeperJob>(std::distance(
+          keeperOpen.begin(), std::ranges::find(keeperOpen, true)));
+      if (keeperJob == KeeperJob::SWEEP_OWN_GOAL)
       {
         control.state = GoalkeeperState::SWEEP;
         target = clampToPitch(*ownGoal);
         job = planJob(PlanBranch::GOALKEEPER, 1U);
       }
-      // A keeper receiving a team-mate's pass steps onto the ball's path.
-      else if (!receivingBackPass)
+      else if (keeperJob == KeeperJob::POSITION)
       {
         target = goalkeeperTargetCapybara(player, carrier);
         job = planJob(PlanBranch::GOALKEEPER);
