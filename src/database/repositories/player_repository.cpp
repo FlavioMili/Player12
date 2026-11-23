@@ -24,6 +24,7 @@
 
 #include "database/SQLLoader.h"
 #include "database/repositories/text_encoding.h"
+#include "global/nationality.h"
 #include "model/role_utils.h"
 #include "model/squad_numbers.h"
 
@@ -224,20 +225,23 @@ class PlayerRowBinder
     appendTraits(traits, player.getTraits());
     dynamics.clear();
     appendDynamics(dynamics, player.getDynamics());
-    const auto nationality = languageToString.find(player.getNationality());
-    const std::string_view nationality_text =
-        nationality != languageToString.end()
-            ? std::string_view(nationality->second)
-            : std::string_view("English");
-    const std::string_view foot =
-        player.getFoot() == Foot::Left ? "Left" : "Right";
+    // Bound with SQLITE_STATIC: the text must outlive bind(), like stats.
+    nationality = nationalityName(player.getNationality());
+    if (nationality.empty())
+    {
+      nationality = "English";
+    }
+    const Foot foot_value = player.getFoot();
+    const std::string_view foot = foot_value == Foot::Left   ? "Left"
+                                  : foot_value == Foot::Both ? "Both"
+                                                             : "Right";
 
     sqlite3_bind_int(stmt, index++, static_cast<int>(player.getTeamId()));
     bindText(stmt, index++, player.getFirstName());
     bindText(stmt, index++, player.getLastName());
     sqlite3_bind_int(stmt, index++, player.getAge());
     bindText(stmt, index++, role);
-    bindText(stmt, index++, nationality_text);
+    bindText(stmt, index++, nationality);
     sqlite3_bind_int(stmt, index++, static_cast<int>(player.getWage()));
     sqlite3_bind_int(stmt, index++, player.getContractYears());
     sqlite3_bind_int(stmt, index++, player.getHeight());
@@ -248,7 +252,8 @@ class PlayerRowBinder
                         static_cast<double>(player.getPotential()));
     bindText(stmt, index++, traits);
     bindText(stmt, index++, dynamics);
-    sqlite3_bind_int(stmt, index, player.getSquadNumber());
+    sqlite3_bind_int(stmt, index++, player.getSquadNumber());
+    bindText(stmt, index, player.getNickname());
   }
 
  private:
@@ -259,6 +264,7 @@ class PlayerRowBinder
   }
 
   std::string stats;
+  std::string nationality;
   std::string role;
   std::string traits;
   std::string dynamics;
@@ -305,7 +311,7 @@ const char* columnText(sqlite3_stmt* stmt, int column)
   return text ? reinterpret_cast<const char*>(text) : "";
 }
 
-constexpr int PLAYER_PARAM_COUNT = 16;
+constexpr int PLAYER_PARAM_COUNT = 17;
 
 class InvalidPlayerStatsError : public std::runtime_error
 {
@@ -365,10 +371,12 @@ std::vector<Player> PlayerRepository::loadAllPlayers() const
     int status = sqlite3_column_int(stmt, 12);
 
     std::string nat_str(nationality_str);
-    auto it = stringToLanguage.find(nat_str);
-    Language nationality =
-        (it != stringToLanguage.end()) ? it->second : Language::EN;
-    Foot foot = (std::string(foot_str) == "Left") ? Foot::Left : Foot::Right;
+    Language nationality = nationalityFromName(nat_str).value_or(Language::EN);
+    const std::string foot_text =
+        foot_str ? reinterpret_cast<const char*>(foot_str) : "";
+    Foot foot = foot_text == "Left"   ? Foot::Left
+                : foot_text == "Both" ? Foot::Both
+                                      : Foot::Right;
 
     std::map<std::string, float> stats = parsePlayerStats(stats_str);
 
@@ -385,6 +393,12 @@ std::vector<Player> PlayerRepository::loadAllPlayers() const
     const int squad_number = sqlite3_column_int(stmt, 16);
     if (SquadNumbers::isValid(squad_number))
       player.setSquadNumber(static_cast<std::uint8_t>(squad_number));
+    // Column 17 ("nickname") exists on schema >= 15; rows without it keep an
+    // empty nickname.
+    if (sqlite3_column_count(stmt) > 17 &&
+        sqlite3_column_text(stmt, 17) != nullptr)
+      player.setNickname(
+          reinterpret_cast<const char*>(sqlite3_column_text(stmt, 17)));
   }
 
   sqlite3_finalize(stmt);

@@ -1049,13 +1049,26 @@ TEST(YouthSelectionTest, ExperiencedPlayersStartAtSimilarAbility)
   Team& team = gamedata->getTeam(modest)->get();
   team.generateStartingXI(*gamedata, config);
 
-  // An experienced outfield starter and a squad player of his position who
-  // becomes his teenage double.
+  // An experienced outfield starter, the weakest starter of his position
+  // (a double of a stronger one would fairly replace that weakest starter),
+  // and a squad player of his position who becomes his teenage double.
   const Player* veteran = nullptr;
   PlayerID double_id = 0;
-  for (const auto& positioned : team.getLineup().getOutfieldPlayers())
+  const auto& outfield = team.getLineup().getOutfieldPlayers();
+  for (const auto& positioned : outfield)
   {
     if (!positioned.player || positioned.player->getAge() < 24) continue;
+    const double overall = positioned.player->getOverall(config);
+    if (std::ranges::any_of(outfield,
+                            [&](const auto& other)
+                            {
+                              return other.player &&
+                                     other.player != positioned.player &&
+                                     other.player->getRole() ==
+                                         positioned.player->getRole() &&
+                                     other.player->getOverall(config) < overall;
+                            }))
+      continue;
     for (const PlayerID player_id : team.getPlayerIDs())
     {
       const Player& other = gamedata->getPlayer(player_id)->get();

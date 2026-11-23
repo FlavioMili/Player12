@@ -1,5 +1,6 @@
 add_executable(db_benchmarks
   db_benchmark.cpp
+  world_benchmark.cpp
 )
 
 target_link_libraries(db_benchmarks

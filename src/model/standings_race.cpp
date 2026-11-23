@@ -896,7 +896,7 @@ Standings::RacePlaces Standings::racePlaces(
     uint16_t top = 0;
     uint16_t total = 0;
     bool first = true;
-    for (const auto& rules : Continental::COMPETITIONS)
+    for (const auto& rules : Continental::competitions())
     {
       if (rules.continent != *continent) continue;
       std::vector<uint8_t> capacity;
@@ -915,7 +915,7 @@ Standings::RacePlaces Standings::racePlaces(
       // who may come from outside the league's qualifying places.
       bool lower = false;
       bool higher = false;
-      for (const auto& other : Continental::COMPETITIONS)
+      for (const auto& other : Continental::competitions())
       {
         if (other.continent != rules.continent || other.id == rules.id)
           continue;

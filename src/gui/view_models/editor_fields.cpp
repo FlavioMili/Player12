@@ -12,6 +12,7 @@
 
 #include "global/global.h"
 #include "global/languages.h"
+#include "global/nationality.h"
 #include "model/role_utils.h"
 
 namespace
@@ -50,12 +51,12 @@ std::vector<EditorField> playerFields()
   }
   auto nation = text("nationality", "PROFILE_NATIONALITY", PERSONAL);
   nation.control = EditorField::Control::Choice;
-  for (const auto& [language, name] : languageToString)
+  // Labels are shown as written: world-defined peoples have no translation.
+  nation.translate_choices = false;
+  for (const auto& [language, name] : allNationalities())
   {
-    (void)language;
-    nation.choices.emplace_back(name, "NATION_" + name);
+    nation.choices.emplace_back(name, nationalityLabel(language));
   }
-  std::ranges::sort(nation.choices);
   auto foot = text("foot", "PROFILE_FOOT", PERSONAL);
   foot.control = EditorField::Control::Choice;
   foot.choices = {{"Left", "PLAYER_FOOT_LEFT"}, {"Right", "PLAYER_FOOT_RIGHT"}};

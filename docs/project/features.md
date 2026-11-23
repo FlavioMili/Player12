@@ -107,6 +107,16 @@
   that does not load can be restored from its newest good backup, and a
   crash leaves a report on your computer (nothing is sent anywhere).
 
+**Worlds and modding**
+
+- Every new career starts in the world you choose: the built-in one, a world
+  you build in the World editor, or a `.fmdb` file someone shared (file
+  picker or drag and drop).
+- The World editor builds countries, cities, competitions, clubs, kits and
+  players with the in-game editor's controls, combines worlds with automatic
+  renumbering and conflict resolution, and exports files that diff cleanly
+  in Git ([guide](../user/world-editor.md)).
+
 The [changelog](../../CHANGELOG.md) has the complete list.
 
 ## Screenshots

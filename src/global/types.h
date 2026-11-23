@@ -12,7 +12,17 @@
 
 // ID Types
 /** @brief Type alias for League identifiers. */
-using LeagueID = uint8_t;
+using LeagueID = uint16_t;
+
+/** @brief Type alias for nationality identifiers (underlying type of Language).
+ */
+using NationalityID = uint16_t;
+
+/** @brief Type aliases for world entity identifiers. */
+using CountryID = uint16_t;
+using RegionID = uint16_t;
+using ConfederationID = uint16_t;
+using LanguageID = uint16_t;
 
 /** @brief Type alias for Team identifiers. */
 using TeamID = uint16_t;

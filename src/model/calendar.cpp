@@ -27,6 +27,7 @@
 #include <vector>
 
 #include "database/gamedata.h"
+#include "database/world/world_runtime.h"
 #include "global/global.h"
 #include "global/logger.h"
 #include "global/paths.h"
@@ -576,20 +577,17 @@ std::vector<DaySlot> parseSlots(const json& list,
   return slots;
 }
 
-/** Day patterns of the data pack (round_days in leagues.json) by league. */
+/** Day patterns of the installed world (round_days of its leagues). */
 std::unordered_map<LeagueID, RoundPattern> loadRoundPatterns()
 {
   std::unordered_map<LeagueID, RoundPattern> patterns;
-  std::ifstream file(AssetPaths::leagues());
-  if (!file) return patterns;
-  const json data = json::parse(file, nullptr, false);
-  if (!data.is_array()) return patterns;
-  for (const json& league : data)
+  const auto world = World::current();
+  for (const json& league : world->section(World::Kind::League))
   {
     if (!league.is_object()) continue;
     const auto id = league.find("id");
     const auto days = league.find("round_days");
-    if (id == league.end() || !id->is_number_unsigned() ||
+    if (id == league.end() || !id->is_number_integer() ||
         days == league.end() || !days->is_object())
       continue;
     RoundPattern pattern;
@@ -1068,6 +1066,9 @@ void Calendar::generateSeasonFixtures(const class GameData& gamedata,
   {
     const size_t half_rounds = plan.first_half.size();
     const size_t rounds = plan.rounds.size();
+    // A league without rounds (one club in a custom world) has nothing to
+    // schedule.
+    if (half_rounds == 0) continue;
     std::unordered_map<TeamID, int> last_played;
     const auto lastPlayed = [&last_played](TeamID team)
     {
@@ -1338,11 +1339,11 @@ void Calendar::generateFriendlies(const class GameData& gamedata,
   // Pre-season tours stay in the club's region (same country or nearby):
   // clubs are paired within their region, and leftovers of odd-sized
   // regions play each other.
-  std::map<WorldRegion, std::vector<TeamID>> regions;
+  std::map<RegionID, std::vector<TeamID>> regions;
   for (const auto& [id, team] : gamedata.getTeams())
   {
     if (id != FREE_AGENTS_TEAM_ID)
-      regions[leagueProfile(team.getLeagueId()).region].push_back(id);
+      regions[leagueProfile(team.getLeagueId()).region_id].push_back(id);
   }
   for (auto& [region, team_ids] : regions) std::ranges::sort(team_ids);
 

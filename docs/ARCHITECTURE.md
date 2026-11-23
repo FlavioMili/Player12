@@ -143,7 +143,9 @@ background result.
   possible.
 - **GameData** (`src/database/gamedata.*`) keeps players, teams and leagues
   in memory for the whole session. New worlds are built by `DataGenerator`
-  and `WorldGeneration` from the JSON data pack in `assets/user_made_data/`.
+  and `WorldGeneration` from the installed world database
+  (`src/database/world/`): the built-in `assets/world/default.fmdb` or a
+  world the player chose, which the save keeps a copy of (`WorldDocument`).
 - **Working copy and crash-safe saves**: a career is played on an in-memory
   SQLite database. `SaveManager` (`src/database/save_manager.*`) writes a slot
   only through a verified snapshot: online backup to `<slot>.tmp`,

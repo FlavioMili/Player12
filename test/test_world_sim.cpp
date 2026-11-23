@@ -32,6 +32,7 @@
 
 #include "controller/game_controller.h"
 #include "database/gamedata.h"
+#include "database/world/world_runtime.h"
 #include "global/global.h"
 #include "global/language_manager.h"
 #include "global/logger.h"
@@ -312,6 +313,37 @@ TEST(WorldGenerationTest, RolesLeaguesAndReputationShapeTheWorld)
 // Injuries
 // ---------------------------------------------------------------------------
 
+TEST(WorldGenerationTest, WorldStatureFixesThePeckingOrderAcrossSeeds)
+{
+  // Every career of the same world has the same strongest clubs: a stated
+  // stature is kept, and the clubs the world leaves open fill the league's
+  // other ranks in club-id order, whatever the save's seed.
+  const std::unordered_map<TeamID, std::uint8_t> stature = {{17, 96}, {4, 91}};
+  std::vector<TeamID> first_top;
+  for (const std::uint64_t seed : {1ULL, 2ULL, 0xC0FFEEULL})
+  {
+    std::unordered_map<TeamID, Team> teams;
+    for (TeamID id = 1; id <= 20; ++id)
+    {
+      teams.try_emplace(id, id, LeagueID{1}, std::format("Club {}", id), 0);
+    }
+    WorldGeneration::generateClubProfiles(teams, seed, false, &stature);
+    EXPECT_EQ(teams.at(17).getReputation(), 96) << seed;
+    EXPECT_EQ(teams.at(4).getReputation(), 91) << seed;
+    std::vector<TeamID> ranking;
+    for (TeamID id = 1; id <= 20; ++id) ranking.push_back(id);
+    std::ranges::stable_sort(ranking, std::greater{}, [&](TeamID id)
+                             { return teams.at(id).getReputation(); });
+    EXPECT_EQ(ranking.front(), 17) << seed;
+    EXPECT_GT(teams.at(1).getReputation(), teams.at(20).getReputation())
+        << seed;
+    // Neighbouring ranks may swap by a point of noise; the top does not.
+    const std::vector<TeamID> top(ranking.begin(), ranking.begin() + 2);
+    if (first_top.empty()) first_top = top;
+    EXPECT_EQ(top, first_top) << seed;
+  }
+}
+
 TEST(WorldGenerationTest, NamesFollowNationalityAndAreUnique)
 {
   const SlotCleanup slot{uniqueSlot(0)};
@@ -379,7 +411,7 @@ TEST(WorldGenerationTest, NamesFollowNationalityAndAreUnique)
 TEST(WorldGenerationTest, LeagueShapesStratifyTopDivisions)
 {
   // Shape arithmetic: zero mean, the league's spread, the elite pulled clear.
-  for (const LeagueProfile& profile : LEAGUE_PROFILES)
+  for (const LeagueProfile& profile : leagueProfiles())
   {
     const std::vector<float> offsets =
         WorldGeneration::levelOffsets(profile.shape, 20);
@@ -1465,8 +1497,7 @@ TEST(WorldGenerationTest, ExcludedNamesAreHashedAndNeverGenerated)
   EXPECT_TRUE(registry.isAvailable("Zzz Testnam"));
 
   // The asset holds no plain list of names to avoid.
-  std::ifstream file(AssetPaths::firstNames());
-  const auto json = nlohmann::json::parse(file);
+  const nlohmann::json& json = World::defaultWorld()->names(true);
   EXPECT_FALSE(json.contains("excluded_full_names"));
   ASSERT_TRUE(json.contains("excluded_name_hashes"));
   EXPECT_EQ(json.at("excluded_name_hashes").size(),

@@ -10,15 +10,18 @@
 
 #include <filesystem>
 #include <future>
+#include <memory>
 #include <optional>
 #include <string>
 #include <thread>
 #include <vector>
 
+#include "database/world/world_document.h"
 #include "global/background_task.h"
 #include "global/crash_report.h"
 #include "gui/gui_scene.h"
 #include "gui/gui_view.h"
+#include "gui/scenes/world_choice_dialog.h"
 
 /**
  * @brief Scene for the main menu.
@@ -36,6 +39,18 @@ class MainMenuScene : public GUIScene
    * @brief Destroys the MainMenuScene.
    */
   ~MainMenuScene() override = default;
+
+  /** Starts a new career in @p slot with @p world (null: built-in world) on
+   * the next frames, with the usual loading screen. */
+  void beginCareer(int slot, std::shared_ptr<const World::Document> world);
+
+  /** Opens the new-career slot picker; the chosen slot starts a career in
+   * @p world (null: the world choice is asked first). */
+  void chooseSlotFor(std::shared_ptr<const World::Document> world);
+
+  /** Drag and drop: world databases are accepted when a new career is
+   * being started. */
+  void handleEvent(const SDL_Event& event) override;
 
   /**
    * @brief Populated when the scene is entered. Caches the save slot metadata.
@@ -95,6 +110,16 @@ class MainMenuScene : public GUIScene
   /** Why some or all texts are English, empty when nothing fell back. */
   std::string language_notice;
 
+  // New-career world choice.
+  WorldChoiceDialog world_choice;
+  int world_slot = 0; /**< Slot the world choice is for. */
+  /** World the career being started is built from (null: built-in). */
+  std::shared_ptr<const World::Document> start_world;
+  /** World already chosen (World editor): the slot picker then starts it. */
+  std::shared_ptr<const World::Document> pending_world;
+  /** File dropped before a slot was chosen; imported by the world choice. */
+  std::filesystem::path dropped_file;
+
   void loadCachedMetadata();
   void renderBackdrop() const;
   void renderSlotPicker();
@@ -109,4 +134,7 @@ class MainMenuScene : public GUIScene
   /** Opens the load error dialog for @p slot with its recovery offer. */
   void showLoadError(int slot, std::string text);
   void startSlot(int slot, bool newGame);
+  /** A slot was chosen for a new career: start it or ask for the world. */
+  void beginNewCareer(int slot);
+  void handleWorldChoice(const WorldChoiceDialog::Result& choice);
 };

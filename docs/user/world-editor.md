@@ -1,0 +1,110 @@
+# Worlds: play, build and share
+
+A **world** is everything a career starts from: countries, competitions,
+clubs, players, kits and league economies. The game ships with a built-in
+world, and you can play in worlds other players made, build your own, or
+combine several into one.
+
+## Start a career in another world
+
+Every new career asks which world to play in, right after you choose the save
+slot:
+
+- **Default world**: the built-in world, generated fresh from a random seed.
+- **Edit a world first**: opens the World editor; press **Start career** there
+  when you are done.
+- **Your worlds**: worlds you imported or saved. Select one to see its author,
+  version and size, then press **Start career**.
+
+To use a world someone shared, download its `.fmdb` file, then press
+**Import file…** or simply drop the file onto the game window. The file is
+checked before anything happens: if something is wrong you see each problem
+with the club, player or competition it concerns, and nothing is imported.
+The game never downloads files itself.
+
+A world only affects the career you are starting. Your other careers keep
+the world they were created in, even if you later edit or delete that world.
+Clubs and players a world leaves out are generated as in the default world,
+so a world of a few clubs or a list of legendary players is enough.
+
+## Build a world
+
+Open **Main menu → World editor**. It opens the built-in world; use **New**
+to start from a small example world or an empty one, or **Open** for one of
+your worlds or any `.fmdb` file.
+
+The left side lists the layers of the world:
+
+| Page | What you edit |
+|------|---------------|
+| World details | Name, author, version, description and the season ages refer to |
+| Languages | A language with the first and last names of its speakers |
+| Confederations | Groups of regions: the continental cups, national finals and trips of their national teams (cups are written as data) |
+| Regions | A name and its confederation; pre-season tours stay inside a region |
+| Countries | Name, the people (demonym), language, region, football and economic level |
+| Cities and Travel | Cities with their population and travel times between them (stored for future features; no effect on matches yet) |
+| Competitions | Divisions, the division above for promotion and relegation, tie-break rule and the economy and match profile |
+| Clubs | Name, three-letter code, competition, city, colours and full kits, stadium |
+| Players | Names, nickname, club, age, nationality, position, foot, attributes and contract |
+
+Pick a page, search or filter the list (for example the players of one club,
+or free agents), and select an entry to edit it with the same controls as the
+[in-game editor](in-game-editor.md). **Add**, **Duplicate** and **Delete**
+work on the selected page; to move a club to another division or a player to
+another club, change its competition or club in the form. Deleting asks first
+and tells you what changes: the players of a deleted club become free agents,
+the clubs of a deleted division wait without a competition until you place
+them. **Undo** and **Redo** step through your changes.
+
+Leagues you create follow their country's football and economic level:
+lower divisions are weaker and poorer. Set the profile fields of a
+competition only if you want to tune its finances or match style yourself.
+
+## Problems
+
+The counters at the top show errors, problems that block a career and
+warnings; select one to see the list and jump to the entry concerned. You can
+save an unfinished world at any time. A career needs at least one division of
+four or more clubs, an even number of clubs per division, unique club codes
+and every club placed in a competition.
+
+## Combine worlds
+
+**Combine** loads another world into the one you are editing, like building
+blocks: for example a file of historic players, someone's league and your own
+fantasy league.
+
+- Ids never clash: the added world is renumbered automatically. The
+  **Combine review** page lists everything added, with ids shown as old -> new.
+- Nothing different is merged or dropped for you. Entries that are identical
+  and clearly the same (same club in the same league of the same country,
+  same player at the same club, and so on) merge for convenience, and are
+  listed under **Merged automatically** with the reason. If one is really a
+  different thing, select it and choose **These are different: keep both**.
+- The same club, player, competition or country with different data becomes a
+  **conflict**. For each one, keep your version, keep the other one, keep
+  both, or pick field by field. With many conflicts, you can choose one world
+  as the source of truth for all those remaining; that is always your click.
+- Weaker matches are **possible duplicates**: a club with the same name in
+  another division, a player with the same name, nationality and age at
+  another club, several equally good candidates, or similar names such as
+  "Real Madrid" and "Real Madrid CF". Both are kept; merge them or keep them
+  separate. Each shows why it was flagged ("Matched on ...").
+- While conflicts or possible duplicates are undecided, the world cannot be
+  saved or used to start a career. Decide each one, or choose **Keep
+  everything as it is**.
+
+Players of a club that merged into another follow the club that remains.
+
+## Save and share
+
+**Save** keeps the world in your worlds, ready for a new career. **Export…**
+writes a `.fmdb` file anywhere, for example to share it on GitHub or Discord.
+From a running career, **Settings → World databases → Export world…** writes
+the world as it is now, with every club and player.
+
+World files are plain text (JSON) written in a stable order, one entry per
+line, so they work well in a Git repository and can be reviewed or tweaked in
+a text editor. The [format reference](../../assets/world/README.md) describes
+every field. Do not publish worlds containing real people's or clubs' data
+where you are not allowed to.

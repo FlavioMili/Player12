@@ -28,6 +28,7 @@
 
 #include "database/database_connection.h"
 #include "database/migrations/migrations.h"
+#include "database/world/world_runtime.h"
 #include "global/logger.h"
 #include "model/world_rng.h"
 
@@ -339,7 +340,7 @@ void readMetadata(sqlite3* db, SaveInspection& inspection)
           "SELECT schema_version, game_version, engine_version, "
           "rules_edition, rng_version, sim_version, world_seed, seed_unknown, "
           "created_at_utc, updated_at_utc, last_saved_game_date, "
-          "playtime_seconds FROM save_meta WHERE id = 1;",
+          "playtime_seconds, packs FROM save_meta WHERE id = 1;",
           -1, &stmt, nullptr) == SQLITE_OK &&
       sqlite3_step(stmt) == SQLITE_ROW)
   {
@@ -356,6 +357,7 @@ void readMetadata(sqlite3* db, SaveInspection& inspection)
     meta.updated_at_utc = columnText(stmt, 9);
     meta.last_saved_game_date = columnText(stmt, 10);
     meta.playtime_seconds = sqlite3_column_int64(stmt, 11);
+    meta.packs = columnText(stmt, 12);
     inspection.has_metadata = true;
   }
   sqlite3_finalize(stmt);
@@ -521,9 +523,20 @@ void SaveManager::stampMetadata(const DatabaseConnection& working,
   sqlite3_stmt* stmt = working.prepareStatement(
       "UPDATE save_meta SET game_version = ?, engine_version = ?, "
       "rng_version = ?, sim_version = ?, world_seed = ?, updated_at_utc = ?, "
-      "last_saved_game_date = ?, playtime_seconds = ? WHERE id = 1;");
+      "last_saved_game_date = ?, playtime_seconds = ?, packs = ? WHERE id = "
+      "1;");
   const std::string updated = utcNow("{:%FT%TZ}");
   const std::string date = game_date.toString();
+  // Provenance of the world database the career was built from.
+  std::string packs = "[]";
+  if (const auto world = World::current(); !World::isBuiltIn(*world))
+  {
+    const World::Manifest manifest = world->manifest();
+    packs = nlohmann::json::array({{{"name", manifest.name},
+                                    {"author", manifest.author},
+                                    {"version", manifest.version}}})
+                .dump();
+  }
   sqlite3_bind_text(stmt, 1, SaveFormat::GAME_VERSION.data(),
                     static_cast<int>(SaveFormat::GAME_VERSION.size()),
                     SQLITE_STATIC);
@@ -536,6 +549,7 @@ void SaveManager::stampMetadata(const DatabaseConnection& working,
   sqlite3_bind_text(stmt, 6, updated.c_str(), -1, SQLITE_TRANSIENT);
   sqlite3_bind_text(stmt, 7, date.c_str(), -1, SQLITE_TRANSIENT);
   sqlite3_bind_int64(stmt, 8, playtime_seconds);
+  sqlite3_bind_text(stmt, 9, packs.c_str(), -1, SQLITE_TRANSIENT);
   working.executeStep(stmt);
   sqlite3_finalize(stmt);
 }

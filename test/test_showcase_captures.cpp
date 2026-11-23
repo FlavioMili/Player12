@@ -28,6 +28,7 @@
 #include <unistd.h>
 
 #include <algorithm>
+#include <array>
 #include <cstdint>
 #include <cstdlib>
 #include <filesystem>
@@ -38,15 +39,21 @@
 #include <vector>
 
 #include "controller/game_controller.h"
+#include "database/world/world_edit.h"
+#include "database/world/world_io.h"
+#include "database/world/world_library.h"
 #include "global/language_manager.h"
 #include "global/logger.h"
 #include "global/runtime_paths.h"
 #include "gui/gui_view.h"
 #include "gui/scenes/main_game_scene.h"
+#include "gui/scenes/main_menu_scene.h"
 #include "gui/scenes/management_scene.h"
 #include "gui/scenes/match_scene.h"
 #include "gui/scenes/roster_scene.h"
 #include "gui/scenes/transfer_market_scene.h"
+#include "gui/scenes/world_editor_scene.h"
+#include "gui/scenes/world_editor_state.h"
 #include "model/calendar.h"
 #include "model/match_engine.h"
 #include "model/settings_manager.h"
@@ -73,6 +80,10 @@ class GameFlowTest_GUIFlowLifecycle_Test
   static void select(RosterScene& scene, PlayerID id)
   {
     scene.selected_player_id = id;
+  }
+  static WorldChoiceDialog& worldChoice(MainMenuScene& scene)
+  {
+    return scene.world_choice;
   }
 };
 
@@ -143,18 +154,20 @@ void frames(GUIView& view, int count)
 
 /** Writes the current frame as <folder>/<name>.png. */
 void capture(GUIView& view, const std::filesystem::path& folder,
-             const char* name)
+             const char* name, int width = WIDTH)
 {
   const auto path = folder / (std::string(name) + ".png");
   std::filesystem::remove(path);
   SDL_Surface* surface = SDL_RenderReadPixels(view.getRenderer(), nullptr);
   ASSERT_NE(surface, nullptr) << SDL_GetError();
-  EXPECT_EQ(surface->w, WIDTH) << name;
+  EXPECT_EQ(surface->w, width) << name;
   EXPECT_TRUE(SDL_SavePNG(surface, path.string().c_str()))
       << path.string() << ": " << SDL_GetError();
   SDL_DestroySurface(surface);
   ASSERT_TRUE(std::filesystem::exists(path)) << name;
-  EXPECT_GT(std::filesystem::file_size(path), 50'000u) << name;
+  EXPECT_GT(std::filesystem::file_size(path),
+            width >= WIDTH ? 50'000u : 20'000u)
+      << name;
 }
 
 /** Optional motion capture: every PNG is a rendered, fixed-time game frame.
@@ -410,4 +423,239 @@ TEST(ShowcaseCaptures, ReadmeScreens)
   capture(view, folder, "match_3d_focus");
   MatchBridge::setFocus(*match, false);
   frames(view, 2);
+}
+
+/** Test access to the World editor (see WorldEditorScene). */
+struct WorldEditorTestAccess
+{
+  static WorldEditorScene::State& state(GUIView& view)
+  {
+    return *dynamic_cast<WorldEditorScene&>(*Bridge::activeScene(view)).state;
+  }
+};
+
+namespace
+{
+using World::Kind;
+using EditorState = WorldEditorScene::State;
+
+constexpr int WORLD_WIDTH = 1600;
+constexpr int WORLD_HEIGHT = 900;
+
+/** Selects the editor form's tab named @p label. */
+void selectTab(const char* label)
+{
+  for (ImGuiTabBar& bar : ImGui::GetCurrentContext()->TabBars.Buf)
+  {
+    for (ImGuiTabItem& tab : bar.Tabs)
+    {
+      if (std::string(ImGui::TabBarGetTabName(&bar, &tab)) == label)
+      {
+        bar.NextSelectedTabId = tab.ID;
+        return;
+      }
+    }
+  }
+  ADD_FAILURE() << "missing tab " << label;
+}
+
+/** The example world with more clubs and a few named players. */
+World::Document showcaseWorld()
+{
+  World::Document world = World::templateDocument();
+  const std::array<const char*, 6> clubs = {"Harbour Town", "Ironbridge",
+                                            "Lakeside",     "Marlow Park",
+                                            "Oldcastle",    "Redhill"};
+  for (const char* name : clubs)
+  {
+    const auto id = World::create(world, Kind::Club, 1);
+    world.find(Kind::Club, id)->operator[]("name") = name;
+    world.find(Kind::Club, id)->operator[]("short_name") =
+        std::string(name).substr(0, 3);
+  }
+  const std::array<std::pair<const char*, const char*>, 8> players = {{
+      {"Luca", "Marino"},
+      {"Tom", "Hartley"},
+      {"Idris", "Okoye"},
+      {"Marco", "Bellini"},
+      {"Noah", "Fischer"},
+      {"Jonas", "Lindqvist"},
+      {"Diego", "Ramos"},
+      {"Elias", "Moreau"},
+  }};
+  const std::array<const char*, 4> roles = {"GK", "CB", "CM", "ST"};
+  for (std::size_t i = 0; i < players.size(); ++i)
+  {
+    const auto id = World::create(world, Kind::Player, 101 + i % 4);
+    auto& player = *world.find(Kind::Player, id);
+    player["first_name"] = players[i].first;
+    player["last_name"] = players[i].second;
+    player["role"] = roles[i % roles.size()];
+    player["age"] = 19 + static_cast<int>(i) * 2;
+    for (auto& [stat, value] : player["stats"].items())
+      value = 48 + static_cast<int>((i * 7 + stat.size() * 3) % 38);
+  }
+  return world;
+}
+
+EditorState& openWorldEditor(GUIView& view, World::Document document)
+{
+  WorldEditorScene::Options options;
+  options.world = std::make_shared<World::Document>(std::move(document));
+  view.changeScene(std::make_unique<WorldEditorScene>(&view, options));
+  frames(view, 3);
+  return WorldEditorTestAccess::state(view);
+}
+}  // namespace
+
+TEST(ShowcaseCaptures, WorldScreens)
+{
+  const char* folderSetting = std::getenv("FM_SHOWCASE_DIR");
+  if (folderSetting == nullptr || *folderSetting == '\0')
+    GTEST_SKIP() << "set FM_SHOWCASE_DIR to write the screenshots";
+  const std::filesystem::path folder(folderSetting);
+  std::filesystem::create_directories(folder);
+
+  SDL_SetHint(SDL_HINT_VIDEO_DRIVER, "dummy");
+  Logger::init();
+  ASSERT_TRUE(LanguageManager::instance().loadLanguage(Language::EN));
+  Settings& settings = SettingsManager::instance()->get();
+  settings.screen_tips = false;
+  settings.audio_muted = true;
+  settings.ui_scale = 1.0f;
+
+  GameController controller;
+  GUIView view(controller);
+  ASSERT_TRUE(Bridge::initialize(view));
+  view.refreshTheme();
+  resize(view, WORLD_WIDTH, WORLD_HEIGHT);
+  frames(view, 3);
+  const auto shoot = [&](const char* name)
+  {
+    frames(view, 3);
+    capture(view, folder, name, WORLD_WIDTH);
+  };
+
+  EditorState& clubs = openWorldEditor(view, showcaseWorld());
+  clubs.setPage(EditorState::Page::Club);
+  clubs.select(Kind::Club, 103);
+  shoot("world_editor_clubs");
+
+  clubs.setPage(EditorState::Page::Player);
+  clubs.select(Kind::Player, 3);
+  shoot("world_editor_player");
+
+  auto& club = *clubs.doc.find(Kind::Club, 102);
+  club["colours"]["home"] = {{"shirt", "#1D428A"},
+                             {"shorts", "#FFFFFF"},
+                             {"socks", "#1D428A"},
+                             {"trim", "#FDB913"}};
+  club["colours"]["away"] = {{"shirt", "#FFFFFF"},
+                             {"shorts", "#1D428A"},
+                             {"socks", "#FFFFFF"},
+                             {"trim", "#1D428A"}};
+  club["colours"]["third"] = {{"shirt", "#00843D"},
+                              {"shorts", "#00843D"},
+                              {"socks", "#FFFFFF"},
+                              {"trim", "#FFFFFF"}};
+  clubs.setPage(EditorState::Page::Club);
+  clubs.select(Kind::Club, 102);
+  frames(view, 3);
+  selectTab(LOC("WORLD_SECTION_KIT"));
+  shoot("world_editor_kits");
+
+  World::Document geography = showcaseWorld();
+  geography.add(Kind::Language, {{"id", 1},
+                                 {"name", "Freelandic"},
+                                 {"first_names", {"Aldo", "Bram", "Cael"}},
+                                 {"last_names", {"Marsh", "Venn", "Holt"}}});
+  geography.add(
+      Kind::Confederation,
+      {{"id", 1},
+       {"name", "Freeland Union"},
+       {"nationalities", {"Freelander"}},
+       {"cups",
+        {{{"name", "Union Cup"},
+          {"clubs", 32},
+          {"matches", 8},
+          {"places", {4, 4, 3, 2}},
+          {"weekday_offsets", {0, 1}},
+          {"prizes", {{"participation", 15'000'000}}}},
+         {{"name", "Union Shield"}, {"tier", 2}}}},
+       {"routes", {{{"to", "Overseas League"}, {"km", 9500}, {"hours", 11}}}}});
+  geography.add(Kind::Confederation, {{"id", 2},
+                                      {"name", "Overseas League"},
+                                      {"cups", nlohmann::json::array()}});
+  geography.add(Kind::Region, {{"id", 1},
+                               {"name", "The Northlands"},
+                               {"confederation_id", 1},
+                               {"base", "Europe"}});
+  auto& country = *geography.find(
+      Kind::Country, World::entityId(geography.section(Kind::Country).front()));
+  country["demonym"] = "Freelander";
+  country["language"] = 1;
+  country["region_id"] = 1;
+  EditorState& cups = openWorldEditor(view, std::move(geography));
+  cups.setPage(EditorState::Page::Confederation);
+  cups.select(Kind::Confederation, 1);
+  frames(view, 3);
+  selectTab(LOC("WORLD_TAB_CUPS"));
+  frames(view, 2);
+  cups.selectCup(0);
+  shoot("world_editor_confederation");
+
+  cups.setPage(EditorState::Page::Country);
+  cups.select(Kind::Country,
+              World::entityId(cups.doc.section(Kind::Country).front()));
+  shoot("world_editor_country");
+
+  World::Document small = World::templateDocument();
+  World::removeEntity(small, Kind::Club, 104);
+  EditorState& problems = openWorldEditor(view, std::move(small));
+  problems.setPage(EditorState::Page::Problems);
+  problems.problems(true);
+  shoot("world_editor_problems");
+
+  World::Document incoming = World::Document::empty("Coastal Cup World");
+  incoming.add(Kind::Country,
+               {{"id", 7}, {"name", "Freeland"}, {"nationality", "English"}});
+  incoming.add(Kind::League,
+               {{"id", 3}, {"name", "Freeland League"}, {"country_id", 7}});
+  incoming.add(Kind::Club, {{"id", 9},
+                            {"league_id", 3},
+                            {"name", "Northport"},
+                            {"short_name", "NOR"},
+                            {"nickname", "The Ports"},
+                            {"founded", 1888}});
+  incoming.add(Kind::Club, {{"id", 10},
+                            {"league_id", 3},
+                            {"name", "Midtown"},
+                            {"short_name", "MID"}});
+  EditorState& merged = openWorldEditor(view, World::templateDocument());
+  merged.combineDocument(incoming, "Coastal Cup World");
+  merged.applyCombined();
+  const auto conflict =
+      std::ranges::find(merged.conflicts, Kind::Club, &World::Conflict::kind);
+  ASSERT_NE(conflict, merged.conflicts.end());
+  merged.conflict_selected =
+      static_cast<int>(conflict - merged.conflicts.begin());
+  frames(view, 3);
+  merged.popup = EditorState::Popup::None;
+  shoot("world_editor_conflicts");
+
+  World::Document library = World::templateDocument();
+  World::Manifest manifest = library.manifest();
+  manifest.name = "Freeland Classic";
+  manifest.author = "Showcase";
+  library.setManifest(manifest);
+  const auto stored = World::Library::save(library);
+  ASSERT_FALSE(stored.empty());
+  view.changeScene(std::make_unique<MainMenuScene>(&view));
+  frames(view, 3);
+  auto& menu = dynamic_cast<MainMenuScene&>(*Bridge::activeScene(view));
+  Bridge::worldChoice(menu).open(WorldChoiceDialog::Mode::Choose, stored);
+  shoot("world_choice");
+  Bridge::worldChoice(menu).close();
+  frames(view, 2);
+  World::Library::remove(stored);
 }

@@ -84,10 +84,7 @@ KitColors pickGoalkeeperKit(TeamID team, std::initializer_list<ImU32> avoid)
 
 const std::unordered_map<TeamID, ClubIdentity>& clubIdentities()
 {
-  // The pack is read-only while the game runs: parse it once.
-  static const std::unordered_map<TeamID, ClubIdentity> identities =
-      DataGenerator::loadClubIdentities();
-  return identities;
+  return DataGenerator::clubIdentities();
 }
 
 std::optional<ClubColours> packColours(TeamID team)
@@ -102,6 +99,23 @@ KitColors clubKit(const ClubColours& colours)
 {
   return {colours.primary, colours.secondary, colours.secondary,
           colours.primary};
+}
+
+/** A real strip from the data pack, if the club set one. */
+KitColors paletteKit(const KitPalette& palette)
+{
+  return {kitColorFromRgb(palette.shirt), kitColorFromRgb(palette.trim),
+          kitColorFromRgb(palette.shorts), kitColorFromRgb(palette.socks)};
+}
+
+/** The club's home strip: the real palette when present, else the generic. */
+KitColors homeStrip(TeamID team, const ClubIdentity* identity,
+                    const std::optional<ClubColours>& colours)
+{
+  if (identity && identity->home_kit.valid)
+    return paletteKit(identity->home_kit);
+  if (colours) return clubKit(*colours);
+  return HOME_KITS[cosmeticHash(team) % HOME_KITS.size()];
 }
 }  // namespace
 
@@ -160,10 +174,59 @@ ImU32 goalkeeperGloveColor(const KitColors& kit)
 
 MatchKits chooseMatchKits(TeamID homeTeam, TeamID awayTeam)
 {
-  const std::optional<ClubColours> home = packColours(homeTeam);
-  const std::optional<ClubColours> away = packColours(awayTeam);
-  return chooseMatchKits(homeTeam, awayTeam, home ? &*home : nullptr,
-                         away ? &*away : nullptr);
+  const ClubIdentity* homeIdentity = findClubIdentity(homeTeam);
+  const ClubIdentity* awayIdentity = findClubIdentity(awayTeam);
+  const std::optional<ClubColours> homeColours = packColours(homeTeam);
+  const std::optional<ClubColours> awayColours = packColours(awayTeam);
+
+  MatchKits kits;
+  kits.home = homeStrip(homeTeam, homeIdentity, homeColours);
+  kits.away = homeStrip(awayTeam, awayIdentity, awayColours);
+
+  const bool clash = homeTeam == awayTeam ||
+                     !contrastsWithAll(kits.away.shirt, {kits.home.shirt});
+  if (clash)
+  {
+    const auto useIfContrasts = [&](const KitPalette& palette)
+    {
+      if (!palette.valid) return false;
+      const KitColors strip = paletteKit(palette);
+      if (!contrastsWithAll(strip.shirt, {kits.home.shirt})) return false;
+      kits.away = strip;
+      return true;
+    };
+    // The club's own away strip, then its third, then reversed colours,
+    // then any generic change strip that reads against the home shirt.
+    const bool usedAway =
+        awayIdentity && useIfContrasts(awayIdentity->away_kit);
+    const bool usedThird =
+        !usedAway && awayIdentity && useIfContrasts(awayIdentity->third_kit);
+    const bool usedReverse =
+        !usedAway && !usedThird && awayColours &&
+        contrastsWithAll(awayColours->secondary, {kits.home.shirt});
+    if (usedReverse)
+    {
+      kits.away = {awayColours->secondary, awayColours->primary,
+                   awayColours->primary, awayColours->secondary};
+    }
+    if (!usedAway && !usedThird && !usedReverse)
+    {
+      for (const KitColors& change : CHANGE_KITS)
+      {
+        if (contrastsWithAll(change.shirt, {kits.home.shirt}))
+        {
+          kits.away = change;
+          break;
+        }
+      }
+    }
+  }
+
+  kits.homeGoalkeeper =
+      pickGoalkeeperKit(homeTeam, {kits.home.shirt, kits.away.shirt});
+  kits.awayGoalkeeper = pickGoalkeeperKit(
+      awayTeam, {kits.home.shirt, kits.away.shirt, kits.homeGoalkeeper.shirt});
+  return kits;
 }
 
 MatchKits chooseMatchKits(TeamID homeTeam, TeamID awayTeam,
@@ -180,7 +243,7 @@ MatchKits chooseMatchKits(TeamID homeTeam, TeamID awayTeam,
   // A club's own reversed colours come before any generic change strip.
   if (const bool clash = homeTeam == awayTeam ||
                          !contrastsWithAll(kits.away.shirt, {kits.home.shirt});
-      clash && awayColours && homeTeam != awayTeam &&
+      clash && awayColours &&
       contrastsWithAll(awayColours->secondary, {kits.home.shirt}))
   {
     kits.away = {awayColours->secondary, awayColours->primary,

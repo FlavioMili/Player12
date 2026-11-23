@@ -53,19 +53,7 @@ std::optional<Article> parse(std::string_view text)
 
 const std::unordered_map<std::string, std::string>& overrides()
 {
-  static const auto loaded = []
-  {
-    try
-    {
-      return DataGenerator::loadClubArticles();
-    }
-    catch (const std::exception& error)
-    {
-      Logger::error(std::string("Club articles not loaded: ") + error.what());
-      return std::unordered_map<std::string, std::string>{};
-    }
-  }();
-  return loaded;
+  return DataGenerator::clubArticles();
 }
 
 bool isVowel(char c)

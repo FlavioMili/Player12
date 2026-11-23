@@ -1280,6 +1280,9 @@ TEST_F(PlaytestJourney, NewCareerThroughTheGui)
   items = player.discover();
   for (const Item& item : items) log.line("  - slot dialog: `{}`", item.label);
   ASSERT_TRUE(player.clickLabel(items, "1/##slot"));
+  player.frames(3);
+  items = player.discover();
+  ASSERT_TRUE(player.clickLabel(items, "##default_world"));
 
   player.step = "new game loading";
   const auto loadStart = Clock::now();

@@ -215,7 +215,13 @@ void GameData::generateAndSaveInitialData()
     {
       _teams.try_emplace(team.getId(), team);
     }
-    WorldGeneration::generateClubProfiles(_teams, world_seed, true);
+    // The world's club statures fix the pecking order of every new career.
+    std::unordered_map<TeamID, std::uint8_t> stature;
+    for (const auto& [id, identity] : DataGenerator::clubIdentities())
+    {
+      if (identity.reputation > 0) stature.emplace(id, identity.reputation);
+    }
+    WorldGeneration::generateClubProfiles(_teams, world_seed, true, &stature);
 
     // Populate _teamsVec so we can use insertTeamsWithId
     _teamsVec.clear();
@@ -224,7 +230,7 @@ void GameData::generateAndSaveInitialData()
 
     teamRepo.insertTeamsWithId(_teamsVec);
 
-    std::map<uint8_t, std::vector<TeamID>> league_teams_map;
+    std::map<LeagueID, std::vector<TeamID>> league_teams_map;
     for (const auto& team : all_teams)
     {
       league_teams_map[team.getLeagueId()].push_back(team.getId());
@@ -373,7 +379,7 @@ void GameData::loadExistingData()
   auto all_teams = teamRepo.loadAllTeams();
   const auto storedLineups = teamRepo.loadAllLineups();
 
-  std::map<uint8_t, std::vector<TeamID>> league_teams_map;
+  std::map<LeagueID, std::vector<TeamID>> league_teams_map;
   for (const auto& team : all_teams)
   {
     league_teams_map[team.getLeagueId()].push_back(team.getId());

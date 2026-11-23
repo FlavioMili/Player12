@@ -28,7 +28,7 @@ class WorldRng;
 
 /**
  * @struct NamePool
- * @brief First and last names from assets/user_made_data/names_files.
+ * @brief First and last names of the installed world (or the built-in pools).
  *
  * Besides a generic list, every nationality has its own fictional but
  * culture-appropriate names. Full names listed (as hashes) under
@@ -143,10 +143,18 @@ double overallFor(PlayerRole role, const std::map<std::string, float>& stats,
  * clubs also get opening cash scaled to their expected income (new worlds)
  * and the registry of generated names starts afresh; legacy saves keep
  * their balance.
+ *
+ * With @p stature (new worlds) the pecking order comes from the world, not
+ * from the seed: a club with a stated stature keeps it and takes the free
+ * rank of the league's shape nearest to it; the other clubs fill the free
+ * ranks in club-id order. Every career of the same world therefore has the
+ * same strongest clubs. Without it (legacy saves) the clubs are ranked by a
+ * shuffle of @p world_seed, as before.
  */
-void generateClubProfiles(std::unordered_map<TeamID, Team>& teams,
-                          std::uint64_t world_seed,
-                          bool assign_opening_balance);
+void generateClubProfiles(
+    std::unordered_map<TeamID, Team>& teams, std::uint64_t world_seed,
+    bool assign_opening_balance,
+    const std::unordered_map<TeamID, std::uint8_t>* stature = nullptr);
 
 /**
  * Draws a name of @p nationality that is free in @p registry and keeps the

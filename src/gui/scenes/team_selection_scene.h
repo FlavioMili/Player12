@@ -123,7 +123,7 @@ class TeamSelectionScene : public GUIScene
 
   std::vector<LeagueEntry> league_entries;
   std::vector<std::reference_wrapper<const Team>> available_teams;
-  std::optional<uint8_t> selected_league_id;
+  std::optional<LeagueID> selected_league_id;
   std::optional<TeamID> selected_team_id;
   /** Countries (top division IDs) whose lower divisions are listed. */
   std::set<LeagueID> expanded_countries;

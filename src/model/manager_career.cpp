@@ -19,6 +19,7 @@
 #include "database/database_connection.h"
 #include "database/gamedata.h"
 #include "global/global.h"
+#include "global/nationality.h"
 #include "model/competition.h"
 #include "model/inbox.h"
 #include "model/season_history.h"
@@ -253,7 +254,7 @@ ManagerProfile readManagerProfile(sqlite3_stmt* stmt)
   profile.first_name = columnText(stmt, 0);
   profile.last_name = columnText(stmt, 1);
   profile.nationality = static_cast<Language>(std::clamp<std::int64_t>(
-      sqlite3_column_int64(stmt, 2), 0, std::to_underlying(Language::US)));
+      sqlite3_column_int64(stmt, 2), 0, LAST_CUSTOM_NATIONALITY));
   profile.age = columnAs<std::uint8_t>(stmt, 3);
   profile.reputation = columnFloat(stmt, 4);
   profile.licence = enumFrom(sqlite3_column_int64(stmt, 5),
@@ -1976,33 +1977,32 @@ void ManagerCareer::load(const std::shared_ptr<DatabaseConnection>& db_conn)
                             ManagerAwardKind::ManagerOfTheSeason),
                    columnAs<TeamID>(stmt, 2), columnText(stmt, 3));
              });
-  forEachRow(db,
-             "SELECT id, first_name, last_name, nationality, age, reputation, "
-             "ability, style, team_id, appointed, matches, confidence, form "
-             "FROM AiManagers ORDER BY id;",
-             [this](sqlite3_stmt* stmt)
-             {
-               AiManager manager;
-               manager.id = columnAs<std::uint32_t>(stmt, 0);
-               manager.first_name = columnText(stmt, 1);
-               manager.last_name = columnText(stmt, 2);
-               manager.nationality = static_cast<Language>(
-                   std::clamp<std::int64_t>(sqlite3_column_int64(stmt, 3), 0,
-                                            std::to_underlying(Language::US)));
-               manager.age = columnAs<std::uint8_t>(stmt, 4);
-               manager.reputation = columnFloat(stmt, 5);
-               manager.ability = columnFloat(stmt, 6);
-               manager.style =
-                   enumFrom(sqlite3_column_int64(stmt, 7), ManagerStyle::COUNT,
-                            ManagerStyle::Balanced);
-               manager.team_id = columnAs<TeamID>(stmt, 8);
-               manager.appointed = columnDate(stmt, 9);
-               manager.matches = columnAs<std::uint16_t>(stmt, 10);
-               manager.confidence = columnFloat(stmt, 11);
-               manager.form = columnFloat(stmt, 12);
-               next_manager_id = std::max(next_manager_id, manager.id + 1);
-               managers.emplace_back(std::move(manager));
-             });
+  forEachRow(
+      db,
+      "SELECT id, first_name, last_name, nationality, age, reputation, "
+      "ability, style, team_id, appointed, matches, confidence, form "
+      "FROM AiManagers ORDER BY id;",
+      [this](sqlite3_stmt* stmt)
+      {
+        AiManager manager;
+        manager.id = columnAs<std::uint32_t>(stmt, 0);
+        manager.first_name = columnText(stmt, 1);
+        manager.last_name = columnText(stmt, 2);
+        manager.nationality = static_cast<Language>(std::clamp<std::int64_t>(
+            sqlite3_column_int64(stmt, 3), 0, LAST_CUSTOM_NATIONALITY));
+        manager.age = columnAs<std::uint8_t>(stmt, 4);
+        manager.reputation = columnFloat(stmt, 5);
+        manager.ability = columnFloat(stmt, 6);
+        manager.style = enumFrom(sqlite3_column_int64(stmt, 7),
+                                 ManagerStyle::COUNT, ManagerStyle::Balanced);
+        manager.team_id = columnAs<TeamID>(stmt, 8);
+        manager.appointed = columnDate(stmt, 9);
+        manager.matches = columnAs<std::uint16_t>(stmt, 10);
+        manager.confidence = columnFloat(stmt, 11);
+        manager.form = columnFloat(stmt, 12);
+        next_manager_id = std::max(next_manager_id, manager.id + 1);
+        managers.emplace_back(std::move(manager));
+      });
   forEachRow(db,
              "SELECT team_id, opened, fill_date FROM ManagerVacancies "
              "ORDER BY opened, team_id;",
