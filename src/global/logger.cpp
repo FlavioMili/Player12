@@ -57,6 +57,12 @@ void Logger::init()
   }
 }
 
+void Logger::shutdown()
+{
+  spdlog::drop("main_logger");
+  logger.reset();
+}
+
 void Logger::info(const std::string& msg) { getLogger().info(msg); }
 void Logger::error(const std::string& msg) { getLogger().error(msg); }
 void Logger::warn(const std::string& msg) { getLogger().warn(msg); }

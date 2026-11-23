@@ -53,6 +53,7 @@
 #include <memory>
 #include <optional>
 #include <span>
+#include <stdexcept>
 #include <string>
 #include <string_view>
 #include <system_error>
@@ -61,6 +62,7 @@
 
 #include "controller/game_controller.h"
 #include "global/logger.h"
+#include "global/runtime_paths.h"
 #include "gui/gui_view.h"
 #include "tools/match_sandbox_bench.h"
 #include "tools/match_sandbox_checks.h"
@@ -83,14 +85,14 @@ constexpr int DEFAULT_TRACE_MATCH_CASES = 12;
 /** The longest possession trace: a whole hour of play. */
 constexpr double MAX_TRACE_POSSESSION_SECONDS = 3600.0;
 
-void useOwnRuntimeRoot()
+void useOwnRuntimeRoot(const std::filesystem::path& root)
 {
-  const std::filesystem::path root =
-      std::filesystem::temp_directory_path() / "player12-match-sandbox";
 #if !defined(_WIN32)
-  setenv("FM_RUNTIME_ROOT", root.string().c_str(), 1);
+  if (setenv("FM_RUNTIME_ROOT", root.c_str(), 1) != 0)
+    throw std::runtime_error("Cannot set the sandbox runtime directory");
 #else
-  _putenv_s("FM_RUNTIME_ROOT", root.string().c_str());
+  if (_putenv_s("FM_RUNTIME_ROOT", root.string().c_str()) != 0)
+    throw std::runtime_error("Cannot set the sandbox runtime directory");
 #endif
 }
 /** What the command line asked for. */
@@ -680,7 +682,17 @@ int runSandbox(int argc, char** argv)
   applyCheckDefaults(options);
 
   // Before anything resolves a runtime path (logs, settings, saves).
-  useOwnRuntimeRoot();
+  std::optional<ScratchDirectory> checkRuntime;
+  if (options.checkMatches || options.zoneRoundTrip)
+    checkRuntime.emplace("sandbox-check-runtime");
+  useOwnRuntimeRoot(
+      checkRuntime ? checkRuntime->path
+                   : RuntimePaths::preferenceRoot("FootballManagementSandbox"));
+  // Close the log before removing a check's runtime directory on Windows.
+  const struct LogCleanup
+  {
+    ~LogCleanup() { Logger::shutdown(); }
+  } logCleanup;
   Logger::init();
   try
   {

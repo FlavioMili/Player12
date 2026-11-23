@@ -1,12 +1,12 @@
 // Football Management Project - see LICENSE in the project root.
 #include <cmath>
 #include <cstdlib>
-#include <filesystem>
 #include <iostream>
 #include <stdexcept>
 
 #include "controller/game_controller.h"
 #include "global/logger.h"
+#include "global/runtime_paths.h"
 #include "tools/match_sandbox_drill.h"
 #include "tools/match_sandbox_setup.h"
 #include "tools/match_sandbox_test_teams.h"
@@ -72,14 +72,19 @@ int main()
   try
   {
     // Never touch a career or the interactive sandbox's generated world.
-    const auto root = (std::filesystem::temp_directory_path() /
-                       "player12-sandbox-settings-check")
-                          .string();
+    const ScratchDirectory scratch("sandbox-settings-check");
 #ifdef _WIN32
-    _putenv_s("FM_RUNTIME_ROOT", root.c_str());
+    require(_putenv_s("FM_RUNTIME_ROOT", scratch.path.string().c_str()) == 0,
+            "cannot set the test runtime directory");
 #else
-    setenv("FM_RUNTIME_ROOT", root.c_str(), 1);
+    require(setenv("FM_RUNTIME_ROOT", scratch.path.c_str(), 1) == 0,
+            "cannot set the test runtime directory");
 #endif
+    // Close the log before removing the scratch directory on Windows.
+    const struct LogCleanup
+    {
+      ~LogCleanup() { Logger::shutdown(); }
+    } logCleanup;
     Logger::init();
     GameController controller;
     controller.newGame(1, 1);

@@ -1,7 +1,6 @@
 // Offline integration coverage for per-match possession dispatch and
 // persistence.
 #include <array>
-#include <chrono>
 #include <filesystem>
 #include <fstream>
 #include <iostream>
@@ -13,6 +12,7 @@
 #include <utility>
 #include <vector>
 
+#include "global/runtime_paths.h"
 #include "model/match_engine.h"
 #include "model/match_pitch.h"
 #include "model/match_possession_claim.h"
@@ -1030,10 +1030,8 @@ void persistence()
     check(!SandboxJson::fromJson(json, loaded, error),
           "wrong-type setup version rejected");
   }
-  const auto stamp =
-      std::chrono::steady_clock::now().time_since_epoch().count();
-  const auto file = std::filesystem::temp_directory_path() /
-                    ("possession-seam-" + std::to_string(stamp) + ".json");
+  const ScratchDirectory scratch("possession-seam-check");
+  const auto file = scratch.path / "possession-seam.json";
   MatchRecording recording;
   recording.setup.possession = PossessionId::BINTURONG;
   std::string error;
@@ -1069,7 +1067,6 @@ void persistence()
     out << json;
   }
   check(!Recordings::load(file, error), "future recording version rejected");
-  std::filesystem::remove(file);
 }
 }  // namespace
 

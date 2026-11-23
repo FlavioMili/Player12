@@ -25,6 +25,7 @@
 #include <string_view>
 #include <vector>
 
+#include "global/runtime_paths.h"
 #include "global/stats_config.h"
 #include "model/match_body.h"
 #include "model/match_brain.h"
@@ -116,15 +117,6 @@ std::optional<float> toFloat(std::string_view text)
     return std::nullopt;
   }
   return value;
-}
-
-std::filesystem::path freshFolder()
-{
-  const auto stamp = std::chrono::duration_cast<std::chrono::seconds>(
-                         std::chrono::system_clock::now().time_since_epoch())
-                         .count();
-  return std::filesystem::temp_directory_path() /
-         std::format("fm-lab-touch-{}", stamp);
 }
 
 struct Options
@@ -588,7 +580,9 @@ int runTouchSensitivity(const StatsConfig& config,
   }
 
   // --- Output -------------------------------------------------------------
-  const std::filesystem::path folder = options.outDir.value_or(freshFolder());
+  const auto folder = options.outDir
+                          ? *options.outDir
+                          : RuntimePaths::createToolOutputDirectory("lab-touch");
   std::filesystem::create_directories(folder);
   {
     std::ofstream cells(folder / "cells.csv");

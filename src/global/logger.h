@@ -22,6 +22,8 @@ class Logger
    * kept as RuntimePaths::previousLogPath().
    */
   static void init();
+  /** Closes the log and releases its file handle. */
+  static void shutdown();
 
   /**
    * @brief Logs an informational message.

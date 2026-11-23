@@ -137,7 +137,7 @@ touch-sensitivity
          with the angle and weight errors beside them. Knob steps are x(1
          -/+ step) within each knob's range; --range sets any variable's two
          values as given, beyond its range too. report.md, ranking.csv and
-         cells.csv in --out-dir (default a fresh fm-lab-touch-* temp folder);
+         cells.csv in --out-dir (default a new folder in per-user tool storage);
          Binturong brains and bodies unless --brains/--bodies say otherwise
 
 Fidelity: full (default, the live engine's 10 Hz step) or background (the

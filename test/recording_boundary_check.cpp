@@ -1,5 +1,4 @@
 // Football Management Project - see LICENSE in the project root.
-#include <chrono>
 #include <cstdio>
 #include <filesystem>
 #include <fstream>
@@ -8,6 +7,7 @@
 #include <nlohmann/json.hpp>
 #include <stdexcept>
 
+#include "global/runtime_paths.h"
 #include "tools/match_sandbox_recording.h"
 #include "tools/match_sandbox_session.h"
 #include "tools/match_sandbox_zone_recording.h"
@@ -21,26 +21,6 @@ void require(bool condition, const char* message)
     throw std::runtime_error(message);
   }
 }
-
-struct TemporaryFile
-{
-  TemporaryFile() = default;
-  TemporaryFile(const TemporaryFile&) = delete;
-  TemporaryFile& operator=(const TemporaryFile&) = delete;
-  TemporaryFile(TemporaryFile&&) = delete;
-  TemporaryFile& operator=(TemporaryFile&&) = delete;
-  std::filesystem::path path =
-      std::filesystem::temp_directory_path() /
-      ("player12-boundary-" +
-       std::to_string(
-           std::chrono::steady_clock::now().time_since_epoch().count()) +
-       ".json");
-  ~TemporaryFile()
-  {
-    std::error_code error;
-    std::filesystem::remove(path, error);
-  }
-};
 
 void checkPackedFields(nlohmann::json document,
                        const std::filesystem::path& path)
@@ -188,8 +168,8 @@ int main()
 {
   try
   {
-    const TemporaryFile file;
-    checkRecordings(file.path);
+    const ScratchDirectory scratch("recording-boundary-check");
+    checkRecordings(scratch.path / "recording.json");
     checkSessions();
     checkPlanValidation();
     std::cout << "PASS: recording and session boundaries\n";

@@ -33,6 +33,7 @@
 #include <vector>
 
 #include "controller/game_controller.h"
+#include "global/runtime_paths.h"
 #include "model/match_engine.h"
 #include "model/match_engine_internal.h"
 #include "model/match_scenario.h"
@@ -1998,7 +1999,7 @@ bool checkScenarioExport(SandboxRecorder& recorder, std::uint64_t lastTick)
   const bool exported = placements == EXPORTED_PLAYERS &&
                         text.find("spec.carrierId") != std::string::npos;
   const std::filesystem::path sample =
-      std::filesystem::temp_directory_path() /
+      RuntimePaths::createToolOutputDirectory("scenario-export") /
       "player12-sandbox-check-scenario.cpp.txt";
   std::ofstream(sample) << text;
   std::cout << std::format(
@@ -2098,14 +2099,13 @@ bool checkRecordings(GameController& controller, const MatchSetup& setup,
   const auto started = Clock::now();
   const MatchRecording recording = Recordings::capture(setup, recorder, true);
   const double captureSeconds = secondsSince(started);
-  const std::filesystem::path path = std::filesystem::temp_directory_path() /
-                                     "player12-sandbox-check-recording.json";
+  const ScratchDirectory scratch("recording-check");
+  const auto path = scratch.path / "player12-sandbox-check-recording.json";
   std::string error;
   bool roundTrip = Recordings::save(recording, path, error);
   const std::uintmax_t bytes = roundTrip ? fileBytes(path) : 0;
   std::optional<MatchRecording> loaded =
       roundTrip ? Recordings::load(path, error) : std::nullopt;
-  std::filesystem::remove(path);
   roundTrip = loaded && loaded->setup.possession == recording.setup.possession;
   const ReplayFindings found =
       loaded ? replayRecording(*loaded, controller) : ReplayFindings{};

@@ -17,6 +17,7 @@
 #include <nlohmann/json.hpp>
 
 #include "global/build_info.h"
+#include "global/runtime_paths.h"
 #include "model/player.h"
 #include "tools/match_sandbox_recorder.h"
 #include "tools/match_sandbox_recording.h"
@@ -473,15 +474,13 @@ int runZoneRoundTrip(const StatsConfig& config)
         std::cout << "capture failed: " << error << "\n";
         return 1;
       }
-      const std::filesystem::path path =
-          std::filesystem::temp_directory_path() /
-          ZoneRecordings::fileName(*recording);
+      const ScratchDirectory scratch("zone-recording-check");
+      const auto path = scratch.path / ZoneRecordings::fileName(*recording);
       std::optional<ZoneRecording> loaded;
       if (ZoneRecordings::save(*recording, path, error))
       {
         loaded = ZoneRecordings::load(path, error);
       }
-      std::filesystem::remove(path);
       if (!loaded)
       {
         std::cout << "save or load failed: " << error << "\n";
