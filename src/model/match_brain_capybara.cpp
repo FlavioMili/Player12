@@ -2796,6 +2796,9 @@ constexpr float CARRY_TARGET_METRES = 15.0F;
 constexpr float UNCHOSEN_CARRY_URGENCY = 1.0F / 3.0F;
 constexpr float DEGREES_PER_HALF_TURN = 180.0F;
 constexpr float DEGREES_PER_TURN = 360.0F;
+/** Header frames (step G): the stopgap order's weights. */
+constexpr float HEADER_FIRST = 2.0F;
+constexpr float HEADER_SECOND = 1.0F;
 /** The brain flow tool: an angle this close to a fixed one is that one. */
 constexpr float FIXED_ANGLE_MATCH_DEGREES = 0.5F;
 }  // namespace
@@ -6359,21 +6362,52 @@ MatchEngine::ClearanceAim MatchEngine::rollClearanceAimCapybara(
 MatchEngine::HeaderAttempt MatchEngine::chooseHeaderAttemptCapybara(
     const MatchPlayer& header, bool fromTeammate)
 {
+  // Not a team-mate's ball: the situation "I can intercept the ball"
+  // decides (chooseHeaderPlayCapybara).
+  if (!fromTeammate)
+  {
+    return HeaderAttempt::PLAY;
+  }
+  // The situation "I'm expecting the ball", head branch (brain redesign
+  // plan section 20, step G): header at goal, cushion it (the control
+  // touch), or knock it down to a team-mate (a first-time pass).
+  using S = TermSource;
   const float toGoal = pitch.toGoalLine(header.position, header.isHomeTeam);
-  // A header at goal needs a real chance; from further out the ball is
-  // nodded down for a team-mate instead.
-  if (fromTeammate &&
-      toGoal <= MatchTuning::Aerial::HEADER_SHOT_WITHIN_METRES &&
+  // At goal: it needs a real chance, close in and fairly central.
+  DecisionFrame::Score atGoal;
+  if (toGoal <= MatchTuning::Aerial::HEADER_SHOT_WITHIN_METRES &&
       std::abs(header.position.y - pitch.atY(MatchTuning::Pitch::CENTRE)) <=
           MatchTuning::Aerial::HEADER_SHOT_WIDTH_METRES &&
       estimateShotXG(header) * MatchTuning::Shooting::HEADER_XG_FACTOR >=
           MatchTuning::Aerial::HEADER_SHOT_MIN_XG)
   {
+    atGoal.add("stopgap: first in today's order", S::SITUATION, 1.0F,
+               HEADER_FIRST);
+  }
+  else
+  {
+    atGoal.ruleOut();
+  }
+  // Cushion it: a lofted ball away from goal, kept.
+  DecisionFrame::Score cushion;
+  if (toGoal > MatchTuning::Aerial::HEADER_KNOCK_DOWN_WITHIN_METRES)
+  {
+    cushion.add("stopgap: second in today's order", S::SITUATION, 1.0F,
+                HEADER_SECOND);
+  }
+  else
+  {
+    cushion.ruleOut();
+  }
+  // Knock it down: always open, last in today's order. Follow-up: no
+  // measures yet; the stopgap keeps today's choices.
+  DecisionFrame::Score knockDown;
+  knockDown.add("stopgap: the fallback", S::SITUATION, 0.0F, 1.0F);
+  if (atGoal.isAvailable() && atGoal.total() >= knockDown.total())
+  {
     return HeaderAttempt::SHOOT;
   }
-  // A team-mate's lofted ball away from goal is cushioned down and kept.
-  if (fromTeammate &&
-      toGoal > MatchTuning::Aerial::HEADER_KNOCK_DOWN_WITHIN_METRES)
+  if (cushion.isAvailable() && cushion.total() >= knockDown.total())
   {
     return HeaderAttempt::CUSHION;
   }
@@ -6387,15 +6421,43 @@ MatchEngine::HeaderPlay MatchEngine::chooseHeaderPlayCapybara(
   const float fromOwnGoal =
       pitch.fromOwnGoalLine(header.position, header.isHomeTeam);
   HeaderPlay play;
+  // A team-mate's ball: the knock-down the "expecting the ball" frame
+  // chose (chooseHeaderAttemptCapybara). Otherwise the situation "I can
+  // intercept the ball", head branch (step G): head it behind, clear it,
+  // or knock it down. Follow-up: no measures yet; the stopgap keeps
+  // today's order (and today's 33% roll for heading it behind).
+  using S = TermSource;
+  DecisionFrame::Score behind;
+  DecisionFrame::Score clearIt;
+  DecisionFrame::Score knockDown;
+  knockDown.add("stopgap: the fallback", S::SITUATION, 0.0F, 1.0F);
   // Behind his own penalty spot a defender often plays safe and heads it
   // out of play.
   if (!fromTeammate && fromOwnGoal < MatchTuning::Pitch::PENALTY_SPOT_METRES &&
       randomFloat(0.0F, 1.0F) < MatchTuning::SetPiece::HEADER_BEHIND_CHANCE)
   {
-    return chooseHeaderOutCapybara(header);
+    behind.add("stopgap: first in today's order", S::SITUATION, 1.0F,
+               HEADER_FIRST);
+  }
+  else
+  {
+    behind.ruleOut();
   }
   if (!fromTeammate &&
       fromOwnGoal < MatchTuning::SetPiece::DEFENSIVE_HEADER_WITHIN_METRES)
+  {
+    clearIt.add("stopgap: second in today's order", S::SITUATION, 1.0F,
+                HEADER_SECOND);
+  }
+  else
+  {
+    clearIt.ruleOut();
+  }
+  if (behind.isAvailable() && behind.total() >= knockDown.total())
+  {
+    return chooseHeaderOutCapybara(header);
+  }
+  if (clearIt.isAvailable() && clearIt.total() >= knockDown.total())
   {
     // Defensive header: clear the danger, upfield and away from the middle.
     const float wide = header.position.y < pitch.atY(MatchTuning::Pitch::CENTRE)

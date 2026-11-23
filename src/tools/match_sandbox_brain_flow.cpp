@@ -928,7 +928,7 @@ struct Situation
   /** On a decision frame of its own, not shown in the stages below yet. */
   bool ownFrame;
 };
-constexpr std::array<Situation, 16> SITUATIONS = {{
+constexpr std::array<Situation, 17> SITUATIONS = {{
     {.depth = 0,
      .title = "Restart",
      .decidedBy = "",
@@ -962,8 +962,7 @@ constexpr std::array<Situation, 16> SITUATIONS = {{
     {.depth = 1,
      .title = "Ball loose",
      .decidedBy = "refreshTacticalTargets (chaser by arrival), planWayRound, "
-                  "planOvertake; in the air chooseHeaderAttempt, "
-                  "chooseHeaderPlay",
+                  "planOvertake",
      .layers = SLIDERS | ROLE | ORDERS | MOOD,
      .plannerWide = true,
      .onFrame = false,
@@ -983,6 +982,17 @@ constexpr std::array<Situation, 16> SITUATIONS = {{
      .plannerWide = false,
      .onFrame = false,
      .ownFrame = false},
+    {.depth = 2,
+     .title = "I can intercept the ball",
+     .decidedBy =
+         "its own frame. Head (chooseHeaderPlay, step G): head it behind "
+         "(today's 33% roll inside his penalty spot), clear it, knock it "
+         "down. Stopgap pick in today's order (follow-up: measures). Feet: "
+         "not on a frame yet",
+     .layers = 0,
+     .plannerWide = false,
+     .onFrame = false,
+     .ownFrame = true},
     {.depth = 2,
      .title = "Press or cover",
      .decidedBy = "refreshTacticalTargets (pressers), engageBoost, "
@@ -1023,10 +1033,11 @@ constexpr std::array<Situation, 16> SITUATIONS = {{
     {.depth = 1,
      .title = "Our ball, it's coming to me",
      .decidedBy =
-         "chooseFirstTouch, its own frame (step F, stage 1): control touch, "
-         "lay it out (along his run, when running into space); first-time "
-         "pass, shot and clear listed, not judged yet. Stopgap pick: lay it "
-         "out whenever open (follow-up: measures)",
+         "its own frame. Feet (chooseFirstTouch, step F stage 1): control "
+         "touch, lay it out (along his run, when running into space); "
+         "first-time pass, shot and clear listed, not judged yet. Head "
+         "(chooseHeaderAttempt, step G): at goal, cushion it, knock it "
+         "down. Stopgap picks in today's order (follow-up: measures)",
      .layers = 0,
      .plannerWide = false,
      .onFrame = false,
