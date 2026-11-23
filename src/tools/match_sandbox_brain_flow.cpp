@@ -193,7 +193,8 @@ class BrainFlowExample final : public Drill
       const auto& spot = settings.spots.at(index);
       scenario.players.push_back({.playerId = ids[index],
                                   .position = pitch.at(spot[0], spot[1]),
-                                  .makingRun = index == STRIKER});
+                                  .makingRun = index == STRIKER,
+                                  .facing = std::nullopt});
     }
     scenario.carrierId = ids.empty() ? 0 : ids.front();
     scenario.ballPosition =
@@ -206,11 +207,19 @@ class BrainFlowExample final : public Drill
   bool afterStep(MatchEngine& /*engine*/) override { return true; }
   [[nodiscard]] std::vector<std::string> report() const override { return {}; }
   [[nodiscard]] std::vector<DrillMetric> metrics() const override { return {}; }
-
-  MatchScenario scenario;
-  std::vector<PlayerID> playerIds;
+  /** The scenario the last start loaded, and its players in spot order. */
+  [[nodiscard]] const MatchScenario& startingScenario() const
+  {
+    return scenario;
+  }
+  [[nodiscard]] const std::vector<PlayerID>& spotPlayerIds() const
+  {
+    return playerIds;
+  }
 
  private:
+  MatchScenario scenario;
+  std::vector<PlayerID> playerIds;
   BrainFlowScene::ExampleSettings settings;
 };
 
@@ -395,14 +404,15 @@ void BrainFlowScene::rebuild()
     engine.setStrategy(true, home);
     Strategy away;
     std::vector<PlayerInstruction> orders;
-    if (settings.tightMarkStriker && example.playerIds.size() > STRIKER_SLOT)
+    if (settings.tightMarkStriker &&
+        example.spotPlayerIds().size() > STRIKER_SLOT)
     {
-      orders.push_back({.player = example.playerIds.at(STRIKER_SLOT),
+      orders.push_back({.player = example.spotPlayerIds().at(STRIKER_SLOT),
                         .instruction = OppositionInstruction::TightMark});
     }
-    if (settings.weakFootCarrier && !example.playerIds.empty())
+    if (settings.weakFootCarrier && !example.spotPlayerIds().empty())
     {
-      orders.push_back({.player = example.playerIds.front(),
+      orders.push_back({.player = example.spotPlayerIds().front(),
                         .instruction = OppositionInstruction::ShowWeakFoot});
     }
     away.setOppositionOrders(orders);
@@ -426,7 +436,7 @@ void BrainFlowScene::rebuild()
     record.steady = steady;
     engine.setBrainFlowCapybara(&record, mask);
     const bool applied =
-        engine.applyScenario(example.scenario, MatchState::PLAYING,
+        engine.applyScenario(example.startingScenario(), MatchState::PLAYING,
                              static_cast<float>(settings.minute),
                              settings.ourGoals, settings.theirGoals);
     engine.setBrainFlowCapybara(nullptr, BrainFlow::ALL_LAYERS);
@@ -449,12 +459,14 @@ void BrainFlowScene::rebuild()
       names[slot.player->getId()] = slot.player->getName();
     }
   }
-  exampleIds.assign(example.playerIds.begin(), example.playerIds.end());
-  carrierName = example.playerIds.empty() ? std::string()
-                                          : nameOf(example.playerIds.front());
-  if (!example.scenario.players.empty())
+  exampleIds.assign(example.spotPlayerIds().begin(),
+                    example.spotPlayerIds().end());
+  carrierName = example.spotPlayerIds().empty()
+                    ? std::string()
+                    : nameOf(example.spotPlayerIds().front());
+  if (!example.startingScenario().players.empty())
   {
-    carrierAt = example.scenario.players.front().position;
+    carrierAt = example.startingScenario().players.front().position;
   }
 }
 
