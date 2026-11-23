@@ -56,41 +56,39 @@ constexpr float CHANGE_EPSILON = 0.005F;
 // Layout, in unscaled pixels.
 constexpr float PANEL_WIDTH = 340.0F;
 constexpr float PANEL_SHARE = 0.3F;
-constexpr float COLUMN_PADDING_X = 12.0F;
-constexpr float COLUMN_PADDING_Y = 10.0F;
+constexpr float STAGE_PADDING_X = 12.0F;
+constexpr float STAGE_PADDING_Y = 10.0F;
 constexpr float TITLE_SIZE = 14.0F;
-constexpr float FLOW_BOTTOM_MARGIN = 4.0F;
+/** The gap between two stages, which holds the down arrow. */
+constexpr float ARROW_GAP = 22.0F;
+constexpr float ARROW_HEAD = 6.0F;
+constexpr float ARROW_LINE = 2.0F;
 
-/** One column of the flow. */
-struct ColumnSpec
+/** One stage of the flow: a full-width band, as tall as its content. */
+struct StageSpec
 {
   const char* id;
   const char* title;
-  float width;
   /** False: not built yet (drawn darker). */
   bool built;
 };
-constexpr ColumnSpec SITUATION{
-    .id = "##situation", .title = "SITUATION", .width = 330.0F, .built = true};
-constexpr ColumnSpec READING{
-    .id = "##reading", .title = "READING", .width = 150.0F, .built = false};
-constexpr ColumnSpec GOAL{
-    .id = "##goal", .title = "GOAL", .width = 180.0F, .built = true};
-constexpr ColumnSpec OPTIONS{
-    .id = "##options", .title = "OPTIONS", .width = 240.0F, .built = true};
-constexpr ColumnSpec MEASURES{
-    .id = "##measures", .title = "MEASURES", .width = 320.0F, .built = true};
-constexpr ColumnSpec WEIGHTS{
-    .id = "##weights", .title = "WEIGHTS", .width = 335.0F, .built = true};
-constexpr ColumnSpec JUDGEMENT{
-    .id = "##judgement", .title = "JUDGEMENT", .width = 280.0F, .built = true};
-constexpr ColumnSpec PICK{
-    .id = "##pick", .title = "PICK", .width = 280.0F, .built = true};
-constexpr ColumnSpec BODY{
-    .id = "##body", .title = "BODY", .width = 210.0F, .built = true};
-void situationColumn(BrainFlow::LayerMask on);
-void readingColumn();
-void goalColumn();
+constexpr StageSpec SITUATION{
+    .id = "##situation", .title = "SITUATION", .built = true};
+constexpr StageSpec READING{
+    .id = "##reading", .title = "READING", .built = false};
+constexpr StageSpec GOAL{.id = "##goal", .title = "GOAL", .built = true};
+constexpr StageSpec OPTIONS{
+    .id = "##options", .title = "OPTIONS", .built = true};
+constexpr StageSpec MEASURES{
+    .id = "##measures", .title = "MEASURES", .built = true};
+constexpr StageSpec WEIGHTS{
+    .id = "##weights", .title = "WEIGHTS", .built = true};
+constexpr StageSpec JUDGEMENT{
+    .id = "##judgement", .title = "JUDGEMENT", .built = true};
+constexpr StageSpec PICK{.id = "##pick", .title = "PICK", .built = true};
+constexpr StageSpec BODY{.id = "##body", .title = "BODY", .built = true};
+void readingStage();
+void goalStage();
 
 std::size_t at(Layer layer) { return static_cast<std::size_t>(layer); }
 std::size_t at(OptionIndex option) { return static_cast<std::size_t>(option); }
@@ -507,7 +505,7 @@ void BrainFlowScene::renderPanel(float width)
   namespace Page = SandboxPageUI;
   const float scale = Theme::scale();
   Page::header("Tools", "Brain flow", width, scale, boldFont, regularFont,
-               "The new brain framework, left to right, on a live example "
+               "The new brain framework, top to bottom, on a live example "
                "scored by Capybara's own code. Start from the default flow, "
                "then switch layers on to see what each one touches.",
                true);
@@ -790,54 +788,81 @@ void BrainFlowScene::renderPitch(float width)
 
 namespace
 {
-/** A column: its title, then its body drawn by `body`. */
+/** A down arrow in the gap between two stages. */
+void arrow()
+{
+  const float scale = Theme::scale();
+  const ImVec2 top = ImGui::GetCursorScreenPos();
+  const float middle = top.x + (ImGui::GetContentRegionAvail().x * 0.5F);
+  const float bottom = top.y + (ARROW_GAP * scale);
+  const float head = ARROW_HEAD * scale;
+  ImDrawList* draw = ImGui::GetWindowDrawList();
+  draw->AddLine(ImVec2(middle, top.y), ImVec2(middle, bottom - head),
+                SandboxPageUI::MUTED, ARROW_LINE * scale);
+  draw->AddTriangleFilled(ImVec2(middle - head, bottom - head),
+                          ImVec2(middle + head, bottom - head),
+                          ImVec2(middle, bottom), SandboxPageUI::MUTED);
+  ImGui::Dummy(ImVec2(1.0F, ARROW_GAP * scale));
+}
+
+/** A stage: a full-width band with its title, then its body drawn by
+ * `body`; an arrow above it unless it is the first. */
 template <typename Body>
-void column(const ColumnSpec& spec, float height, ImFont* bold,
-            const Body& body)
+void stage(const StageSpec& spec, ImFont* bold, const Body& body)
 {
   namespace Page = SandboxPageUI;
   const float scale = Theme::scale();
+  if (&spec != &SITUATION)
+  {
+    arrow();
+  }
   ImGui::PushStyleColor(ImGuiCol_ChildBg,
                         spec.built ? Page::LIGHT : Page::DARK);
-  ImGui::PushStyleVar(
-      ImGuiStyleVar_WindowPadding,
-      ImVec2(COLUMN_PADDING_X * scale, COLUMN_PADDING_Y * scale));
-  ImGui::BeginChild(spec.id, ImVec2(spec.width * scale, height),
-                    ImGuiChildFlags_AlwaysUseWindowPadding);
+  ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding,
+                      ImVec2(STAGE_PADDING_X * scale, STAGE_PADDING_Y * scale));
+  ImGui::BeginChild(
+      spec.id, ImVec2(0, 0),
+      ImGuiChildFlags_AlwaysUseWindowPadding | ImGuiChildFlags_AutoResizeY);
+  // The title folds the stage away; built stages start open.
+  ImGui::PushStyleColor(ImGuiCol_Text, spec.built ? Page::LIME : Page::MUTED);
+  ImGui::PushStyleColor(ImGuiCol_Header, IM_COL32(0, 0, 0, 0));
+  ImGui::PushStyleColor(ImGuiCol_HeaderHovered, Page::RULE);
+  ImGui::PushStyleColor(ImGuiCol_HeaderActive, Page::RULE);
   ImGui::PushFont(bold, TITLE_SIZE);
-  text(spec.title, spec.built ? Page::LIME : Page::MUTED);
+  const bool open = ImGui::CollapsingHeader(
+      spec.title, spec.built ? ImGuiTreeNodeFlags_DefaultOpen : 0);
   ImGui::PopFont();
-  ImGui::Separator();
-  body();
+  constexpr int HEADER_COLOURS = 4;
+  ImGui::PopStyleColor(HEADER_COLOURS);
+  if (open)
+  {
+    ImGui::Separator();
+    body();
+  }
   ImGui::EndChild();
   ImGui::PopStyleVar();
   ImGui::PopStyleColor();
-  ImGui::SameLine(0, SandboxPageUI::PANEL_GAP * scale);
 }
 }  // namespace
 
 void BrainFlowScene::renderFlow(float width, float height)
 {
-  const float scale = Theme::scale();
-  ImGui::BeginChild("##brain_flow_columns", ImVec2(width, height),
-                    ImGuiChildFlags_None, ImGuiWindowFlags_HorizontalScrollbar);
+  ImGui::BeginChild("##brain_flow_stages", ImVec2(width, height));
   if (!error.empty())
   {
     text(error, WARNING);
     ImGui::EndChild();
     return;
   }
-  const float full = std::max(scale, height - ImGui::GetStyle().ScrollbarSize -
-                                         (FLOW_BOTTOM_MARGIN * scale));
-  column(SITUATION, full, boldFont, [this] { situationColumn(layers); });
-  column(READING, full, boldFont, readingColumn);
-  column(GOAL, full, boldFont, goalColumn);
-  column(OPTIONS, full, boldFont, [this] { optionsColumn(); });
-  column(MEASURES, full, boldFont, [this] { measuresColumn(); });
-  column(WEIGHTS, full, boldFont, [this] { weightsColumn(); });
-  column(JUDGEMENT, full, boldFont, [this] { judgementColumn(); });
-  column(PICK, full, boldFont, [this] { pickColumn(); });
-  column(BODY, full, boldFont, [this] { bodyColumn(); });
+  stage(SITUATION, boldFont, [this] { situationStage(); });
+  stage(READING, boldFont, readingStage);
+  stage(GOAL, boldFont, goalStage);
+  stage(OPTIONS, boldFont, [this] { optionsStage(); });
+  stage(MEASURES, boldFont, [this] { measuresStage(); });
+  stage(WEIGHTS, boldFont, [this] { weightsStage(); });
+  stage(JUDGEMENT, boldFont, [this] { judgementStage(); });
+  stage(PICK, boldFont, [this] { pickStage(); });
+  stage(BODY, boldFont, [this] { bodyStage(); });
   ImGui::EndChild();
 }
 
@@ -868,7 +893,7 @@ struct Situation
   /** The layers are read by the team planner for all its jobs, not traced
    * job by job yet. */
   bool plannerWide;
-  /** On the decision frame: shown in full in the columns to the right. */
+  /** On the decision frame: shown in full in the stages below. */
   bool onFrame;
 };
 constexpr std::array<Situation, 15> SITUATIONS = {{
@@ -972,56 +997,249 @@ constexpr std::array<Situation, 15> SITUATIONS = {{
      .onFrame = false},
 }};
 
-void situationColumn(BrainFlow::LayerMask on)
+/** The situations one level under `parent`, or the top level when there is
+ * no parent. */
+std::vector<std::size_t> childrenOf(std::optional<std::size_t> parent)
 {
-  constexpr float INDENT = 14.0F;
-  const float scale = Theme::scale();
-  for (const Situation& situation : SITUATIONS)
+  std::vector<std::size_t> children;
+  const int depth = parent ? SITUATIONS.at(*parent).depth + 1 : 0;
+  for (std::size_t index = parent ? *parent + 1 : 0; index < SITUATIONS.size();
+       ++index)
   {
-    const float indent = static_cast<float>(situation.depth) * INDENT * scale;
-    if (indent > 0.0F)
+    const int at = SITUATIONS.at(index).depth;
+    if (at < depth)
     {
-      ImGui::Indent(indent);
+      break;
     }
-    text(situation.title,
-         situation.onFrame ? SandboxPageUI::LIME : SandboxPageUI::CREAM);
-    if (*situation.decidedBy != '\0')
+    if (at == depth)
     {
-      muted(situation.decidedBy);
+      children.push_back(index);
     }
-    if (situation.onFrame)
+  }
+  return children;
+}
+
+/** The situation and all those under it. */
+std::size_t subtreeEnd(std::size_t index)
+{
+  std::size_t end = index + 1;
+  while (end < SITUATIONS.size() &&
+         SITUATIONS.at(end).depth > SITUATIONS.at(index).depth)
+  {
+    ++end;
+  }
+  return end;
+}
+
+/** True when the situation, or one under it, is on the decision frame. */
+bool leadsToFrame(std::size_t index)
+{
+  for (std::size_t at = index; at < subtreeEnd(index); ++at)
+  {
+    if (SITUATIONS.at(at).onFrame)
     {
-      text("on the decision frame: the columns to the right",
-           SandboxPageUI::LIME);
+      return true;
     }
-    else if (*situation.decidedBy != '\0')
+  }
+  return false;
+}
+
+/** The layers that read the situation or any situation under it. */
+BrainFlow::LayerMask subtreeLayers(std::size_t index)
+{
+  BrainFlow::LayerMask layers = 0;
+  for (std::size_t at = index; at < subtreeEnd(index); ++at)
+  {
+    layers |= SITUATIONS.at(at).layers;
+  }
+  return layers;
+}
+
+/** The cards from the top level down to the situation on the frame. */
+std::vector<std::size_t> pathToFrame()
+{
+  std::vector<std::size_t> path;
+  std::optional<std::size_t> parent;
+  while (true)
+  {
+    const std::vector<std::size_t> children = childrenOf(parent);
+    const auto next = std::ranges::find_if(
+        children, [](std::size_t at) { return leadsToFrame(at); });
+    if (next == children.end())
     {
-      muted("not on the frame yet");
+      return path;
     }
-    for (std::size_t layer = 0; layer < BrainFlow::LAYER_COUNT; ++layer)
+    path.push_back(*next);
+    if (SITUATIONS.at(*next).onFrame)
     {
-      const auto which = static_cast<Layer>(layer);
-      if ((situation.layers & bit(which)) != 0 && BrainFlow::isOn(on, which))
+      return path;
+    }
+    parent = *next;
+  }
+}
+
+// Situation cards, in unscaled pixels.
+constexpr float CARD_PADDING_X = 10.0F;
+constexpr float CARD_PADDING_Y = 6.0F;
+constexpr float CARD_GAP = 6.0F;
+constexpr float CARD_ROUNDING = 4.0F;
+constexpr float CARD_BORDER = 1.0F;
+constexpr float CARD_SELECTED_BORDER = 2.0F;
+constexpr float DOT_RADIUS = 3.0F;
+constexpr float DOT_GAP = 4.0F;
+constexpr float DOT_ROW = 10.0F;
+/** From one layer dot to the next. */
+constexpr float DOT_STEP = (2.0F * DOT_RADIUS) + DOT_GAP;
+/** A card's tooltip wraps at this many font heights. */
+constexpr float TOOLTIP_WIDTH_EMS = 30.0F;
+
+/** One situation card: its title (lime when it leads to the frame) and a
+ * dot for each switched-on layer that reads it or a situation under it.
+ * True when clicked. */
+bool situationCard(std::size_t index, bool selected, BrainFlow::LayerMask on)
+{
+  namespace Page = SandboxPageUI;
+  const float scale = Theme::scale();
+  const Situation& situation = SITUATIONS.at(index);
+  const ImVec2 title = ImGui::CalcTextSize(situation.title);
+  const ImVec2 size(title.x + (2.0F * CARD_PADDING_X * scale),
+                    title.y + ((2.0F * CARD_PADDING_Y + DOT_ROW) * scale));
+  ImGui::PushID(static_cast<int>(index));
+  const bool clicked = ImGui::InvisibleButton("##card", size);
+  ImGui::PopID();
+  const bool hovered = ImGui::IsItemHovered();
+  const ImVec2 min = ImGui::GetItemRectMin();
+  const ImVec2 max = ImGui::GetItemRectMax();
+  ImDrawList* draw = ImGui::GetWindowDrawList();
+  draw->AddRectFilled(min, max, selected || hovered ? Page::MID : Page::DARK,
+                      CARD_ROUNDING * scale);
+  draw->AddRect(min, max, selected ? Page::LIME : Page::RULE,
+                CARD_ROUNDING * scale, 0,
+                (selected ? CARD_SELECTED_BORDER : CARD_BORDER) * scale);
+  draw->AddText(ImVec2(min.x + (CARD_PADDING_X * scale),
+                       min.y + (CARD_PADDING_Y * scale)),
+                leadsToFrame(index) ? Page::LIME : Page::CREAM,
+                situation.title);
+  const BrainFlow::LayerMask layers = subtreeLayers(index);
+  float dotX = min.x + ((CARD_PADDING_X + DOT_RADIUS) * scale);
+  const float dotY = max.y - ((CARD_PADDING_Y + DOT_RADIUS) * scale);
+  for (std::size_t layer = 0; layer < BrainFlow::LAYER_COUNT; ++layer)
+  {
+    const auto which = static_cast<Layer>(layer);
+    if ((layers & bit(which)) != 0 && BrainFlow::isOn(on, which))
+    {
+      draw->AddCircleFilled(ImVec2(dotX, dotY), DOT_RADIUS * scale,
+                            LAYER_COLOURS.at(layer));
+      dotX += DOT_STEP * scale;
+    }
+  }
+  if (hovered && *situation.decidedBy != '\0')
+  {
+    ImGui::BeginTooltip();
+    ImGui::PushTextWrapPos(ImGui::GetFontSize() * TOOLTIP_WIDTH_EMS);
+    ImGui::TextUnformatted(situation.decidedBy);
+    ImGui::PopTextWrapPos();
+    ImGui::EndTooltip();
+  }
+  return clicked;
+}
+
+/** The selected situation in full: what decides it, whether it is on the
+ * frame, and the switched-on layers that read it. */
+void situationDetail(const Situation& situation, BrainFlow::LayerMask on)
+{
+  text(situation.title,
+       situation.onFrame ? SandboxPageUI::LIME : SandboxPageUI::CREAM);
+  if (*situation.decidedBy == '\0')
+  {
+    muted("Pick a card below it.");
+    return;
+  }
+  muted(situation.decidedBy);
+  if (situation.onFrame)
+  {
+    text("on the decision frame: the stages below", SandboxPageUI::LIME);
+  }
+  else
+  {
+    muted("not on the frame yet");
+  }
+  for (std::size_t layer = 0; layer < BrainFlow::LAYER_COUNT; ++layer)
+  {
+    const auto which = static_cast<Layer>(layer);
+    if ((situation.layers & bit(which)) != 0 && BrainFlow::isOn(on, which))
+    {
+      tagged(which, situation.plannerWide
+                        ? std::string(LAYER_NAMES.at(layer)) + " (planner-wide)"
+                        : std::string(LAYER_NAMES.at(layer)));
+    }
+  }
+}
+}  // namespace
+
+void BrainFlowScene::situationStage()
+{
+  if (situationPath.empty())
+  {
+    situationPath = pathToFrame();
+  }
+  const float scale = Theme::scale();
+  // A row of cards for each level, down the selected path.
+  std::optional<std::size_t> parent;
+  for (std::size_t level = 0;; ++level)
+  {
+    const std::vector<std::size_t> children = childrenOf(parent);
+    if (children.empty())
+    {
+      break;
+    }
+    const float right =
+        ImGui::GetCursorScreenPos().x + ImGui::GetContentRegionAvail().x;
+    bool first = true;
+    for (const std::size_t index : children)
+    {
+      if (!first)
       {
-        tagged(which,
-               situation.plannerWide
-                   ? std::string(LAYER_NAMES.at(layer)) + " (planner-wide)"
-                   : std::string(LAYER_NAMES.at(layer)));
+        // Wrap to a new line when the next card would not fit.
+        const float next = ImGui::GetItemRectMax().x + (CARD_GAP * scale);
+        const float width = ImGui::CalcTextSize(SITUATIONS.at(index).title).x +
+                            (2.0F * CARD_PADDING_X * scale);
+        if (next + width <= right)
+        {
+          ImGui::SameLine(0, CARD_GAP * scale);
+        }
+      }
+      first = false;
+      const bool selected =
+          level < situationPath.size() && situationPath.at(level) == index;
+      if (situationCard(index, selected, layers))
+      {
+        situationPath.resize(level);
+        situationPath.push_back(index);
       }
     }
-    if (indent > 0.0F)
+    if (level >= situationPath.size())
     {
-      ImGui::Unindent(indent);
+      break;
     }
-    ImGui::Spacing();
+    parent = situationPath.at(level);
+    ImGui::Dummy(ImVec2(1.0F, CARD_GAP * scale));
   }
+  if (!situationPath.empty())
+  {
+    ImGui::Separator();
+    situationDetail(SITUATIONS.at(situationPath.back()), layers);
+  }
+  ImGui::Spacing();
   muted(
       "Layers: from the inputs each function reads (the team sliders carry "
       "team instructions, game state and the shout). Planner-wide: the team "
       "planner reads them for all its jobs; not traced job by job yet.");
 }
 
-void readingColumn()
+namespace
+{
+void readingStage()
 {
   text("Not built yet", WARNING);
   muted(
@@ -1030,7 +1248,7 @@ void readingColumn()
       "truth.");
 }
 
-void goalColumn()
+void goalStage()
 {
   text("Keep the ball and make progress towards a goal");
   muted(
@@ -1039,7 +1257,7 @@ void goalColumn()
 }
 }  // namespace
 
-void BrainFlowScene::optionsColumn()
+void BrainFlowScene::optionsStage()
 {
   for (std::size_t index = 0; index < BrainFlow::OPTION_COUNT; ++index)
   {
@@ -1072,7 +1290,7 @@ void BrainFlowScene::optionsColumn()
   }
 }
 
-void BrainFlowScene::measuresColumn()
+void BrainFlowScene::measuresStage()
 {
   muted("Chances (as true; he may misread them, see Judgement):");
   for (const BrainFlow::Chance& chance : layered.chances)
@@ -1135,7 +1353,7 @@ void BrainFlowScene::measuresColumn()
        base.options.at(at(OptionIndex::SHIELD)).score);
 }
 
-void BrainFlowScene::weightsColumn()
+void BrainFlowScene::weightsStage()
 {
   muted(
       "Default x 1.1^steps, the summed steps soft-capped at 6. Each "
@@ -1193,7 +1411,7 @@ void BrainFlowScene::weightsColumn()
   }
 }
 
-void BrainFlowScene::judgementColumn()
+void BrainFlowScene::judgementStage()
 {
   text(std::format("Decisions {:.0f}", layered.decisions * 100.0F));
   muted(
@@ -1215,7 +1433,7 @@ void BrainFlowScene::judgementColumn()
   }
 }
 
-void BrainFlowScene::pickColumn()
+void BrainFlowScene::pickStage()
 {
   const float noise = layered.pickNoise;
   muted(
@@ -1279,7 +1497,7 @@ void BrainFlowScene::pickColumn()
   }
 }
 
-void BrainFlowScene::bodyColumn()
+void BrainFlowScene::bodyStage()
 {
   if (layered.chosen >= BrainFlow::OPTION_COUNT)
   {

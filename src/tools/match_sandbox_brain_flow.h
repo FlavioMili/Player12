@@ -24,7 +24,7 @@ struct ImFont;
 /**
  * The brain flow visualiser (Notes and plans/
  * match_engine_brain_flow_tool_plan.md): the new brain framework as a flow,
- * left to right (situation, reading, goal, options, measures, weights,
+ * top to bottom (situation, reading, goal, options, measures, weights,
  * judgement, pick, body), on a live example scored by Capybara's own code.
  * The default flow has no influence layers; each layer can be switched on
  * to see which parts of the flow it touches, and by how much.
@@ -89,12 +89,14 @@ class BrainFlowScene : public GUIScene
   /** The example on a small pitch: players to drag, the options drawn. */
   void renderPitch(float width);
   void renderFlow(float width, float height);
-  void optionsColumn();
-  void measuresColumn();
-  void weightsColumn();
-  void judgementColumn();
-  void pickColumn();
-  void bodyColumn();
+  /** The situation tree as rows of cards: pick one at each level. */
+  void situationStage();
+  void optionsStage();
+  void measuresStage();
+  void weightsStage();
+  void judgementStage();
+  void pickStage();
+  void bodyStage();
   [[nodiscard]] bool layerOn(BrainFlow::Layer layer) const;
   [[nodiscard]] std::string nameOf(std::uint32_t player) const;
 
@@ -107,6 +109,10 @@ class BrainFlowScene : public GUIScene
   std::uint32_t rollSeed = 1;
   /** The example player being dragged on the pitch. */
   std::optional<std::size_t> dragging;
+  /** The selected situation card at each level of the tree (indices into
+   * the situation table); empty until first drawn, then the path to the
+   * decision frame. */
+  std::vector<std::size_t> situationPath;
 
   // The example, scored when a setting changes.
   bool dirty = true;
