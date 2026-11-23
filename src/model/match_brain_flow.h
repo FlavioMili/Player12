@@ -92,6 +92,9 @@ enum class OptionIndex : std::uint8_t
   SHOT,
   CARRY,
   SHIELD,
+  /** Pressed near his own goal with no pass worth playing (step E: its own
+   * option, scored with the shield's keep for now). */
+  CLEAR,
   COUNT
 };
 inline constexpr std::size_t OPTION_COUNT =
@@ -116,7 +119,8 @@ struct CarryCandidate
   float score = 0.0F;
 };
 
-/** One carrier decision (pass, shot, carry, shield), as the tool shows it. */
+/** One carrier decision (pass, shot, carry, shield, clear), as the tool
+ * shows it. */
 struct CarrierRecord
 {
   /** Set by the tool before the decision (kept when the record is
@@ -153,10 +157,12 @@ struct CarrierRecord
   float shotAimZ = 0.0F;
   /** Every carry candidate; the best (highest score) is the carry option. */
   std::vector<CarryCandidate> carryCandidates;
-  /** The chosen option (OPTION_COUNT for none); a shield deep in his own
-   * third is a clearance. */
+  /** Where the clear option is aimed (today's rules, rolled at the
+   * decision), if it is open. */
+  bool clearAimed = false;
+  PitchPoint clearTarget{};
+  /** The chosen option (OPTION_COUNT for none). */
   std::size_t chosen = OPTION_COUNT;
-  bool clearance = false;
   bool filled = false;
 };
 

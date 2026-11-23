@@ -256,6 +256,18 @@
     ShotAim aim;
   };
   std::optional<HeldShotAimCapybara> heldShotAimCapybara;
+  /** Today's clearance aim (a random length, upfield and towards the
+   * nearer touchline), rolled. */
+  ClearanceAim rollClearanceAimCapybara(const MatchPlayer& defender);
+  /** The aim his clear option carried, held for the strike: only for this
+   * player in this possession. */
+  struct HeldClearAimCapybara
+  {
+    PlayerID player = 0;
+    double possessionStart = 0.0;
+    ClearanceAim aim;
+  };
+  std::optional<HeldClearAimCapybara> heldClearAimCapybara;
   float choosePenaltyGuessCapybara(const MatchPlayer& keeper);
   ClearanceAim chooseClearanceAimCapybara(const MatchPlayer& defender);
   PitchPoint chooseClearBehindTargetCapybara(const MatchPlayer& defender);

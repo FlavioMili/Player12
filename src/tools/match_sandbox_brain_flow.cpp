@@ -48,7 +48,7 @@ constexpr std::array<ImU32, BrainFlow::LAYER_COUNT> LAYER_COLOURS = {
     IM_COL32(185, 135, 225, 255), IM_COL32(230, 105, 105, 255),
     IM_COL32(95, 205, 185, 255),  IM_COL32(230, 210, 95, 255)};
 constexpr std::array<const char*, BrainFlow::OPTION_COUNT> OPTION_NAMES = {
-    "Pass", "Shot", "Carry", "Shield"};
+    "Pass", "Shot", "Carry", "Shield", "Clear"};
 /** Not yet in the plan's terms, or not built: a warning colour. */
 constexpr ImU32 WARNING = IM_COL32(235, 120, 70, 255);
 /** A change smaller than this shows as no change. */
@@ -776,6 +776,12 @@ void BrainFlowScene::renderPitch(float width)
     line(screen(pitch.fractionX(layered.carryEnd),
                 pitch.fractionY(layered.carryEnd)),
          OptionIndex::CARRY);
+    if (layered.clearAimed)
+    {
+      line(screen(pitch.fractionX(layered.clearTarget),
+                  pitch.fractionY(layered.clearTarget)),
+           OptionIndex::CLEAR);
+    }
     if (layered.options.at(at(OptionIndex::SHOT)).ruledOut == nullptr)
     {
       // To the aim the shot option carries (the goal's centre if none).
@@ -1010,7 +1016,7 @@ constexpr std::array<Situation, 15> SITUATIONS = {{
     {.depth = 1,
      .title = "Our ball, I have it (collected)",
      .decidedBy = "chooseBallAction: pass, shot, carry (direction x pace), "
-                  "shield",
+                  "shield, clear",
      .layers = SLIDERS | ROLE | ORDERS | MOOD,
      .plannerWide = false,
      .onFrame = true},
@@ -1416,10 +1422,6 @@ void BrainFlowScene::optionsStage()
     {
       title += " to " + nameOf(layered.bestReceiver);
     }
-    if (index == at(OptionIndex::SHIELD) && layered.clearance)
-    {
-      title += " (clear)";
-    }
     text(title, chosen ? SandboxPageUI::LIME : SandboxPageUI::CREAM);
     if (option.ruledOut != nullptr)
     {
@@ -1516,6 +1518,15 @@ void BrainFlowScene::measuresStage()
   }
   list("Shield", layered.options.at(at(OptionIndex::SHIELD)).score,
        base.options.at(at(OptionIndex::SHIELD)).score);
+  list("Clear", layered.options.at(at(OptionIndex::CLEAR)).score,
+       base.options.at(at(OptionIndex::CLEAR)).score);
+  if (layered.options.at(at(OptionIndex::CLEAR)).score.isAvailable())
+  {
+    text(
+        "Follow-up: the clear has no measures of its own yet; it is scored "
+        "with the shield's keep (what decided a clearance before).",
+        WARNING);
+  }
 }
 
 void BrainFlowScene::weightsStage()
@@ -1702,7 +1713,18 @@ void BrainFlowScene::bodyStage()
       break;
     }
     case OptionIndex::SHIELD:
-      text(layered.clearance ? "Clears it" : "Shields it");
+      text("Shields it");
+      break;
+    case OptionIndex::CLEAR:
+      text("Clears it");
+      if (layered.clearAimed)
+      {
+        muted(std::format(
+            "aimed {:.0f} m upfield and towards the touchline (today's aim "
+            "rules, rolled with the option; held for the strike)",
+            std::hypot(layered.clearTarget.x - carrierAt.x,
+                       layered.clearTarget.y - carrierAt.y)));
+      }
       break;
     case OptionIndex::COUNT:
       break;

@@ -5123,29 +5123,57 @@ MatchEngine::BallAction MatchEngine::chooseBallActionCapybara(
   carry.add("time already on the ball", S::SITUATION, heldSeconds,
             weights.carryHeld);
 
-  // Shield: open only when he is pressed and has no pass worth playing.
+  // Shield and clear (step E): open only when he is pressed and has no
+  // pass worth playing; near his own goal it is a clearance, else a
+  // shield. Follow-up: the clear option has no measures of its own yet; it
+  // is scored with the shield's keep (what decided a clearance before), so
+  // the same situations clear as before.
   DecisionFrame::Score shield;
+  DecisionFrame::Score clear;
   const bool passUnavailableOrWeak =
       !option ||
       pass.total() <= MatchTuning::Passing::MIN_ACCEPTABLE_OPTION_SCORE;
-  if (pressure >= MatchTuning::Decision::SHIELD_PRESSURE_THRESHOLD &&
-      passUnavailableOrWeak)
+  const bool nearOwnGoal =
+      pitch.fromOwnGoalLine(carrier.position, carrier.isHomeTeam) <
+      MatchTuning::Defending::CLEARANCE_WITHIN_METRES;
+  std::optional<ClearanceAim> clearAim;
+  const bool keepOpen =
+      pressure >= MatchTuning::Decision::SHIELD_PRESSURE_THRESHOLD &&
+      passUnavailableOrWeak;
+  if (keepOpen)
   {
-    shield.add(
-        "keeps the ball", S::SITUATION,
+    const float keep =
         readChance("shield keep", keepChanceCapybara(carrier, true, pressure),
-                   misreadOffset()),
-        weights.shieldKeep);
+                   misreadOffset());
+    if (nearOwnGoal)
+    {
+      clear.add("keeps the ball (stopgap: the shield's score)", S::SITUATION,
+                keep, weights.shieldKeep);
+      // The clear option carries its aim (today's rules, rolled now): if it
+      // is chosen, the strike uses it.
+      clearAim = rollClearanceAimCapybara(carrier);
+    }
+    else
+    {
+      shield.add("keeps the ball", S::SITUATION, keep, weights.shieldKeep);
+    }
   }
-  else
+  if (!keepOpen || nearOwnGoal)
   {
     shield.ruleOut();
+  }
+  if (!keepOpen || !nearOwnGoal)
+  {
+    clear.ruleOut();
   }
 
   float passScore = pass.total();
   float shotScore = shot.total();
   float carryScore = carry.total();
-  float shieldScore = shield.total();
+  // At most one of shield and clear is open: the pick compares the open
+  // one where the shield used to be.
+  const bool clearing = clear.isAvailable();
+  float shieldScore = clearing ? clear.total() : shield.total();
   if (detail)
   {
     // The pass: the best candidate's own terms as he reads them, then the
@@ -5160,7 +5188,8 @@ MatchEngine::BallAction MatchEngine::chooseBallActionCapybara(
     }
     shot.fill(*shotTerms);
     carry.fill(*carryTerms);
-    shield.fill(*shieldTerms);
+    // The debugger has four slots: the clear uses the shield's.
+    (clearing ? clear : shield).fill(*shieldTerms);
   }
 
   // Kept for the recorder: which option the scores alone would choose.
@@ -5195,29 +5224,51 @@ MatchEngine::BallAction MatchEngine::chooseBallActionCapybara(
     record.options[at(OptionIndex::SHOT)].score = shot;
     record.options[at(OptionIndex::CARRY)].score = carry;
     record.options[at(OptionIndex::SHIELD)].score = shield;
+    record.options[at(OptionIndex::CLEAR)].score = clear;
     record.options[at(OptionIndex::PASS)].ruledOut =
         option ? nullptr : "no pass candidate in range";
     record.options[at(OptionIndex::SHOT)].ruledOut =
         shotXG >= MatchTuning::Decision::MIN_SHOT_XG
             ? nullptr
             : "xG below the least a shot needs";
-    if (pressure < MatchTuning::Decision::SHIELD_PRESSURE_THRESHOLD)
+    for (const OptionIndex keepOption :
+         {OptionIndex::SHIELD, OptionIndex::CLEAR})
     {
-      record.options[at(OptionIndex::SHIELD)].ruledOut =
-          "not pressed closely enough";
-    }
-    else if (!passUnavailableOrWeak)
-    {
-      record.options[at(OptionIndex::SHIELD)].ruledOut = "a pass worth playing";
+      const char*& ruledOut = record.options.at(at(keepOption)).ruledOut;
+      if (pressure < MatchTuning::Decision::SHIELD_PRESSURE_THRESHOLD)
+      {
+        ruledOut = "not pressed closely enough";
+      }
+      else if (!passUnavailableOrWeak)
+      {
+        ruledOut = "a pass worth playing";
+      }
+      else if (keepOption == OptionIndex::SHIELD && nearOwnGoal)
+      {
+        ruledOut = "near his own goal: he clears it";
+      }
+      else if (keepOption == OptionIndex::CLEAR && !nearOwnGoal)
+      {
+        ruledOut = "not near his own goal";
+      }
     }
     const std::array<float, 4> withNoise{passScore, shotScore, carryScore,
                                          shieldScore};
     for (std::size_t index = 0; index < withNoise.size(); ++index)
     {
-      record.options.at(index).noise =
+      // The fourth score is the shield's or the clear's, whichever is open.
+      const std::size_t slot = index == at(OptionIndex::SHIELD) && clearing
+                                   ? at(OptionIndex::CLEAR)
+                                   : index;
+      record.options.at(slot).noise =
           std::isfinite(scoresBeforeNoise.at(index))
               ? withNoise.at(index) - scoresBeforeNoise.at(index)
               : 0.0F;
+    }
+    if (clearAim)
+    {
+      record.clearAimed = true;
+      record.clearTarget = clearAim->target;
     }
     record.judgement = judgement;
     record.pickNoise = pickNoiseScale;
@@ -5233,9 +5284,6 @@ MatchEngine::BallAction MatchEngine::chooseBallActionCapybara(
       record.shotAimZ = shotAim->aimZ;
     }
     // The same comparisons as the branches below, in the same order.
-    const bool clearing =
-        pitch.fromOwnGoalLine(carrier.position, carrier.isHomeTeam) <
-        MatchTuning::Defending::CLEARANCE_WITHIN_METRES;
     if (shotScore >= passScore && shotScore >= carryScore &&
         shotScore >= shieldScore)
     {
@@ -5247,13 +5295,13 @@ MatchEngine::BallAction MatchEngine::chooseBallActionCapybara(
     }
     else if (shieldScore >= passScore)
     {
-      record.chosen = at(OptionIndex::SHIELD);
+      record.chosen =
+          clearing ? at(OptionIndex::CLEAR) : at(OptionIndex::SHIELD);
     }
     else if (option)
     {
       record.chosen = at(OptionIndex::PASS);
     }
-    record.clearance = record.chosen == at(OptionIndex::SHIELD) && clearing;
     record.filled = true;
   }
 
@@ -5374,15 +5422,19 @@ MatchEngine::BallAction MatchEngine::chooseBallActionCapybara(
     }
     return action;
   }
-  const float fromOwnGoal =
-      pitch.fromOwnGoalLine(carrier.position, carrier.isHomeTeam);
-  if (shieldScore >= passScore &&
-      fromOwnGoal < MatchTuning::Defending::CLEARANCE_WITHIN_METRES)
+  if (shieldScore >= passScore && clearing)
   {
     lastScenarioDecision.action = ScenarioAction::CLEAR;
     lastScenarioDecision.reason =
         "clear:pressed in the own third with no safe outlet";
     action.kind = ScenarioAction::CLEAR;
+    if (clearAim && carrier.player != nullptr)
+    {
+      heldClearAimCapybara = HeldClearAimCapybara{
+          .player = carrier.player->getId(),
+          .possessionStart = getPossessionHistory().possessionStartSeconds,
+          .aim = *clearAim};
+    }
     return action;
   }
   if (shieldScore >= passScore)
@@ -6240,6 +6292,23 @@ MatchEngine::HeaderPlay MatchEngine::chooseHeaderOutCapybara(
 }
 
 MatchEngine::ClearanceAim MatchEngine::chooseClearanceAimCapybara(
+    const MatchPlayer& defender)
+{
+  // His clear option's aim, once (step E); otherwise rolled now (a tackler
+  // clearing it, Play mode).
+  if (heldClearAimCapybara && defender.player != nullptr &&
+      heldClearAimCapybara->player == defender.player->getId() &&
+      heldClearAimCapybara->possessionStart ==
+          getPossessionHistory().possessionStartSeconds)
+  {
+    const ClearanceAim aim = heldClearAimCapybara->aim;
+    heldClearAimCapybara.reset();
+    return aim;
+  }
+  return rollClearanceAimCapybara(defender);
+}
+
+MatchEngine::ClearanceAim MatchEngine::rollClearanceAimCapybara(
     const MatchPlayer& defender)
 {
   // A long, high clearance upfield and towards the nearer touchline.
