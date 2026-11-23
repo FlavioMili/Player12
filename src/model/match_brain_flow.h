@@ -11,6 +11,7 @@
 #include <array>
 #include <cstddef>
 #include <cstdint>
+#include <optional>
 #include <vector>
 
 #include "model/match_decision_frame.h"
@@ -154,6 +155,28 @@ struct OffBallRecord
     float margin = 0.0F;
   };
   std::vector<MeetPoint> meetPoints;
+  /** Step O6, first to commit: his projected sequence (the tool's moment
+   * does not run on, so the delays are shown, not waited). */
+  struct CommitCall
+  {
+    float lookUpSeconds = 0.0F;
+    float callSeconds = 0.0F;
+    /** The nearest team-mate also going (0 for none), his delays, and both
+     * precise meeting times. */
+    std::uint32_t partner = 0;
+    float partnerLookUpSeconds = 0.0F;
+    float partnerCallSeconds = 0.0F;
+    float hisSeconds = 0.0F;
+    float partnerSeconds = 0.0F;
+    /** Decided by the shape spots (within 0.5 s), not the clearly
+     * quicker; whose it should be; his chance of getting that right. */
+    bool byShape = false;
+    bool shouldBeHis = false;
+    float rightChance = 0.0F;
+    /** He finishes both delays first, so he makes the call. */
+    bool heCalls = false;
+  };
+  std::optional<CommitCall> commit;
 };
 
 /** One carrier decision (pass, shot, carry, shield, clear), as the tool

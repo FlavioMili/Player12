@@ -124,6 +124,8 @@ class BrainFlowScene : public GUIScene
   void offBallStage();
   /** Step O6: his own loose-ball call and meeting points (shadow). */
   static void looseShadow(const BrainFlow::OffBallRecord& offBall);
+  /** Step O6: his first-to-commit sequence, projected. */
+  void looseCommit(const BrainFlow::OffBallRecord& offBall) const;
   [[nodiscard]] bool layerOn(BrainFlow::Layer layer) const;
   [[nodiscard]] std::string nameOf(std::uint32_t player) const;
 

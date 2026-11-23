@@ -2378,6 +2378,27 @@ void MatchEngine::refreshTacticalTargetsCapybara(float dt, bool planHome)
     }
     looseCommitStageCapybara(planHome, precise,
                              (planHome ? homePressers : awayPressers).front());
+    // The brain flow tool: the example player's sequence, projected.
+    for (std::size_t index = 0;
+         offBallRecord != nullptr && index < players.size(); ++index)
+    {
+      const MatchPlayer& player = players.at(index);
+      if (player.player == nullptr || player.isHomeTeam != planHome ||
+          player.player->getId() != offBallRecord->offBall.player)
+      {
+        continue;
+      }
+      const std::size_t partner = loosePartnerCapybara(index);
+      const auto [hisSeconds, hisAt] = interception(player);
+      PreciseMeetCapybara theirs{};
+      if (partner != SIZE_MAX)
+      {
+        const auto [seconds, at] = interception(players.at(partner));
+        theirs = {.seconds = seconds, .at = at};
+      }
+      noteLooseCommitCapybara(index, partner,
+                              {.seconds = hisSeconds, .at = hisAt}, theirs);
+    }
   }
 }
 
@@ -2413,6 +2434,7 @@ bool MatchEngine::brainFlowOffBallCapybara(const MatchScenario& scenario,
   record.offBall.filled = false;
   record.offBall.looseCall = nullptr;
   record.offBall.meetPoints.clear();
+  record.offBall.commit.reset();
   if (scenario.players.empty() || state == MatchState::FULL_TIME ||
       !placeScenario(scenario, MatchState::PLAYING, matchMinute, homeGoals,
                      awayGoals, true))
@@ -2869,6 +2891,72 @@ void MatchEngine::settleLooseCallCapybara(std::size_t index,
   constexpr double MILLIS = 1000.0;
   stats.looseCallMillis += static_cast<int>(
       (now - std::max(commit.committedAt, mate.committedAt)) * MILLIS);
+}
+
+std::size_t MatchEngine::loosePartnerCapybara(std::size_t index) const
+{
+  const MatchPlayer& player = players.at(index);
+  std::size_t partner = SIZE_MAX;
+  float nearest = std::numeric_limits<float>::max();
+  for (std::size_t other = 0; other < players.size(); ++other)
+  {
+    const MatchPlayer& mate = players.at(other);
+    if (other == index || mate.isHomeTeam != player.isHomeTeam ||
+        !active(mate) || mate.isGoalkeeper ||
+        looseCallsNowCapybara.at(other) == LooseCallCapybara::NOT_MINE)
+    {
+      continue;
+    }
+    const float metres = distance(player.position, mate.position);
+    if (metres < nearest)
+    {
+      nearest = metres;
+      partner = other;
+    }
+  }
+  return partner;
+}
+
+void MatchEngine::noteLooseCommitCapybara(std::size_t index,
+                                          std::size_t partner,
+                                          PreciseMeetCapybara his,
+                                          PreciseMeetCapybara theirs)
+{
+  if (looseCallsNowCapybara.at(index) == LooseCallCapybara::NOT_MINE)
+  {
+    return;
+  }
+  const MatchPlayer& player = players.at(index);
+  const auto delay = [](const MatchPlayer& who, DerivedStat stat)
+  {
+    return alongStatScale(who.derivedStat(stat), STAT_DELAY_AT_1,
+                          STAT_DELAY_AT_99);
+  };
+  BrainFlow::OffBallRecord::CommitCall commit{
+      .lookUpSeconds = delay(player, DerivedStat::CONCENTRATION),
+      .callSeconds = delay(player, DerivedStat::LEADERSHIP)};
+  if (partner != SIZE_MAX)
+  {
+    const MatchPlayer& mate = players.at(partner);
+    commit.partner = mate.player != nullptr ? mate.player->getId() : 0U;
+    commit.partnerLookUpSeconds = delay(mate, DerivedStat::CONCENTRATION);
+    commit.partnerCallSeconds = delay(mate, DerivedStat::LEADERSHIP);
+    commit.hisSeconds = his.seconds;
+    commit.partnerSeconds = theirs.seconds;
+    commit.byShape =
+        std::abs(his.seconds - theirs.seconds) <= LOOSE_SHADOW_MARGIN_SECONDS;
+    commit.shouldBeHis =
+        commit.byShape
+            ? distance(shapeSpotsCapybara.at(index), his.at) <=
+                  distance(shapeSpotsCapybara.at(partner), his.at)
+            : his.seconds < theirs.seconds;
+    commit.rightChance =
+        alongStatScale(player.derivedStat(DerivedStat::DECISIONS),
+                       RIGHT_CALL_AT_1, RIGHT_CALL_AT_99);
+    commit.heCalls = commit.lookUpSeconds + commit.callSeconds <=
+                     commit.partnerLookUpSeconds + commit.partnerCallSeconds;
+  }
+  offBallRecord->offBall.commit = commit;
 }
 
 void MatchEngine::tallyWrongLooseCallCapybara(

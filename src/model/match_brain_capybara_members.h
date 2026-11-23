@@ -118,6 +118,12 @@
                            double now);
   void settleLooseCallCapybara(std::size_t index, const MatchPlayer* teamPick,
                                double now);
+  /** The nearest team-mate also going for it this step (SIZE_MAX: none). */
+  [[nodiscard]] std::size_t loosePartnerCapybara(std::size_t index) const;
+  /** The brain flow tool: the example player's first-to-commit sequence. */
+  void noteLooseCommitCapybara(std::size_t index, std::size_t partner,
+                               PreciseMeetCapybara his,
+                               PreciseMeetCapybara theirs);
   /** The brain flow tool's example player: his call and, when it is his,
    * where he could meet it. */
   void noteLooseCallCapybara(const MatchPlayer& player,

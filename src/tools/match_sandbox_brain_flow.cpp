@@ -1990,7 +1990,50 @@ void BrainFlowScene::offBallStage()
     text(std::format("Overridden: {}", offBall.overriddenBy), WARNING);
   }
   looseShadow(offBall);
+  looseCommit(offBall);
   muted("The line on the pitch: from him to the target his job sets.");
+}
+
+void BrainFlowScene::looseCommit(const BrainFlow::OffBallRecord& offBall) const
+{
+  if (!offBall.commit)
+  {
+    return;
+  }
+  const BrainFlow::OffBallRecord::CommitCall& commit = *offBall.commit;
+  text("First to commit (shadow, step O6): he goes for it.",
+       SandboxPageUI::CREAM);
+  text(std::format("He looks up after {:.2f} s (Concentration), calls {:.2f} "
+                   "s later (Leadership): {:.2f} s in all.",
+                   commit.lookUpSeconds, commit.callSeconds,
+                   commit.lookUpSeconds + commit.callSeconds));
+  if (commit.partner == 0)
+  {
+    muted("No team-mate is going for it: no call needed.");
+    return;
+  }
+  const std::string mate = nameOf(commit.partner);
+  text(std::format("{} is going too: {:.2f} s + {:.2f} s = {:.2f} s.", mate,
+                   commit.partnerLookUpSeconds, commit.partnerCallSeconds,
+                   commit.partnerLookUpSeconds + commit.partnerCallSeconds));
+  text(std::format(
+      "The detailed look: him {:.2f} s, {} {:.2f} s. {} It should be {}.",
+      commit.hisSeconds, mate, commit.partnerSeconds,
+      commit.byShape ? "Within 0.5 s: the shape spot nearest where it is "
+                       "collected decides."
+                     : "Over 0.5 s apart: the quicker takes it.",
+      commit.shouldBeHis ? "his" : mate));
+  // The caller says mine when it should be his own, else yours.
+  const bool callerTakesIt = commit.heCalls == commit.shouldBeHis;
+  text(std::format("{} calls first: \"{}\" (if he reads it right: the "
+                   "caller's Decisions; his own {:.0f}%).",
+                   commit.heCalls ? "He" : mate,
+                   callerTakesIt ? "mine" : "yours",
+                   commit.rightChance * 100.0F),
+       SandboxPageUI::LIME);
+  muted("A projection: the moment does not run on. Delays: 1 s at the stat's "
+        "1 to 0.1 s at 100; right call 50% at Decisions 1 to 100% at 100 "
+        "(estimates, to tune).");
 }
 
 void BrainFlowScene::looseShadow(const BrainFlow::OffBallRecord& offBall)
