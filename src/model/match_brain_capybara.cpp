@@ -3892,9 +3892,14 @@ TouchIntent MatchEngine::chooseFirstTouchCapybara(
 MatchEngine::Challenge MatchEngine::chooseChallengeCapybara(
     const MatchPlayer& carrier, float dt)
 {
-  // The nearest defender to the ball (not to the man) decides whether to
-  // challenge. He waits for the ball to be away from the attacker's foot;
-  // near his own box and with a pressing instruction he goes in sooner.
+  // The situation "I can challenge the carrier" (brain redesign plan
+  // section 24, step K), its older way in: each step, the nearest defender
+  // to the ball (not to the man) may engage. Options: hold, tackle
+  // (standing), slide in. Open on today's roll (the engage rate below):
+  // standing within his reach, sliding beyond it; hold always. Follow-up:
+  // no measures yet; the stopgap pick takes the open tackle.
+  // He waits for the ball to be away from the attacker's foot; near his
+  // own box and with a pressing instruction he goes in sooner.
   Challenge challenge;
   MatchPlayer* defender =
       findClosestPlayer(ball.position, !carrier.isHomeTeam, false);
@@ -4016,14 +4021,21 @@ bool MatchEngine::goesIntoContestCapybara(const MatchPlayer& defender,
                                           const MatchPlayer& owner,
                                           PitchPoint contact)
 {
-  // Tackling plan step 5. He reads the carrier's foot: recovering from a
-  // touch, or his touch about to come (he would swing at nothing or meet
-  // it in a block), and how much of the ball he has shown; how true his
-  // read of the timing is, is his Defending (judgement). He goes in when
-  // the cue as he reads it clears his bar: lower pressing, against a
-  // "press him" order or with cover; higher as the last man or in his own
-  // box. Free with no touch due is no cue at all: a defender who reads it
-  // right holds, however hard his side presses.
+  // The situation "I can challenge the carrier" (step K), its contest way
+  // in (tackling plan step 5): the loose dribbled ball within both their
+  // reaches. Options: hold, go in to win it, go in to clear it (go in to
+  // pass it listed, not judged yet). Going in is open when the cue as he
+  // reads it clears his bar; the intent is today's rule (clear in his own
+  // third, at a stretch or as the last man; else win), carried by the
+  // option and held to the contact. Follow-up: the stopgap pick goes in
+  // whenever it is open.
+  // He reads the carrier's foot: recovering from a touch, or his touch
+  // about to come (he would swing at nothing or meet it in a block), and
+  // how much of the ball he has shown; how true his read of the timing is,
+  // is his Defending (judgement). The bar: lower pressing, against a "press
+  // him" order or with cover; higher as the last man or in his own box.
+  // Free with no touch due is no cue at all: a defender who reads it right
+  // holds, however hard his side presses.
   using D = MatchTuning::Defending;
   using R = MatchTuning::Dribble;
   const float judgement = std::clamp(
@@ -4086,12 +4098,41 @@ bool MatchEngine::goesIntoContestCapybara(const MatchPlayer& defender,
   {
     ++stats.goInsOnFreeFoot;
   }
+  if (goes && defender.player != nullptr)
+  {
+    heldTackleCapybara = HeldTackleCapybara{
+        .player = defender.player->getId(),
+        .step = stepCounter,
+        .contact = contact,
+        .intent = tackleIntentRuleCapybara(defender, owner, contact, false)};
+  }
   return goes;
 }
 
 TackleIntent MatchEngine::chooseTackleIntentCapybara(
     const MatchPlayer& tackler, const MatchPlayer& attacker, PitchPoint contact,
     bool freeBall)
+{
+  // A contest he went into: the intent his option carried (step K), once.
+  if (!freeBall && heldTackleCapybara && tackler.player != nullptr &&
+      heldTackleCapybara->player == tackler.player->getId() &&
+      heldTackleCapybara->step == stepCounter &&
+      heldTackleCapybara->contact.x == contact.x &&
+      heldTackleCapybara->contact.y == contact.y)
+  {
+    const TackleIntent intent = heldTackleCapybara->intent;
+    heldTackleCapybara.reset();
+    return intent;
+  }
+  // A free ball outside the carrier's reach (step K's free-ball way in):
+  // going for it and what for are the same moment, decided here.
+  return tackleIntentRuleCapybara(tackler, attacker, contact, freeBall);
+}
+
+TackleIntent MatchEngine::tackleIntentRuleCapybara(const MatchPlayer& tackler,
+                                                   const MatchPlayer& attacker,
+                                                   PitchPoint contact,
+                                                   bool freeBall) const
 {
   // Tackling plan step 5. A free ball well away from the carrier he simply
   // controls. Otherwise he knocks it away in his own third, at a stretch or

@@ -1127,12 +1127,19 @@ constexpr std::array<Situation, 19> SITUATIONS = {{
      .onFrame = false,
      .ownFrame = true},
     {.depth = 2,
-     .title = "Challenge the carrier",
-     .decidedBy = "chooseChallenge, goesIntoContest, chooseTackleIntent",
+     .title = "I can challenge the carrier",
+     .decidedBy =
+         "its own frame (step K), three ways in. The engage roll "
+         "(chooseChallenge, the older model): hold, tackle, slide in. The "
+         "contest (goesIntoContest: the cue he reads against his bar): hold, "
+         "go in to win it, go in to clear it; the intent carried by the "
+         "option to the contact. A free ball outside the carrier's reach "
+         "(chooseTackleIntent): control, clear or win it. Go in to pass it "
+         "listed, not judged. Stopgap picks (follow-up: measures)",
      .layers = SLIDERS | ORDERS,
      .plannerWide = false,
      .onFrame = false,
-     .ownFrame = false},
+     .ownFrame = true},
     {.depth = 2,
      .title = "Keeper",
      .decidedBy =

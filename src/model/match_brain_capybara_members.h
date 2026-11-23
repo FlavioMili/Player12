@@ -309,6 +309,22 @@
   Challenge chooseChallengeCapybara(const MatchPlayer& carrier, float dt);
   bool goesIntoContestCapybara(const MatchPlayer& defender,
                                 const MatchPlayer& owner, PitchPoint contact);
+  /** Today's rule for what a tackle tries to do: control a free ball well
+   * away from the carrier; clear it in his own third, at a stretch or as
+   * the last man; else win it. */
+  [[nodiscard]] TackleIntent tackleIntentRuleCapybara(
+      const MatchPlayer& tackler, const MatchPlayer& attacker,
+      PitchPoint contact, bool freeBall) const;
+  /** The intent his "go in" option carried (step K), held to the contact:
+   * this player, this step, this contact point. */
+  struct HeldTackleCapybara
+  {
+    PlayerID player = 0;
+    std::uint64_t step = 0;
+    PitchPoint contact{};
+    TackleIntent intent = TackleIntent::WIN;
+  };
+  std::optional<HeldTackleCapybara> heldTackleCapybara;
   TackleIntent chooseTackleIntentCapybara(const MatchPlayer& tackler,
                                            const MatchPlayer& attacker,
                                            PitchPoint contact, bool freeBall);
