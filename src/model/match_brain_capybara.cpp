@@ -389,6 +389,16 @@ constexpr std::array<const char*, LOOSE_JOB_COUNT> LOOSE_WHEN = {
     "ball loose, his side just won it, he is a runner",
     "ball loose, his side just won it",
     "always"};
+/** "I'm on the ground" (step J): his options, in the stopgap order. */
+enum class GetUp : std::uint8_t
+{
+  FOR_THE_RESTART,
+  FOR_THE_BALL,
+  GINGERLY,
+  STAY_DOWN,
+  COUNT
+};
+constexpr std::size_t GET_UP_COUNT = static_cast<std::size_t>(GetUp::COUNT);
 /** "I'm the keeper" (step O4): his options, in the stopgap order. */
 enum class KeeperJob : std::uint8_t
 {
@@ -3768,10 +3778,15 @@ TouchIntent MatchEngine::chooseFirstTouchCapybara(
   intent.pressure = contactPressure(nearestOpponentDistance(player),
                                     knob[K::PRESSURE_RADIUS]);
 
-  // The situation "I'm expecting the ball" (brain redesign plan section
-  // 19, step F stage 1): its own decision frame. Options: a control touch,
-  // laying it out, and first-time pass, shot and clear (listed, not judged
-  // by the brain yet).
+  // Two situations share this frame, feet branch:
+  // - "I'm expecting the ball" (brain redesign plan section 19, step F
+  //   stage 1): our pass, or a loose ball he goes to;
+  // - "I can intercept the ball" (step I): the opponents' pass reaches him
+  //   (getPossessionState().isPass, passByHome not his side).
+  // Options in both: a control touch, laying it out, and first-time pass,
+  // shot and clear (listed, not judged by the brain yet). The same
+  // availability and stopgap pick for now; the situations will part when
+  // the options get measures (an interception is scored differently).
   using S = TermSource;
   // Lay it out: open when he is running into open space (today's "into
   // his stride"), along his run.
@@ -7411,21 +7426,23 @@ float MatchEngine::pushMetresCapybara(const MatchPlayer& player,
 
 float MatchEngine::chooseGetUpCapybara(const MatchPlayer& player)
 {
-  // How quick to get up is his call, by urgency (collision plan step 5).
+  // The situation "I'm on the ground" (brain redesign plan section 23,
+  // step J): how quick to get up is his call, by urgency (collision plan
+  // step 5). Options: up for the restart (play has stopped), jump up for
+  // the ball (near and still to be won), up gingerly (play has run on a
+  // long while), stay down for now. Follow-up: no measures yet; the
+  // stopgap pick is today's order (the first open option).
   using C = MatchTuning::Collision;
   const float agility = player.derivedStat(DerivedStat::AGILITY);
   const float gingerly =
       alongStatScale(agility, C::GINGERLY_SECONDS_AT_AGILITY_1,
                      C::GINGERLY_SECONDS_AT_AGILITY_99);
-  // Play has stopped: up, ready for the restart.
-  if (state != MatchState::PLAYING)
-  {
-    ++stats.collisionGetUpsInStoppage;
-    return gingerly;
-  }
-  // The ball near and still to be won (loose, his side's, or an opponent's
-  // with a team-mate of his on it): he jumps up.
-  if (distance(player.position, ball.position) <= C::GET_UP_BALL_METRES)
+  const bool restart = state != MatchState::PLAYING;
+  // The ball near and still to be won: loose, his side's, or an
+  // opponent's with a team-mate of his on it.
+  bool forTheBall = false;
+  if (!restart &&
+      distance(player.position, ball.position) <= C::GET_UP_BALL_METRES)
   {
     const MatchPlayer* holder = findMatchPlayer(getPossessionAttachment());
     bool chance = holder == nullptr || holder->isHomeTeam == player.isHomeTeam;
@@ -7446,18 +7463,27 @@ float MatchEngine::chooseGetUpCapybara(const MatchPlayer& player)
         }
       }
     }
-    if (chance)
-    {
+    forTheBall = chance;
+  }
+  const std::array<bool, GET_UP_COUNT> open{
+      restart, forTheBall, player.downSeconds >= C::GINGERLY_AFTER_SECONDS,
+      true};
+  switch (static_cast<GetUp>(
+      std::distance(open.begin(), std::ranges::find(open, true))))
+  {
+    case GetUp::FOR_THE_RESTART:
+      ++stats.collisionGetUpsInStoppage;
+      return gingerly;
+    case GetUp::FOR_THE_BALL:
       ++stats.collisionGetUpsForBall;
       return alongStatScale(agility, C::GET_UP_SECONDS_AT_AGILITY_1,
                             C::GET_UP_SECONDS_AT_AGILITY_99);
-    }
-  }
-  // Play has run on a long while with him down: up, gingerly.
-  if (player.downSeconds >= C::GINGERLY_AFTER_SECONDS)
-  {
-    ++stats.collisionGetUpsGingerly;
-    return gingerly;
+    case GetUp::GINGERLY:
+      ++stats.collisionGetUpsGingerly;
+      return gingerly;
+    case GetUp::STAY_DOWN:
+    case GetUp::COUNT:
+      break;
   }
   return 0.0F;
 }

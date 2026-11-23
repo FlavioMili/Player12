@@ -713,43 +713,73 @@ void BrainFlowScene::renderExample(float width)
   Page::endCard(scale);
 }
 
-void BrainFlowScene::renderPitch(float width)
+namespace
 {
-  namespace Page = SandboxPageUI;
-  constexpr ImU32 GRASS = IM_COL32(34, 62, 40, 255);
-  constexpr ImU32 LINES = IM_COL32(200, 215, 200, 140);
-  constexpr ImU32 HOME = IM_COL32(155, 208, 107, 255);
-  constexpr ImU32 AWAY = IM_COL32(230, 105, 105, 255);
-  constexpr float PLAYER_RADIUS = 5.0F;
-  constexpr float CARRIER_RING = 9.0F;
-  constexpr float GRAB_RADIUS = 12.0F;
-  constexpr float THIN = 1.5F;
-  constexpr float BOLD = 3.0F;
-  constexpr float CANDIDATE_DOT = 2.0F;
-  constexpr float EDGE = 0.01F;
-  // Penalty areas: 16.5 m deep and 40.32 m wide on a 105 x 68 m pitch.
-  constexpr float BOX_DEPTH = 16.5F / 105.0F;
-  constexpr float BOX_WIDTH = 40.32F / 68.0F;
-  const float scale = Theme::scale();
+constexpr ImU32 PITCH_GRASS = IM_COL32(34, 62, 40, 255);
+constexpr ImU32 PITCH_LINES = IM_COL32(200, 215, 200, 140);
+constexpr ImU32 HOME_DOT = IM_COL32(155, 208, 107, 255);
+constexpr ImU32 AWAY_DOT = IM_COL32(230, 105, 105, 255);
+constexpr float PLAYER_RADIUS = 5.0F;
+constexpr float CARRIER_RING = 9.0F;
+constexpr float GRAB_RADIUS = 12.0F;
+constexpr float THIN_LINE = 1.5F;
+constexpr float BOLD_LINE = 3.0F;
+constexpr float CANDIDATE_DOT = 2.0F;
+constexpr float PITCH_EDGE = 0.01F;
+// Penalty areas: 16.5 m deep and 40.32 m wide on a 105 x 68 m pitch.
+constexpr float BOX_DEPTH = 16.5F / 105.0F;
+constexpr float BOX_WIDTH = 40.32F / 68.0F;
+/** The example's first four are the home side. */
+constexpr std::size_t FIRST_OPPONENT = 4;
+
+/** The pitch's markings: outline, halfway line and both penalty areas. */
+void drawPitchMarkings(ImDrawList* draw, const BrainPitchFrame& frame)
+{
+  draw->AddRectFilled(frame.origin, frame.screen(1.0F, 1.0F), PITCH_GRASS);
+  draw->AddRect(frame.origin, frame.screen(1.0F, 1.0F), PITCH_LINES);
+  draw->AddLine(frame.screen(MatchTuning::Pitch::CENTRE, 0.0F),
+                frame.screen(MatchTuning::Pitch::CENTRE, 1.0F), PITCH_LINES);
+  const float boxTop = MatchTuning::Pitch::CENTRE - (BOX_WIDTH / 2.0F);
+  const float boxBottom = MatchTuning::Pitch::CENTRE + (BOX_WIDTH / 2.0F);
+  draw->AddRect(frame.screen(0.0F, boxTop), frame.screen(BOX_DEPTH, boxBottom),
+                PITCH_LINES);
+  draw->AddRect(frame.screen(1.0F - BOX_DEPTH, boxTop),
+                frame.screen(1.0F, boxBottom), PITCH_LINES);
+}
+}  // namespace
+
+// Argument order: across then down, as points go.
+// NOLINTNEXTLINE(bugprone-easily-swappable-parameters)
+ImVec2 BrainPitchFrame::screen(float fx, float fy) const
+{
+  return {origin.x + (fx * width), origin.y + (fy * height)};
+}
+
+ImVec2 BrainPitchFrame::screen(PitchPoint at) const
+{
   const MatchPitch pitch;
-  const float height = width * pitch.width / pitch.length;
-  const ImVec2 origin = ImGui::GetCursorScreenPos();
-  ImGui::InvisibleButton("##brain_flow_pitch", ImVec2(width, height));
-  const auto screen = [&](float fx, float fy)
-  { return ImVec2(origin.x + (fx * width), origin.y + (fy * height)); };
-  const auto spotOf = [&](std::size_t index)
-  {
-    const auto& spot = settings.spots.at(index);
-    return screen(spot[0], spot[1]);
-  };
-  // Dragging a player: grab the nearest within reach.
+  return screen(pitch.fractionX(at), pitch.fractionY(at));
+}
+
+ImVec2 BrainFlowScene::spotOf(const BrainPitchFrame& frame,
+                              std::size_t index) const
+{
+  const auto& spot = settings.spots.at(index);
+  return frame.screen(spot[0], spot[1]);
+}
+
+/** Dragging a player: grab the nearest within reach, move him, and the
+ * example rebuilds when he is let go. */
+void BrainFlowScene::dragPlayers(const BrainPitchFrame& frame)
+{
+  const float scale = Theme::scale();
   const ImVec2 mouse = ImGui::GetIO().MousePos;
   if (ImGui::IsItemActivated())
   {
     float best = GRAB_RADIUS * scale;
     for (std::size_t index = 0; index < settings.spots.size(); ++index)
     {
-      const ImVec2 at = spotOf(index);
+      const ImVec2 at = spotOf(frame, index);
       const float metres = std::hypot(at.x - mouse.x, at.y - mouse.y);
       if (metres <= best)
       {
@@ -761,8 +791,10 @@ void BrainFlowScene::renderPitch(float width)
   if (dragging && ImGui::IsItemActive())
   {
     auto& spot = settings.spots.at(*dragging);
-    spot[0] = std::clamp((mouse.x - origin.x) / width, EDGE, 1.0F - EDGE);
-    spot[1] = std::clamp((mouse.y - origin.y) / height, EDGE, 1.0F - EDGE);
+    spot[0] = std::clamp((mouse.x - frame.origin.x) / frame.width, PITCH_EDGE,
+                         1.0F - PITCH_EDGE);
+    spot[1] = std::clamp((mouse.y - frame.origin.y) / frame.height, PITCH_EDGE,
+                         1.0F - PITCH_EDGE);
   }
   if (dragging && ImGui::IsItemDeactivated())
   {
@@ -770,88 +802,109 @@ void BrainFlowScene::renderPitch(float width)
     preset = -1;
     dirty = true;
   }
-  ImDrawList* draw = ImGui::GetWindowDrawList();
-  draw->AddRectFilled(origin, screen(1.0F, 1.0F), GRASS);
-  draw->AddRect(origin, screen(1.0F, 1.0F), LINES);
-  draw->AddLine(screen(MatchTuning::Pitch::CENTRE, 0.0F),
-                screen(MatchTuning::Pitch::CENTRE, 1.0F), LINES);
-  const float boxTop = MatchTuning::Pitch::CENTRE - (BOX_WIDTH / 2.0F);
-  const float boxBottom = MatchTuning::Pitch::CENTRE + (BOX_WIDTH / 2.0F);
-  draw->AddRect(screen(0.0F, boxTop), screen(BOX_DEPTH, boxBottom), LINES);
-  draw->AddRect(screen(1.0F - BOX_DEPTH, boxTop), screen(1.0F, boxBottom),
-                LINES);
-  // The options (not while dragging: they are from before the move).
-  if (!dragging && layered.filled && !exampleIds.empty())
+}
+
+/** The options from the carrier: the best pass, every carry candidate's 1 s
+ * point and the best one, a clearance and the shot; the chosen one bold. */
+void BrainFlowScene::drawOptionLines(ImDrawList* draw,
+                                     const BrainPitchFrame& frame) const
+{
+  namespace Page = SandboxPageUI;
+  const float scale = Theme::scale();
+  const MatchPitch pitch;
+  const ImVec2 from = spotOf(frame, 0);
+  const auto line = [&](ImVec2 to, OptionIndex option)
   {
-    const ImVec2 from = spotOf(0);
-    const auto chosen = [this](OptionIndex option)
-    { return layered.chosen == at(option); };
-    const auto line = [&](ImVec2 to, OptionIndex option)
+    const bool chosen = layered.chosen == at(option);
+    draw->AddLine(from, to, chosen ? Page::LIME : Page::MUTED,
+                  (chosen ? BOLD_LINE : THIN_LINE) * scale);
+  };
+  for (std::size_t index = 0; index < exampleIds.size(); ++index)
+  {
+    if (exampleIds[index] == layered.bestReceiver &&
+        index < settings.spots.size())
     {
-      draw->AddLine(from, to, chosen(option) ? Page::LIME : Page::MUTED,
-                    (chosen(option) ? BOLD : THIN) * scale);
-    };
-    for (std::size_t index = 0; index < exampleIds.size(); ++index)
-    {
-      if (exampleIds[index] == layered.bestReceiver &&
-          index < settings.spots.size())
-      {
-        line(spotOf(index), OptionIndex::PASS);
-      }
-    }
-    // Every carry candidate's 1 s point, then the best one's line.
-    for (const BrainFlow::CarryCandidate& candidate : layered.carryCandidates)
-    {
-      draw->AddCircleFilled(screen(pitch.fractionX(candidate.end),
-                                   pitch.fractionY(candidate.end)),
-                            CANDIDATE_DOT * scale, Page::MUTED);
-    }
-    line(screen(pitch.fractionX(layered.carryEnd),
-                pitch.fractionY(layered.carryEnd)),
-         OptionIndex::CARRY);
-    if (layered.clearAimed)
-    {
-      line(screen(pitch.fractionX(layered.clearTarget),
-                  pitch.fractionY(layered.clearTarget)),
-           OptionIndex::CLEAR);
-    }
-    if (layered.options.at(at(OptionIndex::SHOT)).ruledOut == nullptr)
-    {
-      // To the aim the shot option carries (the goal's centre if none).
-      const PitchPoint aim{pitch.atX(1.0F),
-                           pitch.atY(MatchTuning::Pitch::CENTRE) +
-                               (layered.shotAimed ? layered.shotAimY : 0.0F)};
-      line(screen(1.0F, pitch.fractionY(aim)), OptionIndex::SHOT);
+      line(spotOf(frame, index), OptionIndex::PASS);
     }
   }
-  // The players; the carrier ringed; a name on hover.
-  constexpr std::size_t FIRST_OPPONENT = 4;
+  for (const BrainFlow::CarryCandidate& candidate : layered.carryCandidates)
+  {
+    draw->AddCircleFilled(frame.screen(candidate.end), CANDIDATE_DOT * scale,
+                          Page::MUTED);
+  }
+  line(frame.screen(layered.carryEnd), OptionIndex::CARRY);
+  if (layered.clearAimed)
+  {
+    line(frame.screen(layered.clearTarget), OptionIndex::CLEAR);
+  }
+  if (layered.options.at(at(OptionIndex::SHOT)).ruledOut == nullptr)
+  {
+    // To the aim the shot option carries (the goal's centre if none).
+    const PitchPoint aim{pitch.atX(1.0F),
+                         pitch.atY(MatchTuning::Pitch::CENTRE) +
+                             (layered.shotAimed ? layered.shotAimY : 0.0F)};
+    line(frame.screen(1.0F, pitch.fractionY(aim)), OptionIndex::SHOT);
+  }
+}
+
+/** The players; the carrier ringed. Returns the one under the mouse. */
+std::optional<std::size_t> BrainFlowScene::drawPlayers(
+    ImDrawList* draw, const BrainPitchFrame& frame) const
+{
+  const float scale = Theme::scale();
+  const ImVec2 mouse = ImGui::GetIO().MousePos;
   std::optional<std::size_t> hovered;
   for (std::size_t index = 0; index < settings.spots.size(); ++index)
   {
-    const ImVec2 at = spotOf(index);
+    const ImVec2 at = spotOf(frame, index);
     draw->AddCircleFilled(at, PLAYER_RADIUS * scale,
-                          index < FIRST_OPPONENT ? HOME : AWAY);
+                          index < FIRST_OPPONENT ? HOME_DOT : AWAY_DOT);
     if (index == 0)
     {
-      draw->AddCircle(at, CARRIER_RING * scale, HOME, 0, THIN * scale);
+      draw->AddCircle(at, CARRIER_RING * scale, HOME_DOT, 0, THIN_LINE * scale);
     }
     if (std::hypot(at.x - mouse.x, at.y - mouse.y) <= GRAB_RADIUS * scale)
     {
       hovered = index;
     }
   }
-  // The off-ball player: ringed, and a line to where his frame sends him.
+  return hovered;
+}
+
+/** The off-ball player: ringed, and a line to where his frame sends him. */
+void BrainFlowScene::drawOffBall(ImDrawList* draw,
+                                 const BrainPitchFrame& frame) const
+{
+  namespace Page = SandboxPageUI;
+  const float scale = Theme::scale();
   const auto offBallIndex = static_cast<std::size_t>(offBallPlayer);
-  if (!dragging && offBall.filled && offBallIndex < settings.spots.size())
+  if (dragging || !offBall.filled || offBallIndex >= settings.spots.size())
   {
-    const ImVec2 at = spotOf(offBallIndex);
-    draw->AddCircle(at, CARRIER_RING * scale, Page::CREAM, 0, THIN * scale);
-    draw->AddLine(at,
-                  screen(pitch.fractionX(offBall.target),
-                         pitch.fractionY(offBall.target)),
-                  Page::CREAM, THIN * scale);
+    return;
   }
+  const ImVec2 at = spotOf(frame, offBallIndex);
+  draw->AddCircle(at, CARRIER_RING * scale, Page::CREAM, 0, THIN_LINE * scale);
+  draw->AddLine(at, frame.screen(offBall.target), Page::CREAM,
+                THIN_LINE * scale);
+}
+
+void BrainFlowScene::renderPitch(float width)
+{
+  const MatchPitch pitch;
+  const float height = width * pitch.width / pitch.length;
+  const BrainPitchFrame frame{
+      .origin = ImGui::GetCursorScreenPos(), .width = width, .height = height};
+  ImGui::InvisibleButton("##brain_flow_pitch", ImVec2(width, height));
+  dragPlayers(frame);
+  ImDrawList* draw = ImGui::GetWindowDrawList();
+  drawPitchMarkings(draw, frame);
+  // The options (not while dragging: they are from before the move).
+  if (!dragging && layered.filled && !exampleIds.empty())
+  {
+    drawOptionLines(draw, frame);
+  }
+  const std::optional<std::size_t> hovered = drawPlayers(draw, frame);
+  drawOffBall(draw, frame);
   if (hovered && ImGui::IsItemHovered() && *hovered < exampleIds.size())
   {
     ImGui::BeginTooltip();
@@ -973,7 +1026,7 @@ struct Situation
   /** On a decision frame of its own, not shown in the stages below yet. */
   bool ownFrame;
 };
-constexpr std::array<Situation, 18> SITUATIONS = {{
+constexpr std::array<Situation, 19> SITUATIONS = {{
     {.depth = 0,
      .title = "Restart",
      .decidedBy = "",
@@ -1052,8 +1105,10 @@ constexpr std::array<Situation, 18> SITUATIONS = {{
      .decidedBy =
          "its own frame. Head (chooseHeaderPlay, step G): head it behind "
          "(today's 33% roll inside his penalty spot), clear it, knock it "
-         "down. Stopgap pick in today's order (follow-up: measures). Feet: "
-         "not on a frame yet",
+         "down. Feet (chooseFirstTouch, step I): the opponents' pass reaching "
+         "him: control touch, lay it out; first-time pass, shot, clear listed, "
+         "not judged yet. Stopgap picks in today's order (follow-up: "
+         "measures)",
      .layers = 0,
      .plannerWide = false,
      .onFrame = false,
@@ -1086,6 +1141,17 @@ constexpr std::array<Situation, 18> SITUATIONS = {{
          "(goalkeeperTarget, its own state machine, left as it is). Stopgap "
          "pick in today's order (follow-up: measures). Also choosesToBlock",
      .layers = ROLE,
+     .plannerWide = false,
+     .onFrame = false,
+     .ownFrame = true},
+    {.depth = 1,
+     .title = "I'm on the ground",
+     .decidedBy =
+         "its own frame (step J, chooseGetUp): up for the restart, jump up "
+         "for the ball (near and still to be won), up gingerly (play ran on a "
+         "while), stay down. Stopgap pick in today's order (follow-up: "
+         "measures)",
+     .layers = 0,
      .plannerWide = false,
      .onFrame = false,
      .ownFrame = true},
