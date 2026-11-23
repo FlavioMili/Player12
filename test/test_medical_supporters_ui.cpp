@@ -35,6 +35,7 @@
 #include "model/game.h"
 #include "model/medical_centre.h"
 #include "model/settings_manager.h"
+#include "test_worlds.h"
 
 /**
  * The GUI classes grant their internals to this name (the lifecycle test of
@@ -129,12 +130,17 @@ TEST(MedicalSupportersUiTest, LoadChartInstructionsAndSupportersRender)
   SDL_SetHint(SDL_HINT_VIDEO_DRIVER, "dummy");
   Logger::init();
   const SlotCleanup slot{uniqueSlot(0)};
-  GameController controller;
-  controller.newGame(slot.slot, WORLD_SEED);
-  const TeamID club = controller.getTeams().front().get().getId();
-  controller.selectManagedTeam(club);
-  // Five weeks of pre-season: a full load chart and a few weekly moods.
-  for (int day = 0; day < 35; ++day) controller.advanceDay();
+  // Five weeks of pre-season: a full load chart and a few weekly moods
+  // (a shared checkpoint).
+  const auto holder = TestWorlds::career(
+      slot.slot, "days-35",
+      [](GameController& prepared)
+      {
+        for (int day = 0; day < 35; ++day) prepared.advanceDay();
+      },
+      WORLD_SEED);
+  GameController& controller = *holder;
+  const TeamID club = controller.getManagedTeam()->get().getId();
   const PlayerID player = controller.getPlayersForTeam(club)[5].get().getId();
 
   GUIView view(controller);
