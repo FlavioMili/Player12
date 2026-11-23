@@ -88,6 +88,8 @@
     bool committed = false;
     bool lookedUp = false;
     bool settled = false;
+    /** A call settled it for his team-mate: he covers instead. */
+    bool standsDown = false;
     bool answerMine = false;
     bool answerRight = false;
     double committedAt = 0.0;
@@ -101,6 +103,16 @@
   std::vector<LooseCallCapybara> looseCallsNowCapybara;
   std::vector<PitchPoint> shapeSpotsCapybara;
   std::uint64_t looseShadowStepCapybara = 0;
+  /** Live (step O6): he goes for the loose ball. His own call (mine or in
+   * doubt) unless a team-mate's call stood him down; when nobody on his
+   * side goes, the team's pick (to close the winner: the user, 2026-11-23,
+   * kept with the team for now). */
+  [[nodiscard]] bool looseChaserCapybara(const MatchPlayer& player,
+                                         const MatchPlayer* teamPick) const;
+  [[nodiscard]] bool looseStoodDownCapybara(const MatchPlayer& player) const;
+  /** A team-mate also going whom he sees at once: in view as he looks at
+   * the ball, or alongside him. */
+  [[nodiscard]] bool seesTeamMateGoingCapybara(std::size_t index) const;
   /** A player's index in players. */
   [[nodiscard]] std::size_t playerIndexCapybara(const MatchPlayer& player) const;
   /** Per player: his precise meeting time and point (the planner's path

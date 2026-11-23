@@ -2003,8 +2003,11 @@ void BrainFlowScene::looseCommit(const BrainFlow::OffBallRecord& offBall) const
   const BrainFlow::OffBallRecord::CommitCall& commit = *offBall.commit;
   text("First to commit (shadow, step O6): he goes for it.",
        SandboxPageUI::CREAM);
-  text(std::format("He looks up after {:.2f} s (Concentration), calls {:.2f} "
-                   "s later (Leadership): {:.2f} s in all.",
+  text(std::format("He {} {:.2f} s, calls {:.2f} s later (Leadership): "
+                   "{:.2f} s in all.",
+                   commit.seesAtOnce ? "sees his team-mate at once (in view or "
+                                       "alongside):"
+                                     : "looks up after (Concentration)",
                    commit.lookUpSeconds, commit.callSeconds,
                    commit.lookUpSeconds + commit.callSeconds));
   if (commit.partner == 0)
@@ -2019,9 +2022,9 @@ void BrainFlowScene::looseCommit(const BrainFlow::OffBallRecord& offBall) const
   text(std::format(
       "The detailed look: him {:.2f} s, {} {:.2f} s. {} It should be {}.",
       commit.hisSeconds, mate, commit.partnerSeconds,
-      commit.byShape ? "Within 0.5 s: the shape spot nearest where it is "
+      commit.byShape ? "Within the margin: the shape spot nearest where it is "
                        "collected decides."
-                     : "Over 0.5 s apart: the quicker takes it.",
+                     : "Further apart than the margin: the quicker takes it.",
       commit.shouldBeHis ? "his" : mate));
   // The caller says mine when it should be his own, else yours.
   const bool callerTakesIt = commit.heCalls == commit.shouldBeHis;
@@ -2049,7 +2052,8 @@ void BrainFlowScene::looseShadow(const BrainFlow::OffBallRecord& offBall)
   muted(
       "Can he beat the 3 closest to the earliest playable point? If nobody "
       "gets there in time, his own earliest point against those in "
-      "contention. Beaten by over 0.5 s: not his; closer: he chases in "
+      "contention. Beaten by more than the margin (10% of his time, at "
+      "most 0.5 s): not his; closer: he chases in "
       "doubt (estimates, to tune).");
   for (const BrainFlow::OffBallRecord::MeetPoint& point : offBall.meetPoints)
   {
@@ -2062,7 +2066,7 @@ void BrainFlowScene::looseShadow(const BrainFlow::OffBallRecord& offBall)
   if (!offBall.meetPoints.empty())
   {
     muted(
-        "Where to meet it: open when nobody beats him there within 0.5 s. "
+        "Where to meet it: open when nobody beats him there within the margin. "
         "Stopgap pick: the earliest (follow-up: measures, control against "
         "time given away).");
   }

@@ -161,6 +161,8 @@ struct OffBallRecord
   {
     float lookUpSeconds = 0.0F;
     float callSeconds = 0.0F;
+    /** The team-mate is in view or alongside: no look-up delay. */
+    bool seesAtOnce = false;
     /** The nearest team-mate also going (0 for none), his delays, and both
      * precise meeting times. */
     std::uint32_t partner = 0;
