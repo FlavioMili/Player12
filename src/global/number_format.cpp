@@ -212,7 +212,7 @@ std::string decimal(double value, int digits, const Locale& locale)
 
 std::string money(int64_t amount, const Locale& locale)
 {
-  const double absolute = static_cast<double>(magnitude(amount));
+  const auto absolute = static_cast<double>(magnitude(amount));
   std::string body;
   if (absolute >= 1'000'000'000.0)
     body = decimal(absolute / 1'000'000'000.0, 2, locale) + locale.billion_unit;
@@ -317,13 +317,46 @@ MoneyError tokenizeNumber(std::string_view number, MoneyParts& parts)
   return NONE;
 }
 
+MoneyError chooseMixedDecimal(MoneyParts& parts, size_t dots, size_t commas,
+                              size_t lastPoint)
+{
+  using enum MoneyError;
+  const auto& marks = parts.marks;
+  // With both separators present, the final kind marks the fractional part.
+  const char kind = marks[lastPoint];
+  if (lastPoint + 1 != marks.size() || (kind == '.' ? dots : commas) > 1)
+    return AMBIGUOUS;
+  parts.decimal_mark = lastPoint;
+  return NONE;
+}
+
+MoneyError chooseSingleDecimal(MoneyParts& parts, bool hasUnit,
+                               const Locale& locale, size_t lastPoint)
+{
+  using enum MoneyError;
+  const auto& marks = parts.marks;
+  const auto& runs = parts.runs;
+  const size_t after = runs[lastPoint + 1].size();
+  const bool couldGroup = after == 3 && !runs[lastPoint].empty();
+  if (!couldGroup)
+  {
+    parts.decimal_mark = lastPoint;
+    return NONE;
+  }
+  if (!hasUnit) return NONE;
+  // With a unit, a three-digit suffix is decimal only in the locale's mark.
+  if (locale.decimal_mark.size() != 1 ||
+      marks[lastPoint] != locale.decimal_mark.front())
+    return AMBIGUOUS;
+  parts.decimal_mark = lastPoint;
+  return NONE;
+}
+
 MoneyError chooseDecimal(MoneyParts& parts, bool hasUnit, const Locale& locale)
 {
   using enum MoneyError;
   // Which mark, if any, is the decimal mark.
-  auto& decimalMark = parts.decimal_mark;
   const auto& marks = parts.marks;
-  const auto& runs = parts.runs;
   size_t dots = 0;
   size_t commas = 0;
   std::optional<size_t> lastPoint;
@@ -333,30 +366,11 @@ MoneyError chooseDecimal(MoneyParts& parts, bool hasUnit, const Locale& locale)
     if (marks[index] == ',') ++commas;
     if (marks[index] == '.' || marks[index] == ',') lastPoint = index;
   }
+  if (!lastPoint) return NONE;
   if (dots > 0 && commas > 0)
-  {
-    // "1.234.567,89" or "1,234,567.89": the last kind is the decimal mark.
-    if (const char kind = marks[*lastPoint];
-        *lastPoint + 1 != marks.size() || (kind == '.' ? dots : commas) > 1)
-      return AMBIGUOUS;
-    decimalMark = lastPoint;
-  }
+    return chooseMixedDecimal(parts, dots, commas, *lastPoint);
   else if (dots + commas == 1 && *lastPoint + 1 == marks.size())
-  {
-    const size_t after = runs[*lastPoint + 1].size();
-    const bool couldGroup = after == 3 && !runs[*lastPoint].empty();
-    if (!couldGroup)
-      decimalMark = lastPoint;
-    else if (hasUnit)
-    {
-      // "1.500k": 1.5K in English, 1.5M in Italian. Only the language's
-      // own decimal mark settles it.
-      if (locale.decimal_mark.size() != 1 ||
-          marks[*lastPoint] != locale.decimal_mark.front())
-        return AMBIGUOUS;
-      decimalMark = lastPoint;
-    }
-  }
+    return chooseSingleDecimal(parts, hasUnit, locale, *lastPoint);
 
   return NONE;
 }

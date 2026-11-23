@@ -10,11 +10,14 @@
 #include <unistd.h>
 
 #include <algorithm>
+#include <atomic>
 #include <fstream>
+#include <latch>
 #include <memory>
 #include <nlohmann/json.hpp>
 #include <set>
 #include <string>
+#include <thread>
 #include <utility>
 #include <vector>
 
@@ -1029,6 +1032,42 @@ TEST(StoriesTest, RivalIsAStableSameLeagueClub)
   EXPECT_EQ(gamedata->getTeam(*rival)->get().getLeagueId(),
             gamedata->getTeam(managed)->get().getLeagueId());
   EXPECT_EQ(stories.rivalOf(managed), rival);
+}
+
+TEST(StoriesTest, ConcurrentRivalQueriesStayStableDuringCacheInvalidation)
+{
+  const SlotCleanup slot{uniqueSlot(15)};
+  auto controller = makeCareer(slot.slot);
+  const TeamID managed = managedId(*controller);
+  StoryEngine stories(controller->getGameData());
+  const auto expected = stories.rivalOf(managed);
+  constexpr int READERS = 4;
+  constexpr int READS = 1024;
+  constexpr int RESETS = 256;
+  std::latch start(READERS + 1);
+  std::atomic<bool> consistent{true};
+  std::vector<std::jthread> readers;
+  for (int reader = 0; reader < READERS; ++reader)
+  {
+    readers.emplace_back(
+        [&]
+        {
+          start.arrive_and_wait();
+          for (int read = 0; read < READS; ++read)
+          {
+            if (stories.rivalOf(managed) != expected) consistent.store(false);
+          }
+        });
+  }
+  start.arrive_and_wait();
+  for (int reset = 0; reset < RESETS; ++reset)
+  {
+    stories.onSeasonStart();
+    stories.restore({});
+  }
+  readers.clear();  // Join before reading the results or destroying the cache.
+  EXPECT_TRUE(consistent.load());
+  EXPECT_EQ(stories.rivalOf(managed), expected);
 }
 
 // ---------------------------------------------------------------------------

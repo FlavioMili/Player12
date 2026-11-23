@@ -229,6 +229,14 @@ class NationalManagement
   void handleFinals(const QueuedFinals& queued, const GameDateValue& date,
                     NationalTeams& teams, ManagerCareer& career, Inbox& inbox,
                     NationalDayEvents& events);
+  void handleQualificationFinals(const QueuedFinals& queued,
+                                 const GameDateValue& date,
+                                 const std::vector<Language>& ranking,
+                                 NationalTeams& teams, ManagerCareer& career,
+                                 Inbox& inbox, NationalDayEvents& events);
+  void handleDecidedFinals(const QueuedFinals& queued,
+                           const GameDateValue& date, ManagerCareer& career,
+                           Inbox& inbox);
   void fillVacancies(const GameDateValue& date, NationalTeams& teams);
   void processApplications(const GameDateValue& date,
                            const NationalTeams& teams,

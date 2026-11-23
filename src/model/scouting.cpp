@@ -10,6 +10,7 @@
 
 #include <algorithm>
 #include <cmath>
+#include <cstddef>
 #include <format>
 #include <memory>
 #include <numbers>
@@ -77,6 +78,60 @@ std::size_t positionGroup(PlayerRole role)
   }
 }
 
+using ScoutingTeamPrior = std::array<std::vector<float>, 4>;
+
+void accumulatePriorStats(const Player& player,
+                          const std::vector<std::string>& names,
+                          std::array<std::vector<double>, 4>& sums,
+                          std::array<std::vector<int>, 4>& counts,
+                          std::vector<double>& all_sums,
+                          std::vector<int>& all_counts)
+{
+  const std::size_t group = positionGroup(player.getRole());
+  const auto& stats = player.getStats();
+  for (std::size_t stat_index = 0; stat_index < names.size(); ++stat_index)
+  {
+    const auto stat = stats.find(names[stat_index]);
+    if (stat == stats.end()) continue;
+    sums[group][stat_index] += static_cast<double>(stat->second);
+    ++counts[group][stat_index];
+    all_sums[stat_index] += static_cast<double>(stat->second);
+    ++all_counts[stat_index];
+  }
+}
+
+ScoutingTeamPrior buildTeamPrior(const GameData& gamedata, TeamID team_id)
+{
+  const auto& names = gamedata.getStatsConfig().possible_stats;
+  std::array<std::vector<double>, 4> sums;
+  std::array<std::vector<int>, 4> counts;
+  std::vector<double> all_sums(names.size(), 0.0);
+  std::vector<int> all_counts(names.size(), 0);
+  for (std::size_t group = 0; group < sums.size(); ++group)
+  {
+    sums[group].assign(names.size(), 0.0);
+    counts[group].assign(names.size(), 0);
+  }
+  for (const Player& player : gamedata.getPlayersForTeam(team_id))
+    accumulatePriorStats(player, names, sums, counts, all_sums, all_counts);
+
+  ScoutingTeamPrior prior;
+  for (std::size_t group = 0; group < sums.size(); ++group)
+  {
+    prior[group].resize(names.size());
+    for (std::size_t index = 0; index < names.size(); ++index)
+    {
+      double mean = 0.5 * static_cast<double>(MAX_STAT_VAL);
+      if (counts[group][index] > 0)
+        mean = sums[group][index] / counts[group][index];
+      else if (all_counts[index] > 0)
+        mean = all_sums[index] / all_counts[index];
+      prior[group][index] = static_cast<float>(mean);
+    }
+  }
+  return prior;
+}
+
 float clampStat(float value)
 {
   return std::clamp(value, static_cast<float>(MIN_STAT_VAL),
@@ -89,20 +144,39 @@ std::uint8_t toPercent(float value)
       std::lround(std::clamp(value, 0.0f, 100.0f)));
 }
 
-void post(Inbox& inbox, const GameDateValue& date, InboxCategory category,
-          std::string title_key, std::string body_key,
-          std::vector<std::string> args, std::optional<PlayerID> player_id,
-          std::optional<TeamID> team_id = std::nullopt)
+void post(Inbox& inbox, InboxMessage message) { inbox.add(std::move(message)); }
+
+bool passesPlayerFilters(const GameData& gamedata, TeamID managed_team_id,
+                         const Player& player, const ScoutSearchFilter& filter)
 {
-  InboxMessage message;
-  message.date = date;
-  message.category = category;
-  message.title_key = std::move(title_key);
-  message.body_key = std::move(body_key);
-  message.args = std::move(args);
-  message.player_id = player_id;
-  message.team_id = team_id;
-  inbox.add(std::move(message));
+  const TeamID team_id = player.getTeamId();
+  if (managed_team_id != FREE_AGENTS_TEAM_ID && team_id == managed_team_id)
+    return false;
+  if (filter.role != PlayerRole::UNKNOWN && player.getRole() != filter.role)
+    return false;
+  if (filter.min_age > 0 && player.getAge() < filter.min_age) return false;
+  if (filter.max_age > 0 && player.getAge() > filter.max_age) return false;
+  if (filter.free_agents_only && team_id != FREE_AGENTS_TEAM_ID) return false;
+  if (filter.league_id == 0) return true;
+  const auto team = gamedata.getTeam(team_id);
+  return team && team_id != FREE_AGENTS_TEAM_ID &&
+         team->get().getLeagueId() == filter.league_id;
+}
+
+bool passesEstimatedFilters(const ScoutedPlayerRow& row,
+                            const ScoutSearchFilter& filter)
+{
+  return row.overall >= filter.min_overall &&
+         (filter.max_value <= 0 || row.estimated_value <= filter.max_value) &&
+         row.knowledge >= filter.min_knowledge &&
+         (!filter.focus_matches_only || row.matches_focus);
+}
+
+bool betterScoutedRows(const ScoutedPlayerRow& left,
+                       const ScoutedPlayerRow& right)
+{
+  return left.overall != right.overall ? left.overall > right.overall
+                                       : left.player_id < right.player_id;
 }
 
 std::string gradeLetter(ScoutGrade grade)
@@ -299,9 +373,9 @@ LeagueID ScoutingSystem::countryOf(LeagueID league_id) const
   for (int depth = 0; depth < 8; ++depth)
   {
     const auto league = gamedata->getLeague(current);
-    if (!league) break;
+    if (!league) return current;
     const auto parent = league->get().getParentLeagueID();
-    if (!parent.has_value()) break;
+    if (!parent.has_value()) return current;
     current = *parent;
   }
   return current;
@@ -452,48 +526,8 @@ float ScoutingSystem::priorMean(TeamID team_id, std::size_t group,
   const std::scoped_lock lock(cache_mutex);
   auto found = priors.find(team_id);
   if (found == priors.end())
-  {
-    const auto& names = gamedata->getStatsConfig().possible_stats;
-    std::array<std::vector<double>, POSITION_GROUPS> sums;
-    std::array<std::vector<int>, POSITION_GROUPS> counts;
-    std::vector all_sums(names.size(), 0.0);
-    std::vector all_counts(names.size(), 0);
-    for (std::size_t g = 0; g < POSITION_GROUPS; ++g)
-    {
-      sums[g].assign(names.size(), 0.0);
-      counts[g].assign(names.size(), 0);
-    }
-    for (const Player& mate : gamedata->getPlayersForTeam(team_id))
-    {
-      const std::size_t g = positionGroup(mate.getRole());
-      const auto& stats = mate.getStats();
-      for (std::size_t stat_index = 0; stat_index < names.size(); ++stat_index)
-      {
-        const auto stat = stats.find(names[stat_index]);
-        if (stat == stats.end()) continue;
-        sums[g][stat_index] += static_cast<double>(stat->second);
-        ++counts[g][stat_index];
-        all_sums[stat_index] += static_cast<double>(stat->second);
-        ++all_counts[stat_index];
-      }
-    }
-    TeamPrior prior;
-    for (std::size_t g = 0; g < POSITION_GROUPS; ++g)
-    {
-      prior[g].resize(names.size());
-      for (std::size_t stat_index = 0; stat_index < names.size(); ++stat_index)
-      {
-        // Position-group mean, else the squad mean, else mid-scale.
-        double mean = 0.5 * static_cast<double>(MAX_STAT_VAL);
-        if (counts[g][stat_index] > 0)
-          mean = sums[g][stat_index] / counts[g][stat_index];
-        else if (all_counts[stat_index] > 0)
-          mean = all_sums[stat_index] / all_counts[stat_index];
-        prior[g][stat_index] = static_cast<float>(mean);
-      }
-    }
-    found = priors.try_emplace(team_id, std::move(prior)).first;
-  }
+    found =
+        priors.try_emplace(team_id, buildTeamPrior(*gamedata, team_id)).first;
   return found->second[group][requested_index];
 }
 
@@ -713,45 +747,24 @@ std::vector<ScoutedPlayerRow> ScoutingSystem::search(
   std::vector<ScoutedPlayerRow> rows;
   for (const Player& player : gamedata->getPlayersVector())
   {
-    const TeamID team_id = player.getTeamId();
-    if (state.team_id != FREE_AGENTS_TEAM_ID && team_id == state.team_id)
-      continue;
     // Cheap public filters first; estimates only for the survivors.
-    if (filter.role != PlayerRole::UNKNOWN && player.getRole() != filter.role)
+    if (!passesPlayerFilters(*gamedata, state.team_id, player, filter))
       continue;
-    if (filter.min_age > 0 && player.getAge() < filter.min_age) continue;
-    if (filter.max_age > 0 && player.getAge() > filter.max_age) continue;
-    if (filter.free_agents_only && team_id != FREE_AGENTS_TEAM_ID) continue;
-    if (filter.league_id != 0)
-    {
-      const auto team = gamedata->getTeam(team_id);
-      if (!team || team_id == FREE_AGENTS_TEAM_ID ||
-          team->get().getLeagueId() != filter.league_id)
-        continue;
-    }
     ScoutedPlayerRow row = makeRow(player);
-    if (row.overall < filter.min_overall) continue;
-    if (filter.max_value > 0 && row.estimated_value > filter.max_value)
-      continue;
-    if (row.knowledge < filter.min_knowledge) continue;
-    if (filter.focus_matches_only && !row.matches_focus) continue;
+    if (!passesEstimatedFilters(row, filter)) continue;
     row.shortlisted = shortlisted.contains(row.player_id);
     rows.push_back(row);
   }
-  const auto better = [](const ScoutedPlayerRow& a, const ScoutedPlayerRow& b)
-  {
-    return a.overall != b.overall ? a.overall > b.overall
-                                  : a.player_id < b.player_id;
-  };
   if (filter.limit > 0 && rows.size() > filter.limit)
   {
     std::ranges::partial_sort(
-        rows, rows.begin() + static_cast<std::ptrdiff_t>(filter.limit), better);
+        rows, rows.begin() + static_cast<std::ptrdiff_t>(filter.limit),
+        betterScoutedRows);
     rows.resize(filter.limit);
   }
   else
   {
-    std::ranges::sort(rows, better);
+    std::ranges::sort(rows, betterScoutedRows);
   }
   return rows;
 }
@@ -825,14 +838,15 @@ std::int64_t ScoutingSystem::assignmentCost(ScoutTargetKind kind,
       break;
     }
     case Region:
-      if (target_id >= static_cast<std::uint32_t>(Continent::COUNT) ||
-          std::ranges::none_of(worldCountries(),
-                               [target_id](LeagueID country)
-                               {
-                                 return static_cast<std::uint32_t>(
-                                            countryContinent(country)) ==
-                                        target_id;
-                               }))
+      if (target_id >= static_cast<std::uint32_t>(
+                           std::to_underlying(Continent::COUNT)) ||
+          std::ranges::none_of(
+              worldCountries(),
+              [target_id](LeagueID country)
+              {
+                return static_cast<std::uint32_t>(std::to_underlying(
+                           countryContinent(country))) == target_id;
+              }))
         return 0;
       break;
     case FreeAgents:
@@ -900,6 +914,10 @@ std::vector<PlayerID> ScoutingSystem::coverage(
     for (const Player& player : gamedata->getPlayersForTeam(team_id))
       players.push_back(player.getId());
   };
+  const auto addLeagueTeams = [&addTeam](const League& league)
+  {
+    for (const TeamID team_id : league.getTeamIDs()) addTeam(team_id);
+  };
   switch (assignment.kind)
   {
     case ScoutTargetKind::Player:
@@ -907,10 +925,7 @@ std::vector<PlayerID> ScoutingSystem::coverage(
     case ScoutTargetKind::League:
       if (const auto league =
               gamedata->getLeague(static_cast<LeagueID>(assignment.target_id)))
-      {
-        for (const TeamID team_id : league->get().getTeamIDs())
-          addTeam(team_id);
-      }
+        addLeagueTeams(league->get());
       break;
     case ScoutTargetKind::Country:
       for (const League& league : gamedata->getLeaguesVector())
@@ -918,16 +933,16 @@ std::vector<PlayerID> ScoutingSystem::coverage(
         if (countryOf(league.getId()) !=
             static_cast<LeagueID>(assignment.target_id))
           continue;
-        for (const TeamID team_id : league.getTeamIDs()) addTeam(team_id);
+        addLeagueTeams(league);
       }
       break;
     case ScoutTargetKind::Region:
       for (const League& league : gamedata->getLeaguesVector())
       {
-        if (static_cast<std::uint32_t>(countryContinent(
-                countryOf(league.getId()))) != assignment.target_id)
+        if (static_cast<std::uint32_t>(std::to_underlying(countryContinent(
+                countryOf(league.getId())))) != assignment.target_id)
           continue;
-        for (const TeamID team_id : league.getTeamIDs()) addTeam(team_id);
+        addLeagueTeams(league);
       }
       break;
     case ScoutTargetKind::FreeAgents:
@@ -945,12 +960,99 @@ std::array<float, ScoutingSystem::ROLE_COUNT> ScoutingSystem::ownBestByRole()
   const StatsConfig& config = gamedata->getStatsConfig();
   for (const Player& player : gamedata->getPlayersForTeam(state.team_id))
   {
-    const auto role = static_cast<std::size_t>(player.getRole());
+    const auto role =
+        static_cast<std::size_t>(std::to_underlying(player.getRole()));
     if (role >= ROLE_COUNT) continue;
     best[role] =
         std::max(best[role], static_cast<float>(player.getOverall(config)));
   }
   return best;
+}
+
+std::vector<float> ScoutingSystem::coverageWeights(
+    const std::vector<PlayerID>& candidates,
+    const std::array<float, ROLE_COUNT>& best_own) const
+{
+  std::vector<float> weights;
+  weights.reserve(candidates.size());
+  for (const PlayerID player_id : candidates)
+  {
+    const auto player = gamedata->getPlayer(player_id);
+    const ScoutedPlayerRow estimate = makeRow(player->get());
+    float weight = 1.0f;
+    if (estimate.matches_focus)
+      weight += 9.0f;
+    else if (state.focuses.empty())
+    {
+      const auto role =
+          static_cast<std::size_t>(std::to_underlying(estimate.role));
+      if (role < ROLE_COUNT && estimate.overall >= best_own[role] - 2.0f)
+        weight += 2.0f;
+    }
+    if (estimate.listed || estimate.contract_years <= 1) weight += 1.0f;
+    if (estimate.knowledge >= 80)
+      weight *= 0.3f;
+    else if (estimate.knowledge < REPORT_KNOWLEDGE &&
+             state.knowledge.contains(player_id))
+      weight *= FOLLOW_UP_WEIGHT;
+    weights.push_back(weight);
+  }
+  return weights;
+}
+
+void ScoutingSystem::observeCoveragePick(ScoutAssignment& assignment,
+                                         PlayerID player_id,
+                                         const ScoutProfile& scout,
+                                         float multiplier,
+                                         std::vector<LeagueID>& leagues_seen)
+{
+  observe(player_id, COVERAGE_OBSERVATION_GAIN * multiplier, &scout);
+  ++assignment.players_observed;
+  if (const auto team =
+          gamedata->getTeam(gamedata->getPlayer(player_id)->get().getTeamId());
+      team && team->get().getId() != FREE_AGENTS_TEAM_ID &&
+      std::ranges::find(leagues_seen, team->get().getLeagueId()) ==
+          leagues_seen.end())
+    leagues_seen.push_back(team->get().getLeagueId());
+}
+
+void ScoutingSystem::fileCoverageReport(ScoutAssignment& assignment,
+                                        PlayerID player_id,
+                                        const ScoutProfile& scout,
+                                        const GameDateValue& date,
+                                        std::int32_t ordinal,
+                                        int& reports_today, Inbox& inbox)
+{
+  const auto entry = state.knowledge.find(player_id);
+  if (entry == state.knowledge.end() ||
+      entry->second.knowledge < REPORT_KNOWLEDGE ||
+      reports_today >= MAX_REPORTS_PER_ASSIGNMENT_DAY)
+    return;
+  if (entry->second.last_report_day != 0 &&
+      ordinal - entry->second.last_report_day < REPORT_COOLDOWN_DAYS)
+    return;
+  const Player& player = gamedata->getPlayer(player_id)->get();
+  if (!state.focuses.empty() && !anyFocusMatches(makeRow(player))) return;
+  const ScoutReport& report =
+      fileReport(date, player, scout, ordinal, assignment.id);
+  ++assignment.reports_filed;
+  ++reports_today;
+  if (report.grade != ScoutGrade::A) return;
+  post(inbox,
+       InboxMessage{
+           .date = date,
+           .category = InboxCategory::Transfer,
+           .title_key = "SCOUT_MSG_RECOMMEND_TITLE",
+           .body_key = "SCOUT_MSG_RECOMMEND_BODY",
+           .args = {scout.name, player.getName(),
+                    RoleUtils::shortNameArg(player.getRole()),
+                    std::to_string(player.getAge()),
+                    std::format("{:.0f}", static_cast<double>(report.overall)),
+                    rangeText(report.potential_low, report.potential_high),
+                    formatMoney(report.estimated_fee),
+                    std::to_string(report.confidence)},
+           .player_id = player_id,
+           .team_id = player.getTeamId()});
 }
 
 void ScoutingSystem::coverageDay(ScoutAssignment& assignment,
@@ -967,34 +1069,7 @@ void ScoutingSystem::coverageDay(ScoutAssignment& assignment,
   const std::vector<PlayerID> candidates = coverage(assignment);
   if (candidates.empty()) return;
   const auto best_own = ownBestByRole();
-
-  // Scouts spend their days on players who match a focus (or would improve
-  // the squad when no focus is set) and move on from players already known.
-  std::vector<float> weights;
-  weights.reserve(candidates.size());
-  for (const PlayerID player_id : candidates)
-  {
-    const auto player = gamedata->getPlayer(player_id);
-    const ScoutedPlayerRow estimate = makeRow(player->get());
-    float weight = 1.0f;
-    if (estimate.matches_focus)
-      weight += 9.0f;
-    else if (state.focuses.empty())
-    {
-      const auto role = static_cast<std::size_t>(estimate.role);
-      if (role < ROLE_COUNT && estimate.overall >= best_own[role] - 2.0f)
-        weight += 2.0f;
-    }
-    if (estimate.listed || estimate.contract_years <= 1) weight += 1.0f;
-    // Follow up on players already seen until a report is possible, then
-    // move on from those who are well known.
-    if (estimate.knowledge >= 80)
-      weight *= 0.3f;
-    else if (estimate.knowledge < REPORT_KNOWLEDGE &&
-             state.knowledge.contains(player_id))
-      weight *= FOLLOW_UP_WEIGHT;
-    weights.push_back(weight);
-  }
+  std::vector<float> weights = coverageWeights(candidates, best_own);
 
   WorldRng rng = WorldRng::stream(gamedata->getWorldSeed(), RngDomain::Scouting,
                                   mixHash(COVERAGE_KEY, assignment.id),
@@ -1011,42 +1086,9 @@ void ScoutingSystem::coverageDay(ScoutAssignment& assignment,
     if (weights[index] <= 0.0f) break;
     weights[index] = 0.0f;
     const PlayerID player_id = candidates[index];
-    observe(player_id, COVERAGE_OBSERVATION_GAIN * multiplier, &scout);
-    ++assignment.players_observed;
-    if (const auto team = gamedata->getTeam(
-            gamedata->getPlayer(player_id)->get().getTeamId());
-        team && team->get().getId() != FREE_AGENTS_TEAM_ID &&
-        std::ranges::find(leagues_seen, team->get().getLeagueId()) ==
-            leagues_seen.end())
-      leagues_seen.push_back(team->get().getLeagueId());
-
-    const auto entry = state.knowledge.find(player_id);
-    if (entry == state.knowledge.end() ||
-        entry->second.knowledge < REPORT_KNOWLEDGE ||
-        reports_today >= MAX_REPORTS_PER_ASSIGNMENT_DAY)
-      continue;
-    if (entry->second.last_report_day != 0 &&
-        ordinal - entry->second.last_report_day < REPORT_COOLDOWN_DAYS)
-      continue;
-    const Player& player = gamedata->getPlayer(player_id)->get();
-    if (!state.focuses.empty() && !anyFocusMatches(makeRow(player))) continue;
-    const ScoutReport& report =
-        fileReport(date, player, scout, ordinal, assignment.id);
-    ++assignment.reports_filed;
-    ++reports_today;
-    if (report.grade == ScoutGrade::A)
-    {
-      post(inbox, date, InboxCategory::Transfer, "SCOUT_MSG_RECOMMEND_TITLE",
-           "SCOUT_MSG_RECOMMEND_BODY",
-           {scout.name, player.getName(),
-            RoleUtils::shortNameArg(player.getRole()),
-            std::to_string(player.getAge()),
-            std::format("{:.0f}", static_cast<double>(report.overall)),
-            rangeText(report.potential_low, report.potential_high),
-            formatMoney(report.estimated_fee),
-            std::to_string(report.confidence)},
-           player_id, player.getTeamId());
-    }
+    observeCoveragePick(assignment, player_id, scout, multiplier, leagues_seen);
+    fileCoverageReport(assignment, player_id, scout, date, ordinal,
+                       reports_today, inbox);
   }
   for (const LeagueID league_id : leagues_seen)
     addExperience(base_scout.id, league_id);
@@ -1078,7 +1120,7 @@ const ScoutReport& ScoutingSystem::fileReport(const GameDateValue& date,
   report.estimated_fee = estimatedFee(player, estimate);
 
   const auto best_own = ownBestByRole();
-  const auto role = static_cast<std::size_t>(estimate.role);
+  const auto role = static_cast<std::size_t>(std::to_underlying(estimate.role));
   const float own_best = role < ROLE_COUNT ? best_own[role] : 0.0f;
   // He fits when he would compete for a place now (or, if young, soon) and
   // matches one of the manager's stated needs.
@@ -1124,10 +1166,10 @@ const ScoutReport& ScoutingSystem::fileReport(const GameDateValue& date,
   }
   report.available = available;
 
-  const int score = static_cast<int>(report.fits_need) +
-                    static_cast<int>(report.affordable) +
-                    static_cast<int>(report.available);
-  if (score == 3)
+  if (const int score = static_cast<int>(report.fits_need) +
+                        static_cast<int>(report.affordable) +
+                        static_cast<int>(report.available);
+      score == 3)
     report.grade = ScoutGrade::A;
   else if (score == 2)
     report.grade = ScoutGrade::B;
@@ -1184,33 +1226,54 @@ void ScoutingSystem::finishAssignment(ScoutAssignment& assignment,
   if (scout == nullptr) return;
   if (assignment.kind == ScoutTargetKind::Player)
   {
-    const auto player_ref = gamedata->getPlayer(assignment.target_id);
-    if (!player_ref) return;
-    const Player& player = player_ref->get();
-    const ScoutProfile effective = effectiveScout(
-        *scout, effectiveness(scout->id, assignment.kind, assignment.target_id)
-                    .multiplier);
-    const ScoutReport& report =
-        fileReport(date, player, effective, dayOrdinal(date), assignment.id);
-    assignment.reports_filed = 1;
-    post(inbox, date, InboxCategory::Transfer, "SCOUT_MSG_REPORT_TITLE",
-         "SCOUT_MSG_REPORT_BODY",
-         {player.getName(), gradeLetter(report.grade), scout->name,
-          RoleUtils::shortNameArg(player.getRole()),
-          std::to_string(player.getAge()),
-          std::format("{:.0f}", static_cast<double>(report.overall)),
-          rangeText(report.potential_low, report.potential_high),
-          formatMoney(report.estimated_fee), std::to_string(report.confidence),
-          std::string("@") + scoutGradeKey(report.grade),
-          report.fits_need ? "@SCOUT_REASON_FITS" : "@SCOUT_REASON_NO_FIT",
-          report.affordable ? "@SCOUT_REASON_AFFORDABLE"
-                            : "@SCOUT_REASON_EXPENSIVE",
-          report.available ? "@SCOUT_REASON_AVAILABLE"
-                           : "@SCOUT_REASON_UNAVAILABLE"},
-         player.getId(), player.getTeamId());
+    finishPlayerAssignment(assignment, *scout, date, inbox);
     return;
   }
+  finishCoverageAssignment(assignment, *scout, date, inbox);
+}
 
+void ScoutingSystem::finishPlayerAssignment(ScoutAssignment& assignment,
+                                            const ScoutProfile& scout,
+                                            const GameDateValue& date,
+                                            Inbox& inbox)
+{
+  const auto player_ref = gamedata->getPlayer(assignment.target_id);
+  if (!player_ref) return;
+  const Player& player = player_ref->get();
+  const ScoutProfile effective = effectiveScout(
+      scout, effectiveness(scout.id, assignment.kind, assignment.target_id)
+                 .multiplier);
+  const ScoutReport& report =
+      fileReport(date, player, effective, dayOrdinal(date), assignment.id);
+  assignment.reports_filed = 1;
+  InboxMessage message{
+      .date = date,
+      .category = InboxCategory::Transfer,
+      .title_key = "SCOUT_MSG_REPORT_TITLE",
+      .body_key = "SCOUT_MSG_REPORT_BODY",
+      .args = {player.getName(), gradeLetter(report.grade), scout.name,
+               RoleUtils::shortNameArg(player.getRole()),
+               std::to_string(player.getAge()),
+               std::format("{:.0f}", static_cast<double>(report.overall)),
+               rangeText(report.potential_low, report.potential_high),
+               formatMoney(report.estimated_fee),
+               std::to_string(report.confidence),
+               std::string("@") + scoutGradeKey(report.grade),
+               report.fits_need ? "@SCOUT_REASON_FITS" : "@SCOUT_REASON_NO_FIT",
+               report.affordable ? "@SCOUT_REASON_AFFORDABLE"
+                                 : "@SCOUT_REASON_EXPENSIVE",
+               report.available ? "@SCOUT_REASON_AVAILABLE"
+                                : "@SCOUT_REASON_UNAVAILABLE"},
+      .player_id = player.getId(),
+      .team_id = player.getTeamId()};
+  post(inbox, std::move(message));
+}
+
+void ScoutingSystem::finishCoverageAssignment(const ScoutAssignment& assignment,
+                                              const ScoutProfile& scout,
+                                              const GameDateValue& date,
+                                              Inbox& inbox)
+{
   std::vector<const ScoutReport*> filed;
   for (const ScoutReport& report : state.reports)
   {
@@ -1246,14 +1309,20 @@ void ScoutingSystem::finishAssignment(ScoutAssignment& assignment,
     target_name = std::string("@") +
                   continentKey(static_cast<Continent>(assignment.target_id));
   }
-  post(inbox, date, InboxCategory::Transfer, "SCOUT_MSG_DONE_TITLE",
-       "SCOUT_MSG_DONE_BODY",
-       {scout->name, std::string("@") + scoutTargetKindKey(assignment.kind),
-        target_name, std::to_string(assignment.days_done),
-        std::to_string(assignment.players_observed),
-        std::to_string(assignment.reports_filed),
-        best.empty() ? "@SCOUT_MSG_NO_RECOMMENDATIONS" : best},
-       std::nullopt);
+  post(inbox,
+       InboxMessage{
+           .date = date,
+           .category = InboxCategory::Transfer,
+           .title_key = "SCOUT_MSG_DONE_TITLE",
+           .body_key = "SCOUT_MSG_DONE_BODY",
+           .args = {scout.name,
+                    std::string("@") + scoutTargetKindKey(assignment.kind),
+                    target_name, std::to_string(assignment.days_done),
+                    std::to_string(assignment.players_observed),
+                    std::to_string(assignment.reports_filed),
+                    best.empty() ? "@SCOUT_MSG_NO_RECOMMENDATIONS" : best},
+           .player_id = std::nullopt,
+           .team_id = std::nullopt});
 }
 
 // ---------------------------------------------------------------------------
@@ -1366,11 +1435,12 @@ std::uint8_t ScoutingSystem::shortlistFlags(const Player& player) const
 {
   std::uint8_t flags = 0;
   if (player.getTransferStatus() == TransferStatus::Listed)
-    flags |= SHORTLIST_LISTED;
+    flags |= std::to_underlying(ShortlistFlag::Listed);
   if (player.getTeamId() != FREE_AGENTS_TEAM_ID &&
       player.getContractYears() <= 1)
-    flags |= SHORTLIST_EXPIRING;
-  if (player.getDynamics().injury_days > 0) flags |= SHORTLIST_INJURED;
+    flags |= std::to_underlying(ShortlistFlag::Expiring);
+  if (player.getDynamics().injury_days > 0)
+    flags |= std::to_underlying(ShortlistFlag::Injured);
   return flags;
 }
 
@@ -1411,31 +1481,47 @@ void ScoutingSystem::checkShortlist(const GameDateValue& date, Inbox& inbox)
     }
     const Player& player = player_ref->get();
     const std::uint8_t flags = shortlistFlags(player);
-    const std::uint8_t raised =
-        flags & static_cast<std::uint8_t>(~entry->last_flags);
+    const auto raised = static_cast<std::uint8_t>(flags & ~entry->last_flags);
     const std::string name = player.getName();
-    if (raised & SHORTLIST_LISTED)
-      post(inbox, date, InboxCategory::Transfer, "SCOUT_ALERT_LISTED_TITLE",
-           "SCOUT_ALERT_LISTED_BODY", {name}, player.getId(),
-           player.getTeamId());
-    if (raised & SHORTLIST_EXPIRING)
-      post(inbox, date, InboxCategory::Contract, "SCOUT_ALERT_EXPIRING_TITLE",
-           "SCOUT_ALERT_EXPIRING_BODY", {name}, player.getId(),
-           player.getTeamId());
-    if (raised & SHORTLIST_INJURED)
-      post(inbox, date, InboxCategory::Injury, "SCOUT_ALERT_INJURED_TITLE",
-           "SCOUT_ALERT_INJURED_BODY",
-           {name, std::to_string(player.getDynamics().injury_days)},
-           player.getId(), player.getTeamId());
+    if ((raised & std::to_underlying(ShortlistFlag::Listed)) != 0)
+      post(inbox, InboxMessage{.date = date,
+                               .category = InboxCategory::Transfer,
+                               .title_key = "SCOUT_ALERT_LISTED_TITLE",
+                               .body_key = "SCOUT_ALERT_LISTED_BODY",
+                               .args = {name},
+                               .player_id = player.getId(),
+                               .team_id = player.getTeamId()});
+    if ((raised & std::to_underlying(ShortlistFlag::Expiring)) != 0)
+      post(inbox, InboxMessage{.date = date,
+                               .category = InboxCategory::Contract,
+                               .title_key = "SCOUT_ALERT_EXPIRING_TITLE",
+                               .body_key = "SCOUT_ALERT_EXPIRING_BODY",
+                               .args = {name},
+                               .player_id = player.getId(),
+                               .team_id = player.getTeamId()});
+    if ((raised & std::to_underlying(ShortlistFlag::Injured)) != 0)
+      post(inbox,
+           InboxMessage{
+               .date = date,
+               .category = InboxCategory::Injury,
+               .title_key = "SCOUT_ALERT_INJURED_TITLE",
+               .body_key = "SCOUT_ALERT_INJURED_BODY",
+               .args = {name, std::to_string(player.getDynamics().injury_days)},
+               .player_id = player.getId(),
+               .team_id = player.getTeamId()});
     if (player.getTeamId() != entry->last_team)
     {
       std::string club = "@TRANSFER_FREE_AGENT_LABEL";
       if (const auto team = gamedata->getTeam(player.getTeamId());
           team && player.getTeamId() != FREE_AGENTS_TEAM_ID)
         club = team->get().getName();
-      post(inbox, date, InboxCategory::Transfer, "SCOUT_ALERT_MOVED_TITLE",
-           "SCOUT_ALERT_MOVED_BODY", {name, club}, player.getId(),
-           player.getTeamId());
+      post(inbox, InboxMessage{.date = date,
+                               .category = InboxCategory::Transfer,
+                               .title_key = "SCOUT_ALERT_MOVED_TITLE",
+                               .body_key = "SCOUT_ALERT_MOVED_BODY",
+                               .args = {name, club},
+                               .player_id = player.getId(),
+                               .team_id = player.getTeamId()});
     }
     entry->last_flags = flags;
     entry->last_team = player.getTeamId();
@@ -1452,7 +1538,8 @@ std::vector<SquadComparisonRow> ScoutingSystem::compareWithSquad() const
   const StatsConfig& config = gamedata->getStatsConfig();
   for (const Player& player : gamedata->getPlayersForTeam(state.team_id))
   {
-    const auto role = static_cast<std::size_t>(player.getRole());
+    const auto role =
+        static_cast<std::size_t>(std::to_underlying(player.getRole()));
     if (role >= ROLE_COUNT) continue;
     SquadComparisonRow& row = rows[role];
     ++row.own_count;
@@ -1468,7 +1555,8 @@ std::vector<SquadComparisonRow> ScoutingSystem::compareWithSquad() const
     const auto player = gamedata->getPlayer(entry.player_id);
     if (!player) continue;
     const ScoutedPlayerRow estimate = makeRow(player->get());
-    const auto role = static_cast<std::size_t>(estimate.role);
+    const auto role =
+        static_cast<std::size_t>(std::to_underlying(estimate.role));
     if (role >= ROLE_COUNT) continue;
     SquadComparisonRow& row = rows[role];
     if (row.candidate_id != 0 && estimate.overall <= row.candidate_overall)
@@ -1620,7 +1708,8 @@ std::vector<TargetCountry> ScoutingSystem::targetCountries(
     case Region:
       for (const LeagueID country : worldCountries())
       {
-        if (static_cast<std::uint32_t>(countryContinent(country)) == target_id)
+        if (static_cast<std::uint32_t>(
+                std::to_underlying(countryContinent(country))) == target_id)
           countries.push_back(country);
       }
       break;

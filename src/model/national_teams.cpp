@@ -149,7 +149,293 @@ std::string nationArg(Language nation)
   return "@" + International::teamNameKey(nation);
 }
 
+void recordAppearance(
+    const PlayerMatchLine& line, bool finals_match, const GameDateValue& today,
+    GameData& gamedata,
+    std::unordered_map<PlayerID, International::Record>& records)
+{
+  if (line.minutes == 0)
+  {
+    return;
+  }
+  const auto player = gamedata.getPlayer(line.player_id);
+  if (!player)
+  {
+    return;
+  }
+  International::Record& record = records[line.player_id];
+  record.nation = player->get().getNationality();
+  record.name = player->get().getName();
+  ++record.caps;
+  record.goals = static_cast<uint16_t>(record.goals + line.goals);
+  if (finals_match)
+  {
+    ++record.finals_caps;
+  }
+  record.last_cap = today;
+  record.last_cap_age = static_cast<uint8_t>(player->get().getAge());
+}
+
+template <typename LineupFor>
+void addNationalMatchInputs(const std::vector<size_t>& fixture_indices,
+                            std::vector<Fixture>& fixtures,
+                            const GameDateValue& today,
+                            const LineupFor& lineup_for,
+                            std::vector<size_t>& simulated,
+                            std::vector<MatchSimulationInput>& inputs)
+{
+  for (const size_t index : fixture_indices)
+  {
+    Fixture& fixture = fixtures[index];
+    MatchSimulationInput input;
+    input.home_id = static_cast<TeamID>(NationalTeams::TEAM_ID_BASE +
+                                        std::to_underlying(fixture.home));
+    input.away_id = static_cast<TeamID>(NationalTeams::TEAM_ID_BASE +
+                                        std::to_underlying(fixture.away));
+    input.seed = Competitions::mixSeed(static_cast<uint32_t>(dayOrdinal(today)),
+                                       fixture.id, MATCH_SEED_SALT);
+    input.home_lineup = lineup_for(fixture.home);
+    input.away_lineup = lineup_for(fixture.away);
+    if (input.home_lineup.starters().size() < MIN_PLAYERS_TO_PLAY ||
+        input.away_lineup.starters().size() < MIN_PLAYERS_TO_PLAY)
+    {
+      fixture.played = true;
+      continue;
+    }
+    input.knockout.required = fixture.stage != Stage::Group;
+    simulated.push_back(index);
+    inputs.push_back(std::move(input));
+  }
+}
+
+Lineup nationalLineup(const std::vector<PlayerID>& squad_players,
+                      GameData& gamedata, const StatsConfig& config)
+{
+  Lineup lineup;
+  std::vector<PlayerID> available;
+  for (const PlayerID player_id : squad_players)
+  {
+    if (const auto player = gamedata.getPlayer(player_id);
+        player && player->get().isAvailable())
+    {
+      available.push_back(player_id);
+    }
+  }
+  lineup.generateStartingXI(gamedata, available, config);
+
+  std::vector<const Player*> bench;
+  const Player* keeper = nullptr;
+  std::vector<const Player*> outfield;
+  for (const Player* reserve : lineup.getReserves())
+  {
+    if (reserve->getRole() == PlayerRole::GK)
+    {
+      if (keeper == nullptr)
+      {
+        keeper = reserve;
+      }
+    }
+    else
+    {
+      outfield.push_back(reserve);
+    }
+  }
+  std::ranges::stable_sort(
+      outfield, [&config](const Player* a, const Player* b)
+      { return a->getOverall(config) > b->getOverall(config); });
+  if (keeper != nullptr)
+  {
+    bench.push_back(keeper);
+  }
+  for (const Player* player : outfield)
+  {
+    if (bench.size() < MATCH_RESERVES)
+    {
+      bench.push_back(player);
+    }
+  }
+  lineup.setReserves(bench);
+  return lineup;
+}
+
+void extendFinalsSquadUntil(NationalTeams::Squad& squad,
+                            const NationalTeams::Finals& tournament,
+                            const std::vector<Fixture>& fixtures)
+{
+  for (const Fixture& fixture : fixtures)
+  {
+    if (fixture.competition == tournament.competition &&
+        !(fixture.date < squad.start) && squad.until < fixture.date)
+    {
+      squad.until = fixture.date;
+    }
+  }
+  squad.until = std::max(
+      squad.until, plusDays(squad.start, FINALS_KNOCKOUT_DAYS.back()),
+      [](const GameDateValue& a, const GameDateValue& b) { return a < b; });
+}
+
+void boostFinalists(NationalTeams::Finals const& entry,
+                    const std::vector<NationalTeams::Squad>& squads,
+                    GameData& gamedata)
+{
+  for (const NationalTeams::Squad& squad : squads)
+  {
+    if (squad.nation != *entry.winner && squad.nation != *entry.runner_up)
+    {
+      continue;
+    }
+    const float boost =
+        squad.nation == *entry.winner ? WINNER_MORALE : RUNNER_UP_MORALE;
+    for (const PlayerID player_id : squad.players)
+    {
+      if (const auto player = gamedata.getPlayers().find(player_id);
+          player != gamedata.getPlayers().end())
+      {
+        PlayerDynamics& dynamics = player->second.mutableDynamics();
+        dynamics.morale = std::min(100.0f, dynamics.morale + boost);
+      }
+    }
+  }
+}
+
+void collectManagedCallups(const NationalTeams::Squad& squad,
+                           TeamID managed_team_id, GameData& gamedata,
+                           std::vector<std::string>& called)
+{
+  for (const PlayerID player_id : squad.players)
+  {
+    const auto player = gamedata.getPlayer(player_id);
+    if (player && player->get().getTeamId() == managed_team_id &&
+        managed_team_id != FREE_AGENTS_TEAM_ID)
+    {
+      called.push_back(player->get().getName() + " (@" +
+                       International::teamNameKey(squad.nation) + ")");
+    }
+  }
+}
+
+void processReleasedSquad(
+    const NationalTeams::Squad& squad, const GameDateValue& today,
+    TeamID managed_team_id, GameData& gamedata,
+    std::unordered_map<PlayerID, NationalTeams::Travel>& travel,
+    std::map<TeamID, int64_t>& compensation,
+    std::vector<std::string>& returning)
+{
+  const Confederation home = International::confederationOf(squad.nation);
+  for (const PlayerID player_id : squad.players)
+  {
+    const auto player_ref = gamedata.getPlayers().find(player_id);
+    if (player_ref == gamedata.getPlayers().end())
+    {
+      continue;
+    }
+    Player& player = player_ref->second;
+    const TeamID club = player.getTeamId();
+    const auto [km, zones] =
+        tripBetween(clubConfederation(gamedata, club, home), home);
+    travel[player_id] = {.returned = today, .km = km, .time_zones = zones};
+    PlayerDynamics& dynamics = player.mutableDynamics();
+    dynamics.condition =
+        std::max(std::min(dynamics.condition, 100.0f) -
+                     (CONDITION_LOSS_BASE + (CONDITION_LOSS_PER_KM * km)),
+                 MIN_RETURN_CONDITION);
+    if (squad.finals && club != FREE_AGENTS_TEAM_ID)
+    {
+      compensation[club] +=
+          NationalTeams::COMPENSATION_PER_DAY *
+          (dayOrdinal(squad.until) - dayOrdinal(squad.start) + 2);
+    }
+    if (club == managed_team_id && managed_team_id != FREE_AGENTS_TEAM_ID)
+    {
+      returning.push_back(player.getName());
+    }
+  }
+}
+
 }  // namespace
+
+void NationalTeams::pairFriendlyNations(std::vector<Language>& nations,
+                                        const GameDateValue& day,
+                                        std::mt19937& rng,
+                                        std::vector<Language>* leftovers)
+{
+  std::ranges::shuffle(nations, rng);
+  size_t index = 0;
+  for (; index + 1 < nations.size(); index += 2)
+  {
+    Fixture fixture;
+    fixture.date = day;
+    fixture.home = nations[index];
+    fixture.away = nations[index + 1];
+    fixture.competition = Competition::Friendly;
+    addFixture(std::move(fixture));
+  }
+  if (index < nations.size() && leftovers)
+  {
+    leftovers->push_back(nations[index]);
+  }
+}
+
+bool NationalTeams::replaceUnavailablePlayers(Squad& squad,
+                                              const GameDateValue& today)
+{
+  std::vector<PlayerID> removed;
+  std::erase_if(squad.players,
+                [this, &removed](PlayerID player_id)
+                {
+                  const auto player = gamedata->getPlayer(player_id);
+                  const bool gone = !player || !player->get().isAvailable();
+                  if (gone && player)
+                  {
+                    removed.push_back(player_id);
+                  }
+                  return gone;
+                });
+  const bool changed = !removed.empty();
+  for (const PlayerID player_id : removed)
+  {
+    const PlayerRole role = gamedata->getPlayer(player_id)->get().getRole();
+    std::vector<PlayerID> exclude = squad.players;
+    exclude.insert(exclude.end(), removed.begin(), removed.end());
+    for (const PlayerID candidate :
+         pickSquad(squad.nation, International::FINALS_SQUAD, today, exclude))
+    {
+      if (roleGroup(gamedata->getPlayer(candidate)->get().getRole()) ==
+          roleGroup(role))
+      {
+        squad.players.push_back(candidate);
+        break;
+      }
+    }
+  }
+  return changed;
+}
+
+void NationalTeams::scheduleWindowFriendlies(
+    const std::vector<GameDateValue>& match_days)
+{
+  for (const GameDateValue& day : match_days)
+  {
+    std::map<Confederation, std::vector<Language>> idle;
+    for (const Language nation : ranking())
+    {
+      if (hasFixture(nation, day) || finalsFor(nation, day))
+      {
+        continue;
+      }
+      idle[International::confederationOf(nation)].push_back(nation);
+    }
+    std::mt19937 rng(Competitions::mixSeed(
+        static_cast<uint32_t>(dayOrdinal(day)), FRIENDLY_SALT, 0));
+    std::vector<Language> leftovers;
+    for (auto& [confederation, nations] : idle)
+    {
+      pairFriendlyNations(nations, day, rng, &leftovers);
+    }
+    pairFriendlyNations(leftovers, day, rng, nullptr);
+  }
+}
 
 // ---------------------------------------------------------------------------
 // International helpers
@@ -448,8 +734,12 @@ std::vector<PlayerID> International::selectSquad(
   std::array<size_t, 4> picked_by_group{};
   std::vector<PlayerID> squad;
   std::vector<uint8_t> used(ranked.size(), 0);
-  for (size_t index = 0; index < ranked.size() && squad.size() < size; ++index)
+  for (size_t index = 0; index < ranked.size(); ++index)
   {
+    if (squad.size() >= size)
+    {
+      break;
+    }
     const auto group =
         std::to_underlying(roleGroup(ranked[index].second->getRole()));
     if (picked_by_group[group] >= quota[group]) continue;
@@ -457,8 +747,12 @@ std::vector<PlayerID> International::selectSquad(
     used[index] = 1;
     squad.push_back(ranked[index].second->getId());
   }
-  for (size_t index = 0; index < ranked.size() && squad.size() < size; ++index)
+  for (size_t index = 0; index < ranked.size(); ++index)
   {
+    if (squad.size() >= size)
+    {
+      break;
+    }
     if (used[index]) continue;
     const auto group =
         std::to_underlying(roleGroup(ranked[index].second->getRole()));
@@ -975,36 +1269,7 @@ void NationalTeams::announceWindow(const GameDateValue& today,
 {
   // Friendlies for every nation without a match, within the confederation
   // first.
-  for (const GameDateValue& day : match_days)
-  {
-    std::map<Confederation, std::vector<Language>> idle;
-    for (const Language nation : ranking())
-    {
-      if (hasFixture(nation, day) || finalsFor(nation, day)) continue;
-      idle[International::confederationOf(nation)].push_back(nation);
-    }
-    std::mt19937 rng(Competitions::mixSeed(
-        static_cast<uint32_t>(dayOrdinal(day)), FRIENDLY_SALT, 0));
-    std::vector<Language> leftovers;
-    const auto pairUp =
-        [&](std::vector<Language>& nations, std::vector<Language>* rest)
-    {
-      std::ranges::shuffle(nations, rng);
-      size_t i = 0;
-      for (; i + 1 < nations.size(); i += 2)
-      {
-        Fixture fixture;
-        fixture.date = day;
-        fixture.home = nations[i];
-        fixture.away = nations[i + 1];
-        fixture.competition = Competition::Friendly;
-        addFixture(fixture);
-      }
-      if (i < nations.size() && rest) rest->push_back(nations[i]);
-    };
-    for (auto& [confederation, nations] : idle) pairUp(nations, &leftovers);
-    pairUp(leftovers, nullptr);
-  }
+  scheduleWindowFriendlies(match_days);
 
   std::vector<std::string> called;
   for (const Team& team : teams)
@@ -1031,28 +1296,12 @@ void NationalTeams::announceWindow(const GameDateValue& today,
     squad.start = start;
     squad.until = end;
     squad.finals = tournament != nullptr;
-    if (tournament)
-    {
-      for (const Fixture& fixture : fixtures)
-        if (fixture.competition == tournament->competition &&
-            !(fixture.date < start) && squad.until < fixture.date)
-          squad.until = fixture.date;
-      squad.until = std::max(
-          squad.until, plusDays(start, FINALS_KNOCKOUT_DAYS.back()),
-          [](const GameDateValue& a, const GameDateValue& b) { return a < b; });
-    }
+    if (tournament) extendFinalsSquadUntil(squad, *tournament, fixtures);
     squad.players = pickSquad(
         team.nation,
         tournament ? International::FINALS_SQUAD : International::WINDOW_SQUAD,
         today, {});
-    for (const PlayerID player_id : squad.players)
-    {
-      const auto player = gamedata->getPlayer(player_id);
-      if (player && player->get().getTeamId() == managed_team_id &&
-          managed_team_id != FREE_AGENTS_TEAM_ID)
-        called.push_back(player->get().getName() + " (@" +
-                         International::teamNameKey(team.nation) + ")");
-    }
+    collectManagedCallups(squad, managed_team_id, *gamedata, called);
     squads.push_back(std::move(squad));
   }
   rebuildDutyIndex();
@@ -1073,32 +1322,7 @@ void NationalTeams::replaceInjured(const GameDateValue& today)
   for (Squad& squad : squads)
   {
     if (!(squad.start == today)) continue;
-    std::vector<PlayerID> removed;
-    std::erase_if(squad.players,
-                  [this, &removed](PlayerID player_id)
-                  {
-                    const auto player = gamedata->getPlayer(player_id);
-                    const bool gone = !player || !player->get().isAvailable();
-                    if (gone && player) removed.push_back(player_id);
-                    return gone;
-                  });
-    for (const PlayerID player_id : removed)
-    {
-      const PlayerRole role = gamedata->getPlayer(player_id)->get().getRole();
-      std::vector<PlayerID> exclude = squad.players;
-      exclude.insert(exclude.end(), removed.begin(), removed.end());
-      for (const PlayerID candidate :
-           pickSquad(squad.nation, International::FINALS_SQUAD, today, exclude))
-      {
-        if (roleGroup(gamedata->getPlayer(candidate)->get().getRole()) ==
-            roleGroup(role))
-        {
-          squad.players.push_back(candidate);
-          break;
-        }
-      }
-    }
-    changed = changed || !removed.empty();
+    changed = replaceUnavailablePlayers(squad, today) || changed;
   }
   if (changed) rebuildDutyIndex();
 }
@@ -1178,64 +1402,12 @@ void NationalTeams::playMatches(const GameDateValue& today,
     squadFor(fixtures[index].away);
   }
   const auto lineupFor = [&](Language nation)
-  {
-    Lineup lineup;
-    std::vector<PlayerID> available;
-    for (const PlayerID player_id : squadFor(nation)->players)
-      if (const auto player = gamedata->getPlayer(player_id);
-          player && player->get().isAvailable())
-        available.push_back(player_id);
-    lineup.generateStartingXI(*gamedata, available, config);
-    // A realistic bench: the best reserve goalkeeper and outfield players.
-    std::vector<const Player*> bench;
-    const Player* keeper = nullptr;
-    std::vector<const Player*> outfield;
-    for (const Player* reserve : lineup.getReserves())
-    {
-      if (reserve->getRole() == PlayerRole::GK)
-      {
-        if (!keeper) keeper = reserve;
-      }
-      else
-      {
-        outfield.push_back(reserve);
-      }
-    }
-    std::ranges::stable_sort(
-        outfield, [&config](const Player* a, const Player* b)
-        { return a->getOverall(config) > b->getOverall(config); });
-    if (keeper) bench.push_back(keeper);
-    for (const Player* player : outfield)
-      if (bench.size() < MATCH_RESERVES) bench.push_back(player);
-    lineup.setReserves(bench);
-    return lineup;
-  };
+  { return nationalLineup(squadFor(nation)->players, *gamedata, config); };
 
   std::vector<size_t> simulated;
   std::vector<MatchSimulationInput> inputs;
-  for (const size_t index : today_fixtures)
-  {
-    Fixture& fixture = fixtures[index];
-    MatchSimulationInput input;
-    input.home_id =
-        static_cast<TeamID>(TEAM_ID_BASE + std::to_underlying(fixture.home));
-    input.away_id =
-        static_cast<TeamID>(TEAM_ID_BASE + std::to_underlying(fixture.away));
-    input.seed = Competitions::mixSeed(static_cast<uint32_t>(dayOrdinal(today)),
-                                       fixture.id, MATCH_SEED_SALT);
-    input.home_lineup = lineupFor(fixture.home);
-    input.away_lineup = lineupFor(fixture.away);
-    if (input.home_lineup.starters().size() < MIN_PLAYERS_TO_PLAY ||
-        input.away_lineup.starters().size() < MIN_PLAYERS_TO_PLAY)
-    {
-      fixture.played = true;  // Not enough players: recorded as 0-0.
-      continue;
-    }
-    // Knockout matches are played on through extra time and penalties.
-    input.knockout.required = fixture.stage != Stage::Group;
-    simulated.push_back(index);
-    inputs.push_back(std::move(input));
-  }
+  addNationalMatchInputs(today_fixtures, fixtures, today, lineupFor, simulated,
+                         inputs);
   if (inputs.empty()) return;
   std::vector<MatchSimulationResult> results = scheduler.run(inputs, config);
   for (size_t i = 0; i < simulated.size(); ++i)
@@ -1256,19 +1428,7 @@ void NationalTeams::playMatches(const GameDateValue& today,
         International::isFinals(fixture.competition) &&
         fixture.competition != Competition::NationsLeagueFinals;
     for (const PlayerMatchLine& line : result.report.players)
-    {
-      if (line.minutes == 0) continue;
-      const auto player = gamedata->getPlayer(line.player_id);
-      if (!player) continue;
-      International::Record& record = records[line.player_id];
-      record.nation = player->get().getNationality();
-      record.name = player->get().getName();
-      ++record.caps;
-      record.goals = static_cast<uint16_t>(record.goals + line.goals);
-      if (finals_match) ++record.finals_caps;
-      record.last_cap = today;
-      record.last_cap_age = static_cast<uint8_t>(player->get().getAge());
-    }
+      recordAppearance(line, finals_match, today, *gamedata, records);
     for (const PlayerMatchConsequence& consequence : result.consequences)
       world.applyMatchConsequences(today, consequence, managed_team_id);
     if (result_sink)
@@ -1507,20 +1667,7 @@ void NationalTeams::progressFinals(Finals& entry, const GameDateValue& today,
       releaseNation(*entry.winner);
       honours.push_back(
           {entry.year, entry.competition, *entry.winner, *entry.runner_up});
-      for (const Squad& squad : squads)
-      {
-        if (squad.nation != *entry.winner && squad.nation != *entry.runner_up)
-          continue;
-        const float boost =
-            squad.nation == *entry.winner ? WINNER_MORALE : RUNNER_UP_MORALE;
-        for (const PlayerID player_id : squad.players)
-          if (const auto player = gamedata->getPlayers().find(player_id);
-              player != gamedata->getPlayers().end())
-          {
-            PlayerDynamics& dynamics = player->second.mutableDynamics();
-            dynamics.morale = std::min(100.0f, dynamics.morale + boost);
-          }
-      }
+      boostFinalists(entry, squads, *gamedata);
       post(world, today, "INBOX_INTL_WINNER_TITLE", "INBOX_INTL_WINNER_BODY",
            {std::string("@") + International::competitionKey(entry.competition),
             nationArg(*entry.winner), nationArg(*entry.runner_up)},
@@ -1564,28 +1711,8 @@ void NationalTeams::releasePlayers(const GameDateValue& today,
   {
     if (!(squad.until < today)) continue;
     changed = true;
-    const Confederation home = International::confederationOf(squad.nation);
-    for (const PlayerID player_id : squad.players)
-    {
-      const auto player_ref = gamedata->getPlayers().find(player_id);
-      if (player_ref == gamedata->getPlayers().end()) continue;
-      Player& player = player_ref->second;
-      const TeamID club = player.getTeamId();
-      const auto [km, zones] =
-          tripBetween(clubConfederation(*gamedata, club, home), home);
-      travel[player_id] = {today, km, zones};
-      PlayerDynamics& dynamics = player.mutableDynamics();
-      dynamics.condition =
-          std::max(std::min(dynamics.condition, 100.0f) -
-                       (CONDITION_LOSS_BASE + CONDITION_LOSS_PER_KM * km),
-                   MIN_RETURN_CONDITION);
-      if (squad.finals && club != FREE_AGENTS_TEAM_ID)
-        compensation[club] +=
-            COMPENSATION_PER_DAY *
-            (dayOrdinal(squad.until) - dayOrdinal(squad.start) + 2);
-      if (club == managed_team_id && managed_team_id != FREE_AGENTS_TEAM_ID)
-        returning.push_back(player.getName());
-    }
+    processReleasedSquad(squad, today, managed_team_id, *gamedata, travel,
+                         compensation, returning);
   }
   if (!changed) return;
   std::erase_if(squads,

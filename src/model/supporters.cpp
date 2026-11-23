@@ -63,6 +63,118 @@ void forEachRow(const DatabaseConnection& db, const char* sql, Read read)
   while (sqlite3_step(stmt) == SQLITE_ROW) read(stmt);
   sqlite3_finalize(stmt);
 }
+
+void collectDerbyPoints(SupporterFacts& facts, const Calendar& calendar,
+                        const GameDateValue& date, TeamID team_id, TeamID rival)
+{
+  const GameDateValue season_start(SeasonCalendar::seasonStartYear(date),
+                                   SEASON_START_MONTH, 1);
+  const auto& schedule = calendar.getFullCalendar();
+  for (auto day = schedule.lower_bound(season_start);
+       day != schedule.end() && !(date < day->first); ++day)
+  {
+    for (const Match& match : day->second)
+    {
+      if (!match.isPlayed() || match.getMatchType() == MatchType::FRIENDLY)
+        continue;
+      const bool home =
+          match.getHomeTeamId() == team_id && match.getAwayTeamId() == rival;
+      const bool away =
+          match.getAwayTeamId() == team_id && match.getHomeTeamId() == rival;
+      if (!home && !away) continue;
+      const std::optional<TeamID> winner = match.getWinnerId();
+      int points = 1;
+      if (winner.has_value() && *winner == team_id)
+        points = 3;
+      else if (winner.has_value())
+        points = 0;
+      facts.derby_points.insert(facts.derby_points.begin(), points);
+    }
+  }
+}
+
+void collectTicketRatio(SupporterFacts& facts, const GameData& gamedata,
+                        const Team& team)
+{
+  const auto economies = buildLeagueEconomies(gamedata);
+  const auto economy = economies.find(team.getLeagueId());
+  if (economy == economies.end()) return;
+  const ClubProfile& profile = team.getProfile();
+  const double fair = ClubEconomy::fairTicketPrice(economy->second, profile);
+  if (fair > 0.0 && profile.ticket_price > 0)
+    facts.ticket_ratio =
+        static_cast<float>(static_cast<double>(profile.ticket_price) / fair);
+}
+
+void collectStarTransferCounts(SupporterFacts& facts, const GameData& gamedata,
+                               const GameDateValue& date, TeamID team_id,
+                               const TransferMarket& transfers,
+                               const StatsConfig& config, double star_level)
+{
+  const std::int32_t today = dayOrdinal(date);
+  for (const TransferRecord& record : transfers.history())
+  {
+    if (today - dayOrdinal(record.date) > SupporterModel::STAR_WINDOW_DAYS ||
+        date < record.date)
+      continue;
+    const auto player = gamedata.getPlayer(record.player_id);
+    if (!player || player->get().getOverall(config) < star_level) continue;
+    const bool fee_move = record.kind == TransferKind::Permanent ||
+                          record.kind == TransferKind::Free ||
+                          record.kind == TransferKind::PreContract;
+    if (record.from_team == team_id && fee_move &&
+        player->get().getTeamId() != team_id)
+      ++facts.star_sales;
+    else if (record.to_team == team_id &&
+             (fee_move || record.kind == TransferKind::Loan) &&
+             player->get().getTeamId() == team_id)
+      ++facts.star_signings;
+  }
+}
+
+std::optional<double> findStarLevel(const GameData& gamedata, TeamID team_id,
+                                    const StatsConfig& config)
+{
+  std::vector<double> overalls;
+  for (const auto& player : gamedata.getPlayersForTeam(team_id))
+    overalls.push_back(player.get().getOverall(config));
+  std::ranges::sort(overalls, std::greater<>());
+  if (overalls.empty()) return std::nullopt;
+  return overalls[std::min<std::size_t>(SupporterModel::STAR_RANK,
+                                        overalls.size()) -
+                  1];
+}
+
+struct SupporterSnapshot
+{
+  TeamID team_id = 0;
+  SupporterMood mood;
+  std::int32_t updated_day = 0;
+};
+
+SupporterSnapshot readSupporterSnapshot(sqlite3_stmt* stmt)
+{
+  SupporterSnapshot snapshot;
+  snapshot.team_id = static_cast<TeamID>(sqlite3_column_int(stmt, 0));
+  snapshot.mood.index = std::clamp(
+      static_cast<float>(sqlite3_column_double(stmt, 1)), 0.0f, 100.0f);
+  snapshot.updated_day = sqlite3_column_int(stmt, 2);
+  const auto* text =
+      reinterpret_cast<const char*>(sqlite3_column_text(stmt, 3));
+  std::istringstream reasons(text ? text : "");
+  int factor = 0;
+  float points = 0.0f;
+  char separator = 0;
+  while (reasons >> factor >> separator >> points)
+  {
+    if (factor < 0 ||
+        factor >= static_cast<int>(std::to_underlying(SupporterFactor::COUNT)))
+      continue;  // Written by a newer version.
+    snapshot.mood.reasons.push_back(
+        {static_cast<SupporterFactor>(factor), points});
+  }
+  return snapshot;
+}
 }  // namespace
 
 SupporterMood SupporterModel::evaluate(const SupporterFacts& facts)
@@ -183,7 +295,6 @@ SupporterFacts Supporters::gather(const GameData& gamedata,
                                   const TransferMarket& transfers,
                                   std::optional<TeamID> rival)
 {
-  using enum TransferKind;
   SupporterFacts facts;
   const auto team = gamedata.getTeam(team_id);
   if (!team) return facts;
@@ -196,71 +307,16 @@ SupporterFacts Supporters::gather(const GameData& gamedata,
                                   board.recent_deltas.size()));
 
   if (rival.has_value())
-  {
-    const GameDateValue season_start(SeasonCalendar::seasonStartYear(date),
-                                     SEASON_START_MONTH, 1);
-    const auto& schedule = calendar.getFullCalendar();
-    for (auto day = schedule.lower_bound(season_start);
-         day != schedule.end() && !(date < day->first); ++day)
-    {
-      for (const Match& match : day->second)
-      {
-        if (!match.isPlayed() || match.getMatchType() == MatchType::FRIENDLY)
-          continue;
-        const bool home =
-            match.getHomeTeamId() == team_id && match.getAwayTeamId() == *rival;
-        if (const bool away = match.getAwayTeamId() == team_id &&
-                              match.getHomeTeamId() == *rival;
-            !home && !away)
-          continue;
-        const std::optional<TeamID> winner = match.getWinnerId();
-        int points = 1;
-        if (winner && *winner == team_id)
-          points = 3;
-        else if (winner)
-          points = 0;
-        facts.derby_points.insert(facts.derby_points.begin(), points);
-      }
-    }
-  }
-
-  const auto economies = buildLeagueEconomies(gamedata);
-  if (const auto economy = economies.find(team->get().getLeagueId());
-      economy != economies.end())
-  {
-    const ClubProfile& profile = team->get().getProfile();
-    const double fair = ClubEconomy::fairTicketPrice(economy->second, profile);
-    if (fair > 0.0 && profile.ticket_price > 0)
-      facts.ticket_ratio =
-          static_cast<float>(static_cast<double>(profile.ticket_price) / fair);
-  }
+    collectDerbyPoints(facts, calendar, date, team_id, *rival);
+  collectTicketRatio(facts, gamedata, team->get());
 
   // Stars are measured against today's squad: the best STAR_RANK players.
   const StatsConfig& config = gamedata.getStatsConfig();
-  std::vector<double> overalls;
-  for (const auto& player : gamedata.getPlayersForTeam(team_id))
-    overalls.push_back(player.get().getOverall(config));
-  std::ranges::sort(overalls, std::greater<>());
-  if (overalls.empty()) return facts;
-  const double star_level = overalls
-      [std::min<std::size_t>(SupporterModel::STAR_RANK, overalls.size()) - 1];
-  const std::int32_t today = dayOrdinal(date);
-  for (const TransferRecord& record : transfers.history())
-  {
-    if (today - dayOrdinal(record.date) > SupporterModel::STAR_WINDOW_DAYS ||
-        date < record.date)
-      continue;
-    const auto player = gamedata.getPlayer(record.player_id);
-    if (!player || player->get().getOverall(config) < star_level) continue;
-    const bool fee_move = record.kind == Permanent || record.kind == Free ||
-                          record.kind == PreContract;
-    if (record.from_team == team_id && fee_move &&
-        player->get().getTeamId() != team_id)
-      ++facts.star_sales;
-    else if (record.to_team == team_id && (fee_move || record.kind == Loan) &&
-             player->get().getTeamId() == team_id)
-      ++facts.star_signings;
-  }
+  const std::optional<double> star_level =
+      findStarLevel(gamedata, team_id, config);
+  if (!star_level) return facts;
+  collectStarTransferCounts(facts, gamedata, date, team_id, transfers, config,
+                            *star_level);
   return facts;
 }
 
@@ -286,31 +342,16 @@ void Supporters::onDayEnd(const GameData& gamedata, const GameDateValue& date,
 void Supporters::load(const std::shared_ptr<DatabaseConnection>& db_conn)
 {
   *this = Supporters();
-  forEachRow(
-      *db_conn,
-      "SELECT team_id, mood, updated_day, reasons FROM SupporterMood "
-      "WHERE id = 1;",
-      [this](sqlite3_stmt* stmt)
-      {
-        team_id = static_cast<TeamID>(sqlite3_column_int(stmt, 0));
-        current.index = std::clamp(
-            static_cast<float>(sqlite3_column_double(stmt, 1)), 0.0f, 100.0f);
-        updated_day = sqlite3_column_int(stmt, 2);
-        const auto* text =
-            reinterpret_cast<const char*>(sqlite3_column_text(stmt, 3));
-        std::istringstream reasons(text ? text : "");
-        int factor = 0;
-        float points = 0.0f;
-        char separator = 0;
-        while (reasons >> factor >> separator >> points)
-        {
-          if (factor < 0 || factor >= static_cast<int>(std::to_underlying(
-                                          SupporterFactor::COUNT)))
-            continue;  // Written by a newer version.
-          current.reasons.push_back(
-              {static_cast<SupporterFactor>(factor), points});
-        }
-      });
+  forEachRow(*db_conn,
+             "SELECT team_id, mood, updated_day, reasons FROM SupporterMood "
+             "WHERE id = 1;",
+             [this](sqlite3_stmt* stmt)
+             {
+               SupporterSnapshot snapshot = readSupporterSnapshot(stmt);
+               team_id = snapshot.team_id;
+               current = std::move(snapshot.mood);
+               updated_day = snapshot.updated_day;
+             });
 }
 
 void Supporters::save(const std::shared_ptr<DatabaseConnection>& db_conn) const

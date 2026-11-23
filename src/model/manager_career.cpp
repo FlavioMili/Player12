@@ -246,6 +246,27 @@ Enum enumFrom(std::int64_t value, Enum count, Enum fallback)
              : fallback;
 }
 
+AiManager readAiManager(sqlite3_stmt* stmt)
+{
+  AiManager manager;
+  manager.id = columnAs<std::uint32_t>(stmt, 0);
+  manager.first_name = columnText(stmt, 1);
+  manager.last_name = columnText(stmt, 2);
+  manager.nationality = static_cast<Language>(std::clamp<std::int64_t>(
+      sqlite3_column_int64(stmt, 3), 0, std::to_underlying(Language::US)));
+  manager.age = columnAs<std::uint8_t>(stmt, 4);
+  manager.reputation = columnFloat(stmt, 5);
+  manager.ability = columnFloat(stmt, 6);
+  manager.style = enumFrom(sqlite3_column_int64(stmt, 7), ManagerStyle::COUNT,
+                           ManagerStyle::Balanced);
+  manager.team_id = columnAs<TeamID>(stmt, 8);
+  manager.appointed = columnDate(stmt, 9);
+  manager.matches = columnAs<std::uint16_t>(stmt, 10);
+  manager.confidence = columnFloat(stmt, 11);
+  manager.form = columnFloat(stmt, 12);
+  return manager;
+}
+
 ManagerProfile readManagerProfile(sqlite3_stmt* stmt)
 {
   ManagerProfile profile;
@@ -1556,6 +1577,14 @@ void ManagerCareer::weeklyManagerReview(const GameDateValue& date,
   // caller wins.
   const double chance =
       std::min(0.45, 0.08 + 0.02 * static_cast<double>(idle / 7));
+  TeamID pick = unsolicitedVacancyPick(today, chance);
+  if (pick == FREE_AGENTS_TEAM_ID && idle >= DESPERATE_AFTER_DAYS)
+    pick = desperateVacancyPick(date, managed_team_id, inbox, events, chance);
+  if (pick != FREE_AGENTS_TEAM_ID) makeOffer(pick, date, true, 1.0f, inbox);
+}
+
+TeamID ManagerCareer::unsolicitedVacancyPick(std::int32_t today, double chance)
+{
   TeamID pick = FREE_AGENTS_TEAM_ID;
   for (const Vacancy& vacancy : vacancies)
   {
@@ -1572,29 +1601,34 @@ void ManagerCareer::weeklyManagerReview(const GameDateValue& date,
     if (pick == FREE_AGENTS_TEAM_ID || reputation > clubReputation(pick))
       pick = vacancy.team_id;
   }
-  if (pick == FREE_AGENTS_TEAM_ID && idle >= DESPERATE_AFTER_DAYS &&
-      uniform(*gamedata, today, 0x4445'5350ULL) < chance)
+  return pick;
+}
+
+TeamID ManagerCareer::desperateVacancyPick(const GameDateValue& date,
+                                           TeamID managed_team_id, Inbox& inbox,
+                                           CareerDayEvents& events,
+                                           double chance)
+{
+  if (uniform(*gamedata, dayOrdinal(date), 0x4445'5350ULL) >= chance)
+    return FREE_AGENTS_TEAM_ID;
+  // Long out of work: a struggling club further down makes a change.
+  AiManager* weakest = nullptr;
+  for (AiManager& manager : managers)
   {
-    // Long out of work: a struggling club further down makes a change.
-    AiManager* weakest = nullptr;
-    for (AiManager& manager : managers)
-    {
-      if (manager.team_id == FREE_AGENTS_TEAM_ID ||
-          manager.team_id == managed_team_id ||
-          static_cast<float>(clubReputation(manager.team_id)) >
-              std::max(profile.reputation + 5.0f, 50.0f))
-        continue;
-      if (!weakest || manager.confidence < weakest->confidence)
-        weakest = &manager;
-    }
-    if (weakest && weakest->confidence < INITIAL_CONFIDENCE)
-    {
-      pick = weakest->team_id;
-      dismissAi(*weakest, date, inbox, managed_team_id);
-      ++events.ai_dismissals;
-    }
+    if (manager.team_id == FREE_AGENTS_TEAM_ID ||
+        manager.team_id == managed_team_id ||
+        static_cast<float>(clubReputation(manager.team_id)) >
+            std::max(profile.reputation + 5.0f, 50.0f))
+      continue;
+    if (!weakest || manager.confidence < weakest->confidence)
+      weakest = &manager;
   }
-  if (pick != FREE_AGENTS_TEAM_ID) makeOffer(pick, date, true, 1.0f, inbox);
+  if (!weakest || weakest->confidence >= INITIAL_CONFIDENCE)
+    return FREE_AGENTS_TEAM_ID;
+  const TeamID pick = weakest->team_id;
+  dismissAi(*weakest, date, inbox, managed_team_id);
+  ++events.ai_dismissals;
+  return pick;
 }
 
 void ManagerCareer::monthlyReviews(const GameDateValue& date,
@@ -1613,9 +1647,9 @@ void ManagerCareer::monthlyReviews(const GameDateValue& date,
   for (auto& [league_id, clubs] : ranks)
     std::ranges::sort(clubs, std::greater<>{});
   monthlyAiReviews(ranks, positions);
-  monthlyManagerReview(date, managed_team_id, board_confidence,
-                       board_expected_position, positions, ranks, inbox,
-                       events);
+  if (!isEmployed() || profile.club != managed_team_id) return;
+  monthlyManagerReview(date, board_confidence, board_expected_position,
+                       positions, ranks, inbox, events);
 }
 
 void ManagerCareer::monthlyAiReviews(
@@ -1643,13 +1677,13 @@ void ManagerCareer::monthlyAiReviews(
 }
 
 void ManagerCareer::monthlyManagerReview(
-    const GameDateValue& date, TeamID managed_team_id, float board_confidence,
+    const GameDateValue& date, float board_confidence,
     int board_expected_position, const PositionProvider& positions,
     const std::map<LeagueID, std::vector<std::pair<std::uint8_t, TeamID>>>&
         league_ranks,
     Inbox& inbox, CareerDayEvents& events)
 {
-  if (!isEmployed() || profile.club != managed_team_id) return;
+  const TeamID managed_team_id = profile.club;
   const int position = positions(managed_team_id);
   if (position <= 0) return;
   int league_size = 20;
@@ -1705,27 +1739,6 @@ void ManagerCareer::onMatchPlayed(const ManagerMatchEvent& match)
     if (own > other) return 3.0f;
     return own == other ? 1.0f : 0.0f;
   };
-  const auto updateManagedResult = [this, &match](TeamID team_id, int own,
-                                                  int other, float earned,
-                                                  float expected)
-  {
-    if (team_id != match.managed_team || !isEmployed() ||
-        profile.club != team_id)
-      return false;
-    if (ManagerStint* stint = currentStint())
-    {
-      ++stint->played;
-      if (own > other)
-        ++stint->won;
-      else if (own == other)
-        ++stint->drawn;
-      else
-        ++stint->lost;
-    }
-    profile.reputation = std::clamp(
-        profile.reputation + 0.06f * (earned - expected), 1.0f, 99.0f);
-    return true;
-  };
   const auto updateAiResult =
       [this, &match](TeamID team_id, float earned, float expected)
   {
@@ -1741,17 +1754,39 @@ void ManagerCareer::onMatchPlayed(const ManagerMatchEvent& match)
       break;
     }
   };
-  const auto apply = [&points, &updateManagedResult, &updateAiResult](
+  const auto apply = [this, &match, &points, &updateAiResult](
                          TeamID team_id, int own, int other, float expected)
   {
     const float earned = points(own, other);
-    if (updateManagedResult(team_id, own, other, earned, expected)) return;
+    if (updateManagedMatchResult(match, team_id, own, other, earned, expected))
+      return;
     updateAiResult(team_id, earned, expected);
   };
   apply(match.home_team, match.home_goals, match.away_goals,
         match.home_expected_points);
   apply(match.away_team, match.away_goals, match.home_goals,
         match.away_expected_points);
+}
+
+bool ManagerCareer::updateManagedMatchResult(const ManagerMatchEvent& match,
+                                             TeamID team_id, int own, int other,
+                                             float earned, float expected)
+{
+  if (team_id != match.managed_team || !isEmployed() || profile.club != team_id)
+    return false;
+  if (ManagerStint* stint = currentStint())
+  {
+    ++stint->played;
+    if (own > other)
+      ++stint->won;
+    else if (own == other)
+      ++stint->drawn;
+    else
+      ++stint->lost;
+  }
+  profile.reputation =
+      std::clamp(profile.reputation + 0.06f * (earned - expected), 1.0f, 99.0f);
+  return true;
 }
 
 void ManagerCareer::reviewAiManagersAtSeasonEnd(
@@ -1806,26 +1841,8 @@ float ManagerCareer::applySeasonHonours(
   float delta = std::clamp(
       1.2f * static_cast<float>(line.expected_position - line.position), -8.0f,
       10.0f);
-  bool title = false;
-  for (const SeasonHistoryEntry& entry : finished)
-  {
-    const bool cup = entry.competition_type == MatchType::CUP;
-    if (!cup && entry.competition_id != line.league_id) continue;
-    if (entry.champion_id == club)
-    {
-      recordAward(
-          cup ? ManagerAwardKind::CupWin : ManagerAwardKind::LeagueTitle,
-          start_year, club);
-      delta += cup ? 3.0f : (tier <= 1 ? 6.0f : 3.0f);
-      title = title || !cup;
-    }
-    if (!cup && std::ranges::contains(entry.promoted, club))
-    {
-      recordAward(ManagerAwardKind::Promotion, start_year, club);
-      delta += 3.0f;
-    }
-    if (!cup && std::ranges::contains(entry.relegated, club)) delta -= 4.0f;
-  }
+  const bool title =
+      applyCompetitionHonours(line, finished, start_year, tier, delta);
   if (line.position > 0 && (line.position + 4 <= line.expected_position ||
                             (title && line.expected_position > 2)))
     recordAward(ManagerAwardKind::ManagerOfTheSeason, start_year, club);
@@ -1839,6 +1856,35 @@ float ManagerCareer::applySeasonHonours(
       profile.reputation > static_cast<float>(clubReputation(club)) + 10.0f)
     delta *= 0.5f;
   return delta;
+}
+
+bool ManagerCareer::applyCompetitionHonours(
+    const ManagerSeasonLine& line, std::span<const SeasonHistoryEntry> finished,
+    std::uint16_t start_year, std::uint8_t tier, float& delta)
+{
+  using enum ManagerAwardKind;
+  const TeamID club = line.team_id;
+  bool title = false;
+  for (const SeasonHistoryEntry& entry : finished)
+  {
+    const bool cup = entry.competition_type == MatchType::CUP;
+    if (!cup && entry.competition_id != line.league_id) continue;
+    if (entry.champion_id == club)
+    {
+      recordAward(cup ? CupWin : LeagueTitle, start_year, club);
+      float award_delta = 3.0f;
+      if (!cup && tier <= 1) award_delta = 6.0f;
+      delta += award_delta;
+      title = title || !cup;
+    }
+    if (!cup && std::ranges::contains(entry.promoted, club))
+    {
+      recordAward(Promotion, start_year, club);
+      delta += 3.0f;
+    }
+    if (!cup && std::ranges::contains(entry.relegated, club)) delta -= 4.0f;
+  }
+  return title;
 }
 
 bool ManagerCareer::onSeasonEnd(const GameDateValue& date,
@@ -1982,24 +2028,7 @@ void ManagerCareer::load(const std::shared_ptr<DatabaseConnection>& db_conn)
              "FROM AiManagers ORDER BY id;",
              [this](sqlite3_stmt* stmt)
              {
-               AiManager manager;
-               manager.id = columnAs<std::uint32_t>(stmt, 0);
-               manager.first_name = columnText(stmt, 1);
-               manager.last_name = columnText(stmt, 2);
-               manager.nationality = static_cast<Language>(
-                   std::clamp<std::int64_t>(sqlite3_column_int64(stmt, 3), 0,
-                                            std::to_underlying(Language::US)));
-               manager.age = columnAs<std::uint8_t>(stmt, 4);
-               manager.reputation = columnFloat(stmt, 5);
-               manager.ability = columnFloat(stmt, 6);
-               manager.style =
-                   enumFrom(sqlite3_column_int64(stmt, 7), ManagerStyle::COUNT,
-                            ManagerStyle::Balanced);
-               manager.team_id = columnAs<TeamID>(stmt, 8);
-               manager.appointed = columnDate(stmt, 9);
-               manager.matches = columnAs<std::uint16_t>(stmt, 10);
-               manager.confidence = columnFloat(stmt, 11);
-               manager.form = columnFloat(stmt, 12);
+               AiManager manager = readAiManager(stmt);
                next_manager_id = std::max(next_manager_id, manager.id + 1);
                managers.emplace_back(std::move(manager));
              });

@@ -623,9 +623,11 @@ void appendNetStrand(const RenderMath::Projection& projection,
   if (!projection.project(displaced(from), a)) return;
   for (int segment = 1; segment <= segments; ++segment)
   {
-    const Vec3 point = RenderMath::lerp(
-        from, to, static_cast<float>(segment) / static_cast<float>(segments));
-    if (!projection.project(displaced(point), b)) return;
+    if (const Vec3 point = RenderMath::lerp(
+            from, to,
+            static_cast<float>(segment) / static_cast<float>(segments));
+        !projection.project(displaced(point), b))
+      return;
     points.push_back(toImVec(a));
     points.push_back(toImVec(b));
     a = b;
@@ -941,10 +943,10 @@ void drawPitchCell(RendererState& state, const Stadium3D::PitchGrid& grid,
                    std::size_t cell, std::size_t rows,
                    std::size_t cellsPerStripe)
 {
-  const int stripe = static_cast<int>(cell / cellsPerStripe);
+  const auto stripe = static_cast<int>(cell / cellsPerStripe);
   const std::size_t withinStripe = cell % cellsPerStripe;
-  const int column = static_cast<int>(withinStripe / rows);
-  const int row = static_cast<int>(withinStripe % rows);
+  const auto column = static_cast<int>(withinStripe / rows);
+  const auto row = static_cast<int>(withinStripe % rows);
   const std::array<std::size_t, 4> corner{
       grid.index(stripe, column, row), grid.index(stripe, column + 1, row),
       grid.index(stripe, column + 1, row + 1),
@@ -1115,12 +1117,10 @@ MatchCameraFocus MatchRenderer3D::State::computeFocus(
        RenderMath::worldFromPitch(snapshot.ball.previousPosition)) *
       (1.0f / MatchTuning::Timing::FIXED_STEP_SECONDS);
 
-  const auto carrierIterator =
-      std::ranges::find_if(snapshot.players, [](const MatchRenderPlayer& player)
-                           { return player.possessesBall; });
-  const MatchRenderPlayer* carrier =
-      carrierIterator == snapshot.players.end() ? nullptr : &*carrierIterator;
-  if (carrier)
+  if (const auto carrier = std::ranges::find_if(
+          snapshot.players,
+          [](const MatchRenderPlayer& player) { return player.possessesBall; });
+      carrier != snapshot.players.end())
   {
     focus.hasCarrier = true;
     focus.carrier = RenderMath::worldFromPitch(lerpRenderPosition(
@@ -1454,8 +1454,8 @@ void MatchRenderer3D::State::drawPitch()
       pitchScreen[index] = toImVec(projection.clipToScreen(pitchClip[index]));
   }
 
-  const std::size_t rows = static_cast<std::size_t>(grid.rows);
-  const std::size_t columns = static_cast<std::size_t>(grid.columnsPerStripe);
+  const auto rows = static_cast<std::size_t>(grid.rows);
+  const auto columns = static_cast<std::size_t>(grid.columnsPerStripe);
   const std::size_t cellsPerStripe = rows * columns;
   const std::size_t cellCount =
       static_cast<std::size_t>(grid.stripes) * cellsPerStripe;
@@ -1768,10 +1768,10 @@ void drawNearCrowdClump(RendererState& state,
   const float inverseDepth = 1.0f / clumpClip.w;
   const float reach = (clump.halfWidth + C::DOT_WIDTH) *
                       state.projection.focalPixels * inverseDepth;
-  const float rise = (C::DOT_HEIGHT * 2.0f +
-                      C::ROW_DEPTH * static_cast<float>(C::CLUMP_ROWS)) *
-                     state.projection.focalPixels * inverseDepth;
-  if (base.x + reach < layout.left || base.x - reach > layout.right ||
+  if (const float rise = (C::DOT_HEIGHT * 2.0f +
+                          C::ROW_DEPTH * static_cast<float>(C::CLUMP_ROWS)) *
+                         state.projection.focalPixels * inverseDepth;
+      base.x + reach < layout.left || base.x - reach > layout.right ||
       base.y - rise > layout.bottom || base.y + rise < layout.top)
     return;
 
@@ -2688,8 +2688,9 @@ float fitPelvisToPlantedFeet(float pelvisHeight, const AnimationSlot& slot,
     if (!foot.inStance) continue;
     const Vec3 hip =
         root + flatSide * ((index == 0 ? 1.0f : -1.0f) * P::HIP_SPREAD * scale);
-    const float ahead = RenderMath::dot(foot.position - hip, forward);
-    if (ahead <= 0.0f) continue;
+    if (const float ahead = RenderMath::dot(foot.position - hip, forward);
+        ahead <= 0.0f)
+      continue;
     const float flat = PlayerRig::flatDistance(foot.position, hip);
     const float highest =
         ankleHeight + std::sqrt(std::max(reach * reach - flat * flat, 0.0f));
@@ -3424,8 +3425,8 @@ void detectKickAction(RendererState& state, const MatchRenderSnapshot& snapshot,
     const float yaw = RenderMath::worldYawFromFacing(RenderMath::lerpAngle(
         player.previousFacingAngle, player.currentFacingAngle, alpha));
     const Vec3 left{-std::sin(yaw), std::cos(yaw), 0.0f};
-    const float offset = RenderMath::dot(from - root, left);
-    if (offset > Kk::WRONG_FOOT_METRES)
+    if (const float offset = RenderMath::dot(from - root, left);
+        offset > Kk::WRONG_FOOT_METRES)
       slot.action.eventLeg = 0U;
     else if (offset < -Kk::WRONG_FOOT_METRES)
       slot.action.eventLeg = 1U;
@@ -3720,8 +3721,8 @@ void updateBallRotation(RendererState& state, Vec3 world, Vec3 moved,
     return;
   const float dx = ahead.x - screen.x;
   const float dy = ahead.y - screen.y;
-  const float length = std::hypot(dx, dy);
-  if (length > 1e-3f) state.ballRoll = {dx / length, dy / length};
+  if (const float length = std::hypot(dx, dy); length > 1e-3f)
+    state.ballRoll = {dx / length, dy / length};
   state.ballSpin =
       std::fmod(state.ballSpin + std::min(distance / Tuning::Ball::RADIUS,
                                           Tuning::Ball::SPIN_MAX_PER_FRAME),

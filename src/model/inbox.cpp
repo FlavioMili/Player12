@@ -101,14 +101,14 @@ bool isIsoDate(const std::string& argument)
 std::string expandMoney(const std::string& argument)
 {
   static constexpr std::string_view EURO =
-      "\xE2"
-      "\x82"
-      "\xAC";
+      "\x{E2}"
+      "\x{82}"
+      "\x{AC}";
   std::size_t found = argument.find(EURO);
   if (found == std::string::npos) return argument;
   std::string result;
   std::size_t copied = 0;
-  for (; found != std::string::npos; found = argument.find(EURO, found))
+  while (found != std::string::npos)
   {
     std::size_t end = found + EURO.size();
     if (end < argument.size() && argument[end] == '-') ++end;
@@ -123,14 +123,14 @@ std::string expandMoney(const std::string& argument)
               argument[end] != '.' && argument[end] != ','));
         !token)
     {
-      found += EURO.size();
+      found = argument.find(EURO, found + EURO.size());
       continue;
     }
     result.append(argument, copied, found - copied);
     result += NumberFormat::money(
         std::strtoll(argument.c_str() + found + EURO.size(), nullptr, 10));
     copied = end;
-    found = end;
+    found = argument.find(EURO, end);
   }
   result.append(argument, copied, std::string::npos);
   return result;
@@ -152,21 +152,28 @@ std::string expandKeys(const std::string& argument)
   if (found == std::string::npos) return argument;
   std::string result;
   std::size_t copied = 0;
-  for (; found != std::string::npos; found = argument.find('@', found + 1))
+  while (found != std::string::npos)
   {
     std::size_t end = found + 1;
     while (end < argument.size() && isKeyCharacter(argument[end])) ++end;
     // Keys start with a capital ("INBOX_...", "NT_Italian").
     if (end - found < 3 || argument[found + 1] < 'A' ||
         argument[found + 1] > 'Z')
+    {
+      found = argument.find('@', found + 1);
       continue;
+    }
     const std::string key = argument.substr(found + 1, end - found - 1);
     const char* text = LOC(key.c_str());
-    if (text == key.c_str()) continue;
+    if (text == key.c_str())
+    {
+      found = argument.find('@', found + 1);
+      continue;
+    }
     result.append(argument, copied, found - copied);
     result += text;
     copied = end;
-    found = end - 1;
+    found = argument.find('@', end);
   }
   result.append(argument, copied, std::string::npos);
   return result;
@@ -180,12 +187,13 @@ std::string resolveArgument(const std::string& argument)
     static constexpr std::string_view SEPARATOR = ", @";
     std::string resolved;
     std::size_t start = 1;
-    for (std::size_t next = argument.find(SEPARATOR, start);
-         next != std::string::npos; next = argument.find(SEPARATOR, start))
+    std::size_t next = argument.find(SEPARATOR, start);
+    while (next != std::string::npos)
     {
       resolved += LOC(argument.substr(start, next - start).c_str());
       resolved += ", ";
       start = next + SEPARATOR.size();
+      next = argument.find(SEPARATOR, start);
     }
     return resolved + LOC(argument.c_str() + start);
   }
@@ -208,6 +216,37 @@ std::string resolveSpec(const std::string& argument, std::string_view spec)
   return std::string(argument == "1" ? spec.substr(1, bar - 1)
                                      : spec.substr(bar + 1));
 }
+
+bool hasRecentUnreadDigest(const std::vector<InboxMessage>& messages,
+                           const InboxMessage& message, std::int32_t day)
+{
+  for (auto it = messages.rbegin(); it != messages.rend(); ++it)
+  {
+    if (day - dayOrdinal(it->date) >= Inbox::DIGEST_DAYS) return false;
+    if (!it->read && it->title_key == message.title_key) return true;
+  }
+  return false;
+}
+
+std::optional<std::size_t> appendPlaceholder(
+    const std::string& pattern, std::size_t open,
+    const std::vector<std::string>& args, std::string& result)
+{
+  const std::size_t close = pattern.find('}', open);
+  if (close == std::string::npos || close <= open + 1) return std::nullopt;
+  char* end = nullptr;
+  const unsigned long index =
+      std::strtoul(pattern.c_str() + open + 1, &end, 10);
+  const char* const stop = pattern.c_str() + close;
+  if (end == pattern.c_str() + open + 1 ||
+      (end != stop && *end != ':' && *end != '|'))
+    return std::nullopt;
+  if (index < args.size())
+    result += end == stop
+                  ? resolveArgument(args[index])
+                  : resolveSpec(args[index], std::string_view(end, stop));
+  return close;
+}
 }  // namespace
 
 const char* inboxCategoryKey(InboxCategory category)
@@ -223,32 +262,19 @@ std::string formatLocalized(const std::string& key,
   const std::string pattern = LOC(key.c_str());
   std::string result;
   result.reserve(pattern.size() + 32);
-  for (std::size_t i = 0; i < pattern.size(); ++i)
+  std::size_t i = 0;
+  while (i < pattern.size())
   {
     if (pattern[i] == '{')
     {
-      const std::size_t close = pattern.find('}', i);
-      if (close != std::string::npos && close > i + 1)
+      if (const auto close = appendPlaceholder(pattern, i, args, result))
       {
-        char* end = nullptr;
-        const unsigned long index =
-            std::strtoul(pattern.c_str() + i + 1, &end, 10);
-        const char* const stop = pattern.c_str() + close;
-        if (end != pattern.c_str() + i + 1 &&
-            (end == stop || *end == ':' || *end == '|'))
-        {
-          if (index < args.size())
-          {
-            result += end == stop ? resolveArgument(args[index])
-                                  : resolveSpec(args[index],
-                                                std::string_view(end, stop));
-          }
-          i = close;
-          continue;
-        }
+        i = *close + 1;
+        continue;
       }
     }
     result += pattern[i];
+    ++i;
   }
   return result;
 }
@@ -266,9 +292,9 @@ std::string localizedDate(const std::string& text)
 std::string formatMoney(std::int64_t amount)
 {
   return std::format("{}{}",
-                     "\xE2"
-                     "\x82"
-                     "\xAC",
+                     "\x{E2}"
+                     "\x{82}"
+                     "\x{AC}",
                      amount);
 }
 
@@ -302,10 +328,9 @@ InboxAction Inbox::actionFor(const std::string& title_key)
 
 bool Inbox::isDecision(InboxAction action)
 {
-  return action == InboxAction::RespondOffer ||
-         action == InboxAction::ReplyToPlayer ||
-         action == InboxAction::YouthTrialists ||
-         action == InboxAction::Dilemma;
+  using enum InboxAction;
+  return action == RespondOffer || action == ReplyToPlayer ||
+         action == YouthTrialists || action == Dilemma;
 }
 
 bool Inbox::matchesView(const InboxMessage& message, const InboxView& view,
@@ -337,15 +362,7 @@ std::uint32_t Inbox::add(InboxMessage message)
   {
     // One unread message of the kind per week; the rest join its thread.
     const std::int32_t day = dayOrdinal(message.date);
-    for (auto it = messages.rbegin(); it != messages.rend(); ++it)
-    {
-      if (day - dayOrdinal(it->date) >= DIGEST_DAYS) break;
-      if (!it->read && it->title_key == message.title_key)
-      {
-        message.read = true;
-        break;
-      }
-    }
+    message.read = hasRecentUnreadDigest(messages, message, day);
   }
   message.id = next_id++;
   const std::uint32_t id = message.id;

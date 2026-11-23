@@ -122,18 +122,17 @@ GameDateValue GameDateValue::fromString(const std::string& str)
 {
   if (const bool valid_shape =
           str.size() == 10 && str[4] == '-' && str[7] == '-' &&
-          std::ranges::all_of(
-              str, [](unsigned char character)
-              { return std::isdigit(character) || character == '-'; });
+          std::ranges::count_if(str, [](unsigned char character)
+                                { return std::isdigit(character) != 0; }) == 8;
       !valid_shape)
-    throw std::runtime_error("Invalid date string: " + str);
+    throw std::invalid_argument("Invalid date string: " + str);
 
   const auto y = static_cast<uint16_t>(std::stoi(str.substr(0, 4)));
   const auto m = static_cast<uint8_t>(std::stoi(str.substr(5, 2)));
   const auto d = static_cast<uint8_t>(std::stoi(str.substr(8, 2)));
   if (m < 1 || m > 12 || d < 1 || d > daysInMonth(m, y))
   {
-    throw std::runtime_error("Invalid calendar date: " + str);
+    throw std::invalid_argument("Invalid calendar date: " + str);
   }
   return GameDateValue(y, m, d);
 }

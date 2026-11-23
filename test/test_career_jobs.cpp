@@ -768,6 +768,39 @@ TEST(NationalJobTest, OfferAcceptanceCallUpsAndResults)
             NationalApplyResult::RecentlyLeft);
 }
 
+TEST(NationalJobTest, FinalsQualificationAndHonoursUpdateTheManager)
+{
+  const SlotCleanup slot{uniqueSlot(9)};
+  auto controller = makeNationsWorld(slot.slot);
+  const auto candidates = smallNations(*controller);
+  ASSERT_FALSE(candidates.empty());
+  createInternationalManager(*controller, candidates.front());
+  const std::uint32_t offer = obtainNationalOffer(*controller);
+  ASSERT_NE(offer, 0u);
+  ASSERT_EQ(controller->acceptNationalJobOffer(offer), NationalApplyResult::Ok);
+  Game& game = *controller->getGame();
+  const Language nation = controller->getNationalJob()->nation;
+  NationalTeams::Finals finals;
+  finals.qualified = {nation};
+  const float before_qualifying = controller->getManagerProfile()->reputation;
+  game.getNationalJob().queueFinals(finals, false);
+  controller->advanceDay();
+  ASSERT_TRUE(controller->hasNationalJob());
+  EXPECT_TRUE(controller->getNationalJob()->qualified);
+  EXPECT_GT(controller->getManagerProfile()->reputation, before_qualifying);
+  EXPECT_TRUE(hasMessage(controller->getInbox(), "INBOX_NT_QUALIFIED_TITLE"));
+
+  const auto trophies = controller->getNationalJob()->trophies;
+  const float before_winning = controller->getManagerProfile()->reputation;
+  finals.winner = nation;
+  game.getNationalJob().queueFinals(finals, true);
+  controller->advanceDay();
+  ASSERT_TRUE(controller->hasNationalJob());
+  EXPECT_EQ(controller->getNationalJob()->trophies, trophies + 1);
+  EXPECT_GT(controller->getManagerProfile()->reputation, before_winning);
+  EXPECT_TRUE(hasMessage(controller->getInbox(), "INBOX_NT_TROPHY_TITLE"));
+}
+
 TEST(NationalJobTest, ClubManagersNeedAContinentalNameForBothJobs)
 {
   const SlotCleanup slot{uniqueSlot(5)};

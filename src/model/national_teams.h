@@ -13,6 +13,7 @@
 #include <map>
 #include <memory>
 #include <optional>
+#include <random>
 #include <string>
 #include <unordered_map>
 #include <utility>
@@ -382,6 +383,11 @@ class NationalTeams
                    WorldSimulation& world, TeamID managed_team_id);
   void releasePlayers(const GameDateValue& today, WorldSimulation& world,
                       TeamID managed_team_id);
+  void scheduleWindowFriendlies(const std::vector<GameDateValue>& match_days);
+  void pairFriendlyNations(std::vector<Language>& nations,
+                           const GameDateValue& day, std::mt19937& rng,
+                           std::vector<Language>* leftovers);
+  bool replaceUnavailablePlayers(Squad& squad, const GameDateValue& today);
   void replaceInjured(const GameDateValue& today);
   std::vector<PlayerID> pickSquad(Language nation, size_t size,
                                   const GameDateValue& date,
