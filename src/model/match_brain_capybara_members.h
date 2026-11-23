@@ -105,7 +105,6 @@
     // Carry.
     float carryKeep = 0.0F;
     float carryHeld = 0.0F;
-    float cutInsideCarry = 0.0F;
     // Shield.
     float shieldKeep = 0.0F;
   };
@@ -143,10 +142,69 @@
   /** Fills the brain flow record's weights for this carrier. */
   void noteFlowWeightsCapybara(const MatchPlayer& carrier,
                                const CarrierWeightsCapybara& weights) const;
-  /** Where his carry would take him by his next decision: about a second
-   * towards carryTargetCapybara at carrying speed. */
-  [[nodiscard]] PitchPoint carryEndCapybara(const MatchPlayer& carrier) const;
-  /** The xG from `end` (carryEndCapybara), with the nearest opponent
+  /** A carry candidate (brain redesign plan section 16, step C): a
+   * direction and a pace, measured at his 1 s point on the true chances. */
+  struct CarryCandidateCapybara
+  {
+    /** Metric unit vector. */
+    Vector2F direction{};
+    /** The pace as a level: walk 0, jog 1/3, run 2/3, sprint 1. */
+    float urgency = 0.0F;
+    PitchPoint end{};
+    /** Path keep and the xG at the end, true (before his misreading). */
+    float keep = 1.0F;
+    float endXG = 0.0F;
+    /** On the true chances; the search keeps the highest. */
+    float score = 0.0F;
+  };
+  /** The carry he has chosen, held until his next decision (step C):
+   * read by the planner (carryTargetCapybara) and the dribble pace and
+   * touch (carryUrgencyCapybara). Only for this player in this
+   * possession. */
+  struct HeldCarryCapybara
+  {
+    PlayerID player = 0;
+    double possessionStart = 0.0;
+    Vector2F direction{};
+    float urgency = 0.0F;
+  };
+  std::optional<HeldCarryCapybara> heldCarryCapybara;
+  /** The held carry if it is his, in this possession; else null. */
+  [[nodiscard]] const HeldCarryCapybara* heldCarryOfCapybara(
+      const MatchPlayer& player) const;
+  /** The best carry candidate: each direction (towards the goal; down the
+   * pitch at 0, ±30, ±60, ±90, ±135 and 180 degrees) at each pace (walk,
+   * jog, run, sprint), scored on progress, space, keep and threat at its
+   * 1 s point. Off the pitch, or backwards near his own goal: ruled out.
+   * No take-on choice (step C2): a carry past a defender is a carry. */
+  [[nodiscard]] CarryCandidateCapybara bestCarryCapybara(
+      const MatchPlayer& carrier, const CarrierWeightsCapybara& weights) const;
+  /** A carry pace: its level (walk 0 to sprint 1) and m/s. */
+  struct CarryPaceCapybara
+  {
+    float level = 0.0F;
+    float metresPerSecond = 0.0F;
+  };
+  /** The carry directions open to him (metric unit vectors). */
+  [[nodiscard]] std::vector<Vector2F> carryDirectionsCapybara(
+      const MatchPlayer& carrier) const;
+  /** One carry candidate scored on the true chances; none when its 1 s
+   * point is off the pitch. */
+  [[nodiscard]] std::optional<CarryCandidateCapybara> carryCandidateCapybara(
+      const MatchPlayer& carrier, const CarrierWeightsCapybara& weights,
+      Vector2F direction, CarryPaceCapybara pace) const;
+  /** Chance he keeps the ball carrying from where he is to `to`: 1 minus
+   * the largest, over opponents, of the pressure on his path (as near the
+   * line he covers as the pressure radius) times that opponent's tackle
+   * win chance. */
+  [[nodiscard]] float pathKeepCapybara(const MatchPlayer& carrier,
+                                       PitchPoint to) const;
+  /** The chance `tackler`'s standing tackle wins the ball off `carrier`
+   * (MatchRules::tackleWinChance), as the rules would settle it. */
+  [[nodiscard]] float tackleWinChanceCapybara(const MatchPlayer& tackler,
+                                              const MatchPlayer& carrier,
+                                              bool shielding) const;
+  /** The xG from `end` (a carry's 1 s point), with the nearest opponent
    * measured from there. */
   [[nodiscard]] float carryEndXGCapybara(const MatchPlayer& carrier,
                                          PitchPoint end) const;
@@ -164,7 +222,7 @@
   [[nodiscard]] float keepChanceCapybara(const MatchPlayer& carrier,
                                          bool shielding,
                                          float pressure) const;
-  MatchPlayer* chooseTakeOnCapybara(MatchPlayer& carrier);
+  static MatchPlayer* chooseTakeOnCapybara(MatchPlayer& carrier);
   void afterPassReleasedCapybara(const MatchPlayer& passer, const MatchPlayer& receiver);
   /** @param details Debugger detail: every team-mate looked at (or null). */
   std::optional<PassOption> choosePassTargetCapybara(
@@ -237,17 +295,26 @@
    * touchline from wide of the six-yard box; in line with it, up and over
    * the bar or glanced on towards the corner, whichever is easier. */
   HeaderPlay chooseHeaderOutCapybara(const MatchPlayer& header) const;
-  /** Where the carrier heads with the ball: forward, away from the nearest
-   * opponent, inside or down his lane. */
+  /** Where the carrier heads with the ball: along the direction of his
+   * held carry (bestCarryCapybara), or straight down the pitch before he
+   * has chosen one. */
   PitchPoint carryTargetCapybara(const MatchPlayer& player) const;
-  /** The pace (m/s) he carries the ball at (dribble meet plan 2c): from
-   * the space along his way, the team's phase and its risk-taking, walk to
-   * sprint; Dribbling caps how much of his pace he can use with it. */
+  /** Where his first touch aims (before his decision on the ball): the
+   * carry target as it was before step C, until the first touch moves
+   * onto the decision frame. */
+  PitchPoint firstTouchAimCapybara(const MatchPlayer& player) const;
+  /** The pace (m/s) he carries the ball at (dribble meet plan 2c): his
+   * held carry's pace, walk to sprint; Dribbling caps how much of his pace
+   * he can use with it. */
   float carryPaceCapybara(const MatchPlayer& player) const;
+  /** The pace (m/s) he carries the ball at for an urgency level (0 walk
+   * to 1 sprint), capped by Dribbling. */
+  float carryPaceAtCapybara(const MatchPlayer& player, float urgency) const;
   /** What this brain decides for itself (MatchEngine::BrainTraits). */
   const BrainTraits& brainTraitsCapybara() const;
   /** How urgently he carries it (0-1): what carryPaceCapybara maps onto
-   * his bands. */
+   * his bands; his held carry's pace level (a drill's set dribbler: the
+   * drill's). */
   float carryUrgencyCapybara(const MatchPlayer& player) const;
   /** How long until he wants his ball again after a touch (s), the push's
    * intent (dribble meet plan 3c): as soon as he can with an opponent near;

@@ -97,6 +97,25 @@ enum class OptionIndex : std::uint8_t
 inline constexpr std::size_t OPTION_COUNT =
     static_cast<std::size_t>(OptionIndex::COUNT);
 
+/** One carry candidate (brain redesign plan section 16, step C): a
+ * direction and a pace, measured at its 1 s point on the true chances.
+ * Candidates ruled out (off the pitch, backwards near his own goal) and
+ * paces the Dribbling cap makes equal are not listed. */
+struct CarryCandidate
+{
+  /** Degrees off straight down the pitch; positive to his right as the
+   * tool draws the pitch (y downwards). */
+  float angleDegrees = 0.0F;
+  /** "Towards the goal" rather than one of the fixed angles. */
+  bool towardsGoal = false;
+  /** Pace level: walk 0, jog 1/3, run 2/3, sprint 1. */
+  float level = 0.0F;
+  PitchPoint end{};
+  float keep = 0.0F;
+  float endXG = 0.0F;
+  float score = 0.0F;
+};
+
 /** One carrier decision (pass, shot, carry, shield), as the tool shows it. */
 struct CarrierRecord
 {
@@ -124,6 +143,8 @@ struct CarrierRecord
   float receiverRoleSteps = 0.0F;
   /** Where his carry takes him by his next decision. */
   PitchPoint carryEnd{};
+  /** Every carry candidate; the best (highest score) is the carry option. */
+  std::vector<CarryCandidate> carryCandidates;
   /** The chosen option (OPTION_COUNT for none); a shield deep in his own
    * third is a clearance. */
   std::size_t chosen = OPTION_COUNT;

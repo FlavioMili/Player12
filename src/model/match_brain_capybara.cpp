@@ -2770,8 +2770,58 @@ void MatchEngine::planWayRoundCapybara(std::size_t slot)
   }
 }
 
+namespace
+{
+// Carry candidates (brain redesign plan section 16, step C). NT: our own
+// estimates, each needs tuning.
+/** He decides again about a second later (individual possessions last
+ * about a second), so a carry is measured where he will be then. */
+constexpr float CARRY_HORIZON_SECONDS = 1.0F;
+/** NT: the directions, in degrees off straight down the pitch. */
+constexpr std::array<float, 10> CARRY_ANGLES_DEGREES = {
+    0.0F, 30.0F, -30.0F, 60.0F, -60.0F, 90.0F, -90.0F, 135.0F, -135.0F, 180.0F};
+/** NT: "towards the goal" is left out within this of another direction. */
+constexpr float SAME_DIRECTION_DEGREES = 5.0F;
+/** NT: a candidate whose 1 s point is nearer the lines than this is out. */
+constexpr float CARRY_PITCH_MARGIN_METRES = 1.0F;
+/** NT: paces the Dribbling cap makes this close count once (m/s). */
+constexpr float SAME_PACE_MPS = 0.05F;
+/** The pace levels: walk, jog, run, sprint (as carryPaceCapybara maps). */
+constexpr std::array<float, 4> CARRY_PACE_LEVELS = {0.0F, 1.0F / 3.0F,
+                                                    2.0F / 3.0F, 1.0F};
+/** NT: the planner's carry target sits this far along the held
+ * direction (today's target sat about 17 m ahead). */
+constexpr float CARRY_TARGET_METRES = 15.0F;
+/** NT: before he has chosen a carry: a jog. */
+constexpr float UNCHOSEN_CARRY_URGENCY = 1.0F / 3.0F;
+constexpr float DEGREES_PER_HALF_TURN = 180.0F;
+constexpr float DEGREES_PER_TURN = 360.0F;
+/** The brain flow tool: an angle this close to a fixed one is that one. */
+constexpr float FIXED_ANGLE_MATCH_DEGREES = 0.5F;
+}  // namespace
+
 PitchPoint MatchEngine::carryTargetCapybara(const MatchPlayer& player) const
 {
+  // Along the direction of the carry he chose (bestCarryCapybara), held
+  // until he decides again; straight down the pitch before he has chosen
+  // one. Lost until roles act on the options step (plan section 16): the
+  // cut inside, keeping a wide lane, the forward metres for Dribbling, risk
+  // and a counter-attack, and the dodge away from the nearest opponent.
+  const HeldCarryCapybara* held = heldCarryOfCapybara(player);
+  const Vector2F direction =
+      held != nullptr
+          ? held->direction
+          : Vector2F{.x = player.isHomeTeam ? 1.0F : -1.0F, .y = 0.0F};
+  return clampToPitch(
+      PitchPoint{player.position.x + (direction.x * CARRY_TARGET_METRES),
+                 player.position.y + (direction.y * CARRY_TARGET_METRES)});
+}
+
+PitchPoint MatchEngine::firstTouchAimCapybara(const MatchPlayer& player) const
+{
+  // The first touch's aim (it comes before his decision on the ball):
+  // the carry target as it was before step C, kept until the first touch
+  // moves onto the decision frame.
   const StrategySliders sliders = getEffectiveSliders(player.isHomeTeam);
   const TeamPhase teamPhase = player.isHomeTeam ? homePhase : awayPhase;
   const float attackDirection = player.isHomeTeam ? 1.0F : -1.0F;
@@ -3476,7 +3526,8 @@ TouchIntent MatchEngine::chooseFirstTouchCapybara(
   // Otherwise set it just ahead of where he will be, toward where he means
   // to carry it, turned away from the nearest opponent the closer he is,
   // and never back toward his own goal near it.
-  Vector2F aim = metricDirection(player.position, carryTargetCapybara(player));
+  Vector2F aim =
+      metricDirection(player.position, firstTouchAimCapybara(player));
   if (length(aim) <= EPSILON)
   {
     aim = {.x = attackDirection, .y = 0.0F};
@@ -3778,7 +3829,6 @@ MatchEngine::CarrierWeightsCapybara MatchEngine::neutralCarrierWeightsCapybara()
   // Carry. Keeping the ball counts as much as a completed pass does.
   weights.carryKeep = P::COMPLETION_UTILITY_WEIGHT;
   weights.carryHeld = -D::CARRY_HOLD_PENALTY_PER_SECOND;
-  weights.cutInsideCarry = D::CUT_INSIDE_CARRY_BONUS;
   // Shield.
   weights.shieldKeep = P::COMPLETION_UTILITY_WEIGHT;
   return weights;
@@ -3931,8 +3981,6 @@ void MatchEngine::noteFlowWeightsCapybara(
   note("time on the ball", neutral.carryHeld, none, weights.carryHeld);
   note("cutting inside (shot)", neutral.cutInsideShot, none,
        weights.cutInsideShot);
-  note("cutting inside (carry)", neutral.cutInsideCarry, none,
-       weights.cutInsideCarry);
   note("weak foot (shot)", neutral.weakFootShot, none, weights.weakFootShot);
   note("wide angle (shot)", neutral.wideShot, none, weights.wideShot);
 }
@@ -3963,26 +4011,266 @@ float MatchEngine::addShotCoreCapybara(DecisionFrame::Score& shot,
   return range;
 }
 
-PitchPoint MatchEngine::carryEndCapybara(const MatchPlayer& carrier) const
+namespace
 {
-  // He decides again about a second later (individual possessions last
-  // about a second), so the carry is worth the xG from where he will be
-  // then, not from the point he aims at (about 17 m ahead).
-  constexpr float NEXT_DECISION_SECONDS = 1.0F;
-  const PitchPoint aim = carryTargetCapybara(carrier);
-  const float aimMetres = distance(carrier.position, aim);
-  const float reach =
-      std::min(aimMetres, currentTopSpeed(carrier) *
-                              MatchTuning::Player::CARRY_BALL_SPEED_SCALE *
-                              NEXT_DECISION_SECONDS);
-  PitchPoint end = carrier.position;
-  if (aimMetres > EPSILON)
+Vector2F rotatedBy(Vector2F vector, float degrees)
+{
+  const float radians =
+      degrees * std::numbers::pi_v<float> / DEGREES_PER_HALF_TURN;
+  const float cosine = std::cos(radians);
+  const float sine = std::sin(radians);
+  return {.x = (vector.x * cosine) - (vector.y * sine),
+          .y = (vector.x * sine) + (vector.y * cosine)};
+}
+
+/** Metres from `point` to the segment from `from` to `to`. */
+float segmentMetres(PitchPoint point, PitchPoint from, PitchPoint to)
+{
+  const Vector2F along = to - from;
+  const Vector2F toPoint = point - from;
+  const float lengthSquared = (along.x * along.x) + (along.y * along.y);
+  const float share =
+      lengthSquared > 0.0F
+          ? std::clamp(
+                ((toPoint.x * along.x) + (toPoint.y * along.y)) / lengthSquared,
+                0.0F, 1.0F)
+          : 0.0F;
+  const PitchPoint nearest{from.x + (along.x * share),
+                           from.y + (along.y * share)};
+  return distance(point, nearest);
+}
+
+/** A carry's measures at its 1 s point. */
+struct CarryMeasures
+{
+  float space;
+  float keep;
+  float gain;
+  float endXG;
+};
+
+/** A carry's terms: space where it ends, progress and threat (each times
+ * the chance he keeps it) and keeping it. The search (true chances) and
+ * the chosen carry (as he reads them) are scored the same way. */
+void addCarryTerms(DecisionFrame::Score& carry,
+                   const MatchEngine::CarrierWeightsCapybara& weights,
+                   const CarryMeasures& measures)
+{
+  using S = TermSource;
+  carry.add("space where the ball ends", S::SITUATION, measures.space,
+            weights.space);
+  carry.add("progress (keeps it x gain)", S::SITUATION,
+            measures.keep * measures.gain, weights.progress);
+  carry.add("keeps the ball", S::SITUATION, measures.keep, weights.carryKeep);
+  carry.add("threat (keeps it x xG at the carry's end)", S::SITUATION,
+            measures.keep * measures.endXG, weights.threat);
+}
+}  // namespace
+
+const MatchEngine::HeldCarryCapybara* MatchEngine::heldCarryOfCapybara(
+    const MatchPlayer& player) const
+{
+  if (!heldCarryCapybara || player.player == nullptr ||
+      heldCarryCapybara->player != player.player->getId() ||
+      heldCarryCapybara->possessionStart !=
+          getPossessionHistory().possessionStartSeconds)
   {
-    const float share = reach / aimMetres;
-    end.x += (aim.x - carrier.position.x) * share;
-    end.y += (aim.y - carrier.position.y) * share;
+    return nullptr;
   }
-  return end;
+  return &*heldCarryCapybara;
+}
+
+float MatchEngine::tackleWinChanceCapybara(const MatchPlayer& tackler,
+                                           const MatchPlayer& carrier,
+                                           bool shielding) const
+{
+  // The same challenge the rules would settle (resolveTackle): his body
+  // against the carrier's, the team edges and the tackler's pressing; a
+  // standing tackle from the front with the ball at the carrier's foot.
+  MatchRules::TackleContext context;
+  context.make = tackleMake(tackler, nullptr);
+  context.resist = tackleResist(carrier, shielding, nullptr);
+  context.defenderEdge =
+      teamEdge(tackler.isHomeTeam) * MatchTuning::Rules::DUEL_EDGE_WEIGHT;
+  context.carrierEdge =
+      teamEdge(carrier.isHomeTeam) * MatchTuning::Rules::DUEL_EDGE_WEIGHT;
+  context.pressing = getEffectiveSliders(tackler.isHomeTeam).pressing;
+  return MatchRules::tackleWinChance(context);
+}
+
+float MatchEngine::pathKeepCapybara(const MatchPlayer& carrier,
+                                    PitchPoint to) const
+{
+  // The simple path keep (step C): the opponents where they stand now, as
+  // near his line as the pressure radius. A longer, faster carry passes
+  // nearer more of them. Better later: whether each can reach the line
+  // before he passes (plan section 16, "Better measures, later").
+  constexpr float RADIUS = MatchTuning::Decision::PRESSURE_RADIUS_METRES;
+  float worst = 0.0F;
+  for (const MatchPlayer& opponent : players)
+  {
+    if (opponent.isHomeTeam == carrier.isHomeTeam || !active(opponent))
+    {
+      continue;
+    }
+    const float pressure = std::clamp(
+        (RADIUS - segmentMetres(opponent.position, carrier.position, to)) /
+            RADIUS,
+        0.0F, 1.0F);
+    if (pressure > 0.0F)
+    {
+      worst = std::max(
+          worst, pressure * tackleWinChanceCapybara(opponent, carrier, false));
+    }
+  }
+  return 1.0F - worst;
+}
+
+std::vector<Vector2F> MatchEngine::carryDirectionsCapybara(
+    const MatchPlayer& carrier) const
+{
+  // Straight down the pitch and turned off it, and towards the goal;
+  // backwards near his own goal ruled out (the first touch's guard, as an
+  // Options rule).
+  const float forward = carrier.isHomeTeam ? 1.0F : -1.0F;
+  const bool nearOwnGoal =
+      pitch.fromOwnGoalLine(carrier.position, carrier.isHomeTeam) <
+      MatchTuning::SetPiece::CROSS_CLEARANCE_WITHIN_METRES;
+  std::vector<Vector2F> directions;
+  directions.reserve(CARRY_ANGLES_DEGREES.size() + 1);
+  for (const float angle : CARRY_ANGLES_DEGREES)
+  {
+    directions.push_back(rotatedBy({.x = forward, .y = 0.0F}, angle));
+  }
+  const PitchPoint goal =
+      pitch.at(carrier.isHomeTeam ? 1.0F : 0.0F, MatchTuning::Pitch::CENTRE);
+  const Vector2F towardsGoal = metricDirection(carrier.position, goal);
+  const float sameCosine =
+      std::cos(SAME_DIRECTION_DEGREES * std::numbers::pi_v<float> /
+               DEGREES_PER_HALF_TURN);
+  const auto close = [&](Vector2F direction)
+  {
+    return (direction.x * towardsGoal.x) + (direction.y * towardsGoal.y) >
+           sameCosine;
+  };
+  if (length(towardsGoal) > EPSILON && std::ranges::none_of(directions, close))
+  {
+    directions.push_back(towardsGoal);
+  }
+  if (nearOwnGoal)
+  {
+    std::erase_if(directions, [forward](Vector2F direction)
+                  { return direction.x * forward < -EPSILON; });
+  }
+  return directions;
+}
+
+std::optional<MatchEngine::CarryCandidateCapybara>
+MatchEngine::carryCandidateCapybara(const MatchPlayer& carrier,
+                                    const CarrierWeightsCapybara& weights,
+                                    Vector2F direction,
+                                    CarryPaceCapybara pace) const
+{
+  // Its 1 s point, measured and scored on the true chances; none off the
+  // pitch.
+  const float reach = pace.metresPerSecond * CARRY_HORIZON_SECONDS;
+  const PitchPoint end{carrier.position.x + (direction.x * reach),
+                       carrier.position.y + (direction.y * reach)};
+  const float minX =
+      std::min(pitch.atX(0.0F), pitch.atX(1.0F)) + CARRY_PITCH_MARGIN_METRES;
+  const float maxX =
+      std::max(pitch.atX(0.0F), pitch.atX(1.0F)) - CARRY_PITCH_MARGIN_METRES;
+  const float minY =
+      std::min(pitch.atY(0.0F), pitch.atY(1.0F)) + CARRY_PITCH_MARGIN_METRES;
+  const float maxY =
+      std::max(pitch.atY(0.0F), pitch.atY(1.0F)) - CARRY_PITCH_MARGIN_METRES;
+  if (end.x < minX || end.x > maxX || end.y < minY || end.y > maxY)
+  {
+    return std::nullopt;
+  }
+  CarryCandidateCapybara candidate{.direction = direction,
+                                   .urgency = pace.level,
+                                   .end = end,
+                                   .keep = pathKeepCapybara(carrier, end),
+                                   .endXG = carryEndXGCapybara(carrier, end),
+                                   .score = 0.0F};
+  DecisionFrame::Score terms;
+  addCarryTerms(
+      terms, weights,
+      {.space = spaceAtCapybara(carrier.isHomeTeam, end),
+       .keep = candidate.keep,
+       .gain = progressCapybara(carrier.isHomeTeam, carrier.position, end),
+       .endXG = candidate.endXG});
+  candidate.score = terms.total();
+  return candidate;
+}
+
+MatchEngine::CarryCandidateCapybara MatchEngine::bestCarryCapybara(
+    const MatchPlayer& carrier, const CarrierWeightsCapybara& weights) const
+{
+  // Paces: the tops of his walk, jog and run bands and his top speed, each
+  // capped by Dribbling (as carryPaceCapybara carries it).
+  std::vector<CarryPaceCapybara> paces;
+  for (const float level : CARRY_PACE_LEVELS)
+  {
+    const float metresPerSecond = carryPaceAtCapybara(carrier, level);
+    if (paces.empty() || std::abs(metresPerSecond -
+                                  paces.back().metresPerSecond) > SAME_PACE_MPS)
+    {
+      paces.push_back({.level = level, .metresPerSecond = metresPerSecond});
+    }
+  }
+  std::optional<CarryCandidateCapybara> best;
+  const auto keepBest = [&best](std::optional<CarryCandidateCapybara> next)
+  {
+    if (next && (!best || next->score > best->score))
+    {
+      best = next;
+    }
+  };
+  const float forward = carrier.isHomeTeam ? 1.0F : -1.0F;
+  for (const Vector2F direction : carryDirectionsCapybara(carrier))
+  {
+    for (const CarryPaceCapybara pace : paces)
+    {
+      const std::optional<CarryCandidateCapybara> candidate =
+          carryCandidateCapybara(carrier, weights, direction, pace);
+      if (candidate && flowRecord != nullptr)
+      {
+        // The brain flow tool: every candidate, its angle off straight
+        // down the pitch (positive to his right as the tool draws it).
+        const float angle =
+            std::atan2(direction.y * forward, direction.x * forward) *
+            DEGREES_PER_HALF_TURN / std::numbers::pi_v<float>;
+        const bool fixed = std::ranges::any_of(
+            CARRY_ANGLES_DEGREES,
+            [angle](float grid)
+            {
+              return std::abs(std::remainder(angle - grid, DEGREES_PER_TURN)) <
+                     FIXED_ANGLE_MATCH_DEGREES;
+            });
+        flowRecord->carryCandidates.push_back({.angleDegrees = angle,
+                                               .towardsGoal = !fixed,
+                                               .level = candidate->urgency,
+                                               .end = candidate->end,
+                                               .keep = candidate->keep,
+                                               .endXG = candidate->endXG,
+                                               .score = candidate->score});
+      }
+      keepBest(candidate);
+    }
+  }
+  if (best)
+  {
+    return *best;
+  }
+  // Hemmed in on every side: stand on it (a walk, going nowhere).
+  CarryCandidateCapybara still;
+  still.direction = {.x = forward, .y = 0.0F};
+  still.end = carrier.position;
+  still.keep = pathKeepCapybara(carrier, carrier.position);
+  still.endXG = carryEndXGCapybara(carrier, carrier.position);
+  return still;
 }
 
 namespace
@@ -4609,18 +4897,8 @@ float MatchEngine::keepChanceCapybara(const MatchPlayer& carrier,
   {
     return 1.0F;
   }
-  // The same challenge the rules would settle (resolveTackle): his body
-  // against the carrier's, the team edges and the tackler's pressing; a
-  // standing tackle from the front with the ball at the carrier's foot.
-  MatchRules::TackleContext context;
-  context.make = tackleMake(*tackler, nullptr);
-  context.resist = tackleResist(carrier, shielding, nullptr);
-  context.defenderEdge =
-      teamEdge(tackler->isHomeTeam) * MatchTuning::Rules::DUEL_EDGE_WEIGHT;
-  context.carrierEdge =
-      teamEdge(carrier.isHomeTeam) * MatchTuning::Rules::DUEL_EDGE_WEIGHT;
-  context.pressing = getEffectiveSliders(tackler->isHomeTeam).pressing;
-  return 1.0F - (pressure * MatchRules::tackleWinChance(context));
+  return 1.0F -
+         (pressure * tackleWinChanceCapybara(*tackler, carrier, shielding));
 }
 
 MatchEngine::BallAction MatchEngine::chooseBallActionCapybara(
@@ -4821,31 +5099,22 @@ MatchEngine::BallAction MatchEngine::chooseBallActionCapybara(
   // than three.
   const auto heldSeconds = static_cast<float>(
       getSimulatedSeconds() - getPossessionHistory().possessionStartSeconds);
-  // The measures are taken where he will be at his next decision
-  // (carryEndCapybara), as a pass's are taken at the receiver.
+  // The best carry candidate, a direction and a pace (step C,
+  // bestCarryCapybara, on the true chances), scored again on the chances
+  // as he reads them. Its measures are taken at its 1 s point, where he
+  // will be at his next decision, as a pass's are taken at the receiver.
   DecisionFrame::Score carry;
-  const PitchPoint carryEnd = carryEndCapybara(carrier);
-  const float carryKeep =
-      readChance("carry keep", keepChanceCapybara(carrier, false, pressure),
-                 misreadOffset());
-  const float carryEndXG = readChance(
-      "carry end xG", carryEndXGCapybara(carrier, carryEnd), misreadOffset());
-  const float carryProgress =
-      carryKeep *
-      progressCapybara(carrier.isHomeTeam, carrier.position, carryEnd);
-  carry.add("space where the ball ends", S::SITUATION,
-            spaceAtCapybara(carrier.isHomeTeam, carryEnd), weights.space);
-  carry.add("progress (keeps it x gain)", S::SITUATION, carryProgress,
-            weights.progress);
-  carry.add("keeps the ball", S::SITUATION, carryKeep, weights.carryKeep);
-  // Threat: the chance he keeps it times the xG where the carry ends.
-  carry.add("threat (keeps it x xG at the carry's end)", S::SITUATION,
-            carryKeep * carryEndXG, weights.threat);
+  const CarryCandidateCapybara bestCarry = bestCarryCapybara(carrier, weights);
+  const PitchPoint carryEnd = bestCarry.end;
+  // Braced, so the two misreadings are drawn in this order.
+  addCarryTerms(
+      carry, weights,
+      {.space = spaceAtCapybara(carrier.isHomeTeam, carryEnd),
+       .keep = readChance("carry keep", bestCarry.keep, misreadOffset()),
+       .gain = progressCapybara(carrier.isHomeTeam, carrier.position, carryEnd),
+       .endXG = readChance("carry end xG", bestCarry.endXG, misreadOffset())});
   carry.add("time already on the ball", S::SITUATION, heldSeconds,
             weights.carryHeld);
-  // A wide forward cutting inside wants to run at the box himself.
-  carry.add("cutting inside", S::SLOT_ROLE, gate(cutsInside),
-            weights.cutInsideCarry);
 
   // Shield: open only when he is pressed and has no pass worth playing.
   DecisionFrame::Score shield;
@@ -5073,6 +5342,16 @@ MatchEngine::BallAction MatchEngine::chooseBallActionCapybara(
     action.kind = ScenarioAction::CARRY;
     action.holdSeconds = randomFloat(MatchTuning::Decision::MIN_DRIBBLE_TIME,
                                      MatchTuning::Decision::MAX_DRIBBLE_TIME);
+    // The chosen direction and pace hold until he decides again: the
+    // planner and the dribble pace read them (step C).
+    if (carrier.player != nullptr)
+    {
+      heldCarryCapybara = HeldCarryCapybara{
+          .player = carrier.player->getId(),
+          .possessionStart = getPossessionHistory().possessionStartSeconds,
+          .direction = bestCarry.direction,
+          .urgency = bestCarry.urgency};
+    }
     return action;
   }
   const float fromOwnGoal =
@@ -6442,30 +6721,19 @@ MatchEngine::RestartPlay MatchEngine::chooseCornerPlayCapybara(
   return {.kind = RestartPlay::Kind::PASS, .pass = delivery, .lofted = true};
 }
 
-MatchPlayer* MatchEngine::chooseTakeOnCapybara(MatchPlayer& carrier)
+MatchPlayer* MatchEngine::chooseTakeOnCapybara(MatchPlayer& /*carrier*/)
 {
-  // A defender standing in his path, close and ready to challenge, is taken
-  // on rather than run through.
-  MatchPlayer* blocker =
-      findClosestPlayer(carrier.position, !carrier.isHomeTeam, false);
-  const float forward = carrier.isHomeTeam ? 1.0F : -1.0F;
-  if ((blocker != nullptr) && blocker->tackleCooldown <= 0.0F &&
-      distance(blocker->position, carrier.position) <
-          MatchTuning::Dribble::TAKE_ON_RANGE_METRES &&
-      (blocker->position.x - carrier.position.x) * forward > 0.0F)
-  {
-    return blocker;
-  }
+  // No take-on choice (step C2, the user's decision): a carry is a carry,
+  // scored like any other direction and pace. Take-ons come back when the
+  // contest is reworked to arise from the physics (plan section 16).
   return nullptr;
 }
 
 float MatchEngine::carryUrgencyCapybara(const MatchPlayer& player) const
 {
-  // How urgently he carries it: open space along his way, a break on (an
-  // attacking transition) and a side that takes risks push him on; with
-  // nobody near he may stroll it out, with someone in front he slows to
-  // keep it. A drill's dribbler goes as hard as the drill asks.
-  using R = MatchTuning::Dribble;
+  // How urgently he carries it: the pace of the carry he chose (step C;
+  // walk 0, jog 1/3, run 2/3, sprint 1), held until he decides again. A
+  // drill's dribbler goes as hard as the drill asks.
   if (player.player != nullptr)
   {
     for (const auto& [keeper, urgency] : ballKeeperUrgency)
@@ -6476,47 +6744,20 @@ float MatchEngine::carryUrgencyCapybara(const MatchPlayer& player) const
       }
     }
   }
-  const Vector2F at = asVector(player.position);
-  const Vector2F way = ball.dribbleGoal - player.position;
-  const float wayMetres = length(way);
-  float nearest = R::CARRY_SPACE_OPEN_METRES;
-  for (const MatchPlayer& opponent : players)
-  {
-    if (!active(opponent) || opponent.isHomeTeam == player.isHomeTeam)
-    {
-      continue;
-    }
-    const Vector2F toThem = {.x = asVector(opponent.position).x - at.x,
-                             .y = asVector(opponent.position).y - at.y};
-    const float metres = length(toThem);
-    if (wayMetres > EPSILON && metres > EPSILON &&
-        (toThem.x * way.x + toThem.y * way.y) <
-            R::CARRY_SPACE_CONE_COSINE * metres * wayMetres)
-    {
-      continue;
-    }
-    nearest = std::min(nearest, metres);
-  }
-  const float space =
-      std::clamp((nearest - R::CARRY_SPACE_CLOSE_METRES) /
-                     (R::CARRY_SPACE_OPEN_METRES - R::CARRY_SPACE_CLOSE_METRES),
-                 0.0F, 1.0F);
-  const TeamPhase phase = player.isHomeTeam ? homePhase : awayPhase;
-  const StrategySliders sliders = getEffectiveSliders(player.isHomeTeam);
-  return std::clamp(
-      R::CARRY_URGENCY_BASE + (R::CARRY_URGENCY_SPACE * space) +
-          (phase == TeamPhase::ATTACKING_TRANSITION
-               ? R::CARRY_URGENCY_TRANSITION
-               : 0.0F) +
-          (R::CARRY_URGENCY_RISK * (sliders.riskTaking - 0.5F) * 2.0F),
-      0.0F, 1.0F);
+  const HeldCarryCapybara* held = heldCarryOfCapybara(player);
+  return held != nullptr ? held->urgency : UNCHOSEN_CARRY_URGENCY;
 }
 
 float MatchEngine::carryPaceCapybara(const MatchPlayer& player) const
 {
+  return carryPaceAtCapybara(player, carryUrgencyCapybara(player));
+}
+
+float MatchEngine::carryPaceAtCapybara(const MatchPlayer& player,
+                                       float urgency) const
+{
   // Walk at urgency 0, jog at 1/3, run at 2/3, sprint at 1 (the tops of his
   // bands, as fuel has left them), in straight lines between.
-  const float urgency = carryUrgencyCapybara(player);
   const std::array<float, 4> tops{speedBand(player, MovementMode::WALK).high,
                                   speedBand(player, MovementMode::JOG).high,
                                   speedBand(player, MovementMode::RUN).high,

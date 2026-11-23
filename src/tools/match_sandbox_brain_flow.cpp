@@ -680,6 +680,7 @@ void BrainFlowScene::renderPitch(float width)
   constexpr float GRAB_RADIUS = 12.0F;
   constexpr float THIN = 1.5F;
   constexpr float BOLD = 3.0F;
+  constexpr float CANDIDATE_DOT = 2.0F;
   constexpr float EDGE = 0.01F;
   // Penalty areas: 16.5 m deep and 40.32 m wide on a 105 x 68 m pitch.
   constexpr float BOX_DEPTH = 16.5F / 105.0F;
@@ -752,6 +753,13 @@ void BrainFlowScene::renderPitch(float width)
       {
         line(spotOf(index), OptionIndex::PASS);
       }
+    }
+    // Every carry candidate's 1 s point, then the best one's line.
+    for (const BrainFlow::CarryCandidate& candidate : layered.carryCandidates)
+    {
+      draw->AddCircleFilled(screen(pitch.fractionX(candidate.end),
+                                   pitch.fractionY(candidate.end)),
+                            CANDIDATE_DOT * scale, Page::MUTED);
     }
     line(screen(pitch.fractionX(layered.carryEnd),
                 pitch.fractionY(layered.carryEnd)),
@@ -985,14 +993,16 @@ constexpr std::array<Situation, 15> SITUATIONS = {{
      .onFrame = false},
     {.depth = 1,
      .title = "Our ball, I have it (collected)",
-     .decidedBy = "chooseBallAction: pass, shot, carry, shield",
+     .decidedBy = "chooseBallAction: pass, shot, carry (direction x pace), "
+                  "shield",
      .layers = SLIDERS | ROLE | ORDERS | MOOD,
      .plannerWide = false,
      .onFrame = true},
     {.depth = 2,
-     .title = "Then: take-ons and carrying",
-     .decidedBy = "chooseTakeOn, carryTarget, carryUrgency, carryPace",
-     .layers = SLIDERS,
+     .title = "Then: carrying it",
+     .decidedBy = "follows the chosen carry (carryTarget, carryUrgency, "
+                  "carryPace); no take-ons until the take-on rework",
+     .layers = 0,
      .plannerWide = false,
      .onFrame = false},
 }};
@@ -1257,6 +1267,117 @@ void goalStage()
 }
 }  // namespace
 
+namespace
+{
+constexpr std::array<const char*, 4> PACE_NAMES = {"walk", "jog", "run",
+                                                   "sprint"};
+/** Angles this close are the same direction (degrees). */
+constexpr float SAME_ANGLE = 0.5F;
+constexpr float BACK_ANGLE = 180.0F;
+
+std::size_t paceIndex(float level)
+{
+  const auto steps = static_cast<float>(PACE_NAMES.size() - 1);
+  return std::min(PACE_NAMES.size() - 1,
+                  static_cast<std::size_t>(std::lround(level * steps)));
+}
+
+std::string carryDirectionName(const BrainFlow::CarryCandidate& candidate)
+{
+  const float angle = candidate.angleDegrees;
+  if (candidate.towardsGoal)
+  {
+    return std::format("towards goal ({:.0f} deg)", angle);
+  }
+  if (std::abs(angle) < SAME_ANGLE)
+  {
+    return "straight on";
+  }
+  if (std::abs(std::abs(angle) - BACK_ANGLE) < SAME_ANGLE)
+  {
+    return "back";
+  }
+  return std::format("{:.0f} deg {}", std::abs(angle),
+                     angle > 0.0F ? "right" : "left");
+}
+
+/** The carry candidates as a grid: a row per direction, a column per pace;
+ * each cell its score on the true chances (hover: keep and end xG); the
+ * best, which is the carry option, in lime. */
+void carryGrid(const BrainFlow::CarrierRecord& record)
+{
+  const std::vector<BrainFlow::CarryCandidate>& candidates =
+      record.carryCandidates;
+  if (candidates.empty())
+  {
+    return;
+  }
+  const auto best = std::ranges::max_element(candidates, {},
+                                             &BrainFlow::CarryCandidate::score);
+  std::vector<float> angles;
+  for (const BrainFlow::CarryCandidate& candidate : candidates)
+  {
+    if (std::ranges::none_of(
+            angles, [&](float angle)
+            { return std::abs(angle - candidate.angleDegrees) < SAME_ANGLE; }))
+    {
+      angles.push_back(candidate.angleDegrees);
+    }
+  }
+  muted(
+      "Carry candidates, scored at each 1 s point on the true chances "
+      "(hover a score for its keep and end xG):");
+  constexpr int COLUMNS = 1 + static_cast<int>(PACE_NAMES.size());
+  if (!ImGui::BeginTable(
+          "##carry_candidates", COLUMNS,
+          ImGuiTableFlags_SizingFixedFit | ImGuiTableFlags_BordersInnerV))
+  {
+    return;
+  }
+  ImGui::TableSetupColumn("Direction");
+  for (const char* pace : PACE_NAMES)
+  {
+    ImGui::TableSetupColumn(pace);
+  }
+  ImGui::TableHeadersRow();
+  for (const float angle : angles)
+  {
+    ImGui::TableNextRow();
+    bool named = false;
+    for (const BrainFlow::CarryCandidate& candidate : candidates)
+    {
+      if (std::abs(candidate.angleDegrees - angle) >= SAME_ANGLE)
+      {
+        continue;
+      }
+      if (!named)
+      {
+        ImGui::TableSetColumnIndex(0);
+        text(carryDirectionName(candidate));
+        named = true;
+      }
+      ImGui::TableSetColumnIndex(1 +
+                                 static_cast<int>(paceIndex(candidate.level)));
+      text(std::format("{:.2f}", candidate.score),
+           &candidate == &*best ? SandboxPageUI::LIME : SandboxPageUI::CREAM);
+      if (ImGui::IsItemHovered())
+      {
+        ImGui::BeginTooltip();
+        ImGui::TextUnformatted(
+            std::format("keeps it {:.2f}, xG at the end {:.3f}", candidate.keep,
+                        candidate.endXG)
+                .c_str());
+        ImGui::EndTooltip();
+      }
+    }
+  }
+  ImGui::EndTable();
+  muted(
+      "Missing cells: off the pitch, backwards near his own goal, or a pace "
+      "the Dribbling cap makes the same as the one before.");
+}
+}  // namespace
+
 void BrainFlowScene::optionsStage()
 {
   for (std::size_t index = 0; index < BrainFlow::OPTION_COUNT; ++index)
@@ -1285,6 +1406,10 @@ void BrainFlowScene::optionsStage()
     if ((before.ruledOut == nullptr) != (option.ruledOut == nullptr))
     {
       text("the layers change whether it is open", WARNING);
+    }
+    if (index == at(OptionIndex::CARRY))
+    {
+      carryGrid(layered);
     }
     ImGui::Spacing();
   }
@@ -1347,8 +1472,18 @@ void BrainFlowScene::measuresStage()
       muted("xG: the game's empty-goal map (no keeper map yet).");
     }
   }
-  list("Carry", layered.options.at(at(OptionIndex::CARRY)).score,
+  list("Carry (the best candidate)",
+       layered.options.at(at(OptionIndex::CARRY)).score,
        base.options.at(at(OptionIndex::CARRY)).score);
+  if (layered.options.at(at(OptionIndex::CARRY)).score.isAvailable())
+  {
+    muted(
+        "Keeps the ball: the path keep, 1 minus the worst opponent near the "
+        "line he covers (how close, within 8.5 m, times his tackle chance). "
+        "A longer, faster carry passes nearer more of them. Opponents where "
+        "they stand now; whether they can reach the line in time comes "
+        "later.");
+  }
   list("Shield", layered.options.at(at(OptionIndex::SHIELD)).score,
        base.options.at(at(OptionIndex::SHIELD)).score);
 }
@@ -1514,10 +1649,24 @@ void BrainFlowScene::bodyStage()
       text("Shoots");
       break;
     case OptionIndex::CARRY:
-      text(std::format("Carries it, about {:.0f} m by his next decision",
+    {
+      const auto& candidates = layered.carryCandidates;
+      const auto best = std::ranges::max_element(
+          candidates, {}, &BrainFlow::CarryCandidate::score);
+      const std::string how =
+          best == candidates.end()
+              ? std::string("Carries it")
+              : std::format("Carries it {} at a {}", carryDirectionName(*best),
+                            PACE_NAMES.at(paceIndex(best->level)));
+      text(std::format("{}, about {:.0f} m by his next decision", how,
                        std::hypot(layered.carryEnd.x - carrierAt.x,
                                   layered.carryEnd.y - carrierAt.y)));
+      muted(
+          "Held until he decides again: the planner aims along it and the "
+          "dribble runs at that pace. No take-ons (until the take-on "
+          "rework).");
       break;
+    }
     case OptionIndex::SHIELD:
       text(layered.clearance ? "Clears it" : "Shields it");
       break;
