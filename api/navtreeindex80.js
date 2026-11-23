@@ -1,5 +1,7 @@
 var NAVTREEINDEX80 =
 {
+"team__talk__dialog_8h.html":[26,0,1,4,1,110],
+"team__talk__dialog_8h_source.html":[26,0,1,4,1,110],
 "text__encoding_8h.html":[26,0,1,2,1,20],
 "text__encoding_8h.html#a8b1fd4aef7db4d9edc253a00a8f6eea8":[26,0,1,2,1,20,2],
 "text__encoding_8h.html#a8d7d4d4b25e1af0729d71a73fd8ce3eb":[26,0,1,2,1,20,1],
@@ -247,7 +249,5 @@ var NAVTREEINDEX80 =
 "transfer__market_8h.html#acd7b3257d13499dde8d04b969fcf2979aa6ce9441135b2ff7199b96aa93078fdc":[26,0,1,5,146,14,3],
 "transfer__market_8h.html#acd7b3257d13499dde8d04b969fcf2979ab24ce0cd392a5b0b8dedc66c25213594":[26,0,1,5,146,14,1],
 "transfer__market_8h.html#acd7b3257d13499dde8d04b969fcf2979ab8e7b465df7c5979dc731d06e84ce2cf":[26,0,1,5,146,14,5],
-"transfer__market_8h_source.html":[26,0,1,5,146],
-"transfer__market__scene_8cpp.html":[26,0,1,4,1,115],
-"transfer__market__scene_8h.html":[26,0,1,4,1,116]
+"transfer__market_8h_source.html":[26,0,1,5,146]
 };

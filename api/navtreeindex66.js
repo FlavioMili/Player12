@@ -1,5 +1,7 @@
 var NAVTREEINDEX66 =
 {
+"structPassDecision.html#a73aab420f3640ffeb8b356ef09e6b570":[25,0,282,7],
+"structPassDecision.html#a833dee599dfdf4a36700a38384e57006":[25,0,282,0],
 "structPassDecision.html#a83a7c165faaa3659a4e15be91059af10":[25,0,282,3],
 "structPassDecision.html#a9414ff5ebd86bc79df4ab1976d6baa66":[25,0,282,1],
 "structPassDecision.html#ad305d6750ab6b7b9b0d99ba296728477":[25,0,282,6],
@@ -247,7 +249,5 @@ var NAVTREEINDEX66 =
 "structPlayerRig_1_1ActionInput.html#ae4fe38a593dd07b7d1df58e2ef4c7b12":[23,0,53,0,6],
 "structPlayerRig_1_1ActionInput.html#ae4fe38a593dd07b7d1df58e2ef4c7b12":[25,0,21,0,6],
 "structPlayerRig_1_1ActionInput.html#aebc3b7a643e19b2ff7ebbc24c3d15867":[23,0,53,0,7],
-"structPlayerRig_1_1ActionInput.html#aebc3b7a643e19b2ff7ebbc24c3d15867":[25,0,21,0,7],
-"structPlayerRig_1_1ActionInput.html#afc9f755a26384d0040d885ab3329d1fe":[23,0,53,0,3],
-"structPlayerRig_1_1ActionInput.html#afc9f755a26384d0040d885ab3329d1fe":[25,0,21,0,3]
+"structPlayerRig_1_1ActionInput.html#aebc3b7a643e19b2ff7ebbc24c3d15867":[25,0,21,0,7]
 };

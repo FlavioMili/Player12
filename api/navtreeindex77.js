@@ -1,5 +1,7 @@
 var NAVTREEINDEX77 =
 {
+"structWorldEditorScene_1_1State.html#a2506192706b5fd52ee8ecae3f58880c8":[25,0,444,1,122],
+"structWorldEditorScene_1_1State.html#a2550f922462ee0baced180c9d3ed79c3":[25,0,444,1,98],
 "structWorldEditorScene_1_1State.html#a25dad3ae7b4b9bebc7bbf42add0678c4":[25,0,444,1,88],
 "structWorldEditorScene_1_1State.html#a276301372acb87c91735c0351efa01c0":[25,0,444,1,123],
 "structWorldEditorScene_1_1State.html#a28871464b69b24d4d6d735a740d44af2":[25,0,444,1,4],
@@ -247,7 +249,5 @@ var NAVTREEINDEX77 =
 "structWorldTuning_1_1MatchContext.html#a99e70ec5205929b4048c15826409d03c":[25,0,448,6,1],
 "structWorldTuning_1_1MatchContext.html#a9ca2a84ba06f1f4388600e15cfae1d30":[25,0,448,6,8],
 "structWorldTuning_1_1MatchContext.html#aafffa7898f54d5ed5581cab2e5b535e6":[25,0,448,6,5],
-"structWorldTuning_1_1MatchContext.html#ab59345a4bf5aa623b0dae7c71a4e25ea":[25,0,448,6,6],
-"structWorldTuning_1_1MatchContext.html#ae46a1d70cfaaf5bc024de2d12a8417a9":[25,0,448,6,4],
-"structWorldTuning_1_1Morale.html":[25,0,448,7]
+"structWorldTuning_1_1MatchContext.html#ab59345a4bf5aa623b0dae7c71a4e25ea":[25,0,448,6,6]
 };

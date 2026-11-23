@@ -1,5 +1,7 @@
 var NAVTREEINDEX49 =
 {
+"structGameController_1_1IncomingOfferView.html#a1f80476720f64ab057dae2bfb8785823":[25,0,116,9,21],
+"structGameController_1_1IncomingOfferView.html#a200fe3f699f2449c1eb36cf5a87a2cd6":[25,0,116,9,24],
 "structGameController_1_1IncomingOfferView.html#a27c890d509f0d6a280310c8432928e6d":[25,0,116,9,8],
 "structGameController_1_1IncomingOfferView.html#a2f5793ebb8298bc98bfbd50aeeb5d566":[25,0,116,9,3],
 "structGameController_1_1IncomingOfferView.html#a5e0ea840108399e658e258db5ebb81e8":[25,0,116,9,23],
@@ -153,12 +155,12 @@ var NAVTREEINDEX49 =
 "structGame_1_1CupRun.html#a0007599b5bb0e149a74ddd8184f5715b":[25,0,115,0,1],
 "structGame_1_1CupRun.html#a0a0d884e5f58a58899c9aa6955c706cd":[25,0,115,0,2],
 "structGame_1_1CupRun.html#a5bebb4e47cfb2d506979569504446a80":[25,0,115,0,0],
-"structGlossary_1_1Term.html":[25,0,9,0],
 "structGlossary_1_1Term.html":[23,0,20,0],
+"structGlossary_1_1Term.html":[25,0,9,0],
 "structGlossary_1_1Term.html#a640d2fb64c53aa2875f9dc790b71ce0d":[25,0,9,0,0],
 "structGlossary_1_1Term.html#a640d2fb64c53aa2875f9dc790b71ce0d":[23,0,20,0,0],
-"structGlossary_1_1Term.html#a93e28363b1c6a8ec301e11ec1c120f34":[25,0,9,0,1],
 "structGlossary_1_1Term.html#a93e28363b1c6a8ec301e11ec1c120f34":[23,0,20,0,1],
+"structGlossary_1_1Term.html#a93e28363b1c6a8ec301e11ec1c120f34":[25,0,9,0,1],
 "structGoalCandidate.html":[25,0,121],
 "structGoalCandidate.html#a190dddc06d92c757769682cf29d065fe":[25,0,121,1],
 "structGoalCandidate.html#aa1174da5f1cc2780388c01012298c5af":[25,0,121,5],
@@ -247,7 +249,5 @@ var NAVTREEINDEX49 =
 "structHolidaySummary.html#a654a5cf10a749262d7f1bfcc21ed8e94":[25,0,135,18],
 "structHolidaySummary.html#a74e5b1dbbd6e543a31917b9c9cf6ce44":[25,0,135,2],
 "structHolidaySummary.html#a770d233b094fea5e1076f69d76259180":[25,0,135,6],
-"structHolidaySummary.html#a8ee8108f573bd1067aea484255476f85":[25,0,135,5],
-"structHolidaySummary.html#aa7d698b8041b58a0f1b0c5d81d04a5f9":[25,0,135,17],
-"structHolidaySummary.html#aa9c7c3215255852f01c8f026b279f61d":[25,0,135,7]
+"structHolidaySummary.html#a8ee8108f573bd1067aea484255476f85":[25,0,135,5]
 };

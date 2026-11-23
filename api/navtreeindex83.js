@@ -1,5 +1,7 @@
 var NAVTREEINDEX83 =
 {
+"world__geography_8h.html":[26,0,1,2,2,9],
+"world__geography_8h.html#ae3820f8079243b1bd819a1263412d2d7":[26,0,1,2,2,9,6],
 "world__geography_8h.html#ae9306365326b548999e28110a4d10c7a":[26,0,1,2,2,9,4],
 "world__geography_8h.html#af4137aca482279b8b0af4140ad1954f9":[26,0,1,2,2,9,5],
 "world__geography_8h_source.html":[26,0,1,2,2,9],
@@ -247,7 +249,5 @@ var NAVTREEINDEX83 =
 "youth__academy_8cpp.html#a3949eb060d9e7530a794f34fdff4e20b":[26,0,1,5,159,7],
 "youth__academy_8cpp.html#a3e4fd2c4a1c1ed75cae1ea3c0d5cc722":[26,0,1,5,159,2],
 "youth__academy_8cpp.html#a49b7a7cd39a4e812bdcbf582cc76701b":[26,0,1,5,159,8],
-"youth__academy_8cpp.html#a5739b7c26139daafcac5ec62ad49ed00":[26,0,1,5,159,18],
-"youth__academy_8cpp.html#a589246b6c256e117b87fb99f7fd98c4b":[26,0,1,5,159,6],
-"youth__academy_8cpp.html#a652063a7a026cd025f686c64f67fd210":[26,0,1,5,159,14]
+"youth__academy_8cpp.html#a5739b7c26139daafcac5ec62ad49ed00":[26,0,1,5,159,18]
 };

@@ -1,5 +1,7 @@
 var NAVTREEINDEX82 =
 {
+"widgets_8cpp.html#aa819594ae04c11714cad538666e01aaf":[26,0,1,4,3,10,38],
+"widgets_8cpp.html#aac045940a0d8dbf92e8c68f726827f87":[26,0,1,4,3,10,2],
 "widgets_8cpp.html#aac23b6d3c883c523565edc1938ca2bb4":[26,0,1,4,3,10,7],
 "widgets_8cpp.html#ab348516b6ffb4995e9ddd800117444e1":[26,0,1,4,3,10,18],
 "widgets_8cpp.html#ab89a22080138b6d717c518bd00b86bcd":[26,0,1,4,3,10,3],
@@ -247,7 +249,5 @@ var NAVTREEINDEX82 =
 "world__geography_8cpp.html#ab701e3ac61a85b337ec5c1abaad6742d":[26,0,1,2,2,8,0],
 "world__geography_8cpp.html#ae3820f8079243b1bd819a1263412d2d7":[26,0,1,2,2,8,3],
 "world__geography_8cpp.html#ae9306365326b548999e28110a4d10c7a":[26,0,1,2,2,8,1],
-"world__geography_8cpp.html#af4137aca482279b8b0af4140ad1954f9":[26,0,1,2,2,8,2],
-"world__geography_8h.html":[26,0,1,2,2,9],
-"world__geography_8h.html#ae3820f8079243b1bd819a1263412d2d7":[26,0,1,2,2,9,6]
+"world__geography_8cpp.html#af4137aca482279b8b0af4140ad1954f9":[26,0,1,2,2,8,2]
 };

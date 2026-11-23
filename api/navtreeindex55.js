@@ -1,5 +1,7 @@
 var NAVTREEINDEX55 =
 {
+"structMatchEngine_1_1ShoutState.html#abf8e14340b33dbc98f56a26699b7e4f4":[25,0,202,6,3],
+"structMatchEngine_1_1ShoutState.html#acf422cc6eedf3a0e333b1573a818ffca":[25,0,202,6,2],
 "structMatchEngine_1_1ShoutState.html#ada938bf6bd3963abcfafc51d72dcdbf3":[25,0,202,6,0],
 "structMatchEngine_1_1SlotTactic.html":[25,0,202,7],
 "structMatchEngine_1_1SlotTactic.html#a0b90051dc39a6817714efa6ba4d307c0":[25,0,202,7,0],
@@ -247,7 +249,5 @@ var NAVTREEINDEX55 =
 "structMatchRender2DTuning_1_1Token.html#aedb49e5d4a805ca3130c71b334b683da":[25,0,213,8,4],
 "structMatchRender2DTuning_1_1Token.html#af4c4e87bc0203de866bc7a343ebba8fd":[25,0,213,8,1],
 "structMatchRender2DTuning_1_1Token.html#af86b0f00d63750643800ccb4aeb2c327":[25,0,213,8,19],
-"structMatchRender2DTuning_1_1Token.html#afcc892d1c2d74c4107c1c371211e825d":[25,0,213,8,21],
-"structMatchRender3DTuning.html":[25,0,214],
-"structMatchRender3DTuning_1_1Ball.html":[25,0,214,0]
+"structMatchRender2DTuning_1_1Token.html#afcc892d1c2d74c4107c1c371211e825d":[25,0,213,8,21]
 };

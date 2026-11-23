@@ -1,5 +1,7 @@
 var NAVTREEINDEX84 =
 {
+"youth__academy_8cpp.html#a589246b6c256e117b87fb99f7fd98c4b":[26,0,1,5,159,6],
+"youth__academy_8cpp.html#a652063a7a026cd025f686c64f67fd210":[26,0,1,5,159,14],
 "youth__academy_8cpp.html#a7c3b29cb79873dcbeca84853ff0026cf":[26,0,1,5,159,5],
 "youth__academy_8cpp.html#a83274e466ee3b53e21dba7768f9843d0":[26,0,1,5,159,20],
 "youth__academy_8cpp.html#abdfe5dce7a55d3e1c999f855ee3df434":[26,0,1,5,159,10],

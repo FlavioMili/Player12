@@ -1,5 +1,7 @@
 var NAVTREEINDEX38 =
 {
+"namespaceSquadStatusModel.html#ac6ec5753b788ce72c38905103332e3be":[23,0,74,2],
+"namespaceSquadStatusModel.html#aeb578bf6b027b663dc01376274bc9aa4":[23,0,74,3],
 "namespaceStadium3D.html":[23,0,75],
 "namespaceStadium3D.html#a4a95d806375a3b288ef98efb0a6ce53e":[23,0,75,15],
 "namespaceStadium3D.html#a7597d546b68102a34db678b001ba3b5c":[23,0,75,18],
@@ -247,7 +249,5 @@ var NAVTREEINDEX38 =
 "namespaceTrainingModel.html#aaacec2cac31212b419b52206c23a4a2c":[23,0,85,14],
 "namespaceTrainingModel.html#aabae8de6200cd29131b712ad90b8d0bc":[23,0,85,3],
 "namespaceTrainingModel.html#ab3ab165bb30fff487419ffb41642e0b0":[23,0,85,0],
-"namespaceTrainingModel.html#ac11a7edd4279c0a673f8a4d442c4592a":[23,0,85,28],
-"namespaceTrainingModel.html#ac5a3b1cbd13a660fb6cf7f523f44c1fb":[23,0,85,9],
-"namespaceTrainingModel.html#acaacf3fa5a91d0cda7e6250cbbcf0bc2":[23,0,85,21]
+"namespaceTrainingModel.html#ac11a7edd4279c0a673f8a4d442c4592a":[23,0,85,28]
 };

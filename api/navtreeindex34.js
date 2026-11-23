@@ -1,5 +1,7 @@
 var NAVTREEINDEX34 =
 {
+"namespaceBuyerNegotiation.html#a268b0e303bfe3b781e5f5d04b5bad40a":[23,0,4,13],
+"namespaceBuyerNegotiation.html#a357a5638ecafd4bc3ee6576c122a111d":[23,0,4,27],
 "namespaceBuyerNegotiation.html#a42e1f8a9cc41c633e8198dac54ef7eba":[23,0,4,9],
 "namespaceBuyerNegotiation.html#a45fad473b7c32dd9b31020c8df2c031c":[23,0,4,25],
 "namespaceBuyerNegotiation.html#a540d7f18110cce3903e054533937005c":[23,0,4,14],
@@ -247,7 +249,5 @@ var NAVTREEINDEX34 =
 "namespaceInput.html#aa2e50dbf7534ce80973bdf57266a4bb2a5995d98caf31b9445202b0f054fdc54e":[23,0,26,6,0],
 "namespaceInput.html#aa2e50dbf7534ce80973bdf57266a4bb2a6a216efc529825c60a4a4c0bc99ad77f":[23,0,26,6,5],
 "namespaceInput.html#aa2e50dbf7534ce80973bdf57266a4bb2a6ac3227c311790fb4c3ebbe16920f93a":[23,0,26,6,2],
-"namespaceInput.html#aa2e50dbf7534ce80973bdf57266a4bb2ab4b7d40fe4a37ad7e881c06fce794ef3":[23,0,26,6,4],
-"namespaceInput.html#aa2e50dbf7534ce80973bdf57266a4bb2addf0d6b21537d984fea6544f58101fa8":[23,0,26,6,3],
-"namespaceInput.html#ab396144e8c0ca7b3ced1804fad44920c":[23,0,26,9]
+"namespaceInput.html#aa2e50dbf7534ce80973bdf57266a4bb2ab4b7d40fe4a37ad7e881c06fce794ef3":[23,0,26,6,4]
 };

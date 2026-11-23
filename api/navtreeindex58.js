@@ -1,5 +1,7 @@
 var NAVTREEINDEX58 =
 {
+"structMatchRender3DTuning_1_1Rig.html#af091eee7aa6473453c41d529a7ada8bd":[25,0,214,25,16],
+"structMatchRender3DTuning_1_1Ripple.html":[25,0,214,26],
 "structMatchRender3DTuning_1_1Ripple.html#a09c4469180d0db36ff6f426059e03616":[25,0,214,26,0],
 "structMatchRender3DTuning_1_1Ripple.html#a45fdf8cd3e444fa44cca27542a4028c7":[25,0,214,26,2],
 "structMatchRender3DTuning_1_1Ripple.html#a53a5321fabc2211aaf3a3ea9ec4b3d46":[25,0,214,26,3],
@@ -247,7 +249,5 @@ var NAVTREEINDEX58 =
 "structMatchRenderer3D_1_1State.html#a24376da7dc025b2623c4750a594c2305":[25,0,217,0,97],
 "structMatchRenderer3D_1_1State.html#a2772f9ba2f9e700cc9c9550c96f35e35":[25,0,217,0,80],
 "structMatchRenderer3D_1_1State.html#a29a258ddd7ed8720bb02e0597c28a63c":[25,0,217,0,8],
-"structMatchRenderer3D_1_1State.html#a2e9f789317458878090912b4aabba3ad":[25,0,217,0,94],
-"structMatchRenderer3D_1_1State.html#a2ef57c3f0f124ba46368fc00835f8f25":[25,0,217,0,45],
-"structMatchRenderer3D_1_1State.html#a312a5b8231e16c4c866da75f8aa0fef2":[25,0,217,0,27]
+"structMatchRenderer3D_1_1State.html#a2e9f789317458878090912b4aabba3ad":[25,0,217,0,94]
 };

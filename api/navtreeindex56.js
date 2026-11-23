@@ -1,5 +1,7 @@
 var NAVTREEINDEX56 =
 {
+"structMatchRender3DTuning.html":[25,0,214],
+"structMatchRender3DTuning_1_1Ball.html":[25,0,214,0],
 "structMatchRender3DTuning_1_1Ball.html#a032c913060622bf86d97c72cea7760b4":[25,0,214,0,7],
 "structMatchRender3DTuning_1_1Ball.html#a10ebde8eaa46b7b4dc1681977cfd8f91":[25,0,214,0,6],
 "structMatchRender3DTuning_1_1Ball.html#a1df71374f27919a450a78c3a3503df5a":[25,0,214,0,3],
@@ -247,7 +249,5 @@ var NAVTREEINDEX56 =
 "structMatchRender3DTuning_1_1Goal.html#a96cc320a86de243f264369cc1ce1373b":[25,0,214,14,10],
 "structMatchRender3DTuning_1_1Goal.html#a96d7a078f061f4063ee4016f95b52951":[25,0,214,14,5],
 "structMatchRender3DTuning_1_1Goal.html#aa6159eccc519bb8f821b8bef6742cb7e":[25,0,214,14,6],
-"structMatchRender3DTuning_1_1Goal.html#aac6ccdd3a7deee640059bdc17b86572a":[25,0,214,14,3],
-"structMatchRender3DTuning_1_1Goal.html#aac95bc0967bedc11ef90110e563b9c30":[25,0,214,14,4],
-"structMatchRender3DTuning_1_1Goal.html#aafea3815f81295719660de61faeec6dc":[25,0,214,14,12]
+"structMatchRender3DTuning_1_1Goal.html#aac6ccdd3a7deee640059bdc17b86572a":[25,0,214,14,3]
 };

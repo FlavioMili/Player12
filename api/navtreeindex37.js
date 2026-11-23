@@ -1,5 +1,7 @@
 var NAVTREEINDEX37 =
 {
+"namespacePlayerRig.html#aa8ee7148b8793b8c1a0ca832f10fef9ea04dd53a8e6c2306e9bbf944c1d6047f2":[23,0,53,8,3],
+"namespacePlayerRig.html#aa8ee7148b8793b8c1a0ca832f10fef9ea655474de4674aba7a436a73cd8d9a906":[23,0,53,8,7],
 "namespacePlayerRig.html#aa8ee7148b8793b8c1a0ca832f10fef9ea7a95bf926a0333f57705aeac07a362a2":[23,0,53,8,1],
 "namespacePlayerRig.html#aa8ee7148b8793b8c1a0ca832f10fef9ea7ad4905b4543ab4a1637dd23c50e36ce":[23,0,53,8,4],
 "namespacePlayerRig.html#aa8ee7148b8793b8c1a0ca832f10fef9eab4bece16f41bf005ca3fb5358b67b0c6":[23,0,53,8,6],
@@ -247,7 +249,5 @@ var NAVTREEINDEX37 =
 "namespaceSquadStatusModel.html#a071f71c32b6bdac088adeef3e60ed49d":[23,0,74,5],
 "namespaceSquadStatusModel.html#a51bc670d956753dafa53cc99c372b3bd":[23,0,74,0],
 "namespaceSquadStatusModel.html#a9d14502673a61f3d080a10444642a2c8":[23,0,74,4],
-"namespaceSquadStatusModel.html#aaf3d8d7da822e034244329a799f02565":[23,0,74,6],
-"namespaceSquadStatusModel.html#ac6ec5753b788ce72c38905103332e3be":[23,0,74,2],
-"namespaceSquadStatusModel.html#aeb578bf6b027b663dc01376274bc9aa4":[23,0,74,3]
+"namespaceSquadStatusModel.html#aaf3d8d7da822e034244329a799f02565":[23,0,74,6]
 };

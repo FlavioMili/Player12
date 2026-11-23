@@ -1,5 +1,7 @@
 var NAVTREEINDEX79 =
 {
+"structYouthRecord.html":[25,0,452],
+"structYouthRecord.html#a18cc82e978fd3ffa66fea7485a77b5a3":[25,0,452,3],
 "structYouthRecord.html#a229bc264fc4ecff4d17287afda81bd4f":[25,0,452,8],
 "structYouthRecord.html#a2b3b28bbc3ecaf82a4bbfb99525180bb":[25,0,452,2],
 "structYouthRecord.html#a3baab2b8a27a82048d971bc04b638d81":[25,0,452,9],
@@ -247,7 +249,5 @@ var NAVTREEINDEX79 =
 "team__selection__scene_8cpp.html":[26,0,1,4,1,107],
 "team__selection__scene_8h.html":[26,0,1,4,1,108],
 "team__selection__scene_8h_source.html":[26,0,1,4,1,108],
-"team__talk__dialog_8cpp.html":[26,0,1,4,1,109],
-"team__talk__dialog_8h.html":[26,0,1,4,1,110],
-"team__talk__dialog_8h_source.html":[26,0,1,4,1,110]
+"team__talk__dialog_8cpp.html":[26,0,1,4,1,109]
 };

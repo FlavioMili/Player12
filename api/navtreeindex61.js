@@ -1,5 +1,7 @@
 var NAVTREEINDEX61 =
 {
+"structMatchTuning_1_1Ball.html#a6e9b8c05415ca29f2ce491701386e981":[25,0,237,1,38],
+"structMatchTuning_1_1Ball.html#a7369276b905f62cc7152935b45893595":[25,0,237,1,16],
 "structMatchTuning_1_1Ball.html#a84fa9f4bd825530c49e9e088e6c4f529":[25,0,237,1,45],
 "structMatchTuning_1_1Ball.html#a938e4af51a4d5769346189b4770614f3":[25,0,237,1,3],
 "structMatchTuning_1_1Ball.html#a94083c55e50839ee8fc4430c986e035c":[25,0,237,1,15],
@@ -247,7 +249,5 @@ var NAVTREEINDEX61 =
 "structMatchTuning_1_1Goalkeeper.html#a832b622b12dae5604a7020f58b00d67f":[25,0,237,9,3],
 "structMatchTuning_1_1Goalkeeper.html#a85dfe02c7528ba80376750080b25e214":[25,0,237,9,10],
 "structMatchTuning_1_1Goalkeeper.html#a8a0927d42614a6f65abfbdf7cdd077fd":[25,0,237,9,0],
-"structMatchTuning_1_1Goalkeeper.html#a8bc1f0031d399fa06a8b56aca6b7a7ee":[25,0,237,9,34],
-"structMatchTuning_1_1Goalkeeper.html#a9212e3baea6cc85200908184bb50a4ba":[25,0,237,9,33],
-"structMatchTuning_1_1Goalkeeper.html#a96a2c9c0da71a14487ea1ec3d9825218":[25,0,237,9,26]
+"structMatchTuning_1_1Goalkeeper.html#a8bc1f0031d399fa06a8b56aca6b7a7ee":[25,0,237,9,34]
 };

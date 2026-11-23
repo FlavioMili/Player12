@@ -192,9 +192,9 @@ Tests</h1>
 <tr class="markdownTableHead">
 <th class="markdownTableHeadNone">Label   </th><th class="markdownTableHeadNone">Executables   </th><th class="markdownTableHeadNone">Contents    </th></tr>
 <tr class="markdownTableRowOdd">
-<td class="markdownTableBodyNone"><code>unit</code>   </td><td class="markdownTableBodyNone"><code>unit_tests</code>, plus the GUI and lab suites   </td><td class="markdownTableBodyNone">Model, persistence and view-model tests    </td></tr>
+<td class="markdownTableBodyNone"><code>unit</code>   </td><td class="markdownTableBodyNone"><code>unit_tests</code>, plus the GUI and lab suites   </td><td class="markdownTableBodyNone">Model, persistence and view-model tests (the default lane runs <code>unit_tests</code> in 2 shards and <code>core_unit_tests</code> in 4)    </td></tr>
 <tr class="markdownTableRowEven">
-<td class="markdownTableBodyNone"><code>core</code>   </td><td class="markdownTableBodyNone"><code>core_unit_tests</code> (prefix <code>core::</code>)   </td><td class="markdownTableBodyNone">The headless tests linked against <code>fm_core</code> only; also <code>leak-check</code>    </td></tr>
+<td class="markdownTableBodyNone"><code>core</code>   </td><td class="markdownTableBodyNone"><code>core_unit_tests</code> (prefix <code>core::</code>)   </td><td class="markdownTableBodyNone">The headless tests linked against <code>fm_core</code> only (each test runs once); <code>leak-check</code> selects them under the sanitizer build    </td></tr>
 <tr class="markdownTableRowOdd">
 <td class="markdownTableBodyNone"><code>gui</code>   </td><td class="markdownTableBodyNone"><code>scouting_ui_tests</code>, <code>youth_ui_tests</code>, <code>squad_ui_tests</code>, <code>manager_ui_tests</code>, <code>navigation_ui_tests</code>, <code>guidance_ui_tests</code>, <code>career_ui_tests</code>   </td><td class="markdownTableBodyNone">Screens driven through a real <code><a class="el" href="classGUIView.html" title="Main view manager for the GUI. Handles scenes and overlays.">GUIView</a></code> with the dummy video driver, with captures at several sizes and scales    </td></tr>
 <tr class="markdownTableRowEven">
