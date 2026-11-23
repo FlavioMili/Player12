@@ -35,6 +35,15 @@ namespace
 {
 constexpr std::uint64_t SEED = 77;
 
+/** Puts the built-in world back when a test ends (tests share a process). */
+struct WorldReset
+{
+  WorldReset() = default;
+  WorldReset(const WorldReset&) = delete;
+  WorldReset& operator=(const WorldReset&) = delete;
+  ~WorldReset() { World::install(nullptr); }
+};
+
 struct Slot
 {
   explicit Slot(int number) : slot(number) {}
@@ -249,6 +258,7 @@ TEST(WorldRuntime, CustomLeaguesFollowTheirCountry)
 
 TEST(WorldRuntime, CareerFromCustomWorldPersistsItsWorld)
 {
+  const WorldReset reset;
   const Slot slot{731'201};
   {
     auto controller = career(slot.slot, customWorld());
@@ -286,6 +296,7 @@ TEST(WorldRuntime, CareerFromCustomWorldPersistsItsWorld)
 
 TEST(WorldRuntime, CustomWorldPlaysAWholeSeason)
 {
+  const WorldReset reset;
   const Slot slot{731'202};
   auto controller = career(slot.slot, customWorld());
   controller->selectManagedTeam(201);
@@ -393,6 +404,7 @@ TEST(WorldPeoples, OlderWorldsKeepTheBuiltInGeography)
 
 TEST(WorldPeoples, FantasyWorldPlaysASeasonWithItsOwnPeoplesAndCups)
 {
+  const WorldReset reset;
   const Slot slot{731'205};
   auto controller = career(slot.slot, fantasyWorld());
   const auto westerosi = *nationalityFromName("Westerosi");
@@ -458,6 +470,7 @@ TEST(WorldPeoples, FantasyWorldPlaysASeasonWithItsOwnPeoplesAndCups)
 
 TEST(WorldPeoples, AnEditedCupStartsACareerWithItsOwnFormat)
 {
+  const WorldReset reset;
   World::Document document = *fantasyWorld();
   json& cup = (*document.find(Kind::Confederation, 1))["cups"][0];
   cup["clubs"] = 8;
@@ -520,6 +533,7 @@ TEST(WorldPeoples, BadCupsAndRoutesAreReportedWithTheirFieldPaths)
 
 TEST(WorldPeoples, SixteenBitIdsHoldHundredsOfPeoplesAndManyCups)
 {
+  const WorldReset reset;
   const Slot slot{731'206};
   auto controller = career(slot.slot, wideWorld());
   EXPECT_EQ(allNationalities().size(), 159U + 300U);

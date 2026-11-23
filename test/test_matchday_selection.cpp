@@ -22,6 +22,7 @@
 #include "model/game.h"
 #include "model/match.h"
 #include "model/youth_academy.h"
+#include "test_worlds.h"
 
 namespace
 {
@@ -170,11 +171,22 @@ TEST(MatchdaySelectionTest, AssistantPreservesRegularsAndAutoPickSelectsBestXI)
 {
   Logger::init();
   const SlotCleanup slot{uniqueSlot(0)};
-  GameController controller;
-  controller.newGame(slot.slot, WORLD_SEED);
-  const TeamID club = middleOfTheLeague(controller);
+  // The first weeks (pre-season, injuries, international breaks) are one
+  // shared checkpoint; the checks start on the first match days after it.
+  const auto holder = TestWorlds::unmanagedWorld(
+      slot.slot, "matchday-selection-aug-31",
+      [](GameController& prepared)
+      {
+        const TeamID chosen = middleOfTheLeague(prepared);
+        prepared.selectManagedTeam(chosen);
+        while (prepared.getCurrentDate() < GameDateValue(2025, 8, 31))
+          prepared.advanceDay();
+      },
+      WORLD_SEED);
+  GameController& controller = *holder;
+  ASSERT_TRUE(controller.hasSelectedTeam());
+  const TeamID club = controller.getManagedTeam()->get().getId();
   ASSERT_NE(club, 0u);
-  controller.selectManagedTeam(club);
   ASSERT_TRUE(controller.getAssistantFixesLineup());
   const StatsConfig& config = controller.getStatsConfig();
   const Game& game = *controller.getGame();
@@ -182,7 +194,7 @@ TEST(MatchdaySelectionTest, AssistantPreservesRegularsAndAutoPickSelectsBestXI)
   bool checkedLeague = false;
   bool checkedCup = false;
   bool checkedReload = false;
-  for (int day = 0; day < 140 && !(checkedLeague && checkedCup); ++day)
+  for (int day = 0; day < 110 && !(checkedLeague && checkedCup); ++day)
   {
     // The assistant may replace unavailable players, but cannot override a
     // healthy manager-selected regular simply to improve the overall rating.

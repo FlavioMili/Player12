@@ -590,7 +590,10 @@ endforeach()
 
 if(FM_ENABLE_SANITIZERS)
   foreach(target fm_core fm_ui)
-    target_compile_options(${target} PUBLIC -fsanitize=address,undefined -fno-omit-frame-pointer)
+    # -O1 is the level AddressSanitizer is meant for: unoptimised Debug code
+    # ran the simulation tests about 50 times slower than Release.
+    target_compile_options(${target} PUBLIC -fsanitize=address,undefined -fno-omit-frame-pointer
+      $<$<CONFIG:Debug>:-O1>)
     target_link_options(${target} PUBLIC -fsanitize=address,undefined)
   endforeach()
 endif()

@@ -39,6 +39,7 @@
 #include "model/draw_ceremony.h"
 #include "model/game.h"
 #include "model/settings_manager.h"
+#include "test_worlds.h"
 
 /** The GUI classes grant their internals to this name. */
 class GameFlowTest_GUIFlowLifecycle_Test
@@ -156,16 +157,22 @@ TEST(NewsUiTest, NewsTimelineAndDrawCeremonies)
   SDL_SetHint(SDL_HINT_VIDEO_DRIVER, "dummy");
   Logger::init();
   const SlotCleanup slot{uniqueSlot(0)};
-  GameController controller;
-  controller.newGame(slot.slot, WORLD_SEED);
   // A club of the top continental competition, so its draw reaches the
-  // inbox.
-  const auto* season =
-      controller.getContinental()->getSeason(Continental::CHAMPIONS_CUP_ID);
-  ASSERT_NE(season, nullptr);
-  const TeamID managed = season->entrants.front().team_id;
-  controller.selectManagedTeam(managed);
-  for (int day = 0; day < 64; ++day) controller.advanceDay();
+  // inbox; the first 64 days are a shared checkpoint.
+  const auto holder = TestWorlds::unmanagedWorld(
+      slot.slot, "news-champions-club-day-64",
+      [](GameController& prepared)
+      {
+        const auto* season =
+            prepared.getContinental()->getSeason(Continental::CHAMPIONS_CUP_ID);
+        if (season == nullptr) return;
+        prepared.selectManagedTeam(season->entrants.front().team_id);
+        for (int day = 0; day < 64; ++day) prepared.advanceDay();
+      },
+      WORLD_SEED);
+  GameController& controller = *holder;
+  ASSERT_TRUE(controller.hasSelectedTeam());
+  const TeamID managed = controller.getManagedTeam()->get().getId();
 
   GUIView view(controller);
   ASSERT_TRUE(Bridge::initialize(view));

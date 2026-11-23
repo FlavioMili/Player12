@@ -44,6 +44,7 @@
 #include "model/world_generation.h"
 #include "model/world_rng.h"
 #include "model/world_simulation.h"
+#include "test_worlds.h"
 
 namespace
 {
@@ -1107,11 +1108,9 @@ TEST(InboxTest, WorkloadWarningsDigestWithoutSuppressingInjuries)
 TEST(WorldSimulationTest, InboxStaysQuietThroughTheFirstMonths)
 {
   const SlotCleanup slot{uniqueSlot(4)};
-  const auto controller = makeWorld(slot.slot);
-  const TeamID managed = controller->getTeams().front().get().getId();
-  controller->selectManagedTeam(managed);
-  while (controller->getCurrentDate() < GameDateValue(2025, 10, 1))
-    controller->advanceDay();
+  // The three months of play are a shared checkpoint.
+  const auto controller =
+      TestWorlds::careerAt(slot.slot, GameDateValue(2025, 10, 1), WORLD_SEED);
 
   std::map<std::string, std::pair<int, int>, std::less<>> by_title;
   std::map<int, int> unread_by_month;

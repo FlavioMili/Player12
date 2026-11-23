@@ -1,0 +1,79 @@
+# Pre-merge lane: the slow tests (fuzz, soak, perf, QA hunts, playtest and
+# monkey journeys) that the default lanes in ci.yml leave out. Runs on pull
+# requests that are ready for review, and on drafts labelled `full-tests`,
+# so a PR is checked in full before it is merged without slowing every push
+# while it is a draft. See test/CMakeLists.txt for the lanes.
+name: Full tests
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened, ready_for_review, labeled]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: full-tests-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  slow-lanes:
+    name: Slow test lanes (Linux, GCC 14)
+    if: >-
+      github.event.pull_request.draft == false ||
+      contains(github.event.pull_request.labels.*.name, 'full-tests')
+    runs-on: ubuntu-24.04
+    timeout-minutes: 300
+    env:
+      CC: gcc-14
+      CXX: g++-14
+      CCACHE_DIR: ${{ github.workspace }}/.ccache
+      CCACHE_BASEDIR: ${{ github.workspace }}
+      CCACHE_MAXSIZE: 500M
+      SDL_VIDEO_DRIVER: dummy
+      SDL_VIDEODRIVER: dummy
+      SDL_AUDIO_DRIVER: dummy
+      SDL_AUDIODRIVER: dummy
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6.1.0
+
+      - name: Install toolchain and SDL build dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends \
+            gcc-14 g++-14 ninja-build ccache pkg-config \
+            libsqlite3-dev libfreetype-dev libharfbuzz-dev \
+            libasound2-dev libpulse-dev libaudio-dev libjack-dev libsndio-dev \
+            libpipewire-0.3-dev libx11-dev libxext-dev libxrandr-dev \
+            libxcursor-dev libxfixes-dev libxi-dev libxss-dev libxtst-dev \
+            libxkbcommon-dev libdrm-dev libgbm-dev libgl1-mesa-dev \
+            libgles2-mesa-dev libegl1-mesa-dev libdbus-1-dev libibus-1.0-dev \
+            libudev-dev libwayland-dev libdecor-0-dev liburing-dev
+
+      - name: Cache FetchContent sources
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: |
+            build/_deps/*-src
+          key: fetchcontent-sources-v2-${{ github.repository }}-linux-full-${{ hashFiles('CMakeLists.txt') }}
+
+      - name: Cache ccache
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: .ccache
+          key: ccache-linux-full-${{ github.sha }}
+          restore-keys: ccache-linux-full-
+
+      - name: Configure
+        run: >
+          cmake -S . -B build -G Ninja -DCMAKE_BUILD_TYPE=Release
+          -DBUILD_TESTING=ON
+          -DCMAKE_C_COMPILER_LAUNCHER=ccache
+          -DCMAKE_CXX_COMPILER_LAUNCHER=ccache
+
+      - name: Build
+        run: cmake --build build --parallel 4
+
+      - name: Run the slow lanes
+        run: >
+          ctest --test-dir build --output-on-failure --parallel 4 -L slow

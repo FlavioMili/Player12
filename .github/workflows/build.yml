@@ -104,7 +104,7 @@ jobs:
         if: inputs.run-tests
         run: >
           ctest --test-dir build --output-on-failure --parallel 2
-          --timeout 900 -LE "$CTEST_LABEL_EXCLUDE"
+          --timeout 900 -L "unit|scenario" -LE "$CTEST_LABEL_EXCLUDE"
 
       - name: Smoke test normal install
         env:
@@ -261,7 +261,7 @@ jobs:
         if: inputs.run-tests
         run: >
           ctest --test-dir build --output-on-failure --parallel 2
-          --timeout 900 -LE "$CTEST_LABEL_EXCLUDE"
+          --timeout 900 -L "unit|scenario" -LE "$CTEST_LABEL_EXCLUDE"
 
       - name: Package (zip with Player12.app)
         run: cpack --config build/CPackConfig.cmake -B dist
