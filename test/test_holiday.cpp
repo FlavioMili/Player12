@@ -217,6 +217,12 @@ TEST(Holiday, DayLimitAndOpenEndedHolidays)
   HolidayPlan until = plan(HolidayMode::UntilDate);
   until.until = GameDateValue(2025, 12, 1);
   until.max_days = 5;
+  // Only the day limit may end this holiday: a big bid or an injury in
+  // those days is a real event that would (rightly) stop it first.
+  until.preferences.stop_big_bid = false;
+  until.preferences.stop_sacking_warning = false;
+  until.preferences.stop_injury_crisis = false;
+  until.preferences.stop_key_injury = false;
   EXPECT_EQ(controller->goOnHoliday(until), 5);
   EXPECT_EQ(controller->getHolidaySummary().reason, HolidayStop::DayLimit);
 

@@ -290,7 +290,7 @@ std::optional<DrawCeremony> DrawCeremonies::forMessage(
   if (!announcesDraw(message) || message.args.empty()) return std::nullopt;
   const Continental::CompetitionRules* rules = nullptr;
   for (const Continental::CompetitionRules& candidate :
-       Continental::COMPETITIONS)
+       Continental::competitions())
     if (message.args[0] == std::string("@") + candidate.name_key)
       rules = &candidate;
   if (rules == nullptr) return std::nullopt;

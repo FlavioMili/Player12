@@ -138,6 +138,7 @@ std::string databaseDigest(sqlite3* db)
   sqlite3_finalize(stmt);
   for (const std::string& table : tables)
   {
+    digest += "\n#table " + table + "\n";
     sqlite3_prepare_v2(db, std::format("SELECT * FROM \"{}\";", table).c_str(),
                        -1, &stmt, nullptr);
     while (sqlite3_step(stmt) == SQLITE_ROW)
@@ -153,6 +154,19 @@ std::string databaseDigest(sqlite3* db)
     sqlite3_finalize(stmt);
   }
   return digest;
+}
+
+/** Table of the first difference between two databaseDigest() results. */
+std::string firstDifferentTable(const std::string& left,
+                                const std::string& right)
+{
+  const auto [mismatch, unused] = std::ranges::mismatch(left, right);
+  (void)unused;
+  const auto position = static_cast<std::size_t>(mismatch - left.begin());
+  const std::size_t marker = left.rfind("\n#table ", position);
+  if (marker == std::string::npos) return "<schema>";
+  const std::size_t start = marker + 8;
+  return left.substr(start, left.find('\n', start) - start);
 }
 
 /** Opens a closed save file directly, like a hand-edited save. */
@@ -725,7 +739,9 @@ TEST(SaveSafety, UnsavedProgressNeverReachesTheSlot)
     if (round == 0)
       first_digest = std::move(digest);
     else
-      EXPECT_EQ(digest, first_digest);
+      EXPECT_TRUE(digest == first_digest)
+          << "first different table: "
+          << firstDifferentTable(first_digest, digest);
   }
   EXPECT_EQ(fileBytes(path), saved);
 }

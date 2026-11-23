@@ -92,12 +92,11 @@ TEST(NationalTeamsTest, FinalsSizeAndConfederations)
   EXPECT_EQ(International::finalsSize(20), 8u);
   EXPECT_EQ(International::finalsSize(7), 4u);
   EXPECT_EQ(International::finalsSize(3), 0u);
-  EXPECT_EQ(International::confederationOf(Language::IT),
-            International::Confederation::Europe);
-  EXPECT_EQ(International::confederationOf(Language::BR),
-            International::Confederation::Americas);
-  EXPECT_EQ(International::confederationOf(Language::JP),
-            International::Confederation::Asia);
+  // The built-in world numbers Europe, Americas, Asia and Africa from 1.
+  EXPECT_EQ(International::confederationOf(Language::IT), 1);
+  EXPECT_EQ(International::confederationOf(Language::BR), 2);
+  EXPECT_EQ(International::confederationOf(Language::JP), 3);
+  EXPECT_EQ(International::confederationOf(Language::NG), 4);
   EXPECT_EQ(International::teamNameKey(Language::IT), "NT_Italian");
 }
 

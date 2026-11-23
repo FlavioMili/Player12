@@ -740,7 +740,7 @@ TEST(MatchContextTest, LeaguesCarryTheirOwnMatchStyle)
             0.9f * expectedGoals(ENGLAND, Reference::REFERENCE_GOALS_TOP));
 
   // Every league's context is inside the engine's accepted ranges.
-  for (const LeagueProfile& profile : LEAGUE_PROFILES)
+  for (const LeagueProfile& profile : leagueProfiles())
   {
     const MatchContext value = context(profile.league_id);
     EXPECT_GE(value.goalRateScale, MatchTuning::Context::MIN_GOAL_RATE_SCALE);

@@ -4,6 +4,39 @@ All notable changes to Player12 are listed here. The format
 follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and version
 numbers follow [Semantic Versioning](https://semver.org/).
 
+## Unreleased
+
+### Added
+
+**World databases** (#78)
+- Every new career asks which world to play in before you pick a club: the
+  built-in world, a world you edit first, or a world database (`.fmdb`) you
+  downloaded, chosen with the file picker or dropped onto the window.
+- World editor (Main menu): build a world layer by layer (countries, cities,
+  travel times, competitions, clubs, players) with the in-game editor's
+  controls; add, duplicate, move and delete with consistent references; a
+  Problems list says what still blocks a career; undo; save to your worlds or
+  export a file to share.
+- Combine worlds like building blocks: ids are renumbered automatically,
+  identical entries merge, and entries defined differently (the same club
+  with another budget) become conflicts you resolve one by one, field by
+  field, or by choosing one world as the source of truth.
+- Export world from a running career.
+- League economy and match profiles are world data; custom leagues follow
+  their country's football and economic level instead of a hidden default.
+- Saves keep the world they were created from; older saves keep using the
+  built-in world.
+- Built on the custom database format, validator and engine extensions
+  (159 nationalities, skin tones, home/away/third kits, player nicknames,
+  both-footed players) contributed by ashcdev-hub.
+
+### Changed
+- The built-in world moved from `assets/user_made_data/` to the single file
+  `assets/world/default.fmdb`, loaded through the same path as user worlds.
+  New default careers generate leagues and clubs in id order (previously the
+  order of files on disk), so a given seed can produce a slightly different
+  world than before.
+
 ## v1.0.0 (unreleased)
 
 First public release. Everything below is new compared to the earlier

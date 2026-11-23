@@ -23,7 +23,7 @@
 
 namespace
 {
-// League ids of assets/user_made_data/leagues/leagues.json.
+// League ids of the built-in world (assets/world/default.fmdb).
 constexpr LeagueID ITALY = 1;
 constexpr LeagueID SPAIN = 2;
 constexpr LeagueID ENGLAND = 3;

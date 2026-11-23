@@ -28,7 +28,7 @@ League::League(LeagueID league_id, const std::string& league_name,
   }
 }
 
-uint8_t League::getId() const { return id; }
+LeagueID League::getId() const { return id; }
 
 std::string League::getName() const { return name; }
 

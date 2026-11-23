@@ -11,17 +11,13 @@
 #include <imgui.h>
 
 #include <algorithm>
-#include <cctype>
-#include <cmath>
 #include <format>
-#include <nlohmann/json.hpp>
-#include <set>
 
 #include "database/database_exception.h"
 #include "database/gamedata.h"
 #include "global/global.h"
 #include "global/language_manager.h"
-#include "gui/view_models/player_view.h"
+#include "gui/widgets/editor_form.h"
 #include "gui/widgets/theme.h"
 #include "gui/widgets/widgets.h"
 
@@ -32,7 +28,6 @@ constexpr float WINDOW_WIDTH = 1060.0F;
 constexpr float WINDOW_HEIGHT = 600.0F;
 constexpr float WINDOW_MARGIN = 24.0F;
 constexpr float WINDOW_CENTER = 0.5F;
-constexpr float DETAILS_COLUMNS_WIDTH = 560.0F;
 
 /** Dense form spacing preserves the user's font scale without giant gaps. */
 class ScopedEditorStyle
@@ -96,135 +91,6 @@ std::string rowLabel(const RuntimeEditor::Table& table,
   return label;
 }
 
-struct AttributeGroup
-{
-  std::string title;
-  std::vector<std::pair<std::string, double>> stats;
-};
-std::vector<AttributeGroup> attributeGroups(const nlohmann::json& stats)
-{
-  std::vector<AttributeGroup> groups;
-  std::set<std::string, std::less<>> grouped;
-  for (const auto& descriptor : PlayerView::ATTRIBUTE_GROUPS)
-  {
-    AttributeGroup group{.title = LOC(descriptor.title_key), .stats = {}};
-    for (const auto name : descriptor.stats)
-    {
-      if (const auto it = stats.find(std::string(name));
-          it != stats.end() && it->is_number())
-      {
-        group.stats.emplace_back(name, it->get<double>());
-        grouped.emplace(name);
-      }
-    }
-    if (!group.stats.empty())
-    {
-      groups.push_back(std::move(group));
-    }
-  }
-  AttributeGroup other{.title = LOC("PROFILE_GROUP_OTHER"), .stats = {}};
-  for (const auto& [name, value] : stats.items())
-  {
-    if (!grouped.contains(name) && value.is_number())
-    {
-      other.stats.emplace_back(name, value.get<double>());
-    }
-  }
-  if (!other.stats.empty())
-  {
-    groups.push_back(std::move(other));
-  }
-  return groups;
-}
-
-int resizeText(ImGuiInputTextCallbackData* data)
-{
-  auto* string = static_cast<std::string*>(data->UserData);
-  if (data->EventFlag == ImGuiInputTextFlags_CallbackResize)
-  {
-    string->resize(static_cast<std::size_t>(data->BufTextLen));
-    data->Buf = string->data();
-  }
-  return 0;
-}
-
-void input(const char* label, std::string& string)
-{
-  constexpr auto FLAGS = ImGuiInputTextFlags_CallbackResize;
-  ImGui::InputText(label, string.data(), string.capacity() + 1, FLAGS,
-                   resizeText, &string);
-}
-
-std::string humanLabel(std::string_view name)
-{
-  std::string result;
-  for (std::size_t i = 0; i < name.size(); ++i)
-  {
-    if (i > 0 && std::isupper(static_cast<unsigned char>(name.at(i))) != 0 &&
-        std::islower(static_cast<unsigned char>(name.at(i - 1))) != 0)
-    {
-      result += ' ';
-    }
-    result += name.at(i) == '_' ? ' ' : name.at(i);
-  }
-  if (!result.empty())
-  {
-    result.front() = static_cast<char>(
-        std::toupper(static_cast<unsigned char>(result.front())));
-  }
-  return result;
-}
-int attributeColumns(const std::vector<AttributeGroup>& groups,
-                     float rating_width)
-{
-  float label_width = 0.0F;
-  for (const auto& group : groups)
-  {
-    for (const auto& [name, value] : group.stats)
-    {
-      const auto translated = PlayerView::statLabel(name);
-      const auto label = translated == name ? humanLabel(name) : translated;
-      label_width = std::max(label_width, ImGui::CalcTextSize(label.c_str()).x);
-    }
-  }
-  // Include the card padding and both tables' cell padding. Never select a
-  // column count that breaks ordinary attribute names into fragments.
-  const float padding =
-      (((2 * Theme::Space::M) + (4 * 2.0F)) * Theme::scale()) +
-      (2 * ImGui::GetStyle().CellPadding.x);
-  const float minimum_width = label_width + rating_width + padding;
-  const int maximum =
-      std::max(1, static_cast<int>(std::min<std::size_t>(3, groups.size())));
-  return std::clamp(
-      static_cast<int>(ImGui::GetContentRegionAvail().x / minimum_width), 1,
-      maximum);
-}
-
-bool renderAttribute(const std::string& name, double value,
-                     nlohmann::json& stats)
-{
-  bool changed = false;
-  ImGui::PushID(name.c_str());
-  ImGui::TableNextColumn();
-  ImGui::AlignTextToFramePadding();
-  const auto translated = PlayerView::statLabel(name);
-  wrapped((translated == name ? humanLabel(name) : translated).c_str());
-  ImGui::TableNextColumn();
-  ImGui::SetNextItemWidth(-1);
-  auto rating = static_cast<float>(value);
-  ImGui::PushStyleColor(ImGuiCol_Text, Theme::ratingColor(value));
-  if (ImGui::InputFloat("##rating", &rating, 1.0F, 0.0F, "%.0f") &&
-      std::isfinite(rating))
-  {
-    stats.at(name) = std::clamp(rating, static_cast<float>(MIN_STAT_VAL),
-                                static_cast<float>(MAX_STAT_VAL));
-    changed = true;
-  }
-  ImGui::PopStyleColor();
-  ImGui::PopID();
-  return changed;
-}
-
 std::string tableLabel(const std::string& name)
 {
   static const std::map<std::string, const char*, std::less<>> labels = {
@@ -235,7 +101,7 @@ std::string tableLabel(const std::string& name)
   {
     return LOC(label->second);
   }
-  return humanLabel(name);
+  return EditorForm::humanLabel(name);
 }
 
 std::vector<std::string> relatedTables(const std::optional<NavEntry>& context,
@@ -644,61 +510,15 @@ void RuntimeEditorDialog::chooseTable(const std::string& name)
   }
 }
 
-void RuntimeEditorDialog::renderAttributes(Field& field)
+void RuntimeEditorDialog::renderForm()
 {
-  auto stats = nlohmann::json::parse(field.text, nullptr, false);
-  if (!stats.is_object())
+  const auto presentation = presentations.find(selected_table);
+  if (presentation == presentations.end())
   {
-    wrapped(LOC("EDITOR_ERROR"));
+    wrapped(LOC("EDITOR_UNAVAILABLE"));
     return;
   }
-  const auto groups = attributeGroups(stats);
-  wrapped(LOC("EDITOR_ATTRIBUTE_HINT"));
-  ImGui::Spacing();
-  const float scale = Theme::scale();
-  ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, ImVec2(2 * scale, 2 * scale));
-  const float rating_width =
-      ImGui::CalcTextSize(std::to_string(MAX_STAT_VAL).c_str()).x +
-      (2 * ImGui::GetStyle().FramePadding.x) + (2 * ImGui::GetFrameHeight()) +
-      (2 * ImGui::GetStyle().ItemInnerSpacing.x);
-  const int columns = attributeColumns(groups, rating_width);
-  const bool table = ImGui::BeginTable("##attribute_groups", columns,
-                                       ImGuiTableFlags_SizingStretchSame);
-  bool changed = false;
-  for (const auto& group : groups)
-  {
-    if (table)
-    {
-      ImGui::TableNextColumn();
-    }
-    ImGui::PushID(group.title.c_str());
-    UI::beginAutoHeightCard("##attribute_card", group.title.c_str());
-    ImGui::PushStyleVar(ImGuiStyleVar_CellPadding,
-                        ImVec2(2 * scale, 2 * scale));
-    if (ImGui::BeginTable("##ratings", 2, ImGuiTableFlags_SizingStretchProp))
-    {
-      ImGui::TableSetupColumn("##label", ImGuiTableColumnFlags_WidthStretch);
-      ImGui::TableSetupColumn("##value", ImGuiTableColumnFlags_WidthFixed,
-                              rating_width);
-      for (const auto& [name, value] : group.stats)
-      {
-        changed = renderAttribute(name, value, stats) || changed;
-      }
-      ImGui::EndTable();
-    }
-    ImGui::PopStyleVar();
-    UI::endCard();
-    ImGui::PopID();
-  }
-  if (table)
-  {
-    ImGui::EndTable();
-  }
-  ImGui::PopStyleVar();
-  if (changed)
-  {
-    field.text = stats.dump();
-  }
+  EditorForm::render(fields, presentation->second, page.table.writable);
 }
 
 const EditorField* RuntimeEditorDialog::fieldDescriptor(
@@ -734,191 +554,6 @@ void RuntimeEditorDialog::limitToGameplay()
     fields.clear();
     original.reset();
   }
-}
-
-void RuntimeEditorDialog::renderChoice(Field& field,
-                                       const EditorField& descriptor)
-{
-  const auto selected =
-      std::ranges::find(descriptor.choices, field.text,
-                        &std::pair<std::string, std::string>::first);
-  if (const char* preview = selected == descriptor.choices.end()
-                                ? LOC("EDITOR_NO_VALUE")
-                                : LOC(selected->second.c_str());
-      !ImGui::BeginCombo("##value", preview))
-  {
-    return;
-  }
-  for (const auto& [value, label] : descriptor.choices)
-  {
-    if (ImGui::Selectable(LOC(label.c_str()), field.text == value))
-    {
-      field.text = value;
-    }
-  }
-  ImGui::EndCombo();
-}
-
-void RuntimeEditorDialog::renderNumber(Field& field,
-                                       const EditorField& descriptor)
-{
-  if (field.type == SQLITE_INTEGER)
-  {
-    auto number =
-        std::get<std::int64_t>(RuntimeEditor::parse(field.type, field.text));
-    if (const std::int64_t step = 1;
-        !ImGui::InputScalar("##value", ImGuiDataType_S64, &number, &step))
-    {
-      return;
-    }
-    if (descriptor.minimum.has_value())
-    {
-      number = std::max(number, static_cast<std::int64_t>(*descriptor.minimum));
-    }
-    if (descriptor.maximum.has_value())
-    {
-      number = std::min(number, static_cast<std::int64_t>(*descriptor.maximum));
-    }
-    field.text = std::to_string(number);
-    return;
-  }
-  if (field.type == SQLITE_FLOAT)
-  {
-    double number =
-        std::get<double>(RuntimeEditor::parse(field.type, field.text));
-    if (!ImGui::InputDouble("##value", &number) || !std::isfinite(number))
-    {
-      return;
-    }
-    if (descriptor.minimum.has_value())
-    {
-      number = std::max(number, *descriptor.minimum);
-    }
-    if (descriptor.maximum.has_value())
-    {
-      number = std::min(number, *descriptor.maximum);
-    }
-    field.text = RuntimeEditor::display(number);
-    return;
-  }
-  ImGui::TextUnformatted(LOC("EDITOR_NO_VALUE"));
-}
-
-void RuntimeEditorDialog::renderField(Field& field,
-                                      const EditorField& descriptor)
-{
-  using enum EditorField::Control;
-  if (descriptor.control == Attributes)
-  {
-    renderAttributes(field);
-    return;
-  }
-  ImGui::PushID(field.name.c_str());
-  ImGui::TextUnformatted(LOC(descriptor.label.c_str()));
-  ImGui::SetNextItemWidth(-1);
-  switch (descriptor.control)
-  {
-    case Choice:
-      renderChoice(field, descriptor);
-      break;
-    case Number:
-      renderNumber(field, descriptor);
-      break;
-    case Text:
-      input("##value", field.text);
-      break;
-    case Attributes:
-      break;
-  }
-  ImGui::Dummy(ImVec2(0, Theme::Space::XS * Theme::scale()));
-  ImGui::PopID();
-}
-
-void RuntimeEditorDialog::renderForm()
-{
-  const auto presentation = presentations.find(selected_table);
-  if (fields.empty() || presentation == presentations.end())
-  {
-    wrapped(LOC("EDITOR_UNAVAILABLE"));
-    return;
-  }
-  std::vector<std::string> sections;
-  for (const auto& descriptor : presentation->second)
-  {
-    if (const auto field =
-            std::ranges::find(fields, descriptor.column, &Field::name);
-        field == fields.end() || field->readonly)
-    {
-      continue;
-    }
-    if (std::ranges::find(sections, descriptor.section) == sections.end())
-    {
-      sections.push_back(descriptor.section);
-    }
-  }
-  if (sections.empty())
-  {
-    wrapped(LOC("EDITOR_UNAVAILABLE"));
-    return;
-  }
-  std::string selected_section;
-  if (ImGui::BeginTabBar("##editor_sections",
-                         ImGuiTabBarFlags_FittingPolicyScroll))
-  {
-    for (const auto& section : sections)
-    {
-      if (ImGui::BeginTabItem(LOC(section.c_str())))
-      {
-        selected_section = section;
-        ImGui::EndTabItem();
-      }
-    }
-    ImGui::EndTabBar();
-  }
-  renderSection(selected_section, presentation->second);
-}
-
-void RuntimeEditorDialog::renderSection(
-    std::string_view selected_section,
-    const std::vector<EditorField>& descriptors)
-{
-  if (ImGui::BeginChild("##editor_fields", ImVec2(0, 0)))
-  {
-    ImGui::Spacing();
-    ImGui::BeginDisabled(!page.table.writable);
-    const bool attributes = selected_section == "EDITOR_ATTRIBUTES";
-    const int columns =
-        !attributes && ImGui::GetContentRegionAvail().x >=
-                           DETAILS_COLUMNS_WIDTH * Theme::scale()
-            ? 2
-            : 1;
-    const bool layout = ImGui::BeginTable("##details_layout", columns,
-                                          ImGuiTableFlags_SizingStretchSame);
-    for (const auto& descriptor : descriptors)
-    {
-      if (descriptor.section != selected_section)
-      {
-        continue;
-      }
-      const auto field =
-          std::ranges::find(fields, descriptor.column, &Field::name);
-      if (field == fields.end() || field->readonly)
-      {
-        continue;
-      }
-      if (layout)
-      {
-        ImGui::TableNextColumn();
-      }
-      renderField(*field, descriptor);
-    }
-    if (layout)
-    {
-      ImGui::EndTable();
-    }
-    ImGui::EndDisabled();
-  }
-  ImGui::EndChild();
 }
 
 void RuntimeEditorDialog::render()

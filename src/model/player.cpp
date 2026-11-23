@@ -56,6 +56,10 @@ const std::string& Player::getFirstName() const { return _first_name; }
 
 const std::string& Player::getLastName() const { return _last_name; }
 
+const std::string& Player::getNickname() const { return _nickname; }
+
+void Player::setNickname(std::string_view nickname) { _nickname = nickname; }
+
 int Player::getAge() const { return _age; }
 
 void Player::setAge(uint8_t new_age)

@@ -11,11 +11,13 @@ day. For every key and mouse shortcut see [controls.md](controls.md).
 1. Launch the game and choose **New Game**.
 2. Pick one of the three save slots. Starting in a used slot overwrites that
    career after a confirmation.
-3. **Create your manager**: first and last name, nationality, experience
+3. **Choose the world**: *Default world* for the built-in leagues, or a world
+   you built or downloaded (see [Worlds](world-editor.md)).
+4. **Create your manager**: first and last name, nationality, experience
    (from *Sunday league* to *Former international*) and preferred style. The
    summary shows your starting reputation. Bigger clubs want bigger names, so
    a modest background means a longer climb.
-4. **Choose a club**: pick a league on the left, compare the clubs (squad
+5. **Choose a club**: pick a league on the left, compare the clubs (squad
    size, balance, best player, stadium) and click *Start career with this
    club*, or double-click a club to start straight away.
 

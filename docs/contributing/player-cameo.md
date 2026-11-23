@@ -4,109 +4,72 @@ As an optional thank-you for contributing, you can add your name or nickname
 to [CONTRIBUTORS.md](../../CONTRIBUTORS.md), or give a fictional player your
 name at your favorite existing club. You can choose both forms of credit.
 
-The game loads hand-made players from `assets/user_made_data/players/*.json`
-when it creates a new career. This is the actual folder name in the repository.
-The rest of each squad is filled with generated players. A cameo changes the
-starting world; it does not insert a player into an existing save or guarantee
-that the player will start every match.
+The game's built-in world is one file,
+[`assets/world/default.fmdb`](../../assets/world/default.fmdb). Its `players`
+section holds the hand-made players; the rest of each squad is generated when
+a new career starts. A cameo changes the starting world; it does not insert a
+player into an existing save or guarantee that the player will start every
+match.
 
-## 1. Choose your club and an unused player ID
+## 1. Add the player in the World editor
 
-Find your favorite club in
-[the team data](../../assets/user_made_data/teams). Its `id` is your player's
-`team_id`. For example, Lecce is team **103** in the default pack. Use an
-existing club so that no league or scheduling changes are needed.
+1. Run a development build from your checkout (see [builds](../development/builds.md)).
+2. **Main menu → World editor**. The built-in world opens.
+3. Open **Clubs**, select your favorite club, then **Players → Add**. The new
+   player already belongs to the selected club.
+4. Fill in the name you want to be credited with, position, age, nationality
+   and attributes. Keep attributes and wage plausible for the club's level;
+   age, height and nationality describe the fictional player, not you.
+5. **Export…** and save over `assets/world/default.fmdb` in your checkout.
 
-Choose a positive player `id` below **50000** that is not already used in
-[the player data](../../assets/user_made_data/players). Generated players start
-at 50000. The example uses **20001**, unused when this guide was written;
-check again before submitting it. If another contribution takes the same ID,
-choose another before merging.
+The editor writes the file deterministically, one entity per line, so your
+pull request shows a single added line in the `players` section.
 
-For a quick local search:
+## 2. Or add one line by hand
 
-```sh
-rg -n 'Lecce' assets/user_made_data/teams
-rg -n '"id"\s*:\s*20001\b' assets/user_made_data/players
-```
-
-## 2. Create a player file
-
-Create `assets/user_made_data/players/your-handle.json`. Use lowercase words
-and hyphens for the filename. Each file contains a JSON **array**, even if
-you add only one player. Replace the example names with your own chosen name
-or nickname, change `team_id` to your club, and check the ID is free.
+Add one line to the `players` array of `assets/world/default.fmdb`, keeping
+the array sorted by `id`:
 
 ```json
-[
-  {
-    "id": 20001,
-    "team_id": 103,
-    "first_name": "Alex",
-    "last_name": "Contributor",
-    "age": 22,
-    "nationality": "Italian",
-    "role": "CM",
-    "height": 180,
-    "preferred_foot": "Right",
-    "contract_years": 3,
-    "wage": 2500,
-    "stats": {
-      "Pace": 65,
-      "Shooting": 55,
-      "Passing": 68,
-      "Dribbling": 62,
-      "Defending": 58,
-      "Physicality": 60,
-      "Stamina": 70,
-      "Vision": 66,
-      "Goalkeeping": 10
-    }
-  }
-]
+{"age":22,"contract_years":3,"first_name":"Alex","height":180,"id":20001,"last_name":"Contributor","nationality":"Italian","preferred_foot":"Right","role":"CM","stats":{"Defending":58,"Dribbling":62,"Goalkeeping":10,"Pace":65,"Passing":68,"Physicality":60,"Shooting":55,"Stamina":70,"Vision":66},"team_id":103,"wage":2500},
 ```
 
-`role` accepts `GK`, `CB`, `LB`, `RB`, `CDM`, `CM`, `CAM`, `LM`, `RM`, `LW`,
-`RW` and `ST`. Height is in centimetres and wage is weekly. Use `Left` or
-`Right` for the preferred foot. Nationality is a demonym, such as `Italian`,
-`English` or `French`; supported values are in
-[languages.h](../../src/global/languages.h).
+- `team_id` is your club's `id` in the `clubs` section (Lecce is **103**).
+- `id` must be unused in the `players` section; use a number below 50000.
+- `role` is one of `GK`, `CB`, `LB`, `RB`, `CDM`, `CM`, `CAM`, `LM`, `RM`,
+  `LW`, `RW`, `ST`; `preferred_foot` is `Left`, `Right` or `Both`;
+  `nationality` is a demonym such as `Italian` (see
+  [languages.h](../../src/global/languages.h)).
+- Attributes are the nine names in
+  [stats_config.json](../../assets/config/stats_config.json), 1 to 100.
 
-Attributes use the names in
-[stats_config.json](../../assets/config/stats_config.json) and values from
-1 to 100. Keep attributes and wages plausible for the club; a cameo should
-fit the squad's level. The example's age, height and nationality describe
-the fictional player, so they do not need to be your personal details.
+Opening and saving the file in the World editor once normalises the
+formatting and reports any mistake with the player's name and field.
 
 ## 3. Check it in a new career
 
-Check the JSON syntax from the repository root:
-
-```sh
-python3 -m json.tool assets/user_made_data/players/your-handle.json > /dev/null
-```
-
-Then start a development build with an isolated save/settings directory:
+Start a development build with an isolated save/settings directory:
 
 ```sh
 FM_RUNTIME_ROOT=/tmp/fm-player-cameo FM_WORLD_SEED=424242 \
   ./build/release/src/Player12
 ```
 
-Create a **new career**, choose your club, open its squad and find your player.
-Use the executable path from your own build if you used another preset or
-followed the [macOS/Windows setup](../user/installation.md). On PowerShell,
-set environment variables with `$env:FM_RUNTIME_ROOT` and `$env:FM_WORLD_SEED`
+Create a **new career** with the default world, choose your club, open its
+squad and find your player. Use the executable path from your own build if
+you used another preset or followed the
+[macOS/Windows setup](../user/installation.md). On PowerShell, set
+environment variables with `$env:FM_RUNTIME_ROOT` and `$env:FM_WORLD_SEED`
 before launching the executable.
 
 ## 4. Include it in your contribution
 
-Add the JSON file to your pull request and state the chosen club, player ID
-and how you checked the new career. You can also add your name to
-[CONTRIBUTORS.md](../../CONTRIBUTORS.md). Use your own name or nickname that
-you want publicly credited. The default pack keeps professional players,
-real club badges and copied kits out of its content.
+Include the changed `assets/world/default.fmdb` in your pull request and state
+the chosen club, player ID and how you checked the new career. You can also
+add your name to [CONTRIBUTORS.md](../../CONTRIBUTORS.md). Use your own name or
+nickname that you want publicly credited. The built-in world keeps
+professional players, real club badges and copied kits out of its content.
 
 If you prefer credits only, editing CONTRIBUTORS.md is enough. For all fields
 and the wider world format, see the
-[data reference](../../assets/user_made_data/README.md).
+[world database reference](../../assets/world/README.md).

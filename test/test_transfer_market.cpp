@@ -283,12 +283,17 @@ int64_t categoryTotal(const Finances& finances, FinanceCategory category)
 /** A player of another club who would join @p club and is not a key
  * player there (so the seller is willing to negotiate). */
 PlayerID findWillingTarget(const GameController& controller, TeamID club,
-                           SquadRole min_role = SquadRole::FirstTeam)
+                           SquadRole min_role = SquadRole::FirstTeam,
+                           bool other_league = false)
 {
   const TransferMarket& market = marketOf(controller);
+  const LeagueID own_league =
+      controller.getGameData()->getTeams().at(club).getLeagueId();
   for (const auto& team : controller.getTeams())
   {
     if (team.get().getId() == club) continue;
+    // A club of another league is never a rival (no rival premium).
+    if (other_league && team.get().getLeagueId() == own_league) continue;
     for (const auto& player : controller.getPlayersForTeam(team.get().getId()))
     {
       const PlayerID id = player.get().getId();
@@ -1338,7 +1343,9 @@ TEST_F(TransferMarketTest, OpeningBidAtValueIsCounteredThenAgreed)
   Finances& finances = gamedata->getTeams().at(managed).getFinances();
   finances.addBalance(500'000'000LL);
   finances.setTransferBudget(500'000'000LL);
-  const PlayerID target = findWillingTarget(*controller, managed);
+  // From another league: a rival would ask a premium over the value.
+  const PlayerID target =
+      findWillingTarget(*controller, managed, SquadRole::FirstTeam, true);
   ASSERT_NE(target, 0u);
   gamedata->getPlayers().at(target).setContractYears(3);
 
@@ -1465,9 +1472,12 @@ TEST_F(TransferMarketTest, TakingChargeWithdrawsTheClubsUnmanagedBids)
   // While the market is seeded no club has a manager yet: a bid placed by
   // the club the user then picks must not complete without him.
   auto gamedata = controller->getGameData();
-  const auto& teams = controller->getTeams();
-  const TeamID chosen = teams[5].get().getId();
-  const TeamID seller = teams[6].get().getId();
+  // Two clubs by id (container order differs between standard libraries),
+  // neither of them the club SetUp manages.
+  const auto& members = gamedata->getLeagues().at(2).getTeamIDs();
+  ASSERT_GE(members.size(), 2U);
+  const TeamID chosen = std::ranges::min(members);
+  const TeamID seller = std::ranges::max(members);
   gamedata->getTeams().at(chosen).getFinances().addBalance(1'000'000'000LL);
   const PlayerID target =
       controller->getPlayersForTeam(seller).back().get().getId();

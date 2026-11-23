@@ -60,6 +60,7 @@ enum class SceneID : uint8_t
   NEWS,            /**< World news feed */
   TIMELINE,        /**< Manager's career timeline and journal */
   MATCH_SANDBOX,   /**< Match sandbox setup (tools/match_sandbox) */
+  WORLD_EDITOR,    /**< World database builder (main menu) */
 };
 
 /**

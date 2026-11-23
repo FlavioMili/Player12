@@ -20,8 +20,11 @@
 #include <numbers>
 #include <span>
 #include <string>
+#include <unordered_map>
+#include <utility>
 #include <vector>
 
+#include "database/datagenerator.h"
 #include "global/language_manager.h"
 #include "gui/render/match_camera_3d.h"
 #include "gui/render/match_kit_colors.h"
@@ -397,7 +400,12 @@ PlayerLook lookFor(std::uint32_t playerId)
   const std::uint32_t looks = cosmeticHash(playerId + 17U);
   PlayerLook look;
   look.seed = looks;
-  const std::size_t tone = looks % SKIN_TONES.size();
+  std::size_t tone = looks % SKIN_TONES.size();
+  // A real skin tone from the data pack overrides the deterministic roll.
+  const auto& skinTones = DataGenerator::playerSkinTones();
+  if (const auto found = skinTones.find(static_cast<PlayerID>(playerId));
+      found != skinTones.end())
+    tone = std::min<std::size_t>(found->second, SKIN_TONES.size() - 1);
   look.skin = SKIN_TONES[tone];
   // Fair hair and red hair only with fairer skin.
   const std::size_t hairChoices =
