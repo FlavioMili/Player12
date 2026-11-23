@@ -1029,12 +1029,15 @@ constexpr std::array<Situation, 17> SITUATIONS = {{
      .ownFrame = false},
     {.depth = 1,
      .title = "Our ball, a team-mate has it",
-     .decidedBy = "refreshTacticalTargets: support, run in behind, attack "
-                  "the box, overlap, hold shape",
+     .decidedBy =
+         "its own off-ball frame (step O1, refreshTacticalTargets): run in "
+         "behind, attack the box, overlap, support, come short (forwards), "
+         "hold shape. Open when the team's assignments give it to him (hold "
+         "shape always); stopgap pick in today's order (follow-up: measures)",
      .layers = SLIDERS | ROLE | ORDERS | MOOD,
      .plannerWide = true,
      .onFrame = false,
-     .ownFrame = false},
+     .ownFrame = true},
     {.depth = 1,
      .title = "Our ball, it's coming to me",
      .decidedBy =

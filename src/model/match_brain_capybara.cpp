@@ -298,6 +298,24 @@ float MatchEngine::roleStepsCapybara(float profile)
                     DecisionFrame::LAYER_MAX_STEPS);
 }
 
+namespace
+{
+/** "Our ball, a team-mate has it" (step O1): his off-ball options, in
+ * the stopgap order (today's). */
+enum class OurBallJob : std::uint8_t
+{
+  RUN_IN_BEHIND,
+  BOX_ARRIVAL,
+  OVERLAP,
+  SUPPORT,
+  FORWARD_SHORT,
+  HOLD_SHAPE,
+  COUNT
+};
+constexpr std::size_t OUR_BALL_JOB_COUNT =
+    static_cast<std::size_t>(OurBallJob::COUNT);
+}  // namespace
+
 void MatchEngine::refreshTacticalTargetsCapybara(float dt, bool planHome)
 {
   // Team planning happens in two passes: choose shared assignments (pressers,
@@ -1477,8 +1495,30 @@ void MatchEngine::refreshTacticalTargetsCapybara(float dt, bool planHome)
                            role == PlayerRole::RW || role == PlayerRole::CAM;
       const auto& runners = player.isHomeTeam ? homeRunners : awayRunners;
       const auto runnerPosition = std::ranges::find(runners, &player);
-      const bool committedRunner = runnerPosition != runners.end();
-      if (committedRunner)
+      MatchPlayer* midfieldArrival =
+          player.isHomeTeam ? homeMidfieldArrival : awayMidfieldArrival;
+      MatchPlayer* farPostRunner =
+          player.isHomeTeam ? homeFarPostRunner : awayFarPostRunner;
+      MatchPlayer* overlappingFullback =
+          player.isHomeTeam ? homeOverlappingFullback : awayOverlappingFullback;
+      const auto& supporters =
+          player.isHomeTeam ? homeSupporters : awaySupporters;
+      const auto supportPosition = std::ranges::find(supporters, &player);
+      // The situation "Our ball, a team-mate has it" (brain redesign plan
+      // section 22, step O1): his off-ball frame. An option is open when
+      // the team's assignments (above) give it to him; hold shape is always
+      // open. Follow-up: no measures yet; the stopgap pick is today's
+      // order (the first open option).
+      const std::array<bool, OUR_BALL_JOB_COUNT> ourBallOpen{
+          runnerPosition != runners.end(),
+          &player == midfieldArrival || &player == farPostRunner,
+          &player == overlappingFullback,
+          supportPosition != supporters.end(),
+          forward,
+          true};
+      const auto ourBallJob = static_cast<OurBallJob>(std::distance(
+          ourBallOpen.begin(), std::ranges::find(ourBallOpen, true)));
+      if (ourBallJob == OurBallJob::RUN_IN_BEHIND)
       {
         const std::size_t runnerSlot = static_cast<std::size_t>(
             std::distance(runners.begin(), runnerPosition));
@@ -1553,17 +1593,7 @@ void MatchEngine::refreshTacticalTargetsCapybara(float dt, bool planHome)
       }
       else
       {
-        MatchPlayer* midfieldArrival =
-            player.isHomeTeam ? homeMidfieldArrival : awayMidfieldArrival;
-        MatchPlayer* farPostRunner =
-            player.isHomeTeam ? homeFarPostRunner : awayFarPostRunner;
-        MatchPlayer* overlappingFullback = player.isHomeTeam
-                                               ? homeOverlappingFullback
-                                               : awayOverlappingFullback;
-        const auto& supporters =
-            player.isHomeTeam ? homeSupporters : awaySupporters;
-        const auto supportPosition = std::ranges::find(supporters, &player);
-        if (&player == midfieldArrival || &player == farPostRunner)
+        if (ourBallJob == OurBallJob::BOX_ARRIVAL)
         {
           // Late runs into the box: the midfielder to the penalty spot on
           // the side away from the ball, the wide man to the far post; both
@@ -1588,7 +1618,7 @@ void MatchEngine::refreshTacticalTargetsCapybara(float dt, bool planHome)
           job = planJob(PlanBranch::BOX_ARRIVAL,
                         (farPost ? 1U : 0U) | (ballSide > 0.0F ? 2U : 0U));
         }
-        else if (&player == overlappingFullback)
+        else if (ourBallJob == OurBallJob::OVERLAP)
         {
           player.intent = PlayerIntent::OVERLAP;
           job = planJob(PlanBranch::OVERLAP);
@@ -1596,7 +1626,7 @@ void MatchEngine::refreshTacticalTargetsCapybara(float dt, bool planHome)
               pitch.atX(attackDirection *
                         MatchTuning::Shape::FINAL_THIRD_FULLBACK_OVERLAP);
         }
-        else if (supportPosition != supporters.end())
+        else if (ourBallJob == OurBallJob::SUPPORT)
         {
           player.intent = PlayerIntent::OFFER_SUPPORT;
           const std::size_t supportSlot = static_cast<std::size_t>(
@@ -1638,7 +1668,7 @@ void MatchEngine::refreshTacticalTargetsCapybara(float dt, bool planHome)
                             (supportSide > 0.0F ? 1U << 8 : 0U) |
                             (transitionBonus ? 1U << 9 : 0U));
         }
-        else if (forward)
+        else if (ourBallJob == OurBallJob::FORWARD_SHORT)
         {
           player.intent = PlayerIntent::OFFER_SUPPORT;
           // Not every attacker runs beyond the defence. A complementary
