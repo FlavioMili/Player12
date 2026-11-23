@@ -37,8 +37,8 @@ std::vector<std::string> TechniqueTuning::changes() const
   {
     for (std::size_t knob = 0; knob < STRIKE_KNOB_COUNT; ++knob)
     {
-      const float was = strikeDefaults.values[kind][knob];
-      const float now = strike.values[kind][knob];
+      const float was = strikeDefaults.values.at(kind).at(knob);
+      const float now = strike.values.at(kind).at(knob);
       if (differs(was, now))
       {
         lines.push_back(
@@ -52,44 +52,46 @@ std::vector<std::string> TechniqueTuning::changes() const
   const FirstTouchKnobs touchDefaults;
   for (std::size_t knob = 0; knob < TOUCH_KNOB_COUNT; ++knob)
   {
-    const float was = touchDefaults.values[knob];
-    const float now = touch.values[knob];
+    const float was = touchDefaults.values.at(knob);
+    const float now = touch.values.at(knob);
     if (differs(was, now))
     {
       lines.push_back(std::format("Touch: {} {:g} -> {:g}",
-                                  TOUCH_KNOBS[knob].name, was, now));
+                                  TOUCH_KNOBS.at(knob).name, was, now));
     }
   }
   const StretchMap stretchDefaults;
   for (std::size_t row = 0; row < StretchMap::ANGLES; ++row)
   {
-    if (differs(stretch.angles[row], stretchDefaults.angles[row]))
+    if (differs(stretch.angles.at(row), stretchDefaults.angles.at(row)))
     {
       lines.push_back(std::format("Stretch map: angle {} {:g} -> {:g}", row + 1,
-                                  stretchDefaults.angles[row],
-                                  stretch.angles[row]));
+                                  stretchDefaults.angles.at(row),
+                                  stretch.angles.at(row)));
     }
   }
   for (std::size_t column = 0; column < StretchMap::DISTANCES; ++column)
   {
-    if (differs(stretch.distances[column], stretchDefaults.distances[column]))
+    if (differs(stretch.distances.at(column),
+                stretchDefaults.distances.at(column)))
     {
-      lines.push_back(std::format("Stretch map: distance {} {:g} -> {:g}",
-                                  column + 1, stretchDefaults.distances[column],
-                                  stretch.distances[column]));
+      lines.push_back(std::format(
+          "Stretch map: distance {} {:g} -> {:g}", column + 1,
+          stretchDefaults.distances.at(column), stretch.distances.at(column)));
     }
   }
   for (std::size_t row = 0; row < StretchMap::ANGLES; ++row)
   {
     for (std::size_t column = 0; column < StretchMap::DISTANCES; ++column)
     {
-      if (differs(stretch.values[row][column],
-                  stretchDefaults.values[row][column]))
+      if (differs(stretch.values.at(row).at(column),
+                  stretchDefaults.values.at(row).at(column)))
       {
-        lines.push_back(std::format(
-            "Stretch map: {:g} deg, {:g} of reach {:g} -> {:g}",
-            stretch.angles[row], stretch.distances[column],
-            stretchDefaults.values[row][column], stretch.values[row][column]));
+        lines.push_back(
+            std::format("Stretch map: {:g} deg, {:g} of reach {:g} -> {:g}",
+                        stretch.angles.at(row), stretch.distances.at(column),
+                        stretchDefaults.values.at(row).at(column),
+                        stretch.values.at(row).at(column)));
       }
     }
   }

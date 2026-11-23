@@ -10,10 +10,12 @@
 
 #include <imgui.h>
 
+#include <cstddef>
 #include <cstdint>
 #include <functional>
 #include <map>
 #include <memory>
+#include <optional>
 #include <string>
 #include <vector>
 
@@ -226,6 +228,25 @@ class DrillRun
   [[nodiscard]] const std::vector<PlayerID>& ids() const { return drillIds; }
 
  private:
+  /** A slot of a side's eleven, and the drill player (spec) it holds. */
+  struct Slot
+  {
+    std::size_t side = 0;
+    std::size_t slot = 0;
+    std::optional<std::size_t> spec;
+  };
+
+  /** One side's eleven: its drill players first (a keeper in goal),
+   * reference players in the rest. */
+  void fillSide(std::size_t side, const std::vector<DrillPlayerSpec>& specs,
+                const StatsConfig& config, const std::vector<Player*>& squad,
+                Lineup& lineup, PlayerID& nextId);
+  /** The player for a slot: the session's own, or a new reference one. */
+  Player* playerFor(const Slot& at, const std::vector<DrillPlayerSpec>& specs,
+                    const StatsConfig& config,
+                    const std::vector<Player*>& squad, PlayerID& nextId);
+  void prepareEngine(const std::vector<DrillPlayerSpec>& specs, bool record);
+
   Drill& drill;
   std::vector<std::unique_ptr<Player>> pool;
   std::vector<PlayerID> drillIds;

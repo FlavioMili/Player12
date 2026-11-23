@@ -273,11 +273,16 @@ void DebugInspector::selectable(const SandboxRecorder& recorder,
 
 // --- Team ------------------------------------------------------------------
 
-void DebugInspector::renderTeam(const SandboxRecorder& recorder,
-                                const MatchEngine& engine)
+namespace
 {
-  auto guard = recorder.lock();
-  refresh(recorder, engine.getSimulatedSteps());
+constexpr ImGuiTableFlags TEAM_TABLE_FLAGS = ImGuiTableFlags_RowBg |
+                                             ImGuiTableFlags_BordersInnerV |
+                                             ImGuiTableFlags_SizingStretchProp;
+}  // namespace
+
+/** The side picker, its phase and how long it has held. */
+void DebugInspector::renderTeamHeader(const MatchEngine& engine)
+{
   constexpr std::array<const char*, 2> SIDES{"Home", "Away"};
   for (int index = 0; index < 2; ++index)
   {
@@ -308,54 +313,107 @@ void DebugInspector::renderTeam(const SandboxRecorder& recorder,
                     static_cast<double>(engine.getTransitionSecondsRemaining()))
             .c_str());
   }
+}
 
-  // The planner's jobs, with the scores that ranked them.
-  ImGui::SeparatorText("Planner jobs");
-  constexpr ImGuiTableFlags tableFlags = ImGuiTableFlags_RowBg |
-                                         ImGuiTableFlags_BordersInnerV |
-                                         ImGuiTableFlags_SizingStretchProp;
-  if (ImGui::BeginTable("##jobs", 3, tableFlags))
+/** The planner's jobs, with the scores that ranked them. */
+void DebugInspector::renderPlannerJobs(const SandboxRecorder& recorder,
+                                       std::size_t team)
+{
+  if (!ImGui::BeginTable("##jobs", 3, TEAM_TABLE_FLAGS))
   {
-    ImGui::TableSetupColumn("Job");
-    ImGui::TableSetupColumn("Player");
-    ImGui::TableSetupColumn("Ranking score");
-    ImGui::PushFont(SandboxAnalysisUI::bold(), HEADER_FONT_SIZE);
-    ImGui::TableHeadersRow();
-    ImGui::PopFont();
-    for (std::size_t job = 1; job < JOBS; ++job)
-    {
-      const PlayerID player = asOf.jobs.at(team).at(job);
-      if (player == 0)
-      {
-        continue;
-      }
-      ImGui::TableNextRow();
-      ImGui::TableNextColumn();
-      ImGui::TextUnformatted(SandboxNames::job(static_cast<Job>(job)));
-      ImGui::TableNextColumn();
-      selectable(recorder, player);
-      ImGui::TableNextColumn();
-      const auto kind = static_cast<Job>(job);
-      if (kind == Job::PRESSER_1 || kind == Job::PRESSER_2)
-      {
-        ImGui::TextUnformatted(
-            std::format("arrives in {:.2f} s",
-                        static_cast<double>(asOf.scores.at(team).at(job)))
-                .c_str());
-      }
-      else if (kind == Job::RUNNER_1 || kind == Job::RUNNER_2 ||
-               kind == Job::RUNNER_3)
-      {
-        ImGui::TextUnformatted(
-            std::format("run priority {:.2f}",
-                        static_cast<double>(asOf.scores.at(team).at(job)))
-                .c_str());
-      }
-    }
-    ImGui::EndTable();
+    return;
   }
+  ImGui::TableSetupColumn("Job");
+  ImGui::TableSetupColumn("Player");
+  ImGui::TableSetupColumn("Ranking score");
+  ImGui::PushFont(SandboxAnalysisUI::bold(), HEADER_FONT_SIZE);
+  ImGui::TableHeadersRow();
+  ImGui::PopFont();
+  for (std::size_t job = 1; job < JOBS; ++job)
+  {
+    const PlayerID player = asOf.jobs.at(team).at(job);
+    if (player == 0)
+    {
+      continue;
+    }
+    ImGui::TableNextRow();
+    ImGui::TableNextColumn();
+    ImGui::TextUnformatted(SandboxNames::job(static_cast<Job>(job)));
+    ImGui::TableNextColumn();
+    selectable(recorder, player);
+    ImGui::TableNextColumn();
+    const auto kind = static_cast<Job>(job);
+    const auto score = static_cast<double>(asOf.scores.at(team).at(job));
+    if (kind == Job::PRESSER_1 || kind == Job::PRESSER_2)
+    {
+      ImGui::TextUnformatted(std::format("arrives in {:.2f} s", score).c_str());
+    }
+    else if (kind == Job::RUNNER_1 || kind == Job::RUNNER_2 ||
+             kind == Job::RUNNER_3)
+    {
+      ImGui::TextUnformatted(std::format("run priority {:.2f}", score).c_str());
+    }
+  }
+  ImGui::EndTable();
+}
 
-  // Every player of the side at this moment.
+/** One player of the side at this moment. */
+void DebugInspector::renderTeamPlayerRow(const SandboxRecorder& recorder,
+                                         const MatchPlayer& slot,
+                                         const PossessionSnapshot& possession)
+{
+  const PlayerID id = slot.player->getId();
+  ImGui::TableNextRow();
+  ImGui::TableNextColumn();
+  selectable(recorder, id);
+  if (const char* ballStatus = possessionTag(id, possession);
+      ballStatus != nullptr)
+  {
+    ImGui::SameLine();
+    SandboxText::coloredText(Theme::palette().positive, ballStatus);
+  }
+  if (id == possession.expectedReceiver)
+  {
+    ImGui::SameLine();
+    SandboxText::disabledText("(expected)");
+  }
+  ImGui::TableNextColumn();
+  ImGui::TextUnformatted(RoleUtils::shortName(slot.player->getRole()));
+  ImGui::TableNextColumn();
+  SandboxText::coloredText(
+      ImGui::ColorConvertU32ToFloat4(intentColor(slot.intent)),
+      SandboxNames::intent(slot.intent));
+  ImGui::TableNextColumn();
+  if (const Job job = jobOf(id, slot.isHomeTeam); job != Job::NONE)
+  {
+    ImGui::TextUnformatted(SandboxNames::job(job));
+  }
+  ImGui::TableNextColumn();
+  ImGui::TextUnformatted(
+      std::format("{:.1f} m", static_cast<double>(
+                                  metres(slot.position, slot.tacticalTarget)))
+          .c_str());
+  ImGui::TableNextColumn();
+  ImGui::TextUnformatted(
+      std::format("{:.1f} m/s", static_cast<double>(std::hypot(
+                                    slot.velocity.x, slot.velocity.y)))
+          .c_str());
+  ImGui::TableNextColumn();
+  ImGui::TextUnformatted(
+      std::format("{:.0f}%", static_cast<double>(slot.stamina * 100.0F))
+          .c_str());
+}
+
+void DebugInspector::renderTeam(const SandboxRecorder& recorder,
+                                const MatchEngine& engine)
+{
+  auto guard = recorder.lock();
+  refresh(recorder, engine.getSimulatedSteps());
+  renderTeamHeader(engine);
+  const bool home = team_side == 0;
+  ImGui::SeparatorText("Planner jobs");
+  renderPlannerJobs(recorder, side(home));
+
   // Full detail: both rankings, every candidate broken down.
   if (ImGui::CollapsingHeader("Ranking breakdowns (full detail)"))
   {
@@ -365,76 +423,37 @@ void DebugInspector::renderTeam(const SandboxRecorder& recorder,
     guard.lock();
   }
 
+  // Every player of the side at this moment.
   ImGui::SeparatorText("Players");
-  if (ImGui::BeginTable("##players", TEAM_TABLE_COLUMNS,
-                        tableFlags | ImGuiTableFlags_ScrollY,
-                        ImVec2(0.0F, 0.0F)))
+  if (!ImGui::BeginTable("##players", TEAM_TABLE_COLUMNS,
+                         TEAM_TABLE_FLAGS | ImGuiTableFlags_ScrollY,
+                         ImVec2(0.0F, 0.0F)))
   {
-    ImGui::TableSetupScrollFreeze(0, 1);
-    ImGui::TableSetupColumn("Player", ImGuiTableColumnFlags_WidthStretch,
-                            PLAYER_COLUMN_WEIGHT);
-    ImGui::TableSetupColumn("Pos");
-    ImGui::TableSetupColumn("Intent", ImGuiTableColumnFlags_WidthStretch,
-                            DETAIL_COLUMN_WEIGHT);
-    ImGui::TableSetupColumn("Job", ImGuiTableColumnFlags_WidthStretch,
-                            JOB_COLUMN_WEIGHT);
-    ImGui::TableSetupColumn("To target");
-    ImGui::TableSetupColumn("Speed");
-    ImGui::TableSetupColumn("Stamina");
-    ImGui::PushFont(SandboxAnalysisUI::bold(), HEADER_FONT_SIZE);
-    ImGui::TableHeadersRow();
-    ImGui::PopFont();
-    const PossessionSnapshot possession = engine.getPossessionSnapshot();
-    for (const MatchPlayer& slot : engine.getPlayers())
-    {
-      if ((slot.player == nullptr) || slot.isHomeTeam != home || !slot.onPitch)
-      {
-        continue;
-      }
-      const PlayerID id = slot.player->getId();
-      ImGui::TableNextRow();
-      ImGui::TableNextColumn();
-      selectable(recorder, id);
-      const char* ballStatus = possessionTag(id, possession);
-      if (ballStatus != nullptr)
-      {
-        ImGui::SameLine();
-        SandboxText::coloredText(Theme::palette().positive, ballStatus);
-      }
-      if (id == possession.expectedReceiver)
-      {
-        ImGui::SameLine();
-        SandboxText::disabledText("(expected)");
-      }
-      ImGui::TableNextColumn();
-      ImGui::TextUnformatted(RoleUtils::shortName(slot.player->getRole()));
-      ImGui::TableNextColumn();
-      SandboxText::coloredText(
-          ImGui::ColorConvertU32ToFloat4(intentColor(slot.intent)),
-          SandboxNames::intent(slot.intent));
-      ImGui::TableNextColumn();
-      const Job job = jobOf(id, home);
-      if (job != Job::NONE)
-      {
-        ImGui::TextUnformatted(SandboxNames::job(job));
-      }
-      ImGui::TableNextColumn();
-      ImGui::TextUnformatted(
-          std::format("{:.1f} m", static_cast<double>(metres(
-                                      slot.position, slot.tacticalTarget)))
-              .c_str());
-      ImGui::TableNextColumn();
-      ImGui::TextUnformatted(
-          std::format("{:.1f} m/s", static_cast<double>(std::hypot(
-                                        slot.velocity.x, slot.velocity.y)))
-              .c_str());
-      ImGui::TableNextColumn();
-      ImGui::TextUnformatted(
-          std::format("{:.0f}%", static_cast<double>(slot.stamina * 100.0F))
-              .c_str());
-    }
-    ImGui::EndTable();
+    return;
   }
+  ImGui::TableSetupScrollFreeze(0, 1);
+  ImGui::TableSetupColumn("Player", ImGuiTableColumnFlags_WidthStretch,
+                          PLAYER_COLUMN_WEIGHT);
+  ImGui::TableSetupColumn("Pos");
+  ImGui::TableSetupColumn("Intent", ImGuiTableColumnFlags_WidthStretch,
+                          DETAIL_COLUMN_WEIGHT);
+  ImGui::TableSetupColumn("Job", ImGuiTableColumnFlags_WidthStretch,
+                          JOB_COLUMN_WEIGHT);
+  ImGui::TableSetupColumn("To target");
+  ImGui::TableSetupColumn("Speed");
+  ImGui::TableSetupColumn("Stamina");
+  ImGui::PushFont(SandboxAnalysisUI::bold(), HEADER_FONT_SIZE);
+  ImGui::TableHeadersRow();
+  ImGui::PopFont();
+  const PossessionSnapshot possession = engine.getPossessionSnapshot();
+  for (const MatchPlayer& slot : engine.getPlayers())
+  {
+    if ((slot.player != nullptr) && slot.isHomeTeam == home && slot.onPitch)
+    {
+      renderTeamPlayerRow(recorder, slot, possession);
+    }
+  }
+  ImGui::EndTable();
 }
 
 // --- Player ----------------------------------------------------------------
@@ -511,14 +530,157 @@ void DebugInspector::renderIntentStrip(const SandboxRecorder& recorder,
   }
 }
 
-void DebugInspector::renderPlayer(const SandboxRecorder& recorder,
-                                  const MatchEngine& engine)
+namespace
 {
-  const auto guard = recorder.lock();
-  const std::uint64_t tick = engine.getSimulatedSteps();
-  refresh(recorder, tick);
+/** His movement mode now and his own bands (fatigue plan 4.2). */
+std::string movementText(const MatchEngine& engine, const MatchPlayer& slot)
+{
+  const float speedNow = std::hypot(slot.velocity.x, slot.velocity.y);
+  std::string bands;
+  for (const MovementMode mode : {MovementMode::WALK, MovementMode::JOG,
+                                  MovementMode::RUN, MovementMode::SPRINT})
+  {
+    bands +=
+        std::format("{}{} ≤{:.2f}", bands.empty() ? "" : " · ",
+                    movementModeName(mode), engine.speedBand(slot, mode).high);
+  }
+  return std::format("{} · {}",
+                     movementModeName(engine.movementModeAt(slot, speedNow)),
+                     bands);
+}
 
-  // A new selection (pitch, tables, log) stops following the ball.
+/** Down: how long, and what he is doing about it. */
+std::string downText(const MatchPlayer& slot)
+{
+  if (!slot.fallen)
+  {
+    return {};
+  }
+  std::string text = std::format("down {:.1f} s", slot.downSeconds);
+  if (slot.bigHitSeconds > 0.0F)
+  {
+    text += std::format(" (big hit, at least {:.1f} s)", slot.bigHitSeconds);
+  }
+  if (slot.velocity.x != 0.0F || slot.velocity.y != 0.0F)
+  {
+    text += slot.lyingAcross ? ", tumbling" : ", sliding";
+  }
+  else if (slot.rollSeconds > 0.0F)
+  {
+    text += ", rolling in pain";
+  }
+  else if (slot.gettingUp)
+  {
+    text += std::format(", getting up ({:.1f} s)", slot.getUpSeconds);
+  }
+  return text;
+}
+
+/** Whom he is going round, and on which side. */
+std::string goingRoundText(const MatchEngine& engine, const MatchPlayer& slot)
+{
+  if (slot.wayRoundOf < 0 ||
+      static_cast<std::size_t>(slot.wayRoundOf) >= engine.getPlayers().size())
+  {
+    return {};
+  }
+  const MatchPlayer& other =
+      engine.getPlayers()[static_cast<std::size_t>(slot.wayRoundOf)];
+  return std::format(
+      "going round {} ({})",
+      (other.player != nullptr) ? other.player->getName() : std::string("?"),
+      slot.wayRoundSide > 0 ? "left" : "right");
+}
+
+/** Everything true of him now, joined; "-" if nothing. */
+std::string stateText(const MatchEngine& engine, const MatchPlayer& slot,
+                      PlayerID inspected, PlayerID owner)
+{
+  std::string text;
+  const auto flag = [&text](bool on, const std::string& what)
+  {
+    if (!on)
+    {
+      return;
+    }
+    if (!text.empty())
+    {
+      text += " · ";
+    }
+    text += what;
+  };
+  flag(inspected == owner, "has the ball");
+  flag(slot.isPressing, "pressing");
+  flag(slot.isMakingRun, "making a run");
+  flag(slot.isTrapping, "controlling the ball");
+  flag(slot.isDiving, "diving");
+  flag(slot.isInjured, "injured");
+  flag(slot.stumbleSeconds > 0.0F, "stumbling");
+  flag(slot.collisionPause > 0.0F && slot.stumbleSeconds <= 0.0F,
+       "knocked (paused)");
+  flag(slot.fallen, downText(slot));
+  flag(slot.wayRoundOf >= 0, goingRoundText(engine, slot));
+  flag(engine.getControlledPlayer() == inspected, "human-controlled");
+  return text.empty() ? std::string("-") : text;
+}
+
+std::string engineAttributesText(const MatchPlayer& slot)
+{
+  return std::format(
+      "Pac {:.0f} · Sho {:.0f} · Pas {:.0f} · Dri {:.0f} · "
+      "Def {:.0f} · Phy {:.0f} · Sta {:.0f} · Vis {:.0f}"
+      "{} · {:.2f} m",
+      slot.pace * 100.0F, slot.shooting * 100.0F, slot.passing * 100.0F,
+      slot.dribbling * 100.0F, slot.defending * 100.0F,
+      slot.physicality * 100.0F, slot.endurance * 100.0F, slot.vision * 100.0F,
+      slot.isGoalkeeper ? std::format(" · GK {:.0f}", slot.goalkeeping * 100.0F)
+                        : std::string(),
+      slot.heightMetres);
+}
+
+/** Every derived stat in the registry, with its physical value if it has
+ * one, and the help that explains them. */
+void derivedStatsRow(const MatchPlayer& slot)
+{
+  std::string derivedText;
+  std::string derivedHelp =
+      "Stats the match works out from the attributes above, with the "
+      "handshake's recipes (match_derived_stats.h). Future game stats "
+      "stand in for stats the game will carry; match-engine-only stats "
+      "exist only in the match:";
+  for (std::size_t index = 0; index < DERIVED_STAT_COUNT; ++index)
+  {
+    const auto stat = static_cast<DerivedStat>(index);
+    const DerivedStatInfo& info = derivedStatInfo(stat);
+    const float rating = slot.derivedStat(stat);
+    if (!derivedText.empty())
+    {
+      derivedText += " · ";
+    }
+    derivedText += std::format("{} {:.0f}", info.label, rating * 100.0F);
+    if (!info.unit.empty())
+    {
+      derivedText += std::format(" ({:.4g} {})",
+                                 derivedPhysicalValue(stat, rating), info.unit);
+    }
+    derivedHelp += std::format("\n{} ({}): {}", info.name,
+                               derivedLayerName(info.layer), info.description);
+  }
+  derivedText +=
+      std::format(" · weight {:.0f} kg",
+                  bodyMassKilograms(slot.heightMetres,
+                                    slot.derivedStat(DerivedStat::STRENGTH)));
+  derivedHelp +=
+      "\nWeight: a proxy until the game carries one, from his height and "
+      "Strength (collision plan).";
+  property("Derived stats", derivedText, derivedHelp.c_str());
+}
+}  // namespace
+
+/** The follow toggle; returns whom to inspect (the ball's man while
+ * following, else the selection). A new selection stops following. */
+PlayerID DebugInspector::followedOrSelected(const MatchEngine& engine)
+{
   if (selected != last_selected)
   {
     follow_ball = false;
@@ -541,9 +703,13 @@ void DebugInspector::renderPlayer(const SandboxRecorder& recorder,
   {
     followed = owner;
   }
-  const PlayerID inspected = follow_ball && followed != 0 ? followed : selected;
+  return follow_ball && followed != 0 ? followed : selected;
+}
 
-  // Picker: every player seen in the match, by name.
+/** Picker: every player seen in the match, by name. */
+void DebugInspector::renderPlayerPicker(const SandboxRecorder& recorder,
+                                        const MatchEngine& engine)
+{
   const std::string current = (selected != 0U) ? recorder.playerName(selected)
                                                : std::string("Choose a player");
   ImGui::SetNextItemWidth(PLAYER_PICKER_WIDTH * Theme::scale());
@@ -569,222 +735,86 @@ void DebugInspector::renderPlayer(const SandboxRecorder& recorder,
   }
   ImGui::SameLine();
   SandboxText::disabledText("or click him on the review pitch");
-  const MatchPlayer* slot = findSlot(engine, inspected);
-  if (slot == nullptr)
-  {
-    SandboxText::disabledText(
-        "No player inspected (or he is not on the pitch).");
-    return;
-  }
+}
 
-  const Job job = jobOf(inspected, slot->isHomeTeam);
-  ImGui::TextUnformatted(
-      std::format("{}  ·  {}  ·  natural {}{}", slot->player->getName(),
-                  slot->isHomeTeam ? "Home" : "Away",
-                  RoleUtils::shortName(slot->player->getRole()),
-                  slot->isGoalkeeper ? "  ·  in goal" : "")
-          .c_str());
-
-  // Now: what he is doing and why.
+/** Now: what he is doing and why. */
+void DebugInspector::renderPlayerNow(const MatchEngine& engine,
+                                     const MatchPlayer& slot,
+                                     PlayerID inspected) const
+{
   constexpr ImGuiTableFlags flags =
       ImGuiTableFlags_SizingStretchProp | ImGuiTableFlags_BordersInnerH;
-  if (ImGui::BeginTable("##now", 2, flags))
+  if (!ImGui::BeginTable("##now", 2, flags))
   {
-    ImGui::TableSetupColumn("key", ImGuiTableColumnFlags_WidthFixed,
-                            PROPERTY_COLUMN_WIDTH * Theme::scale());
-    ImGui::TableSetupColumn("value");
-    property("Brain",
-             std::string(brainName(engine.getBrain(slot->isHomeTeam))));
-    property("Body", std::string(bodyName(engine.getBody(slot->isHomeTeam))));
-    property("Intent", SandboxNames::intent(slot->intent));
-    property("Why",
-             job != Job::NONE
-                 ? std::format("planner job: {}", SandboxNames::job(job))
-                 : std::string("no team job: his role, the team phase and "
-                               "the shape rules set it"));
-    property("Target", std::format("{:.1f} m away{}",
-                                   metres(slot->position, slot->tacticalTarget),
-                                   slot->urgentMovement ? " · urgent" : ""));
-    property(
-        "Speed",
-        std::format("{:.1f} m/s (top {:.1f}){}",
-                    std::hypot(slot->velocity.x, slot->velocity.y),
-                    slot->maxSpeed, slot->isSprinting ? " · sprinting" : ""));
-    {
-      // His movement mode now and his own bands (fatigue plan 4.2).
-      const float speedNow = std::hypot(slot->velocity.x, slot->velocity.y);
-      std::string bands;
-      for (const MovementMode mode : {MovementMode::WALK, MovementMode::JOG,
-                                      MovementMode::RUN, MovementMode::SPRINT})
-      {
-        bands += std::format("{}{} ≤{:.2f}", bands.empty() ? "" : " · ",
-                             movementModeName(mode),
-                             engine.speedBand(*slot, mode).high);
-      }
-      property(
-          "Movement",
-          std::format("{} · {}",
-                      movementModeName(engine.movementModeAt(*slot, speedNow)),
-                      bands),
-          "His movement mode by his speed, and the top of each mode's "
-          "band for him now (m/s): walk to his walk-run transition, "
-          "jog to 0.82 x critical speed, run to critical speed, sprint "
-          "to his top speed. Fuel lowers the bands.");
-    }
-    property("Facing",
-             std::format("{:.0f}°", slot->facingAngle * DEGREES_HALF_TURN /
-                                        std::numbers::pi_v<float>));
-    property("Stamina",
-             std::format("{:.0f}% · sprint reserve {:.0f}%",
-                         slot->stamina * 100.0F, slot->sprintReserve * 100.0F));
-    property("Cooldowns",
-             std::format("action {:.2f} s · tackle {:.2f} s",
-                         slot->actionCooldown, slot->tackleCooldown));
-    std::string flagsText;
-    const auto flag = [&flagsText](bool on, const char* text)
-    {
-      if (!on)
-      {
-        return;
-      }
-      if (!flagsText.empty())
-      {
-        flagsText += " · ";
-      }
-      flagsText += text;
-    };
-    flag(inspected == owner, "has the ball");
-    flag(slot->isPressing, "pressing");
-    flag(slot->isMakingRun, "making a run");
-    flag(slot->isTrapping, "controlling the ball");
-    flag(slot->isDiving, "diving");
-    flag(slot->isInjured, "injured");
-    flag(slot->stumbleSeconds > 0.0F, "stumbling");
-    flag(slot->collisionPause > 0.0F && slot->stumbleSeconds <= 0.0F,
-         "knocked (paused)");
-    std::string downText;
-    if (slot->fallen)
-    {
-      downText = std::format("down {:.1f} s", slot->downSeconds);
-      if (slot->bigHitSeconds > 0.0F)
-      {
-        downText +=
-            std::format(" (big hit, at least {:.1f} s)", slot->bigHitSeconds);
-      }
-      if (slot->velocity.x != 0.0F || slot->velocity.y != 0.0F)
-      {
-        downText += slot->lyingAcross ? ", tumbling" : ", sliding";
-      }
-      else if (slot->rollSeconds > 0.0F)
-      {
-        downText += ", rolling in pain";
-      }
-      else if (slot->gettingUp)
-      {
-        downText += std::format(", getting up ({:.1f} s)", slot->getUpSeconds);
-      }
-    }
-    flag(slot->fallen, downText.c_str());
-    std::string roundText;
-    if (slot->wayRoundOf >= 0 &&
-        static_cast<std::size_t>(slot->wayRoundOf) < engine.getPlayers().size())
-    {
-      const MatchPlayer& other =
-          engine.getPlayers()[static_cast<std::size_t>(slot->wayRoundOf)];
-      roundText =
-          std::format("going round {} ({})",
-                      (other.player != nullptr) ? other.player->getName()
-                                                : std::string("?"),
-                      slot->wayRoundSide > 0 ? "left" : "right");
-    }
-    flag(slot->wayRoundOf >= 0, roundText.c_str());
-    flag(engine.getControlledPlayer() == inspected, "human-controlled");
-    property("State", flagsText.empty() ? std::string("-") : flagsText);
-    property("Engine attributes",
-             std::format(
-                 "Pac {:.0f} · Sho {:.0f} · Pas {:.0f} · Dri {:.0f} · "
-                 "Def {:.0f} · Phy {:.0f} · Sta {:.0f} · Vis {:.0f}"
-                 "{} · {:.2f} m",
-                 slot->pace * 100.0F, slot->shooting * 100.0F,
-                 slot->passing * 100.0F, slot->dribbling * 100.0F,
-                 slot->defending * 100.0F, slot->physicality * 100.0F,
-                 slot->endurance * 100.0F, slot->vision * 100.0F,
-                 slot->isGoalkeeper
-                     ? std::format(" · GK {:.0f}", slot->goalkeeping * 100.0F)
-                     : std::string(),
-                 slot->heightMetres),
-             "The values the match engine uses: the career attributes after "
-             "the level shift and the contrast curve, capped at 100. Strong "
-             "players often reach the cap.");
-    {
-      // Every derived stat in the registry, with its physical value if it
-      // has one.
-      std::string derivedText;
-      std::string derivedHelp =
-          "Stats the match works out from the attributes above, with the "
-          "handshake's recipes (match_derived_stats.h). Future game stats "
-          "stand in for stats the game will carry; match-engine-only stats "
-          "exist only in the match:";
-      for (std::size_t index = 0; index < DERIVED_STAT_COUNT; ++index)
-      {
-        const auto stat = static_cast<DerivedStat>(index);
-        const DerivedStatInfo& info = derivedStatInfo(stat);
-        const float rating = slot->derivedStat(stat);
-        if (!derivedText.empty())
-        {
-          derivedText += " · ";
-        }
-        derivedText += std::format("{} {:.0f}", info.label, rating * 100.0F);
-        if (!info.unit.empty())
-        {
-          derivedText += std::format(
-              " ({:.4g} {})", derivedPhysicalValue(stat, rating), info.unit);
-        }
-        derivedHelp +=
-            std::format("\n{} ({}): {}", info.name,
-                        derivedLayerName(info.layer), info.description);
-      }
-      derivedText += std::format(
-          " · weight {:.0f} kg",
-          bodyMassKilograms(slot->heightMetres,
-                            slot->derivedStat(DerivedStat::STRENGTH)));
-      derivedHelp +=
-          "\nWeight: a proxy until the game carries one, from his height and "
-          "Strength (collision plan).";
-      property("Derived stats", derivedText, derivedHelp.c_str());
-    }
-    if (const PlayerMatchStats* stats = engine.findPlayerStats(inspected))
-    {
-      property(
-          "Match so far",
-          std::format("touches {} · passes {}/{} · shots {} · tackles {}/{} "
-                      "· {:.0f} m covered · rating {:.1f}",
-                      stats->touches, stats->passesCompleted,
-                      stats->passesAttempted, stats->shots, stats->tacklesWon,
-                      stats->tacklesAttempted, stats->distanceMetres,
-                      stats->rating));
-    }
-    ImGui::EndTable();
+    return;
   }
+  const Job job = jobOf(inspected, slot.isHomeTeam);
+  const PlayerID owner = (engine.getPossessionAttachment() != nullptr)
+                             ? engine.getPossessionAttachment()->getId()
+                             : 0;
+  ImGui::TableSetupColumn("key", ImGuiTableColumnFlags_WidthFixed,
+                          PROPERTY_COLUMN_WIDTH * Theme::scale());
+  ImGui::TableSetupColumn("value");
+  property("Brain", std::string(brainName(engine.getBrain(slot.isHomeTeam))));
+  property("Body", std::string(bodyName(engine.getBody(slot.isHomeTeam))));
+  property("Intent", SandboxNames::intent(slot.intent));
+  property("Why", job != Job::NONE
+                      ? std::format("planner job: {}", SandboxNames::job(job))
+                      : std::string("no team job: his role, the team phase and "
+                                    "the shape rules set it"));
+  property("Target", std::format("{:.1f} m away{}",
+                                 metres(slot.position, slot.tacticalTarget),
+                                 slot.urgentMovement ? " · urgent" : ""));
+  property("Speed",
+           std::format("{:.1f} m/s (top {:.1f}){}",
+                       std::hypot(slot.velocity.x, slot.velocity.y),
+                       slot.maxSpeed, slot.isSprinting ? " · sprinting" : ""));
+  property("Movement", movementText(engine, slot),
+           "His movement mode by his speed, and the top of each mode's "
+           "band for him now (m/s): walk to his walk-run transition, "
+           "jog to 0.82 x critical speed, run to critical speed, sprint "
+           "to his top speed. Fuel lowers the bands.");
+  property("Facing",
+           std::format("{:.0f}°", slot.facingAngle * DEGREES_HALF_TURN /
+                                      std::numbers::pi_v<float>));
+  property("Stamina",
+           std::format("{:.0f}% · sprint reserve {:.0f}%",
+                       slot.stamina * 100.0F, slot.sprintReserve * 100.0F));
+  property("Cooldowns", std::format("action {:.2f} s · tackle {:.2f} s",
+                                    slot.actionCooldown, slot.tackleCooldown));
+  property("State", stateText(engine, slot, inspected, owner));
+  property("Engine attributes", engineAttributesText(slot),
+           "The values the match engine uses: the career attributes after "
+           "the level shift and the contrast curve, capped at 100. Strong "
+           "players often reach the cap.");
+  derivedStatsRow(slot);
+  if (const PlayerMatchStats* stats = engine.findPlayerStats(inspected))
+  {
+    property("Match so far",
+             std::format("touches {} · passes {}/{} · shots {} · tackles {}/{} "
+                         "· {:.0f} m covered · rating {:.1f}",
+                         stats->touches, stats->passesCompleted,
+                         stats->passesAttempted, stats->shots,
+                         stats->tacklesWon, stats->tacklesAttempted,
+                         stats->distanceMetres, stats->rating));
+  }
+  ImGui::EndTable();
+}
 
-  ImGui::SeparatorText("Intent over the match");
-  renderIntentStrip(recorder, inspected,
-                    {.cursor = tick, .end = recorder.lastTick()});
-
-  // His latest decisions and actions up to this moment.
-  ImGui::SeparatorText("Recent decisions and actions");
+/** His latest decisions and actions up to this moment. */
+void DebugInspector::renderRecentEvents(const SandboxRecorder& recorder,
+                                        PlayerID inspected) const
+{
   int shown = 0;
   for (std::size_t index = asOf.prefix; index > 0 && shown < RECENT_EVENT_LIMIT;
        --index)
   {
     const auto& entry = recorder.entries()[index - 1];
-    const bool decision =
-        std::holds_alternative<MatchDecisionRecord>(entry.payload);
-    const bool action =
-        std::holds_alternative<MatchActionRecord>(entry.payload);
-    const bool possession =
+    const bool wanted =
+        std::holds_alternative<MatchDecisionRecord>(entry.payload) ||
+        std::holds_alternative<MatchActionRecord>(entry.payload) ||
         std::holds_alternative<Recorder::PossessionChange>(entry.payload);
-    if (!decision && !action && !possession)
+    if (!wanted)
     {
       continue;
     }
@@ -803,6 +833,35 @@ void DebugInspector::renderPlayer(const SandboxRecorder& recorder,
   {
     SandboxText::disabledText("None yet.");
   }
+}
+
+void DebugInspector::renderPlayer(const SandboxRecorder& recorder,
+                                  const MatchEngine& engine)
+{
+  const auto guard = recorder.lock();
+  const std::uint64_t tick = engine.getSimulatedSteps();
+  refresh(recorder, tick);
+  const PlayerID inspected = followedOrSelected(engine);
+  renderPlayerPicker(recorder, engine);
+  const MatchPlayer* slot = findSlot(engine, inspected);
+  if (slot == nullptr)
+  {
+    SandboxText::disabledText(
+        "No player inspected (or he is not on the pitch).");
+    return;
+  }
+  ImGui::TextUnformatted(
+      std::format("{}  ·  {}  ·  natural {}{}", slot->player->getName(),
+                  slot->isHomeTeam ? "Home" : "Away",
+                  RoleUtils::shortName(slot->player->getRole()),
+                  slot->isGoalkeeper ? "  ·  in goal" : "")
+          .c_str());
+  renderPlayerNow(engine, *slot, inspected);
+  ImGui::SeparatorText("Intent over the match");
+  renderIntentStrip(recorder, inspected,
+                    {.cursor = tick, .end = recorder.lastTick()});
+  ImGui::SeparatorText("Recent decisions and actions");
+  renderRecentEvents(recorder, inspected);
 }
 
 // --- Referee ---------------------------------------------------------------
@@ -1190,30 +1249,132 @@ void DebugInspector::renderOverlayToggles()
   ImGui::Checkbox("Selected only", &selected_only);
 }
 
+namespace
+{
+bool projectOnPitch(const IMatchRenderer& renderer, PitchPoint pitch,
+                    ImVec2& screen)
+{
+  return renderer.projectPitch(pitch, 0.0F, screen.x, screen.y);
+}
+
+/** The decision's scores, by his feet. */
+void drawDecisionLabel(ImDrawList* drawList, ImVec2 from,
+                       const MatchDecisionRecord& decision, float scale)
+{
+  const auto score = [](float value)
+  {
+    return std::isfinite(value) ? std::format("{:.2f}", value)
+                                : std::string("-");
+  };
+  const std::string label = std::format(
+      "{}  pass {} shot {} carry {} shield {}{}",
+      SandboxNames::choice(decision.chosen), score(decision.pass),
+      score(decision.shot), score(decision.carry), score(decision.shield),
+      decision.chosen != decision.chosenWithoutNoise ? "  (noise)" : "");
+  const ImVec2 textAt(from.x + (10.0F * scale), from.y + (8.0F * scale));
+  const ImVec2 size = ImGui::CalcTextSize(label.c_str());
+  drawList->AddRectFilled(
+      ImVec2(textAt.x - PASS_LABEL_PADDING_X, textAt.y - PASS_LABEL_PADDING_Y),
+      ImVec2(textAt.x + size.x + PASS_LABEL_PADDING_X,
+             textAt.y + size.y + PASS_LABEL_PADDING_Y),
+      IM_COL32(0, 0, 0, 190), LABEL_ROUNDING);
+  drawList->AddText(textAt, IM_COL32(255, 255, 255, 255), label.c_str());
+}
+}  // namespace
+
+/** One player's overlay: his target, his job tag, and the selection ring. */
+void DebugInspector::drawPlayerOverlay(ImDrawList* drawList,
+                                       const IMatchRenderer& renderer,
+                                       const MatchPlayer& slot, ImVec2 at) const
+{
+  const float scale = Theme::scale();
+  const PlayerID id = slot.player->getId();
+  const bool isSelected = id == selected;
+  ImVec2 target;
+  if (show_targets && projectOnPitch(renderer, slot.tacticalTarget, target))
+  {
+    const ImU32 color = intentColor(slot.intent);
+    drawList->AddLine(at, target, color,
+                      (isSelected ? SELECTED_STROKE : OVERLAY_STROKE) * scale);
+    drawList->AddCircle(target, TARGET_RADIUS * scale, color, 0,
+                        OVERLAY_STROKE * scale);
+  }
+  const char* tag = show_jobs ? jobTag(jobOf(id, slot.isHomeTeam)) : "";
+  if (*tag != '\0')
+  {
+    const ImVec2 textAt(at.x + (7.0F * scale), at.y - (16.0F * scale));
+    const ImVec2 size = ImGui::CalcTextSize(tag);
+    drawList->AddRectFilled(
+        ImVec2(textAt.x - LABEL_PADDING_X, textAt.y - 1.0F),
+        ImVec2(textAt.x + size.x + LABEL_PADDING_X, textAt.y + size.y + 1.0F),
+        IM_COL32(0, 0, 0, 170), LABEL_ROUNDING);
+    drawList->AddText(textAt, IM_COL32(255, 230, 120, 255), tag);
+  }
+  if (isSelected)
+  {
+    drawList->AddCircle(at, SELECTION_RADIUS * scale,
+                        IM_COL32(255, 220, 60, 255), 0,
+                        SELECTED_STROKE * scale);
+  }
+}
+
+/** The latest decision's pass options, while it is recent. */
+void DebugInspector::drawPassOptions(const SandboxRecorder& recorder,
+                                     const MatchEngine& engine,
+                                     const IMatchRenderer& renderer,
+                                     ImDrawList* drawList) const
+{
+  if (!show_pass_options || !asOf.lastDecision)
+  {
+    return;
+  }
+  const float scale = Theme::scale();
+  const auto& entry = recorder.entries()[*asOf.lastDecision];
+  const auto& decision = std::get<MatchDecisionRecord>(entry.payload);
+  const MatchPlayer* passer = findSlot(engine, decision.player);
+  const bool recent =
+      engine.getSimulatedSteps() - entry.tick <= PASS_OPTION_TICKS;
+  ImVec2 from;
+  if ((passer == nullptr) || !recent ||
+      (selected_only && decision.player != selected) ||
+      !projectOnPitch(renderer, passer->position, from))
+  {
+    return;
+  }
+  const auto arrow = [&](PlayerID receiver, PassArrowStyle style)
+  {
+    const MatchPlayer* target = findSlot(engine, receiver);
+    ImVec2 to;
+    if (!target || !projectOnPitch(renderer, target->position, to))
+    {
+      return;
+    }
+    drawList->AddLine(from, to, style.color, style.width * scale);
+    drawList->AddCircleFilled(to, PASS_MARKER_RADIUS * scale, style.color);
+  };
+  arrow(decision.runnerUpReceiver,
+        {.color = IM_COL32(240, 180, 40, 220), .width = RUNNER_UP_STROKE});
+  arrow(decision.bestReceiver,
+        {.color = IM_COL32(80, 230, 110, 255), .width = BEST_PASS_STROKE});
+  drawDecisionLabel(drawList, from, decision, scale);
+}
+
 void DebugInspector::drawOverlays(const SandboxRecorder& recorder,
                                   const MatchEngine& engine,
                                   const IMatchRenderer& renderer, bool clicked)
 {
   const auto guard = recorder.lock();
-  const std::uint64_t tick = engine.getSimulatedSteps();
-  refresh(recorder, tick);
+  refresh(recorder, engine.getSimulatedSteps());
   const float scale = Theme::scale();
   ImDrawList* drawList = ImGui::GetWindowDrawList();
-  const auto project = [&renderer](PitchPoint pitch, ImVec2& screen)
-  { return renderer.projectPitch(pitch, 0.0F, screen.x, screen.y); };
-
   const ImVec2 mouse = ImGui::GetIO().MousePos;
   PlayerID nearest = 0;
   float nearestDistance = PICK_RADIUS * scale;
   for (const MatchPlayer& slot : engine.getPlayers())
   {
-    if ((slot.player == nullptr) || !slot.onPitch)
-    {
-      continue;
-    }
-    const PlayerID id = slot.player->getId();
     ImVec2 at;
-    if (!project(slot.position, at))
+    if ((slot.player == nullptr) || !slot.onPitch ||
+        !projectOnPitch(renderer, slot.position, at))
     {
       continue;
     }
@@ -1221,100 +1382,14 @@ void DebugInspector::drawOverlays(const SandboxRecorder& recorder,
     if (distance < nearestDistance)
     {
       nearestDistance = distance;
-      nearest = id;
+      nearest = slot.player->getId();
     }
-    const bool isSelected = id == selected;
-    if (selected_only && !isSelected)
+    if (!selected_only || slot.player->getId() == selected)
     {
-      continue;
-    }
-    if (show_targets)
-    {
-      ImVec2 target;
-      if (project(slot.tacticalTarget, target))
-      {
-        const ImU32 color = intentColor(slot.intent);
-        drawList->AddLine(
-            at, target, color,
-            (isSelected ? SELECTED_STROKE : OVERLAY_STROKE) * scale);
-        drawList->AddCircle(target, TARGET_RADIUS * scale, color, 0,
-                            OVERLAY_STROKE * scale);
-      }
-    }
-    if (show_jobs)
-    {
-      const char* tag = jobTag(jobOf(id, slot.isHomeTeam));
-      if (*tag != '\0')
-      {
-        const ImVec2 textAt(at.x + (7.0F * scale), at.y - (16.0F * scale));
-        const ImVec2 size = ImGui::CalcTextSize(tag);
-        drawList->AddRectFilled(
-            ImVec2(textAt.x - LABEL_PADDING_X, textAt.y - 1.0F),
-            ImVec2(textAt.x + size.x + LABEL_PADDING_X,
-                   textAt.y + size.y + 1.0F),
-            IM_COL32(0, 0, 0, 170), LABEL_ROUNDING);
-        drawList->AddText(textAt, IM_COL32(255, 230, 120, 255), tag);
-      }
-    }
-    if (isSelected)
-    {
-      drawList->AddCircle(at, SELECTION_RADIUS * scale,
-                          IM_COL32(255, 220, 60, 255), 0,
-                          SELECTED_STROKE * scale);
+      drawPlayerOverlay(drawList, renderer, slot, at);
     }
   }
-
-  // The latest decision's pass options, while it is recent.
-  if (show_pass_options && asOf.lastDecision)
-  {
-    const auto& entry = recorder.entries()[*asOf.lastDecision];
-    const auto& decision = std::get<MatchDecisionRecord>(entry.payload);
-    const MatchPlayer* passer = findSlot(engine, decision.player);
-    if ((passer != nullptr) && tick - entry.tick <= PASS_OPTION_TICKS &&
-        (!selected_only || decision.player == selected))
-    {
-      ImVec2 from;
-      if (project(passer->position, from))
-      {
-        const auto arrow = [&](PlayerID receiver, PassArrowStyle style)
-        {
-          const MatchPlayer* target = findSlot(engine, receiver);
-          ImVec2 to;
-          if (!target || !project(target->position, to))
-          {
-            return;
-          }
-          drawList->AddLine(from, to, style.color, style.width * scale);
-          drawList->AddCircleFilled(to, PASS_MARKER_RADIUS * scale,
-                                    style.color);
-        };
-        arrow(decision.runnerUpReceiver, {.color = IM_COL32(240, 180, 40, 220),
-                                          .width = RUNNER_UP_STROKE});
-        arrow(decision.bestReceiver, {.color = IM_COL32(80, 230, 110, 255),
-                                      .width = BEST_PASS_STROKE});
-        const auto score = [](float value)
-        {
-          return std::isfinite(value) ? std::format("{:.2f}", value)
-                                      : std::string("-");
-        };
-        const std::string label = std::format(
-            "{}  pass {} shot {} carry {} shield {}{}",
-            SandboxNames::choice(decision.chosen), score(decision.pass),
-            score(decision.shot), score(decision.carry), score(decision.shield),
-            decision.chosen != decision.chosenWithoutNoise ? "  (noise)" : "");
-        const ImVec2 textAt(from.x + (10.0F * scale), from.y + (8.0F * scale));
-        const ImVec2 size = ImGui::CalcTextSize(label.c_str());
-        drawList->AddRectFilled(
-            ImVec2(textAt.x - PASS_LABEL_PADDING_X,
-                   textAt.y - PASS_LABEL_PADDING_Y),
-            ImVec2(textAt.x + size.x + PASS_LABEL_PADDING_X,
-                   textAt.y + size.y + PASS_LABEL_PADDING_Y),
-            IM_COL32(0, 0, 0, 190), LABEL_ROUNDING);
-        drawList->AddText(textAt, IM_COL32(255, 255, 255, 255), label.c_str());
-      }
-    }
-  }
-
+  drawPassOptions(recorder, engine, renderer, drawList);
   if (clicked && nearest != 0)
   {
     selected = nearest;

@@ -18,6 +18,7 @@
 #include <variant>
 
 #include "gui/render/match_renderer_2d.h"
+#include "gui/widgets/text.h"
 #include "gui/widgets/theme.h"
 #include "tools/match_sandbox_analysis_ui.h"
 #include "tools/match_sandbox_inspector.h"
@@ -214,24 +215,24 @@ void MatchReview::renderPanel(const SandboxRecorder& recorder,
 
   if (shown)
   {
-    ImGui::Text("%s  ·  tick %llu", clock(shown->getMatchTimeMinutes()).c_str(),
-                static_cast<unsigned long long>(shown->getSimulatedSteps()));
+    UI::text("{}  ·  tick {:d}", clock(shown->getMatchTimeMinutes()).c_str(),
+             static_cast<unsigned long long>(shown->getSimulatedSteps()));
 
     if (divergedAt)
     {
-      ImGui::TextColored(Theme::palette().negative,
-                         "Rebuild differs from the match from tick %llu: "
-                         "what you see here is not what was played.",
-                         static_cast<unsigned long long>(*divergedAt));
+      UI::textColoured(Theme::palette().negative,
+                       "Rebuild differs from the match from tick {:d}: "
+                       "what you see here is not what was played.",
+                       static_cast<unsigned long long>(*divergedAt));
     }
     else
     {
-      ImGui::TextColored(Theme::palette().positive, "Rebuilt exactly");
+      UI::textColoured(Theme::palette().positive, "Rebuilt exactly");
     }
   }
   else
   {
-    ImGui::TextWrapped(
+    UI::textWrapped(
         "Following the live match. Click or drag the timeline to rewind "
         "(the live match pauses).");
   }
@@ -249,6 +250,163 @@ void MatchReview::renderPanel(const SandboxRecorder& recorder,
     inspector->renderOverlayToggles();
   }
   ImGui::PopTextWrapPos();
+}
+
+namespace
+{
+/** Home markers sit above the lane's middle, away below. */
+constexpr float MARKER_LANE_MIDDLE = 0.5F;
+
+/** How an event shows on the timeline: its colour, and whether it spans
+ * both sides' halves. */
+struct MarkerStyle
+{
+  ImU32 color;
+  bool fullHeight;
+};
+
+MarkerStyle markerStyleOf(MatchEventType type)
+{
+  switch (type)
+  {
+    case MatchEventType::GOAL:
+    case MatchEventType::OWN_GOAL:
+      return {.color = IM_COL32(255, 255, 255, 255), .fullHeight = true};
+    case MatchEventType::SHOT:
+      return {.color = IM_COL32(150, 150, 160, 255), .fullHeight = false};
+    case MatchEventType::YELLOW_CARD:
+    case MatchEventType::SECOND_YELLOW:
+      return {.color = IM_COL32(245, 200, 40, 255), .fullHeight = false};
+    case MatchEventType::RED_CARD:
+      return {.color = IM_COL32(220, 50, 50, 255), .fullHeight = false};
+    case MatchEventType::SUBSTITUTION:
+      return {.color = IM_COL32(80, 200, 220, 255), .fullHeight = false};
+    case MatchEventType::PENALTY:
+      return {.color = IM_COL32(255, 130, 200, 255), .fullHeight = false};
+    default:
+      return {.color = IM_COL32(120, 120, 130, 255), .fullHeight = true};
+  }
+}
+
+/** A side's phase at that tick (set piece before its first). */
+template <typename Spans>
+TeamPhase phaseAtTick(const Spans& spans, std::uint64_t tick)
+{
+  TeamPhase phase = TeamPhase::SET_PIECE;
+  for (const auto& phaseSpan : spans)
+  {
+    if (phaseSpan.tick <= tick)
+    {
+      phase = phaseSpan.phase;
+    }
+  }
+  return phase;
+}
+}  // namespace
+
+/** The hovered event, or the colour key: each side's phase at the hovered
+ * moment. */
+void MatchReview::timelineTooltip(const SandboxRecorder& recorder,
+                                  const Marker* nearest,
+                                  std::uint64_t tick) const
+{
+  if (nearest != nullptr)
+  {
+    const auto guard = recorder.lock();
+    const MatchEvent& event = recorder.events()[nearest->event];
+    UI::tooltip("{}'  {}", clock(event.timeMinute).c_str(),
+                event.description.c_str());
+    return;
+  }
+  UI::tooltip("Home: {}\nAway: {}\ntick {:d} ({:.0f} s of play)",
+              SandboxNames::phase(phaseAtTick(homePhases, tick)),
+              SandboxNames::phase(phaseAtTick(awayPhases, tick)),
+              static_cast<unsigned long long>(tick),
+              static_cast<double>(tick) * STEP_SECONDS);
+}
+
+float MatchReview::TimelineFrame::xOf(std::uint64_t tick) const
+{
+  return left + (width * std::min(1.0F, static_cast<float>(tick) / span));
+}
+
+std::uint64_t MatchReview::TimelineFrame::tickAt(float x) const
+{
+  return static_cast<std::uint64_t>(std::clamp((x - left) / width, 0.0F, 1.0F) *
+                                    span);
+}
+
+/** A side's phases as coloured bands, each until the next. */
+void MatchReview::drawPhaseBands(ImDrawList* drawList,
+                                 const TimelineFrame& frame,
+                                 const std::vector<PhaseSpan>& spans, float top)
+{
+  const float band = BAND_HEIGHT * Theme::scale();
+  for (std::size_t index = 0; index < spans.size(); ++index)
+  {
+    const std::uint64_t until =
+        index + 1 < spans.size() ? spans[index + 1].tick : frame.end;
+    drawList->AddRectFilled(
+        ImVec2(frame.xOf(spans[index].tick), top),
+        ImVec2(std::max(frame.xOf(until), frame.xOf(spans[index].tick) + 1.0F),
+               top + band),
+        phaseColor(spans[index].phase));
+  }
+}
+
+/** Event markers below the bands: goals tall, shots short, home above.
+ * Returns the marker under the mouse, if hovering near one. */
+const MatchReview::Marker* MatchReview::drawMarkers(ImDrawList* drawList,
+                                                    const TimelineFrame& frame,
+                                                    const MarkerLane& lane,
+                                                    bool hovered) const
+{
+  const float scale = Theme::scale();
+  const Marker* nearest = nullptr;
+  float nearestDistance = MARKER_PICK_PIXELS * scale;
+  const ImVec2 mouse = ImGui::GetIO().MousePos;
+  for (const Marker& marker : markers)
+  {
+    const float x = frame.xOf(marker.tick);
+    const MarkerStyle style = markerStyleOf(marker.type);
+    float top = lane.top;
+    float bottom = lane.bottom;
+    if (!style.fullHeight && marker.homeTeam)
+    {
+      bottom = lane.middle;
+    }
+    else if (!style.fullHeight)
+    {
+      top = lane.middle;
+    }
+    drawList->AddLine(ImVec2(x, top), ImVec2(x, bottom), style.color,
+                      marker.type == MatchEventType::GOAL
+                          ? GOAL_MARKER_THICKNESS * scale
+                          : MARKER_THICKNESS * scale);
+    if (hovered && std::abs(mouse.x - x) < nearestDistance)
+    {
+      nearestDistance = std::abs(mouse.x - x);
+      nearest = &marker;
+    }
+  }
+  return nearest;
+}
+
+/** Dragging seeks there, snapping to a marker under the mouse so events are
+ * easy to land on; it pauses a live match. */
+void MatchReview::scrubTimeline(const SandboxRecorder& recorder,
+                                std::uint64_t tick, bool* livePaused)
+{
+  if (shown && shown->getSimulatedSteps() == tick)
+  {
+    return;
+  }
+  if (livePaused != nullptr)
+  {
+    *livePaused = true;
+  }
+  playing = false;
+  seek(recorder, tick);
 }
 
 void MatchReview::renderTimeline(const SandboxRecorder& recorder,
@@ -269,140 +427,40 @@ void MatchReview::renderTimeline(const SandboxRecorder& recorder,
   {
     return;
   }
-
-  const auto span = static_cast<float>(end);
-  const auto xOf = [&](std::uint64_t tick)
-  { return min.x + (width * std::min(1.0F, static_cast<float>(tick) / span)); };
+  const TimelineFrame frame{.left = min.x,
+                            .width = width,
+                            .span = static_cast<float>(end),
+                            .end = end};
   const float band = BAND_HEIGHT * scale;
-  const auto drawBands = [&](const std::vector<PhaseSpan>& spans, float top)
-  {
-    for (std::size_t index = 0; index < spans.size(); ++index)
-    {
-      const std::uint64_t until =
-          index + 1 < spans.size() ? spans[index + 1].tick : end;
-      drawList->AddRectFilled(
-          ImVec2(xOf(spans[index].tick), top),
-          ImVec2(std::max(xOf(until), xOf(spans[index].tick) + 1.0F),
-                 top + band),
-          phaseColor(spans[index].phase));
-    }
-  };
   const float homeTop = min.y + (3.0F * scale);
   const float awayTop = homeTop + band + (2.0F * scale);
-  drawBands(homePhases, homeTop);
-  drawBands(awayPhases, awayTop);
-
-  // Event markers below the bands: goals tall, shots short, home above.
+  drawPhaseBands(drawList, frame, homePhases, homeTop);
+  drawPhaseBands(drawList, frame, awayPhases, awayTop);
   const float markerTop = awayTop + band + (3.0F * scale);
   const float markerBottom = max.y - (2.0F * scale);
-  const float middle = (markerTop + markerBottom) * 0.5F;
-  const Marker* nearest = nullptr;
-  float nearestDistance = MARKER_PICK_PIXELS * scale;
-  const ImVec2 mouse = ImGui::GetIO().MousePos;
-  for (const Marker& marker : markers)
-  {
-    const float x = xOf(marker.tick);
-    ImU32 color = IM_COL32(200, 200, 200, 255);
-    float top = marker.homeTeam ? markerTop : middle;
-    float bottom = marker.homeTeam ? middle : markerBottom;
-    switch (marker.type)
-    {
-      case MatchEventType::GOAL:
-      case MatchEventType::OWN_GOAL:
-        color = IM_COL32(255, 255, 255, 255);
-        top = markerTop;
-        bottom = markerBottom;
-        break;
-      case MatchEventType::SHOT:
-        color = IM_COL32(150, 150, 160, 255);
-        break;
-      case MatchEventType::YELLOW_CARD:
-      case MatchEventType::SECOND_YELLOW:
-        color = IM_COL32(245, 200, 40, 255);
-        break;
-      case MatchEventType::RED_CARD:
-        color = IM_COL32(220, 50, 50, 255);
-        break;
-      case MatchEventType::SUBSTITUTION:
-        color = IM_COL32(80, 200, 220, 255);
-        break;
-      case MatchEventType::PENALTY:
-        color = IM_COL32(255, 130, 200, 255);
-        break;
-      default:
-        color = IM_COL32(120, 120, 130, 255);
-        top = markerTop;
-        bottom = markerBottom;
-        break;
-    }
-    drawList->AddLine(ImVec2(x, top), ImVec2(x, bottom), color,
-                      marker.type == MatchEventType::GOAL
-                          ? GOAL_MARKER_THICKNESS * scale
-                          : MARKER_THICKNESS * scale);
-    if (hovered && std::abs(mouse.x - x) < nearestDistance)
-    {
-      nearestDistance = std::abs(mouse.x - x);
-      nearest = &marker;
-    }
-  }
+  const Marker* nearest =
+      drawMarkers(drawList, frame,
+                  {.top = markerTop,
+                   .middle = (markerTop + markerBottom) * MARKER_LANE_MIDDLE,
+                   .bottom = markerBottom},
+                  hovered);
 
   // The moment shown, or the live end while following.
   const std::uint64_t at = shown ? shown->getSimulatedSteps() : end;
-  const float cursorX = xOf(at);
+  const float cursorX = frame.xOf(at);
   drawList->AddLine(ImVec2(cursorX, min.y), ImVec2(cursorX, max.y),
                     IM_COL32(255, 255, 255, 230), CURSOR_THICKNESS * scale);
-
+  const float mouseX = ImGui::GetIO().MousePos.x;
   if (hovered)
   {
-    const auto tick = static_cast<std::uint64_t>(
-        std::clamp((mouse.x - min.x) / width, 0.0F, 1.0F) * span);
-    if (nearest != nullptr)
-    {
-      const auto guard = recorder.lock();
-      const MatchEvent& event = recorder.events()[nearest->event];
-      ImGui::SetTooltip("%s'  %s", clock(event.timeMinute).c_str(),
-                        event.description.c_str());
-    }
-    else
-    {
-      // The colour key: each side's phase at the hovered moment.
-      const auto phaseAt = [tick](const std::vector<PhaseSpan>& spans)
-      {
-        TeamPhase phase = TeamPhase::SET_PIECE;
-        for (const PhaseSpan& phaseSpan : spans)
-        {
-          if (phaseSpan.tick <= tick)
-          {
-            phase = phaseSpan.phase;
-          }
-        }
-        return phase;
-      };
-      ImGui::SetTooltip("Home: %s\nAway: %s\ntick %llu (%.0f s of play)",
-                        SandboxNames::phase(phaseAt(homePhases)),
-                        SandboxNames::phase(phaseAt(awayPhases)),
-                        static_cast<unsigned long long>(tick),
-                        static_cast<double>(tick) * STEP_SECONDS);
-    }
+    timelineTooltip(recorder, nearest, frame.tickAt(mouseX));
   }
   if (active)
   {
-    // Snap to a marker under the mouse so events are easy to land on.
-    std::uint64_t tick =
-        (nearest != nullptr)
-            ? nearest->tick
-            : static_cast<std::uint64_t>(
-                  std::clamp((mouse.x - min.x) / width, 0.0F, 1.0F) * span);
-    tick = std::clamp<std::uint64_t>(tick, 1, end);
-    if (!shown || shown->getSimulatedSteps() != tick)
-    {
-      if (livePaused != nullptr)
-      {
-        *livePaused = true;
-      }
-      playing = false;
-      seek(recorder, tick);
-    }
+    const std::uint64_t tick =
+        (nearest != nullptr) ? nearest->tick : frame.tickAt(mouseX);
+    scrubTimeline(recorder, std::clamp<std::uint64_t>(tick, 1, end),
+                  livePaused);
   }
 }
 
@@ -499,7 +557,7 @@ void MatchReview::renderTransport(const SandboxRecorder& recorder,
   }
   if (ImGui::IsItemHovered())
   {
-    ImGui::SetTooltip("Review playback speed");
+    UI::tooltip("Review playback speed");
   }
 }
 
@@ -521,7 +579,8 @@ void MatchReview::play(const SandboxRecorder& recorder, std::uint64_t end)
 }
 
 void MatchReview::renderPitch(const SandboxRecorder& recorder,
-                              const MatchEngine* live, TeamID home, TeamID away,
+                              const MatchEngine* live,
+                              const std::array<TeamID, 2>& teams,
                               DebugInspector* inspector, bool overlayControls)
 {
   // The moment under review, or the live match while following it.
@@ -555,8 +614,8 @@ void MatchReview::renderPitch(const SandboxRecorder& recorder,
   {
     snapshot.interpolationAlpha = 1.0F;
   }
-  snapshot.homeTeam = home;
-  snapshot.awayTeam = away;
+  snapshot.homeTeam = teams[0];
+  snapshot.awayTeam = teams[1];
   MatchRenderOptions options;
   options.showPlayerNames = true;
   options.frameSeconds = ImGui::GetIO().DeltaTime;

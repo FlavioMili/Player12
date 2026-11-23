@@ -152,8 +152,9 @@ GameXgSweep::GameXgSweep(Drill& shotDrill, const StatsConfig& config_ref,
     const int every =
         std::max(1, static_cast<int>(std::lround(band.step / fine)));
     const int lines = static_cast<int>(
-        std::floor((band.lineTo - setup.lineFrom) / fine + 1e-3F));
-    const int sides = static_cast<int>(std::floor(band.sideMax / fine + 1e-3F));
+        std::floor(((band.lineTo - setup.lineFrom) / fine) + 1e-3F));
+    const int sides =
+        static_cast<int>(std::floor((band.sideMax / fine) + 1e-3F));
     for (int line = 0; line <= std::min(lines, lineCells); line += every)
     {
       for (int side = -(sides / every) * every; side <= sides; side += every)
@@ -407,6 +408,8 @@ void GameXgSweep::testSymmetry()
   mirror = asymmetry <= setup.asymmetricShare && std::abs(pooledZ) <= Z_95;
 }
 
+// Argument order: grid line then side, the order used across the sweep.
+// NOLINTNEXTLINE(bugprone-easily-swappable-parameters)
 std::optional<std::pair<int, int>> GameXgSweep::folded(int line, int side,
                                                        std::size_t level) const
 {
@@ -1217,6 +1220,8 @@ std::optional<std::vector<float>> numbers(const std::string& value)
 }
 
 /** A numeric option onto the spec; false if it isn't one or doesn't parse. */
+// Argument order: the flag then its value, in command-line order.
+// NOLINTNEXTLINE(bugprone-easily-swappable-parameters)
 bool numericOption(const std::string& argument, const std::string& value,
                    GameXgSweepSpec& spec)
 {
@@ -1267,6 +1272,115 @@ std::optional<std::vector<GameXgBand>> bandsNamed(std::string value)
   return bands;
 }
 
+/** --shooting or --goalkeeping: the levels to measure; false if they are
+ * not numbers. */
+// Argument order: the flag then its value, in command-line order.
+// NOLINTNEXTLINE(bugprone-easily-swappable-parameters)
+bool readLevels(const std::string& argument, const std::string& value,
+                GameXgOptions& options)
+{
+  const auto levels = numbers(value);
+  if (!levels)
+  {
+    return false;
+  }
+  if (argument == "--shooting")
+  {
+    options.base.shooting = *levels;
+  }
+  else
+  {
+    options.base.goalkeeping = *levels;
+  }
+  return true;
+}
+
+/** --layer: the empty goal, the keeper (his own default Shooting levels
+ * unless given) or the legs; false if none of them. */
+bool readLayer(const std::string& value, GameXgOptions& options,
+               bool shootingGiven)
+{
+  if (value == "empty")
+  {
+    options.base.layer = GameXgTable::EMPTY_GOAL;
+  }
+  else if (value == "keeper")
+  {
+    options.base.layer = GameXgTable::KEEPER;
+    if (!shootingGiven)
+    {
+      options.base.shooting = gameXgSpec(GameXgTable::KEEPER).shooting;
+    }
+  }
+  else if (value == "legs")
+  {
+    options.legs = true;
+  }
+  else
+  {
+    return false;
+  }
+  return true;
+}
+
+/** One option with its value; the error, or empty if it was read. */
+// Argument order: the flag then its value, in command-line order.
+// NOLINTNEXTLINE(bugprone-easily-swappable-parameters)
+std::string readGameXgOption(const std::string& argument,
+                             const std::string& value, GameXgOptions& options,
+                             bool& shootingGiven)
+{
+  if (argument == "--goal")
+  {
+    const auto goals = goalsNamed(value);
+    if (!goals)
+    {
+      return "--goal: full, 9v9, 7v7, futsal, 5-a-side, small, pop-up or all";
+    }
+    options.goals = *goals;
+    return {};
+  }
+  if (argument == "--shooting" || argument == "--goalkeeping")
+  {
+    if (!readLevels(argument, value, options))
+    {
+      return argument == "--shooting"
+                 ? "--shooting expects numbers, e.g. 1,25,50,75,100"
+                 : "--goalkeeping expects numbers, e.g. 1,50,100";
+    }
+    shootingGiven = shootingGiven || argument == "--shooting";
+    return {};
+  }
+  if (argument == "--layer")
+  {
+    return readLayer(value, options, shootingGiven)
+               ? std::string()
+               : std::string("--layer: empty, keeper or legs");
+  }
+  if (argument == "--out")
+  {
+    options.out = value;
+    return {};
+  }
+  if (argument == "--bands")
+  {
+    const auto bands = bandsNamed(value);
+    if (!bands)
+    {
+      return "--bands expects LINE:SIDE:STEP,... finest first, e.g. "
+             "18:20:1,30:28:2,52:32:4";
+    }
+    options.base.bands = *bands;
+    return {};
+  }
+  if (!numericOption(argument, value, options.base))
+  {
+    return std::format("unknown option or bad value \"{} {}\"", argument,
+                       value);
+  }
+  return {};
+}
+
 std::optional<GameXgOptions> parseOptions(
     const std::vector<std::string>& arguments, std::string& error)
 {
@@ -1290,83 +1404,11 @@ std::optional<GameXgOptions> parseOptions(
       error = std::format("\"{}\" needs a value", argument);
       return std::nullopt;
     }
-    const std::string& value = arguments[++index];
-    if (argument == "--goal")
+    const std::string problem =
+        readGameXgOption(argument, arguments[++index], options, shootingGiven);
+    if (!problem.empty())
     {
-      const auto goals = goalsNamed(value);
-      if (!goals)
-      {
-        error =
-            "--goal: full, 9v9, 7v7, futsal, 5-a-side, small, pop-up or all";
-        return std::nullopt;
-      }
-      options.goals = *goals;
-    }
-    else if (argument == "--shooting")
-    {
-      const auto levels = numbers(value);
-      if (!levels)
-      {
-        error = "--shooting expects numbers, e.g. 1,25,50,75,100";
-        return std::nullopt;
-      }
-      options.base.shooting = *levels;
-      shootingGiven = true;
-    }
-    else if (argument == "--goalkeeping")
-    {
-      const auto levels = numbers(value);
-      if (!levels)
-      {
-        error = "--goalkeeping expects numbers, e.g. 1,50,100";
-        return std::nullopt;
-      }
-      options.base.goalkeeping = *levels;
-    }
-    else if (argument == "--layer")
-    {
-      if (value == "empty")
-      {
-        options.base.layer = GameXgTable::EMPTY_GOAL;
-      }
-      else if (value == "keeper")
-      {
-        options.base.layer = GameXgTable::KEEPER;
-        if (!shootingGiven)
-        {
-          options.base.shooting = gameXgSpec(GameXgTable::KEEPER).shooting;
-        }
-      }
-      else if (value == "legs")
-      {
-        options.legs = true;
-      }
-      else
-      {
-        error = "--layer: empty, keeper or legs";
-        return std::nullopt;
-      }
-    }
-    else if (argument == "--out")
-    {
-      options.out = value;
-    }
-    else if (argument == "--bands")
-    {
-      const auto bands = bandsNamed(value);
-      if (!bands)
-      {
-        error =
-            "--bands expects LINE:SIDE:STEP,... finest first, e.g. "
-            "18:20:1,30:28:2,52:32:4";
-        return std::nullopt;
-      }
-      options.base.bands = *bands;
-    }
-    else if (!numericOption(argument, value, options.base))
-    {
-      error =
-          std::format("unknown option or bad value \"{} {}\"", argument, value);
+      error = problem;
       return std::nullopt;
     }
   }

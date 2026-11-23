@@ -557,8 +557,10 @@ class MovementDrill : public Drill
     path = pathSetting();
     withBall = ballChoice >= CHOICE_MIDPOINT;
     MatchScenario scenario;
-    scenario.players.push_back(
-        {.playerId = id, .position = at, .makingRun = false});
+    scenario.players.push_back({.playerId = id,
+                                .position = at,
+                                .makingRun = false,
+                                .facing = std::nullopt});
     scenario.ballPosition = withBall ? at : ballOutOfTheWay();
     if (withBall)
     {
@@ -3287,10 +3289,14 @@ class OvertakeDrill final : public Drill
                                       {.x = 0.0F, .y = 1.0F}, offset);
     finishLine = along(start, {.x = 1.0F, .y = 0.0F}, finishMetres);
     MatchScenario scenario;
-    scenario.players.push_back(
-        {.playerId = chaserId, .position = start, .makingRun = false});
-    scenario.players.push_back(
-        {.playerId = leaderId, .position = leaderAt, .makingRun = false});
+    scenario.players.push_back({.playerId = chaserId,
+                                .position = start,
+                                .makingRun = false,
+                                .facing = std::nullopt});
+    scenario.players.push_back({.playerId = leaderId,
+                                .position = leaderAt,
+                                .makingRun = false,
+                                .facing = std::nullopt});
     if (thirdId != 0)
     {
       scenario.players.push_back(
@@ -3298,7 +3304,8 @@ class OvertakeDrill final : public Drill
            .position =
                along(leaderAt, {.x = 0.0F, .y = 1.0F},
                      third == 1 ? THIRD_SIDE_METRES : -THIRD_SIDE_METRES),
-           .makingRun = false});
+           .makingRun = false,
+           .facing = std::nullopt});
     }
     scenario.ballPosition = ballOutOfTheWay();
     engine.startDrill(scenario);
@@ -3664,10 +3671,14 @@ class LooseBallDrill final : public Drill
         along(along(ballAt, {.x = 1.0F, .y = 0.0F}, mateSetting),
               {.x = 0.0F, .y = 1.0F}, mateOffsetSetting);
     MatchScenario scenario;
-    scenario.players.push_back(
-        {.playerId = chaserId, .position = chaserAt, .makingRun = false});
-    scenario.players.push_back(
-        {.playerId = mateId, .position = mateAt, .makingRun = false});
+    scenario.players.push_back({.playerId = chaserId,
+                                .position = chaserAt,
+                                .makingRun = false,
+                                .facing = std::nullopt});
+    scenario.players.push_back({.playerId = mateId,
+                                .position = mateAt,
+                                .makingRun = false,
+                                .facing = std::nullopt});
     if (rivalId != 0)
     {
       scenario.players.push_back(
@@ -3676,7 +3687,8 @@ class LooseBallDrill final : public Drill
                                           RIVAL_BESIDE_MATE_METRES)
                                   : along(chaserAt, {.x = 0.0F, .y = 1.0F},
                                           RIVAL_BESIDE_CHASER_METRES),
-           .makingRun = false});
+           .makingRun = false,
+           .facing = std::nullopt});
     }
     const PitchPoint bystanderAt =
         along(along(ballAt, {.x = 1.0F, .y = 0.0F}, bystanderAlongSetting),
@@ -3685,7 +3697,8 @@ class LooseBallDrill final : public Drill
     {
       scenario.players.push_back({.playerId = bystanderId,
                                   .position = bystanderAt,
-                                  .makingRun = false});
+                                  .makingRun = false,
+                                  .facing = std::nullopt});
     }
     scenario.ballPosition = ballAt;
     engine.startDrill(scenario);
@@ -4066,15 +4079,20 @@ class TackleDrill final : public Drill
         along(along(defenderStart, {.x = 1.0F, .y = 0.0F}, mateBehindSetting),
               {.x = 0.0F, .y = 1.0F}, mateAcrossSetting);
     MatchScenario scenario;
-    scenario.players.push_back(
-        {.playerId = attackerId, .position = attackerAt, .makingRun = false});
+    scenario.players.push_back({.playerId = attackerId,
+                                .position = attackerAt,
+                                .makingRun = false,
+                                .facing = std::nullopt});
     scenario.players.push_back({.playerId = defenderId,
                                 .position = defenderStart,
-                                .makingRun = false});
+                                .makingRun = false,
+                                .facing = std::nullopt});
     if (mateId != 0)
     {
-      scenario.players.push_back(
-          {.playerId = mateId, .position = mateAt, .makingRun = false});
+      scenario.players.push_back({.playerId = mateId,
+                                  .position = mateAt,
+                                  .makingRun = false,
+                                  .facing = std::nullopt});
     }
     scenario.carrierId = attackerId;
     scenario.ballPosition = attackerAt;
@@ -4698,10 +4716,14 @@ class CollisionDrill final : public Drill
     startA = along(meetA, directionA, -a.runUp);
     startB = along(meetB, directionB, -b.runUp);
     MatchScenario scenario;
-    scenario.players.push_back(
-        {.playerId = aId, .position = startA, .makingRun = false});
-    scenario.players.push_back(
-        {.playerId = bId, .position = startB, .makingRun = false});
+    scenario.players.push_back({.playerId = aId,
+                                .position = startA,
+                                .makingRun = false,
+                                .facing = std::nullopt});
+    scenario.players.push_back({.playerId = bId,
+                                .position = startB,
+                                .makingRun = false,
+                                .facing = std::nullopt});
     scenario.ballPosition = ballOutOfTheWay();
     engine.startDrill(scenario);
     // When each sets off: the later arrival first, so they meet.
@@ -5166,8 +5188,8 @@ class ShotDrill final : public Drill
           const float toGoal = std::atan2(goalMiddle.y - event.position.y,
                                           goalMiddle.x - event.position.x);
           shot->facingOffDegrees =
-              std::abs(facingAngleOf(shooter->facingAngle - toGoal)) * 180.0F /
-              PI;
+              std::abs(facingAngleOf(shooter->facingAngle - toGoal)) *
+              DEGREES_PER_HALF_TURN / PI;
         }
         continue;
       }
@@ -5418,8 +5440,10 @@ class ShotDrill final : public Drill
                                       metresBetween(goal, spot) *
                                           KEEPER_DISTANCE_SHARE))
                      : at(KEEPER_START_LINE_SHARE, PITCH_MIDPOINT_SHARE);
-      scenario.players.push_back(
-          {.playerId = keeperId, .position = keeperAt, .makingRun = false});
+      scenario.players.push_back({.playerId = keeperId,
+                                  .position = keeperAt,
+                                  .makingRun = false,
+                                  .facing = std::nullopt});
     }
     if (hasDefender)
     {
@@ -5428,8 +5452,10 @@ class ShotDrill final : public Drill
           std::min(defenderDistance, metresBetween(spot, goal) - 1.0F);
       defenderAt = along(spot, directionBetween(spot, goal),
                          std::max(MIN_SHOT_DEFENDER_GAP_METRES, towards));
-      scenario.players.push_back(
-          {.playerId = defenderId, .position = defenderAt, .makingRun = false});
+      scenario.players.push_back({.playerId = defenderId,
+                                  .position = defenderAt,
+                                  .makingRun = false,
+                                  .facing = std::nullopt});
     }
     scenario.carrierId = shooterId;
     scenario.ballPosition = spot;
@@ -6295,8 +6321,10 @@ class ShotBlockDrill final : public Drill
     defenderOut = there;
     start = runs ? along(defenderAt, left, -runUp) : defenderAt;
     MatchScenario scenario;
-    scenario.players.push_back(
-        {.playerId = shooterId, .position = spot, .makingRun = false});
+    scenario.players.push_back({.playerId = shooterId,
+                                .position = spot,
+                                .makingRun = false,
+                                .facing = std::nullopt});
     // Already facing as he will (the shooter; a sprinter his run), not his
     // side's default: a body still turning as the shot comes stands side-on
     // to it, his feet along its line.
@@ -6314,7 +6342,8 @@ class ShotBlockDrill final : public Drill
       scenario.players.push_back(
           {.playerId = ids[2],
            .position = at(KEEPER_START_LINE_SHARE, PITCH_MIDPOINT_SHARE),
-           .makingRun = false});
+           .makingRun = false,
+           .facing = std::nullopt});
     }
     scenario.carrierId = shooterId;
     scenario.ballPosition = spot;
@@ -6596,6 +6625,82 @@ class ShotBlockDrill final : public Drill
   }
 
  public:
+  /** Met his body: a block, or (off a team-mate) a deflection; the first
+   * part the shot met. */
+  void noteBodyMet(const MatchEngine& engine)
+  {
+    if (!shotAt || metPart >= 0 || engine.lastShotBounce().at <= bounceBefore)
+    {
+      return;
+    }
+    metPart = static_cast<int>(engine.lastShotBounce().hit.part);
+    if (passingHeight < 0.0F)
+    {
+      // Met before passing him: about the height it met him at (its
+      // last look before the meeting), and his side gap from its path
+      // there.
+      passingHeight = heightBefore;
+      passingMark = lastMark;
+      passingGap = gapFromPath(lastMark);
+    }
+    // Off a team-mate it is no block, and may go anywhere (back up the
+    // pitch, with no goal or miss to end on): the run ends here.
+    if (whose > CHOICE_MIDPOINT && outcome.empty())
+    {
+      outcome = "deflected off him";
+    }
+  }
+
+  /** The ball's height, and how far to his side its path ran, as it passes
+   * level with him: against where he would be had he not reacted (where he was
+   * at the strike, carried on at his speed then), along the shot's actual path;
+   * between two looks, in a straight line. */
+  void tracePassing(const MatchEngine& engine, const MatchPlayer& defender,
+                    double now)
+  {
+    const MatchBall& ball = engine.getBall();
+    const auto projected = [this](double time)
+    {
+      const auto seconds = static_cast<float>(time - *shotAt);
+      return Vector2F{
+          .x = defenderAtShot.x + (defenderVelocityAtShot.x * seconds),
+          .y = defenderAtShot.y + (defenderVelocityAtShot.y * seconds)};
+    };
+    const Vector2F from = asVector(pathFrom);
+    const auto alongOf = [this](Vector2F point, Vector2F mark)
+    {
+      return ((point.x - mark.x) * pathLine.x) +
+             ((point.y - mark.y) * pathLine.y);
+    };
+    const Vector2F markNow = projected(now);
+    const float alongNow = alongOf(asVector(ball.position), markNow);
+    if (!lastAlong)
+    {
+      // From where it was struck (from close in it is past him by the
+      // first look).
+      lastAlong = alongOf(from, projected(*shotAt));
+      lastLook = *shotAt;
+      lastHeight = MatchTuning::Units::BALL_RADIUS_METRES;
+    }
+    if (*lastAlong < 0.0F && alongNow >= 0.0F)
+    {
+      const float share = *lastAlong / (*lastAlong - alongNow);
+      passingHeight = lastHeight + ((ball.z - lastHeight) * share);
+      passingMark = projected(lastLook + ((now - lastLook) * share));
+      passingGap = gapFromPath(passingMark);
+      // How far he actually is from where he was carried on to (at
+      // this look), and his pace now.
+      projectionMiss = std::hypot(defender.position.x - markNow.x,
+                                  defender.position.y - markNow.y);
+      speedPassing = speedOf(defender);
+    }
+    heightBefore = lastHeight;
+    lastAlong = alongNow;
+    lastLook = now;
+    lastHeight = ball.z;
+    lastMark = markNow;
+  }
+
   bool afterStep(MatchEngine& engine) override
   {
     const double now = secondsOf(engine);
@@ -6632,79 +6737,14 @@ class ShotBlockDrill final : public Drill
       }
       closest = std::min(closest, metresBetween(engine.getBall().position,
                                                 defender->position));
-      // The ball's height, and how far to his side its path ran, as it
-      // passes level with him: against where he would be had he not
-      // reacted (where he was at the strike, carried on at his speed then),
-      // along the shot's actual path; between two looks, in a straight
-      // line.
       if (shotAt && passingHeight < 0.0F)
       {
-        const MatchBall& ball = engine.getBall();
-        const auto projected = [this](double time)
-        {
-          const auto seconds = static_cast<float>(time - *shotAt);
-          return Vector2F{
-              .x = defenderAtShot.x + (defenderVelocityAtShot.x * seconds),
-              .y = defenderAtShot.y + (defenderVelocityAtShot.y * seconds)};
-        };
-        const Vector2F from = asVector(pathFrom);
-        const auto alongOf = [this](Vector2F point, Vector2F mark)
-        {
-          return ((point.x - mark.x) * pathLine.x) +
-                 ((point.y - mark.y) * pathLine.y);
-        };
-        const Vector2F markNow = projected(now);
-        const float alongNow = alongOf(asVector(ball.position), markNow);
-        if (!lastAlong)
-        {
-          // From where it was struck (from close in it is past him by the
-          // first look).
-          lastAlong = alongOf(from, projected(*shotAt));
-          lastLook = *shotAt;
-          lastHeight = MatchTuning::Units::BALL_RADIUS_METRES;
-        }
-        if (*lastAlong < 0.0F && alongNow >= 0.0F)
-        {
-          const float share = *lastAlong / (*lastAlong - alongNow);
-          passingHeight = lastHeight + ((ball.z - lastHeight) * share);
-          passingMark = projected(lastLook + ((now - lastLook) * share));
-          passingGap = gapFromPath(passingMark);
-          // How far he actually is from where he was carried on to (at
-          // this look), and his pace now.
-          projectionMiss = std::hypot(defender->position.x - markNow.x,
-                                      defender->position.y - markNow.y);
-          speedPassing = speedOf(*defender);
-        }
-        heightBefore = lastHeight;
-        lastAlong = alongNow;
-        lastLook = now;
-        lastHeight = ball.z;
-        lastMark = markNow;
+        tracePassing(engine, *defender, now);
       }
       throughNow = engine.getStats().shotTorsoPassThroughs;
       insideNow = engine.getStats().shotTorsoInsideAtStart;
     }
-    // Met his body: a block, or (off a team-mate) a deflection; the first
-    // part the shot met.
-    if (shotAt && metPart < 0 && engine.lastShotBounce().at > bounceBefore)
-    {
-      metPart = static_cast<int>(engine.lastShotBounce().hit.part);
-      if (passingHeight < 0.0F)
-      {
-        // Met before passing him: about the height it met him at (its
-        // last look before the meeting), and his side gap from its path
-        // there.
-        passingHeight = heightBefore;
-        passingMark = lastMark;
-        passingGap = gapFromPath(lastMark);
-      }
-      // Off a team-mate it is no block, and may go anywhere (back up the
-      // pitch, with no goal or miss to end on): the run ends here.
-      if (whose > CHOICE_MIDPOINT && outcome.empty())
-      {
-        outcome = "deflected off him";
-      }
-    }
+    noteBodyMet(engine);
     observeDeflection(engine);
     observeAfterBlock(engine, now);
     if (outcome.empty() && !shotAt && now >= STRIKE_TIMEOUT_SECONDS)
@@ -6811,16 +6851,11 @@ class ShotBlockDrill final : public Drill
     return lines;
   }
 
-  [[nodiscard]] std::vector<DrillMetric> metrics() const override
+  /** What the shot met, and where it passed him. */
+  [[nodiscard]] std::vector<DrillMetric> hitMetrics() const
   {
-    if (!shotAt || outcome.empty() || outcome == "no outcome")
-    {
-      return {};
-    }
     const bool blocked = outcome == "blocked";
     const bool reaction = part.find("reaction") != std::string::npos;
-    const bool leg = legs && legs->blocking;
-    const bool reacted = legs && legs->reacted;
     const auto met = [this](std::initializer_list<ShotBodyPart> parts)
     {
       for (const ShotBodyPart one : parts)
@@ -6865,6 +6900,16 @@ class ShotBlockDrill final : public Drill
          .value = static_cast<double>(blocked && part == "head")},
         {.name = "Reaction block",
          .value = static_cast<double>(blocked && reaction)},
+    };
+  }
+
+  /** His reaction and legs, the shot's frame, and why no leg went out. */
+  [[nodiscard]] std::vector<DrillMetric> legMetrics() const
+  {
+    const bool blocked = outcome == "blocked";
+    const bool leg = legs && legs->blocking;
+    const bool reacted = legs && legs->reacted;
+    return {
         {.name = "Line gap (m)", .value = reacted ? legs->lineGap : 0.0},
         {.name = "Ball height (m)", .value = reacted ? legs->lineHeight : 0.0},
         {.name = "Speed (m/s)", .value = speedAtShot},
@@ -6903,6 +6948,14 @@ class ShotBlockDrill final : public Drill
         {.name = "No leg: past him", .value = noLegMetric("past")},
         {.name = "Still a shot",
          .value = static_cast<double>(blocked && stillShot)},
+    };
+  }
+
+  /** What became of the ball, and how it came off him. */
+  [[nodiscard]] std::vector<DrillMetric> afterMetrics() const
+  {
+    const bool blocked = outcome == "blocked";
+    return {
         {.name = "Goal after",
          .value = static_cast<double>(afterBlock == "goal")},
         {.name = "Saved after",
@@ -6931,6 +6984,20 @@ class ShotBlockDrill final : public Drill
         {.name = "Inside at sub-step start",
          .value = static_cast<double>(insideNow - insideBefore)},
     };
+  }
+
+  [[nodiscard]] std::vector<DrillMetric> metrics() const override
+  {
+    if (!shotAt || outcome.empty() || outcome == "no outcome")
+    {
+      return {};
+    }
+    std::vector<DrillMetric> all = hitMetrics();
+    for (std::vector<DrillMetric> more : {legMetrics(), afterMetrics()})
+    {
+      all.insert(all.end(), more.begin(), more.end());
+    }
+    return all;
   }
 
  private:
@@ -7426,12 +7493,14 @@ class FirstTouchDrill final : public Drill
     MatchScenario scenario;
     scenario.players.push_back({.playerId = receiverId,
                                 .position = receiverStart,
-                                .makingRun = false});
+                                .makingRun = false,
+                                .facing = std::nullopt});
     if (hasDefender)
     {
       scenario.players.push_back({.playerId = defenderId,
                                   .position = defenderStart,
-                                  .makingRun = false});
+                                  .makingRun = false,
+                                  .facing = std::nullopt});
     }
     scenario.carrierId = 0;
     scenario.ballPosition = feedFrom;
@@ -8330,19 +8399,23 @@ class PassDrill final : public Drill
     defenderSpot = along(passPoint, up, -defenderDistance);
 
     MatchScenario scenario;
-    scenario.players.push_back(
-        {.playerId = passerId, .position = passerStart, .makingRun = false});
+    scenario.players.push_back({.playerId = passerId,
+                                .position = passerStart,
+                                .makingRun = false,
+                                .facing = std::nullopt});
     if (hasReceiver)
     {
       scenario.players.push_back({.playerId = receiverId,
                                   .position = receiverSpot,
-                                  .makingRun = false});
+                                  .makingRun = false,
+                                  .facing = std::nullopt});
     }
     if (hasDefender)
     {
       scenario.players.push_back({.playerId = defenderId,
                                   .position = defenderSpot,
-                                  .makingRun = false});
+                                  .makingRun = false,
+                                  .facing = std::nullopt});
     }
     scenario.carrierId = passerId;
     scenario.ballPosition = passerStart;
@@ -9087,8 +9160,10 @@ class FirstTimePassDrill final : public Drill
                                    PITCH.atY(PITCH_SAFE_MAX_SHARE))};
 
     MatchScenario scenario;
-    scenario.players.push_back(
-        {.playerId = playerId, .position = playerStart, .makingRun = false});
+    scenario.players.push_back({.playerId = playerId,
+                                .position = playerStart,
+                                .makingRun = false,
+                                .facing = std::nullopt});
     scenario.carrierId = 0;
     scenario.ballPosition = feedFrom;
     engine.startDrill(scenario);
@@ -9470,8 +9545,10 @@ class PassTargetDrill : public Drill
   {
     preparePasser(engine, ids[0]);
     MatchScenario scenario;
-    scenario.players.push_back(
-        {.playerId = passerId, .position = SPOT, .makingRun = false});
+    scenario.players.push_back({.playerId = passerId,
+                                .position = SPOT,
+                                .makingRun = false,
+                                .facing = std::nullopt});
     scenario.carrierId = passerId;
     scenario.ballPosition = SPOT;
     engine.startDrill(scenario);
@@ -10724,8 +10801,10 @@ class KeeperThrowDrill final : public BullseyePassDrill
   {
     preparePasser(engine, ids[0]);
     MatchScenario scenario;
-    scenario.players.push_back(
-        {.playerId = passerPlayerId(), .position = SPOT, .makingRun = false});
+    scenario.players.push_back({.playerId = passerPlayerId(),
+                                .position = SPOT,
+                                .makingRun = false,
+                                .facing = std::nullopt});
     scenario.carrierId = passerPlayerId();
     scenario.ballPosition = SPOT;
     scenario.carrierInHands = true;
@@ -11157,8 +11236,10 @@ class ShotTargetDrill final : public Drill
         goal, directionBetween(goal, spot),
         std::min(keeperOff, std::max(metresBetween(goal, spot) - 1.0F, 0.0F)));
     keeperAt.x = std::min(keeperAt.x, PITCH.atX(PITCH_EDGE_MAX_SHARE));
-    scenario.players.push_back(
-        {.playerId = keeperId, .position = keeperAt, .makingRun = false});
+    scenario.players.push_back({.playerId = keeperId,
+                                .position = keeperAt,
+                                .makingRun = false,
+                                .facing = std::nullopt});
     (void)engine;
   }
 
@@ -11192,8 +11273,10 @@ class ShotTargetDrill final : public Drill
                                 PITCH.atY(PITCH_SAFE_MAX_SHARE))};
       start = spot;
       MatchScenario scenario;
-      scenario.players.push_back(
-          {.playerId = shooterId, .position = spot, .makingRun = false});
+      scenario.players.push_back({.playerId = shooterId,
+                                  .position = spot,
+                                  .makingRun = false,
+                                  .facing = std::nullopt});
       placeKeeper(engine, scenario, ids);
       scenario.carrierId = 0;
       scenario.ballPosition = feedFrom;
@@ -11233,8 +11316,10 @@ class ShotTargetDrill final : public Drill
                        std::clamp(start.y, PITCH.atY(PITCH_SAFE_MIN_SHARE),
                                   PITCH.atY(PITCH_SAFE_MAX_SHARE))};
     MatchScenario scenario;
-    scenario.players.push_back(
-        {.playerId = shooterId, .position = start, .makingRun = false});
+    scenario.players.push_back({.playerId = shooterId,
+                                .position = start,
+                                .makingRun = false,
+                                .facing = std::nullopt});
     placeKeeper(engine, scenario, ids);
     scenario.carrierId = shooterId;
     scenario.ballPosition = start;
@@ -12170,8 +12255,10 @@ class HeaderTargetDrill final : public Drill
                        start.y};
     running = false;
     MatchScenario scenario;
-    scenario.players.push_back(
-        {.playerId = playerId, .position = start, .makingRun = false});
+    scenario.players.push_back({.playerId = playerId,
+                                .position = start,
+                                .makingRun = false,
+                                .facing = std::nullopt});
     scenario.carrierId = 0;
     scenario.ballPosition = feedFrom;
     engine.startDrill(scenario);
@@ -13133,8 +13220,10 @@ class BodyControlDrill final : public Drill
                    std::clamp(feedFrom.y, PITCH.atY(PITCH_EDGE_MIN_SHARE),
                               PITCH.atY(PITCH_EDGE_MAX_SHARE))};
     MatchScenario scenario;
-    scenario.players.push_back(
-        {.playerId = playerId, .position = stand, .makingRun = false});
+    scenario.players.push_back({.playerId = playerId,
+                                .position = stand,
+                                .makingRun = false,
+                                .facing = std::nullopt});
     scenario.carrierId = 0;
     scenario.ballPosition = feedFrom;
     engine.startDrill(scenario);
@@ -13615,10 +13704,12 @@ class LooseHighBallDrill final : public Drill
     MatchScenario scenario;
     scenario.players.push_back({.playerId = homeId,
                                 .position = startAt(homeDistance, homeAngle),
-                                .makingRun = false});
+                                .makingRun = false,
+                                .facing = std::nullopt});
     scenario.players.push_back({.playerId = awayId,
                                 .position = startAt(awayDistance, awayAngle),
-                                .makingRun = false});
+                                .makingRun = false,
+                                .facing = std::nullopt});
     scenario.ballPosition = feedFrom;
     engine.startDrill(scenario);
     const float lift = HeaderTargetDrill::liftFor(
@@ -13973,7 +14064,8 @@ class WalledBoxDrill final : public Drill
            .position = PitchPoint{box.length * (home ? WALLED_HOME_START_SHARE
                                                      : WALLED_AWAY_START_SHARE),
                                   box.width * across},
-           .makingRun = false});
+           .makingRun = false,
+           .facing = std::nullopt});
     }
     const PitchPoint centre{PITCH_MIDPOINT_SHARE * box.length,
                             PITCH_MIDPOINT_SHARE * box.width};
@@ -14477,7 +14569,8 @@ class SmallSidedGameDrill final : public Drill
                PitchPoint{box.length * (home ? SMALL_SIDED_HOME_START_SHARE
                                              : SMALL_SIDED_AWAY_START_SHARE),
                           box.width * across},
-           .makingRun = false});
+           .makingRun = false,
+           .facing = std::nullopt});
     }
     scenario.ballPosition = PitchPoint{PITCH_MIDPOINT_SHARE * box.length,
                                        PITCH_MIDPOINT_SHARE * box.width};

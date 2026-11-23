@@ -10,6 +10,7 @@
 #include <type_traits>
 #include <utility>
 
+#include "gui/widgets/text.h"
 #include "model/match_tuning.h"
 #include "tools/match_sandbox_setup.h"
 #include "tools/match_sandbox_typography.h"
@@ -150,9 +151,12 @@ struct SetupPainter
     return {origin.x + (x * scale), origin.y + (y * scale)};
   }
 
+  // Argument order: position then styling, ImGui text order.
+  // NOLINTBEGIN(bugprone-easily-swappable-parameters)
   void text(float x, float y, const char* value, float size = SMALL_SIZE,
             ImU32 ink = CREAM, ImFont* font = nullptr, float tracking = 0,
             float wrap = 0) const
+  // NOLINTEND(bugprone-easily-swappable-parameters)
   {
     font = (font != nullptr) ? font : regular;
     ImGui::PushFont(font, size);
@@ -223,8 +227,10 @@ struct SetupPainter
     const bool pressed = ImGui::InvisibleButton(
         label, ImVec2(w * scale, BUTTON_H * scale), ImGuiButtonFlags_EnableNav);
     const bool hover = ImGui::IsItemHovered();
-    const ImU32 fill = selected ? (hover ? IM_COL32(170, 215, 130, 255) : LIME)
-                                : (hover ? IM_COL32(46, 39, 32, 255) : DARK);
+    const ImU32 hoverFill =
+        selected ? IM_COL32(170, 215, 130, 255) : IM_COL32(46, 39, 32, 255);
+    const ImU32 restFill = selected ? LIME : DARK;
+    const ImU32 fill = hover ? hoverFill : restFill;
     draw->AddRectFilled(point(x, y), point(x + w, y + BUTTON_H), fill);
     draw->AddRect(point(x, y), point(x + w, y + BUTTON_H),
                   selected ? LIME : BORDER, 0, 0, scale);
@@ -241,11 +247,14 @@ struct SetupPainter
   }
 
   template <typename Version>
+  // Argument order: one value per brain, in brain order.
+  // NOLINTBEGIN(bugprone-easily-swappable-parameters)
   void version(
       const Card& c, int row, const char* label, const char* helper,
       Version& value, Version aardvark, Version binturong,
       std::type_identity_t<std::optional<Version>> capybara = std::nullopt,
       float rowHeight = ROW_H) const
+  // NOLINTEND(bugprone-easily-swappable-parameters)
   {
     const float y = c.y + FIRST_ROW_TOP + (static_cast<float>(row) * rowHeight);
     const float buttonW = capybara ? THREE_BUTTON_W : TWO_BUTTON_W;
@@ -292,7 +301,7 @@ struct SetupPainter
     const bool hover = ImGui::IsItemHovered();
     if (hover)
     {
-      ImGui::SetTooltip("%s", helper);
+      UI::tooltip("{}", helper);
     }
     const ImVec2 boxMin = point(x, y + CHECK_TOP);
     const ImVec2 boxMax = point(x + CHECK_SIZE, y + CHECK_TOP + CHECK_SIZE);
@@ -325,9 +334,14 @@ void SandboxSetupUI::render(float scale, ImFont* setup_regular_font,
   const float available = ImGui::GetContentRegionAvail().x / scale;
   const bool wide = available >= HOME_W + AWAY_W + SIDE_W + 2 * GAP;
   const bool twoColumns = available >= HOME_W + SIDE_W + GAP;
-  const float width =
-      wide ? HOME_W + AWAY_W + SIDE_W + (2 * GAP)
-           : (twoColumns ? HOME_W + SIDE_W + GAP : std::min(available, HOME_W));
+  float width =
+      twoColumns ? HOME_W + SIDE_W + GAP : std::min(available, HOME_W);
+  float leftW = twoColumns ? HOME_W : width;
+  if (wide)
+  {
+    width = HOME_W + AWAY_W + SIDE_W + (2 * GAP);
+    leftW = HOME_W + GAP + AWAY_W;
+  }
   SetupPainter ui{.origin = ImGui::GetCursorScreenPos(),
                   .scale = scale,
                   .regular = setup_regular_font,
@@ -342,8 +356,6 @@ void SandboxSetupUI::render(float scale, ImFont* setup_regular_font,
           CREAM, setup_regular_font, 0, width - (2 * INSET));
   ui.end(header, true);
 
-  const float leftW =
-      wide ? HOME_W + GAP + AWAY_W : (twoColumns ? HOME_W : width);
   const Card home{
       .x = 0, .y = HEADER_H + GAP, .w = wide ? HOME_W : leftW, .h = ENGINE_H};
   const Card away{.x = wide ? HOME_W + GAP : 0,
@@ -437,7 +449,7 @@ void SandboxSetupUI::render(float scale, ImFont* setup_regular_font,
                      maximum, "", ImGuiSliderFlags_AlwaysClamp);
   if (ImGui::IsItemHovered())
   {
-    ImGui::SetTooltip("0: neutral. 1: standard home edge. 2: maximum.");
+    UI::tooltip("0: neutral. 1: standard home edge. 2: maximum.");
   }
   ImGui::PopStyleColor(static_cast<int>(HIDDEN.size()));
   const float trackLeft = sx + SIM.trackInset;

@@ -183,6 +183,11 @@ class SandboxRecorder : public MatchRecorder
 
  private:
   void append(const MatchEngine& engine, Payload payload);
+  void recordIntents(const MatchEngine& engine);
+  /** Possession: only a new owner is a change (a kicked ball is in flight). */
+  void recordPossession(const MatchEngine& engine);
+  /** Rewind: the command and input logs, appended as they grow. */
+  void appendLogs(const MatchEngine& engine);
   void learnPlayers(const MatchEngine& engine);
   [[nodiscard]] Job jobOf(PlayerID player, bool homeTeam) const;
 

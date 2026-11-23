@@ -14,12 +14,14 @@
 #include <cmath>
 #include <format>
 #include <limits>
+#include <memory>
 #include <sstream>
 #include <string_view>
 
 #include "controller/game_controller.h"
 #include "global/paths.h"
 #include "gui/gui_view.h"
+#include "gui/widgets/text.h"
 #include "gui/widgets/theme.h"
 #include "tools/match_sandbox_contact_view.h"
 #include "tools/match_sandbox_drill_scene.h"
@@ -126,7 +128,7 @@ void nextButton(const char* label, float scale, ImFont* font)
 
 void field(const char* label)
 {
-  ImGui::TextWrapped("%s", label);
+  UI::textWrapped("{}", label);
   ImGui::SetNextItemWidth(-1);
 }
 
@@ -189,8 +191,8 @@ std::vector<float> parseSkills(const char* text)
     }
     float value = 0.0F;
     const auto [end, error] =
-        std::from_chars(part.data(), part.data() + part.size(), value);
-    if (error == std::errc() && end == part.data() + part.size())
+        std::from_chars(part.data(), std::to_address(part.end()), value);
+    if (error == std::errc() && end == std::to_address(part.end()))
     {
       skills.push_back(std::clamp(value, 1.0F, 100.0F));
     }
@@ -200,8 +202,11 @@ std::vector<float> parseSkills(const char* text)
   return skills;
 }
 
+// Argument order: thickness then dash length, as ImDrawList takes them.
+// NOLINTBEGIN(bugprone-easily-swappable-parameters)
 void dashedLine(ImDrawList& draw, ImVec2 a, ImVec2 b, ImU32 colour,
                 float thickness, float dash)
+// NOLINTEND(bugprone-easily-swappable-parameters)
 {
   const float length = std::hypot(b.x - a.x, b.y - a.y);
   if (length < 1.0F)
@@ -289,7 +294,8 @@ void TechniqueBenchScene::reload()
   {
     skills += std::format("{}{:g}", skills.empty() ? "" : ", ", skill);
   }
-  std::snprintf(skillsText.data(), skillsText.size(), "%s", skills.c_str());
+  skillsText.fill('\0');
+  skills.copy(skillsText.data(), skillsText.size() - 1);
   tagValues.clear();
   for (const BenchTest& test : catalogue.tests)
   {
@@ -358,12 +364,12 @@ ImU32 TechniqueBenchScene::colourOf(const BenchTest& test) const
     const auto& [key, values] = tagValues[static_cast<std::size_t>(colourBy)];
     const auto found = std::ranges::find(values, test.tag(key));
     const auto place = static_cast<std::size_t>(found - values.begin());
-    return SERIES[place % SERIES.size()];
+    return SERIES.at(place % SERIES.size());
   }
   const auto found =
       std::ranges::find(catalogue.tests, test.id, &BenchTest::id);
   const auto place = static_cast<std::size_t>(found - catalogue.tests.begin());
-  return SERIES[place % SERIES.size()];
+  return SERIES.at(place % SERIES.size());
 }
 
 const BenchResults* TechniqueBenchScene::shownRun() const
@@ -440,7 +446,7 @@ void TechniqueBenchScene::start(bool onlyShown)
   if (skillOverride > 0)
   {
     spec.skillOverride =
-        SKILL_OVERRIDES[static_cast<std::size_t>(skillOverride)];
+        SKILL_OVERRIDES.at(static_cast<std::size_t>(skillOverride));
   }
   spec.tuning = sandboxTuning();
   runner = std::make_unique<BenchRunner>(
@@ -568,7 +574,7 @@ void TechniqueBenchScene::render()
     const float width = ImGui::GetContentRegionAvail().x;
     ImGui::BeginChild("##bench_results", ImVec2(width, available.y),
                       ImGuiChildFlags_AlwaysUseWindowPadding);
-    renderResults(std::max(scale, width - gutter), available.y);
+    renderResults(ImVec2(std::max(scale, width - gutter), available.y));
     ImGui::EndChild();
   }
   else
@@ -576,25 +582,74 @@ void TechniqueBenchScene::render()
     ImGui::BeginChild("##bench_page", available,
                       ImGuiChildFlags_AlwaysUseWindowPadding);
     renderPanel(panel);
-    renderResults(panel, available.y);
+    renderResults(ImVec2(panel, available.y));
     ImGui::EndChild();
   }
   ImGui::PopStyleVar();
   ImGui::End();
 }
 
-void TechniqueBenchScene::renderPanel(float width)
+namespace
+{
+/** The newest saved bench runs, newest first. */
+std::vector<std::filesystem::path> savedBenchRuns()
+{
+  std::vector<std::filesystem::path> files;
+  std::error_code ignored;
+  for (const auto& entry :
+       std::filesystem::directory_iterator(measureFolder() / "bench", ignored))
+  {
+    if (entry.path().extension() == ".csv")
+    {
+      files.push_back(entry.path());
+    }
+  }
+  std::ranges::sort(files, std::greater<>());
+  if (files.size() > SAVED_LISTED)
+  {
+    files.resize(SAVED_LISTED);
+  }
+  return files;
+}
+
+/** The start of a form cell: room above, then its label. */
+void formCell(const char* label)
+{
+  ImGui::TableNextColumn();
+  ImGui::Dummy(ImVec2(0, 0));
+  field(label);
+}
+}  // namespace
+
+/** A run running: stop, its progress and its warnings. */
+void TechniqueBenchScene::renderRunProgress(float scale)
 {
   namespace Page = SandboxPageUI;
-  const float scale = Theme::scale();
-  const std::string context = std::format(
-      "Pass tolerance: {:.0f} m at {:.0f} m, rising to {:.0f} m at {:.0f} m. "
-      "Shots: on target.",
-      BENCH_NEAR_TOLERANCE, BENCH_NEAR_METRES, BENCH_FAR_TOLERANCE,
-      BENCH_FAR_METRES);
-  Page::header("Technique bench",
-               "Compare pass and shot success across skill levels and seeds.",
-               width, scale, boldFont, regularFont, context.c_str(), true);
+  nextButton("Stop", scale, boldFont);
+  if (Page::button("Stop", false, scale, boldFont))
+  {
+    runner->stop();
+  }
+  const float share = runner->runsTotal() == 0
+                          ? 1.0F
+                          : static_cast<float>(runner->runsDone()) /
+                                static_cast<float>(runner->runsTotal());
+  ImGui::ProgressBar(share, ImVec2(-1.0F, 0.0F),
+                     std::format("{} / {} runs · {:.1f} s", runner->runsDone(),
+                                 runner->runsTotal(), runner->seconds())
+                         .c_str());
+  ImGui::PushTextWrapPos(0.0F);
+  for (const std::string& note : runner->warnings())
+  {
+    UI::textColoured(WARNING, "{}", note.c_str());
+  }
+  ImGui::PopTextWrapPos();
+}
+
+/** Back, run ticked or all, and a run's progress. */
+void TechniqueBenchScene::renderRunActions(float width, float scale)
+{
+  namespace Page = SandboxPageUI;
   Page::beginCard("##bench_actions", "RUN BENCH", width, Page::DARK, scale,
                   boldFont);
   if (Page::button("Back to sandbox", false, scale, boldFont))
@@ -614,7 +669,7 @@ void TechniqueBenchScene::renderPanel(float width)
   }
   if (ImGui::IsItemHovered())
   {
-    ImGui::SetTooltip("The ticked tests the filters show.");
+    UI::tooltip("The ticked tests the filters show.");
   }
   nextButton("Run all", scale, boldFont);
   if (Page::button("Run all", false, scale, boldFont))
@@ -624,35 +679,20 @@ void TechniqueBenchScene::renderPanel(float width)
   ImGui::EndDisabled();
   if (running)
   {
-    nextButton("Stop", scale, boldFont);
-    if (Page::button("Stop", false, scale, boldFont))
-    {
-      runner->stop();
-    }
-    const float share = runner->runsTotal() == 0
-                            ? 1.0F
-                            : static_cast<float>(runner->runsDone()) /
-                                  static_cast<float>(runner->runsTotal());
-    ImGui::ProgressBar(
-        share, ImVec2(-1.0F, 0.0F),
-        std::format("{} / {} runs · {:.1f} s", runner->runsDone(),
-                    runner->runsTotal(), runner->seconds())
-            .c_str());
-    ImGui::PushTextWrapPos(0.0F);
-    for (const std::string& note : runner->warnings())
-    {
-      ImGui::TextColored(WARNING, "%s", note.c_str());
-    }
-    ImGui::PopTextWrapPos();
+    renderRunProgress(scale);
   }
   if (!status.empty())
   {
     ImGui::PushTextWrapPos(0.0F);
-    ImGui::TextDisabled("%s", status.c_str());
+    UI::textDisabled("{}", status.c_str());
     ImGui::PopTextWrapPos();
   }
-
   Page::endCard(scale);
+}
+
+void TechniqueBenchScene::renderControlTabs(float width, float scale)
+{
+  namespace Page = SandboxPageUI;
   Page::beginCard("##bench_tabs", "CONTROLS", width, Page::MID, scale,
                   boldFont);
   const std::array<const char*, 4> tabs{"Run", "Tests", "Filters", "Tuning"};
@@ -662,13 +702,153 @@ void TechniqueBenchScene::renderPanel(float width)
     {
       ImGui::SameLine(0, SandboxPageUI::PANEL_GAP * scale);
     }
-    if (Page::button(tabs[tab], panelTab == static_cast<int>(tab), scale,
+    if (Page::button(tabs.at(tab), panelTab == static_cast<int>(tab), scale,
                      boldFont))
     {
       panelTab = static_cast<int>(tab);
     }
   }
   Page::endCard(scale);
+}
+
+void TechniqueBenchScene::renderRunSetup(float width, float scale)
+{
+  namespace Page = SandboxPageUI;
+  Page::beginCard("##bench_run_setup", "RUN SETUP", width, Page::LIGHT, scale,
+                  boldFont);
+  ImGui::BeginDisabled(runner != nullptr);
+  if (ImGui::BeginTable(
+          "##run_fields", 2,
+          ImGuiTableFlags_SizingStretchSame | ImGuiTableFlags_BordersInnerH |
+              ImGuiTableFlags_BordersInnerV | ImGuiTableFlags_RowBg))
+  {
+    formCell("Runs per point");
+    ImGui::SliderInt("##repeats", &repeats, MIN_REPEATS, MAX_REPEATS);
+    if (ImGui::IsItemHovered())
+    {
+      UI::tooltip(
+          "Seeds per test and skill. 50 gives a rate to about +/-7 points near "
+          "50%; 200 to about +/-3.5.");
+    }
+    formCell("First seed");
+    ImGui::InputInt("##first_seed", &firstSeed);
+    formCell("Skills");
+    ImGui::InputText("##skills", skillsText.data(), skillsText.size());
+    if (ImGui::IsItemHovered())
+    {
+      UI::tooltip("Comma-separated skill values (1-100): {}",
+                  skillsText.data());
+    }
+    formCell("Skill swept");
+    SandboxPageUI::combo("##skill_override", &skillOverride,
+                         SKILL_OVERRIDES.data(),
+                         static_cast<int>(SKILL_OVERRIDES.size()));
+    if (ImGui::IsItemHovered())
+    {
+      UI::tooltip(
+          "Each test's own skill, or one setting for every test that has it.");
+    }
+    ImGui::EndTable();
+  }
+  ImGui::EndDisabled();
+  Page::endCard(scale);
+}
+
+/** A run's name in the pickers: its number, label and tuning. */
+std::string TechniqueBenchScene::runName(int index) const
+{
+  if (index < 0 || index >= static_cast<int>(runs.size()))
+  {
+    return "(none)";
+  }
+  const BenchResults& run = *runs[static_cast<std::size_t>(index)];
+  return std::format(
+      "{}: {}{}", index + 1, run.label,
+      run.tuningChanges.empty()
+          ? std::string(", game's tuning")
+          : std::format(", {} changes", run.tuningChanges.size()));
+}
+
+/** A run picker, newest first; hovering it shows the run's tuning. */
+void TechniqueBenchScene::runCombo(const char* label, int& index, bool optional)
+{
+  field(label);
+  const std::string id = std::string("##") + label;
+  if (SandboxPageUI::beginCombo(id.c_str(), runName(index).c_str()))
+  {
+    if (optional && ImGui::Selectable("(none)", index < 0))
+    {
+      index = -1;
+    }
+    for (int candidate = static_cast<int>(runs.size()) - 1; candidate >= 0;
+         --candidate)
+    {
+      if (ImGui::Selectable(runName(candidate).c_str(), candidate == index))
+      {
+        index = candidate;
+      }
+    }
+    ImGui::EndCombo();
+  }
+  if (!ImGui::IsItemHovered() || index < 0 ||
+      index >= static_cast<int>(runs.size()))
+  {
+    return;
+  }
+  const BenchResults& run = *runs[static_cast<std::size_t>(index)];
+  std::string tip = std::format("{} runs per point\nTuning:", run.repeats);
+  if (run.tuningChanges.empty())
+  {
+    tip += " the game's values";
+  }
+  for (const std::string& line : run.tuningChanges)
+  {
+    tip += "\n  " + line;
+  }
+  UI::tooltip("{}", tip.c_str());
+}
+
+void TechniqueBenchScene::renderRunsCard(float width, float scale)
+{
+  namespace Page = SandboxPageUI;
+  Page::beginCard("##bench_runs", "RUNS & COMPARISON", width, Page::MID, scale,
+                  boldFont);
+  runCombo("Show", showIndex, false);
+  runCombo("Compare with", compareIndex, true);
+  field("Load saved");
+  if (SandboxPageUI::beginCombo("##load_saved", "Choose a file…"))
+  {
+    const std::vector<std::filesystem::path> files = savedBenchRuns();
+    if (files.empty())
+    {
+      UI::textDisabled("No saved runs yet.");
+    }
+    for (const auto& file : files)
+    {
+      if (ImGui::Selectable(file.stem().string().c_str()))
+      {
+        loadSaved(file);
+      }
+    }
+    ImGui::EndCombo();
+  }
+  Page::endCard(scale);
+}
+
+void TechniqueBenchScene::renderPanel(float width)
+{
+  namespace Page = SandboxPageUI;
+  const float scale = Theme::scale();
+  const std::string context = std::format(
+      "Pass tolerance: {:.0f} m at {:.0f} m, rising to {:.0f} m at {:.0f} m. "
+      "Shots: on target.",
+      BENCH_NEAR_TOLERANCE, BENCH_NEAR_METRES, BENCH_FAR_TOLERANCE,
+      BENCH_FAR_METRES);
+  Page::header("Technique bench",
+               "Compare pass and shot success across skill levels and seeds.",
+               width, scale, boldFont, regularFont, context.c_str(), true);
+  renderRunActions(width, scale);
+  renderControlTabs(width, scale);
   if (panelTab == 1)
   {
     Page::beginCard("##bench_tests", "TEST CATALOGUE", width, Page::LIGHT,
@@ -695,138 +875,8 @@ void TechniqueBenchScene::renderPanel(float width)
     Page::endCard(scale);
     return;
   }
-  Page::beginCard("##bench_run_setup", "RUN SETUP", width, Page::LIGHT, scale,
-                  boldFont);
-  ImGui::BeginDisabled(running);
-  if (ImGui::BeginTable(
-          "##run_fields", 2,
-          ImGuiTableFlags_SizingStretchSame | ImGuiTableFlags_BordersInnerH |
-              ImGuiTableFlags_BordersInnerV | ImGuiTableFlags_RowBg))
-  {
-    ImGui::TableNextColumn();
-    ImGui::Dummy(ImVec2(0, 0));
-    field("Runs per point");
-    ImGui::SliderInt("##repeats", &repeats, MIN_REPEATS, MAX_REPEATS);
-    if (ImGui::IsItemHovered())
-    {
-      ImGui::SetTooltip(
-          "Seeds per test and skill. 50 gives a rate to about +/-7 points near "
-          "50%%; 200 to about +/-3.5.");
-    }
-    ImGui::TableNextColumn();
-    ImGui::Dummy(ImVec2(0, 0));
-    field("First seed");
-    ImGui::InputInt("##first_seed", &firstSeed);
-    ImGui::TableNextColumn();
-    ImGui::Dummy(ImVec2(0, 0));
-    field("Skills");
-    ImGui::InputText("##skills", skillsText.data(), skillsText.size());
-    if (ImGui::IsItemHovered())
-    {
-      ImGui::SetTooltip("Comma-separated skill values (1-100): %s",
-                        skillsText.data());
-    }
-    ImGui::TableNextColumn();
-    ImGui::Dummy(ImVec2(0, 0));
-    field("Skill swept");
-    SandboxPageUI::combo("##skill_override", &skillOverride,
-                         SKILL_OVERRIDES.data(),
-                         static_cast<int>(SKILL_OVERRIDES.size()));
-    if (ImGui::IsItemHovered())
-    {
-      ImGui::SetTooltip(
-          "Each test's own skill, or one setting for every test that has it.");
-    }
-    ImGui::EndTable();
-  }
-  ImGui::EndDisabled();
-  Page::endCard(scale);
-  Page::beginCard("##bench_runs", "RUNS & COMPARISON", width, Page::MID, scale,
-                  boldFont);
-  const auto runName = [&](int index)
-  {
-    if (index < 0 || index >= static_cast<int>(runs.size()))
-    {
-      return std::string("(none)");
-    }
-    const BenchResults& run = *runs[static_cast<std::size_t>(index)];
-    return std::format(
-        "{}: {}{}", index + 1, run.label,
-        run.tuningChanges.empty()
-            ? std::string(", game's tuning")
-            : std::format(", {} changes", run.tuningChanges.size()));
-  };
-  const auto runCombo = [&](const char* label, int& index, bool optional)
-  {
-    field(label);
-    const std::string id = std::string("##") + label;
-    if (SandboxPageUI::beginCombo(id.c_str(), runName(index).c_str()))
-    {
-      if (optional && ImGui::Selectable("(none)", index < 0))
-      {
-        index = -1;
-      }
-      for (int candidate = static_cast<int>(runs.size()) - 1; candidate >= 0;
-           --candidate)
-      {
-        if (ImGui::Selectable(runName(candidate).c_str(), candidate == index))
-        {
-          index = candidate;
-        }
-      }
-      ImGui::EndCombo();
-    }
-    if (ImGui::IsItemHovered() && index >= 0 &&
-        index < static_cast<int>(runs.size()))
-    {
-      const BenchResults& run = *runs[static_cast<std::size_t>(index)];
-      std::string tip = std::format("{} runs per point\nTuning:", run.repeats);
-      if (run.tuningChanges.empty())
-      {
-        tip += " the game's values";
-      }
-      for (const std::string& line : run.tuningChanges)
-      {
-        tip += "\n  " + line;
-      }
-      ImGui::SetTooltip("%s", tip.c_str());
-    }
-  };
-  runCombo("Show", showIndex, false);
-  runCombo("Compare with", compareIndex, true);
-  field("Load saved");
-  if (SandboxPageUI::beginCombo("##load_saved", "Choose a file…"))
-  {
-    std::vector<std::filesystem::path> files;
-    std::error_code ignored;
-    for (const auto& entry : std::filesystem::directory_iterator(
-             measureFolder() / "bench", ignored))
-    {
-      if (entry.path().extension() == ".csv")
-      {
-        files.push_back(entry.path());
-      }
-    }
-    std::ranges::sort(files, std::greater<>());
-    if (files.size() > SAVED_LISTED)
-    {
-      files.resize(SAVED_LISTED);
-    }
-    if (files.empty())
-    {
-      ImGui::TextDisabled("No saved runs yet.");
-    }
-    for (const auto& file : files)
-    {
-      if (ImGui::Selectable(file.stem().string().c_str()))
-      {
-        loadSaved(file);
-      }
-    }
-    ImGui::EndCombo();
-  }
-
-  Page::endCard(scale);
+  renderRunSetup(width, scale);
+  renderRunsCard(width, scale);
 }
 
 void TechniqueBenchScene::renderTuning()
@@ -841,8 +891,8 @@ void TechniqueBenchScene::renderTuning()
   }
   else
   {
-    ImGui::TextColored(WARNING, "%zu changes from the game's values.",
-                       changes.size());
+    UI::textColoured(WARNING, "{:d} changes from the game's values.",
+                     changes.size());
   }
   if (!changes.empty() && ImGui::IsItemHovered())
   {
@@ -851,17 +901,15 @@ void TechniqueBenchScene::renderTuning()
     {
       tip += line + "\n";
     }
-    ImGui::SetTooltip("%s", tip.c_str());
+    UI::tooltip("{}", tip.c_str());
   }
   const auto bodyName = [](BodyId body)
   { return body == BodyId::BINTURONG ? "Binturong" : "Aardvark"; };
-  ImGui::TextDisabled("Bodies: drill side %s, other side %s (the sandbox's).",
-                      bodyName(sandboxBodies()[0]),
-                      bodyName(sandboxBodies()[1]));
+  UI::textDisabled("Bodies: drill side {}, other side {} (the sandbox's).",
+                   bodyName(sandboxBodies()[0]), bodyName(sandboxBodies()[1]));
   if (sandboxBodies()[0] != BodyId::BINTURONG)
   {
-    ImGui::TextColored(WARNING,
-                       "The technique rules are the Binturong body's.");
+    UI::textColoured(WARNING, "The technique rules are the Binturong body's.");
   }
   if (Page::button("Edit in contact view", false, scale, boldFont))
   {
@@ -869,7 +917,7 @@ void TechniqueBenchScene::renderTuning()
   }
   if (ImGui::IsItemHovered())
   {
-    ImGui::SetTooltip(
+    UI::tooltip(
         "The contact view edits this tuning (the stretch map and "
         "every touch and strike knob); runs started here use "
         "it.");
@@ -882,7 +930,7 @@ void TechniqueBenchScene::renderTuning()
   }
   if (ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenDisabled))
   {
-    ImGui::SetTooltip("The changes as text, to copy into match_tuning.h.");
+    UI::tooltip("The changes as text, to copy into match_tuning.h.");
   }
   nextButton("Reset", scale, boldFont);
   if (Page::button("Reset", false, scale, boldFont))
@@ -900,7 +948,7 @@ void TechniqueBenchScene::renderFilters()
   for (const auto& [key, values] : tagValues)
   {
     ImGui::PushID(key.c_str());
-    ImGui::TextDisabled("%s", key.c_str());
+    UI::textDisabled("{}", key.c_str());
     std::set<std::string>& active = filters[key];
     float used = 0;
     const auto chip = [&](const char* label, bool selected)
@@ -940,35 +988,74 @@ void TechniqueBenchScene::renderFilters()
   }
 }
 
+/** Ticks or unticks every test the filters show. */
+void TechniqueBenchScene::tickShown(bool on)
+{
+  for (std::size_t index = 0; index < catalogue.tests.size(); ++index)
+  {
+    if (shown(catalogue.tests[index]))
+    {
+      ticked[index] = on;
+    }
+  }
+}
+
+/** One test's row: its tick, its colour, and its id and name to open it. */
+void TechniqueBenchScene::renderTestRow(std::size_t index)
+{
+  const float scale = Theme::scale();
+  const auto& test = catalogue.tests[index];
+  ImGui::PushID(static_cast<int>(index));
+  ImGui::TableNextRow();
+  ImGui::TableNextColumn();
+  bool on = ticked[index];
+  if (ImGui::Checkbox("##tick", &on))
+  {
+    ticked[index] = on;
+  }
+  ImGui::TableNextColumn();
+  const ImVec2 swatch = ImGui::GetCursorScreenPos();
+  ImGui::GetWindowDrawList()->AddRectFilled(
+      ImVec2(swatch.x, swatch.y + (SWATCH_TOP * scale)),
+      ImVec2(swatch.x + (SWATCH_WIDTH * scale),
+             swatch.y + (SWATCH_BOTTOM * scale)),
+      colourOf(test));
+  ImGui::Dummy(ImVec2(SWATCH_ROOM * scale, ImGui::GetFrameHeight()));
+  ImGui::SameLine(0, 4 * scale);
+  const std::string label = std::format("{}  {}", test.id, test.name);
+  if (ImGui::Selectable(
+          label.c_str(), focus == test.id, 0,
+          ImVec2(std::max(scale, ImGui::GetContentRegionAvail().x),
+                 ImGui::GetFrameHeight())))
+  {
+    focus = test.id;
+    selectView = 2;
+  }
+  if (ImGui::IsItemHovered())
+  {
+    UI::tooltip("{}\n{}", test.name.c_str(),
+                test.success.describe(test.range).c_str());
+  }
+  ImGui::PopID();
+}
+
 void TechniqueBenchScene::renderTestList()
 {
   namespace Page = SandboxPageUI;
   const float scale = Theme::scale();
-  ImGui::TextWrapped("%s", catalogue.path.string().c_str());
+  UI::textWrapped("{}", catalogue.path.string().c_str());
   for (const auto& problem : catalogue.problems)
   {
-    ImGui::TextColored(WARNING, "%s", problem.c_str());
+    UI::textColoured(WARNING, "{}", problem.c_str());
   }
   if (Page::button("Tick shown", false, scale, boldFont))
   {
-    for (std::size_t index = 0; index < catalogue.tests.size(); ++index)
-    {
-      if (shown(catalogue.tests[index]))
-      {
-        ticked[index] = true;
-      }
-    }
+    tickShown(true);
   }
   nextButton("Untick shown", scale, boldFont);
   if (Page::button("Untick shown", false, scale, boldFont))
   {
-    for (std::size_t index = 0; index < catalogue.tests.size(); ++index)
-    {
-      if (shown(catalogue.tests[index]))
-      {
-        ticked[index] = false;
-      }
-    }
+    tickShown(false);
   }
   nextButton("Reload", scale, boldFont);
   if (Page::button("Reload", false, scale, boldFont))
@@ -977,12 +1064,13 @@ void TechniqueBenchScene::renderTestList()
   }
   if (ImGui::IsItemHovered())
   {
-    ImGui::SetTooltip("Reads the tests file again (edit it, then reload).");
+    UI::tooltip("Reads the tests file again (edit it, then reload).");
   }
+  // Each section a collapsible table of its tests.
   std::string section;
   bool open = false;
   bool table = false;
-  const auto close = [&]
+  const auto close = [&table]
   {
     if (table)
     {
@@ -991,6 +1079,25 @@ void TechniqueBenchScene::renderTestList()
       ImGui::PopID();
       table = false;
     }
+  };
+  const auto begin = [&table, &section, scale]
+  {
+    ImGui::PushID(section.c_str());
+    ImGui::PushStyleVar(ImGuiStyleVar_CellPadding,
+                        ImVec2(3 * scale, 3 * scale));
+    table = ImGui::BeginTable("##tests", 2,
+                              ImGuiTableFlags_RowBg |
+                                  ImGuiTableFlags_BordersInnerH |
+                                  ImGuiTableFlags_BordersInnerV);
+    if (!table)
+    {
+      ImGui::PopStyleVar();
+      ImGui::PopID();
+      return;
+    }
+    ImGui::TableSetupColumn("Tick", ImGuiTableColumnFlags_WidthFixed,
+                            TICK_COLUMN_WIDTH * scale);
+    ImGui::TableSetupColumn("Test", ImGuiTableColumnFlags_WidthStretch);
   };
   for (std::size_t index = 0; index < catalogue.tests.size(); ++index)
   {
@@ -1006,61 +1113,14 @@ void TechniqueBenchScene::renderTestList()
       open = ImGui::CollapsingHeader(section.c_str(),
                                      ImGuiTreeNodeFlags_DefaultOpen);
     }
-    if (!open)
+    if (open && !table)
     {
-      continue;
+      begin();
     }
-    if (!table)
+    if (open && table)
     {
-      ImGui::PushID(section.c_str());
-      ImGui::PushStyleVar(ImGuiStyleVar_CellPadding,
-                          ImVec2(3 * scale, 3 * scale));
-      table = ImGui::BeginTable("##tests", 2,
-                                ImGuiTableFlags_RowBg |
-                                    ImGuiTableFlags_BordersInnerH |
-                                    ImGuiTableFlags_BordersInnerV);
-      if (!table)
-      {
-        ImGui::PopStyleVar();
-        ImGui::PopID();
-        continue;
-      }
-      ImGui::TableSetupColumn("Tick", ImGuiTableColumnFlags_WidthFixed,
-                              TICK_COLUMN_WIDTH * scale);
-      ImGui::TableSetupColumn("Test", ImGuiTableColumnFlags_WidthStretch);
+      renderTestRow(index);
     }
-    ImGui::PushID(static_cast<int>(index));
-    ImGui::TableNextRow();
-    ImGui::TableNextColumn();
-    bool on = ticked[index];
-    if (ImGui::Checkbox("##tick", &on))
-    {
-      ticked[index] = on;
-    }
-    ImGui::TableNextColumn();
-    const ImVec2 swatch = ImGui::GetCursorScreenPos();
-    ImGui::GetWindowDrawList()->AddRectFilled(
-        ImVec2(swatch.x, swatch.y + (SWATCH_TOP * scale)),
-        ImVec2(swatch.x + (SWATCH_WIDTH * scale),
-               swatch.y + (SWATCH_BOTTOM * scale)),
-        colourOf(test));
-    ImGui::Dummy(ImVec2(SWATCH_ROOM * scale, ImGui::GetFrameHeight()));
-    ImGui::SameLine(0, 4 * scale);
-    const std::string label = std::format("{}  {}", test.id, test.name);
-    if (ImGui::Selectable(
-            label.c_str(), focus == test.id, 0,
-            ImVec2(std::max(scale, ImGui::GetContentRegionAvail().x),
-                   ImGui::GetFrameHeight())))
-    {
-      focus = test.id;
-      selectView = 2;
-    }
-    if (ImGui::IsItemHovered())
-    {
-      ImGui::SetTooltip("%s\n%s", test.name.c_str(),
-                        test.success.describe(test.range).c_str());
-    }
-    ImGui::PopID();
   }
   close();
 }
@@ -1068,89 +1128,78 @@ void TechniqueBenchScene::renderTestList()
 // --- Results
 // ---------------------------------------------------------------------
 
-void TechniqueBenchScene::renderResults(float width, float height)
+/** The result shown and the colouring, as two fields. */
+void TechniqueBenchScene::renderResultFields(
+    const std::vector<std::string>& names, float scale)
 {
-  namespace Page = SandboxPageUI;
-  const float scale = Theme::scale();
-  const auto* run = shownRun();
-  Page::beginCard("##bench_result_controls", "RESULTS", width, Page::MID, scale,
-                  boldFont);
-  if (run == nullptr)
+  if (!ImGui::BeginTable("##result_fields", 2,
+                         ImGuiTableFlags_SizingStretchProp,
+                         ImVec2(std::min(FIELDS_TABLE_WIDTH * scale,
+                                         ImGui::GetContentRegionAvail().x),
+                                0)))
   {
-    ImGui::TextWrapped(
-        "Run the ticked tests or the full catalogue to see success curves, a "
-        "results grid and individual test details.");
-    Page::endCard(scale);
     return;
   }
-  const auto& names = run->metricNames();
-  result = std::clamp(result, 0, static_cast<int>(names.size()));
-  if (ImGui::BeginTable("##result_fields", 2, ImGuiTableFlags_SizingStretchProp,
-                        ImVec2(std::min(FIELDS_TABLE_WIDTH * scale,
-                                        ImGui::GetContentRegionAvail().x),
-                               0)))
+  ImGui::TableSetupColumn("Result", ImGuiTableColumnFlags_WidthStretch, 2);
+  ImGui::TableSetupColumn("Colour", ImGuiTableColumnFlags_WidthStretch, 1);
+  ImGui::TableNextColumn();
+  ImGui::Dummy(ImVec2(0, 0));
+  field("Result");
+  if (SandboxPageUI::beginCombo(
+          "##result",
+          result == 0 ? "Success rate (%)"
+                      : names[static_cast<std::size_t>(result - 1)].c_str()))
   {
-    ImGui::TableSetupColumn("Result", ImGuiTableColumnFlags_WidthStretch, 2);
-    ImGui::TableSetupColumn("Colour", ImGuiTableColumnFlags_WidthStretch, 1);
-    ImGui::TableNextColumn();
-    ImGui::Dummy(ImVec2(0, 0));
-    field("Result");
-    if (SandboxPageUI::beginCombo(
-            "##result",
-            result == 0 ? "Success rate (%)"
-                        : names[static_cast<std::size_t>(result - 1)].c_str()))
+    if (ImGui::Selectable("Success rate (%)", result == 0))
     {
-      if (ImGui::Selectable("Success rate (%)", result == 0))
-      {
-        result = 0;
-      }
-      for (std::size_t index = 0; index < names.size(); ++index)
-      {
-        if (ImGui::Selectable(names[index].c_str(),
-                              result == static_cast<int>(index) + 1))
-        {
-          result = static_cast<int>(index) + 1;
-        }
-      }
-      ImGui::EndCombo();
+      result = 0;
     }
-    if (ImGui::IsItemHovered())
+    for (std::size_t index = 0; index < names.size(); ++index)
     {
-      ImGui::SetTooltip(
-          "Success rate, or the mean of any result over the "
-          "finished runs.");
-    }
-    ImGui::TableNextColumn();
-    ImGui::Dummy(ImVec2(0, 0));
-    field("Colour by");
-    if (SandboxPageUI::beginCombo(
-            "##colour_by",
-            colourBy < 0
-                ? "test"
-                : tagValues[static_cast<std::size_t>(colourBy)].first.c_str()))
-    {
-      if (ImGui::Selectable("test", colourBy < 0))
+      if (ImGui::Selectable(names[index].c_str(),
+                            result == static_cast<int>(index) + 1))
       {
-        colourBy = -1;
+        result = static_cast<int>(index) + 1;
       }
-      for (std::size_t index = 0; index < tagValues.size(); ++index)
-      {
-        if (ImGui::Selectable(tagValues[index].first.c_str(),
-                              colourBy == static_cast<int>(index)))
-        {
-          colourBy = static_cast<int>(index);
-        }
-      }
-      ImGui::EndCombo();
     }
-    ImGui::EndTable();
+    ImGui::EndCombo();
   }
-  if (const BenchResults* other = compareRun())
+  if (ImGui::IsItemHovered())
   {
-    ImGui::TextWrapped("Dashed: run %d (%s)", compareIndex + 1,
-                       other->label.c_str());
+    UI::tooltip(
+        "Success rate, or the mean of any result over the "
+        "finished runs.");
   }
+  ImGui::TableNextColumn();
+  ImGui::Dummy(ImVec2(0, 0));
+  field("Colour by");
+  if (SandboxPageUI::beginCombo(
+          "##colour_by",
+          colourBy < 0
+              ? "test"
+              : tagValues[static_cast<std::size_t>(colourBy)].first.c_str()))
+  {
+    if (ImGui::Selectable("test", colourBy < 0))
+    {
+      colourBy = -1;
+    }
+    for (std::size_t index = 0; index < tagValues.size(); ++index)
+    {
+      if (ImGui::Selectable(tagValues[index].first.c_str(),
+                            colourBy == static_cast<int>(index)))
+      {
+        colourBy = static_cast<int>(index);
+      }
+    }
+    ImGui::EndCombo();
+  }
+  ImGui::EndTable();
+}
 
+/** Curves, grid or one test: a view picked elsewhere takes over first. */
+void TechniqueBenchScene::renderResultTabs(float scale)
+{
+  namespace Page = SandboxPageUI;
   if (selectView >= 0)
   {
     view = selectView;
@@ -1163,19 +1212,53 @@ void TechniqueBenchScene::renderResults(float width, float height)
     {
       ImGui::SameLine(0, SandboxPageUI::PANEL_GAP * scale);
     }
-    if (Page::button(tabs[tab], view == tab, scale, boldFont))
+    if (Page::button(tabs.at(tab), view == tab, scale, boldFont))
     {
       view = tab;
     }
   }
+}
+
+void TechniqueBenchScene::renderResults(ImVec2 area)
+{
+  const float width = area.x;
+  const float height = area.y;
+  namespace Page = SandboxPageUI;
+  const float scale = Theme::scale();
+  const auto* run = shownRun();
+  Page::beginCard("##bench_result_controls", "RESULTS", width, Page::MID, scale,
+                  boldFont);
+  if (run == nullptr)
+  {
+    UI::textWrapped(
+        "Run the ticked tests or the full catalogue to see success curves, a "
+        "results grid and individual test details.");
+    Page::endCard(scale);
+    return;
+  }
+  const auto& names = run->metricNames();
+  result = std::clamp(result, 0, static_cast<int>(names.size()));
+  renderResultFields(names, scale);
+  if (const BenchResults* other = compareRun())
+  {
+    UI::textWrapped("Dashed: run {:d} ({})", compareIndex + 1,
+                    other->label.c_str());
+  }
+  renderResultTabs(scale);
   Page::endCard(scale);
   const float bodyHeight =
       std::max(300 * scale, height - ImGui::GetCursorPosY() - (56 * scale));
-  Page::beginCard("##bench_result_body",
-                  view == 0 ? (result == 0 ? "SUCCESS CURVES" : "RESULT CURVES")
-                  : view == 1 ? "RESULT GRID"
-                              : "TEST DETAIL",
-                  width, Page::DARK, scale, boldFont);
+  const char* bodyTitle = "TEST DETAIL";
+  if (view == 0)
+  {
+    bodyTitle = result == 0 ? "SUCCESS CURVES" : "RESULT CURVES";
+  }
+  else if (view == 1)
+  {
+    bodyTitle = "RESULT GRID";
+  }
+  Page::beginCard("##bench_result_body", bodyTitle, width, Page::DARK, scale,
+                  boldFont);
   ImGui::PushTextWrapPos(0);
   if (view == 0)
   {
@@ -1193,59 +1276,18 @@ void TechniqueBenchScene::renderResults(float width, float height)
   Page::endCard(scale);
 }
 
-void TechniqueBenchScene::renderChart(ImVec2 size)
+namespace
 {
-  const BenchResults& run = *shownRun();
-  const BenchResults* other = compareRun();
-  const std::vector<const BenchTest*> tests = drawnTests();
-  const float scale = Theme::scale();
-  const bool rates = result == 0;
+/** Room round the plot for the axes' labels (scaled pixels). */
+constexpr float PLOT_LEFT_MARGIN = 52.0F;
+constexpr float PLOT_RIGHT_MARGIN = 48.0F;
+constexpr float PLOT_TOP_MARGIN = 8.0F;
+constexpr float PLOT_BOTTOM_MARGIN = 36.0F;
 
-  // Legend rows below the plot: by tag value, or by test.
-  struct Entry
-  {
-    std::string label;
-    ImU32 colour;
-  };
-  std::vector<Entry> legend;
-  if (colourBy >= 0)
-  {
-    const auto& [key, values] = tagValues[static_cast<std::size_t>(colourBy)];
-    for (const std::string& value : values)
-    {
-      if (std::ranges::any_of(tests, [&](const BenchTest* test)
-                              { return test->tag(key) == value; }))
-      {
-        legend.push_back(
-            {.label = std::format("{} {}", key, value),
-             .colour =
-                 SERIES[static_cast<std::size_t>(
-                            std::ranges::find(values, value) - values.begin()) %
-                        SERIES.size()]});
-      }
-    }
-  }
-  else
-  {
-    for (const BenchTest* test : tests)
-    {
-      legend.push_back({.label = test->id, .colour = colourOf(*test)});
-    }
-  }
-  const float lineHeight = ImGui::GetTextLineHeightWithSpacing();
-  float legendWidth = 0.0F;
-  for (const Entry& entry : legend)
-  {
-    legendWidth += ImGui::CalcTextSize(entry.label.c_str()).x +
-                   (LEGEND_ENTRY_EXTRA * scale);
-  }
-  const float legendRows =
-      std::ceil(legendWidth / std::max(size.x, 1.0F)) + 1.0F;
-  const ImVec2 plotSize(
-      size.x, std::max(200.0F * scale, size.y - (legendRows * lineHeight) -
-                                           (lineHeight * 1.5F)));
-
-  // Ranges: skills across; 0-100 for rates, else the data's.
+/** Every skill either run measured, in order. */
+std::vector<float> chartSkills(const BenchResults& run,
+                               const BenchResults* other)
+{
   std::vector<float> skills = run.skills;
   if (other != nullptr)
   {
@@ -1258,248 +1300,59 @@ void TechniqueBenchScene::renderChart(ImVec2 size)
     }
   }
   std::ranges::sort(skills);
-  if (skills.empty())
-  {
-    return;
-  }
-  double xMin = skills.front();
-  double xMax = skills.back();
-  if (xMax - xMin < SAME_SKILL)
-  {
-    xMin -= 1.0;
-    xMax += 1.0;
-  }
-  double yMin = rates ? 0.0 : std::numeric_limits<double>::max();
-  double yMax = rates ? 100.0 : std::numeric_limits<double>::lowest();
-  if (!rates)
-  {
-    for (const BenchTest* test : tests)
-    {
-      for (const float skill : skills)
-      {
-        for (const BenchResults* source : {&run, other})
-        {
-          if (source != nullptr)
-          {
-            if (const auto value = valueOf(source->cell(test->id, skill)))
-            {
-              yMin = std::min(yMin, *value);
-              yMax = std::max(yMax, *value);
-            }
-          }
-        }
-      }
-    }
-    if (yMin > yMax)
-    {
-      ImGui::TextDisabled("No values for this result in the tests shown.");
-      return;
-    }
-    const double pad =
-        std::max((yMax - yMin) * 0.08, 1e-3 + (0.05 * std::abs(yMax)));
-    yMin -= pad;
-    yMax += pad;
-  }
+  return skills;
+}
 
-  const ImVec2 origin = ImGui::GetCursorScreenPos();
-  ImGui::InvisibleButton("##chart", plotSize);
-  const bool hovering = ImGui::IsItemHovered();
-  const bool clicked = ImGui::IsItemClicked();
-  ImDrawList& draw = *ImGui::GetWindowDrawList();
-  const float left = origin.x + (52.0F * scale);
-  const float right = origin.x + plotSize.x - (48.0F * scale);
-  const float top = origin.y + (8.0F * scale);
-  const float bottom = origin.y + plotSize.y - (36.0F * scale);
-  const auto sx = [&](double x)
-  {
-    return left +
-           (static_cast<float>((x - xMin) / (xMax - xMin)) * (right - left));
-  };
-  const auto sy = [&](double y)
-  {
-    return bottom -
-           (static_cast<float>((y - yMin) / (yMax - yMin)) * (bottom - top));
-  };
-  draw.AddRectFilled(ImVec2(left, top), ImVec2(right, bottom), SURFACE);
+/** The grid and tick labels, the skills across and the axis title. */
+void drawChartAxes(ImDrawList& draw, const ChartFrame& frame,
+                   const std::vector<float>& skills, bool rates,
+                   const std::string& axis)
+{
+  const float scale = frame.scale;
+  draw.AddRectFilled(ImVec2(frame.left, frame.top),
+                     ImVec2(frame.right, frame.bottom), SURFACE);
   const double yStep =
-      rates ? RATE_TICK_STEP : tickStep(yMax - yMin, VALUE_TICKS);
-  const double firstY = std::ceil(yMin / yStep) * yStep;
-  const int yTicks =
-      static_cast<int>(std::floor((yMax + TICK_TOLERANCE - firstY) / yStep)) +
-      1;
+      rates ? RATE_TICK_STEP : tickStep(frame.yMax - frame.yMin, VALUE_TICKS);
+  const double firstY = std::ceil(frame.yMin / yStep) * yStep;
+  const int yTicks = static_cast<int>(std::floor(
+                         (frame.yMax + TICK_TOLERANCE - firstY) / yStep)) +
+                     1;
   for (int tick = 0; tick < yTicks; ++tick)
   {
     const double y = firstY + (static_cast<double>(tick) * yStep);
-    draw.AddLine(ImVec2(left, sy(y)), ImVec2(right, sy(y)), GRID);
+    draw.AddLine(ImVec2(frame.left, frame.sy(y)),
+                 ImVec2(frame.right, frame.sy(y)), GRID);
     const std::string label =
         std::format("{:g}", std::round(y / yStep) * yStep);
     const ImVec2 labelSize = ImGui::CalcTextSize(label.c_str());
-    draw.AddText(ImVec2(left - labelSize.x - (AXIS_LABEL_GAP * scale),
-                        sy(y) - (labelSize.y * CENTRE)),
+    draw.AddText(ImVec2(frame.left - labelSize.x - (AXIS_LABEL_GAP * scale),
+                        frame.sy(y) - (labelSize.y * CENTRE)),
                  TEXT_MUTED, label.c_str());
   }
   for (const float skill : skills)
   {
     const std::string label = std::format("{:g}", skill);
     const ImVec2 labelSize = ImGui::CalcTextSize(label.c_str());
-    draw.AddText(ImVec2(sx(skill) - (labelSize.x * CENTRE),
-                        bottom + (SKILL_LABEL_GAP * scale)),
+    draw.AddText(ImVec2(frame.sx(skill) - (labelSize.x * CENTRE),
+                        frame.bottom + (SKILL_LABEL_GAP * scale)),
                  TEXT_MUTED, label.c_str());
   }
-  const std::string axis = std::format(
-      "Skill ({})", SKILL_OVERRIDES[static_cast<std::size_t>(skillOverride)]);
   const ImVec2 axisSize = ImGui::CalcTextSize(axis.c_str());
-  draw.AddText(ImVec2((left + right - axisSize.x) * CENTRE,
-                      bottom + (SKILL_LABEL_GAP * scale) + axisSize.y),
+  draw.AddText(ImVec2((frame.left + frame.right - axisSize.x) * CENTRE,
+                      frame.bottom + (SKILL_LABEL_GAP * scale) + axisSize.y),
                TEXT_MUTED, axis.c_str());
+}
 
-  // The comparison first (dashed, faint), then the shown run over it.
-  const ImVec2 mouse = ImGui::GetIO().MousePos;
-  const BenchTest* hoveredTest = nullptr;
-  float hoveredSkill = 0.0F;
-  float hoveredDistance = HOVER_PIXELS * scale;
-  const auto curve = [&](const BenchResults& source, const BenchTest& test,
-                         bool faint) -> std::optional<ImVec2>
-  {
-    const ImU32 colour = colourOf(test);
-    std::optional<ImVec2> before;
-    std::optional<ImVec2> last;
-    for (const float skill : skills)
-    {
-      const auto value = valueOf(source.cell(test.id, skill));
-      if (!value)
-      {
-        continue;
-      }
-      const ImVec2 at(sx(skill), sy(*value));
-      if (before)
-      {
-        if (faint)
-        {
-          dashedLine(draw, *before, at, withAlpha(colour, FAINT_ALPHA),
-                     FAINT_LINE_THICKNESS * scale, FAINT_DASH * scale);
-        }
-        else
-        {
-          draw.AddLine(*before, at, colour, LINE_THICKNESS * scale);
-        }
-      }
-      if (faint)
-      {
-        draw.AddCircle(at, FAINT_MARKER_RADIUS * scale,
-                       withAlpha(colour, FAINT_ALPHA), 0, 1.0F * scale);
-      }
-      else
-      {
-        // A ring of surface round each marker keeps crossing curves apart.
-        draw.AddCircleFilled(at, MARKER_RING_RADIUS * scale, SURFACE);
-        draw.AddCircleFilled(at, MARKER_RADIUS * scale, colour);
-        const float distance = std::hypot(mouse.x - at.x, mouse.y - at.y);
-        if (distance < hoveredDistance)
-        {
-          hoveredDistance = distance;
-          hoveredTest = &test;
-          hoveredSkill = skill;
-        }
-      }
-      before = at;
-      last = at;
-    }
-    return last;
-  };
-  if (other != nullptr)
-  {
-    for (const BenchTest* test : tests)
-    {
-      (void)curve(*other, *test, true);
-    }
-  }
-  std::vector<std::pair<ImVec2, const BenchTest*>> ends;
-  for (const BenchTest* test : tests)
-  {
-    if (const auto end = curve(run, *test, false))
-    {
-      ends.emplace_back(*end, test);
-    }
-  }
-  // Direct labels at the right end when few enough to read.
-  if (ends.size() <= MAX_END_LABELS)
-  {
-    for (const auto& [at, test] : ends)
-    {
-      draw.AddText(ImVec2(at.x + (END_LABEL_GAP * scale),
-                          at.y - (ImGui::GetTextLineHeight() * CENTRE)),
-                   TEXT, test->id.c_str());
-    }
-  }
-
-  if ((hoveredTest != nullptr) && hovering)
-  {
-    // A crosshair at the skill, and every number at the point.
-    draw.AddLine(ImVec2(sx(hoveredSkill), top),
-                 ImVec2(sx(hoveredSkill), bottom), IM_COL32(255, 255, 255, 60),
-                 1.0F * scale);
-    const BenchCell* cell = run.cell(hoveredTest->id, hoveredSkill);
-    std::string tip = std::format("{}  {}\nSkill {:g}", hoveredTest->id,
-                                  hoveredTest->name, hoveredSkill);
-    if (cell != nullptr)
-    {
-      const auto rate = cell->rate();
-      tip += std::format("\nSuccess {}  ({} of {} finished, {} runs)",
-                         rate ? std::format("{:.0f}%", *rate * 100.0) : "-",
-                         cell->successes, cell->completed, cell->runs);
-      if (!rates)
-      {
-        if (const auto value = valueOf(cell))
-        {
-          tip += std::format(
-              "\n{}: {:.3f}",
-              run.metricNames()[static_cast<std::size_t>(result - 1)], *value);
-        }
-      }
-      if (cell->tolerance.count > 0)
-      {
-        tip += std::format("\nWithin {:.2f} m (mean tolerance)",
-                           cell->tolerance.mean());
-      }
-    }
-    if (other != nullptr)
-    {
-      const auto then = valueOf(other->cell(hoveredTest->id, hoveredSkill));
-      const auto now = valueOf(cell);
-      if (then)
-      {
-        tip += std::format("\nRun {}: {:.1f}{}", compareIndex + 1, *then,
-                           now ? std::format("  (change {:+.1f})", *now - *then)
-                               : std::string());
-      }
-    }
-    tip += "\n" + hoveredTest->success.describe(hoveredTest->range);
-    tip += "\nClick: this test's detail";
-    ImGui::SetTooltip("%s", tip.c_str());
-    if (clicked)
-    {
-      focus = hoveredTest->id;
-      watchSkill = hoveredSkill;
-      selectView = 2;
-    }
-  }
-
-  // Legend.
-  if (colourBy < 0 && tests.size() > SERIES.size())
-  {
-    ImGui::TextColored(
-        WARNING,
-        "%zu curves share 8 colours: colour by a tag, or filter, "
-        "to tell them apart (hover a point to name it).",
-        tests.size());
-  }
+/** The legend rows: a swatch and a label each, wrapping to the width. */
+void drawChartLegend(const std::vector<ChartLegendEntry>& legend, float width)
+{
+  const float scale = Theme::scale();
   float used = 0.0F;
-  for (const Entry& entry : legend)
+  for (const ChartLegendEntry& entry : legend)
   {
     const float wide =
         ImGui::CalcTextSize(entry.label.c_str()).x + (30.0F * scale);
-    if (used > 0.0F && used + wide <= size.x)
+    if (used > 0.0F && used + wide <= width)
     {
       ImGui::SameLine(0.0F, 0.0F);
     }
@@ -1522,6 +1375,359 @@ void TechniqueBenchScene::renderChart(ImVec2 size)
     used += wide;
   }
 }
+}  // namespace
+
+float ChartFrame::sx(double x) const
+{
+  return left +
+         (static_cast<float>((x - xMin) / (xMax - xMin)) * (right - left));
+}
+
+float ChartFrame::sy(double y) const
+{
+  return bottom -
+         (static_cast<float>((y - yMin) / (yMax - yMin)) * (bottom - top));
+}
+
+/** Legend rows below the plot: by tag value, or by test. */
+std::vector<ChartLegendEntry> TechniqueBenchScene::chartLegend(
+    const std::vector<const BenchTest*>& tests) const
+{
+  std::vector<ChartLegendEntry> legend;
+  if (colourBy < 0)
+  {
+    for (const BenchTest* test : tests)
+    {
+      legend.push_back({.label = test->id, .colour = colourOf(*test)});
+    }
+    return legend;
+  }
+  const auto& [key, values] = tagValues[static_cast<std::size_t>(colourBy)];
+  for (const std::string& value : values)
+  {
+    if (std::ranges::any_of(tests, [&](const BenchTest* test)
+                            { return test->tag(key) == value; }))
+    {
+      legend.push_back(
+          {.label = std::format("{} {}", key, value),
+           .colour = SERIES.at(
+               static_cast<std::size_t>(std::ranges::find(values, value) -
+                                        values.begin()) %
+               SERIES.size())});
+    }
+  }
+  return legend;
+}
+
+/** The values' range over the tests and skills, padded; none if there are
+ * no values. */
+std::optional<std::pair<double, double>> TechniqueBenchScene::chartValueRange(
+    const std::vector<const BenchTest*>& tests,
+    const std::vector<float>& skills) const
+{
+  const BenchResults* other = compareRun();
+  double yMin = std::numeric_limits<double>::max();
+  double yMax = std::numeric_limits<double>::lowest();
+  for (const BenchTest* test : tests)
+  {
+    for (const float skill : skills)
+    {
+      for (const BenchResults* source : {shownRun(), other})
+      {
+        const auto value = source != nullptr
+                               ? valueOf(source->cell(test->id, skill))
+                               : std::nullopt;
+        if (value)
+        {
+          yMin = std::min(yMin, *value);
+          yMax = std::max(yMax, *value);
+        }
+      }
+    }
+  }
+  if (yMin > yMax)
+  {
+    return std::nullopt;
+  }
+  const double pad =
+      std::max((yMax - yMin) * 0.08, 1e-3 + (0.05 * std::abs(yMax)));
+  return std::pair{yMin - pad, yMax + pad};
+}
+
+/** One test's curve from one run: the shown run solid (and hoverable), the
+ * comparison dashed and faint. Returns where it ends, if anywhere. */
+std::optional<ImVec2> TechniqueBenchScene::drawCurve(ImDrawList& draw,
+                                                     const ChartFrame& frame,
+                                                     const ChartCurve& curve,
+                                                     ChartHover& hover) const
+{
+  const float scale = frame.scale;
+  const ImU32 colour = colourOf(*curve.test);
+  const ImVec2 mouse = ImGui::GetIO().MousePos;
+  std::optional<ImVec2> before;
+  for (const float skill : *curve.skills)
+  {
+    const auto value = valueOf(curve.source->cell(curve.test->id, skill));
+    if (!value)
+    {
+      continue;
+    }
+    const ImVec2 at(frame.sx(skill), frame.sy(*value));
+    if (before && curve.faint)
+    {
+      dashedLine(draw, *before, at, withAlpha(colour, FAINT_ALPHA),
+                 FAINT_LINE_THICKNESS * scale, FAINT_DASH * scale);
+    }
+    else if (before)
+    {
+      draw.AddLine(*before, at, colour, LINE_THICKNESS * scale);
+    }
+    if (curve.faint)
+    {
+      draw.AddCircle(at, FAINT_MARKER_RADIUS * scale,
+                     withAlpha(colour, FAINT_ALPHA), 0, 1.0F * scale);
+    }
+    else
+    {
+      // A ring of surface round each marker keeps crossing curves apart.
+      draw.AddCircleFilled(at, MARKER_RING_RADIUS * scale, SURFACE);
+      draw.AddCircleFilled(at, MARKER_RADIUS * scale, colour);
+      const float distance = std::hypot(mouse.x - at.x, mouse.y - at.y);
+      if (distance < hover.distance)
+      {
+        hover.distance = distance;
+        hover.test = curve.test;
+        hover.skill = skill;
+      }
+    }
+    before = at;
+  }
+  return before;
+}
+
+/** Every number at the hovered point; a click opens the test's detail. */
+void TechniqueBenchScene::chartTooltip(const ChartHover& hover, bool clicked)
+{
+  const BenchResults& run = *shownRun();
+  const BenchResults* other = compareRun();
+  const BenchCell* cell = run.cell(hover.test->id, hover.skill);
+  std::string tip = std::format("{}  {}\nSkill {:g}", hover.test->id,
+                                hover.test->name, hover.skill);
+  if (cell != nullptr)
+  {
+    const auto rate = cell->rate();
+    tip += std::format("\nSuccess {}  ({} of {} finished, {} runs)",
+                       rate ? std::format("{:.0f}%", *rate * 100.0) : "-",
+                       cell->successes, cell->completed, cell->runs);
+    const auto value = result != 0 ? valueOf(cell) : std::nullopt;
+    if (value)
+    {
+      tip += std::format(
+          "\n{}: {:.3f}",
+          run.metricNames()[static_cast<std::size_t>(result - 1)], *value);
+    }
+    if (cell->tolerance.count > 0)
+    {
+      tip += std::format("\nWithin {:.2f} m (mean tolerance)",
+                         cell->tolerance.mean());
+    }
+  }
+  const auto then = other != nullptr
+                        ? valueOf(other->cell(hover.test->id, hover.skill))
+                        : std::nullopt;
+  if (then)
+  {
+    const auto now = valueOf(cell);
+    tip += std::format(
+        "\nRun {}: {:.1f}{}", compareIndex + 1, *then,
+        now ? std::format("  (change {:+.1f})", *now - *then) : std::string());
+  }
+  tip += "\n" + hover.test->success.describe(hover.test->range);
+  tip += "\nClick: this test's detail";
+  UI::tooltip("{}", tip.c_str());
+  if (clicked)
+  {
+    focus = hover.test->id;
+    watchSkill = hover.skill;
+    selectView = 2;
+  }
+}
+
+void TechniqueBenchScene::renderChart(ImVec2 size)
+{
+  const BenchResults& run = *shownRun();
+  const BenchResults* other = compareRun();
+  const std::vector<const BenchTest*> tests = drawnTests();
+  const float scale = Theme::scale();
+  const bool rates = result == 0;
+  const std::vector<ChartLegendEntry> legend = chartLegend(tests);
+  const float lineHeight = ImGui::GetTextLineHeightWithSpacing();
+  float legendWidth = 0.0F;
+  for (const ChartLegendEntry& entry : legend)
+  {
+    legendWidth += ImGui::CalcTextSize(entry.label.c_str()).x +
+                   (LEGEND_ENTRY_EXTRA * scale);
+  }
+  const float legendRows =
+      std::ceil(legendWidth / std::max(size.x, 1.0F)) + 1.0F;
+  const ImVec2 plotSize(
+      size.x, std::max(200.0F * scale, size.y - (legendRows * lineHeight) -
+                                           (lineHeight * 1.5F)));
+
+  // Ranges: skills across; 0-100 for rates, else the data's.
+  const std::vector<float> skills = chartSkills(run, other);
+  if (skills.empty())
+  {
+    return;
+  }
+  ChartFrame frame;
+  frame.scale = scale;
+  frame.xMin = skills.front();
+  frame.xMax = skills.back();
+  if (frame.xMax - frame.xMin < SAME_SKILL)
+  {
+    frame.xMin -= 1.0;
+    frame.xMax += 1.0;
+  }
+  frame.yMax = 100.0;
+  if (!rates)
+  {
+    const auto range = chartValueRange(tests, skills);
+    if (!range)
+    {
+      UI::textDisabled("No values for this result in the tests shown.");
+      return;
+    }
+    std::tie(frame.yMin, frame.yMax) = *range;
+  }
+
+  const ImVec2 origin = ImGui::GetCursorScreenPos();
+  ImGui::InvisibleButton("##chart", plotSize);
+  const bool hovering = ImGui::IsItemHovered();
+  const bool clicked = ImGui::IsItemClicked();
+  ImDrawList& draw = *ImGui::GetWindowDrawList();
+  frame.left = origin.x + (PLOT_LEFT_MARGIN * scale);
+  frame.right = origin.x + plotSize.x - (PLOT_RIGHT_MARGIN * scale);
+  frame.top = origin.y + (PLOT_TOP_MARGIN * scale);
+  frame.bottom = origin.y + plotSize.y - (PLOT_BOTTOM_MARGIN * scale);
+  drawChartAxes(
+      draw, frame, skills, rates,
+      std::format("Skill ({})",
+                  SKILL_OVERRIDES.at(static_cast<std::size_t>(skillOverride))));
+
+  // The comparison first (dashed, faint), then the shown run over it.
+  ChartHover hover{
+      .test = nullptr, .skill = 0.0F, .distance = HOVER_PIXELS * scale};
+  if (other != nullptr)
+  {
+    for (const BenchTest* test : tests)
+    {
+      (void)drawCurve(
+          draw, frame,
+          {.source = other, .test = test, .skills = &skills, .faint = true},
+          hover);
+    }
+  }
+  std::vector<std::pair<ImVec2, const BenchTest*>> ends;
+  for (const BenchTest* test : tests)
+  {
+    if (const auto end = drawCurve(
+            draw, frame,
+            {.source = &run, .test = test, .skills = &skills, .faint = false},
+            hover))
+    {
+      ends.emplace_back(*end, test);
+    }
+  }
+  // Direct labels at the right end when few enough to read.
+  if (ends.size() <= MAX_END_LABELS)
+  {
+    for (const auto& [at, test] : ends)
+    {
+      draw.AddText(ImVec2(at.x + (END_LABEL_GAP * scale),
+                          at.y - (ImGui::GetTextLineHeight() * CENTRE)),
+                   TEXT, test->id.c_str());
+    }
+  }
+  if ((hover.test != nullptr) && hovering)
+  {
+    // A crosshair at the skill, and every number at the point.
+    draw.AddLine(ImVec2(frame.sx(hover.skill), frame.top),
+                 ImVec2(frame.sx(hover.skill), frame.bottom),
+                 IM_COL32(255, 255, 255, 60), 1.0F * scale);
+    chartTooltip(hover, clicked);
+  }
+
+  // Legend.
+  if (colourBy < 0 && tests.size() > SERIES.size())
+  {
+    UI::textColoured(WARNING,
+                     "{:d} curves share 8 colours: colour by a tag, or filter, "
+                     "to tell them apart (hover a point to name it).",
+                     tests.size());
+  }
+  drawChartLegend(legend, size.x);
+}
+
+/** One grid cell: the value, or its change from the comparison. */
+void TechniqueBenchScene::renderGridCell(const BenchTest& test, float skill,
+                                         bool change) const
+{
+  const BenchResults& run = *shownRun();
+  const BenchResults* other = compareRun();
+  const BenchCell* cell = run.cell(test.id, skill);
+  const auto value = valueOf(cell);
+  if (!value)
+  {
+    UI::textDisabled("-");
+    return;
+  }
+  const auto then =
+      change ? valueOf(other->cell(test.id, skill)) : std::nullopt;
+  if (change && !then)
+  {
+    UI::textDisabled("new");
+    return;
+  }
+  if (change)
+  {
+    const double delta = *value - *then;
+    ImGui::TableSetBgColor(
+        ImGuiTableBgTarget_CellBg,
+        changeColour(result == 0
+                         ? delta
+                         : delta * FULL_CHANGE_POINTS /
+                               std::max(std::abs(*then), MIN_CHANGE_BASE)));
+    if (result == 0)
+    {
+      UI::text("{:+.0f}", delta);
+    }
+    else
+    {
+      UI::text("{:+.2f}", delta);
+    }
+  }
+  else if (result == 0)
+  {
+    ImGui::TableSetBgColor(ImGuiTableBgTarget_CellBg,
+                           rateColour(*value / PERCENT));
+    ImGui::PushStyleColor(ImGuiCol_Text, *value > DARK_TEXT_RATE * PERCENT
+                                             ? IM_COL32(16, 20, 28, 255)
+                                             : TEXT);
+    UI::text("{:.0f}", *value);
+    ImGui::PopStyleColor();
+  }
+  else
+  {
+    UI::text("{:.2f}", *value);
+  }
+  if (ImGui::IsItemHovered() && (cell != nullptr))
+  {
+    UI::tooltip("{} at {:g}: {:d} of {:d} finished runs succeeded",
+                test.id.c_str(), static_cast<double>(skill), cell->successes,
+                cell->completed);
+  }
+}
 
 void TechniqueBenchScene::renderGrid(ImVec2 size)
 {
@@ -1530,10 +1736,10 @@ void TechniqueBenchScene::renderGrid(ImVec2 size)
   const std::vector<const BenchTest*> tests = drawnTests();
   const float controlsY = ImGui::GetCursorPosY();
   ImGui::Checkbox("Change from the comparison", &gridChange);
-  ImGui::TextWrapped(gridChange
-                         ? "Points (or units) against the dashed run: blue "
-                           "up, red down."
-                         : "Click a row for its detail.");
+  UI::textWrapped("{}", gridChange
+                            ? "Points (or units) against the dashed run: blue "
+                              "up, red down."
+                            : "Click a row for its detail.");
   const bool change = gridChange && (other != nullptr);
   std::vector<float> skills = run.skills;
   const int columns = 2 + static_cast<int>(skills.size()) + 1;
@@ -1568,7 +1774,7 @@ void TechniqueBenchScene::renderGrid(ImVec2 size)
       ImGui::TableNextRow();
       ImGui::TableNextColumn();
       ImGui::TableNextColumn();
-      ImGui::TextDisabled("%s", section.c_str());
+      UI::textDisabled("{}", section.c_str());
     }
     ImGui::TableNextRow();
     ImGui::TableNextColumn();
@@ -1583,85 +1789,20 @@ void TechniqueBenchScene::renderGrid(ImVec2 size)
     for (const float skill : skills)
     {
       ImGui::TableNextColumn();
-      const BenchCell* cell = run.cell(test->id, skill);
-      const auto value = valueOf(cell);
-      if (!value)
-      {
-        ImGui::TextDisabled("-");
-        continue;
-      }
-      if (change)
-      {
-        const auto then = valueOf(other->cell(test->id, skill));
-        if (!then)
-        {
-          ImGui::TextDisabled("new");
-          continue;
-        }
-        const double delta = *value - *then;
-        ImGui::TableSetBgColor(
-            ImGuiTableBgTarget_CellBg,
-            changeColour(result == 0
-                             ? delta
-                             : delta * FULL_CHANGE_POINTS /
-                                   std::max(std::abs(*then), MIN_CHANGE_BASE)));
-        ImGui::Text(result == 0 ? "%+.0f" : "%+.2f", delta);
-      }
-      else
-      {
-        if (result == 0)
-        {
-          ImGui::TableSetBgColor(ImGuiTableBgTarget_CellBg,
-                                 rateColour(*value / PERCENT));
-          ImGui::PushStyleColor(ImGuiCol_Text, *value > DARK_TEXT_RATE * PERCENT
-                                                   ? IM_COL32(16, 20, 28, 255)
-                                                   : TEXT);
-          ImGui::Text("%.0f", *value);
-          ImGui::PopStyleColor();
-        }
-        else
-        {
-          ImGui::Text("%.2f", *value);
-        }
-      }
-      if (ImGui::IsItemHovered() && (cell != nullptr))
-      {
-        ImGui::SetTooltip("%s at %g: %d of %d finished runs succeeded",
-                          test->id.c_str(), static_cast<double>(skill),
-                          cell->successes, cell->completed);
-      }
+      renderGridCell(*test, skill, change);
     }
     ImGui::TableNextColumn();
-    ImGui::TextDisabled("%s", test->success.describe(test->range).c_str());
+    UI::textDisabled("{}", test->success.describe(test->range).c_str());
   }
   ImGui::EndTable();
 }
 
-void TechniqueBenchScene::renderTest()
+namespace
 {
-  const BenchResults& run = *shownRun();
-  const BenchResults* other = compareRun();
-  const auto found = std::ranges::find(catalogue.tests, focus, &BenchTest::id);
-  if (found == catalogue.tests.end())
-  {
-    ImGui::TextDisabled(
-        "Click a test (in the list, a curve's point or a grid row).");
-    return;
-  }
-  const BenchTest& test = *found;
-  ImGui::TextWrapped("%s  %s", test.id.c_str(), test.name.c_str());
-  ImGui::TextDisabled("%s · drill \"%s\" · skill %s", test.section.c_str(),
-                      test.drill.c_str(), test.skill.c_str());
-  ImGui::TextWrapped("Success: %s", test.success.describe(test.range).c_str());
-  // Choices by name, from the drill's own settings.
-  std::vector<DrillParameter> parameters;
-  for (const auto& drill : watchDrills)
-  {
-    if (test.drill == drill->name())
-    {
-      parameters = drill->parameters();
-    }
-  }
+/** The test's settings, choices by name from the drill's own settings. */
+std::string testSettingsText(const BenchTest& test,
+                             const std::vector<DrillParameter>& parameters)
+{
   std::string settings;
   for (const auto& [name, value] : test.settings)
   {
@@ -1678,16 +1819,126 @@ void TechniqueBenchScene::renderTest()
     settings +=
         std::format("{}{} {}", settings.empty() ? "" : " · ", name, text);
   }
-  ImGui::PushTextWrapPos(0.0F);
-  ImGui::TextDisabled("Settings: %s", settings.c_str());
+  return settings;
+}
+
+std::string testTagsText(const BenchTest& test)
+{
   std::string tags;
   for (const auto& [key, value] : test.tags)
   {
     tags += std::format("{}{}={}", tags.empty() ? "" : " · ", key, value);
   }
-  ImGui::TextDisabled("Tags: %s", tags.c_str());
-  ImGui::PopTextWrapPos();
+  return tags;
+}
 
+/** The detail metrics any of the run's cells for the test carries. */
+std::vector<const char*> testExtras(const BenchResults& run,
+                                    const BenchTest& test)
+{
+  std::vector<const char*> extras;
+  for (const char* name : DETAIL_METRICS)
+  {
+    if (std::ranges::any_of(run.skills,
+                            [&](float skill)
+                            {
+                              const BenchCell* cell = run.cell(test.id, skill);
+                              return cell && cell->metrics.contains(name);
+                            }))
+    {
+      extras.push_back(name);
+    }
+  }
+  return extras;
+}
+
+/** The rate, coloured by itself. */
+void rateCell(std::optional<double> rate)
+{
+  if (!rate)
+  {
+    return;
+  }
+  ImGui::TableSetBgColor(ImGuiTableBgTarget_CellBg, rateColour(*rate));
+  ImGui::PushStyleColor(
+      ImGuiCol_Text, *rate > DARK_TEXT_RATE ? IM_COL32(16, 20, 28, 255) : TEXT);
+  UI::text("{:.0f}%", *rate * 100.0);
+  ImGui::PopStyleColor();
+}
+
+/** One skill's row: runs, the rate, the comparison, why it failed. */
+void testDetailRow(const BenchCell* cell, const BenchCell* then,
+                   const std::vector<const char*>& extras)
+{
+  ImGui::TableNextColumn();
+  if (cell == nullptr)
+  {
+    UI::textDisabled("-");
+    return;
+  }
+  UI::text("{:d} / {:d}", cell->completed, cell->runs);
+  ImGui::TableNextColumn();
+  const auto rate = cell->rate();
+  rateCell(rate);
+  ImGui::TableNextColumn();
+  if ((then != nullptr) && then->rate() && rate)
+  {
+    UI::text("{:.0f}% ({:+.0f})", *then->rate() * 100.0,
+             (*rate - *then->rate()) * 100.0);
+  }
+  else
+  {
+    UI::textDisabled("-");
+  }
+  ImGui::TableNextColumn();
+  if (cell->tolerance.count > 0)
+  {
+    UI::text("{:.2f}", cell->tolerance.mean());
+  }
+  else
+  {
+    UI::textDisabled("-");
+  }
+  for (const char* name : extras)
+  {
+    ImGui::TableNextColumn();
+    const auto metric = cell->metrics.find(name);
+    if (metric == cell->metrics.end() || metric->second.count == 0)
+    {
+      UI::textDisabled("-");
+    }
+    else
+    {
+      UI::text("{:.2f}", metric->second.mean());
+    }
+  }
+}
+}  // namespace
+
+/** The test: its name, drill, success rule, settings and tags. */
+void TechniqueBenchScene::renderTestSummary(const BenchTest& test) const
+{
+  UI::textWrapped("{}  {}", test.id.c_str(), test.name.c_str());
+  UI::textDisabled("{} · drill \"{}\" · skill {}", test.section.c_str(),
+                   test.drill.c_str(), test.skill.c_str());
+  UI::textWrapped("Success: {}", test.success.describe(test.range).c_str());
+  std::vector<DrillParameter> parameters;
+  for (const auto& drill : watchDrills)
+  {
+    if (test.drill == drill->name())
+    {
+      parameters = drill->parameters();
+    }
+  }
+  ImGui::PushTextWrapPos(0.0F);
+  UI::textDisabled("Settings: {}", testSettingsText(test, parameters).c_str());
+  UI::textDisabled("Tags: {}", testTagsText(test).c_str());
+  ImGui::PopTextWrapPos();
+}
+
+/** Watch: the test's drill with a skill and seed. */
+void TechniqueBenchScene::renderWatchControls(const BenchTest& test)
+{
   ImGui::SeparatorText("Watch");
   if (SandboxPageUI::button("Watch", true, Theme::scale(), boldFont))
   {
@@ -1695,7 +1946,7 @@ void TechniqueBenchScene::renderTest()
   }
   if (ImGui::IsItemHovered())
   {
-    ImGui::SetTooltip(
+    UI::tooltip(
         "Opens this test's drill with the selected skill, seed and bench "
         "tuning.");
   }
@@ -1715,23 +1966,16 @@ void TechniqueBenchScene::renderTest()
     ImGui::InputInt("##watch_seed", &watchSeed);
     ImGui::EndTable();
   }
+}
 
-  // Per skill: the rate, the comparison, why it failed.
-  std::vector<const char*> extras;
-  for (const char* name : DETAIL_METRICS)
-  {
-    if (std::ranges::any_of(run.skills,
-                            [&](float skill)
-                            {
-                              const BenchCell* cell = run.cell(test.id, skill);
-                              return cell && cell->metrics.contains(name);
-                            }))
-    {
-      extras.push_back(name);
-    }
-  }
+/** Per skill: the rate, the comparison, why it failed. */
+void TechniqueBenchScene::renderTestTable(const BenchTest& test) const
+{
+  const BenchResults& run = *shownRun();
+  const BenchResults* other = compareRun();
+  const std::vector<const char*> extras = testExtras(run, test);
   const int columns = 5 + static_cast<int>(extras.size());
-  if (ImGui::BeginTable(
+  if (!ImGui::BeginTable(
           "##detail", columns,
           ImGuiTableFlags_Borders | ImGuiTableFlags_RowBg |
               ImGuiTableFlags_SizingFixedFit | ImGuiTableFlags_ScrollX,
@@ -1740,86 +1984,54 @@ void TechniqueBenchScene::renderTest()
                      (ImGui::GetTextLineHeight() +
                       ImGui::GetStyle().CellPadding.y * 2))))
   {
-    ImGui::TableSetupColumn("Skill");
-    ImGui::TableSetupColumn("Runs");
-    ImGui::TableSetupColumn("Success");
-    ImGui::TableSetupColumn(
-        (other != nullptr) ? std::format("Run {}", compareIndex + 1).c_str()
-                           : "Compare");
-    ImGui::TableSetupColumn("Tolerance (m)");
-    for (const char* name : extras)
-    {
-      ImGui::TableSetupColumn(name);
-    }
-    ImGui::PushFont(boldFont, SandboxPageUI::BOLD_FONT_SIZE);
-    ImGui::TableHeadersRow();
-    ImGui::PopFont();
-    for (const float skill : run.skills)
-    {
-      const BenchCell* cell = run.cell(test.id, skill);
-      ImGui::TableNextRow();
-      ImGui::TableNextColumn();
-      ImGui::Text("%g", static_cast<double>(skill));
-      ImGui::TableNextColumn();
-      if (cell == nullptr)
-      {
-        ImGui::TextDisabled("-");
-        continue;
-      }
-      ImGui::Text("%d / %d", cell->completed, cell->runs);
-      ImGui::TableNextColumn();
-      const auto rate = cell->rate();
-      if (rate)
-      {
-        ImGui::TableSetBgColor(ImGuiTableBgTarget_CellBg, rateColour(*rate));
-        ImGui::PushStyleColor(ImGuiCol_Text, *rate > DARK_TEXT_RATE
-                                                 ? IM_COL32(16, 20, 28, 255)
-                                                 : TEXT);
-        ImGui::Text("%.0f%%", *rate * 100.0);
-        ImGui::PopStyleColor();
-      }
-      ImGui::TableNextColumn();
-      const BenchCell* then =
-          (other != nullptr) ? other->cell(test.id, skill) : nullptr;
-      if ((then != nullptr) && then->rate() && rate)
-      {
-        ImGui::Text("%.0f%% (%+.0f)", *then->rate() * 100.0,
-                    (*rate - *then->rate()) * 100.0);
-      }
-      else
-      {
-        ImGui::TextDisabled("-");
-      }
-      ImGui::TableNextColumn();
-      if (cell->tolerance.count > 0)
-      {
-        ImGui::Text("%.2f", cell->tolerance.mean());
-      }
-      else
-      {
-        ImGui::TextDisabled("-");
-      }
-      for (const char* name : extras)
-      {
-        ImGui::TableNextColumn();
-        const auto metric = cell->metrics.find(name);
-        if (metric == cell->metrics.end() || metric->second.count == 0)
-        {
-          ImGui::TextDisabled("-");
-        }
-        else
-        {
-          ImGui::Text("%.2f", metric->second.mean());
-        }
-      }
-    }
-    ImGui::EndTable();
+    return;
   }
-  ImGui::TextDisabled(
+  ImGui::TableSetupColumn("Skill");
+  ImGui::TableSetupColumn("Runs");
+  ImGui::TableSetupColumn("Success");
+  ImGui::TableSetupColumn((other != nullptr)
+                              ? std::format("Run {}", compareIndex + 1).c_str()
+                              : "Compare");
+  ImGui::TableSetupColumn("Tolerance (m)");
+  for (const char* name : extras)
+  {
+    ImGui::TableSetupColumn(name);
+  }
+  ImGui::PushFont(boldFont, SandboxPageUI::BOLD_FONT_SIZE);
+  ImGui::TableHeadersRow();
+  ImGui::PopFont();
+  for (const float skill : run.skills)
+  {
+    ImGui::TableNextRow();
+    ImGui::TableNextColumn();
+    UI::text("{:g}", static_cast<double>(skill));
+    testDetailRow(run.cell(test.id, skill),
+                  (other != nullptr) ? other->cell(test.id, skill) : nullptr,
+                  extras);
+  }
+  ImGui::EndTable();
+}
+
+void TechniqueBenchScene::renderTest()
+{
+  const auto found = std::ranges::find(catalogue.tests, focus, &BenchTest::id);
+  if (found == catalogue.tests.end())
+  {
+    UI::textDisabled(
+        "Click a test (in the list, a curve's point or a grid row).");
+    return;
+  }
+  const BenchTest& test = *found;
+  renderTestSummary(test);
+  renderWatchControls(test);
+  renderTestTable(test);
+  UI::textDisabled(
       "Failed columns are shares of the finished runs (0-1); "
       "misses and speeds are means.");
 }
 
+// Argument order: skill then seed, the order the bench lists runs in.
+// NOLINTNEXTLINE(bugprone-easily-swappable-parameters)
 void TechniqueBenchScene::watch(const BenchTest& test, float skill, int seed)
 {
   const auto found =

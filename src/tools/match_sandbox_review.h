@@ -8,6 +8,7 @@
 
 #pragma once
 
+#include <array>
 #include <cstddef>
 #include <cstdint>
 #include <memory>
@@ -17,6 +18,8 @@
 #include "global/types.h"
 #include "gui/render/match_render_snapshot.h"
 #include "model/match_engine.h"
+
+struct ImDrawList;
 
 class DebugInspector;
 class IMatchRenderer;
@@ -48,8 +51,8 @@ class MatchReview
 
   /** Embedded pitch; overlay controls can be placed in a separate card. */
   void renderPitch(const SandboxRecorder& recorder, const MatchEngine* live,
-                   TeamID home, TeamID away, DebugInspector* inspector,
-                   bool overlayControls = true);
+                   const std::array<TeamID, 2>& teams,
+                   DebugInspector* inspector, bool overlayControls = true);
 
   /** Hide players off the pitch (a drill's players not in it). */
   bool hideOffPitch = false;
@@ -81,6 +84,33 @@ class MatchReview
   };
 
   void refreshTimeline(const SandboxRecorder& recorder);
+  /** The timeline across the card: ticks to x and back. */
+  struct TimelineFrame
+  {
+    float left = 0.0F;
+    float width = 1.0F;
+    float span = 1.0F;
+    std::uint64_t end = 0;
+
+    [[nodiscard]] float xOf(std::uint64_t tick) const;
+    [[nodiscard]] std::uint64_t tickAt(float x) const;
+  };
+  /** Where event markers go: home above the middle, away below. */
+  struct MarkerLane
+  {
+    float top = 0.0F;
+    float middle = 0.0F;
+    float bottom = 0.0F;
+  };
+
+  void timelineTooltip(const SandboxRecorder& recorder, const Marker* nearest,
+                       std::uint64_t tick) const;
+  static void drawPhaseBands(ImDrawList* drawList, const TimelineFrame& frame,
+                             const std::vector<PhaseSpan>& spans, float top);
+  const Marker* drawMarkers(ImDrawList* drawList, const TimelineFrame& frame,
+                            const MarkerLane& lane, bool hovered) const;
+  void scrubTimeline(const SandboxRecorder& recorder, std::uint64_t tick,
+                     bool* livePaused);
   void renderTimeline(const SandboxRecorder& recorder, std::uint64_t end,
                       bool* livePaused);
   void renderTransport(const SandboxRecorder& recorder, std::uint64_t end,

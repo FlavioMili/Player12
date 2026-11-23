@@ -8,6 +8,7 @@
 
 #pragma once
 
+#include <array>
 #include <memory>
 #include <optional>
 #include <string>
@@ -22,6 +23,22 @@ struct ImFont;
 class Drill;
 class GameXgSweep;
 class GameXgLegSweep;
+
+/** The xG map's attacking half on the screen, for one frame: the goal at
+ * the top. */
+struct XgMapFrame
+{
+  float left = 0.0F;
+  float top = 0.0F;
+  /** Pixels per metre. */
+  float ppm = 1.0F;
+  /** Where the half starts, and the pitch's length (metres). */
+  float half = 0.0F;
+  float length = 0.0F;
+
+  /** A pitch point (x towards the goal at x = length) on the screen. */
+  [[nodiscard]] ImVec2 screen(PitchPoint at) const;
+};
 
 /**
  * The xG map (training ground plan section 24, T8): a pitch, the match one
@@ -65,6 +82,8 @@ class XgMapScene : public GUIScene
    * missing). */
   void loadGameTable();
   void renderSweep(float width);
+  void renderSweepProgress(float scale);
+  void renderMapSweepControls(float scale);
   /** The leg sweep (game xG plan, layer 3): a slice of it each frame, or
    * one run every few frames when watched slowly; saves when done. */
   void updateLegSweep();
@@ -74,13 +93,28 @@ class XgMapScene : public GUIScene
   void renderScan(ImVec2 area);
   /** The card for the spot last pointed at. */
   void renderSpot(float width);
+  void renderXgParts(const Spot& spot) const;
+  void renderGameXg(const Spot& spot, PitchPoint at) const;
+  void renderShotScore(const Spot& spot, PitchPoint at);
   /** Whether the map draws Capybara's shot score (the chosen brain). */
   [[nodiscard]] static bool capybaraScore();
   [[nodiscard]] MatchPitch pitch() const;
   [[nodiscard]] Spot spotAt(const MatchPitch& on, PitchPoint at) const;
   void rebuild();
   void renderPanel(float width);
-  void renderMap(float width, float height);
+  void renderMap(ImVec2 area);
+  [[nodiscard]] const Spot& spotOf(int row, int column) const;
+  /** A spot's value on the shown layer. */
+  [[nodiscard]] float spotValue(const Spot& spot) const;
+  /** A cell's colour on the shown layer; 0 to leave it as grass. */
+  [[nodiscard]] ImU32 cellColour(const Spot& spot, bool gameShown) const;
+  [[nodiscard]] std::array<PitchPoint, 2> cellCorners(int row, int column,
+                                                      float half) const;
+  void drawMapCells(ImDrawList* draw, const XgMapFrame& frame,
+                    bool gameShown) const;
+  void drawContours(ImDrawList* draw, const XgMapFrame& frame) const;
+  void drawSweepDots(ImDrawList* draw, const XgMapFrame& frame) const;
+  void trackHover(const XgMapFrame& frame, bool hovering);
 
   // Settings.
   bool trainingPitch = false;

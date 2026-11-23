@@ -96,8 +96,7 @@ int main()
     for (const bool reverse : {false, true})
     {
       selectVersions(reverse);
-      const auto expected =
-          MatchSetup::capture(controller, clubs[0], clubs[1], 7, true);
+      const auto expected = MatchSetup::capture(controller, clubs, 7, true);
       DrillRun drill(*drills.front(), controller.getStatsConfig(), false);
       auto training = startTrainingRun(*session->drills.front(),
                                        controller.getStatsConfig());
@@ -118,8 +117,7 @@ int main()
       auto match = expected.build(controller, error);
       require(match != nullptr, error.c_str());
       verify(*match, expected);
-      const auto changed =
-          MatchSetup::capture(controller, clubs[0], clubs[1], 7, true);
+      const auto changed = MatchSetup::capture(controller, clubs, 7, true);
       DrillRun next(*drills.front(), controller.getStatsConfig(), false);
       verify(next.engine(), changed);
 

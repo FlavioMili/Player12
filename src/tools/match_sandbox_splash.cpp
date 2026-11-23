@@ -247,6 +247,205 @@ void SandboxSplashScene::update(float deltaTime)
   exit_elapsed += deltaTime;
 }
 
+namespace
+{
+/** Where the splash's animations have got to, for one frame. */
+struct SplashTiming
+{
+  float elapsed = 0.0F;
+  bool still = false;
+  bool ready = false;
+};
+
+/** Where a half's design goes: its corner, its scale, and how far the
+ * panels have slid it aside. */
+struct SplashPlacement
+{
+  ImVec2 offset;
+  float scale = 1.0F;
+  float shift = 0.0F;
+};
+
+/** One half of the opening panels: the design drawn at its scale, shifted
+ * aside as the panels open. */
+class SplashHalf
+{
+ public:
+  SplashHalf(ImDrawList* drawList, const SplashPlacement& placement,
+             ImFont* titleFont)
+      : draw(drawList),
+        offset(placement.offset),
+        scale(placement.scale),
+        shift(placement.shift),
+        font(titleFont)
+  {
+  }
+
+  void drawPanel(ImVec2 origin, ImVec2 size) const
+  {
+    draw->AddRectFilled(ImVec2(origin.x + shift, origin.y),
+                        ImVec2(origin.x + size.x + shift, origin.y + size.y),
+                        BACKGROUND);
+    draw->AddRectFilled(ImVec2(origin.x + shift, origin.y),
+                        ImVec2(point(SEAM_X, 0.0F).x, origin.y + size.y),
+                        opacity(PANEL, 1.0F));
+    for (const auto& [x1, y1, x2, y2] : BLOCKS)
+    {
+      draw->AddRectFilled(point(x1, y1), point(x2, y2), opacity(BLOCK, 1.0F));
+    }
+  }
+
+  void drawTitle() const
+  {
+    for (const Words& words : TITLE)
+    {
+      text(words);
+    }
+    // Measure the actual title font so the rule always spans Again exactly.
+    ImGui::PushFont(font, TITLE_SIZE * scale);
+    const float titleWidth = ImGui::CalcTextSize(TITLE.back().value).x;
+    ImGui::PopFont();
+    const ImVec2 ruleEnd = point(TITLE_RULE_LEFT, TITLE_RULE_BOTTOM);
+    draw->AddRectFilled(point(TITLE_RULE_LEFT, TITLE_RULE_TOP),
+                        ImVec2(ruleEnd.x + titleWidth, ruleEnd.y),
+                        opacity(LIME, 1.0F));
+    text(CAPTIONS[0]);
+    const auto [x1, y1, x2, y2] = NAME_BAR;
+    draw->AddRectFilled(point(x1, y1), point(x2, y2),
+                        opacity(PITCH_LINE, 1.0F));
+    text(CAPTIONS[1]);
+    text(CAPTIONS[2]);
+  }
+
+  /** The outline, halfway line and centre circle, then the boxes, arcs and
+   * spots. */
+  void drawPitch(float alpha) const
+  {
+    const ImU32 ink = opacity(PITCH_LINE, alpha);
+    box(PITCH_BOXES.front(), ink);
+    const auto [x1, y1, x2, y2] = HALFWAY_LINE;
+    draw->AddLine(point(x1, y1), point(x2, y2), ink,
+                  PITCH_LINE_THICKNESS * scale);
+    arc(PITCH_ARCS.front(), ink);
+    for (std::size_t index = 1; index < PITCH_BOXES.size(); ++index)
+    {
+      box(PITCH_BOXES.at(index), ink);
+    }
+    for (std::size_t index = 1; index < PITCH_ARCS.size(); ++index)
+    {
+      arc(PITCH_ARCS.at(index), ink);
+    }
+    for (const float y : SPOT_YS)
+    {
+      draw->AddCircleFilled(point(SPOT_X, y), SPOT_RADIUS * scale, ink);
+    }
+  }
+
+  void drawPlayers(float alpha) const
+  {
+    for (const ImVec2 player : PLAYERS)
+    {
+      draw->AddTriangleFilled(
+          point(player.x, player.y - PLAYER_TOP),
+          point(player.x - PLAYER_HALF_WIDTH, player.y + PLAYER_BASE),
+          point(player.x + PLAYER_HALF_WIDTH, player.y + PLAYER_BASE),
+          opacity(LIME, alpha));
+    }
+  }
+
+  /** The pass, dashed out as far as it has got; its head once it is all
+   * there. */
+  void drawPass(float progress) const
+  {
+    const ImVec2 start = PASS_START;
+    const ImVec2 end = PASS_END;
+    const float dx = end.x - start.x;
+    const float dy = end.y - start.y;
+    const float length = std::sqrt((dx * dx) + (dy * dy));
+    const float ux = dx / length;
+    const float uy = dy / length;
+    const int dashes =
+        static_cast<int>(std::ceil(length * progress / DASH_EVERY));
+    for (int dash = 0; dash < dashes; ++dash)
+    {
+      const float distance = static_cast<float>(dash) * DASH_EVERY;
+      const float to = std::min(distance + DASH_LENGTH, length * progress);
+      draw->AddLine(point(start.x + (ux * distance), start.y + (uy * distance)),
+                    point(start.x + (ux * to), start.y + (uy * to)),
+                    opacity(YELLOW, 1.0F), PASS_THICKNESS * scale);
+    }
+    if (progress < 1.0F)
+    {
+      return;
+    }
+    for (float side : {-1.0F, 1.0F})
+    {
+      draw->AddLine(point(end.x, end.y),
+                    point(end.x - (ux * HEAD_BACK) + (side * uy * HEAD_SIDE),
+                          end.y - (uy * HEAD_BACK) - (side * ux * HEAD_SIDE)),
+                    opacity(YELLOW, 1.0F), PASS_THICKNESS * scale);
+    }
+  }
+
+  void text(const Words& words) const
+  {
+    ImGui::PushFont(font, words.size * scale);
+    draw->AddText(ImGui::GetFont(), words.size * scale, point(words.x, words.y),
+                  opacity(words.ink, 1.0F), words.value);
+    ImGui::PopFont();
+  }
+
+ private:
+  /** A design point on the screen. */
+  // Argument order: x then y, as points go.
+  // NOLINTNEXTLINE(bugprone-easily-swappable-parameters)
+  [[nodiscard]] ImVec2 point(float x, float y) const
+  {
+    return {offset.x + (x * scale) + shift, offset.y + (y * scale)};
+  }
+
+  void box(const Box& at, ImU32 ink) const
+  {
+    const auto [x1, y1, x2, y2] = at;
+    draw->AddRect(point(x1, y1), point(x2, y2), ink, 0.0F, 0,
+                  PITCH_LINE_THICKNESS * scale);
+  }
+
+  void arc(const Arc& at, ImU32 ink) const
+  {
+    const auto [x, y, radius, from, to] = at;
+    draw->PathArcTo(point(x, y), radius * scale, from, to, ARC_SEGMENTS);
+    draw->PathStroke(ink, 0, PITCH_LINE_THICKNESS * scale);
+  }
+
+  ImDrawList* draw;
+  ImVec2 offset;
+  float scale;
+  float shift;
+  ImFont* font;
+};
+
+/** Everything on one half, revealed as far as the timing has got. */
+void drawSplashHalf(const SplashHalf& half, const SplashTiming& timing,
+                    ImVec2 origin, ImVec2 size)
+{
+  half.drawPanel(origin, size);
+  half.drawTitle();
+  half.drawPitch(
+      timing.still ? 1.0F : reveal(timing.elapsed, 0.0F, PITCH_REVEAL_SECONDS));
+  half.drawPlayers(timing.still ? 1.0F
+                                : reveal(timing.elapsed, PLAYERS_DELAY_SECONDS,
+                                         PLAYERS_REVEAL_SECONDS));
+  half.drawPass(timing.still ? 1.0F
+                             : reveal(timing.elapsed, PASS_DELAY_SECONDS,
+                                      PASS_REVEAL_SECONDS));
+  if (!timing.ready && timing.elapsed > PREPARING_AFTER_SECONDS)
+  {
+    half.text(PREPARING);
+  }
+}
+}  // namespace
+
 void SandboxSplashScene::render()
 {
   const ImGuiViewport* viewport = ImGui::GetMainViewport();
@@ -268,6 +467,9 @@ void SandboxSplashScene::render()
                       origin.y + ((size.y - DESIGN_H * scale) * CENTRE));
   const float seam = offset.x + (SEAM_X * scale);
   const float opening = reveal(exit_elapsed, 0.0F, EXIT_SECONDS);
+  const SplashTiming timing{.elapsed = elapsed,
+                            .still = Theme::reducedMotion() || skip,
+                            .ready = ready};
   for (int half = 0; half < 2; ++half)
   {
     const float shift = half == 0 ? -(seam - origin.x) * opening
@@ -278,133 +480,10 @@ void SandboxSplashScene::render()
                        ImVec2(std::min(origin.x + size.x, clipRight + shift),
                               origin.y + size.y),
                        true);
-    const auto point = [&](float x, float y)
-    { return ImVec2(offset.x + (x * scale) + shift, offset.y + (y * scale)); };
-    const bool still = Theme::reducedMotion() || skip;
-    const auto color = [&](ImU32 value, float alpha = 1.0F)
-    { return opacity(value, alpha); };
-    const float pitchAlpha =
-        still ? 1.0F : reveal(elapsed, 0.0F, PITCH_REVEAL_SECONDS);
-    const ImU32 pitchInk = color(PITCH_LINE, pitchAlpha);
-    const float pitchThickness = PITCH_LINE_THICKNESS * scale;
-    const auto line = [&](const Box& at)
-    {
-      const auto [x1, y1, x2, y2] = at;
-      draw->AddLine(point(x1, y1), point(x2, y2), pitchInk, pitchThickness);
-    };
-    const auto box = [&](const Box& at)
-    {
-      const auto [x1, y1, x2, y2] = at;
-      draw->AddRect(point(x1, y1), point(x2, y2), pitchInk, 0.0F, 0,
-                    pitchThickness);
-    };
-    const auto arc = [&](const Arc& at)
-    {
-      const auto [x, y, radius, from, to] = at;
-      draw->PathArcTo(point(x, y), radius * scale, from, to, ARC_SEGMENTS);
-      draw->PathStroke(pitchInk, 0, pitchThickness);
-    };
-    const auto text = [&](const Words& words)
-    {
-      ImGui::PushFont(splash_font, words.size * scale);
-      draw->AddText(ImGui::GetFont(), words.size * scale,
-                    point(words.x, words.y), color(words.ink), words.value);
-      ImGui::PopFont();
-    };
-
-    draw->AddRectFilled(ImVec2(origin.x + shift, origin.y),
-                        ImVec2(origin.x + size.x + shift, origin.y + size.y),
-                        BACKGROUND);
-    draw->AddRectFilled(ImVec2(origin.x + shift, origin.y),
-                        ImVec2(point(SEAM_X, 0.0F).x, origin.y + size.y),
-                        color(PANEL));
-    for (const auto& [x1, y1, x2, y2] : BLOCKS)
-    {
-      draw->AddRectFilled(point(x1, y1), point(x2, y2), color(BLOCK));
-    }
-
-    for (const Words& words : TITLE)
-    {
-      text(words);
-    }
-    // Measure the actual title font so the rule always spans Again exactly.
-    ImGui::PushFont(splash_font, TITLE_SIZE * scale);
-    const float titleWidth = ImGui::CalcTextSize(TITLE.back().value).x;
-    ImGui::PopFont();
-    const ImVec2 ruleEnd = point(TITLE_RULE_LEFT, TITLE_RULE_BOTTOM);
-    draw->AddRectFilled(point(TITLE_RULE_LEFT, TITLE_RULE_TOP),
-                        ImVec2(ruleEnd.x + titleWidth, ruleEnd.y), color(LIME));
-    text(CAPTIONS[0]);
-    {
-      const auto [x1, y1, x2, y2] = NAME_BAR;
-      draw->AddRectFilled(point(x1, y1), point(x2, y2), color(PITCH_LINE));
-    }
-    text(CAPTIONS[1]);
-    text(CAPTIONS[2]);
-
-    // The outline, halfway line and centre circle, then the boxes and arcs.
-    box(PITCH_BOXES.front());
-    line(HALFWAY_LINE);
-    arc(PITCH_ARCS.front());
-    for (std::size_t index = 1; index < PITCH_BOXES.size(); ++index)
-    {
-      box(PITCH_BOXES.at(index));
-    }
-    for (std::size_t index = 1; index < PITCH_ARCS.size(); ++index)
-    {
-      arc(PITCH_ARCS.at(index));
-    }
-    for (const float y : SPOT_YS)
-    {
-      draw->AddCircleFilled(point(SPOT_X, y), SPOT_RADIUS * scale, pitchInk);
-    }
-
-    const float playersAlpha =
-        still ? 1.0F
-              : reveal(elapsed, PLAYERS_DELAY_SECONDS, PLAYERS_REVEAL_SECONDS);
-    for (const ImVec2 player : PLAYERS)
-    {
-      draw->AddTriangleFilled(
-          point(player.x, player.y - PLAYER_TOP),
-          point(player.x - PLAYER_HALF_WIDTH, player.y + PLAYER_BASE),
-          point(player.x + PLAYER_HALF_WIDTH, player.y + PLAYER_BASE),
-          color(LIME, playersAlpha));
-    }
-
-    const ImVec2 start = PASS_START;
-    const ImVec2 end = PASS_END;
-    const float dx = end.x - start.x;
-    const float dy = end.y - start.y;
-    const float length = std::sqrt((dx * dx) + (dy * dy));
-    const float ux = dx / length;
-    const float uy = dy / length;
-    const float progress =
-        still ? 1.0F : reveal(elapsed, PASS_DELAY_SECONDS, PASS_REVEAL_SECONDS);
-    const int dashes =
-        static_cast<int>(std::ceil(length * progress / DASH_EVERY));
-    for (int dash = 0; dash < dashes; ++dash)
-    {
-      const float distance = static_cast<float>(dash) * DASH_EVERY;
-      const float to = std::min(distance + DASH_LENGTH, length * progress);
-      draw->AddLine(point(start.x + (ux * distance), start.y + (uy * distance)),
-                    point(start.x + (ux * to), start.y + (uy * to)),
-                    color(YELLOW), PASS_THICKNESS * scale);
-    }
-    if (progress >= 1.0F)
-    {
-      for (float side : {-1.0F, 1.0F})
-      {
-        draw->AddLine(point(end.x, end.y),
-                      point(end.x - (ux * HEAD_BACK) + (side * uy * HEAD_SIDE),
-                            end.y - (uy * HEAD_BACK) - (side * ux * HEAD_SIDE)),
-                      color(YELLOW), PASS_THICKNESS * scale);
-      }
-    }
-
-    if (!ready && elapsed > PREPARING_AFTER_SECONDS)
-    {
-      text(PREPARING);
-    }
+    drawSplashHalf(
+        SplashHalf(draw, {.offset = offset, .scale = scale, .shift = shift},
+                   splash_font),
+        timing, origin, size);
     draw->PopClipRect();
   }
   rendered = true;

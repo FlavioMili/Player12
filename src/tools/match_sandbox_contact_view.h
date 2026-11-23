@@ -80,8 +80,42 @@ class ContactViewScene : public GUIScene
   [[nodiscard]] ImU32 colourOf(const ContactAssessment& contact,
                                std::span<const int> zoneFactors) const;
 
+  /** The contact map's geometry for one frame. */
+  struct CircleFrame
+  {
+    ImVec2 centre;
+    /** His reach on screen (pixels). */
+    float radius = 0.0F;
+    /** Pixels per metre. */
+    float ppm = 0.0F;
+    float reachMetres = 0.0F;
+    float scale = 1.0F;
+
+    /** A point in metres from his centre (x right, y up) on the screen. */
+    [[nodiscard]] ImVec2 at(ImVec2 metres) const;
+    /** A compass direction at a multiple of his reach. */
+    [[nodiscard]] ImVec2 onRing(float degrees, float multiple) const;
+  };
+
   void renderPanel(float width);
+  void renderContactChoice(float width, float scale);
+  void renderPanelTabs(float width, float scale);
+  void renderTuningCard(float width, float scale);
+  void renderInputCard(float width, float scale);
+  void renderPlayerInputs();
+  void renderBallInputs();
+  void renderMeetingPoint();
+  void renderExpectation();
+  void renderAimInputs();
   void renderCircle(ImVec2 size);
+  void dragOnCircle(ImVec2 offset, float mouseRadius, const CircleFrame& frame);
+  void drawContactRings(ImDrawList& draw, const CircleFrame& frame) const;
+  void drawContactDisc(ImDrawList& draw, const CircleFrame& frame) const;
+  void drawContactOutlines(ImDrawList& draw, const CircleFrame& frame) const;
+  void drawTurnChevrons(ImDrawList& draw, const CircleFrame& frame) const;
+  void drawContactPlayer(ImDrawList& draw, const CircleFrame& frame) const;
+  void drawContactBall(ImDrawList& draw, const CircleFrame& frame) const;
+  void contactTooltip(ImVec2 offset, float mouseRadius) const;
   void renderBreakdown(float width);
   void renderFactors(const ContactAssessment& contact) const;
   /** The ball seen from the side: the steepness it arrives at and the one
@@ -89,6 +123,8 @@ class ContactViewScene : public GUIScene
   void renderSideView(const ContactAssessment& contact) const;
   /** The stretch map, editable; it goes into every contact shown here. */
   void renderStretchMap();
+  void renderStretchDistances();
+  void renderStretchRow(std::size_t row);
   /** The chosen contact's knobs (the sandbox's tuning), editable. */
   void renderKnobs();
   /** The tuning as a whole: what changed, copy, reset, the bench. */

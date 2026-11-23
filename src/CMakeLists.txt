@@ -567,6 +567,8 @@ set(FM_UI_SOURCES
     gui/widgets/format.cpp
     gui/widgets/icons.h
     gui/widgets/icons.cpp
+    gui/widgets/text.h
+    gui/widgets/text.cpp
     gui/widgets/theme.h
     gui/widgets/theme.cpp
     gui/widgets/widgets.h

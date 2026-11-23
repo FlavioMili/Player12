@@ -350,5 +350,9 @@ int tracePossessionPair(MatchEngine& observed, MatchEngine& reference,
               {"helper_events", trace.helperEventCount()},
               {"issue_steps", trace.issueStepCount()},
               {"nearby_gates", trace.nearbyGates()}});
-  return output ? (identical ? 0 : 1) : 2;
+  if (!output)
+  {
+    return 2;
+  }
+  return identical ? 0 : 1;
 }

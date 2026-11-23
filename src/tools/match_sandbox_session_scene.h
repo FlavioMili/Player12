@@ -43,7 +43,7 @@ class ZoneSessionScene : public GUIScene
  private:
   void restart();
   void renderPanel(float width);
-  void renderGround(float width, float height);
+  void renderGround(ImVec2 area);
 
   SessionPlan plan;
   /** The players picked to train (the first make up the squad). */
@@ -57,6 +57,15 @@ class ZoneSessionScene : public GUIScene
   std::size_t debuggedZone = static_cast<std::size_t>(-1);
   const DrillRun* debuggedRun = nullptr;
   void renderZoneTools(float width);
+  void renderViewControls(float scale);
+  void renderPlayback(float width, float scale);
+  void renderChangingRoom(float width, float scale);
+  void renderRestPicker(const std::vector<std::size_t>& playing, float scale);
+  void renderZones(float width, float scale);
+  void renderSessionPlan(float width, float scale);
+  void saveWatchedZone();
+  void renderZoneVersions(float scale);
+  void renderZoneDebugger(float width, float scale);
   /** What the last "Save this zone" did. */
   std::string saveMessage;
   std::unique_ptr<SessionRun> run;

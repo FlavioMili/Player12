@@ -93,6 +93,8 @@ class ShotMap
 
  private:
   void refresh();
+  /** One shot into its cell, the scatter and the calibration bins. */
+  void addShot(ShotMapCell& cell, const MeasureRun& run);
 
   ShotMapSpec setup;
   std::unique_ptr<DrillMeasure> measure;
@@ -118,8 +120,11 @@ class ShotMapScene : public GUIScene
  private:
   void start();
   void renderPanel(float width);
-  void renderResults(float width, float height);
+  void renderResults(ImVec2 area);
   void renderMap(ImVec2 size);
+  void renderShotActions(float width, float scale);
+  void renderShotFields();
+  [[nodiscard]] bool shotsMoved() const;
   void renderCalibration(ImVec2 size);
   void exportCsv();
 

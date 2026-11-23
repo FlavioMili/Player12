@@ -21,6 +21,7 @@
 #include "controller/game_controller.h"
 #include "global/paths.h"
 #include "gui/gui_view.h"
+#include "gui/widgets/text.h"
 #include "gui/widgets/theme.h"
 #include "model/match_decision_frame.h"
 #include "tools/match_sandbox_drill.h"
@@ -126,9 +127,9 @@ ImU32 xgColour(float xg, float full = FITTED_FULL_COLOUR)
 XgMapScene::XgMapScene(GUIView* guiView_ptr)
     : GUIScene(guiView_ptr),
       drills(makeDrills()),
+      shotDrill(gameXgDrill(drills)),
       blockDrill(gameXgLegDrill(drills))
 {
-  shotDrill = gameXgDrill(drills);
 }
 
 XgMapScene::~XgMapScene() = default;
@@ -419,7 +420,8 @@ void XgMapScene::render()
   }
   else
   {
-    renderMap(std::max(scale, ImGui::GetContentRegionAvail().x), available.y);
+    renderMap(
+        ImVec2(std::max(scale, ImGui::GetContentRegionAvail().x), available.y));
   }
   ImGui::PopStyleVar();
   ImGui::End();
@@ -503,13 +505,13 @@ void XgMapScene::renderPanel(float width)
   ImGui::PushTextWrapPos(0);
   if (layer == XG_LAYER)
   {
-    ImGui::TextDisabled(
+    UI::textDisabled(
         "Contours at 0.05, 0.10, 0.20 and 0.40. A header shows its xG after "
         "the header discount.");
   }
   else if (layer == SCORE_LAYER)
   {
-    ImGui::TextDisabled(
+    UI::textDisabled(
         "Green: the shot's own score is above nothing (worth a shot on its "
         "own; the brain still weighs passing and carrying). Red: below. "
         "Clear: never considered. No role, shout or cutting inside.");
@@ -525,7 +527,7 @@ void XgMapScene::renderPanel(float width)
       changed(ImGui::SliderFloat("Goalkeeping", &goalkeepingSetting, 1.0F,
                                  100.0F, "%.0f"));
     }
-    ImGui::TextDisabled(
+    UI::textDisabled(
         "Game xG, measured in the Still-ball shot drill (game xG plan): the "
         "chance a still ball struck from the spot goes in, with no keeper, "
         "or times the keeper map's factor for a keeper at his set position "
@@ -542,134 +544,214 @@ void XgMapScene::renderPanel(float width)
   renderSweep(width);
 }
 
+/** The spot's xG, in its parts. */
+void XgMapScene::renderXgParts(const Spot& spot) const
+{
+  using S = MatchTuning::Shooting;
+  const MatchEngine::XgBreakdown& x = spot.xg;
+  if (!x.goal)
+  {
+    ImGui::TextUnformatted("No goal on this pitch: xG 0, nobody shoots.");
+    return;
+  }
+  if (!x.inRange)
+  {
+    UI::text(
+        "{:.1f} m from the goal: beyond the fit's {:.0f} m, the floor "
+        "{:.3f}.",
+        x.metres, S::XG_MAX_DISTANCE_METRES, x.xg);
+    return;
+  }
+  UI::text(
+      "{:.1f} m from the goal ({:.1f} m from its line, {:.1f} m off the "
+      "middle); "
+      "the goal's mouth shows {:.1f} degrees.",
+      x.metres, x.lineMetres, x.lateralMetres, x.angle * DEGREES_PER_RADIAN);
+  UI::text("Location (the fitted model): {:.3f}", x.location);
+  UI::text("x skill {:.2f} (Shooting {:.0f})", x.skillFactor, shootingSetting);
+  UI::text("x pressure {:.2f} ({})", x.pressureFactor,
+           defender
+               ? std::format("a defender {:.1f} m away", defenderMetres).c_str()
+               : "nobody near");
+  const char* clamp = "";
+  if (x.unclamped > S::MAX_OPEN_PLAY_XG)
+  {
+    clamp = " (capped)";
+  }
+  else if (x.unclamped < S::MIN_OPEN_PLAY_XG)
+  {
+    clamp = " (floored)";
+  }
+  UI::text("= {:.3f}; xG {:.3f}{}", x.unclamped, x.xg, clamp);
+}
+
+/** Game xG at the spot: the empty goal's, and the keeper's factor on it. */
+void XgMapScene::renderGameXg(const Spot& spot, PitchPoint at) const
+{
+  if (spot.game < 0.0F || !gameTable)
+  {
+    UI::textDisabled("Game xG, empty goal: none for this goal yet.");
+    return;
+  }
+  const float line = built.length - at.x;
+  const float side = at.y - (MIDDLE_SHARE * built.width);
+  const float open = gameTable->value(line, side, shootingSetting);
+  ImGui::TextUnformatted(std::format("Game xG, empty goal: {:.3f} (Shooting "
+                                     "{:.0f}, "
+                                     "{}-footed)",
+                                     open, shootingSetting, gameTable->foot)
+                             .c_str());
+  if (!keeperTable)
+  {
+    UI::textDisabled("No keeper map for this goal yet.");
+    return;
+  }
+  const float factor =
+      keeperTable->value(line, side, shootingSetting, goalkeepingSetting);
+  ImGui::TextUnformatted(
+      std::format("x keeper at his set position {:.2f} (Goalkeeping "
+                  "{:.0f}) = {:.3f}",
+                  factor, goalkeepingSetting, open * factor)
+          .c_str());
+}
+
+/** The shot score at the spot: Capybara's terms or Binturong's parts. */
+void XgMapScene::renderShotScore(const Spot& spot, PitchPoint at)
+{
+  using D = MatchTuning::Decision;
+  if (header)
+  {
+    return;
+  }
+  const MatchEngine::ShotScoreParts& s = spot.score;
+  if (!spot.considered)
+  {
+    UI::text("Shot score: not considered (xG under {:.3f}).", D::MIN_SHOT_XG);
+    return;
+  }
+  if (capybaraScore())
+  {
+    // Capybara's own terms (DecisionFrame), as the brain sums them.
+    const DecisionFrame::Score shot = capybaraShotCore(built, at, spot.xg.xg);
+    ImGui::TextUnformatted(
+        std::format("Capybara shot score {:.2f}:", shot.total()).c_str());
+    for (const DecisionFrame::Term& term : shot.allTerms())
+    {
+      ImGui::TextUnformatted(
+          std::format("  {}: {:+.2f}", term.name, term.value()).c_str());
+    }
+    return;
+  }
+  ImGui::TextUnformatted(
+      std::format("Binturong shot score {:.2f}:", s.total).c_str());
+  UI::text("  xG above {:.3f}: {:+.2f}", D::BASE_SHOT_THRESHOLD, s.xgTerm);
+  UI::text("  have a go (space {:.2f}, range {:.2f}): {:+.2f}", spaceAhead,
+           s.rangeEligibility, s.haveAGo);
+  UI::text("  final third: {:+.2f}", s.finalThird);
+  UI::text("  Shooting: {:+.2f}", s.skill);
+  UI::text("  pressure: {:+.2f}", -s.pressure);
+  if (s.wideFactor != 1.0F)
+  {
+    UI::text("  wide angle: x {:.2f} (more than {:.1f} m off the middle)",
+             s.wideFactor, D::WIDE_SHOT_WIDTH_METRES);
+  }
+}
+
 void XgMapScene::renderSpot(float width)
 {
   // The spot last pointed at (it stays when the mouse leaves), in its parts.
   namespace Page = SandboxPageUI;
   using S = MatchTuning::Shooting;
-  using D = MatchTuning::Decision;
   const float scale = Theme::scale();
   Page::beginCard("##xg_map_spot", "AT THE SPOT", width, Page::LIGHT, scale,
                   boldFont);
   ImGui::PushTextWrapPos(0);
   if (!hovered)
   {
-    ImGui::TextDisabled(
+    UI::textDisabled(
         "Point at the pitch. The last spot stays, marked, when the mouse "
         "leaves it.");
   }
   else
   {
     const Spot spot = spotAt(built, *hovered);
-    const MatchEngine::XgBreakdown& x = spot.xg;
-    ImGui::Text("At %.1f m along, %.1f m across", hovered->x, hovered->y);
-    if (!x.goal)
-    {
-      ImGui::TextUnformatted("No goal on this pitch: xG 0, nobody shoots.");
-    }
-    else if (!x.inRange)
-    {
-      ImGui::Text(
-          "%.1f m from the goal: beyond the fit's %.0f m, the floor %.3f.",
-          x.metres, S::XG_MAX_DISTANCE_METRES, x.xg);
-    }
-    else
-    {
-      ImGui::Text(
-          "%.1f m from the goal (%.1f m from its line, %.1f m off the middle); "
-          "the goal's mouth shows %.1f degrees.",
-          x.metres, x.lineMetres, x.lateralMetres,
-          x.angle * DEGREES_PER_RADIAN);
-      ImGui::Text("Location (the fitted model): %.3f", x.location);
-      ImGui::Text("x skill %.2f (Shooting %.0f)", x.skillFactor,
-                  shootingSetting);
-      ImGui::Text(
-          "x pressure %.2f (%s)", x.pressureFactor,
-          defender
-              ? std::format("a defender {:.1f} m away", defenderMetres).c_str()
-              : "nobody near");
-      ImGui::Text("= %.3f; xG %.3f%s", x.unclamped, x.xg,
-                  x.unclamped > S::MAX_OPEN_PLAY_XG   ? " (capped)"
-                  : x.unclamped < S::MIN_OPEN_PLAY_XG ? " (floored)"
-                                                      : "");
-    }
+    UI::text("At {:.1f} m along, {:.1f} m across", hovered->x, hovered->y);
+    renderXgParts(spot);
     if (header)
     {
-      ImGui::Text(
-          "Header: x %.2f = %.3f; he heads at goal if that reaches %.2f: %s",
-          S::HEADER_XG_FACTOR, x.xg * S::HEADER_XG_FACTOR,
+      UI::text(
+          "Header: x {:.2f} = {:.3f}; he heads at goal if that reaches {:.2f}: "
+          "{}",
+          S::HEADER_XG_FACTOR, spot.xg.xg * S::HEADER_XG_FACTOR,
           MatchTuning::Aerial::HEADER_SHOT_MIN_XG,
           spot.considered ? "yes" : "no");
     }
-    ImGui::Text("As struck: %.3f", spot.struck);
-    if (spot.game >= 0.0F && gameTable)
-    {
-      const float line = built.length - hovered->x;
-      const float side = hovered->y - (MIDDLE_SHARE * built.width);
-      const float open = gameTable->value(line, side, shootingSetting);
-      ImGui::TextUnformatted(
-          std::format("Game xG, empty goal: {:.3f} (Shooting {:.0f}, "
-                      "{}-footed)",
-                      open, shootingSetting, gameTable->foot)
-              .c_str());
-      if (keeperTable)
-      {
-        const float factor =
-            keeperTable->value(line, side, shootingSetting, goalkeepingSetting);
-        ImGui::TextUnformatted(
-            std::format("x keeper at his set position {:.2f} (Goalkeeping "
-                        "{:.0f}) = {:.3f}",
-                        factor, goalkeepingSetting, open * factor)
-                .c_str());
-      }
-      else
-      {
-        ImGui::TextDisabled("No keeper map for this goal yet.");
-      }
-    }
-    else
-    {
-      ImGui::TextDisabled("Game xG, empty goal: none for this goal yet.");
-    }
+    UI::text("As struck: {:.3f}", spot.struck);
+    renderGameXg(spot, *hovered);
     ImGui::Separator();
-    const MatchEngine::ShotScoreParts& s = spot.score;
-    if (!header && !spot.considered)
-    {
-      ImGui::Text("Shot score: not considered (xG under %.3f).",
-                  D::MIN_SHOT_XG);
-    }
-    else if (!header && capybaraScore())
-    {
-      // Capybara's own terms (DecisionFrame), as the brain sums them.
-      const DecisionFrame::Score shot =
-          capybaraShotCore(built, *hovered, spot.xg.xg);
-      ImGui::TextUnformatted(
-          std::format("Capybara shot score {:.2f}:", shot.total()).c_str());
-      for (const DecisionFrame::Term& term : shot.allTerms())
-      {
-        ImGui::TextUnformatted(
-            std::format("  {}: {:+.2f}", term.name, term.value()).c_str());
-      }
-    }
-    else if (!header)
-    {
-      ImGui::TextUnformatted(
-          std::format("Binturong shot score {:.2f}:", s.total).c_str());
-      ImGui::Text("  xG above %.3f: %+.2f", D::BASE_SHOT_THRESHOLD, s.xgTerm);
-      ImGui::Text("  have a go (space %.2f, range %.2f): %+.2f", spaceAhead,
-                  s.rangeEligibility, s.haveAGo);
-      ImGui::Text("  final third: %+.2f", s.finalThird);
-      ImGui::Text("  Shooting: %+.2f", s.skill);
-      ImGui::Text("  pressure: %+.2f", -s.pressure);
-      if (s.wideFactor != 1.0F)
-      {
-        ImGui::Text("  wide angle: x %.2f (more than %.1f m off the middle)",
-                    s.wideFactor, D::WIDE_SHOT_WIDTH_METRES);
-      }
-    }
+    renderShotScore(spot, *hovered);
   }
   ImGui::PopTextWrapPos();
   Page::endCard(scale);
+}
+
+/** A map sweep running: how far it has got, and a stop button. */
+void XgMapScene::renderSweepProgress(float scale)
+{
+  namespace Page = SandboxPageUI;
+  const double share = sweep->runsQueued() > 0
+                           ? static_cast<double>(sweep->runsDone()) /
+                                 static_cast<double>(sweep->runsQueued())
+                           : 0.0;
+  ImGui::ProgressBar(static_cast<float>(share),
+                     ImVec2(-1.0F, PROGRESS_HEIGHT * scale), "");
+  UI::text("{}: {:d} / {:d} runs, {:.0f} s", sweep->phase().c_str(),
+           sweep->runsDone(), sweep->runsQueued(), sweep->seconds());
+  if (Page::button("Stop", false, scale, boldFont))
+  {
+    sweep->stop();
+    sweepNote = "Stopped: nothing saved.";
+  }
+}
+
+/** The map sweeps (empty goal or keeper): choose, set and run one. */
+void XgMapScene::renderMapSweepControls(float scale)
+{
+  namespace Page = SandboxPageUI;
+  Page::radio("Empty goal", &sweepLayer, 0);
+  ImGui::SameLine();
+  Page::radio("Keeper", &sweepLayer, 1);
+  if (blockDrill != nullptr)
+  {
+    ImGui::SameLine();
+    Page::radio("Legs", &sweepLayer, LEGS_SWEEP);
+  }
+  ImGui::SetNextItemWidth(CONTROL_WIDTH * scale);
+  ImGui::SliderFloat("Shots a point", &sweepRepeats, MIN_SWEEP_REPEATS,
+                     MAX_SWEEP_REPEATS, "%.0f");
+  if (Page::button("Run the sweep", false, scale, boldFont))
+  {
+    GameXgSweepSpec spec = gameXgSpec(
+        sweepLayer == 1 ? GameXgTable::KEEPER : GameXgTable::EMPTY_GOAL);
+    spec.goal = goalKind();
+    spec.repeats = static_cast<int>(sweepRepeats);
+    sweep = std::make_unique<GameXgSweep>(
+        *shotDrill, guiView->getController().getStatsConfig(), spec);
+    sweepNote = sweep->problem().empty() ? "" : "Not run: " + sweep->problem();
+  }
+  UI::textDisabled(
+      "{}",
+      sweepLayer == 1
+          ? "The Still-ball shot drill against a keeper at his set "
+            "position, both sides: spots every 1 m to 18 m out (20 m either "
+            "side), 2 m to 30 m, 4 m to halfway; Goalkeeping 1, 50 and 100 "
+            "by Shooting 1, 50 and 100. Stored as a factor on the empty "
+            "goal's map, which must exist. About 6 minutes at 60 shots a "
+            "point. Saves to assets/config/game_xg/ when done."
+          : "The Still-ball shot drill at an empty goal, both sides: spots "
+            "every 1 m to 18 m out (20 m either side), 2 m to 30 m, 4 m to "
+            "halfway; Shooting 1, 25, 50, 75 and 100. About 4-5 minutes at "
+            "60 shots a point. Saves to assets/config/game_xg/ when done.");
 }
 
 void XgMapScene::renderSweep(float width)
@@ -686,72 +768,26 @@ void XgMapScene::renderSweep(float width)
   const bool maps = goalKind() != GoalKind::NONE && shotDrill != nullptr;
   if (legsRunning || (!running && sweepLayer == LEGS_SWEEP))
   {
+    if (!legsRunning && maps)
+    {
+      Page::radio("Empty goal", &sweepLayer, 0);
+      ImGui::SameLine();
+      Page::radio("Keeper", &sweepLayer, 1);
+      ImGui::SameLine();
+    }
     if (!legsRunning)
     {
-      if (maps)
-      {
-        Page::radio("Empty goal", &sweepLayer, 0);
-        ImGui::SameLine();
-        Page::radio("Keeper", &sweepLayer, 1);
-        ImGui::SameLine();
-      }
       Page::radio("Legs", &sweepLayer, LEGS_SWEEP);
     }
     renderLegSweep(legsRunning);
   }
   else if (running)
   {
-    const double share = sweep->runsQueued() > 0
-                             ? static_cast<double>(sweep->runsDone()) /
-                                   static_cast<double>(sweep->runsQueued())
-                             : 0.0;
-    ImGui::ProgressBar(static_cast<float>(share),
-                       ImVec2(-1.0F, PROGRESS_HEIGHT * scale), "");
-    ImGui::Text("%s: %lld / %lld runs, %.0f s", sweep->phase().c_str(),
-                sweep->runsDone(), sweep->runsQueued(), sweep->seconds());
-    if (Page::button("Stop", false, scale, boldFont))
-    {
-      sweep->stop();
-      sweepNote = "Stopped: nothing saved.";
-    }
+    renderSweepProgress(scale);
   }
   else if (maps)
   {
-    Page::radio("Empty goal", &sweepLayer, 0);
-    ImGui::SameLine();
-    Page::radio("Keeper", &sweepLayer, 1);
-    if (blockDrill != nullptr)
-    {
-      ImGui::SameLine();
-      Page::radio("Legs", &sweepLayer, LEGS_SWEEP);
-    }
-    ImGui::SetNextItemWidth(CONTROL_WIDTH * scale);
-    ImGui::SliderFloat("Shots a point", &sweepRepeats, MIN_SWEEP_REPEATS,
-                       MAX_SWEEP_REPEATS, "%.0f");
-    if (Page::button("Run the sweep", false, scale, boldFont))
-    {
-      GameXgSweepSpec spec = gameXgSpec(
-          sweepLayer == 1 ? GameXgTable::KEEPER : GameXgTable::EMPTY_GOAL);
-      spec.goal = goalKind();
-      spec.repeats = static_cast<int>(sweepRepeats);
-      sweep = std::make_unique<GameXgSweep>(
-          *shotDrill, guiView->getController().getStatsConfig(), spec);
-      sweepNote =
-          sweep->problem().empty() ? "" : "Not run: " + sweep->problem();
-    }
-    ImGui::TextDisabled(
-        "%s",
-        sweepLayer == 1
-            ? "The Still-ball shot drill against a keeper at his set "
-              "position, both sides: spots every 1 m to 18 m out (20 m either "
-              "side), 2 m to 30 m, 4 m to halfway; Goalkeeping 1, 50 and 100 "
-              "by Shooting 1, 50 and 100. Stored as a factor on the empty "
-              "goal's map, which must exist. About 6 minutes at 60 shots a "
-              "point. Saves to assets/config/game_xg/ when done."
-            : "The Still-ball shot drill at an empty goal, both sides: spots "
-              "every 1 m to 18 m out (20 m either side), 2 m to 30 m, 4 m to "
-              "halfway; Shooting 1, 25, 50, 75 and 100. About 4-5 minutes at "
-              "60 shots a point. Saves to assets/config/game_xg/ when done.");
+    renderMapSweepControls(scale);
   }
   else if (blockDrill != nullptr)
   {
@@ -840,273 +876,361 @@ void XgMapScene::renderScan(ImVec2 area)
   Page::endCard(scale);
 }
 
-void XgMapScene::renderMap(float width, float height)
+namespace
+{
+constexpr ImU32 MAP_WHITE = IM_COL32(240, 240, 235, 230);
+/** Room round the half: a margin of grass all round (metres). */
+constexpr float MAP_MARGIN = 3.0F;
+/** Both sides' margins. */
+constexpr float MAP_MARGINS = 2.0F * MAP_MARGIN;
+
+/** A match pitch's markings in the attacking half. */
+void drawMatchMarkings(ImDrawList* draw, const XgMapFrame& frame,
+                       const MatchPitch& built, float line)
+{
+  using M = MatchTuning::Pitch;
+  const float half = frame.half;
+  const float middle = 0.5F * built.width;
+  const auto box = [&](float deep, float halfWide)
+  {
+    draw->AddRect(
+        frame.screen(PitchPoint{built.length, middle - halfWide}),
+        frame.screen(PitchPoint{built.length - deep, middle + halfWide}),
+        MAP_WHITE, 0.0F, 0, line);
+  };
+  draw->AddRect(frame.screen(PitchPoint{built.length, 0.0F}),
+                frame.screen(PitchPoint{half, built.width}), MAP_WHITE, 0.0F, 0,
+                line);
+  box(M::PENALTY_AREA_DEPTH_METRES, M::PENALTY_AREA_HALF_WIDTH_METRES);
+  box(MatchTuning::DeadBall::GOAL_AREA_DEPTH_METRES,
+      M::GOAL_AREA_HALF_WIDTH_METRES);
+  const ImVec2 spot =
+      frame.screen(PitchPoint{built.length - M::PENALTY_SPOT_METRES, middle});
+  draw->AddCircleFilled(
+      spot, std::max(MIN_SPOT_RADIUS, SPOT_RADIUS_METRES * frame.ppm),
+      MAP_WHITE);
+  // The arc outside the penalty area and the halfway circle (9.15 m).
+  const float radius = CIRCLE_RADIUS_METRES * frame.ppm;
+  const float beyond = M::PENALTY_AREA_DEPTH_METRES - M::PENALTY_SPOT_METRES;
+  const float arcHalf =
+      std::acos(std::clamp(beyond / CIRCLE_RADIUS_METRES, -1.0F, 1.0F));
+  draw->PathArcTo(spot, radius, QUARTER_TURN - arcHalf, QUARTER_TURN + arcHalf,
+                  PENALTY_ARC_SEGMENTS);
+  draw->PathStroke(MAP_WHITE, 0, line);
+  constexpr int ARC_SEGMENTS = 32;
+  draw->PathArcTo(frame.screen(PitchPoint{half, middle}), radius,
+                  std::numbers::pi_v<float>, 2 * std::numbers::pi_v<float>,
+                  ARC_SEGMENTS);
+  draw->PathStroke(MAP_WHITE, 0, line);
+}
+
+/** A training pitch's walls, open at the goal mouth; the halfway line
+ * faint. */
+void drawTrainingWalls(ImDrawList* draw, const XgMapFrame& frame,
+                       const MatchPitch& built, float line)
+{
+  constexpr ImU32 WALL = IM_COL32(20, 26, 30, 240);
+  const float half = frame.half;
+  const float middle = 0.5F * built.width;
+  const float gap =
+      built.goal.present() ? built.goal.halfWidth + built.goal.post : 0.0F;
+  draw->AddLine(frame.screen(PitchPoint{built.length, 0.0F}),
+                frame.screen(PitchPoint{half, 0.0F}), WALL, WALL_LINES * line);
+  draw->AddLine(frame.screen(PitchPoint{built.length, built.width}),
+                frame.screen(PitchPoint{half, built.width}), WALL,
+                WALL_LINES * line);
+  draw->AddLine(frame.screen(PitchPoint{built.length, 0.0F}),
+                frame.screen(PitchPoint{built.length, middle - gap}), WALL,
+                WALL_LINES * line);
+  draw->AddLine(frame.screen(PitchPoint{built.length, middle + gap}),
+                frame.screen(PitchPoint{built.length, built.width}), WALL,
+                WALL_LINES * line);
+  draw->AddLine(frame.screen(PitchPoint{half, 0.0F}),
+                frame.screen(PitchPoint{half, built.width}),
+                IM_COL32(240, 240, 235, 120), line);
+}
+
+/** The goal: its net behind the line, its frame. */
+void drawMapGoal(ImDrawList* draw, const XgMapFrame& frame,
+                 const MatchPitch& built)
+{
+  if (!built.goal.present())
+  {
+    return;
+  }
+  const float middle = 0.5F * built.width;
+  const float halfWide = built.goal.halfWidth;
+  draw->AddRectFilled(
+      frame.screen(
+          PitchPoint{built.length + built.goal.netDepth, middle - halfWide}),
+      frame.screen(PitchPoint{built.length, middle + halfWide}),
+      IM_COL32(230, 230, 230, 60));
+  const float post = std::max(2.0F, built.goal.post * frame.ppm);
+  draw->AddLine(frame.screen(PitchPoint{built.length, middle - halfWide}),
+                frame.screen(PitchPoint{built.length, middle + halfWide}),
+                IM_COL32(250, 250, 250, 255), post);
+}
+
+/** The game map's shooter, in the corner: its left-right lean is his foot. */
+void drawShooterFlag(ImDrawList* draw, ImVec2 origin, const std::string& foot,
+                     float scale)
+{
+  namespace Page = SandboxPageUI;
+  const std::string flag =
+      std::format("{}-FOOTED SHOOTER", foot == "left" ? "LEFT" : "RIGHT");
+  const ImVec2 at(origin.x + (FLAG_INSET * scale),
+                  origin.y + (FLAG_INSET * scale));
+  const ImVec2 size = ImGui::CalcTextSize(flag.c_str());
+  draw->AddRectFilled(
+      ImVec2(at.x - (FLAG_PADDING * scale), at.y - (FLAG_PADDING * scale)),
+      ImVec2(at.x + size.x + (FLAG_PADDING * scale),
+             at.y + size.y + (FLAG_PADDING * scale)),
+      Page::DARK);
+  draw->AddText(at, Page::LIME, flag.c_str());
+}
+}  // namespace
+
+ImVec2 XgMapFrame::screen(PitchPoint at) const
+{
+  return {left + (at.y * ppm), top + ((length - at.x) * ppm)};
+}
+
+const XgMapScene::Spot& XgMapScene::spotOf(int row, int column) const
+{
+  return grid[(static_cast<std::size_t>(row) *
+               static_cast<std::size_t>(columns)) +
+              static_cast<std::size_t>(column)];
+}
+
+float XgMapScene::spotValue(const Spot& spot) const
+{
+  if (layer == GAME_LAYER)
+  {
+    return std::max(spot.game, 0.0F);
+  }
+  return header ? spot.xg.xg * MatchTuning::Shooting::HEADER_XG_FACTOR
+                : spot.xg.xg;
+}
+
+ImU32 XgMapScene::cellColour(const Spot& spot, bool gameShown) const
+{
+  if (layer == XG_LAYER)
+  {
+    return xgColour(spotValue(spot));
+  }
+  if (layer == GAME_LAYER)
+  {
+    return gameShown ? xgColour(spotValue(spot), GAME_FULL_COLOUR) : 0;
+  }
+  if (!spot.considered)
+  {
+    return 0;
+  }
+  const float total =
+      header
+          ? (spotValue(spot) - MatchTuning::Aerial::HEADER_SHOT_MIN_XG) * 20.0F
+          : spot.scoreTotal;
+  const int alpha =
+      static_cast<int>(40 + (120 * std::min(1.0F, std::abs(total) / 3.0F)));
+  return total > 0.0F ? IM_COL32(40, 200, 80, alpha)
+                      : IM_COL32(220, 60, 50, alpha);
+}
+
+/** A cell's corners on the pitch, cut to the half. */
+std::array<PitchPoint, 2> XgMapScene::cellCorners(int row, int column,
+                                                  float half) const
+{
+  return {PitchPoint{std::max(edgeX(column), half), std::max(edgeY(row), 0.0F)},
+          PitchPoint{std::min(edgeX(column + 1), built.length),
+                     std::min(edgeY(row + 1), built.width)}};
+}
+
+/** The map in cells, and a hairline grid at the cells' edges. */
+void XgMapScene::drawMapCells(ImDrawList* draw, const XgMapFrame& frame,
+                              bool gameShown) const
+{
+  const float half = frame.half;
+  const int firstColumn = static_cast<int>((half - originX) / cell);
+  for (int row = 0; row < rows; ++row)
+  {
+    for (int column = firstColumn; column < columns; ++column)
+    {
+      const ImU32 colour = cellColour(spotOf(row, column), gameShown);
+      if (colour == 0)
+      {
+        continue;
+      }
+      const auto [from, to] = cellCorners(row, column, half);
+      draw->AddRectFilled(frame.screen(PitchPoint{to.x, from.y}),
+                          frame.screen(PitchPoint{from.x, to.y}), colour);
+    }
+  }
+  constexpr ImU32 GRID = IM_COL32(255, 255, 255, 22);
+  for (int column = firstColumn; column <= columns; ++column)
+  {
+    const float x = std::clamp(edgeX(column), half, built.length);
+    draw->AddLine(frame.screen(PitchPoint{x, 0.0F}),
+                  frame.screen(PitchPoint{x, built.width}), GRID, 1.0F);
+  }
+  for (int row = 0; row <= rows; ++row)
+  {
+    const float y = std::clamp(edgeY(row), 0.0F, built.width);
+    draw->AddLine(frame.screen(PitchPoint{half, y}),
+                  frame.screen(PitchPoint{built.length, y}), GRID, 1.0F);
+  }
+}
+
+/** Contours: an edge between two cells either side of a contour value. */
+void XgMapScene::drawContours(ImDrawList* draw, const XgMapFrame& frame) const
+{
+  const auto& levels = layer == XG_LAYER ? CONTOURS : GAME_CONTOURS;
+  const int firstColumn = static_cast<int>((frame.half - originX) / cell);
+  for (int row = 0; row < rows; ++row)
+  {
+    for (int column = firstColumn; column < columns; ++column)
+    {
+      const float here = spotValue(spotOf(row, column));
+      const auto [from, to] = cellCorners(row, column, frame.half);
+      for (const float level : levels)
+      {
+        if (column + 1 < columns &&
+            (here < level) != (spotValue(spotOf(row, column + 1)) < level))
+        {
+          draw->AddLine(frame.screen(PitchPoint{to.x, from.y}),
+                        frame.screen(PitchPoint{to.x, to.y}),
+                        IM_COL32(255, 255, 255, 210), CONTOUR_THICKNESS);
+        }
+        if (row + 1 < rows &&
+            (here < level) != (spotValue(spotOf(row + 1, column)) < level))
+        {
+          draw->AddLine(frame.screen(PitchPoint{from.x, to.y}),
+                        frame.screen(PitchPoint{to.x, to.y}),
+                        IM_COL32(255, 255, 255, 210), CONTOUR_THICKNESS);
+        }
+      }
+    }
+  }
+}
+
+/** A sweep in progress for this goal: a dot at each spot it measures
+ * (faint: waiting; lime: being measured; white: measured). */
+void XgMapScene::drawSweepDots(ImDrawList* draw, const XgMapFrame& frame) const
+{
+  namespace Page = SandboxPageUI;
+  if (!sweep || sweep->done() || sweep->spec().goal != goalKind())
+  {
+    return;
+  }
+  const float dot =
+      std::max(MIN_SWEEP_DOT_RADIUS, SWEEP_DOT_METRES * frame.ppm);
+  const float middle = MIDDLE_SHARE * built.width;
+  for (const GameXgSweep::SweepSpot& spot : sweep->spots())
+  {
+    const PitchPoint at{built.length - spot.line, middle + spot.side};
+    if (at.x < frame.half || at.y < 0.0F || at.y > built.width)
+    {
+      continue;
+    }
+    ImU32 colour = Page::LIME;
+    if (spot.state == GameXgSweep::SpotState::MEASURED)
+    {
+      colour = SWEEP_DOT_DONE;
+    }
+    else if (spot.state == GameXgSweep::SpotState::WAITING)
+    {
+      colour = SWEEP_DOT_WAITING;
+    }
+    draw->AddCircleFilled(frame.screen(at), dot, colour);
+  }
+}
+
+/** The spot under the mouse; the last one stays when the mouse leaves (the
+ * panel's card reads it), unless it is off a pitch made smaller since. */
+void XgMapScene::trackHover(const XgMapFrame& frame, bool hovering)
+{
+  if (hovered && (hovered->x < frame.half || hovered->x > built.length ||
+                  hovered->y > built.width))
+  {
+    hovered.reset();
+  }
+  if (!hovering)
+  {
+    return;
+  }
+  const ImVec2 mouse = ImGui::GetMousePos();
+  const PitchPoint at{built.length - ((mouse.y - frame.top) / frame.ppm),
+                      (mouse.x - frame.left) / frame.ppm};
+  if (at.x >= frame.half && at.x <= built.length && at.y >= 0.0F &&
+      at.y <= built.width)
+  {
+    hovered = at;
+  }
+}
+
+void XgMapScene::renderMap(ImVec2 area)
 {
   // The attacking half only, turned so its goal is at the top: plain grass,
   // its lines (a match pitch's markings, or a training pitch's walls), its
   // goal, the map in cells with a hairline grid, and the spot under the
   // mouse.
   namespace Page = SandboxPageUI;
-  using M = MatchTuning::Pitch;
   const float scale = Theme::scale();
-  Page::beginCard("##xg_map_pitch", "ATTACKING HALF", width, Page::DARK, scale,
+  Page::beginCard("##xg_map_pitch", "ATTACKING HALF", area.x, Page::DARK, scale,
                   boldFont);
   const ImVec2 origin = ImGui::GetCursorScreenPos();
   const ImVec2 size(std::max(scale, ImGui::GetContentRegionAvail().x),
-                    std::max(200 * scale, height - (56 * scale)));
+                    std::max(200 * scale, area.y - (56 * scale)));
   ImGui::InvisibleButton("##xg_map_area", size);
   const bool hovering = ImGui::IsItemHovered();
   ImDrawList* draw = ImGui::GetWindowDrawList();
   draw->PushClipRect(origin, ImVec2(origin.x + size.x, origin.y + size.y),
                      true);
 
-  const float half = 0.5F * built.length;
+  XgMapFrame frame;
+  frame.half = MIDDLE_SHARE * built.length;
+  frame.length = built.length;
   const float depth = built.goal.present() ? built.goal.netDepth : 0.0F;
   // Room round it: the goal's net above, a margin of grass all round.
-  constexpr float MARGIN = 3.0F;
-  const float ppm = std::min(size.x / (built.width + 2.0F * MARGIN),
-                             size.y / (half + depth + 2.0F * MARGIN));
-  const float left = origin.x + (0.5F * (size.x - built.width * ppm));
-  const float top =
-      origin.y + (0.5F * (size.y - (half + depth) * ppm)) + (depth * ppm);
-  // A pitch point (x towards the goal at x = length) on the screen.
-  const auto screen = [&](float x, float y)
-  { return ImVec2(left + (y * ppm), top + ((built.length - x) * ppm)); };
+  frame.ppm = std::min(size.x / (built.width + MAP_MARGINS),
+                       size.y / (frame.half + depth + MAP_MARGINS));
+  frame.left = origin.x + (MIDDLE_SHARE * (size.x - built.width * frame.ppm));
+  frame.top = origin.y +
+              (MIDDLE_SHARE * (size.y - (frame.half + depth) * frame.ppm)) +
+              (depth * frame.ppm);
 
   // Plain grass, a shade darker round the pitch.
   draw->AddRectFilled(origin, ImVec2(origin.x + size.x, origin.y + size.y),
                       IM_COL32(52, 96, 52, 255));
-  draw->AddRectFilled(screen(built.length, 0.0F), screen(half, built.width),
+  draw->AddRectFilled(frame.screen(PitchPoint{built.length, 0.0F}),
+                      frame.screen(PitchPoint{frame.half, built.width}),
                       IM_COL32(62, 116, 62, 255));
-
-  // The map.
-  const auto valueOf = [&](const Spot& spot)
-  {
-    if (layer == GAME_LAYER)
-    {
-      return std::max(spot.game, 0.0F);
-    }
-    return header ? spot.xg.xg * MatchTuning::Shooting::HEADER_XG_FACTOR
-                  : spot.xg.xg;
-  };
   const bool gameShown = layer == GAME_LAYER && gameTable.has_value();
-  const int firstColumn = static_cast<int>((half - originX) / cell);
-  for (int row = 0; row < rows; ++row)
-  {
-    for (int column = firstColumn; column < columns; ++column)
-    {
-      const Spot& spot = grid[(static_cast<std::size_t>(row) *
-                               static_cast<std::size_t>(columns)) +
-                              static_cast<std::size_t>(column)];
-      ImU32 colour = 0;
-      if (layer == XG_LAYER)
-      {
-        colour = xgColour(valueOf(spot));
-      }
-      else if (layer == GAME_LAYER)
-      {
-        colour = gameShown ? xgColour(valueOf(spot), GAME_FULL_COLOUR) : 0;
-      }
-      else if (spot.considered)
-      {
-        const float total =
-            header ? (valueOf(spot) - MatchTuning::Aerial::HEADER_SHOT_MIN_XG) *
-                         20.0F
-                   : spot.scoreTotal;
-        const int alpha = static_cast<int>(
-            40 + (120 * std::min(1.0F, std::abs(total) / 3.0F)));
-        colour = total > 0.0F ? IM_COL32(40, 200, 80, alpha)
-                              : IM_COL32(220, 60, 50, alpha);
-      }
-      if (colour == 0)
-      {
-        continue;
-      }
-      const float x0 = std::max(edgeX(column), half);
-      const float y0 = std::max(edgeY(row), 0.0F);
-      const float x1 = std::min(edgeX(column + 1), built.length);
-      const float y1 = std::min(edgeY(row + 1), built.width);
-      draw->AddRectFilled(screen(x1, y0), screen(x0, y1), colour);
-    }
-  }
-  // A hairline grid at the cells' edges.
-  constexpr ImU32 GRID = IM_COL32(255, 255, 255, 22);
-  for (int column = firstColumn; column <= columns; ++column)
-  {
-    const float x = std::clamp(edgeX(column), half, built.length);
-    draw->AddLine(screen(x, 0.0F), screen(x, built.width), GRID, 1.0F);
-  }
-  for (int row = 0; row <= rows; ++row)
-  {
-    const float y = std::clamp(edgeY(row), 0.0F, built.width);
-    draw->AddLine(screen(half, y), screen(built.length, y), GRID, 1.0F);
-  }
-  // Contours: an edge between two cells either side of a contour value.
+  drawMapCells(draw, frame, gameShown);
   if (layer == XG_LAYER || gameShown)
   {
-    const auto& levels = layer == XG_LAYER ? CONTOURS : GAME_CONTOURS;
-    for (int row = 0; row < rows; ++row)
-    {
-      for (int column = firstColumn; column < columns; ++column)
-      {
-        const float here = valueOf(grid[(static_cast<std::size_t>(row) *
-                                         static_cast<std::size_t>(columns)) +
-                                        static_cast<std::size_t>(column)]);
-        const float x0 = std::max(edgeX(column), half);
-        const float y0 = std::max(edgeY(row), 0.0F);
-        const float x1 = std::min(edgeX(column + 1), built.length);
-        const float y1 = std::min(edgeY(row + 1), built.width);
-        for (const float level : levels)
-        {
-          if (column + 1 < columns &&
-              (here < level) !=
-                  (valueOf(grid[(static_cast<std::size_t>(row) *
-                                 static_cast<std::size_t>(columns)) +
-                                static_cast<std::size_t>(column) + 1]) < level))
-          {
-            draw->AddLine(screen(x1, y0), screen(x1, y1),
-                          IM_COL32(255, 255, 255, 210), CONTOUR_THICKNESS);
-          }
-          if (row + 1 < rows &&
-              (here < level) !=
-                  (valueOf(grid[((static_cast<std::size_t>(row) + 1) *
-                                 static_cast<std::size_t>(columns)) +
-                                static_cast<std::size_t>(column)]) < level))
-          {
-            draw->AddLine(screen(x0, y1), screen(x1, y1),
-                          IM_COL32(255, 255, 255, 210), CONTOUR_THICKNESS);
-          }
-        }
-      }
-    }
+    drawContours(draw, frame);
   }
-
   // The lines: a match pitch's markings, or a training pitch's walls.
-  const float line = std::max(1.0F, 0.12F * ppm);
-  constexpr ImU32 WHITE = IM_COL32(240, 240, 235, 230);
-  const float middle = 0.5F * built.width;
-  const auto box = [&](float deep, float halfWide)
-  {
-    draw->AddRect(screen(built.length, middle - halfWide),
-                  screen(built.length - deep, middle + halfWide), WHITE, 0.0F,
-                  0, line);
-  };
+  const float line = std::max(1.0F, 0.12F * frame.ppm);
   if (built.surface == PitchSurface::MATCH)
   {
-    draw->AddRect(screen(built.length, 0.0F), screen(half, built.width), WHITE,
-                  0.0F, 0, line);
-    box(M::PENALTY_AREA_DEPTH_METRES, M::PENALTY_AREA_HALF_WIDTH_METRES);
-    box(MatchTuning::DeadBall::GOAL_AREA_DEPTH_METRES,
-        M::GOAL_AREA_HALF_WIDTH_METRES);
-    const ImVec2 spot = screen(built.length - M::PENALTY_SPOT_METRES, middle);
-    draw->AddCircleFilled(
-        spot, std::max(MIN_SPOT_RADIUS, SPOT_RADIUS_METRES * ppm), WHITE);
-    // The arc outside the penalty area and the halfway circle (9.15 m).
-    const float radius = CIRCLE_RADIUS_METRES * ppm;
-    const float beyond = M::PENALTY_AREA_DEPTH_METRES - M::PENALTY_SPOT_METRES;
-    const float arcHalf =
-        std::acos(std::clamp(beyond / CIRCLE_RADIUS_METRES, -1.0F, 1.0F));
-    draw->PathArcTo(spot, radius, QUARTER_TURN - arcHalf,
-                    QUARTER_TURN + arcHalf, PENALTY_ARC_SEGMENTS);
-    draw->PathStroke(WHITE, 0, line);
-    constexpr int ARC_SEGMENTS = 32;
-    draw->PathArcTo(screen(half, middle), radius, std::numbers::pi_v<float>,
-                    2 * std::numbers::pi_v<float>, ARC_SEGMENTS);
-    draw->PathStroke(WHITE, 0, line);
+    drawMatchMarkings(draw, frame, built, line);
   }
   else
   {
-    // The walls, open at the goal mouth; the halfway line faint.
-    constexpr ImU32 WALL = IM_COL32(20, 26, 30, 240);
-    const float gap =
-        built.goal.present() ? built.goal.halfWidth + built.goal.post : 0.0F;
-    draw->AddLine(screen(built.length, 0.0F), screen(half, 0.0F), WALL,
-                  WALL_LINES * line);
-    draw->AddLine(screen(built.length, built.width), screen(half, built.width),
-                  WALL, WALL_LINES * line);
-    draw->AddLine(screen(built.length, 0.0F),
-                  screen(built.length, middle - gap), WALL, WALL_LINES * line);
-    draw->AddLine(screen(built.length, middle + gap),
-                  screen(built.length, built.width), WALL, WALL_LINES * line);
-    draw->AddLine(screen(half, 0.0F), screen(half, built.width),
-                  IM_COL32(240, 240, 235, 120), line);
+    drawTrainingWalls(draw, frame, built, line);
   }
-  // The goal: its net behind the line, its frame.
-  if (built.goal.present())
-  {
-    const float halfWide = built.goal.halfWidth;
-    draw->AddRectFilled(screen(built.length + depth, middle - halfWide),
-                        screen(built.length, middle + halfWide),
-                        IM_COL32(230, 230, 230, 60));
-    const float post = std::max(2.0F, built.goal.post * ppm);
-    draw->AddLine(screen(built.length, middle - halfWide),
-                  screen(built.length, middle + halfWide),
-                  IM_COL32(250, 250, 250, 255), post);
-  }
-
-  // A sweep in progress for this goal: a dot at each spot it measures
-  // (faint: waiting; lime: being measured; white: measured).
-  if (sweep && !sweep->done() && sweep->spec().goal == goalKind())
-  {
-    const float dot = std::max(MIN_SWEEP_DOT_RADIUS, SWEEP_DOT_METRES * ppm);
-    const float middle = MIDDLE_SHARE * built.width;
-    for (const GameXgSweep::SweepSpot& spot : sweep->spots())
-    {
-      const PitchPoint at{built.length - spot.line, middle + spot.side};
-      if (at.x < half || at.y < 0.0F || at.y > built.width)
-      {
-        continue;
-      }
-      ImU32 colour = Page::LIME;
-      if (spot.state == GameXgSweep::SpotState::MEASURED)
-      {
-        colour = SWEEP_DOT_DONE;
-      }
-      else if (spot.state == GameXgSweep::SpotState::WAITING)
-      {
-        colour = SWEEP_DOT_WAITING;
-      }
-      draw->AddCircleFilled(screen(at.x, at.y), dot, colour);
-    }
-  }
-
-  // The spot under the mouse; the last one stays when the mouse leaves (the
-  // panel's card reads it), unless it is off a pitch made smaller since.
-  if (hovered && (hovered->x < half || hovered->x > built.length ||
-                  hovered->y > built.width))
-  {
-    hovered.reset();
-  }
-  if (hovering)
-  {
-    const ImVec2 mouse = ImGui::GetMousePos();
-    const PitchPoint at{built.length - ((mouse.y - top) / ppm),
-                        (mouse.x - left) / ppm};
-    if (at.x >= half && at.x <= built.length && at.y >= 0.0F &&
-        at.y <= built.width)
-    {
-      hovered = at;
-    }
-  }
+  drawMapGoal(draw, frame, built);
+  drawSweepDots(draw, frame);
+  trackHover(frame, hovering);
   if (hovered)
   {
-    draw->AddCircle(screen(hovered->x, hovered->y), MOUSE_RING_RADIUS * scale,
+    draw->AddCircle(frame.screen(*hovered), MOUSE_RING_RADIUS * scale,
                     IM_COL32(255, 255, 255, 230), 0, MOUSE_RING_THICKNESS);
   }
-  // The game map's shooter, in the corner: its left-right lean is his foot.
   if (gameShown)
   {
-    const std::string flag = std::format(
-        "{}-FOOTED SHOOTER", gameTable->foot == "left" ? "LEFT" : "RIGHT");
-    const ImVec2 at(origin.x + (FLAG_INSET * scale),
-                    origin.y + (FLAG_INSET * scale));
-    const ImVec2 size = ImGui::CalcTextSize(flag.c_str());
-    draw->AddRectFilled(
-        ImVec2(at.x - (FLAG_PADDING * scale), at.y - (FLAG_PADDING * scale)),
-        ImVec2(at.x + size.x + (FLAG_PADDING * scale),
-               at.y + size.y + (FLAG_PADDING * scale)),
-        Page::DARK);
-    draw->AddText(at, Page::LIME, flag.c_str());
+    drawShooterFlag(draw, origin, gameTable->foot, scale);
   }
   draw->PopClipRect();
   Page::endCard(scale);

@@ -486,7 +486,7 @@ void DrillScene::renderPitch(ImVec2 area)
         "##drill_review_pitch",
         ImVec2(0, std::max(MIN_PITCH_HEIGHT * scale,
                            height - (PITCH_CARD_CHROME * scale))));
-    review.renderPitch(run->recorder(), &run->engine(), 0, 0, &inspector);
+    review.renderPitch(run->recorder(), &run->engine(), {0, 0}, &inspector);
     ImGui::EndChild();
     Page::endCard(scale);
     return;

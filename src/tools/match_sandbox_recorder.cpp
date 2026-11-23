@@ -57,10 +57,10 @@ std::string SandboxRecorder::playerName(PlayerID id) const
 SandboxRecorder::Job SandboxRecorder::jobOf(PlayerID player,
                                             bool homeTeam) const
 {
-  const auto& held = jobs[sideOf(homeTeam)];
+  const auto& held = jobs.at(sideOf(homeTeam));
   for (std::size_t job = 1; job < held.size(); ++job)
   {
-    if (held[job] == player)
+    if (held.at(job) == player)
     {
       return static_cast<Job>(job);
     }
@@ -87,10 +87,12 @@ void SandboxRecorder::onTeamPlan(const MatchEngine& engine,
   const std::scoped_lock guard(mutex);
   std::array<PlayerID, JOB_COUNT> next{};
   std::array<float, JOB_COUNT> scores{};
+  // Argument order: job, player, score as the plan lists them.
+  // NOLINTNEXTLINE(bugprone-easily-swappable-parameters)
   const auto put = [&](Job job, PlayerID player, float score)
   {
-    next[static_cast<std::size_t>(job)] = player;
-    scores[static_cast<std::size_t>(job)] = score;
+    next.at(static_cast<std::size_t>(job)) = player;
+    scores.at(static_cast<std::size_t>(job)) = score;
   };
   put(Job::PRESSER_1, plan.pressers[0], plan.pressArrivalSeconds[0]);
   put(Job::PRESSER_2, plan.pressers[1], plan.pressArrivalSeconds[1]);
@@ -99,7 +101,7 @@ void SandboxRecorder::onTeamPlan(const MatchEngine& engine,
   for (std::size_t index = 0;
        index < RUNNERS.size() && index < plan.runners.size(); ++index)
   {
-    put(RUNNERS[index], plan.runners[index], plan.runPriority[index]);
+    put(RUNNERS.at(index), plan.runners.at(index), plan.runPriority.at(index));
   }
   put(Job::MIDFIELD_ARRIVAL, plan.midfieldArrival, 0.0F);
   put(Job::FAR_POST, plan.farPostRunner, 0.0F);
@@ -109,23 +111,23 @@ void SandboxRecorder::onTeamPlan(const MatchEngine& engine,
   for (std::size_t index = 0;
        index < SUPPORTERS.size() && index < plan.supporters.size(); ++index)
   {
-    put(SUPPORTERS[index], plan.supporters[index], 0.0F);
+    put(SUPPORTERS.at(index), plan.supporters.at(index), 0.0F);
   }
   put(Job::COVER_OUTLET, plan.coverOutlet, 0.0F);
 
-  auto& held = jobs[sideOf(plan.homeTeam)];
+  auto& held = jobs.at(sideOf(plan.homeTeam));
   for (std::size_t job = 1; job < JOB_COUNT; ++job)
   {
-    if (next[job] == held[job])
+    if (next.at(job) == held.at(job))
     {
       continue;
     }
     append(engine, JobChange{.homeTeam = plan.homeTeam,
                              .job = static_cast<Job>(job),
-                             .player = next[job],
-                             .previous = held[job],
-                             .score = scores[job]});
-    held[job] = next[job];
+                             .player = next.at(job),
+                             .previous = held.at(job),
+                             .score = scores.at(job)});
+    held.at(job) = next.at(job);
   }
 }
 
@@ -142,6 +144,80 @@ void SandboxRecorder::onAction(const MatchEngine& engine,
   const std::scoped_lock guard(mutex);
   append(engine, action);
   lastAction = log.size() - 1;
+}
+
+/** Each player's intent, when it changes (his first one too). */
+void SandboxRecorder::recordIntents(const MatchEngine& engine)
+{
+  for (const MatchPlayer& slot : engine.getPlayers())
+  {
+    if ((slot.player == nullptr) || !slot.onPitch)
+    {
+      continue;
+    }
+    const PlayerID id = slot.player->getId();
+    const auto known = intents.find(id);
+    const PlayerIntent previous =
+        known != intents.end() ? known->second : PlayerIntent::HOLD_SHAPE;
+    if (known != intents.end() && previous == slot.intent)
+    {
+      continue;
+    }
+    append(engine, IntentChange{.player = id,
+                                .homeTeam = slot.isHomeTeam,
+                                .from = previous,
+                                .to = slot.intent,
+                                .target = slot.tacticalTarget,
+                                .job = jobOf(id, slot.isHomeTeam)});
+    intents[id] = slot.intent;
+  }
+}
+
+void SandboxRecorder::recordPossession(const MatchEngine& engine)
+{
+  // Possession: only a new owner is a change (a kicked ball is in flight).
+  if (const Player* owner = engine.getPossessionAttachment();
+      (owner != nullptr) && owner != possessor)
+  {
+    bool ownerHome = true;
+    for (const MatchPlayer& slot : engine.getPlayers())
+    {
+      if (slot.player == owner)
+      {
+        ownerHome = slot.isHomeTeam;
+      }
+    }
+    append(engine, PossessionChange{.from = idOf(possessor),
+                                    .to = owner->getId(),
+                                    .fromHome = possessorHome,
+                                    .toHome = ownerHome,
+                                    .afterAction = lastAction});
+    possessor = owner;
+    possessorHome = ownerHome;
+    lastAction.reset();
+  }
+}
+
+void SandboxRecorder::appendLogs(const MatchEngine& engine)
+{
+  // Rewind: the logs only grow during a live match, so new records are
+  // appended; a fingerprint per tick; a saved copy every minute of play.
+  const auto& engineCommands = engine.getCommandLog();
+  if (engineCommands.size() > commandLog.size())
+  {
+    commandLog.insert(
+        commandLog.end(),
+        engineCommands.begin() + static_cast<std::ptrdiff_t>(commandLog.size()),
+        engineCommands.end());
+  }
+  const auto& engineInputs = engine.getInputLog();
+  if (engineInputs.size() > inputLog.size())
+  {
+    inputLog.insert(
+        inputLog.end(),
+        engineInputs.begin() + static_cast<std::ptrdiff_t>(inputLog.size()),
+        engineInputs.end());
+  }
 }
 
 void SandboxRecorder::onStepEnd(const MatchEngine& engine)
@@ -171,66 +247,25 @@ void SandboxRecorder::onStepEnd(const MatchEngine& engine)
 
   for (std::size_t side = HOME; side <= AWAY; ++side)
   {
-    if (nowPhases[side] != phases[side])
+    if (nowPhases.at(side) != phases.at(side))
     {
       append(engine, PhaseChange{.homeTeam = side == HOME,
-                                 .from = phases[side],
-                                 .to = nowPhases[side]});
-      phases[side] = nowPhases[side];
+                                 .from = phases.at(side),
+                                 .to = nowPhases.at(side)});
+      phases.at(side) = nowPhases.at(side);
     }
-    if (nowKeepers[side] != keepers[side])
+    if (nowKeepers.at(side) != keepers.at(side))
     {
       append(engine, KeeperChange{.homeTeam = side == HOME,
-                                  .from = keepers[side],
-                                  .to = nowKeepers[side]});
-      keepers[side] = nowKeepers[side];
+                                  .from = keepers.at(side),
+                                  .to = nowKeepers.at(side)});
+      keepers.at(side) = nowKeepers.at(side);
     }
   }
 
-  for (const MatchPlayer& slot : engine.getPlayers())
-  {
-    if ((slot.player == nullptr) || !slot.onPitch)
-    {
-      continue;
-    }
-    const PlayerID id = slot.player->getId();
-    const auto known = intents.find(id);
-    const PlayerIntent previous =
-        known != intents.end() ? known->second : PlayerIntent::HOLD_SHAPE;
-    if (known != intents.end() && previous == slot.intent)
-    {
-      continue;
-    }
-    append(engine, IntentChange{.player = id,
-                                .homeTeam = slot.isHomeTeam,
-                                .from = previous,
-                                .to = slot.intent,
-                                .target = slot.tacticalTarget,
-                                .job = jobOf(id, slot.isHomeTeam)});
-    intents[id] = slot.intent;
-  }
+  recordIntents(engine);
 
-  // Possession: only a new owner is a change (a kicked ball is in flight).
-  if (const Player* owner = engine.getPossessionAttachment();
-      (owner != nullptr) && owner != possessor)
-  {
-    bool ownerHome = true;
-    for (const MatchPlayer& slot : engine.getPlayers())
-    {
-      if (slot.player == owner)
-      {
-        ownerHome = slot.isHomeTeam;
-      }
-    }
-    append(engine, PossessionChange{.from = idOf(possessor),
-                                    .to = owner->getId(),
-                                    .fromHome = possessorHome,
-                                    .toHome = ownerHome,
-                                    .afterAction = lastAction});
-    possessor = owner;
-    possessorHome = ownerHome;
-    lastAction.reset();
-  }
+  recordPossession(engine);
 
   const auto& engineEvents = engine.getEvents();
   for (std::size_t index = matchEvents.size(); index < engineEvents.size();
@@ -240,24 +275,7 @@ void SandboxRecorder::onStepEnd(const MatchEngine& engine)
     append(engine, EventEntry{index});
   }
 
-  // Rewind: the logs only grow during a live match, so new records are
-  // appended; a fingerprint per tick; a saved copy every minute of play.
-  const auto& engineCommands = engine.getCommandLog();
-  if (engineCommands.size() > commandLog.size())
-  {
-    commandLog.insert(
-        commandLog.end(),
-        engineCommands.begin() + static_cast<std::ptrdiff_t>(commandLog.size()),
-        engineCommands.end());
-  }
-  const auto& engineInputs = engine.getInputLog();
-  if (engineInputs.size() > inputLog.size())
-  {
-    inputLog.insert(
-        inputLog.end(),
-        engineInputs.begin() + static_cast<std::ptrdiff_t>(inputLog.size()),
-        engineInputs.end());
-  }
+  appendLogs(engine);
   if (checksums.size() <= tick)
   {
     checksums.resize(tick + 1, 0);

@@ -94,7 +94,7 @@ std::vector<Member> uniformSquad(int level)
   add(PlayerRole::GK, STARTING_KEEPER);
   for (std::size_t slot = 0; slot < shape().slots.size(); ++slot)
   {
-    add(shape().slots[slot].role, static_cast<int>(slot));
+    add(shape().slots.at(slot).role, static_cast<int>(slot));
   }
   for (const PlayerRole role : BENCH)
   {
@@ -111,7 +111,7 @@ std::vector<Member> tieredSquad()
   for (std::size_t index = 0; index < all.size(); ++index)
   {
     squad.push_back({.name = std::format("Outfield {}", all[index]),
-                     .role = shape().slots[index].role,
+                     .role = shape().slots.at(index).role,
                      .level = all[index],
                      .slot = static_cast<int>(index)});
   }
@@ -165,7 +165,7 @@ TeamID addClub(GameData& data, TeamID id, LeagueID league,
     {
       lineup.addOutfieldPlayer(
           player,
-          shape().slots[static_cast<std::size_t>(member.slot)].position);
+          shape().slots.at(static_cast<std::size_t>(member.slot)).position);
     }
   }
   lineup.setReserves(reserves);

@@ -264,6 +264,37 @@ std::filesystem::path measurePath(const std::string& drill,
 
 // --- DrillMeasure ------------------------------------------------------------
 
+/** Nobody plays a headless run: "You" becomes the AI. */
+void DrillMeasure::keepHeadless()
+{
+  const auto who = findParameter(drill, "Who runs");
+  if (!who)
+  {
+    return;
+  }
+  const std::vector<float> allowed = headlessChoices(*who);
+  const auto headless = [&](float value)
+  { return std::ranges::find(allowed, value) != allowed.end(); };
+  const bool onAxis = setup.sweep.parameter == "Who runs" ||
+                      (setup.by && setup.by->parameter == "Who runs");
+  const float path = setup.fixed.contains("Who runs")
+                         ? setup.fixed.at("Who runs")
+                         : saved.at("Who runs");
+  if (!onAxis && !allowed.empty() && !headless(path))
+  {
+    setup.fixed["Who runs"] = allowed.front();
+    notes.emplace_back("\"You\" can't run headless: measured with the AI.");
+  }
+  for (MeasureAxis* axis : {&setup.sweep, setup.by ? &*setup.by : nullptr})
+  {
+    if ((axis != nullptr) && axis->parameter == "Who runs")
+    {
+      std::erase_if(axis->values,
+                    [&](float value) { return !headless(value); });
+    }
+  }
+}
+
 DrillMeasure::DrillMeasure(Drill& drill_ref, const StatsConfig& config_ref,
                            MeasureSpec spec)
     : drill(drill_ref),
@@ -296,31 +327,7 @@ DrillMeasure::DrillMeasure(Drill& drill_ref, const StatsConfig& config_ref,
     notes.push_back(
         std::format("Unknown setting \"{}\".", setup.by->parameter));
   }
-  // Nobody plays a headless run: "You" becomes the AI.
-  if (const auto who = findParameter(drill, "Who runs"))
-  {
-    const std::vector<float> allowed = headlessChoices(*who);
-    const auto headless = [&](float value)
-    { return std::ranges::find(allowed, value) != allowed.end(); };
-    const bool onAxis = setup.sweep.parameter == "Who runs" ||
-                        (setup.by && setup.by->parameter == "Who runs");
-    const float path = setup.fixed.contains("Who runs")
-                           ? setup.fixed.at("Who runs")
-                           : saved.at("Who runs");
-    if (!onAxis && !allowed.empty() && !headless(path))
-    {
-      setup.fixed["Who runs"] = allowed.front();
-      notes.emplace_back("\"You\" can't run headless: measured with the AI.");
-    }
-    for (MeasureAxis* axis : {&setup.sweep, setup.by ? &*setup.by : nullptr})
-    {
-      if ((axis != nullptr) && axis->parameter == "Who runs")
-      {
-        std::erase_if(axis->values,
-                      [&](float value) { return !headless(value); });
-      }
-    }
-  }
+  keepHeadless();
   setup.repeats = std::max(1, setup.repeats);
   const std::size_t groups = setup.by ? setup.by->values.size() : 1;
   const bool unknown =
@@ -533,10 +540,284 @@ std::string DrillMeasure::csv() const
 
 // --- Command line ------------------------------------------------------------
 
-int runMeasureCommand(const StatsConfig& config, const std::string& drillName,
-                      const std::vector<std::string>& arguments)
+namespace
 {
-  auto drills = makeDrills();
+/** The command line's measure: the spec, a preset, and where output goes. */
+struct MeasureCommand
+{
+  MeasureSpec spec;
+  std::optional<std::filesystem::path> csvPath;
+  bool csvAuto = false;
+  std::optional<std::string> presetName;
+  std::optional<std::filesystem::path> tracePath;
+  float traceSeconds = DEFAULT_TRACE_SECONDS;
+};
+
+/** How reading one option went. */
+struct MeasureOptionRead
+{
+  /** Stop reading (the error, if any, is already set). */
+  bool stop = false;
+  /** It used the value after it. */
+  bool usedValue = true;
+};
+
+/** --set NAME=VALUE: a setting held at a value. */
+MeasureOptionRead fixMeasureSetting(Drill& drill, const std::string& value,
+                                    MeasureSpec& spec, std::string& error)
+{
+  const std::size_t equals = value.find('=');
+  const auto parameter = lookUp(drill, value.substr(0, equals));
+  const auto number = equals == std::string::npos
+                          ? std::nullopt
+                          : toFloat(std::string_view(value).substr(equals + 1));
+  if (!parameter || !number)
+  {
+    error = std::format("--set \"{}\": expected Setting=value", value);
+    return {.stop = true};
+  }
+  spec.fixed[parameter->name] = *number;
+  return {};
+}
+
+/** The options that only set a value. */
+bool readMeasureValue(const std::string& argument, MeasureCommand& command,
+                      const std::string& value)
+{
+  if (argument == "--repeats")
+  {
+    command.spec.repeats = static_cast<int>(toFloat(value).value_or(1.0F));
+  }
+  else if (argument == "--preset")
+  {
+    command.presetName = value;
+  }
+  else if (argument == "--seed")
+  {
+    command.spec.firstSeed =
+        static_cast<std::uint32_t>(toFloat(value).value_or(1.0F));
+  }
+  else if (argument == "--trace")
+  {
+    command.tracePath = value;
+  }
+  else if (argument == "--seconds")
+  {
+    command.traceSeconds = toFloat(value).value_or(command.traceSeconds);
+  }
+  else
+  {
+    return false;
+  }
+  return true;
+}
+
+/** One option of the measure's command line. */
+MeasureOptionRead readMeasureOption(Drill& drill, const std::string& argument,
+                                    const std::string* value,
+                                    MeasureCommand& command, std::string& error)
+{
+  if (value != nullptr && argument == "--sweep")
+  {
+    const auto axis = parseMeasureAxis(drill, *value, error);
+    if (!axis)
+    {
+      return {.stop = true};
+    }
+    command.spec.sweep = *axis;
+    return {};
+  }
+  if (value != nullptr && argument == "--by")
+  {
+    command.spec.by = parseMeasureAxis(drill, *value, error);
+    return {.stop = !command.spec.by};
+  }
+  if (value != nullptr && argument == "--set")
+  {
+    return fixMeasureSetting(drill, *value, command.spec, error);
+  }
+  if (value != nullptr && readMeasureValue(argument, command, *value))
+  {
+    return {};
+  }
+  if (argument == "--csv")
+  {
+    if (value != nullptr && !value->starts_with("--"))
+    {
+      command.csvPath = *value;
+      return {};
+    }
+    command.csvAuto = true;
+    return {.stop = false, .usedValue = false};
+  }
+  error = std::format("unknown option \"{}\"", argument);
+  return {.stop = true};
+}
+
+/** Reads every option into `command`, stopping at the first error. */
+void readMeasureOptions(Drill& drill, const std::vector<std::string>& arguments,
+                        MeasureCommand& command, std::string& error)
+{
+  for (std::size_t index = 0; index < arguments.size(); ++index)
+  {
+    const std::string* value =
+        index + 1 < arguments.size() ? &arguments.at(index + 1) : nullptr;
+    const MeasureOptionRead read =
+        readMeasureOption(drill, arguments.at(index), value, command, error);
+    if (read.stop)
+    {
+      return;
+    }
+    if (read.usedValue)
+    {
+      ++index;
+    }
+  }
+}
+
+/** A preset fills in settings; any --set (whatever its place) wins over it. */
+void applyPreset(Drill& drill, const std::string& presetName, MeasureSpec& spec,
+                 std::string& error)
+{
+  const auto list = drill.presets();
+  const auto found = std::ranges::find(list, presetName, &DrillPreset::name);
+  if (found == list.end())
+  {
+    error = std::format("no preset \"{}\"; presets:", presetName);
+    for (const DrillPreset& preset : list)
+    {
+      error += " \"" + preset.name + '"';
+    }
+    return;
+  }
+  for (const auto& [name, value] : found->settings)
+  {
+    spec.fixed.try_emplace(name, value);
+  }
+}
+
+/** --trace: one run (the preset, --set, --seed), every player and the ball
+ * every fixed step for --seconds, instead of a sweep (lab_trace.h). */
+int runMeasureTrace(Drill& drill, const StatsConfig& config,
+                    const MeasureCommand& command,
+                    const std::filesystem::path& tracePath)
+{
+  const MeasureSpec& spec = command.spec;
+  for (const DrillParameter& parameter : drill.parameters())
+  {
+    if ((parameter.value != nullptr) && spec.fixed.contains(parameter.name))
+    {
+      *parameter.value = spec.fixed.at(parameter.name);
+    }
+  }
+  drill.seed = spec.firstSeed;
+  const int ticks = static_cast<int>(std::lround(
+      command.traceSeconds / MatchTuning::Timing::FIXED_STEP_SECONDS));
+  std::ofstream out(tracePath, std::ios::binary);
+  if (!out)
+  {
+    std::cerr << "Measure: cannot write " << tracePath.string() << '\n';
+    return 2;
+  }
+  Lab::writeTraceHeader(out);
+  DrillRun run(drill, config, false);
+  Lab::writeTraceRows(out, "d", 0, run.engine());
+  for (int tick = 1; tick <= ticks; ++tick)
+  {
+    const bool going = run.step();
+    Lab::writeTraceRows(out, "d", tick, run.engine());
+    if (!going)
+    {
+      break;
+    }
+  }
+  std::cout << std::format("{}: trace written to {}\n", drill.name(),
+                           tracePath.string());
+  // The run's report, as the sandbox shows it.
+  for (const std::string& line : drill.report())
+  {
+    std::cout << "  " << line << '\n';
+  }
+  return out ? 0 : 2;
+}
+
+/** The table's header: the swept settings, done, then every metric. */
+std::string measureHeader(const MeasureSpec& spec,
+                          const std::vector<std::string>& names)
+{
+  std::string header = std::format(
+      "{:>{}}", spec.sweep.parameter.substr(0, SWEEP_COLUMN), SWEEP_COLUMN);
+  if (spec.by)
+  {
+    header += std::format("  {:>{}}", spec.by->parameter.substr(0, BY_COLUMN),
+                          BY_COLUMN);
+  }
+  header += "   done";
+  for (const std::string& name : names)
+  {
+    header += std::format("  {}", name);
+  }
+  return header;
+}
+
+/** One metric at one point: mean (± spread), or "-" if none. */
+std::string measureCell(const MeasurePoint& point, const std::string& name)
+{
+  const auto found = point.stats.find(name);
+  if (found == point.stats.end())
+  {
+    return "-";
+  }
+  return found->second.count > 1 && found->second.sd >= SHOWN_SPREAD
+             ? std::format("{:.2f}±{:.2f}", found->second.mean,
+                           found->second.sd)
+             : std::format("{:.2f}", found->second.mean);
+}
+
+/** One point's row: its settings, runs done, then every metric. */
+std::string measureRow(const DrillMeasure& measure, const MeasureSpec& spec,
+                       const MeasurePoint& point,
+                       const std::vector<std::string>& names)
+{
+  std::string row = std::format(
+      "{:>{}}", measure.valueText(spec.sweep.parameter, point.x), SWEEP_COLUMN);
+  if (spec.by)
+  {
+    row += std::format(
+        "  {:>{}}", measure.valueText(spec.by->parameter, point.by), BY_COLUMN);
+  }
+  row += std::format("  {:>2}/{:<2}", point.completed, point.runs);
+  for (const std::string& name : names)
+  {
+    row += std::format("  {:>{}}", measureCell(point, name), name.size());
+  }
+  return row;
+}
+
+/** Writes the runs to the CSV asked for; false if it could not. */
+bool writeMeasureCsv(const DrillMeasure& measure,
+                     const std::filesystem::path& path)
+{
+  std::error_code ignored;
+  if (path.has_parent_path())
+  {
+    std::filesystem::create_directories(path.parent_path(), ignored);
+  }
+  std::ofstream file(path, std::ios::binary);
+  file << measure.csv();
+  if (!file)
+  {
+    std::cerr << "Could not write " << path.string() << '\n';
+    return false;
+  }
+  std::cout << "\nRuns written to " << path.string() << '\n';
+  return true;
+}
+
+/** The drill of that name, if there is one. */
+Drill* drillNamed(const std::vector<std::unique_ptr<Drill>>& drills,
+                  const std::string& drillName)
+{
   Drill* drill = nullptr;
   for (const auto& candidate : drills)
   {
@@ -545,179 +826,26 @@ int runMeasureCommand(const StatsConfig& config, const std::string& drillName,
       drill = candidate.get();
     }
   }
-  if (drill == nullptr)
-  {
-    std::cerr << "No drill \"" << drillName << "\". Drills:";
-    for (const auto& candidate : drills)
-    {
-      std::cerr << " \"" << candidate->name() << '"';
-    }
-    std::cerr << '\n';
-    return 2;
-  }
-  MeasureSpec spec;
-  std::optional<std::filesystem::path> csvPath;
-  bool csvAuto = false;
-  std::string error;
-  std::optional<std::string> presetName;
-  std::optional<std::filesystem::path> tracePath;
-  float traceSeconds = DEFAULT_TRACE_SECONDS;
-  for (std::size_t index = 0; index < arguments.size(); ++index)
-  {
-    const std::string& argument = arguments[index];
-    const bool hasValue = index + 1 < arguments.size();
-    const std::string value = hasValue ? arguments[index + 1] : std::string();
-    if (argument == "--sweep" && hasValue)
-    {
-      const auto axis = parseMeasureAxis(*drill, value, error);
-      if (!axis)
-      {
-        break;
-      }
-      spec.sweep = *axis;
-    }
-    else if (argument == "--by" && hasValue)
-    {
-      spec.by = parseMeasureAxis(*drill, value, error);
-      if (!spec.by)
-      {
-        break;
-      }
-    }
-    else if (argument == "--set" && hasValue)
-    {
-      const std::size_t equals = value.find('=');
-      const auto parameter = lookUp(*drill, value.substr(0, equals));
-      const auto number =
-          equals == std::string::npos
-              ? std::nullopt
-              : toFloat(std::string_view(value).substr(equals + 1));
-      if (!parameter || !number)
-      {
-        error = std::format("--set \"{}\": expected Setting=value", value);
-        break;
-      }
-      spec.fixed[parameter->name] = *number;
-    }
-    else if (argument == "--repeats" && hasValue)
-    {
-      spec.repeats = static_cast<int>(toFloat(value).value_or(1.0F));
-    }
-    else if (argument == "--preset" && hasValue)
-    {
-      presetName = value;
-    }
-    else if (argument == "--seed" && hasValue)
-    {
-      spec.firstSeed =
-          static_cast<std::uint32_t>(toFloat(value).value_or(1.0F));
-    }
-    else if (argument == "--trace" && hasValue)
-    {
-      tracePath = value;
-    }
-    else if (argument == "--seconds" && hasValue)
-    {
-      traceSeconds = toFloat(value).value_or(traceSeconds);
-    }
-    else if (argument == "--csv")
-    {
-      if (hasValue && !arguments[index + 1].starts_with("--"))
-      {
-        csvPath = value;
-      }
-      else
-      {
-        csvAuto = true;
-        continue;
-      }
-    }
-    else
-    {
-      error = std::format("unknown option \"{}\"", argument);
-      break;
-    }
-    ++index;
-  }
-  // A preset fills in settings; any --set (whatever its place) wins over it.
-  if (error.empty() && presetName)
-  {
-    const auto list = drill->presets();
-    const auto found = std::ranges::find(list, *presetName, &DrillPreset::name);
-    if (found == list.end())
-    {
-      error = std::format("no preset \"{}\"; presets:", *presetName);
-      for (const DrillPreset& preset : list)
-      {
-        error += " \"" + preset.name + '"';
-      }
-    }
-    else
-    {
-      for (const auto& [name, value] : found->settings)
-      {
-        spec.fixed.try_emplace(name, value);
-      }
-    }
-  }
-  // --trace: one run (the preset, --set, --seed), every player and the ball
-  // every fixed step for --seconds, instead of a sweep (lab_trace.h).
-  if (error.empty() && tracePath)
-  {
-    for (const DrillParameter& parameter : drill->parameters())
-    {
-      if ((parameter.value != nullptr) && spec.fixed.contains(parameter.name))
-      {
-        *parameter.value = spec.fixed.at(parameter.name);
-      }
-    }
-    drill->seed = spec.firstSeed;
-    const int ticks = static_cast<int>(
-        std::lround(traceSeconds / MatchTuning::Timing::FIXED_STEP_SECONDS));
-    std::ofstream out(*tracePath, std::ios::binary);
-    if (!out)
-    {
-      std::cerr << "Measure: cannot write " << tracePath->string() << '\n';
-      return 2;
-    }
-    Lab::writeTraceHeader(out);
-    DrillRun run(*drill, config, false);
-    Lab::writeTraceRows(out, "d", 0, run.engine());
-    for (int tick = 1; tick <= ticks; ++tick)
-    {
-      const bool going = run.step();
-      Lab::writeTraceRows(out, "d", tick, run.engine());
-      if (!going)
-      {
-        break;
-      }
-    }
-    std::cout << std::format("{}: trace written to {}\n", drill->name(),
-                             tracePath->string());
-    // The run's report, as the sandbox shows it.
-    for (const std::string& line : drill->report())
-    {
-      std::cout << "  " << line << '\n';
-    }
-    return out ? 0 : 2;
-  }
-  if (error.empty() && spec.sweep.values.empty())
-  {
-    error = "--sweep is required, e.g. --sweep \"Pace=40:95:12\"";
-  }
-  if (!error.empty())
-  {
-    std::cerr << "Measure: " << error << "\nSettings of " << drill->name()
-              << ":";
-    for (const DrillParameter& parameter : drill->parameters())
-    {
-      std::cerr << " \"" << parameter.name << '"';
-    }
-    std::cerr << '\n';
-    return 2;
-  }
+  return drill;
+}
 
-  DrillMeasure measure(*drill, config, spec);
+/** The error, then the drill's settings, for the command line's user. */
+void reportMeasureError(Drill& drill, const std::string& error)
+{
+  std::cerr << "Measure: " << error << "\nSettings of " << drill.name() << ":";
+  for (const DrillParameter& parameter : drill.parameters())
+  {
+    std::cerr << " \"" << parameter.name << '"';
+  }
+  std::cerr << '\n';
+}
+
+/** Runs the sweep and prints its table; the exit code. */
+int runMeasureSweep(Drill& drill, const StatsConfig& config,
+                    const MeasureCommand& command)
+{
+  const MeasureSpec& spec = command.spec;
+  DrillMeasure measure(drill, config, spec);
   for (const std::string& note : measure.warnings())
   {
     std::cout << note << '\n';
@@ -727,7 +855,7 @@ int runMeasureCommand(const StatsConfig& config, const std::string& drillName,
     return 2;
   }
   std::cout << std::format(
-      "{}: {} runs ({} by {}{}, {} repeat{})\n", drill->name(),
+      "{}: {} runs ({} by {}{}, {} repeat{})\n", drill.name(),
       measure.runsTotal(), spec.sweep.parameter,
       measure.spec().sweep.values.size(),
       spec.by ? std::format(", for each {}", spec.by->parameter)
@@ -742,63 +870,58 @@ int runMeasureCommand(const StatsConfig& config, const std::string& drillName,
 
   // Table: one row per point, mean (± spread) of every metric.
   const auto& names = measure.metricNames();
-  std::string header = std::format(
-      "{:>{}}", spec.sweep.parameter.substr(0, SWEEP_COLUMN), SWEEP_COLUMN);
-  if (spec.by)
-  {
-    header += std::format("  {:>{}}", spec.by->parameter.substr(0, BY_COLUMN),
-                          BY_COLUMN);
-  }
-  header += "   done";
-  for (const std::string& name : names)
-  {
-    header += std::format("  {}", name);
-  }
-  std::cout << header << '\n';
+  std::cout << measureHeader(spec, names) << '\n';
   for (const MeasurePoint& point : measure.points())
   {
-    std::string row =
-        std::format("{:>{}}", measure.valueText(spec.sweep.parameter, point.x),
-                    SWEEP_COLUMN);
-    if (spec.by)
-    {
-      row += std::format("  {:>{}}",
-                         measure.valueText(spec.by->parameter, point.by),
-                         BY_COLUMN);
-    }
-    row += std::format("  {:>2}/{:<2}", point.completed, point.runs);
-    for (const std::string& name : names)
-    {
-      const auto found = point.stats.find(name);
-      std::string cell =
-          found == point.stats.end() ? "-"
-          : found->second.count > 1 && found->second.sd >= SHOWN_SPREAD
-              ? std::format("{:.2f}±{:.2f}", found->second.mean,
-                            found->second.sd)
-              : std::format("{:.2f}", found->second.mean);
-      row += std::format("  {:>{}}", cell, name.size());
-    }
-    std::cout << row << '\n';
+    std::cout << measureRow(measure, spec, point, names) << '\n';
   }
-  if (csvAuto)
+  std::optional<std::filesystem::path> csvPath = command.csvPath;
+  if (command.csvAuto)
   {
-    csvPath = measurePath(drill->name(), spec.sweep.parameter);
+    csvPath = measurePath(drill.name(), spec.sweep.parameter);
   }
-  if (csvPath)
+  if (csvPath && !writeMeasureCsv(measure, *csvPath))
   {
-    std::error_code ignored;
-    if (csvPath->has_parent_path())
-    {
-      std::filesystem::create_directories(csvPath->parent_path(), ignored);
-    }
-    std::ofstream file(*csvPath, std::ios::binary);
-    file << measure.csv();
-    if (!file)
-    {
-      std::cerr << "Could not write " << csvPath->string() << '\n';
-      return 1;
-    }
-    std::cout << "\nRuns written to " << csvPath->string() << '\n';
+    return 1;
   }
   return 0;
+}
+}  // namespace
+
+int runMeasureCommand(const StatsConfig& config, const std::string& drillName,
+                      const std::vector<std::string>& arguments)
+{
+  auto drills = makeDrills();
+  Drill* drill = drillNamed(drills, drillName);
+  if (drill == nullptr)
+  {
+    std::cerr << "No drill \"" << drillName << "\". Drills:";
+    for (const auto& candidate : drills)
+    {
+      std::cerr << " \"" << candidate->name() << '"';
+    }
+    std::cerr << '\n';
+    return 2;
+  }
+  MeasureCommand command;
+  std::string error;
+  readMeasureOptions(*drill, arguments, command, error);
+  if (error.empty() && command.presetName)
+  {
+    applyPreset(*drill, *command.presetName, command.spec, error);
+  }
+  if (error.empty() && command.tracePath)
+  {
+    return runMeasureTrace(*drill, config, command, *command.tracePath);
+  }
+  if (error.empty() && command.spec.sweep.values.empty())
+  {
+    error = "--sweep is required, e.g. --sweep \"Pace=40:95:12\"";
+  }
+  if (!error.empty())
+  {
+    reportMeasureError(*drill, error);
+    return 2;
+  }
+  return runMeasureSweep(*drill, config, command);
 }

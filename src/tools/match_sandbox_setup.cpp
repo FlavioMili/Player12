@@ -95,24 +95,24 @@ void applyHomeAdvantage(MatchEngine& engine, float scale)
   engine.setMatchContext(context);
 }
 
-MatchSetup MatchSetup::capture(const GameController& controller, TeamID home,
-                               TeamID away, std::uint32_t seed,
-                               bool fullFamiliarity)
+MatchSetup MatchSetup::capture(const GameController& controller,
+                               const std::array<TeamID, 2>& teams,
+                               std::uint32_t seed, bool fullFamiliarity)
 {
   MatchSetup setup;
   setup.worldSeed = controller.getWorldSeed();
   setup.matchSeed = seed;
-  const std::array<TeamID, 2> ids{home, away};
+  const std::array<TeamID, 2>& ids = teams;
   for (std::size_t index = 0; index < ids.size(); ++index)
   {
-    const auto team = controller.getTeamById(ids[index]);
+    const auto team = controller.getTeamById(ids.at(index));
     if (!team)
     {
       continue;
     }
-    Side& side = setup.sides[index];
+    Side& side = setup.sides.at(index);
     const Lineup& lineup = team->get().getLineup();
-    side.team = ids[index];
+    side.team = ids.at(index);
     side.name = team->get().getName();
     side.strategy = team->get().getStrategy();
     side.designations = lineup.getDesignations();
@@ -148,12 +148,13 @@ MatchSetup MatchSetup::capture(const GameController& controller, TeamID home,
       side.reserves.push_back(reserve->getId());
       squad(reserve);
     }
-    setup.familiarity[index] =
-        fullFamiliarity ? 1.0F : controller.getTacticalFamiliarity(ids[index]);
+    setup.familiarity.at(index) =
+        fullFamiliarity ? 1.0F
+                        : controller.getTacticalFamiliarity(ids.at(index));
   }
   if (const Game* game = controller.getGame())
   {
-    if (const auto team = controller.getTeamById(home))
+    if (const auto team = controller.getTeamById(teams[0]))
     {
       setup.medicalFlags = MatchdaySquad::medicalFlags(game->getMedical(),
                                                        team->get().getLineup());
@@ -200,8 +201,8 @@ std::unique_ptr<MatchEngine> MatchSetup::build(const GameController& controller,
   std::array<Lineup, 2> lineups;
   for (std::size_t index = 0; index < sides.size(); ++index)
   {
-    const Side& side = sides[index];
-    Lineup& lineup = lineups[index];
+    const Side& side = sides.at(index);
+    Lineup& lineup = lineups.at(index);
     const Player* keeper = find(side.goalkeeper);
     if (keeper == nullptr)
     {
@@ -369,6 +370,108 @@ json SandboxJson::toJson(const MatchSetup& setup)
           {"home_advantage", setup.homeAdvantage}};
 }
 
+namespace
+{
+/** A version field: its key, and what the error calls it. */
+struct VersionField
+{
+  const char* key;
+  const char* what;
+};
+
+/** An optional version field: missing keeps the default (older setups
+ * played the Aardvark); an unknown key is an error. */
+template <typename T, typename FromKey>
+bool readVersion(const json& value, VersionField field, FromKey fromKey,
+                 T& target, std::string& error)
+{
+  const auto found = value.find(field.key);
+  if (found == value.end())
+  {
+    return true;
+  }
+  const auto key = found->template get<std::string>();
+  const auto converted = fromKey(key);
+  if (!converted)
+  {
+    error = std::format("setup: unknown {} '{}'", field.what, key);
+    return false;
+  }
+  target = *converted;
+  return true;
+}
+
+/** The same for a version per side. */
+template <typename T, std::size_t N, typename FromKey>
+bool readVersionPair(const json& value, VersionField field, FromKey fromKey,
+                     std::array<T, N>& target, std::string& error)
+{
+  const auto found = value.find(field.key);
+  if (found == value.end())
+  {
+    return true;
+  }
+  for (std::size_t index = 0; index < target.size(); ++index)
+  {
+    const auto key = found->at(index).template get<std::string>();
+    const auto converted = fromKey(key);
+    if (!converted)
+    {
+      error = std::format("setup: unknown {} '{}'", field.what, key);
+      return false;
+    }
+    target.at(index) = *converted;
+  }
+  return true;
+}
+
+/** Both sides: team, players, set pieces and strategy. */
+void readSides(const json& value, MatchSetup& setup)
+{
+  const auto& sides = value.at("sides");
+  for (std::size_t index = 0; index < setup.sides.size(); ++index)
+  {
+    const auto& item = sides.at(index);
+    MatchSetup::Side& side = setup.sides.at(index);
+    side.team = item.at("team").get<TeamID>();
+    side.name = item.at("name").get<std::string>();
+    side.goalkeeper = item.at("goalkeeper").get<PlayerID>();
+    for (const auto& slot : item.at("outfield"))
+    {
+      side.outfield.emplace_back(
+          slot.at(0).get<PlayerID>(),
+          Vector2F{.x = slot.at(1).get<float>(), .y = slot.at(2).get<float>()});
+    }
+    side.reserves = item.at("reserves").get<std::vector<PlayerID>>();
+    side.designations = item.at("designations").get<SetPieceDesignations>();
+    side.strategy = SandboxJson::strategyFromJson(item.at("strategy"));
+  }
+}
+
+/** Every engine version the setup names. */
+bool readVersions(const json& value, MatchSetup& setup, std::string& error)
+{
+  // Older setups have none of these: everything played the Aardvark (and a
+  // missing home advantage was the full edge).
+  return readVersionPair(value, {.key = "brains", .what = "brain"},
+                         brainFromKey, setup.brains, error) &&
+         readVersionPair(value, {.key = "bodies", .what = "body"}, bodyFromKey,
+                         setup.bodies, error) &&
+         readVersion(value, {.key = "handshake", .what = "handshake"},
+                     handshakeFromKey, setup.handshake, error) &&
+         readVersion(value, {.key = "referee", .what = "referee"},
+                     refereeFromKey, setup.referee, error) &&
+         readVersionPair(value, {.key = "managers", .what = "manager"},
+                         managerFromKey, setup.managers, error) &&
+         readVersion(value, {.key = "ball_physics", .what = "ball physics"},
+                     ballPhysicsFromKey, setup.ballPhysics, error) &&
+         readVersion(value, {.key = "out_of_play", .what = "out of play"},
+                     outOfPlayFromKey, setup.outOfPlay, error) &&
+         readVersion(value, {.key = "possession", .what = "possession"},
+                     possessionFromKey, setup.possession, error);
+}
+}  // namespace
+
 bool SandboxJson::fromJson(const json& value, MatchSetup& setup,
                            std::string& error)
 {
@@ -377,24 +480,7 @@ bool SandboxJson::fromJson(const json& value, MatchSetup& setup,
     setup = MatchSetup{};
     setup.worldSeed = value.at("world_seed").get<std::uint64_t>();
     setup.matchSeed = value.at("match_seed").get<std::uint32_t>();
-    const auto& sides = value.at("sides");
-    for (std::size_t index = 0; index < setup.sides.size(); ++index)
-    {
-      const auto& item = sides.at(index);
-      MatchSetup::Side& side = setup.sides[index];
-      side.team = item.at("team").get<TeamID>();
-      side.name = item.at("name").get<std::string>();
-      side.goalkeeper = item.at("goalkeeper").get<PlayerID>();
-      for (const auto& slot : item.at("outfield"))
-      {
-        side.outfield.emplace_back(slot.at(0).get<PlayerID>(),
-                                   Vector2F{.x = slot.at(1).get<float>(),
-                                            .y = slot.at(2).get<float>()});
-      }
-      side.reserves = item.at("reserves").get<std::vector<PlayerID>>();
-      side.designations = item.at("designations").get<SetPieceDesignations>();
-      side.strategy = strategyFromJson(item.at("strategy"));
-    }
+    readSides(value, setup);
     setup.familiarity = value.at("familiarity").get<std::array<float, 2>>();
     for (const auto& item : value.at("conditions"))
     {
@@ -408,110 +494,10 @@ bool SandboxJson::fromJson(const json& value, MatchSetup& setup,
     }
     setup.autoSubstitutions =
         value.at("auto_substitutions").get<std::array<bool, 2>>();
-    // Older setups have no brains: both sides played the Aardvark brain.
-    if (const auto brains = value.find("brains"); brains != value.end())
+    if (!readVersions(value, setup, error))
     {
-      for (std::size_t index = 0; index < setup.brains.size(); ++index)
-      {
-        const auto key = brains->at(index).get<std::string>();
-        const auto brain = brainFromKey(key);
-        if (!brain)
-        {
-          error = std::format("setup: unknown brain '{}'", key);
-          return false;
-        }
-        setup.brains[index] = *brain;
-      }
+      return false;
     }
-    // Likewise older setups have no bodies: both sides played the Aardvark.
-    if (const auto bodies = value.find("bodies"); bodies != value.end())
-    {
-      for (std::size_t index = 0; index < setup.bodies.size(); ++index)
-      {
-        const auto key = bodies->at(index).get<std::string>();
-        const auto body = bodyFromKey(key);
-        if (!body)
-        {
-          error = std::format("setup: unknown body '{}'", key);
-          return false;
-        }
-        setup.bodies[index] = *body;
-      }
-    }
-    // And no handshake: they were built with the Aardvark.
-    if (const auto handshake = value.find("handshake");
-        handshake != value.end())
-    {
-      const auto key = handshake->get<std::string>();
-      const auto converted = handshakeFromKey(key);
-      if (!converted)
-      {
-        error = std::format("setup: unknown handshake '{}'", key);
-        return false;
-      }
-      setup.handshake = *converted;
-    }
-    // Nor a referee, AI managers, ball physics or out of play: all were the
-    // Aardvark.
-    if (const auto referee = value.find("referee"); referee != value.end())
-    {
-      const auto key = referee->get<std::string>();
-      const auto converted = refereeFromKey(key);
-      if (!converted)
-      {
-        error = std::format("setup: unknown referee '{}'", key);
-        return false;
-      }
-      setup.referee = *converted;
-    }
-    if (const auto managers = value.find("managers"); managers != value.end())
-    {
-      for (std::size_t index = 0; index < setup.managers.size(); ++index)
-      {
-        const auto key = managers->at(index).get<std::string>();
-        const auto manager = managerFromKey(key);
-        if (!manager)
-        {
-          error = std::format("setup: unknown manager '{}'", key);
-          return false;
-        }
-        setup.managers[index] = *manager;
-      }
-    }
-    if (const auto physics = value.find("ball_physics"); physics != value.end())
-    {
-      const auto key = physics->get<std::string>();
-      const auto converted = ballPhysicsFromKey(key);
-      if (!converted)
-      {
-        error = std::format("setup: unknown ball physics '{}'", key);
-        return false;
-      }
-      setup.ballPhysics = *converted;
-    }
-    if (const auto version = value.find("out_of_play"); version != value.end())
-    {
-      const auto key = version->get<std::string>();
-      const auto converted = outOfPlayFromKey(key);
-      if (!converted)
-      {
-        error = std::format("setup: unknown out of play '{}'", key);
-        return false;
-      }
-      setup.outOfPlay = *converted;
-    }
-    if (const auto version = value.find("possession"); version != value.end())
-    {
-      const auto key = version->get<std::string>();
-      const auto converted = possessionFromKey(key);
-      if (!converted)
-      {
-        error = std::format("setup: unknown possession '{}'", key);
-        return false;
-      }
-      setup.possession = *converted;
-    }
-    // Nor a home advantage: they were played with the full edge.
     if (const auto home = value.find("home_advantage"); home != value.end())
     {
       setup.homeAdvantage = home->get<float>();

@@ -116,7 +116,7 @@ void ZoneReplayScene::render()
     Page::beginCard("##zone_replay_pitch_card", "ZONE",
                     ImGui::GetContentRegionAvail().x, Page::DARK, scale,
                     boldFont);
-    review.renderPitch(replay->run->recorder(), &replay->run->engine(), 0, 0,
+    review.renderPitch(replay->run->recorder(), &replay->run->engine(), {0, 0},
                        &inspector);
     Page::endCard(scale);
   }

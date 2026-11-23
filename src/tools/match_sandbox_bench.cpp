@@ -358,6 +358,196 @@ std::vector<float> defaultBenchSkills()
   return skills;
 }
 
+namespace
+{
+/** A test's problems, each named by its id (or name). */
+struct TestProblems
+{
+  std::vector<std::string>* list = nullptr;
+  std::string label;
+
+  void add(const std::string& text) const
+  {
+    list->push_back(std::format("{}: {}", label, text));
+  }
+};
+
+/** The drill of that name among `drills`, if any. */
+Drill* benchDrillNamed(const std::vector<std::unique_ptr<Drill>>& drills,
+                       std::string_view name)
+{
+  for (const auto& drill : drills)
+  {
+    if (sameName(drill->name(), name))
+    {
+      return drill.get();
+    }
+  }
+  return nullptr;
+}
+
+/** Settings by name onto the test; false if one is unknown or bad. */
+bool readBenchSettings(const nlohmann::json& settings,
+                       const std::vector<DrillParameter>& parameters,
+                       BenchTest& test, const TestProblems& problems)
+{
+  if (!settings.is_object())
+  {
+    return true;
+  }
+  bool ok = true;
+  for (const auto& [name, value] : settings.items())
+  {
+    const DrillParameter* parameter = parameterOf(parameters, name);
+    if (parameter == nullptr)
+    {
+      problems.add(std::format("{} has no setting \"{}\"", test.drill, name));
+      ok = false;
+      continue;
+    }
+    std::string error;
+    const auto number = settingValue(*parameter, value, error);
+    if (!number)
+    {
+      problems.add(error);
+      ok = false;
+      continue;
+    }
+    test.settings[parameter->name] = *number;
+  }
+  return ok;
+}
+
+/** "strike", {"flag": NAME} or {"metric": NAME, "atMost"/"atLeast": VALUE};
+ * false if it is none of them. */
+bool readBenchSuccess(const nlohmann::json& success, BenchSuccess& rule)
+{
+  if (success.is_string() && success.get<std::string>() == "strike")
+  {
+    rule.kind = BenchSuccess::Kind::STRIKE;
+    return true;
+  }
+  if (success.is_object() && success.contains("flag"))
+  {
+    rule.kind = BenchSuccess::Kind::FLAG;
+    rule.metric = success["flag"].get<std::string>();
+    return true;
+  }
+  if (!success.is_object() || !success.contains("metric") ||
+      (!success.contains("atMost") && !success.contains("atLeast")))
+  {
+    return false;
+  }
+  rule.metric = success["metric"].get<std::string>();
+  const bool atMost = success.contains("atMost");
+  rule.kind =
+      atMost ? BenchSuccess::Kind::AT_MOST : BenchSuccess::Kind::AT_LEAST;
+  rule.threshold =
+      atMost ? success["atMost"].get<float>() : success["atLeast"].get<float>();
+  return true;
+}
+
+/** Its range: given, else its drill's length setting. */
+void readBenchRange(const nlohmann::json& entry, BenchTest& test)
+{
+  if (entry.contains("range") && entry["range"].is_number())
+  {
+    test.range = entry["range"].get<float>();
+  }
+  else if (const auto length = test.settings.find("Length (m)");
+           length != test.settings.end())
+  {
+    test.range = length->second;
+  }
+}
+
+/** The settings, skill and tags of a test of that drill; false if any is
+ * wrong. */
+bool readBenchTestSetup(const nlohmann::json& entry, Drill& drill,
+                        const nlohmann::json& defaults, BenchTest& test,
+                        const TestProblems& problems)
+{
+  test.drill = drill.name();
+  const auto parameters = drill.parameters();
+  bool ok = true;
+  if (defaults.contains(test.drill))
+  {
+    ok = readBenchSettings(defaults[test.drill], parameters, test, problems) &&
+         ok;
+  }
+  ok = readBenchSettings(entry.value("settings", nlohmann::json::object()),
+                         parameters, test, problems) &&
+       ok;
+  const std::string skill = entry.value("skill", std::string());
+  if (const DrillParameter* parameter = parameterOf(parameters, skill))
+  {
+    test.skill = parameter->name;
+  }
+  else
+  {
+    problems.add(
+        std::format("{} has no skill setting \"{}\"", test.drill, skill));
+    ok = false;
+  }
+  for (const auto& [key, value] :
+       entry.value("tags", nlohmann::json::object()).items())
+  {
+    if (value.is_string())
+    {
+      test.tags[key] = value.get<std::string>();
+    }
+  }
+  return ok;
+}
+
+/** One test of the file, or none (its problems listed) if it is wrong. */
+std::optional<BenchTest> readBenchTest(
+    const nlohmann::json& entry,
+    const std::vector<std::unique_ptr<Drill>>& drills,
+    const nlohmann::json& defaults, BenchCatalogue& catalogue)
+{
+  BenchTest test;
+  test.id = entry.value("id", std::string());
+  test.name = entry.value("name", test.id);
+  test.section = entry.value("section", std::string("Tests"));
+  const TestProblems problems{.list = &catalogue.problems,
+                              .label = test.id.empty() ? test.name : test.id};
+  if (test.id.empty())
+  {
+    problems.add("no id");
+    return std::nullopt;
+  }
+  Drill* drill = benchDrillNamed(drills, entry.value("drill", std::string()));
+  if (drill == nullptr)
+  {
+    problems.add(
+        std::format("no drill \"{}\"", entry.value("drill", std::string())));
+    return std::nullopt;
+  }
+  bool ok = readBenchTestSetup(entry, *drill, defaults, test, problems);
+  if (!readBenchSuccess(entry.value("success", nlohmann::json("strike")),
+                        test.success))
+  {
+    problems.add(
+        "success: expected \"strike\", {\"flag\": NAME} or {\"metric\": "
+        "NAME, \"atMost\" or \"atLeast\": VALUE}");
+    ok = false;
+  }
+  readBenchRange(entry, test);
+  if (std::ranges::any_of(catalogue.tests, [&](const BenchTest& other)
+                          { return other.id == test.id; }))
+  {
+    problems.add("the id is used twice");
+    ok = false;
+  }
+  if (!ok)
+  {
+    return std::nullopt;
+  }
+  return test;
+}
+}  // namespace
+
 BenchCatalogue loadBenchCatalogue(const std::filesystem::path& path)
 {
   BenchCatalogue catalogue;
@@ -390,144 +580,15 @@ BenchCatalogue loadBenchCatalogue(const std::filesystem::path& path)
       }
     }
   }
-
   // One set of drills to check names against.
   const auto drills = makeDrills();
-  const auto drillNamed = [&](std::string_view name) -> Drill*
-  {
-    for (const auto& drill : drills)
-    {
-      if (sameName(drill->name(), name))
-      {
-        return drill.get();
-      }
-    }
-    return nullptr;
-  };
   const nlohmann::json defaults =
       root.value("drillDefaults", nlohmann::json::object());
-
   for (const auto& entry : root.value("tests", nlohmann::json::array()))
   {
-    BenchTest test;
-    test.id = entry.value("id", std::string());
-    test.name = entry.value("name", test.id);
-    test.section = entry.value("section", std::string("Tests"));
-    const std::string label = test.id.empty() ? test.name : test.id;
-    const auto problem = [&](const std::string& text)
-    { catalogue.problems.push_back(std::format("{}: {}", label, text)); };
-    if (test.id.empty())
+    if (auto test = readBenchTest(entry, drills, defaults, catalogue))
     {
-      problem("no id");
-      continue;
-    }
-    Drill* drill = drillNamed(entry.value("drill", std::string()));
-    if (drill == nullptr)
-    {
-      problem(
-          std::format("no drill \"{}\"", entry.value("drill", std::string())));
-      continue;
-    }
-    test.drill = drill->name();
-    const auto parameters = drill->parameters();
-    bool ok = true;
-    const auto read = [&](const nlohmann::json& settings)
-    {
-      if (!settings.is_object())
-      {
-        return;
-      }
-      for (const auto& [name, value] : settings.items())
-      {
-        const DrillParameter* parameter = parameterOf(parameters, name);
-        if (!parameter)
-        {
-          problem(std::format("{} has no setting \"{}\"", test.drill, name));
-          ok = false;
-          continue;
-        }
-        std::string error;
-        const auto number = settingValue(*parameter, value, error);
-        if (!number)
-        {
-          problem(error);
-          ok = false;
-          continue;
-        }
-        test.settings[parameter->name] = *number;
-      }
-    };
-    if (defaults.contains(test.drill))
-    {
-      read(defaults[test.drill]);
-    }
-    read(entry.value("settings", nlohmann::json::object()));
-    const std::string skill = entry.value("skill", std::string());
-    if (const DrillParameter* parameter = parameterOf(parameters, skill))
-    {
-      test.skill = parameter->name;
-    }
-    else
-    {
-      problem(std::format("{} has no skill setting \"{}\"", test.drill, skill));
-      ok = false;
-    }
-    for (const auto& [key, value] :
-         entry.value("tags", nlohmann::json::object()).items())
-    {
-      if (value.is_string())
-      {
-        test.tags[key] = value.get<std::string>();
-      }
-    }
-
-    const nlohmann::json success =
-        entry.value("success", nlohmann::json("strike"));
-    if (success.is_string() && success.get<std::string>() == "strike")
-    {
-      test.success.kind = BenchSuccess::Kind::STRIKE;
-    }
-    else if (success.is_object() && success.contains("flag"))
-    {
-      test.success.kind = BenchSuccess::Kind::FLAG;
-      test.success.metric = success["flag"].get<std::string>();
-    }
-    else if (success.is_object() && success.contains("metric") &&
-             (success.contains("atMost") || success.contains("atLeast")))
-    {
-      test.success.metric = success["metric"].get<std::string>();
-      test.success.kind = success.contains("atMost")
-                              ? BenchSuccess::Kind::AT_MOST
-                              : BenchSuccess::Kind::AT_LEAST;
-      test.success.threshold = success.contains("atMost")
-                                   ? success["atMost"].get<float>()
-                                   : success["atLeast"].get<float>();
-    }
-    else
-    {
-      problem(
-          "success: expected \"strike\", {\"flag\": NAME} or {\"metric\": "
-          "NAME, \"atMost\" or \"atLeast\": VALUE}");
-      ok = false;
-    }
-    if (entry.contains("range") && entry["range"].is_number())
-    {
-      test.range = entry["range"].get<float>();
-    }
-    else if (const auto length = test.settings.find("Length (m)");
-             length != test.settings.end())
-    {
-      test.range = length->second;
-    }
-    if (std::ranges::any_of(catalogue.tests, [&](const BenchTest& other)
-                            { return other.id == test.id; }))
-    {
-      problem("the id is used twice");
-      ok = false;
-    }
-    if (ok)
-    {
-      catalogue.tests.push_back(std::move(test));
+      catalogue.tests.push_back(std::move(*test));
     }
   }
   return catalogue;
@@ -666,6 +727,111 @@ bool BenchResults::save(const std::filesystem::path& path) const
   return static_cast<bool>(file);
 }
 
+namespace
+{
+/** A saved results file's columns by name; -1 where it has none. */
+struct ResultsColumns
+{
+  const std::vector<std::string>* header = nullptr;
+
+  [[nodiscard]] int of(std::string_view name) const
+  {
+    for (std::size_t index = 0; index < header->size(); ++index)
+    {
+      if ((*header)[index] == name)
+      {
+        return static_cast<int>(index);
+      }
+    }
+    return -1;
+  }
+};
+
+/** A row's field, or empty where it has none. */
+std::string fieldAt(const std::vector<std::string>& fields, int index)
+{
+  return index >= 0 && index < static_cast<int>(fields.size())
+             ? fields[static_cast<std::size_t>(index)]
+             : std::string();
+}
+
+/** The test a results row is for, as the file describes it. */
+BenchTest savedTest(const std::vector<std::string>& fields,
+                    const ResultsColumns& columns)
+{
+  BenchTest test;
+  test.id = fieldAt(fields, columns.of("Test"));
+  test.name = fieldAt(fields, columns.of("Name"));
+  test.section = fieldAt(fields, columns.of("Section"));
+  test.drill = fieldAt(fields, columns.of("Drill"));
+  test.tags = tagsFrom(fieldAt(fields, columns.of("Tags")));
+  test.skill = fieldAt(fields, columns.of("Skill setting"));
+  // The rule is kept as text only; a strike rule is recognisable.
+  test.success.kind =
+      fieldAt(fields, columns.of("Success rule")).starts_with("lands")
+          ? BenchSuccess::Kind::STRIKE
+          : BenchSuccess::Kind::FLAG;
+  test.success.metric = fieldAt(fields, columns.of("Success rule"));
+  return test;
+}
+
+/** One results row: its run's outcome and every metric after the tolerance. */
+BenchRow savedRow(const std::vector<std::string>& fields,
+                  const ResultsColumns& columns, std::size_t test)
+{
+  const std::vector<std::string>& header = *columns.header;
+  const int toleranceColumn = columns.of("Tolerance (m)");
+  BenchRow row;
+  row.test = test;
+  row.skill = toFloat(fieldAt(fields, columns.of("Skill"))).value_or(0.0F);
+  row.seed = static_cast<std::uint32_t>(
+      toFloat(fieldAt(fields, columns.of("Seed"))).value_or(0.0F));
+  row.completed = fieldAt(fields, columns.of("Completed")) == "1";
+  row.success = fieldAt(fields, columns.of("Success")) == "1";
+  row.tolerance = toFloat(fieldAt(fields, toleranceColumn)).value_or(0.0F);
+  for (std::size_t index = static_cast<std::size_t>(toleranceColumn) + 1;
+       index < header.size() && index < fields.size(); ++index)
+  {
+    if (const auto value = toFloat(fields[index]))
+    {
+      row.metrics.push_back({.name = header[index], .value = *value});
+    }
+  }
+  return row;
+}
+
+/** The tuning a saved run used, from the notes saved beside it. */
+void readSavedTuning(const std::filesystem::path& path, BenchResults& results)
+{
+  std::filesystem::path notes = path;
+  notes.replace_extension();
+  notes += " tuning.txt";
+  std::ifstream tuning(notes, std::ios::binary);
+  if (!tuning)
+  {
+    return;
+  }
+  bool inTuning = false;
+  std::string line;
+  while (std::getline(tuning, line))
+  {
+    if (!line.empty() && line.back() == '\r')
+    {
+      line.pop_back();
+    }
+    if (line == "Tuning:")
+    {
+      inTuning = true;
+    }
+    else if (inTuning && !line.empty() &&
+             !line.starts_with("The game's values"))
+    {
+      results.tuningChanges.push_back(line);
+    }
+  }
+}
+}  // namespace
+
 std::optional<BenchResults> BenchResults::load(
     const std::filesystem::path& path, std::string& error)
 {
@@ -682,23 +848,9 @@ std::optional<BenchResults> BenchResults::load(
     return std::nullopt;
   }
   const std::vector<std::string> header = csvFields(line);
-  const auto column = [&](std::string_view name) -> int
-  {
-    for (std::size_t index = 0; index < header.size(); ++index)
-    {
-      if (header[index] == name)
-      {
-        return static_cast<int>(index);
-      }
-    }
-    return -1;
-  };
-  const int testColumn = column("Test");
-  const int skillColumn = column("Skill");
-  const int successColumn = column("Success");
-  const int toleranceColumn = column("Tolerance (m)");
-  if (testColumn < 0 || skillColumn < 0 || successColumn < 0 ||
-      toleranceColumn < 0)
+  const ResultsColumns columns{.header = &header};
+  if (columns.of("Test") < 0 || columns.of("Skill") < 0 ||
+      columns.of("Success") < 0 || columns.of("Tolerance (m)") < 0)
   {
     error = "Not a bench results file (no Test, Skill or Success column)";
     return std::nullopt;
@@ -706,12 +858,6 @@ std::optional<BenchResults> BenchResults::load(
   BenchResults results;
   results.label = path.stem().string();
   std::map<std::string, std::size_t> testIndex;
-  const auto field = [](const std::vector<std::string>& fields, int index)
-  {
-    return index >= 0 && index < static_cast<int>(fields.size())
-               ? fields[static_cast<std::size_t>(index)]
-               : std::string();
-  };
   while (std::getline(file, line))
   {
     if (line.empty() || line == "\r")
@@ -719,42 +865,14 @@ std::optional<BenchResults> BenchResults::load(
       continue;
     }
     const std::vector<std::string> fields = csvFields(line);
-    const std::string id = field(fields, testColumn);
+    const std::string id = fieldAt(fields, columns.of("Test"));
     auto found = testIndex.find(id);
     if (found == testIndex.end())
     {
-      BenchTest test;
-      test.id = id;
-      test.name = field(fields, column("Name"));
-      test.section = field(fields, column("Section"));
-      test.drill = field(fields, column("Drill"));
-      test.tags = tagsFrom(field(fields, column("Tags")));
-      test.skill = field(fields, column("Skill setting"));
-      // The rule is kept as text only; a strike rule is recognisable.
-      test.success.kind =
-          field(fields, column("Success rule")).starts_with("lands")
-              ? BenchSuccess::Kind::STRIKE
-              : BenchSuccess::Kind::FLAG;
-      test.success.metric = field(fields, column("Success rule"));
       found = testIndex.emplace(id, results.tests.size()).first;
-      results.tests.push_back(std::move(test));
+      results.tests.push_back(savedTest(fields, columns));
     }
-    BenchRow row;
-    row.test = found->second;
-    row.skill = toFloat(field(fields, skillColumn)).value_or(0.0F);
-    row.seed = static_cast<std::uint32_t>(
-        toFloat(field(fields, column("Seed"))).value_or(0.0F));
-    row.completed = field(fields, column("Completed")) == "1";
-    row.success = field(fields, successColumn) == "1";
-    row.tolerance = toFloat(field(fields, toleranceColumn)).value_or(0.0F);
-    for (std::size_t index = static_cast<std::size_t>(toleranceColumn) + 1;
-         index < header.size() && index < fields.size(); ++index)
-    {
-      if (const auto value = toFloat(fields[index]))
-      {
-        row.metrics.push_back({.name = header[index], .value = *value});
-      }
-    }
+    BenchRow row = savedRow(fields, columns, found->second);
     if (std::ranges::find(results.skills, row.skill) == results.skills.end())
     {
       results.skills.push_back(row.skill);
@@ -762,29 +880,7 @@ std::optional<BenchResults> BenchResults::load(
     results.add(std::move(row));
   }
   std::ranges::sort(results.skills);
-  std::filesystem::path notes = path;
-  notes.replace_extension();
-  notes += " tuning.txt";
-  if (std::ifstream tuning(notes, std::ios::binary); tuning)
-  {
-    bool inTuning = false;
-    while (std::getline(tuning, line))
-    {
-      if (!line.empty() && line.back() == '\r')
-      {
-        line.pop_back();
-      }
-      if (line == "Tuning:")
-      {
-        inTuning = true;
-      }
-      else if (inTuning && !line.empty() &&
-               !line.starts_with("The game's values"))
-      {
-        results.tuningChanges.push_back(line);
-      }
-    }
-  }
+  readSavedTuning(path, results);
   return results;
 }
 
@@ -795,6 +891,135 @@ std::filesystem::path benchResultsPath()
 
 // --- Runner
 // --------------------------------------------------------------------
+
+namespace
+{
+/** The test with its skill set to `skill` where its drill has it; none (and
+ * a note) where it hasn't. */
+std::optional<BenchTest> withSkillOverride(
+    BenchTest test, const std::string& skill,
+    const std::vector<std::unique_ptr<Drill>>& drills,
+    std::vector<std::string>& notes)
+{
+  if (skill.empty())
+  {
+    return test;
+  }
+  Drill* drill = nullptr;
+  for (const auto& candidate : drills)
+  {
+    if (candidate->name() == test.drill)
+    {
+      drill = candidate.get();
+    }
+  }
+  // Kept for the lookup: the parameter found points into it.
+  const std::vector<DrillParameter> parameters =
+      (drill != nullptr) ? drill->parameters() : std::vector<DrillParameter>{};
+  const DrillParameter* parameter = parameterOf(parameters, skill);
+  if (parameter == nullptr)
+  {
+    notes.push_back(std::format("{}: {} has no \"{}\", left out.", test.id,
+                                test.drill, skill));
+    return std::nullopt;
+  }
+  test.skill = parameter->name;
+  return test;
+}
+
+/** The skills in running order: the middle one first, then the ends, then
+ * the rest. */
+std::vector<float> skillPriority(std::vector<float> order)
+{
+  std::ranges::sort(order);
+  std::vector<float> priority;
+  if (order.empty())
+  {
+    return priority;
+  }
+  const auto middle = std::ranges::min_element(
+      order, {}, [](float skill) { return std::abs(skill - MIDDLE_SKILL); });
+  priority.push_back(*middle);
+  for (const float end : {order.front(), order.back()})
+  {
+    if (std::ranges::find(priority, end) == priority.end())
+    {
+      priority.push_back(end);
+    }
+  }
+  for (const float skill : order)
+  {
+    if (std::ranges::find(priority, skill) == priority.end())
+    {
+      priority.push_back(skill);
+    }
+  }
+  return priority;
+}
+
+/** A worker's own drills (they hold a run's state), each with its default
+ * settings to start every run from. */
+struct WorkerDrills
+{
+  std::vector<std::unique_ptr<Drill>> drills = makeDrills();
+  std::map<std::string, Drill*> byName;
+  std::map<Drill*, std::map<std::string, float>> defaults;
+
+  WorkerDrills()
+  {
+    for (const auto& drill : drills)
+    {
+      byName[drill->name()] = drill.get();
+      for (const DrillParameter& parameter : drill->parameters())
+      {
+        if (parameter.value != nullptr)
+        {
+          defaults[drill.get()][parameter.name] = *parameter.value;
+        }
+      }
+    }
+  }
+};
+
+/** Runs the row's test at its skill and seed, filling in how it went. */
+void runBenchRow(BenchRow& row, const BenchTest& test, WorkerDrills& set,
+                 const StatsConfig& config,
+                 const std::function<void(MatchEngine&)>& prepare)
+{
+  const auto found = set.byName.find(test.drill);
+  if (found == set.byName.end())
+  {
+    return;
+  }
+  Drill& drill = *found->second;
+  std::map<std::string, float> values = set.defaults[&drill];
+  for (const auto& [name, value] : test.settings)
+  {
+    values[name] = value;
+  }
+  values[test.skill] = row.skill;
+  for (const DrillParameter& parameter : drill.parameters())
+  {
+    if ((parameter.value != nullptr) && values.contains(parameter.name))
+    {
+      *parameter.value = values.at(parameter.name);
+    }
+  }
+  drill.seed = row.seed;
+  {
+    DrillRun run(drill, config, false, prepare);
+    while (run.step())
+    {
+    }
+  }
+  row.metrics = drill.metrics();
+  row.completed = !row.metrics.empty();
+  if (row.completed)
+  {
+    row.success = test.success.judge(row.metrics, &row.tolerance);
+  }
+}
+}  // namespace
 
 BenchRunner::BenchRunner(const BenchCatalogue& catalogue,
                          const StatsConfig& config_ref, BenchSpec spec)
@@ -813,59 +1038,14 @@ BenchRunner::BenchRunner(const BenchCatalogue& catalogue,
     {
       continue;
     }
-    BenchTest test = catalogue.tests[index];
-    if (!setup.skillOverride.empty())
+    if (auto test = withSkillOverride(catalogue.tests[index],
+                                      setup.skillOverride, drills, notes))
     {
-      Drill* drill = nullptr;
-      for (const auto& candidate : drills)
-      {
-        if (candidate->name() == test.drill)
-        {
-          drill = candidate.get();
-        }
-      }
-      // Kept for the lookup: the parameter found points into it.
-      const std::vector<DrillParameter> parameters =
-          (drill != nullptr) ? drill->parameters()
-                             : std::vector<DrillParameter>{};
-      const DrillParameter* parameter =
-          parameterOf(parameters, setup.skillOverride);
-      if (parameter == nullptr)
-      {
-        notes.push_back(std::format("{}: {} has no \"{}\", left out.", test.id,
-                                    test.drill, setup.skillOverride));
-        continue;
-      }
-      test.skill = parameter->name;
+      tests.push_back(std::move(*test));
     }
-    tests.push_back(std::move(test));
   }
-
   // Every test at the middle skill first, then the ends, then the rest.
-  std::vector<float> order = setup.skills;
-  std::ranges::sort(order);
-  std::vector<float> priority;
-  if (!order.empty())
-  {
-    const auto middle = std::ranges::min_element(
-        order, {}, [](float skill) { return std::abs(skill - MIDDLE_SKILL); });
-    priority.push_back(*middle);
-    for (const float end : {order.front(), order.back()})
-    {
-      if (std::ranges::find(priority, end) == priority.end())
-      {
-        priority.push_back(end);
-      }
-    }
-    for (const float skill : order)
-    {
-      if (std::ranges::find(priority, skill) == priority.end())
-      {
-        priority.push_back(skill);
-      }
-    }
-  }
-  for (const float skill : priority)
+  for (const float skill : skillPriority(setup.skills))
   {
     for (std::size_t test = 0; test < tests.size(); ++test)
     {
@@ -927,23 +1107,10 @@ void BenchRunner::work()
 {
   // Each worker has its own drills (they hold a run's state), each starting
   // every run from its own default settings.
-  const auto drills = makeDrills();
-  std::map<std::string, Drill*> byName;
-  std::map<Drill*, std::map<std::string, float>> defaults;
-  for (const auto& drill : drills)
-  {
-    byName[drill->name()] = drill.get();
-    for (const DrillParameter& parameter : drill->parameters())
-    {
-      if (parameter.value != nullptr)
-      {
-        defaults[drill.get()][parameter.name] = *parameter.value;
-      }
-    }
-  }
+  WorkerDrills set;
   const TechniqueTuning& tuning = setup.tuning;
-  const auto prepare = [&tuning](MatchEngine& engine)
-  { tuning.applyTo(engine); };
+  const std::function<void(MatchEngine&)> prepare =
+      [&tuning](MatchEngine& engine) { tuning.applyTo(engine); };
   while (!stopping)
   {
     const std::size_t index = nextJob.fetch_add(1);
@@ -952,41 +1119,11 @@ void BenchRunner::work()
       break;
     }
     const Job& job = jobs[index];
-    const BenchTest& test = tests[job.test];
     BenchRow row;
     row.test = job.test;
     row.skill = job.skill;
     row.seed = job.seed;
-    if (const auto found = byName.find(test.drill); found != byName.end())
-    {
-      Drill& drill = *found->second;
-      std::map<std::string, float> values = defaults[&drill];
-      for (const auto& [name, value] : test.settings)
-      {
-        values[name] = value;
-      }
-      values[test.skill] = job.skill;
-      for (const DrillParameter& parameter : drill.parameters())
-      {
-        if ((parameter.value != nullptr) && values.contains(parameter.name))
-        {
-          *parameter.value = values.at(parameter.name);
-        }
-      }
-      drill.seed = job.seed;
-      {
-        DrillRun run(drill, config, false, prepare);
-        while (run.step())
-        {
-        }
-      }
-      row.metrics = drill.metrics();
-      row.completed = !row.metrics.empty();
-      if (row.completed)
-      {
-        row.success = test.success.judge(row.metrics, &row.tolerance);
-      }
-    }
+    runBenchRow(row, tests[job.test], set, config, prepare);
     {
       const std::scoped_lock lock(mutex);
       pending.push_back(std::move(row));
@@ -1026,8 +1163,10 @@ void BenchRunner::collect(BenchResults& results)
 // --- Command line
 // ----------------------------------------------------------------
 
-int runBenchCommand(const StatsConfig& config,
-                    const std::vector<std::string>& arguments)
+namespace
+{
+/** The bench's command line. */
+struct BenchCommand
 {
   std::filesystem::path cataloguePath = benchCataloguePath();
   std::vector<std::string> patterns;
@@ -1035,162 +1174,152 @@ int runBenchCommand(const StatsConfig& config,
   BenchSpec spec;
   std::optional<std::filesystem::path> csvPath;
   bool skillsGiven = false;
-  // Every option takes a value: options and values come in pairs.
-  for (std::size_t index = 0; index < arguments.size(); index += 2)
-  {
-    const std::string& argument = arguments[index];
-    const bool hasValue = index + 1 < arguments.size();
-    const std::string value = hasValue ? arguments[index + 1] : std::string();
-    const auto list = [](const std::string& text)
-    {
-      std::vector<std::string> parts;
-      std::stringstream stream(text);
-      for (std::string part; std::getline(stream, part, ',');)
-      {
-        if (!part.empty())
-        {
-          parts.push_back(part);
-        }
-      }
-      return parts;
-    };
-    if (argument == "--catalogue" && hasValue)
-    {
-      cataloguePath = value;
-    }
-    else if (argument == "--tests" && hasValue)
-    {
-      patterns = list(value);
-    }
-    else if (argument == "--tag" && hasValue &&
-             value.find('=') != std::string::npos)
-    {
-      tagFilters.emplace_back(value.substr(0, value.find('=')),
-                              value.substr(value.find('=') + 1));
-    }
-    else if (argument == "--skills" && hasValue)
-    {
-      skillsGiven = true;
-      const std::vector<std::string> parts = list(value);
-      if (parts.size() == 1 && value.find(':') != std::string::npos)
-      {
-        std::vector<float> range;
-        for (const std::string& part :
-             [&]
-             {
-               std::vector<std::string> pieces;
-               std::stringstream stream(value);
-               for (std::string piece; std::getline(stream, piece, ':');)
-               {
-                 pieces.push_back(piece);
-               }
-               return pieces;
-             }())
-        {
-          if (const auto number = toFloat(part))
-          {
-            range.push_back(*number);
-          }
-        }
-        if (range.size() == 3)
-        {
-          spec.skills = spreadValues(range[0], range[1],
-                                     static_cast<int>(range[2]), true);
-        }
-      }
-      else
-      {
-        for (const std::string& part : parts)
-        {
-          if (const auto number = toFloat(part))
-          {
-            spec.skills.push_back(*number);
-          }
-        }
-      }
-    }
-    else if (argument == "--repeats" && hasValue)
-    {
-      spec.repeats = std::max(
-          1, static_cast<int>(toFloat(value).value_or(DEFAULT_REPEATS)));
-    }
-    else if (argument == "--seed" && hasValue)
-    {
-      spec.firstSeed =
-          static_cast<std::uint32_t>(toFloat(value).value_or(1.0F));
-    }
-    else if (argument == "--threads" && hasValue)
-    {
-      spec.threads = static_cast<unsigned>(toFloat(value).value_or(0.0F));
-    }
-    else if (argument == "--skill" && hasValue)
-    {
-      spec.skillOverride = value;
-    }
-    else if (argument == "--csv" && hasValue)
-    {
-      csvPath = value;
-    }
-    else
-    {
-      std::cerr << "Bench: unknown or incomplete option \"" << argument
-                << "\".\nUsage: --bench [--tests P0*,S1*] [--tag KEY=VALUE]... "
-                   "[--skills 1,10,...|A:B:N] [--repeats N] [--seed N] "
-                   "[--threads N] [--skill SETTING] [--catalogue PATH] "
-                   "[--csv PATH]\n";
-      return 2;
-    }
-  }
+};
 
-  const BenchCatalogue catalogue = loadBenchCatalogue(cataloguePath);
-  for (const std::string& problem : catalogue.problems)
+/** `text` split at `separator`; empty parts kept or dropped. */
+std::vector<std::string> splitText(const std::string& text, char separator,
+                                   bool keepEmpty)
+{
+  std::vector<std::string> parts;
+  std::stringstream stream(text);
+  for (std::string part; std::getline(stream, part, separator);)
   {
-    std::cerr << "Catalogue: " << problem << '\n';
+    if (keepEmpty || !part.empty())
+    {
+      parts.push_back(part);
+    }
   }
-  if (!skillsGiven)
+  return parts;
+}
+
+/** --skills: a list ("1,10,...") or a spread ("A:B:N"). */
+std::vector<float> benchSkills(const std::string& value)
+{
+  std::vector<float> skills;
+  const std::vector<std::string> parts = splitText(value, ',', false);
+  if (parts.size() == 1 && value.find(':') != std::string::npos)
   {
-    spec.skills = catalogue.skills;
+    std::vector<float> range;
+    for (const std::string& part : splitText(value, ':', true))
+    {
+      if (const auto number = toFloat(part))
+      {
+        range.push_back(*number);
+      }
+    }
+    if (range.size() == 3)
+    {
+      skills =
+          spreadValues(range[0], range[1], static_cast<int>(range[2]), true);
+    }
+    return skills;
   }
+  for (const std::string& part : parts)
+  {
+    if (const auto number = toFloat(part))
+    {
+      skills.push_back(*number);
+    }
+  }
+  return skills;
+}
+
+/** The options that only set the spec. */
+bool readBenchSpecOption(const std::string& argument, BenchSpec& spec,
+                         const std::string& value)
+{
+  if (argument == "--repeats")
+  {
+    spec.repeats =
+        std::max(1, static_cast<int>(toFloat(value).value_or(DEFAULT_REPEATS)));
+  }
+  else if (argument == "--seed")
+  {
+    spec.firstSeed = static_cast<std::uint32_t>(toFloat(value).value_or(1.0F));
+  }
+  else if (argument == "--threads")
+  {
+    spec.threads = static_cast<unsigned>(toFloat(value).value_or(0.0F));
+  }
+  else if (argument == "--skill")
+  {
+    spec.skillOverride = value;
+  }
+  else
+  {
+    return false;
+  }
+  return true;
+}
+
+/** One option and its value; false if unknown or incomplete. */
+bool readBenchOption(const std::string& argument, const std::string* value,
+                     BenchCommand& command)
+{
+  if (value == nullptr)
+  {
+    return false;
+  }
+  if (argument == "--catalogue")
+  {
+    command.cataloguePath = *value;
+  }
+  else if (argument == "--tests")
+  {
+    command.patterns = splitText(*value, ',', false);
+  }
+  else if (argument == "--tag")
+  {
+    const std::size_t equals = value->find('=');
+    if (equals == std::string::npos)
+    {
+      return false;
+    }
+    command.tagFilters.emplace_back(value->substr(0, equals),
+                                    value->substr(equals + 1));
+  }
+  else if (argument == "--skills")
+  {
+    command.skillsGiven = true;
+    command.spec.skills = benchSkills(*value);
+  }
+  else if (argument == "--csv")
+  {
+    command.csvPath = *value;
+  }
+  else
+  {
+    return readBenchSpecOption(argument, command.spec, *value);
+  }
+  return true;
+}
+
+/** The catalogue's tests the patterns name and the tag filters keep. */
+std::vector<std::size_t> chosenBenchTests(const BenchCatalogue& catalogue,
+                                          const BenchCommand& command)
+{
+  std::vector<std::size_t> chosen;
   for (std::size_t index = 0; index < catalogue.tests.size(); ++index)
   {
     const BenchTest& test = catalogue.tests[index];
     const bool named =
-        patterns.empty() ||
-        std::ranges::any_of(patterns, [&](const std::string& pattern)
+        command.patterns.empty() ||
+        std::ranges::any_of(command.patterns, [&](const std::string& pattern)
                             { return wildcard(pattern, test.id); });
     const bool tagged = std::ranges::all_of(
-        tagFilters, [&](const auto& filter)
+        command.tagFilters, [&](const auto& filter)
         { return sameName(test.tag(filter.first), filter.second); });
     if (named && tagged)
     {
-      spec.tests.push_back(index);
+      chosen.push_back(index);
     }
   }
-  if (spec.tests.empty())
-  {
-    std::cerr << "Bench: no tests chosen (" << catalogue.tests.size() << " in "
-              << cataloguePath.string() << ").\n";
-    return 2;
-  }
+  return chosen;
+}
 
-  std::cout << std::format("Bench: {} tests x {} skills x {} repeats\n",
-                           spec.tests.size(), spec.skills.size(), spec.repeats);
-  BenchRunner runner(catalogue, config, spec);
-  for (const std::string& note : runner.warnings())
-  {
-    std::cerr << note << '\n';
-  }
-  BenchResults results;
-  while (!runner.done())
-  {
-    std::this_thread::sleep_for(PROGRESS_POLL);
-    runner.collect(results);
-  }
-  runner.collect(results);
-  std::cout << std::format("Done in {:.2f} s ({} runs).\n\n", runner.seconds(),
-                           runner.runsDone());
-
-  // Success rate by test and skill.
+/** Success rate by test and skill. */
+void printBenchRates(const BenchResults& results)
+{
   std::cout << std::format("{:<5} {:<{}}", "Test", "Success %",
                            TEST_NAME_COLUMN);
   for (const float skill : results.skills)
@@ -1212,8 +1341,67 @@ int runBenchCommand(const StatsConfig& config,
     }
     std::cout << "   " << test.success.describe(test.range) << '\n';
   }
+}
+}  // namespace
 
-  const std::filesystem::path path = csvPath ? *csvPath : benchResultsPath();
+int runBenchCommand(const StatsConfig& config,
+                    const std::vector<std::string>& arguments)
+{
+  BenchCommand command;
+  // Every option takes a value: options and values come in pairs.
+  for (std::size_t index = 0; index < arguments.size(); index += 2)
+  {
+    const std::string* value =
+        index + 1 < arguments.size() ? &arguments[index + 1] : nullptr;
+    if (!readBenchOption(arguments[index], value, command))
+    {
+      std::cerr << "Bench: unknown or incomplete option \"" << arguments[index]
+                << "\".\nUsage: --bench [--tests P0*,S1*] [--tag KEY=VALUE]... "
+                   "[--skills 1,10,...|A:B:N] [--repeats N] [--seed N] "
+                   "[--threads N] [--skill SETTING] [--catalogue PATH] "
+                   "[--csv PATH]\n";
+      return 2;
+    }
+  }
+
+  const BenchCatalogue catalogue = loadBenchCatalogue(command.cataloguePath);
+  for (const std::string& problem : catalogue.problems)
+  {
+    std::cerr << "Catalogue: " << problem << '\n';
+  }
+  BenchSpec& spec = command.spec;
+  if (!command.skillsGiven)
+  {
+    spec.skills = catalogue.skills;
+  }
+  spec.tests = chosenBenchTests(catalogue, command);
+  if (spec.tests.empty())
+  {
+    std::cerr << "Bench: no tests chosen (" << catalogue.tests.size() << " in "
+              << command.cataloguePath.string() << ").\n";
+    return 2;
+  }
+
+  std::cout << std::format("Bench: {} tests x {} skills x {} repeats\n",
+                           spec.tests.size(), spec.skills.size(), spec.repeats);
+  BenchRunner runner(catalogue, config, spec);
+  for (const std::string& note : runner.warnings())
+  {
+    std::cerr << note << '\n';
+  }
+  BenchResults results;
+  while (!runner.done())
+  {
+    std::this_thread::sleep_for(PROGRESS_POLL);
+    runner.collect(results);
+  }
+  runner.collect(results);
+  std::cout << std::format("Done in {:.2f} s ({} runs).\n\n", runner.seconds(),
+                           runner.runsDone());
+  printBenchRates(results);
+
+  const std::filesystem::path path =
+      command.csvPath ? *command.csvPath : benchResultsPath();
   if (results.save(path))
   {
     std::cout << "\nSaved " << path.string() << '\n';

@@ -97,6 +97,24 @@ class DebugInspector
     std::array<std::uint64_t, 14> intentTicks{};
   };
 
+  PlayerID followedOrSelected(const MatchEngine& engine);
+  void renderTeamHeader(const MatchEngine& engine);
+  void renderPlannerJobs(const SandboxRecorder& recorder, std::size_t team);
+  void renderTeamPlayerRow(const SandboxRecorder& recorder,
+                           const MatchPlayer& slot,
+                           const PossessionSnapshot& possession);
+  void drawPlayerOverlay(ImDrawList* drawList, const IMatchRenderer& renderer,
+                         const MatchPlayer& slot, ImVec2 at) const;
+  void drawPassOptions(const SandboxRecorder& recorder,
+                       const MatchEngine& engine,
+                       const IMatchRenderer& renderer,
+                       ImDrawList* drawList) const;
+  void renderPlayerPicker(const SandboxRecorder& recorder,
+                          const MatchEngine& engine);
+  void renderPlayerNow(const MatchEngine& engine, const MatchPlayer& slot,
+                       PlayerID inspected) const;
+  void renderRecentEvents(const SandboxRecorder& recorder,
+                          PlayerID inspected) const;
   /** Brings `asOf` to the tick; hold the recorder's lock. */
   void refresh(const SandboxRecorder& recorder, std::uint64_t tick);
   [[nodiscard]] SandboxRecorder::Job jobOf(PlayerID player,

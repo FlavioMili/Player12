@@ -16,6 +16,7 @@
 #include <initializer_list>
 #include <numbers>
 
+#include "gui/widgets/text.h"
 #include "model/match_body_shape_binturong.h"
 #include "model/match_contact_binturong.h"
 #include "model/match_rules.h"
@@ -81,6 +82,12 @@ constexpr float SECTION_EDGE_ALPHA = 0.25F;
 /** Shapes of the techniques not picked. */
 constexpr float UNPICKED_ALPHA = 0.25F;
 constexpr float BODY_BASE_ALPHA = 0.95F;
+constexpr float BODY_EDGE_ALPHA = 0.9F;
+/** His sides: in a kit, or plain; full detail, or outline only. */
+constexpr float KIT_SIDE_ALPHA = 0.3F;
+constexpr float KIT_SIDE_OUTLINE_ALPHA = 0.45F;
+constexpr float PLAIN_SIDE_ALPHA = 0.18F;
+constexpr float PLAIN_SIDE_OUTLINE_ALPHA = 0.3F;
 constexpr float KIT_RING_ALPHA = 0.9F;
 constexpr float PLAIN_RING_ALPHA = 0.45F;
 constexpr float OUTLINE_FACING_ALPHA = 0.7F;
@@ -219,6 +226,8 @@ ImU32 colour(Rgb rgb, float alpha)
 }
 
 /** 0-1 on the contact view's dark-to-hot scale. */
+// Argument order: value then alpha, as the colour helpers take them.
+// NOLINTNEXTLINE(bugprone-easily-swappable-parameters)
 ImU32 heat(float value, float alpha)
 {
   constexpr std::array<ImVec4, 5> STOPS{{{0.14F, 0.17F, 0.26F, 1.0F},
@@ -229,14 +238,16 @@ ImU32 heat(float value, float alpha)
   const float scaled = std::clamp(value, 0.0F, 1.0F) * 4.0F;
   const int index = std::min(static_cast<int>(scaled), 3);
   const float t = scaled - static_cast<float>(index);
-  const ImVec4& a = STOPS[static_cast<std::size_t>(index)];
-  const ImVec4& b = STOPS[static_cast<std::size_t>(index) + 1];
+  const ImVec4& a = STOPS.at(static_cast<std::size_t>(index));
+  const ImVec4& b = STOPS.at(static_cast<std::size_t>(index) + 1);
   return ImGui::GetColorU32(ImVec4(a.x + ((b.x - a.x) * t),
                                    a.y + ((b.y - a.y) * t),
                                    a.z + ((b.z - a.z) * t), alpha));
 }
 
 /** A share of power, 1 green down to 0 red. */
+// Argument order: share then alpha, as the colour helpers take them.
+// NOLINTNEXTLINE(bugprone-easily-swappable-parameters)
 ImU32 powerColour(float share, float alpha)
 {
   const float s = std::clamp(share, 0.0F, 1.0F);
@@ -255,8 +266,8 @@ void stretchRings(const Painter& paint, const StretchMap& map, float reach,
   const auto& distances = map.distances;
   for (std::size_t ringIndex = 0; ringIndex + 1 < distances.size(); ++ringIndex)
   {
-    const float inner = distances[ringIndex] * reach;
-    const float outer = distances[ringIndex + 1] * reach;
+    const float inner = distances.at(ringIndex) * reach;
+    const float outer = distances.at(ringIndex + 1) * reach;
     const float middle = 0.5F * (inner + outer);
     for (int section = 0; section < SECTIONS; ++section)
     {
@@ -288,6 +299,8 @@ Vec3 Painter::polar(float degrees, float radius, float z) const
   return polarFrom(centre, degrees, radius, z);
 }
 
+// Argument order: degrees then radius, as polar coordinates go.
+// NOLINTNEXTLINE(bugprone-easily-swappable-parameters)
 Vec3 Painter::polarFrom(Vec3 from, float degrees, float radius, float z) const
 {
   const float angle = facing + radians(degrees);
@@ -341,6 +354,8 @@ void Painter::fill(const std::vector<Vec3>& points, ImU32 tint) const
                             tint);
 }
 
+// Argument order: angles from and to, then tint, as ImDrawList paths go.
+// NOLINTNEXTLINE(bugprone-easily-swappable-parameters)
 void Painter::arc(float radius, float z, float from, float to, ImU32 tint,
                   float thickness) const
 {
@@ -371,6 +386,8 @@ void Painter::dashedRing(float radius, float z, ImU32 tint,
   }
 }
 
+// Argument order: radii, height, angles, then tint, as ImDrawList paths go.
+// NOLINTNEXTLINE(bugprone-easily-swappable-parameters)
 void Painter::sector(float inner, float outer, float z, float from, float to,
                      ImU32 tint) const
 {
@@ -449,46 +466,147 @@ Tuning Tuning::from(const FirstTouchKnobs& touch, const StrikeKnobs& strikes,
 // ---- The body
 // ----------------------------------------------------------------
 
-void drawBody(const Painter& base, const Body& body, const Tuning& tuning,
-              const Layers& layers, Technique technique, Detail detail,
-              std::vector<Label>* labels, std::vector<Entry>* entries)
+namespace
 {
-  using A = MatchTuning::Aerial;
-  using B = MatchTuning::Ball;
-  using C = MatchTuning::Collision;
-  Painter paint = base;
-  paint.centre = body.at;
-  paint.facing = body.facing;
-  const bool full = detail == Detail::FULL;
-  const float height = body.height;
-  const float feetHeight = body.feetHeight;
-  const float radius = 0.5F * MatchTuning::Body::DIAMETER_METRES;
-  const BodyLines lines = bodyLinesOfHeight(height);
-  // In the air his feet, thigh and chest play nothing (the touch sweep
-  // skips airborne players); down, nothing of his plays it.
-  const bool groundPartsOn = !body.airborne && !body.lying;
-  const bool thighOn = groundPartsOn && !body.thighOff;
-  const float z0 = body.at.z;
+/** A ring of the lying outline: its height, and its radius from his line. */
+struct LyingRing
+{
+  float z = 0.0F;
+  float radius = 0.0F;
+};
 
-  const auto label = [&](Vec3 at, std::string text, ImU32 tint)
+/** One thigh or chest part: its band, reach, and where it sends the ball. */
+struct BodyPart
+{
+  const char* name;
+  float bottom;
+  float top;
+  float reach;
+  bool on;
+  Technique owner;
+  ImU32 tint;
+  float sideDegrees;
+  float upFrom;
+  float upTo;
+};
+
+/** Draws one body's shapes, layer by layer, with their labels and entries. */
+class BodyDrawer
+{
+ public:
+  BodyDrawer(Painter base, const Body& drawn, const Tuning& knobs,
+             const Layers& shown, Technique picked, Detail detail,
+             std::vector<Label>* labelsOut, std::vector<Entry>* entriesOut)
+      : paint(std::move(base)),
+        body(drawn),
+        tuning(&knobs),
+        layers(shown),
+        technique(picked),
+        full(detail == Detail::FULL),
+        labels(labelsOut),
+        entries(entriesOut),
+        height(drawn.height),
+        feetHeight(drawn.feetHeight),
+        lines(bodyLinesOfHeight(drawn.height)),
+        // In the air his feet, thigh and chest play nothing (the touch sweep
+        // skips airborne players); down, nothing of his plays it.
+        groundPartsOn(!drawn.airborne && !drawn.lying),
+        thighOn(groundPartsOn && !drawn.thighOff),
+        z0(drawn.at.z),
+        feetReach(knobs.feetReach),
+        comfortGap(knobs.comfortGap),
+        deadAngle(knobs.deadAngle)
   {
-    if (labels && layers.labels)
+    paint.centre = drawn.at;
+    paint.facing = drawn.facing;
+  }
+
+  void draw()
+  {
+    if (layers.body || !full)
+    {
+      drawCylinder();
+    }
+    if (!body.binturong)
+    {
+      add("Aardvark body", "cylinder only",
+          "the true view draws the Binturong body's shapes; this side plays "
+          "another body");
+      return;
+    }
+    if (body.goalkeeper)
+    {
+      add("Goalkeeper", "cylinder only",
+          "keepers keep the old trap and their hands; their shapes are a "
+          "follow-up");
+      return;
+    }
+    if (!full)
+    {
+      drawOutline();
+      return;
+    }
+    if (layers.personalSpace && !body.lying)
+    {
+      drawPersonalSpace();
+    }
+    if (layers.technique && groundPartsOn)
+    {
+      drawTechniqueRanges();
+    }
+    if (layers.feet && !body.lying)
+    {
+      drawFeet();
+    }
+    if (layers.technique && groundPartsOn &&
+        (technique == Technique::FOOT_STRIKE || technique == Technique::HEADER))
+    {
+      drawPowerByAngle();
+    }
+    if (layers.lines && !body.lying)
+    {
+      drawLines();
+    }
+    if (layers.thighChest && !body.lying)
+    {
+      drawThighAndChest();
+    }
+    if (layers.head && !body.lying)
+    {
+      drawHead();
+      drawJump();
+    }
+    if (layers.facing && !body.lying)
+    {
+      drawFacing();
+    }
+  }
+
+ private:
+  static constexpr float RADIUS = 0.5F * MatchTuning::Body::DIAMETER_METRES;
+
+  void label(Vec3 at, std::string text, ImU32 tint) const
+  {
+    if ((labels != nullptr) && layers.labels)
     {
       labels->push_back({.at = at, .text = std::move(text), .tint = tint});
     }
-  };
-  const auto add = [&](std::string what, std::string value, std::string source,
-                       std::string wip = {})
+  }
+
+  void add(std::string what, std::string value, std::string source,
+           std::string wip = {}) const
   {
-    if (entries)
+    if (entries != nullptr)
     {
       entries->push_back({.what = std::move(what),
                           .value = std::move(value),
                           .source = std::move(source),
                           .wip = std::move(wip)});
     }
-  };
-  const auto picked = [&](std::initializer_list<Technique> owners)
+  }
+
+  /** Full strength for the picked technique's parts, faded otherwise. */
+  [[nodiscard]] float picked(std::initializer_list<Technique> owners) const
   {
     if (technique == Technique::ALL)
     {
@@ -502,162 +620,178 @@ void drawBody(const Painter& base, const Body& body, const Tuning& tuning,
       }
     }
     return UNPICKED_ALPHA;
-  };
-  const ImU32 offTint = colour(OFF_GREY, 0.35F);
-  const float feetReach = tuning.feetReach;
-  const float comfortGap = tuning.comfortGap;
-  const float deadAngle = tuning.deadAngle;
+  }
 
-  // ---- The body cylinder (every body) ---------------------------------------
-  if (layers.body || !full)
+  // ---- The body cylinder (every body) -------------------------------------
+
+  [[nodiscard]] static ImU32 edgeTint()
   {
-    const ImU32 edge = colour(BODY_EDGE_BLUE, 0.9F);
-    // In a match his shirt colour tells the sides apart.
-    const ImU32 side = body.kit != 0
-                           ? withAlpha(body.kit, full ? 0.3F : 0.45F)
-                           : colour(BODY_SIDE_BLUE, full ? 0.18F : 0.3F);
-    if (!body.lying)
+    return colour(BODY_EDGE_BLUE, BODY_EDGE_ALPHA);
+  }
+
+  /** His sides: in a match his shirt colour tells the sides apart. */
+  [[nodiscard]] ImU32 sideTint() const
+  {
+    return body.kit != 0
+               ? withAlpha(body.kit,
+                           full ? KIT_SIDE_ALPHA : KIT_SIDE_OUTLINE_ALPHA)
+               : colour(BODY_SIDE_BLUE,
+                        full ? PLAIN_SIDE_ALPHA : PLAIN_SIDE_OUTLINE_ALPHA);
+  }
+
+  void drawCylinder() const
+  {
+    if (body.lying)
     {
-      if (body.kit != 0)
-      {
-        paint.sector(0.0F, radius, z0 + BASE_LIFT, -HALF_TURN, HALF_TURN,
-                     withAlpha(body.kit, BODY_BASE_ALPHA));
-      }
-      paint.cylinderSides(radius, z0 + feetHeight, z0 + feetHeight + height,
-                          side);
-      paint.cylinder(radius, z0 + feetHeight, z0 + feetHeight + height,
-                     -HALF_TURN, HALF_TURN, edge, LINE);
-      add("Body: an upright cylinder, across",
-          std::format("{:.2f} m", MatchTuning::Body::DIAMETER_METRES),
-          "Body::DIAMETER_METRES");
-      add("Body: tall (his height)", std::format("{:.2f} m", height),
-          "player height");
+      drawLying();
+      return;
+    }
+    const ImU32 edge = edgeTint();
+    const ImU32 side = sideTint();
+    if (body.kit != 0)
+    {
+      paint.sector(0.0F, RADIUS, z0 + BASE_LIFT, -HALF_TURN, HALF_TURN,
+                   withAlpha(body.kit, BODY_BASE_ALPHA));
+    }
+    paint.cylinderSides(RADIUS, z0 + feetHeight, z0 + feetHeight + height,
+                        side);
+    paint.cylinder(RADIUS, z0 + feetHeight, z0 + feetHeight + height,
+                   -HALF_TURN, HALF_TURN, edge, LINE);
+    add("Body: an upright cylinder, across",
+        std::format("{:.2f} m", MatchTuning::Body::DIAMETER_METRES),
+        "Body::DIAMETER_METRES");
+    add("Body: tall (his height)", std::format("{:.2f} m", height),
+        "player height");
+  }
+
+  /** Half his length less the rounded end, lying down. */
+  [[nodiscard]] float lyingHalf() const
+  {
+    return std::max(0.0F, (HALF * height) - RADIUS);
+  }
+
+  /** Down: his outline from above, a stadium of the ring's radius at its
+   * height. */
+  [[nodiscard]] std::vector<Vec3> lyingOutline(const Painter& flat,
+                                               LyingRing ring) const
+  {
+    const float half = lyingHalf();
+    const float z = ring.z;
+    const float r = ring.radius;
+    std::vector<Vec3> points;
+    const Vec3 head = flat.polar(0.0F, half, z0);
+    const Vec3 feet = flat.polar(HALF_TURN, half, z0);
+    for (int step = 0; step <= LYING_END_STEPS; ++step)
+    {
+      points.push_back(
+          flat.polarFrom(head,
+                         QUARTER_TURN - (HALF_TURN * static_cast<float>(step) /
+                                         static_cast<float>(LYING_END_STEPS)),
+                         r, z0 + z));
+    }
+    for (int step = 0; step <= LYING_END_STEPS; ++step)
+    {
+      points.push_back(
+          flat.polarFrom(feet,
+                         -QUARTER_TURN - (HALF_TURN * static_cast<float>(step) /
+                                          static_cast<float>(LYING_END_STEPS)),
+                         r, z0 + z));
+    }
+    return points;
+  }
+
+  /** Down (collision plan step 4): seen from above a stadium, his length
+   * with rounded ends, 0.4 m high. */
+  void drawLying() const
+  {
+    using C = MatchTuning::Collision;
+    const ImU32 edge = edgeTint();
+    const ImU32 side = sideTint();
+    Painter flat = paint;
+    flat.facing = body.lyingAngle;
+    const float half = lyingHalf();
+    const float bodyTop = MatchTuning::Body::DIAMETER_METRES;
+    const std::vector<Vec3> bottom =
+        lyingOutline(flat, {.z = 0.0F, .radius = RADIUS});
+    const std::vector<Vec3> top =
+        lyingOutline(flat, {.z = bodyTop, .radius = RADIUS});
+    paint.fill(top, side);
+    paint.polyline(bottom, edge, LINE, true);
+    paint.polyline(top, edge, LINE, true);
+    for (std::size_t index = 0; index < bottom.size(); index += LYING_RIB_EVERY)
+    {
+      paint.line(bottom[index], top[index], edge, 1.0F);
+    }
+    if (!full)
+    {
+      return;
+    }
+    // A ball whose centre comes this close below this height hits him.
+    const float ballReach = RADIUS + MatchTuning::Units::BALL_RADIUS_METRES;
+    const ImU32 hit = colour(BALL_HIT_YELLOW, 0.8F);
+    paint.polyline(lyingOutline(flat, {.z = C::FALLEN_BALL_BELOW_METRES,
+                                       .radius = ballReach}),
+                   hit, 1.0F, true);
+    paint.polyline(lyingOutline(flat, {.z = 0.0F, .radius = ballReach}), hit,
+                   1.0F, true);
+    label(flat.polar(0.0F, half + ballReach, z0 + C::FALLEN_BALL_BELOW_METRES),
+          std::format(
+              "ball's centre within {:.2f} m, below {:.2f} m: off his body",
+              ballReach, C::FALLEN_BALL_BELOW_METRES),
+          hit);
+    label(flat.polar(HALF_TURN, half + RADIUS, z0 + bodyTop),
+          std::format("lying {:.2f} m long, {:.2f} m high", height, bodyTop),
+          colour(BODY_EDGE_BLUE, 1.0F));
+    add("Down: his body seen from above",
+        std::format("{:.2f} x {:.2f} m, ends rounded", height,
+                    MatchTuning::Body::DIAMETER_METRES),
+        "lyingBody (match_collisions.cpp): height long, BODY_DIAMETER "
+        "across");
+    add("Down: the ball comes off him",
+        std::format("centre within {:.2f} m, below {:.2f} m", ballReach,
+                    C::FALLEN_BALL_BELOW_METRES),
+        "Collision::FALLEN_BALL_BELOW_METRES, body radius + ball radius");
+    add("Down: off his body",
+        std::format("{:.0f}% back, {:.0f}% along kept",
+                    C::FALLEN_BOUNCE_BACK_SHARE * 100.0F,
+                    C::FALLEN_ALONG_KEPT_SHARE * 100.0F),
+        "Collision::FALLEN_BOUNCE_BACK_SHARE, FALLEN_ALONG_KEPT_SHARE");
+    add("Down: plays the ball", "never",
+        "fallen players are out of the touch sweep");
+    add("Personal space", "none", "a fallen player is hurdled, not run into");
+  }
+
+  // ---- Outline: his feet reach and facing only ----------------------------
+
+  void drawOutline() const
+  {
+    if (!groundPartsOn)
+    {
+      return;
+    }
+    if (body.kit != 0)
+    {
+      paint.ring(feetReach, z0 + FEET_LIFT, withAlpha(body.kit, KIT_RING_ALPHA),
+                 LINE_HEAVY);
     }
     else
     {
-      // Down (collision plan step 4): seen from above a stadium, his length
-      // with rounded ends, 0.4 m high.
-      Painter flat = paint;
-      flat.facing = body.lyingAngle;
-      const float half = std::max(0.0F, (0.5F * height) - radius);
-      const auto outline = [&](float z, float r)
-      {
-        std::vector<Vec3> points;
-        const Vec3 head = flat.polar(0.0F, half, z0);
-        const Vec3 feet = flat.polar(HALF_TURN, half, z0);
-        for (int step = 0; step <= LYING_END_STEPS; ++step)
-        {
-          points.push_back(flat.polarFrom(
-              head,
-              QUARTER_TURN - (HALF_TURN * static_cast<float>(step) /
-                              static_cast<float>(LYING_END_STEPS)),
-              r, z0 + z));
-        }
-        for (int step = 0; step <= LYING_END_STEPS; ++step)
-        {
-          points.push_back(flat.polarFrom(
-              feet,
-              -QUARTER_TURN - (HALF_TURN * static_cast<float>(step) /
-                               static_cast<float>(LYING_END_STEPS)),
-              r, z0 + z));
-        }
-        return points;
-      };
-      const float bodyTop = MatchTuning::Body::DIAMETER_METRES;
-      const std::vector<Vec3> bottom = outline(0.0F, radius);
-      const std::vector<Vec3> top = outline(bodyTop, radius);
-      paint.fill(top, side);
-      paint.polyline(bottom, edge, LINE, true);
-      paint.polyline(top, edge, LINE, true);
-      for (std::size_t index = 0; index < bottom.size();
-           index += LYING_RIB_EVERY)
-      {
-        paint.line(bottom[index], top[index], edge, 1.0F);
-      }
-      if (full)
-      {
-        // A ball whose centre comes this close below this height hits him.
-        const float ballReach = radius + MatchTuning::Units::BALL_RADIUS_METRES;
-        const ImU32 hit = colour(BALL_HIT_YELLOW, 0.8F);
-        paint.polyline(outline(C::FALLEN_BALL_BELOW_METRES, ballReach), hit,
-                       1.0F, true);
-        paint.polyline(outline(0.0F, ballReach), hit, 1.0F, true);
-        label(flat.polar(0.0F, half + ballReach,
-                         z0 + C::FALLEN_BALL_BELOW_METRES),
-              std::format(
-                  "ball's centre within {:.2f} m, below {:.2f} m: off his body",
-                  ballReach, C::FALLEN_BALL_BELOW_METRES),
-              hit);
-        label(
-            flat.polar(HALF_TURN, half + radius, z0 + bodyTop),
-            std::format("lying {:.2f} m long, {:.2f} m high", height, bodyTop),
-            colour(BODY_EDGE_BLUE, 1.0F));
-        add("Down: his body seen from above",
-            std::format("{:.2f} x {:.2f} m, ends rounded", height,
-                        MatchTuning::Body::DIAMETER_METRES),
-            "lyingBody (match_collisions.cpp): height long, BODY_DIAMETER "
-            "across");
-        add("Down: the ball comes off him",
-            std::format("centre within {:.2f} m, below {:.2f} m", ballReach,
-                        C::FALLEN_BALL_BELOW_METRES),
-            "Collision::FALLEN_BALL_BELOW_METRES, body radius + ball radius");
-        add("Down: off his body",
-            std::format("{:.0f}% back, {:.0f}% along kept",
-                        C::FALLEN_BOUNCE_BACK_SHARE * 100.0F,
-                        C::FALLEN_ALONG_KEPT_SHARE * 100.0F),
-            "Collision::FALLEN_BOUNCE_BACK_SHARE, FALLEN_ALONG_KEPT_SHARE");
-        add("Down: plays the ball", "never",
-            "fallen players are out of the touch sweep");
-        add("Personal space", "none",
-            "a fallen player is hurdled, not run into");
-      }
+      paint.ring(feetReach, z0 + FEET_LIFT, colour(PALE, PLAIN_RING_ALPHA),
+                 LINE_FINE);
     }
-  }
-  if (!body.binturong)
-  {
-    add("Aardvark body", "cylinder only",
-        "the true view draws the Binturong body's shapes; this side plays "
-        "another body");
-    return;
-  }
-  if (body.goalkeeper)
-  {
-    add("Goalkeeper", "cylinder only",
-        "keepers keep the old trap and their hands; their shapes are a "
-        "follow-up");
-    return;
+    paint.line(paint.polar(0.0F, RADIUS, z0 + ARROW_LIFT),
+               paint.polar(0.0F, feetReach, z0 + ARROW_LIFT),
+               colour(WHITE, OUTLINE_FACING_ALPHA), LINE);
   }
 
-  // ---- Outline: his feet reach and facing only
-  // ----------------------------------
-  if (!full)
-  {
-    if (groundPartsOn)
-    {
-      if (body.kit != 0)
-      {
-        paint.ring(feetReach, z0 + FEET_LIFT,
-                   withAlpha(body.kit, KIT_RING_ALPHA), LINE_HEAVY);
-      }
-      else
-      {
-        paint.ring(feetReach, z0 + FEET_LIFT, colour(PALE, PLAIN_RING_ALPHA),
-                   LINE_FINE);
-      }
-      paint.line(paint.polar(0.0F, radius, z0 + ARROW_LIFT),
-                 paint.polar(0.0F, feetReach, z0 + ARROW_LIFT),
-                 colour(WHITE, OUTLINE_FACING_ALPHA), LINE);
-    }
-    return;
-  }
+  // ---- Personal space -----------------------------------------------------
 
-  // ---- Personal space
-  // ----------------------------------------------------------
-  if (layers.personalSpace && !body.lying)
+  void drawPersonalSpace() const
   {
+    using C = MatchTuning::Collision;
     const float teamMate = C::OVERTAKE_TEAM_MATE_CLEARANCE_METRES;
     const float opponent = C::OVERTAKE_OPPONENT_CLEARANCE_METRES;
-    const float pressure = tuning.pressureRadius;
+    const float pressure = tuning->pressureRadius;
     paint.dashedRing(teamMate, z0 + SPACE_LIFT,
                      colour(TEAM_MATE_GREEN, SPACE_ALPHA));
     paint.dashedRing(opponent, z0 + SPACE_LIFT,
@@ -683,130 +817,117 @@ void drawBody(const Painter& base, const Body& body, const Tuning& tuning,
         std::format("{:.2f} m", pressure), "touch knob Pressure radius");
   }
 
-  // ---- Technique ranges on the floor
-  // -------------------------------------------
-  if (layers.technique && groundPartsOn)
+  // ---- Technique ranges on the floor --------------------------------------
+
+  void drawTechniqueRanges() const
   {
     if (technique == Technique::DRIBBLE || technique == Technique::ALL)
     {
-      const float alpha = technique == Technique::DRIBBLE ? 1.0F : 0.45F;
-      const float meet = dribbleMeetGapOf(comfortGap, body.dribbling);
-      const float collect = MatchTuning::Dribble::KICK_REACH_METRES;
-      paint.ring(meet, z0 + BASE_LIFT, colour(DRIBBLE_CYAN, alpha), LINE_BOLD);
-      paint.dashedRing(collect, z0 + BASE_LIFT, colour(DRIBBLE_CYAN, alpha),
-                       LINE);
-      label(paint.polar(MEET_BEARING, meet, z0),
-            std::format("dribble meet {:.2f} m", meet),
-            colour(DRIBBLE_CYAN, alpha));
-      label(paint.polar(COLLECT_BEARING, collect, z0),
-            std::format("collects within {:.2f} m", collect),
-            colour(DRIBBLE_CYAN, alpha));
-      add("Dribble touch: where he meets it", std::format("{:.2f} m", meet),
-          "dribbleMeetGapOf: comfort gap (Dribbling 99) to kick reach (1)");
-      add("Dribble: collects it within", std::format("{:.2f} m", collect),
-          "Dribble::KICK_REACH_METRES");
+      drawDribbleRange();
     }
     if (technique == Technique::TACKLE || technique == Technique::ALL)
     {
-      const float alpha = technique == Technique::TACKLE ? 1.0F : 0.4F;
-      const float standing = standingTackleReachOf(body.defending);
-      const float slide = MatchTuning::Defending::SLIDE_TACKLE_DISTANCE_METRES;
-      for (int section = 0; section < SECTIONS; ++section)
-      {
-        const float from =
-            -HALF_TURN + (SECTION_DEGREES * static_cast<float>(section));
-        paint.sector(
-            standing, slide, z0 + TACKLE_FILL_LIFT, from,
-            from + SECTION_DEGREES,
-            colour(TACKLE_VIOLET,
-                   (TACKLE_FILL_ALPHA * alpha) +
-                       (section % 2 == 0 ? TACKLE_STRIPE_ALPHA : 0.0F)));
-      }
-      paint.ring(standing, z0 + TACKLE_RING_LIFT, colour(TACKLE_VIOLET, alpha),
-                 LINE);
-      paint.ring(slide, z0 + TACKLE_RING_LIFT, colour(TACKLE_VIOLET, alpha),
-                 LINE);
-      label(paint.polar(SLIDE_BEARING, slide, z0),
-            std::format("slide tackle roll {:.1f} m [WIP]", slide),
-            colour(TACKLE_VIOLET, alpha));
-      label(paint.polar(STANDING_BEARING, standing, z0),
-            std::format("standing range {:.2f} m [WIP]", standing),
-            colour(TACKLE_VIOLET, alpha));
-      add("Slide tackle (a roll from here out)", std::format("{:.2f} m", slide),
-          "Defending::SLIDE_TACKLE_DISTANCE_METRES",
-          "old dice roll; slides are only a flag (no movement), untouched by "
-          "the tackling plan");
-      add("Standing tackle range (old roll)", std::format("{:.2f} m", standing),
-          "standingTackleReachOf: 1.3 m + 0.3 m x Defending",
-          "no standing roll inside it with the ball at his feet: a contest "
-          "touch on the feet "
-          "reach instead (tackling plan); here it is the slide's inner edge");
+      drawTackleRange();
     }
     if (technique == Technique::SHOT_BLOCK || technique == Technique::ALL)
     {
-      // Shot block plan §3c: his torso, solid from the hip to the top of
-      // his head; below it, his legs only where a stride rolled for a shot
-      // has them (drawn as ghosts while one is recent).
-      const float alpha = technique == Technique::SHOT_BLOCK ? 1.0F : 0.3F;
-      const float torso = radius + MatchTuning::Units::BALL_RADIUS_METRES;
-      paint.cylinder(torso, z0 + feetHeight + lines.chest,
-                     z0 + feetHeight + height, -HALF_TURN, HALF_TURN,
-                     colour(SHOT_BLOCK_PINK, alpha * SHOT_BLOCK_ALPHA), 1.0F);
-      label(
-          paint.polar(SHOT_BLOCK_BEARING, torso, z0 + feetHeight + lines.chest),
-          std::format("shot block: torso {:.2f} m, hip {:.2f} m to head [WIP]",
-                      torso, lines.chest),
-          colour(SHOT_BLOCK_PINK, alpha));
-      add("Shot block: torso", std::format("{:.2f} m, hip to head", torso),
-          "Body::RADIUS_METRES + ball radius; hip = chest line",
-          "shot block plan: where the ball goes off him is still the old "
-          "bounce");
-      add("Shot block: legs", "where his stride has them",
-          "legPoseOf (MatchTuning::Stride), rolled once per shot path",
-          "natural positions only; no deliberate leg until the brain step");
+      drawShotBlock();
     }
   }
 
-  // ---- Feet
-  // --------------------------------------------------------------------
-  if (layers.feet && !body.lying)
+  void drawDribbleRange() const
+  {
+    const float alpha = technique == Technique::DRIBBLE ? 1.0F : 0.45F;
+    const float meet = dribbleMeetGapOf(comfortGap, body.dribbling);
+    const float collect = MatchTuning::Dribble::KICK_REACH_METRES;
+    paint.ring(meet, z0 + BASE_LIFT, colour(DRIBBLE_CYAN, alpha), LINE_BOLD);
+    paint.dashedRing(collect, z0 + BASE_LIFT, colour(DRIBBLE_CYAN, alpha),
+                     LINE);
+    label(paint.polar(MEET_BEARING, meet, z0),
+          std::format("dribble meet {:.2f} m", meet),
+          colour(DRIBBLE_CYAN, alpha));
+    label(paint.polar(COLLECT_BEARING, collect, z0),
+          std::format("collects within {:.2f} m", collect),
+          colour(DRIBBLE_CYAN, alpha));
+    add("Dribble touch: where he meets it", std::format("{:.2f} m", meet),
+        "dribbleMeetGapOf: comfort gap (Dribbling 99) to kick reach (1)");
+    add("Dribble: collects it within", std::format("{:.2f} m", collect),
+        "Dribble::KICK_REACH_METRES");
+  }
+
+  void drawTackleRange() const
+  {
+    const float alpha = technique == Technique::TACKLE ? 1.0F : 0.4F;
+    const float standing = standingTackleReachOf(body.defending);
+    const float slide = MatchTuning::Defending::SLIDE_TACKLE_DISTANCE_METRES;
+    for (int section = 0; section < SECTIONS; ++section)
+    {
+      const float from =
+          -HALF_TURN + (SECTION_DEGREES * static_cast<float>(section));
+      paint.sector(standing, slide, z0 + TACKLE_FILL_LIFT, from,
+                   from + SECTION_DEGREES,
+                   colour(TACKLE_VIOLET,
+                          (TACKLE_FILL_ALPHA * alpha) +
+                              (section % 2 == 0 ? TACKLE_STRIPE_ALPHA : 0.0F)));
+    }
+    paint.ring(standing, z0 + TACKLE_RING_LIFT, colour(TACKLE_VIOLET, alpha),
+               LINE);
+    paint.ring(slide, z0 + TACKLE_RING_LIFT, colour(TACKLE_VIOLET, alpha),
+               LINE);
+    label(paint.polar(SLIDE_BEARING, slide, z0),
+          std::format("slide tackle roll {:.1f} m [WIP]", slide),
+          colour(TACKLE_VIOLET, alpha));
+    label(paint.polar(STANDING_BEARING, standing, z0),
+          std::format("standing range {:.2f} m [WIP]", standing),
+          colour(TACKLE_VIOLET, alpha));
+    add("Slide tackle (a roll from here out)", std::format("{:.2f} m", slide),
+        "Defending::SLIDE_TACKLE_DISTANCE_METRES",
+        "old dice roll; slides are only a flag (no movement), untouched by "
+        "the tackling plan");
+    add("Standing tackle range (old roll)", std::format("{:.2f} m", standing),
+        "standingTackleReachOf: 1.3 m + 0.3 m x Defending",
+        "no standing roll inside it with the ball at his feet: a contest "
+        "touch on the feet "
+        "reach instead (tackling plan); here it is the slide's inner edge");
+  }
+
+  /** Shot block plan §3c: his torso, solid from the hip to the top of his
+   * head; below it, his legs only where a stride rolled for a shot has them
+   * (drawn as ghosts while one is recent). */
+  void drawShotBlock() const
+  {
+    const float alpha = technique == Technique::SHOT_BLOCK ? 1.0F : 0.3F;
+    const float torso = RADIUS + MatchTuning::Units::BALL_RADIUS_METRES;
+    paint.cylinder(torso, z0 + feetHeight + lines.chest,
+                   z0 + feetHeight + height, -HALF_TURN, HALF_TURN,
+                   colour(SHOT_BLOCK_PINK, alpha * SHOT_BLOCK_ALPHA), 1.0F);
+    label(paint.polar(SHOT_BLOCK_BEARING, torso, z0 + feetHeight + lines.chest),
+          std::format("shot block: torso {:.2f} m, hip {:.2f} m to head [WIP]",
+                      torso, lines.chest),
+          colour(SHOT_BLOCK_PINK, alpha));
+    add("Shot block: torso", std::format("{:.2f} m, hip to head", torso),
+        "Body::RADIUS_METRES + ball radius; hip = chest line",
+        "shot block plan: where the ball goes off him is still the old "
+        "bounce");
+    add("Shot block: legs", "where his stride has them",
+        "legPoseOf (MatchTuning::Stride), rolled once per shot path",
+        "natural positions only; no deliberate leg until the brain step");
+  }
+
+  // ---- Feet ---------------------------------------------------------------
+
+  void drawFeet() const
   {
     const float alpha = picked({Technique::FIRST_TOUCH, Technique::FOOT_STRIKE,
                                 Technique::DRIBBLE, Technique::TACKLE});
     const float z = z0 + FEET_LIFT;
     if (groundPartsOn)
     {
-      stretchRings(
-          paint, tuning.feetStretch, feetReach, z, alpha,
-          [&](float centre, float middle)
-          { return middle > comfortGap && std::abs(centre) > deadAngle; },
-          colour(DEAD_ZONE_GREY, DEAD_ZONE_ALPHA * alpha));
-      // The dead zone's edge, exactly.
-      const ImU32 deadEdge = colour(DEAD_EDGE_RED, alpha);
-      for (const float side : {-1.0F, 1.0F})
-      {
-        paint.line(paint.polar(side * deadAngle, comfortGap, z),
-                   paint.polar(side * deadAngle, feetReach, z), deadEdge,
-                   LINE_BOLD);
-        paint.arc(comfortGap, z, side * deadAngle, side * HALF_TURN, deadEdge,
-                  LINE_BOLD);
-      }
-      paint.ring(comfortGap, z + SPACE_LIFT, colour(COMFORT_GREEN, alpha),
-                 LINE_HEAVY);
-      paint.ring(feetReach, z + SPACE_LIFT, colour(PALE, alpha), LINE_HEAVY);
-      // The band his feet play: up to his feet line.
-      paint.cylinder(feetReach, z0, z0 + lines.feet, -HALF_TURN, HALF_TURN,
-                     colour(PALE, FEET_BAND_ALPHA * alpha), 1.0F);
-      label(paint.polar(FEET_REACH_BEARING, feetReach, z0),
-            std::format("feet reach {:.2f} m", feetReach), colour(PALE, alpha));
-      label(paint.polar(COMFORT_BEARING, comfortGap, z0),
-            std::format("comfort gap {:.2f} m (best technique)", comfortGap),
-            colour(COMFORT_GREEN, alpha));
-      label(paint.polar(HALF_TURN, HALF * (comfortGap + feetReach), z0),
-            std::format("dead zone: beyond {:.0f} deg", deadAngle), deadEdge);
+      drawFeetOnGround(alpha, z);
     }
     else
     {
+      const ImU32 offTint = colour(OFF_GREY, 0.35F);
       paint.ring(feetReach, z, offTint, LINE);
       label(paint.polar(FEET_REACH_BEARING, feetReach, z0),
             "feet: off in the air", offTint);
@@ -823,36 +944,72 @@ void drawBody(const Painter& base, const Body& body, const Tuning& tuning,
         "stretch map (contact view), at each section's middle");
     add("Feet band: up to his feet line", std::format("{:.2f} m", lines.feet),
         "Ball::FEET_LINE_HEIGHT_SHARE x height (his knee)");
-
-    // His feet: the weaker foot's side of his facing line.
     if (layers.facing && groundPartsOn)
     {
-      const float weakSide = body.rightFooted ? -1.0F : 1.0F;
-      paint.arc(feetReach + FOOT_SIDE_GAP, z, 0.0F, weakSide * HALF_TURN,
-                colour(WEAK_FOOT_BLUE, alpha), LINE_HEAVIEST);
-      paint.arc(feetReach + FOOT_SIDE_GAP, z, 0.0F, -weakSide * HALF_TURN,
-                colour(AMBER, alpha), LINE_HEAVIEST);
-      label(
-          paint.polar(weakSide * QUARTER_TURN, feetReach + FOOT_LABEL_GAP, z0),
-          "weaker foot side", colour(WEAK_FOOT_BLUE, 1.0F));
-      label(
-          paint.polar(-weakSide * QUARTER_TURN, feetReach + FOOT_LABEL_GAP, z0),
-          body.rightFooted ? "right foot side" : "left foot side",
-          colour(AMBER, 1.0F));
-      add("Weaker foot: a ball on this side of his facing line",
-          body.rightFooted ? "his left" : "his right",
-          "engine: the side of his facing line (+ his right, clockwise in the "
-          "engine's frame)");
+      drawFootSides(alpha, z);
     }
   }
 
-  // ---- Power by angle
-  // ----------------------------------------------------------
-  if (layers.technique && groundPartsOn &&
-      (technique == Technique::FOOT_STRIKE || technique == Technique::HEADER))
+  void drawFeetOnGround(float alpha, float z) const
   {
+    const float gap = comfortGap;
+    const float dead = deadAngle;
+    stretchRings(
+        paint, tuning->feetStretch, feetReach, z, alpha,
+        [gap, dead](float centre, float middle)
+        { return middle > gap && std::abs(centre) > dead; },
+        colour(DEAD_ZONE_GREY, DEAD_ZONE_ALPHA * alpha));
+    // The dead zone's edge, exactly.
+    const ImU32 deadEdge = colour(DEAD_EDGE_RED, alpha);
+    for (const float side : {-1.0F, 1.0F})
+    {
+      paint.line(paint.polar(side * deadAngle, comfortGap, z),
+                 paint.polar(side * deadAngle, feetReach, z), deadEdge,
+                 LINE_BOLD);
+      paint.arc(comfortGap, z, side * deadAngle, side * HALF_TURN, deadEdge,
+                LINE_BOLD);
+    }
+    paint.ring(comfortGap, z + SPACE_LIFT, colour(COMFORT_GREEN, alpha),
+               LINE_HEAVY);
+    paint.ring(feetReach, z + SPACE_LIFT, colour(PALE, alpha), LINE_HEAVY);
+    // The band his feet play: up to his feet line.
+    paint.cylinder(feetReach, z0, z0 + lines.feet, -HALF_TURN, HALF_TURN,
+                   colour(PALE, FEET_BAND_ALPHA * alpha), 1.0F);
+    label(paint.polar(FEET_REACH_BEARING, feetReach, z0),
+          std::format("feet reach {:.2f} m", feetReach), colour(PALE, alpha));
+    label(paint.polar(COMFORT_BEARING, comfortGap, z0),
+          std::format("comfort gap {:.2f} m (best technique)", comfortGap),
+          colour(COMFORT_GREEN, alpha));
+    label(paint.polar(HALF_TURN, HALF * (comfortGap + feetReach), z0),
+          std::format("dead zone: beyond {:.0f} deg", deadAngle), deadEdge);
+  }
+
+  /** His feet: the weaker foot's side of his facing line. */
+  void drawFootSides(float alpha, float z) const
+  {
+    const float weakSide = body.rightFooted ? -1.0F : 1.0F;
+    paint.arc(feetReach + FOOT_SIDE_GAP, z, 0.0F, weakSide * HALF_TURN,
+              colour(WEAK_FOOT_BLUE, alpha), LINE_HEAVIEST);
+    paint.arc(feetReach + FOOT_SIDE_GAP, z, 0.0F, -weakSide * HALF_TURN,
+              colour(AMBER, alpha), LINE_HEAVIEST);
+    label(paint.polar(weakSide * QUARTER_TURN, feetReach + FOOT_LABEL_GAP, z0),
+          "weaker foot side", colour(WEAK_FOOT_BLUE, 1.0F));
+    label(paint.polar(-weakSide * QUARTER_TURN, feetReach + FOOT_LABEL_GAP, z0),
+          body.rightFooted ? "right foot side" : "left foot side",
+          colour(AMBER, 1.0F));
+    add("Weaker foot: a ball on this side of his facing line",
+        body.rightFooted ? "his left" : "his right",
+        "engine: the side of his facing line (+ his right, clockwise in the "
+        "engine's frame)");
+  }
+
+  // ---- Power by angle -----------------------------------------------------
+
+  void drawPowerByAngle() const
+  {
+    using A = MatchTuning::Aerial;
     const bool header = technique == Technique::HEADER;
-    const ContactProfile& profile = header ? tuning.header : tuning.strike;
+    const ContactProfile& profile = header ? tuning->header : tuning->strike;
     const float inner =
         header ? A::HEAD_REACH_METRES + 0.05F : feetReach + 0.12F;
     const float outer = inner + 0.15F;
@@ -885,8 +1042,8 @@ void drawBody(const Painter& base, const Body& body, const Tuning& tuning,
           powerColour(profile.powerBehind, 1.0F));
     const std::string kind =
         header ? "Header"
-               : std::string(STRIKE_KIND_NAMES[static_cast<std::size_t>(
-                     tuning.strikeKind)]);
+               : std::string(STRIKE_KIND_NAMES.at(
+                     static_cast<std::size_t>(tuning->strikeKind)));
     add(kind + ": power left square inward / outward / behind",
         std::format(
             "{:.0f}% / {:.0f}% / {:.0f}%", profile.powerInwardSquare * 100.0F,
@@ -898,9 +1055,9 @@ void drawBody(const Painter& base, const Body& body, const Tuning& tuning,
         "the engine picks inward or outward with turnsOutward");
   }
 
-  // ---- His lines
-  // -----------------------------------------------------------------
-  if (layers.lines && !body.lying)
+  // ---- His lines ----------------------------------------------------------
+
+  void drawLines() const
   {
     struct Line
     {
@@ -915,9 +1072,9 @@ void drawBody(const Painter& base, const Body& body, const Tuning& tuning,
     }};
     for (const Line& mark : marks)
     {
-      paint.ring(radius + MARK_GAP, z0 + feetHeight + mark.z,
+      paint.ring(RADIUS + MARK_GAP, z0 + feetHeight + mark.z,
                  colour(WHITE, MARK_ALPHA), LINE_BOLD);
-      label(paint.polar(QUARTER_TURN, radius + MARK_LABEL_GAP,
+      label(paint.polar(QUARTER_TURN, RADIUS + MARK_LABEL_GAP,
                         z0 + feetHeight + mark.z),
             std::format("{} {:.2f} m ({:.2f} x h)", mark.name, mark.z,
                         mark.z / height),
@@ -934,24 +1091,12 @@ void drawBody(const Painter& base, const Body& body, const Tuning& tuning,
     }
   }
 
-  // ---- Thigh and chest
-  // ---------------------------------------------------------
-  if (layers.thighChest && !body.lying)
+  // ---- Thigh and chest ----------------------------------------------------
+
+  void drawThighAndChest() const
   {
-    struct Part
-    {
-      const char* name;
-      float bottom;
-      float top;
-      float reach;
-      bool on;
-      Technique owner;
-      ImU32 tint;
-      float sideDegrees;
-      float upFrom;
-      float upTo;
-    };
-    const std::array<Part, 2> parts{{
+    using B = MatchTuning::Ball;
+    const std::array<BodyPart, 2> parts{{
         {.name = "thigh",
          .bottom = lines.feet,
          .top = lines.chest,
@@ -973,103 +1118,119 @@ void drawBody(const Painter& base, const Body& body, const Tuning& tuning,
          .upFrom = 0.0F,
          .upTo = B::CHEST_MAX_UP_DEGREES},
     }};
-    for (const Part& part : parts)
+    for (const BodyPart& part : parts)
     {
-      const float alpha = picked({part.owner});
-      const ImU32 tint = part.on ? withAlpha(part.tint, alpha) : offTint;
-      const float bottom = z0 + feetHeight + part.bottom;
-      const float top = z0 + feetHeight + part.top;
-      // In front of him only: a half cylinder from his centre.
-      paint.cylinder(part.reach, bottom, top, -QUARTER_TURN, QUARTER_TURN, tint,
-                     LINE);
-      if (part.on)
+      drawPart(part);
+    }
+    addThighAndChestEntries();
+  }
+
+  void drawPart(const BodyPart& part) const
+  {
+    const float alpha = picked({part.owner});
+    const ImU32 tint =
+        part.on ? withAlpha(part.tint, alpha) : colour(OFF_GREY, 0.35F);
+    const float bottom = z0 + feetHeight + part.bottom;
+    const float top = z0 + feetHeight + part.top;
+    // In front of him only: a half cylinder from his centre.
+    paint.cylinder(part.reach, bottom, top, -QUARTER_TURN, QUARTER_TURN, tint,
+                   LINE);
+    if (part.on)
+    {
+      paint.sector(0.0F, part.reach, bottom, -QUARTER_TURN, QUARTER_TURN,
+                   withAlpha(part.tint, PART_FILL_ALPHA * alpha));
+    }
+    label(paint.polar(0.0F, part.reach, HALF * (bottom + top)),
+          part.on ? std::format("{} {:.2f} m, in front", part.name, part.reach)
+                  : std::format("{}: off", part.name),
+          tint);
+    if (layers.sendCones && part.on)
+    {
+      drawSendCone(part, tint,
+                   paint.polar(0.0F, part.reach, HALF * (bottom + top)));
+    }
+  }
+
+  /** Where a part can send the ball: up to sideDegrees either side, from
+   * upFrom to upTo above flat. */
+  void drawSendCone(const BodyPart& part, ImU32 tint, Vec3 from) const
+  {
+    const auto direction = [&](float side, float up)
+    {
+      return paint.polarFrom(from, side, std::cos(radians(up)) * CONE_METRES,
+                             from.z + (std::sin(radians(up)) * CONE_METRES));
+    };
+    std::vector<Vec3> edge;
+    for (int step = 0; step <= CONE_EDGE_STEPS; ++step)
+    {
+      edge.push_back(direction(
+          -part.sideDegrees +
+              (part.sideDegrees * static_cast<float>(step) / CONE_HALF_STEPS),
+          part.upFrom));
+    }
+    for (int step = 0; step <= CONE_EDGE_STEPS; ++step)
+    {
+      edge.push_back(direction(
+          part.sideDegrees -
+              (part.sideDegrees * static_cast<float>(step) / CONE_HALF_STEPS),
+          part.upTo));
+    }
+    paint.polyline(edge, tint, LINE, true);
+    for (const float side : {-part.sideDegrees, part.sideDegrees})
+    {
+      for (const float up : {part.upFrom, part.upTo})
       {
-        paint.sector(0.0F, part.reach, bottom, -QUARTER_TURN, QUARTER_TURN,
-                     withAlpha(part.tint, PART_FILL_ALPHA * alpha));
-      }
-      label(paint.polar(0.0F, part.reach, HALF * (bottom + top)),
-            part.on
-                ? std::format("{} {:.2f} m, in front", part.name, part.reach)
-                : std::format("{}: off", part.name),
-            tint);
-      if (layers.sendCones && part.on)
-      {
-        // Where it can send the ball: up to sideDegrees either side, from
-        // upFrom to upTo above flat.
-        const Vec3 from = paint.polar(0.0F, part.reach, 0.5F * (bottom + top));
-        const auto direction = [&](float side, float up)
-        {
-          return paint.polarFrom(
-              from, side, std::cos(radians(up)) * CONE_METRES,
-              from.z + (std::sin(radians(up)) * CONE_METRES));
-        };
-        std::vector<Vec3> edge;
-        for (int step = 0; step <= CONE_EDGE_STEPS; ++step)
-        {
-          edge.push_back(direction(
-              -part.sideDegrees + (part.sideDegrees * static_cast<float>(step) /
-                                   CONE_HALF_STEPS),
-              part.upFrom));
-        }
-        for (int step = 0; step <= CONE_EDGE_STEPS; ++step)
-        {
-          edge.push_back(direction(
-              part.sideDegrees - (part.sideDegrees * static_cast<float>(step) /
-                                  CONE_HALF_STEPS),
-              part.upTo));
-        }
-        paint.polyline(edge, tint, LINE, true);
-        for (const float side : {-part.sideDegrees, part.sideDegrees})
-        {
-          for (const float up : {part.upFrom, part.upTo})
-          {
-            paint.line(from, direction(side, up), tint, 1.0F);
-          }
-        }
+        paint.line(from, direction(side, up), tint, 1.0F);
       }
     }
+  }
+
+  void addThighAndChestEntries() const
+  {
+    using B = MatchTuning::Ball;
+    const char* thighOff =
+        groundPartsOn ? "off: moving faster than its limit" : "off now";
     add("Thigh: reach, in front only",
         std::format("{:.2f} m", B::THIGH_REACH_METRES),
-        "Ball::THIGH_REACH_METRES",
-        thighOn ? ""
-                : (groundPartsOn ? "off: moving faster than its limit"
-                                 : "off now"));
+        "Ball::THIGH_REACH_METRES", thighOn ? "" : thighOff);
     add("Thigh: only nearly stopped",
         std::format("<= {:.1f} m/s", B::THIGH_MAX_SPEED),
         "Ball::THIGH_MAX_SPEED", "placeholder (chest and thigh plan step 4)");
     add("Chest: reach, in front only",
         std::format("{:.2f} m", B::CHEST_REACH_METRES),
         "Ball::CHEST_REACH_METRES", groundPartsOn ? "" : "off now");
-    if (layers.sendCones)
+    if (!layers.sendCones)
     {
-      add("Chest: sends it",
-          std::format("+/-{:.0f} deg, 0-{:.0f} deg up",
-                      B::CHEST_MAX_SIDE_DEGREES, B::CHEST_MAX_UP_DEGREES),
-          "Ball::CHEST_MAX_SIDE_DEGREES, CHEST_MAX_UP_DEGREES",
-          "placeholders (step 3)");
-      add("Thigh: sends it",
-          std::format("+/-{:.0f} deg, {:.0f}-{:.0f} deg up",
-                      B::THIGH_MAX_SIDE_DEGREES, B::THIGH_MIN_UP_DEGREES,
-                      B::THIGH_MAX_UP_DEGREES),
-          "Ball::THIGH_MAX_SIDE_DEGREES, THIGH_MIN/MAX_UP_DEGREES",
-          "placeholders (step 4)");
+      return;
     }
+    add("Chest: sends it",
+        std::format("+/-{:.0f} deg, 0-{:.0f} deg up", B::CHEST_MAX_SIDE_DEGREES,
+                    B::CHEST_MAX_UP_DEGREES),
+        "Ball::CHEST_MAX_SIDE_DEGREES, CHEST_MAX_UP_DEGREES",
+        "placeholders (step 3)");
+    add("Thigh: sends it",
+        std::format("+/-{:.0f} deg, {:.0f}-{:.0f} deg up",
+                    B::THIGH_MAX_SIDE_DEGREES, B::THIGH_MIN_UP_DEGREES,
+                    B::THIGH_MAX_UP_DEGREES),
+        "Ball::THIGH_MAX_SIDE_DEGREES, THIGH_MIN/MAX_UP_DEGREES",
+        "placeholders (step 4)");
   }
 
-  // ---- Head
-  // --------------------------------------------------------------------------
-  if (layers.head && !body.lying)
+  // ---- Head ---------------------------------------------------------------
+
+  void drawHead() const
   {
+    using A = MatchTuning::Aerial;
     const float alpha = picked({Technique::HEADER});
     const HeadBand band = headBandOf(height, feetHeight);
     const float forehead = z0 + band.forehead;
     const float headReach = A::HEAD_REACH_METRES;
-    const float headComfort = tuning.header.comfortGap;
+    const float headComfort = tuning->header.comfortGap;
     // Beyond his comfort gap and 60 degrees round, only the top of his
     // head reaches it (a ball at or above it).
     stretchRings(
-        paint, tuning.header.stretchMap, headReach, forehead, alpha,
-        [&](float centre, float middle)
+        paint, tuning->header.stretchMap, headReach, forehead, alpha,
+        [headComfort](float centre, float middle)
         {
           return middle > headComfort &&
                  std::abs(centre) > A::HEAD_DEAD_ZONE_DEGREES;
@@ -1095,7 +1256,13 @@ void drawBody(const Painter& base, const Body& body, const Tuning& tuning,
           colour(PALE, alpha));
     label(paint.polar(TOP_ONLY_BEARING, headReach, forehead),
           "top of head only", colour(HEAD_TOP_PURPLE, 1.0F));
-    add("Head: reach", std::format("{:.2f} m", headReach),
+    addHeadEntries(band, headComfort);
+  }
+
+  void addHeadEntries(const HeadBand& band, float headComfort) const
+  {
+    using A = MatchTuning::Aerial;
+    add("Head: reach", std::format("{:.2f} m", A::HEAD_REACH_METRES),
         "Aerial::HEAD_REACH_METRES", "placeholder (heading plan step 4)");
     add("Head: comfort gap (best technique)",
         std::format("{:.2f} m", headComfort), "Aerial::HEAD_COMFORT_GAP_METRES",
@@ -1113,8 +1280,14 @@ void drawBody(const Painter& base, const Body& body, const Tuning& tuning,
         "height + his feet's height");
     add("Head: stretch (ring colours)", "0-1, 12 sections",
         "Aerial::HEAD_STRETCH_* (the header's profile)", "placeholders");
+  }
 
-    // His jump's top: Jumping reach (running), a share of it standing.
+  /** His jump's top: Jumping reach (running), a share of it standing. */
+  void drawJump() const
+  {
+    using A = MatchTuning::Aerial;
+    const float alpha = picked({Technique::HEADER});
+    const float headReach = A::HEAD_REACH_METRES;
     const ImU32 ceiling = colour(JUMP_BLUE, alpha);
     paint.dashedRing(headReach, z0 + body.jumpingReach, ceiling, LINE);
     paint.dashedRing(headReach * STANDING_JUMP_RING,
@@ -1141,14 +1314,14 @@ void drawBody(const Painter& base, const Body& body, const Tuning& tuning,
         "Aerial::RUNNING_JUMP_MIN_SPEED", "placeholder");
   }
 
-  // ---- Facing
-  // ------------------------------------------------------------------------
-  if (layers.facing && !body.lying)
+  // ---- Facing -------------------------------------------------------------
+
+  void drawFacing() const
   {
     const ImU32 tint = colour(WHITE, FACING_ALPHA);
     const float length = std::max(feetReach, 1.0F);
     const Vec3 tip = paint.polar(0.0F, length + ARROW_TIP, z0 + ARROW_LIFT);
-    paint.line(paint.polar(0.0F, radius, z0 + ARROW_LIFT), tip, tint,
+    paint.line(paint.polar(0.0F, RADIUS, z0 + ARROW_LIFT), tip, tint,
                LINE_HEAVY);
     for (const float barb : {-ARROW_BARB_DEGREES, ARROW_BARB_DEGREES})
     {
@@ -1157,21 +1330,96 @@ void drawBody(const Painter& base, const Body& body, const Tuning& tuning,
     }
     label(tip, "facing", tint);
   }
+
+  Painter paint;
+  Body body;
+  const Tuning* tuning;
+  Layers layers;
+  Technique technique;
+  bool full;
+  std::vector<Label>* labels;
+  std::vector<Entry>* entries;
+  float height;
+  float feetHeight;
+  BodyLines lines;
+  bool groundPartsOn;
+  bool thighOn;
+  float z0;
+  float feetReach;
+  float comfortGap;
+  float deadAngle;
+};
+}  // namespace
+
+void drawBody(const Painter& base, const Body& body, const Tuning& tuning,
+              const Layers& layers, Technique technique, Detail detail,
+              std::vector<Label>* labels, std::vector<Entry>* entries)
+{
+  BodyDrawer(base, body, tuning, layers, technique, detail, labels, entries)
+      .draw();
 }
 
+namespace
+{
+/** A pose offset (the engine's metric frame) from his centre, lifted with
+ * him in a jump. */
+Vec3 legPoint(const Body& body, Point3F offset)
+{
+  return Vec3{.x = body.at.x + offset.x,
+              .y = body.at.y + offset.y,
+              .z = body.at.z + body.feetHeight + offset.z};
+}
+
+/** The booted foot: a box from the heel behind the ankle, sole at its rise. */
+void drawBootedFoot(const Painter& paint, const Body& body,
+                    const LegPose::Leg& leg, ImU32 foot)
+{
+  using S = MatchTuning::Stride;
+  const float scale = body.height / S::REFERENCE_HEIGHT_METRES;
+  const Vector2F forward = leg.footFacing;
+  const Vector2F side{.x = -forward.y, .y = forward.x};
+  const float heel = -S::HEEL_BEHIND_ANKLE * scale;
+  const float toe = (S::FOOT_LENGTH - S::HEEL_BEHIND_ANKLE) * scale;
+  const float halfWidth = 0.5F * S::FOOT_WIDTH * scale;
+  const float sole = leg.ankle.z - (S::FOOT_HEIGHT * scale);
+  std::array<Vec3, FOOT_CORNERS> corners{};
+  std::size_t corner = 0;
+  for (const float z : {sole, leg.ankle.z})
+  {
+    for (const float along : {heel, toe})
+    {
+      for (const float across : {-halfWidth, halfWidth})
+      {
+        corners.at(corner++) = legPoint(
+            body, {.x = leg.ankle.x + (forward.x * along) + (side.x * across),
+                   .y = leg.ankle.y + (forward.y * along) + (side.y * across),
+                   .z = z});
+      }
+    }
+  }
+  // Edges between corners differing in one of the three choices.
+  for (std::size_t a = 0; a < corners.size(); ++a)
+  {
+    for (const std::size_t bit : {1U, 2U, 4U})
+    {
+      if ((a & bit) == 0U)
+      {
+        paint.line(corners.at(a), corners.at(a | bit), foot, LINE);
+      }
+    }
+  }
+}
+}  // namespace
+
+// Argument order: fade then age, both on every call.
+// NOLINTBEGIN(bugprone-easily-swappable-parameters)
 void drawLegGhost(const Painter& paint, const Body& body, const ShotLegs& legs,
                   float fade, float ageSeconds, std::vector<Label>* labels)
+// NOLINTEND(bugprone-easily-swappable-parameters)
 {
   // The pose's offsets are in the engine's metric frame, as a match's
   // painter is; from his centre, lifted with him in a jump.
-  using S = MatchTuning::Stride;
-  const float scale = body.height / S::REFERENCE_HEIGHT_METRES;
-  const auto at = [&](Point3F offset)
-  {
-    return Vec3{.x = body.at.x + offset.x,
-                .y = body.at.y + offset.y,
-                .z = body.at.z + body.feetHeight + offset.z};
-  };
+  const auto at = [&body](Point3F offset) { return legPoint(body, offset); };
   // A stride in orange; a leg put in the way in cyan.
   const LegPose& pose = legs.pose;
   const bool block = legs.blocking;
@@ -1183,41 +1431,9 @@ void drawLegGhost(const Painter& paint, const Body& body, const ShotLegs& legs,
                            : colour(STRIDE_FOOT_YELLOW, 0.9F * fade);
   for (const LegPose::Leg& leg : pose.legs)
   {
-    const Vector2F forward = leg.footFacing;
-    const Vector2F side{.x = -forward.y, .y = forward.x};
     paint.line(at(leg.hip), at(leg.knee), thigh, THIGH_THICKNESS);
     paint.line(at(leg.knee), at(leg.ankle), shin, SHIN_THICKNESS);
-    // The booted foot: a box from the heel behind the ankle, sole at its rise.
-    const float heel = -S::HEEL_BEHIND_ANKLE * scale;
-    const float toe = (S::FOOT_LENGTH - S::HEEL_BEHIND_ANKLE) * scale;
-    const float halfWidth = 0.5F * S::FOOT_WIDTH * scale;
-    const float sole = leg.ankle.z - (S::FOOT_HEIGHT * scale);
-    std::array<Vec3, FOOT_CORNERS> corners{};
-    std::size_t corner = 0;
-    for (const float z : {sole, leg.ankle.z})
-    {
-      for (const float along : {heel, toe})
-      {
-        for (const float across : {-halfWidth, halfWidth})
-        {
-          corners[corner++] =
-              at({.x = leg.ankle.x + (forward.x * along) + (side.x * across),
-                  .y = leg.ankle.y + (forward.y * along) + (side.y * across),
-                  .z = z});
-        }
-      }
-    }
-    // Edges between corners differing in one of the three choices.
-    for (std::size_t a = 0; a < corners.size(); ++a)
-    {
-      for (const std::size_t bit : {1U, 2U, 4U})
-      {
-        if ((a & bit) == 0U)
-        {
-          paint.line(corners[a], corners[a | bit], foot, LINE);
-        }
-      }
-    }
+    drawBootedFoot(paint, body, leg, foot);
   }
   paint.line(at(pose.legs[0].hip), at(pose.legs[1].hip), thigh, LINE_HEAVIEST);
   if (labels != nullptr)
@@ -1297,10 +1513,10 @@ void renderTable(const std::vector<Entry>& entries, ImFont* headingFont)
     ImGui::PopTextWrapPos();
     ImGui::TableNextColumn();
     ImGui::PushTextWrapPos(0.0F);
-    ImGui::TextDisabled("%s", entry.source.c_str());
+    UI::textDisabled("{}", entry.source.c_str());
     if (!entry.wip.empty())
     {
-      ImGui::TextColored(WIP_TEXT, "WIP: %s", entry.wip.c_str());
+      UI::textColoured(WIP_TEXT, "WIP: {}", entry.wip.c_str());
     }
     ImGui::PopTextWrapPos();
   }

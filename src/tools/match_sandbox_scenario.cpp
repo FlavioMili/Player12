@@ -56,20 +56,19 @@ std::string score(float value)
 }
 }  // namespace
 
-std::string ScenarioExport::testCase(const MatchEngine& before,
-                                     const SandboxRecorder& names,
-                                     const MatchDecisionDetail& decision,
-                                     std::uint64_t tick, float minute)
+namespace
 {
-  // Dummy slots: home 0-10, away 11-21; the keeper takes slot 0 (11).
-  struct Placed
-  {
-    std::size_t slot = 0;
-    const MatchPlayer* player = nullptr;
-  };
-  std::vector<Placed> placed;
-  std::optional<std::size_t> carrierSlot;
-  std::optional<std::size_t> receiverSlot;
+/** A player of the moment in his dummy slot. */
+struct ScenarioPlaced
+{
+  std::size_t slot = 0;
+  const MatchPlayer* player = nullptr;
+};
+
+/** Dummy slots: home 0-10, away 11-21; the keeper takes slot 0 (11). */
+std::vector<ScenarioPlaced> placeInSlots(const MatchEngine& before)
+{
+  std::vector<ScenarioPlaced> placed;
   for (const bool home : {true, false})
   {
     const std::size_t base = home ? 0 : SLOTS_PER_SIDE;
@@ -81,27 +80,37 @@ std::string ScenarioExport::testCase(const MatchEngine& before,
       {
         continue;
       }
-      std::size_t slot = 0;
       if (player.isGoalkeeper)
       {
-        slot = base;
+        placed.push_back({.slot = base, .player = &player});
       }
       else if (next < SLOTS_PER_SIDE)
       {
-        slot = base + next++;
-      }
-      else
-      {
-        continue;
-      }
-      placed.push_back({.slot = slot, .player = &player});
-      if (player.player->getId() == decision.player)
-      {
-        carrierSlot = slot;
+        placed.push_back({.slot = base + next++, .player = &player});
       }
     }
   }
-  // The best pass's receiver, for the comment.
+  return placed;
+}
+
+/** The last slot holding that player, if any. */
+std::optional<std::size_t> slotOfPlayer(
+    const std::vector<ScenarioPlaced>& placed, PlayerID id)
+{
+  std::optional<std::size_t> slot;
+  for (const ScenarioPlaced& entry : placed)
+  {
+    if (entry.player->player->getId() == id)
+    {
+      slot = entry.slot;
+    }
+  }
+  return slot;
+}
+
+/** The decision's best pass: its receiver (0 if none) and its utility. */
+std::pair<PlayerID, float> bestPass(const MatchDecisionDetail& decision)
+{
   PlayerID bestReceiver = 0;
   float bestUtility = -std::numeric_limits<float>::infinity();
   for (const PassCandidateDetail& candidate : decision.candidates)
@@ -113,13 +122,60 @@ std::string ScenarioExport::testCase(const MatchEngine& before,
       bestReceiver = candidate.receiver;
     }
   }
-  for (const Placed& entry : placed)
+  return {bestReceiver, bestUtility};
+}
+
+/** Every slot's place: the players where they were, the rest parked. */
+std::string layoutLines(const std::vector<ScenarioPlaced>& placed)
+{
+  std::string text;
+  std::vector<bool> used(2 * SLOTS_PER_SIDE, false);
+  for (const ScenarioPlaced& entry : placed)
   {
-    if (entry.player->player->getId() == bestReceiver)
+    used[entry.slot] = true;
+    const MatchPlayer& player = *entry.player;
+    text += std::format(
+        "  spec.layout[slotId(ids, {})] = {{{:.4f}f, {:.4f}f}};  // {} ({}, "
+        "{})\n",
+        entry.slot, MatchPitch::matchSize().fractionX(player.position),
+        MatchPitch::matchSize().fractionY(player.position),
+        player.player->getName(), RoleUtils::toString(player.player->getRole()),
+        player.isHomeTeam ? "home" : "away");
+    if (player.isMakingRun)
     {
-      receiverSlot = entry.slot;
+      text +=
+          std::format("  spec.makeRuns[slotId(ids, {})] = true;\n", entry.slot);
     }
   }
+  for (std::size_t slot = 0; slot < used.size(); ++slot)
+  {
+    if (!used[slot])
+    {
+      text += std::format(
+          "  spec.layout[slotId(ids, {})] = {{{:.2f}f, {:.2f}f}};  // not on "
+          "the pitch\n",
+          slot, PARKED.x, PARKED.y);
+    }
+  }
+  return text;
+}
+}  // namespace
+
+// Argument order: tick then minute of the same decision.
+// NOLINTBEGIN(bugprone-easily-swappable-parameters)
+std::string ScenarioExport::testCase(const MatchEngine& before,
+                                     const SandboxRecorder& names,
+                                     const MatchDecisionDetail& decision,
+                                     std::uint64_t tick, float minute)
+// NOLINTEND(bugprone-easily-swappable-parameters)
+{
+  const std::vector<ScenarioPlaced> placed = placeInSlots(before);
+  const std::optional<std::size_t> carrierSlot =
+      slotOfPlayer(placed, decision.player);
+  // The best pass's receiver, for the comment.
+  const auto [bestReceiver, bestUtility] = bestPass(decision);
+  const std::optional<std::size_t> receiverSlot =
+      slotOfPlayer(placed, bestReceiver);
 
   const int seconds = static_cast<int>(std::floor(minute * 60.0F));
   std::string text = std::format(
@@ -149,34 +205,7 @@ std::string ScenarioExport::testCase(const MatchEngine& before,
       "  const Ids ids = collectIds(pool);\n"
       "  const StatsConfig config = createStatsConfig();\n\n"
       "  ScenarioSpec spec;\n";
-  std::vector<bool> used(2 * SLOTS_PER_SIDE, false);
-  for (const Placed& entry : placed)
-  {
-    used[entry.slot] = true;
-    const MatchPlayer& player = *entry.player;
-    text += std::format(
-        "  spec.layout[slotId(ids, {})] = {{{:.4f}f, {:.4f}f}};  // {} ({}, "
-        "{})\n",
-        entry.slot, MatchPitch::matchSize().fractionX(player.position),
-        MatchPitch::matchSize().fractionY(player.position),
-        player.player->getName(), RoleUtils::toString(player.player->getRole()),
-        player.isHomeTeam ? "home" : "away");
-    if (player.isMakingRun)
-    {
-      text +=
-          std::format("  spec.makeRuns[slotId(ids, {})] = true;\n", entry.slot);
-    }
-  }
-  for (std::size_t slot = 0; slot < used.size(); ++slot)
-  {
-    if (!used[slot])
-    {
-      text += std::format(
-          "  spec.layout[slotId(ids, {})] = {{{:.2f}f, {:.2f}f}};  // not on "
-          "the pitch\n",
-          slot, PARKED.x, PARKED.y);
-    }
-  }
+  text += layoutLines(placed);
   text += std::format("  spec.carrierId = slotId(ids, {});\n\n",
                       carrierSlot ? *carrierSlot : 0);
   text += std::format(

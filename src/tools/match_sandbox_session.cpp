@@ -601,7 +601,8 @@ class RegroupDrill final : public Drill
     {
       scenario.players.push_back({.playerId = ids[index],
                                   .position = walkers_[index].state.position,
-                                  .makingRun = false});
+                                  .makingRun = false,
+                                  .facing = std::nullopt});
     }
     scenario.ballPosition =
         PitchPoint{CENTRE_TO_EDGE_SCALE * TrainingGround::LENGTH_METRES,

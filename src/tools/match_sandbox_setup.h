@@ -121,10 +121,11 @@ struct MatchSetup
 
   /**
    * The match about to be played between two clubs of the current world,
-   * the home side managed. `fullFamiliarity` sets both sides to 1.
+   * home then away, the home side managed. `fullFamiliarity` sets both
+   * sides to 1.
    */
   [[nodiscard]] static MatchSetup capture(const GameController& controller,
-                                          TeamID home, TeamID away,
+                                          const std::array<TeamID, 2>& teams,
                                           std::uint32_t seed,
                                           bool fullFamiliarity);
 

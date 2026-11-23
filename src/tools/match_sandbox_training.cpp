@@ -51,6 +51,9 @@ constexpr float OFF_TRACK_METRES = 10.0F;
  * second. */
 constexpr float TRACE_MOVING_SPEED = 3.0F;
 constexpr std::array<float, 4> OFF_FACING_DEGREES{10.0F, 20.0F, 45.0F, 90.0F};
+/** Below this a direction has no length to face along. */
+constexpr float MIN_DIRECTION_LENGTH = 1e-6F;
+constexpr float DEGREES_PER_HALF_TURN = 180.0F;
 constexpr double FOLLOW_EVERY_SECONDS = 0.5;
 constexpr double CLOCK_TOLERANCE = 1e-6;
 
@@ -167,8 +170,10 @@ class AcrossAndBackDrill final : public TrainingDrill
       lane.x = FIRST_X + laneWidth * (static_cast<float>(index) + HALF);
       lane.previous = PITCH.at(lane.x, NEAR_Y);
       lanes.push_back(lane);
-      scenario.players.push_back(
-          {.playerId = lane.id, .position = lane.previous, .makingRun = false});
+      scenario.players.push_back({.playerId = lane.id,
+                                  .position = lane.previous,
+                                  .makingRun = false,
+                                  .facing = std::nullopt});
     }
     // In front of a goal, clear of every lane.
     scenario.ballPosition = PITCH.at(NEAR_GOAL_X, HALFWAY);
@@ -494,7 +499,8 @@ class SlalomDrill final : public TrainingDrill
       runner.previous = queueSpot(place);
       scenario.players.push_back({.playerId = runner.id,
                                   .position = runner.previous,
-                                  .makingRun = false});
+                                  .makingRun = false,
+                                  .facing = std::nullopt});
     }
     // In front of a goal, clear of the course and the queue.
     scenario.ballPosition = PITCH.at(FAR_GOAL_X, HALFWAY);
@@ -1016,13 +1022,14 @@ class LapsDrill final : public TrainingDrill
     lapMetres = 0.0F;
     for (std::size_t corner = 0; corner < 4; ++corner)
     {
-      corners[corner] =
-          along(cones[corner], directionBetween(cones[corner], FLAGS[corner]),
-                OUTSIDE_METRES);
+      corners.at(corner) = along(
+          cones.at(corner),
+          directionBetween(cones.at(corner), FLAGS.at(corner)), OUTSIDE_METRES);
     }
     for (std::size_t corner = 0; corner < 4; ++corner)
     {
-      lapMetres += metresBetween(corners[corner], corners[(corner + 1) % 4]);
+      lapMetres +=
+          metresBetween(corners.at(corner), corners.at((corner + 1) % 4));
     }
 
     runners.clear();
@@ -1036,17 +1043,19 @@ class LapsDrill final : public TrainingDrill
       float metres =
           lapMetres * static_cast<float>(index) / static_cast<float>(count);
       std::size_t leg = 0;
-      while (leg < 3 && metres > metresBetween(corners[leg], corners[leg + 1]))
+      while (leg < 3 &&
+             metres > metresBetween(corners.at(leg), corners.at(leg + 1)))
       {
-        metres -= metresBetween(corners[leg], corners[leg + 1]);
+        metres -= metresBetween(corners.at(leg), corners.at(leg + 1));
         ++leg;
       }
       const std::size_t next = (leg + 1) % 4;
       Runner runner;
       runner.id = ids[index];
       runner.next = next;
-      runner.previous = along(
-          corners[leg], directionBetween(corners[leg], corners[next]), metres);
+      runner.previous =
+          along(corners.at(leg),
+                directionBetween(corners.at(leg), corners.at(next)), metres);
       // The fallback for anyone without a time in the sprint: his engine top
       // speed when fresh.
       runner.topSpeed =
@@ -1054,7 +1063,8 @@ class LapsDrill final : public TrainingDrill
       runners.push_back(runner);
       scenario.players.push_back({.playerId = runner.id,
                                   .position = runner.previous,
-                                  .makingRun = false});
+                                  .makingRun = false,
+                                  .facing = std::nullopt});
     }
     // On the centre spot, well inside the track.
     scenario.ballPosition = PITCH.at(HALFWAY, HALFWAY);
@@ -1072,7 +1082,7 @@ class LapsDrill final : public TrainingDrill
       }
       else
       {
-        engine.setDrillTarget(runner.id, corners[runner.next], true);
+        engine.setDrillTarget(runner.id, corners.at(runner.next), true);
       }
     }
   }
@@ -1105,31 +1115,15 @@ class LapsDrill final : public TrainingDrill
       }
       else if (routes(engine, *player))
       {
-        // As his body moves on from a corner (heading for a later one: his
-        // next waypoint, or with none left his target), the plan moves on
-        // one corner, so he never skips one (a way round someone ahead can
-        // push the second out of his route for a moment). A way round is
-        // not a corner.
-        const PitchPoint heading = player->routeWaypoints > 0
-                                       ? player->movementTarget
-                                       : player->tacticalTarget;
-        for (std::size_t ahead = 1; ahead <= 2; ++ahead)
-        {
-          const PitchPoint corner = corners[(runner.next + ahead) % 4];
-          if (heading.x == corner.x && heading.y == corner.y)
-          {
-            runner.next = (runner.next + 1) % 4;
-            planLap(engine, runner);
-            break;
-          }
-        }
+        followRoute(engine, runner, *player);
       }
       // Round the cone: on to the next once he is close to this one.
-      else if (metresBetween(at, corners[runner.next]) <= CORNER_RADIUS_METRES)
+      else if (metresBetween(at, corners.at(runner.next)) <=
+               CORNER_RADIUS_METRES)
       {
         runner.next = (runner.next + 1) % 4;
         runner.passing = false;
-        engine.setDrillTarget(runner.id, corners[runner.next], true);
+        engine.setDrillTarget(runner.id, corners.at(runner.next), true);
       }
       else
       {
@@ -1165,8 +1159,9 @@ class LapsDrill final : public TrainingDrill
     const float scale = Theme::scale();
     for (std::size_t corner = 0; corner < 4; ++corner)
     {
-      DrillDraw::line(renderer, draw, corners[corner],
-                      corners[(corner + 1) % 4], LINE, LINE_THICKNESS * scale);
+      DrillDraw::line(renderer, draw, corners.at(corner),
+                      corners.at((corner + 1) % 4), LINE,
+                      LINE_THICKNESS * scale);
     }
     for (const PitchPoint cone : cones)
     {
@@ -1293,6 +1288,28 @@ class LapsDrill final : public TrainingDrill
     std::size_t place = 0;
   };
 
+  /** As his body moves on from a corner (heading for a later one: his next
+   * waypoint, or with none left his target), the plan moves on one corner,
+   * so he never skips one (a way round someone ahead can push the second
+   * out of his route for a moment). A way round is not a corner. */
+  void followRoute(MatchEngine& engine, Runner& runner,
+                   const MatchPlayer& player) const
+  {
+    const PitchPoint heading = player.routeWaypoints > 0
+                                   ? player.movementTarget
+                                   : player.tacticalTarget;
+    for (std::size_t ahead = 1; ahead <= 2; ++ahead)
+    {
+      const PitchPoint corner = corners.at((runner.next + ahead) % 4);
+      if (heading.x == corner.x && heading.y == corner.y)
+      {
+        runner.next = (runner.next + 1) % 4;
+        planLap(engine, runner);
+        return;
+      }
+    }
+  }
+
   /** Whether his side plans his laps as a route (and overtakes): a Binturong
    * or later brain on a Binturong body (movement targets plan 4a). */
   static bool routes(const MatchEngine& engine, const MatchPlayer& player)
@@ -1313,23 +1330,23 @@ class LapsDrill final : public TrainingDrill
   {
     const std::size_t corner = runner.next;
     const Vector2F in =
-        directionBetween(corners[(corner + 3) % 4], corners[corner]);
+        directionBetween(corners.at((corner + 3) % 4), corners.at(corner));
     const Vector2F out =
-        directionBetween(corners[corner], corners[(corner + 1) % 4]);
+        directionBetween(corners.at(corner), corners.at((corner + 1) % 4));
     const float size = std::hypot(in.x + out.x, in.y + out.y);
     if (size < NO_LENGTH)
     {
       return false;
     }
     const Vector2F way{.x = (in.x + out.x) / size, .y = (in.y + out.y) / size};
-    return crossingShare(from, to, cones[corner], way).has_value();
+    return crossingShare(from, to, cones.at(corner), way).has_value();
   }
 
   void planLap(MatchEngine& engine, const Runner& runner) const
   {
     engine.setDrillTarget(
-        runner.id, corners[(runner.next + 2) % 4], true,
-        {corners[runner.next], corners[(runner.next + 1) % 4]}, 0.0F,
+        runner.id, corners.at((runner.next + 2) % 4), true,
+        {corners.at(runner.next), corners.at((runner.next + 1) % 4)}, 0.0F,
         LAP_OUTWARD_ROOM_METRES, std::nullopt, true);
   }
 
@@ -1341,8 +1358,8 @@ class LapsDrill final : public TrainingDrill
    */
   void steerPast(MatchEngine& engine, Runner& runner, PitchPoint at)
   {
-    const PitchPoint from = corners[(runner.next + 3) % 4];
-    const PitchPoint to = corners[runner.next];
+    const PitchPoint from = corners.at((runner.next + 3) % 4);
+    const PitchPoint to = corners.at(runner.next);
     const Vector2F ahead = directionBetween(from, to);
     // Out wide: square to the leg, away from the middle of the pitch.
     Vector2F wide{.x = -ahead.y, .y = ahead.x};
@@ -1509,165 +1526,101 @@ const std::vector<TrainingSessionInfo>& trainingSessions()
 
 // --- Laps trace (diagnostic) -----------------------------------------------
 
-int runLapsTrace(const std::vector<TrainingPlayer>& squad,
-                 const StatsConfig& config, double seconds,
-                 const std::string& follow)
+namespace
+{
+std::string tracedName(const MatchPlayer& player)
+{
+  return (player.player != nullptr) ? player.player->getName()
+                                    : std::string("?");
+}
+
+/** How far a body facing `facingAngle` faces off moving along `along`
+ * (degrees). */
+float degreesOffLine(Vector2F along, float facingAngle)
 {
   using MatchEngineInternal::length;
-  std::unique_ptr<TrainingSession> session = trainingSessions()[0].make(squad);
-  TrainingDrill& laps = *session->drills[2];
-  std::unique_ptr<DrillRun> run =
-      startTrainingRun(laps, config, BrainId::BINTURONG, BodyId::BINTURONG);
-  MatchEngine& engine = run->engine();
-  const auto nameOf = [](const MatchPlayer& player)
-  { return player.player ? player.player->getName() : std::string("?"); };
-  const auto& players = engine.getPlayers();
-  std::vector<std::int8_t> overtaking(players.size(), -1);
-  std::vector<bool> slow(players.size(), false);
-  const double step = MatchTuning::Timing::FIXED_STEP_SECONDS;
-  double now = 0.0;
-  // How far bodies face off their line of travel, running (over 3 m/s).
-  std::array<int, 4> offCounts{};
-  int movingCount = 0;
-  float worstOff = 0.0F;
-  while (now < seconds && run->step())
+  const Vector2F facing{.x = std::cos(facingAngle), .y = std::sin(facingAngle)};
+  return std::acos(std::clamp(
+             (along.x * facing.x + along.y * facing.y) /
+                 std::max(length(along) * length(facing), MIN_DIRECTION_LENGTH),
+             -1.0F, 1.0F)) *
+         DEGREES_PER_HALF_TURN / std::numbers::pi_v<float>;
+}
+
+/** Where he is and what he is doing, for a trace line. */
+std::string tracedState(const MatchPlayer& player)
+{
+  using MatchEngineInternal::length;
+  const PitchPoint at = player.position;
+  const auto metres = [&](PitchPoint to)
+  { return std::hypot(to.x - at.x, to.y - at.y); };
+  return std::format(
+      "at ({:.1f},{:.1f}) m speed {:.2f} · route {} next {:.1f} m then "
+      "{:.1f} m · "
+      "target {:.1f} m · pause {:.2f} stumble {:.2f} fallen {} · stamina "
+      "{:.2f}",
+      at.x, at.y, length(player.velocity), player.routeWaypoints,
+      metres(player.movementTarget), metres(player.nextTarget),
+      metres(player.tacticalTarget), player.collisionPause,
+      player.stumbleSeconds, player.fallen, player.stamina);
+}
+
+/** One side of a run-in: his speed before and after, how far his body faced
+ * off his line of travel before it, and how the knock was judged. */
+std::string knockDetail(const MatchPlayer& player,
+                        const MatchEngine::CollisionSide& entry)
+{
+  using MatchEngineInternal::length;
+  const Vector2F before{.x = entry.after.x - entry.jolt.x,
+                        .y = entry.after.y - entry.jolt.y};
+  const float off = degreesOffLine(before, player.facingAngle);
+  return std::format(
+      "{} {:.1f}->{:.1f} m/s, facing {:.0f} deg off, ends up {:.0f}% "
+      "sudden {:.0f}% "
+      "score {:.0f}% (lines {:.0f}/{:.0f})",
+      tracedName(player), length(before), length(entry.after), off,
+      entry.endsUp * 100.0F, entry.sudden * 100.0F, entry.score * 100.0F,
+      entry.stumbleLine * 100.0F, entry.fallLine * 100.0F);
+}
+
+/** Follows a laps drill step by step, printing its run-ins, overtakes and
+ * slow-downs (and one player's route, if asked). */
+class LapsTrace
+{
+ public:
+  LapsTrace(const MatchEngine& engine, std::string followed)
+      : players(&engine.getPlayers()),
+        lastCollisions(&engine),
+        overtaking(engine.getPlayers().size(), -1),
+        slow(engine.getPlayers().size(), false),
+        follow(std::move(followed))
   {
-    now += step;
-    for (const MatchEngine::CollisionHit& hit : engine.getLastCollisions())
+  }
+
+  void step(double now)
+  {
+    clock = now;
+    for (const MatchEngine::CollisionHit& hit :
+         lastCollisions->getLastCollisions())
     {
-      std::array<std::string, 2> who;
-      std::array<std::string, 2> detail;
-      for (std::size_t side = 0; side < 2; ++side)
-      {
-        for (const MatchPlayer& player : players)
-        {
-          if ((player.player != nullptr) &&
-              player.player->getId() == hit.sides[side].player)
-          {
-            who.at(side) = nameOf(player);
-            // His speed before and after, how far his body faced off his
-            // line of travel before it, and how the knock was judged.
-            const MatchEngine::CollisionSide& entry = hit.sides[side];
-            const Vector2F before{.x = entry.after.x - entry.jolt.x,
-                                  .y = entry.after.y - entry.jolt.y};
-            const Vector2F facing{.x = std::cos(player.facingAngle),
-                                  .y = std::sin(player.facingAngle)};
-            const float off =
-                std::acos(std::clamp(
-                    (before.x * facing.x + before.y * facing.y) /
-                        std::max(length(before) * length(facing), 1e-6F),
-                    -1.0F, 1.0F)) *
-                180.0F / std::numbers::pi_v<float>;
-            detail.at(side) = std::format(
-                "{} {:.1f}->{:.1f} m/s, facing {:.0f} deg off, ends up {:.0f}% "
-                "sudden {:.0f}% "
-                "score {:.0f}% (lines {:.0f}/{:.0f})",
-                who.at(side), length(before), length(entry.after), off,
-                entry.endsUp * 100.0F, entry.sudden * 100.0F,
-                entry.score * 100.0F, entry.stumbleLine * 100.0F,
-                entry.fallLine * 100.0F);
-          }
-        }
-      }
-      std::println(
-          "{:6.1f}  RUN-IN {} / {}  jolt {:.2f} / {:.2f}  outcome {} / {}", now,
-          who[0], who[1], length(hit.sides[0].jolt), length(hit.sides[1].jolt),
-          hit.sides[0].outcome, hit.sides[1].outcome);
-      for (std::size_t side = 0; side < 2; ++side)
-      {
-        if (hit.sides[side].outcome > 0)
-        {
-          std::println("          knocked: {}", detail.at(side));
-        }
-      }
+      reportRunIn(hit, now);
     }
-    for (std::size_t index = 0; index < players.size(); ++index)
+    for (std::size_t index = 0; index < players->size(); ++index)
     {
-      const MatchPlayer& player = players[index];
-      if (!MatchEngineInternal::active(player))
+      if (MatchEngineInternal::active((*players)[index]))
       {
-        continue;
-      }
-      const float speed = length(player.velocity);
-      if (speed > TRACE_MOVING_SPEED)
-      {
-        const Vector2F facing{.x = std::cos(player.facingAngle),
-                              .y = std::sin(player.facingAngle)};
-        const float off =
-            std::acos(std::clamp(
-                (player.velocity.x * facing.x + player.velocity.y * facing.y) /
-                    std::max(speed * length(facing), 1e-6F),
-                -1.0F, 1.0F)) *
-            180.0F / std::numbers::pi_v<float>;
-        ++movingCount;
-        worstOff = std::max(worstOff, off);
-        for (std::size_t band = 0; band < OFF_FACING_DEGREES.size(); ++band)
-        {
-          if (off > OFF_FACING_DEGREES.at(band))
-          {
-            ++offCounts.at(band);
-          }
-        }
-      }
-      const auto describe = [&]()
-      {
-        const PitchPoint at = player.position;
-        const auto metres = [&](PitchPoint to)
-        { return std::hypot(to.x - at.x, to.y - at.y); };
-        return std::format(
-            "at ({:.1f},{:.1f}) m speed {:.2f} · route {} next {:.1f} m then "
-            "{:.1f} m · "
-            "target {:.1f} m · pause {:.2f} stumble {:.2f} fallen {} · stamina "
-            "{:.2f}",
-            at.x, at.y, speed, player.routeWaypoints,
-            metres(player.movementTarget), metres(player.nextTarget),
-            metres(player.tacticalTarget), player.collisionPause,
-            player.stumbleSeconds, player.fallen, player.stamina);
-      };
-      // The player followed: his route every half second.
-      if (!follow.empty() && nameOf(player).find(follow) != std::string::npos &&
-          std::fmod(now + CLOCK_TOLERANCE, FOLLOW_EVERY_SECONDS) < step)
-      {
-        std::println(
-            "{:6.1f}  [{}] vel ({:.2f},{:.2f}) movT ({:.1f},{:.1f}) nextT "
-            "({:.1f},{:.1f}) tacT ({:.1f},{:.1f}) wp {} apex {:.2f} room "
-            "{:.2f} intent {} ovt {} {}",
-            now, follow, player.velocity.x, player.velocity.y,
-            player.movementTarget.x, player.movementTarget.y,
-            player.nextTarget.x, player.nextTarget.y, player.tacticalTarget.x,
-            player.tacticalTarget.y, player.routeWaypoints,
-            player.routeApexOffset, player.routeOutwardRoom,
-            static_cast<int>(player.intent), player.overtaking, describe());
-      }
-      if (player.overtaking != overtaking[index])
-      {
-        if (player.overtaking >= 0)
-        {
-          const MatchPlayer& leader =
-              players[static_cast<std::size_t>(player.overtaking)];
-          std::println(
-              "{:6.1f}  {} OVERTAKES {} (side {:+}, leader {:.2f} m/s) {}", now,
-              nameOf(player), nameOf(leader), player.overtakeSide,
-              length(leader.velocity), describe());
-        }
-        else
-        {
-          std::println("{:6.1f}  {} overtake off  {}", now, nameOf(player),
-                       describe());
-        }
-        overtaking[index] = player.overtaking;
-      }
-      const bool nowSlow = now > 4.0 && speed < 2.0F && player.stamina > 0.05F;
-      if (nowSlow != slow[index])
-      {
-        std::println("{:6.1f}  {} {}  {}", now, nameOf(player),
-                     nowSlow ? "SLOWS" : "going again", describe());
-        slow[index] = nowSlow;
+        trackPlayer(index);
       }
     }
   }
-  if (movingCount > 0)
+
+  /** How far bodies face off their line of travel, running (over 3 m/s). */
+  void summary() const
   {
+    if (movingCount == 0)
+    {
+      return;
+    }
     std::println(
         "Running over 3 m/s: facing off his line >10 deg {:.1f}%, >20 {:.1f}%, "
         ">45 {:.1f}%, >90 {:.1f}%; worst {:.0f} deg",
@@ -1675,5 +1628,143 @@ int runLapsTrace(const std::vector<TrainingPlayer>& squad,
         100.0 * offCounts[2] / movingCount, 100.0 * offCounts[3] / movingCount,
         worstOff);
   }
+
+ private:
+  void reportRunIn(const MatchEngine::CollisionHit& hit, double now) const
+  {
+    using MatchEngineInternal::length;
+    std::array<std::string, 2> who;
+    std::array<std::string, 2> detail;
+    for (std::size_t side = 0; side < 2; ++side)
+    {
+      for (const MatchPlayer& player : *players)
+      {
+        if ((player.player != nullptr) &&
+            player.player->getId() == hit.sides.at(side).player)
+        {
+          who.at(side) = tracedName(player);
+          detail.at(side) = knockDetail(player, hit.sides.at(side));
+        }
+      }
+    }
+    std::println(
+        "{:6.1f}  RUN-IN {} / {}  jolt {:.2f} / {:.2f}  outcome {} / {}", now,
+        who[0], who[1], length(hit.sides[0].jolt), length(hit.sides[1].jolt),
+        hit.sides[0].outcome, hit.sides[1].outcome);
+    for (std::size_t side = 0; side < 2; ++side)
+    {
+      if (hit.sides.at(side).outcome > 0)
+      {
+        std::println("          knocked: {}", detail.at(side));
+      }
+    }
+  }
+
+  void trackPlayer(std::size_t index)
+  {
+    const double now = clock;
+    using MatchEngineInternal::length;
+    const MatchPlayer& player = (*players)[index];
+    const float speed = length(player.velocity);
+    if (speed > TRACE_MOVING_SPEED)
+    {
+      countFacing(degreesOffLine(player.velocity, player.facingAngle));
+    }
+    // The player followed: his route every half second.
+    if (!follow.empty() &&
+        tracedName(player).find(follow) != std::string::npos &&
+        std::fmod(now + CLOCK_TOLERANCE, FOLLOW_EVERY_SECONDS) <
+            MatchTuning::Timing::FIXED_STEP_SECONDS)
+    {
+      printFollowed(player, now);
+    }
+    if (player.overtaking != overtaking[index])
+    {
+      reportOvertake(player, now);
+      overtaking[index] = player.overtaking;
+    }
+    const bool nowSlow = now > 4.0 && speed < 2.0F && player.stamina > 0.05F;
+    if (nowSlow != slow[index])
+    {
+      std::println("{:6.1f}  {} {}  {}", now, tracedName(player),
+                   nowSlow ? "SLOWS" : "going again", tracedState(player));
+      slow[index] = nowSlow;
+    }
+  }
+
+  void countFacing(float off)
+  {
+    ++movingCount;
+    worstOff = std::max(worstOff, off);
+    for (std::size_t band = 0; band < OFF_FACING_DEGREES.size(); ++band)
+    {
+      if (off > OFF_FACING_DEGREES.at(band))
+      {
+        ++offCounts.at(band);
+      }
+    }
+  }
+
+  void printFollowed(const MatchPlayer& player, double now) const
+  {
+    std::println(
+        "{:6.1f}  [{}] vel ({:.2f},{:.2f}) movT ({:.1f},{:.1f}) nextT "
+        "({:.1f},{:.1f}) tacT ({:.1f},{:.1f}) wp {} apex {:.2f} room "
+        "{:.2f} intent {} ovt {} {}",
+        now, follow, player.velocity.x, player.velocity.y,
+        player.movementTarget.x, player.movementTarget.y, player.nextTarget.x,
+        player.nextTarget.y, player.tacticalTarget.x, player.tacticalTarget.y,
+        player.routeWaypoints, player.routeApexOffset, player.routeOutwardRoom,
+        static_cast<int>(player.intent), player.overtaking,
+        tracedState(player));
+  }
+
+  void reportOvertake(const MatchPlayer& player, double now) const
+  {
+    using MatchEngineInternal::length;
+    if (player.overtaking < 0)
+    {
+      std::println("{:6.1f}  {} overtake off  {}", now, tracedName(player),
+                   tracedState(player));
+      return;
+    }
+    const MatchPlayer& leader =
+        (*players)[static_cast<std::size_t>(player.overtaking)];
+    std::println("{:6.1f}  {} OVERTAKES {} (side {:+}, leader {:.2f} m/s) {}",
+                 now, tracedName(player), tracedName(leader),
+                 player.overtakeSide, length(leader.velocity),
+                 tracedState(player));
+  }
+
+  const std::vector<MatchPlayer>* players;
+  const MatchEngine* lastCollisions;
+  std::vector<std::int8_t> overtaking;
+  std::vector<bool> slow;
+  std::string follow;
+  std::array<int, 4> offCounts{};
+  int movingCount = 0;
+  float worstOff = 0.0F;
+  /** The drill clock at this step (s). */
+  double clock = 0.0;
+};
+}  // namespace
+
+int runLapsTrace(const std::vector<TrainingPlayer>& squad,
+                 const StatsConfig& config, double seconds,
+                 const std::string& follow)
+{
+  std::unique_ptr<TrainingSession> session = trainingSessions()[0].make(squad);
+  TrainingDrill& laps = *session->drills[2];
+  std::unique_ptr<DrillRun> run =
+      startTrainingRun(laps, config, BrainId::BINTURONG, BodyId::BINTURONG);
+  LapsTrace trace(run->engine(), follow);
+  const double step = MatchTuning::Timing::FIXED_STEP_SECONDS;
+  double now = 0.0;
+  while (now < seconds && run->step())
+  {
+    now += step;
+    trace.step(now);
+  }
+  trace.summary();
   return 0;
 }

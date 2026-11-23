@@ -8,6 +8,8 @@
 
 #pragma once
 
+#include <imgui.h>
+
 #include <array>
 #include <cstddef>
 #include <cstdint>
@@ -20,6 +22,18 @@
 #include "model/match_brain_flow.h"
 
 struct ImFont;
+
+/** The brain flow pitch on the screen, for one frame. */
+struct BrainPitchFrame
+{
+  ImVec2 origin;
+  float width = 1.0F;
+  float height = 1.0F;
+
+  /** A point given as fractions of the pitch (across, down). */
+  [[nodiscard]] ImVec2 screen(float fx, float fy) const;
+  [[nodiscard]] ImVec2 screen(PitchPoint at) const;
+};
 
 /**
  * The brain flow visualiser (Notes and plans/
@@ -88,6 +102,13 @@ class BrainFlowScene : public GUIScene
   void renderExample(float width);
   /** The example on a small pitch: players to drag, the options drawn. */
   void renderPitch(float width);
+  [[nodiscard]] ImVec2 spotOf(const BrainPitchFrame& frame,
+                              std::size_t index) const;
+  void dragPlayers(const BrainPitchFrame& frame);
+  void drawOptionLines(ImDrawList* draw, const BrainPitchFrame& frame) const;
+  std::optional<std::size_t> drawPlayers(ImDrawList* draw,
+                                         const BrainPitchFrame& frame) const;
+  void drawOffBall(ImDrawList* draw, const BrainPitchFrame& frame) const;
   void renderFlow(float width, float height);
   /** The situation tree as rows of cards: pick one at each level. */
   void situationStage();

@@ -510,17 +510,59 @@ void ContactViewScene::render()
   ImGui::End();
 }
 
-void ContactViewScene::renderPanel(float width)
+namespace
+{
+/** A slider's range. */
+struct FloatRange
+{
+  float low = 0.0F;
+  float high = 1.0F;
+};
+
+/** The next input cell, with its label. */
+void nextInputField(const char* label)
+{
+  ImGui::TableNextColumn();
+  ImGui::Dummy(ImVec2(0, 0));
+  field(label);
+}
+
+/** A labelled slider in the next input cell; true if it moved. */
+bool inputSlider(const char* label, float* value, FloatRange range,
+                 const char* format)
+{
+  nextInputField(label);
+  const std::string id = std::string("##") + label;
+  return ImGui::SliderFloat(id.c_str(), value, range.low, range.high, format);
+}
+
+/** A row of tab buttons; returns the one chosen (or `selected`). A click
+ * shows at once on the buttons after it, as the panel always has. */
+int tabButtons(std::span<const char* const> tabs, float scale, ImFont* font,
+               int selected)
 {
   namespace Page = SandboxPageUI;
-  const float scale = Theme::scale();
-  Page::header("Contact difficulty",
-               "See how a touch or strike changes with position, ball movement "
-               "and intent.",
-               width, scale, boldFont, regularFont,
-               "Drag the disc for contact, the inner ring for arrival, the "
-               "outer ring for aim. Right-drag turns him.",
-               true);
+  int chosen = selected;
+  for (int tab = 0; tab < static_cast<int>(tabs.size()); ++tab)
+  {
+    if (tab > 0)
+    {
+      ImGui::SameLine(0, BUTTON_GAP * scale);
+    }
+    if (Page::button(tabs[static_cast<std::size_t>(tab)], chosen == tab, scale,
+                     font))
+    {
+      chosen = tab;
+    }
+  }
+  return chosen;
+}
+}  // namespace
+
+/** The contact card: back, the bench, the contact and what colours it. */
+void ContactViewScene::renderContactChoice(float width, float scale)
+{
+  namespace Page = SandboxPageUI;
   Page::beginCard("##contact_mode", "CONTACT", width, Page::DARK, scale,
                   boldFont);
   if (Page::button("Back to sandbox", false, scale, boldFont))
@@ -573,68 +615,163 @@ void ContactViewScene::renderPanel(float width)
     }
     ImGui::EndCombo();
   }
-
   Page::endCard(scale);
+}
+
+/** The details card: the panel's tabs, and the inputs' or tuning's sections. */
+void ContactViewScene::renderPanelTabs(float width, float scale)
+{
+  namespace Page = SandboxPageUI;
   Page::beginCard("##contact_tabs", "DETAILS", width, Page::MID, scale,
                   boldFont);
-  const std::array<const char*, 3> tabs{"Inputs", "Analysis", "Tuning"};
-  for (int tab = 0; tab < 3; ++tab)
-  {
-    if (tab > 0)
-    {
-      ImGui::SameLine(0, BUTTON_GAP * scale);
-    }
-    if (Page::button(tabs.at(tab), panelTab == tab, scale, boldFont))
-    {
-      panelTab = tab;
-    }
-  }
+  constexpr std::array<const char*, 3> TABS{"Inputs", "Analysis", "Tuning"};
+  panelTab = tabButtons(TABS, scale, boldFont, panelTab);
   if (panelTab != 1)
   {
-    const std::array<const char*, 3> sections =
-        panelTab == 0
-            ? std::array<const char*, 3>{"Player", "Ball", "Aim"}
-            : std::array<const char*, 3>{"Summary", "Stretch", "Knobs"};
+    constexpr std::array<const char*, 3> INPUT_SECTIONS{"Player", "Ball",
+                                                        "Aim"};
+    constexpr std::array<const char*, 3> TUNING_SECTIONS{"Summary", "Stretch",
+                                                         "Knobs"};
     int& selected = panelTab == 0 ? inputTab : tuningTab;
-    for (int tab = 0; tab < 3; ++tab)
-    {
-      if (tab > 0)
-      {
-        ImGui::SameLine(0, BUTTON_GAP * scale);
-      }
-      if (Page::button(sections.at(tab), selected == tab, scale, boldFont))
-      {
-        selected = tab;
-      }
-    }
+    selected = tabButtons(panelTab == 0 ? INPUT_SECTIONS : TUNING_SECTIONS,
+                          scale, boldFont, selected);
   }
   Page::endCard(scale);
-  if (panelTab == 1)
+}
+
+void ContactViewScene::renderTuningCard(float width, float scale)
+{
+  namespace Page = SandboxPageUI;
+  const PanelCard& card = panelCard(TUNING_CARDS, tuningTab);
+  Page::beginCard(card.id, card.title, width, Page::LIGHT, scale, boldFont);
+  ImGui::PushTextWrapPos(0);
+  if (tuningTab == 0)
   {
-    renderBreakdown(width);
-    return;
+    renderTuning();
   }
-  if (panelTab == 2)
+  else if (tuningTab == 1)
   {
-    const PanelCard& card = panelCard(TUNING_CARDS, tuningTab);
-    Page::beginCard(card.id, card.title, width, Page::LIGHT, scale, boldFont);
-    ImGui::PushTextWrapPos(0);
-    if (tuningTab == 0)
-    {
-      renderTuning();
-    }
-    else if (tuningTab == 1)
-    {
-      renderStretchMap();
-    }
-    else
-    {
-      renderKnobs();
-    }
-    ImGui::PopTextWrapPos();
-    Page::endCard(scale);
-    return;
+    renderStretchMap();
   }
+  else
+  {
+    renderKnobs();
+  }
+  ImGui::PopTextWrapPos();
+  Page::endCard(scale);
+}
+
+void ContactViewScene::renderPlayerInputs()
+{
+  inputSlider("Facing (°)", &inputs.facing,
+              {.low = 0.0F, .high = FULL_TURN_DEGREES}, "%.0f");
+  int foot = inputs.rightFooted ? 0 : 1;
+  constexpr std::array<const char*, 2> FEET{"Right", "Left"};
+  nextInputField("Stronger foot");
+  if (SandboxPageUI::combo("##foot", &foot, FEET.data(), 2))
+  {
+    inputs.rightFooted = foot == 0;
+  }
+  inputSlider("His speed (m/s)", &inputs.ownSpeed,
+              {.low = 0.0F, .high = MAX_OWN_SPEED}, "%.1f");
+  inputSlider("Running to (°)", &inputs.ownDirection,
+              {.low = 0.0F, .high = FULL_TURN_DEGREES}, "%.0f");
+  inputSlider("Top speed (m/s)", &inputs.topSpeed,
+              {.low = MIN_TOP_SPEED, .high = MAX_TOP_SPEED}, "%.1f");
+}
+
+/** Where he meets it, as distance and direction from his centre. */
+void ContactViewScene::renderMeetingPoint()
+{
+  const float reachMetres = reach();
+  float gap = std::hypot(inputs.probe.x, inputs.probe.y);
+  float bearing =
+      gap > PROBE_DIRECTION_EPSILON ? compassOf(inputs.probe) : 0.0F;
+  const bool gapChanged =
+      inputSlider("Met at", &gap, {.low = 0.0F, .high = reachMetres}, "%.2f m");
+  const bool bearingChanged = inputSlider(
+      "Met at (°)", &bearing, {.low = 0.0F, .high = FULL_TURN_DEGREES}, "%.0f");
+  if (gapChanged || bearingChanged)
+  {
+    const Vector2F unit = compass(bearing);
+    inputs.probe = ImVec2(unit.x * gap, unit.y * gap);
+  }
+}
+
+/** The brain's read of the ball: expected or not (touches only). */
+void ContactViewScene::renderExpectation()
+{
+  nextInputField("Expected?");
+  if (SandboxPageUI::beginCombo(
+          "##expected", isTouch() ? EXPECTATIONS.at(static_cast<std::size_t>(
+                                        inputs.expectation))
+                                  : "He chose to strike it"))
+  {
+    for (std::size_t index = 0; isTouch() && index < EXPECTATIONS.size();
+         ++index)
+    {
+      if (ImGui::Selectable(EXPECTATIONS.at(index),
+                            static_cast<int>(index) == inputs.expectation))
+      {
+        inputs.expectation = static_cast<int>(index);
+      }
+    }
+    ImGui::EndCombo();
+  }
+  if (ImGui::IsItemHovered())
+  {
+    SandboxText::tooltipText(
+        "The brain's read: only a pass meant for someone else "
+        "surprises him, for now.");
+  }
+}
+
+void ContactViewScene::renderBallInputs()
+{
+  inputSlider("Comes from (°)", &inputs.incomingFrom,
+              {.low = 0.0F, .high = FULL_TURN_DEGREES}, "%.0f");
+  inputSlider("Incoming pace", &inputs.incomingPace,
+              {.low = 0.0F, .high = MAX_BALL_PACE}, "%.1f m/s");
+  inputSlider("Vertical speed", &inputs.verticalSpeed,
+              {.low = MIN_VERTICAL_SPEED, .high = MAX_VERTICAL_SPEED},
+              "%+.1f m/s");
+  if (ImGui::IsItemHovered())
+  {
+    SandboxText::tooltipText(
+        "The ball's speed up (+) or down (-) as it reaches "
+        "him.");
+  }
+  inputSlider("Height", &inputs.height, {.low = 0.0F, .high = MAX_BALL_HEIGHT},
+              "%.2f m");
+  renderMeetingPoint();
+  renderExpectation();
+  inputSlider("Nearest opponent", &inputs.opponentMetres,
+              {.low = 0.0F, .high = MAX_OPPONENT_DISTANCE}, "%.1f m");
+}
+
+void ContactViewScene::renderAimInputs()
+{
+  inputSlider("Sends it to (°)", &inputs.aim,
+              {.low = 0.0F, .high = FULL_TURN_DEGREES}, "%.0f");
+  inputSlider("Intended pace", &inputs.intendedSpeed,
+              {.low = 0.0F, .high = MAX_BALL_PACE}, "%.1f m/s");
+  if (ImGui::IsItemHovered())
+  {
+    SandboxText::tooltipText("Over the ground.");
+  }
+  inputSlider("Lift", &inputs.lift, {.low = MIN_LIFT, .high = MAX_LIFT},
+              "%+.1f m/s");
+  if (ImGui::IsItemHovered())
+  {
+    SandboxText::tooltipText(
+        "The speed up (+) or down (-) he means it to leave "
+        "with; 0 sends it off level, cushioning any drop.");
+  }
+}
+
+void ContactViewScene::renderInputCard(float width, float scale)
+{
+  namespace Page = SandboxPageUI;
   const PanelCard& card = panelCard(INPUT_CARDS, inputTab);
   Page::beginCard(card.id, card.title, width, Page::LIGHT, scale, boldFont);
   ImGui::PushStyleVar(ImGuiStyleVar_FramePadding,
@@ -645,110 +782,17 @@ void ContactViewScene::renderPanel(float width)
           ImGuiTableFlags_SizingStretchSame | ImGuiTableFlags_RowBg |
               ImGuiTableFlags_BordersInnerH | ImGuiTableFlags_BordersInnerV))
   {
-    const auto nextField = [&](const char* label)
-    {
-      ImGui::TableNextColumn();
-      ImGui::Dummy(ImVec2(0, 0));
-      field(label);
-    };
-    const auto slider = [&](const char* label, float* value, float low,
-                            float high, const char* format)
-    {
-      nextField(label);
-      const std::string id = std::string("##") + label;
-      return ImGui::SliderFloat(id.c_str(), value, low, high, format);
-    };
     if (inputTab == 0)
     {
-      slider("Facing (°)", &inputs.facing, 0.0F, FULL_TURN_DEGREES, "%.0f");
-      int foot = inputs.rightFooted ? 0 : 1;
-      constexpr std::array<const char*, 2> FEET{"Right", "Left"};
-      nextField("Stronger foot");
-      if (SandboxPageUI::combo("##foot", &foot, FEET.data(), 2))
-      {
-        inputs.rightFooted = foot == 0;
-      }
-      slider("His speed (m/s)", &inputs.ownSpeed, 0.0F, MAX_OWN_SPEED, "%.1f");
-      slider("Running to (°)", &inputs.ownDirection, 0.0F, FULL_TURN_DEGREES,
-             "%.0f");
-      slider("Top speed (m/s)", &inputs.topSpeed, MIN_TOP_SPEED, MAX_TOP_SPEED,
-             "%.1f");
+      renderPlayerInputs();
     }
     else if (inputTab == 1)
     {
-      slider("Comes from (°)", &inputs.incomingFrom, 0.0F, FULL_TURN_DEGREES,
-             "%.0f");
-      slider("Incoming pace", &inputs.incomingPace, 0.0F, MAX_BALL_PACE,
-             "%.1f m/s");
-      slider("Vertical speed", &inputs.verticalSpeed, MIN_VERTICAL_SPEED,
-             MAX_VERTICAL_SPEED, "%+.1f m/s");
-      if (ImGui::IsItemHovered())
-      {
-        SandboxText::tooltipText(
-            "The ball's speed up (+) or down (-) as it reaches "
-            "him.");
-      }
-      slider("Height", &inputs.height, 0.0F, MAX_BALL_HEIGHT, "%.2f m");
-      const float reachMetres = reach();
-      // Where he meets it, as distance and direction from his centre.
-      float gap = std::hypot(inputs.probe.x, inputs.probe.y);
-      float bearing =
-          gap > PROBE_DIRECTION_EPSILON ? compassOf(inputs.probe) : 0.0F;
-      const bool gapChanged =
-          slider("Met at", &gap, 0.0F, reachMetres, "%.2f m");
-      const bool bearingChanged =
-          slider("Met at (°)", &bearing, 0.0F, FULL_TURN_DEGREES, "%.0f");
-      if (gapChanged || bearingChanged)
-      {
-        const Vector2F unit = compass(bearing);
-        inputs.probe = ImVec2(unit.x * gap, unit.y * gap);
-      }
-      nextField("Expected?");
-      if (SandboxPageUI::beginCombo(
-              "##expected",
-              isTouch() ? EXPECTATIONS.at(
-                              static_cast<std::size_t>(inputs.expectation))
-                        : "He chose to strike it"))
-      {
-        if (isTouch())
-        {
-          for (std::size_t index = 0; index < EXPECTATIONS.size(); ++index)
-          {
-            if (ImGui::Selectable(
-                    EXPECTATIONS.at(index),
-                    static_cast<int>(index) == inputs.expectation))
-            {
-              inputs.expectation = static_cast<int>(index);
-            }
-          }
-        }
-        ImGui::EndCombo();
-      }
-      if (ImGui::IsItemHovered())
-      {
-        SandboxText::tooltipText(
-            "The brain's read: only a pass meant for someone else "
-            "surprises him, for now.");
-      }
-      slider("Nearest opponent", &inputs.opponentMetres, 0.0F,
-             MAX_OPPONENT_DISTANCE, "%.1f m");
+      renderBallInputs();
     }
     else
     {
-      slider("Sends it to (°)", &inputs.aim, 0.0F, FULL_TURN_DEGREES, "%.0f");
-      slider("Intended pace", &inputs.intendedSpeed, 0.0F, MAX_BALL_PACE,
-             "%.1f m/s");
-      if (ImGui::IsItemHovered())
-      {
-        SandboxText::tooltipText("Over the ground.");
-      }
-      slider("Lift", &inputs.lift, MIN_LIFT, MAX_LIFT, "%+.1f m/s");
-      if (ImGui::IsItemHovered())
-      {
-        SandboxText::tooltipText(
-            "The speed up (+) or down (-) he means it to leave "
-            "with; 0 sends it off level, cushioning any drop.");
-      }
+      renderAimInputs();
     }
     ImGui::EndTable();
   }
@@ -756,77 +800,203 @@ void ContactViewScene::renderPanel(float width)
   Page::endCard(scale);
 }
 
-void ContactViewScene::renderCircle(ImVec2 size)
+void ContactViewScene::renderPanel(float width)
 {
   namespace Page = SandboxPageUI;
   const float scale = Theme::scale();
-  Page::beginCard("##contact_diagram", "CONTACT MAP", size.x, Page::DARK, scale,
-                  boldFont);
-  const ImVec2 area(std::max(scale, ImGui::GetContentRegionAvail().x),
-                    std::max(240 * scale, size.y - (56 * scale)));
-  const ContactAssessment legendContact = assessProbe();
-  const std::array<int, 3> factors{STRETCH, APPROACH, TURN};
-  const std::array<const char*, 3> names{"Disc: stretch", "Arrival: approach",
-                                         "Aim: turn"};
-  std::array<std::string, 3> legendLabels;
-  int legendRows = 1;
-  float used = 0;
-  for (std::size_t index = 0; index < factors.size(); ++index)
+  Page::header("Contact difficulty",
+               "See how a touch or strike changes with position, ball movement "
+               "and intent.",
+               width, scale, boldFont, regularFont,
+               "Drag the disc for contact, the inner ring for arrival, the "
+               "outer ring for aim. Right-drag turns him.",
+               true);
+  renderContactChoice(width, scale);
+  renderPanelTabs(width, scale);
+  if (panelTab == 1)
   {
-    const auto& factor = legendContact.factors.at(factors.at(index));
-    const bool weighted = factor.angleWeight != 0 || factor.weightWeight != 0 ||
-                          factor.verticalWeight != 0;
-    legendLabels.at(index) =
-        std::string(names.at(index)) + (weighted ? "" : " (unweighted)");
-    const float width = ImGui::CalcTextSize(legendLabels.at(index).c_str()).x;
-    if (used > 0 && used + LEGEND_GAP * scale + width > area.x)
+    renderBreakdown(width);
+  }
+  else if (panelTab == 2)
+  {
+    renderTuningCard(width, scale);
+  }
+  else
+  {
+    renderInputCard(width, scale);
+  }
+}
+
+namespace
+{
+/** The factors the zones legend names, and their labels. */
+constexpr std::array<int, 3> LEGEND_FACTORS{STRETCH, APPROACH, TURN};
+constexpr std::array<const char*, 3> LEGEND_NAMES{
+    "Disc: stretch", "Arrival: approach", "Aim: turn"};
+/** Room left outside the aim ring, as a share of his reach. */
+constexpr float AIM_RING_MARGIN = 0.08F;
+constexpr const char* CIRCLE_GUIDE =
+    "Outer ring: > inward, >> outward; bars mean no ground line. Hover for "
+    "guide.";
+
+/** The zones legend: its labels, and how many rows they wrap to. */
+struct CircleLegend
+{
+  std::array<std::string, 3> labels;
+  int rows = 1;
+};
+
+bool factorWeighted(const ContactFactor& factor)
+{
+  return factor.angleWeight != 0 || factor.weightWeight != 0 ||
+         factor.verticalWeight != 0;
+}
+
+CircleLegend circleLegend(const ContactAssessment& contact, float width,
+                          float scale)
+{
+  CircleLegend legend;
+  float used = 0;
+  for (std::size_t index = 0; index < LEGEND_FACTORS.size(); ++index)
+  {
+    const auto& factor = contact.factors.at(LEGEND_FACTORS.at(index));
+    legend.labels.at(index) = std::string(LEGEND_NAMES.at(index)) +
+                              (factorWeighted(factor) ? "" : " (unweighted)");
+    const float labelWidth =
+        ImGui::CalcTextSize(legend.labels.at(index).c_str()).x;
+    if (used > 0 && used + LEGEND_GAP * scale + labelWidth > width)
     {
-      ++legendRows;
+      ++legend.rows;
       used = 0;
     }
-    used += width + LEGEND_GAP * scale;
+    used += labelWidth + LEGEND_GAP * scale;
   }
-  const std::string reachLabel = std::format(
-      "Reach {:.2f} m / comfort gap {:.2f} m (dashed). Directions: 0 deg up, "
-      "clockwise.",
-      reach(), profile.comfortGap);
-  const char* guide =
-      "Outer ring: > inward, >> outward; bars mean no ground line. Hover for "
-      "guide.";
-  const float spacing = ImGui::GetStyle().ItemSpacing.y;
-  const float legendHeight =
-      spacing +
-      (static_cast<float>(view == 0 ? legendRows : 1) *
-       ImGui::GetTextLineHeightWithSpacing()) +
-      ImGui::CalcTextSize(reachLabel.c_str(), nullptr, false, area.x).y +
-      spacing + ImGui::CalcTextSize(guide, nullptr, false, area.x).y + spacing;
-  const float side =
-      std::max(std::min(area.x, area.y - legendHeight), 100.0F * scale);
-  const ImVec2 origin = ImGui::GetCursorScreenPos();
-  const ImVec2 centre(origin.x + (area.x * MIDPOINT_SHARE),
-                      origin.y + (side * MIDPOINT_SHARE));
-  const float radius = side * MIDPOINT_SHARE / (AIM_OUTER + 0.08F);
-  const float reachMetres = reach();
-  const float ppm = radius / reachMetres;
-  const auto at = [&](float x, float y)
-  { return ImVec2(centre.x + (x * ppm), centre.y - (y * ppm)); };
-  const auto onRing = [&](float degrees, float multiple)
+  return legend;
+}
+
+/** The zones legend: each factor in its hue, wrapping to the width. */
+void drawZonesLegend(const CircleLegend& legend,
+                     const ContactAssessment& contact, float width, float scale)
+{
+  namespace Page = SandboxPageUI;
+  float rowWidth = 0;
+  for (std::size_t index = 0; index < LEGEND_FACTORS.size(); ++index)
   {
-    const Vector2F unit = compass(degrees);
-    return ImVec2(centre.x + (unit.x * radius * multiple),
-                  centre.y - (unit.y * radius * multiple));
-  };
+    const float labelWidth =
+        ImGui::CalcTextSize(legend.labels.at(index).c_str()).x;
+    if (rowWidth > 0 && rowWidth + LEGEND_GAP * scale + labelWidth <= width)
+    {
+      ImGui::SameLine(0, LEGEND_GAP * scale);
+    }
+    else
+    {
+      rowWidth = 0;
+    }
+    const auto& factor = contact.factors.at(LEGEND_FACTORS.at(index));
+    SandboxText::coloredText(factorWeighted(factor)
+                                 ? zoneHue(LEGEND_FACTORS.at(index))
+                                 : ImGui::ColorConvertU32ToFloat4(Page::MUTED),
+                             legend.labels.at(index).c_str());
+    if (ImGui::IsItemHovered())
+    {
+      SandboxText::tooltipText(
+          std::format(
+              "{} / weaker foot can be selected separately with Colour by.",
+              DEPENDS_ON.at(LEGEND_FACTORS.at(index)))
+              .c_str());
+    }
+    rowWidth += labelWidth + LEGEND_GAP * scale;
+  }
+}
 
-  ImGui::InvisibleButton(
-      "##canvas", ImVec2(area.x, side),
-      ImGuiButtonFlags_MouseButtonLeft | ImGuiButtonFlags_MouseButtonRight);
-  const bool hovered = ImGui::IsItemHovered();
-  const ImVec2 mouse = ImGui::GetIO().MousePos;
-  const ImVec2 offset((mouse.x - centre.x) / ppm, (centre.y - mouse.y) / ppm);
-  const float mouseRadius =
-      std::hypot(mouse.x - centre.x, mouse.y - centre.y) / radius;
+/** The heat legend: 0 to 1 on one scale. */
+void drawHeatLegend(ImDrawList& draw, float width, float scale)
+{
+  SandboxText::disabledText("0");
+  ImGui::SameLine();
+  const ImVec2 bar = ImGui::GetCursorScreenPos();
+  const float barWidth = std::min(240 * scale, width * 0.4F);
+  const float barHeight = ImGui::GetTextLineHeight();
+  for (int index = 0; index < HEAT_BAR_STEPS; ++index)
+  {
+    draw.AddRectFilled(
+        ImVec2(bar.x + (barWidth * static_cast<float>(index) /
+                        static_cast<float>(HEAT_BAR_STEPS)),
+               bar.y),
+        ImVec2(bar.x + (barWidth * static_cast<float>(index + 1) /
+                        static_cast<float>(HEAT_BAR_STEPS)),
+               bar.y + barHeight),
+        heat(float(index) / (HEAT_BAR_STEPS - 1)));
+  }
+  ImGui::Dummy(ImVec2(barWidth, barHeight));
+  ImGui::SameLine();
+  SandboxText::disabledText("1 / same scale throughout");
+}
 
-  // Dragging: what was grabbed keeps moving until release.
+/** One slot of the outer ring's chevrons: where, which way, and how big. */
+struct ChevronSlot
+{
+  ImVec2 middle;
+  ImVec2 along;
+  ImVec2 out;
+  float chevron = 0.0F;
+  bool noLine = false;
+  float scale = 1.0F;
+};
+
+/** One chevron (or bar) in a slot, `shift` along the ring. */
+void drawChevronMark(ImDrawList& draw, const ChevronSlot& slot, float shift)
+{
+  const ImVec2 middle = slot.middle;
+  const ImVec2 along = slot.along;
+  const ImVec2 out = slot.out;
+  const float chevron = slot.chevron;
+  const float scale = slot.scale;
+  const float depth = chevron * 0.8F;
+  if (slot.noLine)
+  {
+    const ImVec2 centre(middle.x + (along.x * shift),
+                        middle.y + (along.y * shift));
+    const ImVec2 a(centre.x + (out.x * chevron), centre.y + (out.y * chevron));
+    const ImVec2 b(centre.x - (out.x * chevron), centre.y - (out.y * chevron));
+    draw.AddLine(a, b, IM_COL32(0, 0, 0, 170), CHEVRON_OUTLINE_STROKE * scale);
+    draw.AddLine(a, b, IM_COL32(255, 255, 255, 235), CHEVRON_STROKE * scale);
+    return;
+  }
+  const ImVec2 tip(middle.x + (along.x * (shift + depth * MIDPOINT_SHARE)),
+                   middle.y + (along.y * (shift + depth * MIDPOINT_SHARE)));
+  const ImVec2 back(middle.x + (along.x * (shift - depth * MIDPOINT_SHARE)),
+                    middle.y + (along.y * (shift - depth * MIDPOINT_SHARE)));
+  const std::array<ImVec2, 3> points{
+      ImVec2(back.x + (out.x * chevron), back.y + (out.y * chevron)), tip,
+      ImVec2(back.x - (out.x * chevron), back.y - (out.y * chevron))};
+  draw.AddPolyline(points.data(), 3, IM_COL32(0, 0, 0, 170), 0,
+                   CHEVRON_OUTLINE_STROKE * scale);
+  draw.AddPolyline(points.data(), 3, IM_COL32(255, 255, 255, 235), 0,
+                   CHEVRON_STROKE * scale);
+}
+}  // namespace
+
+ImVec2 ContactViewScene::CircleFrame::at(ImVec2 metres) const
+{
+  return {centre.x + (metres.x * ppm), centre.y - (metres.y * ppm)};
+}
+
+// Argument order: degrees then multiple of his reach, as polar coordinates go.
+// NOLINTNEXTLINE(bugprone-easily-swappable-parameters)
+ImVec2 ContactViewScene::CircleFrame::onRing(float degrees,
+                                             float multiple) const
+{
+  const Vector2F unit = compass(degrees);
+  return {centre.x + (unit.x * radius * multiple),
+          centre.y - (unit.y * radius * multiple)};
+}
+
+/** Dragging: what was grabbed keeps moving until release. */
+void ContactViewScene::dragOnCircle(ImVec2 offset, float mouseRadius,
+                                    const CircleFrame& frame)
+{
+  const float reachMetres = frame.reachMetres;
   if (ImGui::IsItemActivated())
   {
     if (ImGui::IsMouseDown(ImGuiMouseButton_Right))
@@ -880,11 +1050,13 @@ void ContactViewScene::renderCircle(ImVec2 size)
     inputs.probe = ImVec2(inputs.probe.x * reachMetres / gap,
                           inputs.probe.y * reachMetres / gap);
   }
+}
 
-  ImDrawList& draw = *ImGui::GetWindowDrawList();
-
-  // The rings: where it comes from (with the ball where it is met), and
-  // where he sends it.
+/** The rings: where it comes from (with the ball where it is met), and
+ * where he sends it. */
+void ContactViewScene::drawContactRings(ImDrawList& draw,
+                                        const CircleFrame& frame) const
+{
   const float step = FULL_TURN_DEGREES / RING_SEGMENTS;
   for (int segment = 0; segment < RING_SEGMENTS; ++segment)
   {
@@ -894,22 +1066,29 @@ void ContactViewScene::renderCircle(ImVec2 size)
     const ContactAssessment fromContact =
         assess(inputs.probe, middle, inputs.aim);
     const std::array<ImVec2, 4> fromQuad{
-        onRing(from, FROM_INNER), onRing(from, FROM_OUTER),
-        onRing(to, FROM_OUTER), onRing(to, FROM_INNER)};
+        frame.onRing(from, FROM_INNER), frame.onRing(from, FROM_OUTER),
+        frame.onRing(to, FROM_OUTER), frame.onRing(to, FROM_INNER)};
     draw.AddConvexPolyFilled(fromQuad.data(), 4,
                              colourOf(fromContact, FROM_ZONES));
     const ContactAssessment aimContact =
         assess(inputs.probe, inputs.incomingFrom, middle);
     const std::array<ImVec2, 4> aimQuad{
-        onRing(from, AIM_INNER), onRing(from, AIM_OUTER), onRing(to, AIM_OUTER),
-        onRing(to, AIM_INNER)};
+        frame.onRing(from, AIM_INNER), frame.onRing(from, AIM_OUTER),
+        frame.onRing(to, AIM_OUTER), frame.onRing(to, AIM_INNER)};
     draw.AddConvexPolyFilled(aimQuad.data(), 4,
                              colourOf(aimContact, AIM_ZONES));
   }
+}
 
-  // The disc: each cell coloured by meeting the ball there.
+/** The disc: each cell coloured by meeting the ball there. */
+void ContactViewScene::drawContactDisc(ImDrawList& draw,
+                                       const CircleFrame& frame) const
+{
+  const float reachMetres = frame.reachMetres;
   const float cell = reachMetres * 2.0F / DISC_CELLS;
-  draw.AddCircleFilled(centre, radius, ImGui::GetColorU32(BASE), RING_SEGMENTS);
+  const float halfCell = cell * MIDPOINT_SHARE;
+  draw.AddCircleFilled(frame.centre, frame.radius, ImGui::GetColorU32(BASE),
+                       RING_SEGMENTS);
   for (int row = 0; row < DISC_CELLS; ++row)
   {
     for (int column = 0; column < DISC_CELLS; ++column)
@@ -922,34 +1101,35 @@ void ContactViewScene::renderCircle(ImVec2 size)
       {
         continue;
       }
-      if (inDeadZone(ImVec2(x, y)))
-      {
-        draw.AddRectFilled(
-            at(x - (cell * MIDPOINT_SHARE), y + (cell * MIDPOINT_SHARE)),
-            at(x + (cell * MIDPOINT_SHARE), y - (cell * MIDPOINT_SHARE)),
-            DEAD_ZONE_COLOUR);
-        continue;
-      }
-      const ContactAssessment contact =
-          assess(ImVec2(x, y), inputs.incomingFrom, inputs.aim);
-      draw.AddRectFilled(
-          at(x - (cell * MIDPOINT_SHARE), y + (cell * MIDPOINT_SHARE)),
-          at(x + (cell * MIDPOINT_SHARE), y - (cell * MIDPOINT_SHARE)),
-          colourOf(contact, DISC_ZONES));
+      const ImU32 tint =
+          inDeadZone(ImVec2(x, y))
+              ? DEAD_ZONE_COLOUR
+              : colourOf(assess(ImVec2(x, y), inputs.incomingFrom, inputs.aim),
+                         DISC_ZONES);
+      draw.AddRectFilled(frame.at({x - halfCell, y + halfCell}),
+                         frame.at({x + halfCell, y - halfCell}), tint);
     }
   }
+}
 
-  // Outlines: his reach, the comfort gap (stretching starts beyond it),
-  // the rings.
+/** Outlines: his reach, the comfort gap (stretching starts beyond it), the
+ * dead zone's edges and the rings. */
+void ContactViewScene::drawContactOutlines(ImDrawList& draw,
+                                           const CircleFrame& frame) const
+{
+  const float scale = frame.scale;
+  const float reachMetres = frame.reachMetres;
+  const float cell = reachMetres * 2.0F / DISC_CELLS;
   const ImU32 line = IM_COL32(255, 255, 255, 190);
   const ImU32 faint = IM_COL32(255, 255, 255, 70);
   // The square cells overhang the circle: trim them with the background.
-  const float overhang = cell * ppm * 1.5F;
-  draw.AddCircle(centre, radius + (overhang * MIDPOINT_SHARE),
+  const float overhang = cell * frame.ppm * 1.5F;
+  draw.AddCircle(frame.centre, frame.radius + (overhang * MIDPOINT_SHARE),
                  ImGui::GetColorU32(ImGuiCol_WindowBg), RING_SEGMENTS,
                  overhang);
-  draw.AddCircle(centre, radius, line, RING_SEGMENTS, NORMAL_STROKE * scale);
-  const float comfort = profile.comfortGap * ppm;
+  draw.AddCircle(frame.centre, frame.radius, line, RING_SEGMENTS,
+                 NORMAL_STROKE * scale);
+  const float comfort = profile.comfortGap * frame.ppm;
   for (int dash = 0; dash < DASH_SEGMENTS; dash += 2)
   {
     const float a = static_cast<float>(dash) /
@@ -958,16 +1138,37 @@ void ContactViewScene::renderCircle(ImVec2 size)
     const float b = static_cast<float>(dash + 1) /
                     static_cast<float>(HEAT_BAR_STEPS) * 2.0F *
                     std::numbers::pi_v<float>;
-    draw.PathArcTo(centre, comfort, a, b, 4);
+    draw.PathArcTo(frame.centre, comfort, a, b, 4);
     draw.PathStroke(line, 0, THIN_STROKE * scale);
   }
-  // The outer ring's turns: chevrons pointing the way sending it there
-  // turns the ball off its line, clockwise or anticlockwise; one for an
-  // inward turn, two for outward, none where it is no turn. A ball with
-  // no line across the ground (still, or straight up or down) has no
-  // turn to point along: bars, one for inward, two for outward.
+  drawTurnChevrons(draw, frame);
+  // The dead zone's edges, from the comfort gap out to his reach.
+  const float deadAngle = sandboxTuning().touch[TouchKnob::DEAD_ZONE_ANGLE];
+  for (const float sideOf : {-1.0F, 1.0F})
+  {
+    const Vector2F edge = compass(inputs.facing + (sideOf * deadAngle));
+    draw.AddLine(
+        frame.at({edge.x * profile.comfortGap, edge.y * profile.comfortGap}),
+        frame.at({edge.x * reachMetres, edge.y * reachMetres}), line,
+        THIN_STROKE * scale);
+  }
+  for (const float multiple : {FROM_INNER, FROM_OUTER, AIM_INNER, AIM_OUTER})
+  {
+    draw.AddCircle(frame.centre, frame.radius * multiple, faint, RING_SEGMENTS,
+                   1.0F * scale);
+  }
+}
+
+/** The outer ring's turns: chevrons pointing the way sending it there turns
+ * the ball off its line, clockwise or anticlockwise; one for an inward turn,
+ * two for outward, none where it is no turn. A ball with no line across the
+ * ground (still, or straight up or down) has no turn to point along: bars,
+ * one for inward, two for outward. */
+void ContactViewScene::drawTurnChevrons(ImDrawList& draw,
+                                        const CircleFrame& frame) const
+{
   constexpr int CHEVRONS = 24;
-  const float chevron = radius * (AIM_OUTER - AIM_INNER) * 0.26F;
+  const float chevron = frame.radius * (AIM_OUTER - AIM_INNER) * 0.26F;
   for (int mark = 0; mark < CHEVRONS; ++mark)
   {
     const float degrees = (static_cast<float>(mark) + MIDPOINT_SHARE) *
@@ -976,8 +1177,8 @@ void ContactViewScene::renderCircle(ImVec2 size)
         assess(inputs.probe, inputs.incomingFrom, degrees);
     const bool noLine = !contact.moving || std::cos(contact.lineElevation) <=
                                                PROBE_DIRECTION_EPSILON;
-    // None in a slot holding a direction that is no turn (straight back
-    // or straight on), so the gap shows where the ball keeps its line.
+    // None in a slot holding a direction that is no turn (straight back or
+    // straight on), so the gap shows where the ball keeps its line.
     if (!noLine &&
         std::abs(contact.turn) < radians(HALF_TURN_DEGREES / CHEVRONS))
     {
@@ -986,115 +1187,93 @@ void ContactViewScene::renderCircle(ImVec2 size)
     // Along the ring on screen: a positive turn is anticlockwise.
     const float angle = radians(degrees);
     const float way = contact.turn > 0.0F ? -1.0F : 1.0F;
-    const ImVec2 along(std::cos(angle) * way, std::sin(angle) * way);
-    const ImVec2 out(std::sin(angle), -std::cos(angle));
-    const ImVec2 middle =
-        onRing(degrees, (AIM_INNER + AIM_OUTER) * MIDPOINT_SHARE);
+    const ChevronSlot slot{
+        .middle =
+            frame.onRing(degrees, (AIM_INNER + AIM_OUTER) * MIDPOINT_SHARE),
+        .along = ImVec2(std::cos(angle) * way, std::sin(angle) * way),
+        .out = ImVec2(std::sin(angle), -std::cos(angle)),
+        .chevron = chevron,
+        .noLine = noLine,
+        .scale = frame.scale};
     const int count = contact.outward ? 2 : 1;
-    const float depth = chevron * 0.8F;
     const float spacing = chevron * 0.75F;
     for (int index = 0; index < count; ++index)
     {
       const float shift = (static_cast<float>(index) -
                            static_cast<float>(count - 1) * MIDPOINT_SHARE) *
                           spacing;
-      if (noLine)
-      {
-        const ImVec2 centre(middle.x + (along.x * shift),
-                            middle.y + (along.y * shift));
-        const ImVec2 a(centre.x + (out.x * chevron),
-                       centre.y + (out.y * chevron));
-        const ImVec2 b(centre.x - (out.x * chevron),
-                       centre.y - (out.y * chevron));
-        draw.AddLine(a, b, IM_COL32(0, 0, 0, 170),
-                     CHEVRON_OUTLINE_STROKE * scale);
-        draw.AddLine(a, b, IM_COL32(255, 255, 255, 235),
-                     CHEVRON_STROKE * scale);
-        continue;
-      }
-      const ImVec2 tip(middle.x + (along.x * (shift + depth * MIDPOINT_SHARE)),
-                       middle.y + (along.y * (shift + depth * MIDPOINT_SHARE)));
-      const ImVec2 back(
-          middle.x + (along.x * (shift - depth * MIDPOINT_SHARE)),
-          middle.y + (along.y * (shift - depth * MIDPOINT_SHARE)));
-      const std::array<ImVec2, 3> points{
-          ImVec2(back.x + (out.x * chevron), back.y + (out.y * chevron)), tip,
-          ImVec2(back.x - (out.x * chevron), back.y - (out.y * chevron))};
-      draw.AddPolyline(points.data(), 3, IM_COL32(0, 0, 0, 170), 0,
-                       CHEVRON_OUTLINE_STROKE * scale);
-      draw.AddPolyline(points.data(), 3, IM_COL32(255, 255, 255, 235), 0,
-                       CHEVRON_STROKE * scale);
+      drawChevronMark(draw, slot, shift);
     }
   }
-  // The dead zone's edges, from the comfort gap out to his reach.
-  const float deadAngle = sandboxTuning().touch[TouchKnob::DEAD_ZONE_ANGLE];
-  for (const float sideOf : {-1.0F, 1.0F})
-  {
-    const Vector2F edge = compass(inputs.facing + (sideOf * deadAngle));
-    draw.AddLine(at(edge.x * profile.comfortGap, edge.y * profile.comfortGap),
-                 at(edge.x * reachMetres, edge.y * reachMetres), line,
-                 THIN_STROKE * scale);
-  }
-  for (const float multiple : {FROM_INNER, FROM_OUTER, AIM_INNER, AIM_OUTER})
-  {
-    draw.AddCircle(centre, radius * multiple, faint, RING_SEGMENTS,
-                   1.0F * scale);
-  }
+}
 
-  // Him: shoulders across his facing, the facing arrow, his feet (the
-  // stronger one marked), and his run.
+/** Him: shoulders across his facing, the facing arrow, his feet (the
+ * stronger one marked), and his run. */
+void ContactViewScene::drawContactPlayer(ImDrawList& draw,
+                                         const CircleFrame& frame) const
+{
+  const float scale = frame.scale;
   const Vector2F facing = compass(inputs.facing);
   const Vector2F right{.x = facing.y, .y = -facing.x};
   const float shoulder = 0.22F;
-  draw.AddLine(at(-right.x * shoulder, -right.y * shoulder),
-               at(right.x * shoulder, right.y * shoulder),
+  draw.AddLine(frame.at({-right.x * shoulder, -right.y * shoulder}),
+               frame.at({right.x * shoulder, right.y * shoulder}),
                IM_COL32(235, 235, 235, 255), SHOULDER_STROKE * scale);
-  draw.AddCircleFilled(at(0.0F, 0.0F), CENTRE_RADIUS_METRES * ppm,
+  draw.AddCircleFilled(frame.at({0.0F, 0.0F}), CENTRE_RADIUS_METRES * frame.ppm,
                        IM_COL32(235, 235, 235, 255));
   arrow(draw,
-        at(facing.x * FACING_START_METRES, facing.y * FACING_START_METRES),
-        onRing(inputs.facing, AIM_OUTER + FACING_RING_OVERHANG),
+        frame.at(
+            {facing.x * FACING_START_METRES, facing.y * FACING_START_METRES}),
+        frame.onRing(inputs.facing, AIM_OUTER + FACING_RING_OVERHANG),
         IM_COL32(255, 255, 255, 230), FACING_STROKE * scale);
   for (const float sideOf : {-1.0F, 1.0F})
   {
     const bool stronger = (sideOf > 0.0F) == inputs.rightFooted;
-    const ImVec2 foot = at((right.x * 0.13F * sideOf) + (facing.x * 0.06F),
-                           (right.y * 0.13F * sideOf) + (facing.y * 0.06F));
+    const ImVec2 foot =
+        frame.at({(right.x * 0.13F * sideOf) + (facing.x * 0.06F),
+                  (right.y * 0.13F * sideOf) + (facing.y * 0.06F)});
     draw.AddCircleFilled(
-        foot, FOOT_RADIUS_METRES * ppm,
+        foot, FOOT_RADIUS_METRES * frame.ppm,
         stronger ? IM_COL32(120, 255, 140, 255) : IM_COL32(170, 170, 170, 255));
     const char* label = sideOf > 0.0F ? "R" : "L";
     draw.AddText(ImVec2(foot.x - (FOOT_LABEL_OFFSET_PIXELS * scale),
-                        foot.y + (FOOT_LABEL_OFFSET_METRES * ppm)),
+                        foot.y + (FOOT_LABEL_OFFSET_METRES * frame.ppm)),
                  IM_COL32(255, 255, 255, 220), label);
   }
   if (inputs.ownSpeed > MIN_ARROW_SPEED)
   {
     const Vector2F run = compass(inputs.ownDirection);
-    const float length =
-        reachMetres * 0.8F * std::min(inputs.ownSpeed / inputs.topSpeed, 1.0F);
-    arrow(draw, at(0.0F, 0.0F), at(run.x * length, run.y * length),
+    const float length = frame.reachMetres * 0.8F *
+                         std::min(inputs.ownSpeed / inputs.topSpeed, 1.0F);
+    arrow(draw, frame.at({0.0F, 0.0F}),
+          frame.at({run.x * length, run.y * length}),
           IM_COL32(120, 220, 255, 230), NORMAL_STROKE * scale);
   }
+}
 
-  // The ball, the way it comes, and where he sends it.
-  const ImVec2 ball = at(inputs.probe.x, inputs.probe.y);
+/** The ball, the way it comes, and where he sends it. */
+void ContactViewScene::drawContactBall(ImDrawList& draw,
+                                       const CircleFrame& frame) const
+{
+  const float scale = frame.scale;
+  const float reachMetres = frame.reachMetres;
+  const ImVec2 ball = frame.at(inputs.probe);
   if (inputs.incomingPace > MIN_ARROW_SPEED)
   {
-    arrow(
-        draw,
-        onRing(inputs.incomingFrom, (FROM_INNER + FROM_OUTER) * MIDPOINT_SHARE),
-        ball, IM_COL32(255, 255, 255, 150), THIN_STROKE * scale);
+    arrow(draw,
+          frame.onRing(inputs.incomingFrom,
+                       (FROM_INNER + FROM_OUTER) * MIDPOINT_SHARE),
+          ball, IM_COL32(255, 255, 255, 150), THIN_STROKE * scale);
   }
-  // The ball-contact line (his centre through the ball to his reach), and
-  // the ball's path along his aim to where it leaves his reach: in or out
-  // is read from these and his facing line.
+  // The ball-contact line (his centre through the ball to his reach), and the
+  // ball's path along his aim to where it leaves his reach: in or out is read
+  // from these and his facing line.
   const float probeGap = std::hypot(inputs.probe.x, inputs.probe.y);
   if (probeGap > PROBE_DIRECTION_EPSILON)
   {
-    draw.AddLine(at(0.0F, 0.0F),
-                 at(inputs.probe.x / probeGap * reachMetres,
-                    inputs.probe.y / probeGap * reachMetres),
+    draw.AddLine(frame.at({0.0F, 0.0F}),
+                 frame.at({inputs.probe.x / probeGap * reachMetres,
+                           inputs.probe.y / probeGap * reachMetres}),
                  IM_COL32(255, 255, 255, 110), THIN_STROKE * scale);
   }
   const Vector2F aimUnit = compass(inputs.aim);
@@ -1104,139 +1283,148 @@ void ContactViewScene::renderCircle(ImVec2 size)
       -along + std::sqrt(std::max((along * along) - (probeGap * probeGap) +
                                       (reachMetres * reachMetres),
                                   0.0F));
-  const ImVec2 exit = at(inputs.probe.x + (aimUnit.x * exitDistance),
-                         inputs.probe.y + (aimUnit.y * exitDistance));
+  const ImVec2 exit = frame.at({inputs.probe.x + (aimUnit.x * exitDistance),
+                                inputs.probe.y + (aimUnit.y * exitDistance)});
   arrow(draw, ball, exit, IM_COL32(255, 255, 255, 230), NORMAL_STROKE * scale);
   draw.AddCircleFilled(exit, AIM_POINT_RADIUS * scale,
                        IM_COL32(255, 255, 255, 255));
   // On to the handle on the outer ring, faintly.
-  draw.AddLine(exit,
-               onRing(inputs.aim, (AIM_INNER + AIM_OUTER) * MIDPOINT_SHARE),
-               IM_COL32(255, 255, 255, 70), 1.0F * scale);
-  draw.AddCircleFilled(
-      ball, std::max(BALL_RADIUS_METRES * ppm, MIN_BALL_RADIUS_PIXELS * scale),
-      IM_COL32(255, 255, 255, 255));
-  draw.AddCircle(
-      ball, std::max(BALL_RADIUS_METRES * ppm, MIN_BALL_RADIUS_PIXELS * scale),
-      IM_COL32(0, 0, 0, 255), 0, THIN_STROKE * scale);
+  draw.AddLine(
+      exit, frame.onRing(inputs.aim, (AIM_INNER + AIM_OUTER) * MIDPOINT_SHARE),
+      IM_COL32(255, 255, 255, 70), 1.0F * scale);
+  const float ballRadius =
+      std::max(BALL_RADIUS_METRES * frame.ppm, MIN_BALL_RADIUS_PIXELS * scale);
+  draw.AddCircleFilled(ball, ballRadius, IM_COL32(255, 255, 255, 255));
+  draw.AddCircle(ball, ballRadius, IM_COL32(0, 0, 0, 255), 0,
+                 THIN_STROKE * scale);
   for (const auto& [degrees, multiple] :
        {std::pair{inputs.incomingFrom,
                   (FROM_INNER + FROM_OUTER) * MIDPOINT_SHARE},
         std::pair{inputs.aim, (AIM_INNER + AIM_OUTER) * MIDPOINT_SHARE}})
   {
-    draw.AddCircleFilled(onRing(degrees, multiple), HANDLE_RADIUS * scale,
+    draw.AddCircleFilled(frame.onRing(degrees, multiple), HANDLE_RADIUS * scale,
                          IM_COL32(255, 255, 255, 255));
-    draw.AddCircle(onRing(degrees, multiple), HANDLE_RADIUS * scale,
+    draw.AddCircle(frame.onRing(degrees, multiple), HANDLE_RADIUS * scale,
                    IM_COL32(0, 0, 0, 255), 0, THIN_STROKE * scale);
   }
+}
 
-  // Hovering reads one point.
+/** Hovering reads one point: on the disc, the arrival ring or the aim ring. */
+void ContactViewScene::contactTooltip(ImVec2 offset, float mouseRadius) const
+{
+  std::optional<ContactAssessment> contact;
+  std::string where;
+  if (mouseRadius <= 1.0F)
+  {
+    contact = assess(offset, inputs.incomingFrom, inputs.aim);
+    where = std::format("Met {:.2f} m from his centre, at {:.0f}°",
+                        std::hypot(offset.x, offset.y), compassOf(offset));
+    if (inDeadZone(offset))
+    {
+      where += "\nDead zone: he cannot play it here";
+    }
+  }
+  else if (mouseRadius >= FROM_INNER && mouseRadius <= FROM_OUTER)
+  {
+    contact = assess(inputs.probe, compassOf(offset), inputs.aim);
+    where = std::format("Coming from {:.0f}°", compassOf(offset));
+  }
+  else if (mouseRadius >= AIM_INNER && mouseRadius <= AIM_OUTER)
+  {
+    contact = assess(inputs.probe, inputs.incomingFrom, compassOf(offset));
+    where = std::format("Sent to {:.0f}°", compassOf(offset));
+  }
+  if (!contact)
+  {
+    return;
+  }
+  std::string tip = std::format(
+      "{}\nAngle job {:.2f} · weight job {:.2f} · vertical job "
+      "{:.2f}\nTurn "
+      "{:.0f}° {} · pace change {:+.1f} m/s",
+      where, contact->angleDifficulty, contact->weightDifficulty,
+      contact->verticalDifficulty,
+      std::abs(contact->turn) * HALF_TURN_DEGREES / std::numbers::pi_v<float>,
+      contact->outward ? "outward" : "inward", contact->paceChange);
+  for (const ContactFactor& factor : contact->factors)
+  {
+    if (factor.value > VISIBLE_FACTOR_THRESHOLD)
+    {
+      tip += std::format("\n  {:<26} {:.2f}", factor.name, factor.value);
+    }
+  }
+  SandboxText::tooltipText(tip.c_str());
+}
+
+void ContactViewScene::renderCircle(ImVec2 size)
+{
+  namespace Page = SandboxPageUI;
+  const float scale = Theme::scale();
+  Page::beginCard("##contact_diagram", "CONTACT MAP", size.x, Page::DARK, scale,
+                  boldFont);
+  const ImVec2 area(std::max(scale, ImGui::GetContentRegionAvail().x),
+                    std::max(240 * scale, size.y - (56 * scale)));
+  const ContactAssessment legendContact = assessProbe();
+  const CircleLegend legend = circleLegend(legendContact, area.x, scale);
+  const std::string reachLabel = std::format(
+      "Reach {:.2f} m / comfort gap {:.2f} m (dashed). Directions: 0 deg up, "
+      "clockwise.",
+      reach(), profile.comfortGap);
+  const float spacing = ImGui::GetStyle().ItemSpacing.y;
+  const float legendHeight =
+      spacing +
+      (static_cast<float>(view == 0 ? legend.rows : 1) *
+       ImGui::GetTextLineHeightWithSpacing()) +
+      ImGui::CalcTextSize(reachLabel.c_str(), nullptr, false, area.x).y +
+      spacing + ImGui::CalcTextSize(CIRCLE_GUIDE, nullptr, false, area.x).y +
+      spacing;
+  const float side =
+      std::max(std::min(area.x, area.y - legendHeight), 100.0F * scale);
+  const ImVec2 origin = ImGui::GetCursorScreenPos();
+  CircleFrame frame;
+  frame.centre = ImVec2(origin.x + (area.x * MIDPOINT_SHARE),
+                        origin.y + (side * MIDPOINT_SHARE));
+  frame.radius = side * MIDPOINT_SHARE / (AIM_OUTER + AIM_RING_MARGIN);
+  frame.reachMetres = reach();
+  frame.ppm = frame.radius / frame.reachMetres;
+  frame.scale = scale;
+
+  ImGui::InvisibleButton(
+      "##canvas", ImVec2(area.x, side),
+      ImGuiButtonFlags_MouseButtonLeft | ImGuiButtonFlags_MouseButtonRight);
+  const bool hovered = ImGui::IsItemHovered();
+  const ImVec2 mouse = ImGui::GetIO().MousePos;
+  const ImVec2 offset((mouse.x - frame.centre.x) / frame.ppm,
+                      (frame.centre.y - mouse.y) / frame.ppm);
+  const float mouseRadius =
+      std::hypot(mouse.x - frame.centre.x, mouse.y - frame.centre.y) /
+      frame.radius;
+  dragOnCircle(offset, mouseRadius, frame);
+
+  ImDrawList& draw = *ImGui::GetWindowDrawList();
+  drawContactRings(draw, frame);
+  drawContactDisc(draw, frame);
+  drawContactOutlines(draw, frame);
+  drawContactPlayer(draw, frame);
+  drawContactBall(draw, frame);
   if (hovered && dragging == 0)
   {
-    std::optional<ContactAssessment> contact;
-    std::string where;
-    if (mouseRadius <= 1.0F)
-    {
-      contact = assess(offset, inputs.incomingFrom, inputs.aim);
-      where = std::format("Met {:.2f} m from his centre, at {:.0f}°",
-                          std::hypot(offset.x, offset.y), compassOf(offset));
-      if (inDeadZone(offset))
-      {
-        where += "\nDead zone: he cannot play it here";
-      }
-    }
-    else if (mouseRadius >= FROM_INNER && mouseRadius <= FROM_OUTER)
-    {
-      contact = assess(inputs.probe, compassOf(offset), inputs.aim);
-      where = std::format("Coming from {:.0f}°", compassOf(offset));
-    }
-    else if (mouseRadius >= AIM_INNER && mouseRadius <= AIM_OUTER)
-    {
-      contact = assess(inputs.probe, inputs.incomingFrom, compassOf(offset));
-      where = std::format("Sent to {:.0f}°", compassOf(offset));
-    }
-    if (contact)
-    {
-      std::string tip = std::format(
-          "{}\nAngle job {:.2f} · weight job {:.2f} · vertical job "
-          "{:.2f}\nTurn "
-          "{:.0f}° {} · pace change {:+.1f} m/s",
-          where, contact->angleDifficulty, contact->weightDifficulty,
-          contact->verticalDifficulty,
-          std::abs(contact->turn) * HALF_TURN_DEGREES /
-              std::numbers::pi_v<float>,
-          contact->outward ? "outward" : "inward", contact->paceChange);
-      for (const ContactFactor& factor : contact->factors)
-      {
-        if (factor.value > VISIBLE_FACTOR_THRESHOLD)
-        {
-          tip += std::format("\n  {:<26} {:.2f}", factor.name, factor.value);
-        }
-      }
-      SandboxText::tooltipText(tip.c_str());
-    }
+    contactTooltip(offset, mouseRadius);
   }
 
   // Legend.
   ImGui::Spacing();
   if (view == 0)
   {
-    float rowWidth = 0;
-    for (std::size_t index = 0; index < factors.size(); ++index)
-    {
-      const float width = ImGui::CalcTextSize(legendLabels.at(index).c_str()).x;
-      if (rowWidth > 0 && rowWidth + LEGEND_GAP * scale + width <= area.x)
-      {
-        ImGui::SameLine(0, LEGEND_GAP * scale);
-      }
-      else
-      {
-        rowWidth = 0;
-      }
-      const auto& factor = legendContact.factors.at(factors.at(index));
-      const bool weighted = factor.angleWeight != 0 ||
-                            factor.weightWeight != 0 ||
-                            factor.verticalWeight != 0;
-      SandboxText::coloredText(
-          weighted ? zoneHue(factors.at(index))
-                   : ImGui::ColorConvertU32ToFloat4(Page::MUTED),
-          legendLabels.at(index).c_str());
-      if (ImGui::IsItemHovered())
-      {
-        SandboxText::tooltipText(
-            std::format(
-                "{} / weaker foot can be selected separately with Colour by.",
-                DEPENDS_ON.at(factors.at(index)))
-                .c_str());
-      }
-      rowWidth += width + LEGEND_GAP * scale;
-    }
+    drawZonesLegend(legend, legendContact, area.x, scale);
   }
   else
   {
-    SandboxText::disabledText("0");
-    ImGui::SameLine();
-    const ImVec2 bar = ImGui::GetCursorScreenPos();
-    const float barWidth = std::min(240 * scale, area.x * 0.4F);
-    const float barHeight = ImGui::GetTextLineHeight();
-    for (int index = 0; index < HEAT_BAR_STEPS; ++index)
-    {
-      draw.AddRectFilled(
-          ImVec2(bar.x + (barWidth * static_cast<float>(index) /
-                          static_cast<float>(HEAT_BAR_STEPS)),
-                 bar.y),
-          ImVec2(bar.x + (barWidth * static_cast<float>(index + 1) /
-                          static_cast<float>(HEAT_BAR_STEPS)),
-                 bar.y + barHeight),
-          heat(float(index) / (HEAT_BAR_STEPS - 1)));
-    }
-    ImGui::Dummy(ImVec2(barWidth, barHeight));
-    ImGui::SameLine();
-    SandboxText::disabledText("1 / same scale throughout");
+    drawHeatLegend(draw, area.x, scale);
   }
   SandboxText::wrappedText(reachLabel.c_str());
   ImGui::PushTextWrapPos(0);
-  SandboxText::disabledText(guide);
+  SandboxText::disabledText(CIRCLE_GUIDE);
   ImGui::PopTextWrapPos();
   if (ImGui::IsItemHovered())
   {
@@ -1335,6 +1523,107 @@ void ContactViewScene::renderBreakdown(float width)
   Page::endCard(scale);
 }
 
+namespace
+{
+/** The map as the MatchTuning::FirstTouch constants, ready to paste in. */
+std::string stretchMapCode(const StretchMap& stretch)
+{
+  std::string text =
+      "    static constexpr std::array<float, 6> STRETCH_ANGLES{";
+  for (std::size_t row = 0; row < StretchMap::ANGLES; ++row)
+  {
+    text +=
+        std::format("{}{:.1f}f", row == 0 ? "" : ", ", stretch.angles.at(row));
+  }
+  text += "};\n    static constexpr std::array<float, 6> STRETCH_DISTANCES{";
+  for (std::size_t column = 0; column < StretchMap::DISTANCES; ++column)
+  {
+    text += std::format("{}{:.3f}f", column == 0 ? "" : ", ",
+                        stretch.distances.at(column));
+  }
+  text +=
+      "};\n    static constexpr std::array<std::array<float, 6>, 6> "
+      "STRETCH_VALUES{{\n";
+  for (std::size_t row = 0; row < StretchMap::ANGLES; ++row)
+  {
+    text += "        {";
+    for (std::size_t column = 0; column < StretchMap::DISTANCES; ++column)
+    {
+      text += std::format("{}{:.3f}f", column == 0 ? "" : ", ",
+                          stretch.values.at(row).at(column));
+    }
+    text += "},\n";
+  }
+  text += "    }};\n";
+  return text;
+}
+}  // namespace
+
+/** Header: the distances, editable, kept in order. */
+void ContactViewScene::renderStretchDistances()
+{
+  ImGui::TableNextRow(ImGuiTableRowFlags_Headers);
+  ImGui::TableNextColumn();
+  SandboxText::disabledText("Angle");
+  for (std::size_t column = 0; column < StretchMap::DISTANCES; ++column)
+  {
+    ImGui::TableNextColumn();
+    ImGui::PushID(static_cast<int>(column));
+    ImGui::SetNextItemWidth(-1.0F);
+    const float low =
+        column == 0 ? 0.0F : sandboxTuning().stretch.distances.at(column - 1);
+    const float high = column + 1 == StretchMap::DISTANCES
+                           ? 1.0F
+                           : sandboxTuning().stretch.distances.at(column + 1);
+    if (ImGui::DragFloat("##distance",
+                         &sandboxTuning().stretch.distances.at(column),
+                         DISTANCE_DRAG_SPEED, low, high, "%.2f",
+                         ImGuiSliderFlags_AlwaysClamp))
+    {
+      profile = chosenProfile();
+    }
+    ImGui::PopID();
+  }
+}
+
+/** One row: the angle, then the stretch at each distance. */
+void ContactViewScene::renderStretchRow(std::size_t row)
+{
+  ImGui::TableNextRow();
+  ImGui::PushID(static_cast<int>(ANGLE_ROW_ID_BASE + row));
+  ImGui::TableNextColumn();
+  ImGui::SetNextItemWidth(-1.0F);
+  const float low =
+      row == 0 ? 0.0F : sandboxTuning().stretch.angles.at(row - 1);
+  const float high = row + 1 == StretchMap::ANGLES
+                         ? HALF_TURN_DEGREES
+                         : sandboxTuning().stretch.angles.at(row + 1);
+  if (ImGui::DragFloat("##angle", &sandboxTuning().stretch.angles.at(row),
+                       ANGLE_DRAG_SPEED, low, high, "%.0f°",
+                       ImGuiSliderFlags_AlwaysClamp))
+  {
+    profile = chosenProfile();
+  }
+  for (std::size_t column = 0; column < StretchMap::DISTANCES; ++column)
+  {
+    ImGui::TableNextColumn();
+    float& value = sandboxTuning().stretch.values.at(row).at(column);
+    ImVec4 shade = ImGui::ColorConvertU32ToFloat4(heat(value));
+    shade.w = STRETCH_CELL_ALPHA;
+    ImGui::TableSetBgColor(ImGuiTableBgTarget_CellBg,
+                           ImGui::GetColorU32(shade));
+    ImGui::PushID(static_cast<int>(column));
+    ImGui::SetNextItemWidth(-1.0F);
+    if (ImGui::DragFloat("##value", &value, STRETCH_DRAG_SPEED, 0.0F, 1.0F,
+                         "%.2f", ImGuiSliderFlags_AlwaysClamp))
+    {
+      profile = chosenProfile();
+    }
+    ImGui::PopID();
+  }
+  ImGui::PopID();
+}
+
 void ContactViewScene::renderStretchMap()
 {
   const float scale = Theme::scale();
@@ -1355,65 +1644,10 @@ void ContactViewScene::renderStretchMap()
   if (ImGui::BeginTable("##stretch_map",
                         static_cast<int>(StretchMap::DISTANCES) + 1, flags))
   {
-    // Header: the distances, editable, kept in order.
-    ImGui::TableNextRow(ImGuiTableRowFlags_Headers);
-    ImGui::TableNextColumn();
-    SandboxText::disabledText("Angle");
-    for (std::size_t column = 0; column < StretchMap::DISTANCES; ++column)
-    {
-      ImGui::TableNextColumn();
-      ImGui::PushID(static_cast<int>(column));
-      ImGui::SetNextItemWidth(-1.0F);
-      const float low =
-          column == 0 ? 0.0F : sandboxTuning().stretch.distances.at(column - 1);
-      const float high = column + 1 == StretchMap::DISTANCES
-                             ? 1.0F
-                             : sandboxTuning().stretch.distances.at(column + 1);
-      if (ImGui::DragFloat("##distance",
-                           &sandboxTuning().stretch.distances.at(column),
-                           DISTANCE_DRAG_SPEED, low, high, "%.2f",
-                           ImGuiSliderFlags_AlwaysClamp))
-      {
-        profile = chosenProfile();
-      }
-      ImGui::PopID();
-    }
-    // Rows: the angle, then the stretch at each distance.
+    renderStretchDistances();
     for (std::size_t row = 0; row < StretchMap::ANGLES; ++row)
     {
-      ImGui::TableNextRow();
-      ImGui::PushID(static_cast<int>(ANGLE_ROW_ID_BASE + row));
-      ImGui::TableNextColumn();
-      ImGui::SetNextItemWidth(-1.0F);
-      const float low =
-          row == 0 ? 0.0F : sandboxTuning().stretch.angles.at(row - 1);
-      const float high = row + 1 == StretchMap::ANGLES
-                             ? HALF_TURN_DEGREES
-                             : sandboxTuning().stretch.angles.at(row + 1);
-      if (ImGui::DragFloat("##angle", &sandboxTuning().stretch.angles.at(row),
-                           ANGLE_DRAG_SPEED, low, high, "%.0f°",
-                           ImGuiSliderFlags_AlwaysClamp))
-      {
-        profile = chosenProfile();
-      }
-      for (std::size_t column = 0; column < StretchMap::DISTANCES; ++column)
-      {
-        ImGui::TableNextColumn();
-        float& value = sandboxTuning().stretch.values.at(row).at(column);
-        ImVec4 shade = ImGui::ColorConvertU32ToFloat4(heat(value));
-        shade.w = STRETCH_CELL_ALPHA;
-        ImGui::TableSetBgColor(ImGuiTableBgTarget_CellBg,
-                               ImGui::GetColorU32(shade));
-        ImGui::PushID(static_cast<int>(column));
-        ImGui::SetNextItemWidth(-1.0F);
-        if (ImGui::DragFloat("##value", &value, STRETCH_DRAG_SPEED, 0.0F, 1.0F,
-                             "%.2f", ImGuiSliderFlags_AlwaysClamp))
-        {
-          profile = chosenProfile();
-        }
-        ImGui::PopID();
-      }
-      ImGui::PopID();
+      renderStretchRow(row);
     }
     ImGui::EndTable();
   }
@@ -1427,35 +1661,7 @@ void ContactViewScene::renderStretchMap()
   nextButton("Copy values", scale, boldFont);
   if (Page::button("Copy values", false, scale, boldFont))
   {
-    // As the MatchTuning::FirstTouch constants, ready to paste in.
-    std::string text =
-        "    static constexpr std::array<float, 6> STRETCH_ANGLES{";
-    for (std::size_t row = 0; row < StretchMap::ANGLES; ++row)
-    {
-      text += std::format("{}{:.1f}f", row == 0 ? "" : ", ",
-                          sandboxTuning().stretch.angles.at(row));
-    }
-    text += "};\n    static constexpr std::array<float, 6> STRETCH_DISTANCES{";
-    for (std::size_t column = 0; column < StretchMap::DISTANCES; ++column)
-    {
-      text += std::format("{}{:.3f}f", column == 0 ? "" : ", ",
-                          sandboxTuning().stretch.distances.at(column));
-    }
-    text +=
-        "};\n    static constexpr std::array<std::array<float, 6>, 6> "
-        "STRETCH_VALUES{{\n";
-    for (std::size_t row = 0; row < StretchMap::ANGLES; ++row)
-    {
-      text += "        {";
-      for (std::size_t column = 0; column < StretchMap::DISTANCES; ++column)
-      {
-        text += std::format("{}{:.3f}f", column == 0 ? "" : ", ",
-                            sandboxTuning().stretch.values.at(row).at(column));
-      }
-      text += "},\n";
-    }
-    text += "    }};\n";
-    ImGui::SetClipboardText(text.c_str());
+    ImGui::SetClipboardText(stretchMapCode(sandboxTuning().stretch).c_str());
   }
   if (ImGui::IsItemHovered())
   {
@@ -1511,6 +1717,134 @@ void ContactViewScene::renderSideView(const ContactAssessment& contact) const
                IM_COL32(170, 170, 170, 255), "Side view");
 }
 
+namespace
+{
+/** One knob: its name and unit, the game's value and its range. */
+struct KnobRowSpec
+{
+  std::string_view name;
+  std::string_view unit;
+  float fallback = 0.0F;
+  float low = 0.0F;
+  float high = 1.0F;
+};
+
+/** One knob's row: a changed one in the warning colour, with a button back
+ * to the game's value. */
+void knobRow(const KnobRowSpec& spec, float& value, float scale, ImFont* font)
+{
+  namespace Page = SandboxPageUI;
+  ImGui::PushID(spec.name.data(), spec.name.data() + spec.name.size());
+  const bool changed = std::abs(value - spec.fallback) > 1e-6F;
+  const std::string label =
+      std::format("{}{}{}", spec.name, spec.unit.empty() ? "" : " ", spec.unit);
+  SandboxText::wrappedText(label.c_str());
+  ImGui::SetNextItemWidth(changed ? -Page::buttonWidth("Reset", scale, font) -
+                                        (BUTTON_GAP * scale)
+                                  : -1);
+  if (changed)
+  {
+    ImGui::PushStyleColor(ImGuiCol_Text, MODIFIED_TINT);
+  }
+  ImGui::DragFloat("##value", &value,
+                   (spec.high - spec.low) / KNOB_DRAG_DIVISOR, 0.0F, 0.0F,
+                   "%.4g");
+  if (changed)
+  {
+    ImGui::PopStyleColor();
+  }
+  if (ImGui::IsItemHovered())
+  {
+    SandboxText::tooltipText(
+        std::format("The game's value: {:.6g} (range {:.6g} to {:.6g})",
+                    static_cast<double>(spec.fallback),
+                    static_cast<double>(spec.low),
+                    static_cast<double>(spec.high))
+            .c_str());
+  }
+  if (changed)
+  {
+    ImGui::SameLine();
+    if (Page::button("Reset", false, scale, font))
+    {
+      value = spec.fallback;
+    }
+  }
+  ImGui::PopID();
+}
+
+/** Each group once, in the order it first appears (the registries are not
+ * sorted by group: the strike knobs come back to a group further down). */
+template <typename Registry>
+std::vector<std::string_view> knobGroups(const Registry& registry)
+{
+  std::vector<std::string_view> found;
+  for (const auto& info : registry)
+  {
+    if (std::ranges::find(found, info.group) == found.end())
+    {
+      found.push_back(info.group);
+    }
+  }
+  return found;
+}
+
+void touchKnobRows(TechniqueTuning& tuning, float scale, ImFont* font)
+{
+  const FirstTouchKnobs defaults;
+  for (const std::string_view group : knobGroups(TOUCH_KNOBS))
+  {
+    if (!ImGui::TreeNodeEx(std::format("{}##touch", group).c_str(),
+                           ImGuiTreeNodeFlags_NoTreePushOnOpen))
+    {
+      continue;
+    }
+    for (std::size_t index = 0; index < TOUCH_KNOB_COUNT; ++index)
+    {
+      const TouchKnobInfo& info = TOUCH_KNOBS.at(index);
+      if (info.group != group)
+      {
+        continue;
+      }
+      knobRow({.name = info.name,
+               .unit = info.unit,
+               .fallback = defaults.values.at(index),
+               .low = info.min,
+               .high = info.max},
+              tuning.touch.values.at(index), scale, font);
+    }
+  }
+}
+
+void strikeKnobRows(TechniqueTuning& tuning, StrikeKind kind, float scale,
+                    ImFont* font)
+{
+  for (const std::string_view group : knobGroups(STRIKE_KNOBS))
+  {
+    if (!ImGui::TreeNodeEx(std::format("{}##strike", group).c_str(),
+                           ImGuiTreeNodeFlags_NoTreePushOnOpen))
+    {
+      continue;
+    }
+    for (std::size_t index = 0; index < STRIKE_KNOB_COUNT; ++index)
+    {
+      const StrikeKnobInfo& info = STRIKE_KNOBS.at(index);
+      const auto knob = static_cast<StrikeKnob>(index);
+      if (info.group != group)
+      {
+        continue;
+      }
+      knobRow({.name = info.name,
+               .unit = info.unit,
+               .fallback = strikeKnobDefault(kind, knob),
+               .low = info.min,
+               .high = info.max},
+              tuning.strike.at(kind, knob), scale, font);
+    }
+  }
+}
+}  // namespace
+
 void ContactViewScene::renderKnobs()
 {
   // The chosen contact's knobs, by group; a changed one in the warning
@@ -1522,7 +1856,6 @@ void ContactViewScene::renderKnobs()
                 : std::format("Knobs: {}",
                               STRIKE_KIND_NAMES.at(static_cast<std::size_t>(
                                   inputs.contact - 1)));
-  namespace Page = SandboxPageUI;
   SandboxText::wrappedText(title.c_str());
   ImGui::PushTextWrapPos(0.0F);
   SandboxText::disabledText(
@@ -1531,103 +1864,14 @@ void ContactViewScene::renderKnobs()
       "Ctrl+click to type (beyond the range if need be). Shared with the "
       "technique bench.");
   ImGui::PopTextWrapPos();
-  const auto row = [&](std::string_view name, std::string_view unit,
-                       float& value, float fallback, float low, float high)
-  {
-    ImGui::PushID(name.data(), name.data() + name.size());
-    const bool changed = std::abs(value - fallback) > 1e-6F;
-    const std::string label =
-        std::format("{}{}{}", name, unit.empty() ? "" : " ", unit);
-    SandboxText::wrappedText(label.c_str());
-    ImGui::SetNextItemWidth(changed
-                                ? -Page::buttonWidth("Reset", scale, boldFont) -
-                                      (BUTTON_GAP * scale)
-                                : -1);
-    if (changed)
-    {
-      ImGui::PushStyleColor(ImGuiCol_Text, MODIFIED_TINT);
-    }
-    ImGui::DragFloat("##value", &value, (high - low) / KNOB_DRAG_DIVISOR, 0.0F,
-                     0.0F, "%.4g");
-    if (changed)
-    {
-      ImGui::PopStyleColor();
-    }
-    if (ImGui::IsItemHovered())
-    {
-      SandboxText::tooltipText(
-          std::format("The game's value: {:.6g} (range {:.6g} to {:.6g})",
-                      static_cast<double>(fallback), static_cast<double>(low),
-                      static_cast<double>(high))
-              .c_str());
-    }
-    if (changed)
-    {
-      ImGui::SameLine();
-      if (Page::button("Reset", false, scale, boldFont))
-      {
-        value = fallback;
-      }
-    }
-    ImGui::PopID();
-  };
-  // Each group once, in the order it first appears, with all its knobs
-  // (the registries are not sorted by group: the strike knobs come back to
-  // a group further down).
-  const auto groups = [](const auto& registry)
-  {
-    std::vector<std::string_view> found;
-    for (const auto& info : registry)
-    {
-      if (std::ranges::find(found, info.group) == found.end())
-      {
-        found.push_back(info.group);
-      }
-    }
-    return found;
-  };
   if (isTouch())
   {
-    const FirstTouchKnobs defaults;
-    for (const std::string_view group : groups(TOUCH_KNOBS))
-    {
-      if (!ImGui::TreeNodeEx(std::format("{}##touch", group).c_str(),
-                             ImGuiTreeNodeFlags_NoTreePushOnOpen))
-      {
-        continue;
-      }
-      for (std::size_t index = 0; index < TOUCH_KNOB_COUNT; ++index)
-      {
-        const TouchKnobInfo& info = TOUCH_KNOBS.at(index);
-        if (info.group == group)
-        {
-          row(info.name, info.unit, tuning.touch.values.at(index),
-              defaults.values.at(index), info.min, info.max);
-        }
-      }
-    }
+    touchKnobRows(tuning, scale, boldFont);
   }
   else
   {
-    const auto kind = static_cast<StrikeKind>(inputs.contact - 1);
-    for (const std::string_view group : groups(STRIKE_KNOBS))
-    {
-      if (!ImGui::TreeNodeEx(std::format("{}##strike", group).c_str(),
-                             ImGuiTreeNodeFlags_NoTreePushOnOpen))
-      {
-        continue;
-      }
-      for (std::size_t index = 0; index < STRIKE_KNOB_COUNT; ++index)
-      {
-        const StrikeKnobInfo& info = STRIKE_KNOBS.at(index);
-        const auto knob = static_cast<StrikeKnob>(index);
-        if (info.group == group)
-        {
-          row(info.name, info.unit, tuning.strike.at(kind, knob),
-              strikeKnobDefault(kind, knob), info.min, info.max);
-        }
-      }
-    }
+    strikeKnobRows(tuning, static_cast<StrikeKind>(inputs.contact - 1), scale,
+                   boldFont);
   }
   profile = chosenProfile();
 }

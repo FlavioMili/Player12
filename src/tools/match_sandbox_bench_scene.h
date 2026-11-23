@@ -14,8 +14,10 @@
 #include <cstddef>
 #include <map>
 #include <memory>
+#include <optional>
 #include <set>
 #include <string>
+#include <utility>
 #include <vector>
 
 #include "gui/gui_scene.h"
@@ -23,6 +25,47 @@
 
 /** Room for the skills field's text. */
 inline constexpr std::size_t SKILLS_TEXT_BYTES = 128;
+
+/** The bench chart's plot area and scales, for one frame. */
+struct ChartFrame
+{
+  float left = 0.0F;
+  float right = 1.0F;
+  float top = 0.0F;
+  float bottom = 1.0F;
+  double xMin = 0.0;
+  double xMax = 1.0;
+  double yMin = 0.0;
+  double yMax = 1.0;
+  float scale = 1.0F;
+
+  /** A skill across, and a value up, on the screen. */
+  [[nodiscard]] float sx(double x) const;
+  [[nodiscard]] float sy(double y) const;
+};
+
+struct ChartLegendEntry
+{
+  std::string label;
+  ImU32 colour = 0;
+};
+
+/** One test's curve from one run, over the chart's skills. */
+struct ChartCurve
+{
+  const BenchResults* source = nullptr;
+  const BenchTest* test = nullptr;
+  const std::vector<float>* skills = nullptr;
+  bool faint = false;
+};
+
+/** The shown run's point nearest the mouse, so far. */
+struct ChartHover
+{
+  const BenchTest* test = nullptr;
+  float skill = 0.0F;
+  float distance = 0.0F;
+};
 
 /**
  * Technique bench (Notes and plans/match_engine_technique_bench_plan.md §6):
@@ -59,13 +102,37 @@ class TechniqueBenchScene : public GUIScene
   [[nodiscard]] const BenchResults* compareRun() const;
 
   void renderPanel(float width);
+  void renderRunProgress(float scale);
+  void renderRunActions(float width, float scale);
+  void renderControlTabs(float width, float scale);
+  void renderRunSetup(float width, float scale);
+  [[nodiscard]] std::string runName(int index) const;
+  void runCombo(const char* label, int& index, bool optional);
+  void renderRunsCard(float width, float scale);
   void renderTuning();
   void renderFilters();
   void renderTestList();
-  void renderResults(float width, float height);
+  void tickShown(bool on);
+  void renderTestRow(std::size_t index);
+  void renderResults(ImVec2 area);
+  void renderResultFields(const std::vector<std::string>& names, float scale);
+  void renderResultTabs(float scale);
   void renderChart(ImVec2 size);
+  [[nodiscard]] std::vector<ChartLegendEntry> chartLegend(
+      const std::vector<const BenchTest*>& tests) const;
+  [[nodiscard]] std::optional<std::pair<double, double>> chartValueRange(
+      const std::vector<const BenchTest*>& tests,
+      const std::vector<float>& skills) const;
+  std::optional<ImVec2> drawCurve(ImDrawList& draw, const ChartFrame& frame,
+                                  const ChartCurve& curve,
+                                  ChartHover& hover) const;
+  void chartTooltip(const ChartHover& hover, bool clicked);
   void renderGrid(ImVec2 size);
+  void renderGridCell(const BenchTest& test, float skill, bool change) const;
   void renderTest();
+  void renderTestSummary(const BenchTest& test) const;
+  void renderWatchControls(const BenchTest& test);
+  void renderTestTable(const BenchTest& test) const;
   void watch(const BenchTest& test, float skill, int seed);
   void openContactView();
   void loadSaved(const std::filesystem::path& path);

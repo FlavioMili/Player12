@@ -517,238 +517,182 @@ void DrillMeasureScene::renderResults(ImVec2 size)
   }
 }
 
-void DrillMeasureScene::renderChart(ImVec2 size)
+namespace
 {
-  const MeasureSpec& spec = measure->spec();
-  const std::string& name =
-      measure->metricNames()[static_cast<std::size_t>(metric)];
-  const std::vector<MeasurePoint> points = measure->points();
-  const bool choiceX = !std::ranges::all_of(
-      spec.sweep.values,
-      [&](float value)
-      {
-        return measure->valueText(spec.sweep.parameter, value) ==
-               std::format("{:g}", value);
-      });
+/** Room round the plot for the axes' labels (scaled pixels). */
+constexpr float PLOT_LEFT_MARGIN = 56.0F;
+constexpr float PLOT_RIGHT_MARGIN = 12.0F;
+constexpr float PLOT_BOTTOM_MARGIN = 34.0F;
 
-  // Position of a sweep value along x: its value, or its place for choices.
-  const auto xOf = [&](float value) -> double
+/** One metric's chart over a measure's sweep: a curve per "by" value. */
+class MeasureChart
+{
+ public:
+  MeasureChart(const DrillMeasure& source, const std::string& metric)
+      : measure(&source),
+        spec(&source.spec()),
+        name(&metric),
+        points(source.points()),
+        choiceX(!std::ranges::all_of(
+            source.spec().sweep.values,
+            [&source](float value)
+            {
+              return source.valueText(source.spec().sweep.parameter, value) ==
+                     std::format("{:g}", value);
+            }))
   {
-    if (!choiceX)
-    {
-      return value;
-    }
-    const auto found = std::ranges::find(spec.sweep.values, value);
-    return static_cast<double>(found - spec.sweep.values.begin());
-  };
-  double xMin = std::numeric_limits<double>::max();
-  double xMax = std::numeric_limits<double>::lowest();
-  for (const float value : spec.sweep.values)
-  {
-    xMin = std::min(xMin, xOf(value));
-    xMax = std::max(xMax, xOf(value));
-  }
-  double yMin = std::numeric_limits<double>::max();
-  double yMax = std::numeric_limits<double>::lowest();
-  for (const MeasurePoint& point : points)
-  {
-    if (const auto found = point.stats.find(name); found != point.stats.end())
-    {
-      yMin = std::min(yMin, found->second.mean - found->second.sd);
-      yMax = std::max(yMax, found->second.mean + found->second.sd);
-    }
-  }
-  if (yMin > yMax)
-  {
-    return;
-  }
-  if (xMax - xMin < X_SPAN_EPSILON)
-  {
-    xMin -= 1.0;
-    xMax += 1.0;
-  }
-  const double yPad =
-      std::max((yMax - yMin) * 0.1, (0.05 * std::abs(yMax)) + 1e-3);
-  yMin -= yPad;
-  yMax += yPad;
-  if (choiceX)
-  {
-    xMin -= EMPTY_X_PADDING;
-    xMax += EMPTY_X_PADDING;
-  }
-
-  // One curve per "by" value.
-  std::vector<float> groups;
-  for (const MeasurePoint& point : points)
-  {
-    if (std::ranges::find(groups, point.by) == groups.end())
-    {
-      groups.push_back(point.by);
-    }
-  }
-  float legendUsed = 0;
-  int legendRows = spec.by ? 1 : 0;
-  for (float group : groups)
-  {
-    if (spec.by)
-    {
-      const float width =
-          ImGui::CalcTextSize(
-              measure->valueText(spec.by->parameter, group).c_str())
-              .x +
-          (30 * Theme::scale());
-      if (legendUsed > 0 && legendUsed + width > size.x)
-      {
-        ++legendRows;
-        legendUsed = 0;
-      }
-      legendUsed += width;
-    }
-  }
-  const float plotHeight = std::max(
-      160 * Theme::scale(), size.y - (static_cast<float>(legendRows) *
-                                      ImGui::GetTextLineHeightWithSpacing()));
-  const float scale = Theme::scale();
-  const ImVec2 origin = ImGui::GetCursorScreenPos();
-  ImGui::InvisibleButton("##chart", ImVec2(size.x, plotHeight));
-  const bool hovering = ImGui::IsItemHovered();
-  ImDrawList& draw = *ImGui::GetWindowDrawList();
-  const float left = origin.x + (56.0F * scale);
-  const float right = origin.x + size.x - (12.0F * scale);
-  const float top = origin.y + (PLOT_TOP_PADDING * scale);
-  const float bottom = origin.y + plotHeight - (34.0F * scale);
-  const auto sx = [&](double x)
-  {
-    return left +
-           (static_cast<float>((x - xMin) / (xMax - xMin)) * (right - left));
-  };
-  const auto sy = [&](double y)
-  {
-    return bottom -
-           (static_cast<float>((y - yMin) / (yMax - yMin)) * (bottom - top));
-  };
-  draw.AddRectFilled(ImVec2(left, top), ImVec2(right, bottom),
-                     SandboxPageUI::DARK);
-  const ImU32 grid = SandboxPageUI::RULE;
-  const ImU32 text = SandboxPageUI::MUTED;
-  // Y ticks.
-  const double yStep = tickStep(yMax - yMin, 5);
-  const double firstY = std::ceil(yMin / yStep) * yStep;
-  const int yTicks = static_cast<int>(std::floor((yMax - firstY) / yStep)) + 1;
-  for (int tick = 0; tick < yTicks; ++tick)
-  {
-    const double y = firstY + (static_cast<double>(tick) * yStep);
-    draw.AddLine(ImVec2(left, sy(y)), ImVec2(right, sy(y)), grid);
-    const std::string label =
-        std::format("{:g}", std::round(y / yStep) * yStep);
-    const ImVec2 labelSize = ImGui::CalcTextSize(label.c_str());
-    draw.AddText(ImVec2(left - labelSize.x - (Y_LABEL_GAP * scale),
-                        sy(y) - (labelSize.y * LABEL_ALIGNMENT)),
-                 text, label.c_str());
-  }
-  // X ticks: every value (choices), or nice steps.
-  const auto xLabel = [&](double x, const std::string& label)
-  {
-    draw.AddLine(ImVec2(sx(x), top), ImVec2(sx(x), bottom), grid);
-    const ImVec2 labelSize = ImGui::CalcTextSize(label.c_str());
-    draw.AddText(ImVec2(sx(x) - (labelSize.x * LABEL_ALIGNMENT),
-                        bottom + (X_LABEL_GAP * scale)),
-                 text, label.c_str());
-  };
-  if (choiceX)
-  {
-    for (const float value : spec.sweep.values)
-    {
-      xLabel(xOf(value), measure->valueText(spec.sweep.parameter, value));
-    }
-  }
-  else
-  {
-    const double xStep = tickStep(xMax - xMin, 8);
-    const double firstX = std::ceil(xMin / xStep) * xStep;
-    const int xTicks =
-        static_cast<int>(std::floor((xMax + X_SPAN_EPSILON - firstX) / xStep)) +
-        1;
-    for (int tick = 0; tick < xTicks; ++tick)
-    {
-      const double x = firstX + (static_cast<double>(tick) * xStep);
-      xLabel(x, std::format("{:g}", std::round(x / xStep) * xStep));
-    }
-  }
-  const ImVec2 axisSize = ImGui::CalcTextSize(spec.sweep.parameter.c_str());
-  draw.AddText(ImVec2((left + right - axisSize.x) * LABEL_ALIGNMENT,
-                      bottom + (X_LABEL_GAP * scale) + axisSize.y),
-               SandboxPageUI::MUTED, spec.sweep.parameter.c_str());
-
-  // One curve per comparison value.
-  const ImVec2 mouse = ImGui::GetIO().MousePos;
-  const MeasurePoint* hovered = nullptr;
-  float hoveredDistance = HOVER_RADIUS * scale;
-  for (std::size_t group = 0; group < groups.size(); ++group)
-  {
-    const ImU32 colour = CURVE_COLOURS.at(group % CURVE_COLOURS.size());
-    std::vector<const MeasurePoint*> curve;
     for (const MeasurePoint& point : points)
     {
-      if (point.by == groups[group] && point.stats.contains(name))
+      if (std::ranges::find(groups, point.by) == groups.end())
       {
-        curve.push_back(&point);
-      }
-    }
-    std::ranges::sort(curve, {},
-                      [&](const MeasurePoint* point) { return xOf(point->x); });
-    for (std::size_t index = 0; index < curve.size(); ++index)
-    {
-      const MeasureStat& stat = curve[index]->stats.at(name);
-      const ImVec2 at(sx(xOf(curve[index]->x)), sy(stat.mean));
-      if (index > 0)
-      {
-        const MeasureStat& before = curve[index - 1]->stats.at(name);
-        draw.AddLine(ImVec2(sx(xOf(curve[index - 1]->x)), sy(before.mean)), at,
-                     colour, CURVE_STROKE * scale);
-      }
-      if (stat.sd > 0.0)
-      {
-        draw.AddLine(ImVec2(at.x, sy(stat.mean - stat.sd)),
-                     ImVec2(at.x, sy(stat.mean + stat.sd)), colour,
-                     1.0F * scale);
-      }
-      draw.AddCircleFilled(at, POINT_RADIUS * scale, colour);
-      const float distance = std::hypot(mouse.x - at.x, mouse.y - at.y);
-      if (distance < hoveredDistance)
-      {
-        hoveredDistance = distance;
-        hovered = curve[index];
+        groups.push_back(point.by);
       }
     }
   }
-  if ((hovered != nullptr) && hovering)
+
+  /** The value ranges, padded; false if the metric has no values. */
+  bool findRanges()
   {
-    const MeasureStat& stat = hovered->stats.at(name);
-    std::string tip =
-        std::format("{} {}", spec.sweep.parameter,
-                    measure->valueText(spec.sweep.parameter, hovered->x));
-    if (spec.by)
+    for (const float value : spec->sweep.values)
     {
-      tip += std::format(" · {} {}", spec.by->parameter,
-                         measure->valueText(spec.by->parameter, hovered->by));
+      xMin = std::min(xMin, xOf(value));
+      xMax = std::max(xMax, xOf(value));
+    }
+    for (const MeasurePoint& point : points)
+    {
+      if (const auto found = point.stats.find(*name);
+          found != point.stats.end())
+      {
+        yMin = std::min(yMin, found->second.mean - found->second.sd);
+        yMax = std::max(yMax, found->second.mean + found->second.sd);
+      }
+    }
+    if (yMin > yMax)
+    {
+      return false;
+    }
+    if (xMax - xMin < X_SPAN_EPSILON)
+    {
+      xMin -= 1.0;
+      xMax += 1.0;
+    }
+    const double yPad =
+        std::max((yMax - yMin) * 0.1, (0.05 * std::abs(yMax)) + 1e-3);
+    yMin -= yPad;
+    yMax += yPad;
+    if (choiceX)
+    {
+      xMin -= EMPTY_X_PADDING;
+      xMax += EMPTY_X_PADDING;
+    }
+    return true;
+  }
+
+  /** Rows the legend takes at that width (none without a "by"). */
+  [[nodiscard]] int legendRows(float width) const
+  {
+    if (!spec->by)
+    {
+      return 0;
+    }
+    float used = 0;
+    int rows = 1;
+    for (const float group : groups)
+    {
+      const float labelWidth =
+          ImGui::CalcTextSize(
+              measure->valueText(spec->by->parameter, group).c_str())
+              .x +
+          (30 * Theme::scale());
+      if (used > 0 && used + labelWidth > width)
+      {
+        ++rows;
+        used = 0;
+      }
+      used += labelWidth;
+    }
+    return rows;
+  }
+
+  void place(ImVec2 origin, ImVec2 plot)
+  {
+    const float scale = Theme::scale();
+    left = origin.x + (PLOT_LEFT_MARGIN * scale);
+    right = origin.x + plot.x - (PLOT_RIGHT_MARGIN * scale);
+    top = origin.y + (PLOT_TOP_PADDING * scale);
+    bottom = origin.y + plot.y - (PLOT_BOTTOM_MARGIN * scale);
+  }
+
+  void drawAxes(ImDrawList& draw) const
+  {
+    draw.AddRectFilled(ImVec2(left, top), ImVec2(right, bottom),
+                       SandboxPageUI::DARK);
+    drawYTicks(draw);
+    drawXTicks(draw);
+    const float scale = Theme::scale();
+    const std::string& parameter = spec->sweep.parameter;
+    const ImVec2 axisSize = ImGui::CalcTextSize(parameter.c_str());
+    draw.AddText(ImVec2((left + right - axisSize.x) * LABEL_ALIGNMENT,
+                        bottom + (X_LABEL_GAP * scale) + axisSize.y),
+                 SandboxPageUI::MUTED, parameter.c_str());
+  }
+
+  /** The curves; returns the point nearest the mouse, if near enough. */
+  const MeasurePoint* drawCurves(ImDrawList& draw) const
+  {
+    const ImVec2 mouse = ImGui::GetIO().MousePos;
+    const MeasurePoint* hovered = nullptr;
+    float hoveredDistance = HOVER_RADIUS * Theme::scale();
+    for (std::size_t group = 0; group < groups.size(); ++group)
+    {
+      for (const auto& [at, point] : drawCurve(draw, group))
+      {
+        const float distance = std::hypot(mouse.x - at.x, mouse.y - at.y);
+        if (distance < hoveredDistance)
+        {
+          hoveredDistance = distance;
+          hovered = point;
+        }
+      }
+    }
+    return hovered;
+  }
+
+  void tooltip(const MeasurePoint& hovered) const
+  {
+    const MeasureStat& stat = hovered.stats.at(*name);
+    std::string tip =
+        std::format("{} {}", spec->sweep.parameter,
+                    measure->valueText(spec->sweep.parameter, hovered.x));
+    if (spec->by)
+    {
+      tip += std::format(" · {} {}", spec->by->parameter,
+                         measure->valueText(spec->by->parameter, hovered.by));
     }
     tip += std::format(
         "\n{}: {:.3f} ± {:.3f}\nrange {:.3f} – {:.3f} · {} of {} runs "
         "finished",
-        name, stat.mean, stat.sd, stat.min, stat.max, hovered->completed,
-        hovered->runs);
+        *name, stat.mean, stat.sd, stat.min, stat.max, hovered.completed,
+        hovered.runs);
     SandboxText::tooltipText(tip.c_str());
   }
-  float used = 0;
-  if (spec.by)
+
+  /** A swatch and the value for each "by" value, wrapping to the width. */
+  void legend(ImDrawList& draw, float width) const
   {
+    if (!spec->by)
+    {
+      return;
+    }
+    const float scale = Theme::scale();
+    float used = 0;
     for (std::size_t group = 0; group < groups.size(); ++group)
     {
       const std::string label =
-          measure->valueText(spec.by->parameter, groups[group]);
-      const float width = ImGui::CalcTextSize(label.c_str()).x + (30 * scale);
-      if (used > 0 && used + width <= size.x)
+          measure->valueText(spec->by->parameter, groups[group]);
+      const float labelWidth =
+          ImGui::CalcTextSize(label.c_str()).x + (30 * scale);
+      if (used > 0 && used + labelWidth <= width)
       {
         ImGui::SameLine(0, LEGEND_GAP * scale);
       }
@@ -765,9 +709,179 @@ void DrillMeasureScene::renderChart(ImVec2 size)
           ImVec2(LEGEND_MARKER_ADVANCE * scale, ImGui::GetTextLineHeight()));
       ImGui::SameLine(0, 4 * scale);
       ImGui::TextUnformatted(label.c_str());
-      used += width;
+      used += labelWidth;
     }
   }
+
+ private:
+  /** Position of a sweep value along x: its value, or its place for
+   * choices. */
+  [[nodiscard]] double xOf(float value) const
+  {
+    if (!choiceX)
+    {
+      return value;
+    }
+    const auto found = std::ranges::find(spec->sweep.values, value);
+    return static_cast<double>(found - spec->sweep.values.begin());
+  }
+
+  [[nodiscard]] float sx(double x) const
+  {
+    return left +
+           (static_cast<float>((x - xMin) / (xMax - xMin)) * (right - left));
+  }
+
+  [[nodiscard]] float sy(double y) const
+  {
+    return bottom -
+           (static_cast<float>((y - yMin) / (yMax - yMin)) * (bottom - top));
+  }
+
+  void drawYTicks(ImDrawList& draw) const
+  {
+    const float scale = Theme::scale();
+    const double yStep = tickStep(yMax - yMin, 5);
+    const double firstY = std::ceil(yMin / yStep) * yStep;
+    const int yTicks =
+        static_cast<int>(std::floor((yMax - firstY) / yStep)) + 1;
+    for (int tick = 0; tick < yTicks; ++tick)
+    {
+      const double y = firstY + (static_cast<double>(tick) * yStep);
+      draw.AddLine(ImVec2(left, sy(y)), ImVec2(right, sy(y)),
+                   SandboxPageUI::RULE);
+      const std::string label =
+          std::format("{:g}", std::round(y / yStep) * yStep);
+      const ImVec2 labelSize = ImGui::CalcTextSize(label.c_str());
+      draw.AddText(ImVec2(left - labelSize.x - (Y_LABEL_GAP * scale),
+                          sy(y) - (labelSize.y * LABEL_ALIGNMENT)),
+                   SandboxPageUI::MUTED, label.c_str());
+    }
+  }
+
+  void xLabel(ImDrawList& draw, double x, const std::string& label) const
+  {
+    draw.AddLine(ImVec2(sx(x), top), ImVec2(sx(x), bottom),
+                 SandboxPageUI::RULE);
+    const ImVec2 labelSize = ImGui::CalcTextSize(label.c_str());
+    draw.AddText(ImVec2(sx(x) - (labelSize.x * LABEL_ALIGNMENT),
+                        bottom + (X_LABEL_GAP * Theme::scale())),
+                 SandboxPageUI::MUTED, label.c_str());
+  }
+
+  /** X ticks: every value (choices), or nice steps. */
+  void drawXTicks(ImDrawList& draw) const
+  {
+    if (choiceX)
+    {
+      for (const float value : spec->sweep.values)
+      {
+        xLabel(draw, xOf(value),
+               measure->valueText(spec->sweep.parameter, value));
+      }
+      return;
+    }
+    const double xStep = tickStep(xMax - xMin, 8);
+    const double firstX = std::ceil(xMin / xStep) * xStep;
+    const int xTicks =
+        static_cast<int>(std::floor((xMax + X_SPAN_EPSILON - firstX) / xStep)) +
+        1;
+    for (int tick = 0; tick < xTicks; ++tick)
+    {
+      const double x = firstX + (static_cast<double>(tick) * xStep);
+      xLabel(draw, x, std::format("{:g}", std::round(x / xStep) * xStep));
+    }
+  }
+
+  /** A group's points with the metric, in order along x. */
+  [[nodiscard]] std::vector<const MeasurePoint*> curveOf(
+      std::size_t group) const
+  {
+    std::vector<const MeasurePoint*> curve;
+    for (const MeasurePoint& point : points)
+    {
+      if (point.by == groups[group] && point.stats.contains(*name))
+      {
+        curve.push_back(&point);
+      }
+    }
+    std::ranges::sort(
+        curve, {}, [this](const MeasurePoint* point) { return xOf(point->x); });
+    return curve;
+  }
+
+  /** One group's curve with its spreads; returns its points, each where it
+   * is on the screen. */
+  std::vector<std::pair<ImVec2, const MeasurePoint*>> drawCurve(
+      ImDrawList& draw, std::size_t group) const
+  {
+    const float scale = Theme::scale();
+    const ImU32 colour = CURVE_COLOURS.at(group % CURVE_COLOURS.size());
+    const std::vector<const MeasurePoint*> curve = curveOf(group);
+    std::vector<std::pair<ImVec2, const MeasurePoint*>> marks;
+    for (std::size_t index = 0; index < curve.size(); ++index)
+    {
+      const MeasureStat& stat = curve[index]->stats.at(*name);
+      const ImVec2 at(sx(xOf(curve[index]->x)), sy(stat.mean));
+      if (index > 0)
+      {
+        const MeasureStat& before = curve[index - 1]->stats.at(*name);
+        draw.AddLine(ImVec2(sx(xOf(curve[index - 1]->x)), sy(before.mean)), at,
+                     colour, CURVE_STROKE * scale);
+      }
+      if (stat.sd > 0.0)
+      {
+        draw.AddLine(ImVec2(at.x, sy(stat.mean - stat.sd)),
+                     ImVec2(at.x, sy(stat.mean + stat.sd)), colour,
+                     1.0F * scale);
+      }
+      draw.AddCircleFilled(at, POINT_RADIUS * scale, colour);
+      marks.emplace_back(at, curve[index]);
+    }
+    return marks;
+  }
+
+  const DrillMeasure* measure;
+  const MeasureSpec* spec;
+  const std::string* name;
+  std::vector<MeasurePoint> points;
+  bool choiceX;
+  std::vector<float> groups;
+  double xMin = std::numeric_limits<double>::max();
+  double xMax = std::numeric_limits<double>::lowest();
+  double yMin = std::numeric_limits<double>::max();
+  double yMax = std::numeric_limits<double>::lowest();
+  float left = 0.0F;
+  float right = 1.0F;
+  float top = 0.0F;
+  float bottom = 1.0F;
+};
+}  // namespace
+
+void DrillMeasureScene::renderChart(ImVec2 size)
+{
+  MeasureChart chart(*measure,
+                     measure->metricNames()[static_cast<std::size_t>(metric)]);
+  if (!chart.findRanges())
+  {
+    return;
+  }
+  const float plotHeight =
+      std::max(160 * Theme::scale(),
+               size.y - (static_cast<float>(chart.legendRows(size.x)) *
+                         ImGui::GetTextLineHeightWithSpacing()));
+  const ImVec2 origin = ImGui::GetCursorScreenPos();
+  ImGui::InvisibleButton("##chart", ImVec2(size.x, plotHeight));
+  const bool hovering = ImGui::IsItemHovered();
+  ImDrawList& draw = *ImGui::GetWindowDrawList();
+  chart.place(origin, ImVec2(size.x, plotHeight));
+  chart.drawAxes(draw);
+  const MeasurePoint* hovered = chart.drawCurves(draw);
+  if ((hovered != nullptr) && hovering)
+  {
+    chart.tooltip(*hovered);
+  }
+  chart.legend(draw, size.x);
 }
 
 void DrillMeasureScene::renderTable(ImVec2 size)

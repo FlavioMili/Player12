@@ -24,6 +24,7 @@
 #include "gui/gui_view.h"
 #include "gui/render/match_renderer_2d.h"
 #include "gui/render/match_renderer_3d.h"
+#include "gui/widgets/text.h"
 #include "gui/widgets/theme.h"
 #include "model/player.h"
 #include "tools/match_sandbox_page_ui.h"
@@ -189,16 +190,16 @@ void ZoneSessionScene::render()
     renderPanel(panel);
     ImGui::EndChild();
     ImGui::SameLine(0, SandboxPageUI::PANEL_GAP * scale);
-    renderGround(std::max(scale, ImGui::GetContentRegionAvail().x),
-                 available.y);
+    renderGround(
+        ImVec2(std::max(scale, ImGui::GetContentRegionAvail().x), available.y));
   }
   else
   {
     ImGui::BeginChild("##zone_session_controls", available,
                       ImGuiChildFlags_AlwaysUseWindowPadding);
-    renderGround(panel,
-                 std::max(SandboxPageUI::MIN_CANVAS_HEIGHT * scale,
-                          available.y * SandboxPageUI::NARROW_CANVAS_SHARE));
+    renderGround(ImVec2(
+        panel, std::max(SandboxPageUI::MIN_CANVAS_HEIGHT * scale,
+                        available.y * SandboxPageUI::NARROW_CANVAS_SHARE)));
     renderPanel(panel);
     ImGui::EndChild();
   }
@@ -206,53 +207,39 @@ void ZoneSessionScene::render()
   ImGui::End();
 }
 
-void ZoneSessionScene::renderPanel(float width)
+namespace
 {
-  namespace Page = SandboxPageUI;
-  const float scale = Theme::scale();
-  if (!run)
+/** A version picker: "Set-up's" (none) or one of `all`, by name. */
+template <typename Id, typename All, typename Name>
+void versionPicker(const char* label, std::optional<Id>& choice, const All& all,
+                   Name name, float scale)
+{
+  const std::string current =
+      choice ? std::string(name(*choice)) : std::string("Set-up's");
+  ImGui::SetNextItemWidth(PICK_COMBO_WIDTH * scale);
+  if (!SandboxPageUI::beginCombo(label, current.c_str()))
   {
-    if (!runError.empty())
-    {
-      ImGui::PushTextWrapPos(0);
-      ImGui::TextDisabled("This session can't start: %s", runError.c_str());
-      ImGui::PopTextWrapPos();
-    }
     return;
   }
-  const std::size_t exerciseCount = plan.exercises.size();
-  const std::size_t index = std::min(run->exercise(), exerciseCount - 1);
-  const std::string context =
-      run->changing() && index + 1 < exerciseCount
-          ? std::format(
-                "Changing to exercise {} of {}: {}. Everyone walks to his "
-                "place.",
-                index + 2, exerciseCount, plan.exercises[index + 1].name)
-          : std::format(
-                "Exercise {} of {}: {}. Engine conditions come from Set-up.",
-                index + 1, exerciseCount, plan.exercises[index].name);
-  Page::header("Training", plan.name.c_str(), width, scale, boldFont,
-               regularFont, context.c_str(), true);
-  Page::beginCard("##zone_session_playback", "RUN SESSION", width, Page::DARK,
-                  scale, boldFont);
-  if (Page::button("Back to sandbox", false, scale, boldFont))
+  if (ImGui::Selectable("Set-up's", !choice))
   {
-    guiView->popScene();
+    choice.reset();
   }
-  ImGui::SameLine(0, SandboxPageUI::PANEL_GAP * scale);
-  if (Page::button("Restart (R)", false, scale, boldFont))
+  for (const Id id : all)
   {
-    restart();
+    if (ImGui::Selectable(std::string(name(id)).c_str(),
+                          choice && *choice == id))
+    {
+      choice = id;
+    }
   }
-  const bool over = run->finished();
-  ImGui::SameLine(0, SandboxPageUI::PANEL_GAP * scale);
-  ImGui::BeginDisabled(over);
-  if (Page::button(paused ? "Play (Space)" : "Pause (Space)", false, scale,
-                   boldFont))
-  {
-    paused = !paused;
-  }
-  ImGui::EndDisabled();
+  ImGui::EndCombo();
+}
+}  // namespace
+
+/** The speed picker, the 3D toggle and, in 3D, the camera. */
+void ZoneSessionScene::renderViewControls(float scale)
+{
   ImGui::AlignTextToFramePadding();
   ImGui::TextUnformatted("Speed");
   ImGui::SameLine();
@@ -282,43 +269,81 @@ void ZoneSessionScene::renderPanel(float width)
       renderer = std::make_unique<MatchRenderer2D>();
     }
   }
-  if (view3d)
+  if (!view3d)
   {
-    constexpr std::array<std::pair<MatchCameraMode, const char*>, 3> CAMERAS{
-        {{MatchCameraMode::BROADCAST, "Broadcast"},
-         {MatchCameraMode::TACTICAL, "Tactical"},
-         {MatchCameraMode::END, "End"}}};
-    const char* current = "Broadcast";
-    for (const auto& [mode, label] : CAMERAS)
+    return;
+  }
+  constexpr std::array<std::pair<MatchCameraMode, const char*>, 3> CAMERAS{
+      {{MatchCameraMode::BROADCAST, "Broadcast"},
+       {MatchCameraMode::TACTICAL, "Tactical"},
+       {MatchCameraMode::END, "End"}}};
+  const char* current = "Broadcast";
+  for (const auto& [mode, label] : CAMERAS)
+  {
+    if (mode == cameraMode)
     {
-      if (mode == cameraMode)
-      {
-        current = label;
-      }
-    }
-    ImGui::SetNextItemWidth(CAMERA_COMBO_WIDTH * scale);
-    if (SandboxPageUI::beginCombo("Camera", current))
-    {
-      for (const auto& [mode, label] : CAMERAS)
-      {
-        if (ImGui::Selectable(label, mode == cameraMode))
-        {
-          cameraMode = mode;
-        }
-      }
-      ImGui::EndCombo();
+      current = label;
     }
   }
-  const int seconds = static_cast<int>(run->seconds());
-  ImGui::Text("%s / %d:%02d",
-              over     ? "Finished"
-              : paused ? "Paused"
-                       : "Running",
-              seconds / SECONDS_PER_MINUTE, seconds % SECONDS_PER_MINUTE);
-  Page::endCard(scale);
+  ImGui::SetNextItemWidth(CAMERA_COMBO_WIDTH * scale);
+  if (SandboxPageUI::beginCombo("Camera", current))
+  {
+    for (const auto& [mode, label] : CAMERAS)
+    {
+      if (ImGui::Selectable(label, mode == cameraMode))
+      {
+        cameraMode = mode;
+      }
+    }
+    ImGui::EndCombo();
+  }
+}
 
-  // The changing room (T7c): send a player there; he plays again in the
-  // next exercise that names him.
+/** Back, restart, play or pause, the view, and the clock. */
+void ZoneSessionScene::renderPlayback(float width, float scale)
+{
+  namespace Page = SandboxPageUI;
+  Page::beginCard("##zone_session_playback", "RUN SESSION", width, Page::DARK,
+                  scale, boldFont);
+  if (Page::button("Back to sandbox", false, scale, boldFont))
+  {
+    guiView->popScene();
+  }
+  ImGui::SameLine(0, SandboxPageUI::PANEL_GAP * scale);
+  if (Page::button("Restart (R)", false, scale, boldFont))
+  {
+    restart();
+  }
+  const bool over = run->finished();
+  ImGui::SameLine(0, SandboxPageUI::PANEL_GAP * scale);
+  ImGui::BeginDisabled(over);
+  if (Page::button(paused ? "Play (Space)" : "Pause (Space)", false, scale,
+                   boldFont))
+  {
+    paused = !paused;
+  }
+  ImGui::EndDisabled();
+  renderViewControls(scale);
+  const int seconds = static_cast<int>(run->seconds());
+  const char* state = "Running";
+  if (over)
+  {
+    state = "Finished";
+  }
+  else if (paused)
+  {
+    state = "Paused";
+  }
+  UI::text("{} / {:d}:{:02d}", state, seconds / SECONDS_PER_MINUTE,
+           seconds % SECONDS_PER_MINUTE);
+  Page::endCard(scale);
+}
+
+/** The changing room (T7c): send a player there; he plays again in the
+ * next exercise that names him. */
+void ZoneSessionScene::renderChangingRoom(float width, float scale)
+{
+  namespace Page = SandboxPageUI;
   Page::beginCard("##zone_session_room", "CHANGING ROOM", width, Page::MID,
                   scale, boldFont);
   const std::vector<std::size_t> room = run->changingRoom();
@@ -330,31 +355,9 @@ void ZoneSessionScene::renderPanel(float width)
       playing.push_back(index);
     }
   }
-  if (!over && !playing.empty())
+  if (!run->finished() && !playing.empty())
   {
-    if (std::ranges::find(playing, restPick) == playing.end())
-    {
-      restPick = playing.front();
-    }
-    ImGui::SetNextItemWidth(PICK_COMBO_WIDTH * scale);
-    if (SandboxPageUI::beginCombo("##rest_pick",
-                                  run->squad()[restPick]->getName().c_str()))
-    {
-      for (const std::size_t index : playing)
-      {
-        if (ImGui::Selectable(run->squad()[index]->getName().c_str(),
-                              index == restPick))
-        {
-          restPick = index;
-        }
-      }
-      ImGui::EndCombo();
-    }
-    ImGui::SameLine(0, SandboxPageUI::PANEL_GAP * scale);
-    if (Page::button("Send to the changing room", false, scale, boldFont))
-    {
-      (void)run->sendToChangingRoom(restPick);
-    }
+    renderRestPicker(playing, scale);
   }
   std::string resting;
   for (const std::size_t index : room)
@@ -362,18 +365,49 @@ void ZoneSessionScene::renderPanel(float width)
     resting += (resting.empty() ? "" : ", ") + run->squad()[index]->getName();
   }
   ImGui::PushTextWrapPos(0);
-  ImGui::TextDisabled("In the changing room: %s",
-                      resting.empty() ? "nobody" : resting.c_str());
+  UI::textDisabled("In the changing room: {}",
+                   resting.empty() ? "nobody" : resting.c_str());
   ImGui::PopTextWrapPos();
   Page::endCard(scale);
+}
 
-  renderZoneTools(width);
+void ZoneSessionScene::renderRestPicker(const std::vector<std::size_t>& playing,
+                                        float scale)
+{
+  namespace Page = SandboxPageUI;
+  if (std::ranges::find(playing, restPick) == playing.end())
+  {
+    restPick = playing.front();
+  }
+  ImGui::SetNextItemWidth(PICK_COMBO_WIDTH * scale);
+  if (SandboxPageUI::beginCombo("##rest_pick",
+                                run->squad()[restPick]->getName().c_str()))
+  {
+    for (const std::size_t index : playing)
+    {
+      if (ImGui::Selectable(run->squad()[index]->getName().c_str(),
+                            index == restPick))
+      {
+        restPick = index;
+      }
+    }
+    ImGui::EndCombo();
+  }
+  ImGui::SameLine(0, SandboxPageUI::PANEL_GAP * scale);
+  if (Page::button("Send to the changing room", false, scale, boldFont))
+  {
+    (void)run->sendToChangingRoom(restPick);
+  }
+}
 
-  // Each zone of the exercise, live.
+/** Each zone of the exercise, live. */
+void ZoneSessionScene::renderZones(float width, float scale)
+{
+  namespace Page = SandboxPageUI;
   Page::beginCard("##zone_session_zones", "ZONES", width, Page::LIGHT, scale,
                   boldFont);
   ImGui::PushTextWrapPos(0);
-  if (over)
+  if (run->finished())
   {
     ImGui::TextUnformatted("The session is over.");
   }
@@ -406,27 +440,42 @@ void ZoneSessionScene::renderPanel(float width)
   }
   ImGui::PopTextWrapPos();
   Page::endCard(scale);
+}
 
-  // The exercises done so far, and what is to come.
+/** The exercises done so far, and what is to come. */
+void ZoneSessionScene::renderSessionPlan(float width, float scale)
+{
+  namespace Page = SandboxPageUI;
+  const std::size_t current =
+      std::min(run->exercise(), plan.exercises.size() - 1);
+  const bool over = run->finished();
   Page::beginCard("##zone_session_plan", "SESSION", width, Page::MID, scale,
                   boldFont);
   ImGui::PushTextWrapPos(0);
   ImGui::TextUnformatted(plan.summary.c_str());
-  for (std::size_t exercise = 0; exercise < exerciseCount; ++exercise)
+  for (std::size_t exercise = 0; exercise < plan.exercises.size(); ++exercise)
   {
-    const char* status = exercise < run->history().size() ? "Done"
-                         : exercise == index && !over     ? "Now"
-                                                          : "Next";
-    ImGui::Text("%zu / %s: %s", exercise + 1,
-                plan.exercises[exercise].name.c_str(), status);
-    if (exercise < run->history().size())
+    const bool done = exercise < run->history().size();
+    const char* status = "Next";
+    if (done)
     {
-      for (const std::string& line : run->history()[exercise])
+      status = "Done";
+    }
+    else if (exercise == current && !over)
+    {
+      status = "Now";
+    }
+    UI::text("{:d} / {}: {}", exercise + 1,
+             plan.exercises[exercise].name.c_str(), status);
+    if (!done)
+    {
+      continue;
+    }
+    for (const std::string& line : run->history()[exercise])
+    {
+      if (line.find("OUTCOME") != std::string::npos)
       {
-        if (line.find("OUTCOME") != std::string::npos)
-        {
-          ImGui::TextDisabled("  %s", line.c_str());
-        }
+        UI::textDisabled("  {}", line.c_str());
       }
     }
   }
@@ -434,8 +483,44 @@ void ZoneSessionScene::renderPanel(float width)
   Page::endCard(scale);
 }
 
-void ZoneSessionScene::renderGround(float width, float height)
+void ZoneSessionScene::renderPanel(float width)
 {
+  namespace Page = SandboxPageUI;
+  const float scale = Theme::scale();
+  if (!run)
+  {
+    if (!runError.empty())
+    {
+      ImGui::PushTextWrapPos(0);
+      UI::textDisabled("This session can't start: {}", runError.c_str());
+      ImGui::PopTextWrapPos();
+    }
+    return;
+  }
+  const std::size_t exerciseCount = plan.exercises.size();
+  const std::size_t index = std::min(run->exercise(), exerciseCount - 1);
+  const std::string context =
+      run->changing() && index + 1 < exerciseCount
+          ? std::format(
+                "Changing to exercise {} of {}: {}. Everyone walks to his "
+                "place.",
+                index + 2, exerciseCount, plan.exercises[index + 1].name)
+          : std::format(
+                "Exercise {} of {}: {}. Engine conditions come from Set-up.",
+                index + 1, exerciseCount, plan.exercises[index].name);
+  Page::header("Training", plan.name.c_str(), width, scale, boldFont,
+               regularFont, context.c_str(), true);
+  renderPlayback(width, scale);
+  renderChangingRoom(width, scale);
+  renderZoneTools(width);
+  renderZones(width, scale);
+  renderSessionPlan(width, scale);
+}
+
+void ZoneSessionScene::renderGround(ImVec2 area)
+{
+  const float width = area.x;
+  const float height = area.y;
   namespace Page = SandboxPageUI;
   const float scale = Theme::scale();
   Page::beginCard("##zone_session_ground", "TRAINING GROUND", width, Page::DARK,
@@ -468,6 +553,72 @@ void ZoneSessionScene::renderGround(float width, float height)
   Page::endCard(scale);
 }
 
+/** Save the picked zone as far as it has played (T7f); it opens from the
+ * Training page as a replay of that zone alone. */
+void ZoneSessionScene::saveWatchedZone()
+{
+  std::string error;
+  if (const auto recording = ZoneRecordings::capture(*run, watchedZone, error))
+  {
+    const std::filesystem::path path =
+        Recordings::folder() / ZoneRecordings::fileName(*recording);
+    saveMessage = ZoneRecordings::save(*recording, path, error)
+                      ? std::format("Saved: {}", path.filename().string())
+                      : std::format("Not saved: {}", error);
+  }
+  else
+  {
+    saveMessage = std::format("Not saved: {}", error);
+  }
+}
+
+/** Its brain and body (both sides), in the scene's copy of the plan: brains
+ * are set before a zone starts, so a change takes effect on Restart. The
+ * picked zone's place in the plan comes from the zone itself (the run's copy
+ * of the plan), not from its place among the running zones. */
+void ZoneSessionScene::renderZoneVersions(float scale)
+{
+  const auto& zones = run->zones();
+  const std::size_t exercise = run->exercise();
+  const std::vector<SessionZone>& runPlanZones =
+      run->plan().exercises[exercise].zones;
+  const auto planIndex = static_cast<std::size_t>(
+      std::distance(runPlanZones.data(), zones[watchedZone].plan));
+  if (exercise >= plan.exercises.size() || planIndex >= runPlanZones.size() ||
+      planIndex >= plan.exercises[exercise].zones.size())
+  {
+    return;
+  }
+  SessionZone& zone = plan.exercises[exercise].zones[planIndex];
+  versionPicker("Brain", zone.brain, ALL_BRAINS, brainName, scale);
+  ImGui::SameLine(0, GROUP_GAP * scale);
+  versionPicker("Body", zone.body, ALL_BODIES, bodyName, scale);
+  UI::textDisabled("Takes effect on Restart (R).");
+}
+
+/** The debugger on the picked zone (its log, the inspector). */
+void ZoneSessionScene::renderZoneDebugger(float width, float scale)
+{
+  namespace Page = SandboxPageUI;
+  const SessionRun::Zone& picked = run->zones()[watchedZone];
+  if (!picked.run)
+  {
+    return;
+  }
+  if (picked.run.get() != debuggedRun)
+  {
+    debuggedRun = picked.run.get();
+    debugger.reset();
+    inspector.reset();
+  }
+  Page::beginCard("##zone_session_debugger", "DEBUGGER", width, Page::LIGHT,
+                  scale, boldFont);
+  MatchEngine& engine = picked.run->engine();
+  debugger.renderContents(picked.run->recorder(), &engine, &paused,
+                          std::nullopt, &engine, inspector);
+  Page::endCard(scale);
+}
+
 void ZoneSessionScene::renderZoneTools(float width)
 {
   // One zone picked (T7e): the 3D cameras follow its ball, its set-up can
@@ -483,7 +634,7 @@ void ZoneSessionScene::renderZoneTools(float width)
   const auto& zones = run->zones();
   if (run->changing() || zones.empty())
   {
-    ImGui::TextDisabled("Changing exercise: one engine for everyone.");
+    UI::textDisabled("Changing exercise: one engine for everyone.");
     Page::endCard(scale);
     return;
   }
@@ -501,94 +652,18 @@ void ZoneSessionScene::renderZoneTools(float width)
     }
     ImGui::EndCombo();
   }
-  ImGui::TextDisabled("The 3D cameras follow this zone's ball.");
-  // Save the picked zone as far as it has played (T7f); it opens from the
-  // Training page as a replay of that zone alone.
+  UI::textDisabled("The 3D cameras follow this zone's ball.");
   if (Page::button("Save this zone", false, scale, boldFont))
   {
-    std::string error;
-    if (const auto recording =
-            ZoneRecordings::capture(*run, watchedZone, error))
-    {
-      const std::filesystem::path path =
-          Recordings::folder() / ZoneRecordings::fileName(*recording);
-      saveMessage = ZoneRecordings::save(*recording, path, error)
-                        ? std::format("Saved: {}", path.filename().string())
-                        : std::format("Not saved: {}", error);
-    }
-    else
-    {
-      saveMessage = std::format("Not saved: {}", error);
-    }
+    saveWatchedZone();
   }
   if (!saveMessage.empty())
   {
     ImGui::PushTextWrapPos(0);
-    ImGui::TextDisabled("%s", saveMessage.c_str());
+    UI::textDisabled("{}", saveMessage.c_str());
     ImGui::PopTextWrapPos();
   }
-
-  // Its brain and body (both sides), in the scene's copy of the plan:
-  // brains are set before a zone starts, so a change takes effect on
-  // Restart. The picked zone's place in the plan comes from the zone itself
-  // (the run's copy of the plan), not from its place among the running
-  // zones.
-  const std::size_t exercise = run->exercise();
-  const std::vector<SessionZone>& runPlanZones =
-      run->plan().exercises[exercise].zones;
-  const auto planIndex = static_cast<std::size_t>(
-      std::distance(runPlanZones.data(), zones[watchedZone].plan));
-  if (exercise < plan.exercises.size() && planIndex < runPlanZones.size() &&
-      planIndex < plan.exercises[exercise].zones.size())
-  {
-    SessionZone& zone = plan.exercises[exercise].zones[planIndex];
-    const auto picker = [&]<typename Id>(const char* label,
-                                         std::optional<Id>& choice,
-                                         const auto& all, auto name)
-    {
-      const std::string current =
-          choice ? std::string(name(*choice)) : std::string("Set-up's");
-      ImGui::SetNextItemWidth(PICK_COMBO_WIDTH * scale);
-      if (SandboxPageUI::beginCombo(label, current.c_str()))
-      {
-        if (ImGui::Selectable("Set-up's", !choice))
-        {
-          choice.reset();
-        }
-        for (const Id id : all)
-        {
-          if (ImGui::Selectable(std::string(name(id)).c_str(),
-                                choice && *choice == id))
-          {
-            choice = id;
-          }
-        }
-        ImGui::EndCombo();
-      }
-    };
-    picker("Brain", zone.brain, ALL_BRAINS, brainName);
-    ImGui::SameLine(0, GROUP_GAP * scale);
-    picker("Body", zone.body, ALL_BODIES, bodyName);
-    ImGui::TextDisabled("Takes effect on Restart (R).");
-  }
+  renderZoneVersions(scale);
   Page::endCard(scale);
-
-  // The debugger on the picked zone (its log, the inspector).
-  const SessionRun::Zone& picked = zones[watchedZone];
-  if (!picked.run)
-  {
-    return;
-  }
-  if (picked.run.get() != debuggedRun)
-  {
-    debuggedRun = picked.run.get();
-    debugger.reset();
-    inspector.reset();
-  }
-  Page::beginCard("##zone_session_debugger", "DEBUGGER", width, Page::LIGHT,
-                  scale, boldFont);
-  MatchEngine& engine = picked.run->engine();
-  debugger.renderContents(picked.run->recorder(), &engine, &paused,
-                          std::nullopt, &engine, inspector);
-  Page::endCard(scale);
+  renderZoneDebugger(width, scale);
 }

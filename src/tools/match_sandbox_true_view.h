@@ -10,10 +10,26 @@
 
 #include <imgui.h>
 
+#include <string>
 #include <vector>
 
 #include "gui/gui_scene.h"
 #include "tools/match_sandbox_true_view_shapes.h"
+
+/** A pose's moment: its caption, and how far up he is (-1: not getting
+ * up). */
+struct TrueViewMoment
+{
+  std::string caption;
+  float getUpShare = -1.0F;
+};
+
+/** How far his running and standing jumps rise (metres). */
+struct JumpRises
+{
+  float running = 0.0F;
+  float standing = 0.0F;
+};
 
 /**
  * True view (Notes and plans/match_engine_true_view_plan.md): one player in
@@ -73,7 +89,21 @@ class TrueViewScene : public GUIScene
   };
 
   void renderPanel(float width);
+  void renderViewButtons(float width, float scale);
+  void renderDetailTabs(float width, float scale);
+  void renderPlayerControls(float width, float scale);
+  void renderPoseControls(float width, float scale);
+  void renderTechniqueControls(float width, float scale);
+  void renderLayerToggles(float width, float scale);
   void renderCanvas(ImVec2 size);
+  void orbitCamera();
+  [[nodiscard]] float cycleOf(float total) const;
+  TrueViewMoment jumpMoment(TrueView::Body& body, float rise) const;
+  float rolledMetres();
+  TrueViewMoment fallenMoment(TrueView::Body& body);
+  TrueViewMoment gettingUpMoment(TrueView::Body& body);
+  TrueViewMoment poseMoment(TrueView::Body& body, const JumpRises& rises);
+  [[nodiscard]] TrueView::Body statsBody() const;
   void renderTable(float width);
 
   Stats stats;

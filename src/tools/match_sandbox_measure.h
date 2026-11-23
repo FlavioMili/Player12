@@ -119,6 +119,8 @@ class DrillMeasure
                                       float value) const;
 
  private:
+  /** A headless run has no "You": the AI runs instead. */
+  void keepHeadless();
   void apply(std::size_t index);
   void restore();
 

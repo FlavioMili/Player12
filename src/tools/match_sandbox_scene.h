@@ -13,6 +13,7 @@
 #include <filesystem>
 #include <memory>
 #include <optional>
+#include <span>
 #include <string>
 #include <vector>
 
@@ -28,10 +29,15 @@
 #include "tools/match_sandbox_setup.h"
 #include "tools/match_sandbox_true_view_match.h"
 
+class IMatchRenderer;
 class Lineup;
+class Player;
 class Strategy;
 class Team;
 struct ImFont;
+struct MatchRenderSnapshot;
+struct SessionPlan;
+struct TrainingSessionInfo;
 
 /** The sandbox's pages, one per sidebar item. */
 enum class SandboxPage
@@ -93,7 +99,7 @@ class MatchSandboxScene : public GUIScene
     TeamID team = 0;
   };
 
-  void renderSide(Side& side, bool home, float width, float height);
+  void renderSide(Side& side, bool home, float width);
   void renderClubPicker(Side& side, bool home);
   void renderFormation(Team& team);
   void renderInstructions(Strategy& strategy);
@@ -126,7 +132,46 @@ class MatchSandboxScene : public GUIScene
       category_drill_indices{};
 
   // Training: a session for the home club's squad.
+  /** A training session picked: drills on the pitch, or a training ground
+   * plan (one of them set). */
+  struct ChosenSession
+  {
+    const TrainingSessionInfo* session = nullptr;
+    const SessionPlan* zonePlan = nullptr;
+  };
+
+  void renderReviewControls(float panel);
+  void renderReviewStage(ImVec2 area);
+  void pickDrillCategory(DrillCategory to);
+  DrillCategory renderDrillCategories(float width);
+  void renderDrillRun(Drill& drill, float detailWidth);
+  /** A click on the match view: Ctrl held, and where. */
+  struct MatchClick
+  {
+    bool clicked = false;
+    bool ctrl = false;
+    ImVec2 at;
+  };
+
+  void renderRecordingDetail(float detailWidth);
+  void renderMatchDebugPanel(MatchEngine& engine, bool& paused);
+  void drawMatchOverlay(const IMatchRenderer& renderer,
+                        const MatchEngine& engine,
+                        const MatchRenderSnapshot& snapshot,
+                        const MatchClick& click);
   void renderTraining();
+  void pickTrainingClub(TeamID clubId, const std::vector<const Player*>& squad);
+  void renderSessionList(float width, float scale);
+  void renderZoneRecordingList(float width, float scale);
+  void renderSessionOverview(const ChosenSession& chosen, float width,
+                             float scale);
+  void startTraining(const ChosenSession& chosen,
+                     const std::vector<const Player*>& squad,
+                     const std::string& clubName);
+  void renderTrainingRow(const Player& player, float scale);
+  void renderTrainingRoster(std::span<const Player* const> players, int column);
+  void renderTrainingSquad(const std::vector<const Player*>& squad,
+                           const std::string& clubName, float width);
   /** Tools that show one rule of the engine on its own. */
   void renderVisualisers();
   int session_index = 0;
