@@ -239,8 +239,23 @@
                                 PassCandidateDetail* detail = nullptr,
                                 PassMisreadCapybara misread = {},
                                 DecisionFrame::Score* terms = nullptr) const;
+  /** The aim for a strike: an open-play shot uses the aim his decision
+   * held (the shot option carried it); otherwise rolled now. */
   ShotAim chooseShotAimCapybara(const MatchPlayer& shooter, bool header, bool penalty,
                         bool freeKick);
+  /** Today's aim rules (side away from the keeper, inset, power shot,
+   * height), rolled. */
+  ShotAim rollShotAimCapybara(const MatchPlayer& shooter, bool header,
+                              bool penalty, bool freeKick);
+  /** The aim his shot option carried, held for the strike: only for this
+   * player in this possession. */
+  struct HeldShotAimCapybara
+  {
+    PlayerID player = 0;
+    double possessionStart = 0.0;
+    ShotAim aim;
+  };
+  std::optional<HeldShotAimCapybara> heldShotAimCapybara;
   float choosePenaltyGuessCapybara(const MatchPlayer& keeper);
   ClearanceAim chooseClearanceAimCapybara(const MatchPlayer& defender);
   PitchPoint chooseClearBehindTargetCapybara(const MatchPlayer& defender);

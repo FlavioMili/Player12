@@ -143,6 +143,14 @@ struct CarrierRecord
   float receiverRoleSteps = 0.0F;
   /** Where his carry takes him by his next decision. */
   PitchPoint carryEnd{};
+  /** The aim the shot option carries (today's rules, rolled at the
+   *
+   * decision), if the shot is open: across the goal from its centre
+   *
+   * (positive towards pitch y = 1) and up, in metres. */
+  bool shotAimed = false;
+  float shotAimY = 0.0F;
+  float shotAimZ = 0.0F;
   /** Every carry candidate; the best (highest score) is the carry option. */
   std::vector<CarryCandidate> carryCandidates;
   /** The chosen option (OPTION_COUNT for none); a shield deep in his own

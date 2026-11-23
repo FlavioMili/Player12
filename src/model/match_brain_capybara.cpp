@@ -5093,6 +5093,13 @@ MatchEngine::BallAction MatchEngine::chooseBallActionCapybara(
   {
     shot.ruleOut();
   }
+  // The shot option carries its aim (today's rules, rolled now): if the
+  // shot is chosen, the strike uses it.
+  std::optional<ShotAim> shotAim;
+  if (shot.isAvailable())
+  {
+    shotAim = rollShotAimCapybara(carrier, false, false, false);
+  }
 
   // Carry: always open. The longer he has had the ball, the keener he is to
   // release it: individual possessions last about a second, rarely more
@@ -5219,6 +5226,12 @@ MatchEngine::BallAction MatchEngine::chooseBallActionCapybara(
     record.edgeFactor = edgeFactor;
     record.talkFactor = talkFactor;
     record.carryEnd = carryEnd;
+    if (shotAim)
+    {
+      record.shotAimed = true;
+      record.shotAimY = shotAim->aimY;
+      record.shotAimZ = shotAim->aimZ;
+    }
     // The same comparisons as the branches below, in the same order.
     const bool clearing =
         pitch.fromOwnGoalLine(carrier.position, carrier.isHomeTeam) <
@@ -5328,6 +5341,13 @@ MatchEngine::BallAction MatchEngine::chooseBallActionCapybara(
     lastScenarioDecision.reason =
         "shot with estimated xG " + std::to_string(shotXG);
     action.kind = ScenarioAction::SHOT;
+    if (shotAim && carrier.player != nullptr)
+    {
+      heldShotAimCapybara = HeldShotAimCapybara{
+          .player = carrier.player->getId(),
+          .possessionStart = getPossessionHistory().possessionStartSeconds,
+          .aim = *shotAim};
+    }
     return action;
   }
   if (carryScore >= passScore && carryScore >= shieldScore)
@@ -5861,6 +5881,23 @@ void MatchEngine::afterPassReleasedCapybara(const MatchPlayer& passer,
 }
 
 MatchEngine::ShotAim MatchEngine::chooseShotAimCapybara(
+    const MatchPlayer& shooter, bool header, bool penalty, bool freeKick)
+{
+  // An open-play shot: the aim his shot option carried, once.
+  if (!header && !penalty && !freeKick && heldShotAimCapybara &&
+      shooter.player != nullptr &&
+      heldShotAimCapybara->player == shooter.player->getId() &&
+      heldShotAimCapybara->possessionStart ==
+          getPossessionHistory().possessionStartSeconds)
+  {
+    const ShotAim aim = heldShotAimCapybara->aim;
+    heldShotAimCapybara.reset();
+    return aim;
+  }
+  return rollShotAimCapybara(shooter, header, penalty, freeKick);
+}
+
+MatchEngine::ShotAim MatchEngine::rollShotAimCapybara(
     const MatchPlayer& shooter, bool header, bool penalty, bool freeKick)
 {
   // Aim for the side away from the keeper, a little inside the post; better

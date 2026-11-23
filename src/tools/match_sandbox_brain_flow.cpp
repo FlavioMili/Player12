@@ -778,7 +778,11 @@ void BrainFlowScene::renderPitch(float width)
          OptionIndex::CARRY);
     if (layered.options.at(at(OptionIndex::SHOT)).ruledOut == nullptr)
     {
-      line(screen(1.0F, MatchTuning::Pitch::CENTRE), OptionIndex::SHOT);
+      // To the aim the shot option carries (the goal's centre if none).
+      const PitchPoint aim{pitch.atX(1.0F),
+                           pitch.atY(MatchTuning::Pitch::CENTRE) +
+                               (layered.shotAimed ? layered.shotAimY : 0.0F)};
+      line(screen(1.0F, pitch.fractionY(aim)), OptionIndex::SHOT);
     }
   }
   // The players; the carrier ringed; a name on hover.
@@ -1313,6 +1317,16 @@ std::string carryDirectionName(const BrainFlow::CarryCandidate& candidate)
                      angle > 0.0F ? "right" : "left");
 }
 
+/** The aim the shot option carries, in words. */
+std::string shotAimText(const BrainFlow::CarrierRecord& record)
+{
+  return std::format(
+      "aim: {:.1f} m {} of the goal's centre, {:.1f} m up (today's aim "
+      "rules, rolled with the option; held for the strike)",
+      std::abs(record.shotAimY), record.shotAimY >= 0.0F ? "right" : "left",
+      record.shotAimZ);
+}
+
 /** The carry candidates as a grid: a row per direction, a column per pace;
  * each cell its score on the true chances (hover: keep and end xG); the
  * best, which is the carry option, in lime. */
@@ -1418,6 +1432,10 @@ void BrainFlowScene::optionsStage()
     if ((before.ruledOut == nullptr) != (option.ruledOut == nullptr))
     {
       text("the layers change whether it is open", WARNING);
+    }
+    if (index == at(OptionIndex::SHOT) && layered.shotAimed)
+    {
+      muted(shotAimText(layered));
     }
     if (index == at(OptionIndex::CARRY))
     {
@@ -1658,7 +1676,11 @@ void BrainFlowScene::bodyStage()
       text(std::format("Plays the pass to {}", nameOf(layered.bestReceiver)));
       break;
     case OptionIndex::SHOT:
-      text("Shoots");
+      text(layered.shotAimed ? "Shoots at the aim it carried" : "Shoots");
+      if (layered.shotAimed)
+      {
+        muted(shotAimText(layered));
+      }
       break;
     case OptionIndex::CARRY:
     {
