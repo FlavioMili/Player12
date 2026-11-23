@@ -4340,9 +4340,7 @@ void MatchEngine::planPenaltyDiveBinturong(MatchPlayer& keeper, double strikeAt)
     return;
   }
   const Vector2F side = normalized({.x = 0.0F, .y = guess});
-  const float height = randomFloat(0.0F, 1.0F) < D::PENALTY_HIGH_CHANCE
-                           ? D::PENALTY_HIGH_METRES
-                           : D::PENALTY_LOW_METRES;
+  const float height = penaltyDiveHeight(keeper);
   const float spread =
       alongStatScale(keeper.goalkeeping, D::PENALTY_LEAD_SPREAD_POOR,
                      D::PENALTY_LEAD_SPREAD_BEST);

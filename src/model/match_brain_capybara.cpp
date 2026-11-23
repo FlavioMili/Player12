@@ -6381,15 +6381,46 @@ void MatchEngine::decidePenaltyCapybara(const MatchPlayer& taker)
 
 float MatchEngine::choosePenaltyGuessCapybara(const MatchPlayer& keeper)
 {
-  // A blind guess, before the kick (goalkeeper plan step 9): a side, or he
-  // stays. Reading the taker (Anticipation) is for later.
-  (void)keeper;
+  // The situation "I'm facing a penalty" (brain redesign plan section 26,
+  // step L), decided before the kick (goalkeeper plan step 9). Options:
+  // dive left, dive right (each carrying its height, high or low), stay.
+  // Open on today's blind rolls: a side at 50/50, then the stay chance;
+  // the height is rolled with a dive and held to the dive plan (a Binturong
+  // body's dive; other bodies have no height). Follow-up: no measures
+  // (reading the taker, Anticipation, is for later); the stopgap pick is
+  // the rolled option.
   float guess = randomFloat(0.0F, 1.0F) < 0.5F ? -1.0F : 1.0F;
   if (randomFloat(0.0F, 1.0F) < MatchTuning::Goalkeeper::PENALTY_STAY_CHANCE)
   {
     guess = 0.0F;
   }
+  heldPenaltyDiveCapybara.reset();
+  if (guess != 0.0F && keeper.player != nullptr &&
+      getBody(keeper.isHomeTeam) == BodyId::BINTURONG)
+  {
+    using D = MatchTuning::KeeperDive;
+    heldPenaltyDiveCapybara = HeldPenaltyDiveCapybara{
+        .player = keeper.player->getId(),
+        .height = randomFloat(0.0F, 1.0F) < D::PENALTY_HIGH_CHANCE
+                      ? D::PENALTY_HIGH_METRES
+                      : D::PENALTY_LOW_METRES};
+  }
   return guess;
+}
+
+float MatchEngine::penaltyDiveHeight(const MatchPlayer& keeper)
+{
+  using D = MatchTuning::KeeperDive;
+  if (heldPenaltyDiveCapybara && keeper.player != nullptr &&
+      heldPenaltyDiveCapybara->player == keeper.player->getId())
+  {
+    const float height = heldPenaltyDiveCapybara->height;
+    heldPenaltyDiveCapybara.reset();
+    return height;
+  }
+  return randomFloat(0.0F, 1.0F) < D::PENALTY_HIGH_CHANCE
+             ? D::PENALTY_HIGH_METRES
+             : D::PENALTY_LOW_METRES;
 }
 
 PitchPoint MatchEngine::goalkeeperTargetCapybara(MatchPlayer& keeper,
@@ -6575,14 +6606,18 @@ PitchPoint MatchEngine::keeperSetPositionCapybara(const MatchPlayer& keeper,
 
 bool MatchEngine::choosesToBlockCapybara(const MatchPlayer& /*player*/)
 {
-  // Every outfielder in the path tries; whether he gets there is the body's.
+  // The situation "I can intercept the ball", its shot-block branch (step
+  // L): an outfielder in a shot's path. Options: throw myself in, let it
+  // go. Throwing himself in is always open; whether he gets there is the
+  // body's. Follow-up: no measures; the stopgap pick throws himself in.
   return true;
 }
 
 bool MatchEngine::choosesToPutBlockBehindCapybara(const MatchPlayer& /*player*/)
 {
   // No second kick after a block (shot block plan step 4): the ball goes
-  // where it comes off him.
+  // where it comes off him. A closed option of the shot-block branch (step
+  // L), kept for the older brains.
   return false;
 }
 
@@ -6590,7 +6625,8 @@ bool MatchEngine::choosesToClearCrossBehindCapybara(
     const MatchPlayer& /*player*/)
 {
   // No instant kick behind on meeting a cross (shot block plan step 4): he
-  // plays it with his touch like any other ball.
+  // plays it with his touch like any other ball, through the receiving and
+  // intercept frames (steps F, G, I). A closed option (step L).
   return false;
 }
 

@@ -1026,7 +1026,7 @@ struct Situation
   /** On a decision frame of its own, not shown in the stages below yet. */
   bool ownFrame;
 };
-constexpr std::array<Situation, 19> SITUATIONS = {{
+constexpr std::array<Situation, 20> SITUATIONS = {{
     {.depth = 0,
      .title = "Restart",
      .decidedBy = "",
@@ -1055,6 +1055,17 @@ constexpr std::array<Situation, 19> SITUATIONS = {{
      .plannerWide = false,
      .onFrame = false,
      .ownFrame = false},
+    {.depth = 1,
+     .title = "I'm facing a penalty (keeper)",
+     .decidedBy =
+         "its own frame (step L, choosePenaltyGuess), before the kick: dive "
+         "left, dive right (each carrying its height, high or low, held to "
+         "the dive), stay. Open on today's blind rolls; stopgap pick is the "
+         "rolled option (follow-up: measures, reading the taker)",
+     .layers = 0,
+     .plannerWide = false,
+     .onFrame = false,
+     .ownFrame = true},
     {.depth = 0,
      .title = "Open play",
      .decidedBy = "",
@@ -1107,7 +1118,9 @@ constexpr std::array<Situation, 19> SITUATIONS = {{
          "(today's 33% roll inside his penalty spot), clear it, knock it "
          "down. Feet (chooseFirstTouch, step I): the opponents' pass reaching "
          "him: control touch, lay it out; first-time pass, shot, clear listed, "
-         "not judged yet. Stopgap picks in today's order (follow-up: "
+         "not judged yet. Shot block (choosesToBlock, step L): throw myself "
+         "in (always open), let it go; put it behind and clear a cross "
+         "behind closed. Stopgap picks in today's order (follow-up: "
          "measures)",
      .layers = 0,
      .plannerWide = false,
@@ -1146,7 +1159,7 @@ constexpr std::array<Situation, 19> SITUATIONS = {{
          "its own frame (step O4): sweep a ball going into his own goal (once "
          "he has reacted), take a team-mate's pass, take up his position "
          "(goalkeeperTarget, its own state machine, left as it is). Stopgap "
-         "pick in today's order (follow-up: measures). Also choosesToBlock",
+         "pick in today's order (follow-up: measures)",
      .layers = ROLE,
      .plannerWide = false,
      .onFrame = false,

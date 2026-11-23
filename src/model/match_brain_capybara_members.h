@@ -297,6 +297,17 @@
   };
   std::optional<HeldClearAimCapybara> heldClearAimCapybara;
   float choosePenaltyGuessCapybara(const MatchPlayer& keeper);
+  /** The dive height his "dive left/right" option carried (step L), held
+   * to the dive plan: this keeper, high or low. */
+  struct HeldPenaltyDiveCapybara
+  {
+    PlayerID player = 0;
+    float height = 0.0F;
+  };
+  std::optional<HeldPenaltyDiveCapybara> heldPenaltyDiveCapybara;
+  /** The height a planned penalty dive takes: the one his option carried,
+   * once, else today's roll. */
+  float penaltyDiveHeight(const MatchPlayer& keeper);
   /** "Restart: I'm the taker", a penalty (step H): his kick decided
    * before the run-up; it carries its aim (today's penalty rules, rolled
    * now), held for the strike. */
