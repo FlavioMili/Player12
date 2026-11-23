@@ -62,6 +62,14 @@
    * carrier decision to fill (null: none, as in every match), and the
    * influence layers it plays with (a BrainFlow::LayerMask; all by
    * default). Only the carrier decision reads the mask so far. */
+  /** The brain flow tool's off-ball view (step O5): places the scenario
+   * as applyScenario does, but nobody decides; runs the team planner once
+   * (marks, then both sides' targets), filling `record` for its player.
+   * False if the scenario could not be placed or he was not planned. */
+  bool brainFlowOffBallCapybara(const MatchScenario& scenario,
+                                float matchMinute, int homeGoals,
+                                int awayGoals,
+                                BrainFlow::CarrierRecord& record);
   void setBrainFlowCapybara(BrainFlow::CarrierRecord* record,
                             std::uint8_t layers)
   {
@@ -126,6 +134,16 @@
   static constexpr std::size_t FLOW_LAYER_COUNT = 6;
   static constexpr std::uint8_t FLOW_ALL_LAYERS = 0x3F;
   BrainFlow::CarrierRecord* flowRecord = nullptr;
+  /** The tool's off-ball record while the planner fills it (step O5). */
+  BrainFlow::CarrierRecord* offBallRecord = nullptr;
+  /** Notes one player's off-ball frame in offBallRecord, if he is its
+   * player: the situation, each option (name, open, what opens it) and
+   * the pick. */
+  void noteOffBallCapybara(const MatchPlayer& player, const char* situation,
+                           std::span<const bool> open,
+                           std::span<const char* const> names,
+                           std::span<const char* const> opensWhen,
+                           std::size_t chosen);
   std::uint8_t flowLayers = FLOW_ALL_LAYERS;
   /** Each influence layer's steps on the stepped weights (index by
    * BrainFlow::Layer), as carrierWeightsCapybara sums them. The team

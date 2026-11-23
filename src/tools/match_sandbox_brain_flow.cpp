@@ -87,6 +87,8 @@ constexpr StageSpec JUDGEMENT{
     .id = "##judgement", .title = "JUDGEMENT", .built = true};
 constexpr StageSpec PICK{.id = "##pick", .title = "PICK", .built = true};
 constexpr StageSpec BODY{.id = "##body", .title = "BODY", .built = true};
+constexpr StageSpec OFF_BALL{
+    .id = "##off_ball", .title = "OFF THE BALL", .built = true};
 void readingStage();
 void goalStage();
 
@@ -224,6 +226,11 @@ class BrainFlowExample final : public Drill
 };
 
 // The example's presets: where the nine players stand.
+/** The example players, in spot order (ExampleSettings::spots). */
+constexpr std::array<const char*, BrainFlowScene::EXAMPLE_PLAYERS> SPOT_NAMES =
+    {"Carrier",          "Left midfielder",   "Right winger",
+     "Striker",          "Their keeper",      "Their presser",
+     "Their midfielder", "Their centre-back", "Their centre-back 2"};
 constexpr std::array<const char*, 3> PRESET_NAMES = {
     "Build-up in midfield", "Edge of the box", "Pressed near his own goal"};
 constexpr std::array<BrainFlowScene::Spots, 3> PRESET_SPOTS = {{
@@ -459,6 +466,22 @@ void BrainFlowScene::rebuild()
       names[slot.player->getId()] = slot.player->getName();
     }
   }
+  // The off-ball frame of the chosen player at the same moment: the
+  // example placed again, nobody deciding, the team planner run once.
+  offBall = {};
+  const auto& ids = example.spotPlayerIds();
+  const auto pick = static_cast<std::size_t>(offBallPlayer);
+  if (pick < ids.size())
+  {
+    BrainFlow::CarrierRecord holder;
+    holder.offBall.player = ids.at(pick);
+    if (engine.brainFlowOffBallCapybara(
+            example.startingScenario(), static_cast<float>(settings.minute),
+            settings.ourGoals, settings.theirGoals, holder))
+    {
+      offBall = holder.offBall;
+    }
+  }
   exampleIds.assign(example.spotPlayerIds().begin(),
                     example.spotPlayerIds().end());
   carrierName = example.spotPlayerIds().empty()
@@ -649,6 +672,16 @@ void BrainFlowScene::renderExample(float width)
   muted(
       "Drag a player to move him. Lime: our side (the carrier ringed); red: "
       "the opponents. The chosen option is drawn bold.");
+  muted("Off the ball (the OFF THE BALL stage): whose frame to show.");
+  for (std::size_t index = 0; index < SPOT_NAMES.size(); ++index)
+  {
+    if (Page::choice(SPOT_NAMES.at(index),
+                     offBallPlayer == static_cast<int>(index), scale, boldFont))
+    {
+      offBallPlayer = static_cast<int>(index);
+      dirty = true;
+    }
+  }
   muted("The carrier's attributes:");
   constexpr float LOWEST = 1.0F;
   constexpr float HIGHEST = 100.0F;
@@ -808,6 +841,17 @@ void BrainFlowScene::renderPitch(float width)
       hovered = index;
     }
   }
+  // The off-ball player: ringed, and a line to where his frame sends him.
+  const auto offBallIndex = static_cast<std::size_t>(offBallPlayer);
+  if (!dragging && offBall.filled && offBallIndex < settings.spots.size())
+  {
+    const ImVec2 at = spotOf(offBallIndex);
+    draw->AddCircle(at, CARRIER_RING * scale, Page::CREAM, 0, THIN * scale);
+    draw->AddLine(at,
+                  screen(pitch.fractionX(offBall.target),
+                         pitch.fractionY(offBall.target)),
+                  Page::CREAM, THIN * scale);
+  }
   if (hovered && ImGui::IsItemHovered() && *hovered < exampleIds.size())
   {
     ImGui::BeginTooltip();
@@ -893,6 +937,7 @@ void BrainFlowScene::renderFlow(float width, float height)
   stage(JUDGEMENT, boldFont, [this] { judgementStage(); });
   stage(PICK, boldFont, [this] { pickStage(); });
   stage(BODY, boldFont, [this] { bodyStage(); });
+  stage(OFF_BALL, boldFont, [this] { offBallStage(); });
   ImGui::EndChild();
 }
 
@@ -1751,6 +1796,51 @@ void BrainFlowScene::pickStage()
            WARNING);
     }
   }
+}
+
+void BrainFlowScene::offBallStage()
+{
+  const auto index = static_cast<std::size_t>(offBallPlayer);
+  if (!offBall.filled || index >= exampleIds.size())
+  {
+    muted("Pick a player in the example card (OFF THE BALL).");
+    return;
+  }
+  text(
+      std::format("{}: {}", SPOT_NAMES.at(index), nameOf(exampleIds.at(index))),
+      SandboxPageUI::LIME);
+  text(std::format("Situation: {}", offBall.situation));
+  muted(
+      "His off-ball frame at this moment (all layers on): an option is open "
+      "when the team's assignments, orders or phase give it to him; the "
+      "stopgap pick is the first open one in today's order (follow-up: "
+      "measures). The team planner ran once with nobody deciding.");
+  for (std::size_t option = 0; option < offBall.options.size(); ++option)
+  {
+    const BrainFlow::OffBallOption& entry = offBall.options.at(option);
+    // Picked (lime, ">"), open ("+"), or closed (muted, "-").
+    const char* mark = "-";
+    ImU32 colour = SandboxPageUI::MUTED;
+    if (option == offBall.chosen)
+    {
+      mark = ">";
+      colour = SandboxPageUI::LIME;
+    }
+    else if (entry.open)
+    {
+      mark = "+";
+      colour = SandboxPageUI::CREAM;
+    }
+    text(std::format("{} {} - {}{}", mark, entry.name,
+                     entry.open ? "open: " : "closed: opens when ",
+                     entry.opensWhen),
+         colour);
+  }
+  if (offBall.overriddenBy != nullptr)
+  {
+    text(std::format("Overridden: {}", offBall.overriddenBy), WARNING);
+  }
+  muted("The line on the pitch: from him to the target his job sets.");
 }
 
 void BrainFlowScene::bodyStage()

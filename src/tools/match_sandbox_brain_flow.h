@@ -97,6 +97,8 @@ class BrainFlowScene : public GUIScene
   void judgementStage();
   void pickStage();
   void bodyStage();
+  /** One player's off-ball frame at the example's moment (step O5). */
+  void offBallStage();
   [[nodiscard]] bool layerOn(BrainFlow::Layer layer) const;
   [[nodiscard]] std::string nameOf(std::uint32_t player) const;
 
@@ -104,6 +106,8 @@ class BrainFlowScene : public GUIScene
   BrainFlow::LayerMask layers = 0;
   ExampleSettings settings;
   int preset = 0;
+  /** Whose off-ball frame to show (an index into the example players). */
+  int offBallPlayer = 1;
   /** True: scores at the true chances; false: one sample drawn. */
   bool steady = true;
   std::uint32_t rollSeed = 1;
@@ -119,6 +123,8 @@ class BrainFlowScene : public GUIScene
   std::string error;
   BrainFlow::CarrierRecord base;
   BrainFlow::CarrierRecord layered;
+  /** The off-ball frame of offBallPlayer, all layers on. */
+  BrainFlow::OffBallRecord offBall;
   std::map<std::uint32_t, std::string> names;
   /** The example players' ids, in EXAMPLE_PLAYERS order. */
   std::vector<std::uint32_t> exampleIds;

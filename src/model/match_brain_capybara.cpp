@@ -314,6 +314,17 @@ enum class OurBallJob : std::uint8_t
 };
 constexpr std::size_t OUR_BALL_JOB_COUNT =
     static_cast<std::size_t>(OurBallJob::COUNT);
+// The brain flow tool's words for each frame's options (step O5).
+constexpr std::array<const char*, OUR_BALL_JOB_COUNT> OUR_BALL_NAMES = {
+    "run in behind", "attack the box", "overlap",
+    "support",       "come short",     "hold shape"};
+constexpr std::array<const char*, OUR_BALL_JOB_COUNT> OUR_BALL_WHEN = {
+    "the team made him a runner",
+    "the team picked him to arrive late or attack the far post",
+    "the team picked him to overlap",
+    "the team made him a supporter",
+    "he is a forward (ST, LW, RW, CAM)",
+    "always"};
 /** "Opponents' ball" (step O2): his off-ball options, in the stopgap
  * order (today's). */
 enum class TheirBallJob : std::uint8_t
@@ -330,6 +341,19 @@ enum class TheirBallJob : std::uint8_t
 };
 constexpr std::size_t THEIR_BALL_JOB_COUNT =
     static_cast<std::size_t>(TheirBallJob::COUNT);
+constexpr std::array<const char*, THEIR_BALL_JOB_COUNT> THEIR_BALL_NAMES = {
+    "press",      "double up",  "block a lane",
+    "cover",      "tight mark", "recover in transition",
+    "zonal mark", "hold shape"};
+constexpr std::array<const char*, THEIR_BALL_JOB_COUNT> THEIR_BALL_WHEN = {
+    "the team made him the first presser",
+    "the second presser, under a double-up order",
+    "the second presser, pressing high enough, an outlet to cut off",
+    "the second presser, pressing high enough, no outlet",
+    "an order to mark a man tightly",
+    "his side has just lost the ball",
+    "the team gave him a man to mark",
+    "always"};
 /** Nobody has the ball (step O3): his off-ball options across its three
  * situations, in the stopgap order (today's). */
 enum class LooseJob : std::uint8_t
@@ -348,6 +372,23 @@ enum class LooseJob : std::uint8_t
 };
 constexpr std::size_t LOOSE_JOB_COUNT =
     static_cast<std::size_t>(LooseJob::COUNT);
+constexpr std::array<const char*, LOOSE_JOB_COUNT> LOOSE_NAMES = {
+    "receive it",         "support while it travels",
+    "chase it",           "cover the chase",
+    "tight mark",         "recover in transition",
+    "hold shape",         "transition run",
+    "transition support", "recover"};
+constexpr std::array<const char*, LOOSE_JOB_COUNT> LOOSE_WHEN = {
+    "our pass is meant for him",
+    "our pass is travelling",
+    "the team's first to the ball",
+    "the team's second to it, pressing high enough",
+    "their pass travelling, under a tight-mark order",
+    "a pass or shot travelling, his side just lost the ball",
+    "a pass or shot travelling",
+    "ball loose, his side just won it, he is a runner",
+    "ball loose, his side just won it",
+    "always"};
 /** "I'm the keeper" (step O4): his options, in the stopgap order. */
 enum class KeeperJob : std::uint8_t
 {
@@ -358,6 +399,12 @@ enum class KeeperJob : std::uint8_t
 };
 constexpr std::size_t KEEPER_JOB_COUNT =
     static_cast<std::size_t>(KeeperJob::COUNT);
+constexpr std::array<const char*, KEEPER_JOB_COUNT> KEEPER_NAMES = {
+    "sweep a ball going into his own goal", "take a team-mate's pass",
+    "take up his position"};
+constexpr std::array<const char*, KEEPER_JOB_COUNT> KEEPER_WHEN = {
+    "a ball heading in, once he has reacted", "our pass is meant for him",
+    "always"};
 }  // namespace
 
 void MatchEngine::refreshTacticalTargetsCapybara(float dt, bool planHome)
@@ -1562,6 +1609,9 @@ void MatchEngine::refreshTacticalTargetsCapybara(float dt, bool planHome)
           true};
       const auto ourBallJob = static_cast<OurBallJob>(std::distance(
           ourBallOpen.begin(), std::ranges::find(ourBallOpen, true)));
+      noteOffBallCapybara(player, "Our ball, a team-mate has it", ourBallOpen,
+                          OUR_BALL_NAMES, OUR_BALL_WHEN,
+                          static_cast<std::size_t>(ourBallJob));
       if (ourBallJob == OurBallJob::RUN_IN_BEHIND)
       {
         const std::size_t runnerSlot = static_cast<std::size_t>(
@@ -1783,6 +1833,9 @@ void MatchEngine::refreshTacticalTargetsCapybara(float dt, bool planHome)
           true};
       const auto theirBallJob = static_cast<TheirBallJob>(std::distance(
           theirBallOpen.begin(), std::ranges::find(theirBallOpen, true)));
+      noteOffBallCapybara(player, "Opponents' ball", theirBallOpen,
+                          THEIR_BALL_NAMES, THEIR_BALL_WHEN,
+                          static_cast<std::size_t>(theirBallJob));
       if (theirBallJob == TheirBallJob::PRESS)
       {
         player.intent = PlayerIntent::PRESS_BALL;
@@ -1938,6 +1991,17 @@ void MatchEngine::refreshTacticalTargetsCapybara(float dt, bool planHome)
           true};
       const auto looseJob = static_cast<LooseJob>(
           std::distance(looseOpen.begin(), std::ranges::find(looseOpen, true)));
+      const char* looseSituation = "Ball loose";
+      if (receivingPass)
+      {
+        looseSituation = "Our pass travelling";
+      }
+      else if (travelling)
+      {
+        looseSituation = "Their pass, or a shot, travelling";
+      }
+      noteOffBallCapybara(player, looseSituation, looseOpen, LOOSE_NAMES,
+                          LOOSE_WHEN, static_cast<std::size_t>(looseJob));
       if (receivingPass)
       {
         if (looseJob == LooseJob::RECEIVE)
@@ -2179,6 +2243,8 @@ void MatchEngine::refreshTacticalTargetsCapybara(float dt, bool planHome)
           receivingBackPass, true};
       const auto keeperJob = static_cast<KeeperJob>(std::distance(
           keeperOpen.begin(), std::ranges::find(keeperOpen, true)));
+      noteOffBallCapybara(player, "I'm the keeper", keeperOpen, KEEPER_NAMES,
+                          KEEPER_WHEN, static_cast<std::size_t>(keeperJob));
       if (keeperJob == KeeperJob::SWEEP_OWN_GOAL)
       {
         control.state = GoalkeeperState::SWEEP;
@@ -2237,7 +2303,76 @@ void MatchEngine::refreshTacticalTargetsCapybara(float dt, bool planHome)
          player.intent == PlayerIntent::OFFER_SUPPORT ||
          player.intent == PlayerIntent::RECOVER_SHAPE);
     player.looseBallMeetSeconds = looseMeetSeconds;
+    // The brain flow tool (step O5): where his frame sends him, and what
+    // overrode its pick.
+    if (offBallRecord != nullptr && player.player != nullptr &&
+        player.player->getId() == offBallRecord->offBall.player)
+    {
+      if (&player == carrier)
+      {
+        offBallRecord->offBall.situation =
+            "I have the ball (the carrier decision)";
+        offBallRecord->offBall.options.clear();
+      }
+      if (challenging)
+      {
+        offBallRecord->offBall.overriddenBy =
+            "going for the high ball (a convention: whoever meets it first)";
+      }
+      else if (job == planJob(PlanBranch::AERIAL_HOLD))
+      {
+        offBallRecord->offBall.overriddenBy =
+            "holding his mark during their delivery into the box";
+      }
+      offBallRecord->offBall.target = target;
+      offBallRecord->offBall.filled = true;
+    }
   }
+}
+
+void MatchEngine::noteOffBallCapybara(const MatchPlayer& player,
+                                      const char* situation,
+                                      std::span<const bool> open,
+                                      std::span<const char* const> names,
+                                      std::span<const char* const> opensWhen,
+                                      std::size_t chosen)
+{
+  if (offBallRecord == nullptr || player.player == nullptr ||
+      player.player->getId() != offBallRecord->offBall.player)
+  {
+    return;
+  }
+  offBallRecord->offBall.situation = situation;
+  offBallRecord->offBall.options.clear();
+  for (std::size_t index = 0; index < open.size(); ++index)
+  {
+    offBallRecord->offBall.options.push_back({.name = names[index],
+                                              .open = open[index],
+                                              .opensWhen = opensWhen[index]});
+  }
+  offBallRecord->offBall.chosen = chosen;
+  offBallRecord->offBall.overriddenBy = nullptr;
+}
+
+bool MatchEngine::brainFlowOffBallCapybara(const MatchScenario& scenario,
+                                           float matchMinute, int homeGoals,
+                                           int awayGoals,
+                                           BrainFlow::CarrierRecord& record)
+{
+  record.offBall.filled = false;
+  if (scenario.players.empty() || state == MatchState::FULL_TIME ||
+      !placeScenario(scenario, MatchState::PLAYING, matchMinute, homeGoals,
+                     awayGoals, true))
+  {
+    return false;
+  }
+  offBallRecord = &record;
+  assignMarks(true);
+  assignMarks(false);
+  refreshTacticalTargets(MatchTuning::Timing::FIXED_STEP_SECONDS, true);
+  refreshTacticalTargets(MatchTuning::Timing::FIXED_STEP_SECONDS, false);
+  offBallRecord = nullptr;
+  return record.offBall.filled;
 }
 
 void MatchEngine::planOvertakeCapybara(std::size_t slot)

@@ -119,6 +119,30 @@ struct CarryCandidate
   float score = 0.0F;
 };
 
+/** One off-ball option: whether it is open to him, and what opens it. */
+struct OffBallOption
+{
+  const char* name = "";
+  bool open = false;
+  const char* opensWhen = "";
+};
+
+/** One player's off-ball frame, as the tool shows it (route A, brain
+ * redesign plan section 22): his situation, its options, the stopgap pick
+ * (today's order), an override, and where it sends him. */
+struct OffBallRecord
+{
+  /** Set by the tool: whose frame to record (player id). */
+  std::uint32_t player = 0;
+  const char* situation = "";
+  std::vector<OffBallOption> options;
+  std::size_t chosen = 0;
+  /** What overrode the pick (null for nothing). */
+  const char* overriddenBy = nullptr;
+  PitchPoint target{};
+  bool filled = false;
+};
+
 /** One carrier decision (pass, shot, carry, shield, clear), as the tool
  * shows it. */
 struct CarrierRecord
@@ -148,9 +172,7 @@ struct CarrierRecord
   /** Where his carry takes him by his next decision. */
   PitchPoint carryEnd{};
   /** The aim the shot option carries (today's rules, rolled at the
-   *
    * decision), if the shot is open: across the goal from its centre
-   *
    * (positive towards pitch y = 1) and up, in metres. */
   bool shotAimed = false;
   float shotAimY = 0.0F;
@@ -164,6 +186,9 @@ struct CarrierRecord
   /** The chosen option (OPTION_COUNT for none). */
   std::size_t chosen = OPTION_COUNT;
   bool filled = false;
+  /** The tool's off-ball view of one player at the same moment (step O5),
+   * filled by MatchEngine::brainFlowOffBallCapybara. */
+  OffBallRecord offBall;
 };
 
 }  // namespace BrainFlow
