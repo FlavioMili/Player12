@@ -5258,7 +5258,7 @@ class ShotDrill final : public Drill
   static constexpr double DECISION_TIMEOUT_SECONDS = 15.0;
   static constexpr double SHOT_WATCH_SECONDS = 6.0;
   static constexpr double RESULT_LINGER_SECONDS = 0.5;
-  static constexpr float LINE_MAX = 45.0F;
+  static constexpr float GOAL_LINE_DISTANCE_MAX = 45.0F;
   static constexpr float SIDE_MIN = -30.0F;
   static constexpr float SIDE_MAX = 30.0F;
   static constexpr float SHOOTING_MAX = 100.0F;
@@ -5316,7 +5316,7 @@ class ShotDrill final : public Drill
   {
     std::vector<DrillParameter> list;
     list.push_back(setting("Out from goal line (m)", &line,
-                           {.min = 0.0F, .max = LINE_MAX}, false,
+                           {.min = 0.0F, .max = GOAL_LINE_DISTANCE_MAX}, false,
                            "Distance of the spot from the goal line. 0: the "
                            "ball on the line (touching it, still in play)."));
     list.push_back(setting("Off centre (m)", &side,
@@ -5707,7 +5707,7 @@ class StillShotDrill final : public Drill
 {
   static constexpr double WATCH_SECONDS = 6.0;
   static constexpr double RESULT_LINGER_SECONDS = 0.5;
-  static constexpr float LINE_MAX = 45.0F;
+  static constexpr float GOAL_LINE_DISTANCE_MAX = 45.0F;
   static constexpr float SIDE_MIN = -30.0F;
   static constexpr float SIDE_MAX = 30.0F;
   static constexpr float RATING_MAX = 100.0F;
@@ -5753,7 +5753,7 @@ class StillShotDrill final : public Drill
   {
     std::vector<DrillParameter> list;
     list.push_back(setting("Out from goal line (m)", &line,
-                           {.min = 0.0F, .max = LINE_MAX}, false,
+                           {.min = 0.0F, .max = GOAL_LINE_DISTANCE_MAX}, false,
                            "Where the ball lies: from the goal line (0: on "
                            "the line, touching it)."));
     list.push_back(setting("Off centre (m)", &side,
@@ -6103,7 +6103,7 @@ class ShotBlockDrill final : public Drill
   static constexpr float RUN_CHOICE_THRESHOLD = 1.5F;
   static constexpr float MIN_DEFLECTION_SPEED = 1e-3F;
   static constexpr float LINE_MIN = 6.0F;
-  static constexpr float LINE_MAX = 40.0F;
+  static constexpr float GOAL_LINE_DISTANCE_MAX = 40.0F;
   static constexpr float SIDE_MIN = -20.0F;
   static constexpr float SIDE_MAX = 20.0F;
   static constexpr float AIM_ACROSS_MIN = -3.6F;
@@ -6155,7 +6155,8 @@ class ShotBlockDrill final : public Drill
   {
     std::vector<DrillParameter> list;
     list.push_back(setting("Out from goal line (m)", &line,
-                           {.min = LINE_MIN, .max = LINE_MAX}, false,
+                           {.min = LINE_MIN, .max = GOAL_LINE_DISTANCE_MAX},
+                           false,
                            "Where the shooter stands."));
     list.push_back(setting("Off centre (m)", &side,
                            {.min = SIDE_MIN, .max = SIDE_MAX}, false));
@@ -10911,7 +10912,7 @@ class ShotTargetDrill final : public Drill
   static constexpr double RESULT_LINGER_SECONDS = 0.5;
   static constexpr float SECOND_CHOICE_THRESHOLD = 1.5F;
   static constexpr float LINE_MIN = 3.0F;
-  static constexpr float LINE_MAX = 40.0F;
+  static constexpr float GOAL_LINE_DISTANCE_MAX = 40.0F;
   static constexpr float SIDE_MIN = -25.0F;
   static constexpr float SIDE_MAX = 25.0F;
   static constexpr float AIM_ACROSS_MIN = -3.66F;
@@ -11055,7 +11056,7 @@ class ShotTargetDrill final : public Drill
       list.push_back(std::move(parameter));
     };
     add(setting("Out from goal line (m)", &line,
-                {.min = LINE_MIN, .max = LINE_MAX}, false,
+                {.min = LINE_MIN, .max = GOAL_LINE_DISTANCE_MAX}, false,
                 "Distance of the ball from the goal line."),
         "Shot");
     add(setting("Off centre (m)", &side, {.min = SIDE_MIN, .max = SIDE_MAX},
