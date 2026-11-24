@@ -11,6 +11,7 @@ football_management.db*
 !test/**/*report*
 heaptrack*
 assets/config/settings.json
+/.generated/game_xg/
 add_copyright_header.sh
 logs
 docs/html/

@@ -747,11 +747,11 @@ void XgMapScene::renderMapSweepControls(float scale)
             "side), 2 m to 30 m, 4 m to halfway; Goalkeeping 1, 50 and 100 "
             "by Shooting 1, 50 and 100. Stored as a factor on the empty "
             "goal's map, which must exist. About 6 minutes at 60 shots a "
-            "point. Saves to assets/config/game_xg/ when done."
+            "point. Saves the generated xG table when done."
           : "The Still-ball shot drill at an empty goal, both sides: spots "
             "every 1 m to 18 m out (20 m either side), 2 m to 30 m, 4 m to "
             "halfway; Shooting 1, 25, 50, 75 and 100. About 4-5 minutes at "
-            "60 shots a point. Saves to assets/config/game_xg/ when done.");
+            "60 shots a point. Saves the generated xG table when done.");
 }
 
 void XgMapScene::renderSweep(float width)
@@ -858,7 +858,7 @@ void XgMapScene::renderLegSweep(bool running)
       "path ran from where he'd have been had he not reacted (0 to 1.5 m); "
       "then the shooter's error at Shooting 1, 50 and 100. Not a map: "
       "Capybara looks these chances up for each body in the way of each "
-      "shot. Saves to assets/config/game_xg/legs.json when done.");
+      "shot. Saves the generated legs.json table when done.");
   ImGui::PopStyleColor();
 }
 

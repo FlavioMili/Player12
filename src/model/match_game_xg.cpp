@@ -496,7 +496,13 @@ namespace GameXg
 {
 std::filesystem::path folder()
 {
-  return {AssetPaths::file("assets/config/game_xg")};
+  const std::filesystem::path source(FM_SOURCE_DIR);
+  if ((RuntimePaths::assetRoot() / "assets").lexically_normal() ==
+      (source / "assets").lexically_normal())
+  {
+    return source / ".generated" / "game_xg";
+  }
+  return RuntimePaths::root() / "game_xg";
 }
 
 std::filesystem::path file(std::string_view layer, GoalKind goal)

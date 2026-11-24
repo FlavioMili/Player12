@@ -203,8 +203,8 @@ class GameXgLegTable
 
 namespace GameXg
 {
-/** Where the tables live: assets/config/game_xg/ (the source checkout in
- * development, so a sweep's result can be committed). */
+/** Generated tables live in .generated/game_xg/ in the source checkout, or
+ * in game_xg/ under the writable runtime root for installed builds. */
 [[nodiscard]] std::filesystem::path folder();
 /** A layer's file for a goal kind: "empty_goal_full.json". */
 [[nodiscard]] std::filesystem::path file(std::string_view layer, GoalKind goal);
