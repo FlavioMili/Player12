@@ -35,6 +35,8 @@
   /** A movement mode's speed band for him now: his walk-run transition,
    * critical speed and top speed as fuel has left them. */
   SpeedBand speedBandBinturong(const MatchPlayer& player, MovementMode mode) const;
+  /** What those bands are made from (speedBandBinturong). */
+  SpeedBandInputs speedBandInputsBinturong(const MatchPlayer& player) const;
   /** Collision plan: the fastest he can naturally move (m/s) in the
    * direction of `velocity` (metres), against his body's facing: the
    * direction caps (forward a sprint, backward a jog at 0.7...). */

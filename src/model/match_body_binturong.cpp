@@ -1210,14 +1210,21 @@ float MatchEngine::currentTopSpeedBinturong(const MatchPlayer& player) const
 SpeedBand MatchEngine::speedBandBinturong(const MatchPlayer& player,
                                           MovementMode mode) const
 {
+  return speedBandFrom(mode, speedBandInputsBinturong(player));
+}
+
+SpeedBandInputs MatchEngine::speedBandInputsBinturong(
+    const MatchPlayer& player) const
+{
   const float transition =
       MatchRules::walkRunTransitionSpeed(player.heightMetres);
   const float critical = tieredCriticalSpeed(
       derivedPhysicalValue(DerivedStat::ENDURANCE,
                            player.derivedStat(DerivedStat::ENDURANCE)),
       player.stamina, transition);
-  return speedBandFrom(mode, transition, critical,
-                       currentTopSpeedBinturong(player));
+  return {.transition = transition,
+          .critical = critical,
+          .top = currentTopSpeedBinturong(player)};
 }
 
 float MatchEngine::directionTopSpeedBinturong(const MatchPlayer& player,

@@ -2425,9 +2425,13 @@ void MatchEngine::updateMovement(float dt)
     }
     // Then each runner's overtake, on the targets as they now stand, in
     // slot order (a plan reads the routes of those planned before it).
+    // (The Aardvark brain plans no overtakes: its players are skipped.)
     for (std::size_t slot = 0; slot < players.size(); ++slot)
     {
-      planOvertake(slot);
+      if (brainOf(players[slot].isHomeTeam) != BrainId::AARDVARK)
+      {
+        planOvertake(slot);
+      }
     }
     // Then a loose-ball chaser's way round anyone in his way.
     for (std::size_t slot = 0; slot < players.size(); ++slot)
@@ -2559,25 +2563,30 @@ void MatchEngine::updateMovement(float dt)
     std::uint8_t slot = 0;
     MatchPlayer before;
   };
-  std::array<Waiter, 4> waiters{};
+  // (Built only when someone could wait: each holds a whole player.)
+  std::optional<std::array<Waiter, 4>> waiters;
+  if (waiting != 0U && anyBinturongBody())
+  {
+    waiters.emplace();
+  }
   std::size_t waiterCount = 0;
-  for (std::size_t index = 0; index < batched && waiting != 0U; ++index)
+  for (std::size_t index = 0; waiters && index < batched; ++index)
   {
     const std::uint8_t slot = batch[index];
     const MatchPlayer& player = players[slot];
     if ((waiting & (1U << slot)) == 0U || player.isGoalkeeper ||
         !brainTraits(player.isHomeTeam).waitsForTouches ||
         getBody(player.isHomeTeam) != BodyId::BINTURONG ||
-        waiterCount >= waiters.size())
+        waiterCount >= waiters->size())
     {
       continue;
     }
-    waiters[waiterCount++] = {.slot = slot, .before = player};
+    waiters->at(waiterCount++) = {.slot = slot, .before = player};
   }
   movePlayers(batch.data(), batched, dt, false);
-  for (std::size_t index = 0; index < waiterCount; ++index)
+  for (std::size_t index = 0; waiters && index < waiterCount; ++index)
   {
-    const Waiter& waiter = waiters[index];
+    const Waiter& waiter = waiters->at(index);
     MatchPlayer& player = players[waiter.slot];
     if (waitPlayableNextSubstep(player, dt))
     {
@@ -2720,11 +2729,23 @@ float MatchEngine::getTeamTalkEffect(bool homeTeam) const
   return talkOf(homeTeam);
 }
 
-void MatchEngine::movePlayers(const std::uint8_t* slots, std::size_t count,
-                              float dt, bool walking)
+void MatchEngine::integrateBySide(const std::uint8_t* slots, std::size_t count,
+                                  float dt, bool walking)
 {
-  // Each side moves with its own body. A player's movement reads only his
-  // own state, so moving the sides one after the other changes nothing.
+  // Both sides on the Aardvark body: one batch. Its movement reads only
+  // each mover's own state (and his side's movement style), so how the
+  // movers are batched changes nothing.
+  if (bodyOf(true) == BodyId::AARDVARK && bodyOf(false) == BodyId::AARDVARK)
+  {
+    if (count > 0)
+    {
+      integrateMovements(slots, count, dt, walking);
+    }
+    return;
+  }
+  // Otherwise each side moves with its own body. A player's movement reads
+  // only his own state, so moving the sides one after the other changes
+  // nothing.
   std::array<std::array<std::uint8_t, 32>, 2> sides{};
   std::array<std::size_t, 2> counts{};
   for (std::size_t index = 0; index < count; ++index)
@@ -2735,35 +2756,6 @@ void MatchEngine::movePlayers(const std::uint8_t* slots, std::size_t count,
       sides[side][counts[side]++] = slots[index];
     }
   }
-  // Training dummies (plan section 21): a player whose straight line runs
-  // into one heads for its nearest edge for this step instead, and his own
-  // target is put back after (unless his body changed it). A player on a
-  // route (a drill's) follows his route; the keep-out still holds him.
-  std::array<std::optional<PitchPoint>, 32> heldTargets{};
-  std::array<PitchPoint, 32> steeredTargets{};
-  // And one who runs into a dummy bounces off it: his velocity before the
-  // move is what went into it.
-  std::array<Vector2F, 32> velocitiesBefore{};
-  if (!kit.dummies.empty())
-  {
-    for (std::size_t index = 0; index < count && index < heldTargets.size();
-         ++index)
-    {
-      MatchPlayer& player = players[slots[index]];
-      velocitiesBefore[index] = player.velocity;
-      if (player.routeWaypoints > 0)
-      {
-        continue;
-      }
-      if (const std::optional<PitchPoint> steer =
-              steerRoundDummies(player.position, player.movementTarget))
-      {
-        heldTargets[index] = player.movementTarget;
-        steeredTargets[index] = *steer;
-        player.movementTarget = *steer;
-      }
-    }
-  }
   for (std::size_t side = 0; side < 2; ++side)
   {
     if (counts[side] > 0)
@@ -2771,23 +2763,65 @@ void MatchEngine::movePlayers(const std::uint8_t* slots, std::size_t count,
       integrateMovements(sides[side].data(), counts[side], dt, walking);
     }
   }
-  if (kit.dummies.empty())
+}
+
+void MatchEngine::movePlayers(const std::uint8_t* slots, std::size_t count,
+                              float dt, bool walking)
+{
+  // Training dummies (plan section 21): a player whose straight line runs
+  // into one heads for its nearest edge for this step instead, and his own
+  // target is put back after (unless his body changed it). A player on a
+  // route (a drill's) follows his route; the keep-out still holds him.
+  // And one who runs into a dummy bounces off it: his velocity before the
+  // move is what went into it. (Kept only when there are dummies.)
+  struct DummySteering
+  {
+    std::array<std::optional<PitchPoint>, 32> heldTargets{};
+    std::array<PitchPoint, 32> steeredTargets{};
+    std::array<Vector2F, 32> velocitiesBefore{};
+  };
+  std::optional<DummySteering> steering;
+  if (!kit.dummies.empty())
+  {
+    steering.emplace();
+    for (std::size_t index = 0;
+         index < count && index < steering->heldTargets.size(); ++index)
+    {
+      MatchPlayer& player = players[slots[index]];
+      steering->velocitiesBefore.at(index) = player.velocity;
+      if (player.routeWaypoints > 0)
+      {
+        continue;
+      }
+      if (const std::optional<PitchPoint> steer =
+              steerRoundDummies(player.position, player.movementTarget))
+      {
+        steering->heldTargets.at(index) = player.movementTarget;
+        steering->steeredTargets.at(index) = *steer;
+        player.movementTarget = *steer;
+      }
+    }
+  }
+  integrateBySide(slots, count, dt, walking);
+  if (!steering)
   {
     return;
   }
-  for (std::size_t index = 0; index < count && index < heldTargets.size();
-       ++index)
+  for (std::size_t index = 0;
+       index < count && index < steering->heldTargets.size(); ++index)
   {
     MatchPlayer& player = players[slots[index]];
-    bounceOffDummies(player, velocitiesBefore[index]);
-    if (!heldTargets[index])
+    bounceOffDummies(player, steering->velocitiesBefore.at(index));
+    const std::optional<PitchPoint>& held = steering->heldTargets.at(index);
+    if (!held)
     {
       continue;
     }
-    if (player.movementTarget.x == steeredTargets[index].x &&
-        player.movementTarget.y == steeredTargets[index].y)
+    const PitchPoint& steered = steering->steeredTargets.at(index);
+    if (player.movementTarget.x == steered.x &&
+        player.movementTarget.y == steered.y)
     {
-      player.movementTarget = *heldTargets[index];
+      player.movementTarget = *held;
     }
   }
 }
@@ -3126,6 +3160,13 @@ void MatchEngine::accumulatePlayerLoad(float dt)
                         : 0.0F;
     stamina[lane] = player.stamina;
     reserve[lane] = player.sprintReserve;
+    fastDebt[lane] = player.fastBurstDebt;
+    // The endurance stats below are read only by the Binturong body's
+    // energy model (each side's model reads its own lanes).
+    if (bodyOf(player.isHomeTeam) != BodyId::BINTURONG)
+    {
+      continue;
+    }
     enduranceLanes.criticalSpeed[lane] = derivedPhysicalValue(
         DerivedStat::ENDURANCE, player.derivedStat(DerivedStat::ENDURANCE));
     enduranceLanes.burstMetres[lane] =
@@ -3137,7 +3178,6 @@ void MatchEngine::accumulatePlayerLoad(float dt)
     enduranceLanes.fastRecoverySeconds[lane] =
         derivedPhysicalValue(DerivedStat::FAST_RECOVERY,
                              player.derivedStat(DerivedStat::FAST_RECOVERY));
-    fastDebt[lane] = player.fastBurstDebt;
     enduranceLanes.fuelSeconds[lane] =
         derivedPhysicalValue(DerivedStat::FUEL_CAPACITY,
                              player.derivedStat(DerivedStat::FUEL_CAPACITY)) *
@@ -3163,6 +3203,10 @@ void MatchEngine::accumulatePlayerLoad(float dt)
   }
   spendEnergy(lanes, 0, homeLanes, dt, true);
   spendEnergy(lanes, homeLanes, count, dt, false);
+  // The load profile, energy, movement-mode, 5-minute running and ran-empty
+  // figures are read only by the lab: not kept while tracking is off (an
+  // unwatched fixture).
+  const bool observed = tracker.isEnabled();
   for (std::size_t lane = 0; lane < count; ++lane)
   {
     MatchPlayer& player = players[slots[lane]];
@@ -3174,7 +3218,7 @@ void MatchEngine::accumulatePlayerLoad(float dt)
           0.0F, (matchTimeMinutes - (period == 2 ? 45.0F : 0.0F)) / 15.0F));
       return (period == 2 ? 3U : 0U) + std::min<std::size_t>(quarter, 2U);
     };
-    LoadProfileStats* profile = period <= 2 && !player.isGoalkeeper
+    LoadProfileStats* profile = observed && period <= 2 && !player.isGoalkeeper
                                     ? &loadProfile[player.isHomeTeam ? 0 : 1]
                                     : nullptr;
     if (profile != nullptr)
@@ -3199,15 +3243,18 @@ void MatchEngine::accumulatePlayerLoad(float dt)
     }
     PlayerMatchStats& entry = statsOf(player);
     entry.distanceMetres += metres;
-    entry.metabolicEnergy += lanes.stepEnergy[lane];
-    entry.anaerobicEnergy += lanes.stepAnaerobicEnergy[lane];
-    entry.brakingEnergy += stepBrakingEnergy[lane];
-    entry.brakingAnaerobicEnergy += stepBrakingAnaerobicEnergy[lane];
-    static_assert(std::tuple_size_v<decltype(entry.modeSeconds)> ==
-                  MOVEMENT_MODE_COUNT);
-    const auto mode = static_cast<std::size_t>(movementModeAt(player, speed));
-    entry.modeSeconds[mode] += dt;
-    entry.modeMetres[mode] += metres;
+    if (observed)
+    {
+      entry.metabolicEnergy += lanes.stepEnergy[lane];
+      entry.anaerobicEnergy += lanes.stepAnaerobicEnergy[lane];
+      entry.brakingEnergy += stepBrakingEnergy[lane];
+      entry.brakingAnaerobicEnergy += stepBrakingAnaerobicEnergy[lane];
+      static_assert(std::tuple_size_v<decltype(entry.modeSeconds)> ==
+                    MOVEMENT_MODE_COUNT);
+      const auto mode = static_cast<std::size_t>(movementModeAt(player, speed));
+      entry.modeSeconds[mode] += dt;
+      entry.modeMetres[mode] += metres;
+    }
     if (period == 2)
     {
       entry.secondHalfDistanceMetres += metres;
@@ -3230,7 +3277,7 @@ void MatchEngine::accumulatePlayerLoad(float dt)
     {
       entry.runMetres += metres;
     }
-    if (speed >= L::RUN_SPEED)
+    if (observed && speed >= L::RUN_SPEED)
     {
       // The 5-minute window of the half (added time left out).
       const float halfMinutes = matchTimeMinutes - (period == 2 ? 45.0F : 0.0F);
@@ -3267,7 +3314,7 @@ void MatchEngine::accumulatePlayerLoad(float dt)
     player.stamina = nextStamina[lane];
     player.sprintReserve = nextReserve[lane];
     player.fastBurstDebt = nextFastDebt[lane];
-    if (player.stamina <= 0.0F && entry.emptyAtMinute < 0.0F)
+    if (observed && player.stamina <= 0.0F && entry.emptyAtMinute < 0.0F)
     {
       entry.emptyAtMinute = elapsedMatchMinutes;
     }
@@ -4421,6 +4468,10 @@ void MatchEngine::updateBall(float dt)
     ~ClockRuns() { running = false; }
   } clockRuns{ballClockRunning};
   ballClockRunning = true;
+  // Falls happen in the movement phase (collisions), never during this.
+  anyoneFallen =
+      std::ranges::any_of(players, [](const MatchPlayer& player)
+                          { return active(player) && player.fallen; });
   const double stepStart = getSimulatedSeconds();
   for (int index = 0; index < substeps; ++index)
   {
@@ -4741,25 +4792,10 @@ void MatchEngine::resolveLooseBall(bool beforeLine)
            !(getPossessionState().isPass &&
              getPossessionState().passByHome == player.isHomeTeam);
   };
-  struct Contact
-  {
-    std::size_t slot = 0;
-    float along = 0.0F;
-    float gap = 0.0F;
-    float height = 0.0F;
-    float reach = 0.0F;
-    ShotBodyPart part = ShotBodyPart::TORSO;
-    /** A shot meeting a Binturong body: where and how (shot block plan). */
-    ShotBodyHit hit{};
-    /** A shot he plays like any loose ball (shot block plan step 4). */
-    bool asLoose = false;
-    /** Any other ball meeting his body, not played (pass block plan). */
-    bool body = false;
-    /** A shot meeting his body (a keeper's in his area too: goalkeeper
-     * plan step 1). */
-    bool shotBody = false;
-  };
-  std::array<Contact, 32> contacts{};
+  // Each entry is written whole before it is read, so the engine's array is
+  // reused as it stands (nothing calls back in here during a sweep).
+  using Contact = LooseBallContact;
+  std::array<Contact, 32>& contacts = looseBallContacts;
   std::size_t contactCount = 0;
   // Nobody further than the largest reach from the segment's bounding box can
   // touch the ball; the margin keeps the exact test below authoritative.
@@ -4774,8 +4810,13 @@ void MatchEngine::resolveLooseBall(bool beforeLine)
                              MatchTuning::Units::BALL_RADIUS_METRES;
   // Pass block plan: where each player's body meets a ball he doesn't play
   // (not a shot); those with a touch on it meet it only if the touch is no
-  // attempt after all (bodyInstead below).
-  std::array<std::optional<ShotBodyHit>, 32> bodyHits{};
+  // attempt after all (bodyInstead below). Only a Binturong body meets it
+  // so: without one in the match there is nothing to clear for each call.
+  std::optional<std::array<std::optional<ShotBodyHit>, 32>> bodyHits;
+  if (anyBinturongBody())
+  {
+    bodyHits.emplace();
+  }
   std::uint32_t touchCandidates = 0;
   std::uint32_t bodyOnlyIfDeclined = 0;
   // Within reach but in his dead zone (for the lost-wait split).
@@ -4821,9 +4862,11 @@ void MatchEngine::resolveLooseBall(bool beforeLine)
                                ballStepSeconds * (1.0F - stepShareHere)))
         .has_value();
   };
+  // (Two at a time: a list of three compiles to a library call.)
+  const float footReach =
+      std::max(touchKnobs[TouchKnob::FEET_REACH], shotLegBound);
   const float maxReach =
-      std::max({B::GOALKEEPER_CONTROL_RADIUS_METRES,
-                touchKnobs[TouchKnob::FEET_REACH], shotLegBound});
+      std::max(B::GOALKEEPER_CONTROL_RADIUS_METRES, footReach);
   const float reachBound = maxReach + 0.01F;
   const float boundMinX = std::min(start.x, end.x) - reachBound;
   const float boundMaxX = std::max(start.x, end.x) + reachBound;
@@ -4835,7 +4878,7 @@ void MatchEngine::resolveLooseBall(bool beforeLine)
     const MatchPlayer& player = players[slot];
     const Vector2F position = asVector(player.position);
     // (A diving keeper reaches well beyond it: goalkeeper plan step 3.)
-    const bool diving = keeperDiving(player);
+    const bool diving = player.isGoalkeeper && keeperDiving(player);
     if ((position.x < boundMinX || position.x > boundMaxX ||
          position.y < boundMinY || position.y > boundMaxY) &&
         !diving)
@@ -4923,11 +4966,12 @@ void MatchEngine::resolveLooseBall(bool beforeLine)
                 player, slot, {.x = start.x, .y = start.y, .z = startHeight},
                 {.x = end.x, .y = end.y, .z = endHeight}, !teammate);
             hit && !headCanHeadAt(*hit) &&
-            (!beforeLine ||
-             ballInPlayAt(asPoint({.x = start.x + (segment.x * hit->share),
-                                   .y = start.y + (segment.y * hit->share)}))))
+            (!beforeLine || ballInPlayAt(asPoint(
+                                {.x = start.x + (segment.x * hit->share),
+                                 .y = start.y + (segment.y * hit->share)}))) &&
+            bodyHits)
         {
-          bodyHits[slot] = *hit;
+          bodyHits->at(slot) = *hit;
         }
       }
       // Meant for him, or a ball he is letting come closer to play: only if
@@ -5179,15 +5223,17 @@ void MatchEngine::resolveLooseBall(bool beforeLine)
   }
   // Bodies in the way that no touch of theirs plays it first.
   for (std::size_t slot = 0;
-       slot < bodyHits.size() && contactCount < contacts.size(); ++slot)
+       bodyHits && slot < bodyHits->size() && contactCount < contacts.size();
+       ++slot)
   {
     const std::uint32_t bit = 1U << slot;
-    if (!bodyHits[slot] || (touchCandidates & bit) != 0U ||
+    const std::optional<ShotBodyHit>& bodyHit = bodyHits->at(slot);
+    if (!bodyHit || (touchCandidates & bit) != 0U ||
         (bodyOnlyIfDeclined & bit) != 0U)
     {
       continue;
     }
-    const ShotBodyHit& hit = *bodyHits[slot];
+    const ShotBodyHit& hit = *bodyHit;
     contacts[contactCount++] = {
         .slot = slot,
         .along = hit.share,
@@ -5328,20 +5374,24 @@ void MatchEngine::resolveLooseBall(bool beforeLine)
     // further on, it meets it there.
     const auto bodyInstead = [&]
     {
-      const std::size_t slot = contact.slot;
-      if (!bodyHits[slot] || contactCount >= contacts.size())
+      if (!bodyHits || contactCount >= contacts.size())
+      {
+        return;
+      }
+      std::optional<ShotBodyHit>& bodyHit = bodyHits->at(contact.slot);
+      if (!bodyHit)
       {
         return;
       }
       Contact body = contact;
-      body.along = std::max(contact.along, bodyHits[slot]->share);
+      body.along = std::max(contact.along, bodyHit->share);
       body.height = startHeight + (endHeight - startHeight) * body.along;
-      body.hit = *bodyHits[slot];
+      body.hit = *bodyHit;
       body.part = body.hit.part;
       body.asLoose = false;
       body.body = true;
       body.gap = -1.0F;
-      bodyHits[slot].reset();
+      bodyHit.reset();
       std::size_t at = index + 1;
       while (at < contactCount && contacts[at].along <= body.along)
       {
@@ -6031,6 +6081,11 @@ bool MatchEngine::headInSweep()
   // head it passed within reach of (headMeetBinturong) meets it there. With
   // an opponent's head reaching it at about the same moment, the duel
   // decides which of them (aerial challenge plan step 3).
+  // Neither side's body heads it here, nor claims it with a keeper's hands.
+  if (!anyBinturongBody())
+  {
+    return false;
+  }
   using A = MatchTuning::Aerial;
   constexpr float HEAD_REACH = A::HEAD_REACH_METRES;
   const Vector2F start = asVector(substepBallPosition);

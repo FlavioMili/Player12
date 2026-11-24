@@ -20,6 +20,11 @@ using namespace MatchEngineInternal;
 
 void MatchEngine::observePlanJitter(bool scheduled)
 {
+  // Nobody reads it while tracking is off (an unwatched fixture).
+  if (!tracker.isEnabled())
+  {
+    return;
+  }
   // A move under half a metre is noise-level; a flip back within a second
   // (five refreshes) counts as undoing the switch.
   constexpr float MOVE_METRES = 0.5F;
@@ -93,6 +98,11 @@ void MatchEngine::observePlanJitter(bool scheduled)
 
 void MatchEngine::observeRunJitter(float dt)
 {
+  // Nobody reads it while tracking is off (an unwatched fixture).
+  if (!tracker.isEnabled())
+  {
+    return;
+  }
   // Runs are judged over 2 s windows; turns every 0.2 s above 1 m/s.
   constexpr std::uint64_t WINDOW_TICKS = 20;
   constexpr float RUNNING_SPEED = 1.0F;

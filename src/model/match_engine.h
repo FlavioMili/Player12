@@ -77,25 +77,54 @@ inline constexpr float JOG_RUN_CRITICAL_SHARE = 0.823F;
  * pass his top speed, so as fatigue lowers his top speed the faster bands
  * close (a spent player only walks).
  */
-inline SpeedBand speedBandFrom(MovementMode mode, float transition,
-                               float critical, float top)
+/** The tops of the walk, jog and run bands (m/s; speedBandFrom). */
+struct SpeedBandTops
+{
+  float walk = 0.0F;
+  float jog = 0.0F;
+  float run = 0.0F;
+};
+
+inline SpeedBandTops speedBandTops(float transition, float critical, float top)
 {
   const float walkTop = std::min(transition, top);
   const float jogTop =
       std::clamp(JOG_RUN_CRITICAL_SHARE * critical, walkTop, top);
-  const float runTop = std::clamp(critical, jogTop, top);
+  return {
+      .walk = walkTop, .jog = jogTop, .run = std::clamp(critical, jogTop, top)};
+}
+
+inline SpeedBand speedBandFrom(MovementMode mode, float transition,
+                               float critical, float top)
+{
+  const SpeedBandTops tops = speedBandTops(transition, critical, top);
   switch (mode)
   {
     case MovementMode::WALK:
-      return {.low = 0.0F, .high = walkTop};
+      return {.low = 0.0F, .high = tops.walk};
     case MovementMode::JOG:
-      return {.low = walkTop, .high = jogTop};
+      return {.low = tops.walk, .high = tops.jog};
     case MovementMode::RUN:
-      return {.low = jogTop, .high = runTop};
+      return {.low = tops.jog, .high = tops.run};
     case MovementMode::SPRINT:
-      return {.low = runTop, .high = top};
+      return {.low = tops.run, .high = top};
   }
-  return {.low = 0.0F, .high = walkTop};
+  return {.low = 0.0F, .high = tops.walk};
+}
+
+/** What a player's speed bands are made from, each now (m/s): his walk-run
+ * transition, critical speed and top speed (speedBandFrom). */
+struct SpeedBandInputs
+{
+  float transition = 0.0F;
+  float critical = 0.0F;
+  float top = 0.0F;
+};
+
+/** A mode's band from his band inputs (speedBandFrom). */
+inline SpeedBand speedBandFrom(MovementMode mode, const SpeedBandInputs& inputs)
+{
+  return speedBandFrom(mode, inputs.transition, inputs.critical, inputs.top);
 }
 
 /**
@@ -2104,6 +2133,7 @@ enum class MatchInputAction : std::uint8_t
  * Movement jitter of one side's outfield players in open play, observed
  * only (it changes nothing in the match): how the plan's targets and
  * intents change from one refresh to the next, and how the runs follow.
+ * Not observed while tracking is off (background fidelity).
  */
 struct MovementJitterStats
 {
@@ -3055,6 +3085,8 @@ class MatchEngine
   /** A movement mode's speed band for him now, as his side's body sees it
    * (fatigue plan 4.2). */
   SpeedBand speedBand(const MatchPlayer& player, MovementMode mode) const;
+  /** What his speed bands are made from now, as his side's body sees it. */
+  SpeedBandInputs speedBandInputs(const MatchPlayer& player) const;
   /** The mode whose band holds `speed` for him now. */
   MovementMode movementModeAt(const MatchPlayer& player, float speed) const;
   const DrillRules& getDrillRules() const { return drillRules; }
@@ -3818,6 +3850,32 @@ class MatchEngine
    * start of each swept path), and the run-ins it found. */
   std::array<PitchPoint, 32> stepStartPositions{};
   std::vector<CollisionHit> lastCollisions;
+  /** A player the ball meets on a sweep (resolveLooseBall), in the order
+   * the ball meets them. */
+  struct LooseBallContact
+  {
+    std::size_t slot = 0;
+    float along = 0.0F;
+    float gap = 0.0F;
+    float height = 0.0F;
+    float reach = 0.0F;
+    ShotBodyPart part = ShotBodyPart::TORSO;
+    /** A shot meeting a Binturong body: where and how (shot block plan). */
+    ShotBodyHit hit{};
+    /** A shot he plays like any loose ball (shot block plan step 4). */
+    bool asLoose = false;
+    /** Any other ball meeting his body, not played (pass block plan). */
+    bool body = false;
+    /** A shot meeting his body (a keeper's in his area too: goalkeeper
+     * plan step 1). */
+    bool shotBody = false;
+  };
+  /** resolveLooseBall's contacts, kept here so a sweep does not clear all
+   * of them each time: only the first `contactCount` it writes are read. */
+  std::array<LooseBallContact, 32> looseBallContacts{};
+  /** Whether anyone on the pitch was down when this step's ball update
+   * began (fallenBodyInPath; nobody falls during it). */
+  bool anyoneFallen = false;
   /** Ball situation at the last tactical refresh (event-driven refresh). */
   const Player* tacticalOwner = nullptr;
   std::uint8_t tacticalFlags = 0;
@@ -4099,6 +4157,13 @@ class MatchEngine
   BrainId brainOf(bool homeTeam) const { return brains[homeTeam ? 0 : 1]; }
   /** The body a side's players move and play with. */
   BodyId bodyOf(bool homeTeam) const { return bodies[homeTeam ? 0 : 1]; }
+  /** Whether either side plays with a Binturong body: the contacts only
+   * it has (head sweeps, the ball meeting bodies, falls) need checking. */
+  bool anyBinturongBody() const
+  {
+    return bodyOf(true) == BodyId::BINTURONG ||
+           bodyOf(false) == BodyId::BINTURONG;
+  }
   /** The movement style of a side's brain. */
   const MovementStyle& movementStyle(bool homeTeam) const;
   /** What a side's brain decides for itself where the engine and body
@@ -4590,6 +4655,11 @@ class MatchEngine
   /** Moves the players in `slots`, each side with its own body. */
   void movePlayers(const std::uint8_t* slots, std::size_t count, float dt,
                    bool walking);
+  /** integrateMovements for the players in `slots`: each side's batch with
+   * its own body, or all in one batch when both sides have the Aardvark
+   * body (whose movement reads nothing of the other movers or the ball). */
+  void integrateBySide(const std::uint8_t* slots, std::size_t count, float dt,
+                       bool walking);
   void updateRestartMovement(float dt);
   bool userRestartPassRequested() const;
   void updateRestartSupport(MatchPlayer& player, const MatchPlayer* taker);

@@ -265,8 +265,16 @@ void MatchEngine::refreshTacticalTargetsAardvark(float dt, bool planHome)
     return closest;
   };
 
-  const auto homePressers = closestOutfieldPair(true);
-  const auto awayPressers = closestOutfieldPair(false);
+  // This call plans only the planHome side's players, and every selection
+  // (pressers here, runners, final-third arrivals, supporters and the cover
+  // outlet below) is read only for the side it is made for. So only that
+  // side's are made; the other side's are left empty. Make both before
+  // adding a read of the other side's.
+  using Pressers = decltype(closestOutfieldPair(true));
+  const Pressers homePressers =
+      planHome ? closestOutfieldPair(true) : Pressers{};
+  const Pressers awayPressers =
+      planHome ? Pressers{} : closestOutfieldPair(false);
 
   const auto runPriority = [&](const MatchPlayer& candidate)
   {
@@ -383,8 +391,11 @@ void MatchEngine::refreshTacticalTargetsAardvark(float dt, bool planHome)
     return runners;
   };
 
-  const auto homeRunners = selectAttackingRunners(true);
-  const auto awayRunners = selectAttackingRunners(false);
+  using Runners = decltype(selectAttackingRunners(true));
+  const Runners homeRunners =
+      planHome ? selectAttackingRunners(true) : Runners{};
+  const Runners awayRunners =
+      planHome ? Runners{} : selectAttackingRunners(false);
 
   const auto runChannel = [this](const MatchPlayer& runner)
   {
@@ -508,18 +519,23 @@ void MatchEngine::refreshTacticalTargetsAardvark(float dt, bool planHome)
     return selected;
   };
 
+  // (The planning side's only, as above.)
+  const auto finalThirdPlayer = [&](bool homeTeam,
+                                    Arrival arrival) -> MatchPlayer*
+  {
+    return homeTeam == planHome ? selectFinalThirdPlayer(homeTeam, arrival)
+                                : nullptr;
+  };
   MatchPlayer* homeMidfieldArrival =
-      selectFinalThirdPlayer(true, Arrival::MIDFIELDER);
+      finalThirdPlayer(true, Arrival::MIDFIELDER);
   MatchPlayer* awayMidfieldArrival =
-      selectFinalThirdPlayer(false, Arrival::MIDFIELDER);
-  MatchPlayer* homeFarPostRunner =
-      selectFinalThirdPlayer(true, Arrival::FAR_POST);
-  MatchPlayer* awayFarPostRunner =
-      selectFinalThirdPlayer(false, Arrival::FAR_POST);
+      finalThirdPlayer(false, Arrival::MIDFIELDER);
+  MatchPlayer* homeFarPostRunner = finalThirdPlayer(true, Arrival::FAR_POST);
+  MatchPlayer* awayFarPostRunner = finalThirdPlayer(false, Arrival::FAR_POST);
   MatchPlayer* homeOverlappingFullback =
-      selectFinalThirdPlayer(true, Arrival::FULLBACK);
+      finalThirdPlayer(true, Arrival::FULLBACK);
   MatchPlayer* awayOverlappingFullback =
-      selectFinalThirdPlayer(false, Arrival::FULLBACK);
+      finalThirdPlayer(false, Arrival::FULLBACK);
 
   const auto selectActiveSupporters = [&](bool homeTeam)
   {
@@ -586,8 +602,11 @@ void MatchEngine::refreshTacticalTargetsAardvark(float dt, bool planHome)
     return supporters;
   };
 
-  const auto homeSupporters = selectActiveSupporters(true);
-  const auto awaySupporters = selectActiveSupporters(false);
+  using Supporters = decltype(selectActiveSupporters(true));
+  const Supporters homeSupporters =
+      planHome ? selectActiveSupporters(true) : Supporters{};
+  const Supporters awaySupporters =
+      planHome ? Supporters{} : selectActiveSupporters(false);
 
   const auto findCoverOutlet = [&](bool defendingHome) -> const MatchPlayer*
   {
@@ -627,8 +646,10 @@ void MatchEngine::refreshTacticalTargetsAardvark(float dt, bool planHome)
     return outlet;
   };
 
-  const MatchPlayer* homeCoverOutlet = findCoverOutlet(true);
-  const MatchPlayer* awayCoverOutlet = findCoverOutlet(false);
+  const MatchPlayer* homeCoverOutlet =
+      planHome ? findCoverOutlet(true) : nullptr;
+  const MatchPlayer* awayCoverOutlet =
+      planHome ? nullptr : findCoverOutlet(false);
 
   if (MatchRecorder* recorder = getRecorder())
   {

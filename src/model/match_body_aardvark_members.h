@@ -35,6 +35,8 @@
   /** A movement mode's speed band for him now (the Aardvark body has no
    * critical-speed model of its own: the Endurance stat, unfatigued). */
   SpeedBand speedBandAardvark(const MatchPlayer& player, MovementMode mode) const;
+  /** What those bands are made from (speedBandAardvark). */
+  SpeedBandInputs speedBandInputsAardvark(const MatchPlayer& player) const;
   float executionErrorScaleAardvark(const MatchPlayer& player) const;
   /** Moves the dribbled ball with its carrier; false if a heavy touch lost it.
    */

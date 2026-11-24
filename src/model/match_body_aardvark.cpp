@@ -106,11 +106,17 @@ float MatchEngine::currentTopSpeedAardvark(const MatchPlayer& player) const
 SpeedBand MatchEngine::speedBandAardvark(const MatchPlayer& player,
                                          MovementMode mode) const
 {
-  return speedBandFrom(
-      mode, MatchRules::walkRunTransitionSpeed(player.heightMetres),
-      derivedPhysicalValue(DerivedStat::ENDURANCE,
-                           player.derivedStat(DerivedStat::ENDURANCE)),
-      currentTopSpeedAardvark(player));
+  return speedBandFrom(mode, speedBandInputsAardvark(player));
+}
+
+SpeedBandInputs MatchEngine::speedBandInputsAardvark(
+    const MatchPlayer& player) const
+{
+  return {
+      .transition = MatchRules::walkRunTransitionSpeed(player.heightMetres),
+      .critical = derivedPhysicalValue(
+          DerivedStat::ENDURANCE, player.derivedStat(DerivedStat::ENDURANCE)),
+      .top = currentTopSpeedAardvark(player)};
 }
 
 FM_KERNEL_CLONES void MatchEngine::integrateMovementsAardvark(

@@ -23,7 +23,8 @@
 void MatchEngine::integrateMovements(const std::uint8_t* slots,
                                      std::size_t count, float dt, bool walking)
 {
-  // The movers are all of one side (movePlayers).
+  // The movers share a body (integrateBySide): one side's, or both sides'
+  // when both have the Aardvark body.
   switch (bodyOf(count == 0 || players[slots[0]].isHomeTeam))
   {
     case BodyId::AARDVARK:
@@ -111,16 +112,36 @@ SpeedBand MatchEngine::speedBand(const MatchPlayer& player,
   return speedBandAardvark(player, mode);
 }
 
+SpeedBandInputs MatchEngine::speedBandInputs(const MatchPlayer& player) const
+{
+  switch (bodyOf(player.isHomeTeam))
+  {
+    case BodyId::AARDVARK:
+      break;
+    case BodyId::BINTURONG:
+      return speedBandInputsBinturong(player);
+  }
+  return speedBandInputsAardvark(player);
+}
+
 MovementMode MatchEngine::movementModeAt(const MatchPlayer& player,
                                          float speed) const
 {
-  for (const MovementMode mode :
-       {MovementMode::SPRINT, MovementMode::RUN, MovementMode::JOG})
+  // Read once: each band starts at the top of the one below it.
+  const SpeedBandInputs inputs = speedBandInputs(player);
+  const SpeedBandTops tops =
+      speedBandTops(inputs.transition, inputs.critical, inputs.top);
+  if (speed > tops.run)
   {
-    if (speed > speedBand(player, mode).low)
-    {
-      return mode;
-    }
+    return MovementMode::SPRINT;
+  }
+  if (speed > tops.jog)
+  {
+    return MovementMode::RUN;
+  }
+  if (speed > tops.walk)
+  {
+    return MovementMode::JOG;
   }
   return MovementMode::WALK;
 }
@@ -587,6 +608,13 @@ BodyLines MatchEngine::bodyLines(const MatchPlayer& player) const
 
 std::pair<float, float> MatchEngine::headLineRange() const
 {
+  // Aardvark bodies all have the fixed head line, the control ceiling, which
+  // is also the answer with nobody on the pitch.
+  if (!anyBinturongBody())
+  {
+    return {MatchTuning::Aerial::CONTROL_CEILING_METRES,
+            MatchTuning::Aerial::CONTROL_CEILING_METRES};
+  }
   float lowest = std::numeric_limits<float>::max();
   float highest = 0.0F;
   for (const MatchPlayer& player : players)

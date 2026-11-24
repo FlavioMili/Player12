@@ -260,6 +260,12 @@ bool MatchEngine::collidesByMomentum(const MatchPlayer& first,
 
 void MatchEngine::rememberStepStart()
 {
+  // Only the momentum collisions read these (collidePlayers, later in the
+  // same step), and only with a Binturong body in the match.
+  if (!anyBinturongBody())
+  {
+    return;
+  }
   const std::size_t count = std::min(players.size(), stepStartPositions.size());
   for (std::size_t index = 0; index < count; ++index)
   {
@@ -782,7 +788,7 @@ std::optional<std::pair<std::size_t, float>> MatchEngine::fallenBodyInPath(
     float seconds) const
 {
   using C = MatchTuning::Collision;
-  if (state != MatchState::PLAYING ||
+  if (!anyoneFallen || state != MatchState::PLAYING ||
       ((getPossessionAttachment() != nullptr) && !hasTouchClaim()))
   {
     return std::nullopt;
