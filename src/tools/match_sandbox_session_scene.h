@@ -20,6 +20,7 @@
 #include "tools/match_sandbox_training.h"
 
 class IMatchRenderer;
+class MatchAudio;
 struct ImFont;
 
 /**
@@ -42,6 +43,7 @@ class ZoneSessionScene : public GUIScene
 
  private:
   void restart();
+  void stepSession();
   void renderPanel(float width);
   void renderGround(ImVec2 area);
 
@@ -69,6 +71,7 @@ class ZoneSessionScene : public GUIScene
   /** What the last "Save this zone" did. */
   std::string saveMessage;
   std::unique_ptr<SessionRun> run;
+  std::unique_ptr<MatchAudio> coachAudio;
   /** Why the session couldn't start (its plan's problem), if it couldn't. */
   std::string runError;
   bool paused = false;

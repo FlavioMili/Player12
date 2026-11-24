@@ -3179,6 +3179,19 @@ class MatchEngine
   [[nodiscard]] int getFoulsNotGiven() const { return foulsNotGiven; }
   /** Coach's serves so far (a training pitch). For drills. */
   [[nodiscard]] int getServesTaken() const { return servesTaken; }
+  [[nodiscard]] bool isResetRestartStoppage() const
+  {
+    return pitch.laws.resetBetweenRestarts &&
+           (state == MatchState::GOAL || state == MatchState::SERVE);
+  }
+  [[nodiscard]] std::uint64_t getTimedDrillSteps() const
+  {
+    return getSimulatedSteps() - resetRestartSteps;
+  }
+  [[nodiscard]] float getCoachRestartWhistleRemaining() const
+  {
+    return coachRestartWhistleRemaining;
+  }
   /** Times the ball has come off a training dummy. For drills. */
   [[nodiscard]] int getDummyHits() const { return dummyHits; }
   /** Times a player has bounced off a training dummy. For drills. */
@@ -3419,6 +3432,9 @@ class MatchEngine
   float serveRemaining = 0.0F;
   bool lastServeHome = false;
   int servesTaken = 0;
+  std::uint64_t resetRestartSteps = 0;
+  float centreServeElapsed = 0.0F;
+  float coachRestartWhistleRemaining = 0.0F;
   /** Times the ball has come off a training dummy, and players have. */
   int dummyHits = 0;
   int dummyBodyHits = 0;
@@ -5585,6 +5601,8 @@ class MatchEngine
    * (`home`), as the pitch's serve side says, after `waitSeconds`: the ball
    * goes to the coach and the players hold where they are. */
   void beginServe(bool home, float waitSeconds);
+  void lineUpForCentreServe();
+  void updateCentreServe(float dt);
   /** Just after a goal on a serving pitch: no kick-off to walk back to and
    * no ball to fetch; everyone holds where he is. */
   void holdAfterGoal();

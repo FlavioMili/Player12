@@ -803,7 +803,7 @@ void SessionRun::finishChange()
   exerciseIndex = upcomingIndex;
 }
 
-bool SessionRun::step()
+bool SessionRun::step(const DrillRun::CoachWhistle& coachWhistle)
 {
   if (over)
   {
@@ -835,13 +835,15 @@ bool SessionRun::step()
     return true;
   }
   bool running = false;
+  bool restartStoppage = false;
   for (Zone& zone : current)
   {
     if (!zone.run || zone.run->finished())
     {
       continue;
     }
-    if (zone.run->step())
+    restartStoppage |= zone.run->engine().isResetRestartStoppage();
+    if (zone.run->step(coachWhistle))
     {
       running = true;
     }
@@ -850,7 +852,10 @@ bool SessionRun::step()
       zone.report = zone.drill->report();
     }
   }
-  elapsed += MatchTuning::Timing::FIXED_STEP_SECONDS;
+  if (!restartStoppage)
+  {
+    elapsed += MatchTuning::Timing::FIXED_STEP_SECONDS;
+  }
   if (running)
   {
     return true;

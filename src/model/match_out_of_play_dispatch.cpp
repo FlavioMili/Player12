@@ -409,12 +409,24 @@ void MatchEngine::beginServe(bool home, float waitSeconds)
   serveHome = serveSideFor(home);
   lastServeHome = serveHome;
   serveRemaining = waitSeconds;
+  centreServeElapsed = 0.0F;
   restartIsSetPiece = false;
   restartTakerIndex.reset();
   restartLineUp.reset();
   deadBall = DeadBallReturn{};
-  clearPossession();
-  clearFlightState();
+  if (pitch.laws.resetBetweenRestarts)
+  {
+    // A neutral restart must lose the previous play's touch history and
+    // meet plan as well as its current owner.
+    ball = freshBall();
+    pendingStrike.reset();
+    transitionSecondsRemaining = 0.0F;
+  }
+  else
+  {
+    clearPossession();
+    clearFlightState();
+  }
   // The ball goes back to the coach: at his feet, on the pitch's side.
   const Vector2F inward = serveInward();
   ball.position = PitchPoint{
@@ -438,6 +450,34 @@ void MatchEngine::beginServe(bool home, float waitSeconds)
   updateTeamPhases();
 }
 
+void MatchEngine::lineUpForCentreServe()
+{
+  std::array<int, 2> teamSizes{};
+  for (const auto& player : players)
+  {
+    if (active(player))
+    {
+      ++teamSizes[player.isHomeTeam ? 0 : 1];
+    }
+  }
+  std::array<int, 2> next{};
+  for (auto& player : players)
+  {
+    if (active(player))
+    {
+      const std::size_t side = player.isHomeTeam ? 0 : 1;
+      const int index = next[side]++;
+      // Fill the line from the middle out, with equal gaps between players.
+      const int offset = (index % 2 == 0 ? -1 : 1) * ((index + 1) / 2);
+      const float spacing =
+          pitch.width / static_cast<float>(teamSizes[side] + 1);
+      player.movementTarget = clampToPitch(PitchPoint{
+          player.isHomeTeam ? 0.0F : pitch.length,
+          (pitch.width * 0.5F) + (static_cast<float>(offset) * spacing)});
+    }
+  }
+}
+
 void MatchEngine::holdForServe(float dt)
 {
   rememberStepStart();
@@ -453,7 +493,9 @@ void MatchEngine::holdForServe(float dt)
     }
     // A drill's "make your way here" (a session's regroup, plan section 23)
     // walks him there while play waits.
-    if (player.player != nullptr)
+    if (player.player != nullptr &&
+        !(pitch.laws.resetBetweenRestarts && state == MatchState::SERVE &&
+          serveRemaining != std::numeric_limits<float>::max()))
     {
       if (const std::optional<PitchPoint> held =
               getDrillTarget(player.player->getId()))
@@ -498,12 +540,85 @@ void MatchEngine::settleBallInNet(float dt)
 
 void MatchEngine::updateServe(float dt)
 {
+  if (pitch.laws.resetBetweenRestarts &&
+      serveRemaining != std::numeric_limits<float>::max())
+  {
+    updateCentreServe(dt);
+    return;
+  }
   holdForServe(dt);
   advanceClock(dt);
   serveRemaining = std::max(0.0F, serveRemaining - dt);
   if (serveRemaining <= 0.0F)
   {
     deliverServe();
+  }
+}
+
+void MatchEngine::updateCentreServe(float dt)
+{
+  constexpr float ARRIVAL_METRES =
+      MatchTuning::Player::ARRIVAL_DEAD_ZONE_METRES + 0.05F;
+  constexpr float SERVE_SPEED_METRES_PER_SECOND = 12.0F;
+  constexpr float WHISTLE_SECONDS = 0.8F;
+
+  if (centreServeElapsed == 0.0F)
+  {
+    lineUpForCentreServe();
+    holdForServe(dt);
+    advanceClock(dt);
+    serveRemaining = std::max(0.0F, serveRemaining - dt);
+    const bool allArrived = std::ranges::all_of(
+        players,
+        [this](const MatchPlayer& player)
+        {
+          return !active(player) ||
+                 (!player.fallen &&
+                  distance(player.position, player.movementTarget) <=
+                      ARRIVAL_METRES);
+        });
+    if (serveRemaining > 0.0F || !allArrived)
+    {
+      return;
+    }
+    // Movement targets keep bodies inside the pitch. Once everyone is in
+    // place, set them on the painted line and hold them there for the serve.
+    for (auto& player : players)
+    {
+      if (active(player))
+      {
+        player.position = PitchPoint{player.isHomeTeam ? 0.0F : pitch.length,
+                                     player.movementTarget.y};
+        player.velocity = {};
+      }
+    }
+  }
+  else
+  {
+    rememberStepStart();
+    updateTouchline(dt);
+    advanceClock(dt);
+  }
+
+  // Roll the ball to the exact centre under the coach's control, then
+  // release it as a stationary, unclaimed ball when he whistles.
+  centreServeElapsed += dt;
+  const PitchPoint from = serveStart();
+  const PitchPoint centre = pitch.at(0.5F, 0.5F);
+  const float share =
+      std::min(1.0F, centreServeElapsed * SERVE_SPEED_METRES_PER_SECOND /
+                         std::max(EPSILON, distance(from, centre)));
+  ball.position = PitchPoint{std::lerp(from.x, centre.x, share),
+                             std::lerp(from.y, centre.y, share)};
+  notePathChange();
+  if (share >= 1.0F)
+  {
+    beginFedBall();
+    finishFedBall(nullptr);
+    state = MatchState::PLAYING;
+    coachRestartWhistleRemaining = WHISTLE_SECONDS;
+    ++servesTaken;
+    updateTeamPhases();
   }
 }
 

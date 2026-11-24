@@ -14478,9 +14478,11 @@ class SmallSidedGameDrill final : public Drill
     const float players = static_cast<float>(std::max(2, 2 * perSide()));
     const float area = areaSetting * players;
     const float width = std::sqrt(area / SMALL_SIDED_PITCH_ASPECT_RATIO);
-    return MatchPitch::training(
+    MatchPitch box = MatchPitch::training(
         SMALL_SIDED_PITCH_ASPECT_RATIO * width, width,
         static_cast<GoalKind>(static_cast<int>(std::round(goalsChoice))));
+    box.laws.resetBetweenRestarts = resetBetweenRestarts >= 0.5F;
+    return box;
   }
 
   std::vector<DrillParameter> parameters() override
@@ -14514,6 +14516,13 @@ class SmallSidedGameDrill final : public Drill
     goals.choices = {"None",   "Full size", "9v9",          "7v7",
                      "Futsal", "5-a-side",  "Small framed", "Pop-up"};
     list.push_back(goals);
+    DrillParameter reset = setting(
+        "Reset between restarts", &resetBetweenRestarts,
+        {.min = 0.0F, .max = 1.0F}, true,
+        "Pause the clock while players return to their goal lines and the "
+        "coach serves the ball to the centre.");
+    reset.choices = {"Off", "On"};
+    list.push_back(reset);
     DrillParameter layersSetting = setting(
         "Layers", &layersChoice, {.min = 0.0F, .max = 1.0F}, true,
         "Off: the neutral ladder (brain redesign plan, section 3). No "
@@ -14618,7 +14627,7 @@ class SmallSidedGameDrill final : public Drill
 
   bool afterStep(MatchEngine& engine) override
   {
-    elapsed = secondsOf(engine);
+    elapsed = static_cast<double>(engine.getTimedDrillSteps()) * STEP;
     homeGoals = engine.getHomeScore();
     awayGoals = engine.getAwayScore();
     const MatchStats& stats = engine.getStats();
@@ -14665,6 +14674,11 @@ class SmallSidedGameDrill final : public Drill
         ++looseTicks;
       }
       ++inPlayTicks;
+    }
+    else if (engine.isResetRestartStoppage())
+    {
+      lastSide = 0;
+      spellSide = 0;
     }
     // What each rung is there to show (training ground T6b): measures, not
     // targets.
@@ -15062,6 +15076,7 @@ class SmallSidedGameDrill final : public Drill
   }
 
   float rungChoice = 1.0F;
+  float resetBetweenRestarts = 0.0F;
   float homeReferenceRating = DrillRun::REFERENCE_RATING;
   float awayReferenceRating = DrillRun::REFERENCE_RATING;
   float nSetting = DEFAULT_N_SETTING;

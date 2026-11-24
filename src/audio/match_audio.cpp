@@ -244,6 +244,12 @@ void MatchAudio::whistle(Priority priority, WhistlePattern pattern, float x)
                   .variant = std::to_underlying(pattern)});
 }
 
+void MatchAudio::playCoachWhistle(bool restart)
+{
+  whistle(Priority::KEY,
+          restart ? WhistlePattern::KICK_OFF : WhistlePattern::SHORT, 0.5F);
+}
+
 void MatchAudio::update(float wallSeconds, const MatchAudioFrame& frame,
                         std::span<const MatchEvent> events)
 {

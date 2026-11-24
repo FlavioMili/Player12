@@ -960,8 +960,13 @@ void MatchEngine::updateServer(MatchPlayer& body, const TouchlinePerson& person,
   const bool serving =
       (state == MatchState::SERVE && serveRemaining <= S::STEP_SECONDS) ||
       (afterGoal && goalCelebrationRemaining <= S::STEP_SECONDS);
+  const bool centreRestart = pitch.laws.resetBetweenRestarts;
+  const bool steppingIn = centreRestart
+                              ? state == MatchState::SERVE &&
+                                    centreServeElapsed > 0.0F
+                              : serving;
   const Vector2F inward = serveInward();
-  const float step = serving ? S::STEP_METRES : 0.0F;
+  const float step = steppingIn ? S::STEP_METRES : 0.0F;
   const Vector2F spot{.x = person.seat.x + (inward.x * step),
                       .y = person.seat.y + (inward.y * step)};
   const Vector2F at = asVector(body.position);
@@ -982,7 +987,11 @@ void MatchEngine::updateServer(MatchPlayer& body, const TouchlinePerson& person,
   }
   // He watches the ball; waiting to serve, the player he serves to.
   PitchPoint look = ball.position;
-  if (state == MatchState::SERVE || (afterGoal && serving))
+  if (centreRestart && state == MatchState::SERVE)
+  {
+    look = pitch.at(0.5F, 0.5F);
+  }
+  else if (state == MatchState::SERVE || (afterGoal && serving))
   {
     const bool side = state == MatchState::SERVE
                           ? serveHome

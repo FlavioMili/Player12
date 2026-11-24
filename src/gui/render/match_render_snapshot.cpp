@@ -87,6 +87,19 @@ void fillMatchRenderSnapshot(const MatchEngine& engine,
     person.player = body.player;
     person.isHomeTeam = body.isHomeTeam;
     person.role = people[index].role;
+    person.whistle = MatchRenderTouchlinePerson::Whistle::None;
+    if (person.role == TouchlineRole::SERVER &&
+        engine.getPitch().laws.resetBetweenRestarts)
+    {
+      if (engine.getState() == MatchState::GOAL)
+      {
+        person.whistle = MatchRenderTouchlinePerson::Whistle::Stop;
+      }
+      else if (engine.getCoachRestartWhistleRemaining() > 0.0F)
+      {
+        person.whistle = MatchRenderTouchlinePerson::Whistle::Go;
+      }
+    }
     person.seated = people[index].seated;
     person.hidden = inTunnel(body.position);
     person.currentPosition = body.position;

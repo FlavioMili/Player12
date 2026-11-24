@@ -90,6 +90,8 @@ struct MatchRenderPlayer
  * staff or a manager, seated in the dugout or on his feet. */
 struct MatchRenderTouchlinePerson
 {
+  enum class Whistle { None, Stop, Go };
+
   /** A sub's player; staff and managers have none. */
   const Player* player = nullptr;
   bool isHomeTeam = false;
@@ -97,6 +99,7 @@ struct MatchRenderTouchlinePerson
   bool seated = false;
   /** Deep in the tunnel (walk-outs and walk-offs): not drawn. */
   bool hidden = false;
+  Whistle whistle = Whistle::None;
   PitchPoint previousPosition{};
   PitchPoint currentPosition{};
   float previousFacingAngle = 0.0F;

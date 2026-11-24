@@ -185,6 +185,7 @@ struct PitchLaws
   /** With serves: who gets one (a drill's choice). */
   ServeSide serveSide = ServeSide::CONCEDED_OR_FOULED;
   ServeReceiver serveReceiver = ServeReceiver::MOST_OPEN;
+  bool resetBetweenRestarts = false;
 
   /** None of them, and a coach's serve: a training pitch's default. */
   [[nodiscard]] static constexpr PitchLaws none()

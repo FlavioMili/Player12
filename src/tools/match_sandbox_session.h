@@ -130,7 +130,7 @@ class SessionRun
 
   /** One fixed step of every zone still running; when they are all over,
    * the next exercise starts. False once the last exercise is over. */
-  bool step();
+  bool step(const DrillRun::CoachWhistle& coachWhistle = {});
   [[nodiscard]] bool finished() const { return over; }
   [[nodiscard]] std::size_t exercise() const { return exerciseIndex; }
   [[nodiscard]] const SessionPlan& plan() const { return sessionPlan; }

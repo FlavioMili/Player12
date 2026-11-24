@@ -21,6 +21,7 @@
 #include "tools/match_sandbox_review.h"
 
 class IMatchRenderer;
+class MatchAudio;
 struct StatsConfig;
 
 /**
@@ -62,6 +63,7 @@ class DrillScene : public GUIScene
   Drill& drill;
   std::function<void(MatchEngine&)> prepareRun;
   std::unique_ptr<DrillRun> run;
+  std::unique_ptr<MatchAudio> coachAudio;
   bool paused = false;
   float speed = 1.0F;
   float accumulator = 0.0F;

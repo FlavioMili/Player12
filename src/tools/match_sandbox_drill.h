@@ -221,7 +221,8 @@ class DrillRun
   DrillRun& operator=(const DrillRun&) = delete;
 
   /** One fixed step and the drill's script; false once the run is over. */
-  bool step();
+  using CoachWhistle = std::function<void(bool restart)>;
+  bool step(const CoachWhistle& coachWhistle = {});
   [[nodiscard]] bool finished() const { return over; }
 
   [[nodiscard]] MatchEngine& engine() { return *match; }

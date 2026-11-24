@@ -19,6 +19,7 @@
 #include <string_view>
 #include <utility>
 
+#include "audio/match_audio.h"
 #include "controller/game_controller.h"
 #include "global/paths.h"
 #include "gui/gui_view.h"
@@ -27,6 +28,7 @@
 #include "gui/widgets/text.h"
 #include "gui/widgets/theme.h"
 #include "model/player.h"
+#include "model/settings_manager.h"
 #include "tools/match_sandbox_page_ui.h"
 #include "tools/match_sandbox_recording.h"
 #include "tools/match_sandbox_typography.h"
@@ -117,11 +119,26 @@ void ZoneSessionScene::restart()
   {
     for (int step = 0; step < steps && run && !run->finished(); ++step)
     {
-      run->step();
+      stepSession();
     }
   };
   accumulator = 0.0F;
   paused = false;
+}
+
+void ZoneSessionScene::stepSession()
+{
+  run->step(
+      [this](bool restart)
+      {
+        if (!coachAudio)
+        {
+          coachAudio = std::make_unique<MatchAudio>();
+        }
+        coachAudio->setLevels(
+            MatchAudio::levelsFrom(SettingsManager::instance()->get()));
+        coachAudio->playCoachWhistle(restart);
+      });
 }
 
 void ZoneSessionScene::update(float deltaTime)
@@ -144,7 +161,7 @@ void ZoneSessionScene::update(float deltaTime)
   while (accumulator >= STEP && steps < MAX_STEPS_PER_FRAME && !run->finished())
   {
     accumulator -= STEP;
-    run->step();
+    stepSession();
     ++steps;
   }
   if (steps == MAX_STEPS_PER_FRAME)

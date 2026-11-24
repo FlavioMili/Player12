@@ -322,6 +322,8 @@ struct MatchRenderer2D::State
   void drawOffside();
   void drawFreeKickMarker();
   void drawRefereeSignal(const MatchRenderSnapshot& snapshot, float alpha);
+  void drawOfficialSignal(const MatchRenderTouchlinePerson& person,
+                          RefBeat beat, float growth, float alpha);
   void drawTouchline(const MatchRenderSnapshot& snapshot, float alpha);
   void drawFlights();
   void drawTrail();
@@ -1822,26 +1824,33 @@ void MatchRenderer2D::State::drawFreeKickMarker()
 void MatchRenderer2D::State::drawRefereeSignal(
     const MatchRenderSnapshot& snapshot, float alpha)
 {
-  using R = Tuning::RefereeSignal;
-  if (refGrowth <= 0.0F)
-  {
-    return;
-  }
-  const MatchRenderTouchlinePerson* referee = nullptr;
+  using Whistle = MatchRenderTouchlinePerson::Whistle;
   for (const MatchRenderTouchlinePerson& person : snapshot.touchline)
   {
-    if (person.role == TouchlineRole::REFEREE && !person.hidden)
+    if (person.hidden)
     {
-      referee = &person;
-      break;
+      continue;
+    }
+    if (person.role == TouchlineRole::REFEREE && refGrowth > 0.0F)
+    {
+      drawOfficialSignal(person, refShown, refGrowth, alpha);
+    }
+    if (person.whistle != Whistle::None)
+    {
+      drawOfficialSignal(
+          person, {person.whistle == Whistle::Go ? RefIcon::GO : RefIcon::STOP},
+          1.0F, alpha);
     }
   }
-  if (referee == nullptr)
-  {
-    return;
-  }
-  const PitchPoint at = lerpRenderPosition(referee->previousPosition,
-                                           referee->currentPosition, alpha);
+}
+
+void MatchRenderer2D::State::drawOfficialSignal(
+    const MatchRenderTouchlinePerson& person, RefBeat beat, float growth,
+    float alpha)
+{
+  using R = Tuning::RefereeSignal;
+  const PitchPoint at = lerpRenderPosition(person.previousPosition,
+                                           person.currentPosition, alpha);
   const ImVec2 c = atMetres(at.x, at.y);
 
   // From his body to a player's size, eased.
@@ -1849,7 +1858,7 @@ void MatchRenderer2D::State::drawRefereeSignal(
                               Tuning::Touchline::RADIUS_METRES * ppm);
   const float grown =
       std::max(px(R::MIN_GROWN_PIXELS), Tuning::Token::RADIUS_METRES * ppm);
-  const float eased = refGrowth * refGrowth * (3.0F - 2.0F * refGrowth);
+  const float eased = growth * growth * (3.0F - 2.0F * growth);
   const float r = body + ((grown - body) * eased);
   const float outline = std::max(1.0F, px(1.2F));
   drawList->AddCircleFilled(c, r + (outline * 1.5F), officialsShirtColor(kits));
@@ -1863,9 +1872,9 @@ void MatchRenderer2D::State::drawRefereeSignal(
   }
   const float s = r * 0.62F;
   const ImU32 edge = fadedColor(IM_COL32(245, 245, 245, 230), shown);
-  const float dir = refShown.home ? 1.0F : -1.0F;
+  const float dir = beat.home ? 1.0F : -1.0F;
   const ImU32 team =
-      fadedColor(refShown.home ? kits.home.shirt : kits.away.shirt, shown);
+      fadedColor(beat.home ? kits.home.shirt : kits.away.shirt, shown);
 
   const auto whistle = [&](ImU32 color)
   {
@@ -1895,7 +1904,7 @@ void MatchRenderer2D::State::drawRefereeSignal(
                           std::max(1.0F, px(0.8F)));
   };
 
-  switch (refShown.icon)
+  switch (beat.icon)
   {
     case RefIcon::STOP:
       whistle(R::STOP_COLOR);

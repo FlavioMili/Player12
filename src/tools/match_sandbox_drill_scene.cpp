@@ -17,6 +17,7 @@
 #include <string>
 #include <string_view>
 
+#include "audio/match_audio.h"
 #include "controller/game_controller.h"
 #include "global/paths.h"
 #include "gui/gui_view.h"
@@ -24,6 +25,7 @@
 #include "gui/render/match_renderer_3d.h"
 #include "gui/widgets/theme.h"
 #include "gui/widgets/widgets.h"
+#include "model/settings_manager.h"
 #include "tools/match_sandbox_page_ui.h"
 #include "tools/match_sandbox_setup.h"
 #include "tools/match_sandbox_text.h"
@@ -176,7 +178,17 @@ void DrillScene::stepRun(int steps)
     {
       play.update(run->engine(), STEP, basis);
     }
-    run->step();
+    run->step(
+        [this](bool restart)
+        {
+          if (!coachAudio)
+          {
+            coachAudio = std::make_unique<MatchAudio>();
+          }
+          coachAudio->setLevels(
+              MatchAudio::levelsFrom(SettingsManager::instance()->get()));
+          coachAudio->playCoachWhistle(restart);
+        });
   }
 }
 
@@ -418,7 +430,7 @@ void DrillScene::renderPanel(float width)
     ImGui::TextUnformatted(
         std::format(
             "{} / {:.1f} s", status,
-            static_cast<double>(run->engine().getSimulatedSteps()) * STEP)
+            static_cast<double>(run->engine().getTimedDrillSteps()) * STEP)
             .c_str());
     ImGui::PushTextWrapPos(0.0F);
     // A line that starts PASS or FAIL (after OUTCOME, if it is one) is

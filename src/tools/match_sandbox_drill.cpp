@@ -223,11 +223,13 @@ DrillRun::DrillRun(Drill& drill_ref, const StatsConfig& config, bool record,
   {
     fillSide(side, specs, config, squad, lineups.at(side), nextId);
   }
+  const MatchPitch drillPitch = drill.pitch();
+  MatchPitch pitch =
+      squad.empty() ? sandboxDrillPitch().value_or(drillPitch) : drillPitch;
+  pitch.laws.resetBetweenRestarts = drillPitch.laws.resetBetweenRestarts;
   match = std::make_unique<MatchEngine>(
       lineups[0], lineups[1], Strategy{}, Strategy{}, config, drill.seed,
-      sandboxHandshake(), sandboxPossession(),
-      squad.empty() ? sandboxDrillPitch().value_or(drill.pitch())
-                    : drill.pitch());
+      sandboxHandshake(), sandboxPossession(), pitch);
   prepareEngine(specs, record);
   drill.begin(*match, drillIds);
   if (prepare)
@@ -247,14 +249,30 @@ DrillRun::~DrillRun()
   log.reset();
 }
 
-bool DrillRun::step()
+bool DrillRun::step(const CoachWhistle& coachWhistle)
 {
   if (over)
   {
     return false;
   }
+  const bool signalCoach =
+      coachWhistle && match->getPitch().laws.resetBetweenRestarts;
+  const MatchState previousState = match->getState();
+  const int previousServes = match->getServesTaken();
   drill.beforeStep(*match);
   match->advance(MatchTuning::Timing::FIXED_STEP_SECONDS);
+  if (signalCoach)
+  {
+    if (previousState != MatchState::GOAL &&
+        match->getState() == MatchState::GOAL)
+    {
+      coachWhistle(false);
+    }
+    if (previousServes != match->getServesTaken())
+    {
+      coachWhistle(true);
+    }
+  }
   if (!drill.afterStep(*match) || match->getState() == MatchState::FULL_TIME)
   {
     over = true;

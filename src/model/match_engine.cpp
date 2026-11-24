@@ -1308,11 +1308,14 @@ float MatchEngine::getInterpolationAlpha() const
 
 void MatchEngine::advanceClock(float dt)
 {
-  const float clockScale = matchClockRate();
-  const float clockDelta =
-      dt * clockScale / MatchTuning::Timing::SECONDS_PER_MINUTE;
-  matchTimeMinutes += clockDelta;
-  elapsedMatchMinutes += clockDelta;
+  if (!isResetRestartStoppage())
+  {
+    const float clockScale = matchClockRate();
+    const float clockDelta =
+        dt * clockScale / MatchTuning::Timing::SECONDS_PER_MINUTE;
+    matchTimeMinutes += clockDelta;
+    elapsedMatchMinutes += clockDelta;
+  }
   accumulatePlayerLoad(dt);
 }
 
@@ -1468,6 +1471,12 @@ void MatchEngine::simulateStepBody(float dt)
   // Dead-ball and break states have their own movement/clock rules. Their
   // early returns prevent celebrations, breaks and shootouts from also
   // executing open-play decisions or the ordinary period-ending logic.
+  coachRestartWhistleRemaining =
+      std::max(0.0F, coachRestartWhistleRemaining - dt);
+  if (isResetRestartStoppage())
+  {
+    resetRestartSteps += stepTicks;
+  }
   if (state == MatchState::GOAL)
   {
     // The scored ball settles in the net while the teams celebrate and walk
@@ -3079,14 +3088,16 @@ void MatchEngine::accumulatePlayerLoad(float dt)
   // The final pass rejects restart teleports before applying load or fatigue.
   using L = MatchTuning::Load;
   using F = MatchTuning::Fatigue;
-  const float clockScale = matchClockRate();
-  const float clockDelta =
-      dt * clockScale / MatchTuning::Timing::SECONDS_PER_MINUTE;
-  for (const auto& player : players)
+  if (!isResetRestartStoppage())
   {
-    if (active(player))
+    const float clockDelta =
+        dt * matchClockRate() / MatchTuning::Timing::SECONDS_PER_MINUTE;
+    for (const auto& player : players)
     {
-      statsOf(player).minutesPlayed += clockDelta;
+      if (active(player))
+      {
+        statsOf(player).minutesPlayed += clockDelta;
+      }
     }
   }
   // Distance, intensity and energy are accounted over two steps at a time.
