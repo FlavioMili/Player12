@@ -347,6 +347,16 @@ void extractEngine(MatchSample& sample, const MatchEngine& engine)
   sample.press_wrong_near_tie = stats.pressWrongNearTie;
   sample.press_wrong_slower = stats.pressWrongSlower;
   sample.press_wrong_pick_pressing = stats.pressWrongPickPressing;
+  sample.press_calls_made = stats.pressCallsMade;
+  sample.press_calls_right = stats.pressCallsRight;
+  sample.press_calls_agree = stats.pressCallsAgree;
+  sample.press_call_millis = stats.pressCallMillis;
+  sample.press_commits_carried = stats.pressCommitsCarried;
+  sample.press_go_agree = stats.pressGoAgree;
+  sample.press_go_other = stats.pressGoOther;
+  sample.press_go_other_pick_pressing = stats.pressGoOtherPickPressing;
+  sample.press_go_several = stats.pressGoSeveral;
+  sample.press_go_none = stats.pressGoNone;
   sample.holds = stats.homeHolds + stats.awayHolds;
   sample.intents_win = stats.intentsWin;
   sample.intents_clear = stats.intentsClear;
@@ -1393,6 +1403,38 @@ std::map<std::string, Estimate> matchMetrics(
   metrics["press_wrong_pick_pressing_share"] = ratioEstimate(
       column([](const MatchSample& s) { return s.press_wrong_pick_pressing; }),
       pressWrong);
+  const std::vector<double> pressCalls =
+      column([](const MatchSample& s) { return s.press_calls_made; });
+  metrics["press_calls_per_match"] = meanEstimate(pressCalls);
+  metrics["press_calls_right_share"] = ratioEstimate(
+      column([](const MatchSample& s) { return s.press_calls_right; }),
+      pressCalls);
+  metrics["press_calls_agree_share"] = ratioEstimate(
+      column([](const MatchSample& s) { return s.press_calls_agree; }),
+      pressCalls);
+  constexpr double PRESS_MILLIS_PER_SECOND = 1000.0;
+  metrics["press_call_seconds"] = ratioEstimate(
+      column([](const MatchSample& s)
+             { return s.press_call_millis / PRESS_MILLIS_PER_SECOND; }),
+      pressCalls);
+  metrics["press_commits_carried_per_match"] = meanEstimate(
+      column([](const MatchSample& s) { return s.press_commits_carried; }));
+  metrics["press_go_agree_share"] = ratioEstimate(
+      column([](const MatchSample& s) { return s.press_go_agree; }),
+      pressChecks);
+  metrics["press_go_other_share"] = ratioEstimate(
+      column([](const MatchSample& s) { return s.press_go_other; }),
+      pressChecks);
+  metrics["press_go_other_pick_pressing_share"] = ratioEstimate(
+      column([](const MatchSample& s)
+             { return s.press_go_other_pick_pressing; }),
+      column([](const MatchSample& s) { return s.press_go_other; }));
+  metrics["press_go_several_share"] = ratioEstimate(
+      column([](const MatchSample& s) { return s.press_go_several; }),
+      pressChecks);
+  metrics["press_go_none_share"] = ratioEstimate(
+      column([](const MatchSample& s) { return s.press_go_none; }),
+      pressChecks);
   const std::vector<double> looseCalls =
       column([](const MatchSample& s) { return s.loose_calls_made; });
   metrics["loose_calls_per_match"] = meanEstimate(looseCalls);

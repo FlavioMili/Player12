@@ -162,6 +162,8 @@ struct OffBallRecord
    * does not run on, so the delays are shown, not waited). */
   struct CommitCall
   {
+    /** On the press (step P3), not a loose ball (step O6). */
+    bool press = false;
     float lookUpSeconds = 0.0F;
     float callSeconds = 0.0F;
     /** The team-mate is in view or alongside: no look-up delay. */

@@ -1868,6 +1868,23 @@ struct MatchStats
   int pressWrongNearTie = 0;
   int pressWrongSlower = 0;
   int pressWrongPickPressing = 0;
+  /** Step P3, first to commit on the press (shadow): calls made, those the
+   * caller got right, those leaving the team's pick as the presser, the
+   * time from the second commit to the call (ms, summed), and commitments
+   * carried over from the side's loose ball. */
+  int pressCallsMade = 0;
+  int pressCallsRight = 0;
+  int pressCallsAgree = 0;
+  int pressCallMillis = 0;
+  int pressCommitsCarried = 0;
+  /** Step P3, per check after the commit stage: who would press (his call
+   * not "not mine", not stood down). One, the team's pick; one, another
+   * (and of those, the team's pick already pressing); two or more; none. */
+  int pressGoAgree = 0;
+  int pressGoOther = 0;
+  int pressGoOtherPickPressing = 0;
+  int pressGoSeveral = 0;
+  int pressGoNone = 0;
   int homeHolds = 0;
   int awayHolds = 0;
   int intentsWin = 0;

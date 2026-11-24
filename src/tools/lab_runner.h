@@ -268,6 +268,16 @@ struct MatchSample
   int press_wrong_near_tie = 0;
   int press_wrong_slower = 0;
   int press_wrong_pick_pressing = 0;
+  int press_calls_made = 0;
+  int press_calls_right = 0;
+  int press_calls_agree = 0;
+  int press_call_millis = 0;
+  int press_commits_carried = 0;
+  int press_go_agree = 0;
+  int press_go_other = 0;
+  int press_go_other_pick_pressing = 0;
+  int press_go_several = 0;
+  int press_go_none = 0;
   int holds = 0;
   int intents_win = 0;
   int intents_clear = 0;

@@ -1200,7 +1200,9 @@ constexpr std::array<Situation, 20> SITUATIONS = {{
          "engageBoost, pressStandOffShare, doubleUpPoint, tightMarkPoint. "
          "Shadow (step P1, changes nothing yet): each defender's own call on "
          "pressing the carrier (mine, in doubt, not mine), by the loose "
-         "ball's rough look against the 3 team-mates nearest him",
+         "ball's rough look against the 3 team-mates nearest him; first to "
+         "commit on it (step P3: the loose ball's stage; a new carrier is a "
+         "fresh call, a loose-ball commitment carries over)",
      .layers = SLIDERS | ROLE | ORDERS | MOOD,
      .plannerWide = true,
      .onFrame = false,
@@ -2005,7 +2007,8 @@ void BrainFlowScene::looseCommit(const BrainFlow::OffBallRecord& offBall) const
     return;
   }
   const BrainFlow::OffBallRecord::CommitCall& commit = *offBall.commit;
-  text("First to commit (shadow, step O6): he goes for it.",
+  text(commit.press ? "First to commit (shadow, step P3): he goes to press."
+                    : "First to commit (shadow, step O6): he goes for it.",
        SandboxPageUI::CREAM);
   text(std::format("He {} {:.2f} s, calls {:.2f} s later (Leadership): "
                    "{:.2f} s in all.",
@@ -2016,18 +2019,23 @@ void BrainFlowScene::looseCommit(const BrainFlow::OffBallRecord& offBall) const
                    commit.lookUpSeconds + commit.callSeconds));
   if (commit.partner == 0)
   {
-    muted("No team-mate is going for it: no call needed.");
+    muted(commit.press ? "No team-mate is going to press: no call needed."
+                       : "No team-mate is going for it: no call needed.");
     return;
   }
   const std::string mate = nameOf(commit.partner);
   text(std::format("{} is going too: {:.2f} s + {:.2f} s = {:.2f} s.", mate,
                    commit.partnerLookUpSeconds, commit.partnerCallSeconds,
                    commit.partnerLookUpSeconds + commit.partnerCallSeconds));
+  const char* shapeRule =
+      commit.press ? "Within the margin: the shape spot nearest the carrier "
+                     "decides."
+                   : "Within the margin: the shape spot nearest where it is "
+                     "collected decides.";
   text(std::format(
       "The detailed look: him {:.2f} s, {} {:.2f} s. {} It should be {}.",
       commit.hisSeconds, mate, commit.partnerSeconds,
-      commit.byShape ? "Within the margin: the shape spot nearest where it is "
-                       "collected decides."
+      commit.byShape ? shapeRule
                      : "Further apart than the margin: the quicker takes it.",
       commit.shouldBeHis ? "his" : mate));
   // The caller says mine when it should be his own, else yours.
