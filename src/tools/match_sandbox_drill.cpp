@@ -57,9 +57,13 @@ std::map<std::string, float> drillPlayerStats(const StatsConfig& config,
                                               const DrillPlayerSpec* spec)
 {
   std::map<std::string, float> stats;
+  const float referenceRating = spec != nullptr
+                                    ? spec->referenceRating.value_or(
+                                          DrillRun::REFERENCE_RATING)
+                                    : DrillRun::REFERENCE_RATING;
   for (const std::string& stat : config.possible_stats)
   {
-    stats[stat] = DrillRun::REFERENCE_RATING;
+    stats[stat] = referenceRating;
   }
   if (spec != nullptr)
   {

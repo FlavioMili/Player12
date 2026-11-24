@@ -14493,6 +14493,12 @@ class SmallSidedGameDrill final : public Drill
     list.push_back(rung);
     list.push_back(setting("N a side (N v N)", &nSetting,
                            {.min = N_SETTING_MIN, .max = N_SETTING_MAX}, true));
+    list.push_back(setting("Home reference rating", &homeReferenceRating,
+                           {.min = 1.0F, .max = 99.0F}, true,
+                           "Base attributes of generated home players."));
+    list.push_back(setting("Away reference rating", &awayReferenceRating,
+                           {.min = 1.0F, .max = 99.0F}, true,
+                           "Base attributes of generated away players."));
     list.push_back(
         setting("Area per player (m2)", &areaSetting,
                 {.min = AREA_SETTING_MIN, .max = AREA_SETTING_MAX}, true,
@@ -14531,14 +14537,16 @@ class SmallSidedGameDrill final : public Drill
                       .role = role,
                       .homeTeam = true,
                       .stats = {},
-                      .derived = {}});
+                      .derived = {},
+                      .referenceRating = homeReferenceRating});
       if (!alone)
       {
         list.push_back({.name = std::format("Away {}", index + 1),
                         .role = role,
                         .homeTeam = false,
                         .stats = {},
-                        .derived = {}});
+                        .derived = {},
+                        .referenceRating = awayReferenceRating});
       }
     }
     return list;
@@ -15053,6 +15061,8 @@ class SmallSidedGameDrill final : public Drill
   }
 
   float rungChoice = 1.0F;
+  float homeReferenceRating = DrillRun::REFERENCE_RATING;
+  float awayReferenceRating = DrillRun::REFERENCE_RATING;
   float nSetting = DEFAULT_N_SETTING;
   float areaSetting = DEFAULT_AREA_SETTING;
   float secondsSetting = DEFAULT_SECONDS_SETTING;

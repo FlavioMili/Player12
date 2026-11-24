@@ -89,6 +89,8 @@ struct DrillPlayerSpec
   Foot foot = Foot::Right;
   /** Condition at the start, 0-100 (100: fresh). */
   float condition = 100.0F;
+  /** Base attributes for a generated player before individual overrides. */
+  std::optional<float> referenceRating = std::nullopt;
 };
 
 /** One setting of a drill (also what a measure sweep can vary). */
