@@ -684,6 +684,44 @@ void MatchEngine::refreshTacticalTargetsCapybara(float dt, bool planHome)
                                   interception(*teamPick).first);
     }
   }
+  // Step P1 (brain redesign plan section 28): each defender's own call on
+  // pressing the carrier, in the shadow of the team's pick (the first
+  // presser). Draws nothing, changes nothing.
+  if (carrier != nullptr && carrier->isHomeTeam != planHome &&
+      state == MatchState::PLAYING)
+  {
+    const MatchPlayer* teamPick =
+        (planHome ? homePressers : awayPressers).front();
+    const MatchPlayer* shadowPick =
+        shadowPressCapybara(planHome, *carrier, teamPick);
+    if (shadowPick != nullptr && teamPick != nullptr && shadowPick != teamPick)
+    {
+      // The planner's pursuit time without its press eagerness and
+      // continuity, for the diagnosis.
+      const auto pursuitSeconds = [&](const MatchPlayer& candidate)
+      {
+        const Vector2F toTarget = pressurePosition - candidate.position;
+        const float targetDistance = length(toTarget);
+        if (targetDistance <= EPSILON)
+        {
+          return 0.0F;
+        }
+        const float toward =
+            std::max(0.0F, ((candidate.velocity.x * toTarget.x) +
+                            (candidate.velocity.y * toTarget.y)) /
+                               targetDistance);
+        constexpr float WEIGHT =
+            MatchTuning::Player::CURRENT_VELOCITY_PURSUIT_WEIGHT;
+        const float speed =
+            std::max(currentTopSpeed(candidate) + (toward * WEIGHT),
+                     MatchTuning::Player::MINIMUM_PURSUIT_SPEED);
+        return targetDistance / speed;
+      };
+      tallyWrongPressCallCapybara(pursuitSeconds(*shadowPick),
+                                  pursuitSeconds(*teamPick),
+                                  teamPick->intent == PlayerIntent::PRESS_BALL);
+    }
+  }
 
   // Going for a loose high ball (aerial challenge plan step 2): goal kicks,
   // clearances, long balls and the head tennis after them, and crosses
@@ -2435,6 +2473,7 @@ bool MatchEngine::brainFlowOffBallCapybara(const MatchScenario& scenario,
                                            BrainFlow::CarrierRecord& record)
 {
   record.offBall.filled = false;
+  record.offBall.pressCall = nullptr;
   record.offBall.looseCall = nullptr;
   record.offBall.meetPoints.clear();
   record.offBall.commit.reset();
@@ -3090,6 +3129,129 @@ void MatchEngine::tallyWrongLooseCallCapybara(
   {
     ++stats.looseWrongSlowerMissed;
   }
+}
+
+MatchEngine::LooseCallCapybara MatchEngine::pressCallCapybara(
+    const MatchPlayer& player, Vector2F at) const
+{
+  // Step P1, the rough look (as the loose ball's): can he get to the
+  // carrier before the few team-mates nearest him? The carrier's own side
+  // does not race him there, so only team-mates count.
+  std::array<float, LOOSE_SHADOW_RIVALS> closestMetres{};
+  closestMetres.fill(std::numeric_limits<float>::max());
+  std::array<const MatchPlayer*, LOOSE_SHADOW_RIVALS> closest{};
+  for (const MatchPlayer& other : players)
+  {
+    if (&other == &player || !active(other) || other.isGoalkeeper ||
+        other.isHomeTeam != player.isHomeTeam)
+    {
+      continue;
+    }
+    float metres = metresBetween(asVector(other.position), at);
+    const MatchPlayer* who = &other;
+    for (std::size_t place = 0; place < LOOSE_SHADOW_RIVALS; ++place)
+    {
+      if (metres < closestMetres.at(place))
+      {
+        std::swap(metres, closestMetres.at(place));
+        std::swap(who, closest.at(place));
+      }
+    }
+  }
+  float bestRival = std::numeric_limits<float>::max();
+  for (const MatchPlayer* rival : closest)
+  {
+    if (rival != nullptr)
+    {
+      bestRival = std::min(bestRival, roughSecondsCapybara(*rival, at));
+    }
+  }
+  return judgeLooseCallCapybara(roughSecondsCapybara(player, at), bestRival);
+}
+
+const MatchPlayer* MatchEngine::shadowPressCapybara(bool home,
+                                                    const MatchPlayer& carrier,
+                                                    const MatchPlayer* teamPick)
+{
+  const Vector2F at = asVector(carrier.position);
+  int mine = 0;
+  int inDoubt = 0;
+  const MatchPlayer* mineWho = nullptr;
+  for (const MatchPlayer& player : players)
+  {
+    if (!active(player) || player.isGoalkeeper || player.isHomeTeam != home)
+    {
+      continue;
+    }
+    const LooseCallCapybara call = pressCallCapybara(player, at);
+    if (call == LooseCallCapybara::MINE)
+    {
+      ++mine;
+      mineWho = &player;
+    }
+    else if (call == LooseCallCapybara::IN_DOUBT)
+    {
+      ++inDoubt;
+    }
+    notePressCallCapybara(player, call);
+  }
+  ++stats.pressShadowChecks;
+  if (mine >= 2)
+  {
+    ++stats.pressShadowTwoGo;
+  }
+  else if (mine == 1)
+  {
+    ++(mineWho == teamPick ? stats.pressShadowAgree
+                           : stats.pressShadowWrongPlayer);
+    if (inDoubt > 0)
+    {
+      ++stats.pressShadowWithDoubt;
+    }
+  }
+  else
+  {
+    ++stats.pressShadowNobody;
+  }
+  return mine == 1 ? mineWho : nullptr;
+}
+
+void MatchEngine::tallyWrongPressCallCapybara(float shadowSeconds,
+                                              float pickSeconds,
+                                              bool pickPressing)
+{
+  constexpr float NEAR_TIE_SECONDS = 0.1F;
+  const float later = shadowSeconds - pickSeconds;
+  if (later < -NEAR_TIE_SECONDS)
+  {
+    ++stats.pressWrongShadowFaster;
+  }
+  else if (later <= NEAR_TIE_SECONDS)
+  {
+    ++stats.pressWrongNearTie;
+  }
+  else
+  {
+    ++stats.pressWrongSlower;
+  }
+  if (pickPressing)
+  {
+    ++stats.pressWrongPickPressing;
+  }
+}
+
+void MatchEngine::notePressCallCapybara(const MatchPlayer& player,
+                                        LooseCallCapybara call)
+{
+  if (offBallRecord == nullptr || player.player == nullptr ||
+      player.player->getId() != offBallRecord->offBall.player)
+  {
+    return;
+  }
+  constexpr std::array<const char*, 3> CALLS = {
+      "mine (I get to him first)", "in doubt (a team-mate is close)",
+      "not mine (beaten by more than the margin)"};
+  offBallRecord->offBall.pressCall = CALLS.at(static_cast<std::size_t>(call));
 }
 
 void MatchEngine::noteLooseCallCapybara(

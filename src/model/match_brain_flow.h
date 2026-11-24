@@ -142,6 +142,9 @@ struct OffBallRecord
   const char* overriddenBy = nullptr;
   PitchPoint target{};
   bool filled = false;
+  /** Step P1 (shadow): his own call on pressing the carrier (null when
+   * none). */
+  const char* pressCall = nullptr;
   /** Step O6 (shadow): his own loose-ball call (null when none), and when
    * it is his, where he could meet it. */
   const char* looseCall = nullptr;

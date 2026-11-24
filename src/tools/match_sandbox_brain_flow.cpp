@@ -1197,7 +1197,10 @@ constexpr std::array<Situation, 20> SITUATIONS = {{
          "zonal mark, hold shape. Open when the team's assignments (pressers, "
          "assignMarks), orders or phase give it to him (hold shape always); "
          "stopgap pick in today's order (follow-up: measures). Targets: "
-         "engageBoost, pressStandOffShare, doubleUpPoint, tightMarkPoint",
+         "engageBoost, pressStandOffShare, doubleUpPoint, tightMarkPoint. "
+         "Shadow (step P1, changes nothing yet): each defender's own call on "
+         "pressing the carrier (mine, in doubt, not mine), by the loose "
+         "ball's rough look against the 3 team-mates nearest him",
      .layers = SLIDERS | ROLE | ORDERS | MOOD,
      .plannerWide = true,
      .onFrame = false,
@@ -1989,6 +1992,7 @@ void BrainFlowScene::offBallStage()
   {
     text(std::format("Overridden: {}", offBall.overriddenBy), WARNING);
   }
+  pressShadow(offBall);
   looseShadow(offBall);
   looseCommit(offBall);
   muted("The line on the pitch: from him to the target his job sets.");
@@ -2037,6 +2041,25 @@ void BrainFlowScene::looseCommit(const BrainFlow::OffBallRecord& offBall) const
   muted("A projection: the moment does not run on. Delays: 1 s at the stat's "
         "1 to 0.1 s at 100; right call 50% at Decisions 1 to 100% at 100 "
         "(estimates, to tune).");
+}
+
+void BrainFlowScene::pressShadow(const BrainFlow::OffBallRecord& offBall)
+{
+  if (offBall.pressCall == nullptr)
+  {
+    return;
+  }
+  // Step P1: his own call on pressing the carrier, in the shadow of the
+  // team's pick (it changes nothing yet).
+  text(std::format("His own press call (shadow, step P1): {}",
+                   offBall.pressCall),
+       SandboxPageUI::CREAM);
+  muted(
+      "Can he get to the carrier before the 3 team-mates nearest him (rough "
+      "look: straight line at top speed, his way already toward him, the "
+      "turn)? Beaten by more than the margin (10% of his time, at most "
+      "0.5 s): not his; closer: in doubt (estimates, to tune). The team's "
+      "press eagerness (role, team talk) is left out of the shadow.");
 }
 
 void BrainFlowScene::looseShadow(const BrainFlow::OffBallRecord& offBall)

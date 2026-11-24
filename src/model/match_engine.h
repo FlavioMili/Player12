@@ -1848,6 +1848,26 @@ struct MatchStats
   int looseWrongSlowerBig = 0;
   int looseWrongSlowerLater = 0;
   int looseWrongSlowerMissed = 0;
+  /** Brain redesign plan section 28 (step P1): the defenders' own calls on
+   * pressing the carrier, in the shadow of the team's pick (the first
+   * presser). Per side and step with an opponent on the ball: checks, the
+   * one "mine" is the team's pick, is someone else, two or more say mine,
+   * nobody says mine, and one says mine with a team-mate chasing in doubt
+   * (a first-to-commit case). */
+  int pressShadowChecks = 0;
+  int pressShadowAgree = 0;
+  int pressShadowWrongPlayer = 0;
+  int pressShadowTwoGo = 0;
+  int pressShadowNobody = 0;
+  int pressShadowWithDoubt = 0;
+  /** Of the wrong-player calls, by the planner's pursuit times without its
+   * press eagerness and continuity: his sooner by over 0.1 s (the team's
+   * extra terms chose another), within 0.1 s, later by over 0.1 s; and the
+   * team's pick already pressing (its continuity). */
+  int pressWrongShadowFaster = 0;
+  int pressWrongNearTie = 0;
+  int pressWrongSlower = 0;
+  int pressWrongPickPressing = 0;
   int homeHolds = 0;
   int awayHolds = 0;
   int intentsWin = 0;

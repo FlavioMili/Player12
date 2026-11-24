@@ -257,6 +257,17 @@ struct MatchSample
   int loose_wrong_slower_big = 0;
   int loose_wrong_slower_later = 0;
   int loose_wrong_slower_missed = 0;
+  /** Step P1: the shadow press calls (see MatchStats). */
+  int press_shadow_checks = 0;
+  int press_shadow_agree = 0;
+  int press_shadow_wrong_player = 0;
+  int press_shadow_two_go = 0;
+  int press_shadow_nobody = 0;
+  int press_shadow_with_doubt = 0;
+  int press_wrong_shadow_faster = 0;
+  int press_wrong_near_tie = 0;
+  int press_wrong_slower = 0;
+  int press_wrong_pick_pressing = 0;
   int holds = 0;
   int intents_win = 0;
   int intents_clear = 0;

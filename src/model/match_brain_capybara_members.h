@@ -136,6 +136,24 @@
   void noteLooseCommitCapybara(std::size_t index, std::size_t partner,
                                PreciseMeetCapybara his,
                                PreciseMeetCapybara theirs);
+  /** Step P1 (brain redesign plan section 28): a defender's own call on
+   * pressing the carrier at `at`, by the same rough look as the loose
+   * ball: his time there against the 3 team-mates nearest it. Mine if he
+   * is first; not his if beaten by more than the margin; else in doubt. */
+  [[nodiscard]] LooseCallCapybara pressCallCapybara(const MatchPlayer& player,
+                                                    Vector2F at) const;
+  /** Every outfielder of a side makes his press call; tallied against the
+   * team's pick (stats.pressShadow*). Returns the one who said mine (null
+   * if none or several). Draws nothing, changes nothing. */
+  const MatchPlayer* shadowPressCapybara(bool home, const MatchPlayer& carrier,
+                                         const MatchPlayer* teamPick);
+  /** Diagnosis of a wrong-player press call: his and the team pick's
+   * pursuit times (no eagerness or continuity), and whether the pick was
+   * already pressing. */
+  void tallyWrongPressCallCapybara(float shadowSeconds, float pickSeconds,
+                                   bool pickPressing);
+  /** The brain flow tool's example player: his press call. */
+  void notePressCallCapybara(const MatchPlayer& player, LooseCallCapybara call);
   /** The brain flow tool's example player: his call and, when it is his,
    * where he could meet it. */
   void noteLooseCallCapybara(const MatchPlayer& player,
