@@ -21,6 +21,51 @@
    * way (Notes and plans/match_engine_way_round_plan.md). */
   void planWayRoundCapybara(std::size_t slot);
   void assignMarksCapybara(bool home);
+  /** Facing the ball plan step 1 (Notes and plans/
+   * match_engine_facing_the_ball_plan.md): goal-side of the ball, an
+   * off-ball player faces it, unless his job asks more speed toward its
+   * target than he can manage facing it; then he turns and runs (null: his
+   * body follows his run), and stays turned until it asks under a share of
+   * that. */
+  struct OffBallFacingCapybara
+  {
+    /** The facing asked (null: none, his body follows his run). */
+    std::optional<float> angle;
+    bool goalSide = false;
+    bool turned = false;
+    /** The speed his job asks toward its target, and the most he can
+     * manage that way facing the ball (m/s). */
+    float asked = 0.0F;
+    float cap = 0.0F;
+  };
+  [[nodiscard]] OffBallFacingCapybara offBallFacingCapybara(
+      const MatchPlayer& player, PitchPoint target, Vector2F targetVelocity,
+      PitchPoint ballAt);
+  /** Off-ball jobs whose body faces their run, not the ball (NONE: the
+   * default applies). */
+  enum class OffBallRunCapybara : std::uint8_t
+  {
+    NONE,
+    AERIAL,
+    CHASE,
+    RECEIVE,
+    RUN,
+    TRACKS
+  };
+  static constexpr std::size_t OFF_BALL_RUN_COUNT = 6;
+  [[nodiscard]] OffBallRunCapybara offBallRunCapybara(
+      const MatchPlayer& player, Vector2F targetVelocity, bool challenging,
+      bool looseChase, bool pinned) const;
+  /** Sets his facing request from his job, tallies it (stats.facing*) and
+   * notes it for the brain flow tool. Not for keepers or the carrier. */
+  void planOffBallFacingCapybara(MatchPlayer& player, PitchPoint target,
+                                 Vector2F targetVelocity, PitchPoint ballAt,
+                                 OffBallRunCapybara run);
+  /** Per player (index into players): turned to run from facing the ball. */
+  std::vector<std::uint8_t> facingTurnedCapybara;
+  /** The brain flow tool: why the example player faces as he does. */
+  void noteOffBallFacingCapybara(const MatchPlayer& player, const char* why,
+                                 const OffBallFacingCapybara& facing);
   /** A loose ball's projected path, one point per tick. */
   struct LoosePathPointCapybara
   {

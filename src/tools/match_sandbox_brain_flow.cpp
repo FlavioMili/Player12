@@ -1142,7 +1142,12 @@ constexpr std::array<Situation, 20> SITUATIONS = {{
          "recover. Stopgap pick in today's order (follow-up: measures). "
          "Shadow (step O6): each player's own call (mine, in doubt, not "
          "mine) and where he could meet it, tallied against the team's "
-         "pick; it changes nothing yet. Routing: planWayRound, planOvertake",
+         "pick; it changes nothing yet. Routing: planWayRound, planOvertake. "
+         "Body (facing plan step 1): goal-side of the ball he faces it; a "
+         "run or sprint job turns him to run when it asks more than he "
+         "manages facing it (back to facing under 80%); a chase, a run, a "
+         "pass to receive, a high ball or a runner he tracks faces its run. "
+         "Keepers: not changed",
      .layers = SLIDERS | ROLE | ORDERS | MOOD,
      .plannerWide = true,
      .onFrame = false,
@@ -1162,7 +1167,12 @@ constexpr std::array<Situation, 20> SITUATIONS = {{
      .decidedBy =
          "its own off-ball frame (step O3): chase it (the first presser: an "
          "interception), cover the chase, tight mark, recover in transition, "
-         "hold shape. Stopgap pick in today's order (follow-up: measures)",
+         "hold shape. Stopgap pick in today's order (follow-up: measures). "
+         "Body (facing plan step 1): goal-side of the ball he faces it; a "
+         "run or sprint job turns him to run when it asks more than he "
+         "manages facing it (back to facing under 80%); a chase, a run, a "
+         "pass to receive, a high ball or a runner he tracks faces its run. "
+         "Keepers: not changed",
      .layers = SLIDERS | ROLE | ORDERS | MOOD,
      .plannerWide = true,
      .onFrame = false,
@@ -1202,7 +1212,12 @@ constexpr std::array<Situation, 20> SITUATIONS = {{
          "pressing the carrier (mine, in doubt, not mine), by the loose "
          "ball's rough look against the 3 team-mates nearest him; first to "
          "commit on it (step P3: the loose ball's stage; a new carrier is a "
-         "fresh call, a loose-ball commitment carries over)",
+         "fresh call, a loose-ball commitment carries over). "
+         "Body (facing plan step 1): goal-side of the ball he faces it; a "
+         "run or sprint job turns him to run when it asks more than he "
+         "manages facing it (back to facing under 80%); a chase, a run, a "
+         "pass to receive, a high ball or a runner he tracks faces its run. "
+         "Keepers: not changed",
      .layers = SLIDERS | ROLE | ORDERS | MOOD,
      .plannerWide = true,
      .onFrame = false,
@@ -1993,6 +2008,23 @@ void BrainFlowScene::offBallStage()
   if (offBall.overriddenBy != nullptr)
   {
     text(std::format("Overridden: {}", offBall.overriddenBy), WARNING);
+  }
+  if (offBall.facing != nullptr)
+  {
+    // Facing the ball plan step 1: his body, and the backpedal-or-turn
+    // check when he is goal-side of the ball.
+    text(std::format("Body: {}", offBall.facing), SandboxPageUI::CREAM);
+    if (offBall.facingChecked)
+    {
+      muted(std::format(
+          "Goal-side of the ball: his job asks {:.1f} m/s; facing the ball "
+          "he can manage {:.1f} m/s that way. {}",
+          offBall.facingAsked, offBall.facingCap,
+          offBall.facingTurned
+              ? "Turned: he faces it again under 80% of that."
+              : "A run or sprint job turns him above it; a walk or jog job "
+                "keeps him facing it."));
+    }
   }
   pressShadow(offBall);
   looseShadow(offBall);

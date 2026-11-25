@@ -2364,10 +2364,29 @@ void MatchEngine::refreshTacticalTargetsCapybara(float dt, bool planHome)
     player.tacticalTarget = target;
     player.targetVelocity = targetVelocity;
     player.urgentMovement = urgentTarget;
-    // No route planning yet (overtakes are added after), and no body
-    // orientation asked: he heads straight for it, his body following.
+    // No route planning yet (overtakes are added after). His body (facing
+    // the ball plan step 1): a run, a chase, a pass to receive, a man he
+    // tracks at a run, or ahead of the ball, and his body follows his run;
+    // otherwise, goal-side of the ball, he faces it while he can keep up
+    // with his job that way.
     player.routeWaypoints = 0;
-    player.facingRequested = false;
+    if (!goalkeeper && &player != carrier)
+    {
+      planOffBallFacingCapybara(
+          player, target, targetVelocity, pressurePosition,
+          offBallRunCapybara(player, targetVelocity, challenging, looseChase,
+                             pinned));
+    }
+    else
+    {
+      // Keepers (their own state machine) and the carrier: not asked, and
+      // not left turned for when he is next off the ball.
+      player.facingRequested = false;
+      if (!facingTurnedCapybara.empty())
+      {
+        facingTurnedCapybara.at(playerIndexCapybara(player)) = 0;
+      }
+    }
     player.arriveAtSpeed = throughTarget;
     // Chasing the loose ball (on the ground, or up for it), and whether he
     // steers round others on the way: the ground chaser, and a player
@@ -2504,6 +2523,223 @@ void MatchEngine::noteOffBallCapybara(const MatchPlayer& player,
   offBallRecord->offBall.overriddenBy = nullptr;
 }
 
+namespace
+{
+// Facing the ball plan step 1 (the user, 2026-11-25; a design choice, not
+// researched): turned to run, he faces the ball again once his job asks
+// under this share of what he can manage facing it, so he doesn't flick
+// between the two.
+constexpr float FACING_RETURN_SHARE = 0.8F;
+}  // namespace
+
+MatchEngine::OffBallFacingCapybara MatchEngine::offBallFacingCapybara(
+    const MatchPlayer& player, PitchPoint target, Vector2F targetVelocity,
+    PitchPoint ballAt)
+{
+  if (facingTurnedCapybara.size() != players.size())
+  {
+    facingTurnedCapybara.assign(players.size(), 0);
+  }
+  std::uint8_t& turned = facingTurnedCapybara.at(playerIndexCapybara(player));
+  OffBallFacingCapybara result;
+  const Vector2F toBall = ballAt - player.position;
+  const float ballMetres = length(toBall);
+  result.goalSide = pitch.fromOwnGoalLine(player.position, player.isHomeTeam) <
+                    pitch.fromOwnGoalLine(ballAt, player.isHomeTeam);
+  if (!result.goalSide || ballMetres <= EPSILON)
+  {
+    turned = 0;
+    return result;
+  }
+  // The speed his job asks: what his job's movement mode asks at this
+  // distance (the body's modeTargetSpeed), held to what he can stop in at
+  // the body's arrival deceleration (its floor), toward his target, plus
+  // the target's own movement (as the body follows a moving target).
+  const MovementStyle& style = movementStyle(player.isHomeTeam);
+  const auto mode =
+      style.intentModes.at(static_cast<std::size_t>(player.intent));
+  const SpeedBandInputs inputs = speedBandInputs(player);
+  const SpeedBandTops bands =
+      speedBandTops(inputs.transition, inputs.critical, inputs.top);
+  const std::array<float, 4> tops{bands.walk, bands.jog, bands.run, inputs.top};
+  const Vector2F toTarget = target - player.position;
+  const float remaining = length(toTarget);
+  const float closing =
+      remaining > EPSILON
+          ? std::min(
+                modeTargetSpeed(mode, remaining, style.jogRampMetres, tops),
+                std::sqrt(2.0F * MatchTuning::Player::ARRIVAL_DECELERATION *
+                          remaining))
+          : 0.0F;
+  const float share = remaining > EPSILON ? closing / remaining : 0.0F;
+  const Vector2F wanted{.x = targetVelocity.x + (toTarget.x * share),
+                        .y = targetVelocity.y + (toTarget.y * share)};
+  result.asked = length(wanted);
+  // The most he can manage that way facing the ball: the body's direction
+  // speeds (forward, diagonal, sideways, back) at the angle between his
+  // way and the ball, blended as the body blends them.
+  using P = MatchTuning::Player;
+  const float alignment =
+      result.asked > EPSILON
+          ? std::clamp(((wanted.x * toBall.x) + (wanted.y * toBall.y)) /
+                           (result.asked * ballMetres),
+                       -1.0F, 1.0F)
+          : 1.0F;
+  const DirectionMix mix = directionMix(std::acos(alignment));
+  const auto directionCap = [&](std::size_t direction)
+  {
+    return P::DIRECTION_SPEED_SHARE.at(direction) *
+           tops.at(
+               static_cast<std::size_t>(P::DIRECTION_TOP_BAND.at(direction)));
+  };
+  result.cap =
+      directionCap(mix.below) +
+      ((directionCap(mix.below + 1) - directionCap(mix.below)) * mix.onward);
+  // Only an urgent job turns him (the user, 2026-11-25, option A): on a
+  // walk or jog job he keeps facing the ball and takes the slower speed
+  // (shuffling back into shape); a run or sprint job turns him when it asks
+  // more than he can manage facing it.
+  const bool urgent = mode == MovementMode::RUN || mode == MovementMode::SPRINT;
+  turned = static_cast<std::uint8_t>(
+      urgent && (turned != 0 ? result.asked >= FACING_RETURN_SHARE * result.cap
+                             : result.asked > result.cap));
+  result.turned = turned != 0;
+  if (!result.turned)
+  {
+    result.angle = std::atan2(toBall.y, toBall.x);
+  }
+  return result;
+}
+
+MatchEngine::OffBallRunCapybara MatchEngine::offBallRunCapybara(
+    const MatchPlayer& player, Vector2F targetVelocity, bool challenging,
+    bool looseChase, bool pinned) const
+{
+  using R = OffBallRunCapybara;
+  if (challenging)
+  {
+    return R::AERIAL;
+  }
+  if (looseChase || player.intent == PlayerIntent::CLAIM_LOOSE_BALL)
+  {
+    return R::CHASE;
+  }
+  if (player.intent == PlayerIntent::RECEIVE_PASS)
+  {
+    return R::RECEIVE;
+  }
+  if (player.isMakingRun)
+  {
+    return R::RUN;
+  }
+  // Tracking a runner: tight on his man while the man runs (over a jog).
+  const float jogTop =
+      speedBandFrom(MovementMode::JOG, speedBandInputs(player)).high;
+  if (player.intent == PlayerIntent::MARK_OPPONENT && pinned &&
+      length(targetVelocity) > jogTop)
+  {
+    return R::TRACKS;
+  }
+  return R::NONE;
+}
+
+void MatchEngine::planOffBallFacingCapybara(MatchPlayer& player,
+                                            PitchPoint target,
+                                            Vector2F targetVelocity,
+                                            PitchPoint ballAt,
+                                            OffBallRunCapybara run)
+{
+  using R = OffBallRunCapybara;
+  OffBallFacingCapybara facing;
+  if (run == R::NONE)
+  {
+    facing = offBallFacingCapybara(player, target, targetVelocity, ballAt);
+  }
+  else
+  {
+    facing.goalSide =
+        pitch.fromOwnGoalLine(player.position, player.isHomeTeam) <
+        pitch.fromOwnGoalLine(ballAt, player.isHomeTeam);
+    if (!facingTurnedCapybara.empty())
+    {
+      facingTurnedCapybara.at(playerIndexCapybara(player)) = 0;
+    }
+  }
+  player.facingRequested = facing.angle.has_value();
+  player.facingRequest = facing.angle.value_or(0.0F);
+  // The lab's tallies (facing_*), goal-side of the ball only.
+  if (facing.goalSide)
+  {
+    ++stats.facingGoalSide;
+    switch (run)
+    {
+      case R::NONE:
+        stats.facingFaces += facing.angle.has_value() ? 1 : 0;
+        stats.facingTurned += facing.turned ? 1 : 0;
+        stats.facingTurnedPressing +=
+            facing.turned && player.intent == PlayerIntent::PRESS_BALL ? 1 : 0;
+        break;
+      case R::AERIAL:
+        ++stats.facingAerial;
+        break;
+      case R::CHASE:
+        ++stats.facingChase;
+        break;
+      case R::RECEIVE:
+        ++stats.facingReceive;
+        break;
+      case R::RUN:
+        ++stats.facingRun;
+        break;
+      case R::TRACKS:
+        ++stats.facingTracks;
+        break;
+    }
+  }
+  static constexpr std::array<const char*, OFF_BALL_RUN_COUNT> RUN_NAMES{
+      "",
+      "going up for the high ball",
+      "chasing the loose ball",
+      "receiving a pass",
+      "making a run",
+      "tracking a runner (his man over a jog)"};
+  const char* why = RUN_NAMES.at(static_cast<std::size_t>(run));
+  if (run == R::NONE)
+  {
+    if (facing.angle.has_value())
+    {
+      why = "facing the ball";
+    }
+    else if (facing.turned)
+    {
+      why =
+          "turned to run (his run job asks more speed than he has facing "
+          "the ball)";
+    }
+    else
+    {
+      why = "ahead of the ball (his run)";
+    }
+  }
+  noteOffBallFacingCapybara(player, why, facing);
+}
+
+void MatchEngine::noteOffBallFacingCapybara(const MatchPlayer& player,
+                                            const char* why,
+                                            const OffBallFacingCapybara& facing)
+{
+  if (offBallRecord == nullptr || player.player == nullptr ||
+      player.player->getId() != offBallRecord->offBall.player)
+  {
+    return;
+  }
+  offBallRecord->offBall.facing = why;
+  offBallRecord->offBall.facingChecked = facing.goalSide;
+  offBallRecord->offBall.facingAsked = facing.asked;
+  offBallRecord->offBall.facingCap = facing.cap;
+  offBallRecord->offBall.facingTurned = facing.turned;
+}
+
 bool MatchEngine::brainFlowOffBallCapybara(const MatchScenario& scenario,
                                            float matchMinute, int homeGoals,
                                            int awayGoals,
@@ -2511,6 +2747,8 @@ bool MatchEngine::brainFlowOffBallCapybara(const MatchScenario& scenario,
 {
   record.offBall.filled = false;
   record.offBall.pressCall = nullptr;
+  record.offBall.facing = nullptr;
+  record.offBall.facingChecked = false;
   record.offBall.looseCall = nullptr;
   record.offBall.meetPoints.clear();
   record.offBall.commit.reset();

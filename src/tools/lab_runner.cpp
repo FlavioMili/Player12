@@ -317,6 +317,15 @@ void extractEngine(MatchSample& sample, const MatchEngine& engine)
   sample.shot_leg_outcomes = stats.shotLegOutcomes;
   sample.go_ins = stats.homeGoIns + stats.awayGoIns;
   sample.go_ins_free_foot = stats.goInsOnFreeFoot;
+  sample.facing_goal_side = stats.facingGoalSide;
+  sample.facing_faces = stats.facingFaces;
+  sample.facing_turned = stats.facingTurned;
+  sample.facing_turned_pressing = stats.facingTurnedPressing;
+  sample.facing_chase = stats.facingChase;
+  sample.facing_receive = stats.facingReceive;
+  sample.facing_run = stats.facingRun;
+  sample.facing_tracks = stats.facingTracks;
+  sample.facing_aerial = stats.facingAerial;
   sample.loose_shadow_checks = stats.looseShadowChecks;
   sample.loose_shadow_agree = stats.looseShadowAgree;
   sample.loose_shadow_wrong_player = stats.looseShadowWrongPlayer;
@@ -1331,6 +1340,32 @@ std::map<std::string, Estimate> matchMetrics(
   metrics["go_ins_free_foot_share"] = ratioEstimate(
       column([](const MatchSample& s) { return s.go_ins_free_foot; }),
       column([](const MatchSample& s) { return s.go_ins; }));
+  const std::vector<double> facingChecks =
+      column([](const MatchSample& s) { return s.facing_goal_side; });
+  metrics["facing_goal_side_per_match"] = meanEstimate(facingChecks);
+  metrics["facing_faces_share"] =
+      ratioEstimate(column([](const MatchSample& s) { return s.facing_faces; }),
+                    facingChecks);
+  metrics["facing_turned_share"] = ratioEstimate(
+      column([](const MatchSample& s) { return s.facing_turned; }),
+      facingChecks);
+  metrics["facing_turned_pressing_share"] = ratioEstimate(
+      column([](const MatchSample& s) { return s.facing_turned_pressing; }),
+      column([](const MatchSample& s) { return s.facing_turned; }));
+  metrics["facing_chase_share"] =
+      ratioEstimate(column([](const MatchSample& s) { return s.facing_chase; }),
+                    facingChecks);
+  metrics["facing_receive_share"] = ratioEstimate(
+      column([](const MatchSample& s) { return s.facing_receive; }),
+      facingChecks);
+  metrics["facing_run_share"] = ratioEstimate(
+      column([](const MatchSample& s) { return s.facing_run; }), facingChecks);
+  metrics["facing_tracks_share"] = ratioEstimate(
+      column([](const MatchSample& s) { return s.facing_tracks; }),
+      facingChecks);
+  metrics["facing_aerial_share"] = ratioEstimate(
+      column([](const MatchSample& s) { return s.facing_aerial; }),
+      facingChecks);
   const std::vector<double> looseChecks =
       column([](const MatchSample& s) { return s.loose_shadow_checks; });
   metrics["loose_shadow_checks_per_match"] = meanEstimate(looseChecks);

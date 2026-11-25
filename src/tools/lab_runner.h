@@ -236,6 +236,16 @@ struct MatchSample
    * the carrier's free foot, steps held, and the intents chosen. */
   int go_ins = 0;
   int go_ins_free_foot = 0;
+  /** Facing the ball plan step 1 (see MatchStats). */
+  int facing_goal_side = 0;
+  int facing_faces = 0;
+  int facing_turned = 0;
+  int facing_turned_pressing = 0;
+  int facing_chase = 0;
+  int facing_receive = 0;
+  int facing_run = 0;
+  int facing_tracks = 0;
+  int facing_aerial = 0;
   /** Step O6: the shadow loose-ball calls (see MatchStats). */
   int loose_shadow_checks = 0;
   int loose_shadow_agree = 0;

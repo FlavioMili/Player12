@@ -1818,6 +1818,19 @@ struct MatchStats
    * the one "mine" is the team's pick, is someone else, nobody says mine
    * (none in doubt), nobody says mine but some chase in doubt, two or more
    * say mine. Per player: calls, and those judged at a later point. */
+  /** Facing the ball plan step 1: Capybara plans of outfield players off
+   * the ball and goal-side of it; those facing it, those turned to run
+   * (and of them, pressing), and those whose job faces its run (chasing,
+   * receiving, making a run, tracking a runner, up for a high ball). */
+  int facingGoalSide = 0;
+  int facingFaces = 0;
+  int facingTurned = 0;
+  int facingTurnedPressing = 0;
+  int facingChase = 0;
+  int facingReceive = 0;
+  int facingRun = 0;
+  int facingTracks = 0;
+  int facingAerial = 0;
   int looseShadowChecks = 0;
   int looseShadowAgree = 0;
   int looseShadowWrongPlayer = 0;

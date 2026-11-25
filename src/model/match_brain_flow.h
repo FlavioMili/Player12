@@ -140,6 +140,14 @@ struct OffBallRecord
   std::size_t chosen = 0;
   /** What overrode the pick (null for nothing). */
   const char* overriddenBy = nullptr;
+  /** Facing the ball plan step 1: why his body faces as it does (null:
+   * not recorded); when goal-side, the speed his job asks and the most he
+   * can manage that way facing the ball (m/s), and whether he turned. */
+  const char* facing = nullptr;
+  bool facingChecked = false;
+  float facingAsked = 0.0F;
+  float facingCap = 0.0F;
+  bool facingTurned = false;
   PitchPoint target{};
   bool filled = false;
   /** Step P1 (shadow): his own call on pressing the carrier (null when
