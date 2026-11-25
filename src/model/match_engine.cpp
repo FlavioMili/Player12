@@ -2350,8 +2350,181 @@ void MatchEngine::updateTeamPhases()
   setTransitionPhases(*getPossessionHistory().lastControlledTeamHome);
 }
 
+namespace
+{
+// Run-ats (facing the ball plan §4c; measured, our estimates): a carrier
+// within this distance of the nearest outfield opponent goal-side of him
+// (Yamazaki et al. 2026: one-on-ones start at a median 8.4 m), running
+// toward the goal faster than this.
+constexpr float RUN_AT_START_METRES = 8.0F;
+constexpr float RUN_AT_TOWARD_GOAL_SPEED = 2.0F;
+}  // namespace
+
+void MatchEngine::endRunAt(bool attackingHome, RunAtEnd end, float shotXG)
+{
+  RunAtTrack& track = runAtTracks.at(attackingHome ? 0 : 1);
+  if (!track.active)
+  {
+    return;
+  }
+  track.active = false;
+  const MatchPlayer& defender = players.at(track.defender);
+  ++stats.runAts;
+  stats.runAtSeconds += getSimulatedSeconds() - track.startSeconds;
+  stats.runAtGroundGiven +=
+      std::max(0.0F, track.defenderStartDepth -
+                         pitch.fromOwnGoalLine(defender.position,
+                                               defender.isHomeTeam));
+  stats.runAtStartXG += track.startXG;
+  stats.runAtBestXG += track.bestXG;
+  stats.runAtPast += track.gotPast ? 1 : 0;
+  switch (end)
+  {
+    case RunAtEnd::SHOT:
+    {
+      ++stats.runAtShots;
+      stats.runAtShotXG += shotXG;
+      const MatchPlayer* shooter = findMatchPlayer(track.carrier);
+      if (shooter != nullptr &&
+          pitch.fromOwnGoalLine(defender.position, defender.isHomeTeam) <
+              pitch.fromOwnGoalLine(shooter->position, defender.isHomeTeam))
+      {
+        ++stats.runAtShotsDefenderGoalSide;
+      }
+      break;
+    }
+    case RunAtEnd::PASS:
+      ++stats.runAtPasses;
+      break;
+    case RunAtEnd::WON:
+      ++stats.runAtWon;
+      break;
+    case RunAtEnd::OTHER:
+      ++stats.runAtOther;
+      break;
+  }
+}
+
+void MatchEngine::noteRunAtShot(const MatchPlayer& shooter, float xg)
+{
+  const RunAtTrack& track = runAtTracks.at(shooter.isHomeTeam ? 0 : 1);
+  if (track.active && shooter.player == track.carrier)
+  {
+    endRunAt(shooter.isHomeTeam, RunAtEnd::SHOT, xg);
+  }
+}
+
+void MatchEngine::noteRunAtPass(const MatchPlayer& passer)
+{
+  const RunAtTrack& track = runAtTracks.at(passer.isHomeTeam ? 0 : 1);
+  if (track.active && passer.player == track.carrier)
+  {
+    endRunAt(passer.isHomeTeam, RunAtEnd::PASS);
+  }
+}
+
+void MatchEngine::trackRunAts()
+{
+  // A stoppage since the last step ends any run-at.
+  if (stepCounter != lastRunAtStep + stepTicks)
+  {
+    endRunAt(true, RunAtEnd::OTHER);
+    endRunAt(false, RunAtEnd::OTHER);
+  }
+  lastRunAtStep = stepCounter;
+  const MatchPlayer* carrier = findMatchPlayer(getPossessionAttachment());
+  for (const bool attackingHome : {true, false})
+  {
+    RunAtTrack& track = runAtTracks.at(attackingHome ? 0 : 1);
+    if (!track.active)
+    {
+      continue;
+    }
+    const MatchPlayer& defender = players.at(track.defender);
+    if (carrier == nullptr)
+    {
+      track.loose = true;
+      continue;
+    }
+    if (carrier->player != track.carrier)
+    {
+      endRunAt(attackingHome, carrier->isHomeTeam != attackingHome
+                                  ? RunAtEnd::WON
+                                  : RunAtEnd::OTHER);
+      continue;
+    }
+    track.loose = false;
+    track.bestXG =
+        std::max(track.bestXG, gameShotXGCapybara(*carrier, carrier->position));
+    if (pitch.fromOwnGoalLine(carrier->position, defender.isHomeTeam) <
+        pitch.fromOwnGoalLine(defender.position, defender.isHomeTeam))
+    {
+      track.gotPast = true;
+    }
+  }
+  if (carrier != nullptr && carrier->player != nullptr &&
+      !runAtTracks.at(carrier->isHomeTeam ? 0 : 1).active)
+  {
+    startRunAt(*carrier);
+  }
+}
+
+void MatchEngine::startRunAt(const MatchPlayer& carrierPlayer)
+{
+  // A new run-at: a carrier heading for goal with the nearest outfield
+  // opponent goal-side of him and close.
+  const MatchPlayer* carrier = &carrierPlayer;
+  const bool attackingHome = carrier->isHomeTeam;
+  const float towardGoal = carrier->velocity.x * (attackingHome ? 1.0F : -1.0F);
+  if (towardGoal <= RUN_AT_TOWARD_GOAL_SPEED)
+  {
+    return;
+  }
+  std::size_t nearest = players.size();
+  float nearestMetres = RUN_AT_START_METRES;
+  for (std::size_t slot = 0; slot < players.size(); ++slot)
+  {
+    const MatchPlayer& candidate = players.at(slot);
+    if (candidate.isHomeTeam == attackingHome || candidate.isGoalkeeper ||
+        !active(candidate))
+    {
+      continue;
+    }
+    const float metres = distance(candidate.position, carrier->position);
+    if (metres < nearestMetres)
+    {
+      nearest = slot;
+      nearestMetres = metres;
+    }
+  }
+  if (nearest == players.size())
+  {
+    return;
+  }
+  const MatchPlayer& defender = players.at(nearest);
+  const float defenderDepth =
+      pitch.fromOwnGoalLine(defender.position, defender.isHomeTeam);
+  if (defenderDepth >=
+      pitch.fromOwnGoalLine(carrier->position, defender.isHomeTeam))
+  {
+    return;
+  }
+  const float startXG = gameShotXGCapybara(*carrier, carrier->position);
+  runAtTracks.at(attackingHome ? 0 : 1) =
+      RunAtTrack{.active = true,
+                 .carrier = carrier->player,
+                 .defender = nearest,
+                 .startSeconds = getSimulatedSeconds(),
+                 .defenderStartDepth = defenderDepth,
+                 .startXG = startXG,
+                 .bestXG = startXG,
+                 .gotPast = false,
+                 .loose = false};
+}
+
 void MatchEngine::updateMovement(float dt)
 {
+  trackRunAts();
   // Jitter is observed over unbroken open play: a stoppage starts afresh.
   if (stepCounter != lastJitterStep + stepTicks)
   {
@@ -4258,6 +4431,7 @@ void MatchEngine::takeShot(MatchPlayer& shooter, float forcedXG, bool header,
   const bool penalty = state == MatchState::PENALTY;
   const float xg =
       strikeShot(shooter, forcedXG, header, penalty, freeKick, aim);
+  noteRunAtShot(shooter, xg);
 
   PlayerMatchStats& shooterStats = statsOf(shooter);
   ++shooterStats.shots;

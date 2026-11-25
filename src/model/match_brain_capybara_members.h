@@ -106,6 +106,31 @@
   [[nodiscard]] static LooseCallCapybara judgeLooseCallCapybara(
       float mine, float bestRival);
   /** Straight-line metres over his top speed, his reach taken off. */
+  /** The press squeeze (facing the ball plan §4c): how far he closes the
+   * stand-off (0 to 1) and why (null: no squeeze); the stand-off before
+   * and after (m). */
+  struct PressSqueezeCapybara
+  {
+    float share = 0.0F;
+    const char* why = nullptr;
+    float usualMetres = 0.0F;
+    float squeezedMetres = 0.0F;
+  };
+  [[nodiscard]] PressSqueezeCapybara
+  pressSqueezeCapybara(const MatchPlayer& presser,
+                       const MatchPlayer& carrier) const;
+  void noteSqueezeCapybara(const MatchPlayer& player,
+                           const PressSqueezeCapybara& squeeze);
+  /** The presser's pounce call (facing the ball plan §4c): whether he
+   * goes, and when he and the carrier can meet the ball (s). */
+  struct PounceCallCapybara
+  {
+    bool pounce = false;
+    float mySeconds = 0.0F;
+    float carrierSeconds = 0.0F;
+  };
+  void notePounceCapybara(const MatchPlayer& player,
+                          const PounceCallCapybara& call);
   [[nodiscard]] float roughSecondsCapybara(const MatchPlayer& player,
                                            Vector2F at) const;
   /** The first point from `from` on he can play and reach in time (else

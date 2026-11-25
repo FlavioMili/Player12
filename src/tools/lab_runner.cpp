@@ -317,6 +317,21 @@ void extractEngine(MatchSample& sample, const MatchEngine& engine)
   sample.shot_leg_outcomes = stats.shotLegOutcomes;
   sample.go_ins = stats.homeGoIns + stats.awayGoIns;
   sample.go_ins_free_foot = stats.goInsOnFreeFoot;
+  sample.run_ats = stats.runAts;
+  sample.run_at_shots = stats.runAtShots;
+  sample.run_at_shots_defender_goal_side = stats.runAtShotsDefenderGoalSide;
+  sample.run_at_passes = stats.runAtPasses;
+  sample.run_at_won = stats.runAtWon;
+  sample.pounces = stats.pounces;
+  sample.press_frames = stats.pressFrames;
+  sample.press_squeezed = stats.pressSqueezed;
+  sample.run_at_other = stats.runAtOther;
+  sample.run_at_past = stats.runAtPast;
+  sample.run_at_shot_xg = stats.runAtShotXG;
+  sample.run_at_seconds = stats.runAtSeconds;
+  sample.run_at_ground_given = stats.runAtGroundGiven;
+  sample.run_at_start_xg = stats.runAtStartXG;
+  sample.run_at_best_xg = stats.runAtBestXG;
   sample.facing_goal_side = stats.facingGoalSide;
   sample.facing_faces = stats.facingFaces;
   sample.facing_turned = stats.facingTurned;
@@ -1368,6 +1383,21 @@ std::map<std::string, Estimate> matchMetrics(
   metrics["go_ins_free_foot_share"] = ratioEstimate(
       column([](const MatchSample& s) { return s.go_ins_free_foot; }),
       column([](const MatchSample& s) { return s.go_ins; }));
+  const std::vector<double> runAts = column([](const MatchSample& s) { return s.run_ats; });
+  metrics["run_ats_per_match"] = meanEstimate(runAts);
+  metrics["press_squeezed_share"] = ratioEstimate(column([](const MatchSample& s) { return s.press_squeezed; }), column([](const MatchSample& s) { return s.press_frames; }));
+  metrics["pounces_per_match"] = meanEstimate(column([](const MatchSample& s) { return s.pounces; }));
+  metrics["run_at_shot_share"] = ratioEstimate(column([](const MatchSample& s) { return s.run_at_shots; }), runAts);
+  metrics["run_at_pass_share"] = ratioEstimate(column([](const MatchSample& s) { return s.run_at_passes; }), runAts);
+  metrics["run_at_won_share"] = ratioEstimate(column([](const MatchSample& s) { return s.run_at_won; }), runAts);
+  metrics["run_at_other_share"] = ratioEstimate(column([](const MatchSample& s) { return s.run_at_other; }), runAts);
+  metrics["run_at_past_share"] = ratioEstimate(column([](const MatchSample& s) { return s.run_at_past; }), runAts);
+  metrics["run_at_shot_goal_side_share"] = ratioEstimate(column([](const MatchSample& s) { return s.run_at_shots_defender_goal_side; }), column([](const MatchSample& s) { return s.run_at_shots; }));
+  metrics["run_at_shot_xg_mean"] = ratioEstimate(column([](const MatchSample& s) { return s.run_at_shot_xg; }), column([](const MatchSample& s) { return s.run_at_shots; }));
+  metrics["run_at_seconds_mean"] = ratioEstimate(column([](const MatchSample& s) { return s.run_at_seconds; }), runAts);
+  metrics["run_at_ground_given_mean"] = ratioEstimate(column([](const MatchSample& s) { return s.run_at_ground_given; }), runAts);
+  metrics["run_at_start_xg_mean"] = ratioEstimate(column([](const MatchSample& s) { return s.run_at_start_xg; }), runAts);
+  metrics["run_at_best_xg_mean"] = ratioEstimate(column([](const MatchSample& s) { return s.run_at_best_xg; }), runAts);
   const std::vector<double> facingChecks =
       column([](const MatchSample& s) { return s.facing_goal_side; });
   metrics["facing_goal_side_per_match"] = meanEstimate(facingChecks);

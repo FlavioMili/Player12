@@ -2087,6 +2087,32 @@ void BrainFlowScene::looseCommit(const BrainFlow::OffBallRecord& offBall) const
 
 void BrainFlowScene::pressShadow(const BrainFlow::OffBallRecord& offBall)
 {
+  if (offBall.pounce != nullptr)
+  {
+    // Facing the ball plan §4c: the presser, with the touch out of the
+    // carrier's reach.
+    text(std::format("The pounce: he {}.", offBall.pounce),
+         SandboxPageUI::LIME);
+    muted(std::format(
+        "He meets it in {:.2f} s, the carrier in {:.2f} s (the same rough "
+        "meet for both: top speed along the ball's roll). He goes for it when "
+        "he gets there no later than the carrier.",
+        offBall.pounceSeconds, offBall.pounceCarrierSeconds));
+  }
+  if (offBall.squeeze != nullptr)
+  {
+    // Facing the ball plan §4c: the press squeeze.
+    text(std::format("The squeeze ({:.0f}%): {}.",
+                     offBall.squeezeShare * 100.0F, offBall.squeeze),
+         SandboxPageUI::LIME);
+    muted(std::format(
+        "Stand-off {:.1f} m closed to {:.1f} m. Strongest of: the carrier "
+        "slowing (2 to 0.5 m/s toward goal), pinned (8 to 3 m off the "
+        "touchline), cover (a team-mate goal-side within 8 m of him), his "
+        "game xG (0.05 to 0.2); full squeeze 0.5 m (ours, aggressive, to back "
+        "off).",
+        offBall.squeezeFrom, offBall.squeezeTo));
+  }
   if (offBall.pressCall == nullptr)
   {
     return;

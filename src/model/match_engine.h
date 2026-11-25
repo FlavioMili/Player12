@@ -1822,6 +1822,32 @@ struct MatchStats
    * the ball and goal-side of it; those facing it, those turned to run
    * (and of them, pressing), and those whose job faces its run (chasing,
    * receiving, making a run, tracking a runner, up for a high ball). */
+  /** Facing the ball plan §4c (measured): run-ats (a carrier running at
+   * the nearest outfield opponent goal-side of him, within 8 m, at over
+   * 2 m/s toward goal), and how each ended: a shot (its xG summed, and
+   * those with the defender still goal-side), a pass, the defenders
+   * winning it, or anything else; those where he got past (nearer the goal
+   * than the defender) at some point; and over all of them, the seconds,
+   * the metres the defender gave up toward his goal, and the carrier's
+   * game xG at the start and at its best. */
+  int runAts = 0;
+  /** Facing the ball plan §4c: pounces (the presser going for the ball's
+   * meeting point once it is out of the carrier's reach). */
+  int pounces = 0;
+  /** Press frames, and those squeezed at least halfway. */
+  int pressFrames = 0;
+  int pressSqueezed = 0;
+  int runAtShots = 0;
+  int runAtShotsDefenderGoalSide = 0;
+  double runAtShotXG = 0.0;
+  int runAtPasses = 0;
+  int runAtWon = 0;
+  int runAtOther = 0;
+  int runAtPast = 0;
+  double runAtSeconds = 0.0;
+  double runAtGroundGiven = 0.0;
+  double runAtStartXG = 0.0;
+  double runAtBestXG = 0.0;
   int facingGoalSide = 0;
   int facingFaces = 0;
   int facingTurned = 0;
@@ -3949,6 +3975,40 @@ class MatchEngine
   };
   std::array<JitterTrack, 32> jitterTracks{};
   std::uint64_t lastJitterStep = 0;
+  /** Run-ats (facing the ball plan §4c, measured only): a carrier running
+   * at the nearest outfield opponent goal-side of him, from the start to
+   * the end of his possession. One per attacking side (index 0 home). */
+  struct RunAtTrack
+  {
+    bool active = false;
+    const Player* carrier = nullptr;
+    std::size_t defender = 0;
+    double startSeconds = 0.0;
+    /** The defender's metres from his own goal line at the start. */
+    float defenderStartDepth = 0.0F;
+    float startXG = 0.0F;
+    float bestXG = 0.0F;
+    bool gotPast = false;
+    /** The ball is loose from his touch: who next has it decides. */
+    bool loose = false;
+  };
+  std::array<RunAtTrack, 2> runAtTracks{};
+  std::uint64_t lastRunAtStep = 0;
+  enum class RunAtEnd : std::uint8_t
+  {
+    SHOT,
+    PASS,
+    WON,
+    OTHER
+  };
+  /** Each open-play step: starts, follows and ends the run-ats. */
+  void trackRunAts();
+  void startRunAt(const MatchPlayer& carrierPlayer);
+  /** Ends a side's run-at, tallying it (stats.runAt*). */
+  void endRunAt(bool attackingHome, RunAtEnd end, float shotXG = 0.0F);
+  /** A shot or pass by the carrier of a run-at ends it. */
+  void noteRunAtShot(const MatchPlayer& shooter, float xg);
+  void noteRunAtPass(const MatchPlayer& passer);
   std::array<std::uint8_t, 32> separationOrder{};
   std::size_t separationCount = 0;
   /** Positions after the last separation pass and whether it found no

@@ -104,6 +104,22 @@ constexpr float OVERTAKE_OPPONENT_CLEARANCE_METRES =
 constexpr float OVERTAKE_TEAM_MATE_CLEARANCE_METRES =
     MatchTuning::Collision::OVERTAKE_TEAM_MATE_CLEARANCE_METRES;
 constexpr float OVERTAKE_HORIZON_SECONDS = 3.0F;
+
+// The press squeeze (facing the ball plan §4c). Ours, no research,
+// aggressive to start (the user, 2026-11-25): the closest stand-off (m);
+// the carrier's speed toward goal still driving and stalled (m/s); metres
+// off the touchline free and pinned; how near a covering team-mate (m);
+// the carrier's game xG with no squeeze and a full one; the share counted
+// as squeezed in the stats.
+constexpr float SQUEEZE_STAND_OFF_METRES = 0.5F;
+constexpr float SQUEEZE_DRIVING_SPEED = 2.0F;
+constexpr float SQUEEZE_STALLED_SPEED = 0.5F;
+constexpr float SQUEEZE_TOUCHLINE_FREE_METRES = 8.0F;
+constexpr float SQUEEZE_TOUCHLINE_PINNED_METRES = 3.0F;
+constexpr float SQUEEZE_COVER_METRES = 8.0F;
+constexpr float SQUEEZE_XG_NONE = 0.05F;
+constexpr float SQUEEZE_XG_FULL = 0.2F;
+constexpr float SQUEEZE_COUNTED_SHARE = 0.5F;
 constexpr float OVERTAKE_SAME_TARGET_METRES = 2.0F;
 constexpr float OVERTAKE_SAME_DIRECTION_COSINE = 0.7071F;
 constexpr float OVERTAKE_STICKY_METRES = 0.5F;
@@ -470,7 +486,13 @@ void MatchEngine::refreshTacticalTargetsCapybara(float dt, bool planHome)
   using PathPoint = LoosePathPointCapybara;
   std::array<PathPoint, LOOSE_BALL_PATH_TICKS + 1> loosePath{};
   std::size_t loosePoints = 0;
-  if (carrier == nullptr)
+  // Facing the ball plan §4c, the pounce: his touch has left the carrier's
+  // reach (the user, 2026-11-25: the trigger to pounce), so the ball's roll
+  // is mapped as for a loose ball, for the presser to meet.
+  const bool touchAway =
+      carrier != nullptr && distance(carrier->position, ball.position) >
+                                MatchTuning::Dribble::KICK_REACH_METRES;
+  if (carrier == nullptr || touchAway)
   {
     const float speed = length(ball.velocity);
     const Vector2F heading = speed > EPSILON
@@ -1913,17 +1935,56 @@ void MatchEngine::refreshTacticalTargetsCapybara(float dt, bool planHome)
       {
         player.intent = PlayerIntent::PRESS_BALL;
         player.isPressing = true;
-        const float standOff =
+        const float usualStandOff =
             (MatchTuning::Shape::PRESSING_STANDOFF_BASE_METRES +
              (1.0F - sliders.pressing) *
                  MatchTuning::Shape::PRESSING_STANDOFF_CAUTIOUS_BONUS_METRES) *
             pressStandOffShareCapybara(player, *carrier);
+        // Facing the ball plan §4c, the squeeze: he closes the stand-off
+        // when the moment is his (aggressive to start, the user).
+        PressSqueezeCapybara squeeze = pressSqueezeCapybara(player, *carrier);
+        const float standOff =
+            usualStandOff +
+            ((std::min(usualStandOff, SQUEEZE_STAND_OFF_METRES) -
+              usualStandOff) *
+             squeeze.share);
+        squeeze.usualMetres = usualStandOff;
+        squeeze.squeezedMetres = standOff;
+        ++stats.pressFrames;
+        if (squeeze.share >= SQUEEZE_COUNTED_SHARE)
+        {
+          ++stats.pressSqueezed;
+        }
+        noteSqueezeCapybara(player, squeeze);
         target = pressurePosition;
         target.x -= attackDirection * standOff;
         target.y += weakFootShadeCapybara(*carrier);
         targetVelocity = carrier->velocity;
         pinned = true;
         job = planJob(PlanBranch::PRESS);
+        // The pounce: with the ball out of the carrier's reach, he goes for
+        // where he can meet it on its roll, when he gets there no later
+        // than the carrier (design choice: the same rough meet for both).
+        if (touchAway)
+        {
+          const auto [mySeconds, meet] = interception(player);
+          const float carrierSeconds = interception(*carrier).first;
+          const bool pounce = mySeconds <= carrierSeconds;
+          notePounceCapybara(player, {.pounce = pounce,
+                                      .mySeconds = mySeconds,
+                                      .carrierSeconds = carrierSeconds});
+          if (pounce)
+          {
+            target = clampToPitch(meet);
+            targetVelocity = {.x = 0.0F, .y = 0.0F};
+            pinned = false;
+            job = planJob(PlanBranch::PRESS, 1);
+            if (player.plannedJob != job)
+            {
+              ++stats.pounces;
+            }
+          }
+        }
       }
       else if (theirBallJob == TheirBallJob::DOUBLE_UP)
       {
@@ -2745,6 +2806,24 @@ void MatchEngine::noteOffBallFacingCapybara(const MatchPlayer& player,
   offBallRecord->offBall.facingTurned = facing.turned;
 }
 
+void MatchEngine::notePounceCapybara(const MatchPlayer& player,
+                                     const PounceCallCapybara& call)
+{
+  if (offBallRecord == nullptr || player.player == nullptr ||
+      player.player->getId() != offBallRecord->offBall.player)
+  {
+    return;
+  }
+  offBallRecord->offBall.pounce =
+      call.pounce
+          ? "pounces: the touch is out of the carrier's reach and he meets "
+            "it first"
+          : "holds the press: the touch is out of reach, but the carrier "
+            "meets it first";
+  offBallRecord->offBall.pounceSeconds = call.mySeconds;
+  offBallRecord->offBall.pounceCarrierSeconds = call.carrierSeconds;
+}
+
 bool MatchEngine::brainFlowOffBallCapybara(const MatchScenario& scenario,
                                            float matchMinute, int homeGoals,
                                            int awayGoals,
@@ -2752,6 +2831,8 @@ bool MatchEngine::brainFlowOffBallCapybara(const MatchScenario& scenario,
 {
   record.offBall.filled = false;
   record.offBall.pressCall = nullptr;
+  record.offBall.pounce = nullptr;
+  record.offBall.squeeze = nullptr;
   record.offBall.facing = nullptr;
   record.offBall.facingChecked = false;
   record.offBall.pressSecond = nullptr;
@@ -4976,6 +5057,71 @@ float MatchEngine::pressStandOffShareCapybara(const MatchPlayer& presser,
     share *= TacticsTuning::PRESS_ORDER_STANDOFF_SHARE;
   }
   return std::clamp(share, 0.3F, 1.3F);
+}
+
+MatchEngine::PressSqueezeCapybara MatchEngine::pressSqueezeCapybara(
+    const MatchPlayer& presser, const MatchPlayer& carrier) const
+{
+  // Facing the ball plan §4c: when the presser closes in. Each trigger is a
+  // share (0 to 1) and the strongest wins. All values are ours (no
+  // research), aggressive to start (the user, 2026-11-25): back off with
+  // testing.
+  const auto ramp = [](float value, float none, float full)
+  { return std::clamp((value - none) / (full - none), 0.0F, 1.0F); };
+  PressSqueezeCapybara squeeze{};
+  const auto consider = [&](float share, const char* why)
+  {
+    if (share > squeeze.share)
+    {
+      squeeze.share = share;
+      squeeze.why = why;
+    }
+  };
+  // He slows or checks back: his speed toward goal from 2 m/s down to 0.5.
+  const float towardGoal =
+      carrier.velocity.x * (carrier.isHomeTeam ? 1.0F : -1.0F);
+  consider(ramp(towardGoal, SQUEEZE_DRIVING_SPEED, SQUEEZE_STALLED_SPEED),
+           "the carrier slows or checks back");
+  // Pinned at the touchline: from 8 m off it to 3 m.
+  const float touchline =
+      std::min(carrier.position.y, pitch.atY(1.0F) - carrier.position.y);
+  consider(ramp(touchline, SQUEEZE_TOUCHLINE_FREE_METRES,
+                SQUEEZE_TOUCHLINE_PINNED_METRES),
+           "the carrier is pinned at the touchline");
+  // Cover: another outfield team-mate goal-side of the carrier, near him.
+  const float carrierDepth =
+      pitch.fromOwnGoalLine(carrier.position, presser.isHomeTeam);
+  for (const MatchPlayer& mate : players)
+  {
+    if (&mate != &presser && mate.isHomeTeam == presser.isHomeTeam &&
+        !mate.isGoalkeeper && active(mate) &&
+        pitch.fromOwnGoalLine(mate.position, presser.isHomeTeam) <
+            carrierDepth &&
+        distance(mate.position, carrier.position) <= SQUEEZE_COVER_METRES)
+    {
+      consider(1.0F, "he has cover behind him");
+      break;
+    }
+  }
+  // A shooting chance: the carrier's game xG from 0.05 to 0.2.
+  consider(ramp(gameShotXGCapybara(carrier, carrier.position), SQUEEZE_XG_NONE,
+                SQUEEZE_XG_FULL),
+           "the carrier is in a high-xG position");
+  return squeeze;
+}
+
+void MatchEngine::noteSqueezeCapybara(const MatchPlayer& player,
+                                      const PressSqueezeCapybara& squeeze)
+{
+  if (offBallRecord == nullptr || player.player == nullptr ||
+      player.player->getId() != offBallRecord->offBall.player)
+  {
+    return;
+  }
+  offBallRecord->offBall.squeeze = squeeze.why;
+  offBallRecord->offBall.squeezeShare = squeeze.share;
+  offBallRecord->offBall.squeezeFrom = squeeze.usualMetres;
+  offBallRecord->offBall.squeezeTo = squeeze.squeezedMetres;
 }
 
 float MatchEngine::weakFootShadeCapybara(const MatchPlayer& carrier) const

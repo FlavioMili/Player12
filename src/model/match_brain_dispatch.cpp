@@ -203,6 +203,7 @@ void MatchEngine::planOvertake(std::size_t slot)
 void MatchEngine::afterPassReleased(const MatchPlayer& passer,
                                     const MatchPlayer& receiver)
 {
+  noteRunAtPass(passer);
   switch (brainOf(passer.isHomeTeam))
   {
     case BrainId::AARDVARK:

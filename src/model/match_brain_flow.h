@@ -153,6 +153,18 @@ struct OffBallRecord
   /** Step P1 (shadow): his own call on pressing the carrier (null when
    * none). */
   const char* pressCall = nullptr;
+  /** Facing the ball plan §4c, the pounce (the presser, with the ball out
+   * of the carrier's reach): his call (null when not asked), and when he
+   * and the carrier can meet it (s). */
+  const char* pounce = nullptr;
+  /** The press squeeze: its strongest reason (null: none), how far (0 to
+   * 1), and the stand-off before and after (m). */
+  const char* squeeze = nullptr;
+  float squeezeShare = 0.0F;
+  float squeezeFrom = 0.0F;
+  float squeezeTo = 0.0F;
+  float pounceSeconds = 0.0F;
+  float pounceCarrierSeconds = 0.0F;
   /** Step P4 (shadow): his own call on the second man's job (null when not
    * asked, or the job is closed). */
   const char* pressSecond = nullptr;

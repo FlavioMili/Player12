@@ -237,6 +237,22 @@ struct MatchSample
   int go_ins = 0;
   int go_ins_free_foot = 0;
   /** Facing the ball plan step 1 (see MatchStats). */
+  /** Facing the ball plan §4c: run-ats (see MatchStats). */
+  int run_ats = 0;
+  int run_at_shots = 0;
+  int run_at_shots_defender_goal_side = 0;
+  int run_at_passes = 0;
+  int run_at_won = 0;
+  int pounces = 0;
+  int press_frames = 0;
+  int press_squeezed = 0;
+  int run_at_other = 0;
+  int run_at_past = 0;
+  double run_at_shot_xg = 0.0;
+  double run_at_seconds = 0.0;
+  double run_at_ground_given = 0.0;
+  double run_at_start_xg = 0.0;
+  double run_at_best_xg = 0.0;
   int facing_goal_side = 0;
   int facing_faces = 0;
   int facing_turned = 0;
