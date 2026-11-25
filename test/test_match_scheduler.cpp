@@ -17,6 +17,7 @@
 #include <condition_variable>
 #include <cstdio>
 #include <cstdlib>
+#include <format>
 #include <future>
 #include <iostream>
 #include <limits>
@@ -41,6 +42,7 @@
 #include "model/match.h"
 #include "model/match_engine.h"
 #include "model/match_scheduler.h"
+#include "test_worlds.h"
 
 namespace
 {
@@ -62,12 +64,39 @@ struct SlotCleanup
   SlotCleanup& operator=(const SlotCleanup&) = delete;
 };
 
+/** First day with at least @p minimum fixtures (a full league matchday). */
+std::optional<GameDateValue> firstBusyDay(const GameController& controller,
+                                          std::size_t minimum)
+{
+  for (const auto& [date, matches] :
+       controller.getGame()->getCalendar().getFullCalendar())
+  {
+    if (matches.size() >= minimum) return date;
+  }
+  return std::nullopt;
+}
+
 std::unique_ptr<GameController> makeWorld(int slot)
 {
-  Logger::init();
-  auto controller = std::make_unique<GameController>();
-  controller->newGame(slot, WORLD_SEED);
-  return controller;
+  return TestWorlds::unmanagedWorld(slot, "new", {}, WORLD_SEED);
+}
+
+/**
+ * The world @p daysBefore days before the first full league matchday (the
+ * checkpoint is shared by every test that asks for it).
+ */
+std::unique_ptr<GameController> makeWorldOnBusyDay(int slot, int daysBefore = 0)
+{
+  return TestWorlds::unmanagedWorld(
+      slot, std::format("first-busy-day-minus-{}", daysBefore),
+      [daysBefore](GameController& controller)
+      {
+        const auto day = firstBusyDay(controller, 50);
+        if (!day) return;
+        const GameDateValue target = SeasonCalendar::addDays(*day, -daysBefore);
+        while (controller.getCurrentDate() < target) controller.advanceDay();
+      },
+      WORLD_SEED);
 }
 
 /**
@@ -139,18 +168,6 @@ class ScopedEnv
   const char* name;
   std::optional<std::string> previous;
 };
-
-/** First day with at least @p minimum fixtures (a full league matchday). */
-std::optional<GameDateValue> firstBusyDay(const GameController& controller,
-                                          std::size_t minimum)
-{
-  for (const auto& [date, matches] :
-       controller.getGame()->getCalendar().getFullCalendar())
-  {
-    if (matches.size() >= minimum) return date;
-  }
-  return std::nullopt;
-}
 
 void advanceUntil(GameController& controller, const GameDateValue& date)
 {
@@ -377,6 +394,29 @@ TEST(MatchSchedulerTest, BatchResultsDoNotDependOnTheThreadCount)
   EXPECT_EQ(parallel.getProgress().total, 0U);
 }
 
+// The same check as the full career below, from the day of the first full
+// matchday (one shared checkpoint) through the next fixtures of the first two
+// weeks: friendlies and league rounds, simulated with one and four threads.
+TEST(MatchSchedulerTest, ParallelMatchdaysMatchSequentialMatchdays)
+{
+  const SlotCleanup sequential_slot{uniqueSlot(5)};
+  const SlotCleanup parallel_slot{uniqueSlot(6)};
+  const auto sequential = makeWorldOnBusyDay(sequential_slot.slot);
+  const auto parallel = makeWorldOnBusyDay(parallel_slot.slot);
+  sequential->setSimulationThreads(1);
+  parallel->setSimulationThreads(PARALLEL_THREADS);
+  ASSERT_EQ(parallel->getGame()->getSimulationThreads(), PARALLEL_THREADS);
+  const auto matchday = firstBusyDay(*sequential, 50);
+  ASSERT_TRUE(matchday);
+  ASSERT_EQ(sequential->getCurrentDate(), *matchday);
+  expectSameWorld(worldFingerprint(*sequential), worldFingerprint(*parallel));
+
+  const GameDateValue end = SeasonCalendar::addDays(*matchday, 8);
+  advanceUntil(*sequential, end);
+  advanceUntil(*parallel, end);
+  expectSameWorld(worldFingerprint(*sequential), worldFingerprint(*parallel));
+}
+
 TEST(MatchSchedulerTest, ParallelCareerMatchesSequentialCareer)
 {
   const SlotCleanup sequential_slot{uniqueSlot(1)};
@@ -413,7 +453,7 @@ TEST(MatchSchedulerTest, ParallelCareerMatchesSequentialCareer)
 TEST(MatchSchedulerTest, ContinueReportsMatchdayProgress)
 {
   const SlotCleanup slot{uniqueSlot(3)};
-  const auto controller = makeWorld(slot.slot);
+  const auto controller = makeWorldOnBusyDay(slot.slot, 1);
   EXPECT_EQ(controller->getContinueProgress().fraction(), 0.0f);
   const auto matchday = firstBusyDay(*controller, 50);
   ASSERT_TRUE(matchday);
@@ -440,7 +480,7 @@ TEST(MatchSchedulerTest, ControllerShutsDownCleanlyAfterParallelMatchdays)
     SCOPED_TRACE(on_worker ? "days simulated on a worker thread"
                            : "days simulated on the test thread");
     const SlotCleanup slot{uniqueSlot(on_worker ? 8 : 7)};
-    auto controller = makeWorld(slot.slot);
+    auto controller = makeWorldOnBusyDay(slot.slot);
     controller->setSimulationThreads(PARALLEL_THREADS);
     const auto matchday = firstBusyDay(*controller, 50);
     ASSERT_TRUE(matchday);
