@@ -18,9 +18,16 @@
 
 #include "global/stats_config.h"
 #include "model/match_engine.h"
+#include "model/match_pitch.h"
 #include "model/match_scenario.h"
 #include "model/player.h"
 #include "model/team.h"
+
+namespace
+{
+// Tests play on a match pitch, placed by fractions of it.
+const MatchPitch& PITCH = MatchPitch::matchSize();
+}  // namespace
 
 namespace
 {
@@ -30,14 +37,18 @@ StatsConfig createStatsConfig()
   config.possible_stats = {"Pace",      "Shooting",  "Passing",
                            "Dribbling", "Defending", "Physicality",
                            "Stamina",   "Vision",    "Goalkeeping"};
-  config.role_focus["Goalkeeper"] = {{"Goalkeeping", "Vision", "Physicality"},
-                                     {0.7, 0.2, 0.1}};
+  config.role_focus["Goalkeeper"] = {
+      .stats = {"Goalkeeping", "Vision", "Physicality"},
+      .weights = {0.7, 0.2, 0.1}};
   config.role_focus["Defender"] = {
-      {"Defending", "Physicality", "Pace", "Vision"}, {0.4, 0.3, 0.15, 0.15}};
+      .stats = {"Defending", "Physicality", "Pace", "Vision"},
+      .weights = {0.4, 0.3, 0.15, 0.15}};
   config.role_focus["Midfielder"] = {
-      {"Passing", "Vision", "Stamina", "Dribbling"}, {0.3, 0.3, 0.2, 0.2}};
+      .stats = {"Passing", "Vision", "Stamina", "Dribbling"},
+      .weights = {0.3, 0.3, 0.2, 0.2}};
   config.role_focus["Striker"] = {
-      {"Shooting", "Pace", "Dribbling", "Physicality"}, {0.4, 0.2, 0.2, 0.2}};
+      .stats = {"Shooting", "Pace", "Dribbling", "Physicality"},
+      .weights = {0.4, 0.2, 0.2, 0.2}};
   return config;
 }
 
@@ -48,17 +59,18 @@ Team createDummyTeam(TeamID id, const std::string& name, int rating,
   Team team(id, 1, name, 50'000'000, {}, Strategy{}, Lineup{});
   static constexpr std::array ROLES = {GK, LB, CB, CB, RB, CM,
                                        CM, LW, RW, ST, ST};
-  static constexpr std::array<Vector2F, 11> POSITIONS = {{{0.04f, 0.50f},
-                                                          {0.18f, 0.12f},
-                                                          {0.18f, 0.38f},
-                                                          {0.18f, 0.62f},
-                                                          {0.18f, 0.88f},
-                                                          {0.43f, 0.35f},
-                                                          {0.43f, 0.65f},
-                                                          {0.68f, 0.16f},
-                                                          {0.68f, 0.84f},
-                                                          {0.78f, 0.38f},
-                                                          {0.78f, 0.62f}}};
+  static constexpr std::array<Vector2F, 11> POSITIONS = {
+      {{.x = 0.04F, .y = 0.50F},
+       {.x = 0.18F, .y = 0.12F},
+       {.x = 0.18F, .y = 0.38F},
+       {.x = 0.18F, .y = 0.62F},
+       {.x = 0.18F, .y = 0.88F},
+       {.x = 0.43F, .y = 0.35F},
+       {.x = 0.43F, .y = 0.65F},
+       {.x = 0.68F, .y = 0.16F},
+       {.x = 0.68F, .y = 0.84F},
+       {.x = 0.78F, .y = 0.38F},
+       {.x = 0.78F, .y = 0.62F}}};
 
   for (uint32_t index = 0; index < 11; ++index)
   {
@@ -68,13 +80,17 @@ Team createDummyTeam(TeamID id, const std::string& name, int rating,
         {"Dribbling", value}, {"Defending", value}, {"Physicality", value},
         {"Stamina", value},   {"Vision", value},    {"Goalkeeping", value}};
     auto player = std::make_unique<Player>(
-        static_cast<PlayerID>(id) * 100U + index, id, "First",
+        (static_cast<PlayerID>(id) * 100U) + index, id, "First",
         std::to_string(index), ROLES[index], Language::EN, 100'000, 0, 25, 3,
         180, Foot::Right, stats);
     if (ROLES[index] == GK)
+    {
       team.getLineup().setGoalkeeper(player.get());
+    }
     else
+    {
       team.getLineup().addOutfieldPlayer(player.get(), POSITIONS[index]);
+    }
     players.push_back(std::move(player));
   }
   return team;
@@ -101,34 +117,38 @@ std::map<std::uint32_t, Vector2F> standardHomeAttackLayout(const Ids& ids)
 {
   // Home (left to right) building out of a settled block; away parked deep.
   const std::array<std::pair<std::uint32_t, Vector2F>, 11> homeSlots = {
-      {{ids.home[0], {0.02f, 0.50f}},
-       {ids.home[1], {0.16f, 0.12f}},
-       {ids.home[2], {0.17f, 0.35f}},
-       {ids.home[3], {0.17f, 0.65f}},
-       {ids.home[4], {0.16f, 0.88f}},
-       {ids.home[5], {0.42f, 0.45f}},
-       {ids.home[6], {0.42f, 0.55f}},
-       {ids.home[7], {0.62f, 0.12f}},
-       {ids.home[8], {0.62f, 0.88f}},
-       {ids.home[9], {0.68f, 0.42f}},
-       {ids.home[10], {0.68f, 0.58f}}}};
+      {{ids.home[0], {.x = 0.02F, .y = 0.50F}},
+       {ids.home[1], {.x = 0.16F, .y = 0.12F}},
+       {ids.home[2], {.x = 0.17F, .y = 0.35F}},
+       {ids.home[3], {.x = 0.17F, .y = 0.65F}},
+       {ids.home[4], {.x = 0.16F, .y = 0.88F}},
+       {ids.home[5], {.x = 0.42F, .y = 0.45F}},
+       {ids.home[6], {.x = 0.42F, .y = 0.55F}},
+       {ids.home[7], {.x = 0.62F, .y = 0.12F}},
+       {ids.home[8], {.x = 0.62F, .y = 0.88F}},
+       {ids.home[9], {.x = 0.68F, .y = 0.42F}},
+       {ids.home[10], {.x = 0.68F, .y = 0.58F}}}};
   const std::array<std::pair<std::uint32_t, Vector2F>, 11> awaySlots = {
-      {{ids.away[0], {0.965f, 0.50f}},
-       {ids.away[1], {0.88f, 0.12f}},
-       {ids.away[2], {0.88f, 0.38f}},
-       {ids.away[3], {0.88f, 0.62f}},
-       {ids.away[4], {0.88f, 0.88f}},
-       {ids.away[5], {0.74f, 0.42f}},
-       {ids.away[6], {0.74f, 0.58f}},
-       {ids.away[7], {0.60f, 0.12f}},
-       {ids.away[8], {0.60f, 0.88f}},
-       {ids.away[9], {0.45f, 0.42f}},
-       {ids.away[10], {0.45f, 0.58f}}}};
+      {{ids.away[0], {.x = 0.965F, .y = 0.50F}},
+       {ids.away[1], {.x = 0.88F, .y = 0.12F}},
+       {ids.away[2], {.x = 0.88F, .y = 0.38F}},
+       {ids.away[3], {.x = 0.88F, .y = 0.62F}},
+       {ids.away[4], {.x = 0.88F, .y = 0.88F}},
+       {ids.away[5], {.x = 0.74F, .y = 0.42F}},
+       {ids.away[6], {.x = 0.74F, .y = 0.58F}},
+       {ids.away[7], {.x = 0.60F, .y = 0.12F}},
+       {ids.away[8], {.x = 0.60F, .y = 0.88F}},
+       {ids.away[9], {.x = 0.45F, .y = 0.42F}},
+       {ids.away[10], {.x = 0.45F, .y = 0.58F}}}};
   std::map<std::uint32_t, Vector2F> layout;
   for (const auto& [playerId, position] : homeSlots)
+  {
     layout[playerId] = position;
+  }
   for (const auto& [playerId, position] : awaySlots)
+  {
     layout[playerId] = position;
+  }
   return layout;
 }
 
@@ -151,12 +171,13 @@ MatchScenario buildScenario(const ScenarioSpec& spec)
   {
     MatchScenarioPlayer placement;
     placement.playerId = id;
-    placement.position = position;
+    placement.position = PITCH.at(position.x, position.y);
     placement.makingRun = spec.makeRuns.contains(id) && spec.makeRuns.at(id);
     scenario.players.push_back(placement);
   }
   scenario.carrierId = spec.carrierId;
-  scenario.ballPosition = spec.layout.at(spec.carrierId);
+  const Vector2F ball = spec.layout.at(spec.carrierId);
+  scenario.ballPosition = PITCH.at(ball.x, ball.y);
   return scenario;
 }
 
@@ -179,22 +200,25 @@ TEST(MatchScenarioTest, BlockedCentralLaneChoosesTheOpenFlankOption)
   ScenarioSpec spec;
   spec.layout = standardHomeAttackLayout(ids);
   // Carrier is a central midfielder; the central lane onward is blocked.
-  spec.layout[slotId(ids, 5)] = {0.50f, 0.50f};
-  spec.layout[slotId(ids, 9)] = {0.66f, 0.50f};
-  spec.layout[slotId(ids, 7)] = {0.72f, 0.12f};
-  spec.layout[slotId(ids, 7 + 11)] = {0.58f, 0.50f};
+  spec.layout[slotId(ids, 5)] = {.x = 0.50F, .y = 0.50F};
+  spec.layout[slotId(ids, 9)] = {.x = 0.66F, .y = 0.50F};
+  spec.layout[slotId(ids, 7)] = {.x = 0.72F, .y = 0.12F};
+  spec.layout[slotId(ids, 7 + 11)] = {.x = 0.58F, .y = 0.50F};
   spec.carrierId = slotId(ids, 5);
 
   MatchEngine engine = buildEngine(home, away, config);
   ASSERT_TRUE(engine.applyScenario(buildScenario(spec)));
 
   const ScenarioDecision& decision = engine.getLastScenarioDecision();
-  ASSERT_TRUE(decision.best.has_value());
+  if (!decision.best)
+  {
+    FAIL() << "expected a pass option";
+  }
   EXPECT_EQ(decision.best->receiverId, slotId(ids, 7))
       << "The blocked central lane must be avoided in favour of the open "
          "flank option";
   EXPECT_NE(decision.best->receiverId, slotId(ids, 9));
-  EXPECT_LT(decision.best->completionProbability, 0.99f);
+  EXPECT_LT(decision.best->completionProbability, 0.99F);
   EXPECT_FALSE(decision.reason.empty());
 
   const std::string json = engine.getDebugSnapshotJson();
@@ -212,22 +236,25 @@ TEST(MatchScenarioTest, OpenProgressiveMidfielderIsChosenFirst)
 
   ScenarioSpec spec;
   spec.layout = standardHomeAttackLayout(ids);
-  spec.layout[slotId(ids, 5)] = {0.48f, 0.50f};
-  spec.layout[slotId(ids, 6)] = {0.63f, 0.55f};
+  spec.layout[slotId(ids, 5)] = {.x = 0.48F, .y = 0.50F};
+  spec.layout[slotId(ids, 6)] = {.x = 0.63F, .y = 0.55F};
   // Keep the forwards behind the ball so the midfielder option dominates.
-  spec.layout[slotId(ids, 9)] = {0.32f, 0.38f};
-  spec.layout[slotId(ids, 10)] = {0.32f, 0.62f};
+  spec.layout[slotId(ids, 9)] = {.x = 0.32F, .y = 0.38F};
+  spec.layout[slotId(ids, 10)] = {.x = 0.32F, .y = 0.62F};
   spec.carrierId = slotId(ids, 5);
 
   MatchEngine engine = buildEngine(home, away, config);
   ASSERT_TRUE(engine.applyScenario(buildScenario(spec)));
 
   const ScenarioDecision& decision = engine.getLastScenarioDecision();
-  ASSERT_TRUE(decision.best.has_value());
+  if (!decision.best)
+  {
+    FAIL() << "expected a pass option";
+  }
   EXPECT_EQ(decision.best->receiverId, slotId(ids, 6));
   EXPECT_EQ(decision.best->intent, PassIntent::PROGRESSIVE);
-  EXPECT_GT(decision.best->progression, 0.0f);
-  EXPECT_GT(decision.best->completionProbability, 0.60f);
+  EXPECT_GT(decision.best->progression, 0.0F);
+  EXPECT_GT(decision.best->completionProbability, 0.60F);
 }
 
 TEST(MatchScenarioTest, OnsideRunnerBehindTheLineIsSelectable)
@@ -240,16 +267,16 @@ TEST(MatchScenarioTest, OnsideRunnerBehindTheLineIsSelectable)
 
   ScenarioSpec spec;
   spec.layout = standardHomeAttackLayout(ids);
-  spec.layout[slotId(ids, 5)] = {0.55f, 0.50f};
-  spec.layout[slotId(ids, 9)] = {0.80f, 0.50f};
-  spec.layout[slotId(ids, 10)] = {0.80f, 0.74f};
+  spec.layout[slotId(ids, 5)] = {.x = 0.55F, .y = 0.50F};
+  spec.layout[slotId(ids, 9)] = {.x = 0.80F, .y = 0.50F};
+  spec.layout[slotId(ids, 10)] = {.x = 0.80F, .y = 0.74F};
   // High defensive line: away back four on the edge of the box.
-  spec.layout[slotId(ids, 1 + 11)] = {0.87f, 0.12f};
-  spec.layout[slotId(ids, 2 + 11)] = {0.87f, 0.40f};
-  spec.layout[slotId(ids, 3 + 11)] = {0.87f, 0.60f};
-  spec.layout[slotId(ids, 4 + 11)] = {0.87f, 0.88f};
-  spec.layout[slotId(ids, 9 + 11)] = {0.45f, 0.42f};
-  spec.layout[slotId(ids, 10 + 11)] = {0.45f, 0.58f};
+  spec.layout[slotId(ids, 1 + 11)] = {.x = 0.87F, .y = 0.12F};
+  spec.layout[slotId(ids, 2 + 11)] = {.x = 0.87F, .y = 0.40F};
+  spec.layout[slotId(ids, 3 + 11)] = {.x = 0.87F, .y = 0.60F};
+  spec.layout[slotId(ids, 4 + 11)] = {.x = 0.87F, .y = 0.88F};
+  spec.layout[slotId(ids, 9 + 11)] = {.x = 0.45F, .y = 0.42F};
+  spec.layout[slotId(ids, 10 + 11)] = {.x = 0.45F, .y = 0.58F};
   spec.makeRuns[slotId(ids, 9)] = true;
   spec.carrierId = slotId(ids, 5);
 
@@ -257,9 +284,12 @@ TEST(MatchScenarioTest, OnsideRunnerBehindTheLineIsSelectable)
   ASSERT_TRUE(engine.applyScenario(buildScenario(spec)));
 
   const ScenarioDecision& decision = engine.getLastScenarioDecision();
-  ASSERT_TRUE(decision.best.has_value());
+  if (!decision.best)
+  {
+    FAIL() << "expected a pass option";
+  }
   EXPECT_EQ(decision.best->receiverId, slotId(ids, 9));
-  EXPECT_GT(decision.best->progression, 0.09f);
+  EXPECT_GT(decision.best->progression, 0.09F);
 }
 
 TEST(MatchScenarioTest, OffsideRunnerIsNeverSelected)
@@ -272,16 +302,16 @@ TEST(MatchScenarioTest, OffsideRunnerIsNeverSelected)
 
   ScenarioSpec spec;
   spec.layout = standardHomeAttackLayout(ids);
-  spec.layout[slotId(ids, 5)] = {0.55f, 0.50f};
+  spec.layout[slotId(ids, 5)] = {.x = 0.55F, .y = 0.50F};
   // The striker is well beyond the high defensive line: clearly offside.
-  spec.layout[slotId(ids, 9)] = {0.93f, 0.50f};
-  spec.layout[slotId(ids, 10)] = {0.80f, 0.74f};
-  spec.layout[slotId(ids, 1 + 11)] = {0.87f, 0.12f};
-  spec.layout[slotId(ids, 2 + 11)] = {0.87f, 0.40f};
-  spec.layout[slotId(ids, 3 + 11)] = {0.87f, 0.60f};
-  spec.layout[slotId(ids, 4 + 11)] = {0.87f, 0.88f};
-  spec.layout[slotId(ids, 9 + 11)] = {0.45f, 0.42f};
-  spec.layout[slotId(ids, 10 + 11)] = {0.45f, 0.58f};
+  spec.layout[slotId(ids, 9)] = {.x = 0.93F, .y = 0.50F};
+  spec.layout[slotId(ids, 10)] = {.x = 0.80F, .y = 0.74F};
+  spec.layout[slotId(ids, 1 + 11)] = {.x = 0.87F, .y = 0.12F};
+  spec.layout[slotId(ids, 2 + 11)] = {.x = 0.87F, .y = 0.40F};
+  spec.layout[slotId(ids, 3 + 11)] = {.x = 0.87F, .y = 0.60F};
+  spec.layout[slotId(ids, 4 + 11)] = {.x = 0.87F, .y = 0.88F};
+  spec.layout[slotId(ids, 9 + 11)] = {.x = 0.45F, .y = 0.42F};
+  spec.layout[slotId(ids, 10 + 11)] = {.x = 0.45F, .y = 0.58F};
   spec.makeRuns[slotId(ids, 9)] = true;
   spec.carrierId = slotId(ids, 5);
 
@@ -289,7 +319,10 @@ TEST(MatchScenarioTest, OffsideRunnerIsNeverSelected)
   ASSERT_TRUE(engine.applyScenario(buildScenario(spec)));
 
   const ScenarioDecision& decision = engine.getLastScenarioDecision();
-  ASSERT_TRUE(decision.best.has_value());
+  if (!decision.best)
+  {
+    FAIL() << "expected a pass option";
+  }
   EXPECT_NE(decision.best->receiverId, slotId(ids, 9))
       << "An offside runner must never be the selected receiver";
   if (decision.runnerUp)
@@ -314,29 +347,32 @@ TEST(MatchScenarioTest, PressuredCarrierRecyclesToTheSafeOutlet)
 
   ScenarioSpec spec;
   spec.layout = standardHomeAttackLayout(ids);
-  spec.layout[slotId(ids, 5)] = {0.50f, 0.50f};
+  spec.layout[slotId(ids, 5)] = {.x = 0.50F, .y = 0.50F};
   // Immediate presser hugging the carrier.
-  spec.layout[slotId(ids, 6 + 11)] = {0.505f, 0.50f};
+  spec.layout[slotId(ids, 6 + 11)] = {.x = 0.505F, .y = 0.50F};
   // Safe backward outlet, fully open.
-  spec.layout[slotId(ids, 6)] = {0.40f, 0.50f};
-  spec.layout[slotId(ids, 9 + 11)] = {0.70f, 0.42f};
-  spec.layout[slotId(ids, 10 + 11)] = {0.70f, 0.58f};
+  spec.layout[slotId(ids, 6)] = {.x = 0.40F, .y = 0.50F};
+  spec.layout[slotId(ids, 9 + 11)] = {.x = 0.70F, .y = 0.42F};
+  spec.layout[slotId(ids, 10 + 11)] = {.x = 0.70F, .y = 0.58F};
   // Every forward lane is blocked or marked so the outlet dominates.
-  spec.layout[slotId(ids, 9)] = {0.62f, 0.50f};
-  spec.layout[slotId(ids, 2 + 11)] = {0.56f, 0.50f};
-  spec.layout[slotId(ids, 10)] = {0.68f, 0.58f};
-  spec.layout[slotId(ids, 5 + 11)] = {0.64f, 0.56f};
+  spec.layout[slotId(ids, 9)] = {.x = 0.62F, .y = 0.50F};
+  spec.layout[slotId(ids, 2 + 11)] = {.x = 0.56F, .y = 0.50F};
+  spec.layout[slotId(ids, 10)] = {.x = 0.68F, .y = 0.58F};
+  spec.layout[slotId(ids, 5 + 11)] = {.x = 0.64F, .y = 0.56F};
   spec.carrierId = slotId(ids, 5);
 
   MatchEngine engine = buildEngine(home, away, config);
   ASSERT_TRUE(engine.applyScenario(buildScenario(spec)));
 
   const ScenarioDecision& decision = engine.getLastScenarioDecision();
-  ASSERT_TRUE(decision.best.has_value());
+  if (!decision.best)
+  {
+    FAIL() << "expected a pass option";
+  }
   EXPECT_EQ(decision.best->intent, PassIntent::PRESSURE_RELEASE)
       << "Under direct pressure the safe outlet must win";
   EXPECT_EQ(decision.best->receiverId, slotId(ids, 6));
-  EXPECT_LT(decision.best->progression, 0.0f);
+  EXPECT_LT(decision.best->progression, 0.0F);
 }
 
 TEST(MatchScenarioTest, WideSwitchIsChosenWhenTheFarSideIsOpen)
@@ -349,19 +385,22 @@ TEST(MatchScenarioTest, WideSwitchIsChosenWhenTheFarSideIsOpen)
 
   ScenarioSpec spec;
   spec.layout = standardHomeAttackLayout(ids);
-  spec.layout[slotId(ids, 5)] = {0.50f, 0.30f};
-  spec.layout[slotId(ids, 8)] = {0.57f, 0.80f};
+  spec.layout[slotId(ids, 5)] = {.x = 0.50F, .y = 0.30F};
+  spec.layout[slotId(ids, 8)] = {.x = 0.57F, .y = 0.80F};
   // Block the alternative forward lanes so the far winger dominates.
-  spec.layout[slotId(ids, 9)] = {0.62f, 0.50f};
-  spec.layout[slotId(ids, 2 + 11)] = {0.58f, 0.50f};
-  spec.layout[slotId(ids, 10)] = {0.42f, 0.62f};
+  spec.layout[slotId(ids, 9)] = {.x = 0.62F, .y = 0.50F};
+  spec.layout[slotId(ids, 2 + 11)] = {.x = 0.58F, .y = 0.50F};
+  spec.layout[slotId(ids, 10)] = {.x = 0.42F, .y = 0.62F};
   spec.carrierId = slotId(ids, 5);
 
   MatchEngine engine = buildEngine(home, away, config);
   ASSERT_TRUE(engine.applyScenario(buildScenario(spec)));
 
   const ScenarioDecision& decision = engine.getLastScenarioDecision();
-  ASSERT_TRUE(decision.best.has_value());
+  if (!decision.best)
+  {
+    FAIL() << "expected a pass option";
+  }
   EXPECT_EQ(decision.best->intent, PassIntent::SWITCH_PLAY);
   EXPECT_EQ(decision.best->receiverId, slotId(ids, 8));
 }
@@ -376,23 +415,26 @@ TEST(MatchScenarioTest, OverlappingFullbackIsReachableAheadOfTheCarrier)
 
   ScenarioSpec spec;
   spec.layout = standardHomeAttackLayout(ids);
-  spec.layout[slotId(ids, 7)] = {0.58f, 0.14f};
+  spec.layout[slotId(ids, 7)] = {.x = 0.58F, .y = 0.14F};
   // The left back runs beyond the winger (overlap).
-  spec.layout[slotId(ids, 1)] = {0.68f, 0.14f};
+  spec.layout[slotId(ids, 1)] = {.x = 0.68F, .y = 0.14F};
   spec.makeRuns[slotId(ids, 1)] = true;
   // All other forwards stay behind the carrier so the overlap dominates.
-  spec.layout[slotId(ids, 9)] = {0.42f, 0.38f};
-  spec.layout[slotId(ids, 10)] = {0.42f, 0.62f};
-  spec.layout[slotId(ids, 8)] = {0.44f, 0.84f};
+  spec.layout[slotId(ids, 9)] = {.x = 0.42F, .y = 0.38F};
+  spec.layout[slotId(ids, 10)] = {.x = 0.42F, .y = 0.62F};
+  spec.layout[slotId(ids, 8)] = {.x = 0.44F, .y = 0.84F};
   spec.carrierId = slotId(ids, 7);
 
   MatchEngine engine = buildEngine(home, away, config);
   ASSERT_TRUE(engine.applyScenario(buildScenario(spec)));
 
   const ScenarioDecision& decision = engine.getLastScenarioDecision();
-  ASSERT_TRUE(decision.best.has_value());
+  if (!decision.best)
+  {
+    FAIL() << "expected a pass option";
+  }
   EXPECT_EQ(decision.best->receiverId, slotId(ids, 1));
-  EXPECT_GT(decision.best->progression, 0.0f)
+  EXPECT_GT(decision.best->progression, 0.0F)
       << "The overlapping fullback has overtaken the carrier";
 }
 
@@ -406,19 +448,22 @@ TEST(MatchScenarioTest, CrossChosenFromWideDeepPosition)
 
   ScenarioSpec spec;
   spec.layout = standardHomeAttackLayout(ids);
-  spec.layout[slotId(ids, 8)] = {0.72f, 0.86f};
-  spec.layout[slotId(ids, 9)] = {0.75f, 0.50f};
-  spec.layout[slotId(ids, 10)] = {0.76f, 0.42f};
-  spec.layout[slotId(ids, 7)] = {0.30f, 0.14f};
-  spec.layout[slotId(ids, 5)] = {0.42f, 0.45f};
-  spec.layout[slotId(ids, 6)] = {0.42f, 0.55f};
+  spec.layout[slotId(ids, 8)] = {.x = 0.72F, .y = 0.86F};
+  spec.layout[slotId(ids, 9)] = {.x = 0.75F, .y = 0.50F};
+  spec.layout[slotId(ids, 10)] = {.x = 0.76F, .y = 0.42F};
+  spec.layout[slotId(ids, 7)] = {.x = 0.30F, .y = 0.14F};
+  spec.layout[slotId(ids, 5)] = {.x = 0.42F, .y = 0.45F};
+  spec.layout[slotId(ids, 6)] = {.x = 0.42F, .y = 0.55F};
   spec.carrierId = slotId(ids, 8);
 
   MatchEngine engine = buildEngine(home, away, config);
   ASSERT_TRUE(engine.applyScenario(buildScenario(spec)));
 
   const ScenarioDecision& decision = engine.getLastScenarioDecision();
-  ASSERT_TRUE(decision.best.has_value());
+  if (!decision.best)
+  {
+    FAIL() << "expected a pass option";
+  }
   EXPECT_EQ(decision.best->intent, PassIntent::CROSS);
 }
 
@@ -432,19 +477,22 @@ TEST(MatchScenarioTest, CutbackChosenFromTheByline)
 
   ScenarioSpec spec;
   spec.layout = standardHomeAttackLayout(ids);
-  spec.layout[slotId(ids, 8)] = {0.90f, 0.86f};
-  spec.layout[slotId(ids, 10)] = {0.86f, 0.50f};
-  spec.layout[slotId(ids, 9)] = {0.30f, 0.38f};
-  spec.layout[slotId(ids, 7)] = {0.30f, 0.14f};
-  spec.layout[slotId(ids, 5)] = {0.42f, 0.45f};
-  spec.layout[slotId(ids, 6)] = {0.42f, 0.55f};
+  spec.layout[slotId(ids, 8)] = {.x = 0.90F, .y = 0.86F};
+  spec.layout[slotId(ids, 10)] = {.x = 0.86F, .y = 0.50F};
+  spec.layout[slotId(ids, 9)] = {.x = 0.30F, .y = 0.38F};
+  spec.layout[slotId(ids, 7)] = {.x = 0.30F, .y = 0.14F};
+  spec.layout[slotId(ids, 5)] = {.x = 0.42F, .y = 0.45F};
+  spec.layout[slotId(ids, 6)] = {.x = 0.42F, .y = 0.55F};
   spec.carrierId = slotId(ids, 8);
 
   MatchEngine engine = buildEngine(home, away, config);
   ASSERT_TRUE(engine.applyScenario(buildScenario(spec)));
 
   const ScenarioDecision& decision = engine.getLastScenarioDecision();
-  ASSERT_TRUE(decision.best.has_value());
+  if (!decision.best)
+  {
+    FAIL() << "expected a pass option";
+  }
   EXPECT_EQ(decision.best->intent, PassIntent::CUTBACK);
 }
 
@@ -458,19 +506,22 @@ TEST(MatchScenarioTest, GoalkeeperPlaysTheOpenOutlet)
 
   ScenarioSpec spec;
   spec.layout = standardHomeAttackLayout(ids);
-  spec.layout[slotId(ids, 0)] = {0.04f, 0.50f};
-  spec.layout[slotId(ids, 2)] = {0.26f, 0.50f};
+  spec.layout[slotId(ids, 0)] = {.x = 0.04F, .y = 0.50F};
+  spec.layout[slotId(ids, 2)] = {.x = 0.26F, .y = 0.50F};
   spec.carrierId = slotId(ids, 0);
 
   MatchEngine engine = buildEngine(home, away, config);
   ASSERT_TRUE(engine.applyScenario(buildScenario(spec)));
 
   const ScenarioDecision& decision = engine.getLastScenarioDecision();
-  ASSERT_TRUE(decision.best.has_value());
+  if (!decision.best)
+  {
+    FAIL() << "expected a pass option";
+  }
   EXPECT_EQ(decision.best->receiverId, slotId(ids, 2))
       << "The goalkeeper should pick the open central outlet";
-  EXPECT_GT(decision.best->progression, 0.0f);
-  EXPECT_GT(decision.best->completionProbability, 0.55f);
+  EXPECT_GT(decision.best->progression, 0.0F);
+  EXPECT_GT(decision.best->completionProbability, 0.55F);
 }
 
 TEST(MatchScenarioTest, CompletionProbabilityImprovesWhenTheOptionIsOpen)
@@ -485,8 +536,8 @@ TEST(MatchScenarioTest, CompletionProbabilityImprovesWhenTheOptionIsOpen)
   {
     ScenarioSpec spec;
     spec.layout = standardHomeAttackLayout(ids);
-    spec.layout[slotId(ids, 5)] = {0.50f, 0.50f};
-    spec.layout[slotId(ids, 9)] = {0.62f, 0.50f};
+    spec.layout[slotId(ids, 5)] = {.x = 0.50F, .y = 0.50F};
+    spec.layout[slotId(ids, 9)] = {.x = 0.62F, .y = 0.50F};
     spec.carrierId = slotId(ids, 5);
     return spec;
   };
@@ -494,17 +545,23 @@ TEST(MatchScenarioTest, CompletionProbabilityImprovesWhenTheOptionIsOpen)
   ScenarioSpec openSpec = makeSharedSpec();
   MatchEngine open = buildEngine(home, away, config);
   ASSERT_TRUE(open.applyScenario(buildScenario(openSpec)));
-  ASSERT_TRUE(open.getLastScenarioDecision().best.has_value());
-  const float openCompletion =
-      open.getLastScenarioDecision().best->completionProbability;
+  const auto& openBest = open.getLastScenarioDecision().best;
+  if (!openBest)
+  {
+    FAIL() << "expected an open-lane pass option";
+  }
+  const float openCompletion = openBest->completionProbability;
 
   ScenarioSpec blockedSpec = makeSharedSpec();
-  blockedSpec.layout[slotId(ids, 2 + 11)] = {0.56f, 0.50f};
+  blockedSpec.layout[slotId(ids, 2 + 11)] = {.x = 0.56F, .y = 0.50F};
   MatchEngine blocked = buildEngine(home, away, config);
   ASSERT_TRUE(blocked.applyScenario(buildScenario(blockedSpec)));
-  ASSERT_TRUE(blocked.getLastScenarioDecision().best.has_value());
-  const float blockedCompletion =
-      blocked.getLastScenarioDecision().best->completionProbability;
+  const auto& blockedBest = blocked.getLastScenarioDecision().best;
+  if (!blockedBest)
+  {
+    FAIL() << "expected a blocked-lane pass option";
+  }
+  const float blockedCompletion = blockedBest->completionProbability;
 
   EXPECT_GT(openCompletion, blockedCompletion)
       << "An open lane must raise the completion probability compared with a "
@@ -521,10 +578,10 @@ TEST(MatchScenarioTest, EvaluationIsDeterministicAcrossEngines)
 
   ScenarioSpec spec;
   spec.layout = standardHomeAttackLayout(ids);
-  spec.layout[slotId(ids, 5)] = {0.50f, 0.50f};
-  spec.layout[slotId(ids, 9)] = {0.66f, 0.50f};
-  spec.layout[slotId(ids, 7)] = {0.72f, 0.12f};
-  spec.layout[slotId(ids, 7 + 11)] = {0.58f, 0.50f};
+  spec.layout[slotId(ids, 5)] = {.x = 0.50F, .y = 0.50F};
+  spec.layout[slotId(ids, 9)] = {.x = 0.66F, .y = 0.50F};
+  spec.layout[slotId(ids, 7)] = {.x = 0.72F, .y = 0.12F};
+  spec.layout[slotId(ids, 7 + 11)] = {.x = 0.58F, .y = 0.50F};
   spec.carrierId = slotId(ids, 5);
   const MatchScenario scenario = buildScenario(spec);
 
@@ -535,8 +592,14 @@ TEST(MatchScenarioTest, EvaluationIsDeterministicAcrossEngines)
 
   const ScenarioDecision& a = first.getLastScenarioDecision();
   const ScenarioDecision& b = second.getLastScenarioDecision();
-  ASSERT_TRUE(a.best.has_value());
-  ASSERT_TRUE(b.best.has_value());
+  if (!a.best)
+  {
+    FAIL() << "expected a pass option";
+  }
+  if (!b.best)
+  {
+    FAIL() << "expected a pass option";
+  }
   EXPECT_EQ(a.best->receiverId, b.best->receiverId);
   EXPECT_EQ(a.best->intent, b.best->intent);
   EXPECT_FLOAT_EQ(a.best->utility, b.best->utility);
@@ -559,8 +622,8 @@ TEST(MatchScenarioTest, CentralOneOnOnePrefersTheShot)
 
   ScenarioSpec spec;
   spec.layout = standardHomeAttackLayout(ids);
-  spec.layout[slotId(ids, 9)] = {0.905f, 0.50f};
-  spec.layout[slotId(ids, 0 + 11)] = {0.965f, 0.50f};
+  spec.layout[slotId(ids, 9)] = {.x = 0.905F, .y = 0.50F};
+  spec.layout[slotId(ids, 0 + 11)] = {.x = 0.965F, .y = 0.50F};
   spec.carrierId = slotId(ids, 9);
 
   MatchEngine engine = buildEngine(home, away, config);
@@ -582,8 +645,8 @@ TEST(MatchScenarioTest, EmptyGoalPromptsTheShot)
   ScenarioSpec spec;
   spec.layout = standardHomeAttackLayout(ids);
   // The away keeper is stranded at the centre circle: the goal mouth is open.
-  spec.layout[slotId(ids, 9)] = {0.905f, 0.50f};
-  spec.layout[slotId(ids, 0 + 11)] = {0.50f, 0.50f};
+  spec.layout[slotId(ids, 9)] = {.x = 0.905F, .y = 0.50F};
+  spec.layout[slotId(ids, 0 + 11)] = {.x = 0.50F, .y = 0.50F};
   spec.carrierId = slotId(ids, 9);
 
   MatchEngine engine = buildEngine(home, away, config);
@@ -603,8 +666,8 @@ TEST(MatchScenarioTest, PenaltySpotProducesAimedShot)
 
   ScenarioSpec spec;
   spec.layout = standardHomeAttackLayout(ids);
-  spec.layout[slotId(ids, 9)] = {0.885f, 0.50f};
-  spec.layout[slotId(ids, 0 + 11)] = {0.965f, 0.50f};
+  spec.layout[slotId(ids, 9)] = {.x = 0.885F, .y = 0.50F};
+  spec.layout[slotId(ids, 0 + 11)] = {.x = 0.965F, .y = 0.50F};
   spec.carrierId = slotId(ids, 9);
 
   MatchEngine engine = buildEngine(home, away, config);
@@ -626,8 +689,8 @@ TEST(MatchScenarioTest, WideLowXgShotYieldsToTheOpenCutback)
   spec.layout = standardHomeAttackLayout(ids);
   // Carrier is wide on the byline with a hopeless angle; a striker is open in
   // the middle for an easy cutback.
-  spec.layout[slotId(ids, 8)] = {0.90f, 0.86f};
-  spec.layout[slotId(ids, 9)] = {0.86f, 0.50f};
+  spec.layout[slotId(ids, 8)] = {.x = 0.90F, .y = 0.86F};
+  spec.layout[slotId(ids, 9)] = {.x = 0.86F, .y = 0.50F};
   spec.carrierId = slotId(ids, 8);
 
   MatchEngine engine = buildEngine(home, away, config);
@@ -635,7 +698,10 @@ TEST(MatchScenarioTest, WideLowXgShotYieldsToTheOpenCutback)
 
   const ScenarioDecision& decision = engine.getLastScenarioDecision();
   EXPECT_EQ(decision.action, ScenarioAction::PASS) << decision.reason;
-  ASSERT_TRUE(decision.best.has_value());
+  if (!decision.best)
+  {
+    FAIL() << "expected a pass option";
+  }
   EXPECT_EQ(decision.best->intent, PassIntent::CUTBACK);
 }
 
@@ -651,14 +717,14 @@ TEST(MatchScenarioTest, PressuredLongShotRecyclesToTheSafeOutlet)
   spec.layout = standardHomeAttackLayout(ids);
   // Carrier is well outside the final third and immediately pressed, with the
   // forward carrying channels bottled up.
-  spec.layout[slotId(ids, 6)] = {0.56f, 0.55f};
-  spec.layout[slotId(ids, 6 + 11)] = {0.58f, 0.56f};
-  spec.layout[slotId(ids, 5 + 11)] = {0.72f, 0.78f};
-  spec.layout[slotId(ids, 7 + 11)] = {0.70f, 0.25f};
-  spec.layout[slotId(ids, 9 + 11)] = {0.66f, 0.55f};
-  spec.layout[slotId(ids, 10 + 11)] = {0.70f, 0.50f};
+  spec.layout[slotId(ids, 6)] = {.x = 0.56F, .y = 0.55F};
+  spec.layout[slotId(ids, 6 + 11)] = {.x = 0.58F, .y = 0.56F};
+  spec.layout[slotId(ids, 5 + 11)] = {.x = 0.72F, .y = 0.78F};
+  spec.layout[slotId(ids, 7 + 11)] = {.x = 0.70F, .y = 0.25F};
+  spec.layout[slotId(ids, 9 + 11)] = {.x = 0.66F, .y = 0.55F};
+  spec.layout[slotId(ids, 10 + 11)] = {.x = 0.70F, .y = 0.50F};
   // A safe central outlet sits well behind the press.
-  spec.layout[slotId(ids, 5)] = {0.44f, 0.52f};
+  spec.layout[slotId(ids, 5)] = {.x = 0.44F, .y = 0.52F};
   spec.carrierId = slotId(ids, 6);
 
   MatchEngine engine = buildEngine(home, away, config);
@@ -666,5 +732,8 @@ TEST(MatchScenarioTest, PressuredLongShotRecyclesToTheSafeOutlet)
 
   const ScenarioDecision& decision = engine.getLastScenarioDecision();
   EXPECT_EQ(decision.action, ScenarioAction::PASS) << decision.reason;
-  ASSERT_TRUE(decision.best.has_value());
+  if (!decision.best)
+  {
+    FAIL() << "expected a pass option";
+  }
 }

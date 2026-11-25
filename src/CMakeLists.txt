@@ -187,10 +187,80 @@ set(FM_CORE_SOURCES
     model/match_report.cpp
     model/match_commentary.h
     model/match_commentary.cpp
+    model/match_ball_physics.h
+    model/match_ball_physics_dispatch.cpp
+    model/match_ball_physics_binturong.cpp
+    model/match_ball_physics_binturong_members.h
+    model/match_ball_physics_aardvark.cpp
+    model/match_ball_physics_aardvark_members.h
+    model/match_body.h
+    model/match_body_dispatch.cpp
+    model/match_body_binturong.cpp
+    model/match_body_binturong_members.h
+    model/match_body_aardvark.cpp
+    model/match_body_aardvark_members.h
+    model/match_brain.h
+    model/match_brain_dispatch.cpp
+    model/match_brain_binturong.cpp
+    model/match_brain_binturong_members.h
+    model/match_brain_capybara.cpp
+    model/match_brain_capybara_members.h
+    model/match_decision_frame.h
+    model/match_brain_flow.h
+    model/match_brain_aardvark.cpp
+    model/match_brain_aardvark_members.h
+    model/match_derived_stats.h
+    model/match_game_xg.h
+    model/match_game_xg.cpp
+    model/match_first_touch_knobs.h
+    model/match_handshake.h
+    model/match_handshake_dispatch.cpp
+    model/match_handshake_binturong.cpp
+    model/match_handshake_binturong_members.h
+    model/match_handshake_aardvark.cpp
+    model/match_handshake_aardvark_members.h
+    model/match_manager.h
+    model/match_manager_dispatch.cpp
+    model/match_manager_binturong.cpp
+    model/match_manager_binturong_members.h
+    model/match_manager_aardvark.cpp
+    model/match_manager_aardvark_members.h
+    model/match_out_of_play.h
+    model/match_out_of_play_dispatch.cpp
+    model/match_out_of_play_binturong.cpp
+    model/match_out_of_play_binturong_members.h
+    model/match_out_of_play_aardvark.cpp
+    model/match_out_of_play_aardvark_members.h
+    model/match_contact_binturong.h
+    model/match_body_shape_binturong.h
+    model/match_ground.h
     model/match_engine.h
+    model/match_engine_internal.h
     model/match_engine.cpp
+    model/match_possession.h
+    model/match_possession_control.h
+    model/match_possession_claim.h
+    model/match_possession_coordination.h
+    model/match_restart_approach.h
+    model/match_possession.cpp
+    model/match_possession_dispatch.cpp
+    model/match_possession_aardvark.cpp
+    model/match_possession_binturong.cpp
     model/match_engine_tracking.cpp
+    model/match_engine_drills.cpp
+    model/match_collisions.cpp
+    model/match_touchline_people.cpp
+    model/match_walk_out.cpp
+    model/match_engine_jitter.cpp
+    model/match_engine_play.cpp
     model/match_events.h
+    model/match_recorder.h
+    model/match_referee.h
+    model/match_referee_dispatch.cpp
+    model/match_referee_binturong.cpp
+    model/match_referee_binturong_members.h
+    model/match_referee_aardvark.cpp
+    model/match_referee_aardvark_members.h
     model/match_insights.h
     model/match_insights.cpp
     model/match_tracking.h
@@ -198,6 +268,7 @@ set(FM_CORE_SOURCES
     model/match_rules.h
     model/match_rules.cpp
     model/match_scenario.h
+    model/match_state.h
     model/match_scheduler.h
     model/match_scheduler.cpp
     model/match_tuning.h
@@ -361,6 +432,7 @@ set(FM_UI_SOURCES
     gui/player_ui.h
     gui/render/imatch_renderer.h
     gui/render/match_render_snapshot.h
+    gui/render/match_render_snapshot.cpp
     gui/render/match_renderer_2d.h
     gui/render/match_renderer_2d.cpp
     gui/render/match_render_2d_tuning.h
@@ -381,6 +453,7 @@ set(FM_UI_SOURCES
     gui/scenes/lineup_scene.cpp
     gui/scenes/match_scene.h
     gui/scenes/match_scene.cpp
+    gui/scenes/match_scene_sandbox.cpp
     gui/scenes/match_scene_play.cpp
     gui/scenes/match_play_controller.h
     gui/scenes/match_play_controller.cpp
@@ -531,6 +604,8 @@ set(FM_UI_SOURCES
     gui/widgets/format.cpp
     gui/widgets/icons.h
     gui/widgets/icons.cpp
+    gui/widgets/text.h
+    gui/widgets/text.cpp
     gui/widgets/theme.h
     gui/widgets/theme.cpp
     gui/widgets/widgets.h
@@ -636,7 +711,8 @@ endif()
 
 # -----------------------------
 # Balance lab: headless batch simulation and calibration reports (fm_lab).
-# Links fm_core only (no window, no ImGui).
+# Links fm_core; the drill mode also links the drills (and through them the
+# UI library), but runs headless.
 # -----------------------------
 add_library(fm_lab_lib STATIC
     tools/lab_stats.h
@@ -649,10 +725,165 @@ add_library(fm_lab_lib STATIC
     tools/lab_runner.cpp
     tools/lab_season.h
     tools/lab_season.cpp
+    tools/lab_trace.h
+    tools/lab_trace.cpp
 )
 target_link_libraries(fm_lab_lib PUBLIC fm_core)
 target_compile_options(fm_lab_lib PRIVATE ${FM_WARNING_FLAGS})
 
+# -----------------------------
+# Drills: the match sandbox's minigames and Measure mode, shared by the
+# sandbox and the lab (fm_lab drill). Their settings and overlays use ImGui,
+# so they link the UI library; the lab only ever runs them headless.
+# -----------------------------
+add_library(fm_drills STATIC
+    tools/match_sandbox_drill.h
+    tools/match_sandbox_drill.cpp
+    tools/match_sandbox_drills.cpp
+    tools/match_sandbox_training.h
+    tools/match_sandbox_training.cpp
+    tools/match_sandbox_session.h
+    tools/match_sandbox_session.cpp
+    tools/match_sandbox_measure.h
+    tools/match_sandbox_measure.cpp
+    tools/match_sandbox_game_xg.h
+    tools/match_sandbox_game_xg.cpp
+    tools/match_sandbox_tuning.h
+    tools/match_sandbox_tuning.cpp
+    tools/match_sandbox_bench.h
+    tools/match_sandbox_bench.cpp
+    tools/match_sandbox_setup.h
+    tools/match_sandbox_setup.cpp
+    tools/match_sandbox_recorder.h
+    tools/match_sandbox_recorder.cpp
+    tools/lab_touch_sensitivity.h
+    tools/lab_touch_sensitivity.cpp
+)
+target_link_libraries(fm_drills PUBLIC fm_ui fm_lab_lib)
+target_compile_options(fm_drills PRIVATE ${FM_WARNING_FLAGS})
+
 add_executable(fm_lab tools/lab_main.cpp)
-target_link_libraries(fm_lab PRIVATE fm_lab_lib)
+target_link_libraries(fm_lab PRIVATE fm_lab_lib fm_drills)
 target_compile_options(fm_lab PRIVATE ${FM_WARNING_FLAGS})
+
+# -----------------------------
+# Match sandbox: two clubs, both sides' tactics and a live match, without a
+# career (match_sandbox). A developer tool: not installed or packaged.
+# -----------------------------
+add_executable(match_sandbox
+    tools/match_sandbox_main.cpp
+    tools/match_sandbox_splash.h
+    tools/match_sandbox_splash.cpp
+    tools/match_sandbox_scene.h
+    tools/match_sandbox_scene.cpp
+    tools/match_sandbox_setup_ui.cpp
+    tools/match_sandbox_setup_ui.h
+    tools/match_sandbox_typography.h
+    tools/match_sandbox_page_ui.h
+    tools/match_sandbox_debugger.h
+    tools/match_sandbox_debugger.cpp
+    tools/match_sandbox_checks.h
+    tools/match_sandbox_checks.cpp
+    tools/match_sandbox_possession_trace.h
+    tools/match_sandbox_possession_trace.cpp
+    tools/match_sandbox_rewind.h
+    tools/match_sandbox_rewind.cpp
+    tools/match_sandbox_review.h
+    tools/match_sandbox_review.cpp
+    tools/match_sandbox_names.h
+    tools/match_sandbox_inspector.h
+    tools/match_sandbox_inspector.cpp
+    tools/match_sandbox_inspector_detail.cpp
+    tools/match_sandbox_detail.h
+    tools/match_sandbox_detail.cpp
+    tools/match_sandbox_recording.h
+    tools/match_sandbox_recording.cpp
+    tools/match_sandbox_zone_recording.h
+    tools/match_sandbox_zone_recording.cpp
+    tools/match_sandbox_zone_replay_scene.h
+    tools/match_sandbox_zone_replay_scene.cpp
+    tools/match_sandbox_compare.h
+    tools/match_sandbox_compare.cpp
+    tools/match_sandbox_scenario.h
+    tools/match_sandbox_scenario.cpp
+    tools/match_sandbox_drill_scene.h
+    tools/match_sandbox_drill_scene.cpp
+    tools/match_sandbox_training_scene.h
+    tools/match_sandbox_training_scene.cpp
+    tools/match_sandbox_session_scene.h
+    tools/match_sandbox_session_scene.cpp
+    tools/match_sandbox_measure_scene.h
+    tools/match_sandbox_measure_scene.cpp
+    tools/match_sandbox_shot_map.h
+    tools/match_sandbox_shot_map.cpp
+    tools/match_sandbox_contact_view.h
+    tools/match_sandbox_contact_view.cpp
+    tools/match_sandbox_xg_map.h
+    tools/match_sandbox_xg_map.cpp
+    tools/match_sandbox_leg_scan.h
+    tools/match_sandbox_leg_scan.cpp
+    tools/match_sandbox_brain_flow.h
+    tools/match_sandbox_brain_flow.cpp
+    tools/match_sandbox_bench_scene.h
+    tools/match_sandbox_bench_scene.cpp
+    tools/match_sandbox_true_view.h
+    tools/match_sandbox_true_view.cpp
+    tools/match_sandbox_true_view_shapes.h
+    tools/match_sandbox_true_view_shapes.cpp
+    tools/match_sandbox_true_view_match.h
+    tools/match_sandbox_true_view_match.cpp
+    tools/match_sandbox_pickers.h
+    tools/match_sandbox_pickers.cpp
+    tools/match_sandbox_test_teams.h
+    tools/match_sandbox_test_teams.cpp
+)
+target_link_libraries(match_sandbox PRIVATE fm_drills)
+target_compile_options(match_sandbox PRIVATE ${FM_WARNING_FLAGS})
+
+# Headless integration check for shared Sandbox engine settings.
+add_executable(sandbox_settings_check EXCLUDE_FROM_ALL
+    ../test/sandbox_settings_check.cpp
+    tools/match_sandbox_test_teams.cpp)
+target_link_libraries(sandbox_settings_check PRIVATE fm_drills)
+target_compile_options(sandbox_settings_check PRIVATE ${FM_WARNING_FLAGS})
+
+# Small, dependency-free possession contract checks for offline builds where
+# GoogleTest is unavailable. Explicit target; not part of the default build.
+add_executable(possession_contract_check EXCLUDE_FROM_ALL
+    ../test/possession_contract_check.cpp)
+target_include_directories(possession_contract_check PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}")
+target_compile_options(possession_contract_check PRIVATE ${FM_WARNING_FLAGS})
+
+add_executable(possession_control_check EXCLUDE_FROM_ALL
+    ../test/possession_control_check.cpp)
+target_include_directories(possession_control_check PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}")
+target_compile_options(possession_control_check PRIVATE ${FM_WARNING_FLAGS})
+
+add_executable(possession_claim_check EXCLUDE_FROM_ALL ../test/possession_claim_check.cpp)
+target_include_directories(possession_claim_check PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}")
+target_compile_options(possession_claim_check PRIVATE ${FM_WARNING_FLAGS})
+
+add_executable(possession_coordination_check EXCLUDE_FROM_ALL ../test/possession_coordination_check.cpp)
+target_include_directories(possession_coordination_check PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}")
+target_compile_options(possession_coordination_check PRIVATE ${FM_WARNING_FLAGS})
+
+add_executable(possession_friendly_check EXCLUDE_FROM_ALL ../test/possession_friendly_check.cpp)
+target_link_libraries(possession_friendly_check PRIVATE fm_drills)
+target_compile_options(possession_friendly_check PRIVATE ${FM_WARNING_FLAGS})
+
+add_executable(possession_seam_check EXCLUDE_FROM_ALL
+    ../test/possession_seam_check.cpp
+    tools/match_sandbox_recording.cpp
+    tools/match_sandbox_detail.cpp
+    tools/match_sandbox_rewind.cpp)
+target_link_libraries(possession_seam_check PRIVATE fm_drills)
+target_compile_options(possession_seam_check PRIVATE ${FM_WARNING_FLAGS})
+
+add_executable(recording_boundary_check EXCLUDE_FROM_ALL
+    ../test/recording_boundary_check.cpp
+    tools/match_sandbox_recording.cpp
+    tools/match_sandbox_detail.cpp
+    tools/match_sandbox_rewind.cpp
+    tools/match_sandbox_zone_recording.cpp)
+target_link_libraries(recording_boundary_check PRIVATE fm_drills)
+target_compile_options(recording_boundary_check PRIVATE ${FM_WARNING_FLAGS})

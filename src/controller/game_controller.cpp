@@ -28,6 +28,7 @@
 #include "database/repositories/player_repository.h"
 #include "database/repositories/team_repository.h"
 #include "database/world/world_runtime.h"
+#include "database/world_generation_stop.h"
 #include "global/global.h"
 #include "global/logger.h"
 #include "global/runtime_paths.h"
@@ -84,11 +85,12 @@ class WorldGuard
 }  // namespace
 
 void GameController::newGame(int slot, std::optional<std::uint64_t> world_seed,
-                             std::shared_ptr<const World::Document> world)
+                             std::shared_ptr<const World::Document> world,
+                             std::stop_token stop)
+try
 {
   const std::scoped_lock runtime_lock(runtime_mutex);
-  editor_session.reset();
-  editor_backup.reset();
+  checkWorldGenerationStop(stop);
   const auto startedAt = std::chrono::steady_clock::now();
   // The slot is not touched until the new world is complete: the first save
   // replaces it atomically and keeps the previous file as a rotation backup,
@@ -100,8 +102,14 @@ void GameController::newGame(int slot, std::optional<std::uint64_t> world_seed,
   auto new_data = std::make_shared<GameData>();
   if (world_seed.has_value()) new_data->setWorldSeed(*world_seed);
   auto connection = SaveManager::createWorkingCopy();
-  auto new_game = std::make_unique<Game>(new_data, connection);
+  auto new_game = std::make_unique<Game>(new_data, connection, stop);
+  checkWorldGenerationStop(stop);
   World::storeInSave(connection->getRaw(), *World::current());
+  checkWorldGenerationStop(stop);
+
+  // Finish initialization once the new career replaces the old one.
+  editor_session.reset();
+  editor_backup.reset();
   world_guard.commit();
   last_load_error.reset();
   gamedata = std::move(new_data);
@@ -131,6 +139,10 @@ void GameController::newGame(int slot, std::optional<std::uint64_t> world_seed,
           .count();
   Logger::info(std::format("New game initialized in {:.2f} ms",
                            last_initialization_milliseconds));
+}
+catch (const WorldGenerationCancelled&)
+{
+  // The working copy and world guard discard the unfinished career.
 }
 
 bool GameController::loadGame(int slot)

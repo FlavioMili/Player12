@@ -30,11 +30,11 @@
 namespace
 {
 /** Zoom of the 2D play view over the fitted pitch. */
-constexpr float PLAY_ZOOM_2D = 2.0f;
+constexpr float PLAY_ZOOM_2D = 2.0F;
 /** Share of the gap to the follow point closed per second (2D). */
-constexpr float FOLLOW_RATE_PER_SECOND = 4.0f;
+constexpr float FOLLOW_RATE_PER_SECOND = 4.0F;
 /** The follow point leans this much toward the ball (0 = active player). */
-constexpr float FOLLOW_BALL_SHARE = 0.55f;
+constexpr float FOLLOW_BALL_SHARE = 0.55F;
 
 float scaled(float value) { return value * Theme::scale(); }
 
@@ -51,7 +51,7 @@ MatchPlayController::Options MatchScene::playOptions() const
   options.autoSwitch = autoSwitchFrom(settings.play_auto_switch);
   options.passAssist =
       static_cast<std::uint8_t>(std::clamp(settings.play_pass_assist, 0, 2));
-  options.deadZone = std::clamp(settings.play_dead_zone, 0.05f, 0.5f);
+  options.deadZone = std::clamp(settings.play_dead_zone, 0.05F, 0.5F);
   return options;
 }
 
@@ -65,7 +65,10 @@ bool MatchScene::canTakeControl() const
 
 void MatchScene::requestTakeControl()
 {
-  if (!canTakeControl()) return;
+  if (!canTakeControl())
+  {
+    return;
+  }
   // The match stops first; the manager starts playing when ready.
   is_paused = true;
   paused_for_dialog = false;
@@ -75,7 +78,10 @@ void MatchScene::requestTakeControl()
 void MatchScene::startPlaying()
 {
   play_confirm = false;
-  if (!canTakeControl()) return;
+  if (!canTakeControl())
+  {
+    return;
+  }
   watch_speed = match_speed;
   watch_highlights = highlights_only;
   watch_camera = camera_mode;
@@ -83,11 +89,11 @@ void MatchScene::startPlaying()
   engine->setPlayHalfMinutes(
       SettingsManager::instance()->get().play_half_minutes);
   // Physics and inputs stay in real time; only the match clock is compressed.
-  match_speed = 1.0f;
+  match_speed = 1.0F;
   highlights_only = false;
   engine->setPlaybackMode(MatchPlaybackMode::FULL_MATCH);
-  engine->setPlaybackSpeed(1.0f);
-  engine->setHighlightPlaybackSpeed(1.0f);
+  engine->setPlaybackSpeed(1.0F);
+  engine->setHighlightPlaybackSpeed(1.0F);
   camera_mode = MatchCameraMode::PLAY;
   free_follow_ball = false;
   setPitchFocus(true);
@@ -105,7 +111,10 @@ bool MatchScene::canHandBack() const
 
 void MatchScene::handBack()
 {
-  if (!play.isActive() || !engine) return;
+  if (!play.isActive() || !engine)
+  {
+    return;
+  }
   engine->setPlayHalfMinutes(0);
   play.end(*engine);
   play_menu = false;
@@ -118,7 +127,10 @@ void MatchScene::handBack()
 
 void MatchScene::openPlayMenu()
 {
-  if (!play.isActive() || match_finished) return;
+  if (!play.isActive() || match_finished)
+  {
+    return;
+  }
   play_menu = true;
   play_menu_resume = false;
   is_paused = true;
@@ -135,18 +147,28 @@ void MatchScene::closePlayMenu()
 
 void MatchScene::suspendKeyboardNavigation(bool suspend)
 {
-  if (suspend == nav_keyboard_suspended) return;
+  if (suspend == nav_keyboard_suspended)
+  {
+    return;
+  }
   ImGuiIO& io = ImGui::GetIO();
   if (suspend)
+  {
     io.ConfigFlags &= ~ImGuiConfigFlags_NavEnableKeyboard;
+  }
   else
+  {
     io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard;
+  }
   nav_keyboard_suspended = suspend;
 }
 
 void MatchScene::updatePlay(float deltaTime)
 {
-  if (!play.isActive() || !engine) return;
+  if (!play.isActive() || !engine)
+  {
+    return;
+  }
   if (match_finished)
   {
     // Full time: the result is recorded with every player back to the AI.
@@ -161,23 +183,34 @@ void MatchScene::updatePlay(float deltaTime)
   if (play.takePauseRequest())
   {
     if (play_menu)
+    {
       play_menu_resume = true;
+    }
     else if (!dialog)
+    {
       openPlayMenu();
+    }
   }
   const bool driving = !is_paused && !dialog;
   suspendKeyboardNavigation(driving);
   // Real time while playing (the speed controls are hidden).
   // Buttons pressed while paused or in a dialog do nothing on the pitch.
   if (driving)
+  {
     play.update(*engine, deltaTime, play_basis);
+  }
   else
+  {
     play.clearPresses();
+  }
 }
 
 void MatchScene::onExit()
 {
-  if (play.isActive() && engine && !quick_result.valid()) play.end(*engine);
+  if (play.isActive() && engine && !quick_result.valid())
+  {
+    play.end(*engine);
+  }
   suspendKeyboardNavigation(false);
   GUIScene::onExit();
 }
@@ -187,14 +220,20 @@ MatchViewport MatchScene::playViewport2D(const MatchViewport& fitted,
 {
   // Follow a point between the active footballer and the ball, damped with
   // real frame time so the camera glides at any frame rate.
-  Vector2F focus = engine->getBall().position;
+  PitchPoint focus = engine->getBall().position;
   const PlayerID active = engine->getControlledPlayer();
   for (const MatchPlayer& player : engine->getPlayers())
-    if (active != 0 && player.player && player.player->getId() == active)
-      focus = {
-          player.position.x + (focus.x - player.position.x) * FOLLOW_BALL_SHARE,
-          player.position.y +
-              (focus.y - player.position.y) * FOLLOW_BALL_SHARE};
+  {
+    if (active != 0 && (player.player != nullptr) &&
+        player.player->getId() == active)
+    {
+      focus =
+          PitchPoint{player.position.x +
+                         ((focus.x - player.position.x) * FOLLOW_BALL_SHARE),
+                     player.position.y +
+                         ((focus.y - player.position.y) * FOLLOW_BALL_SHARE)};
+    }
+  }
   if (!play_follow_ready)
   {
     play_follow = focus;
@@ -202,60 +241,75 @@ MatchViewport MatchScene::playViewport2D(const MatchViewport& fitted,
   }
   else
   {
-    const float blend = 1.0f - std::exp(-FOLLOW_RATE_PER_SECOND *
-                                        std::min(frame_seconds, 0.1f));
+    const float blend = 1.0F - std::exp(-FOLLOW_RATE_PER_SECOND *
+                                        std::min(frame_seconds, 0.1F));
     play_follow.x += (focus.x - play_follow.x) * blend;
     play_follow.y += (focus.y - play_follow.y) * blend;
   }
   MatchViewport zoomed = fitted;
-  zoomed.width = fitted.width * PLAY_ZOOM_2D;
-  zoomed.height = fitted.height * PLAY_ZOOM_2D;
-  const float centreX = (viewMin.x + viewMax.x) * 0.5f;
-  const float centreY = (viewMin.y + viewMax.y) * 0.5f;
-  // Never further than the pitch's own surround (the apron) past an edge.
-  const float apron = scaled(MatchSceneTuning::Stadium::APRON_WIDTH);
+  const float maxZoom =
+      std::min((viewMax.x - viewMin.x) / fitted.width,
+               (viewMax.y - viewMin.y) / fitted.height) /
+      PLAY_ZOOM_2D;
+  const float wheelSteps = sandbox ? pending_zoom_steps : 0.0F;
+  play_zoom_2d = std::clamp(play_zoom_2d * std::pow(1.15F, wheelSteps),
+                            std::min(0.5F, maxZoom), maxZoom);
+  zoomed.width = fitted.width * PLAY_ZOOM_2D * play_zoom_2d;
+  zoomed.height = fitted.height * PLAY_ZOOM_2D * play_zoom_2d;
+  const float centreX = (viewMin.x + viewMax.x) * 0.5F;
+  const float centreY = (viewMin.y + viewMax.y) * 0.5F;
+  // Follow the action within any space left around the whole pitch.
   const auto place = [](float centre, float span, float follow, float low,
-                        float high, float margin)
+                        float high)
   {
-    const float origin = centre - follow * span;
-    const float lowest = high - span - margin;
-    const float highest = low + margin;
-    return lowest > highest ? (low + high - span) * 0.5f
-                            : std::clamp(origin, lowest, highest);
+    const float origin = centre - (follow * span);
+    return std::clamp(origin, low, std::max(low, high - span));
   };
-  zoomed.x =
-      place(centreX, zoomed.width, play_follow.x, viewMin.x, viewMax.x, apron);
-  zoomed.y =
-      place(centreY, zoomed.height, play_follow.y, viewMin.y, viewMax.y, apron);
+  zoomed.x = place(centreX, zoomed.width,
+                   MatchPitch::matchSize().fractionX(play_follow.x), viewMin.x,
+                   viewMax.x);
+  zoomed.y = place(centreY, zoomed.height,
+                   MatchPitch::matchSize().fractionY(play_follow.y), viewMin.y,
+                   viewMax.y);
   return zoomed;
 }
 
 void MatchScene::renderPlayOverlay(const IMatchRenderer& renderer,
                                    ImVec2 viewMin, ImVec2 viewMax)
 {
-  if (!play.isActive()) return;
+  if (!play.isActive())
+  {
+    return;
+  }
   const PlayerID active = engine->getControlledPlayer();
   // The stick follows the screen: screen pixels per metre along the pitch's
   // length and width at the active footballer, from the view's projection.
   for (const MatchPlayer& player : engine->getPlayers())
   {
-    if (!player.player || player.player->getId() != active) continue;
-    float originX = 0.0f;
-    float originY = 0.0f;
-    float lengthX = 0.0f;
-    float lengthY = 0.0f;
-    float widthX = 0.0f;
-    float widthY = 0.0f;
-    constexpr float METRE_X = 1.0f / MatchTuning::Pitch::LENGTH_METRES;
-    constexpr float METRE_Y = 1.0f / MatchTuning::Pitch::WIDTH_METRES;
-    if (renderer.projectPitch(player.position, 0.0f, originX, originY) &&
-        renderer.projectPitch({player.position.x + METRE_X, player.position.y},
-                              0.0f, lengthX, lengthY) &&
-        renderer.projectPitch({player.position.x, player.position.y + METRE_Y},
-                              0.0f, widthX, widthY))
+    if ((player.player == nullptr) || player.player->getId() != active)
     {
-      play_basis = {lengthX - originX, lengthY - originY, widthX - originX,
-                    widthY - originY};
+      continue;
+    }
+    float originX = 0.0F;
+    float originY = 0.0F;
+    float lengthX = 0.0F;
+    float lengthY = 0.0F;
+    float widthX = 0.0F;
+    float widthY = 0.0F;
+    constexpr float METRE_X = 1.0F / MatchTuning::Pitch::MATCH_LENGTH_METRES;
+    constexpr float METRE_Y = 1.0F / MatchTuning::Pitch::MATCH_WIDTH_METRES;
+    if (renderer.projectPitch(player.position, 0.0F, originX, originY) &&
+        renderer.projectPitch(
+            PitchPoint{player.position.x + METRE_X, player.position.y}, 0.0F,
+            lengthX, lengthY) &&
+        renderer.projectPitch(
+            PitchPoint{player.position.x, player.position.y + METRE_Y}, 0.0F,
+            widthX, widthY))
+    {
+      play_basis = {.lengthX = lengthX - originX,
+                    .lengthY = lengthY - originY,
+                    .widthX = widthX - originX,
+                    .widthY = widthY - originY};
     }
   }
   MatchPlayOverlayState state;
@@ -275,10 +329,15 @@ void MatchScene::renderPlayButtons()
 {
   if (!engine || !managed_is_home.has_value() || match_finished ||
       quick_result.valid())
+  {
     return;
+  }
   if (!play.isActive())
   {
-    if (!canTakeControl()) return;
+    if (!canTakeControl())
+    {
+      return;
+    }
     // Before the first whistle this is the matchday "Play"; later it takes
     // over a watched match.
     const bool beforeKickOff = engine->getState() == MatchState::KICK_OFF &&
@@ -286,18 +345,32 @@ void MatchScene::renderPlayButtons()
     const char* label =
         beforeKickOff ? LOC("MATCH_PLAY") : LOC("MATCH_TAKE_CONTROL");
     UI::sameLineIfFits(UI::buttonWidth(label));
-    if (UI::primaryButton(label)) requestTakeControl();
-    if (ImGui::IsItemHovered()) ImGui::SetTooltip("%s", LOC("MATCH_PLAY_HINT"));
+    if (UI::primaryButton(label))
+    {
+      requestTakeControl();
+    }
+    if (ImGui::IsItemHovered())
+    {
+      ImGui::SetTooltip("%s", LOC("MATCH_PLAY_HINT"));
+    }
     return;
   }
   UI::sameLineIfFits(UI::buttonWidth(LOC("PLAY_MENU")));
-  if (ImGui::Button(LOC("PLAY_MENU"))) openPlayMenu();
+  if (ImGui::Button(LOC("PLAY_MENU")))
+  {
+    openPlayMenu();
+  }
   UI::sameLineIfFits(UI::buttonWidth(LOC("MATCH_HAND_BACK")));
   ImGui::BeginDisabled(!canHandBack());
-  if (ImGui::Button(LOC("MATCH_HAND_BACK"))) handBack();
+  if (ImGui::Button(LOC("MATCH_HAND_BACK")))
+  {
+    handBack();
+  }
   ImGui::EndDisabled();
   if (ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenDisabled))
+  {
     ImGui::SetTooltip("%s", LOC("MATCH_HAND_BACK_HINT"));
+  }
 }
 
 void MatchScene::renderPlayControlsHelp() const
@@ -328,28 +401,44 @@ void MatchScene::renderPlayControlsHelp() const
   ImGui::TextWrapped("%s", LOC("PLAY_PAD_TEXT"));
   ImGui::Spacing();
   if (play.hasGamepad())
+  {
     ImGui::TextUnformatted(
         fmt::sprintf(LOC("PLAY_GAMEPAD_CONNECTED"), play.gamepadName())
             .c_str());
+  }
   else
+  {
     ImGui::TextColored(muted, "%s", LOC("PLAY_NO_GAMEPAD"));
+  }
 }
 
 void MatchScene::renderPlayConfirm()
 {
-  if (!play_confirm) return;
-  constexpr const char* ID = "###play_confirm";
-  if (!ImGui::IsPopupOpen(ID)) ImGui::OpenPopup(ID);
-  const ImGuiViewport* viewport = ImGui::GetMainViewport();
-  ImGui::SetNextWindowPos(viewport->GetCenter(), ImGuiCond_Always,
-                          ImVec2(0.5f, 0.5f));
-  ImGui::SetNextWindowSize(
-      ImVec2(std::min(scaled(560.0f), viewport->WorkSize.x * 0.92f), 0.0f));
-  if (const std::string title = std::string(LOC("PLAY_CONFIRM_TITLE")) + ID;
-      !ImGui::BeginPopupModal(
-          title.c_str(), nullptr,
-          ImGuiWindowFlags_NoSavedSettings | ImGuiWindowFlags_NoResize))
+  if (!play_confirm)
+  {
     return;
+  }
+  const bool embedded = sandbox.has_value();
+  constexpr const char* ID = "###play_confirm";
+  if (!embedded)
+  {
+    if (!ImGui::IsPopupOpen(ID))
+    {
+      ImGui::OpenPopup(ID);
+    }
+    const ImGuiViewport* viewport = ImGui::GetMainViewport();
+    ImGui::SetNextWindowPos(viewport->GetCenter(), ImGuiCond_Always,
+                            ImVec2(0.5F, 0.5F));
+    ImGui::SetNextWindowSize(
+        ImVec2(std::min(scaled(560.0F), viewport->WorkSize.x * 0.92F), 0.0F));
+    const std::string title = std::string(LOC("PLAY_CONFIRM_TITLE")) + ID;
+    if (!ImGui::BeginPopupModal(
+            title.c_str(), nullptr,
+            ImGuiWindowFlags_NoSavedSettings | ImGuiWindowFlags_NoResize))
+    {
+      return;
+    }
+  }
   const std::string& club = *managed_is_home ? home_name : away_name;
   ImGui::TextWrapped(
       "%s", fmt::sprintf(LOC("PLAY_CONFIRM_TEXT"), club.c_str()).c_str());
@@ -358,29 +447,43 @@ void MatchScene::renderPlayConfirm()
   ImGui::Spacing();
   if (UI::primaryButton(LOC("PLAY_START")))
   {
-    ImGui::CloseCurrentPopup();
+    if (!embedded)
+    {
+      ImGui::CloseCurrentPopup();
+    }
     startPlaying();
   }
   ImGui::SameLine();
   if (UI::secondaryButton(LOC("PLAY_CANCEL")) ||
       ImGui::IsKeyPressed(ImGuiKey_Escape, false))
   {
-    ImGui::CloseCurrentPopup();
+    if (!embedded)
+    {
+      ImGui::CloseCurrentPopup();
+    }
     play_confirm = false;
   }
-  ImGui::EndPopup();
+  if (!embedded)
+  {
+    ImGui::EndPopup();
+  }
 }
 
 void MatchScene::renderPlayMenu()
 {
+  const bool embedded = sandbox.has_value();
   // A dialog chosen from the menu opens once the menu has gone.
   if (!play_menu && play_menu_next != PlayMenuNext::NONE &&
       !ImGui::IsPopupOpen("", ImGuiPopupFlags_AnyPopupId))
   {
     if (play_menu_next == PlayMenuNext::TACTICS)
+    {
       showTactics(true);
+    }
     else
+    {
       showSubstitutions(true);
+    }
     play_menu_next = PlayMenuNext::NONE;
   }
   constexpr const char* ID = "###play_menu";
@@ -388,28 +491,45 @@ void MatchScene::renderPlayMenu()
   {
     // Closed from outside the popup (full time, hand-back): close it in
     // ImGui too, so it does not block the other dialogs.
-    if (ImGui::IsPopupOpen(ID) &&
+    if (!embedded && ImGui::IsPopupOpen(ID) &&
         ImGui::BeginPopupModal(ID, nullptr, ImGuiWindowFlags_NoSavedSettings))
     {
-      ImGui::CloseCurrentPopup();
-      ImGui::EndPopup();
+      if (!embedded)
+      {
+        ImGui::CloseCurrentPopup();
+      }
+      if (!embedded)
+      {
+        ImGui::EndPopup();
+      }
     }
     return;
   }
-  if (!ImGui::IsPopupOpen(ID)) ImGui::OpenPopup(ID);
-  const ImGuiViewport* viewport = ImGui::GetMainViewport();
-  ImGui::SetNextWindowPos(viewport->GetCenter(), ImGuiCond_Always,
-                          ImVec2(0.5f, 0.5f));
-  ImGui::SetNextWindowSize(
-      ImVec2(std::min(scaled(560.0f), viewport->WorkSize.x * 0.92f), 0.0f));
-  if (const std::string title = std::string(LOC("PLAY_MENU_TITLE")) + ID;
-      !ImGui::BeginPopupModal(
-          title.c_str(), nullptr,
-          ImGuiWindowFlags_NoSavedSettings | ImGuiWindowFlags_NoResize))
-    return;
-  const auto close = [this]
+  if (!embedded)
   {
-    ImGui::CloseCurrentPopup();
+    if (!ImGui::IsPopupOpen(ID))
+    {
+      ImGui::OpenPopup(ID);
+    }
+    const ImGuiViewport* viewport = ImGui::GetMainViewport();
+    ImGui::SetNextWindowPos(viewport->GetCenter(), ImGuiCond_Always,
+                            ImVec2(0.5F, 0.5F));
+    ImGui::SetNextWindowSize(
+        ImVec2(std::min(scaled(560.0F), viewport->WorkSize.x * 0.92F), 0.0F));
+    const std::string title = std::string(LOC("PLAY_MENU_TITLE")) + ID;
+    if (!ImGui::BeginPopupModal(
+            title.c_str(), nullptr,
+            ImGuiWindowFlags_NoSavedSettings | ImGuiWindowFlags_NoResize))
+    {
+      return;
+    }
+  }
+  const auto close = [this, embedded]
+  {
+    if (!embedded)
+    {
+      ImGui::CloseCurrentPopup();
+    }
     closePlayMenu();
   };
   if (UI::primaryButton(LOC("MATCH_RESUME")) || play_menu_resume)
@@ -417,19 +537,40 @@ void MatchScene::renderPlayMenu()
     close();
     is_paused = false;
   }
-  ImGui::SameLine();
+  if (embedded)
+  {
+    UI::sameLineIfFits(scaled(130.0F));
+  }
+  else
+  {
+    ImGui::SameLine();
+  }
   if (UI::secondaryButton(LOC("MATCH_TACTICS_TITLE")))
   {
     close();
     play_menu_next = PlayMenuNext::TACTICS;
   }
-  ImGui::SameLine();
+  if (embedded)
+  {
+    UI::sameLineIfFits(scaled(130.0F));
+  }
+  else
+  {
+    ImGui::SameLine();
+  }
   if (UI::secondaryButton(LOC("SUBSTITUTION_TITLE")))
   {
     close();
     play_menu_next = PlayMenuNext::SUBSTITUTIONS;
   }
-  ImGui::SameLine();
+  if (embedded)
+  {
+    UI::sameLineIfFits(scaled(130.0F));
+  }
+  else
+  {
+    ImGui::SameLine();
+  }
   if (UI::secondaryButton(LOC("MATCH_HAND_BACK")))
   {
     close();
@@ -447,7 +588,16 @@ void MatchScene::renderPlayMenu()
     ImGui::TextUnformatted(label);
     for (int index = 0; index < 3; ++index)
     {
-      ImGui::SameLine();
+      if (!embedded)
+      {
+        ImGui::SameLine();
+      }
+      else if (index > 0)
+      {
+        UI::sameLineIfFits(
+            ImGui::CalcTextSize(options[static_cast<std::size_t>(index)]).x +
+            scaled(32));
+      }
       ImGui::PushID(label);
       ImGui::PushID(index);
       if (ImGui::RadioButton(options[static_cast<std::size_t>(index)],
@@ -464,19 +614,26 @@ void MatchScene::renderPlayMenu()
          {LOC("PLAY_SWITCH_MANUAL"), LOC("PLAY_SWITCH_ASSISTED"),
           LOC("PLAY_SWITCH_AUTO")});
   if (ImGui::IsItemHovered())
+  {
     ImGui::SetTooltip("%s", LOC("PLAY_AUTO_SWITCH_HINT"));
+  }
   choice(LOC("PLAY_PASS_ASSIST"), settings.play_pass_assist,
          {LOC("PLAY_ASSIST_NONE"), LOC("PLAY_ASSIST_NORMAL"),
           LOC("PLAY_ASSIST_STRONG")});
   ImGui::AlignTextToFramePadding();
   ImGui::TextUnformatted(LOC("PLAY_DEAD_ZONE"));
   ImGui::SameLine();
-  ImGui::SetNextItemWidth(scaled(180.0f));
+  ImGui::SetNextItemWidth(scaled(180.0F));
   // The slider applies while dragged and is saved when let go.
-  if (ImGui::SliderFloat("##play_dead_zone", &settings.play_dead_zone, 0.05f,
-                         0.5f, "%.2f"))
+  if (ImGui::SliderFloat("##play_dead_zone", &settings.play_dead_zone, 0.05F,
+                         0.5F, "%.2f"))
+  {
     play.setOptions(playOptions());
-  if (ImGui::IsItemDeactivatedAfterEdit()) changed = true;
+  }
+  if (ImGui::IsItemDeactivatedAfterEdit())
+  {
+    changed = true;
+  }
   if (changed)
   {
     SettingsManager::instance()->save();
@@ -485,5 +642,8 @@ void MatchScene::renderPlayMenu()
 
   ImGui::SeparatorText(LOC("PLAY_CONTROLS"));
   renderPlayControlsHelp();
-  ImGui::EndPopup();
+  if (!embedded)
+  {
+    ImGui::EndPopup();
+  }
 }

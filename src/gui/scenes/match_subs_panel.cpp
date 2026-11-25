@@ -30,19 +30,19 @@
 
 namespace
 {
-constexpr float DIALOG_WIDTH = 1040.0f;
-constexpr float DIALOG_HEIGHT = 760.0f;
+constexpr float DIALOG_WIDTH = 1040.0F;
+constexpr float DIALOG_HEIGHT = 760.0F;
 /** Pitch and bench side by side from this dialog content width. */
-constexpr float TWO_COLUMN_WIDTH = 760.0f;
-constexpr float PITCH_SHARE = 0.56f;
-constexpr float PITCH_MAX_HEIGHT = 430.0f;
-constexpr float PITCH_MIN_HEIGHT = 150.0f;
-constexpr float PITCH_ASPECT = 68.0f / 105.0f;
-constexpr float MARKER_RADIUS = 12.0f;
-constexpr float MARKER_LABEL_WIDTH = 92.0f;
-constexpr float CONDITION_BAR_WIDTH = 36.0f;
-constexpr float CONDITION_BAR_HEIGHT = 4.0f;
-constexpr float BENCH_BAR_WIDTH = 64.0f;
+constexpr float TWO_COLUMN_WIDTH = 760.0F;
+constexpr float PITCH_SHARE = 0.56F;
+constexpr float PITCH_MAX_HEIGHT = 430.0F;
+constexpr float PITCH_MIN_HEIGHT = 150.0F;
+constexpr float PITCH_ASPECT = 68.0F / 105.0F;
+constexpr float MARKER_RADIUS = 12.0F;
+constexpr float MARKER_LABEL_WIDTH = 92.0F;
+constexpr float CONDITION_BAR_WIDTH = 36.0F;
+constexpr float CONDITION_BAR_HEIGHT = 4.0F;
+constexpr float BENCH_BAR_WIDTH = 64.0F;
 constexpr std::size_t SUGGESTION_COUNT = 3;
 /** Fixed engine steps between two looks at the suggestions (2 s). */
 constexpr std::uint64_t SUGGESTION_REFRESH_STEPS = 20;
@@ -56,8 +56,8 @@ ImU32 textOn(ImU32 kit)
 {
   const ImVec4 colour = ImGui::ColorConvertU32ToFloat4(kit);
   const float luminance =
-      0.299f * colour.x + 0.587f * colour.y + 0.114f * colour.z;
-  return luminance > 0.6f ? IM_COL32(20, 20, 24, 255)
+      (0.299F * colour.x) + (0.587F * colour.y) + (0.114F * colour.z);
+  return luminance > 0.6F ? IM_COL32(20, 20, 24, 255)
                           : IM_COL32(250, 250, 250, 255);
 }
 
@@ -65,10 +65,10 @@ void conditionBar(ImDrawList* drawList, ImVec2 min, float width, float height,
                   float condition)
 {
   const ImVec2 max(min.x + width, min.y + height);
-  drawList->AddRectFilled(min, max, IM_COL32(0, 0, 0, 120), height * 0.5f);
+  drawList->AddRectFilled(min, max, IM_COL32(0, 0, 0, 120), height * 0.5F);
   drawList->AddRectFilled(
-      min, ImVec2(min.x + width * std::clamp(condition, 0.0f, 1.0f), max.y),
-      Theme::toU32(Touchline::conditionColor(condition)), height * 0.5f);
+      min, ImVec2(min.x + (width * std::clamp(condition, 0.0F, 1.0F)), max.y),
+      Theme::toU32(Touchline::conditionColor(condition)), height * 0.5F);
 }
 
 void drawPitchMarkings(ImDrawList* drawList, ImVec2 min, ImVec2 max)
@@ -76,37 +76,46 @@ void drawPitchMarkings(ImDrawList* drawList, ImVec2 min, ImVec2 max)
   using Pitch = MatchSceneTuning::Pitch;
   const float width = max.x - min.x;
   const float height = max.y - min.y;
-  drawList->AddRectFilled(min, max, Pitch::GRASS_COLOR, scaled(4.0f));
+  drawList->AddRectFilled(min, max, Pitch::GRASS_COLOR, scaled(4.0F));
   const float stripe = width / static_cast<float>(Pitch::MOWING_STRIPE_COUNT);
   for (int index = 1; index < Pitch::MOWING_STRIPE_COUNT; index += 2)
   {
-    const float left = min.x + stripe * static_cast<float>(index);
+    const float left = min.x + (stripe * static_cast<float>(index));
     drawList->AddRectFilled(ImVec2(left, min.y), ImVec2(left + stripe, max.y),
                             Pitch::ALTERNATE_GRASS_COLOR);
   }
-  const float line = scaled(1.2f);
+  const float line = scaled(1.2F);
   const ImU32 colour = IM_COL32(255, 255, 255, 120);
-  drawList->AddRect(min, max, colour, scaled(4.0f), 0, line);
-  const float midX = min.x + width * 0.5f;
+  drawList->AddRect(min, max, colour, scaled(4.0F), 0, line);
+  const float midX = min.x + (width * 0.5F);
   drawList->AddLine(ImVec2(midX, min.y), ImVec2(midX, max.y), colour, line);
-  drawList->AddCircle(ImVec2(midX, min.y + height * 0.5f),
+  drawList->AddCircle(ImVec2(midX, min.y + (height * 0.5F)),
                       height * Pitch::CENTRE_CIRCLE_RADIUS_RATIO, colour, 32,
                       line);
   const float boxWidth = width * Pitch::PENALTY_BOX_WIDTH_RATIO;
   const float boxTop =
-      min.y + height * (1.0f - Pitch::PENALTY_BOX_HEIGHT_RATIO) * 0.5f;
+      min.y + (height * (1.0F - Pitch::PENALTY_BOX_HEIGHT_RATIO) * 0.5F);
   const float boxBottom = max.y - (boxTop - min.y);
   drawList->AddRect(ImVec2(min.x, boxTop), ImVec2(min.x + boxWidth, boxBottom),
-                    colour, 0.0f, 0, line);
+                    colour, 0.0F, 0, line);
   drawList->AddRect(ImVec2(max.x - boxWidth, boxTop), ImVec2(max.x, boxBottom),
-                    colour, 0.0f, 0, line);
+                    colour, 0.0F, 0, line);
 }
 
 const char* fitLabel(float fit)
 {
-  if (fit >= 0.99f) return LOC("SUBSTITUTION_FIT_NATURAL");
-  if (fit >= 0.7f) return LOC("SUBSTITUTION_FIT_GOOD");
-  if (fit >= 0.5f) return LOC("SUBSTITUTION_FIT_FAIR");
+  if (fit >= 0.99F)
+  {
+    return LOC("SUBSTITUTION_FIT_NATURAL");
+  }
+  if (fit >= 0.7F)
+  {
+    return LOC("SUBSTITUTION_FIT_GOOD");
+  }
+  if (fit >= 0.5F)
+  {
+    return LOC("SUBSTITUTION_FIT_FAIR");
+  }
   return LOC("SUBSTITUTION_FIT_POOR");
 }
 }  // namespace
@@ -122,7 +131,10 @@ bool MatchSubsPanel::plan(const TouchlineContext& context, PlayerID out,
                           PlayerID in)
 {
   const auto team = context.controller.getTeamById(context.team_id);
-  if (!team) return false;
+  if (!team)
+  {
+    return false;
+  }
   const Lineup& lineup = team->get().getLineup();
   const MatchChanges::Refusal refusal = substitution_plan.add(
       context.engine, context.home, lineup.getReserves(), out, in);
@@ -148,7 +160,10 @@ bool MatchSubsPanel::substituteNow(const TouchlineContext& context,
                                    PlayerID out, PlayerID in)
 {
   const auto team = context.controller.getTeamById(context.team_id);
-  if (!team) return false;
+  if (!team)
+  {
+    return false;
+  }
   const Lineup& lineup = team->get().getLineup();
   MatchChanges::SubstitutionPlan once;
   if (const MatchChanges::Refusal refusal =
@@ -171,7 +186,10 @@ bool MatchSubsPanel::substituteNow(const TouchlineContext& context,
 void MatchSubsPanel::confirm(const TouchlineContext& context)
 {
   substitution_plan.confirm();
-  if (!substitution_plan.isConfirmed()) return;
+  if (!substitution_plan.isConfirmed())
+  {
+    return;
+  }
   if (MatchChanges::atStoppage(context.engine))
   {
     update(context);
@@ -185,14 +203,23 @@ void MatchSubsPanel::confirm(const TouchlineContext& context)
 
 void MatchSubsPanel::update(const TouchlineContext& context)
 {
-  if (!substitution_plan.isConfirmed()) return;
+  if (!substitution_plan.isConfirmed())
+  {
+    return;
+  }
   const auto team = context.controller.getTeamById(context.team_id);
-  if (!team) return;
+  if (!team)
+  {
+    return;
+  }
   const Lineup& lineup = team->get().getLineup();
   const std::vector<MatchChanges::SubstitutionOutcome> outcomes =
       substitution_plan.applyIfDue(context.engine, context.home,
                                    lineup.getReserves());
-  if (!outcomes.empty()) report(context, lineup, outcomes);
+  if (!outcomes.empty())
+  {
+    report(context, lineup, outcomes);
+  }
 }
 
 void MatchSubsPanel::report(
@@ -207,7 +234,10 @@ void MatchSubsPanel::report(
     const std::string in = Touchline::playerName(lineup, outcome.change.in);
     std::string& line =
         outcome.refusal == MatchChanges::Refusal::NONE ? done : refused;
-    if (!line.empty()) line += ' ';
+    if (!line.empty())
+    {
+      line += ' ';
+    }
     line +=
         outcome.refusal == MatchChanges::Refusal::NONE
             ? fmt::sprintf(LOC("SUBSTITUTION_DONE"), in.c_str(), out.c_str())
@@ -215,11 +245,17 @@ void MatchSubsPanel::report(
   }
   context.status_refused = !refused.empty();
   if (done.empty())
+  {
     context.status = refused;
+  }
   else if (refused.empty())
+  {
     context.status = done;
+  }
   else
+  {
     context.status = done + ' ' + refused;
+  }
 }
 
 bool MatchSubsPanel::swapPositions(const TouchlineContext& context,
@@ -228,7 +264,10 @@ bool MatchSubsPanel::swapPositions(const TouchlineContext& context,
   const auto team = context.controller.getTeamById(context.team_id);
   swap_mode = false;
   selected_out = 0;
-  if (!team) return false;
+  if (!team)
+  {
+    return false;
+  }
   const Lineup& lineup = team->get().getLineup();
   const std::string firstName = Touchline::playerName(lineup, first);
   const std::string secondName = Touchline::playerName(lineup, second);
@@ -251,7 +290,9 @@ bool MatchSubsPanel::swapPositions(const TouchlineContext& context,
 void MatchSubsPanel::selectionChanged(const TouchlineContext& context)
 {
   if (selected_out != 0 && selected_in != 0)
+  {
     plan(context, selected_out, selected_in);
+  }
 }
 
 void MatchSubsPanel::collectMarkers(const TouchlineContext& context)
@@ -261,16 +302,19 @@ void MatchSubsPanel::collectMarkers(const TouchlineContext& context)
   const auto& stats = context.engine.getPlayerStats();
   for (const MatchPlayer& player : context.engine.getPlayers())
   {
-    if (!player.player || !player.onPitch || player.isHomeTeam != context.home)
+    if ((player.player == nullptr) || !player.onPitch ||
+        player.isHomeTeam != context.home)
+    {
       continue;
+    }
     PitchMarker marker;
     marker.player = player.player;
     marker.id = player.player->getId();
     marker.goalkeeper = player.isGoalkeeper;
     if (player.isGoalkeeper)
     {
-      marker.spot = {MatchTuning::Pitch::LINEUP_GOALKEEPER_X,
-                     MatchTuning::Pitch::CENTRE};
+      marker.spot = {.x = MatchTuning::Pitch::LINEUP_GOALKEEPER_X_SHARE,
+                     .y = MatchTuning::Pitch::CENTRE};
     }
     else if (player.formationSlot >= 0 &&
              static_cast<std::size_t>(player.formationSlot) < shape.size())
@@ -281,57 +325,68 @@ void MatchSubsPanel::collectMarkers(const TouchlineContext& context)
     {
       // Base positions are in match coordinates: the away side attacks
       // toward x = 0.
-      marker.spot = context.home ? player.basePosition
-                                 : Vector2F{1.0f - player.basePosition.x,
-                                            1.0f - player.basePosition.y};
+      const Vector2F base =
+          MatchPitch::matchSize().fractions(player.basePosition);
+      marker.spot = context.home
+                        ? base
+                        : Vector2F{.x = 1.0F - base.x, .y = 1.0F - base.y};
     }
     marker.condition = player.stamina;
     marker.rating = player.statsIndex < stats.size()
                         ? stats[player.statsIndex].rating
-                        : 0.0f;
+                        : 0.0F;
     marker.yellow_cards = player.yellowCards;
     marker.injured = player.isInjured;
     markers.push_back(marker);
   }
 }
 
-bool MatchSubsPanel::render(const TouchlineContext& context)
+bool MatchSubsPanel::render(const TouchlineContext& context, bool embedded)
 {
   std::array<char, 128> title{};
-  const auto titleText =
-      std::format("{}{}", LOC("SUBSTITUTION_TITLE"), WINDOW_ID);
-  const auto titleResult = std::format_to_n(
-      title.data(), static_cast<std::ptrdiff_t>(title.size() - 1), "{}",
-      titleText);
-  title[std::min(static_cast<std::size_t>(titleResult.size),
-                 title.size() - 1)] = '\0';
-  if (!Touchline::beginDialog(title.data(), popup_opened, DIALOG_WIDTH,
-                              DIALOG_HEIGHT))
+  std::snprintf(title.data(), title.size(), "%s%s", LOC("SUBSTITUTION_TITLE"),
+                WINDOW_ID);
+  if (!embedded && !Touchline::beginDialog(title.data(), popup_opened,
+                                           DIALOG_WIDTH, DIALOG_HEIGHT))
   {
     close_requested = false;
     return false;
   }
 
+  if (embedded)
+  {
+    popup_opened = true;
+  }
   const auto team = context.controller.getTeamById(context.team_id);
   if (!team || close_requested || ImGui::IsKeyPressed(ImGuiKey_Escape, false))
   {
     close_requested = false;
     popup_opened = false;
     resetSelection();
-    ImGui::CloseCurrentPopup();
-    ImGui::EndPopup();
+    if (!embedded)
+    {
+      ImGui::CloseCurrentPopup();
+    }
+    if (!embedded)
+    {
+      ImGui::EndPopup();
+    }
     return false;
   }
   const Lineup& lineup = team->get().getLineup();
   collectMarkers(context);
 
   ImGui::BeginChild("##substitution_body",
-                    ImVec2(0.0f, -Touchline::footerHeight()));
+                    ImVec2(0.0F, -Touchline::footerHeight() -
+                                     (embedded ? scaled(24.0F) : 0.0F)),
+                    ImGuiChildFlags_None,
+                    embedded ? ImGuiWindowFlags_AlwaysVerticalScrollbar
+                             : ImGuiWindowFlags_None);
   renderUsage(context);
   if (const float width = ImGui::GetContentRegionAvail().x;
       width >= scaled(TWO_COLUMN_WIDTH))
   {
-    const float spacing = ImGui::GetStyle().ItemSpacing.x * 2.0f;
+    const float spacing = ImGui::GetStyle().ItemSpacing.x * 2.0F;
     const float pitchWidth = std::floor((width - spacing) * PITCH_SHARE);
     // The plan and the advice stay in view under the pitch; the (long)
     // bench takes the other column.
@@ -339,14 +394,14 @@ bool MatchSubsPanel::render(const TouchlineContext& context)
     renderPitch(context, pitchWidth);
     ImGui::PushTextWrapPos(ImGui::GetCursorPosX() + pitchWidth);
     ImGui::BeginChild(
-        "##plan_column", ImVec2(pitchWidth, 0.0f), ImGuiChildFlags_AutoResizeY,
+        "##plan_column", ImVec2(pitchWidth, 0.0F), ImGuiChildFlags_AutoResizeY,
         ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoBackground);
     renderPlan(context, lineup);
     renderSuggestions(context, lineup);
     ImGui::EndChild();
     ImGui::PopTextWrapPos();
     ImGui::EndGroup();
-    ImGui::SameLine(0.0f, spacing);
+    ImGui::SameLine(0.0F, spacing);
     ImGui::BeginGroup();
     renderBench(context, lineup, width - pitchWidth - spacing);
     ImGui::EndGroup();
@@ -365,9 +420,15 @@ bool MatchSubsPanel::render(const TouchlineContext& context)
   if (!open)
   {
     resetSelection();
-    ImGui::CloseCurrentPopup();
+    if (!embedded)
+    {
+      ImGui::CloseCurrentPopup();
+    }
   }
-  ImGui::EndPopup();
+  if (!embedded)
+  {
+    ImGui::EndPopup();
+  }
   return open;
 }
 
@@ -386,13 +447,13 @@ void MatchSubsPanel::renderUsage(const TouchlineContext& context) const
   if (rules != MatchChanges::Refusal::NONE)
   {
     const std::string reason = Touchline::refusalText(rules, engine, {}, {});
-    ImGui::PushTextWrapPos(0.0f);
+    ImGui::PushTextWrapPos(0.0F);
     ImGui::TextColored(palette.warning, "%s", reason.c_str());
     ImGui::PopTextWrapPos();
   }
   else
   {
-    ImGui::PushTextWrapPos(0.0f);
+    ImGui::PushTextWrapPos(0.0F);
     ImGui::TextColored(palette.faint, "%s", LOC("SUBSTITUTION_HELP"));
     ImGui::PopTextWrapPos();
   }
@@ -409,17 +470,29 @@ void MatchSubsPanel::renderPitch(const TouchlineContext& context, float width)
     ImGui::SameLine();
     if (UI::toggleButton(LOC("SUBSTITUTION_SWAP"), swap_mode, ImVec2(0, 0),
                          UI::ButtonSize::COMPACT))
+    {
       swap_mode = !swap_mode;
+    }
     if (ImGui::IsItemHovered())
+    {
       ImGui::SetTooltip("%s", LOC("SUBSTITUTION_SWAP_HINT"));
+    }
   }
 
   const auto team = context.controller.getTeamById(context.team_id);
   const auto benchPlayer = [&team](PlayerID id) -> const Player*
   {
-    if (!team) return nullptr;
+    if (!team)
+    {
+      return nullptr;
+    }
     for (const Player* reserve : team->get().getLineup().getReserves())
-      if (reserve && reserve->getId() == id) return reserve;
+    {
+      if (reserve && reserve->getId() == id)
+      {
+        return reserve;
+      }
+    }
     return nullptr;
   };
   // Short windows (or a big UI scale) keep the whole XI in view.
@@ -430,29 +503,30 @@ void MatchSubsPanel::renderPitch(const TouchlineContext& context, float width)
                              ImGui::GetFrameHeightWithSpacing())});
   const float pitchWidth = height / PITCH_ASPECT;
   const ImVec2 cursor = ImGui::GetCursorScreenPos();
-  const ImVec2 min(cursor.x + (width - pitchWidth) * 0.5f, cursor.y);
+  const ImVec2 min(cursor.x + ((width - pitchWidth) * 0.5F), cursor.y);
   const ImVec2 max(min.x + pitchWidth, min.y + height);
   ImDrawList* drawList = ImGui::GetWindowDrawList();
   drawPitchMarkings(drawList, min, max);
 
   const float radius = scaled(MARKER_RADIUS);
-  const float margin = radius * 1.6f;
+  const float margin = radius * 1.6F;
   const float labelWidth = scaled(MARKER_LABEL_WIDTH);
   const float lineHeight = ImGui::GetTextLineHeight();
   const ImU32 kitText = textOn(context.kit);
   for (const PitchMarker& marker : markers)
   {
     const ImVec2 centre(
-        min.x + margin + marker.spot.x * (pitchWidth - 2.0f * margin),
-        min.y + margin + marker.spot.y * (height - 2.0f * margin - lineHeight));
+        min.x + margin + (marker.spot.x * (pitchWidth - 2.0F * margin)),
+        min.y + margin +
+            (marker.spot.y * (height - 2.0F * margin - lineHeight)));
     const bool selected = selected_out == marker.id;
     const PlayerID replacement = substitution_plan.replacementFor(marker.id);
 
     ImGui::PushID(static_cast<int>(marker.id));
     ImGui::SetCursorScreenPos(
-        ImVec2(centre.x - labelWidth * 0.5f, centre.y - radius));
+        ImVec2(centre.x - (labelWidth * 0.5F), centre.y - radius));
     const bool clicked = ImGui::InvisibleButton(
-        "##marker", ImVec2(labelWidth, radius * 2.0f + lineHeight * 1.6f));
+        "##marker", ImVec2(labelWidth, (radius * 2.0F) + (lineHeight * 1.6F)));
     const bool hovered = ImGui::IsItemHovered();
     if (clicked)
     {
@@ -485,7 +559,10 @@ void MatchSubsPanel::renderPitch(const TouchlineContext& context, float width)
                    ImGui::AcceptDragDropPayload(PITCH_PAYLOAD))
       {
         const PlayerID other = *static_cast<const PlayerID*>(moved->Data);
-        if (other != marker.id) swapPositions(context, other, marker.id);
+        if (other != marker.id)
+        {
+          swapPositions(context, other, marker.id);
+        }
       }
       ImGui::EndDragDropTarget();
     }
@@ -496,13 +573,17 @@ void MatchSubsPanel::renderPitch(const TouchlineContext& context, float width)
       ImGui::TextColored(palette.muted, "%s  ·  %s %.0f%%  ·  %s %.1f",
                          RoleUtils::shortName(marker.player->getRole()),
                          LOC("ROSTER_COL_CONDITION"),
-                         static_cast<double>(marker.condition * 100.0f),
+                         static_cast<double>(marker.condition * 100.0F),
                          LOC("STATS_COL_RATING"),
                          static_cast<double>(marker.rating));
       if (marker.injured)
+      {
         ImGui::TextColored(palette.negative, "%s", LOC("SUBSTITUTION_INJURED"));
+      }
       if (marker.yellow_cards > 0)
+      {
         ImGui::TextColored(palette.warning, "%s", LOC("SUBSTITUTION_BOOKED"));
+      }
       ImGui::TextColored(palette.faint, "%s", LOC("SUBSTITUTION_MARKER_HINT"));
       ImGui::EndTooltip();
     }
@@ -511,20 +592,24 @@ void MatchSubsPanel::renderPitch(const TouchlineContext& context, float width)
     // Shirt with the position code, selection or planned-change ring.
     drawList->AddCircleFilled(centre, radius, context.kit);
     drawList->AddCircle(centre, radius, IM_COL32(255, 255, 255, 220), 0,
-                        scaled(1.5f));
+                        scaled(1.5F));
     if (selected || hovered)
-      drawList->AddCircle(centre, radius + scaled(3.0f),
-                          Theme::toU32(palette.accent), 0, scaled(2.5f));
+    {
+      drawList->AddCircle(centre, radius + scaled(3.0F),
+                          Theme::toU32(palette.accent), 0, scaled(2.5F));
+    }
     if (replacement != 0)
-      drawList->AddCircle(centre, radius + scaled(3.0f),
-                          Theme::toU32(palette.warning), 0, scaled(2.5f));
+    {
+      drawList->AddCircle(centre, radius + scaled(3.0F),
+                          Theme::toU32(palette.warning), 0, scaled(2.5F));
+    }
     {
       Theme::ScopedText caption(Theme::Text::CAPTION);
       const char* code = RoleUtils::shortName(marker.player->getRole());
       const ImVec2 codeSize = ImGui::CalcTextSize(code);
-      drawList->AddText(
-          ImVec2(centre.x - codeSize.x * 0.5f, centre.y - codeSize.y * 0.5f),
-          kitText, code);
+      drawList->AddText(ImVec2(centre.x - (codeSize.x * 0.5F),
+                               centre.y - (codeSize.y * 0.5F)),
+                        kitText, code);
       // Rating beside the shirt.
       std::array<char, 8> rating{};
       const auto formatted = std::format_to_n(
@@ -532,72 +617,77 @@ void MatchSubsPanel::renderPitch(const TouchlineContext& context, float width)
           "{:.1f}", static_cast<double>(marker.rating));
       rating[std::min(static_cast<std::size_t>(formatted.size),
                       rating.size() - 1)] = '\0';
-      const ImVec2 ratingAt(centre.x + radius + scaled(3.0f),
+      const ImVec2 ratingAt(centre.x + radius + scaled(3.0F),
                             centre.y - radius);
       const ImVec2 ratingSize = ImGui::CalcTextSize(rating.data());
-      drawList->AddRectFilled(ImVec2(ratingAt.x - scaled(2.0f), ratingAt.y),
-                              ImVec2(ratingAt.x + ratingSize.x + scaled(2.0f),
+      drawList->AddRectFilled(ImVec2(ratingAt.x - scaled(2.0F), ratingAt.y),
+                              ImVec2(ratingAt.x + ratingSize.x + scaled(2.0F),
                                      ratingAt.y + ratingSize.y),
-                              IM_COL32(0, 0, 0, 150), scaled(3.0f));
+                              IM_COL32(0, 0, 0, 150), scaled(3.0F));
       drawList->AddText(ratingAt, IM_COL32(255, 255, 255, 235), rating.data());
       // Name and condition under the shirt.
       const std::string& lastName = marker.player->getLastName();
       const float nameWidth =
           std::min(ImGui::CalcTextSize(lastName.c_str()).x, labelWidth);
-      const float nameTop = centre.y + radius + scaled(2.0f);
+      const float nameTop = centre.y + radius + scaled(2.0F);
       drawList->AddRectFilled(
-          ImVec2(centre.x - nameWidth * 0.5f - scaled(3.0f), nameTop),
-          ImVec2(centre.x + nameWidth * 0.5f + scaled(3.0f),
+          ImVec2(centre.x - (nameWidth * 0.5F) - scaled(3.0F), nameTop),
+          ImVec2(centre.x + (nameWidth * 0.5F) + scaled(3.0F),
                  nameTop + ImGui::GetTextLineHeight()),
-          IM_COL32(0, 0, 0, 110), scaled(3.0f));
-      UI::drawTextFitted(drawList, ImVec2(centre.x - nameWidth * 0.5f, nameTop),
+          IM_COL32(0, 0, 0, 110), scaled(3.0F));
+      UI::drawTextFitted(drawList,
+                         ImVec2(centre.x - (nameWidth * 0.5F), nameTop),
                          IM_COL32(255, 255, 255, 240), lastName, labelWidth);
       conditionBar(drawList,
-                   ImVec2(centre.x - scaled(CONDITION_BAR_WIDTH) * 0.5f,
-                          nameTop + ImGui::GetTextLineHeight() + scaled(2.0f)),
+                   ImVec2(centre.x - (scaled(CONDITION_BAR_WIDTH) * 0.5F),
+                          nameTop + ImGui::GetTextLineHeight() + scaled(2.0F)),
                    scaled(CONDITION_BAR_WIDTH), scaled(CONDITION_BAR_HEIGHT),
                    marker.condition);
       // The planned replacement under the player, after a small arrow.
       if (replacement != 0)
+      {
         if (const Player* incoming = benchPlayer(replacement))
         {
           const std::string& inName = incoming->getLastName();
-          const float arrow = scaled(4.0f);
+          const float arrow = scaled(4.0F);
           const float inWidth = std::min(ImGui::CalcTextSize(inName.c_str()).x,
-                                         labelWidth - 3.0f * arrow);
+                                         labelWidth - (3.0F * arrow));
           const float top = nameTop + ImGui::GetTextLineHeight() +
-                            scaled(CONDITION_BAR_HEIGHT) + scaled(4.0f);
-          const float left = centre.x - (inWidth + 3.0f * arrow) * 0.5f;
+                            scaled(CONDITION_BAR_HEIGHT) + scaled(4.0F);
+          const float left = centre.x - ((inWidth + 3.0F * arrow) * 0.5F);
           drawList->AddRectFilled(
-              ImVec2(left - scaled(3.0f), top),
-              ImVec2(left + inWidth + 3.0f * arrow + scaled(3.0f),
+              ImVec2(left - scaled(3.0F), top),
+              ImVec2(left + inWidth + (3.0F * arrow) + scaled(3.0F),
                      top + ImGui::GetTextLineHeight()),
-              IM_COL32(0, 0, 0, 150), scaled(3.0f));
-          const float mid = top + ImGui::GetTextLineHeight() * 0.5f;
-          drawList->AddTriangleFilled(ImVec2(left, mid + arrow),
-                                      ImVec2(left + 2.0f * arrow, mid + arrow),
-                                      ImVec2(left + arrow, mid - arrow),
-                                      Theme::toU32(palette.warning));
-          UI::drawTextFitted(drawList, ImVec2(left + 3.0f * arrow, top),
+              IM_COL32(0, 0, 0, 150), scaled(3.0F));
+          const float mid = top + (ImGui::GetTextLineHeight() * 0.5F);
+          drawList->AddTriangleFilled(
+              ImVec2(left, mid + arrow),
+              ImVec2(left + (2.0F * arrow), mid + arrow),
+              ImVec2(left + arrow, mid - arrow), Theme::toU32(palette.warning));
+          UI::drawTextFitted(drawList, ImVec2(left + (3.0F * arrow), top),
                              Theme::toU32(palette.warning), inName, inWidth);
         }
+      }
     }
     // Booking and injury marks on the shirt's shoulder.
-    const ImVec2 corner(centre.x - radius - scaled(2.0f),
-                        centre.y - radius - scaled(2.0f));
+    const ImVec2 corner(centre.x - radius - scaled(2.0F),
+                        centre.y - radius - scaled(2.0F));
     if (marker.yellow_cards > 0)
+    {
       drawList->AddRectFilled(
-          corner, ImVec2(corner.x + scaled(6.0f), corner.y + scaled(8.0f)),
-          IM_COL32(245, 200, 40, 255), scaled(1.0f));
+          corner, ImVec2(corner.x + scaled(6.0F), corner.y + scaled(8.0F)),
+          IM_COL32(245, 200, 40, 255), scaled(1.0F));
+    }
     if (marker.injured)
     {
-      const ImVec2 cross(corner.x + scaled(12.0f), corner.y + scaled(4.0f));
-      const float arm = scaled(4.0f);
+      const ImVec2 cross(corner.x + scaled(12.0F), corner.y + scaled(4.0F));
+      const float arm = scaled(4.0F);
       const ImU32 red = IM_COL32(230, 60, 60, 255);
       drawList->AddLine(ImVec2(cross.x - arm, cross.y),
-                        ImVec2(cross.x + arm, cross.y), red, scaled(2.5f));
+                        ImVec2(cross.x + arm, cross.y), red, scaled(2.5F));
       drawList->AddLine(ImVec2(cross.x, cross.y - arm),
-                        ImVec2(cross.x, cross.y + arm), red, scaled(2.5f));
+                        ImVec2(cross.x, cross.y + arm), red, scaled(2.5F));
     }
   }
   ImGui::SetCursorScreenPos(cursor);
@@ -612,26 +702,39 @@ void MatchSubsPanel::renderBench(const TouchlineContext& context,
   const StatsConfig& config = context.controller.getStatsConfig();
   PlayerRole position = PlayerRole::UNKNOWN;
   for (const PitchMarker& marker : markers)
-    if (marker.id == selected_out) position = marker.player->getRole();
+  {
+    if (marker.id == selected_out)
+    {
+      position = marker.player->getRole();
+    }
+  }
   const bool showFit = position != PlayerRole::UNKNOWN;
 
   if (const ImGuiTableFlags flags = ImGuiTableFlags_RowBg |
                                     ImGuiTableFlags_BordersInnerH |
                                     ImGuiTableFlags_SizingFixedFit;
       !ImGui::BeginTable("##substitution_bench", showFit ? 5 : 4, flags,
-                         ImVec2(width, 0.0f)))
+                         ImVec2(width, 0.0F)))
+  {
     return;
+  }
   ImGui::TableSetupColumn(LOC("MAIN_GAME_POS"));
   ImGui::TableSetupColumn(LOC("ROSTER_COL_NAME"),
                           ImGuiTableColumnFlags_WidthStretch);
   ImGui::TableSetupColumn(LOC("ROSTER_COL_CONDITION"));
   ImGui::TableSetupColumn(LOC("MAIN_GAME_OVR"));
-  if (showFit) ImGui::TableSetupColumn(LOC("SUBSTITUTION_FIT_HEADER"));
+  if (showFit)
+  {
+    ImGui::TableSetupColumn(LOC("SUBSTITUTION_FIT_HEADER"));
+  }
   UI::staticHeadersRow();
 
   for (const Player* reserve : lineup.getReserves())
   {
-    if (!reserve) continue;
+    if (reserve == nullptr)
+    {
+      continue;
+    }
     const PlayerID id = reserve->getId();
     // Players who already took part (or were replaced) cannot come on.
     const bool used = context.engine.findPlayerStats(id) != nullptr;
@@ -657,35 +760,43 @@ void MatchSubsPanel::renderBench(const TouchlineContext& context,
     ImGui::EndDisabled();
     if (ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenDisabled) &&
         (used || planned))
+    {
       ImGui::SetTooltip("%s", used ? LOC("SUBSTITUTION_ALREADY_PLAYED")
                                    : LOC("SUBSTITUTION_IN_PLAN"));
+    }
     ImGui::PopID();
 
     ImGui::TableNextColumn();
     UI::textFitted(reserve->getName(), ImGui::GetContentRegionAvail().x,
                    used || planned ? palette.faint : palette.text);
     ImGui::TableNextColumn();
-    const float condition = reserve->getDynamics().condition / 100.0f;
+    const float condition = reserve->getDynamics().condition / 100.0F;
     const ImVec2 at = ImGui::GetCursorScreenPos();
-    const float barHeight = scaled(CONDITION_BAR_HEIGHT) * 1.5f;
+    const float barHeight = scaled(CONDITION_BAR_HEIGHT) * 1.5F;
     conditionBar(
         ImGui::GetWindowDrawList(),
-        ImVec2(at.x, at.y + (ImGui::GetTextLineHeight() - barHeight) * 0.5f),
+        ImVec2(at.x, at.y + ((ImGui::GetTextLineHeight() - barHeight) * 0.5F)),
         scaled(BENCH_BAR_WIDTH), barHeight, condition);
     ImGui::Dummy(ImVec2(scaled(BENCH_BAR_WIDTH), ImGui::GetTextLineHeight()));
     if (ImGui::IsItemHovered())
-      ImGui::SetTooltip("%.0f%%", static_cast<double>(condition * 100.0f));
+    {
+      ImGui::SetTooltip("%.0f%%", static_cast<double>(condition * 100.0F));
+    }
     ImGui::TableNextColumn();
     ImGui::Text("%.0f", reserve->getOverall(config));
     if (showFit)
     {
       ImGui::TableNextColumn();
-      float fit = 0.0f;
+      float fit = 0.0F;
       if (reserve->getRole() == PlayerRole::GK || position == PlayerRole::GK)
-        fit = reserve->getRole() == position ? 1.0f : 0.0f;
+      {
+        fit = reserve->getRole() == position ? 1.0F : 0.0F;
+      }
       else
+      {
         fit = MatchChanges::positionFit(reserve->getRole(), position);
-      ImGui::TextColored(fit >= 0.7f ? palette.text : palette.muted, "%s",
+      }
+      ImGui::TextColored(fit >= 0.7F ? palette.text : palette.muted, "%s",
                          fitLabel(fit));
     }
   }
@@ -696,7 +807,7 @@ void MatchSubsPanel::renderPlan(const TouchlineContext& context,
                                 const Lineup& lineup)
 {
   const Theme::Palette& palette = Theme::palette();
-  ImGui::Dummy(ImVec2(0.0f, scaled(Theme::Space::XS)));
+  ImGui::Dummy(ImVec2(0.0F, scaled(Theme::Space::XS)));
   UI::sectionLabel(LOC("SUBSTITUTION_PLAN"));
   const auto entries = substitution_plan.entries();
   if (entries.empty())
@@ -720,14 +831,21 @@ void MatchSubsPanel::renderPlan(const TouchlineContext& context,
                        ImGui::GetStyle().ItemSpacing.x,
                    palette.text);
     ImGui::SameLine(ImGui::GetContentRegionMax().x - removeWidth);
-    if (UI::secondaryButton(LOC("COMPARE_REMOVE"), ImVec2(removeWidth, 0.0f),
+    if (UI::secondaryButton(LOC("COMPARE_REMOVE"), ImVec2(removeWidth, 0.0F),
                             UI::ButtonSize::COMPACT))
+    {
       removed = index;
+    }
     ImGui::PopID();
   }
-  if (removed.has_value()) substitution_plan.remove(*removed);
+  if (removed.has_value())
+  {
+    substitution_plan.remove(*removed);
+  }
   if (substitution_plan.isConfirmed())
+  {
     ImGui::TextColored(palette.info, "%s", LOC("SUBSTITUTION_PLAN_WAITING"));
+  }
   (void)context;
 }
 
@@ -739,15 +857,17 @@ void MatchSubsPanel::renderSuggestions(const TouchlineContext& context,
           context.engine, context.home,
           static_cast<int>(substitution_plan.entries().size())) !=
       MatchChanges::Refusal::NONE)
+  {
     return;
-  ImGui::Dummy(ImVec2(0.0f, scaled(Theme::Space::XS)));
+  }
+  ImGui::Dummy(ImVec2(0.0F, scaled(Theme::Space::XS)));
   UI::sectionLabel(LOC("SUBSTITUTION_ASSISTANT"));
   // Re-evaluated every couple of match seconds or when the squad changes,
   // not every frame.
   const std::uint64_t key =
       context.engine.getSimulatedSteps() / SUGGESTION_REFRESH_STEPS;
   if (const std::size_t changes =
-          substitution_plan.entries().size() * 16 +
+          (substitution_plan.entries().size() * 16) +
           static_cast<std::size_t>(
               context.engine.getSubstitutionsUsed(context.home));
       key != suggestions_key || changes != suggestions_changes)
@@ -771,21 +891,30 @@ void MatchSubsPanel::renderSuggestions(const TouchlineContext& context,
     std::string reasons;
     const auto addReason = [&reasons](std::string_view text)
     {
-      if (!reasons.empty()) reasons += ", ";
+      if (!reasons.empty())
+      {
+        reasons += ", ";
+      }
       reasons.append(text);
     };
     const std::byte reasonFlags = static_cast<std::byte>(suggestion.reasons);
     if ((reasonFlags & static_cast<std::byte>(MatchChanges::SUGGEST_INJURED)) !=
         std::byte{})
+    {
       addReason(LOC("SUBSTITUTION_REASON_INJURED"));
+    }
     if ((reasonFlags & static_cast<std::byte>(MatchChanges::SUGGEST_TIRED)) !=
         std::byte{})
+    {
       addReason(fmt::sprintf(
           LOC("SUBSTITUTION_REASON_TIRED"),
-          static_cast<int>(std::lround(suggestion.condition * 100.0f))));
+          static_cast<int>(std::lround(suggestion.condition * 100.0F))));
+    }
     if ((reasonFlags & static_cast<std::byte>(MatchChanges::SUGGEST_BOOKED)) !=
         std::byte{})
+    {
       addReason(LOC("SUBSTITUTION_REASON_BOOKED"));
+    }
     const std::string line = fmt::sprintf(
         LOC("SUBSTITUTION_SUGGESTION"),
         Touchline::playerName(lineup, suggestion.out).c_str(), reasons.c_str(),
@@ -797,12 +926,17 @@ void MatchSubsPanel::renderSuggestions(const TouchlineContext& context,
                        ImGui::GetStyle().ItemSpacing.x,
                    palette.text);
     ImGui::SameLine(ImGui::GetContentRegionMax().x - addWidth);
-    if (UI::secondaryButton(LOC("SUBSTITUTION_ACCEPT"), ImVec2(addWidth, 0.0f),
+    if (UI::secondaryButton(LOC("SUBSTITUTION_ACCEPT"), ImVec2(addWidth, 0.0F),
                             UI::ButtonSize::COMPACT))
+    {
       accepted = suggestion;
+    }
     ImGui::PopID();
   }
-  if (accepted) plan(context, accepted->out, accepted->in);
+  if (accepted)
+  {
+    plan(context, accepted->out, accepted->in);
+  }
 }
 
 void MatchSubsPanel::renderFooter(const TouchlineContext& context)
@@ -817,29 +951,42 @@ void MatchSubsPanel::renderFooter(const TouchlineContext& context)
   const float available = ImGui::GetContentRegionAvail().x;
   ImGui::AlignTextToFramePadding();
   UI::textFitted(context.status,
-                 std::max(0.0f, available - settingWidth -
+                 std::max(0.0F, available - settingWidth -
                                     ImGui::GetStyle().ItemSpacing.x),
                  context.status_refused ? palette.negative : palette.positive);
-  ImGui::SameLine(rowStart + std::max(0.0f, available - settingWidth));
+  ImGui::SameLine(rowStart + std::max(0.0F, available - settingWidth));
   Touchline::pauseSetting();
 
   const auto planned = static_cast<int>(substitution_plan.entries().size());
   const bool waiting = substitution_plan.isConfirmed();
   const char* confirmKey = "SUBSTITUTION_MAKE_AT_STOPPAGE";
   if (waiting)
+  {
     confirmKey = "SUBSTITUTION_WAITING_BUTTON";
+  }
   else if (MatchChanges::atStoppage(context.engine))
+  {
     confirmKey = "SUBSTITUTION_MAKE_NOW";
+  }
   // Stable id while the count in the label changes.
   const std::string confirmLabel =
       fmt::sprintf(LOC(confirmKey), planned) + "###substitution_confirm";
   ImGui::BeginDisabled(planned == 0 || waiting);
-  if (UI::primaryButton(confirmLabel.c_str())) confirm(context);
+  if (UI::primaryButton(confirmLabel.c_str()))
+  {
+    confirm(context);
+  }
   ImGui::EndDisabled();
   ImGui::SameLine();
   ImGui::BeginDisabled(planned == 0);
-  if (UI::secondaryButton(LOC("SUBSTITUTION_CLEAR"))) substitution_plan.clear();
+  if (UI::secondaryButton(LOC("SUBSTITUTION_CLEAR")))
+  {
+    substitution_plan.clear();
+  }
   ImGui::EndDisabled();
   ImGui::SameLine();
-  if (UI::secondaryButton(LOC("SUBSTITUTION_CLOSE"))) popup_opened = false;
+  if (UI::secondaryButton(LOC("SUBSTITUTION_CLOSE")))
+  {
+    popup_opened = false;
+  }
 }

@@ -1,0 +1,651 @@
+// -----------------------------------------------------------------------------
+//  Football Management Project
+//  Copyright (c) 2025 - 2026 Flavio Milinanni. All Rights Reserved.
+//
+//  This file is part of the Football Management Project.
+//  See the LICENSE file in the project root.
+// -----------------------------------------------------------------------------
+
+#include "tools/match_sandbox_drill_scene.h"
+
+#include <imgui.h>
+
+#include <algorithm>
+#include <array>
+#include <format>
+#include <random>
+#include <string>
+#include <string_view>
+
+#include "audio/match_audio.h"
+#include "controller/game_controller.h"
+#include "global/paths.h"
+#include "gui/gui_view.h"
+#include "gui/render/match_renderer_2d.h"
+#include "gui/render/match_renderer_3d.h"
+#include "gui/widgets/theme.h"
+#include "gui/widgets/widgets.h"
+#include "model/settings_manager.h"
+#include "tools/match_sandbox_page_ui.h"
+#include "tools/match_sandbox_setup.h"
+#include "tools/match_sandbox_text.h"
+
+namespace
+{
+constexpr float REGULAR_FONT_SIZE = 16.0F;
+constexpr float HEADER_FONT_SIZE = 14.0F;
+constexpr float PAGE_PADDING = 24.0F;
+constexpr float PANEL_GAP = 6.0F;
+constexpr float COLUMN_LAYOUT_WIDTH = 1000.0F;
+constexpr float WIDE_LAYOUT_WIDTH = 1400.0F;
+constexpr float WIDE_PANEL_WIDTH = 440.0F;
+constexpr float PANEL_WIDTH = 400.0F;
+constexpr float MIN_PITCH_HEIGHT = 300.0F;
+constexpr float NARROW_PITCH_SHARE = 0.65F;
+constexpr float PITCH_CARD_CHROME = 56.0F;
+constexpr float VIEWPORT_CENTRE = 0.5F;
+constexpr float RUNNER_DEAD_ZONE = 0.2F;
+constexpr int STEPS_PER_SECOND = 10;
+constexpr float SPEED_CONTROL_WIDTH = 160.0F;
+constexpr float SPEED_COMBO_WIDTH = 90.0F;
+constexpr float VIEW_TOGGLE_PADDING = 40.0F;
+constexpr float CAMERA_CONTROL_WIDTH = 240.0F;
+constexpr float CAMERA_COMBO_WIDTH = 180.0F;
+constexpr float SETTINGS_COLUMNS_WIDTH = 360.0F;
+constexpr ImVec4 FAIL_TEXT{1.0F, 0.4F, 0.35F, 1.0F};
+constexpr std::string_view OUTCOME_PREFIX = "OUTCOME  ";
+constexpr float STEP = MatchTuning::Timing::FIXED_STEP_SECONDS;
+/** At most this many steps per frame, so a slow frame cannot snowball. */
+constexpr int MAX_STEPS_PER_FRAME = 40;
+constexpr std::array<float, 7> SPEEDS{0.25F, 0.5F, 1.0F, 2.0F,
+                                      4.0F,  8.0F, 16.0F};
+}  // namespace
+
+DrillScene::DrillScene(GUIView* guiView_ptr, Drill& drill_ref,
+                       std::function<void(MatchEngine&)> prepare)
+    : GUIScene(guiView_ptr),
+      drill(drill_ref),
+      prepareRun(std::move(prepare)),
+      renderer(std::make_unique<MatchRenderer2D>())
+{
+  // The debugger's Step buttons run the drill's script too.
+  debugger.stepper = [this](int steps) { stepRun(steps); };
+  review.hideOffPitch = true;
+}
+
+DrillScene::~DrillScene() = default;
+
+SceneID DrillScene::getID() const { return SceneID::MATCH_SANDBOX; }
+
+void DrillScene::onEnter()
+{
+  // Reuse the launch page's fonts. Direct drill entry loads them once into
+  // the current atlas, so reopening a drill does not keep adding font sources.
+  auto* atlas = ImGui::GetIO().Fonts;
+  const auto font = [&](const char* file, float size)
+  {
+    const auto config = SandboxTypography::manropeConfig();
+    for (auto* existing : atlas->Fonts)
+    {
+      if (std::string_view(existing->GetDebugName()).find(file) !=
+              std::string_view::npos &&
+          !existing->Sources.empty() &&
+          existing->Sources[0]->ExtraSizeScale == config.ExtraSizeScale)
+      {
+        return existing;
+      }
+    }
+    return atlas->AddFontFromFileTTF(
+        AssetPaths::file((std::string("assets/fonts/") + file).c_str()).c_str(),
+        size, &config);
+  };
+  regularFont = font("Manrope-Regular.ttf", REGULAR_FONT_SIZE);
+  boldFont = font("Manrope-Bold.ttf", HEADER_FONT_SIZE);
+  restart();
+}
+
+void DrillScene::onExit()
+{
+  if (run && play.isActive())
+  {
+    play.end(run->engine());
+  }
+  suspendKeyboardNavigation(false);
+  GUIScene::onExit();
+}
+
+void DrillScene::handleEvent(const SDL_Event& event)
+{
+  if (play.isActive())
+  {
+    play.handleEvent(event);
+  }
+}
+
+void DrillScene::suspendKeyboardNavigation(bool suspend)
+{
+  if (suspend == navSuspended)
+  {
+    return;
+  }
+  ImGuiIO& io = ImGui::GetIO();
+  if (suspend)
+  {
+    io.ConfigFlags &= ~ImGuiConfigFlags_NavEnableKeyboard;
+  }
+  else
+  {
+    io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard;
+  }
+  navSuspended = suspend;
+}
+
+void DrillScene::restart()
+{
+  if (newSeedEachRun)
+  {
+    drill.seed = std::random_device{}();
+  }
+  // The windows forget the old run before it goes.
+  debugger.reset();
+  review.reset();
+  inspector.reset();
+  if (run && play.isActive())
+  {
+    play.end(run->engine());
+  }
+  run.reset();
+  run = std::make_unique<DrillRun>(
+      drill, guiView->getController().getStatsConfig(), true, prepareRun);
+  accumulator = 0.0F;
+  // You run: the run waits for you to press Space.
+  paused = drill.humanControl();
+  if (drill.humanControl())
+  {
+    play.begin(run->engine(), true,
+               {.autoSwitch = PlayAutoSwitch::OFF,
+                .passAssist = 1,
+                .deadZone = RUNNER_DEAD_ZONE});
+  }
+}
+
+void DrillScene::stepRun(int steps)
+{
+  for (int step = 0; step < steps && run && !run->finished(); ++step)
+  {
+    // Your input for this step (sampled once per step, as in Play).
+    if (play.isActive())
+    {
+      play.update(run->engine(), STEP, basis);
+    }
+    run->step(
+        [this](bool restart)
+        {
+          if (!coachAudio)
+          {
+            coachAudio = std::make_unique<MatchAudio>();
+          }
+          coachAudio->setLevels(
+              MatchAudio::levelsFrom(SettingsManager::instance()->get()));
+          coachAudio->playCoachWhistle(restart);
+        });
+  }
+}
+
+void DrillScene::update(float deltaTime)
+{
+  if (ImGui::IsKeyPressed(ImGuiKey_Space, false) &&
+      !ImGui::GetIO().WantTextInput)
+  {
+    paused = !paused;
+  }
+  if (ImGui::IsKeyPressed(ImGuiKey_R, false) && !ImGui::GetIO().WantTextInput)
+  {
+    restart();
+  }
+  if (play.isActive() && play.takePauseRequest())
+  {
+    paused = !paused;
+  }
+  // While you steer, the keys belong to the runner, not the panel.
+  const bool steering = play.isActive() && !paused && run && !run->finished();
+  suspendKeyboardNavigation(steering);
+  if (play.isActive() && !steering)
+  {
+    play.clearPresses();
+  }
+  if (!run || paused || run->finished())
+  {
+    return;
+  }
+  accumulator += deltaTime * speed;
+  int steps = 0;
+  while (accumulator >= STEP && steps < MAX_STEPS_PER_FRAME)
+  {
+    accumulator -= STEP;
+    stepRun(1);
+    ++steps;
+  }
+  if (steps == MAX_STEPS_PER_FRAME)
+  {
+    accumulator = 0.0F;
+  }
+}
+
+void DrillScene::render()
+{
+  namespace Page = SandboxPageUI;
+  const auto* viewport = ImGui::GetMainViewport();
+  const float scale = Theme::scale();
+  const Page::Style style(regularFont, scale);
+  ImGui::SetNextWindowPos(viewport->WorkPos);
+  ImGui::SetNextWindowSize(viewport->WorkSize);
+  ImGui::PushStyleColor(ImGuiCol_WindowBg, Page::PAGE);
+  ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding,
+                      ImVec2(PAGE_PADDING * scale, PAGE_PADDING * scale));
+  ImGui::PushStyleVar(ImGuiStyleVar_WindowBorderSize, 0);
+  ImGui::PushStyleVar(ImGuiStyleVar_WindowRounding, 0);
+  ImGui::Begin("##drill", nullptr,
+               ImGuiWindowFlags_NoDecoration | ImGuiWindowFlags_NoMove |
+                   ImGuiWindowFlags_NoSavedSettings |
+                   ImGuiWindowFlags_NoBringToFrontOnFocus |
+                   ImGuiWindowFlags_NoScrollbar |
+                   ImGuiWindowFlags_NoScrollWithMouse);
+  ImGui::PopStyleVar(3);
+  ImGui::PopStyleColor();
+  const ImVec2 available = ImGui::GetContentRegionAvail();
+  const bool columns = available.x >= COLUMN_LAYOUT_WIDTH * scale;
+  const float gutter = (PANEL_GAP * scale) + ImGui::GetStyle().ScrollbarSize;
+  const float panel =
+      columns ? (available.x >= WIDE_LAYOUT_WIDTH * scale ? WIDE_PANEL_WIDTH
+                                                          : PANEL_WIDTH) *
+                    scale
+              : std::max(scale, available.x - gutter);
+  const std::string context = std::format(
+      "{} / Engine versions and simulation conditions come from Set-up.",
+      drillCategoryName(drill.category));
+  const auto controls = [&]
+  {
+    Page::header(drill.name(), drill.summary(), panel, scale, boldFont,
+                 regularFont, context.c_str(), true);
+    renderControls(panel);
+    Page::beginCard("##drill_analysis_tabs", "VIEW", panel, Page::MID, scale,
+                    boldFont);
+    constexpr std::array<const char*, 3> TABS{"Run", "Review", "Debugger"};
+    for (int i = 0; i < 3; ++i)
+    {
+      if (i)
+      {
+        ImGui::SameLine(0, PANEL_GAP * scale);
+      }
+      if (Page::button(TABS.at(static_cast<std::size_t>(i)), analysisTab == i,
+                       scale, boldFont))
+      {
+        analysisTab = i;
+      }
+    }
+    Page::endCard(scale);
+    if (analysisTab == 0)
+    {
+      renderPanel(panel);
+    }
+    else
+    {
+      Page::beginCard("##drill_review_controls",
+                      analysisTab == 1 ? "REVIEW" : "ENGINE ANALYSIS", panel,
+                      Page::LIGHT, scale, boldFont);
+      if (run)
+      {
+        review.renderPanel(run->recorder(), &run->engine(), &paused, nullptr);
+      }
+      SandboxText::wrappedText(
+          analysisTab == 1 ? "The pitch shows the selected moment. Back to "
+                             "live resumes the drill."
+                           : "Select a log entry to review it on the pitch. "
+                             "Inspector tabs share the same selected moment.");
+      Page::endCard(scale);
+    }
+  };
+  ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(0, 0));
+  if (columns)
+  {
+    // Only the controls/settings scroll. The pitch occupies all remaining
+    // window space and stays visible while browsing a long parameter form.
+    ImGui::BeginChild("##drill_page", ImVec2(panel + gutter, available.y),
+                      ImGuiChildFlags_AlwaysUseWindowPadding);
+    controls();
+    ImGui::EndChild();
+    ImGui::SameLine(0, PANEL_GAP * scale);
+    renderPitch(
+        ImVec2(std::max(scale, ImGui::GetContentRegionAvail().x), available.y));
+  }
+  else
+  {
+    // Narrow windows keep a full-width stage, with the controls below it.
+    ImGui::BeginChild("##drill_page", available,
+                      ImGuiChildFlags_AlwaysUseWindowPadding);
+    renderPitch(ImVec2(panel, std::max(MIN_PITCH_HEIGHT * scale,
+                                       available.y * NARROW_PITCH_SHARE)));
+    controls();
+    ImGui::EndChild();
+  }
+  ImGui::PopStyleVar();
+  ImGui::End();
+}
+
+void DrillScene::renderControls(float width)
+{
+  namespace Page = SandboxPageUI;
+  const float scale = Theme::scale();
+  Page::beginCard("##run_controls", "RUN DRILL", width, Page::DARK, scale,
+                  boldFont);
+  const auto next = [&](float itemWidth)
+  {
+    if (ImGui::GetItemRectMax().x + PANEL_GAP * scale + itemWidth <=
+        ImGui::GetWindowPos().x + ImGui::GetWindowContentRegionMax().x)
+    {
+      ImGui::SameLine(0, PANEL_GAP * scale);
+    }
+  };
+  const auto buttonNext = [&](const char* label)
+  { next(Page::buttonWidth(label, scale, boldFont)); };
+  if (Page::button("Back to sandbox", false, scale, boldFont))
+  {
+    guiView->popScene();
+  }
+  buttonNext("Restart (R)");
+  if (Page::button("Restart (R)", true, scale, boldFont))
+  {
+    restart();
+  }
+  const char* playback = paused ? "Play (Space)" : "Pause (Space)";
+  buttonNext(playback);
+  ImGui::BeginDisabled(!run || run->finished());
+  if (Page::button(playback, false, scale, boldFont))
+  {
+    paused = !paused;
+  }
+  buttonNext("Step 0.1 s");
+  if (Page::button("Step 0.1 s", false, scale, boldFont))
+  {
+    stepRun(1);
+  }
+  buttonNext("Step 1 s");
+  if (Page::button("Step 1 s", false, scale, boldFont))
+  {
+    stepRun(STEPS_PER_SECOND);
+  }
+  ImGui::EndDisabled();
+  next(SPEED_CONTROL_WIDTH * scale);
+  ImGui::AlignTextToFramePadding();
+  ImGui::TextUnformatted("Speed");
+  ImGui::SameLine();
+  ImGui::SetNextItemWidth(SPEED_COMBO_WIDTH * scale);
+  const std::string label = std::format("{:g}x", speed);
+  if (SandboxPageUI::beginCombo("##speed", label.c_str()))
+  {
+    for (const float option : SPEEDS)
+    {
+      if (ImGui::Selectable(std::format("{:g}x", option).c_str(),
+                            option == speed))
+      {
+        speed = option;
+      }
+    }
+    ImGui::EndCombo();
+  }
+  ImGui::Checkbox("New seed each run", &newSeedEachRun);
+
+  renderViewControls(scale);
+  if (play.isActive())
+  {
+    ImGui::PushTextWrapPos(0.0F);
+    SandboxText::coloredText(
+        ImGui::ColorConvertU32ToFloat4(Page::LIME),
+        std::format("You run: WASD or the arrows (or a gamepad's stick), "
+                    "hold Shift to sprint. Esc pauses.{}",
+                    paused && run && run->engine().getSimulatedSteps() == 0
+                        ? " Press Space or Esc to start."
+                        : "")
+            .c_str());
+    ImGui::PopTextWrapPos();
+  }
+
+  Page::endCard(scale);
+}
+
+void DrillScene::renderPanel(float width)
+{
+  namespace Page = SandboxPageUI;
+  const float scale = Theme::scale();
+  Page::beginCard("##drill_result", "RESULT", width, Page::MID, scale,
+                  boldFont);
+  if (run)
+  {
+    const char* status = paused ? "Paused" : "Running";
+    if (run->finished())
+    {
+      status = "Finished";
+    }
+    ImGui::TextUnformatted(
+        std::format(
+            "{} / {:.1f} s", status,
+            static_cast<double>(run->engine().getTimedDrillSteps()) * STEP)
+            .c_str());
+    ImGui::PushTextWrapPos(0.0F);
+    // A line that starts PASS or FAIL (after OUTCOME, if it is one) is
+    // coloured by it.
+    for (const std::string& line : drill.report())
+    {
+      std::string_view verdict = line;
+      if (verdict.starts_with(OUTCOME_PREFIX))
+      {
+        verdict.remove_prefix(OUTCOME_PREFIX.size());
+      }
+      if (verdict.starts_with("PASS"))
+      {
+        SandboxText::coloredText(ImGui::ColorConvertU32ToFloat4(Page::LIME),
+                                 line.c_str());
+      }
+      else if (verdict.starts_with("FAIL"))
+      {
+        SandboxText::coloredText(FAIL_TEXT, line.c_str());
+      }
+      else
+      {
+        ImGui::TextUnformatted(line.c_str());
+      }
+    }
+    ImGui::PopTextWrapPos();
+  }
+
+  ImGui::PushTextWrapPos(0);
+  drill.renderAfterSettings();
+  ImGui::PopTextWrapPos();
+  Page::endCard(scale);
+  Page::beginCard("##drill_settings", "SETTINGS", width, Page::LIGHT, scale,
+                  boldFont);
+  ImGui::PushItemWidth(-1);
+  drill.renderSettings(width >= SETTINGS_COLUMNS_WIDTH * scale ? 2 : 1, true,
+                       true);
+  ImGui::PopItemWidth();
+  SandboxText::disabledText("Restart to apply starting conditions.");
+  Page::endCard(scale);
+}
+
+void DrillScene::renderPitch(ImVec2 area)
+{
+  const float width = area.x;
+  const float height = area.y;
+  namespace Page = SandboxPageUI;
+  const float scale = Theme::scale();
+  Page::beginCard("##pitch_card", "PITCH", width, Page::DARK, scale, boldFont);
+  if (analysisTab == 2 && run)
+  {
+    ImGui::BeginChild("##drill_debug_content",
+                      ImVec2(0, std::max(MIN_PITCH_HEIGHT * scale,
+                                         height - (PITCH_CARD_CHROME * scale))),
+                      ImGuiChildFlags_None,
+                      ImGuiWindowFlags_HorizontalScrollbar);
+    renderDebugTools();
+    ImGui::EndChild();
+    Page::endCard(scale);
+    return;
+  }
+  if (analysisTab == 1 && run)
+  {
+    ImGui::BeginChild(
+        "##drill_review_pitch",
+        ImVec2(0, std::max(MIN_PITCH_HEIGHT * scale,
+                           height - (PITCH_CARD_CHROME * scale))));
+    review.renderPitch(run->recorder(), &run->engine(), {0, 0}, &inspector);
+    ImGui::EndChild();
+    Page::endCard(scale);
+    return;
+  }
+  const ImVec2 origin = ImGui::GetCursorScreenPos();
+  const ImVec2 size(
+      std::max(scale, ImGui::GetContentRegionAvail().x),
+      std::max(200 * scale, height - (PITCH_CARD_CHROME * scale)));
+  ImGui::InvisibleButton("##drill_pitch", size);
+  if (!run)
+  {
+    Page::endCard(scale);
+    return;
+  }
+  MatchViewport view = computeMatchViewport(origin.x, origin.y, size.x, size.y);
+  view.x = origin.x + std::max(0.0F, (size.x - view.width) * VIEWPORT_CENTRE);
+  view.y = origin.y + std::max(0.0F, (size.y - view.height) * VIEWPORT_CENTRE);
+  // The 3D view fills the whole area (its camera frames the pitch).
+  if (view3d)
+  {
+    view = {.x = origin.x, .y = origin.y, .width = size.x, .height = size.y};
+  }
+  fillMatchRenderSnapshot(run->engine(), snapshot);
+  // Players not in the drill would wait by the bench like players sent off.
+  std::erase_if(snapshot.players, [](const MatchRenderPlayer& player)
+                { return !player.onPitch; });
+  snapshot.interpolationAlpha =
+      paused || run->finished() ? 1.0F
+                                : std::clamp(accumulator / STEP, 0.0F, 1.0F);
+  MatchRenderOptions options;
+  options.showPlayerNames = true;
+  options.frameSeconds = ImGui::GetIO().DeltaTime;
+  options.cameraMode = cameraMode;
+  ImDrawList* draw = ImGui::GetWindowDrawList();
+  draw->PushClipRect(origin, ImVec2(origin.x + size.x, origin.y + size.y),
+                     true);
+  renderer->render(snapshot, options, view);
+  if (play.isActive())
+  {
+    updateBasis();
+  }
+  drill.drawOverlay(*renderer, *draw);
+  draw->PopClipRect();
+  Page::endCard(scale);
+}
+
+void DrillScene::updateBasis()
+{
+  // The stick follows the screen: pixels per metre along the pitch's length
+  // and width at the runner, from the view's projection (as in Play).
+  const PlayerID active = run->engine().getControlledPlayer();
+  const float METRE_X = 1.0F;
+  const float METRE_Y = 1.0F;
+  for (const MatchPlayer& player : run->engine().getPlayers())
+  {
+    if ((player.player == nullptr) || player.player->getId() != active)
+    {
+      continue;
+    }
+    ImVec2 origin;
+    ImVec2 length;
+    ImVec2 width;
+    if (DrillDraw::project(*renderer, player.position, origin) &&
+        DrillDraw::project(
+            *renderer,
+            PitchPoint{player.position.x + METRE_X, player.position.y},
+            length) &&
+        DrillDraw::project(
+            *renderer,
+            PitchPoint{player.position.x, player.position.y + METRE_Y}, width))
+    {
+      basis = {.lengthX = length.x - origin.x,
+               .lengthY = length.y - origin.y,
+               .widthX = width.x - origin.x,
+               .widthY = width.y - origin.y};
+    }
+  }
+}
+
+void DrillScene::renderDebugTools()
+{
+  if (!run)
+  {
+    return;
+  }
+  MatchEngine& engine = run->engine();
+
+  const MatchEngine* inspected =
+      (review.shownEngine() != nullptr) ? review.shownEngine() : &engine;
+  debugger.renderContents(run->recorder(), &engine, &paused, review.cursor(),
+                          inspected, inspector);
+  if (const auto tick = debugger.takeSeekRequest())
+  {
+    paused = true;
+    review.seek(run->recorder(), *tick);
+    analysisTab = 1;
+  }
+}
+
+void DrillScene::renderViewControls(float scale)
+{
+  const auto next = [&](float itemWidth)
+  {
+    if (ImGui::GetItemRectMax().x + PANEL_GAP * scale + itemWidth <=
+        ImGui::GetWindowPos().x + ImGui::GetWindowContentRegionMax().x)
+    {
+      ImGui::SameLine(0, PANEL_GAP * scale);
+    }
+  };
+  next(ImGui::CalcTextSize("3D view").x + (VIEW_TOGGLE_PADDING * scale));
+  if (ImGui::Checkbox("3D view", &view3d))
+  {
+    if (view3d)
+    {
+      renderer = std::make_unique<MatchRenderer3D>();
+    }
+    else
+    {
+      renderer = std::make_unique<MatchRenderer2D>();
+    }
+  }
+  if (view3d)
+  {
+    constexpr std::array<std::pair<MatchCameraMode, const char*>, 3> CAMERAS{
+        {{MatchCameraMode::BROADCAST, "Broadcast"},
+         {MatchCameraMode::TACTICAL, "Tactical"},
+         {MatchCameraMode::END, "End"}}};
+    const char* current = "Broadcast";
+    for (const auto& [mode, label] : CAMERAS)
+    {
+      if (mode == cameraMode)
+      {
+        current = label;
+      }
+    }
+    next(CAMERA_CONTROL_WIDTH * scale);
+    ImGui::SetNextItemWidth(CAMERA_COMBO_WIDTH * scale);
+    if (SandboxPageUI::beginCombo("Camera", current))
+    {
+      for (const auto& [mode, label] : CAMERAS)
+      {
+        if (ImGui::Selectable(label, mode == cameraMode))
+        {
+          cameraMode = mode;
+        }
+      }
+      ImGui::EndCombo();
+    }
+  }
+}

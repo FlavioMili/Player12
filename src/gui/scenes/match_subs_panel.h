@@ -43,13 +43,17 @@ class MatchSubsPanel
    * @brief Draws the dialog while it is shown.
    * @return False once it closed (Close, Escape or another dialog).
    */
-  bool render(const TouchlineContext& context);
+  bool render(const TouchlineContext& context, bool embedded = false);
 
   /** @brief Makes the confirmed plan once play stops (every frame). */
   void update(const TouchlineContext& context);
 
   /** @brief Next render() opens the popup again (after it was hidden). */
-  void resetPopup() { popup_opened = false; }
+  void resetPopup()
+  {
+    popup_opened = false;
+    close_requested = false;
+  }
 
   /** @brief Closes the dialog on its next frame. */
   void requestClose() { close_requested = true; }
@@ -97,8 +101,8 @@ class MatchSubsPanel
     const Player* player = nullptr;
     PlayerID id = 0;
     Vector2F spot{};
-    float condition = 1.0f;
-    float rating = 0.0f;
+    float condition = 1.0F;
+    float rating = 0.0F;
     int yellow_cards = 0;
     bool injured = false;
     bool goalkeeper = false;

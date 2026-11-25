@@ -114,6 +114,7 @@ class MatchAudio
   /** Master/crowd/effects volumes and mute from the settings. */
   static Audio::BusLevels levelsFrom(const Settings& settings);
   void setLevels(const Audio::BusLevels& levels);
+  void playCoachWhistle(bool restart);
 
   void update(float wallSeconds, const MatchAudioFrame& frame,
               std::span<const MatchEvent> events);

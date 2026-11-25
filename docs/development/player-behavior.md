@@ -152,8 +152,25 @@ These are semantic labels attached to targets, not independent scripts that
 teleport players. `integrateMovements()` blends a tactical target into the
 movement target with a familiarity-dependent response. It applies acceleration,
 braking, turning, fatigue and speed limits. Players slow to arrive and cannot
-reverse their velocity instantly. `separatePlayers()` resolves body overlap
-after movement. Its sorted nearby-pair pass avoids checking every distant pair.
+reverse their velocity instantly. `collidePlayers()` resolves body contact
+after movement. Two players who both have the Binturong body are cylinders
+`MatchTuning::Body` across (0.5 m; the one body size, also used against the
+boards, walls and goal frames): each pair's first contact is found along their straight paths
+through the step, both are wound back to it, the hit is applied by momentum
+(no bounce along the line between their centres, the sideways part kept,
+weight from height and Strength) and both are wound forward. `judgeKnock()`
+scores each hit player (the worse of where he ends up against his
+directional top speed and how sudden the jolt was, with a Balance-scaled
+wobble) against his Balance lines: below them he coasts for 0.1 s per m/s
+of jolt, neither driving, steering nor braking; above the first he
+stumbles (`stumbleBinturong()`); above the second he falls (`knockOver()`).
+A fallen player slides to a stop, may roll about after a big hit, can't
+play the ball, is hurdled by others (no collisions), and gets up when his
+side's brain says (`chooseGetUp()`; the Binturong brain jumps up for a ball
+near and still to be won, gets up in a stoppage, or gingerly after 15 s).
+Contact changes velocity, never position. Any pair with an Aardvark body in
+it is still pushed apart to 0.8 m by `separatePlayers()`, whose sorted
+nearby-pair pass avoids checking every distant pair.
 
 The movement kernel gathers values into arrays so the compiler can process
 multiple players efficiently. Preserve its relationship with scalar
@@ -217,6 +234,25 @@ context. Engagement uses a rate converted to a step probability
 (`1 - exp(-rate * dt)`), so changing step duration does not directly multiply
 the number of tackle attempts. `attemptTackle()` resolves the challenge,
 and foul/advantage/sanction paths may stop play or defer the restart.
+
+On the Binturong body the standing tackle is a touch on the contact model
+instead (tackling plan, `Notes and plans/match_engine_tackling_plan.md`);
+the engage rate starts only slides there. A dribbled ball that has drifted
+out of the carrier's reach is a free ball: any defender it reaches plays
+it. Inside both players' reaches it is a contest: the Binturong brain
+(`goesIntoContestBinturong`) decides once a tick whether he goes in or
+holds, from the carrier's foot (recovering from a touch, or about to
+swing) and how much of the ball he has shown, read as truly as his
+Defending allows, against a bar set by pressing, opposition orders,
+cover, the last man and his own box. Every swing commits his foot
+(`footCooldown`). When both feet meet the ball it is a block
+(`playBlock`): two pushes set by Tackling, squeezed along the line between
+them and added across it. What the tackle is for (`TackleIntent`: control,
+win it with a nudge out of the attacker's line, or knock it away) is the
+brain's (`chooseTackleIntentBinturong`); drills can force it. After a
+win-it nudge he runs to meet the ball from the attacker's side
+(`chaseTouchedBall`); a block at a stretch or at speed adds a little to
+both feet's recovery.
 
 Opposition instructions change mechanisms: tight marking follows a target,
 Press reduces stand-off and raises engagement, ShowWeakFoot shades the defender

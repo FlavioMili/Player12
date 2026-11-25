@@ -11,6 +11,7 @@
 #include <imgui.h>
 
 #include <cstdint>
+#include <functional>
 #include <future>
 #include <memory>
 #include <optional>
@@ -57,7 +58,64 @@ enum class MatchViewMode : std::uint8_t
 class MatchScene : public GUIScene
 {
  public:
+  /**
+   * A match played outside the career (the match sandbox): nothing is
+   * recorded, and full time hands the engine to `on_finish` instead.
+   */
+  struct Sandbox
+  {
+    /**
+     * Builds the engine (seed, condition, familiarity included) in place of
+     * the fixture's setup, so a replay can build the same match again.
+     */
+    std::function<std::unique_ptr<MatchEngine>()> make_engine;
+    /** Called once with the finished engine, in place of the result. */
+    std::function<void(const MatchEngine&)> on_finish;
+    /** Observer attached to the engine for the whole match (may be null). */
+    MatchRecorder* recorder = nullptr;
+    /** Draws the sandbox's own windows over the match each frame; it may
+     * pause the match (`paused`) and step the engine while paused. */
+    std::function<void(MatchEngine&, bool& paused)> on_render;
+    /** Draws the sandbox's own buttons in the match controls (after Leave),
+     * on the same line as them. */
+    std::function<void()> on_controls;
+    /**
+     * Set: the side panel is one scrolling column of collapsible sections
+     * (statistics, events, then these, drawn by the sandbox; it may pause
+     * the match and step the engine while paused).
+     */
+    std::function<void(MatchEngine&, bool& paused)> on_side_panel;
+    /** Embedded analysis area beside the pitch. */
+    std::function<void(MatchEngine&, bool&)> on_debug_panel;
+    std::function<bool()> debugger_visible;
+    std::function<void(bool)> set_debugger;
+    std::function<void(bool)> set_true_view;
+    std::function<void(bool)> engine_tools_visible;
+    /** The moment the pitch shows in place of the live match (a rewound
+     * review), or null for the live match. */
+    std::function<const MatchEngine*()> shown_engine;
+    /** True: the pitch is the 3D view with no figures (the sandbox's true
+     * view draws the engine's shapes in their place). */
+    std::function<bool()> true_view;
+    /** A click on the pitch (released without a drag), for the overlay. */
+    struct ViewClick
+    {
+      bool clicked = false;
+      bool ctrl = false;
+      float x = 0.0F;
+      float y = 0.0F;
+    };
+    /** Draws over the pitch just rendered, inside its clip (the true view's
+     * shapes, the inspector's overlays), from the engine and snapshot it
+     * shows. */
+    std::function<void(const IMatchRenderer&, const MatchEngine&,
+                       const MatchRenderSnapshot&, const ViewClick&)>
+        on_view_overlay;
+  };
+
   MatchScene(class GUIView* guiView_ptr, uint16_t home_id, uint16_t away_id);
+  MatchScene(class GUIView* guiView_ptr, uint16_t home_id, uint16_t away_id,
+             Sandbox sandbox);
 
   void onEnter() override;
   void handleEvent(const SDL_Event& event) override;
@@ -91,6 +149,8 @@ class MatchScene : public GUIScene
 
   uint16_t home_team_id;
   uint16_t away_team_id;
+  /** Set for a sandbox match (see Sandbox). */
+  std::optional<Sandbox> sandbox;
 
   std::string home_name;
   std::string away_name;
@@ -114,7 +174,7 @@ class MatchScene : public GUIScene
   /** Crowd, whistle and ball sounds of the live match. */
   std::unique_ptr<MatchAudio> audio;
   /** Seconds the "skipping to the next highlight" note stays visible. */
-  float skip_indicator_seconds = 0.0f;
+  float skip_indicator_seconds = 0.0F;
   std::unique_ptr<IMatchRenderer> renderer_2d;
   std::unique_ptr<IMatchRenderer> renderer_3d;
   MatchViewMode view_mode = MatchViewMode::PITCH_2D;
@@ -126,7 +186,9 @@ class MatchScene : public GUIScene
   bool day_look = false;
   /** Pitch-control overlay on the 2D view. */
   bool pressure_overlay = false;
-  float pending_zoom_steps = 0.0f;
+  float pending_zoom_steps = 0.0F;
+  float watch_zoom_2d = 1.0F;
+  float play_zoom_2d = 1.0F;
   /** Mouse input over the 3D view waiting for the next rendered frame. */
   MatchCameraInput pending_camera_input;
   /** The free camera orbits the moving ball (B). */
@@ -136,8 +198,8 @@ class MatchScene : public GUIScene
   /** Statistics and events hidden so the view gets the whole width. */
   bool side_panels_hidden = false;
   /** Width of the focus HUD's control strip last frame (right-aligned). */
-  float focus_controls_width = 0.0f;
-  float frame_seconds = 0.0f;
+  float focus_controls_width = 0.0F;
+  float frame_seconds = 0.0F;
 
   bool match_finished = false;
   /** "a.e.t." / "4-3 on penalties" under the full-time score (built once). */
@@ -145,7 +207,7 @@ class MatchScene : public GUIScene
   bool decided_by_ready = false;
 
   /** Multiplier of the engine's real-time pace (1x = real time). */
-  float match_speed = 1.0f;
+  float match_speed = 1.0F;
   bool highlights_only = false;
   bool is_paused = false;
   TeamTalkDialog team_talk;
@@ -188,14 +250,15 @@ class MatchScene : public GUIScene
   };
   PlayMenuNext play_menu_next = PlayMenuNext::NONE;
   /** How the match was being watched, restored on hand-back. */
-  float watch_speed = 1.0f;
+  float watch_speed = 1.0F;
   bool watch_highlights = false;
   MatchCameraMode watch_camera = MatchCameraMode::BROADCAST;
   bool watch_focus = false;
   /** ImGui keyboard navigation is off while the keys drive the pitch. */
   bool nav_keyboard_suspended = false;
-  /** Damped centre of the zoomed 2D play view (normalised pitch). */
-  Vector2F play_follow{MatchTuning::Pitch::CENTRE, MatchTuning::Pitch::CENTRE};
+  /** Damped centre of the zoomed 2D play view (metres). */
+  PitchPoint play_follow{MatchTuning::Pitch::MATCH_CENTRE_X_METRES,
+                         MatchTuning::Pitch::MATCH_CENTRE_Y_METRES};
   bool play_follow_ready = false;
   /** Stick-to-pitch mapping of the view on screen (last frame). */
   PlayScreenBasis play_basis;
@@ -210,12 +273,12 @@ class MatchScene : public GUIScene
   bool indexed_show_all = false;
   bool substitution_refused = false;
   std::string debug_status;
-  float scene_entry_milliseconds = 0.0f;
-  float last_update_milliseconds = 0.0f;
-  float maximum_update_milliseconds = 0.0f;
+  float scene_entry_milliseconds = 0.0F;
+  float last_update_milliseconds = 0.0F;
+  float maximum_update_milliseconds = 0.0F;
   std::uint64_t slow_update_count = 0;
-  float last_render_milliseconds = 0.0f;
-  float average_render_milliseconds = 0.0f;
+  float last_render_milliseconds = 0.0F;
+  float average_render_milliseconds = 0.0F;
 
   /** Re-checks the managed selection against today's fixture. */
   void refreshLineupProblems();
@@ -291,15 +354,35 @@ class MatchScene : public GUIScene
   void toggleWindowFullscreen();
   /** Orbit, pan, zoom and double-click over the view (last item). */
   void handleViewInput();
+  /** Zoom about the pitch centre; 1x restores the full stadium view. */
+  MatchViewport watchViewport2D(const MatchViewport& fitted, ImVec2 viewSize,
+                                float wheelSteps);
   void renderPitchFocus();
   void renderFocusHud(ImVec2 origin, ImVec2 size);
   void renderLineupGate();
   void renderQuickResultProgress();
+  void renderSandboxMatch();
+  void renderSandboxOverview(float width);
+  void renderSandboxTouchline(float width, float height);
+  void renderSandboxRoster();
+  void loadSandboxFonts();
+  ImFont* sandbox_regular = nullptr;
+  ImFont* sandbox_bold = nullptr;
+  int sandbox_tab = 0;
+  bool sandbox_ui_ready = false;
+  float sandbox_normal_toolbar = 32;
   void renderScoreboard();
   void renderTimeline();
   /** Appends new engine events to the (optionally filtered) feed. */
   void refreshVisibleEvents();
   void renderControls();
+  /** The sandbox's windows over the match (see Sandbox::on_render). */
+  void renderSandboxTools();
+  /** A sandbox's side panel: statistics, events and its own sections in
+   * one scrolling column (Sandbox::on_side_panel). */
+  void renderSandboxPanel(ImVec2 size);
+  /** A sandbox match showing its true view (Sandbox::true_view). */
+  [[nodiscard]] bool sandboxTrueView() const;
   void renderViewControls();
   void renderPitch(ImVec2 size);
   void renderStatistics(ImVec2 size);

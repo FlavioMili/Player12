@@ -330,6 +330,8 @@ development snapshots, so most of it is listed under *Added*.
 
 ### Changed
 
+- The orange fallback kit uses ivory shorts and trim for a clearer 2D
+  player chip. This includes the Team 66 and Team Tiered sandbox copies.
 - The match engine was rewritten as a real-time simulation; results,
   statistics and the live views all come from it.
 - The old separate scenes were replaced by one management shell.
@@ -347,6 +349,8 @@ development snapshots, so most of it is listed under *Added*.
 
 ### Fixed
 
+- In 3D, collision falls lower the player to the turf, and officials hold
+  their stride pose when the match is paused.
 - macOS packaging disables the unused vendored CoreText backend after SDL_ttf
   configuration, avoiding incompatible SDK headers while retaining font shaping.
 - Linux Clang builds use the portable movement kernel instead of GCC-only

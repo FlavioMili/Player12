@@ -1,0 +1,229 @@
+// -----------------------------------------------------------------------------
+//  Football Management Project
+//  Copyright (c) 2025 - 2026 Flavio Milinanni. All Rights Reserved.
+//
+//  This file is part of the Football Management Project.
+//  See the LICENSE file in the project root.
+// -----------------------------------------------------------------------------
+
+#pragma once
+
+#include <array>
+#include <cstdint>
+#include <filesystem>
+#include <memory>
+#include <optional>
+#include <span>
+#include <string>
+#include <vector>
+
+#include "global/types.h"
+#include "gui/gui_scene.h"
+#include "tools/match_sandbox_compare.h"
+#include "tools/match_sandbox_debugger.h"
+#include "tools/match_sandbox_drill.h"
+#include "tools/match_sandbox_inspector.h"
+#include "tools/match_sandbox_recorder.h"
+#include "tools/match_sandbox_recording.h"
+#include "tools/match_sandbox_review.h"
+#include "tools/match_sandbox_setup.h"
+#include "tools/match_sandbox_true_view_match.h"
+
+class IMatchRenderer;
+class Lineup;
+class Player;
+class Strategy;
+class Team;
+struct ImFont;
+struct MatchRenderSnapshot;
+struct SessionPlan;
+struct TrainingSessionInfo;
+
+/** The sandbox's pages, one per sidebar item. */
+enum class SandboxPage
+{
+  MATCHES,
+  DRILLS,
+  TRAINING,
+  TOOLS,
+  SETUP,
+  RECORDINGS,
+  REVIEW
+};
+
+/** How the sandbox opens: a drill in Watch, Measure or Shot map, or a view
+ * with no drill (the contact view, the technique bench, the true view). */
+enum class SandboxOpenView
+{
+  WATCH,
+  MEASURE,
+  SHOT_MAP,
+  CONTACT,
+  BENCH,
+  TRUE_VIEW
+};
+
+/**
+ * @brief Setup screen of the match sandbox (match_sandbox): two clubs of a
+ * throwaway world, both sides' selection and tactics, then a live match.
+ *
+ * The home side is the managed one: the live match offers its touchline
+ * (substitutions, tactics, shouts) and Play mode. The away side is played by
+ * the AI with the tactics set here. Nothing is recorded: full time returns
+ * here with the score, ready for a rematch.
+ */
+class MatchSandboxScene : public GUIScene
+{
+ public:
+  /**
+   * @param kick_off_now Start a match with the default setup straight away.
+   * @param open_drill Open this drill (by name, any case) in Watch mode.
+   * @param open_view How to open it (the drill, or a view with no drill).
+   */
+  explicit MatchSandboxScene(
+      GUIView* guiView_ptr, bool kick_off_now = false,
+      std::string open_drill = {},
+      SandboxOpenView open_view = SandboxOpenView::WATCH);
+
+  void onEnter() override;
+  void update(float deltaTime) override;
+  void render() override;
+  SceneID getID() const override;
+
+ private:
+  void renderSidebar();
+  void renderDeveloperSetup();
+  /** One side of the match. */
+  struct Side
+  {
+    TeamID team = 0;
+  };
+
+  void renderSide(Side& side, bool home, float width);
+  void renderClubPicker(Side& side, bool home);
+  void renderFormation(Team& team);
+  void renderInstructions(Strategy& strategy);
+  void renderSelection(Team& team);
+  void renderFooter();
+  void kickOff();
+
+  /** Index of the formation preset the lineup is set up in, if any. */
+  [[nodiscard]] static std::optional<std::size_t> currentPreset(
+      const Lineup& lineup);
+
+  std::array<Side, 2> sides{};
+  bool kick_off_pending = false;
+  std::string drill_pending;
+  SandboxOpenView drill_view = SandboxOpenView::WATCH;
+  std::uint32_t match_seed = 1;
+  bool new_seed_each_match = true;
+  bool full_familiarity = true;
+  std::string last_result;
+
+  // Drills.
+  void renderDrills();
+  SandboxPage mode = SandboxPage::MATCHES;
+  ImFont* sidebar_font = nullptr;
+  ImFont* setup_regular_font = nullptr;
+  ImFont* setup_medium_font = nullptr;
+  std::vector<std::unique_ptr<Drill>> drills = makeDrills();
+  int drill_index = 0;
+  std::array<int, static_cast<std::size_t>(DrillCategory::Count)>
+      category_drill_indices{};
+
+  // Training: a session for the home club's squad.
+  /** A training session picked: drills on the pitch, or a training ground
+   * plan (one of them set). */
+  struct ChosenSession
+  {
+    const TrainingSessionInfo* session = nullptr;
+    const SessionPlan* zonePlan = nullptr;
+  };
+
+  void renderReviewControls(float panel);
+  void renderReviewStage(ImVec2 area);
+  void pickDrillCategory(DrillCategory to);
+  DrillCategory renderDrillCategories(float width);
+  void renderDrillRun(Drill& drill, float detailWidth);
+  /** A click on the match view: Ctrl held, and where. */
+  struct MatchClick
+  {
+    bool clicked = false;
+    bool ctrl = false;
+    ImVec2 at;
+  };
+
+  void renderRecordingDetail(float detailWidth);
+  void renderMatchDebugPanel(MatchEngine& engine, bool& paused);
+  void drawMatchOverlay(const IMatchRenderer& renderer,
+                        const MatchEngine& engine,
+                        const MatchRenderSnapshot& snapshot,
+                        const MatchClick& click);
+  void renderTraining();
+  void pickTrainingClub(TeamID clubId, const std::vector<const Player*>& squad);
+  void renderSessionList(float width, float scale);
+  void renderZoneRecordingList(float width, float scale);
+  void renderSessionOverview(const ChosenSession& chosen, float width,
+                             float scale);
+  void startTraining(const ChosenSession& chosen,
+                     const std::vector<const Player*>& squad,
+                     const std::string& clubName);
+  void renderTrainingRow(const Player& player, float scale);
+  void renderTrainingRoster(std::span<const Player* const> players, int column);
+  void renderTrainingSquad(const std::vector<const Player*>& squad,
+                           const std::string& clubName, float width);
+  /** Tools that show one rule of the engine on its own. */
+  void renderVisualisers();
+  int session_index = 0;
+  /** Whose squad the picks below belong to (new picks when it changes). */
+  TeamID training_club = 0;
+  std::vector<PlayerID> training_picks;
+
+  // Recordings (debugger phase 5).
+  void saveRecording();
+  void renderRecordings();
+  void renderReviewPage();
+  int reviewTab = 0;
+  int recording_index = -1;
+  std::optional<MatchRecording> recording_preview;
+  std::string recording_preview_error;
+  /** @param brains, bodies Replay with these (home, away) instead of the
+   * recorded ones: side by side, the comparison shows where they differ. */
+  void loadRecording(const std::filesystem::path& path,
+                     std::optional<std::array<BrainId, 2>> brains = {},
+                     std::optional<std::array<BodyId, 2>> bodies = {},
+                     std::optional<HandshakeId> handshake = {},
+                     std::optional<PossessionId> possession = {});
+
+  /** What the current (or last) match was built from. */
+  std::optional<MatchSetup> match_setup;
+  /** A recording opened for review, and how it replayed on this engine. */
+  std::optional<MatchRecording> loaded;
+  std::optional<Recordings::Replay> replay_info;
+  RecordingComparison comparison;
+  bool save_with_detail = true;
+  std::vector<std::filesystem::path> recording_files;
+  /** Last save, load or build message, shown in the footer. */
+  std::string status;
+
+  /** The current (or last) match's log, kept until the next kick-off. */
+  std::unique_ptr<SandboxRecorder> recorder;
+  EngineDebugger debugger;
+  MatchReview review;
+  DebugInspector inspector;
+  /** Clubs of the recorded match (the pickers may change after it). */
+  TeamID match_home = 0;
+  TeamID match_away = 0;
+  /** In the match (its controls' Debug and True view buttons): debug shows
+   * the review's moment on the match's pitch with the inspector's
+   * overlays, and the review and debugger in its side panel; the true view
+   * makes the pitch the engine's shapes, its settings in the side panel.
+   * The setup screen's checkbox turns debug on at kick-off. */
+  bool match_debug = false;
+  bool match_engine_tools = false;
+  bool match_true_view = false;
+  bool debug_at_kick_off = false;
+  MatchTrueView true_view;
+  /** The sandbox's sections in the match's side panel. */
+  void renderMatchPanel(MatchEngine& engine, bool& paused);
+};

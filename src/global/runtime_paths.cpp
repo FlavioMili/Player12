@@ -10,6 +10,8 @@
 
 #include <SDL3/SDL.h>
 
+#include <cerrno>
+#include <chrono>
 #include <cstdlib>
 #include <format>
 #include <memory>
@@ -90,6 +92,30 @@ unsigned long processId()
 #endif
 }
 
+std::filesystem::path createToolDirectory(const char* category,
+                                          const char* prefix)
+{
+  const auto base =
+      RuntimePaths::preferenceRoot("FootballManagementTools") / category;
+  std::filesystem::create_directories(base);
+  const auto stamp = std::chrono::steady_clock::now().time_since_epoch().count();
+  for (unsigned attempt = 0; attempt < 100; ++attempt)
+  {
+    const auto path = base / std::format("{}-{}-{}-{}", prefix, processId(),
+                                         stamp, attempt);
+#if defined(_WIN32)
+    if (std::filesystem::create_directory(path)) return path;
+#else
+    if (mkdir(path.c_str(), S_IRWXU) == 0) return path;
+    const std::error_code error(errno, std::generic_category());
+    if (error != std::errc::file_exists)
+      throw std::filesystem::filesystem_error("Cannot create tool directory",
+                                              path, error);
+#endif
+  }
+  throw std::runtime_error("Cannot allocate a unique tool directory");
+}
+
 /**
  * Per-process test root, removed at process exit so test runs never
  * accumulate files. FM_KEEP_TEST_ARTIFACTS=1 keeps it (captures, saves) for
@@ -123,6 +149,22 @@ class TestRuntimeRoot
 };
 }  // namespace
 
+ScratchDirectory::ScratchDirectory(const char* prefix)
+    : path(createToolDirectory("scratch", prefix))
+{
+}
+
+ScratchDirectory::~ScratchDirectory()
+{
+  std::error_code error;
+  std::filesystem::remove_all(path, error);
+}
+
+std::filesystem::path RuntimePaths::createToolOutputDirectory(const char* prefix)
+{
+  return createToolDirectory("output", prefix);
+}
+
 std::filesystem::path RuntimePaths::root()
 {
   if (const auto configured = environmentValue("FM_RUNTIME_ROOT");
@@ -144,8 +186,13 @@ std::filesystem::path RuntimePaths::root()
 
   // Keep the historical storage identity through the Player12 rebrand so
   // existing careers and settings remain discoverable on every platform.
+  return preferenceRoot("FootballManagement");
+}
+
+std::filesystem::path RuntimePaths::preferenceRoot(const char* application)
+{
   if (const std::unique_ptr<char, decltype(&SDL_free)> prefPath(
-          SDL_GetPrefPath("FlavioMili", "FootballManagement"), &SDL_free);
+          SDL_GetPrefPath("FlavioMili", application), &SDL_free);
       prefPath != nullptr)
   {
     return ensureDirectory(prefPath.get());

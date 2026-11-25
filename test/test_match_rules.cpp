@@ -48,7 +48,7 @@ TEST(MatchRulesTest, AddedTimeGrowsWithStoppagesAndStaysBounded)
 TEST(MatchRulesTest, RatingIsEventDrivenAndBounded)
 {
   PlayerMatchStats quiet;
-  quiet.minutesPlayed = 90.0f;
+  quiet.minutesPlayed = 90.0F;
   EXPECT_FLOAT_EQ(MatchRules::computeMatchRating(quiet, false, false, 0),
                   MatchTuning::Rating::BASELINE);
 
@@ -59,12 +59,12 @@ TEST(MatchRulesTest, RatingIsEventDrivenAndBounded)
   scorer.shotsOnTarget = 3;
   const float scorerRating =
       MatchRules::computeMatchRating(scorer, false, false, 2);
-  EXPECT_GT(scorerRating, 8.0f);
+  EXPECT_GT(scorerRating, 8.0F);
 
   PlayerMatchStats sentOff = quiet;
   sentOff.redCards = 1;
   sentOff.foulsCommitted = 3;
-  EXPECT_LT(MatchRules::computeMatchRating(sentOff, false, false, -1), 5.0f);
+  EXPECT_LT(MatchRules::computeMatchRating(sentOff, false, false, -1), 5.0F);
 
   PlayerMatchStats cleanSheetKeeper = quiet;
   cleanSheetKeeper.saves = 4;
@@ -88,39 +88,39 @@ TEST(MatchRulesTest, AerialReachDependsOnHeightAndPhysicality)
 {
   EXPECT_FLOAT_EQ(MatchRules::playerHeightMetres(0),
                   MatchTuning::Units::DEFAULT_PLAYER_HEIGHT_METRES);
-  EXPECT_FLOAT_EQ(MatchRules::playerHeightMetres(191), 1.91f);
+  EXPECT_FLOAT_EQ(MatchRules::playerHeightMetres(191), 1.91F);
 
-  const float shortWeak = MatchRules::headerReachMetres(1.70f, 0.3f);
-  const float tallWeak = MatchRules::headerReachMetres(1.92f, 0.3f);
-  const float tallStrong = MatchRules::headerReachMetres(1.92f, 0.9f);
+  const float shortWeak = MatchRules::headerReachMetres(1.70F, 0.3F);
+  const float tallWeak = MatchRules::headerReachMetres(1.92F, 0.3F);
+  const float tallStrong = MatchRules::headerReachMetres(1.92F, 0.9F);
   EXPECT_LT(shortWeak, tallWeak);
   EXPECT_LT(tallWeak, tallStrong);
-  EXPECT_GT(tallStrong, 2.3f);
-  EXPECT_LT(tallStrong, 3.0f);
-  EXPECT_GT(MatchRules::goalkeeperReachMetres(1.90f, 0.7f), tallStrong);
+  EXPECT_GT(tallStrong, 2.3F);
+  EXPECT_LT(tallStrong, 3.0F);
+  EXPECT_GT(MatchRules::goalkeeperReachMetres(1.90F, 0.7F), tallStrong);
 
-  EXPECT_FLOAT_EQ(MatchRules::aerialDuelStrength(1.70f, 0.5f, 3.2f), 0.0f);
-  EXPECT_GT(MatchRules::aerialDuelStrength(1.92f, 0.9f, 2.2f),
-            MatchRules::aerialDuelStrength(1.75f, 0.4f, 2.2f));
+  EXPECT_FLOAT_EQ(MatchRules::aerialDuelStrength(1.70F, 0.5F, 3.2F), 0.0F);
+  EXPECT_GT(MatchRules::aerialDuelStrength(1.92F, 0.9F, 2.2F),
+            MatchRules::aerialDuelStrength(1.75F, 0.4F, 2.2F));
 }
 
 TEST(MatchRulesTest, FoulSanctionsFollowTheLaws)
 {
   FoulContext careless;
-  careless.severityRoll = 0.2f;
-  careless.cardRoll = 0.9f;
+  careless.severityRoll = 0.2F;
+  careless.cardRoll = 0.9F;
   EXPECT_EQ(MatchRules::decideFoulSanction(careless), FoulSanction::NONE);
 
   FoulContext reckless = careless;
-  reckless.severityRoll = 0.95f;
-  reckless.cardRoll = 0.1f;
+  reckless.severityRoll = 0.95F;
+  reckless.cardRoll = 0.1F;
   EXPECT_EQ(MatchRules::decideFoulSanction(reckless), FoulSanction::YELLOW);
   reckless.offenderAlreadyBooked = true;
   EXPECT_EQ(MatchRules::decideFoulSanction(reckless),
             FoulSanction::SECOND_YELLOW);
 
   FoulContext violent = careless;
-  violent.severityRoll = 0.9999f;
+  violent.severityRoll = 0.9999F;
   EXPECT_EQ(MatchRules::decideFoulSanction(violent), FoulSanction::RED);
 
   // Denying an obvious goal-scoring opportunity is a sending-off outside the
@@ -132,7 +132,7 @@ TEST(MatchRulesTest, FoulSanctionsFollowTheLaws)
   lastMan.denyingGoalChance = true;
   lastMan.cardRoll = (D::PENALTY_AREA_DOGSO_RED_CHANCE +
                       D::TACTICAL_YELLOW_CHANCE * D::HOME_CARD_BIAS) *
-                     0.5f;
+                     0.5F;
   EXPECT_EQ(MatchRules::decideFoulSanction(lastMan), FoulSanction::RED);
   lastMan.inPenaltyArea = true;
   EXPECT_EQ(MatchRules::decideFoulSanction(lastMan), FoulSanction::YELLOW);
@@ -141,34 +141,34 @@ TEST(MatchRulesTest, FoulSanctionsFollowTheLaws)
   FoulContext tactical = careless;
   tactical.tactical = true;
   tactical.cardRoll = D::TACTICAL_YELLOW_CHANCE * D::HOME_CARD_BIAS;
-  tactical.strictness = 0.8f;
+  tactical.strictness = 0.8F;
   EXPECT_EQ(MatchRules::decideFoulSanction(tactical), FoulSanction::NONE);
-  tactical.strictness = 1.3f;
+  tactical.strictness = 1.3F;
   EXPECT_EQ(MatchRules::decideFoulSanction(tactical), FoulSanction::YELLOW);
 }
 
 TEST(MatchRulesTest, StaminaDrainFollowsIntensityAndEndurance)
 {
-  const float walking = MatchRules::staminaDrainPerSecond(0.2f, 0.5f, 0.0f);
-  const float running = MatchRules::staminaDrainPerSecond(0.6f, 0.5f, 0.0f);
-  const float sprinting = MatchRules::staminaDrainPerSecond(1.0f, 0.5f, 0.0f);
+  const float walking = MatchRules::staminaDrainPerSecond(0.2F, 0.5F, 0.0F);
+  const float running = MatchRules::staminaDrainPerSecond(0.6F, 0.5F, 0.0F);
+  const float sprinting = MatchRules::staminaDrainPerSecond(1.0F, 0.5F, 0.0F);
   EXPECT_LT(walking, running);
   EXPECT_LT(running, sprinting);
-  EXPECT_GT(MatchRules::staminaDrainPerSecond(0.6f, 0.2f, 0.0f),
-            MatchRules::staminaDrainPerSecond(0.6f, 0.9f, 0.0f));
-  EXPECT_GT(MatchRules::staminaDrainPerSecond(0.6f, 0.5f, 1.0f), running);
+  EXPECT_GT(MatchRules::staminaDrainPerSecond(0.6F, 0.2F, 0.0F),
+            MatchRules::staminaDrainPerSecond(0.6F, 0.9F, 0.0F));
+  EXPECT_GT(MatchRules::staminaDrainPerSecond(0.6F, 0.5F, 1.0F), running);
 }
 
 TEST(MatchRulesTest, ChallengeTimingAndAngleDecideTackles)
 {
   MatchRules::TackleContext closeControl;
-  closeControl.exposure = 0.0f;
+  closeControl.exposure = 0.0F;
   MatchRules::TackleContext exposed = closeControl;
-  exposed.exposure = 1.0f;
+  exposed.exposure = 1.0F;
   // A challenge while the ball is away from the attacker's foot wins it more
   // often and catches the man less often.
   EXPECT_GT(MatchRules::tackleWinChance(exposed),
-            MatchRules::tackleWinChance(closeControl) + 0.2f);
+            MatchRules::tackleWinChance(closeControl) + 0.2F);
   EXPECT_LT(MatchRules::tackleFoulPropensity(exposed),
             MatchRules::tackleFoulPropensity(closeControl));
 
@@ -179,24 +179,34 @@ TEST(MatchRulesTest, ChallengeTimingAndAngleDecideTackles)
   EXPECT_LT(MatchRules::tackleWinChance(fromBehind),
             MatchRules::tackleWinChance(closeControl));
   EXPECT_GT(MatchRules::tackleFoulPropensity(fromBehind),
-            MatchRules::tackleFoulPropensity(closeControl) * 2.0f);
+            MatchRules::tackleFoulPropensity(closeControl) * 2.0F);
   EXPECT_GT(MatchRules::tackleFoulPropensity(slidingFromBehind),
             MatchRules::tackleFoulPropensity(fromBehind));
 
   // Skill and strength matter, and a strong player shielding is hard to rob.
   MatchRules::TackleContext skilledDefender = closeControl;
-  skilledDefender.defending = 0.9f;
-  skilledDefender.dribbling = 0.3f;
+  skilledDefender.make = MatchRules::tackleMake(0.9F, 0.5F);
+  skilledDefender.resist = MatchRules::tackleResist(0.3F, 0.5F, false);
   MatchRules::TackleContext skilledDribbler = closeControl;
-  skilledDribbler.defending = 0.3f;
-  skilledDribbler.dribbling = 0.9f;
+  skilledDribbler.make = MatchRules::tackleMake(0.3F, 0.5F);
+  skilledDribbler.resist = MatchRules::tackleResist(0.9F, 0.5F, false);
   EXPECT_GT(MatchRules::tackleWinChance(skilledDefender),
             MatchRules::tackleWinChance(skilledDribbler));
   MatchRules::TackleContext shielding = closeControl;
-  shielding.shielding = true;
-  shielding.carrierPhysicality = 0.9f;
+  shielding.resist = MatchRules::tackleResist(0.5F, 0.9F, true);
   EXPECT_LT(MatchRules::tackleWinChance(shielding),
             MatchRules::tackleWinChance(closeControl));
+  // A clumsy tackler fouls more; the home side's edge helps both ways.
+  MatchRules::TackleContext clumsy = closeControl;
+  clumsy.technique = MatchRules::tackleTechnique(0.2F);
+  EXPECT_GT(MatchRules::tackleFoulPropensity(clumsy),
+            MatchRules::tackleFoulPropensity(closeControl));
+  MatchRules::TackleContext edged = closeControl;
+  edged.defenderEdge = 0.1F;
+  EXPECT_GT(MatchRules::tackleWinChance(edged),
+            MatchRules::tackleWinChance(closeControl));
+  EXPECT_LT(MatchRules::tackleFoulPropensity(edged),
+            MatchRules::tackleFoulPropensity(closeControl));
 
   // A careful defender in his own box or on a booking fouls far less.
   MatchRules::TackleContext inBox = closeControl;
@@ -204,7 +214,7 @@ TEST(MatchRulesTest, ChallengeTimingAndAngleDecideTackles)
   MatchRules::TackleContext booked = closeControl;
   booked.defenderBooked = true;
   EXPECT_LT(MatchRules::tackleFoulPropensity(inBox),
-            MatchRules::tackleFoulPropensity(closeControl) * 0.2f);
+            MatchRules::tackleFoulPropensity(closeControl) * 0.2F);
   EXPECT_LT(MatchRules::tackleFoulPropensity(booked),
             MatchRules::tackleFoulPropensity(closeControl));
   for (const auto* context : {&closeControl, &exposed, &slidingFromBehind})
@@ -325,12 +335,12 @@ TEST(MatchRulesTest, ShootoutIsDecidedWhenOneSideCannotCatchUp)
 
 TEST(MatchRulesTest, PeriodsRunThroughExtraTime)
 {
-  EXPECT_FLOAT_EQ(MatchRules::periodStartMinute(1), 0.0f);
-  EXPECT_FLOAT_EQ(MatchRules::periodEndMinute(2), 90.0f);
-  EXPECT_FLOAT_EQ(MatchRules::periodStartMinute(3), 90.0f);
-  EXPECT_FLOAT_EQ(MatchRules::periodEndMinute(3), 105.0f);
-  EXPECT_FLOAT_EQ(MatchRules::periodStartMinute(4), 105.0f);
-  EXPECT_FLOAT_EQ(MatchRules::periodEndMinute(4), 120.0f);
+  EXPECT_FLOAT_EQ(MatchRules::periodStartMinute(1), 0.0F);
+  EXPECT_FLOAT_EQ(MatchRules::periodEndMinute(2), 90.0F);
+  EXPECT_FLOAT_EQ(MatchRules::periodStartMinute(3), 90.0F);
+  EXPECT_FLOAT_EQ(MatchRules::periodEndMinute(3), 105.0F);
+  EXPECT_FLOAT_EQ(MatchRules::periodStartMinute(4), 105.0F);
+  EXPECT_FLOAT_EQ(MatchRules::periodEndMinute(4), 120.0F);
   MatchRules::StoppageLog quiet;
   EXPECT_GE(MatchRules::computeAddedMinutes(quiet, 3), 1);
   EXPECT_LE(MatchRules::computeAddedMinutes(quiet, 4),
@@ -339,22 +349,22 @@ TEST(MatchRulesTest, PeriodsRunThroughExtraTime)
 
 TEST(MatchRulesTest, KeeperHandlingRequiresPhysicalHorizontalAndVerticalReach)
 {
-  const float height = 1.85f;
-  const float skill = 0.8f;
-  const float shoulder = height * 0.8f;
+  const float height = 1.85F;
+  const float skill = 0.8F;
+  const float shoulder = height * 0.8F;
   const float ceiling = MatchRules::goalkeeperReachMetres(height, skill);
   const float standing =
       MatchRules::goalkeeperHandlingRadiusMetres(height, skill, shoulder);
-  EXPECT_GT(standing, 0.7f);
-  EXPECT_LT(standing, 0.9f);
+  EXPECT_GT(standing, 0.7F);
+  EXPECT_LT(standing, 0.9F);
   EXPECT_LT(MatchRules::goalkeeperHandlingRadiusMetres(
-                height, skill, (shoulder + ceiling) * 0.5f),
+                height, skill, (shoulder + ceiling) * 0.5F),
             standing);
   EXPECT_FLOAT_EQ(
-      MatchRules::goalkeeperHandlingRadiusMetres(height, skill, ceiling), 0.0f);
+      MatchRules::goalkeeperHandlingRadiusMetres(height, skill, ceiling), 0.0F);
   EXPECT_FLOAT_EQ(
-      MatchRules::goalkeeperHandlingRadiusMetres(height, skill, ceiling + 0.1f),
-      0.0f);
-  EXPECT_LT(MatchRules::goalkeeperHandlingRadiusMetres(1.70f, skill, 1.0f),
-            MatchRules::goalkeeperHandlingRadiusMetres(2.00f, skill, 1.0f));
+      MatchRules::goalkeeperHandlingRadiusMetres(height, skill, ceiling + 0.1F),
+      0.0F);
+  EXPECT_LT(MatchRules::goalkeeperHandlingRadiusMetres(1.70F, skill, 1.0F),
+            MatchRules::goalkeeperHandlingRadiusMetres(2.00F, skill, 1.0F));
 }

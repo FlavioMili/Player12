@@ -30,21 +30,21 @@
 
 namespace
 {
-constexpr float TREND_HEIGHT = 180.0f;
-constexpr float TWO_COLUMN_MIN_WIDTH = 760.0f;
-constexpr float SHOT_MAP_MAX_WIDTH = 420.0f;
-constexpr float CHART_LEFT_AXIS = 36.0f;
-constexpr float PERFORMANCE_HEIGHT = 150.0f;
-constexpr float LEADER_COLUMN_MIN_WIDTH = 220.0f;
+constexpr float TREND_HEIGHT = 180.0F;
+constexpr float TWO_COLUMN_MIN_WIDTH = 760.0F;
+constexpr float SHOT_MAP_MAX_WIDTH = 420.0F;
+constexpr float CHART_LEFT_AXIS = 36.0F;
+constexpr float PERFORMANCE_HEIGHT = 150.0F;
+constexpr float LEADER_COLUMN_MIN_WIDTH = 220.0F;
 
 /** Second categorical series colour (orange), stepped for the surface. */
 ImVec4 secondSeries()
 {
   const ImVec4& surface = Theme::palette().surface;
   const float luminance =
-      0.2126f * surface.x + 0.7152f * surface.y + 0.0722f * surface.z;
-  return luminance > 0.5f ? ImVec4(0.922f, 0.408f, 0.204f, 1.0f)
-                          : ImVec4(0.851f, 0.349f, 0.149f, 1.0f);
+      (0.2126F * surface.x) + (0.7152F * surface.y) + (0.0722F * surface.z);
+  return luminance > 0.5F ? ImVec4(0.922F, 0.408F, 0.204F, 1.0F)
+                          : ImVec4(0.851F, 0.349F, 0.149F, 1.0F);
 }
 
 std::string lastName(const std::string& name)
@@ -54,23 +54,29 @@ std::string lastName(const std::string& name)
 }
 
 // Pitch proportions of the attacking half (metres).
-constexpr float HALF_LENGTH = MatchTuning::Pitch::LENGTH_METRES * 0.5f;
-constexpr float PITCH_WIDTH = MatchTuning::Pitch::WIDTH_METRES;
-constexpr float BOX_DEPTH = 16.5f;
-constexpr float BOX_WIDTH = 40.32f;
-constexpr float SIX_DEPTH = 5.5f;
-constexpr float SIX_WIDTH = 18.32f;
+constexpr float HALF_LENGTH = MatchTuning::Pitch::MATCH_LENGTH_METRES * 0.5F;
+constexpr float PITCH_WIDTH = MatchTuning::Pitch::MATCH_WIDTH_METRES;
+constexpr float BOX_DEPTH = 16.5F;
+constexpr float BOX_WIDTH = 40.32F;
+constexpr float SIX_DEPTH = 5.5F;
+constexpr float SIX_WIDTH = 18.32F;
 
 std::string decimal(float value) { return std::format("{:.2f}", value); }
 
 std::string metricValue(HubMetric metric, float value)
 {
   if (metric == HubMetric::PassCompletion || metric == HubMetric::SetPieceShare)
+  {
     return std::format("{:.0f}%", value);
+  }
   if (metric == HubMetric::Finishing || metric == HubMetric::GoalsPrevented)
+  {
     return std::format("{:+.2f}", value);
+  }
   if (metric == HubMetric::ShotsFor || metric == HubMetric::ShotsAgainst)
+  {
     return std::format("{:.1f}", value);
+  }
   return decimal(value);
 }
 
@@ -98,8 +104,9 @@ void legendItem(const char* label, const ImVec4& color)
   const float size = ImGui::GetTextLineHeight();
   const ImVec2 start = ImGui::GetCursorScreenPos();
   ImGui::GetWindowDrawList()->AddRectFilled(
-      ImVec2(start.x, start.y + size * 0.45f),
-      ImVec2(start.x + size, start.y + size * 0.45f + 2.0f * Theme::scale()),
+      ImVec2(start.x, start.y + (size * 0.45F)),
+      ImVec2(start.x + size,
+             start.y + (size * 0.45F) + (2.0F * Theme::scale())),
       Theme::toU32(color));
   ImGui::Dummy(ImVec2(size, size));
   ImGui::SameLine();
@@ -109,7 +116,7 @@ void legendItem(const char* label, const ImVec4& color)
 void footnote(const char* text)
 {
   Theme::ScopedText small(Theme::Text::SMALL);
-  ImGui::PushTextWrapPos(0.0f);
+  ImGui::PushTextWrapPos(0.0F);
   ImGui::TextColored(Theme::palette().muted, "%s", text);
   ImGui::PopTextWrapPos();
 }
@@ -150,7 +157,7 @@ void DataHubScene::refresh()
   // Finishing and goalkeeping, cached per match.
   const TeamAnalytics& team = hub.team;
   performance_tooltips.clear();
-  performance_top = 0.5f;
+  performance_top = 0.5F;
   for (std::size_t index = 0; index < team.trend.size(); ++index)
   {
     const TeamTrendPoint& point = team.trend[index];
@@ -166,7 +173,7 @@ void DataHubScene::refresh()
         decimal(point.xg_against).c_str(),
         std::format("{:+.2f}", prevention).c_str()));
   }
-  performance_top = std::ceil(performance_top * 2.0f) / 2.0f;
+  performance_top = std::ceil(performance_top * 2.0F) / 2.0F;
 
   // Leaderboards over the tracked matches.
   leaders_note =
@@ -205,11 +212,15 @@ void DataHubScene::renderContent()
   const std::array<const char*, 2> tabs = {LOC("HUB_TAB_TEAM"),
                                            LOC("HUB_TAB_PLAYERS")};
   UI::segmented("##hub_tab", tab, tabs);
-  ImGui::Dummy(ImVec2(0.0f, Theme::Space::XS * Theme::scale()));
+  ImGui::Dummy(ImVec2(0.0F, Theme::Space::XS * Theme::scale()));
   if (tab == 0)
+  {
     renderTeam();
+  }
   else
+  {
     renderPlayers();
+  }
 }
 
 void DataHubScene::renderTeam()
@@ -237,19 +248,27 @@ void DataHubScene::renderTeam()
         league ? metricValue(metric, value.team) : std::string("–");
     std::string note;
     if (!league)
+    {
       note = LOC("HUB_TILE_NO_LEAGUE");
+    }
     else if (value.rank > 0)
+    {
       note = fmt::sprintf(LOC("HUB_TILE_NOTE"),
                           metricValue(metric, value.league).c_str(), value.rank,
                           value.ranked_teams);
+    }
     else
+    {
       note = fmt::sprintf(LOC("HUB_TILE_NOTE_UNRANKED"),
                           metricValue(metric, value.league).c_str());
+    }
     ImGui::PushID(static_cast<int>(std::to_underlying(metric)));
     UI::statTile("hub_tile", LOC(hubMetricKey(metric)), text.c_str(),
                  note.c_str(), palette.text, row.width());
     if (ImGui::IsItemHovered(ImGuiHoveredFlags_DelayShort))
+    {
       ImGui::SetTooltip("%s", LOC(hubMetricHelpKey(metric)));
+    }
     ImGui::PopID();
   }
 
@@ -259,7 +278,7 @@ void DataHubScene::renderTeam()
   const float gap = ImGui::GetStyle().ItemSpacing.x;
   if (available >= TWO_COLUMN_MIN_WIDTH * Theme::scale())
   {
-    const float left = std::min(std::floor((available - gap) * 0.5f),
+    const float left = std::min(std::floor((available - gap) * 0.5F),
                                 SHOT_MAP_MAX_WIDTH * Theme::scale());
     ImGui::BeginGroup();
     renderShotMap(left);
@@ -287,7 +306,7 @@ void DataHubScene::renderPerformance(float width)
   const TeamAnalytics& team = hub.team;
   UI::beginAutoHeightCard("hub_performance", LOC("HUB_PERF_TITLE"), width);
   legendItem(LOC("HUB_PERF_FINISHING"), palette.info);
-  ImGui::SameLine(0.0f, Theme::Space::L * scale);
+  ImGui::SameLine(0.0F, Theme::Space::L * scale);
   legendItem(LOC("HUB_PERF_PREVENTION"), secondSeries());
 
   const float plotWidth = ImGui::GetContentRegionAvail().x;
@@ -298,22 +317,22 @@ void DataHubScene::renderPerformance(float width)
                                               ImVec2(plotWidth, plotHeight));
   const bool hovered = ImGui::IsItemHovered();
   ImDrawList* drawList = ImGui::GetWindowDrawList();
-  const float left = origin.x + CHART_LEFT_AXIS * scale;
-  const float right = origin.x + plotWidth - Theme::Space::S * scale;
-  const float top = origin.y + Theme::Space::S * scale;
-  const float bottom = origin.y + plotHeight - Theme::Space::S * scale;
-  const float zero = (top + bottom) * 0.5f;
+  const float left = origin.x + (CHART_LEFT_AXIS * scale);
+  const float right = origin.x + plotWidth - (Theme::Space::S * scale);
+  const float top = origin.y + (Theme::Space::S * scale);
+  const float bottom = origin.y + plotHeight - (Theme::Space::S * scale);
+  const float zero = (top + bottom) * 0.5F;
   const auto yOf = [&](float value)
   {
     return zero -
-           (zero - top) * std::clamp(value / performance_top, -1.0f, 1.0f);
+           ((zero - top) * std::clamp(value / performance_top, -1.0F, 1.0F));
   };
   const std::size_t count = team.trend.size();
   const auto xOf = [&](std::size_t index)
   {
-    return count <= 1 ? (left + right) * 0.5f
-                      : left + (right - left) * static_cast<float>(index) /
-                                   static_cast<float>(count - 1);
+    return count <= 1 ? (left + right) * 0.5F
+                      : left + ((right - left) * static_cast<float>(index) /
+                                static_cast<float>(count - 1));
   };
   {
     Theme::ScopedText small(Theme::Text::SMALL);
@@ -323,16 +342,16 @@ void DataHubScene::renderPerformance(float width)
       const float y = yOf(value);
       drawList->AddLine(
           ImVec2(left, y), ImVec2(right, y),
-          Theme::toU32(step == 0 ? palette.muted : palette.border), 1.0f);
+          Theme::toU32(step == 0 ? palette.muted : palette.border), 1.0F);
       std::array<char, 16> label{};
       const auto formatted = std::format_to_n(
           label.data(), static_cast<std::ptrdiff_t>(label.size() - 1),
           "{:+.1f}", value);
       label[std::min(static_cast<std::size_t>(formatted.size),
                      label.size() - 1)] = '\0';
-      drawList->AddText(ImVec2(origin.x, y - ImGui::GetTextLineHeight() * 0.5f),
-                        Theme::toU32(palette.muted),
-                        step == 0 ? "0" : label.data());
+      drawList->AddText(
+          ImVec2(origin.x, y - (ImGui::GetTextLineHeight() * 0.5F)),
+          Theme::toU32(palette.muted), step == 0 ? "0" : label.data());
     }
   }
   const auto series = [&](const std::vector<float>& values, const ImVec4& color)
@@ -340,11 +359,13 @@ void DataHubScene::renderPerformance(float width)
     for (std::size_t index = 0; index < values.size(); ++index)
     {
       drawList->AddCircleFilled(ImVec2(xOf(index), yOf(values[index])),
-                                2.5f * scale, Theme::toU32(color));
+                                2.5F * scale, Theme::toU32(color));
       if (index > 0)
+      {
         drawList->AddLine(ImVec2(xOf(index - 1), yOf(values[index - 1])),
                           ImVec2(xOf(index), yOf(values[index])),
-                          Theme::toU32(color), 2.0f * scale);
+                          Theme::toU32(color), 2.0F * scale);
+      }
     }
   };
   series(team.cumulative_finishing, palette.info);
@@ -354,10 +375,14 @@ void DataHubScene::renderPerformance(float width)
     const float mouse = ImGui::GetIO().MousePos.x;
     std::size_t nearest = 0;
     for (std::size_t index = 1; index < count; ++index)
+    {
       if (std::abs(xOf(index) - mouse) < std::abs(xOf(nearest) - mouse))
+      {
         nearest = index;
+      }
+    }
     drawList->AddLine(ImVec2(xOf(nearest), top), ImVec2(xOf(nearest), bottom),
-                      Theme::toU32(palette.faint), 1.0f);
+                      Theme::toU32(palette.faint), 1.0F);
     ImGui::SetMouseCursor(ImGuiMouseCursor_Hand);
     ImGui::SetTooltip("%s\n%s", performance_tooltips[nearest].c_str(),
                       LOC("FIXTURES_OPEN_REPORT_HINT"));
@@ -390,13 +415,17 @@ void DataHubScene::renderLeaders(float width)
     return;
   }
   const float inner = ImGui::GetContentRegionAvail().x;
-  const float gap = ImGui::GetStyle().ItemSpacing.x * 2.0f;
+  const float gap = ImGui::GetStyle().ItemSpacing.x * 2.0F;
   const float minimum = LEADER_COLUMN_MIN_WIDTH * scale;
   std::size_t columns = 1;
-  if (inner >= 4.0f * minimum + 3.0f * gap)
+  if (inner >= 4.0F * minimum + 3.0F * gap)
+  {
     columns = 4;
-  else if (inner >= 2.0f * minimum + gap)
+  }
+  else if (inner >= 2.0F * minimum + gap)
+  {
     columns = 2;
+  }
   const float columnWidth =
       std::floor((inner - gap * static_cast<float>(columns - 1)) /
                  static_cast<float>(columns));
@@ -404,8 +433,10 @@ void DataHubScene::renderLeaders(float width)
   for (std::size_t metric = 0; metric < LEADER_METRIC_COUNT; ++metric)
   {
     if (metric % columns != 0)
-      ImGui::SameLine(startX + static_cast<float>(metric % columns) *
-                                   (columnWidth + gap));
+    {
+      ImGui::SameLine(startX + (static_cast<float>(metric % columns) *
+                                (columnWidth + gap)));
+    }
     ImGui::PushID(static_cast<int>(metric));
     ImGui::BeginGroup();
     const float x0 = ImGui::GetCursorPosX();
@@ -415,7 +446,10 @@ void DataHubScene::renderLeaders(float width)
           palette.muted, "%s",
           LOC(leaderMetricKey(static_cast<LeaderMetric>(metric))));
     }
-    if (leaders[metric].empty()) ImGui::TextColored(palette.faint, "%s", "–");
+    if (leaders[metric].empty())
+    {
+      ImGui::TextColored(palette.faint, "%s", "–");
+    }
     for (std::size_t rank = 0; rank < leaders[metric].size(); ++rank)
     {
       const LeaderRow& row = leaders[metric][rank];
@@ -432,9 +466,13 @@ void DataHubScene::renderLeaders(float width)
                   ? row.name
                   : row.short_name;
           UI::link(label.c_str(), "leader"))
+      {
         Navigation::openPlayer(guiView, row.id);
+      }
       if (ImGui::IsItemHovered(ImGuiHoveredFlags_DelayShort))
+      {
         ImGui::SetTooltip("%s\n%s", row.name.c_str(), row.tooltip.c_str());
+      }
       ImGui::SameLine(columnWidth - valueWidth);
       ImGui::TextUnformatted(row.value.c_str());
       ImGui::PopID();
@@ -453,7 +491,7 @@ void DataHubScene::renderTrendChart(float width)
   const TeamAnalytics& team = hub.team;
   UI::beginAutoHeightCard("hub_trend", LOC("HUB_TREND_TITLE"), width);
   legendItem(LOC("HUB_TREND_FOR"), palette.info);
-  ImGui::SameLine(0.0f, Theme::Space::L * scale);
+  ImGui::SameLine(0.0F, Theme::Space::L * scale);
   legendItem(LOC("HUB_TREND_AGAINST"), palette.warning);
 
   const float plotWidth = ImGui::GetContentRegionAvail().x;
@@ -465,22 +503,26 @@ void DataHubScene::renderTrendChart(float width)
   const bool hovered = ImGui::IsItemHovered();
   ImDrawList* drawList = ImGui::GetWindowDrawList();
 
-  float top = 0.5f;
+  float top = 0.5F;
   for (const TeamTrendPoint& point : team.trend)
+  {
     top = std::max({top, point.xg_for, point.xg_against});
-  top = std::ceil(top * 2.0f) / 2.0f;
-  const float left = origin.x + CHART_LEFT_AXIS * scale;
-  const float right = origin.x + plotWidth - Theme::Space::S * scale;
+  }
+  top = std::ceil(top * 2.0F) / 2.0F;
+  const float left = origin.x + (CHART_LEFT_AXIS * scale);
+  const float right = origin.x + plotWidth - (Theme::Space::S * scale);
   const float bottom = origin.y + plotHeight - ImGui::GetTextLineHeight();
-  const float ceiling = origin.y + Theme::Space::S * scale;
+  const float ceiling = origin.y + (Theme::Space::S * scale);
   const auto yOf = [&](float value)
-  { return bottom - (bottom - ceiling) * std::clamp(value / top, 0.0f, 1.0f); };
+  {
+    return bottom - ((bottom - ceiling) * std::clamp(value / top, 0.0F, 1.0F));
+  };
   const std::size_t count = team.trend.size();
   const auto xOf = [&](std::size_t index)
   {
-    return count <= 1 ? (left + right) * 0.5f
-                      : left + (right - left) * static_cast<float>(index) /
-                                   static_cast<float>(count - 1);
+    return count <= 1 ? (left + right) * 0.5F
+                      : left + ((right - left) * static_cast<float>(index) /
+                                static_cast<float>(count - 1));
   };
 
   // Recessive grid with axis labels in text ink.
@@ -488,20 +530,20 @@ void DataHubScene::renderTrendChart(float width)
   small.emplace(Theme::Text::SMALL);
   for (int step = 0; step <= 2; ++step)
   {
-    const float value = top * static_cast<float>(step) / 2.0f;
+    const float value = top * static_cast<float>(step) / 2.0F;
     const float y = yOf(value);
     drawList->AddLine(ImVec2(left, y), ImVec2(right, y),
-                      Theme::toU32(palette.border), 1.0f);
+                      Theme::toU32(palette.border), 1.0F);
     const std::string label = std::format("{:.1f}", value);
-    drawList->AddText(ImVec2(origin.x, y - ImGui::GetTextLineHeight() * 0.5f),
+    drawList->AddText(ImVec2(origin.x, y - (ImGui::GetTextLineHeight() * 0.5F)),
                       Theme::toU32(palette.muted), label.c_str());
   }
   const std::string first = Format::dayMonth(team.trend.front().date);
   const std::string last = Format::dayMonth(team.trend.back().date);
-  drawList->AddText(ImVec2(left, bottom + 2.0f * scale),
+  drawList->AddText(ImVec2(left, bottom + (2.0F * scale)),
                     Theme::toU32(palette.muted), first.c_str());
   drawList->AddText(ImVec2(right - ImGui::CalcTextSize(last.c_str()).x,
-                           bottom + 2.0f * scale),
+                           bottom + (2.0F * scale)),
                     Theme::toU32(palette.muted), last.c_str());
 
   const auto series =
@@ -512,12 +554,14 @@ void DataHubScene::renderTrendChart(float width)
       // Match values as small markers, the rolling mean as the line.
       const float raw =
           against ? team.trend[index].xg_against : team.trend[index].xg_for;
-      drawList->AddCircleFilled(ImVec2(xOf(index), yOf(raw)), 2.5f * scale,
-                                Theme::toU32(color, 0.45f));
+      drawList->AddCircleFilled(ImVec2(xOf(index), yOf(raw)), 2.5F * scale,
+                                Theme::toU32(color, 0.45F));
       if (index > 0)
+      {
         drawList->AddLine(ImVec2(xOf(index - 1), yOf(rolling[index - 1])),
                           ImVec2(xOf(index), yOf(rolling[index])),
-                          Theme::toU32(color), 2.0f * scale);
+                          Theme::toU32(color), 2.0F * scale);
+      }
     }
   };
   series(team.rolling_xg_for, false, palette.info);
@@ -528,8 +572,12 @@ void DataHubScene::renderTrendChart(float width)
     const float mouse = ImGui::GetIO().MousePos.x;
     std::size_t nearest = 0;
     for (std::size_t index = 1; index < count; ++index)
+    {
       if (std::abs(xOf(index) - mouse) < std::abs(xOf(nearest) - mouse))
+      {
         nearest = index;
+      }
+    }
     return nearest;
   };
   if (hovered && count > 0)
@@ -538,7 +586,7 @@ void DataHubScene::renderTrendChart(float width)
     ImGui::SetMouseCursor(ImGuiMouseCursor_Hand);
     drawList->AddLine(ImVec2(xOf(nearest), ceiling),
                       ImVec2(xOf(nearest), bottom), Theme::toU32(palette.faint),
-                      1.0f);
+                      1.0F);
     const TeamTrendPoint& point = team.trend[nearest];
     ImGui::SetTooltip(
         "%s\n%s",
@@ -591,49 +639,51 @@ void DataHubScene::renderShotMap(float width)
   const bool hovered = ImGui::IsItemHovered();
   ImDrawList* drawList = ImGui::GetWindowDrawList();
   const ImU32 line = Theme::toU32(palette.border);
-  const float thickness = 1.5f * scale;
+  const float thickness = 1.5F * scale;
   // Attacking half with the goal at the top.
   drawList->AddRect(origin, ImVec2(origin.x + mapWidth, origin.y + mapHeight),
-                    line, 0.0f, 0, thickness);
+                    line, 0.0F, 0, thickness);
   const auto box = [&](float depth, float boxWidth)
   {
     const float w = mapWidth * boxWidth / PITCH_WIDTH;
     const float h = mapHeight * depth / HALF_LENGTH;
-    const float x = origin.x + (mapWidth - w) * 0.5f;
+    const float x = origin.x + ((mapWidth - w) * 0.5F);
     drawList->AddRect(ImVec2(x, origin.y), ImVec2(x + w, origin.y + h), line,
-                      0.0f, 0, thickness);
+                      0.0F, 0, thickness);
   };
   box(BOX_DEPTH, BOX_WIDTH);
   box(SIX_DEPTH, SIX_WIDTH);
-  drawList->AddCircle(ImVec2(origin.x + mapWidth * 0.5f, origin.y + mapHeight),
-                      mapWidth * 9.15f / PITCH_WIDTH, line, 0, thickness);
+  drawList->AddCircle(
+      ImVec2(origin.x + (mapWidth * 0.5F), origin.y + mapHeight),
+      mapWidth * 9.15F / PITCH_WIDTH, line, 0, thickness);
 
   const auto position = [&](const ShotRecord& shot)
   {
-    const float depth = std::clamp((1.0f - shot.x) * 2.0f, 0.0f, 1.0f);
-    return ImVec2(origin.x + mapWidth * shot.y, origin.y + mapHeight * depth);
+    const float depth = std::clamp((1.0F - shot.x) * 2.0F, 0.0F, 1.0F);
+    return ImVec2(origin.x + (mapWidth * shot.y),
+                  origin.y + (mapHeight * depth));
   };
   const ShotRecord* nearest = nullptr;
-  float nearestDistance = 12.0f * scale;
-  float totalXg = 0.0f;
+  float nearestDistance = 12.0F * scale;
+  float totalXg = 0.0F;
   int goals = 0;
   const ImVec2 mouse = ImGui::GetIO().MousePos;
   for (const ShotRecord& shot : shots)
   {
     const ImVec2 at = position(shot);
-    const float radius = (3.0f + 10.0f * std::sqrt(shot.xg)) * scale;
+    const float radius = (3.0F + 10.0F * std::sqrt(shot.xg)) * scale;
     totalXg += shot.xg;
     if (shot.outcome == ShotOutcome::Goal)
     {
       ++goals;
       drawList->AddCircleFilled(at, radius, Theme::toU32(color));
       drawList->AddCircle(at, radius, Theme::toU32(palette.surface), 0,
-                          2.0f * scale);
+                          2.0F * scale);
     }
     else
     {
-      drawList->AddCircle(at, radius, Theme::toU32(color, 0.8f), 0,
-                          1.5f * scale);
+      drawList->AddCircle(at, radius, Theme::toU32(color, 0.8F), 0,
+                          1.5F * scale);
     }
     const float distance = std::hypot(at.x - mouse.x, at.y - mouse.y);
     if (hovered && distance < std::max(nearestDistance, radius))
@@ -643,11 +693,13 @@ void DataHubScene::renderShotMap(float width)
     }
   }
   if (nearest != nullptr)
+  {
     ImGui::SetTooltip("%s", fmt::sprintf(LOC("HUB_SHOT_TOOLTIP"),
                                          static_cast<int>(nearest->minute) + 1,
                                          decimal(nearest->xg).c_str(),
                                          LOC(outcomeKey(nearest->outcome)))
                                 .c_str());
+  }
   footnote(fmt::sprintf(LOC("HUB_SHOTS_NOTE"), shots.size(), goals,
                         decimal(totalXg).c_str(), team.tracked_matches));
   UI::endCard();
@@ -668,7 +720,7 @@ void DataHubScene::renderSetPieces(float width)
       std::format("{:.1f}", static_cast<float>(set.shots_for) / matches);
   const std::string share =
       set.all_shots_for > 0
-          ? std::format("{:.0f}%", 100.0f * static_cast<float>(set.shots_for) /
+          ? std::format("{:.0f}%", 100.0F * static_cast<float>(set.shots_for) /
                                        static_cast<float>(set.all_shots_for))
           : std::string("–");
   const std::string goals = std::to_string(set.goals_for);
@@ -698,10 +750,10 @@ void DataHubScene::renderComparison(float width)
     return;
   }
   static constexpr std::array<UI::Column, 4> COLUMNS = {
-      {{"HUB_COL_METRIC", 0.0f, 0},
-       {"HUB_COL_CLUB", 64.0f, 0},
-       {"HUB_COL_LEAGUE", 64.0f, 1},
-       {"HUB_COL_RANK", 64.0f, 0}}};
+      {{.label = "HUB_COL_METRIC", .width = 0.0F, .priority = 0},
+       {.label = "HUB_COL_CLUB", .width = 64.0F, .priority = 0},
+       {.label = "HUB_COL_LEAGUE", .width = 64.0F, .priority = 1},
+       {.label = "HUB_COL_RANK", .width = 64.0F, .priority = 0}}};
   std::array<UI::Column, 4> columns{};
   for (std::size_t index = 0; index < columns.size(); ++index)
   {
@@ -709,7 +761,7 @@ void DataHubScene::renderComparison(float width)
     columns[index].label = LOC(COLUMNS[index].label);
   }
   if (const UI::ColumnMask mask =
-          UI::fitColumns(columns, ImGui::GetContentRegionAvail().x, 120.0f);
+          UI::fitColumns(columns, ImGui::GetContentRegionAvail().x, 120.0F);
       UI::beginResponsiveTable("hub_league_table", columns, mask,
                                ImGuiTableFlags_RowBg))
   {
@@ -721,12 +773,18 @@ void DataHubScene::renderComparison(float width)
       ImGui::TableNextColumn();
       ImGui::TextUnformatted(LOC(hubMetricKey(metric)));
       if (ImGui::IsItemHovered(ImGuiHoveredFlags_DelayShort))
+      {
         ImGui::SetTooltip("%s", LOC(hubMetricHelpKey(metric)));
+      }
       if (UI::cell(mask, 1))
+      {
         UI::textRight(metricValue(metric, value.team).c_str());
+      }
       if (UI::cell(mask, 2))
+      {
         UI::textRightColored(palette.muted,
                              metricValue(metric, value.league).c_str());
+      }
       if (UI::cell(mask, 3))
       {
         const std::string rank =
@@ -751,22 +809,22 @@ void DataHubScene::renderPlayers()
                    LOC("HUB_PLAYERS_EMPTY_BODY"));
     return;
   }
-  UI::beginAutoHeightCard("hub_players", nullptr, 0.0f);
+  UI::beginAutoHeightCard("hub_players", nullptr, 0.0F);
   static constexpr std::array<UI::Column, 14> COLUMNS = {
-      {{"HUB_COL_PLAYER", 0.0f, 0},
-       {"HUB_COL_APPS", 44.0f, 3},
-       {"HUB_COL_MINUTES", 56.0f, 2},
-       {"HUB_COL_GOALS90", 56.0f, 1},
-       {"HUB_COL_ASSISTS90", 56.0f, 2},
-       {"HUB_COL_XG90", 56.0f, 3},
-       {"HUB_COL_KEY90", 60.0f, 4},
-       {"HUB_COL_XA90", 56.0f, 4},
-       {"HUB_COL_PROG90", 60.0f, 5},
-       {"HUB_COL_PRESS90", 60.0f, 5},
-       {"HUB_COL_PASS", 56.0f, 4},
-       {"HUB_COL_SHARE", 60.0f, 5},
-       {"HUB_COL_RATING", 56.0f, 1},
-       {"HUB_COL_TREND", 96.0f, 3}}};
+      {{.label = "HUB_COL_PLAYER", .width = 0.0F, .priority = 0},
+       {.label = "HUB_COL_APPS", .width = 44.0F, .priority = 3},
+       {.label = "HUB_COL_MINUTES", .width = 56.0F, .priority = 2},
+       {.label = "HUB_COL_GOALS90", .width = 56.0F, .priority = 1},
+       {.label = "HUB_COL_ASSISTS90", .width = 56.0F, .priority = 2},
+       {.label = "HUB_COL_XG90", .width = 56.0F, .priority = 3},
+       {.label = "HUB_COL_KEY90", .width = 60.0F, .priority = 4},
+       {.label = "HUB_COL_XA90", .width = 56.0F, .priority = 4},
+       {.label = "HUB_COL_PROG90", .width = 60.0F, .priority = 5},
+       {.label = "HUB_COL_PRESS90", .width = 60.0F, .priority = 5},
+       {.label = "HUB_COL_PASS", .width = 56.0F, .priority = 4},
+       {.label = "HUB_COL_SHARE", .width = 60.0F, .priority = 5},
+       {.label = "HUB_COL_RATING", .width = 56.0F, .priority = 1},
+       {.label = "HUB_COL_TREND", .width = 96.0F, .priority = 3}}};
   constexpr std::size_t COLUMN_COUNT = COLUMNS.size();
   std::array<UI::Column, COLUMN_COUNT> columns{};
   for (std::size_t index = 0; index < COLUMN_COUNT; ++index)
@@ -793,38 +851,61 @@ void DataHubScene::renderPlayers()
       ImGui::PushID(static_cast<int>(row.id));
       // Players no longer in the world (released youth) have no profile.
       if (row.name.empty())
+      {
         ImGui::TextColored(palette.muted, "%s", "–");
+      }
       else if (UI::link(row.name.c_str(), "player"))
+      {
         Navigation::openPlayer(guiView, row.id);
+      }
       ImGui::SameLine();
       ImGui::TextColored(palette.faint, "%s", row.role.c_str());
       if (UI::cell(mask, 1))
+      {
         UI::textRight(std::to_string(s.appearances).c_str());
-      if (UI::cell(mask, 2)) UI::textRight(std::to_string(s.minutes).c_str());
+      }
+      if (UI::cell(mask, 2))
+      {
+        UI::textRight(std::to_string(s.minutes).c_str());
+      }
       if (UI::cell(mask, 3))
+      {
         UI::textRight(per90(static_cast<float>(s.goals), s.minutes).c_str());
+      }
       if (UI::cell(mask, 4))
+      {
         UI::textRight(per90(static_cast<float>(s.assists), s.minutes).c_str());
+      }
       if (UI::cell(mask, 5))
+      {
         UI::textRight(per90(s.xg, s.tracked_minutes).c_str());
+      }
       if (UI::cell(mask, 6))
+      {
         UI::textRight(
             per90(static_cast<float>(s.key_passes), s.tracked_minutes).c_str());
+      }
       if (UI::cell(mask, 7))
+      {
         UI::textRight(per90(s.xa, s.detail_minutes).c_str());
+      }
       if (UI::cell(mask, 8))
+      {
         UI::textRight(
             per90(static_cast<float>(s.progressive_passes), s.detail_minutes)
                 .c_str());
+      }
       if (UI::cell(mask, 9))
+      {
         UI::textRight(
             per90(static_cast<float>(s.pressures), s.detail_minutes).c_str());
+      }
       if (UI::cell(mask, 10))
       {
         const std::string pass =
             s.passes_attempted > 0
                 ? std::format("{:.0f}%",
-                              100.0f * static_cast<float>(s.passes_completed) /
+                              100.0F * static_cast<float>(s.passes_completed) /
                                   static_cast<float>(s.passes_attempted))
                 : std::string("–");
         UI::textRight(pass.c_str());
@@ -833,16 +914,20 @@ void DataHubScene::renderPlayers()
       {
         const std::string share =
             s.tracked_minutes > 0
-                ? std::format("{:.0f}%", 100.0f * s.pass_share)
+                ? std::format("{:.0f}%", 100.0F * s.pass_share)
                 : std::string("–");
         UI::textRight(share.c_str());
       }
       if (UI::cell(mask, 12))
       {
         if (s.rated_matches > 0)
+        {
           UI::ratingChip(s.average_rating);
+        }
         else
+        {
           UI::textRight("–");
+        }
       }
       if (UI::cell(mask, 13) && s.ratings.size() >= 2)
       {
@@ -850,13 +935,15 @@ void DataHubScene::renderPlayers()
             "##trend", s.ratings,
             ImVec2(ImGui::GetContentRegionAvail().x,
                    ImGui::GetTextLineHeight()),
-            s.rating_trend >= 0.0f ? palette.positive : palette.negative);
+            s.rating_trend >= 0.0F ? palette.positive : palette.negative);
         if (ImGui::IsItemHovered(ImGuiHoveredFlags_DelayShort))
+        {
           ImGui::SetTooltip("%s",
                             fmt::sprintf(LOC("HUB_TREND_PLAYER_TOOLTIP"),
-                                         s.rating_trend >= 0.0f ? "+" : "",
+                                         s.rating_trend >= 0.0F ? "+" : "",
                                          s.rating_trend, s.ratings.size())
                                 .c_str());
+        }
       }
       ImGui::PopID();
     }

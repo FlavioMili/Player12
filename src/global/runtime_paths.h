@@ -10,6 +10,18 @@
 
 #include <filesystem>
 
+/** A unique directory in per-user storage, removed when its owner exits scope. */
+class ScratchDirectory
+{
+ public:
+  explicit ScratchDirectory(const char* prefix);
+  ~ScratchDirectory();
+  ScratchDirectory(const ScratchDirectory&) = delete;
+  ScratchDirectory& operator=(const ScratchDirectory&) = delete;
+
+  const std::filesystem::path path;
+};
+
 /** Runtime locations for files that must never be written into game assets. */
 class RuntimePaths
 {
@@ -21,6 +33,8 @@ class RuntimePaths
    * removed at process exit unless FM_KEEP_TEST_ARTIFACTS is set (non-"0").
    */
   static std::filesystem::path root();
+  static std::filesystem::path preferenceRoot(const char* application);
+  static std::filesystem::path createToolOutputDirectory(const char* prefix);
   static std::filesystem::path saveDirectory();
   static std::filesystem::path savePath(int slot);
   static std::filesystem::path settingsPath();

@@ -147,7 +147,7 @@ before a shootout) at any speed until you resume it.
 
 | Input | Action |
 |-------|--------|
-| Drag a substitute onto a player | Plan a substitution; several planned changes are made together at the next stoppage |
+| Drag a substitute onto a player | Plan a substitution; several planned changes are made together at the next stoppage (with the newer match engine, the players walk off and the subs walk on before play restarts) |
 | *Pause while open* | Keeps the match paused while the board or the panel is open (a saved setting) |
 
 The tactics panel changes the style, the instructions and the formation
@@ -200,8 +200,13 @@ afterwards has less effect.
 | Double-click (free camera) | Look at the clicked spot |
 | Double-click (other cameras, or the 2D view) | Toggle pitch focus |
 
-In the 2D view the mouse only toggles pitch focus; orbit, pan and zoom apply
-to the 3D view.
+In the sandbox's 2D view, the mouse wheel zooms in as far as the pitch
+window allows while keeping the entire pitch visible, including both goal
+lines. In Watch mode, zoom is centred on the pitch. Scroll down to return
+to the full stadium view. In Play mode, the view follows the action within
+the space available around the pitch.
+Double-click toggles pitch focus. Orbit and pan apply to the 3D view; outside
+the sandbox, the 2D mouse controls only toggle pitch focus.
 
 ### Play mode
 
@@ -253,11 +258,11 @@ Controls*; the keys above are the defaults.
 | Stick dead zone | How far the stick must move before the player does (0.05 to 0.50, default 0.20) |
 
 Gamepads can be plugged in and out at any time; the first connected pad is
-used. The views while playing: the 2D view zooms in and follows the active
-player and the ball; the 3D view uses the *Play* camera, which keeps both in
-the picture. A radar of the whole pitch sits at the bottom of the view, and
-an arrow at the edge points to the active player when he is out of the
-picture.
+used. The 2D view keeps the whole pitch visible and follows the active
+player and the ball within the space available. The 3D view uses the *Play*
+camera, which keeps both in the picture. A radar of the whole pitch sits at
+the bottom of the view. An arrow at the edge points to the active player
+when he is out of the picture.
 
 ## Where your files are
 

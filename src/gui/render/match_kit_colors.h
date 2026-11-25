@@ -74,7 +74,7 @@ constexpr ImU32 kitColorFromRgb(std::uint32_t rgb)
 float kitColorDistance(ImU32 first, ImU32 second);
 
 /** Minimum `kitColorDistance` treated as a readable contrast. */
-inline constexpr float KIT_CLASH_DISTANCE = 190.0f;
+inline constexpr float KIT_CLASH_DISTANCE = 190.0F;
 
 /**
  * Colour of the numbers and names printed on a shirt: the trim when it
@@ -86,18 +86,26 @@ ImU32 kitNumberColor(const KitColors& kit);
 /** Goalkeeper gloves: the stock colour that stands out most on the shirt. */
 ImU32 goalkeeperGloveColor(const KitColors& kit);
 
+/** The match officials' shirts: black unless it clashes with a strip, else
+ * the stock colour that stands out most from all four (shorts black). */
+ImU32 officialsShirtColor(const MatchKits& kits);
+
 /** Scales the RGB channels of a packed colour, keeping its alpha. */
 inline ImU32 shadeColor(ImU32 color, float factor)
 {
   const auto scale = [factor](ImU32 value, int shift)
   {
     const float scaled =
-        static_cast<float>((value >> shift) & 0xFFU) * factor + 0.5f;
+        (static_cast<float>((value >> shift) & 0xFFU) * factor) + 0.5F;
     float bounded = scaled;
-    if (scaled < 0.0f)
-      bounded = 0.0f;
-    else if (scaled > 255.0f)
-      bounded = 255.0f;
+    if (scaled < 0.0F)
+    {
+      bounded = 0.0F;
+    }
+    else if (scaled > 255.0F)
+    {
+      bounded = 255.0F;
+    }
     return static_cast<ImU32>(bounded) << shift;
   };
   return scale(color, IM_COL32_R_SHIFT) | scale(color, IM_COL32_G_SHIFT) |
@@ -111,7 +119,7 @@ inline ImU32 mixColor(ImU32 first, ImU32 second, float t)
   {
     const auto from = static_cast<float>((a >> shift) & 0xFFU);
     const auto to = static_cast<float>((b >> shift) & 0xFFU);
-    return static_cast<ImU32>(std::lerp(from, to, t) + 0.5f) << shift;
+    return static_cast<ImU32>(std::lerp(from, to, t) + 0.5F) << shift;
   };
   return blend(first, second, IM_COL32_R_SHIFT) |
          blend(first, second, IM_COL32_G_SHIFT) |

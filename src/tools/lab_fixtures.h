@@ -31,18 +31,40 @@ namespace Lab
  */
 StatsConfig loadStatsConfig();
 
+/** One outfield slot of a lab formation: its role (which shapes the
+ * player's attributes) and its Lineup position. */
+struct FormationSlot
+{
+  PlayerRole role = PlayerRole::UNKNOWN;
+  Vector2F position;
+};
+/** The ten outfield slots of a formation (the keeper is always added). */
+using FormationSlots = std::array<FormationSlot, 10>;
+
 /**
- * 4-4-2 matchday squad (eleven starters, seven reserves) whose attributes
- * are role-shaped offsets around `rating` with a small deterministic
- * per-player spread. Same construction as test/test_match_calibration.cpp
- * (createCalibrationTeam), duplicated so the lab does not depend on tests,
- * except that the spread depends on the squad slot only: two squads of the
- * same rating are identical (the test's ID-based spread makes team 1 about
- * 2.3 attribute points stronger than team 2).
- * Players are owned by `pool` and get IDs team_id * 100 + index.
+ * 4-4-2 matchday squad (or the outfield slots of `formation`, if given) (eleven
+ * starters, seven reserves) whose attributes are role-shaped offsets around
+ * `rating` with a small deterministic per-player spread. Same construction as
+ * test/test_match_calibration.cpp (createCalibrationTeam), duplicated so the
+ * lab does not depend on tests, except that the spread depends on the squad
+ * slot only: two squads of the same rating are identical (the test's ID-based
+ * spread makes team 1 about 2.3 attribute points stronger than team 2). Players
+ * are owned by `pool` and get IDs team_id * 100 + index.
  */
 Lineup buildLabLineup(TeamID team_id, float rating,
-                      std::vector<std::unique_ptr<Player>>& pool);
+                      std::vector<std::unique_ptr<Player>>& pool,
+                      const FormationSlots* formation = nullptr);
+
+/**
+ * The same 4-4-2 squad with every stat of `config` at `rating` for every
+ * player, keepers and outfielders alike, all 26, 180 cm and right-footed:
+ * the match sandbox's "Team N" (match_sandbox_test_teams.cpp). Same ids as
+ * buildLabLineup().
+ */
+Lineup buildUniformLineup(TeamID team_id, float rating,
+                          const StatsConfig& config,
+                          std::vector<std::unique_ptr<Player>>& pool,
+                          const FormationSlots* formation = nullptr);
 
 /** Mean overall of the eleven starters (the contract's team rating). */
 float lineupRating(const Lineup& lineup, const StatsConfig& config);
@@ -59,9 +81,29 @@ struct TacticPreset
  * namespace of fm_ui; keep both in sync.
  */
 inline constexpr std::array<TacticPreset, 4> TACTIC_PRESETS{{
-    {"Balanced", {0.50f, 0.50f, 0.50f, 0.50f, 0.50f}},
-    {"Front foot", {0.82f, 0.72f, 0.76f, 0.68f, 0.64f}},
-    {"Counter", {0.38f, 0.68f, 0.62f, 0.58f, 0.42f}},
-    {"Control", {0.62f, 0.34f, 0.44f, 0.72f, 0.72f}},
+    {.name = "Balanced",
+     .sliders = {.pressing = 0.50F,
+                 .riskTaking = 0.50F,
+                 .offensiveBias = 0.50F,
+                 .widthUsage = 0.50F,
+                 .compactness = 0.50F}},
+    {.name = "Front foot",
+     .sliders = {.pressing = 0.82F,
+                 .riskTaking = 0.72F,
+                 .offensiveBias = 0.76F,
+                 .widthUsage = 0.68F,
+                 .compactness = 0.64F}},
+    {.name = "Counter",
+     .sliders = {.pressing = 0.38F,
+                 .riskTaking = 0.68F,
+                 .offensiveBias = 0.62F,
+                 .widthUsage = 0.58F,
+                 .compactness = 0.42F}},
+    {.name = "Control",
+     .sliders = {.pressing = 0.62F,
+                 .riskTaking = 0.34F,
+                 .offensiveBias = 0.44F,
+                 .widthUsage = 0.72F,
+                 .compactness = 0.72F}},
 }};
 }  // namespace Lab

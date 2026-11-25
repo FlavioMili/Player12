@@ -1,0 +1,2497 @@
+// -----------------------------------------------------------------------------
+//  Football Management Project
+//  Copyright (c) 2025 - 2026 Flavio Milinanni. All Rights Reserved.
+//
+//  This file is part of the Football Management Project.
+//  See the LICENSE file in the project root.
+// -----------------------------------------------------------------------------
+
+#include "tools/match_sandbox_scene.h"
+
+#include <SDL3/SDL.h>
+#include <imgui.h>
+
+#include <algorithm>
+#include <array>
+#include <cmath>
+#include <format>
+#include <random>
+#include <span>
+#include <string>
+#include <utility>
+#include <vector>
+
+#include "controller/game_controller.h"
+#include "database/gamedata.h"
+#include "global/language_manager.h"
+#include "global/paths.h"
+#include "gui/gui_view.h"
+#include "gui/scenes/match_scene.h"
+#include "gui/view_models/formation.h"
+#include "gui/widgets/text.h"
+#include "gui/widgets/theme.h"
+#include "gui/widgets/widgets.h"
+#include "model/league.h"
+#include "model/lineup.h"
+#include "model/match_engine.h"
+#include "model/opposition_report.h"
+#include "model/player.h"
+#include "model/role_utils.h"
+#include "model/strategy.h"
+#include "model/tactics.h"
+#include "model/team.h"
+#include "tools/lab_fixtures.h"
+#include "tools/match_sandbox_bench_scene.h"
+#include "tools/match_sandbox_brain_flow.h"
+#include "tools/match_sandbox_contact_view.h"
+#include "tools/match_sandbox_drill_scene.h"
+#include "tools/match_sandbox_measure_scene.h"
+#include "tools/match_sandbox_page_ui.h"
+#include "tools/match_sandbox_pickers.h"
+#include "tools/match_sandbox_session_scene.h"
+#include "tools/match_sandbox_setup_ui.h"
+#include "tools/match_sandbox_shot_map.h"
+#include "tools/match_sandbox_test_teams.h"
+#include "tools/match_sandbox_training_scene.h"
+#include "tools/match_sandbox_true_view.h"
+#include "tools/match_sandbox_typography.h"
+#include "tools/match_sandbox_xg_map.h"
+#include "tools/match_sandbox_zone_recording.h"
+#include "tools/match_sandbox_zone_replay_scene.h"
+
+namespace
+{
+constexpr std::size_t HOME = 0;
+constexpr std::size_t AWAY = 1;
+constexpr float SLIDER_LABEL_WIDTH = 150.0F;
+constexpr float OVERALL_COLUMN_WIDTH = 34.0F;
+constexpr float POSITION_COLUMN_WIDTH = 38.0F;
+/** Lineup coordinates closer than this are the same formation slot. */
+constexpr float SLOT_TOLERANCE = 0.02F;
+/** Slider values this close are the same setting. */
+constexpr float SAME_SLIDER = 0.001F;
+constexpr float HEADING_FONT_SIZE = 24.0F;
+constexpr float SCORE_FONT_SIZE = 17.0F;
+/** Layout (scaled pixels). */
+constexpr float RECORDINGS_PAGE_WIDTH = 1120.0F;
+constexpr float SETTINGS_ITEM_WIDTH = 280.0F;
+constexpr float SETTINGS_ITEM_SHARE = 0.5F;
+constexpr float TWO_COLUMN_SETTINGS_WIDTH = 780.0F;
+/** Visualiser cards: page widths that fit three, then two, columns. */
+constexpr float VISUALISER_THREE_COLUMN_WIDTH = 1332.0F;
+constexpr float VISUALISER_TWO_COLUMN_WIDTH = 806.0F;
+constexpr int TRAINING_SQUAD_COLUMNS = 6;
+constexpr ImVec2 XI_CELL_PADDING{6, 3};
+constexpr float XI_PLAYER_WEIGHT = 2.2F;
+constexpr float XI_ROLE_WEIGHT = 1.6F;
+constexpr float XI_DUTY_WIDTH = 96.0F;
+constexpr float KICK_OFF_SLOT_WIDTH = 240.0F;
+constexpr float SEED_INPUT_WIDTH = 130.0F;
+/** A checkbox's box and gap before its label. */
+constexpr float CHECKBOX_ROOM = 40.0F;
+constexpr float RECORDING_ROW_HEIGHT = 44.0F;
+constexpr float MIN_REVIEW_HEIGHT = 300.0F;
+constexpr float REVIEW_CARD_CHROME = 56.0F;
+constexpr float MIN_STAGE_HEIGHT = 440.0F;
+
+struct SliderInfo
+{
+  const char* key;
+  float StrategySliders::* value;
+  const char* helpKey;
+};
+
+// The five instructions, labelled as on the tactics screen.
+constexpr std::array<SliderInfo, 5> SLIDERS{{
+    {.key = "STRATEGY_PRESSING",
+     .value = &StrategySliders::pressing,
+     .helpKey = "TACTIC_PRESSING_HELP"},
+    {.key = "STRATEGY_RISK_TAKING",
+     .value = &StrategySliders::riskTaking,
+     .helpKey = "TACTIC_RISK_HELP"},
+    {.key = "STRATEGY_OFFENSIVE_BIAS",
+     .value = &StrategySliders::offensiveBias,
+     .helpKey = "TACTIC_OFFENSIVE_HELP"},
+    {.key = "STRATEGY_WIDTH_USAGE",
+     .value = &StrategySliders::widthUsage,
+     .helpKey = "TACTIC_WIDTH_HELP"},
+    {.key = "STRATEGY_COMPACTNESS",
+     .value = &StrategySliders::compactness,
+     .helpKey = "TACTIC_COMPACTNESS_HELP"},
+}};
+
+std::optional<std::reference_wrapper<Team>> mutableTeam(GUIView* view,
+                                                        TeamID id)
+{
+  const auto data = view->getController().getGameData();
+  if (!data)
+  {
+    return std::nullopt;
+  }
+  return data->getTeam(id);
+}
+
+std::vector<const Player*> squadOf(const GameController& controller, TeamID id)
+{
+  std::vector<const Player*> squad;
+  for (const auto& player : controller.getPlayersForTeam(id))
+  {
+    squad.push_back(&player.get());
+  }
+  return squad;
+}
+
+std::string leagueName(const GameController& controller, LeagueID id)
+{
+  for (const auto& league : controller.getLeagues())
+  {
+    if (league.get().getId() == id)
+    {
+      return league.get().getName();
+    }
+  }
+  return {};
+}
+
+/** Role, duty and shape of the slot at @p anchor (Standard when unset). */
+SlotInstruction slotAt(const Strategy& strategy, Vector2F anchor)
+{
+  SlotInstruction instruction;
+  instruction.anchor = anchor;
+  if (const SlotInstruction* stored = strategy.findSlot(anchor))
+  {
+    instruction.role = stored->role;
+    instruction.duty = stored->duty;
+    instruction.possessionOffset = stored->possessionOffset;
+  }
+  // A role of another position group (the slot moved) plays Standard.
+  if (!Tactics::allows(Tactics::familyForSlot(anchor), instruction.role))
+  {
+    instruction.role = TacticalRole::Standard;
+  }
+  return instruction;
+}
+
+/** The assistant's roles and duties for every starter (as on the tactics
+ * screen), keeping the in-possession shape. */
+void suggestRoles(Strategy& strategy, const Lineup& lineup)
+{
+  for (const auto& positioned : lineup.getOutfieldPlayers())
+  {
+    if (positioned.player == nullptr)
+    {
+      continue;
+    }
+    SlotInstruction instruction = slotAt(strategy, positioned.position);
+    const RoleFamily family = Tactics::familyForSlot(positioned.position);
+    instruction.role = Tactics::suggestedRole(*positioned.player, family);
+    instruction.duty = Tactics::suggestedDuty(*positioned.player, family);
+    strategy.setSlot(instruction);
+  }
+  if (const Player* goalkeeper = lineup.getGoalkeeper())
+  {
+    strategy.setKeeperRole(
+        Tactics::suggestedRole(*goalkeeper, RoleFamily::Goalkeeper));
+  }
+}
+
+void applyPossessionShape(Strategy& strategy, const Lineup& lineup,
+                          PossessionShape shape)
+{
+  for (const auto& positioned : lineup.getOutfieldPlayers())
+  {
+    SlotInstruction instruction = slotAt(strategy, positioned.position);
+    instruction.possessionOffset =
+        Tactics::possessionOffset(shape, positioned.position);
+    strategy.setSlot(instruction);
+  }
+}
+
+bool sameSliders(const StrategySliders& left, const StrategySliders& right)
+{
+  return std::ranges::all_of(
+      SLIDERS,
+      [&](const SliderInfo& slider)
+      {
+        return std::abs(left.*slider.value - right.*slider.value) < SAME_SLIDER;
+      });
+}
+
+std::string playerLabel(const Player& player, const StatsConfig& config)
+{
+  return std::format("{}  ({} {:.0f})", player.getName(),
+                     RoleUtils::shortName(player.getRole()),
+                     player.getOverall(config));
+}
+
+/** Replaces @p current in the XI by @p chosen: from the bench, from outside
+ * the matchday squad, or by trading places with another outfield starter. */
+void selectPlayer(Lineup& lineup, const Player& current, const Player& chosen)
+{
+  if (lineup.swapPlayers(chosen.getId(), current.getId()))
+  {
+    return;
+  }
+  if (lineup.bringIn(&chosen, current.getId()))
+  {
+    return;
+  }
+  const auto& outfield = lineup.getOutfieldPlayers();
+  const auto spotOf = [&outfield](PlayerID id) -> std::optional<Vector2F>
+  {
+    for (const auto& positioned : outfield)
+    {
+      if (positioned.player && positioned.player->getId() == id)
+      {
+        return positioned.position;
+      }
+    }
+    return std::nullopt;
+  };
+  const auto from = spotOf(current.getId());
+  const auto to = spotOf(chosen.getId());
+  if (!from || !to)
+  {
+    return;
+  }
+  lineup.moveOutfieldPlayer(current.getId(), *to);
+  lineup.moveOutfieldPlayer(chosen.getId(), *from);
+}
+
+// The sidebar (scaled pixels unless said).
+constexpr float SIDEBAR_WIDTH = 220.0F;
+constexpr ImVec2 SIDEBAR_PADDING{12, 16};
+constexpr float SIDEBAR_ITEM_WIDTH = 196.0F;
+constexpr float SIDEBAR_ITEM_HEIGHT = 44.0F;
+constexpr float BRAND_HEIGHT = 80.0F;
+constexpr float BRAND_GAP = 22.0F;
+constexpr float SELECTED_BAR_WIDTH = 3.0F;
+constexpr float ITEM_LABEL_LEFT = 46.0F;
+constexpr float ITEM_LABEL_TRACKING = 1.5F;
+/** The set-up item sits this far up from the sidebar's foot. */
+constexpr float FOOTER_FROM_BOTTOM = 69.0F;
+constexpr float FOOTER_GAP = 7.0F;
+constexpr float EDGE_FADE = 6.0F;
+
+/** Sidebar icons: drawn on a 24-unit grid, shown 20 pixels square, this far
+ * into the item. Circle radii are in pixels. */
+constexpr float ICON_LEFT = 14.0F;
+constexpr float ICON_TOP = 12.0F;
+constexpr float ICON_PIXELS = 20.0F;
+constexpr float ICON_GRID = 24.0F;
+constexpr float ICON_STROKE = 1.5F;
+constexpr float KNOB_RADIUS = 2.5F;
+constexpr int SMALL_CIRCLE_SEGMENTS = 12;
+constexpr int LENS_SEGMENTS = 20;
+
+/** x1, y1, x2, y2 on the icon grid. */
+using IconSegment = std::array<float, 4>;
+constexpr std::array<ImVec2, 0> NO_KNOBS{};
+struct SidebarIcon
+{
+  /** A square frame (left, top, right, bottom), when `framed`. */
+  bool framed = false;
+  IconSegment frame{};
+  std::span<const IconSegment> segments;
+  /** A ring (x, y on the grid; radius in pixels), when the radius is set. */
+  ImVec2 ringAt{0.0F, 0.0F};
+  float ringRadius = 0.0F;
+  int ringSegments = SMALL_CIRCLE_SEGMENTS;
+  /** Slider knobs: filled with the sidebar, ringed in the ink. */
+  std::span<const ImVec2> knobs = NO_KNOBS;
+};
+
+constexpr std::array<IconSegment, 3> CALENDAR{
+    {{3, 10, 21, 10}, {8, 3, 8, 7}, {16, 3, 16, 7}}};
+constexpr std::array<IconSegment, 3> DRILL_BOARD{
+    {{7, 15, 16, 8}, {12, 8, 16, 8}, {16, 8, 16, 12}}};
+constexpr std::array<IconSegment, 5> CONE{{{7, 19, 10, 5},
+                                           {10, 5, 14, 5},
+                                           {14, 5, 17, 19},
+                                           {5, 20, 19, 20},
+                                           {8, 14, 16, 14}}};
+constexpr std::array<IconSegment, 4> BARS{
+    {{3, 20, 21, 20}, {6, 17, 6, 11}, {12, 17, 12, 5}, {18, 17, 18, 8}}};
+constexpr std::array<IconSegment, 3> PLAY{
+    {{9, 8, 16, 12}, {16, 12, 9, 16}, {9, 16, 9, 8}}};
+constexpr std::array<IconSegment, 1> LENS_HANDLE{{{15, 15, 21, 21}}};
+constexpr std::array<IconSegment, 3> SLIDER_RAILS{
+    {{4, 6, 20, 6}, {4, 12, 20, 12}, {4, 18, 20, 18}}};
+constexpr std::array<ImVec2, 3> SLIDER_KNOBS{{{9, 6}, {15, 12}, {8, 18}}};
+
+constexpr SidebarIcon MATCHES_ICON{
+    .framed = true, .frame = {3, 5, 21, 21}, .segments = CALENDAR};
+constexpr SidebarIcon DRILLS_ICON{.framed = true,
+                                  .frame = {3, 4, 21, 20},
+                                  .segments = DRILL_BOARD,
+                                  .ringAt = {7, 8},
+                                  .ringRadius = 1.5F};
+constexpr SidebarIcon TRAINING_ICON{.segments = CONE};
+constexpr SidebarIcon TOOLS_ICON{.segments = BARS};
+constexpr SidebarIcon RECORDINGS_ICON{
+    .framed = true, .frame = {3, 4, 21, 20}, .segments = PLAY};
+constexpr SidebarIcon REVIEW_ICON{.segments = LENS_HANDLE,
+                                  .ringAt = {10, 10},
+                                  .ringRadius = 6.0F,
+                                  .ringSegments = LENS_SEGMENTS};
+constexpr SidebarIcon SETUP_ICON{.segments = SLIDER_RAILS,
+                                 .knobs = SLIDER_KNOBS};
+
+struct SidebarItem
+{
+  const char* label = "";
+  SandboxPage page = SandboxPage::MATCHES;
+  const SidebarIcon* icon = nullptr;
+};
+constexpr std::array<SidebarItem, 6> SIDEBAR_ITEMS{
+    {{.label = "MATCHES", .page = SandboxPage::MATCHES, .icon = &MATCHES_ICON},
+     {.label = "DRILLS", .page = SandboxPage::DRILLS, .icon = &DRILLS_ICON},
+     {.label = "TRAINING",
+      .page = SandboxPage::TRAINING,
+      .icon = &TRAINING_ICON},
+     {.label = "TOOLS", .page = SandboxPage::TOOLS, .icon = &TOOLS_ICON},
+     {.label = "RECORDINGS",
+      .page = SandboxPage::RECORDINGS,
+      .icon = &RECORDINGS_ICON},
+     {.label = "REVIEW", .page = SandboxPage::REVIEW, .icon = &REVIEW_ICON}}};
+constexpr SidebarItem SETUP_ITEM{
+    .label = "SET-UP", .page = SandboxPage::SETUP, .icon = &SETUP_ICON};
+}  // namespace
+
+MatchSandboxScene::MatchSandboxScene(GUIView* guiView_ptr, bool kick_off_now,
+                                     std::string open_drill,
+                                     SandboxOpenView open_view)
+    : GUIScene(guiView_ptr),
+      kick_off_pending(kick_off_now),
+      drill_pending(std::move(open_drill)),
+      drill_view(open_view)
+{
+}
+
+SceneID MatchSandboxScene::getID() const { return SceneID::MATCH_SANDBOX; }
+
+void MatchSandboxScene::onEnter()
+{
+  if (sidebar_font == nullptr)
+  {
+    const std::string fontPath =
+        AssetPaths::file("assets/fonts/Manrope-Bold.ttf");
+    const auto fontConfig = SandboxTypography::manropeConfig();
+    sidebar_font = ImGui::GetIO().Fonts->AddFontFromFileTTF(
+        fontPath.c_str(), SandboxPageUI::BOLD_FONT_SIZE, &fontConfig);
+    setup_regular_font = ImGui::GetIO().Fonts->AddFontFromFileTTF(
+        AssetPaths::file("assets/fonts/Manrope-Regular.ttf").c_str(),
+        SandboxPageUI::REGULAR_FONT_SIZE, &fontConfig);
+    setup_medium_font = ImGui::GetIO().Fonts->AddFontFromFileTTF(
+        AssetPaths::file("assets/fonts/Manrope-Medium.ttf").c_str(),
+        SandboxPageUI::BOLD_FONT_SIZE, &fontConfig);
+  }
+  // Told apart from the game in the taskbar, and opened maximised (once:
+  // a size the user picks afterwards is kept).
+  static bool maximised = false;
+  int windowCount = 0;
+  if (SDL_Window** windows = SDL_GetWindows(&windowCount))
+  {
+    if (windowCount > 0)
+    {
+      SDL_Window* const first = *windows;
+      SDL_SetWindowTitle(first, "Player12 match sandbox");
+      if (!maximised)
+      {
+        SDL_MaximizeWindow(first);
+      }
+      maximised = true;
+    }
+    SDL_free(static_cast<void*>(windows));
+  }
+
+  // Team 66 and its copy start as home and away; without the test teams,
+  // the first two clubs of the first league.
+  if (const auto& clubs = sandboxDefaultClubs(); clubs[0] != 0 && clubs[1] != 0)
+  {
+    sides[HOME].team = clubs[0];
+    sides[AWAY].team = clubs[1];
+    return;
+  }
+  const GameController& controller = guiView->getController();
+  const auto& leagues = controller.getLeagues();
+  const auto& teams = controller.getTeams();
+  std::vector<TeamID> candidates;
+  for (const auto& team : teams)
+  {
+    if (!leagues.empty() &&
+        team.get().getLeagueId() == leagues.front().get().getId())
+    {
+      candidates.push_back(team.get().getId());
+    }
+  }
+  if (candidates.size() < 2)
+  {
+    for (const auto& team : teams)
+    {
+      candidates.push_back(team.get().getId());
+    }
+  }
+  if (candidates.size() >= 2)
+  {
+    sides[HOME].team = candidates[0];
+    sides[AWAY].team = candidates[1];
+  }
+}
+
+void MatchSandboxScene::update(float /*deltaTime*/)
+{
+  if (drill_view == SandboxOpenView::CONTACT)
+  {
+    drill_view = SandboxOpenView::WATCH;
+    mode = SandboxPage::TOOLS;
+    guiView->overlayScene(std::make_unique<ContactViewScene>(guiView));
+  }
+  if (drill_view == SandboxOpenView::BENCH)
+  {
+    drill_view = SandboxOpenView::WATCH;
+    mode = SandboxPage::TOOLS;
+    guiView->overlayScene(std::make_unique<TechniqueBenchScene>(guiView, true));
+  }
+  if (drill_view == SandboxOpenView::TRUE_VIEW)
+  {
+    drill_view = SandboxOpenView::WATCH;
+    mode = SandboxPage::TOOLS;
+    guiView->overlayScene(std::make_unique<TrueViewScene>(guiView));
+  }
+  if (!drill_pending.empty())
+  {
+    const auto lower = [](std::string text)
+    {
+      std::ranges::transform(text, text.begin(), [](unsigned char c)
+                             { return static_cast<char>(std::tolower(c)); });
+      return text;
+    };
+    for (std::size_t index = 0; index < drills.size(); ++index)
+    {
+      if (lower(drills[index]->name()) == lower(drill_pending))
+      {
+        mode = SandboxPage::DRILLS;
+        drill_index = static_cast<int>(index);
+        if (drill_view == SandboxOpenView::SHOT_MAP)
+        {
+          guiView->overlayScene(
+              std::make_unique<ShotMapScene>(guiView, *drills[index], true));
+        }
+        else if (drill_view == SandboxOpenView::MEASURE)
+        {
+          guiView->overlayScene(std::make_unique<DrillMeasureScene>(
+              guiView, *drills[index], true));
+        }
+        else
+        {
+          guiView->overlayScene(
+              std::make_unique<DrillScene>(guiView, *drills[index]));
+        }
+      }
+    }
+    drill_pending.clear();
+  }
+  if (!kick_off_pending)
+  {
+    return;
+  }
+  kick_off_pending = false;
+  if (sides[HOME].team != 0 && sides[AWAY].team != 0)
+  {
+    kickOff();
+  }
+}
+
+std::optional<std::size_t> MatchSandboxScene::currentPreset(
+    const Lineup& lineup)
+{
+  const auto& outfield = lineup.getOutfieldPlayers();
+  for (std::size_t index = 0; index < Formation::PRESETS.size(); ++index)
+  {
+    const auto& slots = Formation::PRESETS.at(index).slots;
+    if (outfield.size() != slots.size())
+    {
+      continue;
+    }
+    const bool matches = std::ranges::all_of(
+        slots,
+        [&outfield](const Formation::Slot& slot)
+        {
+          return std::ranges::any_of(
+              outfield,
+              [&slot](const Lineup::PositionedPlayer& positioned)
+              {
+                return std::abs(positioned.position.x - slot.position.x) <
+                           SLOT_TOLERANCE &&
+                       std::abs(positioned.position.y - slot.position.y) <
+                           SLOT_TOLERANCE;
+              });
+        });
+    if (matches)
+    {
+      return index;
+    }
+  }
+  return std::nullopt;
+}
+
+void MatchSandboxScene::render()
+{
+  const ImGuiViewport* viewport = ImGui::GetMainViewport();
+  ImGui::SetNextWindowPos(viewport->WorkPos);
+  ImGui::SetNextWindowSize(viewport->WorkSize);
+  const float scale = Theme::scale();
+  ImGui::PushStyleColor(ImGuiCol_WindowBg,
+                        ImGui::ColorConvertU32ToFloat4(SandboxPageUI::PAGE));
+  ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding,
+                      ImVec2(SandboxPageUI::PAGE_PADDING * scale,
+                             SandboxPageUI::PAGE_PADDING * scale));
+  ImGui::PushStyleVar(ImGuiStyleVar_WindowBorderSize, 0.0F);
+  ImGui::PushStyleVar(ImGuiStyleVar_WindowRounding, 0.0F);
+  ImGui::Begin("##match_sandbox", nullptr,
+               ImGuiWindowFlags_NoDecoration | ImGuiWindowFlags_NoMove |
+                   ImGuiWindowFlags_NoSavedSettings |
+                   ImGuiWindowFlags_NoBringToFrontOnFocus |
+                   ImGuiWindowFlags_NoScrollbar |
+                   ImGuiWindowFlags_NoScrollWithMouse);
+  ImGui::PopStyleVar(3);
+  ImGui::PopStyleColor();
+
+  renderSidebar();
+  ImGui::SameLine(0.0F, SandboxPageUI::PANEL_GAP * scale);
+  ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(0, 0));
+  const std::array<std::pair<ImGuiCol, ImU32>, 5> pageColours{
+      {{ImGuiCol_ChildBg, SandboxPageUI::PAGE},
+       {ImGuiCol_ScrollbarBg, SandboxPageUI::SCROLL_TRACK},
+       {ImGuiCol_ScrollbarGrab, SandboxPageUI::SCROLL_GRAB},
+       {ImGuiCol_ScrollbarGrabHovered, SandboxPageUI::SCROLL_HOVER},
+       {ImGuiCol_ScrollbarGrabActive, SandboxPageUI::SCROLL_HOVER}}};
+  for (const auto& [slot, colour] : pageColours)
+  {
+    ImGui::PushStyleColor(slot, colour);
+  }
+  const float gutter =
+      (SandboxPageUI::PANEL_GAP * scale) + ImGui::GetStyle().ScrollbarSize;
+  const float available = ImGui::GetContentRegionAvail().x;
+  float pageWidth = 0.0F;
+  if (mode == SandboxPage::MATCHES)
+  {
+    pageWidth = SandboxPageUI::matchPageWidth(available, scale, gutter);
+  }
+  else if (mode == SandboxPage::DRILLS || mode == SandboxPage::TRAINING)
+  {
+    pageWidth = SandboxPageUI::activityPageWidth(available, scale, gutter);
+  }
+  else if (mode == SandboxPage::TOOLS)
+  {
+    pageWidth = SandboxPageUI::toolsPageWidth(available, scale, gutter);
+  }
+  else if (mode == SandboxPage::RECORDINGS)
+  {
+    pageWidth = std::min(available, RECORDINGS_PAGE_WIDTH * scale);
+  }
+  ImGui::PushStyleVar(ImGuiStyleVar_ScrollbarRounding, 0.0F);
+  ImGui::BeginChild("##sandbox_content", ImVec2(pageWidth, 0.0F),
+                    ImGuiChildFlags_AlwaysUseWindowPadding);
+  ImGui::PopStyleVar();
+  ImGui::PopStyleColor(static_cast<int>(pageColours.size()));
+  ImGui::PopStyleVar();
+  if (mode == SandboxPage::RECORDINGS)
+  {
+    renderRecordings();
+  }
+  else if (mode == SandboxPage::REVIEW)
+  {
+    renderReviewPage();
+  }
+  else if (mode == SandboxPage::SETUP)
+  {
+    renderDeveloperSetup();
+  }
+  else if (mode == SandboxPage::DRILLS)
+  {
+    renderDrills();
+  }
+  else if (mode == SandboxPage::TRAINING)
+  {
+    renderTraining();
+  }
+  else if (mode == SandboxPage::TOOLS)
+  {
+    renderVisualisers();
+  }
+  else
+  {
+    namespace Page = SandboxPageUI;
+    const Page::Style style(setup_regular_font, scale);
+    const float usable = ImGui::GetWindowSize().x - gutter;
+    const bool columns = usable >= 1062 * scale;
+    const float width =
+        columns ? (usable - (SandboxPageUI::PANEL_GAP * scale)) / 2 : usable;
+    Page::header(
+        "Matches",
+        "Choose two clubs, prepare both teams and manage the home side.",
+        usable, scale, sidebar_font, setup_regular_font,
+        "Engine versions and simulation conditions come from Set-up.");
+    Page::beginCard("##match_controls", "MATCH CONTROLS", usable, Page::DARK,
+                    scale, sidebar_font);
+    renderFooter();
+    Page::endCard(scale);
+    ImGui::BeginGroup();
+    renderSide(sides[HOME], true, width);
+    ImGui::EndGroup();
+    if (columns)
+    {
+      ImGui::SameLine(0, SandboxPageUI::PANEL_GAP * scale);
+    }
+    ImGui::BeginGroup();
+    renderSide(sides[AWAY], false, width);
+    ImGui::EndGroup();
+  }
+  ImGui::EndChild();
+  ImGui::End();
+}
+
+void MatchSandboxScene::renderDeveloperSetup()
+{
+  SandboxSetupUI::render(Theme::scale(), setup_regular_font, setup_medium_font,
+                         sidebar_font, full_familiarity, debug_at_kick_off);
+}
+
+void MatchSandboxScene::renderSidebar()
+{
+  const float scale = Theme::scale();
+  const ImU32 bg = IM_COL32(15, 13, 11, 255);
+  const ImU32 cream = IM_COL32(240, 234, 226, 255);
+  const ImU32 white = IM_COL32(255, 255, 255, 255);
+  ImGui::PushStyleColor(ImGuiCol_ChildBg, bg);
+  ImGui::PushStyleVar(ImGuiStyleVar_ChildRounding, 0.0F);
+  ImGui::PushStyleVar(
+      ImGuiStyleVar_WindowPadding,
+      ImVec2(SIDEBAR_PADDING.x * scale, SIDEBAR_PADDING.y * scale));
+  ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, ImVec2(0, 2 * scale));
+  ImGui::BeginChild("##sandbox_sidebar", ImVec2(SIDEBAR_WIDTH * scale, 0),
+                    ImGuiChildFlags_AlwaysUseWindowPadding);
+  ImDrawList* draw = ImGui::GetWindowDrawList();
+  const ImVec2 panel = ImGui::GetWindowPos();
+  const ImVec2 size = ImGui::GetWindowSize();
+  const ImVec2 brand = ImGui::GetCursorScreenPos();
+  const float itemWidth = SIDEBAR_ITEM_WIDTH * scale;
+  const float itemHeight = SIDEBAR_ITEM_HEIGHT * scale;
+  SandboxTypography::label(
+      draw, sidebar_font, HEADING_FONT_SIZE, "Player 12", brand,
+      ImVec2(brand.x + itemWidth, brand.y + (BRAND_HEIGHT * scale)), cream);
+  ImGui::Dummy(ImVec2(itemWidth, BRAND_HEIGHT * scale));
+  ImGui::Dummy(ImVec2(0, BRAND_GAP * scale));
+  ImGui::PushFont(sidebar_font, SandboxPageUI::BOLD_FONT_SIZE);
+  const auto item = [&](const SidebarItem& entry)
+  {
+    const bool selected = mode == entry.page;
+    const ImVec2 row = ImGui::GetCursorScreenPos();
+    const ImVec2 rowEnd(row.x + itemWidth, row.y + itemHeight);
+    if (ImGui::InvisibleButton(entry.label, ImVec2(itemWidth, itemHeight),
+                               ImGuiButtonFlags_EnableNav))
+    {
+      mode = entry.page;
+    }
+    if (selected || ImGui::IsItemHovered())
+    {
+      draw->AddRectFilled(
+          row, rowEnd,
+          selected ? IM_COL32(46, 39, 32, 255) : IM_COL32(31, 26, 21, 255));
+    }
+    if (selected)
+    {
+      draw->AddRectFilled(
+          row, ImVec2(row.x + (SELECTED_BAR_WIDTH * scale), rowEnd.y), white);
+    }
+    if (ImGui::IsItemFocused())
+    {
+      draw->AddRect(row, rowEnd, IM_COL32(133, 122, 110, 255), 0, 0, scale);
+    }
+    const ImU32 ink = selected ? white : IM_COL32(196, 186, 174, 255);
+    const float stroke = ICON_STROKE * scale;
+    const auto pt = [&](float x, float y)
+    {
+      return ImVec2(row.x + ((ICON_LEFT + x * ICON_PIXELS / ICON_GRID) * scale),
+                    row.y + ((ICON_TOP + y * ICON_PIXELS / ICON_GRID) * scale));
+    };
+    const SidebarIcon& icon = *entry.icon;
+    if (icon.framed)
+    {
+      const auto [left, top, right, bottom] = icon.frame;
+      draw->AddRect(pt(left, top), pt(right, bottom), ink, 0, 0, stroke);
+    }
+    for (const auto& [x1, y1, x2, y2] : icon.segments)
+    {
+      draw->AddLine(pt(x1, y1), pt(x2, y2), ink, stroke);
+    }
+    if (icon.ringRadius > 0.0F)
+    {
+      draw->AddCircle(pt(icon.ringAt.x, icon.ringAt.y), icon.ringRadius * scale,
+                      ink, icon.ringSegments, stroke);
+    }
+    for (const ImVec2 knob : icon.knobs)
+    {
+      draw->AddCircleFilled(pt(knob.x, knob.y), KNOB_RADIUS * scale, bg);
+      draw->AddCircle(pt(knob.x, knob.y), KNOB_RADIUS * scale, ink,
+                      SMALL_CIRCLE_SEGMENTS, stroke);
+    }
+    SandboxTypography::label(draw, sidebar_font, SandboxPageUI::BOLD_FONT_SIZE,
+                             entry.label, row, rowEnd, selected ? white : cream,
+                             ITEM_LABEL_TRACKING * scale, false,
+                             ITEM_LABEL_LEFT * scale);
+  };
+  for (const SidebarItem& entry : SIDEBAR_ITEMS)
+  {
+    item(entry);
+  }
+  // The sandbox's settings destination follows the reference footer placement.
+  ImGui::SetCursorPosY(
+      std::max(ImGui::GetCursorPosY(), size.y - (FOOTER_FROM_BOTTOM * scale)));
+  const ImVec2 divider = ImGui::GetCursorScreenPos();
+  draw->AddLine(divider, ImVec2(divider.x + itemWidth, divider.y),
+                IM_COL32(51, 44, 36, 255), scale);
+  ImGui::Dummy(ImVec2(0, FOOTER_GAP * scale));
+  item(SETUP_ITEM);
+  ImGui::PopFont();
+  const ImU32 edge = IM_COL32(22, 19, 16, 255);
+  const ImU32 clear = IM_COL32(22, 19, 16, 0);
+  const float f = EDGE_FADE * scale;
+  const ImVec2 br(panel.x + size.x, panel.y + size.y);
+  draw->AddRectFilledMultiColor(panel, ImVec2(br.x, panel.y + f), edge, edge,
+                                clear, clear);
+  draw->AddRectFilledMultiColor(ImVec2(panel.x, br.y - f), br, clear, clear,
+                                edge, edge);
+  draw->AddRectFilledMultiColor(panel, ImVec2(panel.x + f, br.y), edge, clear,
+                                clear, edge);
+  draw->AddRectFilledMultiColor(ImVec2(br.x - f, panel.y), br, clear, edge,
+                                edge, clear);
+  ImGui::EndChild();
+  ImGui::PopStyleVar(3);
+  ImGui::PopStyleColor();
+}
+
+/** The drill's category picked: back to its last drill, else its first. */
+void MatchSandboxScene::pickDrillCategory(DrillCategory to)
+{
+  const DrillCategory from =
+      drills[static_cast<std::size_t>(drill_index)]->category;
+  category_drill_indices.at(static_cast<std::size_t>(from)) = drill_index;
+  const int previous = category_drill_indices.at(static_cast<std::size_t>(to));
+  if (previous >= 0 && static_cast<std::size_t>(previous) < drills.size() &&
+      drills[static_cast<std::size_t>(previous)]->category == to)
+  {
+    drill_index = previous;
+    return;
+  }
+  for (std::size_t i = 0; i < drills.size(); ++i)
+  {
+    if (drills[i]->category == to)
+    {
+      drill_index = static_cast<int>(i);
+      return;
+    }
+  }
+}
+
+/** The categories as buttons, wrapping to the card; returns the one shown. */
+DrillCategory MatchSandboxScene::renderDrillCategories(float width)
+{
+  namespace Page = SandboxPageUI;
+  const float scale = Theme::scale();
+  auto category = drills[static_cast<std::size_t>(drill_index)]->category;
+  Page::beginCard("##drill_categories", "CATEGORIES", width, Page::MID, scale,
+                  sidebar_font);
+  const float rowWidth = ImGui::GetContentRegionAvail().x;
+  float usedWidth = 0;
+  for (int c = 0; c < static_cast<int>(DrillCategory::Count); ++c)
+  {
+    const auto candidate = static_cast<DrillCategory>(c);
+    const auto* label = drillCategoryName(candidate);
+    const float buttonWidth = Page::buttonWidth(label, scale, sidebar_font);
+    if (usedWidth > 0 &&
+        usedWidth + (SandboxPageUI::PANEL_GAP * scale) + buttonWidth <=
+            rowWidth)
+    {
+      ImGui::SameLine(0, SandboxPageUI::PANEL_GAP * scale);
+      usedWidth += SandboxPageUI::PANEL_GAP * scale;
+    }
+    else
+    {
+      usedWidth = 0;
+    }
+    if (Page::button(label, candidate == category, scale, sidebar_font))
+    {
+      pickDrillCategory(candidate);
+      category = drills[static_cast<std::size_t>(drill_index)]->category;
+    }
+    usedWidth += buttonWidth;
+  }
+  Page::endCard(scale);
+  return category;
+}
+
+/** Watch, measure or shot-map the drill. */
+void MatchSandboxScene::renderDrillRun(Drill& drill, float detailWidth)
+{
+  namespace Page = SandboxPageUI;
+  const float scale = Theme::scale();
+  Page::beginCard("##drill_run", "RUN DRILL", detailWidth, Page::DARK, scale,
+                  sidebar_font);
+  if (Page::button("WATCH", true, scale, sidebar_font))
+  {
+    guiView->overlayScene(std::make_unique<DrillScene>(guiView, drill));
+  }
+  if (ImGui::IsItemHovered())
+  {
+    UI::tooltip(
+        "Run the drill on the pitch, step by step if you like, "
+        "with the debugger windows.");
+  }
+  ImGui::SameLine();
+  if (Page::button("MEASURE", false, scale, sidebar_font))
+  {
+    guiView->overlayScene(std::make_unique<DrillMeasureScene>(guiView, drill));
+  }
+  if (ImGui::IsItemHovered())
+  {
+    UI::tooltip(
+        "Run the drill headless over a range of a setting: "
+        "curves, tables and CSV.");
+  }
+  if (drill.offersShotMap())
+  {
+    ImGui::SameLine();
+    if (Page::button("SHOT MAP", false, scale, sidebar_font))
+    {
+      guiView->overlayScene(std::make_unique<ShotMapScene>(guiView, drill));
+    }
+    if (ImGui::IsItemHovered())
+    {
+      UI::tooltip(
+          "A grid of spots, many shots each: conversion against "
+          "the engine's xG as a heatmap, and the calibration.");
+    }
+  }
+  Page::endCard(scale);
+}
+
+void MatchSandboxScene::renderDrills()
+{
+  namespace Page = SandboxPageUI;
+  const float scale = Theme::scale();
+  const Page::Style style(setup_regular_font, scale);
+  const Page::ActivityLayout layout(
+      ImGui::GetWindowSize().x - ImGui::GetStyle().ScrollbarSize, scale);
+  const bool columns = layout.columns;
+  const float detailWidth = layout.details;
+  const float listWidth = layout.catalogue;
+  Page::header(
+      "Drills",
+      "Choose a drill, configure the test and watch or measure the result.",
+      layout.page, scale, sidebar_font, setup_regular_font,
+      "Engine versions and simulation conditions come from Set-up.");
+  if (drills.empty())
+  {
+    return;
+  }
+  drill_index = std::clamp(drill_index, 0, static_cast<int>(drills.size()) - 1);
+  const DrillCategory category = renderDrillCategories(layout.page);
+  ImGui::BeginGroup();
+  Page::beginCard("##drill_list", drillCategoryName(category), listWidth,
+                  Page::LIGHT, scale, sidebar_font);
+  for (std::size_t index = 0; index < drills.size(); ++index)
+  {
+    if (drills[index]->category == category &&
+        Page::choice(drills[index]->name(),
+                     static_cast<std::size_t>(drill_index) == index, scale,
+                     sidebar_font))
+    {
+      drill_index = static_cast<int>(index);
+      category_drill_indices.at(static_cast<std::size_t>(category)) =
+          drill_index;
+    }
+  }
+  Page::endCard(scale);
+  ImGui::EndGroup();
+  if (columns)
+  {
+    ImGui::SameLine(0, SandboxPageUI::PANEL_GAP * scale);
+  }
+  Drill& drill = *drills[static_cast<std::size_t>(drill_index)];
+  ImGui::BeginGroup();
+  Page::beginCard("##drill_overview", "SELECTED DRILL", detailWidth, Page::MID,
+                  scale, sidebar_font);
+  ImGui::PushFont(sidebar_font, HEADING_FONT_SIZE);
+  UI::textWrapped("{}", drill.name());
+  ImGui::PopFont();
+  ImGui::PushTextWrapPos(0.0F);
+  ImGui::TextUnformatted(drill.summary());
+  ImGui::PopTextWrapPos();
+  Page::endCard(scale);
+  renderDrillRun(drill, detailWidth);
+  Page::beginCard("##drill_settings", "SETTINGS", detailWidth, Page::MID, scale,
+                  sidebar_font);
+  ImGui::PushItemWidth(
+      std::min(SETTINGS_ITEM_WIDTH * scale,
+               ImGui::GetContentRegionAvail().x * SETTINGS_ITEM_SHARE));
+  drill.renderSettings(detailWidth >= TWO_COLUMN_SETTINGS_WIDTH * scale ? 2 : 1,
+                       true);
+  ImGui::PopItemWidth();
+  Page::endCard(scale);
+  ImGui::EndGroup();
+}
+
+void MatchSandboxScene::renderVisualisers()
+{
+  namespace Page = SandboxPageUI;
+  const float scale = Theme::scale();
+  const Page::Style style(setup_regular_font, scale);
+  const float usable =
+      std::max(scale, ImGui::GetWindowSize().x -
+                          ImGui::GetStyle().ScrollbarSize - (6 * scale));
+  int columns = 1;
+  if (usable >= VISUALISER_THREE_COLUMN_WIDTH * scale)
+  {
+    columns = 3;
+  }
+  else if (usable >= VISUALISER_TWO_COLUMN_WIDTH * scale)
+  {
+    columns = 2;
+  }
+  const float cardWidth = std::min(
+      440 * scale, columns == 2 && usable < 886 * scale ? 400 * scale : usable);
+  const float width = (static_cast<float>(columns) * cardWidth) +
+                      (static_cast<float>(columns - 1) * 6.0F * scale);
+  Page::header("Tools",
+               "Inspect movement, ball contact and technique performance.",
+               width, scale, sidebar_font, setup_regular_font,
+               "Visualisers and test benches for the Binturong body model.");
+  struct Tool
+  {
+    const char* id;
+    const char* title;
+    const char* description;
+    const char* command;
+    ImU32 background;
+  };
+  const std::array<Tool, 5> tools{
+      {{.id = "##visualiser_page",
+        .title = "CONTACT DIFFICULTY",
+        .description =
+            "Inspect how reach, approach angle and ball movement affect a "
+            "touch "
+            "or "
+            "strike. "
+            "Adjust the contact model and see each factor's contribution.",
+        .command = "match_sandbox --contact-view",
+        .background = Page::LIGHT},
+       {.id = "##true_view_page",
+        .title = "TRUE VIEW",
+        .description =
+            "Explore the player's body model, movement, reach and personal "
+            "space in "
+            "3D. "
+            "Inspect the values behind each shape without the player figure.",
+        .command = "match_sandbox --true-view",
+        .background = Page::MID},
+       {.id = "##bench_page",
+        .title = "TECHNIQUE BENCH",
+        .description =
+            "Run repeatable passing and shooting tests across techniques and "
+            "conditions. "
+            "Compare success rates over many seeds and against the previous "
+            "run.",
+        .command = "match_sandbox --bench-view\n--bench for headless tests",
+        .background = Page::DARK},
+       {.id = "##xg_map_page",
+        .title = "XG MAP",
+        .description =
+            "See the engine's xG over a match or training pitch of any size "
+            "and "
+            "goal, "
+            "and where the brain thinks a shot is worth it. Hover for every "
+            "part.",
+        .command = "Training ground plan, section 24",
+        .background = Page::LIGHT},
+       {.id = "##brain_flow_page",
+        .title = "BRAIN FLOW",
+        .description =
+            "See the new brain framework as a flow, from situation to body, "
+            "on a live example. Switch each influence layer on to see what it "
+            "touches.",
+        .command = "Brain flow tool plan",
+        .background = Page::MID}}};
+  for (int tool = 0; tool < static_cast<int>(tools.size()); ++tool)
+  {
+    if (tool % columns != 0)
+    {
+      ImGui::SameLine(0, SandboxPageUI::PANEL_GAP * scale);
+    }
+    Page::beginCard(tools.at(static_cast<std::size_t>(tool)).id,
+                    tools.at(static_cast<std::size_t>(tool)).title, cardWidth,
+                    tools.at(static_cast<std::size_t>(tool)).background, scale,
+                    sidebar_font);
+    UI::textWrapped("{}", tools.at(static_cast<std::size_t>(tool)).description);
+    if (Page::button("OPEN", true, scale, sidebar_font))
+    {
+      if (tool == 0)
+      {
+        guiView->overlayScene(std::make_unique<ContactViewScene>(guiView));
+      }
+      else if (tool == 1)
+      {
+        guiView->overlayScene(std::make_unique<TrueViewScene>(guiView));
+      }
+      else if (tool == 2)
+      {
+        guiView->overlayScene(std::make_unique<TechniqueBenchScene>(guiView));
+      }
+      else if (tool == 3)
+      {
+        guiView->overlayScene(std::make_unique<XgMapScene>(guiView));
+      }
+      else
+      {
+        guiView->overlayScene(std::make_unique<BrainFlowScene>(guiView));
+      }
+    }
+    ImGui::PushFont(setup_regular_font, SandboxPageUI::BOLD_FONT_SIZE);
+    ImGui::PushTextWrapPos(0);
+    UI::textDisabled("{}", tools.at(static_cast<std::size_t>(tool)).command);
+    ImGui::PopTextWrapPos();
+    ImGui::PopFont();
+    Page::endCard(scale);
+  }
+}
+namespace
+{
+std::string clubNameOf(const GameController& controller, TeamID clubId)
+{
+  std::string clubName;
+  for (const auto& team : controller.getTeams())
+  {
+    if (team.get().getId() == clubId)
+    {
+      clubName = team.get().getName();
+    }
+  }
+  return clubName;
+}
+
+/** One of his stats; 0 if he has none of it. */
+float statOf(const Player& player, const char* name)
+{
+  const auto& stats = player.getStats();
+  const auto at = stats.find(name);
+  return at == stats.end() ? 0.0F : at->second;
+}
+}  // namespace
+
+/** A new club: the first of its squad, as many as fit on the pitch. */
+void MatchSandboxScene::pickTrainingClub(
+    TeamID clubId, const std::vector<const Player*>& squad)
+{
+  if (clubId == training_club)
+  {
+    return;
+  }
+  training_club = clubId;
+  training_picks.clear();
+  for (const Player* player : squad)
+  {
+    if (training_picks.size() < TrainingDrill::MAX_PLAYERS)
+    {
+      training_picks.push_back(player->getId());
+    }
+  }
+}
+
+/** Sessions of drills one after another on the pitch, then sessions on the
+ * training ground (its zones side by side, each its own game; training
+ * ground plan section 23). */
+void MatchSandboxScene::renderSessionList(float width, float scale)
+{
+  namespace Page = SandboxPageUI;
+  const std::vector<TrainingSessionInfo>& sessions = trainingSessions();
+  const std::vector<SessionPlan>& zonePlans = sessionPlans();
+  Page::beginCard("##session_list", "SESSIONS", width, Page::LIGHT, scale,
+                  sidebar_font);
+  const std::size_t total = sessions.size() + zonePlans.size();
+  for (std::size_t index = 0; index < total; ++index)
+  {
+    const char* name = index < sessions.size()
+                           ? sessions[index].name
+                           : zonePlans[index - sessions.size()].name.c_str();
+    if (Page::choice(name, static_cast<std::size_t>(session_index) == index,
+                     scale, sidebar_font))
+    {
+      session_index = static_cast<int>(index);
+    }
+  }
+  Page::endCard(scale);
+}
+
+/** Saved zones of training sessions (training ground plan section 23, T7f):
+ * each opens as a replay of that zone alone. */
+void MatchSandboxScene::renderZoneRecordingList(float width, float scale)
+{
+  namespace Page = SandboxPageUI;
+  Page::beginCard("##zone_recordings", "ZONE RECORDINGS", width, Page::LIGHT,
+                  scale, sidebar_font);
+  static std::vector<std::filesystem::path> zoneFiles;
+  static bool zoneFilesListed = false;
+  if (!zoneFilesListed || Page::button("Refresh", false, scale, sidebar_font))
+  {
+    zoneFiles = ZoneRecordings::list();
+    zoneFilesListed = true;
+  }
+  static std::string zoneOpenError;
+  if (zoneFiles.empty())
+  {
+    UI::textDisabled("None saved yet (Save this zone, in a session).");
+  }
+  for (const std::filesystem::path& file : zoneFiles)
+  {
+    const std::string label = file.filename().string();
+    if (!Page::choice(
+            label
+                .substr(0, label.size() - std::string_view(" zone.json").size())
+                .c_str(),
+            false, scale, sidebar_font))
+    {
+      continue;
+    }
+    std::string error;
+    if (std::optional<ZoneRecording> recording =
+            ZoneRecordings::load(file, error))
+    {
+      zoneOpenError.clear();
+      guiView->overlayScene(
+          std::make_unique<ZoneReplayScene>(guiView, std::move(*recording)));
+    }
+    else
+    {
+      zoneOpenError = std::format("Can't open it: {}", error);
+    }
+  }
+  if (!zoneOpenError.empty())
+  {
+    ImGui::PushTextWrapPos(0);
+    UI::textDisabled("{}", zoneOpenError.c_str());
+    ImGui::PopTextWrapPos();
+  }
+  Page::endCard(scale);
+}
+
+/** The chosen session: its name and what it is. */
+void MatchSandboxScene::renderSessionOverview(const ChosenSession& chosen,
+                                              float width, float scale)
+{
+  namespace Page = SandboxPageUI;
+  Page::beginCard("##session_overview", "SELECTED SESSION", width, Page::MID,
+                  scale, sidebar_font);
+  ImGui::PushFont(sidebar_font, HEADING_FONT_SIZE);
+  UI::textWrapped("{}", (chosen.zonePlan != nullptr)
+                            ? chosen.zonePlan->name.c_str()
+                            : chosen.session->name);
+  ImGui::PopFont();
+  ImGui::PushTextWrapPos(0.0F);
+  ImGui::TextUnformatted((chosen.zonePlan != nullptr)
+                             ? chosen.zonePlan->summary.c_str()
+                             : chosen.session->summary);
+  if (chosen.zonePlan != nullptr)
+  {
+    UI::textDisabled(
+        "{}",
+        std::format("On the training ground: {} players; the first "
+                    "{} picks take part (reference players fill "
+                    "any gap).",
+                    chosen.zonePlan->squadSize, chosen.zonePlan->squadSize)
+            .c_str());
+  }
+  ImGui::PopTextWrapPos();
+  Page::endCard(scale);
+}
+
+/** Starts the chosen session with the picks, in squad order. */
+void MatchSandboxScene::startTraining(const ChosenSession& chosen,
+                                      const std::vector<const Player*>& squad,
+                                      const std::string& clubName)
+{
+  std::vector<TrainingPlayer> trainees;
+  for (const Player* player : squad)
+  {
+    if (std::ranges::find(training_picks, player->getId()) !=
+        training_picks.end())
+    {
+      trainees.push_back({.name = player->getName(),
+                          .role = player->getRole(),
+                          .stats = player->getStats(),
+                          .height = player->getHeight(),
+                          .foot = player->getFoot()});
+    }
+  }
+  if (chosen.zonePlan != nullptr)
+  {
+    guiView->overlayScene(std::make_unique<ZoneSessionScene>(
+        guiView, *chosen.zonePlan, std::move(trainees)));
+  }
+  else
+  {
+    guiView->overlayScene(std::make_unique<TrainingSessionScene>(
+        guiView, chosen.session->make(std::move(trainees)), clubName));
+  }
+}
+
+/** One squad row: picked or not (up to the most that fit), and his name,
+ * position, Pace, Physicality and Stamina. */
+void MatchSandboxScene::renderTrainingRow(const Player& player, float scale)
+{
+  namespace Page = SandboxPageUI;
+  const PlayerID id = player.getId();
+  const auto found = std::ranges::find(training_picks, id);
+  bool picked = found != training_picks.end();
+  ImGui::PushID(static_cast<int>(id));
+  ImGui::TableNextRow();
+  ImGui::TableNextColumn();
+  ImGui::BeginDisabled(!picked &&
+                       training_picks.size() >= TrainingDrill::MAX_PLAYERS);
+  ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, ImVec2(3 * scale, 3 * scale));
+  ImGui::PushStyleColor(ImGuiCol_FrameBgHovered,
+                        picked ? Page::LIME : Page::MID);
+  ImGui::PushStyleColor(ImGuiCol_FrameBgActive,
+                        picked ? Page::LIME : Page::MID);
+  if (ImGui::Checkbox("##pick", &picked))
+  {
+    if (picked)
+    {
+      training_picks.push_back(id);
+    }
+    else
+    {
+      training_picks.erase(found);
+    }
+  }
+  ImGui::PopStyleColor(2);
+  ImGui::PopStyleVar();
+  ImGui::EndDisabled();
+  ImGui::TableNextColumn();
+  UI::textFitted(player.getName(), ImGui::GetContentRegionAvail().x,
+                 ImGui::ColorConvertU32ToFloat4(Page::CREAM));
+  ImGui::TableNextColumn();
+  ImGui::TextUnformatted(RoleUtils::toString(player.getRole()).c_str());
+  ImGui::TableNextColumn();
+  UI::text("{:.0f}", static_cast<double>(statOf(player, "Pace")));
+  ImGui::TableNextColumn();
+  UI::text("{:.0f}", static_cast<double>(statOf(player, "Physicality")));
+  ImGui::TableNextColumn();
+  UI::text("{:.0f}", static_cast<double>(statOf(player, "Stamina")));
+  ImGui::PopID();
+}
+
+/** A column of the squad: these players, as a table. */
+void MatchSandboxScene::renderTrainingRoster(
+    std::span<const Player* const> players, int column)
+{
+  const float scale = Theme::scale();
+  ImGui::PushID(column);
+  if (ImGui::BeginTable("##training_squad", TRAINING_SQUAD_COLUMNS,
+                        ImGuiTableFlags_RowBg | ImGuiTableFlags_BordersInnerH |
+                            ImGuiTableFlags_SizingFixedFit,
+                        ImVec2(0.0F, 0.0F)))
+  {
+    ImGui::TableSetupColumn("");
+    ImGui::TableSetupColumn("Player", ImGuiTableColumnFlags_WidthStretch);
+    ImGui::TableSetupColumn("Pos");
+    ImGui::TableSetupColumn("Pace");
+    ImGui::TableSetupColumn("Phys");
+    ImGui::TableSetupColumn("Stam");
+    ImGui::PushFont(sidebar_font, SandboxPageUI::BOLD_FONT_SIZE);
+    ImGui::TableHeadersRow();
+    ImGui::PopFont();
+    for (const Player* player : players)
+    {
+      renderTrainingRow(*player, scale);
+    }
+    ImGui::EndTable();
+  }
+  ImGui::PopID();
+}
+
+/** The squad card: how many are picked, and the squad in one or two
+ * columns. */
+void MatchSandboxScene::renderTrainingSquad(
+    const std::vector<const Player*>& squad, const std::string& clubName,
+    float width)
+{
+  namespace Page = SandboxPageUI;
+  const float scale = Theme::scale();
+  Page::beginCard("##training_squad_card", "SQUAD", width, Page::MID, scale,
+                  sidebar_font);
+  UI::textWrapped("{}", std::format("{}: {} of {} picked (up to {})", clubName,
+                                    training_picks.size(), squad.size(),
+                                    TrainingDrill::MAX_PLAYERS)
+                            .c_str());
+  if (squad.empty())
+  {
+    UI::textWrapped("No players are available for this club.");
+  }
+  ImGui::PushStyleVar(ImGuiStyleVar_CellPadding, ImVec2(3 * scale, 3 * scale));
+  const std::span<const Player* const> all(squad);
+  if (width < TWO_COLUMN_SETTINGS_WIDTH * scale)
+  {
+    renderTrainingRoster(all, 0);
+  }
+  else if (ImGui::BeginTable("##roster_columns", 2,
+                             ImGuiTableFlags_SizingStretchSame |
+                                 ImGuiTableFlags_BordersInnerV))
+  {
+    const std::size_t halfway = (squad.size() + 1) / 2;
+    ImGui::TableNextColumn();
+    renderTrainingRoster(all.first(halfway), 0);
+    ImGui::TableNextColumn();
+    renderTrainingRoster(all.subspan(halfway), 1);
+    ImGui::EndTable();
+  }
+  ImGui::PopStyleVar();
+  Page::endCard(scale);
+}
+
+void MatchSandboxScene::renderTraining()
+{
+  namespace Page = SandboxPageUI;
+  const float scale = Theme::scale();
+  const Page::Style style(setup_regular_font, scale);
+  const Page::ActivityLayout layout(
+      ImGui::GetWindowSize().x - ImGui::GetStyle().ScrollbarSize, scale);
+  const float detailWidth = layout.details;
+  const GameController& controller = guiView->getController();
+  const TeamID clubId = sides[HOME].team;
+  const std::vector<const Player*> squad = squadOf(controller, clubId);
+  const std::string clubName = clubNameOf(controller, clubId);
+  pickTrainingClub(clubId, squad);
+
+  const std::vector<TrainingSessionInfo>& sessions = trainingSessions();
+  const std::vector<SessionPlan>& zonePlans = sessionPlans();
+  Page::header("Training",
+               "Choose a session and the players who will take part.",
+               layout.page, scale, sidebar_font, setup_regular_font,
+               std::format("Training club: {}. Choose it on Matches. Engine "
+                           "versions and conditions come from Set-up.",
+                           clubName)
+                   .c_str());
+  ImGui::BeginGroup();
+  renderSessionList(layout.catalogue, scale);
+  renderZoneRecordingList(layout.catalogue, scale);
+  ImGui::EndGroup();
+  if (layout.columns)
+  {
+    ImGui::SameLine(0, SandboxPageUI::PANEL_GAP * scale);
+  }
+  const std::size_t total = sessions.size() + zonePlans.size();
+  if (total == 0)
+  {
+    return;
+  }
+  session_index = std::min(session_index, static_cast<int>(total) - 1);
+  const auto index = static_cast<std::size_t>(session_index);
+  const ChosenSession chosen{
+      .session = index < sessions.size() ? &sessions[index] : nullptr,
+      .zonePlan = index >= sessions.size() ? &zonePlans[index - sessions.size()]
+                                           : nullptr};
+  ImGui::BeginGroup();
+  renderSessionOverview(chosen, detailWidth, scale);
+  Page::beginCard("##training_start", "RUN SESSION", detailWidth, Page::DARK,
+                  scale, sidebar_font);
+  ImGui::BeginDisabled(training_picks.empty());
+  if (Page::button("START SESSION", true, scale, sidebar_font))
+  {
+    startTraining(chosen, squad, clubName);
+  }
+  ImGui::EndDisabled();
+  ImGui::SameLine();
+  UI::textDisabled("{:d} players selected", training_picks.size());
+  Page::endCard(scale);
+  renderTrainingSquad(squad, clubName, detailWidth);
+  ImGui::EndGroup();
+}
+
+void MatchSandboxScene::renderMatchPanel(MatchEngine& engine, bool& paused)
+{
+  if (match_true_view &&
+      ImGui::CollapsingHeader("True view", ImGuiTreeNodeFlags_DefaultOpen))
+  {
+    ImGui::PushID("true_view");
+    true_view.renderSettings(
+        (review.shownEngine() != nullptr) ? *review.shownEngine() : engine);
+    ImGui::PopID();
+  }
+  if (!recorder)
+  {
+    return;
+  }
+  if (SandboxPageUI::button(match_debug ? "Show Touchline" : "Debugger", false,
+                            Theme::scale(), sidebar_font))
+  {
+    match_debug = !match_debug;
+  }
+  if (ImGui::CollapsingHeader("Review", ImGuiTreeNodeFlags_DefaultOpen))
+  {
+    ImGui::PushID("review");
+    review.renderPanel(*recorder, &engine, &paused, &inspector);
+    ImGui::PopID();
+  }
+}
+
+void MatchSandboxScene::renderSide(Side& side, bool home, float width)
+{
+  namespace Page = SandboxPageUI;
+  const float scale = Theme::scale();
+  ImGui::PushID(home ? "home" : "away");
+  Page::beginCard("##club_card",
+                  home ? "HOME / YOU MANAGE" : "AWAY / AI MANAGES", width,
+                  Page::LIGHT, scale, sidebar_font);
+  renderClubPicker(side, home);
+  if (const auto team = mutableTeam(guiView, side.team))
+  {
+    renderFormation(team->get());
+  }
+  Page::endCard(scale);
+  if (const auto team = mutableTeam(guiView, side.team))
+  {
+    Page::beginCard("##xi_card", "STARTING XI / ROLES & DUTIES", width,
+                    Page::MID, scale, sidebar_font);
+    renderSelection(team->get());
+    Page::endCard(scale);
+    Page::beginCard("##tactics_card", "TEAM INSTRUCTIONS", width, Page::DARK,
+                    scale, sidebar_font);
+    renderInstructions(team->get().getStrategy());
+    Page::endCard(scale);
+  }
+  ImGui::PopID();
+}
+
+void MatchSandboxScene::renderClubPicker(Side& side, bool home)
+{
+  const GameController& controller = guiView->getController();
+  const auto current = controller.getTeamById(side.team);
+  const std::string preview =
+      current
+          ? std::format("{}  /  {}", current->get().getName(),
+                        leagueName(controller, current->get().getLeagueId()))
+          : std::string("Choose a club");
+  (void)home;
+  ImGui::SetNextItemWidth(-1.0F);
+  if (!SandboxPageUI::beginCombo("##club", preview.c_str(),
+                                 ImGuiComboFlags_HeightLarge))
+  {
+    return;
+  }
+  for (const auto& league : controller.getLeagues())
+  {
+    ImGui::SeparatorText(league.get().getName().c_str());
+    for (const auto& team : controller.getTeams())
+    {
+      if (team.get().getLeagueId() != league.get().getId())
+      {
+        continue;
+      }
+      const TeamID id = team.get().getId();
+      ImGui::PushID(id);
+      if (ImGui::Selectable(team.get().getName().c_str(), id == side.team))
+      {
+        side.team = id;
+      }
+      ImGui::PopID();
+    }
+  }
+  ImGui::EndCombo();
+}
+
+void MatchSandboxScene::renderFormation(Team& team)
+{
+  const GameController& controller = guiView->getController();
+  Lineup& lineup = team.getLineup();
+  namespace Page = SandboxPageUI;
+  const float scale = Theme::scale();
+  UI::textDisabled("Formation");
+  float used = 0;
+  const float width = ImGui::GetContentRegionAvail().x;
+  const std::optional<std::size_t> active = currentPreset(lineup);
+  for (std::size_t index = 0; index < Formation::PRESETS.size(); ++index)
+  {
+    const Formation::Preset& preset = Formation::PRESETS.at(index);
+    const float w = Page::buttonWidth(preset.name, scale, sidebar_font);
+    if (used > 0 && used + w <= width)
+    {
+      ImGui::SameLine(0, SandboxPageUI::PANEL_GAP * scale);
+    }
+    else
+    {
+      used = 0;
+    }
+    used += w + (SandboxPageUI::PANEL_GAP * scale);
+    if (Page::button(preset.name, active == index, scale, sidebar_font))
+    {
+      // A new shape picks the best XI for it and the roles that fit them.
+      const std::vector<const Player*> squad =
+          squadOf(controller, team.getId());
+      Formation::autoPick(lineup, preset, squad, controller.getStatsConfig());
+      suggestRoles(team.getStrategy(), lineup);
+    }
+  }
+  if (!active)
+  {
+    std::vector<PlayerRole> roles;
+    for (const auto& positioned : lineup.getOutfieldPlayers())
+    {
+      roles.push_back(Lineup::roleAt(positioned.position));
+    }
+    UI::textColoured(ImGui::ColorConvertU32ToFloat4(Page::MUTED), "Current: {}",
+                     formationLabel(roles).c_str());
+  }
+  if (Page::button("Best XI", false, scale, sidebar_font))
+  {
+    const std::vector<const Player*> squad = squadOf(controller, team.getId());
+    const Formation::Preset& preset = Formation::PRESETS.at(active.value_or(0));
+    Formation::autoPick(lineup, preset, squad, controller.getStatsConfig());
+  }
+  if (ImGui::IsItemHovered())
+  {
+    UI::tooltip("Pick the strongest eleven for the formation.");
+  }
+  ImGui::SameLine();
+  if (Page::button("Suggest roles", false, scale, sidebar_font))
+  {
+    suggestRoles(team.getStrategy(), lineup);
+  }
+  if (ImGui::IsItemHovered())
+  {
+    UI::tooltip("Give every starter the role and duty that suit him.");
+  }
+  ImGui::SetNextItemWidth(-1);
+  if (SandboxPageUI::beginCombo("##shape", LOC("TACTIC_SHAPE_PRESETS")))
+  {
+    for (std::size_t index = 0;
+         index < static_cast<std::size_t>(PossessionShape::COUNT); ++index)
+    {
+      const auto shape = static_cast<PossessionShape>(index);
+      if (ImGui::Selectable(LOC(Tactics::possessionShapeKey(shape))))
+      {
+        applyPossessionShape(team.getStrategy(), lineup, shape);
+      }
+    }
+    ImGui::EndCombo();
+  }
+  if (ImGui::IsItemHovered())
+  {
+    UI::tooltip("Where the outfield players move with the ball.");
+  }
+}
+
+void MatchSandboxScene::renderInstructions(Strategy& strategy)
+{
+  namespace Page = SandboxPageUI;
+  const float scale = Theme::scale();
+  StrategySliders sliders = strategy.getSliders();
+  float used = 0;
+  const float rowWidth = ImGui::GetContentRegionAvail().x;
+  for (const auto& preset : Lab::TACTIC_PRESETS)
+  {
+    const std::string label(preset.name);
+    const float w = Page::buttonWidth(label.c_str(), scale, sidebar_font);
+    if (used > 0 && used + (SandboxPageUI::PANEL_GAP * scale) + w <= rowWidth)
+    {
+      ImGui::SameLine(0, SandboxPageUI::PANEL_GAP * scale);
+    }
+    else
+    {
+      used = 0;
+    }
+    used += w + (SandboxPageUI::PANEL_GAP * scale);
+    if (Page::button(label.c_str(), sameSliders(sliders, preset.sliders), scale,
+                     sidebar_font))
+    {
+      sliders = preset.sliders;
+      strategy.setAllSliders(sliders);
+    }
+  }
+  const float labelWidth = SLIDER_LABEL_WIDTH * Theme::scale();
+  bool changed = false;
+  if (ImGui::BeginTable("##instructions", 2,
+                        ImGuiTableFlags_RowBg | ImGuiTableFlags_BordersInnerH |
+                            ImGuiTableFlags_BordersInnerV))
+  {
+    ImGui::TableSetupColumn("Instruction", ImGuiTableColumnFlags_WidthFixed,
+                            labelWidth);
+    ImGui::TableSetupColumn("Value", ImGuiTableColumnFlags_WidthStretch);
+    for (const SliderInfo& slider : SLIDERS)
+    {
+      ImGui::TableNextRow();
+      ImGui::TableNextColumn();
+      ImGui::PushID(slider.key);
+      ImGui::AlignTextToFramePadding();
+      ImGui::TextUnformatted(LOC(slider.key));
+      if (ImGui::IsItemHovered())
+      {
+        UI::tooltip("{}", LOC(slider.helpKey));
+      }
+      ImGui::TableNextColumn();
+      ImGui::SetNextItemWidth(-1.0F);
+      changed |= ImGui::SliderFloat("##value", &(sliders.*slider.value), 0.0F,
+                                    1.0F, "%.2f");
+      ImGui::PopID();
+    }
+    ImGui::EndTable();
+  }
+  if (changed)
+  {
+    strategy.setAllSliders(sliders);
+  }
+}
+
+namespace
+{
+/** What the XI table edits, and the squad best first for its pickers. */
+struct XiContext
+{
+  Lineup* lineup = nullptr;
+  Strategy* strategy = nullptr;
+  const std::vector<const Player*>* ordered = nullptr;
+  const StatsConfig* config = nullptr;
+};
+
+/** The player picker of one slot: the whole squad, best first. Picking a
+ * player already in the XI trades places with him. */
+void xiPlayerPicker(const XiContext& xi, const Player& current, bool goalkeeper)
+{
+  ImGui::SetNextItemWidth(-1.0F);
+  if (!SandboxPageUI::beginCombo("##player", current.getName().c_str(),
+                                 ImGuiComboFlags_HeightLarge))
+  {
+    if (ImGui::IsItemHovered())
+    {
+      UI::tooltip("{}", playerLabel(current, *xi.config).c_str());
+    }
+    return;
+  }
+  for (const Player* candidate : *xi.ordered)
+  {
+    // The goalkeeper's slot takes keepers, outfield slots outfielders.
+    if ((candidate->getRole() == PlayerRole::GK) != goalkeeper)
+    {
+      continue;
+    }
+    const bool muted =
+        xi.lineup->isStarter(candidate->getId()) && candidate != &current;
+    ImGui::PushID(static_cast<int>(candidate->getId()));
+    if (muted)
+    {
+      ImGui::PushStyleColor(ImGuiCol_Text, Theme::palette().muted);
+    }
+    if (ImGui::Selectable(playerLabel(*candidate, *xi.config).c_str(),
+                          candidate == &current) &&
+        candidate != &current)
+    {
+      selectPlayer(*xi.lineup, current, *candidate);
+    }
+    if (muted)
+    {
+      ImGui::PopStyleColor();
+    }
+    ImGui::PopID();
+  }
+  ImGui::EndCombo();
+}
+
+/** Goalkeeper: a role, no duty. */
+void xiKeeperRow(const XiContext& xi, const Player& keeper)
+{
+  Strategy& strategy = *xi.strategy;
+  ImGui::PushID("keeper");
+  ImGui::TableNextRow();
+  ImGui::TableNextColumn();
+  ImGui::AlignTextToFramePadding();
+  ImGui::TextUnformatted(RoleUtils::shortName(PlayerRole::GK));
+  ImGui::TableNextColumn();
+  xiPlayerPicker(xi, keeper, true);
+  ImGui::TableNextColumn();
+  ImGui::SetNextItemWidth(-1.0F);
+  const TacticalRole keeperRole = strategy.getKeeperRole();
+  if (SandboxPageUI::beginCombo("##role", LOC(Tactics::roleKey(keeperRole))))
+  {
+    for (const TacticalRole role : Tactics::rolesFor(RoleFamily::Goalkeeper))
+    {
+      if (ImGui::Selectable(LOC(Tactics::roleKey(role)), role == keeperRole))
+      {
+        strategy.setKeeperRole(role);
+      }
+    }
+    ImGui::EndCombo();
+  }
+  ImGui::TableNextColumn();
+  ImGui::TableNextColumn();
+  ImGui::AlignTextToFramePadding();
+  UI::text("{:.0f}",
+           Tactics::roleFit(keeper, RoleFamily::Goalkeeper, keeperRole));
+  ImGui::PopID();
+}
+
+/** A slot's role, from its family's roles. */
+void xiRolePicker(Strategy& strategy, SlotInstruction& instruction,
+                  RoleFamily family)
+{
+  ImGui::SetNextItemWidth(-1.0F);
+  if (SandboxPageUI::beginCombo("##role",
+                                LOC(Tactics::roleKey(instruction.role))))
+  {
+    for (const TacticalRole role : Tactics::rolesFor(family))
+    {
+      if (ImGui::Selectable(LOC(Tactics::roleKey(role)),
+                            role == instruction.role))
+      {
+        instruction.role = role;
+        strategy.setSlot(instruction);
+      }
+      if (ImGui::IsItemHovered())
+      {
+        UI::tooltip("{}", LOC(Tactics::roleDescriptionKey(role)));
+      }
+    }
+    ImGui::EndCombo();
+  }
+  if (ImGui::IsItemHovered())
+  {
+    UI::tooltip("{}", LOC(Tactics::roleKey(instruction.role)));
+  }
+}
+
+/** A slot's duty, where its family has one. */
+void xiDutyPicker(Strategy& strategy, SlotInstruction& instruction,
+                  RoleFamily family)
+{
+  if (!Tactics::hasDuty(family))
+  {
+    return;
+  }
+  ImGui::SetNextItemWidth(-1.0F);
+  if (SandboxPageUI::beginCombo("##duty",
+                                LOC(Tactics::dutyKey(instruction.duty))))
+  {
+    for (std::size_t index = 0;
+         index < static_cast<std::size_t>(RoleDuty::COUNT); ++index)
+    {
+      const auto duty = static_cast<RoleDuty>(index);
+      if (ImGui::Selectable(LOC(Tactics::dutyKey(duty)),
+                            duty == instruction.duty))
+      {
+        instruction.duty = duty;
+        strategy.setSlot(instruction);
+      }
+    }
+    ImGui::EndCombo();
+  }
+  if (ImGui::IsItemHovered())
+  {
+    UI::tooltip("{}", LOC(Tactics::dutyKey(instruction.duty)));
+  }
+}
+
+/** One outfield slot: position, player, role, duty and his fit. */
+void xiOutfieldRow(const XiContext& xi,
+                   const Lineup::PositionedPlayer& positioned)
+{
+  const Player& player = *positioned.player;
+  const RoleFamily family = Tactics::familyForSlot(positioned.position);
+  SlotInstruction instruction = slotAt(*xi.strategy, positioned.position);
+  ImGui::PushID(static_cast<int>(player.getId()));
+  ImGui::TableNextRow();
+  ImGui::TableNextColumn();
+  ImGui::AlignTextToFramePadding();
+  ImGui::TextUnformatted(
+      RoleUtils::shortName(Lineup::roleAt(positioned.position)));
+  ImGui::TableNextColumn();
+  xiPlayerPicker(xi, player, false);
+  ImGui::TableNextColumn();
+  xiRolePicker(*xi.strategy, instruction, family);
+  ImGui::TableNextColumn();
+  xiDutyPicker(*xi.strategy, instruction, family);
+  ImGui::TableNextColumn();
+  ImGui::AlignTextToFramePadding();
+  UI::text("{:.0f}", Tactics::roleFit(player, family, instruction.role));
+  if (ImGui::IsItemHovered())
+  {
+    UI::tooltip("How well he suits the role (0-100).");
+  }
+  ImGui::PopID();
+}
+}  // namespace
+
+void MatchSandboxScene::renderSelection(Team& team)
+{
+  const GameController& controller = guiView->getController();
+  const StatsConfig& config = controller.getStatsConfig();
+  Lineup& lineup = team.getLineup();
+  const std::vector<const Player*> squad = squadOf(controller, team.getId());
+
+  constexpr ImGuiTableFlags flags =
+      ImGuiTableFlags_RowBg | ImGuiTableFlags_BordersInnerH |
+      ImGuiTableFlags_BordersInnerV | ImGuiTableFlags_SizingStretchProp;
+  ImGui::PushStyleVar(ImGuiStyleVar_CellPadding,
+                      ImVec2(XI_CELL_PADDING.x * Theme::scale(),
+                             XI_CELL_PADDING.y * Theme::scale()));
+  const bool table = ImGui::BeginTable("##xi", 5, flags);
+  if (!table)
+  {
+    ImGui::PopStyleVar();
+    return;
+  }
+  const float scale = Theme::scale();
+  ImGui::TableSetupColumn("Pos", ImGuiTableColumnFlags_WidthFixed,
+                          POSITION_COLUMN_WIDTH * scale);
+  ImGui::TableSetupColumn("Player", ImGuiTableColumnFlags_WidthStretch,
+                          XI_PLAYER_WEIGHT);
+  ImGui::TableSetupColumn("Role", ImGuiTableColumnFlags_WidthStretch,
+                          XI_ROLE_WEIGHT);
+  ImGui::TableSetupColumn("Duty", ImGuiTableColumnFlags_WidthFixed,
+                          XI_DUTY_WIDTH * scale);
+  ImGui::TableSetupColumn("Fit", ImGuiTableColumnFlags_WidthFixed,
+                          OVERALL_COLUMN_WIDTH * scale);
+  ImGui::PushFont(sidebar_font, SandboxPageUI::BOLD_FONT_SIZE);
+  ImGui::TableHeadersRow();
+  ImGui::PopFont();
+
+  std::vector<const Player*> ordered = squad;
+  std::ranges::sort(
+      ordered, [&config](const Player* left, const Player* right)
+      { return left->getOverall(config) > right->getOverall(config); });
+  const XiContext xi{.lineup = &lineup,
+                     .strategy = &team.getStrategy(),
+                     .ordered = &ordered,
+                     .config = &config};
+  if (const Player* keeper = lineup.getGoalkeeper())
+  {
+    xiKeeperRow(xi, *keeper);
+  }
+  // Outfield slots, back to front.
+  std::vector<Lineup::PositionedPlayer> outfield = lineup.getOutfieldPlayers();
+  std::ranges::stable_sort(
+      outfield,
+      [](const auto& left, const auto& right)
+      {
+        if (std::abs(left.position.x - right.position.x) > SLOT_TOLERANCE)
+        {
+          return left.position.x < right.position.x;
+        }
+        return left.position.y < right.position.y;
+      });
+  for (const Lineup::PositionedPlayer& positioned : outfield)
+  {
+    if (positioned.player != nullptr)
+    {
+      xiOutfieldRow(xi, positioned);
+    }
+  }
+  ImGui::EndTable();
+  ImGui::PopStyleVar();
+}
+
+void MatchSandboxScene::renderFooter()
+{
+  namespace Page = SandboxPageUI;
+  const float scale = Theme::scale();
+  const auto next = [&](float width)
+  {
+    if (ImGui::GetItemRectMax().x + (SandboxPageUI::PANEL_GAP * scale) +
+            width <=
+        ImGui::GetWindowPos().x + ImGui::GetWindowContentRegionMax().x)
+    {
+      ImGui::SameLine(0, SandboxPageUI::PANEL_GAP * scale);
+    }
+  };
+  const auto buttonNext = [&](const char* label)
+  { next(Page::buttonWidth(label, scale, sidebar_font)); };
+  const bool sameClub = sides[HOME].team == sides[AWAY].team;
+  const bool ready =
+      !sameClub && sides[HOME].team != 0 && sides[AWAY].team != 0;
+  ImGui::BeginDisabled(!ready);
+  if (Page::button("Kick off", true, scale, sidebar_font))
+  {
+    kickOff();
+  }
+  ImGui::EndDisabled();
+  if (sameClub && ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenDisabled))
+  {
+    UI::tooltip("Choose two different clubs.");
+  }
+  next(KICK_OFF_SLOT_WIDTH * scale);
+  ImGui::AlignTextToFramePadding();
+  ImGui::TextUnformatted("Match seed");
+  ImGui::SameLine();
+  ImGui::SetNextItemWidth(SEED_INPUT_WIDTH * scale);
+  ImGui::InputScalar("##seed", ImGuiDataType_U32, &match_seed);
+  if (ImGui::IsItemHovered())
+  {
+    UI::tooltip("The same seed, clubs and tactics replay the same match.");
+  }
+  next(ImGui::CalcTextSize("New seed each match").x + (CHECKBOX_ROOM * scale));
+  ImGui::Checkbox("New seed each match", &new_seed_each_match);
+  if (recorder)
+  {
+    buttonNext("Review");
+    if (Page::button("Review", false, scale, sidebar_font))
+    {
+      mode = SandboxPage::REVIEW;
+      reviewTab = 0;
+    }
+    buttonNext("Debugger");
+    if (Page::button("Debugger", false, scale, sidebar_font))
+    {
+      mode = SandboxPage::REVIEW;
+      reviewTab = 1;
+    }
+  }
+  ImGui::BeginDisabled(!recorder || !match_setup || loaded.has_value());
+  if (Page::button("Save recording", false, scale, sidebar_font))
+  {
+    saveRecording();
+  }
+  ImGui::EndDisabled();
+  if (ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenDisabled))
+  {
+    UI::tooltip(
+        "Save the last match to review it later or compare engine versions.");
+  }
+  next(ImGui::CalcTextSize("with full detail").x + (CHECKBOX_ROOM * scale));
+  ImGui::Checkbox("with full detail", &save_with_detail);
+  if (ImGui::IsItemHovered())
+  {
+    UI::tooltip(
+        "Save decision breakdowns for term-by-term engine comparison (a larger "
+        "file).");
+  }
+  buttonNext("Recordings...");
+  if (Page::button("Recordings...", false, scale, sidebar_font))
+  {
+    mode = SandboxPage::RECORDINGS;
+    recording_files.clear();
+    recording_index = -1;
+    recording_preview.reset();
+  }
+  if (!last_result.empty())
+  {
+    UI::textWrapped("Last match: {}", last_result.c_str());
+  }
+  if (!status.empty())
+  {
+    UI::textWrapped("{}", status.c_str());
+  }
+}
+
+void MatchSandboxScene::saveRecording()
+{
+  if (!recorder || !match_setup)
+  {
+    return;
+  }
+  const MatchRecording recording =
+      Recordings::capture(*match_setup, *recorder, save_with_detail);
+  const std::filesystem::path path =
+      Recordings::folder() / Recordings::fileName(recording);
+  std::string error;
+  status = Recordings::save(recording, path, error)
+               ? "Saved " + path.filename().string()
+               : "Could not save: " + error;
+  recording_files.clear();
+}
+
+void MatchSandboxScene::loadRecording(
+    const std::filesystem::path& path,
+    std::optional<std::array<BrainId, 2>> brains,
+    std::optional<std::array<BodyId, 2>> bodies,
+    std::optional<HandshakeId> handshake,
+    std::optional<PossessionId> possession)
+{
+  std::string error;
+  std::optional<MatchRecording> recording = Recordings::load(path, error);
+  if (!recording)
+  {
+    status = "Could not open " + path.filename().string() + ": " + error;
+    return;
+  }
+  Recordings::Replay replayed =
+      Recordings::replay(*recording, guiView->getController(), brains, bodies,
+                         handshake, possession);
+  if (!replayed.match)
+  {
+    status = "Could not replay: " + replayed.error;
+    return;
+  }
+  // The replayed match takes the place of the last match in every window.
+  recorder = std::move(replayed.match);
+  match_setup = recording->setup;
+  if (brains)
+  {
+    match_setup->brains = *brains;
+  }
+  if (bodies)
+  {
+    match_setup->bodies = *bodies;
+  }
+  if (handshake)
+  {
+    match_setup->handshake = *handshake;
+  }
+  if (possession)
+  {
+    match_setup->possession = *possession;
+  }
+  match_home = recording->setup.sides[0].team;
+  match_away = recording->setup.sides[1].team;
+  debugger.reset();
+  review.reset();
+  inspector.reset();
+  comparison.reset();
+  loaded = std::move(recording);
+  replay_info = std::move(replayed);
+  mode = SandboxPage::REVIEW;
+  reviewTab = 0;
+  last_result = std::format(
+      "{} {} - {} {} (recording, seed {}, {})", loaded->setup.sides[0].name,
+      replay_info->homeScore, replay_info->awayScore,
+      loaded->setup.sides[1].name, loaded->setup.matchSeed,
+      brains || bodies || handshake || possession
+          ? std::format("replayed with brains {}, bodies {}, handshake {}; "
+                        "recorded with brains {}, bodies {}, handshake {}",
+                        brainPairName(match_setup->brains),
+                        bodyPairName(match_setup->bodies),
+                        handshakeName(match_setup->handshake),
+                        brainPairName(loaded->setup.brains),
+                        bodyPairName(loaded->setup.bodies),
+                        handshakeName(loaded->setup.handshake))
+          : std::format("brains {}; bodies {}; handshake {}",
+                        brainPairName(loaded->setup.brains),
+                        bodyPairName(loaded->setup.bodies),
+                        handshakeName(loaded->setup.handshake)));
+  last_result += std::format("; possession {} (recorded {})",
+                             possessionName(match_setup->possession),
+                             possessionName(loaded->setup.possession));
+  status = "Opened " + path.filename().string();
+}
+
+/** The picked recording: its match and how to open it. */
+void MatchSandboxScene::renderRecordingDetail(float detailWidth)
+{
+  namespace Page = SandboxPageUI;
+  const float scale = Theme::scale();
+  Page::beginCard("##recording_detail", "RECORDING DETAILS", detailWidth,
+                  Page::LIGHT, scale, sidebar_font);
+  if (recording_index < 0)
+  {
+    UI::textWrapped(
+        "Select a recording to see its details and replay options.");
+  }
+  else if (!recording_preview)
+  {
+    UI::textWrapped("Could not read recording: {}",
+                    recording_preview_error.c_str());
+  }
+  else
+  {
+    const auto& r = *recording_preview;
+    UI::textWrapped(
+        "{}", recording_files[recording_index].filename().string().c_str());
+    ImGui::PushFont(sidebar_font, SCORE_FONT_SIZE);
+    UI::textWrapped("{} {:d} - {:d} {}", r.setup.sides[0].name.c_str(),
+                    r.homeScore, r.awayScore, r.setup.sides[1].name.c_str());
+    ImGui::PopFont();
+    UI::textWrapped("Recorded {} / seed {:d}", r.created.c_str(),
+                    r.setup.matchSeed);
+    UI::textWrapped("Engine build: {}", r.build.c_str());
+    UI::textWrapped(
+        "{:d} decisions / {}", r.decisions.size(),
+        r.details.empty() ? "without full detail" : "with full detail");
+    if (Page::button("Open", true, scale, sidebar_font))
+    {
+      loadRecording(recording_files[recording_index]);
+    }
+    ImGui::SameLine(0, SandboxPageUI::PANEL_GAP * scale);
+    if (Page::button("Replay with", false, scale, sidebar_font))
+    {
+      loadRecording(recording_files[recording_index], sandboxBrains(),
+                    sandboxBodies(), sandboxHandshake(), sandboxPossession());
+    }
+    UI::textWrapped(
+        "Open uses the recorded engine selections. Replay with uses the "
+        "brains, bodies, handshake and possession selected in Set-up. Both "
+        "open the Review page with comparison results.");
+  }
+  Page::endCard(scale);
+}
+
+void MatchSandboxScene::renderRecordings()
+{
+  namespace Page = SandboxPageUI;
+  const float scale = Theme::scale();
+  const Page::Style style(setup_regular_font, scale);
+  const float width = ImGui::GetContentRegionAvail().x - (6 * scale) -
+                      ImGui::GetStyle().ScrollbarSize;
+  Page::header("Recordings",
+               "Browse saved matches and compare engine versions.", width,
+               scale, sidebar_font, setup_regular_font, nullptr, true);
+  Page::beginCard("##recording_actions", "LIBRARY", width, Page::DARK, scale,
+                  sidebar_font);
+  if (Page::button("Refresh", false, scale, sidebar_font))
+  {
+    recording_files.clear();
+    recording_index = -1;
+    recording_preview.reset();
+  }
+  ImGui::SameLine(0, SandboxPageUI::PANEL_GAP * scale);
+  if (Page::button("Current review", false, scale, sidebar_font))
+  {
+    mode = SandboxPage::REVIEW;
+  }
+  UI::textWrapped("{}", Recordings::folder().string().c_str());
+  if (!status.empty())
+  {
+    UI::textWrapped("{}", status.c_str());
+  }
+  Page::endCard(scale);
+  if (recording_files.empty())
+  {
+    std::error_code ignored;
+    for (const auto& entry :
+         std::filesystem::directory_iterator(Recordings::folder(), ignored))
+    {
+      if (entry.path().extension() == ".json")
+      {
+        recording_files.push_back(entry.path());
+      }
+    }
+    std::ranges::sort(recording_files, std::greater{});
+  }
+  const bool columns = width >= 900 * scale;
+  const float listWidth = columns ? 400 * scale : width;
+  ImGui::BeginGroup();
+  Page::beginCard("##recording_list", "SAVED MATCHES", listWidth, Page::MID,
+                  scale, sidebar_font);
+  if (recording_files.empty())
+  {
+    UI::textWrapped(
+        "No recordings yet. Save a completed match from Matches to add it "
+        "here.");
+  }
+  for (std::size_t i = 0; i < recording_files.size(); ++i)
+  {
+    ImGui::PushID(int(i));
+    const auto filename = recording_files[i].stem().string();
+    const auto label =
+        filename.size() > 38 ? filename.substr(0, 35) + "..." : filename;
+    ImGui::PushTextWrapPos(0);
+    if (ImGui::Selectable(label.c_str(), recording_index == int(i),
+                          ImGuiSelectableFlags_None,
+                          ImVec2(0, RECORDING_ROW_HEIGHT * scale)))
+    {
+      recording_index = int(i);
+      recording_preview =
+          Recordings::load(recording_files[i], recording_preview_error);
+    }
+    if (ImGui::IsItemHovered())
+    {
+      UI::tooltip("{}", filename.c_str());
+    }
+    ImGui::PopTextWrapPos();
+    ImGui::PopID();
+  }
+  Page::endCard(scale);
+  ImGui::EndGroup();
+  if (columns)
+  {
+    ImGui::SameLine(0, SandboxPageUI::PANEL_GAP * scale);
+  }
+  const float detailWidth = columns ? width - listWidth - (6 * scale) : width;
+  renderRecordingDetail(detailWidth);
+}
+
+/** The review's controls: where to go, which view, and playback. */
+void MatchSandboxScene::renderReviewControls(float panel)
+{
+  namespace Page = SandboxPageUI;
+  const float scale = Theme::scale();
+  Page::header("Review", loaded ? "Recorded match" : "Current / last match",
+               panel, scale, sidebar_font, setup_regular_font, nullptr, true);
+  Page::beginCard("##review_navigation", "REVIEW MATCH", panel, Page::MID,
+                  scale, sidebar_font);
+  if (Page::button("Recordings", false, scale, sidebar_font))
+  {
+    mode = SandboxPage::RECORDINGS;
+  }
+  ImGui::SameLine(0, SandboxPageUI::PANEL_GAP * scale);
+  if (Page::button("Matches", false, scale, sidebar_font))
+  {
+    mode = SandboxPage::MATCHES;
+  }
+  if (!recorder)
+  {
+    UI::textWrapped("Play a match or open a recording to start reviewing.");
+  }
+  else
+  {
+    if (!last_result.empty())
+    {
+      UI::textWrapped("{}", last_result.c_str());
+    }
+    constexpr std::array<const char*, 3> tabs{"Pitch", "Analysis",
+                                              "Comparison"};
+    for (int i = 0; i < 3; ++i)
+    {
+      if (i > 0)
+      {
+        ImGui::SameLine(0, SandboxPageUI::PANEL_GAP * scale);
+      }
+      if (Page::button(tabs.at(static_cast<std::size_t>(i)), reviewTab == i,
+                       scale, sidebar_font))
+      {
+        reviewTab = i;
+      }
+    }
+  }
+  Page::endCard(scale);
+  if (recorder)
+  {
+    Page::beginCard("##review_transport", "TIMELINE / PLAYBACK", panel,
+                    Page::DARK, scale, sidebar_font);
+    review.renderPanel(*recorder, nullptr, nullptr, nullptr);
+    Page::endCard(scale);
+  }
+}
+
+/** The review's stage: the pitch, the engine's analysis or the comparison. */
+void MatchSandboxScene::renderReviewStage(ImVec2 area)
+{
+  namespace Page = SandboxPageUI;
+  const float scale = Theme::scale();
+  const float width = area.x;
+  const float height = area.y;
+  const char* stageTitle = "RECORDING COMPARISON";
+  if (reviewTab == 0)
+  {
+    stageTitle = "PITCH";
+  }
+  else if (reviewTab == 1)
+  {
+    stageTitle = "ENGINE ANALYSIS";
+  }
+  Page::beginCard("##review_stage", stageTitle, width, Page::LIGHT, scale,
+                  sidebar_font);
+  ImGui::BeginChild("##review_content",
+                    ImVec2(0, std::max(MIN_REVIEW_HEIGHT * scale,
+                                       height - (REVIEW_CARD_CHROME * scale))),
+                    ImGuiChildFlags_None, ImGuiWindowFlags_HorizontalScrollbar);
+  ImGui::PushTextWrapPos(0);
+  if (!recorder)
+  {
+    UI::textWrapped(
+        "No match available. Open a recording or play a match first.");
+  }
+  else if (reviewTab == 0)
+  {
+    review.renderPitch(*recorder, nullptr, {match_home, match_away},
+                       &inspector);
+  }
+  else if (reviewTab == 1)
+  {
+    debugger.renderContents(*recorder, nullptr, nullptr, review.cursor(),
+                            review.shownEngine(), inspector);
+  }
+  else if (loaded && replay_info)
+  {
+    if (comparison.render(*loaded, *replay_info, recorder.get(), review,
+                          inspector))
+    {
+      reviewTab = 0;
+    }
+  }
+  else
+  {
+    UI::textWrapped(
+        "Open a saved recording to compare its replay with the original "
+        "result and decisions.");
+  }
+  ImGui::PopTextWrapPos();
+  ImGui::EndChild();
+  Page::endCard(scale);
+}
+
+void MatchSandboxScene::renderReviewPage()
+{
+  namespace Page = SandboxPageUI;
+  const float scale = Theme::scale();
+  const Page::Style style(setup_regular_font, scale);
+  const ImVec2 available = ImGui::GetContentRegionAvail();
+  const float gutter =
+      (SandboxPageUI::PANEL_GAP * scale) + ImGui::GetStyle().ScrollbarSize;
+  const bool columns = available.x >= 1000 * scale;
+  const float panel = columns ? 400 * scale : available.x - gutter;
+  ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(0, 0));
+  if (columns)
+  {
+    ImGui::BeginChild("##review_controls", ImVec2(panel + gutter, available.y),
+                      ImGuiChildFlags_AlwaysUseWindowPadding);
+    renderReviewControls(panel);
+    ImGui::EndChild();
+    ImGui::SameLine(0, SandboxPageUI::PANEL_GAP * scale);
+    renderReviewStage(
+        ImVec2(ImGui::GetContentRegionAvail().x - gutter, available.y));
+  }
+  else
+  {
+    renderReviewControls(panel);
+    renderReviewStage(
+        ImVec2(panel, std::max(MIN_STAGE_HEIGHT * scale, available.y)));
+  }
+  ImGui::PopStyleVar();
+  if (recorder)
+  {
+    if (const auto tick = debugger.takeSeekRequest())
+    {
+      review.seek(*recorder, *tick);
+      reviewTab = 0;
+    }
+  }
+}
+
+/** The match's debug panel: the debugger on the match as it runs. */
+void MatchSandboxScene::renderMatchDebugPanel(MatchEngine& engine, bool& paused)
+{
+  if (!recorder)
+  {
+    return;
+  }
+  debugger.renderContents(
+      *recorder, &engine, &paused, review.cursor(),
+      (review.shownEngine() != nullptr) ? review.shownEngine() : &engine,
+      inspector);
+  if (const auto tick = debugger.takeSeekRequest())
+  {
+    paused = true;
+    review.seek(*recorder, *tick);
+  }
+}
+
+/** The match's view overlay: the true view takes the click (A, or B with
+ * Ctrl) and hands A to the inspector; without it the inspector picks. */
+void MatchSandboxScene::drawMatchOverlay(const IMatchRenderer& renderer,
+                                         const MatchEngine& engine,
+                                         const MatchRenderSnapshot& snapshot,
+                                         const MatchClick& click)
+{
+  if (match_true_view)
+  {
+    const PlayerID picked = true_view.drawOverlay(
+        renderer, engine, snapshot, click.clicked, click.ctrl, click.at);
+    if (picked != 0 && !click.ctrl)
+    {
+      inspector.selected = picked;
+    }
+  }
+  if ((match_debug || match_engine_tools) && recorder)
+  {
+    inspector.drawOverlays(*recorder, engine, renderer,
+                           click.clicked && !match_true_view);
+  }
+}
+
+void MatchSandboxScene::kickOff()
+{
+  if (new_seed_each_match)
+  {
+    match_seed = std::random_device{}();
+  }
+  GameController& controller = guiView->getController();
+  // The home side is the managed one: its touchline and Play mode.
+  controller.selectManagedTeam(sides[HOME].team);
+
+  // The match is built from its setup, so its recording can build it again.
+  match_setup =
+      MatchSetup::capture(controller, {sides[HOME].team, sides[AWAY].team},
+                          match_seed, full_familiarity);
+  MatchScene::Sandbox sandbox;
+  sandbox.make_engine = [this]()
+  {
+    std::string error;
+    auto engine = match_setup->build(guiView->getController(), error);
+    if (!engine)
+    {
+      status = "Could not build the match: " + error;
+    }
+    return engine;
+  };
+  // A fresh log for this match; the previous one is discarded.
+  loaded.reset();
+  recorder = std::make_unique<SandboxRecorder>();
+  debugger.reset();
+  review.reset();
+  inspector.reset();
+  match_debug = debug_at_kick_off;
+  match_engine_tools = false;
+  match_home = sides[HOME].team;
+  match_away = sides[AWAY].team;
+  sandbox.recorder = recorder.get();
+  // In the match: Debug and True view buttons in its controls, their
+  // sections in its side panel, and the moment and shapes on its pitch.
+  sandbox.on_side_panel = [this](MatchEngine& engine, bool& paused)
+  { renderMatchPanel(engine, paused); };
+  sandbox.on_debug_panel = [this](MatchEngine& engine, bool& paused)
+  { renderMatchDebugPanel(engine, paused); };
+  sandbox.debugger_visible = [this] { return match_debug; };
+  sandbox.set_debugger = [this](bool value) { match_debug = value; };
+  sandbox.engine_tools_visible = [this](bool value)
+  { match_engine_tools = value; };
+  sandbox.set_true_view = [this](bool value) { match_true_view = value; };
+  sandbox.shown_engine = [this]() -> const MatchEngine*
+  { return review.shownEngine(); };
+  sandbox.true_view = [this] { return match_true_view; };
+  sandbox.on_view_overlay = [this](const IMatchRenderer& renderer,
+                                   const MatchEngine& engine,
+                                   const MatchRenderSnapshot& snapshot,
+                                   const MatchScene::Sandbox::ViewClick& click)
+  {
+    drawMatchOverlay(renderer, engine, snapshot,
+                     {.clicked = click.clicked,
+                      .ctrl = click.ctrl,
+                      .at = ImVec2(click.x, click.y)});
+  };
+  const std::uint32_t seed = match_seed;
+  const std::array<BrainId, 2> brains = match_setup->brains;
+  const std::array<BodyId, 2> bodies = match_setup->bodies;
+  const HandshakeId handshake = match_setup->handshake;
+  const float homeAdvantage = match_setup->homeAdvantage;
+  sandbox.on_finish = [this, seed, brains, bodies, handshake,
+                       homeAdvantage](const MatchEngine& engine)
+  {
+    const GameController& gameController = guiView->getController();
+    const auto home = gameController.getTeamById(sides[HOME].team);
+    const auto away = gameController.getTeamById(sides[AWAY].team);
+    std::string score =
+        std::format("{} {} - {} {}", home ? home->get().getName() : "Home",
+                    engine.getHomeScore(), engine.getAwayScore(),
+                    away ? away->get().getName() : "Away");
+    if (engine.hasShootout())
+    {
+      score += std::format(" ({} - {} pens)", engine.getShootoutScore(true),
+                           engine.getShootoutScore(false));
+    }
+    last_result = std::format(
+        "{}  (seed {}; brains {}; bodies {}; handshake {}; home advantage "
+        "{:.2f})",
+        score, seed, brainPairName(brains), bodyPairName(bodies),
+        handshakeName(handshake), homeAdvantage);
+  };
+  guiView->overlayScene(std::make_unique<MatchScene>(
+      guiView, sides[HOME].team, sides[AWAY].team, std::move(sandbox)));
+}

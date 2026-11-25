@@ -23,6 +23,7 @@
 #include <vector>
 
 #include "database/world/world_runtime.h"
+#include "database/world_generation_stop.h"
 #include "gamedata.h"
 #include "global/languages.h"
 #include "global/logger.h"
@@ -461,7 +462,8 @@ DataGenerator::playerSkinTones()
       });
 }
 
-std::vector<Player> DataGenerator::generatePlayers(const GameData& gamedata)
+std::vector<Player> DataGenerator::generatePlayers(const GameData& gamedata,
+                                                   std::stop_token stop)
 {
   const StatsConfig& stats_config = gamedata.getStatsConfig();
   std::vector<Player> players;
@@ -475,6 +477,7 @@ std::vector<Player> DataGenerator::generatePlayers(const GameData& gamedata)
   const WorldSection authored(World::Kind::Player);
   for (const json& item : authored.items)
   {
+    checkWorldGenerationStop(stop);
     TeamID team_id = item.value<TeamID>("team_id", FREE_AGENTS_TEAM_ID);
     if (!gamedata.getTeam(team_id).has_value()) team_id = FREE_AGENTS_TEAM_ID;
     player_counts[team_id]++;
@@ -520,6 +523,7 @@ std::vector<Player> DataGenerator::generatePlayers(const GameData& gamedata)
   size_t generated_players = 0;
   for (const auto& team_ref : ordered)
   {
+    checkWorldGenerationStop(stop);
     const Team& team = team_ref.get();
     const auto economy = economies.find(team.getLeagueId());
     if (team.getId() == FREE_AGENTS_TEAM_ID || economy == economies.end())

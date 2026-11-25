@@ -16,12 +16,25 @@
 /** Starts work on an explicitly owned thread and returns its result channel.
  * The owner must outlive captured objects. Reusing or destroying the worker
  * joins its previous task; exceptions travel through the returned future.
+ * Functions that accept a stop token receive the worker's token.
  */
 template <class Function>
+  requires (!std::is_invocable_v<Function&, std::stop_token>)
 auto launchBackgroundTask(std::jthread& worker, Function function)
 {
   std::packaged_task<std::invoke_result_t<Function&>()> task(
       std::move(function));
+  auto result = task.get_future();
+  worker = std::jthread(std::move(task));
+  return result;
+}
+
+template <class Function>
+  requires std::is_invocable_v<Function&, std::stop_token>
+auto launchBackgroundTask(std::jthread& worker, Function function)
+{
+  std::packaged_task<std::invoke_result_t<Function&, std::stop_token>(
+      std::stop_token)> task(std::move(function));
   auto result = task.get_future();
   worker = std::jthread(std::move(task));
   return result;
