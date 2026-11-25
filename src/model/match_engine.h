@@ -1898,6 +1898,49 @@ struct MatchStats
   int pressGoOtherPickPressing = 0;
   int pressGoSeveral = 0;
   int pressGoNone = 0;
+  /** Step P4, the second man (shadow), per check where today's second man
+   * has a job (double-up order, or pressing over the cover minimum): the
+   * job; one second man, the team's second, the team's first (and of those
+   * the team's second going), or another; two or more; held back (two or
+   * more going, the call to come; of those the team's second one of them);
+   * none. */
+  int pressSecondChecks = 0;
+  int pressSecondDoubleUp = 0;
+  int pressSecondBlockLane = 0;
+  int pressSecondCover = 0;
+  int pressSecondAgree = 0;
+  int pressSecondTeamFirst = 0;
+  int pressSecondSwapped = 0;
+  int pressSecondOther = 0;
+  int pressSecondSeveral = 0;
+  int pressSecondHeld = 0;
+  int pressSecondHeldTeamGoing = 0;
+  int pressSecondNone = 0;
+  /** One second man: stood down by a call (and of those the team's second),
+   * with another in doubt, and those where the one going is the team's
+   * first presser (and of those the team's second). */
+  int pressSecondStoodDown = 0;
+  int pressSecondStoodDownAgree = 0;
+  int pressSecondWithDoubt = 0;
+  int pressSecondSameFirst = 0;
+  int pressSecondSameFirstAgree = 0;
+  /** One second man by his own call (nobody stood down), the team's second;
+   * the nearest (metres) of those not going the same man, and that nearest
+   * the team's second. */
+  int pressSecondOwnCall = 0;
+  int pressSecondOwnCallAgree = 0;
+  int pressSecondIsNearest = 0;
+  int pressSecondNearestAgree = 0;
+  /** Another player, by the planner's pursuit times (as pressWrong*),
+   * against the team's second; of the later, those stood down. */
+  int pressSecondOtherFaster = 0;
+  int pressSecondOtherNearTie = 0;
+  int pressSecondOtherSlower = 0;
+  int pressSecondOtherSlowerStoodDown = 0;
+  /** The job changing hands while one opponent has the ball: the shadow's
+   * second man, and the team's. */
+  int pressSecondSwitches = 0;
+  int pressSecondTeamSwitches = 0;
   int homeHolds = 0;
   int awayHolds = 0;
   int intentsWin = 0;

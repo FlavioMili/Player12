@@ -188,6 +188,8 @@
    * not "not mine", not stood down), against the team's pick
    * (stats.pressGo*). */
   void tallyPressGoersCapybara(bool home, const MatchPlayer* teamPick);
+  /** Step P3: he would press (after the commit stage). */
+  [[nodiscard]] bool pressGoesCapybara(std::size_t index) const;
   /** Live (step O6): he goes for the loose ball. His own call (mine or in
    * doubt) unless a team-mate's call stood him down; when nobody on his
    * side goes, the team's pick (to close the winner: the user, 2026-11-23,
@@ -243,6 +245,67 @@
                                    bool pickPressing);
   /** The brain flow tool's example player: his press call. */
   void notePressCallCapybara(const MatchPlayer& player, LooseCallCapybara call);
+  /** Step P4 (brain redesign plan section 28, shadow): his own call on the
+   * second man's job (double up, cover or block a lane). The man a call
+   * stood down takes it. With nobody stood down and one man going, the
+   * players whose press call was "not mine" judge it by the same rough
+   * look, against the not-going team-mates nearest the carrier. With two
+   * going (the call to come) one of them will be the second man: nobody
+   * else is. */
+  enum class PressSecondCapybara : std::uint8_t
+  {
+    NONE,
+    STOOD_DOWN,
+    MINE,
+    IN_DOUBT,
+    NOT_MINE
+  };
+  [[nodiscard]] PressSecondCapybara pressSecondCallCapybara(
+      const MatchPlayer& player, Vector2F at) const;
+  /** His quickest rival's rough time to `at` among the 3 team-mates nearest
+   * it (only those whose press call is "not mine", when asked). */
+  [[nodiscard]] float quickestMateSecondsCapybara(const MatchPlayer& player,
+                                                  Vector2F at,
+                                                  bool notGoingOnly) const;
+  /** Step P4, a side's calls this step: how many would press, how many take
+   * the second man's job (and the last of each), any in doubt over it, any
+   * stood down. */
+  struct PressSecondsCapybara
+  {
+    std::size_t second = SIZE_MAX;
+    std::size_t goer = SIZE_MAX;
+    int seconds = 0;
+    int goers = 0;
+    bool inDoubt = false;
+    bool stoodDown = false;
+  };
+  PressSecondsCapybara pressSecondsCapybara(bool home, Vector2F at);
+  /** Step P4: the second men this step, against the team's pick of both
+   * (stats.pressSecond*), where the job is open (the order or the pressing
+   * slider). Draws nothing, changes nothing. */
+  void tallyPressSecondCapybara(const MatchPlayer& carrier,
+                                std::span<MatchPlayer* const, 2> teamPair,
+                                const MatchPlayer* coverOutlet, float pressing,
+                                std::span<const PreciseMeetCapybara> precise);
+  /** Step P4, one second man: him against the team's second presser, with
+   * the one going to press (SIZE_MAX: not one). */
+  void tallyOneSecondCapybara(std::size_t second, std::size_t goer,
+                              Vector2F carrierAt,
+                              std::span<MatchPlayer* const, 2> teamPair,
+                              std::span<const PreciseMeetCapybara> precise);
+  /** Step P4: a second man by his own call, against the nearest not going. */
+  void tallyNearestSecondCapybara(std::size_t second, Vector2F carrierAt,
+                                  const MatchPlayer* teamSecond);
+  /** Step P4: the second man's job changing hands (null: not one). */
+  void tallySecondSwitchesCapybara(bool home, const MatchPlayer* shadowSecond,
+                                   const MatchPlayer* teamSecond);
+  /** The brain flow tool's example player: his second-man call. */
+  void notePressSecondCapybara(const MatchPlayer& player,
+                               PressSecondCapybara call);
+  /** Step P4: the second man (the shadow's, then the team's), per side, by
+   * player id, to count how often the job changes hands on one carrier
+   * (0: none). */
+  std::array<std::array<std::uint32_t, 2>, 2> pressSecondHolderCapybara{};
   /** The brain flow tool's example player: his call and, when it is his,
    * where he could meet it. */
   void noteLooseCallCapybara(const MatchPlayer& player,

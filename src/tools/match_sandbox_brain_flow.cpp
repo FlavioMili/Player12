@@ -1212,7 +1212,9 @@ constexpr std::array<Situation, 20> SITUATIONS = {{
          "pressing the carrier (mine, in doubt, not mine), by the loose "
          "ball's rough look against the 3 team-mates nearest him; first to "
          "commit on it (step P3: the loose ball's stage; a new carrier is a "
-         "fresh call, a loose-ball commitment carries over). "
+         "fresh call, a loose-ball commitment carries over); the second man "
+         "(step P4: whoever a call stood down, else the quickest of those "
+         "not going; nobody while two go). "
          "Body (facing plan step 1): goal-side of the ball he faces it; a "
          "run or sprint job turns him to run when it asks more than he "
          "manages facing it (back to facing under 80%); a chase, a run, a "
@@ -2100,6 +2102,13 @@ void BrainFlowScene::pressShadow(const BrainFlow::OffBallRecord& offBall)
       "turn)? Beaten by more than the margin (10% of his time, at most "
       "0.5 s): not his; closer: in doubt (estimates, to tune). The team's "
       "press eagerness (role, team talk) is left out of the shadow.");
+  if (offBall.pressSecond != nullptr)
+  {
+    text(std::format("The second man's job (double up, block a lane or cover; "
+                     "shadow, step P4): {}",
+                     offBall.pressSecond),
+         SandboxPageUI::CREAM);
+  }
 }
 
 void BrainFlowScene::looseShadow(const BrainFlow::OffBallRecord& offBall)
