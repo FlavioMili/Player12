@@ -117,14 +117,14 @@ Classes</h2></td></tr>
 </table><table class="memberdecls">
 <tr class="heading"><td colspan="2"><h2 class="groupheader"><a id="pub-methods" name="pub-methods"></a>
 Public Member Functions</h2></td></tr>
-<tr class="memitem:a7f70044c08f04b900410b2909e4fa9c3" id="r_a7f70044c08f04b900410b2909e4fa9c3"><td class="memItemLeft" align="right" valign="top">bool&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classMatchSubsPanel.html#a7f70044c08f04b900410b2909e4fa9c3">render</a> (const <a class="el" href="structTouchlineContext.html">TouchlineContext</a> &amp;context)</td></tr>
-<tr class="memdesc:a7f70044c08f04b900410b2909e4fa9c3"><td class="mdescLeft">&#160;</td><td class="mdescRight">Draws the dialog while it is shown.  <br /></td></tr>
-<tr class="separator:a7f70044c08f04b900410b2909e4fa9c3"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a99c5b80fcaf084addb979f30b84c9fc7" id="r_a99c5b80fcaf084addb979f30b84c9fc7"><td class="memItemLeft" align="right" valign="top">bool&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classMatchSubsPanel.html#a99c5b80fcaf084addb979f30b84c9fc7">render</a> (const <a class="el" href="structTouchlineContext.html">TouchlineContext</a> &amp;context, bool embedded=false)</td></tr>
+<tr class="memdesc:a99c5b80fcaf084addb979f30b84c9fc7"><td class="mdescLeft">&#160;</td><td class="mdescRight">Draws the dialog while it is shown.  <br /></td></tr>
+<tr class="separator:a99c5b80fcaf084addb979f30b84c9fc7"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:aa362a0ffc61640cc43ca0c883d4980f0" id="r_aa362a0ffc61640cc43ca0c883d4980f0"><td class="memItemLeft" align="right" valign="top">void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classMatchSubsPanel.html#aa362a0ffc61640cc43ca0c883d4980f0">update</a> (const <a class="el" href="structTouchlineContext.html">TouchlineContext</a> &amp;context)</td></tr>
 <tr class="memdesc:aa362a0ffc61640cc43ca0c883d4980f0"><td class="mdescLeft">&#160;</td><td class="mdescRight">Makes the confirmed plan once play stops (every frame).  <br /></td></tr>
 <tr class="separator:aa362a0ffc61640cc43ca0c883d4980f0"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a8b9dc37fda3934b749232c846b644145" id="r_a8b9dc37fda3934b749232c846b644145"><td class="memItemLeft" align="right" valign="top">void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classMatchSubsPanel.html#a8b9dc37fda3934b749232c846b644145">resetPopup</a> ()</td></tr>
-<tr class="memdesc:a8b9dc37fda3934b749232c846b644145"><td class="mdescLeft">&#160;</td><td class="mdescRight">Next <a class="el" href="classMatchSubsPanel.html#a7f70044c08f04b900410b2909e4fa9c3" title="Draws the dialog while it is shown.">render()</a> opens the popup again (after it was hidden).  <br /></td></tr>
+<tr class="memdesc:a8b9dc37fda3934b749232c846b644145"><td class="mdescLeft">&#160;</td><td class="mdescRight">Next <a class="el" href="classMatchSubsPanel.html#a99c5b80fcaf084addb979f30b84c9fc7" title="Draws the dialog while it is shown.">render()</a> opens the popup again (after it was hidden).  <br /></td></tr>
 <tr class="separator:a8b9dc37fda3934b749232c846b644145"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a99defade7a23935fc99f8d1ee8c734e1" id="r_a99defade7a23935fc99f8d1ee8c734e1"><td class="memItemLeft" align="right" valign="top">void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classMatchSubsPanel.html#a99defade7a23935fc99f8d1ee8c734e1">requestClose</a> ()</td></tr>
 <tr class="memdesc:a99defade7a23935fc99f8d1ee8c734e1"><td class="mdescLeft">&#160;</td><td class="mdescRight">Closes the dialog on its next frame.  <br /></td></tr>
@@ -337,8 +337,8 @@ Private Attributes</h2></td></tr>
 
 </div>
 </div>
-<a id="a7f70044c08f04b900410b2909e4fa9c3" name="a7f70044c08f04b900410b2909e4fa9c3"></a>
-<h2 class="memtitle"><span class="permalink"><a href="#a7f70044c08f04b900410b2909e4fa9c3">&#9670;&#160;</a></span>render()</h2>
+<a id="a99c5b80fcaf084addb979f30b84c9fc7" name="a99c5b80fcaf084addb979f30b84c9fc7"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a99c5b80fcaf084addb979f30b84c9fc7">&#9670;&#160;</a></span>render()</h2>
 
 <div class="memitem">
 <div class="memproto">
@@ -347,8 +347,18 @@ Private Attributes</h2></td></tr>
           <td class="memname">bool MatchSubsPanel::render </td>
           <td>(</td>
           <td class="paramtype">const <a class="el" href="structTouchlineContext.html">TouchlineContext</a> &amp;&#160;</td>
-          <td class="paramname"><em>context</em></td><td>)</td>
+          <td class="paramname"><em>context</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
           <td></td>
+          <td class="paramtype">bool&#160;</td>
+          <td class="paramname"><em>embedded</em> = <code>false</code>&#160;</td>
+        </tr>
+        <tr>
+          <td></td>
+          <td>)</td>
+          <td></td><td></td>
         </tr>
       </table>
 </div><div class="memdoc">
@@ -653,7 +663,7 @@ Private Attributes</h2></td></tr>
 </table>
 </div><div class="memdoc">
 
-<p>Next <a class="el" href="classMatchSubsPanel.html#a7f70044c08f04b900410b2909e4fa9c3" title="Draws the dialog while it is shown.">render()</a> opens the popup again (after it was hidden). </p>
+<p>Next <a class="el" href="classMatchSubsPanel.html#a99c5b80fcaf084addb979f30b84c9fc7" title="Draws the dialog while it is shown.">render()</a> opens the popup again (after it was hidden). </p>
 
 </div>
 </div>

@@ -356,7 +356,7 @@ var classGameController =
     [ "moveTransferToWageBudget", "classGameController.html#a388b9d019121d1d81e7bac6646c38cf2", null ],
     [ "nameAskingPrice", "classGameController.html#a71a3cd827f2e6d6a953898cc62f54ef7", null ],
     [ "negotiateJobOffer", "classGameController.html#aafdf8e8e2b914c157d0d1c10c75bad78", null ],
-    [ "newGame", "classGameController.html#a45280c51d1c1ffd8b5fdde35a4cabd10", null ],
+    [ "newGame", "classGameController.html#a974cc16c574d37eaf54f43d35f574bf6", null ],
     [ "offerYouthProfessionalContract", "classGameController.html#aeab5f639d9e66d3e00e7fe6147686570", null ],
     [ "payReleaseClause", "classGameController.html#af4ebd854a22a502043045b021ed4c781", null ],
     [ "persistLocked", "classGameController.html#ad5266c8778adf9c775a797c0da9ddb03", null ],

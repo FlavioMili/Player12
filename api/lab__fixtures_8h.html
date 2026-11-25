@@ -96,6 +96,7 @@ $(document).ready(function(){initNavTree('lab__fixtures_8h.html',''); initResiza
   <div class="summary">
 <a href="#nested-classes">Classes</a> &#124;
 <a href="#namespaces">Namespaces</a> &#124;
+<a href="#typedef-members">Typedefs</a> &#124;
 <a href="#func-members">Functions</a> &#124;
 <a href="#var-members">Variables</a>  </div>
   <div class="headertitle"><div class="title">lab_fixtures.h File Reference</div></div>
@@ -115,6 +116,8 @@ $(document).ready(function(){initNavTree('lab__fixtures_8h.html',''); initResiza
 <table class="memberdecls">
 <tr class="heading"><td colspan="2"><h2 class="groupheader"><a id="nested-classes" name="nested-classes"></a>
 Classes</h2></td></tr>
+<tr class="memitem:"><td class="memItemLeft" align="right" valign="top">struct &#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structLab_1_1FormationSlot.html">Lab::FormationSlot</a></td></tr>
+<tr class="separator:"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:"><td class="memItemLeft" align="right" valign="top">struct &#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structLab_1_1TacticPreset.html">Lab::TacticPreset</a></td></tr>
 <tr class="separator:"><td class="memSeparator" colspan="2">&#160;</td></tr>
 </table><table class="memberdecls">
@@ -123,12 +126,19 @@ Namespaces</h2></td></tr>
 <tr class="memitem:namespaceLab" id="r_namespaceLab"><td class="memItemLeft" align="right" valign="top">namespace &#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="namespaceLab.html">Lab</a></td></tr>
 <tr class="separator:"><td class="memSeparator" colspan="2">&#160;</td></tr>
 </table><table class="memberdecls">
+<tr class="heading"><td colspan="2"><h2 class="groupheader"><a id="typedef-members" name="typedef-members"></a>
+Typedefs</h2></td></tr>
+<tr class="memitem:a25af3061f222a997ffc585bfad2abb24" id="r_a25af3061f222a997ffc585bfad2abb24"><td class="memItemLeft" align="right" valign="top">using&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="namespaceLab.html#a25af3061f222a997ffc585bfad2abb24">Lab::FormationSlots</a> = std::array&lt; <a class="el" href="structLab_1_1FormationSlot.html">FormationSlot</a>, 10 &gt;</td></tr>
+<tr class="separator:a25af3061f222a997ffc585bfad2abb24"><td class="memSeparator" colspan="2">&#160;</td></tr>
+</table><table class="memberdecls">
 <tr class="heading"><td colspan="2"><h2 class="groupheader"><a id="func-members" name="func-members"></a>
 Functions</h2></td></tr>
 <tr class="memitem:aaad8c23c2544c3d430623784f834b87f" id="r_aaad8c23c2544c3d430623784f834b87f"><td class="memItemLeft" align="right" valign="top"><a class="el" href="structStatsConfig.html">StatsConfig</a>&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="namespaceLab.html#aaad8c23c2544c3d430623784f834b87f">Lab::loadStatsConfig</a> ()</td></tr>
 <tr class="separator:aaad8c23c2544c3d430623784f834b87f"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:af10cacbab4feeb1ae5097b9389650a88" id="r_af10cacbab4feeb1ae5097b9389650a88"><td class="memItemLeft" align="right" valign="top"><a class="el" href="classLineup.html">Lineup</a>&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="namespaceLab.html#af10cacbab4feeb1ae5097b9389650a88">Lab::buildLabLineup</a> (<a class="el" href="types_8h.html#a57143f6ccbdf5a5d9724b986cbdafb31">TeamID</a> team_id, float rating, std::vector&lt; std::unique_ptr&lt; <a class="el" href="classPlayer.html">Player</a> &gt; &gt; &amp;pool)</td></tr>
-<tr class="separator:af10cacbab4feeb1ae5097b9389650a88"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:af25298218d60a8e0f26ad97014c339d1" id="r_af25298218d60a8e0f26ad97014c339d1"><td class="memItemLeft" align="right" valign="top"><a class="el" href="classLineup.html">Lineup</a>&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="namespaceLab.html#af25298218d60a8e0f26ad97014c339d1">Lab::buildLabLineup</a> (<a class="el" href="types_8h.html#a57143f6ccbdf5a5d9724b986cbdafb31">TeamID</a> team_id, float rating, std::vector&lt; std::unique_ptr&lt; <a class="el" href="classPlayer.html">Player</a> &gt; &gt; &amp;pool, const <a class="el" href="namespaceLab.html#a25af3061f222a997ffc585bfad2abb24">FormationSlots</a> *formation)</td></tr>
+<tr class="separator:af25298218d60a8e0f26ad97014c339d1"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:abd37111ca4a749daac62cbaff834c1bd" id="r_abd37111ca4a749daac62cbaff834c1bd"><td class="memItemLeft" align="right" valign="top"><a class="el" href="classLineup.html">Lineup</a>&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="namespaceLab.html#abd37111ca4a749daac62cbaff834c1bd">Lab::buildUniformLineup</a> (<a class="el" href="types_8h.html#a57143f6ccbdf5a5d9724b986cbdafb31">TeamID</a> team_id, float rating, const <a class="el" href="structStatsConfig.html">StatsConfig</a> &amp;config, std::vector&lt; std::unique_ptr&lt; <a class="el" href="classPlayer.html">Player</a> &gt; &gt; &amp;pool, const <a class="el" href="namespaceLab.html#a25af3061f222a997ffc585bfad2abb24">FormationSlots</a> *formation)</td></tr>
+<tr class="separator:abd37111ca4a749daac62cbaff834c1bd"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a9f09fd72e54a33d144b3e9d06dc625f2" id="r_a9f09fd72e54a33d144b3e9d06dc625f2"><td class="memItemLeft" align="right" valign="top">float&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="namespaceLab.html#a9f09fd72e54a33d144b3e9d06dc625f2">Lab::lineupRating</a> (const <a class="el" href="classLineup.html">Lineup</a> &amp;lineup, const <a class="el" href="structStatsConfig.html">StatsConfig</a> &amp;config)</td></tr>
 <tr class="separator:a9f09fd72e54a33d144b3e9d06dc625f2"><td class="memSeparator" colspan="2">&#160;</td></tr>
 </table><table class="memberdecls">

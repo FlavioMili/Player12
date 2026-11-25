@@ -116,18 +116,32 @@ $(document).ready(function(){initNavTree('background__task_8h_source.html',''); 
 <div class="line"><a id="l00013" name="l00013"></a><span class="lineno">   13</span><span class="preprocessor">#include &lt;type_traits&gt;</span></div>
 <div class="line"><a id="l00014" name="l00014"></a><span class="lineno">   14</span><span class="preprocessor">#include &lt;utility&gt;</span></div>
 <div class="line"><a id="l00015" name="l00015"></a><span class="lineno">   15</span> </div>
-<div class="line"><a id="l00020" name="l00020"></a><span class="lineno">   20</span><span class="keyword">template</span> &lt;<span class="keyword">class</span> Function&gt;</div>
-<div class="foldopen" id="foldopen00021" data-start="{" data-end="}">
-<div class="line"><a id="l00021" name="l00021"></a><span class="lineno"><a class="line" href="background__task_8h.html#ab0333af931c5dd624cc3aa7f8203e431">   21</a></span><span class="keyword">auto</span> <a class="code hl_function" href="background__task_8h.html#ab0333af931c5dd624cc3aa7f8203e431">launchBackgroundTask</a>(std::jthread&amp; worker, Function function)</div>
-<div class="line"><a id="l00022" name="l00022"></a><span class="lineno">   22</span>{</div>
-<div class="line"><a id="l00023" name="l00023"></a><span class="lineno">   23</span>  std::packaged_task&lt;std::invoke_result_t&lt;Function&amp;&gt;()&gt; task(</div>
-<div class="line"><a id="l00024" name="l00024"></a><span class="lineno">   24</span>      std::move(function));</div>
-<div class="line"><a id="l00025" name="l00025"></a><span class="lineno">   25</span>  <span class="keyword">auto</span> result = task.get_future();</div>
-<div class="line"><a id="l00026" name="l00026"></a><span class="lineno">   26</span>  worker = std::jthread(std::move(task));</div>
-<div class="line"><a id="l00027" name="l00027"></a><span class="lineno">   27</span>  <span class="keywordflow">return</span> result;</div>
-<div class="line"><a id="l00028" name="l00028"></a><span class="lineno">   28</span>}</div>
+<div class="line"><a id="l00021" name="l00021"></a><span class="lineno">   21</span><span class="keyword">template</span> &lt;<span class="keyword">class</span> Function&gt;</div>
+<div class="line"><a id="l00022" name="l00022"></a><span class="lineno">   22</span>  <span class="keyword">requires</span> (!std::is_invocable_v&lt;Function&amp;, std::stop_token&gt;)</div>
+<div class="foldopen" id="foldopen00023" data-start="{" data-end="}">
+<div class="line"><a id="l00023" name="l00023"></a><span class="lineno"><a class="line" href="background__task_8h.html#a3c5c1ad16f524a8b8146a5016755096b">   23</a></span><span class="keyword">auto</span> <a class="code hl_function" href="background__task_8h.html#a3c5c1ad16f524a8b8146a5016755096b">launchBackgroundTask</a>(std::jthread&amp; worker, Function function)</div>
+<div class="line"><a id="l00024" name="l00024"></a><span class="lineno">   24</span>{</div>
+<div class="line"><a id="l00025" name="l00025"></a><span class="lineno">   25</span>  std::packaged_task&lt;std::invoke_result_t&lt;Function&amp;&gt;()&gt; task(</div>
+<div class="line"><a id="l00026" name="l00026"></a><span class="lineno">   26</span>      std::move(function));</div>
+<div class="line"><a id="l00027" name="l00027"></a><span class="lineno">   27</span>  <span class="keyword">auto</span> result = task.get_future();</div>
+<div class="line"><a id="l00028" name="l00028"></a><span class="lineno">   28</span>  worker = std::jthread(std::move(task));</div>
+<div class="line"><a id="l00029" name="l00029"></a><span class="lineno">   29</span>  <span class="keywordflow">return</span> result;</div>
+<div class="line"><a id="l00030" name="l00030"></a><span class="lineno">   30</span>}</div>
 </div>
-<div class="ttc" id="abackground__task_8h_html_ab0333af931c5dd624cc3aa7f8203e431"><div class="ttname"><a href="background__task_8h.html#ab0333af931c5dd624cc3aa7f8203e431">launchBackgroundTask</a></div><div class="ttdeci">auto launchBackgroundTask(std::jthread &amp;worker, Function function)</div><div class="ttdef"><b>Definition</b> background_task.h:21</div></div>
+<div class="line"><a id="l00031" name="l00031"></a><span class="lineno">   31</span> </div>
+<div class="line"><a id="l00032" name="l00032"></a><span class="lineno">   32</span><span class="keyword">template</span> &lt;<span class="keyword">class</span> Function&gt;</div>
+<div class="line"><a id="l00033" name="l00033"></a><span class="lineno">   33</span>  <span class="keyword">requires</span> std::is_invocable_v&lt;Function&amp;, std::stop_token&gt;</div>
+<div class="foldopen" id="foldopen00034" data-start="{" data-end="}">
+<div class="line"><a id="l00034" name="l00034"></a><span class="lineno"><a class="line" href="background__task_8h.html#a3cf19df3a0b5c42fd20ce18966747288">   34</a></span><span class="keyword">auto</span> <a class="code hl_function" href="background__task_8h.html#a3c5c1ad16f524a8b8146a5016755096b">launchBackgroundTask</a>(std::jthread&amp; worker, Function function)</div>
+<div class="line"><a id="l00035" name="l00035"></a><span class="lineno">   35</span>{</div>
+<div class="line"><a id="l00036" name="l00036"></a><span class="lineno">   36</span>  std::packaged_task&lt;std::invoke_result_t&lt;Function&amp;, std::stop_token&gt;(</div>
+<div class="line"><a id="l00037" name="l00037"></a><span class="lineno">   37</span>      std::stop_token)&gt; task(std::move(function));</div>
+<div class="line"><a id="l00038" name="l00038"></a><span class="lineno">   38</span>  <span class="keyword">auto</span> result = task.get_future();</div>
+<div class="line"><a id="l00039" name="l00039"></a><span class="lineno">   39</span>  worker = std::jthread(std::move(task));</div>
+<div class="line"><a id="l00040" name="l00040"></a><span class="lineno">   40</span>  <span class="keywordflow">return</span> result;</div>
+<div class="line"><a id="l00041" name="l00041"></a><span class="lineno">   41</span>}</div>
+</div>
+<div class="ttc" id="abackground__task_8h_html_a3c5c1ad16f524a8b8146a5016755096b"><div class="ttname"><a href="background__task_8h.html#a3c5c1ad16f524a8b8146a5016755096b">launchBackgroundTask</a></div><div class="ttdeci">auto launchBackgroundTask(std::jthread &amp;worker, Function function)</div><div class="ttdef"><b>Definition</b> background_task.h:23</div></div>
 </div><!-- fragment --></div><!-- contents -->
 </div><!-- doc-content -->
 <!-- start footer part -->

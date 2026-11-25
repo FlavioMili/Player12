@@ -208,9 +208,9 @@ Public Member Functions</h2></td></tr>
 <tr class="memitem:a7d72ff3f639acb68578e20fee3649b42" id="r_a7d72ff3f639acb68578e20fee3649b42"><td class="memItemLeft" align="right" valign="top">&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classGameController.html#a7d72ff3f639acb68578e20fee3649b42">GameController</a> ()</td></tr>
 <tr class="memdesc:a7d72ff3f639acb68578e20fee3649b42"><td class="mdescLeft">&#160;</td><td class="mdescRight">Constructs a new <a class="el" href="classGameController.html" title="Manages the core game logic, interacting with teams, leagues, and players.">GameController</a>.  <br /></td></tr>
 <tr class="separator:a7d72ff3f639acb68578e20fee3649b42"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a45280c51d1c1ffd8b5fdde35a4cabd10" id="r_a45280c51d1c1ffd8b5fdde35a4cabd10"><td class="memItemLeft" align="right" valign="top">void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classGameController.html#a45280c51d1c1ffd8b5fdde35a4cabd10">newGame</a> (int slot, std::optional&lt; std::uint64_t &gt; world_seed=std::nullopt, std::shared_ptr&lt; const <a class="el" href="classWorld_1_1Document.html">World::Document</a> &gt; <a class="el" href="world__runtime_8cpp.html#a1c8861c05e97e9a8f48d86d94292921b">world</a>=nullptr)</td></tr>
-<tr class="memdesc:a45280c51d1c1ffd8b5fdde35a4cabd10"><td class="mdescLeft">&#160;</td><td class="mdescRight">Starts a new game on the given save slot.  <br /></td></tr>
-<tr class="separator:a45280c51d1c1ffd8b5fdde35a4cabd10"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a974cc16c574d37eaf54f43d35f574bf6" id="r_a974cc16c574d37eaf54f43d35f574bf6"><td class="memItemLeft" align="right" valign="top">void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classGameController.html#a974cc16c574d37eaf54f43d35f574bf6">newGame</a> (int slot, std::optional&lt; std::uint64_t &gt; world_seed=std::nullopt, std::shared_ptr&lt; const <a class="el" href="classWorld_1_1Document.html">World::Document</a> &gt; <a class="el" href="world__runtime_8cpp.html#a1c8861c05e97e9a8f48d86d94292921b">world</a>=nullptr, std::stop_token stop={})</td></tr>
+<tr class="memdesc:a974cc16c574d37eaf54f43d35f574bf6"><td class="mdescLeft">&#160;</td><td class="mdescRight">Starts a new game on the given save slot.  <br /></td></tr>
+<tr class="separator:a974cc16c574d37eaf54f43d35f574bf6"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a4ddd3105f8d7d1abd3e336aca9511da5" id="r_a4ddd3105f8d7d1abd3e336aca9511da5"><td class="memItemLeft" align="right" valign="top">bool&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classGameController.html#a4ddd3105f8d7d1abd3e336aca9511da5">loadGame</a> (int slot)</td></tr>
 <tr class="memdesc:a4ddd3105f8d7d1abd3e336aca9511da5"><td class="mdescLeft">&#160;</td><td class="mdescRight">Loads an existing game from the given save slot.  <br /></td></tr>
 <tr class="separator:a4ddd3105f8d7d1abd3e336aca9511da5"><td class="memSeparator" colspan="2">&#160;</td></tr>
@@ -802,7 +802,7 @@ Public Member Functions</h2></td></tr>
 <tr class="separator:a65a8cacbdf3763a69bfe026c1e1dedfb"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a18c083b1297bec3454a958a53140402d" id="r_a18c083b1297bec3454a958a53140402d"><td class="memItemLeft" align="right" valign="top">bool&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classGameController.html#a18c083b1297bec3454a958a53140402d">isDelegated</a> (<a class="el" href="delegation_8h.html#a9698d62a1cfeb35d789bc6c5742a0dde">Duty</a> duty) const</td></tr>
 <tr class="separator:a18c083b1297bec3454a958a53140402d"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:ad6e0649840724964978b70eda55061b0" id="r_ad6e0649840724964978b70eda55061b0"><td class="memItemLeft" align="right" valign="top">bool&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classGameController.html#ad6e0649840724964978b70eda55061b0">setDutyOwner</a> (<a class="el" href="delegation_8h.html#a9698d62a1cfeb35d789bc6c5742a0dde">Duty</a> duty, <a class="el" href="delegation_8h.html#a33c5c1175960e90e8f401760896dfd1a">DutyOwner</a> owner)</td></tr>
+<tr class="memitem:ad6e0649840724964978b70eda55061b0" id="r_ad6e0649840724964978b70eda55061b0"><td class="memItemLeft" align="right" valign="top">bool&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classGameController.html#ad6e0649840724964978b70eda55061b0">setDutyOwner</a> (<a class="el" href="delegation_8h.html#a9698d62a1cfeb35d789bc6c5742a0dde">Duty</a> duty, <a class="el" href="delegation_8h.html#a33c5c1175960e90e8f401760896dfd1a">DutyOwner</a> <a class="el" href="match__sandbox__true__view__shapes_8cpp.html#a595424e4771ea5c3ce2736cb35a41bff">owner</a>)</td></tr>
 <tr class="separator:ad6e0649840724964978b70eda55061b0"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:aa6b826076b99e16532ca0350cd308a7f" id="r_aa6b826076b99e16532ca0350cd308a7f"><td class="memItemLeft" align="right" valign="top">void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classGameController.html#aa6b826076b99e16532ca0350cd308a7f">applyDelegationPreset</a> (<a class="el" href="delegation_8h.html#a20d680c92164e028e47ca160fc44ec21">DelegationPreset</a> preset)</td></tr>
 <tr class="separator:aa6b826076b99e16532ca0350cd308a7f"><td class="memSeparator" colspan="2">&#160;</td></tr>
@@ -7712,8 +7712,8 @@ Private Attributes</h2></td></tr>
 
 </div>
 </div>
-<a id="a45280c51d1c1ffd8b5fdde35a4cabd10" name="a45280c51d1c1ffd8b5fdde35a4cabd10"></a>
-<h2 class="memtitle"><span class="permalink"><a href="#a45280c51d1c1ffd8b5fdde35a4cabd10">&#9670;&#160;</a></span>newGame()</h2>
+<a id="a974cc16c574d37eaf54f43d35f574bf6" name="a974cc16c574d37eaf54f43d35f574bf6"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a974cc16c574d37eaf54f43d35f574bf6">&#9670;&#160;</a></span>newGame()</h2>
 
 <div class="memitem">
 <div class="memproto">
@@ -7734,7 +7734,13 @@ Private Attributes</h2></td></tr>
           <td class="paramkey"></td>
           <td></td>
           <td class="paramtype">std::shared_ptr&lt; const <a class="el" href="classWorld_1_1Document.html">World::Document</a> &gt;&#160;</td>
-          <td class="paramname"><em>world</em> = <code>nullptr</code>&#160;</td>
+          <td class="paramname"><em>world</em> = <code>nullptr</code>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">std::stop_token&#160;</td>
+          <td class="paramname"><em>stop</em> = <code>{}</code>&#160;</td>
         </tr>
         <tr>
           <td></td>
@@ -7749,6 +7755,7 @@ Private Attributes</h2></td></tr>
   <table class="params">
     <tr><td class="paramname">world_seed</td><td>Seed of the generated world and of every random stream of the world simulation. Without it FM_WORLD_SEED or the clock is used. </td></tr>
     <tr><td class="paramname">world</td><td><a class="el" href="namespaceWorld.html">World</a> database to build the career from (null: the built-in world). It must be playable (<a class="el" href="namespaceWorld.html#acfef297f5d52d2ff29fc17f9abf4a194">World::playability</a>). </td></tr>
+    <tr><td class="paramname">stop</td><td>Cancels generation before publishing the new career and writing its save. Once publishing begins, initialization finishes. </td></tr>
   </table>
   </dd>
 </dl>

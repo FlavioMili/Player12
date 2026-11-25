@@ -15,6 +15,6 @@ var theme_8cpp =
     [ "scale", "theme_8cpp.html#a239ccaa2156cf7fbac641a84621c975d", null ],
     [ "setClub", "theme_8cpp.html#a74972883c09e1a9e0809747303407e48", null ],
     [ "textSize", "theme_8cpp.html#a5a9c8e0a414eead7211432f46e878c54", null ],
-    [ "toU32", "theme_8cpp.html#a1c4d14f9757094c97a8a22a8d5ecf46d", null ],
+    [ "toU32", "theme_8cpp.html#a71e9f10ded152d0484e4a9290caa430c", null ],
     [ "unpackRgb", "theme_8cpp.html#a470581765af350dab1b006ba01867111", null ]
 ];

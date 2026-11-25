@@ -9,6 +9,7 @@ var namespaceTheme =
     ] ],
     [ "Appearance", "structTheme_1_1Appearance.html", "structTheme_1_1Appearance" ],
     [ "Palette", "structTheme_1_1Palette.html", "structTheme_1_1Palette" ],
+    [ "ScopedPalette", "classTheme_1_1ScopedPalette.html", "classTheme_1_1ScopedPalette" ],
     [ "ScopedText", "classTheme_1_1ScopedText.html", "classTheme_1_1ScopedText" ],
     [ "Swatch", "structTheme_1_1Swatch.html", "structTheme_1_1Swatch" ],
     [ "ColorVision", "namespaceTheme.html#aaa5ad72e8bbefb6e566deb7ae47ab76e", [
@@ -49,6 +50,6 @@ var namespaceTheme =
     [ "scale", "namespaceTheme.html#a239ccaa2156cf7fbac641a84621c975d", null ],
     [ "setClub", "namespaceTheme.html#a74972883c09e1a9e0809747303407e48", null ],
     [ "textSize", "namespaceTheme.html#a5a9c8e0a414eead7211432f46e878c54", null ],
-    [ "toU32", "namespaceTheme.html#a1c4d14f9757094c97a8a22a8d5ecf46d", null ],
+    [ "toU32", "namespaceTheme.html#a71e9f10ded152d0484e4a9290caa430c", null ],
     [ "unpackRgb", "namespaceTheme.html#a470581765af350dab1b006ba01867111", null ]
 ];

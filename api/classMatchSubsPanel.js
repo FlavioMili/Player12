@@ -6,7 +6,7 @@ var classMatchSubsPanel =
     [ "getPlan", "classMatchSubsPanel.html#a0c6d263fdec63eaf3782ea471880805c", null ],
     [ "getPlan", "classMatchSubsPanel.html#a01cd870cd2e8c0a1c683ed7d91bf560e", null ],
     [ "plan", "classMatchSubsPanel.html#ac4c8eaf8ba5fe6b9103723b471add859", null ],
-    [ "render", "classMatchSubsPanel.html#a7f70044c08f04b900410b2909e4fa9c3", null ],
+    [ "render", "classMatchSubsPanel.html#a99c5b80fcaf084addb979f30b84c9fc7", null ],
     [ "renderBench", "classMatchSubsPanel.html#abfe3ff46d53a67a552f74c799a581702", null ],
     [ "renderFooter", "classMatchSubsPanel.html#af5f1cc64cd38e16d0ef9e017dfd67229", null ],
     [ "renderPitch", "classMatchSubsPanel.html#aed9bab3ef7371c062336dd85cc43de8b", null ],

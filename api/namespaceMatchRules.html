@@ -145,12 +145,20 @@ Functions</h2></td></tr>
 <tr class="separator:a61c7995a3511629f53eaa88bccbbe8ae"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a500694b7ba7e058edf1b343534818d96" id="r_a500694b7ba7e058edf1b343534818d96"><td class="memItemLeft" align="right" valign="top"><a class="el" href="namespaceMatchRules.html#afc4bdb59c2614b6698982acc7263b2e0">FoulSanction</a>&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="namespaceMatchRules.html#a500694b7ba7e058edf1b343534818d96">decideFoulSanction</a> (const <a class="el" href="structMatchRules_1_1FoulContext.html">FoulContext</a> &amp;context)</td></tr>
 <tr class="separator:a500694b7ba7e058edf1b343534818d96"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a590361c869ec063025412dfb9f18ebc7" id="r_a590361c869ec063025412dfb9f18ebc7"><td class="memItemLeft" align="right" valign="top">float&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="namespaceMatchRules.html#a590361c869ec063025412dfb9f18ebc7">tackleMake</a> (float defending, float physicality)</td></tr>
+<tr class="separator:a590361c869ec063025412dfb9f18ebc7"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:add79d189773f417b2c6bcc4c4b1085bb" id="r_add79d189773f417b2c6bcc4c4b1085bb"><td class="memItemLeft" align="right" valign="top">float&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="namespaceMatchRules.html#add79d189773f417b2c6bcc4c4b1085bb">tackleResist</a> (float dribbling, float physicality, bool shielding)</td></tr>
+<tr class="separator:add79d189773f417b2c6bcc4c4b1085bb"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a60c31cd40b45a30fa689d122dd455d94" id="r_a60c31cd40b45a30fa689d122dd455d94"><td class="memItemLeft" align="right" valign="top">float&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="namespaceMatchRules.html#a60c31cd40b45a30fa689d122dd455d94">tackleTechnique</a> (float defending)</td></tr>
+<tr class="separator:a60c31cd40b45a30fa689d122dd455d94"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:aecdd78fb3ab86872734bf300e39215bf" id="r_aecdd78fb3ab86872734bf300e39215bf"><td class="memItemLeft" align="right" valign="top">float&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="namespaceMatchRules.html#aecdd78fb3ab86872734bf300e39215bf">tackleWinChance</a> (const <a class="el" href="structMatchRules_1_1TackleContext.html">TackleContext</a> &amp;context)</td></tr>
 <tr class="separator:aecdd78fb3ab86872734bf300e39215bf"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a536c45ac506044ff83a8a83e3f34657b" id="r_a536c45ac506044ff83a8a83e3f34657b"><td class="memItemLeft" align="right" valign="top">float&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="namespaceMatchRules.html#a536c45ac506044ff83a8a83e3f34657b">tackleFoulPropensity</a> (const <a class="el" href="structMatchRules_1_1TackleContext.html">TackleContext</a> &amp;context)</td></tr>
 <tr class="separator:a536c45ac506044ff83a8a83e3f34657b"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a47e21708f7e3209c2efdb5c3c30a51f3" id="r_a47e21708f7e3209c2efdb5c3c30a51f3"><td class="memItemLeft" align="right" valign="top">float&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="namespaceMatchRules.html#a47e21708f7e3209c2efdb5c3c30a51f3">staminaDrainPerSecond</a> (float speedRatio, float endurance, float pressingIntensity)</td></tr>
 <tr class="separator:a47e21708f7e3209c2efdb5c3c30a51f3"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a23e5ab6232bf7e9f6dc5a9de6de756fe" id="r_a23e5ab6232bf7e9f6dc5a9de6de756fe"><td class="memItemLeft" align="right" valign="top">float&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="namespaceMatchRules.html#a23e5ab6232bf7e9f6dc5a9de6de756fe">walkRunTransitionSpeed</a> (float heightMetres)</td></tr>
+<tr class="separator:a23e5ab6232bf7e9f6dc5a9de6de756fe"><td class="memSeparator" colspan="2">&#160;</td></tr>
 </table>
 <a name="details" id="details"></a><h2 class="groupheader">Detailed Description</h2>
 <div class="textblock"><p>Pure, deterministic rules used by the match engine. Everything here is a function of its arguments (random rolls are passed in), so each rule can be unit tested without running a match. </p>
@@ -566,6 +574,89 @@ Functions</h2></td></tr>
 
 </div>
 </div>
+<a id="a590361c869ec063025412dfb9f18ebc7" name="a590361c869ec063025412dfb9f18ebc7"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a590361c869ec063025412dfb9f18ebc7">&#9670;&#160;</a></span>tackleMake()</h2>
+
+<div class="memitem">
+<div class="memproto">
+      <table class="memname">
+        <tr>
+          <td class="memname">float MatchRules::tackleMake </td>
+          <td>(</td>
+          <td class="paramtype">float&#160;</td>
+          <td class="paramname"><em>defending</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">float&#160;</td>
+          <td class="paramname"><em>physicality</em>&#160;</td>
+        </tr>
+        <tr>
+          <td></td>
+          <td>)</td>
+          <td></td><td></td>
+        </tr>
+      </table>
+</div><div class="memdoc">
+<p>What the tackler's Defending and Physicality are worth. </p>
+
+</div>
+</div>
+<a id="add79d189773f417b2c6bcc4c4b1085bb" name="add79d189773f417b2c6bcc4c4b1085bb"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#add79d189773f417b2c6bcc4c4b1085bb">&#9670;&#160;</a></span>tackleResist()</h2>
+
+<div class="memitem">
+<div class="memproto">
+      <table class="memname">
+        <tr>
+          <td class="memname">float MatchRules::tackleResist </td>
+          <td>(</td>
+          <td class="paramtype">float&#160;</td>
+          <td class="paramname"><em>dribbling</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">float&#160;</td>
+          <td class="paramname"><em>physicality</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">bool&#160;</td>
+          <td class="paramname"><em>shielding</em>&#160;</td>
+        </tr>
+        <tr>
+          <td></td>
+          <td>)</td>
+          <td></td><td></td>
+        </tr>
+      </table>
+</div><div class="memdoc">
+<p>What the carrier's Dribbling and Physicality are worth; shielding (at walking pace) lets his Physicality count again. </p>
+
+</div>
+</div>
+<a id="a60c31cd40b45a30fa689d122dd455d94" name="a60c31cd40b45a30fa689d122dd455d94"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a60c31cd40b45a30fa689d122dd455d94">&#9670;&#160;</a></span>tackleTechnique()</h2>
+
+<div class="memitem">
+<div class="memproto">
+      <table class="memname">
+        <tr>
+          <td class="memname">float MatchRules::tackleTechnique </td>
+          <td>(</td>
+          <td class="paramtype">float&#160;</td>
+          <td class="paramname"><em>defending</em></td><td>)</td>
+          <td></td>
+        </tr>
+      </table>
+</div><div class="memdoc">
+<p>How clumsy the tackler is: foul propensity points (0 for a perfect Defending of 1). </p>
+
+</div>
+</div>
 <a id="aecdd78fb3ab86872734bf300e39215bf" name="aecdd78fb3ab86872734bf300e39215bf"></a>
 <h2 class="memtitle"><span class="permalink"><a href="#aecdd78fb3ab86872734bf300e39215bf">&#9670;&#160;</a></span>tackleWinChance()</h2>
 
@@ -582,6 +673,33 @@ Functions</h2></td></tr>
       </table>
 </div><div class="memdoc">
 <p>Chance that a challenge reaches the ball first. </p>
+
+</div>
+</div>
+<a id="a23e5ab6232bf7e9f6dc5a9de6de756fe" name="a23e5ab6232bf7e9f6dc5a9de6de756fe"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a23e5ab6232bf7e9f6dc5a9de6de756fe">&#9670;&#160;</a></span>walkRunTransitionSpeed()</h2>
+
+<div class="memitem">
+<div class="memproto">
+<table class="mlabels">
+  <tr>
+  <td class="mlabels-left">
+      <table class="memname">
+        <tr>
+          <td class="memname">float MatchRules::walkRunTransitionSpeed </td>
+          <td>(</td>
+          <td class="paramtype">float&#160;</td>
+          <td class="paramname"><em>heightMetres</em></td><td>)</td>
+          <td></td>
+        </tr>
+      </table>
+  </td>
+  <td class="mlabels-right">
+<span class="mlabels"><span class="mlabel">inline</span></span>  </td>
+  </tr>
+</table>
+</div><div class="memdoc">
+<p>The speed (m/s) at which he breaks from a walk into a run: Froude number v^2 / (g L) of about 0.5 across people of different leg length (Kram et al.), with leg length L about 0.53 of his height. 2.07 m/s at 1.65 m, 2.16 at 1.80, 2.25 at 1.95. </p>
 
 </div>
 </div>

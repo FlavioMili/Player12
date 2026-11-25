@@ -11,7 +11,7 @@ var structMatchEvent =
     [ "isHomeTeam", "structMatchEvent.html#a1fc0885d7c0e253e71c328d2c2cf5efa", null ],
     [ "minutes", "structMatchEvent.html#a89b8f190f32bc94ba1e4ed2b198cb290", null ],
     [ "period", "structMatchEvent.html#a795d0cde9b00cf2c4ba6568af7bf5175", null ],
-    [ "position", "structMatchEvent.html#a2207e3c134c59cb582393de7ea512da7", null ],
+    [ "position", "structMatchEvent.html#ab568ae6cd4f49be7fe6587a972e3f069", null ],
     [ "primaryPlayerId", "structMatchEvent.html#a3b4200530fc106d20073b42a017f352d", null ],
     [ "secondaryPlayerId", "structMatchEvent.html#a11fcd0cd136002d9e0b1f6140133579d", null ],
     [ "timeMinute", "structMatchEvent.html#a44e7b3e62d9f489ceab79ac8620fb6f2", null ],

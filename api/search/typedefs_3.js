@@ -1,4 +1,4 @@
 var searchData=
 [
-  ['eligibility_0',['Eligibility',['../namespaceMatchdaySquad.html#a8546a982e752f092ebb42f3b93d32c4e',1,'MatchdaySquad']]]
+  ['derivedrecipes_0',['DerivedRecipes',['../match__derived__stats_8h.html#ac7f6bc75e4d4f03c0b48f2496e111922',1,'match_derived_stats.h']]]
 ];

@@ -13,6 +13,7 @@ var match__kit__colors_8h =
     [ "kitNumberColor", "match__kit__colors_8h.html#af8c8c7395a66f175656e6ab39c9adb8d", null ],
     [ "mixColor", "match__kit__colors_8h.html#a8bf520c407bfac5879e4c9e716c8d0e9", null ],
     [ "mixColor256", "match__kit__colors_8h.html#af6119b010b5bf8f435857c42935a09d1", null ],
+    [ "officialsShirtColor", "match__kit__colors_8h.html#ae8cb7829ff7fc7afaa50bda1cad82316", null ],
     [ "shadeColor", "match__kit__colors_8h.html#af79c3e03611330b9101f0aca2c91e619", null ],
     [ "shadeColor256", "match__kit__colors_8h.html#a745c4cc66178141a8146f0821f544d9b", null ],
     [ "withAlpha", "match__kit__colors_8h.html#a1dae4de6f0fbe7a0c80c4714d8be496e", null ],

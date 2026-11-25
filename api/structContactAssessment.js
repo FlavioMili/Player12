@@ -1,0 +1,27 @@
+var structContactAssessment =
+[
+    [ "added", "structContactAssessment.html#a6a23ae8365f440af9dcdcd94bb850cf0", null ],
+    [ "difficulty", "structContactAssessment.html#a4a959aebb45337d7738d073396549be5", null ],
+    [ "aim", "structContactAssessment.html#aefb526cccf5b149670f502a5932f836c", null ],
+    [ "angleDifficulty", "structContactAssessment.html#aa1b2f6b001afada800384a856b6609bb", null ],
+    [ "factors", "structContactAssessment.html#ae8f3923e588d48d84409a1a930baa7cd", null ],
+    [ "incomingSpeed", "structContactAssessment.html#ad5e27de9a8565d18af2cdedd4ba00212", null ],
+    [ "intendedElevation", "structContactAssessment.html#af492e1a9ec9294c4036c4e6ddbc18538", null ],
+    [ "intendedSpeed", "structContactAssessment.html#aa8f67f8b93e9df7511b406cf08603ae7", null ],
+    [ "intendedSpin", "structContactAssessment.html#ad15cb0ee597a3ad8b926160660d55cd4", null ],
+    [ "line", "structContactAssessment.html#a351f62c8e00b7d97d706c4f0692fd0ae", null ],
+    [ "lineElevation", "structContactAssessment.html#a8526ea62be2300dbfa04dc34c08ea472", null ],
+    [ "moving", "structContactAssessment.html#a11433a7ded98c28351a6916471321d54", null ],
+    [ "outward", "structContactAssessment.html#a87396cc5da5633d6045491d9fd55d63b", null ],
+    [ "paceChange", "structContactAssessment.html#a03f26599771629afad49beac323140be", null ],
+    [ "rebound", "structContactAssessment.html#aa35f4cdd7ba511de3fadb50f6a2696fc", null ],
+    [ "spinDifficulty", "structContactAssessment.html#a16d66454555b80575bd9b5e8ad41a06e", null ],
+    [ "turn", "structContactAssessment.html#a8490dbcd6fb38818c6450278b0adfedc", null ],
+    [ "verticalDifficulty", "structContactAssessment.html#a18c0a8ad50f731251a5f35da8cffaa44", null ],
+    [ "verticalTurn", "structContactAssessment.html#a8694b0574bc90759250e39ad58b0eeca", null ],
+    [ "weakFootAngle", "structContactAssessment.html#a274aaaae55d5fdd11f1daa70e0d35e84", null ],
+    [ "weakFootSpin", "structContactAssessment.html#a6a181b568135086d12a46d59e19c8810", null ],
+    [ "weakFootVertical", "structContactAssessment.html#a9c0dd7566bce84ba52b95b5673193bc9", null ],
+    [ "weakFootWeight", "structContactAssessment.html#a9e8a80e8ab71eddf314518a4334df600", null ],
+    [ "weightDifficulty", "structContactAssessment.html#a240559399936f70380ecb054c66f5068", null ]
+];

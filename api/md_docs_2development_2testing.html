@@ -96,7 +96,7 @@ $(document).ready(function(){initNavTree('md_docs_2development_2testing.html',''
   <div class="headertitle"><div class="title">Tests and tools</div></div>
 </div><!--header-->
 <div class="contents">
-<div class="textblock"><p><a class="anchor" id="autotoc_md83"></a> Configure with tests (<code>release-tests</code> preset or <code>-DBUILD_TESTING=ON</code>):</p>
+<div class="textblock"><p><a class="anchor" id="autotoc_md117"></a> Configure with tests (<code>release-tests</code> preset or <code>-DBUILD_TESTING=ON</code>):</p>
 <p>Install the <a class="el" href="md_docs_2user_2installation.html">platform prerequisites</a> first. If you are already using a build directory such as <code>build</code>, use <code>ctest --test-dir build</code> instead of the preset; a preset always targets its own <code>build/</code> directory.</p>
 <div class="fragment"><div class="line">cmake --preset release-tests</div>
 <div class="line">cmake --build --preset release-tests --parallel 4</div>
@@ -108,7 +108,7 @@ $(document).ready(function(){initNavTree('md_docs_2development_2testing.html',''
 <div class="line">ctest --test-dir build -L fuzz          # the fuzz lane</div>
 <div class="line">ctest --test-dir build -L slow          # every slow lane</div>
 </div><!-- fragment --><p>Tests run headless (SDL's dummy video driver) with fixed seeds and a scratch data directory under <code>/tmp/football-management-tests</code>, so they never touch your saves.</p>
-<h1><a class="anchor" id="autotoc_md84"></a>
+<h1><a class="anchor" id="autotoc_md118"></a>
 Lanes, labels and shards</h1>
 <p>Every test runs once. Each executable is compiled from distinct files (<code>core_unit_tests</code> holds the headless model tests, <code>unit_tests</code> the files that need the GUI library).</p>
 <p>The default lanes do <b>not</b> register one CTest entry per GoogleTest case. <code>core_unit_tests</code> runs as 4 CTest entries (<code>shard0of4::core_unit_tests</code>, ...) and <code>unit_tests</code> as 2, each a single process running its share of the cases (<code>GTEST_TOTAL_SHARDS</code> / <code>GTEST_SHARD_INDEX</code>). A process builds or loads the shared worlds and checkpoints once and every test gets its own copy. The other GUI executables hold a handful of tests and keep one entry per case.</p>
@@ -125,7 +125,7 @@ Lanes, labels and shards</h1>
 <p>Tests share a process, so they must not leak global state. <code>fm_test_support</code> installs a listener in every executable that fingerprints the installed world, its league profiles and the nationality registry before and after each test: a test that leaves another world installed fails and the built-in world is put back (call <code>World::install(nullptr)</code>).</p>
 <p>Debug and sanitizer builds are several times slower: configure with <code>-DFM_TEST_TIMEOUT_SCALE=10</code> (the <code>debug-sanitized</code> preset does) to scale every timeout.</p>
 <p>The leak-check lane is the <code>core</code> label run under the sanitizer build (<code>ctest --preset debug-sanitized -L core</code>, as in CI); it is the same executable as the normal lane, not a second copy of the tests, so the default Release run does not repeat it.</p>
-<h1><a class="anchor" id="autotoc_md85"></a>
+<h1><a class="anchor" id="autotoc_md119"></a>
 Shared fixtures (&lt;tt&gt;test/support/test_worlds.h&lt;/tt&gt;)</h1>
 <p>Generating a world or simulating weeks of a career is the main cost of the suite, so do not do it per test. Link is automatic (<code>fm_test_support</code>); include <code>"test_worlds.h"</code>:</p>
 <div class="fragment"><div class="line"><span class="comment">// A copy of the generated world (GameData + in-memory connection).</span></div>
@@ -142,30 +142,32 @@ Shared fixtures (&lt;tt&gt;test/support/test_worlds.h&lt;/tt&gt;)</h1>
 <div class="line"><span class="comment">// Any other state: the first caller runs `prepare`, everyone else loads it.</span></div>
 <div class="line"><span class="keyword">auto</span> custom = TestWorlds::career(slot, <span class="stringliteral">&quot;my-state-key&quot;</span>,</div>
 <div class="line">                                 [](<a class="code hl_class" href="classGameController.html">GameController</a>&amp; c) { <span class="comment">/* build state */</span> });</div>
-<div class="ttc" id="aclassGameController_html"><div class="ttname"><a href="classGameController.html">GameController</a></div><div class="ttdoc">Manages the core game logic, interacting with teams, leagues, and players.</div><div class="ttdef"><b>Definition</b> game_controller.h:71</div></div>
+<div class="ttc" id="aclassGameController_html"><div class="ttname"><a href="classGameController.html">GameController</a></div><div class="ttdoc">Manages the core game logic, interacting with teams, leagues, and players.</div><div class="ttdef"><b>Definition</b> game_controller.h:72</div></div>
 <div class="ttc" id="astructGameDateValue_html"><div class="ttname"><a href="structGameDateValue.html">GameDateValue</a></div><div class="ttdoc">Represents a specific date in the game world.</div><div class="ttdef"><b>Definition</b> gamedate.h:20</div></div>
 <div class="ttc" id="aworld__runtime_8cpp_html_a1c8861c05e97e9a8f48d86d94292921b"><div class="ttname"><a href="world__runtime_8cpp.html#a1c8861c05e97e9a8f48d86d94292921b">world</a></div><div class="ttdeci">std::shared_ptr&lt; const Document &gt; world</div><div class="ttdef"><b>Definition</b> world_runtime.cpp:51</div></div>
 </div><!-- fragment --><p>How it works: the first process to need a state builds it (one real simulation) and stores a checkpoint save in a <code>fm-test-fixtures</code> folder next to the test executable (the build tree), keyed by the test executable's size and timestamp; later processes (a sharded process, or a per-case test process) copy the file into their own save slot and load it. A rebuilt executable never sees an older build's checkpoints. The calendar is deliberately not jumped: the model advances players, finances, the market and competitions day by day, so a state reached by a shortcut could never occur in a game. <code>defaultWorld()</code> also keeps a per-process template and clones it with a SQLite backup into a new in-memory connection.</p>
 <p>Rules: give a different <code>key</code> to every different <code>prepare</code>; remove your slot with <code>RuntimePaths::removeSave(slot)</code> when done; keep the same seeds and the same assertions as the long version of the test.</p>
-<h1><a class="anchor" id="autotoc_md86"></a>
+<h1><a class="anchor" id="autotoc_md120"></a>
 Run one area first</h1>
 <div class="fragment"><div class="line">ctest --preset release-tests -N -R &#39;MatchScenarioTest&#39;</div>
 <div class="line">ctest --preset release-tests -R &#39;^core::MatchScenarioTest\.&#39;</div>
 </div><!-- fragment --><p>CTest lists each GoogleTest case separately. Core cases have a <code>core::</code> prefix; the <code>unit_tests</code> cases (engine, Play, view models, game flow) have no prefix. Use <code>-N</code> to confirm that a filter selects actual tests before relying on its result.</p>
 <p>The <a class="el" href="md_docs_2development_2match-engine.html">engine guide</a> maps behaviors to tests. For larger code changes, also run the CI-style suite above and the relevant sanitizer checks from <a class="el" href="md_docs_2development_2builds.html">Builds</a>. Preserve failing output in your PR description.</p>
-<h1><a class="anchor" id="autotoc_md87"></a>
+<h1><a class="anchor" id="autotoc_md121"></a>
 Balance lab</h1>
 <p><code>fm_lab</code>, built next to the game, is a headless balance lab. It plays large batches of matches or whole seasons and compares the results with real-world ranges:</p>
 <div class="fragment"><div class="line">./build/release-tests/src/fm_lab matches --n 1000 --spread --threads 4</div>
 <div class="line">./build/release-tests/src/fm_lab season --seasons 1 --threads 2</div>
 <div class="line">./build/release-tests/src/fm_lab tactics</div>
 </div><!-- fragment --><p><code>./build/release-tests/src/fm_lab --help</code> lists every option. The lab writes <code>report.md</code> and <code>metrics.json</code> to its output directory. Compare before/after results using the same seeds, ratings, count and fidelity; see <a href="extending-and-modding.md#validate-a-behavior-change">Extending and modding</a>.</p>
-<h1><a class="anchor" id="autotoc_md88"></a>
+<p>For a change that should only alter float rounding, compare position traces from two builds tick by tick. <code>fm_lab trace</code> takes the <code>matches</code> options plus <code>--out FILE</code> and writes every player and the ball, in metres, at every fixed step for the first <code>--seconds</code> (default 10) of each match. <code>fm_lab drill "NAME" --trace FILE</code> does the same for one run of a drill. <code>fm_lab drill --pitch 40x30 "NAME" ...</code> plays a drill on a walled training pitch of that size instead of its own, and <code>--goal KIND</code> puts a goal of that kind at each end (see the Walled box drill and <a href="match-engine.md#training-pitches">match-engine.md</a>).</p>
+<p><code>fm_lab session "NAME"</code> runs a training session headless (see <a href="match-engine.md#training-sessions">match-engine.md</a>) and prints each exercise's zones' outcomes, each change (arrivals, time, the largest jump of place and condition at the merge and the split) and the squad's condition; <code>--zone-brain "ZONE=B"</code> and <code>--zone-body "ZONE=B"</code> set a zone's versions, and <code>--carry-check</code> checks that a player's running state carries from one engine to another exactly. <code>match_sandbox --zone-round-trip</code> saves zones of the example session, loads and replays them, and says whether each replays identically.</p>
+<h1><a class="anchor" id="autotoc_md122"></a>
 Screenshots</h1>
 <p>The screenshots in <code>docs/images</code> come from a real career, captured by the <code>showcase_captures</code> test (skipped unless <code>FM_SHOWCASE_DIR</code> is set):</p>
 <div class="fragment"><div class="line">FM_SHOWCASE_DIR=/tmp/showcase ctest --preset release-tests -R showcase</div>
 </div><!-- fragment --><p>It writes PNG files at interface scale 2; the header of <a href="../../test/test_showcase_captures.cpp">test/test_showcase_captures.cpp</a> explains the options.</p>
-<h1><a class="anchor" id="autotoc_md89"></a>
+<h1><a class="anchor" id="autotoc_md123"></a>
 Performance benchmarks</h1>
 <p>For a change to database work or a hot simulation loop, measure its workload before and after the edit. Benchmarks are opt-in and are not part of normal CI.</p>
 <div class="fragment"><div class="line">cmake --preset profile</div>
@@ -174,7 +176,7 @@ Performance benchmarks</h1>
 <div class="line">./build/profile/benchmarks/match_benchmarks</div>
 </div><!-- fragment --><p>The <code>profile</code> preset enables machine-local native optimizations; use comparable builds and hardware when reporting results. Benchmark target definitions are in <a href="../../benchmarks/CMakeLists.txt">benchmarks/CMakeLists.txt</a>.</p>
 <p>The ten-seed headless match unit test compares each completed match with the same seed advanced one fixed step at a time. It checks identical simulation-step counts, final debug snapshots and event types/player IDs, without an elapsed-time threshold or estimated match-duration range. Use the opt-in match benchmarks on comparable builds and hardware to measure performance changes.</p>
-<h1><a class="anchor" id="autotoc_md90"></a>
+<h1><a class="anchor" id="autotoc_md124"></a>
 Historical calibration failures</h1>
 <p>Verification on 2026-10-07 reproduced these failures with the original engine from revision <code>8b0aafb</code>, before the documentation/context-override changes:</p>
 <table class="markdownTable">

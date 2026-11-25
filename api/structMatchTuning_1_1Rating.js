@@ -3,6 +3,8 @@ var structMatchTuning_1_1Rating =
     [ "AERIAL_WON", "structMatchTuning_1_1Rating.html#a6d1cc926c132f0c08e98a9b12fa2bb4b", null ],
     [ "ASSIST", "structMatchTuning_1_1Rating.html#ac7d23587e7896df229b228cbd8eefe68", null ],
     [ "BASELINE", "structMatchTuning_1_1Rating.html#a864f2295765e6a559a0dda3a43078a02", null ],
+    [ "BLOCKED_PASS", "structMatchTuning_1_1Rating.html#ab14eb26793b43cf2770b6ba58abb7db7", null ],
+    [ "BLOCKED_SHOT", "structMatchTuning_1_1Rating.html#a8ab574f2bab06c3db0eca7ed0e1ebe1f", null ],
     [ "CLEAN_SHEET_DEFENDER", "structMatchTuning_1_1Rating.html#ac402db39b943207e6c5cfe899897880b", null ],
     [ "CLEAN_SHEET_GOALKEEPER", "structMatchTuning_1_1Rating.html#a760436142496f05fa65886c4cd236be2", null ],
     [ "CLEAN_SHEET_MINIMUM_MINUTES", "structMatchTuning_1_1Rating.html#a1698f4c733871ba24579da8398770a39", null ],

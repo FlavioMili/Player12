@@ -1,5 +1,6 @@
 var searchData=
 [
-  ['verdict_0',['Verdict',['../namespaceLab.html#a0630ae14998d5a31bba3c8f90a4347cd',1,'Lab']]],
-  ['view_1',['View',['../classFixturesScene.html#a3c34a5c38506a10bf9d18006ce2799df',1,'FixturesScene']]]
+  ['unavailability_0',['Unavailability',['../classLineupScene.html#a6a91317aee8a382171e4dcd7f36bdfa4',1,'LineupScene']]],
+  ['unit_1',['Unit',['../namespaceLab.html#a3bfac8a8a018979a6662ef12e642d4ae',1,'Lab']]],
+  ['upgraderequestresult_2',['UpgradeRequestResult',['../youth__academy_8h.html#a9cf56b8aa1251a33c96e51201a494b33',1,'youth_academy.h']]]
 ];

@@ -16,5 +16,6 @@ var dir_803ee67260c130b45d29089798491ab2 =
     [ "save_manager.h", "save__manager_8h.html", "save__manager_8h" ],
     [ "sqlite_rows.h", "sqlite__rows_8h.html", "sqlite__rows_8h" ],
     [ "SQLLoader.cpp", "SQLLoader_8cpp.html", null ],
-    [ "SQLLoader.h", "SQLLoader_8h.html", "SQLLoader_8h" ]
+    [ "SQLLoader.h", "SQLLoader_8h.html", "SQLLoader_8h" ],
+    [ "world_generation_stop.h", "world__generation__stop_8h.html", "world__generation__stop_8h" ]
 ];

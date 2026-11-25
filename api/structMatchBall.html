@@ -94,7 +94,10 @@ $(document).ready(function(){initNavTree('structMatchBall.html',''); initResizab
 
 <div class="header">
   <div class="summary">
+<a href="#pub-methods">Public Member Functions</a> &#124;
 <a href="#pub-attribs">Public Attributes</a> &#124;
+<a href="#pri-attribs">Private Attributes</a> &#124;
+<a href="#friends">Friends</a> &#124;
 <a href="structMatchBall-members.html">List of all members</a>  </div>
   <div class="headertitle"><div class="title">MatchBall Struct Reference</div></div>
 </div><!--header-->
@@ -102,82 +105,171 @@ $(document).ready(function(){initNavTree('structMatchBall.html',''); initResizab
 
 <p><code>#include &lt;<a class="el" href="match__engine_8h_source.html">match_engine.h</a>&gt;</code></p>
 <table class="memberdecls">
+<tr class="heading"><td colspan="2"><h2 class="groupheader"><a id="pub-methods" name="pub-methods"></a>
+Public Member Functions</h2></td></tr>
+<tr class="memitem:acaeca01dddaed484b89799e11cb85009" id="r_acaeca01dddaed484b89799e11cb85009"><td class="memItemLeft" align="right" valign="top">const <a class="el" href="structMatchPossessionState.html">MatchPossessionState</a> &amp;&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structMatchBall.html#acaeca01dddaed484b89799e11cb85009">possessionState</a> () const</td></tr>
+<tr class="separator:acaeca01dddaed484b89799e11cb85009"><td class="memSeparator" colspan="2">&#160;</td></tr>
+</table><table class="memberdecls">
 <tr class="heading"><td colspan="2"><h2 class="groupheader"><a id="pub-attribs" name="pub-attribs"></a>
 Public Attributes</h2></td></tr>
-<tr class="memitem:a31fd99b365b115e1ac858b49f002c050" id="r_a31fd99b365b115e1ac858b49f002c050"><td class="memItemLeft" align="right" valign="top"><a class="el" href="structVector2F.html">Vector2F</a>&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structMatchBall.html#a31fd99b365b115e1ac858b49f002c050">position</a> {<a class="el" href="structMatchTuning_1_1Pitch.html#a92587d6c3e1234472f369e2041eee489">MatchTuning::Pitch::CENTRE</a>, <a class="el" href="structMatchTuning_1_1Pitch.html#a92587d6c3e1234472f369e2041eee489">MatchTuning::Pitch::CENTRE</a>}</td></tr>
-<tr class="separator:a31fd99b365b115e1ac858b49f002c050"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a02be3e93ce1c017bae8a9f2c4676d247" id="r_a02be3e93ce1c017bae8a9f2c4676d247"><td class="memItemLeft" align="right" valign="top">float&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structMatchBall.html#a02be3e93ce1c017bae8a9f2c4676d247">z</a> = 0.0f</td></tr>
+<tr class="memitem:a8ef019eb0c4ac4d6b53882138b78541b" id="r_a8ef019eb0c4ac4d6b53882138b78541b"><td class="memItemLeft" align="right" valign="top"><a class="el" href="structPitchPoint.html">PitchPoint</a>&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structMatchBall.html#a8ef019eb0c4ac4d6b53882138b78541b">position</a></td></tr>
+<tr class="separator:a8ef019eb0c4ac4d6b53882138b78541b"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a02be3e93ce1c017bae8a9f2c4676d247" id="r_a02be3e93ce1c017bae8a9f2c4676d247"><td class="memItemLeft" align="right" valign="top">float&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structMatchBall.html#a02be3e93ce1c017bae8a9f2c4676d247">z</a> = 0.0F</td></tr>
 <tr class="separator:a02be3e93ce1c017bae8a9f2c4676d247"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a0a0953c6d32de7d26fbe47a3e8dd7a29" id="r_a0a0953c6d32de7d26fbe47a3e8dd7a29"><td class="memItemLeft" align="right" valign="top"><a class="el" href="structVector2F.html">Vector2F</a>&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structMatchBall.html#a0a0953c6d32de7d26fbe47a3e8dd7a29">velocity</a> {0.0f, 0.0f}</td></tr>
+<tr class="memitem:a0a0953c6d32de7d26fbe47a3e8dd7a29" id="r_a0a0953c6d32de7d26fbe47a3e8dd7a29"><td class="memItemLeft" align="right" valign="top"><a class="el" href="structVector2F.html">Vector2F</a>&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structMatchBall.html#a0a0953c6d32de7d26fbe47a3e8dd7a29">velocity</a> {.x = 0.0F, .y = 0.0F}</td></tr>
 <tr class="separator:a0a0953c6d32de7d26fbe47a3e8dd7a29"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a7e88be49bffbbc187dc01c63883078b5" id="r_a7e88be49bffbbc187dc01c63883078b5"><td class="memItemLeft" align="right" valign="top">float&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structMatchBall.html#a7e88be49bffbbc187dc01c63883078b5">velocityZ</a> = 0.0f</td></tr>
+<tr class="memitem:a7e88be49bffbbc187dc01c63883078b5" id="r_a7e88be49bffbbc187dc01c63883078b5"><td class="memItemLeft" align="right" valign="top">float&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structMatchBall.html#a7e88be49bffbbc187dc01c63883078b5">velocityZ</a> = 0.0F</td></tr>
 <tr class="separator:a7e88be49bffbbc187dc01c63883078b5"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a600da3b00424a82f2c03bb1e03020105" id="r_a600da3b00424a82f2c03bb1e03020105"><td class="memItemLeft" align="right" valign="top">float&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structMatchBall.html#a600da3b00424a82f2c03bb1e03020105">curve</a> = 0.0f</td></tr>
-<tr class="separator:a600da3b00424a82f2c03bb1e03020105"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:ac7f5131fd332e2b02deef21405f4548d" id="r_ac7f5131fd332e2b02deef21405f4548d"><td class="memItemLeft" align="right" valign="top">const <a class="el" href="classPlayer.html">Player</a> *&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structMatchBall.html#ac7f5131fd332e2b02deef21405f4548d">possessedBy</a> = nullptr</td></tr>
-<tr class="separator:ac7f5131fd332e2b02deef21405f4548d"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:aaec17c4c7e38c74702fe8592a06ea7b8" id="r_aaec17c4c7e38c74702fe8592a06ea7b8"><td class="memItemLeft" align="right" valign="top">const <a class="el" href="classPlayer.html">Player</a> *&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structMatchBall.html#aaec17c4c7e38c74702fe8592a06ea7b8">lastPossessor</a> = nullptr</td></tr>
-<tr class="separator:aaec17c4c7e38c74702fe8592a06ea7b8"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:aa562a5413c421ae67974f77fdbbb26ff" id="r_aa562a5413c421ae67974f77fdbbb26ff"><td class="memItemLeft" align="right" valign="top">const <a class="el" href="classPlayer.html">Player</a> *&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structMatchBall.html#aa562a5413c421ae67974f77fdbbb26ff">intendedReceiver</a> = nullptr</td></tr>
-<tr class="separator:aa562a5413c421ae67974f77fdbbb26ff"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a22b2c1449d70719e144e20c25950b2b7" id="r_a22b2c1449d70719e144e20c25950b2b7"><td class="memItemLeft" align="right" valign="top">const <a class="el" href="classPlayer.html">Player</a> *&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structMatchBall.html#a22b2c1449d70719e144e20c25950b2b7">kicker</a> = nullptr</td></tr>
-<tr class="separator:a22b2c1449d70719e144e20c25950b2b7"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a2e4ac018b47c82f23d47c3c1a2f8781e" id="r_a2e4ac018b47c82f23d47c3c1a2f8781e"><td class="memItemLeft" align="right" valign="top">float&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structMatchBall.html#a2e4ac018b47c82f23d47c3c1a2f8781e">kickerLockout</a> = 0.0f</td></tr>
+<tr class="memitem:a457850b61989e09ebcfbcdaea38cd0fd" id="r_a457850b61989e09ebcfbcdaea38cd0fd"><td class="memItemLeft" align="right" valign="top"><a class="el" href="structBallSpin.html">BallSpin</a>&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structMatchBall.html#a457850b61989e09ebcfbcdaea38cd0fd">spin</a> {}</td></tr>
+<tr class="separator:a457850b61989e09ebcfbcdaea38cd0fd"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a3abf0cdba83546f57877ad425dde5a4f" id="r_a3abf0cdba83546f57877ad425dde5a4f"><td class="memItemLeft" align="right" valign="top"><a class="el" href="structPitchPoint.html">PitchPoint</a>&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structMatchBall.html#a3abf0cdba83546f57877ad425dde5a4f">dribbleGoal</a></td></tr>
+<tr class="separator:a3abf0cdba83546f57877ad425dde5a4f"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a00a8e174173fc6e0f05f7ca5679286b4" id="r_a00a8e174173fc6e0f05f7ca5679286b4"><td class="memItemLeft" align="right" valign="top">float&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structMatchBall.html#a00a8e174173fc6e0f05f7ca5679286b4">ownTouchCooldown</a> = 0.0F</td></tr>
+<tr class="separator:a00a8e174173fc6e0f05f7ca5679286b4"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a523e930a3ba2846f270d1d8e7a1bcc3d" id="r_a523e930a3ba2846f270d1d8e7a1bcc3d"><td class="memItemLeft" align="right" valign="top">const <a class="el" href="classPlayer.html">Player</a> *&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structMatchBall.html#a523e930a3ba2846f270d1d8e7a1bcc3d">meetFor</a> = nullptr</td></tr>
+<tr class="separator:a523e930a3ba2846f270d1d8e7a1bcc3d"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:af8df0f2c05bd626f52c8f30396fc168c" id="r_af8df0f2c05bd626f52c8f30396fc168c"><td class="memItemLeft" align="right" valign="top">bool&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structMatchBall.html#af8df0f2c05bd626f52c8f30396fc168c">meetRecovering</a> = false</td></tr>
+<tr class="separator:af8df0f2c05bd626f52c8f30396fc168c"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:aa6c10d2dd83aed4d32b64719b5931a28" id="r_aa6c10d2dd83aed4d32b64719b5931a28"><td class="memItemLeft" align="right" valign="top">bool&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structMatchBall.html#aa6c10d2dd83aed4d32b64719b5931a28">knockedOn</a> = false</td></tr>
+<tr class="separator:aa6c10d2dd83aed4d32b64719b5931a28"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a0bb17c0976b04f54473c4d701e6d2e7a" id="r_a0bb17c0976b04f54473c4d701e6d2e7a"><td class="memItemLeft" align="right" valign="top">float&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structMatchBall.html#a0bb17c0976b04f54473c4d701e6d2e7a">plannedTouchIn</a> = 0.0F</td></tr>
+<tr class="separator:a0bb17c0976b04f54473c4d701e6d2e7a"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a34991c36a8ae57ec668b323d29a5a3a3" id="r_a34991c36a8ae57ec668b323d29a5a3a3"><td class="memItemLeft" align="right" valign="top"><a class="el" href="structVector2F.html">Vector2F</a>&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structMatchBall.html#a34991c36a8ae57ec668b323d29a5a3a3">pushDirection</a> {.x = 1.0F, .y = 0.0F}</td></tr>
+<tr class="separator:a34991c36a8ae57ec668b323d29a5a3a3"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:ad195fc0732b697d65a11d8968d2b2001" id="r_ad195fc0732b697d65a11d8968d2b2001"><td class="memItemLeft" align="right" valign="top">float&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structMatchBall.html#ad195fc0732b697d65a11d8968d2b2001">meetPace</a> = 0.0F</td></tr>
+<tr class="separator:ad195fc0732b697d65a11d8968d2b2001"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a1834405ac29d0672775fa83998f3baf1" id="r_a1834405ac29d0672775fa83998f3baf1"><td class="memItemLeft" align="right" valign="top"><a class="el" href="structPitchPoint.html">PitchPoint</a>&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structMatchBall.html#a1834405ac29d0672775fa83998f3baf1">meetPoint</a> {}</td></tr>
+<tr class="separator:a1834405ac29d0672775fa83998f3baf1"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:aa92d56fc23b24ec1d28b89ab533d0aca" id="r_aa92d56fc23b24ec1d28b89ab533d0aca"><td class="memItemLeft" align="right" valign="top">float&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structMatchBall.html#aa92d56fc23b24ec1d28b89ab533d0aca">meetSeconds</a> = 0.0F</td></tr>
+<tr class="separator:aa92d56fc23b24ec1d28b89ab533d0aca"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a58781d2e3a1f4ee431fedb370da5fa36" id="r_a58781d2e3a1f4ee431fedb370da5fa36"><td class="memItemLeft" align="right" valign="top"><a class="el" href="structVector2F.html">Vector2F</a>&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structMatchBall.html#a58781d2e3a1f4ee431fedb370da5fa36">meetOut</a> {.x = 1.0F, .y = 0.0F}</td></tr>
+<tr class="separator:a58781d2e3a1f4ee431fedb370da5fa36"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a49b1eefed4e0e909f36aea277962b404" id="r_a49b1eefed4e0e909f36aea277962b404"><td class="memItemLeft" align="right" valign="top">float&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structMatchBall.html#a49b1eefed4e0e909f36aea277962b404">meetPush</a> = 0.0F</td></tr>
+<tr class="separator:a49b1eefed4e0e909f36aea277962b404"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:ac899c577bb6fe70ad255c613e3a9acd7" id="r_ac899c577bb6fe70ad255c613e3a9acd7"><td class="memItemLeft" align="right" valign="top"><a class="el" href="structPitchPoint.html">PitchPoint</a>&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structMatchBall.html#ac899c577bb6fe70ad255c613e3a9acd7">meetLegStart</a> {}</td></tr>
+<tr class="separator:ac899c577bb6fe70ad255c613e3a9acd7"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:adf7321afebf4f200184e2ac4c3d7782c" id="r_adf7321afebf4f200184e2ac4c3d7782c"><td class="memItemLeft" align="right" valign="top">float&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structMatchBall.html#adf7321afebf4f200184e2ac4c3d7782c">touchGap</a> = 0.0F</td></tr>
+<tr class="separator:adf7321afebf4f200184e2ac4c3d7782c"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a5ce33e9574d018573b01f000a6bd2829" id="r_a5ce33e9574d018573b01f000a6bd2829"><td class="memItemLeft" align="right" valign="top">float&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structMatchBall.html#a5ce33e9574d018573b01f000a6bd2829">touchPeakGap</a> = 0.0F</td></tr>
+<tr class="separator:a5ce33e9574d018573b01f000a6bd2829"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:ab88df69c25098c6264eb23a343f702c2" id="r_ab88df69c25098c6264eb23a343f702c2"><td class="memItemLeft" align="right" valign="top"><a class="el" href="structPitchPoint.html">PitchPoint</a>&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structMatchBall.html#ab88df69c25098c6264eb23a343f702c2">sentFrom</a> {}</td></tr>
+<tr class="separator:ab88df69c25098c6264eb23a343f702c2"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:ac01d66936d8ecdfaca3a407cc7b3f734" id="r_ac01d66936d8ecdfaca3a407cc7b3f734"><td class="memItemLeft" align="right" valign="top">float&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structMatchBall.html#ac01d66936d8ecdfaca3a407cc7b3f734">sentHeightMetres</a> = 0.0F</td></tr>
+<tr class="separator:ac01d66936d8ecdfaca3a407cc7b3f734"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a5f427394029e82b556293a9f065e3667" id="r_a5f427394029e82b556293a9f065e3667"><td class="memItemLeft" align="right" valign="top"><a class="el" href="structTouchIntent.html#a67aa7d6cf23ed52ea8e5a3dc1055c7b1">TouchIntent::Kind</a>&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structMatchBall.html#a5f427394029e82b556293a9f065e3667">touchKind</a> = <a class="el" href="structTouchIntent.html#a67aa7d6cf23ed52ea8e5a3dc1055c7b1a8c52684db8f49511e9b44471716bf164">TouchIntent::Kind::SET</a></td></tr>
+<tr class="separator:a5f427394029e82b556293a9f065e3667"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a4a11a1a541fda475dc18062fe304ea22" id="r_a4a11a1a541fda475dc18062fe304ea22"><td class="memItemLeft" align="right" valign="top">float&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structMatchBall.html#a4a11a1a541fda475dc18062fe304ea22">touchContactGap</a> = 0.0F</td></tr>
+<tr class="separator:a4a11a1a541fda475dc18062fe304ea22"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a3fa2f6fef054e9843b4d6a1ad1d5c741" id="r_a3fa2f6fef054e9843b4d6a1ad1d5c741"><td class="memItemLeft" align="right" valign="top">float&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structMatchBall.html#a3fa2f6fef054e9843b4d6a1ad1d5c741">touchContactHeight</a> = 0.0F</td></tr>
+<tr class="separator:a3fa2f6fef054e9843b4d6a1ad1d5c741"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a86089a82afd5bd2ba02409f6fd2c9011" id="r_a86089a82afd5bd2ba02409f6fd2c9011"><td class="memItemLeft" align="right" valign="top">float&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structMatchBall.html#a86089a82afd5bd2ba02409f6fd2c9011">touchAngleError</a> = 0.0F</td></tr>
+<tr class="separator:a86089a82afd5bd2ba02409f6fd2c9011"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:aef71c90b7b6e4fb39cc90b64c1985417" id="r_aef71c90b7b6e4fb39cc90b64c1985417"><td class="memItemLeft" align="right" valign="top">float&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structMatchBall.html#aef71c90b7b6e4fb39cc90b64c1985417">touchWeightError</a> = 0.0F</td></tr>
+<tr class="separator:aef71c90b7b6e4fb39cc90b64c1985417"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a80f54da22bdb5ad91ad5f4f03ec6e3b9" id="r_a80f54da22bdb5ad91ad5f4f03ec6e3b9"><td class="memItemLeft" align="right" valign="top">float&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structMatchBall.html#a80f54da22bdb5ad91ad5f4f03ec6e3b9">touchAngleDifficulty</a> = 0.0F</td></tr>
+<tr class="separator:a80f54da22bdb5ad91ad5f4f03ec6e3b9"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a456333233b64848ed05a794939374542" id="r_a456333233b64848ed05a794939374542"><td class="memItemLeft" align="right" valign="top">float&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structMatchBall.html#a456333233b64848ed05a794939374542">touchWeightDifficulty</a> = 0.0F</td></tr>
+<tr class="separator:a456333233b64848ed05a794939374542"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a49bb0b9f02e15c97ed7f6bedb705085a" id="r_a49bb0b9f02e15c97ed7f6bedb705085a"><td class="memItemLeft" align="right" valign="top">bool&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structMatchBall.html#a49bb0b9f02e15c97ed7f6bedb705085a">touchAngleFailed</a> = false</td></tr>
+<tr class="separator:a49bb0b9f02e15c97ed7f6bedb705085a"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:ab284676861f082051606afa0336b4a9e" id="r_ab284676861f082051606afa0336b4a9e"><td class="memItemLeft" align="right" valign="top">bool&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structMatchBall.html#ab284676861f082051606afa0336b4a9e">touchWeightFailed</a> = false</td></tr>
+<tr class="separator:ab284676861f082051606afa0336b4a9e"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a7fb42a35abc32b7e21e5ab40d7715037" id="r_a7fb42a35abc32b7e21e5ab40d7715037"><td class="memItemLeft" align="right" valign="top">float&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structMatchBall.html#a7fb42a35abc32b7e21e5ab40d7715037">touchTurn</a> = 0.0F</td></tr>
+<tr class="separator:a7fb42a35abc32b7e21e5ab40d7715037"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a0d67056a5b90a487f58c82e1e6617532" id="r_a0d67056a5b90a487f58c82e1e6617532"><td class="memItemLeft" align="right" valign="top">bool&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structMatchBall.html#a0d67056a5b90a487f58c82e1e6617532">touchOutward</a> = false</td></tr>
+<tr class="separator:a0d67056a5b90a487f58c82e1e6617532"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:aafe000a86982d75e4e38e503a8a6e160" id="r_aafe000a86982d75e4e38e503a8a6e160"><td class="memItemLeft" align="right" valign="top">float&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structMatchBall.html#aafe000a86982d75e4e38e503a8a6e160">touchPaceChange</a> = 0.0F</td></tr>
+<tr class="separator:aafe000a86982d75e4e38e503a8a6e160"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:aab3ed68b9567a17d697f1d8677476410" id="r_aab3ed68b9567a17d697f1d8677476410"><td class="memItemLeft" align="right" valign="top">float&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structMatchBall.html#aab3ed68b9567a17d697f1d8677476410">touchLaunchSpeed</a> = 0.0F</td></tr>
+<tr class="separator:aab3ed68b9567a17d697f1d8677476410"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a2e4ac018b47c82f23d47c3c1a2f8781e" id="r_a2e4ac018b47c82f23d47c3c1a2f8781e"><td class="memItemLeft" align="right" valign="top">float&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structMatchBall.html#a2e4ac018b47c82f23d47c3c1a2f8781e">kickerLockout</a> = 0.0F</td></tr>
 <tr class="separator:a2e4ac018b47c82f23d47c3c1a2f8781e"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a30549e6ce89427604dbd51b71b93571b" id="r_a30549e6ce89427604dbd51b71b93571b"><td class="memItemLeft" align="right" valign="top">std::uint32_t&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structMatchBall.html#a30549e6ce89427604dbd51b71b93571b">touchAttempts</a> = 0</td></tr>
 <tr class="separator:a30549e6ce89427604dbd51b71b93571b"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a172584fd8527e622d8d30210aec79ba0" id="r_a172584fd8527e622d8d30210aec79ba0"><td class="memItemLeft" align="right" valign="top">float&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structMatchBall.html#a172584fd8527e622d8d30210aec79ba0">dribbleExposure</a> = 0.0f</td></tr>
+<tr class="memitem:a8cc9978b1b9fa90e94c486ac8a6a8a3a" id="r_a8cc9978b1b9fa90e94c486ac8a6a8a3a"><td class="memItemLeft" align="right" valign="top">std::uint32_t&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structMatchBall.html#a8cc9978b1b9fa90e94c486ac8a6a8a3a">commitMisses</a> = 0</td></tr>
+<tr class="separator:a8cc9978b1b9fa90e94c486ac8a6a8a3a"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a2b786d64cdd83e3a17111ddce5f3f147" id="r_a2b786d64cdd83e3a17111ddce5f3f147"><td class="memItemLeft" align="right" valign="top">std::uint32_t&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structMatchBall.html#a2b786d64cdd83e3a17111ddce5f3f147">touchWaiting</a> = 0</td></tr>
+<tr class="separator:a2b786d64cdd83e3a17111ddce5f3f147"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a172584fd8527e622d8d30210aec79ba0" id="r_a172584fd8527e622d8d30210aec79ba0"><td class="memItemLeft" align="right" valign="top">float&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structMatchBall.html#a172584fd8527e622d8d30210aec79ba0">dribbleExposure</a> = 0.0F</td></tr>
 <tr class="separator:a172584fd8527e622d8d30210aec79ba0"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a189e3e9be85215ba82a43b166e2c4c2b" id="r_a189e3e9be85215ba82a43b166e2c4c2b"><td class="memItemLeft" align="right" valign="top">float&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structMatchBall.html#a189e3e9be85215ba82a43b166e2c4c2b">dribbleTouchLength</a> = 0.0f</td></tr>
+<tr class="memitem:a189e3e9be85215ba82a43b166e2c4c2b" id="r_a189e3e9be85215ba82a43b166e2c4c2b"><td class="memItemLeft" align="right" valign="top">float&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structMatchBall.html#a189e3e9be85215ba82a43b166e2c4c2b">dribbleTouchLength</a> = 0.0F</td></tr>
 <tr class="separator:a189e3e9be85215ba82a43b166e2c4c2b"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a80bf27538ad42a90b28cf99b9b16303d" id="r_a80bf27538ad42a90b28cf99b9b16303d"><td class="memItemLeft" align="right" valign="top"><a class="el" href="structVector2F.html">Vector2F</a>&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structMatchBall.html#a80bf27538ad42a90b28cf99b9b16303d">dribbleDirection</a> {1.0f, 0.0f}</td></tr>
+<tr class="memitem:a80bf27538ad42a90b28cf99b9b16303d" id="r_a80bf27538ad42a90b28cf99b9b16303d"><td class="memItemLeft" align="right" valign="top"><a class="el" href="structVector2F.html">Vector2F</a>&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structMatchBall.html#a80bf27538ad42a90b28cf99b9b16303d">dribbleDirection</a> {.x = 1.0F, .y = 0.0F}</td></tr>
 <tr class="separator:a80bf27538ad42a90b28cf99b9b16303d"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a7a6c269f04594121dbab2fed479d49f5" id="r_a7a6c269f04594121dbab2fed479d49f5"><td class="memItemLeft" align="right" valign="top">float&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structMatchBall.html#a7a6c269f04594121dbab2fed479d49f5">touchTimer</a> = 0.0f</td></tr>
+<tr class="memitem:a7a6c269f04594121dbab2fed479d49f5" id="r_a7a6c269f04594121dbab2fed479d49f5"><td class="memItemLeft" align="right" valign="top">float&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structMatchBall.html#a7a6c269f04594121dbab2fed479d49f5">touchTimer</a> = 0.0F</td></tr>
 <tr class="separator:a7a6c269f04594121dbab2fed479d49f5"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a9c9e4023a1e8e7c9556684a4da80ce76" id="r_a9c9e4023a1e8e7c9556684a4da80ce76"><td class="memItemLeft" align="right" valign="top">bool&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structMatchBall.html#a9c9e4023a1e8e7c9556684a4da80ce76">isPass</a> = false</td></tr>
-<tr class="separator:a9c9e4023a1e8e7c9556684a4da80ce76"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a0440e62b194b3d25a21349bbef778fbf" id="r_a0440e62b194b3d25a21349bbef778fbf"><td class="memItemLeft" align="right" valign="top">bool&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structMatchBall.html#a0440e62b194b3d25a21349bbef778fbf">passByHome</a> = false</td></tr>
-<tr class="separator:a0440e62b194b3d25a21349bbef778fbf"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a315fd366ab05ab1567b216b606a024e0" id="r_a315fd366ab05ab1567b216b606a024e0"><td class="memItemLeft" align="right" valign="top">bool&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structMatchBall.html#a315fd366ab05ab1567b216b606a024e0">passWasOffside</a> = false</td></tr>
-<tr class="separator:a315fd366ab05ab1567b216b606a024e0"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a8d395dfe545e87d6a7977a52493b5e1f" id="r_a8d395dfe545e87d6a7977a52493b5e1f"><td class="memItemLeft" align="right" valign="top">bool&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structMatchBall.html#a8d395dfe545e87d6a7977a52493b5e1f">isShot</a> = false</td></tr>
-<tr class="separator:a8d395dfe545e87d6a7977a52493b5e1f"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a2dd67d72d12dc8bdbd7da07e2e1c18e1" id="r_a2dd67d72d12dc8bdbd7da07e2e1c18e1"><td class="memItemLeft" align="right" valign="top">bool&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structMatchBall.html#a2dd67d72d12dc8bdbd7da07e2e1c18e1">shotByHome</a> = false</td></tr>
-<tr class="separator:a2dd67d72d12dc8bdbd7da07e2e1c18e1"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a79f8a010b96bcf2220674768576d374b" id="r_a79f8a010b96bcf2220674768576d374b"><td class="memItemLeft" align="right" valign="top">bool&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structMatchBall.html#a79f8a010b96bcf2220674768576d374b">shotOnTarget</a> = false</td></tr>
-<tr class="separator:a79f8a010b96bcf2220674768576d374b"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a77005f056e825bc04d52f3859130eefd" id="r_a77005f056e825bc04d52f3859130eefd"><td class="memItemLeft" align="right" valign="top">float&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structMatchBall.html#a77005f056e825bc04d52f3859130eefd">shotXG</a> = 0.0f</td></tr>
-<tr class="separator:a77005f056e825bc04d52f3859130eefd"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:ac767b814b6d07297717e1e8603f81dd6" id="r_ac767b814b6d07297717e1e8603f81dd6"><td class="memItemLeft" align="right" valign="top">float&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structMatchBall.html#ac767b814b6d07297717e1e8603f81dd6">shotTargetY</a> = <a class="el" href="structMatchTuning_1_1Pitch.html#a92587d6c3e1234472f369e2041eee489">MatchTuning::Pitch::CENTRE</a></td></tr>
-<tr class="separator:ac767b814b6d07297717e1e8603f81dd6"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a13096b6d4b5386c3b675e75652b258e2" id="r_a13096b6d4b5386c3b675e75652b258e2"><td class="memItemLeft" align="right" valign="top">float&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structMatchBall.html#a13096b6d4b5386c3b675e75652b258e2">shotTargetHeightMetres</a> = 0.0f</td></tr>
-<tr class="separator:a13096b6d4b5386c3b675e75652b258e2"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a8778a41710736308c3e5b9f6346e70bb" id="r_a8778a41710736308c3e5b9f6346e70bb"><td class="memItemLeft" align="right" valign="top">float&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structMatchBall.html#a8778a41710736308c3e5b9f6346e70bb">shotElapsedSeconds</a> = 0.0f</td></tr>
-<tr class="separator:a8778a41710736308c3e5b9f6346e70bb"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a20c3ad9d07b03e4f9e45e2eeb9899b7d" id="r_a20c3ad9d07b03e4f9e45e2eeb9899b7d"><td class="memItemLeft" align="right" valign="top">bool&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structMatchBall.html#a20c3ad9d07b03e4f9e45e2eeb9899b7d">shotIsHeader</a> = false</td></tr>
-<tr class="separator:a20c3ad9d07b03e4f9e45e2eeb9899b7d"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a08556856f26e77a6896f195241844d5b" id="r_a08556856f26e77a6896f195241844d5b"><td class="memItemLeft" align="right" valign="top">bool&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structMatchBall.html#a08556856f26e77a6896f195241844d5b">shotIsPenalty</a> = false</td></tr>
-<tr class="separator:a08556856f26e77a6896f195241844d5b"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a2c2b5b3f95b90d6a1e71cb4f26137e80" id="r_a2c2b5b3f95b90d6a1e71cb4f26137e80"><td class="memItemLeft" align="right" valign="top">bool&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structMatchBall.html#a2c2b5b3f95b90d6a1e71cb4f26137e80">shotFromSetPiece</a> = false</td></tr>
-<tr class="separator:a2c2b5b3f95b90d6a1e71cb4f26137e80"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:ac302c2d6e6eb72ad2fa7c40992956018" id="r_ac302c2d6e6eb72ad2fa7c40992956018"><td class="memItemLeft" align="right" valign="top">bool&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structMatchBall.html#ac302c2d6e6eb72ad2fa7c40992956018">shotSaveResolved</a> = false</td></tr>
-<tr class="separator:ac302c2d6e6eb72ad2fa7c40992956018"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a32143a6743063255cefb6206929ffbd0" id="r_a32143a6743063255cefb6206929ffbd0"><td class="memItemLeft" align="right" valign="top">bool&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structMatchBall.html#a32143a6743063255cefb6206929ffbd0">isAerialDelivery</a> = false</td></tr>
-<tr class="separator:a32143a6743063255cefb6206929ffbd0"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a3f92712a8ae19d7b4faea6be00c8a2dd" id="r_a3f92712a8ae19d7b4faea6be00c8a2dd"><td class="memItemLeft" align="right" valign="top">bool&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structMatchBall.html#a3f92712a8ae19d7b4faea6be00c8a2dd">fromThrowIn</a> = false</td></tr>
-<tr class="separator:a3f92712a8ae19d7b4faea6be00c8a2dd"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a0ed58d49e9b55c214b3482a5861add46" id="r_a0ed58d49e9b55c214b3482a5861add46"><td class="memItemLeft" align="right" valign="top">std::int8_t&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structMatchBall.html#a0ed58d49e9b55c214b3482a5861add46">inGoalMouth</a> = 0</td></tr>
+<tr class="separator:a0ed58d49e9b55c214b3482a5861add46"><td class="memSeparator" colspan="2">&#160;</td></tr>
+</table><table class="memberdecls">
+<tr class="heading"><td colspan="2"><h2 class="groupheader"><a id="pri-attribs" name="pri-attribs"></a>
+Private Attributes</h2></td></tr>
+<tr class="memitem:a772e46e7eea428ea3615911a30216e01" id="r_a772e46e7eea428ea3615911a30216e01"><td class="memItemLeft" align="right" valign="top"><a class="el" href="structMatchPossessionState.html">MatchPossessionState</a>&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structMatchBall.html#a772e46e7eea428ea3615911a30216e01">possession</a></td></tr>
+<tr class="separator:a772e46e7eea428ea3615911a30216e01"><td class="memSeparator" colspan="2">&#160;</td></tr>
+</table><table class="memberdecls">
+<tr class="heading"><td colspan="2"><h2 class="groupheader"><a id="friends" name="friends"></a>
+Friends</h2></td></tr>
+<tr class="memitem:ac270020bb8f2182653486c4ea931bc67" id="r_ac270020bb8f2182653486c4ea931bc67"><td class="memItemLeft" align="right" valign="top">class&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structMatchBall.html#ac270020bb8f2182653486c4ea931bc67">MatchEngine</a></td></tr>
+<tr class="separator:ac270020bb8f2182653486c4ea931bc67"><td class="memSeparator" colspan="2">&#160;</td></tr>
 </table>
-<a name="details" id="details"></a><h2 class="groupheader">Detailed Description</h2>
-<div class="textblock"><p>The ball. <code>position</code> is normalised; <code>z</code> is the height in length units (z * <a class="el" href="structMatchTuning_1_1Units.html#a62c78cfcbf9a4cfc6a32308b2f08d6e0">MatchTuning::Units::BALL_Z_METRES</a> = metres) for renderers. Velocities are in m/s and <code>curve</code> is the heading rotation rate in rad/s. </p>
-</div><h2 class="groupheader">Member Data Documentation</h2>
-<a id="a600da3b00424a82f2c03bb1e03020105" name="a600da3b00424a82f2c03bb1e03020105"></a>
-<h2 class="memtitle"><span class="permalink"><a href="#a600da3b00424a82f2c03bb1e03020105">&#9670;&#160;</a></span>curve</h2>
+<h2 class="groupheader">Member Function Documentation</h2>
+<a id="acaeca01dddaed484b89799e11cb85009" name="acaeca01dddaed484b89799e11cb85009"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#acaeca01dddaed484b89799e11cb85009">&#9670;&#160;</a></span>possessionState()</h2>
+
+<div class="memitem">
+<div class="memproto">
+<table class="mlabels">
+  <tr>
+  <td class="mlabels-left">
+      <table class="memname">
+        <tr>
+          <td class="memname">const <a class="el" href="structMatchPossessionState.html">MatchPossessionState</a> &amp; MatchBall::possessionState </td>
+          <td>(</td>
+          <td class="paramname"></td><td>)</td>
+          <td> const</td>
+        </tr>
+      </table>
+  </td>
+  <td class="mlabels-right">
+<span class="mlabels"><span class="mlabel">inline</span></span>  </td>
+  </tr>
+</table>
+</div><div class="memdoc">
+<p>Borrowed read-only compatibility view. No second writable projection. </p>
+
+</div>
+</div>
+<h2 class="groupheader">Friends And Related Symbol Documentation</h2>
+<a id="ac270020bb8f2182653486c4ea931bc67" name="ac270020bb8f2182653486c4ea931bc67"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#ac270020bb8f2182653486c4ea931bc67">&#9670;&#160;</a></span>MatchEngine</h2>
+
+<div class="memitem">
+<div class="memproto">
+<table class="mlabels">
+  <tr>
+  <td class="mlabels-left">
+      <table class="memname">
+        <tr>
+          <td class="memname">friend class <a class="el" href="classMatchEngine.html">MatchEngine</a></td>
+        </tr>
+      </table>
+  </td>
+  <td class="mlabels-right">
+<span class="mlabels"><span class="mlabel">friend</span></span>  </td>
+  </tr>
+</table>
+</div><div class="memdoc">
+
+</div>
+</div>
+<h2 class="groupheader">Member Data Documentation</h2>
+<a id="a8cc9978b1b9fa90e94c486ac8a6a8a3a" name="a8cc9978b1b9fa90e94c486ac8a6a8a3a"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a8cc9978b1b9fa90e94c486ac8a6a8a3a">&#9670;&#160;</a></span>commitMisses</h2>
 
 <div class="memitem">
 <div class="memproto">
       <table class="memname">
         <tr>
-          <td class="memname">float MatchBall::curve = 0.0f</td>
+          <td class="memname">std::uint32_t MatchBall::commitMisses = 0</td>
         </tr>
       </table>
 </div><div class="memdoc">
@@ -191,7 +283,7 @@ Public Attributes</h2></td></tr>
 <div class="memproto">
       <table class="memname">
         <tr>
-          <td class="memname"><a class="el" href="structVector2F.html">Vector2F</a> MatchBall::dribbleDirection {1.0f, 0.0f}</td>
+          <td class="memname"><a class="el" href="structVector2F.html">Vector2F</a> MatchBall::dribbleDirection {.x = 1.0F, .y = 0.0F}</td>
         </tr>
       </table>
 </div><div class="memdoc">
@@ -205,11 +297,30 @@ Public Attributes</h2></td></tr>
 <div class="memproto">
       <table class="memname">
         <tr>
-          <td class="memname">float MatchBall::dribbleExposure = 0.0f</td>
+          <td class="memname">float MatchBall::dribbleExposure = 0.0F</td>
         </tr>
       </table>
 </div><div class="memdoc">
 <p>While dribbled: metres ahead of the carrier's feet and the metric direction of the last touch. </p>
+
+</div>
+</div>
+<a id="a3abf0cdba83546f57877ad425dde5a4f" name="a3abf0cdba83546f57877ad425dde5a4f"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a3abf0cdba83546f57877ad425dde5a4f">&#9670;&#160;</a></span>dribbleGoal</h2>
+
+<div class="memitem">
+<div class="memproto">
+      <table class="memname">
+        <tr>
+          <td class="memname"><a class="el" href="structPitchPoint.html">PitchPoint</a> MatchBall::dribbleGoal</td>
+        </tr>
+      </table>
+</div><div class="memdoc">
+<b>Initial value:</b><div class="fragment"><div class="line">{<a class="code hl_variable" href="structMatchTuning_1_1Pitch.html#ac33a1731f125dcadbb120ee4cb074945">MatchTuning::Pitch::MATCH_CENTRE_X_METRES</a>,</div>
+<div class="line">                         <a class="code hl_variable" href="structMatchTuning_1_1Pitch.html#a64cd016fda31b3c9a98721328fe7ab9e">MatchTuning::Pitch::MATCH_CENTRE_Y_METRES</a>}</div>
+<div class="ttc" id="astructMatchTuning_1_1Pitch_html_a64cd016fda31b3c9a98721328fe7ab9e"><div class="ttname"><a href="structMatchTuning_1_1Pitch.html#a64cd016fda31b3c9a98721328fe7ab9e">MatchTuning::Pitch::MATCH_CENTRE_Y_METRES</a></div><div class="ttdeci">static constexpr float MATCH_CENTRE_Y_METRES</div><div class="ttdef"><b>Definition</b> match_tuning.h:372</div></div>
+<div class="ttc" id="astructMatchTuning_1_1Pitch_html_ac33a1731f125dcadbb120ee4cb074945"><div class="ttname"><a href="structMatchTuning_1_1Pitch.html#ac33a1731f125dcadbb120ee4cb074945">MatchTuning::Pitch::MATCH_CENTRE_X_METRES</a></div><div class="ttdeci">static constexpr float MATCH_CENTRE_X_METRES</div><div class="ttdef"><b>Definition</b> match_tuning.h:371</div></div>
+</div><!-- fragment --><p>While dribbling: where he means to carry it (his plan's target, kept from the last plan refresh, as the chase overrides his movement), and the time until he may touch it again (s). </p>
 
 </div>
 </div>
@@ -220,97 +331,25 @@ Public Attributes</h2></td></tr>
 <div class="memproto">
       <table class="memname">
         <tr>
-          <td class="memname">float MatchBall::dribbleTouchLength = 0.0f</td>
+          <td class="memname">float MatchBall::dribbleTouchLength = 0.0F</td>
         </tr>
       </table>
 </div><div class="memdoc">
 
 </div>
 </div>
-<a id="a3f92712a8ae19d7b4faea6be00c8a2dd" name="a3f92712a8ae19d7b4faea6be00c8a2dd"></a>
-<h2 class="memtitle"><span class="permalink"><a href="#a3f92712a8ae19d7b4faea6be00c8a2dd">&#9670;&#160;</a></span>fromThrowIn</h2>
+<a id="a0ed58d49e9b55c214b3482a5861add46" name="a0ed58d49e9b55c214b3482a5861add46"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a0ed58d49e9b55c214b3482a5861add46">&#9670;&#160;</a></span>inGoalMouth</h2>
 
 <div class="memitem">
 <div class="memproto">
       <table class="memname">
         <tr>
-          <td class="memname">bool MatchBall::fromThrowIn = false</td>
+          <td class="memname">std::int8_t MatchBall::inGoalMouth = 0</td>
         </tr>
       </table>
 </div><div class="memdoc">
-<p>Thrown in and untouched since: it cannot score directly. </p>
-
-</div>
-</div>
-<a id="aa562a5413c421ae67974f77fdbbb26ff" name="aa562a5413c421ae67974f77fdbbb26ff"></a>
-<h2 class="memtitle"><span class="permalink"><a href="#aa562a5413c421ae67974f77fdbbb26ff">&#9670;&#160;</a></span>intendedReceiver</h2>
-
-<div class="memitem">
-<div class="memproto">
-      <table class="memname">
-        <tr>
-          <td class="memname">const <a class="el" href="classPlayer.html">Player</a>* MatchBall::intendedReceiver = nullptr</td>
-        </tr>
-      </table>
-</div><div class="memdoc">
-
-</div>
-</div>
-<a id="a32143a6743063255cefb6206929ffbd0" name="a32143a6743063255cefb6206929ffbd0"></a>
-<h2 class="memtitle"><span class="permalink"><a href="#a32143a6743063255cefb6206929ffbd0">&#9670;&#160;</a></span>isAerialDelivery</h2>
-
-<div class="memitem">
-<div class="memproto">
-      <table class="memname">
-        <tr>
-          <td class="memname">bool MatchBall::isAerialDelivery = false</td>
-        </tr>
-      </table>
-</div><div class="memdoc">
-<p>Lofted delivery (cross, corner, long ball) that can be contested. </p>
-
-</div>
-</div>
-<a id="a9c9e4023a1e8e7c9556684a4da80ce76" name="a9c9e4023a1e8e7c9556684a4da80ce76"></a>
-<h2 class="memtitle"><span class="permalink"><a href="#a9c9e4023a1e8e7c9556684a4da80ce76">&#9670;&#160;</a></span>isPass</h2>
-
-<div class="memitem">
-<div class="memproto">
-      <table class="memname">
-        <tr>
-          <td class="memname">bool MatchBall::isPass = false</td>
-        </tr>
-      </table>
-</div><div class="memdoc">
-
-</div>
-</div>
-<a id="a8d395dfe545e87d6a7977a52493b5e1f" name="a8d395dfe545e87d6a7977a52493b5e1f"></a>
-<h2 class="memtitle"><span class="permalink"><a href="#a8d395dfe545e87d6a7977a52493b5e1f">&#9670;&#160;</a></span>isShot</h2>
-
-<div class="memitem">
-<div class="memproto">
-      <table class="memname">
-        <tr>
-          <td class="memname">bool MatchBall::isShot = false</td>
-        </tr>
-      </table>
-</div><div class="memdoc">
-
-</div>
-</div>
-<a id="a22b2c1449d70719e144e20c25950b2b7" name="a22b2c1449d70719e144e20c25950b2b7"></a>
-<h2 class="memtitle"><span class="permalink"><a href="#a22b2c1449d70719e144e20c25950b2b7">&#9670;&#160;</a></span>kicker</h2>
-
-<div class="memitem">
-<div class="memproto">
-      <table class="memname">
-        <tr>
-          <td class="memname">const <a class="el" href="classPlayer.html">Player</a>* MatchBall::kicker = nullptr</td>
-        </tr>
-      </table>
-</div><div class="memdoc">
-<p>The player who last kicked or deflected the ball. </p>
+<p>Its centre went over a goal line inside the frame (1 the right goal, -1 the left) and has not come back out: a goal once the whole ball is over (Binturong out of play). </p>
 
 </div>
 </div>
@@ -321,7 +360,7 @@ Public Attributes</h2></td></tr>
 <div class="memproto">
       <table class="memname">
         <tr>
-          <td class="memname">float MatchBall::kickerLockout = 0.0f</td>
+          <td class="memname">float MatchBall::kickerLockout = 0.0F</td>
         </tr>
       </table>
 </div><div class="memdoc">
@@ -329,212 +368,297 @@ Public Attributes</h2></td></tr>
 
 </div>
 </div>
-<a id="aaec17c4c7e38c74702fe8592a06ea7b8" name="aaec17c4c7e38c74702fe8592a06ea7b8"></a>
-<h2 class="memtitle"><span class="permalink"><a href="#aaec17c4c7e38c74702fe8592a06ea7b8">&#9670;&#160;</a></span>lastPossessor</h2>
+<a id="aa6c10d2dd83aed4d32b64719b5931a28" name="aa6c10d2dd83aed4d32b64719b5931a28"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#aa6c10d2dd83aed4d32b64719b5931a28">&#9670;&#160;</a></span>knockedOn</h2>
 
 <div class="memitem">
 <div class="memproto">
       <table class="memname">
         <tr>
-          <td class="memname">const <a class="el" href="classPlayer.html">Player</a>* MatchBall::lastPossessor = nullptr</td>
+          <td class="memname">bool MatchBall::knockedOn = false</td>
+        </tr>
+      </table>
+</div><div class="memdoc">
+<p>His last touch knocked it on into space: he sprints after it at his full pace, until his next touch. </p>
+
+</div>
+</div>
+<a id="a523e930a3ba2846f270d1d8e7a1bcc3d" name="a523e930a3ba2846f270d1d8e7a1bcc3d"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a523e930a3ba2846f270d1d8e7a1bcc3d">&#9670;&#160;</a></span>meetFor</h2>
+
+<div class="memitem">
+<div class="memproto">
+      <table class="memname">
+        <tr>
+          <td class="memname">const <a class="el" href="classPlayer.html">Player</a>* MatchBall::meetFor = nullptr</td>
+        </tr>
+      </table>
+</div><div class="memdoc">
+<p>His next meet with his ball (dribble meet plan, Binturong body), replanned every step: whose plan it is (none: he chases it), where on its roll he plays it and how long until it is there (s), where that touch sends it (metric unit) and how far (m), where his run to it began (his last touch), and the pace he carries it at (m/s). </p>
+
+</div>
+</div>
+<a id="ac899c577bb6fe70ad255c613e3a9acd7" name="ac899c577bb6fe70ad255c613e3a9acd7"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#ac899c577bb6fe70ad255c613e3a9acd7">&#9670;&#160;</a></span>meetLegStart</h2>
+
+<div class="memitem">
+<div class="memproto">
+      <table class="memname">
+        <tr>
+          <td class="memname"><a class="el" href="structPitchPoint.html">PitchPoint</a> MatchBall::meetLegStart {}</td>
         </tr>
       </table>
 </div><div class="memdoc">
 
 </div>
 </div>
-<a id="a0440e62b194b3d25a21349bbef778fbf" name="a0440e62b194b3d25a21349bbef778fbf"></a>
-<h2 class="memtitle"><span class="permalink"><a href="#a0440e62b194b3d25a21349bbef778fbf">&#9670;&#160;</a></span>passByHome</h2>
+<a id="a58781d2e3a1f4ee431fedb370da5fa36" name="a58781d2e3a1f4ee431fedb370da5fa36"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a58781d2e3a1f4ee431fedb370da5fa36">&#9670;&#160;</a></span>meetOut</h2>
 
 <div class="memitem">
 <div class="memproto">
       <table class="memname">
         <tr>
-          <td class="memname">bool MatchBall::passByHome = false</td>
+          <td class="memname"><a class="el" href="structVector2F.html">Vector2F</a> MatchBall::meetOut {.x = 1.0F, .y = 0.0F}</td>
         </tr>
       </table>
 </div><div class="memdoc">
 
 </div>
 </div>
-<a id="a315fd366ab05ab1567b216b606a024e0" name="a315fd366ab05ab1567b216b606a024e0"></a>
-<h2 class="memtitle"><span class="permalink"><a href="#a315fd366ab05ab1567b216b606a024e0">&#9670;&#160;</a></span>passWasOffside</h2>
+<a id="ad195fc0732b697d65a11d8968d2b2001" name="ad195fc0732b697d65a11d8968d2b2001"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#ad195fc0732b697d65a11d8968d2b2001">&#9670;&#160;</a></span>meetPace</h2>
 
 <div class="memitem">
 <div class="memproto">
       <table class="memname">
         <tr>
-          <td class="memname">bool MatchBall::passWasOffside = false</td>
+          <td class="memname">float MatchBall::meetPace = 0.0F</td>
         </tr>
       </table>
 </div><div class="memdoc">
 
 </div>
 </div>
-<a id="a31fd99b365b115e1ac858b49f002c050" name="a31fd99b365b115e1ac858b49f002c050"></a>
-<h2 class="memtitle"><span class="permalink"><a href="#a31fd99b365b115e1ac858b49f002c050">&#9670;&#160;</a></span>position</h2>
+<a id="a1834405ac29d0672775fa83998f3baf1" name="a1834405ac29d0672775fa83998f3baf1"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a1834405ac29d0672775fa83998f3baf1">&#9670;&#160;</a></span>meetPoint</h2>
 
 <div class="memitem">
 <div class="memproto">
       <table class="memname">
         <tr>
-          <td class="memname"><a class="el" href="structVector2F.html">Vector2F</a> MatchBall::position {<a class="el" href="structMatchTuning_1_1Pitch.html#a92587d6c3e1234472f369e2041eee489">MatchTuning::Pitch::CENTRE</a>, <a class="el" href="structMatchTuning_1_1Pitch.html#a92587d6c3e1234472f369e2041eee489">MatchTuning::Pitch::CENTRE</a>}</td>
+          <td class="memname"><a class="el" href="structPitchPoint.html">PitchPoint</a> MatchBall::meetPoint {}</td>
         </tr>
       </table>
 </div><div class="memdoc">
 
 </div>
 </div>
-<a id="ac7f5131fd332e2b02deef21405f4548d" name="ac7f5131fd332e2b02deef21405f4548d"></a>
-<h2 class="memtitle"><span class="permalink"><a href="#ac7f5131fd332e2b02deef21405f4548d">&#9670;&#160;</a></span>possessedBy</h2>
+<a id="a49b1eefed4e0e909f36aea277962b404" name="a49b1eefed4e0e909f36aea277962b404"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a49b1eefed4e0e909f36aea277962b404">&#9670;&#160;</a></span>meetPush</h2>
 
 <div class="memitem">
 <div class="memproto">
       <table class="memname">
         <tr>
-          <td class="memname">const <a class="el" href="classPlayer.html">Player</a>* MatchBall::possessedBy = nullptr</td>
+          <td class="memname">float MatchBall::meetPush = 0.0F</td>
         </tr>
       </table>
 </div><div class="memdoc">
 
 </div>
 </div>
-<a id="a2dd67d72d12dc8bdbd7da07e2e1c18e1" name="a2dd67d72d12dc8bdbd7da07e2e1c18e1"></a>
-<h2 class="memtitle"><span class="permalink"><a href="#a2dd67d72d12dc8bdbd7da07e2e1c18e1">&#9670;&#160;</a></span>shotByHome</h2>
+<a id="af8df0f2c05bd626f52c8f30396fc168c" name="af8df0f2c05bd626f52c8f30396fc168c"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#af8df0f2c05bd626f52c8f30396fc168c">&#9670;&#160;</a></span>meetRecovering</h2>
 
 <div class="memitem">
 <div class="memproto">
       <table class="memname">
         <tr>
-          <td class="memname">bool MatchBall::shotByHome = false</td>
+          <td class="memname">bool MatchBall::meetRecovering = false</td>
+        </tr>
+      </table>
+</div><div class="memdoc">
+<p>His last touch went wrong (angle or weight): he runs straight to it to collect it, no corner, until his next touch. </p>
+
+</div>
+</div>
+<a id="aa92d56fc23b24ec1d28b89ab533d0aca" name="aa92d56fc23b24ec1d28b89ab533d0aca"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#aa92d56fc23b24ec1d28b89ab533d0aca">&#9670;&#160;</a></span>meetSeconds</h2>
+
+<div class="memitem">
+<div class="memproto">
+      <table class="memname">
+        <tr>
+          <td class="memname">float MatchBall::meetSeconds = 0.0F</td>
         </tr>
       </table>
 </div><div class="memdoc">
 
 </div>
 </div>
-<a id="a8778a41710736308c3e5b9f6346e70bb" name="a8778a41710736308c3e5b9f6346e70bb"></a>
-<h2 class="memtitle"><span class="permalink"><a href="#a8778a41710736308c3e5b9f6346e70bb">&#9670;&#160;</a></span>shotElapsedSeconds</h2>
+<a id="a00a8e174173fc6e0f05f7ca5679286b4" name="a00a8e174173fc6e0f05f7ca5679286b4"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a00a8e174173fc6e0f05f7ca5679286b4">&#9670;&#160;</a></span>ownTouchCooldown</h2>
 
 <div class="memitem">
 <div class="memproto">
       <table class="memname">
         <tr>
-          <td class="memname">float MatchBall::shotElapsedSeconds = 0.0f</td>
+          <td class="memname">float MatchBall::ownTouchCooldown = 0.0F</td>
         </tr>
       </table>
 </div><div class="memdoc">
 
 </div>
 </div>
-<a id="a2c2b5b3f95b90d6a1e71cb4f26137e80" name="a2c2b5b3f95b90d6a1e71cb4f26137e80"></a>
-<h2 class="memtitle"><span class="permalink"><a href="#a2c2b5b3f95b90d6a1e71cb4f26137e80">&#9670;&#160;</a></span>shotFromSetPiece</h2>
+<a id="a0bb17c0976b04f54473c4d701e6d2e7a" name="a0bb17c0976b04f54473c4d701e6d2e7a"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a0bb17c0976b04f54473c4d701e6d2e7a">&#9670;&#160;</a></span>plannedTouchIn</h2>
 
 <div class="memitem">
 <div class="memproto">
       <table class="memname">
         <tr>
-          <td class="memname">bool MatchBall::shotFromSetPiece = false</td>
+          <td class="memname">float MatchBall::plannedTouchIn = 0.0F</td>
+        </tr>
+      </table>
+</div><div class="memdoc">
+<p>Until he means to play it again (s, counting down; dribble meet plan 3d), and the way his last touch sent it (metric unit): before then he plays it only if it needs it. </p>
+
+</div>
+</div>
+<a id="a8ef019eb0c4ac4d6b53882138b78541b" name="a8ef019eb0c4ac4d6b53882138b78541b"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a8ef019eb0c4ac4d6b53882138b78541b">&#9670;&#160;</a></span>position</h2>
+
+<div class="memitem">
+<div class="memproto">
+      <table class="memname">
+        <tr>
+          <td class="memname"><a class="el" href="structPitchPoint.html">PitchPoint</a> MatchBall::position</td>
+        </tr>
+      </table>
+</div><div class="memdoc">
+<b>Initial value:</b><div class="fragment"><div class="line">{<a class="code hl_variable" href="structMatchTuning_1_1Pitch.html#ac33a1731f125dcadbb120ee4cb074945">MatchTuning::Pitch::MATCH_CENTRE_X_METRES</a>,</div>
+<div class="line">                      <a class="code hl_variable" href="structMatchTuning_1_1Pitch.html#a64cd016fda31b3c9a98721328fe7ab9e">MatchTuning::Pitch::MATCH_CENTRE_Y_METRES</a>}</div>
+</div><!-- fragment -->
+</div>
+</div>
+<a id="a772e46e7eea428ea3615911a30216e01" name="a772e46e7eea428ea3615911a30216e01"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a772e46e7eea428ea3615911a30216e01">&#9670;&#160;</a></span>possession</h2>
+
+<div class="memitem">
+<div class="memproto">
+<table class="mlabels">
+  <tr>
+  <td class="mlabels-left">
+      <table class="memname">
+        <tr>
+          <td class="memname"><a class="el" href="structMatchPossessionState.html">MatchPossessionState</a> MatchBall::possession</td>
+        </tr>
+      </table>
+  </td>
+  <td class="mlabels-right">
+<span class="mlabels"><span class="mlabel">private</span></span>  </td>
+  </tr>
+</table>
+</div><div class="memdoc">
+
+</div>
+</div>
+<a id="a34991c36a8ae57ec668b323d29a5a3a3" name="a34991c36a8ae57ec668b323d29a5a3a3"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a34991c36a8ae57ec668b323d29a5a3a3">&#9670;&#160;</a></span>pushDirection</h2>
+
+<div class="memitem">
+<div class="memproto">
+      <table class="memname">
+        <tr>
+          <td class="memname"><a class="el" href="structVector2F.html">Vector2F</a> MatchBall::pushDirection {.x = 1.0F, .y = 0.0F}</td>
         </tr>
       </table>
 </div><div class="memdoc">
 
 </div>
 </div>
-<a id="a20c3ad9d07b03e4f9e45e2eeb9899b7d" name="a20c3ad9d07b03e4f9e45e2eeb9899b7d"></a>
-<h2 class="memtitle"><span class="permalink"><a href="#a20c3ad9d07b03e4f9e45e2eeb9899b7d">&#9670;&#160;</a></span>shotIsHeader</h2>
+<a id="ab88df69c25098c6264eb23a343f702c2" name="ab88df69c25098c6264eb23a343f702c2"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#ab88df69c25098c6264eb23a343f702c2">&#9670;&#160;</a></span>sentFrom</h2>
 
 <div class="memitem">
 <div class="memproto">
       <table class="memname">
         <tr>
-          <td class="memname">bool MatchBall::shotIsHeader = false</td>
+          <td class="memname"><a class="el" href="structPitchPoint.html">PitchPoint</a> MatchBall::sentFrom {}</td>
+        </tr>
+      </table>
+</div><div class="memdoc">
+<p>Where the last contact sent it off from (metres; for drills and reports, read by nothing in play). </p>
+
+</div>
+</div>
+<a id="ac01d66936d8ecdfaca3a407cc7b3f734" name="ac01d66936d8ecdfaca3a407cc7b3f734"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#ac01d66936d8ecdfaca3a407cc7b3f734">&#9670;&#160;</a></span>sentHeightMetres</h2>
+
+<div class="memitem">
+<div class="memproto">
+      <table class="memname">
+        <tr>
+          <td class="memname">float MatchBall::sentHeightMetres = 0.0F</td>
+        </tr>
+      </table>
+</div><div class="memdoc">
+<p>How high it was there (m; the same: for drills and reports). </p>
+
+</div>
+</div>
+<a id="a457850b61989e09ebcfbcdaea38cd0fd" name="a457850b61989e09ebcfbcdaea38cd0fd"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a457850b61989e09ebcfbcdaea38cd0fd">&#9670;&#160;</a></span>spin</h2>
+
+<div class="memitem">
+<div class="memproto">
+      <table class="memname">
+        <tr>
+          <td class="memname"><a class="el" href="structBallSpin.html">BallSpin</a> MatchBall::spin {}</td>
         </tr>
       </table>
 </div><div class="memdoc">
 
 </div>
 </div>
-<a id="a08556856f26e77a6896f195241844d5b" name="a08556856f26e77a6896f195241844d5b"></a>
-<h2 class="memtitle"><span class="permalink"><a href="#a08556856f26e77a6896f195241844d5b">&#9670;&#160;</a></span>shotIsPenalty</h2>
+<a id="a80f54da22bdb5ad91ad5f4f03ec6e3b9" name="a80f54da22bdb5ad91ad5f4f03ec6e3b9"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a80f54da22bdb5ad91ad5f4f03ec6e3b9">&#9670;&#160;</a></span>touchAngleDifficulty</h2>
 
 <div class="memitem">
 <div class="memproto">
       <table class="memname">
         <tr>
-          <td class="memname">bool MatchBall::shotIsPenalty = false</td>
+          <td class="memname">float MatchBall::touchAngleDifficulty = 0.0F</td>
         </tr>
       </table>
 </div><div class="memdoc">
 
 </div>
 </div>
-<a id="a79f8a010b96bcf2220674768576d374b" name="a79f8a010b96bcf2220674768576d374b"></a>
-<h2 class="memtitle"><span class="permalink"><a href="#a79f8a010b96bcf2220674768576d374b">&#9670;&#160;</a></span>shotOnTarget</h2>
+<a id="a86089a82afd5bd2ba02409f6fd2c9011" name="a86089a82afd5bd2ba02409f6fd2c9011"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a86089a82afd5bd2ba02409f6fd2c9011">&#9670;&#160;</a></span>touchAngleError</h2>
 
 <div class="memitem">
 <div class="memproto">
       <table class="memname">
         <tr>
-          <td class="memname">bool MatchBall::shotOnTarget = false</td>
+          <td class="memname">float MatchBall::touchAngleError = 0.0F</td>
         </tr>
       </table>
 </div><div class="memdoc">
-<p>Whether the shot's flight crosses the goal line inside the frame. </p>
+<p>How the current touch went (<a class="el" href="structTouchResult.html">TouchResult</a>). </p>
 
 </div>
 </div>
-<a id="ac302c2d6e6eb72ad2fa7c40992956018" name="ac302c2d6e6eb72ad2fa7c40992956018"></a>
-<h2 class="memtitle"><span class="permalink"><a href="#ac302c2d6e6eb72ad2fa7c40992956018">&#9670;&#160;</a></span>shotSaveResolved</h2>
-
-<div class="memitem">
-<div class="memproto">
-      <table class="memname">
-        <tr>
-          <td class="memname">bool MatchBall::shotSaveResolved = false</td>
-        </tr>
-      </table>
-</div><div class="memdoc">
-
-</div>
-</div>
-<a id="a13096b6d4b5386c3b675e75652b258e2" name="a13096b6d4b5386c3b675e75652b258e2"></a>
-<h2 class="memtitle"><span class="permalink"><a href="#a13096b6d4b5386c3b675e75652b258e2">&#9670;&#160;</a></span>shotTargetHeightMetres</h2>
+<a id="a49bb0b9f02e15c97ed7f6bedb705085a" name="a49bb0b9f02e15c97ed7f6bedb705085a"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a49bb0b9f02e15c97ed7f6bedb705085a">&#9670;&#160;</a></span>touchAngleFailed</h2>
 
 <div class="memitem">
 <div class="memproto">
       <table class="memname">
         <tr>
-          <td class="memname">float MatchBall::shotTargetHeightMetres = 0.0f</td>
-        </tr>
-      </table>
-</div><div class="memdoc">
-
-</div>
-</div>
-<a id="ac767b814b6d07297717e1e8603f81dd6" name="ac767b814b6d07297717e1e8603f81dd6"></a>
-<h2 class="memtitle"><span class="permalink"><a href="#ac767b814b6d07297717e1e8603f81dd6">&#9670;&#160;</a></span>shotTargetY</h2>
-
-<div class="memitem">
-<div class="memproto">
-      <table class="memname">
-        <tr>
-          <td class="memname">float MatchBall::shotTargetY = <a class="el" href="structMatchTuning_1_1Pitch.html#a92587d6c3e1234472f369e2041eee489">MatchTuning::Pitch::CENTRE</a></td>
-        </tr>
-      </table>
-</div><div class="memdoc">
-<p>Predicted goal-line crossing of the current shot (y and metres high). </p>
-
-</div>
-</div>
-<a id="a77005f056e825bc04d52f3859130eefd" name="a77005f056e825bc04d52f3859130eefd"></a>
-<h2 class="memtitle"><span class="permalink"><a href="#a77005f056e825bc04d52f3859130eefd">&#9670;&#160;</a></span>shotXG</h2>
-
-<div class="memitem">
-<div class="memproto">
-      <table class="memname">
-        <tr>
-          <td class="memname">float MatchBall::shotXG = 0.0f</td>
+          <td class="memname">bool MatchBall::touchAngleFailed = false</td>
         </tr>
       </table>
 </div><div class="memdoc">
@@ -556,6 +680,121 @@ Public Attributes</h2></td></tr>
 
 </div>
 </div>
+<a id="a4a11a1a541fda475dc18062fe304ea22" name="a4a11a1a541fda475dc18062fe304ea22"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a4a11a1a541fda475dc18062fe304ea22">&#9670;&#160;</a></span>touchContactGap</h2>
+
+<div class="memitem">
+<div class="memproto">
+      <table class="memname">
+        <tr>
+          <td class="memname">float MatchBall::touchContactGap = 0.0F</td>
+        </tr>
+      </table>
+</div><div class="memdoc">
+
+</div>
+</div>
+<a id="a3fa2f6fef054e9843b4d6a1ad1d5c741" name="a3fa2f6fef054e9843b4d6a1ad1d5c741"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a3fa2f6fef054e9843b4d6a1ad1d5c741">&#9670;&#160;</a></span>touchContactHeight</h2>
+
+<div class="memitem">
+<div class="memproto">
+      <table class="memname">
+        <tr>
+          <td class="memname">float MatchBall::touchContactHeight = 0.0F</td>
+        </tr>
+      </table>
+</div><div class="memdoc">
+
+</div>
+</div>
+<a id="adf7321afebf4f200184e2ac4c3d7782c" name="adf7321afebf4f200184e2ac4c3d7782c"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#adf7321afebf4f200184e2ac4c3d7782c">&#9670;&#160;</a></span>touchGap</h2>
+
+<div class="memitem">
+<div class="memproto">
+      <table class="memname">
+        <tr>
+          <td class="memname">float MatchBall::touchGap = 0.0F</td>
+        </tr>
+      </table>
+</div><div class="memdoc">
+<p>While in a touch: the gap (m) to the owner at the last check, and the largest gap so far. </p>
+
+</div>
+</div>
+<a id="a5f427394029e82b556293a9f065e3667" name="a5f427394029e82b556293a9f065e3667"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a5f427394029e82b556293a9f065e3667">&#9670;&#160;</a></span>touchKind</h2>
+
+<div class="memitem">
+<div class="memproto">
+      <table class="memname">
+        <tr>
+          <td class="memname"><a class="el" href="structTouchIntent.html#a67aa7d6cf23ed52ea8e5a3dc1055c7b1">TouchIntent::Kind</a> MatchBall::touchKind = <a class="el" href="structTouchIntent.html#a67aa7d6cf23ed52ea8e5a3dc1055c7b1a8c52684db8f49511e9b44471716bf164">TouchIntent::Kind::SET</a></td>
+        </tr>
+      </table>
+</div><div class="memdoc">
+<p>The current touch: what was tried, and how far from his centre (m) he met the ball. </p>
+
+</div>
+</div>
+<a id="aab3ed68b9567a17d697f1d8677476410" name="aab3ed68b9567a17d697f1d8677476410"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#aab3ed68b9567a17d697f1d8677476410">&#9670;&#160;</a></span>touchLaunchSpeed</h2>
+
+<div class="memitem">
+<div class="memproto">
+      <table class="memname">
+        <tr>
+          <td class="memname">float MatchBall::touchLaunchSpeed = 0.0F</td>
+        </tr>
+      </table>
+</div><div class="memdoc">
+<p>The pace it left the current touch at, along the ground (m/s). </p>
+
+</div>
+</div>
+<a id="a0d67056a5b90a487f58c82e1e6617532" name="a0d67056a5b90a487f58c82e1e6617532"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a0d67056a5b90a487f58c82e1e6617532">&#9670;&#160;</a></span>touchOutward</h2>
+
+<div class="memitem">
+<div class="memproto">
+      <table class="memname">
+        <tr>
+          <td class="memname">bool MatchBall::touchOutward = false</td>
+        </tr>
+      </table>
+</div><div class="memdoc">
+
+</div>
+</div>
+<a id="aafe000a86982d75e4e38e503a8a6e160" name="aafe000a86982d75e4e38e503a8a6e160"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#aafe000a86982d75e4e38e503a8a6e160">&#9670;&#160;</a></span>touchPaceChange</h2>
+
+<div class="memitem">
+<div class="memproto">
+      <table class="memname">
+        <tr>
+          <td class="memname">float MatchBall::touchPaceChange = 0.0F</td>
+        </tr>
+      </table>
+</div><div class="memdoc">
+
+</div>
+</div>
+<a id="a5ce33e9574d018573b01f000a6bd2829" name="a5ce33e9574d018573b01f000a6bd2829"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a5ce33e9574d018573b01f000a6bd2829">&#9670;&#160;</a></span>touchPeakGap</h2>
+
+<div class="memitem">
+<div class="memproto">
+      <table class="memname">
+        <tr>
+          <td class="memname">float MatchBall::touchPeakGap = 0.0F</td>
+        </tr>
+      </table>
+</div><div class="memdoc">
+
+</div>
+</div>
 <a id="a7a6c269f04594121dbab2fed479d49f5" name="a7a6c269f04594121dbab2fed479d49f5"></a>
 <h2 class="memtitle"><span class="permalink"><a href="#a7a6c269f04594121dbab2fed479d49f5">&#9670;&#160;</a></span>touchTimer</h2>
 
@@ -563,7 +802,78 @@ Public Attributes</h2></td></tr>
 <div class="memproto">
       <table class="memname">
         <tr>
-          <td class="memname">float MatchBall::touchTimer = 0.0f</td>
+          <td class="memname">float MatchBall::touchTimer = 0.0F</td>
+        </tr>
+      </table>
+</div><div class="memdoc">
+
+</div>
+</div>
+<a id="a7fb42a35abc32b7e21e5ab40d7715037" name="a7fb42a35abc32b7e21e5ab40d7715037"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a7fb42a35abc32b7e21e5ab40d7715037">&#9670;&#160;</a></span>touchTurn</h2>
+
+<div class="memitem">
+<div class="memproto">
+      <table class="memname">
+        <tr>
+          <td class="memname">float MatchBall::touchTurn = 0.0F</td>
+        </tr>
+      </table>
+</div><div class="memdoc">
+
+</div>
+</div>
+<a id="a2b786d64cdd83e3a17111ddce5f3f147" name="a2b786d64cdd83e3a17111ddce5f3f147"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a2b786d64cdd83e3a17111ddce5f3f147">&#9670;&#160;</a></span>touchWaiting</h2>
+
+<div class="memitem">
+<div class="memproto">
+      <table class="memname">
+        <tr>
+          <td class="memname">std::uint32_t MatchBall::touchWaiting = 0</td>
+        </tr>
+      </table>
+</div><div class="memdoc">
+<p>Players (by slot bit) letting this loose ball come closer before they touch it (first-touch timing). </p>
+
+</div>
+</div>
+<a id="a456333233b64848ed05a794939374542" name="a456333233b64848ed05a794939374542"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a456333233b64848ed05a794939374542">&#9670;&#160;</a></span>touchWeightDifficulty</h2>
+
+<div class="memitem">
+<div class="memproto">
+      <table class="memname">
+        <tr>
+          <td class="memname">float MatchBall::touchWeightDifficulty = 0.0F</td>
+        </tr>
+      </table>
+</div><div class="memdoc">
+
+</div>
+</div>
+<a id="aef71c90b7b6e4fb39cc90b64c1985417" name="aef71c90b7b6e4fb39cc90b64c1985417"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#aef71c90b7b6e4fb39cc90b64c1985417">&#9670;&#160;</a></span>touchWeightError</h2>
+
+<div class="memitem">
+<div class="memproto">
+      <table class="memname">
+        <tr>
+          <td class="memname">float MatchBall::touchWeightError = 0.0F</td>
+        </tr>
+      </table>
+</div><div class="memdoc">
+
+</div>
+</div>
+<a id="ab284676861f082051606afa0336b4a9e" name="ab284676861f082051606afa0336b4a9e"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#ab284676861f082051606afa0336b4a9e">&#9670;&#160;</a></span>touchWeightFailed</h2>
+
+<div class="memitem">
+<div class="memproto">
+      <table class="memname">
+        <tr>
+          <td class="memname">bool MatchBall::touchWeightFailed = false</td>
         </tr>
       </table>
 </div><div class="memdoc">
@@ -577,7 +887,7 @@ Public Attributes</h2></td></tr>
 <div class="memproto">
       <table class="memname">
         <tr>
-          <td class="memname"><a class="el" href="structVector2F.html">Vector2F</a> MatchBall::velocity {0.0f, 0.0f}</td>
+          <td class="memname"><a class="el" href="structVector2F.html">Vector2F</a> MatchBall::velocity {.x = 0.0F, .y = 0.0F}</td>
         </tr>
       </table>
 </div><div class="memdoc">
@@ -591,7 +901,7 @@ Public Attributes</h2></td></tr>
 <div class="memproto">
       <table class="memname">
         <tr>
-          <td class="memname">float MatchBall::velocityZ = 0.0f</td>
+          <td class="memname">float MatchBall::velocityZ = 0.0F</td>
         </tr>
       </table>
 </div><div class="memdoc">
@@ -605,7 +915,7 @@ Public Attributes</h2></td></tr>
 <div class="memproto">
       <table class="memname">
         <tr>
-          <td class="memname">float MatchBall::z = 0.0f</td>
+          <td class="memname">float MatchBall::z = 0.0F</td>
         </tr>
       </table>
 </div><div class="memdoc">

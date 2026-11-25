@@ -7,6 +7,8 @@ var structMatchRender2DTuning =
     [ "Lines", "structMatchRender2DTuning_1_1Lines.html", "structMatchRender2DTuning_1_1Lines" ],
     [ "Offside", "structMatchRender2DTuning_1_1Offside.html", "structMatchRender2DTuning_1_1Offside" ],
     [ "Pressure", "structMatchRender2DTuning_1_1Pressure.html", "structMatchRender2DTuning_1_1Pressure" ],
+    [ "RefereeSignal", "structMatchRender2DTuning_1_1RefereeSignal.html", "structMatchRender2DTuning_1_1RefereeSignal" ],
     [ "Stadium", "structMatchRender2DTuning_1_1Stadium.html", "structMatchRender2DTuning_1_1Stadium" ],
-    [ "Token", "structMatchRender2DTuning_1_1Token.html", "structMatchRender2DTuning_1_1Token" ]
+    [ "Token", "structMatchRender2DTuning_1_1Token.html", "structMatchRender2DTuning_1_1Token" ],
+    [ "Touchline", "structMatchRender2DTuning_1_1Touchline.html", "structMatchRender2DTuning_1_1Touchline" ]
 ];

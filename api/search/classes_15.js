@@ -9,5 +9,6 @@ var searchData=
   ['vec4_6',['Vec4',['../structRenderMath_1_1Vec4.html',1,'RenderMath']]],
   ['vector2f_7',['Vector2F',['../structVector2F.html',1,'']]],
   ['view_8',['view',['../structMatchSceneTuning_1_1View.html',1,'MatchSceneTuning::View'],['../structSquadPlannerScene_1_1View.html',1,'SquadPlannerScene::View']]],
-  ['voice_9',['Voice',['../classAudio_1_1Voice.html',1,'Audio']]]
+  ['viewclick_9',['ViewClick',['../structMatchScene_1_1Sandbox_1_1ViewClick.html',1,'MatchScene::Sandbox']]],
+  ['voice_10',['Voice',['../classAudio_1_1Voice.html',1,'Audio']]]
 ];

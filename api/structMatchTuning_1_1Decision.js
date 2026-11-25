@@ -1,6 +1,9 @@
 var structMatchTuning_1_1Decision =
 [
     [ "BASE_SHOT_THRESHOLD", "structMatchTuning_1_1Decision.html#a2b0b36ef14f628175dc0fa1d76045a00", null ],
+    [ "BLOCK_CONE_SAMPLES", "structMatchTuning_1_1Decision.html#af4f9afb0be060eaa8739f436ea93f90a", null ],
+    [ "BLOCK_SPRINT_SPEED", "structMatchTuning_1_1Decision.html#a4258d89c0496eff614c42178cdfea27c", null ],
+    [ "BLOCK_STANDING_SPEED", "structMatchTuning_1_1Decision.html#a7da3c8ba5977b3485f7f52c06dc1ff79", null ],
     [ "CARRY_DRIBBLING_BONUS", "structMatchTuning_1_1Decision.html#a65702bec4ce8f70ea4151984850685f4", null ],
     [ "CARRY_HOLD_PENALTY_PER_SECOND", "structMatchTuning_1_1Decision.html#a2c46292aae78b224b429ce4204b9daf3", null ],
     [ "CARRY_OPENNESS_WEIGHT", "structMatchTuning_1_1Decision.html#a1afab080320a8e6f784225fbe8137001", null ],
@@ -14,6 +17,10 @@ var structMatchTuning_1_1Decision =
     [ "CUT_INSIDE_SHOT_BONUS", "structMatchTuning_1_1Decision.html#aadfc91eb696e59a98d6b312ce44c2fa7", null ],
     [ "FAMILIARITY_NOISE_GAIN", "structMatchTuning_1_1Decision.html#aa9de29f2eb57628e9126e44cc773a047", null ],
     [ "FINAL_THIRD_SHOT_BONUS", "structMatchTuning_1_1Decision.html#a25501d75f4d4586e21410e94a5ebb826", null ],
+    [ "GOAL_OPEN_SHARE_MARGIN", "structMatchTuning_1_1Decision.html#a4253b72901b75454a2373370ac16f72e", null ],
+    [ "GOAL_OPEN_SHOT_BONUS", "structMatchTuning_1_1Decision.html#ac63b9db9188d37f58dcbe845b9f7556e", null ],
+    [ "KEEPER_COVER_METRES", "structMatchTuning_1_1Decision.html#a36cadde6d8e0e41d50311a72819bac4f", null ],
+    [ "KEEPER_RUSH_SPEED", "structMatchTuning_1_1Decision.html#a7977944d8acf412b32465d5abdf87ced", null ],
     [ "LATE_GAME_MINUTE", "structMatchTuning_1_1Decision.html#a72948bd35a20a3adf9bd0b42ea5c0b1b", null ],
     [ "LATE_LEAD_SPECULATIVE_PENALTY", "structMatchTuning_1_1Decision.html#a0979dbd0e508339c30db40c7a3519046", null ],
     [ "MAX_DRIBBLE_TIME", "structMatchTuning_1_1Decision.html#a96b0bc749171ceddd9384db2d5de783d", null ],
@@ -33,5 +40,5 @@ var structMatchTuning_1_1Decision =
     [ "VISION_NOISE_SCALE", "structMatchTuning_1_1Decision.html#a730e1ef6b258aed65a9d83a8678d0706", null ],
     [ "WIDE_RECYCLE_BONUS", "structMatchTuning_1_1Decision.html#a264be6766cbdb5bf7477a941c1f99896", null ],
     [ "WIDE_SHOT_DISCOUNT", "structMatchTuning_1_1Decision.html#abc2e1f1ff56a868cd73cb6e044a3e30f", null ],
-    [ "WIDE_SHOT_WIDTH_DEVIATION", "structMatchTuning_1_1Decision.html#a2daa4fc5a92be31c96320052cbd82ce6", null ]
+    [ "WIDE_SHOT_WIDTH_METRES", "structMatchTuning_1_1Decision.html#ad198114a4d093e741cae67ad06f50d59", null ]
 ];

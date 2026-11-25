@@ -94,6 +94,7 @@ $(document).ready(function(){initNavTree('classGUIView.html',''); initResizable(
 
 <div class="header">
   <div class="summary">
+<a href="#pub-types">Public Types</a> &#124;
 <a href="#pub-methods">Public Member Functions</a> &#124;
 <a href="#pri-types">Private Types</a> &#124;
 <a href="#pri-methods">Private Member Functions</a> &#124;
@@ -110,6 +111,11 @@ $(document).ready(function(){initNavTree('classGUIView.html',''); initResizable(
 
 <p><code>#include &lt;<a class="el" href="gui__view_8h_source.html">gui_view.h</a>&gt;</code></p>
 <table class="memberdecls">
+<tr class="heading"><td colspan="2"><h2 class="groupheader"><a id="pub-types" name="pub-types"></a>
+Public Types</h2></td></tr>
+<tr class="memitem:a745339c085c3fbaaf6508ca0f286f430" id="r_a745339c085c3fbaaf6508ca0f286f430"><td class="memItemLeft" align="right" valign="top">using&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classGUIView.html#a745339c085c3fbaaf6508ca0f286f430">SceneFactory</a> = std::function&lt; std::unique_ptr&lt; <a class="el" href="classGUIScene.html">GUIScene</a> &gt;(<a class="el" href="classGUIView.html">GUIView</a> *)&gt;</td></tr>
+<tr class="separator:a745339c085c3fbaaf6508ca0f286f430"><td class="memSeparator" colspan="2">&#160;</td></tr>
+</table><table class="memberdecls">
 <tr class="heading"><td colspan="2"><h2 class="groupheader"><a id="pub-methods" name="pub-methods"></a>
 Public Member Functions</h2></td></tr>
 <tr class="memitem:a7ca40b58018713c5c91ab1e53e9a70e1" id="r_a7ca40b58018713c5c91ab1e53e9a70e1"><td class="memItemLeft" align="right" valign="top">&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classGUIView.html#a7ca40b58018713c5c91ab1e53e9a70e1">GUIView</a> (<a class="el" href="classGameController.html">GameController</a> &amp;controller_ref)</td></tr>
@@ -121,6 +127,9 @@ Public Member Functions</h2></td></tr>
 <tr class="memitem:a0fef49a04f8ef5111d45273bc21ceb44" id="r_a0fef49a04f8ef5111d45273bc21ceb44"><td class="memItemLeft" align="right" valign="top">void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classGUIView.html#a0fef49a04f8ef5111d45273bc21ceb44">run</a> ()</td></tr>
 <tr class="memdesc:a0fef49a04f8ef5111d45273bc21ceb44"><td class="mdescLeft">&#160;</td><td class="mdescRight">Starts the scene run loop.  <br /></td></tr>
 <tr class="separator:a0fef49a04f8ef5111d45273bc21ceb44"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:adced9626283f3d54b48f324eebed6d8c" id="r_adced9626283f3d54b48f324eebed6d8c"><td class="memItemLeft" align="right" valign="top">void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classGUIView.html#adced9626283f3d54b48f324eebed6d8c">run</a> (const <a class="el" href="classGUIView.html#a745339c085c3fbaaf6508ca0f286f430">SceneFactory</a> &amp;firstScene)</td></tr>
+<tr class="memdesc:adced9626283f3d54b48f324eebed6d8c"><td class="mdescLeft">&#160;</td><td class="mdescRight">Starts the scene run loop on <code>firstScene</code> instead of the main menu (the match sandbox).  <br /></td></tr>
+<tr class="separator:adced9626283f3d54b48f324eebed6d8c"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a76e17f84736b505c4a1dcc2708eee133" id="r_a76e17f84736b505c4a1dcc2708eee133"><td class="memItemLeft" align="right" valign="top">bool&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classGUIView.html#a76e17f84736b505c4a1dcc2708eee133">runMatchRenderProfile</a> ()</td></tr>
 <tr class="memdesc:a76e17f84736b505c4a1dcc2708eee133"><td class="mdescLeft">&#160;</td><td class="mdescRight">Profiles the first live-match frames and exits automatically.  <br /></td></tr>
 <tr class="separator:a76e17f84736b505c4a1dcc2708eee133"><td class="memSeparator" colspan="2">&#160;</td></tr>
@@ -279,7 +288,7 @@ Private Attributes</h2></td></tr>
 Static Private Attributes</h2></td></tr>
 <tr class="memitem:a3fe69de1b1020c07363b531b1b35003a" id="r_a3fe69de1b1020c07363b531b1b35003a"><td class="memItemLeft" align="right" valign="top">static constexpr int&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classGUIView.html#a3fe69de1b1020c07363b531b1b35003a">MATCH_FRAME_TIMING_COUNT</a> = 120</td></tr>
 <tr class="separator:a3fe69de1b1020c07363b531b1b35003a"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:ad749318213c021b46a6f92cd4684f976" id="r_ad749318213c021b46a6f92cd4684f976"><td class="memItemLeft" align="right" valign="top">static constexpr float&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classGUIView.html#ad749318213c021b46a6f92cd4684f976">MATCH_PROFILE_FRAME_SECONDS</a> = 1.0f / 60.0f</td></tr>
+<tr class="memitem:ad749318213c021b46a6f92cd4684f976" id="r_ad749318213c021b46a6f92cd4684f976"><td class="memItemLeft" align="right" valign="top">static constexpr float&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classGUIView.html#ad749318213c021b46a6f92cd4684f976">MATCH_PROFILE_FRAME_SECONDS</a> = 1.0F / 60.0F</td></tr>
 <tr class="separator:ad749318213c021b46a6f92cd4684f976"><td class="memSeparator" colspan="2">&#160;</td></tr>
 </table><table class="memberdecls">
 <tr class="heading"><td colspan="2"><h2 class="groupheader"><a id="friends" name="friends"></a>
@@ -293,7 +302,23 @@ Friends</h2></td></tr>
 </table>
 <a name="details" id="details"></a><h2 class="groupheader">Detailed Description</h2>
 <div class="textblock"><p>Main view manager for the GUI. Handles scenes and overlays. </p>
-</div><h2 class="groupheader">Member Enumeration Documentation</h2>
+</div><h2 class="groupheader">Member Typedef Documentation</h2>
+<a id="a745339c085c3fbaaf6508ca0f286f430" name="a745339c085c3fbaaf6508ca0f286f430"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a745339c085c3fbaaf6508ca0f286f430">&#9670;&#160;</a></span>SceneFactory</h2>
+
+<div class="memitem">
+<div class="memproto">
+      <table class="memname">
+        <tr>
+          <td class="memname">using <a class="el" href="classGUIView.html#a745339c085c3fbaaf6508ca0f286f430">GUIView::SceneFactory</a> =  std::function&lt;std::unique_ptr&lt;<a class="el" href="classGUIScene.html">GUIScene</a>&gt;(<a class="el" href="classGUIView.html">GUIView</a>*)&gt;</td>
+        </tr>
+      </table>
+</div><div class="memdoc">
+<p>Builds the first scene of a tool that does not open on the main menu. </p>
+
+</div>
+</div>
+<h2 class="groupheader">Member Enumeration Documentation</h2>
 <a id="a5599174075b54d4caad80c213daedad0" name="a5599174075b54d4caad80c213daedad0"></a>
 <h2 class="memtitle"><span class="permalink"><a href="#a5599174075b54d4caad80c213daedad0">&#9670;&#160;</a></span>PendingAction</h2>
 
@@ -1202,7 +1227,7 @@ Friends</h2></td></tr>
 </div>
 </div>
 <a id="a0fef49a04f8ef5111d45273bc21ceb44" name="a0fef49a04f8ef5111d45273bc21ceb44"></a>
-<h2 class="memtitle"><span class="permalink"><a href="#a0fef49a04f8ef5111d45273bc21ceb44">&#9670;&#160;</a></span>run()</h2>
+<h2 class="memtitle"><span class="permalink"><a href="#a0fef49a04f8ef5111d45273bc21ceb44">&#9670;&#160;</a></span>run() <span class="overload">[1/2]</span></h2>
 
 <div class="memitem">
 <div class="memproto">
@@ -1217,6 +1242,26 @@ Friends</h2></td></tr>
 </div><div class="memdoc">
 
 <p>Starts the scene run loop. </p>
+
+</div>
+</div>
+<a id="adced9626283f3d54b48f324eebed6d8c" name="adced9626283f3d54b48f324eebed6d8c"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#adced9626283f3d54b48f324eebed6d8c">&#9670;&#160;</a></span>run() <span class="overload">[2/2]</span></h2>
+
+<div class="memitem">
+<div class="memproto">
+      <table class="memname">
+        <tr>
+          <td class="memname">void GUIView::run </td>
+          <td>(</td>
+          <td class="paramtype">const <a class="el" href="classGUIView.html#a745339c085c3fbaaf6508ca0f286f430">SceneFactory</a> &amp;&#160;</td>
+          <td class="paramname"><em>firstScene</em></td><td>)</td>
+          <td></td>
+        </tr>
+      </table>
+</div><div class="memdoc">
+
+<p>Starts the scene run loop on <code>firstScene</code> instead of the main menu (the match sandbox). </p>
 
 </div>
 </div>
@@ -1525,7 +1570,7 @@ Friends</h2></td></tr>
   <td class="mlabels-left">
       <table class="memname">
         <tr>
-          <td class="memname">constexpr float GUIView::MATCH_PROFILE_FRAME_SECONDS = 1.0f / 60.0f</td>
+          <td class="memname">constexpr float GUIView::MATCH_PROFILE_FRAME_SECONDS = 1.0F / 60.0F</td>
         </tr>
       </table>
   </td>

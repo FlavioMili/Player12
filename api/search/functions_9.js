@@ -1,8 +1,20 @@
 var searchData=
 [
-  ['journalfilename_0',['journalFileName',['../namespaceCareerTimeline.html#ae0199ec63c871eac8bf7407ad0bb6a6d',1,'CareerTimeline']]],
-  ['judge_1',['judge',['../namespaceSeasonReviewModel.html#acc277a61d1015da07b3259f2bf52d354',1,'SeasonReviewModel']]],
-  ['judgeseason_2',['judgeSeason',['../classGame.html#af72b1ef663e90dbd08984fc1334b0337',1,'Game']]],
-  ['judgingsd_3',['judgingSd',['../classYouthAcademy.html#a719e22ebf0bf25504451a8bfe563db6a',1,'YouthAcademy']]],
-  ['jumptargetfor_4',['jumpTargetFor',['../match__renderer__3d_8cpp.html#a3f4283db1d2b59a923ed44d22084acad',1,'match_renderer_3d.cpp']]]
+  ['job_0',['job',['../namespaceSandboxNames.html#adece73111919e88fa4e8f783645de73a',1,'SandboxNames']]],
+  ['jobof_1',['jobof',['../classSandboxRecorder.html#aff351ec51dc16e6d2aa23c15abf8aa21',1,'SandboxRecorder::jobOf()'],['../classDebugInspector.html#a13c78f04b4d0b8a84e9a50fd6d3d5111',1,'DebugInspector::jobOf()']]],
+  ['journalfilename_2',['journalFileName',['../namespaceCareerTimeline.html#ae0199ec63c871eac8bf7407ad0bb6a6d',1,'CareerTimeline']]],
+  ['judge_3',['judge',['../structBenchSuccess.html#a4ff60de5c041f12d7fbd7387fbd2b2b0',1,'BenchSuccess::judge()'],['../namespaceSeasonReviewModel.html#acc277a61d1015da07b3259f2bf52d354',1,'SeasonReviewModel::judge()']]],
+  ['judgeknock_4',['judgeKnock',['../classMatchEngine.html#a47bb8146b0412932f819a6610e6b013d',1,'MatchEngine']]],
+  ['judgeloosecallcapybara_5',['judgeLooseCallCapybara',['../match__brain__capybara__members_8h.html#acc0dd4bf3454b75f2fc04b04a3da5a07',1,'match_brain_capybara.cpp']]],
+  ['judgementstage_6',['judgementStage',['../classBrainFlowScene.html#a81ba911cf64d30014e53202b55fc9283',1,'BrainFlowScene']]],
+  ['judgeoffside_7',['judgeOffside',['../classMatchEngine.html#a82445ef3000dce3e7bc2480e14e5aeed',1,'MatchEngine']]],
+  ['judgeoffsideaardvark_8',['judgeOffsideAardvark',['../match__referee__aardvark__members_8h.html#a3f84865617ad04d8be5929b479a15825',1,'match_referee_aardvark.cpp']]],
+  ['judgeoffsidebinturong_9',['judgeOffsideBinturong',['../match__referee__binturong__members_8h.html#ad62f44e0fc20361adc5dc0ec7a34f818',1,'match_referee_binturong.cpp']]],
+  ['judgeseason_10',['judgeSeason',['../classGame.html#af72b1ef663e90dbd08984fc1334b0337',1,'Game']]],
+  ['judgingsd_11',['judgingSd',['../classYouthAcademy.html#a719e22ebf0bf25504451a8bfe563db6a',1,'YouthAcademy']]],
+  ['jumpingreachbinturong_12',['jumpingReachBinturong',['../match__body__binturong__members_8h.html#a3036c402749c3bd13508f0e2177d6de5',1,'match_body_binturong.cpp']]],
+  ['jumpingreachrecipe_13',['jumpingReachRecipe',['../namespaceDerivedStats.html#a40ade9479c71c2596c8e7654706297e3',1,'DerivedStats']]],
+  ['jumpmoment_14',['jumpMoment',['../classTrueViewScene.html#af252f2ae28fc0d927029f1673acd7063',1,'TrueViewScene']]],
+  ['jumprisebinturong_15',['jumpRiseBinturong',['../match__body__binturong__members_8h.html#a1bde7849c75688e90b1b5688b897aa4d',1,'match_body_binturong.cpp']]],
+  ['jumpriseof_16',['jumpRiseOf',['../match__body__shape__binturong_8h.html#abc4394987617f962a07e910b8ce11281',1,'match_body_shape_binturong.h']]]
 ];

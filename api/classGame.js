@@ -1,7 +1,7 @@
 var classGame =
 [
     [ "CupRun", "structGame_1_1CupRun.html", "structGame_1_1CupRun" ],
-    [ "Game", "classGame.html#a8acdee0bf96a2711911fde329c40b4e0", null ],
+    [ "Game", "classGame.html#a232152bf15b632c77d07cdd8b3e52461", null ],
     [ "advanceDay", "classGame.html#a3a07e7c96e055f2ac28ce7a05d2573ce", null ],
     [ "beginSeasonReview", "classGame.html#adf4a2bb1d3d3dd2953056d45004b517c", null ],
     [ "canKickOff", "classGame.html#a039d9835f0841d95d79cf4b11a16945e", null ],

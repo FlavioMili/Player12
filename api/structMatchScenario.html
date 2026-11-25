@@ -108,24 +108,30 @@ Public Attributes</h2></td></tr>
 <tr class="separator:a5eaaf0b5c45350e8fb0432821c75603b"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a2228d83e9d8481ac04f23b1019b3d8d7" id="r_a2228d83e9d8481ac04f23b1019b3d8d7"><td class="memItemLeft" align="right" valign="top">std::uint32_t&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structMatchScenario.html#a2228d83e9d8481ac04f23b1019b3d8d7">carrierId</a> = 0</td></tr>
 <tr class="separator:a2228d83e9d8481ac04f23b1019b3d8d7"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a1950394948021cb6ff2befb42a5e48bd" id="r_a1950394948021cb6ff2befb42a5e48bd"><td class="memItemLeft" align="right" valign="top"><a class="el" href="structVector2F.html">Vector2F</a>&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structMatchScenario.html#a1950394948021cb6ff2befb42a5e48bd">ballPosition</a> {<a class="el" href="structMatchTuning_1_1Pitch.html#a92587d6c3e1234472f369e2041eee489">MatchTuning::Pitch::CENTRE</a>, <a class="el" href="structMatchTuning_1_1Pitch.html#a92587d6c3e1234472f369e2041eee489">MatchTuning::Pitch::CENTRE</a>}</td></tr>
-<tr class="separator:a1950394948021cb6ff2befb42a5e48bd"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:acda53632d5afbc2edeeb27678259dc0c" id="r_acda53632d5afbc2edeeb27678259dc0c"><td class="memItemLeft" align="right" valign="top"><a class="el" href="structPitchPoint.html">PitchPoint</a>&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structMatchScenario.html#acda53632d5afbc2edeeb27678259dc0c">ballPosition</a></td></tr>
+<tr class="separator:acda53632d5afbc2edeeb27678259dc0c"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a0f7ef13dd4798bc1710606a5b654276c" id="r_a0f7ef13dd4798bc1710606a5b654276c"><td class="memItemLeft" align="right" valign="top">bool&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structMatchScenario.html#a0f7ef13dd4798bc1710606a5b654276c">carrierInHands</a> = false</td></tr>
+<tr class="separator:a0f7ef13dd4798bc1710606a5b654276c"><td class="memSeparator" colspan="2">&#160;</td></tr>
 </table>
 <a name="details" id="details"></a><h2 class="groupheader">Detailed Description</h2>
 <div class="textblock"><p>A fully-specified, deterministic snapshot of players and ball that the match engine can load. Used by the headless scenario suite to exercise pass, shot, and carry decisions without organic full-match states. The renderer never sees this path; it only consumes the read-only <a class="el" href="structMatchRenderSnapshot.html">MatchRenderSnapshot</a>. </p>
 </div><h2 class="groupheader">Member Data Documentation</h2>
-<a id="a1950394948021cb6ff2befb42a5e48bd" name="a1950394948021cb6ff2befb42a5e48bd"></a>
-<h2 class="memtitle"><span class="permalink"><a href="#a1950394948021cb6ff2befb42a5e48bd">&#9670;&#160;</a></span>ballPosition</h2>
+<a id="acda53632d5afbc2edeeb27678259dc0c" name="acda53632d5afbc2edeeb27678259dc0c"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#acda53632d5afbc2edeeb27678259dc0c">&#9670;&#160;</a></span>ballPosition</h2>
 
 <div class="memitem">
 <div class="memproto">
       <table class="memname">
         <tr>
-          <td class="memname"><a class="el" href="structVector2F.html">Vector2F</a> MatchScenario::ballPosition {<a class="el" href="structMatchTuning_1_1Pitch.html#a92587d6c3e1234472f369e2041eee489">MatchTuning::Pitch::CENTRE</a>, <a class="el" href="structMatchTuning_1_1Pitch.html#a92587d6c3e1234472f369e2041eee489">MatchTuning::Pitch::CENTRE</a>}</td>
+          <td class="memname"><a class="el" href="structPitchPoint.html">PitchPoint</a> MatchScenario::ballPosition</td>
         </tr>
       </table>
 </div><div class="memdoc">
-
+<b>Initial value:</b><div class="fragment"><div class="line">{<a class="code hl_variable" href="structMatchTuning_1_1Pitch.html#ac33a1731f125dcadbb120ee4cb074945">MatchTuning::Pitch::MATCH_CENTRE_X_METRES</a>,</div>
+<div class="line">                          <a class="code hl_variable" href="structMatchTuning_1_1Pitch.html#a64cd016fda31b3c9a98721328fe7ab9e">MatchTuning::Pitch::MATCH_CENTRE_Y_METRES</a>}</div>
+<div class="ttc" id="astructMatchTuning_1_1Pitch_html_a64cd016fda31b3c9a98721328fe7ab9e"><div class="ttname"><a href="structMatchTuning_1_1Pitch.html#a64cd016fda31b3c9a98721328fe7ab9e">MatchTuning::Pitch::MATCH_CENTRE_Y_METRES</a></div><div class="ttdeci">static constexpr float MATCH_CENTRE_Y_METRES</div><div class="ttdef"><b>Definition</b> match_tuning.h:372</div></div>
+<div class="ttc" id="astructMatchTuning_1_1Pitch_html_ac33a1731f125dcadbb120ee4cb074945"><div class="ttname"><a href="structMatchTuning_1_1Pitch.html#ac33a1731f125dcadbb120ee4cb074945">MatchTuning::Pitch::MATCH_CENTRE_X_METRES</a></div><div class="ttdeci">static constexpr float MATCH_CENTRE_X_METRES</div><div class="ttdef"><b>Definition</b> match_tuning.h:371</div></div>
+</div><!-- fragment -->
 </div>
 </div>
 <a id="a2228d83e9d8481ac04f23b1019b3d8d7" name="a2228d83e9d8481ac04f23b1019b3d8d7"></a>
@@ -139,6 +145,21 @@ Public Attributes</h2></td></tr>
         </tr>
       </table>
 </div><div class="memdoc">
+
+</div>
+</div>
+<a id="a0f7ef13dd4798bc1710606a5b654276c" name="a0f7ef13dd4798bc1710606a5b654276c"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a0f7ef13dd4798bc1710606a5b654276c">&#9670;&#160;</a></span>carrierInHands</h2>
+
+<div class="memitem">
+<div class="memproto">
+      <table class="memname">
+        <tr>
+          <td class="memname">bool MatchScenario::carrierInHands = false</td>
+        </tr>
+      </table>
+</div><div class="memdoc">
+<p>Drills: the carrier, a keeper in his area, starts with it in his hands (Binturong body; goalkeeper plan step 5). </p>
 
 </div>
 </div>

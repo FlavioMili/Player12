@@ -106,14 +106,31 @@ $(document).ready(function(){initNavTree('structMatchScenarioPlayer.html',''); i
 Public Attributes</h2></td></tr>
 <tr class="memitem:a4104b48801d8ff724f5fc27d6408cb7d" id="r_a4104b48801d8ff724f5fc27d6408cb7d"><td class="memItemLeft" align="right" valign="top">std::uint32_t&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structMatchScenarioPlayer.html#a4104b48801d8ff724f5fc27d6408cb7d">playerId</a> = 0</td></tr>
 <tr class="separator:a4104b48801d8ff724f5fc27d6408cb7d"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:ae89338ce18e4c250a3f956ed28bb7152" id="r_ae89338ce18e4c250a3f956ed28bb7152"><td class="memItemLeft" align="right" valign="top"><a class="el" href="structVector2F.html">Vector2F</a>&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structMatchScenarioPlayer.html#ae89338ce18e4c250a3f956ed28bb7152">position</a> {<a class="el" href="structMatchTuning_1_1Pitch.html#a92587d6c3e1234472f369e2041eee489">MatchTuning::Pitch::CENTRE</a>, <a class="el" href="structMatchTuning_1_1Pitch.html#a92587d6c3e1234472f369e2041eee489">MatchTuning::Pitch::CENTRE</a>}</td></tr>
-<tr class="separator:ae89338ce18e4c250a3f956ed28bb7152"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a848169f63e14584125316c62bd32b264" id="r_a848169f63e14584125316c62bd32b264"><td class="memItemLeft" align="right" valign="top"><a class="el" href="structPitchPoint.html">PitchPoint</a>&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structMatchScenarioPlayer.html#a848169f63e14584125316c62bd32b264">position</a></td></tr>
+<tr class="separator:a848169f63e14584125316c62bd32b264"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:ade3343a58abc35efe8bd79ecb3368be9" id="r_ade3343a58abc35efe8bd79ecb3368be9"><td class="memItemLeft" align="right" valign="top">bool&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structMatchScenarioPlayer.html#ade3343a58abc35efe8bd79ecb3368be9">makingRun</a> = false</td></tr>
 <tr class="separator:ade3343a58abc35efe8bd79ecb3368be9"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:ad85d18f62af172e63f746bf2c95aa865" id="r_ad85d18f62af172e63f746bf2c95aa865"><td class="memItemLeft" align="right" valign="top">std::optional&lt; float &gt;&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structMatchScenarioPlayer.html#ad85d18f62af172e63f746bf2c95aa865">facing</a></td></tr>
+<tr class="separator:ad85d18f62af172e63f746bf2c95aa865"><td class="memSeparator" colspan="2">&#160;</td></tr>
 </table>
 <a name="details" id="details"></a><h2 class="groupheader">Detailed Description</h2>
 <div class="textblock"><p>Placement of a single player within a deterministic match scenario. </p>
 </div><h2 class="groupheader">Member Data Documentation</h2>
+<a id="ad85d18f62af172e63f746bf2c95aa865" name="ad85d18f62af172e63f746bf2c95aa865"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#ad85d18f62af172e63f746bf2c95aa865">&#9670;&#160;</a></span>facing</h2>
+
+<div class="memitem">
+<div class="memproto">
+      <table class="memname">
+        <tr>
+          <td class="memname">std::optional&lt;float&gt; MatchScenarioPlayer::facing</td>
+        </tr>
+      </table>
+</div><div class="memdoc">
+<p>The way his body faces at the start (an angle like <a class="el" href="structMatchPlayer.html#a927dad111e60d0e16b4fc6ca14a475a2">MatchPlayer::facingAngle</a>); none: he keeps the facing he has. </p>
+
+</div>
+</div>
 <a id="ade3343a58abc35efe8bd79ecb3368be9" name="ade3343a58abc35efe8bd79ecb3368be9"></a>
 <h2 class="memtitle"><span class="permalink"><a href="#ade3343a58abc35efe8bd79ecb3368be9">&#9670;&#160;</a></span>makingRun</h2>
 
@@ -142,18 +159,22 @@ Public Attributes</h2></td></tr>
 
 </div>
 </div>
-<a id="ae89338ce18e4c250a3f956ed28bb7152" name="ae89338ce18e4c250a3f956ed28bb7152"></a>
-<h2 class="memtitle"><span class="permalink"><a href="#ae89338ce18e4c250a3f956ed28bb7152">&#9670;&#160;</a></span>position</h2>
+<a id="a848169f63e14584125316c62bd32b264" name="a848169f63e14584125316c62bd32b264"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a848169f63e14584125316c62bd32b264">&#9670;&#160;</a></span>position</h2>
 
 <div class="memitem">
 <div class="memproto">
       <table class="memname">
         <tr>
-          <td class="memname"><a class="el" href="structVector2F.html">Vector2F</a> MatchScenarioPlayer::position {<a class="el" href="structMatchTuning_1_1Pitch.html#a92587d6c3e1234472f369e2041eee489">MatchTuning::Pitch::CENTRE</a>, <a class="el" href="structMatchTuning_1_1Pitch.html#a92587d6c3e1234472f369e2041eee489">MatchTuning::Pitch::CENTRE</a>}</td>
+          <td class="memname"><a class="el" href="structPitchPoint.html">PitchPoint</a> MatchScenarioPlayer::position</td>
         </tr>
       </table>
 </div><div class="memdoc">
-
+<b>Initial value:</b><div class="fragment"><div class="line">{<a class="code hl_variable" href="structMatchTuning_1_1Pitch.html#ac33a1731f125dcadbb120ee4cb074945">MatchTuning::Pitch::MATCH_CENTRE_X_METRES</a>,</div>
+<div class="line">                      <a class="code hl_variable" href="structMatchTuning_1_1Pitch.html#a64cd016fda31b3c9a98721328fe7ab9e">MatchTuning::Pitch::MATCH_CENTRE_Y_METRES</a>}</div>
+<div class="ttc" id="astructMatchTuning_1_1Pitch_html_a64cd016fda31b3c9a98721328fe7ab9e"><div class="ttname"><a href="structMatchTuning_1_1Pitch.html#a64cd016fda31b3c9a98721328fe7ab9e">MatchTuning::Pitch::MATCH_CENTRE_Y_METRES</a></div><div class="ttdeci">static constexpr float MATCH_CENTRE_Y_METRES</div><div class="ttdef"><b>Definition</b> match_tuning.h:372</div></div>
+<div class="ttc" id="astructMatchTuning_1_1Pitch_html_ac33a1731f125dcadbb120ee4cb074945"><div class="ttname"><a href="structMatchTuning_1_1Pitch.html#ac33a1731f125dcadbb120ee4cb074945">MatchTuning::Pitch::MATCH_CENTRE_X_METRES</a></div><div class="ttdeci">static constexpr float MATCH_CENTRE_X_METRES</div><div class="ttdef"><b>Definition</b> match_tuning.h:371</div></div>
+</div><!-- fragment -->
 </div>
 </div>
 <hr/>The documentation for this struct was generated from the following file:<ul>

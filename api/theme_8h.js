@@ -2,6 +2,7 @@ var theme_8h =
 [
     [ "Theme::Appearance", "structTheme_1_1Appearance.html", "structTheme_1_1Appearance" ],
     [ "Theme::Palette", "structTheme_1_1Palette.html", "structTheme_1_1Palette" ],
+    [ "Theme::ScopedPalette", "classTheme_1_1ScopedPalette.html", "classTheme_1_1ScopedPalette" ],
     [ "Theme::Swatch", "structTheme_1_1Swatch.html", "structTheme_1_1Swatch" ],
     [ "Theme::ScopedText", "classTheme_1_1ScopedText.html", "classTheme_1_1ScopedText" ],
     [ "ColorVision", "theme_8h.html#aaa5ad72e8bbefb6e566deb7ae47ab76e", [
@@ -42,7 +43,7 @@ var theme_8h =
     [ "scale", "theme_8h.html#a239ccaa2156cf7fbac641a84621c975d", null ],
     [ "setClub", "theme_8h.html#a74972883c09e1a9e0809747303407e48", null ],
     [ "textSize", "theme_8h.html#a5a9c8e0a414eead7211432f46e878c54", null ],
-    [ "toU32", "theme_8h.html#a1c4d14f9757094c97a8a22a8d5ecf46d", null ],
+    [ "toU32", "theme_8h.html#a71e9f10ded152d0484e4a9290caa430c", null ],
     [ "unpackRgb", "theme_8h.html#a470581765af350dab1b006ba01867111", null ],
     [ "L", "theme_8h.html#acb873c6511385bfad8203c9a90796312", null ],
     [ "M", "theme_8h.html#a61103c698fc477f3e606d2b9f295283a", null ],

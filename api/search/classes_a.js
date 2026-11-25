@@ -1,12 +1,21 @@
 var searchData=
 [
   ['keeper_0',['Keeper',['../structMatchRender3DTuning_1_1Keeper.html',1,'MatchRender3DTuning']]],
-  ['keymoment_1',['KeyMoment',['../structKeyMoment.html',1,'']]],
-  ['keyopponent_2',['KeyOpponent',['../structKeyOpponent.html',1,'']]],
-  ['kick_3',['Kick',['../structMatchRender3DTuning_1_1Kick.html',1,'MatchRender3DTuning']]],
-  ['kicktiming_4',['KickTiming',['../structPlayerRig_1_1KickTiming.html',1,'PlayerRig']]],
-  ['kitcolors_5',['KitColors',['../structKitColors.html',1,'']]],
-  ['kitpalette_6',['KitPalette',['../structKitPalette.html',1,'']]],
-  ['knockout_7',['Knockout',['../structMatchRules_1_1Knockout.html',1,'MatchRules']]],
-  ['knockoutresolution_8',['KnockoutResolution',['../structCompetitions_1_1KnockoutResolution.html',1,'Competitions']]]
+  ['keeperchange_1',['KeeperChange',['../structSandboxRecorder_1_1KeeperChange.html',1,'SandboxRecorder']]],
+  ['keeperclaim_2',['KeeperClaim',['../structMatchTuning_1_1KeeperClaim.html',1,'MatchTuning']]],
+  ['keeperdive_3',['keeperdive',['../structKeeperDive.html',1,'KeeperDive'],['../structMatchTuning_1_1KeeperDive.html',1,'MatchTuning::KeeperDive']]],
+  ['keeperdivepose_4',['KeeperDivePose',['../structKeeperDivePose.html',1,'']]],
+  ['keeperhands_5',['KeeperHands',['../structMatchTuning_1_1KeeperHands.html',1,'MatchTuning']]],
+  ['keeperheld_6',['KeeperHeld',['../structMatchTuning_1_1KeeperHeld.html',1,'MatchTuning']]],
+  ['keeperreach_7',['KeeperReach',['../structKeeperReach.html',1,'']]],
+  ['keepersmother_8',['KeeperSmother',['../structMatchTuning_1_1KeeperSmother.html',1,'MatchTuning']]],
+  ['keyframe_9',['Keyframe',['../structSandboxRecorder_1_1Keyframe.html',1,'SandboxRecorder']]],
+  ['keymoment_10',['KeyMoment',['../structKeyMoment.html',1,'']]],
+  ['keyopponent_11',['KeyOpponent',['../structKeyOpponent.html',1,'']]],
+  ['kick_12',['kick',['../structMatchEngine_1_1Kick.html',1,'MatchEngine::Kick'],['../structMatchRender3DTuning_1_1Kick.html',1,'MatchRender3DTuning::Kick']]],
+  ['kicktiming_13',['KickTiming',['../structPlayerRig_1_1KickTiming.html',1,'PlayerRig']]],
+  ['kitcolors_14',['KitColors',['../structKitColors.html',1,'']]],
+  ['kitpalette_15',['KitPalette',['../structKitPalette.html',1,'']]],
+  ['knockout_16',['Knockout',['../structMatchRules_1_1Knockout.html',1,'MatchRules']]],
+  ['knockoutresolution_17',['KnockoutResolution',['../structCompetitions_1_1KnockoutResolution.html',1,'Competitions']]]
 ];

@@ -7,7 +7,7 @@ var classMatchRenderer2D =
     [ "MatchRenderer2D", "classMatchRenderer2D.html#aea55578148d41e1c2d690b390b168b38", null ],
     [ "operator=", "classMatchRenderer2D.html#a02b32ca3bcd36e3c2a904e560cd45862", null ],
     [ "operator=", "classMatchRenderer2D.html#aebf19db8723e0e274ce4951ef3f353c2", null ],
-    [ "projectPitch", "classMatchRenderer2D.html#a581d45ce2aa365cad57dacb8c8d3b4d6", null ],
+    [ "projectPitch", "classMatchRenderer2D.html#adb3bc28f15fa97c8f16d43ed05faa421", null ],
     [ "render", "classMatchRenderer2D.html#a0fbea105bd8cea9a31ceb98f14ce9e7d", null ],
     [ "state", "classMatchRenderer2D.html#ae1987efe8367d9d9bd247054d701d208", null ]
 ];

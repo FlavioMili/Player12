@@ -1,0 +1,37 @@
+var classGameXgLegTable =
+[
+    [ "Kind", "classGameXgLegTable.html#ad9c88fad6444ae1e9e7de3a891b218e6", [
+      [ "OPPONENT_STANDING", "classGameXgLegTable.html#ad9c88fad6444ae1e9e7de3a891b218e6ae09c06118f64b8780f277ebbfd0fad90", null ],
+      [ "OPPONENT_SIDESTEPPING", "classGameXgLegTable.html#ad9c88fad6444ae1e9e7de3a891b218e6a0143e681f4ed46787667ca0ca413abe5", null ],
+      [ "OPPONENT_SPRINTING", "classGameXgLegTable.html#ad9c88fad6444ae1e9e7de3a891b218e6a7a02f27cb09d6d59dcb9cfdd4391b488", null ],
+      [ "TEAMMATE_STANDING", "classGameXgLegTable.html#ad9c88fad6444ae1e9e7de3a891b218e6a0170f340e0809a9d7072582301754138", null ],
+      [ "TEAMMATE_SIDESTEPPING", "classGameXgLegTable.html#ad9c88fad6444ae1e9e7de3a891b218e6a106ecc3fb43c62d59f3b937441caf740", null ],
+      [ "TEAMMATE_SPRINTING", "classGameXgLegTable.html#ad9c88fad6444ae1e9e7de3a891b218e6ae87d65677660acfd2bee50c0d8dcbf9f", null ],
+      [ "COUNT", "classGameXgLegTable.html#ad9c88fad6444ae1e9e7de3a891b218e6a4905ac9d6a22bdfc1ae096094ce6248d", null ]
+    ] ],
+    [ "acrossPoints", "classGameXgLegTable.html#ada899a1b1ea362e223f87d6e8abb9d72", null ],
+    [ "empty", "classGameXgLegTable.html#a04b6902149d7dfbbac4f4e1f451da39f", null ],
+    [ "fromJson", "classGameXgLegTable.html#a7cbd87042169418ceab2e64ab85cc231", null ],
+    [ "index", "classGameXgLegTable.html#a598c8c9486ed701e6d84af94eef27745", null ],
+    [ "kindName", "classGameXgLegTable.html#a69bfd4ddb77ad54eb6ef3c56211aa1b9", null ],
+    [ "load", "classGameXgLegTable.html#acd5c3f8c9e44172955419635f0f2ab29", null ],
+    [ "save", "classGameXgLegTable.html#ad66192d271d69c66e6fb9adb72f4aeb2", null ],
+    [ "toJson", "classGameXgLegTable.html#a56ecbc6aa1df1d590ef43ef0c1369eb0", null ],
+    [ "upPoints", "classGameXgLegTable.html#a43b311ff741d1bd45e31e5c74bffca98", null ],
+    [ "value", "classGameXgLegTable.html#add9817bcd1ebbd62ff812f97c464c3ed", null ],
+    [ "blocks", "classGameXgLegTable.html#a433fec680dd5ad8c5b68eb3cdfed32cc", null ],
+    [ "distances", "classGameXgLegTable.html#a206b4916e90cb62b7a490ed9d3a45010", null ],
+    [ "firstSeed", "classGameXgLegTable.html#abdb7e5718d69d0adc201c9ad8c02f622", null ],
+    [ "KINDS", "classGameXgLegTable.html#a006fcffc7a70e6341e3ebb76f6930e56", null ],
+    [ "measured", "classGameXgLegTable.html#a1a1796973bfa0a900335fc1b45f23194", null ],
+    [ "offsets", "classGameXgLegTable.html#a3c2d8342a943a1780d47d07b9830fb43", null ],
+    [ "ratings", "classGameXgLegTable.html#a37811ac47ccee02ed01b2fa916e78745", null ],
+    [ "repeats", "classGameXgLegTable.html#a31f8d4d1a20ec20574fc06277a47ecd6", null ],
+    [ "SCATTER_ACROSS_POINTS", "classGameXgLegTable.html#a17b735636c70cdd36dc6af31390643f5", null ],
+    [ "SCATTER_UP_POINTS", "classGameXgLegTable.html#ac8b232b99547e0cf8e338436d14d762f", null ],
+    [ "scatterAcross", "classGameXgLegTable.html#a4015432dd269a32c125f94d08cd12b76", null ],
+    [ "scatterShooting", "classGameXgLegTable.html#a8e83bd7c9b855f57f3a23e90ee2d0801", null ],
+    [ "scatterUp", "classGameXgLegTable.html#a168b47cf802754d161e25eb8670daddf", null ],
+    [ "shots", "classGameXgLegTable.html#ab3dd8e02de76936d6823eb14215964b1", null ],
+    [ "values", "classGameXgLegTable.html#a79d64ab8c39244c4b1ffbbc45a05fa94", null ]
+];

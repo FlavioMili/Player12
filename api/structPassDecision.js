@@ -6,6 +6,6 @@ var structPassDecision =
     [ "passerId", "structPassDecision.html#a83a7c165faaa3659a4e15be91059af10", null ],
     [ "progression", "structPassDecision.html#a51f79eb8ea33822b428eec5f0a923f11", null ],
     [ "receiverId", "structPassDecision.html#a1170d2d63498f36e025107d83ccaf32b", null ],
-    [ "targetPoint", "structPassDecision.html#ad305d6750ab6b7b9b0d99ba296728477", null ],
+    [ "targetPoint", "structPassDecision.html#a69d5989de2b8bc89d8449276319591a0", null ],
     [ "utility", "structPassDecision.html#a73aab420f3640ffeb8b356ef09e6b570", null ]
 ];

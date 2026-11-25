@@ -5,7 +5,7 @@ var classMatchTacticsPanel =
     [ "canUndo", "classMatchTacticsPanel.html#a3afd2cca44d6ad529779fb30839aa30d", null ],
     [ "getApplied", "classMatchTacticsPanel.html#a888c851f2358b825842ad37c7498952d", null ],
     [ "hasChanges", "classMatchTacticsPanel.html#aac519672449b533b076b07f06c9c0c22", null ],
-    [ "render", "classMatchTacticsPanel.html#a8a35db01458dd06285081b8984a4898a", null ],
+    [ "render", "classMatchTacticsPanel.html#a87b4a526b47e61dff9ec49a172271dae", null ],
     [ "renderFamiliarity", "classMatchTacticsPanel.html#aae57c541986e62ac0b209d929517c069", null ],
     [ "renderFooter", "classMatchTacticsPanel.html#af636ba280b242eb2df230932743d6f98", null ],
     [ "renderFormation", "classMatchTacticsPanel.html#a6b3f401cd5ece2214baf2f60bfd50e3e", null ],

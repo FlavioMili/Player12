@@ -1,0 +1,27 @@
+var structBrainFlow_1_1CarrierRecord =
+[
+    [ "bestPass", "structBrainFlow_1_1CarrierRecord.html#a3f91cfaca8c800efd589e802307a183b", null ],
+    [ "bestReceiver", "structBrainFlow_1_1CarrierRecord.html#a48074ef2474bcaccab1e918426770d7d", null ],
+    [ "carryCandidates", "structBrainFlow_1_1CarrierRecord.html#ac188a1f5aa44a093ed871f23ff4d82f0", null ],
+    [ "carryEnd", "structBrainFlow_1_1CarrierRecord.html#a6e58f61097c67593ba8f9e50f18fda3e", null ],
+    [ "chances", "structBrainFlow_1_1CarrierRecord.html#a57a54c6816dc2336f0e967c42a7920a9", null ],
+    [ "chosen", "structBrainFlow_1_1CarrierRecord.html#abab82673a78f5660e50d1b332555243b", null ],
+    [ "clearAimed", "structBrainFlow_1_1CarrierRecord.html#ad250dc6cd2a5485d80dbb0992d9b2734", null ],
+    [ "clearTarget", "structBrainFlow_1_1CarrierRecord.html#ae1ddd2748a13d6cbaf1240484b139d72", null ],
+    [ "decisions", "structBrainFlow_1_1CarrierRecord.html#a930ef4bfb42beca447ddf734cc7fc482", null ],
+    [ "edgeFactor", "structBrainFlow_1_1CarrierRecord.html#a8175d0cd5f5047a5c89462567f97f50c", null ],
+    [ "familiarityFactor", "structBrainFlow_1_1CarrierRecord.html#a049401b292e1604de57165f182803313", null ],
+    [ "filled", "structBrainFlow_1_1CarrierRecord.html#aa9d30a6aa0573932e4e0076b39af8369", null ],
+    [ "judgement", "structBrainFlow_1_1CarrierRecord.html#acdda5eef1ef5fe1c6f619ea35eb8a110", null ],
+    [ "layers", "structBrainFlow_1_1CarrierRecord.html#af6e13d8617bfc7005cf1d42d6757769a", null ],
+    [ "offBall", "structBrainFlow_1_1CarrierRecord.html#ab15947ad50ce0940127420fa879bafea", null ],
+    [ "options", "structBrainFlow_1_1CarrierRecord.html#a2733f674a5ce84f0dfd187839b800316", null ],
+    [ "pickNoise", "structBrainFlow_1_1CarrierRecord.html#afde1f1ca82bb3d498689a3f2ea34fd48", null ],
+    [ "receiverRoleSteps", "structBrainFlow_1_1CarrierRecord.html#a66e81d548f9964a0b749d278b984c8e4", null ],
+    [ "shotAimed", "structBrainFlow_1_1CarrierRecord.html#a7077cefc1077807ae3c7cc373f7fde5e", null ],
+    [ "shotAimY", "structBrainFlow_1_1CarrierRecord.html#adc5974471da77af8e62949a9a4bf8c6c", null ],
+    [ "shotAimZ", "structBrainFlow_1_1CarrierRecord.html#a57edfabdda7c0610af6687dd7462f519", null ],
+    [ "steady", "structBrainFlow_1_1CarrierRecord.html#ab90789a0e0f7df8d1e2df7535ce3318c", null ],
+    [ "talkFactor", "structBrainFlow_1_1CarrierRecord.html#a3028e8393c1c759f6f2a64a2a0f55723", null ],
+    [ "weights", "structBrainFlow_1_1CarrierRecord.html#af3a0c2891739cd847a3c70fdcb6e0909", null ]
+];

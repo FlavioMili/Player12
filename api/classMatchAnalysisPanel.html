@@ -119,6 +119,10 @@ Classes</h2></td></tr>
 Public Member Functions</h2></td></tr>
 <tr class="memitem:ade581d11c7cd86e27ff8aaaef470f803" id="r_ade581d11c7cd86e27ff8aaaef470f803"><td class="memItemLeft" align="right" valign="top">void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classMatchAnalysisPanel.html#ade581d11c7cd86e27ff8aaaef470f803">renderForMatch</a> (const <a class="el" href="classGameController.html">GameController</a> &amp;controller, const <a class="el" href="classMatchEngine.html">MatchEngine</a> &amp;engine, <a class="el" href="types_8h.html#a57143f6ccbdf5a5d9724b986cbdafb31">TeamID</a> home_id, <a class="el" href="types_8h.html#a57143f6ccbdf5a5d9724b986cbdafb31">TeamID</a> away_id, bool other_dialog_open)</td></tr>
 <tr class="separator:ade581d11c7cd86e27ff8aaaef470f803"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:ad036950e496d57682c715a23f9944f20" id="r_ad036950e496d57682c715a23f9944f20"><td class="memItemLeft" align="right" valign="top">void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classMatchAnalysisPanel.html#ad036950e496d57682c715a23f9944f20">prepareForMatch</a> (const <a class="el" href="classGameController.html">GameController</a> &amp;controller, const <a class="el" href="classMatchEngine.html">MatchEngine</a> &amp;engine, <a class="el" href="types_8h.html#a57143f6ccbdf5a5d9724b986cbdafb31">TeamID</a> home_id, <a class="el" href="types_8h.html#a57143f6ccbdf5a5d9724b986cbdafb31">TeamID</a> away_id, bool other_dialog_open)</td></tr>
+<tr class="separator:ad036950e496d57682c715a23f9944f20"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:ad9e5fa0c99c9558ecc59773b80bc1d53" id="r_ad9e5fa0c99c9558ecc59773b80bc1d53"><td class="memItemLeft" align="right" valign="top">void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classMatchAnalysisPanel.html#ad9e5fa0c99c9558ecc59773b80bc1d53">renderEmbedded</a> (bool embedded=true)</td></tr>
+<tr class="separator:ad9e5fa0c99c9558ecc59773b80bc1d53"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:abfef49ef3c95ff96728695e00babaddc" id="r_abfef49ef3c95ff96728695e00babaddc"><td class="memItemLeft" align="right" valign="top">void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classMatchAnalysisPanel.html#abfef49ef3c95ff96728695e00babaddc">openNow</a> (const <a class="el" href="classGameController.html">GameController</a> &amp;controller, const <a class="el" href="classMatchEngine.html">MatchEngine</a> &amp;engine, <a class="el" href="types_8h.html#a57143f6ccbdf5a5d9724b986cbdafb31">TeamID</a> home_id, <a class="el" href="types_8h.html#a57143f6ccbdf5a5d9724b986cbdafb31">TeamID</a> away_id)</td></tr>
 <tr class="separator:abfef49ef3c95ff96728695e00babaddc"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a05efe75643a3bcbd2902f15d86dca4fc" id="r_a05efe75643a3bcbd2902f15d86dca4fc"><td class="memItemLeft" align="right" valign="top">void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classMatchAnalysisPanel.html#a05efe75643a3bcbd2902f15d86dca4fc">close</a> ()</td></tr>
@@ -297,6 +301,52 @@ Private Attributes</h2></td></tr>
 
 </div>
 </div>
+<a id="ad036950e496d57682c715a23f9944f20" name="ad036950e496d57682c715a23f9944f20"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#ad036950e496d57682c715a23f9944f20">&#9670;&#160;</a></span>prepareForMatch()</h2>
+
+<div class="memitem">
+<div class="memproto">
+      <table class="memname">
+        <tr>
+          <td class="memname">void MatchAnalysisPanel::prepareForMatch </td>
+          <td>(</td>
+          <td class="paramtype">const <a class="el" href="classGameController.html">GameController</a> &amp;&#160;</td>
+          <td class="paramname"><em>controller</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">const <a class="el" href="classMatchEngine.html">MatchEngine</a> &amp;&#160;</td>
+          <td class="paramname"><em>engine</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype"><a class="el" href="types_8h.html#a57143f6ccbdf5a5d9724b986cbdafb31">TeamID</a>&#160;</td>
+          <td class="paramname"><em>home_id</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype"><a class="el" href="types_8h.html#a57143f6ccbdf5a5d9724b986cbdafb31">TeamID</a>&#160;</td>
+          <td class="paramname"><em>away_id</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">bool&#160;</td>
+          <td class="paramname"><em>other_dialog_open</em>&#160;</td>
+        </tr>
+        <tr>
+          <td></td>
+          <td>)</td>
+          <td></td><td></td>
+        </tr>
+      </table>
+</div><div class="memdoc">
+
+</div>
+</div>
 <a id="a0ce1072fa48aa492a721bbbf0e8894f1" name="a0ce1072fa48aa492a721bbbf0e8894f1"></a>
 <h2 class="memtitle"><span class="permalink"><a href="#a0ce1072fa48aa492a721bbbf0e8894f1">&#9670;&#160;</a></span>render()</h2>
 
@@ -318,6 +368,24 @@ Private Attributes</h2></td></tr>
 <span class="mlabels"><span class="mlabel">private</span></span>  </td>
   </tr>
 </table>
+</div><div class="memdoc">
+
+</div>
+</div>
+<a id="ad9e5fa0c99c9558ecc59773b80bc1d53" name="ad9e5fa0c99c9558ecc59773b80bc1d53"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#ad9e5fa0c99c9558ecc59773b80bc1d53">&#9670;&#160;</a></span>renderEmbedded()</h2>
+
+<div class="memitem">
+<div class="memproto">
+      <table class="memname">
+        <tr>
+          <td class="memname">void MatchAnalysisPanel::renderEmbedded </td>
+          <td>(</td>
+          <td class="paramtype">bool&#160;</td>
+          <td class="paramname"><em>embedded</em> = <code>true</code></td><td>)</td>
+          <td></td>
+        </tr>
+      </table>
 </div><div class="memdoc">
 
 </div>

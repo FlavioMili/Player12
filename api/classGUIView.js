@@ -1,5 +1,6 @@
 var classGUIView =
 [
+    [ "SceneFactory", "classGUIView.html#a745339c085c3fbaaf6508ca0f286f430", null ],
     [ "PendingAction", "classGUIView.html#a5599174075b54d4caad80c213daedad0", [
       [ "NONE", "classGUIView.html#a5599174075b54d4caad80c213daedad0ab50339a10e1de285ac99d4c3990b8693", null ],
       [ "CHANGE", "classGUIView.html#a5599174075b54d4caad80c213daedad0a421cfd143e450c3f5814a0495409e073", null ],
@@ -46,6 +47,7 @@ var classGUIView =
     [ "reportMatchRenderTimings", "classGUIView.html#acf4afae32b601d8f4f9df3368b9001ee", null ],
     [ "requestBackdropCapture", "classGUIView.html#a35d1fa4165ea4c99fa753a629e1874ea", null ],
     [ "run", "classGUIView.html#a0fef49a04f8ef5111d45273bc21ceb44", null ],
+    [ "run", "classGUIView.html#adced9626283f3d54b48f324eebed6d8c", null ],
     [ "runMatchRenderProfile", "classGUIView.html#a76e17f84736b505c4a1dcc2708eee133", null ],
     [ "swipeGesture", "classGUIView.html#a5f5f90dd70632bf4f22bec5f259b0a79", null ],
     [ "update", "classGUIView.html#a8a2fde03bd86fcbc98049eddd976b2e5", null ],

@@ -1,7 +1,6 @@
 var structMatchSceneTuning_1_1Stadium =
 [
     [ "APRON_COLOR", "structMatchSceneTuning_1_1Stadium.html#ad6e48a7a95f6bcd32bf80082248794fc", null ],
-    [ "APRON_WIDTH", "structMatchSceneTuning_1_1Stadium.html#a04e0a3540acc17707e4d3f32962270ad", null ],
     [ "CROWD_A_COLOR", "structMatchSceneTuning_1_1Stadium.html#a4a2910150c09108d53eda763f9c225d0", null ],
     [ "CROWD_B_COLOR", "structMatchSceneTuning_1_1Stadium.html#a6311cc5620ac29280f6fab10e7c1644c", null ],
     [ "CROWD_C_COLOR", "structMatchSceneTuning_1_1Stadium.html#a4062f68d8ab58fa3ffc783bfd0a50dfa", null ],

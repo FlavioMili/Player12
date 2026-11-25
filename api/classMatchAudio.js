@@ -16,6 +16,7 @@ var classMatchAudio =
     [ "mixer", "classMatchAudio.html#a737bdbbedfa639cf8011b86ab8233583", null ],
     [ "operator=", "classMatchAudio.html#a826f000ce73e88699062f5eacbd1ca68", null ],
     [ "play", "classMatchAudio.html#a6048ee07f70d2913a872726af844de7d", null ],
+    [ "playCoachWhistle", "classMatchAudio.html#ade14d393cde5ad7714a50b23ff37d8c4", null ],
     [ "react", "classMatchAudio.html#a2b2f420ff3119fd5caa73f3e514785cc", null ],
     [ "reactToGoal", "classMatchAudio.html#a8600ba99e4cf7ecdbb29c73130ac3d35", null ],
     [ "reactToMiss", "classMatchAudio.html#a6c883519db06437a30592885c1c7df9c", null ],

@@ -23,5 +23,9 @@ var namespaceMatchRules =
     [ "shootoutDecided", "namespaceMatchRules.html#a0aa9e08d57d3e9b3ce2dcabb2bbaa845", null ],
     [ "staminaDrainPerSecond", "namespaceMatchRules.html#a47e21708f7e3209c2efdb5c3c30a51f3", null ],
     [ "tackleFoulPropensity", "namespaceMatchRules.html#a536c45ac506044ff83a8a83e3f34657b", null ],
-    [ "tackleWinChance", "namespaceMatchRules.html#aecdd78fb3ab86872734bf300e39215bf", null ]
+    [ "tackleMake", "namespaceMatchRules.html#a590361c869ec063025412dfb9f18ebc7", null ],
+    [ "tackleResist", "namespaceMatchRules.html#add79d189773f417b2c6bcc4c4b1085bb", null ],
+    [ "tackleTechnique", "namespaceMatchRules.html#a60c31cd40b45a30fa689d122dd455d94", null ],
+    [ "tackleWinChance", "namespaceMatchRules.html#aecdd78fb3ab86872734bf300e39215bf", null ],
+    [ "walkRunTransitionSpeed", "namespaceMatchRules.html#a23e5ab6232bf7e9f6dc5a9de6de756fe", null ]
 ];

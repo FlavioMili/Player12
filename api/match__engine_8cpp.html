@@ -94,57 +94,41 @@ $(document).ready(function(){initNavTree('match__engine_8cpp.html',''); initResi
 
 <div class="header">
   <div class="summary">
-<a href="#define-members">Macros</a> &#124;
 <a href="#func-members">Functions</a>  </div>
   <div class="headertitle"><div class="title">match_engine.cpp File Reference</div></div>
 </div><!--header-->
 <div class="contents">
 <div class="textblock"><code>#include &quot;<a class="el" href="match__engine_8h_source.html">model/match_engine.h</a>&quot;</code><br />
+<code>#include &quot;<a class="el" href="match__possession__control_8h_source.html">model/match_possession_control.h</a>&quot;</code><br />
+<code>#include &quot;<a class="el" href="match__possession__coordination_8h_source.html">model/match_possession_coordination.h</a>&quot;</code><br />
+<code>#include &quot;<a class="el" href="match__restart__approach_8h_source.html">model/match_restart_approach.h</a>&quot;</code><br />
 <code>#include &lt;algorithm&gt;</code><br />
 <code>#include &lt;array&gt;</code><br />
 <code>#include &lt;atomic&gt;</code><br />
 <code>#include &lt;bit&gt;</code><br />
 <code>#include &lt;chrono&gt;</code><br />
 <code>#include &lt;cmath&gt;</code><br />
-<code>#include &lt;format&gt;</code><br />
 <code>#include &lt;fstream&gt;</code><br />
 <code>#include &lt;iomanip&gt;</code><br />
 <code>#include &lt;limits&gt;</code><br />
-<code>#include &lt;memory&gt;</code><br />
 <code>#include &lt;numbers&gt;</code><br />
 <code>#include &lt;span&gt;</code><br />
 <code>#include &lt;sstream&gt;</code><br />
-<code>#include &lt;utility&gt;</code><br />
+<code>#include &lt;stdexcept&gt;</code><br />
+<code>#include &quot;<a class="el" href="match__body__shape__binturong_8h_source.html">model/match_body_shape_binturong.h</a>&quot;</code><br />
 <code>#include &quot;<a class="el" href="match__commentary_8h_source.html">model/match_commentary.h</a>&quot;</code><br />
+<code>#include &quot;<a class="el" href="match__contact__binturong_8h_source.html">model/match_contact_binturong.h</a>&quot;</code><br />
+<code>#include &quot;<a class="el" href="match__engine__internal_8h_source.html">model/match_engine_internal.h</a>&quot;</code><br />
+<code>#include &quot;<a class="el" href="match__recorder_8h_source.html">model/match_recorder.h</a>&quot;</code><br />
 <code>#include &quot;<a class="el" href="medical__centre_8h_source.html">model/medical_centre.h</a>&quot;</code><br />
 <code>#include &quot;<a class="el" href="player_8h_source.html">model/player.h</a>&quot;</code><br />
 <code>#include &quot;<a class="el" href="role__utils_8h_source.html">model/role_utils.h</a>&quot;</code><br />
 </div><table class="memberdecls">
-<tr class="heading"><td colspan="2"><h2 class="groupheader"><a id="define-members" name="define-members"></a>
-Macros</h2></td></tr>
-<tr class="memitem:a59529efb3773485de69af24290bcb73f" id="r_a59529efb3773485de69af24290bcb73f"><td class="memItemLeft" align="right" valign="top">#define&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="match__engine_8cpp.html#a59529efb3773485de69af24290bcb73f">FM_KERNEL_CLONES</a></td></tr>
-<tr class="separator:a59529efb3773485de69af24290bcb73f"><td class="memSeparator" colspan="2">&#160;</td></tr>
-</table><table class="memberdecls">
 <tr class="heading"><td colspan="2"><h2 class="groupheader"><a id="func-members" name="func-members"></a>
 Functions</h2></td></tr>
-<tr class="memitem:a7de987d5e8db90ceecccf0168d78cff9" id="r_a7de987d5e8db90ceecccf0168d78cff9"><td class="memItemLeft" align="right" valign="top">std::string_view&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="match__engine_8cpp.html#a7de987d5e8db90ceecccf0168d78cff9">goalkeeperStateName</a> (<a class="el" href="match__engine_8h.html#a9f9ca6c5dc389f4fcac901c486ee4cc5">GoalkeeperState</a> state)</td></tr>
+<tr class="memitem:a7de987d5e8db90ceecccf0168d78cff9" id="r_a7de987d5e8db90ceecccf0168d78cff9"><td class="memItemLeft" align="right" valign="top">std::string_view&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="match__engine_8cpp.html#a7de987d5e8db90ceecccf0168d78cff9">goalkeeperStateName</a> (<a class="el" href="match__state_8h.html#a9f9ca6c5dc389f4fcac901c486ee4cc5">GoalkeeperState</a> state)</td></tr>
 <tr class="separator:a7de987d5e8db90ceecccf0168d78cff9"><td class="memSeparator" colspan="2">&#160;</td></tr>
 </table>
-<h2 class="groupheader">Macro Definition Documentation</h2>
-<a id="a59529efb3773485de69af24290bcb73f" name="a59529efb3773485de69af24290bcb73f"></a>
-<h2 class="memtitle"><span class="permalink"><a href="#a59529efb3773485de69af24290bcb73f">&#9670;&#160;</a></span>FM_KERNEL_CLONES</h2>
-
-<div class="memitem">
-<div class="memproto">
-      <table class="memname">
-        <tr>
-          <td class="memname">#define FM_KERNEL_CLONES</td>
-        </tr>
-      </table>
-</div><div class="memdoc">
-
-</div>
-</div>
 <h2 class="groupheader">Function Documentation</h2>
 <a id="a7de987d5e8db90ceecccf0168d78cff9" name="a7de987d5e8db90ceecccf0168d78cff9"></a>
 <h2 class="memtitle"><span class="permalink"><a href="#a7de987d5e8db90ceecccf0168d78cff9">&#9670;&#160;</a></span>goalkeeperStateName()</h2>
@@ -155,7 +139,7 @@ Functions</h2></td></tr>
         <tr>
           <td class="memname">std::string_view goalkeeperStateName </td>
           <td>(</td>
-          <td class="paramtype"><a class="el" href="match__engine_8h.html#a9f9ca6c5dc389f4fcac901c486ee4cc5">GoalkeeperState</a>&#160;</td>
+          <td class="paramtype"><a class="el" href="match__state_8h.html#a9f9ca6c5dc389f4fcac901c486ee4cc5">GoalkeeperState</a>&#160;</td>
           <td class="paramname"><em>state</em></td><td>)</td>
           <td></td>
         </tr>

@@ -116,7 +116,13 @@ Classes</h2></td></tr>
 Functions</h2></td></tr>
 <tr class="memitem:a407a74c5cffaabce6f544828337498e4" id="r_a407a74c5cffaabce6f544828337498e4"><td class="memItemLeft" align="right" valign="top"><a class="el" href="structMatchViewport.html">MatchViewport</a>&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="match__renderer__2d_8h.html#a407a74c5cffaabce6f544828337498e4">computeMatchViewport</a> (float topLeftX, float topLeftY, float availableWidth, float availableHeight)</td></tr>
 <tr class="separator:a407a74c5cffaabce6f544828337498e4"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a7c435061133820f3699ce412632bba55" id="r_a7c435061133820f3699ce412632bba55"><td class="memItemLeft" align="right" valign="top">const char *&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="match__renderer__2d_8h.html#a7c435061133820f3699ce412632bba55">playerIntentLabel</a> (<a class="el" href="match__engine_8h.html#a142c3c51fd70298c409fad612830d4b5">PlayerIntent</a> intent)</td></tr>
+<tr class="memitem:a026937a5232f0bca3554ccfa01982888" id="r_a026937a5232f0bca3554ccfa01982888"><td class="memItemLeft" align="right" valign="top">ImVec2&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="match__renderer__2d_8h.html#a026937a5232f0bca3554ccfa01982888">stadiumApron2D</a> (const <a class="el" href="structMatchViewport.html">MatchViewport</a> &amp;viewport)</td></tr>
+<tr class="separator:a026937a5232f0bca3554ccfa01982888"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a2efab2903ce1ad5479efdf5734c282a3" id="r_a2efab2903ce1ad5479efdf5734c282a3"><td class="memItemLeft" align="right" valign="top">float&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="match__renderer__2d_8h.html#a2efab2903ce1ad5479efdf5734c282a3">stadiumAspectRatio2D</a> ()</td></tr>
+<tr class="separator:a2efab2903ce1ad5479efdf5734c282a3"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:adbcb1418df059adf286e3de0429c5beb" id="r_adbcb1418df059adf286e3de0429c5beb"><td class="memItemLeft" align="right" valign="top"><a class="el" href="structMatchViewport.html">MatchViewport</a>&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="match__renderer__2d_8h.html#adbcb1418df059adf286e3de0429c5beb">computeMatchViewportWithStadium</a> (float topLeftX, float topLeftY, float availableWidth, float availableHeight)</td></tr>
+<tr class="separator:adbcb1418df059adf286e3de0429c5beb"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a7c435061133820f3699ce412632bba55" id="r_a7c435061133820f3699ce412632bba55"><td class="memItemLeft" align="right" valign="top">const char *&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="match__renderer__2d_8h.html#a7c435061133820f3699ce412632bba55">playerIntentLabel</a> (<a class="el" href="match__state_8h.html#a142c3c51fd70298c409fad612830d4b5">PlayerIntent</a> intent)</td></tr>
 <tr class="separator:a7c435061133820f3699ce412632bba55"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a10b193c5b8afe9e7e915c1a9fc10402b" id="r_a10b193c5b8afe9e7e915c1a9fc10402b"><td class="memItemLeft" align="right" valign="top">void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="match__renderer__2d_8h.html#a10b193c5b8afe9e7e915c1a9fc10402b">drawGoalCelebration</a> (ImDrawList &amp;drawList, const <a class="el" href="structMatchViewport.html">MatchViewport</a> &amp;viewport, int homeScore, int awayScore, float celebrationRemaining, float celebrationDuration)</td></tr>
 <tr class="separator:a10b193c5b8afe9e7e915c1a9fc10402b"><td class="memSeparator" colspan="2">&#160;</td></tr>
@@ -160,6 +166,47 @@ Functions</h2></td></tr>
       </table>
 </div><div class="memdoc">
 <p>Fits the pitch into the available screen space at its real 105 x 68 m proportions (never stretched); the caller centres the result. </p>
+
+</div>
+</div>
+<a id="adbcb1418df059adf286e3de0429c5beb" name="adbcb1418df059adf286e3de0429c5beb"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#adbcb1418df059adf286e3de0429c5beb">&#9670;&#160;</a></span>computeMatchViewportWithStadium()</h2>
+
+<div class="memitem">
+<div class="memproto">
+      <table class="memname">
+        <tr>
+          <td class="memname"><a class="el" href="structMatchViewport.html">MatchViewport</a> computeMatchViewportWithStadium </td>
+          <td>(</td>
+          <td class="paramtype">float&#160;</td>
+          <td class="paramname"><em>topLeftX</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">float&#160;</td>
+          <td class="paramname"><em>topLeftY</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">float&#160;</td>
+          <td class="paramname"><em>availableWidth</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">float&#160;</td>
+          <td class="paramname"><em>availableHeight</em>&#160;</td>
+        </tr>
+        <tr>
+          <td></td>
+          <td>)</td>
+          <td></td><td></td>
+        </tr>
+      </table>
+</div><div class="memdoc">
+<p>The 2D pitch fitted, with its stadium round it, into the available area and centred in it. </p>
 
 </div>
 </div>
@@ -225,13 +272,50 @@ Functions</h2></td></tr>
         <tr>
           <td class="memname">const char * playerIntentLabel </td>
           <td>(</td>
-          <td class="paramtype"><a class="el" href="match__engine_8h.html#a142c3c51fd70298c409fad612830d4b5">PlayerIntent</a>&#160;</td>
+          <td class="paramtype"><a class="el" href="match__state_8h.html#a142c3c51fd70298c409fad612830d4b5">PlayerIntent</a>&#160;</td>
           <td class="paramname"><em>intent</em></td><td>)</td>
           <td></td>
         </tr>
       </table>
 </div><div class="memdoc">
 <p>Short English description of a player's current intent (tooltips). </p>
+
+</div>
+</div>
+<a id="a026937a5232f0bca3554ccfa01982888" name="a026937a5232f0bca3554ccfa01982888"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a026937a5232f0bca3554ccfa01982888">&#9670;&#160;</a></span>stadiumApron2D()</h2>
+
+<div class="memitem">
+<div class="memproto">
+      <table class="memname">
+        <tr>
+          <td class="memname">ImVec2 stadiumApron2D </td>
+          <td>(</td>
+          <td class="paramtype">const <a class="el" href="structMatchViewport.html">MatchViewport</a> &amp;&#160;</td>
+          <td class="paramname"><em>viewport</em></td><td>)</td>
+          <td></td>
+        </tr>
+      </table>
+</div><div class="memdoc">
+<p>How far the stadium drawn round a 2D pitch (run-off, boards, the gap to the stand and the rows of crowd shown) reaches past the goal lines (x) and the touchlines (y), in pixels. </p>
+
+</div>
+</div>
+<a id="a2efab2903ce1ad5479efdf5734c282a3" name="a2efab2903ce1ad5479efdf5734c282a3"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a2efab2903ce1ad5479efdf5734c282a3">&#9670;&#160;</a></span>stadiumAspectRatio2D()</h2>
+
+<div class="memitem">
+<div class="memproto">
+      <table class="memname">
+        <tr>
+          <td class="memname">float stadiumAspectRatio2D </td>
+          <td>(</td>
+          <td class="paramname"></td><td>)</td>
+          <td></td>
+        </tr>
+      </table>
+</div><div class="memdoc">
+<p>Width / height of the complete pitch and visible stadium surround. </p>
 
 </div>
 </div>

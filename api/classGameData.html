@@ -116,9 +116,9 @@ Public Member Functions</h2></td></tr>
 <tr class="separator:a4ccb44cfede8ab807de133e2999b1825"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a976075ba17848d8ad927bef2cc584d94" id="r_a976075ba17848d8ad927bef2cc584d94"><td class="memItemLeft" align="right" valign="top"><a class="el" href="classGameData.html">GameData</a> &amp;&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classGameData.html#a976075ba17848d8ad927bef2cc584d94">operator=</a> (const <a class="el" href="classGameData.html">GameData</a> &amp;)=delete</td></tr>
 <tr class="separator:a976075ba17848d8ad927bef2cc584d94"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a211d56ca50267b9374fc3a224f5dc972" id="r_a211d56ca50267b9374fc3a224f5dc972"><td class="memItemLeft" align="right" valign="top">bool&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classGameData.html#a211d56ca50267b9374fc3a224f5dc972">loadFromDB</a> (std::shared_ptr&lt; <a class="el" href="classDatabaseConnection.html">DatabaseConnection</a> &gt; database_ptr)</td></tr>
-<tr class="memdesc:a211d56ca50267b9374fc3a224f5dc972"><td class="mdescLeft">&#160;</td><td class="mdescRight">Loads the initial game state from the database.  <br /></td></tr>
-<tr class="separator:a211d56ca50267b9374fc3a224f5dc972"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a9ce4c35cbbd220a96f3d0b2cf2dff8cd" id="r_a9ce4c35cbbd220a96f3d0b2cf2dff8cd"><td class="memItemLeft" align="right" valign="top">bool&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classGameData.html#a9ce4c35cbbd220a96f3d0b2cf2dff8cd">loadFromDB</a> (std::shared_ptr&lt; <a class="el" href="classDatabaseConnection.html">DatabaseConnection</a> &gt; database_ptr, std::stop_token stop={})</td></tr>
+<tr class="memdesc:a9ce4c35cbbd220a96f3d0b2cf2dff8cd"><td class="mdescLeft">&#160;</td><td class="mdescRight">Loads the initial game state from the database.  <br /></td></tr>
+<tr class="separator:a9ce4c35cbbd220a96f3d0b2cf2dff8cd"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a8fd6cdae7977ed3d6080e47990f8da9b" id="r_a8fd6cdae7977ed3d6080e47990f8da9b"><td class="memItemLeft" align="right" valign="top">bool&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classGameData.html#a8fd6cdae7977ed3d6080e47990f8da9b">saveToDB</a> () const</td></tr>
 <tr class="memdesc:a8fd6cdae7977ed3d6080e47990f8da9b"><td class="mdescLeft">&#160;</td><td class="mdescRight">Saves the current in-memory state back to the database.  <br /></td></tr>
 <tr class="separator:a8fd6cdae7977ed3d6080e47990f8da9b"><td class="memSeparator" colspan="2">&#160;</td></tr>
@@ -216,8 +216,8 @@ Public Member Functions</h2></td></tr>
 Private Member Functions</h2></td></tr>
 <tr class="memitem:a02aba4cd6aaef8cd1e8ebe80a06948af" id="r_a02aba4cd6aaef8cd1e8ebe80a06948af"><td class="memItemLeft" align="right" valign="top">void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classGameData.html#a02aba4cd6aaef8cd1e8ebe80a06948af">loadStatsConfig</a> ()</td></tr>
 <tr class="separator:a02aba4cd6aaef8cd1e8ebe80a06948af"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a123e2a349374cc053a74502c8ca8941c" id="r_a123e2a349374cc053a74502c8ca8941c"><td class="memItemLeft" align="right" valign="top">void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classGameData.html#a123e2a349374cc053a74502c8ca8941c">generateAndSaveInitialData</a> ()</td></tr>
-<tr class="separator:a123e2a349374cc053a74502c8ca8941c"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a14a0ef18000f342dcb56fcdf757dcec8" id="r_a14a0ef18000f342dcb56fcdf757dcec8"><td class="memItemLeft" align="right" valign="top">void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classGameData.html#a14a0ef18000f342dcb56fcdf757dcec8">generateAndSaveInitialData</a> (std::stop_token stop)</td></tr>
+<tr class="separator:a14a0ef18000f342dcb56fcdf757dcec8"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:ac4e958180d6268673123f37b35d11a3a" id="r_ac4e958180d6268673123f37b35d11a3a"><td class="memItemLeft" align="right" valign="top">void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classGameData.html#ac4e958180d6268673123f37b35d11a3a">loadExistingData</a> ()</td></tr>
 <tr class="separator:ac4e958180d6268673123f37b35d11a3a"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a3a8c20edbb8e5c6845648b3e999322e4" id="r_a3a8c20edbb8e5c6845648b3e999322e4"><td class="memItemLeft" align="right" valign="top">void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classGameData.html#a3a8c20edbb8e5c6845648b3e999322e4">migrateSchema</a> () const</td></tr>
@@ -527,8 +527,8 @@ Private Attributes</h2></td></tr>
 
 </div>
 </div>
-<a id="a123e2a349374cc053a74502c8ca8941c" name="a123e2a349374cc053a74502c8ca8941c"></a>
-<h2 class="memtitle"><span class="permalink"><a href="#a123e2a349374cc053a74502c8ca8941c">&#9670;&#160;</a></span>generateAndSaveInitialData()</h2>
+<a id="a14a0ef18000f342dcb56fcdf757dcec8" name="a14a0ef18000f342dcb56fcdf757dcec8"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a14a0ef18000f342dcb56fcdf757dcec8">&#9670;&#160;</a></span>generateAndSaveInitialData()</h2>
 
 <div class="memitem">
 <div class="memproto">
@@ -539,7 +539,8 @@ Private Attributes</h2></td></tr>
         <tr>
           <td class="memname">void GameData::generateAndSaveInitialData </td>
           <td>(</td>
-          <td class="paramname"></td><td>)</td>
+          <td class="paramtype">std::stop_token&#160;</td>
+          <td class="paramname"><em>stop</em></td><td>)</td>
           <td></td>
         </tr>
       </table>
@@ -1018,8 +1019,8 @@ Private Attributes</h2></td></tr>
 
 </div>
 </div>
-<a id="a211d56ca50267b9374fc3a224f5dc972" name="a211d56ca50267b9374fc3a224f5dc972"></a>
-<h2 class="memtitle"><span class="permalink"><a href="#a211d56ca50267b9374fc3a224f5dc972">&#9670;&#160;</a></span>loadFromDB()</h2>
+<a id="a9ce4c35cbbd220a96f3d0b2cf2dff8cd" name="a9ce4c35cbbd220a96f3d0b2cf2dff8cd"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a9ce4c35cbbd220a96f3d0b2cf2dff8cd">&#9670;&#160;</a></span>loadFromDB()</h2>
 
 <div class="memitem">
 <div class="memproto">
@@ -1028,8 +1029,18 @@ Private Attributes</h2></td></tr>
           <td class="memname">bool GameData::loadFromDB </td>
           <td>(</td>
           <td class="paramtype">std::shared_ptr&lt; <a class="el" href="classDatabaseConnection.html">DatabaseConnection</a> &gt;&#160;</td>
-          <td class="paramname"><em>database_ptr</em></td><td>)</td>
+          <td class="paramname"><em>database_ptr</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
           <td></td>
+          <td class="paramtype">std::stop_token&#160;</td>
+          <td class="paramname"><em>stop</em> = <code>{}</code>&#160;</td>
+        </tr>
+        <tr>
+          <td></td>
+          <td>)</td>
+          <td></td><td></td>
         </tr>
       </table>
 </div><div class="memdoc">

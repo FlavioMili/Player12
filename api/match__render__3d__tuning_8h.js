@@ -7,6 +7,8 @@ var match__render__3d__tuning_8h =
     [ "MatchRender3DTuning::Goal", "structMatchRender3DTuning_1_1Goal.html", "structMatchRender3DTuning_1_1Goal" ],
     [ "MatchRender3DTuning::CornerFlag", "structMatchRender3DTuning_1_1CornerFlag.html", "structMatchRender3DTuning_1_1CornerFlag" ],
     [ "MatchRender3DTuning::Boards", "structMatchRender3DTuning_1_1Boards.html", "structMatchRender3DTuning_1_1Boards" ],
+    [ "MatchRender3DTuning::Fixtures", "structMatchRender3DTuning_1_1Fixtures.html", "structMatchRender3DTuning_1_1Fixtures" ],
+    [ "MatchRender3DTuning::TouchlineFigure", "structMatchRender3DTuning_1_1TouchlineFigure.html", "structMatchRender3DTuning_1_1TouchlineFigure" ],
     [ "MatchRender3DTuning::Stands", "structMatchRender3DTuning_1_1Stands.html", "structMatchRender3DTuning_1_1Stands" ],
     [ "MatchRender3DTuning::Crowd", "structMatchRender3DTuning_1_1Crowd.html", "structMatchRender3DTuning_1_1Crowd" ],
     [ "MatchRender3DTuning::Floodlight", "structMatchRender3DTuning_1_1Floodlight.html", "structMatchRender3DTuning_1_1Floodlight" ],

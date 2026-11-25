@@ -115,9 +115,9 @@ Classes</h2></td></tr>
 </table><table class="memberdecls">
 <tr class="heading"><td colspan="2"><h2 class="groupheader"><a id="pub-methods" name="pub-methods"></a>
 Public Member Functions</h2></td></tr>
-<tr class="memitem:a8acdee0bf96a2711911fde329c40b4e0" id="r_a8acdee0bf96a2711911fde329c40b4e0"><td class="memItemLeft" align="right" valign="top">&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classGame.html#a8acdee0bf96a2711911fde329c40b4e0">Game</a> (std::shared_ptr&lt; class <a class="el" href="classGameData.html">GameData</a> &gt; gd, std::shared_ptr&lt; <a class="el" href="classDatabaseConnection.html">DatabaseConnection</a> &gt; conn)</td></tr>
-<tr class="memdesc:a8acdee0bf96a2711911fde329c40b4e0"><td class="mdescLeft">&#160;</td><td class="mdescRight">Constructs a new <a class="el" href="classGame.html" title="Represents the core game state and logic.">Game</a> object.  <br /></td></tr>
-<tr class="separator:a8acdee0bf96a2711911fde329c40b4e0"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a232152bf15b632c77d07cdd8b3e52461" id="r_a232152bf15b632c77d07cdd8b3e52461"><td class="memItemLeft" align="right" valign="top">&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classGame.html#a232152bf15b632c77d07cdd8b3e52461">Game</a> (std::shared_ptr&lt; class <a class="el" href="classGameData.html">GameData</a> &gt; gd, std::shared_ptr&lt; <a class="el" href="classDatabaseConnection.html">DatabaseConnection</a> &gt; conn, std::stop_token stop={})</td></tr>
+<tr class="memdesc:a232152bf15b632c77d07cdd8b3e52461"><td class="mdescLeft">&#160;</td><td class="mdescRight">Constructs a new <a class="el" href="classGame.html" title="Represents the core game state and logic.">Game</a> object.  <br /></td></tr>
+<tr class="separator:a232152bf15b632c77d07cdd8b3e52461"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a3a07e7c96e055f2ac28ce7a05d2573ce" id="r_a3a07e7c96e055f2ac28ce7a05d2573ce"><td class="memItemLeft" align="right" valign="top">void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classGame.html#a3a07e7c96e055f2ac28ce7a05d2573ce">advanceDay</a> ()</td></tr>
 <tr class="memdesc:a3a07e7c96e055f2ac28ce7a05d2573ce"><td class="mdescLeft">&#160;</td><td class="mdescRight">Advances the game time by one day, simulating any matches or events scheduled for the current date.  <br /></td></tr>
 <tr class="separator:a3a07e7c96e055f2ac28ce7a05d2573ce"><td class="memSeparator" colspan="2">&#160;</td></tr>
@@ -310,8 +310,8 @@ Private Attributes</h2></td></tr>
 <div class="textblock"><p>Represents the core game state and logic. </p>
 <p>The <a class="el" href="classGame.html" title="Represents the core game state and logic.">Game</a> class orchestrates the simulation mechanics, handling the progression of time, saving and loading the game state, and triggering match simulations. </p>
 </div><h2 class="groupheader">Constructor &amp; Destructor Documentation</h2>
-<a id="a8acdee0bf96a2711911fde329c40b4e0" name="a8acdee0bf96a2711911fde329c40b4e0"></a>
-<h2 class="memtitle"><span class="permalink"><a href="#a8acdee0bf96a2711911fde329c40b4e0">&#9670;&#160;</a></span>Game()</h2>
+<a id="a232152bf15b632c77d07cdd8b3e52461" name="a232152bf15b632c77d07cdd8b3e52461"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a232152bf15b632c77d07cdd8b3e52461">&#9670;&#160;</a></span>Game()</h2>
 
 <div class="memitem">
 <div class="memproto">
@@ -329,7 +329,13 @@ Private Attributes</h2></td></tr>
           <td class="paramkey"></td>
           <td></td>
           <td class="paramtype">std::shared_ptr&lt; <a class="el" href="classDatabaseConnection.html">DatabaseConnection</a> &gt;&#160;</td>
-          <td class="paramname"><em>conn</em>&#160;</td>
+          <td class="paramname"><em>conn</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">std::stop_token&#160;</td>
+          <td class="paramname"><em>stop</em> = <code>{}</code>&#160;</td>
         </tr>
         <tr>
           <td></td>

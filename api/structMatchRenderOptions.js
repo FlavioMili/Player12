@@ -6,6 +6,7 @@ var structMatchRenderOptions =
     [ "cameraMode", "structMatchRenderOptions.html#a53933d712c9a332cef645c19ab6d91f9", null ],
     [ "dayLook", "structMatchRenderOptions.html#a2f1dbf59b168d4933577a91d3bf3b89a", null ],
     [ "frameSeconds", "structMatchRenderOptions.html#a839f3464495707afc1ee181439f31d74", null ],
+    [ "hidePlayerFigures", "structMatchRenderOptions.html#ab1d8476515b5dc6c1ff5f892dab80416", null ],
     [ "homeLabel", "structMatchRenderOptions.html#abd3b0c9693a4bafc362678305651609b", null ],
     [ "kickoffMinutes", "structMatchRenderOptions.html#a020c375db3be8cb80615a66b4b0a4811", null ],
     [ "pressureOverlay", "structMatchRenderOptions.html#af6b6178640cdfbb8390e5af5e7e862f3", null ],

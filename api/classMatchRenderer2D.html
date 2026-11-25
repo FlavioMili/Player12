@@ -134,8 +134,8 @@ Public Member Functions</h2></td></tr>
 <tr class="separator:aebf19db8723e0e274ce4951ef3f353c2"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a0fbea105bd8cea9a31ceb98f14ce9e7d" id="r_a0fbea105bd8cea9a31ceb98f14ce9e7d"><td class="memItemLeft" align="right" valign="top">void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classMatchRenderer2D.html#a0fbea105bd8cea9a31ceb98f14ce9e7d">render</a> (const <a class="el" href="structMatchRenderSnapshot.html">MatchRenderSnapshot</a> &amp;snapshot, const <a class="el" href="structMatchRenderOptions.html">MatchRenderOptions</a> &amp;options, const <a class="el" href="structMatchViewport.html">MatchViewport</a> &amp;viewport) override</td></tr>
 <tr class="separator:a0fbea105bd8cea9a31ceb98f14ce9e7d"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a581d45ce2aa365cad57dacb8c8d3b4d6" id="r_a581d45ce2aa365cad57dacb8c8d3b4d6"><td class="memItemLeft" align="right" valign="top">bool&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classMatchRenderer2D.html#a581d45ce2aa365cad57dacb8c8d3b4d6">projectPitch</a> (<a class="el" href="structVector2F.html">Vector2F</a> pitch, float heightMetres, float &amp;screenX, float &amp;screenY) const override</td></tr>
-<tr class="separator:a581d45ce2aa365cad57dacb8c8d3b4d6"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:adb3bc28f15fa97c8f16d43ed05faa421" id="r_adb3bc28f15fa97c8f16d43ed05faa421"><td class="memItemLeft" align="right" valign="top">bool&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classMatchRenderer2D.html#adb3bc28f15fa97c8f16d43ed05faa421">projectPitch</a> (<a class="el" href="structPitchPoint.html">PitchPoint</a> pitch, float heightMetres, float &amp;screenX, float &amp;screenY) const override</td></tr>
+<tr class="separator:adb3bc28f15fa97c8f16d43ed05faa421"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="inherit_header pub_methods_classIMatchRenderer"><td colspan="2" onclick="javascript:toggleInherit('pub_methods_classIMatchRenderer')"><img src="closed.png" alt="-"/>&#160;Public Member Functions inherited from <a class="el" href="classIMatchRenderer.html">IMatchRenderer</a></td></tr>
 <tr class="memitem:a362de59acdba815e0c12eca8517cbea1 inherit pub_methods_classIMatchRenderer" id="r_a362de59acdba815e0c12eca8517cbea1"><td class="memItemLeft" align="right" valign="top">virtual&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classIMatchRenderer.html#a362de59acdba815e0c12eca8517cbea1">~IMatchRenderer</a> ()=default</td></tr>
 <tr class="separator:a362de59acdba815e0c12eca8517cbea1 inherit pub_methods_classIMatchRenderer"><td class="memSeparator" colspan="2">&#160;</td></tr>
@@ -296,8 +296,8 @@ Private Attributes</h2></td></tr>
 
 </div>
 </div>
-<a id="a581d45ce2aa365cad57dacb8c8d3b4d6" name="a581d45ce2aa365cad57dacb8c8d3b4d6"></a>
-<h2 class="memtitle"><span class="permalink"><a href="#a581d45ce2aa365cad57dacb8c8d3b4d6">&#9670;&#160;</a></span>projectPitch()</h2>
+<a id="adb3bc28f15fa97c8f16d43ed05faa421" name="adb3bc28f15fa97c8f16d43ed05faa421"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#adb3bc28f15fa97c8f16d43ed05faa421">&#9670;&#160;</a></span>projectPitch()</h2>
 
 <div class="memitem">
 <div class="memproto">
@@ -308,7 +308,7 @@ Private Attributes</h2></td></tr>
         <tr>
           <td class="memname">bool MatchRenderer2D::projectPitch </td>
           <td>(</td>
-          <td class="paramtype"><a class="el" href="structVector2F.html">Vector2F</a>&#160;</td>
+          <td class="paramtype"><a class="el" href="structPitchPoint.html">PitchPoint</a>&#160;</td>
           <td class="paramname"><em>pitch</em>, </td>
         </tr>
         <tr>
@@ -341,9 +341,9 @@ Private Attributes</h2></td></tr>
   </tr>
 </table>
 </div><div class="memdoc">
-<p>Screen position (logical pixels) of a normalised pitch point at a height in metres, as drawn by the last <a class="el" href="classMatchRenderer2D.html#a0fbea105bd8cea9a31ceb98f14ce9e7d">render()</a>, so overlays can be drawn in the view's projection. False before the first frame or when the point is behind the camera. </p>
+<p>Screen position (logical pixels) of a pitch point (metres) at a height in metres, as drawn by the last <a class="el" href="classMatchRenderer2D.html#a0fbea105bd8cea9a31ceb98f14ce9e7d">render()</a>, so overlays can be drawn in the view's projection. False before the first frame or when the point is behind the camera. </p>
 
-<p>Implements <a class="el" href="classIMatchRenderer.html#aecb5f3c42cfee67fbdace5c4f575770d">IMatchRenderer</a>.</p>
+<p>Implements <a class="el" href="classIMatchRenderer.html#a385afec8a19761128531b362cfb65fb7">IMatchRenderer</a>.</p>
 
 </div>
 </div>

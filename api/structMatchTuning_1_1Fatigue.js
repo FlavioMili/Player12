@@ -10,6 +10,7 @@ var structMatchTuning_1_1Fatigue =
     [ "RESERVE_DRAIN_PER_SECOND", "structMatchTuning_1_1Fatigue.html#a91c4e6eb3db9035e9a3a284c00b4c697", null ],
     [ "RESERVE_RECOVERY_SECONDS", "structMatchTuning_1_1Fatigue.html#aebc1d342dc0568cce9b60527edc93c12", null ],
     [ "RUNNING_DRAIN", "structMatchTuning_1_1Fatigue.html#a87b9847ca5ce4fbabe670f345f86e43a", null ],
+    [ "SPENT_TECHNIQUE_ERROR", "structMatchTuning_1_1Fatigue.html#af4f67b865022e7a5db910f7bf2da4ff0", null ],
     [ "SPRINT_DRAIN", "structMatchTuning_1_1Fatigue.html#aef2f0d45870eef90015ce551fbe21171", null ],
     [ "SPRINT_THRESHOLD", "structMatchTuning_1_1Fatigue.html#a43dce4dbb1c21c1dbd3af0d187df5eac", null ],
     [ "TEAM_PRESSING_DRAIN", "structMatchTuning_1_1Fatigue.html#aeb60a6ac967759995c8c8c56992f3ffc", null ],

@@ -53,6 +53,7 @@ var namespaces_dup =
       [ "PROJECT_COOLDOWN_DAYS", "namespaceBoardModel.html#acec33dfbe97da63bf2b884e8ea91608c", null ],
       [ "PROJECT_MIN_CONFIDENCE", "namespaceBoardModel.html#abecf0bddb6494ee0be430d6dfe0b1f97", null ]
     ] ],
+    [ "BrainFlow", "namespaceBrainFlow.html", "namespaceBrainFlow" ],
     [ "BuildInfo", "namespaceBuildInfo.html", [
       [ "commit", "namespaceBuildInfo.html#ada88549620adb5b514efdf2563ab2045", null ],
       [ "compiler", "namespaceBuildInfo.html#af673e56fd8c57743a4ca1732da081fd4", null ],
@@ -117,6 +118,8 @@ var namespaces_dup =
       [ "RATING_HISTORY", "namespaceDataHub.html#a8e77c1422dd14b0dbf058fceec6d8150", null ],
       [ "ROLLING_WINDOW", "namespaceDataHub.html#aaf7b3e49163eb9dc17b8857d4e4d053e", null ]
     ] ],
+    [ "DecisionFrame", "namespaceDecisionFrame.html", "namespaceDecisionFrame" ],
+    [ "DerivedStats", "namespaceDerivedStats.html", "namespaceDerivedStats" ],
     [ "DrawCeremonies", "namespaceDrawCeremonies.html", [
       [ "announcesDraw", "namespaceDrawCeremonies.html#a2098034c87f251987ba60d7240363328", null ],
       [ "continentalRound", "namespaceDrawCeremonies.html#ab36cadc4fa951e4eff62da33dfae0d48", null ],
@@ -126,6 +129,17 @@ var namespaces_dup =
       [ "latestCupRound", "namespaceDrawCeremonies.html#a85a254f48301c076e02d8fb09d957d14", null ],
       [ "shownAt", "namespaceDrawCeremonies.html#a0ff2cd682c0eff2ad994cb716e9357d7", null ],
       [ "REVEAL_SECONDS", "namespaceDrawCeremonies.html#ac6788246032961a2707d45c00ab9e3bb", null ]
+    ] ],
+    [ "DrillDraw", "namespaceDrillDraw.html", [
+      [ "area", "namespaceDrillDraw.html#a2c56e692bfe16b446fd6a30ba1d7e342", null ],
+      [ "circle", "namespaceDrillDraw.html#aa8ede14424eccc8df97507c997be4182", null ],
+      [ "cone", "namespaceDrillDraw.html#ac20d7fb9a10309c552b99875a597ecdf", null ],
+      [ "label", "namespaceDrillDraw.html#a706e57a049d025502ae27cc5cbd71703", null ],
+      [ "line", "namespaceDrillDraw.html#a07e5b81949d97d6d686c5f5efbaee5fa", null ],
+      [ "marker", "namespaceDrillDraw.html#a688f61fbec096caec154dacd49df32e4", null ],
+      [ "path", "namespaceDrillDraw.html#a9f83a1458fec822c78dcf6a8a28c511f", null ],
+      [ "project", "namespaceDrillDraw.html#abd71fd7bc9e841c4f6790f3a0ecc3eef", null ],
+      [ "CONE_RADIUS_METRES", "namespaceDrillDraw.html#a055a46531ee7f4dca14ea8a61fb91365", null ]
     ] ],
     [ "EditorForm", "namespaceEditorForm.html", "namespaceEditorForm" ],
     [ "EditorValidation", "namespaceEditorValidation.html", [
@@ -145,6 +159,15 @@ var namespaces_dup =
       [ "weekday", "namespaceFormat.html#a79324e6fdc1e639d7f26a7a19328691e", null ]
     ] ],
     [ "Formation", "namespaceFormation.html", "namespaceFormation" ],
+    [ "GameXg", "namespaceGameXg.html", [
+      [ "file", "namespaceGameXg.html#a5c18fef04836358f421035995a9dd831", null ],
+      [ "folder", "namespaceGameXg.html#a9cdc01c6a9def008bdd2804bce40e49a", null ],
+      [ "legFile", "namespaceGameXg.html#a96a1744692ef318716d8643ac6e16d26", null ],
+      [ "legs", "namespaceGameXg.html#a6cadf91d006e527b38c5e79f2a9e26a4", null ],
+      [ "openShare", "namespaceGameXg.html#ab6fbdb447ec9a975b9ec554022637464", null ],
+      [ "reload", "namespaceGameXg.html#ad7dece32cbbd4e98d75aebf50dad386f", null ],
+      [ "table", "namespaceGameXg.html#a3c37d6045ec88b0e4ebf992c994589ee", null ]
+    ] ],
     [ "Glossary", "namespaceGlossary.html", "namespaceGlossary" ],
     [ "GUIConstants", "namespaceGUIConstants.html", "namespaceGUIConstants" ],
     [ "GuidanceUI", "namespaceGuidanceUI.html", [
@@ -276,6 +299,8 @@ var namespaces_dup =
       [ "replacements", "namespaceMatchdaySquad.html#aa2bceebd02986eaaa2c51fd37f039084", null ],
       [ "slotScore", "namespaceMatchdaySquad.html#af87d89d39f9a047ea437d272ddc5d883", null ]
     ] ],
+    [ "MatchEngineInternal", "namespaceMatchEngineInternal.html", "namespaceMatchEngineInternal" ],
+    [ "MatchGround", "namespaceMatchGround.html", "namespaceMatchGround" ],
     [ "MatchInsights", "namespaceMatchInsights.html", [
       [ "BIG_CHANCE_XG", "namespaceMatchInsights.html#a579a9603bcf4f131c7e8b2bf8d6c367b", null ],
       [ "CLEAR_XG_GAP", "namespaceMatchInsights.html#a05303a48e068d08f9630e41f48dfeaf5", null ],
@@ -404,6 +429,7 @@ var namespaces_dup =
       [ "PASSING_MARGIN", "namespaceOppositionRules.html#a03f83fdd775b3790e79b1685d1604dcd", null ],
       [ "RECENT_MATCHES", "namespaceOppositionRules.html#ae3aeff7d3fcdc2f1aaf83b9cce94423e", null ]
     ] ],
+    [ "PitchKit", "namespacePitchKit.html", "namespacePitchKit" ],
     [ "PitchMetres", "namespacePitchMetres.html", null ],
     [ "PlayerAgent", "namespacePlayerAgent.html", "namespacePlayerAgent" ],
     [ "PlayerRig", "namespacePlayerRig.html", "namespacePlayerRig" ],
@@ -417,6 +443,9 @@ var namespaces_dup =
       [ "log", "namespacePortableMath.html#aabc5c7cdd3e75374dea64a1bb8bed5a2", null ]
     ] ],
     [ "PortableRandom", "namespacePortableRandom.html", "namespacePortableRandom" ],
+    [ "PossessionClaim", "namespacePossessionClaim.html", "namespacePossessionClaim" ],
+    [ "PossessionControl", "namespacePossessionControl.html", "namespacePossessionControl" ],
+    [ "PossessionCoordination", "namespacePossessionCoordination.html", "namespacePossessionCoordination" ],
     [ "Preseason", "namespacePreseason.html", [
       [ "campQuote", "namespacePreseason.html#a6b5ecf0ddd227a01c65b110cebe2ab83", null ],
       [ "levelMatches", "namespacePreseason.html#a1a646e43dd06c53cf40d2fede7f99fd1", null ],
@@ -425,6 +454,7 @@ var namespaces_dup =
       [ "LEVEL_GAP", "namespacePreseason.html#a363b2981329d341d008b4624bf1f4188", null ],
       [ "TOUR_MATCHES_FOR_REPUTATION", "namespacePreseason.html#a8e13bfc49ae36b542aa5a6a2be0c7964", null ]
     ] ],
+    [ "Recordings", "namespaceRecordings.html", "namespaceRecordings" ],
     [ "Records", "namespaceRecords.html", [
       [ "beats", "namespaceRecords.html#a82f2613d8396f87893a3574125526d55", null ],
       [ "isLegend", "namespaceRecords.html#ad8e84dbab36ca177d9a40ef619339828", null ],
@@ -436,7 +466,47 @@ var namespaces_dup =
       [ "LEGEND_HONOURS_APPEARANCES", "namespaceRecords.html#a3fd81c113e1d2ed8b7e2e666f1628746", null ]
     ] ],
     [ "RenderMath", "namespaceRenderMath.html", "namespaceRenderMath" ],
+    [ "RestartApproach", "namespaceRestartApproach.html", [
+      [ "target", "namespaceRestartApproach.html#a9dcadc4cdcacffb3ed4182e14b2bfacf", null ]
+    ] ],
     [ "RuntimeEditor", "namespaceRuntimeEditor.html", "namespaceRuntimeEditor" ],
+    [ "SandboxAnalysisUI", "namespaceSandboxAnalysisUI.html", [
+      [ "bold", "namespaceSandboxAnalysisUI.html#a3c1b20a28f86d951e06f00810a615e6d", null ],
+      [ "button", "namespaceSandboxAnalysisUI.html#a8566587d768c3643fc11bc148dbabed9", null ],
+      [ "next", "namespaceSandboxAnalysisUI.html#a074fe0cf7e8f2f7d0fcd412ccc8e9cbb", null ],
+      [ "regular", "namespaceSandboxAnalysisUI.html#a56785e00cc975537b5fc3cce8d68627d", null ]
+    ] ],
+    [ "SandboxJson", "namespaceSandboxJson.html", [
+      [ "fromJson", "namespaceSandboxJson.html#a2b24f51ed151bba6deb2bf4dd46a6809", null ],
+      [ "strategyFromJson", "namespaceSandboxJson.html#a6ea668aa9d149753b005b78721079683", null ],
+      [ "toJson", "namespaceSandboxJson.html#a16224f0dda6e55f320698b1a4b39a74c", null ],
+      [ "toJson", "namespaceSandboxJson.html#ad000b195ee32690077fe48eef40e3ba8", null ]
+    ] ],
+    [ "SandboxNames", "namespaceSandboxNames.html", [
+      [ "action", "namespaceSandboxNames.html#ad1b3b0ae8097828b459b8dafbf445f54", null ],
+      [ "choice", "namespaceSandboxNames.html#a26b2aeca953abfd6b85dce4733b92ec3", null ],
+      [ "duel", "namespaceSandboxNames.html#af0835c7c90ff9da05d2432e0a4bfca86", null ],
+      [ "intent", "namespaceSandboxNames.html#a778ceba4d0fe5f03215468bc811e8570", null ],
+      [ "job", "namespaceSandboxNames.html#adece73111919e88fa4e8f783645de73a", null ],
+      [ "passIntent", "namespaceSandboxNames.html#a070e46e620551320559958c3838394eb", null ],
+      [ "phase", "namespaceSandboxNames.html#aeb01b54391d9188dc483b0a3b957ca6c", null ]
+    ] ],
+    [ "SandboxPageUI", "namespaceSandboxPageUI.html", "namespaceSandboxPageUI" ],
+    [ "SandboxPickers", "namespaceSandboxPickers.html", [
+      [ "engineVersionsTable", "namespaceSandboxPickers.html#a200cb639f294c6266bbe2c6e072369b5", null ]
+    ] ],
+    [ "SandboxSetupUI", "namespaceSandboxSetupUI.html", [
+      [ "render", "namespaceSandboxSetupUI.html#abebd18b4629b9e054f41c05bcb69b71c", null ]
+    ] ],
+    [ "SandboxText", "namespaceSandboxText.html", [
+      [ "bulletText", "namespaceSandboxText.html#a39e1ec7c4d0a0b31ee5a284b79782e41", null ],
+      [ "coloredText", "namespaceSandboxText.html#a404445483eaec5f9fd9098d71b5ba725", null ],
+      [ "disabledText", "namespaceSandboxText.html#a0e4c98dce322e94639708a9aef6a3a16", null ],
+      [ "tooltipText", "namespaceSandboxText.html#ae0fb26383b5ffa092abfcadc99e1cfc7", null ],
+      [ "treeNode", "namespaceSandboxText.html#a7afcbc8b3df32c47296db79e8a388f20", null ],
+      [ "wrappedText", "namespaceSandboxText.html#ae1d01d99a578a5475073abdfb73ad8b1", null ]
+    ] ],
+    [ "SandboxTypography", "namespaceSandboxTypography.html", "namespaceSandboxTypography" ],
     [ "SaveFormat", "namespaceSaveFormat.html", [
       [ "ENGINE_VERSION", "namespaceSaveFormat.html#a950cfe9240ac648503668b359374c91a", null ],
       [ "FORMAT_ID", "namespaceSaveFormat.html#a5d75f9538722babba1ff3c1ce5f592a5", null ],
@@ -444,6 +514,10 @@ var namespaces_dup =
       [ "RNG_VERSION", "namespaceSaveFormat.html#ae4088eca8201795e8b310329cedaa6ef", null ],
       [ "RULES_EDITION", "namespaceSaveFormat.html#a76afd0a8aa1ed3e45e6bafde69266122", null ],
       [ "SIM_VERSION", "namespaceSaveFormat.html#accee6659f6c4f3f5ebdfe0ba69d6069d", null ]
+    ] ],
+    [ "ScenarioExport", "namespaceScenarioExport.html", [
+      [ "save", "namespaceScenarioExport.html#ae57ba6e446b45b64b1ec7b2bdf0e2537", null ],
+      [ "testCase", "namespaceScenarioExport.html#a9d9fc72826e67382a81ce7c282052b82", null ]
     ] ],
     [ "ScoutExpertiseModel", "namespaceScoutExpertiseModel.html", [
       [ "compute", "namespaceScoutExpertiseModel.html#a5fe7fcf6928b6d7c0db31a795b1ac18b", null ],
@@ -677,6 +751,10 @@ var namespaces_dup =
       [ "appendShortest", "namespaceTextEncoding.html#a8b1fd4aef7db4d9edc253a00a8f6eea8", null ]
     ] ],
     [ "Theme", "namespaceTheme.html", "namespaceTheme" ],
+    [ "TouchKnobDefaults", "namespaceTouchKnobDefaults.html", [
+      [ "Ball", "namespaceTouchKnobDefaults.html#ac259e597873db43ab403f52b2208a2e1", null ],
+      [ "F", "namespaceTouchKnobDefaults.html#a05828de5a4fb2893b4612b382bde53ff", null ]
+    ] ],
     [ "Touchline", "namespaceTouchline.html", [
       [ "beginDialog", "namespaceTouchline.html#a0c5ee52fb348c0e1fa7d0927f43ae2d4", null ],
       [ "conditionColor", "namespaceTouchline.html#a5928b5b9286d2d8c4b6b74e3f30f900b", null ],
@@ -685,6 +763,11 @@ var namespaces_dup =
       [ "pausesMatch", "namespaceTouchline.html#a4b3150e6a9c57dbf4def7ee87dbdd7fc", null ],
       [ "playerName", "namespaceTouchline.html#a695bfcbff81243c91143a010469c9239", null ],
       [ "refusalText", "namespaceTouchline.html#ac982d385be82d25ff5277868a31634b7", null ]
+    ] ],
+    [ "TrainingGround", "namespaceTrainingGround.html", [
+      [ "LENGTH_METRES", "namespaceTrainingGround.html#a3edf2ed9d40fb5ed7cc46560fb00f900", null ],
+      [ "WIDTH_METRES", "namespaceTrainingGround.html#a43e8fcefe4b2a94020cbb6f767049d84", null ],
+      [ "ZONE_MARGIN_METRES", "namespaceTrainingGround.html#ab36d55d95048a16af79011757f4bd8a6", null ]
     ] ],
     [ "TrainingModel", "namespaceTrainingModel.html", [
       [ "advise", "namespaceTrainingModel.html#ab3ab165bb30fff487419ffb41642e0b0", null ],
@@ -760,6 +843,7 @@ var namespaces_dup =
       [ "YEAR_LABELS", "namespaceTransferTermsEditor.html#a959e53c0696cc7785dbc46c348b5da9f", null ]
     ] ],
     [ "TransferWindows", "namespaceTransferWindows.html", "namespaceTransferWindows" ],
+    [ "TrueView", "namespaceTrueView.html", "namespaceTrueView" ],
     [ "UI", "namespaceUI.html", "namespaceUI" ],
     [ "World", "namespaceWorld.html", "namespaceWorld" ],
     [ "WorldEditorUi", "namespaceWorldEditorUi.html", [
@@ -828,5 +912,6 @@ var namespaces_dup =
       [ "U21_OVERAGE_GOALKEEPERS", "namespaceYouthModel.html#a6844e7625060098bb556f52498b4c961", null ],
       [ "U21_OVERAGE_OUTFIELD", "namespaceYouthModel.html#a455adf01a30df12f3490c3bd568e89cd", null ],
       [ "U21_SQUAD_LIMIT", "namespaceYouthModel.html#a8ff8771b09db43a30861322bd07552a0", null ]
-    ] ]
+    ] ],
+    [ "ZoneRecordings", "namespaceZoneRecordings.html", "namespaceZoneRecordings" ]
 ];

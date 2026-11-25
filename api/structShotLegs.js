@@ -1,0 +1,26 @@
+var structShotLegs =
+[
+    [ "aim", "structShotLegs.html#a72279fdffd32f4e29dd43959a2600d58", null ],
+    [ "ballThere", "structShotLegs.html#aa690625f522d35ac6e02cb2e6e36aa44", null ],
+    [ "blocking", "structShotLegs.html#acc6d8d1c0fa36f194dba61ef75c49dbd", null ],
+    [ "chance", "structShotLegs.html#a3bf5ec950220da6eca410f5746a427a9", null ],
+    [ "error", "structShotLegs.html#a6705eb18c86c7e7bc8b40616170ca1de", null ],
+    [ "errorRadius", "structShotLegs.html#acc40fa4362a27ca46814420e3de593a3", null ],
+    [ "footFacing", "structShotLegs.html#a93539014c9a7ec7e6c8cdbca907c40f2", null ],
+    [ "hands", "structShotLegs.html#a6a71eede6b4c5e2f8e422e82692a379f", null ],
+    [ "leg", "structShotLegs.html#a6b9e76cacf4c58de2f4a472af5b5bac3", null ],
+    [ "legFrom", "structShotLegs.html#a36d7cd8e3ceeca2c3ac217103b3cc791", null ],
+    [ "legSeconds", "structShotLegs.html#ab533861db60ddbadfa1bbbbd77ae1401", null ],
+    [ "lineGap", "structShotLegs.html#a050e32e2192503c4c48a73f65a989dc6", null ],
+    [ "lineHeight", "structShotLegs.html#a765cae67a33ac9afda036a6b5b0e8cf1", null ],
+    [ "noBlock", "structShotLegs.html#a69e4c141571a137046de19ad6c954772", null ],
+    [ "outcome", "structShotLegs.html#afa04b18faf628572d7af117708fd93e8", null ],
+    [ "outShare", "structShotLegs.html#a7e844f952b00749dac4fce36a62462ae", null ],
+    [ "passedThrough", "structShotLegs.html#ae27a17f02d093f42df03d0a8b1535969", null ],
+    [ "pathFor", "structShotLegs.html#ac84f9769e33ce858e65a4c952bd9ac93", null ],
+    [ "pose", "structShotLegs.html#a7ff217252f998eb3001cc0645ad941ca", null ],
+    [ "reacted", "structShotLegs.html#a8e33e4c0a9cdd0ad99a2ff0025a1e716", null ],
+    [ "rolledAt", "structShotLegs.html#aeed2b43f0cf4c3ae9109347ca84ae54f", null ],
+    [ "spareSeconds", "structShotLegs.html#a088625805f67a847bc5f3bb72bd3881c", null ],
+    [ "stride", "structShotLegs.html#aebb69be33c5c342c01ae7c29988ed3a0", null ]
+];

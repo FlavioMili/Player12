@@ -8,6 +8,8 @@ var dir_cc657b4ce13702a9d007a200bde234e1 =
     [ "format.h", "format_8h.html", "format_8h" ],
     [ "icons.cpp", "icons_8cpp.html", "icons_8cpp" ],
     [ "icons.h", "icons_8h.html", "icons_8h" ],
+    [ "text.cpp", "text_8cpp.html", "text_8cpp" ],
+    [ "text.h", "text_8h.html", "text_8h" ],
     [ "theme.cpp", "theme_8cpp.html", "theme_8cpp" ],
     [ "theme.h", "theme_8h.html", "theme_8h" ],
     [ "widgets.cpp", "widgets_8cpp.html", "widgets_8cpp" ],

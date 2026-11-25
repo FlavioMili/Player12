@@ -95,12 +95,16 @@ $(document).ready(function(){initNavTree('match__engine_8h.html',''); initResiza
 <div class="header">
   <div class="summary">
 <a href="#nested-classes">Classes</a> &#124;
+<a href="#namespaces">Namespaces</a> &#124;
 <a href="#enum-members">Enumerations</a> &#124;
-<a href="#func-members">Functions</a>  </div>
+<a href="#func-members">Functions</a> &#124;
+<a href="#var-members">Variables</a>  </div>
   <div class="headertitle"><div class="title">match_engine.h File Reference</div></div>
 </div><!--header-->
 <div class="contents">
-<div class="textblock"><code>#include &lt;array&gt;</code><br />
+<div class="textblock"><code>#include &lt;algorithm&gt;</code><br />
+<code>#include &lt;array&gt;</code><br />
+<code>#include &lt;cmath&gt;</code><br />
 <code>#include &lt;cstdint&gt;</code><br />
 <code>#include &lt;limits&gt;</code><br />
 <code>#include &lt;optional&gt;</code><br />
@@ -108,34 +112,139 @@ $(document).ready(function(){initNavTree('match__engine_8h.html',''); initResiza
 <code>#include &lt;span&gt;</code><br />
 <code>#include &lt;string&gt;</code><br />
 <code>#include &lt;string_view&gt;</code><br />
+<code>#include &lt;utility&gt;</code><br />
 <code>#include &lt;vector&gt;</code><br />
 <code>#include &quot;<a class="el" href="stats__config_8h_source.html">global/stats_config.h</a>&quot;</code><br />
 <code>#include &quot;<a class="el" href="types_8h_source.html">global/types.h</a>&quot;</code><br />
 <code>#include &quot;<a class="el" href="lineup_8h_source.html">model/lineup.h</a>&quot;</code><br />
+<code>#include &quot;<a class="el" href="match__ball__physics_8h_source.html">model/match_ball_physics.h</a>&quot;</code><br />
+<code>#include &quot;<a class="el" href="match__body_8h_source.html">model/match_body.h</a>&quot;</code><br />
+<code>#include &quot;<a class="el" href="match__brain_8h_source.html">model/match_brain.h</a>&quot;</code><br />
 <code>#include &quot;<a class="el" href="match__context_8h_source.html">model/match_context.h</a>&quot;</code><br />
+<code>#include &quot;<a class="el" href="match__derived__stats_8h_source.html">model/match_derived_stats.h</a>&quot;</code><br />
 <code>#include &quot;<a class="el" href="match__events_8h_source.html">model/match_events.h</a>&quot;</code><br />
+<code>#include &quot;<a class="el" href="match__first__touch__knobs_8h_source.html">model/match_first_touch_knobs.h</a>&quot;</code><br />
+<code>#include &quot;<a class="el" href="match__handshake_8h_source.html">model/match_handshake.h</a>&quot;</code><br />
+<code>#include &quot;<a class="el" href="match__layout_8h_source.html">model/match_layout.h</a>&quot;</code><br />
+<code>#include &quot;<a class="el" href="match__manager_8h_source.html">model/match_manager.h</a>&quot;</code><br />
+<code>#include &quot;<a class="el" href="match__out__of__play_8h_source.html">model/match_out_of_play.h</a>&quot;</code><br />
+<code>#include &quot;<a class="el" href="match__pitch_8h_source.html">model/match_pitch.h</a>&quot;</code><br />
+<code>#include &quot;<a class="el" href="match__point_8h_source.html">model/match_point.h</a>&quot;</code><br />
+<code>#include &quot;<a class="el" href="match__possession_8h_source.html">model/match_possession.h</a>&quot;</code><br />
+<code>#include &quot;<a class="el" href="match__referee_8h_source.html">model/match_referee.h</a>&quot;</code><br />
 <code>#include &quot;<a class="el" href="match__rules_8h_source.html">model/match_rules.h</a>&quot;</code><br />
 <code>#include &quot;<a class="el" href="match__scenario_8h_source.html">model/match_scenario.h</a>&quot;</code><br />
+<code>#include &quot;<a class="el" href="match__state_8h_source.html">model/match_state.h</a>&quot;</code><br />
+<code>#include &quot;<a class="el" href="match__strike__knobs_8h_source.html">model/match_strike_knobs.h</a>&quot;</code><br />
 <code>#include &quot;<a class="el" href="match__tracking_8h_source.html">model/match_tracking.h</a>&quot;</code><br />
 <code>#include &quot;<a class="el" href="match__tuning_8h_source.html">model/match_tuning.h</a>&quot;</code><br />
 <code>#include &quot;<a class="el" href="strategy_8h_source.html">model/strategy.h</a>&quot;</code><br />
 <code>#include &quot;<a class="el" href="tactics_8h_source.html">model/tactics.h</a>&quot;</code><br />
+<code>#include &quot;<a class="el" href="match__brain__aardvark__members_8h_source.html">model/match_brain_aardvark_members.h</a>&quot;</code><br />
+<code>#include &quot;<a class="el" href="match__brain__binturong__members_8h_source.html">model/match_brain_binturong_members.h</a>&quot;</code><br />
+<code>#include &quot;<a class="el" href="match__brain__capybara__members_8h_source.html">model/match_brain_capybara_members.h</a>&quot;</code><br />
+<code>#include &quot;<a class="el" href="match__ball__physics__aardvark__members_8h_source.html">model/match_ball_physics_aardvark_members.h</a>&quot;</code><br />
+<code>#include &quot;<a class="el" href="match__ball__physics__binturong__members_8h_source.html">model/match_ball_physics_binturong_members.h</a>&quot;</code><br />
+<code>#include &quot;<a class="el" href="match__body__aardvark__members_8h_source.html">model/match_body_aardvark_members.h</a>&quot;</code><br />
+<code>#include &quot;<a class="el" href="match__body__binturong__members_8h_source.html">model/match_body_binturong_members.h</a>&quot;</code><br />
+<code>#include &quot;<a class="el" href="match__handshake__aardvark__members_8h_source.html">model/match_handshake_aardvark_members.h</a>&quot;</code><br />
+<code>#include &quot;<a class="el" href="match__handshake__binturong__members_8h_source.html">model/match_handshake_binturong_members.h</a>&quot;</code><br />
+<code>#include &quot;<a class="el" href="match__manager__aardvark__members_8h_source.html">model/match_manager_aardvark_members.h</a>&quot;</code><br />
+<code>#include &quot;<a class="el" href="match__manager__binturong__members_8h_source.html">model/match_manager_binturong_members.h</a>&quot;</code><br />
+<code>#include &quot;<a class="el" href="match__out__of__play__aardvark__members_8h_source.html">model/match_out_of_play_aardvark_members.h</a>&quot;</code><br />
+<code>#include &quot;<a class="el" href="match__out__of__play__binturong__members_8h_source.html">model/match_out_of_play_binturong_members.h</a>&quot;</code><br />
+<code>#include &quot;<a class="el" href="match__referee__aardvark__members_8h_source.html">model/match_referee_aardvark_members.h</a>&quot;</code><br />
+<code>#include &quot;<a class="el" href="match__referee__binturong__members_8h_source.html">model/match_referee_binturong_members.h</a>&quot;</code><br />
 </div>
 <p><a href="match__engine_8h_source.html">Go to the source code of this file.</a></p>
 <table class="memberdecls">
 <tr class="heading"><td colspan="2"><h2 class="groupheader"><a id="nested-classes" name="nested-classes"></a>
 Classes</h2></td></tr>
+<tr class="memitem:"><td class="memItemLeft" align="right" valign="top">struct &#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structSpeedBand.html">SpeedBand</a></td></tr>
+<tr class="separator:"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:"><td class="memItemLeft" align="right" valign="top">struct &#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structSpeedBandTops.html">SpeedBandTops</a></td></tr>
+<tr class="separator:"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:"><td class="memItemLeft" align="right" valign="top">struct &#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structSpeedBandInputs.html">SpeedBandInputs</a></td></tr>
+<tr class="separator:"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:"><td class="memItemLeft" align="right" valign="top">struct &#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structPassDecision.html">PassDecision</a></td></tr>
 <tr class="separator:"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:"><td class="memItemLeft" align="right" valign="top">struct &#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structScenarioDecision.html">ScenarioDecision</a></td></tr>
 <tr class="separator:"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:"><td class="memItemLeft" align="right" valign="top">struct &#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structMatchPlayer.html">MatchPlayer</a></td></tr>
 <tr class="separator:"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:"><td class="memItemLeft" align="right" valign="top">struct &#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structWalkState.html">WalkState</a></td></tr>
+<tr class="separator:"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:"><td class="memItemLeft" align="right" valign="top">struct &#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structTouchlinePerson.html">TouchlinePerson</a></td></tr>
+<tr class="separator:"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:"><td class="memItemLeft" align="right" valign="top">struct &#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structTouchIntent.html">TouchIntent</a></td></tr>
+<tr class="separator:"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:"><td class="memItemLeft" align="right" valign="top">struct &#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structTouchMoment.html">TouchMoment</a></td></tr>
+<tr class="separator:"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:"><td class="memItemLeft" align="right" valign="top">struct &#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structTouchResult.html">TouchResult</a></td></tr>
+<tr class="separator:"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:"><td class="memItemLeft" align="right" valign="top">struct &#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structStretchMap.html">StretchMap</a></td></tr>
+<tr class="separator:"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:"><td class="memItemLeft" align="right" valign="top">struct &#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structContactProfile.html">ContactProfile</a></td></tr>
+<tr class="separator:"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:"><td class="memItemLeft" align="right" valign="top">struct &#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structContactProfile_1_1Weights.html">ContactProfile::Weights</a></td></tr>
+<tr class="separator:"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:"><td class="memItemLeft" align="right" valign="top">struct &#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structContactFactor.html">ContactFactor</a></td></tr>
+<tr class="separator:"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:"><td class="memItemLeft" align="right" valign="top">struct &#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structContactAssessment.html">ContactAssessment</a></td></tr>
+<tr class="separator:"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:"><td class="memItemLeft" align="right" valign="top">struct &#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structStrikeContactStats.html">StrikeContactStats</a></td></tr>
+<tr class="separator:"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:"><td class="memItemLeft" align="right" valign="top">struct &#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structStrikeContactStats_1_1ByKind.html">StrikeContactStats::ByKind</a></td></tr>
+<tr class="separator:"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:"><td class="memItemLeft" align="right" valign="top">struct &#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structContactOutcome.html">ContactOutcome</a></td></tr>
+<tr class="separator:"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:"><td class="memItemLeft" align="right" valign="top">struct &#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structBodyLines.html">BodyLines</a></td></tr>
+<tr class="separator:"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:"><td class="memItemLeft" align="right" valign="top">struct &#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structPoint3F.html">Point3F</a></td></tr>
+<tr class="separator:"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:"><td class="memItemLeft" align="right" valign="top">struct &#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structLegPose.html">LegPose</a></td></tr>
+<tr class="separator:"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:"><td class="memItemLeft" align="right" valign="top">struct &#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structLegPose_1_1Leg.html">LegPose::Leg</a></td></tr>
+<tr class="separator:"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:"><td class="memItemLeft" align="right" valign="top">struct &#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structShotHands.html">ShotHands</a></td></tr>
+<tr class="separator:"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:"><td class="memItemLeft" align="right" valign="top">struct &#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structKeeperDive.html">KeeperDive</a></td></tr>
+<tr class="separator:"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:"><td class="memItemLeft" align="right" valign="top">struct &#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structKeeperDivePose.html">KeeperDivePose</a></td></tr>
+<tr class="separator:"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:"><td class="memItemLeft" align="right" valign="top">struct &#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structShotLegs.html">ShotLegs</a></td></tr>
+<tr class="separator:"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:"><td class="memItemLeft" align="right" valign="top">struct &#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structShotBodyHit.html">ShotBodyHit</a></td></tr>
+<tr class="separator:"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:"><td class="memItemLeft" align="right" valign="top">struct &#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structKeeperReach.html">KeeperReach</a></td></tr>
+<tr class="separator:"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:"><td class="memItemLeft" align="right" valign="top">struct &#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structContactRequest.html">ContactRequest</a></td></tr>
+<tr class="separator:"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:"><td class="memItemLeft" align="right" valign="top">struct &#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structContactResult.html">ContactResult</a></td></tr>
+<tr class="separator:"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:"><td class="memItemLeft" align="right" valign="top">struct &#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structPossessionHistory.html">PossessionHistory</a></td></tr>
+<tr class="separator:"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:"><td class="memItemLeft" align="right" valign="top">struct &#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structPossessionHistory_1_1PendingTackle.html">PossessionHistory::PendingTackle</a></td></tr>
+<tr class="separator:"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:"><td class="memItemLeft" align="right" valign="top">struct &#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structMatchPossessionState.html">MatchPossessionState</a></td></tr>
+<tr class="separator:"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:"><td class="memItemLeft" align="right" valign="top">struct &#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structMatchBall.html">MatchBall</a></td></tr>
+<tr class="separator:"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:"><td class="memItemLeft" align="right" valign="top">struct &#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structDeadBallReturn.html">DeadBallReturn</a></td></tr>
+<tr class="separator:"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:"><td class="memItemLeft" align="right" valign="top">struct &#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structRestartReadiness.html">RestartReadiness</a></td></tr>
 <tr class="separator:"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:"><td class="memItemLeft" align="right" valign="top">struct &#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structMatchStats.html">MatchStats</a></td></tr>
 <tr class="separator:"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:"><td class="memItemLeft" align="right" valign="top">struct &#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structMatchCommandRecord.html">MatchCommandRecord</a></td></tr>
+<tr class="separator:"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:"><td class="memItemLeft" align="right" valign="top">struct &#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structPendingSubstitution.html">PendingSubstitution</a></td></tr>
+<tr class="separator:"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:"><td class="memItemLeft" align="right" valign="top">struct &#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structMovementJitterStats.html">MovementJitterStats</a></td></tr>
+<tr class="separator:"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:"><td class="memItemLeft" align="right" valign="top">struct &#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structMovementJitterStats_1_1ByIntent.html">MovementJitterStats::ByIntent</a></td></tr>
+<tr class="separator:"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:"><td class="memItemLeft" align="right" valign="top">struct &#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structLoadProfileStats.html">LoadProfileStats</a></td></tr>
 <tr class="separator:"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:"><td class="memItemLeft" align="right" valign="top">struct &#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structMatchPlayerInput.html">MatchPlayerInput</a></td></tr>
 <tr class="separator:"><td class="memSeparator" colspan="2">&#160;</td></tr>
@@ -145,75 +254,118 @@ Classes</h2></td></tr>
 <tr class="separator:"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:"><td class="memItemLeft" align="right" valign="top">class &#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classMatchEngine.html">MatchEngine</a></td></tr>
 <tr class="separator:"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:"><td class="memItemLeft" align="right" valign="top">struct &#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structMatchEngine_1_1ShotBounce.html">MatchEngine::ShotBounce</a></td></tr>
+<tr class="separator:"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:"><td class="memItemLeft" align="right" valign="top">struct &#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structMatchEngine_1_1FirstTouchWaitLosses.html">MatchEngine::FirstTouchWaitLosses</a></td></tr>
+<tr class="separator:"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:"><td class="memItemLeft" align="right" valign="top">struct &#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structMatchEngine_1_1RestartLineUpStats.html">MatchEngine::RestartLineUpStats</a></td></tr>
+<tr class="separator:"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:"><td class="memItemLeft" align="right" valign="top">struct &#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structMatchEngine_1_1BodyContactStats.html">MatchEngine::BodyContactStats</a></td></tr>
+<tr class="separator:"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:"><td class="memItemLeft" align="right" valign="top">struct &#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structMatchEngine_1_1CollisionSide.html">MatchEngine::CollisionSide</a></td></tr>
+<tr class="separator:"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:"><td class="memItemLeft" align="right" valign="top">struct &#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structMatchEngine_1_1CollisionHit.html">MatchEngine::CollisionHit</a></td></tr>
+<tr class="separator:"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:"><td class="memItemLeft" align="right" valign="top">struct &#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structMatchEngine_1_1Obstacle.html">MatchEngine::Obstacle</a></td></tr>
+<tr class="separator:"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:"><td class="memItemLeft" align="right" valign="top">struct &#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structMatchEngine_1_1DrillRules.html">MatchEngine::DrillRules</a></td></tr>
+<tr class="separator:"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:"><td class="memItemLeft" align="right" valign="top">struct &#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structMatchEngine_1_1XgBreakdown.html">MatchEngine::XgBreakdown</a></td></tr>
+<tr class="separator:"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:"><td class="memItemLeft" align="right" valign="top">struct &#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structMatchEngine_1_1ShotScoreParts.html">MatchEngine::ShotScoreParts</a></td></tr>
+<tr class="separator:"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:"><td class="memItemLeft" align="right" valign="top">struct &#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structMatchEngine_1_1CarriedPlayer.html">MatchEngine::CarriedPlayer</a></td></tr>
+<tr class="separator:"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:"><td class="memItemLeft" align="right" valign="top">struct &#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structMatchEngine_1_1RecorderLink.html">MatchEngine::RecorderLink</a></td></tr>
+<tr class="separator:"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:"><td class="memItemLeft" align="right" valign="top">struct &#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structMatchEngine_1_1DrillTarget.html">MatchEngine::DrillTarget</a></td></tr>
+<tr class="separator:"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:"><td class="memItemLeft" align="right" valign="top">struct &#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structMatchEngine_1_1ForcedHeader.html">MatchEngine::ForcedHeader</a></td></tr>
+<tr class="separator:"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:"><td class="memItemLeft" align="right" valign="top">struct &#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structMatchEngine_1_1ForcedPass.html">MatchEngine::ForcedPass</a></td></tr>
+<tr class="separator:"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:"><td class="memItemLeft" align="right" valign="top">struct &#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structMatchEngine_1_1Shootout.html">MatchEngine::Shootout</a></td></tr>
 <tr class="separator:"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:"><td class="memItemLeft" align="right" valign="top">struct &#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structMatchEngine_1_1PendingAdvantage.html">MatchEngine::PendingAdvantage</a></td></tr>
 <tr class="separator:"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:"><td class="memItemLeft" align="right" valign="top">struct &#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structMatchEngine_1_1GoalkeeperControl.html">MatchEngine::GoalkeeperControl</a></td></tr>
 <tr class="separator:"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:"><td class="memItemLeft" align="right" valign="top">struct &#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structMatchEngine_1_1BallMotion.html">MatchEngine::BallMotion</a></td></tr>
+<tr class="separator:"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:"><td class="memItemLeft" align="right" valign="top">struct &#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structMatchEngine_1_1ShoutState.html">MatchEngine::ShoutState</a></td></tr>
 <tr class="separator:"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:"><td class="memItemLeft" align="right" valign="top">struct &#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structMatchEngine_1_1SlotTactic.html">MatchEngine::SlotTactic</a></td></tr>
+<tr class="separator:"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:"><td class="memItemLeft" align="right" valign="top">struct &#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structMatchEngine_1_1JitterTrack.html">MatchEngine::JitterTrack</a></td></tr>
+<tr class="separator:"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:"><td class="memItemLeft" align="right" valign="top">struct &#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structMatchEngine_1_1LooseBallContact.html">MatchEngine::LooseBallContact</a></td></tr>
 <tr class="separator:"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:"><td class="memItemLeft" align="right" valign="top">struct &#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structMatchEngine_1_1ControlledShot.html">MatchEngine::ControlledShot</a></td></tr>
 <tr class="separator:"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:"><td class="memItemLeft" align="right" valign="top">struct &#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structMatchEngine_1_1PassOption.html">MatchEngine::PassOption</a></td></tr>
 <tr class="separator:"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:"><td class="memItemLeft" align="right" valign="top">struct &#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structMatchEngine_1_1ShotAim.html">MatchEngine::ShotAim</a></td></tr>
+<tr class="separator:"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:"><td class="memItemLeft" align="right" valign="top">struct &#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structMatchEngine_1_1PendingStrike.html">MatchEngine::PendingStrike</a></td></tr>
+<tr class="separator:"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:"><td class="memItemLeft" align="right" valign="top">struct &#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structMatchEngine_1_1FirstTimeMeet.html">MatchEngine::FirstTimeMeet</a></td></tr>
+<tr class="separator:"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:"><td class="memItemLeft" align="right" valign="top">struct &#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structMatchEngine_1_1HeaderTurn.html">MatchEngine::HeaderTurn</a></td></tr>
+<tr class="separator:"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:"><td class="memItemLeft" align="right" valign="top">struct &#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structMatchEngine_1_1JumpPathPoint.html">MatchEngine::JumpPathPoint</a></td></tr>
+<tr class="separator:"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:"><td class="memItemLeft" align="right" valign="top">struct &#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structMatchEngine_1_1MovementStyle.html">MatchEngine::MovementStyle</a></td></tr>
+<tr class="separator:"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:"><td class="memItemLeft" align="right" valign="top">struct &#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structMatchEngine_1_1BrainTraits.html">MatchEngine::BrainTraits</a></td></tr>
+<tr class="separator:"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:"><td class="memItemLeft" align="right" valign="top">struct &#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structMatchEngine_1_1BallAction.html">MatchEngine::BallAction</a></td></tr>
+<tr class="separator:"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:"><td class="memItemLeft" align="right" valign="top">struct &#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structMatchEngine_1_1ClearanceAim.html">MatchEngine::ClearanceAim</a></td></tr>
+<tr class="separator:"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:"><td class="memItemLeft" align="right" valign="top">struct &#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structMatchEngine_1_1HeaderPlay.html">MatchEngine::HeaderPlay</a></td></tr>
+<tr class="separator:"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:"><td class="memItemLeft" align="right" valign="top">struct &#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structMatchEngine_1_1Challenge.html">MatchEngine::Challenge</a></td></tr>
+<tr class="separator:"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:"><td class="memItemLeft" align="right" valign="top">struct &#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structMatchEngine_1_1RestartPlay.html">MatchEngine::RestartPlay</a></td></tr>
+<tr class="separator:"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:"><td class="memItemLeft" align="right" valign="top">struct &#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structMatchEngine_1_1RestartLineUp.html">MatchEngine::RestartLineUp</a></td></tr>
+<tr class="separator:"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:"><td class="memItemLeft" align="right" valign="top">struct &#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structMatchEngine_1_1SetPieceAttackers.html">MatchEngine::SetPieceAttackers</a></td></tr>
+<tr class="separator:"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:"><td class="memItemLeft" align="right" valign="top">struct &#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structMatchEngine_1_1FitnessLanes.html">MatchEngine::FitnessLanes</a></td></tr>
+<tr class="separator:"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:"><td class="memItemLeft" align="right" valign="top">struct &#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structMatchEngine_1_1EnduranceLanes.html">MatchEngine::EnduranceLanes</a></td></tr>
+<tr class="separator:"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:"><td class="memItemLeft" align="right" valign="top">struct &#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structMatchEngine_1_1Kick.html">MatchEngine::Kick</a></td></tr>
+<tr class="separator:"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:"><td class="memItemLeft" align="right" valign="top">struct &#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structMatchEngine_1_1ShotStrike.html">MatchEngine::ShotStrike</a></td></tr>
+<tr class="separator:"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:"><td class="memItemLeft" align="right" valign="top">struct &#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structMatchEngine_1_1Spill.html">MatchEngine::Spill</a></td></tr>
+<tr class="separator:"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:"><td class="memItemLeft" align="right" valign="top">struct &#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structMatchEngine_1_1SaveAttempt.html">MatchEngine::SaveAttempt</a></td></tr>
+<tr class="separator:"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:"><td class="memItemLeft" align="right" valign="top">struct &#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structMatchEngine_1_1DribbleAim.html">MatchEngine::DribbleAim</a></td></tr>
+<tr class="separator:"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:"><td class="memItemLeft" align="right" valign="top">struct &#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structMatchEngine_1_1DribbleTurnAhead.html">MatchEngine::DribbleTurnAhead</a></td></tr>
+<tr class="separator:"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:"><td class="memItemLeft" align="right" valign="top">struct &#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structMatchEngine_1_1BallRelease.html">MatchEngine::BallRelease</a></td></tr>
+<tr class="separator:"><td class="memSeparator" colspan="2">&#160;</td></tr>
+</table><table class="memberdecls">
+<tr class="heading"><td colspan="2"><h2 class="groupheader"><a id="namespaces" name="namespaces"></a>
+Namespaces</h2></td></tr>
+<tr class="memitem:namespaceDecisionFrame" id="r_namespaceDecisionFrame"><td class="memItemLeft" align="right" valign="top">namespace &#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="namespaceDecisionFrame.html">DecisionFrame</a></td></tr>
+<tr class="separator:"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:namespaceBrainFlow" id="r_namespaceBrainFlow"><td class="memItemLeft" align="right" valign="top">namespace &#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="namespaceBrainFlow.html">BrainFlow</a></td></tr>
 <tr class="separator:"><td class="memSeparator" colspan="2">&#160;</td></tr>
 </table><table class="memberdecls">
 <tr class="heading"><td colspan="2"><h2 class="groupheader"><a id="enum-members" name="enum-members"></a>
 Enumerations</h2></td></tr>
-<tr class="memitem:aca6448151e924d2cb062632532d9081f" id="r_aca6448151e924d2cb062632532d9081f"><td class="memItemLeft" align="right" valign="top">enum class &#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="match__engine_8h.html#aca6448151e924d2cb062632532d9081f">MatchState</a> { <br />
-&#160;&#160;<a class="el" href="match__engine_8h.html#aca6448151e924d2cb062632532d9081fa526aadb8564a9c50374ebe55ec7bade0">KICK_OFF</a>
-, <a class="el" href="match__engine_8h.html#aca6448151e924d2cb062632532d9081fa50366a49630a416ab3ccaa004196027e">PLAYING</a>
-, <a class="el" href="match__engine_8h.html#aca6448151e924d2cb062632532d9081fa4652c1e0327ad75fd82cbc5e7bf322bf">THROW_IN</a>
-, <a class="el" href="match__engine_8h.html#aca6448151e924d2cb062632532d9081fa0fdbca2289dacdc8f12ccf9b31c3ed08">GOAL_KICK</a>
-, <br />
-&#160;&#160;<a class="el" href="match__engine_8h.html#aca6448151e924d2cb062632532d9081fa472f3d45de8018bfb63987a203dca8e4">CORNER_KICK</a>
-, <a class="el" href="match__engine_8h.html#aca6448151e924d2cb062632532d9081faefda66f5bcbc157a7bbfe70d58456e51">FREE_KICK</a>
-, <a class="el" href="match__engine_8h.html#aca6448151e924d2cb062632532d9081fa0e9bc37ec6da933200c9464b9585415e">PENALTY</a>
-, <a class="el" href="match__engine_8h.html#aca6448151e924d2cb062632532d9081fa007a3c4175ca4f86d9dc49e4f2e9cf8a">GOAL</a>
-, <br />
-&#160;&#160;<a class="el" href="match__engine_8h.html#aca6448151e924d2cb062632532d9081fa654e91e7d93eb77fc971a217c7811f3f">PENALTY_SHOOTOUT</a>
-, <a class="el" href="match__engine_8h.html#aca6448151e924d2cb062632532d9081fab763f44331074a91fe69ede12eac324b">HALF_TIME</a>
-, <a class="el" href="match__engine_8h.html#aca6448151e924d2cb062632532d9081fa2e84354d070a36b67c6c60953de6feaa">FULL_TIME</a>
-<br />
+<tr class="memitem:a09726432f66a8de5ea8a047f5751bd9e" id="r_a09726432f66a8de5ea8a047f5751bd9e"><td class="memItemLeft" align="right" valign="top">enum class &#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="match__engine_8h.html#a09726432f66a8de5ea8a047f5751bd9e">MovementMode</a> : std::uint8_t { <a class="el" href="match__engine_8h.html#a09726432f66a8de5ea8a047f5751bd9eabb2dfc184fa2e91373d3ff304cb01b8a">WALK</a>
+, <a class="el" href="match__engine_8h.html#a09726432f66a8de5ea8a047f5751bd9eae1de386f24e4aa660e9d29ab9473a46e">JOG</a>
+, <a class="el" href="match__engine_8h.html#a09726432f66a8de5ea8a047f5751bd9ea855520d2a5b0b1a64b939e7e30889e2a">RUN</a>
+, <a class="el" href="match__engine_8h.html#a09726432f66a8de5ea8a047f5751bd9eabb321fcc8697e3608dd7f5fe188a2747">SPRINT</a>
  }</td></tr>
-<tr class="separator:aca6448151e924d2cb062632532d9081f"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a2ededa6f6de89342dc3fe73bea6330cd" id="r_a2ededa6f6de89342dc3fe73bea6330cd"><td class="memItemLeft" align="right" valign="top">enum class &#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="match__engine_8h.html#a2ededa6f6de89342dc3fe73bea6330cd">TeamPhase</a> { <br />
-&#160;&#160;<a class="el" href="match__engine_8h.html#a2ededa6f6de89342dc3fe73bea6330cda9edda5a1c726a51344b63941e1befca3">STOPPAGE</a>
-, <a class="el" href="match__engine_8h.html#a2ededa6f6de89342dc3fe73bea6330cda3d024ff901fe0aa1d1f3c3b95445b5da">SET_PIECE</a>
-, <a class="el" href="match__engine_8h.html#a2ededa6f6de89342dc3fe73bea6330cda1c068b0d5df5b30242152478ac00da50">DEFENSIVE_BLOCK</a>
-, <a class="el" href="match__engine_8h.html#a2ededa6f6de89342dc3fe73bea6330cdaada925b8b71d318152547102a2a9bc36">DEFENSIVE_TRANSITION</a>
-, <br />
-&#160;&#160;<a class="el" href="match__engine_8h.html#a2ededa6f6de89342dc3fe73bea6330cdaddfd55130238e21ca6e6136eebaec8f5">ATTACKING_TRANSITION</a>
-, <a class="el" href="match__engine_8h.html#a2ededa6f6de89342dc3fe73bea6330cda1150f485a3f2cbd83548ffec80a1d3c9">POSSESSION</a>
-, <a class="el" href="match__engine_8h.html#a2ededa6f6de89342dc3fe73bea6330cda5ff14e9c370e065b4adf67903ed9affe">FINAL_THIRD</a>
-<br />
- }</td></tr>
-<tr class="separator:a2ededa6f6de89342dc3fe73bea6330cd"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a142c3c51fd70298c409fad612830d4b5" id="r_a142c3c51fd70298c409fad612830d4b5"><td class="memItemLeft" align="right" valign="top">enum class &#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="match__engine_8h.html#a142c3c51fd70298c409fad612830d4b5">PlayerIntent</a> { <br />
-&#160;&#160;<a class="el" href="match__engine_8h.html#a142c3c51fd70298c409fad612830d4b5a0add921fe4a3799dff66c02c152397f1">HOLD_SHAPE</a>
-, <a class="el" href="match__engine_8h.html#a142c3c51fd70298c409fad612830d4b5aa83978a083117e13eda145329e49a307">CARRY_BALL</a>
-, <a class="el" href="match__engine_8h.html#a142c3c51fd70298c409fad612830d4b5a645241f84353158b119ab3fb43682270">OFFER_SUPPORT</a>
-, <a class="el" href="match__engine_8h.html#a142c3c51fd70298c409fad612830d4b5aba7dc3fa9bc0b1cd90bb51e1159d59d8">RECEIVE_PASS</a>
-, <br />
-&#160;&#160;<a class="el" href="match__engine_8h.html#a142c3c51fd70298c409fad612830d4b5a6138a561a15b22039d70fd22ad8e0ae6">RUN_IN_BEHIND</a>
-, <a class="el" href="match__engine_8h.html#a142c3c51fd70298c409fad612830d4b5a03a3aa4e6aa463d259e28920e690e58b">ATTACK_BOX</a>
-, <a class="el" href="match__engine_8h.html#a142c3c51fd70298c409fad612830d4b5a8c009c8dd4d4f9dde7515c00d5cd4661">OVERLAP</a>
-, <a class="el" href="match__engine_8h.html#a142c3c51fd70298c409fad612830d4b5afd4e0ff8ee8dc47e60f024f3d5118334">PRESS_BALL</a>
-, <br />
-&#160;&#160;<a class="el" href="match__engine_8h.html#a142c3c51fd70298c409fad612830d4b5ae7881c36017dd3ceab7007083e8b04f7">COVER_PRESS</a>
-, <a class="el" href="match__engine_8h.html#a142c3c51fd70298c409fad612830d4b5a1e1ebc223eafc2cab20218201333f11b">BLOCK_PASSING_LANE</a>
-, <a class="el" href="match__engine_8h.html#a142c3c51fd70298c409fad612830d4b5a6d001f8ce2541502c7e90ea500d8741a">MARK_OPPONENT</a>
-, <a class="el" href="match__engine_8h.html#a142c3c51fd70298c409fad612830d4b5ac8fbfa5cac00835edb87c04b17d94f55">CLAIM_LOOSE_BALL</a>
-, <br />
-&#160;&#160;<a class="el" href="match__engine_8h.html#a142c3c51fd70298c409fad612830d4b5ae91c44c2b8b855e752f6fa0dc6829df7">RECOVER_SHAPE</a>
-, <a class="el" href="match__engine_8h.html#a142c3c51fd70298c409fad612830d4b5a5c8ddc458c995122c904463d104b3176">GOALKEEP</a>
-<br />
- }</td></tr>
-<tr class="separator:a142c3c51fd70298c409fad612830d4b5"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="separator:a09726432f66a8de5ea8a047f5751bd9e"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a3f2bffb7346b7caffae490d09ed55083" id="r_a3f2bffb7346b7caffae490d09ed55083"><td class="memItemLeft" align="right" valign="top">enum class &#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="match__engine_8h.html#a3f2bffb7346b7caffae490d09ed55083">PassIntent</a> { <br />
 &#160;&#160;<a class="el" href="match__engine_8h.html#a3f2bffb7346b7caffae490d09ed55083a202d1374a15b796f137f5844deebdabe">RECYCLE</a>
 , <a class="el" href="match__engine_8h.html#a3f2bffb7346b7caffae490d09ed55083a9bc5e7fe934fe08249e3aa2e0d3678ed">PROGRESSIVE</a>
@@ -238,19 +390,58 @@ Enumerations</h2></td></tr>
 <br />
  }</td></tr>
 <tr class="separator:af57570b9a86811e45240a606a963cfe6"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a9f9ca6c5dc389f4fcac901c486ee4cc5" id="r_a9f9ca6c5dc389f4fcac901c486ee4cc5"><td class="memItemLeft" align="right" valign="top">enum class &#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="match__engine_8h.html#a9f9ca6c5dc389f4fcac901c486ee4cc5">GoalkeeperState</a> { <br />
-&#160;&#160;<a class="el" href="match__engine_8h.html#a9f9ca6c5dc389f4fcac901c486ee4cc5ab9d6ef2a1efa6bdb8b1dd80680c5ff90">SET_POSITION</a>
-, <a class="el" href="match__engine_8h.html#a9f9ca6c5dc389f4fcac901c486ee4cc5a836ede1239c3fef77fa9c7df2eaf67e9">SWEEP</a>
-, <a class="el" href="match__engine_8h.html#a9f9ca6c5dc389f4fcac901c486ee4cc5ace9981238b60cb4e5e43c548093127ef">RUSH</a>
-, <a class="el" href="match__engine_8h.html#a9f9ca6c5dc389f4fcac901c486ee4cc5a35a99ca7087899687b9d08a1348a02cf">CLAIM</a>
+<tr class="memitem:a1bcd68521faef1414d4770dbb0e44cb2" id="r_a1bcd68521faef1414d4770dbb0e44cb2"><td class="memItemLeft" align="right" valign="top">enum class &#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="match__engine_8h.html#a1bcd68521faef1414d4770dbb0e44cb2">WalkPhase</a> : std::uint8_t { <br />
+&#160;&#160;<a class="el" href="match__engine_8h.html#a1bcd68521faef1414d4770dbb0e44cb2ab50339a10e1de285ac99d4c3990b8693">NONE</a>
+, <a class="el" href="match__engine_8h.html#a1bcd68521faef1414d4770dbb0e44cb2a88559a0cfd8250c9d65970cc145c92d4">OFF</a>
+, <a class="el" href="match__engine_8h.html#a1bcd68521faef1414d4770dbb0e44cb2ac86ee0d9d7ed3e7b4fdbf486fa6c0ebb">IN</a>
+, <a class="el" href="match__engine_8h.html#a1bcd68521faef1414d4770dbb0e44cb2aef373774188a51f80463f37b6bd9e83a">OUT</a>
 , <br />
-&#160;&#160;<a class="el" href="match__engine_8h.html#a9f9ca6c5dc389f4fcac901c486ee4cc5a345c2df90fed0e74ea3c8926e13e5f12">DIVE</a>
-, <a class="el" href="match__engine_8h.html#a9f9ca6c5dc389f4fcac901c486ee4cc5a0c6d9dfb485b43c6fba87439f9f73ac4">HOLD</a>
-, <a class="el" href="match__engine_8h.html#a9f9ca6c5dc389f4fcac901c486ee4cc5ad7d6bb34546c601f4ddcd7d9d964814e">DISTRIBUTE</a>
-, <a class="el" href="match__engine_8h.html#a9f9ca6c5dc389f4fcac901c486ee4cc5aea625ca593694ee20079bd188f84fa29">RECOVER</a>
+&#160;&#160;<a class="el" href="match__engine_8h.html#a1bcd68521faef1414d4770dbb0e44cb2a3068c7ed4c0d707d6321b42e63539ec9">LINED_UP</a>
+, <a class="el" href="match__engine_8h.html#a1bcd68521faef1414d4770dbb0e44cb2a84fcef12cce95eb15cffe4338ecf5d29">HANDSHAKE</a>
 <br />
  }</td></tr>
-<tr class="separator:a9f9ca6c5dc389f4fcac901c486ee4cc5"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="separator:a1bcd68521faef1414d4770dbb0e44cb2"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a008ebff49ad7d4521366818b3a23d4c9" id="r_a008ebff49ad7d4521366818b3a23d4c9"><td class="memItemLeft" align="right" valign="top">enum class &#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="match__engine_8h.html#a008ebff49ad7d4521366818b3a23d4c9">ContactJob</a> : std::uint8_t { <a class="el" href="match__engine_8h.html#a008ebff49ad7d4521366818b3a23d4c9ac03211b47bf5b5f35eba61e0fcb5e7bf">ANGLE</a>
+, <a class="el" href="match__engine_8h.html#a008ebff49ad7d4521366818b3a23d4c9ab3875e51f39f9f9e820de6f1c41d99cc">WEIGHT</a>
+, <a class="el" href="match__engine_8h.html#a008ebff49ad7d4521366818b3a23d4c9a3e1b74251c07310c5f1b968145bf00dc">VERTICAL</a>
+, <a class="el" href="match__engine_8h.html#a008ebff49ad7d4521366818b3a23d4c9a01518642fd172918ac4e6fa78bbb3164">SPIN</a>
+ }</td></tr>
+<tr class="separator:a008ebff49ad7d4521366818b3a23d4c9"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a6a1652225e18bfaff8ecb9f9563a6a52" id="r_a6a1652225e18bfaff8ecb9f9563a6a52"><td class="memItemLeft" align="right" valign="top">enum class &#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="match__engine_8h.html#a6a1652225e18bfaff8ecb9f9563a6a52">ShotLegOutcome</a> : std::uint8_t { <br />
+&#160;&#160;<a class="el" href="match__engine_8h.html#a6a1652225e18bfaff8ecb9f9563a6a52affe3a85e4ed702e1a1ea8826bab73c9f">LEG_OUT</a>
+, <a class="el" href="match__engine_8h.html#a6a1652225e18bfaff8ecb9f9563a6a52aabd7d60c3d7a927b78d2a9782ebd354e">FEET_BUSY</a>
+, <a class="el" href="match__engine_8h.html#a6a1652225e18bfaff8ecb9f9563a6a52a9adba86d69e906190aec2138df34b5de">CHOSE_NOT</a>
+, <a class="el" href="match__engine_8h.html#a6a1652225e18bfaff8ecb9f9563a6a52ae23282de7deb782829731cc301a0fb52">NOT_TRAVELLING</a>
+, <br />
+&#160;&#160;<a class="el" href="match__engine_8h.html#a6a1652225e18bfaff8ecb9f9563a6a52a0a96390f57015f6cfe52fa2e63100604">PAST_HIM</a>
+, <a class="el" href="match__engine_8h.html#a6a1652225e18bfaff8ecb9f9563a6a52a4918fefab55dddfcb426a9c688e130b6">ABOVE_HIP</a>
+, <a class="el" href="match__engine_8h.html#a6a1652225e18bfaff8ecb9f9563a6a52a8a72a76fa43f54561a486c3b96c045bf">OUT_OF_REACH_HEIGHT</a>
+, <a class="el" href="match__engine_8h.html#a6a1652225e18bfaff8ecb9f9563a6a52a88b51c7fd42324d85d77a861fa93d861">OUT_OF_REACH_RUNNING</a>
+, <br />
+&#160;&#160;<a class="el" href="match__engine_8h.html#a6a1652225e18bfaff8ecb9f9563a6a52a803cd887a92188d012b74c597a55d11a">BEHIND_HIM</a>
+, <a class="el" href="match__engine_8h.html#a6a1652225e18bfaff8ecb9f9563a6a52a4905ac9d6a22bdfc1ae096094ce6248d">COUNT</a>
+<br />
+ }</td></tr>
+<tr class="separator:a6a1652225e18bfaff8ecb9f9563a6a52"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:ab8b493e059af180eb5a1c5fb41ebc389" id="r_ab8b493e059af180eb5a1c5fb41ebc389"><td class="memItemLeft" align="right" valign="top">enum class &#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="match__engine_8h.html#ab8b493e059af180eb5a1c5fb41ebc389">ShotBodyPart</a> : std::uint8_t { <br />
+&#160;&#160;<a class="el" href="match__engine_8h.html#ab8b493e059af180eb5a1c5fb41ebc389ac11f05532feb92ef97d414c1d7bf9075">TORSO</a>
+, <a class="el" href="match__engine_8h.html#ab8b493e059af180eb5a1c5fb41ebc389a4d3da0974affba932610e88e916ae5ee">THIGH</a>
+, <a class="el" href="match__engine_8h.html#ab8b493e059af180eb5a1c5fb41ebc389aac4778eb26ac4b4bcda6b3fe5cc659fa">SHIN</a>
+, <a class="el" href="match__engine_8h.html#ab8b493e059af180eb5a1c5fb41ebc389af5dd40adaf2cd3949f81fb2aae4fdf4e">FOOT</a>
+, <br />
+&#160;&#160;<a class="el" href="match__engine_8h.html#ab8b493e059af180eb5a1c5fb41ebc389ae15e216fc1c639f787b1231ecdfa1bf8">HEAD</a>
+, <a class="el" href="match__engine_8h.html#ab8b493e059af180eb5a1c5fb41ebc389a41b00f79ae19301abe87bd8bc19120d9">HAND</a>
+, <a class="el" href="match__engine_8h.html#ab8b493e059af180eb5a1c5fb41ebc389a47f45e65244c17ec9fa8771a5c6d60e1">ARM</a>
+, <a class="el" href="match__engine_8h.html#ab8b493e059af180eb5a1c5fb41ebc389a4905ac9d6a22bdfc1ae096094ce6248d">COUNT</a>
+<br />
+ }</td></tr>
+<tr class="separator:ab8b493e059af180eb5a1c5fb41ebc389"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:abda29f16afa6758b217a10755c432d2b" id="r_abda29f16afa6758b217a10755c432d2b"><td class="memItemLeft" align="right" valign="top">enum class &#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="match__engine_8h.html#abda29f16afa6758b217a10755c432d2b">HeldRelease</a> : std::uint8_t { <a class="el" href="match__engine_8h.html#abda29f16afa6758b217a10755c432d2bab50339a10e1de285ac99d4c3990b8693">NONE</a>
+, <a class="el" href="match__engine_8h.html#abda29f16afa6758b217a10755c432d2ba08cd1a31f17f0247ac89e2fbaadaa9e8">ROLL</a>
+, <a class="el" href="match__engine_8h.html#abda29f16afa6758b217a10755c432d2ba8b8efb37acd2d5f6fb00ec5062bb63cd">OVERARM</a>
+, <a class="el" href="match__engine_8h.html#abda29f16afa6758b217a10755c432d2baad70de8c964b79a3046bdbd709d468c5">PUNT</a>
+ }</td></tr>
+<tr class="separator:abda29f16afa6758b217a10755c432d2b"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:acbc756131ab8818aa239f885e87f5a24" id="r_acbc756131ab8818aa239f885e87f5a24"><td class="memItemLeft" align="right" valign="top">enum class &#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="match__engine_8h.html#acbc756131ab8818aa239f885e87f5a24">MatchShout</a> : std::uint8_t { <br />
 &#160;&#160;<a class="el" href="match__engine_8h.html#acbc756131ab8818aa239f885e87f5a24a0efbba28e44fa20724b8b3d9153adf37">PUSH_HIGHER</a>
 , <a class="el" href="match__engine_8h.html#acbc756131ab8818aa239f885e87f5a24ae0acdfa025a65ccb7bba8065b2130d20">DROP_DEEPER</a>
@@ -276,9 +467,64 @@ Enumerations</h2></td></tr>
 , <br />
 &#160;&#160;<a class="el" href="match__engine_8h.html#ae8b176d0be8e12cfab4b464547ab8891ae637679b66688b9f8c9441147fceb023">SUBSTITUTION</a>
 , <a class="el" href="match__engine_8h.html#ae8b176d0be8e12cfab4b464547ab8891af73fd2e5a4a9fbf33580912630f0f41f">TEAM_TALK</a>
+, <a class="el" href="match__engine_8h.html#ae8b176d0be8e12cfab4b464547ab8891a95a197d845c460f9d41d7329d13808ae">DRILL_TARGET</a>
+, <a class="el" href="match__engine_8h.html#ae8b176d0be8e12cfab4b464547ab8891a279826997079fb7f6e1f33f58193a05e">FORCE_SHOT</a>
+, <br />
+&#160;&#160;<a class="el" href="match__engine_8h.html#ae8b176d0be8e12cfab4b464547ab8891a62d8267e6490c2cd97fb32b7b55d0f4b">FEED_BALL</a>
+, <a class="el" href="match__engine_8h.html#ae8b176d0be8e12cfab4b464547ab8891a2f8528d2371d2646f5de276720170930">KEEP_BALL</a>
+, <a class="el" href="match__engine_8h.html#ae8b176d0be8e12cfab4b464547ab8891ab199883ae5f2e89ac4eb923c861bf005">FORCE_PASS</a>
+, <a class="el" href="match__engine_8h.html#ae8b176d0be8e12cfab4b464547ab8891a7b2d419e072f9c2cc042462d6bbb9834">FORCE_HEADER</a>
+, <br />
+&#160;&#160;<a class="el" href="match__engine_8h.html#ae8b176d0be8e12cfab4b464547ab8891a2558f13ba4c1ca42f5d4db17dc8b3276">FORCE_TACKLE_INTENT</a>
+, <a class="el" href="match__engine_8h.html#ae8b176d0be8e12cfab4b464547ab8891ae1555fc5b39b81b5591bbe2cc0be010d">STRIKE_STILL_BALL</a>
 <br />
  }</td></tr>
 <tr class="separator:ae8b176d0be8e12cfab4b464547ab8891"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:acf127105351500adc2ce5955c312f835" id="r_acf127105351500adc2ce5955c312f835"><td class="memItemLeft" align="right" valign="top">enum class &#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="match__engine_8h.html#acf127105351500adc2ce5955c312f835">TackleIntent</a> : std::uint8_t { <br />
+&#160;&#160;<a class="el" href="match__engine_8h.html#acf127105351500adc2ce5955c312f835ac861cd34025f9002df5912d623326130">CONTROL</a>
+, <a class="el" href="match__engine_8h.html#acf127105351500adc2ce5955c312f835a92e56d8195a9dd45a9b90aacf82886b1">WIN</a>
+, <a class="el" href="match__engine_8h.html#acf127105351500adc2ce5955c312f835a813461e0c58e7ad59a2fd83ca2237fec">CLEAR</a>
+, <a class="el" href="match__engine_8h.html#acf127105351500adc2ce5955c312f835a7a95bf926a0333f57705aeac07a362a2">PASS</a>
+, <br />
+&#160;&#160;<a class="el" href="match__engine_8h.html#acf127105351500adc2ce5955c312f835aa09965d3782048b98c9c3423fb8040e9">BRAIN</a>
+<br />
+ }</td></tr>
+<tr class="separator:acf127105351500adc2ce5955c312f835"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:ab8e1c5d3a9a6a2005b98c5dca7823662" id="r_ab8e1c5d3a9a6a2005b98c5dca7823662"><td class="memItemLeft" align="right" valign="top">enum class &#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="match__engine_8h.html#ab8e1c5d3a9a6a2005b98c5dca7823662">ForcedHeaderAim</a> : std::uint8_t { <a class="el" href="match__engine_8h.html#ab8e1c5d3a9a6a2005b98c5dca7823662a5bac85a0c611ddef64ab0dfb383056f4">SPOT</a>
+, <a class="el" href="match__engine_8h.html#ab8e1c5d3a9a6a2005b98c5dca7823662a007a3c4175ca4f86d9dc49e4f2e9cf8a">GOAL</a>
+, <a class="el" href="match__engine_8h.html#ab8e1c5d3a9a6a2005b98c5dca7823662a60cba2874369bd3790e14ea5f8a7bc58">KEEP</a>
+ }</td></tr>
+<tr class="separator:ab8e1c5d3a9a6a2005b98c5dca7823662"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a9b8a1202bf2c87d9f61ce2ceae1b1d89" id="r_a9b8a1202bf2c87d9f61ce2ceae1b1d89"><td class="memItemLeft" align="right" valign="top">enum class &#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="match__engine_8h.html#a9b8a1202bf2c87d9f61ce2ceae1b1d89">HeadPart</a> : std::uint8_t { <a class="el" href="match__engine_8h.html#a9b8a1202bf2c87d9f61ce2ceae1b1d89a30bfd7696577091eb3693a816e5b293e">FOREHEAD</a>
+, <a class="el" href="match__engine_8h.html#a9b8a1202bf2c87d9f61ce2ceae1b1d89a6705777b712ee811e76fb07162081d63">TOP</a>
+ }</td></tr>
+<tr class="separator:a9b8a1202bf2c87d9f61ce2ceae1b1d89"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a3a95e590e865b6b96f47bd736b5dd2fe" id="r_a3a95e590e865b6b96f47bd736b5dd2fe"><td class="memItemLeft" align="right" valign="top">enum class &#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="match__engine_8h.html#a3a95e590e865b6b96f47bd736b5dd2fe">ForcedPassStyle</a> : std::uint8_t { <br />
+&#160;&#160;<a class="el" href="match__engine_8h.html#a3a95e590e865b6b96f47bd736b5dd2fea0ad724ce8ed0ba339f3718f0d2db7fb7">AS_CHOSEN</a>
+, <a class="el" href="match__engine_8h.html#a3a95e590e865b6b96f47bd736b5dd2feadedcb56e75fe1488e20865e0ea36d0b9">GROUND</a>
+, <a class="el" href="match__engine_8h.html#a3a95e590e865b6b96f47bd736b5dd2fea0556d036214c61f92bcb60289d157064">LOFTED</a>
+, <a class="el" href="match__engine_8h.html#a3a95e590e865b6b96f47bd736b5dd2fea3e277b6c845972ae208950f3dd588459">DRIVEN</a>
+, <br />
+&#160;&#160;<a class="el" href="match__engine_8h.html#a3a95e590e865b6b96f47bd736b5dd2feaed8e8497a6a4c2315790d3d56b7c5065">CHIP</a>
+<br />
+ }</td></tr>
+<tr class="separator:a3a95e590e865b6b96f47bd736b5dd2fe"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:ab2f483403261c6831dae53607d3f45e6" id="r_ab2f483403261c6831dae53607d3f45e6"><td class="memItemLeft" align="right" valign="top">enum class &#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="match__engine_8h.html#ab2f483403261c6831dae53607d3f45e6">PassTechnique</a> : std::uint8_t { <a class="el" href="match__engine_8h.html#ab2f483403261c6831dae53607d3f45e6adedcb56e75fe1488e20865e0ea36d0b9">GROUND</a>
+, <a class="el" href="match__engine_8h.html#ab2f483403261c6831dae53607d3f45e6a0556d036214c61f92bcb60289d157064">LOFTED</a>
+, <a class="el" href="match__engine_8h.html#ab2f483403261c6831dae53607d3f45e6a3e277b6c845972ae208950f3dd588459">DRIVEN</a>
+, <a class="el" href="match__engine_8h.html#ab2f483403261c6831dae53607d3f45e6aed8e8497a6a4c2315790d3d56b7c5065">CHIP</a>
+ }</td></tr>
+<tr class="separator:ab2f483403261c6831dae53607d3f45e6"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:aa429d29de03c19cc5d35b33b3e4bc9f2" id="r_aa429d29de03c19cc5d35b33b3e4bc9f2"><td class="memItemLeft" align="right" valign="top">enum class &#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="match__engine_8h.html#aa429d29de03c19cc5d35b33b3e4bc9f2">ShotTechnique</a> : std::uint8_t { <br />
+&#160;&#160;<a class="el" href="match__engine_8h.html#aa429d29de03c19cc5d35b33b3e4bc9f2a3e277b6c845972ae208950f3dd588459">DRIVEN</a>
+, <a class="el" href="match__engine_8h.html#aa429d29de03c19cc5d35b33b3e4bc9f2a0a4373ca716769f93112e16e251bb8a1">PLACED</a>
+, <a class="el" href="match__engine_8h.html#aa429d29de03c19cc5d35b33b3e4bc9f2a3f45bb09b9b4a9350bc4a07644b56f52">CURLED</a>
+, <a class="el" href="match__engine_8h.html#aa429d29de03c19cc5d35b33b3e4bc9f2aed8e8497a6a4c2315790d3d56b7c5065">CHIP</a>
+, <br />
+&#160;&#160;<a class="el" href="match__engine_8h.html#aa429d29de03c19cc5d35b33b3e4bc9f2a593a648fb1945d1ca0cd781fd54eb416">TOE_POKE</a>
+<br />
+ }</td></tr>
+<tr class="separator:aa429d29de03c19cc5d35b33b3e4bc9f2"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a0ce6613f83ca519603bd985cce32745d" id="r_a0ce6613f83ca519603bd985cce32745d"><td class="memItemLeft" align="right" valign="top">enum class &#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="match__engine_8h.html#a0ce6613f83ca519603bd985cce32745d">MatchInputAction</a> : std::uint8_t { <br />
 &#160;&#160;<a class="el" href="match__engine_8h.html#a0ce6613f83ca519603bd985cce32745dab50339a10e1de285ac99d4c3990b8693">NONE</a>
 , <a class="el" href="match__engine_8h.html#a0ce6613f83ca519603bd985cce32745da7a95bf926a0333f57705aeac07a362a2">PASS</a>
@@ -303,12 +549,41 @@ Enumerations</h2></td></tr>
 </table><table class="memberdecls">
 <tr class="heading"><td colspan="2"><h2 class="groupheader"><a id="func-members" name="func-members"></a>
 Functions</h2></td></tr>
-<tr class="memitem:a7de987d5e8db90ceecccf0168d78cff9" id="r_a7de987d5e8db90ceecccf0168d78cff9"><td class="memItemLeft" align="right" valign="top">std::string_view&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="match__engine_8h.html#a7de987d5e8db90ceecccf0168d78cff9">goalkeeperStateName</a> (<a class="el" href="match__engine_8h.html#a9f9ca6c5dc389f4fcac901c486ee4cc5">GoalkeeperState</a> state)</td></tr>
-<tr class="separator:a7de987d5e8db90ceecccf0168d78cff9"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a561fe703e0d9c517cb8d3a0074adb0c0" id="r_a561fe703e0d9c517cb8d3a0074adb0c0"><td class="memItemLeft" align="right" valign="top"><a class="el" href="structSpeedBandTops.html">SpeedBandTops</a>&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="match__engine_8h.html#a561fe703e0d9c517cb8d3a0074adb0c0">speedBandTops</a> (float transition, float critical, float <a class="el" href="match__sandbox__true__view__shapes_8cpp.html#aec3f3270b9c9a786c01326e81db15681">top</a>)</td></tr>
+<tr class="separator:a561fe703e0d9c517cb8d3a0074adb0c0"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a761c24a01b4ea2c6a7c30830baa3a7b4" id="r_a761c24a01b4ea2c6a7c30830baa3a7b4"><td class="memItemLeft" align="right" valign="top"><a class="el" href="structSpeedBand.html">SpeedBand</a>&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="match__engine_8h.html#a761c24a01b4ea2c6a7c30830baa3a7b4">speedBandFrom</a> (<a class="el" href="match__engine_8h.html#a09726432f66a8de5ea8a047f5751bd9e">MovementMode</a> mode, float transition, float critical, float <a class="el" href="match__sandbox__true__view__shapes_8cpp.html#aec3f3270b9c9a786c01326e81db15681">top</a>)</td></tr>
+<tr class="separator:a761c24a01b4ea2c6a7c30830baa3a7b4"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:ad2eb0fbb44c632698196cc4b63a97c97" id="r_ad2eb0fbb44c632698196cc4b63a97c97"><td class="memItemLeft" align="right" valign="top"><a class="el" href="structSpeedBand.html">SpeedBand</a>&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="match__engine_8h.html#ad2eb0fbb44c632698196cc4b63a97c97">speedBandFrom</a> (<a class="el" href="match__engine_8h.html#a09726432f66a8de5ea8a047f5751bd9e">MovementMode</a> mode, const <a class="el" href="structSpeedBandInputs.html">SpeedBandInputs</a> &amp;inputs)</td></tr>
+<tr class="separator:ad2eb0fbb44c632698196cc4b63a97c97"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a5ec9350e41a2d6c5bc18fbfa66766b24" id="r_a5ec9350e41a2d6c5bc18fbfa66766b24"><td class="memItemLeft" align="right" valign="top">float&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="match__engine_8h.html#a5ec9350e41a2d6c5bc18fbfa66766b24">modeTargetSpeed</a> (<a class="el" href="match__engine_8h.html#a09726432f66a8de5ea8a047f5751bd9e">MovementMode</a> mode, float distance, const std::array&lt; float, 4 &gt; &amp;jogRamp, const std::array&lt; float, 4 &gt; &amp;tops)</td></tr>
+<tr class="separator:a5ec9350e41a2d6c5bc18fbfa66766b24"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a450cfac7abd0db3c17a54b972eee04cf" id="r_a450cfac7abd0db3c17a54b972eee04cf"><td class="memItemLeft" align="right" valign="top">const char *&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="match__engine_8h.html#a450cfac7abd0db3c17a54b972eee04cf">movementModeName</a> (<a class="el" href="match__engine_8h.html#a09726432f66a8de5ea8a047f5751bd9e">MovementMode</a> mode)</td></tr>
+<tr class="separator:a450cfac7abd0db3c17a54b972eee04cf"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a9f05cfcac39f5d6817bcc220805c0b48" id="r_a9f05cfcac39f5d6817bcc220805c0b48"><td class="memItemLeft" align="right" valign="top">constexpr bool&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="match__engine_8h.html#a9f05cfcac39f5d6817bcc220805c0b48">isLegPart</a> (<a class="el" href="match__engine_8h.html#ab8b493e059af180eb5a1c5fb41ebc389">ShotBodyPart</a> part)</td></tr>
+<tr class="separator:a9f05cfcac39f5d6817bcc220805c0b48"><td class="memSeparator" colspan="2">&#160;</td></tr>
+</table><table class="memberdecls">
+<tr class="heading"><td colspan="2"><h2 class="groupheader"><a id="var-members" name="var-members"></a>
+Variables</h2></td></tr>
+<tr class="memitem:ae1af1743cfdbe1c351b59d3122803121" id="r_ae1af1743cfdbe1c351b59d3122803121"><td class="memItemLeft" align="right" valign="top">constexpr std::size_t&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="match__engine_8h.html#ae1af1743cfdbe1c351b59d3122803121">MOVEMENT_MODE_COUNT</a> = 4</td></tr>
+<tr class="separator:ae1af1743cfdbe1c351b59d3122803121"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a74d48cee81fd8ff1d50e3846c8a99dd3" id="r_a74d48cee81fd8ff1d50e3846c8a99dd3"><td class="memItemLeft" align="right" valign="top">constexpr float&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="match__engine_8h.html#a74d48cee81fd8ff1d50e3846c8a99dd3">JOG_RUN_CRITICAL_SHARE</a> = 0.823F</td></tr>
+<tr class="separator:a74d48cee81fd8ff1d50e3846c8a99dd3"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a42d661043576023ed631b0bcd1b6abf7" id="r_a42d661043576023ed631b0bcd1b6abf7"><td class="memItemLeft" align="right" valign="top">constexpr std::size_t&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="match__engine_8h.html#a42d661043576023ed631b0bcd1b6abf7">CONTACT_FACTOR_COUNT</a> = 13</td></tr>
+<tr class="separator:a42d661043576023ed631b0bcd1b6abf7"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:ace93659ead3432fc52de1a765d46ab3a" id="r_ace93659ead3432fc52de1a765d46ab3a"><td class="memItemLeft" align="right" valign="top">constexpr std::size_t&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="match__engine_8h.html#ace93659ead3432fc52de1a765d46ab3a">WEAK_FOOT_FACTOR</a> = 6</td></tr>
+<tr class="separator:ace93659ead3432fc52de1a765d46ab3a"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a2b9e3055c0ed01e31f31c0ab493e76b2" id="r_a2b9e3055c0ed01e31f31c0ab493e76b2"><td class="memItemLeft" align="right" valign="top">constexpr std::size_t&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="match__engine_8h.html#a2b9e3055c0ed01e31f31c0ab493e76b2">VERTICAL_TURN_FACTOR</a> = 10</td></tr>
+<tr class="separator:a2b9e3055c0ed01e31f31c0ab493e76b2"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a1385b9932562edf3fd6adab98b59f2a3" id="r_a1385b9932562edf3fd6adab98b59f2a3"><td class="memItemLeft" align="right" valign="top">constexpr std::size_t&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="match__engine_8h.html#a1385b9932562edf3fd6adab98b59f2a3">SPIN_ASKED_FACTOR</a> = 11</td></tr>
+<tr class="separator:a1385b9932562edf3fd6adab98b59f2a3"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:ad861d2b5f4153d5659b0caac23b813f4" id="r_ad861d2b5f4153d5659b0caac23b813f4"><td class="memItemLeft" align="right" valign="top">constexpr std::size_t&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="match__engine_8h.html#ad861d2b5f4153d5659b0caac23b813f4">POWER_ASKED_FACTOR</a> = 12</td></tr>
+<tr class="separator:ad861d2b5f4153d5659b0caac23b813f4"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a470a01e29e6f59c255dec2f54e2e87eb" id="r_a470a01e29e6f59c255dec2f54e2e87eb"><td class="memItemLeft" align="right" valign="top">constexpr std::array&lt; std::string_view, <a class="el" href="match__engine_8h.html#a42d661043576023ed631b0bcd1b6abf7">CONTACT_FACTOR_COUNT</a> &gt;&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="match__engine_8h.html#a470a01e29e6f59c255dec2f54e2e87eb">CONTACT_FACTOR_LABELS</a></td></tr>
+<tr class="separator:a470a01e29e6f59c255dec2f54e2e87eb"><td class="memSeparator" colspan="2">&#160;</td></tr>
 </table>
 <h2 class="groupheader">Enumeration Type Documentation</h2>
-<a id="a9f9ca6c5dc389f4fcac901c486ee4cc5" name="a9f9ca6c5dc389f4fcac901c486ee4cc5"></a>
-<h2 class="memtitle"><span class="permalink"><a href="#a9f9ca6c5dc389f4fcac901c486ee4cc5">&#9670;&#160;</a></span>GoalkeeperState</h2>
+<a id="a008ebff49ad7d4521366818b3a23d4c9" name="a008ebff49ad7d4521366818b3a23d4c9"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a008ebff49ad7d4521366818b3a23d4c9">&#9670;&#160;</a></span>ContactJob</h2>
 
 <div class="memitem">
 <div class="memproto">
@@ -317,7 +592,7 @@ Functions</h2></td></tr>
   <td class="mlabels-left">
       <table class="memname">
         <tr>
-          <td class="memname">enum class <a class="el" href="match__engine_8h.html#a9f9ca6c5dc389f4fcac901c486ee4cc5">GoalkeeperState</a></td>
+          <td class="memname">enum class <a class="el" href="match__engine_8h.html#a008ebff49ad7d4521366818b3a23d4c9">ContactJob</a> : std::uint8_t</td>
         </tr>
       </table>
   </td>
@@ -326,16 +601,132 @@ Functions</h2></td></tr>
   </tr>
 </table>
 </div><div class="memdoc">
-<p>Semantic goalkeeper state. Animation stays out of the engine. </p>
+<p>A contact's three jobs (vertical contact plan): the turn seen from above, the pace (in 3D), and the turn in steepness. </p>
 <table class="fieldtable">
-<tr><th colspan="2">Enumerator</th></tr><tr><td class="fieldname"><a id="a9f9ca6c5dc389f4fcac901c486ee4cc5ab9d6ef2a1efa6bdb8b1dd80680c5ff90" name="a9f9ca6c5dc389f4fcac901c486ee4cc5ab9d6ef2a1efa6bdb8b1dd80680c5ff90"></a>SET_POSITION&#160;</td><td class="fielddoc"></td></tr>
-<tr><td class="fieldname"><a id="a9f9ca6c5dc389f4fcac901c486ee4cc5a836ede1239c3fef77fa9c7df2eaf67e9" name="a9f9ca6c5dc389f4fcac901c486ee4cc5a836ede1239c3fef77fa9c7df2eaf67e9"></a>SWEEP&#160;</td><td class="fielddoc"></td></tr>
-<tr><td class="fieldname"><a id="a9f9ca6c5dc389f4fcac901c486ee4cc5ace9981238b60cb4e5e43c548093127ef" name="a9f9ca6c5dc389f4fcac901c486ee4cc5ace9981238b60cb4e5e43c548093127ef"></a>RUSH&#160;</td><td class="fielddoc"></td></tr>
-<tr><td class="fieldname"><a id="a9f9ca6c5dc389f4fcac901c486ee4cc5a35a99ca7087899687b9d08a1348a02cf" name="a9f9ca6c5dc389f4fcac901c486ee4cc5a35a99ca7087899687b9d08a1348a02cf"></a>CLAIM&#160;</td><td class="fielddoc"></td></tr>
-<tr><td class="fieldname"><a id="a9f9ca6c5dc389f4fcac901c486ee4cc5a345c2df90fed0e74ea3c8926e13e5f12" name="a9f9ca6c5dc389f4fcac901c486ee4cc5a345c2df90fed0e74ea3c8926e13e5f12"></a>DIVE&#160;</td><td class="fielddoc"></td></tr>
-<tr><td class="fieldname"><a id="a9f9ca6c5dc389f4fcac901c486ee4cc5a0c6d9dfb485b43c6fba87439f9f73ac4" name="a9f9ca6c5dc389f4fcac901c486ee4cc5a0c6d9dfb485b43c6fba87439f9f73ac4"></a>HOLD&#160;</td><td class="fielddoc"></td></tr>
-<tr><td class="fieldname"><a id="a9f9ca6c5dc389f4fcac901c486ee4cc5ad7d6bb34546c601f4ddcd7d9d964814e" name="a9f9ca6c5dc389f4fcac901c486ee4cc5ad7d6bb34546c601f4ddcd7d9d964814e"></a>DISTRIBUTE&#160;</td><td class="fielddoc"></td></tr>
-<tr><td class="fieldname"><a id="a9f9ca6c5dc389f4fcac901c486ee4cc5aea625ca593694ee20079bd188f84fa29" name="a9f9ca6c5dc389f4fcac901c486ee4cc5aea625ca593694ee20079bd188f84fa29"></a>RECOVER&#160;</td><td class="fielddoc"></td></tr>
+<tr><th colspan="2">Enumerator</th></tr><tr><td class="fieldname"><a id="a008ebff49ad7d4521366818b3a23d4c9ac03211b47bf5b5f35eba61e0fcb5e7bf" name="a008ebff49ad7d4521366818b3a23d4c9ac03211b47bf5b5f35eba61e0fcb5e7bf"></a>ANGLE&#160;</td><td class="fielddoc"></td></tr>
+<tr><td class="fieldname"><a id="a008ebff49ad7d4521366818b3a23d4c9ab3875e51f39f9f9e820de6f1c41d99cc" name="a008ebff49ad7d4521366818b3a23d4c9ab3875e51f39f9f9e820de6f1c41d99cc"></a>WEIGHT&#160;</td><td class="fielddoc"></td></tr>
+<tr><td class="fieldname"><a id="a008ebff49ad7d4521366818b3a23d4c9a3e1b74251c07310c5f1b968145bf00dc" name="a008ebff49ad7d4521366818b3a23d4c9a3e1b74251c07310c5f1b968145bf00dc"></a>VERTICAL&#160;</td><td class="fielddoc"></td></tr>
+<tr><td class="fieldname"><a id="a008ebff49ad7d4521366818b3a23d4c9a01518642fd172918ac4e6fa78bbb3164" name="a008ebff49ad7d4521366818b3a23d4c9a01518642fd172918ac4e6fa78bbb3164"></a>SPIN&#160;</td><td class="fielddoc"><p>Putting on the spin he asks for (strikes). </p>
+</td></tr>
+</table>
+
+</div>
+</div>
+<a id="ab8e1c5d3a9a6a2005b98c5dca7823662" name="ab8e1c5d3a9a6a2005b98c5dca7823662"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#ab8e1c5d3a9a6a2005b98c5dca7823662">&#9670;&#160;</a></span>ForcedHeaderAim</h2>
+
+<div class="memitem">
+<div class="memproto">
+<table class="mlabels">
+  <tr>
+  <td class="mlabels-left">
+      <table class="memname">
+        <tr>
+          <td class="memname">enum class <a class="el" href="match__engine_8h.html#ab8e1c5d3a9a6a2005b98c5dca7823662">ForcedHeaderAim</a> : std::uint8_t</td>
+        </tr>
+      </table>
+  </td>
+  <td class="mlabels-right">
+<span class="mlabels"><span class="mlabel">strong</span></span>  </td>
+  </tr>
+</table>
+</div><div class="memdoc">
+<p>What a drill's forced header does (forceHeader). </p>
+<table class="fieldtable">
+<tr><th colspan="2">Enumerator</th></tr><tr><td class="fieldname"><a id="ab8e1c5d3a9a6a2005b98c5dca7823662a5bac85a0c611ddef64ab0dfb383056f4" name="ab8e1c5d3a9a6a2005b98c5dca7823662a5bac85a0c611ddef64ab0dfb383056f4"></a>SPOT&#160;</td><td class="fielddoc"><p>Headed on to a spot on the ground (a knock-down to it). </p>
+</td></tr>
+<tr><td class="fieldname"><a id="ab8e1c5d3a9a6a2005b98c5dca7823662a007a3c4175ca4f86d9dc49e4f2e9cf8a" name="ab8e1c5d3a9a6a2005b98c5dca7823662a007a3c4175ca4f86d9dc49e4f2e9cf8a"></a>GOAL&#160;</td><td class="fielddoc"><p>Headed at a spot in the goal (a headed shot). </p>
+</td></tr>
+<tr><td class="fieldname"><a id="ab8e1c5d3a9a6a2005b98c5dca7823662a60cba2874369bd3790e14ea5f8a7bc58" name="ab8e1c5d3a9a6a2005b98c5dca7823662a60cba2874369bd3790e14ea5f8a7bc58"></a>KEEP&#160;</td><td class="fielddoc"><p>Cushioned down and kept. </p>
+</td></tr>
+</table>
+
+</div>
+</div>
+<a id="a3a95e590e865b6b96f47bd736b5dd2fe" name="a3a95e590e865b6b96f47bd736b5dd2fe"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a3a95e590e865b6b96f47bd736b5dd2fe">&#9670;&#160;</a></span>ForcedPassStyle</h2>
+
+<div class="memitem">
+<div class="memproto">
+<table class="mlabels">
+  <tr>
+  <td class="mlabels-left">
+      <table class="memname">
+        <tr>
+          <td class="memname">enum class <a class="el" href="match__engine_8h.html#a3a95e590e865b6b96f47bd736b5dd2fe">ForcedPassStyle</a> : std::uint8_t</td>
+        </tr>
+      </table>
+  </td>
+  <td class="mlabels-right">
+<span class="mlabels"><span class="mlabel">strong</span></span>  </td>
+  </tr>
+</table>
+</div><div class="memdoc">
+<p>How a drill's forced pass is played: as the AI would (ground or lofted by its length), or always along the ground, or always lofted. </p>
+<table class="fieldtable">
+<tr><th colspan="2">Enumerator</th></tr><tr><td class="fieldname"><a id="a3a95e590e865b6b96f47bd736b5dd2fea0ad724ce8ed0ba339f3718f0d2db7fb7" name="a3a95e590e865b6b96f47bd736b5dd2fea0ad724ce8ed0ba339f3718f0d2db7fb7"></a>AS_CHOSEN&#160;</td><td class="fielddoc"></td></tr>
+<tr><td class="fieldname"><a id="a3a95e590e865b6b96f47bd736b5dd2feadedcb56e75fe1488e20865e0ea36d0b9" name="a3a95e590e865b6b96f47bd736b5dd2feadedcb56e75fe1488e20865e0ea36d0b9"></a>GROUND&#160;</td><td class="fielddoc"></td></tr>
+<tr><td class="fieldname"><a id="a3a95e590e865b6b96f47bd736b5dd2fea0556d036214c61f92bcb60289d157064" name="a3a95e590e865b6b96f47bd736b5dd2fea0556d036214c61f92bcb60289d157064"></a>LOFTED&#160;</td><td class="fielddoc"></td></tr>
+<tr><td class="fieldname"><a id="a3a95e590e865b6b96f47bd736b5dd2fea3e277b6c845972ae208950f3dd588459" name="a3a95e590e865b6b96f47bd736b5dd2fea3e277b6c845972ae208950f3dd588459"></a>DRIVEN&#160;</td><td class="fielddoc"><p>Low and hard (<a class="el" href="match__engine_8h.html#ab2f483403261c6831dae53607d3f45e6a3e277b6c845972ae208950f3dd588459">PassTechnique::DRIVEN</a>). </p>
+</td></tr>
+<tr><td class="fieldname"><a id="a3a95e590e865b6b96f47bd736b5dd2feaed8e8497a6a4c2315790d3d56b7c5065" name="a3a95e590e865b6b96f47bd736b5dd2feaed8e8497a6a4c2315790d3d56b7c5065"></a>CHIP&#160;</td><td class="fielddoc"><p>Steep, over someone close (<a class="el" href="match__engine_8h.html#ab2f483403261c6831dae53607d3f45e6aed8e8497a6a4c2315790d3d56b7c5065">PassTechnique::CHIP</a>). </p>
+</td></tr>
+</table>
+
+</div>
+</div>
+<a id="a9b8a1202bf2c87d9f61ce2ceae1b1d89" name="a9b8a1202bf2c87d9f61ce2ceae1b1d89"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a9b8a1202bf2c87d9f61ce2ceae1b1d89">&#9670;&#160;</a></span>HeadPart</h2>
+
+<div class="memitem">
+<div class="memproto">
+<table class="mlabels">
+  <tr>
+  <td class="mlabels-left">
+      <table class="memname">
+        <tr>
+          <td class="memname">enum class <a class="el" href="match__engine_8h.html#a9b8a1202bf2c87d9f61ce2ceae1b1d89">HeadPart</a> : std::uint8_t</td>
+        </tr>
+      </table>
+  </td>
+  <td class="mlabels-right">
+<span class="mlabels"><span class="mlabel">strong</span></span>  </td>
+  </tr>
+</table>
+</div><div class="memdoc">
+<p>Which part of his head meets a high ball (heading technique plan step 4): the forehead, or the top of the head (above the forehead's reach, or a ball passing over him from beside or behind). </p>
+<table class="fieldtable">
+<tr><th colspan="2">Enumerator</th></tr><tr><td class="fieldname"><a id="a9b8a1202bf2c87d9f61ce2ceae1b1d89a30bfd7696577091eb3693a816e5b293e" name="a9b8a1202bf2c87d9f61ce2ceae1b1d89a30bfd7696577091eb3693a816e5b293e"></a>FOREHEAD&#160;</td><td class="fielddoc"></td></tr>
+<tr><td class="fieldname"><a id="a9b8a1202bf2c87d9f61ce2ceae1b1d89a6705777b712ee811e76fb07162081d63" name="a9b8a1202bf2c87d9f61ce2ceae1b1d89a6705777b712ee811e76fb07162081d63"></a>TOP&#160;</td><td class="fielddoc"></td></tr>
+</table>
+
+</div>
+</div>
+<a id="abda29f16afa6758b217a10755c432d2b" name="abda29f16afa6758b217a10755c432d2b"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#abda29f16afa6758b217a10755c432d2b">&#9670;&#160;</a></span>HeldRelease</h2>
+
+<div class="memitem">
+<div class="memproto">
+<table class="mlabels">
+  <tr>
+  <td class="mlabels-left">
+      <table class="memname">
+        <tr>
+          <td class="memname">enum class <a class="el" href="match__engine_8h.html#abda29f16afa6758b217a10755c432d2b">HeldRelease</a> : std::uint8_t</td>
+        </tr>
+      </table>
+  </td>
+  <td class="mlabels-right">
+<span class="mlabels"><span class="mlabel">strong</span></span>  </td>
+  </tr>
+</table>
+</div><div class="memdoc">
+<p>The ball: <code>position</code> and the height <code>z</code> are metres. Velocities are in m/s and <code>spin</code> in rad/s (<a class="el" href="structBallSpin.html">BallSpin</a>). How a keeper lets go of a ball in his hands (goalkeeper plan step 5). </p>
+<table class="fieldtable">
+<tr><th colspan="2">Enumerator</th></tr><tr><td class="fieldname"><a id="abda29f16afa6758b217a10755c432d2bab50339a10e1de285ac99d4c3990b8693" name="abda29f16afa6758b217a10755c432d2bab50339a10e1de285ac99d4c3990b8693"></a>NONE&#160;</td><td class="fielddoc"></td></tr>
+<tr><td class="fieldname"><a id="abda29f16afa6758b217a10755c432d2ba08cd1a31f17f0247ac89e2fbaadaa9e8" name="abda29f16afa6758b217a10755c432d2ba08cd1a31f17f0247ac89e2fbaadaa9e8"></a>ROLL&#160;</td><td class="fielddoc"></td></tr>
+<tr><td class="fieldname"><a id="abda29f16afa6758b217a10755c432d2ba8b8efb37acd2d5f6fb00ec5062bb63cd" name="abda29f16afa6758b217a10755c432d2ba8b8efb37acd2d5f6fb00ec5062bb63cd"></a>OVERARM&#160;</td><td class="fielddoc"></td></tr>
+<tr><td class="fieldname"><a id="abda29f16afa6758b217a10755c432d2baad70de8c964b79a3046bdbd709d468c5" name="abda29f16afa6758b217a10755c432d2baad70de8c964b79a3046bdbd709d468c5"></a>PUNT&#160;</td><td class="fielddoc"></td></tr>
 </table>
 
 </div>
@@ -367,6 +758,22 @@ Functions</h2></td></tr>
 <tr><td class="fieldname"><a id="ae8b176d0be8e12cfab4b464547ab8891a1378bc841102e2a0cc708d51be3963bb" name="ae8b176d0be8e12cfab4b464547ab8891a1378bc841102e2a0cc708d51be3963bb"></a>MOVE_TO_SLOT&#160;</td><td class="fielddoc"></td></tr>
 <tr><td class="fieldname"><a id="ae8b176d0be8e12cfab4b464547ab8891ae637679b66688b9f8c9441147fceb023" name="ae8b176d0be8e12cfab4b464547ab8891ae637679b66688b9f8c9441147fceb023"></a>SUBSTITUTION&#160;</td><td class="fielddoc"></td></tr>
 <tr><td class="fieldname"><a id="ae8b176d0be8e12cfab4b464547ab8891af73fd2e5a4a9fbf33580912630f0f41f" name="ae8b176d0be8e12cfab4b464547ab8891af73fd2e5a4a9fbf33580912630f0f41f"></a>TEAM_TALK&#160;</td><td class="fielddoc"><p>A team talk's modifier for one half (see setTeamTalkModifier). </p>
+</td></tr>
+<tr><td class="fieldname"><a id="ae8b176d0be8e12cfab4b464547ab8891a95a197d845c460f9d41d7329d13808ae" name="ae8b176d0be8e12cfab4b464547ab8891a95a197d845c460f9d41d7329d13808ae"></a>DRILL_TARGET&#160;</td><td class="fielddoc"><p>Drills: hold (or release) a player's movement target. </p>
+</td></tr>
+<tr><td class="fieldname"><a id="ae8b176d0be8e12cfab4b464547ab8891a279826997079fb7f6e1f33f58193a05e" name="ae8b176d0be8e12cfab4b464547ab8891a279826997079fb7f6e1f33f58193a05e"></a>FORCE_SHOT&#160;</td><td class="fielddoc"><p>Drills: the player shoots as soon as he has the ball and can act. </p>
+</td></tr>
+<tr><td class="fieldname"><a id="ae8b176d0be8e12cfab4b464547ab8891a62d8267e6490c2cd97fb32b7b55d0f4b" name="ae8b176d0be8e12cfab4b464547ab8891a62d8267e6490c2cd97fb32b7b55d0f4b"></a>FEED_BALL&#160;</td><td class="fielddoc"><p>Drills: the ball is played in (a pass to a player, or loose). </p>
+</td></tr>
+<tr><td class="fieldname"><a id="ae8b176d0be8e12cfab4b464547ab8891a2f8528d2371d2646f5de276720170930" name="ae8b176d0be8e12cfab4b464547ab8891a2f8528d2371d2646f5de276720170930"></a>KEEP_BALL&#160;</td><td class="fielddoc"><p>Drills: the player keeps the ball, deciding nothing with it (or is released to decide again). </p>
+</td></tr>
+<tr><td class="fieldname"><a id="ae8b176d0be8e12cfab4b464547ab8891ab199883ae5f2e89ac4eb923c861bf005" name="ae8b176d0be8e12cfab4b464547ab8891ab199883ae5f2e89ac4eb923c861bf005"></a>FORCE_PASS&#160;</td><td class="fielddoc"><p>Drills: the player passes to a team-mate as soon as he has the ball and can act. </p>
+</td></tr>
+<tr><td class="fieldname"><a id="ae8b176d0be8e12cfab4b464547ab8891a7b2d419e072f9c2cc042462d6bbb9834" name="ae8b176d0be8e12cfab4b464547ab8891a7b2d419e072f9c2cc042462d6bbb9834"></a>FORCE_HEADER&#160;</td><td class="fielddoc"><p>Drills: what the player does with the next header he wins. </p>
+</td></tr>
+<tr><td class="fieldname"><a id="ae8b176d0be8e12cfab4b464547ab8891a2558f13ba4c1ca42f5d4db17dc8b3276" name="ae8b176d0be8e12cfab4b464547ab8891a2558f13ba4c1ca42f5d4db17dc8b3276"></a>FORCE_TACKLE_INTENT&#160;</td><td class="fielddoc"><p>Drills: what the player means by a tackle on a free ball. </p>
+</td></tr>
+<tr><td class="fieldname"><a id="ae8b176d0be8e12cfab4b464547ab8891ae1555fc5b39b81b5591bbe2cc0be010d" name="ae8b176d0be8e12cfab4b464547ab8891ae1555fc5b39b81b5591bbe2cc0be010d"></a>STRIKE_STILL_BALL&#160;</td><td class="fielddoc"><p>Drills: the player strikes the still ball where it lies, now: an open-play shot at the spot he picks, with no touch before it. </p>
 </td></tr>
 </table>
 
@@ -500,8 +907,8 @@ Functions</h2></td></tr>
 
 </div>
 </div>
-<a id="aca6448151e924d2cb062632532d9081f" name="aca6448151e924d2cb062632532d9081f"></a>
-<h2 class="memtitle"><span class="permalink"><a href="#aca6448151e924d2cb062632532d9081f">&#9670;&#160;</a></span>MatchState</h2>
+<a id="a09726432f66a8de5ea8a047f5751bd9e" name="a09726432f66a8de5ea8a047f5751bd9e"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a09726432f66a8de5ea8a047f5751bd9e">&#9670;&#160;</a></span>MovementMode</h2>
 
 <div class="memitem">
 <div class="memproto">
@@ -510,7 +917,7 @@ Functions</h2></td></tr>
   <td class="mlabels-left">
       <table class="memname">
         <tr>
-          <td class="memname">enum class <a class="el" href="match__engine_8h.html#aca6448151e924d2cb062632532d9081f">MatchState</a></td>
+          <td class="memname">enum class <a class="el" href="match__engine_8h.html#a09726432f66a8de5ea8a047f5751bd9e">MovementMode</a> : std::uint8_t</td>
         </tr>
       </table>
   </td>
@@ -519,20 +926,12 @@ Functions</h2></td></tr>
   </tr>
 </table>
 </div><div class="memdoc">
+<p>How a player moves (fatigue plan 4.2): the brain's vocabulary, which the body turns into a speed band for him (<a class="el" href="classMatchEngine.html#ad0ecfaa7947ce869a8b46ab2ab6de0a6">MatchEngine::speedBand</a>). </p>
 <table class="fieldtable">
-<tr><th colspan="2">Enumerator</th></tr><tr><td class="fieldname"><a id="aca6448151e924d2cb062632532d9081fa526aadb8564a9c50374ebe55ec7bade0" name="aca6448151e924d2cb062632532d9081fa526aadb8564a9c50374ebe55ec7bade0"></a>KICK_OFF&#160;</td><td class="fielddoc"></td></tr>
-<tr><td class="fieldname"><a id="aca6448151e924d2cb062632532d9081fa50366a49630a416ab3ccaa004196027e" name="aca6448151e924d2cb062632532d9081fa50366a49630a416ab3ccaa004196027e"></a>PLAYING&#160;</td><td class="fielddoc"></td></tr>
-<tr><td class="fieldname"><a id="aca6448151e924d2cb062632532d9081fa4652c1e0327ad75fd82cbc5e7bf322bf" name="aca6448151e924d2cb062632532d9081fa4652c1e0327ad75fd82cbc5e7bf322bf"></a>THROW_IN&#160;</td><td class="fielddoc"></td></tr>
-<tr><td class="fieldname"><a id="aca6448151e924d2cb062632532d9081fa0fdbca2289dacdc8f12ccf9b31c3ed08" name="aca6448151e924d2cb062632532d9081fa0fdbca2289dacdc8f12ccf9b31c3ed08"></a>GOAL_KICK&#160;</td><td class="fielddoc"></td></tr>
-<tr><td class="fieldname"><a id="aca6448151e924d2cb062632532d9081fa472f3d45de8018bfb63987a203dca8e4" name="aca6448151e924d2cb062632532d9081fa472f3d45de8018bfb63987a203dca8e4"></a>CORNER_KICK&#160;</td><td class="fielddoc"></td></tr>
-<tr><td class="fieldname"><a id="aca6448151e924d2cb062632532d9081faefda66f5bcbc157a7bbfe70d58456e51" name="aca6448151e924d2cb062632532d9081faefda66f5bcbc157a7bbfe70d58456e51"></a>FREE_KICK&#160;</td><td class="fielddoc"></td></tr>
-<tr><td class="fieldname"><a id="aca6448151e924d2cb062632532d9081fa0e9bc37ec6da933200c9464b9585415e" name="aca6448151e924d2cb062632532d9081fa0e9bc37ec6da933200c9464b9585415e"></a>PENALTY&#160;</td><td class="fielddoc"></td></tr>
-<tr><td class="fieldname"><a id="aca6448151e924d2cb062632532d9081fa007a3c4175ca4f86d9dc49e4f2e9cf8a" name="aca6448151e924d2cb062632532d9081fa007a3c4175ca4f86d9dc49e4f2e9cf8a"></a>GOAL&#160;</td><td class="fielddoc"></td></tr>
-<tr><td class="fieldname"><a id="aca6448151e924d2cb062632532d9081fa654e91e7d93eb77fc971a217c7811f3f" name="aca6448151e924d2cb062632532d9081fa654e91e7d93eb77fc971a217c7811f3f"></a>PENALTY_SHOOTOUT&#160;</td><td class="fielddoc"><p>A level knockout match decided from the spot (clock stopped). </p>
-</td></tr>
-<tr><td class="fieldname"><a id="aca6448151e924d2cb062632532d9081fab763f44331074a91fe69ede12eac324b" name="aca6448151e924d2cb062632532d9081fab763f44331074a91fe69ede12eac324b"></a>HALF_TIME&#160;</td><td class="fielddoc"><p>Half-time, and the breaks before and during extra time. </p>
-</td></tr>
-<tr><td class="fieldname"><a id="aca6448151e924d2cb062632532d9081fa2e84354d070a36b67c6c60953de6feaa" name="aca6448151e924d2cb062632532d9081fa2e84354d070a36b67c6c60953de6feaa"></a>FULL_TIME&#160;</td><td class="fielddoc"></td></tr>
+<tr><th colspan="2">Enumerator</th></tr><tr><td class="fieldname"><a id="a09726432f66a8de5ea8a047f5751bd9eabb2dfc184fa2e91373d3ff304cb01b8a" name="a09726432f66a8de5ea8a047f5751bd9eabb2dfc184fa2e91373d3ff304cb01b8a"></a>WALK&#160;</td><td class="fielddoc"></td></tr>
+<tr><td class="fieldname"><a id="a09726432f66a8de5ea8a047f5751bd9eae1de386f24e4aa660e9d29ab9473a46e" name="a09726432f66a8de5ea8a047f5751bd9eae1de386f24e4aa660e9d29ab9473a46e"></a>JOG&#160;</td><td class="fielddoc"></td></tr>
+<tr><td class="fieldname"><a id="a09726432f66a8de5ea8a047f5751bd9ea855520d2a5b0b1a64b939e7e30889e2a" name="a09726432f66a8de5ea8a047f5751bd9ea855520d2a5b0b1a64b939e7e30889e2a"></a>RUN&#160;</td><td class="fielddoc"></td></tr>
+<tr><td class="fieldname"><a id="a09726432f66a8de5ea8a047f5751bd9eabb321fcc8697e3608dd7f5fe188a2747" name="a09726432f66a8de5ea8a047f5751bd9eabb321fcc8697e3608dd7f5fe188a2747"></a>SPRINT&#160;</td><td class="fielddoc"></td></tr>
 </table>
 
 </div>
@@ -570,8 +969,8 @@ Functions</h2></td></tr>
 
 </div>
 </div>
-<a id="a142c3c51fd70298c409fad612830d4b5" name="a142c3c51fd70298c409fad612830d4b5"></a>
-<h2 class="memtitle"><span class="permalink"><a href="#a142c3c51fd70298c409fad612830d4b5">&#9670;&#160;</a></span>PlayerIntent</h2>
+<a id="ab2f483403261c6831dae53607d3f45e6" name="ab2f483403261c6831dae53607d3f45e6"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#ab2f483403261c6831dae53607d3f45e6">&#9670;&#160;</a></span>PassTechnique</h2>
 
 <div class="memitem">
 <div class="memproto">
@@ -580,7 +979,7 @@ Functions</h2></td></tr>
   <td class="mlabels-left">
       <table class="memname">
         <tr>
-          <td class="memname">enum class <a class="el" href="match__engine_8h.html#a142c3c51fd70298c409fad612830d4b5">PlayerIntent</a></td>
+          <td class="memname">enum class <a class="el" href="match__engine_8h.html#ab2f483403261c6831dae53607d3f45e6">PassTechnique</a> : std::uint8_t</td>
         </tr>
       </table>
   </td>
@@ -589,22 +988,16 @@ Functions</h2></td></tr>
   </tr>
 </table>
 </div><div class="memdoc">
-<p>High-level decision currently driving a player's renderer-independent AI. </p>
+<p>How a pass is struck (Binturong body; the Aardvark one plays a driven pass along the ground and a chip as a lofted pass). </p>
 <table class="fieldtable">
-<tr><th colspan="2">Enumerator</th></tr><tr><td class="fieldname"><a id="a142c3c51fd70298c409fad612830d4b5a0add921fe4a3799dff66c02c152397f1" name="a142c3c51fd70298c409fad612830d4b5a0add921fe4a3799dff66c02c152397f1"></a>HOLD_SHAPE&#160;</td><td class="fielddoc"></td></tr>
-<tr><td class="fieldname"><a id="a142c3c51fd70298c409fad612830d4b5aa83978a083117e13eda145329e49a307" name="a142c3c51fd70298c409fad612830d4b5aa83978a083117e13eda145329e49a307"></a>CARRY_BALL&#160;</td><td class="fielddoc"></td></tr>
-<tr><td class="fieldname"><a id="a142c3c51fd70298c409fad612830d4b5a645241f84353158b119ab3fb43682270" name="a142c3c51fd70298c409fad612830d4b5a645241f84353158b119ab3fb43682270"></a>OFFER_SUPPORT&#160;</td><td class="fielddoc"></td></tr>
-<tr><td class="fieldname"><a id="a142c3c51fd70298c409fad612830d4b5aba7dc3fa9bc0b1cd90bb51e1159d59d8" name="a142c3c51fd70298c409fad612830d4b5aba7dc3fa9bc0b1cd90bb51e1159d59d8"></a>RECEIVE_PASS&#160;</td><td class="fielddoc"></td></tr>
-<tr><td class="fieldname"><a id="a142c3c51fd70298c409fad612830d4b5a6138a561a15b22039d70fd22ad8e0ae6" name="a142c3c51fd70298c409fad612830d4b5a6138a561a15b22039d70fd22ad8e0ae6"></a>RUN_IN_BEHIND&#160;</td><td class="fielddoc"></td></tr>
-<tr><td class="fieldname"><a id="a142c3c51fd70298c409fad612830d4b5a03a3aa4e6aa463d259e28920e690e58b" name="a142c3c51fd70298c409fad612830d4b5a03a3aa4e6aa463d259e28920e690e58b"></a>ATTACK_BOX&#160;</td><td class="fielddoc"></td></tr>
-<tr><td class="fieldname"><a id="a142c3c51fd70298c409fad612830d4b5a8c009c8dd4d4f9dde7515c00d5cd4661" name="a142c3c51fd70298c409fad612830d4b5a8c009c8dd4d4f9dde7515c00d5cd4661"></a>OVERLAP&#160;</td><td class="fielddoc"></td></tr>
-<tr><td class="fieldname"><a id="a142c3c51fd70298c409fad612830d4b5afd4e0ff8ee8dc47e60f024f3d5118334" name="a142c3c51fd70298c409fad612830d4b5afd4e0ff8ee8dc47e60f024f3d5118334"></a>PRESS_BALL&#160;</td><td class="fielddoc"></td></tr>
-<tr><td class="fieldname"><a id="a142c3c51fd70298c409fad612830d4b5ae7881c36017dd3ceab7007083e8b04f7" name="a142c3c51fd70298c409fad612830d4b5ae7881c36017dd3ceab7007083e8b04f7"></a>COVER_PRESS&#160;</td><td class="fielddoc"></td></tr>
-<tr><td class="fieldname"><a id="a142c3c51fd70298c409fad612830d4b5a1e1ebc223eafc2cab20218201333f11b" name="a142c3c51fd70298c409fad612830d4b5a1e1ebc223eafc2cab20218201333f11b"></a>BLOCK_PASSING_LANE&#160;</td><td class="fielddoc"></td></tr>
-<tr><td class="fieldname"><a id="a142c3c51fd70298c409fad612830d4b5a6d001f8ce2541502c7e90ea500d8741a" name="a142c3c51fd70298c409fad612830d4b5a6d001f8ce2541502c7e90ea500d8741a"></a>MARK_OPPONENT&#160;</td><td class="fielddoc"></td></tr>
-<tr><td class="fieldname"><a id="a142c3c51fd70298c409fad612830d4b5ac8fbfa5cac00835edb87c04b17d94f55" name="a142c3c51fd70298c409fad612830d4b5ac8fbfa5cac00835edb87c04b17d94f55"></a>CLAIM_LOOSE_BALL&#160;</td><td class="fielddoc"></td></tr>
-<tr><td class="fieldname"><a id="a142c3c51fd70298c409fad612830d4b5ae91c44c2b8b855e752f6fa0dc6829df7" name="a142c3c51fd70298c409fad612830d4b5ae91c44c2b8b855e752f6fa0dc6829df7"></a>RECOVER_SHAPE&#160;</td><td class="fielddoc"></td></tr>
-<tr><td class="fieldname"><a id="a142c3c51fd70298c409fad612830d4b5a5c8ddc458c995122c904463d104b3176" name="a142c3c51fd70298c409fad612830d4b5a5c8ddc458c995122c904463d104b3176"></a>GOALKEEP&#160;</td><td class="fielddoc"></td></tr>
+<tr><th colspan="2">Enumerator</th></tr><tr><td class="fieldname"><a id="ab2f483403261c6831dae53607d3f45e6adedcb56e75fe1488e20865e0ea36d0b9" name="ab2f483403261c6831dae53607d3f45e6adedcb56e75fe1488e20865e0ea36d0b9"></a>GROUND&#160;</td><td class="fielddoc"><p>Side-foot, along the ground, to arrive at a pace he can control. </p>
+</td></tr>
+<tr><td class="fieldname"><a id="ab2f483403261c6831dae53607d3f45e6a0556d036214c61f92bcb60289d157064" name="ab2f483403261c6831dae53607d3f45e6a0556d036214c61f92bcb60289d157064"></a>LOFTED&#160;</td><td class="fielddoc"><p>Instep, to drop at the target (chest height to a team-mate). </p>
+</td></tr>
+<tr><td class="fieldname"><a id="ab2f483403261c6831dae53607d3f45e6a3e277b6c845972ae208950f3dd588459" name="ab2f483403261c6831dae53607d3f45e6a3e277b6c845972ae208950f3dd588459"></a>DRIVEN&#160;</td><td class="fielddoc"><p>Instep, low and hard: down at the target, a long one in a flat arc. </p>
+</td></tr>
+<tr><td class="fieldname"><a id="ab2f483403261c6831dae53607d3f45e6aed8e8497a6a4c2315790d3d56b7c5065" name="ab2f483403261c6831dae53607d3f45e6aed8e8497a6a4c2315790d3d56b7c5065"></a>CHIP&#160;</td><td class="fielddoc"><p>Stabbed up steeply with backspin, clearing someone close. </p>
+</td></tr>
 </table>
 
 </div>
@@ -640,8 +1033,8 @@ Functions</h2></td></tr>
 
 </div>
 </div>
-<a id="a2ededa6f6de89342dc3fe73bea6330cd" name="a2ededa6f6de89342dc3fe73bea6330cd"></a>
-<h2 class="memtitle"><span class="permalink"><a href="#a2ededa6f6de89342dc3fe73bea6330cd">&#9670;&#160;</a></span>TeamPhase</h2>
+<a id="ab8b493e059af180eb5a1c5fb41ebc389" name="ab8b493e059af180eb5a1c5fb41ebc389"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#ab8b493e059af180eb5a1c5fb41ebc389">&#9670;&#160;</a></span>ShotBodyPart</h2>
 
 <div class="memitem">
 <div class="memproto">
@@ -650,7 +1043,7 @@ Functions</h2></td></tr>
   <td class="mlabels-left">
       <table class="memname">
         <tr>
-          <td class="memname">enum class <a class="el" href="match__engine_8h.html#a2ededa6f6de89342dc3fe73bea6330cd">TeamPhase</a></td>
+          <td class="memname">enum class <a class="el" href="match__engine_8h.html#ab8b493e059af180eb5a1c5fb41ebc389">ShotBodyPart</a> : std::uint8_t</td>
         </tr>
       </table>
   </td>
@@ -659,35 +1052,578 @@ Functions</h2></td></tr>
   </tr>
 </table>
 </div><div class="memdoc">
-<p>Team-level context shared by individual player decisions. </p>
+<p>What of him a shot met (shot block plan). </p>
 <table class="fieldtable">
-<tr><th colspan="2">Enumerator</th></tr><tr><td class="fieldname"><a id="a2ededa6f6de89342dc3fe73bea6330cda9edda5a1c726a51344b63941e1befca3" name="a2ededa6f6de89342dc3fe73bea6330cda9edda5a1c726a51344b63941e1befca3"></a>STOPPAGE&#160;</td><td class="fielddoc"></td></tr>
-<tr><td class="fieldname"><a id="a2ededa6f6de89342dc3fe73bea6330cda3d024ff901fe0aa1d1f3c3b95445b5da" name="a2ededa6f6de89342dc3fe73bea6330cda3d024ff901fe0aa1d1f3c3b95445b5da"></a>SET_PIECE&#160;</td><td class="fielddoc"></td></tr>
-<tr><td class="fieldname"><a id="a2ededa6f6de89342dc3fe73bea6330cda1c068b0d5df5b30242152478ac00da50" name="a2ededa6f6de89342dc3fe73bea6330cda1c068b0d5df5b30242152478ac00da50"></a>DEFENSIVE_BLOCK&#160;</td><td class="fielddoc"></td></tr>
-<tr><td class="fieldname"><a id="a2ededa6f6de89342dc3fe73bea6330cdaada925b8b71d318152547102a2a9bc36" name="a2ededa6f6de89342dc3fe73bea6330cdaada925b8b71d318152547102a2a9bc36"></a>DEFENSIVE_TRANSITION&#160;</td><td class="fielddoc"></td></tr>
-<tr><td class="fieldname"><a id="a2ededa6f6de89342dc3fe73bea6330cdaddfd55130238e21ca6e6136eebaec8f5" name="a2ededa6f6de89342dc3fe73bea6330cdaddfd55130238e21ca6e6136eebaec8f5"></a>ATTACKING_TRANSITION&#160;</td><td class="fielddoc"></td></tr>
-<tr><td class="fieldname"><a id="a2ededa6f6de89342dc3fe73bea6330cda1150f485a3f2cbd83548ffec80a1d3c9" name="a2ededa6f6de89342dc3fe73bea6330cda1150f485a3f2cbd83548ffec80a1d3c9"></a>POSSESSION&#160;</td><td class="fielddoc"></td></tr>
-<tr><td class="fieldname"><a id="a2ededa6f6de89342dc3fe73bea6330cda5ff14e9c370e065b4adf67903ed9affe" name="a2ededa6f6de89342dc3fe73bea6330cda5ff14e9c370e065b4adf67903ed9affe"></a>FINAL_THIRD&#160;</td><td class="fielddoc"></td></tr>
+<tr><th colspan="2">Enumerator</th></tr><tr><td class="fieldname"><a id="ab8b493e059af180eb5a1c5fb41ebc389ac11f05532feb92ef97d414c1d7bf9075" name="ab8b493e059af180eb5a1c5fb41ebc389ac11f05532feb92ef97d414c1d7bf9075"></a>TORSO&#160;</td><td class="fielddoc"></td></tr>
+<tr><td class="fieldname"><a id="ab8b493e059af180eb5a1c5fb41ebc389a4d3da0974affba932610e88e916ae5ee" name="ab8b493e059af180eb5a1c5fb41ebc389a4d3da0974affba932610e88e916ae5ee"></a>THIGH&#160;</td><td class="fielddoc"></td></tr>
+<tr><td class="fieldname"><a id="ab8b493e059af180eb5a1c5fb41ebc389aac4778eb26ac4b4bcda6b3fe5cc659fa" name="ab8b493e059af180eb5a1c5fb41ebc389aac4778eb26ac4b4bcda6b3fe5cc659fa"></a>SHIN&#160;</td><td class="fielddoc"></td></tr>
+<tr><td class="fieldname"><a id="ab8b493e059af180eb5a1c5fb41ebc389af5dd40adaf2cd3949f81fb2aae4fdf4e" name="ab8b493e059af180eb5a1c5fb41ebc389af5dd40adaf2cd3949f81fb2aae4fdf4e"></a>FOOT&#160;</td><td class="fielddoc"></td></tr>
+<tr><td class="fieldname"><a id="ab8b493e059af180eb5a1c5fb41ebc389ae15e216fc1c639f787b1231ecdfa1bf8" name="ab8b493e059af180eb5a1c5fb41ebc389ae15e216fc1c639f787b1231ecdfa1bf8"></a>HEAD&#160;</td><td class="fielddoc"><p>The upright body above the top of his shoulders (his head line). </p>
+</td></tr>
+<tr><td class="fieldname"><a id="ab8b493e059af180eb5a1c5fb41ebc389a41b00f79ae19301abe87bd8bc19120d9" name="ab8b493e059af180eb5a1c5fb41ebc389a41b00f79ae19301abe87bd8bc19120d9"></a>HAND&#160;</td><td class="fielddoc"><p>A keeper's gloved hand and his arm (goalkeeper plan step 2). </p>
+</td></tr>
+<tr><td class="fieldname"><a id="ab8b493e059af180eb5a1c5fb41ebc389a47f45e65244c17ec9fa8771a5c6d60e1" name="ab8b493e059af180eb5a1c5fb41ebc389a47f45e65244c17ec9fa8771a5c6d60e1"></a>ARM&#160;</td><td class="fielddoc"></td></tr>
+<tr><td class="fieldname"><a id="ab8b493e059af180eb5a1c5fb41ebc389a4905ac9d6a22bdfc1ae096094ce6248d" name="ab8b493e059af180eb5a1c5fb41ebc389a4905ac9d6a22bdfc1ae096094ce6248d"></a>COUNT&#160;</td><td class="fielddoc"></td></tr>
+</table>
+
+</div>
+</div>
+<a id="a6a1652225e18bfaff8ecb9f9563a6a52" name="a6a1652225e18bfaff8ecb9f9563a6a52"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a6a1652225e18bfaff8ecb9f9563a6a52">&#9670;&#160;</a></span>ShotLegOutcome</h2>
+
+<div class="memitem">
+<div class="memproto">
+<table class="mlabels">
+  <tr>
+  <td class="mlabels-left">
+      <table class="memname">
+        <tr>
+          <td class="memname">enum class <a class="el" href="match__engine_8h.html#a6a1652225e18bfaff8ecb9f9563a6a52">ShotLegOutcome</a> : std::uint8_t</td>
+        </tr>
+      </table>
+  </td>
+  <td class="mlabels-right">
+<span class="mlabels"><span class="mlabel">strong</span></span>  </td>
+  </tr>
+</table>
+</div><div class="memdoc">
+<p>What became of a shot passing within a defender's reach once he had reacted (shot block plan §3d): a leg put out, or why not. </p>
+<table class="fieldtable">
+<tr><th colspan="2">Enumerator</th></tr><tr><td class="fieldname"><a id="a6a1652225e18bfaff8ecb9f9563a6a52affe3a85e4ed702e1a1ea8826bab73c9f" name="a6a1652225e18bfaff8ecb9f9563a6a52affe3a85e4ed702e1a1ea8826bab73c9f"></a>LEG_OUT&#160;</td><td class="fielddoc"></td></tr>
+<tr><td class="fieldname"><a id="a6a1652225e18bfaff8ecb9f9563a6a52aabd7d60c3d7a927b78d2a9782ebd354e" name="a6a1652225e18bfaff8ecb9f9563a6a52aabd7d60c3d7a927b78d2a9782ebd354e"></a>FEET_BUSY&#160;</td><td class="fielddoc"></td></tr>
+<tr><td class="fieldname"><a id="a6a1652225e18bfaff8ecb9f9563a6a52a9adba86d69e906190aec2138df34b5de" name="a6a1652225e18bfaff8ecb9f9563a6a52a9adba86d69e906190aec2138df34b5de"></a>CHOSE_NOT&#160;</td><td class="fielddoc"></td></tr>
+<tr><td class="fieldname"><a id="a6a1652225e18bfaff8ecb9f9563a6a52ae23282de7deb782829731cc301a0fb52" name="a6a1652225e18bfaff8ecb9f9563a6a52ae23282de7deb782829731cc301a0fb52"></a>NOT_TRAVELLING&#160;</td><td class="fielddoc"></td></tr>
+<tr><td class="fieldname"><a id="a6a1652225e18bfaff8ecb9f9563a6a52a0a96390f57015f6cfe52fa2e63100604" name="a6a1652225e18bfaff8ecb9f9563a6a52a0a96390f57015f6cfe52fa2e63100604"></a>PAST_HIM&#160;</td><td class="fielddoc"></td></tr>
+<tr><td class="fieldname"><a id="a6a1652225e18bfaff8ecb9f9563a6a52a4918fefab55dddfcb426a9c688e130b6" name="a6a1652225e18bfaff8ecb9f9563a6a52a4918fefab55dddfcb426a9c688e130b6"></a>ABOVE_HIP&#160;</td><td class="fielddoc"></td></tr>
+<tr><td class="fieldname"><a id="a6a1652225e18bfaff8ecb9f9563a6a52a8a72a76fa43f54561a486c3b96c045bf" name="a6a1652225e18bfaff8ecb9f9563a6a52a8a72a76fa43f54561a486c3b96c045bf"></a>OUT_OF_REACH_HEIGHT&#160;</td><td class="fielddoc"></td></tr>
+<tr><td class="fieldname"><a id="a6a1652225e18bfaff8ecb9f9563a6a52a88b51c7fd42324d85d77a861fa93d861" name="a6a1652225e18bfaff8ecb9f9563a6a52a88b51c7fd42324d85d77a861fa93d861"></a>OUT_OF_REACH_RUNNING&#160;</td><td class="fielddoc"></td></tr>
+<tr><td class="fieldname"><a id="a6a1652225e18bfaff8ecb9f9563a6a52a803cd887a92188d012b74c597a55d11a" name="a6a1652225e18bfaff8ecb9f9563a6a52a803cd887a92188d012b74c597a55d11a"></a>BEHIND_HIM&#160;</td><td class="fielddoc"></td></tr>
+<tr><td class="fieldname"><a id="a6a1652225e18bfaff8ecb9f9563a6a52a4905ac9d6a22bdfc1ae096094ce6248d" name="a6a1652225e18bfaff8ecb9f9563a6a52a4905ac9d6a22bdfc1ae096094ce6248d"></a>COUNT&#160;</td><td class="fielddoc"></td></tr>
+</table>
+
+</div>
+</div>
+<a id="aa429d29de03c19cc5d35b33b3e4bc9f2" name="aa429d29de03c19cc5d35b33b3e4bc9f2"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#aa429d29de03c19cc5d35b33b3e4bc9f2">&#9670;&#160;</a></span>ShotTechnique</h2>
+
+<div class="memitem">
+<div class="memproto">
+<table class="mlabels">
+  <tr>
+  <td class="mlabels-left">
+      <table class="memname">
+        <tr>
+          <td class="memname">enum class <a class="el" href="match__engine_8h.html#aa429d29de03c19cc5d35b33b3e4bc9f2">ShotTechnique</a> : std::uint8_t</td>
+        </tr>
+      </table>
+  </td>
+  <td class="mlabels-right">
+<span class="mlabels"><span class="mlabel">strong</span></span>  </td>
+  </tr>
+</table>
+</div><div class="memdoc">
+<p>How a foot shot is struck (shooting technique plan step 5). Without one asked: driven, as every shot was. </p>
+<table class="fieldtable">
+<tr><th colspan="2">Enumerator</th></tr><tr><td class="fieldname"><a id="aa429d29de03c19cc5d35b33b3e4bc9f2a3e277b6c845972ae208950f3dd588459" name="aa429d29de03c19cc5d35b33b3e4bc9f2a3e277b6c845972ae208950f3dd588459"></a>DRIVEN&#160;</td><td class="fielddoc"><p>The instep, hard and low, with a little topspin. </p>
+</td></tr>
+<tr><td class="fieldname"><a id="aa429d29de03c19cc5d35b33b3e4bc9f2a0a4373ca716769f93112e16e251bb8a1" name="aa429d29de03c19cc5d35b33b3e4bc9f2a0a4373ca716769f93112e16e251bb8a1"></a>PLACED&#160;</td><td class="fielddoc"><p>The side of the foot, at a lower pace, for the line. </p>
+</td></tr>
+<tr><td class="fieldname"><a id="aa429d29de03c19cc5d35b33b3e4bc9f2a3f45bb09b9b4a9350bc4a07644b56f52" name="aa429d29de03c19cc5d35b33b3e4bc9f2a3f45bb09b9b4a9350bc4a07644b56f52"></a>CURLED&#160;</td><td class="fielddoc"><p>The instep's wrap, with sidespin, bent in towards the middle. </p>
+</td></tr>
+<tr><td class="fieldname"><a id="aa429d29de03c19cc5d35b33b3e4bc9f2aed8e8497a6a4c2315790d3d56b7c5065" name="aa429d29de03c19cc5d35b33b3e4bc9f2aed8e8497a6a4c2315790d3d56b7c5065"></a>CHIP&#160;</td><td class="fielddoc"><p>Stabbed under it with backspin, over the keeper. </p>
+</td></tr>
+<tr><td class="fieldname"><a id="aa429d29de03c19cc5d35b33b3e4bc9f2a593a648fb1945d1ca0cd781fd54eb416" name="aa429d29de03c19cc5d35b33b3e4bc9f2a593a648fb1945d1ca0cd781fd54eb416"></a>TOE_POKE&#160;</td><td class="fielddoc"><p>The toe: quick, with little control. </p>
+</td></tr>
+</table>
+
+</div>
+</div>
+<a id="acf127105351500adc2ce5955c312f835" name="acf127105351500adc2ce5955c312f835"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#acf127105351500adc2ce5955c312f835">&#9670;&#160;</a></span>TackleIntent</h2>
+
+<div class="memitem">
+<div class="memproto">
+<table class="mlabels">
+  <tr>
+  <td class="mlabels-left">
+      <table class="memname">
+        <tr>
+          <td class="memname">enum class <a class="el" href="match__engine_8h.html#acf127105351500adc2ce5955c312f835">TackleIntent</a> : std::uint8_t</td>
+        </tr>
+      </table>
+  </td>
+  <td class="mlabels-right">
+<span class="mlabels"><span class="mlabel">strong</span></span>  </td>
+  </tr>
+</table>
+</div><div class="memdoc">
+<p>What a tackle means to do, on a free ball (tackling plan step 3) or in a block (step 4). </p>
+<table class="fieldtable">
+<tr><th colspan="2">Enumerator</th></tr><tr><td class="fieldname"><a id="acf127105351500adc2ce5955c312f835ac861cd34025f9002df5912d623326130" name="acf127105351500adc2ce5955c312f835ac861cd34025f9002df5912d623326130"></a>CONTROL&#160;</td><td class="fielddoc"><p>Bring it under control (his first touch, as before). </p>
+</td></tr>
+<tr><td class="fieldname"><a id="acf127105351500adc2ce5955c312f835a92e56d8195a9dd45a9b90aacf82886b1" name="acf127105351500adc2ce5955c312f835a92e56d8195a9dd45a9b90aacf82886b1"></a>WIN&#160;</td><td class="fielddoc"><p>Nudge it away from the attacker, to step across and win it. </p>
+</td></tr>
+<tr><td class="fieldname"><a id="acf127105351500adc2ce5955c312f835a813461e0c58e7ad59a2fd83ca2237fec" name="acf127105351500adc2ce5955c312f835a813461e0c58e7ad59a2fd83ca2237fec"></a>CLEAR&#160;</td><td class="fielddoc"><p>Clear it, struck where he meets it. </p>
+</td></tr>
+<tr><td class="fieldname"><a id="acf127105351500adc2ce5955c312f835a7a95bf926a0333f57705aeac07a362a2" name="acf127105351500adc2ce5955c312f835a7a95bf926a0333f57705aeac07a362a2"></a>PASS&#160;</td><td class="fielddoc"><p>Pass it first time to a team-mate. </p>
+</td></tr>
+<tr><td class="fieldname"><a id="acf127105351500adc2ce5955c312f835aa09965d3782048b98c9c3423fb8040e9" name="acf127105351500adc2ce5955c312f835aa09965d3782048b98c9c3423fb8040e9"></a>BRAIN&#160;</td><td class="fielddoc"><p>Drills: no forcing; his brain chooses (tackling plan step 5). </p>
+</td></tr>
+</table>
+
+</div>
+</div>
+<a id="a1bcd68521faef1414d4770dbb0e44cb2" name="a1bcd68521faef1414d4770dbb0e44cb2"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a1bcd68521faef1414d4770dbb0e44cb2">&#9670;&#160;</a></span>WalkPhase</h2>
+
+<div class="memitem">
+<div class="memproto">
+<table class="mlabels">
+  <tr>
+  <td class="mlabels-left">
+      <table class="memname">
+        <tr>
+          <td class="memname">enum class <a class="el" href="match__engine_8h.html#a1bcd68521faef1414d4770dbb0e44cb2">WalkPhase</a> : std::uint8_t</td>
+        </tr>
+      </table>
+  </td>
+  <td class="mlabels-right">
+<span class="mlabels"><span class="mlabel">strong</span></span>  </td>
+  </tr>
+</table>
+</div><div class="memdoc">
+<p>Where a walk-out or walk-off is (touchline plan stage 4). </p>
+<table class="fieldtable">
+<tr><th colspan="2">Enumerator</th></tr><tr><td class="fieldname"><a id="a1bcd68521faef1414d4770dbb0e44cb2ab50339a10e1de285ac99d4c3990b8693" name="a1bcd68521faef1414d4770dbb0e44cb2ab50339a10e1de285ac99d4c3990b8693"></a>NONE&#160;</td><td class="fielddoc"></td></tr>
+<tr><td class="fieldname"><a id="a1bcd68521faef1414d4770dbb0e44cb2a88559a0cfd8250c9d65970cc145c92d4" name="a1bcd68521faef1414d4770dbb0e44cb2a88559a0cfd8250c9d65970cc145c92d4"></a>OFF&#160;</td><td class="fielddoc"><p>Half-time: everyone walking into the tunnel. </p>
+</td></tr>
+<tr><td class="fieldname"><a id="a1bcd68521faef1414d4770dbb0e44cb2ac86ee0d9d7ed3e7b4fdbf486fa6c0ebb" name="a1bcd68521faef1414d4770dbb0e44cb2ac86ee0d9d7ed3e7b4fdbf486fa6c0ebb"></a>IN&#160;</td><td class="fielddoc"><p>Half-time: everyone in; the break runs. </p>
+</td></tr>
+<tr><td class="fieldname"><a id="a1bcd68521faef1414d4770dbb0e44cb2aef373774188a51f80463f37b6bd9e83a" name="a1bcd68521faef1414d4770dbb0e44cb2aef373774188a51f80463f37b6bd9e83a"></a>OUT&#160;</td><td class="fielddoc"><p>Out of the tunnel to the line-up (first half) or the kick-off. </p>
+</td></tr>
+<tr><td class="fieldname"><a id="a1bcd68521faef1414d4770dbb0e44cb2a3068c7ed4c0d707d6321b42e63539ec9" name="a1bcd68521faef1414d4770dbb0e44cb2a3068c7ed4c0d707d6321b42e63539ec9"></a>LINED_UP&#160;</td><td class="fielddoc"><p>Lined up before the handshake. </p>
+</td></tr>
+<tr><td class="fieldname"><a id="a1bcd68521faef1414d4770dbb0e44cb2a84fcef12cce95eb15cffe4338ecf5d29" name="a1bcd68521faef1414d4770dbb0e44cb2a84fcef12cce95eb15cffe4338ecf5d29"></a>HANDSHAKE&#160;</td><td class="fielddoc"></td></tr>
 </table>
 
 </div>
 </div>
 <h2 class="groupheader">Function Documentation</h2>
-<a id="a7de987d5e8db90ceecccf0168d78cff9" name="a7de987d5e8db90ceecccf0168d78cff9"></a>
-<h2 class="memtitle"><span class="permalink"><a href="#a7de987d5e8db90ceecccf0168d78cff9">&#9670;&#160;</a></span>goalkeeperStateName()</h2>
+<a id="a9f05cfcac39f5d6817bcc220805c0b48" name="a9f05cfcac39f5d6817bcc220805c0b48"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a9f05cfcac39f5d6817bcc220805c0b48">&#9670;&#160;</a></span>isLegPart()</h2>
 
 <div class="memitem">
 <div class="memproto">
+<table class="mlabels">
+  <tr>
+  <td class="mlabels-left">
       <table class="memname">
         <tr>
-          <td class="memname">std::string_view goalkeeperStateName </td>
+          <td class="memname">constexpr bool isLegPart </td>
           <td>(</td>
-          <td class="paramtype"><a class="el" href="match__engine_8h.html#a9f9ca6c5dc389f4fcac901c486ee4cc5">GoalkeeperState</a>&#160;</td>
-          <td class="paramname"><em>state</em></td><td>)</td>
+          <td class="paramtype"><a class="el" href="match__engine_8h.html#ab8b493e059af180eb5a1c5fb41ebc389">ShotBodyPart</a>&#160;</td>
+          <td class="paramname"><em>part</em></td><td>)</td>
           <td></td>
         </tr>
       </table>
+  </td>
+  <td class="mlabels-right">
+<span class="mlabels"><span class="mlabel">constexpr</span></span>  </td>
+  </tr>
+</table>
 </div><div class="memdoc">
+<p>A thigh, shin or foot. </p>
+
+</div>
+</div>
+<a id="a5ec9350e41a2d6c5bc18fbfa66766b24" name="a5ec9350e41a2d6c5bc18fbfa66766b24"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a5ec9350e41a2d6c5bc18fbfa66766b24">&#9670;&#160;</a></span>modeTargetSpeed()</h2>
+
+<div class="memitem">
+<div class="memproto">
+<table class="mlabels">
+  <tr>
+  <td class="mlabels-left">
+      <table class="memname">
+        <tr>
+          <td class="memname">float modeTargetSpeed </td>
+          <td>(</td>
+          <td class="paramtype"><a class="el" href="match__engine_8h.html#a09726432f66a8de5ea8a047f5751bd9e">MovementMode</a>&#160;</td>
+          <td class="paramname"><em>mode</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">float&#160;</td>
+          <td class="paramname"><em>distance</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">const std::array&lt; float, 4 &gt; &amp;&#160;</td>
+          <td class="paramname"><em>jogRamp</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">const std::array&lt; float, 4 &gt; &amp;&#160;</td>
+          <td class="paramname"><em>tops</em>&#160;</td>
+        </tr>
+        <tr>
+          <td></td>
+          <td>)</td>
+          <td></td><td></td>
+        </tr>
+      </table>
+  </td>
+  <td class="mlabels-right">
+<span class="mlabels"><span class="mlabel">inline</span></span>  </td>
+  </tr>
+</table>
+</div><div class="memdoc">
+<p>The speed a mode asks for, <code>distance</code> metres from his target: the top of its band; on a jog job, a ramp by distance (<code>jogRamp</code>, m) from the top of walk close in, through the top of jog, to the top of run far off. The tops are his now (walk, jog, run, sprint). </p>
+
+</div>
+</div>
+<a id="a450cfac7abd0db3c17a54b972eee04cf" name="a450cfac7abd0db3c17a54b972eee04cf"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a450cfac7abd0db3c17a54b972eee04cf">&#9670;&#160;</a></span>movementModeName()</h2>
+
+<div class="memitem">
+<div class="memproto">
+<table class="mlabels">
+  <tr>
+  <td class="mlabels-left">
+      <table class="memname">
+        <tr>
+          <td class="memname">const char * movementModeName </td>
+          <td>(</td>
+          <td class="paramtype"><a class="el" href="match__engine_8h.html#a09726432f66a8de5ea8a047f5751bd9e">MovementMode</a>&#160;</td>
+          <td class="paramname"><em>mode</em></td><td>)</td>
+          <td></td>
+        </tr>
+      </table>
+  </td>
+  <td class="mlabels-right">
+<span class="mlabels"><span class="mlabel">inline</span></span>  </td>
+  </tr>
+</table>
+</div><div class="memdoc">
+
+</div>
+</div>
+<a id="ad2eb0fbb44c632698196cc4b63a97c97" name="ad2eb0fbb44c632698196cc4b63a97c97"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#ad2eb0fbb44c632698196cc4b63a97c97">&#9670;&#160;</a></span>speedBandFrom() <span class="overload">[1/2]</span></h2>
+
+<div class="memitem">
+<div class="memproto">
+<table class="mlabels">
+  <tr>
+  <td class="mlabels-left">
+      <table class="memname">
+        <tr>
+          <td class="memname"><a class="el" href="structSpeedBand.html">SpeedBand</a> speedBandFrom </td>
+          <td>(</td>
+          <td class="paramtype"><a class="el" href="match__engine_8h.html#a09726432f66a8de5ea8a047f5751bd9e">MovementMode</a>&#160;</td>
+          <td class="paramname"><em>mode</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">const <a class="el" href="structSpeedBandInputs.html">SpeedBandInputs</a> &amp;&#160;</td>
+          <td class="paramname"><em>inputs</em>&#160;</td>
+        </tr>
+        <tr>
+          <td></td>
+          <td>)</td>
+          <td></td><td></td>
+        </tr>
+      </table>
+  </td>
+  <td class="mlabels-right">
+<span class="mlabels"><span class="mlabel">inline</span></span>  </td>
+  </tr>
+</table>
+</div><div class="memdoc">
+<p>A mode's band from his band inputs (speedBandFrom). </p>
+
+</div>
+</div>
+<a id="a761c24a01b4ea2c6a7c30830baa3a7b4" name="a761c24a01b4ea2c6a7c30830baa3a7b4"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a761c24a01b4ea2c6a7c30830baa3a7b4">&#9670;&#160;</a></span>speedBandFrom() <span class="overload">[2/2]</span></h2>
+
+<div class="memitem">
+<div class="memproto">
+<table class="mlabels">
+  <tr>
+  <td class="mlabels-left">
+      <table class="memname">
+        <tr>
+          <td class="memname"><a class="el" href="structSpeedBand.html">SpeedBand</a> speedBandFrom </td>
+          <td>(</td>
+          <td class="paramtype"><a class="el" href="match__engine_8h.html#a09726432f66a8de5ea8a047f5751bd9e">MovementMode</a>&#160;</td>
+          <td class="paramname"><em>mode</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">float&#160;</td>
+          <td class="paramname"><em>transition</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">float&#160;</td>
+          <td class="paramname"><em>critical</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">float&#160;</td>
+          <td class="paramname"><em>top</em>&#160;</td>
+        </tr>
+        <tr>
+          <td></td>
+          <td>)</td>
+          <td></td><td></td>
+        </tr>
+      </table>
+  </td>
+  <td class="mlabels-right">
+<span class="mlabels"><span class="mlabel">inline</span></span>  </td>
+  </tr>
+</table>
+</div><div class="memdoc">
+
+</div>
+</div>
+<a id="a561fe703e0d9c517cb8d3a0074adb0c0" name="a561fe703e0d9c517cb8d3a0074adb0c0"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a561fe703e0d9c517cb8d3a0074adb0c0">&#9670;&#160;</a></span>speedBandTops()</h2>
+
+<div class="memitem">
+<div class="memproto">
+<table class="mlabels">
+  <tr>
+  <td class="mlabels-left">
+      <table class="memname">
+        <tr>
+          <td class="memname"><a class="el" href="structSpeedBandTops.html">SpeedBandTops</a> speedBandTops </td>
+          <td>(</td>
+          <td class="paramtype">float&#160;</td>
+          <td class="paramname"><em>transition</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">float&#160;</td>
+          <td class="paramname"><em>critical</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">float&#160;</td>
+          <td class="paramname"><em>top</em>&#160;</td>
+        </tr>
+        <tr>
+          <td></td>
+          <td>)</td>
+          <td></td><td></td>
+        </tr>
+      </table>
+  </td>
+  <td class="mlabels-right">
+<span class="mlabels"><span class="mlabel">inline</span></span>  </td>
+  </tr>
+</table>
+</div><div class="memdoc">
+
+</div>
+</div>
+<h2 class="groupheader">Variable Documentation</h2>
+<a id="a42d661043576023ed631b0bcd1b6abf7" name="a42d661043576023ed631b0bcd1b6abf7"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a42d661043576023ed631b0bcd1b6abf7">&#9670;&#160;</a></span>CONTACT_FACTOR_COUNT</h2>
+
+<div class="memitem">
+<div class="memproto">
+<table class="mlabels">
+  <tr>
+  <td class="mlabels-left">
+      <table class="memname">
+        <tr>
+          <td class="memname">constexpr std::size_t CONTACT_FACTOR_COUNT = 13</td>
+        </tr>
+      </table>
+  </td>
+  <td class="mlabels-right">
+<span class="mlabels"><span class="mlabel">inline</span><span class="mlabel">constexpr</span></span>  </td>
+  </tr>
+</table>
+</div><div class="memdoc">
+<p>A contact's conditions, in <a class="el" href="structContactAssessment.html#ae8f3923e588d48d84409a1a930baa7cd">ContactAssessment::factors</a> order, with short labels for tables. </p>
+
+</div>
+</div>
+<a id="a470a01e29e6f59c255dec2f54e2e87eb" name="a470a01e29e6f59c255dec2f54e2e87eb"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a470a01e29e6f59c255dec2f54e2e87eb">&#9670;&#160;</a></span>CONTACT_FACTOR_LABELS</h2>
+
+<div class="memitem">
+<div class="memproto">
+<table class="mlabels">
+  <tr>
+  <td class="mlabels-left">
+      <table class="memname">
+        <tr>
+          <td class="memname">constexpr std::array&lt;std::string_view, <a class="el" href="match__engine_8h.html#a42d661043576023ed631b0bcd1b6abf7">CONTACT_FACTOR_COUNT</a>&gt; CONTACT_FACTOR_LABELS</td>
+        </tr>
+      </table>
+  </td>
+  <td class="mlabels-right">
+<span class="mlabels"><span class="mlabel">inline</span><span class="mlabel">constexpr</span></span>  </td>
+  </tr>
+</table>
+</div><div class="memdoc">
+<b>Initial value:</b><div class="fragment"><div class="line">= {</div>
+<div class="line">        <span class="stringliteral">&quot;Pace change&quot;</span>,    <span class="stringliteral">&quot;Turn off its line&quot;</span>, <span class="stringliteral">&quot;Incoming pace&quot;</span>,</div>
+<div class="line">        <span class="stringliteral">&quot;Approach angle&quot;</span>, <span class="stringliteral">&quot;His own speed&quot;</span>,     <span class="stringliteral">&quot;Stretching&quot;</span>,</div>
+<div class="line">        <span class="stringliteral">&quot;Weaker foot&quot;</span>,    <span class="stringliteral">&quot;Off the ground&quot;</span>,    <span class="stringliteral">&quot;Surprise&quot;</span>,</div>
+<div class="line">        <span class="stringliteral">&quot;Pressure&quot;</span>,       <span class="stringliteral">&quot;Turn up or down&quot;</span>,   <span class="stringliteral">&quot;Spin asked&quot;</span>,</div>
+<div class="line">        <span class="stringliteral">&quot;Power asked&quot;</span>}</div>
+</div><!-- fragment -->
+</div>
+</div>
+<a id="a74d48cee81fd8ff1d50e3846c8a99dd3" name="a74d48cee81fd8ff1d50e3846c8a99dd3"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a74d48cee81fd8ff1d50e3846c8a99dd3">&#9670;&#160;</a></span>JOG_RUN_CRITICAL_SHARE</h2>
+
+<div class="memitem">
+<div class="memproto">
+<table class="mlabels">
+  <tr>
+  <td class="mlabels-left">
+      <table class="memname">
+        <tr>
+          <td class="memname">constexpr float JOG_RUN_CRITICAL_SHARE = 0.823F</td>
+        </tr>
+      </table>
+  </td>
+  <td class="mlabels-right">
+<span class="mlabels"><span class="mlabel">inline</span><span class="mlabel">constexpr</span></span>  </td>
+  </tr>
+</table>
+</div><div class="memdoc">
+<p>The first threshold (moderate-heavy boundary) as a share of critical speed: 82.3% (Hunter et al. 2024, 26 studies): where a jog becomes a run. </p>
+
+</div>
+</div>
+<a id="ae1af1743cfdbe1c351b59d3122803121" name="ae1af1743cfdbe1c351b59d3122803121"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#ae1af1743cfdbe1c351b59d3122803121">&#9670;&#160;</a></span>MOVEMENT_MODE_COUNT</h2>
+
+<div class="memitem">
+<div class="memproto">
+<table class="mlabels">
+  <tr>
+  <td class="mlabels-left">
+      <table class="memname">
+        <tr>
+          <td class="memname">constexpr std::size_t MOVEMENT_MODE_COUNT = 4</td>
+        </tr>
+      </table>
+  </td>
+  <td class="mlabels-right">
+<span class="mlabels"><span class="mlabel">inline</span><span class="mlabel">constexpr</span></span>  </td>
+  </tr>
+</table>
+</div><div class="memdoc">
+
+</div>
+</div>
+<a id="ad861d2b5f4153d5659b0caac23b813f4" name="ad861d2b5f4153d5659b0caac23b813f4"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#ad861d2b5f4153d5659b0caac23b813f4">&#9670;&#160;</a></span>POWER_ASKED_FACTOR</h2>
+
+<div class="memitem">
+<div class="memproto">
+<table class="mlabels">
+  <tr>
+  <td class="mlabels-left">
+      <table class="memname">
+        <tr>
+          <td class="memname">constexpr std::size_t POWER_ASKED_FACTOR = 12</td>
+        </tr>
+      </table>
+  </td>
+  <td class="mlabels-right">
+<span class="mlabels"><span class="mlabel">inline</span><span class="mlabel">constexpr</span></span>  </td>
+  </tr>
+</table>
+</div><div class="memdoc">
+<p>The pace he asks for against his power (strikes). </p>
+
+</div>
+</div>
+<a id="a1385b9932562edf3fd6adab98b59f2a3" name="a1385b9932562edf3fd6adab98b59f2a3"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a1385b9932562edf3fd6adab98b59f2a3">&#9670;&#160;</a></span>SPIN_ASKED_FACTOR</h2>
+
+<div class="memitem">
+<div class="memproto">
+<table class="mlabels">
+  <tr>
+  <td class="mlabels-left">
+      <table class="memname">
+        <tr>
+          <td class="memname">constexpr std::size_t SPIN_ASKED_FACTOR = 11</td>
+        </tr>
+      </table>
+  </td>
+  <td class="mlabels-right">
+<span class="mlabels"><span class="mlabel">inline</span><span class="mlabel">constexpr</span></span>  </td>
+  </tr>
+</table>
+</div><div class="memdoc">
+<p>The spin he asks for against what he can put on. </p>
+
+</div>
+</div>
+<a id="a2b9e3055c0ed01e31f31c0ab493e76b2" name="a2b9e3055c0ed01e31f31c0ab493e76b2"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a2b9e3055c0ed01e31f31c0ab493e76b2">&#9670;&#160;</a></span>VERTICAL_TURN_FACTOR</h2>
+
+<div class="memitem">
+<div class="memproto">
+<table class="mlabels">
+  <tr>
+  <td class="mlabels-left">
+      <table class="memname">
+        <tr>
+          <td class="memname">constexpr std::size_t VERTICAL_TURN_FACTOR = 10</td>
+        </tr>
+      </table>
+  </td>
+  <td class="mlabels-right">
+<span class="mlabels"><span class="mlabel">inline</span><span class="mlabel">constexpr</span></span>  </td>
+  </tr>
+</table>
+</div><div class="memdoc">
+<p>The turn off the line's steepness: the vertical angle job's size. </p>
+
+</div>
+</div>
+<a id="ace93659ead3432fc52de1a765d46ab3a" name="ace93659ead3432fc52de1a765d46ab3a"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#ace93659ead3432fc52de1a765d46ab3a">&#9670;&#160;</a></span>WEAK_FOOT_FACTOR</h2>
+
+<div class="memitem">
+<div class="memproto">
+<table class="mlabels">
+  <tr>
+  <td class="mlabels-left">
+      <table class="memname">
+        <tr>
+          <td class="memname">constexpr std::size_t WEAK_FOOT_FACTOR = 6</td>
+        </tr>
+      </table>
+  </td>
+  <td class="mlabels-right">
+<span class="mlabels"><span class="mlabel">inline</span><span class="mlabel">constexpr</span></span>  </td>
+  </tr>
+</table>
+</div><div class="memdoc">
+<p>The weaker-foot condition's place in the list: it scales the other conditions' sum rather than adding to it. </p>
 
 </div>
 </div>

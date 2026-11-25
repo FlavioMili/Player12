@@ -9,7 +9,6 @@ var structMatchRender2DTuning_1_1Token =
     [ "LABEL_TEXT_COLOR", "structMatchRender2DTuning_1_1Token.html#a9893536ea0d99a804ec470100165dc06", null ],
     [ "LIGHT_OUTLINE_COLOR", "structMatchRender2DTuning_1_1Token.html#ab113ef861322da758af33d50d85d4b0b", null ],
     [ "MIN_NUMBER_PIXELS", "structMatchRender2DTuning_1_1Token.html#a8210ba38cb32e52647ffd9ef27359878", null ],
-    [ "MIN_RADIUS_FONT_SHARE", "structMatchRender2DTuning_1_1Token.html#a9570dfc29ee1da259eb7f3fb3677ea5e", null ],
     [ "NUMBER_SHARE", "structMatchRender2DTuning_1_1Token.html#a652ef83d56c07b7e1525904f241870c4", null ],
     [ "OFF_PITCH_ALPHA", "structMatchRender2DTuning_1_1Token.html#a5c1272b273fde0fc551b814d138a0ebb", null ],
     [ "OUTLINE_COLOR", "structMatchRender2DTuning_1_1Token.html#a6ad875a85f824b9bfa133a7a63d42387", null ],
@@ -19,6 +18,7 @@ var structMatchRender2DTuning_1_1Token =
     [ "SHADOW_COLOR", "structMatchRender2DTuning_1_1Token.html#a23c1fc6591f37e5ef49745ec93a79bf7", null ],
     [ "SHADOW_OFFSET_SHARE", "structMatchRender2DTuning_1_1Token.html#a63e55650374fec0748c033a8aeb1f828", null ],
     [ "SHIRT_SHARE", "structMatchRender2DTuning_1_1Token.html#a2ad7ffc0771e2e864dfca47d32e8144c", null ],
+    [ "SHORTS_SHARE", "structMatchRender2DTuning_1_1Token.html#a9a64eac19c63756fff1e7d72542db6b5", null ],
     [ "WEDGE_COLOR", "structMatchRender2DTuning_1_1Token.html#af86b0f00d63750643800ccb4aeb2c327", null ],
     [ "WEDGE_HALF_ANGLE", "structMatchRender2DTuning_1_1Token.html#a655881341280adb2b925b81906b02531", null ],
     [ "WEDGE_REACH", "structMatchRender2DTuning_1_1Token.html#afcc892d1c2d74c4107c1c371211e825d", null ]

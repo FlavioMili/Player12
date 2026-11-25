@@ -23,5 +23,9 @@ var match__rules_8h =
     [ "shootoutDecided", "match__rules_8h.html#a0aa9e08d57d3e9b3ce2dcabb2bbaa845", null ],
     [ "staminaDrainPerSecond", "match__rules_8h.html#a47e21708f7e3209c2efdb5c3c30a51f3", null ],
     [ "tackleFoulPropensity", "match__rules_8h.html#a536c45ac506044ff83a8a83e3f34657b", null ],
-    [ "tackleWinChance", "match__rules_8h.html#aecdd78fb3ab86872734bf300e39215bf", null ]
+    [ "tackleMake", "match__rules_8h.html#a590361c869ec063025412dfb9f18ebc7", null ],
+    [ "tackleResist", "match__rules_8h.html#add79d189773f417b2c6bcc4c4b1085bb", null ],
+    [ "tackleTechnique", "match__rules_8h.html#a60c31cd40b45a30fa689d122dd455d94", null ],
+    [ "tackleWinChance", "match__rules_8h.html#aecdd78fb3ab86872734bf300e39215bf", null ],
+    [ "walkRunTransitionSpeed", "match__rules_8h.html#a23e5ab6232bf7e9f6dc5a9de6de756fe", null ]
 ];

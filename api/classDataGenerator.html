@@ -124,9 +124,9 @@ Static Public Member Functions</h2></td></tr>
 <tr class="memitem:ac00469c443ba9ac788f807cdeafc3099" id="r_ac00469c443ba9ac788f807cdeafc3099"><td class="memItemLeft" align="right" valign="top">static const std::unordered_map&lt; <a class="el" href="types_8h.html#a93dcecc4aec7387438b9cabd8a28dfdb">PlayerID</a>, std::uint8_t &gt; &amp;&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classDataGenerator.html#ac00469c443ba9ac788f807cdeafc3099">playerSkinTones</a> ()</td></tr>
 <tr class="memdesc:ac00469c443ba9ac788f807cdeafc3099"><td class="mdescLeft">&#160;</td><td class="mdescRight">Skin tone (0 lightest .. 7 darkest) of every authored player of the installed world: the "skin" field, else a plausible tone for the nationality. Generated players get a deterministic tone from their id.  <br /></td></tr>
 <tr class="separator:ac00469c443ba9ac788f807cdeafc3099"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a7c3829f9f1a76c784edee8af94b94fca" id="r_a7c3829f9f1a76c784edee8af94b94fca"><td class="memItemLeft" align="right" valign="top">static std::vector&lt; <a class="el" href="classPlayer.html">Player</a> &gt;&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classDataGenerator.html#a7c3829f9f1a76c784edee8af94b94fca">generatePlayers</a> (const class <a class="el" href="classGameData.html">GameData</a> &amp;gamedata)</td></tr>
-<tr class="memdesc:a7c3829f9f1a76c784edee8af94b94fca"><td class="mdescLeft">&#160;</td><td class="mdescRight">Loads the predefined players and completes every club's squad with generated players (see <a class="el" href="namespaceWorldGeneration.html" title="Creation of clubs and players with realistic structure.">WorldGeneration</a>). Club profiles must be assigned first; generation is deterministic for the world seed.  <br /></td></tr>
-<tr class="separator:a7c3829f9f1a76c784edee8af94b94fca"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a8c1912d75375fc4b2c2a77ed98ec2536" id="r_a8c1912d75375fc4b2c2a77ed98ec2536"><td class="memItemLeft" align="right" valign="top">static std::vector&lt; <a class="el" href="classPlayer.html">Player</a> &gt;&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classDataGenerator.html#a8c1912d75375fc4b2c2a77ed98ec2536">generatePlayers</a> (const class <a class="el" href="classGameData.html">GameData</a> &amp;gamedata, std::stop_token stop={})</td></tr>
+<tr class="memdesc:a8c1912d75375fc4b2c2a77ed98ec2536"><td class="mdescLeft">&#160;</td><td class="mdescRight">Loads the predefined players and completes every club's squad with generated players (see <a class="el" href="namespaceWorldGeneration.html" title="Creation of clubs and players with realistic structure.">WorldGeneration</a>). Club profiles must be assigned first; generation is deterministic for the world seed.  <br /></td></tr>
+<tr class="separator:a8c1912d75375fc4b2c2a77ed98ec2536"><td class="memSeparator" colspan="2">&#160;</td></tr>
 </table>
 <a name="details" id="details"></a><h2 class="groupheader">Detailed Description</h2>
 <div class="textblock"><p>Class responsible for generating initial data for leagues, teams, and players. </p>
@@ -213,8 +213,8 @@ Static Public Member Functions</h2></td></tr>
 
 </div>
 </div>
-<a id="a7c3829f9f1a76c784edee8af94b94fca" name="a7c3829f9f1a76c784edee8af94b94fca"></a>
-<h2 class="memtitle"><span class="permalink"><a href="#a7c3829f9f1a76c784edee8af94b94fca">&#9670;&#160;</a></span>generatePlayers()</h2>
+<a id="a8c1912d75375fc4b2c2a77ed98ec2536" name="a8c1912d75375fc4b2c2a77ed98ec2536"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a8c1912d75375fc4b2c2a77ed98ec2536">&#9670;&#160;</a></span>generatePlayers()</h2>
 
 <div class="memitem">
 <div class="memproto">
@@ -226,8 +226,18 @@ Static Public Member Functions</h2></td></tr>
           <td class="memname">std::vector&lt; <a class="el" href="classPlayer.html">Player</a> &gt; DataGenerator::generatePlayers </td>
           <td>(</td>
           <td class="paramtype">const class <a class="el" href="classGameData.html">GameData</a> &amp;&#160;</td>
-          <td class="paramname"><em>gamedata</em></td><td>)</td>
+          <td class="paramname"><em>gamedata</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
           <td></td>
+          <td class="paramtype">std::stop_token&#160;</td>
+          <td class="paramname"><em>stop</em> = <code>{}</code>&#160;</td>
+        </tr>
+        <tr>
+          <td></td>
+          <td>)</td>
+          <td></td><td></td>
         </tr>
       </table>
   </td>

@@ -104,6 +104,7 @@ $(document).ready(function(){initNavTree('match__kit__colors_8cpp.html',''); ini
 <code>#include &lt;cmath&gt;</code><br />
 <code>#include &lt;cstddef&gt;</code><br />
 <code>#include &lt;initializer_list&gt;</code><br />
+<code>#include &lt;limits&gt;</code><br />
 <code>#include &lt;optional&gt;</code><br />
 <code>#include &lt;unordered_map&gt;</code><br />
 <code>#include &quot;<a class="el" href="datagenerator_8h_source.html">database/datagenerator.h</a>&quot;</code><br />
@@ -118,6 +119,8 @@ Functions</h2></td></tr>
 <tr class="separator:af8c8c7395a66f175656e6ab39c9adb8d"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:ae8aaa7cd972e686f19420976a594cf86" id="r_ae8aaa7cd972e686f19420976a594cf86"><td class="memItemLeft" align="right" valign="top">ImU32&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="match__kit__colors_8cpp.html#ae8aaa7cd972e686f19420976a594cf86">goalkeeperGloveColor</a> (const <a class="el" href="structKitColors.html">KitColors</a> &amp;kit)</td></tr>
 <tr class="separator:ae8aaa7cd972e686f19420976a594cf86"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:ae8cb7829ff7fc7afaa50bda1cad82316" id="r_ae8cb7829ff7fc7afaa50bda1cad82316"><td class="memItemLeft" align="right" valign="top">ImU32&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="match__kit__colors_8cpp.html#ae8cb7829ff7fc7afaa50bda1cad82316">officialsShirtColor</a> (const <a class="el" href="structMatchKits.html">MatchKits</a> &amp;<a class="el" href="match__stadium__3d_8cpp.html#ab469729b14e7d61b8a589d615c3fbf2e">kits</a>)</td></tr>
+<tr class="separator:ae8cb7829ff7fc7afaa50bda1cad82316"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a352be325f9655a08c1bc761b602cf882" id="r_a352be325f9655a08c1bc761b602cf882"><td class="memItemLeft" align="right" valign="top"><a class="el" href="structMatchKits.html">MatchKits</a>&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="match__kit__colors_8cpp.html#a352be325f9655a08c1bc761b602cf882">chooseMatchKits</a> (<a class="el" href="types_8h.html#a57143f6ccbdf5a5d9724b986cbdafb31">TeamID</a> homeTeam, <a class="el" href="types_8h.html#a57143f6ccbdf5a5d9724b986cbdafb31">TeamID</a> awayTeam)</td></tr>
 <tr class="separator:a352be325f9655a08c1bc761b602cf882"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a2f95a11a3c5b45883751d496cf6ea0b0" id="r_a2f95a11a3c5b45883751d496cf6ea0b0"><td class="memItemLeft" align="right" valign="top"><a class="el" href="structMatchKits.html">MatchKits</a>&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="match__kit__colors_8cpp.html#a2f95a11a3c5b45883751d496cf6ea0b0">chooseMatchKits</a> (<a class="el" href="types_8h.html#a57143f6ccbdf5a5d9724b986cbdafb31">TeamID</a> homeTeam, <a class="el" href="types_8h.html#a57143f6ccbdf5a5d9724b986cbdafb31">TeamID</a> awayTeam, const <a class="el" href="structClubColours.html">ClubColours</a> *homeColours, const <a class="el" href="structClubColours.html">ClubColours</a> *awayColours)</td></tr>
@@ -277,6 +280,25 @@ Functions</h2></td></tr>
       </table>
 </div><div class="memdoc">
 <p>Colour of the numbers and names printed on a shirt: the trim when it contrasts with the shirt, otherwise white or near-black, whichever stands out more. </p>
+
+</div>
+</div>
+<a id="ae8cb7829ff7fc7afaa50bda1cad82316" name="ae8cb7829ff7fc7afaa50bda1cad82316"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#ae8cb7829ff7fc7afaa50bda1cad82316">&#9670;&#160;</a></span>officialsShirtColor()</h2>
+
+<div class="memitem">
+<div class="memproto">
+      <table class="memname">
+        <tr>
+          <td class="memname">ImU32 officialsShirtColor </td>
+          <td>(</td>
+          <td class="paramtype">const <a class="el" href="structMatchKits.html">MatchKits</a> &amp;&#160;</td>
+          <td class="paramname"><em>kits</em></td><td>)</td>
+          <td></td>
+        </tr>
+      </table>
+</div><div class="memdoc">
+<p>The match officials' shirts: black unless it clashes with a strip, else the stock colour that stands out most from all four (shorts black). </p>
 
 </div>
 </div>

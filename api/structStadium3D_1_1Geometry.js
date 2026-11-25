@@ -8,6 +8,7 @@ var structStadium3D_1_1Geometry =
     [ "crowd", "structStadium3D_1_1Geometry.html#a94266764f94a6fc51f563c9be8c98bac", null ],
     [ "day", "structStadium3D_1_1Geometry.html#a9ae1244a3bce0878ffa748f4eff5bee8", null ],
     [ "faces", "structStadium3D_1_1Geometry.html#a9ccc7adb55ed152f93a53663a49ddd7b", null ],
+    [ "fixtures", "structStadium3D_1_1Geometry.html#ac5ac754c9eb0ad41a23b471581b0f020", null ],
     [ "flags", "structStadium3D_1_1Geometry.html#ab7565f1ef3587d429de840f8436452be", null ],
     [ "goals", "structStadium3D_1_1Geometry.html#a19656e7e009a9c0a20535baa31d3c1c4", null ],
     [ "ground", "structStadium3D_1_1Geometry.html#a2782940e31d7a051f7b394561dbfd9dc", null ],

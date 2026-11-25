@@ -110,6 +110,8 @@ Static Public Member Functions</h2></td></tr>
 <tr class="memitem:ad9f38f9cc2d75a6207f4972427aa74f1" id="r_ad9f38f9cc2d75a6207f4972427aa74f1"><td class="memItemLeft" align="right" valign="top">static void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classLogger.html#ad9f38f9cc2d75a6207f4972427aa74f1">init</a> ()</td></tr>
 <tr class="memdesc:ad9f38f9cc2d75a6207f4972427aa74f1"><td class="mdescLeft">&#160;</td><td class="mdescRight">Initializes the logging system. The previous session's log is kept as <a class="el" href="classRuntimePaths.html#afc1af322ab9ca3f58b095afe5d104245">RuntimePaths::previousLogPath()</a>.  <br /></td></tr>
 <tr class="separator:ad9f38f9cc2d75a6207f4972427aa74f1"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a9dbb809282232adfbe81a780077e587a" id="r_a9dbb809282232adfbe81a780077e587a"><td class="memItemLeft" align="right" valign="top">static void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classLogger.html#a9dbb809282232adfbe81a780077e587a">shutdown</a> ()</td></tr>
+<tr class="separator:a9dbb809282232adfbe81a780077e587a"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:afaac8d8aba7262900267f1e3779bd657" id="r_afaac8d8aba7262900267f1e3779bd657"><td class="memItemLeft" align="right" valign="top">static void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classLogger.html#afaac8d8aba7262900267f1e3779bd657">info</a> (const std::string &amp;msg)</td></tr>
 <tr class="memdesc:afaac8d8aba7262900267f1e3779bd657"><td class="mdescLeft">&#160;</td><td class="mdescRight">Logs an informational message.  <br /></td></tr>
 <tr class="separator:afaac8d8aba7262900267f1e3779bd657"><td class="memSeparator" colspan="2">&#160;</td></tr>
@@ -280,6 +282,32 @@ Static Public Member Functions</h2></td></tr>
 </div><div class="memdoc">
 
 <p>Initializes the logging system. The previous session's log is kept as <a class="el" href="classRuntimePaths.html#afc1af322ab9ca3f58b095afe5d104245">RuntimePaths::previousLogPath()</a>. </p>
+
+</div>
+</div>
+<a id="a9dbb809282232adfbe81a780077e587a" name="a9dbb809282232adfbe81a780077e587a"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a9dbb809282232adfbe81a780077e587a">&#9670;&#160;</a></span>shutdown()</h2>
+
+<div class="memitem">
+<div class="memproto">
+<table class="mlabels">
+  <tr>
+  <td class="mlabels-left">
+      <table class="memname">
+        <tr>
+          <td class="memname">void Logger::shutdown </td>
+          <td>(</td>
+          <td class="paramname"></td><td>)</td>
+          <td></td>
+        </tr>
+      </table>
+  </td>
+  <td class="mlabels-right">
+<span class="mlabels"><span class="mlabel">static</span></span>  </td>
+  </tr>
+</table>
+</div><div class="memdoc">
+<p>Closes the log and releases its file handle. </p>
 
 </div>
 </div>

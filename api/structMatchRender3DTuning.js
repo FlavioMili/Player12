@@ -10,6 +10,7 @@ var structMatchRender3DTuning =
     [ "Day", "structMatchRender3DTuning_1_1Day.html", "structMatchRender3DTuning_1_1Day" ],
     [ "Director", "structMatchRender3DTuning_1_1Director.html", "structMatchRender3DTuning_1_1Director" ],
     [ "End", "structMatchRender3DTuning_1_1End.html", "structMatchRender3DTuning_1_1End" ],
+    [ "Fixtures", "structMatchRender3DTuning_1_1Fixtures.html", "structMatchRender3DTuning_1_1Fixtures" ],
     [ "Floodlight", "structMatchRender3DTuning_1_1Floodlight.html", "structMatchRender3DTuning_1_1Floodlight" ],
     [ "Follow", "structMatchRender3DTuning_1_1Follow.html", "structMatchRender3DTuning_1_1Follow" ],
     [ "Free", "structMatchRender3DTuning_1_1Free.html", "structMatchRender3DTuning_1_1Free" ],
@@ -31,5 +32,6 @@ var structMatchRender3DTuning =
     [ "Sky", "structMatchRender3DTuning_1_1Sky.html", "structMatchRender3DTuning_1_1Sky" ],
     [ "Stands", "structMatchRender3DTuning_1_1Stands.html", "structMatchRender3DTuning_1_1Stands" ],
     [ "Sting", "structMatchRender3DTuning_1_1Sting.html", "structMatchRender3DTuning_1_1Sting" ],
-    [ "Tactical", "structMatchRender3DTuning_1_1Tactical.html", "structMatchRender3DTuning_1_1Tactical" ]
+    [ "Tactical", "structMatchRender3DTuning_1_1Tactical.html", "structMatchRender3DTuning_1_1Tactical" ],
+    [ "TouchlineFigure", "structMatchRender3DTuning_1_1TouchlineFigure.html", "structMatchRender3DTuning_1_1TouchlineFigure" ]
 ];

@@ -1,5 +1,4 @@
 var searchData=
 [
-  ['nationalityid_0',['NationalityID',['../types_8h.html#ab387ec6c91c92d70502872e083909142',1,'types.h']]],
-  ['newssink_1',['NewsSink',['../classContinentalCompetitions.html#a13bb9e6bd5ac3fa27a5e0df8a57c4c10',1,'ContinentalCompetitions']]]
+  ['microcycle_0',['Microcycle',['../training_8h.html#ae097d2f64717dc03ec3d5c0184e618d6',1,'training.h']]]
 ];

@@ -19,7 +19,7 @@ var match__render__math_8h =
     [ "lookAt", "match__render__math_8h.html#a9f6627bd1676236f6a5df705bf3e1158", null ],
     [ "normalize", "match__render__math_8h.html#a6ac8d7485466da497654f57f29fb7442", null ],
     [ "perspective", "match__render__math_8h.html#aabf4736b94035a15339da7cc54071bbe", null ],
-    [ "worldFromPitch", "match__render__math_8h.html#ae4d398a680cfe5cb5c31aa2aa149b3d3", null ],
+    [ "worldFromPitch", "match__render__math_8h.html#a454c8e2788f9bd4410a8a0cff9399fa2", null ],
     [ "worldYawFromFacing", "match__render__math_8h.html#a053de1098b3725b98a59dc111048ee48", null ],
     [ "wrapAngle", "match__render__math_8h.html#a631311bdfd31567021d2a2d51b0a5b25", null ]
 ];

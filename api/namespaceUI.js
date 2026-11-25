@@ -6,6 +6,13 @@ var namespaceUI =
       [ "BUTTON_MIN_WIDTH", "namespaceUI_1_1Size.html#a8d086012129ca7bce92bcd53f1fb8c65", null ],
       [ "BUTTON_PADDING_X", "namespaceUI_1_1Size.html#aa2f25fb246dbc8c81f5c5aa425abad74", null ]
     ] ],
+    [ "TextDetail", "namespaceUI_1_1TextDetail.html", [
+      [ "coloured", "namespaceUI_1_1TextDetail.html#a521b0ec71233e6c8353eb50d8295e44e", null ],
+      [ "disabled", "namespaceUI_1_1TextDetail.html#aff2feb4b78cc472f0ffe6e960e15468b", null ],
+      [ "plain", "namespaceUI_1_1TextDetail.html#a83cc4d44c7d728a5af29509c85210596", null ],
+      [ "tooltip", "namespaceUI_1_1TextDetail.html#a215aeadaf53ed5c333a054a7b083e35d", null ],
+      [ "wrapped", "namespaceUI_1_1TextDetail.html#a16888eefa7274d1579f1defb762e92f6", null ]
+    ] ],
     [ "BarDatum", "structUI_1_1BarDatum.html", "structUI_1_1BarDatum" ],
     [ "Column", "structUI_1_1Column.html", "structUI_1_1Column" ],
     [ "MoneyChip", "structUI_1_1MoneyChip.html", "structUI_1_1MoneyChip" ],
@@ -93,8 +100,13 @@ var namespaceUI =
     [ "statTileHeight", "namespaceUI.html#a00b3a6224891324e07718e9971dd691b", null ],
     [ "stepMoney", "namespaceUI.html#a4ff0757c1c3258a3be3f2f5db6b19441", null ],
     [ "summaryRow", "namespaceUI.html#abe085cea3d4af489031a19a02f0f2c70", null ],
+    [ "text", "namespaceUI.html#aba9bc32a54f3b3884587e7d81f31b476", null ],
+    [ "textColoured", "namespaceUI.html#a68ade14475db1db7aa41505e2b970b8e", null ],
+    [ "textDisabled", "namespaceUI.html#acd3e926439dc8096012e7f835a383640", null ],
     [ "textFitted", "namespaceUI.html#a4ba4b11511ad78f19e7fcff204ac22f4", null ],
     [ "textRight", "namespaceUI.html#accb7b155023beae478f197d797b63d3a", null ],
     [ "textRightColored", "namespaceUI.html#a3b052891660160447613e3029eb52f99", null ],
-    [ "toggleButton", "namespaceUI.html#a5cd04f1bab60f874248b6e0e1088382a", null ]
+    [ "textWrapped", "namespaceUI.html#a7ead88c94d472f266a147d80b29c33b2", null ],
+    [ "toggleButton", "namespaceUI.html#a5cd04f1bab60f874248b6e0e1088382a", null ],
+    [ "tooltip", "namespaceUI.html#aa493a20629dbedf4ab6f64bbef52df7c", null ]
 ];

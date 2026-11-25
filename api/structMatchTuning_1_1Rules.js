@@ -11,7 +11,7 @@ var structMatchTuning_1_1Rules =
     [ "MAX_SUBSTITUTIONS_PER_TEAM", "structMatchTuning_1_1Rules.html#a4ca2aa8d7d2c6b162ce03b1cbff05685", null ],
     [ "MINIMUM_PLAYERS", "structMatchTuning_1_1Rules.html#a4cb85bf0e9f36a02a838d46273fc6406", null ],
     [ "NUMERICAL_EDGE_PER_PLAYER", "structMatchTuning_1_1Rules.html#a8ebe4746b7ce765c7a4ae768fa849136", null ],
-    [ "PARKED_PLAYER_OFFSET", "structMatchTuning_1_1Rules.html#af85113a1284937ad9e654f9f59d9b30e", null ],
-    [ "PARKED_PLAYER_SPACING", "structMatchTuning_1_1Rules.html#a62d50d1d351345ee6141893a2ba2a553", null ],
+    [ "PARKED_PLAYER_OFFSET_METRES", "structMatchTuning_1_1Rules.html#aad32c3777891c05ec3dd5a7482f436d1", null ],
+    [ "PARKED_PLAYER_SPACING_METRES", "structMatchTuning_1_1Rules.html#a02dc681439e1805797cab38406dbd8f9", null ],
     [ "SHORT_HANDED_DROP", "structMatchTuning_1_1Rules.html#a03a6f217f2bb3df05a09319565f33f6b", null ]
 ];

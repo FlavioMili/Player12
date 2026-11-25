@@ -7,7 +7,7 @@ var structMatchTuning_1_1Discipline =
     [ "BOOKED_PLAYER_CAUTION", "structMatchTuning_1_1Discipline.html#a8b223a0b44cb209c92b3dd9c2989abd7", null ],
     [ "CARELESS_YELLOW_CHANCE", "structMatchTuning_1_1Discipline.html#a7a3a6f704e99e2c247c734388f6f19f8", null ],
     [ "DOGSO_MAX_DISTANCE_METRES", "structMatchTuning_1_1Discipline.html#a7874993da0e53ac7db62efb0206e32d4", null ],
-    [ "DOGSO_MAX_WIDTH_DEVIATION", "structMatchTuning_1_1Discipline.html#a8a5a095031c1c6894d6e8fd9da040e30", null ],
+    [ "DOGSO_MAX_WIDTH_METRES", "structMatchTuning_1_1Discipline.html#a502d1bf73695916ce5bc812a6c95fed6", null ],
     [ "DOGSO_RED_CHANCE", "structMatchTuning_1_1Discipline.html#a1da679a178c6db42bdf6295c18a05764", null ],
     [ "HOME_CARD_BIAS", "structMatchTuning_1_1Discipline.html#ad9076afd1a347b84943f6b9f7f004f27", null ],
     [ "MAX_CONTEXT_STRICTNESS", "structMatchTuning_1_1Discipline.html#a18bf0f7e62db9f0b96bdea1fcb464612", null ],

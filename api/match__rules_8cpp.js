@@ -13,5 +13,8 @@ var match__rules_8cpp =
     [ "playerHeightMetres", "match__rules_8cpp.html#ad79a129dabf1df117c7dc8a322a6fda1", null ],
     [ "shootoutDecided", "match__rules_8cpp.html#a0aa9e08d57d3e9b3ce2dcabb2bbaa845", null ],
     [ "tackleFoulPropensity", "match__rules_8cpp.html#a536c45ac506044ff83a8a83e3f34657b", null ],
+    [ "tackleMake", "match__rules_8cpp.html#a590361c869ec063025412dfb9f18ebc7", null ],
+    [ "tackleResist", "match__rules_8cpp.html#add79d189773f417b2c6bcc4c4b1085bb", null ],
+    [ "tackleTechnique", "match__rules_8cpp.html#a60c31cd40b45a30fa689d122dd455d94", null ],
     [ "tackleWinChance", "match__rules_8cpp.html#aecdd78fb3ab86872734bf300e39215bf", null ]
 ];

@@ -96,6 +96,7 @@ $(document).ready(function(){initNavTree('namespaceLab.html',''); initResizable(
   <div class="summary">
 <a href="#namespaces">Namespaces</a> &#124;
 <a href="#nested-classes">Classes</a> &#124;
+<a href="#typedef-members">Typedefs</a> &#124;
 <a href="#enum-members">Enumerations</a> &#124;
 <a href="#func-members">Functions</a> &#124;
 <a href="#var-members">Variables</a>  </div>
@@ -113,6 +114,8 @@ Classes</h2></td></tr>
 <tr class="memitem:"><td class="memItemLeft" align="right" valign="top">struct &#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structLab_1_1Band.html">Band</a></td></tr>
 <tr class="separator:"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:"><td class="memItemLeft" align="right" valign="top">struct &#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structLab_1_1Estimate.html">Estimate</a></td></tr>
+<tr class="separator:"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:"><td class="memItemLeft" align="right" valign="top">struct &#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structLab_1_1FormationSlot.html">FormationSlot</a></td></tr>
 <tr class="separator:"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:"><td class="memItemLeft" align="right" valign="top">struct &#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structLab_1_1LabReport.html">LabReport</a></td></tr>
 <tr class="separator:"><td class="memSeparator" colspan="2">&#160;</td></tr>
@@ -140,6 +143,11 @@ Classes</h2></td></tr>
 <tr class="separator:"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:"><td class="memItemLeft" align="right" valign="top">struct &#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structLab_1_1TierVitals.html">TierVitals</a></td></tr>
 <tr class="separator:"><td class="memSeparator" colspan="2">&#160;</td></tr>
+</table><table class="memberdecls">
+<tr class="heading"><td colspan="2"><h2 class="groupheader"><a id="typedef-members" name="typedef-members"></a>
+Typedefs</h2></td></tr>
+<tr class="memitem:a25af3061f222a997ffc585bfad2abb24" id="r_a25af3061f222a997ffc585bfad2abb24"><td class="memItemLeft" align="right" valign="top">using&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="namespaceLab.html#a25af3061f222a997ffc585bfad2abb24">FormationSlots</a> = std::array&lt; <a class="el" href="structLab_1_1FormationSlot.html">FormationSlot</a>, 10 &gt;</td></tr>
+<tr class="separator:a25af3061f222a997ffc585bfad2abb24"><td class="memSeparator" colspan="2">&#160;</td></tr>
 </table><table class="memberdecls">
 <tr class="heading"><td colspan="2"><h2 class="groupheader"><a id="enum-members" name="enum-members"></a>
 Enumerations</h2></td></tr>
@@ -183,8 +191,10 @@ Enumerations</h2></td></tr>
 Functions</h2></td></tr>
 <tr class="memitem:aaad8c23c2544c3d430623784f834b87f" id="r_aaad8c23c2544c3d430623784f834b87f"><td class="memItemLeft" align="right" valign="top"><a class="el" href="structStatsConfig.html">StatsConfig</a>&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="namespaceLab.html#aaad8c23c2544c3d430623784f834b87f">loadStatsConfig</a> ()</td></tr>
 <tr class="separator:aaad8c23c2544c3d430623784f834b87f"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:af10cacbab4feeb1ae5097b9389650a88" id="r_af10cacbab4feeb1ae5097b9389650a88"><td class="memItemLeft" align="right" valign="top"><a class="el" href="classLineup.html">Lineup</a>&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="namespaceLab.html#af10cacbab4feeb1ae5097b9389650a88">buildLabLineup</a> (<a class="el" href="types_8h.html#a57143f6ccbdf5a5d9724b986cbdafb31">TeamID</a> team_id, float rating, std::vector&lt; std::unique_ptr&lt; <a class="el" href="classPlayer.html">Player</a> &gt; &gt; &amp;pool)</td></tr>
-<tr class="separator:af10cacbab4feeb1ae5097b9389650a88"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:af25298218d60a8e0f26ad97014c339d1" id="r_af25298218d60a8e0f26ad97014c339d1"><td class="memItemLeft" align="right" valign="top"><a class="el" href="classLineup.html">Lineup</a>&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="namespaceLab.html#af25298218d60a8e0f26ad97014c339d1">buildLabLineup</a> (<a class="el" href="types_8h.html#a57143f6ccbdf5a5d9724b986cbdafb31">TeamID</a> team_id, float rating, std::vector&lt; std::unique_ptr&lt; <a class="el" href="classPlayer.html">Player</a> &gt; &gt; &amp;pool, const <a class="el" href="namespaceLab.html#a25af3061f222a997ffc585bfad2abb24">FormationSlots</a> *formation)</td></tr>
+<tr class="separator:af25298218d60a8e0f26ad97014c339d1"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:abd37111ca4a749daac62cbaff834c1bd" id="r_abd37111ca4a749daac62cbaff834c1bd"><td class="memItemLeft" align="right" valign="top"><a class="el" href="classLineup.html">Lineup</a>&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="namespaceLab.html#abd37111ca4a749daac62cbaff834c1bd">buildUniformLineup</a> (<a class="el" href="types_8h.html#a57143f6ccbdf5a5d9724b986cbdafb31">TeamID</a> team_id, float rating, const <a class="el" href="structStatsConfig.html">StatsConfig</a> &amp;config, std::vector&lt; std::unique_ptr&lt; <a class="el" href="classPlayer.html">Player</a> &gt; &gt; &amp;pool, const <a class="el" href="namespaceLab.html#a25af3061f222a997ffc585bfad2abb24">FormationSlots</a> *formation)</td></tr>
+<tr class="separator:abd37111ca4a749daac62cbaff834c1bd"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a9f09fd72e54a33d144b3e9d06dc625f2" id="r_a9f09fd72e54a33d144b3e9d06dc625f2"><td class="memItemLeft" align="right" valign="top">float&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="namespaceLab.html#a9f09fd72e54a33d144b3e9d06dc625f2">lineupRating</a> (const <a class="el" href="classLineup.html">Lineup</a> &amp;lineup, const <a class="el" href="structStatsConfig.html">StatsConfig</a> &amp;config)</td></tr>
 <tr class="separator:a9f09fd72e54a33d144b3e9d06dc625f2"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a7e9ed7436f0572aa8191b0c5f1472811" id="r_a7e9ed7436f0572aa8191b0c5f1472811"><td class="memItemLeft" align="right" valign="top">std::span&lt; const <a class="el" href="structLab_1_1TargetSpec.html">TargetSpec</a> &gt;&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="namespaceLab.html#a7e9ed7436f0572aa8191b0c5f1472811">targetTable</a> ()</td></tr>
@@ -207,21 +217,28 @@ Functions</h2></td></tr>
 <tr class="separator:a86a562a2a72ef00853b3e05b9adfcc91"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a670909cb31df942cfe3fc76e21318cf9" id="r_a670909cb31df942cfe3fc76e21318cf9"><td class="memItemLeft" align="right" valign="top"><a class="el" href="structLab_1_1MatchSample.html">MatchSample</a>&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="namespaceLab.html#a670909cb31df942cfe3fc76e21318cf9">simulateMatch</a> (const <a class="el" href="structLab_1_1MatchJob.html">MatchJob</a> &amp;job, const <a class="el" href="structStatsConfig.html">StatsConfig</a> &amp;config)</td></tr>
 <tr class="separator:a670909cb31df942cfe3fc76e21318cf9"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:acbc6d06433c275d91df31a1e62f09f9d" id="r_acbc6d06433c275d91df31a1e62f09f9d"><td class="memItemLeft" align="right" valign="top">void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="namespaceLab.html#acbc6d06433c275d91df31a1e62f09f9d">traceMatch</a> (const <a class="el" href="structLab_1_1MatchJob.html">MatchJob</a> &amp;job, const <a class="el" href="structStatsConfig.html">StatsConfig</a> &amp;config, int ticks, std::string_view <a class="el" href="match__stadium__3d_8cpp.html#a7ba5d0a041a28d59606f43a04630d283">run</a>, std::ostream &amp;out)</td></tr>
+<tr class="separator:acbc6d06433c275d91df31a1e62f09f9d"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:adb609db3ca64d81cfed0e162bb760f1d" id="r_adb609db3ca64d81cfed0e162bb760f1d"><td class="memItemLeft" align="right" valign="top">std::vector&lt; <a class="el" href="structLab_1_1MatchSample.html">MatchSample</a> &gt;&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="namespaceLab.html#adb609db3ca64d81cfed0e162bb760f1d">simulateMatches</a> (std::span&lt; const <a class="el" href="structLab_1_1MatchJob.html">MatchJob</a> &gt; jobs, const <a class="el" href="structStatsConfig.html">StatsConfig</a> &amp;config, unsigned threads, const std::function&lt; void(std::size_t)&gt; &amp;progress)</td></tr>
 <tr class="separator:adb609db3ca64d81cfed0e162bb760f1d"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:aa9e615f65f18f339638d02553fd63ef4" id="r_aa9e615f65f18f339638d02553fd63ef4"><td class="memItemLeft" align="right" valign="top"><a class="el" href="structLab_1_1MatchSample.html">MatchSample</a>&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="namespaceLab.html#aa9e615f65f18f339638d02553fd63ef4">sampleFromReport</a> (const <a class="el" href="structMatchReport.html">MatchReport</a> &amp;report)</td></tr>
 <tr class="separator:aa9e615f65f18f339638d02553fd63ef4"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a659fdcb4dd7186772b96932f656a8757" id="r_a659fdcb4dd7186772b96932f656a8757"><td class="memTemplParams" colspan="2">template&lt;typename Column &gt; </td></tr>
+<tr class="memitem:a659fdcb4dd7186772b96932f656a8757"><td class="memTemplItemLeft" align="right" valign="top">void&#160;</td><td class="memTemplItemRight" valign="bottom"><a class="el" href="namespaceLab.html#a659fdcb4dd7186772b96932f656a8757">addBlockCheck</a> (std::map&lt; std::string, <a class="el" href="structLab_1_1Estimate.html">Estimate</a> &gt; &amp;metrics, const Column &amp;<a class="el" href="runtime__editor__validation_8cpp.html#a921810f01aad313c4da5d462a94afd27">column</a>)</td></tr>
+<tr class="separator:a659fdcb4dd7186772b96932f656a8757"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:ab53f9d52b78415d721a80ae0a0cd0280" id="r_ab53f9d52b78415d721a80ae0a0cd0280"><td class="memItemLeft" align="right" valign="top">std::map&lt; std::string, <a class="el" href="structLab_1_1Estimate.html">Estimate</a> &gt;&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="namespaceLab.html#ab53f9d52b78415d721a80ae0a0cd0280">matchMetrics</a> (std::span&lt; const <a class="el" href="structLab_1_1MatchSample.html">MatchSample</a> &gt; samples)</td></tr>
 <tr class="separator:ab53f9d52b78415d721a80ae0a0cd0280"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:ab021b19469c2dd2522a234b6f98444b8" id="r_ab021b19469c2dd2522a234b6f98444b8"><td class="memItemLeft" align="right" valign="top">std::vector&lt; <a class="el" href="structLab_1_1TextTable.html">TextTable</a> &gt;&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="namespaceLab.html#ab021b19469c2dd2522a234b6f98444b8">matchTables</a> (std::span&lt; const <a class="el" href="structLab_1_1MatchSample.html">MatchSample</a> &gt; samples)</td></tr>
 <tr class="separator:ab021b19469c2dd2522a234b6f98444b8"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:acc133556fd97848c76d6a5870a3dbbed" id="r_acc133556fd97848c76d6a5870a3dbbed"><td class="memItemLeft" align="right" valign="top"><a class="el" href="structLab_1_1TextTable.html">TextTable</a>&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="namespaceLab.html#acc133556fd97848c76d6a5870a3dbbed">ratingGapTable</a> (std::span&lt; const <a class="el" href="structLab_1_1MatchSample.html">MatchSample</a> &gt; samples)</td></tr>
 <tr class="separator:acc133556fd97848c76d6a5870a3dbbed"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a37e3d94adc138498a6f0f8746385cb96" id="r_a37e3d94adc138498a6f0f8746385cb96"><td class="memItemLeft" align="right" valign="top"><a class="el" href="structLab_1_1TextTable.html">TextTable</a>&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="namespaceLab.html#a37e3d94adc138498a6f0f8746385cb96">perSideTable</a> (std::span&lt; const <a class="el" href="structLab_1_1MatchSample.html">MatchSample</a> &gt; samples)</td></tr>
+<tr class="separator:a37e3d94adc138498a6f0f8746385cb96"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a2e486e364ba2356240c6c8a01c0687fe" id="r_a2e486e364ba2356240c6c8a01c0687fe"><td class="memItemLeft" align="right" valign="top">std::vector&lt; <a class="el" href="structLab_1_1MatchJob.html">MatchJob</a> &gt;&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="namespaceLab.html#a2e486e364ba2356240c6c8a01c0687fe">tacticJobs</a> (std::uint64_t seed, int seeds_per_pair, float rating)</td></tr>
 <tr class="separator:a2e486e364ba2356240c6c8a01c0687fe"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:ae1715685f817cf60f35ae33dcc542d3b" id="r_ae1715685f817cf60f35ae33dcc542d3b"><td class="memItemLeft" align="right" valign="top">std::array&lt; std::size_t, 2 &gt;&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="namespaceLab.html#ae1715685f817cf60f35ae33dcc542d3b">tacticPresetsOf</a> (std::size_t job_index, int seeds_per_pair)</td></tr>
 <tr class="separator:ae1715685f817cf60f35ae33dcc542d3b"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a39ba8f8a809da1c5433a20b8a1ab58d2" id="r_a39ba8f8a809da1c5433a20b8a1ab58d2"><td class="memItemLeft" align="right" valign="top">void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="namespaceLab.html#a39ba8f8a809da1c5433a20b8a1ab58d2">tacticMetrics</a> (std::span&lt; const <a class="el" href="structLab_1_1MatchSample.html">MatchSample</a> &gt; samples, int seeds_per_pair, std::map&lt; std::string, <a class="el" href="structLab_1_1Estimate.html">Estimate</a> &gt; &amp;metrics, std::vector&lt; <a class="el" href="structLab_1_1TextTable.html">TextTable</a> &gt; &amp;tables)</td></tr>
+<tr class="memitem:a39ba8f8a809da1c5433a20b8a1ab58d2" id="r_a39ba8f8a809da1c5433a20b8a1ab58d2"><td class="memItemLeft" align="right" valign="top">void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="namespaceLab.html#a39ba8f8a809da1c5433a20b8a1ab58d2">tacticMetrics</a> (std::span&lt; const <a class="el" href="structLab_1_1MatchSample.html">MatchSample</a> &gt; samples, int seeds_per_pair, std::map&lt; std::string, <a class="el" href="structLab_1_1Estimate.html">Estimate</a> &gt; &amp;metrics, std::vector&lt; <a class="el" href="structLab_1_1TextTable.html">TextTable</a> &gt; &amp;<a class="el" href="match__game__xg_8cpp.html#a686d5c790b5ad7b8fa46d6c917d87afe">tables</a>)</td></tr>
 <tr class="separator:a39ba8f8a809da1c5433a20b8a1ab58d2"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a542cd10e472f4914f32ad4a7763abbad" id="r_a542cd10e472f4914f32ad4a7763abbad"><td class="memItemLeft" align="right" valign="top"><a class="el" href="structLab_1_1LabReport.html">LabReport</a>&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="namespaceLab.html#a542cd10e472f4914f32ad4a7763abbad">runSeasons</a> (const <a class="el" href="structLab_1_1SeasonOptions.html">SeasonOptions</a> &amp;options)</td></tr>
 <tr class="separator:a542cd10e472f4914f32ad4a7763abbad"><td class="memSeparator" colspan="2">&#160;</td></tr>
@@ -239,6 +256,10 @@ Functions</h2></td></tr>
 <tr class="separator:a51901315efabbcc3f1e29d2ae7607664"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a6a28ca2a93f796f29ed6d3a780525071" id="r_a6a28ca2a93f796f29ed6d3a780525071"><td class="memItemLeft" align="right" valign="top"><a class="el" href="namespaceLab.html#a0630ae14998d5a31bba3c8f90a4347cd">Verdict</a>&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="namespaceLab.html#a6a28ca2a93f796f29ed6d3a780525071">classify</a> (const <a class="el" href="structLab_1_1Estimate.html">Estimate</a> &amp;estimate, const std::optional&lt; <a class="el" href="structLab_1_1Band.html">Band</a> &gt; &amp;band)</td></tr>
 <tr class="separator:a6a28ca2a93f796f29ed6d3a780525071"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a89f83534e99e89b1088b3f9cff54a390" id="r_a89f83534e99e89b1088b3f9cff54a390"><td class="memItemLeft" align="right" valign="top">void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="namespaceLab.html#a89f83534e99e89b1088b3f9cff54a390">writeTraceHeader</a> (std::ostream &amp;out)</td></tr>
+<tr class="separator:a89f83534e99e89b1088b3f9cff54a390"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:ae873c642d06cf7e610b8d01f7788ffc2" id="r_ae873c642d06cf7e610b8d01f7788ffc2"><td class="memItemLeft" align="right" valign="top">void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="namespaceLab.html#ae873c642d06cf7e610b8d01f7788ffc2">writeTraceRows</a> (std::ostream &amp;out, std::string_view <a class="el" href="match__stadium__3d_8cpp.html#a7ba5d0a041a28d59606f43a04630d283">run</a>, int tick, const <a class="el" href="classMatchEngine.html">MatchEngine</a> &amp;engine)</td></tr>
+<tr class="separator:ae873c642d06cf7e610b8d01f7788ffc2"><td class="memSeparator" colspan="2">&#160;</td></tr>
 </table><table class="memberdecls">
 <tr class="heading"><td colspan="2"><h2 class="groupheader"><a id="var-members" name="var-members"></a>
 Variables</h2></td></tr>
@@ -254,8 +275,25 @@ Variables</h2></td></tr>
 <p>Calibration targets, verdicts and report output (Markdown + JSON) of the balance lab. Report text is an English developer artifact, never shown in the game <a class="el" href="namespaceUI.html" title="Small vector icons drawn with ImDrawList (no icon font needed).">UI</a>.</p>
 <p>Batch simulation of the balance lab: isolated matches and tactics.</p>
 <p>Whole-world season runs of the balance lab.</p>
-<p>Statistics of the balance lab (fm_lab). Every estimate carries a 95% confidence interval so a realism verdict can tell "off target" apart from "not enough samples". </p>
-</div><h2 class="groupheader">Enumeration Type Documentation</h2>
+<p>Statistics of the balance lab (fm_lab). Every estimate carries a 95% confidence interval so a realism verdict can tell "off target" apart from "not enough samples".</p>
+<p>Position traces (fm_lab trace, fm_lab drill &ndash;trace): every player and the ball in metres, every fixed step, as CSV. Two builds' traces from the same seed are compared tick by tick to find a change that should only round differently (training ground plan §12, 2026-11-13). </p>
+</div><h2 class="groupheader">Typedef Documentation</h2>
+<a id="a25af3061f222a997ffc585bfad2abb24" name="a25af3061f222a997ffc585bfad2abb24"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a25af3061f222a997ffc585bfad2abb24">&#9670;&#160;</a></span>FormationSlots</h2>
+
+<div class="memitem">
+<div class="memproto">
+      <table class="memname">
+        <tr>
+          <td class="memname">using <a class="el" href="namespaceLab.html#a25af3061f222a997ffc585bfad2abb24">Lab::FormationSlots</a> = typedef std::array&lt;<a class="el" href="structLab_1_1FormationSlot.html">FormationSlot</a>, 10&gt;</td>
+        </tr>
+      </table>
+</div><div class="memdoc">
+<p>The ten outfield slots of a formation (the keeper is always added). </p>
+
+</div>
+</div>
+<h2 class="groupheader">Enumeration Type Documentation</h2>
 <a id="aa4670de7a4e3b6b325866db20fc346fc" name="aa4670de7a4e3b6b325866db20fc346fc"></a>
 <h2 class="memtitle"><span class="permalink"><a href="#aa4670de7a4e3b6b325866db20fc346fc">&#9670;&#160;</a></span>GameStateIndex</h2>
 
@@ -421,6 +459,37 @@ Variables</h2></td></tr>
 </div>
 </div>
 <h2 class="groupheader">Function Documentation</h2>
+<a id="a659fdcb4dd7186772b96932f656a8757" name="a659fdcb4dd7186772b96932f656a8757"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a659fdcb4dd7186772b96932f656a8757">&#9670;&#160;</a></span>addBlockCheck()</h2>
+
+<div class="memitem">
+<div class="memproto">
+<div class="memtemplate">
+template&lt;typename Column &gt; </div>
+      <table class="memname">
+        <tr>
+          <td class="memname">void Lab::addBlockCheck </td>
+          <td>(</td>
+          <td class="paramtype">std::map&lt; std::string, <a class="el" href="structLab_1_1Estimate.html">Estimate</a> &gt; &amp;&#160;</td>
+          <td class="paramname"><em>metrics</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">const Column &amp;&#160;</td>
+          <td class="paramname"><em>column</em>&#160;</td>
+        </tr>
+        <tr>
+          <td></td>
+          <td>)</td>
+          <td></td><td></td>
+        </tr>
+      </table>
+</div><div class="memdoc">
+<p>The game xG layer 3 check (block_check_*): of Capybara's open-play shots, overall and by predicted band, the share predicted stopped against those blocked by an opponent or first meeting a team-mate. </p>
+
+</div>
+</div>
 <a id="a51901315efabbcc3f1e29d2ae7607664" name="a51901315efabbcc3f1e29d2ae7607664"></a>
 <h2 class="memtitle"><span class="permalink"><a href="#a51901315efabbcc3f1e29d2ae7607664">&#9670;&#160;</a></span>bootstrapEstimate()</h2>
 
@@ -462,8 +531,8 @@ Variables</h2></td></tr>
 
 </div>
 </div>
-<a id="af10cacbab4feeb1ae5097b9389650a88" name="af10cacbab4feeb1ae5097b9389650a88"></a>
-<h2 class="memtitle"><span class="permalink"><a href="#af10cacbab4feeb1ae5097b9389650a88">&#9670;&#160;</a></span>buildLabLineup()</h2>
+<a id="af25298218d60a8e0f26ad97014c339d1" name="af25298218d60a8e0f26ad97014c339d1"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#af25298218d60a8e0f26ad97014c339d1">&#9670;&#160;</a></span>buildLabLineup()</h2>
 
 <div class="memitem">
 <div class="memproto">
@@ -484,7 +553,13 @@ Variables</h2></td></tr>
           <td class="paramkey"></td>
           <td></td>
           <td class="paramtype">std::vector&lt; std::unique_ptr&lt; <a class="el" href="classPlayer.html">Player</a> &gt; &gt; &amp;&#160;</td>
-          <td class="paramname"><em>pool</em>&#160;</td>
+          <td class="paramname"><em>pool</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">const <a class="el" href="namespaceLab.html#a25af3061f222a997ffc585bfad2abb24">FormationSlots</a> *&#160;</td>
+          <td class="paramname"><em>formation</em> = <code>nullptr</code>&#160;</td>
         </tr>
         <tr>
           <td></td>
@@ -493,7 +568,54 @@ Variables</h2></td></tr>
         </tr>
       </table>
 </div><div class="memdoc">
-<p>4-4-2 matchday squad (eleven starters, seven reserves) whose attributes are role-shaped offsets around <code>rating</code> with a small deterministic per-player spread. Same construction as test/test_match_calibration.cpp (createCalibrationTeam), duplicated so the lab does not depend on tests, except that the spread depends on the squad slot only: two squads of the same rating are identical (the test's ID-based spread makes team 1 about 2.3 attribute points stronger than team 2). Players are owned by <code>pool</code> and get IDs team_id * 100 + index. </p>
+<p>4-4-2 matchday squad (or the outfield slots of <code>formation</code>, if given) (eleven starters, seven reserves) whose attributes are role-shaped offsets around <code>rating</code> with a small deterministic per-player spread. Same construction as test/test_match_calibration.cpp (createCalibrationTeam), duplicated so the lab does not depend on tests, except that the spread depends on the squad slot only: two squads of the same rating are identical (the test's ID-based spread makes team 1 about 2.3 attribute points stronger than team 2). Players are owned by <code>pool</code> and get IDs team_id * 100 + index. </p>
+
+</div>
+</div>
+<a id="abd37111ca4a749daac62cbaff834c1bd" name="abd37111ca4a749daac62cbaff834c1bd"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#abd37111ca4a749daac62cbaff834c1bd">&#9670;&#160;</a></span>buildUniformLineup()</h2>
+
+<div class="memitem">
+<div class="memproto">
+      <table class="memname">
+        <tr>
+          <td class="memname"><a class="el" href="classLineup.html">Lineup</a> Lab::buildUniformLineup </td>
+          <td>(</td>
+          <td class="paramtype"><a class="el" href="types_8h.html#a57143f6ccbdf5a5d9724b986cbdafb31">TeamID</a>&#160;</td>
+          <td class="paramname"><em>team_id</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">float&#160;</td>
+          <td class="paramname"><em>rating</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">const <a class="el" href="structStatsConfig.html">StatsConfig</a> &amp;&#160;</td>
+          <td class="paramname"><em>config</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">std::vector&lt; std::unique_ptr&lt; <a class="el" href="classPlayer.html">Player</a> &gt; &gt; &amp;&#160;</td>
+          <td class="paramname"><em>pool</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">const <a class="el" href="namespaceLab.html#a25af3061f222a997ffc585bfad2abb24">FormationSlots</a> *&#160;</td>
+          <td class="paramname"><em>formation</em> = <code>nullptr</code>&#160;</td>
+        </tr>
+        <tr>
+          <td></td>
+          <td>)</td>
+          <td></td><td></td>
+        </tr>
+      </table>
+</div><div class="memdoc">
+<p>The same 4-4-2 squad with every stat of <code>config</code> at <code>rating</code> for every player, keepers and outfielders alike, all 26, 180 cm and right-footed: the match sandbox's "Team N" (<a class="el" href="match__sandbox__test__teams_8cpp.html">match_sandbox_test_teams.cpp</a>). Same ids as <a class="el" href="namespaceLab.html#af25298218d60a8e0f26ad97014c339d1">buildLabLineup()</a>. </p>
 
 </div>
 </div>
@@ -733,6 +855,25 @@ Variables</h2></td></tr>
       </table>
 </div><div class="memdoc">
 <p>Median with a distribution-free (binomial order-statistic) interval. </p>
+
+</div>
+</div>
+<a id="a37e3d94adc138498a6f0f8746385cb96" name="a37e3d94adc138498a6f0f8746385cb96"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a37e3d94adc138498a6f0f8746385cb96">&#9670;&#160;</a></span>perSideTable()</h2>
+
+<div class="memitem">
+<div class="memproto">
+      <table class="memname">
+        <tr>
+          <td class="memname"><a class="el" href="structLab_1_1TextTable.html">TextTable</a> Lab::perSideTable </td>
+          <td>(</td>
+          <td class="paramtype">std::span&lt; const <a class="el" href="structLab_1_1MatchSample.html">MatchSample</a> &gt;&#160;</td>
+          <td class="paramname"><em>samples</em></td><td>)</td>
+          <td></td>
+        </tr>
+      </table>
+</div><div class="memdoc">
+<p>Home and away side by side, per match: results, shots, xG, possession, passing, fouls and duels (for comparing two brains or bodies). </p>
 
 </div>
 </div>
@@ -1136,6 +1277,53 @@ Variables</h2></td></tr>
 
 </div>
 </div>
+<a id="acbc6d06433c275d91df31a1e62f09f9d" name="acbc6d06433c275d91df31a1e62f09f9d"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#acbc6d06433c275d91df31a1e62f09f9d">&#9670;&#160;</a></span>traceMatch()</h2>
+
+<div class="memitem">
+<div class="memproto">
+      <table class="memname">
+        <tr>
+          <td class="memname">void Lab::traceMatch </td>
+          <td>(</td>
+          <td class="paramtype">const <a class="el" href="structLab_1_1MatchJob.html">MatchJob</a> &amp;&#160;</td>
+          <td class="paramname"><em>job</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">const <a class="el" href="structStatsConfig.html">StatsConfig</a> &amp;&#160;</td>
+          <td class="paramname"><em>config</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">int&#160;</td>
+          <td class="paramname"><em>ticks</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">std::string_view&#160;</td>
+          <td class="paramname"><em>run</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">std::ostream &amp;&#160;</td>
+          <td class="paramname"><em>out</em>&#160;</td>
+        </tr>
+        <tr>
+          <td></td>
+          <td>)</td>
+          <td></td><td></td>
+        </tr>
+      </table>
+</div><div class="memdoc">
+<p>Plays the first <code>ticks</code> fixed steps of the job's match and writes every player and the ball after each (tick 0 before the first) to <code>out</code> as trace rows labelled <code>run</code> (<a class="el" href="lab__trace_8h.html">lab_trace.h</a>). </p>
+
+</div>
+</div>
 <a id="a1f6b3c1cb80a8459a757e43a76245cb0" name="a1f6b3c1cb80a8459a757e43a76245cb0"></a>
 <h2 class="memtitle"><span class="permalink"><a href="#a1f6b3c1cb80a8459a757e43a76245cb0">&#9670;&#160;</a></span>verdictName()</h2>
 
@@ -1151,6 +1339,66 @@ Variables</h2></td></tr>
         </tr>
       </table>
 </div><div class="memdoc">
+
+</div>
+</div>
+<a id="a89f83534e99e89b1088b3f9cff54a390" name="a89f83534e99e89b1088b3f9cff54a390"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a89f83534e99e89b1088b3f9cff54a390">&#9670;&#160;</a></span>writeTraceHeader()</h2>
+
+<div class="memitem">
+<div class="memproto">
+      <table class="memname">
+        <tr>
+          <td class="memname">void Lab::writeTraceHeader </td>
+          <td>(</td>
+          <td class="paramtype">std::ostream &amp;&#160;</td>
+          <td class="paramname"><em>out</em></td><td>)</td>
+          <td></td>
+        </tr>
+      </table>
+</div><div class="memdoc">
+<p>The CSV header: run, tick, who, x, y, z (metres; z the ball's height). </p>
+
+</div>
+</div>
+<a id="ae873c642d06cf7e610b8d01f7788ffc2" name="ae873c642d06cf7e610b8d01f7788ffc2"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#ae873c642d06cf7e610b8d01f7788ffc2">&#9670;&#160;</a></span>writeTraceRows()</h2>
+
+<div class="memitem">
+<div class="memproto">
+      <table class="memname">
+        <tr>
+          <td class="memname">void Lab::writeTraceRows </td>
+          <td>(</td>
+          <td class="paramtype">std::ostream &amp;&#160;</td>
+          <td class="paramname"><em>out</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">std::string_view&#160;</td>
+          <td class="paramname"><em>run</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">int&#160;</td>
+          <td class="paramname"><em>tick</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">const <a class="el" href="classMatchEngine.html">MatchEngine</a> &amp;&#160;</td>
+          <td class="paramname"><em>engine</em>&#160;</td>
+        </tr>
+        <tr>
+          <td></td>
+          <td>)</td>
+          <td></td><td></td>
+        </tr>
+      </table>
+</div><div class="memdoc">
+<p>One row per player (who = "p" and its index in getPlayers()) and one for the ball, at <code>tick</code> (0 = before the first step). </p>
 
 </div>
 </div>
@@ -1221,10 +1469,30 @@ Variables</h2></td></tr>
 </table>
 </div><div class="memdoc">
 <b>Initial value:</b><div class="fragment"><div class="line">{{</div>
-<div class="line">    {<span class="stringliteral">&quot;Balanced&quot;</span>, {0.50f, 0.50f, 0.50f, 0.50f, 0.50f}},</div>
-<div class="line">    {<span class="stringliteral">&quot;Front foot&quot;</span>, {0.82f, 0.72f, 0.76f, 0.68f, 0.64f}},</div>
-<div class="line">    {<span class="stringliteral">&quot;Counter&quot;</span>, {0.38f, 0.68f, 0.62f, 0.58f, 0.42f}},</div>
-<div class="line">    {<span class="stringliteral">&quot;Control&quot;</span>, {0.62f, 0.34f, 0.44f, 0.72f, 0.72f}},</div>
+<div class="line">    {.name = <span class="stringliteral">&quot;Balanced&quot;</span>,</div>
+<div class="line">     .sliders = {.pressing = 0.50F,</div>
+<div class="line">                 .riskTaking = 0.50F,</div>
+<div class="line">                 .offensiveBias = 0.50F,</div>
+<div class="line">                 .widthUsage = 0.50F,</div>
+<div class="line">                 .compactness = 0.50F}},</div>
+<div class="line">    {.name = <span class="stringliteral">&quot;Front foot&quot;</span>,</div>
+<div class="line">     .sliders = {.pressing = 0.82F,</div>
+<div class="line">                 .riskTaking = 0.72F,</div>
+<div class="line">                 .offensiveBias = 0.76F,</div>
+<div class="line">                 .widthUsage = 0.68F,</div>
+<div class="line">                 .compactness = 0.64F}},</div>
+<div class="line">    {.name = <span class="stringliteral">&quot;Counter&quot;</span>,</div>
+<div class="line">     .sliders = {.pressing = 0.38F,</div>
+<div class="line">                 .riskTaking = 0.68F,</div>
+<div class="line">                 .offensiveBias = 0.62F,</div>
+<div class="line">                 .widthUsage = 0.58F,</div>
+<div class="line">                 .compactness = 0.42F}},</div>
+<div class="line">    {.name = <span class="stringliteral">&quot;Control&quot;</span>,</div>
+<div class="line">     .sliders = {.pressing = 0.62F,</div>
+<div class="line">                 .riskTaking = 0.34F,</div>
+<div class="line">                 .offensiveBias = 0.44F,</div>
+<div class="line">                 .widthUsage = 0.72F,</div>
+<div class="line">                 .compactness = 0.72F}},</div>
 <div class="line">}}</div>
 </div><!-- fragment --><p>The four presets of the tactics screen (<a class="el" href="strategy__scene_8cpp.html">gui/scenes/strategy_scene.cpp</a>, PRESETS). Duplicated because the GUI table lives in an anonymous namespace of fm_ui; keep both in sync. </p>
 

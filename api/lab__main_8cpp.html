@@ -101,6 +101,7 @@ $(document).ready(function(){initNavTree('lab__main_8cpp.html',''); initResizabl
 <div class="textblock"><code>#include &lt;SDL3/SDL.h&gt;</code><br />
 <code>#include &lt;spdlog/spdlog.h&gt;</code><br />
 <code>#include &lt;chrono&gt;</code><br />
+<code>#include &lt;cmath&gt;</code><br />
 <code>#include &lt;cstdlib&gt;</code><br />
 <code>#include &lt;filesystem&gt;</code><br />
 <code>#include &lt;format&gt;</code><br />
@@ -115,14 +116,26 @@ $(document).ready(function(){initNavTree('lab__main_8cpp.html',''); initResizabl
 <code>#include &lt;vector&gt;</code><br />
 <code>#include &quot;<a class="el" href="logger_8h_source.html">global/logger.h</a>&quot;</code><br />
 <code>#include &quot;<a class="el" href="thread__pool_8h_source.html">global/thread_pool.h</a>&quot;</code><br />
+<code>#include &quot;<a class="el" href="formation_8h_source.html">gui/view_models/formation.h</a>&quot;</code><br />
+<code>#include &quot;<a class="el" href="match__tuning_8h_source.html">model/match_tuning.h</a>&quot;</code><br />
 <code>#include &quot;<a class="el" href="lab__fixtures_8h_source.html">tools/lab_fixtures.h</a>&quot;</code><br />
 <code>#include &quot;<a class="el" href="lab__report_8h_source.html">tools/lab_report.h</a>&quot;</code><br />
 <code>#include &quot;<a class="el" href="lab__runner_8h_source.html">tools/lab_runner.h</a>&quot;</code><br />
 <code>#include &quot;<a class="el" href="lab__season_8h_source.html">tools/lab_season.h</a>&quot;</code><br />
+<code>#include &quot;<a class="el" href="lab__touch__sensitivity_8h_source.html">tools/lab_touch_sensitivity.h</a>&quot;</code><br />
+<code>#include &quot;<a class="el" href="lab__trace_8h_source.html">tools/lab_trace.h</a>&quot;</code><br />
+<code>#include &quot;<a class="el" href="match__sandbox__game__xg_8h_source.html">tools/match_sandbox_game_xg.h</a>&quot;</code><br />
+<code>#include &quot;<a class="el" href="match__sandbox__measure_8h_source.html">tools/match_sandbox_measure.h</a>&quot;</code><br />
+<code>#include &quot;<a class="el" href="match__sandbox__session_8h_source.html">tools/match_sandbox_session.h</a>&quot;</code><br />
+<code>#include &quot;<a class="el" href="match__sandbox__setup_8h_source.html">tools/match_sandbox_setup.h</a>&quot;</code><br />
 <code>#include &lt;unistd.h&gt;</code><br />
 </div><table class="memberdecls">
 <tr class="heading"><td colspan="2"><h2 class="groupheader"><a id="func-members" name="func-members"></a>
 Functions</h2></td></tr>
+<tr class="memitem:a2f83857753858e95913d8fd5ba043c25" id="r_a2f83857753858e95913d8fd5ba043c25"><td class="memItemLeft" align="right" valign="top">int&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="lab__main_8cpp.html#a2f83857753858e95913d8fd5ba043c25">runDrillMode</a> (int argc, char **argv)</td></tr>
+<tr class="separator:a2f83857753858e95913d8fd5ba043c25"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a85616ad48de861ea965334b41fbde620" id="r_a85616ad48de861ea965334b41fbde620"><td class="memItemLeft" align="right" valign="top">int&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="lab__main_8cpp.html#a85616ad48de861ea965334b41fbde620">runSessionMode</a> (int argc, char **argv)</td></tr>
+<tr class="separator:a85616ad48de861ea965334b41fbde620"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a3c04138a5bfe5d72780bb7e82a18e627" id="r_a3c04138a5bfe5d72780bb7e82a18e627"><td class="memItemLeft" align="right" valign="top">int&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="lab__main_8cpp.html#a3c04138a5bfe5d72780bb7e82a18e627">main</a> (int argc, char **argv)</td></tr>
 <tr class="separator:a3c04138a5bfe5d72780bb7e82a18e627"><td class="memSeparator" colspan="2">&#160;</td></tr>
 </table>
@@ -152,6 +165,64 @@ Functions</h2></td></tr>
         </tr>
       </table>
 </div><div class="memdoc">
+
+</div>
+</div>
+<a id="a2f83857753858e95913d8fd5ba043c25" name="a2f83857753858e95913d8fd5ba043c25"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a2f83857753858e95913d8fd5ba043c25">&#9670;&#160;</a></span>runDrillMode()</h2>
+
+<div class="memitem">
+<div class="memproto">
+      <table class="memname">
+        <tr>
+          <td class="memname">int runDrillMode </td>
+          <td>(</td>
+          <td class="paramtype">int&#160;</td>
+          <td class="paramname"><em>argc</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">char **&#160;</td>
+          <td class="paramname"><em>argv</em>&#160;</td>
+        </tr>
+        <tr>
+          <td></td>
+          <td>)</td>
+          <td></td><td></td>
+        </tr>
+      </table>
+</div><div class="memdoc">
+<p>fm_lab drill: a match sandbox drill measured headless. The match options come first, then the drill's name, then the measure's own options, which go to the sandbox's measure command unchanged. </p>
+
+</div>
+</div>
+<a id="a85616ad48de861ea965334b41fbde620" name="a85616ad48de861ea965334b41fbde620"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a85616ad48de861ea965334b41fbde620">&#9670;&#160;</a></span>runSessionMode()</h2>
+
+<div class="memitem">
+<div class="memproto">
+      <table class="memname">
+        <tr>
+          <td class="memname">int runSessionMode </td>
+          <td>(</td>
+          <td class="paramtype">int&#160;</td>
+          <td class="paramname"><em>argc</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">char **&#160;</td>
+          <td class="paramname"><em>argv</em>&#160;</td>
+        </tr>
+        <tr>
+          <td></td>
+          <td>)</td>
+          <td></td><td></td>
+        </tr>
+      </table>
+</div><div class="memdoc">
+<p>fm_lab session: runs a training session headless (training ground plan section 23) and prints each exercise's zones' outcomes (with &ndash;full, their whole reports), then the session's time. </p>
 
 </div>
 </div>

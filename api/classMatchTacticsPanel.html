@@ -120,11 +120,11 @@ Public Member Functions</h2></td></tr>
 <tr class="memitem:a72fc6cb1191f1b91972dd17c54198cff" id="r_a72fc6cb1191f1b91972dd17c54198cff"><td class="memItemLeft" align="right" valign="top">void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classMatchTacticsPanel.html#a72fc6cb1191f1b91972dd17c54198cff">reset</a> (const <a class="el" href="classStrategy.html">Strategy</a> &amp;plan)</td></tr>
 <tr class="memdesc:a72fc6cb1191f1b91972dd17c54198cff"><td class="mdescLeft">&#160;</td><td class="mdescRight">Starts a match from the club's tactics (clears the history).  <br /></td></tr>
 <tr class="separator:a72fc6cb1191f1b91972dd17c54198cff"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a8a35db01458dd06285081b8984a4898a" id="r_a8a35db01458dd06285081b8984a4898a"><td class="memItemLeft" align="right" valign="top">bool&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classMatchTacticsPanel.html#a8a35db01458dd06285081b8984a4898a">render</a> (const <a class="el" href="structTouchlineContext.html">TouchlineContext</a> &amp;context)</td></tr>
-<tr class="memdesc:a8a35db01458dd06285081b8984a4898a"><td class="mdescLeft">&#160;</td><td class="mdescRight">Draws the dialog while it is shown.  <br /></td></tr>
-<tr class="separator:a8a35db01458dd06285081b8984a4898a"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a87b4a526b47e61dff9ec49a172271dae" id="r_a87b4a526b47e61dff9ec49a172271dae"><td class="memItemLeft" align="right" valign="top">bool&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classMatchTacticsPanel.html#a87b4a526b47e61dff9ec49a172271dae">render</a> (const <a class="el" href="structTouchlineContext.html">TouchlineContext</a> &amp;context, bool embedded=false)</td></tr>
+<tr class="memdesc:a87b4a526b47e61dff9ec49a172271dae"><td class="mdescLeft">&#160;</td><td class="mdescRight">Draws the dialog while it is shown.  <br /></td></tr>
+<tr class="separator:a87b4a526b47e61dff9ec49a172271dae"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a39612c72bee6beeb6d20c4fad1c24f3c" id="r_a39612c72bee6beeb6d20c4fad1c24f3c"><td class="memItemLeft" align="right" valign="top">void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classMatchTacticsPanel.html#a39612c72bee6beeb6d20c4fad1c24f3c">resetPopup</a> ()</td></tr>
-<tr class="memdesc:a39612c72bee6beeb6d20c4fad1c24f3c"><td class="mdescLeft">&#160;</td><td class="mdescRight">Next <a class="el" href="classMatchTacticsPanel.html#a8a35db01458dd06285081b8984a4898a" title="Draws the dialog while it is shown.">render()</a> opens the popup again, with a fresh draft.  <br /></td></tr>
+<tr class="memdesc:a39612c72bee6beeb6d20c4fad1c24f3c"><td class="mdescLeft">&#160;</td><td class="mdescRight">Next <a class="el" href="classMatchTacticsPanel.html#a87b4a526b47e61dff9ec49a172271dae" title="Draws the dialog while it is shown.">render()</a> opens the popup again, with a fresh draft.  <br /></td></tr>
 <tr class="separator:a39612c72bee6beeb6d20c4fad1c24f3c"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:ae380e02d6e88c5ef3a161853343c6d47" id="r_ae380e02d6e88c5ef3a161853343c6d47"><td class="memItemLeft" align="right" valign="top">void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classMatchTacticsPanel.html#ae380e02d6e88c5ef3a161853343c6d47">requestClose</a> ()</td></tr>
 <tr class="memdesc:ae380e02d6e88c5ef3a161853343c6d47"><td class="mdescLeft">&#160;</td><td class="mdescRight">Closes the dialog on its next frame.  <br /></td></tr>
@@ -276,8 +276,8 @@ Private Attributes</h2></td></tr>
 
 </div>
 </div>
-<a id="a8a35db01458dd06285081b8984a4898a" name="a8a35db01458dd06285081b8984a4898a"></a>
-<h2 class="memtitle"><span class="permalink"><a href="#a8a35db01458dd06285081b8984a4898a">&#9670;&#160;</a></span>render()</h2>
+<a id="a87b4a526b47e61dff9ec49a172271dae" name="a87b4a526b47e61dff9ec49a172271dae"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a87b4a526b47e61dff9ec49a172271dae">&#9670;&#160;</a></span>render()</h2>
 
 <div class="memitem">
 <div class="memproto">
@@ -286,8 +286,18 @@ Private Attributes</h2></td></tr>
           <td class="memname">bool MatchTacticsPanel::render </td>
           <td>(</td>
           <td class="paramtype">const <a class="el" href="structTouchlineContext.html">TouchlineContext</a> &amp;&#160;</td>
-          <td class="paramname"><em>context</em></td><td>)</td>
+          <td class="paramname"><em>context</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
           <td></td>
+          <td class="paramtype">bool&#160;</td>
+          <td class="paramname"><em>embedded</em> = <code>false</code>&#160;</td>
+        </tr>
+        <tr>
+          <td></td>
+          <td>)</td>
+          <td></td><td></td>
         </tr>
       </table>
 </div><div class="memdoc">
@@ -495,7 +505,7 @@ Private Attributes</h2></td></tr>
 </table>
 </div><div class="memdoc">
 
-<p>Next <a class="el" href="classMatchTacticsPanel.html#a8a35db01458dd06285081b8984a4898a" title="Draws the dialog while it is shown.">render()</a> opens the popup again, with a fresh draft. </p>
+<p>Next <a class="el" href="classMatchTacticsPanel.html#a87b4a526b47e61dff9ec49a172271dae" title="Draws the dialog while it is shown.">render()</a> opens the popup again, with a fresh draft. </p>
 
 </div>
 </div>

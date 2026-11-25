@@ -18,6 +18,7 @@ var structMatchTuning_1_1Timing =
     [ "INJURY_DELAY_SECONDS", "structMatchTuning_1_1Timing.html#a12610becbfda12fea2a3cde41c23b6de", null ],
     [ "KICK_OPPONENT_DISTANCE_METRES", "structMatchTuning_1_1Timing.html#a1ff4eaecbc0dd91da3fbfe69955dbd10", null ],
     [ "KICKOFF_DELAY_SECONDS", "structMatchTuning_1_1Timing.html#aefc6161db0b7babe9e765962442a39b0", null ],
+    [ "KICKOFF_WALK_IN_LIMIT_SECONDS", "structMatchTuning_1_1Timing.html#a0ecb89469c4a46cb08af4cea86273689", null ],
     [ "MAX_EVENTS", "structMatchTuning_1_1Timing.html#af1fc0609720e4f5e07344ff9ea754f72", null ],
     [ "MAX_FIXED_STEPS_PER_UPDATE", "structMatchTuning_1_1Timing.html#a632727e34c01831c8ba0f54c35c1d3bc", null ],
     [ "MAX_FRAME_DELTA_SECONDS", "structMatchTuning_1_1Timing.html#aa09485356cbdb717d28572eee0f1bbbe", null ],

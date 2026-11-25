@@ -2,7 +2,7 @@ var structRenderMath_1_1Projection =
 [
     [ "clipToScreen", "structRenderMath_1_1Projection.html#afa04396922cf4466e8e23dc11d119168", null ],
     [ "depth", "structRenderMath_1_1Projection.html#a4d358e0a8514b0bcd9b90538fd783e91", null ],
-    [ "groundPointAt", "structRenderMath_1_1Projection.html#a52041c90e001966303ffd37bd79706b7", null ],
+    [ "groundPointAt", "structRenderMath_1_1Projection.html#aa30b86f489cdfb5a3bda6c3ff7e43ed5", null ],
     [ "make", "structRenderMath_1_1Projection.html#a06943b05f411bd5b8bdfd5e96dd9ef0e", null ],
     [ "project", "structRenderMath_1_1Projection.html#a931a2e181f042eab350da3d67a87fcf6", null ],
     [ "rayThrough", "structRenderMath_1_1Projection.html#a488aca08120af26461fedddd3ff42b55", null ],

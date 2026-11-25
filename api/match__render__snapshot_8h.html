@@ -99,9 +99,13 @@ $(document).ready(function(){initNavTree('match__render__snapshot_8h.html',''); 
   <div class="headertitle"><div class="title">match_render_snapshot.h File Reference</div></div>
 </div><!--header-->
 <div class="contents">
-<div class="textblock"><code>#include &lt;cmath&gt;</code><br />
-<code>#include &lt;vector&gt;</code><br />
-<code>#include &quot;<a class="el" href="match__engine_8h_source.html">model/match_engine.h</a>&quot;</code><br />
+<div class="textblock"><code>#include &lt;vector&gt;</code><br />
+<code>#include &quot;<a class="el" href="types_8h_source.html">global/types.h</a>&quot;</code><br />
+<code>#include &quot;<a class="el" href="match__events_8h_source.html">model/match_events.h</a>&quot;</code><br />
+<code>#include &quot;<a class="el" href="match__layout_8h_source.html">model/match_layout.h</a>&quot;</code><br />
+<code>#include &quot;<a class="el" href="match__pitch_8h_source.html">model/match_pitch.h</a>&quot;</code><br />
+<code>#include &quot;<a class="el" href="match__state_8h_source.html">model/match_state.h</a>&quot;</code><br />
+<code>#include &quot;<a class="el" href="match__tuning_8h_source.html">model/match_tuning.h</a>&quot;</code><br />
 </div>
 <p><a href="match__render__snapshot_8h_source.html">Go to the source code of this file.</a></p>
 <table class="memberdecls">
@@ -109,7 +113,11 @@ $(document).ready(function(){initNavTree('match__render__snapshot_8h.html',''); 
 Classes</h2></td></tr>
 <tr class="memitem:"><td class="memItemLeft" align="right" valign="top">struct &#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structMatchRenderPlayer.html">MatchRenderPlayer</a></td></tr>
 <tr class="separator:"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:"><td class="memItemLeft" align="right" valign="top">struct &#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structMatchRenderTouchlinePerson.html">MatchRenderTouchlinePerson</a></td></tr>
+<tr class="separator:"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:"><td class="memItemLeft" align="right" valign="top">struct &#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structMatchRenderBall.html">MatchRenderBall</a></td></tr>
+<tr class="separator:"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:"><td class="memItemLeft" align="right" valign="top">struct &#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structMatchRenderZone.html">MatchRenderZone</a></td></tr>
 <tr class="separator:"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:"><td class="memItemLeft" align="right" valign="top">struct &#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structMatchRenderSnapshot.html">MatchRenderSnapshot</a></td></tr>
 <tr class="separator:"><td class="memSeparator" colspan="2">&#160;</td></tr>
@@ -120,8 +128,8 @@ Functions</h2></td></tr>
 <tr class="separator:aa227a365cec09caf1dbcc219b36190f2"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a795958d9e9510c863d858c226751f61d" id="r_a795958d9e9510c863d858c226751f61d"><td class="memItemLeft" align="right" valign="top"><a class="el" href="structMatchRenderSnapshot.html">MatchRenderSnapshot</a>&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="match__render__snapshot_8h.html#a795958d9e9510c863d858c226751f61d">buildMatchRenderSnapshot</a> (const <a class="el" href="classMatchEngine.html">MatchEngine</a> &amp;engine)</td></tr>
 <tr class="separator:a795958d9e9510c863d858c226751f61d"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:aa2b54cd6281a3be1ff0f1771a16fccbd" id="r_aa2b54cd6281a3be1ff0f1771a16fccbd"><td class="memItemLeft" align="right" valign="top"><a class="el" href="structVector2F.html">Vector2F</a>&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="match__render__snapshot_8h.html#aa2b54cd6281a3be1ff0f1771a16fccbd">lerpRenderPosition</a> (<a class="el" href="structVector2F.html">Vector2F</a> first, <a class="el" href="structVector2F.html">Vector2F</a> second, float alpha)</td></tr>
-<tr class="separator:aa2b54cd6281a3be1ff0f1771a16fccbd"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:af597e01e285360ef0148bb4de75fd85e" id="r_af597e01e285360ef0148bb4de75fd85e"><td class="memItemLeft" align="right" valign="top"><a class="el" href="structPitchPoint.html">PitchPoint</a>&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="match__render__snapshot_8h.html#af597e01e285360ef0148bb4de75fd85e">lerpRenderPosition</a> (<a class="el" href="structPitchPoint.html">PitchPoint</a> first, <a class="el" href="structPitchPoint.html">PitchPoint</a> second, float alpha)</td></tr>
+<tr class="separator:af597e01e285360ef0148bb4de75fd85e"><td class="memSeparator" colspan="2">&#160;</td></tr>
 </table>
 <h2 class="groupheader">Function Documentation</h2>
 <a id="a795958d9e9510c863d858c226751f61d" name="a795958d9e9510c863d858c226751f61d"></a>
@@ -129,9 +137,6 @@ Functions</h2></td></tr>
 
 <div class="memitem">
 <div class="memproto">
-<table class="mlabels">
-  <tr>
-  <td class="mlabels-left">
       <table class="memname">
         <tr>
           <td class="memname"><a class="el" href="structMatchRenderSnapshot.html">MatchRenderSnapshot</a> buildMatchRenderSnapshot </td>
@@ -141,11 +146,6 @@ Functions</h2></td></tr>
           <td></td>
         </tr>
       </table>
-  </td>
-  <td class="mlabels-right">
-<span class="mlabels"><span class="mlabel">inline</span></span>  </td>
-  </tr>
-</table>
 </div><div class="memdoc">
 <p>Builds a read-only render snapshot from a live engine. </p>
 
@@ -156,9 +156,6 @@ Functions</h2></td></tr>
 
 <div class="memitem">
 <div class="memproto">
-<table class="mlabels">
-  <tr>
-  <td class="mlabels-left">
       <table class="memname">
         <tr>
           <td class="memname">void fillMatchRenderSnapshot </td>
@@ -178,18 +175,13 @@ Functions</h2></td></tr>
           <td></td><td></td>
         </tr>
       </table>
-  </td>
-  <td class="mlabels-right">
-<span class="mlabels"><span class="mlabel">inline</span></span>  </td>
-  </tr>
-</table>
 </div><div class="memdoc">
 <p>Refills <code>snapshot</code> from a live engine, reusing its storage so a view that keeps one snapshot allocates nothing per frame. </p>
 
 </div>
 </div>
-<a id="aa2b54cd6281a3be1ff0f1771a16fccbd" name="aa2b54cd6281a3be1ff0f1771a16fccbd"></a>
-<h2 class="memtitle"><span class="permalink"><a href="#aa2b54cd6281a3be1ff0f1771a16fccbd">&#9670;&#160;</a></span>lerpRenderPosition()</h2>
+<a id="af597e01e285360ef0148bb4de75fd85e" name="af597e01e285360ef0148bb4de75fd85e"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#af597e01e285360ef0148bb4de75fd85e">&#9670;&#160;</a></span>lerpRenderPosition()</h2>
 
 <div class="memitem">
 <div class="memproto">
@@ -198,15 +190,15 @@ Functions</h2></td></tr>
   <td class="mlabels-left">
       <table class="memname">
         <tr>
-          <td class="memname"><a class="el" href="structVector2F.html">Vector2F</a> lerpRenderPosition </td>
+          <td class="memname"><a class="el" href="structPitchPoint.html">PitchPoint</a> lerpRenderPosition </td>
           <td>(</td>
-          <td class="paramtype"><a class="el" href="structVector2F.html">Vector2F</a>&#160;</td>
+          <td class="paramtype"><a class="el" href="structPitchPoint.html">PitchPoint</a>&#160;</td>
           <td class="paramname"><em>first</em>, </td>
         </tr>
         <tr>
           <td class="paramkey"></td>
           <td></td>
-          <td class="paramtype"><a class="el" href="structVector2F.html">Vector2F</a>&#160;</td>
+          <td class="paramtype"><a class="el" href="structPitchPoint.html">PitchPoint</a>&#160;</td>
           <td class="paramname"><em>second</em>, </td>
         </tr>
         <tr>
