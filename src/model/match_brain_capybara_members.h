@@ -178,7 +178,7 @@
   std::array<std::uint64_t, 2> looseShadowSideStepCapybara{};
   /** Step P3 (brain redesign plan section 28): first to commit on the
    * press, the same stage as the loose ball's, with its own commitments
-   * (shadow: a hashed roll, nothing drawn). Per side, the carrier they were
+   * (live since step P5). Per side, the carrier they were
    * made against (player id) and the step: a new carrier is a fresh call;
    * right after the side's own loose ball, the loose commitments carry
    * over (no new delays). */
@@ -235,8 +235,7 @@
     float seconds = 0.0F;
     PitchPoint at{};
   };
-  /** The first-to-commit stage, for the loose ball (live) or the press
-   * (shadow). */
+  /** The first-to-commit stage, for the loose ball or the press. */
   void looseCommitStageCapybara(CommitKindCapybara kind, bool home,
                                 std::span<const PreciseMeetCapybara> precise,
                                 const MatchPlayer* teamPick);
@@ -270,7 +269,7 @@
                                    bool pickPressing);
   /** The brain flow tool's example player: his press call. */
   void notePressCallCapybara(const MatchPlayer& player, LooseCallCapybara call);
-  /** Step P4 (brain redesign plan section 28, shadow): his own call on the
+  /** Step P4 (brain redesign plan section 28): his own call on the
    * second man's job (double up, cover or block a lane). The man a call
    * stood down takes it. With nobody stood down and one man going, the
    * players whose press call was "not mine" judge it by the same rough
@@ -287,6 +286,17 @@
   };
   [[nodiscard]] PressSecondCapybara pressSecondCallCapybara(
       const MatchPlayer& player, Vector2F at) const;
+  /** Step P5 (live): whether he presses, whether the second man's job is
+   * his, and the first man (the quickest going; null: none), with the
+   * carrier at `at`. */
+  struct PressJobsCapybara
+  {
+    bool presses = false;
+    bool second = false;
+    const MatchPlayer* firstMan = nullptr;
+  };
+  [[nodiscard]] PressJobsCapybara pressJobsCapybara(const MatchPlayer& player,
+                                                    Vector2F at) const;
   /** His quickest rival's rough time to `at` among the 3 team-mates nearest
    * it (only those whose press call is "not mine", when asked). */
   [[nodiscard]] float quickestMateSecondsCapybara(const MatchPlayer& player,
@@ -331,6 +341,8 @@
    * player id, to count how often the job changes hands on one carrier
    * (0: none). */
   std::array<std::array<std::uint32_t, 2>, 2> pressSecondHolderCapybara{};
+  /** The same for the presser (one going; his, then the team's pick). */
+  std::array<std::array<std::uint32_t, 2>, 2> pressFirstHolderCapybara{};
   /** The brain flow tool's example player: his call and, when it is his,
    * where he could meet it. */
   void noteLooseCallCapybara(const MatchPlayer& player,

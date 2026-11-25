@@ -150,7 +150,7 @@ struct OffBallRecord
   bool facingTurned = false;
   PitchPoint target{};
   bool filled = false;
-  /** Step P1 (shadow): his own call on pressing the carrier (null when
+  /** Step P1: his own call on pressing the carrier (null when
    * none). */
   const char* pressCall = nullptr;
   /** Facing the ball plan §4c, the pounce (the presser, with the ball out
@@ -165,7 +165,7 @@ struct OffBallRecord
   float squeezeTo = 0.0F;
   float pounceSeconds = 0.0F;
   float pounceCarrierSeconds = 0.0F;
-  /** Step P4 (shadow): his own call on the second man's job (null when not
+  /** Step P4: his own call on the second man's job (null when not
    * asked, or the job is closed). */
   const char* pressSecond = nullptr;
   /** Step O6 (shadow): his own loose-ball call (null when none), and when

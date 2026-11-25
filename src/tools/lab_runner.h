@@ -331,6 +331,8 @@ struct MatchSample
   int press_second_other_slower_stood_down = 0;
   int press_second_switches = 0;
   int press_second_team_switches = 0;
+  int press_first_switches = 0;
+  int press_first_team_switches = 0;
   int holds = 0;
   int intents_win = 0;
   int intents_clear = 0;

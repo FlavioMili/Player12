@@ -1204,12 +1204,13 @@ constexpr std::array<Situation, 20> SITUATIONS = {{
      .decidedBy =
          "its own off-ball frame (step O2, refreshTacticalTargets): press, "
          "double up, block a lane, cover, tight mark, recover in transition, "
-         "zonal mark, hold shape. Open when the team's assignments (pressers, "
-         "assignMarks), orders or phase give it to him (hold shape always); "
+         "zonal mark, hold shape. Open when his own press call, the team's "
+         "marks (assignMarks), orders or phase give it to him (hold shape "
+         "always); "
          "stopgap pick in today's order (follow-up: measures). Targets: "
          "engageBoost, pressStandOffShare, doubleUpPoint, tightMarkPoint. "
-         "Shadow (step P1, changes nothing yet): each defender's own call on "
-         "pressing the carrier (mine, in doubt, not mine), by the loose "
+         "Pressing (steps P1 to P5): each defender's own call on "
+         "the carrier (mine, in doubt, not mine), by the loose "
          "ball's rough look against the 3 team-mates nearest him; first to "
          "commit on it (step P3: the loose ball's stage; a new carrier is a "
          "fresh call, a loose-ball commitment carries over); the second man "
@@ -2041,8 +2042,8 @@ void BrainFlowScene::looseCommit(const BrainFlow::OffBallRecord& offBall) const
     return;
   }
   const BrainFlow::OffBallRecord::CommitCall& commit = *offBall.commit;
-  text(commit.press ? "First to commit (shadow, step P3): he goes to press."
-                    : "First to commit (shadow, step O6): he goes for it.",
+  text(commit.press ? "First to commit (step P3): he goes to press."
+                    : "First to commit (step O6): he goes for it.",
        SandboxPageUI::CREAM);
   text(std::format("He {} {:.2f} s, calls {:.2f} s later (Leadership): "
                    "{:.2f} s in all.",
@@ -2117,21 +2118,19 @@ void BrainFlowScene::pressShadow(const BrainFlow::OffBallRecord& offBall)
   {
     return;
   }
-  // Step P1: his own call on pressing the carrier, in the shadow of the
-  // team's pick (it changes nothing yet).
-  text(std::format("His own press call (shadow, step P1): {}",
-                   offBall.pressCall),
+  // Step P1: his own call on pressing the carrier (live since step P5).
+  text(std::format("His own press call (step P1): {}", offBall.pressCall),
        SandboxPageUI::CREAM);
   muted(
       "Can he get to the carrier before the 3 team-mates nearest him (rough "
       "look: straight line at top speed, his way already toward him, the "
       "turn)? Beaten by more than the margin (10% of his time, at most "
       "0.5 s): not his; closer: in doubt (estimates, to tune). The team's "
-      "press eagerness (role, team talk) is left out of the shadow.");
+      "press eagerness (role, team talk) no longer decides who presses.");
   if (offBall.pressSecond != nullptr)
   {
     text(std::format("The second man's job (double up, block a lane or cover; "
-                     "shadow, step P4): {}",
+                     "step P4): {}",
                      offBall.pressSecond),
          SandboxPageUI::CREAM);
   }

@@ -1967,6 +1967,10 @@ struct MatchStats
    * second man, and the team's. */
   int pressSecondSwitches = 0;
   int pressSecondTeamSwitches = 0;
+  /** The press changing hands while one opponent has the ball: the one
+   * going by the players' calls, and the team's pick. */
+  int pressFirstSwitches = 0;
+  int pressFirstTeamSwitches = 0;
   int homeHolds = 0;
   int awayHolds = 0;
   int intentsWin = 0;

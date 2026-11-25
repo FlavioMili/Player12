@@ -409,6 +409,8 @@ void extractEngine(MatchSample& sample, const MatchEngine& engine)
       stats.pressSecondOtherSlowerStoodDown;
   sample.press_second_switches = stats.pressSecondSwitches;
   sample.press_second_team_switches = stats.pressSecondTeamSwitches;
+  sample.press_first_switches = stats.pressFirstSwitches;
+  sample.press_first_team_switches = stats.pressFirstTeamSwitches;
   sample.holds = stats.homeHolds + stats.awayHolds;
   sample.intents_win = stats.intentsWin;
   sample.intents_clear = stats.intentsClear;
@@ -1530,6 +1532,10 @@ std::map<std::string, Estimate> matchMetrics(
       pressChecks);
   const auto pressSecond = [&column](int MatchSample::* member)
   { return column([member](const MatchSample& s) { return s.*member; }); };
+  metrics["press_first_switches_per_match"] =
+      meanEstimate(pressSecond(&MatchSample::press_first_switches));
+  metrics["press_first_team_switches_per_match"] =
+      meanEstimate(pressSecond(&MatchSample::press_first_team_switches));
   metrics["press_second_checks_per_match"] =
       meanEstimate(pressSecond(&MatchSample::press_second_checks));
   metrics["press_second_switches_per_match"] =
