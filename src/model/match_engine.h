@@ -1888,89 +1888,49 @@ struct MatchStats
   int looseWrongSlowerLater = 0;
   int looseWrongSlowerMissed = 0;
   /** Brain redesign plan section 28 (step P1): the defenders' own calls on
-   * pressing the carrier, in the shadow of the team's pick (the first
-   * presser). Per side and step with an opponent on the ball: checks, the
-   * one "mine" is the team's pick, is someone else, two or more say mine,
-   * nobody says mine, and one says mine with a team-mate chasing in doubt
-   * (a first-to-commit case). */
+   * pressing the carrier. Per side and step with an opponent on the ball:
+   * checks, one says mine, two or more say mine, nobody says mine, and one
+   * says mine with a team-mate chasing in doubt (a first-to-commit case). */
   int pressShadowChecks = 0;
-  int pressShadowAgree = 0;
-  int pressShadowWrongPlayer = 0;
+  int pressShadowOne = 0;
   int pressShadowTwoGo = 0;
   int pressShadowNobody = 0;
   int pressShadowWithDoubt = 0;
-  /** Of the wrong-player calls, by the planner's pursuit times without its
-   * press eagerness and continuity: his sooner by over 0.1 s (the team's
-   * extra terms chose another), within 0.1 s, later by over 0.1 s; and the
-   * team's pick already pressing (its continuity). */
-  int pressWrongShadowFaster = 0;
-  int pressWrongNearTie = 0;
-  int pressWrongSlower = 0;
-  int pressWrongPickPressing = 0;
-  /** Step P3, first to commit on the press (shadow): calls made, those the
-   * caller got right, those leaving the team's pick as the presser, the
-   * time from the second commit to the call (ms, summed), and commitments
-   * carried over from the side's loose ball. */
+  /** Step P3, first to commit on the press: calls made, those the caller got
+   * right, the time from the second commit to the call (ms, summed), and
+   * commitments carried over from the side's loose ball. */
   int pressCallsMade = 0;
   int pressCallsRight = 0;
-  int pressCallsAgree = 0;
   int pressCallMillis = 0;
   int pressCommitsCarried = 0;
   /** Step P3, per check after the commit stage: who would press (his call
-   * not "not mine", not stood down). One, the team's pick; one, another
-   * (and of those, the team's pick already pressing); two or more; none. */
-  int pressGoAgree = 0;
-  int pressGoOther = 0;
-  int pressGoOtherPickPressing = 0;
+   * not "not mine", not stood down). One; two or more; none. */
+  int pressGoOne = 0;
   int pressGoSeveral = 0;
   int pressGoNone = 0;
-  /** Step P4, the second man (shadow), per check where today's second man
-   * has a job (double-up order, or pressing over the cover minimum): the
-   * job; one second man, the team's second, the team's first (and of those
-   * the team's second going), or another; two or more; held back (two or
-   * more going, the call to come; of those the team's second one of them);
-   * none. */
+  /** Step P4, the second man, per check: two or more second men; one (and
+   * his job as the frame opens it: double up, block a lane, cover, or no
+   * job: no order and the pressing slider at or under the cover minimum);
+   * held back (two or more going, the call to come); none. */
   int pressSecondChecks = 0;
   int pressSecondDoubleUp = 0;
   int pressSecondBlockLane = 0;
   int pressSecondCover = 0;
-  int pressSecondAgree = 0;
-  int pressSecondTeamFirst = 0;
-  int pressSecondSwapped = 0;
-  int pressSecondOther = 0;
+  int pressSecondNoJob = 0;
   int pressSecondSeveral = 0;
   int pressSecondHeld = 0;
-  int pressSecondHeldTeamGoing = 0;
   int pressSecondNone = 0;
-  /** One second man: stood down by a call (and of those the team's second),
-   * with another in doubt, and those where the one going is the team's
-   * first presser (and of those the team's second). */
+  /** One second man: stood down by a call, with another in doubt. */
   int pressSecondStoodDown = 0;
-  int pressSecondStoodDownAgree = 0;
   int pressSecondWithDoubt = 0;
-  int pressSecondSameFirst = 0;
-  int pressSecondSameFirstAgree = 0;
-  /** One second man by his own call (nobody stood down), the team's second;
-   * the nearest (metres) of those not going the same man, and that nearest
-   * the team's second. */
+  /** One second man by his own call (nobody stood down); of those, the
+   * nearest (metres) of those not going. */
   int pressSecondOwnCall = 0;
-  int pressSecondOwnCallAgree = 0;
   int pressSecondIsNearest = 0;
-  int pressSecondNearestAgree = 0;
-  /** Another player, by the planner's pursuit times (as pressWrong*),
-   * against the team's second; of the later, those stood down. */
-  int pressSecondOtherFaster = 0;
-  int pressSecondOtherNearTie = 0;
-  int pressSecondOtherSlower = 0;
-  int pressSecondOtherSlowerStoodDown = 0;
-  /** The job changing hands while one opponent has the ball: the shadow's
-   * second man, and the team's. */
+  /** The job changing hands while one opponent has the ball: the second
+   * man, and the one going to press, by the players' calls. */
   int pressSecondSwitches = 0;
-  int pressSecondTeamSwitches = 0;
-  /** The press changing hands while one opponent has the ball: the one
-   * going by the players' calls, and the team's pick. */
   int pressFirstSwitches = 0;
-  int pressFirstTeamSwitches = 0;
   int homeHolds = 0;
   int awayHolds = 0;
   int intentsWin = 0;

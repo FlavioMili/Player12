@@ -362,55 +362,31 @@ void extractEngine(MatchSample& sample, const MatchEngine& engine)
   sample.loose_wrong_slower_later = stats.looseWrongSlowerLater;
   sample.loose_wrong_slower_missed = stats.looseWrongSlowerMissed;
   sample.press_shadow_checks = stats.pressShadowChecks;
-  sample.press_shadow_agree = stats.pressShadowAgree;
-  sample.press_shadow_wrong_player = stats.pressShadowWrongPlayer;
+  sample.press_shadow_one = stats.pressShadowOne;
   sample.press_shadow_two_go = stats.pressShadowTwoGo;
   sample.press_shadow_nobody = stats.pressShadowNobody;
   sample.press_shadow_with_doubt = stats.pressShadowWithDoubt;
-  sample.press_wrong_shadow_faster = stats.pressWrongShadowFaster;
-  sample.press_wrong_near_tie = stats.pressWrongNearTie;
-  sample.press_wrong_slower = stats.pressWrongSlower;
-  sample.press_wrong_pick_pressing = stats.pressWrongPickPressing;
   sample.press_calls_made = stats.pressCallsMade;
   sample.press_calls_right = stats.pressCallsRight;
-  sample.press_calls_agree = stats.pressCallsAgree;
   sample.press_call_millis = stats.pressCallMillis;
   sample.press_commits_carried = stats.pressCommitsCarried;
-  sample.press_go_agree = stats.pressGoAgree;
-  sample.press_go_other = stats.pressGoOther;
-  sample.press_go_other_pick_pressing = stats.pressGoOtherPickPressing;
+  sample.press_go_one = stats.pressGoOne;
   sample.press_go_several = stats.pressGoSeveral;
   sample.press_go_none = stats.pressGoNone;
   sample.press_second_checks = stats.pressSecondChecks;
   sample.press_second_double_up = stats.pressSecondDoubleUp;
   sample.press_second_block_lane = stats.pressSecondBlockLane;
   sample.press_second_cover = stats.pressSecondCover;
-  sample.press_second_agree = stats.pressSecondAgree;
-  sample.press_second_team_first = stats.pressSecondTeamFirst;
-  sample.press_second_swapped = stats.pressSecondSwapped;
-  sample.press_second_other = stats.pressSecondOther;
+  sample.press_second_no_job = stats.pressSecondNoJob;
   sample.press_second_several = stats.pressSecondSeveral;
   sample.press_second_held = stats.pressSecondHeld;
-  sample.press_second_held_team_going = stats.pressSecondHeldTeamGoing;
   sample.press_second_none = stats.pressSecondNone;
   sample.press_second_stood_down = stats.pressSecondStoodDown;
-  sample.press_second_stood_down_agree = stats.pressSecondStoodDownAgree;
   sample.press_second_with_doubt = stats.pressSecondWithDoubt;
-  sample.press_second_same_first = stats.pressSecondSameFirst;
-  sample.press_second_same_first_agree = stats.pressSecondSameFirstAgree;
   sample.press_second_own_call = stats.pressSecondOwnCall;
-  sample.press_second_own_call_agree = stats.pressSecondOwnCallAgree;
   sample.press_second_is_nearest = stats.pressSecondIsNearest;
-  sample.press_second_nearest_agree = stats.pressSecondNearestAgree;
-  sample.press_second_other_faster = stats.pressSecondOtherFaster;
-  sample.press_second_other_near_tie = stats.pressSecondOtherNearTie;
-  sample.press_second_other_slower = stats.pressSecondOtherSlower;
-  sample.press_second_other_slower_stood_down =
-      stats.pressSecondOtherSlowerStoodDown;
   sample.press_second_switches = stats.pressSecondSwitches;
-  sample.press_second_team_switches = stats.pressSecondTeamSwitches;
   sample.press_first_switches = stats.pressFirstSwitches;
-  sample.press_first_team_switches = stats.pressFirstTeamSwitches;
   sample.holds = stats.homeHolds + stats.awayHolds;
   sample.intents_win = stats.intentsWin;
   sample.intents_clear = stats.intentsClear;
@@ -1466,148 +1442,79 @@ std::map<std::string, Estimate> matchMetrics(
       column([](const MatchSample& s) { return s.loose_wrong_slower_later; }), looseWrong);
   metrics["loose_wrong_slower_missed_share"] = ratioEstimate(
       column([](const MatchSample& s) { return s.loose_wrong_slower_missed; }), looseWrong);
-  const std::vector<double> pressChecks =
-      column([](const MatchSample& s) { return s.press_shadow_checks; });
-  metrics["press_shadow_checks_per_match"] = meanEstimate(pressChecks);
-  metrics["press_shadow_agree_share"] = ratioEstimate(
-      column([](const MatchSample& s) { return s.press_shadow_agree; }),
-      pressChecks);
-  metrics["press_shadow_wrong_player_share"] = ratioEstimate(
-      column([](const MatchSample& s) { return s.press_shadow_wrong_player; }),
-      pressChecks);
-  metrics["press_shadow_two_go_share"] = ratioEstimate(
-      column([](const MatchSample& s) { return s.press_shadow_two_go; }),
-      pressChecks);
-  metrics["press_shadow_nobody_share"] = ratioEstimate(
-      column([](const MatchSample& s) { return s.press_shadow_nobody; }),
-      pressChecks);
-  metrics["press_shadow_with_doubt_share"] = ratioEstimate(
-      column([](const MatchSample& s) { return s.press_shadow_with_doubt; }),
-      pressChecks);
-  const std::vector<double> pressWrong =
-      column([](const MatchSample& s) { return s.press_shadow_wrong_player; });
-  metrics["press_wrong_shadow_faster_share"] = ratioEstimate(
-      column([](const MatchSample& s) { return s.press_wrong_shadow_faster; }),
-      pressWrong);
-  metrics["press_wrong_near_tie_share"] = ratioEstimate(
-      column([](const MatchSample& s) { return s.press_wrong_near_tie; }),
-      pressWrong);
-  metrics["press_wrong_slower_share"] = ratioEstimate(
-      column([](const MatchSample& s) { return s.press_wrong_slower; }),
-      pressWrong);
-  metrics["press_wrong_pick_pressing_share"] = ratioEstimate(
-      column([](const MatchSample& s) { return s.press_wrong_pick_pressing; }),
-      pressWrong);
-  const std::vector<double> pressCalls =
-      column([](const MatchSample& s) { return s.press_calls_made; });
-  metrics["press_calls_per_match"] = meanEstimate(pressCalls);
-  metrics["press_calls_right_share"] = ratioEstimate(
-      column([](const MatchSample& s) { return s.press_calls_right; }),
-      pressCalls);
-  metrics["press_calls_agree_share"] = ratioEstimate(
-      column([](const MatchSample& s) { return s.press_calls_agree; }),
-      pressCalls);
+  const auto press = [&column](int MatchSample::* member)
+  { return column([member](const MatchSample& s) { return s.*member; }); };
+  metrics["press_shadow_checks_per_match"] =
+      meanEstimate(press(&MatchSample::press_shadow_checks));
+  metrics["press_shadow_one_share"] =
+      ratioEstimate(press(&MatchSample::press_shadow_one),
+                    press(&MatchSample::press_shadow_checks));
+  metrics["press_shadow_two_go_share"] =
+      ratioEstimate(press(&MatchSample::press_shadow_two_go),
+                    press(&MatchSample::press_shadow_checks));
+  metrics["press_shadow_nobody_share"] =
+      ratioEstimate(press(&MatchSample::press_shadow_nobody),
+                    press(&MatchSample::press_shadow_checks));
+  metrics["press_shadow_with_doubt_share"] =
+      ratioEstimate(press(&MatchSample::press_shadow_with_doubt),
+                    press(&MatchSample::press_shadow_checks));
+  metrics["press_calls_per_match"] =
+      meanEstimate(press(&MatchSample::press_calls_made));
+  metrics["press_calls_right_share"] =
+      ratioEstimate(press(&MatchSample::press_calls_right),
+                    press(&MatchSample::press_calls_made));
   constexpr double PRESS_MILLIS_PER_SECOND = 1000.0;
   metrics["press_call_seconds"] = ratioEstimate(
       column([](const MatchSample& s)
              { return s.press_call_millis / PRESS_MILLIS_PER_SECOND; }),
-      pressCalls);
-  metrics["press_commits_carried_per_match"] = meanEstimate(
-      column([](const MatchSample& s) { return s.press_commits_carried; }));
-  metrics["press_go_agree_share"] = ratioEstimate(
-      column([](const MatchSample& s) { return s.press_go_agree; }),
-      pressChecks);
-  metrics["press_go_other_share"] = ratioEstimate(
-      column([](const MatchSample& s) { return s.press_go_other; }),
-      pressChecks);
-  metrics["press_go_other_pick_pressing_share"] = ratioEstimate(
-      column([](const MatchSample& s)
-             { return s.press_go_other_pick_pressing; }),
-      column([](const MatchSample& s) { return s.press_go_other; }));
-  metrics["press_go_several_share"] = ratioEstimate(
-      column([](const MatchSample& s) { return s.press_go_several; }),
-      pressChecks);
-  metrics["press_go_none_share"] = ratioEstimate(
-      column([](const MatchSample& s) { return s.press_go_none; }),
-      pressChecks);
-  const auto pressSecond = [&column](int MatchSample::* member)
-  { return column([member](const MatchSample& s) { return s.*member; }); };
+      press(&MatchSample::press_calls_made));
+  metrics["press_commits_carried_per_match"] =
+      meanEstimate(press(&MatchSample::press_commits_carried));
+  metrics["press_go_one_share"] =
+      ratioEstimate(press(&MatchSample::press_go_one),
+                    press(&MatchSample::press_shadow_checks));
+  metrics["press_go_several_share"] =
+      ratioEstimate(press(&MatchSample::press_go_several),
+                    press(&MatchSample::press_shadow_checks));
+  metrics["press_go_none_share"] =
+      ratioEstimate(press(&MatchSample::press_go_none),
+                    press(&MatchSample::press_shadow_checks));
   metrics["press_first_switches_per_match"] =
-      meanEstimate(pressSecond(&MatchSample::press_first_switches));
-  metrics["press_first_team_switches_per_match"] =
-      meanEstimate(pressSecond(&MatchSample::press_first_team_switches));
+      meanEstimate(press(&MatchSample::press_first_switches));
   metrics["press_second_checks_per_match"] =
-      meanEstimate(pressSecond(&MatchSample::press_second_checks));
+      meanEstimate(press(&MatchSample::press_second_checks));
   metrics["press_second_switches_per_match"] =
-      meanEstimate(pressSecond(&MatchSample::press_second_switches));
-  metrics["press_second_team_switches_per_match"] =
-      meanEstimate(pressSecond(&MatchSample::press_second_team_switches));
+      meanEstimate(press(&MatchSample::press_second_switches));
   metrics["press_second_double_up_share"] =
-      ratioEstimate(pressSecond(&MatchSample::press_second_double_up),
-                    pressSecond(&MatchSample::press_second_checks));
+      ratioEstimate(press(&MatchSample::press_second_double_up),
+                    press(&MatchSample::press_second_checks));
   metrics["press_second_block_lane_share"] =
-      ratioEstimate(pressSecond(&MatchSample::press_second_block_lane),
-                    pressSecond(&MatchSample::press_second_checks));
+      ratioEstimate(press(&MatchSample::press_second_block_lane),
+                    press(&MatchSample::press_second_checks));
   metrics["press_second_cover_share"] =
-      ratioEstimate(pressSecond(&MatchSample::press_second_cover),
-                    pressSecond(&MatchSample::press_second_checks));
-  metrics["press_second_agree_share"] =
-      ratioEstimate(pressSecond(&MatchSample::press_second_agree),
-                    pressSecond(&MatchSample::press_second_checks));
-  metrics["press_second_team_first_share"] =
-      ratioEstimate(pressSecond(&MatchSample::press_second_team_first),
-                    pressSecond(&MatchSample::press_second_checks));
-  metrics["press_second_swapped_share"] =
-      ratioEstimate(pressSecond(&MatchSample::press_second_swapped),
-                    pressSecond(&MatchSample::press_second_team_first));
-  metrics["press_second_other_share"] =
-      ratioEstimate(pressSecond(&MatchSample::press_second_other),
-                    pressSecond(&MatchSample::press_second_checks));
+      ratioEstimate(press(&MatchSample::press_second_cover),
+                    press(&MatchSample::press_second_checks));
+  metrics["press_second_no_job_share"] =
+      ratioEstimate(press(&MatchSample::press_second_no_job),
+                    press(&MatchSample::press_second_checks));
   metrics["press_second_several_share"] =
-      ratioEstimate(pressSecond(&MatchSample::press_second_several),
-                    pressSecond(&MatchSample::press_second_checks));
+      ratioEstimate(press(&MatchSample::press_second_several),
+                    press(&MatchSample::press_second_checks));
   metrics["press_second_held_share"] =
-      ratioEstimate(pressSecond(&MatchSample::press_second_held),
-                    pressSecond(&MatchSample::press_second_checks));
-  metrics["press_second_held_team_going_share"] =
-      ratioEstimate(pressSecond(&MatchSample::press_second_held_team_going),
-                    pressSecond(&MatchSample::press_second_held));
+      ratioEstimate(press(&MatchSample::press_second_held),
+                    press(&MatchSample::press_second_checks));
   metrics["press_second_none_share"] =
-      ratioEstimate(pressSecond(&MatchSample::press_second_none),
-                    pressSecond(&MatchSample::press_second_checks));
+      ratioEstimate(press(&MatchSample::press_second_none),
+                    press(&MatchSample::press_second_checks));
   metrics["press_second_stood_down_share"] =
-      ratioEstimate(pressSecond(&MatchSample::press_second_stood_down),
-                    pressSecond(&MatchSample::press_second_checks));
-  metrics["press_second_stood_down_agree_share"] =
-      ratioEstimate(pressSecond(&MatchSample::press_second_stood_down_agree),
-                    pressSecond(&MatchSample::press_second_stood_down));
+      ratioEstimate(press(&MatchSample::press_second_stood_down),
+                    press(&MatchSample::press_second_checks));
   metrics["press_second_with_doubt_share"] =
-      ratioEstimate(pressSecond(&MatchSample::press_second_with_doubt),
-                    pressSecond(&MatchSample::press_second_checks));
-  metrics["press_second_same_first_agree_share"] =
-      ratioEstimate(pressSecond(&MatchSample::press_second_same_first_agree),
-                    pressSecond(&MatchSample::press_second_same_first));
-  metrics["press_second_own_call_agree_share"] =
-      ratioEstimate(pressSecond(&MatchSample::press_second_own_call_agree),
-                    pressSecond(&MatchSample::press_second_own_call));
+      ratioEstimate(press(&MatchSample::press_second_with_doubt),
+                    press(&MatchSample::press_second_checks));
   metrics["press_second_is_nearest_share"] =
-      ratioEstimate(pressSecond(&MatchSample::press_second_is_nearest),
-                    pressSecond(&MatchSample::press_second_own_call));
-  metrics["press_second_nearest_agree_share"] =
-      ratioEstimate(pressSecond(&MatchSample::press_second_nearest_agree),
-                    pressSecond(&MatchSample::press_second_own_call));
-  metrics["press_second_other_faster_share"] =
-      ratioEstimate(pressSecond(&MatchSample::press_second_other_faster),
-                    pressSecond(&MatchSample::press_second_other));
-  metrics["press_second_other_near_tie_share"] =
-      ratioEstimate(pressSecond(&MatchSample::press_second_other_near_tie),
-                    pressSecond(&MatchSample::press_second_other));
-  metrics["press_second_other_slower_share"] =
-      ratioEstimate(pressSecond(&MatchSample::press_second_other_slower),
-                    pressSecond(&MatchSample::press_second_other));
-  metrics["press_second_other_slower_stood_down_share"] = ratioEstimate(
-      pressSecond(&MatchSample::press_second_other_slower_stood_down),
-      pressSecond(&MatchSample::press_second_other_slower));
+      ratioEstimate(press(&MatchSample::press_second_is_nearest),
+                    press(&MatchSample::press_second_own_call));
   const std::vector<double> looseCalls =
       column([](const MatchSample& s) { return s.loose_calls_made; });
   metrics["loose_calls_per_match"] = meanEstimate(looseCalls);

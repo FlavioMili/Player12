@@ -209,10 +209,9 @@
     return kind == CommitKindCapybara::PRESS ? pressCallsNowCapybara
                                              : looseCallsNowCapybara;
   }
-  /** Step P3: after the commit stage, who on the side would press (his call
-   * not "not mine", not stood down), against the team's pick
-   * (stats.pressGo*). */
-  void tallyPressGoersCapybara(bool home, const MatchPlayer* teamPick);
+  /** Step P3: after the commit stage, how many on the side would press (his
+   * call not "not mine", not stood down; stats.pressGo*). */
+  void tallyPressGoersCapybara(bool home);
   /** Step P3: he would press (after the commit stage). */
   [[nodiscard]] bool pressGoesCapybara(std::size_t index) const;
   /** Live (step O6): he goes for the loose ball. His own call (mine or in
@@ -235,7 +234,8 @@
     float seconds = 0.0F;
     PitchPoint at{};
   };
-  /** The first-to-commit stage, for the loose ball or the press. */
+  /** The first-to-commit stage, for the loose ball or the press (the team's
+   * pick only for the loose ball's agreement tally; null on the press). */
   void looseCommitStageCapybara(CommitKindCapybara kind, bool home,
                                 std::span<const PreciseMeetCapybara> precise,
                                 const MatchPlayer* teamPick);
@@ -257,16 +257,13 @@
    * is first; not his if beaten by more than the margin; else in doubt. */
   [[nodiscard]] LooseCallCapybara pressCallCapybara(const MatchPlayer& player,
                                                     Vector2F at) const;
-  /** Every outfielder of a side makes his press call; tallied against the
-   * team's pick (stats.pressShadow*). Returns the one who said mine (null
-   * if none or several). Draws nothing, changes nothing. */
-  const MatchPlayer* shadowPressCapybara(bool home, const MatchPlayer& carrier,
-                                         const MatchPlayer* teamPick);
-  /** Diagnosis of a wrong-player press call: his and the team pick's
-   * pursuit times (no eagerness or continuity), and whether the pick was
-   * already pressing. */
-  void tallyWrongPressCallCapybara(float shadowSeconds, float pickSeconds,
-                                   bool pickPressing);
+  /** Every outfielder of a side makes his press call (stats.pressShadow*:
+   * one, two or more, or nobody says mine). Draws nothing. */
+  void shadowPressCapybara(bool home, const MatchPlayer& carrier);
+  /** Step P3: sizes the press records; a new carrier (or the first press
+   * for a while) is a fresh call, carrying over the side's loose-ball
+   * commitments right after it. */
+  void freshPressCallCapybara(bool home, const MatchPlayer& carrier);
   /** The brain flow tool's example player: his press call. */
   void notePressCallCapybara(const MatchPlayer& player, LooseCallCapybara call);
   /** Step P4 (brain redesign plan section 28): his own call on the
@@ -315,34 +312,21 @@
     bool stoodDown = false;
   };
   PressSecondsCapybara pressSecondsCapybara(bool home, Vector2F at);
-  /** Step P4: the second men this step, against the team's pick of both
-   * (stats.pressSecond*), where the job is open (the order or the pressing
-   * slider). Draws nothing, changes nothing. */
+  /** Step P4: the second men this step by the players' calls, and the job
+   * the frame opens for one (stats.pressSecond*). Draws nothing, changes
+   * nothing. */
   void tallyPressSecondCapybara(const MatchPlayer& carrier,
-                                std::span<MatchPlayer* const, 2> teamPair,
-                                const MatchPlayer* coverOutlet, float pressing,
-                                std::span<const PreciseMeetCapybara> precise);
-  /** Step P4, one second man: him against the team's second presser, with
-   * the one going to press (SIZE_MAX: not one). */
-  void tallyOneSecondCapybara(std::size_t second, std::size_t goer,
-                              Vector2F carrierAt,
-                              std::span<MatchPlayer* const, 2> teamPair,
-                              std::span<const PreciseMeetCapybara> precise);
+                                const MatchPlayer* coverOutlet, float pressing);
   /** Step P4: a second man by his own call, against the nearest not going. */
-  void tallyNearestSecondCapybara(std::size_t second, Vector2F carrierAt,
-                                  const MatchPlayer* teamSecond);
-  /** Step P4: the second man's job changing hands (null: not one). */
-  void tallySecondSwitchesCapybara(bool home, const MatchPlayer* shadowSecond,
-                                   const MatchPlayer* teamSecond);
+  void tallyNearestSecondCapybara(std::size_t second, Vector2F carrierAt);
   /** The brain flow tool's example player: his second-man call. */
   void notePressSecondCapybara(const MatchPlayer& player,
                                PressSecondCapybara call);
-  /** Step P4: the second man (the shadow's, then the team's), per side, by
-   * player id, to count how often the job changes hands on one carrier
-   * (0: none). */
-  std::array<std::array<std::uint32_t, 2>, 2> pressSecondHolderCapybara{};
-  /** The same for the presser (one going; his, then the team's pick). */
-  std::array<std::array<std::uint32_t, 2>, 2> pressFirstHolderCapybara{};
+  /** Step P4: the second man by the players' calls, per side, by player id,
+   * to count how often the job changes hands on one carrier (0: none). */
+  std::array<std::uint32_t, 2> pressSecondHolderCapybara{};
+  /** The same for the presser (one going). */
+  std::array<std::uint32_t, 2> pressFirstHolderCapybara{};
   /** The brain flow tool's example player: his call and, when it is his,
    * where he could meet it. */
   void noteLooseCallCapybara(const MatchPlayer& player,
@@ -758,9 +742,6 @@
                                  const MatchPlayer& receiver) const;
   /** Formation spot while his side has the ball (role and shape shift). */
   PitchPoint possessionAnchorCapybara(const MatchPlayer& player) const;
-  /** Seconds a role is quicker (+) or slower to close the ball down. */
-  float pressEagernessCapybara(const MatchPlayer& candidate,
-                       const MatchPlayer* carrier) const;
   /** Share of the presser's normal stand-off distance. */
   float pressStandOffShareCapybara(const MatchPlayer& presser,
                            const MatchPlayer& carrier) const;

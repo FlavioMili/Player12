@@ -1209,7 +1209,8 @@ constexpr std::array<Situation, 20> SITUATIONS = {{
          "always); "
          "stopgap pick in today's order (follow-up: measures). Targets: "
          "engageBoost, pressStandOffShare, doubleUpPoint, tightMarkPoint. "
-         "Pressing (steps P1 to P5): each defender's own call on "
+         "Pressing (steps P1 to P7; the team no longer ranks pressers, "
+         "restarts included): each defender's own call on "
          "the carrier (mine, in doubt, not mine), by the loose "
          "ball's rough look against the 3 team-mates nearest him; first to "
          "commit on it (step P3: the loose ball's stage; a new carrier is a "
@@ -2125,8 +2126,9 @@ void BrainFlowScene::pressShadow(const BrainFlow::OffBallRecord& offBall)
       "Can he get to the carrier before the 3 team-mates nearest him (rough "
       "look: straight line at top speed, his way already toward him, the "
       "turn)? Beaten by more than the margin (10% of his time, at most "
-      "0.5 s): not his; closer: in doubt (estimates, to tune). The team's "
-      "press eagerness (role, team talk) no longer decides who presses.");
+      "0.5 s): not his; closer: in doubt (estimates, to tune). The team no "
+      "longer ranks pressers (step P7, restarts too); the role's press bias "
+      "and the team talk only shape the stand-off and the engage.");
   if (offBall.pressSecond != nullptr)
   {
     text(std::format("The second man's job (double up, block a lane or cover; "
