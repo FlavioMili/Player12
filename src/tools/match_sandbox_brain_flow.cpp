@@ -2110,8 +2110,8 @@ void BrainFlowScene::pressShadow(const BrainFlow::OffBallRecord& offBall)
         "Stand-off {:.1f} m closed to {:.1f} m. Strongest of: the carrier "
         "slowing (2 to 0.5 m/s toward goal), pinned (8 to 3 m off the "
         "touchline), cover (a team-mate goal-side within 8 m of him), his "
-        "game xG (0.05 to 0.2); full squeeze 0.5 m (ours, aggressive, to back "
-        "off).",
+        "game xG (0.05 to 0.2); full squeeze 1 m centre to centre, a 0.5 m "
+        "gap between bodies (ours, aggressive, to back off).",
         offBall.squeezeFrom, offBall.squeezeTo));
   }
   if (offBall.pressCall == nullptr)

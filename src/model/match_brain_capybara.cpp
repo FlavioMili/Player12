@@ -105,12 +105,13 @@ constexpr float OVERTAKE_TEAM_MATE_CLEARANCE_METRES =
 constexpr float OVERTAKE_HORIZON_SECONDS = 3.0F;
 
 // The press squeeze (facing the ball plan §4c). Ours, no research,
-// aggressive to start (the user, 2026-11-25): the closest stand-off (m);
-// the carrier's speed toward goal still driving and stalled (m/s); metres
-// off the touchline free and pinned; how near a covering team-mate (m);
-// the carrier's game xG with no squeeze and a full one; the share counted
-// as squeezed in the stats.
-constexpr float SQUEEZE_STAND_OFF_METRES = 0.5F;
+// aggressive to start (the user, 2026-11-25): the closest stand-off (m,
+// centre to centre: bodies are 0.5 m across, so 1 m leaves a 0.5 m gap;
+// the user, 2026-11-25, was 0.5 m, body contact); the carrier's speed toward
+// goal still driving and stalled (m/s); metres off the touchline free and
+// pinned; how near a covering team-mate (m); the carrier's game xG with no
+// squeeze and a full one; the share counted as squeezed in the stats.
+constexpr float SQUEEZE_STAND_OFF_METRES = 1.0F;
 constexpr float SQUEEZE_DRIVING_SPEED = 2.0F;
 constexpr float SQUEEZE_STALLED_SPEED = 0.5F;
 constexpr float SQUEEZE_TOUCHLINE_FREE_METRES = 8.0F;
