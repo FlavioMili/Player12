@@ -212,6 +212,10 @@
   /** Step P3: after the commit stage, how many on the side would press (his
    * call not "not mine", not stood down; stats.pressGo*). */
   void tallyPressGoersCapybara(bool home, const MatchPlayer& carrier);
+  /** Step P6: a call by a player on the floor (left out) or stumbling or
+   * paused by a knock (slowed); stats.callsSkippedFallen and
+   * callsSlowedStumbling. */
+  void tallyKnockedCallCapybara(const MatchPlayer& player);
   /** Step P6's diagnosis: the presser changing hands (stats.pressSwitchWhy
    * in this order). */
   enum class PressSwitchWhyCapybara : std::uint8_t

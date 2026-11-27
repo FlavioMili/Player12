@@ -1984,6 +1984,11 @@ struct MatchStats
    * the rough look (0.1 s), a real difference, anything else. How long he
    * had held it (under 0.5 s, to 1.5 s, longer); straight back to the one
    * before within 1 s; after two or nobody going in between. */
+  /** The press and loose-ball calls (step P6): players on the floor left
+   * out of a call, and calls of players stumbling or paused by a knock
+   * (their rough look slowed by the time left). */
+  int callsSkippedFallen = 0;
+  int callsSlowedStumbling = 0;
   std::array<int, 6> pressSwitchWhy{};
   std::array<int, 3> pressSwitchHeld{};
   int pressSwitchBack = 0;

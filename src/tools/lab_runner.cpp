@@ -395,6 +395,8 @@ void extractEngine(MatchSample& sample, const MatchEngine& engine)
   sample.press_switch_why = stats.pressSwitchWhy;
   sample.press_switch_held = stats.pressSwitchHeld;
   sample.press_switch_back = stats.pressSwitchBack;
+  sample.calls_skipped_fallen = stats.callsSkippedFallen;
+  sample.calls_slowed_stumbling = stats.callsSlowedStumbling;
   sample.press_switch_via_gap = stats.pressSwitchViaGap;
   sample.holds = stats.homeHolds + stats.awayHolds;
   sample.intents_win = stats.intentsWin;
@@ -1614,6 +1616,10 @@ std::map<std::string, Estimate> matchMetrics(
   perMatch("collision_big_hits_per_match", &MatchSample::collision_big_hits);
   perMatch("touches_shielded_per_match", &MatchSample::touches_shielded);
   perMatch("step_in_moves_per_match", &MatchSample::step_in_moves);
+  perMatch("calls_skipped_fallen_per_match",
+           &MatchSample::calls_skipped_fallen);
+  perMatch("calls_slowed_stumbling_per_match",
+           &MatchSample::calls_slowed_stumbling);
   perMatch("passes_loose_off_target_per_match",
            &MatchSample::passes_loose_off_target);
   perMatch("passes_loose_ran_past_per_match",

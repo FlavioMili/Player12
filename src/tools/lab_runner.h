@@ -321,6 +321,8 @@ struct MatchSample
   std::array<int, 6> press_switch_why{};
   std::array<int, 3> press_switch_held{};
   int press_switch_back = 0;
+  int calls_skipped_fallen = 0;
+  int calls_slowed_stumbling = 0;
   int press_switch_via_gap = 0;
   int holds = 0;
   int intents_win = 0;

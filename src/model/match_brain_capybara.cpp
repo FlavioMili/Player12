@@ -2911,6 +2911,13 @@ constexpr float SEES_WHILE_LOOKING_DEGREES = 60.0F;
 constexpr float ALONGSIDE_METRES = 2.0F;
 constexpr float ALONGSIDE_HEADING_DEGREES = 30.0F;
 
+// Step P6 (the user, 2026-11-27): a player on the floor is left out of
+// the press and loose-ball calls, his own and as a rival.
+bool standingCapybara(const MatchPlayer& player)
+{
+  return active(player) && !player.fallen;
+}
+
 // The margin for a chase that takes him this long.
 float looseMargin(float seconds)
 {
@@ -2988,7 +2995,10 @@ float MatchEngine::roughSecondsCapybara(const MatchPlayer& player,
                  -1.0F, 1.0F);
   const float turn = std::acos(facingCosine) /
                      MatchTuning::Player::FACING_TURN_RATE_RADIANS;
-  return (run / speed) + turn;
+  // Stumbling, or paused by a knock he kept his feet through, he can't
+  // drive until it is over (step P6, the user, 2026-11-27).
+  const float knocked = player.stumbleSeconds + player.collisionPause;
+  return (run / speed) + turn + knocked;
 }
 
 std::pair<std::size_t, float> MatchEngine::roughMeetCapybara(
@@ -3032,7 +3042,7 @@ MatchEngine::LooseCallResultCapybara MatchEngine::looseCallCapybara(
   std::array<const MatchPlayer*, LOOSE_SHADOW_RIVALS> closest{};
   for (const MatchPlayer& other : players)
   {
-    if (&other == &player || !active(other) || other.isGoalkeeper)
+    if (&other == &player || !standingCapybara(other) || other.isGoalkeeper)
     {
       continue;
     }
@@ -3075,7 +3085,7 @@ MatchEngine::LooseCallResultCapybara MatchEngine::looseCallCapybara(
   bool watchConsidered = false;
   for (const MatchPlayer& other : players)
   {
-    if (&other == &player || !active(other) || other.isGoalkeeper)
+    if (&other == &player || !standingCapybara(other) || other.isGoalkeeper)
     {
       continue;
     }
@@ -3124,8 +3134,14 @@ MatchEngine::LooseShadowOutcomeCapybara MatchEngine::shadowLooseBallCapybara(
     {
       continue;
     }
+    // On the floor: not his (and no rival to anyone).
     const LooseCallResultCapybara result =
-        looseCallCapybara(player, path, teamPick);
+        player.fallen ? LooseCallResultCapybara{}
+                      : looseCallCapybara(player, path, teamPick);
+    if (player.isHomeTeam == home)
+    {
+      tallyKnockedCallCapybara(player);
+    }
     looseCallsNowCapybara.at(playerIndexCapybara(player)) = result.call;
     if (player.isHomeTeam != home)
     {
@@ -3571,7 +3587,7 @@ float MatchEngine::quickestMateSecondsCapybara(const MatchPlayer& player,
   std::array<const MatchPlayer*, LOOSE_SHADOW_RIVALS> closest{};
   for (const MatchPlayer& other : players)
   {
-    if (&other == &player || !active(other) || other.isGoalkeeper ||
+    if (&other == &player || !standingCapybara(other) || other.isGoalkeeper ||
         other.isHomeTeam != player.isHomeTeam ||
         (notGoingOnly && pressCallsNowCapybara.at(playerIndexCapybara(other)) !=
                              LooseCallCapybara::NOT_MINE))
@@ -3648,6 +3664,18 @@ void MatchEngine::freshPressCallCapybara(bool home, const MatchPlayer& carrier)
   pressShadowSideStepCapybara.at(side) = stepCounter;
 }
 
+void MatchEngine::tallyKnockedCallCapybara(const MatchPlayer& player)
+{
+  if (player.fallen)
+  {
+    ++stats.callsSkippedFallen;
+  }
+  else if (player.stumbleSeconds > 0.0F || player.collisionPause > 0.0F)
+  {
+    ++stats.callsSlowedStumbling;
+  }
+}
+
 void MatchEngine::shadowPressCapybara(bool home, const MatchPlayer& carrier)
 {
   freshPressCallCapybara(home, carrier);
@@ -3660,7 +3688,11 @@ void MatchEngine::shadowPressCapybara(bool home, const MatchPlayer& carrier)
     {
       continue;
     }
-    const LooseCallCapybara call = pressCallCapybara(player, at);
+    // On the floor: not his (and no rival to anyone).
+    const LooseCallCapybara call = player.fallen
+                                       ? LooseCallCapybara::NOT_MINE
+                                       : pressCallCapybara(player, at);
+    tallyKnockedCallCapybara(player);
     pressCallsNowCapybara.at(playerIndexCapybara(player)) = call;
     if (call == LooseCallCapybara::MINE)
     {
@@ -3874,7 +3906,8 @@ MatchEngine::PressSecondCapybara MatchEngine::pressSecondCallCapybara(
     const MatchPlayer& player, Vector2F at) const
 {
   const std::size_t self = playerIndexCapybara(player);
-  if (!active(player) || player.isGoalkeeper || pressGoesCapybara(self))
+  if (!standingCapybara(player) || player.isGoalkeeper ||
+      pressGoesCapybara(self))
   {
     return PressSecondCapybara::NONE;
   }
@@ -4114,7 +4147,7 @@ void MatchEngine::noteLooseCallCapybara(
     float rival = std::numeric_limits<float>::max();
     for (const MatchPlayer& other : players)
     {
-      if (&other != &player && active(other) && !other.isGoalkeeper)
+      if (&other != &player && standingCapybara(other) && !other.isGoalkeeper)
       {
         rival = std::min(rival, roughSecondsCapybara(other, point.at));
       }
