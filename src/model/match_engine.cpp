@@ -5390,6 +5390,15 @@ void MatchEngine::resolveLooseBall(bool beforeLine)
         observePossessionGate(player, PossessionContactGate::BEHIND_REACH);
         continue;
       }
+      // Another player's body in his foot's way (shielding).
+      if (height <= lines.feet && binturong &&
+          touchShielded(player, {.x = start.x + (segment.x * along),
+                                 .y = start.y + (segment.y * along)}))
+      {
+        ++stats.touchesShielded;
+        observePossessionGate(player, PossessionContactGate::SHIELDED);
+        continue;
+      }
     }
     if (reach <= 0.0F || gap > reach)
     {
@@ -5879,6 +5888,8 @@ void MatchEngine::resolveLooseBall(bool beforeLine)
     // A contest that meets the carrier's foot too is a block (step 4).
     MatchPlayer* blockOwner = nullptr;
     bool blockCommitted = false;
+    // On the carrier's recovering foot: the touch his option chose.
+    const MatchPlayer* unopposedFrom = nullptr;
     if (hasTouchClaim())
     {
       if (possessionId == PossessionId::BINTURONG && (touchOwner != nullptr) &&
@@ -5910,6 +5921,10 @@ void MatchEngine::resolveLooseBall(bool beforeLine)
               blockOwner = owner;
               blockCommitted = meet == ContestMeet::BLOCK_COMMITTED;
             }
+            else
+            {
+              unopposedFrom = owner;
+            }
           }
         }
         else if (!hands && !player.isGoalkeeper &&
@@ -5925,6 +5940,20 @@ void MatchEngine::resolveLooseBall(bool beforeLine)
     {
       playBlock(player, *blockOwner, moment, blockCommitted);
       return;
+    }
+    // On the carrier's recovering foot, or a free ball of his: the tackle
+    // touch his option chose, played as its technique.
+    const MatchPlayer* touchFrom =
+        (freeBallFrom != nullptr) ? freeBallFrom : unopposedFrom;
+    if (touchFrom != nullptr && !hands &&
+        contact.height <= bodyLines(player).feet)
+    {
+      if (const auto touch = chooseTackleTouch(player, *touchFrom, moment,
+                                               freeBallFrom == nullptr))
+      {
+        playTackleTouch(player, moment, *touch);
+        return;
+      }
     }
     if ((freeBallFrom != nullptr) &&
         playTackleIntent(player, *freeBallFrom, moment))
@@ -7376,6 +7405,30 @@ bool MatchEngine::playTackleIntent(MatchPlayer& tackler,
   return false;
 }
 
+void MatchEngine::playTackleTouch(MatchPlayer& tackler,
+                                  const TouchMoment& moment,
+                                  const TackleTouch& touch)
+{
+  // Tackle techniques plan: control is his first touch as it would be;
+  // a poke or a step-in is his touch weighted to its spot, with its own
+  // contact kind and his Tackling.
+  ++stats.tackleTouches.at(static_cast<std::size_t>(touch.technique));
+  if (touch.technique == TackleTechnique::CONTROL)
+  {
+    playFirstTouch(tackler, moment);
+    return;
+  }
+  TouchIntent intent = chooseFirstTouch(tackler, moment);
+  intent.kind = TouchIntent::Kind::SET;
+  intent.targetSpot = touch.spot;
+  intent.arrivalSpeed = touch.arrivalSpeed;
+  intent.liftSpeed = 0.0F;
+  intent.knockOn = false;
+  intent.plannedSeconds = 0.0F;
+  intent.tackle = touch.technique;
+  playFirstTouch(tackler, moment, &intent);
+}
+
 void MatchEngine::playFirstTouch(MatchPlayer& player, const TouchMoment& moment,
                                  const TouchIntent* forced)
 {
@@ -8232,7 +8285,9 @@ bool MatchEngine::waitPlayableNextSubstep(const MatchPlayer& player,
   {
     return false;
   }
-  return !ballBehindReach(player, gapX, gapY, gap);
+  return !ballBehindReach(player, gapX, gapY, gap) &&
+         !touchShielded(player, {.x = start.x + (segment.x * along),
+                                 .y = start.y + (segment.y * along)});
 }
 
 void MatchEngine::noteWaitChosen(std::size_t slot, float stepSeconds)

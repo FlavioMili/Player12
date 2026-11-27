@@ -637,16 +637,34 @@
   [[nodiscard]] TackleIntent tackleIntentRuleCapybara(
       const MatchPlayer& tackler, const MatchPlayer& attacker,
       PitchPoint contact, bool freeBall) const;
-  /** The intent his "go in" option carried (step K), held to the contact:
-   * this player, this step, this contact point. */
+  /** His "go in" option (step K), held to the contact: this player, this
+   * step, this contact point. What it is for (the intent) and how his foot
+   * plays it (the tackle touch: control, a poke or a step-in). */
   struct HeldTackleCapybara
   {
     PlayerID player = 0;
     std::uint64_t step = 0;
     PitchPoint contact{};
     TackleIntent intent = TackleIntent::WIN;
+    TackleTouch touch{};
   };
   std::optional<HeldTackleCapybara> heldTackleCapybara;
+  /** The held option, if it is this player's at this contact this step. */
+  [[nodiscard]] const HeldTackleCapybara* heldTackleForCapybara(
+      const MatchPlayer& tackler, PitchPoint contact) const;
+  /** The poke option (step K): up-field, along the line that best puts it
+   * nearer his side than theirs; control when no poke is open. */
+  [[nodiscard]] TackleTouch pokeOptionCapybara(const MatchPlayer& defender,
+                                               const MatchPlayer& owner,
+                                               PitchPoint contact) const;
+  /** The step-in (the press's third choice): open from the carrier's side
+   * or a diagonal and close; where his body goes, into the gap between the
+   * carrier and his ball. */
+  [[nodiscard]] std::optional<PitchPoint> stepInPointCapybara(
+      const MatchPlayer& tackler, const MatchPlayer& carrier) const;
+  std::optional<TackleTouch> chooseTackleTouchCapybara(
+      MatchPlayer& tackler, const MatchPlayer& owner,
+      const TouchMoment& moment, bool contest);
   TackleIntent chooseTackleIntentCapybara(const MatchPlayer& tackler,
                                            const MatchPlayer& attacker,
                                            PitchPoint contact, bool freeBall);

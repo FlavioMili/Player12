@@ -3058,12 +3058,27 @@ ContactResult MatchEngine::contactBinturong(const MatchPlayer& player,
   }
   // A touch on receiving the ball is his First Touch; a touch on his own
   // ball, dribbling it, is his Dribbling.
-  result.skill = strike ? strikeSkillBinturong(player, request.strike)
-                 : request.kind == ContactRequest::Kind::DRIBBLE_TOUCH
-                     ? player.dribbling
-                 : request.kind == ContactRequest::Kind::BLOCK
-                     ? player.derivedStat(DerivedStat::TACKLING)
-                     : player.derivedStat(DerivedStat::FIRST_TOUCH);
+  // A block, poke or step-in touch is his Tackling.
+  const auto touchSkill = [&]() -> float
+  {
+    switch (request.kind)
+    {
+      case ContactRequest::Kind::DRIBBLE_TOUCH:
+        return player.dribbling;
+      case ContactRequest::Kind::BLOCK:
+      case ContactRequest::Kind::POKE:
+      case ContactRequest::Kind::STEP_IN:
+        return player.derivedStat(DerivedStat::TACKLING);
+      case ContactRequest::Kind::FIRST_TOUCH:
+      case ContactRequest::Kind::CHEST_TOUCH:
+      case ContactRequest::Kind::THIGH_TOUCH:
+      case ContactRequest::Kind::STRIKE:
+        break;
+    }
+    return player.derivedStat(DerivedStat::FIRST_TOUCH);
+  };
+  result.skill =
+      strike ? strikeSkillBinturong(player, request.strike) : touchSkill();
   result.outcome =
       carryOutContactBinturong(player, profile, result.contact, result.skill);
   // ...and the error can't take it below that: a light miss comes off at it.
@@ -3982,8 +3997,20 @@ TouchResult MatchEngine::firstTouchBinturong(const MatchPlayer& player,
   // The touch is a contact with the touch profile, carried out with his
   // First Touch (his Dribbling for his own ball).
   ContactRequest request;
-  request.kind = ownBall ? ContactRequest::Kind::DRIBBLE_TOUCH
-                         : ContactRequest::Kind::FIRST_TOUCH;
+  // A tackle touch is its technique's contact.
+  request.kind = ContactRequest::Kind::FIRST_TOUCH;
+  if (ownBall)
+  {
+    request.kind = ContactRequest::Kind::DRIBBLE_TOUCH;
+  }
+  else if (intent.tackle == TackleTechnique::POKE)
+  {
+    request.kind = ContactRequest::Kind::POKE;
+  }
+  else if (intent.tackle == TackleTechnique::STEP_IN)
+  {
+    request.kind = ContactRequest::Kind::STEP_IN;
+  }
   request.aim = aim;
   request.speed = intendedSpeed;
   request.lift = intent.liftSpeed;
@@ -9828,6 +9855,173 @@ bool MatchEngine::dribbleTouchNeededEarlyBinturong(const MatchPlayer& player,
     }
   }
   return false;
+}
+
+MatchEngine::PokeRead MatchEngine::pokeReadBinturong(const MatchPlayer& owner,
+                                                     PitchPoint contact,
+                                                     Vector2F aim) const
+{
+  // Tackle techniques plan, the poke: along `aim`, how far until the ball
+  // is clear of the carrier's reach (by the margin) where he will be when
+  // his foot recovers (at least a step on), and the pace that takes. The
+  // hardest poke is his touch's top speed for now.
+  using D = MatchTuning::Defending;
+  PokeRead read;
+  read.maxLaunchSpeed = touchKnobs[TouchKnob::MAX_TOUCH_SPEED];
+  const float recovery = std::max({ball.ownTouchCooldown, owner.footCooldown,
+                                   MatchTuning::Timing::FIXED_STEP_SECONDS});
+  const Vector2F fromOwner{
+      .x = contact.x - (owner.position.x + (owner.velocity.x * recovery)),
+      .y = contact.y - (owner.position.y + (owner.velocity.y * recovery))};
+  const float clear = feetReach(owner) + D::POKE_CLEAR_MARGIN_METRES;
+  const float along = (fromOwner.x * aim.x) + (fromOwner.y * aim.y);
+  const float inside = (clear * clear) - ((fromOwner.x * fromOwner.x) +
+                                          (fromOwner.y * fromOwner.y));
+  read.metres =
+      inside > 0.0F ? -along + std::sqrt((along * along) + inside) : 0.0F;
+  read.arrivalSpeed = read.metres / recovery;
+  read.launchSpeed = read.metres > EPSILON
+                         ? groundLaunchSpeed(read.metres, read.arrivalSpeed)
+                         : 0.0F;
+  return read;
+}
+
+bool MatchEngine::stepInAngleOpenBinturong(const MatchPlayer& tackler,
+                                           const MatchPlayer& carrier) const
+{
+  // Tackle techniques plan, the step-in: from the carrier's side or a
+  // diagonal. His bearing off the carrier's line (the carrier's run, or
+  // barely moving, from him to the ball) is neither straight in front nor
+  // straight behind.
+  using D = MatchTuning::Defending;
+  const Vector2F toHim{.x = tackler.position.x - carrier.position.x,
+                       .y = tackler.position.y - carrier.position.y};
+  const float apart = length(toHim);
+  const float speed = length(carrier.velocity);
+  const Vector2F line = speed > MatchTuning::Ball::STOP_SPEED
+                            ? Vector2F{.x = carrier.velocity.x / speed,
+                                       .y = carrier.velocity.y / speed}
+                            : metricDirection(carrier.position, ball.position);
+  if (apart <= EPSILON || length(line) <= EPSILON)
+  {
+    return false;
+  }
+  const float bearing =
+      std::acos(std::clamp(((line.x * toHim.x) + (line.y * toHim.y)) / apart,
+                           -1.0F, 1.0F)) *
+      180.0F / std::numbers::pi_v<float>;
+  return bearing >= D::STEP_IN_MIN_DEGREES && bearing <= D::STEP_IN_MAX_DEGREES;
+}
+
+std::optional<TackleTouch> MatchEngine::stepInTouchBinturong(
+    const MatchPlayer& tackler, const MatchPlayer& owner, PitchPoint contact,
+    PitchPoint bodyTarget) const
+{
+  // Tackle techniques plan, the step-in touch, during his move across: by
+  // the time the carrier's foot can next play it (his recovery, at least a
+  // step on), where will the tackler be (toward `bodyTarget` at his pace,
+  // at least a quick step) and the carrier (on his run)? The spot just
+  // beyond the tackler's body on the line from the carrier is in his
+  // shadow then. The touch: soft, stopping there, if that has it in the
+  // shadow by then; else firmer, there by then; none if that is beyond his
+  // poke, or its way goes through the carrier's body, or his angle is not
+  // a step-in's.
+  using D = MatchTuning::Defending;
+  constexpr float RADIUS = MatchTuning::Body::RADIUS_METRES;
+  if (!stepInAngleOpenBinturong(tackler, owner))
+  {
+    return std::nullopt;
+  }
+  const float seconds = std::max({ball.ownTouchCooldown, owner.footCooldown,
+                                  MatchTuning::Timing::FIXED_STEP_SECONDS});
+  const Vector2F toTarget{.x = bodyTarget.x - tackler.position.x,
+                          .y = bodyTarget.y - tackler.position.y};
+  const float targetGap = length(toTarget);
+  const float moved = std::min(
+      targetGap,
+      std::max(length(tackler.velocity), D::STEP_IN_STEP_SPEED) * seconds);
+  const PitchPoint him =
+      targetGap > EPSILON
+          ? PitchPoint{tackler.position.x + (toTarget.x / targetGap * moved),
+                       tackler.position.y + (toTarget.y / targetGap * moved)}
+          : tackler.position;
+  const PitchPoint carrierAt{owner.position.x + (owner.velocity.x * seconds),
+                             owner.position.y + (owner.velocity.y * seconds)};
+  const Vector2F away = metricDirection(carrierAt, him);
+  if (length(away) <= EPSILON)
+  {
+    return std::nullopt;
+  }
+  const float beyond =
+      RADIUS + MatchTuning::Units::BALL_RADIUS_METRES + D::STEP_IN_GAP_METRES;
+  const PitchPoint spot = clampToPitch(
+      PitchPoint{him.x + (away.x * beyond), him.y + (away.y * beyond)});
+  const Vector2F path{.x = spot.x - contact.x, .y = spot.y - contact.y};
+  const float metres = length(path);
+  // Clear of the carrier's body on its way.
+  const auto nearestOnPath = [&](PitchPoint point)
+  {
+    const float share = metres > EPSILON
+                            ? std::clamp((((point.x - contact.x) * path.x) +
+                                          ((point.y - contact.y) * path.y)) /
+                                             (metres * metres),
+                                         0.0F, 1.0F)
+                            : 0.0F;
+    return PitchPoint{contact.x + (path.x * share),
+                      contact.y + (path.y * share)};
+  };
+  if (distance(owner.position, nearestOnPath(owner.position)) <
+      RADIUS + MatchTuning::Units::BALL_RADIUS_METRES)
+  {
+    return std::nullopt;
+  }
+  // In his shadow at that moment: the carrier's line to it through his
+  // body, his body between.
+  const auto shadowed = [&](PitchPoint ballAt)
+  {
+    const Vector2F line{.x = ballAt.x - carrierAt.x,
+                        .y = ballAt.y - carrierAt.y};
+    const float lineSquared = (line.x * line.x) + (line.y * line.y);
+    if (lineSquared <= EPSILON)
+    {
+      return false;
+    }
+    const float share =
+        (((him.x - carrierAt.x) * line.x) + ((him.y - carrierAt.y) * line.y)) /
+        lineSquared;
+    if (share <= 0.0F || share >= 1.0F)
+    {
+      return false;
+    }
+    return std::hypot(him.x - (carrierAt.x + (line.x * share)),
+                      him.y - (carrierAt.y + (line.y * share))) < RADIUS;
+  };
+  TackleTouch touch{.technique = TackleTechnique::STEP_IN,
+                    .spot = spot,
+                    .arrivalSpeed = 0.0F};
+  if (metres <= EPSILON)
+  {
+    return touch;
+  }
+  // Soft: rolling to a stop there (as if at an even slowing), where is it
+  // by then?
+  const float softLaunch = groundLaunchSpeed(metres, 0.0F);
+  const float slowing = (softLaunch * softLaunch) / (2.0F * metres);
+  const float rolled = std::min(
+      metres, (softLaunch * seconds) - (0.5F * slowing * seconds * seconds));
+  if (shadowed(PitchPoint{contact.x + (path.x / metres * rolled),
+                          contact.y + (path.y / metres * rolled)}))
+  {
+    return touch;
+  }
+  // Firmer: there by then.
+  touch.arrivalSpeed = metres / seconds;
+  if (groundLaunchSpeed(metres, touch.arrivalSpeed) >
+      touchKnobs[TouchKnob::MAX_TOUCH_SPEED])
+  {
+    return std::nullopt;
+  }
+  return touch;
 }
 
 PitchPoint MatchEngine::tackleNudgeSpotBinturong(const MatchPlayer& tackler,

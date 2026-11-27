@@ -2221,6 +2221,24 @@ struct MatchTuning final
     /** Within this of the attacker's line he is dead centre: the side is
      * his weaker foot's (placeholder). */
     static constexpr float NUDGE_CENTRE_METRES = 0.2F;
+    /** Tackle techniques (tackle techniques plan, 2026-11-27; our
+     * estimates). A poke clears the carrier's reach by this much (the
+     * ball's radius, Units::BALL_RADIUS_METRES: all of it out); the brain
+     * aims it up-field, within this either side of straight (degrees),
+     * tried in these steps, at least hard enough to roll this far. */
+    static constexpr float POKE_CLEAR_MARGIN_METRES = 0.11F;
+    static constexpr float POKE_AIM_SPREAD_DEGREES = 75.0F;
+    static constexpr float POKE_AIM_STEP_DEGREES = 15.0F;
+    static constexpr float POKE_ROLL_METRES = 3.0F;
+    /** A step-in: from the carrier's side or a diagonal, his bearing this
+     * far off the carrier's line (degrees; not straight in front, not
+     * straight behind); the brain starts one within the carrier's reach
+     * and a body width. His step across goes at least this fast (m/s, a
+     * quick step); the ball ends this far beyond his body. */
+    static constexpr float STEP_IN_MIN_DEGREES = 30.0F;
+    static constexpr float STEP_IN_MAX_DEGREES = 150.0F;
+    static constexpr float STEP_IN_STEP_SPEED = 2.0F;
+    static constexpr float STEP_IN_GAP_METRES = 0.05F;
     /** The block (tackling plan step 4; placeholders tried 2026-10-27). A
      * push: the pace his foot would give it unopposed, by Tackling. */
     static constexpr float BLOCK_PUSH_POOR = 4.0F;

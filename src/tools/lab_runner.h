@@ -160,6 +160,11 @@ struct MatchSample
   int blocks = 0;
   int blocks_committed = 0;
   int blocks_popped = 0;
+  /** Feet touches a body was in the way of (shielding), step-ins started,
+   * and tackle touches by technique: control, poke, step-in. */
+  int touches_shielded = 0;
+  int step_in_moves = 0;
+  std::array<int, 3> tackle_touches{};
   /** Open-play shots blocked by a Binturong body, those off a leg, and
    * those off a leg he put there (a reaction block). */
   int shot_body_blocks = 0;

@@ -329,6 +329,7 @@ enum class PossessionContactGate : std::uint8_t
   KEEPER_NOT_READY,
   OUT_OF_REACH,
   BEHIND_REACH,
+  SHIELDED,
   PHYSICAL_RECOVERY
 };
 
@@ -360,6 +361,8 @@ constexpr std::string_view possessionGateName(PossessionContactGate gate)
       return "outside-contact-reach";
     case PossessionContactGate::BEHIND_REACH:
       return "behind-contact-reach";
+    case PossessionContactGate::SHIELDED:
+      return "shielded-by-a-body";
     case PossessionContactGate::PHYSICAL_RECOVERY:
       return "trapping-airborne-fallen-or-diving";
   }

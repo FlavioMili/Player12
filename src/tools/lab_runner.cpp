@@ -237,6 +237,9 @@ void extractEngine(MatchSample& sample, const MatchEngine& engine)
   sample.blocks = stats.homeBlocks + stats.awayBlocks;
   sample.blocks_committed = stats.blocksCommitted;
   sample.blocks_popped = stats.blocksPoppedUp;
+  sample.touches_shielded = stats.touchesShielded;
+  sample.step_in_moves = stats.stepInMoves;
+  sample.tackle_touches = stats.tackleTouches;
   for (const int count : stats.shotBlocksByPart)
   {
     sample.shot_body_blocks += count;
@@ -1574,6 +1577,19 @@ std::map<std::string, Estimate> matchMetrics(
                             { return static_cast<double>(s.*field); }));
   };
   perMatch("collision_big_hits_per_match", &MatchSample::collision_big_hits);
+  perMatch("touches_shielded_per_match", &MatchSample::touches_shielded);
+  perMatch("step_in_moves_per_match", &MatchSample::step_in_moves);
+  {
+    const std::array<const char*, 3> names{"tackle_touch_control_per_match",
+                                           "tackle_touch_poke_per_match",
+                                           "tackle_touch_step_in_per_match"};
+    for (std::size_t technique = 0; technique < names.size(); ++technique)
+    {
+      metrics[names.at(technique)] = meanEstimate(column(
+          [technique](const MatchSample& s)
+          { return static_cast<double>(s.tackle_touches.at(technique)); }));
+    }
+  }
   perMatch("collision_falls_losing_ball_per_match",
            &MatchSample::collision_falls_losing_ball);
   perMatch("collision_down_play_seconds_per_match",

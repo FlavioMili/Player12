@@ -1982,6 +1982,21 @@ void MatchEngine::refreshTacticalTargetsCapybara(float dt, bool planHome)
         targetVelocity = carrier->velocity;
         pinned = true;
         job = planJob(PlanBranch::PRESS);
+        // The step-in: from the carrier's side or a diagonal, close, his
+        // body into the gap between the carrier and his ball, moving with
+        // him (stepInPointCapybara); his touch comes during it.
+        if (!touchAway)
+        {
+          if (const auto gap = stepInPointCapybara(player, *carrier))
+          {
+            target = *gap;
+            job = planJob(PlanBranch::PRESS, 2);
+            if (player.plannedJob != job)
+            {
+              ++stats.stepInMoves;
+            }
+          }
+        }
         // The pounce: with the ball out of the carrier's reach, he goes for
         // where he can meet it on its roll, when he gets there no later
         // than the carrier (design choice: the same rough meet for both).
@@ -5713,6 +5728,26 @@ bool MatchEngine::goesIntoContestCapybara(const MatchPlayer& defender,
   // him" order or with cover; higher as the last man or in his own box.
   // Free with no touch due is no cue at all: a defender who reads it right
   // holds, however hard his side presses.
+  // Stepping in (the press's third choice), on the carrier's recovering
+  // foot: in as soon as a touch can put the ball where his shadow will be
+  // as he moves across (the body's step-in touch).
+  const bool steppingIn =
+      defender.plannedJob == planJob(PlanBranch::PRESS, 2) &&
+      std::max(ball.ownTouchCooldown, owner.footCooldown) > 1e-4F;
+  if (steppingIn && defender.player != nullptr)
+  {
+    if (const auto touch =
+            stepInTouch(defender, owner, contact, defender.plannedTarget))
+    {
+      heldTackleCapybara =
+          HeldTackleCapybara{.player = defender.player->getId(),
+                             .step = stepCounter,
+                             .contact = contact,
+                             .intent = TackleIntent::WIN,
+                             .touch = *touch};
+      return true;
+    }
+  }
   using D = MatchTuning::Defending;
   using R = MatchTuning::Dribble;
   const float judgement = std::clamp(
@@ -5777,13 +5812,146 @@ bool MatchEngine::goesIntoContestCapybara(const MatchPlayer& defender,
   }
   if (goes && defender.player != nullptr)
   {
+    // How his foot plays it on the recovering foot: to win or clear it, a
+    // poke when one is open; else control (stopgap pick).
+    const TackleIntent intent =
+        tackleIntentRuleCapybara(defender, owner, contact, false);
     heldTackleCapybara = HeldTackleCapybara{
         .player = defender.player->getId(),
         .step = stepCounter,
         .contact = contact,
-        .intent = tackleIntentRuleCapybara(defender, owner, contact, false)};
+        .intent = intent,
+        .touch = intent == TackleIntent::CONTROL
+                     ? TackleTouch{}
+                     : pokeOptionCapybara(defender, owner, contact)};
   }
   return goes;
+}
+
+const MatchEngine::HeldTackleCapybara* MatchEngine::heldTackleForCapybara(
+    const MatchPlayer& tackler, PitchPoint contact) const
+{
+  if (!heldTackleCapybara || tackler.player == nullptr ||
+      heldTackleCapybara->player != tackler.player->getId() ||
+      heldTackleCapybara->step != stepCounter ||
+      heldTackleCapybara->contact.x != contact.x ||
+      heldTackleCapybara->contact.y != contact.y)
+  {
+    return nullptr;
+  }
+  return &*heldTackleCapybara;
+}
+
+TackleTouch MatchEngine::pokeOptionCapybara(const MatchPlayer& defender,
+                                            const MatchPlayer& owner,
+                                            PitchPoint contact) const
+{
+  // Step K's poke: up-field (away from his own goal), along the line that
+  // best puts it nearer his side than theirs (a team-mate, space to chase,
+  // or just away), as hard as clearing the carrier's reach in time takes
+  // (the body's read), and at least a roll of POKE_ROLL_METRES; open
+  // within his hardest poke. None open: control.
+  using D = MatchTuning::Defending;
+  constexpr float STEP = MatchTuning::Timing::FIXED_STEP_SECONDS;
+  const float recovery =
+      std::max({ball.ownTouchCooldown, owner.footCooldown, STEP});
+  const PitchPoint ownerAt{owner.position.x + (owner.velocity.x * recovery),
+                           owner.position.y + (owner.velocity.y * recovery)};
+  const PitchPoint defenderAt{
+      defender.position.x + (defender.velocity.x * STEP),
+      defender.position.y + (defender.velocity.y * STEP)};
+  const float upField = defender.isHomeTeam ? 1.0F : -1.0F;
+  const float rollLaunch = groundLaunchSpeed(D::POKE_ROLL_METRES, 0.0F);
+  const auto sideMargin = [&](PitchPoint point)
+  {
+    float theirs = distance(ownerAt, point);
+    float ours = distance(defenderAt, point);
+    for (const MatchPlayer& other : players)
+    {
+      if (!active(other) || &other == &owner || &other == &defender)
+      {
+        continue;
+      }
+      float& nearest = other.isHomeTeam == defender.isHomeTeam ? ours : theirs;
+      nearest = std::min(nearest, distance(other.position, point));
+    }
+    return theirs - ours;
+  };
+  TackleTouch best;
+  float bestMargin = -std::numeric_limits<float>::max();
+  const int steps = static_cast<int>(
+      std::lround(D::POKE_AIM_SPREAD_DEGREES / D::POKE_AIM_STEP_DEGREES));
+  for (int index = -steps; index <= steps; ++index)
+  {
+    const float angle = static_cast<float>(index) * D::POKE_AIM_STEP_DEGREES *
+                        std::numbers::pi_v<float> / 180.0F;
+    const Vector2F aim{.x = upField * std::cos(angle), .y = std::sin(angle)};
+    const PokeRead read = pokeRead(owner, contact, aim);
+    const bool roll = rollLaunch >= read.launchSpeed;
+    if ((roll ? rollLaunch : read.launchSpeed) > read.maxLaunchSpeed)
+    {
+      continue;
+    }
+    const float out = roll ? D::POKE_ROLL_METRES : read.metres;
+    const float margin = sideMargin(clampToPitch(
+        PitchPoint{contact.x + (aim.x * std::max(out, D::POKE_ROLL_METRES)),
+                   contact.y + (aim.y * std::max(out, D::POKE_ROLL_METRES))}));
+    if (margin > bestMargin)
+    {
+      bestMargin = margin;
+      best = TackleTouch{
+          .technique = TackleTechnique::POKE,
+          .spot = clampToPitch(
+              PitchPoint{contact.x + (aim.x * out), contact.y + (aim.y * out)}),
+          .arrivalSpeed = roll ? 0.0F : read.arrivalSpeed};
+    }
+  }
+  return best;
+}
+
+std::optional<PitchPoint> MatchEngine::stepInPointCapybara(
+    const MatchPlayer& tackler, const MatchPlayer& carrier) const
+{
+  // The step-in: open when the body allows it from his angle (the side or
+  // a diagonal) and he is within the carrier's reach and a body width; his
+  // body goes into the gap between the carrier and his ball (on that line,
+  // at the ball or a body width out), barging him if it is narrow.
+  if (!ballInReach(carrier) || !stepInAngleOpen(tackler, carrier) ||
+      distance(tackler.position, carrier.position) >
+          feetReach(carrier) + MatchTuning::Body::DIAMETER_METRES)
+  {
+    return std::nullopt;
+  }
+  const Vector2F toBall = metricDirection(carrier.position, ball.position);
+  const float out = std::max(distance(carrier.position, ball.position),
+                             MatchTuning::Body::DIAMETER_METRES);
+  return clampToPitch(PitchPoint{carrier.position.x + (toBall.x * out),
+                                 carrier.position.y + (toBall.y * out)});
+}
+
+std::optional<TackleTouch> MatchEngine::chooseTackleTouchCapybara(
+    MatchPlayer& tackler, const MatchPlayer& owner, const TouchMoment& moment,
+    bool contest)
+{
+  // A contest on the recovering foot: the touch his option carried. A
+  // free ball of the carrier's while he steps in: the step-in touch when
+  // the body has one; else his intent's way.
+  if (contest)
+  {
+    const HeldTackleCapybara* held =
+        heldTackleForCapybara(tackler, moment.contactPoint);
+    if (held == nullptr)
+    {
+      return std::nullopt;
+    }
+    return held->touch;
+  }
+  if (tackler.plannedJob != planJob(PlanBranch::PRESS, 2))
+  {
+    return std::nullopt;
+  }
+  return stepInTouch(tackler, owner, moment.contactPoint,
+                     tackler.plannedTarget);
 }
 
 TackleIntent MatchEngine::chooseTackleIntentCapybara(
@@ -5791,15 +5959,10 @@ TackleIntent MatchEngine::chooseTackleIntentCapybara(
     bool freeBall)
 {
   // A contest he went into: the intent his option carried (step K), once.
-  if (!freeBall && heldTackleCapybara && tackler.player != nullptr &&
-      heldTackleCapybara->player == tackler.player->getId() &&
-      heldTackleCapybara->step == stepCounter &&
-      heldTackleCapybara->contact.x == contact.x &&
-      heldTackleCapybara->contact.y == contact.y)
+  if (const HeldTackleCapybara* held =
+          freeBall ? nullptr : heldTackleForCapybara(tackler, contact))
   {
-    const TackleIntent intent = heldTackleCapybara->intent;
-    heldTackleCapybara.reset();
-    return intent;
+    return held->intent;
   }
   // A free ball outside the carrier's reach (step K's free-ball way in):
   // going for it and what for are the same moment, decided here.

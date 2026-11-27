@@ -427,6 +427,21 @@ bool MatchEngine::goesIntoContest(MatchPlayer& defender,
   return defender.goingIn;
 }
 
+std::optional<TackleTouch> MatchEngine::chooseTackleTouch(
+    MatchPlayer& tackler, const MatchPlayer& owner, const TouchMoment& moment,
+    bool contest)
+{
+  switch (brainOf(tackler.isHomeTeam))
+  {
+    case BrainId::AARDVARK:
+    case BrainId::BINTURONG:
+      break;
+    case BrainId::CAPYBARA:
+      return chooseTackleTouchCapybara(tackler, owner, moment, contest);
+  }
+  return std::nullopt;
+}
+
 TackleIntent MatchEngine::chooseTackleIntent(const MatchPlayer& tackler,
                                              const MatchPlayer& attacker,
                                              PitchPoint contact, bool freeBall)

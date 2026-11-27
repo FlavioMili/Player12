@@ -1216,7 +1216,10 @@ constexpr std::array<Situation, 20> SITUATIONS = {{
          "commit on it (step P3: the loose ball's stage; a new carrier is a "
          "fresh call, a loose-ball commitment carries over); the second man "
          "(step P4: whoever a call stood down, else the quickest of those "
-         "not going; nobody while two go). "
+         "not going; nobody while two go). The first man's choices: stand "
+         "off (squeezed when the moment is his), step in (from the side or "
+         "a diagonal, close: into the gap between carrier and ball), pounce "
+         "(the touch out of the carrier's reach). "
          "Body (facing plan step 1): goal-side of the ball he faces it; a "
          "run or sprint job turns him to run when it asks more than he "
          "manages facing it (back to facing under 80%); a chase, a run, a "
@@ -1232,10 +1235,16 @@ constexpr std::array<Situation, 20> SITUATIONS = {{
          "its own frame (step K), three ways in. The engage roll "
          "(chooseChallenge, the older model): hold, tackle, slide in. The "
          "contest (goesIntoContest: the cue he reads against his bar): hold, "
-         "go in to win it, go in to clear it; the intent carried by the "
-         "option to the contact. A free ball outside the carrier's reach "
-         "(chooseTackleIntent): control, clear or win it. Go in to pass it "
-         "listed, not judged. Stopgap picks (follow-up: measures)",
+         "go in to win it, go in to clear it; the option carries the intent "
+         "and its touch on the recovering foot to the contact: control, or a "
+         "poke up-field clear of his reach (the line best for his side). "
+         "Stepping in (the press's third choice: from the side or a "
+         "diagonal, his body into the carrier's gap), he goes in as soon as "
+         "the body has a step-in touch, to where his shadow will be as he "
+         "moves across. A free ball outside the carrier's reach "
+         "(chooseTackleIntent): control, clear or win it; stepping in, the "
+         "step-in touch. Go in to pass it listed, not judged. Stopgap picks "
+         "(follow-up: measures)",
      .layers = SLIDERS | ORDERS,
      .plannerWide = false,
      .onFrame = false,

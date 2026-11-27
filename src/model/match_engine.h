@@ -556,6 +556,27 @@ struct TouchlinePerson
 
 /** What a first touch tries to do (first-touch plan): send the ball to
  * `targetSpot` (metres), arriving at `arrivalSpeed` m/s. */
+/** How a tackler's foot plays the carrier's ball (tackle techniques plan,
+ * 2026-11-27): his first touch (control); a poke, hit to leave the
+ * carrier's reach before his foot recovers; a step-in, touched to where his
+ * body's shadow will be as he moves across the carrier. */
+enum class TackleTechnique : std::uint8_t
+{
+  CONTROL,
+  POKE,
+  STEP_IN,
+  COUNT,
+};
+
+/** A tackle touch: the technique, where it should go and how fast it
+ * should get there (m/s; 0, stopping there). */
+struct TackleTouch
+{
+  TackleTechnique technique = TackleTechnique::CONTROL;
+  PitchPoint spot{0.0F, 0.0F};
+  float arrivalSpeed = 0.0F;
+};
+
 struct TouchIntent
 {
   enum class Kind : std::uint8_t
@@ -583,6 +604,9 @@ struct TouchIntent
   /** A dribble touch: how long until he means to play it again (s; 0,
    * none: the next touch is due as soon as it is needed). */
   float plannedSeconds = 0.0F;
+  /** A tackle touch's technique: its contact kind, played with his
+   * Tackling (control: an ordinary first touch). */
+  TackleTechnique tackle = TackleTechnique::CONTROL;
 };
 
 /** A loose ball in a player's reach during one ball sub-step: where it is
@@ -1204,6 +1228,10 @@ struct ContactRequest
     /** A foot through the ball in a block (tackling plan step 4): the
      * touch profile, carried out with his Tackling. */
     BLOCK,
+    /** Tackle techniques (tackle techniques plan): a poke and a step-in
+     * touch, the touch profile for now, carried out with his Tackling. */
+    POKE,
+    STEP_IN,
   };
   Kind kind = Kind::FIRST_TOUCH;
   StrikeKind strike = StrikeKind::GROUND_PASS;
@@ -1639,6 +1667,12 @@ struct MatchStats
   int awayBlocks = 0;
   int blocksCommitted = 0;
   int blocksPoppedUp = 0;
+  /** Feet touches a body was in the way of (shielding), contact checks;
+   * pressers starting a step-in; tackle touches by technique. */
+  int touchesShielded = 0;
+  int stepInMoves = 0;
+  std::array<int, static_cast<std::size_t>(TackleTechnique::COUNT)>
+      tackleTouches{};
   /** Open-play shots blocked by a Binturong body, by what they met
    * (ShotBodyPart: torso, thigh, shin, foot). */
   std::array<int, static_cast<std::size_t>(ShotBodyPart::COUNT)>
@@ -4428,6 +4462,17 @@ class MatchEngine
   TackleIntent chooseTackleIntent(const MatchPlayer& tackler,
                                   const MatchPlayer& attacker,
                                   PitchPoint contact, bool freeBall);
+  /** A tackle on the carrier's ball (a contest on his recovering foot, or
+   * a free ball he lost behind a body or out of reach): the touch the
+   * tackler's option chose; none, the engine's own way (his intent). */
+  std::optional<TackleTouch> chooseTackleTouch(MatchPlayer& tackler,
+                                               const MatchPlayer& owner,
+                                               const TouchMoment& moment,
+                                               bool contest);
+  /** Plays a tackle touch: his first touch weighted to its spot, as its
+   * technique. */
+  void playTackleTouch(MatchPlayer& tackler, const TouchMoment& moment,
+                       const TackleTouch& touch);
   /** First touch: whether he plays the ball now or lets it come closer
    * (asked every ball sub-step it is in his reach). */
   bool touchNow(const MatchPlayer& player, const TouchMoment& moment);
@@ -5661,6 +5706,38 @@ class MatchEngine
   /** Whether he could play the ball where it is now: within his feet reach
    * and not behind him beyond it (his foot could be on it). */
   bool ballInReach(const MatchPlayer& player) const;
+  /** Whether another player's body is in the way of his foot to a ball at
+   * `ballAt` (shielding): the line from his centre to it passes through
+   * that body. Only a Binturong outfielder's feet are so blocked. */
+  bool touchShielded(const MatchPlayer& toucher, Vector2F ballAt) const;
+  /** The body in his foot's way to `ballAt`, if any (touchShielded). */
+  const MatchPlayer* touchShieldedBy(const MatchPlayer& toucher,
+                                     Vector2F ballAt) const;
+  /** What a poke along `aim` takes (tackle techniques plan): how far it
+   * must go to leave the carrier's reach before his foot recovers, the
+   * pace to be there by then, the launch pace that needs, and the hardest
+   * a poke can be (0: none; the carrier's body's reach decides). */
+  struct PokeRead
+  {
+    float metres = 0.0F;
+    float arrivalSpeed = 0.0F;
+    float launchSpeed = 0.0F;
+    float maxLaunchSpeed = 0.0F;
+  };
+  PokeRead pokeRead(const MatchPlayer& owner, PitchPoint contact,
+                    Vector2F aim) const;
+  /** Whether his angle on the carrier allows a step-in: from the side or a
+   * diagonal, not straight in front or behind. */
+  bool stepInAngleOpen(const MatchPlayer& tackler,
+                       const MatchPlayer& carrier) const;
+  /** A step-in touch from `contact` as his body moves toward
+   * `bodyTarget`: to where his shadow from the carrier will be when the
+   * carrier's foot can next play it, if a touch gets it there in time and
+   * clear of the carrier's body. */
+  std::optional<TackleTouch> stepInTouch(const MatchPlayer& tackler,
+                                         const MatchPlayer& owner,
+                                         PitchPoint contact,
+                                         PitchPoint bodyTarget) const;
   /** The lowest and highest head lines of the outfielders on the pitch:
    * above the lowest the ball is a header for someone, above the highest
    * for everyone. */
