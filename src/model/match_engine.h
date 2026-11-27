@@ -1371,6 +1371,15 @@ struct MatchPossessionState
   PitchPoint passTarget{MatchTuning::Pitch::MATCH_CENTRE_X_METRES,
                         MatchTuning::Pitch::MATCH_CENTRE_Y_METRES};
   bool passByHome = false;
+  /** A pass gone loose (Binturong possession): where it was struck from and
+   * the spot the passer chose for its receiver; marked loose once it is
+   * off target or has run past that spot (updatePassGoneLoose). The pass
+   * itself stands (completion, offside); the brain reads this. */
+  PitchPoint passFrom{MatchTuning::Pitch::MATCH_CENTRE_X_METRES,
+                      MatchTuning::Pitch::MATCH_CENTRE_Y_METRES};
+  PitchPoint passSpot{MatchTuning::Pitch::MATCH_CENTRE_X_METRES,
+                      MatchTuning::Pitch::MATCH_CENTRE_Y_METRES};
+  bool passLoose = false;
   bool passWasOffside = false;
   /** Binturong: release-time offside judgements for other possible collectors.
    * Player identities survive copies and cannot transfer to a substitute. */
@@ -1671,6 +1680,10 @@ struct MatchStats
    * pressers starting a step-in; tackle touches by technique. */
   int touchesShielded = 0;
   int stepInMoves = 0;
+  /** Passes gone loose: off target (their path never within reach of the
+   * spot or the receiver) and run past the spot. */
+  int passesLooseOffTarget = 0;
+  int passesLooseRanPast = 0;
   std::array<int, static_cast<std::size_t>(TackleTechnique::COUNT)>
       tackleTouches{};
   /** Open-play shots blocked by a Binturong body, by what they met
@@ -4842,6 +4855,11 @@ class MatchEngine
   bool userRestartPassRequested() const;
   void updateRestartSupport(MatchPlayer& player, const MatchPlayer* taker);
   void separatePlayers();
+  /** A pass in flight gone loose (the user's rule, 2026-11-27): its path
+   * will no longer come within Passing::ON_TARGET_METRES of the passer's
+   * spot or its receiver, or it is Passing::PAST_SPOT_METRES past the spot
+   * along the pass's line. Once loose it stays loose. */
+  void updatePassGoneLoose();
   /** Collision plan: whether a pair meets by the new rules (both on the
    * Binturong body; otherwise today's separation). */
   bool collidesByMomentum(const MatchPlayer& first,

@@ -109,6 +109,7 @@ void MatchEngine::clearFlightStateBinturong()
 {
   ball.possession.intendedReceiver = nullptr;
   ball.possession.isPass = false;
+  ball.possession.passLoose = false;
   ball.possession.passWasOffside = false;
   ball.possession.passOffsidePlayers.clear();
   ball.possession.isShot = false;
@@ -423,6 +424,8 @@ void MatchEngine::beginPassFlightBinturong(const MatchPlayer& passer,
       (receiver != nullptr) ? receiver->player : nullptr;
   ball.possession.isPass = true;
   ball.possession.passByHome = passer.isHomeTeam;
+  ball.possession.passFrom = passer.position;
+  ball.possession.passSpot = option.targetPoint;
   ball.possession.passWasOffside =
       (receiver != nullptr) &&
       judgeOffside(passer, option, offsideLine(passer.isHomeTeam));
@@ -1134,6 +1137,8 @@ void MatchEngine::finishFedBallBinturong(const MatchPlayer* receiver)
     ball.possession.intendedReceiver = receiver->player;
     ball.possession.passByHome = receiver->isHomeTeam;
     ball.possession.passTarget = receiver->position;
+    ball.possession.passFrom = ball.position;
+    ball.possession.passSpot = receiver->position;
   }
   observePossession(PossessionObservation::FINISH_FED_BALL,
                     PossessionId::BINTURONG);

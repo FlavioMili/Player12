@@ -1560,6 +1560,12 @@ struct MatchTuning final
 
   struct Passing final
   {
+    /** A pass gone loose (the user, 2026-11-27): on target while its path
+     * will still come within this of the passer's chosen spot or of its
+     * receiver (m); loose once it is this far past the spot along the
+     * pass's line (m). */
+    static constexpr float ON_TARGET_METRES = 2.0F;
+    static constexpr float PAST_SPOT_METRES = 1.0F;
     static constexpr float MIN_DISTANCE_METRES = 2.5F;
     static constexpr float MAX_DISTANCE_METRES = 50.0F;
     static constexpr float IDEAL_DISTANCE_METRES = 16.0F;

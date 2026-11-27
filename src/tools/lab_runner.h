@@ -164,6 +164,9 @@ struct MatchSample
    * and tackle touches by technique: control, poke, step-in. */
   int touches_shielded = 0;
   int step_in_moves = 0;
+  /** Passes gone loose: off target, and run past the spot. */
+  int passes_loose_off_target = 0;
+  int passes_loose_ran_past = 0;
   std::array<int, 3> tackle_touches{};
   /** Open-play shots blocked by a Binturong body, those off a leg, and
    * those off a leg he put there (a reaction block). */

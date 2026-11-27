@@ -624,6 +624,8 @@
    * now), held for the strike. */
   void decidePenaltyCapybara(const MatchPlayer& taker);
   ClearanceAim chooseClearanceAimCapybara(const MatchPlayer& defender);
+  /** A pass in flight still on target (not gone loose). */
+  [[nodiscard]] bool passLiveCapybara() const;
   PitchPoint chooseClearBehindTargetCapybara(const MatchPlayer& defender);
   HeaderAttempt chooseHeaderAttemptCapybara(const MatchPlayer& header,
                                     bool fromTeammate);

@@ -1157,7 +1157,9 @@ constexpr std::array<Situation, 20> SITUATIONS = {{
      .decidedBy =
          "its own off-ball frame (step O3): receive it (the collector, set by "
          "afterPassReleased), or support while it travels. Stopgap pick in "
-         "today's order (follow-up: measures)",
+         "today's order (follow-up: measures). A pass gone loose (its path "
+         "no longer within 2 m of the passer's spot or the receiver, or 1 m "
+         "past the spot) is \"Ball loose\" for both sides",
      .layers = SLIDERS | ROLE | ORDERS | MOOD,
      .plannerWide = true,
      .onFrame = false,

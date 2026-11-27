@@ -1436,6 +1436,7 @@ void MatchEngine::simulateStepBody(float dt)
     player.isTrapping = player.trapTimer > 0.0F;
     player.isDiving = player.diveTimer > 0.0F;
   }
+  updatePassGoneLoose();
   ball.kickerLockout = std::max(0.0F, ball.kickerLockout - dt);
   // The sliders only move with a fading shout or with the clock while a side
   // leads; otherwise they stay as last computed.
@@ -3132,6 +3133,92 @@ void MatchEngine::updateRestartMovement(float dt)
   movePlayers(batch.data(), batched, dt, true);
   updateTouchline(dt);
   collidePlayers(dt);
+}
+
+void MatchEngine::updatePassGoneLoose()
+{
+  // The user's rule (2026-11-27). A pass is on target while its path, as
+  // the ball's own physics carries it (rolling to a stop, or a lofted ball
+  // coming down to his head line), will still come within ON_TARGET_METRES
+  // of the passer's chosen spot or of its receiver where he is now. It is
+  // loose once it will not, or once it is PAST_SPOT_METRES further along
+  // the pass's line (from where it was struck through the spot) than the
+  // spot, whatever the receiver did. Judged on paths that settle within
+  // the look-ahead; a longer one is judged later.
+  MatchPossessionState& pass = ball.possession;
+  if (possessionId != PossessionId::BINTURONG || !pass.isPass ||
+      pass.passLoose || state != MatchState::PLAYING || hasTouchClaim())
+  {
+    return;
+  }
+  using P = MatchTuning::Passing;
+  const Vector2F line{.x = pass.passSpot.x - pass.passFrom.x,
+                      .y = pass.passSpot.y - pass.passFrom.y};
+  const float lineLength = length(line);
+  if (lineLength > EPSILON)
+  {
+    const float along = (((ball.position.x - pass.passFrom.x) * line.x) +
+                         ((ball.position.y - pass.passFrom.y) * line.y)) /
+                        lineLength;
+    if (along > lineLength + P::PAST_SPOT_METRES)
+    {
+      pass.passLoose = true;
+      ++stats.passesLooseRanPast;
+      return;
+    }
+  }
+  const MatchPlayer* receiver = findMatchPlayer(pass.intendedReceiver);
+  const float headLine = (receiver != nullptr)
+                             ? bodyLines(*receiver).head
+                             : MatchTuning::Aerial::CONTROL_CEILING_METRES;
+  const auto onTarget = [&](Vector2F at, float height)
+  {
+    if (height > headLine)
+    {
+      return false;
+    }
+    const PitchPoint point = asPoint(at);
+    return distance(point, pass.passSpot) <= P::ON_TARGET_METRES ||
+           ((receiver != nullptr) &&
+            distance(point, receiver->position) <= P::ON_TARGET_METRES);
+  };
+  const float speed = length(ball.velocity);
+  const Vector2F heading =
+      speed > EPSILON
+          ? Vector2F{.x = ball.velocity.x / speed, .y = ball.velocity.y / speed}
+          : Vector2F{.x = 0.0F, .y = 0.0F};
+  FlightState flight{.horizontalSpeed = speed,
+                     .verticalSpeed = ball.velocityZ,
+                     .height = ball.z,
+                     .bounced = false,
+                     .spin = ball.spin};
+  Vector2F at = asVector(ball.position);
+  if (onTarget(at, flight.height))
+  {
+    return;
+  }
+  constexpr int SUBSTEPS = MatchTuning::Timing::BALL_SUBSTEPS;
+  constexpr float TICK = MatchTuning::Timing::FIXED_STEP_SECONDS;
+  constexpr int LOOK_AHEAD_TICKS = 50;
+  for (int tick = 1; tick <= LOOK_AHEAD_TICKS; ++tick)
+  {
+    for (int sub = 0; sub < SUBSTEPS; ++sub)
+    {
+      const float moved = stepFlight(flight, TICK / SUBSTEPS);
+      at = {.x = at.x + (heading.x * moved), .y = at.y + (heading.y * moved)};
+      if (onTarget(at, flight.height))
+      {
+        return;
+      }
+    }
+    if (flight.horizontalSpeed <= 0.0F && flight.height <= 0.0F &&
+        flight.verticalSpeed <= 0.0F)
+    {
+      pass.passLoose = true;
+      ++stats.passesLooseOffTarget;
+      return;
+    }
+  }
 }
 
 void MatchEngine::separatePlayers()

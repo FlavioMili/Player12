@@ -239,6 +239,8 @@ void extractEngine(MatchSample& sample, const MatchEngine& engine)
   sample.blocks_popped = stats.blocksPoppedUp;
   sample.touches_shielded = stats.touchesShielded;
   sample.step_in_moves = stats.stepInMoves;
+  sample.passes_loose_off_target = stats.passesLooseOffTarget;
+  sample.passes_loose_ran_past = stats.passesLooseRanPast;
   sample.tackle_touches = stats.tackleTouches;
   for (const int count : stats.shotBlocksByPart)
   {
@@ -1579,6 +1581,10 @@ std::map<std::string, Estimate> matchMetrics(
   perMatch("collision_big_hits_per_match", &MatchSample::collision_big_hits);
   perMatch("touches_shielded_per_match", &MatchSample::touches_shielded);
   perMatch("step_in_moves_per_match", &MatchSample::step_in_moves);
+  perMatch("passes_loose_off_target_per_match",
+           &MatchSample::passes_loose_off_target);
+  perMatch("passes_loose_ran_past_per_match",
+           &MatchSample::passes_loose_ran_past);
   {
     const std::array<const char*, 3> names{"tackle_touch_control_per_match",
                                            "tackle_touch_poke_per_match",

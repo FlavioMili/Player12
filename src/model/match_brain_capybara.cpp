@@ -471,10 +471,9 @@ void MatchEngine::refreshTacticalTargetsCapybara(float dt, bool planHome)
   // The team shape reads the play where it is heading: while a pass
   // travels, where it is going, so the block shifts once instead of
   // sliding with the ball. Pressing and loose balls still go to the ball.
-  const PitchPoint shapeAnchor =
-      (carrier == nullptr) && getPossessionState().isPass
-          ? getPossessionState().passTarget
-          : pressurePosition;
+  const PitchPoint shapeAnchor = (carrier == nullptr) && passLiveCapybara()
+                                     ? getPossessionState().passTarget
+                                     : pressurePosition;
   const StrategySliders homeSliders = getEffectiveSliders(true);
   const StrategySliders awaySliders = getEffectiveSliders(false);
 
@@ -619,7 +618,7 @@ void MatchEngine::refreshTacticalTargetsCapybara(float dt, bool planHome)
         .arrivalSeconds = arrival,
         .collectionQuality = PossessionCoordination::quality(
             p.velocity, ball.velocity, p.isHomeTeam, space),
-        .intendedReceiver = getPossessionState().isPass &&
+        .intendedReceiver = passLiveCapybara() &&
                             getPossessionState().passByHome == p.isHomeTeam &&
                             getExpectedReceiver() == p.player,
         .id = p.player ? p.player->getId() : 0};
@@ -695,10 +694,10 @@ void MatchEngine::refreshTacticalTargetsCapybara(float dt, bool planHome)
   // Step O6 (brain redesign plan section 27): each player's own call on a
   // loose ball decides who goes for it (live since 2026-11-23); the lab
   // still tallies how often it agrees with the team's pick (the first
-  // presser). Not while our own pass travels (it has a receiver).
+  // presser). Not while our own pass travels on target (it has a
+  // receiver); a pass gone loose is a loose ball for both sides.
   if (carrier == nullptr && loosePoints > 0 && state == MatchState::PLAYING &&
-      (!getPossessionState().isPass ||
-       getPossessionState().passByHome != planHome))
+      (!passLiveCapybara() || getPossessionState().passByHome != planHome))
   {
     looseShadowRan = true;
     const MatchPlayer* teamPick =
@@ -1055,7 +1054,7 @@ void MatchEngine::refreshTacticalTargetsCapybara(float dt, bool planHome)
     scores.fill(-std::numeric_limits<float>::infinity());
     const bool possessionContext = carrier && carrier->isHomeTeam == homeTeam;
     const bool looseTransitionContext =
-        !carrier && !getPossessionState().isPass && transitionSource &&
+        !carrier && !passLiveCapybara() && transitionSource &&
         transitionSource->isHomeTeam == homeTeam;
     if (!possessionContext && !looseTransitionContext)
     {
@@ -2117,8 +2116,9 @@ void MatchEngine::refreshTacticalTargetsCapybara(float dt, bool planHome)
     }
     else
     {
+      // A pass gone loose is a loose ball for both sides.
       const bool receivingPass =
-          getPossessionState().isPass &&
+          passLiveCapybara() &&
           getPossessionState().passByHome == player.isHomeTeam;
       const auto& pressers = player.isHomeTeam ? homePressers : awayPressers;
       // Nobody has the ball (brain redesign plan section 22, step O3):
@@ -2131,10 +2131,9 @@ void MatchEngine::refreshTacticalTargetsCapybara(float dt, bool planHome)
       //   hold shape.
       // - "Ball loose": chase, cover the chase, transition run or support,
       //   recover.
-      const bool travelling =
-          getPossessionState().isPass || getPossessionState().isShot;
+      const bool travelling = passLiveCapybara() || getPossessionState().isShot;
       const MatchPlayer* tight =
-          getPossessionState().isPass &&
+          passLiveCapybara() &&
                   getPossessionState().passByHome != player.isHomeTeam
               ? tightMarkTargetCapybara(player)
               : nullptr;
@@ -3104,7 +3103,7 @@ MatchEngine::LooseShadowOutcomeCapybara MatchEngine::shadowLooseBallCapybara(
     shapeSpotsCapybara.assign(players.size(), PitchPoint{});
   }
   looseShadowStepCapybara = stepCounter;
-  if (!getPossessionState().isPass)
+  if (!passLiveCapybara())
   {
     looseShadowSideStepCapybara.at(home ? 0 : 1) = stepCounter;
   }
@@ -5994,6 +5993,13 @@ TackleIntent MatchEngine::tackleIntentRuleCapybara(const MatchPlayer& tackler,
   return TackleIntent::WIN;
 }
 
+bool MatchEngine::passLiveCapybara() const
+{
+  // A pass in flight still on target (updatePassGoneLoose): gone loose, it
+  // is a loose ball for both sides.
+  return getPossessionState().isPass && !getPossessionState().passLoose;
+}
+
 MatchEngine::CarrierWeightsCapybara MatchEngine::neutralCarrierWeightsCapybara()
 {
   // Weighting (brain redesign plan section 15): each weight's default from
@@ -8343,8 +8349,8 @@ PitchPoint MatchEngine::goalkeeperTargetCapybara(MatchPlayer& keeper,
       pitch.fromOwnGoalLine(ball.position, keeper.isHomeTeam) <
           MatchTuning::Pitch::GOALKEEPER_SWEEP_METRES *
               (1.0F + keeperSweep * TacticsTuning::KEEPER_SWEEP_DEPTH_GAIN) &&
-      !(getPossessionState().isPass &&
-        getPossessionState().passByHome == keeper.isHomeTeam))
+      (!passLiveCapybara() ||
+       getPossessionState().passByHome != keeper.isHomeTeam))
   {
     const float keeperDistance = distance(keeper.position, ball.position);
     bool keeperFirst = true;
@@ -9363,7 +9369,7 @@ float MatchEngine::chooseGetUpCapybara(const MatchPlayer& player)
   {
     const MatchPlayer* holder = findMatchPlayer(getPossessionAttachment());
     bool chance = holder == nullptr || holder->isHomeTeam == player.isHomeTeam;
-    if (holder == nullptr && getPossessionState().isPass)
+    if (holder == nullptr && passLiveCapybara())
     {
       chance = getPossessionState().passByHome == player.isHomeTeam;
     }
