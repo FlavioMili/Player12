@@ -1818,6 +1818,45 @@ struct MatchStats
    * the one "mine" is the team's pick, is someone else, nobody says mine
    * (none in doubt), nobody says mine but some chase in doubt, two or more
    * say mine. Per player: calls, and those judged at a later point. */
+  /** Facing the ball plan step 1: Capybara plans of outfield players off
+   * the ball and goal-side of it; those facing it, those turned to run
+   * (and of them, pressing), and those whose job faces its run (chasing,
+   * receiving, making a run, tracking a runner, up for a high ball). */
+  /** Facing the ball plan §4c (measured): run-ats (a carrier running at
+   * the nearest outfield opponent goal-side of him, within 8 m, at over
+   * 2 m/s toward goal), and how each ended: a shot (its xG summed, and
+   * those with the defender still goal-side), a pass, the defenders
+   * winning it, or anything else; those where he got past (nearer the goal
+   * than the defender) at some point; and over all of them, the seconds,
+   * the metres the defender gave up toward his goal, and the carrier's
+   * game xG at the start and at its best. */
+  int runAts = 0;
+  /** Facing the ball plan §4c: pounces (the presser going for the ball's
+   * meeting point once it is out of the carrier's reach). */
+  int pounces = 0;
+  /** Press frames, and those squeezed at least halfway. */
+  int pressFrames = 0;
+  int pressSqueezed = 0;
+  int runAtShots = 0;
+  int runAtShotsDefenderGoalSide = 0;
+  double runAtShotXG = 0.0;
+  int runAtPasses = 0;
+  int runAtWon = 0;
+  int runAtOther = 0;
+  int runAtPast = 0;
+  double runAtSeconds = 0.0;
+  double runAtGroundGiven = 0.0;
+  double runAtStartXG = 0.0;
+  double runAtBestXG = 0.0;
+  int facingGoalSide = 0;
+  int facingFaces = 0;
+  int facingTurned = 0;
+  int facingTurnedPressing = 0;
+  int facingChase = 0;
+  int facingReceive = 0;
+  int facingRun = 0;
+  int facingTracks = 0;
+  int facingAerial = 0;
   int looseShadowChecks = 0;
   int looseShadowAgree = 0;
   int looseShadowWrongPlayer = 0;
@@ -1848,6 +1887,86 @@ struct MatchStats
   int looseWrongSlowerBig = 0;
   int looseWrongSlowerLater = 0;
   int looseWrongSlowerMissed = 0;
+  /** Brain redesign plan section 28 (step P1): the defenders' own calls on
+   * pressing the carrier, in the shadow of the team's pick (the first
+   * presser). Per side and step with an opponent on the ball: checks, the
+   * one "mine" is the team's pick, is someone else, two or more say mine,
+   * nobody says mine, and one says mine with a team-mate chasing in doubt
+   * (a first-to-commit case). */
+  int pressShadowChecks = 0;
+  int pressShadowAgree = 0;
+  int pressShadowWrongPlayer = 0;
+  int pressShadowTwoGo = 0;
+  int pressShadowNobody = 0;
+  int pressShadowWithDoubt = 0;
+  /** Of the wrong-player calls, by the planner's pursuit times without its
+   * press eagerness and continuity: his sooner by over 0.1 s (the team's
+   * extra terms chose another), within 0.1 s, later by over 0.1 s; and the
+   * team's pick already pressing (its continuity). */
+  int pressWrongShadowFaster = 0;
+  int pressWrongNearTie = 0;
+  int pressWrongSlower = 0;
+  int pressWrongPickPressing = 0;
+  /** Step P3, first to commit on the press (shadow): calls made, those the
+   * caller got right, those leaving the team's pick as the presser, the
+   * time from the second commit to the call (ms, summed), and commitments
+   * carried over from the side's loose ball. */
+  int pressCallsMade = 0;
+  int pressCallsRight = 0;
+  int pressCallsAgree = 0;
+  int pressCallMillis = 0;
+  int pressCommitsCarried = 0;
+  /** Step P3, per check after the commit stage: who would press (his call
+   * not "not mine", not stood down). One, the team's pick; one, another
+   * (and of those, the team's pick already pressing); two or more; none. */
+  int pressGoAgree = 0;
+  int pressGoOther = 0;
+  int pressGoOtherPickPressing = 0;
+  int pressGoSeveral = 0;
+  int pressGoNone = 0;
+  /** Step P4, the second man (shadow), per check where today's second man
+   * has a job (double-up order, or pressing over the cover minimum): the
+   * job; one second man, the team's second, the team's first (and of those
+   * the team's second going), or another; two or more; held back (two or
+   * more going, the call to come; of those the team's second one of them);
+   * none. */
+  int pressSecondChecks = 0;
+  int pressSecondDoubleUp = 0;
+  int pressSecondBlockLane = 0;
+  int pressSecondCover = 0;
+  int pressSecondAgree = 0;
+  int pressSecondTeamFirst = 0;
+  int pressSecondSwapped = 0;
+  int pressSecondOther = 0;
+  int pressSecondSeveral = 0;
+  int pressSecondHeld = 0;
+  int pressSecondHeldTeamGoing = 0;
+  int pressSecondNone = 0;
+  /** One second man: stood down by a call (and of those the team's second),
+   * with another in doubt, and those where the one going is the team's
+   * first presser (and of those the team's second). */
+  int pressSecondStoodDown = 0;
+  int pressSecondStoodDownAgree = 0;
+  int pressSecondWithDoubt = 0;
+  int pressSecondSameFirst = 0;
+  int pressSecondSameFirstAgree = 0;
+  /** One second man by his own call (nobody stood down), the team's second;
+   * the nearest (metres) of those not going the same man, and that nearest
+   * the team's second. */
+  int pressSecondOwnCall = 0;
+  int pressSecondOwnCallAgree = 0;
+  int pressSecondIsNearest = 0;
+  int pressSecondNearestAgree = 0;
+  /** Another player, by the planner's pursuit times (as pressWrong*),
+   * against the team's second; of the later, those stood down. */
+  int pressSecondOtherFaster = 0;
+  int pressSecondOtherNearTie = 0;
+  int pressSecondOtherSlower = 0;
+  int pressSecondOtherSlowerStoodDown = 0;
+  /** The job changing hands while one opponent has the ball: the shadow's
+   * second man, and the team's. */
+  int pressSecondSwitches = 0;
+  int pressSecondTeamSwitches = 0;
   int homeHolds = 0;
   int awayHolds = 0;
   int intentsWin = 0;
@@ -3856,6 +3975,40 @@ class MatchEngine
   };
   std::array<JitterTrack, 32> jitterTracks{};
   std::uint64_t lastJitterStep = 0;
+  /** Run-ats (facing the ball plan §4c, measured only): a carrier running
+   * at the nearest outfield opponent goal-side of him, from the start to
+   * the end of his possession. One per attacking side (index 0 home). */
+  struct RunAtTrack
+  {
+    bool active = false;
+    const Player* carrier = nullptr;
+    std::size_t defender = 0;
+    double startSeconds = 0.0;
+    /** The defender's metres from his own goal line at the start. */
+    float defenderStartDepth = 0.0F;
+    float startXG = 0.0F;
+    float bestXG = 0.0F;
+    bool gotPast = false;
+    /** The ball is loose from his touch: who next has it decides. */
+    bool loose = false;
+  };
+  std::array<RunAtTrack, 2> runAtTracks{};
+  std::uint64_t lastRunAtStep = 0;
+  enum class RunAtEnd : std::uint8_t
+  {
+    SHOT,
+    PASS,
+    WON,
+    OTHER
+  };
+  /** Each open-play step: starts, follows and ends the run-ats. */
+  void trackRunAts();
+  void startRunAt(const MatchPlayer& carrierPlayer);
+  /** Ends a side's run-at, tallying it (stats.runAt*). */
+  void endRunAt(bool attackingHome, RunAtEnd end, float shotXG = 0.0F);
+  /** A shot or pass by the carrier of a run-at ends it. */
+  void noteRunAtShot(const MatchPlayer& shooter, float xg);
+  void noteRunAtPass(const MatchPlayer& passer);
   std::array<std::uint8_t, 32> separationOrder{};
   std::size_t separationCount = 0;
   /** Positions after the last separation pass and whether it found no
