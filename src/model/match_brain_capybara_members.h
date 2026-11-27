@@ -211,7 +211,25 @@
   }
   /** Step P3: after the commit stage, how many on the side would press (his
    * call not "not mine", not stood down; stats.pressGo*). */
-  void tallyPressGoersCapybara(bool home);
+  void tallyPressGoersCapybara(bool home, const MatchPlayer& carrier);
+  /** Step P6's diagnosis: the presser changing hands (stats.pressSwitchWhy
+   * in this order). */
+  enum class PressSwitchWhyCapybara : std::uint8_t
+  {
+    DOWN,
+    STOOD_DOWN,
+    BEATEN,
+    TIE,
+    REAL,
+    OTHER,
+  };
+  struct PressHandOffCapybara
+  {
+    const MatchPlayer* from = nullptr;
+    const MatchPlayer* to = nullptr;
+  };
+  void tallyPressSwitchCapybara(PressHandOffCapybara handOff,
+                                const MatchPlayer& carrier, std::size_t side);
   /** Step P3: he would press (after the commit stage). */
   [[nodiscard]] bool pressGoesCapybara(std::size_t index) const;
   /** Live (step O6): he goes for the loose ball. His own call (mine or in
@@ -327,6 +345,11 @@
   std::array<std::uint32_t, 2> pressSecondHolderCapybara{};
   /** The same for the presser (one going). */
   std::array<std::uint32_t, 2> pressFirstHolderCapybara{};
+  /** Step P6's diagnosis: when the presser took it, the one before him,
+   * and whether two or nobody went since he last was the only one. */
+  std::array<std::uint64_t, 2> pressFirstSinceCapybara{};
+  std::array<std::uint32_t, 2> pressFirstPreviousCapybara{};
+  std::array<bool, 2> pressFirstGapCapybara{};
   /** The brain flow tool's example player: his call and, when it is his,
    * where he could meet it. */
   void noteLooseCallCapybara(const MatchPlayer& player,

@@ -392,6 +392,10 @@ void extractEngine(MatchSample& sample, const MatchEngine& engine)
   sample.press_second_is_nearest = stats.pressSecondIsNearest;
   sample.press_second_switches = stats.pressSecondSwitches;
   sample.press_first_switches = stats.pressFirstSwitches;
+  sample.press_switch_why = stats.pressSwitchWhy;
+  sample.press_switch_held = stats.pressSwitchHeld;
+  sample.press_switch_back = stats.pressSwitchBack;
+  sample.press_switch_via_gap = stats.pressSwitchViaGap;
   sample.holds = stats.homeHolds + stats.awayHolds;
   sample.intents_win = stats.intentsWin;
   sample.intents_clear = stats.intentsClear;
@@ -1486,6 +1490,35 @@ std::map<std::string, Estimate> matchMetrics(
                     press(&MatchSample::press_shadow_checks));
   metrics["press_first_switches_per_match"] =
       meanEstimate(press(&MatchSample::press_first_switches));
+  {
+    // Step P6's diagnosis, as shares of the hand-offs.
+    const auto switches = press(&MatchSample::press_first_switches);
+    const std::array<const char*, 6> whyNames{
+        "press_switch_down_share",   "press_switch_stood_down_share",
+        "press_switch_beaten_share", "press_switch_tie_share",
+        "press_switch_real_share",   "press_switch_other_share"};
+    for (std::size_t why = 0; why < whyNames.size(); ++why)
+    {
+      metrics[whyNames.at(why)] = ratioEstimate(
+          column([why](const MatchSample& s)
+                 { return static_cast<double>(s.press_switch_why.at(why)); }),
+          switches);
+    }
+    const std::array<const char*, 3> heldNames{"press_switch_held_short_share",
+                                               "press_switch_held_mid_share",
+                                               "press_switch_held_long_share"};
+    for (std::size_t held = 0; held < heldNames.size(); ++held)
+    {
+      metrics[heldNames.at(held)] = ratioEstimate(
+          column([held](const MatchSample& s)
+                 { return static_cast<double>(s.press_switch_held.at(held)); }),
+          switches);
+    }
+    metrics["press_switch_back_share"] =
+        ratioEstimate(press(&MatchSample::press_switch_back), switches);
+    metrics["press_switch_via_gap_share"] =
+        ratioEstimate(press(&MatchSample::press_switch_via_gap), switches);
+  }
   metrics["press_second_checks_per_match"] =
       meanEstimate(press(&MatchSample::press_second_checks));
   metrics["press_second_switches_per_match"] =

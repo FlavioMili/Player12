@@ -1978,6 +1978,16 @@ struct MatchStats
    * man, and the one going to press, by the players' calls. */
   int pressSecondSwitches = 0;
   int pressFirstSwitches = 0;
+  /** Step P6's diagnosis of the presser changing hands, by the old
+   * presser's state then: knocked down or stumbling, stood down by a
+   * team-mate's call, the carrier past him (not goal-side), a near tie by
+   * the rough look (0.1 s), a real difference, anything else. How long he
+   * had held it (under 0.5 s, to 1.5 s, longer); straight back to the one
+   * before within 1 s; after two or nobody going in between. */
+  std::array<int, 6> pressSwitchWhy{};
+  std::array<int, 3> pressSwitchHeld{};
+  int pressSwitchBack = 0;
+  int pressSwitchViaGap = 0;
   int homeHolds = 0;
   int awayHolds = 0;
   int intentsWin = 0;

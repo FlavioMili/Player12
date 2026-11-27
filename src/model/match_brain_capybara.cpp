@@ -2573,7 +2573,7 @@ void MatchEngine::refreshTacticalTargetsCapybara(float dt, bool planHome)
     }
     looseCommitStageCapybara(CommitKindCapybara::PRESS, planHome, precise,
                              nullptr);
-    tallyPressGoersCapybara(planHome);
+    tallyPressGoersCapybara(planHome, *carrier);
     // Step P4: the second man and the job the frame opens for him.
     tallyPressSecondCapybara(*carrier,
                              planHome ? homeCoverOutlet : awayCoverOutlet,
@@ -2897,6 +2897,11 @@ namespace
 // pace (m/s) on the ground it has settled.
 constexpr float LOOSE_SHADOW_MARGIN_SECONDS = 0.5F;
 constexpr float LOOSE_MARGIN_SHARE = 0.10F;
+// Step P6 (the user, 2026-11-27, our estimate): the margin is at least
+// this, about a reaction time and two steps. At pressing distances 10% of
+// his time was 0.01-0.03 s and the press flip-flopped between two players
+// already on the carrier.
+constexpr float LOOSE_MARGIN_FLOOR_SECONDS = 0.2F;
 constexpr std::size_t LOOSE_SHADOW_RIVALS = 3;
 // Seeing a team-mate also going (the user, 2026-11-23, our estimates): in
 // view while he looks at the ball (within this angle of his line to it),
@@ -2909,7 +2914,9 @@ constexpr float ALONGSIDE_HEADING_DEGREES = 30.0F;
 // The margin for a chase that takes him this long.
 float looseMargin(float seconds)
 {
-  return std::min(LOOSE_SHADOW_MARGIN_SECONDS, LOOSE_MARGIN_SHARE * seconds);
+  return std::max(
+      LOOSE_MARGIN_FLOOR_SECONDS,
+      std::min(LOOSE_SHADOW_MARGIN_SECONDS, LOOSE_MARGIN_SHARE * seconds));
 }
 constexpr float COMFORTABLE_CONTROL_METRES = 1.0F;
 constexpr float SETTLED_BALL_SPEED = 2.0F;
@@ -3634,6 +3641,8 @@ void MatchEngine::freshPressCallCapybara(bool home, const MatchPlayer& carrier)
     pressCarrierCapybara.at(side) = carrierId;
     pressSecondHolderCapybara.at(side) = {};
     pressFirstHolderCapybara.at(side) = {};
+    pressFirstPreviousCapybara.at(side) = {};
+    pressFirstGapCapybara.at(side) = false;
     looseShadowSideStepCapybara.at(side) = 0;  // carried over once
   }
   pressShadowSideStepCapybara.at(side) = stepCounter;
@@ -3699,7 +3708,72 @@ int holderChanged(std::uint32_t& holder, const MatchPlayer* who)
 }
 }  // namespace
 
-void MatchEngine::tallyPressGoersCapybara(bool home)
+void MatchEngine::tallyPressSwitchCapybara(PressHandOffCapybara handOff,
+                                           const MatchPlayer& carrier,
+                                           std::size_t side)
+{
+  const MatchPlayer& from = *handOff.from;
+  const MatchPlayer& to = *handOff.to;
+  // Step P6's diagnosis (counting only): the old presser's state as the
+  // press leaves him.
+  constexpr float TIE_SECONDS = 0.1F;
+  constexpr float SHORT_HOLD_SECONDS = 0.5F;
+  constexpr float LONG_HOLD_SECONDS = 1.5F;
+  constexpr float BACK_SECONDS = 1.0F;
+  const std::size_t index = playerIndexCapybara(from);
+  const PitchPoint ownGoal =
+      pitch.at(from.isHomeTeam ? 0.0F : 1.0F, MatchTuning::Pitch::CENTRE);
+  using Why = PressSwitchWhyCapybara;
+  Why why = Why::OTHER;
+  if (!active(from) || from.fallen || from.stumbleSeconds > 0.0F ||
+      from.collisionPause > 0.0F)
+  {
+    why = Why::DOWN;
+  }
+  else if (pressCommitsCapybara.at(index).standsDown)
+  {
+    why = Why::STOOD_DOWN;
+  }
+  else if (distance(carrier.position, ownGoal) <
+           distance(from.position, ownGoal))
+  {
+    why = Why::BEATEN;
+  }
+  else if (pressCallsNowCapybara.at(index) == LooseCallCapybara::NOT_MINE)
+  {
+    const Vector2F at = asVector(carrier.position);
+    why = roughSecondsCapybara(from, at) - roughSecondsCapybara(to, at) <=
+                  TIE_SECONDS
+              ? Why::TIE
+              : Why::REAL;
+  }
+  ++stats.pressSwitchWhy.at(static_cast<std::size_t>(why));
+  const float held =
+      static_cast<float>(stepCounter - pressFirstSinceCapybara.at(side)) *
+      MatchTuning::Timing::FIXED_STEP_SECONDS;
+  std::size_t heldBand = 2;
+  if (held < SHORT_HOLD_SECONDS)
+  {
+    heldBand = 0;
+  }
+  else if (held < LONG_HOLD_SECONDS)
+  {
+    heldBand = 1;
+  }
+  ++stats.pressSwitchHeld.at(heldBand);
+  if (to.player != nullptr &&
+      pressFirstPreviousCapybara.at(side) == to.player->getId() &&
+      held < BACK_SECONDS)
+  {
+    ++stats.pressSwitchBack;
+  }
+  if (pressFirstGapCapybara.at(side))
+  {
+    ++stats.pressSwitchViaGap;
+  }
+}
+
+void MatchEngine::tallyPressGoersCapybara(bool home, const MatchPlayer& carrier)
 {
   int goers = 0;
   const MatchPlayer* goer = nullptr;
@@ -3713,8 +3787,38 @@ void MatchEngine::tallyPressGoersCapybara(bool home)
     ++goers;
     goer = &player;
   }
-  stats.pressFirstSwitches += holderChanged(
-      pressFirstHolderCapybara.at(home ? 0 : 1), goers == 1 ? goer : nullptr);
+  // Step P6's diagnosis: who held it, for how long, and why it moved.
+  const std::size_t side = home ? 0 : 1;
+  const std::uint32_t was = pressFirstHolderCapybara.at(side);
+  const MatchPlayer* from = nullptr;
+  for (const MatchPlayer& player : players)
+  {
+    if (was != 0U && player.player != nullptr && player.player->getId() == was)
+    {
+      from = &player;
+    }
+  }
+  const int switched = holderChanged(pressFirstHolderCapybara.at(side),
+                                     goers == 1 ? goer : nullptr);
+  stats.pressFirstSwitches += switched;
+  if (goers != 1)
+  {
+    pressFirstGapCapybara.at(side) = true;
+  }
+  else if (was == 0U || switched != 0)
+  {
+    if (switched != 0 && from != nullptr)
+    {
+      tallyPressSwitchCapybara({.from = from, .to = goer}, carrier, side);
+    }
+    pressFirstPreviousCapybara.at(side) = was;
+    pressFirstSinceCapybara.at(side) = stepCounter;
+    pressFirstGapCapybara.at(side) = false;
+  }
+  else
+  {
+    pressFirstGapCapybara.at(side) = false;
+  }
   if (goers >= 2)
   {
     ++stats.pressGoSeveral;
