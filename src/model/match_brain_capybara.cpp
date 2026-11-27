@@ -103,6 +103,23 @@ constexpr float OVERTAKE_OPPONENT_CLEARANCE_METRES =
 constexpr float OVERTAKE_TEAM_MATE_CLEARANCE_METRES =
     MatchTuning::Collision::OVERTAKE_TEAM_MATE_CLEARANCE_METRES;
 constexpr float OVERTAKE_HORIZON_SECONDS = 3.0F;
+
+// The press squeeze (facing the ball plan §4c). Ours, no research,
+// aggressive to start (the user, 2026-11-25): the closest stand-off (m,
+// centre to centre: bodies are 0.5 m across, so 1 m leaves a 0.5 m gap;
+// the user, 2026-11-25, was 0.5 m, body contact); the carrier's speed toward
+// goal still driving and stalled (m/s); metres off the touchline free and
+// pinned; how near a covering team-mate (m); the carrier's game xG with no
+// squeeze and a full one; the share counted as squeezed in the stats.
+constexpr float SQUEEZE_STAND_OFF_METRES = 1.0F;
+constexpr float SQUEEZE_DRIVING_SPEED = 2.0F;
+constexpr float SQUEEZE_STALLED_SPEED = 0.5F;
+constexpr float SQUEEZE_TOUCHLINE_FREE_METRES = 8.0F;
+constexpr float SQUEEZE_TOUCHLINE_PINNED_METRES = 3.0F;
+constexpr float SQUEEZE_COVER_METRES = 8.0F;
+constexpr float SQUEEZE_XG_NONE = 0.05F;
+constexpr float SQUEEZE_XG_FULL = 0.2F;
+constexpr float SQUEEZE_COUNTED_SHARE = 0.5F;
 constexpr float OVERTAKE_SAME_TARGET_METRES = 2.0F;
 constexpr float OVERTAKE_SAME_DIRECTION_COSINE = 0.7071F;
 constexpr float OVERTAKE_STICKY_METRES = 0.5F;
@@ -346,10 +363,10 @@ constexpr std::array<const char*, THEIR_BALL_JOB_COUNT> THEIR_BALL_NAMES = {
     "cover",      "tight mark", "recover in transition",
     "zonal mark", "hold shape"};
 constexpr std::array<const char*, THEIR_BALL_JOB_COUNT> THEIR_BALL_WHEN = {
-    "the team made him the first presser",
-    "the second presser, under a double-up order",
-    "the second presser, pressing high enough, an outlet to cut off",
-    "the second presser, pressing high enough, no outlet",
+    "his own call: he gets to the carrier first (or in doubt, not stood down)",
+    "his own call: the second man, under a double-up order",
+    "his own call: the second man, pressing high enough, an outlet to cut off",
+    "his own call: the second man, pressing high enough, no outlet",
     "an order to mark a man tightly",
     "his side has just lost the ball",
     "the team gave him a man to mark",
@@ -454,10 +471,9 @@ void MatchEngine::refreshTacticalTargetsCapybara(float dt, bool planHome)
   // The team shape reads the play where it is heading: while a pass
   // travels, where it is going, so the block shifts once instead of
   // sliding with the ball. Pressing and loose balls still go to the ball.
-  const PitchPoint shapeAnchor =
-      (carrier == nullptr) && getPossessionState().isPass
-          ? getPossessionState().passTarget
-          : pressurePosition;
+  const PitchPoint shapeAnchor = (carrier == nullptr) && passLiveCapybara()
+                                     ? getPossessionState().passTarget
+                                     : pressurePosition;
   const StrategySliders homeSliders = getEffectiveSliders(true);
   const StrategySliders awaySliders = getEffectiveSliders(false);
 
@@ -469,7 +485,13 @@ void MatchEngine::refreshTacticalTargetsCapybara(float dt, bool planHome)
   using PathPoint = LoosePathPointCapybara;
   std::array<PathPoint, LOOSE_BALL_PATH_TICKS + 1> loosePath{};
   std::size_t loosePoints = 0;
-  if (carrier == nullptr)
+  // Facing the ball plan §4c, the pounce: his touch has left the carrier's
+  // reach (the user, 2026-11-25: the trigger to pounce), so the ball's roll
+  // is mapped as for a loose ball, for the presser to meet.
+  const bool touchAway =
+      carrier != nullptr && distance(carrier->position, ball.position) >
+                                MatchTuning::Dribble::KICK_REACH_METRES;
+  if (carrier == nullptr || touchAway)
   {
     const float speed = length(ball.velocity);
     const Vector2F heading = speed > EPSILON
@@ -573,9 +595,9 @@ void MatchEngine::refreshTacticalTargetsCapybara(float dt, bool planHome)
                      (velocityTowardTarget *
                       MatchTuning::Player::CURRENT_VELOCITY_PURSUIT_WEIGHT),
                  MatchTuning::Player::MINIMUM_PURSUIT_SPEED);
-    float arrivalTime =
-        std::max(0.0F, (targetDistance / pursuitSpeed) -
-                           pressEagernessCapybara(candidate, carrier));
+    // No carrier here (step P7): the press eagerness, seconds off a
+    // carrier's pursuit, went with the presser ranking.
+    float arrivalTime = targetDistance / pursuitSpeed;
     if (candidate.intent == PlayerIntent::PRESS_BALL ||
         candidate.intent == PlayerIntent::CLAIM_LOOSE_BALL)
     {
@@ -596,7 +618,7 @@ void MatchEngine::refreshTacticalTargetsCapybara(float dt, bool planHome)
         .arrivalSeconds = arrival,
         .collectionQuality = PossessionCoordination::quality(
             p.velocity, ball.velocity, p.isHomeTeam, space),
-        .intendedReceiver = getPossessionState().isPass &&
+        .intendedReceiver = passLiveCapybara() &&
                             getPossessionState().passByHome == p.isHomeTeam &&
                             getExpectedReceiver() == p.player,
         .id = p.player ? p.player->getId() : 0};
@@ -659,16 +681,23 @@ void MatchEngine::refreshTacticalTargetsCapybara(float dt, bool planHome)
     return closest;
   };
 
-  const auto homePressers = closestOutfieldPair(true);
-  const auto awayPressers = closestOutfieldPair(false);
+  // The team's ranking is for the ball with nobody on it (the loose ball's
+  // leftover and second chaser, the receive of our own pass). With a
+  // carrier, who presses is each player's own call (step P7 took the
+  // ranking out, restarts included: the user, 2026-11-26).
+  const std::array<MatchPlayer*, 2> noPair{nullptr, nullptr};
+  const auto homePressers =
+      carrier == nullptr ? closestOutfieldPair(true) : noPair;
+  const auto awayPressers =
+      carrier == nullptr ? closestOutfieldPair(false) : noPair;
   bool looseShadowRan = false;
   // Step O6 (brain redesign plan section 27): each player's own call on a
   // loose ball decides who goes for it (live since 2026-11-23); the lab
   // still tallies how often it agrees with the team's pick (the first
-  // presser). Not while our own pass travels (it has a receiver).
+  // presser). Not while our own pass travels on target (it has a
+  // receiver); a pass gone loose is a loose ball for both sides.
   if (carrier == nullptr && loosePoints > 0 && state == MatchState::PLAYING &&
-      (!getPossessionState().isPass ||
-       getPossessionState().passByHome != planHome))
+      (!passLiveCapybara() || getPossessionState().passByHome != planHome))
   {
     looseShadowRan = true;
     const MatchPlayer* teamPick =
@@ -683,6 +712,34 @@ void MatchEngine::refreshTacticalTargetsCapybara(float dt, bool planHome)
                                   interception(*outcome.mine).first,
                                   interception(*teamPick).first);
     }
+  }
+  // Step P1 (brain redesign plan section 28): each defender's own call on
+  // pressing the carrier decides who presses (live since step P5,
+  // 2026-11-25; at restarts too since step P7, 2026-11-26).
+  // The planner's pursuit time without its press eagerness and continuity:
+  // step P3's detailed look, and the recorder's arrival times.
+  const auto pressPursuitSeconds = [&](const MatchPlayer& candidate)
+  {
+    const Vector2F toTarget = pressurePosition - candidate.position;
+    const float targetDistance = length(toTarget);
+    if (targetDistance <= EPSILON)
+    {
+      return 0.0F;
+    }
+    const float toward = std::max(0.0F, ((candidate.velocity.x * toTarget.x) +
+                                         (candidate.velocity.y * toTarget.y)) /
+                                            targetDistance);
+    constexpr float WEIGHT =
+        MatchTuning::Player::CURRENT_VELOCITY_PURSUIT_WEIGHT;
+    const float speed = std::max(currentTopSpeed(candidate) + (toward * WEIGHT),
+                                 MatchTuning::Player::MINIMUM_PURSUIT_SPEED);
+    return targetDistance / speed;
+  };
+  bool pressShadowRan = false;
+  if (carrier != nullptr && carrier->isHomeTeam != planHome)
+  {
+    pressShadowRan = true;
+    shadowPressCapybara(planHome, *carrier);
   }
 
   // Going for a loose high ball (aerial challenge plan step 2): goal kicks,
@@ -997,7 +1054,7 @@ void MatchEngine::refreshTacticalTargetsCapybara(float dt, bool planHome)
     scores.fill(-std::numeric_limits<float>::infinity());
     const bool possessionContext = carrier && carrier->isHomeTeam == homeTeam;
     const bool looseTransitionContext =
-        !carrier && !getPossessionState().isPass && transitionSource &&
+        !carrier && !passLiveCapybara() && transitionSource &&
         transitionSource->isHomeTeam == homeTeam;
     if (!possessionContext && !looseTransitionContext)
     {
@@ -1319,14 +1376,34 @@ void MatchEngine::refreshTacticalTargetsCapybara(float dt, bool planHome)
       MatchTeamPlan plan;
       plan.homeTeam = homeTeam;
       plan.phase = homeTeam ? homePhase : awayPhase;
-      const auto& pressers = homeTeam ? homePressers : awayPressers;
+      std::array<const MatchPlayer*, 2> pressers{
+          (homeTeam ? homePressers : awayPressers)[0],
+          (homeTeam ? homePressers : awayPressers)[1]};
+      // On the press (step P7): the first man and the second man by the
+      // players' own calls, with the planner's pursuit times.
+      const bool ownPress = pressShadowRan && homeTeam == planHome;
+      if (ownPress)
+      {
+        const Vector2F at = asVector(carrier->position);
+        pressers = {nullptr, nullptr};
+        for (const MatchPlayer* mate : onPitch(planHome))
+        {
+          const PressJobsCapybara own = pressJobsCapybara(*mate, at);
+          pressers[0] = own.firstMan;
+          if (own.second && pressers[1] == nullptr)
+          {
+            pressers[1] = mate;
+          }
+        }
+      }
       for (std::size_t index = 0; index < plan.pressers.size(); ++index)
       {
-        plan.pressers[index] = idOf(pressers[index]);
-        if (pressers[index])
+        plan.pressers.at(index) = idOf(pressers.at(index));
+        if (pressers.at(index) != nullptr)
         {
-          plan.pressArrivalSeconds[index] =
-              estimatedArrivalTime(*pressers[index]);
+          plan.pressArrivalSeconds.at(index) =
+              ownPress ? pressPursuitSeconds(*pressers.at(index))
+                       : estimatedArrivalTime(*pressers.at(index));
         }
       }
       const auto& runners = homeTeam ? homeRunners : awayRunners;
@@ -1586,9 +1663,9 @@ void MatchEngine::refreshTacticalTargetsCapybara(float dt, bool planHome)
                  (shapeAnchor.y - centreY) * S::BLOCK_BALL_SIDE_SHIFT;
       target.x += defensiveRoleShiftCapybara(player);
     }
-    // Step O6: his shape spot (the block moved with the ball), for the
-    // first-to-commit call.
-    if (looseShadowRan)
+    // Steps O6 and P3: his shape spot (the block moved with the ball), for
+    // the first-to-commit call.
+    if (looseShadowRan || pressShadowRan)
     {
       shapeSpotsCapybara.at(playerIndexCapybara(player)) = target;
     }
@@ -1828,13 +1905,15 @@ void MatchEngine::refreshTacticalTargetsCapybara(float dt, bool planHome)
     }
     else if (carrier != nullptr)
     {
-      const auto& pressers = player.isHomeTeam ? homePressers : awayPressers;
+      // Who presses and who is second man: each player's own call (steps P1
+      // to P4, live since P5; restarts too since P7).
+      const PressJobsCapybara own =
+          pressJobsCapybara(player, asVector(carrier->position));
       const std::optional<PitchPoint> doubling =
-          pressers[1] == &player
-              ? doubleUpPointCapybara(player, *carrier, pressers[0])
-              : std::nullopt;
+          own.second ? doubleUpPointCapybara(player, *carrier, own.firstMan)
+                     : std::nullopt;
       const bool coveringPress =
-          pressers[1] == &player &&
+          own.second &&
           sliders.pressing > MatchTuning::Shape::COVER_PRESS_MINIMUM;
       const MatchPlayer* coverOutlet =
           player.isHomeTeam ? homeCoverOutlet : awayCoverOutlet;
@@ -1852,12 +1931,13 @@ void MatchEngine::refreshTacticalTargetsCapybara(float dt, bool planHome)
         mark = nullptr;
       }
       // The situation "Opponents' ball" (brain redesign plan section 22,
-      // step O2): his off-ball frame. Open when the team's assignments,
-      // orders or phase give it to him; hold shape is always open.
+      // step O2): his off-ball frame. Open when his own press call, the
+      // team's marks, orders or phase give it to him; hold shape is always
+      // open.
       // Follow-up: no measures yet; the stopgap pick is today's order (the
       // first open option).
       const std::array<bool, THEIR_BALL_JOB_COUNT> theirBallOpen{
-          pressers[0] == &player,
+          own.presses,
           doubling.has_value(),
           coveringPress && coverOutlet != nullptr,
           coveringPress && coverOutlet == nullptr,
@@ -1874,17 +1954,71 @@ void MatchEngine::refreshTacticalTargetsCapybara(float dt, bool planHome)
       {
         player.intent = PlayerIntent::PRESS_BALL;
         player.isPressing = true;
-        const float standOff =
+        const float usualStandOff =
             (MatchTuning::Shape::PRESSING_STANDOFF_BASE_METRES +
              (1.0F - sliders.pressing) *
                  MatchTuning::Shape::PRESSING_STANDOFF_CAUTIOUS_BONUS_METRES) *
             pressStandOffShareCapybara(player, *carrier);
+        // Facing the ball plan §4c, the squeeze: he closes the stand-off
+        // when the moment is his (aggressive to start, the user).
+        PressSqueezeCapybara squeeze = pressSqueezeCapybara(player, *carrier);
+        const float standOff =
+            usualStandOff +
+            ((std::min(usualStandOff, SQUEEZE_STAND_OFF_METRES) -
+              usualStandOff) *
+             squeeze.share);
+        squeeze.usualMetres = usualStandOff;
+        squeeze.squeezedMetres = standOff;
+        ++stats.pressFrames;
+        if (squeeze.share >= SQUEEZE_COUNTED_SHARE)
+        {
+          ++stats.pressSqueezed;
+        }
+        noteSqueezeCapybara(player, squeeze);
         target = pressurePosition;
         target.x -= attackDirection * standOff;
         target.y += weakFootShadeCapybara(*carrier);
         targetVelocity = carrier->velocity;
         pinned = true;
         job = planJob(PlanBranch::PRESS);
+        // The step-in: from the carrier's side or a diagonal, close, his
+        // body into the gap between the carrier and his ball, moving with
+        // him (stepInPointCapybara); his touch comes during it.
+        if (!touchAway)
+        {
+          if (const auto gap = stepInPointCapybara(player, *carrier))
+          {
+            target = *gap;
+            job = planJob(PlanBranch::PRESS, 2);
+            if (player.plannedJob != job)
+            {
+              ++stats.stepInMoves;
+            }
+          }
+        }
+        // The pounce: with the ball out of the carrier's reach, he goes for
+        // where he can meet it on its roll, when he gets there no later
+        // than the carrier (design choice: the same rough meet for both).
+        if (touchAway)
+        {
+          const auto [mySeconds, meet] = interception(player);
+          const float carrierSeconds = interception(*carrier).first;
+          const bool pounce = mySeconds <= carrierSeconds;
+          notePounceCapybara(player, {.pounce = pounce,
+                                      .mySeconds = mySeconds,
+                                      .carrierSeconds = carrierSeconds});
+          if (pounce)
+          {
+            target = clampToPitch(meet);
+            targetVelocity = {.x = 0.0F, .y = 0.0F};
+            pinned = false;
+            job = planJob(PlanBranch::PRESS, 1);
+            if (player.plannedJob != job)
+            {
+              ++stats.pounces;
+            }
+          }
+        }
       }
       else if (theirBallJob == TheirBallJob::DOUBLE_UP)
       {
@@ -1982,8 +2116,9 @@ void MatchEngine::refreshTacticalTargetsCapybara(float dt, bool planHome)
     }
     else
     {
+      // A pass gone loose is a loose ball for both sides.
       const bool receivingPass =
-          getPossessionState().isPass &&
+          passLiveCapybara() &&
           getPossessionState().passByHome == player.isHomeTeam;
       const auto& pressers = player.isHomeTeam ? homePressers : awayPressers;
       // Nobody has the ball (brain redesign plan section 22, step O3):
@@ -1996,10 +2131,9 @@ void MatchEngine::refreshTacticalTargetsCapybara(float dt, bool planHome)
       //   hold shape.
       // - "Ball loose": chase, cover the chase, transition run or support,
       //   recover.
-      const bool travelling =
-          getPossessionState().isPass || getPossessionState().isShot;
+      const bool travelling = passLiveCapybara() || getPossessionState().isShot;
       const MatchPlayer* tight =
-          getPossessionState().isPass &&
+          passLiveCapybara() &&
                   getPossessionState().passByHome != player.isHomeTeam
               ? tightMarkTargetCapybara(player)
               : nullptr;
@@ -2325,10 +2459,29 @@ void MatchEngine::refreshTacticalTargetsCapybara(float dt, bool planHome)
     player.tacticalTarget = target;
     player.targetVelocity = targetVelocity;
     player.urgentMovement = urgentTarget;
-    // No route planning yet (overtakes are added after), and no body
-    // orientation asked: he heads straight for it, his body following.
+    // No route planning yet (overtakes are added after). His body (facing
+    // the ball plan step 1): a run, a chase, a pass to receive, a man he
+    // tracks at a run, or ahead of the ball, and his body follows his run;
+    // otherwise, goal-side of the ball, he faces it while he can keep up
+    // with his job that way.
     player.routeWaypoints = 0;
-    player.facingRequested = false;
+    if (!goalkeeper && &player != carrier)
+    {
+      planOffBallFacingCapybara(
+          player, target, targetVelocity, pressurePosition,
+          offBallRunCapybara(player, targetVelocity, challenging, looseChase,
+                             pinned));
+    }
+    else
+    {
+      // Keepers (their own state machine) and the carrier: not asked, and
+      // not left turned for when he is next off the ball.
+      player.facingRequested = false;
+      if (!facingTurnedCapybara.empty())
+      {
+        facingTurnedCapybara.at(playerIndexCapybara(player)) = 0;
+      }
+    }
     player.arriveAtSpeed = throughTarget;
     // Chasing the loose ball (on the ground, or up for it), and whether he
     // steers round others on the way: the ground chaser, and a player
@@ -2379,7 +2532,7 @@ void MatchEngine::refreshTacticalTargetsCapybara(float dt, bool planHome)
         precise.at(index) = {.seconds = seconds, .at = at};
       }
     }
-    looseCommitStageCapybara(planHome, precise,
+    looseCommitStageCapybara(CommitKindCapybara::LOOSE, planHome, precise,
                              (planHome ? homePressers : awayPressers).front());
     // The brain flow tool: the example player's sequence, projected.
     for (std::size_t index = 0;
@@ -2391,7 +2544,8 @@ void MatchEngine::refreshTacticalTargetsCapybara(float dt, bool planHome)
       {
         continue;
       }
-      const std::size_t partner = loosePartnerCapybara(index);
+      const std::size_t partner =
+          loosePartnerCapybara(CommitKindCapybara::LOOSE, index);
       const auto [hisSeconds, hisAt] = interception(player);
       PreciseMeetCapybara theirs{};
       if (partner != SIZE_MAX)
@@ -2399,8 +2553,45 @@ void MatchEngine::refreshTacticalTargetsCapybara(float dt, bool planHome)
         const auto [seconds, at] = interception(players.at(partner));
         theirs = {.seconds = seconds, .at = at};
       }
-      noteLooseCommitCapybara(index, partner,
+      noteLooseCommitCapybara(CommitKindCapybara::LOOSE, index, partner,
                               {.seconds = hisSeconds, .at = hisAt}, theirs);
+    }
+  }
+  // Step P3: first to commit on the press, with this step's shape
+  // spots; the detailed look uses the planner's pursuit time (no eagerness
+  // or continuity), collected where the carrier is.
+  if (pressShadowRan)
+  {
+    std::vector<PreciseMeetCapybara> precise(players.size());
+    for (std::size_t index = 0; index < players.size(); ++index)
+    {
+      if (players.at(index).isHomeTeam == planHome)
+      {
+        precise.at(index) = {.seconds = pressPursuitSeconds(players.at(index)),
+                             .at = pressurePosition};
+      }
+    }
+    looseCommitStageCapybara(CommitKindCapybara::PRESS, planHome, precise,
+                             nullptr);
+    tallyPressGoersCapybara(planHome, *carrier);
+    // Step P4: the second man and the job the frame opens for him.
+    tallyPressSecondCapybara(*carrier,
+                             planHome ? homeCoverOutlet : awayCoverOutlet,
+                             (planHome ? homeSliders : awaySliders).pressing);
+    for (std::size_t index = 0;
+         offBallRecord != nullptr && index < players.size(); ++index)
+    {
+      const MatchPlayer& player = players.at(index);
+      if (player.player == nullptr || player.isHomeTeam != planHome ||
+          player.player->getId() != offBallRecord->offBall.player)
+      {
+        continue;
+      }
+      const std::size_t partner =
+          loosePartnerCapybara(CommitKindCapybara::PRESS, index);
+      noteLooseCommitCapybara(
+          CommitKindCapybara::PRESS, index, partner, precise.at(index),
+          partner != SIZE_MAX ? precise.at(partner) : PreciseMeetCapybara{});
     }
   }
 }
@@ -2429,12 +2620,253 @@ void MatchEngine::noteOffBallCapybara(const MatchPlayer& player,
   offBallRecord->offBall.overriddenBy = nullptr;
 }
 
+namespace
+{
+// Facing the ball plan step 1 (the user, 2026-11-25; a design choice, not
+// researched): turned to run, he faces the ball again once his job asks
+// under this share of what he can manage facing it, so he doesn't flick
+// between the two.
+constexpr float FACING_RETURN_SHARE = 0.8F;
+}  // namespace
+
+MatchEngine::OffBallFacingCapybara MatchEngine::offBallFacingCapybara(
+    const MatchPlayer& player, PitchPoint target, Vector2F targetVelocity,
+    PitchPoint ballAt)
+{
+  if (facingTurnedCapybara.size() != players.size())
+  {
+    facingTurnedCapybara.assign(players.size(), 0);
+  }
+  std::uint8_t& turned = facingTurnedCapybara.at(playerIndexCapybara(player));
+  OffBallFacingCapybara result;
+  const Vector2F toBall = ballAt - player.position;
+  const float ballMetres = length(toBall);
+  result.goalSide = pitch.fromOwnGoalLine(player.position, player.isHomeTeam) <
+                    pitch.fromOwnGoalLine(ballAt, player.isHomeTeam);
+  if (!result.goalSide || ballMetres <= EPSILON)
+  {
+    turned = 0;
+    return result;
+  }
+  // The speed his job asks: what his job's movement mode asks at this
+  // distance (the body's modeTargetSpeed), held to what he can stop in at
+  // the body's arrival deceleration (its floor), toward his target, plus
+  // the target's own movement (as the body follows a moving target).
+  const MovementStyle& style = movementStyle(player.isHomeTeam);
+  const auto mode =
+      style.intentModes.at(static_cast<std::size_t>(player.intent));
+  const SpeedBandInputs inputs = speedBandInputs(player);
+  const SpeedBandTops bands =
+      speedBandTops(inputs.transition, inputs.critical, inputs.top);
+  const std::array<float, 4> tops{bands.walk, bands.jog, bands.run, inputs.top};
+  const Vector2F toTarget = target - player.position;
+  const float remaining = length(toTarget);
+  const float closing =
+      remaining > EPSILON
+          ? std::min(
+                modeTargetSpeed(mode, remaining, style.jogRampMetres, tops),
+                std::sqrt(2.0F * MatchTuning::Player::ARRIVAL_DECELERATION *
+                          remaining))
+          : 0.0F;
+  const float share = remaining > EPSILON ? closing / remaining : 0.0F;
+  const Vector2F wanted{.x = targetVelocity.x + (toTarget.x * share),
+                        .y = targetVelocity.y + (toTarget.y * share)};
+  result.asked = length(wanted);
+  // The most he can manage that way facing the ball: the body's direction
+  // speeds (forward, diagonal, sideways, back) at the angle between his
+  // way and the ball, blended as the body blends them.
+  using P = MatchTuning::Player;
+  const float alignment =
+      result.asked > EPSILON
+          ? std::clamp(((wanted.x * toBall.x) + (wanted.y * toBall.y)) /
+                           (result.asked * ballMetres),
+                       -1.0F, 1.0F)
+          : 1.0F;
+  const DirectionMix mix = directionMix(std::acos(alignment));
+  const auto directionCap = [&](std::size_t direction)
+  {
+    return P::DIRECTION_SPEED_SHARE.at(direction) *
+           tops.at(
+               static_cast<std::size_t>(P::DIRECTION_TOP_BAND.at(direction)));
+  };
+  result.cap =
+      directionCap(mix.below) +
+      ((directionCap(mix.below + 1) - directionCap(mix.below)) * mix.onward);
+  // Only an urgent job turns him (the user, 2026-11-25, option A): on a
+  // walk or jog job he keeps facing the ball and takes the slower speed
+  // (shuffling back into shape); a run or sprint job turns him when it asks
+  // more than he can manage facing it.
+  const bool urgent = mode == MovementMode::RUN || mode == MovementMode::SPRINT;
+  turned = static_cast<std::uint8_t>(
+      urgent && (turned != 0 ? result.asked >= FACING_RETURN_SHARE * result.cap
+                             : result.asked > result.cap));
+  result.turned = turned != 0;
+  if (!result.turned)
+  {
+    result.angle = std::atan2(toBall.y, toBall.x);
+  }
+  return result;
+}
+
+MatchEngine::OffBallRunCapybara MatchEngine::offBallRunCapybara(
+    const MatchPlayer& player, Vector2F targetVelocity, bool challenging,
+    bool looseChase, bool pinned) const
+{
+  using R = OffBallRunCapybara;
+  if (challenging)
+  {
+    return R::AERIAL;
+  }
+  if (looseChase || player.intent == PlayerIntent::CLAIM_LOOSE_BALL)
+  {
+    return R::CHASE;
+  }
+  if (player.intent == PlayerIntent::RECEIVE_PASS)
+  {
+    return R::RECEIVE;
+  }
+  if (player.isMakingRun)
+  {
+    return R::RUN;
+  }
+  // Tracking a runner: tight on his man while the man runs (over a jog).
+  const float jogTop =
+      speedBandFrom(MovementMode::JOG, speedBandInputs(player)).high;
+  if (player.intent == PlayerIntent::MARK_OPPONENT && pinned &&
+      length(targetVelocity) > jogTop)
+  {
+    return R::TRACKS;
+  }
+  return R::NONE;
+}
+
+void MatchEngine::planOffBallFacingCapybara(MatchPlayer& player,
+                                            PitchPoint target,
+                                            Vector2F targetVelocity,
+                                            PitchPoint ballAt,
+                                            OffBallRunCapybara run)
+{
+  using R = OffBallRunCapybara;
+  OffBallFacingCapybara facing;
+  if (run == R::NONE)
+  {
+    facing = offBallFacingCapybara(player, target, targetVelocity, ballAt);
+  }
+  else
+  {
+    facing.goalSide =
+        pitch.fromOwnGoalLine(player.position, player.isHomeTeam) <
+        pitch.fromOwnGoalLine(ballAt, player.isHomeTeam);
+    if (!facingTurnedCapybara.empty())
+    {
+      facingTurnedCapybara.at(playerIndexCapybara(player)) = 0;
+    }
+  }
+  player.facingRequested = facing.angle.has_value();
+  player.facingRequest = facing.angle.value_or(0.0F);
+  // The lab's tallies (facing_*), goal-side of the ball only.
+  if (facing.goalSide)
+  {
+    ++stats.facingGoalSide;
+    switch (run)
+    {
+      case R::NONE:
+        stats.facingFaces += facing.angle.has_value() ? 1 : 0;
+        stats.facingTurned += facing.turned ? 1 : 0;
+        stats.facingTurnedPressing +=
+            facing.turned && player.intent == PlayerIntent::PRESS_BALL ? 1 : 0;
+        break;
+      case R::AERIAL:
+        ++stats.facingAerial;
+        break;
+      case R::CHASE:
+        ++stats.facingChase;
+        break;
+      case R::RECEIVE:
+        ++stats.facingReceive;
+        break;
+      case R::RUN:
+        ++stats.facingRun;
+        break;
+      case R::TRACKS:
+        ++stats.facingTracks;
+        break;
+    }
+  }
+  static constexpr std::array<const char*, OFF_BALL_RUN_COUNT> RUN_NAMES{
+      "",
+      "going up for the high ball",
+      "chasing the loose ball",
+      "receiving a pass",
+      "making a run",
+      "tracking a runner (his man over a jog)"};
+  const char* why = RUN_NAMES.at(static_cast<std::size_t>(run));
+  if (run == R::NONE)
+  {
+    if (facing.angle.has_value())
+    {
+      why = "facing the ball";
+    }
+    else if (facing.turned)
+    {
+      why =
+          "turned to run (his run job asks more speed than he has facing "
+          "the ball)";
+    }
+    else
+    {
+      why = "ahead of the ball (his run)";
+    }
+  }
+  noteOffBallFacingCapybara(player, why, facing);
+}
+
+void MatchEngine::noteOffBallFacingCapybara(const MatchPlayer& player,
+                                            const char* why,
+                                            const OffBallFacingCapybara& facing)
+{
+  if (offBallRecord == nullptr || player.player == nullptr ||
+      player.player->getId() != offBallRecord->offBall.player)
+  {
+    return;
+  }
+  offBallRecord->offBall.facing = why;
+  offBallRecord->offBall.facingChecked = facing.goalSide;
+  offBallRecord->offBall.facingAsked = facing.asked;
+  offBallRecord->offBall.facingCap = facing.cap;
+  offBallRecord->offBall.facingTurned = facing.turned;
+}
+
+void MatchEngine::notePounceCapybara(const MatchPlayer& player,
+                                     const PounceCallCapybara& call)
+{
+  if (offBallRecord == nullptr || player.player == nullptr ||
+      player.player->getId() != offBallRecord->offBall.player)
+  {
+    return;
+  }
+  offBallRecord->offBall.pounce =
+      call.pounce
+          ? "pounces: the touch is out of the carrier's reach and he meets "
+            "it first"
+          : "holds the press: the touch is out of reach, but the carrier "
+            "meets it first";
+  offBallRecord->offBall.pounceSeconds = call.mySeconds;
+  offBallRecord->offBall.pounceCarrierSeconds = call.carrierSeconds;
+}
+
 bool MatchEngine::brainFlowOffBallCapybara(const MatchScenario& scenario,
                                            float matchMinute, int homeGoals,
                                            int awayGoals,
                                            BrainFlow::CarrierRecord& record)
 {
   record.offBall.filled = false;
+  record.offBall.pressCall = nullptr;
+  record.offBall.pounce = nullptr;
+  record.offBall.squeeze = nullptr;
+  record.offBall.facing = nullptr;
+  record.offBall.facingChecked = false;
+  record.offBall.pressSecond = nullptr;
   record.offBall.looseCall = nullptr;
   record.offBall.meetPoints.clear();
   record.offBall.commit.reset();
@@ -2465,6 +2897,11 @@ namespace
 // pace (m/s) on the ground it has settled.
 constexpr float LOOSE_SHADOW_MARGIN_SECONDS = 0.5F;
 constexpr float LOOSE_MARGIN_SHARE = 0.10F;
+// Step P6 (the user, 2026-11-27, our estimate): the margin is at least
+// this, about a reaction time and two steps. At pressing distances 10% of
+// his time was 0.01-0.03 s and the press flip-flopped between two players
+// already on the carrier.
+constexpr float LOOSE_MARGIN_FLOOR_SECONDS = 0.2F;
 constexpr std::size_t LOOSE_SHADOW_RIVALS = 3;
 // Seeing a team-mate also going (the user, 2026-11-23, our estimates): in
 // view while he looks at the ball (within this angle of his line to it),
@@ -2474,10 +2911,19 @@ constexpr float SEES_WHILE_LOOKING_DEGREES = 60.0F;
 constexpr float ALONGSIDE_METRES = 2.0F;
 constexpr float ALONGSIDE_HEADING_DEGREES = 30.0F;
 
+// Step P6 (the user, 2026-11-27): a player on the floor is left out of
+// the press and loose-ball calls, his own and as a rival.
+bool standingCapybara(const MatchPlayer& player)
+{
+  return active(player) && !player.fallen;
+}
+
 // The margin for a chase that takes him this long.
 float looseMargin(float seconds)
 {
-  return std::min(LOOSE_SHADOW_MARGIN_SECONDS, LOOSE_MARGIN_SHARE * seconds);
+  return std::max(
+      LOOSE_MARGIN_FLOOR_SECONDS,
+      std::min(LOOSE_SHADOW_MARGIN_SECONDS, LOOSE_MARGIN_SHARE * seconds));
 }
 constexpr float COMFORTABLE_CONTROL_METRES = 1.0F;
 constexpr float SETTLED_BALL_SPEED = 2.0F;
@@ -2549,7 +2995,10 @@ float MatchEngine::roughSecondsCapybara(const MatchPlayer& player,
                  -1.0F, 1.0F);
   const float turn = std::acos(facingCosine) /
                      MatchTuning::Player::FACING_TURN_RATE_RADIANS;
-  return (run / speed) + turn;
+  // Stumbling, or paused by a knock he kept his feet through, he can't
+  // drive until it is over (step P6, the user, 2026-11-27).
+  const float knocked = player.stumbleSeconds + player.collisionPause;
+  return (run / speed) + turn + knocked;
 }
 
 std::pair<std::size_t, float> MatchEngine::roughMeetCapybara(
@@ -2593,7 +3042,7 @@ MatchEngine::LooseCallResultCapybara MatchEngine::looseCallCapybara(
   std::array<const MatchPlayer*, LOOSE_SHADOW_RIVALS> closest{};
   for (const MatchPlayer& other : players)
   {
-    if (&other == &player || !active(other) || other.isGoalkeeper)
+    if (&other == &player || !standingCapybara(other) || other.isGoalkeeper)
     {
       continue;
     }
@@ -2636,7 +3085,7 @@ MatchEngine::LooseCallResultCapybara MatchEngine::looseCallCapybara(
   bool watchConsidered = false;
   for (const MatchPlayer& other : players)
   {
-    if (&other == &player || !active(other) || other.isGoalkeeper)
+    if (&other == &player || !standingCapybara(other) || other.isGoalkeeper)
     {
       continue;
     }
@@ -2671,6 +3120,10 @@ MatchEngine::LooseShadowOutcomeCapybara MatchEngine::shadowLooseBallCapybara(
     shapeSpotsCapybara.assign(players.size(), PitchPoint{});
   }
   looseShadowStepCapybara = stepCounter;
+  if (!passLiveCapybara())
+  {
+    looseShadowSideStepCapybara.at(home ? 0 : 1) = stepCounter;
+  }
   int mine = 0;
   int inDoubt = 0;
   bool theirs = false;
@@ -2681,8 +3134,14 @@ MatchEngine::LooseShadowOutcomeCapybara MatchEngine::shadowLooseBallCapybara(
     {
       continue;
     }
+    // On the floor: not his (and no rival to anyone).
     const LooseCallResultCapybara result =
-        looseCallCapybara(player, path, teamPick);
+        player.fallen ? LooseCallResultCapybara{}
+                      : looseCallCapybara(player, path, teamPick);
+    if (player.isHomeTeam == home)
+    {
+      tallyKnockedCallCapybara(player);
+    }
     looseCallsNowCapybara.at(playerIndexCapybara(player)) = result.call;
     if (player.isHomeTeam != home)
     {
@@ -2741,6 +3200,9 @@ constexpr float STAT_DELAY_AT_99 =
     STAT_DELAY_AT_1 - ((STAT_DELAY_AT_1 - STAT_DELAY_AT_100) * 98.0F / 99.0F);
 constexpr float RIGHT_CALL_AT_1 = 0.5F;
 constexpr float RIGHT_CALL_AT_99 = 1.0F - (0.5F * 1.0F / 99.0F);
+// Step P6 (the user, 2026-11-27): two pressing within this of the carrier
+// (m), seeing each other, settle it at once.
+constexpr float PRESS_CLOSE_METRES = 2.0F;
 
 }  // namespace
 
@@ -2763,8 +3225,10 @@ bool MatchEngine::looseChaserCapybara(const MatchPlayer& player,
   return anyGoes ? goes(playerIndexCapybara(player)) : &player == teamPick;
 }
 
-bool MatchEngine::seesTeamMateGoingCapybara(std::size_t index) const
+bool MatchEngine::seesTeamMateGoingCapybara(CommitKindCapybara kind,
+                                            std::size_t index) const
 {
+  const std::vector<LooseCommitCapybara>& commits = commitsCapybara(kind);
   const MatchPlayer& player = players.at(index);
   const auto unit = [](Vector2F v)
   {
@@ -2789,7 +3253,7 @@ bool MatchEngine::seesTeamMateGoingCapybara(std::size_t index) const
   for (std::size_t other = 0; other < players.size(); ++other)
   {
     const MatchPlayer& mate = players.at(other);
-    const LooseCommitCapybara& theirs = looseCommitsCapybara.at(other);
+    const LooseCommitCapybara& theirs = commits.at(other);
     if (other == index || mate.isHomeTeam != player.isHomeTeam ||
         !theirs.committed || theirs.settled)
     {
@@ -2821,29 +3285,31 @@ std::size_t MatchEngine::playerIndexCapybara(const MatchPlayer& player) const
 }
 
 void MatchEngine::looseCommitStageCapybara(
-    bool home, std::span<const PreciseMeetCapybara> precise,
-    const MatchPlayer* teamPick)
+    CommitKindCapybara kind, bool home,
+    std::span<const PreciseMeetCapybara> precise, const MatchPlayer* teamPick)
 {
   const double now = getSimulatedSeconds();
+  std::vector<LooseCommitCapybara>& commits = commitsCapybara(kind);
+  const std::vector<LooseCallCapybara>& calls = callsNowCapybara(kind);
   for (std::size_t index = 0; index < players.size(); ++index)
   {
     const MatchPlayer& player = players.at(index);
-    LooseCommitCapybara& commit = looseCommitsCapybara.at(index);
+    LooseCommitCapybara& commit = commits.at(index);
     if (player.isHomeTeam != home || !active(player) || player.isGoalkeeper)
     {
       continue;
     }
-    const LooseCallCapybara call = looseCallsNowCapybara.at(index);
+    const LooseCallCapybara call = calls.at(index);
     // Settled: the call holds, unless the one going for it gives up; then
     // both are free again.
     if (commit.settled)
     {
       if (!commit.standsDown && call == LooseCallCapybara::NOT_MINE)
       {
-        if (commit.partner < looseCommitsCapybara.size() &&
-            looseCommitsCapybara.at(commit.partner).standsDown)
+        if (commit.partner < commits.size() &&
+            commits.at(commit.partner).standsDown)
         {
-          looseCommitsCapybara.at(commit.partner) = LooseCommitCapybara{};
+          commits.at(commit.partner) = LooseCommitCapybara{};
         }
         commit = LooseCommitCapybara{};
       }
@@ -2872,9 +3338,9 @@ void MatchEngine::looseCommitStageCapybara(
     }
     // A team-mate going whom he can see, or alongside him: no delay.
     if (!commit.lookedUp &&
-        (now >= commit.lookUpAt || seesTeamMateGoingCapybara(index)))
+        (now >= commit.lookUpAt || seesTeamMateGoingCapybara(kind, index)))
     {
-      lookUpLooseCapybara(index, precise, now);
+      lookUpLooseCapybara(kind, index, precise, now);
     }
   }
   // The calls that are due, the soonest first; each settles its pair.
@@ -2883,11 +3349,10 @@ void MatchEngine::looseCommitStageCapybara(
     std::size_t first = SIZE_MAX;
     for (std::size_t index = 0; index < players.size(); ++index)
     {
-      const LooseCommitCapybara& commit = looseCommitsCapybara.at(index);
+      const LooseCommitCapybara& commit = commits.at(index);
       if (players.at(index).isHomeTeam == home && commit.lookedUp &&
           !commit.settled && commit.callAt <= now &&
-          (first == SIZE_MAX ||
-           commit.callAt < looseCommitsCapybara.at(first).callAt))
+          (first == SIZE_MAX || commit.callAt < commits.at(first).callAt))
       {
         first = index;
       }
@@ -2896,22 +3361,23 @@ void MatchEngine::looseCommitStageCapybara(
     {
       break;
     }
-    settleLooseCallCapybara(first, teamPick, now);
+    settleLooseCallCapybara(kind, first, teamPick, now);
   }
 }
 
 void MatchEngine::lookUpLooseCapybara(
-    std::size_t index, std::span<const PreciseMeetCapybara> precise,
-    double now)
+    CommitKindCapybara kind, std::size_t index,
+    std::span<const PreciseMeetCapybara> precise, double now)
 {
+  std::vector<LooseCommitCapybara>& commits = commitsCapybara(kind);
   const MatchPlayer& player = players.at(index);
-  LooseCommitCapybara& commit = looseCommitsCapybara.at(index);
+  LooseCommitCapybara& commit = commits.at(index);
   // A team-mate also going for it (the nearest, if more than one).
   std::size_t partner = SIZE_MAX;
   float nearest = std::numeric_limits<float>::max();
   for (std::size_t other = 0; other < players.size(); ++other)
   {
-    const LooseCommitCapybara& theirs = looseCommitsCapybara.at(other);
+    const LooseCommitCapybara& theirs = commits.at(other);
     if (other == index || players.at(other).isHomeTeam != player.isHomeTeam ||
         !theirs.committed || theirs.settled)
     {
@@ -2931,6 +3397,7 @@ void MatchEngine::lookUpLooseCapybara(
   }
   // The detailed look: the clearly quicker takes it; else the one whose
   // shape spot is nearest where it will be collected.
+  // On the press, within the margin, the one goal-side keeps it (step P6).
   const float his = precise[index].seconds;
   const float theirs = precise[partner].seconds;
   const PitchPoint collect = precise[index].at;
@@ -2939,6 +3406,11 @@ void MatchEngine::lookUpLooseCapybara(
   if (theirs - his > margin)
   {
     rightMine = true;
+  }
+  else if (his - theirs <= margin && kind == CommitKindCapybara::PRESS)
+  {
+    rightMine = pressGoalSideMineCapybara(index, partner, collect);
+    ++stats.pressCallsGoalSide;
   }
   else if (his - theirs <= margin)
   {
@@ -2953,17 +3425,64 @@ void MatchEngine::lookUpLooseCapybara(
   commit.partner = partner;
   commit.answerMine = right ? rightMine : !rightMine;
   commit.answerRight = right;
+  // Both on the carrier and seeing each other, the call is at once (step
+  // P6); else his Leadership's delay.
   commit.callAt =
       now + alongStatScale(player.derivedStat(DerivedStat::LEADERSHIP),
                            STAT_DELAY_AT_1, STAT_DELAY_AT_99);
+  if (kind == CommitKindCapybara::PRESS &&
+      pressCallAtOnceCapybara(index, partner, collect))
+  {
+    commit.callAt = now;
+    ++stats.pressCallsInstant;
+  }
 }
 
-void MatchEngine::settleLooseCallCapybara(std::size_t index,
+bool MatchEngine::pressGoalSideMineCapybara(std::size_t index,
+                                            std::size_t partner,
+                                            PitchPoint carrier) const
+{
+  // Goal-side: nearer the line from the carrier to the goal they defend
+  // (cutting off his way forward), the way the user put it (2026-11-24,
+  // taken up in step P6).
+  const MatchPlayer& player = players.at(index);
+  const PitchPoint goal =
+      pitch.at(player.isHomeTeam ? 0.0F : 1.0F, MatchTuning::Pitch::CENTRE);
+  const Vector2F line{.x = goal.x - carrier.x, .y = goal.y - carrier.y};
+  const float lineSquared = (line.x * line.x) + (line.y * line.y);
+  const auto offLine = [&](const MatchPlayer& who)
+  {
+    const float share =
+        lineSquared > EPSILON
+            ? std::clamp((((who.position.x - carrier.x) * line.x) +
+                          ((who.position.y - carrier.y) * line.y)) /
+                             lineSquared,
+                         0.0F, 1.0F)
+            : 0.0F;
+    return distance(who.position, PitchPoint{carrier.x + (line.x * share),
+                                             carrier.y + (line.y * share)});
+  };
+  return offLine(player) <= offLine(players.at(partner));
+}
+
+bool MatchEngine::pressCallAtOnceCapybara(std::size_t index,
+                                          std::size_t partner,
+                                          PitchPoint carrier) const
+{
+  return distance(players.at(index).position, carrier) <= PRESS_CLOSE_METRES &&
+         distance(players.at(partner).position, carrier) <=
+             PRESS_CLOSE_METRES &&
+         seesTeamMateGoingCapybara(CommitKindCapybara::PRESS, index);
+}
+
+void MatchEngine::settleLooseCallCapybara(CommitKindCapybara kind,
+                                          std::size_t index,
                                           const MatchPlayer* teamPick,
                                           double now)
 {
-  LooseCommitCapybara& commit = looseCommitsCapybara.at(index);
-  LooseCommitCapybara& mate = looseCommitsCapybara.at(commit.partner);
+  std::vector<LooseCommitCapybara>& commits = commitsCapybara(kind);
+  LooseCommitCapybara& commit = commits.at(index);
+  LooseCommitCapybara& mate = commits.at(commit.partner);
   commit.settled = true;
   if (mate.settled)
   {
@@ -2972,8 +3491,17 @@ void MatchEngine::settleLooseCallCapybara(std::size_t index,
   mate.settled = true;
   mate.partner = index;
   const std::size_t chaser = commit.answerMine ? index : commit.partner;
-  looseCommitsCapybara.at(chaser == index ? commit.partner : index)
-      .standsDown = true;
+  commits.at(chaser == index ? commit.partner : index).standsDown = true;
+  constexpr double MILLIS = 1000.0;
+  const int millis = static_cast<int>(
+      (now - std::max(commit.committedAt, mate.committedAt)) * MILLIS);
+  if (kind == CommitKindCapybara::PRESS)
+  {
+    ++stats.pressCallsMade;
+    stats.pressCallsRight += commit.answerRight ? 1 : 0;
+    stats.pressCallMillis += millis;
+    return;
+  }
   ++stats.looseCallsMade;
   if (commit.answerRight)
   {
@@ -2983,13 +3511,13 @@ void MatchEngine::settleLooseCallCapybara(std::size_t index,
   {
     ++stats.looseCallsAgree;
   }
-  constexpr double MILLIS = 1000.0;
-  stats.looseCallMillis += static_cast<int>(
-      (now - std::max(commit.committedAt, mate.committedAt)) * MILLIS);
+  stats.looseCallMillis += millis;
 }
 
-std::size_t MatchEngine::loosePartnerCapybara(std::size_t index) const
+std::size_t MatchEngine::loosePartnerCapybara(CommitKindCapybara kind,
+                                              std::size_t index) const
 {
+  const std::vector<LooseCallCapybara>& calls = callsNowCapybara(kind);
   const MatchPlayer& player = players.at(index);
   std::size_t partner = SIZE_MAX;
   float nearest = std::numeric_limits<float>::max();
@@ -2998,7 +3526,7 @@ std::size_t MatchEngine::loosePartnerCapybara(std::size_t index) const
     const MatchPlayer& mate = players.at(other);
     if (other == index || mate.isHomeTeam != player.isHomeTeam ||
         !active(mate) || mate.isGoalkeeper ||
-        looseCallsNowCapybara.at(other) == LooseCallCapybara::NOT_MINE)
+        calls.at(other) == LooseCallCapybara::NOT_MINE)
     {
       continue;
     }
@@ -3012,12 +3540,13 @@ std::size_t MatchEngine::loosePartnerCapybara(std::size_t index) const
   return partner;
 }
 
-void MatchEngine::noteLooseCommitCapybara(std::size_t index,
+void MatchEngine::noteLooseCommitCapybara(CommitKindCapybara kind,
+                                          std::size_t index,
                                           std::size_t partner,
                                           PreciseMeetCapybara his,
                                           PreciseMeetCapybara theirs)
 {
-  if (looseCallsNowCapybara.at(index) == LooseCallCapybara::NOT_MINE)
+  if (callsNowCapybara(kind).at(index) == LooseCallCapybara::NOT_MINE)
   {
     return;
   }
@@ -3027,8 +3556,9 @@ void MatchEngine::noteLooseCommitCapybara(std::size_t index,
     return alongStatScale(who.derivedStat(stat), STAT_DELAY_AT_1,
                           STAT_DELAY_AT_99);
   };
-  const bool seesAtOnce = seesTeamMateGoingCapybara(index);
+  const bool seesAtOnce = seesTeamMateGoingCapybara(kind, index);
   BrainFlow::OffBallRecord::CommitCall commit{
+      .press = kind == CommitKindCapybara::PRESS,
       .lookUpSeconds =
           seesAtOnce ? 0.0F : delay(player, DerivedStat::CONCENTRATION),
       .callSeconds = delay(player, DerivedStat::LEADERSHIP),
@@ -3090,6 +3620,516 @@ void MatchEngine::tallyWrongLooseCallCapybara(
   {
     ++stats.looseWrongSlowerMissed;
   }
+}
+
+MatchEngine::LooseCallCapybara MatchEngine::pressCallCapybara(
+    const MatchPlayer& player, Vector2F at) const
+{
+  // Step P1, the rough look (as the loose ball's): can he get to the
+  // carrier before the few team-mates nearest him? The carrier's own side
+  // does not race him there, so only team-mates count.
+  return judgeLooseCallCapybara(roughSecondsCapybara(player, at),
+                                quickestMateSecondsCapybara(player, at, false));
+}
+
+float MatchEngine::quickestMateSecondsCapybara(const MatchPlayer& player,
+                                               Vector2F at,
+                                               bool notGoingOnly) const
+{
+  std::array<float, LOOSE_SHADOW_RIVALS> closestMetres{};
+  closestMetres.fill(std::numeric_limits<float>::max());
+  std::array<const MatchPlayer*, LOOSE_SHADOW_RIVALS> closest{};
+  for (const MatchPlayer& other : players)
+  {
+    if (&other == &player || !standingCapybara(other) || other.isGoalkeeper ||
+        other.isHomeTeam != player.isHomeTeam ||
+        (notGoingOnly && pressCallsNowCapybara.at(playerIndexCapybara(other)) !=
+                             LooseCallCapybara::NOT_MINE))
+    {
+      continue;
+    }
+    float metres = metresBetween(asVector(other.position), at);
+    const MatchPlayer* who = &other;
+    for (std::size_t place = 0; place < LOOSE_SHADOW_RIVALS; ++place)
+    {
+      if (metres < closestMetres.at(place))
+      {
+        std::swap(metres, closestMetres.at(place));
+        std::swap(who, closest.at(place));
+      }
+    }
+  }
+  float bestRival = std::numeric_limits<float>::max();
+  for (const MatchPlayer* rival : closest)
+  {
+    if (rival != nullptr)
+    {
+      bestRival = std::min(bestRival, roughSecondsCapybara(*rival, at));
+    }
+  }
+  return bestRival;
+}
+
+void MatchEngine::freshPressCallCapybara(bool home, const MatchPlayer& carrier)
+{
+  if (pressCommitsCapybara.size() != players.size())
+  {
+    pressCommitsCapybara.assign(players.size(), {});
+    pressCallsNowCapybara.assign(players.size(), LooseCallCapybara::NOT_MINE);
+  }
+  if (shapeSpotsCapybara.size() != players.size())
+  {
+    shapeSpotsCapybara.assign(players.size(), PitchPoint{});
+  }
+  // Step P3: a new carrier (or the first press for a while) is a fresh
+  // call; right after the side's own loose ball, its commitments carry
+  // over, no new delays (the user, 2026-11-24).
+  const std::size_t side = home ? 0 : 1;
+  const std::uint32_t carrierId =
+      carrier.player != nullptr ? carrier.player->getId() : 0U;
+  constexpr auto REFRESH = MatchTuning::Timing::TACTICAL_REFRESH_STEPS;
+  if (pressCarrierCapybara.at(side) != carrierId ||
+      stepCounter > pressShadowSideStepCapybara.at(side) + REFRESH)
+  {
+    const bool afterLoose =
+        looseCommitsCapybara.size() == players.size() &&
+        looseShadowSideStepCapybara.at(side) != 0 &&
+        stepCounter <= looseShadowSideStepCapybara.at(side) + REFRESH;
+    for (std::size_t index = 0; index < players.size(); ++index)
+    {
+      if (players.at(index).isHomeTeam != home)
+      {
+        continue;
+      }
+      pressCommitsCapybara.at(index) =
+          afterLoose ? looseCommitsCapybara.at(index) : LooseCommitCapybara{};
+      if (afterLoose && pressCommitsCapybara.at(index).committed)
+      {
+        ++stats.pressCommitsCarried;
+      }
+    }
+    pressCarrierCapybara.at(side) = carrierId;
+    pressSecondHolderCapybara.at(side) = {};
+    pressFirstHolderCapybara.at(side) = {};
+    pressFirstPreviousCapybara.at(side) = {};
+    pressFirstGapCapybara.at(side) = false;
+    looseShadowSideStepCapybara.at(side) = 0;  // carried over once
+  }
+  pressShadowSideStepCapybara.at(side) = stepCounter;
+}
+
+void MatchEngine::tallyKnockedCallCapybara(const MatchPlayer& player)
+{
+  if (player.fallen)
+  {
+    ++stats.callsSkippedFallen;
+  }
+  else if (player.stumbleSeconds > 0.0F || player.collisionPause > 0.0F)
+  {
+    ++stats.callsSlowedStumbling;
+  }
+}
+
+void MatchEngine::shadowPressCapybara(bool home, const MatchPlayer& carrier)
+{
+  freshPressCallCapybara(home, carrier);
+  const Vector2F at = asVector(carrier.position);
+  int mine = 0;
+  int inDoubt = 0;
+  for (const MatchPlayer& player : players)
+  {
+    if (!active(player) || player.isGoalkeeper || player.isHomeTeam != home)
+    {
+      continue;
+    }
+    // On the floor: not his (and no rival to anyone).
+    const LooseCallCapybara call = player.fallen
+                                       ? LooseCallCapybara::NOT_MINE
+                                       : pressCallCapybara(player, at);
+    tallyKnockedCallCapybara(player);
+    pressCallsNowCapybara.at(playerIndexCapybara(player)) = call;
+    if (call == LooseCallCapybara::MINE)
+    {
+      ++mine;
+    }
+    else if (call == LooseCallCapybara::IN_DOUBT)
+    {
+      ++inDoubt;
+    }
+    notePressCallCapybara(player, call);
+  }
+  ++stats.pressShadowChecks;
+  if (mine >= 2)
+  {
+    ++stats.pressShadowTwoGo;
+  }
+  else if (mine == 1)
+  {
+    ++stats.pressShadowOne;
+    if (inDoubt > 0)
+    {
+      ++stats.pressShadowWithDoubt;
+    }
+  }
+  else
+  {
+    ++stats.pressShadowNobody;
+  }
+}
+
+namespace
+{
+// The holder changes to `who` (1: from another player; a null is skipped).
+int holderChanged(std::uint32_t& holder, const MatchPlayer* who)
+{
+  const std::uint32_t id =
+      who != nullptr && who->player != nullptr ? who->player->getId() : 0U;
+  if (id == 0U)
+  {
+    return 0;
+  }
+  const int switched = holder != 0U && holder != id ? 1 : 0;
+  holder = id;
+  return switched;
+}
+}  // namespace
+
+void MatchEngine::tallyPressSwitchCapybara(PressHandOffCapybara handOff,
+                                           const MatchPlayer& carrier,
+                                           std::size_t side)
+{
+  const MatchPlayer& from = *handOff.from;
+  const MatchPlayer& to = *handOff.to;
+  // Step P6's diagnosis (counting only): the old presser's state as the
+  // press leaves him.
+  constexpr float TIE_SECONDS = 0.1F;
+  constexpr float SHORT_HOLD_SECONDS = 0.5F;
+  constexpr float LONG_HOLD_SECONDS = 1.5F;
+  constexpr float BACK_SECONDS = 1.0F;
+  const std::size_t index = playerIndexCapybara(from);
+  const PitchPoint ownGoal =
+      pitch.at(from.isHomeTeam ? 0.0F : 1.0F, MatchTuning::Pitch::CENTRE);
+  using Why = PressSwitchWhyCapybara;
+  Why why = Why::OTHER;
+  if (!active(from) || from.fallen || from.stumbleSeconds > 0.0F ||
+      from.collisionPause > 0.0F)
+  {
+    why = Why::DOWN;
+  }
+  else if (pressCommitsCapybara.at(index).standsDown)
+  {
+    why = Why::STOOD_DOWN;
+  }
+  else if (distance(carrier.position, ownGoal) <
+           distance(from.position, ownGoal))
+  {
+    why = Why::BEATEN;
+  }
+  else if (pressCallsNowCapybara.at(index) == LooseCallCapybara::NOT_MINE)
+  {
+    const Vector2F at = asVector(carrier.position);
+    why = roughSecondsCapybara(from, at) - roughSecondsCapybara(to, at) <=
+                  TIE_SECONDS
+              ? Why::TIE
+              : Why::REAL;
+  }
+  ++stats.pressSwitchWhy.at(static_cast<std::size_t>(why));
+  const float held =
+      static_cast<float>(stepCounter - pressFirstSinceCapybara.at(side)) *
+      MatchTuning::Timing::FIXED_STEP_SECONDS;
+  std::size_t heldBand = 2;
+  if (held < SHORT_HOLD_SECONDS)
+  {
+    heldBand = 0;
+  }
+  else if (held < LONG_HOLD_SECONDS)
+  {
+    heldBand = 1;
+  }
+  ++stats.pressSwitchHeld.at(heldBand);
+  if (to.player != nullptr &&
+      pressFirstPreviousCapybara.at(side) == to.player->getId() &&
+      held < BACK_SECONDS)
+  {
+    ++stats.pressSwitchBack;
+  }
+  if (pressFirstGapCapybara.at(side))
+  {
+    ++stats.pressSwitchViaGap;
+  }
+}
+
+void MatchEngine::tallyPressGoersCapybara(bool home, const MatchPlayer& carrier)
+{
+  int goers = 0;
+  const MatchPlayer* goer = nullptr;
+  for (std::size_t index = 0; index < players.size(); ++index)
+  {
+    const MatchPlayer& player = players.at(index);
+    if (player.isHomeTeam != home || !pressGoesCapybara(index))
+    {
+      continue;
+    }
+    ++goers;
+    goer = &player;
+  }
+  // Step P6's diagnosis: who held it, for how long, and why it moved.
+  const std::size_t side = home ? 0 : 1;
+  const std::uint32_t was = pressFirstHolderCapybara.at(side);
+  const MatchPlayer* from = nullptr;
+  for (const MatchPlayer& player : players)
+  {
+    if (was != 0U && player.player != nullptr && player.player->getId() == was)
+    {
+      from = &player;
+    }
+  }
+  const int switched = holderChanged(pressFirstHolderCapybara.at(side),
+                                     goers == 1 ? goer : nullptr);
+  stats.pressFirstSwitches += switched;
+  if (goers != 1)
+  {
+    pressFirstGapCapybara.at(side) = true;
+  }
+  else if (was == 0U || switched != 0)
+  {
+    if (switched != 0 && from != nullptr)
+    {
+      tallyPressSwitchCapybara({.from = from, .to = goer}, carrier, side);
+    }
+    pressFirstPreviousCapybara.at(side) = was;
+    pressFirstSinceCapybara.at(side) = stepCounter;
+    pressFirstGapCapybara.at(side) = false;
+  }
+  else
+  {
+    pressFirstGapCapybara.at(side) = false;
+  }
+  if (goers >= 2)
+  {
+    ++stats.pressGoSeveral;
+  }
+  else if (goers == 0)
+  {
+    ++stats.pressGoNone;
+  }
+  else
+  {
+    ++stats.pressGoOne;
+  }
+}
+
+bool MatchEngine::pressGoesCapybara(std::size_t index) const
+{
+  const MatchPlayer& player = players.at(index);
+  return active(player) && !player.isGoalkeeper &&
+         pressCallsNowCapybara.at(index) != LooseCallCapybara::NOT_MINE &&
+         !pressCommitsCapybara.at(index).standsDown;
+}
+
+MatchEngine::PressJobsCapybara MatchEngine::pressJobsCapybara(
+    const MatchPlayer& player, Vector2F at) const
+{
+  const PressSecondCapybara call = pressSecondCallCapybara(player, at);
+  PressJobsCapybara result{
+      .presses = pressGoesCapybara(playerIndexCapybara(player)),
+      .second = call == PressSecondCapybara::STOOD_DOWN ||
+                call == PressSecondCapybara::MINE,
+      .firstMan = nullptr};
+  // The first man, for the side a second man closes from: the quickest of
+  // those going (rough look).
+  float quickest = std::numeric_limits<float>::max();
+  for (std::size_t index = 0; index < players.size(); ++index)
+  {
+    const MatchPlayer& mate = players.at(index);
+    if (mate.isHomeTeam != player.isHomeTeam || !pressGoesCapybara(index))
+    {
+      continue;
+    }
+    const float seconds = roughSecondsCapybara(mate, at);
+    if (seconds < quickest)
+    {
+      quickest = seconds;
+      result.firstMan = &mate;
+    }
+  }
+  return result;
+}
+
+MatchEngine::PressSecondCapybara MatchEngine::pressSecondCallCapybara(
+    const MatchPlayer& player, Vector2F at) const
+{
+  const std::size_t self = playerIndexCapybara(player);
+  if (!standingCapybara(player) || player.isGoalkeeper ||
+      pressGoesCapybara(self))
+  {
+    return PressSecondCapybara::NONE;
+  }
+  if (pressCommitsCapybara.at(self).standsDown)
+  {
+    return PressSecondCapybara::STOOD_DOWN;
+  }
+  int goers = 0;
+  for (std::size_t index = 0; index < players.size(); ++index)
+  {
+    if (players.at(index).isHomeTeam != player.isHomeTeam)
+    {
+      continue;
+    }
+    if (active(players.at(index)) && pressCommitsCapybara.at(index).standsDown)
+    {
+      return PressSecondCapybara::NONE;
+    }
+    goers += pressGoesCapybara(index) ? 1 : 0;
+  }
+  if (goers != 1)
+  {
+    return PressSecondCapybara::NONE;
+  }
+  switch (judgeLooseCallCapybara(roughSecondsCapybara(player, at),
+                                 quickestMateSecondsCapybara(player, at, true)))
+  {
+    case LooseCallCapybara::MINE:
+      return PressSecondCapybara::MINE;
+    case LooseCallCapybara::IN_DOUBT:
+      return PressSecondCapybara::IN_DOUBT;
+    case LooseCallCapybara::NOT_MINE:
+      break;
+  }
+  return PressSecondCapybara::NOT_MINE;
+}
+
+void MatchEngine::tallyPressSecondCapybara(const MatchPlayer& carrier,
+                                           const MatchPlayer* coverOutlet,
+                                           float pressing)
+{
+  const bool home = !carrier.isHomeTeam;
+  const Vector2F at = asVector(carrier.position);
+  ++stats.pressSecondChecks;
+  const PressSecondsCapybara calls = pressSecondsCapybara(home, at);
+  if (calls.seconds >= 2)
+  {
+    ++stats.pressSecondSeveral;
+  }
+  else if (calls.seconds == 1)
+  {
+    stats.pressSecondWithDoubt += calls.inDoubt ? 1 : 0;
+    stats.pressSecondStoodDown += calls.stoodDown ? 1 : 0;
+    // The job his frame opens: the order, else the pressing slider.
+    const MatchPlayer& second = players.at(calls.second);
+    const PressJobsCapybara own = pressJobsCapybara(second, at);
+    if (doubleUpPointCapybara(second, carrier, own.firstMan).has_value())
+    {
+      ++stats.pressSecondDoubleUp;
+    }
+    else if (pressing > MatchTuning::Shape::COVER_PRESS_MINIMUM)
+    {
+      ++(coverOutlet != nullptr ? stats.pressSecondBlockLane
+                                : stats.pressSecondCover);
+    }
+    else
+    {
+      ++stats.pressSecondNoJob;
+    }
+    if (!calls.stoodDown)
+    {
+      tallyNearestSecondCapybara(calls.second, at);
+    }
+  }
+  else if (calls.goers >= 2)
+  {
+    ++stats.pressSecondHeld;
+  }
+  else
+  {
+    ++stats.pressSecondNone;
+  }
+  stats.pressSecondSwitches +=
+      holderChanged(pressSecondHolderCapybara.at(home ? 0 : 1),
+                    calls.seconds == 1 ? &players.at(calls.second) : nullptr);
+}
+
+MatchEngine::PressSecondsCapybara MatchEngine::pressSecondsCapybara(bool home,
+                                                                    Vector2F at)
+{
+  PressSecondsCapybara result;
+  for (std::size_t index = 0; index < players.size(); ++index)
+  {
+    const MatchPlayer& player = players.at(index);
+    if (player.isHomeTeam != home)
+    {
+      continue;
+    }
+    if (pressGoesCapybara(index))
+    {
+      ++result.goers;
+      result.goer = index;
+    }
+    const PressSecondCapybara call = pressSecondCallCapybara(player, at);
+    result.inDoubt = result.inDoubt || call == PressSecondCapybara::IN_DOUBT;
+    result.stoodDown =
+        result.stoodDown || call == PressSecondCapybara::STOOD_DOWN;
+    if (call == PressSecondCapybara::STOOD_DOWN ||
+        call == PressSecondCapybara::MINE)
+    {
+      ++result.seconds;
+      result.second = index;
+    }
+    notePressSecondCapybara(player, call);
+  }
+  return result;
+}
+
+void MatchEngine::tallyNearestSecondCapybara(std::size_t second,
+                                             Vector2F carrierAt)
+{
+  // The plan's wording, the nearest: is he the nearest of those not going?
+  const MatchPlayer& who = players.at(second);
+  float nearest = std::numeric_limits<float>::max();
+  std::size_t nearestIndex = second;
+  for (std::size_t index = 0; index < players.size(); ++index)
+  {
+    const MatchPlayer& player = players.at(index);
+    const float metres = metresBetween(asVector(player.position), carrierAt);
+    if (player.isHomeTeam == who.isHomeTeam && active(player) &&
+        !player.isGoalkeeper && !pressGoesCapybara(index) && metres < nearest)
+    {
+      nearest = metres;
+      nearestIndex = index;
+    }
+  }
+  ++stats.pressSecondOwnCall;
+  stats.pressSecondIsNearest += nearestIndex == second ? 1 : 0;
+}
+
+void MatchEngine::notePressSecondCapybara(const MatchPlayer& player,
+                                          PressSecondCapybara call)
+{
+  if (offBallRecord == nullptr || player.player == nullptr ||
+      player.player->getId() != offBallRecord->offBall.player)
+  {
+    return;
+  }
+  constexpr std::array<const char*, 5> CALLS = {
+      nullptr, "his (a team-mate's call stood him down)",
+      "his (the quickest of those not going)",
+      "in doubt (another not going is close): he leaves it",
+      "not his (another not going is quicker)"};
+  offBallRecord->offBall.pressSecond = CALLS.at(static_cast<std::size_t>(call));
+}
+
+void MatchEngine::notePressCallCapybara(const MatchPlayer& player,
+                                        LooseCallCapybara call)
+{
+  if (offBallRecord == nullptr || player.player == nullptr ||
+      player.player->getId() != offBallRecord->offBall.player)
+  {
+    return;
+  }
+  constexpr std::array<const char*, 3> CALLS = {
+      "mine (I get to him first)", "in doubt (a team-mate is close)",
+      "not mine (beaten by more than the margin)"};
+  offBallRecord->offBall.pressCall = CALLS.at(static_cast<std::size_t>(call));
 }
 
 void MatchEngine::noteLooseCallCapybara(
@@ -3161,7 +4201,7 @@ void MatchEngine::noteLooseCallCapybara(
     float rival = std::numeric_limits<float>::max();
     for (const MatchPlayer& other : players)
     {
-      if (&other != &player && active(other) && !other.isGoalkeeper)
+      if (&other != &player && standingCapybara(other) && !other.isGoalkeeper)
       {
         rival = std::min(rival, roughSecondsCapybara(other, point.at));
       }
@@ -4104,19 +5144,6 @@ float MatchEngine::tightMarkPenaltyCapybara(const MatchPlayer& receiver) const
   return 0.0F;
 }
 
-[[gnu::always_inline]] inline float MatchEngine::pressEagernessCapybara(
-    const MatchPlayer& candidate, const MatchPlayer* carrier) const
-{
-  if ((carrier == nullptr) || carrier->isHomeTeam == candidate.isHomeTeam)
-  {
-    return 0.0F;
-  }
-  // A rousing talk sends the side after the ball sooner (a flat one later).
-  return (roleProfileOf(candidate).pressBias *
-          TacticsTuning::PRESS_BIAS_SECONDS) +
-         (talkSwing(candidate.isHomeTeam) * TacticsTuning::TALK_PRESS_SECONDS);
-}
-
 float MatchEngine::engageBoostCapybara(const MatchPlayer& defender,
                                        const MatchPlayer& carrier) const
 {
@@ -4146,6 +5173,71 @@ float MatchEngine::pressStandOffShareCapybara(const MatchPlayer& presser,
     share *= TacticsTuning::PRESS_ORDER_STANDOFF_SHARE;
   }
   return std::clamp(share, 0.3F, 1.3F);
+}
+
+MatchEngine::PressSqueezeCapybara MatchEngine::pressSqueezeCapybara(
+    const MatchPlayer& presser, const MatchPlayer& carrier) const
+{
+  // Facing the ball plan §4c: when the presser closes in. Each trigger is a
+  // share (0 to 1) and the strongest wins. All values are ours (no
+  // research), aggressive to start (the user, 2026-11-25): back off with
+  // testing.
+  const auto ramp = [](float value, float none, float full)
+  { return std::clamp((value - none) / (full - none), 0.0F, 1.0F); };
+  PressSqueezeCapybara squeeze{};
+  const auto consider = [&](float share, const char* why)
+  {
+    if (share > squeeze.share)
+    {
+      squeeze.share = share;
+      squeeze.why = why;
+    }
+  };
+  // He slows or checks back: his speed toward goal from 2 m/s down to 0.5.
+  const float towardGoal =
+      carrier.velocity.x * (carrier.isHomeTeam ? 1.0F : -1.0F);
+  consider(ramp(towardGoal, SQUEEZE_DRIVING_SPEED, SQUEEZE_STALLED_SPEED),
+           "the carrier slows or checks back");
+  // Pinned at the touchline: from 8 m off it to 3 m.
+  const float touchline =
+      std::min(carrier.position.y, pitch.atY(1.0F) - carrier.position.y);
+  consider(ramp(touchline, SQUEEZE_TOUCHLINE_FREE_METRES,
+                SQUEEZE_TOUCHLINE_PINNED_METRES),
+           "the carrier is pinned at the touchline");
+  // Cover: another outfield team-mate goal-side of the carrier, near him.
+  const float carrierDepth =
+      pitch.fromOwnGoalLine(carrier.position, presser.isHomeTeam);
+  for (const MatchPlayer& mate : players)
+  {
+    if (&mate != &presser && mate.isHomeTeam == presser.isHomeTeam &&
+        !mate.isGoalkeeper && active(mate) &&
+        pitch.fromOwnGoalLine(mate.position, presser.isHomeTeam) <
+            carrierDepth &&
+        distance(mate.position, carrier.position) <= SQUEEZE_COVER_METRES)
+    {
+      consider(1.0F, "he has cover behind him");
+      break;
+    }
+  }
+  // A shooting chance: the carrier's game xG from 0.05 to 0.2.
+  consider(ramp(gameShotXGCapybara(carrier, carrier.position), SQUEEZE_XG_NONE,
+                SQUEEZE_XG_FULL),
+           "the carrier is in a high-xG position");
+  return squeeze;
+}
+
+void MatchEngine::noteSqueezeCapybara(const MatchPlayer& player,
+                                      const PressSqueezeCapybara& squeeze)
+{
+  if (offBallRecord == nullptr || player.player == nullptr ||
+      player.player->getId() != offBallRecord->offBall.player)
+  {
+    return;
+  }
+  offBallRecord->offBall.squeeze = squeeze.why;
+  offBallRecord->offBall.squeezeShare = squeeze.share;
+  offBallRecord->offBall.squeezeFrom = squeeze.usualMetres;
+  offBallRecord->offBall.squeezeTo = squeeze.squeezedMetres;
 }
 
 float MatchEngine::weakFootShadeCapybara(const MatchPlayer& carrier) const
@@ -4826,6 +5918,26 @@ bool MatchEngine::goesIntoContestCapybara(const MatchPlayer& defender,
   // him" order or with cover; higher as the last man or in his own box.
   // Free with no touch due is no cue at all: a defender who reads it right
   // holds, however hard his side presses.
+  // Stepping in (the press's third choice), on the carrier's recovering
+  // foot: in as soon as a touch can put the ball where his shadow will be
+  // as he moves across (the body's step-in touch).
+  const bool steppingIn =
+      defender.plannedJob == planJob(PlanBranch::PRESS, 2) &&
+      std::max(ball.ownTouchCooldown, owner.footCooldown) > 1e-4F;
+  if (steppingIn && defender.player != nullptr)
+  {
+    if (const auto touch =
+            stepInTouch(defender, owner, contact, defender.plannedTarget))
+    {
+      heldTackleCapybara =
+          HeldTackleCapybara{.player = defender.player->getId(),
+                             .step = stepCounter,
+                             .contact = contact,
+                             .intent = TackleIntent::WIN,
+                             .touch = *touch};
+      return true;
+    }
+  }
   using D = MatchTuning::Defending;
   using R = MatchTuning::Dribble;
   const float judgement = std::clamp(
@@ -4890,13 +6002,146 @@ bool MatchEngine::goesIntoContestCapybara(const MatchPlayer& defender,
   }
   if (goes && defender.player != nullptr)
   {
+    // How his foot plays it on the recovering foot: to win or clear it, a
+    // poke when one is open; else control (stopgap pick).
+    const TackleIntent intent =
+        tackleIntentRuleCapybara(defender, owner, contact, false);
     heldTackleCapybara = HeldTackleCapybara{
         .player = defender.player->getId(),
         .step = stepCounter,
         .contact = contact,
-        .intent = tackleIntentRuleCapybara(defender, owner, contact, false)};
+        .intent = intent,
+        .touch = intent == TackleIntent::CONTROL
+                     ? TackleTouch{}
+                     : pokeOptionCapybara(defender, owner, contact)};
   }
   return goes;
+}
+
+const MatchEngine::HeldTackleCapybara* MatchEngine::heldTackleForCapybara(
+    const MatchPlayer& tackler, PitchPoint contact) const
+{
+  if (!heldTackleCapybara || tackler.player == nullptr ||
+      heldTackleCapybara->player != tackler.player->getId() ||
+      heldTackleCapybara->step != stepCounter ||
+      heldTackleCapybara->contact.x != contact.x ||
+      heldTackleCapybara->contact.y != contact.y)
+  {
+    return nullptr;
+  }
+  return &*heldTackleCapybara;
+}
+
+TackleTouch MatchEngine::pokeOptionCapybara(const MatchPlayer& defender,
+                                            const MatchPlayer& owner,
+                                            PitchPoint contact) const
+{
+  // Step K's poke: up-field (away from his own goal), along the line that
+  // best puts it nearer his side than theirs (a team-mate, space to chase,
+  // or just away), as hard as clearing the carrier's reach in time takes
+  // (the body's read), and at least a roll of POKE_ROLL_METRES; open
+  // within his hardest poke. None open: control.
+  using D = MatchTuning::Defending;
+  constexpr float STEP = MatchTuning::Timing::FIXED_STEP_SECONDS;
+  const float recovery =
+      std::max({ball.ownTouchCooldown, owner.footCooldown, STEP});
+  const PitchPoint ownerAt{owner.position.x + (owner.velocity.x * recovery),
+                           owner.position.y + (owner.velocity.y * recovery)};
+  const PitchPoint defenderAt{
+      defender.position.x + (defender.velocity.x * STEP),
+      defender.position.y + (defender.velocity.y * STEP)};
+  const float upField = defender.isHomeTeam ? 1.0F : -1.0F;
+  const float rollLaunch = groundLaunchSpeed(D::POKE_ROLL_METRES, 0.0F);
+  const auto sideMargin = [&](PitchPoint point)
+  {
+    float theirs = distance(ownerAt, point);
+    float ours = distance(defenderAt, point);
+    for (const MatchPlayer& other : players)
+    {
+      if (!active(other) || &other == &owner || &other == &defender)
+      {
+        continue;
+      }
+      float& nearest = other.isHomeTeam == defender.isHomeTeam ? ours : theirs;
+      nearest = std::min(nearest, distance(other.position, point));
+    }
+    return theirs - ours;
+  };
+  TackleTouch best;
+  float bestMargin = -std::numeric_limits<float>::max();
+  const int steps = static_cast<int>(
+      std::lround(D::POKE_AIM_SPREAD_DEGREES / D::POKE_AIM_STEP_DEGREES));
+  for (int index = -steps; index <= steps; ++index)
+  {
+    const float angle = static_cast<float>(index) * D::POKE_AIM_STEP_DEGREES *
+                        std::numbers::pi_v<float> / 180.0F;
+    const Vector2F aim{.x = upField * std::cos(angle), .y = std::sin(angle)};
+    const PokeRead read = pokeRead(owner, contact, aim);
+    const bool roll = rollLaunch >= read.launchSpeed;
+    if ((roll ? rollLaunch : read.launchSpeed) > read.maxLaunchSpeed)
+    {
+      continue;
+    }
+    const float out = roll ? D::POKE_ROLL_METRES : read.metres;
+    const float margin = sideMargin(clampToPitch(
+        PitchPoint{contact.x + (aim.x * std::max(out, D::POKE_ROLL_METRES)),
+                   contact.y + (aim.y * std::max(out, D::POKE_ROLL_METRES))}));
+    if (margin > bestMargin)
+    {
+      bestMargin = margin;
+      best = TackleTouch{
+          .technique = TackleTechnique::POKE,
+          .spot = clampToPitch(
+              PitchPoint{contact.x + (aim.x * out), contact.y + (aim.y * out)}),
+          .arrivalSpeed = roll ? 0.0F : read.arrivalSpeed};
+    }
+  }
+  return best;
+}
+
+std::optional<PitchPoint> MatchEngine::stepInPointCapybara(
+    const MatchPlayer& tackler, const MatchPlayer& carrier) const
+{
+  // The step-in: open when the body allows it from his angle (the side or
+  // a diagonal) and he is within the carrier's reach and a body width; his
+  // body goes into the gap between the carrier and his ball (on that line,
+  // at the ball or a body width out), barging him if it is narrow.
+  if (!ballInReach(carrier) || !stepInAngleOpen(tackler, carrier) ||
+      distance(tackler.position, carrier.position) >
+          feetReach(carrier) + MatchTuning::Body::DIAMETER_METRES)
+  {
+    return std::nullopt;
+  }
+  const Vector2F toBall = metricDirection(carrier.position, ball.position);
+  const float out = std::max(distance(carrier.position, ball.position),
+                             MatchTuning::Body::DIAMETER_METRES);
+  return clampToPitch(PitchPoint{carrier.position.x + (toBall.x * out),
+                                 carrier.position.y + (toBall.y * out)});
+}
+
+std::optional<TackleTouch> MatchEngine::chooseTackleTouchCapybara(
+    MatchPlayer& tackler, const MatchPlayer& owner, const TouchMoment& moment,
+    bool contest)
+{
+  // A contest on the recovering foot: the touch his option carried. A
+  // free ball of the carrier's while he steps in: the step-in touch when
+  // the body has one; else his intent's way.
+  if (contest)
+  {
+    const HeldTackleCapybara* held =
+        heldTackleForCapybara(tackler, moment.contactPoint);
+    if (held == nullptr)
+    {
+      return std::nullopt;
+    }
+    return held->touch;
+  }
+  if (tackler.plannedJob != planJob(PlanBranch::PRESS, 2))
+  {
+    return std::nullopt;
+  }
+  return stepInTouch(tackler, owner, moment.contactPoint,
+                     tackler.plannedTarget);
 }
 
 TackleIntent MatchEngine::chooseTackleIntentCapybara(
@@ -4904,15 +6149,10 @@ TackleIntent MatchEngine::chooseTackleIntentCapybara(
     bool freeBall)
 {
   // A contest he went into: the intent his option carried (step K), once.
-  if (!freeBall && heldTackleCapybara && tackler.player != nullptr &&
-      heldTackleCapybara->player == tackler.player->getId() &&
-      heldTackleCapybara->step == stepCounter &&
-      heldTackleCapybara->contact.x == contact.x &&
-      heldTackleCapybara->contact.y == contact.y)
+  if (const HeldTackleCapybara* held =
+          freeBall ? nullptr : heldTackleForCapybara(tackler, contact))
   {
-    const TackleIntent intent = heldTackleCapybara->intent;
-    heldTackleCapybara.reset();
-    return intent;
+    return held->intent;
   }
   // A free ball outside the carrier's reach (step K's free-ball way in):
   // going for it and what for are the same moment, decided here.
@@ -4942,6 +6182,13 @@ TackleIntent MatchEngine::tackleIntentRuleCapybara(const MatchPlayer& tackler,
     return TackleIntent::CLEAR;
   }
   return TackleIntent::WIN;
+}
+
+bool MatchEngine::passLiveCapybara() const
+{
+  // A pass in flight still on target (updatePassGoneLoose): gone loose, it
+  // is a loose ball for both sides.
+  return getPossessionState().isPass && !getPossessionState().passLoose;
 }
 
 MatchEngine::CarrierWeightsCapybara MatchEngine::neutralCarrierWeightsCapybara()
@@ -7293,8 +8540,8 @@ PitchPoint MatchEngine::goalkeeperTargetCapybara(MatchPlayer& keeper,
       pitch.fromOwnGoalLine(ball.position, keeper.isHomeTeam) <
           MatchTuning::Pitch::GOALKEEPER_SWEEP_METRES *
               (1.0F + keeperSweep * TacticsTuning::KEEPER_SWEEP_DEPTH_GAIN) &&
-      !(getPossessionState().isPass &&
-        getPossessionState().passByHome == keeper.isHomeTeam))
+      (!passLiveCapybara() ||
+       getPossessionState().passByHome != keeper.isHomeTeam))
   {
     const float keeperDistance = distance(keeper.position, ball.position);
     bool keeperFirst = true;
@@ -8313,7 +9560,7 @@ float MatchEngine::chooseGetUpCapybara(const MatchPlayer& player)
   {
     const MatchPlayer* holder = findMatchPlayer(getPossessionAttachment());
     bool chance = holder == nullptr || holder->isHomeTeam == player.isHomeTeam;
-    if (holder == nullptr && getPossessionState().isPass)
+    if (holder == nullptr && passLiveCapybara())
     {
       chance = getPossessionState().passByHome == player.isHomeTeam;
     }

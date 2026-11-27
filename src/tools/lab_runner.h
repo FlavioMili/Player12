@@ -160,6 +160,14 @@ struct MatchSample
   int blocks = 0;
   int blocks_committed = 0;
   int blocks_popped = 0;
+  /** Feet touches a body was in the way of (shielding), step-ins started,
+   * and tackle touches by technique: control, poke, step-in. */
+  int touches_shielded = 0;
+  int step_in_moves = 0;
+  /** Passes gone loose: off target, and run past the spot. */
+  int passes_loose_off_target = 0;
+  int passes_loose_ran_past = 0;
+  std::array<int, 3> tackle_touches{};
   /** Open-play shots blocked by a Binturong body, those off a leg, and
    * those off a leg he put there (a reaction block). */
   int shot_body_blocks = 0;
@@ -236,6 +244,32 @@ struct MatchSample
    * the carrier's free foot, steps held, and the intents chosen. */
   int go_ins = 0;
   int go_ins_free_foot = 0;
+  /** Facing the ball plan step 1 (see MatchStats). */
+  /** Facing the ball plan §4c: run-ats (see MatchStats). */
+  int run_ats = 0;
+  int run_at_shots = 0;
+  int run_at_shots_defender_goal_side = 0;
+  int run_at_passes = 0;
+  int run_at_won = 0;
+  int pounces = 0;
+  int press_frames = 0;
+  int press_squeezed = 0;
+  int run_at_other = 0;
+  int run_at_past = 0;
+  double run_at_shot_xg = 0.0;
+  double run_at_seconds = 0.0;
+  double run_at_ground_given = 0.0;
+  double run_at_start_xg = 0.0;
+  double run_at_best_xg = 0.0;
+  int facing_goal_side = 0;
+  int facing_faces = 0;
+  int facing_turned = 0;
+  int facing_turned_pressing = 0;
+  int facing_chase = 0;
+  int facing_receive = 0;
+  int facing_run = 0;
+  int facing_tracks = 0;
+  int facing_aerial = 0;
   /** Step O6: the shadow loose-ball calls (see MatchStats). */
   int loose_shadow_checks = 0;
   int loose_shadow_agree = 0;
@@ -257,6 +291,41 @@ struct MatchSample
   int loose_wrong_slower_big = 0;
   int loose_wrong_slower_later = 0;
   int loose_wrong_slower_missed = 0;
+  /** Steps P1 to P5: the press calls (see MatchStats). */
+  int press_shadow_checks = 0;
+  int press_shadow_one = 0;
+  int press_shadow_two_go = 0;
+  int press_shadow_nobody = 0;
+  int press_shadow_with_doubt = 0;
+  int press_calls_made = 0;
+  int press_calls_right = 0;
+  int press_call_millis = 0;
+  int press_commits_carried = 0;
+  int press_go_one = 0;
+  int press_go_several = 0;
+  int press_go_none = 0;
+  int press_second_checks = 0;
+  int press_second_double_up = 0;
+  int press_second_block_lane = 0;
+  int press_second_cover = 0;
+  int press_second_no_job = 0;
+  int press_second_several = 0;
+  int press_second_held = 0;
+  int press_second_none = 0;
+  int press_second_stood_down = 0;
+  int press_second_with_doubt = 0;
+  int press_second_own_call = 0;
+  int press_second_is_nearest = 0;
+  int press_second_switches = 0;
+  int press_first_switches = 0;
+  std::array<int, 6> press_switch_why{};
+  std::array<int, 3> press_switch_held{};
+  int press_switch_back = 0;
+  int calls_skipped_fallen = 0;
+  int press_calls_instant = 0;
+  int press_calls_goal_side = 0;
+  int calls_slowed_stumbling = 0;
+  int press_switch_via_gap = 0;
   int holds = 0;
   int intents_win = 0;
   int intents_clear = 0;
