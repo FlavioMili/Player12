@@ -1989,6 +1989,11 @@ struct MatchStats
    * (their rough look slowed by the time left). */
   int callsSkippedFallen = 0;
   int callsSlowedStumbling = 0;
+  /** Press first-to-commit calls (step P6): made at once (both within
+   * 2 m of the carrier and seeing each other), and near ties settled by
+   * who is goal-side (nearer the carrier's line to goal). */
+  int pressCallsInstant = 0;
+  int pressCallsGoalSide = 0;
   std::array<int, 6> pressSwitchWhy{};
   std::array<int, 3> pressSwitchHeld{};
   int pressSwitchBack = 0;

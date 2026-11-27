@@ -216,6 +216,17 @@
    * paused by a knock (slowed); stats.callsSkippedFallen and
    * callsSlowedStumbling. */
   void tallyKnockedCallCapybara(const MatchPlayer& player);
+  /** Step P6: of two pressing within the margin, whether `index` keeps
+   * it over `partner`: the one goal-side, nearer the carrier's line to
+   * the goal he defends. */
+  [[nodiscard]] bool pressGoalSideMineCapybara(std::size_t index,
+                                               std::size_t partner,
+                                               PitchPoint carrier) const;
+  /** Step P6: both within PRESS_CLOSE_METRES of the carrier and he sees
+   * his team-mate going: the call is made at once. */
+  [[nodiscard]] bool pressCallAtOnceCapybara(std::size_t index,
+                                             std::size_t partner,
+                                             PitchPoint carrier) const;
   /** Step P6's diagnosis: the presser changing hands (stats.pressSwitchWhy
    * in this order). */
   enum class PressSwitchWhyCapybara : std::uint8_t

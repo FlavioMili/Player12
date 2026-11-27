@@ -396,6 +396,8 @@ void extractEngine(MatchSample& sample, const MatchEngine& engine)
   sample.press_switch_held = stats.pressSwitchHeld;
   sample.press_switch_back = stats.pressSwitchBack;
   sample.calls_skipped_fallen = stats.callsSkippedFallen;
+  sample.press_calls_instant = stats.pressCallsInstant;
+  sample.press_calls_goal_side = stats.pressCallsGoalSide;
   sample.calls_slowed_stumbling = stats.callsSlowedStumbling;
   sample.press_switch_via_gap = stats.pressSwitchViaGap;
   sample.holds = stats.homeHolds + stats.awayHolds;
@@ -1618,6 +1620,9 @@ std::map<std::string, Estimate> matchMetrics(
   perMatch("step_in_moves_per_match", &MatchSample::step_in_moves);
   perMatch("calls_skipped_fallen_per_match",
            &MatchSample::calls_skipped_fallen);
+  perMatch("press_calls_instant_per_match", &MatchSample::press_calls_instant);
+  perMatch("press_calls_goal_side_per_match",
+           &MatchSample::press_calls_goal_side);
   perMatch("calls_slowed_stumbling_per_match",
            &MatchSample::calls_slowed_stumbling);
   perMatch("passes_loose_off_target_per_match",

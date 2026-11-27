@@ -3200,6 +3200,9 @@ constexpr float STAT_DELAY_AT_99 =
     STAT_DELAY_AT_1 - ((STAT_DELAY_AT_1 - STAT_DELAY_AT_100) * 98.0F / 99.0F);
 constexpr float RIGHT_CALL_AT_1 = 0.5F;
 constexpr float RIGHT_CALL_AT_99 = 1.0F - (0.5F * 1.0F / 99.0F);
+// Step P6 (the user, 2026-11-27): two pressing within this of the carrier
+// (m), seeing each other, settle it at once.
+constexpr float PRESS_CLOSE_METRES = 2.0F;
 
 }  // namespace
 
@@ -3394,6 +3397,7 @@ void MatchEngine::lookUpLooseCapybara(
   }
   // The detailed look: the clearly quicker takes it; else the one whose
   // shape spot is nearest where it will be collected.
+  // On the press, within the margin, the one goal-side keeps it (step P6).
   const float his = precise[index].seconds;
   const float theirs = precise[partner].seconds;
   const PitchPoint collect = precise[index].at;
@@ -3402,6 +3406,11 @@ void MatchEngine::lookUpLooseCapybara(
   if (theirs - his > margin)
   {
     rightMine = true;
+  }
+  else if (his - theirs <= margin && kind == CommitKindCapybara::PRESS)
+  {
+    rightMine = pressGoalSideMineCapybara(index, partner, collect);
+    ++stats.pressCallsGoalSide;
   }
   else if (his - theirs <= margin)
   {
@@ -3416,9 +3425,54 @@ void MatchEngine::lookUpLooseCapybara(
   commit.partner = partner;
   commit.answerMine = right ? rightMine : !rightMine;
   commit.answerRight = right;
+  // Both on the carrier and seeing each other, the call is at once (step
+  // P6); else his Leadership's delay.
   commit.callAt =
       now + alongStatScale(player.derivedStat(DerivedStat::LEADERSHIP),
                            STAT_DELAY_AT_1, STAT_DELAY_AT_99);
+  if (kind == CommitKindCapybara::PRESS &&
+      pressCallAtOnceCapybara(index, partner, collect))
+  {
+    commit.callAt = now;
+    ++stats.pressCallsInstant;
+  }
+}
+
+bool MatchEngine::pressGoalSideMineCapybara(std::size_t index,
+                                            std::size_t partner,
+                                            PitchPoint carrier) const
+{
+  // Goal-side: nearer the line from the carrier to the goal they defend
+  // (cutting off his way forward), the way the user put it (2026-11-24,
+  // taken up in step P6).
+  const MatchPlayer& player = players.at(index);
+  const PitchPoint goal =
+      pitch.at(player.isHomeTeam ? 0.0F : 1.0F, MatchTuning::Pitch::CENTRE);
+  const Vector2F line{.x = goal.x - carrier.x, .y = goal.y - carrier.y};
+  const float lineSquared = (line.x * line.x) + (line.y * line.y);
+  const auto offLine = [&](const MatchPlayer& who)
+  {
+    const float share =
+        lineSquared > EPSILON
+            ? std::clamp((((who.position.x - carrier.x) * line.x) +
+                          ((who.position.y - carrier.y) * line.y)) /
+                             lineSquared,
+                         0.0F, 1.0F)
+            : 0.0F;
+    return distance(who.position, PitchPoint{carrier.x + (line.x * share),
+                                             carrier.y + (line.y * share)});
+  };
+  return offLine(player) <= offLine(players.at(partner));
+}
+
+bool MatchEngine::pressCallAtOnceCapybara(std::size_t index,
+                                          std::size_t partner,
+                                          PitchPoint carrier) const
+{
+  return distance(players.at(index).position, carrier) <= PRESS_CLOSE_METRES &&
+         distance(players.at(partner).position, carrier) <=
+             PRESS_CLOSE_METRES &&
+         seesTeamMateGoingCapybara(CommitKindCapybara::PRESS, index);
 }
 
 void MatchEngine::settleLooseCallCapybara(CommitKindCapybara kind,
