@@ -1142,7 +1142,12 @@ constexpr std::array<Situation, 20> SITUATIONS = {{
          "recover. Stopgap pick in today's order (follow-up: measures). "
          "Shadow (step O6): each player's own call (mine, in doubt, not "
          "mine) and where he could meet it, tallied against the team's "
-         "pick; it changes nothing yet. Routing: planWayRound, planOvertake",
+         "pick; it changes nothing yet. Routing: planWayRound, planOvertake. "
+         "Body (facing plan step 1): goal-side of the ball he faces it; a "
+         "run or sprint job turns him to run when it asks more than he "
+         "manages facing it (back to facing under 80%); a chase, a run, a "
+         "pass to receive, a high ball or a runner he tracks faces its run. "
+         "Keepers: not changed",
      .layers = SLIDERS | ROLE | ORDERS | MOOD,
      .plannerWide = true,
      .onFrame = false,
@@ -1162,7 +1167,12 @@ constexpr std::array<Situation, 20> SITUATIONS = {{
      .decidedBy =
          "its own off-ball frame (step O3): chase it (the first presser: an "
          "interception), cover the chase, tight mark, recover in transition, "
-         "hold shape. Stopgap pick in today's order (follow-up: measures)",
+         "hold shape. Stopgap pick in today's order (follow-up: measures). "
+         "Body (facing plan step 1): goal-side of the ball he faces it; a "
+         "run or sprint job turns him to run when it asks more than he "
+         "manages facing it (back to facing under 80%); a chase, a run, a "
+         "pass to receive, a high ball or a runner he tracks faces its run. "
+         "Keepers: not changed",
      .layers = SLIDERS | ROLE | ORDERS | MOOD,
      .plannerWide = true,
      .onFrame = false,
@@ -1194,10 +1204,27 @@ constexpr std::array<Situation, 20> SITUATIONS = {{
      .decidedBy =
          "its own off-ball frame (step O2, refreshTacticalTargets): press, "
          "double up, block a lane, cover, tight mark, recover in transition, "
-         "zonal mark, hold shape. Open when the team's assignments (pressers, "
-         "assignMarks), orders or phase give it to him (hold shape always); "
+         "zonal mark, hold shape. Open when his own press call, the team's "
+         "marks (assignMarks), orders or phase give it to him (hold shape "
+         "always); "
          "stopgap pick in today's order (follow-up: measures). Targets: "
-         "engageBoost, pressStandOffShare, doubleUpPoint, tightMarkPoint",
+         "engageBoost, pressStandOffShare, doubleUpPoint, tightMarkPoint. "
+         "Pressing (steps P1 to P7; the team no longer ranks pressers, "
+         "restarts included): each defender's own call on "
+         "the carrier (mine, in doubt, not mine), by the loose "
+         "ball's rough look against the 3 team-mates nearest him; first to "
+         "commit on it (step P3: the loose ball's stage; a new carrier is a "
+         "fresh call, a loose-ball commitment carries over); the second man "
+         "(step P4: whoever a call stood down, else the quickest of those "
+         "not going; nobody while two go). The first man's choices: stand "
+         "off (squeezed when the moment is his), step in (from the side or "
+         "a diagonal, close: into the gap between carrier and ball), pounce "
+         "(the touch out of the carrier's reach). "
+         "Body (facing plan step 1): goal-side of the ball he faces it; a "
+         "run or sprint job turns him to run when it asks more than he "
+         "manages facing it (back to facing under 80%); a chase, a run, a "
+         "pass to receive, a high ball or a runner he tracks faces its run. "
+         "Keepers: not changed",
      .layers = SLIDERS | ROLE | ORDERS | MOOD,
      .plannerWide = true,
      .onFrame = false,
@@ -1208,10 +1235,16 @@ constexpr std::array<Situation, 20> SITUATIONS = {{
          "its own frame (step K), three ways in. The engage roll "
          "(chooseChallenge, the older model): hold, tackle, slide in. The "
          "contest (goesIntoContest: the cue he reads against his bar): hold, "
-         "go in to win it, go in to clear it; the intent carried by the "
-         "option to the contact. A free ball outside the carrier's reach "
-         "(chooseTackleIntent): control, clear or win it. Go in to pass it "
-         "listed, not judged. Stopgap picks (follow-up: measures)",
+         "go in to win it, go in to clear it; the option carries the intent "
+         "and its touch on the recovering foot to the contact: control, or a "
+         "poke up-field clear of his reach (the line best for his side). "
+         "Stepping in (the press's third choice: from the side or a "
+         "diagonal, his body into the carrier's gap), he goes in as soon as "
+         "the body has a step-in touch, to where his shadow will be as he "
+         "moves across. A free ball outside the carrier's reach "
+         "(chooseTackleIntent): control, clear or win it; stepping in, the "
+         "step-in touch. Go in to pass it listed, not judged. Stopgap picks "
+         "(follow-up: measures)",
      .layers = SLIDERS | ORDERS,
      .plannerWide = false,
      .onFrame = false,
@@ -1989,6 +2022,24 @@ void BrainFlowScene::offBallStage()
   {
     text(std::format("Overridden: {}", offBall.overriddenBy), WARNING);
   }
+  if (offBall.facing != nullptr)
+  {
+    // Facing the ball plan step 1: his body, and the backpedal-or-turn
+    // check when he is goal-side of the ball.
+    text(std::format("Body: {}", offBall.facing), SandboxPageUI::CREAM);
+    if (offBall.facingChecked)
+    {
+      muted(std::format(
+          "Goal-side of the ball: his job asks {:.1f} m/s; facing the ball "
+          "he can manage {:.1f} m/s that way. {}",
+          offBall.facingAsked, offBall.facingCap,
+          offBall.facingTurned
+              ? "Turned: he faces it again under 80% of that."
+              : "A run or sprint job turns him above it; a walk or jog job "
+                "keeps him facing it."));
+    }
+  }
+  pressShadow(offBall);
   looseShadow(offBall);
   looseCommit(offBall);
   muted("The line on the pitch: from him to the target his job sets.");
@@ -2001,7 +2052,8 @@ void BrainFlowScene::looseCommit(const BrainFlow::OffBallRecord& offBall) const
     return;
   }
   const BrainFlow::OffBallRecord::CommitCall& commit = *offBall.commit;
-  text("First to commit (shadow, step O6): he goes for it.",
+  text(commit.press ? "First to commit (step P3): he goes to press."
+                    : "First to commit (step O6): he goes for it.",
        SandboxPageUI::CREAM);
   text(std::format("He {} {:.2f} s, calls {:.2f} s later (Leadership): "
                    "{:.2f} s in all.",
@@ -2012,18 +2064,23 @@ void BrainFlowScene::looseCommit(const BrainFlow::OffBallRecord& offBall) const
                    commit.lookUpSeconds + commit.callSeconds));
   if (commit.partner == 0)
   {
-    muted("No team-mate is going for it: no call needed.");
+    muted(commit.press ? "No team-mate is going to press: no call needed."
+                       : "No team-mate is going for it: no call needed.");
     return;
   }
   const std::string mate = nameOf(commit.partner);
   text(std::format("{} is going too: {:.2f} s + {:.2f} s = {:.2f} s.", mate,
                    commit.partnerLookUpSeconds, commit.partnerCallSeconds,
                    commit.partnerLookUpSeconds + commit.partnerCallSeconds));
+  const char* shapeRule =
+      commit.press ? "Within the margin: the shape spot nearest the carrier "
+                     "decides."
+                   : "Within the margin: the shape spot nearest where it is "
+                     "collected decides.";
   text(std::format(
       "The detailed look: him {:.2f} s, {} {:.2f} s. {} It should be {}.",
       commit.hisSeconds, mate, commit.partnerSeconds,
-      commit.byShape ? "Within the margin: the shape spot nearest where it is "
-                       "collected decides."
+      commit.byShape ? shapeRule
                      : "Further apart than the margin: the quicker takes it.",
       commit.shouldBeHis ? "his" : mate));
   // The caller says mine when it should be his own, else yours.
@@ -2037,6 +2094,57 @@ void BrainFlowScene::looseCommit(const BrainFlow::OffBallRecord& offBall) const
   muted("A projection: the moment does not run on. Delays: 1 s at the stat's "
         "1 to 0.1 s at 100; right call 50% at Decisions 1 to 100% at 100 "
         "(estimates, to tune).");
+}
+
+void BrainFlowScene::pressShadow(const BrainFlow::OffBallRecord& offBall)
+{
+  if (offBall.pounce != nullptr)
+  {
+    // Facing the ball plan §4c: the presser, with the touch out of the
+    // carrier's reach.
+    text(std::format("The pounce: he {}.", offBall.pounce),
+         SandboxPageUI::LIME);
+    muted(std::format(
+        "He meets it in {:.2f} s, the carrier in {:.2f} s (the same rough "
+        "meet for both: top speed along the ball's roll). He goes for it when "
+        "he gets there no later than the carrier.",
+        offBall.pounceSeconds, offBall.pounceCarrierSeconds));
+  }
+  if (offBall.squeeze != nullptr)
+  {
+    // Facing the ball plan §4c: the press squeeze.
+    text(std::format("The squeeze ({:.0f}%): {}.",
+                     offBall.squeezeShare * 100.0F, offBall.squeeze),
+         SandboxPageUI::LIME);
+    muted(std::format(
+        "Stand-off {:.1f} m closed to {:.1f} m. Strongest of: the carrier "
+        "slowing (2 to 0.5 m/s toward goal), pinned (8 to 3 m off the "
+        "touchline), cover (a team-mate goal-side within 8 m of him), his "
+        "game xG (0.05 to 0.2); full squeeze 1 m centre to centre, a 0.5 m "
+        "gap between bodies (ours, aggressive, to back off).",
+        offBall.squeezeFrom, offBall.squeezeTo));
+  }
+  if (offBall.pressCall == nullptr)
+  {
+    return;
+  }
+  // Step P1: his own call on pressing the carrier (live since step P5).
+  text(std::format("His own press call (step P1): {}", offBall.pressCall),
+       SandboxPageUI::CREAM);
+  muted(
+      "Can he get to the carrier before the 3 team-mates nearest him (rough "
+      "look: straight line at top speed, his way already toward him, the "
+      "turn)? Beaten by more than the margin (10% of his time, at most "
+      "0.5 s): not his; closer: in doubt (estimates, to tune). The team no "
+      "longer ranks pressers (step P7, restarts too); the role's press bias "
+      "and the team talk only shape the stand-off and the engage.");
+  if (offBall.pressSecond != nullptr)
+  {
+    text(std::format("The second man's job (double up, block a lane or cover; "
+                     "step P4): {}",
+                     offBall.pressSecond),
+         SandboxPageUI::CREAM);
+  }
 }
 
 void BrainFlowScene::looseShadow(const BrainFlow::OffBallRecord& offBall)

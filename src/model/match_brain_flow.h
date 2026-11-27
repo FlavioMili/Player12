@@ -140,8 +140,34 @@ struct OffBallRecord
   std::size_t chosen = 0;
   /** What overrode the pick (null for nothing). */
   const char* overriddenBy = nullptr;
+  /** Facing the ball plan step 1: why his body faces as it does (null:
+   * not recorded); when goal-side, the speed his job asks and the most he
+   * can manage that way facing the ball (m/s), and whether he turned. */
+  const char* facing = nullptr;
+  bool facingChecked = false;
+  float facingAsked = 0.0F;
+  float facingCap = 0.0F;
+  bool facingTurned = false;
   PitchPoint target{};
   bool filled = false;
+  /** Step P1: his own call on pressing the carrier (null when
+   * none). */
+  const char* pressCall = nullptr;
+  /** Facing the ball plan §4c, the pounce (the presser, with the ball out
+   * of the carrier's reach): his call (null when not asked), and when he
+   * and the carrier can meet it (s). */
+  const char* pounce = nullptr;
+  /** The press squeeze: its strongest reason (null: none), how far (0 to
+   * 1), and the stand-off before and after (m). */
+  const char* squeeze = nullptr;
+  float squeezeShare = 0.0F;
+  float squeezeFrom = 0.0F;
+  float squeezeTo = 0.0F;
+  float pounceSeconds = 0.0F;
+  float pounceCarrierSeconds = 0.0F;
+  /** Step P4: his own call on the second man's job (null when not
+   * asked, or the job is closed). */
+  const char* pressSecond = nullptr;
   /** Step O6 (shadow): his own loose-ball call (null when none), and when
    * it is his, where he could meet it. */
   const char* looseCall = nullptr;
@@ -159,6 +185,8 @@ struct OffBallRecord
    * does not run on, so the delays are shown, not waited). */
   struct CommitCall
   {
+    /** On the press (step P3), not a loose ball (step O6). */
+    bool press = false;
     float lookUpSeconds = 0.0F;
     float callSeconds = 0.0F;
     /** The team-mate is in view or alongside: no look-up delay. */
