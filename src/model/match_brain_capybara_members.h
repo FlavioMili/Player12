@@ -103,6 +103,46 @@
   std::vector<LooseCallCapybara> looseCallsNowCapybara;
   std::vector<PitchPoint> shapeSpotsCapybara;
   std::uint64_t looseShadowStepCapybara = 0;
+  /** The step each side (0 home) last made its calls on a free loose ball
+   * (not a pass travelling); 0 once carried into the press. */
+  std::array<std::uint64_t, 2> looseShadowSideStepCapybara{};
+  /** Step P3 (brain redesign plan section 28): first to commit on the
+   * press, the same stage as the loose ball's, with its own commitments
+   * (shadow: a hashed roll, nothing drawn). Per side, the carrier they were
+   * made against (player id) and the step: a new carrier is a fresh call;
+   * right after the side's own loose ball, the loose commitments carry
+   * over (no new delays). */
+  enum class CommitKindCapybara : std::uint8_t
+  {
+    LOOSE,
+    PRESS
+  };
+  std::vector<LooseCommitCapybara> pressCommitsCapybara;
+  std::vector<LooseCallCapybara> pressCallsNowCapybara;
+  std::array<std::uint32_t, 2> pressCarrierCapybara{};
+  std::array<std::uint64_t, 2> pressShadowSideStepCapybara{};
+  [[nodiscard]] std::vector<LooseCommitCapybara>& commitsCapybara(
+      CommitKindCapybara kind)
+  {
+    return kind == CommitKindCapybara::PRESS ? pressCommitsCapybara
+                                             : looseCommitsCapybara;
+  }
+  [[nodiscard]] const std::vector<LooseCommitCapybara>& commitsCapybara(
+      CommitKindCapybara kind) const
+  {
+    return kind == CommitKindCapybara::PRESS ? pressCommitsCapybara
+                                             : looseCommitsCapybara;
+  }
+  [[nodiscard]] const std::vector<LooseCallCapybara>& callsNowCapybara(
+      CommitKindCapybara kind) const
+  {
+    return kind == CommitKindCapybara::PRESS ? pressCallsNowCapybara
+                                             : looseCallsNowCapybara;
+  }
+  /** Step P3: after the commit stage, who on the side would press (his call
+   * not "not mine", not stood down), against the team's pick
+   * (stats.pressGo*). */
+  void tallyPressGoersCapybara(bool home, const MatchPlayer* teamPick);
   /** Live (step O6): he goes for the loose ball. His own call (mine or in
    * doubt) unless a team-mate's call stood him down; when nobody on his
    * side goes, the team's pick (to close the winner: the user, 2026-11-23,
@@ -112,7 +152,8 @@
   [[nodiscard]] bool looseStoodDownCapybara(const MatchPlayer& player) const;
   /** A team-mate also going whom he sees at once: in view as he looks at
    * the ball, or alongside him. */
-  [[nodiscard]] bool seesTeamMateGoingCapybara(std::size_t index) const;
+  [[nodiscard]] bool seesTeamMateGoingCapybara(CommitKindCapybara kind,
+                                               std::size_t index) const;
   /** A player's index in players. */
   [[nodiscard]] std::size_t playerIndexCapybara(const MatchPlayer& player) const;
   /** Per player: his precise meeting time and point (the planner's path
@@ -122,20 +163,41 @@
     float seconds = 0.0F;
     PitchPoint at{};
   };
-  void looseCommitStageCapybara(bool home,
+  /** The first-to-commit stage, for the loose ball (live) or the press
+   * (shadow). */
+  void looseCommitStageCapybara(CommitKindCapybara kind, bool home,
                                 std::span<const PreciseMeetCapybara> precise,
                                 const MatchPlayer* teamPick);
-  void lookUpLooseCapybara(std::size_t index,
+  void lookUpLooseCapybara(CommitKindCapybara kind, std::size_t index,
                            std::span<const PreciseMeetCapybara> precise,
                            double now);
-  void settleLooseCallCapybara(std::size_t index, const MatchPlayer* teamPick,
-                               double now);
+  void settleLooseCallCapybara(CommitKindCapybara kind, std::size_t index,
+                               const MatchPlayer* teamPick, double now);
   /** The nearest team-mate also going for it this step (SIZE_MAX: none). */
-  [[nodiscard]] std::size_t loosePartnerCapybara(std::size_t index) const;
+  [[nodiscard]] std::size_t loosePartnerCapybara(CommitKindCapybara kind,
+                                                 std::size_t index) const;
   /** The brain flow tool: the example player's first-to-commit sequence. */
-  void noteLooseCommitCapybara(std::size_t index, std::size_t partner,
-                               PreciseMeetCapybara his,
+  void noteLooseCommitCapybara(CommitKindCapybara kind, std::size_t index,
+                               std::size_t partner, PreciseMeetCapybara his,
                                PreciseMeetCapybara theirs);
+  /** Step P1 (brain redesign plan section 28): a defender's own call on
+   * pressing the carrier at `at`, by the same rough look as the loose
+   * ball: his time there against the 3 team-mates nearest it. Mine if he
+   * is first; not his if beaten by more than the margin; else in doubt. */
+  [[nodiscard]] LooseCallCapybara pressCallCapybara(const MatchPlayer& player,
+                                                    Vector2F at) const;
+  /** Every outfielder of a side makes his press call; tallied against the
+   * team's pick (stats.pressShadow*). Returns the one who said mine (null
+   * if none or several). Draws nothing, changes nothing. */
+  const MatchPlayer* shadowPressCapybara(bool home, const MatchPlayer& carrier,
+                                         const MatchPlayer* teamPick);
+  /** Diagnosis of a wrong-player press call: his and the team pick's
+   * pursuit times (no eagerness or continuity), and whether the pick was
+   * already pressing. */
+  void tallyWrongPressCallCapybara(float shadowSeconds, float pickSeconds,
+                                   bool pickPressing);
+  /** The brain flow tool's example player: his press call. */
+  void notePressCallCapybara(const MatchPlayer& player, LooseCallCapybara call);
   /** The brain flow tool's example player: his call and, when it is his,
    * where he could meet it. */
   void noteLooseCallCapybara(const MatchPlayer& player,

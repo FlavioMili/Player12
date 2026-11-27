@@ -1197,7 +1197,12 @@ constexpr std::array<Situation, 20> SITUATIONS = {{
          "zonal mark, hold shape. Open when the team's assignments (pressers, "
          "assignMarks), orders or phase give it to him (hold shape always); "
          "stopgap pick in today's order (follow-up: measures). Targets: "
-         "engageBoost, pressStandOffShare, doubleUpPoint, tightMarkPoint",
+         "engageBoost, pressStandOffShare, doubleUpPoint, tightMarkPoint. "
+         "Shadow (step P1, changes nothing yet): each defender's own call on "
+         "pressing the carrier (mine, in doubt, not mine), by the loose "
+         "ball's rough look against the 3 team-mates nearest him; first to "
+         "commit on it (step P3: the loose ball's stage; a new carrier is a "
+         "fresh call, a loose-ball commitment carries over)",
      .layers = SLIDERS | ROLE | ORDERS | MOOD,
      .plannerWide = true,
      .onFrame = false,
@@ -1989,6 +1994,7 @@ void BrainFlowScene::offBallStage()
   {
     text(std::format("Overridden: {}", offBall.overriddenBy), WARNING);
   }
+  pressShadow(offBall);
   looseShadow(offBall);
   looseCommit(offBall);
   muted("The line on the pitch: from him to the target his job sets.");
@@ -2001,7 +2007,8 @@ void BrainFlowScene::looseCommit(const BrainFlow::OffBallRecord& offBall) const
     return;
   }
   const BrainFlow::OffBallRecord::CommitCall& commit = *offBall.commit;
-  text("First to commit (shadow, step O6): he goes for it.",
+  text(commit.press ? "First to commit (shadow, step P3): he goes to press."
+                    : "First to commit (shadow, step O6): he goes for it.",
        SandboxPageUI::CREAM);
   text(std::format("He {} {:.2f} s, calls {:.2f} s later (Leadership): "
                    "{:.2f} s in all.",
@@ -2012,18 +2019,23 @@ void BrainFlowScene::looseCommit(const BrainFlow::OffBallRecord& offBall) const
                    commit.lookUpSeconds + commit.callSeconds));
   if (commit.partner == 0)
   {
-    muted("No team-mate is going for it: no call needed.");
+    muted(commit.press ? "No team-mate is going to press: no call needed."
+                       : "No team-mate is going for it: no call needed.");
     return;
   }
   const std::string mate = nameOf(commit.partner);
   text(std::format("{} is going too: {:.2f} s + {:.2f} s = {:.2f} s.", mate,
                    commit.partnerLookUpSeconds, commit.partnerCallSeconds,
                    commit.partnerLookUpSeconds + commit.partnerCallSeconds));
+  const char* shapeRule =
+      commit.press ? "Within the margin: the shape spot nearest the carrier "
+                     "decides."
+                   : "Within the margin: the shape spot nearest where it is "
+                     "collected decides.";
   text(std::format(
       "The detailed look: him {:.2f} s, {} {:.2f} s. {} It should be {}.",
       commit.hisSeconds, mate, commit.partnerSeconds,
-      commit.byShape ? "Within the margin: the shape spot nearest where it is "
-                       "collected decides."
+      commit.byShape ? shapeRule
                      : "Further apart than the margin: the quicker takes it.",
       commit.shouldBeHis ? "his" : mate));
   // The caller says mine when it should be his own, else yours.
@@ -2037,6 +2049,25 @@ void BrainFlowScene::looseCommit(const BrainFlow::OffBallRecord& offBall) const
   muted("A projection: the moment does not run on. Delays: 1 s at the stat's "
         "1 to 0.1 s at 100; right call 50% at Decisions 1 to 100% at 100 "
         "(estimates, to tune).");
+}
+
+void BrainFlowScene::pressShadow(const BrainFlow::OffBallRecord& offBall)
+{
+  if (offBall.pressCall == nullptr)
+  {
+    return;
+  }
+  // Step P1: his own call on pressing the carrier, in the shadow of the
+  // team's pick (it changes nothing yet).
+  text(std::format("His own press call (shadow, step P1): {}",
+                   offBall.pressCall),
+       SandboxPageUI::CREAM);
+  muted(
+      "Can he get to the carrier before the 3 team-mates nearest him (rough "
+      "look: straight line at top speed, his way already toward him, the "
+      "turn)? Beaten by more than the margin (10% of his time, at most "
+      "0.5 s): not his; closer: in doubt (estimates, to tune). The team's "
+      "press eagerness (role, team talk) is left out of the shadow.");
 }
 
 void BrainFlowScene::looseShadow(const BrainFlow::OffBallRecord& offBall)

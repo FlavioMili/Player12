@@ -142,6 +142,9 @@ struct OffBallRecord
   const char* overriddenBy = nullptr;
   PitchPoint target{};
   bool filled = false;
+  /** Step P1 (shadow): his own call on pressing the carrier (null when
+   * none). */
+  const char* pressCall = nullptr;
   /** Step O6 (shadow): his own loose-ball call (null when none), and when
    * it is his, where he could meet it. */
   const char* looseCall = nullptr;
@@ -159,6 +162,8 @@ struct OffBallRecord
    * does not run on, so the delays are shown, not waited). */
   struct CommitCall
   {
+    /** On the press (step P3), not a loose ball (step O6). */
+    bool press = false;
     float lookUpSeconds = 0.0F;
     float callSeconds = 0.0F;
     /** The team-mate is in view or alongside: no look-up delay. */

@@ -1848,6 +1848,43 @@ struct MatchStats
   int looseWrongSlowerBig = 0;
   int looseWrongSlowerLater = 0;
   int looseWrongSlowerMissed = 0;
+  /** Brain redesign plan section 28 (step P1): the defenders' own calls on
+   * pressing the carrier, in the shadow of the team's pick (the first
+   * presser). Per side and step with an opponent on the ball: checks, the
+   * one "mine" is the team's pick, is someone else, two or more say mine,
+   * nobody says mine, and one says mine with a team-mate chasing in doubt
+   * (a first-to-commit case). */
+  int pressShadowChecks = 0;
+  int pressShadowAgree = 0;
+  int pressShadowWrongPlayer = 0;
+  int pressShadowTwoGo = 0;
+  int pressShadowNobody = 0;
+  int pressShadowWithDoubt = 0;
+  /** Of the wrong-player calls, by the planner's pursuit times without its
+   * press eagerness and continuity: his sooner by over 0.1 s (the team's
+   * extra terms chose another), within 0.1 s, later by over 0.1 s; and the
+   * team's pick already pressing (its continuity). */
+  int pressWrongShadowFaster = 0;
+  int pressWrongNearTie = 0;
+  int pressWrongSlower = 0;
+  int pressWrongPickPressing = 0;
+  /** Step P3, first to commit on the press (shadow): calls made, those the
+   * caller got right, those leaving the team's pick as the presser, the
+   * time from the second commit to the call (ms, summed), and commitments
+   * carried over from the side's loose ball. */
+  int pressCallsMade = 0;
+  int pressCallsRight = 0;
+  int pressCallsAgree = 0;
+  int pressCallMillis = 0;
+  int pressCommitsCarried = 0;
+  /** Step P3, per check after the commit stage: who would press (his call
+   * not "not mine", not stood down). One, the team's pick; one, another
+   * (and of those, the team's pick already pressing); two or more; none. */
+  int pressGoAgree = 0;
+  int pressGoOther = 0;
+  int pressGoOtherPickPressing = 0;
+  int pressGoSeveral = 0;
+  int pressGoNone = 0;
   int homeHolds = 0;
   int awayHolds = 0;
   int intentsWin = 0;
