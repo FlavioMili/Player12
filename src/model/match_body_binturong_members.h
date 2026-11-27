@@ -528,6 +528,9 @@
   /** Where a tackle's "win it" nudge sends a free ball met at `contact`
    * (tackling plan step 3): out of the attacker's line to the defender's
    * side, or, goal-side and face on, forward and to the side past him. */
+  PokeRead pokeReadBinturong(const MatchPlayer& owner, PitchPoint contact, Vector2F aim) const;
+  bool stepInAngleOpenBinturong(const MatchPlayer& tackler, const MatchPlayer& carrier) const;
+  std::optional<TackleTouch> stepInTouchBinturong(const MatchPlayer& tackler, const MatchPlayer& owner, PitchPoint contact, PitchPoint bodyTarget) const;
   PitchPoint tackleNudgeSpotBinturong(const MatchPlayer& tackler,
                                     const MatchPlayer& attacker,
                                     PitchPoint contact) const;

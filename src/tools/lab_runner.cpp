@@ -237,6 +237,11 @@ void extractEngine(MatchSample& sample, const MatchEngine& engine)
   sample.blocks = stats.homeBlocks + stats.awayBlocks;
   sample.blocks_committed = stats.blocksCommitted;
   sample.blocks_popped = stats.blocksPoppedUp;
+  sample.touches_shielded = stats.touchesShielded;
+  sample.step_in_moves = stats.stepInMoves;
+  sample.passes_loose_off_target = stats.passesLooseOffTarget;
+  sample.passes_loose_ran_past = stats.passesLooseRanPast;
+  sample.tackle_touches = stats.tackleTouches;
   for (const int count : stats.shotBlocksByPart)
   {
     sample.shot_body_blocks += count;
@@ -317,6 +322,30 @@ void extractEngine(MatchSample& sample, const MatchEngine& engine)
   sample.shot_leg_outcomes = stats.shotLegOutcomes;
   sample.go_ins = stats.homeGoIns + stats.awayGoIns;
   sample.go_ins_free_foot = stats.goInsOnFreeFoot;
+  sample.run_ats = stats.runAts;
+  sample.run_at_shots = stats.runAtShots;
+  sample.run_at_shots_defender_goal_side = stats.runAtShotsDefenderGoalSide;
+  sample.run_at_passes = stats.runAtPasses;
+  sample.run_at_won = stats.runAtWon;
+  sample.pounces = stats.pounces;
+  sample.press_frames = stats.pressFrames;
+  sample.press_squeezed = stats.pressSqueezed;
+  sample.run_at_other = stats.runAtOther;
+  sample.run_at_past = stats.runAtPast;
+  sample.run_at_shot_xg = stats.runAtShotXG;
+  sample.run_at_seconds = stats.runAtSeconds;
+  sample.run_at_ground_given = stats.runAtGroundGiven;
+  sample.run_at_start_xg = stats.runAtStartXG;
+  sample.run_at_best_xg = stats.runAtBestXG;
+  sample.facing_goal_side = stats.facingGoalSide;
+  sample.facing_faces = stats.facingFaces;
+  sample.facing_turned = stats.facingTurned;
+  sample.facing_turned_pressing = stats.facingTurnedPressing;
+  sample.facing_chase = stats.facingChase;
+  sample.facing_receive = stats.facingReceive;
+  sample.facing_run = stats.facingRun;
+  sample.facing_tracks = stats.facingTracks;
+  sample.facing_aerial = stats.facingAerial;
   sample.loose_shadow_checks = stats.looseShadowChecks;
   sample.loose_shadow_agree = stats.looseShadowAgree;
   sample.loose_shadow_wrong_player = stats.looseShadowWrongPlayer;
@@ -337,6 +366,32 @@ void extractEngine(MatchSample& sample, const MatchEngine& engine)
   sample.loose_wrong_slower_big = stats.looseWrongSlowerBig;
   sample.loose_wrong_slower_later = stats.looseWrongSlowerLater;
   sample.loose_wrong_slower_missed = stats.looseWrongSlowerMissed;
+  sample.press_shadow_checks = stats.pressShadowChecks;
+  sample.press_shadow_one = stats.pressShadowOne;
+  sample.press_shadow_two_go = stats.pressShadowTwoGo;
+  sample.press_shadow_nobody = stats.pressShadowNobody;
+  sample.press_shadow_with_doubt = stats.pressShadowWithDoubt;
+  sample.press_calls_made = stats.pressCallsMade;
+  sample.press_calls_right = stats.pressCallsRight;
+  sample.press_call_millis = stats.pressCallMillis;
+  sample.press_commits_carried = stats.pressCommitsCarried;
+  sample.press_go_one = stats.pressGoOne;
+  sample.press_go_several = stats.pressGoSeveral;
+  sample.press_go_none = stats.pressGoNone;
+  sample.press_second_checks = stats.pressSecondChecks;
+  sample.press_second_double_up = stats.pressSecondDoubleUp;
+  sample.press_second_block_lane = stats.pressSecondBlockLane;
+  sample.press_second_cover = stats.pressSecondCover;
+  sample.press_second_no_job = stats.pressSecondNoJob;
+  sample.press_second_several = stats.pressSecondSeveral;
+  sample.press_second_held = stats.pressSecondHeld;
+  sample.press_second_none = stats.pressSecondNone;
+  sample.press_second_stood_down = stats.pressSecondStoodDown;
+  sample.press_second_with_doubt = stats.pressSecondWithDoubt;
+  sample.press_second_own_call = stats.pressSecondOwnCall;
+  sample.press_second_is_nearest = stats.pressSecondIsNearest;
+  sample.press_second_switches = stats.pressSecondSwitches;
+  sample.press_first_switches = stats.pressFirstSwitches;
   sample.holds = stats.homeHolds + stats.awayHolds;
   sample.intents_win = stats.intentsWin;
   sample.intents_clear = stats.intentsClear;
@@ -1311,6 +1366,47 @@ std::map<std::string, Estimate> matchMetrics(
   metrics["go_ins_free_foot_share"] = ratioEstimate(
       column([](const MatchSample& s) { return s.go_ins_free_foot; }),
       column([](const MatchSample& s) { return s.go_ins; }));
+  const std::vector<double> runAts = column([](const MatchSample& s) { return s.run_ats; });
+  metrics["run_ats_per_match"] = meanEstimate(runAts);
+  metrics["press_squeezed_share"] = ratioEstimate(column([](const MatchSample& s) { return s.press_squeezed; }), column([](const MatchSample& s) { return s.press_frames; }));
+  metrics["pounces_per_match"] = meanEstimate(column([](const MatchSample& s) { return s.pounces; }));
+  metrics["run_at_shot_share"] = ratioEstimate(column([](const MatchSample& s) { return s.run_at_shots; }), runAts);
+  metrics["run_at_pass_share"] = ratioEstimate(column([](const MatchSample& s) { return s.run_at_passes; }), runAts);
+  metrics["run_at_won_share"] = ratioEstimate(column([](const MatchSample& s) { return s.run_at_won; }), runAts);
+  metrics["run_at_other_share"] = ratioEstimate(column([](const MatchSample& s) { return s.run_at_other; }), runAts);
+  metrics["run_at_past_share"] = ratioEstimate(column([](const MatchSample& s) { return s.run_at_past; }), runAts);
+  metrics["run_at_shot_goal_side_share"] = ratioEstimate(column([](const MatchSample& s) { return s.run_at_shots_defender_goal_side; }), column([](const MatchSample& s) { return s.run_at_shots; }));
+  metrics["run_at_shot_xg_mean"] = ratioEstimate(column([](const MatchSample& s) { return s.run_at_shot_xg; }), column([](const MatchSample& s) { return s.run_at_shots; }));
+  metrics["run_at_seconds_mean"] = ratioEstimate(column([](const MatchSample& s) { return s.run_at_seconds; }), runAts);
+  metrics["run_at_ground_given_mean"] = ratioEstimate(column([](const MatchSample& s) { return s.run_at_ground_given; }), runAts);
+  metrics["run_at_start_xg_mean"] = ratioEstimate(column([](const MatchSample& s) { return s.run_at_start_xg; }), runAts);
+  metrics["run_at_best_xg_mean"] = ratioEstimate(column([](const MatchSample& s) { return s.run_at_best_xg; }), runAts);
+  const std::vector<double> facingChecks =
+      column([](const MatchSample& s) { return s.facing_goal_side; });
+  metrics["facing_goal_side_per_match"] = meanEstimate(facingChecks);
+  metrics["facing_faces_share"] =
+      ratioEstimate(column([](const MatchSample& s) { return s.facing_faces; }),
+                    facingChecks);
+  metrics["facing_turned_share"] = ratioEstimate(
+      column([](const MatchSample& s) { return s.facing_turned; }),
+      facingChecks);
+  metrics["facing_turned_pressing_share"] = ratioEstimate(
+      column([](const MatchSample& s) { return s.facing_turned_pressing; }),
+      column([](const MatchSample& s) { return s.facing_turned; }));
+  metrics["facing_chase_share"] =
+      ratioEstimate(column([](const MatchSample& s) { return s.facing_chase; }),
+                    facingChecks);
+  metrics["facing_receive_share"] = ratioEstimate(
+      column([](const MatchSample& s) { return s.facing_receive; }),
+      facingChecks);
+  metrics["facing_run_share"] = ratioEstimate(
+      column([](const MatchSample& s) { return s.facing_run; }), facingChecks);
+  metrics["facing_tracks_share"] = ratioEstimate(
+      column([](const MatchSample& s) { return s.facing_tracks; }),
+      facingChecks);
+  metrics["facing_aerial_share"] = ratioEstimate(
+      column([](const MatchSample& s) { return s.facing_aerial; }),
+      facingChecks);
   const std::vector<double> looseChecks =
       column([](const MatchSample& s) { return s.loose_shadow_checks; });
   metrics["loose_shadow_checks_per_match"] = meanEstimate(looseChecks);
@@ -1351,6 +1447,79 @@ std::map<std::string, Estimate> matchMetrics(
       column([](const MatchSample& s) { return s.loose_wrong_slower_later; }), looseWrong);
   metrics["loose_wrong_slower_missed_share"] = ratioEstimate(
       column([](const MatchSample& s) { return s.loose_wrong_slower_missed; }), looseWrong);
+  const auto press = [&column](int MatchSample::* member)
+  { return column([member](const MatchSample& s) { return s.*member; }); };
+  metrics["press_shadow_checks_per_match"] =
+      meanEstimate(press(&MatchSample::press_shadow_checks));
+  metrics["press_shadow_one_share"] =
+      ratioEstimate(press(&MatchSample::press_shadow_one),
+                    press(&MatchSample::press_shadow_checks));
+  metrics["press_shadow_two_go_share"] =
+      ratioEstimate(press(&MatchSample::press_shadow_two_go),
+                    press(&MatchSample::press_shadow_checks));
+  metrics["press_shadow_nobody_share"] =
+      ratioEstimate(press(&MatchSample::press_shadow_nobody),
+                    press(&MatchSample::press_shadow_checks));
+  metrics["press_shadow_with_doubt_share"] =
+      ratioEstimate(press(&MatchSample::press_shadow_with_doubt),
+                    press(&MatchSample::press_shadow_checks));
+  metrics["press_calls_per_match"] =
+      meanEstimate(press(&MatchSample::press_calls_made));
+  metrics["press_calls_right_share"] =
+      ratioEstimate(press(&MatchSample::press_calls_right),
+                    press(&MatchSample::press_calls_made));
+  constexpr double PRESS_MILLIS_PER_SECOND = 1000.0;
+  metrics["press_call_seconds"] = ratioEstimate(
+      column([](const MatchSample& s)
+             { return s.press_call_millis / PRESS_MILLIS_PER_SECOND; }),
+      press(&MatchSample::press_calls_made));
+  metrics["press_commits_carried_per_match"] =
+      meanEstimate(press(&MatchSample::press_commits_carried));
+  metrics["press_go_one_share"] =
+      ratioEstimate(press(&MatchSample::press_go_one),
+                    press(&MatchSample::press_shadow_checks));
+  metrics["press_go_several_share"] =
+      ratioEstimate(press(&MatchSample::press_go_several),
+                    press(&MatchSample::press_shadow_checks));
+  metrics["press_go_none_share"] =
+      ratioEstimate(press(&MatchSample::press_go_none),
+                    press(&MatchSample::press_shadow_checks));
+  metrics["press_first_switches_per_match"] =
+      meanEstimate(press(&MatchSample::press_first_switches));
+  metrics["press_second_checks_per_match"] =
+      meanEstimate(press(&MatchSample::press_second_checks));
+  metrics["press_second_switches_per_match"] =
+      meanEstimate(press(&MatchSample::press_second_switches));
+  metrics["press_second_double_up_share"] =
+      ratioEstimate(press(&MatchSample::press_second_double_up),
+                    press(&MatchSample::press_second_checks));
+  metrics["press_second_block_lane_share"] =
+      ratioEstimate(press(&MatchSample::press_second_block_lane),
+                    press(&MatchSample::press_second_checks));
+  metrics["press_second_cover_share"] =
+      ratioEstimate(press(&MatchSample::press_second_cover),
+                    press(&MatchSample::press_second_checks));
+  metrics["press_second_no_job_share"] =
+      ratioEstimate(press(&MatchSample::press_second_no_job),
+                    press(&MatchSample::press_second_checks));
+  metrics["press_second_several_share"] =
+      ratioEstimate(press(&MatchSample::press_second_several),
+                    press(&MatchSample::press_second_checks));
+  metrics["press_second_held_share"] =
+      ratioEstimate(press(&MatchSample::press_second_held),
+                    press(&MatchSample::press_second_checks));
+  metrics["press_second_none_share"] =
+      ratioEstimate(press(&MatchSample::press_second_none),
+                    press(&MatchSample::press_second_checks));
+  metrics["press_second_stood_down_share"] =
+      ratioEstimate(press(&MatchSample::press_second_stood_down),
+                    press(&MatchSample::press_second_checks));
+  metrics["press_second_with_doubt_share"] =
+      ratioEstimate(press(&MatchSample::press_second_with_doubt),
+                    press(&MatchSample::press_second_checks));
+  metrics["press_second_is_nearest_share"] =
+      ratioEstimate(press(&MatchSample::press_second_is_nearest),
+                    press(&MatchSample::press_second_own_call));
   const std::vector<double> looseCalls =
       column([](const MatchSample& s) { return s.loose_calls_made; });
   metrics["loose_calls_per_match"] = meanEstimate(looseCalls);
@@ -1410,6 +1579,23 @@ std::map<std::string, Estimate> matchMetrics(
                             { return static_cast<double>(s.*field); }));
   };
   perMatch("collision_big_hits_per_match", &MatchSample::collision_big_hits);
+  perMatch("touches_shielded_per_match", &MatchSample::touches_shielded);
+  perMatch("step_in_moves_per_match", &MatchSample::step_in_moves);
+  perMatch("passes_loose_off_target_per_match",
+           &MatchSample::passes_loose_off_target);
+  perMatch("passes_loose_ran_past_per_match",
+           &MatchSample::passes_loose_ran_past);
+  {
+    const std::array<const char*, 3> names{"tackle_touch_control_per_match",
+                                           "tackle_touch_poke_per_match",
+                                           "tackle_touch_step_in_per_match"};
+    for (std::size_t technique = 0; technique < names.size(); ++technique)
+    {
+      metrics[names.at(technique)] = meanEstimate(column(
+          [technique](const MatchSample& s)
+          { return static_cast<double>(s.tackle_touches.at(technique)); }));
+    }
+  }
   perMatch("collision_falls_losing_ball_per_match",
            &MatchSample::collision_falls_losing_ball);
   perMatch("collision_down_play_seconds_per_match",

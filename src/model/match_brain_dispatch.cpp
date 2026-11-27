@@ -203,6 +203,7 @@ void MatchEngine::planOvertake(std::size_t slot)
 void MatchEngine::afterPassReleased(const MatchPlayer& passer,
                                     const MatchPlayer& receiver)
 {
+  noteRunAtPass(passer);
   switch (brainOf(passer.isHomeTeam))
   {
     case BrainId::AARDVARK:
@@ -424,6 +425,21 @@ bool MatchEngine::goesIntoContest(MatchPlayer& defender,
     }
   }
   return defender.goingIn;
+}
+
+std::optional<TackleTouch> MatchEngine::chooseTackleTouch(
+    MatchPlayer& tackler, const MatchPlayer& owner, const TouchMoment& moment,
+    bool contest)
+{
+  switch (brainOf(tackler.isHomeTeam))
+  {
+    case BrainId::AARDVARK:
+    case BrainId::BINTURONG:
+      break;
+    case BrainId::CAPYBARA:
+      return chooseTackleTouchCapybara(tackler, owner, moment, contest);
+  }
+  return std::nullopt;
 }
 
 TackleIntent MatchEngine::chooseTackleIntent(const MatchPlayer& tackler,

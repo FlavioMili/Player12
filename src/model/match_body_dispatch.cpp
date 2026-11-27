@@ -656,7 +656,100 @@ bool MatchEngine::ballInReach(const MatchPlayer& player) const
   const float gapX = player.position.x - ball.position.x;
   const float gapY = player.position.y - ball.position.y;
   const float gap = std::hypot(gapX, gapY);
-  return gap <= feetReach(player) && !ballBehindReach(player, gapX, gapY, gap);
+  return gap <= feetReach(player) &&
+         !ballBehindReach(player, gapX, gapY, gap) &&
+         (ball.z > bodyLines(player).feet ||
+          !touchShielded(player, asVector(ball.position)));
+}
+
+MatchEngine::PokeRead MatchEngine::pokeRead(const MatchPlayer& owner,
+                                            PitchPoint contact,
+                                            Vector2F aim) const
+{
+  switch (bodyOf(owner.isHomeTeam))
+  {
+    case BodyId::AARDVARK:
+      break;
+    case BodyId::BINTURONG:
+      return pokeReadBinturong(owner, contact, aim);
+  }
+  return {};
+}
+
+bool MatchEngine::stepInAngleOpen(const MatchPlayer& tackler,
+                                  const MatchPlayer& carrier) const
+{
+  switch (bodyOf(tackler.isHomeTeam))
+  {
+    case BodyId::AARDVARK:
+      break;
+    case BodyId::BINTURONG:
+      return stepInAngleOpenBinturong(tackler, carrier);
+  }
+  return false;
+}
+
+std::optional<TackleTouch> MatchEngine::stepInTouch(const MatchPlayer& tackler,
+                                                    const MatchPlayer& owner,
+                                                    PitchPoint contact,
+                                                    PitchPoint bodyTarget) const
+{
+  switch (bodyOf(tackler.isHomeTeam))
+  {
+    case BodyId::AARDVARK:
+      break;
+    case BodyId::BINTURONG:
+      return stepInTouchBinturong(tackler, owner, contact, bodyTarget);
+  }
+  return std::nullopt;
+}
+
+bool MatchEngine::touchShielded(const MatchPlayer& toucher,
+                                Vector2F ballAt) const
+{
+  return touchShieldedBy(toucher, ballAt) != nullptr;
+}
+
+const MatchPlayer* MatchEngine::touchShieldedBy(const MatchPlayer& toucher,
+                                                Vector2F ballAt) const
+{
+  // Shielding: no foot goes through another player's body (either side's).
+  // The body is his circle (Body::RADIUS_METRES); the foot's way is the
+  // line from the toucher's centre to the ball.
+  if (getBody(toucher.isHomeTeam) != BodyId::BINTURONG || toucher.isGoalkeeper)
+  {
+    return nullptr;
+  }
+  constexpr float RADIUS = MatchTuning::Body::RADIUS_METRES;
+  const Vector2F from = asVector(toucher.position);
+  const Vector2F line{.x = ballAt.x - from.x, .y = ballAt.y - from.y};
+  const float lineSquared = (line.x * line.x) + (line.y * line.y);
+  if (lineSquared <= MatchEngineInternal::EPSILON)
+  {
+    return nullptr;
+  }
+  for (const MatchPlayer& other : players)
+  {
+    if (&other == &toucher || !MatchEngineInternal::active(other))
+    {
+      continue;
+    }
+    const Vector2F at = asVector(other.position);
+    const Vector2F off{.x = at.x - from.x, .y = at.y - from.y};
+    // Behind the toucher, or past the ball: not in the way.
+    const float along = ((off.x * line.x) + (off.y * line.y)) / lineSquared;
+    if (along <= 0.0F || along >= 1.0F)
+    {
+      continue;
+    }
+    const float gapX = at.x - (from.x + (line.x * along));
+    const float gapY = at.y - (from.y + (line.y * along));
+    if ((gapX * gapX) + (gapY * gapY) < RADIUS * RADIUS)
+    {
+      return &other;
+    }
+  }
+  return nullptr;
 }
 
 PitchPoint MatchEngine::strikePoint(const MatchPlayer& striker) const

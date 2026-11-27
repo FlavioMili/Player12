@@ -122,6 +122,8 @@ class BrainFlowScene : public GUIScene
   void bodyStage();
   /** One player's off-ball frame at the example's moment (step O5). */
   void offBallStage();
+  /** Step P1: his own call on pressing the carrier (shadow). */
+  static void pressShadow(const BrainFlow::OffBallRecord& offBall);
   /** Step O6: his own loose-ball call and meeting points (shadow). */
   static void looseShadow(const BrainFlow::OffBallRecord& offBall);
   /** Step O6: his first-to-commit sequence, projected. */
